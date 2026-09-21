@@ -33,6 +33,8 @@ export interface HistogramChartProps {
   error?: Error | null
   emptyMessage?: string
   height?: number
+  /** Propage a ChartCard : le graphe est rendu nu, sans bordure ni fond (voir ChartCard.frameless). */
+  frameless?: boolean
   /** Token couleur pour la barre (default chart-series-1). */
   colorToken?: SemanticToken
   /** Libellé de l'axe X (ex. "K/D", "Kills / match"). */
@@ -98,6 +100,7 @@ export function HistogramChart({
   error,
   emptyMessage,
   height,
+  frameless,
   colorToken,
   xAxisLabel,
   yAxisLabel,
@@ -130,6 +133,7 @@ export function HistogramChart({
       error={error}
       emptyMessage={emptyMessage}
       height={height}
+      frameless={frameless}
       buildOption={buildOption}
     />
   )

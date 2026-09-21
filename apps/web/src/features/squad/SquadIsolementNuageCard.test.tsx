@@ -108,23 +108,27 @@ describe('SquadIsolementNuageCard', () => {
     expect(screen.getByTestId('chart-card')).toBeTruthy()
   })
 
-  it('l’aide ⓘ reste CONCISE (trois phrases au plus) et nomme la portée du radar', () => {
+  // L'INFOBULLE PORTE DÉSORMAIS AUSSI CE QUE LA FIGURE DÉNOMBRE (2026-09-21, lot A1) :
+  // cette phrase vivait en gris au-dessus du graphe. Une carte n'a qu'une infobulle, et
+  // l'aide de lecture y reste concise — trois phrases, plus la légende de la figure.
+  it('l’aide ⓘ reste CONCISE et porte la portée du radar comme la légende de la figure', () => {
     renderWithProviders(<SquadIsolementNuageCard nuage={nuageDe()} joueurs={joueurs} />)
     fireEvent.mouseEnter(screen.getByRole('button', { name: /info/i }))
     const aide = screen.getByRole('tooltip').textContent ?? ''
     expect(aide).toContain('radar')
-    expect(aide.split('.').filter((p) => p.trim().length > 0).length).toBeLessThanOrEqual(3)
+    expect(aide).toContain('un gros point par joueur')
+    expect(aide.split('.').filter((p) => p.trim().length > 0).length).toBeLessThanOrEqual(4)
   })
 
   it('PARITÉ FR/EN : les deux langues rendent un titre, et deux titres différents', () => {
     const { unmount } = renderWithProviders(
       <SquadIsolementNuageCard nuage={nuageDe()} joueurs={joueurs} />,
     )
-    const fr = screen.getByText('Pourquoi la vengeance ne vient pas').textContent ?? ''
+    const fr = screen.getByText('Frags non vengés').textContent ?? ''
     unmount()
     useAppShellStore.setState({ locale: 'en' })
     renderWithProviders(<SquadIsolementNuageCard nuage={nuageDe()} joueurs={joueurs} />)
-    const en = screen.getByText('Why revenge does not come').textContent ?? ''
+    const en = screen.getByText('Unavenged kills').textContent ?? ''
     expect(fr.length).toBeGreaterThan(0)
     expect(en.length).toBeGreaterThan(0)
     expect(en).not.toBe(fr)

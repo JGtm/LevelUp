@@ -32,19 +32,21 @@ export interface FormesBlockText {
 }
 
 export interface FormesText {
+  /** Le NOM ACCESSIBLE de la section. Plus de titre a l'ecran depuis la decision D5 du
+   *  2026-09-21 : trois intertitres se suivaient, le premier ne nommait rien de lisible. */
   sectionTitle: string
-  /** Les quatre repères du bandeau (ensemble, lobbies, parité, modes). */
-  header: {
-    scope: string
-    scopeMeasuredFmt: (measured: number, total: number) => string
-    lobbies: string
-    lobbiesPlacesFmt: (players: number, squad: number) => string
-    parity: string
-    parityHint: string
-    modes: string
-    modesHint: string
-    matchesFmt: (n: number) => string
-    familiesFmt: (n: number) => string
+  /**
+   * CE QUE DIT UN BLOC SANS DONNEE (decision D8 du 2026-09-21). Un bloc vide reste
+   * affiche et NOMME SA CAUSE : sans cause, un ecran vide se lit comme une panne. La
+   * cause se deduit des comptes du bloc ; `generic` est le repli quand aucune ne se
+   * deduit.
+   */
+  empty: {
+    noFilm: string
+    noEquipment: string
+    noPads: string
+    padsUnnamedOnly: string
+    generic: string
   }
   blocks: { equipment: FormesBlockText; weapons: FormesBlockText; objectives: FormesBlockText }
   axes: Record<EquipmentAxis, string>
@@ -209,25 +211,26 @@ const EN_COLUMNS: Record<string, string> = {
 export const FORMES_TEXT: Record<Locale, FormesText> = {
   fr: {
     sectionTitle: 'Les formes retenues',
-    header: {
-      scope: 'Ensemble',
-      scopeMeasuredFmt: (measured, total) =>
-        `${measured} sur ${total} avec film décodé`,
-      lobbies: 'Lobbies observés',
-      lobbiesPlacesFmt: (players, squad) =>
-        `${players} joueurs mesurés, dont ${squad} de mon escouade`,
-      parity: 'Parité',
-      parityHint: 'dans mon équipe / dans le lobby',
-      modes: 'Modes',
-      modesHint: 'familles de mode à objectif',
-      matchesFmt: (n) => (n > 1 ? `${n} matchs` : `${n} match`),
-      familiesFmt: (n) => (n > 1 ? `${n} familles` : `${n} famille`),
+    empty: {
+      noFilm:
+        'Aucun match de cette sélection n’a de film décodé — ces formes se lisent dans le ' +
+        'film, elles n’ont donc rien à montrer ici.',
+      noEquipment:
+        'Aucun usage d’équipement dans les modes sélectionnés : les matchs sont mesurés, ' +
+        'mais personne n’y a posé de mur, de camouflage, de surbouclier ni de grappin.',
+      noPads:
+        'Aucun socle d’arme spéciale dans les modes sélectionnés — ces modes n’en portent ' +
+        'pas, ou aucun n’a été occupé.',
+      padsUnnamedOnly:
+        'Des socles ont été occupés, mais l’événement natif ne nomme aucun ramasseur : sans ' +
+        'nom, une prise ne peut être versée à aucun camp.',
+      generic: 'Données manquantes sur cette sélection.',
     },
     blocks: {
       equipment: {
         title: "Usages d'équipements",
         aide:
-          "Les gestes d'équipement lus dans le film : camouflage, surbouclier, mur de protection, grappin et objets lâchés au sol. Les grenades n'en sont pas et restent hors du bloc. Attention à l'échelle : ce sont de petits volumes, et une part y bouge de vingt points pour un geste de plus.",
+          "Les usages d'équipement lus dans le film : camouflage, surbouclier, mur de protection, grappin et objets lâchés au sol. Les grenades n'en sont pas et restent hors du bloc. Attention à l'échelle : ce sont de petits volumes, et une part y bouge de vingt points pour un usage de plus.",
       },
       weapons: {
         title: 'Contrôle des armes spéciales',
@@ -310,9 +313,9 @@ export const FORMES_TEXT: Record<Locale, FormesText> = {
         (hidden > 0 ? ` · ${frCount(hidden)} autres ne sont pas affichés` : '') +
         '.',
       matchesShortFmt: (n) => (n > 1 ? `${n} matchs` : `${n} match`),
-      gesturesAxis: 'gestes — une échelle par colonne',
-      gesturesPerMatchAxis: 'gestes par match — une échelle par colonne',
-      spreadAxis: 'gestes par match',
+      gesturesAxis: 'usages — une échelle par colonne',
+      gesturesPerMatchAxis: 'usages par match — une échelle par colonne',
+      spreadAxis: 'usages par match',
       meanPrefix: 'moy',
       lowestToHighest: 'Du match le plus faible au plus fort',
       meanPerMatch: 'Moyenne par match',
@@ -341,18 +344,20 @@ export const FORMES_TEXT: Record<Locale, FormesText> = {
   },
   en: {
     sectionTitle: 'The retained forms',
-    header: {
-      scope: 'Scope',
-      scopeMeasuredFmt: (measured, total) => `${measured} of ${total} with a decoded film`,
-      lobbies: 'Lobbies observed',
-      lobbiesPlacesFmt: (players, squad) =>
-        `${players} measured players, ${squad} of them in my squad`,
-      parity: 'Parity',
-      parityHint: 'in my team / in the lobby',
-      modes: 'Modes',
-      modesHint: 'objective mode families',
-      matchesFmt: (n) => (n > 1 ? `${n} matches` : `${n} match`),
-      familiesFmt: (n) => (n > 1 ? `${n} families` : `${n} family`),
+    empty: {
+      noFilm:
+        'No match in this selection has a decoded film — these forms are read from the film, ' +
+        'so they have nothing to show here.',
+      noEquipment:
+        'No equipment usage in the selected modes: the matches are measured, but nobody ' +
+        'deployed a wall, a camouflage, an overshield or a grapple there.',
+      noPads:
+        'No power weapon pad in the selected modes — either these modes carry none, or none ' +
+        'was occupied.',
+      padsUnnamedOnly:
+        'Pads were occupied, but the native event names no picker: without a name, a pickup ' +
+        'belongs to no side.',
+      generic: 'Data missing for this selection.',
     },
     blocks: {
       equipment: {

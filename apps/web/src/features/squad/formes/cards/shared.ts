@@ -11,7 +11,6 @@
 import type { SquadFormesMatch } from '@/lib/api/types'
 
 import { TEAM_REST_INK } from '../colors'
-import { lobbyOf } from '../model/access'
 import type { PisteRow, PisteSegment } from '../forms/Piste100Form'
 import type { LobbyParts } from '../model/aggregates'
 import type { FormesViewModel } from '../viewModel'
@@ -74,15 +73,4 @@ export function lobbyTrackRow(
     hatch: true,
   })
   return { key, label, sublabel, segments }
-}
-
-/**
- * Le nombre de JOUEURS DISTINCTS mesurés sur la période — le dénominateur du
- * repère « lobbies observés ». Un joueur croisé sur trois matchs compte une
- * fois : c'est une population, pas un nombre de places.
- */
-export function measuredPlayersCount(vm: FormesViewModel): number {
-  const seen = new Set<string>()
-  for (const m of vm.measured) for (const p of lobbyOf(m)) seen.add(p.xuid)
-  return seen.size
 }

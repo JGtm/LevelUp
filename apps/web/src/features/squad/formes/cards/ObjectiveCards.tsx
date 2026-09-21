@@ -10,7 +10,7 @@
  * UNE DURÉE NE SE COMPARE QU'À SA PROPRE PARITÉ : les colonnes « tenir » sont en
  * secondes et s'écrivent en m:ss.
  */
-import { FormesCaption, FormesCard, FormesSubtitle } from '../FormesCard'
+import { FormesCard, FormesSubtitle } from '../FormesCard'
 import { MINUS_INK, PLUS_INK, SPREAD_INK, TEAM_REST_INK, squadPlayerInk } from '../colors'
 import { EcartForm, type EcartRow } from '../forms/EcartForm'
 import { GrilleForm, type GrilleColumn, type GrilleRow } from '../forms/GrilleForm'
@@ -160,10 +160,19 @@ export function ObjectivesSharesByFamilyCard({ vm }: { vm: FormesViewModel }) {
 /** Carte 17 — « Objectif par mode, en valeurs brutes » (grille par famille). */
 export function ObjectivesRawGridCard({ vm }: { vm: FormesViewModel }) {
   const { t, ct } = vm
+  // LE REPLI DE CHAQUE FAMILLE, NOMMÉ : la carte porte une grille par famille de mode, donc
+  // une portée par famille. Ramenées dans l'infobulle ⓘ du titre (2026-09-21), ces phrases
+  // gardent le nom de leur famille en tête — sans lui, trois « Affichés : les N derniers »
+  // empilés ne diraient plus de quoi ils parlent.
+  const portees = objectiveFamilies(vm.block).map((family) => {
+    const shown = listWindow(matchesOfFamily(vm.block, family))
+    return `**${familyLabel(vm, family)}** — ${t.common.foldListFmt(shown.rows.length, shown.hidden)}`
+  })
   return (
     <FormesCard
       title={ct.cards.objectivesRawGrid.title}
       note={ct.cards.objectivesRawGrid.note}
+      help={portees}
       legend={[{ label: vm.squad[0]?.label ?? '', ink: squadPlayerInk(0) }]}
     >
       {objectiveFamilies(vm.block).map((family) => {
@@ -213,7 +222,6 @@ export function ObjectivesRawGridCard({ vm }: { vm: FormesViewModel }) {
               axisTitle={t.common.gesturesAxis}
               nameWidth={MATCH_NAME_WIDTH}
             />
-            <FormesCaption>{t.common.foldListFmt(matches.length, shown.hidden)}</FormesCaption>
           </div>
         )
       })}

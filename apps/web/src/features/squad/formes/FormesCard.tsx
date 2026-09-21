@@ -11,6 +11,7 @@
  */
 import type { ReactNode } from 'react'
 
+import { InfoTooltip, TooltipParagraphs } from '@/components/ui/info-tooltip'
 import { SectionCard } from '@/components/ui/section-card'
 
 import { ENEMY_HATCH, PARITY_INK, UNMEASURED_HATCH } from './colors'
@@ -33,8 +34,16 @@ export interface FormesCardProps {
   title: string
   children: ReactNode
   legend?: FormesLegendEntry[]
-  /** La note de pied, avec ses passages en gras (`**ainsi**`). */
+  /** La note de méthode, avec ses passages en gras (`**ainsi**`). */
   note?: string
+  /**
+   * LES PHRASES DE PORTÉE de la carte : ce que la forme montre vraiment quand elle se
+   * borne (le repli d'une forme par match), ses réserves de mesure. Elles vivaient DANS
+   * le corps, en gris, sous chaque forme (`FormesCaption`) — du texte de méthode posé là
+   * où l'œil cherche la donnée. Elles rejoignent la note dans l'infobulle ⓘ du titre le
+   * 2026-09-21. Le gras `**ainsi**` y reste rendu.
+   */
+  help?: string[]
 }
 
 function LegendChip({ entry }: { entry: FormesLegendEntry }) {
@@ -65,9 +74,29 @@ function LegendChip({ entry }: { entry: FormesLegendEntry }) {
   )
 }
 
-export function FormesCard({ title, children, legend, note }: FormesCardProps) {
+export function FormesCard({ title, children, legend, note, help }: FormesCardProps) {
+  // UNE SEULE INFOBULLE PAR CARTE : la note de méthode d'abord, puis les phrases de portée
+  // dans l'ordre des formes de la carte. Aucune infobulle quand la carte n'a rien à dire.
+  const aide = [note, ...(help ?? [])].filter((x): x is string => x != null && x !== '')
   return (
-    <SectionCard title={title} label={title}>
+    <SectionCard
+      title={title}
+      label={title}
+      titleAdornment={
+        aide.length > 0
+          ? (label) => (
+              <span className="flex items-center gap-1.5">
+                {label}
+                <InfoTooltip
+                  content={
+                    <TooltipParagraphs items={aide.map((text) => <RichText key={text} text={text} />)} />
+                  }
+                />
+              </span>
+            )
+          : undefined
+      }
+    >
       <div className="overflow-x-auto px-3 pb-3 pt-4">{children}</div>
       {legend != null && legend.length > 0 && (
         <div className="flex flex-wrap justify-center gap-x-5 gap-y-1.5 border-t border-border px-3 py-2 text-3xs text-muted-foreground">
@@ -79,23 +108,8 @@ export function FormesCard({ title, children, legend, note }: FormesCardProps) {
           ))}
         </div>
       )}
-      {note != null && note !== '' && (
-        <div className="border-t border-dashed border-border px-3 pb-2.5 pt-2 text-3xs text-muted-foreground">
-          <RichText text={note} />
-        </div>
-      )}
     </SectionCard>
   )
-}
-
-/**
- * FormesCaption — LA PHRASE DE PIED D'UNE FORME : sa portée réelle quand elle ne
- * montre pas tout (le repli des formes par match), ou sa réserve de mesure. Elle
- * vit DANS le corps, sous la forme qu'elle qualifie — jamais dans la note, qui
- * dit la méthode et vaut pour toute la carte.
- */
-export function FormesCaption({ children }: { children: string }) {
-  return <p className="mt-2 text-3xs text-muted-foreground">{children}</p>
 }
 
 /** Le sous-titre d'une sous-forme, quand une carte en porte deux. */

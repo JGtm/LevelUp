@@ -7,9 +7,8 @@
  * « Les deux frises » porte cette réserve en toutes lettres — sans elle, la
  * barre se lirait comme la totalité des socles.
  */
-import { FormesCaption, FormesCard, FormesSubtitle } from '../FormesCard'
+import { FormesCard, FormesSubtitle } from '../FormesCard'
 import { MINUS_INK, PLUS_INK, SPREAD_INK, TEAM_REST_INK, squadPlayerInk } from '../colors'
-import { RichText } from '../forms/RichText'
 import { BandeForm } from '../forms/BandeForm'
 import { EcartForm, type EcartRow } from '../forms/EcartForm'
 import { GrilleForm, type GrilleColumn, type GrilleRow } from '../forms/GrilleForm'
@@ -28,7 +27,6 @@ import {
   aggregateWeaponClass,
   matchesWithWeapon,
   namedPickups,
-  unnamedOccupations,
   weaponOccupations,
   weaponPickupsByPlayer,
   weaponsByVolume,
@@ -102,6 +100,7 @@ export function PadsShareSoloCard({ vm }: { vm: FormesViewModel }) {
     <FormesCard
       title={ct.cards.padsShareSolo.title}
       note={ct.cards.padsShareSolo.note}
+      help={[t.common.foldMeasuredFmt(shown.rows.length, shown.hidden, shown.unmeasured)]}
       legend={[
         { label: t.common.myShare, ink: squadPlayerInk(0) },
         { label: t.common.spread, ink: SPREAD_INK },
@@ -178,9 +177,6 @@ export function PadsShareSoloCard({ vm }: { vm: FormesViewModel }) {
         parity={parity}
         axisTitle={t.common.matchesAxis}
       />
-      <FormesCaption>
-        {t.common.foldMeasuredFmt(shown.rows.length, shown.hidden, shown.unmeasured)}
-      </FormesCaption>
     </FormesCard>
   )
 }
@@ -283,7 +279,6 @@ export function PadsTwoFriezesCard({ vm }: { vm: FormesViewModel }) {
   const { t, ct } = vm
   const parts = lobbyParts(vm.measured, vm.squad.map((s) => s.xuid), PAD_AXIS)
   const named = namedPickups(vm.block)
-  const unnamed = unnamedOccupations(vm.block)
   const shown = measuredWindow(vm.block)
   return (
     <FormesCard
@@ -326,9 +321,6 @@ export function PadsTwoFriezesCard({ vm }: { vm: FormesViewModel }) {
         parity={50}
         axisTitle={t.common.matchesAxis}
       />
-      <FormesCaption>
-        {t.common.foldMeasuredFmt(shown.rows.length, shown.hidden, shown.unmeasured)}
-      </FormesCaption>
       <FormesSubtitle>{ct.subtitles.whoLobbyShare}</FormesSubtitle>
       <Piste100Form
         rows={[
@@ -347,9 +339,6 @@ export function PadsTwoFriezesCard({ vm }: { vm: FormesViewModel }) {
         formatCount={(v) => vm.fmtCount(v)}
         segmentTipFmt={t.common.segmentTipFmt}
       />
-      <p className="mt-3 text-3xs text-muted-foreground">
-        <RichText text={ct.unnamedReserveFmt(unnamed, named, named + unnamed)} />
-      </p>
     </FormesCard>
   )
 }
@@ -369,6 +358,7 @@ export function PadsSquadByMatchCard({ vm }: { vm: FormesViewModel }) {
     <FormesCard
       title={ct.cards.padsSquadByMatch.title}
       note={ct.cards.padsSquadByMatch.note}
+      help={[t.common.foldMeasuredFmt(shown.rows.length, shown.hidden, shown.unmeasured)]}
       legend={[
         ...vm.squad.map((s) => ({ label: s.label, ink: s.ink })),
         { label: t.common.teamRest, ink: TEAM_REST_INK },
@@ -385,9 +375,6 @@ export function PadsSquadByMatchCard({ vm }: { vm: FormesViewModel }) {
         formatCount={(v) => vm.fmtCount(v)}
         segmentTipFmt={t.common.segmentTipFmt}
       />
-      <FormesCaption>
-        {t.common.foldMeasuredFmt(shown.rows.length, shown.hidden, shown.unmeasured)}
-      </FormesCaption>
     </FormesCard>
   )
 }

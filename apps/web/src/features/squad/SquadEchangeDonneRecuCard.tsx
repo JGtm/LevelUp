@@ -62,7 +62,7 @@ export function SquadEchangeDonneRecuCard({ echange }: SquadEchangeDonneRecuCard
                   })
                 : t.donneRecuSayEquilibre}
             </p>
-            <BarGroupedChart series={series} height={280} showValues />
+            <BarGroupedChart series={series} height={280} showValues frameless />
           </>
         )}
       </div>

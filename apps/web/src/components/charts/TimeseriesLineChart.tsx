@@ -45,6 +45,8 @@ export interface TimeseriesLineChartProps {
   error?: Error | null
   emptyMessage?: string
   height?: number
+  /** Propage a ChartCard : le graphe est rendu nu, sans bordure ni fond (voir ChartCard.frameless). */
+  frameless?: boolean
   /**
    * Si true, X est traité comme un axe temporel (datetime). Default true.
    *
@@ -111,6 +113,7 @@ export function TimeseriesLineChart({
   error,
   emptyMessage,
   height,
+  frameless,
   timeAxis = true,
   xAxisType,
   outcomeMarkers = true,
@@ -170,6 +173,7 @@ export function TimeseriesLineChart({
       error={error}
       emptyMessage={emptyMessage}
       height={height}
+      frameless={frameless}
       buildOption={buildOption}
     />
   )

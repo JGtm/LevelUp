@@ -47,8 +47,6 @@ export interface FormesCardsText {
     whenTeamShare: string
     whoLobbyShare: string
   }
-  /** La réserve de la carte « Les deux frises » : les occupations sans nom. */
-  unnamedReserveFmt: (unnamed: number, named: number, total: number) => string
   familyMatchesFmt: (family: string, matches: number) => string
   families: Record<string, string>
   /** Le constat du bloc 2, alimenté par les mesures de la période. */
@@ -77,16 +75,12 @@ export const FORMES_CARDS_TEXT: Record<Locale, FormesCardsText> = {
       whenTeamShare: 'Quand — la part de mon camp, match par match',
       whoLobbyShare: 'Qui — la part de chacun dans le lobby',
     },
-    unnamedReserveFmt: (unnamed, named, total) =>
-      `Hors de cette barre : **${unnamed} occupations de socle** dont l’événement natif ne nomme ` +
-      `pas le ramasseur. Elles ne sont versées à aucun camp — la barre porte ${named} prises sur ` +
-      `${total} mesurées.`,
     familyMatchesFmt: (family, matches) =>
       `${family} — ${matches > 1 ? `${matches} matchs` : `${matches} match`}`,
     families: {
       ctf: 'Drapeau',
       zones_koth: 'Roi de la colline',
-      zones_strongholds: 'Bastion',
+      zones_strongholds: 'Bases',
       oddball: 'Crâne',
       stockpile: 'Réserve',
       extraction: 'Extraction',
@@ -119,9 +113,9 @@ export const FORMES_CARDS_TEXT: Record<Locale, FormesCardsText> = {
           'équipe dominée sur cet axe.',
       },
       equipmentByMatch: {
-        title: 'Cadence de gestes, match par match',
+        title: 'Usages d’équipement par match',
         note:
-          '**Quand le jeu a changé dans la période.** Un geste qui n’apparaît que sur un match, ' +
+          '**Quand le jeu a changé dans la période.** Un usage qui n’apparaît que sur un match, ' +
           'c’est la carte qui le porte, pas une envie. Chaque colonne a **sa propre échelle** — un ' +
           'mur se compare à un mur. **Ce qu’elle abandonne** : au-delà d’une vingtaine de matchs ' +
           'elle demandera un repli.',
@@ -129,7 +123,7 @@ export const FORMES_CARDS_TEXT: Record<Locale, FormesCardsText> = {
       equipmentSpread: {
         title: 'Étendue et moyenne de la période',
         note:
-          '**Une période en une ligne par geste** — la moyenne par match, et la dispersion autour ' +
+          '**Une période en une ligne par usage** — la moyenne par match, et la dispersion autour ' +
           'd’elle. Une moyenne basse peut cacher un match à zéro et un match très haut : l’écart ' +
           'n’est pas du bruit, c’est le mode et la carte. **Ce qu’elle abandonne** : l’ordre des ' +
           'matchs — on ne voit plus QUAND le pic a eu lieu, c’est la grille au-dessus qui le dit.',
@@ -142,7 +136,7 @@ export const FORMES_CARDS_TEXT: Record<Locale, FormesCardsText> = {
           'points.',
       },
       equipmentLobbyTrack: {
-        title: 'Ce que mon camp prend du lobby',
+        title: 'Part de mon camp',
         note:
           '**Deux questions d’un coup** : combien mon camp prend du lobby (la partie colorée face ' +
           'au trait de parité) et qui le prend chez nous (les segments). Complémentaire de la ' +
@@ -151,17 +145,17 @@ export const FORMES_CARDS_TEXT: Record<Locale, FormesCardsText> = {
       equipmentSquadGrid: {
         title: 'Cadence de chacun sur la période',
         note:
-          '**Le même geste comparé entre coéquipiers, sur la même base — la moyenne par match ' +
+          '**Le même usage comparé entre coéquipiers, sur la même base — la moyenne par match ' +
           'mesuré.** **Ce qu’elle abandonne** : la variation d’un match à l’autre, écrasée par la ' +
           'moyenne.',
       },
       equipmentSquadTrack: {
-        title: 'Qui porte quel geste dans l’escouade',
+        title: 'Qui porte quel usage dans l’escouade',
         note:
           '**La répartition des rôles à l’intérieur du groupe.** **Ce qu’elle abandonne — et c’est ' +
           'important** : le dénominateur est l’escouade SEULE, pas le lobby. Il n’y a donc **pas ' +
-          'de trait de parité** ici : la barre ne dit rien de l’adversaire. À lire avec « Ce que ' +
-          'mon camp prend du lobby ».',
+          'de trait de parité** ici : la barre ne dit rien de l’adversaire. À lire avec ' +
+          '« Part de mon camp ».',
       },
       padsGapSolo: {
         title: 'Écart à la parité, par famille d’arme',
@@ -193,12 +187,13 @@ export const FORMES_CARDS_TEXT: Record<Locale, FormesCardsText> = {
           'faits opposés — une famille tenue, une autre perdue.',
       },
       padsTwoFriezes: {
-        title: 'Les deux frises : quand, et qui',
+        title: 'Détail des prises d’armes spéciales',
         note:
           '**Les deux frises dans une seule carte, l’une au-dessus de l’autre** : elles répondent ' +
           'à deux questions qui ne se posent jamais séparément — *quand* le camp a tenu les socles, ' +
-          'et *qui* les a tenus. **Ce qu’elle exige** : la phrase de réserve juste en dessous, sans ' +
-          'quoi la barre se lirait comme la totalité des socles.',
+          'et *qui* les a tenus. **Ce qu’elle abandonne** : les occupations de socle dont ' +
+          'l’événement natif ne nomme pas le ramasseur ne sont versées à aucun camp — la barre ' +
+          'porte les prises NOMMÉES, pas la totalité des socles.',
       },
       padsSquadByMatch: {
         title: 'Emprise de l’escouade, match par match',
@@ -229,7 +224,7 @@ export const FORMES_CARDS_TEXT: Record<Locale, FormesCardsText> = {
         note:
           'Les colonnes RÉELLES de chaque mode, sans les fondre dans trois rôles — mais toutes ' +
           'ramenées à la même unité, la part, donc lisibles l’une sous l’autre. **La vue par rôle ' +
-          'dit le profil, celle-ci dit le geste.**',
+          'dit le profil, celle-ci dit l’usage.**',
       },
       objectivesRawGrid: {
         title: 'Objectif par mode, en valeurs brutes',
@@ -261,9 +256,6 @@ export const FORMES_CARDS_TEXT: Record<Locale, FormesCardsText> = {
       whenTeamShare: 'When — my side’s share, match by match',
       whoLobbyShare: 'Who — each player’s share of the lobby',
     },
-    unnamedReserveFmt: (unnamed, named, total) =>
-      `Outside this bar: **${unnamed} pad occupations** whose native event does not name the ` +
-      `picker. They belong to no side — the bar carries ${named} pickups out of ${total} measured.`,
     familyMatchesFmt: (family, matches) =>
       `${family} — ${matches > 1 ? `${matches} matches` : `${matches} match`}`,
     families: {
@@ -301,7 +293,7 @@ export const FORMES_CARDS_TEXT: Record<Locale, FormesCardsText> = {
           'failing, it is playing in a team that is dominated on that axis.',
       },
       equipmentByMatch: {
-        title: 'Action count, match by match',
+        title: 'Equipment usage per match',
         note:
           '**When the game changed over the period.** An action that appears on a single match is ' +
           'the map carrying it, not a whim. Each column has **its own scale** — a wall compares to ' +
@@ -322,7 +314,7 @@ export const FORMES_CARDS_TEXT: Record<Locale, FormesCardsText> = {
           'cell. **What it gives up**: volume, and intensity saturates at thirty points.',
       },
       equipmentLobbyTrack: {
-        title: 'What my side takes from the lobby',
+        title: 'My side’s share',
         note:
           '**Two questions at once**: how much my side takes from the lobby (the coloured part ' +
           'against the parity line) and who takes it among us (the segments). Complementary to the ' +
@@ -336,12 +328,11 @@ export const FORMES_CARDS_TEXT: Record<Locale, FormesCardsText> = {
           'flattened by the average.',
       },
       equipmentSquadTrack: {
-        title: 'Who carries which action in the squad',
+        title: 'Who carries which usage in the squad',
         note:
           '**How roles split inside the group.** **What it gives up — and it matters**: the ' +
           'denominator is the squad ALONE, not the lobby. There is therefore **no parity line** ' +
-          'here: the bar says nothing about the other team. Read it with “What my side takes from ' +
-          'the lobby”.',
+          'here: the bar says nothing about the other team. Read it with “My side’s share”.',
       },
       padsGapSolo: {
         title: 'Gap to parity, by weapon family',
@@ -373,12 +364,12 @@ export const FORMES_CARDS_TEXT: Record<Locale, FormesCardsText> = {
           'facts — one family held, another lost.',
       },
       padsTwoFriezes: {
-        title: 'The two friezes: when, and who',
+        title: 'Special weapon pickups in detail',
         note:
           '**Both friezes in a single card, one above the other**: they answer two questions that ' +
           'are never asked separately — *when* the side held the pads, and *who* held them. **What ' +
-          'it requires**: the caveat sentence right below, without which the bar would read as the ' +
-          'totality of the pads.',
+          'it gives up**: pad occupations whose native event does not name the picker belong to no ' +
+          'side — the bar carries NAMED pickups, not the totality of the pads.',
       },
       padsSquadByMatch: {
         title: 'Squad grip, match by match',

@@ -37,7 +37,7 @@ import { useMemo } from 'react'
 import { Heatmap2DChart, type ChartPointHeatmap } from '@/components/charts/Heatmap2DChart'
 import { getEChartsThemeColors } from '@/components/charts/_utils'
 import { NarrativeBadge } from '@/components/feedback/NarrativeBadge'
-import { InfoTooltip } from '@/components/ui/info-tooltip'
+import { InfoTooltip, TooltipParagraphs } from '@/components/ui/info-tooltip'
 import { SectionCard } from '@/components/ui/section-card'
 import { EmptyStateNotice } from '@/components/ui/empty-state'
 import { tokenVar } from '@/lib/accessibility'
@@ -119,26 +119,29 @@ export function SquadEchangeMatrixCard({ echange }: SquadEchangeMatrixCardProps)
     rate: pctFmt.format(echange.couverture.taux),
   })
 
-  // La RÉSERVE d'échantillon faible reste : elle n'explique pas la lecture, elle interdit
-  // de la comparer. Le reste du pied (orientation, définition de l'échange) est passé en
-  // infobulle ⓘ du titre le 2026-09-19 — un pavé lu une fois puis jamais.
-  const footer = echange.couverture.echantillon_faible ? (
-    <div className="border-t border-border px-3 py-2">
-      <p className="text-xs text-muted-foreground" data-testid="squad-echange-low-sample">
-        {t.lowSample} — {t.lowSampleHint(PLANCHER_MORTS)}
-      </p>
-    </div>
-  ) : undefined
+  // LA RÉSERVE D'ÉCHANTILLON REJOINT L'INFOBULLE ⓘ DU TITRE (2026-09-21). Elle vivait en
+  // pied de carte, en gris, sous la grille : une ligne de méthode posée là où l'œil cherche
+  // la donnée. Une carte n'a désormais qu'UNE infobulle, et tout ce qui dit la méthode ou la
+  // portée y tient — ici l'orientation de la grille, puis la réserve quand elle s'applique.
+  const aide = (
+    <TooltipParagraphs
+      items={[
+        t.matrixHelp(secondes),
+        echange.couverture.echantillon_faible
+          ? `${t.lowSample} — ${t.lowSampleHint(PLANCHER_MORTS)}`
+          : null,
+      ]}
+    />
+  )
 
   return (
     <SectionCard
       title={t.sectionTitle}
       label={t.sectionLabel}
-      footer={footer}
       titleAdornment={(label) => (
-        <span className="flex items-center gap-1.5">
+        <span className="flex items-center gap-1.5" data-testid="squad-echange-low-sample">
           {label}
-          <InfoTooltip content={t.matrixHelp(secondes)} />
+          <InfoTooltip content={aide} />
         </span>
       )}
     >
@@ -162,6 +165,7 @@ export function SquadEchangeMatrixCard({ echange }: SquadEchangeMatrixCardProps)
               cellLabelColor={cellLabelColor}
               formatTooltip={formatTooltip}
               height={260}
+              frameless
             />
             {/* « reçu N » sous chaque COLONNE, aligné sur la grille du wrapper. */}
             <div

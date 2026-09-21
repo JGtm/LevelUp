@@ -99,8 +99,15 @@ export function Piste100Form({
                     <div key={seg.key} className="flex h-full" style={{ flex: seg.value }}>
                       <Tooltip content={tip} className="h-full w-full">
                         <span
+                          // L'ENCRE DE L'ÉTIQUETTE SUIT LE FOND, PAS LE RÔLE (2026-09-21).
+                          // Sur un aplat de joueur, du blanc. Sur la HACHURE de l'adversaire,
+                          // le fond reste celui de la carte : le blanc y disparaîtrait en
+                          // thème clair, et `muted-foreground` — l'encre précédente — se
+                          // confondait avec les rayures, qui sont faites de cette teinte.
+                          // `foreground` est l'encre de texte la plus contrastée du thème,
+                          // dans les deux thèmes.
                           className={`flex h-full w-full items-center justify-center overflow-hidden whitespace-nowrap text-3xs font-semibold${
-                            seg.hatch || seg.unmeasured ? ' text-muted-foreground' : ' text-white'
+                            seg.hatch || seg.unmeasured ? ' text-foreground' : ' text-white'
                           }`}
                           style={
                             seg.unmeasured

@@ -64,6 +64,8 @@ export interface Heatmap2DChartProps {
   error?: Error | null
   emptyMessage?: string
   height?: number
+  /** Propage a ChartCard : le graphe est rendu nu, sans bordure ni fond (voir ChartCard.frameless). */
+  frameless?: boolean
   /** sequential (cold→hot) ou divergent (low→neutral→high). Default 'sequential'. */
   paletteMode?: HeatmapPaletteMode
   /** Min/max forcés du visualMap (default = auto-fit). */
@@ -185,6 +187,7 @@ export function Heatmap2DChart({
   error,
   emptyMessage,
   height,
+  frameless,
   paletteMode = 'sequential',
   valueRange,
   saturationCap,
@@ -270,6 +273,7 @@ export function Heatmap2DChart({
       error={error}
       emptyMessage={emptyMessage}
       height={height}
+      frameless={frameless}
       buildOption={buildOption}
       legend={
         legend ?? (hasEmptyCell ? (
