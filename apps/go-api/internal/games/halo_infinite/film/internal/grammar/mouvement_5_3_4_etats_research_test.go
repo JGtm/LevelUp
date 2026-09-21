@@ -163,7 +163,21 @@ func m534Contexte(t *testing.T, film *source.Film) *FilmContext {
 		t.Fatalf("carte %q : %v", nom, err)
 	}
 	t.Logf("CARTE : %s (axes %v)", nom, entry.AxisWidths)
-	return NewFilmContextForMap(film, &entry, nil)
+	fc := NewFilmContextForMap(film, &entry, nil)
+	// LES LARGEURS D AXE DE LA CARTE S INSTALLENT ICI, ET C EST OBLIGATOIRE — c est le geste que
+	// `replay.installWorldObjectPrecision` fait en production juste apres le constructeur.
+	// Sans lui, le contexte garde le descripteur PAR DEFAUT, qui est l entree `cliffhanger` du
+	// catalogue : sur `snowbound` (15/15/17) le chemin absolu d `i0` lirait ses trois axes aux
+	// largeurs 13/13/14, donc CINQ BITS DE TROP PAR RECORD, et tout ce qui suit dans le record
+	// est du bruit. L instrument de reference de 5.3.2 ne le faisait pas — cause mesuree au
+	// lot 5.3.5.
+	bal := fc.ProfilDeBalayage()
+	bal.PoserLargeursObjetDuMondeDepuisDecoupage(entry.Layout())
+	fc.PoserProfilDeBalayage(bal)
+	t.Logf("LARGEURS WORLD-OBJECT INSTALLEES : %v (index %d, region %d)",
+		fc.LargeursObjetDuMonde().AxisW, fc.LargeursObjetDuMonde().IndexW,
+		fc.LargeursObjetDuMonde().Region)
+	return fc
 }
 
 // m534Observateur branche les deux hooks utiles. Le pointeur `ts` porte l horodatage du paquet

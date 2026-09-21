@@ -2011,6 +2011,146 @@ DE POSITION du meme chemin, donc une sortie publiee. Consignee au § 6.
 
 ---
 
+## 2 septdecies. LA LOI DE `i1` (5.3.5) — ELLE ETAIT EXACTE, ET L INSTRUMENT LISAIT LA CARTE D A COTE
+
+> Point (1) de la reprise du 2026-09-21. **CE SECTION CORRIGE LES CHIFFRES DES § 2quaterdecies,
+> § 2quindecies ET § 2sexdecies** : ils ont ete mesures sans installer les largeurs d axe de la
+> carte, et ils sous-estiment tout d un facteur 3 a 65. Les valeurs de ce § font foi.
+
+### 2sept-d.1 L ECRIVAIN, LU A L OCTET — ET LE PORT EST EXACT
+
+```
+FUN_14076d45c  (l entree d i1)
+    b = R(1) ; FUN_14076d4d0(lecteur, dst, b*2)
+FUN_14076d4d0  (le repartiteur, PARTAGE avec i62)
+    mode 0 (b == 0) : FUN_14076d528(..., min = DAT_143cd88f8, max = DAT_143cd88fc, 10, 0x13)
+    mode 2 (b == 1) : FUN_1406d676c(..., 0x60)        -> vec3 BRUT de 96 bits
+FUN_14076d528  (le vec3 a precision dynamique)
+    g = R(1) ; si g != 0 -> VECTEUR CONSTANT (*PTR_DAT_14474c2f0), AUCUN bit de charge
+    sinon : dir = R(0x13 = 19) ; FUN_1406d8288(dir, &u, 19)   -> unitaire cubemap
+            m   = FUN_14076d6dc(lecteur, min, max, 10)        -> LE SCALAIRE, LU APRES
+            out = u * m
+FUN_14076d6dc  (la loi du scalaire)
+    raw = R(w) ; n = 1 << w
+    raw == 0    -> min
+    raw >= n-1  -> max
+    sinon       -> exp(raw*step + 0.5*step) - (1 - min),   step = log((1 - min) + max) / n
+```
+
+**CONSTANTES RELUES DANS LE BINAIRE** (`/read_memory`, float32 little-endian) :
+
+| symbole | octets | valeur |
+|---|---|---|
+| `DAT_143cd88f8` | `8fc2f53c` | **0,029999999** (min) |
+| `DAT_143cd88fc` | `0000af43` | **350,0** (max) |
+| `DAT_143cd8374` | `0000803f` | 1,0 (le 1 de « 1 - min ») |
+| `DAT_143cd84b0` | `0000003f` | 0,5 (le demi-pas) |
+
+**VERDICT : `DecodeVelocityMagnitude` TRANSCRIT CETTE LOI TERME POUR TERME**, ses trois
+constantes valent celles-ci, l ordre direction-puis-scalaire est le bon et la polarite de la
+porte l est aussi (bit a 1 = vecteur constant, zero bit de charge). **LA LOI N ETAIT PAS LA
+CAUSE.**
+
+### 2sept-d.2 LA CAUSE, ET C EST ENCORE L INSTRUMENT
+
+**LES LARGEURS D AXE DE LA CARTE N ETAIENT PAS INSTALLEES.** `NewFilmContextForMap` pose la
+bascule de grammaire et le decoupage impose, mais PAS le descripteur world-object : en production
+c est `replay.installWorldObjectPrecision` qui le fait, juste apres le constructeur. Aucun
+instrument de ce lot — ni celui de 5.3.2, ni les miens — ne faisait ce second geste. Le chemin
+absolu d `i0` lisait donc ses trois axes aux largeurs de **`cliffhanger` (13/13/14)** sur un film
+de **`snowbound` (15/15/17)** : **cinq bits de trop par record**, et tout ce qui suit dans le
+record est du bruit.
+
+**L EFFET, MESURE SUR `bfecd02b`** (meme marche, meme monde, meme profil ; seules les largeurs
+changent) :
+
+| | sans les largeurs | **avec les largeurs** | facteur |
+|---|---|---|---|
+| records `ti=35` | 31 530 | **97 447** | x3,1 |
+| records `ti=35` DESYNCHRONISES | 38 (0,12 %) | **3 (0,00 %)** | /13 |
+| composant fautif | `i59` 25 · `i57` 13 | **`i59` 3, `i57` ZERO** | |
+| etalon `i0` | 63,3 % | **85,5 %** | |
+| etalon `i1` | 57,4 % | **77,5 %** | |
+| etalon `i21` | 67,2 % | **65,2 %** | |
+| etalon `i25` | 92,6 % | **97,0 %** | |
+| `i1` lectures dequantifiees | 3 291 | **60 783** | x18,5 |
+| positions `i0` captees | 25 495 | **96 638** | x3,8 |
+| `i29` lectures (slot bipede) | 848 | **1 407** | x1,7 |
+| `i62` lectures (slot bipede) | 787 | **1 507** | x1,9 |
+
+**TROIS DESYNCS SUR 97 447 RECORDS**, et `i57` n en cause plus AUCUNE : la « desync propre » de
+`i57` que le § 2quindecies chiffrait a 13 etait elle-meme un artefact de largeur. Le verdict
+GRAMMATICAL de `i57` (le gate `dst[2]` n est pas derivable du flux) reste vrai ; son COUT est nul
+sur ce film.
+
+### 2sept-d.3 L ORACLE INDEPENDANT : LA VITESSE DECODEE SUIT LE DEPLACEMENT
+
+Pour chaque paire de positions successives d une MEME vie : deplacement par seconde, divise par
+la vitesse decodee du meme intervalle. **Aucune unite n est supposee — c est la DISPERSION qui
+tranche.**
+
+| film | paires appariees | p10 | mediane | p90 | **dispersion p90/p10** | verdict |
+|---|---|---|---|---|---|---|
+| `bfecd02b` | 59 557 | 0,180 | **0,240** | 0,307 | **1,7** | ETROITE |
+| `4f77afc1` | 178 180 | 0,124 | **0,236** | 0,288 | **2,3** | ETROITE |
+
+**LE FACTEUR D UNITE EST LE MEME SUR LES DEUX FILMS (0,240 et 0,236)** — deux cartes, deux modes,
+deux builds. Un decodage faux ne rendrait pas deux fois la meme constante. **LA VITESSE DE `i1`
+EST DONC LUE JUSTE**, et l aberration du § 2sexdecies.4 (347 m/s, un bipede sur deux au-dessus de
+11 m/s) est entierement imputable aux largeurs manquantes.
+
+### 2sept-d.4 LA DISTRIBUTION EN m/s — ET LE SPRINT EST REFUTE COMME OBSERVABLE PAR LA VITESSE
+
+| film | lectures | p10 | mediane | p90 | max |
+|---|---|---|---|---|---|
+| `bfecd02b` | 60 783 | 1,14 | **2,26 m/s** | 2,88 | 343 |
+| `4f77afc1` | 214 284 | 0,82 | **2,27 m/s** | 2,90 | 347 |
+
+Histogramme de la vitesse AU SOL, pas de 1 m/s (`bfecd02b`) :
+`0:4 843 · 1:15 960 · 2:37 283 · 3:2 335 · 4:51 · 5:13 · 6:11 · 7:7 · ... · >=25:179`
+
+**UN SEUL MAXIMUM LOCAL, A 2-3 m/s** — 61,3 % de la population sur `bfecd02b`, 56,1 % sur
+`4f77afc1`. **AUCUNE SECONDE BOSSE.** Au-dela de 4 m/s la population s effondre (51 lectures sur
+60 783, soit 0,08 %), et ce qui reste au-dessus de 25 m/s (179 et 3 668) est la queue des
+vehicules et des projectiles montes sur des slots recycles.
+
+**LE SPRINT EST DONC REFUTE COMME OBSERVABLE PAR LA VITESSE**, et c est un negatif MESURE, pas un
+defaut d instrument : la loi est exacte, l oracle la valide a deux films, et la distribution n a
+qu un mode. Si le sprint existe dans le film, il n est PAS un deuxieme regime de vitesse — il
+faut le chercher dans un ETAT (un drapeau), pas dans une grandeur.
+
+### 2sept-d.5 LE SAUT — UNE FORME LISIBLE, MAIS PAS UNE PREUVE
+
+Impulsion = la composante verticale devient positive puis negative sur la MEME vie.
+
+| | `bfecd02b` | `4f77afc1` |
+|---|---|---|
+| impulsions · slots | 1 817 · 59 | 10 494 · 209 |
+| duree (mediane) | 0,234 s | 0,534 s |
+| pic de montee (mediane) | 0,367 m/s | 0,699 m/s |
+| **impulsions a pic >= 3 m/s** | **270** | **2 805** |
+| duree de celles-la (mediane) | **0,632 s** | **1,567 s** |
+
+**LE PIC MEDIAN EST SOUS 1 m/s** : l immense majorite des « impulsions » est le clapotis vertical
+d un Spartan qui marche, pas un saut. En ne gardant que les pics >= 3 m/s, `bfecd02b` rend une
+duree mediane de **0,632 s** — exactement l ordre d un saut de Halo —, mais `4f77afc1` rend
+**1,567 s** avec un p90 a 48 s : **la signature ne tient pas d un film a l autre.**
+
+**VERDICT : LE SAUT N EST PAS PROUVE.** Il est LU (la composante verticale est decodee juste) mais
+sa segmentation en episodes repose sur DEUX SEUILS D INSTRUMENT (le pic de 3 m/s, le signe de
+vz), et le resultat n est pas stable. **Publier un tel etat serait publier un seuil comme une
+donnee** — c est ce que la doctrine du chantier interdit (la grammaire prime, une heuristique est
+un repli compte). Report au § 6.
+
+### 2sept-d.6 CE QUE 5.3.5 CHANGE POUR LE PORT
+
+`stances[]` ne peut porter que ce qui est **LU** : `crouch` (`i29`, un booleen du flux),
+`slide` (`i62`, la porte du flux) et `mobility` (`i54`, son drapeau d amorce). **`sprint` et
+`jump` n y entrent pas** — le premier est refute, le second n est pas prouve. Les deux sont au
+§ 6 avec leurs chiffres.
+
+---
+
 ## 3. LE NEGATIF, MESURE DEUX FOIS
 
 **(a) Sur l'archetype.** Les 64 composants de `ti=35` (`ecs_table.tsv`) : aucun nom ne contient
@@ -2186,3 +2326,24 @@ go test -tags=research -count=1 -v -run TestMouvementI55D1 \
 - **PORTER LES QUATRE ETIQUETTES ECRITES D `i59` (1, 4, 5, 6) ET LES DEUX SANS CHARGE (bruts 6
   et 7).** Pre-requis dans l ordre au § 2quindecies.5. **NON TRAITEE** : 0,12 % des records de
   bipede, contre un risque sur `grappleLines[]`.
+
+- **D16 (5.3) — LE SPRINT EST REFUTE COMME OBSERVABLE PAR LA VITESSE** (5.3.5). Loi de `i1`
+  exacte (ecrivain + constantes relues), oracle du deplacement valide sur deux films (dispersion
+  1,7 et 2,3 ; facteur d unite 0,240 et 0,236), et la distribution au sol n a **qu un seul mode,
+  a 2-3 m/s** (61,3 % et 56,1 %) : au-dela de 4 m/s il reste 0,08 % de la population.
+  **NON TRAITEE** : si le sprint est dans le film, c est un ETAT (un drapeau), pas un second
+  regime de vitesse. A chercher dans les composants d etat, pas dans une grandeur.
+- **D17 (5.3) — LE SAUT EST LU MAIS PAS PROUVE** (5.3.5). La composante verticale est decodee
+  juste ; sa segmentation en episodes repose sur deux seuils d instrument, et la signature ne
+  tient pas d un film a l autre (duree mediane des impulsions a pic >= 3 m/s : 0,632 s sur
+  `bfecd02b`, 1,567 s sur `4f77afc1`, p90 48 s). **NON TRAITEE** : publier cet etat publierait un
+  seuil comme une donnee. Le remede est une PRECONDITION lue (etre au sol), pas un seuil ajuste.
+- **D18 (5.3) — LES INSTRUMENTS DU LOT N INSTALLAIENT PAS LES LARGEURS D AXE DE LA CARTE**
+  (5.3.5). `NewFilmContextForMap` pose la bascule et le decoupage impose, mais le descripteur
+  world-object est installe SEPAREMENT en production (`replay.installWorldObjectPrecision`).
+  Sans ce second geste, `i0` lit ses axes aux largeurs de `cliffhanger` sur toutes les autres
+  cartes. Effet mesure sur `bfecd02b` : records `ti=35` 31 530 -> **97 447**, desyncs 38 -> **3**,
+  etalon `i0` 63,3 -> **85,5 %**, lectures `i1` x18,5. **TRAITEE DANS LES INSTRUMENTS** (les
+  trois posent desormais le descripteur) ; **consignee parce qu elle invalide les chiffres des
+  § 2quaterdecies a § 2sexdecies**, corriges au § 2septdecies. Un garde-rail d instrument
+  manquerait encore : rien n empeche le prochain d oublier ce geste.

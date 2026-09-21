@@ -114,7 +114,15 @@ func m533bContexte(t *testing.T, film *source.Film) *FilmContext {
 		t.Fatalf("carte %q : %v", nom, err)
 	}
 	t.Logf("CARTE : %s (axes %v)", nom, entry.AxisWidths)
-	return NewFilmContextForMap(film, &entry, nil)
+	fc := NewFilmContextForMap(film, &entry, nil)
+	// LES LARGEURS D AXE DE LA CARTE S INSTALLENT ICI (cf. `m534Contexte` : sans elles le chemin
+	// absolu d `i0` lit ses axes aux largeurs de `cliffhanger`, et tout le record derriere est du
+	// bruit — cause mesuree au lot 5.3.5).
+	bal := fc.ProfilDeBalayage()
+	bal.PoserLargeursObjetDuMondeDepuisDecoupage(entry.Layout())
+	fc.PoserProfilDeBalayage(bal)
+	t.Logf("LARGEURS WORLD-OBJECT INSTALLEES : %v", fc.LargeursObjetDuMonde().AxisW)
+	return fc
 }
 
 // m533bLierMonde lie les slots portes par les images-cles d un chunk (meme geste que la marche
