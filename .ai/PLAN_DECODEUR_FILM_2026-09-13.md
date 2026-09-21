@@ -8093,10 +8093,49 @@ fin de vie « despawn » que le rejeu ne sait pas nommer.
   soit a nommer l absence de mort. Les deux se paient d une montee de schema 66 -> 67. La mesure
   est posee ; la decision ne l est pas.
 
+- [x] **5.10.5 — LES 32 DRAPEAUX DE `PlayerGameEventSmall` NE PORTENT PAS LE DECLENCHEUR DU
+  SAUT, ET LE MAILLON MANQUANT EST NOMME.** Item ajoute par le pilote. Le masque final du type
+  82 (`FUN_14080add8` -> `FUN_14080ae28` : 32 `R(1)` inconditionnels) etait SAUTE depuis le lot
+  1 ; il est desormais LU par l instrument (`pgesPayload.mask`, meme bits — un `ReadBits(32)` a
+  la place d un `Skip(32)`).
+  **LE JUGE ETAIT ECRIT AVANT LA MESURE** : un bit est NOMME s il tient 90 % en precision ET en
+  rappel contre un debut d etat, dans une fenetre de DEUX TICKS (tick mesure : **16 672 us**,
+  ecart median des paquets delta de `bfecd02b`). Etiquettes lues par la fonction de PRODUCTION
+  `ScanMovementStates` : saut `jumpDerived` **396**, sprint `i57` **296**, accroupi `i29` **6**.
+  **LE PONT VERS LE SLOT N EXISTE PAS SUR CE FILM, ET C EST LA MESURE QUI LE DIT.** Sur les
+  **578** evenements de type 82 de `bfecd02b`, les TROIS references d en-tete (domaines 0, 8 et
+  7, descripteur `0x142ef7f6c`, base de categorie 4 = **512**) sont ABSENTES : leur bit de porte
+  vaut 0 sur **578 / 578**. Controle independant : l instrument du lot 1
+  (`TestPlayerGameEventSmall`, 12 chunks) rend `ref0 presente 0/225 (0,0 %)` sur le meme film,
+  avec une charge parfaitement alignee par ailleurs (21 valeurs de champ A, 0 selecteur a
+  largeur runtime, sac de texte present sur 4 % des evenements). **Le defaut n est donc pas la
+  lecture : l evenement ne nomme pas son joueur sur ce film.**
+  **CE QUI RESTE MESURABLE, ET SON TEMOIN.** Sans pont de slot, la seule note possible est la
+  coincidence de TEMPS, tous joueurs confondus, avec un temoin decale de 3 s. Les huit bits a
+  population exploitable (24 a 31, 39 a 99 evenements chacun) restent AU NIVEAU DU TEMOIN :
+
+        | bit | n  | saut : coincidence / temoin | sprint : coincidence / temoin |
+        |---|---:|---|---|
+        | 24 | 99 | 3,0 % / 3,0 %  | 6,1 % / 2,0 % |
+        | 25 | 39 | 2,6 % / 10,3 % | 0,0 % / 2,6 % |
+        | 26 | 69 | 0,0 % / 2,9 %  | 1,4 % / 0,0 % |
+        | 27 | 89 | 6,7 % / 1,1 %  | 0,0 % / 3,4 % |
+        | 28 | 52 | 9,6 % / 0,0 %  | 3,8 % / 5,8 % |
+        | 29 | 70 | 5,7 % / 5,7 %  | 1,4 % / 2,9 % |
+        | 30 | 74 | 6,8 % / 5,4 %  | 8,1 % / 4,1 % |
+        | 31 | 88 | 4,5 % / 8,0 %  | 5,7 % / 3,4 % |
+
+  L accroupi est a **0,0 %** partout (6 debuts seulement). Les bits 0 a 22 ne sont poses que sur
+  UN evenement chacun — population trop mince pour etre notee, et elle est publiee comme telle.
+  **VERDICT : AUCUN BIT NOMME**, donc AUCUN PORT (le brief le prevoyait explicitement), et
+  `jumpDerived` reste la publication du saut. Ghidra n a pas ete rouvert : la regle du pilote
+  etait « en complement SI un bit ressort », et aucun ne ressort.
+
 ## 4. Découvertes (consignées, NON traitées — règle 7)
 
 | Date | Lot | Découverte | Où elle ira |
 |---|---|---|---|
+| 2026-09-21 | 5.10.5 | **D3 (5.10) — LE TYPE 82 NE NOMME PAS SON JOUEUR SUR `bfecd02b` : LES TROIS REFERENCES D EN-TETE SONT ABSENTES 578 FOIS SUR 578.** Leur bit de porte vaut 0 partout (controle independant : l instrument du lot 1 rend `ref0 presente 0/225`), alors que la charge, elle, est parfaitement alignee (21 valeurs de champ A, aucun selecteur a largeur runtime). Le masque de 32 drapeaux est donc note SANS pont de slot, et il reste au niveau du temoin decale. | NON TRAITE. Le maillon est NOMME et il a une adresse : le lecteur de domaines `0x142ef7f6c` du descripteur `PlayerGameEventSmall`. Deux suites possibles — (a) mesurer la presence des refs sur d AUTRES films (celles du lot 1 etaient relevees sur `000d5950`, `01e1f945`, `00502e52`), (b) chercher l emetteur ailleurs que dans les refs d en-tete (le sac de texte porte des index de participant sur 4 % des evenements) |
 | 2026-09-21 | 5.10.2 | **D1 (5.10) — LES DEUX EPISODES DU RAZORBACK `776/1` SONT SANS SUPPORT DANS LE FILM, ET UN TROISIEME OCCUPANT EST NOMME.** Le document publie `Dafar8423` (frames 251-563) et `Yessireezy` (943-1336) ; la seule montee a bord ECRITE dans ce vehicule est celle du slot **524** (vie sans xuid) a **1:54.5**, siege 1. Le verdict Theater de l utilisateur (2026-09-19) condamnait deja le second. | NON TRAITE (regle 7 : le lot porte sur le SIEGE). Le remede demande de construire les episodes sur `i10` — 48 montees nommees contre 86 episodes publies : c est un arbitrage de couverture ET une valeur neuve de `rides[].src`, donc une decision utilisateur |
 | 2026-09-21 | 5.10.1 | **D2 (5.10) — LA MARCHE DES IMAGES-CLES NE REND QU UN RECORD PAR TABLE.** `WalkKeyframeRecords` rend **61** records pour **61** images-cles de `4f77afc1`, 0 desynchronise : elle s arrete a la premiere frontiere. L ETAT d occupation a l instant d une image-cle — qui fermerait la couverture partielle d `i10` — est donc hors de portee tant que cette marche ne traverse pas la table. | NON TRAITE. Meme famille que D11 (5.3) (24 % des paquets a liste pleine non localises) ; le lot qui voudra l ETAT plutot que les TRANSITIONS doit d abord instruire l arret de `WalkKeyframeRecords` (cause d arret rendue par la fonction, jamais lue jusqu ici) |
 | 2026-09-21 | 5.9.5 | **D6 (5.9) — LES TROIS FENTES SONT NOMMEES, MAIS SEULE LA 1 EST PUBLIEE.** `'saev'` (esquive, fente 0) et `'sagh'` (grappin, fente 2) sont nommes par l image au meme titre que `'sasp'`, et le grappin a meme le meilleur controle de contenu du lot (vitesse au sol p90 **5,84 m/s** dans ses intervalles contre 2,88 hors, sur `4f77afc1`). Leur population reste mince : 1 et 1 lecture sur `bfecd02b`, 12 et 49 sur `4f77afc1`. | NON TRAITE (regle 7, et le brief bornait le port a l enum `kind`). Un canal `abilityActive[]` publierait les trois fentes avec leurs noms ; le controle qui le fermerait est le croisement des **41 intervalles de la fente 2** avec les `grappleLines[]` du lot 3.7 (paires d `i59` etiquette 3, deja publiees) — un appariement, pas une lecture de plus |
@@ -8578,6 +8617,13 @@ DECOUPES, jamais plafonnes : `facts/rev_chronique.go` (rotation des rangs `.2` a
 la carte installees, oracle de contenu), `sieges_5_10_parent_research_test.go` (recensement,
 resolution du parent, loi du siege, sejours, dissolutions, suppressions) et
 `sieges_5_10_fins_research_test.go` (recensement contre suppression, et le temoin `776`).
+
+**5.10.5 (item ajoute par le pilote), gates SANS AUCUN DECODAGE DE CORPUS** : `gofmt`,
+`go vet -tags=research`, et la mesure sur `bfecd02b` par `masque_5_10_5_research_test.go` (1,6 s)
+puis le controle independant `TestPlayerGameEventSmall` du lot 1 sur le MEME film. Le seul octet
+de code touche hors instrument est le `Skip(32)` du masque, devenu `ReadBits(32)` dans le helper
+de test du lot 1 : MEMES BITS, et `TestGrammarRevSuitLaGrammaire` reste vert (les fichiers de
+test sont hors de l empreinte de la couche).
 
 
 ### Post-chantier — lot 5.9 (chaines du sprint et du saut), 2026-09-21
