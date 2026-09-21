@@ -38,18 +38,18 @@ fusion par le pilote dans la branche de chantier. Statuts : `[x]` fait, `[~]` co
 
 ## Lots
 
-### Lot A1 — chrome des graphes, Escouade, formes retenues (worktree `LevelUp-wt-ajsup-a1`)
-- [ ] Six cartes de l'echange + donuts + tout ChartCard monte dans une SectionCard : `frameless`
-- [ ] Titres D12 (FR + EN)
-- [ ] Taux d'echange par session : rendu inchange (attend D13)
-- [ ] Frises : retirer « Affiches : les XX derniers matchs… » et « Hors de cette barre… »
-- [ ] Formes retenues (solo + squad) : titre de section + HeaderStrip retires (D5)
-- [ ] Notes sous legende des FormesCard -> InfoTooltip (i) a droite du titre de carte
-- [ ] Footers/notes des cartes de l'echange -> InfoTooltip (i)
-- [ ] Intertitre « Objectifs » orphelin corrige ; politique D8 sur les blocs des formes
-- [ ] Etiquettes blanches sur rayures (Piste100Form) — « Ce que mon camp prend du lobby »
-- [ ] « geste » -> « usages » dans `formes/cardsI18n.ts` et `formes/i18n.ts` ; « Bastion » -> « Bases »
-- [ ] Colonne « Objets laches au sol » (D9)
+### Lot A1 — chrome des graphes, Escouade, formes retenues (worktree `LevelUp-wt-ajsup-a1`) — FUSIONNE 57362a0d5
+- [x] Six cartes de l'echange + donuts + tout ChartCard monte dans une SectionCard : `frameless`
+- [x] Titres D12 (FR + EN)
+- [x] Taux d'echange par session : rendu inchange (attend D13)
+- [x] Frises : retirer « Affiches : les XX derniers matchs… » et « Hors de cette barre… »
+- [x] Formes retenues (solo + squad) : titre de section + HeaderStrip retires (D5)
+- [x] Notes sous legende des FormesCard -> InfoTooltip (i) a droite du titre de carte
+- [x] Footers/notes des cartes de l'echange -> InfoTooltip (i)
+- [x] Intertitre « Objectifs » orphelin corrige ; politique D8 sur les blocs des formes
+- [x] Etiquettes blanches sur rayures (Piste100Form) — « Ce que mon camp prend du lobby »
+- [x] « geste » -> « usages » dans `formes/cardsI18n.ts` et `formes/i18n.ts` ; « Bastion » -> « Bases »
+- [x] Colonne « Objets laches au sol » (D9)
 
 ### Lot A2 — usage partage + Sessions (worktree `LevelUp-wt-ajsup-a2`)
 - [ ] Sessions : retirer « Matchs mesures X/X », pied du controle des armes, texte D1
@@ -88,3 +88,7 @@ fusion par le pilote dans la branche de chantier. Statuts : `[x]` fait, `[~]` co
 - [x] 5 sujets x 3 propositions, jetons de l'app, clair/sombre
 
 ## Decouvertes (hors perimetre, ne pas traiter)
+- A1 : double cadre aussi dans `compare/CompareWeaponsRange.tsx`, `match-view/MatchKillDistanceSection.tsx`, `tactical/TacticalCoordinationCard.tsx`.
+- A1 : motif titleAdornment + InfoTooltip recopie dans ~8 fichiers -> helper canonique + garde-rail (lot G du chantier).
+- A1 : `DroppedByFamily` existe en amont (`film/replay/usage_summary.go:99`, `analysis/sessionusage`) mais s arrete a `analysis/squadformes/formes.go:229` (scalaire `Dropped`) : exposer la ventilation rendrait la colonne par famille (lot G).
+- A1 : etiquettes sur rayures en `text-foreground` (pas blanc) car la hachure adverse laisse voir le fond de carte -> verdict visuel utilisateur.
