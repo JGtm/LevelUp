@@ -6751,6 +6751,99 @@ publie deja (`vehicles[].rides[].aim`, schema 31).
   - [x] Gates joues : `make check-types`, `make test-web` (**7 813 tests verts**), eslint sur les
         cinq fichiers touches, `npx knip` (aucun export mort). Aucun octet Go.
 
+### Post-chantier — lot 5.6 (le camp de capture lu dans le film), branche `feat/decfilm-56`, base `bd51c9d11`
+
+Decouverte RETENUE par l utilisateur le 2026-09-20, suite de 5.2a.3. Le document publie
+`zoneStates[].gaugeRamps[].capturingTeam` (schema 64) mais c est une DEDUCTION de la couche de
+publication : le proprietaire a l issue d une rampe qui ABOUTIT (seuil 0,95, marge 0,038). Une
+rampe AVORTEE n a donc aucun camp, et son remplissage reste neutre a l ecran. Le suspect designe
+au brief etait l archetype `zones` `ti=23`, `deser_non_cable`, dont la table ECS dit qu il porte
+« l identifiant, la POSITION et l ETAT » d une zone de mode.
+
+- [x] **5.6.1 — `ti=23` EST REFUTE PAR SON ECRIVAIN, PUIS PAR LA MESURE : C EST LA SELECTION DE
+  ZONE DE REAPPARITION, ET LE FILM NE L INSTANCIE MEME PAS.** Aucun octet de production touche.
+  **(a) L ECRIVAIN** (Ghidra, lecture seule). `FUN_142ed6cec` est un porteur d UNE instruction
+  utile ; tout le corps est dans `FUN_141454340`, sur une structure de **20 octets (0x14) par
+  zone**, indexee par l index du descripteur :
+
+        FUN_14080dec4(flux, "zone-name", base+0x00)      R(32)  identifiant de chaine
+        FUN_14076e494(flux, base+0x04, 0x10, 0, 1, 0)    position ABSOLUE quantifiee
+                                                         (FUN_14076e524, largeurs de la CARTE)
+        *(base+0x10) = FUN_1407f1ff4(flux, "associated-participant-handle")
+                       -> FUN_1407f2058 : R(1) ; si 0 -> R(5) ; sinon 0xFFFFFFFF
+
+  Soit, par zone : un nom, une position, et un HANDLE DE PARTICIPANT sur 5 bits (32
+  participants). **Ni jauge, ni camp, ni etat de capture.** Le 33e composant de l archetype
+  (`i32 participant-spawn-availability-mask-data-component`, `non_porte`, `deser_addr` VIDE) dit
+  de quoi cette famille parle : la SELECTION DE ZONE DE REAPPARITION. La colonne `meaning_fr`
+  de `ecs_table.tsv` (« son identifiant, sa POSITION, son etat », confiance `haute`) est FAUSSE
+  sur « son etat ».
+  **(b) LA MESURE, ETALONNEE** (`grammar/zone_56_camp_research_test.go`, portes `ZONE56_FILM` /
+  `ZONE56_CARTE` / `ZONE56_TI`, largeurs d axe de la carte installees) : le recensement des
+  images-cles rend **0 slot `ti=23`** sur `396cfc92` (27 images-cles) comme sur `f75e7053`
+  (24 images-cles). L ETALON EST EXIGE AVANT LE NEGATIF — la MEME marche, sur le meme film,
+  rend `ti=13` **26 slots**, `ti=20` **56**, `ti=22` **1**, et `ti=24` **0** :
+
+        | archetype | slots recenses (396cfc92) | vies | records delta |
+        |---|---:|---:|---:|
+        | ti=13 managed-object-property | 26 | 26 | 9 464 |
+        | ti=20 spawn-filter            | 56 |  5 | 10 188 |
+        | ti=22 physics-state           |  1 |  1 | 34 571 |
+        | **ti=23 zones**               | **0** | **0** | — |
+        | ti=24 (inconnu)               |  0 |  0 | — |
+
+  **CONCLUSION : porter `ti=23` serait du code mort.** Le bloquant de `ti=23` au ratchet 0.A.3
+  n avance pas, et c est la bonne reponse : le film ne declare jamais cet archetype.
+- [x] **5.6.2 — LA PREUVE : LE FILM PORTE BIEN LE CAMP QUI POUSSE, SUR UN SECOND CANAL `ti=13`
+  PAR ZONE — ET IL EST DEJA DECODE.** Instrument `replay/zone_56_camp_research_test.go` (portes
+  `ZONE56P_FILM`, `ZONE56P_CARTE`, `ZONE56P_CHAINE`), balayage de PRODUCTION
+  (`grammar.ScanManagedProperties`), aucune grammaire neuve.
+  - [x] **LA STRUCTURE** : les slots d une carte de Bastion forment des blocs de pas 5, et le
+        depot en nommait deja deux sur trois (`zone_states_owner.go` : « proprietaire, canal
+        neutre, jauge »). Le « canal neutre » EST le camp qui pousse : il vaut `0xFFFFFFFF`
+        quand personne ne capture, d ou le nom qu il avait recu. Triplet mesure
+        **(proprietaire N, POUSSEUR N+1, jauge N+2)**, tous en `tag 4`.
+  - [x] **LE CRITERE, SANS APPARIEMENT SUPPOSE** : tous les couples ordonnes de canaux a valeurs
+        de camp sont essayes ; le candidat, LU PENDANT la rampe, doit valoir ce que la reference
+        prend JUSTE APRES le sommet — exactement ce que la publication deduit aujourd hui.
+  - [x] **LE RESULTAT, DEUX FILMS, 0 DESACCORD** (lectures CHAINEES seulement, cf. ci-dessous) :
+
+        | film | jauge | pousseur | proprietaire | abouties | accord | desaccord | avortees NOMMEES |
+        |---|---:|---:|---:|---:|---:|---:|---:|
+        | 396cfc92 | 1603 | 1602 | 1601 | 9 | **9** | **0** | 3 / 3 |
+        | 396cfc92 | 1608 | 1607 | 1606 | 12 | **12** | **0** | 6 / 6 |
+        | 396cfc92 | 1613 | 1612 | 1611 | 9 | **9** | **0** | 0 / 0 |
+        | 7344d24f | 1532 | 1531 | 1530 | 16 | **16** | **0** | 2 / 2 |
+        | 7344d24f | 1537 | 1536 | 1535 | 12 | **12** | **0** | 5 / 5 |
+        | 7344d24f | 1542 | 1541 | 1540 | 11 | **11** | **0** | 3 / 3 |
+
+        Sur `396cfc92` : **30 rampes abouties, 30 accords, 0 desaccord** — et les **9 avortees
+        recoivent un camp**, elles qui n en avaient aucun. Les 39 rampes du film sont couvertes
+        (le depot en publiait 30 dont 29 nommees). Sur `7344d24f` : 39 abouties, 39 accords, 0
+        desaccord, 10 avortees nommees. **Chaque fenetre de rampe porte un camp REEL (0 ou 1),
+        jamais le neutre** : le canal ne se tait pas sur les rampes.
+  - [x] **LE TEMOIN DE CHAINAGE EST OBLIGATOIRE, ET C EST MESURE** : sans lui, le canal pousseur
+        de la zone `1537` de `7344d24f` porte **7 valeurs distinctes** (dont des `u32` hors
+        plage d equipe) et n est meme pas candidat. Avec `Chained` — le meme filtre que la serie
+        `desig` du tag 5 depuis le lot C-ter — il rend **12/12, 0 desaccord**. Le filtre ne
+        change RIEN aux trois zones de `396cfc92` (memes elus, memes comptes).
+  - [x] **LA COLLINE DE KOTH N A PAS DE POUSSEUR, ET C EST MESURE** (`f75e7053`) : 0 rampe de
+        jauge (le seul `tag 3` du film porte 2 emissions hors echelle) et **UN SEUL canal a
+        valeurs de camp** (slot 1623) — le proprietaire. Le film ne dit pas qui est « en train
+        de prendre » la colline. Reponse au point (3) du brief : NON pour la colline.
+  - [x] **L A/B SANS CARTE, QUI AUTORISE LES FILMS HORS CATALOGUE DE NOMS** : `ti=13` ne porte
+        aucun composant de position, donc les largeurs d axe de la carte ne le touchent pas.
+        Mesure sur `396cfc92` avec et sans `NewFilmContextForMap` : **26 slots, 9 464 records,
+        8 561 lectures, 47 rampes et les MEMES elus** dans les deux passes. C est ce qui permet
+        de mesurer `7344d24f`, dont le nom de carte vit dans la base (qu un backfill tient).
+  - [x] **CORRECTIONS D INSTRUMENT, ECRITES** : deux passes fausses ont ete jetees avant
+        celle-ci. (1) Un canal confronte a TOUTES les rampes du film etait juge sur les rampes
+        d une AUTRE zone — d ou `accord = 0` partout. (2) Apparier la jauge au canal qui BASCULE
+        le plus apres ses rampes designe un canal d une autre zone sur une carte tres disputee.
+        (3) Exiger TOUTES les valeurs d un `tag 3` sur l echelle de jauge jetait 4 canaux sur 6
+        de `7344d24f` — le depot documente deja l emission aberrante sous zero de ce film ; le
+        critere est passe a une MAJORITE de 80 %.
+
 ## 4. Découvertes (consignées, NON traitées — règle 7)
 
 | Date | Lot | Découverte | Où elle ira |
