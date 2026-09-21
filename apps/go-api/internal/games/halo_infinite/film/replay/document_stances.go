@@ -8,10 +8,18 @@ package replay
 // ne porte ces composants que quand l etat CHANGE. Ce fichier les replie en INTERVALLES bornes
 // aux vies publiees : `{slot, kind, t0, t1}` sur le meme axe de temps que `Point.T`.
 //
-// TROIS GENRES, ET TROIS SEULEMENT : `crouch` (`i29`), `slide` (`i62`), `mobility` (`i54`). Le
-// SPRINT est refute comme observable par la vitesse et le SAUT n est pas prouve — les deux sont
-// mesures au lot 5.3.5, et l en-tete de `types/grammar_mouvement.go` porte leurs chiffres.
-// Publier l un des deux publierait un SEUIL D INSTRUMENT comme une donnee.
+// QUATRE GENRES LUS — `crouch` (`i29`), `slide` (`i62`), `mobility` (`i54`), `sprint` (`i57`) —
+// ET UN DERIVE, `jumpDerived` (schema 66, lots 5.9.4 et 5.9.5). Le derive n est pas lu dans un
+// composant : c est l integrale de la vitesse verticale d `i1`, reconnue a sa HAUTEUR (0,85 m
+// +/- 10 %, mesuree sur deux films au lot 5.7.5). Son nom le dit, et
+// `coverage.stances.jumpsDerived` le compte a part.
+//
+// LE SPRINT EST LU, ET SA FENTE EST NOMMEE PAR L IMAGE (lot 5.9.5) : `i57` porte l INDEX DE LA
+// FENTE DE CAPACITE ACTIVE, et `FUN_1407e9ce4` aiguille sur le groupe de tag de la definition
+// pour appeler, par fente, un desenregistreur qui teste l index actif contre SA fente —
+// `'saev'` esquive 0, `'sasp'` SPRINT 1, `'sagh'` grappin 2. Le controle qui valide la lecture
+// de l index est celui du grappin : sur `4f77afc1` la vitesse au sol pendant les intervalles de
+// la fente 2 atteint 5,84 m/s au p90 contre 2,88 hors — la traction.
 //
 // # LE PLIEUR N EST PAS RECOPIE, ET C EST LA REGLE 6
 //
@@ -33,8 +41,8 @@ type Stance struct {
 	// Slot designe la Track concernee — donc une VIE, pas un joueur (meme regle que les autres
 	// calques : le slot migre aux reapparitions).
 	Slot uint32 `json:"slot"`
-	// Kind est le genre d etat : `crouch`, `slide` ou `mobility` (cf.
-	// `types.MovementCrouch` et ses voisines). Un genre inconnu du client ne doit recevoir
+	// Kind est le genre d etat : `crouch`, `slide`, `mobility` (LUS) ou `jumpDerived`
+	// (DERIVE — cf. `types.MovementJumpDerived`). Un genre inconnu du client ne doit recevoir
 	// AUCUN libelle — jamais celui d un voisin.
 	Kind string `json:"kind"`
 	// T0 / T1 bornent l intervalle sur le meme axe que `Point.T`. T1 est soit la transition
@@ -63,6 +71,13 @@ type StanceCoverage struct {
 	// second est toujours plus petit : une lecture qui ne change pas l etat ne produit rien.
 	Reads     int `json:"reads"`
 	Intervals int `json:"intervals"`
+	// JumpEpisodes est le nombre de montees FERMEES examinees par la derivation du saut,
+	// JumpsDerived celles dont la hauteur integree tombe dans la fenetre de
+	// `types.SpartanJumpHeightM`. Le rapport des deux est la SELECTIVITE de la derivation :
+	// sans lui, « N sauts » ne se juge pas. ZERO sur un artefact dont le film ne replique pas
+	// la vitesse — c est `Scanned` qui dit si la marche a tourne.
+	JumpEpisodes int `json:"jumpEpisodes,omitempty"`
+	JumpsDerived int `json:"jumpsDerived,omitempty"`
 	// ByKind compte les intervalles par genre. Une cle ABSENTE veut dire « aucun intervalle de
 	// ce genre », jamais « genre non mesure » — c est `Scanned` qui le dit.
 	ByKind map[string]int `json:"byKind,omitempty"`
@@ -99,7 +114,8 @@ func buildStances(in stanceInputs) ([]Stance, StanceCoverage) {
 	cov := StanceCoverage{Scanned: in.stats.Scanned, Absent: in.stats.Absent,
 		Records: in.stats.Records, Desyncs: in.stats.Desyncs, Reads: len(in.reads),
 		TracksTotal: len(in.tracks), Dropped: in.stats.SlotUnbound,
-		EventPacketsUnlocated: in.stats.EventPacketsUnlocated, MapWidths: in.stats.MapWidths}
+		EventPacketsUnlocated: in.stats.EventPacketsUnlocated, MapWidths: in.stats.MapWidths,
+		JumpEpisodes: in.stats.JumpEpisodes, JumpsDerived: in.stats.JumpsDerived}
 	if len(in.tracks) == 0 || in.step == 0 || len(in.reads) == 0 {
 		return nil, cov
 	}

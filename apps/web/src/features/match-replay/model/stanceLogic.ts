@@ -6,10 +6,13 @@
  * et le Go a replié ces transitions en intervalles bornés aux vies publiées. Ici on ne fait que
  * LIRE : quel genre couvre cette image, pour cette vie.
  *
- * TROIS GENRES, ET TROIS SEULEMENT : `crouch`, `slide`, `mobility`. Le SPRINT est réfuté comme
- * observable par la vitesse et le SAUT est lu mais pas prouvé (lot 5.3.5) — un quatrième genre
- * qui apparaîtrait dans un artefact futur serait une DONNÉE NEUVE, et ce module rend alors
- * `null` plutôt que le libellé d'un voisin.
+ * CINQ GENRES : quatre LUS — `crouch`, `slide`, `mobility`, `sprint` — et un DÉRIVÉ,
+ * `jumpDerived` (schéma 66). Le dérivé ne vient d'aucun composant : c'est l'intégrale de la
+ * vitesse verticale d'`i1`, reconnue à sa HAUTEUR (0,85 m ± 10 %, mesurée sur deux films). Son
+ * nom le dit, et son libellé aussi — « Saut (dérivé) ». Le SPRINT, lui, est LU : `i57` porte
+ * l'INDEX DE LA FENTE DE CAPACITÉ ACTIVE, et l'image nomme les trois fentes (esquive, sprint,
+ * grappin). Un genre inconnu de ce module reste `null` plutôt que de recevoir le libellé d'un
+ * voisin.
  *
  * L'ORDRE DE PRIORITÉ EST ÉCRIT, et il n'est pas arbitraire : deux genres peuvent couvrir la
  * même image (glisser en étant accroupi est une transition de plus, pas une exclusion). La fiche
@@ -18,8 +21,14 @@
  */
 import type { ReplayDocumentReady } from '@/lib/replay/replayReadyTypes'
 
-/** Les trois genres publiés, dans l'ordre de PRIORITÉ d'affichage (le plus spécifique d'abord). */
-export const STANCE_KINDS = ['mobility', 'slide', 'crouch'] as const
+/**
+ * Les genres publiés, dans l'ordre de PRIORITÉ d'affichage (le plus spécifique d'abord).
+ *
+ * `jumpDerived` PASSE DEVANT : un saut dure moins d'une demi-seconde et dit un geste précis,
+ * là où une posture dit un état tenu. Quand les deux couvrent la même image, c'est le saut
+ * qu'on montre.
+ */
+export const STANCE_KINDS = ['jumpDerived', 'mobility', 'slide', 'sprint', 'crouch'] as const
 
 /** Le genre d'un état de mouvement, tel que le document l'écrit. */
 export type StanceKind = (typeof STANCE_KINDS)[number]

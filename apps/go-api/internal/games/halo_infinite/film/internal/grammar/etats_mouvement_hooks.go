@@ -102,8 +102,26 @@ const (
 	// ses appelants (le balayage des capacites) n ont pas besoin du slot. Cette porte-ci
 	// l ajoute, et c est la seule raison de son existence — un intervalle par VIE l exige.
 	EtatMobilite
+	// EtatCapaciteActive : `ti=35 i57 biped-spartan-ability-component` (FUN_142f02810 ->
+	// FUN_142f268c4). Valeurs, TOUJOURS une :
+	//   [0] l INDEX DE LA FENTE DE CAPACITE ACTIVE, decale de +1 comme le flux l ecrit —
+	//       le flux lit `R(2)` et l ecrivain pose `bloc+3 = valeur - 1`, donc la valeur BRUTE
+	//       `0` signifie « aucune fente active » et `1`, `2`, `3` designent les fentes `0`,
+	//       `1`, `2`. La porte publie le BRUT : convertir ici cacherait le decalage.
+	//
+	// ET LES TROIS FENTES SONT NOMMEES PAR L IMAGE (lot 5.9.5). `FUN_1407e9ce4` aiguille sur le
+	// GROUPE DE TAG de la definition de capacite et appelle, pour chacun, un desenregistreur qui
+	// teste l index actif contre SA fente :
+	//
+	//	'saev' (0x73616576, esquive)  -> FUN_14319d0ac : fente `comp+0x1c`, index actif **0**
+	//	'sasp' (0x73617370, SPRINT)   -> FUN_14319d1ec : fente `comp+0x20`, index actif **1**
+	//	'sagh' (0x73616768, grappin)  -> FUN_14319d14c : fente `comp+0x24`, index actif **2**
+	//
+	// D ou : valeur brute **2** = LE SPRINT EST ACTIF. C est ce que publie `movement_states.go`
+	// sous le genre `sprint`, et c est une LECTURE, pas une derivation.
+	EtatCapaciteActive
 	// EtatMouvementCount est le nombre de composants publies.
-	EtatMouvementCount = 6
+	EtatMouvementCount = 7
 )
 
 // String rend l etiquette de registre du composant d etat.
@@ -121,6 +139,8 @@ func (c EtatMouvementComposant) String() string {
 		return "object-translational-velocity-component"
 	case EtatMobilite:
 		return "biped-mobility-action-component"
+	case EtatCapaciteActive:
+		return "biped-spartan-ability-component"
 	}
 	return fmt.Sprintf("etat de mouvement inconnu (%d)", int(c))
 }

@@ -26498,6 +26498,12 @@ components:
         intervals:
           format: int64
           type: integer
+        jumpEpisodes:
+          format: int64
+          type: integer
+        jumpsDerived:
+          format: int64
+          type: integer
         lives:
           format: int64
           type: integer

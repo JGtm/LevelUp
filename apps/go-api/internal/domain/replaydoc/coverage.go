@@ -266,6 +266,10 @@ type AbilityCoverage struct {
 // StanceCoverage dit ce que la marche des ETATS DE MOUVEMENT a lu et ce qu'elle a jeté — les
 // dénominateurs sans lesquels « N intervalles » ne se juge pas. Une couverture partielle est un
 // RESULTAT : la plupart des vies ne s'accroupissent ni ne glissent.
+//
+// `JumpEpisodes` / `JumpsDerived` (schéma 66) sont le dénominateur et le numérateur du SAUT,
+// qui est DÉRIVÉ et non lu : montées fermées examinées, puis celles dont la hauteur intégrée
+// tombe dans la fenêtre du saut du Spartan. Le rapport des deux est la sélectivité.
 type StanceCoverage struct {
 	Scanned               bool           `json:"scanned"`
 	Absent                bool           `json:"absent,omitempty"`
@@ -273,6 +277,8 @@ type StanceCoverage struct {
 	Desyncs               int            `json:"desyncs"`
 	Reads                 int            `json:"reads"`
 	Intervals             int            `json:"intervals"`
+	JumpEpisodes          int            `json:"jumpEpisodes,omitempty"`
+	JumpsDerived          int            `json:"jumpsDerived,omitempty"`
 	ByKind                map[string]int `json:"byKind,omitempty"`
 	Lives                 int            `json:"lives"`
 	TracksTotal           int            `json:"tracksTotal"`

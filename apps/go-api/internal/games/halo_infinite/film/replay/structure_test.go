@@ -1214,8 +1214,24 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   MONTENT AUSSI, à la différence de la v64 : `grammar.Rev`, `facts.Rev` et le blob
 	//   d'entrées (`REPLAYINPUTS24`) — la couche rend une valeur de PLUS, qui transite par les
 	//   faits. Sprint RÉFUTÉ, saut NON PROUVÉ (lot 5.3.5). Détail : `document_chronicle.go`.
-	if SchemaVersion != 65 {
-		t.Fatalf("SchemaVersion = %d, attendu 65 : incrémenter exige une raison écrite ci-dessus "+
+	// - v66 (post-chantier lots 5.9.4 et 5.9.5, 2026-09-21, décision utilisateur) : LE SPRINT,
+	//   LU — ET LE SAUT, PUBLIÉ ET DIT DÉRIVÉ. `stances[].kind` gagne DEUX valeurs et
+	//   `coverage.stances` deux compteurs (`jumpEpisodes`, `jumpsDerived`) : la FORME change.
+	//   LES DEUX GENRES NE SONT PAS DE MÊME NATURE, et leurs noms le disent. `sprint` est LU :
+	//   `i57` porte l'INDEX DE LA FENTE DE CAPACITÉ ACTIVE, et l'image nomme les trois fentes —
+	//   `FUN_1407e9ce4` aiguille sur le groupe de tag et appelle un désenregistreur qui teste
+	//   l'index actif contre SA fente ('saev' esquive → 0, 'sasp' SPRINT → 1, 'sagh' grappin
+	//   → 2). `jumpDerived` est CALCULÉ : l'intégrale de la vitesse verticale d'`i1`, reconnue à
+	//   sa HAUTEUR (0,85 m ± 10 %, pic mesuré sur deux films au lot 5.7.5) ; son nom porte le
+	//   mot « derived » pour qu'un client ne puisse pas le confondre avec une lecture.
+	//   CE QUI VALIDE LA LECTURE DE L'INDEX EST LE GRAPPIN, pas le sprint : sur `4f77afc1` la
+	//   vitesse au sol pendant les intervalles de la fente 2 atteint 5,84 m/s au p90 contre
+	//   2,88 hors — la traction. La vitesse du sprint, elle, ne peut pas trancher, et le dépôt
+	//   l'avait déjà mesuré (lot 5.3.5 : un seul mode dans la distribution au sol).
+	//   MONTENT AUSSI : `grammar.Rev` et `facts.Rev` — la couche rend des transitions de plus.
+	//   Détail : `document_chronicle.go`.
+	if SchemaVersion != 66 {
+		t.Fatalf("SchemaVersion = %d, attendu 66 : incrémenter exige une raison écrite ci-dessus "+
 			"(un champ optionnel de plus n'en est pas une)", SchemaVersion)
 	}
 }

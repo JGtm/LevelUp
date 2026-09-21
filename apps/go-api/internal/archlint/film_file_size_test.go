@@ -118,7 +118,14 @@ var plafondsParFichier = map[string]int{
 	// v65 (`stances[]`, ses trois genres, la marche qui les lit, et les DEUX negatifs mesures qui
 	// expliquent pourquoi le sprint et le saut n y sont pas). Exception ecrite, dans le commit qui
 	// monte `SchemaVersion`.
-	"internal/games/halo_infinite/film/replay/document_chronicle.go": 1863,
+	// SCHEMA 65 -> 66 (2026-09-21, post-chantier lots 5.9.4 et 5.9.5) : 1863 -> 1933, l entree de
+	// chronique v66. Elle porte DEUX genres neufs de `stances[].kind` et les separe : `sprint`
+	// est LU (`i57` porte l index de la fente de capacite active, et l image nomme les trois
+	// fentes), `jumpDerived` est CALCULE (l integrale de la vitesse verticale, reconnue a sa
+	// hauteur). Elle porte aussi le controle du GRAPPIN qui valide la lecture de l index, et la
+	// raison mesuree pour laquelle la vitesse du sprint ne peut pas trancher. UNE SEULE MONTEE
+	// DE SCHEMA POUR LE LOT, donc une seule entree, dans le commit qui monte `SchemaVersion`.
+	"internal/games/halo_infinite/film/replay/document_chronicle.go": 1933,
 	// --- production, hors perimetre du lot 2.7 (aucune preuve d equivalence ne couvrait
 	// leur scission : elle se decidera au lot qui les rouvrira).
 	// `assist.go` EST SORTI DE CETTE TABLE LE 2026-09-16 (lot 2.6.2) : le type `Assist` a descendu
@@ -158,7 +165,12 @@ var plafondsParFichier = map[string]int{
 	// SCHEMA 64 -> 65 (2026-09-21, post-chantier lot 5.3.6) : 1215 -> 1221, la justification que
 	// `TestStructureIsOptionalInDocument` exige avant d accepter la montee. Exception ecrite,
 	// meme commit que `SchemaVersion`.
-	"internal/games/halo_infinite/film/replay/structure_test.go":                                  1221,
+	// SCHEMA 65 -> 66 (2026-09-21, post-chantier lots 5.9.4 et 5.9.5) : 1221 -> 1236, la
+	// justification que `TestStructureIsOptionalInDocument` exige avant d accepter la montee
+	// (les deux genres neufs, LU et DERIVE, et ce qui valide la lecture de l index de fente) :
+	// 1221 -> 1237.
+	// Exception ecrite, meme commit que `SchemaVersion`.
+	"internal/games/halo_infinite/film/replay/structure_test.go":                                  1237,
 	"internal/games/halo_infinite/film/replay/t0_mouvement_research_test.go":                      872,
 	"internal/games/halo_infinite/film/replay/inventory_position_i22_test.go":                     833,
 	"internal/games/halo_infinite/film/replay/ground_link_research_test.go":                       814,
