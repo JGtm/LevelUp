@@ -101,6 +101,55 @@ function mockDetail(usageSides: { left: boolean; right: boolean }) {
   )
 }
 
+/** Bloc « Coordination » minimal et MESURE : son delai median identifie la colonne. */
+function coordinationBlock(delaiMs: number) {
+  const couverture = (taux: number) => ({
+    taux,
+    brut: 10,
+    n: 20,
+    par_match: 5,
+    echantillon_faible: false,
+  })
+  return {
+    available: true,
+    fenetre_ms: 5000,
+    matches_measured: 2,
+    matches_total: 2,
+    riposte: {
+      je_suis_couvert: couverture(0.6),
+      je_riposte: couverture(0.3),
+      team_deaths: 20,
+      team_deaths_avenged: 12,
+      parity_pct: 25,
+      delai_median_ms: delaiMs,
+    },
+    appui: {
+      on_me_prepare: couverture(0.4),
+      ma_part_des_appuis: couverture(0.3),
+      parity_pct: 25,
+    },
+    per_match: [],
+  }
+}
+
+/** Les DEUX sessions portent un bloc de coordination, avec des valeurs distinctes. */
+function mockDetailAvecCoordination() {
+  server.use(
+    http.post('/api/v1/players/:playerSlug/pages/sessions/detail', async ({ request }) => {
+      const body = (await request.json()) as { enable_compare?: boolean }
+      const payload: Record<string, unknown> = baseResponse()
+      payload.coordination = coordinationBlock(4200)
+      if (body.enable_compare) {
+        payload.compare_enabled = true
+        payload.compare_session = COMPARE_SESSION
+        payload.compare_matches = [{ ...MATCH, match_id: 'match-2', session_label: '2026-04-21 18h' }]
+        payload.compare_coordination = coordinationBlock(1500)
+      }
+      return HttpResponse.json(payload)
+    }),
+  )
+}
+
 async function openCompare() {
   await waitFor(() => {
     expect(screen.getByRole('button', { name: /Comparer/i })).toBeInTheDocument()
@@ -159,6 +208,27 @@ describe('SessionDetailPage — rangees partagees (D16)', () => {
     expect(cells[0].querySelector('[data-testid="session-section-placeholder"]')).toBeNull()
     expect(cells[1].querySelector('[data-testid="session-section-placeholder"]')).not.toBeNull()
     expect(screen.getByText('Sans équivalent dans cette session')).toBeInTheDocument()
+  })
+
+  it('rend la section Coordination des DEUX cotes, chacune avec SES donnees (lot S)', async () => {
+    mockDetailAvecCoordination()
+    const { container } = renderWithProviders(<SessionDetailPage />)
+    await openCompare()
+
+    await waitFor(() => {
+      expect(
+        container.querySelectorAll('[data-session-section="coordination"]'),
+      ).toHaveLength(2)
+    })
+    const cells = Array.from(container.querySelectorAll('[data-session-section="coordination"]'))
+    // Aucun placeholder D16 : les deux sessions ont un bloc, les deux colonnes le rendent.
+    for (const cell of cells) {
+      expect(cell.querySelector('[data-testid="session-section-placeholder"]')).toBeNull()
+      expect(cell.querySelector('[data-session-coordination]')).not.toBeNull()
+    }
+    // Chaque colonne parle de SA session : le chiffre d'appel differe des deux cotes.
+    expect(screen.getByText('Délai médian de riposte : 4,2 s')).toBeInTheDocument()
+    expect(screen.getByText('Délai médian de riposte : 1,5 s')).toBeInTheDocument()
   })
 
   it('ne pose ni rangees ni placeholder en pleine page (drawer ferme)', async () => {

@@ -165,5 +165,11 @@ type SessionPageResponse struct {
 	// nil si la session n'a aucun match, Available=false avec raison machine si le titre
 	// ne nomme pas le tueur de chaque mort ou si la lecture échoue. MÊME producteur que
 	// le bloc de la page Séries temporelles (service/coordination_block.go).
-	Coordination *CoordinationBlock `json:"coordination,omitempty"`
+	//
+	// CompareCoordination est le MÊME bloc pour la session COMPARÉE, produit par le même
+	// producteur sur les matchs de cette session — miroir exact d'Usage / CompareUsage et
+	// de RangeProfiles / CompareRangeProfiles. Nil hors comparaison : c'est cette absence,
+	// et non un drapeau, qui dit au client de ne rien rendre à droite.
+	Coordination        *CoordinationBlock `json:"coordination,omitempty"`
+	CompareCoordination *CoordinationBlock `json:"compare_coordination,omitempty"`
 }

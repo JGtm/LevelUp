@@ -98,6 +98,14 @@ type CoordinationRiposte struct {
 	// DelaiMedianMs : délai médian des ripostes portées à mon camp, DANS la fenêtre.
 	// Absent quand aucune riposte n'est survenue — jamais un zéro qui se lirait « instantané ».
 	DelaiMedianMs *int64 `json:"delai_median_ms,omitempty"`
+	// HabituelPct : « je suis couvert » MESURÉ SUR LA PÉRIODE DE RÉFÉRENCE (les matchs du
+	// filtre de la page, toutes sessions confondues), en pourcentage. C'est le repère de
+	// la jauge « je suis couvert », qui n'a PAS de parité : être couvert ne se compare à
+	// aucun 1/n — seulement à son propre habituel.
+	//
+	// Absent quand la référence est TAUTOLOGIQUE (elle se réduit au scope mesuré : le
+	// repère tomberait alors exactement sur la valeur) ou non mesurée. Jamais un 0.
+	HabituelPct *float64 `json:"habituel_pct,omitempty"`
 	// ParityPct : la part ÉQUITABLE de `JeRiposte`, en pourcentage — 100/n pondéré par les
 	// morts de camp de chaque match. Un scope qui mêle 4v4 et BTB n'a pas une parité unique,
 	// et la moyenne des effectifs n'en donnerait pas la bonne. Absent quand AUCUN match
@@ -116,6 +124,10 @@ type CoordinationRiposte struct {
 type CoordinationAppui struct {
 	OnMePrepare     Couverture `json:"on_me_prepare"`
 	MaPartDesAppuis Couverture `json:"ma_part_des_appuis"`
+	// HabituelPct : « on me prépare » mesuré sur la MÊME période de référence que
+	// CoordinationRiposte.HabituelPct, et avec la même règle d'absence. C'est le repère de
+	// la jauge « on me prépare », que rien ne rapporte à une part équitable.
+	HabituelPct *float64 `json:"habituel_pct,omitempty"`
 	// ParityPct : 100/n pondéré par les appuis de camp de chaque match. Même règle
 	// d'absence que CoordinationRiposte.ParityPct.
 	ParityPct *float64 `json:"parity_pct,omitempty"`

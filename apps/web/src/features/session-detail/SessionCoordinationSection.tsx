@@ -3,9 +3,15 @@
  * (lot O, D22-1 et D22-6) : deux cartes en rangée, « Riposte » et « Appui reçu ».
  *
  * LA DONNÉE ARRIVE DANS LA RÉPONSE EXISTANTE (`SessionPageResponse.coordination`, lot N1) —
- * aucune query de plus. Le drawer de comparaison n'a PAS de miroir (le contrat ne sert pas
- * de `compare_coordination`) : la section n'existe alors que du côté principal et la
- * rangée partagée D16 pose son placeholder en face.
+ * aucune query de plus. Le drawer de comparaison monte CE MÊME composant avec
+ * `compare_coordination` (lot S) : les deux colonnes rendent les mêmes cartes, chacune avec
+ * SES données, et la rangée partagée D16 ne pose plus de placeholder dès que les deux
+ * sessions ont un bloc. Aucune échelle partagée à poser : les jauges sont des rails 0..100 %
+ * et les cases de bande des tons — les deux côtés se lisent déjà sur la même graduation.
+ *
+ * LE REPÈRE D'HABITUEL (lot S) est celui de la PÉRIODE DE RÉFÉRENCE, le même des deux côtés :
+ * le serveur le sert dans chaque bloc (`riposte.habituel_pct`, `appui.habituel_pct`), la
+ * carte ne le recalcule pas.
  *
  * MÊMES FORMES QUE LE BLOC « USAGES » : `UsageGaugeGrid` (deux jauges à parité, colonnes
  * nommées par ce lot), `UsageRegularityBand` (une case par match), `UsageBandLegend` — trois
