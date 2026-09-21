@@ -1760,6 +1760,76 @@ package replay
 //	VERSION MONTE  neuf compteurs entrent dans `coverage` : la FORME change, et le garde-rail de
 //	               forme refuse la regeneration sans montee. Les artefacts deja cuits restent
 //	               servis tels quels, les deux champs absents jusqu'a leur prochaine cuisson.
+// v66 (2026-09-21, post-chantier lots 5.9.4 et 5.9.5, decision utilisateur) : LE SPRINT, LU —
+// ET LE SAUT, PUBLIE ET DIT DERIVE.
+//
+//	`stances[]`    DEUX GENRES DE PLUS, et ils ne sont PAS de la meme nature. `sprint` est LU :
+//	               `ti=35 i57 biped-spartan-ability-component` porte l INDEX DE LA FENTE DE
+//	               CAPACITE ACTIVE, et la fente 1 est le sprint. `jumpDerived` est CALCULE :
+//	               c est l integrale de la vitesse verticale d `i1`, reconnue a sa HAUTEUR, et
+//	               son nom porte le mot pour qu on ne puisse pas confondre les deux. Deux
+//	               compteurs neufs dans `coverage.stances` : `jumpEpisodes` (montees fermees
+//	               examinees) et `jumpsDerived` (celles retenues).
+//
+// LE SPRINT : LES TROIS FENTES SONT NOMMEES PAR L IMAGE, PAS PAR UN SCORE. `FUN_1407e9ce4`
+// aiguille sur le GROUPE DE TAG de la definition de capacite et appelle, pour chacun, un
+// desenregistreur qui teste l index actif contre SA fente : `'saev'` esquive -> `FUN_14319d0ac`,
+// fente 0 ; `'sasp'` SPRINT -> `FUN_14319d1ec`, fente 1 ; `'sagh'` grappin -> `FUN_14319d14c`,
+// fente 2. Le flux ecrit `bloc+3 = R(2) - 1`, donc le brut `2` designe la fente 1. La chaine
+// complete va de la condition d animation `is_sprinting_tlg` au bit 45 des drapeaux d unite,
+// pose par `Sprint::Update` (`FUN_1431a2474`) depuis une fraction rampee LOCALEMENT — ce qui
+// vient du film est l ACTIVATION, pas la fraction, et c est elle qu on publie.
+//
+// LE CONTROLE QUI VALIDE LA LECTURE DE L INDEX EST CELUI DU GRAPPIN, ET IL EST FRANC : sur
+// `4f77afc1`, la vitesse au sol pendant les intervalles de la fente 2 monte a **5,84 m/s** au
+// p90, contre 2,88 hors intervalle — la TRACTION du grappin, deux fois le plateau de course.
+// Si la fente 2 est bien le grappin, la lecture de l index est juste, donc la fente 1 est bien
+// `'sasp'`. C est la preuve croisee la plus forte disponible, et elle porte sur le MEME champ,
+// le MEME pliage, le MEME instrument.
+//
+// CE QUE LA VITESSE DU SPRINT, ELLE, NE PEUT PAS PROUVER — ET C EST MESURE. Le score des
+// intervalles de la fente 1 contre un plateau haut de vitesse rend 37,5 % / 60,8 %
+// (`bfecd02b`) et 42,0 % / 40,5 % (`4f77afc1`). Ce n est pas la fente qui est mal nommee :
+// c est l etiquette physique qui est faible, et le depot l avait deja mesure (lot 5.3.5 : la
+// distribution de vitesse au sol n a QU UN SEUL mode). Vm 2,55 contre Vs 2,84 sur le second
+// film — 0,29 m/s d ecart, couvert par la dispersion. Ce qui converge quand meme : la vitesse
+// MAXIMALE atteinte pendant un intervalle a un p10 de 2,73 m/s contre 1,91 pour un temoin
+// apparie (meme vie, meme duree, cinq secondes plus tot), et sa mediane vaut 2,92 m/s.
+//
+// POURQUOI LE NOM PORTE LE MOT « DERIVE ». Les trois autres genres sont des bits que le
+// deserialiseur publie ; celui-ci est un CALCUL. Un client qui affiche `jumpDerived` doit
+// pouvoir le distinguer d une lecture sans consulter de documentation, d ou le genre distinct
+// plutot qu un drapeau a cote — et d ou le libelle « Saut (derive) » / « Jump (derived) ».
+//
+// LA HAUTEUR EST UN FAIT DE JEU, PAS UN SEUIL D INSTRUMENT. `types.SpartanJumpHeightM` vaut
+// 0,85 m : la distribution des hauteurs d episode aerien, integrees depuis la vitesse verticale
+// TENUE, porte un pic etroit a cette valeur sur DEUX films — `bfecd02b` (snowbound) pic x 10,7
+// au-dessus de ses voisins, montee 0,467 s ; `4f77afc1` (flood gulch) pic x 3,9, montee 0,466 s
+// (lot 5.7.5, 2026-09-21). Tous les Spartans sautent la meme hauteur : c est ce qui autorise la
+// derivation, et la fenetre est de +/- 10 %.
+//
+// CE QUI EST REFUSE, ET C EST DELIBERE. Un episode encore OUVERT a la fin de la marche n a pas
+// d instant de fin mesure et sa hauteur est tronquee par le silence qui la termine : il n est pas
+// publie. Et un silence de replication de plus de 250 ms n est PAS une vitesse tenue — l integrer
+// fabriquerait des hauteurs.
+//
+// CE QUE CETTE VERSION NE FAIT PAS : le SPRINT. Sa chaine de donnees est pourtant complete
+// (lot 5.9.1) — l etiquette d `i57 biped-spartan-ability` est l INDEX DE LA FENTE DE CAPACITE
+// ACTIVE (`-1` = aucune, `0..2` = la fente), applique par `FUN_1406c9b1c` puis `FUN_14319db80`,
+// et le bit 45 des drapeaux d unite que lit `SpartanAbilityIsSprinting` est pose par
+// `Sprint::Update` (`FUN_1431a2474`) depuis une fraction rampee LOCALEMENT. Ce qui manque est le
+// nom de la fente qui porte `'sasp'`. L utilisateur n a autorise aucune derive pour le sprint :
+// le plateau de vitesse au sol n a qu un seul mode.
+//
+// QUAND LE CHAMP REPLIQUE DU SAUT SERA NOMME, un genre `jump` LU remplacera `jumpDerived`, avec
+// sa propre montee. La chaine du declencheur est remontee jusqu au compteur de ticks sans contact
+// `u+0x89b` et NON TROUVEE a `FUN_1408b2f90` (lot 5.9.2) : c est un maillon manquant, pas un
+// refus.
+//
+// POURQUOI LA VERSION MONTE : un genre neuf apparait dans `stances[].kind` et deux compteurs
+// entrent dans `coverage.stances` — la FORME change, et le garde-rail de forme refuse la
+// regeneration sans montee.
+//
 // v65 (2026-09-21, post-chantier lot 5.3.6, decision utilisateur) : LES ETATS DE MOUVEMENT DU
 // SPARTAN, EN INTERVALLES PAR VIE — ET TROIS SEULEMENT, PARCE QUE TROIS SEULEMENT SONT LUS.
 //

@@ -12028,6 +12028,10 @@ export interface components {
             /** Format: int64 */
             intervals: number;
             /** Format: int64 */
+            jumpEpisodes?: number;
+            /** Format: int64 */
+            jumpsDerived?: number;
+            /** Format: int64 */
             lives: number;
             mapWidths?: number[] | null;
             /** Format: int64 */

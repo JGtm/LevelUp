@@ -37,9 +37,11 @@ package grammar
 //
 // # CE QUI EST LU, ET CE QUI NE PEUT PAS L ETRE
 //
-// Trois etats, et trois seulement : le SPRINT est refute comme observable par la vitesse et le
-// SAUT n est pas prouve (lot 5.3.5). L en-tete de `types/grammar_mouvement.go` porte leurs
-// chiffres.
+// QUATRE etats LUS — `i29` accroupi, `i62` glissade, `i54` action de mobilite, `i57` SPRINT
+// (l index de la fente de capacite active, lot 5.9.5) — et UN genre DERIVE, `jumpDerived`, qui
+// n est pas lu mais integre depuis la vitesse verticale d `i1` (`movement_states_jump.go`,
+// lot 5.9.4). Les noms disent la difference, et c est delibere. L en-tete de
+// `types/grammar_mouvement.go` porte les chiffres.
 
 import (
 	"sort"
@@ -50,6 +52,19 @@ import (
 
 // Les etiquettes de registre des trois composants, avec leurs deux orthographes : les films
 // portent l une OU l autre (avec ou sans `-component`), comme toute la famille.
+// sprintAbilitySlotRaw est la valeur BRUTE d `i57` qui designe la fente du sprint.
+//
+// DEUX, ET PAS UN : le flux lit `R(2)` et l ecrivain pose `bloc+3 = valeur - 1`
+// (`FUN_142f268c4`), donc la fente `1` — celle de `'sasp'`, nommee par `FUN_14319d1ec` — se lit
+// `2` dans le flux. Le decalage vit ICI, en un seul point, plutot que dans chaque lecteur.
+const sprintAbilitySlotRaw = 2
+
+// abilityComponentName / abilityComponentAlt : l etiquette de registre d `i57`, deux orthographes.
+const (
+	abilityComponentName = "biped-spartan-ability-component"
+	abilityComponentAlt  = "biped-spartan-ability"
+)
+
 const (
 	crouchComponentName    = "unit-crouch-component"
 	crouchComponentNameAlt = "unit-crouch"
@@ -107,9 +122,10 @@ func ScanMovementStates(fc *FilmContext) ([]types.MovementStateRead, types.Movem
 		crouch:   componentIndexOfAny(arch, crouchComponentName, crouchComponentNameAlt),
 		slide:    componentIndexOfAny(arch, slideComponentName, slideComponentNameAlt),
 		mobility: componentIndexOfAny(arch, mobilityComponentName, mobilityComponentAlt),
+		ability:  componentIndexOfAny(arch, abilityComponentName, abilityComponentAlt),
 		vues:     map[movementStateKey]types.MovementStateRead{},
 	}
-	if sc.crouch < 0 && sc.slide < 0 && sc.mobility < 0 {
+	if sc.crouch < 0 && sc.slide < 0 && sc.mobility < 0 && sc.ability < 0 {
 		// AUCUNE ERREUR, et c est delibere : un film dont l archetype bipede ne declare aucun
 		// des trois ne transmet pas les etats de mouvement. C est un fait MESURE, que `Absent`
 		// publie au lieu de le confondre avec un film ou personne ne s accroupit.
@@ -131,6 +147,7 @@ func ScanMovementStates(fc *FilmContext) ([]types.MovementStateRead, types.Movem
 			sc.paquet(c, pk, data, cfg)
 		}
 	}
+	sc.deriverLesSauts()
 	sc.publier()
 	st.Scanned = true
 	return sc.out, st, nil
@@ -152,9 +169,17 @@ type movementStateScanner struct {
 	out                     []types.MovementStateRead
 	monde                   *World
 	crouch, slide, mobility int
-	vues                    map[movementStateKey]types.MovementStateRead
-	chunk, paquetIndex      int
-	ts                      uint64
+	// ability est l index d `i57` dans l archetype bipede — la fente de capacite active, donc
+	// le SPRINT (cf. `sprintAbilitySlotRaw`). Il entre dans la garde d absence : un film dont
+	// l archetype ne declare AUCUN des quatre ne transmet pas les etats de mouvement.
+	ability            int
+	vues               map[movementStateKey]types.MovementStateRead
+	chunk, paquetIndex int
+	ts                 uint64
+	// vit porte les lectures de vitesse verticale par vie — la matiere du saut DERIVE
+	// (`movement_states_jump.go`). Elle n est pas publiee telle quelle : seules les montees
+	// reconnues a leur hauteur deviennent des transitions.
+	vit map[uint32][]jumpVelSample
 }
 
 // lierLeMonde ajoute au monde les liaisons slot -> archetype portees par les images-cles du
@@ -230,7 +255,21 @@ func (sc *movementStateScanner) recevoir(comp EtatMouvementComposant, slot uint3
 			return
 		}
 		lu = types.MovementStateRead{Kind: types.MovementMobility, On: v[0] != 0}
-	case EtatPosture, EtatControleUnite, EtatVitesse:
+	case EtatCapaciteActive:
+		if len(v) < 1 {
+			return
+		}
+		// LA FENTE 1 EST LE SPRINT, et l image la nomme (cf. `types.MovementSprint`). Le flux
+		// ecrit la fente DECALEE DE +1, donc le brut `2`. Toute autre valeur — y compris `0`,
+		// « aucune fente active » — LEVE l etat : ce sont des transitions, et le plieur en fait
+		// des intervalles.
+		lu = types.MovementStateRead{Kind: types.MovementSprint, On: v[0] == sprintAbilitySlotRaw}
+	case EtatVitesse:
+		// PAS UN ETAT, LA MATIERE D UN ETAT : la vitesse verticale sert a DERIVER le saut
+		// (`movement_states_jump.go`), qui publiera ses propres transitions apres la marche.
+		sc.vitesse(slot, v)
+		return
+	case EtatPosture, EtatControleUnite:
 		return // lus par le meme deserialiseur, hors du perimetre de ce calque
 	}
 	if ti, ok := sc.monde.ArchetypeForSlot(slot); !ok || ti != BipedTypeIndex {

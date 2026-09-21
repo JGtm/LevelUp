@@ -74,8 +74,10 @@ export interface PlayerCardReadings {
   zones: ZonePresence
   objective: ObjectiveMarkKind | null
   /**
-   * L'ÉTAT DE MOUVEMENT à cette image (schéma 65) : `crouch`, `slide` ou `mobility`, le plus
-   * SPÉCIFIQUE quand deux se recouvrent. `null` = aucun intervalle publié ne couvre l'image —
+   * L'ÉTAT DE MOUVEMENT à cette image (schéma 66) : `jumpDerived`, `mobility`, `slide`,
+   * `sprint` ou `crouch`, le plus SPÉCIFIQUE quand deux se recouvrent (le saut passe devant : il dure moins
+   * d'une demi-seconde et dit un geste, là où une posture dit un état tenu).
+   * `null` = aucun intervalle publié ne couvre l'image —
    * ce n'est PAS « debout et immobile », et un artefact antérieur au schéma 65 n'en a aucun.
    * Une fiche MORTE n'en porte jamais : les intervalles se ferment à la mort au plus tard.
    */

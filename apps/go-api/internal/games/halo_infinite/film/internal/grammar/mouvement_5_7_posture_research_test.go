@@ -59,10 +59,27 @@ type m57Vit struct {
 	sol  float64
 }
 
+// m57Cap est UNE lecture de la fente de capacite ACTIVE (`i57`), datee et attribuee. La valeur
+// est le BRUT du flux : 0 = aucune fente, 1/2/3 = les fentes 0/1/2 (cf. `EtatCapaciteActive`).
+type m57Cap struct {
+	slot uint32
+	ts   uint64
+	brut uint64
+}
+
+// m57Accr est UNE lecture d accroupi (`i29`), datee et attribuee.
+type m57Accr struct {
+	slot uint32
+	ts   uint64
+	on   bool
+}
+
 // m57Rec : tout ce que la passe collecte.
 type m57Rec struct {
 	post    []m57Post
 	vit     []m57Vit
+	capa    []m57Cap
+	accr    []m57Accr
 	fautifs map[int]int
 	etalon  map[int]int
 	ti35    int
@@ -156,7 +173,11 @@ func m57Observateur(rec *m57Rec, ts *uint64) *Observation {
 				rec.vit = append(rec.vit, m57Vit{slot: slot, ts: *ts,
 					vz:  float64(vec[2]),
 					sol: hypot32(vec[0], vec[1])})
-			case EtatAccroupi, EtatGlissade, EtatControleUnite, EtatMobilite:
+			case EtatCapaciteActive:
+				rec.capa = append(rec.capa, m57Cap{slot: slot, ts: *ts, brut: v[0]})
+			case EtatAccroupi:
+				rec.accr = append(rec.accr, m57Accr{slot: slot, ts: *ts, on: v[0] != 0})
+			case EtatGlissade, EtatControleUnite, EtatMobilite:
 			}
 		},
 	}
@@ -221,9 +242,21 @@ func m57Filtrer(t *testing.T, rec *m57Rec, w *World) {
 			v = append(v, x)
 		}
 	}
-	t.Logf("FILTRE « SLOT LIE AU BIPEDE » : i55 %d -> %d · i1 %d -> %d",
-		len(rec.post), len(p), len(rec.vit), len(v))
-	rec.post, rec.vit = p, v
+	var c []m57Cap
+	for _, x := range rec.capa {
+		if bipede(x.slot) {
+			c = append(c, x)
+		}
+	}
+	t.Logf("FILTRE « SLOT LIE AU BIPEDE » : i55 %d -> %d · i1 %d -> %d · i57 %d -> %d",
+		len(rec.post), len(p), len(rec.vit), len(v), len(rec.capa), len(c))
+	var ac []m57Accr
+	for _, x := range rec.accr {
+		if bipede(x.slot) {
+			ac = append(ac, x)
+		}
+	}
+	rec.post, rec.vit, rec.capa, rec.accr = p, v, c, ac
 }
 
 // m57Oracle publie l oracle de contenu et REFUSE de conclure si l etalon s effondre.

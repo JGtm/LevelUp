@@ -28,123 +28,13 @@ package grammar
 // un lot, un rang, dans l ordre ou les merges sont tombes.
 //
 // LES RANGS ANCIENS VIVENT DANS LES ARCHIVES : `.12` a `.28` dans `rev_chronique_archive.go`,
-// `.29` a `.38` dans `rev_chronique_archive_2.go`. La chronique se ROTATIONNE quand ce fichier
+// `.29` a `.42` dans `rev_chronique_archive_2.go`. La chronique se ROTATIONNE quand ce fichier
 // atteint 500 lignes, comme `.ai/thought_log.md` ; le geste a ete refait le 2026-09-16 (lot
 // 2.5.b, rangs `.21` a `.26`) puis le 2026-09-18 (lot 5.1.7, rangs `.29` a `.38`, dans une
-// SECONDE archive parce que la premiere frolait le meme seuil). C est le geste ordinaire que
-// l en-tete des archives annonce, pas un incident. Ce qui suit est la suite VIVANTE, a partir
-// du `.39`.
-//
-// ENTREE `grammar-2026-09-15.39` (2026-09-17, lot 2.6.1) : HERITAGE, MEME GRAMMAIRE, EMPREINTE
-// RE-POINTEE. AUCUN OCTET N EST LU AUTREMENT.
-//
-// La constante passe de `GrammarRev` a [Rev] et son gate passe sur le mecanisme central
-// (`film/revision`, lot 2.6.0) : c est la derniere des quatre couches a heriter, et l allowlist
-// de `archlint/no_ad_hoc_source_fingerprint_test.go` en devient VIDE.
-//
-// CE QUI CHANGE EST LE PERIMETRE DE L EMPREINTE, ET LUI SEUL. Elle hachait CINQ RACINES EN
-// OCTETS — `source/`, `profile/`, `grammar/`, `facts/killsource/`, `facts/objectives/`, 183
-// fichiers ; elle hache desormais `grammar/` SEUL (143 fichiers) plus les VALEURS de
-// `profile.Rev` et de `source.Rev` (V15 (12)), dans cet ordre. Les couches du dessous ont chacune
-// leur revision depuis le volet facts + source du meme lot : c est `source.Rev` qui hache
-// `source/`, `profile.Rev` qui hache `profile/`, `facts.Rev` qui hache `facts/`. Hacher leurs
-// octets ICI aurait fait monter la grammaire pour une couche du DESSOUS d elle, et surtout
-// rendait le meme diagnostic pour une borne de carte, un ordre de composants et un appariement
-// de kill-feed.
-//
-// RIEN N EST RELACHE : le sens unique passe des octets aux VALEURS AMONT, qui le tiennent plus
-// strictement — une montee de `source.Rev` ou de `profile.Rev` fait monter `Rev`, donc
-// `facts.Rev`, donc le backlog killsource (D6, signal utilisateur), sans que personne ait a y
-// penser.
-//
-// POURQUOI UN RANG NEUF PLUTOT QU UNE EMPREINTE RECOPIEE. La preuve d equivalence du lot 2.6.0
-// disait que le cadre HERITE rend, sur les cinq racines, exactement l empreinte figee au `.38`
-// (`7994ce19…`) : l heritage de l OUTILLAGE ne coute donc rien. Le PERIMETRE, lui, change — 143
-// fichiers et deux valeurs amont au lieu de 183 fichiers — et l empreinte mesuree vaut
-// `966e3f3e…`. Deux quantites differentes ne se figent pas sous la meme ligne : le rang monte,
-// et la raison est ecrite ici.
-//
-// `SchemaVersion` reste 60 ; aucun match deja decode n est candidat au backlog par un changement
-// de sortie — `facts.Rev` monte MECANIQUEMENT parce qu elle hache la valeur ci-dessus, et sa
-// propre entree le dit.
-//
-// ENTREE `grammar-2026-09-15.40` (2026-09-17, lot 3.3.1) : L AMORCE DES LANCERS DEVIENT UNE
-// DONNEE DE PROFIL, ET LE DECODAGE CHANGE. Le balayage comparait 24 bits sur TOUS les films : il
-// lisait donc le bit de poids fort de l identifiant comme un bit d amorce sur les builds
-// anterieurs a `HI_1_12_0`, d ou ZERO lancer publie sur cinq temoins du corpus. Il lit desormais
-// la largeur, la VALEUR de l amorce et la position de l index auteur au profil (neuf clefs,
-// `profile/grenade.go`), derive le motif du `ti` projectile RESOLU PAR NOM dans le registre du
-// film, et ecarte par le sixieme bit d index les naissances de `managed-player`, comptees.
-// `profile.Rev` monte avec elle ; `facts.Rev` derriere ; `SchemaVersion` ne bouge PAS.
-
-// ENTREE `grammar-2026-09-15.41` (2026-09-17, lot 3.4.1) : LA MARCHE DES MORTS CALIBREE PAR LA
-// CARTE. LE CHEMIN ABSOLU D i0 CHANGE DE LARGEUR, DE PLAGE ET DE REGLE D EMISSION.
-//
-// C EST UN CHANGEMENT DE DECODAGE, pas une reformulation : des bits DIFFERENTS sont lus aux
-// memes offsets, et des positions qui etaient jetees sont publiees.
-//
-//	`position_capture.go`        `Lecteur.absoluteAxisW` et `absAxisW` DISPARAISSENT avec le
-//	                             champ `Movement.AbsoluteAxisW` : la largeur UNIFORME de 14 bits
-//	                             ecrasait les trois largeurs de la carte sur le chemin absolu du
-//	                             bipede. `absAxisWFor` suit desormais l index de plage — table
-//	                             DEFAUT du build (`22/22/22`) pour `idx == -1`, table PAR INDEX
-//	                             de la carte pour `idx >= 0` — et `dequantWorldAxis` suit le
-//	                             MEME index pour ses bornes : chez `FUN_14076e524` largeurs et
-//	                             bornes sortent de la meme AABB, les dissocier etait le defaut.
-//	`components_position_i0.go`  CORRECTIF D1 (3.4). Le commentaire « index 1 / no-index =
-//	                             +/-20000 » etait FAUX et le filtre `if idx != 0 { return }`
-//	                             avec lui : seul `index == -1` prend la boite du build. La
-//	                             position n est emise que si l index designe la plage
-//	                             CATALOGUEE (`Region`), nulle sur 78 cartes sur 79 et EGALE A 1
-//	                             sur Live Fire, dont les deux films du corpus voyaient donc
-//	                             leurs 59 376 positions valides jetees et le reste garde.
-//	                             La largeur de l index vient de la CARTE (`DAT_144632be0`,
-//	                             2 bits sur Live Fire) et non plus du descripteur de l appelant.
-//	                             `consumeAbsolutePayload` et `consumePredictedAbsolute` perdent
-//	                             leur parametre `pd`, devenu inutile.
-//
-// CE QUI CHANGE A L ECHELLE DU BIT, sur Cliffhanger : le chemin absolu du bipede lisait
-// `5 + 3x14 + 2 = 49` bits, il en lit `5 + 13+13+14 + 2 = 47` — exactement la mesure Cheat
-// Engine du dispatch (une seule valeur distincte, 100 % de 154 158 releves). Le compte se ferme
-// ou il ne se fermait pas.
-//
-// `facts.Rev` MONTE (elle hache la valeur de celle-ci) : les lignes de kill deja en base
-// deviennent candidates au backlog de redecodage — sur SIGNAL UTILISATEUR (D6), jamais
-// automatiquement. `SchemaVersion` : cf. le volet 3.4.2.
-//
-// ENTREE `grammar-2026-09-15.42` (2026-09-17, lot 3.6.a — RANG PRIS A LA FUSION : la branche
-// portait `.41`, deja occupe par 3.4.1 sur l integration) : `.41` -> `.42`. LE JOUEUR GERE
-// (`ti=9`) N A PLUS AUCUN COMPOSANT SANS LECTEUR.
-//
-// DEUX LECTEURS NEUFS, RELEVES CHEZ L ECRIVAIN (`components_managed_player.go`) :
-//
-//	i4  `managed-player-forge-weather-effect-overrides-component`, ecrivain `FUN_142ed5bc8` :
-//	    `R(32)` + `R(32)`, 64 bits INCONDITIONNELS. C etait le BLOQUANT NOMME des sept bobines.
-//	i9  `managed-player-custom-input-prompt-widget`, ecrivain `FUN_141fcf160` : `R(1)` present,
-//	    `R(2)` mode, puis le SAC TEXTE `FUN_14080b034` (`R(1)` + `R(32)` nom + `n = R(3)` +
-//	    `n` corps `FUN_1407f0ebc` a largeurs litterales). Le depot rendait `ported = false` des
-//	    que `n` depassait 0 — une desynchronisation propre sur une grammaire entierement
-//	    decidable hors ligne.
-//
-// AUCUNE ENTREE DE PROFIL : toutes ces largeurs sont des litteraux d instruction. Le sac texte
-// devient le SEUL lecteur du depot pour `FUN_14080b034` : les deux instruments qui en portaient
-// leur propre copie l appellent desormais.
-//
-// LES DIX `case` DE `ti=9` SONT RASSEMBLES dans `consumeManagedPlayerComponent` — les trois
-// maillons qui se les partageaient etaient AU PLAFOND du ratchet de longueur, et porter `i4` n y
-// avait pas de place. La scission est NEUTRE PAR CONSTRUCTION : aucune etiquette `case` n est
-// dupliquee dans la chaine (verifie sur pieces), donc l ordre des maillons ne decide de rien.
-//
-// CE QUE LA MESURE DIT. Fermeture d image-cle de `ti=9` : sur les sept bobines du ratchet 0.A.3,
-// `0 / 1 717` (bloquant `i4` sur les SEPT) -> `1 716 / 1 717`, plus aucun bloquant nomme ; le
-// 1 717e est une ancre fortuite de `111fa685` (`n1 = 2 154 823 696` contre `12` sur les autres).
-// Sur les SIX FILMS DE RECHERCHE, `0 / 1 679` (100 % de desync) -> **`1 679 / 1 679`**, temoin de
-// hasard a `0 / 1 679` : l archetype ferme a 100 % des qu on quitte le bruit du balayeur d ancres.
-//
-// `facts.Rev` : ce lot ne la fait pas monter de son propre chef (aucune source de `facts/`
-// touchee, aucun fait publie change) ; elle vaut celle de 3.4.1, qui la monte pour sa raison.
-// `SchemaVersion` reste 61 : mesure sur pieces, le document cuit de `084a804d` est identique
-// base -> tete sur TOUS ses chemins sauf `/coverage/decoder/grammarRev`.
+// SECONDE archive parce que la premiere frolait le meme seuil), puis le 2026-09-21 (lot 5.9.4,
+// rangs `.39` a `.42`, verses dans cette meme seconde archive qui avait la place). C est le
+// geste ordinaire que l en-tete des archives annonce, pas un incident. Ce qui suit est la suite
+// VIVANTE, a partir du premier rang du 2026-09-18.
 //
 // ENTREE `grammar-2026-09-18` (2026-09-18, lot 5.1.1) : `.42` -> le premier rang du 18.
 // LE POINT DE NAVIGATION (`ti=12`) EST LU DE `i1` AU MINUTEUR MANUEL.
@@ -489,3 +379,65 @@ package grammar
 // `replay.SchemaVersion` NE MONTE PAS : la FORME ne change pas, le CONTENU oui — `stances[]`
 // perd les intervalles qu il tenait d essais jetes, et `coverage.stances` le dit par ses propres
 // compteurs. C est `backfill-replay` qui re-cuit.
+
+// ENTREE `grammar-2026-09-21.5` (2026-09-21, lot 5.9.4) : LE SAUT, DERIVE DE LA VITESSE
+// VERTICALE ET PUBLIE SOUS UN GENRE QUI LE DIT.
+//
+// CE QUI CHANGE DANS LA COUCHE : `ScanMovementStates` capte desormais `EtatVitesse` (elle le
+// jetait) et derive, apres la marche, les MONTEES de chaque vie par integration de la vitesse
+// verticale TENUE d `i1`. Une montee fermee dont la hauteur integree tombe dans
+// `types.SpartanJumpHeightM` +/- 10 % produit deux transitions `jumpDerived` — posee a l amorce,
+// levee a la fin de la montee. Fichier neuf : `movement_states_jump.go`.
+//
+// LA HAUTEUR EST UN FAIT DE JEU, MESURE SUR DEUX FILMS (lot 5.7.5) : H = 0,85 m, montee 0,467 s
+// sur `bfecd02b` (pic x 10,7 au-dessus de ses voisins) et 0,466 s sur `4f77afc1` (pic x 3,9).
+// Tous les Spartans sautent la meme hauteur ; c est ce qui autorise la derivation, et c est
+// pourquoi la constante vit dans `types/` avec sa mesure en commentaire, et non comme un reglage.
+//
+// DEUX REFUS ECRITS DANS LE CODE : un episode encore OUVERT a la fin de la marche n est pas
+// publie (pas d instant de fin mesure, hauteur tronquee par le silence qui la termine) ; et un
+// silence de replication de plus de 250 ms n est pas une vitesse tenue — `i1` ne voyage que sur
+// changement, et integrer un tel silence FABRIQUERAIT des hauteurs.
+//
+// CE QUI N EST PAS FAIT, ET C EST UNE DECISION : le SPRINT. Sa chaine de donnees est complete
+// (lot 5.9.1 — l etiquette d `i57` est l INDEX DE LA FENTE DE CAPACITE ACTIVE, et le bit 45 des
+// drapeaux d unite est pose par `Sprint::Update` depuis une fraction rampee localement), mais la
+// fente qui porte `'sasp'` n est pas nommee, et l utilisateur n a autorise aucune derive pour lui.
+//
+// `facts.Rev` MONTE (elle hache la VALEUR de cette revision) : `killsource-2026-09-21.5`.
+// `replay.SchemaVersion` MONTE AUSSI (65 -> 66) : un genre neuf apparait dans `stances[].kind` et
+// deux compteurs entrent dans `coverage.stances` — la FORME change.
+
+// ENTREE `grammar-2026-09-21.6` (2026-09-21, lot 5.9.5) : LE SPRINT EST LU — `i57` PORTE
+// L INDEX DE LA FENTE DE CAPACITE ACTIVE, ET L IMAGE NOMME LES TROIS FENTES.
+//
+// CE QUI CHANGE DANS LA COUCHE : `consumeBipedSpartanAbility` publie son etiquette par une porte
+// qui PORTE LE SLOT (`EtatCapaciteActive`, septieme membre de l enumeration) — l ancienne porte
+// `SpartanAbilityHook` ne le porte pas, et un intervalle PAR VIE l exige ; meme geste que la
+// porte d `i54` a cote de `MobilityActionHook`. `ScanMovementStates` capte la nouvelle porte et
+// publie le genre `sprint`. AUCUN BIT N EST LU AUTREMENT : le parcours de
+// `consumeBipedSpartanAbility` est inchange, seule sa publication grandit.
+//
+// LE NOMMAGE VIENT DE L IMAGE. `FUN_1407e9ce4` aiguille sur le GROUPE DE TAG de la definition de
+// capacite et appelle, pour chacun, un desenregistreur qui teste l index actif contre SA fente :
+//
+//	'saev' (0x73616576, esquive)  -> FUN_14319d0ac : fente `comp+0x1c`, index actif 0
+//	'sasp' (0x73617370, SPRINT)   -> FUN_14319d1ec : fente `comp+0x20`, index actif 1
+//	'sagh' (0x73616768, grappin)  -> FUN_14319d14c : fente `comp+0x24`, index actif 2
+//
+// Le flux ecrit `bloc+3 = R(2) - 1` (`FUN_142f268c4`), donc le brut `2` designe la fente 1. Le
+// decalage vit en UN point, `sprintAbilitySlotRaw`.
+//
+// LE CONTROLE QUI VALIDE LA LECTURE DE L INDEX EST CELUI DU GRAPPIN : sur `4f77afc1`, la vitesse
+// au sol pendant les intervalles de la fente 2 atteint 5,84 m/s au p90 contre 2,88 hors
+// intervalle. Aucune autre capacite ne fait cela — c est la traction. Si la fente 2 est le
+// grappin, l index est lu juste, donc la fente 1 est `'sasp'`.
+//
+// MESURE DE LA COUCHE (`bfecd02b`) : 625 lectures d `i57`, 416 sur un slot lie au bipede, 205 a
+// la fente 1 et 209 a « aucune fente » — une pose pour une levee. `ScanMovementStates` publie
+// 616 lectures `sprint` sur 65 vies (contre 52 `crouch`, 47 `slide`, 301 `mobility`). Sur
+// `4f77afc1` : 1 088 lectures a la fente 1, 49 a la fente 2, 12 a la fente 0.
+//
+// `facts.Rev` MONTE (elle hache la VALEUR de cette revision) : `killsource-2026-09-21.6`.
+// `replay.SchemaVersion` NE MONTE PAS UNE SECONDE FOIS : la v66 du meme lot porte DEJA le
+// changement de forme de `stances[].kind`, et la chronique v66 nomme les deux genres.

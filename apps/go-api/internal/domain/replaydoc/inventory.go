@@ -100,6 +100,9 @@ type EquipmentEpisode struct {
 // libellé, jamais celui d'un voisin.
 type Stance struct {
 	Slot uint32 `json:"slot"`
+	// Kind : `crouch`, `slide`, `mobility` (LUS dans un composant) ou `jumpDerived` (DÉRIVÉ de
+	// l'intégrale de la vitesse verticale, schéma 66). Le nom du dérivé le dit : un client ne
+	// doit pas avoir à consulter la documentation pour distinguer un calcul d'une lecture.
 	Kind string `json:"kind"`
 	T0   int    `json:"t0"`
 	T1   int    `json:"t1"`

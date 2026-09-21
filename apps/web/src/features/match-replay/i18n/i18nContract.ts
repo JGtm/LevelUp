@@ -903,17 +903,20 @@ export interface ReplayText {
   markMe: string
   healthLabel: string
   /**
-   * L'ÉTAT DE MOUVEMENT COURANT, sur la fiche du joueur (schéma 65, lot 5.3.6). TROIS clés, et
-   * trois seulement : le film écrit l'accroupi, la glissade et l'action de mobilité ; le SPRINT
-   * est réfuté comme observable par la vitesse et le SAUT n'est pas prouvé (lot 5.3.5), donc
-   * aucune clé ne les nomme — un libellé sans donnée serait une promesse.
+   * L'ÉTAT DE MOUVEMENT COURANT, sur la fiche du joueur (schéma 66, lots 5.3.6 et 5.9.4).
+   * CINQ clés : quatre pour des états LUS dans le film — accroupi, glissade, action de
+   * mobilité, SPRINT — et une pour un état DÉRIVÉ, le saut. Le libellé du dérivé DIT qu'il est dérivé
+   * (« Saut (dérivé) » / « Jump (derived) »), parce qu'il ne vient d'aucun composant mais de
+   * l'intégrale de la vitesse verticale, reconnue à sa hauteur. Le SPRINT est LU : `i57` porte
+   * l'INDEX DE LA FENTE DE CAPACITÉ ACTIVE, et l'image nomme les trois fentes — esquive,
+   * sprint, grappin (lot 5.9.5).
    *
    * `mobility` DIT « ACTION », PAS « ESCALADE » : le film transmet qu'une action de mobilité
    * est amorcée, il ne dit pas LAQUELLE. L'énumération a trois candidats et le domaine mesuré
    * de ses champs contredit l'hypothèse à quatre valeurs (note 5.3, § 2.8 et D9). Nommer
    * « Escalade » serait choisir à la place de la mesure.
    */
-  stanceKind: Record<'crouch' | 'slide' | 'mobility', string>
+  stanceKind: Record<'crouch' | 'slide' | 'mobility' | 'sprint' | 'jumpDerived', string>
   shieldLabel: string
   abilityLabel: string
   loadoutUnread: string

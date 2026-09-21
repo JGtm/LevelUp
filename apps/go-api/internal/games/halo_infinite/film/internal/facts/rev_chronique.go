@@ -473,3 +473,28 @@ package facts
 // `SchemaVersion` NE MONTE PAS : la FORME du document ne change pas. Son CONTENU change
 // (`stances[]` perd les intervalles qu il tenait d essais jetes), et c est `backfill-replay` qui
 // en repond.
+
+// ENTREE `killsource-2026-09-21.5` (2026-09-21, lot 5.9.4) : LA REVISION MONTE DERRIERE UN GENRE
+// NEUF DE LA COUCHE GRAMMAIRE, ET LE KILL-FEED N EST PAS CONCERNE.
+//
+// AUCUN OCTET DE `facts/` N EST TOUCHE. `grammar.Rev` passe a `grammar-2026-09-21.5` : le
+// balayage des etats de mouvement capte desormais la vitesse verticale d `i1` et en DERIVE les
+// sauts, publies sous le genre `jumpDerived` (chronique de `grammar`, entree du meme jour).
+// Cette constante hache la VALEUR de la revision de grammaire : elle monte.
+//
+// CE QUE CE BACKLOG RAPPORTERAIT POUR LE KILL-FEED : RIEN. Le correctif n ajoute qu une SORTIE a
+// la couche — deux transitions de plus dans `MovementStateRead` — et ne touche aucun bit lu : ni
+// `PosCaptureHook`, ni `UnitRefHook`, ni aucune largeur. Les positions, les vitesses et les
+// references d unite publiees sont identiques a l octet.
+//
+// `SchemaVersion` MONTE (65 -> 66), parce que la FORME du document change : `stances[].kind` peut
+// desormais valoir `jumpDerived`, et `coverage.stances` porte deux compteurs de plus.
+
+// ENTREE `killsource-2026-09-21.6` (2026-09-21, lot 5.9.5) : LA REVISION MONTE DERRIERE UN
+// SECOND GENRE DE LA COUCHE GRAMMAIRE, ET LE KILL-FEED N EST PAS CONCERNE.
+//
+// AUCUN OCTET DE `facts/` N EST TOUCHE. `grammar.Rev` passe a `grammar-2026-09-21.6` : le
+// deserialiseur d `i57` publie son etiquette par une porte qui porte le SLOT, et le balayage des
+// etats de mouvement en tire le genre `sprint` — LU, pas derive (chronique de `grammar`, meme
+// jour). Le PARCOURS DE BITS d `i57` est inchange. `SchemaVersion` ne monte pas une seconde
+// fois : la v66 du meme lot porte deja la forme.

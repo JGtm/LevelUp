@@ -1,9 +1,9 @@
 # EMPREINTE DE FORME DU DOCUMENT DE REJEU — fige par document_shape_test.go.
 # Ne s'edite JAMAIS a la main : regeneration decrite en tete de ce test.
-schema 65
-empreinte-stockee 94497c21e0bbca03
-empreinte-servie 94497c21e0bbca03
-empreinte-cuite 9f8aa1d599aa05bc
+schema 66
+empreinte-stockee 8c32e4b7b2b749b8
+empreinte-servie 8c32e4b7b2b749b8
+empreinte-cuite 591a9d1b7c3af97c
 empreinte-cuite-regle 2
 
 AbilityCharge
@@ -806,6 +806,8 @@ StanceCoverage
   Dropped json:"dropped,omitempty" int
   EventPacketsUnlocated json:"eventPacketsUnlocated,omitempty" int
   Intervals json:"intervals" int
+  JumpEpisodes json:"jumpEpisodes,omitempty" int
+  JumpsDerived json:"jumpsDerived,omitempty" int
   Lives json:"lives" int
   MapWidths json:"mapWidths,omitempty" [3]uint
   Reads json:"reads" int

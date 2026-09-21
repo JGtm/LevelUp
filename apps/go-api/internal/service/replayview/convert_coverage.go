@@ -225,7 +225,7 @@ func toEquipmentCoverage(v replay.EquipmentCoverage) replaydoc.EquipmentCoverage
 	}
 }
 
-// toStanceCoverage convertit la couverture des ETATS DE MOUVEMENT (schema 65). `ByKind` est
+// toStanceCoverage convertit la couverture des ETATS DE MOUVEMENT (schema 66). `ByKind` est
 // RECOPIEE : partager la map ferait du document servi une vue sur celle du document stocke.
 func toStanceCoverage(v replay.StanceCoverage) replaydoc.StanceCoverage {
 	out := replaydoc.StanceCoverage{
@@ -235,6 +235,8 @@ func toStanceCoverage(v replay.StanceCoverage) replaydoc.StanceCoverage {
 		Desyncs:               v.Desyncs,
 		Reads:                 v.Reads,
 		Intervals:             v.Intervals,
+		JumpEpisodes:          v.JumpEpisodes,
+		JumpsDerived:          v.JumpsDerived,
 		Lives:                 v.Lives,
 		TracksTotal:           v.TracksTotal,
 		Dropped:               v.Dropped,

@@ -329,6 +329,10 @@ func consumeBipedAction(br *Lecteur) (ported bool) {
 // INCHANGÉ (cf. ability_state_hooks.go).
 func consumeBipedSpartanAbility(br *Lecteur) bool {
 	tag := br.ReadBits(2)
+	// LA PORTE QUI PORTE LE SLOT (lot 5.9.5) : `SpartanAbilityHook` ne le porte pas, et un
+	// intervalle PAR VIE l exige. Meme raison que la porte d `i54` a cote de
+	// `MobilityActionHook`. Aucun bit n est lu autrement.
+	br.publishEtatMouvement(EtatCapaciteActive, tag)
 	switch tag {
 	case 1:
 		sub := br.ReadBits(2)  // FUN_142f25d78 : FUN_1406d310c(4) = 2 bits
