@@ -37,6 +37,7 @@ import { familyOf, type ShotFamily } from '../layers/shotEffects'
 import { heldReading } from '../../../lib/replay/replayLogic'
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 import { vehicleChassisHeadingAt, vehicleShooterAimAt } from './vehiclesAim'
+import { vehicleShotStyleOf } from './vehicleShotFx'
 import { vehicleWeaponMountOf, type VehicleWeaponMount } from './vehicleWeaponMounts'
 import { buildLivesBySlot, lifeOfSlotAt } from './livesPosition'
 
@@ -50,10 +51,23 @@ import { buildLivesBySlot, lifeOfSlotAt } from './livesPosition'
 export interface VehicleShotSource {
   /**
    * Le montage de l'arme sur le châssis, ou `null` quand le tag d'arme n'est pas documenté
-   * (Wraith, Gungoose, Falcon, tourelle posée au sol…). `null` ne fait PLUS perdre la source :
-   * l'éclair reste au CENTRE du véhicule, mais il garde sa DIRECTION (cf. `vehicleShotPlacement`).
+   * (le Shade, dont le tag `weap` manque — le Wraith, le Gungoose et le Falcon sont mesurés depuis
+   * le lot 5.8.3), OU quand l'arme n'est pas une arme de véhicule du tout (`arme: 'joueur'`).
+   * `null` ne fait PLUS perdre la source : l'éclair reste au CENTRE du véhicule, mais il garde sa
+   * DIRECTION (cf. `vehicleShotPlacement`).
    */
   mount: VehicleWeaponMount | null
+  /**
+   * CE QUI A TIRÉ, ET C'EST LA CLÉ DE LA RÈGLE DE DIRECTION (lot 5.8.5) : une arme DE VÉHICULE est
+   * solidaire du châssis (son cap est donc un repli légitime), une arme DE JOUEUR tirée depuis un
+   * siège ne l'est PAS — le passager vise où il veut, et lui prêter le cap du véhicule serait une
+   * invention (règle du lot 5.2a.5, qui SURVIT). La seule direction qu'elle accepte est la visée
+   * MESURÉE de son tireur.
+   *
+   * LE DISCRIMINATEUR EST LE REGISTRE D'ARMES, comme pour le son : une arme absente de
+   * `weaponLabels` est une arme de véhicule.
+   */
+  arme: 'vehicule' | 'joueur'
   /** Famille du véhicule porteur (clé de `sizeOf`/`spriteOf`, cf. `VehicleStyle`). */
   family: string | undefined
   /**
@@ -109,7 +123,12 @@ export function buildShotFx(doc: ReplayDocumentReady, aimHoldFrames: number): Sh
   const out: ShotFxEntry[] = []
   for (const s of doc.shots) {
     const label = s.w ? doc.weaponLabels?.[s.w] : undefined
-    const fam = familyOf(label?.fx)
+    // DEUX JOINTURES, DANS CET ORDRE — la MÊME que celle du son (`shotSoundStem`) : le registre
+    // des armes de JOUEUR d'abord, puis la table des armes DE VÉHICULE (lot 5.8.2). Sans la
+    // seconde, 68 % des tirs de véhicule de `4f77afc1` tombaient sur la famille `plain` et la
+    // teinte `neutral` — un halo gris pâle centré sur un sprite, qui ne se lit pas comme un tir.
+    const style = label ? null : vehicleShotStyleOf(s.w)
+    const fam = familyOf(label?.fx ?? style?.fx)
     if (fam === 'melee') continue
     const track = lifeOfSlotAt(bySlot, s.slot, s.t)
     const read = track ? heldReading(track.points, s.t, (p) => p.h, aimHoldFrames) : null
@@ -119,7 +138,7 @@ export function buildShotFx(doc: ReplayDocumentReady, aimHoldFrames: number): Sh
       y: s.y,
       h: read ? read.value : null,
       fam,
-      tint: fxTintOf(label?.tint),
+      tint: fxTintOf(label?.tint ?? style?.tint),
       seed: s.t + s.slot,
       vehicleShot: vehicleShotSourceOf(doc, s, s.t),
     })
@@ -148,11 +167,25 @@ export function buildShotFx(doc: ReplayDocumentReady, aimHoldFrames: number): Sh
  * sans montage rend donc une direction à l'éclair, et `vehicleShotPlacement` la traduit.
  *
  * LA GARDE EST LE REGISTRE D'ARMES, et c'est le MÊME discriminateur que le son
- * (`shotSoundStem` : « leurs identifiants sont ABSENTS de `weaponLabels` »). Une arme DE JOUEUR
- * tirée depuis un siège de passager reste sur son propre cap de regard, jamais sur celui du
- * châssis : le passager vise où il veut, et lui prêter la direction du véhicule serait une
- * invention. Mesure : `c259789d` ne porte QUE des tirs de ce genre (47 sur 47 dans le registre),
- * et ce chemin ne les touche pas.
+ * (`shotSoundStem` : « leurs identifiants sont ABSENTS de `weaponLabels` »).
+ *
+ * # UNE ARME DE JOUEUR TIRÉE D'UN SIÈGE GARDE LA SOURCE DEPUIS LE LOT 5.8.5, ET POUR SA VISÉE
+ *
+ * LE NÉGATIF QUI L'ÉCARTAIT EST TOMBÉ, et c'est le lot 5.5.2 qui l'a fait tomber. 5.2a.5 les
+ * laissait sur leur propre cap de REGARD — la règle était juste (le passager vise où il veut) mais
+ * ce cap vient de la trajectoire du BIPÈDE, qui ne réplique plus une fois embarqué : il est
+ * lisible pour **1 tir sur 241** (`4f77afc1`). Mesure de la population : **76 tirs sur 241**
+ * (D2 du lot 5.5).
+ *
+ * CE QUE 5.5.2 A ÉTABLI : la visée de l'épisode du TIREUR, appariée par SLOT, est SON PROPRE
+ * REGARD — pas celui d'autrui. L'objection qui gelait ce cas (« faire passer une mesure d'autrui
+ * pour une approximation de soi ») ne s'y applique donc pas, et l'utilisateur l'a tranché le
+ * 2026-09-21 : « pour un occupant NON conducteur, l'orientation de son arme passager est sa
+ * VISÉE, son regard classique comme à pied ».
+ *
+ * LA RÈGLE DE 5.2a.5 SURVIT ENTIÈRE : cette arme ne prend JAMAIS le cap du châssis. Sans lecture
+ * de visée en vigueur, la source n'est même pas créée — le tir retombe alors sur son propre
+ * regard, exactement comme avant ce lot (`h`), et sur la bouffée ronde à défaut.
  */
 function vehicleShotSourceOf(
   doc: ReplayDocumentReady,
@@ -160,19 +193,23 @@ function vehicleShotSourceOf(
   t: number,
 ): VehicleShotSource | null {
   if (shot.v === undefined) return null
+  const track = doc.vehicles.find((v) => v.slot === shot.v)
+  if (!track) return null
   const mount = vehicleWeaponMountOf(shot.w)
   // ARME DE VÉHICULE = absente du registre d'armes de joueur (cf. l'en-tête de cette fonction).
   const armeDeVehicule = shot.w !== undefined && doc.weaponLabels?.[shot.w] === undefined
-  if (!mount && !armeDeVehicule) return null
-  const track = doc.vehicles.find((v) => v.slot === shot.v)
-  if (!track) return null
+  // LE SLOT DU TIREUR, PAS SON SIÈGE (lot 5.5) : c'est la seule clé qui désigne l'occupant qui a
+  // tiré, et elle vaut pour le tourelleur passager du Warthog comme pour le conducteur artilleur
+  // du Scorpion — comme pour le passager qui tire sa propre arme.
+  const viseeTireur = vehicleShooterAimAt(track, shot.slot, t)
+  // UNE ARME DE JOUEUR N'ENTRE QUE SI SA VISÉE EST LUE : sans elle, la source n'apporterait rien
+  // et le tir perdrait son propre regard (`h`), qui est parfois lisible.
+  if (!mount && !armeDeVehicule && viseeTireur === null) return null
   return {
     mount,
+    arme: armeDeVehicule ? 'vehicule' : 'joueur',
     family: track.family,
     headingDeg: vehicleChassisHeadingAt(track, t),
-    // LE SLOT DU TIREUR, PAS SON SIÈGE (lot 5.5) : c'est la seule clé qui désigne l'occupant
-    // qui a tiré, et elle vaut pour le tourelleur passager du Warthog comme pour le conducteur
-    // artilleur du Scorpion.
-    shooterHeadingDeg: vehicleShooterAimAt(track, shot.slot, t),
+    shooterHeadingDeg: viseeTireur,
   }
 }

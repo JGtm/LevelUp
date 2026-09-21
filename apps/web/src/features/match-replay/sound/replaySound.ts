@@ -515,12 +515,22 @@ export const SOUND_CATEGORIES_DEFAULT: SoundCategoryFilter = {
  * d'abord (les armes de joueur, tirées à pied OU depuis un siège), puis les armes DE VÉHICULE
  * — leurs identifiants (`0x<weap>00000000`) sont ABSENTS de `weaponLabels`, c'est la table de
  * `vehicleShotSound.ts` qui les nomme. Aucune des deux ne répond = silence propre, inchangé.
+ *
+ * ELLE PREND LE TIR ENTIER DEPUIS LE LOT 5.8.4, et non plus son seul identifiant d'arme : un tag
+ * AMBIGU (le Warthog, dont le `weap` unique couvre LAAG / Gauss / roquettes) se départage par la
+ * FAMILLE DU CHÂSSIS TIREUR, que le document publie et que seul `Shot.v` permet d'atteindre.
  */
-export function shotSoundStem(doc: ReplayDocumentReady, weaponID: string | undefined): string | undefined {
-  if (!weaponID) return undefined
-  const key = doc.weaponLabels?.[weaponID]?.key
+export function shotSoundStem(
+  doc: ReplayDocumentReady,
+  shot: { w?: string; v?: number },
+): string | undefined {
+  if (!shot.w) return undefined
+  const key = doc.weaponLabels?.[shot.w]?.key
   if (key) return WEAPON_SOUND_STEMS[key]
-  return vehicleShotSoundStem(weaponID)
+  // LA FAMILLE N'EST CHERCHÉE QUE POUR UN TIR EN VÉHICULE : un tir à pied n'a pas de porteur, et
+  // balayer les véhicules pour lui serait un travail inutile à chaque tir du match.
+  const porteur = shot.v === undefined ? undefined : doc.vehicles.find((v) => v.slot === shot.v)
+  return vehicleShotSoundStem(shot.w, porteur?.family)
 }
 
 /**
@@ -604,7 +614,7 @@ export function buildSoundTimeline(
   const out: ReplaySoundEvent[] = []
   if (categories.weapon) {
     for (const s of doc.shots) {
-      const stem = shotSoundStem(doc, s.w)
+      const stem = shotSoundStem(doc, s)
       if (stem) out.push(soundEvent(frameToMs(s.t, doc), stem))
     }
     // Les RAMASSAGES ET LÂCHERS D'ARME (schéma 25) : datés par `weaponChanges`, plus rien à

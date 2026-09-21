@@ -20,13 +20,20 @@
  * propriétaire. Une rampe qui retombe sans changer le propriétaire reste MUETTE — c'est
  * exactement le cas « contestée », et nous ne savons pas encore nommer celui qui a échoué.
  *
- * **TIC DE SCORE.** Règle produit de l'utilisateur (2026-08-27), et elle n'est pas une mesure :
- * « on pourrait les jouer chaque seconde selon l'équipe, quand l'équipe alliée ou adverse a
- * toutes les zones ». C'est donc UN TIC PAR SECONDE tant qu'un camp tient TOUTES les zones.
- * RESTREINT AUX MODES À ZONES SIMULTANÉES : le son s'appelle `..._strongholds_scoring_tick_*`
- * et l'utilisateur a précisé qu'il parlait de Bastion. Une colline unique (KOTH) tenue en
- * permanence ferait sonner un tic par seconde tout le match — la garde est donc double : au
- * moins deux zones, et aucun intervalle marqué `active` (le marqueur de colline).
+ * **TIC DE SCORE.** Règle produit de l'utilisateur (2026-08-27) : « on pourrait les jouer chaque
+ * seconde selon l'équipe, quand l'équipe alliée ou adverse a toutes les zones ». Le déclencheur
+ * est donc la DOMINATION — un camp tient TOUTES les zones —, RESTREINTE AUX MODES À ZONES
+ * SIMULTANÉES : le son s'appelle `..._strongholds_scoring_tick_*` et l'utilisateur a précisé
+ * qu'il parlait de Bastion. Une colline unique (KOTH) tenue en permanence ferait sonner tout le
+ * match — la garde est donc double : au moins deux zones, et aucun intervalle marqué `active`
+ * (le marqueur de colline).
+ *
+ * L'INSTANT DU TIC, LUI, VIENT DE L'HORLOGE DE SCORE DU JEU DEPUIS LE LOT 5.8.6, et ce n'est plus
+ * une cadence synthétique : `scoreTimeline.teams[].total` est l'ESCALIER du score d'un camp
+ * (`{t: frame, v: cumul}`), et un tic sonne à chaque MARCHE de ce camp pendant qu'il domine. Un
+ * tic de score qui ne tombe pas sur un point est un tic qui mentait — le jeu ne marque pas toutes
+ * les secondes, et la cadence dépend de la variante. Le repli synthétique reste là pour les
+ * documents que le calque de score ne couvre pas (cf. `cadenceDerivee`).
  *
  * **NOUVELLE COLLINE.** Chaque début d'intervalle `active` SAUF LE PREMIER : le son est
  * « avant l'apparition d'une NOUVELLE zone », pas l'ouverture du match. Il n'a pas de camp —
@@ -124,12 +131,20 @@ export const ZONE_SOUND_STEMS = {
 export const ZONE_TICK_PERIOD_MS = 1000
 
 /**
- * PLAFOND DE TICS PAR INTERVALLE. Une manche entière tenue par un camp produirait des
- * centaines de tics ; le plafond de voix du lecteur (8) les avalerait, mais la piste porterait
- * quand même leur poids. 180 tics = trois minutes de domination continue, au-delà desquelles
- * un tic de plus n'apprend rien.
+ * BUDGET D'ÉVÉNEMENTS PAR INTERVALLE, pour le seul repli synthétique.
+ *
+ * C'ÉTAIT UN PLAFOND DUR QUI TRONQUAIT, ET C'EST LE DÉFAUT QUE LE LOT 5.8.6 CORRIGE : la boucle
+ * s'arrêtait au 180e tic, donc au-delà de trois minutes de domination continue le son se TAISAIT
+ * jusqu'à la fin de l'intervalle — précisément quand la domination devient l'information la plus
+ * utile. Le chiffre reste, mais il n'est plus une troncature : c'est le nombre d'événements que
+ * l'intervalle a le droit de porter, et la CADENCE s'en déduit (`cadenceDerivee`). Une domination
+ * de trois minutes ou moins garde donc exactement son tic par seconde ; une plus longue voit ses
+ * tics s'espacer au lieu de s'arrêter.
+ *
+ * LA RAISON DU BUDGET N'A PAS CHANGÉ : le plafond de voix du lecteur (8) avalerait les surnombres,
+ * mais la piste porterait quand même leur poids.
  */
-export const ZONE_TICK_MAX_PAR_INTERVALLE = 180
+export const ZONE_TICK_BUDGET_PAR_INTERVALLE = 180
 
 /**
  * Les trois formes lues, réduites à ce dont ce fichier a besoin (typage STRUCTUREL : il n'a pas
@@ -157,6 +172,14 @@ interface ZoneStateLike {
   spans: readonly SpanLike[]
   gauge?: readonly GaugeLike[] | null
   gaugeRamps?: readonly RampLike[] | null
+}
+
+/**
+ * L'ESCALIER DE SCORE D'UN CAMP, réduit à ce dont ce fichier a besoin (même typage STRUCTUREL que
+ * les trois formes ci-dessus) : l'identifiant du camp et sa série cumulative `{t: frame, v}`.
+ */
+interface ScoreStairsLike {
+  teams?: readonly { teamId?: number; total?: readonly GaugeLike[] | null }[] | null
 }
 
 /**
@@ -335,25 +358,81 @@ function ticsDeDomination(
   if (allyTeam === null || zones.length < 2) return []
   if (zones.some((z) => z.spans.some((s) => s.active))) return []
   const out: ReplaySoundEvent[] = []
-  for (const iv of intervallesDeDomination(zones)) {
+  for (const iv of zoneDominationIntervals(zones)) {
     const stem = iv.owner === allyTeam ? ZONE_SOUND_STEMS.tick.ally : ZONE_SOUND_STEMS.tick.enemy
     const debut = frameToMs(iv.t0, doc)
     const fin = frameToMs(iv.t1, doc)
-    for (let n = 0; n < ZONE_TICK_MAX_PAR_INTERVALLE; n++) {
-      const ms = debut + n * ZONE_TICK_PERIOD_MS
-      if (ms > fin) break
-      out.push(soundEvent(ms, stem))
-    }
+    // L'HORLOGE DU JEU D'ABORD, LA CADENCE SYNTHÉTIQUE EN REPLI : même doctrine que partout dans
+    // cette chaîne (une mesure l'emporte sur une déduction). `null` = le calque de score ne
+    // couvre pas ce camp ; un tableau VIDE, lui, est une réponse — ce camp n'a marqué aucun point
+    // pendant qu'il dominait, et inventer des tics le contredirait.
+    const mesures = instantsDePoint(doc.scoreTimeline, iv.owner, debut, fin, doc)
+    for (const ms of mesures ?? cadenceDerivee(debut, fin)) out.push(soundEvent(ms, stem))
   }
   return out
 }
 
 /**
- * intervallesDeDomination rend les tranches de temps où TOUTES les zones ont le même
+ * instantsDePoint — LES INSTANTS OÙ CE CAMP A MARQUÉ, dans la fenêtre donnée, ou `null` quand le
+ * calque de score ne le couvre pas.
+ *
+ * `scoreTimeline.teams[].total` est un ESCALIER CUMULATIF : une MARCHE (`v` strictement supérieur
+ * au précédent) est un point marqué, et son `t` est une FRAME — la même grille que le reste du
+ * document (cf. `scoreAtFrame`). Le PREMIER point de la série n'est une marche que s'il est non
+ * nul : une série qui commence à zéro décrit l'état initial, pas un point.
+ *
+ * LA FENÊTRE EST CELLE DE LA DOMINATION, bornes comprises : un point marqué pendant qu'un camp
+ * tient toutes les zones EST le tic que l'utilisateur décrit. Un point marqué hors domination
+ * (une capture de zone, un frag selon la variante) n'en est pas un.
+ */
+function instantsDePoint(
+  timeline: ScoreStairsLike | undefined,
+  owner: number,
+  debutMs: number,
+  finMs: number,
+  doc: ReplayDocumentReady,
+): number[] | null {
+  const serie = (timeline?.teams ?? []).find((t) => t.teamId === owner)?.total
+  if (!serie || serie.length === 0) return null
+  const out: number[] = []
+  let precedent = 0
+  for (const marche of serie) {
+    const monte = marche.v > precedent
+    precedent = marche.v
+    if (!monte) continue
+    const ms = frameToMs(marche.t, doc)
+    if (ms >= debutMs && ms <= finMs) out.push(ms)
+  }
+  return out
+}
+
+/**
+ * cadenceDerivee — LE REPLI SYNTHÉTIQUE, quand aucune horloge de score ne couvre le camp.
+ *
+ * LA PÉRIODE SUIT LA DURÉE, ET C'EST TOUTE LA CORRECTION DU LOT 5.8.6 : le budget d'événements ne
+ * TRONQUE plus la fin de l'intervalle, il en étire la cadence. Sous trois minutes, la période vaut
+ * exactement la seconde demandée par l'utilisateur (le plancher) et le rendu est INCHANGÉ ;
+ * au-delà, les tics s'espacent au lieu de s'arrêter.
+ */
+function cadenceDerivee(debutMs: number, finMs: number): number[] {
+  const duree = Math.max(0, finMs - debutMs)
+  const periode = Math.max(ZONE_TICK_PERIOD_MS, duree / ZONE_TICK_BUDGET_PAR_INTERVALLE)
+  const out: number[] = []
+  for (let ms = debutMs; ms <= finMs; ms += periode) out.push(ms)
+  return out
+}
+
+/**
+ * zoneDominationIntervals rend les tranches de temps où TOUTES les zones ont le même
  * propriétaire non nul. Le balayage se fait sur les BORNES des intervalles de toutes les zones
  * — la seule grille où l'état peut changer.
+ *
+ * EXPORTÉE POUR L'INSTRUMENT DE MESURE du lot 5.8.6 (`zoneTics.mesure.test.ts`), et c'est
+ * délibéré : la seule autre façon de mesurer la portée du plafond de tics aurait été de recopier
+ * ce balayage dans l'instrument, donc d'en avoir une seconde version qui dérive sans que rien ne
+ * le voie (leçon « DDL de test recopiées »). Aucun autre appelant de production.
  */
-function intervallesDeDomination(
+export function zoneDominationIntervals(
   zones: readonly ZoneStateLike[],
 ): { t0: number; t1: number; owner: number }[] {
   const bornes = new Set<number>()

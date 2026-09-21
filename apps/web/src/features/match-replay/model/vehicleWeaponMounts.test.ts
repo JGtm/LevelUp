@@ -56,15 +56,42 @@ describe('vehicleWeaponMountOf — la table et son repli', () => {
     expect(vehicleWeaponMountOf(shotW('00015cfa'))?.classe).toBe('tourelle')
   })
 
-  it('Gungoose, Shade, tourelle LMG : aucun tag weap documenté, donc repli centre', () => {
-    // Zéro occurrence de leur famille dans V3F_TIRS_COVENANT — pas de tag à indexer, pas
-    // d'entrée fabriquée. Les tags jpt de labels.tsv qu'une version antérieure de ce fichier
-    // utilisait par erreur (mauvais espace d'identifiants) ne sont plus dans la table.
+  it('le Shade reste sans montage : c est son TAG qui manque, pas sa position', () => {
+    // Zéro occurrence de sa famille dans V3F_TIRS_COVENANT — pas de tag à indexer, pas d'entrée
+    // fabriquée. Les tags jpt de labels.tsv qu'une version antérieure de ce fichier utilisait par
+    // erreur (mauvais espace d'identifiants) ne sont plus dans la table.
     expect(vehicleWeaponMountOf('099377af')).toBeNull() // Shade (jpt, PAS un tag weap de Shot.w).
   })
 
+  /**
+   * LOT 5.8.3 — LES TROIS MONTAGES MESURÉS SUR LE SPRITE. Leur TAG était connu depuis le lot des
+   * sons (2026-09-04) ; c'est leur POSITION qui manquait, et l'éclair partait donc du centre du
+   * châssis — pour le Wraith, un mètre et demi derrière la bouche de son mortier.
+   */
+  it('Wraith, Gungoose, Falcon : montage présent, et la CLASSE suit FAMILLES_ARME_FIXE (5.2a.6)', () => {
+    const wraith = vehicleWeaponMountOf(shotW('121b4009'))
+    const gungoose = vehicleWeaponMountOf(shotW('0042678e'))
+    const falcon = vehicleWeaponMountOf(shotW('00015cd3'))
+    // Le Wraith et le Gungoose sont des châssis à arme FIXE (viser, c'est tourner le véhicule) ;
+    // la mitrailleuse de PORTE du Falcon est servie par un passager, donc une tourelle.
+    expect(wraith?.classe).toBe('fixe')
+    expect(gungoose?.classe).toBe('fixe')
+    expect(falcon?.classe).toBe('tourelle')
+  })
+
+  it('les trois ancres neuves sont AVANT ou ARRIÈRE selon ce que le sprite montre', () => {
+    // Le mortier du Wraith et les canons du Gungoose sont à l'AVANT (ay < 0, le nez est en haut) ;
+    // les postes latéraux du Falcon sont EN ARRIÈRE du poste de pilotage (ay > 0).
+    expect(vehicleWeaponMountOf(shotW('121b4009'))?.ay).toBeLessThan(0)
+    expect(vehicleWeaponMountOf(shotW('0042678e'))?.ay).toBeLessThan(0)
+    expect(vehicleWeaponMountOf(shotW('00015cd3'))?.ay).toBeGreaterThan(0)
+    // Le mortier du Wraith est SUR L'AXE : son fût est centré à un demi-pixel de l'axe du châssis.
+    expect(vehicleWeaponMountOf(shotW('121b4009'))?.ax).toBe(0)
+  })
+
   it('toutes les ancres de la table tiennent dans [-0,5 ; +0,5]', () => {
-    const weaps = ['c7d50912', '00015435', '0000aa68', '0000aa69', '11725dc4', 'd3c407ed', 'b40e9618', '00015cfa']
+    const weaps = ['c7d50912', '00015435', '0000aa68', '0000aa69', '11725dc4', 'd3c407ed',
+      'b40e9618', '00015cfa', '121b4009', '0042678e', '00015cd3']
     for (const weap of weaps) {
       const m = vehicleWeaponMountOf(shotW(weap))
       expect(m).not.toBeNull()
@@ -88,7 +115,9 @@ describe('vehicleShotPlacement — rotation de l’ancre par le cap du véhicule
    * GÉOMÉTRIE ne portent que sur le cap du châssis, le seul qui place une ancre. Les tests de
    * DIRECTION posent leurs deux caps explicitement.
    */
-  const CAPS = (chassisDeg: number) => ({ chassisDeg, tireurDeg: null })
+  // `arme: 'vehicule'` est le cas nominal de ces tests (lot 5.8.5) : une arme DE VEHICULE, donc
+  // un chassis dont le cap est un repli legitime quand le montage manque.
+  const CAPS = (chassisDeg: number) => ({ chassisDeg, tireurDeg: null, arme: 'vehicule' as const })
   // Ancre nez pur (ax=0, ay=-0,5) : au bord haut du sprite AVANT rotation, comme
   // `drawRotatedSprite` dessine `drawImage(img, -w/2, -h/2, w, h)` (ay=-0,5 -> y local = -h/2).
   const nose: VehicleWeaponMount = { classe: 'fixe', ax: 0, ay: -0.5 }
@@ -151,7 +180,7 @@ describe('vehicleShotPlacement — rotation de l’ancre par le cap du véhicule
    */
   it('classe tourelle AVEC visée de tireur : direction = visée du tireur, pas le cap du châssis', () => {
     const turret: VehicleWeaponMount = { classe: 'tourelle', ax: 0, ay: 0 }
-    const p = vehicleShotPlacement(turret, { chassisDeg: 10, tireurDeg: 200 }, size, 1, ECHELLE)
+    const p = vehicleShotPlacement(turret, { chassisDeg: 10, tireurDeg: 200, arme: 'vehicule' as const }, size, 1, ECHELLE)
     expect(p.angle).toBeCloseTo((-200 * Math.PI) / 180, 10)
   })
 
@@ -162,7 +191,7 @@ describe('vehicleShotPlacement — rotation de l’ancre par le cap du véhicule
   it('classe tourelle : le DÉCALAGE suit le châssis, jamais la visée du tireur', () => {
     const turret: VehicleWeaponMount = { classe: 'tourelle', ax: 0, ay: -0.5 }
     const sansVisee = vehicleShotPlacement(turret, CAPS(90), size, 1, ECHELLE)
-    const avecVisee = vehicleShotPlacement(turret, { chassisDeg: 90, tireurDeg: 200 }, size, 1, ECHELLE)
+    const avecVisee = vehicleShotPlacement(turret, { chassisDeg: 90, tireurDeg: 200, arme: 'vehicule' as const }, size, 1, ECHELLE)
     expect(avecVisee.offset).toEqual(sansVisee.offset)
   })
 
@@ -172,20 +201,62 @@ describe('vehicleShotPlacement — rotation de l’ancre par le cap du véhicule
    * substituer la visée du tireur n'apporterait rien et brouillerait la règle.
    */
   it('classe fixe : la visée du tireur NE prend PAS le pas sur le cap du châssis', () => {
-    const p = vehicleShotPlacement(nose, { chassisDeg: 33, tireurDeg: 200 }, size, 1, ECHELLE)
+    const p = vehicleShotPlacement(nose, { chassisDeg: 33, tireurDeg: 200, arme: 'vehicule' as const }, size, 1, ECHELLE)
     expect(p.angle).toBeCloseTo((-33 * Math.PI) / 180, 10)
   })
 
   /**
    * MONTAGE INCONNU (2026-09-20) : l'éclair reste au CENTRE — la seule position que le document
    * donne —, mais il garde la DIRECTION du véhicule. Sans cela, un tir d'arme de véhicule non
-   * documentée (Wraith, Gungoose, Falcon) perdait toute direction et tombait sur la bouffée
-   * ronde, invisible sur un châssis.
+   * documentée perdait toute direction et tombait sur la bouffée ronde, invisible sur un
+   * châssis. Le Wraith, le Gungoose et le Falcon sont mesurés depuis le lot 5.8.3 ; le cas
+   * reste vivant pour le Shade, dont le tag `weap` n'est pas documenté.
    */
   it('montage INCONNU : aucun décalage, mais le cap du véhicule donne la direction', () => {
     const p = vehicleShotPlacement(null, CAPS(90), size, 1, ECHELLE)
     expect(p.offset).toEqual({ x: 0, y: 0 })
     expect(p.angle).toBeCloseTo((-90 * Math.PI) / 180, 10)
+  })
+
+  /**
+   * LOT 5.8.5 — SANS MONTAGE, LA DIRECTION DÉPEND DE CE QUI A TIRÉ.
+   *
+   * Une arme DE VÉHICULE est solidaire du corps : le cap du châssis est son repli légitime, et il
+   * ne change pas. Une arme DE JOUEUR tirée d'un siège ne l'est pas — le passager vise où il veut
+   * (règle du lot 5.2a.5, qui SURVIT) : elle n'accepte que la visée mesurée de son tireur.
+   */
+  it('sans montage, ARME DE VÉHICULE : le cap du châssis, inchangé depuis 5.2a.5', () => {
+    const p = vehicleShotPlacement(
+      null,
+      { chassisDeg: 90, tireurDeg: 200, arme: 'vehicule' },
+      size,
+      1,
+      ECHELLE,
+    )
+    expect(p.angle).toBeCloseTo((-90 * Math.PI) / 180, 10)
+  })
+
+  it('sans montage, ARME DE JOUEUR : la visée du tireur, JAMAIS le cap du châssis', () => {
+    const p = vehicleShotPlacement(
+      null,
+      { chassisDeg: 90, tireurDeg: 200, arme: 'joueur' },
+      size,
+      1,
+      ECHELLE,
+    )
+    expect(p.angle).toBeCloseTo((-200 * Math.PI) / 180, 10)
+  })
+
+  it('sans montage, ARME DE JOUEUR sans visée lue : aucune direction (jamais le châssis)', () => {
+    const p = vehicleShotPlacement(
+      null,
+      { chassisDeg: 90, tireurDeg: null, arme: 'joueur' },
+      size,
+      1,
+      ECHELLE,
+    )
+    expect(p.angle).toBeNull()
+    expect(p.offset).toEqual({ x: 0, y: 0 })
   })
 
   it('classe fixe : direction = vehicleAimAngle(cap), jamais null', () => {

@@ -20,18 +20,33 @@
  * pointeur immobile n'a pas d'infobulle à réconcilier ici (ce calque n'en porte aucune en V1),
  * il déclenche seulement `redraw()` pour que la prochaine image le montre.
  */
-import { useCallback, useEffect, useMemo, useRef } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type PointerEvent,
+  type RefObject,
+} from 'react'
 
 import { staticAssetURL } from '@/lib/staticAssets'
 import { useTitleSlug } from '@/lib/title-routing'
 
 import type { FxInk } from './fxInk'
-import type { ReplayLocale } from '../i18n/i18n'
+import { REPLAY_TEXT, type ReplayLocale } from '../i18n/i18n'
 import type { PlacementView } from './placementShapes'
 import { tintedIconCanvas } from './replayDraw'
-import { frameToMs } from '../../../lib/replay/replayLogic'
+import { frameToMs, type XY } from '../../../lib/replay/replayLogic'
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
+import type { Respawn } from '../model/respawnCountdown'
+import {
+  vehicleCycleLives,
+  vehicleCycleReadingAt,
+  type VehicleCycle,
+} from '../model/vehicleCycleTime'
 import { buildEmbarkedPredicate, vehicleIsDecor } from '../model/vehiclesLayer'
+import { drawVehicleCyclesLayer, vehicleCycleIndexAt } from './vehicleCyclesLayer'
 import { drawVehiclesLayer, type VehicleSpriteSize } from './vehiclesPaint'
 
 /** Une entrée de `index.json` (lot A) : seuls les deux champs utiles ici sont lus. */
@@ -43,6 +58,13 @@ interface VehicleManifestEntry {
 export interface VehiclesInput {
   doc: ReplayDocumentReady
   view: PlacementView
+  /**
+   * L'image courante, telle que la boucle de lecture la tient — LUE DANS UNE RÉFÉRENCE, jamais
+   * dans un état React (même règle et même conséquence assumée que `useReplayWeaponPads`) : si
+   * un emplacement change d'état SOUS un pointeur immobile, son infobulle attend le prochain
+   * mouvement. À l'arrêt — le cas où l'on inspecte — la lecture est exacte.
+   */
+  frameRef: RefObject<number>
   /** Faux quand le calque est éteint : rien n'est dessiné (le prédicat embarqué, lui, reste actif). */
   enabled: boolean
   /**
@@ -82,6 +104,14 @@ export interface VehiclesInput {
   /** Encre du contour des noms (cf. `useReplayInks`). */
   labelStroke: string
   /**
+   * Les DEUX encres du MARQUAGE — ce qui est rempli, ce qui est cerné —, celles que les socles
+   * d'arme emploient déjà pour leur compte à rebours (`markInk` du canvas). Le marqueur de
+   * réapparition d'un emplacement de véhicule écrit le même compte, il doit donc porter la même
+   * encre : un chiffre de carte qui changerait d'encre selon le calque se lirait comme deux
+   * natures d'information.
+   */
+  markInk: { fill: string; outline: string }
+  /**
    * Teintes de nature des effets (fxInk.ts, MÊME source que les tirs/grenades) : l'explosion de
    * destruction d'un véhicule (schéma 39, en avance de phase — cf. `VehicleStyle.explosionInk`)
    * en tire sa couleur PLASMA vs NORMALE.
@@ -91,6 +121,24 @@ export interface VehiclesInput {
   reducedMotion: boolean
   /** Repeindre la scène : les vignettes et le manifeste arrivent après coup (chargement async). */
   redraw: () => void
+}
+
+/**
+ * Ce qui est survolé sur un EMPLACEMENT DE NAISSANCE (schéma 63) : l'emplacement, son nom, son
+ * occupation LUE À CET INSTANT, son compte à rebours, et où poser l'infobulle.
+ *
+ * `occupied` ET `respawn` NE SONT PAS REDONDANTS : un emplacement libre peut n'avoir aucun compte
+ * (aucune fin datée d'où partir, aucune naissance suivante dans le film), et l'infobulle doit
+ * alors se taire plutôt que d'annoncer une présence. Les deux silences ne disent pas la même
+ * chose.
+ */
+export interface VehicleCycleHover {
+  cycle: VehicleCycle
+  at: XY
+  /** Famille dominante nommée par le document, ou le titre générique de l'emplacement. */
+  name: string
+  occupied: boolean
+  respawn: Respawn | null
 }
 
 export interface Vehicles {
@@ -122,11 +170,16 @@ export interface Vehicles {
    * le sprite, jamais un second chargement du manifeste ou des images (règle ≤ 2 copies).
    */
   sizeOf: (family: string) => VehicleSpriteSize | null
+  /** L'emplacement de naissance survolé, ou `null` (cf. `ReplayVehicleCycleTip`). */
+  cycleHover: VehicleCycleHover | null
+  onPointerMove: (event: PointerEvent<HTMLCanvasElement>) => void
+  onPointerLeave: () => void
 }
 
 export function useReplayVehicles({
   doc,
   view,
+  frameRef,
   enabled,
   locale,
   showNames,
@@ -139,6 +192,7 @@ export function useReplayVehicles({
   offscreenGroupLabelOf,
   neutralInk,
   labelStroke,
+  markInk,
   explosionInk,
   reducedMotion,
   redraw,
@@ -146,6 +200,12 @@ export function useReplayVehicles({
   const titleSlug = useTitleSlug()
   const tracks = doc.vehicles
   const labels = doc.vehicleLabels
+  const cycles = doc.vehicleCycles
+  // LES LIBELLÉS DE LA LANGUE DU LECTEUR, pour le SEUL marqueur de ce calque qui écrive du texte
+  // de l'application : le compte à rebours d'un emplacement de naissance et le titre générique de
+  // son infobulle. Le calque des véhicules, lui, ne connaît toujours aucune langue — les noms
+  // qu'il affiche viennent du DOCUMENT (`labelOfFamily`).
+  const t = REPLAY_TEXT[locale]
   // Durée RÉELLE d'une frame : l'explosion de destruction a une timeline en TEMPS, pas en
   // frames (même besoin que `RestWindow.frameMs` des grenades, `frameToMs` porte déjà le repli
   // des artefacts sans échelle temporelle). Ne dépend que du document, jamais de l'image.
@@ -263,6 +323,27 @@ export function useReplayVehicles({
     return { naturalWidthPx: raw.naturalWidth, naturalHeightPx: raw.naturalHeight, mmPerPx }
   }, [])
 
+  // L'APPARIEMENT EMPLACEMENT -> VIES, UNE SEULE FOIS PAR DOCUMENT. C'est un balayage de toutes
+  // les vies pour chaque emplacement (la maille de l'amas, cf. `vehicleCycleTime`) : le refaire
+  // soixante fois par seconde serait un doublon de travail, et le refaire au survol un doublon de
+  // source. Le tableau est PARALLÈLE à `cycles` — c'est pourquoi le test de survol rend un RANG.
+  const cycleLives = useMemo(
+    () => cycles.map((cycle) => vehicleCycleLives(cycle, tracks)),
+    [cycles, tracks],
+  )
+  const livesOf = useCallback((index: number) => cycleLives[index] ?? [], [cycleLives])
+
+  // LE NOM D'UN EMPLACEMENT : la famille DOMINANTE telle que le document la nomme, sa clé à
+  // défaut (un nom de véhicule est un nom propre du jeu), et le titre générique quand
+  // l'emplacement ne porte aucune famille — jamais le nom d'un voisin.
+  const nameOfCycle = useCallback(
+    (cycle: VehicleCycle): string =>
+      cycle.family ? (labelOfFamily(cycle.family) ?? cycle.family) : t.vehicleCycleTitle,
+    [labelOfFamily, t.vehicleCycleTitle],
+  )
+
+  const [cycleHover, setCycleHover] = useState<VehicleCycleHover | null>(null)
+
   const paint = useCallback(
     (ctx: CanvasRenderingContext2D, frame: number, k: number) => {
       if (!enabled || tracks.length === 0) return
@@ -277,18 +358,91 @@ export function useReplayVehicles({
           explosionInk, reducedMotion,
         },
       )
+      // LES EMPLACEMENTS DE NAISSANCE APRÈS LES VÉHICULES, et dans le même geste : ils suivent la
+      // MÊME bascule (un marqueur de réapparition de véhicule sans son calque de véhicules serait
+      // un calque sans interrupteur) et se posent au-dessus du fond, sous rien d'autre — un
+      // emplacement occupé ne dessine rien, il n'y a donc jamais de marque sous un sprite.
+      drawVehicleCyclesLayer(
+        ctx,
+        cycles,
+        livesOf,
+        view,
+        { frame, frameMs, k },
+        {
+          ink: neutralInk,
+          fill: markInk.fill,
+          outline: markInk.outline,
+          countdownLabel: t.padCountdownFmt,
+        },
+      )
     },
     [
       enabled, tracks, view, neutralInk, labelStroke, showNames, showAim, spriteOf, sizeOf, kindOf,
       labelOfFamily, colorOfSlot, colorOfXuid, nameOfSlot, nameOfXuid, offscreenLabelOf, offscreenGroupLabelOf,
       frameMs, explosionInk, reducedMotion,
+      cycles, livesOf, markInk.fill, markInk.outline, t.padCountdownFmt,
     ],
   )
+
+  /**
+   * LE SURVOL D'UN EMPLACEMENT DE NAISSANCE — le seul survol de ce calque (les véhicules
+   * eux-mêmes n'en portent aucun).
+   *
+   * MÊME AMORCE QUE CELLE DES SOCLES ET DES POSES : le rapport pixels CSS -> pixels du contexte
+   * se CALCULE plutôt qu'il ne se suppose (la mise en page peut remettre le canevas à l'échelle).
+   */
+  const onPointerMove = useCallback(
+    (event: PointerEvent<HTMLCanvasElement>) => {
+      if (!enabled || cycles.length === 0 || view.width === 0) {
+        setCycleHover((prev) => (prev === null ? prev : null))
+        return
+      }
+      const rect = event.currentTarget.getBoundingClientRect()
+      const kx = rect.width > 0 ? view.width / rect.width : 1
+      const ky = rect.height > 0 ? view.height / rect.height : 1
+      const at = { x: (event.clientX - rect.left) * kx, y: (event.clientY - rect.top) * ky }
+      const i = vehicleCycleIndexAt(cycles, view, window.devicePixelRatio || 1, at)
+      setCycleHover((prev) => {
+        if (i < 0) return prev === null ? prev : null
+        const cycle = cycles[i]
+        const lu = vehicleCycleReadingAt(cycle, cycleLives[i] ?? [], frameRef.current, frameMs)
+        const next: VehicleCycleHover = {
+          cycle,
+          at,
+          name: nameOfCycle(cycle),
+          occupied: lu.occupant !== null,
+          respawn: lu.respawn,
+        }
+        // LE COMPTE SE COMPARE CHAMP À CHAMP, jamais par identité : la lecture construit un objet
+        // neuf à chaque appel, et l'infobulle se recréerait à chaque mouvement de pointeur.
+        if (
+          prev &&
+          prev.cycle === next.cycle &&
+          prev.occupied === next.occupied &&
+          prev.respawn?.seconds === next.respawn?.seconds &&
+          prev.respawn?.measured === next.respawn?.measured &&
+          prev.at.x === at.x &&
+          prev.at.y === at.y
+        ) {
+          return prev
+        }
+        return next
+      })
+    },
+    [enabled, cycles, view, cycleLives, frameRef, frameMs, nameOfCycle],
+  )
+
+  const onPointerLeave = useCallback(() => {
+    setCycleHover((prev) => (prev === null ? prev : null))
+  }, [])
 
   // « DISPONIBLE » = AU MOINS UN VÉHICULE QUE LE CALQUE DESSINERAIT. Un film qui ne porte que du
   // décor (Falcon & consorts, cf. `FAMILLES_NON_JOUABLES`) n'a pas de calque à commander : la
   // bascule ne s'affiche pas, plutôt que d'allumer un calque resté vide.
   const available = useMemo(() => tracks.some((t) => !vehicleIsDecor(t.family)), [tracks])
 
-  return { id: 'vehicules', available, paint, isEmbarkedAt, sizeOf }
+  // UNE SEULE LIGNE, ET C'EST UN RATCHET : `sceneBinding.guard.test.ts` exige que l'id du calque
+  // soit rendu ICI, en tete de l'objet — c'est ce qui rend impossible de peindre ce geste sous
+  // l'identite d'un autre calque.
+  return { id: 'vehicules', available, paint, isEmbarkedAt, sizeOf, cycleHover, onPointerMove, onPointerLeave }
 }
