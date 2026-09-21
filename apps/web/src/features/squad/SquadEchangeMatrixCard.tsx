@@ -37,6 +37,7 @@ import { useMemo } from 'react'
 import { Heatmap2DChart, type ChartPointHeatmap } from '@/components/charts/Heatmap2DChart'
 import { getEChartsThemeColors } from '@/components/charts/_utils'
 import { NarrativeBadge } from '@/components/feedback/NarrativeBadge'
+import { withLowSampleNote } from '@/lib/formatters/lowSampleNote'
 import { TooltipParagraphs } from '@/components/ui/info-tooltip'
 import { titleWithInfo } from '@/components/ui/title-with-info'
 import { SectionCard } from '@/components/ui/section-card'
@@ -129,7 +130,7 @@ export function SquadEchangeMatrixCard({ echange }: SquadEchangeMatrixCardProps)
       items={[
         t.matrixHelp(secondes),
         echange.couverture.echantillon_faible
-          ? `${t.lowSample} — ${t.lowSampleHint(PLANCHER_MORTS)}`
+          ? withLowSampleNote(t.lowSampleHint(PLANCHER_MORTS), true, t.lowSample)
           : null,
       ]}
     />

@@ -43,7 +43,17 @@ func TestPadTierOrder_MemeVocabulaireCoteWeb(t *testing.T) {
 	}
 	liste := txt[debut+len("USAGE_PAD_TIER_ORDER = [") : debut+fin]
 
+	// Niveaux que le web NE REND PAS, par decision et non par oubli (2026-09-21, ajustements
+	// pre-v7.5) : les socles de bonus (camouflage, surbouclier) sont des EQUIPEMENTS et se
+	// lisent dans « Usages d equipement » ; « non identifie » n a pas de ligne, son compte
+	// passe dans l infobulle du titre. Le contrat Go continue de les servir : un nouveau
+	// niveau Go qui n est ni ici ni cote web fait toujours rougir ce test.
+	masquesParDecision := map[string]bool{PadTierPowerup: true, PadTierUnclassified: true}
+
 	for _, tier := range PadTierOrder {
+		if masquesParDecision[tier] {
+			continue
+		}
 		if !strings.Contains(liste, "'"+tier+"'") {
 			t.Errorf("le niveau %q du contrat Go est ABSENT de USAGE_PAD_TIER_ORDER cote web "+
 				"(%s) — il ne s'afficherait sur aucune des trois pages", tier, liste)
