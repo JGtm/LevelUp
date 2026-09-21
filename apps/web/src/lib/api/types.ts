@@ -1398,6 +1398,18 @@ export type SquadNuageIsolement = components['schemas']['SquadNuageIsolement']
 export type SquadIsolementMort = components['schemas']['SquadIsolementMort']
 export type SquadIsolementRepere = components['schemas']['SquadIsolementRepere']
 
+/**
+ * La PORTÉE DES ENGAGEMENTS de tous les joueurs d'un match (lot N2, 2026-09-21) : une
+ * médiane de distance de frag par (match, joueur), et la médiane du LOBBY du match — qui se
+ * calcule sur les frags, jamais comme la moyenne des médianes par joueur. `lobby_delta_m`
+ * est l'écart signé en mètres : c'est lui qui neutralise la carte et le mode. `measured`
+ * accompagne obligatoirement chaque médiane (la couverture des positions rend les effectifs
+ * inégaux d'un joueur à l'autre).
+ */
+export type MatchRangeBlock = components['schemas']['MatchRangeBlock']
+export type MatchRangeProfile = components['schemas']['MatchRangeProfile']
+export type MatchRangePlayer = components['schemas']['MatchRangePlayer']
+
 export interface TeammatesPageResponse {
   options: TeammateOption[]
   teammates: TeammateRow[]
@@ -1464,6 +1476,12 @@ export interface TeammatesPageResponse {
    * un titre sans `film.usage_summary` (même contrat que les autres blocs
    * best-effort).
    */
+  /**
+   * Profils de PORTÉE par match (lot N2) : tous les joueurs mesurés de chaque match, leur
+   * médiane et leur écart à la médiane du lobby. Alimente la carte « Rôles de portée » de
+   * l'onglet Synergies. Absent = aucun film décodé sur la sélection.
+   */
+  range_profiles?: MatchRangeBlock
   equipment_usage?: EquipmentUsageBlock
   /**
    * Bloc « formes retenues » (artefact 2ec1b8eb, lot D2 du 2026-09-13) — la

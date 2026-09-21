@@ -28,6 +28,7 @@ import { SquadAppuiCard } from './SquadAppuiCard'
 import { SquadRiposteCard } from './SquadRiposteCard'
 import { getSquadRiposteText } from './squadRiposteStrings'
 import { SquadIsolementNuageCard } from './SquadIsolementNuageCard'
+import { SquadRangeRolesCard } from './SquadRangeRolesCard'
 import { SquadSynergyHistoryTable } from './SquadSynergyHistoryTable'
 import { SquadImpactScoreboard } from './SquadImpactScoreboard'
 import { MedalDigest } from './MedalDigest'
@@ -145,6 +146,9 @@ export function SquadSynergiesPage() {
   // ETAT (titre qui ne nomme pas le tueur de chaque mort, ou aucun match mesure) et
   // non un zero. Les blocs ne sont alors pas montes du tout.
   const echange = pageData?.echange
+  // Les profils de PORTÉE par match (lot N2) : même politique que les deux blocs
+  // ci-dessus — absent = aucun film décodé sur la sélection, jamais des zéros.
+  const rangeProfiles = pageData?.range_profiles
 
   return (
     <div className="space-y-4">
@@ -158,7 +162,7 @@ export function SquadSynergiesPage() {
           LES TROIS SE MONTENT INDÉPENDAMMENT : la riposte vient du journal des morts,
           l'appui du résumé du film. Un titre qui ne nomme pas le tueur de chaque mort
           garde son appui — les lier aurait fait disparaître une mesure qui existe. */}
-      {(echange || assistPairs) && (
+      {(echange || assistPairs || rangeProfiles) && (
         <section className="space-y-4" aria-label={tRiposte.coordinationTitle}>
           <h3 className="flex items-center gap-1.5 text-base font-semibold text-foreground">
             {tRiposte.coordinationTitle}
@@ -181,6 +185,11 @@ export function SquadSynergiesPage() {
               joueurs={echange.joueurs ?? []}
             />
           )}
+          {/* LA PORTÉE VIENT EN DERNIER de la section : elle répond à la même question que
+              les deux précédentes — comment l'escouade occupe l'espace entre ses joueurs —
+              mais c'est la seule qui ne parle pas de morts. Son absence est un ÉTAT (aucun
+              film décodé sur la sélection) : le bloc n'est alors pas monté. */}
+          {rangeProfiles && <SquadRangeRolesCard bloc={rangeProfiles} roster={roster} />}
         </section>
       )}
       {/* Graphes toujours montés : ChartCard affiche son état vide (titre +
