@@ -105,8 +105,11 @@ type assemblage struct {
 	shotOrphans []orphanShot
 	projCov     *ProjectileCoverage
 	teamCov     TeamCoverage
-	objCov      LayerCoverage
-	scoreCov    *ScoreCoverage
+	// stanceCov est la couverture des ETATS DE MOUVEMENT (schema 65) : mesuree au pliage des
+	// pistes, posee dans `doc.Coverage` par `composerLaCouverture`.
+	stanceCov StanceCoverage
+	objCov    LayerCoverage
+	scoreCov  *ScoreCoverage
 
 	// Ce que les passes suivantes se repassent.
 	clock            scoreClock

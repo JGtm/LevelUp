@@ -1760,6 +1760,44 @@ package replay
 //	VERSION MONTE  neuf compteurs entrent dans `coverage` : la FORME change, et le garde-rail de
 //	               forme refuse la regeneration sans montee. Les artefacts deja cuits restent
 //	               servis tels quels, les deux champs absents jusqu'a leur prochaine cuisson.
+// v65 (2026-09-21, post-chantier lot 5.3.6, decision utilisateur) : LES ETATS DE MOUVEMENT DU
+// SPARTAN, EN INTERVALLES PAR VIE — ET TROIS SEULEMENT, PARCE QUE TROIS SEULEMENT SONT LUS.
+//
+//	`stances[]`    UN INTERVALLE PAR (VIE, GENRE) : `{slot, kind, t0, t1}` sur l axe de
+//	               `Point.T`. Trois genres : `crouch` (accroupi, `ti=35 i29`), `slide`
+//	               (glissade, `i62`), `mobility` (action de mobilite, `i54`). Le type publie
+//	               est neuf, `Stance` ; la couverture aussi, `coverage.stances`.
+//
+// D OU ILS VIENNENT. Le film ECRIT ces trois etats A L INSTANT, pas aux images-cles : un delta
+// ne porte le composant que quand l etat CHANGE. `grammar.ScanMovementStates` rend les
+// TRANSITIONS et `document_stances.go` les replie en intervalles, avec le MEME plieur que les
+// episodes d equipement (`episodeAccum`) — memes fenetres de vie, meme cloture a la mort.
+//
+// CE QUI A RENDU LE CALQUE POSSIBLE, ET C EST TOUT LE LOT 5.3. La marche de production des
+// autres canaux de capacite est un CHERCHEUR D ANCRES : sur `bfecd02b` elle annonce `i29` ZERO
+// fois sur 162 444 records, parce qu elle ne retient que la population pauvre `{i0,i1,i21,i25}`.
+// Le calque emploie donc la marche du FRAME-PROCESSEUR (`DecodeFrameViews`, trois vues — ce que
+// `FUN_142987460` deroule), avec les paquets a liste d evenements localises par la signature du
+// depot. Deux pre-requis, tous deux mesures : la bascule `SimStateComplet` liee a la carte
+// (lot 5.3.3-a, sans quoi `i60` ferme la traversee avant `i61-63`) et les LARGEURS D AXE DE LA
+// CARTE installees sur le contexte (lot 5.3.5, sans quoi `i0` lit aux largeurs de
+// `cliffhanger` : records `ti=35` 31 530 contre 97 447, desyncs 38 contre 3).
+//
+// LE SPRINT ET LE SAUT N Y SONT PAS, ET C EST UNE MESURE. Le sprint est REFUTE comme observable
+// par la vitesse : la loi de dequantification d `i1` est exacte (ecrivain relu, constantes
+// relues), un oracle independant la valide sur deux films (dispersion du rapport
+// deplacement/vitesse 1,7 et 2,3 ; meme facteur d unite 0,240 et 0,236), et la distribution au
+// sol n a QU UN SEUL mode, a 2-3 m/s. Le saut est LU mais PAS PROUVE : sa segmentation repose
+// sur deux seuils d instrument et la signature ne tient pas d un film a l autre (0,632 s contre
+// 1,567 s de duree mediane). Publier l un des deux publierait un SEUIL comme une DONNEE.
+//
+// MESURE DU CALQUE (`bfecd02b`, Snowbound) : 97 447 records `ti=35` dont 3 desynchronises,
+// 7 941 lectures retenues, 101 slots distincts — crouch 2 490 lectures dont 495 posees, slide
+// 2 487 dont 386, mobility 2 964 dont 758.
+//
+// LE CODEC DES FAITS MONTE AVEC (`REPLAYINPUTS24`) : les lectures voyagent par les faits, donc
+// un artefact re-cuit depuis un fixture porte les memes intervalles que la cuisson complete.
+//
 // v64 (2026-09-20, post-chantier lot 5.2-A, demandes utilisateur du 2026-09-19) : LA COULEUR DE
 // LA CAPTURE, C'EST-A-DIRE LE CAMP QUI POUSSE LA JAUGE.
 //

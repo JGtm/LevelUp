@@ -31,6 +31,7 @@ func DecodeFilmFacts(blob []byte, entry profile.MapQuantEntry) (*FilmFacts, erro
 	decodeCanauxDelta(r, g)
 	g.EquipmentChanges, g.EquipmentChangeStats = decodeEquipmentChanges(r)
 	decodeCapacites(r, g)
+	decodeEtatsDeMouvement(r, g)
 	g.ZoomEvents = decodeZoomEvents(r)
 	decodeMonde(r, g)
 	g.Vehicles = decodeVehicleScan(r, lay, world)
@@ -280,6 +281,35 @@ func decodeCapacites(r *greader, g *FilmFacts) {
 		Absent: r.bool8(), Scanned: r.bool8(),
 	}
 
+}
+
+// decodeEtatsDeMouvement relit les ETATS DE MOUVEMENT (v24), stats comprises.
+func decodeEtatsDeMouvement(r *greader, g *FilmFacts) {
+	n := int(r.u())
+	g.MovementStates = make([]types.MovementStateRead, 0, n)
+	var lastTS uint64
+	for k := 0; k < n && r.err == nil; k++ {
+		lastTS += r.u()
+		g.MovementStates = append(g.MovementStates, types.MovementStateRead{
+			TimestampUS: lastTS,
+			Slot:        uint32(r.u()),
+			Kind:        r.str(),
+			On:          r.bool8(),
+			Progress:    uint32(r.u()),
+			Chunk:       int(r.u()),
+			PacketIndex: int(r.u()),
+		})
+	}
+	st := types.MovementStateStats{
+		Records: int(r.u()), Read: int(r.u()), Absent: r.bool8(), Scanned: r.bool8(),
+		Packets: int(r.u()), EventPackets: int(r.u()), EventPacketsLocated: int(r.u()),
+		EventPacketsUnlocated: int(r.u()), Desyncs: int(r.u()), SlotUnbound: int(r.u()),
+		Duplicates: int(r.u()),
+	}
+	for i := range st.MapWidths {
+		st.MapWidths[i] = uint(r.u())
+	}
+	g.MovementStateStats = st
 }
 
 // decodeMonde relit les poses d equipement et les deux voies de socles.

@@ -6103,6 +6103,412 @@ PUBLIE une lecture qui existait déjà.
   RESTENT** : tableau complet en §4 (D2) et en §5. L instrument de recherche est conserve, reduit
   au chemin de 19 bits — il ne lit que `componentDirs.AimRaw`, deja capture avant ce lot.
 
+### Post-chantier — lot 5.3 (états de mouvement du Spartan), branche `feat/decfilm-53`, base `6e86db356`
+
+Ouvert sur demande utilisateur du 2026-09-19 (« on a les évènements de joueurs comme les slide,
+crouch, sprint et saut ? ») et décision du 2026-09-20 (petit lot de recherche, port SEULEMENT si
+la preuve tient). Recherche : `.ai/V7.5/film_re/NOTE_5_3_ETATS_DE_MOUVEMENT_2026-09-20.md`.
+
+**CONTRAINTE DE MACHINE** : le backfill killsource décode le parc pendant ce lot (verrou solo).
+Aucun film n'est lu et aucune base n'est ouverte avant la « voie libre » du pilote — 5.3.1 se
+joue donc ENTIÈREMENT sur l'exécutable et les documents, ce qui n'est pas un pis-aller : la
+méthode du lot 3.7 (§ 7) répond chez l'ÉCRIVAIN, avant tout film.
+
+- [x] **5.3.1 — l'écrivain d'abord, et le négatif mesuré**. Chaîne du descripteur rejouée sur
+  cinq cibles (`ti=35` `i29`, `i54`, `i55`, `i62`, `i1`), **6 calibrations sur 6**, cinq
+  écrivains retombant à l'octet sur ceux que le décodeur porte déjà. Résultat : **l'accroupi
+  (`i29`) et la glissade (`i62`) sont des ÉTATS répliqués par image**, booléen + fraction
+  quantifiée dans `[0.0, 1.0]` (borne `143cd8374` = `1.0f`, lue dans l'image), décodés
+  aujourd'hui et jetés ; **`i54` est une INITIATION d'action** (`initiate_mobility_action` dans
+  l'image), pas un niveau ; **aucun composant du moteur ne porte « sprint » ni « jump »** — ni
+  sur les 64 composants de `ti=35`, ni sur le pool complet des chaînes de l'image (71 chaînes
+  « sprint », 94 « jump », **0 nom de composant**). Instruments : `film/research/mouvement/`
+  (neuf) + deux ajouts à `film/research/reapparition/` (`ChainesContenant`, export de
+  `Calibrer`). **Aucun octet de production Go touché** : tout est sous `//go:build research`.
+- [x] **5.3.1 bis — le canal d'EVENEMENTS, `i56`, et l'enum d'action** (demande utilisateur : « sprint
+  et saut existent comme EVENEMENTS, on les avait deja croises »). Vérifié sur pièces, sans lecture
+  de film. (a) **`i56` `biped-spartan-ability-energy` n'est PAS le sprint** : `R(3)` masque + `R(7)`
+  par charge armée, trois emplacements, défaut `0x7F` — c'est la jauge d'EQUIPEMENT, compagnon
+  d'`i48`. Le catalogue d'août le classe mal (D5). (b) **L'événement de fil 43
+  `initiate_mobility_action` et le composant `i54` PARTAGENT LE MÊME CORPS** `FUN_1408f02c8`, qui
+  n'a que ces deux appelants : `FUN_142ef8f04` lit `R(1)` -> `+0x9d`, force `+0x9e = 0`, puis
+  appelle le corps. **Mais le canal d'événements est MESURÉ VIDE pour ce type** (R5 : 0 tête sur
+  325 160 paquets ; R7, marche de la LISTE ENTIÈRE : « ABSENT du film, 0 tête pour 16,3 attendues »)
+  — **la voie vivante est le COMPOSANT, pas l'événement**. Les « 164 » et « 28 » de l'annexe A sont
+  des TAILLES DE TAMPON (`vtable+0x10`), pas des occurrences. (c) **Le saut du joueur n'existe pas
+  comme événement** : sur les 123 types, seuls `ai_jump` (78) et `AILand` (72), tous deux préfixés
+  AI, dans le vocabulaire de navigation des bots (`AI Jump Action: relevance`,
+  `HKAI_TRAVERSAL_TYPE_JUMP`, `Bot_EnablePathlessMeleeJump`) — **négatif mesuré, la dérivation par
+  `i1` est conservée**. (d) **L'enum d'action** : trois candidats dans le corps partagé, `+0x08`
+  (10 bits, sentinelle `0xFFFFFFFF`), `+0x98` (7 bits), `+0x9c` (2 bits) ; la table d'entrée du
+  moteur aligne exactement quatre actions (`Sprint`, `Thruster`, `Clamber`, `Slide`), ce qui
+  désigne `+0x9c` — coïncidence de cardinal, pas preuve. **Aucun des trois n'est nommé dans
+  l'image** : la ventilation par joueur passe en 5.3.2. Confirmation croisée du champ-à-champ : la
+  grammaire du type 43 portée par le lot R7 finit par `Skip(1 + 7 + 2 + 1)`, exactement les
+  `+0xa1`/`+0x98`/`+0x9c`/`+0x9f` relevés indépendamment au 5.3.1.
+- [x] **5.3.1 ter — l'objection de l'utilisateur : Theater rejoue l'escalade, donc le film porte de
+  quoi la déclencher.** Quatre candidats « entrée répliquée » lus CHEZ L'ÉCRIVAIN, sans film.
+  **`i18 unit-control` (`FUN_141017084`)** : porte `R(1)` ; `R(5)` -> `+0x548` et `R(1)+R(6)` ->
+  `+0x726`, deux **INDEX** bornés à `0x20` avec sentinelle `0xFFFF` (hors plage = la lecture
+  ÉCHOUE) ; puis **`R(1)` + `R(32)` -> `+0x544`, défaut 0** — **le seul champ de tout l'archetype
+  bipède ayant la forme d'un champ de bits de commande**, et l'écrivain ne le nomme pas (D7). Il
+  est **déjà décodé et jeté** (`consumeOpt32`) : le ventiler ne coûte aucun octet de grammaire.
+  **`i19`** déjà réfuté par le dépôt (handles RAM) ; **`i25`** = le TICK de commande seul
+  (`R(10)`), sans champ de boutons ; **`i49`** = `R(2)` ou `R(4)` selon un réglage de processus
+  + `R(1)` — un contexte étroit, et le glose « 3 bits (5 valeurs) » de la table est faux (D6).
+  **`i55` n'est PAS l'énuméré de posture du moteur** : celui de Havok est dans l'image
+  (`HK_CHARACTER_ON_GROUND`/`JUMPING`/`IN_AIR`/`CLIMBING`/`FLYING`, **cinq états au moins**) et ne
+  tient pas sur deux bits ; ses quatre charges ont la forme d'un **ANCRAGE** (vecteurs + un
+  HANDLE d'entité au tag 2), ce qui vise juste pour l'accrochage à un rebord mais pas pour l'état
+  aérien. **LE MÉCANISME EST TRANCHÉ PAR LE GRAPHE D'ANIMATION DU JEU** : ses transitions sont
+  gardées par des CONDITIONS D'ÉTAT (`transition_conditions_is_sprinting_tlg`,
+  `..._is_airborne_tlg`, `..._is_leap_airborne_tlg`), pas par des pressions de bouton. **Theater
+  rejoue donc un ÉTAT RÉPLIQUÉ, pas des entrées** — et cet état est exactement ce que 5.3.1 a
+  trouvé (`i29`, `i54` et sa transformation d'ancrage, `i55`, `i62`, `i63`). L'utilisateur a
+  raison sur le fond ; la correction porte sur le mécanisme, et elle est écrite au § 2.9 de la
+  note.
+- [x] **5.3.2 — la preuve sur film** (voie libre du pilote, 2026-09-21). `bfecd02b` puis
+  `4f77afc1`, UN A LA FOIS, aucune base DuckDB, aucun artefact. **541 105 records bipèdes delta
+  et 1 202 records d'image-clé marchés par la boucle de composants de PRODUCTION.** Cinq
+  résultats. (1) **DEUX CANAUX, DEUX CADENCES** : `i18`, `i29` et `i55` sont à **0,0 %** des
+  records delta et **~99 %** des records d'image-clé — les états sont échantillonnés tous les
+  ~18 s, pas par image ; seule l'action de mobilité `i54` voyage en delta (0,3 % / 0,5 %).
+  (2) **D1 TRANCHÉE** : `i55` absent du delta, présent sur 205/207 et 983/995 images-clés, tags
+  NON NULS **32,7 %** et **25,7 %** (les mini-bobines disaient 23,5 %) — réelle, documentée, et
+  inoffensive tant que la marche s'arrête à `i60` (bloquant sur 171/207 et 859/995).
+  (3) **LA GLISSADE EST INACCESSIBLE** : `i62` lu 0 fois, parce qu'il est DERRIÈRE `i60` —
+  porter `i60 simulation-state-component` est le pré-requis chiffré, pas une impasse.
+  (4) **D7 RÉFUTÉE** : les 32 bits d'`i18 +0x544` sont TOUS allumés entre 7,2 % et 20,6 %, aucun
+  bit mort, aucun dominant, aucun ne prédit la montée mieux que ses voisins — c'est un mot
+  opaque à forte entropie, pas un champ de boutons. **Il ne reste aucun candidat de forme
+  « entrée » sur le bipède.** (5) **L'ORACLE DE VITESSE RÉFUTE LE SPRINT pour `i54`** : magnitude
+  médiane **125** contre **211** debout (`bfecd02b`), **130** contre **217** (`4f77afc1`) —
+  l'action de mobilité se produit PLUS LENTEMENT que la marche, profil d'un geste où l'on
+  ralentit (escalade), pas d'un sprint. L'identifiant de 10 bits n'est transmis **0 fois sur
+  2 245** et `+0x9c` ne prend que **deux** valeurs : l'hypothèse « énuméré à quatre actions »
+  est réfutée (D9). **Le sprint par la vitesse reste NON TRANCHÉ** (distribution resserrée,
+  aucune seconde bosse) et c'est dit comme tel. Cinq instants par état en temps de barre Theater
+  livrés au § 2ter.7 de la note.
+- [ ] **5.3.2 bis — L'ÉTALONNAGE, ET LA CONCLUSION DE CADENCE RETIRÉE** (2026-09-21). L'utilisateur a corrigé : l'état bipède est **PAR TICK** dans les deltas de type 0, accroupissement compris — `RECAP_STATS_EXPLOITABLES.md` § TIER 3, `HANDOFF_FILM_EXTRACTION_EXTERNAL_DEV.md` l. 29, `RECETTE_DECODAGE_FILM_CHUNKS.md`. **La conclusion « les états ne voyagent qu'à l'image-clé » de 5.3.2 est RETIRÉE** (note § 2 quater) ; le « `i29` à 0,0 % » est un défaut d'instrument. **CE QUI EST ÉTABLI ET ÉTALONNÉ** : le modèle d'un état par instant EXISTE et le dépôt le lit déjà — `zoom_events.go` lit `unit_zoom` (type 21) dans la LISTE D'ÉVÉNEMENTS en tête des paquets delta, pont vers le joueur par une référence de domaine 4 **+ 512 = le slot du bipède**, validé contre Theater (6/6 à moins de 1,2 s). Recensement sur `bfecd02b` par `PacketHeadEventType` (la porte du dépôt) : **31 232 paquets delta, 5 274 avec un événement en tête, 20 types**, dont `action_weapon_fire` 2 611, `PlayerGameEventSmall` **578**, `unit_zoom` **320** — le témoin passe. **CE QUI N'A PAS PU ÊTRE FAIT** : l'étalonnage par la porte de production, qui rend **0 record** sur ce film (mesure consignée). Deux contrôles faits : `RequireTag1` n'est pas la cause (162 487 records au lieu de 162 444, `i29` passe de 0 à 1), et le gradient du masque est cohérent (`i0` 100 %, `i25` 100 %, `i1` 90,3 %, `i21` 62,4 %). **LE SUSPECT EST NOMMÉ** : `walkDeltaBipedPayload` est un CHERCHEUR D'ANCRES, pas le décodeur de trame ; le dépôt en a un vrai, `DecodeFrameRecords`, qui marche les records DANS L'ORDRE et couvre les paquets à liste d'événements vide — **83,1 % des paquets de `bfecd02b`** (25 958 / 31 232). **PROCHAINE MESURE** : re-ventiler `ti=35` par `DecodeFrameRecords`, étalonner sur `i21`/`i0`/`i1`, puis rendre la cadence réelle d'`i29` et les intervalles d'accroupissement par slot. À lire avant : `RE_EXE_GHIDRA_FINDINGS.md`, `PLAN_FILM_ECS_DECODER.md`, `thought_log` 2026-06-03/04/05 (archive Q2).
+- [x] **5.3.2 ter — LE VRAI DÉCODEUR DE TRAME, ET L'ÉTALON QUI TRANCHE** (2026-09-21, `bfecd02b` seul). Troisième instrument sur `DecodeFrameRecords` (préambule + records DANS L'ORDRE, `World` amorcé par les images-clés) : **25 958 paquets à liste vide cadrés, 9 786 trames décodées sans erreur (37,7 %), 10 060 records `ti=35`** ; étalon `i0` 62,5 % · `i1` 55,5 % · `i21` 64,5 % · `i25` 95,2 % ; `i18`/`i29`/`i54`/`i55`/`i62` à **4/1/8/3/1** et **0 intervalle d'accroupi sur 37 slots**. **DEUX DÉCODEURS INDÉPENDANTS CONVERGENT.** Et surtout, **L'ÉTALON EST TROUVÉ ET IL N'EST NI L'UN NI L'AUTRE** : `components_position_i0.go` consigne une capture LIVE (oracle Rosette, Cheat Engine) — **15 529 records du masque `{i0,i1,i21,i25}`, longueur vraie 113 bits** (i0=47, i1=31, i21=25, i25=10). **Le record bipède delta dominant porte quatre composants — position, vélocité, visée, tick de commande — et l'accroupissement n'y est pas.** Conséquence : la phrase « per-tick biped state … crouch » des documents décrit le VOCABULAIRE de l'archétype, pas le contenu du record delta. L'utilisateur reste fondé sur le fond (Theater le rejoue) et le dépôt montre OÙ : le **canal d'événements**, dont `unit_zoom` est la preuve vivante. **`PlayerGameEventSmall` (type 82, 578 en tête)** : lecteur `FUN_14080add8` relevé — init, puis **R(32)**, puis une seconde lecture (`FUN_14080ae28`) non encore relevée ; **aucun sous-type n'est nommé à ce stade**, et c'est dit tel quel. Cinq instants NON re-calculés : le décodeur de trame n'en produit aucun, et publier une liste vide comme un progrès serait malhonnête.
+- [x] **5.3.2 quater — L'HYPOTHÈSE DU PILOTE EST CONFIRMÉE : L'ACCROUPI PAR INSTANT EST DANS LA TRAME, DERRIÈRE UNE LARGEUR FAUSSE** (2026-09-21, `bfecd02b`). Le pilote a posé la bonne question : un delta ne porte `i29` QUE quand l'accroupi CHANGE, donc ces records sont rares — et ce sont exactement ceux qui échouent. **16 172 records désynchronisés**, dont 44 de `ti=35`. La comparaison en RAPPORT (part des masques parmi les ÉCHECS contre part parmi les SAINS) : `i18` **18,18 % contre 0,05 %** (x364) · `i29` **9,09 % contre 0,04 %** (x227) · `i54` **22,73 % contre 0,10 %** (x227) · `i55` **13,64 % contre 0,07 %** (x195) · `i62` **18,18 % contre 0,03 %** (x606). **Les cinq composants de mouvement sont sur-représentés d'un facteur 200 à 600 dans les échecs** : le « 0,0 % » des mesures précédentes mesurait la population SAINE, qui est par construction la population PAUVRE (`{i0,i1,i21,i25}`, 113 bits, l'oracle Rosette). **COMPOSANT FAUTIF NOMMÉ** : `ti=0 i0` **13 463 échecs** (83 % du total, le verrou principal) ; `ti=35` : `i59` 18, `i60` 16, `i57` 10 — exactement les trois `partiel` du bipède. **CHAÎNE CAUSALE** : `ti=0 i0` casse → le reste du paquet n'est jamais atteint → les records bipèdes RICHES, plus loin dans la trame, sont perdus → `i29` paraît absent. **L'accroupissement par instant n'est donc pas un item de recherche mais un ITEM DE GRAMMAIRE**, dont la liste est nommée dans l'ordre du rendement : (1) `ti=0 i0`, (2) `ti=35 i57`/`i59`/`i60`, (3) `ti=2 i15` et `ti=5 i22`. **NON FAITS et dit tel quel** : l'écrivain du masque delta et la ventilation du `R(32)` de `PlayerGameEventSmall` — le résultat ci-dessus les dépriorise, il n'y a plus de mystère sur l'endroit.
+- [ ] **5.3.3.0 — OUVERTURE DU LOT DE GRAMMAIRE : LA LISTE DES FAUTIFS EST CORRIGÉE, AUCUNE LARGEUR N'EST TOUCHÉE** (2026-09-21, `bfecd02b`). Première action du lot : re-vérifier le classement des échecs AVANT de toucher une grammaire. **Elle a trouvé une erreur de lecture dans 5.3.2 quater.** Sur le chemin delta, `DecodeFrameRecords` pose `EntityTrace{DesyncAt: 0}` **sans jamais poser `TypeIndex`** quand le test de génération échoue : `DesyncAt = 0` y est une SENTINELLE DE REJET et `TypeIndex` vaut 0 par défaut. Les « 13 463 échecs de `ti=0 i0 game-engine-team-mapping` » étaient donc **13 463 rejets de génération**, où aucun composant n'est lu. Discriminant ajouté : `len(Trace.Comps) == 0`. **Seconde erreur corrigée dans la foulée** : le `World` était remis à neuf à chaque chunk, perdant les liaisons slot -> archétype ; il persiste désormais sur tout le film (trames saines **37,7 % -> 40,5 %**, records `ti=35` 10 060 -> **11 150**). **VRAIE LISTE DES FAUTIFS** : `ti=5 i22 player-aim-assist` **371** · `ti=2 i15 managed-engine-timers` **331** · `ti=10 i5 managed-object-navpoint` **228** · `ti=35` : `i60 simulation-state` **38**, `i59` **19**, `i57` **12**. `game-engine-team-mapping` n'y figure plus. **CE QUI NE BOUGE PAS** : la sur-représentation des composants de mouvement dans les échecs `ti=35` se RENFORCE — `i18` 15,94 % contre 0,13 % (x123), `i29` 15,94 % contre 0,13 % (x123), `i55` 24,64 % contre 0,13 % (x190). **PREMIER OBSTACLE, ET CE N'EST PAS UNE GRAMMAIRE** : **12 316 rejets de génération contre 3 130 désyncs réelles** — quatre cinquièmes des trames perdues le sont faute de liaison slot -> archétype (amorçage circulaire : un NEW ne lie que si sa marche est propre). **Corriger une largeur avant d'avoir levé cet amorçage mesurerait le gain sur une population mutilée** — d'où l'ordre de travail : (1) l'amorçage du monde (`world_dump`, cité par `frame_records.go`), (2) les trois gros fautifs, (3) `ti=35 i57`/`i59`/`i60`, les gardiens du mouvement.
+- [!] **5.3.3.1 — L'AMORÇAGE DU MONDE N'EST PAS LA CAUSE : ÉTAPE RÉFUTÉE PAR SA PROPRE MESURE** (2026-09-21, `bfecd02b`). Deux corrections tentées : le monde persiste sur tout le film (37,7 % -> 40,5 %), puis **liaison par SLOT avec génération neutralisée** (`BindWildcard`, la porte que `world.go` prévoit pour « une liaison slot -> archétype dont la GÉNÉRATION est INCONNUE ») — exactement la forme demandée. **RÉSULTAT : AUCUN CHANGEMENT, pas un chiffre ne bouge** (10 512 trames saines, 12 316 rejets, 3 130 désyncs, mêmes fautifs, même étalon). **LA MESURE QUI TRANCHE** : **4 568 slots DISTINCTS rejetés, dont 28 seulement (0,6 %) apparaissent aussi dans un record sain** ; les plus rejetés (137, 1041, 2616, 3933, 5268) sont tous inconnus. 4 568 slots étalés de 137 à 5 268, c'est **plus d'entités qu'un match n'en porte** : ce sont des identifiants LUS DANS DU BRUIT, pas des liaisons manquantes. **CONCLUSION** : `DecodeFrameRecords` rend la main au PREMIER record en échec, donc les 12 316 rejets sont 12 316 paquets dont le **premier** record échoue déjà — **le cadrage de ces paquets est faux dès le premier bit de trame**. La cible « rejets < 1 000 » n'est pas atteignable par l'amorçage. **PISTE DÉSIGNÉE, NON INSTRUITE** : `bpkCalibre` (`biped_pickup_research_test.go`) balaye déjà `IDLowBits` sur les paquets à liste vide pour maximiser le taux de trames exactes — le dépôt a donc son instrument de calibration de cadrage, et il faut le rejouer sur ce film AVANT toute grammaire. **Aucune largeur touchée, aucune perte** : le seul octet modifié est dans un `_test.go` sous tag `research`.
+- [!] **5.3.3.2 — LE CADRAGE : `bpkCalibre` DIT 9, L'ÉCRIVAIN DIT 13, ET C'EST L'ÉCRIVAIN QUI A RAISON** (2026-09-21, `bfecd02b`). Calibration jouée : `IDLowBits` **9 -> 97,5 %** de trames exactes contre **13 (défaut) -> 5,1 %** ; témoins de décalage +1/+2/+3 à 0,0/0,1/0,0 % (**le cadrage au bit 2 est juste**). **MAIS LA MESURE DE CONTENU REFUSE 9** : trames saines 40,5 % -> **97,0 %**, rejets 12 316 -> **405**, et **records `ti=35` 11 150 -> 1**, étalon `i21` 64,3 % -> **0,0 %**. L'étalon a REFUSÉ de publier — la garde du § 2 quinquies a fait son travail : un correctif adopté sur le seul taux de trames aurait rendu **tous les gates verts en détruisant le décodage des joueurs**. **ARBITRAGE PAR L'ÉCRIVAIN, DÉJÀ DANS LE DÉPÔT** : `readRecordID` porte `FUN_1406d3140(_,_,7,_)`, catégorie **7** ; `varwidth.go` écrit que « `W` ne vaut 13 que pour les catégories 0, 1, **7** et 8 » (`varWidthRange(7)` = `0x1FFF`, `bitLen` = 13). **La largeur est 13, et elle vient de l'écrivain** — ni constante « qui marche », ni ligne de profil. **POURQUOI `bpkCalibre` REND 9** : son critère est la FERMETURE (« consomme le payload à moins d'un octet »), qu'une largeur trop petite satisfait de façon dégénérée — profondeur **1,02 record/paquet** là où un delta 60 Hz en porte des dizaines. **Leçon transverse : un oracle de fermeture ne prouve pas une largeur ; il lui faut un oracle de CONTENU.** **CONSÉQUENCE** : l'étape (2) « corriger le cadrage » **n'a pas d'objet**, rien à changer dans `frame_records.go`, aucun octet de production touché. **La cause des 12 316 rejets reste ouverte**, avec deux hypothèses définitivement éliminées (amorçage du monde, largeur d'ID). À instruire ensuite : le PRÉAMBULE, et surtout **`IDBase`** — `FUN_1406d3140` rend `(queue << 30) | (base + valeur)` avec une base 0x200/0x300/0x400 **selon la catégorie**, et `varwidth.go` dit que cette base **n'est pas portée** et que la changer « se juge au gate de décodage » : une base fausse décale TOUS les identifiants, ce qui est exactement le symptôme mesuré (des slots qui n'existent pas).
+- [!] **5.3.3.3 — `IDBase` : LA TABLE DU JEU LUE EN ENTIER, ET UN NÉGATIF QUI FERME LA PISTE** (2026-09-21). `FUN_1406d3140` lit base et plage dans une table indexée par catégorie (`DAT_1451f98d0[cat*2]` = base, `+4` = plage, sous la garde `DAT_144706104`), et **`FUN_140d10bb0` la remplit** : cat 0/1 base `0x200` plage `0x1DFF` · cat 2 base `0x200` plage `0x100` · cat 3 base **`0x300`** · cat 4 base `0x200` plage `0x200` · cat 5 base **`0x400`** · cat 6 base **0** plage `0x200` · **cat 7 base 0, plage `0x1FFF`, largeur 13** · cat 8 base 0. Les PLAGES concordent exactement avec `varWidthRange` ; **les BASES, que `varwidth.go` déclarait NON PORTÉES, sont désormais lues**. **NÉGATIF** : `readRecordID` porte la catégorie 7, dont la base est **0** et la largeur **13** — et `DefaultFrameConfig()` rend déjà `IDLowBits: 13, IDBase: 0`. **Les deux valeurs du port sont celles de l'écrivain : rien à corriger, aucun octet de production, aucun gate à jouer.** **TROIS HYPOTHÈSES ÉLIMINÉES** pour les 12 316 rejets : amorçage du monde, largeur d'ID, base d'ID. **VALIDATION CROISÉE GRATUITE** : `zoom_events.go` portait `zoomSlotBase = 512` obtenue par FORCE BRUTE (63/64 contre 0/64 pour les autres bases) sur une référence de **domaine 4** — or **la catégorie 4 a pour base `0x200` = 512**. Le « domaine » d'une référence d'événement EST donc la catégorie de `FUN_1406d3140`, et la table vaut pour les événements comme pour les records : un lot d'événements pourrait PORTER ces bases au lieu de les mesurer (domaines 3 et 5 : `0x300`/`0x400` ; 7 et 8 : base 0, largeur 13). **SUITE** : passage à `ti=35 i60`/`i59`/`i57` sur la population SAINE actuelle (11 150 records, étalon `i21` 64,3 %), comme convenu.
+- [!] **5.3.3.4 — LE PRÉAMBULE NE DISTINGUE RIEN (4e négatif), ET `i60` A UN PRÉDICAT ENTIÈREMENT LISIBLE** (2026-09-21, `bfecd02b`). **(a) PRÉAMBULE, mesure sans hypothèse** : octet de tête et taille, 10 512 sains contre 12 316 rejetés — **`0xA0` écrase les deux populations (98,34 % contre 99,79 %)**, et la seule valeur exclusive (`0x80`, 139) est propre aux SAINS. Les tailles ne séparent pas (les rejetés sont juste un peu plus gros, ce qui s'explique : plus de records, plus d'occasions de casser). **Piste fermée. Quatre hypothèses éliminées** : amorçage du monde, largeur d'ID, base d'ID, préambule. **(b) `ti=35 i60 simulation-state`, écrivain `FUN_142ED6D88`** : la queue conditionnelle que `ecs_table` disait dépendre d'un « prédicat sur les vecteurs décodés » est `FUN_140501798`, **un test d'ORTHONORMALITÉ à 10⁻³** sur les deux vec3 déjà décodés : `|‖v1‖²−1| < 0,001` et `|‖v2‖²−1| < 0,001` et `|v1·v2| < 0,001`, chacun testé fini. Constantes relues dans l'image, aucune devinée : `DAT_143cd8370` = **0.0f**, `DAT_143cd8374` = **1.0f** (la même qu'au § 2.1), `DAT_143cd8380` = **`0x7FFFFFFF`** (masque de valeur absolue), `DAT_143cd84bc` = **0.001f**. **DÉCISIF** : le prédicat porte sur des valeurs DÉJÀ DÉCODÉES DU FLUX, pas sur un octet d'état RAM — il est donc **entièrement calculable**, et `i60` peut devenir bit-exact (contrairement à `i57`, dont `ecs_table` dit que l'étiquette 3 est « gardée par des octets d'état RUNTIME : désync PROPRE »). **CHEMIN DE PORT ÉCRIT** : décoder les deux vec3 (déjà lus par le corps), évaluer `orthonormes`, lire la queue `FUN_14076e494(..., 0x10)` seulement si le prédicat tient. **Aucun octet de production touché à ce stade** : le portage est le commit suivant.
+
+#### Passation 5.3.3 — REPRISE PAR UN EXECUTANT FRAIS (2026-09-21)
+
+> Le pilote sortant est à ~770 k jetons. Cette passation est la SOURCE DE VÉRITÉ de la
+> reprise : dix points, dont **six pièges qui ont chacun coûté une mesure fausse**. La copie
+> intégrale vit en tête de `.ai/V7.5/film_re/NOTE_5_3_ETATS_DE_MOUVEMENT_2026-09-20.md`.
+
+## PASSATION 5.3.3 — A LIRE EN ENTIER AVANT DE TOUCHER UN OCTET (2026-09-21)
+
+> Ecrite a la main du pilote sortant, a ~770 k jetons. Dix points. Le lot est un lot de
+> GRAMMAIRE, et sa methode a ete CORRIGEE EN ROUTE : cinq hypotheses ont ete refutees, quatre
+> par la mesure, une par l ecrivain. **Ne les refais pas** — le point 6 les nomme.
+
+### (1) L ETAT EXACT
+
+Branche `feat/decfilm-53`, worktree `LevelUp-wt-decfilm-53`, base du lot `6e86db356`, fusion
+`a289e9c1a` du lot 5.4 (`5fd6f02c3`, `grammar-2026-09-20.2`). Arbre propre. Rien pousse.
+
+| sha | ce qu il apporte |
+|---|---|
+| `6901752f9` `d0e3f42c1` `97f14743d` | 5.3.1 : l ecrivain des etats, D1 mesuree sur mini-bobines |
+| `40213547e` `76cd4f714` | 5.3.1 bis/ter : canal d evenements, `i56`, l enum, l objection tranchee |
+| `7fccdecb8` `9a4962173` `3e81a2a20` `6405237fe` | 5.3.2 : preuve sur film, conclusion de cadence RETIREE, etalon Rosette, hypothese du pilote confirmee |
+| `834527f99` `2cea5cb56` | 5.3.3.0 : liste des fautifs corrigee, journal de fusion |
+| `9d94dc8b3` `613849532` `4fe52d984` `552db474b` | 5.3.3.1 a .4 : quatre negatifs (monde, largeur d ID, base d ID, preambule) |
+| `2a018adf1` | 5.3.3.5 : `i60`, gate TENU en mesure |
+
+**CE QUI EST PORTE** : rien de neuf. **AUCUN OCTET DE PRODUCTION N A ETE TOUCHE DE TOUT LE
+LOT.** Tous les fichiers Go ajoutes sont des `_test.go` sous `//go:build research`, plus le
+paquet `film/research/mouvement/` (hors couche, declare dans `archlint`).
+
+**CE QUI N EST PAS PORTE, ET C EST LE TRAVAIL** : le point (2).
+
+### (2) LE CHANGEMENT DE PRODUCTION A FAIRE — `SimStateComplet`
+
+`i60 simulation-state` est **deja porte integralement**, queue comprise (lot R7-b, 2026-08-17).
+Ce qui le fait desyncer est un DRAPEAU :
+`internal/games/halo_infinite/film/internal/grammar/profil_balayage.go:136`
+(`SimStateComplet bool`, defaut `false`), rendu tel quel comme `ported` par
+`dispatch_biped.go:112`.
+
+Son **critere de bascule est ECRIT** dans son commentaire : « que le chemin absolu d `i0` tire
+ses trois largeurs de la CARTE du match ».
+
+**LE CHANGEMENT JUSTE** : lier le drapeau a la PRESENCE des largeurs de carte, dans
+`ResolveProfile` (`internal/games/halo_infinite/film/internal/grammar/profile.go:40`,
+signature `ResolveProfile(film *source.Film, entry *profile.MapQuantEntry) profile.Profile`) —
+vrai quand `entry != nil`, faux sinon.
+
+**NE PAS basculer le defaut GLOBAL** : `NewFilmContext` (auto-detecte, sans carte) sert les
+enveloppes `ScanFilm*(dir)`, ou les largeurs d axe ne viennent PAS de la carte. Un defaut
+global casserait ces appelants — c est exactement ce que le critere interdit.
+
+**GATES DE CE COMMIT** : `grammar.Rev` monte par l EMPREINTE (racine `film/internal/grammar/`)
+avec son entree de CHRONIQUE (`rev_chronique.go`, la derniere est `grammar-2026-09-20.2`, donc
+`.3`) ; ratchet 0.A.3 (`keyframe_closure.golden`) sans ligne en BAISSE ; `replay-equiv
+--films=4f77afc1` SANS `-update`, **0 perte hors artifact** ; et l ORACLE DE CONTENU :
+**records `ti=35` >= 11 228 et `i21` ~ 64 %** (mesures ci-dessous).
+
+**MESURE DEJA FAITE, a reproduire** (carte `snowbound`, drapeau leve sur le profil de la
+marche) : trames saines 40,5 % -> **40,6 %** · records `ti=35` 11 150 -> **11 228** · `i21`
+64,3 % -> **64,2 %** · desyncs reelles 3 130 -> **3 087** · **fautif `i60` 38 -> 0** · `i29` lu
+7 -> **14** · `i62` lu 6 -> **14**.
+
+### (3) LA LECTURE GHIDRA A FAIRE — LE SERIALISEUR DE TRAME DELTA
+
+**Point de depart** : les APPELANTS de `FUN_1406d3140` en categorie **7** dans la boucle
+d ECRITURE (le pendant de `readRecordID`). Ghidra est joignable en lecture seule sur
+`127.0.0.1:8089` (`/decompile_function?address=0x...`, `/get_xrefs_to`, `/read_memory`) ;
+`HaloInfinite.exe` est analyse, 311 103 fonctions.
+
+**CE QU ON CHERCHE** : les CHEMINS DE RECORD que `DecodeFrameRecords` ne modelise pas. Le
+decodeur connait `recNew`, `recDel`, `recDelta` et `recEnd` ; **12 316 paquets sur 25 958
+echouent des leur PREMIER record**, avec un slot qui n existe pas (4 568 slots distincts, dont
+**0,6 %** seulement vus dans un record sain — ce sont des identifiants lus dans du bruit).
+
+**LES QUATRE NEGATIFS DEJA ACQUIS — NE PAS LES REFAIRE** : ce n est ni l amorcage du monde, ni
+la largeur d ID (13, categorie 7, confirmee chez l ecrivain), ni la base d ID (0 pour la
+categorie 7), ni le preambule (`0xA0` ecrase les deux populations, 98,34 % contre 99,79 %).
+
+### (4) `i59` ET `i57` — CE QUE L ECRIVAIN DIT DEJA
+
+`ecs_table.tsv` (`internal/grammar/testdata/`) les declare `partiel`, et donne la raison :
+
+- **`i57 biped-spartan-ability`** (`FUN_142f02810`) : `R(2)` etiquette ; etiquette 1 -> `R(2)` +
+  `R(24)` reference ; **etiquette 3 -> `FUN_142f262d4`, gardee par des octets d etat RUNTIME**.
+  Une desync PROPRE y est la bonne reponse, et elle doit rester ECRITE.
+- **`i59 biped-spartan-ability-non-predicted-state`** (`FUN_142f02994`) : etiquette + corps ;
+  etiquette 3 = evenement de grappin PAR PAIRES a 0,150 s, position absolue quantifiee aux
+  largeurs de la CARTE, queue `R(3)` sous `param_4 = 2`. `ported=false` sur `Zero3 != 0` ou
+  `Inner` hors `{1,2}`.
+
+**METHODE** : une seule lecture d ecrivain par composant, but ecrit avant. Chercher **jusqu ou
+l ecrivain rend le composant calculable DEPUIS LE FLUX** ; ce qui depend d un octet RUNTIME
+reste une desync propre, et cela se dit dans la note plutot que de se contourner.
+
+Mesures actuelles (bfecd02b, sans le drapeau) : `i59` fautif **19** fois, `i57` **12** fois.
+
+### (5) LA MESURE FINALE DES ETATS
+
+Instrument : `grammar/mouvement_5_3_2d_*` (quatre fichiers, voir point 7).
+
+```bash
+export GOCACHE=/c/Users/Guillaume/Downloads/Scripts/LevelUp-wt-decfilm-53/.gocache
+export PATH=/c/msys64/ucrt64/bin:$PATH CGO_ENABLED=1
+cd apps/go-api
+MOUV532D_FILM=<...>/data/cache/film_chunks/bfecd02b \
+MOUV532D_CARTE=snowbound \
+MOUV532D_BORNES='C:\Users\Guillaume\Downloads\Scripts\LevelUp-wt-decfilm-53\data\titles\halo_infinite\reference\map_quant_bounds.json' \
+MOUV532D_SIMSTATE=1 \
+  go test -tags=research -count=1 -v -timeout 60m \
+    -run '^TestMouvement532Trame$' ./internal/games/halo_infinite/film/internal/grammar/
+```
+
+`MOUV532D_IDLOW` existe aussi (rejouer la calibration de largeur d ID ; **ne pas s en servir
+pour corriger quoi que ce soit**, cf. point 6).
+
+**A RENDRE** : trames saines · desyncs par composant · **cadence de `i29` par slot
+(records/s)** · intervalles d accroupi par slot (progression > 0,5) · `i62` glissade lue
+(compte + intervalles) · `i54` datee (instants) · `i18` et `i55` ventiles · et **les 5 instants
+par etat en TEMPS DE BARRE THEATER** (accroupi, glissade, action de mobilite, montee/saut), sur
+`bfecd02b`.
+
+**L ORACLE DE CONTENU EST OBLIGATOIRE A CHAQUE PASSE** : `i21` doit rester autour de 64 % et
+les records `ti=35` au-dessus de 11 228. L instrument REFUSE deja de publier une cadence si
+`i21` tombe sous 50 % — **ne desactive pas cette garde**, elle a deja evite une catastrophe
+(point 6).
+
+### (6) LES PIEGES RENCONTRES — CHACUN A COUTE UNE MESURE FAUSSE
+
+1. **`DesyncAt = 0` est une SENTINELLE, pas un index.** Sur le chemin delta,
+   `DecodeFrameRecords` pose `EntityTrace{DesyncAt: 0}` **sans jamais poser `TypeIndex`** quand
+   le test de generation echoue. Lu naivement, cela donne « archetype 0, composant 0 » : j ai
+   publie « `ti=0 i0` est le verrou, 13 463 echecs » — **c etait faux**. Discriminant :
+   `len(Trace.Comps) == 0`.
+2. **Le monde ne doit pas etre remis a neuf par chunk** — les liaisons slot -> archetype des
+   chunks precedents sont perdues (37,7 % -> 40,5 % de trames saines une fois corrige).
+3. **`bpkCalibre` mesure une FERMETURE, pas une largeur.** Il rend `IDLowBits = 9` a 97,5 % de
+   trames exactes ; a cette largeur les records `ti=35` tombent de **11 150 a 1**. Une largeur
+   trop petite satisfait la fermeture de facon degeneree (profondeur 1,02 record/paquet). **Un
+   oracle de fermeture ne prouve jamais une largeur : il lui faut un oracle de CONTENU.**
+4. **`poserBasculeDInstrument` ecrit dans `profilDInstrument`**, le profil du HARNAIS — que les
+   marches qui tiennent leur profil du contexte de film n utilisent PAS. Le drapeau se pose sur
+   `cfg.Profil.Grammaire`.
+5. **Le ratchet de taille (500 lignes) a refuse l instrument DEUX fois.** La reponse est la
+   scission par DEPLACEMENT PUR ; `plafondsParFichier` est datee et fermee, **ne pas y ajouter
+   de ligne**.
+6. **Les heredocs bash echouent sur du contenu a accents et backticks** dans cet environnement :
+   passer par un fichier `.py` ecrit a part, ou par l outil d ecriture.
+
+### (7) LES INSTRUMENTS, ET CE QUE CHACUN FAIT
+
+| fichier | role |
+|---|---|
+| `grammar/mouvement_5_3_2_research_test.go` + `_tableaux_` | la lecture delta par chercheur d ancres, et ses tableaux (5.3.2) |
+| `grammar/mouvement_5_3_2b_research_test.go` | porteurs par image, oracle d accroupissement, vitesse en m/s (`DecodeVelocityMagnitude`, loi log/exp 0,03-350) |
+| `grammar/mouvement_5_3_2c_evenements_research_test.go` | recensement des types d evenements en tete (`PacketHeadEventType`) + etalonnage du lecteur de masque |
+| `grammar/mouvement_5_3_2d_trame_research_test.go` | **LA MARCHE DE REFERENCE** : `DecodeFrameRecords`, carte, drapeau, etalon `i21` |
+| `grammar/mouvement_5_3_2d_couverture_research_test.go` | rejets : slots inconnus contre generations avancees |
+| `grammar/mouvement_5_3_2d_preambule_research_test.go` | octet de tete et taille, rejetes contre sains |
+| `grammar/mouvement_i55_d1_research_test.go` | D1 sur les sept mini-bobines |
+| `film/research/mouvement/` + `cmd_mouvement` | la chaine du descripteur sur l exe (cibles, vocabulaire) |
+
+### (8) HORS PERIMETRE — CONSIGNE AU §4, NE PAS TRAITER
+
+- **Les bases par categorie pour les EVENEMENTS** : la table de `FUN_140d10bb0` vaut aussi pour
+  les references d evenements (`zoomSlotBase = 512` = la base de la categorie 4, validation
+  croisee du § 2decies). Un lot d evenements pourrait PORTER ces bases au lieu de les mesurer.
+- **`D5` mode 0 du vehicule** (lot 5.4), **D2** (conventions de `deser_addr` dans
+  `ecs_table.tsv`), **D4** (les deux numerotations de types d evenement), **D6** (`i49` : la
+  table dit 3 bits, l ecrivain en lit 2 ou 4), **D8** (`scanRecordDirs` ne modelise que six
+  composants), **D9** (le domaine mesure des champs d `i54`).
+- **Le PORT des etats dans le document** (schema 65, web) : il se decide APRES la mesure finale,
+  et pas avant.
+
+### (9) L ENVIRONNEMENT
+
+Worktree `C:/Users/Guillaume/Downloads/Scripts/LevelUp-wt-decfilm-53`, branche
+`feat/decfilm-53`. `export GOCACHE=<worktree>/.gocache`, `PATH=/c/msys64/ucrt64/bin:$PATH`,
+`CGO_ENABLED=1`, `GOLANGCI_LINT_CACHE=<worktree>/.golangci-cache`.
+
+**AUCUNE BASE DuckDB tant que le backfill tourne** — demander au pilote avant tout
+`replay-facts-export`. **UN FILM A LA FOIS.** Films autorises a ce jour : `bfecd02b`
+(Snowbound, carte `snowbound`) et `4f77afc1` (Flood Gulch). Jonctions `film_chunks` et
+`film_manifests` posees (1 598 entrees), **jamais retirees**, jamais de `git worktree remove`.
+Corpus gate complet, `replay-equiv` sur 20 films et re-figeage : **par le pilote, a la fin**.
+
+Gates sans decodage a chaque commit : `gofmt -l ./internal ./cmd` · `go build ./...` ·
+`go vet ./...` et `go vet -tags=research ./internal/games/halo_infinite/film/...` ·
+`go test -count=1` sur `halo_infinite/...`, `archlint`, `replaybuild`, `replaydoc`,
+`replayview`, `contracttest`, `api` · `golangci-lint run ./internal/games/halo_infinite/film/...`.
+
+### (10) LE FORMAT DU COMPTE RENDU
+
+Court, par composant, avec **les tableaux chiffres** et leurs DENOMINATEURS. Dire ce qui est
+mesure, ce qui est refute, et ce qui n est pas fait. **Un negatif s ecrit** ; une hypothese
+abandonnee se nomme. **Arret sur toute perte.** Et quand une mesure contredit le depot, c est
+l instrument qu on suspecte en premier — c est la lecon de `zoom_events.go` (« sept campagnes
+ont conclu "aucun evenement de zoom" a cause d un decalage d UN bit ») et celle de ce lot.
+
+
+- [x] **5.3.3-a — `SimStateComplet` SUIT LA CARTE DU MATCH** (2026-09-21, `6de43fb1b`). Le critere
+  de bascule etait ECRIT depuis R7-b et TENU depuis les catalogues ; personne ne l avait relie au
+  drapeau. La regle est ecrite une fois (`grammaireSousCarte`) et posee par les DEUX portes par
+  lesquelles une carte entre dans un profil — le constructeur sous catalogue et le geste qui
+  installe les largeurs (la seconde est obligatoire : `poserProfilPuisCarte` remplace le profil
+  ENTIER). Defaut GLOBAL inchange (`ScanFilm*` sans carte). **Gate de contenu TENU sans aucune
+  variable d environnement** : records `ti=35` **11 228**, `i21` **64,2 %**, fautif `i60` **0**,
+  `i29` lu **14**, `i62` lu **14**. **La cuisson n en voit RIEN, et c est mesure** : A/B par
+  `replay-build` sur `000d5950` et `bcb6d393`, cache de faits vide a chaque passe, artefact BIT A
+  BIT IDENTIQUE ; `replay-equiv` ne deplace que le digest de l etape `killsource`, qui porte la
+  VALEUR du profil calibre. `grammar.Rev` -> `grammar-2026-09-21`, `facts.Rev` ->
+  `killsource-2026-09-21`, `SchemaVersion` inchangee ; 8 fixtures refigees, diff decompresse =
+  les deux chaines de revision SEULES. Garde-rail `simstate_carte_test.go`.
+- [x] **5.3.3-b — L ECRIVAIN DE TRAME DIT TROIS BOUCLES, ET LE DEFAUT ETAIT DANS L INSTRUMENT**
+  (2026-09-21, `e46d1a566`). `FUN_142987460` : un bit de configuration, puis TROIS vues, chacune
+  une passe HORS BANDE (`vtable[0x60]`, aucun bit lu) suivie de LA boucle de records
+  (`vtable[0x40]`), les records appliques apres, capacite 0xa00 pour les trois. La boucle
+  (`FUN_1406cd128`) a deux branches (`DAT_14474cd78`) qui lisent la MEME grammaire ; la garde du
+  delta compare l eid ENTIER a la table de LA VUE (`vue+0x38`, pas de 0xa0) et ARRETE la boucle.
+  L ecrivain d id (`FUN_1406d2464`) confirme la symetrie : base SOUSTRAITE, tag de 2 bits, et le
+  bit d amorce SELECTIONNE la table de largeurs. **Le second bit de l amorce est localise** : la
+  continuation de la liste d evenements, deja modelisee. **CAUSE DES 12 316 REJETS : aucune
+  grammaire ne manque** — `DecodeFrameRecords` porte UNE vue et `DecodeFrameViews` (8 vues en
+  production) existait deja a cote, comme `marchLocateStrict` pour les paquets a liste pleine ; la
+  marche de 5.3.2 n utilisait ni l un ni l autre. Mesure : 16,9 % des paquets JETES, 88,4 % des
+  paquets sains gardant >= 24 bits NON LUS, slots rejetes NON aleatoires (slot 123, 365 fois).
+  Marche du jeu, oracle conserve : `ti=35` 11 228 -> **31 530** (3 vues), `i29` 14 -> **89**,
+  `i62` 14 -> **89** ; a 8 vues 124 828 records, `i29` 110, `i62` 119 ; 16 vues indiscernable de 8.
+  **TROIS rend le meilleur etalon et TROIS est ce que le code deroule.** Zero octet de production.
+- [x] **5.3.3-c — `i59` : L ETIQUETTE VAUT `brut + 1` ET L ECRIVAIN EN A SIX ; `i57` : LA DESYNC
+  EST DEFINITIVE** (2026-09-21, `0958e64df`). `FUN_142f21c0c` lit TROIS bits et range `brut + 1` ;
+  `FUN_142f25e90` dispatche sur 1 a 6 et ne lit RIEN au-dela. Donc : `Inner` du port porte le
+  BRUT (ses constantes 1 et 2 designent les etiquettes 2 et 3), la branche `etiquette == 0` est
+  INATTEIGNABLE, les bruts 6 et 7 ne portent aucune charge, et le port lit sa porte
+  `FUN_1407f08bc` AVANT le `switch` la ou l ecrivain la lit DANS ses etiquettes 1 et 2.
+  `FUN_142f262d4` (`i57` tag 3) rend TROIS cas et `dst[2]` n est ecrit par AUCUNE lecture de la
+  fonction : la desync propre est DEFINITIVE, et desormais bornee. **Cout mesure du manque : 38
+  records sur 31 530 (0,12 %), ventiles `i59` 25 / `i57` 13.** **DECISION ASSUMEE : on ne porte
+  pas plus loin** — trois largeurs manquent et deplacer la porte bougerait le curseur sur les
+  corps qui publient `grappleLines[]`. Perimetre FIGE par `i59_etiquette_loi_test.go` (les huit
+  valeurs brutes, consommation et verdict). `grammar.Rev` inchangee (godoc seule), golden refige a
+  revision egale.
+- [x] **5.3.4 — LA MESURE FINALE, DEUX FILMS** (2026-09-21). Cinq deserialiseurs recoivent une
+  PORTE DE PUBLICATION (`etats_mouvement_hooks.go` : `i29`, `i62`, `i55`, la tete d `i18`, `i1`),
+  slot de capture compris — aucun bit lu autrement, production sans observateur. Marche du jeu a
+  TROIS vues. **`bfecd02b`** : 31 530 records `ti=35` (0,12 % desync) ; `i29` **848 lectures / 69
+  slots**, 21,1 % booleen pose, intervalles mediane **14,65 s** ; `i62` **787 / 155 portes
+  ouvertes**, mediane **30,31 s** ; `i54` 4 451 / 1 079 amorces ; `i55` 4 tags 2 795/540/524/427 ;
+  `i18` 6 804 / 28,9 %. **`4f77afc1`** (BTB 24 joueurs) : `i29` **23 704 / 187 slots**, mediane
+  **6,77 s** ; `i62` **21 011 / 6 151** ; `i54` 43 798 / 12 391. **CINQ INSTANTS PAR ETAT EN TEMPS
+  DE BARRE THEATER, sur les deux films**, par SLOT (le join slot -> joueur demande le registre
+  d identite, hors instrument ; le roster sort du film sans base). **NEGATIF : l oracle de vitesse
+  est REFUTE** — un bipede sur deux a plus de 11 m/s et le max est 347 m/s, donc le SPRINT reste
+  NON TRANCHE pour une raison mesuree. `grammar.Rev` inchangee, golden refige a revision egale ;
+  litteral `unit-control-component` centralise (`compUnitControl`, regle 6).
+- [x] **5.3.5 — LA LOI DE `i1` ETAIT EXACTE, ET L INSTRUMENT LISAIT LA CARTE D A COTE**
+  (2026-09-21, `0fc6a3349`). Ecrivain relu (`FUN_14076d45c` -> `FUN_14076d4d0` -> `FUN_14076d528`
+  -> `FUN_14076d6dc`) et constantes relues dans le binaire (`0.03`, `350.0`, `1.0`, `0.5`) :
+  `DecodeVelocityMagnitude` transcrit la loi TERME POUR TERME, l ordre direction-puis-scalaire est
+  le bon, la polarite de la porte l est aussi. **LA CAUSE ETAIT AILLEURS** : les LARGEURS D AXE DE
+  LA CARTE n etaient pas installees sur le contexte (l installateur de `replay` est un geste
+  SEPARE de `NewFilmContextForMap`), donc `i0` lisait ses axes aux largeurs de `cliffhanger` sur
+  un film de `snowbound` — cinq bits de trop par record. Effet : records `ti=35` 31 530 ->
+  **97 447**, desyncs 38 -> **3** (et `i57` ZERO), etalon `i0` 63,3 -> **85,5 %**, lectures `i1`
+  x18,5. **ORACLE INDEPENDANT** (deplacement de la meme vie / vitesse decodee, aucune unite
+  supposee) : dispersion p90/p10 **1,7** sur `bfecd02b` et **2,3** sur `4f77afc1`, MEME facteur
+  d unite (0,240 et 0,236) — la vitesse est lue juste. **SPRINT REFUTE** comme observable par la
+  vitesse : mediane 2,26 et 2,27 m/s, UN SEUL mode a 2-3 m/s (61,3 % et 56,1 %), 0,08 % au-dela
+  de 4 m/s. **SAUT NON PROUVE** : pic median sous 1 m/s, et a pic >= 3 m/s la duree mediane vaut
+  0,632 s sur un film contre 1,567 s sur l autre — la signature ne tient pas. Zero octet de
+  production.
+- [x] **5.3.6 — LE PORT AU DOCUMENT : `stances[]`, SCHEMA 65** (2026-09-21, sur DECISION
+  UTILISATEUR). Un intervalle par (vie, genre) — `{slot, kind, t0, t1}` — pour `crouch` (`i29`),
+  `slide` (`i62`) et `mobility` (`i54`). **PAS DE `players[]` DANS LE DOCUMENT** : tous les calques
+  par vie sont des tableaux RACINE keyes par slot, et la granularite demandee est celle-la.
+  **LE BALAYAGE EMPLOIE LA MARCHE DU FRAME-PROCESSEUR** (`DecodeFrameViews`, TROIS vues) et non
+  celle des autres canaux de capacite : la sonde de production mesure que celle-la annonce `i29`
+  **zero** fois sur 162 444 records (chercheur d ancres). **LE PLIEUR N EST PAS RECOPIE** :
+  `episodeAccum` d `equipment_episodes.go`, employe tel quel (regle 6).
+  MESURE (`bfecd02b`) : 97 447 records `ti=35` dont 3 desynchronises, **7 941 lectures** sur
+  **101 slots** — crouch 2 490 (495 posees), mobility 2 964 (758), slide 2 487 (386) ; 7 849
+  lectures ecartees (slot non lie) et 1 924 paquets a evenements non localises, **tous deux
+  publies a la couverture**.
+  **SPRINT ET SAUT N Y SONT PAS** (5.3.5) : publier l un des deux publierait un seuil comme une
+  donnee. Le libelle de `mobility` est « Action » / « Action », pas « Escalade » — le film dit
+  qu une action est amorcee, pas laquelle (D9).
+  CHECKLIST TENUE : chronique v65 · `structure_test` (raison + garde) · `document_shape.golden` ·
+  jumeaux `replaydoc`/`replayview` + parite · plafonds justifies (chronique 1825 -> 1863,
+  structure_test 1215 -> 1221, exception ECRITE ; `film_scan.go` 504 -> 472 par deplacement pur) ·
+  surface citee 260 -> 262 datee · calque `layers.stances` · codec des faits `REPLAYINPUTS23` ->
+  **`REPLAYINPUTS24`** avec les 8 fixtures d entrees refigees PAR LEUR PORTE (re-decodage des
+  8 films) · 8 goldens d assemblage · 8 fixtures de contrat `replay_schema_65_*` + manifeste
+  (2 717 376 o / 3 145 728) · formes de `film/types` figees · contrat 60 -> **61** champs ·
+  zod + frontiere web (dont `coverage.stances.mapWidths`) · **OpenAPI EN DERNIER** puis
+  `make generate-types` · web MINIMAL (un mot sur la fiche, FR/EN, token semantique).
+  GATE : `replay-equiv -films bcb6d393` — avant re-figeage, 13 ecarts dont **2 etapes neuves**,
+  **9 decalages POSITIONNELS d un rang**, `positions` (ecart PRE-EXISTANT D15, sha identique),
+  `killsource` (profil calibre, deja constate) et `artifact` (**attendu**, schema 65) ; apres
+  re-figeage de ce seul film, **1 identique** et la passe suivante le confirme. Le re-figeage des
+  19 autres reste le geste du pilote.
+- [ ] **5.3.3 — le port** (**FAIT PAR 5.3.6** ci-dessus : `stances[]` au schema 65, avec la
+  checklist complete. Cette case reste ouverte pour la seule part que 5.3.6 n a PAS prise : une
+  couche d ANALYSE sur les faits — aucune n a ete demandee, et le calque se lit directement).
+  Intervalles d'état par
+  joueur dans le document (`players[].stances[]`), couche d'analyse sur les faits, **montée de
+  schéma 64 -> 65** avec la checklist complète (chronique, `structure_test`,
+  `document_shape.golden`, plafonds justifiés, jumeaux `replaydoc`/`replayview` + parité, zod
+  web, 8 fixtures renommées `replay_schema_65_*` + manifeste, layers, OpenAPI en dernier +
+  `make generate-types`), et un rendu MINIMAL sur la fiche du joueur du rejeu (FR/EN :
+  « Accroupi »/« Crouched », « Glissade »/« Slide », « Sprint »/« Sprint », « Saut »/« Jump »).
+
 ---
 
 ### Post-chantier — lot 5.4 (l avant du chassis), branche `feat/decfilm-54`, base `6e86db356`
@@ -6211,6 +6617,12 @@ sur les seuls chassis a arme FIXE. Le lot cherche l avant REEL, lu dans le film.
 
 | Date | Lot | Découverte | Où elle ira |
 |---|---|---|---|
+| 2026-09-21 | 5.3.3-b | **D10 (5.3) — `marchViews = 8` CONTRE TROIS VUES CHEZ LE FRAME-PROCESSEUR.** `FUN_142987460` deroule exactement trois boucles de records (`do { ... } while (uVar7 < 3)`) ; `killsource.Options.Views` et `grammar.marchViews` en deroulent HUIT. Mesure de l ecart sur `bfecd02b` : 8 vues rapportent 7 000 records de plus que 3 (124 828 contre 117 753) mais degradent l etalon `i25` de 0,8 point et rendent 1 251 records `ti=35` de MOINS ; 16 vues est indiscernable de 8. Le depot lit donc au-dela de la trame. | NON TRAITE (regle 7). Reduire la constante a 3 est un lot de PRODUCTION : elle porte les empreintes gelees de `killsource` et de la marche des morts d objet. L oracle de decision existe deja (l etalon `i21`/`i25` et le compte de records `ti=35`) |
+| 2026-09-21 | 5.3.3-b | **D11 (5.3) — 24 % DES PAQUETS A LISTE PLEINE NE SE LOCALISENT PAS.** `marchLocateStrict` (signature du slot 123, 35 bits, composant unique) localise 4 006 a 4 147 des 5 274 paquets a evenements de `bfecd02b` — 76 a 79 %. Le complement demande la grammaire de CHARGE des types d evenement, que seul un lot d evenements peut porter. | NON TRAITE (regle 7) — c est le lot d evenements deja consigne. La porte existe et son taux est mesure : la matiere manquante est ~1 270 paquets sur 30 000 |
+| 2026-09-21 | 5.3.3-b | **D12 (5.3) — LA TABLE D ENTITES EST CELLE DE LA VUE, ET LE DECODEUR HORS LIGNE TIENT UN SEUL MONDE.** La garde du delta lit `vue + 0x38 + slot*0xa0` : chaque vue a SA table. Le port tient un `World` unique pour les trois. | NON TRAITE. Approximation assumee tant que les trois vues partagent l espace de slots observe ; un lot qui voudrait la lever doit d abord mesurer si un meme slot porte deux archetypes selon la vue |
+| 2026-09-21 | 5.3.4 | **D13 (5.3) — `decodeInferLoop` NE POSE PAS LE SLOT DE CAPTURE.** `decodeDelta` appelle `poserSlotDeCapture` ; la boucle d inference que `DecodeFrameViews` emploie ne le fait PAS pour un record NEW. Toute valeur publiee depuis un record NEW herite du slot du record PRECEDENT, ou de zero au premier record du paquet. Mesure de l effet : sans filtre, le slot 0 portait 3 035 des 7 947 lectures d `i29` de `bfecd02b`. | NON TRAITE (regle 7). **C est un lot de PRODUCTION** : le meme chemin attribue les ECHANTILLONS DE POSITION, donc une sortie publiee. L instrument de 5.3.4 s en protege par un filtre slot lie au bipede, qui dit combien il ecarte |
+| 2026-09-21 | 5.3.4 | **D14 (5.3) — L ORACLE DE VITESSE EST REFUTE, ET AVEC LUI LA MESURE DU SPRINT.** Vitesse au sol des records de BIPEDE via `DecodeVelocity` : mediane 13,31 m/s et 52,5 % des lectures >= 11 m/s sur `bfecd02b` ; 7,89 m/s et 45,9 % sur `4f77afc1` ; maximum 347 m/s (une balle). Impossible pour un Spartan (4,5 m/s a la marche, ~7 au sprint). Soit la loi log/exp ne s applique pas a cette largeur sur le chemin delta, soit l attribution reste fausse (cf. D13). | NON TRAITE (regle 7). **Consequence directe : le SPRINT reste NON TRANCHE**, et pour une raison mesuree. Le remede est un oracle de vitesse verifie contre une verite independante (positions successives d une meme vie), pas un seuil ajuste |
+| 2026-09-21 | 5.3.3-a | **D15 (5.3) — L ETAPE `positions` DU HARNAIS D EQUIVALENCE A DERIVE SUR `bcb6d393`, ET CE N EST PAS DE CE LOT.** `replay-equiv -films bcb6d393` rend un ECART sur `positions` : compte IDENTIQUE (110 004), sha different de la reference figee. Le MEME sha est obtenu avec la bascule de 5.3.3-a abaissee : l ecart vient donc de la base `5fd6f02c3`. Les references ont ete refigees pour la derniere fois a `6e86db356` (cloture 5.2), AVANT la fusion du lot 5.4. | NON TRAITE — **le re-figeage est un geste du pilote, a la fin du chantier**, et il est deja au programme de cloture. Consigne ici pour que l ecart ne soit pas impute a 5.3 |
 | 2026-09-20 | 5.4.1 | **D1 (5.4) — LE BIPEDE ECRIT LUI AUSSI SON ANGLE DE ROULIS, ET `ti=35` LE JETTE ENCORE.** `decodeObjectForwardAndUp` sert `i2` du BIPEDE comme celui des vehicules : la meme queue `R(8)` y est lue. Le cap du bipede pourrait donc se reconstruire de la meme facon, la ou il sort aujourd hui d `i21` (la VISEE, qui n est pas l orientation du CORPS). | NON TRAITE (regle 7) — `ti=35` appartient au lot 5.3, et le brief de 5.4 l interdit explicitement. La valeur est desormais RENDUE par le detenteur de grammaire : un lot `ti=35` n aura qu a la capturer |
 | 2026-09-20 | 5.4.1 | **D2 (5.4) — LE SOUS-CHEMIN « DELTA » DU MODE 0 D `i2` EXIGE UN SUIVI D ETAT PAR ENTITE.** `FUN_14076e744` (bit B pose) ne reconstruit pas un etat absolu : ses quartets et sa queue `R(1)[+R(4)]` sont des INCREMENTS appliques a l etat precedent du composant (`FUN_140c5f8a8` recoit `*param_4`, la valeur d avant). Hors ligne, sans registre par entite, ni la direction ni l angle n y sont absolus. | NON TRAITE. Compte, pas reconstruit (`HasRoll` faux). A rouvrir SI la mesure de 5.4.2 montre que cette population pese : le remede est un registre (slot -> face/iu/iv/angle) dans le balayage, pas une grammaire neuve |
 | 2026-09-20 | 5.4.1 | **D3 (5.4) — `AimVector` DECODAIT A 19 BITS EN DUR, ET C ETAIT UNE FAUTE LATENTE.** La largeur de la direction d `i2` suit le MODE (19 ou 30) ; la constante `aimDirBits` etait appliquee quel que soit le chemin. Elle n a jamais mordu parce que le mode 1 ne posait pas `HasDir` — la direction de 30 bits etait sautee depuis le retrait de la capture de 5.2b.2. Des que ce lot la pose, la faute devient reelle : un code de 30 bits lu a 19 rend une face et un vecteur arbitraires. | **TRAITEE DANS LE PERIMETRE** (c est le meme champ, le meme lecteur) : `AimVector` prend `FwdUpDirBits(p.FwdMode)`. Consignee parce qu elle dit ce que coute une largeur ecrite en dur a cote d une grammaire qui en a deux |
@@ -6616,8 +7028,126 @@ sur les seuls chassis a arme FIXE. Le lot cherche l avant REEL, lu dans le film.
 | 2026-09-18 | 5.1.6 | **D4 (5.1) — LE SLOT `ti=13` DE LA JAUGE NE S'IDENTIFIE PAS PAR SON NOM, ET N'EN A PAS BESOIN.** `i0` (le `StringId` du nom de propriété) est marché mais jamais récolté, donc la jauge a été identifiée par sa CORRÉLATION aux intervalles du calque du drapeau (100,0 % sur trois jauges, contre 15,8 % pour le slot voisin). Un port qui voudrait la nommer sans oracle externe devrait récolter `i0` et hacher les noms Lua candidats. | NON TRAITÉE. Pour publier `returnProgress`, la corrélation suffit et elle est plus sûre qu'un hachage de nom : l'appariement se fait sur le drapeau que `flagCarries` porte déjà |
 | 2026-09-17 | 3.6.a | **D6 (3.6.a) — L'ÉTAPE `vehicles` DE `replay-equiv` BOUGE SUR NEUF FILMS, ET LE MOUVEMENT N'ATTEINT AUCUNE SORTIE PUBLIÉE.** Mesuré à la voie libre : sur `084a804d`, le digest de l'étape `vehicles` passe de `a78431ed…` à `fac28aa9…`. Trois contrôles. (1) DÉTERMINISME : deux exécutions de la tête rendent le même sha sur les 53 étapes — ce n'est pas un aléa. (2) IMPUTATION : le même film cuit avec le CODE DE LA BASE `492cb0923` (arbre extrait hors dépôt, même cache, mêmes références) rend **exactement** la référence figée `a78431ed…` — c'est donc bien le port de `ti=9`, et NON 3.3.1 (dont `grenades` rend le même sha à la base et à la tête). (3) PORTÉE : le document cuit base → tête est identique sur **tous ses chemins sauf un**, `/coverage/decoder/grammarRev` (diff structuré : 1 chemin sur 9 335 637 octets, taille identique des deux côtés) ; **aucune ligne de journal de balayage ne diffère** (`viesRecensees=180 publiees=97 …`, `episodes=74 vehiculesOccupes=45 …` identiques) ; le corpus gate classe 0 gain / 0 perte / 0 changement. Le mouvement est donc confiné à l'ENTRÉE de balayage `VehicleScan`, dans un champ que seul `digest` voit — il hache les champs NON EXPORTÉS, et `VehicleScan.Positions []grammar.BipedPosition` embarque précisément `componentDirs`, le struct non exporté que l'en-tête du paquet `digest` cite en exemple. **CE QUI N'EST PAS ÉTABLI, ET QUI EST DIT** : le champ exact n'est pas isolé — `digest` n'exporte aucun rendu, et l'isoler demanderait un instrument que ce lot n'a pas écrit. NON TRAITÉ : rien ne dépend de cette valeur aujourd'hui (aucune sortie ne la porte). Écarte au passage deux hypothèses testées et fausses : ce n'est PAS un effet de bord de 3.3.1 (`53ce4390` bouge sur `vehicles` sans bouger sur `grenades`), et ce n'est PAS la scission du maillon de dispatch (aucune étiquette `case` n'est dupliquée dans la chaîne — vérifié sur pièces, donc l'ordre des maillons ne décide de rien). | instrument d'isolation des entrées de balayage : exporter un rendu de `digest` (ou un mode `-out-dir` qui écrit la valeur et pas seulement son empreinte) rendrait ce genre d'écart lisible au champ près au lieu du seul sha. À porter le jour où une sortie dépendra de ces champs |
 | 2026-09-19 | 5.1.5 | **TRANSMIS AU LOT DE RENDU DES VÉHICULES (décision du pilote, forme (b)) — L'AFFICHAGE DU CYCLE DE RÉAPPARITION.** `vehicleCycles` est PUBLIÉ au schéma 63 ; aucun client ne le dessine. Vérifié sur pièces le 2026-09-19 : le rejeu n'a **aucune** infobulle ni carte de véhicule — `ReplayCanvasTips.tsx` n'héberge que celles des poses, des socles, du drapeau et des armes au sol, et `useReplayVehicles.ts` ne porte aucun survol (0 occurrence de `hover`). La surface est donc un lot de RENDU, pas un alignement de libellé. | **ITEM TRANSMIS, PAS UNE DETTE** : il part au lot qui reprend déjà l'orientation, la taille et les tirs des véhicules — un marqueur d'emplacement avec « Réapparition dans ≈ N s », sur le modèle des socles d'arme, ou une infobulle |
+| 2026-09-20 | 5.3.1 | **D1 (5.3) — `ti=35 i55 biped-posture-physics` : LE DÉCODEUR LIT LE TAG DE 2 BITS ET SAUTE SES QUATRE CHARGES, QUE LE JEU LIT TOUTES.** `FUN_142f0293c` -> `FUN_142f1f630` lit `R(2)` puis appelle `FUN_141fd997c`, qui écrit un octet de discriminant en `+0x2c` de la cible et dispatche sur QUATRE lecteurs distincts (`FUN_142f265dc`, `FUN_142f25a3c`, `FUN_142f263ac`, `FUN_142f264f4`) ; les quatre appellent des feuilles consommatrices de bits (`1406cf008`, `1406d310c`, `14076dc04`, `14076e494`, `1408f0ac4`). Le port est `br.Skip(2)`. Le corpus décode pourtant au bit près : soit `i55` n'est jamais parcouru, soit son tag vaut toujours la valeur dont la charge est vide — et aucune des deux hypothèses n'est mesurée. | **MESURÉE LE 2026-09-20 SUR LES SEPT MINI-BOBINES, SANS AUCUN FILM DU CACHE** (`grammar/mouvement_i55_d1_research_test.go`, tag `research`, aucun octet de production ; le tag est relu à `CompResult.StartBit`, la position que la marche de production publie). **895 franchissements d'`i55` sur 1 364 records `ti=35` bornés ; le tag est NON NUL 210 fois (23,5 %) : t0=685, t1=79, t2=52, t3=79.** Contrôle interne : écart à l'uniforme = **1 270** (un bruit de curseur dérivé en rendrait ~3), et `i29`/`i54`/`i55` sont déclarés par exactement les mêmes 895 records (`i62` par **0**) — les deux bits sont un champ structuré lu au bon endroit. Coût plancher chez le jeu, feuilles relevées au désassemblage : t0 ≥ 3 bits + un champ à largeur variable · t1 ≥ 19 bits + position + 3 champs variables · t2 ≥ 52 bits + position · t3 ≥ 22 bits + position — **aucun tag ne coûte zéro bit**. **« Pourquoi la marche reste-t-elle alignée ? » ne se pose pas sur ces bobines : elle ne l'est pas** — 6 fermetures sur 1 364, et **0** parmi les records qui franchissent `i55` ; la marche s'arrête plus loin sur `i60 simulation-state-component`, non porté (ce que `keyframe_closure.golden` fige depuis 0.A.3), donc rien n'a jamais vérifié le curseur au-delà d'`i55` sur ce chemin. Les mini-bobines ne portent AUCUN paquet de réplication (leur `PROVENANCE.txt`) : **RESTE OUVERT pour le chemin DELTA**, c'est la mesure de 5.3.2. Toujours NON TRAITÉE au sens de la règle 7 — aucune grammaire n'est corrigée ici |
+| 2026-09-20 | 5.3.1 | **D2 (5.3) — LES COMMENTAIRES DE PORTAGE DE `i54` ET `i62` NOMMENT « DESCRIPTEUR » L'ADRESSE DU SLOT DE NOM.** `components_biped_ability.go` écrit `Descriptor @143d0c9d8` et `components_biped_spartan.go` `Descripteur @143d0ca80` ; la chaîne calibrée rend `143d0c9c0` et `143d0ca68` — l'écart est exactement `0x18`, l'offset du slot de nom dans le descripteur. Aucune grammaire n'est fausse (les écrivains `+0x40` concordent à l'octet) ; c'est la même incohérence de convention que la découverte de bord du lot 3.7 (§ 7.3, `deser_addr` mélangeant `+0x40` et `+0x28`). | **NON TRAITÉE.** Un lot de table qui reprendrait `ecs_table.tsv` corrigerait les deux conventions d'un coup, avec un garde-rail qui rejoue la chaîne sur chaque ligne |
+| 2026-09-20 | 5.3.1 | **D3 (5.3) — `MobilityActionHook` N'A TOUJOURS AUCUN CONSOMMATEUR.** Le crochet publie `flag1`/`flag2` de chaque lecture d'`i54` depuis la sonde qui a réfuté l'usage d'équipement ; aucun appelant ne s'y abonne aujourd'hui. | **NON TRAITÉE.** Soit 5.3.3 le consomme (c'est le chemin naturel du sprint/escalade), soit un lot d'hygiène le supprime : un crochet sans consommateur est du code mort au sens de la règle 7 du dépôt |
+| 2026-09-20 | 5.3.1 bis | **D4 (5.3) — LES DEUX TABLES DE TYPES D'ÉVÉNEMENT DU DÉPÔT NE SONT PAS INDEXÉES PAREIL, ET C'ÉTAIT UNE QUESTION OUVERTE.** `event_types_catalogue_test.go` (types 50..127, base `0x144724A90`) porte son propre avertissement : « valable SEULEMENT si les deux espaces d'index coincident (non etabli) ». **Ils ne coïncident pas, et l'arithmétique de la colonne « Objet » de l'annexe A le montre sans Ghidra** : l'objet du type de FIL 43 est `0x144724d18` = `0x144724A90 + 81*8` (slot 81), celui du type 78 est `0x144724d50` (slot 88) — et `eventTypeNames` rend bien `initiate_mobility_action` en 81 et `ai_jump` en 88. Le piège est réel : nommer un type de fil avec cette table rend « MusicTrigger » pour ce qui est `ai_jump`. Les instruments qui comptent utilisent la bonne table (celle du registrar `FUN_140e453b4`). | **NON TRAITÉE (règle 7).** Un lot d'outillage renommerait la carte en `eventSlotNames` et poserait le garde-rail qui interdit de la cléer par un type de fil |
+| 2026-09-20 | 5.3.1 bis | **D5 (5.3) — LE CATALOGUE D'AOÛT RANGE `i56` SOUS « SPRINT », ET C'EST FAUX.** `biped-spartan-ability-energy` est la jauge des trois emplacements de charge de la capacité d'armure (`R(3)` masque + `R(7)` par charge armée, défaut `0x7F` = pleine), donc de l'ÉQUIPEMENT — le sprint de Halo Infinite ne coûte aucune énergie. Deux documents propagent l'erreur : `RECAP_STATS_EXPLOITABLES.md:229` et `HANDOFF_FILM_EXTRACTION_EXTERNAL_DEV.md:595`. | **NON TRAITÉE** : corriger deux documents est hors périmètre du lot ; `NOTE_5_3_ETATS_DE_MOUVEMENT_2026-09-20.md` § 2.6 fait foi en attendant |
+| 2026-09-20 | 5.3.1 ter | **D6 (5.3) — `ecs_table.tsv` DONNE A `i49 biped-control-context` « 3 bits (5 valeurs) » ; L'ÉCRIVAIN EN LIT 2 OU 4.** `FUN_14107166c` calcule sa largeur depuis `DAT_145121140` (le réglage de pleine précision du processus) : `w = 4` s'il vaut 1, `w = 2` sinon, puis `R(1)`. Le port du dépôt est juste ; c'est la TABLE qui ment — et la valeur « 5 valeurs » avait fait naître une hypothèse (les cinq états Havok) que la lecture de l'écrivain a tuée. | **NON TRAITÉE (règle 7)** : une ligne de table, à corriger par le lot qui reprendra `ecs_table.tsv` avec son garde-rail (voir D2) |
+| 2026-09-20 | 5.3.1 ter | **D7 (5.3) — UN MOT DE 32 BITS OPTIONNEL, DÉJÀ DÉCODÉ ET JETÉ, N'A AUCUN SENS ÉTABLI.** `i18 unit-control +0x544` : `R(1)` puis `R(32)`, défaut 0 — le seul champ de tout l'archetype bipède ayant la forme d'un champ de bits de commande, et l'écrivain ne le nomme pas (`FUN_14080d69c` est la feuille générique « porte + valeur » ; aucune étiquette dans le pool des chaînes). `consumeUnitControl` le consomme et l'abandonne. | **NON TRAITÉE ICI, mais c'est un item de 5.3.2** : sa ventilation bit à bit contre la composante verticale d'`i1` est la mesure la moins chère du lot et elle tranche la question du saut |
+| 2026-09-21 | 5.3.2 | **D8 (5.3) — LE BALAYAGE BIPÈDE DE PRODUCTION NE LIT QUE SIX COMPOSANTS.** `scanRecordDirs` modélise `i1`, `i2`, `i3`, `i4`, `i5`, `i21` et s'arrête au premier autre (« composant non modélisé -> curseur non fiable »). Tout ce qui est au-delà d'`i21` — donc TOUS les composants de mouvement — n'est JAMAIS lu sur le chemin delta en production. Ce n'est pas un défaut (ce balayage ne cherche que positions et directions), mais 5.3.3 devra faire marcher la boucle COMPLÈTE sur les records delta. 5.3.2 a prouvé que c'est faisable : **100 % de marches complètes sur 541 105 records**. | **NON TRAITÉE (règle 7)** : c'est le premier item de chiffrage de 5.3.3, et son coût en temps de décodage doit être mesuré avant d'être promis |
+| 2026-09-21 | 5.3.2 | **D9 (5.3) — LE DOMAINE MESURÉ DES CHAMPS D'`i54` CONTREDIT L'HYPOTHÈSE DE L'ÉCRIVAIN.** L'identifiant optionnel de 10 bits n'est transmis **0 fois sur 2 245 initiations** (il reste à sa sentinelle), et `+0x9c` ne prend que **deux** valeurs, 0 et 2, jamais 1 ni 3. L'hypothèse « Sprint / Thruster / Clamber / Slide sur 2 bits » du § 2.8 est donc réfutée par les valeurs. Seul `+0x98` (R(7)) se comporte en discriminant, et son domaine varie d'un film à l'autre (3 valeurs sur `bfecd02b`, 8 sur `4f77afc1`). | **NON TRAITÉE** : nommer les classes demande de croiser `+0x98` avec la carte et le geste vu dans Theater — c'est un lot en soi, et il a besoin de l'attribution vie -> joueur que 5.3.2 n'a pas faite |
 
 ## 5. Journal des gates locaux (un gate non consigné n'a pas eu lieu)
+
+### Post-chantier — lot 5.3, points 5.3.5 et 5.3.6, 2026-09-21 (suite : la loi de `i1`, puis le port)
+
+Meme branche, meme worktree, **aucune base DuckDB**, un film a la fois. **DEUX COMMITS** :
+`0fc6a3349` (5.3.5) et le present (5.3.6).
+
+**GATES SANS DECODAGE** : `gofmt` (vide) · `go build ./...` · `go vet ./...` et
+`go vet -tags=research ./internal/games/halo_infinite/film/...` · `go test -count=1` sur
+`halo_infinite/...`, `archlint`, `replaybuild`, `replaydoc`, `replayview`, `contracttest`, `api`
+(**tous ok**) · `golangci-lint run ./internal/games/halo_infinite/film/...` (**0 issues** ; une
+violation `prealloc` corrigee, pas exemptee) · web : `tsc -b --force` (vert), `eslint` (vide),
+`vitest` sur `match-replay` + `lib/replay` (**206 fichiers, 3 227 tests**).
+
+**GATE DE DECODAGE** : `replay-equiv -films bcb6d393`, cache de faits VIDE a chaque passe — la
+lecture des 13 ecarts est au § 2duodevicies de la note. Apres re-figeage de ce seul film :
+`1 identique`, confirme par une seconde passe.
+
+**REGENERATIONS, TOUTES PAR LEUR PORTE** : 8 fixtures d entrees (re-decodage des 8 films,
+`REPLAY_FILM_CACHE` puis `REPLAY_FILM_DIR`), 8 goldens d assemblage, 8 fixtures de contrat +
+manifeste (renommees `replay_schema_65_*`, les 8 de la v64 supprimees), `document_shape.golden`,
+`types/shapes.golden`, les deux goldens de revision, `openapi.yaml` (EN DERNIER) puis
+`generated.ts`.
+
+**RATCHETS** : deux plafonds de taille montes sous l exception ECRITE (chronique et
+`structure_test`, dans le commit qui monte `SchemaVersion`) ; un fichier scinde par DEPLACEMENT
+PUR (`film_scan.go` 504 -> 472) ; la surface citee hors decodeur 260 -> 262 avec sa justification
+datee. Aucun garde-rail affaibli.
+
+### Post-chantier — lot 5.3, points 5.3.3-a a 5.3.4, 2026-09-21 (executant frais, reprise sur passation)
+
+Branche `feat/decfilm-53`, worktree `LevelUp-wt-decfilm-53`, tete d entree `94c7e5998`. **AUCUNE
+base DuckDB ouverte** — un backfill tient le parc en ecriture : `replay-corpus-gate` n a pas ete
+joue, et `replay-equiv` l a remplace FILM PAR FILM. Jonctions `film_chunks` et `film_manifests`
+intactes, jamais retirees. `node_modules` deja present dans `apps/web` (aucun `npm ci`
+necessaire) ; aucun `--no-verify`. Un seul decodage a la fois.
+
+**QUATRE COMMITS** : `6de43fb1b` (5.3.3-a), `e46d1a566` (5.3.3-b), `0958e64df` (5.3.3-c), et le
+present commit (5.3.4 + plan + note).
+
+**GATES SANS DECODAGE, joues a chaque commit** : `gofmt -l ./internal ./cmd` (vide) · `go build
+./...` · `go vet ./...` et `go vet -tags=research ./internal/games/halo_infinite/film/...` ·
+`go test -count=1` sur `halo_infinite/...`, `archlint`, `replaybuild`, `replaydoc`, `replayview`,
+`contracttest`, `api` (**tous ok**) · `golangci-lint run ./internal/games/halo_infinite/film/...`
+(**0 issues** ; une violation `goconst` a ete corrigee par centralisation, pas par exemption) ·
+`go test -race` sur `grammar` (**ok**, 384 s puis 421 s).
+
+**GATES DE DECODAGE** :
+
+- `replay-equiv -films bcb6d393` SANS `-update` (le film `4f77afc1` de la passation N EST PAS
+  dans le corpus d equivalence : 21 references, il n y figure pas — le gate a donc ete joue sur
+  un film du corpus present dans le cache). Resultat : ECART sur `positions` (compte identique
+  110 004, sha different) et sur `artifact` — **les DEUX sont obtenus a l identique avec la
+  bascule de 5.3.3-a ABAISSEE**, donc anterieurs au lot (D15 au § 4). La seule etape que la
+  bascule deplace est `killsource`, dont le digest porte la VALEUR du profil calibre.
+- **A/B PAR `replay-build`, cache de faits VIDE A CHAQUE PASSE** (piege : sans cela la seconde
+  passe relit les faits de la premiere et rend un faux « identique » en 172 ms) : `000d5950` et
+  `bcb6d393`, bascule levee puis abaissee, **artefact BIT A BIT IDENTIQUE** des deux cotes
+  (`bcb2a510…`, `af57c5ea…`).
+- **DIFF DECOMPRESSE DES 8 FIXTURES DE CONTRAT**, champ par champ sur `bcb6d393` : **35 valeurs
+  changees, toutes des chaines de revision** (`coverage.decoder.grammarRev` / `factsRev` et
+  `layers[*]`). Aucun champ ajoute, aucun retire, aucune longueur de tableau modifiee.
+- `vitest` sur `src/features/match-replay/test/testDoc.guard.test.ts` (les fixtures refigees sont
+  lues par le web) : **6/6 ok**.
+- **MESURES DE FILM** (`bfecd02b` Snowbound, `4f77afc1` Flood Gulch), un film a la fois, quatre
+  instruments de recherche neufs sous `//go:build research`. Toutes les tables sont a la note 5.3
+  (§ 2terdecies a § 2sexdecies).
+
+**RATCHETS** : ratchet 0.A.3 (`keyframe_closure.golden`) **inchange, aucune ligne en baisse** ·
+empreinte de la couche `grammar` refigee TROIS fois, dont deux A REVISION EGALE (godoc et portes
+de publication : aucun bit lu autrement, aucune sortie de production modifiee) · `facts.Rev`
+montee une seule fois, mecaniquement.
+
+**NON JOUES, ET C EST LE PROGRAMME DU PILOTE** : le corpus 19, l equivalence complete sur 20
+films, le re-figeage des references et la CI.
+
+### Post-chantier — lot 5.3 (états de mouvement), point 5.3.1, gates SANS AUCUN DÉCODAGE, 2026-09-20
+
+Branche `feat/decfilm-53`, base `6e86db356`. **AUCUN film lu, AUCUNE base DuckDB ouverte** — un
+backfill killsource tient le parc en écriture pendant tout le lot (verrou solo). Les jonctions
+`film_chunks` et `film_manifests` sont posées et intactes (**1 598 entrées** chacune),
+`data/cache/replays` n'a jamais été touché. `npm ci` joué dans `apps/web` avant le premier
+commit ; aucun `--no-verify`.
+
+**Aucun octet de production Go ne bouge** : les trois fichiers neufs et les deux fichiers
+touchés de `film/research/` sont tous sous `//go:build research`, et la racine d'empreinte de
+la couche grammaire est `film/internal/grammar/` — `film/research/` en est DEHORS. `grammar.Rev`
+et `facts.Rev` sont donc inchangés, et les 8 fixtures de contrat aussi.
+
+| Date | Point | Gate | Résultat |
+|---|---|---|---|
+| 2026-09-20 | 5.3.1 | périmètre (`git status`) | **7 chemins**, tous du lot : le plan, la note 5.3, `archlint/film_layers_deps_test.go`, deux fichiers de `research/reapparition/`, deux paquets neufs de `research/` |
+| 2026-09-20 | 5.3.1 | calibration de la chaîne du descripteur (`cmd_mouvement`) | **6 témoins sur 6**, et les 5 cibles résolues sans un échec ; les 5 écrivains concordent À L'OCTET avec ceux que le décodeur porte (`142ed42a8`, `142f02978`, `1408f0264`, `142f0293c`, `14076d45c`) |
+| 2026-09-20 | 5.3.1 | négatif du vocabulaire (`cmd_mouvement -vocabulaire`) | univers des noms de composant balayé ; « sprint » **71 chaînes / 0 composant**, « jump » **94 / 0**, « clamber » **34 / 0**, « airborne » **68 / 0**, « vault » **14 / 0**, « mantle » **0 / 0** ; « crouch » 66 / **1**, « slide » 60 / **1**, « posture » 14 / **1**, « mobility » 10 / **1** |
+| 2026-09-20 | 5.3.1 | borne de déquantification lue dans l'image (`read_memory 143cd8374`) | `00 00 80 3f` = **1.0f** — les fractions d'`i29` et d'`i62` sont bien dans `[0.0, 1.0]` |
+| 2026-09-20 | 5.3.1 | `gofmt -l ./internal ./cmd` · `go build ./...` · `go vet ./...` · `go vet -tags=research ./…/film/...` | sortie vide · `BUILD_OK` · `VET_OK` · `VET_RESEARCH_OK` |
+| 2026-09-20 | 5.3.1 | `go test -count=1` sur `halo_infinite/...`, `archlint`, `replaybuild`, `replaydoc`, `replayview`, `contracttest`, `api` | **tout vert, code de sortie 0** (aucune ligne hors `ok` / `no test files`) |
+| 2026-09-20 | 5.3.1 | ratchet des couches (`TestCouchesDuDecodeurSontPeupleesEtALeurPlace`) | **A REFUSÉ le lot au premier passage** (deux paquets de `research/` hors couche) ; les deux sont déclarés `horsCoucheFilm` comme leurs voisins de 3.7, avec la raison écrite — le ratchet repasse vert. C'est le garde-rail qui fait son travail, pas un contournement |
+| 2026-09-20 | 5.3.1 | `golangci-lint run ./…/film/... ./internal/archlint/...` (cache isolé) | **0 issues** |
+| 2026-09-20 | 5.3.1 | `go test -race` sur `grammar` | **NON JOUÉ et assumé** : `film/internal/grammar/` n'est pas touché d'un octet (`git diff --name-only` le montre). À rejouer au premier commit qui touche la grammaire |
+| 2026-09-20 | 5.3.1 | `make check-types`, `make test-web` | **NON JOUÉS et assumés** : aucun fichier de `apps/web/`, ni `openapi.yaml`, ni un type généré. À rejouer au premier commit qui touche le web (5.3.3 si le port a lieu) |
+| 2026-09-20 | 5.3.1 (D1) | `go test -tags=research -run TestMouvementI55D1` sur les 7 mini-bobines | **1 364 records `ti=35` bornés · `i55` franchi 895 · tags t0=685 t1=79 t2=52 t3=79 (23,5 % non nuls)** ; écart à l'uniforme **1 270** ; fermetures **6/1 364, dont 0 après `i55`**. `i29`/`i54`/`i55` présents sur les mêmes 895 records, `i62` sur **0**. Aucun film du cache, aucune base — les mini-bobines ne portent que registre + 12 images-clés + pied |
+| 2026-09-20 | 5.3.1 ter | lecture des écrivains `i18`/`i19`/`i25`/`i49`/`i55` (Ghidra en lecture seule, aucun film) | `i18` = `R(1)` ; `R(5)`->`+0x548` et `R(1)+R(6)`->`+0x726` (index bornés à `0x20`, sentinelle `0xFFFF`, hors plage = échec) ; `R(1)+R(32)`->**`+0x544`, défaut 0**. `i49` = `R(2 ou 4)` + `R(1)` (et non « 3 bits »). Énuméré Havok lu dans l'image à `0x1437d6870` : **cinq états au moins**, donc PAS le tag de 2 bits d'`i55`. Graphe d'animation : transitions gardées par `is_sprinting` / `is_airborne` — des CONDITIONS D'ÉTAT |
+| 2026-09-20 | 5.3.1 bis | vérification sur pièces (documents + exe, Ghidra en lecture seule) | `FUN_142ef8f04` (événement 43) appelle **`FUN_1408f02c8`**, le corps d'`i54` ; **xrefs = 2 appelants exactement**. R5/R7 : type 43 **ABSENT du film** (0 tête / 325 160 paquets ; 0 pour 16,3 attendues en liste entière). Table des 123 types : **seuls `ai_jump` (78) et `AILand` (72)** au vocabulaire du saut, tous deux AI. `i56` = `R(3)` + `R(7)` x popcount, trois charges, défaut `0x7F`. **Aucun film lu, aucune base ouverte** |
+| 2026-09-21 | 5.3.2 | `go test -tags=research -run TestMouvement532` sur `bfecd02b` puis `4f77afc1`, UN A LA FOIS | **162 444 + 378 661 records delta, 207 + 995 d'image-clé.** `i18`/`i29`/`i55` : 0,0 % en delta, ~99 % en image-clé. `i54` : 453 et 1 792 initiations (9 et 63 slots). `i55` tags non nuls **32,7 %** et **25,7 %**. `i62` : **0** (derrière le bloquant `i60`, 171/207 et 859/995). Mot de 32 bits : **32/32 bits allumés**, 7,2-20,6 %, aucun dominant. Vitesse médiane 125 vs 211 et 130 vs 217. **Aucune base DuckDB ouverte, aucun artefact, aucun corpus** |
+| 2026-09-21 | 5.3.2 | ratchet de taille (`TestTailleDesFichiersDuFilmNeCroitPas`) | **A REFUSÉ l'instrument à 826 lignes** (seuil 500). Scindé par DÉPLACEMENT PUR en `mouvement_5_3_2_research_test.go` (la lecture, 416 l.) et `mouvement_5_3_2_tableaux_research_test.go` (les tableaux, 424 l.) ; la table `plafondsParFichier` n'a PAS été touchée |
+| 2026-09-21 | 5.3.2 | `gofmt` · `go build` · `go vet` (dont `-tags=research`) · les 7 paquets de test · `golangci-lint run ./…/film/...` | sortie vide · `BUILD_OK` · `VET_OK` + `VET_RESEARCH_OK` · **code de sortie 0** · **0 issues** |
+| 2026-09-21 | 5.3.3.0 | `git merge --no-ff feat/recherche-decodeur-film` (5fd6f02c3, `grammar-2026-09-20.2`) dans `feat/decfilm-53`, AVANT tout travail de grammaire | **fusion PROPRE, aucun conflit** (30 fichiers, dont `orientation_frame.go`, `vehicle_heading.go` et les 7 fixtures 64). Gates sans décodage : gofmt vide · `BUILD_OK` · `VET_OK` + `VET_RESEARCH_OK` · 7 paquets de test **code de sortie 0** · golangci-lint **0 issues**. Les commits de grammaire du lot monteront donc depuis `.2` |
+| 2026-09-21 | 5.3.3.0 | référence POST-FUSION sur `bfecd02b` (`TestMouvement532Trame`) | **IDENTIQUE à la pré-fusion** — 25 958 paquets cadrés, **10 512 trames saines (40,5 %)**, 11 150 records `ti=35`, **12 316 rejets de génération / 3 130 désyncs réelles**, fautifs `ti=5 i22` 371 · `ti=2 i15` 331 · `ti=10 i5` 228 · `ti=35 i60/i59/i57` 38/19/12 ; étalon `i21` 64,3 %, `i25` 94,8 %. Le lot 5.4 touche `ti=40`, pas le bipède : **c'est la référence de tous les gates de 5.3.3** |
+| 2026-09-20 | 5.3.1 | corpus gate, `replay-equiv`, re-figeage | **AUCUN, et ce n'est pas un report** : rien de publié ne bouge, et la contrainte de machine l'interdit (voir l'en-tête). Le pilote les joue à la fin de la série (décision utilisateur du 2026-09-20) |
 
 ### Lot 5.2b — LE ROSTER DES REMPLACANTS, ET L ORIENTATION REFUTEE PAR SA CAUSE, 2026-09-20
 

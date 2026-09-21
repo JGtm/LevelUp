@@ -877,6 +877,18 @@ export interface ReplayText {
    */
   markMe: string
   healthLabel: string
+  /**
+   * L'ÉTAT DE MOUVEMENT COURANT, sur la fiche du joueur (schéma 65, lot 5.3.6). TROIS clés, et
+   * trois seulement : le film écrit l'accroupi, la glissade et l'action de mobilité ; le SPRINT
+   * est réfuté comme observable par la vitesse et le SAUT n'est pas prouvé (lot 5.3.5), donc
+   * aucune clé ne les nomme — un libellé sans donnée serait une promesse.
+   *
+   * `mobility` DIT « ACTION », PAS « ESCALADE » : le film transmet qu'une action de mobilité
+   * est amorcée, il ne dit pas LAQUELLE. L'énumération a trois candidats et le domaine mesuré
+   * de ses champs contredit l'hypothèse à quatre valeurs (note 5.3, § 2.8 et D9). Nommer
+   * « Escalade » serait choisir à la place de la mesure.
+   */
+  stanceKind: Record<'crouch' | 'slide' | 'mobility', string>
   shieldLabel: string
   abilityLabel: string
   loadoutUnread: string

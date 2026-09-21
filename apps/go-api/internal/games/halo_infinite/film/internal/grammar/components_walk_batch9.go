@@ -52,4 +52,7 @@ func consumeGameEngineCampaignTimer(br *Lecteur) { br.Skip(37) }
 
 // consumeBipedPosturePhysics (ti35 i55) — deser FUN_142f0293c -> FUN_142f1f630 : R(2) puis
 // FUN_141fd997c (resolution d'etat, 0 bit lu).
-func consumeBipedPosturePhysics(br *Lecteur) { br.Skip(2) }
+// LE TAG EST PUBLIE DEPUIS LE LOT 5.3.4 (2026-09-21) — deux bits, la meme consommation.
+func consumeBipedPosturePhysics(br *Lecteur) {
+	br.publishEtatMouvement(EtatPosture, br.ReadBits(2))
+}

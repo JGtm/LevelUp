@@ -65,12 +65,29 @@ func consumeDynPrecVec3(br *Lecteur, mag, scale uint) { //nolint:unparam // magn
 //	if outer == 0 : consumeDynPrecVec3(mag=19, scale=10)                 [delta path]
 //
 // Bit cost: outer==1 -> 97 ; outer==0 & present -> 31 ; outer==0 & absent -> 2.
+// LES QUATRE VALEURS SONT PUBLIEES DEPUIS LE LOT 5.3.4 (2026-09-21) : la vitesse a l instant est
+// ce qui distingue une montee (composante verticale) d un deplacement au sol, et ce qui ferait
+// voir un sprint (seconde bosse de l histogramme de vitesse au sol). La consommation de bits est
+// INCHANGEE (cf. `etats_mouvement_hooks.go` pour la forme de la tranche).
 func consumeObjectTranslationalVelocity(br *Lecteur) {
 	if br.ReadBit() { // FUN_14076d45c R(1); set -> FUN_14076d4d0 mode 2 (keep)
 		br.ReadBits(rawVec3Bits) // FUN_1406d676c(...,0x60) = R(96)
+		br.publishEtatMouvement(EtatVitesse, 1, 0, 0, 0)
 		return
 	}
-	consumeDynPrecVec3(br, velocityMagBits, velocityScaleBits)
+	porte, dir, ech := consumeDynPrecVec3Lu(br, velocityMagBits, velocityScaleBits)
+	br.publishEtatMouvement(EtatVitesse, 0, bit2u(porte), dir, ech)
+}
+
+// consumeDynPrecVec3Lu est [consumeDynPrecVec3] qui REND ce qu il a lu : la porte, la direction
+// empaquetee et le mot d echelle. Meme consommation de bits, au bit pres.
+func consumeDynPrecVec3Lu(br *Lecteur, mag, scale uint) (porte bool, dir, ech uint64) {
+	if porte = br.ReadBit(); porte { // FUN_14076d528 leading R(1); JNZ -> absent
+		return porte, 0, 0
+	}
+	dir = br.ReadBits(mag)   // packed direction (feeds FUN_1406d8288 unpack, 0 extra bits)
+	ech = br.ReadBits(scale) // FUN_14076d6dc log/exp scale word
+	return porte, dir, ech
 }
 
 // consumeObjectAngularVelocity (i3) mirrors FUN_140d87740 -> FUN_14076e1c8. Same

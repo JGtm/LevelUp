@@ -1208,8 +1208,14 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   cette montée PUBLIE une lecture existante. `layers` est inchangé, le blob d'entrées est
 	//   inchangé à l'octet, aucune recuisson n'est requise pour les autres calques.
 	//   Détail, seuil mesuré et forme écartée : `document_chronicle.go`.
-	if SchemaVersion != 64 {
-		t.Fatalf("SchemaVersion = %d, attendu 64 : incrémenter exige une raison écrite ci-dessus "+
+	// - v65 (post-chantier lot 5.3.6, 2026-09-21, décision utilisateur) : LES ÉTATS DE
+	//   MOUVEMENT. `stances[]` publie un INTERVALLE par (vie, genre) — `crouch`, `slide`,
+	//   `mobility` — et les types `Stance`/`StanceCoverage` naissent avec lui : la FORME change.
+	//   MONTENT AUSSI, à la différence de la v64 : `grammar.Rev`, `facts.Rev` et le blob
+	//   d'entrées (`REPLAYINPUTS24`) — la couche rend une valeur de PLUS, qui transite par les
+	//   faits. Sprint RÉFUTÉ, saut NON PROUVÉ (lot 5.3.5). Détail : `document_chronicle.go`.
+	if SchemaVersion != 65 {
+		t.Fatalf("SchemaVersion = %d, attendu 65 : incrémenter exige une raison écrite ci-dessus "+
 			"(un champ optionnel de plus n'en est pas une)", SchemaVersion)
 	}
 }

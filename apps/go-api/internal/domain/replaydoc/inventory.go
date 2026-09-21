@@ -92,6 +92,19 @@ type EquipmentEpisode struct {
 	A       int    `json:"a,omitempty"`
 }
 
+// Stance est UN intervalle d'ETAT DE MOUVEMENT du Spartan, porté par une vie (schéma 65).
+//
+// `Kind` vaut `crouch` (accroupi), `slide` (glissade) ou `mobility` (action de mobilité) — et
+// rien d'autre : le sprint est réfuté comme observable par la vitesse et le saut n'est pas
+// prouvé (cf. `replay/document_stances.go`). Un genre inconnu du client ne doit recevoir AUCUN
+// libellé, jamais celui d'un voisin.
+type Stance struct {
+	Slot uint32 `json:"slot"`
+	Kind string `json:"kind"`
+	T0   int    `json:"t0"`
+	T1   int    `json:"t1"`
+}
+
 // EquipmentPlacement est UNE pose d'équipement, datée et située.
 type EquipmentPlacement struct {
 	T0       int      `json:"t0"`

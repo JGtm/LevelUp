@@ -253,6 +253,10 @@ func NewFilmContext(film *source.Film) *FilmContext {
 func NewFilmContextForMap(film *source.Film, entry *profile.MapQuantEntry, forced *profile.I0Layout) *FilmContext {
 	c := &FilmContext{film: film, impose: resolveI0Layout(forced, entry),
 		bal: ProfilDeBalayageParDefaut()}
+	// LA CARTE DECIDE D UNE BASCULE DE GRAMMAIRE, ET D UNE SEULE : cf. [grammaireSousCarte].
+	// Le decoupage impose est le temoin exact de la PRESENCE des largeurs (il est nil quand ni
+	// l appelant ni le catalogue n en fournit — `resolveI0Layout`).
+	c.bal.Grammaire = grammaireSousCarte(c.bal.Grammaire, c.impose != nil)
 	c.prof, c.profLu = ResolveProfile(film, entry), true
 	journaliserProfilIncomplet(film, c.prof)
 	return c

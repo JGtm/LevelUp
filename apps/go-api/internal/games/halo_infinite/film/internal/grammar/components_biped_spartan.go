@@ -104,11 +104,15 @@ func consumeSimulationStatePlayback(br *Lecteur) {
 // (0x13 then 0x0a); FUN_1406d8288 is pure dequant arithmetic (0 bits). Polarity:
 // `TEST DL,DL; JNZ copy` means bit==1 -> skip (0 bits), bit==0 -> read (consumeGate0R
 // shape, here a composite 19+10 body). CONFIRMED bit-exact from the FUN_14076d528 disasm.
-func consumeBipedSlideQuantNormal(br *Lecteur) {
-	if !br.ReadBit() { // R(1) MSB gate; bit==0 -> body
-		br.ReadBits(19) // R(0x13) packed dir/mag
-		br.ReadBits(10) // FUN_14076d6dc = R(10) magnitude
+// LES TROIS VALEURS SONT RENDUES DEPUIS LE LOT 5.3.4 (2026-09-21) : la porte, la direction
+// empaquetee et la magnitude. La consommation de bits est INCHANGEE.
+func consumeBipedSlideQuantNormal(br *Lecteur) (porte bool, dir, mag uint64) {
+	if porte = br.ReadBit(); porte { // R(1) MSB gate; bit==0 -> body
+		return porte, 0, 0
 	}
+	dir = br.ReadBits(19) // R(0x13) packed dir/mag
+	mag = br.ReadBits(10) // FUN_14076d6dc = R(10) magnitude
+	return porte, dir, mag
 }
 
 // consumeBipedSlide mirrors FUN_142f26ce8 (verified against its disasm):
@@ -123,15 +127,22 @@ func consumeBipedSlideQuantNormal(br *Lecteur) {
 // param_4 (EBP=R9D) == recordStateParam. With recordStateParam==2 (>=1) the second
 // dequant R(8) IS taken. Common totals: 1 bit (gate==0) or 1+(1+{0|29})+8+8+8 =
 // 26 / 55 bits (gate==1). CONFIRMED bit-exact from the FUN_142f26ce8 disasm.
+// LES SEPT VALEURS SONT PUBLIEES DEPUIS LE LOT 5.3.4 (2026-09-21) : la glissade est un ETAT A
+// L INSTANT, et la porte de tete dit a elle seule si cet instant en porte une. La consommation
+// de bits est INCHANGEE (cf. `etats_mouvement_hooks.go` pour la forme de la tranche).
 func consumeBipedSlide(br *Lecteur, recordStateParam uint32) {
-	if br.ReadBit() { // FUN_1406cf008 = R(1) gate
-		consumeBipedSlideQuantNormal(br) // FUN_14076d4d0 -> FUN_14076d528
-		br.ReadBits(8)                   // FUN_1406d84b4(w=8) = R(8)
-		if recordStateParam >= 1 {
-			br.ReadBits(8) // FUN_1406d84b4(w=8) = R(8), gated on param_4>=1
-		}
-		br.ReadBits(8) // inline R(8) -> [dst+2]
+	if !br.ReadBit() { // FUN_1406cf008 = R(1) gate
+		br.publishEtatMouvement(EtatGlissade, 0, 0, 0, 0, 0, 0, 0)
+		return
 	}
+	porte, dir, mag := consumeBipedSlideQuantNormal(br) // FUN_14076d4d0 -> FUN_14076d528
+	a := br.ReadBits(8)                                 // FUN_1406d84b4(w=8) = R(8)
+	var b uint64
+	if recordStateParam >= 1 {
+		b = br.ReadBits(8) // FUN_1406d84b4(w=8) = R(8), gated on param_4>=1
+	}
+	c := br.ReadBits(8) // inline R(8) -> [dst+2]
+	br.publishEtatMouvement(EtatGlissade, 1, bit2u(porte), dir, mag, a, b, c)
 }
 
 // ---------------------------------------------------------------------------
@@ -346,9 +357,15 @@ func consumeBipedSpartanAbility(br *Lecteur) bool {
 //	a = R(1) (FUN_1406cf008)  -> dst[0]
 //	si a != 0 :
 //	    FUN_14297ea84(br) = R(6)
-//	    si (dst[2] & 1) != 0 : b = R(1) ; branche gardee par (dst[2] & 0x10) ;
-//	                           FUN_142f04664(dst+4, br, b, param_3)
-//	    -> dst[2] est un octet d'ETAT RUNTIME : NON derivable du flux. Desync propre.
+//	    si (dst[2] & 1) == 0 : rien de plus, on saute a la queue
+//	    sinon : c = R(1), puis TROIS CAS, ET EUX SEULS (relecture du 2026-09-21, lot 5.3.3-c) :
+//	        c == 0                      -> FUN_142f04664(dst+4, br, 0, param_3)
+//	        c == 1 et (dst[2] & 0x10)   -> FUN_1406d3140 (un id d'entite) PUIS FUN_142f04664
+//	        c == 1 et !(dst[2] & 0x10)  -> FUN_1406d3140 SEUL, puis saut a la queue
+//	    -> dst[2] est un octet d'ETAT RUNTIME, et il n'est ECRIT PAR AUCUNE lecture de cette
+//	       fonction (seuls dst[0] et dst[1] le sont) : il n'est donc PAS derivable du flux, ni
+//	       ici ni chez l'ecrivain. Desync propre, et c'est definitif tant qu'aucune autre
+//	       composante ne replique cet octet.
 //	t = R(1)  -> dst[1]
 //	si t != 0 : FUN_14076e494(br, dst+0x18, 0x10, 0, param_3, 0)   = la MEME queue qu'i60
 //

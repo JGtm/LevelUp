@@ -441,7 +441,41 @@ package facts
 //
 // `SchemaVersion` NE MONTE PAS : aucun champ n est ajoute au document.
 
-const Rev = "killsource-2026-09-20"
+// ENTREE `killsource-2026-09-21` (2026-09-21, lot 5.3.3-a) : LA REVISION MONTE MECANIQUEMENT
+// DERRIERE LA GRAMMAIRE — `i60` EST DECLARE COMPLET QUAND LA CARTE EST LA.
+//
+// AUCUN OCTET DE `facts/` N EST TOUCHE. `grammar.Rev` passe a `grammar-2026-09-21` :
+// `SimStateComplet` ne se pose plus a la main, il SUIT les largeurs d axe de la carte du match
+// (chronique de `grammar`, entree du meme jour). La traversee du bipede va donc plus loin sur
+// tout film dont la carte est cataloguee — 38 desynchronisations d `i60` en moins sur le seul
+// `bfecd02b`. Cette constante hache la VALEUR de la revision de grammaire : elle monte
+// mecaniquement, et les lignes de `match_kill_events` anterieures deviennent candidates au
+// backlog de redecodage (D6, SUR SIGNAL UTILISATEUR, jamais automatiquement).
+//
+// CE QUE CE BACKLOG RAPPORTERAIT, MESURE AVANT DE L OUVRIR : RIEN. A/B par `replay-build` sur
+// `000d5950` et `bcb6d393`, bascule levee puis abaissee, cache de faits vide a chaque passe :
+// artefact BIT A BIT IDENTIQUE. Le `replay-equiv` du meme film ne deplace que le digest de
+// l etape `killsource`, et ce digest porte la VALEUR du profil calibre — compte et octets du
+// kill-feed inchanges. Le pilote n a donc aucune raison de declencher ce backlog pour cette
+// revision-ci.
+//
+// `SchemaVersion` NE MONTE PAS : aucun champ neuf au document, et aucun octet cuit ne change.
+
+// ENTREE `killsource-2026-09-21.2` (2026-09-21, lot 5.3.6) : LA REVISION MONTE DERRIERE UN
+// BALAYAGE NEUF DE LA COUCHE GRAMMAIRE.
+//
+// AUCUN OCTET DE `facts/` N EST TOUCHE. `grammar.Rev` passe a `grammar-2026-09-21.2` : la couche
+// rend une valeur de plus — les ETATS DE MOUVEMENT du Spartan (accroupi, glissade, action de
+// mobilite), publies en `stances[]` au schema 65. Cette constante hache la VALEUR de la revision
+// de grammaire : elle monte, et les lignes de `match_kill_events` anterieures deviennent
+// candidates au backlog de redecodage (D6, SUR SIGNAL UTILISATEUR, jamais automatiquement).
+//
+// CE QUE CE BACKLOG RAPPORTERAIT POUR LE KILL-FEED : rien de neuf. Le calque des etats est
+// ADDITIF — un balayage de plus, sur un canal que le kill-feed ne lit pas. C est le CONTENU CUIT
+// qui change (`SchemaVersion` 64 -> 65), et c est `backfill-replay` qui le re-cuit, pas ce
+// backlog-ci.
+
+const Rev = "killsource-2026-09-21.2"
 
 // L EMPREINTE DES SOURCES DE LA COUCHE VIT DANS UN GOLDEN, A COTE DE CETTE REVISION :
 // `testdata/facts_rev.golden` porte le couple (revision, empreinte) avec son historique, et

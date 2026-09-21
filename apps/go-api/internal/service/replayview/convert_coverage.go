@@ -18,6 +18,7 @@ func toCoverage(v replay.Coverage) replaydoc.Coverage {
 		Seats:             ptrOf(v.Seats, toSeatCoverage),
 		Projectiles:       ptrOf(v.Projectiles, toProjectileCoverage),
 		Equipment:         ptrOf(v.Equipment, toEquipmentCoverage),
+		Stances:           ptrOf(v.Stances, toStanceCoverage),
 		Grapple:           ptrOf(v.Grapple, toGrappleCoverage),
 		Placements:        ptrOf(v.Placements, toEquipmentPlacementCoverage),
 		GroundWeapons:     ptrOf(v.GroundWeapons, toGroundWeaponCoverage),
@@ -222,6 +223,31 @@ func toEquipmentCoverage(v replay.EquipmentCoverage) replaydoc.EquipmentCoverage
 		OvershieldEpisodes: v.OvershieldEpisodes,
 		KillsRead:          v.KillsRead,
 	}
+}
+
+// toStanceCoverage convertit la couverture des ETATS DE MOUVEMENT (schema 65). `ByKind` est
+// RECOPIEE : partager la map ferait du document servi une vue sur celle du document stocke.
+func toStanceCoverage(v replay.StanceCoverage) replaydoc.StanceCoverage {
+	out := replaydoc.StanceCoverage{
+		Scanned:               v.Scanned,
+		Absent:                v.Absent,
+		Records:               v.Records,
+		Desyncs:               v.Desyncs,
+		Reads:                 v.Reads,
+		Intervals:             v.Intervals,
+		Lives:                 v.Lives,
+		TracksTotal:           v.TracksTotal,
+		Dropped:               v.Dropped,
+		EventPacketsUnlocated: v.EventPacketsUnlocated,
+		MapWidths:             v.MapWidths,
+	}
+	if len(v.ByKind) > 0 {
+		out.ByKind = make(map[string]int, len(v.ByKind))
+		for k, n := range v.ByKind {
+			out.ByKind[k] = n
+		}
+	}
+	return out
 }
 
 func toGrappleCoverage(v replay.GrappleCoverage) replaydoc.GrappleCoverage {

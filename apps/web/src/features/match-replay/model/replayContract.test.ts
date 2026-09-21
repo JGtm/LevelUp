@@ -113,6 +113,10 @@ const NULLABLE_ARRAYS = [
   'projectiles',
   'roster',
   'shots',
+  // `stances` : les ETATS DE MOUVEMENT du Spartan (schema 65, 2026-09-21) — un intervalle plat
+  // par (vie, genre), aucun tableau imbrique. Trois genres seulement : le sprint est refute
+  // comme observable par la vitesse et le saut n'est pas prouve (lot 5.3.5).
+  'stances',
   'structure',
   'tracks',
   // `weaponPads` : les SOCLES D'ARME du match (schéma 11, 2026-08-17) — position, famille,
@@ -270,6 +274,9 @@ const NULLABLE_ARRAY_PATHS = [
   'projectiles',
   'roster',
   'shots',
+  'stances',
+  // `coverage.stances.mapWidths` : le triplet de largeurs d'axe de la marche des etats.
+  'coverage.stances.mapWidths',
   'structure',
   'tracks',
   'weaponPads',
@@ -415,6 +422,10 @@ const PATHS_HORS_FRONTIERE = [
   // nullables du schéma 60 restent tels quels — les combler ici en ferait une seconde vérité.
   'coverage.score.roundsWritten',
   'coverage.score.roundsContradicted',
+  // `coverage.stances.mapWidths` (schema 65) : le TRIPLET de largeurs d'axe employe par la
+  // marche, publie parce que c'est le pre-requis le plus facile a oublier. Il vit dans
+  // `coverage`, donc hors frontiere pour la meme raison que les deux ci-dessus.
+  'coverage.stances.mapWidths',
 ] as const
 
 /** (3) La carte couvre EXACTEMENT les tableaux nullables du contrat, à toute profondeur. */

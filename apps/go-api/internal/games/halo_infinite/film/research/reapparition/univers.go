@@ -16,7 +16,10 @@ package reapparition
 // ecrits sans le suffixe (`biped-action`, `simulation-state`) : le rapport le dit, et le
 // vocabulaire se cherche alors dans le pool complet des chaines, pas ici.
 
-import "sort"
+import (
+	"sort"
+	"strings"
+)
 
 const suffixeComposant = "-component"
 
@@ -79,3 +82,77 @@ func estNomDeComposant(s string) bool {
 func finit(s, suf string) bool {
 	return len(s) >= len(suf) && s[len(s)-len(suf):] == suf
 }
+
+// ---------------------------------------------------------------------------
+// LE POOL COMPLET DES CHAINES — ce que l'en-tete de ce fichier annonce.
+//
+// `NomsDeComposants` ne rend que les noms en `-component`. Un vocabulaire de MOTEUR
+// (« sprint », « slide », « crouch », « jump », « clamber ») n'y figure pas forcement : il vit
+// dans des noms de tag, de propriete d'animation, de script de mode, ou nulle part. Le lot 5.3
+// a besoin de la forme FORTE du negatif — « ce mot n'est dans AUCUNE chaine de l'image » — et
+// c'est ce que ce balayage mesure.
+// ---------------------------------------------------------------------------
+
+// Chaine est une chaine C isolee d'une section de donnees, avec son adresse virtuelle.
+type Chaine struct {
+	VA    uint64
+	Texte string
+}
+
+// ChainesContenant rend, par mot cherche, les chaines de l'image qui le contiennent. La
+// comparaison est faite en minuscules des deux cotes : le moteur ecrit indifferemment
+// `biped-slide-component`, `SlideState` et `slide_speed`.
+//
+// La definition d'une chaine est ETROITE ET ECRITE : au moins `minLongueurChaine` octets
+// imprimables ASCII, terminee par un NUL, dans une section SANS code. Elle laisse dehors les
+// chaines larges (UTF-16) — un mot absent ici peut vivre en UTF-16 ; le rapport le dit.
+func (e *Executable) ChainesContenant(mots []string) map[string][]Chaine {
+	bas := make([]string, len(mots))
+	for i, m := range mots {
+		bas[i] = strings.ToLower(m)
+	}
+	out := map[string][]Chaine{}
+	for _, m := range bas {
+		out[m] = nil
+	}
+	for i := range e.sections {
+		s := &e.sections[i]
+		if s.execCode {
+			continue
+		}
+		e.balayerSection(s, bas, out)
+	}
+	for m := range out {
+		sort.Slice(out[m], func(a, b int) bool { return out[m][a].Texte < out[m][b].Texte })
+	}
+	return out
+}
+
+const minLongueurChaine = 4
+
+// balayerSection decoupe une section en chaines C imprimables et classe chacune sous les mots
+// qu'elle contient. Une meme chaine peut repondre a plusieurs mots : elle est classee sous
+// chacun, car le rapport se lit mot par mot.
+func (e *Executable) balayerSection(s *section, mots []string, out map[string][]Chaine) {
+	c := s.contenu
+	deb := 0
+	for off := 0; off <= len(c); off++ {
+		if off < len(c) && estImprimable(c[off]) {
+			continue
+		}
+		if off-deb >= minLongueurChaine {
+			texte := string(c[deb:off])
+			bas := strings.ToLower(texte)
+			for _, m := range mots {
+				if strings.Contains(bas, m) {
+					out[m] = append(out[m], Chaine{VA: s.va + uint64(deb), Texte: texte})
+				}
+			}
+		}
+		deb = off + 1
+	}
+}
+
+// estImprimable garde l'ASCII lisible, espace compris : un nom de tag du moteur y tient
+// entierement, et le NUL comme tout octet binaire coupe la chaine.
+func estImprimable(b byte) bool { return b >= 0x20 && b < 0x7f }

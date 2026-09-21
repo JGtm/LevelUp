@@ -5820,6 +5820,7 @@ export interface components {
             seats?: components["schemas"]["SeatCoverage"];
             shots: components["schemas"]["LayerCoverage"];
             skullCarries?: components["schemas"]["SkullCarriesCoverage"];
+            stances?: components["schemas"]["StanceCoverage"];
             t0Film?: components["schemas"]["T0FilmCoverage"];
             teams?: components["schemas"]["TeamCoverage"];
             tracks?: components["schemas"]["TrackCoverage"];
@@ -10449,6 +10450,7 @@ export interface components {
             scoreTimeline?: components["schemas"]["ScoreTimeline"];
             shots?: components["schemas"]["Shot"][] | null;
             skullCarries?: components["schemas"]["SkullCarry"][] | null;
+            stances?: components["schemas"]["Stance"][] | null;
             structure?: components["schemas"]["Surface"][] | null;
             structureBounds?: components["schemas"]["Bounds"];
             /** Format: int64 */
@@ -12002,6 +12004,39 @@ export interface components {
         SquadWeaponKills: {
             bars: components["schemas"]["SquadWeaponBar"][] | null;
             players: string[] | null;
+        };
+        Stance: {
+            kind: string;
+            /** Format: int32 */
+            slot: number;
+            /** Format: int64 */
+            t0: number;
+            /** Format: int64 */
+            t1: number;
+        };
+        StanceCoverage: {
+            absent?: boolean;
+            byKind?: {
+                [key: string]: number;
+            };
+            /** Format: int64 */
+            desyncs: number;
+            /** Format: int64 */
+            dropped?: number;
+            /** Format: int64 */
+            eventPacketsUnlocated?: number;
+            /** Format: int64 */
+            intervals: number;
+            /** Format: int64 */
+            lives: number;
+            mapWidths?: number[] | null;
+            /** Format: int64 */
+            reads: number;
+            /** Format: int64 */
+            records: number;
+            scanned: boolean;
+            /** Format: int64 */
+            tracksTotal: number;
         };
         StartCampaignRequest: {
             axis: string;

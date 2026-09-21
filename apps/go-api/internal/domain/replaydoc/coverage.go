@@ -14,6 +14,7 @@ type Coverage struct {
 	Seats             *SeatCoverage               `json:"seats,omitempty"`
 	Projectiles       *ProjectileCoverage         `json:"projectiles,omitempty"`
 	Equipment         *EquipmentCoverage          `json:"equipment,omitempty"`
+	Stances           *StanceCoverage             `json:"stances,omitempty"`
 	Grapple           *GrappleCoverage            `json:"grapple,omitempty"`
 	Placements        *EquipmentPlacementCoverage `json:"placements,omitempty"`
 	GroundWeapons     *GroundWeaponCoverage       `json:"groundWeapons,omitempty"`
@@ -260,6 +261,24 @@ type AbilityCoverage struct {
 	ScanNoise   int `json:"scanNoise"`
 	Unpublished int `json:"unpublished"`
 	Published   int `json:"published"`
+}
+
+// StanceCoverage dit ce que la marche des ETATS DE MOUVEMENT a lu et ce qu'elle a jeté — les
+// dénominateurs sans lesquels « N intervalles » ne se juge pas. Une couverture partielle est un
+// RESULTAT : la plupart des vies ne s'accroupissent ni ne glissent.
+type StanceCoverage struct {
+	Scanned               bool           `json:"scanned"`
+	Absent                bool           `json:"absent,omitempty"`
+	Records               int            `json:"records"`
+	Desyncs               int            `json:"desyncs"`
+	Reads                 int            `json:"reads"`
+	Intervals             int            `json:"intervals"`
+	ByKind                map[string]int `json:"byKind,omitempty"`
+	Lives                 int            `json:"lives"`
+	TracksTotal           int            `json:"tracksTotal"`
+	Dropped               int            `json:"dropped,omitempty"`
+	EventPacketsUnlocated int            `json:"eventPacketsUnlocated,omitempty"`
+	MapWidths             [3]uint        `json:"mapWidths,omitempty"`
 }
 
 // EquipmentCoverage dit combien de vies publiées portent au moins un épisode, par

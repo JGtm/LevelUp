@@ -50,6 +50,7 @@ func encodeurDeFaits(g *FilmFacts) *gwriter {
 	encodeCanauxDelta(w, g)
 	encodeEquipmentChanges(w, g.EquipmentChanges, g.EquipmentChangeStats)
 	encodeCapacites(w, g)
+	encodeEtatsDeMouvement(w, g)
 	encodeZoomEvents(w, g.ZoomEvents)
 	encodeMonde(w, g)
 	encodeVehicleScan(w, g.Vehicles)
@@ -257,6 +258,40 @@ func encodeCapacites(w *gwriter, g *FilmFacts) {
 
 	// Les POSES, puis la CALIBRATION qui les rend lisibles. Les deux vont ensemble : une
 	// liste vide ne dit pas la meme chose selon que le film a tranche sa largeur ou non.
+}
+
+// encodeEtatsDeMouvement ecrit les ETATS DE MOUVEMENT (v24) : la liste est rendue TRIEE par
+// instant, d ou le delta d horodatage. Les STATS suivent — c est `Absent` qui distingue « ce film
+// ne transmet pas les composants » de « personne ne s est accroupi », et `MapWidths` qui dit sous
+// quelles largeurs la marche a lu.
+func encodeEtatsDeMouvement(w *gwriter, g *FilmFacts) {
+	w.u(uint64(len(g.MovementStates)))
+	var lastTS uint64
+	for _, r := range g.MovementStates {
+		w.u(r.TimestampUS - lastTS)
+		lastTS = r.TimestampUS
+		w.u(uint64(r.Slot))
+		w.str(r.Kind)
+		w.bool8(r.On)
+		w.u(uint64(r.Progress))
+		w.u(uint64(r.Chunk))
+		w.u(uint64(r.PacketIndex))
+	}
+	st := g.MovementStateStats
+	w.u(uint64(st.Records))
+	w.u(uint64(st.Read))
+	w.bool8(st.Absent)
+	w.bool8(st.Scanned)
+	w.u(uint64(st.Packets))
+	w.u(uint64(st.EventPackets))
+	w.u(uint64(st.EventPacketsLocated))
+	w.u(uint64(st.EventPacketsUnlocated))
+	w.u(uint64(st.Desyncs))
+	w.u(uint64(st.SlotUnbound))
+	w.u(uint64(st.Duplicates))
+	for _, x := range st.MapWidths {
+		w.u(uint64(x))
+	}
 }
 
 // encodeMonde ecrit les poses d equipement et les deux voies de socles.

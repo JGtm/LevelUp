@@ -194,6 +194,11 @@ var couchesDuDecodeur = map[string]coucheFilm{
 	// aucune couche du decodeur, et se classe hors couche comme ses voisins.
 	"internal/games/halo_infinite/film/research/reapparition":     horsCoucheFilm,
 	"internal/games/halo_infinite/film/research/cmd_reapparition": horsCoucheFilm,
+	// Lot 5.3 (2026-09-20) : l instrument des etats de mouvement du Spartan. Meme nature que
+	// son voisin de 3.7, et il REUTILISE sa chaine de descripteur au lieu de la recopier : il
+	// lit `HaloInfinite.exe`, jamais un film, et n importe aucune couche du decodeur.
+	"internal/games/halo_infinite/film/research/mouvement":     horsCoucheFilm,
+	"internal/games/halo_infinite/film/research/cmd_mouvement": horsCoucheFilm,
 
 	// --- source : charger, decompresser, decouper, lire l en-tete, tenir le lecteur de bits.
 	// `source` est une FEUILLE sans aucun import du depot (ratchet `filmsource_leaf_test.go`)

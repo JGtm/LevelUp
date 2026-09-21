@@ -207,7 +207,7 @@ func consumeManagedAndObjectiveComponent(br *Lecteur, name string, level uint32)
 	case "game-engine-team-mapping", compGameEngineTeamMapping: // typeIdx=0 i0 (FUN_140f58200)
 		consumeGameEngineTeamMapping(br)
 		return variant, nil, true
-	case "unit-control-component":
+	case compUnitControl:
 		consumeUnitControl(br)
 		return variant, nil, true
 	case "unit-grenade-counts-component":

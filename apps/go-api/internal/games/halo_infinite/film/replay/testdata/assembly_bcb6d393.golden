@@ -6,7 +6,7 @@
 
 ## AXE DE TEMPS
 3465 frames · intervalle 100 ms · duree 346500 ms
-schema 64 · titre halo_infinite
+schema 65 · titre halo_infinite
 version majeure du film : 40
 origine de la frame 0 sur l horloge du fil : 12904 ms
 coup d envoi date par le film : 35704 ms · 55/55 piste(s) en mouvement · rafale 5 · marge depuis la frame 0 : 22800 ms
@@ -70,9 +70,9 @@ couverture : 137 lecture(s) decodee(s) -> 0 ecartee(s) avant l origine du rejeu 
 rangs de grenade : 0:en="Frag"/fr="Fragmentation", 1:en="Plasma"/fr="Plasma", 2:en="Dynamo"/fr="Dynamo", 3:en="Spike"/fr="Spike"
 
 ## GRENADES PORTEES — un axe, DEUX canaux, chaque lecture disant d ou elle vient
-191 lecture(s) · 106 par image-cle (~20 s) · 85 par delta (transmis AU CHANGEMENT)
+193 lecture(s) · 106 par image-cle (~20 s) · 87 par delta (transmis AU CHANGEMENT)
 36 lecture(s) portent le rang SELECTIONNE — une selection ne se devine pas
-couverture : 106 image-cle · 85 delta · 0 ecartee(s) sans piste · canal munitions refuse : true
+couverture : 106 image-cle · 87 delta · 0 ecartee(s) sans piste · canal munitions refuse : true
 
 ## CAPACITE PORTEE — le RANG de palette, deux canaux pour une seule grandeur
 14 lecture(s) · 14 par i48 (rang complet, paquets delta) · 0 par image-cle (fenetre 16..23)
@@ -89,7 +89,7 @@ couverture : 57 vie(s) publiee(s) · camo 2 vie(s) / 3 episode(s) · surbouclier
 0 evenement(s) -> 0 publie(s) (0 avec va-et-vient) · 0 avant l origine · 0 sans piste publiee
 
 ## IMPULSIONS DE CAPACITE — l usage MESURE du propulseur, attribue par le rang de la vie
-19 lecture(s) -> 10 geste(s) -> 3 publiee(s) · 7 sans identite · 0 famille non mesuree · 0 attribution indisponible · 0 avant l origine · 0 sans piste publiee · composant absent=false
+8 lecture(s) -> 4 geste(s) -> 3 publiee(s) · 1 sans identite · 0 famille non mesuree · 0 attribution indisponible · 0 avant l origine · 0 sans piste publiee · composant absent=false
   slot=512 t=357 thruster
   slot=512 t=432 thruster
   slot=512 t=468 thruster
