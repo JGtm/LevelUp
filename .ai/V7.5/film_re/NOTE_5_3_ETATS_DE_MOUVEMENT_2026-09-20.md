@@ -1510,6 +1510,107 @@ entraine `grammar.Rev` par empreinte, une entree de chronique, le ratchet 0.A.3 
 
 ---
 
+## 2 terdecies. LE PORT DE `SimStateComplet` (5.3.3-a) — LA BASCULE SUIT LA CARTE, ET LA CUISSON N EN VOIT RIEN
+
+> Point (a) du lot 5.3.3, execute le 2026-09-21. Le § 2duo.4 specifiait le changement ; celui-ci
+> le POSE, et il le mesure — y compris ce qu il ne change pas.
+
+### 2ter-d.1 CE QUI EST PORTE, ET OU
+
+Deux portes, une regle, ecrite une fois dans `grammaireSousCarte`
+(`grammar/profil_balayage.go`) : **la grammaire d un profil qui porte les largeurs d axe de la
+carte declare `i60` complet.**
+
+| porte | site | temoin de la presence de la carte |
+|---|---|---|
+| construction du contexte sous catalogue | `NewFilmContextForMap` (`film_context.go`) | `resolveI0Layout(forced, entry) != nil` |
+| installation des largeurs sur un profil deja construit | `ProfilDeBalayage.PoserLargeursObjetDuMondeDepuisDecoupage` | le decoupage passe la garde des axes non nuls |
+
+**LA SECONDE PORTE N EST PAS UN DOUBLON, ELLE EST OBLIGATOIRE.** `replay.poserProfilPuisCarte`
+remplace le profil **ENTIER** du contexte par celui que `killsource` a calibre
+(`Result.ProfilCalibre`) ; une bascule posee a la seule construction y serait EFFACEE sans un
+mot, et la production n aurait rien gagne. La seconde porte est celle de
+`killsource.ProfilDeDepartPourCarte` et de l installateur de `replay`, et elle survit a ce
+remplacement parce qu elle voyage avec les largeurs.
+
+Le DEFAUT GLOBAL reste faux (`grammaireDuProfil`), comme le § 2duo.4 l exigeait :
+`NewFilmContext` sert les enveloppes `ScanFilm*(dir)` et les instruments, ou les largeurs ne
+viennent pas de la carte.
+
+Garde-rail : `grammar/simstate_carte_test.go` — cinq cas de profil (defaut global, contexte sans
+carte, carte sans largeurs, entree nulle, carte avec largeurs) plus les deux sorties du geste
+d installation. Un defaut global leve, ou une porte perdue, le fait rougir.
+
+### 2ter-d.2 LE GATE DE CONTENU, TENU SANS AUCUNE VARIABLE D ENVIRONNEMENT
+
+La marche de reference relancee sur `bfecd02b` / `snowbound` **sans `MOUV532D_SIMSTATE`** — la
+bascule vient desormais du code de production, par la carte :
+
+| | passation (drapeau a la main) | 5.3.3-a (bascule portee) | gate |
+|---|---|---|---|
+| cadres delta a liste vide | 25 958 | 25 958 | |
+| trames saines | 10 546 (40,6 %) | **10 546 (40,6 %)** | |
+| records de trame | 28 185 | **28 185** | |
+| records `ti=35` | 11 228 | **11 228** | **>= 11 228 OK** |
+| etalon `i21` | 64,2 % | **64,2 %** | **~64 % OK** |
+| etalon `i0` / `i1` / `i25` | — | 62,5 % / 55,6 % / 94,6 % | |
+| rejets de GENERATION | 12 316 | **12 325** | |
+| desyncs REELLES | 3 087 | **3 087** | |
+| dont `ti=35` | 31 | **31** (1,0 %) | |
+| **fautif `i60`** | 0 | **0** (absent de la liste) | **-> 0 OK** |
+| `i29` lu | 14 | **14** | |
+| `i62` lu | 14 | **14** | |
+
+Les fautifs de `ti=35` sont desormais **`i59` (19)** et **`i57` (12)**, et rien d autre : c est
+exactement le perimetre du point (c).
+
+### 2ter-d.3 CE QUE LA CUISSON DE PRODUCTION EN VOIT : RIEN, ET C EST MESURE
+
+La question n est pas rhetorique : la bascule entre dans le chemin de `killsource` (donc dans la
+calibration), et une bascule de grammaire qui entre dans la calibration peut deplacer des
+positions. **Elle ne les deplace pas.** A/B par `replay-build`, cache de faits **vide a chaque
+passe** (sans quoi la seconde passe relit les faits de la premiere et rend un faux « identique »
+en 172 ms — piege rencontre) :
+
+| film | carte | bascule abaissee | bascule levee | verdict |
+|---|---|---|---|---|
+| `000d5950` | `cliffhanger` | `bcb2a510…` | `bcb2a510…` | **BIT A BIT IDENTIQUE** |
+| `bcb6d393` | `cliffhanger` | `af57c5ea…` | `af57c5ea…` | **BIT A BIT IDENTIQUE** |
+
+`replay-equiv -films bcb6d393` le confirme etape par etape : la **SEULE** etape que la bascule
+deplace est le digest de `killsource` — et ce digest porte la VALEUR du profil calibre, ou la
+bascule vit maintenant ; son compte (1) et les octets du kill-feed ne changent pas.
+
+**CE QUE CELA VEUT DIRE, ET CE QUE CELA NE VEUT PAS DIRE.** Ce que la bascule ouvre est la
+LECTURE DE LA TRAME — la ou `i60` fermait la traversee du bipede avant `i61-63`. Les calques
+publies aujourd hui ne consomment rien de ce qui est derriere (D8 : le balayage bipede de
+production s arrete a `i21`), donc l artefact ne bouge pas. Le port des etats dans le document
+est un autre lot, et il se decide apres la mesure finale.
+
+### 2ter-d.4 REVISIONS
+
+`grammar.Rev` : `grammar-2026-09-20.2` -> **`grammar-2026-09-21`**, avec son entree de chronique.
+`facts.Rev` : `killsource-2026-09-20` -> **`killsource-2026-09-21`**, mecaniquement (elle hache
+la valeur de la precedente). L entree de chronique des faits DIT ce qu un backlog de redecodage
+rapporterait pour cette revision : **rien**, mesure ci-dessus. `SchemaVersion` NE MONTE PAS.
+
+Goldens refiges : `grammar_rev.golden`, `facts_rev.golden`, `types/testdata/shapes.golden`, et
+les 8 fixtures de contrat `replay_schema_64_*.json.gz` + leur manifeste — **dont le diff
+decompresse ne porte QUE les deux chaines de revision** (verifie champ par champ sur
+`bcb6d393` : 35 valeurs, toutes des `grammarRev` / `factsRev` / `layers[*]`).
+
+Ratchet 0.A.3 (`keyframe_closure.golden`) : **aucune ligne en baisse** — il passe inchange.
+
+### 2ter-d.5 DECOUVERTE, NON TRAITEE (consignee au § 6)
+
+`replay-equiv -films bcb6d393` rend un ECART **PRE-EXISTANT** sur l etape `positions` : compte
+IDENTIQUE (110 004), sha different de la reference figee. **Il n est pas de ce lot** : il
+apparait a l identique quand la bascule est abaissee (meme sha obtenu), donc il vient de la base
+`5fd6f02c3` — les references d equivalence ont ete refigees pour la derniere fois a `6e86db356`
+(cloture 5.2), AVANT la fusion du lot 5.4. Le re-figeage est un geste du pilote, a la fin.
+
+---
+
 ## 3. LE NEGATIF, MESURE DEUX FOIS
 
 **(a) Sur l'archetype.** Les 64 composants de `ti=35` (`ecs_table.tsv`) : aucun nom ne contient

@@ -96,6 +96,41 @@ func (p *ProfilDeBalayage) PoserLargeursObjetDuMondeDepuisDecoupage(l profile.I0
 	// devenait le bit de poids faible du champ precedent : un pas de la moitie de l etendue
 	// de l axe a chaque bascule (31,89 m sur Y, mesure sur quatre films).
 	p.Mouvement.WorldObject.Region = l.Region
+	// LA CARTE EST LA, DONC `i60` EST DECLARE COMPLET : c est le critere de bascule que
+	// `SimStateComplet` porte depuis le lot R7-b, et il est TENU par ce geste meme (cf.
+	// [grammaireSousCarte]).
+	p.Grammaire = grammaireSousCarte(p.Grammaire, true)
+}
+
+// grammaireSousCarte rend la grammaire d un profil selon que les LARGEURS D AXE DE LA CARTE du
+// match sont disponibles pour le chemin absolu d i0. C EST LA REGLE, ECRITE UNE FOIS.
+//
+// # POURQUOI UNE BASCULE DE GRAMMAIRE DEPEND D UNE CARTE
+//
+// [GrammaireBalayage.SimStateComplet] declare `i60 simulation-state` entierement decode, queue
+// comprise. La grammaire de cette queue est etablie depuis le lot R7-b (2026-08-17) ; ce qui lui
+// manquait sur le chemin de production etait la SOURCE DES LARGEURS D AXE, et son critere de
+// bascule etait ecrit noir sur blanc : « que le chemin absolu d i0 tire ses trois largeurs de la
+// CARTE du match ». Un profil qui porte la carte TIENT ce critere ; un profil qui ne la porte pas
+// ne le tient pas, et `i60` y desynchronise PAR CONCEPTION — pas par lacune de grammaire.
+//
+// # CE QUI NE BASCULE PAS, ET C EST LE POINT
+//
+// Le DEFAUT GLOBAL ([grammaireDuProfil]) reste faux. `NewFilmContext` — auto-detecte, SANS
+// carte — sert les enveloppes `ScanFilm*(dir)` et les instruments, ou les largeurs d axe ne
+// viennent pas de la carte : un defaut global leve y ferait lire `i60` au-dela de ce que le
+// critere autorise. La bascule est donc une LIGNE DE PROFIL, posee par les deux portes par
+// lesquelles une carte entre dans un profil de balayage — ce geste-ci
+// ([ProfilDeBalayage.PoserLargeursObjetDuMondeDepuisDecoupage], la porte de `killsource` et de
+// `replay.installWorldObjectPrecision`) et la construction du contexte de film sous catalogue
+// (`NewFilmContextForMap`).
+//
+// MESURE DE SA LEVEE (carte `snowbound`, film `bfecd02b`, lot 5.3.3-a) : fautif `i60` 38 -> 0 ·
+// records `ti=35` 11 150 -> 11 228 · `i29` lu 7 -> 14 · `i62` lu 6 -> 14 · trames saines
+// 40,5 % -> 40,6 %.
+func grammaireSousCarte(g GrammaireBalayage, carte bool) GrammaireBalayage {
+	g.SimStateComplet = carte
+	return g
 }
 
 // GrammaireBalayage porte les BASCULES DE GRAMMAIRE d un balayage : les choix de lecture qui
@@ -129,10 +164,15 @@ type GrammaireBalayage struct {
 	// le passer a false rejoue la ligne de base d avant le portage.
 	DeserEtatParArchetype bool
 	// SimStateComplet : si vrai, i60 (simulation-state) est declare ENTIEREMENT decode et la
-	// traversee continue vers i61-63. Defaut false — la grammaire de la queue est etablie
-	// (`consumeSimStateHandleTail`, lot R7-b), ce qui manque est la SOURCE DES LARGEURS D AXE
-	// de cette queue sur le chemin de production. Critere de bascule du defaut : que le chemin
-	// absolu d i0 tire ses trois largeurs de la carte du match.
+	// traversee continue vers i61-63. La grammaire de la queue est etablie
+	// (`consumeSimStateHandleTail`, lot R7-b) ; ce qui manquait etait la SOURCE DES LARGEURS
+	// D AXE de cette queue, et le critere ecrit etait « que le chemin absolu d i0 tire ses trois
+	// largeurs de la CARTE du match ».
+	//
+	// IL NE SE POSE PLUS A LA MAIN DEPUIS LE LOT 5.3.3-a (2026-09-21) : il SUIT la carte, par
+	// [grammaireSousCarte] — vrai sur un profil qui porte les largeurs de la carte, faux sinon.
+	// Le defaut global reste faux, et c est le critere lui-meme qui l exige (cf. la doc de
+	// [grammaireSousCarte]).
 	SimStateComplet bool
 	// PorteeBaseline mirroite `DAT_144e61ea0` : une PORTEE, pas un reglage. Les lecteurs d etat
 	// complet du groupe `142e2*`/`142e3*` la levent juste AVANT l appel vtable[0x60] et la

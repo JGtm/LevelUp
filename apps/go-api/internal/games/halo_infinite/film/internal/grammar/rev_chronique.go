@@ -342,3 +342,47 @@ package grammar
 // temoin a 94,5, indiscernable — et sa direction lue n y est meme pas verticale, |z| median 0,585
 // contre 0,979 pour le mode 1). Le cap publie sort donc du film sur le mode 1 et sur lui seul ;
 // partout ailleurs la velocite reste la source, en repli nomme et compte.
+
+// ENTREE `grammar-2026-09-21` (2026-09-21, lot 5.3.3-a) : `SimStateComplet` NE SE POSE PLUS A LA
+// MAIN — IL SUIT LA CARTE DU MATCH.
+//
+// LA BASCULE EXISTAIT DEPUIS LE LOT R7-b (2026-08-17) AVEC SON CRITERE ECRIT : « que le chemin
+// absolu d i0 tire ses trois largeurs de la CARTE du match ». Le critere etait TENU depuis les
+// catalogues de cartes ; personne ne l avait relie au drapeau, et `i60 simulation-state` restait
+// donc declare NON porte en production alors que sa queue est decodee
+// (`consumeSimStateHandleTail`). Consequence mesuree : `i60` desynchronisait la traversee du
+// bipede juste avant `i61-63`, et les composants d ETAT DE MOUVEMENT qui vivent derriere lui
+// (`i29` accroupi, `i62` glissade) etaient perdus dans la moitie des records ou ils sont ecrits.
+//
+// CE QUI CHANGE, EN UNE LIGNE : la grammaire d un profil qui PORTE les largeurs de la carte
+// declare `i60` complet ([grammaireSousCarte], `profil_balayage.go`). Deux portes, et deux
+// seulement — le constructeur sous catalogue (`NewFilmContextForMap`) et le geste qui installe
+// les largeurs sur un profil deja construit (`PoserLargeursObjetDuMondeDepuisDecoupage`, la
+// porte de `killsource.ProfilDeDepartPourCarte` et de l installateur de `replay`,
+// `replay/world_object_precision.go`). La
+// seconde est obligatoire : `replay.poserProfilPuisCarte` remplace le profil ENTIER par celui
+// que `killsource` a calibre, et une bascule posee a la seule construction y serait effacee sans
+// un mot.
+//
+// LE DEFAUT GLOBAL RESTE FAUX, ET C EST LE CRITERE QUI L EXIGE : `NewFilmContext`
+// (auto-detecte, SANS carte) sert les enveloppes `ScanFilm*(dir)` et les instruments, ou les
+// largeurs d axe ne viennent pas de la carte. Garde-rail : `simstate_carte_test.go`.
+//
+// MESURE (film `bfecd02b`, carte `snowbound`, `DecodeFrameRecords`) : fautif `i60` 38 -> **0** ·
+// records `ti=35` 11 150 -> **11 228** · `i29` lu 7 -> **14** · `i62` lu 6 -> **14** · desyncs
+// reelles 3 130 -> **3 087** · trames saines 40,5 % -> **40,6 %** · `i21` 64,3 % -> 64,2 %.
+//
+// CE QUE LA CUISSON DE PRODUCTION EN VOIT : RIEN, ET C EST MESURE. A/B par `replay-build` sur
+// deux films (`000d5950` et `bcb6d393`, carte `cliffhanger`, cache de faits vide a chaque passe),
+// bascule levee puis abaissee : l artefact est BIT A BIT IDENTIQUE des deux cotes
+// (`bcb2a510…` et `af57c5ea…`). Le `replay-equiv` du meme film le confirme etape par etape : la
+// SEULE etape que la bascule deplace est le digest de `killsource`, et il porte la VALEUR du
+// profil calibre (`Result.ProfilCalibre`, ou la bascule vit desormais) — compte inchange, octets
+// du kill-feed inchanges. Ce que la bascule ouvre est la LECTURE DE LA TRAME, ou `i60` fermait la
+// traversee du bipede avant `i61-63` ; les calques publies aujourd hui ne consomment pas ce qui
+// est derriere.
+//
+// `facts.Rev` MONTE quand meme (elle hache la VALEUR de cette revision, mecaniquement) :
+// `killsource-2026-09-21`. Le backlog de redecodage reste un geste de production sur signal
+// utilisateur (D6), et cette entree-ci dit ce qu il rapporterait : rien sur le kill-feed.
+// `SchemaVersion` NE MONTE PAS : aucun champ neuf, et aucun octet cuit ne change.
