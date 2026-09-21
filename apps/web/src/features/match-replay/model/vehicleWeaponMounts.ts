@@ -249,6 +249,12 @@ export interface VehicleShotPlacement {
 export interface VehicleShotCaps {
   chassisDeg: number
   tireurDeg: number | null
+  /**
+   * CE QUI A TIRÉ (lot 5.8.5) : une arme DE VÉHICULE est solidaire du châssis, donc son cap est un
+   * repli légitime quand le montage manque ; une arme DE JOUEUR tirée d'un siège ne l'est pas —
+   * elle n'accepte que la visée mesurée de son tireur (règle du lot 5.2a.5, qui survit).
+   */
+  arme: 'vehicule' | 'joueur'
 }
 
 /**
@@ -274,8 +280,8 @@ export function vehicleShotPlacement(
   scalePxPerM: number,
 ): VehicleShotPlacement {
   // MONTAGE INCONNU : aucun décalage — l'éclair reste au CENTRE du châssis, la seule position
-  // que le document donne —, mais la DIRECTION du véhicule lui revient (cf. `vehicleShotOrigin`).
-  if (!mount) return { offset: { x: 0, y: 0 }, angle: vehicleAimAngle(caps.chassisDeg) }
+  // que le document donne —, mais la DIRECTION lui revient (cf. `vehicleMountAngle`).
+  if (!mount) return { offset: { x: 0, y: 0 }, angle: vehicleSansMontageAngle(caps) }
   const scale = vehicleSpriteScale(size.naturalHeightPx, size.mmPerPx, scalePxPerM) * k
   const localX = mount.ax * size.naturalWidthPx
   const localY = mount.ay * size.naturalHeightPx
@@ -305,13 +311,30 @@ function vehicleMountAngle(mount: VehicleWeaponMount, caps: VehicleShotCaps): nu
 }
 
 /**
+ * vehicleSansMontageAngle — LA DIRECTION QUAND AUCUN MONTAGE N'EST DOCUMENTÉ, et elle dépend de
+ * CE QUI A TIRÉ (lot 5.8.5).
+ *
+ *   - ARME DE VÉHICULE (le Shade, dont le tag `weap` manque) : le cap du CHÂSSIS, inchangé depuis
+ *     5.2a.5 — l'arme est solidaire du corps, c'est la seule direction que le film lui donne.
+ *   - ARME DE JOUEUR tirée d'un siège : la visée MESURÉE de son tireur, et RIEN d'autre. Le cap du
+ *     châssis lui serait une invention (règle du lot 5.2a.5, qui survit entière) ; sans lecture,
+ *     la source n'est pas même créée (`shotFx.vehicleShotSourceOf`), donc ce `null` ne se produit
+ *     qu'en appel direct.
+ */
+function vehicleSansMontageAngle(caps: VehicleShotCaps): number | null {
+  if (caps.arme === 'vehicule') return vehicleAimAngle(caps.chassisDeg)
+  return caps.tireurDeg === null ? null : vehicleAimAngle(caps.tireurDeg)
+}
+
+/**
  * vehicleShotOrigin — LE POINT ET LA DIRECTION D'UN ÉCLAIR, tir en véhicule compris
  * (2026-09-03). Posé ICI (pas dans `replayDraw.ts`, déjà au plafond de taille du dépôt,
  * CLAUDE.md n°5) : la composition repli/montage appartient au même fichier que la géométrie
  * qu'elle appelle.
  *
  * REPLI PAR DÉFAUT (`vehicleShot === null`, l'immense majorité des tirs) : le centre déjà
- * projeté, la direction du REGARD relu dans la trajectoire (`h`, cf. shotFx.ts) — inchangé.
+ * projeté, la direction du REGARD relu dans la trajectoire (`h`, cf. shotFx.ts) — inchangé. C'est
+ * là que retombe encore une arme de JOUEUR tirée d'un siège dont la visée n'est pas lue (5.8.5).
  *
  * TIR EN VÉHICULE AVEC MONTAGE CONNU : la demande utilisateur du 2026-09-03, mot pour mot —
  * « si ça vient du passager, faut que le tir vienne du siège passager qui a une tourelle » —
@@ -326,6 +349,8 @@ export function vehicleShotOrigin(args: {
   h: number | null
   vehicleShot: {
     mount: VehicleWeaponMount | null
+    /** Ce qui a tiré (lot 5.8.5) — cf. `VehicleShotCaps.arme`. */
+    arme: 'vehicule' | 'joueur'
     family: string | undefined
     headingDeg: number
     /** Visée MESURÉE du tireur (lot 5.5), `null` si aucune lecture en vigueur. */
@@ -339,14 +364,17 @@ export function vehicleShotOrigin(args: {
 }): { origin: XY; angle: number | null } {
   const { h, vehicleShot, center, sizeOf, k } = args
   if (!vehicleShot) return { origin: center, angle: h === null ? null : (-h * Math.PI) / 180 }
-  const { mount, family, headingDeg, shooterHeadingDeg } = vehicleShot
-  const caps: VehicleShotCaps = { chassisDeg: headingDeg, tireurDeg: shooterHeadingDeg }
+  const { mount, arme, family, headingDeg, shooterHeadingDeg } = vehicleShot
+  const caps: VehicleShotCaps = { chassisDeg: headingDeg, tireurDeg: shooterHeadingDeg, arme }
   const size = family ? sizeOf?.(family) : null
   // LA DIRECTION SANS LE SPRITE : même règle qu'avec lui (`vehicleMountAngle`), seul le DÉCALAGE
   // manque — il exige la taille réelle et ne s'invente pas. Un montage INCONNU (2026-09-20) prend
   // le cap du véhicule ; une TOURELLE prend la visée de son tireur (lot 5.5) ou rien.
   if (!size) {
-    return { origin: center, angle: mount ? vehicleMountAngle(mount, caps) : vehicleAimAngle(headingDeg) }
+    return {
+      origin: center,
+      angle: mount ? vehicleMountAngle(mount, caps) : vehicleSansMontageAngle(caps),
+    }
   }
   const { offset, angle } = vehicleShotPlacement(mount, caps, size, k, args.scalePxPerM)
   return { origin: { x: center.x + offset.x, y: center.y + offset.y }, angle }

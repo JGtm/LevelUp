@@ -115,7 +115,9 @@ describe('vehicleShotPlacement — rotation de l’ancre par le cap du véhicule
    * GÉOMÉTRIE ne portent que sur le cap du châssis, le seul qui place une ancre. Les tests de
    * DIRECTION posent leurs deux caps explicitement.
    */
-  const CAPS = (chassisDeg: number) => ({ chassisDeg, tireurDeg: null })
+  // `arme: 'vehicule'` est le cas nominal de ces tests (lot 5.8.5) : une arme DE VEHICULE, donc
+  // un chassis dont le cap est un repli legitime quand le montage manque.
+  const CAPS = (chassisDeg: number) => ({ chassisDeg, tireurDeg: null, arme: 'vehicule' as const })
   // Ancre nez pur (ax=0, ay=-0,5) : au bord haut du sprite AVANT rotation, comme
   // `drawRotatedSprite` dessine `drawImage(img, -w/2, -h/2, w, h)` (ay=-0,5 -> y local = -h/2).
   const nose: VehicleWeaponMount = { classe: 'fixe', ax: 0, ay: -0.5 }
@@ -178,7 +180,7 @@ describe('vehicleShotPlacement — rotation de l’ancre par le cap du véhicule
    */
   it('classe tourelle AVEC visée de tireur : direction = visée du tireur, pas le cap du châssis', () => {
     const turret: VehicleWeaponMount = { classe: 'tourelle', ax: 0, ay: 0 }
-    const p = vehicleShotPlacement(turret, { chassisDeg: 10, tireurDeg: 200 }, size, 1, ECHELLE)
+    const p = vehicleShotPlacement(turret, { chassisDeg: 10, tireurDeg: 200, arme: 'vehicule' as const }, size, 1, ECHELLE)
     expect(p.angle).toBeCloseTo((-200 * Math.PI) / 180, 10)
   })
 
@@ -189,7 +191,7 @@ describe('vehicleShotPlacement — rotation de l’ancre par le cap du véhicule
   it('classe tourelle : le DÉCALAGE suit le châssis, jamais la visée du tireur', () => {
     const turret: VehicleWeaponMount = { classe: 'tourelle', ax: 0, ay: -0.5 }
     const sansVisee = vehicleShotPlacement(turret, CAPS(90), size, 1, ECHELLE)
-    const avecVisee = vehicleShotPlacement(turret, { chassisDeg: 90, tireurDeg: 200 }, size, 1, ECHELLE)
+    const avecVisee = vehicleShotPlacement(turret, { chassisDeg: 90, tireurDeg: 200, arme: 'vehicule' as const }, size, 1, ECHELLE)
     expect(avecVisee.offset).toEqual(sansVisee.offset)
   })
 
@@ -199,7 +201,7 @@ describe('vehicleShotPlacement — rotation de l’ancre par le cap du véhicule
    * substituer la visée du tireur n'apporterait rien et brouillerait la règle.
    */
   it('classe fixe : la visée du tireur NE prend PAS le pas sur le cap du châssis', () => {
-    const p = vehicleShotPlacement(nose, { chassisDeg: 33, tireurDeg: 200 }, size, 1, ECHELLE)
+    const p = vehicleShotPlacement(nose, { chassisDeg: 33, tireurDeg: 200, arme: 'vehicule' as const }, size, 1, ECHELLE)
     expect(p.angle).toBeCloseTo((-33 * Math.PI) / 180, 10)
   })
 
@@ -214,6 +216,47 @@ describe('vehicleShotPlacement — rotation de l’ancre par le cap du véhicule
     const p = vehicleShotPlacement(null, CAPS(90), size, 1, ECHELLE)
     expect(p.offset).toEqual({ x: 0, y: 0 })
     expect(p.angle).toBeCloseTo((-90 * Math.PI) / 180, 10)
+  })
+
+  /**
+   * LOT 5.8.5 — SANS MONTAGE, LA DIRECTION DÉPEND DE CE QUI A TIRÉ.
+   *
+   * Une arme DE VÉHICULE est solidaire du corps : le cap du châssis est son repli légitime, et il
+   * ne change pas. Une arme DE JOUEUR tirée d'un siège ne l'est pas — le passager vise où il veut
+   * (règle du lot 5.2a.5, qui SURVIT) : elle n'accepte que la visée mesurée de son tireur.
+   */
+  it('sans montage, ARME DE VÉHICULE : le cap du châssis, inchangé depuis 5.2a.5', () => {
+    const p = vehicleShotPlacement(
+      null,
+      { chassisDeg: 90, tireurDeg: 200, arme: 'vehicule' },
+      size,
+      1,
+      ECHELLE,
+    )
+    expect(p.angle).toBeCloseTo((-90 * Math.PI) / 180, 10)
+  })
+
+  it('sans montage, ARME DE JOUEUR : la visée du tireur, JAMAIS le cap du châssis', () => {
+    const p = vehicleShotPlacement(
+      null,
+      { chassisDeg: 90, tireurDeg: 200, arme: 'joueur' },
+      size,
+      1,
+      ECHELLE,
+    )
+    expect(p.angle).toBeCloseTo((-200 * Math.PI) / 180, 10)
+  })
+
+  it('sans montage, ARME DE JOUEUR sans visée lue : aucune direction (jamais le châssis)', () => {
+    const p = vehicleShotPlacement(
+      null,
+      { chassisDeg: 90, tireurDeg: null, arme: 'joueur' },
+      size,
+      1,
+      ECHELLE,
+    )
+    expect(p.angle).toBeNull()
+    expect(p.offset).toEqual({ x: 0, y: 0 })
   })
 
   it('classe fixe : direction = vehicleAimAngle(cap), jamais null', () => {

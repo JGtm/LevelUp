@@ -197,6 +197,66 @@ describe('buildShotFx — tirs en véhicule (v), origine au montage plutôt qu�
   })
 
   /**
+   * LOT 5.8.5 — UNE ARME DE JOUEUR TIRÉE D'UN SIÈGE PREND LA VISÉE DE SON TIREUR.
+   *
+   * 5.2a.5 laissait ces tirs sur leur propre cap de REGARD : la règle était juste, mais ce cap
+   * vient de la trajectoire du bipède, qui ne réplique plus une fois embarqué — lisible pour
+   * 1 tir sur 241 (`4f77afc1`), 76 tirs concernés. 5.5.2 a établi que la visée de l'épisode du
+   * TIREUR (appariée par slot) est son PROPRE regard, et l'utilisateur l'a tranché le 2026-09-21.
+   */
+  it('arme de JOUEUR d’un siège AVEC visée lue : la source est gardée, pour sa visée', () => {
+    const d = doc({
+      vehicles: [
+        {
+          slot: 700, gen: 1, t0: 0, t1: 100, t1max: 100, end: 'unknown', family: 'warthog',
+          samples: [{ t: 0, x: 5, y: 5, h: 45 }],
+          rides: [{ slot: 1, t0: 0, t1: 100, src: 'film', seat: 1, aim: [{ t: 10, h: 200 }] }],
+        },
+      ],
+      weaponLabels: { '0xBR': { en: 'BR75', fr: 'BR75', fx: 'ballistic', tint: 'kinetic' } },
+      shots: [{ slot: 1, t: 10, x: 5, y: 5, w: '0xBR', v: 700 }],
+    })
+    const fx = buildShotFx(d, 50)[0]
+    expect(fx.vehicleShot).not.toBeNull()
+    expect(fx.vehicleShot?.arme).toBe('joueur')
+    expect(fx.vehicleShot?.mount).toBeNull()
+    expect(fx.vehicleShot?.shooterHeadingDeg).toBe(200)
+    // Le STYLE reste celui du registre : c'est bien une arme de joueur.
+    expect(fx.fam).toBe('ballistic')
+  })
+
+  it('arme de JOUEUR d’un siège SANS visée lue : la source n’est pas créée (le regard survit)', () => {
+    const d = doc({
+      vehicles: [
+        {
+          slot: 700, gen: 1, t0: 0, t1: 100, t1max: 100, end: 'unknown', family: 'warthog',
+          samples: [{ t: 0, x: 5, y: 5, h: 45 }],
+          rides: [{ slot: 1, t0: 0, t1: 100, src: 'film', seat: 1, aim: [] }],
+        },
+      ],
+      weaponLabels: { '0xBR': { en: 'BR75', fr: 'BR75', fx: 'ballistic', tint: 'kinetic' } },
+      shots: [{ slot: 1, t: 10, x: 5, y: 5, w: '0xBR', v: 700 }],
+    })
+    // Sans lecture de visée, la source n'apporterait rien et le tir perdrait son propre regard :
+    // c'est exactement le comportement d'avant le lot, et la règle de 5.2a.5 survit.
+    expect(buildShotFx(d, 50)[0].vehicleShot).toBeNull()
+  })
+
+  it('une arme DE VÉHICULE se déclare comme telle (le style et la direction en dépendent)', () => {
+    const d = doc({
+      vehicles: [
+        {
+          slot: 700, gen: 1, t0: 0, t1: 100, t1max: 100, end: 'unknown', family: 'ghost',
+          samples: [{ t: 0, x: 5, y: 5, h: 45 }],
+          rides: [],
+        },
+      ],
+      shots: [{ slot: 1, t: 10, x: 5, y: 5, w: GHOST_WEAP_TAG, v: 700 }],
+    })
+    expect(buildShotFx(d, 50)[0].vehicleShot?.arme).toBe('vehicule')
+  })
+
+  /**
    * LOT 5.8.2 — LA SECONDE JOINTURE DE STYLE. Sans elle, une arme de véhicule tombait sur la
    * famille `plain` et la teinte `neutral` (68 % des tirs de véhicule de `4f77afc1`) : un halo
    * gris pâle centré sur un sprite, qui ne se lit pas comme un tir.

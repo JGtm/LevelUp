@@ -7098,8 +7098,42 @@ aucune base DuckDB. Sept items, un commit chacun, dans l ordre. Sources : 5.2 (�
         parcourt desormais les stems des DEUX tables (et verifie que le compte reste 10 — un stem
         cable dans la seconde et oublie jouerait un seul fichier `_1`), celui du style du lot
         5.8.2 prend l union des DEUX jeux de tags.
-- [ ] **5.8.5 — UN TIR D ARME DE JOUEUR DEPUIS UN SIEGE PASSAGER PREND LA VISEE DE SON TIREUR**
-      (D2 du lot 5.5).
+- [x] **5.8.5 — UN TIR D ARME DE JOUEUR DEPUIS UN SIEGE PREND LA VISEE DE SON TIREUR** (web seul).
+  - [x] **LE NEGATIF QUI L ECARTAIT EST TOMBE, ET C EST 5.5.2 QUI L A FAIT TOMBER.** 5.2a.5
+        laissait ces tirs sur leur propre cap de REGARD : la regle etait juste (« le passager vise
+        ou il veut ») mais ce cap vient de la trajectoire du BIPEDE, qui ne replique plus une fois
+        embarque — lisible pour **1 tir sur 241**. 5.5.2 a etabli que la visee de l episode du
+        TIREUR, appariee par SLOT, est son PROPRE regard et non celui d autrui ; l objection qui
+        gelait ce cas ne s y applique donc pas. **Regle de l utilisateur, 2026-09-21** : « pour un
+        occupant NON conducteur, l orientation de la tourelle ou de son arme passager est sa
+        VISEE, son regard classique comme a pied ».
+  - [x] **LA REGLE DE 5.2a.5 SURVIT ENTIERE, ET C EST LE POINT DELICAT** : cette arme ne prend
+        JAMAIS le cap du chassis. `VehicleShotSource.arme` (`'vehicule' | 'joueur'`) porte le
+        discriminateur — le registre d armes, le MEME que celui du son — et
+        `vehicleSansMontageAngle` en tire deux branches nommees : arme de VEHICULE sans montage ->
+        cap du chassis (inchange, c est le Shade) ; arme de JOUEUR -> visee du tireur, ou RIEN.
+  - [x] **SANS LECTURE DE VISEE, LA SOURCE N EST MEME PAS CREEE** : le tir retombe alors sur son
+        propre regard (`h`), exactement comme avant le lot. Le lot ne peut donc RIEN retirer — il
+        n ajoute que la ou une visee est lue.
+  - [x] **MESURE AVANT / APRES, MEME POPULATION ET MEME CODE** (`tourelleVisee.mesure.test.ts`,
+        porte `TOURELLE_MESURE`, documents CUITS, aucun decodage ; l AVANT s obtient en forcant
+        `shooterHeadingDeg` a `null` dans la chaine de rendu REELLE) :
+
+        | document | population de tirs de vehicule | avec direction AVANT | APRES | dont tirs de TOURELLE |
+        |---|---:|---:|---:|---|
+        | `4f77afc1` | **165 -> 241** | 65 (27,0 %) | **236 (97,9 %)** | 95 / 100 (inchange) |
+        | `8a485699` | 15 | 15 (100 %) | 15 (100 %) | aucun |
+        | `0a44c6cc` | 30 | 30 (100 %) | 30 (100 %) | aucun |
+
+        **LES 76 TIRS DE D2 (5.5) SONT TOUS PASSES** : la population du rendu monte de 165 a 241
+        (241 - 165 = 76, le compte exact de la decouverte) et **236 des 241 portent une
+        direction**. Les 5 qui restent sont les 5 tirs de tourelle sans visee en vigueur — pas un
+        tir d arme de joueur ne manque. Les deux derniers documents sont les temoins de
+        NON-REGRESSION : pas un tir n y change de direction.
+  - [x] 6 cas vitest : sans montage, arme de VEHICULE -> cap du chassis ; arme de JOUEUR avec
+        visee -> la visee ; arme de JOUEUR sans visee -> `null` ET aucun decalage ; arme de joueur
+        d un siege avec visee -> source gardee, `arme: 'joueur'`, montage nul, style du REGISTRE ;
+        sans visee -> source non creee ; une arme de vehicule se declare `arme: 'vehicule'`.
 - [ ] **5.8.6 — LES SONS DES BASES : LE TIC DE SCORE, ET LA RAMPE SUIVIE D UN INTERVALLE NEUTRE**
       (restes de 5.2a.1).
 - [ ] **5.8.7 — UN SAUT DANS LA FRISE RECALE LE SON AU LIEU DE LE TIRER EN RAFALE**
@@ -7588,6 +7622,18 @@ Go, aucun fichier de son ajoute ni retire.
 viennent tous d un chassis `warthog` (100 avec vehicule publie, 5 sans), **0 `rockethog`,
 0 `warthog_gauss`** — un seul film du parc porte ce tag (`4f77afc1`). Consequence audible
 consignee en §4 D5 : **100 tirs passent de la roquette au silence**.
+
+**5.8.5 (la visee du tireur pour une arme de joueur tiree d un siege)** — `make check-types` apres
+purge (vert) · `make test-web` : **726 fichiers, 7 861 tests verts** (**+6** cas) · `npx eslint`
+sur les 4 fichiers touches : **0 erreur, 0 avertissement** · `npx knip` : aucun export mort.
+Aucun octet Go.
+**MESURE AVANT / APRES PAR L INSTRUMENT DEJA TESTE DU LOT 5.5** (`TOURELLE_MESURE=1 npx vitest run
+src/features/match-replay/model/tourelleVisee.mesure.test.ts`, documents CUITS, lecture seule,
+aucune base) : sur `4f77afc1` la population du rendu passe de **165 a 241** tirs de vehicule et
+**236 (97,9 %)** portent une direction, contre 65 (27,0 %) en forcant l AVANT dans la chaine
+reelle. Les 76 tirs de D2 (5.5) sont TOUS passes ; les 5 manquants sont les 5 tirs de tourelle
+sans visee en vigueur. Temoins de non-regression `8a485699` et `0a44c6cc` : 100 % avant comme
+apres, pas un tir ne change de direction. Tableau au point 5.8.5 du §3.
 
 **UN ROUGE ATTRAPE PAR UN RATCHET, ET IL AVAIT RAISON** : le retour du hook des vehicules avait
 ete reecrit sur plusieurs lignes, ce que `sceneBinding.guard.test.ts` refuse — il exige
