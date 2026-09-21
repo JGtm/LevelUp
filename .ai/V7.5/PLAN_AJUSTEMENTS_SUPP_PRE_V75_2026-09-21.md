@@ -51,18 +51,18 @@ fusion par le pilote dans la branche de chantier. Statuts : `[x]` fait, `[~]` co
 - [x] « geste » -> « usages » dans `formes/cardsI18n.ts` et `formes/i18n.ts` ; « Bastion » -> « Bases »
 - [x] Colonne « Objets laches au sol » (D9)
 
-### Lot A2 — usage partage + Sessions (worktree `LevelUp-wt-ajsup-a2`)
-- [ ] Sessions : retirer « Matchs mesures X/X », pied du controle des armes, texte D1
-- [ ] Sessions : Regularite a droite de Parts et parites en pleine page ; legende unique
-- [ ] Legende raye/plein : composant unique pose sur UsageGaugeGrid et UsageLobbyTrack (D7)
-- [ ] Etiquettes blanches sur UsageLobbyTrack (verifier sur capture) ; epaisseurs homogenes
-- [ ] Controle des armes speciales (Sessions) scinde (D6)
-- [ ] Ordre des tiers D2 dans `usagePadTiersModel.ts` + depliable base + « non identifie » retire
-- [ ] Centrage vertical des grilles dans EquipmentUsageSection (Timeseries/Escouade/Synthese)
-- [ ] Donuts d'usage sortis de leur cadre (`frameless`)
-- [ ] Notes de EquipmentUsageSection -> InfoTooltip (i)
-- [ ] Etats vides D8 sur les blocs d'usage
-- [ ] « Bastion(s) » -> « Bases » dans `usageI18n.ts`
+### Lot A2 — usage partage + Sessions (worktree `LevelUp-wt-ajsup-a2`) — FUSIONNE b62842439
+- [x] Sessions : retirer « Matchs mesures X/X », pied du controle des armes, texte D1
+- [x] Sessions : Regularite a droite de Parts et parites en pleine page ; legende unique
+- [x] Legende raye/plein : composant unique pose sur UsageGaugeGrid et UsageLobbyTrack (D7)
+- [x] Etiquettes blanches sur UsageLobbyTrack (verifier sur capture) ; epaisseurs homogenes
+- [x] Controle des armes speciales (Sessions) scinde (D6)
+- [x] Ordre des tiers D2 dans `usagePadTiersModel.ts` + depliable base + « non identifie » retire
+- [x] Centrage vertical des grilles dans EquipmentUsageSection (Timeseries/Escouade/Synthese)
+- [x] Donuts d'usage sortis de leur cadre (`frameless`)
+- [x] Notes de EquipmentUsageSection -> InfoTooltip (i)
+- [x] Etats vides D8 sur les blocs d'usage
+- [x] « Bastion(s) » -> « Bases » dans `usageI18n.ts`
 
 ### Lot B — comparaison Sessions alignee (worktree `LevelUp-wt-ajsup-b`) — FUSIONNE 0fb899baa
 - [x] Rangees partagees gauche/droite, placeholder D16
@@ -88,6 +88,9 @@ fusion par le pilote dans la branche de chantier. Statuts : `[x]` fait, `[~]` co
 - [x] 5 sujets x 3 propositions, jetons de l'app, clair/sombre
 
 ## Decouvertes (hors perimetre, ne pas traiter)
+- A2 : la vue « Prises nettes de drapeau » ne contient plus que son titre (D1 applique a la lettre) -> verdict utilisateur.
+- A2 : `usage.powerup_pickups` servi par Go et plus lu par le web ; `usageI18n.ts` 562 L (dette reduite, non resorbee) ; `equipRift` cle morte.
+- A2 : `usageCardTitle.tsx` = un second helper titre + infobulle, a reconcilier avec celui du lot G.
 - D : `PAD_TIER_ORDER` sert aussi au departage de `tierOfWeaponOf` (`padControlLogic.ts:236`) : ordre d affichage et ordre de departage a decoupler (lot G).
 - A1 : double cadre aussi dans `compare/CompareWeaponsRange.tsx`, `match-view/MatchKillDistanceSection.tsx`, `tactical/TacticalCoordinationCard.tsx`.
 - A1 : motif titleAdornment + InfoTooltip recopie dans ~8 fichiers -> helper canonique + garde-rail (lot G du chantier).
