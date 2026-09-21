@@ -84,7 +84,7 @@ fusion par le pilote dans la branche de chantier. Statuts : `[x]` fait, `[~]` co
 - [ ] Diagnostic sur b1ad85eb : pourquoi Skewer = base ; cause prouvee sur pieces
 - [ ] Correctif Go + jumeau TS + tests ; aucun reclassement heuristique
 
-### Lot F — maquette (fichier `.ai/V7.5/MAQUETTE_RENDUS_AJSUP_2026-09-21.html`)
-- [ ] 5 sujets x 3 propositions, jetons de l'app, clair/sombre
+### Lot F — maquette (fichier `.ai/V7.5/MAQUETTE_RENDUS_AJSUP_2026-09-21.html`) — FUSIONNE bed1a2600
+- [x] 5 sujets x 3 propositions, jetons de l'app, clair/sombre
 
 ## Decouvertes (hors perimetre, ne pas traiter)
