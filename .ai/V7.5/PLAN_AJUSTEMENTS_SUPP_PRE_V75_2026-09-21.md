@@ -37,7 +37,7 @@ fusion par le pilote dans la branche de chantier. Statuts : `[x]` fait, `[~]` co
 - D16 Alignement comparaison : rangees partagees ; placeholder « Sans equivalent dans cette session ».
 - D17 (2026-09-21, apres maquette) : Explorer « Part des assistances » = 1.A et « Repartition des resultats » = 2.A, TOUS DEUX A L HORIZONTALE. Sujets 3, 4, 5 : pas encore tranches.
 - D18 (2026-09-21) : Match view « Controle des armes speciales » = 4.A, colonnes verticales empilees par socle, hauteur = prises reelles, echelle commune ; groupes PUISSANCE / TERRAIN separes par un trait vertical discret, nom du groupe + sous-total CENTRE EN HAUT DANS LE GRAPHIQUE entre l axe Y et le trait (pas de bandeau) ; base repliee.
-- D19 (2026-09-21) : section « echange » de l Escouade = variante A de la maquette MAQUETTE_ECHANGE_ESCOUADE ; vocabulaire tactique : vengeance -> « Riposte », assistance -> « Appui », A APPLIQUER PARTOUT dans l app ; nom de la section : en attente (recommandation « Coordination », « taux de riposte »).
+- D19 (2026-09-21) : section « echange » de l Escouade = variante A de la maquette MAQUETTE_ECHANGE_ESCOUADE ; vocabulaire tactique : vengeance -> « Riposte », assistance -> « Appui », A APPLIQUER PARTOUT dans l app ; nom de la section : « Coordination » (valide), « taux d echange » -> « taux de riposte ».
 
 ## Lots
 
@@ -115,6 +115,13 @@ surface `film/replay` 260 -> 263 justifie.
 
 ### Lot I — Match view, controle des armes en 4.A (worktree `LevelUp-wt-ajsup-i`)
 - [ ] Colonnes empilees par socle, groupes separes par un trait, noms centres en haut dans le graphique, base repliee (D18)
+
+### Lot J — Escouade, section Coordination en variante A + vocabulaire Riposte / Appui partout (worktree `LevelUp-wt-ajsup-j`)
+- [ ] Carte « Riposte » : phrase de lecteur, chiffre d appel face a l habituel, frise batons + tendance par soiree (volumes dessous), histogramme des delais et matrice « Qui riposte pour qui » en replis
+- [ ] Carte « Appui » : le bloc des assistances de l escouade, renomme, phrase de lecteur
+- [ ] Nuage intact, place apres Riposte, phrase d introduction reecrite
+- [ ] Blocs Constat, Compte, Donne/recu, Taux par session supprimes (0 code mort)
+- [ ] Vocabulaire : Riposte / Appui / Coordination applique dans toute l app (Escouade, Match view, Tactique, Timeseries, Synthese, Accueil, i18n FR+EN)
 
 ## Decouvertes (hors perimetre, ne pas traiter)
 - H : `AssistExchangeSummary` (papillon log) reste sur le hub Relations (`RelationAssistsCards.tsx:45`) -> verdict utilisateur ; `assist_volume_max` n a plus de lecteur Explorer ; `ExplorerTargetSampleStats.tsx` a 399 L.
