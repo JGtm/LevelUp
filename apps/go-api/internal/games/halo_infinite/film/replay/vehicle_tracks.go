@@ -120,6 +120,7 @@ func buildVehicleTracks(
 	bySlot := vehiclePositionsBySlot(scan.Positions)
 	rides, st := buildVehicleRides(vehicleRideInputs{
 		vehBySlot: bySlot, bipeds: bipeds, events: scan.Events, reg: reg, lives: lives,
+		occupancy: scan.Occupancy,
 		aimBySlot: vehicleAimBySlot(scan.Aims),
 		drawable:  vehicleDrawableLives(lives, spawns, bySlot), clock: clock,
 	})

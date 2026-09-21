@@ -7986,10 +7986,119 @@ le port derive n attend pas la chaine du declencheur mais ne la remplace pas.
         etiquette 3) reste a faire : c est le controle qui fermerait la fente 2 NOMMEMENT.
 
 
+### Post-chantier — lot 5.10 (sieges et despawn), branche `feat/decfilm-60`, base `677117b82`
+
+Decouvertes RETENUES par l utilisateur (D4 et D5 du lot 5.1.7, verdict Theater du 2026-09-19 ;
+D1 du lot 5.5). Trois defauts : un OCCUPANT FAUX publie dans le Razorback `776/1` de `4f77afc1`,
+un SIEGE qui ne departage pas les occupants (153 `seat = 0` pour 100 tirs de tourelle), et une
+fin de vie « despawn » que le rejeu ne sait pas nommer.
+
+- [x] **5.10.1 — L ECRIVAIN : L EMBARQUEMENT EST DANS `i10`, ET LE SIEGE EST SA QUEUE DE SIX
+  BITS.** Ghidra en lecture seule (`FUN_140c1e4d0`, image base 140000000), puis la mesure.
+  **LA GRAMMAIRE, PAR SENTINELLE.** La branche LIBRE du composant ECRIT ses sentinelles, et ce
+  sont elles qui designent les deux seuls champs capables de porter un attachement :
+
+        +0x274  FUN_1406d3140(categorie 1)  handle du PARENT   -> 0xffffffff quand libre
+        +0x278 / +0x27a  R(16) / R(16) garde                   -> 0xffff quand libre
+        +0x27c / +0x27d  deux R(1)                             -> 0 quand libre
+        +0x280  FUN_140c1e924(..., 0x10)    triplet 3 x R(16)  (pose relative)
+        queue COMMUNE : +0x3a0  R(1) de signe puis R(6)        -> 0xffff quand absent
+                        +0x3a4  R(1)  ·  +0x3a2 / +0x3a3  R(3)
+
+  Le handle est un entier a largeur variable de la categorie 1 : sonde R(1), 13 bits (ou 9 si la
+  sonde bascule sur l entree 4), puis DEUX bits de queue — la generation, au meme format que les
+  references d evenements.
+  **LA BASE DU HANDLE EST MESUREE, PAS SUPPOSEE** (`readQuantStat` ne l ajoute pas, cf.
+  `varwidth.go`). Sur `4f77afc1` (carte `flood gulch` installee, oracle de contenu tenu : `i21`
+  a **69,6 %** sur **321 335** records `ti=35`, 56 desyncs) :
+
+        | base  | parents qui tombent sur un slot `ti=40` |
+        |---|---:|
+        | 0x200 | **48 / 83 (57,8 %)** |
+        | 0x300 | 4 (4,8 %) |
+        | 0     | 1 (1,2 %) |
+        | 0x400 | 0 (0,0 %) |
+
+  **LE SIEGE EST LE R(6) DE LA QUEUE** : sur ces 48 lectures, 43 portent le champ et **42 valent
+  0, 1 ou 2** — conducteur, passager, tourelleur. Le 43e vaut 7 (un vehicule a plus de trois
+  places). **`i10` EST UNE TRANSITION, PAS UN ETAT** : le chemin delta ne porte que ce qui
+  CHANGE, et le composant n est declare que sur **0,1 %** des records `ti=35`. La marche des
+  images-cles ne le rattrape pas (`WalkKeyframeRecords` rend 1 record par image-cle sur ce film).
+  **CE QUI EST LIVRE** : `i10` et `i14` entrent dans la couche de CAPTURE (memes bits, garde-rail
+  `TestCaptureConsumesSameBitsAsDispatch`), `WalkKeyframeRecords` garde ses composants, et la
+  marche des morts rend un second fait (`ScanMarchFacts`, `vehicle_occupancy_march.go`) — aucune
+  marche de film supplementaire. `grammar.Rev` -> `grammar-2026-09-21.7`, `facts.Rev` ->
+  `killsource-2026-09-21.7`, chroniques ecrites, `SchemaVersion` INCHANGE (66).
+- [x] **5.10.2 — LA PREUVE SUR `4f77afc1`, ET ELLE CONDAMNE LES DEUX EPISODES DU TEMOIN.** Le
+  document est CUIT avant et apres, meme film, meme carte (`replay-build`, aucune base DuckDB).
+
+        | population (`4f77afc1`)        | AVANT | APRES |
+        |---|---:|---:|
+        | episodes d occupation publies  | 86 | **86** (inchange) |
+        | episodes avec un siege         | 82 | **20** |
+        | dont siege 0 / 1 / 2 / 3 / 7   | 73 / 6 / 1 / 1 / 1 | **16 / 3 / 0 / 0 / 1** |
+
+  **LA BAISSE EST LE RESULTAT, PAS UNE PERTE** : les 73 zeros d AVANT sont le champ que D1 (5.5)
+  a refute (plusieurs episodes revendiquant le siege du conducteur sur le MEME vehicule a la MEME
+  image) ; les 20 d APRES sont LUS, un par un, dans le composant que le jeu ecrit.
+  **LE TEMOIN NOMME.** Le Razorback `776/1` est recense de **1:40.1** a **3:20.2** (temps film) et
+  le document lui publie DEUX episodes : `Dafar8423` (slot 520, frames 251-563) et `Yessireezy`
+  (slot 532, frames 943-1336). Le film, lui, n ecrit qu UNE montee a bord dans ce vehicule :
+  **slot 524 (vie SANS xuid), siege 1, a 1:54.5**. Le verdict Theater de l utilisateur disait
+  deja que Yessireezy ne monte jamais dedans ; la lecture le confirme et nomme un autre occupant.
+  Les deux episodes sortent desormais SANS siege — le calque des episodes, lui, n est pas touche.
+- [x] **5.10.3 — LE PORT : LE SIEGE EST LU, ET IL N EST PLUS DEVINE.**
+  - [x] `types.VehicleOccupancy` (film/types, forme figee au golden) : la lecture d `i10` d un
+        record bipede — occupant, branche, parent (+ base 0x200), siege.
+  - [x] `grammar.ScanMarchFacts` devient l entree de la marche et rend les DEUX faits ;
+        `ScanObjectDeaths` reste la forme « morts seules » de ses appelants.
+  - [x] `assignVehicleSeats` (`replay/vehicle_rides_seat.go`) pose le siege sur l episode, en UN
+        seul endroit pour les DEUX voies de construction (evenements et trou de position) : la
+        clef est le couple (occupant, vehicule) et la fenetre de l episode, avec la tolerance
+        deja employee par l appariement d evenements (2 s).
+  - [x] L HEURISTIQUE DISPARAIT PLUTOT QUE DE DEVENIR UN REPLI : `vehicleSeatOf` (le champ `R(6)`
+        de l evenement) est SUPPRIMEE avec son test, le champ `seat` de `vehicleEpisode` aussi.
+        Le champ reste LU par la grammaire et publie dans les faits — c est sa PUBLICATION comme
+        siege d un episode qui etait fausse. Compteurs : `avecSiege` (couverture) et
+        `siegesLusDansLeFilm` au journal du calque.
+  - [x] Forme publiee INCHANGEE (`seat` reste un `*int` de `rides[]`), `SchemaVersion` reste 66,
+        aucun octet web.
+  - [!] **LES EPISODES NE SONT PAS RECONSTRUITS SUR `i10`, ET C EST UNE DECISION DE VALEUR
+        REMONTEE AU PILOTE.** Le canal nomme **48** montees a bord quand le document publie
+        **86** episodes : le remplacer perdrait des episodes vrais. Les publier A COTE demanderait
+        une valeur neuve de `rides[].src` (`parent`), c est-a-dire un changement de FORME que le
+        brief reserve a l enum `EndKind`. La mesure est faite et l instrument rend les sejours
+        fermes (attachement -> lecture suivante du meme occupant) : **44** sejours sur
+        `4f77afc1`.
+- [!] **5.10.4 — DESPAWN : LE CANAL EXISTE, IL NE DATE PAS LA DISPARITION DU TEMOIN — ARRET
+  AVANT LA MONTEE DE SCHEMA.** Trois candidats lus, aucun retenu, et chacun a son adresse :
+  - `i14 object-dissolver` (`FUN_140dd9f9c`), le seul composant au nom explicite : **913**
+    lectures hors du neutre sur `4f77afc1`, mais **3 seulement** sur un `ti=40` (12:14, 15:25,
+    15:32) — aucune sur `776`. La dissolution sert les corps et les armes au sol, pas le retrait
+    d un vehicule.
+  - **LE RECORD DE SUPPRESSION** (`recDel`, type 2 de la boucle de records, `FUN_1406cd128`
+    branche `iVar18 == 2`) : il nomme le slot ET la generation, puis lit **R(32)** que LE JEU
+    LUI-MEME JETTE (aucune affectation dans le decompile) — il n y a donc pas de code de cause a
+    lire. Mesure : **1 886** suppressions, dont **43** sur un slot `ti=40`. Confronte au
+    recensement, ce record ne date PAS la disparition : sur **254** vies `ti=40` qui cessent
+    d etre recensees, **5** portent une suppression (2,0 %), et elle tombe **+127 a +418 s**
+    apres le dernier recensement — c est le recyclage du slot, pas le retrait du vehicule.
+    Le temoin `776/1` n en porte AUCUNE.
+  - Le RECENSEMENT, enfin, borne la disparition de `776/1` a **[3:20.2, 3:40.2]**, ce qui contient
+    le « vers 3:29 » du verdict Theater — mais c est la borne que le document publie DEJA
+    (`end = "unknown"`, `goneByUS`), et la nommer `despawn` serait nommer un NEGATIF (« pas de
+    mort ecrite »), pas une lecture.
+  **CE QUI EST DEMANDE AU PILOTE** : publier `despawn` comme le brief le prevoit reviendrait soit
+  a le tirer du record de suppression (couverture **2 %**, date fausse de plusieurs minutes),
+  soit a nommer l absence de mort. Les deux se paient d une montee de schema 66 -> 67. La mesure
+  est posee ; la decision ne l est pas.
+
 ## 4. Découvertes (consignées, NON traitées — règle 7)
 
 | Date | Lot | Découverte | Où elle ira |
 |---|---|---|---|
+| 2026-09-21 | 5.10.2 | **D1 (5.10) — LES DEUX EPISODES DU RAZORBACK `776/1` SONT SANS SUPPORT DANS LE FILM, ET UN TROISIEME OCCUPANT EST NOMME.** Le document publie `Dafar8423` (frames 251-563) et `Yessireezy` (943-1336) ; la seule montee a bord ECRITE dans ce vehicule est celle du slot **524** (vie sans xuid) a **1:54.5**, siege 1. Le verdict Theater de l utilisateur (2026-09-19) condamnait deja le second. | NON TRAITE (regle 7 : le lot porte sur le SIEGE). Le remede demande de construire les episodes sur `i10` — 48 montees nommees contre 86 episodes publies : c est un arbitrage de couverture ET une valeur neuve de `rides[].src`, donc une decision utilisateur |
+| 2026-09-21 | 5.10.1 | **D2 (5.10) — LA MARCHE DES IMAGES-CLES NE REND QU UN RECORD PAR TABLE.** `WalkKeyframeRecords` rend **61** records pour **61** images-cles de `4f77afc1`, 0 desynchronise : elle s arrete a la premiere frontiere. L ETAT d occupation a l instant d une image-cle — qui fermerait la couverture partielle d `i10` — est donc hors de portee tant que cette marche ne traverse pas la table. | NON TRAITE. Meme famille que D11 (5.3) (24 % des paquets a liste pleine non localises) ; le lot qui voudra l ETAT plutot que les TRANSITIONS doit d abord instruire l arret de `WalkKeyframeRecords` (cause d arret rendue par la fonction, jamais lue jusqu ici) |
 | 2026-09-21 | 5.9.5 | **D6 (5.9) — LES TROIS FENTES SONT NOMMEES, MAIS SEULE LA 1 EST PUBLIEE.** `'saev'` (esquive, fente 0) et `'sagh'` (grappin, fente 2) sont nommes par l image au meme titre que `'sasp'`, et le grappin a meme le meilleur controle de contenu du lot (vitesse au sol p90 **5,84 m/s** dans ses intervalles contre 2,88 hors, sur `4f77afc1`). Leur population reste mince : 1 et 1 lecture sur `bfecd02b`, 12 et 49 sur `4f77afc1`. | NON TRAITE (regle 7, et le brief bornait le port a l enum `kind`). Un canal `abilityActive[]` publierait les trois fentes avec leurs noms ; le controle qui le fermerait est le croisement des **41 intervalles de la fente 2** avec les `grappleLines[]` du lot 3.7 (paires d `i59` etiquette 3, deja publiees) — un appariement, pas une lecture de plus |
 | 2026-09-21 | 5.9.2 | **D1 (5.9) — LES QUATRE CHARGES D `i55` NE SONT PAS DES POSTURES : CE SONT QUATRE EVENEMENTS D OBJET TYPES.** L applicateur d etat replique (`FUN_1406c9b1c`) passe le bloc `biped+0x12b4` a `FUN_142f23b20`, qui appelle `FUN_141fd9b88(octet de genre)` : genre 0 -> `FUN_142f23a04` (evenement **`0xd`** ou `FUN_142f28400`, ou le drapeau `0x2b`), genre 1 -> `FUN_142f238d4` (**`0x1d`** / **`0x1c`**), genre 2 -> `FUN_142f23978` (**`0x2b`**), genre 3 -> **`0xc`** ; tous postes par `FUN_14080b870`. Deux autres membres de la meme enumeration sont croises dans ce lot : `FUN_140eb2eb0(idx, 0x3a)` dans `Sprint::Update` et `FUN_1406c88a8(u, 0x39)` / `(u, 0x3b)` dans l activation de capacite. | NON TRAITE (regle 7). **C est l explication de trois echecs de nommage du 5.7** : aucune chaine ne s attache a l octet de genre parce qu il ne nomme pas un ETAT — il choisit un CANAL D EVENEMENT. Le lot qui voudra nommer les quatre charges doit d abord nommer l ENUMERATION D EVENEMENTS D OBJET (`FUN_14080b870`), pas chercher une classe `c_biped_*` en face de chaque tag |
 | 2026-09-21 | 5.9.1 | **D2 (5.9) — L OCTET RUNTIME QUI GARDE LA CHARGE D `i57` N A AUCUNE REFERENCE PAR DEPLACEMENT CONSTANT.** La garde de `FUN_142f262d4` est `param_1[2] & 1` puis `& 0x10`, soit `biped+0x1302`. Recherche d instructions sur `+0x1302` dans toute l image : **ZERO site**. L octet passe donc par l API du bloc (`FUN_140f03db8`, `FUN_140f03dfc`), que Ghidra ne replie pas en offset. | NON TRAITE. Maillon **non trouve a `FUN_140f03db8`** : ce qui reste a lire est le corps de cette famille de constructeurs. La desync PROPRE d `i57` sur cette branche reste la bonne reponse (45 fautifs sur 321 335 records de `4f77afc1`, 1 sur 97 345 de `bfecd02b`) |
@@ -8439,6 +8548,37 @@ le port derive n attend pas la chaine du declencheur mais ne la remplace pas.
 | 2026-09-21 | 5.3.2 | **D9 (5.3) — LE DOMAINE MESURÉ DES CHAMPS D'`i54` CONTREDIT L'HYPOTHÈSE DE L'ÉCRIVAIN.** L'identifiant optionnel de 10 bits n'est transmis **0 fois sur 2 245 initiations** (il reste à sa sentinelle), et `+0x9c` ne prend que **deux** valeurs, 0 et 2, jamais 1 ni 3. L'hypothèse « Sprint / Thruster / Clamber / Slide sur 2 bits » du § 2.8 est donc réfutée par les valeurs. Seul `+0x98` (R(7)) se comporte en discriminant, et son domaine varie d'un film à l'autre (3 valeurs sur `bfecd02b`, 8 sur `4f77afc1`). | **NON TRAITÉE** : nommer les classes demande de croiser `+0x98` avec la carte et le geste vu dans Theater — c'est un lot en soi, et il a besoin de l'attribution vie -> joueur que 5.3.2 n'a pas faite |
 
 ## 5. Journal des gates locaux (un gate non consigné n'a pas eu lieu)
+
+### Post-chantier — lot 5.10 (sieges et despawn), gates SANS AUCUN DECODAGE DE CORPUS, 2026-09-21
+
+`gofmt -l` vide · `go build ./...` · `go vet ./...` · `go vet -tags=research` sur `grammar` ·
+`golangci-lint run ./internal/games/halo_infinite/film/...` : **0 issue** ·
+`go test -count=1` sur `./internal/games/halo_infinite/... ./internal/archlint/
+./internal/replaybuild/ ./internal/domain/replaydoc/ ./internal/service/replayview/
+./contracttest/ ./internal/api/` : **un seul rouge**, `TestContractFixturesMatchCommitted`.
+
+**LE ROUGE EST NOMME, ET IL EST ATTENDU** : les fixtures de contrat rejouent des ENTREES FIGEES
+(`inputs_<film>.bin.gz`), qui ne portent pas les lectures d occupation. Elles montrent donc
+`grammarRev` qui monte et les `seat` qui disparaissent — exactement le piege 6 de la passation
+5.7. Le re-figeage demande un DECODAGE des films de fixtures, geste reserve au pilote par le
+brief (« corpus 19, equivalence complete, re-figeage, CI : par le pilote a la fin »).
+
+Ratchets regeneres, chacun par sa porte dediee : `grammar_rev.golden` (revision
+`grammar-2026-09-21.7`), `facts_rev.golden` (`killsource-2026-09-21.7`), `shapes.golden`
+(`types.VehicleOccupancy` fige). Deux fichiers ont franchi le seuil de 500 lignes et ont ete
+DECOUPES, jamais plafonnes : `facts/rev_chronique.go` (rotation des rangs `.2` a `.6` vers
+`rev_chronique_archive.go`, deplacement pur) et l instrument `sieges_5_10_parent_research_test.go`
+(sortie des fins de vie dans `sieges_5_10_fins_research_test.go`).
+
+**CUISSONS, UN FILM A LA FOIS, AUCUNE BASE DuckDB** : `4f77afc1` cuit AVANT (2 min 31, pic
+0,77 Gio) puis APRES le port. Aucun `replay-corpus-gate`, aucun `-update` d equivalence.
+
+**INSTRUMENTS DE MESURE** (`//go:build research`, paquet `grammar`) :
+`sieges_5_10_passe_research_test.go` (la passe partagee : marche a trois vues, largeurs d axe de
+la carte installees, oracle de contenu), `sieges_5_10_parent_research_test.go` (recensement,
+resolution du parent, loi du siege, sejours, dissolutions, suppressions) et
+`sieges_5_10_fins_research_test.go` (recensement contre suppression, et le temoin `776`).
+
 
 ### Post-chantier — lot 5.9 (chaines du sprint et du saut), 2026-09-21
 

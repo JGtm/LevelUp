@@ -123,6 +123,9 @@ type vehicleRideInputs struct {
 	// reg est le REGISTRE D IDENTITE : il donne l occupant d un slot A UN INSTANT. Vide : les
 	// episodes sortent anonymes, pas supprimes.
 	reg IdentityRegistry
+	// occupancy porte les montees a bord ECRITES par le film (`i10`), d ou sort le SIEGE d un
+	// episode (lot 5.10, cf. vehicle_rides_seat.go). Vides : les episodes sortent sans siege.
+	occupancy []types.VehicleOccupancy
 	// lives sont les vies de vehicule, avec leur fenetre — c est elle qui rattache un episode a
 	// une GENERATION, que le nuage de positions ne porte pas.
 	lives []vehicleLife
@@ -177,6 +180,10 @@ type vehicleRideStats struct {
 	parEvenement, parEvenementProche, parGeometrie, perdus int
 	// repli est le nombre d episodes venus du TROU de position (seconde source).
 	repli int
+	// sieges est le nombre d episodes dont le SIEGE a ete lu dans le film (lot 5.10). Il se
+	// journalise a cote des autres : un calque qui publierait des episodes sans jamais lire un
+	// siege dirait que le canal `i10` n est plus traverse.
+	sieges int
 }
 
 // buildVehicleRides rend les episodes d occupation par vie de vehicule, et le bilan de leur
@@ -237,6 +244,10 @@ func buildVehicleRides(
 		out[key] = append(out[key], vehicleRideOf(g, boards[g.slot], exits[g.slot], in))
 		st.repli++
 	}
+	// LE SIEGE SE POSE ICI, ET EN UN SEUL ENDROIT : les deux voies de construction (evenements
+	// et trou de position) produisent des episodes de la MEME forme, et le siege se lit sur le
+	// couple (occupant, vehicule) une fois l episode rattache a sa vie (lot 5.10).
+	st.sieges = assignVehicleSeats(out, in.occupancy, in.clock)
 	for k := range out {
 		v := out[k]
 		sort.SliceStable(v, func(i, j int) bool {
@@ -259,16 +270,9 @@ func vehicleRideOf(
 	fromEvent := 0
 	if ev, ok := vehicleEventNear(boards, g.startUS); ok {
 		startUS, fromEvent = ev.TimestampUS, fromEvent+1
-		r.Seat = vehicleSeatOf(ev)
 	}
 	if ev, ok := vehicleEventNear(exits, g.endUS); ok {
 		endUS, fromEvent = ev.TimestampUS, fromEvent+1
-		// LE SIEGE DE LA SORTIE PRIME : c est celui dont la mesure est la plus fournie
-		// (`siege = 0` sur 93,8 % des sorties, n = 237), et il s accorde a celui de
-		// l embarquement apparie dans 5 cas sur 6.
-		if s := vehicleSeatOf(ev); s != nil {
-			r.Seat = s
-		}
 	}
 	switch fromEvent {
 	case 2:
@@ -294,18 +298,6 @@ func vehicleRideOf(
 	// que le contrat prevoit explicitement (l episode reste publie, son occupant est inconnu).
 	r.XUID = in.reg.XUIDAt(g.slot, startUS)
 	return r
-}
-
-// vehicleSeatOf rend le siege d un evenement, ou nil quand la charge etait trop courte pour le
-// porter. POINTEUR, et il le faut : le siege 0 est le CONDUCTEUR, c est-a-dire la valeur la plus
-// frequente et la plus utile du champ — `omitempty` sur un entier l effacerait exactement comme
-// une absence de lecture.
-func vehicleSeatOf(ev types.VehicleEvent) *int {
-	if !ev.SeatValid {
-		return nil
-	}
-	s := int(ev.Seat)
-	return &s
 }
 
 // vehicleGaps releve les interruptions >= vehicleGapMinMS du flux de position de chaque bipede.

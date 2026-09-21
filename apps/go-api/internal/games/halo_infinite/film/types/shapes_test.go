@@ -116,6 +116,7 @@ var formesFigees = []typeDeContrat{
 	{"grammar", types.ProjectileTrack{}},
 	{"grammar", types.TranslocatorTeleport{}},
 	{"grammar", types.VehicleEvent{}},
+	{"grammar", types.VehicleOccupancy{}},
 	{"facts/killsource", types.ApparStats{}},
 	{"facts/killsource", types.Assist{}},
 	{"facts/killsource", types.CoupleStats{}},

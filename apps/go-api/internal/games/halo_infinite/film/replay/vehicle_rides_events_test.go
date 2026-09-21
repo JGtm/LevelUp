@@ -203,17 +203,44 @@ func TestVehicleLifeNamedByEventNearest(t *testing.T) {
 	}
 }
 
-// TestVehicleEpisodeSeatFromExit : le siege de la SORTIE prime sur celui de l embarquement.
-func TestVehicleEpisodeSeatFromExit(t *testing.T) {
-	const slot = uint32(500)
-	evs := []types.VehicleEvent{
-		vehEvt(grammar.EventBipedBoardVehicle, slot, 3_000_000, 3),
-		vehEvt(grammar.EventUnitExitVehicle, slot, 8_000_000, 0),
+// TestVehicleRideSeatLuDansLeFilm : le siege d un episode vient du composant `object-parent-state`
+// (lot 5.10), jamais du champ `R(6)` de l evenement — et il ne se rattache qu au couple
+// (occupant, vehicule) de CET episode, dans SA fenetre.
+func TestVehicleRideSeatLuDansLeFilm(t *testing.T) {
+	const occupant, vehicule = uint32(500), uint32(700)
+	clock := vehClock()
+	key := types.EquipmentLifeKey{Slot: vehicule, Gen: 1}
+	rides := map[types.EquipmentLifeKey][]VehicleRide{
+		key: {{Slot: occupant, T0: 40, T1: 160}, {Slot: occupant + 1, T0: 40, T1: 160}},
 	}
-	boards, exits := vehicleEventsByOccupant(evs)
-	got := vehicleEventEpisodes(boards, exits, nil)
-	if len(got) != 1 || got[0].seat == nil || *got[0].seat != 0 {
-		t.Fatalf("siege attendu 0 (celui de la sortie), obtenu %+v", got)
+	occ := []types.VehicleOccupancy{
+		// La montee a bord de l episode : DANS la fenetre, bon occupant, bon vehicule.
+		{TimestampUS: 5_000_000, Slot: occupant, Attached: true, ParentSlot: vehicule,
+			HasSeat: true, Seat: 2},
+		// Un autre vehicule au MEME instant : il ne doit pas servir.
+		{TimestampUS: 5_000_000, Slot: occupant + 1, Attached: true, ParentSlot: vehicule + 9,
+			HasSeat: true, Seat: 1},
+	}
+	if n := assignVehicleSeats(rides, occ, clock); n != 1 {
+		t.Fatalf("episodes servis = %d, attendu 1", n)
+	}
+	if r := rides[key][0]; r.Seat == nil || *r.Seat != 2 {
+		t.Errorf("siege = %v, attendu 2 (le tourelleur) : la lecture couvre cet episode", r.Seat)
+	}
+	if r := rides[key][1]; r.Seat != nil {
+		t.Errorf("siege = %v : une lecture qui nomme un AUTRE vehicule ne sert pas cet episode",
+			*r.Seat)
+	}
+	// Une lecture HORS fenetre ne sert pas non plus, et une lecture DETACHEE jamais.
+	rides[key][0].Seat = nil
+	hors := []types.VehicleOccupancy{
+		{TimestampUS: 60_000_000, Slot: occupant, Attached: true, ParentSlot: vehicule,
+			HasSeat: true, Seat: 0},
+		{TimestampUS: 5_000_000, Slot: occupant, Attached: false, ParentSlot: vehicule,
+			HasSeat: true, Seat: 0},
+	}
+	if n := assignVehicleSeats(rides, hors, clock); n != 0 {
+		t.Fatalf("episodes servis = %d, attendu 0 (hors fenetre, et branche libre)", n)
 	}
 }
 

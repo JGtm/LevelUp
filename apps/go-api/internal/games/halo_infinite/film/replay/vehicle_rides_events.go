@@ -83,7 +83,6 @@ const vehicleEventAnchorRadiusM = 3.0
 type vehicleEpisode struct {
 	slot           uint32
 	startUS, endUS uint64
-	seat           *int
 	// borders compte les bornes datees par un EVENEMENT (0, 1 ou 2).
 	borders int
 	// openEnd : aucune sortie n a ferme l episode — il se ferme a la REAPPARITION de l occupant
@@ -172,8 +171,7 @@ func vehicleEpisodesOfOccupant(
 				open.endUS, open.openEnd = ev.TimestampUS, false
 				out = append(out, open)
 			}
-			open = vehicleEpisode{slot: slot, startUS: ev.TimestampUS,
-				seat: vehicleSeatOf(ev), borders: 1, openEnd: true}
+			open = vehicleEpisode{slot: slot, startUS: ev.TimestampUS, borders: 1, openEnd: true}
 			hasOpen = true
 			continue
 		}
@@ -186,12 +184,6 @@ func vehicleEpisodesOfOccupant(
 		// `ti=40`, zero bipede, zero hors bande sur 12 films).
 		if ev.VehicleSlotValid {
 			open.vehSlot, open.vehValid, open.vehAtUS = ev.VehicleSlot, true, ev.TimestampUS
-		}
-		// LE SIEGE DE LA SORTIE PRIME : c est celui dont la mesure est la plus fournie
-		// (siege 0 sur 93,8 % des sorties, n = 237) et il s accorde a celui de l embarquement
-		// apparie dans 5 cas sur 6 (V3).
-		if s := vehicleSeatOf(ev); s != nil {
-			open.seat = s
 		}
 		out, hasOpen = append(out, open), false
 	}
@@ -262,7 +254,7 @@ func vehicleRideFromEpisode(
 			ep.endUS = ep.reappearUS
 		}
 	}
-	r := VehicleRide{Slot: ep.slot, Seat: ep.seat, Src: vehicleRideSrcOf(ep.borders)}
+	r := VehicleRide{Slot: ep.slot, Src: vehicleRideSrcOf(ep.borders)}
 	r.T0, r.T1 = in.clock.frame(ep.startUS), in.clock.frame(ep.endUS)
 	if r.T1 < r.T0 {
 		r.T1 = r.T0

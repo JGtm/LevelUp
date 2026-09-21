@@ -151,6 +151,12 @@ func TestVehiculeEpisodeBoardExit(t *testing.T) {
 			{Kind: grammar.EventUnitExitVehicle, TimestampUS: 16_800_000, OccupantPresent: true,
 				OccupantInBand: true, OccupantSlot: bipedSlot, Seat: 0, SeatValid: true},
 		},
+		// LE SIEGE VIENT DU FILM, PAS DE L EVENEMENT (lot 5.10) : la montee a bord ecrite au
+		// composant `object-parent-state` tombe dans la fenetre de l episode.
+		Occupancy: []types.VehicleOccupancy{
+			{TimestampUS: 5_200_000, Slot: bipedSlot, Attached: true, ParentSlot: 700,
+				HasSeat: true, Seat: 0},
+		},
 	}
 	// Le bipede est SUR le vehicule a 5 s, puis son flux s interrompt 12 s (le trou), puis il
 	// reapparait a 17 s : la signature exacte d un occupant attache.
@@ -179,8 +185,8 @@ func TestVehiculeEpisodeBoardExit(t *testing.T) {
 		t.Errorf("occupant = %q slot=%d : le pont slot -> xuid DOIT nommer l episode", r.XUID, r.Slot)
 	}
 	if r.Seat == nil || *r.Seat != 0 {
-		t.Errorf("siege = %v, attendu 0 (conducteur) : le siege 0 est la valeur la plus frequente "+
-			"et un pointeur existe pour qu elle ne soit pas effacee par omitempty", r.Seat)
+		t.Errorf("siege = %v, attendu 0 (conducteur) : il est LU au composant object-parent-state, "+
+			"et un pointeur existe pour que le zero ne soit pas efface par omitempty", r.Seat)
 	}
 	if cov.Rides != 1 || cov.RidesNamed != 1 || cov.RidesFromEvent != 1 || cov.VehiclesRidden != 1 {
 		t.Errorf("couverture = %+v : l episode doit se compter, nomme et borne par evenement", cov)
@@ -214,7 +220,8 @@ func TestVehiculeEpisodeSansEvenement(t *testing.T) {
 		t.Errorf("bornes = [%d, %d], attendu [40, 160] (bords du trou : 5,0 s et 17,0 s)", r.T0, r.T1)
 	}
 	if r.Seat != nil {
-		t.Error("siege publie sans evenement : il n existe QUE dans la charge d un evenement")
+		t.Error("siege publie sans lecture d occupation : il n existe QUE dans le composant " +
+			"object-parent-state du film")
 	}
 	if r.XUID != "" {
 		t.Errorf("xuid = %q sans pont : un episode anonyme reste publie, mais il reste anonyme", r.XUID)

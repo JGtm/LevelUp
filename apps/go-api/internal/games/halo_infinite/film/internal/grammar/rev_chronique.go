@@ -441,3 +441,30 @@ package grammar
 // `facts.Rev` MONTE (elle hache la VALEUR de cette revision) : `killsource-2026-09-21.6`.
 // `replay.SchemaVersion` NE MONTE PAS UNE SECONDE FOIS : la v66 du meme lot porte DEJA le
 // changement de forme de `stances[].kind`, et la chronique v66 nomme les deux genres.
+
+// ENTREE `grammar-2026-09-21.7` (2026-09-21, lot 5.10.1) : L EMBARQUEMENT EST LU — `i10` PORTE
+// LE PARENT ET SON SIEGE, ET LA MARCHE LES REND.
+//
+// CE QUI CHANGE DANS LA COUCHE : `object-parent-state` (`i10`) et `object-dissolver` (`i14`)
+// entrent dans la COUCHE DE CAPTURE (`captureNames`) — leur valeur decodee voyage desormais dans
+// `CompResult.Payload`, la ou elle etait jetee ; `WalkKeyframeRecords` garde les composants
+// traverses ; et la marche des morts rend un second fait, les lectures d occupation
+// (`ScanMarchFacts`, `vehicle_occupancy_march.go`). AUCUN BIT N EST LU AUTREMENT : les deux
+// deserialiseurs sont scindes en `decode*` / `consume*`, et
+// `TestCaptureConsumesSameBitsAsDispatch` echoue si les deux chemins divergeaient d un seul bit.
+//
+// L ECRIVAIN, RELU EN LECTURE SEULE (`FUN_140c1e4d0`, image base 140000000) : la branche
+// ATTACHEE ecrit le handle du parent en +0x274 (`FUN_1406d3140`, categorie 1) ; la queue COMMUNE
+// ecrit un entier de SIX bits en +0x3a0 derriere un bit de signe. La branche LIBRE efface les
+// deux (0xffffffff, 0xffff) — ce sont les SENTINELLES qui designent les deux seuls champs
+// capables de porter un embarquement.
+//
+// MESURE DE LA COUCHE (`4f77afc1`, carte `flood gulch` installee, oracle de contenu tenu : `i21`
+// a 69,6 % sur 321 335 records `ti=35`) : 393 lectures d `i10` sur la bande bipede, 83 attachees
+// sur un slot lie au bipede, dont 48 (57,8 %) nomment un slot `ti=40` avec la base 0x200 de la
+// categorie — contre 4 (4,8 %) avec 0x300 et 1 (1,2 %) avec 0. Le champ de six bits vaut 0, 1
+// ou 2 sur 42 de ces 43 lectures : conducteur, passager, tourelleur.
+//
+// `facts.Rev` MONTE (elle hache la VALEUR de cette revision) : `killsource-2026-09-21.7`.
+// `replay.SchemaVersion` NE MONTE PAS : la FORME du document ne change pas — `vehicles[].rides[]`
+// garde ses champs, et `seat` change de SOURCE, pas de type.
