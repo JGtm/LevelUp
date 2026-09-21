@@ -36,7 +36,7 @@ import { fxTintOf, type FxTint } from '../layers/fxInk'
 import { familyOf, type ShotFamily } from '../layers/shotEffects'
 import { heldReading } from '../../../lib/replay/replayLogic'
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
-import { vehicleChassisHeadingAt } from './vehiclesAim'
+import { vehicleChassisHeadingAt, vehicleShooterAimAt } from './vehiclesAim'
 import { vehicleWeaponMountOf, type VehicleWeaponMount } from './vehicleWeaponMounts'
 import { buildLivesBySlot, lifeOfSlotAt } from './livesPosition'
 
@@ -63,6 +63,13 @@ export interface VehicleShotSource {
    * éclair posé à un autre cap sortirait du châssis qu'il est censé quitter.
    */
   headingDeg: number
+  /**
+   * Visée MESURÉE de CELUI QUI A TIRÉ, degrés monde, ou `null` faute de lecture en vigueur
+   * (`vehicleShooterAimAt`, apparié par SLOT — cf. son en-tête pour le négatif du lot 5.5.1 qui
+   * rend cette valeur nécessaire). Elle n'oriente QUE les montages de classe `tourelle` : le
+   * châssis, lui, garde son propre cap.
+   */
+  shooterHeadingDeg: number | null
 }
 
 /** Un tir prêt à dessiner : coordonnées MONDE, la conversion en pixels dépend du cadrage. */
@@ -114,7 +121,7 @@ export function buildShotFx(doc: ReplayDocumentReady, aimHoldFrames: number): Sh
       fam,
       tint: fxTintOf(label?.tint),
       seed: s.t + s.slot,
-      vehicleShot: vehicleShotSourceOf(doc, s.v, s.w, s.t),
+      vehicleShot: vehicleShotSourceOf(doc, s, s.t),
     })
   }
   return out
@@ -149,16 +156,23 @@ export function buildShotFx(doc: ReplayDocumentReady, aimHoldFrames: number): Sh
  */
 function vehicleShotSourceOf(
   doc: ReplayDocumentReady,
-  vehicleSlot: number | undefined,
-  weaponTag: string | undefined,
+  shot: { v?: number; w?: string; slot: number },
   t: number,
 ): VehicleShotSource | null {
-  if (vehicleSlot === undefined) return null
-  const mount = vehicleWeaponMountOf(weaponTag)
+  if (shot.v === undefined) return null
+  const mount = vehicleWeaponMountOf(shot.w)
   // ARME DE VÉHICULE = absente du registre d'armes de joueur (cf. l'en-tête de cette fonction).
-  const armeDeVehicule = weaponTag !== undefined && doc.weaponLabels?.[weaponTag] === undefined
+  const armeDeVehicule = shot.w !== undefined && doc.weaponLabels?.[shot.w] === undefined
   if (!mount && !armeDeVehicule) return null
-  const track = doc.vehicles.find((v) => v.slot === vehicleSlot)
+  const track = doc.vehicles.find((v) => v.slot === shot.v)
   if (!track) return null
-  return { mount, family: track.family, headingDeg: vehicleChassisHeadingAt(track, t) }
+  return {
+    mount,
+    family: track.family,
+    headingDeg: vehicleChassisHeadingAt(track, t),
+    // LE SLOT DU TIREUR, PAS SON SIÈGE (lot 5.5) : c'est la seule clé qui désigne l'occupant
+    // qui a tiré, et elle vaut pour le tourelleur passager du Warthog comme pour le conducteur
+    // artilleur du Scorpion.
+    shooterHeadingDeg: vehicleShooterAimAt(track, shot.slot, t),
+  }
 }

@@ -6613,10 +6613,153 @@ sur les seuls chassis a arme FIXE. Le lot cherche l avant REEL, lu dans le film.
   **5.2a.6 (visee du conducteur) N EST PAS TOUCHE** : c est du rendu web, hors perimetre de ce
   lot, et l arbitrage de son retrait appartient a l utilisateur (§4).
 
+### Post-chantier — lot 5.5 (la visee du tourelleur), branche `feat/decfilm-55`, base `15627a4ce`
+
+Decouverte RETENUE par l utilisateur le 2026-09-20. Apres 5.2a.5 / 5.2a.6 / 5.4, un tir de
+TOURELLE reste SANS direction (`vehicleWeaponMounts.classe === 'tourelle'` -> `angle = null`,
+bouffee ronde) : le chassis s oriente sur l avant lu dans le film, mais la tourelle, elle, tourne
+independamment du corps et personne ne sait ou elle pointe. Deux voies etaient ouvertes : lire
+`ti=40 i41`/`i42` (`vehicle-seats-override-pitch`/`-yaw`, DECLARES et NON PORTES, `deser_addr`
+VIDE) ou se rabattre sur la visee `i21` du BIPEDE assis au siege de tourelle, que le document
+publie deja (`vehicles[].rides[].aim`, schema 31).
+
+- [x] **5.5.1 — L ECRIVAIN, PUIS LE MASQUE : `i41`/`i42` SONT UNE API DE SCRIPT, ET LE FILM NE LES
+  DECLARE JAMAIS.** Deux lectures, deux resultats concordants, aucun octet de production touche.
+  **(a) L ECRIVAIN — la grammaire est bit-exacte, et elle est PLUS PETITE que la question.**
+  Chaine du descripteur (`film/research/reapparition`, **calibration 6/6 temoins**) puis
+  decompilation Ghidra en LECTURE SEULE :
+
+        ti=40 i41  vehicle-seats-override-pitch  ecrivain FUN_142f04a4c  (113 octets)
+        ti=40 i42  vehicle-seats-override-yaw     ecrivain FUN_142f04ac0  (113 octets)
+
+  Les deux corps sont IDENTIQUES a l offset pres : `FUN_1406d84b4(flux, flux, DAT_143cd8920,
+  DAT_143cd8918, 8, 1, 1)` DEUX FOIS, sans porte, sans boucle, sans index de siege — soit
+  `2 x R(8)` dequantifie sur `[-pi, +pi]` = **16 bits par composant**. Les deux bornes sont RELUES
+  dans l image (`/read_memory`) : `DAT_143cd8918 = 0x40490fdb = +pi`, `DAT_143cd8920 =
+  0xc0490fdb = -pi` — les memes constantes que l angle de roulis du lot 5.4.
+  **LE PLURIEL « seats » NE CORRESPOND A AUCUNE BOUCLE** : le composant ecrit DEUX flottants, pas
+  N sieges. Cible de deserialisation `*(param_3+0x10) + 0x8ac`/`0x8b0` (i41) et `0x8b4`/`0x8b8`
+  (i42) ; compagnon de serialisation `FUN_142f08cf0` / `FUN_142f08d24` (source `param_3+0x30`,
+  memes offsets).
+  **(b) D OU VIENT LA VALEUR, ET C EST LA REPONSE.** Le producteur de replication
+  (`FUN_142f0cca0`) recopie `objet+0xbf0`/`0xbf4` -> `0x8ac`/`0x8b0` et `objet+0xbf8`/`0xbfc` ->
+  `0x8b4`/`0x8b8` sous un seuil de VARIATION. Et les quatre flottants de jeu ne sont ecrits que
+  par deux SETTERS a deux arguments : `FUN_143183ea0(objet, a, b)` (marque le composant `0x29` =
+  41 sale) et `FUN_143183ef0(objet, a, b)` (`0x2a` = 42), tous deux appeles depuis une API de
+  SCRIPT — `FUN_1431acd00(unite, float, float)` valide ses deux arguments un par un, les
+  multiplie par `DAT_143cd86c4` (degres -> radians) et les pose sur l unite du joueur courant.
+  **Une paire d angles posee en DEGRES par un script n est pas une rotation de tourelle par
+  tick : c est un OVERRIDE de contrainte de visee de siege.**
+  **(c) LE MASQUE TRANCHE, SANS PORTER UNE SEULE GRAMMAIRE.** Le masque de composants voyage en
+  TETE du record, avant toute charge : il se lit sans desyncer sur un composant non porte
+  (`BipedPosition.MaskBits`, deja capture sous `CaptureDirs`). Ventilation sur la bande `ti=40`,
+  largeurs d axe de la CARTE installees (`NewFilmContextForMap` +
+  `PoserLargeursObjetDuMondeDepuisDecoupage`, piege 5.3) :
+
+        | film                        | records ti=40 | i41 | i42 | i30 | i31 | i40 | i21 |
+        |---|---:|---:|---:|---:|---:|---:|---:|
+        | `4f77afc1` (Flood Gulch)    | 144 385 | **0** | **0** | 0 | 0 | 0 | **0** |
+        | `084a804d` (Fortitude Heavies) | 109 478 | **0** | **0** | 0 | 0 | 0 | **0** |
+
+  **LE ZERO N EST PAS UN PLAFOND D INSTRUMENT** : le meme recensement voit des index a UN SEUL
+  record (`i58` 1, `i59` 1, `i60` 1, `i8` 1, `i18` 1) et `MaskOver` vaut 0 partout — aucun index
+  ne deborde des 64 bits. Ce que le vehicule replique VRAIMENT, sur les deux films : `i0`
+  position 100 %, `i25` tick de commande ~100 %, `i1` velocite ~99 %, `i3` velocite angulaire
+  ~97 %, `i2` avant/haut ~96 %, `i34` physique de type 13-15 %, `i4` vitalite ~4 %, `i37`
+  minuteur EMP 1-3 %.
+  **QUATRE NEGATIFS D UN COUP, et ils ferment la voie « grammaire »** : `i41`, `i42`,
+  `i31 vehicle-auto-turret-aiming-vector` (la tourelle AUTOMATIQUE) et `i21` DU VEHICULE (l unite
+  vehicule ne replique aucun vecteur de visee en propre). **LE FILM NE PORTE PAS LA ROTATION DE
+  LA TOURELLE.** Population : 253 863 records, deux cartes, deux modes, dont un BTB Heavies qui
+  porte les Scorpions.
+  **CE QUI EST LIVRE** : deux instruments sous `//go:build research`
+  (`tourelle_55_ecrivain_research_test.go`, `tourelle_55_masque_research_test.go`) et les DEUX
+  LIGNES DE LA TABLE ECS renseignees (`deser_addr`, `grammar`, `meaning_fr`, `exploitable_fr`,
+  `confidence`, `notes`) avec la consigne **NE PAS PORTER**. `bits_typ` reste VIDE a dessein : la
+  colonne entiere entre dans le controle `ecs_widths_guard`, qui execute le deser de production —
+  il n y en a pas. Aucun octet de `film/internal/` hors testdata, `grammar.Rev` INCHANGEE,
+  `SchemaVersion` inchange.
+- [x] **5.5.2 — LA PREUVE : CE N EST PAS UNE HISTOIRE DE SIEGE, C EST UNE HISTOIRE DE SLOT.** Le
+  negatif de 5.5.1 ferme la voie grammaire ; restait la visee du BIPEDE qui sert l arme, que le
+  document publie deja (`vehicles[].rides[].aim`, un episode par occupant, justesse 0,2-0,5 deg,
+  schema 31). Mesure sur documents CUITS, aucun decodage, aucune base
+  (`tourelleVisee.mesure.test.ts`, porte `TOURELLE_MESURE`, meme patron que
+  `ReplayTeams.perf.test.tsx`).
+  **LE BRIEF DEMANDAIT « LA VISEE DU SIEGE DE TOURELLE » ; LA MESURE REFUSE LE SIEGE.** Sur les
+  100 tirs de tourelle de `4f77afc1` (Warthog, tag `c7d50912`), la ventilation par siege a
+  l instant du tir ne trouve JAMAIS de siege 1 ni 2 : **siege 0 occupe 153 fois** pour 100 tirs
+  (donc plusieurs episodes revendiquent le siege 0 sur le MEME vehicule a la MEME image) et
+  **siege muet 16 fois**. Le champ `seat` ne departage pas les occupants — D1 ci-dessous.
+  **LA CLE QUI MARCHE EST LE SLOT.** Un tir porte le slot de son TIREUR (`Shot.slot`, celui qui
+  alimente deja `heldReading`) et un episode d occupation porte le slot de son OCCUPANT
+  (`ReplayVehicleRide.slot`). Les apparier ne suppose RIEN — ni quel siege sert quelle arme (le
+  tourelleur du Warthog est un passager, le canon du Scorpion est servi par le CONDUCTEUR), ni
+  que le document ait lu le siege.
+
+        | population (`4f77afc1`)              |   n | episode du tireur trouve | visee en vigueur | ecart au cap du chassis (med / q75 / q90) |
+        |---|---:|---:|---:|---|
+        | tous tirs de vehicule                | 241 | **241 (100 %)**          | 235 (97,5 %)     | 0,0 / 43,5 / 105,6 deg |
+        | **tirs de TOURELLE seuls**           | 100 | **100 (100 %)**          | **95 (95,0 %)**  | **43,5 / 105,1 / 146,7 deg** |
+
+  **COUVERTURE ET UTILITE SONT TOUTES DEUX ATTEINTES** : 95 tirs de tourelle sur 100 portent une
+  visee de tireur EN VIGUEUR (meme fenetre de maintien que le cone), et elle s ecarte du cap du
+  chassis de **43,5 deg en mediane** — ce n est pas un raffinement, c est la direction que le
+  rendu ignorait. La MEDIANE NULLE de la ligne « tous tirs » est elle aussi une preuve, et dans
+  l autre sens : sur une famille a ARME FIXE le cap du chassis EST deja la visee du conducteur
+  depuis 5.2a.6, donc l ecart y vaut **exactement 0,0** — le port ne peut rien y casser. Temoins
+  sans tourelle : `8a485699` 15 tirs, ecart 0,0 / 0,0 / 0,0 ; `0a44c6cc` 30 tirs, mediane 0,0.
+- [x] **5.5.3 — LE PORT : LA DIRECTION D UN TIR DE TOURELLE EST LA VISEE DE SON TIREUR.** Web
+  SEUL, **AUCUNE montee de schema** (`SchemaVersion` reste 65), aucun champ neuf au document,
+  aucune recuisson : la valeur etait deja publiee et personne ne la lisait pour le tir.
+  - [x] `vehicleShooterAimAt(track, slotTireur, frame)` (`vehiclesAim.ts`) : l episode dont le
+        slot EGALE celui du tireur, sa lecture de visee en vigueur, ou `null`. Il passe par
+        `vehicleActiveRides` plutot que par un filtre a la main — le predicat « cet episode
+        couvre-t-il cette image » vit la-bas et nulle part ailleurs (CLAUDE.md n° 6).
+  - [x] `VehicleShotSource.shooterHeadingDeg` (`shotFx.ts`), rempli depuis `Shot.slot`.
+        `vehicleShotSourceOf` prend desormais le TIR entier au lieu de trois de ses champs : elle
+        en lisait deja deux et il lui en fallait un troisieme.
+  - [x] `VehicleShotCaps { chassisDeg, tireurDeg }` (`vehicleWeaponMounts.ts`) remplace le
+        `headingDeg` positionnel de `vehicleShotPlacement` — la fonction etait DEJA a cinq
+        parametres (CLAUDE.md n° 5) et les deux caps ne servent pas a la meme chose : le chassis
+        PLACE l ancre (repere local du sprite), le tireur ORIENTE la decharge.
+  - [x] **UN SEUL FOYER POUR LA REGLE DE DIRECTION** (`vehicleMountAngle`) : elle etait ecrite
+        DEUX FOIS, dans `vehicleShotPlacement` et dans la branche « sprite pas encore charge » de
+        `vehicleShotOrigin`. Les deux appellent desormais le meme predicat — `fixe` -> cap du
+        chassis (INCHANGE), `tourelle` -> visee du tireur si elle est lue, sinon `null`.
+  - [~] **LA « TOURELLE DESSINEE » N EXISTE PAS COMME OBJET SEPARE, et c est verifie sur pieces** :
+        `vehiclesPaint.ts` dessine UN sprite de chassis, et son seul glyphe de tourelle
+        (`drawMapElementTurret`) sert les ELEMENTS DE CARTE sans asset (Shade, tourelle posee) —
+        dont les familles sont deja dans `FAMILLES_ARME_FIXE`, donc deja orientees par la visee
+        de leur occupant depuis 5.2a.6. Il n y a rien de plus a orienter ; le chassis du Warthog
+        et du Scorpion garde son propre cap, comme l utilisateur l a tranche le 2026-09-20 (la
+        coque ne suit pas la tourelle).
+  - [x] **MESURE AVANT / APRES, MEME POPULATION ET MEME CODE** (l AVANT s obtient en forcant
+        `shooterHeadingDeg` a `null` dans la chaine de rendu REELLE, jamais par une regle
+        recopiee) :
+
+        | document | population de tirs de vehicule | avec direction AVANT | APRES | dont tirs de TOURELLE |
+        |---|---:|---:|---:|---|
+        | `4f77afc1` | 165 | 65 (39,4 %) | **160 (97,0 %)** | **0 / 100 -> 95 / 100 (95,0 %)** |
+        | `8a485699` | 15 | 15 (100 %) | 15 (100 %) | aucun tir de tourelle |
+        | `0a44c6cc` | 30 | 30 (100 %) | 30 (100 %) | aucun tir de tourelle |
+
+        Les deux derniers sont les temoins de NON-REGRESSION : pas un tir n y change de direction.
+  - [x] Sept cas vitest sur `vehicleShotPlacement`, dont les quatre du lot : tourelle SANS visee
+        -> `null` (la regle de 5.2a.5 SURVIT), tourelle AVEC visee -> la visee du tireur, le
+        DECALAGE d une tourelle suit le chassis et jamais la visee, et arme FIXE -> la visee du
+        tireur ne prend PAS le pas sur le cap du chassis.
+  - [x] Gates joues : `make check-types`, `make test-web` (**7 813 tests verts**), eslint sur les
+        cinq fichiers touches, `npx knip` (aucun export mort). Aucun octet Go.
+
 ## 4. Découvertes (consignées, NON traitées — règle 7)
 
 | Date | Lot | Découverte | Où elle ira |
 |---|---|---|---|
+| 2026-09-21 | 5.5.2 | **D1 (5.5) — LE CHAMP `seat` D UN EPISODE D OCCUPATION NE DEPARTAGE PAS LES OCCUPANTS.** Sur les 100 tirs de tourelle de `4f77afc1`, la ventilation des episodes qui couvrent l instant du tir trouve **153 occurrences de `seat = 0`** (donc PLUSIEURS episodes revendiquent le siege du conducteur sur le MEME vehicule a la MEME image) et **16 episodes a siege MUET** — mais **jamais** de siege 1 ni 2, alors que le tourelleur d un Warthog est un passager. L episode DU TIREUR (apparie par slot) se declare lui aussi `seat = 0` dans 84 cas sur 100. | NON TRAITE (regle 7) — **le port de 5.5.3 ne s appuie pas dessus**, il apparie par SLOT, qui est exact a 100 % (241 / 241). C est un defaut de la CUISSON (`document_vehicles.go`, attribution du siege a un episode), a instruire par un lot serveur : l oracle est ecrit ici (deux episodes ne peuvent pas partager un siege au meme instant), et deux consommateurs s y fient deja — `vehicleDriverAt` (teinte du vehicule, ordre des noms) et `vehicleActiveRides` (tri d affichage) |
+| 2026-09-21 | 5.5.3 | **D2 (5.5) — UNE ARME DE JOUEUR TIREE D UN SIEGE DE PASSAGER RESTE SANS DIRECTION, ET LE REMEDE EST DESORMAIS A PORTEE.** `vehicleShotSourceOf` ecarte ces tirs par decision du lot 5.2a.5 (« le passager vise ou il veut ») et les laisse sur leur propre cap de REGARD — or un bipede embarque ne replique plus sa trajectoire, donc ce cap est lisible pour 1 tir sur 241. Mesure de la population : **76 tirs sur 241** de `4f77afc1` (241 tirs de vehicule, 165 traites par le rendu). | NON TRAITE (regle 7 : le lot porte sur la TOURELLE). Mais le negatif de 5.2a.5 tombe : la visee de l episode du tireur EST son propre regard, pas celui d autrui — l objection qui gelait ce cas (« faire passer une mesure d autrui pour une approximation de soi ») ne s y applique pas. `vehicleShooterAimAt` existe et rend deja la valeur ; le lot qui voudra le faire n a qu a etendre la porte de `vehicleShotSourceOf`, avec sa propre mesure |
+| 2026-09-21 | 5.5.2 | **D3 (5.5) — LES DOCUMENTS DU CACHE LOCAL SONT AU SCHEMA 62, LA TETE EST AU 65.** Les artefacts de `data/cache/replays/halo_infinite` datent du 2026-09-18 (republication de cloture du chantier) et portent `schemaVersion: 62` ; les mesures avant/apres de 5.5.2 et 5.5.3 sont donc prises sur cette forme. Sans consequence pour ce lot : `vehicles[].rides[].{slot,seat,aim}` et `shots[].{slot,v,w,t}` existent depuis le schema 31 et n ont pas bouge depuis. | NON TRAITE, et **dit ici pour que les chiffres soient rejouables** : une recuisson des temoins donnerait des comptes de tirs legerement differents (le brief de lancement citait « 74 / 286 », une forme plus recente). Le VERDICT, lui, ne depend pas du compte : 0 tir de tourelle oriente avant, 95 sur 100 apres |
+| 2026-09-21 | 5.5.1 | **D4 (5.5) — LE MASQUE DE `ti=40` DIT CE QU UN VEHICULE REPLIQUE, ET LA TABLE ECS NE LE DIT NULLE PART.** Recensement sur 253 863 records (deux films) : `i0` position 100 %, `i25` tick de commande ~100 %, `i1` velocite ~99 %, `i3` velocite angulaire ~97 %, `i2` avant/haut ~96 %, `i34` physique de type 13-15 %, `i37` minuteur EMP 1-3 %, `i4` vitalite ~4 % — et **26 autres index a moins de 1 %, dont cinq a UN SEUL record**. Les 17 composants `non_porte` de l archetype vehicule sont donc, pour la plupart, non porte ET jamais declares. | NON TRAITE. **Consigne parce que c est un ORACLE DE PRIORITE gratuit** : un lot qui voudra porter un composant de `ti=40` peut mesurer sa presence AVANT d ecrire une grammaire, avec l instrument de 5.5.1 (`tourelle_55_masque_research_test.go`, une porte `TOUR55_FILM` / `TOUR55_CARTE`, ~6 s par film). Le bloquant d image-cle de `ti=40` reste `i30`, lui aussi jamais declare en delta |
+| 2026-09-21 | 5.5.3 | **D5 (5.5) — UN SEUL DOCUMENT DU CORPUS LOCAL PORTE UN TIR DE TOURELLE, ET LE CANON DU SCORPION N Y TIRE JAMAIS.** Balayage des **172 artefacts cuits** de `data/cache/replays/halo_infinite` : le tag du Warthog (`0xC7D5091200000000`) n apparait que dans **`4f77afc1`**, et le tag du canon du Scorpion (`0x00015CFA00000000`, entree `SCORPION_TURRET` de la table de montages) dans **ZERO** — y compris dans les trois documents ou un Scorpion EXISTE (`8a485699`, `0a44c6cc`, `f0220a96`). Le chemin `tourelle` du rendu est donc prouve sur le Warthog SEUL. | NON TRAITE, et **dit ici pour que la portee de 5.5.3 ne soit pas surestimee** : la regle est agnostique au siege ET a la famille (elle apparie le SLOT du tireur), donc elle vaudra pour le Scorpion sans une ligne de plus — mais aucune mesure ne l atteste encore. Deux causes possibles, non departagees : le tag `weap` du canon n est pas celui que la table suppose (il vient d une DOCUMENTATION, pas d une observation directe — l en-tete de `vehicleWeaponMounts.ts` le dit deja pour les montages « ESTIMATION »), ou le canon ne produit pas d evenement de tir lisible. Le depart se fait avec un film de Heavies recuit et un recensement des tags de `shots[].w` |
 | 2026-09-21 | 5.3.3-b | **D10 (5.3) — `marchViews = 8` CONTRE TROIS VUES CHEZ LE FRAME-PROCESSEUR.** `FUN_142987460` deroule exactement trois boucles de records (`do { ... } while (uVar7 < 3)`) ; `killsource.Options.Views` et `grammar.marchViews` en deroulent HUIT. Mesure de l ecart sur `bfecd02b` : 8 vues rapportent 7 000 records de plus que 3 (124 828 contre 117 753) mais degradent l etalon `i25` de 0,8 point et rendent 1 251 records `ti=35` de MOINS ; 16 vues est indiscernable de 8. Le depot lit donc au-dela de la trame. | NON TRAITE (regle 7). Reduire la constante a 3 est un lot de PRODUCTION : elle porte les empreintes gelees de `killsource` et de la marche des morts d objet. L oracle de decision existe deja (l etalon `i21`/`i25` et le compte de records `ti=35`) |
 | 2026-09-21 | 5.3.3-b | **D11 (5.3) — 24 % DES PAQUETS A LISTE PLEINE NE SE LOCALISENT PAS.** `marchLocateStrict` (signature du slot 123, 35 bits, composant unique) localise 4 006 a 4 147 des 5 274 paquets a evenements de `bfecd02b` — 76 a 79 %. Le complement demande la grammaire de CHARGE des types d evenement, que seul un lot d evenements peut porter. | NON TRAITE (regle 7) — c est le lot d evenements deja consigne. La porte existe et son taux est mesure : la matiere manquante est ~1 270 paquets sur 30 000 |
 | 2026-09-21 | 5.3.3-b | **D12 (5.3) — LA TABLE D ENTITES EST CELLE DE LA VUE, ET LE DECODEUR HORS LIGNE TIENT UN SEUL MONDE.** La garde du delta lit `vue + 0x38 + slot*0xa0` : chaque vue a SA table. Le port tient un `World` unique pour les trois. | NON TRAITE. Approximation assumee tant que les trois vues partagent l espace de slots observe ; un lot qui voudrait la lever doit d abord mesurer si un meme slot porte deux archetypes selon la vue |
@@ -11050,3 +11193,39 @@ Les lectures de film ont toutes été faites **UN FILM À LA FOIS**, par test ci
 | 2026-09-21 | 5.4.3 | `replay-equiv --deux-passes --films=084a804d` (S8 : decodage contre rejeu DEPUIS LES FAITS) | **artefact IDENTIQUE A L OCTET** — c est le gate qui prouve que le codec des faits porte le roulis sans le perdre ; sans lui, le rejeu depuis les faits aurait publie un autre cap que le decodage |
 | 2026-09-21 | 5.4.3 | source du cap sur `084a804d` | 109 478 echantillons : **capDuFilm 70 315 (64,2 %)**, capParVelocite 9 884, sansCap 29 279, `roulisLuMaisModeNonPublie` 9 506 |
 | 2026-09-21 | 5.4.3 | `replay-corpus-gate --temoins=bfecd02b --base=6e86db356` | **NON JOUE — BLOQUE** : le gate exporte les faits par `levelup replay-facts-export`, qui ouvre `shared_matches_v2.duckdb` en lecture ; la base est tenue EN ECRITURE par le backfill (PID 37052). Echec PROPRE (exit 4, trois essais bornes, aucune ecriture). A rejouer par le pilote des que la base est rendue. Le temoin vehicule `084a804d` a ete couvert autrement (deux lignes ci-dessus), sans DuckDB |
+
+### Post-chantier — lot 5.5 (la visee du tourelleur), gates SANS AUCUN DECODAGE DE CORPUS, 2026-09-21
+
+Branche `feat/decfilm-55`, base `15627a4ce`. **AUCUN `replay-equiv`, AUCUN corpus gate, et ce
+n est pas un report** : `SchemaVersion` reste **65**, `grammar.Rev` et `facts.Rev` sont
+INCHANGEES (5.5.1 ne touche aucun octet de production, 5.5.3 est du web SEUL), et les 8 fixtures
+de contrat ne bougent pas — il n y a rien qu un harnais d equivalence puisse voir. Les lectures
+de film ont ete faites **UN FILM A LA FOIS**, par test cible sous tag `research`, sans jamais
+ouvrir une base DuckDB ni ecrire un artefact. Jonctions `film_chunks` / `film_manifests`
+intactes (**1 598 entrees**). Les mesures de document sont en LECTURE SEULE sur les artefacts
+deja cuits du checkout principal (`TOURELLE_MESURE_DIR`), jamais reecrits.
+
+| Date | Lot | Gate | Resultat |
+|---|---|---|---|
+| 2026-09-21 | 5.5.1 | chaine du descripteur, CALIBRATION avant toute adresse neuve | **6 temoins / 6 concordances** — `managed-player-back-button-scoreboard-flair`, `managed-navpoint-sub-type`, `managed-navpoint-radial-progress`, `device-position-animation-name`, `manual-timer-initial-duration`, `manual-timer-current-duration`. Une seule qui rate et la passe ne publie RIEN |
+| 2026-09-21 | 5.5.1 | `i41`/`i42` resolus puis relus au decompile (Ghidra, LECTURE SEULE, `127.0.0.1:8089`) | ecrivains `FUN_142f04a4c` / `FUN_142f04ac0`, 113 octets chacun, corps identiques : `2 x FUN_1406d84b4(..., -pi, +pi, 8, 1, 1)` = **16 bits**, inconditionnel, sans boucle par siege |
+| 2026-09-21 | 5.5.1 | les deux bornes de dequantification relues dans l image (`/read_memory 0x143cd8918`) | `40490fdb` = **+pi** et `c0490fdb` = **-pi** ; `3cc90fdb` = pi/128 au milieu, la constante du roulis du lot 5.4 — aucune valeur devinee |
+| 2026-09-21 | 5.5.1 | d ou vient la valeur (producteur de replication + setters + API de script) | `FUN_142f0cca0` recopie `objet+0xbf0..0xbfc` sous seuil de variation ; `FUN_143183ea0` / `FUN_143183ef0` marquent les composants **0x29** (41) et **0x2a** (42) ; `FUN_1431acd00(unite, float, float)` valide deux angles en DEGRES (`x DAT_143cd86c4`) et les pose sur l unite du joueur courant. **API de script, pas une valeur par tick** |
+| 2026-09-21 | 5.5.1 | masque de composants `ti=40`, `4f77afc1` (carte Flood Gulch, largeurs d axe INSTALLEES) | **144 385 records**, `MaskOver` 0 ; `i41` **0**, `i42` **0**, `i30` 0, `i31` 0, `i40` 0, `i21` 0 |
+| 2026-09-21 | 5.5.1 | masque de composants `ti=40`, `084a804d` (Fortitude Heavies, les Scorpions) | **109 478 records**, `MaskOver` 0 ; memes six zeros |
+| 2026-09-21 | 5.5.1 | controle POSITIF du meme recensement (le zero n est pas un plafond) | il voit des index a **UN SEUL record** : `i8`, `i18`, `i55`, `i58`, `i59` sur `4f77afc1` ; `i19`, `i58`, `i60` sur `084a804d` |
+| 2026-09-21 | 5.5.1 | `gofmt -l` sur `grammar` ; `go build ./...` ; `go vet ./internal/games/halo_infinite/film/...` (+ `-tags=research`) | vide ; vert ; vert aux deux tags |
+| 2026-09-21 | 5.5.1 | `go test -count=1` sur `halo_infinite/...`, `archlint`, `replaybuild`, `replaydoc`, `replayview`, `contracttest`, `api` | **EXIT=0**, aucun FAIL |
+| 2026-09-21 | 5.5.1 | garde-rails de la table ECS (`ecs_table_guard`, `ecs_table_level_gate`, `ecs_widths_guard`) | verts. `bits_typ` laisse VIDE a dessein sur les deux lignes : la colonne entiere entre dans `ecs_widths_guard`, qui EXECUTE le deser de production — il n en existe aucun pour un `non_porte` |
+| 2026-09-21 | 5.5.1 | `golangci-lint run ./internal/games/halo_infinite/film/...` (paquets entiers) | **0 issues** |
+| 2026-09-21 | 5.5.1 | `grammar.Rev` / `facts.Rev` / `SchemaVersion` | **INCHANGEES** — aucun octet de `film/internal/` hors `testdata/ecs_table.tsv`, les deux instruments sont sous `//go:build research` |
+| 2026-09-21 | 5.5.2 | appariement du TIREUR par slot, `4f77afc1` (document cuit, aucun decodage) | tous tirs de vehicule **241 / 241 episodes trouves**, 235 visees en vigueur ; **tirs de tourelle 100 / 100 episodes, 95 visees**, ecart au cap du chassis **43,5 / 105,1 / 146,7 deg** (med / q75 / q90) |
+| 2026-09-21 | 5.5.2 | le SIEGE, controle negatif | **jamais de siege 1 ni 2** a l instant d un tir de tourelle : 153 occurrences de `seat = 0` pour 100 tirs, 16 sieges muets. D1 (5.5) |
+| 2026-09-21 | 5.5.3 | avant / apres sur la chaine de rendu REELLE, meme population (`buildShotFx` + `vehicleShotOrigin`, l AVANT en forcant `shooterHeadingDeg` a `null`) | `4f77afc1` : **65 / 165 (39,4 %) -> 160 / 165 (97,0 %)** ; tirs de tourelle **0 / 100 -> 95 / 100** |
+| 2026-09-21 | 5.5.3 | temoins de NON-REGRESSION (aucun tir de tourelle) | `8a485699` 15 / 15 inchange ; `0a44c6cc` 30 / 30 inchange ; sur une famille a ARME FIXE l ecart visee-chassis vaut **exactement 0,0 deg** (le cap y EST deja la visee du conducteur depuis 5.2a.6) |
+| 2026-09-21 | 5.5.3 | `make check-types` ; `make test-web` | vert ; **722 fichiers, 7 813 tests verts**, 18 skippes |
+| 2026-09-21 | 5.5.3 | eslint sur les cinq fichiers touches ; `npx knip` | 0 probleme ; aucun export mort (seules les 4 lignes d indices de configuration preexistantes) |
+| 2026-09-21 | 5.5.3 | seuils de taille (CLAUDE.md n° 5) | `vehiclesAim.ts` 216 L, `vehicleWeaponMounts.ts` 289 L, `shotFx.ts` 178 L, la mesure 372 L — tous sous 500 ; `vehicleShotPlacement` reste a **cinq** parametres (les deux caps passent dans un objet, pas en sixieme argument) |
+| 2026-09-21 | 5.5.3 | `SchemaVersion` | **65, inchange** : aucun champ neuf au document, aucune recuisson — la valeur etait deja publiee et personne ne la lisait pour le tir |
+| 2026-09-21 | tous | decodage de corpus (`replay-equiv`, `replay-corpus-gate`) | **AUCUN**, et ce n est pas un report : rien de publie ne bouge (voir l en-tete de cette section). Le corpus 19 et le re-figeage restent des gestes du pilote |
+| 2026-09-21 | 5.5.3 | portee du chemin `tourelle`, balayage des **172 artefacts cuits** du cache local | le tag du Warthog (`0xC7D5091200000000`) n est porte que par **`4f77afc1`** ; celui du canon du Scorpion (`0x00015CFA00000000`) par **ZERO**, Scorpions presents ou non. Le chemin est donc prouve sur le Warthog SEUL — D5 (5.5) |
