@@ -320,3 +320,32 @@ package grammar
 // L empreinte de la couche bouge parce que `frame_vue_messages.go`, `frame_vue_controle.go`,
 // `frame_harvest.go` et `profil_balayage.go` sont touches — le rang monte derriere l empreinte,
 // pas derriere un comportement. `facts.Rev` NE BOUGE PAS. `replay.SchemaVersion` reste a 67.
+
+// ENTREE `grammar-2026-09-22.4` (2026-09-22, lot 5.14.2) : LA CHARGE DU `kind` 0 DE LA VUE DE
+// CONTROLE EST LUE, ET LE PAQUET FERME AU BIT — RESTE NUL SUR 5 341 PAQUETS SUR 5 341.
+//
+// `FUN_1406d0388` est l ENTREE DE CONTROLE D UN PARTICIPANT, et sa chaine se lit en entier sur sa
+// branche dominante : `FUN_1406cdc04` (`R(1)` puis `R(7)`, sentinelle `0xff` quand le bit est 0),
+// `R(5)` = l index de controle (0..31, la garde `0x1f < uVar21` qui suit etant inatteignable),
+// puis deux bits de presence qui ouvrent `FUN_1406cd860` (bloc de 0x68 octets) et
+// `FUN_141fdae44` (bloc de 0xbc octets).
+//
+// `FUN_1406cd860` EST L ENTREE ELLE-MEME : `R(1)` [+ `R(2)`], puis `FUN_1406d6ef4` = DEUX
+// SCALAIRES QUANTIFIES SUR SIX BITS (code 0 et code 0x3e aux bornes, code 0x1f a ZERO EXACT,
+// sinon `(code - 1) * pas - origine`) plus un bit de presence, puis deux bits de presence, le
+// second ouvrant `FUN_1406d025c` — LES BITS D ACTION, dont la premiere garde est un bit du flux
+// et dont la charge est VIDE quand ce bit vaut 0.
+//
+// LE GATE EST RENFORCE, ET C EST CE QUI PROUVE LA LECTURE. « Reste dans [0 ; 7] » ne prouve pas
+// qu un paquet est lu : le bourrage d octet est ecrit A ZERO, donc un reste qui porte un 1 est de
+// la grammaire manquante meme s il tient dans sept bits. `TestClasses514Bourrage` l exige.
+//
+//	dad793c7  paquets fermes a reste NUL : 140 -> 5 341 sur 5 365 (24 hors de [0 ; 7])
+//	bfecd02b  paquets fermes a reste NUL : 801 -> 2 884 sur 30 387
+//	reste dominant de `dad793c7` : 1 bit sur 5 068 paquets, ET CE BIT EST ZERO
+//
+// `GrammaireBalayage.ClassesDeVue` reste A FAUX : la marche de production est inchangee (les
+// chiffres ci-dessus sont ceux de l instrument). Le rang monte derriere l empreinte de la couche.
+// `facts.Rev` NE MONTE PAS — la sortie des faits ne peut pas changer tant que le flag est faux ;
+// seul son golden est refige, son empreinte incluant les revisions amont.
+// `replay.SchemaVersion` reste a 67.
