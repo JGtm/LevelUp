@@ -85,7 +85,22 @@ export interface RangeRolesChartOpts {
   surbrillance?: { debut: number; fin: number; label: string; couleur: string }
   /** Masque la légende du graphe — à une seule série, son nom n'apprend rien. */
   masquerLegende?: boolean
+  /**
+   * Écrit le gamertag AU BOUT de sa courbe de tendance, en plus de la légende (E1 : à
+   * quatre joueurs et vingt matchs, faire l'aller-retour vers la légende coûte la lecture).
+   * Réserve la marge droite qui va avec. Défaut : non.
+   */
+  etiquetteBout?: boolean
+  /**
+   * Opacité des points du nuage. Défaut 1 (lot R). Une grandeur dont la LECTURE tient dans
+   * la tendance (E1) baisse les points pour que les courbes passent devant.
+   */
+  opacitePoints?: number
 }
+
+/** Marge droite du `grid` : l'étiquette de bout de courbe a besoin de place. */
+const MARGE_DROITE = 16
+const MARGE_DROITE_ETIQUETTE = 64
 
 /** La donnée d'un point du nuage : sa position, et le point BRUT pour l'infobulle. */
 interface EchartPointDatum {
@@ -162,10 +177,11 @@ function serieTendance(
   serie: SeriePortee,
   couleur: string,
   nom: string,
+  etiquetteBout = false,
 ): Record<string, unknown> {
   const moyennes = moyenneGlissante(serie.points)
   const data = serie.points.map((p, i) => [p.ordre, moyennes[i]])
-  return {
+  const s: Record<string, unknown> = {
     type: 'line',
     name: nom,
     data,
@@ -176,6 +192,17 @@ function serieTendance(
     itemStyle: { color: couleur },
     z: 2,
   }
+  if (etiquetteBout) {
+    s.endLabel = {
+      show: true,
+      formatter: nom,
+      color: couleur,
+      fontSize: 10,
+      fontWeight: 500,
+      distance: 6,
+    }
+  }
+  return s
 }
 
 /** L'infobulle d'un point : le joueur, le match, la médiane, l'écart, les frags mesurés. */
@@ -205,6 +232,7 @@ export function buildSquadRangeRolesOption(
   const bornes = bornesY(series, opts.yDomain)
   const n = opts.categories.length
   const couleurDefaut = opts.couleurDefaut ?? resolveToken('info')
+  const opacitePoints = opts.opacitePoints ?? 1
 
   const nuage = series.map((serie, idx) => {
     const couleur = opts.couleurs[serie.gamertag] ?? couleurDefaut
@@ -217,8 +245,14 @@ export function buildSquadRangeRolesOption(
         // visible (un essai de style n'est pas une erreur de mesure) mais ne se confond
         // jamais avec une médiane tenue.
         itemStyle: p.plein
-          ? { color: encre, borderColor: tc.card, borderWidth: 2 }
-          : { color: 'transparent', borderColor: encre, borderWidth: 2, borderType: 'dashed' },
+          ? { color: encre, borderColor: tc.card, borderWidth: 2, opacity: opacitePoints }
+          : {
+              color: 'transparent',
+              borderColor: encre,
+              borderWidth: 2,
+              borderType: 'dashed',
+              opacity: opacitePoints,
+            },
         raw: p,
       }
     })
@@ -246,7 +280,12 @@ export function buildSquadRangeRolesOption(
   })
 
   const tendances = series.map((serie) =>
-    serieTendance(serie, opts.couleurs[serie.gamertag] ?? couleurDefaut, serie.gamertag),
+    serieTendance(
+      serie,
+      opts.couleurs[serie.gamertag] ?? couleurDefaut,
+      serie.gamertag,
+      opts.etiquetteBout ?? false,
+    ),
   )
 
   const sansLegende = opts.masquerLegende || opts.legende === false
@@ -264,8 +303,13 @@ export function buildSquadRangeRolesOption(
 
   return {
     backgroundColor: CHART_BG,
-    // Sans légende de séries (lots Z1 et W), le bas n'a plus à la loger : la grille descend d'autant.
-    grid: { top: 24, bottom: sansLegende ? 52 : 78, left: 56, right: 16 },
+    // Sans légende de séries (lots Z1 et W), le bas n'a plus à la loger ; l'étiquette de bout (Z2) réserve la droite.
+    grid: {
+      top: 24,
+      bottom: sansLegende ? 52 : 78,
+      left: 56,
+      right: opts.etiquetteBout ? MARGE_DROITE_ETIQUETTE : MARGE_DROITE,
+    },
     tooltip: { ...getTooltipBase(tc), trigger: 'item', formatter: formatTooltip(opts) },
     // Deux contrats cohabitent (Z1 : `legende: false` -> `{ show: false }` ; W : `masquerLegende` -> absente).
     ...(legende ? { legend: legende } : opts.legende === false ? { legend: { show: false } } : {}),

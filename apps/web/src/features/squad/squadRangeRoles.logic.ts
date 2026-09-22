@@ -21,7 +21,7 @@
  * module décide.
  */
 import { truncateMap } from '@/lib/charts/matchLabels'
-import type { MatchRangeProfile } from '@/lib/api/types'
+import type { MatchRangePlayer, MatchRangeProfile } from '@/lib/api/types'
 
 /** Frags mesurés minimaux pour qu'une médiane de match compte (point plein). */
 export const PLANCHER_MESURE = 5
@@ -29,8 +29,44 @@ export const PLANCHER_MESURE = 5
 /** Largeur de la fenêtre glissante qui décide d'un rôle (et trace la tendance). */
 export const FENETRE_ROLE = 5
 
-/** Les trois rôles, ORDINAUX du plus près au plus loin. */
+/**
+ * Les trois rôles, ORDINAUX du plus bas au plus haut sur l'axe : `front` = tiers bas,
+ * `polyvalent` = tiers médian, `sniper` = tiers haut.
+ *
+ * CE SONT DES RANGS, PAS DES LIBELLÉS. La grandeur portée les nomme « Ligne de front /
+ * Polyvalent / Tireur d'élite » ; la grandeur hauteur les nomme « Contrebas / À niveau /
+ * Hauteurs ». Les noms viennent du manifest i18n de la carte (`squad.<grandeur>.band_*`),
+ * jamais de ce module : c'est ce qui permet au même nuage de servir les deux lectures.
+ */
 export type RoleDePortee = 'front' | 'polyvalent' | 'sniper'
+
+/**
+ * La GRANDEUR projetée en ordonnée. `portee` = distance médiane des frags (lot R) ;
+ * `hauteur` = dénivelé médian signé des frags (`killer_z - victim_z`, lot U / E1). Même
+ * échelle relative dans les deux cas : l'écart à la médiane du LOBBY du match.
+ */
+export type GrandeurProfil = 'portee' | 'hauteur'
+
+/**
+ * mesureDeJoueur lit la (médiane, écart au lobby) d'un joueur pour une grandeur.
+ *
+ * `null` quand la grandeur n'est pas mesurée sur ce (match, joueur) : les champs de
+ * dénivelé sont OPTIONNELS côté API — absents = rien à dire, alors qu'un 0 m est une
+ * mesure (« à plat »). Un point sans mesure ne se dessine pas du tout — il ne devient PAS
+ * un point creux, qui lui dit « mesuré, mais sur trop peu de frags ».
+ */
+export function mesureDeJoueur(
+  joueur: MatchRangePlayer,
+  grandeur: GrandeurProfil,
+): { medianeM: number; ecartM: number } | null {
+  if (grandeur === 'portee') {
+    return { medianeM: joueur.median_m, ecartM: joueur.lobby_delta_m }
+  }
+  const medianeM = joueur.elevation_median_m
+  const ecartM = joueur.elevation_lobby_delta_m
+  if (medianeM == null || ecartM == null) return null
+  return { medianeM, ecartM }
+}
 
 /** Les trois rôles dans l'ordre ordinal — l'ordre de la légende et des teintes. */
 export const ROLES_ORDONNES: RoleDePortee[] = ['front', 'polyvalent', 'sniper']
@@ -98,14 +134,21 @@ export function categoriesMatchs(profilsOrdonnes: MatchRangeProfile[]): string[]
  * l'ordre de la légende et l'attribution des encres. La comparaison est insensible à la
  * casse : le serveur rend le gamertag tel que le titre l'écrit, l'URL le rend souvent en
  * minuscules. Un joueur servi hors roster est rendu en queue, jamais perdu.
+ *
+ * `grandeur` choisit ce qui est projeté en ordonnée (portée ou hauteur) : un (match,
+ * joueur) sans mesure pour cette grandeur est ABSENT de la série, et un joueur qui n'en a
+ * aucune n'a pas de série du tout — l'état vide de la carte en découle.
  */
 export function seriesPortee(
   profilsOrdonnes: MatchRangeProfile[],
   ordreRoster: string[] = [],
+  grandeur: GrandeurProfil = 'portee',
 ): SeriePortee[] {
   const parXuid = new Map<string, SeriePortee>()
   profilsOrdonnes.forEach((profil, ordre) => {
     for (const joueur of profil.players ?? []) {
+      const mesure = mesureDeJoueur(joueur, grandeur)
+      if (!mesure) continue
       const gamertag = joueur.gamertag ?? joueur.xuid
       let serie = parXuid.get(joueur.xuid)
       if (!serie) {
@@ -118,8 +161,8 @@ export function seriesPortee(
         mapName: profil.map_name,
         xuid: joueur.xuid,
         gamertag,
-        medianeM: joueur.median_m,
-        ecartM: joueur.lobby_delta_m,
+        medianeM: mesure.medianeM,
+        ecartM: mesure.ecartM,
         mesures: joueur.measured,
         plein: joueur.measured >= PLANCHER_MESURE,
       })

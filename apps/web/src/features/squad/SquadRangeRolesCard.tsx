@@ -1,5 +1,13 @@
 /**
- * SquadRangeRolesCard — « Rôles de portée » (section Coordination, D22-5 du 2026-09-21).
+ * SquadRangeRolesCard — le nuage des RÔLES de la section Coordination : « Rôles de portée »
+ * (D22-5 du 2026-09-21) et, avec `grandeur="hauteur"`, « Rôles de hauteur » (E1 / D24 du
+ * 2026-09-22).
+ *
+ * UNE SEULE CARTE POUR LES DEUX GRANDEURS, pas une copie : la grammaire est la même à la
+ * lettre — un point par (match, joueur), l'écart à la médiane du LOBBY du match en
+ * ordonnée, trois bandes aux tiers de la période, une tendance glissante par joueur. Seuls
+ * changent la grandeur lue sur le profil (`seriesPortee`) et le préfixe de libellés du
+ * manifest. Deux lectures qui s'empilent au lieu de se concurrencer.
  *
  * QUI TIENT LA LIGNE DE FRONT, QUI JOUE LOIN, ET QUI A CHANGÉ. Un point par (match,
  * joueur) : en abscisse le match, du plus ancien au plus récent ; en ordonnée l'écart de sa
@@ -41,19 +49,38 @@ import {
   seriesPortee,
   seuilsRoles,
   TAILLE_POINT_MIN,
+  type GrandeurProfil,
   type RoleDePortee,
 } from './squadRangeRoles.logic'
 import { getSquadRangeRolesText } from './squadRangeRolesStrings'
+
+/** Opacité des points quand la lecture passe par la tendance (grandeur hauteur, E1). */
+const OPACITE_POINTS_HAUTEUR = 0.5
 
 export interface SquadRangeRolesCardProps {
   bloc: MatchRangeBlock
   /** Roster dans l'ordre de la page : joueur principal d'abord, puis les coéquipiers. */
   roster: string[]
+  /**
+   * La grandeur portée en ordonnée. `portee` (défaut, lot R) : la distance des frags.
+   * `hauteur` (E1, D24 du 2026-09-22) : leur dénivelé signé. MÊME CARTE, MÊME NUAGE, MÊME
+   * BANDE — seuls la grandeur lue sur le profil et les libellés du manifest changent.
+   */
+  grandeur?: GrandeurProfil
 }
 
-export function SquadRangeRolesCard({ bloc, roster }: SquadRangeRolesCardProps) {
+export function SquadRangeRolesCard({
+  bloc,
+  roster,
+  grandeur = 'portee',
+}: SquadRangeRolesCardProps) {
   const locale = useAppShellStore((s) => s.locale)
-  const t = getSquadRangeRolesText(locale)
+  const t = getSquadRangeRolesText(locale, grandeur)
+  // Préfixe des `data-testid` : deux cartes cohabitent sur la page, leurs repères aussi.
+  const tid = `squad-${grandeur}`
+  // La lecture de E1 tient dans la tendance (4 joueurs x 20 matchs = 80 points) : les
+  // points s'effacent derrière les courbes, et chaque courbe porte son gamertag au bout.
+  const hauteur = grandeur === 'hauteur'
   const numLoc = intlLocale(locale)
 
   const numFmt = useMemo(
@@ -63,7 +90,10 @@ export function SquadRangeRolesCard({ bloc, roster }: SquadRangeRolesCardProps) 
 
   const profils = useMemo(() => ordonnerProfils(bloc.profiles ?? []), [bloc.profiles])
   const categories = useMemo(() => categoriesMatchs(profils), [profils])
-  const series = useMemo(() => seriesPortee(profils, roster), [profils, roster])
+  const series = useMemo(
+    () => seriesPortee(profils, roster, grandeur),
+    [profils, roster, grandeur],
+  )
   const seuils = useMemo(() => seuilsRoles(series), [series])
   const roles = useMemo(() => {
     const out = new Map<string, (RoleDePortee | null)[]>()
@@ -82,8 +112,8 @@ export function SquadRangeRolesCard({ bloc, roster }: SquadRangeRolesCardProps) 
   const mesuresMax = mesures.length > 0 ? Math.max(...mesures) : 0
 
   const chartSeries = useMemo(
-    () => (series.length > 0 ? [{ key: 'squad-portee', datapoints: series }] : []),
-    [series],
+    () => (series.length > 0 ? [{ key: tid, datapoints: series }] : []),
+    [series, tid],
   )
 
   const buildOption = useMemo(
@@ -104,8 +134,10 @@ export function SquadRangeRolesCard({ bloc, roster }: SquadRangeRolesCardProps) 
           tooltipMeasured: t.tooltipMeasured,
         },
         fmtM: (v: number) => numFmt.format(v),
+        etiquetteBout: hauteur,
+        opacitePoints: hauteur ? OPACITE_POINTS_HAUTEUR : undefined,
       }),
-    [series, categories, seuils, couleurs, mesuresMin, mesuresMax, t, numFmt],
+    [series, categories, seuils, couleurs, mesuresMin, mesuresMax, t, numFmt, hauteur],
   )
 
   const vide = series.length === 0
@@ -116,7 +148,7 @@ export function SquadRangeRolesCard({ bloc, roster }: SquadRangeRolesCardProps) 
       label={t.sectionLabel}
       titleAdornment={titleWithInfo(<TooltipParagraphs items={[t.help(PLANCHER_MESURE)]} />)}
     >
-      <div className="space-y-2 px-3 py-2" data-testid="squad-portee-roles">
+      <div className="space-y-2 px-3 py-2" data-testid={`${tid}-roles`}>
         {vide ? (
           <EmptyStateNotice title={t.emptyTitle} description={t.emptyDescription} />
         ) : (
@@ -126,7 +158,7 @@ export function SquadRangeRolesCard({ bloc, roster }: SquadRangeRolesCardProps) 
                 la tendance. Les joueurs, eux, sont dans la légende du graphe. */}
             <div
               className="flex flex-wrap items-center gap-4 text-2xs text-muted-foreground"
-              data-testid="squad-portee-legende"
+              data-testid={`${tid}-legende`}
             >
               <span className="flex items-center gap-1.5">
                 <span
@@ -140,14 +172,14 @@ export function SquadRangeRolesCard({ bloc, roster }: SquadRangeRolesCardProps) 
                 {t.legendTrend(FENETRE_ROLE)}
               </span>
             </div>
-            <p className="text-2xs text-muted-foreground" data-testid="squad-portee-couverture">
+            <p className="text-2xs text-muted-foreground" data-testid={`${tid}-couverture`}>
               {t.coverage(bloc.kills_measured, bloc.kills_total)}
             </p>
           </>
         )}
       </div>
       {!vide && (
-        <details className="border-t border-border pb-2" data-testid="squad-portee-fold-bande">
+        <details className="border-t border-border pb-2" data-testid={`${tid}-fold-bande`}>
           <summary className="cursor-pointer px-3 py-1 text-xs text-muted-foreground">
             {t.foldTape}
           </summary>
@@ -157,6 +189,7 @@ export function SquadRangeRolesCard({ bloc, roster }: SquadRangeRolesCardProps) 
               roles={roles}
               categories={categories}
               t={t}
+              prefixeTest={tid}
             />
           </div>
         </details>

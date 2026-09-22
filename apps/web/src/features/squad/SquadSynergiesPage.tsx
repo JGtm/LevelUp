@@ -190,6 +190,13 @@ export function SquadSynergiesPage() {
               mais c'est la seule qui ne parle pas de morts. Son absence est un ÉTAT (aucun
               film décodé sur la sélection) : le bloc n'est alors pas monté. */}
           {rangeProfiles && <SquadRangeRolesCard bloc={rangeProfiles} roster={roster} />}
+          {/* LA HAUTEUR SUIT LA PORTÉE (E1, D24 du 2026-09-22) : même bloc de données, même
+              nuage, même grammaire — qui tient les hauteurs, qui joue en contrebas. Elle se
+              monte toujours : la carte rend son état vide nommé quand aucun match de la
+              sélection ne porte de dénivelé mesuré. */}
+          {rangeProfiles && (
+            <SquadRangeRolesCard bloc={rangeProfiles} roster={roster} grandeur="hauteur" />
+          )}
         </section>
       )}
       {/* Graphes toujours montés : ChartCard affiche son état vide (titre +
