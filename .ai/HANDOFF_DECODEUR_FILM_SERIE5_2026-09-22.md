@@ -136,3 +136,12 @@ cd /c/Users/Guillaume/Downloads/Scripts/LevelUp-wt-recherche-film && git worktre
   mesure ; jamais de conclusion negative (un maillon manquant = une adresse) ; jamais de largeur
   inventee ; etats du joueur A L INSTANT ; « remarque ≠ validation » ; au 2e lot sans baisse du gate,
   S ARRETER et demander ; le lien avec les objectifs du user doit etre VISIBLE dans chaque compte rendu.
+
+## 6. Addendum 22/09 soir — feat/v75 = 959877c36, CI
+
+feat/v75 est avancee (fast-forward) sur `959877c36` : serie 5 + 5.24 + sections transverses du user +
+ce handoff. La branche `feat/v75-serie5` et le worktree `wt-v75-merge` sont supprimes. CI de feat/v75 :
+tous les jobs verts (E2E compris) SAUF « Go Coverage + Baseline » ANNULE a 45 min deux fois de suite —
+ce n est plus le flake : les runs qui passent prennent 35 a 41 min et feat/v75 depasse le budget.
+Correctif : `timeout-minutes` du job 45 -> 60 (commentaire date, critere de retour). A verifier a la
+reprise : la CI de feat/v75 verte au niveau job ; sinon `gh run rerun <id> --failed`.
