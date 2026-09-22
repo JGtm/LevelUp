@@ -87,3 +87,60 @@ Les en-tetes rejetes portent la tete `1` 22 687 fois, mais aussi `0` (98), `2` (
 que le jeu ne pourrait pas apparier. Une cle reduite au seul slot ne resoudrait que **19 rejets
 de plus** et lierait ces 638-la. Le prix de la cle juste est de 19 liaisons ; ce qu elle ecarte
 est 638 lectures prises a une position fausse.
+
+---
+
+## 3. LE REPLI, ET CE QU IL COUTE
+
+`rejetDeVue` (`frame_infer.go`) recoit l eid COMPLET — la cle du jeu porte les deux bits de tete
+— et consulte la table AVANT de compter un rejet hors datum. `World.LierParAnticipation`
+(`world.go`) pose alors la liaison de la table de datums (`BindDatum` : `Soft`, `GenAny`, vue
+INCONNUE, sans position), la compte par archetype (`Observation.LiaisonsParAnticipation`) et
+journalise le premier usage du film. Sans table installee, pas un bit ne change.
+
+### Le gate (`TestGate516`, carte `snowbound`, A/B `MOUV523_ANTICIPE=0`)
+
+| mesure | `dad793c7` avant | apres | `bfecd02b` avant | apres |
+|---|---:|---:|---:|---:|
+| paquets a reste NUL | 5 354 / 5 365 | **5 355** | 2 884 / 30 387 | **3 919** |
+| reste hors bourrage | 9 | 8 | 27 471 | 26 418 |
+| debordements | 2 | 2 | 32 | **50** |
+| records rendus | 5 641 | 5 649 | 176 786 | **240 488** |
+| `ti=35` (desynchronises) | 75 (0) | 75 (0) | 129 572 (4) | **164 232 (4)** |
+| fantomes | 1 | 1 | 31 | **49** |
+| rejets hors datum | 2 | **1** | 23 769 | **16 129** |
+| liaisons par anticipation | 0 | 8 | 0 | **254** |
+
+Le film de calibration gagne un paquet et ne perd rien. Sur le film dense, **254 liaisons evitent
+7 640 rejets** et rendent 63 702 records de plus : `ti=42` x3,59, `ti=40` (vehicule) x3,02,
+`ti=10` x2,97, `ti=41` x2,43, `ti=32` x2,40, `ti=37` (equipement) x2,39, `ti=35` x1,27 — et
+`ti=4`, le seul temoin propre du film (1,1 % de faute au 5.19.1), ne bouge pas.
+
+### Les deux compteurs de faute qui montent, et leur cause
+
+Debordements 32 -> 50, fantomes 31 -> 49. Le balayage par archetype (`MOUV523_TI`, un archetype
+anticipe a la fois) l attribue : `ti=35` seul rend 48 et 47 ; `ti=42` seul rend **22 et 21**,
+c est-a-dire DIX debordements de MOINS qu avant. Aucun autre archetype ne les deplace.
+
+La raison est celle que le 5.16.2 avait deja ecrite : les slots rejetes se concentrent dans la
+bande de bipedes 521-601 (27 slots, 72 % du volume — 5.19.2), que toutes les images-cles
+ulterieures declarent. Un en-tete pris a une position FAUSSE y tombe donc facilement, et la ou il
+s arretait il lit desormais un corps de bipede qui deborde. **Aucun paquet ne passe de FERME a
+fautif** : les 18 quittent « reste hors bourrage » (27 471 -> 26 418, soit -1 053) pour
+« debordement », et 1 035 le quittent pour « ferme ». L oracle de CONTENU ne bouge pas :
+`ti=35` desynchronises 4 avant, 4 apres.
+
+### Ce qui est nouvellement lu
+
+**207 -> 222 etiquettes de composant** ; `i21 unit-desired-aiming-vector` 84 827 -> 106 108
+(64,6 % des records `ti=35`, contre 65,5 %). Vingt-neuf etiquettes apparaissent — dont
+`equipment-deployed-component` et `equipment-has-infinite-uses-component` (ti=37),
+`crew-order-component`, `game-engine-current-state-component`, huit `tacmap-*`, deux
+`statborg-*`, trois `forge-engine-*` — et quatorze disparaissent, treize `managed-navpoint-*`
+et `projectile-deceleration-disabled-state` : les records `ti=12` passent de 33 a 37, mais leur
+masque n est plus le meme et `managed-navpoint-visual-state-groups-component-0` cede la place
+a `-3`.
+
+Aucune de ces etiquettes n est un canal PUBLIE : `replay.SchemaVersion` reste **67**. La
+couverture gagne un compteur, `Observation.LiaisonsParAnticipation`, qui n est PAS un champ du
+contrat — `Observation` n est jamais publie, ni dans le document ni dans les faits persistes.

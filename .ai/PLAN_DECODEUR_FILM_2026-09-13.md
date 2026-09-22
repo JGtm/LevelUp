@@ -8399,6 +8399,96 @@ grammaire : `.ai/V7.5/film_re/NOTE_5_23_TABLE_ANTICIPEE_2026-09-22.md`.
   prix de la cle juste est de 19 liaisons ; ce qu elle ecarte est 638 lectures prises a une
   position fausse. On cle sur ce que le jeu compare.
 
+- [x] **5.23.2 — LA LIAISON PAR ANTICIPATION, ET LE GATE MESURE APRES CE SEUL CHANGEMENT.**
+
+  **(a) OU ELLE S INTERCALE, ET NULLE PART AILLEURS.** `rejetDeVue` (`frame_infer.go`) recoit
+  desormais l eid COMPLET et non le slot — la cle du jeu porte les deux bits de tete — et
+  consulte la table AVANT de compter un rejet hors datum. `World.LierParAnticipation`
+  (`world.go`) pose alors la liaison de la table de datums (`BindDatum` : `Soft`, `GenAny`, vue
+  INCONNUE, sans position), la COMPTE par archetype (`Observation.LiaisonsParAnticipation`, a
+  cote de `RejetsHorsDatum`) et journalise le PREMIER usage du film (`slog`). Sans table
+  installee, pas un bit ne change. **C est un REPLI, pas une grammaire : le record de naissance
+  n est toujours pas lu**, et le code le dit a l endroit exact ou on le lirait.
+
+  **(b) LE GATE, MESURE APRES CE SEUL CHANGEMENT** (`TestGate516`, carte `snowbound`, A/B
+  `MOUV523_ANTICIPE=0`) :
+
+  | mesure | `dad793c7` avant | apres | `bfecd02b` avant | apres |
+  |---|---:|---:|---:|---:|
+  | paquets a reste NUL | 5 354 / 5 365 | **5 355** | 2 884 / 30 387 | **3 919** |
+  | reste hors bourrage | 9 | **8** | 27 471 | **26 418** |
+  | debordements | 2 | 2 | 32 | **50** |
+  | records rendus | 5 641 | 5 649 | 176 786 | **240 488** |
+  | records `ti=35` (desynchronises) | 75 (0) | 75 (0) | 129 572 (4) | **164 232 (4)** |
+  | records fantomes | 1 | 1 | 31 | **49** |
+  | rejets hors datum · de vue | 2 · 0 | **1** · 0 | 23 769 · 0 | **16 129** · 0 |
+  | liaisons de table de datums | 53 | 53 | 10 | 11 |
+  | liaisons du bloc de type 1 | 1 | 1 | 0 | 0 |
+  | **liaisons PAR ANTICIPATION** | 0 | **8** (`ti=13`) | 0 | **254** |
+
+  **Le film de calibration GAGNE un paquet et ne perd rien** : 5 354 -> 5 355, debordements 2,
+  fantomes 1, `ti=35` 75 a 0 desynchronise — tous inchanges. Les 254 liaisons de `bfecd02b` :
+  `ti=35` 82 · `ti=42` 80 · `ti=37` 61 · `ti=10` 12 · `ti=41` 11 · `ti=38` 3 · `ti=12` 2 ·
+  `ti=40` 2 · `ti=5` 1. Une liaison sert toute la suite du film : **254 liaisons evitent
+  7 640 rejets.**
+
+  **(c) CE QUE LE TROU PORTAIT, PAR ARCHETYPE** (`bfecd02b`, records rendus) :
+
+  | archetype | avant | apres | facteur |
+  |---|---:|---:|---:|
+  | `ti=42` | 2 804 | **10 064** | x3,59 |
+  | `ti=40` vehicule | 5 337 | **16 141** | x3,02 |
+  | `ti=10` objet gere | 1 025 | **3 041** | x2,97 |
+  | `ti=41` arme | 696 | **1 694** | x2,43 |
+  | `ti=32` | 329 | **791** | x2,40 |
+  | `ti=37` equipement | 4 551 | **10 855** | x2,39 |
+  | `ti=35` bipede | 129 572 | **164 232** | x1,27 |
+  | `ti=4` haute frequence | 28 531 | 28 622 | x1,00 |
+
+  Ce sont EXACTEMENT les classes que la differentielle du 5.19.1 accusait — vehicules,
+  equipements, objets de mode —, et elles remontent dans l ordre de leur taux de faute. `ti=4`,
+  le seul temoin propre du film (1,1 % de faute), ne bouge pas : la mesure se tient.
+
+  **(d) DEUX ORACLES MONTENT SUR `bfecd02b`, ET LA CAUSE EST DANS CE CHANGEMENT — NOMMEE ET
+  MESUREE.** Debordements 32 -> 50, fantomes 31 -> 49 : **+18 chacun**. Le balayage par
+  archetype (`MOUV523_TI=<ti>`, un seul archetype anticipe a la fois) dit lequel :
+
+  | anticipe SEUL | paquets a reste NUL | debordements | fantomes | liaisons |
+  |---|---:|---:|---:|---:|
+  | aucun (avant) | 2 884 | 32 | 31 | 0 |
+  | **`ti=35`** | 3 410 | **48** | **47** | 81 |
+  | `ti=42` | 2 934 | **22** | **21** | 8 |
+  | `ti=40` | 2 932 | 32 | 31 | 1 |
+  | `ti=37` | 2 884 | 32 | 31 | 6 |
+  | `ti=10` · `ti=41` | 2 884 | 32 | 31 | 3 · 1 |
+  | `ti=5` · `ti=12` · `ti=38` | 2 884 | 32 | 31 | 0 |
+  | TOUS | **3 919** | 50 | 49 | 254 |
+
+  **C est l anticipation du BIPEDE qui porte les +16, et c est elle aussi qui porte +526 des
+  +1 035 paquets fermes.** La raison est celle que le 5.16.2 avait deja ecrite : les slots
+  rejetes se concentrent dans la bande de bipedes 521-601 (27 slots, 72 % du volume — 5.19.2),
+  que toutes les images-cles ULTERIEURES declarent. Un en-tete pris a une position FAUSSE y tombe
+  donc facilement, et la ou il s arretait il lit desormais un corps de bipede qui deborde.
+  **AUCUN paquet ne passe de FERME a fautif** : les 18 quittent « reste hors bourrage »
+  (27 471 -> 26 418, soit -1 053) pour « debordement », et 1 035 le quittent pour « ferme ».
+  L oracle de CONTENU ne bouge pas : `ti=35` desynchronises **4 avant, 4 apres**. A l inverse
+  `ti=42` anticipe seul RETIRE dix debordements — la table repare aussi des cadres que le rejet
+  laissait faux. L A/B reste rejouable (`MOUV523_ANTICIPE=0`), et le balayage par archetype avec
+  lui (`MOUV523_TI`), pour que ce compromis soit RELU et non suppose.
+
+  **(e) CE QUI EST NOUVELLEMENT LU, EN ETIQUETTES** (`TestGate516Contenu`, `bfecd02b`) :
+  **207 -> 222** etiquettes de composant, `i21 unit-desired-aiming-vector` 84 827 -> **106 108**
+  (64,6 % des records `ti=35`, contre 65,5 % avant). **Vingt-neuf etiquettes apparaissent** —
+  dont `equipment-deployed-component` et `equipment-has-infinite-uses-component` (ti=37),
+  `crew-order-component` (l equipage d un vehicule), `game-engine-current-state-component`, huit
+  `tacmap-*`, deux `statborg-*`, trois `forge-engine-*` — et **quatorze disparaissent**, treize
+  `managed-navpoint-*` et `projectile-deceleration-disabled-state` : les records `ti=12` passent
+  de 33 a 37 mais leur MASQUE n est plus le meme, et
+  `managed-navpoint-visual-state-groups-component-0` cede la place a `-3`. Aucune de ces
+  etiquettes n est un CANAL PUBLIE : `replay.SchemaVersion` reste **67** (aucune forme ne
+  change ; la couverture gagne un compteur, `Observation.LiaisonsParAnticipation`, qui n est PAS
+  un champ du contrat — `Observation` n est jamais publie).
+
 ### Post-chantier — lot 5.21 (le bloc de type 1 : la table de datums du chunk), branche `feat/decfilm-71`
 
 Sur la decouverte D1 du lot 5.20. METHODE : l ecrivain d abord (Ghidra lecture seule,

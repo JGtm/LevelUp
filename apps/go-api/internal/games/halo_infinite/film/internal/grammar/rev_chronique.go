@@ -234,3 +234,42 @@ package grammar
 // `facts.Rev` NE MONTE PAS : la table n a aucun appelant, `DecodeFrameRecords` et
 // `WalkKeyframeWorld` sont intouches — aucun backlog killsource. Son golden est refige parce
 // qu il hache la VALEUR de `grammar.Rev`. `replay.SchemaVersion` reste a 67.
+
+// ENTREE `grammar-2026-09-22.12` (2026-09-22, lot 5.23.2) : LA LIAISON PAR ANTICIPATION — UN
+// REPLI NOMME, DATE ET COMPTE, AU SEUL POINT DE REJET.
+//
+// CE QUE LE RANG CHANGE, ET OU. `rejetDeVue` recoit l eid COMPLET (et non le slot : la cle que
+// `FUN_1406caad8` compare porte les deux bits de tete) et consulte la table anticipee du film
+// AVANT de compter un rejet hors datum. `World.LierParAnticipation` pose alors la liaison de la
+// table de datums (`BindDatum` : `Soft`, `GenAny`, vue INCONNUE, sans position), la COMPTE par
+// archetype (`Observation.LiaisonsParAnticipation`) et journalise le premier usage du film.
+// Sans table installee — le cas de tout appelant qui ne la pose pas — pas un bit ne change.
+//
+// CE N EST PAS UNE GRAMMAIRE. Le record de NAISSANCE n est toujours pas lu : le repli lie
+// l entite sur la foi d une image-cle ULTERIEURE, et rend ainsi lisible la SUITE du flux. Il est
+// NOMME, DATE (2026-09-22) et COMPTE, et le code le dit la ou on lirait la naissance.
+//
+// LA MESURE, APRES CE SEUL CHANGEMENT (`TestGate516`, A/B `MOUV523_ANTICIPE=0`) :
+//
+//	dad793c7 : paquets a reste NUL 5 354 -> 5 355 ; debordements 2 ; fantomes 1 ; ti=35 75 a
+//	           0 desynchronise ; rejets hors datum 2 -> 1 ; 8 liaisons (ti=13).
+//	bfecd02b : paquets a reste NUL 2 884 -> 3 919 (+1 035) ; rejets hors datum 23 769 -> 16 129
+//	           (-7 640) ; records 176 786 -> 240 488 ; ti=35 129 572 -> 164 232, desyncs 4 -> 4 ;
+//	           ti=40 5 337 -> 16 141, ti=37 4 551 -> 10 855, ti=42 2 804 -> 10 064, ti=10
+//	           1 025 -> 3 041, ti=32 329 -> 791 ; 254 liaisons.
+//
+// DEUX COMPTEURS DE FAUTE MONTENT SUR LE FILM DENSE, ET LA CAUSE EST DANS CE RANG : debordements
+// 32 -> 50 et fantomes 31 -> 49. Le balayage par archetype (`MOUV523_TI`) l attribue a
+// l anticipation du BIPEDE (ti=35 seul : 48 et 47), et la raison est celle du 5.16.2 — les slots
+// rejetes se concentrent dans la bande 521-601, que toutes les images-cles ulterieures
+// declarent, donc un en-tete pris a une position FAUSSE y tombe et lit un corps qui deborde.
+// AUCUN paquet ne passe de FERME a fautif : les 18 quittent « reste hors bourrage » (27 471 ->
+// 26 418) pour « debordement », et 1 035 le quittent pour « ferme ». `ti=42` anticipe seul RETIRE
+// dix debordements.
+//
+// `facts.Rev` NE MONTE PAS : `killsource/` marche par `DecodeFrameRecords`, qui ne passe pas par
+// `rejetDeVue`, et son monde ANTICIPE DEJA — `killsource/world.go` `preload()` lie la premiere
+// declaration de chaque slot de TOUTES les images-cles du film. Aucun backlog killsource. Son
+// golden est refige parce qu il hache la VALEUR de `grammar.Rev`. `replay.SchemaVersion` reste
+// a 67 : 222 etiquettes de composant lues contre 207, mais aucune n est un canal PUBLIE, et
+// `Observation` n est jamais publie.

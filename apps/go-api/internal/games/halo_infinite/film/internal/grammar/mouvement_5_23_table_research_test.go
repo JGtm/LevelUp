@@ -23,7 +23,10 @@ package grammar
 //	  ./internal/games/halo_infinite/film/internal/grammar/
 
 import (
+	"os"
 	"sort"
+	"strconv"
+	"strings"
 	"testing"
 )
 
@@ -201,4 +204,41 @@ func a523IdRejete(pay []byte, cfg FrameConfig, mar d519Marche) (uint32, bool) {
 	}
 	//nolint:gosec // low est borne par IDLowBits <= 15, tete par 2 bits
 	return ((uint32(low)+cfg.IDBase)&0x3fffffff | uint32(tete)<<30), true
+}
+
+// a523Filtrer rend une COPIE de la table restreinte aux archetypes nommes. C est l instrument
+// qui cherche la cause d un oracle qui bouge : quel archetype anticipe fait deborder un paquet ?
+// Rien de ceci n entre en production — la table de production n a pas de filtre.
+func a523Filtrer(tab *TableAnticipee, tis map[uint32]bool) *TableAnticipee {
+	out := NouvelleTableAnticipee()
+	for cle, decls := range tab.entrees {
+		var garde []declarationAnticipee
+		for _, d := range decls {
+			if tis[d.ti] {
+				garde = append(garde, d)
+			}
+		}
+		if len(garde) > 0 {
+			out.entrees[cle] = garde
+			out.declarations += len(garde)
+		}
+	}
+	return out
+}
+
+// a523TIDemandes lit `MOUV523_TI` (liste d archetypes separes par des virgules). Vide = tous.
+func a523TIDemandes() map[uint32]bool {
+	v := os.Getenv("MOUV523_TI")
+	if v == "" {
+		return nil
+	}
+	out := map[uint32]bool{}
+	for _, s := range strings.Split(v, ",") {
+		n, err := strconv.Atoi(strings.TrimSpace(s))
+		if err != nil || n < 0 {
+			continue
+		}
+		out[uint32(n)] = true //nolint:gosec // n >= 0, borne par le registre
+	}
+	return out
 }

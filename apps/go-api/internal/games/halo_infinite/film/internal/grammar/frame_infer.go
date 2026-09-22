@@ -140,13 +140,27 @@ func DecodeFrameInfer(buf []byte, w *World, cfg FrameConfig) ([]FrameRecord, int
 //
 // L appelant remet le curseur a la fin de l EN-TETE et clot la vue — l en-tete, lui, EST ecrit,
 // et c est ce que la vue suivante lira comme son propre en-tete de rejet.
-func rejetDeVue(typ int, slot uint32, w *World, cfg FrameConfig) bool {
+// LE REPLI DU LOT 5.23 S INTERCALE ICI, ET NULLE PART AILLEURS (2026-09-22). Avant de compter un
+// rejet hors datum, la table anticipee du film est consultee : si une image-cle ULTERIEURE
+// declare cet eid avec son archetype, l entite est liee PAR ANTICIPATION et son corps est lu.
+// Le record de naissance n est toujours pas lu — c est un REPLI, il est NOMME et COMPTE
+// ([Observation.LiaisonsParAnticipation]). Sans table installee, rien ne change d un bit.
+//
+// `id` est l eid COMPLET et non le slot : la cle que `FUN_1406caad8` compare porte les deux bits
+// de tete, et 638 des 23 325 en-tetes rejetes de `bfecd02b` presentent une tete qu AUCUNE
+// image-cle du film n emploie — ceux-la ne doivent pas etre lies.
+func rejetDeVue(typ int, id uint32, w *World, cfg FrameConfig) bool {
 	if typ != recDelta || !cfg.Profil.Grammaire.TablesParVue {
 		return false
 	}
+	slot := id & 0x3fffffff
 	if _, lie := w.ArchetypeForSlot(slot); !lie {
-		cfg.Obs.compterRejetHorsDatum()
-		return true
+		ti, anticipe := w.LierParAnticipation(id)
+		if !anticipe {
+			cfg.Obs.compterRejetHorsDatum()
+			return true
+		}
+		cfg.Obs.compterLiaisonParAnticipation(ti)
 	}
 	if !w.VuePossede(slot) {
 		cfg.Obs.compterRejetDeVue()
@@ -234,7 +248,7 @@ func decodeInferLoop(br *Lecteur, buf []byte, w *World, cfg FrameConfig) ([]Fram
 		slot := id & 0x3fffffff
 		finEntete := br.BitPos()
 		rec := FrameRecord{Type: typ, ID: id, Slot: slot, DesyncAt: -1}
-		if rejetDeVue(typ, slot, w, cfg) {
+		if rejetDeVue(typ, id, w, cfg) {
 			br.SetBitPos(finEntete)
 			return out, inferred, true
 		}
