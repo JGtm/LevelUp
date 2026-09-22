@@ -359,7 +359,9 @@ jobs:
     # mono-process) dont chaque package plafonne à 600 s. Inchangé par la fusion du
     # gate baseline (D3) : le gate ajouté est une analyse de JSONL (quelques
     # secondes), c'est l'ANCIEN job dédié de 40 min qui disparaît.
-    timeout-minutes: 45
+    # 45 -> 60 (2026-09-22) : 35 a 41 min quand il passe, ANNULE a 45 min deux fois de suite sur
+    # feat/v75 959877c36 (serie 5 du decodeur + sections transverses). Retour a 45 : 3 runs < 35 min.
+    timeout-minutes: 60
     defaults:
       run:
         working-directory: apps/go-api
