@@ -119,6 +119,65 @@ go run ./cmd/backfill-team-rounds --gamertag X
 go run ./cmd/backfill-team-rounds --gamertag X --apply [--all] [--limit N] [--match ID]
 ```
 
+#### Remplir `match_kill_events` / `match_weapon_shots` depuis les films — `backfill-killsource`
+
+**100 % hors ligne** (films du cache local : ni réseau, ni jetons, ni CDN), **serveur arrêté**
+(elle tient la base partagée en écriture — un seul writer, ADR 0013). Elle joue deux passes dans
+cet ordre : les FILMS (décodage), puis le CRÉDIT (transformation SQL → SQL, quelques minutes).
+
+```bash
+go run ./cmd/levelup backfill-killsource --dry-run      # bilan : total, déjà à jour, chunks, ETA
+go run ./cmd/levelup backfill-killsource                # tout : films puis crédit, 3 ouvriers
+go run ./cmd/levelup backfill-killsource --workers 1    # la boucle en série d'avant le lot 5.24
+go run ./cmd/levelup backfill-killsource --limit 20     # les 20 films les moins chers
+go run ./cmd/levelup backfill-killsource --credit-only  # la passe SQL → SQL seule
+go run ./cmd/levelup backfill-killsource --force        # redécode même ce qui est à jour
+go run ./cmd/levelup backfill-killsource --status       # DANS UN AUTRE TERMINAL : où elle en est
+```
+
+**`--workers` (défaut 3) — N films décodés en parallèle, UN SEUL qui touche la base.** La
+décomposition du coût (lot 5.24.1) mesure **93 à 99 % du temps d'un film en CPU hors base** :
+c'est la seule raison d'être du parallélisme ici. Les écritures et les deux lectures par match
+passent toutes par un jeton unique (`PorteDeLaBase`), donc à tout instant au plus un goroutine
+parle à la base. Le plafond est une MESURE, pas un réglage : le pire film du corpus culmine à
+**422 Mio**, la passe se plafonne à 4 Gio, soit **9 ouvriers au maximum** — au-delà, la commande
+refuse au démarrage en citant le chiffre. Gain mesuré à 3 ouvriers sur 9 films : **9,7 s → 3,5 s
+(×2,7)**, lignes écrites identiques (`TestOuvriers_MemesLignesQuUnSeulOuvrier`).
+
+**`--status` — la question « il en est où ? », depuis un autre terminal.** Elle LIT le fichier
+d'état et l'affiche une fois, **sans ouvrir aucune base** (c'est la seule façon d'interroger un
+processus qui tient la base partagée en écriture). Le fichier est réécrit **après chaque film**,
+dans `data/global/admin_state/backfill_killsource_{slug}.json` :
+
+```
+backfill-killsource [halo_infinite] — phase films, PID 11480
+  demarree     2026-09-22T13:19:13+02:00 (il y a 0s)
+  mise a jour  2026-09-22T13:19:14+02:00 (il y a 0s)
+  revisions    morts killsource-2026-09-22.2 | isolement isolement-2026-09-15-decoupage-du-catalogue
+  films        1 / 3 traites — 5 chunks / 100
+               1 ecrits (42 morts), 0 sans film, 0 sans kill-feed, 0 cle inconnue, 0 abandons sur delai, 0 erreurs
+               1500 deja a jour au demarrage (sautes : c est la REPRISE, et elle se decide en base)
+               3 ouvrier(s), 0.00 films/min, 0.400 s/chunk mesure — reste ~13s
+               fin estimee vers 2026-09-22T13:19:26+02:00
+  dernier fini petit (5 chunks) en 2.00 s — ecrit
+  EN COURS     gros (65 chunks) depuis 12.0 s
+```
+
+L'**ETA compte des CHUNKS, pas des films**, et il est divisé par le nombre d'ouvriers : les gros
+films passent en dernier, donc un reste compté en nombre de films annoncerait une fin proche
+juste avant la queue la plus chère. Le coût par chunk est celui **mesuré depuis le début de la
+passe**, pas une constante. Un état non mis à jour depuis plus de 10 minutes est signalé comme
+tel. Le terminal de la passe, lui, reçoit une ligne de progression **tous les 25 films OU toutes
+les 60 s**, avec les mêmes chiffres.
+
+**Reprise — la clé est `decoder_rev`, EN BASE.** Un match dont toutes les passes courantes (vues
+`_latest`) portent leur révision de décodeur courante est sauté : interrompre et relancer **la
+même commande** repart au dernier état. Le fichier d'état n'est **pas** une source de vérité pour
+la reprise : le supprimer ne perd qu'un affichage. `Ctrl-C` (ou `SIGTERM`) arrête la
+DISTRIBUTION des films ; ceux qui sont en vol vont au bout et sont écrits, l'état est fermé avec
+sa cause, et la commande sort avec le code **130** (distinct du 0 d'une passe finie et du 1 d'une
+panne). Un **second** `Ctrl-C` tue le processus immédiatement.
+
 #### Projeter les artefacts de rejeu en base — L'ORDRE DE RELEASE N'EST PAS INTERCHANGEABLE
 
 Deux passes lisent les artefacts de rejeu DÉJÀ cuits (`data/cache/replays/{slug}/{short8}.json`)

@@ -11542,7 +11542,16 @@ reelles, films lus par les jonctions du cache.
   **SEUILS** : `cmd_backfill_killsource.go` est repasse a 471 lignes, la passe CREDIT ayant ete
   extraite dans `cmd_backfill_killsource_credit.go` (deplacement pur, frontiere nette : la-bas
   les FILMS, ici le SQL -> SQL).
-- [ ] **5.24.5 — DOC : `docs/COMMANDS.md` (FR et EN), en-tete de la commande, plan et note.**
+- [x] **5.24.5 — DOC.** `docs/COMMANDS.md` **et** `docs/FR/COMMANDS.md` (meme PR, regle 15) :
+  une section dediee `backfill-killsource` — elle n en avait aucune, la commande n etait citee
+  qu en passant. Usage complet, `--workers` (avec la mesure qui le justifie, le plafond memoire
+  et le gain observe), `--status` (avec un exemple de sortie reel), lecture du fichier d etat
+  (chemin, cadence, ce que l ETA compte et pourquoi), et la reprise (`decoder_rev` en base,
+  Ctrl-C, code de sortie 130, second Ctrl-C). L en-tete de la commande a ete mis a jour au
+  lot 5.24.2 — le raisonnement « un seul processus » est INTACT et gagne une troisieme ligne
+  (toujours un processus, toujours un handle RW, N goroutines de decodage). `printUsage` de
+  `main.go` cite `--workers` et `--status`. Plan (cette section, §4, §5) et note courte
+  `.ai/V7.5/film_re/NOTE_5_24_BACKFILL_KILLSOURCE_2026-09-22.md`.
 
 ## 4. Découvertes (consignées, NON traitées — règle 7)
 

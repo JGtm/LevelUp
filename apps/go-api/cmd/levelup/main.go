@@ -205,7 +205,9 @@ Commandes:
   backfill-h5-kill-mechanics Corrige les mécaniques de kill H5 (assassination/ground_pound/shoulder_bash) écrites à 0 avant l'activation du mapper (re-fetch carnage, UPDATE ciblé, --dry-run dispo, serveur arrêté)
   backfill-killsource Remplit match_kill_events + match_weapon_shots : décodage HORS LIGNE des films en cache (gros films en dernier,
                   reprenable par decoder_rev) puis producteur credit-seul depuis highlight_events (--dry-run, --limit, --films-only,
-                  --credit-only, serveur arrêté). --online --gamertag <GT> va CHERCHER les films absents du cache et les y archive :
+                  --credit-only, serveur arrêté). --workers N décode N films en parallèle (défaut 3 ; un seul goroutine touche la
+                  base) et --status LIT le fichier d'état de la passe en cours, depuis un autre terminal, sans ouvrir aucune base.
+                  --online --gamertag <GT> va CHERCHER les films absents du cache et les y archive :
                   c'est ce qui rattrape l'attribution des assistances, sans film il n'y en a aucune
   backfill-medailles-feed Rend leur nom aux médailles déjà en base : relit HORS LIGNE le chunk highlight des films en cache, apparie
                   par (xuid, time_ms) et remplit highlight_events.raw_json + type_hint, restés vides depuis avril 2026 (415 matchs /
