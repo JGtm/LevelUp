@@ -3,7 +3,7 @@
 //
 // SECTION MIGRÉE LE 2026-09-13 : elle a quitté la Synthèse pour l'onglet Résumé des Séries
 // temporelles, sans changer de producteur. Le chargement vit dans une FONCTION LIBRE
-// (`buildWeaponRangeSection`) prenant son scope canonique en paramètre — un service qui
+// (`buildWeaponRangeSections`) prenant son scope canonique en paramètre — un service qui
 // appellerait un autre service serait un couplage horizontal (skill arch-rules).
 //
 // Fichier séparé de synthesis_service.go, qui frôle déjà le plafond de 500 lignes du dépôt.
@@ -40,15 +40,23 @@ type weaponRangeQuery struct {
 	Rows      []canonical.PlayerMatchRow
 }
 
-// buildWeaponRangeSection charge et assemble la section pour un scope donné.
+// buildWeaponRangeSections charge UNE FOIS et assemble LES DEUX blocs de la même lecture : la
+// portée par arme et le nuage « distance × dénivelé » (D25).
 //
-// BEST-EFFORT, EXACTEMENT COMME loadWeaponAccuracy : nil (section omise) si le repo n'est pas
-// câblé, si le joueur ou le scope est vide, si le titre ne produit pas de positions par kill
-// (`games.ErrCapabilityNotSupported` -> Debug, c'est une absence légitime) ou si la lecture
-// échoue (-> Warn, c'est une anomalie). Une section absente ne casse jamais la page.
-func buildWeaponRangeSection(ctx context.Context, q weaponRangeQuery) *domain.SynthesisWeaponRange {
+// UN SEUL CHARGEMENT, ET C'EST LE POINT : les deux blocs décrivent les mêmes frags mesurés sur
+// le même scope. Deux producteurs séparés auraient doublé les requêtes et l'emprunt du lecteur
+// partagé, et auraient pu diverger au premier écart de filtre.
+//
+// BEST-EFFORT, EXACTEMENT COMME loadWeaponAccuracy : les deux retours sont nil (sections
+// omises) si le repo n'est pas câblé, si le joueur ou le scope est vide, si le titre ne produit
+// pas de positions par kill (`games.ErrCapabilityNotSupported` -> Debug, c'est une absence
+// légitime) ou si la lecture échoue (-> Warn, c'est une anomalie). Une section absente ne casse
+// jamais la page.
+func buildWeaponRangeSections(
+	ctx context.Context, q weaponRangeQuery,
+) (*domain.SynthesisWeaponRange, *domain.ElevationCloudBlock) {
 	if q.Repo == nil || q.Gamertag == "" || len(q.Rows) == 0 {
-		return nil
+		return nil, nil
 	}
 	scope := weaponRangeScope(q.Rows)
 	filters := port.WeaponRangeFilters{MatchIDs: scope.matchIDs, Gamertag: q.Gamertag}
@@ -56,14 +64,14 @@ func buildWeaponRangeSection(ctx context.Context, q weaponRangeQuery) *domain.Sy
 	kills, err := q.Repo.LoadWeaponRange(ctx, q.TitleSlug, filters)
 	if err != nil {
 		logWeaponRangeFailure(ctx, q, "portee", len(scope.matchIDs), err)
-		return nil
+		return nil, nil
 	}
 	if len(kills) == 0 {
 		// Scope réel mais aucun frag mesuré : le décodeur n'a pas (encore) couvert ces
 		// matchs. Pas une panne, pas une section vide — pas de section.
 		slog.DebugContext(ctx, "portee par arme — aucun frag mesure sur le scope",
 			"title", q.TitleSlug, "gamertag", q.Gamertag, "match_count", len(scope.matchIDs))
-		return nil
+		return nil, nil
 	}
 
 	// L'ENTAME EST UN BONUS, SON ABSENCE N'EMPORTE PAS LA SECTION. Sa couverture est
@@ -76,12 +84,13 @@ func buildWeaponRangeSection(ctx context.Context, q weaponRangeQuery) *domain.Sy
 	}
 
 	block := buildWeaponRangeBlock(kills, openings, scope)
-	hydrateWeaponRangeLabels(ctx, q, block)
+	elevation := buildElevationCloudBlock(kills, scope)
+	hydrateLabels(ctx, q, block, elevation)
 	slog.DebugContext(ctx, "portee par arme",
 		"title", q.TitleSlug, "gamertag", q.Gamertag,
 		"armes", len(block.Weapons), "frags_mesures", block.MeasuredKills,
 		"morts_mesurees", block.MeasuredDeaths, "entames", len(openings))
-	return block
+	return block, elevation
 }
 
 // logWeaponRangeFailure distingue l'absence légitime de l'anomalie — parité loadWeaponAccuracy.
@@ -127,17 +136,23 @@ func weaponRangeScope(filteredCanon []canonical.PlayerMatchRow) weaponRangeScope
 	return sc
 }
 
-// hydrateWeaponRangeLabels remplit les noms d'affichage des armes publiées ET de celles
-// écartées par le seuil.
+// hydrateLabels remplit les noms d'affichage des DEUX blocs, EN UN SEUL APPEL au résolveur.
 //
-// LES DEUX LISTES, ET C'EST VOULU : la ligne « sous le seuil » NOMME les armes (« Hydra (6) »),
-// sans quoi elle dirait « 3 armes » et n'apprendrait rien. Best-effort : une clé que la
-// metadata ne connaît pas garde un libellé vide, et le front retombe sur `WeaponKey` — jamais
-// un nom inventé côté Go (aucun libellé FR/EN en dur, règle transverse multi-titre).
-func hydrateWeaponRangeLabels(
-	ctx context.Context, q weaponRangeQuery, block *domain.SynthesisWeaponRange,
+// UNE SEULE RÉSOLUTION POUR LES DEUX : les deux blocs nomment des armes du même scope, et deux
+// appels auraient interrogé la metadata deux fois pour, à l'union près, les mêmes clés. La
+// jonction se fait sur l'UNION des clés — le nuage porte des armes que le seuil de publication
+// écarte de la portée par arme, et réciproquement une arme « sous le seuil » n'a pas de point
+// si sa mesure vient de l'entame.
+//
+// LES DEUX LISTES DE LA PORTÉE, ET C'EST VOULU : la ligne « sous le seuil » NOMME les armes
+// (« Hydra (6) »), sans quoi elle dirait « 3 armes » et n'apprendrait rien. Best-effort : une
+// clé que la metadata ne connaît pas garde un libellé vide, et le front retombe sur la clé —
+// jamais un nom inventé côté Go (aucun libellé FR/EN en dur, règle transverse multi-titre).
+func hydrateLabels(
+	ctx context.Context, q weaponRangeQuery,
+	block *domain.SynthesisWeaponRange, elevation *domain.ElevationCloudBlock,
 ) {
-	keys := collectWeaponKeys(block)
+	keys := unionWeaponKeys(collectWeaponKeys(block), collectElevationWeaponKeys(elevation))
 	if len(keys) == 0 {
 		return
 	}
@@ -147,6 +162,7 @@ func hydrateWeaponRangeLabels(
 			"title", q.TitleSlug, "armes", len(keys), "err", err)
 		return
 	}
+	applyElevationLabels(elevation, labels)
 	for i := range block.Weapons {
 		l := labels[block.Weapons[i].WeaponKey]
 		block.Weapons[i].Label, block.Weapons[i].LabelEN = l.Label, l.LabelEN
@@ -185,4 +201,20 @@ func collectWeaponKeys(block *domain.SynthesisWeaponRange) []string {
 		ajouter(w.WeaponKey)
 	}
 	return keys
+}
+
+// unionWeaponKeys fond deux listes de clés en une, sans doublon, dans l'ordre de première
+// apparition — l'ordre est stable pour que les tests et les logs ne dépendent pas d'une map.
+func unionWeaponKeys(a, b []string) []string {
+	seen := make(map[string]bool, len(a)+len(b))
+	out := make([]string, 0, len(a)+len(b))
+	for _, liste := range [][]string{a, b} {
+		for _, k := range liste {
+			if k != "" && !seen[k] {
+				seen[k] = true
+				out = append(out, k)
+			}
+		}
+	}
+	return out
 }

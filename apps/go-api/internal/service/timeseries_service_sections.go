@@ -93,7 +93,7 @@ func (s *TimeseriesService) attachMigratedSections(
 	ctx context.Context, resp *domain.TimeseriesPageResponse,
 	filteredCanon []canonical.PlayerMatchRow, locale string,
 ) {
-	resp.WeaponRange = buildWeaponRangeSection(ctx, weaponRangeQuery{
+	resp.WeaponRange, resp.Elevation = buildWeaponRangeSections(ctx, weaponRangeQuery{
 		Repo: s.weaponRangeRepo, TitleSlug: s.titleSlug, Gamertag: s.gamertag, Rows: filteredCanon,
 	})
 	resp.EquipmentUsage = buildEquipmentUsageBlock(ctx, equipmentUsageQuery{
