@@ -1,6 +1,20 @@
 /**
  * SessionColumnBody — corps d'une colonne de session (TOUT ce qui est sous le L3) :
- * bande KPI + pile de graphes + tableau "Détail des matchs".
+ * bande KPI, puis QUATRE SECTIONS TITRÉES — « Bilan », « Match par match »,
+ * « Frags et usages », « Détail des matchs ».
+ *
+ * CE COMPOSANT POSE LES TITRES, MAIS NE DÉCIDE PAS DE LEUR PLACE : chaque section est une
+ * CLÉ stable (`_sections.ts`), et c'est la table des groupes de ce module qui dit quelle
+ * clé ouvre quel titre. Les deux rendus d'ici — pile pleine page, rangées partagées de la
+ * comparaison (D16) — lisent LA MÊME table : un titre ne peut donc pas se poser d'un côté
+ * et pas de l'autre, ce qui décalerait les deux colonnes d'une ligne.
+ *
+ * UN TITRE NE SE POSE JAMAIS AU-DESSUS DE RIEN : la section « Frags et usages » réunit deux
+ * clés qui peuvent manquer toutes les deux (`sessionSectionVisibility`, le MÊME prédicat que
+ * les cartes lisent) — le groupe disparaît alors entièrement, titre compris.
+ *
+ * LA BANDE KPI RESTE SANS TITRE, comme le Home : c'est l'en-tête de la colonne, pas une
+ * section de plus. « Détail des matchs » porte le sien avec son tableau (`space-y-3`).
  *
  * Monté À L'IDENTIQUE par la colonne principale ET par le drawer compare → garantit que
  * "ce qui est sous le L3" est strictement le même rendu des deux côtés ; seules diffèrent
@@ -22,14 +36,27 @@ import type {
   SessionUsageBlock,
 } from '@/lib/api/types'
 
+import { DetailSection, SectionTitle } from '@/components/ui/detail-section'
+
 import type { CompareScale } from './_compareScale'
-import { SESSION_SECTION_ORDER, type SessionSectionKey } from './_sections'
+import {
+  SESSION_GROUP_TITLE_KEY,
+  SESSION_SECTION_ORDER,
+  groupSessionSections,
+  type SessionSectionGroup,
+  type SessionSectionKey,
+} from './_sections'
 import { useSessionChartSections } from './_chartSections'
 import { SessionCoordinationSection } from './SessionCoordinationSection'
+import { SessionFragCard } from './SessionFragCard'
 import { SessionMatchesTable } from './SessionMatchesTable'
 import { SessionRangeCard } from './SessionRangeCard'
 import { SessionSummaryCard } from './SessionSummaryCard'
 import { SessionUsageSection } from './SessionUsageSection'
+import {
+  sessionFragCardHasContent,
+  sessionUsageShowsSomething,
+} from './sessionSectionVisibility'
 import { useSessionT } from './_shared'
 
 interface Props {
@@ -108,11 +135,19 @@ function useSessionColumnSections(props: Props): Partial<Record<SessionSectionKe
   return {
     summary: <SessionSummaryCard entry={entry} compact={compact} />,
     ...chartSections,
-    // Blocs « usages d'équipement, armes spéciales et objectifs ». `compact` suit la
-    // colonne : drawer ouvert = version compacte DES DEUX CÔTÉS, sinon les deux
-    // colonnes ne se compareraient pas. Le composant gère lui-même ses états
-    // indisponible / sans film ; absent du payload → la section n'existe pas.
-    ...(usage
+    // SECTION « Frags et usages » — d'où viennent les frags, et ce qu'on a ramassé, posé,
+    // tenu pour les obtenir. DEUX CLÉS et non une : en comparaison, chaque bloc garde sa
+    // rangée partagée avec la colonne sœur. Chacune n'existe que si son bloc va dessiner
+    // quelque chose (`sessionSectionVisibility`, lu AUSSI par les cartes) : le titre du
+    // groupe se pose alors sur la première présente, et sur rien du tout si les deux
+    // manquent.
+    ...(sessionFragCardHasContent(entry)
+      ? { frags: <SessionFragCard entry={entry} stacked={compact} /> }
+      : {}),
+    // `compact` suit la colonne : drawer ouvert = version compacte DES DEUX CÔTÉS, sinon
+    // les deux colonnes ne se compareraient pas. Le composant gère lui-même ses états
+    // indisponible / sans film.
+    ...(usage && sessionUsageShowsSomething(usage)
       ? { usage: <SessionUsageSection usage={usage} meLabel={playerSlug} compact={compact} /> }
       : {}),
     // Sections transverses de la vague 3 (D22) : la Coordination (deux cartes en rangée)
@@ -141,7 +176,7 @@ function useSessionColumnSections(props: Props): Partial<Record<SessionSectionKe
     // Tableau "Détail des matchs" — hors bloc/Card (juste un titre + le tableau).
     matches: (
       <div className="space-y-3">
-        <h2 className="text-base font-semibold text-foreground">{t('session.detail.matches_card')}</h2>
+        <SectionTitle>{t('session.detail.matches_card')}</SectionTitle>
         <SessionMatchesTable
           matches={matches}
           playerSlug={playerSlug}
@@ -173,23 +208,45 @@ function SessionSectionPlaceholder() {
 }
 
 export function SessionColumnBody(props: Props) {
+  const t = useSessionT()
   const sections = useSessionColumnSections(props)
   const { rowKeys } = props
 
-  // Vue pleine page : pile simple, dans l'ordre canonique.
+  // Vue pleine page : pile simple, dans l'ordre canonique, chaque GROUPE de clés coiffé
+  // de son titre (`_sections.ts`). L'espacement interne reste `space-y-6` — les blocs de
+  // la page le sont depuis toujours ; c'est le titre qui devait être unifié, pas la
+  // densité.
   if (!rowKeys) {
+    const presentes = SESSION_SECTION_ORDER.filter((key) => key in sections)
     return (
       <>
-        {SESSION_SECTION_ORDER.filter((key) => key in sections).map((key) => (
-          <Fragment key={key}>{sections[key]}</Fragment>
-        ))}
+        {groupSessionSections(presentes).map((run) =>
+          run.group == null ? (
+            run.keys.map((key) => <Fragment key={key}>{sections[key]}</Fragment>)
+          ) : (
+            <DetailSection key={run.group} title={t(SESSION_GROUP_TITLE_KEY[run.group])}>
+              <div className="space-y-6">
+                {run.keys.map((key) => (
+                  <Fragment key={key}>{sections[key]}</Fragment>
+                ))}
+              </div>
+            </DetailSection>
+          ),
+        )}
       </>
     )
   }
 
   // Vue comparaison : une rangee de grille par cle — la colonne soeur emet les MEMES
   // cles dans le MEME ordre, donc la i-eme section de gauche et celle de droite
-  // partagent la rangee (donc la hauteur, donc la ligne de titre).
+  // partagent la rangee (donc la hauteur, donc la ligne de titre). LE TITRE DE GROUPE
+  // s'écrit dans la rangée de sa PREMIÈRE clé : `rowKeys` étant identique des deux côtés,
+  // les deux colonnes le posent à la même rangée — un titre d'un seul côté décalerait tout.
+  const ouvertures = new Map(
+    groupSessionSections(rowKeys)
+      .filter((run) => run.group != null)
+      .map((run) => [run.keys[0], run.group as SessionSectionGroup]),
+  )
   return (
     <>
       {rowKeys.map((key) => (
@@ -198,6 +255,11 @@ export function SessionColumnBody(props: Props) {
           data-session-section={key}
           className="min-w-0 [&>*:only-child]:h-full"
         >
+          {ouvertures.has(key) && (
+            <SectionTitle className="mb-4">
+              {t(SESSION_GROUP_TITLE_KEY[ouvertures.get(key) as SessionSectionGroup])}
+            </SectionTitle>
+          )}
           {key in sections ? sections[key] : <SessionSectionPlaceholder />}
         </div>
       ))}

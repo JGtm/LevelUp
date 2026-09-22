@@ -50,6 +50,7 @@ import { teamOfLobbyParityPct } from '@/features/_shared/usage/usageParity'
 import { PadControlCards } from './SessionPadControlCards'
 import { EquipmentCards } from './SessionUsageEquipmentCards'
 import { useGridInks, type CardProps } from './SessionUsageShared'
+import { sessionUsageCardsShown } from './sessionSectionVisibility'
 
 /** Le titre d'une vue à l'intérieur d'une carte (même gabarit que la vue match). */
 function ViewTitle({ children }: { children: string }) {
@@ -138,8 +139,10 @@ function ObjectivesCard({ usage, meLabel, t, locale, compact }: CardProps) {
   // SECTION ENTIÈRE SANS OBJET = MASQUÉE (D8) : aucun bloc d'objectifs servi, il n'y a pas
   // de rangée à laisser bancale. En revanche un bloc SERVI mais sans rôle mesuré garde sa
   // carte et dit pourquoi — c'est une sélection sans mode à objectif, pas une absence de
-  // mesure.
-  if (obj == null || obj.matches_with_objectives <= 0) return null
+  // mesure. LA CONDITION S'ÉCRIT DANS `sessionSectionVisibility` : le titre de section
+  // « Frags et usages » la lit aussi. Le `obj == null` est REDONDANT à l'exécution (le
+  // prédicat l'inclut) — il est là pour que le compilateur affine `obj` sur la suite.
+  if (obj == null || !sessionUsageCardsShown(usage).objectives) return null
   const vide = roles.length === 0
 
   return (

@@ -3,13 +3,15 @@
  *
  * Consomme le contexte SquadContext fourni par SquadLayout. Affiche les
  * charts de contribution par joueur : K/D/A par minute, synergies radar,
- * performance, mécaniques de frag. Le « Premier frag / première mort » a
- * rejoint l'onglet Dynamique (chart lanes).
+ * performance, impact des coéquipiers, médailles, mécaniques de frag. Le
+ * « Premier frag / première mort » a rejoint l'onglet Dynamique (chart lanes) ;
+ * l'impact et les médailles sont arrivés de Synergies (lot 3, 2026-09-22).
  *
  * Multi-titres : strings UI via getSquadText.
  */
 import { useMemo } from 'react'
 import { Link } from '@tanstack/react-router'
+import { SectionTitle } from '@/components/ui/detail-section'
 import { InfoTooltip } from '@/components/ui/info-tooltip'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { useSquadContext } from './SquadContext'
@@ -18,6 +20,8 @@ import { SquadPerMinuteChart } from './SquadPerMinuteChart'
 import { SquadSynergyRadarChart } from './SquadSynergyRadarChart'
 import { SquadPerformanceCharts } from './SquadPerformanceCharts'
 import { SquadKillMechanicsChart } from './SquadKillMechanicsChart'
+import { SquadImpactScoreboard } from './SquadImpactScoreboard'
+import { MedalDigest } from './MedalDigest'
 import { FeatureGate } from '@/lib/capabilities/FeatureGate'
 import { getSquadPlayerColors } from './colors'
 
@@ -107,13 +111,36 @@ export function SquadContributionsPage() {
       </div>
 
       <section className="space-y-3">
-        <h3 className="text-base font-semibold text-foreground">{t.performanceCharts.title}</h3>
+        <SectionTitle>{t.performanceCharts.title}</SectionTitle>
         <SquadPerformanceCharts
           emptyMessage={t.empty.noBlockData}
           rowsByPlayer={perfSeriesByPlayer}
           playerOrder={playerOrder}
           colorByPlayer={playerColors}
           labels={t.performanceCharts}
+        />
+      </section>
+
+      {/* IMPACT DES COÉQUIPIERS — arrivé de Synergies (lot 3 « sections », 2026-09-22) :
+          c'est une contribution par joueur, pas une production de la composition.
+          Section non-graphe toujours montée : titre + état vide géré par le composant
+          (cadre bordé / carte), au lieu de disparaître. */}
+      <section className="space-y-3">
+        <SectionTitle>{t.impact.title}</SectionTitle>
+        <SquadImpactScoreboard
+          matrix={pageData?.impact_matrix ?? { matches: [], players: [], cells: [], badge_ord: [] }}
+        />
+      </section>
+
+      {/* MÉDAILLES — arrivées de Synergies avec l'impact. Elles restent EN DERNIER de
+          leur groupe (décision utilisateur, 2026-09-13) : c'est un palmarès, pas une
+          mesure — il se lit après tout ce qui explique le jeu, jamais avant. */}
+      <section className="space-y-3">
+        <SectionTitle>{t.medals.title}</SectionTitle>
+        <MedalDigest
+          entries={pageData?.medal_digest ?? []}
+          mainPlayer={pageData?.main_player ?? playerSlug}
+          t={t.medals}
         />
       </section>
 

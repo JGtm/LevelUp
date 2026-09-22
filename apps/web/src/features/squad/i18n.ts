@@ -23,6 +23,16 @@ export interface SquadText {
     synergies: string
     contributions: string
     dynamique: string
+    usages: string
+  }
+  /**
+   * Titres de section transverses (lot 3 « sections », 2026-09-22) — un titre coiffe
+   * au moins deux blocs, jamais un bloc seul.
+   */
+  sections: {
+    historique: string
+    fragsArmes: string
+    equipement: string
   }
   selection: {
     placeholder: (count: number) => string
@@ -85,6 +95,9 @@ export interface SquadText {
     noDataDescription: string
     /** Message court pour un bloc non-graphe vide (tape, table, scoreboard). */
     noBlockData: string
+    /** Onglet Usages sans aucun bloc à montrer (aucun film décodé sur la sélection). */
+    noDecodedFilmTitle: string
+    noDecodedFilmDescription: string
   }
   synergies: {
     description: string
@@ -390,6 +403,12 @@ const FR_TEXT: SquadText = {
     synergies: 'Synergies',
     contributions: 'Contributions',
     dynamique: 'Dynamique',
+    usages: 'Usages',
+  },
+  sections: {
+    historique: 'Historique',
+    fragsArmes: 'Frags et armes',
+    equipement: 'Équipement',
   },
   selection: {
     placeholder: (count) => `Rechercher parmi ${count} coéquipiers…`,
@@ -452,6 +471,8 @@ const FR_TEXT: SquadText = {
     noDataDescription:
       'Aucune réponse exploitable n\'a été renvoyée pour cette page. Vérifie les filtres ou la disponibilité des matchs partagés.',
     noBlockData: 'Aucune donnée pour cette sélection.',
+    noDecodedFilmTitle: 'Aucun film décodé',
+    noDecodedFilmDescription: 'Aucun film décodé pour cette sélection.',
   },
   synergies: {
     description: 'Comparaison des statistiques du joueur avec chaque coéquipier sur les matchs joués ensemble.',
@@ -744,6 +765,12 @@ const EN_TEXT: SquadText = {
     synergies: 'Synergies',
     contributions: 'Contributions',
     dynamique: 'Dynamics',
+    usages: 'Usage',
+  },
+  sections: {
+    historique: 'History',
+    fragsArmes: 'Kills and weapons',
+    equipement: 'Equipment',
   },
   selection: {
     placeholder: (count) => `Search among ${count} teammates…`,
@@ -805,6 +832,8 @@ const EN_TEXT: SquadText = {
     noDataDescription:
       'No usable response was returned for this page. Check filters or shared matches availability.',
     noBlockData: 'No data for this selection.',
+    noDecodedFilmTitle: 'No decoded film',
+    noDecodedFilmDescription: 'No decoded film for this selection.',
   },
   synergies: {
     description: 'Comparison of the player\'s stats with each teammate on shared matches.',

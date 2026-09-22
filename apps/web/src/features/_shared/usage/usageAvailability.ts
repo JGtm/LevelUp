@@ -73,11 +73,29 @@ export type UsageAvailability =
  *     des films, restent affichables par l'appelant).
  */
 export function usageAvailability(usage: UsageAvailabilityLike | null | undefined): UsageAvailability {
-  if (usage == null) return { kind: 'hidden' }
-  if (!usage.available) {
-    if (usage.unavailable_reason === 'unsupported') return { kind: 'hidden' }
-    return { kind: 'empty', reason: 'load-failed' }
-  }
-  if (usage.matches_measured <= 0) return { kind: 'empty', reason: 'no-film' }
-  return { kind: 'ok' }
+  const kind = usageAvailabilityKind(usage)
+  if (kind === 'hidden') return { kind: 'hidden' }
+  if (kind === 'ok') return { kind: 'ok' }
+  // `empty` a DEUX causes ici : la lecture a échoué (le titre sait produire), ou le titre
+  // produit mais aucun match de ce scope n'a de film mesuré.
+  const reason: UsageEmptyReason = usage != null && !usage.available ? 'load-failed' : 'no-film'
+  return { kind: 'empty', reason }
+}
+
+/**
+ * usageAvailabilityKind — LA MÊME DÉCISION QUE `usageAvailability`, SANS LA CAUSE.
+ *
+ * Existe parce qu'un appelant peut avoir besoin de savoir si le bloc va rendre QUELQUE
+ * CHOSE sans avoir de dictionnaire sous la main (le titre de section « Frags et usages »
+ * de la page Sessions, qui ne doit pas se poser au-dessus de rien). Dupliquer la règle des
+ * deux portes pour ça l'aurait fait diverger : `usageAvailability` DÉLÈGUE ici, c'est le
+ * seul endroit où la décision est écrite.
+ */
+export function usageAvailabilityKind(
+  usage: UsageAvailabilityLike | null | undefined,
+): UsageAvailability['kind'] {
+  if (usage == null) return 'hidden'
+  if (!usage.available) return usage.unavailable_reason === 'unsupported' ? 'hidden' : 'empty'
+  if (usage.matches_measured <= 0) return 'empty'
+  return 'ok'
 }

@@ -2,9 +2,14 @@
  * TimeseriesPage — onglet "Progression".
  *
  * Découpé depuis TimeseriesPage.tsx (audit #6 god-file split).
- * Contenu : premier frag / première mort, per minute, performance,
- * spree/headshots, rank score, skill rank perf, efficiency, engagement section,
- * profil d'intensité + table.
+ * Contenu : premier frag / première mort, cadences par minute, profil d'intensité,
+ * performance, spree/headshots, rank score, skill rank perf, efficiency,
+ * engagement, puis le tableau historique en pied d'onglet.
+ *
+ * L'INTENSITÉ EST REMONTÉE juste après les cadences par minute : les deux disent COMMENT
+ * le rythme se répartit dans un match, elles se lisent l'une après l'autre. Les usages
+ * d'équipement et les formes retenues ont quitté cet onglet pour « Usages » (tout ce qui
+ * vient du film décodé y est réuni, cf. TimeseriesPage.usages.tsx).
  */
 import { useMemo } from 'react'
 import { type ColumnDef } from '@tanstack/react-table'
@@ -34,9 +39,6 @@ import {
   type TimeseriesNetLivesLabels,
 } from './TimeseriesNetLivesTrend'
 import { TimeseriesCoordinationSection } from './TimeseriesCoordinationSection'
-import { EquipmentUsageSection } from '@/features/_shared/usage/EquipmentUsageSection'
-import { FormesRetenuesSection } from '@/features/squad/formes/FormesRetenuesSection'
-import { USAGE_TEXT } from '@/features/_shared/usage/usageI18n'
 import { FeatureGate } from '@/lib/capabilities/FeatureGate'
 import { useCapability } from '@/lib/capabilities/capabilities'
 import { ExplorerMatchesTable } from '@/features/explorer/ExplorerMatchesTable'
@@ -151,6 +153,27 @@ export function TimeseriesProgressionTab({
           perMinuteSuffix={t('timeseries.progression.per_minute_suffix')}
         />
       </div>
+
+      {/* Intensité — profil médian des parts de frags par phase + enveloppe
+          P25–P75 (panneau solo pleine largeur). */}
+      <TimeseriesIntensityProfile
+        title={
+          <span className="flex items-center gap-1.5">
+            {t('timeseries.progression.intensity_title')}
+            <InfoTooltip content={intensityTooltipText(locale)} />
+          </span>
+        }
+        emptyMessage={emptyMsg}
+        rows={data.intensity_rows ?? []}
+        teamRows={data.intensity_rows_team ?? undefined}
+        lobbyRows={data.intensity_rows_lobby ?? undefined}
+        medianLabel={t('timeseries.progression.intensity_median')}
+        envelopeLabel={t('timeseries.progression.intensity_envelope')}
+        refLabel={t('timeseries.progression.intensity_ref')}
+        playerLabel={t('timeseries.progression.intensity_player')}
+        teamLabel={t('timeseries.progression.intensity_team')}
+        lobbyLabel={t('timeseries.progression.intensity_lobby')}
+      />
 
       {/* timeseries.12 (gauche) | timeseries.16 (droite) */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
@@ -294,39 +317,6 @@ export function TimeseriesProgressionTab({
           />
         </div>
       </FeatureGate>
-
-      {/* Usages d'équipement — section migrée de la Synthèse vers cet onglet le 2026-09-13.
-          Aucune requête neuve : le bloc arrive avec cette même réponse de page. Les deux
-          cartes se retirent d'elles-mêmes quand le bloc est absent ou indisponible pour ce
-          titre. */}
-      <EquipmentUsageSection usage={data.equipment_usage} mode="solo" t={USAGE_TEXT[locale]} locale={locale} />
-
-      {/* « Les formes retenues », CONTEXTE SOLO — les neuf cartes migrées de l'Escouade le
-          2026-09-19 (une page, un contexte). Même bloc de contrat, même composant : le
-          serveur sert `formes_retenues` sur le MÊME scope que les usages d'équipement
-          juste au-dessus. La section se retire d'elle-même quand le bloc est absent. */}
-      <FormesRetenuesSection block={data.formes_retenues} locale={locale} contexte="solo" />
-
-      {/* Intensité — profil médian des parts de frags par phase + enveloppe
-          P25–P75 (panneau solo pleine largeur). */}
-      <TimeseriesIntensityProfile
-        title={
-          <span className="flex items-center gap-1.5">
-            {t('timeseries.progression.intensity_title')}
-            <InfoTooltip content={intensityTooltipText(locale)} />
-          </span>
-        }
-        emptyMessage={emptyMsg}
-        rows={data.intensity_rows ?? []}
-        teamRows={data.intensity_rows_team ?? undefined}
-        lobbyRows={data.intensity_rows_lobby ?? undefined}
-        medianLabel={t('timeseries.progression.intensity_median')}
-        envelopeLabel={t('timeseries.progression.intensity_envelope')}
-        refLabel={t('timeseries.progression.intensity_ref')}
-        playerLabel={t('timeseries.progression.intensity_player')}
-        teamLabel={t('timeseries.progression.intensity_team')}
-        lobbyLabel={t('timeseries.progression.intensity_lobby')}
-      />
 
       {/* Historique des matchs — tableau Explorer standalone (sans bloc ni titre)
           en bas de Progression. Reflète le scope solo du filtre global (mêmes

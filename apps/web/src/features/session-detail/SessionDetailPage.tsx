@@ -40,6 +40,10 @@ import { useSessionT } from './_shared'
 import { SessionParamPills } from './SessionParamPills'
 import { SessionColumnBody } from './SessionColumnBody'
 import { mergeSessionSectionKeys, sessionSectionKeys } from './_sections'
+import {
+  sessionFragCardHasContent,
+  sessionUsageShowsSomething,
+} from './sessionSectionVisibility'
 import { computeCompareScale, rangeDeltaDomain, type CompareScale } from './_compareScale'
 
 export function SessionDetailPage() {
@@ -257,12 +261,14 @@ export function SessionDetailPage() {
   const rowKeys = drawerOpen
     ? mergeSessionSectionKeys(
         sessionSectionKeys({
-          hasUsage: data.usage != null,
+          hasUsage: sessionUsageShowsSomething(data.usage),
+          hasFrags: sessionFragCardHasContent(data.current_session),
           hasCoordination: data.coordination != null,
           hasRange: data.range_profiles != null,
         }),
         sessionSectionKeys({
-          hasUsage: data.compare_usage != null,
+          hasUsage: sessionUsageShowsSomething(data.compare_usage),
+          hasFrags: sessionFragCardHasContent(data.compare_session),
           hasCoordination: data.compare_coordination != null,
           hasRange: data.compare_range_profiles != null,
         }),

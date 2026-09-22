@@ -1,17 +1,25 @@
 /**
- * LE MONTAGE DES DEUX SECTIONS MIGRÉES DEPUIS LA SYNTHÈSE (2026-09-13).
+ * LE MONTAGE DES SECTIONS PAR ONGLET — le CÂBLAGE, pas le rendu de chaque section.
  *
- * « Portée des engagements » vit désormais sur l'onglet Résumé, « Usages d'équipement » sur
- * l'onglet Progression. Les tests de chaque section lui passent son bloc à la main : ils
- * resteraient tous verts si l'onglet oubliait de le brancher (`data.weapon_range`,
- * `data.equipment_usage`) ou si la capability produit masquait la section pour de bon. Ces
- * cas-ci pincent le CÂBLAGE : réponse de page -> onglet -> section, et la porte de capability.
+ * Les tests de chaque section lui passent son bloc à la main : ils resteraient tous verts si
+ * un onglet oubliait de le brancher (`data.weapon_range`, `data.equipment_usage`,
+ * `data.formes_retenues`) ou si la capability produit masquait la section pour de bon. Ces
+ * cas-ci pincent la chaîne réponse de page -> onglet -> section, et la porte de capability.
+ *
+ * REGROUPEMENT DU 2026-09-22 : les trois sections nourries par le film décodé (portée des
+ * engagements, usages d'équipement, formes retenues) ont quitté la Synthèse et la
+ * Progression pour l'onglet « Usages ». Ce fichier vérifie donc aussi qu'elles ne sont PLUS
+ * sur leurs onglets d'origine, et que l'onglet Usages sans film porte son état vide plutôt
+ * que de rester muet.
  */
+import type { ReactNode } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { screen } from '@testing-library/react'
 
+// Le titre est RENDU par le double : c'est la seule marque qui distingue une carte de
+// graphe d'une autre, et l'ordre des blocs d'un onglet se vérifie sur ces titres.
 vi.mock('@/components/charts/ChartCard', () => ({
-  ChartCard: () => <div data-testid="chart-card" />,
+  ChartCard: ({ title }: { title?: ReactNode }) => <div data-testid="chart-card">{title}</div>,
 }))
 
 import { renderWithProviders } from '@/test/render-utils'
@@ -19,8 +27,11 @@ import { useAppShellStore } from '@/stores/appShellStore'
 import type { TimeseriesPageResponse } from '@/lib/api/types'
 import { TimeseriesSummaryTab } from './TimeseriesPage.summary'
 import { TimeseriesProgressionTab } from './TimeseriesPage.progression'
+import { TimeseriesUsagesTab } from './TimeseriesPage.usages'
 
 const RANGE_REGION = 'Portée par arme'
+const EQUIPMENT_REGION = "Usages d'équipement"
+const PAD_CONTROL_REGION = 'Contrôle des armes spéciales'
 
 const weaponRangeBlock = {
   weapons: [
@@ -106,35 +117,90 @@ function renderProgression(data: TimeseriesPageResponse) {
   )
 }
 
-describe('Onglet Résumé — montage de « Portée des engagements »', () => {
+function renderUsages(data: TimeseriesPageResponse) {
+  renderWithProviders(<TimeseriesUsagesTab data={data} locale="fr" t={(key) => key} />)
+}
+
+describe('Onglet Usages — montage de « Portée des engagements »', () => {
   it('avec le bloc servi et la capability active, la section est montée', () => {
     setTitle(['weapon_range'])
-    renderSummary(page({ weapon_range: weaponRangeBlock }))
+    renderUsages(page({ weapon_range: weaponRangeBlock }))
     expect(screen.getByRole('region', { name: RANGE_REGION })).toBeInTheDocument()
   })
 
   it('sans bloc dans la réponse, la section ne s’affiche pas', () => {
     setTitle(['weapon_range'])
-    renderSummary(page())
+    renderUsages(page({ equipment_usage: equipmentUsageBlock }))
     expect(screen.queryByRole('region', { name: RANGE_REGION })).not.toBeInTheDocument()
   })
 
   it('sans la capability du titre, le bloc servi reste masqué', () => {
     setTitle(['matchmaking'])
-    renderSummary(page({ weapon_range: weaponRangeBlock }))
+    renderUsages(page({ weapon_range: weaponRangeBlock, equipment_usage: equipmentUsageBlock }))
     expect(screen.queryByRole('region', { name: RANGE_REGION })).not.toBeInTheDocument()
   })
 })
 
-describe('Onglet Progression — montage de « Usages d’équipement »', () => {
-  it('avec le bloc servi, les cartes d’usage sont montées', () => {
-    renderProgression(page({ equipment_usage: equipmentUsageBlock }))
-    expect(screen.getByRole('region', { name: "Usages d'équipement" })).toBeInTheDocument()
-    expect(screen.getByRole('region', { name: 'Contrôle des armes spéciales' })).toBeInTheDocument()
+describe('Onglet Usages — montage de « Usages d’équipement »', () => {
+  it('avec le bloc servi, le titre de section et les cartes d’usage sont montés', () => {
+    renderUsages(page({ equipment_usage: equipmentUsageBlock }))
+    expect(
+      screen.getByRole('heading', { name: 'timeseries.usages.equipment_title' }),
+    ).toBeInTheDocument()
+    expect(screen.getByRole('region', { name: EQUIPMENT_REGION })).toBeInTheDocument()
+    expect(screen.getByRole('region', { name: PAD_CONTROL_REGION })).toBeInTheDocument()
+  })
+})
+
+describe('Onglet Usages — état vide', () => {
+  it('sans aucun bloc de film, l’onglet porte son état vide plutôt que rien', () => {
+    setTitle(['weapon_range'])
+    renderUsages(page())
+    expect(screen.getByText('timeseries.usages.empty_title')).toBeInTheDocument()
+    expect(screen.getByText('timeseries.usages.empty_description')).toBeInTheDocument()
+    expect(screen.queryByRole('region', { name: EQUIPMENT_REGION })).not.toBeInTheDocument()
   })
 
-  it('sans bloc dans la réponse, aucune carte d’usage', () => {
+  it('un bloc d’usage servi retire l’état vide', () => {
+    renderUsages(page({ equipment_usage: equipmentUsageBlock }))
+    expect(screen.queryByText('timeseries.usages.empty_title')).not.toBeInTheDocument()
+  })
+})
+
+describe('Onglets d’origine — les sections du film n’y sont plus', () => {
+  it('la Synthèse ne monte plus « Portée des engagements »', () => {
+    setTitle(['weapon_range'])
+    renderSummary(page({ weapon_range: weaponRangeBlock }))
+    expect(screen.queryByRole('region', { name: RANGE_REGION })).not.toBeInTheDocument()
+  })
+
+  it('la Progression garde ses blocs, dans l’ordre attendu', () => {
     renderProgression(page())
-    expect(screen.queryByRole('region', { name: "Usages d'équipement" })).not.toBeInTheDocument()
+    const titres = screen.getAllByTestId('chart-card').map((n) => n.textContent ?? '')
+    const attendus = [
+      'timeseries.progression.per_minute_title',
+      'timeseries.progression.intensity_title',
+      'timeseries.summary.perf_label',
+      'timeseries.progression.spree_headshots_title',
+      'timeseries.progression.rank_score_title',
+      'timeseries.progression.efficiency_title',
+    ]
+    const rangs = attendus.map((cle) => titres.findIndex((x) => x.includes(cle)))
+    expect(rangs.every((r) => r >= 0)).toBe(true)
+    expect(rangs).toEqual([...rangs].sort((a, b) => a - b))
+  })
+
+  it('la Progression ne monte plus « Usages d’équipement »', () => {
+    renderProgression(page({ equipment_usage: equipmentUsageBlock }))
+    expect(screen.queryByRole('region', { name: EQUIPMENT_REGION })).not.toBeInTheDocument()
+  })
+
+  it('la Progression garde son profil d’intensité, remonté avant la tendance de performance', () => {
+    renderProgression(page({ equipment_usage: equipmentUsageBlock }))
+    const titres = screen.getAllByTestId('chart-card').map((n) => n.textContent ?? '')
+    const intensite = titres.findIndex((x) => x.includes('timeseries.progression.intensity_title'))
+    const perf = titres.findIndex((x) => x.includes('timeseries.summary.perf_label'))
+    expect(intensite).toBeGreaterThanOrEqual(0)
+    expect(perf).toBeGreaterThan(intensite)
   })
 })

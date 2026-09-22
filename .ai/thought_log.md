@@ -112668,3 +112668,166 @@ en contrebas » (lot AB, garde-rail). Fusion dans `feat/v75` = avance rapide de 
 distante n avait pas bouge depuis la base 28b93cca5). Reste hors chantier : backfill des niveaux d armes
 a rejouer en prod au deploiement (prevenir), gate visuel utilisateur sur le serveur de branche v7,
 retrait des worktrees `LevelUp-wt-ajsup-*`.
+## [2026-09-21] Inventaire des sections transverses (Sessions / Match view / Escouade / Series temporelles) + maquette de six sujets
+
+**Statut** : Complete (etude et maquette ; aucune implementation).
+
+**Demande** : l'utilisateur voulait savoir quelles sections existent et lesquelles manquent entre
+les quatre pages, puis un artefact pour arbitrer six sujets : Objectifs, l'Echange, Les formes
+retenues, Portee des engagements, Assistances entre joueurs, Balance des degats cumulee. Tout le
+reste des ecarts releves est acte comme design volontaire.
+
+**Decision technique principale** : l'inventaire a ete releve DANS LE CODE (routes, pages de
+feature, sections partagees), pas de memoire ni de doc. Constats structurants :
+- « Objectifs » existe DEJA sur les quatre pages, sous quatre grammaires differentes : jauges +
+  deux grilles cote Sessions (`SessionUsageSection::ObjectivesCard`), 9 tuiles brutes cote
+  Escouade (`SquadObjectiveStatsPanel`) et Series temporelles (`TimeseriesObjectiveCard`),
+  lignes du tableau des scores cote Match view (`MatchObjectivesSection`).
+- « Contrele des armes speciales » existe DEJA sur Sessions (jauges, carte 4 de
+  `SessionUsageSection`), contrairement a ce que la question supposait.
+- « L'Echange » est exclusif a l'Escouade, mais sa mecanique (`internal/analysis/coordination`)
+  est PURE et deja partagee par deux surfaces : elle mange des `domain.KillEvent` + une table
+  d'equipes par match. Un troisieme scope ne lui coute rien.
+- « Balance des degats cumulee » manque a Series temporelles alors que `TimeseriesMatchRow`
+  porte deja `damage_dealt` / `damage_taken` et que `netLives` + `cumulativeSigned` +
+  `divergentZeroGradient` sont ecrits : c'est la proposition a cout front-seul.
+
+**Resultats observes** : maquette `.ai/V7.5/MAQUETTE_SECTIONS_TRANSVERSES_2026-09-21.html`
+(jetons de l'app repris a l'identique, SVG interactif, bascule clair/sombre). Dix propositions
+chiffrees en backend / front / reserve, triees du moins cher au plus cher. Aucune forme neuve
+n'est inventee quand une forme en service repond deja a la question (jauges a parite des usages,
+bande de regularite, aire divergente ancree a zero, batons p10-p90, barres empilees par joueur).
+Rendu verifie au navigateur (aucune erreur de script ; trois chevauchements corriges).
+
+**Deux reserves ecrites dans la maquette, a lever AVANT tout chiffrage** :
+1. « Ai-je venge ? » (Series temporelles) a besoin de la taille d'equipe par match pour
+   normaliser a 1/n — presence a confirmer.
+2. « Mon jeu d'equipe » (Series temporelles) exige que `assist_pairs` porte les assistances des
+   coequipiers NON SUIVIS ; sinon le denominateur « frags de mon camp » est ampute et les trois
+   jauges mentent.
+
+**Prochaine etape** : l'utilisateur arbitre les propositions a instruire. Ordre recommande :
+Balance des degats (front seul), puis la grammaire unique des Objectifs (front seul + un
+garde-rail), puis l'Echange sur Match view (donnee deja servie).
+
+**Complement du meme jour (retour utilisateur)** : la maquette ne montrait QUE les propositions.
+Ajout d'un bloc « Aujourd'hui » EN TETE de chaque sujet, qui rend ce qui est a l'ecran page par
+page — « je vais pas choisir des changements si je ne vois pas ce qui est deja en place ». Rien
+n'a ete retire : les six blocs de proposition sont inchanges. Nouveaux rendus : les quatre
+grammaires d'Objectifs (jauges + 2 grilles cote Sessions, 9 tuiles brutes cote Escouade et Series
+temporelles, ValueGrid + face-a-face cote Match view), les SEPT cartes de l'echange de l'Escouade
+dans leur ordre de lecture, une carte des formes retenues en contexte escouade face a celle en
+contexte solo, la reference de portee (4 tuiles + les deux graphes jumeaux sur les memes lignes)
+et « Distance des frags par arme » de Match view, les assistances en cumul, et la balance des
+degats telle qu'elle vit deja sur Sessions et sur Escouade. Rendu re-verifie au navigateur
+(aucune erreur de script ; quatre debordements corriges : barre du face-a-face non bornee,
+deux libelles hors cadre, decimales d'un cumul).
+
+**Correction du meme jour (lecture de l'artefact source)** : l'utilisateur a signale avoir concu un
+rendu d'objectifs dans l'artefact `6mso5N1DLY24Qjar6Ax3ye`. Ouvert AU NAVIGATEUR (chrome-devtools,
+artefact public, aucune authentification) : son titre est « Les formes retenues » et le host de son
+cadre est `2ec1b8eb-…` — c'est-a-dire EXACTEMENT « l'artefact 2ec1b8eb » cite en tete de
+`FormesRetenuesSection.tsx`. Les cinq titres de cartes objectif de l'artefact correspondent AU MOT
+PRES a `formes/cardsI18n.ts` : « Ecart a la parite, par role », « Ma part par famille de mode »,
+« Objectif par mode, en valeurs brutes » (solo) ; « Rapport de force par famille de mode », « Ce que
+mon camp prend de l'objectif » (escouade). **Le rendu est livre, verbatim.**
+
+**Ce que l'inventaire avait rate** : Escouade et Series temporelles portent DEUX rendus d'objectifs,
+pas un. Les 9 tuiles brutes (V72-03, juillet) sont AU-DESSUS des onglets et lisent l'agregat d'API
+(tous les matchs du scope) ; le bloc « Objectifs » des formes retenues est DANS un onglet et lit le
+FILM DECODE (8 matchs sur 9 dans l'artefact). Deux denominateurs, deux univers, et rien a l'ecran
+ne le dit au lecteur. La proposition n 2 est donc requalifiee : ce n'est plus « remplacer des tuiles
+pauvres » mais **reconcilier deux blocs eloignes et nommer leurs denominateurs**.
+
+Deux autres erreurs de la maquette corrigees dans le meme passage : elle dessinait QUATRE roles
+(porter / reprendre / voler / tenir) la ou l'artefact et le code en retiennent TROIS (prendre /
+defendre / tenir) — c'est ce qui rend Bastion et Drapeau comparables sous une parite unique ; et la
+reserve de l'artefact est reportee dans le tableau des couts : « la table role -> grandeurs est un
+savoir du TITRE, a declarer en donnee, jamais en dur dans un composant ».
+
+**Lecon d'outillage** : un artefact Claude ne se lit pas par le MCP Docs (refus `access` : ce ne sont
+pas des Docs), mais s'ouvre au NAVIGATEUR pilote. Le DOM du cadre est cross-origin, donc illisible en
+script — en revanche `take_snapshot` rend tout le texte de l'artefact, cadre compris. C'est le chemin
+a reprendre pour tout artefact cite en conversation.
+
+**Troisieme passe du meme jour — la maquette passe a TROIS colonnes** (demande utilisateur :
+« Aujourd'hui / Ce qui etait prevu / Ce que tu proposes »). Les cinq cartes objectif de l'artefact
+`6mso5N1DLY24Qjar6Ax3ye` sont desormais DESSINEES dans la maquette, pas seulement citees : vocabulaire
+des quatre formes, SOLO A (ecart a la parite par role, 3 roles x 2 lignes equipe/lobby), SOLO B (ma part
+par famille de mode, avec etendue par match), SOLO A (valeurs brutes, une echelle ET un axe par colonne),
+ESCOUADE B (rapport de force par famille), ESCOUADE C (part du lobby empilee par role, l'adversaire
+compte mais jamais nomme). Les citations de l'artefact sont reprises mot pour mot.
+
+Etat de la colonne 2 par sujet, ecrit dans le chapeau : Objectifs et Formes retenues = artefact ouvert
+et retranscrit ; Portee = `MAQUETTE_PORTEE_ENGAGEMENTS_2026-09-06.html`, deja dans le depot ; Echange =
+maquette `4c520da6`, citee 4x dans le code mais NON OUVRABLE ce jour (Cloudflare bloque l'acces aux
+artefacts depuis le navigateur pilote — seul le premier est passe avant le declenchement du defi) ;
+Assistances et Balance = AUCUNE maquette, la forme a ete fixee en conversation puis dans le code.
+
+**Consequence sur la proposition n 2**, ecrite en tete de sa section : ma « grammaire a trois etages »
+a ete concue sans l'artefact et reinvente en moins bien ce qui est livre. Ce qu'il en reste de valable
+n'est pas la forme mais le constat — deux rendus d'objectifs sur une meme page, deux denominateurs,
+rien a l'ecran qui le dise. La question a arbitrer devient : **les tuiles d'API ont-elles encore une
+raison d'etre au-dessus des onglets, maintenant que le bloc de film dit la meme chose en mieux ?**
+
+Rendu re-verifie au navigateur apres chaque passe (aucune erreur de script ; quatre chevauchements
+corriges sur les nouveaux rendus : intertitres de `gapBars` qui se posaient sur la ligne precedente,
+valeurs de `rawObjGrid` qui mordaient la colonne suivante, deux legendes sous leur axe).
+
+## [2026-09-22] Répartition des graphes sur Match view / Séries temporelles / Escouade + titres de sections sur Sessions — Complété (étude, aucun code)
+
+**Statut** : Complété (diagnostic et propositions ; en attente d'arbitrage utilisateur, aucune implémentation).
+
+**Décision technique principale** : inventaire relevé DANS LE CODE par quatre lectures parallèles (une par page), ordre DOM réel, compte ECharts par onglet, conditions d'affichage, gabarit de titre de chaque bloc.
+
+**Résultats observés** :
+- Match view (4 onglets) : Général 10 blocs / 5 ECharts (combat + frags + distance + médailles + citations + médias) ; Chronologie 5 ECharts sous un seul `DetailSection` ; Contrôle 0 ECharts (3 blocs film, souvent vides) ; Joueurs 3 ECharts + 2 tableaux. Général et Contrôle n'ont aucun titre de section.
+- Séries temporelles (3 onglets) : Synthèse 13 ECharts ; Distributions 11 ; Progression 14 ECharts + usages (5 cartes) + formes retenues (9 cartes) + intensité + tableau = l'onglet le plus lourd. CINQ conventions de titre de section sur la même page.
+- Escouade (3 onglets) : Synergies ~14 ECharts + 10 cartes de formes + 3 donuts (échange, victoires, bande, historique, cartes, frags, impact, usages, formes, médailles) ; Contributions 10-12 ; Dynamique ≤ 7.
+- Sessions (aucun onglet) : 18 blocs, 22 ECharts max, un seul titre de section (`h2` « Détail des matchs », `SessionColumnBody.tsx:86`). Mode comparer = MÊME `SessionColumnBody` dans deux pistes de grille (pas de Drawer UI) : l'alignement A/B est structurel, des titres posés dans ce composant s'alignent d'office.
+- Le gabarit « titre type-1 » (`h3 text-base font-semibold`, sans carte) existe en helper `match-view/DetailSection.tsx` mais est recopié en dur ~7 fois (squad ×4, formes ×2, session h2) : à remonter en composant partagé + garde-rail (règle 6).
+
+**Propositions** (détail dans la réponse à l'utilisateur) : onglet « Récompenses » sur Match view (médailles, citations, médias) + distance des frags vers Contrôle ; onglet « Usages » identique sur Séries temporelles et Escouade (portée / usages d'équipement / formes retenues, + section frags-armes côté Escouade) ; Sessions = 7 titres de section via le helper partagé, sans changer l'ordre (une seule question d'ordre : XP de carrière isolée après les dégâts).
+
+**Prochaine étape** : l'utilisateur tranche onglets et titres ; puis un lot par page, worktree dédié.
+
+**Complément du même jour — exécution (cinq lots Opus, branche d'intégration `feat/sections-transverse`, 18 commits, 58 fichiers, NON fusionnée dans `feat/v75`, non poussée)** :
+- Arbitrages utilisateur : quatre onglets MAXIMUM et un axe de lecture par onglet (pas d'équilibre à
+  atteindre) ; Sessions = quatre sections, pas sept ; le transverse (helper partagé) est retenu.
+- Lot 0 `9cc3f5037` : `components/ui/detail-section.tsx` (`SectionTitle` + `DetailSection`), six copies
+  migrées, `detail-section.guard.test.ts` (ratchet daté 2026-09-22, 23 fichiers / 41 occurrences hors
+  périmètre tolérées, prouvé rouge sur une copie brute). Découverte : `apps/web` n'a ni `clsx` ni
+  `tailwind-merge` — aucune fusion de classes en conflit possible, d'où `SectionTitle` pour les
+  conteneurs qui gardent leur `space-y-3`.
+- Lot 1 Match view (`e3d4ee676` → `7e6cb5107`) : onglet `control` renommé `arsenal` « Armes et terrain »
+  (alias d'URL `control -> arsenal`), carte des frags + distance des frags y rejoignent les trois blocs
+  film ; Général = KPI sans titre, « Combat », « Récompenses », « Médias ». Deux corrections exigées à la
+  revue : un titre ne se pose jamais au-dessus de rien (prédicats purs partagés bloc/parent dans
+  `blockPredicates.ts` et `match-replay/model/*Logic.ts`, état vide d'onglet), et zéro nouveau warning
+  `react-refresh` (prédicats sortis des fichiers composants). L'état vide « Aucune capture » de
+  `MatchMediaTab` devenait inatteignable : supprimé avec ses clés.
+- Lot 2 Séries temporelles (`dccdb4228` → `79148339d`) : onglet « Usages » (portée, équipement, formes
+  retenues), intensité remontée près des cadences, titres de Distributions au gabarit standard, état vide
+  sans film. Titre de section « Équipement » (pas « Usages d'équipement », doublon de la première carte).
+- Lot 3 Escouade (`002146a0d` → `7de7a42e0`) : sous-route `squad/usages` (`routeTree.gen.ts` régénéré
+  par le générateur), Impact + Médailles vers Contributions, titres « L'échange » et « Historique » sur
+  Synergies, plafond de nav ratcheté à 4. Réindentation exigée à la revue.
+- Lot 4 Sessions (`26f7bb598` → `f215af27a`) : « Bilan » et « Match par match » dans `SessionChartStack`,
+  « Frags et usages » et « Détail des matchs » dans `SessionColumnBody` (alignement A/B structurel),
+  XP de carrière remontée avant la carte des frags, `sessionSectionVisibility.ts` = la porte des cartes
+  ET du titre (les cartes l'appellent), `usageAvailabilityKind` sans dictionnaire.
+- Intégration : un ajout à `tools/lint-cross-feature-imports.mjs` (`match-view=>match-replay/model/
+  padControlLogic`, plafond 7 tenu). Gates sur l'intégration complète : tsc vert, eslint 0 erreur (26
+  warnings, 28 sur la base), vitest 754 fichiers / 8045 tests verts, lint couleurs / champs / imports
+  croisés / knip verts.
+- Points à valider à l'œil par l'utilisateur : le bloc Médias de Match view perd son cadre de carte
+  (titre de section + grille nue) ; le titre « Distributions » sous l'onglet Distributions se répète.
+- Découvertes non traitées : `lib/pageTitle.ts` duplique la table des onglets Escouade de
+  `features/squad/i18n.ts` sans garde-rail ; `COUNT_ONLY_LABELS` existe en deux copies (match-view,
+  session-detail) — à la troisième, un `fragDetailBreakdownCount` dans `components/charts` ;
+  `useCopyToClipboard.guard.test.ts` flake une fois après un renommage (cache Vite d'`import.meta.glob`) ;
+  `e2e/slice-3b-timeseries.spec.ts:40` libellé périmé (« 5 onglets »).
+
+**Prochaine étape** : accord utilisateur pour fusionner `feat/sections-transverse` dans `feat/v75`,
+pousser et lire la CI ; puis retrait des cinq worktrees `LevelUp-wt-sections-*` (jonctions
+`node_modules` à retirer d'abord, un tour seul).

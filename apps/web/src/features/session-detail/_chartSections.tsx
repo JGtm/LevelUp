@@ -9,6 +9,12 @@
  * `_sections.ts` : la page peut ainsi composer des rangées partagées gauche/droite
  * (D16) sans connaître le contenu des cartes.
  *
+ * LES TITRES DE SECTION NE VIVENT PAS ICI (chantier « sections transverses », 2026-09-22) :
+ * « Bilan » et « Match par match » coiffent des GROUPES de clés, et le groupe d'une clé se
+ * lit dans `_sections.ts` (`SESSION_SECTION_GROUPS`). Ce module ne connaît que les cartes —
+ * c'est `SessionColumnBody` qui pose les titres, aux mêmes rangées des deux côtés de la
+ * comparaison.
+ *
  * - `compact` : colonne divisée (drawer ouvert) — donuts en % interne, sunburst frags empilé.
  * - `participationSide` / `participationColor` : l'axe du profil de participation est à
  *   DROITE + couleur A en vue single, à GAUCHE + couleur B dans le drawer → effet miroir.
@@ -51,7 +57,6 @@ import { FeatureGate } from '@/lib/capabilities/FeatureGate'
 import { useCapability } from '@/lib/capabilities/capabilities'
 import { SessionDamageComposite } from './SessionDamageComposite'
 import { SessionOcdrBars } from './SessionOcdrBars'
-import { SessionFragCard } from './SessionFragCard'
 import { SessionCareerXP } from './SessionCareerXP'
 
 interface Props {
@@ -201,13 +206,8 @@ export function useSessionChartSections({
     />
   )
   const damage = <SessionDamageComposite title={t('session.detail.chart_damage_title')} matches={matches} />
-  // Répartition des frags v2 (sunburst classe→rôle + « Détails des frags ») — alimentée par
-  // l'agrégat de session (P5). Rend null si aucune donnée. Rendu Match view (compteur seul,
-  // légende gauche, survol lié) ; EMPILÉ quand la colonne est étroite (`compact` = colonne
-  // principale rétrécie par le drawer de comparaison).
-  const frags = <SessionFragCard entry={entry} stacked={compact} />
-
-  // XP de carrière estimée (V72-13) — avant-dernier bloc, avant le tableau des matchs.
+  // XP de carrière estimée (V72-13) — DERNIER bloc de la section « Match par match » :
+  // elle se lit match par match, comme ses voisines.
   // Auto-gate data-driven : masqué si aucun match ne porte career_xp_estimated (H5).
   const careerXp = (
     <SessionCareerXP
@@ -265,7 +265,6 @@ export function useSessionChartSections({
     perf,
     engagement,
     damage,
-    frags,
     career_xp: careerXp,
   }
 

@@ -68,8 +68,15 @@ export function padTierLabel(tier: string, t: UsageText): string {
   return Object.hasOwn(t.padTierLabels, tier) ? t.padTierLabels[tier as UsagePadTier] : tier
 }
 
-/** Les lignes de niveau SERVIES, dans l'ordre écrit. */
-function lignesOrdonnees(block: SessionUsagePadTiersBlock | null | undefined): PadTierLine[] {
+/**
+ * Les lignes de niveau SERVIES, dans l'ordre écrit.
+ *
+ * EXPORTÉE (2026-09-22) parce que la PRÉSENCE de lignes décide de l'affichage de la carte
+ * « Contrôle des armes spéciales », et donc du titre de section qui la coiffe : le prédicat
+ * de visibilité doit lire la MÊME liste que le rendu, jamais une approximation sur `tiers`
+ * (un niveau hors contrat est servi mais pas dessiné).
+ */
+export function padTierLines(block: SessionUsagePadTiersBlock | null | undefined): PadTierLine[] {
   if (block == null || (block.tiers ?? []).length === 0) return []
   const parNiveau = new Map((block.tiers ?? []).map((tier) => [tier.tier, tier]))
   const out: PadTierLine[] = []
@@ -96,7 +103,7 @@ export function buildPadTierRows(
   block: SessionUsagePadTiersBlock | null | undefined,
   t: UsageText,
 ): UsageCountsRowInput[] {
-  return lignesOrdonnees(block).map((ligne) => ({
+  return padTierLines(block).map((ligne) => ({
     key: ligne.tier,
     label: padTierLabel(ligne.tier, t),
     taken: ligne.player_total,
@@ -195,7 +202,7 @@ export interface PadTierGaugeOptions {
  * buildPadTierGaugeRows — les MÊMES lignes, dans la forme « trois jauges » de la page Sessions.
  *
  * DEUX FORMES, UN SEUL ORDRE ET UN SEUL DÉTAIL : cette fonction et `buildPadTierRows`
- * partagent `lignesOrdonnees` et `hintDesArmes`. Deux pages qui rangeraient les niveaux dans
+ * partagent `padTierLines` et `hintDesArmes`. Deux pages qui rangeraient les niveaux dans
  * deux ordres, ou qui nommeraient les armes de deux façons, se liraient comme deux mesures.
  */
 export function buildPadTierGaugeRows(
@@ -203,7 +210,7 @@ export function buildPadTierGaugeRows(
   opts: PadTierGaugeOptions,
 ): UsageGaugeRowModel[] {
   if (block == null) return []
-  return lignesOrdonnees(block).map((ligne) =>
+  return padTierLines(block).map((ligne) =>
     buildGaugeRow({
       key: `tier-${ligne.tier}`,
       label: padTierLabel(ligne.tier, opts.t),

@@ -31,6 +31,7 @@
  */
 import { useMemo } from 'react'
 
+import { SectionTitle } from '@/components/ui/detail-section'
 import { InfoTooltip } from '@/components/ui/info-tooltip'
 import type { SquadFormesBlock } from '@/lib/api/types'
 import type { Locale } from '@/lib/i18n/locale'
@@ -84,10 +85,10 @@ export interface FormesRetenuesSectionProps {
 /** Le titre d'un bloc, avec l'aide ⓘ qui dit ce qu'il mesure. */
 function BlockTitle({ children, aide }: { children: string; aide: string }) {
   return (
-    <h3 className="mt-10 flex items-center gap-1.5 border-b border-border pb-2 text-base font-semibold text-foreground">
+    <SectionTitle className="mt-10 flex items-center gap-1.5 border-b border-border pb-2">
       {children}
       <InfoTooltip content={aide} />
-    </h3>
+    </SectionTitle>
   )
 }
 

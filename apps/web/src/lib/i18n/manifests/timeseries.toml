@@ -62,6 +62,10 @@ en = "Distributions"
 fr = "Progression"
 en = "Progression"
 
+[timeseries.tabs.usages]
+fr = "Usages"
+en = "Usage"
+
 # ─── Onglet KPIs ───────────────────────────────────────────────────────────
 
 [timeseries.summary.empty_title]
@@ -902,3 +906,23 @@ en = "No range measured"
 [timeseries.portee.empty_description]
 fr = "Aucun match de la sélection n'a de film décodé : sans positions de frag, la portée ne se mesure pas."
 en = "No match in the selection has a decoded film: without kill positions, range cannot be measured."
+# ─── Onglet Usages ─────────────────────────────────────────────────────────
+# Tout ce qui vient du film décodé : portée des engagements, usages d'équipement,
+# formes retenues. Sans film décodé sur le scope, l'onglet porte son état vide
+# plutôt que de rester muet.
+
+[timeseries.usages.equipment_title]
+# « Équipement », PAS « Usages d'équipement » : ce dernier est mot pour mot le titre de la
+# PREMIÈRE CARTE de la section (usageI18n.blockEquipment) — le libellé se lisait deux fois
+# de suite. Même choix que sur l'Escouade.
+fr = "Équipement"
+en = "Equipment"
+
+[timeseries.usages.empty_title]
+fr = "Aucun film décodé"
+en = "No decoded film"
+
+[timeseries.usages.empty_description]
+fr = "Aucun film décodé pour cette sélection"
+en = "No decoded film for this selection"
+
