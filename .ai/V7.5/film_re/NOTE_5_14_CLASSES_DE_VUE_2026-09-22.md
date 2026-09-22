@@ -273,6 +273,13 @@ chacun : la vue B ferme sa liste trop tot. Ce n est ni la vue A (jamais non vide
 cadrage de paquet sur un film dense a huit joueurs, et il est hors du perimetre « les deux autres
 classes de vue ».
 
+> **CORRIGE AU LOT 5.15 (2026-09-22), et sur deux points** : (1) « ~1 076 bits chacun » est une
+> MOYENNE — la largeur du reste a 2 226 classes, de 42 a 6 162 bits ; (2) « la vue B ferme sa
+> liste trop tot » est une mauvaise description : la vue B sort sur un REJET de table de vue
+> (23 452 contre 400 terminateurs), et la branche que le JEU emprunte sur un film
+> (`DAT_14474cd78 = 1`) n a aucun rejet sur slot inconnu — elle agrandit sa table. Voir
+> `NOTE_5_15_RANG_1_FILM_DENSE_2026-09-22.md`.
+
 ## 8. Les maillons restants, par adresse
 
 | maillon | adresse | ce qu il ouvre |
@@ -283,7 +290,7 @@ classes de vue ».
 | le second bloc du controle | `FUN_141fdae44` (bloc de 0xbc octets), largeurs `(DAT_145121140 == 1) * 2 + 2`, sous-lecteurs `FUN_14080cb98` / `FUN_1406d0f20` / `FUN_1424d0f48`, plus deux `R(0xb)` | la branche `b` de `FUN_1406d0388` |
 | `kind` 1 et `kind` 2 de la vue C | `FUN_142f29b38`, `FUN_142f29e54` | 157 et 137 paquets de `bfecd02b` |
 | la branche longue de `FUN_1406cd860` | `R(5\|7)` puis `FUN_142265fe3` | 2 061 entrees de `bfecd02b` |
-| le trou du rang 1 sur film dense | — | 23 852 paquets de `bfecd02b`, ~1 076 bits chacun |
+| le trou du rang 1 sur film dense | **NOMME AU LOT 5.15** : la table de datums par slot du decodeur partage, `*(vue + 0x20) + 0x20` pas de 200 (voir `NOTE_5_15_RANG_1_FILM_DENSE_2026-09-22.md` §3) | 23 852 paquets de `bfecd02b`. **Le « ~1 076 bits chacun » etait une MOYENNE** : 2 226 classes de largeur, de 42 a 6 162 bits (lot 5.15, §1) |
 
 ## 9. Les instruments
 

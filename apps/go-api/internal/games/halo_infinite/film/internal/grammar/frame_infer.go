@@ -76,6 +76,31 @@ func DecodeFrameInfer(buf []byte, w *World, cfg FrameConfig) ([]FrameRecord, int
 // transcription de la garde ne distingue « eid etranger a cette vue » de « slot non encore lie ».
 // Le gate du trou est `TestMouvement5116Gate` : bits non lus par paquet dans [0 ; 7].
 // --- fin de la note ---------------------------------------------------------------------------
+// --- CE QUE LE LOT 5.15 A TROUVE SUR CETTE GARDE, ET IL FAUT LE LIRE AVANT DE S Y FIER
+// --- (2026-09-22, `.ai/V7.5/film_re/NOTE_5_15_RANG_1_FILM_DENSE_2026-09-22.md` §3)
+//
+// `FUN_1406cd128` porte DEUX grammaires, separees par le global `DAT_14474cd78` (`1406cd24d`) :
+//
+//	branche A (`== 0`) : garde `vue[0x38]` pas de 0xa0, eid ET type, puis `FUN_141f86b58` ;
+//	                    REJET et sortie de boucle sur slot inconnu. C EST CELLE QUE CE FICHIER
+//	                    TRANSCRIT (ci-dessous et [World.VuePossede]).
+//	branche B (`!= 0`) : dispatcheur `FUN_1406cbaa0`, dont le PROLOGUE AGRANDIT `vue[0x38]`
+//	                    (`FUN_1411b3c84(vue+0x38, max(0x1fff, slot+1))`, entrees construites par
+//	                    `FUN_1408f15c8`) : AUCUN rejet sur slot inconnu. Sa garde de delta porte
+//	                    sur la table de datums du DECODEUR PARTAGE (`*(vue+0x20) + 0x20`, pas de
+//	                    200, eid ENTIER), d ou vient aussi l ARCHETYPE, et que `FUN_1408f1314`
+//	                    -> `FUN_1408f1618` alimente A CHAQUE record NEW.
+//
+// `DAT_14474cd78` VAUT 1 DANS L IMAGE, et le seul ecrivain de 0 est `FUN_1428e24bc`, qui
+// l abaisse le temps d un ALLER-RETOUR D ETAT (table pre-remplie depuis une liste de reference)
+// puis le restaure. **LA BRANCHE DU FILM EST DONC B, ET CETTE GARDE-CI TRANSCRIT A.**
+//
+// MESURE (lot 5.15.1, `bfecd02b`) : la vue B sort sur ce rejet 23 452 fois contre 400
+// terminateurs, et 21 988 des 22 112 rejets lisibles portent sur un slot que le monde hors ligne
+// n a JAMAIS lie — ZERO sur un slot lie dans une autre vue. Desarmer la garde ne ferme que
+// 30 paquets sur 22 112 : sans archetype le corps ne se lit pas. Le port correct demande donc la
+// table de datums par slot, pas un changement de garde — c est le report 5.15.3 (D1 du 5.15).
+// --- fin de la note du lot 5.15 ---------------------------------------------------------------
 // rejetDeVue transcrit la GARDE DE TABLE DE VUE (note ci-dessus) : un delta dont le slot
 // n appartient pas a la vue en cours n est pas un record de cette vue. L appelant remet le
 // curseur a la fin de l EN-TETE et clot la vue — l en-tete, lui, EST ecrit, et c est ce que la

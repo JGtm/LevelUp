@@ -80,6 +80,17 @@ func (w *World) PoserVueCourante(v int) { w.vueCourante = int8(v) } //nolint:gos
 // difference que le monde hors ligne ne peut pas TOUJOURS attribuer une vue : une liaison venue
 // d une image-cle n en porte pas. Ces liaisons-la passent, comme les generations inconnues.
 //
+// **ET CETTE TRANSCRIPTION EST CELLE DE LA BRANCHE QUE LE JEU N EMPRUNTE PAS SUR UN FILM**
+// (lot 5.15, 2026-09-22). `FUN_1406cd128` se scinde sur `DAT_14474cd78`, qui VAUT 1 dans
+// l image : la branche vive (`!= 0`) passe par `FUN_1406cbaa0`, dont le prologue AGRANDIT
+// `vue[0x38]` au lieu de rejeter, et dont la garde de delta porte sur la table de datums du
+// decodeur partage (`*(vue+0x20) + 0x20`, pas de 200). Le seul ecrivain de `DAT_14474cd78 = 0`
+// est `FUN_1428e24bc`, un aller-retour d etat qui pre-remplit la table puis restaure le global.
+// Consequence MESUREE sur `bfecd02b` : 21 988 des 22 112 rejets portent sur un slot jamais lie,
+// ZERO sur un slot lie ailleurs. Voir `.ai/V7.5/film_re/NOTE_5_15_RANG_1_FILM_DENSE_2026-09-22.md`
+// §3 et le report 5.15.3 — le correctif est un MODELE (la table de datums par slot), pas une
+// garde de plus.
+//
 // ELLE NE COMPARE PAS L EID COMPLET, ET C EST MESURE (lot 5.13.1). Le comparer — exiger que les
 // deux bits de tete du delta valent ceux que la liaison porte — coute 21 records `ti=35` sur
 // `bfecd02b` (114 458 -> 114 437), parce que les deux bits de tete du flux DELTA et ceux de
