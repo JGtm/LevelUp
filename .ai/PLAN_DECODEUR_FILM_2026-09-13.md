@@ -11301,10 +11301,69 @@ des bases DuckDB temporaires peuplees synthetiquement par les VRAIES migrations.
   `v_gamertag_lookup` par match dans la passe des FILMS (meme defaut, masque par les ~9,5 s de
   decodage que chaque film coute).
 
+### Post-chantier — lot 5.24 (backfill killsource : vitesse, etat, reprise), 2026-09-22
+
+Branche `feat/decfilm-74`, base `f3d52514b` (schema 68). **PERIMETRE FERME** : la commande
+`backfill-killsource` et le collecteur `killcollector`. **AUCUNE grammaire, aucun decodeur,
+aucun changement de ce qui est ecrit en base** — `SchemaVersion`, `grammar.Rev`, `facts.Rev` et
+`IsolationDecoderRev` sont INCHANGES, aucun octet de `film/internal/`. Ce lot change COMMENT la
+passe tourne, pas CE QU ELLE PRODUIT, et un test d egalite 1 contre N ouvriers le prouve.
+**AUCUNE base de production ouverte** (le serveur tourne) : bases DuckDB temporaires, migrations
+reelles, films lus par les jonctions du cache.
+
+- [x] **5.24.1 — LA MESURE AVANT : LE TEMPS EST DANS LE DECODAGE, A 93-99 %.**
+  `internal/sync/killcollector/backfill_cout_integration_test.go` (tag `integration`, banc
+  `peuplerBancCredit` = 180 000 lignes de `match_kill_events` + 50 000 couples, films lus par la
+  jonction du cache). Sept etapes chronometrees par UN appel a la fonction de production chacune.
+
+  | film | chunks | Mio | charg. | assembl. | carte | DECODE | roster | ecrit. | annexes | TOTAL | s/chunk | heap Mio | sys Mio |
+  |---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+  | ee90570b | 6 | 4,4 | 0 | 0 | 0 | 175 ms | 53 ms | 17 ms | 43 ms | **288 ms** | 0,05 | 11 | 31 |
+  | c0a82e88 | 8 | 5,1 | 0 | 4 ms | 0 | 498 ms | 55 ms | 30 ms | 507 ms | **1,09 s** | 0,14 | 22 | 52 |
+  | e157a672 | 8 | 6,6 | 0 | 0 | 0 | 426 ms | 55 ms | 20 ms | 460 ms | **0,96 s** | 0,12 | 14 | 52 |
+  | 1a37bcc8 | 9 | 7,3 | 0 | 0 | 0 | 483 ms | 57 ms | 23 ms | 494 ms | **1,06 s** | 0,12 | 24 | 76 |
+  | 30d3c047 | 10 | 8,7 | 0 | 1 ms | 0 | 901 ms | 56 ms | 38 ms | 806 ms | **1,80 s** | 0,18 | 18 | 76 |
+  | cf040013 | 10 | 8,0 | 0 | 0 | 0 | 529 ms | 53 ms | 15 ms | 540 ms | **1,14 s** | 0,11 | 17 | 76 |
+  | 114b0040 | 11 | 8,9 | 0 | 1 ms | 0 | 791 ms | 49 ms | 31 ms | 718 ms | **1,59 s** | 0,14 | 21 | 80 |
+  | aa056037 | 11 | 8,8 | 0 | 1 ms | 0 | 514 ms | 50 ms | 24 ms | 680 ms | **1,27 s** | 0,12 | 23 | 100 |
+  | bf5ced1b | 11 | 9,0 | 0 | 1 ms | 0 | 663 ms | 60 ms | 21 ms | 747 ms | **1,49 s** | 0,14 | 18 | 100 |
+  | 4555ce28 | 5 | 3,9 | 0 | 0 | 0 | 153 ms | 50 ms | 19 ms | 41 ms | **262 ms** | 0,05 | 7 | 27 |
+  | e624c2a4 | 29 | 22,3 | 0 | 8 ms | 0 | 2,259 s | 54 ms | 61 ms | 2,794 s | **5,18 s** | 0,18 | 59 | 265 |
+  | e85d7bad | 29 | 23,4 | 0 | 2 ms | 0 | 2,073 s | 52 ms | 55 ms | 2,448 s | **4,63 s** | 0,16 | 64 | 265 |
+  | 1c4c63c2 | **69** | 92,2 | 0 | 9 ms | 0 | **38,19 s** | 55 ms | 235 ms | 13,05 s | **51,5 s** | 0,75 | **422** | **769** |
+
+  **LES PARTS** — sur les 9 petits films (10,7 s) : DECODAGE 46,6 %, annexes 46,7 %, roster
+  4,6 %, ecriture 2,1 %, assemblage 0,1 %, chargement et carte **0,0 %**. Sur l echantillon
+  large (4 films, 61,6 s, le gros inclus) : DECODAGE **69,3 %**, annexes **29,8 %**, roster
+  0,3 %, ecriture 0,6 %. Les « annexes » (tirs + positions + touches) sont elles aussi du
+  DECODAGE — elles rebalayent les memes chunks. **93 a 99 % du temps d un film est du CPU
+  hors base.**
+
+  **CE QUE CELA TRANCHE, ET C ETAIT LA QUESTION DU POINT** : le parallelisme est la SEULE reponse
+  qui porte. Le chargement des chunks (jonction, cache chaud) et la resolution de carte sont
+  sous la milliseconde ; l ecriture vaut 15 a 235 ms par film, soit moins de 1 % — un lot
+  d ecriture groupee ne rapporterait rien ici. La seule lecture repetee qui se voie est le
+  ROSTER : **49 a 60 ms par match, CONSTANTS** (independants du film — c est la vue
+  `v_gamertag_lookup` materialisee entierement, D1 du 5.12), soit ~90 s sur 1 612 films.
+
+  **LE PLAFOND MEMOIRE, RE-MESURE** : le pire film du corpus (`1c4c63c2`, 69 chunks, 92,2 Mio)
+  culmine a **422 Mio de HeapInuse** et 769 Mio de `Sys` (process entier, banc DuckDB compris).
+  L affirmation de l en-tete de la commande (« largement sous le gibioctet », 2026-08-24) tient.
+  Les petits films tiennent sous 25 Mio. C est cette mesure qui autorise N ouvriers.
+
+  **DECOUVERTE DE MESURE (consignee au § 4)** : les DIX films les moins chers du cache (2 a 5
+  chunks) ne produisent RIEN neuf fois sur dix — cinq sans identite au fil des morts, trois sans
+  chunk HIGHLIGHT. L echantillon par defaut a ete deplace vers le bas du cout PRODUCTIF.
+- [ ] **5.24.2 — LA VITESSE : N ouvriers de decodage, un seul ecrivain, chargements sortis de la boucle.**
+- [ ] **5.24.3 — L OBSERVABILITE : fichier d etat, ligne de progression, `--status`.**
+- [ ] **5.24.4 — LA REPRISE, PROUVEE : interruption, relance, arret propre sur signal.**
+- [ ] **5.24.5 — DOC : `docs/COMMANDS.md` (FR et EN), en-tete de la commande, plan et note.**
+
 ## 4. Découvertes (consignées, NON traitées — règle 7)
 
 | Date | Lot | Découverte | Où elle ira |
 |---|---|---|---|
+| 2026-09-22 | 5.24.1 | **D1 (5.24) — LES DIX FILMS LES MOINS CHERS DU CACHE NE PRODUISENT RIEN, NEUF FOIS SUR DIX.** Les films de 2 a 5 chunks (`e869bcdf`, `f3e3112f`, `07af7c78`, `29206c7c`, `56b51daf`, `5da6fd30` : aucune identite au fil des morts ; `279ac3dd`, `3b865848`, `54ab2608` : `ErrNoKillFeed`, aucun chunk HIGHLIGHT) — un seul, `4555ce28`, ecrit. Ce sont des parties abandonnees ou tres courtes. La passe les redecode a CHAQUE campagne (le critere de fraicheur porte sur `match_kill_events_latest`, qu ils ne peuplent jamais), pour ~250 ms chacun. | **NON TRAITE** (regle 7 : le lot porte sur la vitesse, pas sur la selection). Le cout est borne et connu — quelques dizaines de secondes sur le parc. Le remede serait un marqueur de registre « film sans kill-feed » DUR (`registry_flags.go` en pose un pour le film absent, pas pour celui-ci, et l en-tete de `collector.go` explique pourquoi : le kill-feed pourrait arriver). A reprendre avec le lot qui rouvrira les marqueurs de registre |
 | 2026-09-21 | 5.11.7 | **D1 (5.11.7) — LE SIGNAL DU MANTLING EST DANS LA QUEUE D `i54`, ET ELLE EST BIEN PLUS RICHE QUE LE PORT NE LE CROIT.** Lecture d ecrivain SEULE. `FUN_1408f0264` lit `i54` ; son MIROIR d ecriture est `FUN_142f053f8`. Les deux appellent une queue que le depot CONSOMME ET JETTE : `FUN_1408f02c8` en lecture, **`FUN_1407ea38c` en ecriture** — et c est l ecriture qui donne la provenance. `si bloc[0x9d] == 0 : RIEN (queue = ZERO bit)` ; `R(1) = (bloc[8] != -1)` ; `si bloc[8] != -1 : R(10) = bloc[8]` (`FUN_1406d310c(0x400)`) ; **un vec3 `bloc+0x18`** (`FUN_1407eb600(w, bloc+0x18, 0x10)`) ; **deux vec3 `bloc+0x24` / `+0x30`** (`FUN_141f86118`) ; `bloc+0x3c` (`FUN_1407eb61c(w, bloc+0x3c, 0xffffffff, 0x10, 0)`) ; `R(1) = bloc[0xa1]` (`FUN_1406d310c(2)`) ; **`R(7) = bloc[0x98]`** ; **`R(2) = bloc[0x9c]` = `etat+0x1294`, QUATRE VALEURS** ; `R(1) = bloc[0x9f] & 1`. Donc `i54`, quand sa garde est levee, porte un champ de deux bits ET TROIS VEC3 — pour une escalade, l ancre du geste — la ou le document ne publie que « une action est amorcee » (D9 (5.3)). Vocabulaire ancre : `SpartanAbilityIsClambering` @`1436f7130` -> `FUN_142c66808` = `FUN_1406b8244(idx) == 2`, et `CharacterPhysicsModeClambering` @`143df73d0` nomme cette valeur 2 ; `auto_clamber` @`1436c69e0`, `EnableAutoClamber` @`143ba6b60`, `clamber` @`143bbaa48`. | **NON TRAITE, ET AUCUN PORT** : les quatre valeurs ne sont pas NOMMEES, donc `stances[].kind` `mobility` ne devient pas `clamber`. IL MANQUE UN SEUL MAILLON : qui ECRIT `etat+0x1294` dans l objet vivant — a chercher depuis le CONSOMMATEUR, jamais depuis l offset (`0x1294` collisionne entre classes). **ET QUAND CE SERA NOMME, LE PORT SERA UNE MONTEE DE SCHEMA** : ajouter une valeur a l enum `kind` change la FORME du document (la v66 l a fait pour `sprint` et `jumpDerived`), donc ARRET et compte rendu avant de la prendre |
 | 2026-09-21 | 5.11.0-a | **D1 (5.11) — LA REFERENCE D EQUIVALENCE EST PERIMEE DEPUIS LA FUSION DU LOT 5.10, ET ELLE REND QUATRE ECARTS QUI NE SONT A PERSONNE.** `replay-equiv -films bcb6d393` SANS `-update`, joue au HEAD de fusion `f8c3e8e7a` AVANT tout changement de ce lot : ECART sur `vehicles`, `movementStates` (attendu 4 469, obtenu **1 363**), `movementStates.stats` et `artifact`. Le plus gros — un facteur 3,3 sur le compte des transitions de mouvement — est donc anterieur a ce lot. | **NON TRAITE** — le re-figeage des references d equivalence est un geste du PILOTE, a la fin du chantier, et il est deja au programme (meme nature que D15 (5.3), qui portait sur `positions`). Consigne ici pour que l ecart ne soit impute ni a 5.10 ni a 5.11 : la seule difference que le correctif 5.11.0-a introduit est `movementStates` **1 363 -> 1 364**, un GAIN d une transition |
 | 2026-09-21 | 5.11.0 | **D2 (5.11) — `i60 simulation-state` EST DECLARE `partiel` DANS `ecs_table.tsv` ALORS QUE LA MESURE LE DIT COMPLET.** Relecture a `StartBit` sur les records RENDUS : **58 declarations sur `bfecd02b` et 326 sur `4f77afc1`, ZERO rendue non portee, ZERO fois composant fautif** sur les deux films. Son `ported` est le drapeau `SimStateComplet`, qui suit la carte depuis le 5.3.3-a — donc vrai des qu une carte est installee, ce qui est le cas de toute marche de production. | **NON TRAITE** (regle 7 : le lot porte sur le saut). Le passage a `porte` demande de decider ce que devient le drapeau quand AUCUNE carte n est installee (`ScanFilm*`), et c est un lot `ti=35` a part entiere. Le cout actuel du statut faux est nul en bits et non nul en lecture : il fait croire qu il reste une grammaire a trouver |
@@ -11766,6 +11825,19 @@ des bases DuckDB temporaires peuplees synthetiquement par les VRAIES migrations.
 | 2026-09-21 | 5.3.2 | **D9 (5.3) — LE DOMAINE MESURÉ DES CHAMPS D'`i54` CONTREDIT L'HYPOTHÈSE DE L'ÉCRIVAIN.** L'identifiant optionnel de 10 bits n'est transmis **0 fois sur 2 245 initiations** (il reste à sa sentinelle), et `+0x9c` ne prend que **deux** valeurs, 0 et 2, jamais 1 ni 3. L'hypothèse « Sprint / Thruster / Clamber / Slide sur 2 bits » du § 2.8 est donc réfutée par les valeurs. Seul `+0x98` (R(7)) se comporte en discriminant, et son domaine varie d'un film à l'autre (3 valeurs sur `bfecd02b`, 8 sur `4f77afc1`). | **NON TRAITÉE** : nommer les classes demande de croiser `+0x98` avec la carte et le geste vu dans Theater — c'est un lot en soi, et il a besoin de l'attribution vie -> joueur que 5.3.2 n'a pas faite |
 
 ## 5. Journal des gates locaux (un gate non consigné n'a pas eu lieu)
+
+### Post-chantier — lot 5.24 (backfill killsource : vitesse, etat, reprise), 2026-09-22
+
+Branche `feat/decfilm-74`, base `f3d52514b`. **Aucune base de production ouverte** (le serveur
+tourne) ; films lus par les jonctions du cache, bases DuckDB temporaires migrees par
+`migration.RunForDB`. Machine PARTAGEE : toutes les mesures portent sur l echantillon du lot,
+jamais sur le parc.
+
+| Date | Point | Gate | Resultat |
+|---|---|---|---|
+| 2026-09-22 | 5.24.1 | `KILLSOURCE_FIXTURES=<cache> go test -count=1 -tags=integration -p 1 -run PasseDesFilms_OuVaLeTemps ./internal/sync/killcollector/` (echantillon large, 4 films productifs dont le plus gros) | **PASS 64,5 s** — DECODAGE 69,3 %, annexes 29,8 %, roster 0,3 %, ecriture 0,6 %, chargement et carte 0,0 % ; pic HeapInuse **422 Mio**, Sys 769 Mio sur `1c4c63c2` |
+| 2026-09-22 | 5.24.1 | meme gate, echantillon des 9 petits films productifs | **PASS 13,3 s** — DECODAGE 46,6 %, annexes 46,7 %, roster **4,6 %** (49 a 60 ms par match, constants), ecriture 2,1 % |
+| 2026-09-22 | 5.24.1 | meme gate, les 10 films les MOINS CHERS du cache (2 a 5 chunks) | **9 sur 10 ne produisent rien** : 5 « aucune identite au fil des morts », 3 `ErrNoKillFeed`, 1 mesure |
 
 ### Post-chantier — lot 5.11 (le declencheur du saut, film temoin), 2026-09-21
 
