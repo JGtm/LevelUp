@@ -8326,6 +8326,159 @@ contre 4 469 dans la reference — et 1 489 est EXACTEMENT la valeur que le lot 
 les divergences sont celles de la reference perimee, pas des siennes. Decodage : 14,8 s,
 pic 0,19 Gio, un film a la fois.
 
+### Post-chantier — lot 5.17 (le masque des composants retenus et le paquet de type 8), branche `feat/decfilm-67`
+
+Sur la decouverte D1 du lot 5.16. METHODE : l ecrivain d abord (Ghidra lecture seule, objdump
+quand le decompilateur perd une largeur), la fermeture des paquets comme seul gate, la mesure
+seulement pour VERIFIER un maillon lu, un commit par maillon. Note de grammaire :
+`.ai/V7.5/film_re/NOTE_5_17_TYPE_8_MASQUE_2026-09-22.md`.
+
+- [x] **5.17.1 — LE PAQUET DE TYPE 8 EST LA POPULATION DE LA SESSION, ET IL FERME A BOURRAGE NUL
+  SUR LES DEUX FILMS.** (`a07c1926d`, puis `b3bbb6e79`)
+
+  La branche `sVar2 == 8` de `FUN_1428e22c0` est la seule qui interroge `&DAT_144c23178` — et
+  elle ne lui demande QUE l adresse de la structure du film charge, pour y lire la VERSION DE
+  FORMAT (`FUN_1428e1e94`, puis `*(u32 *)(struct + 4)` = ce que rend `FUN_1428e1c0c`, deja lu
+  par `FilmFormatVersionFromHeader`). **`&DAT_144c23178` n est pas un porteur de table de
+  composants : c est le singleton du film.**
+
+  `FUN_142987bd4` lit `R(32)` entrees de `0x1440` octets sur le payload BRUT du paquet
+  (`FUN_142988338` = `memcpy` pur du curseur d octets de la session, aucune detente), puis
+  apparie chaque entree avec la liste VIVE des joueurs par la cle de 8 octets `sub+0xcb8`
+  (@142987e64) : il AJOUTE (`FUN_1424d8a8c`, index de manette 0..0x1f), MET A JOUR
+  (`FUN_1424d512c`) et RETIRE (`FUN_142b7f6b8`) les joueurs. **Le type 8 est le roster de la
+  session**, et ses 700 868 octets sur `bfecd02b` contre 20 622 sur `dad793c7` sont simplement
+  huit joueurs contre un — pas l indice d une table de compatibilite.
+
+  **LE CORPS D UNE ENTREE EST CELUI DE LA TABLE DE 32 JOUEURS DE `chunk_00`** (lot 1.5.2) :
+  `FUN_1407eeba4` lit champ pour champ et largeur pour largeur ce que `FUN_1407edea8` ecrit.
+  Le commit `b3bbb6e79` supprime la seconde copie ecrite par le premier : `decodeSlotQueue` est
+  scinde en `decodeSlotCorps` (le corps COMMUN) plus le `u32` de `slot+0x1448`, qui n existe que
+  dans `chunk_00` — deplacement PUR (le diff hors commentaires est l appel plus un `saute`
+  deplace d une ligne). `DecodeRoster` rend des `types.PlayerSlot`, et la largeur du bloc de
+  personnalisation vient du PROFIL DE BUILD, pas d un litteral.
+
+  Deux differences avec `chunk_00`, les deux mesurees : l en-tete (85 bits + XUID contre la
+  porte `R(1)[R(5)]` + XUID) et l ORDRE D OCTETS du XUID — `FUN_1406d676c` depose les octets du
+  flux dans l ordre du flux (`*param_3 = BSWAP64(accumulateur)`), donc la valeur est l inversion
+  d octets de la lecture MSB-first. Et la cle `sub+0xcb8` est LE MEME XUID (verifie octet pour
+  octet sur les huit joueurs de `bfecd02b`) : le champ que la table de `chunk_00` publie en
+  `PlayerSlotShorts.Q64` sans le nommer est le XUID, ce qui explique l appariement.
+
+  **LE MAILLON QUI MANQUAIT TENAIT A UN `+ 1`** : `FUN_142bdeddc` rend `R(11) + 1`
+  (`LEA EAX,[R9 + 0x1]` @142bdeea4). Sans lui, tout glisse d un bit et les deux longueurs
+  prefixees sortent de leurs bornes de structure (`L1 = 2 399` pour un champ de 2 048 octets).
+  C est le meme `+ 1` que `player_table_record.go` porte depuis le lot 1.5.2, lu a dix jours
+  d ecart sur une autre fonction.
+
+  | mesure | `dad793c7` | `bfecd02b` |
+  |---|---:|---:|
+  | version de format / build | 27 / `HI_1_13_0` | 27 / `HI_1_13_0` |
+  | paquets de type 8 | 6 (20 622 o) | 28 (700 868 o) |
+  | entrees annoncees / lues / refusees | 6 / 6 / 0 | 224 / 224 / 0 |
+  | DEBORDEMENTS | **0** | **0** |
+  | reste par paquet | 4 bits | 1 bit |
+  | **fermes a bourrage NUL** | **6 / 6** | **28 / 28** |
+  | XUID Xbox distincts | 1 | **8** |
+  | etiquettes distinctes | 1 (« Neutral ») | **8 gamertags** |
+
+  Les huit entrees d un paquet de `bfecd02b` chainent au bit (32 -> 27 970 -> 55 828 -> 83 790
+  -> 100 322 -> 127 782 -> 155 752 -> 183 635 -> 200 247 sur 200 248) et rendent Tataaannn,
+  JGtm, Chocoboflor, Draconewt, MEK1906, Madina97294, SHN Lups99, indahoopty8751.
+
+  **AVANT CE LOT, LE TYPE 8 N ETAIT NI LU NI COMPTE** : le gate des paquets filtre sur
+  `PacketTypeDelta`, donc un paquet de type 8 lui etait invisible. Le recensement de types
+  re-mesure hors ligne le tableau du §2.2 de la note 5.16 a l octet.
+
+- [x] **5.17.2 — LE DECALAGE DU MASQUE N A PAS D IMAGE HORS LIGNE : L INDEX DU DEPOT EST DEJA
+  CELUI DES COMPOSANTS RETENUS.** (`7c008491e`) D1 du 5.16 est referme par les deux bouts.
+
+  `FUN_14076cb60` parcourt le descripteur d archetype DU PROCESSUS et ECARTE, sans consommer un
+  bit, tout composant que le FILM ne declare pas (`FUN_1428e1dac(&filmSingleton, ti, nom)` faux).
+  **UNE SECONDE SORTIE incremente `decales`, que le 5.16 n avait pas vue** :
+  `niveau = FUN_1428e1b50(&filmSingleton, ti, nom)` puis `deser->vtable[0x10](niveau)` — le
+  niveau declare par LE FILM refuse par le deserialiseur DU PROCESSUS. Les deux sorties sont
+  gardees par le MEME predicat, `FUN_1404f2b4c` (`TLS+0x238` non vide ET etat == 2), vrai
+  UNIQUEMENT en rejeu de film, et desarmees par `DAT_144c232e1`.
+
+  `FUN_1428e1dac` et `FUN_1428e1b50` cherchent le nom dans le bloc `ti` du REGISTRE DE
+  `chunk_00` : `base + 8 + ti*0x4100`, pas de `0x104`, 64 entrees, niveau en `entree + 0x100`.
+  Et **`FUN_142e2c690` tranche** : l iterateur d ETAT COMPLET parcourt ce bloc entree par entree
+  (`param_4 += 0x104`, arret au premier nom vide), resout le deserialiseur PAR NOM et lui passe
+  le niveau de `entree + 0x100`, sans aucun decalage ni masque. `i - decales` est donc la
+  conversion « descripteur du build qui REJOUE » -> « registre du film », et le decodeur hors
+  ligne est DEJA du cote de l arrivee : `arch.Components` EST le registre du film, lu avec les
+  memes constantes de cadrage que le filtre. Le porter appliquerait deux fois la conversion.
+
+  Ce n est pas une absence, c est une EGALITE — et ses deux moities sont figees par
+  `masque_cadre_registre_test.go` : les cinq constantes de cadrage contre les litteraux de
+  l ecrivain, la boucle DE PRODUCTION pilotee par un masque a un seul bit pour chaque index (un
+  port de `i - decales` ferait echouer tous les cas sauf `k = 0`), et la provenance du niveau.
+  La doc suit : `traverseComponentLoopFrom` porte les quatre adresses, et la « decouverte hors
+  perimetre » de `mouvement_5_16_baseline_research_test.go` est CORRIGEE au lieu de rester une
+  doc inversee.
+
+  `FUN_1406d7610` est par ailleurs confirme identique a `consumeMask` (`R(1)` porte ; 0 ->
+  `R(3)` + `n x R(6)` epars ; 1 -> `R(64)`), et son argument descripteur n est pas utilise : la
+  largeur du masque ne depend pas du nombre de composants.
+
+- [x] **5.17.3 — CE QUE LE LOT LIT EN PLUS, ET AUCUNE MONTEE DE SCHEMA.**
+
+  Nouvellement lu : le roster de type 8 — 6 + 224 enregistrements de joueur, 9 XUID Xbox et
+  9 etiquettes sur les deux temoins, avec `desired-representation`, le jeton de session et les
+  six champs courts. Rien d autre.
+
+  **Rien de nouveau sur le chemin de trame, et c est verifiable SUR PIECES** : le diff de
+  production depuis `58b4aba74` ne contient que des commentaires, l extraction PURE de
+  `decodeSlotCorps`, et `roster_type8.go` — qui n a AUCUN appelant de production. Aucune
+  etiquette de composant supplementaire, aucun archetype supplementaire, **aucun canal d etat de
+  bipede**. `replay.SchemaVersion` reste a **67** : pas de chronique v68, pas de fixture
+  `replay_schema_68_*`, pas de jumeaux, pas de zod, pas d OpenAPI. `grammar.Rev` reste
+  `grammar-2026-09-22.6` (decision ECRITE : lecteur sans appelant de production, la sortie de la
+  couche ne peut pas changer) et son empreinte est inchangee au 5.17.2 ; `facts.Rev` ne monte
+  pas, **aucun backlog killsource n est ouvert**.
+
+- [!] **GATE — LE GATE DES PAQUETS DE TRAME N EST PAS RE-MESURE, ET LE LOT DIT POURQUOI.**
+  `TestGate516` exige une carte du catalogue (`MOUV511_BORNES` / `MOUV511_CARTE`) et les deux
+  temoins n ont pas de nom de match : le report D3 (5.11) etablit qu une carte substitut donne
+  des positions FAUSSES SANS ERREUR (facteur 8,2 sur l axe vertical de `dad793c7`). Publier ce
+  tableau au hasard serait publier un chiffre faux. Ce qui est fourni a la place est une PREUVE
+  et non une mesure : le diff de production depuis `58b4aba74` ne touche pas un bit du chemin de
+  decodage (commentaires + extraction pure + fichier sans appelant), et les paquets de type 8
+  sont invisibles a ce gate, qui filtre sur `PacketTypeDelta`. Le tableau du 5.16.4 tient donc
+  par construction : `dad793c7` 5 354/5 365 a reste NUL, `bfecd02b` 2 884/30 387, 2 et 32
+  debordements, `ti=35` 75 et 129 572, desyncs 0 et 4, rejets hors datum 2 et 23 769, rejets de
+  vue 0. **LE RESIDU DE `bfecd02b` N EST DONC PAS REDUIT PAR CE LOT**, et sa cause est renommee
+  au §4 : D1 (5.16) est ECARTE par les adresses, et le suspect qui le remplace est D1 (5.17) —
+  le controle de corruption par composant vient du FILM (`FUN_14076cea8` -> `DAT_144c23326` =
+  `DAT_144c23178 + 0x1ae`) et le depot ne le lit pas.
+
+  Gates sans decodage, tous verts : `gofmt`, `go build ./...`, `go vet` (+ `research`),
+  `go test -count=1` sur `./internal/games/halo_infinite/... ./internal/archlint/
+  ./internal/replaybuild/ ./internal/domain/replaydoc/ ./internal/service/replayview/
+  ./contracttest/ ./internal/api/` (0 `--- FAIL`), `go test -race` sur `grammar` (346 s),
+  `golangci-lint run ./internal/games/halo_infinite/film/...` 0 issue, ratchets (dont
+  `TestAucuneLectureDOctetsBrutsHorsDeLaSource`, qui a refuse `encoding/binary` dans le port et
+  a obtenu son inversion d octets en decalages purs).
+
+#### §4 du lot 5.17 — DECOUVERTES HORS PERIMETRE, CONSIGNEES ET NON TRAITEES
+
+| # | decouverte | ou la reprendre |
+|---|---|---|
+| **D1 (5.17)** | **LE CONTROLE DE CORRUPTION PAR COMPOSANT VIENT DU FILM.** `FUN_14076cea8()` rend `DAT_144c23326` en rejeu de film et `DAT_1450e24e8` en jeu vif ; `DAT_144c23326` est a `DAT_144c23178 + 0x1ae` — un CHAMP DU SINGLETON DU FILM, nul dans l image, avec UNE seule reference croisee (cette lecture), donc rempli au chargement depuis le film. C est lui qui decide si chaque composant PRESENT est suivi d un `R(1)` de garde (et, si ce bit vaut 1, d un `R(32)` sentinelle `0x0bcddcba`). Cote depot, `GrammaireBalayage.ControleDeCorruption` est de defaut FAUX, pose uniquement par des instruments, **jamais lu dans le film**. Un drapeau leve coute >= 1 bit PAR COMPOSANT PRESENT : c est exactement la signature du residu (un film a un joueur ferme 5 354/5 365, un film dense a 207 etiquettes ferme 2 884/30 387). | **le lot du residu de `bfecd02b`** : trouver l ecrivain de `DAT_144c23178 + 0x1ae` dans le chemin de chargement du film (meme famille que `FUN_1428e1c0c` / `FUN_1428e1e94`, qui lisent `+0x100`, `+0x108`, `+0x120`), puis lire le drapeau hors ligne. **C est le suspect qui REMPLACE D1 (5.16)** |
+| **D2 (5.17)** | **`DAT_144c232e1` EST LE KILL-SWITCH DU FILTRE DE COMPOSANTS ET DE LA SUBSTITUTION DE NIVEAU** (`FUN_14076cb60` @14076cc19 et @14076cc7d, `FUN_142e35a58` cote ecrivain d image-cle), et il vient lui aussi du singleton du film. | le meme lot que D1 (5.17) : les deux champs se remplissent au meme endroit |
+| **D3 (5.17)** | **LE PAQUET DE TYPE 9 PESE 631 561 OCTETS SUR `bfecd02b` CONTRE 4 SUR `dad793c7`, ET LE JEU LE SAUTE LUI-MEME** : sa branche du repartiteur avance le CURSEUR D OCTETS de la session de la taille du bloc (`*(int *)(*(param_1+0x130) + 0xf8) += *(int *)(paquet + 2)` — `session+0xf8` est le curseur que `FUN_142988338` consomme) et rend 1. Troisieme bloc saute par construction apres les types 1 et 2. Trois autres types ont un handler que le depot ne lit pas : 6 (`FUN_142988084` -> `session+0x114`), 0xb (`FUN_1429882c8`), 0xc (`FUN_1429875e4`). | le lot qui cherchera une source d etat que ni la trame ni l image-cle ne portent. Le type 9 est le deuxieme plus gros bloc du film dense apres le type 1, et son handler dit qu il n est PAS destine a ce repartiteur |
+| **D4 (5.17)** | **`TestTableJoueursCorpus` EST ROUGE SUR LE CACHE DE CE POSTE, ET C ETAIT DEJA LE CAS AVANT CE LOT** — verifie en restaurant `player_table_record.go` a `58b4aba74` : meme verdict, meme duree (112 s). Le cache porte 1 610 `chunk_00` (le test a ete ecrit pour 1 351) ; le bilan dit 1 604 films lus a 32 slots (14 689 occupes + 36 639 vacants), 1 594/1 604 en accord avec l oracle, **0 contradiction de grammaire**, mais un build `HI_1_5_1` ABSENT DU PROFIL et 10 films ou l oracle de l instrument « perd la tete de la table » au-dela de 40 000 bits. Le test est hors du gate du depot (il SKIPPE sans `CHUNK00_CORPUS`). | le lot qui reprendra la table de `chunk_00` : ajouter la ligne `HI_1_5_1` au profil avec sa provenance (D-4), et decider si l oracle de l instrument doit suivre la croissance du cache ou si c est le test qui doit borner son corpus |
+
+#### §5 du lot 5.17 — ETAT DE CLOTURE
+
+| item | statut | ce qui est etabli |
+|---|---|---|
+| 5.17.1 | `[x]` | le type 8 est le ROSTER de la session ; grammaire complete de `FUN_1428e22c0` jusqu aux feuilles, toutes largeurs lues au desassemblage ; le corps est celui de la table de `chunk_00` et il est FACTORISE, pas recopie ; le maillon manquant est `R(11) + 1` (`FUN_142bdeddc`) ; **6/6 et 28/28 paquets fermes a bourrage NUL, 0 debordement**, 9 XUID Xbox et 9 gamertags rendus |
+| 5.17.2 | `[x]` | D1 (5.16) REFERME : `i - decales` est la conversion « descripteur du build qui rejoue » -> « registre du film », le depot est deja du cote de l arrivee, et `FUN_142e2c690` le confirme sur le chemin d etat complet. Une SECONDE sortie de `decales` est nommee (`FUN_1428e1b50` + `vtable[0x10]`). Trois ratchets posent l egalite ; la doc inversee du 5.16 est corrigee |
+| 5.17.3 | `[x]` | nouvellement lu : le roster (9 XUID, 9 etiquettes). Rien de nouveau sur le chemin de trame, prouve par le diff de production. `SchemaVersion` 67, `grammar.Rev` `.6`, `facts.Rev` inchangee, aucun backlog killsource |
+| GATE | `[!]` | les paquets de trame ne sont pas re-mesures (pas de carte pour les deux temoins, report D3 (5.11)) mais PROUVES inchanges par le diff ; **le residu de `bfecd02b` n est pas reduit**, et sa cause est renommee : D1 (5.16) ecarte, D1 (5.17) le remplace avec son adresse |
+
 ### Post-chantier — lot 5.16 (le modele du rang 1 : table de datums et baseline), branche `feat/decfilm-66`
 
 Sur les decouvertes D1 et D2 du lot 5.15. METHODE : l ecrivain d abord (Ghidra lecture seule), la
