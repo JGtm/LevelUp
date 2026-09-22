@@ -137,6 +137,11 @@ func m533bLierMonde(w *World, data []byte, pks []FilmPacket) {
 			w.BindImageCle(uint32(r.Gen), uint32(r.Slot), uint32(r.TI))
 		}
 	}
+	// PUIS LA TABLE DE DATUMS (lot 5.16.4) : le MEME geste que la production
+	// (`movementStateScanner.lierLeMonde`). La marche d ancres ci-dessus suit la CHAINE des
+	// records de l image-cle et se coupe ; la table de datums, celle que la branche vive de
+	// `FUN_1406cbaa0` interroge, se lit a position libre.
+	LierTableDeDatums(w, data, pks)
 }
 
 // m533bPaquet traite UN paquet : il compte la population, puis lit la vue 0 et tente la suite.

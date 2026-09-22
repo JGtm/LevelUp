@@ -385,3 +385,57 @@ package grammar
 // golden de `facts` est refige parce que son empreinte inclut les revisions amont.
 // `replay.SchemaVersion` reste a 67 : la FORME du document ne change pas, aucun champ n est
 // publie par ce rang.
+
+// ENTREE `grammar-2026-09-22.6` (2026-09-22, lot 5.16.4) : LE MONDE HORS LIGNE RECOIT LA TABLE
+// DE DATUMS PAR SLOT, ET C EST L IMAGE-CLE QUI LA PORTE.
+//
+// LE MODELE DU JEU, PAR ADRESSE. La branche VIVE de la boucle de records de la vue B
+// (`FUN_1406cd128` avec `DAT_14474cd78 != 0`, sa valeur dans l image) dispatche par
+// `FUN_1406cbaa0`, et son cas DELTA ne lit un corps QUE si le slot figure dans la table de
+// datums du DECODEUR PARTAGE : `*(uint *)(slot * 200 + *(*(vue+0x20) + 0x20)) != eid` rend le
+// code 2 ou 3, ZERO bit lu, et la boucle sort ; sinon l archetype se lit en `+0x04` et
+// `FUN_1406caad8` appelle l iterateur `FUN_14076cb60`. Le depot transcrivait la garde de la
+// branche 0 (`vue[0x38]`, pas de 0xa0), celle que le jeu n emprunte que pour l aller-retour
+// d etat de `FUN_1428e24bc` — diagnostic du lot 5.15.
+//
+// LA SOURCE DE LA TABLE, PAR ADRESSE : L IMAGE-CLE EST SON DUMP. `FUN_142f2e174` (slot 0x10 de
+// la vtable de vue) parcourt la table de SA vue par index CROISSANT sous le bitmap `vue+0x58` et
+// rend un mot de 32 bits par entite vivante ; `FUN_142f2c658` serialise chaque mot selon son
+// genre, et le genre 3 (`FUN_142f30610`) ecrit l en-tete par
+// `FUN_142f2c754(writer, 3, eid, archetype)`, ou
+// `archetype = *(int *)(*(vue[0x20] + 0x120) + 4 + slot * 0x18)`.
+//
+// CE QUE LA LECTURE EXISTANTE MANQUAIT, ET C EST MESURE. `WalkKeyframeWorld` suit la CHAINE des
+// records (frontiere par frontiere, slots croissants, fenetre de recherche de 120 000 bits)
+// parce qu il rend aussi leurs POSITIONS. Cette chaine se coupe : sur `dad793c7`, chunk 1,
+// 123 records, dernier slot 122, arret au bit 139 754 sur 1 028 032 — alors que le MEME payload
+// declare le slot 1298 (`id 0x40000512`, `field26 = 0`, `ti = 47`) au bit 279 659, 139 841 bits
+// plus loin. `TableDeDatums` (`keyframe_datums.go`) lit donc `slot -> archetype` a POSITION
+// LIBRE, sous les gardes d en-tete de `kfAnchorFromID` ET sous la CROISSANCE des slots que
+// l ecrivain impose (plus longue sous-suite croissante) ; les candidats que la croissance ecarte
+// sont COMPTES. Sans la croissance la table est sale — mesure : quatre paquets de plus en
+// debordement sur `bfecd02b`.
+//
+//	dad793c7  paquets a reste NUL 5 341 -> 5 354 sur 5 365 · debordements 2 -> 2
+//	          records 5 628 -> 5 641 · `ti=35` 75 -> 75, 0 desynchronise
+//	          rejets de la vue B hors datum 15 -> 2 · 54 liaisons de datum posees
+//	bfecd02b  paquets a reste NUL 2 884 -> 2 884 sur 30 387 · debordements 32 -> 32
+//	          records 176 323 -> 176 786 · `ti=35` 129 572 -> 129 572, 4 desynchronises
+//	          rejets hors datum 23 896 -> 23 769 · 10 liaisons de datum posees
+//
+// Les douze paquets de 96 bits de `dad793c7` (temoin D5 du 5.15) ferment 12/12 a reste de
+// bourrage NUL : leur slot rejete 1298 porte `ti=47`, dont le composant `i1`
+// (`managed-object-networked-splash-message-dynamic`) est un `R(24)`.
+//
+// `rejetDeVue` PORTE DESORMAIS LES DEUX GARDES, ET LES DEUX SONT COMPTEES : la garde VIVE
+// (`RejetsHorsDatum`, le slot n est dans aucune table de datums) d abord, le repli de table de
+// vue (`RejetsDeVue`, la garde de la branche 0) ensuite. Le repli mesure ZERO sur les deux films,
+// comme le 5.15.1 (d) l annonçait — et c est pour que ce zero soit VU qu il est compte plutot
+// que supprime.
+//
+// AUCUNE LARGEUR DE BIT NE CHANGE : ce rang ne deplace pas une grammaire, il donne au decodeur
+// le MODELE qui decide s il a le droit de lire un corps. `facts.Rev` NE MONTE PAS — la couche
+// `facts` marche par `DecodeFrameRecords`, et `LierTableDeDatums` n est appele que par
+// `movementStateScanner.lierLeMonde` ; `killsource` ne voit pas ce rang. `replay.SchemaVersion`
+// reste a 67 : aucun champ n est publie. La FORME de `types.MovementStateStats` gagne
+// `DatumBindings` et `DatumAmbiguous`, et son golden est refige avec les revisions courantes.

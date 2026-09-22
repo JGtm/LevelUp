@@ -101,12 +101,58 @@ func DecodeFrameInfer(buf []byte, w *World, cfg FrameConfig) ([]FrameRecord, int
 // 30 paquets sur 22 112 : sans archetype le corps ne se lit pas. Le port correct demande donc la
 // table de datums par slot, pas un changement de garde — c est le report 5.15.3 (D1 du 5.15).
 // --- fin de la note du lot 5.15 ---------------------------------------------------------------
-// rejetDeVue transcrit la GARDE DE TABLE DE VUE (note ci-dessus) : un delta dont le slot
-// n appartient pas a la vue en cours n est pas un record de cette vue. L appelant remet le
-// curseur a la fin de l EN-TETE et clot la vue — l en-tete, lui, EST ecrit, et c est ce que la
-// vue suivante lira comme son propre en-tete de rejet.
+// --- CE QUE LE LOT 5.16 A PORTE, ET LE « MODELE MANQUANT » CI-DESSUS EST DONC CADUC
+// --- (2026-09-22, `.ai/V7.5/film_re/NOTE_5_16_MODELE_RANG_1_2026-09-22.md`)
+//
+// LE MODELE N ETAIT PAS « LES TROIS TABLES D ENTITES PAR VUE ». La garde vive de
+// `FUN_1406cbaa0` (cas DELTA) porte sur la TABLE DE DATUMS du decodeur PARTAGE — une seule
+// table, indexee par l eid ENTIER : `*(uint *)(slot * 200 + *(*(vue+0x20) + 0x20)) != eid` rend
+// le code 2 ou 3, ZERO bit lu, et la boucle sort ; l archetype se lit en `+0x04`.
+//
+// ET SA SOURCE EST L IMAGE-CLE, qui en est le DUMP : `FUN_142f2e174` (slot `0x10` de la vtable de
+// vue) rend un mot par entite vivante, `FUN_142f2c658` serialise chaque mot selon son genre, et
+// le genre 3 (`FUN_142f30610`) ecrit `FUN_142f2c754(writer, 3, eid, archetype)` avec
+// `archetype = *(int *)(*(vue[0x20] + 0x120) + 4 + slot * 0x18)`. Le monde hors ligne la lit
+// desormais : [TableDeDatums] / [LierTableDeDatums] (`keyframe_datums.go`), et `rejetDeVue`
+// ci-dessous porte les DEUX gardes, chacune COMPTEE.
+//
+// MESURE DU PORT : `dad793c7` paquets a reste NUL 5 341 -> 5 354 sur 5 365 (les douze paquets de
+// 96 bits du temoin D5 du 5.15 ferment 12/12) ; `bfecd02b` 2 884/30 387 INCHANGE, 0 debordement
+// de plus, `ti=35` 129 572 et 4 desyncs constants. Le residu de `bfecd02b` n est PAS un trou de
+// modele : 526 des 632 slots rejetes ne sont declares par aucune source lue et couvrent presque
+// uniformement les treize bits alors que la table du film plafonne vers le slot 1 345 — ce sont
+// des lectures prises a une position FAUSSE. Sa cause NOMMEE est le decalage du masque
+// (`FUN_14076cb60` teste `i - decales`, ce paquet teste `i` brut ; D1 du §4 du lot 5.16).
+// --- fin de la note du lot 5.16 ---------------------------------------------------------------
+// rejetDeVue rend la sortie de la boucle de records de la vue B sur un DELTA, et depuis le lot
+// 5.16.4 elle porte la garde de la BRANCHE VIVE en premier, le repli de vue ensuite — chacun
+// COMPTE, parce que les deux ne disent pas la meme chose.
+//
+//	garde VIVE (`FUN_1406cbaa0`, cas DELTA) : `*(uint *)(slot * 200 + t) != eid` sur la table
+//	  de datums du DECODEUR PARTAGE. Un slot absent de cette table ne rend AUCUN bit de corps,
+//	  et la boucle sort (code 2 ou 3). Hors ligne, « absent de la table » = slot non lie — la
+//	  table de datums de l image-cle est justement ce que `keyframe_datums.go` y verse.
+//	repli de VUE (`FUN_1406cd128`, branche 0 : `vue[0x38]`, pas de 0xa0, eid ET type) : un
+//	  delta dont le slot appartient a une AUTRE vue. Le jeu n emprunte cette branche que pour
+//	  l aller-retour d etat de `FUN_1428e24bc`, et le 5.15.1 (d) a mesure ZERO cas sur 22 112
+//	  rejets lisibles de `bfecd02b`. On le garde, COMPTE, parce qu un zero mesure vaut mieux
+//	  qu une branche supprimee sur une seule paire de films.
+//
+// L appelant remet le curseur a la fin de l EN-TETE et clot la vue — l en-tete, lui, EST ecrit,
+// et c est ce que la vue suivante lira comme son propre en-tete de rejet.
 func rejetDeVue(typ int, slot uint32, w *World, cfg FrameConfig) bool {
-	return typ == recDelta && cfg.Profil.Grammaire.TablesParVue && !w.VuePossede(slot)
+	if typ != recDelta || !cfg.Profil.Grammaire.TablesParVue {
+		return false
+	}
+	if _, lie := w.ArchetypeForSlot(slot); !lie {
+		cfg.Obs.compterRejetHorsDatum()
+		return true
+	}
+	if !w.VuePossede(slot) {
+		cfg.Obs.compterRejetDeVue()
+		return true
+	}
+	return false
 }
 
 // corpsDeRecordNeuf traverse le corps d un record NEW, tente la reparation de chaine, et LIE

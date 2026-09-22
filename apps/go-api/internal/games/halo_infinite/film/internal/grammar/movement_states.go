@@ -195,6 +195,14 @@ func (sc *movementStateScanner) lierLeMonde(data []byte, pks []FilmPacket) {
 			sc.monde.BindImageCle(uint32(r.Gen), uint32(r.Slot), uint32(r.TI))
 		}
 	}
+	// PUIS LA TABLE DE DATUMS, POUR LES SLOTS QUE LA CHAINE N A PAS ATTEINTS (lot 5.16.4).
+	// La branche vive de la boucle de records lit l archetype d un delta dans la table de datums
+	// du decodeur partage, et l image-cle est le DUMP de cette table (`keyframe_datums.go`). La
+	// marche d ancres ci-dessus suit la CHAINE des records et se coupe ; la table, elle, se lit a
+	// position libre. Les liaisons deja posees ne sont pas ecrasees.
+	posees, ambigus := LierTableDeDatums(sc.monde, data, pks)
+	sc.st.DatumBindings += posees
+	sc.st.DatumAmbiguous += ambigus
 }
 
 // paquet decode UN paquet delta. Les paquets a liste d evenements PLEINE sont localises par la
