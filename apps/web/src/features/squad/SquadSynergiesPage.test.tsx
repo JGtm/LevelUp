@@ -126,6 +126,7 @@ describe('SquadSynergiesPage — ce qui a déménagé (lot 3)', () => {
     expect(screen.queryByText('Écart cumulé au FDA attendu')).toBeNull()
     expect(screen.queryByText('Frags et armes')).toBeNull()
     expect(screen.queryByText("Usages d'équipement")).toBeNull()
+    expect(screen.queryByText('Équipement')).toBeNull()
     expect(screen.queryByText('Impact des coéquipiers')).toBeNull()
     expect(screen.queryByText(/^Médailles/)).toBeNull()
   })
