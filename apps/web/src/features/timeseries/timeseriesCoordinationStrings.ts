@@ -27,7 +27,17 @@ export function getTimeseriesCoordinationText(locale: Locale) {
 
     usual: (rate: string) => m('timeseries.progression.coord_usual', { rate }),
     parity: (rate: string) => m('timeseries.progression.coord_parity', { rate }),
-    yAxis: m('timeseries.progression.coord_y_axis'),
+
+    // Mode ÉCART (3.B) : l'axe compte des points, la ligne zéro NOMME les deux repères
+    // qu'elle remplace, et chaque tendance nomme la série qu'elle suit (deux courbes de
+    // même libellé seraient indiscernables en légende).
+    yAxisDelta: m('timeseries.progression.coord_y_axis_delta'),
+    zeroLabel: (a: string, b: string) => m('timeseries.progression.coord_zero_label', { a, b }),
+    trend: (name: string) => m('timeseries.progression.coord_trend', { name }),
+    hollow: m('timeseries.progression.coord_hollow'),
+    points: m('timeseries.progression.coord_points'),
+    tooltipZero: m('timeseries.progression.coord_tt_zero'),
+    tooltipTrend: m('timeseries.progression.coord_tt_trend'),
 
     volMyDeaths: (n: number) => m('timeseries.progression.coord_vol_my_deaths', { n }),
     volTeamDeaths: (n: number) => m('timeseries.progression.coord_vol_team_deaths', { n }),

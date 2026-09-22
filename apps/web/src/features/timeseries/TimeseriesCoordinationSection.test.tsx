@@ -20,6 +20,8 @@ import { TimeseriesCoordinationSection } from './TimeseriesCoordinationSection'
 import {
   coordinationDessinable,
   delaiMedianS,
+  habituelOuTaux,
+  moyenneGlissante,
   pariteOuRien,
   serieDeSoirees,
 } from './timeseriesCoordination.logic'
@@ -93,6 +95,32 @@ describe('timeseriesCoordination.logic', () => {
     expect(pariteOuRien(25)).toBe(25)
     expect(delaiMedianS(undefined)).toBeNull()
     expect(delaiMedianS(3200)).toBe(3.2)
+  })
+
+  it('prend l’habituel de la période de RÉFÉRENCE quand le serveur le mesure, le taux sinon', () => {
+    const c = couverture(54, 100)
+    expect(habituelOuTaux(48.4, c)).toBe(48.4)
+    expect(habituelOuTaux(undefined, c)).toBe(54)
+    expect(habituelOuTaux(0, c)).toBe(54)
+  })
+
+  it('calcule la tendance sur les bâtons PLEINS, et rien tant que la fenêtre est incomplète', () => {
+    const serie = {
+      valuesPct: [10, 20, 30, 40, 50],
+      hollow: [false, false, false, false, false],
+      volumes: [9, 9, 9, 9, 9],
+    }
+    expect(moyenneGlissante(serie)).toEqual([null, null, 20, 30, 40])
+    // Une soirée creuse (échantillon faible) ne nourrit pas la moyenne : la fenêtre
+    // devient incomplète et la tendance se tait plutôt que de mentir.
+    expect(moyenneGlissante({ ...serie, hollow: [false, false, true, false, false] })).toEqual([
+      null,
+      null,
+      null,
+      null,
+      null,
+    ])
+    expect(moyenneGlissante({ ...serie, valuesPct: [10, null, 30, 40, 50] })[3]).toBeNull()
   })
 
   it('ne se dit dessinable qu’avec un bloc disponible ET au moins une soirée', () => {

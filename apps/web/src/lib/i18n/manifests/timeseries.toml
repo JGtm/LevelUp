@@ -726,16 +726,16 @@ fr = "Riposte"
 en = "Riposte"
 
 [timeseries.progression.coord_riposte_tooltip]
-fr = "Une riposte est une mort de ton camp dont le tueur est abattu par un coéquipier dans les {seconds} s. « Je suis couvert » rapporte tes morts ripostées à tes morts ; « je riposte » rapporte tes ripostes à toutes les morts de ton camp, face à la part équitable 1/n. Une soirée sous le plancher d'échantillon est rendue en bâton creux."
-en = "A riposte is a death on your team whose killer is taken down by a teammate within {seconds}s. \"I am covered\" divides your avenged deaths by your deaths; \"I riposte\" divides your ripostes by every team death, against the 1/n fair share. A session below the sample floor is drawn as a hollow bar."
+fr = "Chaque bâton est l'écart de la soirée à son propre repère : « je suis couvert » (tes morts ripostées sur tes morts, une riposte étant une mort de ton camp dont le tueur tombe dans les {seconds} s) face à ton habituel, « je riposte » (tes ripostes sur toutes les morts de ton camp) face à la part équitable 1/n."
+en = "Each bar is the session's gap to its own reference: \"I am covered\" (your avenged deaths over your deaths, a riposte being a team death whose killer falls within {seconds}s) against your usual, \"I riposte\" (your ripostes over every team death) against the 1/n fair share."
 
 [timeseries.progression.coord_appui_title]
 fr = "Appui reçu"
 en = "Support received"
 
 [timeseries.progression.coord_appui_tooltip]
-fr = "Un appui est une assistance reçue sur l'un de tes frags — ni fenêtre de temps, ni mort de ton camp. « On me prépare » rapporte tes frags appuyés à tes frags ; « ma part des appuis » rapporte les assistances qui te reviennent à toutes celles de ton camp, face à la part équitable 1/n. Une soirée sous le plancher d'échantillon est rendue en bâton creux."
-en = "Support is an assist received on one of your kills — no time window, no team death involved. \"Set up for me\" divides your assisted kills by your kills; \"my share of support\" divides the assists coming to you by every team assist, against the 1/n fair share. A session below the sample floor is drawn as a hollow bar."
+fr = "Chaque bâton est l'écart de la soirée à son propre repère : « on me prépare » (tes frags appuyés sur tes frags, un appui étant une assistance reçue sur l'un de tes frags) face à ton habituel, « ma part des appuis » (les assistances qui te reviennent sur toutes celles de ton camp) face à la part équitable 1/n."
+en = "Each bar is the session's gap to its own reference: \"Set up for me\" (your assisted kills over your kills, support being an assist received on one of your kills) against your usual, \"my share of support\" (the assists coming to you over every team assist) against the 1/n fair share."
 
 [timeseries.progression.coord_covered]
 fr = "Je suis couvert"
@@ -760,10 +760,6 @@ en = "usual {rate}"
 [timeseries.progression.coord_parity]
 fr = "parité {rate}"
 en = "fair share {rate}"
-
-[timeseries.progression.coord_y_axis]
-fr = "Part de la soirée"
-en = "Session share"
 
 [timeseries.progression.coord_vol_my_deaths]
 fr = "mes morts : {n}"
@@ -796,3 +792,35 @@ en = "No session measured on this scope."
 [timeseries.progression.coord_unavailable]
 fr = "Coordination indisponible sur ce périmètre."
 en = "Coordination unavailable on this scope."
+
+# --- Mode ÉCART des deux cartes de coordination (3.B, D23-3 du 2026-09-22) ------------
+# Chaque série est tracée en écart à SON repère : l'axe compte des points, plus des parts,
+# et la ligne zéro tient lieu des deux repères qu'elle nomme.
+
+[timeseries.progression.coord_y_axis_delta]
+fr = "Écart (points)"
+en = "Gap (points)"
+
+[timeseries.progression.coord_zero_label]
+fr = "{a} · {b}"
+en = "{a} · {b}"
+
+[timeseries.progression.coord_trend]
+fr = "Tendance — {name}"
+en = "Trend — {name}"
+
+[timeseries.progression.coord_hollow]
+fr = "Échantillon faible"
+en = "Low sample"
+
+[timeseries.progression.coord_points]
+fr = "pts"
+en = "pts"
+
+[timeseries.progression.coord_tt_zero]
+fr = "La ligne zéro tient lieu des deux repères : au-dessus, la soirée fait mieux que le sien ; en dessous, moins bien."
+en = "The zero line stands in for both references: above it the session beats its own, below it falls short."
+
+[timeseries.progression.coord_tt_trend]
+fr = "La pointillée est la moyenne glissante sur trois soirées, calculée sans les soirées à échantillon faible (rendues en bâton creux)."
+en = "The dotted line is the three-session rolling average, computed without the low-sample sessions (drawn as hollow bars)."

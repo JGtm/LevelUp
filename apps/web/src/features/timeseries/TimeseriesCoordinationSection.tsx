@@ -2,10 +2,18 @@
  * TimeseriesCoordinationSection — « Riposte » et « Appui reçu » dans le temps, sur
  * l'onglet Progression des Séries temporelles (lot Q ; D22-3 et D22-6/7 du 2026-09-21).
  *
- * UN SEUL GRAPHE PAR SUJET (amendement D22-3 à la maquette, qui en dessinait deux). Les
- * deux grandeurs d'un sujet sont en points de pourcentage : elles partagent l'axe et se
- * lisent l'une contre l'autre, chacune avec SON repère tireté — l'habituel de la période
- * pour la première, la part équitable 1/n pour la seconde.
+ * UN SEUL GRAPHE PAR SUJET (amendement D22-3 à la maquette, qui en dessinait deux), et
+ * depuis D23-3 (2026-09-22) EN ÉCART À SON REPÈRE : chaque grandeur est tracée comme sa
+ * distance à sa propre référence — l'habituel de la période de référence (`habituel_pct`,
+ * lot S) pour la première, la part équitable 1/n (`parity_pct`) pour la seconde.
+ *
+ * POURQUOI. En valeur, « je suis couvert » vit vers 48 % et « je riposte » vers 25 % :
+ * deux bandes de bâtons qui ne se croisent jamais, sur un axe commun qui ne porte donc
+ * rien, et une soirée qu'il faut juger en mesurant À L'ŒIL la distance de chaque bâton à
+ * SON tireté. En écart, les deux grandeurs partagent enfin une unité — des points — les
+ * deux tiretés se confondent dans UNE ligne zéro qui les nomme, et la soirée se lit par
+ * la seule DIRECTION de ses bâtons. La valeur absolue ne quitte pas la carte : elle reste
+ * dans les chiffres d'appel et dans l'infobulle, qui porte les deux lectures.
  *
  * D22-VERBOSITÉ : aucune phrase de lecteur. Les chiffres d'appel restent (ils disent le
  * fait), l'explication tient dans l'infobulle ⓘ du titre, en trois phrases au plus.
@@ -32,11 +40,13 @@ import type { Locale } from '@/lib/i18n/locale'
 import {
   coordinationDessinable,
   delaiMedianS,
-  enPourcents,
+  habituelOuTaux,
   labelsDeSoirees,
+  moyenneGlissante,
   pariteOuRien,
   serieDeSoirees,
   soireesDe,
+  type SerieDeSoirees,
 } from './timeseriesCoordination.logic'
 import {
   getTimeseriesCoordinationText,
@@ -113,6 +123,54 @@ interface CarteProps {
   pctFmt: Intl.NumberFormat
 }
 
+interface GrandeurDeCarte {
+  name: string
+  color: string
+  serie: SerieDeSoirees
+}
+
+/**
+ * specEcart — une grandeur prête pour le MODE ÉCART de la frise.
+ *
+ * Le repère n'est plus un tireté sur l'axe : la frise le SOUSTRAIT, et son libellé part
+ * rejoindre l'étiquette de la ligne zéro (`labelZero`). D'où `color` absent du repère —
+ * il ne se dessine plus. Un repère `null` (parité non mesurée) laisse la grandeur en
+ * valeur brute : on ne lui invente pas d'origine.
+ *
+ * La tendance est calculée sur les valeurs ABSOLUES et hors soirées à échantillon faible ;
+ * la frise lui applique le même décalage qu'aux bâtons.
+ */
+function specEcart(
+  g: GrandeurDeCarte,
+  reperePct: number | null,
+  repereLabel: string | null,
+  t: TimeseriesCoordinationText,
+): SessionBarsSeriesSpec {
+  return {
+    name: g.name,
+    color: g.color,
+    valuesPct: g.serie.valuesPct,
+    hollow: g.serie.hollow,
+    ...(reperePct != null && repereLabel != null
+      ? { usual: { valuePct: reperePct, label: repereLabel } }
+      : {}),
+    trend: {
+      valuesPct: moyenneGlissante(g.serie),
+      label: t.trend(g.name),
+      color: g.color,
+    },
+  }
+}
+
+/** L'étiquette de la ligne zéro : elle NOMME les repères qu'elle a confondus en elle. */
+function labelZero(
+  habituel: string,
+  parite: string | null,
+  t: TimeseriesCoordinationText,
+): string {
+  return parite == null ? habituel : t.zeroLabel(habituel, parite)
+}
+
 /** « Riposte » : je suis couvert (mes morts ripostées) contre je riposte (part du camp). */
 function CarteRiposte({
   block,
@@ -131,39 +189,22 @@ function CarteRiposte({
   const parite = pariteOuRien(r.parity_pct)
   const delai = delaiMedianS(r.delai_median_ms)
 
+  const habituel = habituelOuTaux(r.habituel_pct, r.je_suis_couvert)
+  const labelHabituel = t.usual(pctFmt.format(habituel / 100))
+  const labelParite = parite == null ? null : t.parity(pctFmt.format(parite / 100))
   const specs: SessionBarsSeriesSpec[] = [
-    {
-      name: t.covered,
-      color: seriesColor(0),
-      valuesPct: couvert.valuesPct,
-      hollow: couvert.hollow,
-      usual: {
-        valuePct: enPourcents(r.je_suis_couvert),
-        label: t.usual(pctFmt.format(r.je_suis_couvert.taux)),
-        color: seriesColor(0),
-      },
-    },
-    {
-      name: t.iRiposte,
-      color: seriesColor(1),
-      valuesPct: mien.valuesPct,
-      hollow: mien.hollow,
-      ...(parite != null
-        ? {
-            usual: {
-              valuePct: parite,
-              label: t.parity(pctFmt.format(parite / 100)),
-              color: seriesColor(1),
-            },
-          }
-        : {}),
-    },
+    specEcart({ name: t.covered, color: seriesColor(0), serie: couvert }, habituel, labelHabituel, t),
+    specEcart({ name: t.iRiposte, color: seriesColor(1), serie: mien }, parite, labelParite, t),
   ]
 
   return (
     <CarteDeCoordination
       title={t.riposteTitle}
-      aide={<TooltipParagraphs items={[t.riposteTooltip(block.fenetre_ms / 1000)]} />}
+      aide={
+        <TooltipParagraphs
+          items={[t.riposteTooltip(block.fenetre_ms / 1000), t.tooltipZero, t.tooltipTrend]}
+        />
+      }
       appels={[
         { label: t.covered, value: pctFmt.format(r.je_suis_couvert.taux) },
         { label: t.iRiposte, value: pctFmt.format(r.je_riposte.taux) },
@@ -178,7 +219,9 @@ function CarteRiposte({
         <SessionBarsTrendChart
           labels={labels}
           series={specs}
-          yAxisLabel={t.yAxis}
+          yAxisLabel={t.yAxisDelta}
+          baseline={{ label: labelZero(labelHabituel, labelParite, t), deltaUnit: t.points }}
+          hollowLegend={{ label: t.hollow, color: seriesColor(0) }}
           tooltipLines={(i: number) => [
             t.volMyDeaths(couvert.volumes[i] ?? 0),
             t.volTeamDeaths(mien.volumes[i] ?? 0),
@@ -209,39 +252,28 @@ function CarteAppui({
 
   // Les deux SENS de l'assistance portent leurs jetons dédiés (famille des stats de
   // combat, 2026-09-17) : on me prépare = je REÇOIS, ma part des appuis = je DONNE.
+  const habituel = habituelOuTaux(a.habituel_pct, a.on_me_prepare)
+  const labelHabituel = t.usual(pctFmt.format(habituel / 100))
+  const labelParite = parite == null ? null : t.parity(pctFmt.format(parite / 100))
   const specs: SessionBarsSeriesSpec[] = [
-    {
-      name: t.prepared,
-      color: resolveToken('assist-received'),
-      valuesPct: prepare.valuesPct,
-      hollow: prepare.hollow,
-      usual: {
-        valuePct: enPourcents(a.on_me_prepare),
-        label: t.usual(pctFmt.format(a.on_me_prepare.taux)),
-        color: resolveToken('assist-received'),
-      },
-    },
-    {
-      name: t.myShare,
-      color: resolveToken('assist-given'),
-      valuesPct: part.valuesPct,
-      hollow: part.hollow,
-      ...(parite != null
-        ? {
-            usual: {
-              valuePct: parite,
-              label: t.parity(pctFmt.format(parite / 100)),
-              color: resolveToken('assist-given'),
-            },
-          }
-        : {}),
-    },
+    specEcart(
+      { name: t.prepared, color: resolveToken('assist-received'), serie: prepare },
+      habituel,
+      labelHabituel,
+      t,
+    ),
+    specEcart(
+      { name: t.myShare, color: resolveToken('assist-given'), serie: part },
+      parite,
+      labelParite,
+      t,
+    ),
   ]
 
   return (
     <CarteDeCoordination
       title={t.appuiTitle}
-      aide={<TooltipParagraphs items={[t.appuiTooltip]} />}
+      aide={<TooltipParagraphs items={[t.appuiTooltip, t.tooltipZero, t.tooltipTrend]} />}
       appels={[
         { label: t.prepared, value: pctFmt.format(a.on_me_prepare.taux) },
         { label: t.myShare, value: pctFmt.format(a.ma_part_des_appuis.taux) },
@@ -255,7 +287,9 @@ function CarteAppui({
         <SessionBarsTrendChart
           labels={labels}
           series={specs}
-          yAxisLabel={t.yAxis}
+          yAxisLabel={t.yAxisDelta}
+          baseline={{ label: labelZero(labelHabituel, labelParite, t), deltaUnit: t.points }}
+          hollowLegend={{ label: t.hollow, color: resolveToken('assist-received') }}
           tooltipLines={(i: number) => [
             t.volMyKills(prepare.volumes[i] ?? 0),
             t.volTeamAssists(part.volumes[i] ?? 0),
