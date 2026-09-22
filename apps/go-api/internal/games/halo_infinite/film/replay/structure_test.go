@@ -1243,8 +1243,28 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   CE QUI NE MONTE PAS : les révisions de décodage (elles ont monté au commit précédent du
 	//   lot, avec la lecture d'`i10`), `layers`, et la fin de vie `despawn` — REFUSÉE, ses trois
 	//   canaux ayant été mesurés et écartés (lot 5.10.4). Détail : `document_chronicle.go`.
-	if SchemaVersion != 67 {
-		t.Fatalf("SchemaVersion = %d, attendu 67 : incrémenter exige une raison écrite ci-dessus "+
+	// - v68 (post-chantier lot 5.22.4, 2026-09-22, verdict Theater de l'utilisateur) :
+	//   L'ACTION DE MOBILITÉ EST NOMMÉE. `stances[].kind` `mobility` devient `clamber` —
+	//   l'ESCALADE. Le bit publié est le MÊME (le drapeau d'amorce d'`i54`), la marche est la
+	//   même, le nombre d'intervalles est le même ; ce qui change est que le document DIT le
+	//   geste au lieu de nommer le composant. LA FORME CHANGE QUAND MÊME, et c'est la raison de
+	//   la montée : une valeur d'enum publié est de la forme, et `stanceAt` (web) IGNORE un
+	//   genre inconnu — un artefact cuit avant cette montée afficherait des escalades
+	//   muettes chez un client neuf, et l'inverse.
+	//   CE QUI TRANCHE N'EST PAS UNE CHAÎNE DU BINAIRE : le lot 5.13.2 avait mesuré qu'aucune
+	//   des dix chaînes `mobility` du binaire n'étiquette les valeurs d'`i54`, et s'était arrêté
+	//   là. L'oracle est venu de l'écran — l'utilisateur a confronté dans Theater des
+	//   intervalles que ce genre publie sur `bfecd02b` : neuf escalades de rebord, 9/9, aucun
+	//   contre-exemple. Le vocabulaire du jeu corrobore (`_action_hoist`, `_action_vault`,
+	//   `_action_climb_attach` ; `CharacterPhysicsModeClambering`).
+	//   PAS DE GENRE `jump` LU : le lot 5.22 l'a cherché sur une vie répliquée à chaque tick et
+	//   l'ensemble des champs qui basculent au décollage est VIDE, sur les 68 vies de
+	//   `bfecd02b` comme sur les 238 de `4f77afc1`. `jumpDerived` reste le seul genre du saut.
+	//   CE QUI NE MONTE PAS : `facts.Rev` (`killsource` ne lit aucun état de mouvement) et
+	//   `layers`. `grammar.Rev` a monté, la couche écrivant l'étiquette de genre.
+	//   Détail : `document_chronicle.go`.
+	if SchemaVersion != 68 {
+		t.Fatalf("SchemaVersion = %d, attendu 68 : incrémenter exige une raison écrite ci-dessus "+
 			"(un champ optionnel de plus n'en est pas une)", SchemaVersion)
 	}
 }

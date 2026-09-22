@@ -37,7 +37,8 @@ package grammar
 //
 // # CE QUI EST LU, ET CE QUI NE PEUT PAS L ETRE
 //
-// QUATRE etats LUS — `i29` accroupi, `i62` glissade, `i54` action de mobilite, `i57` SPRINT
+// QUATRE etats LUS — `i29` accroupi, `i62` glissade, `i54` ESCALADE (`clamber`, nommee au lot
+// 5.22.4 par neuf verdicts Theater sur neuf), `i57` SPRINT
 // (l index de la fente de capacite active, lot 5.9.5) — et UN genre DERIVE, `jumpDerived`, qui
 // n est pas lu mais integre depuis la vitesse verticale d `i1` (`movement_states_jump.go`,
 // lot 5.9.4). Les noms disent la difference, et c est delibere. L en-tete de
@@ -263,7 +264,7 @@ func (sc *movementStateScanner) recevoir(comp EtatMouvementComposant, slot uint3
 		if len(v) < 1 {
 			return
 		}
-		lu = types.MovementStateRead{Kind: types.MovementMobility, On: v[0] != 0}
+		lu = types.MovementStateRead{Kind: types.MovementClamber, On: v[0] != 0}
 	case EtatCapaciteActive:
 		if len(v) < 1 {
 			return

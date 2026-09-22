@@ -132,7 +132,14 @@ var plafondsParFichier = map[string]int{
 	// trois anciens, et le verdict Theater qui a nomme le defaut (le Razorback `776/1`). UNE
 	// SEULE MONTEE DE SCHEMA POUR LE LOT, donc une seule entree, dans le commit qui monte
 	// `SchemaVersion`.
-	"internal/games/halo_infinite/film/replay/document_chronicle.go": 1974,
+	// SCHEMA 67 -> 68 (2026-09-22, post-chantier lot 5.22.4) : 1974 -> 2018, l entree de
+	// chronique v68. Elle porte le RENOMMAGE de `stances[].kind` `mobility` en `clamber`, la
+	// raison pour laquelle un renommage d enum publie est une montee de FORME (un genre inconnu
+	// est IGNORE cote web), l oracle qui a tranche la ou le binaire ne le pouvait pas (neuf
+	// verdicts Theater sur neuf, lot 5.13.2 reouvert), et le refus de publier un genre `jump`
+	// LU faute de preuve. UNE SEULE MONTEE DE SCHEMA POUR LE LOT, donc une seule entree, dans
+	// le commit qui monte `SchemaVersion`.
+	"internal/games/halo_infinite/film/replay/document_chronicle.go": 2018,
 	// --- production, hors perimetre du lot 2.7 (aucune preuve d equivalence ne couvrait
 	// leur scission : elle se decidera au lot qui les rouvrira).
 	// `assist.go` EST SORTI DE CETTE TABLE LE 2026-09-16 (lot 2.6.2) : le type `Assist` a descendu
@@ -182,7 +189,12 @@ var plafondsParFichier = map[string]int{
 	// la source primaire de l occupation, la proximite un repli qui lui cede, et `despawn` est
 	// REFUSEE apres mesure de ses trois canaux. Exception ecrite, meme commit que
 	// `SchemaVersion`.
-	"internal/games/halo_infinite/film/replay/structure_test.go":                                  1250,
+	// SCHEMA 67 -> 68 (2026-09-22, post-chantier lot 5.22.4) : 1250 -> 1270, la justification
+	// que `TestStructureIsOptionalInDocument` exige — le renommage de `stances[].kind`
+	// `mobility` en `clamber`, pourquoi un renommage d enum publie est une montee de FORME, et
+	// le refus de publier un genre `jump` LU faute de preuve. Exception ecrite, meme commit que
+	// `SchemaVersion`.
+	"internal/games/halo_infinite/film/replay/structure_test.go":                                  1270,
 	"internal/games/halo_infinite/film/replay/t0_mouvement_research_test.go":                      872,
 	"internal/games/halo_infinite/film/replay/inventory_position_i22_test.go":                     833,
 	"internal/games/halo_infinite/film/replay/ground_link_research_test.go":                       814,
@@ -233,8 +245,10 @@ func TestTailleDesFichiersDuFilmNeCroitPas(t *testing.T) {
 			t.Errorf("%s : %d lignes, plafond fige a %d (2026-09-16, lot 2.7).\n"+
 				"UN PLAFOND NE MONTE PAS. Sortir autant de lignes ailleurs dans le fichier, "+
 				"ou le scinder par deplacement pur avec sa preuve d equivalence.\n"+
-				"Seule exception ecrite : document_chronicle.go, dont l entree monte du volume "+
-				"de son entree de chronique, dans le commit qui monte SchemaVersion.", rel, n, plafond)
+				"Seule exception ecrite, et elle couvre DEUX fichiers (cf. l en-tete de "+
+				"plafondsParFichier) : document_chronicle.go et structure_test.go, dont le "+
+				"plafond monte du volume de l entree ajoutee, dans le commit qui monte "+
+				"SchemaVersion.", rel, n, plafond)
 			continue
 		}
 		t.Errorf("%s : %d lignes, seuil %d (CLAUDE.md regle 5).\n"+

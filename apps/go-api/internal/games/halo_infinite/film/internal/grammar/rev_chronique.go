@@ -206,3 +206,50 @@ package grammar
 // CE RANG NE DEPLACE AUCUN OCTET DE DECODAGE : il retire trois fichiers de PROSE de l empreinte.
 // `facts.Rev` ne monte pas ; son golden, celui des formes et les fixtures de contrat sont refiges
 // parce qu ils hachent ou publient la VALEUR de `grammar.Rev`. `replay.SchemaVersion` reste a 67.
+
+// ENTREE `grammar-2026-09-22.11` (2026-09-22, lots 5.22.2 et 5.22.4) : LE BLOC D ACTION DE LA VUE DE
+// CONTROLE N ETAIT PAS UN TROU DE GRAMMAIRE, C ETAIT UN TROU DE CABLAGE.
+//
+// D2 (5.14) inscrivait `FUN_1406d025c` — le bloc ouvert 170 fois sur `bfecd02b` derriere la
+// garde de l entree de controle — comme « dans le film et NON PORTE », et le lot 5.22 devait le
+// porter pour y chercher le saut. La lecture de l ecrivain (Ghidra, lecture seule) dit qu il n y
+// avait rien a porter : `FUN_1406d025c` est LE MEME deserialiseur que celui qu `i19
+// unit-actor-control` appelle depuis `FUN_1408f0778`, et le depot le porte EN ENTIER depuis le
+// lot 2.7 sous le nom `consume1406d025c` (2 x 3 bits par `FUN_1431ab1ec`, 2 x 2 bits par
+// `FUN_1431ab1cc`, `FUN_1431a0bbc` R(1)[+R(8)], `FUN_1431a0abc` R(1)[+R(10)], le bloc
+// `FUN_1431a0cbc`, la queue `FUN_1406d0f20` R(3), deux `FUN_1406d00ec` gardees par les drapeaux
+// deja lus, et `FUN_142f26740`). `consumeActionsControle` ne lisait que la garde et rendait
+// `false` : la vue C s arretait sur le bit d un bloc dont le decodeur vivait a cote.
+//
+// AUCUNE LARGEUR N EST NEUVE. La borne est posee A LA SORTIE (`br.BitPos() <= frameLen`) et non
+// a l entree, parce qu un `placeDisponible` d entree devrait MAJORER une largeur qui depend des
+// gardes — ce que la vue C refuse de faire.
+//
+// MESURE, GATE DU 5.14.2 INCHANGE (`TestClasses514Bourrage`, reste dans [0 ; 7] ET tous ses bits
+// a ZERO) :
+//
+//	bfecd02b : paquets fermes 2 884 -> 2 900 (+16) sur 30 387, dont 2 900 / 2 900 a bits NULS
+//	           et 0 portant un 1 — la grammaire neuve n en casse aucun
+//	dad793c7 : 5 354 / 5 365 INCHANGE, et c est ce que la mesure du 5.14.4 annoncait (la garde
+//	           d action est FERMEE sur les 5 202 entrees de ce film)
+//
+// `facts.Rev` NE MONTE PAS, et la decision est ecrite (celle du 5.14.3, mot pour mot) : la couche
+// `facts` marche par `DecodeFrameRecords`, qui ne deroule pas les vues par rang — `killsource` ne
+// voit pas ce cablage. Son golden est refige parce qu il hache la VALEUR de `grammar.Rev` ;
+// aucun backlog killsource n est ouvert. `replay.SchemaVersion` : la montee 67 -> 68 de ce lot
+// est celle du genre `clamber` (5.22.4), pas celle-ci.
+
+// SUITE DU MEME RANG `grammar-2026-09-22.11` (2026-09-22, lot 5.22.4, fusionne dans l integration au rang .11 avec le 5.22.2) : L ACTION DE MOBILITE EST NOMMEE —
+// LE GENRE PUBLIE PASSE DE `mobility` A `clamber`.
+//
+// La couche `grammar` ecrit l etiquette de genre des etats de mouvement (`movement_states.go`,
+// `recevoir`) : sa SORTIE change, meme si aucun bit n est lu autrement. Le verdict est celui de
+// l utilisateur dans Theater — neuf intervalles d `i54` confrontes image par image sur
+// `bfecd02b`, neuf escalades de rebord, aucun contre-exemple — et le vocabulaire du jeu le
+// corrobore (`_action_hoist` / `_action_vault` / `_action_climb_attach`, `143ca0100` ;
+// `CharacterPhysicsModeClambering`, `143df73d0`). Details : `types/grammar_mouvement.go` et
+// l entree v68 de `replay/document_chronicle.go`.
+//
+// `facts.Rev` NE MONTE PAS : `killsource` ne lit aucun etat de mouvement. Son golden est refige
+// parce qu il hache la VALEUR de `grammar.Rev`. `replay.SchemaVersion` MONTE (67 -> 68), parce
+// qu une valeur d enum publie est de la FORME.

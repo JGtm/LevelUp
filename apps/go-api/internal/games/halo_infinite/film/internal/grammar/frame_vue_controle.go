@@ -106,15 +106,17 @@ const plafondToursVueC = 64
 //	                                 symetrique. Puis R(1) ; si 1 : un troisieme champ de
 //	                                 largeur passee par la pile (non resolue au site d appel).
 //	R(1)                             si 1 : un champ de largeur passee par la pile
-//	R(1)                             si 0 : FUN_1406d025c — LES BITS D ACTION (ci-dessous),
-//	                                 puis FIN. Si 1 : R(5) (R(7) quand `DAT_145121140 == 1`).
+//	R(1)                             si 0 : FUN_1406d025c — LE BLOC D ACTION (ci-dessous, PORTE
+//	                                 depuis le lot 5.22), puis FIN. Si 1 : R(5) (R(7) quand
+//	                                 `DAT_145121140 == 1`).
 //
 // `FUN_1406d025c` est le bloc d ACTIONS, et sa premiere garde est un bit : `g = R(1)` ; si `g`
 // vaut 0 la charge est VIDE. Sinon viennent un groupe de 6 bits (`FUN_1431ab1ec`, indices
 // (0,0) (0,1) (0,2) (1,0) (1,1) (1,2)), un groupe de 4 bits (`FUN_1431ab1cc`, (0,0) (0,1)
 // (1,0) (1,1)), un bit de visee qui ouvre deux bits de plus et un point
 // (`FUN_1431a0bbc` / `FUN_1431a0abc` / `FUN_1431a0cbc`), puis `FUN_1406d0f20`, deux
-// `FUN_1406d00ec` gardes par les bits d action deja lus, et `FUN_142f26740`.
+// `FUN_1406d00ec` gardes par les bits d action deja lus, et `FUN_142f26740`. C est MOT POUR MOT
+// le bloc qu `i19 unit-actor-control` porte deja : [consume1406d025c] (lot 5.22).
 //
 // # CE QUE CETTE FONCTION PORTE, ET CE QU ELLE REFUSE DE DEVINER
 //
@@ -123,7 +125,8 @@ const plafondToursVueC = 64
 // `FUN_1406d6ef4` (`DAT_145173840 == 0`), et les gardes de presence LUES DANS LE FLUX. Des
 // qu une garde ouvre un champ dont la largeur vient de la pile ou d un sous-arbre non porte,
 // elle rend `false` : le curseur s arrete sur le bit de garde, et le paquet est SIGNALE. Aucune
-// largeur n est inventee ici.
+// largeur n est inventee ici. Depuis le lot 5.22 le bloc d ACTION n est plus de ceux-la : son
+// deserialiseur est celui d `i19`, et il est cable ([consumeActionsControle]).
 func consumeControleVueC(br *Lecteur, frameLen int) bool {
 	if !placeDisponible(br, frameLen, 1) {
 		return false
@@ -211,12 +214,27 @@ func consumeCoupleAnalogique(br *Lecteur, frameLen int) bool {
 	return !br.ReadBit()
 }
 
-// consumeActionsControle lit `FUN_1406d025c` : les bits d ACTION de l entree de controle.
-// Sa premiere garde est un bit du flux ; a 0 la charge est vide, et c est le seul chemin dont
-// toutes les largeurs sont resolues.
+// consumeActionsControle lit `FUN_1406d025c` : le bloc d ACTION de l entree de controle.
+//
+// # LA GRAMMAIRE ETAIT DEJA AU DEPOT, ET C EST LA DECOUVERTE DU LOT 5.22
+//
+// D2 (5.14) inscrivait ce bloc comme « dans le film et NON PORTE ». Il l etait : `FUN_1406d025c`
+// est LE MEME deserialiseur que celui qu `i19 unit-actor-control` appelle (`FUN_1408f0778`), et
+// le depot le porte EN ENTIER depuis le lot 2.7 sous le nom [consume1406d025c] — deux mots de
+// drapeaux (2 x 3 bits, 2 x 2 bits), un point de visee quantifie (`FUN_1431a0bbc` R(8),
+// `FUN_1431a0abc` R(10), le bloc de quaternion `FUN_1431a0cbc`), la queue `FUN_1406d0f20` R(3),
+// deux references `FUN_1406d00ec` gardees par les drapeaux deja lus, et `FUN_142f26740`. Ce
+// n etait donc pas un trou de grammaire mais un trou de CABLAGE : la vue C s arretait sur la
+// garde d un bloc dont le decodeur existait a cote.
+//
+// LA BORNE EST POSEE A LA SORTIE, PAS A L ENTREE : la largeur totale du bloc depend de ses
+// gardes, donc un `placeDisponible` d entree devrait majorer une largeur — ce que ce fichier
+// refuse de faire. Le bloc est lu, puis le curseur est compare a la trame ; un debordement rend
+// `false` et le paquet est SIGNALE, comme les autres refus d ici.
 func consumeActionsControle(br *Lecteur, frameLen int) bool {
 	if !placeDisponible(br, frameLen, 1) {
 		return false
 	}
-	return !br.ReadBit()
+	consume1406d025c(br)
+	return br.BitPos() <= frameLen
 }

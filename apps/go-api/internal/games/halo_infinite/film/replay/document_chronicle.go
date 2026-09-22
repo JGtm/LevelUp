@@ -1972,3 +1972,47 @@ package replay
 //	               `layers` est inchange — l occupation reste dans le calque des vehicules. La
 //	               fin de vie `despawn` N EST PAS publiee : la mesure du lot 5.10.4 a refute ses
 //	               trois canaux, et `end` garde ses trois valeurs.
+
+// v68 (2026-09-22, post-chantier lot 5.22.4, verdict Theater de l utilisateur) : L ACTION DE
+// MOBILITE EST NOMMEE — `stances[].kind` `mobility` DEVIENT `clamber`, L ESCALADE.
+//
+//	`stances[]`    UNE VALEUR RENOMMEE, PAS UNE VALEUR NEUVE : le genre `mobility` devient
+//	`.kind`        `clamber`. Le bit publie est le MEME (le drapeau d amorce d
+//	               `i54 biped-mobility-action-component`), la marche est la meme, le nombre
+//	               d intervalles est le meme. Ce qui change est que le document DIT ce que le
+//	               geste est, au lieu de dire quel composant le porte.
+//
+// POURQUOI LA VERSION MONTE ALORS QUE LE BIT NE CHANGE PAS : un client qui connait `mobility` ne
+// reconnaitra plus ce genre, et `stanceAt` (cote web) IGNORE un genre inconnu — un artefact cuit
+// avant cette montee afficherait donc des escalades muettes chez un client neuf, et l inverse.
+// La valeur d un enum publie est de la FORME ; un renommage est une montee, jamais un detail.
+//
+// CE QUI TRANCHE, ET CE N EST PAS UNE CHAINE DU BINAIRE. Le lot 5.13.2 s etait arrete
+// explicitement : la queue d `i54` est la charge utile du message reseau `initiate_mobility_action`
+// (`143c97470`), les dix chaines de `mobility` du binaire sont des noms de BOUTON, d ENTREE
+// d armure ou d IMAGE, et aucune n etiquette les quatre valeurs de `bloc + 0x9c`. La decision
+// d alors — « les quatre valeurs restent non nommees, `mobility` NE DEVIENT PAS `clamber` » —
+// tenait faute d oracle. L oracle est arrive : l utilisateur a ouvert Theater sur `bfecd02b` et
+// confronte neuf intervalles de ce genre, pris sur ce film. **Les neuf sont des escalades
+// de rebord, 9 verdicts sur 9, aucun contre-exemple** ; le plus net est celui du temoin du
+// lot 5.22 (Madina97294, slot 523), un saut date a 96,962 s qui se termine en prise sur un
+// element du decor, ou `i54` s allume de 97,096 a 97,63 s et d ou le Spartan redescend ensuite.
+//
+// LE VOCABULAIRE DU JEU CORROBORE SANS PROUVER : `_action_hoist`, `_action_vault`,
+// `_action_climb_attach`, `_action_climb_detach` (`143ca0100` et suivants) et le mode de physique
+// `CharacterPhysicsModeClambering` (`143df73d0`, `FUN_1406b8244(idx) == 2`). C est le mot du jeu
+// pour ce geste ; le verdict vient de l ecran.
+//
+//	PAS DE GENRE   le lot 5.22 a cherche un `jump` LU et ne l a pas trouve : sur une vie
+//	`jump`         repliquee A CHAQUE TICK (le temoin, 4 557 records sur 80 s), l ensemble des
+//	               champs qui basculent au decollage et nulle part ailleurs est VIDE, et il l est
+//	               sur les 68 vies de `bfecd02b` comme sur les 238 de `4f77afc1`, les 64
+//	               composants du bipede au denominateur. `jumpDerived` reste donc le seul genre
+//	               du saut, et son nom continue de dire qu il est calcule. Ce qui n est pas
+//	               prouve n est pas publie.
+//
+//	AUCUNE AUTRE   `layers` est inchange (l escalade reste dans le calque des etats de
+//	DIFFERENCE     mouvement) ; les compteurs de `coverage.stances` gardent leurs noms et leurs
+//	               valeurs ; aucune revision de DECODAGE ne monte pour ce renommage seul
+//	               (`grammar` a monte au commit precedent du lot, pour le cablage du bloc
+//	               d action de la vue de controle).

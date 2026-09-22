@@ -8,7 +8,7 @@ package replay
 // ne porte ces composants que quand l etat CHANGE. Ce fichier les replie en INTERVALLES bornes
 // aux vies publiees : `{slot, kind, t0, t1}` sur le meme axe de temps que `Point.T`.
 //
-// QUATRE GENRES LUS — `crouch` (`i29`), `slide` (`i62`), `mobility` (`i54`), `sprint` (`i57`) —
+// QUATRE GENRES LUS — `crouch` (`i29`), `slide` (`i62`), `clamber` (`i54`), `sprint` (`i57`) —
 // ET UN DERIVE, `jumpDerived` (schema 66, lots 5.9.4 et 5.9.5). Le derive n est pas lu dans un
 // composant : c est l integrale de la vitesse verticale d `i1`, reconnue a sa HAUTEUR (0,85 m
 // +/- 10 %, mesuree sur deux films au lot 5.7.5). Son nom le dit, et
@@ -41,7 +41,7 @@ type Stance struct {
 	// Slot designe la Track concernee — donc une VIE, pas un joueur (meme regle que les autres
 	// calques : le slot migre aux reapparitions).
 	Slot uint32 `json:"slot"`
-	// Kind est le genre d etat : `crouch`, `slide`, `mobility` (LUS) ou `jumpDerived`
+	// Kind est le genre d etat : `crouch`, `slide`, `clamber`, `sprint` (LUS) ou `jumpDerived`
 	// (DERIVE — cf. `types.MovementJumpDerived`). Un genre inconnu du client ne doit recevoir
 	// AUCUN libelle — jamais celui d un voisin.
 	Kind string `json:"kind"`

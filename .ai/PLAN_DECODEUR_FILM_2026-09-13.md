@@ -8449,6 +8449,271 @@ maillon lu, un commit par maillon, jamais une largeur inventee. Note de grammair
 | 5.21.2 | `[x]` | la liaison ecrite dans l ordre du jeu, jouee, et **mesuree a 1 liaison sur `dad793c7`, 0 sur `bfecd02b`** ; gate (ii) mesure apres ce seul changement et INCHANGE ; `TestBloc521Rejets` : **0 des 23 325 rejets** n est un slot que le bloc declare vivant, 23 306 tombent sur une entree entierement vide. La liaison reste dans l instrument, pas en production |
 | 5.21.3 | `[x]` | rien n est nouvellement lu : 207 etiquettes de composant, `ti=35` 129 572, `i21` a 65,5 %, 4 desyncs ; `replay-equiv` rend les six ecarts connus et aucun autre. **Aucune montee de schema** (67), `facts.Rev` inchangee, aucun backlog killsource. `grammar.Rev` `.9` puis `.10` (D3 du 5.20, commit a part) |
 | GATE | `[!]` | (i) **TENU** : le bloc ferme a 0 bit sur les deux films, et son masque de composants tombe a 100 % dans les bornes de l archetype. (ii) NON TENU : 5 354/5 365 et 2 884/30 387, inchanges — le bloc ne declare AUCUN des slots rejetes. La piste D1 (5.20) est fermee par la mesure, et la cause restante est nommee : le record `NEW` du flux de trame (D1 du 5.19) |
+### Post-chantier — lot 5.22 (le declencheur du saut, temoin Madina97294), branche `feat/decfilm-72`
+
+Demande de l utilisateur du 2026-09-22, sa priorite : « un saut est un saut, je ne me contenterai
+pas d un derive ». Le lot 5.11 avait mesure le saut sur `dad793c7`, un film ou le bipede est MUET
+avant le saut : sa fenetre ne separait pas « le saut commence » de « la replication commence »
+(D6 du lot 5.13, qui demandait explicitement un film temoin replique EN CONTINU). `bfecd02b` en
+porte un, et l utilisateur l a VERIFIE dans Theater : **Madina97294** (xuid 2533274858283686,
+slot 523) court sans interruption de 1:19 a 1:41 de barre et y saute SEPT fois.
+
+Instruments (tous `//go:build research`, paquet `grammar`) :
+`mouvement_5_22_{ancres,differentielle,controle}_research_test.go`, variables `MOUV511_FILM`,
+`MOUV511_CARTE`, `MOUV511_BORNES`, `MOUV511_T0` / `T1`, plus `MOUV522_SLOT`, `MOUV522_BITS`.
+Note : `.ai/V7.5/film_re/NOTE_5_22_DECLENCHEUR_SAUT_2026-09-22.md`.
+
+- [x] **5.22.1 — LA DIFFERENTIELLE SUR UNE VIE CONTINUE : AU DECOLLAGE, LE FILM NE TRANSMET QUE
+  LA POSITION, LA VITESSE ET LE TICK DE COMMANDE. ET LA BARRE THEATER EST L HORLOGE DU FILM.**
+
+  **(a) LA CONVERSION DE TEMPS EST TRANCHEE PAR LA MESURE, AVANT TOUTE FENETRE.** Le brief posait
+  `barre = originMs + frame x 100 ms` (`originMs` = 12 547 ms). C est FAUX pour ce film : les six
+  sauts derives que l utilisateur a dates dans Theater tombent aux instants RELATIFS AU PREMIER
+  PAQUET DELTA 84,050 · 85,234 · 86,602 · 89,322 · 93,126 · 96,962 s, c est-a-dire exactement aux
+  temps de barre 1:24,0 · 1:25,1 · 1:26,5 · 1:29,2 · 1:33,0 · 1:36,9 qu il cite ; les trois
+  sprints lus tombent a 88,121 · 90,356 · 95,844 s (barre 1:28,0 · 1:30,3 · 1:35,7) et la queue de
+  `mobility` a 97,096-97,63 s (barre 1:37,0-1:37,6). **La barre EST l horloge relative du film**,
+  au pas de frame pres ; `originMs` recale les evenements de MATCH, pas la barre. La vie du slot
+  523 court de 80,032 s a 159,996 s (79,96 s, 4 557 records) — elle est repliquee a chaque tick.
+
+  **(b) LES SEPT SAUTS SONT TOUS DANS LE CANAL DE VITESSE, Y COMPRIS CELUI QUI MANQUE, ET LA
+  CAUSE DU MANQUE EST CHIFFREE.** `TestMouvement522Ancres` publie TOUS les episodes de montee
+  fermes (86 sur la vie), retenus ou non par la fenetre de hauteur du Spartan :
+
+  | verdict | t0 (s) | duree | hauteur integree | verdict Theater de l utilisateur |
+  |---|---:|---:|---:|---|
+  | RETENU | 84,050 | 0,466 s | 0,8495 m | saut a 1:24 |
+  | RETENU | 85,234 | 0,450 s | 0,8413 m | saut a 1:25 |
+  | RETENU | 86,602 | 0,483 s | 0,8466 m | saut a 1:26,5 |
+  | RETENU | 89,322 | 0,468 s | 0,8430 m | saut « ~1:28 » |
+  | **REJETE** | **91,691** | **0,667 s** | **0,9737 m** | **le saut « ~1:31 » QUI MANQUE** |
+  | RETENU | 93,126 | 0,466 s | 0,8476 m | saut « ~1:32 » |
+  | RETENU | 96,962 | 0,334 s | 0,8104 m | le saut qui finit en escalade |
+
+  Le septieme saut n est pas absent du film : **il est rejete par la fenetre de 10 % autour de
+  `types.SpartanJumpHeightM`** (0,9737 / 0,85 = +14,6 %). Son episode dure 0,667 s au lieu de
+  0,467 — c est une montee prolongee (rebord), pas un saut plat. RIEN N EST CORRIGE ICI : elargir
+  la fenetre deplacerait le compte de `jumpDerived` sur tous les films (§4, D1 (5.22)).
+
+  **(c) LA DIFFERENTIELLE, ET ELLE EST SANS APPEL.** `TestMouvement522Bascule` croise CHAQUE
+  composant declare par les 4 557 records du temoin contre la fenetre de decollage
+  `[t0 - 250 ms ; t0 + 100 ms]` des episodes retenus (277 records dedans, 4 280 hors) :
+
+  | composant | dedans | part | hors | part | facteur |
+  |---|---:|---:|---:|---:|---:|
+  | `i0` position | 277 | 100,00 % | 4 106 | 95,93 % | 1,04 |
+  | `i1` vitesse | 263 | 94,95 % | 3 937 | 91,99 % | 1,03 |
+  | `i25` command-tick | 277 | 100,00 % | 4 148 | 96,92 % | 1,03 |
+  | `i21` desired-aiming | 187 | 67,51 % | 2 801 | 65,44 % | 1,03 |
+  | `i28` active-camo | 9 | 3,25 % | 20 | 0,47 % | 6,95 |
+  | `i57` / `i59` ability | 7 | 2,53 % | 19 | 0,44 % | 5,69 |
+  | `i54` mobility | 11 | 3,97 % | 103 | 2,41 % | 1,65 |
+  | `i16` physics-flags · `i55` posture-physics · `i63` biped-action · `i62` slide · `i29` crouch · `i60` sim-state | **0** chacun | 0,00 % | **0** chacun | — | — |
+
+  **Aucun champ dont TOUS les instants tombent dans une fenetre de decollage : l ensemble est
+  VIDE**, comme au 5.11.2 — mais cette fois sur une vie CONTINUE, ou « le bipede se met a parler »
+  n est plus une explication possible. Et le zoom au record dit la meme chose au tick pres
+  (`TestMouvement522Fenetre`, decollage de 84,050 s) :
+
+  ```
+  + 84.033 s · 2 comps : i0 i25
+  * 84.050 s · 3 comps : i0 i1 i25        <- LE DECOLLAGE
+  + 84.066 s · 5 comps : i0 i1 i25 i57 i59  <- +16 ms : le SPRINT S ETEINT (consequence)
+  + 84.083 s · 4 comps : i0 i1 i25 i28
+  ```
+
+  Le facteur 5,69 d `i57`/`i59` est ce confondant NOMME : le sprint se coupe 16 a 17 ms APRES
+  quatre des six decollages (84,066 · 85,251 · 89,338 · 96,979 s) et pas du tout aux deux autres
+  (86,602 et 93,126 n ont aucune transition de sprint). Un declencheur precede ; celui-la suit, et
+  il manque un tiers des sauts.
+
+  **(d) LE CANAL D ENTREE N EST PAS REFUTE, IL EST ILLISIBLE SUR CE FILM, ET LE CHIFFRE EST
+  DONNE.** D2 (5.14) plaçait l espoir dans les BITS D ACTION de la vue de controle
+  (`FUN_1406d025c`). `TestMouvement522Controle` les DATE : 170 ouvertures de la garde sur tout
+  `bfecd02b`, la plus proche de la fenetre du temoin a 74,040 s puis 160,309 s — **zero entre 80 et
+  100 s**. Mais ce n est PAS une conclusion negative, et `TestMouvement522Fermeture` dit pourquoi :
+  sur les **1 199 paquets delta de la fenetre [80 ; 100] s, ZERO ferme** (reste dans [0 ; 7] a bits
+  nuls) ; 1 115 atteignent le terminateur de la vue C en laissant du reste, 84 n y arrivent pas.
+  Les 12 entrees de controle lues dans cette fenetre sont donc lues a un OFFSET FAUX. Le maillon
+  est nomme et il est deja au registre : **le trou du rang 1 sur film dense** (D1 (5.14), nomme au
+  5.15, en cours au lot 5.21). Tant qu il n est pas referme, `bfecd02b` ne peut ni prouver ni
+  refuter un declencheur dans le canal d entree.
+- [x] **5.22.2 — L ECRIVAIN : LE SAUT EST UNE ACTION D UNITE, BIT 0x16 D UN MOT DE 64 BITS QUI
+  N EST PAS UN CHAMP D OBJET. ET LE « BLOC D ACTION NON PORTE » DE D2 (5.14) ETAIT DEJA AU DEPOT.**
+
+  **(a) LE CONSOMMATEUR NOMME LE CHAMP, ET IL LE NOMME EN CLAIR** (Ghidra, lecture seule ;
+  methode du piege 6 de la passation 5.11 : une etiquette se cherche par son CONSOMMATEUR).
+  `FUN_140a3f6a4` enregistre les fonctions de script ; `unit_action_test_jump` (`143c2e6a8`) y
+  est branche sur le gestionnaire `FUN_142b79bc4`, qui fait :
+
+  ```
+  FUN_142b79bc4()  ->  FUN_142b7dff4(FUN_140acc920(), 0x16)
+
+  FUN_142b7dff4(unite, action)
+      si unite == 0xffffffff : rien
+      mot = *(u64*)( *(TLS + 0x468) + (unite >> 1 & 0x7fff) * 8 )
+      return (mot >> action) & 1
+  ```
+
+  **`jump` = bit `0x16` d un mot de 64 bits par unite, dans une table THREAD-LOCALE
+  (`TLS + 0x468`)** — pas un champ d objet, donc pas un offset qu un deserialiseur de `ti=35`
+  pourrait ecrire (la liste mesuree au 5.7.1 : `0x4dc`, `0x544`/`0x548`/`0x726`, `0x7e8`/`0x7ec`,
+  `0xaa8`, `0x11f8`/`0x1295`/`0x1296`, `0x129c`, `0x12b4`, `0x12e4`, `0x1324`). C est la meme
+  forme de preuve qu au 5.11.3 pour l etat aerien, et elle est plus forte : ce n est meme pas un
+  offset d objet.
+
+  Le meme gestionnaire rend l ENUM COMPLET des actions d unite, lu sur les 25 enregistrements qui
+  passent une constante en clair (les 31 `player_action_test_*` passent par un autre pont) :
+
+  | action | bit | action | bit | action | bit |
+  |---|---:|---|---:|---|---:|
+  | `action` | 0 | `accept` | 2 | `cancel` | 3 |
+  | `primary_trigger` | 4 | `secondary_trigger` | 5 | `grenade_trigger` | 6 |
+  | `melee` | 7 | `rotate_weapons` | 8 | **`jump`** | **0x16** |
+  | `equipment` | 0x17 | `context_primary` | 0x18 | `vehicle_ability_primary` | 0x19 |
+  | `vehicle_ability_secondary` | 0x1a | `vehicle_ability_tertiary` | 0x1b | `look_relative_up` | 0x1c |
+  | `look_relative_down` | 0x1d | `look_relative_left` | 0x1e | `look_relative_right` | 0x1f |
+  | `move_relative_fwd` | 0x20 | `move_relative_back` | 0x21 | `move_relative_right` | 0x22 |
+  | `move_relative_left` | 0x23 | `start` | 0x24 | `back` | 0x25 |
+  | `vision_trigger` | 0x26 | `dpad_up` | 0x29 | `dpad_down` | 0x2a |
+  | `dpad_left` | 0x2b | `dpad_right` | 0x2c | | |
+
+  **(b) LE « BLOC D ACTION » DE LA VUE DE CONTROLE N ETAIT PAS UN TROU DE GRAMMAIRE, C ETAIT UN
+  TROU DE CABLAGE — ET IL EST REFERME.** D2 (5.14) donnait `FUN_1406d025c` (garde ouverte
+  170 fois sur `bfecd02b`) comme « dans le film et NON PORTE », et le brief de ce lot demandait
+  de le porter en entier. Relu chez l ecrivain, il n y avait rien a porter : c est LE MEME
+  deserialiseur que celui qu `i19 unit-actor-control` appelle depuis `FUN_1408f0778`, et le depot
+  le porte EN ENTIER depuis le lot 2.7 sous le nom `consume1406d025c` (2 x 3 bits par
+  `FUN_1431ab1ec` — qui ecrit `bit` dans `u16 dst[mot]` —, 2 x 2 bits par `FUN_1431ab1cc` — `bit`
+  dans `u8 dst[4 + octet]` —, `FUN_1431a0bbc` R(1)[+R(8)], `FUN_1431a0abc` R(1)[+R(10)], le bloc
+  `FUN_1431a0cbc`, la queue `FUN_1406d0f20` R(3), deux `FUN_1406d00ec` gardees par les drapeaux
+  deja lus, et `FUN_142f26740`). `consumeActionsControle` ne lisait que la garde.
+
+  **AUCUNE LARGEUR N EST NEUVE**, et la borne est posee A LA SORTIE (`br.BitPos() <= frameLen`)
+  parce qu un `placeDisponible` d entree devrait MAJORER une largeur qui depend des gardes — ce
+  que la vue C refuse de faire. Mesure, gate du 5.14.2 inchange (`TestClasses514Bourrage`) :
+
+  | film | paquets fermes AVANT | APRES | dont bits TOUS NULS | portant un 1 |
+  |---|---:|---:|---:|---:|
+  | `bfecd02b` | 2 884 / 30 387 | **2 900** | **2 900 / 2 900** | **0** |
+  | `dad793c7` | 5 354 / 5 365 | 5 354 | 5 354 / 5 354 | 0 |
+
+  `dad793c7` ne bouge pas, et c est ce que le 5.14.4 annonçait : sur ce film la garde d action est
+  FERMEE sur les 5 202 entrees. **Le cablage ne referme pas la fenetre du temoin pour autant** :
+  les 1 199 paquets de [80 ; 100] s restent ouverts par le trou du RANG 1 (case 5.22.1 (d)), qui
+  est en amont de la vue C.
+
+  Revisions : `grammar.Rev` `.8 -> .9` (empreinte + entree de chronique) ; **`facts.Rev` NE MONTE
+  PAS**, decision ecrite et identique a celle du 5.14.3 (`facts` marche par
+  `DecodeFrameRecords`, qui ne deroule pas les vues par rang) — son golden est refige parce qu il
+  hache la VALEUR de `grammar.Rev`, aucun backlog killsource ouvert. `shapes.golden` refige (il
+  porte les revisions) ; 8 fixtures de contrat refigees, **dont le SEUL ecart est la chaine de
+  revision** (piege 6 de la passation 5.7 : elles rejouent des entrees figees, ce cablage ne les
+  traverse pas) — 2 770 834 / 3 145 728 octets.
+- [x] **5.22.3 — VERIFICATION SUR TOUTE LA POPULATION DES DEUX FILMS : L ENSEMBLE EST VIDE, ET
+  CETTE FOIS LES 64 COMPOSANTS SONT AU DENOMINATEUR.**
+
+  `TestMouvement522Generalisation` refait la croix de la case 5.22.1 sur TOUTES les vies de
+  bipede, chaque vie contre ses PROPRES fenetres de decollage. L etalon de contenu est publie
+  AVANT toute conclusion, comme l exige la porte propre :
+
+  | film | records `ti=35` | desyncs | vies de bipede | episodes fermes | retenus | vies qui sautent | records dedans / hors |
+  |---|---:|---:|---:|---:|---:|---:|---|
+  | `bfecd02b` (snowbound) | 129 572 | 4 | 68 | 1 513 | 252 | 54 | 4 954 / 124 618 |
+  | `4f77afc1` (flood gulch) | 400 697 | 22 | 238 | 6 497 | 1 209 | 193 | 10 524 / 390 173 |
+
+  **`COMPOSANTS EXCLUSIFS AUX FENETRES DE DECOLLAGE : [] ` sur les DEUX films.** Et le progres
+  sur le 5.11.2 est dans le denominateur : a l epoque `i55`, `i62`, `i29`, `i60`, `i18`, `i63`
+  etaient declares ZERO fois dans les fenetres, mais aussi presque zero fois ailleurs — on ne
+  savait pas si le film les portait. **Ici les 64 composants du bipede sont presents sur
+  `bfecd02b`, `i0` a `i63` sans trou**, et aucun n est exclusif. Les facteurs les plus hauts sont
+  les confondants deja nommes : `i28 active-camo` 5,01 / 6,79 et `i57`/`i59` 4,24 / 6,04 (le
+  sprint qui S ETEINT au decollage), `i32 weapon-overheated` 2,45 (on tire en sautant).
+
+  `i16 object-physics-flags-component` — le candidat de nom le plus prometteur du registre
+  (« au sol, ... ») — est declare **14 fois sur 129 572 records** sur `bfecd02b` et **20 fois sur
+  400 697** sur `4f77afc1`, **jamais** dans une fenetre de decollage. Il ne peut pas etre le
+  canal du saut : un saut par vie et par minute demanderait des milliers de declarations.
+
+  **Precision / rappel d un candidat : SANS OBJET**, puisqu il n y a pas de candidat. Ce qui est
+  mesure a la place, et qui est la vraie sortie de ce lot, est le RAPPEL DU DERIVE lui-meme
+  contre le verdict Theater de l utilisateur sur le temoin : **6 sauts sur 7 dates a moins de
+  100 ms**, le septieme present dans le canal de vitesse et rejete par la seule fenetre de
+  hauteur (case 5.22.1 (b)) — soit un rappel de 6/7 = 85,7 % et une precision de 6/6 = 100 % sur
+  la seule fenetre que l utilisateur a verifiee image par image.
+- [x] **5.22.4 — LE PORT : PAS DE GENRE `jump` LU (IL N EST PAS PROUVE), ET L ACTION DE MOBILITE
+  DEVIENT `clamber` — SCHEMA 67 -> 68.**
+
+  **(a) `stances[].kind` `jump` N EST PAS LIVRE, ET C EST LA REGLE.** « Ce qui n est pas prouve
+  n est pas publie. » Les cases 5.22.1 et 5.22.3 mesurent un ensemble VIDE sur une vie repliquee
+  a chaque tick, sur les 68 vies de `bfecd02b` et les 238 de `4f77afc1`, les 64 composants au
+  denominateur ; la case 5.22.2 dit chez l ecrivain POURQUOI (le saut est un bit d un mot
+  d actions thread-local, pas un champ d objet). `jumpDerived` reste donc le seul genre du saut,
+  et son nom continue de dire qu il est calcule. **Ce qui reste ouvert n est pas nie : le canal
+  d ENTREE du film est illisible dans la fenetre du temoin (0 paquet ferme sur 1 199), et son
+  maillon est nomme — le trou du rang 1, lot 5.21.**
+
+  **(b) `mobility` DEVIENT `clamber`, ET L ORACLE EST L ECRAN.** Le lot 5.13.2 avait TRANCHE
+  l inverse, et pour une bonne raison : aucune des dix chaines `mobility` du binaire n etiquette
+  les quatre valeurs de `bloc + 0x9c`, et « nommer *Escalade* serait choisir a la place de la
+  mesure ». Ce qui a change n est pas le binaire, c est qu il existe desormais une mesure : **les
+  NEUF intervalles de ce genre, pris sur `bfecd02b`, ont ete confrontes image par image dans
+  Theater par l utilisateur — neuf escalades de rebord, 9 sur 9, aucun contre-exemple.** Le plus
+  net est celui du temoin : un saut date a 96,962 s qui se termine en prise sur un element du
+  decor, `i54` allume de 97,096 a 97,63 s, et le Spartan qui redescend ensuite de cet element.
+  Le vocabulaire du jeu corrobore sans prouver (`_action_hoist`, `_action_vault`,
+  `_action_climb_attach`, `_action_climb_detach` a `143ca0100` ;
+  `CharacterPhysicsModeClambering` a `143df73d0`, `FUN_1406b8244(idx) == 2`).
+
+  **POURQUOI UN RENOMMAGE EST UNE MONTEE DE SCHEMA** : `stanceAt` (web) IGNORE un genre inconnu
+  plutot que de lui donner le libelle d un voisin — un artefact cuit avant la montee afficherait
+  des escalades muettes chez un client neuf, et l inverse. Une valeur d enum publie est de la
+  FORME.
+
+  **CHECKLIST DE MONTEE, EN ENTIER** : `types.MovementClamber = "clamber"` (l ancien
+  `MovementMobility` est SUPPRIME, pas garde en alias — regle 7) · `grammar/movement_states.go` ·
+  chronique **v68** de `document_chronicle.go` · `structure_test.go` (la justification que
+  `TestStructureIsOptionalInDocument` exige) · `document_shape.golden` (schema 68, empreinte
+  `8fa3e3de3052db39`) · **plafonds** releves avec justification datee dans l exception ecrite
+  (`document_chronicle.go` 1974 -> 2018, `structure_test.go` 1250 -> 1270 ; au passage, le MESSAGE
+  du ratchet ne nommait qu un des deux fichiers de son exception alors que son propre en-tete en
+  nomme deux — doc inversee corrigee dans le meme commit) · 8 goldens d assemblage · 8 fixtures
+  de contrat **`replay_schema_68_*`** + manifeste (2 770 837 / 3 145 728 octets, les 8 `_67_`
+  supprimees par leur porte) · jumeaux `replaydoc` / `replayview` (le genre est une chaine libre
+  des deux cotes : seuls leurs commentaires changent, la parite tient) · **zod** : le schema web
+  ne contraint pas la valeur de `kind`, donc rien a changer — `STANCE_KINDS` de `stanceLogic.ts`
+  EST l enum cote client, et il porte `clamber` · **i18n FR/EN** « Escalade » / « Clamber »
+  (`i18n.ts` x2, contrat `i18nContract.ts` retype `Record<'crouch' | 'slide' | 'clamber' |
+  'sprint' | 'jumpDerived', string>`) · `layers` INCHANGE (l escalade reste dans le calque des
+  etats de mouvement ; sa revision suit `grammar.Rev`) · **OpenAPI EN DERNIER** (`make
+  openapi-gen`) puis `make generate-types` : **aucun octet ne change**, `kind` y est une chaine
+  libre.
+
+  Revisions : `grammar.Rev` `.9 -> .10` (la couche ecrit l etiquette de genre : sa SORTIE change)
+  + entree de chronique ; **`facts.Rev` NE MONTE PAS** — `killsource` ne lit aucun etat de
+  mouvement — son golden refige parce qu il hache la VALEUR de `grammar.Rev` ;
+  **`replay.SchemaVersion` 67 -> 68**.
+
+#### §4 du lot 5.22 — DECOUVERTES HORS PERIMETRE, CONSIGNEES ET NON TRAITEES
+
+| # | decouverte | ou la reprendre |
+|---|---|---|
+| **D1 (5.22)** | **LE SEPTIEME SAUT DU TEMOIN EST DANS LE FILM ET C EST LA FENETRE DE HAUTEUR QUI LE REJETTE** : episode 91,691 -> 92,358 s du slot 523, **0,9737 m integres en 0,667 s**, soit +14,6 % au-dessus de `types.SpartanJumpHeightM` pour une tolerance de 10 %. Ce n est pas un saut plat : il dure 0,667 s au lieu des 0,467 s du saut de reference — une montee prolongee (rebord, ou saut lance). La fenetre a ete calibree sur le PIC de la distribution (lot 5.7.5) ; elle exclut par construction les montees aidees par le decor. | un lot de PRECISION du derive, et il demande un arbitrage de l utilisateur : elargir la fenetre change le compte de `jumpDerived` sur TOUS les films (184 intervalles sur la seule fixture `000d5950`). Mesurer d abord ce que gagne et ce que perd chaque borne, sur les trois films du corpus |
+| **D2 (5.22)** | **LA BARRE THEATER EST L HORLOGE RELATIVE DU FILM, ET LA FORMULE `originMs + frame x 100 ms` NE LA DONNE PAS.** Mesure de la case 5.22.1 (a) : les six sauts derives, les trois sprints et la queue de `mobility` du temoin tombent tous, a moins de 100 ms, sur l instant relatif au PREMIER PAQUET DELTA. `originMs` (12 547 ms sur `bfecd02b`) recale les evenements de MATCH, pas la barre. Le brief du lot posait l inverse, et l ecart de 1 a 2,5 s qu il decrivait ne se reproduit pas sur cette mesure. | rien a corriger dans le code (aucun chemin de production ne convertit une frame en temps de barre par `originMs`) ; a redire dans le prochain brief qui datera un instant de film |
+| **D3 (5.22)** | **LE MESSAGE DU RATCHET DE TAILLE NE NOMMAIT QU UN DES DEUX FICHIERS DE SON EXCEPTION** (`document_chronicle.go`) alors que l en-tete de `plafondsParFichier` en nomme deux depuis le 2026-09-17 (lot 2.6.3). Un executant qui lit le message et pas l en-tete conclut qu il doit decouper `structure_test.go`. | **TRAITEE** dans le commit 5.22.4, qui touchait deja ce fichier et cette ligne (anti-patron « doc inversee », precedent du 5.14.3) |
+| **D4 (5.22)** | **LA VUE C EST LUE A UN OFFSET FAUX SUR LA MAJORITE DES PAQUETS D UN FILM DENSE, ET RIEN NE LE DIT AU LECTEUR.** `TestMouvement522Controle` rend 20 540 entrees de controle sur `bfecd02b`, dont les index de participant epars (8 a 31) que D5 (5.14) avait deja signales ; `TestMouvement522Fermeture` montre que dans la fenetre du temoin **aucun** paquet ne ferme. Les deux mesures se contredisent tant qu on ne croise pas la fermeture : une lecture de vue C n est fiable que sur un paquet qui ferme. | le lot D1 (5.14) / 5.21, comme controle de sortie : re-mesurer les index de controle APRES la fermeture du rang 1, et poser un compteur « entrees lues sur paquet ferme » plutot qu un compte brut |
+| **D5 (5.22)** | **`FUN_1406d025c` EST DOCUMENTE DEUX FOIS DANS LE DEPOT, SOUS DEUX NOMS DE NATURE DIFFERENTE** : « bloc d orientation / matrice d inertie » dans `unit_control.go` (lot 2.7) et « les BITS D ACTION » dans `frame_vue_controle.go` (lot 5.14). La grammaire est la meme et elle est juste ; c est la SEMANTIQUE qui n est etablie ni d un cote ni de l autre — les setters `FUN_1431ab1ec` / `FUN_1431ab1cc` sont generiques (ecrire un bit dans un mot), donc l offset ne nomme rien. | le lot qui nommera le contenu de ce bloc : passer par son CONSOMMATEUR, c est-a-dire par le type de `param_1` (le bloc de 0x68 octets de `FUN_1406cd860`), jamais par l offset |
+| **D6 (5.22)** | **LE MOT D ACTIONS D UNITE EST LU ET NOMME (25 bits), MAIS SON ECRIVAIN NE L EST PAS** : `FUN_142b7dff4` lit `TLS[0x468][unite]`, et la recherche d instructions sur l offset `0x468` ne rend aucun site qui ECRIVE cette table (17 acces en qword, tous sur d autres structures). Le remplisseur existe forcement ; il n a pas ete trouve dans le budget du lot. | le lot qui voudra savoir D OU vient une action d unite (rejeu des entrees ? animation ?) : partir de `FUN_142b7e030`, qui balaie la MEME table sur plusieurs unites, ou instrumenter l acces en execution |
+
+#### §5 du lot 5.22 — ETAT DE CLOTURE
+
+| case | statut | ce qui est livre |
+|---|---|---|
+| 5.22.1 | `[x]` | la barre Theater = l horloge relative du film, PROUVE par six sauts, trois sprints et une escalade ; les SEPT sauts du temoin dates sur l horloge du film, dont celui qui manque au derive (0,9737 m) ; **au decollage le film ne transmet que `i0`, `i1` et `i25`**, sur une vie repliquee a chaque tick ; le sprint qui s eteint 16 ms APRES est nomme comme confondant ; le canal d entree declare ILLISIBLE et chiffre (0 paquet ferme sur 1 199) |
+| 5.22.2 | `[x]` | `unit_action_test_jump` -> `FUN_142b7dff4(unite, **0x16**)`, un mot de 64 bits par unite dans `TLS + 0x468` — **pas un champ d objet** ; l enum des 25 actions d unite ; **D2 (5.14) referme** : `FUN_1406d025c` etait deja porte au depot (`consume1406d025c`, lot 2.7), cable, paquets fermes 2 884 -> 2 900 a bourrage NUL |
+| 5.22.3 | `[x]` | la croix sur 68 vies de `bfecd02b` et 238 de `4f77afc1`, etalon publie d abord ; **aucun composant exclusif**, et cette fois les **64** composants du bipede sont au denominateur ; `i16 object-physics-flags` refute par son effectif (14 et 20 declarations) |
+| 5.22.4 | `[x]` | **pas de genre `jump` LU** (non prouve) ; **`mobility` -> `clamber`, « Escalade » / « Clamber », schema 67 -> 68**, checklist complete, `grammar.Rev` `.9 -> .10`, `facts.Rev` inchangee, OpenAPI inchange |
+| gates | verts | par commit : `gofmt`, `go build`, `go vet` (+`research`), `go test -count=1` sur `halo_infinite/...`, `archlint`, `replaybuild`, `replaydoc`, `replayview`, `contracttest`, `api` (**0 `--- FAIL`, code de sortie 0**), `golangci-lint ./film/...` (**0 issue**), `go test -race` sur `grammar` (397 s), `tsc -b`, `npx vitest run src/features/match-replay src/lib/replay` (**3 290 tests**), `npx eslint` (0 erreur). Corpus 19, re-figeage des entrees par decodage et CI : **au pilote** |
 
 ### Post-chantier — lot 5.20 (l image-cle entiere et les naissances), branche `feat/decfilm-70`
 
