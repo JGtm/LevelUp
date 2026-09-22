@@ -130,52 +130,52 @@ export function SquadSynergiesPage() {
           il ne se monte qu'avec `echange` (qui apporte six cartes). Quand seules les
           assistances sont mesurées, le groupe reste, sans titre. */}
       {(echange || assistPairs) && (
-      <section className="space-y-4">
-      {echange && <SectionTitle>{t.sections.echange}</SectionTitle>}
-      {/* « Constat du moment » EN TÊTE, AU-DESSUS du « Compte » : c'est le titre narratif
-          du récit de l'échange (le « Cap du moment » de la maquette 4c520da6), pas un
-          doublon d'une des six cartes. Il se rend de lui-même sous ses deux seuils
-          (30 morts d'équipe ET 5 points d'écart) : rien à passer ici, et rien du tout à
-          l'écran quand il n'a rien à dire. */}
-      <SquadEchangeConstatCard echange={echange} />
-      {/* L'ÉCHANGE, SIX CARTES, DANS L'ORDRE DE LECTURE DE LA MAQUETTE 4c520da6 :
-          combien (Le compte) → à quelle vitesse → qui couvre qui → pourquoi la vengeance
-          ne vient pas → donné/reçu → l'évolution par soirée. Les deux premières comptent,
-          la troisième dit qui, la quatrième explique — et c'est elle qui donne quelque
-          chose à corriger. */}
-      {echange && (
-        <>
-          <SquadEchangeCompteCard echange={echange} />
-          <SquadEchangeDelaiCard echange={echange} />
-        </>
-      )}
-      {/* « Qui couvre qui » et « Assistances dans l'escouade » SUR LA MÊME RANGÉE
-          (2026-09-19) : deux lectures du même couple de joueurs, l'une par vengeance,
-          l'autre par assistance — les empiler obligeait à faire défiler entre les deux.
-          `items-stretch` par défaut : les deux cartes ont la même hauteur.
-
-          LES DEUX SE MONTENT INDÉPENDAMMENT : l'échange vient du journal des morts, les
-          assistances du résumé du film. Un titre qui ne nomme pas le tueur garde ses
-          assistances — les lier aurait fait disparaître une mesure qui existe. */}
-      {(echange || assistPairs) && (
-        <div className="grid grid-cols-2 gap-4">
-          {echange && <SquadEchangeMatrixCard echange={echange} />}
-          {assistPairs && <SquadAssistPairsChart block={assistPairs} roster={roster} />}
-        </div>
-      )}
-      {echange && (
-        <>
-          {echange.nuage_isolement && (
-            <SquadIsolementNuageCard
-              nuage={echange.nuage_isolement}
-              joueurs={echange.joueurs ?? []}
-            />
+        <section className="space-y-4">
+          {echange && <SectionTitle>{t.sections.echange}</SectionTitle>}
+          {/* « Constat du moment » EN TÊTE, AU-DESSUS du « Compte » : c'est le titre narratif
+              du récit de l'échange (le « Cap du moment » de la maquette 4c520da6), pas un
+              doublon d'une des six cartes. Il se rend de lui-même sous ses deux seuils
+              (30 morts d'équipe ET 5 points d'écart) : rien à passer ici, et rien du tout à
+              l'écran quand il n'a rien à dire. */}
+          <SquadEchangeConstatCard echange={echange} />
+          {/* L'ÉCHANGE, SIX CARTES, DANS L'ORDRE DE LECTURE DE LA MAQUETTE 4c520da6 :
+              combien (Le compte) → à quelle vitesse → qui couvre qui → pourquoi la vengeance
+              ne vient pas → donné/reçu → l'évolution par soirée. Les deux premières comptent,
+              la troisième dit qui, la quatrième explique — et c'est elle qui donne quelque
+              chose à corriger. */}
+          {echange && (
+            <>
+              <SquadEchangeCompteCard echange={echange} />
+              <SquadEchangeDelaiCard echange={echange} />
+            </>
           )}
-          <SquadEchangeDonneRecuCard echange={echange} />
-          <SquadEchangeTauxSessionCard echange={echange} />
-        </>
-      )}
-      </section>
+          {/* « Qui couvre qui » et « Assistances dans l'escouade » SUR LA MÊME RANGÉE
+              (2026-09-19) : deux lectures du même couple de joueurs, l'une par vengeance,
+              l'autre par assistance — les empiler obligeait à faire défiler entre les deux.
+              `items-stretch` par défaut : les deux cartes ont la même hauteur.
+
+              LES DEUX SE MONTENT INDÉPENDAMMENT : l'échange vient du journal des morts, les
+              assistances du résumé du film. Un titre qui ne nomme pas le tueur garde ses
+              assistances — les lier aurait fait disparaître une mesure qui existe. */}
+          {(echange || assistPairs) && (
+            <div className="grid grid-cols-2 gap-4">
+              {echange && <SquadEchangeMatrixCard echange={echange} />}
+              {assistPairs && <SquadAssistPairsChart block={assistPairs} roster={roster} />}
+            </div>
+          )}
+          {echange && (
+            <>
+              {echange.nuage_isolement && (
+                <SquadIsolementNuageCard
+                  nuage={echange.nuage_isolement}
+                  joueurs={echange.joueurs ?? []}
+                />
+              )}
+              <SquadEchangeDonneRecuCard echange={echange} />
+              <SquadEchangeTauxSessionCard echange={echange} />
+            </>
+          )}
+        </section>
       )}
       {/* Graphes toujours montés : ChartCard affiche son état vide (titre +
           message) au lieu de faire disparaître le bloc quand mapBreakdown
@@ -210,35 +210,35 @@ export function SquadSynergiesPage() {
           le tableau des matchs. L'intitulé de la bande (le `<p>` en capitales) reste en
           place, comme sous-titre du bloc. */}
       <section className="space-y-4">
-      <SectionTitle>{t.sections.historique}</SectionTitle>
-      {/* Séquence des résultats : on garde le libellé + un message court quand
-          il n'y a pas d'historique, au lieu de masquer le bloc. */}
-      <div>
-        <p className="mb-1 flex items-center text-xs font-medium uppercase tracking-wide text-muted-foreground">
-          {t.charts.outcomeSequenceTitle}
-          <ReviewBadge reviewKey="squad.outcome_tape" />
-        </p>
-        {matchHistory.length > 0 ? (
-          <OutcomeSequenceTape
-            // matchHistory arrive DESC (récent→ancien) ; on inverse pour afficher
-            // du plus vieux au plus récent (gauche→droite).
-            matches={[...matchHistory].reverse().map<OutcomePoint>((m) => ({
-              outcome: outcomeCodeToTapeValue(m.outcome),
-              matchId: m.match_id,
-              map: m.map_ui || undefined,
-              mode: m.mode_ui || m.pair_name || undefined,
-              // Absent (0/undefined, ex. Halo 5 sans timeline de score) → aucun
-              // marqueur dessiné, aucun suffixe de tooltip.
-              dominance: asDominance(m.dominance_flag),
-            }))}
-            labels={outcomeLabels}
-            dominanceLabels={tapeDominanceLabels}
-          />
-        ) : (
-          <p className="text-sm text-muted-foreground">{t.empty.noBlockData}</p>
-        )}
-      </div>
-      <SquadSynergyHistoryTable rows={matchHistory} playerSlug={playerSlug} />
+        <SectionTitle>{t.sections.historique}</SectionTitle>
+        {/* Séquence des résultats : on garde le libellé + un message court quand
+            il n'y a pas d'historique, au lieu de masquer le bloc. */}
+        <div>
+          <p className="mb-1 flex items-center text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            {t.charts.outcomeSequenceTitle}
+            <ReviewBadge reviewKey="squad.outcome_tape" />
+          </p>
+          {matchHistory.length > 0 ? (
+            <OutcomeSequenceTape
+              // matchHistory arrive DESC (récent→ancien) ; on inverse pour afficher
+              // du plus vieux au plus récent (gauche→droite).
+              matches={[...matchHistory].reverse().map<OutcomePoint>((m) => ({
+                outcome: outcomeCodeToTapeValue(m.outcome),
+                matchId: m.match_id,
+                map: m.map_ui || undefined,
+                mode: m.mode_ui || m.pair_name || undefined,
+                // Absent (0/undefined, ex. Halo 5 sans timeline de score) → aucun
+                // marqueur dessiné, aucun suffixe de tooltip.
+                dominance: asDominance(m.dominance_flag),
+              }))}
+              labels={outcomeLabels}
+              dominanceLabels={tapeDominanceLabels}
+            />
+          ) : (
+            <p className="text-sm text-muted-foreground">{t.empty.noBlockData}</p>
+          )}
+        </div>
+        <SquadSynergyHistoryTable rows={matchHistory} playerSlug={playerSlug} />
       </section>
       <SquadMapHeatmapChart
         title={t.heatmap.title}
