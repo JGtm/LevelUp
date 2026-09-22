@@ -8326,6 +8326,79 @@ contre 4 469 dans la reference — et 1 489 est EXACTEMENT la valeur que le lot 
 les divergences sont celles de la reference perimee, pas des siennes. Decodage : 14,8 s,
 pic 0,19 Gio, un film a la fois.
 
+### Post-chantier — lot 5.23 (la table anticipee des archetypes), branche `feat/decfilm-73`
+
+Sur la mesure du lot 5.20.2 : **74,7 % des slots rejetes sont declares, avec leur archetype, par
+l image-cle du chunk SUIVANT**. PERIMETRE FERME : ce lot NE CHERCHE PAS l ecrivain de la
+naissance (les lots 5.15 a 5.21 l ont instruit, c est clos) ; il construit un REPLI NOMME, DATE
+et COMPTE, mesure son gain au gate, et le livre en production si le gain est la. Note de
+grammaire : `.ai/V7.5/film_re/NOTE_5_23_TABLE_ANTICIPEE_2026-09-22.md`.
+
+- [x] **5.23.1 — LA TABLE DU FILM, ET SA CLE EST CELLE QUE LE JEU COMPARE.**
+
+  **(a) LA CLE, LUE CHEZ L ECRIVAIN (une lecture, la seule du lot).** `FUN_1406caad8`, la porte
+  que tout corps de delta franchit :
+
+  ```
+  uVar21 = param_2 & 0x3fffffff                            ; le SLOT — 30 bits bas de l eid
+  si param_2 == 0xffffffff                     -> return 3 ; sentinelle
+  lVar19 = *(longlong *)(param_1 + 0x20)                   ; base de la table, pas 200
+  si (fin - base) / 200 <= uVar21              -> return 3 ; slot hors cardinal
+  si *(uint *)(uVar21 * 200 + lVar19) != param_2 -> return 3   ; <- LA CLE
+  puVar18[1]                                               ; l ARCHETYPE, en +0x04
+  ```
+
+  La table est INDEXEE par le slot et son entree porte l eid **ENTIER** : les deux bits de tete
+  comptent. La cle est donc le mot de 32 bits lui-meme, `(slot, tete)`. **Et c est la MEME table
+  que l image-cle remplit** — l entree de 200 octets testee ici est celle que `FUN_142e2bfd0`
+  ecrit (`e[0x00] = R(32)` l eid, `e[0x04] = R(32)` l archetype, lot 5.20.1). Les deux bits de
+  tete d une image-cle sont donc EXACTEMENT ceux qu un delta doit presenter.
+
+  **LE BRIEF DEMANDAIT DE LE DIRE SI LES DEUX CHAMPS N ETAIENT PAS LE MEME : ils le sont, au
+  sens de la comparaison.** Ce qu ils SIGNIFIENT reste ce que le 5.13.1 a etabli (rang de vue
+  chez `FUN_142f2e174`, generation du datum chez `FUN_1408f1730`), et les deux films temoins ne
+  les departagent pas : la mesure ci-dessous ne trouve qu une seule valeur, `1`, du cote des
+  images-cles. La cle, elle, n est pas ambigue.
+
+  **(b) LA TABLE.** `TableAnticipee` (`keyframe_anticipe.go`, 207 lignes) : une passe sur les
+  images-cles de TOUS les chunks, par la lecture que le monde emprunte deja
+  (`WalkKeyframeWorld` : `Slot`, `TI`, `Gen` = le mot de 32 bits decompose). Chaque cle porte la
+  suite DATEE de ses declarations ; `ArchetypeApres(id, chunk)` rend la PREMIERE declaration
+  STRICTEMENT POSTERIEURE au chunk du rejet — anticiper, c est lire l avenir du slot, jamais son
+  passe. Aucun decodage de trame : la passe entiere coute **1,8 s** sur `bfecd02b`.
+
+  **(c) LA MESURE (`TestTable523`, `bfecd02b`, carte `snowbound`).**
+
+  | | valeur |
+  |---|---:|
+  | declarations d image-cle versees | **12 688** |
+  | cles `(slot, tete)` distinctes | **1 015** |
+  | cles portees par PLUS D UN archetype (reutilisation de slot) | **0** |
+  | tetes rencontrees cote image-cle | **`1` seule**, 12 688 fois |
+
+  **ZERO CONFLIT : la datation par chunk n arbitre rien sur ce film, et elle reste** — c est la
+  garde qui empeche qu un slot recycle rende l archetype de son occupant PRECEDENT le jour ou un
+  film en portera un.
+
+  **(d) LA COUVERTURE, ET ELLE REPRODUIT LE 5.20.2 AU REJET PRES.**
+
+  | ou le rejet trouve-t-il son archetype ? | rejets | part |
+  |---|---:|---:|
+  | **declare par une image-cle POSTERIEURE (la table repond)** | **17 432** | **74,7 %** |
+  | declare seulement par un chunk anterieur ou courant | 0 | 0,0 % |
+  | **aucune image-cle du film, jamais** | **5 893** | **25,3 %** |
+
+  Declarant a **+1 chunk : 17 430** ; a +8 : 1 ; a +13 : 1. Par archetype anticipe :
+  `ti=35` **16 932** (les reapparitions de bipedes), `ti=42` 346, `ti=41` 85, `ti=40` 53,
+  `ti=10` 9, `ti=37` 7.
+
+  **(e) ET LA TETE DISCRIMINE, POUR 638 REJETS.** Les en-tetes rejetes portent la tete `1`
+  22 687 fois, mais aussi `0` (98), `2` (392) et `3` (148) — **638 en-tetes presentent une tete
+  qu AUCUNE image-cle du film n emploie**, donc un eid que le jeu ne peut pas apparier. Cle du
+  jeu contre cle reduite au seul slot : la seconde ne resoudrait que **19 rejets de plus**. Le
+  prix de la cle juste est de 19 liaisons ; ce qu elle ecarte est 638 lectures prises a une
+  position fausse. On cle sur ce que le jeu compare.
+
 ### Post-chantier — lot 5.21 (le bloc de type 1 : la table de datums du chunk), branche `feat/decfilm-71`
 
 Sur la decouverte D1 du lot 5.20. METHODE : l ecrivain d abord (Ghidra lecture seule,

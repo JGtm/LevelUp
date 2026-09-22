@@ -206,3 +206,31 @@ package grammar
 // CE RANG NE DEPLACE AUCUN OCTET DE DECODAGE : il retire trois fichiers de PROSE de l empreinte.
 // `facts.Rev` ne monte pas ; son golden, celui des formes et les fixtures de contrat sont refiges
 // parce qu ils hachent ou publient la VALEUR de `grammar.Rev`. `replay.SchemaVersion` reste a 67.
+
+// ENTREE `grammar-2026-09-22.11` (2026-09-22, lot 5.23.1) : LA TABLE ANTICIPEE DES ARCHETYPES —
+// UN LECTEUR D IMAGE-CLE DE PLUS, AUCUN DECODEUR DEPLACE.
+//
+// CE QUE LE RANG AJOUTE. `keyframe_anticipe.go` : `TableAnticipee` construit, par une passe sur
+// les images-cles de TOUS les chunks, la table `(slot, tete) -> archetype` du film entier, datee
+// par chunk. Elle n a AUCUN appelant a ce rang : aucune marche de trame, d image-cle ou de record
+// ne change d un bit. La couche GAGNE un lecteur, elle n en modifie aucun.
+//
+// LA CLE EST CELLE QUE LE JEU COMPARE, ET ELLE EST LUE CHEZ L ECRIVAIN. `FUN_1406caad8` indexe la
+// table de datums par `eid & 0x3fffffff` puis exige `*(uint *)(slot * 200 + base) == eid` —
+// l eid ENTIER, ses deux bits de tete compris — avant de lire le moindre bit de corps, et rend
+// l archetype en `+0x04`. C est la MEME entree de 200 octets que `FUN_142e2bfd0` remplit depuis
+// l image-cle (lot 5.20.1) : les deux bits de tete d une image-cle sont donc exactement ceux
+// qu un delta doit presenter. Ce qu ils SIGNIFIENT reste ce que le 5.13.1 a etabli (rang de vue
+// chez `FUN_142f2e174`, generation du datum chez `FUN_1408f1730`) et les deux films temoins ne
+// les departagent pas ; la CLE, elle, n est pas ambigue.
+//
+// LA MESURE (`TestTable523`, `bfecd02b`) : 12 688 declarations, 1 015 cles distinctes, **ZERO**
+// cle portee par plus d un archetype, une seule tete rencontree (`1`). Sur les 23 325 rejets,
+// la table en resout **17 432 (74,7 %)** — 17 430 par le chunk SUIVANT, 1 a +8, 1 a +13 —, dont
+// `ti=35` 16 932. Les 5 893 restants (25,3 %) ne sont declares par AUCUNE image-cle du film.
+// Une cle reduite au seul slot ne resoudrait que 19 rejets de plus, et laisserait passer 638
+// en-tetes dont la tete n existe nulle part dans le film : on cle sur ce que le jeu compare.
+//
+// `facts.Rev` NE MONTE PAS : la table n a aucun appelant, `DecodeFrameRecords` et
+// `WalkKeyframeWorld` sont intouches — aucun backlog killsource. Son golden est refige parce
+// qu il hache la VALEUR de `grammar.Rev`. `replay.SchemaVersion` reste a 67.
