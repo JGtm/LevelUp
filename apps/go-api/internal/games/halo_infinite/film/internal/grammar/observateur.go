@@ -282,6 +282,19 @@ type Observation struct {
 	ChaineImmediat, ChaineProfond, ChaineAmbigu, ChaineAucun, ChaineBudget int
 	// ResyncValides compte les reprises par resynchronisation validee (diagnostic).
 	ResyncValides int
+	// RejetsHorsDatum et RejetsDeVue ventilent les deux SORTIES par rejet de la boucle de
+	// records de la vue B, et elles ne portent pas la meme grammaire (lot 5.16.4) :
+	//
+	//	RejetsHorsDatum : la GARDE VIVE — le slot n est dans AUCUNE table de datums connue,
+	//	                  c est-a-dire `*(uint *)(slot * 200 + t) != eid` dans
+	//	                  `FUN_1406cbaa0` (cas DELTA, code 2 ou 3, zero bit lu) ;
+	//	RejetsDeVue     : le REPLI — le slot est connu, mais une AUTRE vue le possede. C est
+	//	                  la garde de la branche 0 de `FUN_1406cd128` (`vue[0x38]`), celle que
+	//	                  le jeu n emprunte que pour l aller-retour d etat de `FUN_1428e24bc`.
+	//	                  Le 5.15.1 (d) l a mesuree a ZERO cas sur 22 112 rejets lisibles de
+	//	                  `bfecd02b` ; le compteur existe pour que ce zero soit VU et non
+	//	                  suppose.
+	RejetsHorsDatum, RejetsDeVue int
 	// IndexAbsolus : histogramme des index de plage rencontres sur les chemins ABSOLUS de i0
 	// (7ter.54 axe 3). Purement observationnel — incremente sur l axe 0 de chaque lecture, ne
 	// change AUCUNE consommation de bits. C est la mesure qui dit si l index dominant est 0
@@ -386,6 +399,22 @@ func (o *Observation) neutraliserEtatsDeMouvement() func() {
 	etats := o.EtatMouvementHook
 	o.EtatMouvementHook = nil
 	return func() { o.EtatMouvementHook = etats }
+}
+
+// compterRejetHorsDatum compte une sortie de la vue B par la GARDE VIVE : le slot n est dans
+// aucune table de datums connue (cf. [Observation.RejetsHorsDatum]).
+func (o *Observation) compterRejetHorsDatum() {
+	if o != nil {
+		o.RejetsHorsDatum++
+	}
+}
+
+// compterRejetDeVue compte une sortie de la vue B par le REPLI de garde de table de vue
+// (cf. [Observation.RejetsDeVue]).
+func (o *Observation) compterRejetDeVue() {
+	if o != nil {
+		o.RejetsDeVue++
+	}
 }
 
 // compterResyncValide compte une reprise par resynchronisation validee (diagnostic).

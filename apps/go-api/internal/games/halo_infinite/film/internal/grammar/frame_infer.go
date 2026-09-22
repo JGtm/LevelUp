@@ -101,12 +101,35 @@ func DecodeFrameInfer(buf []byte, w *World, cfg FrameConfig) ([]FrameRecord, int
 // 30 paquets sur 22 112 : sans archetype le corps ne se lit pas. Le port correct demande donc la
 // table de datums par slot, pas un changement de garde — c est le report 5.15.3 (D1 du 5.15).
 // --- fin de la note du lot 5.15 ---------------------------------------------------------------
-// rejetDeVue transcrit la GARDE DE TABLE DE VUE (note ci-dessus) : un delta dont le slot
-// n appartient pas a la vue en cours n est pas un record de cette vue. L appelant remet le
-// curseur a la fin de l EN-TETE et clot la vue — l en-tete, lui, EST ecrit, et c est ce que la
-// vue suivante lira comme son propre en-tete de rejet.
+// rejetDeVue rend la sortie de la boucle de records de la vue B sur un DELTA, et depuis le lot
+// 5.16.4 elle porte la garde de la BRANCHE VIVE en premier, le repli de vue ensuite — chacun
+// COMPTE, parce que les deux ne disent pas la meme chose.
+//
+//	garde VIVE (`FUN_1406cbaa0`, cas DELTA) : `*(uint *)(slot * 200 + t) != eid` sur la table
+//	  de datums du DECODEUR PARTAGE. Un slot absent de cette table ne rend AUCUN bit de corps,
+//	  et la boucle sort (code 2 ou 3). Hors ligne, « absent de la table » = slot non lie — la
+//	  table de datums de l image-cle est justement ce que `keyframe_datums.go` y verse.
+//	repli de VUE (`FUN_1406cd128`, branche 0 : `vue[0x38]`, pas de 0xa0, eid ET type) : un
+//	  delta dont le slot appartient a une AUTRE vue. Le jeu n emprunte cette branche que pour
+//	  l aller-retour d etat de `FUN_1428e24bc`, et le 5.15.1 (d) a mesure ZERO cas sur 22 112
+//	  rejets lisibles de `bfecd02b`. On le garde, COMPTE, parce qu un zero mesure vaut mieux
+//	  qu une branche supprimee sur une seule paire de films.
+//
+// L appelant remet le curseur a la fin de l EN-TETE et clot la vue — l en-tete, lui, EST ecrit,
+// et c est ce que la vue suivante lira comme son propre en-tete de rejet.
 func rejetDeVue(typ int, slot uint32, w *World, cfg FrameConfig) bool {
-	return typ == recDelta && cfg.Profil.Grammaire.TablesParVue && !w.VuePossede(slot)
+	if typ != recDelta || !cfg.Profil.Grammaire.TablesParVue {
+		return false
+	}
+	if _, lie := w.ArchetypeForSlot(slot); !lie {
+		cfg.Obs.compterRejetHorsDatum()
+		return true
+	}
+	if !w.VuePossede(slot) {
+		cfg.Obs.compterRejetDeVue()
+		return true
+	}
+	return false
 }
 
 // corpsDeRecordNeuf traverse le corps d un record NEW, tente la reparation de chaine, et LIE

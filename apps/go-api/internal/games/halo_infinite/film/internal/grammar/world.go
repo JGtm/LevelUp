@@ -223,6 +223,28 @@ func (w *World) vueDeLEspaceDeNoms(ns uint32) int8 {
 	return vueInconnue
 }
 
+// BindDatum enregistre une liaison venue de la TABLE DE DATUMS de l image-cle
+// (`keyframe_datums.go`) : le SEUL fait qu elle porte est `slot -> archetype`.
+//
+// C est la forme minimale de ce que la branche vive de la boucle de records interroge
+// (`FUN_1406cbaa0`, cas DELTA : garde `*(uint *)(slot * 200 + t) != eid`, archetype lu en
+// `+0x04`). Elle est donc :
+//
+//	`Soft`   — ce n est pas une ancre de confirmation pour l inference de chaine : la table dit
+//	           l archetype, pas la frontiere d un record ;
+//	`GenAny` — la generation n est pas relue ici (l identifiant complet de l image-cle et les
+//	           deux bits de tete d un delta ne sont pas le meme champ, lecon du 5.13.1) ;
+//	`Vue` INCONNUE — la table de datums est celle du DECODEUR PARTAGE, pas d une vue.
+//
+// Elle ne pose AUCUNE position : `PosValid` reste faux, et le premier chemin absolu du slot
+// l amorcera comme pour toute autre liaison.
+func (w *World) BindDatum(slot, typeIndex uint32) {
+	s := slot & 0x3fffffff
+	w.slots[s] = slotState{
+		TypeIndex: typeIndex, FullID: s, Soft: true, GenAny: true, Vue: vueInconnue,
+	}
+}
+
 // BindSoft registers an INFERRED slot -> archetype binding (chain inference). Soft
 // bindings decode subsequent deltas like hard ones, but are NOT confirmation anchors
 // for further inference (a soft anchor could self-confirm a wrong chain).
