@@ -237,3 +237,8 @@ surface `film/replay` 260 -> 263 justifie.
 - [ ] Nuage des roles solo par match (`range_profiles` Timeseries), composant du lot R a une serie
 ### Lot Z2 — web Escouade : Denivele E1 (worktree `LevelUp-wt-ajsup-z2`)
 - [ ] Carte « Roles de hauteur » : un point par coequipier par match (`elevation_lobby_delta_m`), bandes Contrebas / A niveau / Hauteurs, tendance 5 matchs, meme composant que les roles de portee
+- D25 (2026-09-22) Denivele Timeseries = T5 (nuage brut un point par frag, distance x dz, deux cotes, halo p25-p75 par cote, medianes en gros points ; quantiles cote Go) ; remplace la carte « Denivele » de WeaponRangeSection.
+
+### Lot AA — Timeseries : Denivele T5 (worktree `LevelUp-wt-ajsup-aa`)
+- [ ] Go : `TimeseriesPageResponse.elevation` = points bruts (distance_m, delta_z_m signe cote joueur, time, match_id, weapon) par cote sur la fenetre + quartiles (p25, p50, p75 en distance et en dz) par cote + couverture
+- [ ] Web : nuage T5 remplacant la carte Denivele, halo, medianes, legende, infobulle (i)
