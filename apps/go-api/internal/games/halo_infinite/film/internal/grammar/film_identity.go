@@ -19,7 +19,8 @@ package grammar
 //	base+0x0CB434  0x100 bits     saveur en clair   ("release")
 //	base+0x0CB454  0x20 bits      identifiant de build (DAT_144e4ef50)
 //	base+0x0CB458  0x20 bits      changelist           (DAT_144e4ef54, " changelist: %d")
-//	base+0x0CB45C  UN SEUL BIT    booleen (FUN_1406d49c4) — TOUT CE QUI SUIT EST DECALE D'UN BIT
+//	base+0x0CB45C  UN SEUL BIT    LE CONTROLE DE CORRUPTION PAR COMPOSANT (FUN_1406d49c4)
+//	                              — TOUT CE QUI SUIT EST DECALE D'UN BIT (cf. lireControleDeCorruption)
 //	base+0x0CB460  0x800 bits x2  deux champs de nom de 256 octets (mesures VIDES)
 //	base+0x0CB660  0x20 bits      L'HORODATAGE DU MATCH (`_time64()` dans FUN_14299b674)
 //	base+0x0CB664  0x20 bits x3   trois u32 mesures nuls
@@ -104,6 +105,8 @@ const (
 	identFieldBytes = 0x20
 	// identBuildIDOff / identChangelistOff / identBoolOff : relatifs a la chaine de BUILD.
 	// `0x0CB454 - 0x0CB414 = 0x40`, `0x0CB458 - 0x0CB414 = 0x44`, `0x0CB45C - 0x0CB414 = 0x48`.
+	// LE BOOLEEN D UN BIT A UN NOM DEPUIS LE LOT 5.18.1 : c est le CONTROLE DE CORRUPTION PAR
+	// COMPOSANT (cf. [lireControleDeCorruption] et [profile.FilmIdentity.ControleDeCorruption]).
 	identBuildIDOff    = 0x40
 	identChangelistOff = 0x44
 	identBoolOff       = 0x48
@@ -172,9 +175,43 @@ func ReadFilmIdentity(chunk0 []byte) (profile.FilmIdentity, error) {
 		// C est elle que `replay` classe et publie en `coverage.decoder.registry` (lot 2.6.3).
 		RegistryFingerprint: RegistryFingerprint(reg),
 		RegistryNamedSlots:  RegistryNamedSlots(reg),
+		// LE BOOLEEN D UN BIT EST DESORMAIS LU, PAS SEULEMENT ENJAMBE (lot 5.18.1).
+		ControleDeCorruption: lireControleDeCorruption(chunk0, buildOff),
 	}
 	id.MatchStartUnix = lireHorodatage(chunk0, buildOff)
 	return id, nil
+}
+
+// lireControleDeCorruption rend LE BIT de `base+0x0CB45C` : le drapeau qui decide si chaque
+// composant present d un corps est suivi d un `R(1)` de garde (et, si ce bit vaut 1, d un
+// `R(32)` sentinelle `0x0bcddcba`).
+//
+// # OU IL EST, ET POURQUOI C EST CE BIT-LA
+//
+// L ecrivain et le lecteur du jeu se repondent au bit, et les deux fonctions sont LUES
+// (Ghidra, `HaloInfinite.exe`, base `0x140000000`, lecture seule, 2026-09-22) :
+//
+//	`FUN_14299b198` @14299b25b   `FUN_1406d49c4(writer, byte[film+0xCB45C])` = W(1)
+//	`FUN_14299ab50` @14299ac28   `FUN_1406cf008(lecteur)` = R(1) -> `film+0xCB45C`
+//
+// Les deux le posent EXACTEMENT apres la changelist (`R(32)` de `film+0xCB458`) et avant les
+// deux champs de nom de 256 octets. Tout ce qui precede est aligne sur l octet — le registre
+// (`0x659000` bits = `0xCB200` octets a partir de `+8`), la table par type (`0xF60` bits =
+// `0x1EC` octets), les trois chaines de `0x100` bits, les deux `u32` — donc les offsets de
+// STRUCTURE de l ecrivain sont aussi les offsets d OCTET du flux, et le bit du drapeau est le
+// bit de poids fort de l octet `buildOff + identBoolOff`. C est le meme bit que
+// [identDecalageBit] enjambe depuis le lot 1.5.1 : la section 2 le franchissait sans le lire.
+//
+// UNE LECTURE HORS BORNES REND FAUX, ce qui est la valeur du constructeur du singleton
+// (`FUN_140eff23c` : `_DAT_144c23320 = 0` couvre `0x144c23326`). L appelant qui a besoin de
+// distinguer « absent » de « faux » lit [ErrNoFilmIdentity] : un film sans section
+// d identification n a pas ce bit.
+func lireControleDeCorruption(d []byte, buildOff int) bool {
+	bit := (buildOff + identBoolOff) * 8
+	if bit < 0 || (bit+1+7)/8 > len(d) {
+		return false
+	}
+	return kfReadBits(d, bit, 1) == 1
 }
 
 // lireHorodatage lit les 32 bits de `_time64()` : ils suivent le booleen d'un bit et les deux

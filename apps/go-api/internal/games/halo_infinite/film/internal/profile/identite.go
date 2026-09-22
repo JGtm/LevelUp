@@ -67,4 +67,25 @@ type FilmIdentity struct {
 	// BodyBit : le PREMIER BIT du corps (`FUN_1407ec560`), decalage d'un bit compris. C'est la
 	// borne basse de tout balayage du corps — la table des joueurs en particulier.
 	BodyBit int
+	// ControleDeCorruption : LE BIT DE `base+0x0CB45C`, ET CE QU IL COMMANDE (lot 5.18.1).
+	//
+	// C est le booleen d un bit que la carte de `film_identity.go` portait sans nom depuis le
+	// lot 1.5.1 — celui qui decale d un bit tout ce qui le suit. Sa VALEUR est lue chez
+	// l ecrivain, et elle commande la grammaire des corps a composants :
+	//
+	//	ECRITURE  `FUN_14299b198` @14299b25b : `W(1)` de `film+0xCB45C` (`FUN_1406d49c4`),
+	//	          apres le buildID et la changelist, avant les deux champs de nom.
+	//	LECTURE   `FUN_14299ab50` @14299ac28 : `R(1)` (`FUN_1406cf008`) range en `film+0xCB45C`.
+	//	REPORT    `FUN_1428e219c` @1428e2239 : `*(char *)(singleton + 0x1AE) = film[0xCB45C]`,
+	//	          sous la garde `*film == 0x29` (la version MAJEURE du film = celle du build).
+	//	USAGE     `FUN_14076cea8()` rend `DAT_144c23326` (= `DAT_144c23178 + 0x1AE`) en rejeu de
+	//	          film, et `FUN_14076cb60` s en sert comme `extra` : apres CHAQUE composant
+	//	          present, un `R(1)` de garde et, si ce bit vaut 1, un `R(32)` sentinelle
+	//	          `0x0bcddcba` (« entity component corrupt »). Idem `FUN_142e2c690` sur le
+	//	          chemin d etat complet.
+	//
+	// C est donc un drapeau de GRAMMAIRE, pas une metadonnee : leve, il coute au moins un bit
+	// par composant present. Le depot le lisait a `false` par defaut (`GrammaireBalayage`) ;
+	// depuis le lot 5.18.2 il vient d ICI, donc du film (ADR 0034 : le film est autoportant).
+	ControleDeCorruption bool
 }

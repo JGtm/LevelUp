@@ -138,6 +138,32 @@ func ProfilDeDepartPourCarte(carte *profile.MapQuantEntry) (grammar.ProfilDeBala
 	return p, p.LargeursObjetDuMonde() != avant
 }
 
+// avertirReplisDeCalibration DIT les replis que la calibration a poses. Deux, et chacun est
+// NOMME au registre — jamais de degradation silencieuse (CLAUDE.md regle 3).
+//
+//	repli_carte_absente_largeurs_par_defaut        les largeurs conservees sont celles d UNE
+//	                                               carte (l entree `cliffhanger` du catalogue)
+//	                                               appliquees a celle-ci.
+//	repli_controle_corruption_section_absente      le film ne porte pas de section
+//	                                               d identification, donc pas le bit de
+//	                                               `chunk_00 + 0x0CB45C` qui decide du `R(1)`
+//	                                               de garde par composant : l invariant tient.
+//
+// EXTRAITE DE `prepare` AU LOT 5.18.2 : le second avertissement y portait la fonction a 84
+// lignes, au-dela du seuil de 80 du depot (ratchet `archlint/film_function_length_test.go`).
+func (c *decodeCtx) avertirReplisDeCalibration(ctx context.Context) {
+	if !c.calib.CarteLue {
+		slog.WarnContext(ctx, "killsource: carte du match absente — la marche des morts lit ses "+
+			"positions aux largeurs d axe PAR DEFAUT, celles d une autre carte",
+			"film", c.name, "largeurs", c.calib.LueAxisW, "indexW", c.calib.LueIndexW)
+	}
+	if !c.calib.ControleDeCorruptionLu {
+		slog.WarnContext(ctx, "killsource: le film ne declare pas son controle de corruption par "+
+			"composant (pas de section d identification) — la grammaire garde son invariant",
+			"film", c.name)
+	}
+}
+
 // prepare : les cinq etapes qui precedent la publication. Aucune ne consulte l arme.
 func (c *decodeCtx) prepare(ctx context.Context, src *source.Film) error {
 	var err error
@@ -191,14 +217,7 @@ func (c *decodeCtx) prepare(ctx context.Context, src *source.Film) error {
 	}
 	tl.rewind()
 	c.calib = calibrate(c.film, tl, c.opts.Views, c.opts.Carte)
-	if !c.calib.CarteLue {
-		// REPLI NOMME ET COMPTE (`repli_carte_absente_largeurs_par_defaut`) : les largeurs
-		// conservees sont celles d UNE carte — l entree `cliffhanger` du catalogue — appliquees
-		// a celle-ci. Jamais de degradation silencieuse (CLAUDE.md regle 3).
-		slog.WarnContext(ctx, "killsource: carte du match absente — la marche des morts lit ses "+
-			"positions aux largeurs d axe PAR DEFAUT, celles d une autre carte",
-			"film", c.name, "largeurs", c.calib.LueAxisW, "indexW", c.calib.LueIndexW)
-	}
+	c.avertirReplisDeCalibration(ctx)
 	if err = ctx.Err(); err != nil {
 		return err
 	}

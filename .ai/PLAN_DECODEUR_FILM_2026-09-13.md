@@ -8326,6 +8326,153 @@ contre 4 469 dans la reference — et 1 489 est EXACTEMENT la valeur que le lot 
 les divergences sont celles de la reference perimee, pas des siennes. Decodage : 14,8 s,
 pic 0,19 Gio, un film a la fois.
 
+### Post-chantier — lot 5.18 (le controle de corruption lu dans le film), branche `feat/decfilm-68`
+
+Sur les decouvertes D1 et D2 du lot 5.17. METHODE : l ecrivain d abord (Ghidra lecture seule,
+objdump quand le decompilateur perd une largeur), la fermeture des paquets comme seul gate, la
+mesure seulement pour VERIFIER un maillon lu, un commit par maillon. Note de grammaire :
+`.ai/V7.5/film_re/NOTE_5_18_CONTROLE_DE_CORRUPTION_2026-09-22.md`.
+
+- [x] **5.18.1 — LE CONTROLE DE CORRUPTION PAR COMPOSANT EST UN BIT DU FILM, ET IL VAUT ZERO SUR
+  TOUT LE CACHE.** (`b867e835b`)
+
+  Le maillon est lu de bout en bout, et il n a AUCUN trou :
+
+  | maillon | adresse | ce qu il fait |
+  |---|---|---|
+  | l ECRIVAIN de `chunk_00` | `FUN_14299b198` @14299b25b | `FUN_1406d49c4(writer, byte[film+0xCB45C])` = **W(1)** |
+  | le LECTEUR de `chunk_00` | `FUN_14299ab50` @14299ac28 | `FUN_1406cf008(lecteur)` = **R(1)** -> `film+0xCB45C` |
+  | le REPORT au singleton | `FUN_1428e219c` @1428e2239 | `*(char *)(singleton + 0x1AE) = (char)film[0x32d17]`, sous la garde `*film == 0x29` (la version MAJEURE du film) |
+  | la LECTURE en rejeu | `FUN_14076cea8` @14076ceba | rend `DAT_144c23326` (= `DAT_144c23178 + 0x1AE`) |
+  | l USAGE | `FUN_14076cb60` / `FUN_142e2c690` | `R(1)` de garde apres CHAQUE composant present ; si 1, `R(32)` sentinelle `0x0bcddcba` |
+
+  Pseudo-code du lecteur d en-tete, largeurs prises en `R9D` au desassemblage : `R(0x20)` film+0
+  (majeure) · `R(0x20)` film+4 (format) · `R(FUN_141cfff30(format))` film+8 (le REGISTRE,
+  `0x659000` bits) · `R(FUN_141cffe20(format))` film+0xCB208 (la TABLE PAR TYPE, `0xF60` bits) ·
+  `R(0x100)` x3 (version / build / saveur) · `R(0x20)` buildID · `R(0x20)` changelist ·
+  **`R(1)` film+0xCB45C** · `FUN_14299bcb0`. L appelant `FUN_14299ac50` enchaine onze champs puis
+  `FUN_1407ee138(lecteur, film+0xCE690, format)` — LA TABLE DES 32 JOUEURS du lot 1.5.2.
+
+  **LA POSITION EST CELLE QUE LE DEPOT ENJAMBAIT DEJA** : tout ce qui precede est aligne sur
+  l octet (`8 + 0x659000/8 = 0xCB208`, `+ 0xF60/8 = 0xCB3F4`, `+ 3x0x20 = 0xCB454`, `+ 4 + 4 =
+  0xCB45C`), donc le drapeau est le bit de poids fort de l octet `buildOff + identBoolOff` — le
+  « booleen d un bit » du lot 1.5.1, celui dont `identDecalageBit` decale tout ce qui suit. Le lot
+  le NOMME et le LIT (`lireControleDeCorruption`, `FilmIdentity.ControleDeCorruption`).
+
+  **AUCUN AUTRE ECRIVAIN** : le singleton remet le champ a zero a la construction
+  (`FUN_140eff23c`, `_DAT_144c23320 = 0`) et a chaque chargement (`FUN_140eff3a8`,
+  `*(u16 *)(this + 0x1ae) = 0`) ; `FUN_1428e219c` est le seul a le poser — un seul site
+  d instruction sur 13 607 754 ecrit `[x + 0x1ae]` dans ce chemin, et son vtable
+  (`0x145620160`) est celui de `FUN_1428e1c0c` (`0x1456200e8`), donc son `this` EST le singleton.
+
+  | film | build / format | buildOff | octet `0xCB45C` | drapeau |
+  |---|---|---:|---|---|
+  | `dad793c7` | `HI_1_13_0` / 27 | `0xCB414` | `00000000` | **faux** |
+  | `bfecd02b` | `HI_1_13_0` / 27 | `0xCB414` | `00000000` | **faux** |
+
+  Cache entier : **0 leve sur 1 605 films lus** (5 sans section), 8 builds, 5 formats. Le defaut
+  faux du depot etait donc JUSTE — mais par hasard : c etait une bascule d instrument, rien ne
+  lisait le film. **D1 (5.17) est ECARTE par une LECTURE, pas par une absence.**
+
+- [x] **5.18.2 — LE PORT : LE DRAPEAU VIENT DU FILM, ET RIEN NE PEUT LE LUI REPRENDRE.**
+  (`ca30664f2`)
+
+  `grammaireSousFilm(g, profile.Profile)` est LA REGLE, ecrite une fois, avec deux portes parce
+  que le depot a deux chemins : `FilmContext.ProfilDeBalayage()`, qui DERIVE le drapeau a chaque
+  rendu, et `grammar.GrammaireSousFilm(bal, film)` pour `killsource`, qui part de l invariant sans
+  contexte. **Le drapeau ne vit PAS dans `FilmContext.bal`** : `PoserProfilDeBalayage` remplace le
+  profil ENTIER et `replay.poserProfilPuisCarte` y installe le profil calibre par `killsource` —
+  ou l INVARIANT quand le kill-feed n a pas pu se decoder. Range dans `bal`, il serait efface par
+  ce geste, sans un mot. `profile.Profile.IdentityRead()` distingue « le film declare faux » de
+  « le film ne declare rien ».
+
+  **REPLI NOMME, ORDONNE, DATE, COMPTE** : `repli_controle_corruption_section_absente` (registre
+  `filmdec`, `apres_lecture` / `section_absente` — `ReadFilmIdentity` TOURNE d abord et rend
+  `ErrNoFilmIdentity`). Population bornee : les 5 films du cache sans section d identification,
+  deja mis de cote par `ErrUnknownBuild`. Compte par `FilmContext.ControleDeCorruptionRepli`,
+  avertissement par film dans `killsource` (`avertirReplisDeCalibration`).
+
+  **GATE DE TRAME JOUE**, carte `snowbound` — celle qui reproduit le tableau du 5.16.4 a chaque
+  chiffre ; le controle d indifference est NEGATIF (`streets` sur `dad793c7` : 5 285 fermes,
+  72 debordements), donc la carte n a pas ete choisie au hasard.
+
+  | mesure | `dad793c7` avant | apres | `bfecd02b` avant | apres |
+  |---|---:|---:|---:|---:|
+  | paquets a reste NUL | 5 354 / 5 365 | **5 354** | 2 884 / 30 387 | **2 884** |
+  | debordements | 2 | **2** | 32 | **32** |
+  | records rendus | 5 641 | **5 641** | 176 786 | **176 786** |
+  | records `ti=35` | 75 | **75** | 129 572 | **129 572** |
+  | desyncs `ti=35` | 0 | **0** | 4 | **4** |
+  | rejets hors datum | 2 | **2** | 23 769 | **23 769** |
+  | rejets de vue (repli) | 0 | **0** | 0 | **0** |
+  | liaisons de datum | 54 | **54** | 10 | **10** |
+  | records fantomes | (non publie) | 1 | (non publie) | 31 |
+
+  Chiffre pour chiffre : **le port ne deplace RIEN**, resultat attendu d un drapeau qui vaut zero
+  partout. Les fantomes (trace qui FINIT au-dela du payload) ne sont pas ceux du 5.14 (records
+  d un rang autre que la vue B, 13 -> 0 et 304 -> 0) : ce sont les records des paquets qui
+  DEBORDENT, leur compte suit les debordements, et l A/B `MOUV516_DATUMS=0` en rend 1 aussi sur
+  `dad793c7` — ils sont anterieurs a la table de datums.
+
+  `replay-equiv -films bcb6d393` sans `-update` : **les SIX memes ecarts, aux memes valeurs**
+  (`movementStates` 1 737, artefact 1 929 397). D5 (5.14) re-mesure : les **21 index de controle
+  epars** de la vue C sont INCHANGES (29 classes, 0 a 7 denses, 8 a 31 a 2-27 entrees) ; le rang 1
+  desynchronise mesure **1 111** paquets — le 1 110 du plan date du 5.14, et l unite d ecart vient
+  du **5.16.4** (`m533bLierMonde` appelle `LierTableDeDatums` depuis ce lot-la).
+
+  `grammar.Rev` -> **`grammar-2026-09-22.7`** + chronique : la couche LIT une decision qu elle
+  ignorait. **`facts.Rev` NE MONTE PAS** (decision ecrite : sur chaque film du parc la valeur lue
+  egale l ancien defaut, donc aucune ligne de `match_kill_events` ne se redecoderait autrement —
+  **AUCUN backlog killsource ouvert**). `profile.Rev` ne monte pas (champ PORTEUR et accesseur,
+  pas une ligne de table). `replay.SchemaVersion` reste a **67**. Goldens refiges par leur porte :
+  `profile_rev`, `grammar_rev`, `facts_rev`, `types/shapes`, `minibobine`, 8 fixtures de contrat +
+  manifeste (2 770 829 octets, plafond 3 Mio tenu).
+
+- [x] **5.18.3 — CE QUE LE TROU PORTAIT : RIEN, ET LE TABLEAU PAR ARCHETYPE LE DIT.**
+
+  `TestGate516Contenu` sur `bfecd02b` : **207 etiquettes de composant**, comptes identiques au
+  5.16.5 — `ti=35` 129 572, `ti=4` 28 531, `ti=40` 5 337, `ti=37` 4 551, `ti=42` 2 804, `ti=2`
+  2 063, `ti=10` 1 025, `ti=41` 696, `ti=32` 329, `ti=0` 295, `ti=43` 104, `ti=38` 62, `ti=47` 56,
+  et 43 autres `ti` sous 40 records. **Aucun archetype nouveau, aucune etiquette nouvelle, AUCUN
+  canal d etat de bipede** — la seule reponse possible quand le drapeau lu egale l ancien defaut.
+  Pas de montee de schema, donc : pas de chronique v68, pas de fixture `replay_schema_68_*`, pas
+  de jumeaux `replaydoc`/`replayview`, pas de zod, pas d OpenAPI.
+
+- [!] **GATE — LES PAQUETS NE FERMENT PAS A 100 %, ET LE LOT DIT POURQUOI SANS INVENTER UN
+  SUSPECT.** `dad793c7` 5 354/5 365, `bfecd02b` 2 884/30 387, INCHANGES. Le lot n avait qu un
+  suspect nomme — D1 (5.17) — et il l a LU : le bit existe, il vaut zero, sur les deux temoins et
+  sur les 1 605 films du cache. Ce n est pas une conclusion negative, c est une mesure : la cause
+  du residu n est pas le controle de corruption. D2 (5.17) tombe de la meme facon, par ses
+  ecrivains. Le §4 nomme ce qui reste, par adresse — et le premier de la liste est le **type 9**,
+  dont la taille suit exactement le rapport des residus entre les deux temoins.
+
+  Gates sans decodage, tous verts : `gofmt`, `go build ./...`, `go vet` (+ `research`),
+  `go test -count=1` sur `./internal/games/halo_infinite/... ./internal/archlint/
+  ./internal/replaybuild/ ./internal/domain/replaydoc/ ./internal/service/replayview/
+  ./contracttest/ ./internal/api/` (0 `--- FAIL`), `go test -race` sur `grammar` (359 s),
+  `golangci-lint run ./internal/games/halo_infinite/film/...` 0 issue, ratchets (taille de
+  fichier — `film_context.go` repasse sous 500 lignes par la scission
+  `controle_corruption_du_film.go` ; longueur de fonction — `prepare` repasse sous 80 par
+  l extraction de `avertirReplisDeCalibration` ; replis au registre ; `devant_la_lecture`).
+
+#### §4 du lot 5.18 — DECOUVERTES HORS PERIMETRE, CONSIGNEES ET NON TRAITEES
+
+| # | decouverte | ou la reprendre |
+|---|---|---|
+| **D1 (5.18)** | **LE TYPE 9 RESTE LE SEUL BLOC DONT LA TAILLE SUIT LE RESIDU** — 631 561 octets sur `bfecd02b` contre 4 sur `dad793c7`, saute par le repartiteur lui-meme (`FUN_1428e22c0`, branche `sVar2 == 9` : `*(int *)(*(param_1+0x130) + 0xf8) += *(int *)(paquet + 2)`). Avec D1 (5.17) ecarte et D1 (5.16) deja ecarte au 5.17, c est le suspect qui reste. | **le lot du residu de `bfecd02b`** : lire le type 9 (son handler dit qu il n est PAS destine a ce repartiteur — il faut trouver QUI le consomme) |
+| **D2 (5.18)** | **`DAT_144c232e1` (`+0x169`) N EST PAS UN CHAMP DU FILM** : ses deux seuls ecrivains sont dans `FUN_1428e24bc` (@1428e251c leve, @1428e2714 rabaisse), autour de l aller-retour serialise. C est une PORTEE de re-entrance ; hors d elle il vaut zero, donc le filtre de composants et la substitution de niveau de `FUN_14076cb60` sont ACTIFS en rejeu. **D2 (5.17) est REFUTE par ses ecrivains, et il n y a rien a porter** (le 5.17.2 avait deja etabli que le filtre n a pas d image hors ligne). | personne : la question est close |
+| **D3 (5.18)** | **LE GATE DE TRAME N EST PAS INDIFFERENT A LA CARTE, ET AUCUN INSTRUMENT NE LE DIT** : sur `dad793c7`, `snowbound` rend 5 354 paquets fermes et 2 debordements, `streets` 5 285 et 72. Le report D3 (5.11) disait qu une carte substitut donne des positions fausses SANS ERREUR ; il faut y ajouter qu elle donne aussi un GATE faux sans erreur. Le tableau du 5.16.4 n a pu etre reproduit qu en retrouvant `snowbound` par essai. | le lot qui outillera les gates : `TestGate516` doit NOMMER la carte qu il a jouee dans son rendu, et refuser de publier un tableau si la carte n est pas celle du match |
+| **D4 (5.18)** | **UN RECORD FANTOME SUR `dad793c7`, TRENTE ET UN SUR `bfecd02b`** — records dont la trace FINIT au-dela du payload, c est-a-dire ceux des paquets qui debordent (2 et 32). Le tableau du 5.16.4 ne portait pas cette ligne ; l A/B `MOUV516_DATUMS=0` en rend 1 aussi, donc ils sont anterieurs a la table de datums. | le lot du residu : un fantome est un debordement vu par l autre bout, et les deux se fermeront ensemble |
+
+#### §5 du lot 5.18 — ETAT DE CLOTURE
+
+| item | statut | ce qui est etabli |
+|---|---|---|
+| 5.18.1 | `[x]` | le maillon COMPLET (W(1) / R(1) / copie / lecture / usage), la position derivee sans un bit de reste, l unicite de l ecrivain prouvee par un balayage des 13,6 M d instructions, et la VALEUR : **faux sur les deux temoins et sur 1 605 films du cache** |
+| 5.18.2 | `[x]` | la regle ecrite une fois, deux portes, le drapeau DERIVE (un profil pose ne peut pas l effacer, ratchet), le repli nomme au registre et compte ; gate de trame joue et IDENTIQUE au 5.16.4 chiffre pour chiffre ; `replay-equiv` et D5 (5.14) re-mesures ; `grammar.Rev` `.7`, `facts.Rev` et `profile.Rev` inchangees, schema 67 |
+| 5.18.3 | `[x]` | 207 etiquettes, memes comptes par archetype : **rien de nouveau n est lu**, et c est la consequence necessaire d un drapeau nul |
+| GATE | `[!]` | 100 % NON ATTEINT et le residu n est pas reduit — mais le suspect du lot a ete LU et ecarte par sa valeur, pas par une absence. Le §4 nomme ce qui reste, le type 9 en tete |
+
 ### Post-chantier — lot 5.17 (le masque des composants retenus et le paquet de type 8), branche `feat/decfilm-67`
 
 Sur la decouverte D1 du lot 5.16. METHODE : l ecrivain d abord (Ghidra lecture seule, objdump
