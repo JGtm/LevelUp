@@ -2,14 +2,14 @@
  * WeaponRangeSection.options.test — CE QUE LA SECTION INJECTE VRAIMENT DANS ECHARTS.
  *
  * POURQUOI CE FICHIER EXISTE (revue adversariale du lot 5, 2026-09-06). Les tests purs
- * (`components/charts/weaponRangeChart.test.ts`, `_weaponElevationChart.test.ts`) prouvent que les deux
+ * (`components/charts/weaponRangeChart.test.ts`, `_elevationCloudChart.test.ts`) prouvent que les deux
  * constructeurs honorent ce qu'on leur INJECTE ; le test de composant, lui, monte la section
  * avec ECharts mocké et ne regarde jamais l'option produite. Entre les deux, personne ne
  * vérifiait le CÂBLAGE : échanger les encres des frags et des morts, les libellés
  * d'infobulle, ou passer `tc.axisLabel` là où `tc.card` est attendu laissait tout vert.
  *
  * Ici on capture la prop `option` que `ChartCard` finit par passer à `echarts-for-react` —
- * donc l'option RÉELLE, après `useWeaponRangeOptions`, `useMemo` et résolution des tokens.
+ * donc l'option RÉELLE, après `useWeaponRangeOption` / `useElevationOption`, `useMemo` et résolution des tokens.
  * La palette d'accessibilité est appliquée pour de bon (`applyPalette`) : sans elle,
  * `resolveToken` rend la chaîne vide et deux couleurs échangées restent égales.
  */
@@ -19,7 +19,7 @@ import { screen } from '@testing-library/react'
 import { applyPalette, _resetActivePalette } from '@/lib/accessibility/applyPalette'
 import { defaultPalette } from '@/lib/accessibility/palettes/default'
 import { getEChartsThemeColors } from '@/lib/echarts/themeColors'
-import type { SynthesisWeaponRange, WeaponRangeSide } from '@/lib/api/types'
+import type { ElevationCloudBlock, SynthesisWeaponRange, WeaponRangeSide } from '@/lib/api/types'
 import { renderWithProviders } from '@/test/render-utils'
 import { useAppShellStore } from '@/stores/appShellStore'
 
@@ -34,6 +34,7 @@ interface EChartsOption {
   series: {
     name?: string
     itemStyle?: { color?: string; borderColor?: string }
+    data?: unknown[]
     renderItem?: (p: { dataIndex: number }, api: FakeApi) => RenderedGroup
   }[]
 }
@@ -53,12 +54,6 @@ vi.mock('echarts-for-react', () => ({
   },
 }))
 
-/** La normalisation de couleur est SONDÉE : jsdom n'a pas de canvas, la vraie fonction y rend
- *  son entrée telle quelle et on ne saurait pas dire si elle a été appelée. */
-vi.mock('@/lib/echarts/cssColorToHex', () => ({
-  cssColorToHex: vi.fn((css: string) => `normalise(${css})`),
-}))
-import { cssColorToHex } from '@/lib/echarts/cssColorToHex'
 
 const side = (o: Partial<WeaponRangeSide>): WeaponRangeSide => ({
   measured: 10,
@@ -103,9 +98,41 @@ const RANGE: SynthesisWeaponRange = {
   below_threshold_deaths: [],
 }
 
+/**
+ * Le nuage de la carte voisine (D25). Un point de chaque côté suffit : ce fichier teste le
+ * CÂBLAGE (encres, libellés, infobulle), pas la géométrie — elle a ses tests purs.
+ */
+const ELEVATION: ElevationCloudBlock = {
+  kills: [{ distance_m: 13.6, delta_z_m: 2.4, match_id: 'm1', time_ms: 1000, weapon: 'hinf_br75' }],
+  deaths: [{ distance_m: 16.4, delta_z_m: -2.5, match_id: 'm1', time_ms: 2000, weapon: 'hinf_br75' }],
+  kills_summary: {
+    distance_p25: 7.1,
+    distance_p50: 13.6,
+    distance_p75: 24.9,
+    delta_z_p25: 0.5,
+    delta_z_p50: 2,
+    delta_z_p75: 4,
+    n: 281,
+  },
+  deaths_summary: {
+    distance_p25: 8.9,
+    distance_p50: 16.4,
+    distance_p75: 29.7,
+    delta_z_p25: -4,
+    delta_z_p50: -1.9,
+    delta_z_p75: 0.5,
+    n: 402,
+  },
+  weapon_labels: { hinf_br75: { label: 'Fusil de combat BR75', label_en: 'BR75 Battle Rifle' } },
+  measured_kills: 281,
+  total_kills: 1602,
+  measured_deaths: 402,
+  total_deaths: 1455,
+}
+
 /** Monte la section et rend les deux options, dans l'ordre des graphes. */
 async function mountAndCapture(range: SynthesisWeaponRange = RANGE) {
-  renderWithProviders(<WeaponRangeSection range={range} />)
+  renderWithProviders(<WeaponRangeSection range={range} elevation={ELEVATION} />)
   // Les deux graphes sont chargés en `lazy` : attendre les rend déterministes. S'ils
   // n'arrivent pas (série vide -> état « Aucune donnée »), ce `find` échoue, et c'est voulu.
   const mocks = await screen.findAllByTestId('echarts-mock')
@@ -166,32 +193,40 @@ describe('les options injectées — graphe de portée', () => {
   })
 })
 
-describe('les options injectées — graphe de dénivelé', () => {
-  const colorOf = (option: EChartsOption, name: string) =>
-    option.series.find((s) => s.name === name)?.itemStyle?.color
+describe('les options injectées — nuage de dénivelé (D25)', () => {
+  const serieNommee = (option: EChartsOption, name: string) =>
+    option.series.find((s) => s.name === name)
 
-  it('la rampe du dénivelé est INDÉPENDANTE des encres frags/morts', async () => {
-    // Une seule teinte, du clair (d'en bas) au foncé (d'en haut). Elle n'emprunte PAS
-    // l'encre des morts : un segment rouge « d'en haut » se lirait comme un jugement, alors
-    // que le dénivelé ne dit que d'où part le tir.
+  it('les deux côtés portent les encres des stats de combat, comme la portée', async () => {
+    // MÊMES ENCRES QUE LA CARTE VOISINE (D25) : le nuage a deux côtés, pas trois classes.
+    // L'ancienne rampe « d'en haut / à niveau / d'en bas » est partie avec les barres
+    // empilées par arme — la position se lit maintenant sur l'axe des ordonnées.
     const { elevation } = await mountAndCapture()
-    expect(colorOf(elevation.option, "d'en haut (> +1 m)")).toBe(defaultPalette['chart-series-3'])
-    expect(colorOf(elevation.option, "d'en bas (< −1 m)")).toBe(defaultPalette['chart-series-1'])
-    expect(colorOf(elevation.option, "d'en haut (> +1 m)")).not.toBe(defaultPalette['outcome-loss'])
+    expect(serieNommee(elevation.option, 'Mes frags')?.itemStyle?.color).toBe(
+      defaultPalette['stat-kills'],
+    )
+    expect(serieNommee(elevation.option, 'Mes morts')?.itemStyle?.color).toBe(
+      defaultPalette['stat-deaths'],
+    )
   })
 
-  it('« à niveau » passe par la NORMALISATION de couleur — zrender ne parse pas oklch', async () => {
+  it('les médianes sont cernées du fond de CARTE, jamais du gris des libellés', async () => {
     const { elevation } = await mountAndCapture()
     const tc = getEChartsThemeColors()
-    expect(cssColorToHex).toHaveBeenCalledWith(tc.axisLabel)
-    expect(colorOf(elevation.option, 'à niveau')).toBe(`normalise(${tc.axisLabel})`)
+    const mediane = serieNommee(elevation.option, 'médiane frags +2,0 m')
+    expect(mediane?.itemStyle?.borderColor).toBe(tc.card)
+    expect(mediane?.itemStyle?.borderColor).not.toBe(tc.axisLabel)
   })
 
-  it('les segments sont cernés du fond de carte, jamais du gris des libellés', async () => {
+  it('l’infobulle d’un point nomme son côté, sa distance, son dénivelé SIGNÉ et son arme', async () => {
     const { elevation } = await mountAndCapture()
-    const tc = getEChartsThemeColors()
-    const borders = elevation.option.series.map((s) => s.itemStyle?.borderColor)
-    expect(new Set(borders)).toEqual(new Set([tc.card]))
-    expect(borders).not.toContain(tc.axisLabel)
+    const html = elevation.option.tooltip.formatter({
+      value: [13.6, -2.5, 'deaths', 'm1', 'hinf_br75'],
+    })
+    expect(html).toContain('Mes morts')
+    expect(html).toContain('13,6 m')
+    // Le signe vient du contrat, il n'est jamais recalculé côté web.
+    expect(html).toContain('2,5 m')
+    expect(html).toContain('Fusil de combat BR75')
   })
 })

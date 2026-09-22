@@ -441,8 +441,8 @@ fr = "Dénivelé"
 en = "Elevation"
 
 [synthesis.weapon_range.elevation_subtitle_detail]
-fr = "D'où vous avez fragué et d'où l'on vous a fragué, à ±1 m près. Deux barres par arme : vos frags au-dessus, vos morts en dessous."
-en = "Where you killed from and where you were killed from, to within ±1 m. Two bars per weapon: your kills on top, your deaths below."
+fr = "Le dénivelé est votre hauteur moins celle de l'adversaire au moment du coup fatal. Le signe est toujours le vôtre : positif, vous étiez au-dessus, pour un frag comme pour une mort. Seuls les engagements dont les deux positions sont décodées y figurent, et le pied de carte en donne le compte."
+en = "Elevation is your height minus your opponent's at the moment of the killing blow. The sign is always yours: positive means you were above, for a kill as for a death. Only engagements whose two positions are decoded appear here, and the card footer gives the count."
 
 [synthesis.weapon_range.legend_label]
 fr = "Légende"
@@ -468,17 +468,48 @@ en = "p10 · median · p90"
 fr = "aucune mesure"
 en = "no measurement"
 
-[synthesis.weapon_range.elev_above]
-fr = "d'en haut (> +1 m)"
-en = "from above (> +1 m)"
+# Nuage « distance × dénivelé » (D25, proposition T5). Les trois classes « d'en haut / à
+# niveau / d'en bas » sont parties avec les barres empilées par arme : le nuage montre la
+# position, il ne la classe pas.
+[synthesis.weapon_range.elev_axis_x]
+fr = "Distance de l'engagement"
+en = "Engagement distance"
 
-[synthesis.weapon_range.elev_level]
-fr = "à niveau"
-en = "level"
+[synthesis.weapon_range.elev_axis_y]
+fr = "Dénivelé (m)"
+en = "Elevation (m)"
 
-[synthesis.weapon_range.elev_below]
-fr = "d'en bas (< −1 m)"
-en = "from below (< −1 m)"
+[synthesis.weapon_range.elev_level_band]
+fr = "À niveau (± 1 m)"
+en = "Level (± 1 m)"
+
+[synthesis.weapon_range.elev_point_kill]
+fr = "Un frag"
+en = "A kill"
+
+[synthesis.weapon_range.elev_point_death]
+fr = "Une mort"
+en = "A death"
+
+[synthesis.weapon_range.elev_quartiles]
+fr = "Du 1er au 3e quartile"
+en = "1st to 3rd quartile"
+
+[synthesis.weapon_range.elev_medians]
+fr = "Médianes"
+en = "Medians"
+
+[synthesis.weapon_range.elev_median_kills]
+fr = "médiane frags {value}"
+en = "kills median {value}"
+
+[synthesis.weapon_range.elev_median_deaths]
+fr = "médiane morts {value}"
+en = "deaths median {value}"
+
+[synthesis.weapon_range.elev_coverage]
+fr = "{mk, number} frags mesurés sur {tk, number}, {md, number} morts sur {td, number}"
+en = "{mk, number} kills measured of {tk, number}, {md, number} deaths of {td, number}"
 
 [synthesis.weapon_range.table_summary]
 fr = "Voir en tableau"
@@ -555,12 +586,14 @@ en = "You close the distance in {pct} of kills"
 fr = "Aucune arme n'atteint le seuil de {min, number} mesures sur cette période : les portées mesurées restent trop rares pour être publiées arme par arme."
 en = "No weapon reaches the {min, number} measurement threshold over this period: measured ranges are still too rare to publish weapon by weapon."
 
-# État vide de la carte « Dénivelé » — sa PROPRE phrase (finitions 2026-09-13). La carte
-# reprenait mot pour mot l'état vide de « Portée par arme » (« les portées mesurées restent
-# trop rares… ») : sur la carte du dénivelé, la phrase parlait d'autre chose que son graphe.
-[synthesis.weapon_range.empty_below_threshold_elevation]
-fr = "Aucune arme n'atteint le seuil de {min, number} mesures sur cette période : les dénivelés mesurés restent trop rares pour être publiés arme par arme."
-en = "No weapon reaches the {min, number} measurement threshold over this period: measured elevations are still too rare to publish weapon by weapon."
+# État vide NOMMÉ de la carte « Dénivelé ». Le nuage (D25) ne dépend d'AUCUN seuil de
+# publication — la dimension arme ne compte pas (D23-b) — donc la seule cause d'une carte
+# vide est l'absence de frag mesuré sur la fenêtre : un film non décodé, jamais un seuil.
+# L'ancienne phrase (« aucune arme n'atteint le seuil de N mesures ») décrivait les barres
+# empilées par arme, qui n'existent plus.
+[synthesis.weapon_range.elevation_empty]
+fr = "Aucun engagement mesuré sur cette période : les positions des frags ne sont pas encore décodées pour ces matchs."
+en = "No measured engagement over this period: kill positions are not decoded yet for these matches."
 
 # ── Records de distance par arme (la règle) — plan PLAN_RECORDS_DISTANCE_2026-09-20.md.
 # Aucune clé ne dit « portée de l'arme » : c'est un usage mesuré du joueur. Ce qui est écarté

@@ -10,10 +10,13 @@
  * (`.ai/V7.5/MAQUETTE_PORTEE_ENGAGEMENTS_2026-09-06.html`, lot 5 du plan
  * `.ai/PLAN_DUELS_PORTEE_2026-09-06.md`) : quatre tuiles de tête, puis UNE carte qui porte
  * les deux graphes jumeaux sur les MÊMES lignes — la portée (deux bâtons p10→p90 par arme,
- * frags au-dessus, morts en dessous) et le dénivelé (deux barres empilées à 100 %).
+ * frags au-dessus, morts en dessous). La carte voisine, « Dénivelé », a changé de forme le
+ * 2026-09-22 (décision D25) : ses barres empilées par arme ont cédé la place au NUAGE
+ * « distance × dénivelé » de la proposition T5 — un point par frag mesuré, deux halos de
+ * quartiles, deux médianes. La question n'est plus « avec quelle arme » mais « d'où ».
  *
  * CE COMPOSANT NE CALCULE RIEN. La projection et les deux options ECharts vivent dans
- * `@/components/charts/weaponRangeChart` (partagé) et `_weaponElevationChart.ts`, les décisions dans
+ * `@/components/charts/weaponRangeChart` (partagé) et `_elevationCloudChart.ts`, les décisions dans
  * `weaponRange_logic.ts` — tous purs, tous testés hors rendu.
  *
  * LES DÉNOMINATEURS SONT AFFICHÉS PARTOUT, et c'est le point : la mesure est partielle par
@@ -27,22 +30,21 @@ import type { EChartsCoreOption } from 'echarts/core'
 
 import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
 import { ChartLegend, type ChartLegendItem } from '@/components/charts/ChartLegend'
-import { titleWithInfo } from '@/components/ui/title-with-info'
 import { SectionCard } from '@/components/ui/section-card'
 import { resolveToken, tokenCssVar, type SemanticToken } from '@/lib/accessibility'
-import type { SynthesisWeaponRange } from '@/lib/api/types'
-import { cssColorToHex } from '@/lib/echarts/cssColorToHex'
+import type {
+  ElevationCloudBlock,
+  SynthesisWeaponRange,
+  TimeseriesMatchRow,
+} from '@/lib/api/types'
 import { getEChartsThemeColors } from '@/lib/echarts/themeColors'
 import { formatMessage, type ManifestLocale } from '@/lib/i18n/format'
 import { synthesisManifest } from '@/lib/i18n/generated/synthesis'
 import { useAppShellStore } from '@/stores/appShellStore'
 
 import { AccentCard, SectionSubtitle } from '@/components/ui/section-primitives'
-import {
-  ELEVATION_KEYS,
-  buildWeaponElevationOption,
-  type ElevationKey,
-} from './_weaponElevationChart'
+import { ElevationCard } from './ElevationCard'
+import { titleWithHelp } from './titleWithHelp'
 import {
   buildWeaponRangeOption,
   weaponRangeChartHeight,
@@ -74,24 +76,13 @@ const MEDIAN_TOKEN: SemanticToken = 'perf-tier-2'
 const DELTA_TOKEN: SemanticToken = 'chart-series-4'
 
 /**
- * Encres du DÉNIVELÉ — indépendantes de celles des frags/morts, et c'est voulu.
+ * Encres du NUAGE DE DÉNIVELÉ : les MÊMES que la portée (D25).
  *
- * Le dénivelé ne dit pas qui tue qui, il dit d'OÙ : une rampe d'une seule teinte, du clair
- * (d'en bas) au foncé (d'en haut), plus le gris des libellés d'axe pour « à niveau ». Les
- * accrocher à `KILLS_TOKEN`/`DEATHS_TOKEN` ferait dire à la couleur ce qu'elle ne dit pas
- * (le rouge des morts sur un segment « d'en haut » se lirait comme un jugement).
+ * Le nuage a deux côtés, pas trois classes : mes frags et mes morts. Leur donner une rampe
+ * de teinte propre (ce que faisaient les barres empilées par arme) aurait fait dire à la
+ * couleur « d'en haut / d'en bas » là où la position se lit déjà sur l'axe des ordonnées.
+ * Les deux côtés se lisent donc d'une carte à l'autre avec la même encre.
  */
-const ELEVATION_ABOVE_TOKEN: SemanticToken = 'chart-series-3'
-const ELEVATION_BELOW_TOKEN: SemanticToken = 'chart-series-1'
-
-/** Les trois libellés de classe, résolus une fois — graphe ET légende lisent la même source. */
-function elevationLabels(t: Translate): Record<ElevationKey, string> {
-  return {
-    above: t('synthesis.weapon_range.elev_above'),
-    level: t('synthesis.weapon_range.elev_level'),
-    below: t('synthesis.weapon_range.elev_below'),
-  }
-}
 
 // ─── Tuiles de tête ───────────────────────────────────────────────────────────
 
@@ -174,35 +165,9 @@ function rangeLegendItems(t: Translate): ChartLegendItem[] {
 }
 
 /**
- * `à niveau` emprunte le gris des libellés d'axe (`--muted-foreground`), la MÊME encre que
- * son segment dans le graphe : c'est la seule des trois classes qui n'a pas de token
- * d'accessibilité, d'où la variable CSS brute plutôt qu'un `tokenCssVar`.
+ * Encres du NUAGE DE DÉNIVELÉ : elles vivent avec leur carte (`ElevationCard.tsx`), qui est
+ * partie d'ici le 2026-09-22 — ce fichier passait les 500 lignes du dépôt en la portant.
  */
-function elevationLegendItems(t: Translate): ChartLegendItem[] {
-  const labels = elevationLabels(t)
-  const color: Record<ElevationKey, string> = {
-    above: tokenCssVar(ELEVATION_ABOVE_TOKEN),
-    level: 'var(--muted-foreground)',
-    below: tokenCssVar(ELEVATION_BELOW_TOKEN),
-  }
-  return ELEVATION_KEYS.map((key) => ({ key, label: labels[key], color: color[key] }))
-}
-
-/**
- * titleWithHelp — le bandeau de titre d'une carte, et son mode d'emploi derrière une aide ⓘ.
- *
- * Le détail de lecture (« bâton du 10e au 90e centile, losange sur la médiane ») s'écrivait
- * SOUS le titre de carte, sur une ligne de sous-titre à lui : un titre pour la carte, un
- * second titre pour le même graphe. Depuis le 2026-09-13 les deux graphes ont chacun leur
- * carte, et l'aide vit dans le bandeau.
- *
- * DEPUIS LE 2026-09-21 ce n'est plus qu'un RÉGLAGE de l'helper canonique
- * `components/ui/title-with-info` (taille d'icône ⓘ de cette page) : le gabarit lui-même
- * ne se réécrit plus ici.
- */
-function titleWithHelp(help: string) {
-  return titleWithInfo(help, { iconClass: 'w-3.5 h-3.5' })
-}
 
 // ─── Pied de carte : le tableau dépliable ─────────────────────────────────────
 
@@ -245,7 +210,7 @@ function RangeFooter({
  * pas de variable CSS. `ChartCard` rappelle ces fonctions à chaque bascule de thème ou de
  * palette d'accessibilité, et les couleurs suivent.
  */
-function useWeaponRangeOptions(lines: WeaponRangeLine[], f: RangeFormats, t: Translate) {
+function useWeaponRangeOption(lines: WeaponRangeLine[], f: RangeFormats, t: Translate) {
   const buildRange = useCallback(() => {
     const tc = getEChartsThemeColors()
     return buildWeaponRangeOption({
@@ -268,36 +233,7 @@ function useWeaponRangeOptions(lines: WeaponRangeLine[], f: RangeFormats, t: Tra
     })
   }, [lines, f, t])
 
-  const buildElevation = useCallback(() => {
-    const tc = getEChartsThemeColors()
-    return buildWeaponElevationOption({
-      lines,
-      tc,
-      // La couleur NE JUGE PAS : une seule teinte du clair (d'en bas) au foncé (d'en haut),
-      // et le gris des libellés d'axe pour « à niveau » — la MÊME encre que sa pastille.
-      //
-      // `cssColorToHex` SUR CETTE SEULE COULEUR, et c'est délibéré : les deux autres viennent
-      // de la palette d'accessibilité, dont les valeurs sont déjà des hex (`palettes/*.ts`),
-      // tandis que `--muted-foreground` est un `oklch(...)` que le parseur de zrender ne sait
-      // pas lire — au survol, `lift()` rendait `undefined` et le segment « à niveau » perdait
-      // son remplissage. Normalisation par le navigateur, cf. `lib/echarts/cssColorToHex.ts`.
-      colors: {
-        above: resolveToken(ELEVATION_ABOVE_TOKEN),
-        level: cssColorToHex(tc.axisLabel),
-        below: resolveToken(ELEVATION_BELOW_TOKEN),
-      },
-      cardColor: tc.card,
-      fmtPercent: f.percent,
-      labels: {
-        kills: t('synthesis.weapon_range.side_kills'),
-        deaths: t('synthesis.weapon_range.side_deaths'),
-        noMeasure: t('synthesis.weapon_range.no_measure'),
-        segments: elevationLabels(t),
-      },
-    })
-  }, [lines, f, t])
-
-  return { buildRange, buildElevation }
+  return buildRange
 }
 
 /**
@@ -347,9 +283,20 @@ function RangeChartBody({
 
 export interface WeaponRangeSectionProps {
   range: SynthesisWeaponRange | null | undefined
+  /**
+   * Le nuage « distance × dénivelé » de la MÊME fenêtre (D25). Servi par le même producteur
+   * et sous la même capability que `range` ; absent quand rien n'est décodé.
+   */
+  elevation?: ElevationCloudBlock | null
+  /**
+   * Les lignes de match de la page, pour nommer « #N · Carte » dans l'infobulle des points.
+   * LA NUMÉROTATION DE LA PAGE, pas un compteur local : le nuage cite les mêmes matchs que
+   * les frises voisines, sous le même numéro.
+   */
+  matchRows?: readonly TimeseriesMatchRow[]
 }
 
-export function WeaponRangeSection({ range }: WeaponRangeSectionProps) {
+export function WeaponRangeSection({ range, elevation, matchRows }: WeaponRangeSectionProps) {
   const locale = useAppShellStore((s) => s.locale) as ManifestLocale
   const t = useCallback<Translate>(
     (key, vars) => formatMessage(synthesisManifest, key, locale, vars),
@@ -360,7 +307,7 @@ export function WeaponRangeSection({ range }: WeaponRangeSectionProps) {
   const lines = useMemo(() => weaponRangeLines(weapons, locale), [weapons, locale])
   const series = useMemo(() => [{ key: 'weapon-range', datapoints: lines }], [lines])
 
-  const { buildRange, buildElevation } = useWeaponRangeOptions(lines, f, t)
+  const buildRange = useWeaponRangeOption(lines, f, t)
 
   // SEULE L'ABSENCE DE BLOC RETIRE LA SECTION. Un bloc SANS arme publiable est un cas
   // NOMINAL — un joueur dont toutes les armes restent sous le seuil de 8 mesures : ses
@@ -403,23 +350,14 @@ export function WeaponRangeSection({ range }: WeaponRangeSectionProps) {
           />
         </SectionCard>
 
-        <SectionCard
-          title={t('synthesis.weapon_range.elevation_subtitle')}
-          label={t('synthesis.weapon_range.elevation_subtitle')}
-          titleAdornment={titleWithHelp(t('synthesis.weapon_range.elevation_subtitle_detail'))}
-        >
-          <RangeChartBody
-            publiable={publiable}
-            series={series}
-            buildOption={buildElevation}
-            height={height}
-            legendItems={elevationLegendItems(t)}
-            legendLabel={t('synthesis.weapon_range.legend_elevation_label')}
-            emptyMessage={t('synthesis.weapon_range.empty_below_threshold_elevation', {
-              min: WEAPON_RANGE_MIN_MEASURED,
-            })}
-          />
-        </SectionCard>
+        <ElevationCard
+          elevation={elevation}
+          matchRows={matchRows}
+          height={height}
+          locale={locale}
+          t={t}
+          f={f}
+        />
       </div>
     </section>
   )

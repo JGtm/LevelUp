@@ -1643,6 +1643,13 @@ export type WeaponBelowThreshold = components['schemas']['WeaponBelowThreshold']
 export type SynthesisOpening = components['schemas']['SynthesisOpening']
 export type SynthesisOpeningDelta = components['schemas']['SynthesisOpeningDelta']
 
+// Nuage « distance x denivele » des engagements (decision D25, proposition T5) — un point
+// par frag mesure, des deux cotes, plus les quartiles par cote et la couverture. Le
+// denivele est DEJA SIGNE du point de vue du joueur cote Go : le web ne le retouche jamais.
+export type ElevationCloudBlock = components['schemas']['ElevationCloudBlock']
+export type ElevationPoint = components['schemas']['ElevationPoint']
+export type ElevationSideSummary = components['schemas']['ElevationSideSummary']
+
 // Répartition hiérarchique des frags v2 (sunburst classe→rôle) — title-agnostic,
 // partagé par Synthesis/Match view/Timeseries/Sessions. Cf. domain/frag_distribution.go.
 export type FragDistribution = components['schemas']['FragDistribution']

@@ -100,7 +100,6 @@ export const timeseriesManifest = {
   "timeseries.progression.coord_vol_my_kills": { fr: "mes frags : {n}", en: "my kills: {n}" },
   "timeseries.progression.coord_vol_team_assists": { fr: "appuis de mon camp : {n}", en: "team assists: {n}" },
   "timeseries.progression.coord_vol_team_deaths": { fr: "morts de mon camp : {n}", en: "team deaths: {n}" },
-  "timeseries.progression.coord_y_axis": { fr: "Part de la soirée", en: "Session share" },
   "timeseries.progression.coord_y_axis_delta": { fr: "Écart (points)", en: "Gap (points)" },
   "timeseries.progression.coord_zero_label": { fr: "{a} · {b}", en: "{a} · {b}" },
   "timeseries.progression.efficiency_title": { fr: "Rendement & Résistance", en: "Output & resistance" },
