@@ -36,7 +36,7 @@ package grammar
 //
 // # REGIME
 //
-//	TOUR55_EXE="D:/SteamLibrary/steamapps/common/Halo Infinite/HaloInfinite.exe" \
+//	TOUR55_EXE="<chemin local de HaloInfinite.exe>" \
 //	  go test -tags=research -count=1 -v -timeout 20m \
 //	    -run '^TestTourelle55Ecrivain$' ./internal/games/halo_infinite/film/internal/grammar/
 //
