@@ -28,11 +28,19 @@ package killcollector
 //     handler et aucune methode ne doit etre appelee depuis `api/` ;
 //   - UNE LIMITE DE TEMPS PAR MATCH + un compteur d abandons. Sans limite, un seul film
 //     pathologique bloque la passe entiere ;
-//   - UN SEUL DECODAGE A LA FOIS DANS LE PROCESS. Les parametres de replication de `grammar`
-//     sont des GLOBAUX DE PAQUET ; `killsource.Decode` serialise deja par un verrou et remet
-//     ces globaux a zero a chaque entree. **Ne pas contourner** : paralleliser deux films
-//     n accelere rien et contaminerait les deux. Le collecteur traite donc les matchs EN SERIE,
-//     et c est un choix, pas une simplification.
+//   - ⚠ « UN SEUL DECODAGE A LA FOIS DANS LE PROCESS » ETAIT ECRIT ICI, ET CE N EST PLUS VRAI
+//     DEPUIS LA CLOTURE M3 DU CHANTIER DECODEUR (ADR 0034, 2026-09-17). Le texte d origine
+//     disait : « les parametres de replication de `grammar` sont des GLOBAUX DE PAQUET ;
+//     `killsource.Decode` serialise deja par un verrou et remet ces globaux a zero a chaque
+//     entree ». Le profil est desormais DEPENSE — `ProfilDeBalayage` voyage en argument jusqu a
+//     `calibrate` et `runWalk` — et le dernier reglage global (`SetInferResyncTargets`) a ete
+//     supprime au lot E.2 du 2026-09-05. Il n existe plus ni verrou de paquet ni global mutable :
+//     verifie sur pieces le 2026-09-22 (lot 5.24.2), et PROUVE par
+//     `TestOuvriers_MemesLignesQuUnSeulOuvrier`, qui ecrit les memes films avec 1 puis N ouvriers
+//     et compare les cinq vues ligne a ligne. Le backfill decode donc N films en parallele
+//     ([KillSourceCollector.CollectMatchesOuvriers]) ; la BASE, elle, reste touchee par un seul
+//     goroutine a la fois (`porte_de_la_base.go`, ADR 0013). Tous les autres appelants — post-sync
+//     du serveur, `--online`, tests — gardent la boucle en serie.
 //
 // # TITLE-AGNOSTIC
 //
@@ -111,6 +119,13 @@ type KillSourceCollector struct {
 	// — acquis du chantier precision remis le 2026-09-01, exposition API retiree). nil = passe
 	// non configuree (chemin live sans cache) -> precision ignoree. Voir ConfigureFilmAccuracy.
 	filmDir FilmDirResolver
+	// observateur : le SUIVI de la passe, film par film (lot 5.24.3). nil = aucun suivi, et
+	// c est le defaut de tous les appelants sauf le backfill CLI. Il n a AUCUN effet sur ce qui
+	// est decode ni sur ce qui est ecrit — voir `collector_ouvriers.go`.
+	observateur ObservateurDePasse
+	// arretDoux : le contexte dont l annulation arrete la DISTRIBUTION des films, jamais un film
+	// en cours (lot 5.24.4, cf. AvecArretDoux). nil = pas d arret doux.
+	arretDoux context.Context
 }
 
 // FilmDirResolver rend le repertoire disque des chunks d un film (chunk_NN.bin, format

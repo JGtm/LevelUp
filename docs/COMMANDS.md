@@ -114,6 +114,65 @@ go run ./cmd/backfill-team-rounds --gamertag X
 go run ./cmd/backfill-team-rounds --gamertag X --apply [--all] [--limit N] [--match ID]
 ```
 
+#### Filling `match_kill_events` / `match_weapon_shots` from films — `backfill-killsource`
+
+**100 % offline** (films from the local cache: no network, no tokens, no CDN), **server
+stopped** (it holds the shared database in write mode — single writer, ADR 0013). It runs two
+passes in this order: FILMS (decoding), then CREDIT (a SQL → SQL transform, a few minutes).
+
+```bash
+go run ./cmd/levelup backfill-killsource --dry-run      # summary: total, already fresh, chunks, ETA
+go run ./cmd/levelup backfill-killsource                # everything: films then credit, 3 workers
+go run ./cmd/levelup backfill-killsource --workers 1    # the serial loop from before lot 5.24
+go run ./cmd/levelup backfill-killsource --limit 20     # the 20 cheapest films
+go run ./cmd/levelup backfill-killsource --credit-only  # the SQL → SQL pass alone
+go run ./cmd/levelup backfill-killsource --force        # re-decode even what is already fresh
+go run ./cmd/levelup backfill-killsource --status       # IN ANOTHER TERMINAL: where it stands
+```
+
+**`--workers` (default 3) — N films decoded in parallel, only ONE touching the database.** The
+cost breakdown (lot 5.24.1) measures **93 to 99 % of a film's time as CPU outside the
+database**: that is the only reason parallelism helps here. Writes and both per-match reads go
+through a single token (`PorteDeLaBase`), so at any instant at most one goroutine talks to the
+database. The ceiling is a MEASUREMENT, not a knob: the worst film of the corpus peaks at
+**422 MiB**, the pass caps itself at 4 GiB, hence **9 workers at most** — beyond that the
+command refuses at startup, quoting the figure. Measured gain with 3 workers over 9 films:
+**9.7 s → 3.5 s (×2.7)**, with identical rows written
+(`TestOuvriers_MemesLignesQuUnSeulOuvrier`).
+
+**`--status` — "where does it stand?", from another terminal.** It READS the state file and
+prints it once, **without opening any database** (the only way to query a process that holds the
+shared database in write mode). The file is rewritten **after every film**, at
+`data/global/admin_state/backfill_killsource_{slug}.json`:
+
+```
+backfill-killsource [halo_infinite] — phase films, PID 11480
+  demarree     2026-09-22T13:19:13+02:00 (il y a 0s)
+  mise a jour  2026-09-22T13:19:14+02:00 (il y a 0s)
+  revisions    morts killsource-2026-09-22.2 | isolement isolement-2026-09-15-decoupage-du-catalogue
+  films        1 / 3 traites — 5 chunks / 100
+               1 ecrits (42 morts), 0 sans film, 0 sans kill-feed, 0 cle inconnue, 0 abandons sur delai, 0 erreurs
+               1500 deja a jour au demarrage (sautes : c est la REPRISE, et elle se decide en base)
+               3 ouvrier(s), 0.00 films/min, 0.400 s/chunk mesure — reste ~13s
+               fin estimee vers 2026-09-22T13:19:26+02:00
+  dernier fini petit (5 chunks) en 2.00 s — ecrit
+  EN COURS     gros (65 chunks) depuis 12.0 s
+```
+
+The **ETA counts CHUNKS, not films**, and is divided by the worker count: the big films run
+last, so a remainder counted in films would announce a near finish right before the most
+expensive tail. The per-chunk cost is the one **measured since the pass started**, not a
+constant. A state not updated for more than 10 minutes is flagged as such. The pass's own
+terminal gets a progress line **every 25 films OR every 60 s**, carrying the same figures.
+
+**Resume — the key is `decoder_rev`, IN THE DATABASE.** A match whose current passes (the
+`_latest` views) all carry the current decoder revision is skipped: interrupting and re-running
+**the same command** picks up where it left off. The state file is **not** a source of truth for
+resume: deleting it only loses a display. `Ctrl-C` (or `SIGTERM`) stops DISPATCHING films; the
+ones in flight run to completion and are written, the state is closed with its cause, and the
+command exits with code **130** (distinct from 0 for a finished pass and 1 for a failure). A
+**second** `Ctrl-C` kills the process immediately.
+
 #### Projecting replay artifacts into the database — RELEASE ORDER MATTERS
 
 Two passes read the already-cooked replay artifacts (`data/cache/replays/{slug}/{short8}.json`)

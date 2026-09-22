@@ -46,8 +46,10 @@ package killcollector
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"log/slog"
+	"sync"
 	"time"
 )
 
@@ -84,21 +86,41 @@ const requeteAnnuaireDesNoms = `
 	WHERE xuid IS NOT NULL AND xuid <> ''
 	ORDER BY xuid, gamertag`
 
-// annuaire rend l annuaire de la passe, en le chargeant au premier appel.
+// chargeurDAnnuaire : l annuaire d UNE passe, charge au premier appel et servi ensuite.
+//
+// LA PIECE EST PARTAGEE PAR LES DEUX PRODUCTEURS depuis le lot 5.24.2 (la passe credit depuis
+// 5.12, la passe des FILMS depuis 5.24). Elle n a PAS ete recopiee : une seconde copie de la
+// lecture canonique d identite serait une seconde verite possible sur les noms, et c est
+// exactement l ecart qu ADR 0035 existe pour empecher.
+//
+// Le verrou n est pas decoratif : depuis 5.24.2 la passe des films tourne a N ouvriers, donc
+// plusieurs goroutines peuvent demander l annuaire au meme instant.
+type chargeurDAnnuaire struct {
+	mu   sync.Mutex
+	noms *annuaireDesNoms
+}
+
+// annuaireDe rend l annuaire de la passe, en le chargeant au premier appel.
 //
 // Le chargement est JOURNALISE (nombre d entrees, duree) : c est la seule trace qui permettra de
-// voir venir le jour ou cette lecture unique devient elle-meme chere.
-func (c *CreditCollector) annuaire(ctx context.Context) (*annuaireDesNoms, error) {
-	c.annuaireMu.Lock()
-	defer c.annuaireMu.Unlock()
+// voir venir le jour ou cette lecture unique devient elle-meme chere. `appelant` nomme la passe
+// dans ce journal — sans lui, deux producteurs ecriraient la meme ligne.
+func (c *chargeurDAnnuaire) annuaireDe(
+	ctx context.Context, read *sql.DB, appelant string,
+) (*annuaireDesNoms, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	if c.noms != nil {
 		return c.noms, nil
 	}
+	if read == nil {
+		return nil, fmt.Errorf("killsource %s: annuaire des noms: db nil", appelant)
+	}
 
 	debut := time.Now()
-	rows, err := c.read.QueryContext(ctx, requeteAnnuaireDesNoms)
+	rows, err := read.QueryContext(ctx, requeteAnnuaireDesNoms)
 	if err != nil {
-		return nil, fmt.Errorf("killsource credit: annuaire des noms: %w", err)
+		return nil, fmt.Errorf("killsource %s: annuaire des noms: %w", appelant, err)
 	}
 	defer func() { _ = rows.Close() }()
 
@@ -106,7 +128,7 @@ func (c *CreditCollector) annuaire(ctx context.Context) (*annuaireDesNoms, error
 	for rows.Next() {
 		var xuid, nom string
 		if err := rows.Scan(&xuid, &nom); err != nil {
-			return nil, fmt.Errorf("killsource credit: annuaire des noms (scan): %w", err)
+			return nil, fmt.Errorf("killsource %s: annuaire des noms (scan): %w", appelant, err)
 		}
 		// La PREMIERE ligne d un xuid gagne — l ordre de la requete la rend deterministe.
 		if _, deja := a.parXUID[xuid]; !deja {
@@ -114,11 +136,16 @@ func (c *CreditCollector) annuaire(ctx context.Context) (*annuaireDesNoms, error
 		}
 	}
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("killsource credit: annuaire des noms (rows): %w", err)
+		return nil, fmt.Errorf("killsource %s: annuaire des noms (rows): %w", appelant, err)
 	}
 
-	slog.InfoContext(ctx, "killsource credit: annuaire des noms charge pour la passe",
-		"xuids", len(a.parXUID), "duration", time.Since(debut))
+	slog.InfoContext(ctx, "killsource: annuaire des noms charge pour la passe",
+		"passe", appelant, "xuids", len(a.parXUID), "duration", time.Since(debut))
 	c.noms = a
 	return a, nil
+}
+
+// annuaire rend l annuaire de la passe CREDIT. Un seul appelant, un seul nom dans le journal.
+func (c *CreditCollector) annuaire(ctx context.Context) (*annuaireDesNoms, error) {
+	return c.chargeur.annuaireDe(ctx, c.read, "credit")
 }
