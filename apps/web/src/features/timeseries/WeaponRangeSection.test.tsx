@@ -15,7 +15,7 @@ import { screen, within } from '@testing-library/react'
 
 import { renderWithProviders } from '@/test/render-utils'
 import { tokenCssVar } from '@/lib/accessibility'
-import type { SynthesisWeaponRange, WeaponRangeSide } from '@/lib/api/types'
+import type { ElevationCloudBlock, SynthesisWeaponRange, WeaponRangeSide } from '@/lib/api/types'
 import { useAppShellStore } from '@/stores/appShellStore'
 
 import { WeaponRangeSection } from './WeaponRangeSection'
@@ -39,6 +39,22 @@ const side = (o: Partial<WeaponRangeSide>): WeaponRangeSide => ({
   below_pct: 20,
   ...o,
 })
+
+/**
+ * Le nuage de la carte « Dénivelé » (D25). Deux points suffisent : ce fichier teste le
+ * RENDU (cartes, légendes, états vides), la géométrie a ses tests purs.
+ */
+const ELEVATION: ElevationCloudBlock = {
+  kills: [{ distance_m: 13.6, delta_z_m: 2.4, match_id: 'm1', time_ms: 1000, weapon: 'hinf_br75' }],
+  deaths: [{ distance_m: 16.4, delta_z_m: -1.9, match_id: 'm1', time_ms: 2000, weapon: 'hinf_br75' }],
+  kills_summary: { distance_p25: 7.1, distance_p50: 13.6, distance_p75: 24.9, delta_z_p25: 0.5, delta_z_p50: 2.4, delta_z_p75: 4, n: 281 },
+  deaths_summary: { distance_p25: 8.9, distance_p50: 16.4, distance_p75: 29.7, delta_z_p25: -4, delta_z_p50: -1.9, delta_z_p75: 0.5, n: 402 },
+  weapon_labels: { hinf_br75: { label: 'Fusil de combat BR75', label_en: 'BR75 Battle Rifle' } },
+  measured_kills: 281,
+  total_kills: 1602,
+  measured_deaths: 402,
+  total_deaths: 1455,
+}
 
 const RANGE: SynthesisWeaponRange = {
   weapons: [
@@ -101,7 +117,7 @@ describe('WeaponRangeSection — rendu nominal', () => {
   // sous un seul titre. Chacune porte son graphe ; le compte d'armes (« 2 armes · … »), lu
   // une fois puis jamais, a été retiré du bandeau.
   it('affiche les DEUX cartes, chacune avec son graphe', () => {
-    renderWithProviders(<WeaponRangeSection range={RANGE} />)
+    renderWithProviders(<WeaponRangeSection range={RANGE} elevation={ELEVATION} />)
     expect(screen.getByRole('region', { name: 'Portée par arme' })).toBeInTheDocument()
     expect(screen.getByRole('region', { name: 'Dénivelé' })).toBeInTheDocument()
     // Deux ChartCard : le canvas lui-même est chargé en `lazy`, on pince la carte.
@@ -109,7 +125,7 @@ describe('WeaponRangeSection — rendu nominal', () => {
   })
 
   it('les quatre tuiles portent leur valeur ET leur dénominateur', () => {
-    renderWithProviders(<WeaponRangeSection range={RANGE} />)
+    renderWithProviders(<WeaponRangeSection range={RANGE} elevation={ELEVATION} />)
     expect(screen.getByText('Portée médiane de mes frags')).toBeInTheDocument()
     expect(textOf(/^1 214 frags mesurés sur 1 602$/).length).toBeGreaterThan(0)
     expect(screen.getByText('Portée médiane de mes morts')).toBeInTheDocument()
@@ -130,22 +146,28 @@ describe('WeaponRangeSection — rendu nominal', () => {
     // Les mentions « (bâton du haut) » / « (bâton du bas, l'arme est celle du tueur) » ont
     // été retirées le 2026-09-09 : elles doublaient un ordre déjà lisible sur le graphe et
     // faisaient une ligne de légende deux fois plus longue que la légende.
-    renderWithProviders(<WeaponRangeSection range={RANGE} />)
+    renderWithProviders(<WeaponRangeSection range={RANGE} elevation={ELEVATION} />)
     // `within` la légende : « Mes frags » nomme AUSSI un groupe de colonnes du tableau.
     const legend = screen.getByRole('list', { name: 'Légende' })
     expect(within(legend).getByText('Mes frags')).toBeInTheDocument()
     expect(within(legend).getByText('Mes morts')).toBeInTheDocument()
     expect(screen.queryByText(/bâton du haut/)).not.toBeInTheDocument()
     expect(screen.queryByText(/bâton du bas/)).not.toBeInTheDocument()
-    expect(screen.getByText("d'en haut (> +1 m)")).toBeInTheDocument()
-    expect(screen.getByText('à niveau')).toBeInTheDocument()
-    expect(screen.getByText("d'en bas (< −1 m)")).toBeInTheDocument()
+    // La légende du nuage (D25) nomme ses cinq entrées : les deux côtés, le halo, les
+    // médianes et la bande à niveau. Les trois classes « d'en haut / à niveau / d'en bas »
+    // sont parties avec les barres empilées par arme.
+    const nuage = screen.getByRole('list', { name: 'Légende du dénivelé' })
+    expect(within(nuage).getByText('Un frag')).toBeInTheDocument()
+    expect(within(nuage).getByText('Une mort')).toBeInTheDocument()
+    expect(within(nuage).getByText('Du 1er au 3e quartile')).toBeInTheDocument()
+    expect(within(nuage).getByText('Médianes')).toBeInTheDocument()
+    expect(within(nuage).getByText('À niveau (± 1 m)')).toBeInTheDocument()
   })
 
   it('les deux légendes sont rendues en PIED de leur graphe, par le composant commun', () => {
     // « Ça ne suit pas la nomenclature des autres graphes » (2026-09-09) : les deux légendes
     // passent désormais par <ChartLegend>, posé dans le pied de carte de leur ChartCard.
-    renderWithProviders(<WeaponRangeSection range={RANGE} />)
+    renderWithProviders(<WeaponRangeSection range={RANGE} elevation={ELEVATION} />)
     const legends = screen.getAllByTestId('chart-legend')
     expect(legends).toHaveLength(2)
     for (const legend of legends) {
@@ -157,7 +179,7 @@ describe('WeaponRangeSection — rendu nominal', () => {
   it('les deux légendes portent des noms accessibles DISTINCTS', () => {
     // Deux listes nommées « Légende » ne se distinguent pas au lecteur d'écran : la seconde
     // qualifie ce qu'elle légende (maquette du 2026-09-06).
-    renderWithProviders(<WeaponRangeSection range={RANGE} />)
+    renderWithProviders(<WeaponRangeSection range={RANGE} elevation={ELEVATION} />)
     expect(screen.getByRole('list', { name: 'Légende' })).toBeInTheDocument()
     expect(screen.getByRole('list', { name: 'Légende du dénivelé' })).toBeInTheDocument()
   })
@@ -167,13 +189,14 @@ describe('WeaponRangeSection — rendu nominal', () => {
     // INDÉPENDANTE des encres frags/morts (elle dit d'OÙ, pas qui tue qui) ; « à niveau »
     // emprunte le gris des libellés d'axe, qui n'a pas de token d'accessibilité — d'où la
     // variable CSS brute.
-    renderWithProviders(<WeaponRangeSection range={RANGE} />)
+    renderWithProviders(<WeaponRangeSection range={RANGE} elevation={ELEVATION} />)
     const legend = screen.getByRole('list', { name: 'Légende du dénivelé' })
     const swatch = (name: string) =>
       within(legend).getByText(name).parentElement!.querySelector('span[aria-hidden]') as HTMLElement
-    expect(swatch("d'en haut (> +1 m)").style.backgroundColor).toBe(tokenCssVar('chart-series-3'))
-    expect(swatch("d'en bas (< −1 m)").style.backgroundColor).toBe(tokenCssVar('chart-series-1'))
-    expect(swatch('à niveau').style.backgroundColor).toBe('var(--muted-foreground)')
+    expect(swatch('Un frag').style.backgroundColor).toBe(tokenCssVar('stat-kills'))
+    expect(swatch('Une mort').style.backgroundColor).toBe(tokenCssVar('stat-deaths'))
+    expect(swatch('Médianes').style.backgroundColor).toBe(tokenCssVar('perf-tier-2'))
+    expect(swatch('À niveau (± 1 m)').style.backgroundColor).toBe('var(--muted-foreground)')
   })
 
   it('les pastilles de la légende de PORTÉE portent l’encre de leur côté', () => {
@@ -181,7 +204,7 @@ describe('WeaponRangeSection — rendu nominal', () => {
     // échanger les deux `tokenCssVar` de `RangeLegend` laissait la suite verte : la légende
     // aurait annoncé les frags à l'encre des morts, et rien n'aurait mordu — alors que c'est
     // la légende qui dit au lecteur quel bâton est lequel.
-    renderWithProviders(<WeaponRangeSection range={RANGE} />)
+    renderWithProviders(<WeaponRangeSection range={RANGE} elevation={ELEVATION} />)
     const legend = screen.getByRole('list', { name: 'Légende' })
     const swatch = (name: string) =>
       within(legend).getByText(name).parentElement!.querySelector('span[aria-hidden]') as HTMLElement
@@ -194,7 +217,7 @@ describe('WeaponRangeSection — rendu nominal', () => {
     // Le filet de 3 px en tête de tuile est le SEUL rappel de couleur entre la tuile et son
     // bâton : les valeurs sont déjà épinglées, l'ENCRE ne l'était pas (lot 6, item 6.0d).
     // Échanger `accent={KILLS_TOKEN}` et `accent={DEATHS_TOKEN}` laissait la suite verte.
-    renderWithProviders(<WeaponRangeSection range={RANGE} />)
+    renderWithProviders(<WeaponRangeSection range={RANGE} elevation={ELEVATION} />)
     const accentOf = (label: string) =>
       (screen.getByText(label).closest('div.rounded-lg')!.firstElementChild as HTMLElement).style
         .backgroundColor
@@ -203,7 +226,7 @@ describe('WeaponRangeSection — rendu nominal', () => {
   })
 
   it('le tableau groupe ses colonnes : mes frags D’ABORD, mes morts ensuite', () => {
-    renderWithProviders(<WeaponRangeSection range={RANGE} />)
+    renderWithProviders(<WeaponRangeSection range={RANGE} elevation={ELEVATION} />)
     const groups = Array.from(
       screen.getByRole('table').querySelectorAll('thead tr:first-child th'),
     ).map((th) => flat(th.textContent))
@@ -214,13 +237,13 @@ describe('WeaponRangeSection — rendu nominal', () => {
   it('ne publie plus ni la ligne « sous le seuil » ni la note de couverture', () => {
     // Retirées le 2026-09-09 (demande utilisateur) : deux paragraphes de texte gris sous la
     // carte, qui répétaient une réserve déjà portée par les dénominateurs de chaque tuile.
-    renderWithProviders(<WeaponRangeSection range={RANGE} />)
+    renderWithProviders(<WeaponRangeSection range={RANGE} elevation={ELEVATION} />)
     expect(screen.queryByText(/Sous le seuil/)).not.toBeInTheDocument()
     expect(screen.queryByText(/couverture partielle/)).not.toBeInTheDocument()
   })
 
   it('le tableau déplié redit les deux côtés, avec un tiret là où rien n’est mesuré', () => {
-    renderWithProviders(<WeaponRangeSection range={RANGE} />)
+    renderWithProviders(<WeaponRangeSection range={RANGE} elevation={ELEVATION} />)
     expect(screen.getByText('Voir en tableau')).toBeInTheDocument()
     const table = screen.getByRole('table')
     const commando = within(table).getByText('Commando VK78').closest('tr')
@@ -334,18 +357,14 @@ describe('WeaponRangeSection — dégradations', () => {
     expect(textOf(/^1 214 frags mesurés sur 1 602$/).length).toBeGreaterThan(0)
     // Aucun graphe, mais une phrase qui DIT pourquoi — jamais un canevas vide sans mot.
     expect(screen.queryAllByTestId('chart-card')).toHaveLength(0)
-    // Une raison PAR CARTE : chacune des deux dit pourquoi elle ne trace rien — une seule
-    // phrase laisserait l'autre carte muette.
+    // LA PORTÉE dit son seuil ; LE NUAGE dit sa vraie cause. Le nuage ne dépend d'aucun
+    // seuil de publication (D23-b) : sans point, c'est que rien n'est décodé sur la
+    // fenêtre. Deux cartes, deux raisons, chacune exacte pour son graphe.
     expect(
-      screen.getAllByText(/Aucune arme n'atteint le seuil de 8 mesures sur cette période/),
-    ).toHaveLength(2)
-    // ET CHAQUE PHRASE PARLE DE SON GRAPHE (finitions 2026-09-13) : la carte « Dénivelé »
-    // reprenait mot pour mot celle de la portée (« les portées mesurées restent trop rares »).
-    expect(
-      screen.getByText(/les portées mesurées restent trop rares pour être publiées arme par arme/),
+      screen.getByText(/Aucune arme n'atteint le seuil de 8 mesures sur cette période/),
     ).toBeInTheDocument()
     expect(
-      screen.getByText(/les dénivelés mesurés restent trop rares pour être publiés arme par arme/),
+      screen.getByText(/les positions des frags ne sont pas encore décodées pour ces matchs/),
     ).toBeInTheDocument()
     // Le tableau disparaît aussi : il n'aurait aucune ligne à redire.
     expect(screen.queryByText('Voir en tableau')).not.toBeInTheDocument()
@@ -354,7 +373,7 @@ describe('WeaponRangeSection — dégradations', () => {
 
   it('en anglais, libellés et nombres suivent la locale', () => {
     useAppShellStore.setState({ locale: 'en' })
-    renderWithProviders(<WeaponRangeSection range={RANGE} />)
+    renderWithProviders(<WeaponRangeSection range={RANGE} elevation={ELEVATION} />)
     expect(screen.getByText('Median range of my kills')).toBeInTheDocument()
     expect(textOf(/^1,214 measured kills out of 1,602$/).length).toBeGreaterThan(0)
     expect(screen.getByText('BR75 Battle Rifle')).toBeInTheDocument()

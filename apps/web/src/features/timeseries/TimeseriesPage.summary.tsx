@@ -252,7 +252,13 @@ export function TimeseriesSummaryTab({
           deux répondent à « avec quoi, et comment ». La section se retire d'elle-même quand
           rien n'est mesuré sur le scope ; le gate reste la capability produit `weapon_range`
           (Halo 5 ne la déclare pas — ses événements de frag n'ont pas d'arme). */}
-      {hasWeaponRange && <WeaponRangeSection range={data.weapon_range} />}
+      {hasWeaponRange && (
+        <WeaponRangeSection
+          range={data.weapon_range}
+          elevation={data.elevation}
+          matchRows={data.match_rows ?? []}
+        />
+      )}
 
       {/* Rôles de portée — juste après « Portée par arme » : la même famille de sujet, posée
           en écart au lobby plutôt qu'en mètres absolus. */}

@@ -32,6 +32,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/canonical"
 	"levelup/go-api/internal/port"
@@ -163,7 +164,7 @@ func TestLoadWeaponRange_Nominal_DeuxCotesEtEntame(t *testing.T) {
 		},
 	}
 
-	block := buildWeaponRangeSection(context.Background(), wrQuery(repo, wrCanonRows(2, 9, 7)))
+	block := wrSection(context.Background(), wrQuery(repo, wrCanonRows(2, 9, 7)))
 	if block == nil {
 		t.Fatal("section nil, attendue peuplée")
 	}
@@ -243,7 +244,7 @@ func TestLoadWeaponRange_EntameEnEchec_LaPorteeSurvit(t *testing.T) {
 		openErr: errors.New("boom SQL"),
 	}
 
-	block := buildWeaponRangeSection(context.Background(), wrQuery(repo, wrCanonRows(1, 9, 5)))
+	block := wrSection(context.Background(), wrQuery(repo, wrCanonRows(1, 9, 5)))
 	if block == nil {
 		t.Fatal("section nil alors que seule l'entame a échoué")
 	}
@@ -263,7 +264,7 @@ func TestLoadWeaponRange_SousLeSeuil_ArmesNommeesParCote(t *testing.T) {
 		"hinf_ravager": {Label: "Ravageur", LabelEN: "Ravager"},
 	}}
 
-	block := buildWeaponRangeSection(context.Background(), wrQuery(repo, wrCanonRows(1, 20, 10)))
+	block := wrSection(context.Background(), wrQuery(repo, wrCanonRows(1, 20, 10)))
 	if block == nil {
 		t.Fatal("section nil")
 	}
@@ -295,7 +296,7 @@ func TestLoadWeaponRange_LibellesNonResolus_LaSectionSurvit(t *testing.T) {
 		labelsErr: errors.New("metadata indisponible"),
 	}
 
-	block := buildWeaponRangeSection(context.Background(), wrQuery(repo, wrCanonRows(1, 9, 5)))
+	block := wrSection(context.Background(), wrQuery(repo, wrCanonRows(1, 9, 5)))
 	if block == nil || len(block.Weapons) != 1 {
 		t.Fatalf("section = %+v, attendue peuplée", block)
 	}
@@ -334,7 +335,7 @@ func TestLoadWeaponRange_DegradationsSansSection(t *testing.T) {
 	}
 	for _, c := range cas {
 		t.Run(c.nom, func(t *testing.T) {
-			if block := buildWeaponRangeSection(context.Background(), c.q); block != nil {
+			if block := wrSection(context.Background(), c.q); block != nil {
 				t.Errorf("section = %+v, attendu nil", block)
 			}
 		})
@@ -349,7 +350,7 @@ func TestLoadWeaponRange_GamertagVide(t *testing.T) {
 	q := wrQuery(repo, wrCanonRows(1, 9, 5))
 	q.Gamertag = ""
 
-	if block := buildWeaponRangeSection(context.Background(), q); block != nil {
+	if block := wrSection(context.Background(), q); block != nil {
 		t.Errorf("section = %+v, attendu nil", block)
 	}
 	if repo.killCalls != 0 {
@@ -373,7 +374,7 @@ func TestLoadWeaponRange_MatchSansCompteur_NiPaniqueNiZeroCompte(t *testing.T) {
 	rows := append(wrCanonRows(1, 9, 5), wrCanonRowSansCompteur("m_sans_scoreboard"))
 	repo := &mockWeaponRangeRepo{kills: wrKills("hinf_br75", analysis.SideKiller, 9, 12, 0)}
 
-	block := buildWeaponRangeSection(context.Background(), wrQuery(repo, rows))
+	block := wrSection(context.Background(), wrQuery(repo, rows))
 	if block == nil {
 		t.Fatal("section nil : un match sans compteur ne doit pas emporter la section")
 	}
@@ -407,7 +408,7 @@ func TestLoadWeaponRange_ToutSousLeSeuil_SectionPresenteAvecZeroArme(t *testing.
 	kills = append(kills, wrKills("hinf_shotgun", analysis.SideVictim, 2, 3, 0)...)
 	repo := &mockWeaponRangeRepo{kills: kills}
 
-	block := buildWeaponRangeSection(context.Background(), wrQuery(repo, wrCanonRows(1, 20, 9)))
+	block := wrSection(context.Background(), wrQuery(repo, wrCanonRows(1, 20, 9)))
 	if block == nil {
 		t.Fatal("section nil alors que 9 frags sont mesurés : la couverture et les médianes " +
 			"restent publiables, seul le graphe par arme est vide")
@@ -469,7 +470,7 @@ func TestLogWeaponRangeFailure_RegimeDesNiveaux(t *testing.T) {
 		t.Run(c.nom, func(t *testing.T) {
 			buf.Reset()
 			repo := &mockWeaponRangeRepo{killsErr: c.err}
-			block := buildWeaponRangeSection(context.Background(), wrQuery(repo, wrCanonRows(1, 9, 5)))
+			block := wrSection(context.Background(), wrQuery(repo, wrCanonRows(1, 9, 5)))
 			if block != nil {
 				t.Fatalf("section = %+v, attendu nil", block)
 			}
@@ -483,4 +484,13 @@ func TestLogWeaponRangeFailure_RegimeDesNiveaux(t *testing.T) {
 			}
 		})
 	}
+}
+
+// wrSection — le bloc « portée par arme » SEUL, pour les tests qui ne regardent que lui.
+// `buildWeaponRangeSections` rend deux blocs depuis la même lecture (D25) ; réécrire
+// `block, _ :=` sur chaque cas n'aurait rien prouvé de plus. Le nuage a ses propres tests
+// (elevation_cloud_section_test.go).
+func wrSection(ctx context.Context, q weaponRangeQuery) *domain.SynthesisWeaponRange {
+	block, _ := buildWeaponRangeSections(ctx, q)
+	return block
 }

@@ -6133,6 +6133,53 @@ export interface components {
             p95: number;
             symetrique: boolean;
         };
+        ElevationCloudBlock: {
+            deaths: components["schemas"]["ElevationPoint"][] | null;
+            deaths_summary: components["schemas"]["ElevationSideSummary"];
+            kills: components["schemas"]["ElevationPoint"][] | null;
+            kills_summary: components["schemas"]["ElevationSideSummary"];
+            /** Format: int64 */
+            measured_deaths: number;
+            /** Format: int64 */
+            measured_kills: number;
+            /** Format: int64 */
+            total_deaths: number;
+            /** Format: int64 */
+            total_kills: number;
+            weapon_labels?: {
+                [key: string]: components["schemas"]["ElevationWeaponLabel"];
+            };
+        };
+        ElevationPoint: {
+            /** Format: double */
+            delta_z_m: number;
+            /** Format: double */
+            distance_m: number;
+            match_id: string;
+            /** Format: int64 */
+            time_ms: number;
+            weapon: string;
+        };
+        ElevationSideSummary: {
+            /** Format: double */
+            delta_z_p25?: number;
+            /** Format: double */
+            delta_z_p50?: number;
+            /** Format: double */
+            delta_z_p75?: number;
+            /** Format: double */
+            distance_p25?: number;
+            /** Format: double */
+            distance_p50?: number;
+            /** Format: double */
+            distance_p75?: number;
+            /** Format: int64 */
+            n: number;
+        };
+        ElevationWeaponLabel: {
+            label?: string;
+            label_en?: string;
+        };
         EncounterDTO: {
             /** Format: int64 */
             as_enemy: number;
@@ -13107,6 +13154,7 @@ export interface components {
             coordination?: components["schemas"]["CoordinationBlock"];
             cumul_tab: components["schemas"]["TimeseriesCumulTab"];
             distributions_tab: components["schemas"]["TimeseriesDistributionsTab"];
+            elevation?: components["schemas"]["ElevationCloudBlock"];
             equipment_usage?: components["schemas"]["EquipmentUsageBlock"];
             first_blood?: components["schemas"]["FirstBloodPlayerSeries"][] | null;
             formes_retenues?: components["schemas"]["SquadFormesBlock"];

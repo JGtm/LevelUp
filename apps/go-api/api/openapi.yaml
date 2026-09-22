@@ -12342,6 +12342,109 @@ components:
         - symetrique
         - n_cellules
       type: object
+    ElevationCloudBlock:
+      additionalProperties: false
+      properties:
+        deaths:
+          items:
+            $ref: '#/components/schemas/ElevationPoint'
+          type:
+            - array
+            - "null"
+        deaths_summary:
+          $ref: '#/components/schemas/ElevationSideSummary'
+        kills:
+          items:
+            $ref: '#/components/schemas/ElevationPoint'
+          type:
+            - array
+            - "null"
+        kills_summary:
+          $ref: '#/components/schemas/ElevationSideSummary'
+        measured_deaths:
+          format: int64
+          type: integer
+        measured_kills:
+          format: int64
+          type: integer
+        total_deaths:
+          format: int64
+          type: integer
+        total_kills:
+          format: int64
+          type: integer
+        weapon_labels:
+          additionalProperties:
+            $ref: '#/components/schemas/ElevationWeaponLabel'
+          type: object
+      required:
+        - kills
+        - deaths
+        - kills_summary
+        - deaths_summary
+        - measured_kills
+        - total_kills
+        - measured_deaths
+        - total_deaths
+      type: object
+    ElevationPoint:
+      additionalProperties: false
+      properties:
+        delta_z_m:
+          format: double
+          type: number
+        distance_m:
+          format: double
+          type: number
+        match_id:
+          type: string
+        time_ms:
+          format: int64
+          type: integer
+        weapon:
+          type: string
+      required:
+        - distance_m
+        - delta_z_m
+        - match_id
+        - time_ms
+        - weapon
+      type: object
+    ElevationSideSummary:
+      additionalProperties: false
+      properties:
+        delta_z_p25:
+          format: double
+          type: number
+        delta_z_p50:
+          format: double
+          type: number
+        delta_z_p75:
+          format: double
+          type: number
+        distance_p25:
+          format: double
+          type: number
+        distance_p50:
+          format: double
+          type: number
+        distance_p75:
+          format: double
+          type: number
+        "n":
+          format: int64
+          type: integer
+      required:
+        - "n"
+      type: object
+    ElevationWeaponLabel:
+      additionalProperties: false
+      properties:
+        label:
+          type: string
+        label_en:
+          type: string
+      type: object
     EncounterDTO:
       additionalProperties: false
       properties:
@@ -29140,6 +29243,8 @@ components:
           $ref: '#/components/schemas/TimeseriesCumulTab'
         distributions_tab:
           $ref: '#/components/schemas/TimeseriesDistributionsTab'
+        elevation:
+          $ref: '#/components/schemas/ElevationCloudBlock'
         equipment_usage:
           $ref: '#/components/schemas/EquipmentUsageBlock'
         first_blood:

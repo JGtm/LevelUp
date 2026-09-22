@@ -330,6 +330,14 @@ type TimeseriesPageResponse struct {
 	// lecture en échec — jamais une section vide. Gated côté front par la capability
 	// produit `weapon_range`. Cf. service/synthesis_weapon_range.go.
 	WeaponRange *SynthesisWeaponRange `json:"weapon_range,omitempty"`
+	// Elevation : le nuage « distance × dénivelé » des engagements de la fenêtre (décision
+	// D25, proposition T5) — un point par frag mesuré, des deux côtés, plus les quartiles
+	// par côté. MÊME LECTURE ET MÊME SCOPE que `WeaponRange` ci-dessus, sous un seul emprunt
+	// du lecteur partagé : il répond à « d'où je frague et d'où je meurs », là où
+	// `WeaponRange` répond à « à quelle distance, avec quelle arme ». Gated côté front par la
+	// même capability produit `weapon_range`. Nil (champ omis) dans les mêmes cas que
+	// `WeaponRange` — jamais un bloc vide.
+	Elevation *ElevationCloudBlock `json:"elevation,omitempty"`
 	// RangeProfiles : le nuage des RÔLES DE PORTÉE du joueur consulté (lot U, décision
 	// D23-a) — un profil par match de la fenêtre filtrée, portant la médiane du joueur et
 	// celle du LOBBY ENTIER du match, qui en est le référentiel.
