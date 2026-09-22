@@ -194,6 +194,20 @@ Test counts (commit `b655d0f2` and after) : 8 Histogram + 9 Scatter + 9 Donut + 
 6. Add a `<ShowcaseSection>` to `apps/web/src/features/lab/ChartsShowcasePage.tsx`.
 7. Update this README's Catalog table.
 
+## Empty state (2026-09-22)
+
+`ChartCard` renders its empty state with the app-wide canonical notice
+(`components/ui/empty-state.tsx` → `EmptyStateNotice`): a bold title over a grey description,
+inside the dashed frame, centred in the chart's reserved height (the layout never jumps).
+
+- `emptyTitle` — the bold line. Omitted: `common.charts.empty_title` ("Aucune donnée" / "No data").
+- `emptyMessage` — the DESCRIPTION, i.e. the sentence that names the cause. Omitted:
+  `common.charts.empty_description`. Callers already passing a full sentence need no change.
+
+Both defaults are resolved in the shell locale: never hardcode a French string in this folder —
+`chartEmptyStateCanonical.guard.test.ts` fails on a home-made empty frame and on any hardcoded
+FR literal here.
+
 ## Live sandbox
 
 Run `npm run dev` and navigate to `/lab/charts` for visual samples of all 11 wrappers with realistic demo data. Sandbox is hardcoded-strings-allowed (lint exception) — useful for visual regression checks.

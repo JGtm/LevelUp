@@ -160,4 +160,23 @@ describe('UsageEmptyNotice — D8, une phrase par cause', () => {
     const { container } = render(<UsageEmptyNotice reason="no-pads" t={t} />)
     expect(container.querySelector('[data-usage-empty="no-pads"]')).not.toBeNull()
   })
+
+  // 2026-09-22 : l'état vide se dessine comme partout ailleurs dans l'app — le gabarit
+  // `EmptyStateNotice` (titre en gras + description en gris dans le cadre pointillé), pas
+  // une ligne grise nue. La typographie elle-même est testée chez `empty-state`.
+  it('rend le gabarit canonique : un titre court AU-DESSUS de la phrase de la cause', () => {
+    const { container } = render(<UsageEmptyNotice reason="no-pads" t={t} />)
+    expect(screen.getByText(t.emptyTitleNoPads)).toBeInTheDocument()
+    expect(container.querySelector('.border-dashed')).not.toBeNull()
+  })
+
+  it('a un titre distinct par cause (deux causes, deux phrases — jusque dans le titre)', () => {
+    const titres = [
+      t.emptyTitleNoFilm,
+      t.emptyTitleNoPads,
+      t.emptyTitleNoObjectives,
+      t.emptyTitleLoadFailed,
+    ]
+    expect(new Set(titres).size).toBe(4)
+  })
 })

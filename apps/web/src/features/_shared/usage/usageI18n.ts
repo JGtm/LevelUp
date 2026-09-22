@@ -92,6 +92,18 @@ export interface UsageText {
   emptyNoFilm: string
   emptyNoPads: string
   emptyNoObjectives: string
+  /**
+   * LE TITRE COURT DE CHAQUE ÉTAT VIDE (2026-09-22). L'état vide canonique de l'app
+   * (`EmptyStateNotice`, `components/ui/empty-state.tsx`) se lit sur DEUX lignes : un titre
+   * en gras (`text-sm font-semibold text-foreground`) puis sa description en gris. Les
+   * phrases ci-dessus sont les DESCRIPTIONS ; ces quatre-là sont les titres. Une par cause,
+   * toujours : deux causes, deux phrases (D8) vaut aussi pour la ligne du haut, sans quoi
+   * le titre redirait « aucune donnée » à la place de ce qui manque vraiment.
+   */
+  emptyTitleNoFilm: string
+  emptyTitleNoPads: string
+  emptyTitleNoObjectives: string
+  emptyTitleLoadFailed: string
   /** Titres des vues à l'intérieur des cartes. */
   viewCadences: string
   viewShares: string
@@ -263,6 +275,10 @@ export const USAGE_TEXT: Record<Locale, UsageText> = {
     emptyNoFilm: "Aucun film décodé sur cette sélection.",
     emptyNoPads: "Aucun socle d'arme dans les modes de cette sélection.",
     emptyNoObjectives: "Aucun objectif dans les modes de cette sélection.",
+    emptyTitleNoFilm: 'Aucune mesure',
+    emptyTitleNoPads: 'Aucune prise de socle',
+    emptyTitleNoObjectives: "Aucune mesure d'objectif",
+    emptyTitleLoadFailed: 'Lecture impossible',
     viewCadences: 'Cadences par match',
     viewShares: 'Parts et parités',
     viewRegularity: 'Régularité match par match',
@@ -378,6 +394,10 @@ export const USAGE_TEXT: Record<Locale, UsageText> = {
     emptyNoFilm: 'No decoded film in this selection.',
     emptyNoPads: 'No weapon pad in the modes of this selection.',
     emptyNoObjectives: 'No objective in the modes of this selection.',
+    emptyTitleNoFilm: 'Nothing measured',
+    emptyTitleNoPads: 'No pad pickup',
+    emptyTitleNoObjectives: 'No objective measured',
+    emptyTitleLoadFailed: 'Could not load',
     viewCadences: 'Rate per match',
     viewShares: 'Shares and parity',
     viewRegularity: 'Match-by-match consistency',

@@ -18,10 +18,14 @@
 import { Suspense, lazy, useMemo, type ReactNode } from 'react'
 import type { EChartsCoreOption } from 'echarts/core'
 
+import { EmptyStateNotice } from '@/components/ui/empty-state'
 import { Spinner } from '@/components/ui/spinner'
 import { useColorPaletteVersion } from '@/lib/accessibility/useColorPaletteVersion'
 import { useThemeVersion } from '@/lib/echarts/useThemeVersion'
+import { formatMessage } from '@/lib/i18n/format'
+import { commonManifest } from '@/lib/i18n/generated/common'
 import { chartReview } from '@/lib/review/chart-review'
+import { useAppShellStore } from '@/stores/appShellStore'
 
 import { ReviewBadge } from './ReviewBadge'
 
@@ -52,7 +56,17 @@ export interface ChartCardProps<T = unknown> {
   loading?: boolean
   /** Erreur de fetch a afficher (texte humain attendu, deja localise). */
   error?: Error | null
-  /** Message a afficher si series est vide. */
+  /**
+   * Titre de l'etat vide (ligne en gras du gabarit canonique
+   * `components/ui/empty-state.tsx`). Absent : « Aucune donnée » / « No data »,
+   * resolu dans la locale du shell depuis `common.charts.empty_title`.
+   */
+  emptyTitle?: string
+  /**
+   * DESCRIPTION de l'etat vide (la phrase grise sous le titre) : c'est elle qui
+   * NOMME LA CAUSE de l'absence. Absente : la phrase generique
+   * `common.charts.empty_description`, resolue dans la locale du shell.
+   */
   emptyMessage?: string
   /** Hauteur fixe en pixels (default 320). */
   height?: number
@@ -124,7 +138,8 @@ export function ChartCard<T = unknown>({
   series,
   loading,
   error,
-  emptyMessage = 'Aucune donnée à afficher',
+  emptyTitle,
+  emptyMessage,
   height = 320,
   fluid = false,
   frameless = false,
@@ -137,6 +152,9 @@ export function ChartCard<T = unknown>({
   renderer = 'canvas',
 }: ChartCardProps<T>) {
   const isEmpty = !loading && !error && series.length === 0
+  // Les defauts des etats non-donnee sont BILINGUES : ce composant est monte par toutes
+  // les pages, un litteral FR ici serait une string UI sans parite EN (CLAUDE.md n°1).
+  const locale = useAppShellStore((s) => s.locale)
   // Le themeVersion s'incrémente lors d'un toggle data-theme : on l'inclut
   // dans les deps du useMemo pour forcer le rebuild de l'option et donc le
   // re-render canvas avec les couleurs du nouveau thème.
@@ -188,9 +206,22 @@ export function ChartCard<T = unknown>({
         {loading ? (
           <ChartCardLoading height={height} fluid={fluid} />
         ) : error ? (
-          <ChartCardError error={error} height={height} fluid={fluid} />
+          <ChartCardError
+            error={error}
+            fallback={formatMessage(commonManifest, 'common.charts.error_fallback', locale)}
+            height={height}
+            fluid={fluid}
+          />
         ) : isEmpty ? (
-          <ChartCardEmpty message={emptyMessage} height={height} fluid={fluid} />
+          <ChartCardEmpty
+            title={emptyTitle ?? formatMessage(commonManifest, 'common.charts.empty_title', locale)}
+            message={
+              emptyMessage ??
+              formatMessage(commonManifest, 'common.charts.empty_description', locale)
+            }
+            height={height}
+            fluid={fluid}
+          />
         ) : (
           <Suspense fallback={<ChartCardLoading height={height} fluid={fluid} />}>
             <ReactECharts
@@ -231,7 +262,17 @@ function ChartCardLoading({ height, fluid }: { height: number; fluid?: boolean }
   )
 }
 
-function ChartCardError({ error, height, fluid }: { error: Error; height: number; fluid?: boolean }) {
+function ChartCardError({
+  error,
+  fallback,
+  height,
+  fluid,
+}: {
+  error: Error
+  fallback: string
+  height: number
+  fluid?: boolean
+}) {
   return (
     <div
       className="flex items-center justify-center text-sm text-destructive"
@@ -239,19 +280,41 @@ function ChartCardError({ error, height, fluid }: { error: Error; height: number
       data-testid="chart-card-error"
       role="alert"
     >
-      {error.message || 'Erreur de chargement'}
+      {error.message || fallback}
     </div>
   )
 }
 
-function ChartCardEmpty({ message, height, fluid }: { message: string; height: number; fluid?: boolean }) {
+/**
+ * L'ETAT VIDE D'UNE CARTE DE GRAPHE SE DESSINE COMME TOUS LES AUTRES DE L'APP (2026-09-22).
+ *
+ * Jusqu'ici ce bloc rendait une simple ligne grise centree, sans titre ni cadre : sur une
+ * rangee ou la carte voisine portait le gabarit canonique (`EmptyStateNotice`, 48 fichiers,
+ * y compris DANS une `SectionCard`), la meme absence se lisait de deux facons. Decision
+ * utilisateur du 2026-09-22 : aligner. Aucun style d'etat vide ici, donc — la typographie
+ * se decide en UN endroit, `components/ui/empty-state.tsx`.
+ *
+ * La hauteur reservee du graphe est CONSERVEE (`minHeight`) : la mise en page ne saute pas
+ * quand une carte bascule entre donnees et vide, et le cadre pointille reste centre dedans.
+ */
+function ChartCardEmpty({
+  title,
+  message,
+  height,
+  fluid,
+}: {
+  title: string
+  message: string
+  height: number
+  fluid?: boolean
+}) {
   return (
     <div
-      className="flex items-center justify-center text-sm text-muted-foreground"
+      className="flex items-center justify-center"
       style={fluid ? { height: '100%', minHeight: height } : { minHeight: height }}
       data-testid="chart-card-empty"
     >
-      {message}
+      <EmptyStateNotice title={title} description={message} className="w-full max-w-md" />
     </div>
   )
 }

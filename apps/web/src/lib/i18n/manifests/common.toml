@@ -2397,3 +2397,50 @@ en = "Unable to load the friends list."
 [common.friends.removed]
 fr = "{gamertag} retiré des amis."
 en = "{gamertag} removed from friends."
+
+# Etat vide et repli d'erreur des cartes de graphe (`components/charts/ChartCard.tsx`).
+# Transverses par nature : tout wrapper ECharts de l'app les affiche quand l'appelant
+# ne fournit ni `emptyTitle` ni `emptyMessage`. Alignes sur l'etat vide canonique
+# (`components/ui/empty-state.tsx` : titre en gras + description grise).
+[common.charts.empty_title]
+fr = "Aucune donnée"
+en = "No data"
+
+[common.charts.empty_description]
+fr = "Aucune donnée à afficher pour cette sélection"
+en = "No data to display for this selection"
+
+[common.charts.error_fallback]
+fr = "Erreur de chargement"
+en = "Loading error"
+
+# Etat vide et repli d'erreur de la courbe d'engagement (`components/charts/EngagementCurve.tsx`).
+[common.charts.engagement_empty]
+fr = "Aucune donnée d'engagement pour ce match"
+en = "No engagement data for this match"
+
+[common.charts.engagement_error]
+fr = "Engagement momentanément indisponible"
+en = "Engagement temporarily unavailable"
+
+# Libelles par defaut des courbes d'engagement (le parent localise fournit les siens).
+[common.charts.engagement_trace_team]
+fr = "Équipe réelle"
+en = "Actual team"
+
+[common.charts.engagement_trace_expected]
+fr = "Joueur attendu"
+en = "Expected player"
+
+[common.charts.engagement_trace_player]
+fr = "Joueur réel"
+en = "Actual player"
+
+[common.charts.engagement_trace_lobby]
+fr = "Partie"
+en = "Lobby"
+
+# Libelle par defaut de l'axe Y d'un histogramme (`components/charts/HistogramChart.tsx`).
+[common.charts.axis_matches]
+fr = "Matchs"
+en = "Matches"

@@ -32,6 +32,7 @@
 import { useMemo } from 'react'
 
 import { SectionTitle } from '@/components/ui/detail-section'
+import { EmptyStateNotice } from '@/components/ui/empty-state'
 import { InfoTooltip } from '@/components/ui/info-tooltip'
 import type { SquadFormesBlock } from '@/lib/api/types'
 import type { Locale } from '@/lib/i18n/locale'
@@ -62,7 +63,7 @@ import {
   PadsTwoFriezesCard,
   PadsWeaponGridCard,
 } from './cards/PadCards'
-import { FORMES_TEXT } from './i18n'
+import { FORMES_TEXT, type FormesEmptyCause, type FormesText } from './i18n'
 import { EQUIPMENT_AXES, axisValue, lobbyOf } from './model/access'
 import { objectiveMatches } from './model/objectives'
 import { namedPickups, unnamedOccupations } from './model/pads'
@@ -97,36 +98,39 @@ function BlockTitle({ children, aide }: { children: string; aide: string }) {
  * manque. Des matchs mesurés mais aucune mesure sur l'axe : les modes retenus ne portent pas
  * la chose. Rien de déductible : le message générique — jamais un écran muet.
  */
-function equipmentCause(vm: FormesViewModel): string | null {
-  if (vm.measured.length === 0) return vm.t.empty.noFilm
+function equipmentCause(vm: FormesViewModel): FormesEmptyCause | null {
+  if (vm.measured.length === 0) return 'noFilm'
   // Un match mesuré SANS AUCUN joueur de lobby n'est pas « zéro usage » : c'est une réponse
   // qu'on ne sait pas lire. On ne lui invente pas de cause, on le dit.
   const places = vm.measured.reduce((a, m) => a + lobbyOf(m).length, 0)
-  if (places === 0) return vm.t.empty.generic
+  if (places === 0) return 'generic'
   const total = vm.measured.reduce(
     (acc, m) =>
       acc +
       lobbyOf(m).reduce((a, p) => a + EQUIPMENT_AXES.reduce((x, k) => x + axisValue(p, k), 0), 0),
     0,
   )
-  return total > 0 ? null : vm.t.empty.noEquipment
+  return total > 0 ? null : 'noEquipment'
 }
 
-function padsCause(vm: FormesViewModel): string | null {
-  if (vm.measured.length === 0) return vm.t.empty.noFilm
+function padsCause(vm: FormesViewModel): FormesEmptyCause | null {
+  if (vm.measured.length === 0) return 'noFilm'
   if (namedPickups(vm.block) > 0) return null
-  return unnamedOccupations(vm.block) > 0 ? vm.t.empty.padsUnnamedOnly : vm.t.empty.noPads
+  return unnamedOccupations(vm.block) > 0 ? 'padsUnnamedOnly' : 'noPads'
 }
 
-/** Le message d'un bloc vide, à la place de ses cartes. */
-function BlockEmpty({ message }: { message: string }) {
+/**
+ * Le bloc vide, à la place de ses cartes — RENDU PAR L'ÉTAT VIDE CANONIQUE DE L'APP
+ * (`EmptyStateNotice`, 2026-09-22). Ce composant portait son propre cadre (`rounded-lg`,
+ * pointillés, `py-6`) et une seule ligne grise : deux écarts au gabarit que toutes les
+ * autres sections posent (titre en gras + description, `rounded-xl`, fond `muted`). La
+ * typographie d'un état vide se décide en UN endroit, pas par section.
+ */
+function BlockEmpty({ cause, t }: { cause: FormesEmptyCause; t: FormesText }) {
   return (
-    <p
-      className="rounded-lg border border-dashed border-border px-3 py-6 text-center text-sm text-muted-foreground"
-      data-testid="formes-block-empty"
-    >
-      {message}
-    </p>
+    <div data-testid="formes-block-empty" data-formes-empty={cause}>
+      <EmptyStateNotice title={t.emptyTitles[cause]} description={t.empty[cause]} />
+    </div>
   )
 }
 
@@ -158,7 +162,7 @@ export function FormesRetenuesSection({
     <section className="space-y-3" aria-label={t.sectionTitle}>
       <BlockTitle aide={t.blocks.equipment.aide}>{t.blocks.equipment.title}</BlockTitle>
       {equipmentEmpty != null ? (
-        <BlockEmpty message={equipmentEmpty} />
+        <BlockEmpty cause={equipmentEmpty} t={t} />
       ) : (
         <div className="space-y-4">
           {solo ? (
@@ -180,7 +184,7 @@ export function FormesRetenuesSection({
 
       <BlockTitle aide={t.blocks.weapons.aide}>{t.blocks.weapons.title}</BlockTitle>
       {padsEmpty != null ? (
-        <BlockEmpty message={padsEmpty} />
+        <BlockEmpty cause={padsEmpty} t={t} />
       ) : (
         <div className="space-y-4">
           {solo ? (

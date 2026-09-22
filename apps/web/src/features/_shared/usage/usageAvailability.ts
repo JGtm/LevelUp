@@ -53,6 +53,24 @@ export function usageEmptyMessage(reason: UsageEmptyReason, t: UsageText): strin
   }
 }
 
+/**
+ * LE TITRE COURT de l'état vide (2026-09-22) — la première ligne de `EmptyStateNotice`,
+ * l'état vide canonique de l'app. `usageEmptyMessage` en reste la seconde : une cause, un
+ * titre ET une phrase, jamais un titre générique recollé devant quatre phrases distinctes.
+ */
+export function usageEmptyTitle(reason: UsageEmptyReason, t: UsageText): string {
+  switch (reason) {
+    case 'no-film':
+      return t.emptyTitleNoFilm
+    case 'no-pads':
+      return t.emptyTitleNoPads
+    case 'no-objectives':
+      return t.emptyTitleNoObjectives
+    case 'load-failed':
+      return t.emptyTitleLoadFailed
+  }
+}
+
 export type UsageAvailability =
   | { kind: 'ok' }
   | { kind: 'hidden' }

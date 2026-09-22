@@ -31,6 +31,13 @@ export interface FormesBlockText {
   aide: string
 }
 
+/**
+ * LES CAUSES D'UN BLOC VIDE de la section « formes retenues » — deduites des comptes par
+ * `equipmentCause` / `padsCause` (FormesRetenuesSection.tsx). Chacune porte SON titre et SA
+ * phrase : `generic` est le repli quand aucune ne se deduit.
+ */
+export type FormesEmptyCause = 'noFilm' | 'noEquipment' | 'noPads' | 'padsUnnamedOnly' | 'generic'
+
 export interface FormesText {
   /** Le NOM ACCESSIBLE de la section. Plus de titre a l'ecran depuis la decision D5 du
    *  2026-09-21 : trois intertitres se suivaient, le premier ne nommait rien de lisible. */
@@ -41,13 +48,14 @@ export interface FormesText {
    * cause se deduit des comptes du bloc ; `generic` est le repli quand aucune ne se
    * deduit.
    */
-  empty: {
-    noFilm: string
-    noEquipment: string
-    noPads: string
-    padsUnnamedOnly: string
-    generic: string
-  }
+  empty: Record<FormesEmptyCause, string>
+  /**
+   * LE TITRE COURT de chaque cause (2026-09-22). L'etat vide canonique de l'app
+   * (`EmptyStateNotice`) se lit sur deux lignes : un titre en gras puis sa description en
+   * gris. `empty` porte les descriptions, `emptyTitles` les titres — un par cause, jamais
+   * un titre generique recolle devant cinq phrases distinctes.
+   */
+  emptyTitles: Record<FormesEmptyCause, string>
   blocks: { equipment: FormesBlockText; weapons: FormesBlockText; objectives: FormesBlockText }
   axes: Record<EquipmentAxis, string>
   weaponClasses: Record<WeaponClass, string>
@@ -233,6 +241,13 @@ export const FORMES_TEXT: Record<Locale, FormesText> = {
         'nom, une prise ne peut être versée à aucun camp.',
       generic: 'Données manquantes sur cette sélection.',
     },
+    emptyTitles: {
+      noFilm: 'Aucune mesure',
+      noEquipment: "Aucun usage d'équipement",
+      noPads: 'Aucune prise de socle',
+      padsUnnamedOnly: 'Prises sans ramasseur',
+      generic: 'Données manquantes',
+    },
     blocks: {
       equipment: {
         title: "Usages d'équipements",
@@ -366,6 +381,13 @@ export const FORMES_TEXT: Record<Locale, FormesText> = {
         'Pads were occupied, but the native event names no picker: without a name, a pickup ' +
         'belongs to no side.',
       generic: 'Data missing for this selection.',
+    },
+    emptyTitles: {
+      noFilm: 'Nothing measured',
+      noEquipment: 'No equipment usage',
+      noPads: 'No pad pickup',
+      padsUnnamedOnly: 'Pickups without a picker',
+      generic: 'Data missing',
     },
     blocks: {
       equipment: {

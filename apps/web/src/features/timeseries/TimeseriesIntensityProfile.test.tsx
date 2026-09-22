@@ -59,7 +59,11 @@ describe('TimeseriesIntensityProfile', () => {
   it('liste vide → état vide (message dans le bloc titré)', () => {
     render(<TimeseriesIntensityProfile rows={[]} title="Intensité" emptyMessage="Aucune donnée" {...LABELS} />)
     expect(screen.getByTestId('chart-card-empty')).toBeInTheDocument()
-    expect(screen.getByText('Aucune donnée')).toBeInTheDocument()
+    // Assertion PORTÉE SUR LE BLOC : depuis l'alignement de l'état vide des cartes de
+    // graphe sur `EmptyStateNotice` (2026-09-22), le bloc porte un titre par défaut
+    // (« Aucune donnée ») en plus de la description — ici la fixture emploie le même
+    // libellé, et un `getByText` global y trouverait deux nœuds.
+    expect(screen.getByTestId('chart-card-empty')).toHaveTextContent('Aucune donnée')
     expect(screen.queryByTestId('echarts-mock')).toBeNull()
   })
 
