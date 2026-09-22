@@ -23,6 +23,7 @@ package grammar
 
 import (
 	"os"
+	"sort"
 	"testing"
 )
 
@@ -124,4 +125,74 @@ func g516Paquet(pay []byte, w *World, cfg FrameConfig, b *g516Bilan) {
 			b.desync35++
 		}
 	}
+}
+
+// TestGate516Contenu dit CE QUE LE TROU PORTAIT, en clair : les records et les COMPOSANTS que la
+// marche lit, ventiles par archetype — a comparer avec `MOUV516_DATUMS=0`, qui rejoue la meme
+// passe sans la table de datums.
+//
+// C est l item 5.16.5 : un tableau « par composant, avant/apres ». Sans l A/B il n aurait qu une
+// colonne, et le lot 5.15 avait refuse de le publier pour cette raison.
+func TestGate516Contenu(t *testing.T) {
+	tc := t516Cadre(t)
+	w := NewWorld(tc.reg)
+	parTI := map[int]int{}
+	parComposant := map[string]int{}
+	for _, c := range tc.fc.ChunkNumbers() {
+		data, pks, ok := tc.fc.ChunkAt(c)
+		if !ok {
+			continue
+		}
+		for _, pk := range pks {
+			if pk.Type != PacketTypeKeyframe {
+				continue
+			}
+			for _, r := range WalkKeyframeWorld(pk.Payload(data)) {
+				//nolint:gosec // slot, TI et Gen viennent du walker, bornes par construction
+				w.BindImageCle(uint32(r.Gen), uint32(r.Slot), uint32(r.TI))
+			}
+		}
+		if os.Getenv("MOUV516_DATUMS") != "0" {
+			LierTableDeDatums(w, data, pks)
+		}
+		for _, pk := range pks {
+			if pk.Type != PacketTypeDelta || pk.Size < 1 {
+				continue
+			}
+			pay := pk.Payload(data)
+			debut := DefaultPacketPreambleBits
+			if _, present := PacketHeadEventType(pay); present {
+				if debut = marchLocateStrict(pay, w, tc.cfg); debut < 0 {
+					continue
+				}
+			}
+			recs, _, _ := DecodeFrameViewsCurseur(pay, w, tc.cfg, 3, debut)
+			for _, r := range recs {
+				parTI[int(r.TypeIndex)]++
+				for _, cp := range r.Trace.Comps {
+					parComposant[cp.Name]++
+				}
+			}
+		}
+	}
+	t.Logf("RECORDS PAR ARCHETYPE : %s", t516HistTI(parTI))
+	t.Logf("COMPOSANTS LUS : %d etiquettes", len(parComposant))
+	for _, n := range g516Trier(parComposant) {
+		t.Logf("  %-60s %7d", n, parComposant[n])
+	}
+}
+
+// g516Trier rend les etiquettes de composant par compte DECROISSANT.
+func g516Trier(m map[string]int) []string {
+	out := make([]string, 0, len(m))
+	for k := range m {
+		out = append(out, k)
+	}
+	sort.Slice(out, func(i, j int) bool {
+		if m[out[i]] != m[out[j]] {
+			return m[out[i]] > m[out[j]]
+		}
+		return out[i] < out[j]
+	})
+	return out
 }
