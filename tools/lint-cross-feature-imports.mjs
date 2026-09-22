@@ -121,6 +121,11 @@ const ALLOWED_CROSS_IMPORTS = new Set([
   'match-view=>match-replay/MatchPadControlSection',
   'match-view=>match-replay/i18n/i18n',
   'match-view=>match-replay/model/equipmentUsageLogic',
+  //  - `model/padControlLogic` : depuis le 2026-09-22 (onglet « Armes et terrain »), la Match
+  //    View decide si la section « Equipement et terrain » a quelque chose a coiffer en relisant
+  //    `hasPadControl` / `buildPadControl` — le MEME predicat que la section elle-meme, sinon un
+  //    titre pourrait se poser au-dessus de rien (regle n° 6 : une condition, une ecriture).
+  'match-view=>match-replay/model/padControlLogic',
   // Engagement orchestre des sous-vues squad
   'engagement=>squad',
   // Home orchestre prestige + palmares + media + match-history
