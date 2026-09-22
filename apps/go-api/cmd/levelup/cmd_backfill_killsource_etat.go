@@ -198,6 +198,20 @@ func nouveauSuivi(
 	return s
 }
 
+// suiviDuCreditSeul : le suivi d une passe `--credit-only`, qui n a AUCUN film a compter.
+//
+// Elle existe parce que la passe credit est celle qui a le plus besoin d etre regardee : c est
+// elle qui a tourne plus de 22 heures en silence le 2026-09-21. Sans ce constructeur, le seul
+// chemin qui fabriquait un suivi etait la passe des FILMS, donc `--credit-only` n ecrivait rien.
+func suiviDuCreditSeul(chemin string, o killsourceOptions) *suiviDeLaPasse {
+	s := nouveauSuivi(chemin, o.titleSlug, nil, bilanDeSelection{}, o)
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.etat.Phase = phaseCredit
+	s.ecrire()
+	return s
+}
+
 // FilmDemarre note qu un ouvrier a pris ce film.
 func (s *suiviDeLaPasse) FilmDemarre(matchID string, debut time.Time) {
 	s.mu.Lock()

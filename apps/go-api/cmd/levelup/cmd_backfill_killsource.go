@@ -165,6 +165,9 @@ type killsourceOptions struct {
 	workers int
 	// status : LIT le fichier d etat et sort. N ouvre aucune base (lot 5.24.3).
 	status bool
+	// workersExplicite : `--workers` a ete ecrit sur la ligne de commande (par opposition au
+	// defaut). Sert UNIQUEMENT a refuser `--online --workers N` sans refuser `--online`.
+	workersExplicite bool
 }
 
 func runBackfillKillSource(cfg *config.AppConfig, args []string) error {
@@ -193,6 +196,13 @@ func runBackfillKillSource(cfg *config.AppConfig, args []string) error {
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
+	// `--workers` A-T-IL ETE DEMANDE, ou est-ce le defaut ? La question n a qu un usage —
+	// refuser `--online --workers N` sans refuser `--online` tout court (cf. validerLesOptions).
+	fs.Visit(func(f *flag.Flag) {
+		if f.Name == "workers" {
+			o.workersExplicite = true
+		}
+	})
 	// LE CONTEXTE D ARRET (lot 5.24.4) : son annulation par SIGINT/SIGTERM arrete la
 	// DISTRIBUTION des films ; ceux qui sont en vol vont au bout, ecriture comprise. Le contexte
 	// de TRAVAIL en est derive par `context.WithoutCancel` la ou il faut aller au bout.
@@ -229,21 +239,9 @@ func runBackfillKillSource(cfg *config.AppConfig, args []string) error {
 		return err
 	}
 
-	cheminEtat := pr.BackfillKillSourceStatePath(o.titleSlug)
-	var suivi *suiviDeLaPasse
-	if !o.creditOnly {
-		passe := passeDesFilms
-		if o.online {
-			passe = passeDesFilmsEnLigne
-		}
-		if suivi, err = passe(ctx, cfg, db, o, cheminEtat); err != nil {
-			return err
-		}
-	}
-	if !o.filmsOnly {
-		if err := passeDuCredit(ctx, db, o, suivi); err != nil {
-			return err
-		}
+	suivi, err := jouerLesDeuxPasses(ctx, cfg, db, o, pr.BackfillKillSourceStatePath(o.titleSlug))
+	if err != nil {
+		return err
 	}
 	cause := causeDArret(ctx)
 	if suivi != nil {
@@ -256,6 +254,47 @@ func runBackfillKillSource(cfg *config.AppConfig, args []string) error {
 		return &interruptionDeLaPasse{cause: cause}
 	}
 	return nil
+}
+
+// jouerLesDeuxPasses : LES FILMS PUIS LE CREDIT, dans cet ordre, sous UN SEUL suivi.
+//
+// Extraite de `runBackfillKillSource` au tour de revue du 2026-09-22 : la fonction depassait le
+// plafond de complexite du depot, et surtout cet enchainement etait la piece la moins couverte
+// du lot alors que c est lui qui porte le contrat de l arret (le constat P1 de la revue vivait
+// ICI). La coupure suit une frontiere nette — LA-BAS ce qui ouvre, valide et ferme, ICI ce qui
+// se joue entre les deux.
+//
+// L ORDRE N EST PAS INTERCHANGEABLE (cf. l en-tete du fichier) : la passe credit repassee APRES
+// le decodage ne coute rien et rattrape les matchs dont le film vient d arriver.
+func jouerLesDeuxPasses(
+	ctx context.Context, cfg *config.AppConfig, db *sql.DB, o killsourceOptions, cheminEtat string,
+) (*suiviDeLaPasse, error) {
+	var suivi *suiviDeLaPasse
+	var err error
+	if !o.creditOnly {
+		passe := passeDesFilms
+		if o.online {
+			passe = passeDesFilmsEnLigne
+		}
+		if suivi, err = passe(ctx, cfg, db, o, cheminEtat); err != nil {
+			return nil, err
+		}
+	}
+	if o.filmsOnly {
+		return suivi, nil
+	}
+	// `--credit-only` A DROIT A SON ETAT, ET C EST LA PASSE QUI EN A LE PLUS BESOIN (constat de
+	// revue, 2026-09-22) : celle du 2026-09-21 a tourne PLUS DE 22 HEURES en silence, et c est
+	// elle que l en-tete de `cmd_backfill_killsource_etat.go` cite comme la douleur a corriger.
+	// Sans ce bloc, `--credit-only` n ecrivait aucun fichier et `--status` servait l etat d une
+	// passe PRECEDENTE pendant toute sa duree.
+	if suivi == nil && !o.dryRun {
+		suivi = suiviDuCreditSeul(cheminEtat, o)
+	}
+	if err := passeDuCredit(ctx, db, o, suivi); err != nil {
+		return suivi, err
+	}
+	return suivi, nil
 }
 
 // migrerSchemaPartage : joue les migrations du shared sur le handle deja ouvert.
@@ -369,6 +408,16 @@ func validerLesOptions(o killsourceOptions) error {
 	if !o.online && o.gamertag != "" {
 		return fmt.Errorf("--gamertag n a de sens qu avec --online (la passe hors ligne n emet aucune requete)")
 	}
+	// LE DRAPEAU ACCEPTE EN SILENCE ETAIT UN MENSONGE (constat de revue, 2026-09-22) :
+	// `--online` decode EN SERIE — son cout est le RESEAU, borne par `--rps`, pas le decodage —
+	// et il ne lit jamais `o.workers`. Accepter la valeur, la valider contre le plafond memoire,
+	// puis l ignorer laissait croire a N ouvriers pour une passe qui en a UN.
+	if o.online && o.workersExplicite && o.workers > 1 {
+		return fmt.Errorf("--online --workers %d : la passe en ligne reste EN SERIE — son cout "+
+			"est le RESEAU (plafonne par --rps), pas le decodage, et paralleliser ne ferait "+
+			"qu attendre plus vite en depassant le debit qu on s est donne. Relancer sans "+
+			"--workers, ou avec --workers 1", o.workers)
+	}
 	return verifierLesOuvriers(o.workers)
 }
 
@@ -388,57 +437,6 @@ func verifierLesOuvriers(n int) error {
 			killcollector.PlafondMemoireDeLaPasse>>20, max)
 	}
 	return nil
-}
-
-// positionCaptureDeps construit les dependances de la capture des positions (G.2bis) :
-// resolution de carte (`port.ReplayMapNameRepo`, implementee par `duckdb.ReplayMapRepo`) et
-// catalogue de bornes de dequantification (le meme que `replaybuild`, DONNEE DE REFERENCE
-// VERSIONNEE — data/titles/{slug}/reference/map_quant_bounds.json, pas une sortie de sync).
-//
-// BEST-EFFORT PAR CONCEPTION : un catalogue illisible ou une metadata indisponible degrade en
-// « positions desactivees », jamais une erreur fatale — le backfill des morts et des tirs, la
-// raison d etre de cette commande, ne doit pas dependre d une brique tierce. `cleanup` ferme le
-// handle metadata ouvert ici ; elle est TOUJOURS non-nil (no-op si rien n a ete ouvert), donc
-// l appelant peut la `defer` inconditionnellement.
-func positionCaptureDeps(
-	cfg *config.AppConfig, titleSlug string, sharedDB *sql.DB, porte *killcollector.PorteDeLaBase,
-) (killcollector.DepsCapture, func()) {
-	noop := func() {}
-	pr := titlePkg.NewPathResolver(cfg.RepoRoot)
-
-	// OpenReadOnly (pas OpenReadForQuery) : la precondition de CETTE commande est le SERVEUR
-	// ARRETE (comme pour le handle RW de shared), donc aucun autre process ne tient metadata en
-	// ecriture pendant la passe — la garde « different configuration » d OpenReadForQuery n a
-	// rien a proteger ici, et NewReplayMapRepo demande le type *duckdb.DB, pas *sql.DB brut.
-	metaDB, err := duckdb.OpenReadOnly(pr.MetadataDBPath(titleSlug))
-	if err != nil {
-		fmt.Printf("metadata illisible (%v) — positions desactivees pour cette passe\n", err)
-		return killcollector.DepsCapture{}, noop
-	}
-	fermer := func() { _ = metaDB.Close() }
-
-	// LE CATALOGUE ET SA POLITIQUE DE DEGRADATION VIVENT DANS `killcollector` (lot 7C.8) :
-	// les TROIS chemins de collecte (post-sync du serveur, --online, ce backfill) les
-	// partagent. Le defaut P0-1 etait que seul celui-ci cablait la capture.
-	// LA RESOLUTION DE CARTE PASSE PAR LA PORTE (lot 5.24.2) : elle lit `match_registry` sur le
-	// handle partage, donc elle est l un des trois chemins par lesquels cette passe parle a la
-	// base — et il n y a aucune raison d en laisser un dehors.
-	capture, err := killcollector.CaptureDepuisCatalogue(cfg.RepoRoot, titleSlug,
-		porte.GarderLesCartes(duckdb.NewReplayMapRepo(staticSharedReader{db: sharedDB}, metaDB)))
-	if err != nil {
-		fmt.Printf("%v — positions desactivees pour cette passe\n", err)
-		return killcollector.DepsCapture{}, fermer
-	}
-	return capture, fermer
-}
-
-// staticSharedReader adapte le handle shared DEJA OUVERT (le lease de cette commande) en
-// duckdb.SharedReader. Meme raison que writerDeja : le process est seul (serveur arrete), donc
-// release est un no-op — il n y a pas de second lease a poser par-dessus celui deja tenu.
-type staticSharedReader struct{ db *sql.DB }
-
-func (s staticSharedReader) Get(context.Context) (*sql.DB, func(), error) {
-	return s.db, func() {}, nil
 }
 
 // writerDeja : le handle RW est deja ouvert et le process est seul (serveur arrete). La

@@ -70,3 +70,36 @@ func TestValiderLesOptions(t *testing.T) {
 		}
 	}
 }
+
+// TestValiderLesOptions_OnlineRefuseDesOuvriers — le constat de revue du 2026-09-22 : la
+// commande ACCEPTAIT `--online --workers 6`, le validait contre le plafond memoire, puis
+// decodait en serie sans rien dire (la passe en ligne n a jamais lu `o.workers`). L utilisateur
+// croyait tourner a six ouvriers et tournait a un.
+//
+// ⚠ ET ELLE NE DOIT PAS REFUSER `--online` TOUT COURT : le defaut vaut 3, donc le refus ne peut
+// porter que sur un `--workers` REELLEMENT ECRIT sur la ligne de commande.
+func TestValiderLesOptions_OnlineRefuseDesOuvriers(t *testing.T) {
+	enLigne := killsourceOptions{online: true, gamertag: "JGtm", workers: killcollector.OuvriersParDefaut}
+	if err := validerLesOptions(enLigne); err != nil {
+		t.Errorf("`--online --gamertag JGtm` refuse alors que --workers n a pas ete demande : %v", err)
+	}
+	demande := enLigne
+	demande.workersExplicite = true
+	demande.workers = 6
+	err := validerLesOptions(demande)
+	if err == nil {
+		t.Fatal("`--online --workers 6` accepte : la passe en ligne decode en serie et ignore " +
+			"la valeur — l utilisateur croirait tourner a six ouvriers")
+	}
+	for _, attendu := range []string{"EN SERIE", "--rps", "--workers 1"} {
+		if !strings.Contains(err.Error(), attendu) {
+			t.Errorf("le refus ne dit pas %q : %v", attendu, err)
+		}
+	}
+	// `--online --workers 1` reste legitime : c est ce que la passe fait deja.
+	unSeul := demande
+	unSeul.workers = 1
+	if err := validerLesOptions(unSeul); err != nil {
+		t.Errorf("`--online --workers 1` refuse alors qu il decrit le comportement reel : %v", err)
+	}
+}

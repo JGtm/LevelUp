@@ -60,7 +60,12 @@ var filmsDeLaReprise = []string{
 }
 
 // filmsCoupesA : apres combien de films l annulation tombe.
-const filmsCoupesA = 2
+//
+// UN, ET C EST UNE CORRECTION DE REVUE (2026-09-22). A deux, la mesure donnait 4 films ecrits
+// sur 6 — deux de marge seulement : sur une machine plus rapide, la passe serait allee au bout
+// avant que le sondeur ne voie la coupure, et le test se serait SAUTE en annoncant vert sans
+// rien avoir verifie. A un, la marge double.
+const filmsCoupesA = 1
 
 // vuesDeLaReprise : ce que la passe sans capture de positions peuple.
 var vuesDeLaReprise = []string{"match_kill_events_latest", "match_weapon_shots_latest"}
@@ -396,4 +401,77 @@ func colonnesPorteusesDeFait(t *testing.T, db *sql.DB, vue string) []string {
 		t.Fatalf("%s : aucune colonne porteuse de fait", vue)
 	}
 	return out
+}
+
+// TestPasseDuCredit_UnArretDejaDemandeNEstPasUneErreur — LE TEST DE NON-REGRESSION du constat
+// P1 de la revue adversariale du 2026-09-22 (trouve par DEUX relecteurs independants).
+//
+// # LE DEFAUT, ET CE QU IL COUTAIT
+//
+// `runBackfillKillSource` enchaine la passe des FILMS puis la passe CREDIT, et passait a la
+// seconde le contexte d ARRET. Apres un Ctrl-C pendant la passe des films, ce contexte est
+// ANNULE : `matchsDuRegistre` faisait `db.QueryContext` dessus, `database/sql` teste
+// `ctx.Done()` AVANT de prendre une connexion, la requete n etait pas executee, et
+// `passeDuCredit` rendait `registre des matchs: context canceled`. La commande sortait alors
+// sur cette erreur, AVANT de fermer l etat et de rendre son code dedie :
+//
+//	l etat restait en phase « films », `interrompue` vide — `--status` annoncait au bout de
+//	  10 minutes « la passe est probablement morte » au lieu de « INTERROMPUE » ;
+//	le code de sortie valait 1 (une panne) au lieu de 130 (« relance-moi ») ;
+//	le message affiche etait « erreur: registre des matchs: context canceled » au lieu des
+//	  instructions de reprise.
+//
+// Les TROIS promesses de l arret tombaient, et sur le chemin NOMINAL (sans `--films-only`).
+//
+// Rouge avant le correctif, vert apres.
+func TestPasseDuCredit_UnArretDejaDemandeNEstPasUneErreur(t *testing.T) {
+	cacheRoot := racineDuCache(t)
+	db := baseDeReprise(t, cacheRoot, nil)
+	if _, err := db.Exec(`INSERT INTO match_registry (match_id, map_name) VALUES (?, ?)`,
+		"match-credit-1", "streets"); err != nil {
+		t.Fatalf("registre: %v", err)
+	}
+
+	arret, annuler := context.WithCancel(context.Background())
+	annuler() // l arret a DEJA ete demande — l etat exact d un Ctrl-C pendant la passe des films
+	o := killsourceOptions{titleSlug: "halo_infinite", cacheDir: cacheRoot, workers: 1}
+	suivi := suiviDuCreditSeul(filepath.Join(t.TempDir(), "etat.json"), o)
+
+	if err := passeDuCredit(arret, db, o, suivi); err != nil {
+		t.Fatalf("passeDuCredit rend une erreur sur un arret deja demande (%v) — la commande "+
+			"sortirait avant de fermer l etat et de rendre le code 130", err)
+	}
+	// ET ELLE S EST BIEN ARRETEE : l arret doux vaut entre deux matchs, il n annule pas la
+	// lecture du registre.
+	if cause := causeDArret(arret); cause == "" {
+		t.Error("le contexte d arret ne se lit plus comme annule")
+	}
+}
+
+// TestPasseDuCredit_EcritSonEtatMemeSansFilm — le constat P2 de la meme revue : `--credit-only`
+// n ecrivait AUCUN fichier d etat, alors que c est la passe qui a tourne 22 heures en silence.
+func TestPasseDuCredit_EcritSonEtatMemeSansFilm(t *testing.T) {
+	cacheRoot := racineDuCache(t)
+	db := baseDeReprise(t, cacheRoot, nil)
+	for i := 0; i < 3; i++ {
+		if _, err := db.Exec(`INSERT INTO match_registry (match_id, map_name) VALUES (?, ?)`,
+			fmt.Sprintf("match-credit-%d", i), "streets"); err != nil {
+			t.Fatalf("registre: %v", err)
+		}
+	}
+	chemin := filepath.Join(t.TempDir(), "etat.json")
+	o := killsourceOptions{titleSlug: "halo_infinite", cacheDir: cacheRoot, workers: 1, creditOnly: true}
+	suivi := suiviDuCreditSeul(chemin, o)
+	if e := lireEtatDeReprise(t, chemin); e.Phase != phaseCredit {
+		t.Fatalf("phase = %q des la construction, attendu %q : `--status` servirait l etat d une "+
+			"passe precedente pendant toute la duree de celle-ci", e.Phase, phaseCredit)
+	}
+	if err := passeDuCredit(context.Background(), db, o, suivi); err != nil {
+		t.Fatalf("passeDuCredit: %v", err)
+	}
+	e := lireEtatDeReprise(t, chemin)
+	if e.Credit.AExaminer != 3 {
+		t.Errorf("credit.a_examiner = %d, attendu 3 — la passe credit n annonce pas son total",
+			e.Credit.AExaminer)
+	}
 }

@@ -112,6 +112,23 @@ type CreditCollector struct {
 	// et c est le defaut : seul le backfill CLI ecrit un fichier d etat. Appelee AUX MEMES
 	// JALONS que la ligne de journal de 5.12, donc depuis le seul goroutine de la passe.
 	progression func(examines, total int, reste time.Duration)
+
+	// arretDoux : le contexte dont l annulation arrete la passe ENTRE DEUX MATCHS, sans couper
+	// celui qui est en cours (lot 5.24.4, meme contrat que `KillSourceCollector.AvecArretDoux`).
+	// nil = pas d arret doux, le defaut de tous les appelants sauf le backfill CLI.
+	arretDoux context.Context
+}
+
+// AvecArretDoux installe le contexte d ARRET DOUX de la passe credit.
+//
+// IL EXISTE POUR LA MEME RAISON QUE SON HOMOLOGUE DE LA PASSE DES FILMS, et il a ete AJOUTE en
+// revue (2026-09-22) : sans lui, la commande n avait qu une facon d arreter la passe credit —
+// annuler le contexte de travail —, ce qui faisait echouer sa PREMIERE lecture au lieu de
+// l arreter proprement. L arret se decide donc ici, entre deux matchs, pendant que le contexte
+// de travail reste vivant.
+func (c *CreditCollector) AvecArretDoux(ctx context.Context) *CreditCollector {
+	c.arretDoux = ctx
+	return c
 }
 
 // AvecProgression branche le suivi externe de la passe credit. nil = aucun suivi.
@@ -408,6 +425,13 @@ func (c *CreditCollector) CollectMatches(ctx context.Context, matchIDs []string)
 	start := time.Now()
 	sum := CreditSummary{Total: len(matchIDs)}
 	for _, id := range matchIDs {
+		if c.arretDoux != nil && c.arretDoux.Err() != nil {
+			// ARRET DOUX : le match en cours est deja fini — on ne prend pas le suivant, et la
+			// lecture du suivant n echoue pas : elle n a pas lieu.
+			slog.InfoContext(ctx, "killsource credit: arret demande — la passe s arrete entre deux matchs",
+				"traites", sum.examines(), "total", sum.Total)
+			break
+		}
 		if ctx.Err() != nil {
 			slog.InfoContext(ctx, "killsource credit: passe interrompue par l appelant",
 				"traites", sum.examines(), "total", sum.Total)

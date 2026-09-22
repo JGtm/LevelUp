@@ -347,9 +347,12 @@ func TestPorteDeLaBase_UnSeulJetonALaFois(t *testing.T) {
 	}
 	rendre()
 	rendre() // idempotente : un second appel ne doit PAS fabriquer un jeton de plus
-	ctx2, annuler2 := context.WithTimeout(context.Background(), 50*time.Millisecond)
-	defer annuler2()
-	rendre2, err := p.prendre(ctx2)
+	// SANS DELAI POUR CELLE-CI, ET C EST UNE CORRECTION DE REVUE (2026-09-22) : le jeton est
+	// DISPONIBLE, donc `prendre` ne doit pas attendre. Avec un `WithTimeout(50 ms)`, les deux
+	// branches du `select` pouvaient etre pretes en meme temps si le goroutine de test etait
+	// desordonnance, et Go en choisit une au hasard — un rouge intermittent sur le seul test de
+	// la porte qui tourne en CI. Les deux prises qui DOIVENT echouer, elles, gardent leur delai.
+	rendre2, err := p.prendre(context.Background())
 	if err != nil {
 		t.Fatalf("le jeton n a pas ete rendu: %v", err)
 	}
@@ -386,3 +389,41 @@ func TestPorteDeLaBase_NilEstUnPassePlat(t *testing.T) {
 
 var _ = decfilm.Rev // la revision du decodeur ne bouge pas dans ce lot : le test la cite pour que
 // tout changement de revision fasse relire ce fichier.
+
+// TestArretDoux_LaBoucleEnSerieLHonoreAussi — le constat de revue du 2026-09-22 : l arret doux
+// de la boucle EN SERIE (`roster.go`, le chemin de `--workers 1`) n etait couvert par AUCUN
+// test, ni local ni CI. Le gate de reprise, lui, tourne a deux ouvriers.
+//
+// Sans ce chemin, `backfill-killsource --workers 1` devient ININTERRUPTIBLE : le contexte de
+// travail est `context.WithoutCancel`, donc il n existe aucun autre point d arret, et il faut un
+// SECOND signal — qui tue le film en vol, c est-a-dire exactement ce que l arret doux existe
+// pour eviter.
+func TestArretDoux_LaBoucleEnSerieLHonoreAussi(t *testing.T) {
+	db := openSharedTestDB(t)
+	client := &fakeFilmClient{}
+	col := NewKillSourceCollector(client, fakeRoster{}, sharedWriter(db), capsAvecFilm(), 0)
+
+	// Temoin : sans arret, les trois matchs sont examines (le client ne rend aucun film, donc
+	// trois `film-absent` — ce qui compte est que la boucle les ait PRIS).
+	sum := col.CollectMatches(context.Background(), []string{"a", "b", "c"})
+	if sum.NoFilm != 3 {
+		t.Fatalf("temoin : %d films examines, attendu 3 (%+v)", sum.NoFilm, sum)
+	}
+	appelsSansArret := client.calls
+
+	arret, annuler := context.WithCancel(context.Background())
+	annuler()
+	sum = col.AvecArretDoux(arret).CollectMatches(context.Background(), []string{"a", "b", "c"})
+	if sum.NoFilm != 0 {
+		t.Errorf("%d films examines malgre l arret demande, attendu 0 : la boucle en serie "+
+			"n honore pas l arret doux et `--workers 1` serait ininterruptible", sum.NoFilm)
+	}
+	if client.calls != appelsSansArret {
+		t.Errorf("la source de films a ete interrogee %d fois de plus apres l arret",
+			client.calls-appelsSansArret)
+	}
+	if sum.Total != 3 {
+		t.Errorf("total = %d, attendu 3 : la synthese doit annoncer ce qu on lui a demande, "+
+			"pas ce qu elle a fait", sum.Total)
+	}
+}

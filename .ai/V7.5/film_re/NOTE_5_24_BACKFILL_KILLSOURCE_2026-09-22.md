@@ -81,6 +81,45 @@ pour ne rien gagner — la reprise se decidant de toute facon en base. L arret d
 pas la base** (une ecriture interrompue est rollback, jamais a moitie) : il protege le temps de
 calcul. Le releveur de signaux est RENDU des le premier signal, donc un second Ctrl-C tue.
 
+## 4 bis. Un defaut trouve en LANCANT la commande, pas en la relisant
+
+`go run ./cmd/levelup backfill-killsource --status` — qui n ouvre aucune base et sort en 0 —
+terminait par « **arret demande : plus aucun film n est distribue** ». Le message le plus
+alarmant de la commande s affichait a la fin de TOUTE passe reussie. Cause :
+`signal.NotifyContext` annule son contexte **par les deux chemins** (le signal ET l appel a
+`stop`), donc le `defer` de fin nominale reveillait le goroutine d annonce. Corrige dans le lot
+(canal de signal dedie, `stop` idempotente) avec son test de non-regression.
+
+Aucune relecture de diff n aurait trouve ce defaut : il ne se voit qu en EXECUTANT.
+
+## 4 ter. La revue adversariale — 1 P1 trouve DEUX FOIS
+
+Deux relecteurs aveugles, contextes frais, lentilles L1 (anti-ART) et L6 (couverture des tests).
+
+**L1 : aucun defaut recevable sur les ecritures**, et 14 conditions verifiees qui tiennent —
+les 7 sites de lease exhaustifs et tous gardes, aucune imbrication de jeton, aucune fuite,
+`decode_pass` unique par passe, les six vues `_latest` partitionnees par `match_id`, aucun etat
+mutable de paquet sur le chemin de decodage (la justification centrale du lot, re-verifiee par
+un tiers).
+
+**Le meme P1 trouve par les DEUX** : la passe CREDIT recevait le contexte d ARRET, deja annule
+apres un Ctrl-C pendant la passe des films. `database/sql` teste `ctx.Done()` avant de prendre
+une connexion, donc `matchsDuRegistre` rendait `context canceled` sans rien executer, et la
+commande sortait AVANT de fermer l etat. **Les trois promesses de l arret tombaient sur le
+chemin nominal** : etat fige en phase « films » (`--status` annoncant « probablement morte » au
+lieu de « INTERROMPUE »), code de sortie 1 au lieu de 130, message d erreur au lieu des
+instructions de reprise. Corrige — contexte de travail par `context.WithoutCancel` et arret par
+`CreditCollector.AvecArretDoux`, applique entre deux matchs —, avec un test dont la MUTATION a
+ete verifiee rouge.
+
+Cinq P2 dans le perimetre corriges avec leurs tests : `--credit-only` sans fichier d etat ;
+`--online --workers N` accepte puis ignore ; l arret doux de la boucle en serie (`--workers 1`)
+non couvert ; un test de porte sensible a l ordonnancement ; la marge du test de reprise.
+
+Deux P2 consignes au paragraphe 5 : **D4** (aucun job CI ne tient les trois affirmations
+centrales — la CI n a pas les films) et **D5** (quatre chemins de cablage CLI sans test de
+mutation).
+
 ## 5. Ce qui reste ouvert
 
 - **D1 (5.24)** — les dix films les moins chers du cache ne produisent rien neuf fois sur dix
@@ -88,6 +127,17 @@ calcul. Le releveur de signaux est RENDU des le premier signal, donc un second C
   de registre terminal. Non traite.
 - **D2 (5.24)** — l en-tete de `facts/killsource/doc.go` affirme encore le verrou de paquet
   disparu. Correction de 7 lignes, a prendre par le premier lot qui rouvrira ce paquet.
+- **D4 (5.24)** — ⚠ **aucun job CI ne joue les trois tests qui tiennent les affirmations du
+  lot** : `ci.yml` lance `go test -tags=integration ./...` sans `KILLSOURCE_FIXTURES`, donc
+  l egalite 1-contre-N, l egalite annuaire-contre-jointure et la reprise se SAUTENT toutes les
+  trois. Elles sont jouees LOCALEMENT a chaque cloture et leurs resultats sont colles au §5 du
+  plan. Y remedier est une decision d infrastructure (la CI n a pas les films, 107 Mo non
+  versionnes), pas un geste de ce lot.
+- **D5 (5.24)** — quatre chemins de cablage CLI sans test de mutation : retirer
+  `.AvecArretDoux(ctx)` ou `.AvecObservateur(suivi)` de la construction de la passe des films,
+  le pont `AvecProgression` de la passe credit, ou le compteur `SansFilmEnCache`, ne fait rougir
+  AUCUN test. L extraction de `jouerLesDeuxPasses` faite au tour de revue rend le remede
+  possible ; c est un lot a part.
 - **D3 (5.24)** — ⚠ **le seul rouge que le corpus reel declenche** :
   `TestKillSourceFaitsDIsolementFilmReel` assert `named_by NOT IN ('death','closure')` alors que
   `persist` en declare SEPT depuis le 2026-09-08 (registre d identite). 99 vies sur 99 « hors
