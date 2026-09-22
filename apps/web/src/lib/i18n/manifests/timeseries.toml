@@ -824,3 +824,81 @@ en = "The zero line stands in for both references: above it the session beats it
 [timeseries.progression.coord_tt_trend]
 fr = "La pointillée est la moyenne glissante sur trois soirées, calculée sans les soirées à échantillon faible (rendues en bâton creux)."
 en = "The dotted line is the three-session rolling average, computed without the low-sample sessions (drawn as hollow bars)."
+
+# --- Rôles de portée (a.1, D23-a du 2026-09-22) ---------------------------------------
+# Le nuage solo des rôles de portée, onglet Résumé, à la suite de « Portée par arme ».
+# Même axe, mêmes bandes et mêmes étiquettes « #N · carte » que la carte de l'Escouade :
+# c'est la même question posée à un seul joueur. D22-verbosité : l'explication tient dans
+# l'infobulle (i), en trois phrases ; sous le graphe, la légende et la couverture, rien d'autre.
+
+[timeseries.portee.card_title]
+fr = "Rôles de portée"
+en = "Range roles"
+
+[timeseries.portee.section_label]
+fr = "Portée des engagements"
+en = "Engagement range"
+
+[timeseries.portee.help]
+fr = "L'écart est la distance médiane de tes frags sur un match, moins celle de tous les joueurs du lobby : rapportée au lobby, elle ne dépend plus ni de la carte ni du mode. Les trois bandes sont les tiers de la fenêtre affichée, pas des mètres en dur — elles disent un rôle relatif, pas une distance absolue. Un match sous {floor, number} frags mesurés donne un point creux, exclu de la tendance."
+en = "The gap is your median kill distance on a match, minus that of every player in the lobby: measured against the lobby, it no longer depends on the map or the mode. The three bands are the thirds of the displayed window, not hard-coded metres — they state a relative role, not an absolute distance. A match under {floor, number} measured kills gives a hollow dot, excluded from the trend."
+
+[timeseries.portee.x_axis]
+fr = "Matchs, du plus ancien au plus récent"
+en = "Matches, oldest to most recent"
+
+[timeseries.portee.y_axis]
+fr = "Écart à la médiane du lobby"
+en = "Gap to the lobby median"
+
+[timeseries.portee.lobby_line]
+fr = "médiane du lobby"
+en = "lobby median"
+
+[timeseries.portee.band_front]
+fr = "Ligne de front"
+en = "Front line"
+
+[timeseries.portee.band_polyvalent]
+fr = "Polyvalent"
+en = "All-rounder"
+
+[timeseries.portee.band_sniper]
+fr = "Tireur d'élite"
+en = "Sharpshooter"
+
+[timeseries.portee.legend_match]
+fr = "un match"
+en = "one match"
+
+[timeseries.portee.legend_low_sample]
+fr = "moins de {floor, number} frags mesurés"
+en = "fewer than {floor, number} measured kills"
+
+[timeseries.portee.legend_trend]
+fr = "tendance ({n, number} matchs)"
+en = "trend ({n, number} matches)"
+
+[timeseries.portee.tooltip_median]
+fr = "médiane {m} m"
+en = "median {m} m"
+
+[timeseries.portee.tooltip_delta]
+fr = "écart {delta} m"
+en = "gap {delta} m"
+
+[timeseries.portee.tooltip_measured]
+fr = "{n, plural, one {# frag mesuré} other {# frags mesurés}}"
+en = "{n, plural, one {# measured kill} other {# measured kills}}"
+
+[timeseries.portee.coverage]
+fr = "{measured, number} frags mesurés sur {total, number}"
+en = "{measured, number} measured kills out of {total, number}"
+
+[timeseries.portee.empty_title]
+fr = "Aucune portée mesurée"
+en = "No range measured"
+
+[timeseries.portee.empty_description]
+fr = "Aucun match de la sélection n'a de film décodé : sans positions de frag, la portée ne se mesure pas."
+en = "No match in the selection has a decoded film: without kill positions, range cannot be measured."

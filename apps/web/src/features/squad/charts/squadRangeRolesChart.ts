@@ -53,6 +53,14 @@ export interface RangeRolesChartOpts {
   }
   /** Formateur des mètres (locale de l'app). */
   fmtM: (v: number) => string
+  /**
+   * Légende des SÉRIES (une entrée par joueur). `false` sur un nuage à une seule série —
+   * Timeseries, où le joueur consulté est seul : nommer une série unique n'apprend rien, et
+   * la légende des encodages (point creux, tendance) reste rendue par la carte.
+   */
+  legende?: boolean
+  /** Encre des séries sans entrée dans `couleurs` (défaut : jeton `info`). */
+  couleurDefaut?: string
 }
 
 /** La donnée d'un point du nuage : sa position, et le point BRUT pour l'infobulle. */
@@ -149,7 +157,7 @@ export function buildSquadRangeRolesOption(
   const axis = getAxisBase(tc)
   const bornes = bornesY(series)
   const n = opts.categories.length
-  const couleurDefaut = resolveToken('info')
+  const couleurDefaut = opts.couleurDefaut ?? resolveToken('info')
 
   const nuage = series.map((serie, idx) => {
     const couleur = opts.couleurs[serie.gamertag] ?? couleurDefaut
@@ -193,17 +201,21 @@ export function buildSquadRangeRolesOption(
 
   return {
     backgroundColor: CHART_BG,
-    grid: { top: 24, bottom: 78, left: 56, right: 16 },
+    // Sans légende de séries, le bas n'a plus à la loger : la grille descend d'autant.
+    grid: { top: 24, bottom: opts.legende === false ? 52 : 78, left: 56, right: 16 },
     tooltip: { ...getTooltipBase(tc), trigger: 'item', formatter: formatTooltip(opts) },
-    legend: {
-      ...getLegendBase(tc),
-      data: legendEntries(
-        series.map((s) => ({
-          name: s.gamertag,
-          color: opts.couleurs[s.gamertag] ?? couleurDefaut,
-        })),
-      ),
-    },
+    legend:
+      opts.legende === false
+        ? { show: false }
+        : {
+            ...getLegendBase(tc),
+            data: legendEntries(
+              series.map((s) => ({
+                name: s.gamertag,
+                color: opts.couleurs[s.gamertag] ?? couleurDefaut,
+              })),
+            ),
+          },
     xAxis: {
       ...axis,
       type: 'category',
