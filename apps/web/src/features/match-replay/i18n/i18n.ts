@@ -312,7 +312,7 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     stanceKind: {
       crouch: 'Accroupi',
       slide: 'Glissade',
-      mobility: 'Action',
+      clamber: 'Escalade',
       jumpDerived: 'Saut (dérivé)',
       sprint: 'Sprint',
     },
@@ -762,7 +762,7 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     stanceKind: {
       crouch: 'Crouched',
       slide: 'Slide',
-      mobility: 'Action',
+      clamber: 'Clamber',
       jumpDerived: 'Jump (derived)',
       sprint: 'Sprint',
     },

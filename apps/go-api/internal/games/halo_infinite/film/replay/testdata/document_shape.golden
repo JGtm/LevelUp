@@ -1,6 +1,6 @@
 # EMPREINTE DE FORME DU DOCUMENT DE REJEU — fige par document_shape_test.go.
 # Ne s'edite JAMAIS a la main : regeneration decrite en tete de ce test.
-schema 67
+schema 68
 empreinte-stockee 0030535963711419
 empreinte-servie 0030535963711419
 empreinte-cuite 8fa3e3de3052db39

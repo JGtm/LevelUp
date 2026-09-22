@@ -8518,7 +8518,79 @@ Note : `.ai/V7.5/film_re/NOTE_5_22_DECLENCHEUR_SAUT_2026-09-22.md`.
   100 ms**, le septieme present dans le canal de vitesse et rejete par la seule fenetre de
   hauteur (case 5.22.1 (b)) — soit un rappel de 6/7 = 85,7 % et une precision de 6/6 = 100 % sur
   la seule fenetre que l utilisateur a verifiee image par image.
-- [ ] **5.22.4 — LE PORT ET LA MONTEE 67 -> 68**
+- [x] **5.22.4 — LE PORT : PAS DE GENRE `jump` LU (IL N EST PAS PROUVE), ET L ACTION DE MOBILITE
+  DEVIENT `clamber` — SCHEMA 67 -> 68.**
+
+  **(a) `stances[].kind` `jump` N EST PAS LIVRE, ET C EST LA REGLE.** « Ce qui n est pas prouve
+  n est pas publie. » Les cases 5.22.1 et 5.22.3 mesurent un ensemble VIDE sur une vie repliquee
+  a chaque tick, sur les 68 vies de `bfecd02b` et les 238 de `4f77afc1`, les 64 composants au
+  denominateur ; la case 5.22.2 dit chez l ecrivain POURQUOI (le saut est un bit d un mot
+  d actions thread-local, pas un champ d objet). `jumpDerived` reste donc le seul genre du saut,
+  et son nom continue de dire qu il est calcule. **Ce qui reste ouvert n est pas nie : le canal
+  d ENTREE du film est illisible dans la fenetre du temoin (0 paquet ferme sur 1 199), et son
+  maillon est nomme — le trou du rang 1, lot 5.21.**
+
+  **(b) `mobility` DEVIENT `clamber`, ET L ORACLE EST L ECRAN.** Le lot 5.13.2 avait TRANCHE
+  l inverse, et pour une bonne raison : aucune des dix chaines `mobility` du binaire n etiquette
+  les quatre valeurs de `bloc + 0x9c`, et « nommer *Escalade* serait choisir a la place de la
+  mesure ». Ce qui a change n est pas le binaire, c est qu il existe desormais une mesure : **les
+  NEUF intervalles de ce genre, pris sur `bfecd02b`, ont ete confrontes image par image dans
+  Theater par l utilisateur — neuf escalades de rebord, 9 sur 9, aucun contre-exemple.** Le plus
+  net est celui du temoin : un saut date a 96,962 s qui se termine en prise sur un element du
+  decor, `i54` allume de 97,096 a 97,63 s, et le Spartan qui redescend ensuite de cet element.
+  Le vocabulaire du jeu corrobore sans prouver (`_action_hoist`, `_action_vault`,
+  `_action_climb_attach`, `_action_climb_detach` a `143ca0100` ;
+  `CharacterPhysicsModeClambering` a `143df73d0`, `FUN_1406b8244(idx) == 2`).
+
+  **POURQUOI UN RENOMMAGE EST UNE MONTEE DE SCHEMA** : `stanceAt` (web) IGNORE un genre inconnu
+  plutot que de lui donner le libelle d un voisin — un artefact cuit avant la montee afficherait
+  des escalades muettes chez un client neuf, et l inverse. Une valeur d enum publie est de la
+  FORME.
+
+  **CHECKLIST DE MONTEE, EN ENTIER** : `types.MovementClamber = "clamber"` (l ancien
+  `MovementMobility` est SUPPRIME, pas garde en alias — regle 7) · `grammar/movement_states.go` ·
+  chronique **v68** de `document_chronicle.go` · `structure_test.go` (la justification que
+  `TestStructureIsOptionalInDocument` exige) · `document_shape.golden` (schema 68, empreinte
+  `8fa3e3de3052db39`) · **plafonds** releves avec justification datee dans l exception ecrite
+  (`document_chronicle.go` 1974 -> 2018, `structure_test.go` 1250 -> 1270 ; au passage, le MESSAGE
+  du ratchet ne nommait qu un des deux fichiers de son exception alors que son propre en-tete en
+  nomme deux — doc inversee corrigee dans le meme commit) · 8 goldens d assemblage · 8 fixtures
+  de contrat **`replay_schema_68_*`** + manifeste (2 770 837 / 3 145 728 octets, les 8 `_67_`
+  supprimees par leur porte) · jumeaux `replaydoc` / `replayview` (le genre est une chaine libre
+  des deux cotes : seuls leurs commentaires changent, la parite tient) · **zod** : le schema web
+  ne contraint pas la valeur de `kind`, donc rien a changer — `STANCE_KINDS` de `stanceLogic.ts`
+  EST l enum cote client, et il porte `clamber` · **i18n FR/EN** « Escalade » / « Clamber »
+  (`i18n.ts` x2, contrat `i18nContract.ts` retype `Record<'crouch' | 'slide' | 'clamber' |
+  'sprint' | 'jumpDerived', string>`) · `layers` INCHANGE (l escalade reste dans le calque des
+  etats de mouvement ; sa revision suit `grammar.Rev`) · **OpenAPI EN DERNIER** (`make
+  openapi-gen`) puis `make generate-types` : **aucun octet ne change**, `kind` y est une chaine
+  libre.
+
+  Revisions : `grammar.Rev` `.9 -> .10` (la couche ecrit l etiquette de genre : sa SORTIE change)
+  + entree de chronique ; **`facts.Rev` NE MONTE PAS** — `killsource` ne lit aucun etat de
+  mouvement — son golden refige parce qu il hache la VALEUR de `grammar.Rev` ;
+  **`replay.SchemaVersion` 67 -> 68**.
+
+#### §4 du lot 5.22 — DECOUVERTES HORS PERIMETRE, CONSIGNEES ET NON TRAITEES
+
+| # | decouverte | ou la reprendre |
+|---|---|---|
+| **D1 (5.22)** | **LE SEPTIEME SAUT DU TEMOIN EST DANS LE FILM ET C EST LA FENETRE DE HAUTEUR QUI LE REJETTE** : episode 91,691 -> 92,358 s du slot 523, **0,9737 m integres en 0,667 s**, soit +14,6 % au-dessus de `types.SpartanJumpHeightM` pour une tolerance de 10 %. Ce n est pas un saut plat : il dure 0,667 s au lieu des 0,467 s du saut de reference — une montee prolongee (rebord, ou saut lance). La fenetre a ete calibree sur le PIC de la distribution (lot 5.7.5) ; elle exclut par construction les montees aidees par le decor. | un lot de PRECISION du derive, et il demande un arbitrage de l utilisateur : elargir la fenetre change le compte de `jumpDerived` sur TOUS les films (184 intervalles sur la seule fixture `000d5950`). Mesurer d abord ce que gagne et ce que perd chaque borne, sur les trois films du corpus |
+| **D2 (5.22)** | **LA BARRE THEATER EST L HORLOGE RELATIVE DU FILM, ET LA FORMULE `originMs + frame x 100 ms` NE LA DONNE PAS.** Mesure de la case 5.22.1 (a) : les six sauts derives, les trois sprints et la queue de `mobility` du temoin tombent tous, a moins de 100 ms, sur l instant relatif au PREMIER PAQUET DELTA. `originMs` (12 547 ms sur `bfecd02b`) recale les evenements de MATCH, pas la barre. Le brief du lot posait l inverse, et l ecart de 1 a 2,5 s qu il decrivait ne se reproduit pas sur cette mesure. | rien a corriger dans le code (aucun chemin de production ne convertit une frame en temps de barre par `originMs`) ; a redire dans le prochain brief qui datera un instant de film |
+| **D3 (5.22)** | **LE MESSAGE DU RATCHET DE TAILLE NE NOMMAIT QU UN DES DEUX FICHIERS DE SON EXCEPTION** (`document_chronicle.go`) alors que l en-tete de `plafondsParFichier` en nomme deux depuis le 2026-09-17 (lot 2.6.3). Un executant qui lit le message et pas l en-tete conclut qu il doit decouper `structure_test.go`. | **TRAITEE** dans le commit 5.22.4, qui touchait deja ce fichier et cette ligne (anti-patron « doc inversee », precedent du 5.14.3) |
+| **D4 (5.22)** | **LA VUE C EST LUE A UN OFFSET FAUX SUR LA MAJORITE DES PAQUETS D UN FILM DENSE, ET RIEN NE LE DIT AU LECTEUR.** `TestMouvement522Controle` rend 20 540 entrees de controle sur `bfecd02b`, dont les index de participant epars (8 a 31) que D5 (5.14) avait deja signales ; `TestMouvement522Fermeture` montre que dans la fenetre du temoin **aucun** paquet ne ferme. Les deux mesures se contredisent tant qu on ne croise pas la fermeture : une lecture de vue C n est fiable que sur un paquet qui ferme. | le lot D1 (5.14) / 5.21, comme controle de sortie : re-mesurer les index de controle APRES la fermeture du rang 1, et poser un compteur « entrees lues sur paquet ferme » plutot qu un compte brut |
+| **D5 (5.22)** | **`FUN_1406d025c` EST DOCUMENTE DEUX FOIS DANS LE DEPOT, SOUS DEUX NOMS DE NATURE DIFFERENTE** : « bloc d orientation / matrice d inertie » dans `unit_control.go` (lot 2.7) et « les BITS D ACTION » dans `frame_vue_controle.go` (lot 5.14). La grammaire est la meme et elle est juste ; c est la SEMANTIQUE qui n est etablie ni d un cote ni de l autre — les setters `FUN_1431ab1ec` / `FUN_1431ab1cc` sont generiques (ecrire un bit dans un mot), donc l offset ne nomme rien. | le lot qui nommera le contenu de ce bloc : passer par son CONSOMMATEUR, c est-a-dire par le type de `param_1` (le bloc de 0x68 octets de `FUN_1406cd860`), jamais par l offset |
+| **D6 (5.22)** | **LE MOT D ACTIONS D UNITE EST LU ET NOMME (25 bits), MAIS SON ECRIVAIN NE L EST PAS** : `FUN_142b7dff4` lit `TLS[0x468][unite]`, et la recherche d instructions sur l offset `0x468` ne rend aucun site qui ECRIVE cette table (17 acces en qword, tous sur d autres structures). Le remplisseur existe forcement ; il n a pas ete trouve dans le budget du lot. | le lot qui voudra savoir D OU vient une action d unite (rejeu des entrees ? animation ?) : partir de `FUN_142b7e030`, qui balaie la MEME table sur plusieurs unites, ou instrumenter l acces en execution |
+
+#### §5 du lot 5.22 — ETAT DE CLOTURE
+
+| case | statut | ce qui est livre |
+|---|---|---|
+| 5.22.1 | `[x]` | la barre Theater = l horloge relative du film, PROUVE par six sauts, trois sprints et une escalade ; les SEPT sauts du temoin dates sur l horloge du film, dont celui qui manque au derive (0,9737 m) ; **au decollage le film ne transmet que `i0`, `i1` et `i25`**, sur une vie repliquee a chaque tick ; le sprint qui s eteint 16 ms APRES est nomme comme confondant ; le canal d entree declare ILLISIBLE et chiffre (0 paquet ferme sur 1 199) |
+| 5.22.2 | `[x]` | `unit_action_test_jump` -> `FUN_142b7dff4(unite, **0x16**)`, un mot de 64 bits par unite dans `TLS + 0x468` — **pas un champ d objet** ; l enum des 25 actions d unite ; **D2 (5.14) referme** : `FUN_1406d025c` etait deja porte au depot (`consume1406d025c`, lot 2.7), cable, paquets fermes 2 884 -> 2 900 a bourrage NUL |
+| 5.22.3 | `[x]` | la croix sur 68 vies de `bfecd02b` et 238 de `4f77afc1`, etalon publie d abord ; **aucun composant exclusif**, et cette fois les **64** composants du bipede sont au denominateur ; `i16 object-physics-flags` refute par son effectif (14 et 20 declarations) |
+| 5.22.4 | `[x]` | **pas de genre `jump` LU** (non prouve) ; **`mobility` -> `clamber`, « Escalade » / « Clamber », schema 67 -> 68**, checklist complete, `grammar.Rev` `.9 -> .10`, `facts.Rev` inchangee, OpenAPI inchange |
+| gates | verts | par commit : `gofmt`, `go build`, `go vet` (+`research`), `go test -count=1` sur `halo_infinite/...`, `archlint`, `replaybuild`, `replaydoc`, `replayview`, `contracttest`, `api` (**0 `--- FAIL`, code de sortie 0**), `golangci-lint ./film/...` (**0 issue**), `go test -race` sur `grammar` (397 s), `tsc -b`, `npx vitest run src/features/match-replay src/lib/replay` (**3 290 tests**), `npx eslint` (0 erreur). Corpus 19, re-figeage des entrees par decodage et CI : **au pilote** |
 
 ### Post-chantier — lot 5.20 (l image-cle entiere et les naissances), branche `feat/decfilm-70`
 

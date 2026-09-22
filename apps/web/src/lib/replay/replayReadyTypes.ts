@@ -286,7 +286,7 @@ export type ReplayDocumentReady = Omit<
   equipmentPlacements: NonNullable<ReplayDocument['equipmentPlacements']>
   /**
    * LES ÉTATS DE MOUVEMENT DU SPARTAN (schéma 66) : un intervalle par (vie, genre) sur l'axe de
-   * frames — `crouch` (accroupi), `slide` (glissade), `mobility` (action de mobilité),
+   * frames — `crouch` (accroupi), `slide` (glissade), `clamber` (escalade),
    * `sprint` (la fente de capacité active d'`i57`), tous quatre LUS dans un composant, et
    * `jumpDerived` (saut), DÉRIVÉ de l'intégrale de la vitesse
    * verticale d'`i1` et reconnu à sa hauteur (0,85 m ± 10 %). Vide = artefact antérieur au

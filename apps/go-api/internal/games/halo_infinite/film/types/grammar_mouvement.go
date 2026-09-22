@@ -11,7 +11,7 @@ package types
 //
 //	MovementCrouch       `ti=35 i29 unit-crouch-component`            un booleen + une progression
 //	MovementSlide        `ti=35 i62 biped-slide-component`            la porte du composant
-//	MovementMobility     `ti=35 i54 biped-mobility-action-component`  le drapeau d amorce
+//	MovementClamber      `ti=35 i54 biped-mobility-action-component`  le drapeau d amorce
 //	MovementSprint       `ti=35 i57 biped-spartan-ability-component`  l index de la fente ACTIVE
 //	MovementJumpDerived  (aucun composant)                            l integrale de `i1`, par sa
 //	                                                                  HAUTEUR
@@ -40,12 +40,30 @@ const (
 	// MovementSlide : glissade. La porte de tete d `i62` dit a elle seule si cet instant en
 	// porte une.
 	MovementSlide = "slide"
-	// MovementMobility : action de mobilite. Le drapeau d amorce d `i54` dit « une action est
-	// transmise a cet instant ». CE QUE L ACTION EST n est PAS etabli : l enum a trois
-	// candidats (escalade, saut de rebord, propulsion) et le domaine mesure de ses champs
-	// contredit l hypothese a quatre valeurs (§ 2.8 et D9 de la note 5.3). Le document publie
-	// donc l ACTION, pas son nom.
-	MovementMobility = "mobility"
+	// MovementClamber : L ESCALADE, et elle est NOMMEE DEPUIS LE 2026-09-22 (lot 5.22.4).
+	//
+	// Le drapeau d amorce d `i54 biped-mobility-action-component` dit « une action de mobilite
+	// est transmise a cet instant ». Le lot 5.13.2 s etait arrete la : aucune des dix chaines
+	// de `mobility` du binaire n est une etiquette de valeur, les quatre valeurs de
+	// `bloc + 0x9c` restaient sans nom, et le genre s appelait donc `mobility` — l ACTION, pas
+	// son nom.
+	//
+	// CE QUI TRANCHE N EST PAS UNE CHAINE DU BINAIRE, C EST LE JEU REGARDE. L utilisateur a
+	// ouvert Theater sur `bfecd02b` et confronte, image par image, NEUF intervalles de ce
+	// genre : les neuf sont des escalades de rebord — le temoin du lot 5.22
+	// (Madina97294, slot 523) en donne la plus nette, un saut date a 96,962 s qui se termine en
+	// prise sur un element du decor, ou `i54` s allume de 97,096 a 97,63 s et ou le Spartan
+	// redescend ensuite de cet element. **9 verdicts sur 9**, aucun contre-exemple.
+	//
+	// LE NOM DU JEU LE CORROBORE SANS LE PROUVER : la famille d actions d animation porte
+	// `_action_hoist`, `_action_vault`, `_action_climb_attach` et `_action_climb_detach`
+	// (`143ca0100` et suivants), et le mode de physique de personnage correspondant est
+	// `CharacterPhysicsModeClambering` (`143df73d0`, `FUN_1406b8244(idx) == 2`). C est le
+	// vocabulaire du jeu pour ce geste ; le verdict, lui, vient de l ecran.
+	//
+	// LE GENRE RESTE UNE LECTURE, et c est pourquoi il ne porte pas de suffixe : le bit est
+	// dans `i54`, il n est pas calcule.
+	MovementClamber = "clamber"
 	// MovementJumpDerived : le SAUT, et il est DERIVE — jamais lu. Le genre porte le mot
 	// `Derived` dans sa valeur meme (`jumpDerived`) parce qu un client qui l affiche doit
 	// pouvoir le distinguer d un bit du film sans consulter de documentation : les trois

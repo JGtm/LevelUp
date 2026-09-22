@@ -125,7 +125,7 @@ export function normalizeReplayDocument(raw: ReplayDocument): ReplayDocumentRead
     // `coverage.placements.calibrated` distinguent les deux, et c'est pour cela qu'ils sont publiés.
     equipmentPlacements: raw.equipmentPlacements ?? [],
     // LES ÉTATS DE MOUVEMENT (schéma 66) : un intervalle par (vie, genre) — `crouch`, `slide`,
-    // `mobility`, `sprint` (LUS) et `jumpDerived` (DÉRIVÉ de la vitesse verticale). Absent = artefact
+    // `clamber`, `sprint` (LUS) et `jumpDerived` (DÉRIVÉ de la vitesse verticale). Absent = artefact
     // antérieur au schéma 65, OU film dont aucune vie publiée ne porte de transition :
     // `coverage.stances.scanned` et `.absent` distinguent les deux, et c'est pour cela qu'ils
     // sont publiés. Un genre de PLUS qui apparaîtrait serait une donnée neuve, pas un libellé

@@ -195,3 +195,18 @@ package grammar
 // voit pas ce cablage. Son golden est refige parce qu il hache la VALEUR de `grammar.Rev` ;
 // aucun backlog killsource n est ouvert. `replay.SchemaVersion` : la montee 67 -> 68 de ce lot
 // est celle du genre `clamber` (5.22.4), pas celle-ci.
+
+// ENTREE `grammar-2026-09-22.10` (2026-09-22, lot 5.22.4) : L ACTION DE MOBILITE EST NOMMEE —
+// LE GENRE PUBLIE PASSE DE `mobility` A `clamber`.
+//
+// La couche `grammar` ecrit l etiquette de genre des etats de mouvement (`movement_states.go`,
+// `recevoir`) : sa SORTIE change, meme si aucun bit n est lu autrement. Le verdict est celui de
+// l utilisateur dans Theater — neuf intervalles d `i54` confrontes image par image sur
+// `bfecd02b`, neuf escalades de rebord, aucun contre-exemple — et le vocabulaire du jeu le
+// corrobore (`_action_hoist` / `_action_vault` / `_action_climb_attach`, `143ca0100` ;
+// `CharacterPhysicsModeClambering`, `143df73d0`). Details : `types/grammar_mouvement.go` et
+// l entree v68 de `replay/document_chronicle.go`.
+//
+// `facts.Rev` NE MONTE PAS : `killsource` ne lit aucun etat de mouvement. Son golden est refige
+// parce qu il hache la VALEUR de `grammar.Rev`. `replay.SchemaVersion` MONTE (67 -> 68), parce
+// qu une valeur d enum publie est de la FORME.
