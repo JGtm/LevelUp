@@ -8487,7 +8487,37 @@ Note : `.ai/V7.5/film_re/NOTE_5_22_DECLENCHEUR_SAUT_2026-09-22.md`.
   porte les revisions) ; 8 fixtures de contrat refigees, **dont le SEUL ecart est la chaine de
   revision** (piege 6 de la passation 5.7 : elles rejouent des entrees figees, ce cablage ne les
   traverse pas) — 2 770 834 / 3 145 728 octets.
-- [ ] **5.22.3 — VERIFICATION**
+- [x] **5.22.3 — VERIFICATION SUR TOUTE LA POPULATION DES DEUX FILMS : L ENSEMBLE EST VIDE, ET
+  CETTE FOIS LES 64 COMPOSANTS SONT AU DENOMINATEUR.**
+
+  `TestMouvement522Generalisation` refait la croix de la case 5.22.1 sur TOUTES les vies de
+  bipede, chaque vie contre ses PROPRES fenetres de decollage. L etalon de contenu est publie
+  AVANT toute conclusion, comme l exige la porte propre :
+
+  | film | records `ti=35` | desyncs | vies de bipede | episodes fermes | retenus | vies qui sautent | records dedans / hors |
+  |---|---:|---:|---:|---:|---:|---:|---|
+  | `bfecd02b` (snowbound) | 129 572 | 4 | 68 | 1 513 | 252 | 54 | 4 954 / 124 618 |
+  | `4f77afc1` (flood gulch) | 400 697 | 22 | 238 | 6 497 | 1 209 | 193 | 10 524 / 390 173 |
+
+  **`COMPOSANTS EXCLUSIFS AUX FENETRES DE DECOLLAGE : [] ` sur les DEUX films.** Et le progres
+  sur le 5.11.2 est dans le denominateur : a l epoque `i55`, `i62`, `i29`, `i60`, `i18`, `i63`
+  etaient declares ZERO fois dans les fenetres, mais aussi presque zero fois ailleurs — on ne
+  savait pas si le film les portait. **Ici les 64 composants du bipede sont presents sur
+  `bfecd02b`, `i0` a `i63` sans trou**, et aucun n est exclusif. Les facteurs les plus hauts sont
+  les confondants deja nommes : `i28 active-camo` 5,01 / 6,79 et `i57`/`i59` 4,24 / 6,04 (le
+  sprint qui S ETEINT au decollage), `i32 weapon-overheated` 2,45 (on tire en sautant).
+
+  `i16 object-physics-flags-component` — le candidat de nom le plus prometteur du registre
+  (« au sol, ... ») — est declare **14 fois sur 129 572 records** sur `bfecd02b` et **20 fois sur
+  400 697** sur `4f77afc1`, **jamais** dans une fenetre de decollage. Il ne peut pas etre le
+  canal du saut : un saut par vie et par minute demanderait des milliers de declarations.
+
+  **Precision / rappel d un candidat : SANS OBJET**, puisqu il n y a pas de candidat. Ce qui est
+  mesure a la place, et qui est la vraie sortie de ce lot, est le RAPPEL DU DERIVE lui-meme
+  contre le verdict Theater de l utilisateur sur le temoin : **6 sauts sur 7 dates a moins de
+  100 ms**, le septieme present dans le canal de vitesse et rejete par la seule fenetre de
+  hauteur (case 5.22.1 (b)) — soit un rappel de 6/7 = 85,7 % et une precision de 6/6 = 100 % sur
+  la seule fenetre que l utilisateur a verifiee image par image.
 - [ ] **5.22.4 — LE PORT ET LA MONTEE 67 -> 68**
 
 ### Post-chantier — lot 5.20 (l image-cle entiere et les naissances), branche `feat/decfilm-70`
