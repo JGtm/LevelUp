@@ -8225,6 +8225,7 @@ export interface components {
         MatchCombatTab: {
             assist_pairs?: components["schemas"]["MatchAssistPairs"];
             cadence?: components["schemas"]["ChartSeriesChartPointStacked"];
+            elevation?: components["schemas"]["MatchElevationBlock"];
             frag_distribution?: components["schemas"]["FragDistribution"];
             highlight_events: components["schemas"]["MatchHighlightEvent"][] | null;
             impact_badges: components["schemas"]["MatchImpactBadge"][] | null;
@@ -8236,6 +8237,28 @@ export interface components {
             riposte?: components["schemas"]["MatchRiposteBlock"];
             tug_of_war: components["schemas"]["MatchTugOfWarBin"][] | null;
             weapon_kills: components["schemas"]["MatchWeaponKill"][] | null;
+        };
+        MatchElevationBlock: {
+            kills: components["schemas"]["MatchElevationKill"][] | null;
+            lobby?: components["schemas"]["MatchElevationKill"][] | null;
+            /** Format: double */
+            lobby_median_delta_z_m: number;
+            /** Format: int64 */
+            measured_kills: number;
+            /** Format: int64 */
+            total_kills: number;
+        };
+        MatchElevationKill: {
+            /** Format: double */
+            delta_z_m: number;
+            /** Format: double */
+            distance_m: number;
+            opponent?: string;
+            side: string;
+            /** Format: int64 */
+            time_ms: number;
+            weapon?: string;
+            weapon_en?: string;
         };
         MatchEncounterBadge: {
             color_token: string;
