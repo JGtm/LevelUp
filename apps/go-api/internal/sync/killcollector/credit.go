@@ -52,7 +52,6 @@ import (
 	"fmt"
 	"log/slog"
 	"strings"
-	"sync"
 	"time"
 
 	"levelup/go-api/internal/analysis"
@@ -103,12 +102,11 @@ type CreditCollector struct {
 	acquireShared persist.SharedWriterFn
 
 	// L annuaire des noms de la passe, charge au premier match et garde pour la vie de
-	// l instance — un collecteur = une passe (`credit_annuaire.go`, lot 5.12). Le verrou n est
-	// pas une precaution decorative : la passe de masse est sequentielle, mais un appelant qui
+	// l instance — un collecteur = une passe (`credit_annuaire.go`, lot 5.12). Le chargeur porte
+	// son propre verrou : la passe de masse est sequentielle, mais un appelant qui
 	// paralleliserait `CollectMatch` ferait sinon courir une ecriture de carte contre ses
 	// lectures.
-	annuaireMu sync.Mutex
-	noms       *annuaireDesNoms
+	chargeur chargeurDAnnuaire
 }
 
 // NewCreditCollector construit le producteur.

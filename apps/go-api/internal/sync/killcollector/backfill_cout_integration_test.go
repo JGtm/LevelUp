@@ -344,3 +344,49 @@ func max64(a, b int64) int64 {
 	}
 	return b
 }
+
+// facteurAttenduDeLAnnuaire : l ecart MINIMAL exige entre la jointure par match et l annuaire de
+// passe, sur le banc de 180 000 lignes.
+//
+// Mesure du 2026-09-22 : 49 a 60 ms par match contre quelques dizaines de microsecondes une fois
+// l annuaire charge. Exiger 10x laisse toute la marge du bruit de machine tout en gardant la
+// reproduction du defaut vraie — et un rouge ici veut dire que DuckDB pousse desormais le filtre
+// dans la vue d identite, donc qu il faut RE-MESURER avant de conclure quoi que ce soit.
+const facteurAttenduDeLAnnuaire = 10
+
+// TestRosterDesFilms_AnnuaireContreJointure — le garde-fou de D1 (5.12), enfin ferme (5.24.2).
+//
+// Il oppose, sur le MEME banc et les MEMES matchs, la resolution d identites par la jointure
+// `v_gamertag_lookup` par match et celle par l annuaire de passe. C est la seule lecture repetee
+// que la decomposition 5.24.1 a trouvee, et depuis que la passe tourne a N ouvriers elle est
+// SERIALISEE derriere la porte de la base : son cout est un plafond, pas une part.
+func TestRosterDesFilms_AnnuaireContreJointure(t *testing.T) {
+	db := openSharedTestDB(t)
+	peuplerBancCredit(t, db)
+	ctx := context.Background()
+
+	// Les matchs du banc portent des participants : `peuplerBancCredit` en pose pour les
+	// `credit-%05d`. C est sur eux que la resolution travaille.
+	mesurer := func(nom string, r *SharedRoster) time.Duration {
+		debut := time.Now()
+		for i := 0; i < nbMatchsCreditMes; i++ {
+			if _, err := r.IdentitiesForMatch(ctx, fmt.Sprintf("credit-%05d", i)); err != nil {
+				t.Fatalf("%s: %v", nom, err)
+			}
+		}
+		d := time.Since(debut) / nbMatchsCreditMes
+		t.Logf("%-52s %s par match", nom, d.Round(time.Microsecond))
+		return d
+	}
+
+	jointure := mesurer("DEFAUT — jointure v_gamertag_lookup par match", NewSharedRoster(db))
+	annuaire := mesurer("production — annuaire de passe (chargement inclus)",
+		NewSharedRoster(db).AvecAnnuaireDePasse())
+
+	if jointure < facteurAttenduDeLAnnuaire*annuaire {
+		t.Errorf("la jointure par match ne coute que %s contre %s pour l annuaire (facteur "+
+			"attendu >= %d) : soit le banc ne reproduit plus le defaut (revoir ses dimensions), "+
+			"soit DuckDB pousse desormais le filtre dans la vue d identite — re-mesurer avant de "+
+			"conclure quoi que ce soit", jointure, annuaire, facteurAttenduDeLAnnuaire)
+	}
+}

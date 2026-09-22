@@ -48,7 +48,10 @@ package main
 // interruption au bout d une heure laisse alors un resultat presque complet, pas un tiers de
 // corpus.
 //
-// # ELLE BOUCLE DANS UN SEUL PROCESSUS, ET ON L Y LAISSE (examen du 2026-08-24)
+// # UN SEUL PROCESSUS, UN SEUL HANDLE RW, N GOROUTINES DE DECODAGE
+//
+// (Examen du 2026-08-24, AMENDE le 2026-09-22 par le lot 5.24.2 — le raisonnement d origine est
+// intact, il gagne une troisieme ligne.)
 //
 // `backfill-replay` a ete decoupee en parent/enfant (un film = un processus) apres avoir sature
 // la machine le 2026-08-20. Cette passe-ci a ete examinee pour le meme traitement et NE L A PAS
@@ -83,11 +86,33 @@ package main
 // A REEXAMINER SI : un film du cache depasse ~500 Mio sur disque, ou si le decodage killsource
 // se met a produire des structures a l echelle du record (comme le fait le rejeu 2D).
 //
+// ─── CE QUE LE LOT 5.24.2 AJOUTE, ET POURQUOI IL NE CONTREDIT RIEN DE CE QUI PRECEDE ────────
+//
+// TOUJOURS UN PROCESSUS, TOUJOURS UN HANDLE RW, TOUJOURS ZERO CYCLE D OUVERTURE PAR FILM : les
+// quatre points ci-dessus restent vrais mot pour mot. Ce qui change est le nombre de goroutines
+// qui DECODENT : `--workers` (defaut 3).
+//
+//	POURQUOI      la decomposition du cout (5.24.1, `backfill_cout_integration_test.go`) mesure
+//	              93 a 99 % du temps d un film en CPU HORS BASE. Une passe qui ne sature qu un
+//	              coeur laisse les autres vides pendant quatre heures.
+//	POURQUOI C EST POSSIBLE MAINTENANT   le decodeur ne porte plus d etat de paquet : la cloture
+//	              M3 d ADR 0034 a DEPENSE le profil (il voyage en argument) et le dernier reglage
+//	              global a disparu au lot E.2 du 2026-09-05. L avertissement contraire qui vivait
+//	              dans `collector.go` etait vrai a son epoque et ne l est plus.
+//	CE QUI TIENT ADR 0013   la PORTE DE LA BASE (`killcollector.PorteDeLaBase`) : un jeton
+//	              unique, pris par le lease RW, par la resolution d identites et par la resolution
+//	              de carte. A tout instant AU PLUS UN goroutine parle a la base.
+//	LA PREUVE     `TestOuvriers_MemesLignesQuUnSeulOuvrier` : les memes films ecrits par 1 puis
+//	              par N ouvriers rendent des vues `_latest` IDENTIQUES ligne a ligne.
+//	LE PLAFOND    le pic mesure du pire film du corpus (`1c4c63c2`) est de 422 Mio ; la commande
+//	              REFUSE au demarrage un `--workers` dont le produit depasserait 4 Gio.
+//
 // Usage (SERVEUR ARRETE — `OpenReadWrite` echoue si le lock est tenu) :
 //
 //	levelup backfill-killsource --dry-run              # ce qui SERAIT fait, aucune ecriture
 //	levelup backfill-killsource --limit 20             # les 20 films les moins chers
 //	levelup backfill-killsource                        # tout : films puis credit
+//	levelup backfill-killsource --workers 1            # la boucle en serie d avant le lot 5.24
 //	levelup backfill-killsource --credit-only          # la passe SQL -> SQL seule (secondes)
 //	levelup backfill-killsource --force                # redecode meme ce qui est a jour
 //
@@ -136,6 +161,8 @@ type killsourceOptions struct {
 	online   bool
 	gamertag string
 	rps      int
+	// workers : le nombre de films decodes EN PARALLELE (lot 5.24.2). 1 = la boucle d avant.
+	workers int
 }
 
 func runBackfillKillSource(cfg *config.AppConfig, args []string) error {
@@ -151,18 +178,18 @@ func runBackfillKillSource(cfg *config.AppConfig, args []string) error {
 	fs.BoolVar(&o.online, "online", false, "telecharger les films absents du cache (et les y archiver) au lieu de s en tenir au cache")
 	fs.StringVar(&o.gamertag, "gamertag", "", "joueur dont les films sont traités, les plus récents d abord (obligatoire avec --online) ; les jetons viennent du pool")
 	fs.IntVar(&o.rps, "rps", 4, "debit maximal des requetes Halo de la passe --online")
+	fs.IntVar(&o.workers, "workers", killcollector.OuvriersParDefaut, fmt.Sprintf(
+		"films decodes EN PARALLELE (1 = la boucle en serie). Le decodage vaut 93 a 99 %% du "+
+			"temps d un film (mesure 5.24.1) et il ne porte plus aucun etat de paquet : N "+
+			"ouvriers decodent, UN SEUL touche la base. Pic mesure du pire film du corpus : "+
+			"%d Mio — le plafond de la passe est de %d Mio, soit %d ouvriers au maximum",
+		killcollector.PicMemoireParFilm>>20, killcollector.PlafondMemoireDeLaPasse>>20,
+		killcollector.OuvriersMaximum()))
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
-	if o.filmsOnly && o.creditOnly {
-		return fmt.Errorf("--films-only et --credit-only s excluent")
-	}
-	if o.online && o.gamertag == "" {
-		return fmt.Errorf("--online exige --gamertag : il nomme le joueur DONT les films sont " +
-			"traites (profil declare dans db_profiles.json) ; les jetons viennent du pool")
-	}
-	if !o.online && o.gamertag != "" {
-		return fmt.Errorf("--gamertag n a de sens qu avec --online (la passe hors ligne n emet aucune requete)")
+	if err := validerLesOptions(o); err != nil {
+		return err
 	}
 
 	ctx := context.Background()
@@ -247,18 +274,26 @@ func passeDesFilms(ctx context.Context, cfg *config.AppConfig, db *sql.DB, o kil
 	if err != nil {
 		return err
 	}
+	// LA PORTE DE LA BASE (lot 5.24.2) : le jeton unique qui donne le droit de toucher le shared.
+	// Elle enveloppe le lease RW, la resolution d identites et la resolution de carte — les trois
+	// seuls chemins par lesquels cette passe parle a la base. A tout instant, au plus un ouvrier
+	// y parle : ADR 0013 est tenue par une piece, plus par la forme de la boucle.
+	porte := killcollector.NouvellePorteDeLaBase()
 	// CAPTURE DES POSITIONS (G.2bis), BEST-EFFORT : catalogue de bornes illisible ou metadata
 	// indisponible degrade en « positions desactivees » (le collecteur continue sans elles, la
 	// passe des morts/tirs n en depend pas). ACTIVEE PAR DEFAUT ici, PAS derriere un flag CLI —
 	// c est la seule commande de backfill de ce producteur, et une feature OFF « pour plus tard »
 	// est l anti-pattern que CLAUDE.md interdit (regle 11) : la capture est prete, elle capture.
-	capture, cleanupPositions := positionCaptureDeps(cfg, o.titleSlug, db)
+	capture, cleanupPositions := positionCaptureDeps(cfg, o.titleSlug, db, porte)
 	defer cleanupPositions()
 
 	collecteur := killcollector.NewKillSourceCollector(
 		killcollector.NewLocalCacheFilms(cache),
-		killcollector.NewSharedRoster(db),
-		writerDeja(db),
+		// L ANNUAIRE DE PASSE (lot 5.24.2) : `v_gamertag_lookup` lue UNE FOIS, pas par match.
+		// C est la seule lecture repetee que la decomposition 5.24.1 ait trouvee — et depuis que
+		// la passe a des ouvriers, elle serait SERIALISEE derriere la porte, donc un plafond.
+		porte.GarderLeRoster(killcollector.NewSharedRoster(db).AvecAnnuaireDePasse()),
+		porte.GarderLeWriter(writerDeja(db)),
 		caps,
 		0, // limite par match : le defaut du collecteur (45 min)
 	).AvecCapture(capture)
@@ -268,11 +303,48 @@ func passeDesFilms(ctx context.Context, cfg *config.AppConfig, db *sql.DB, o kil
 		ids = append(ids, c.matchID)
 	}
 	debut := time.Now()
-	sum := collecteur.CollectMatches(ctx, ids)
+	sum := collecteur.CollectMatchesOuvriers(ctx, ids, o.workers)
 	fmt.Printf("films : %d ecrits (%d morts), %d absents, %d sans kill-feed, "+
 		"%d abandons sur delai, %d erreurs, %d sans capability — %s\n",
 		sum.Written, sum.Deaths, sum.NoFilm, sum.NoKillFeed, sum.Timeouts, sum.Errors,
 		sum.NotSupport, time.Since(debut).Round(time.Second))
+	return nil
+}
+
+// validerLesOptions : les incompatibilites de drapeaux, AVANT d ouvrir quoi que ce soit.
+//
+// Extraite de `runBackfillKillSource` au lot 5.24.2 : le drapeau `--workers` y ajoutait une
+// cinquieme condition et poussait la fonction a une complexite de 18, au-dela du plafond du
+// depot. La coupure suit une frontiere nette — ICI ce qui refuse, LA-BAS ce qui fait.
+func validerLesOptions(o killsourceOptions) error {
+	if o.filmsOnly && o.creditOnly {
+		return fmt.Errorf("--films-only et --credit-only s excluent")
+	}
+	if o.online && o.gamertag == "" {
+		return fmt.Errorf("--online exige --gamertag : il nomme le joueur DONT les films sont " +
+			"traites (profil declare dans db_profiles.json) ; les jetons viennent du pool")
+	}
+	if !o.online && o.gamertag != "" {
+		return fmt.Errorf("--gamertag n a de sens qu avec --online (la passe hors ligne n emet aucune requete)")
+	}
+	return verifierLesOuvriers(o.workers)
+}
+
+// verifierLesOuvriers : le plafond memoire REFUSE au demarrage, avec le chiffre.
+//
+// Il refuse AVANT d ouvrir quoi que ce soit, et il le refuse en NOMMANT la mesure : un plafond
+// qui dit seulement « trop » oblige a relire le code pour savoir pourquoi. Le pic vient de la
+// mesure 5.24.1 sur le pire film du corpus, et il est re-mesurable par le meme test.
+func verifierLesOuvriers(n int) error {
+	if n < 1 {
+		return fmt.Errorf("--workers %d : il en faut au moins un (1 = la boucle en serie)", n)
+	}
+	if max := killcollector.OuvriersMaximum(); n > max {
+		return fmt.Errorf("--workers %d : le pic mesure du pire film du corpus est de %d Mio "+
+			"(mesure 5.24.1, film 1c4c63c2 a 69 chunks) et la passe se plafonne a %d Mio, soit "+
+			"%d ouvriers au maximum", n, killcollector.PicMemoireParFilm>>20,
+			killcollector.PlafondMemoireDeLaPasse>>20, max)
+	}
 	return nil
 }
 
@@ -287,7 +359,7 @@ func passeDesFilms(ctx context.Context, cfg *config.AppConfig, db *sql.DB, o kil
 // handle metadata ouvert ici ; elle est TOUJOURS non-nil (no-op si rien n a ete ouvert), donc
 // l appelant peut la `defer` inconditionnellement.
 func positionCaptureDeps(
-	cfg *config.AppConfig, titleSlug string, sharedDB *sql.DB,
+	cfg *config.AppConfig, titleSlug string, sharedDB *sql.DB, porte *killcollector.PorteDeLaBase,
 ) (killcollector.DepsCapture, func()) {
 	noop := func() {}
 	pr := titlePkg.NewPathResolver(cfg.RepoRoot)
@@ -306,8 +378,11 @@ func positionCaptureDeps(
 	// LE CATALOGUE ET SA POLITIQUE DE DEGRADATION VIVENT DANS `killcollector` (lot 7C.8) :
 	// les TROIS chemins de collecte (post-sync du serveur, --online, ce backfill) les
 	// partagent. Le defaut P0-1 etait que seul celui-ci cablait la capture.
+	// LA RESOLUTION DE CARTE PASSE PAR LA PORTE (lot 5.24.2) : elle lit `match_registry` sur le
+	// handle partage, donc elle est l un des trois chemins par lesquels cette passe parle a la
+	// base — et il n y a aucune raison d en laisser un dehors.
 	capture, err := killcollector.CaptureDepuisCatalogue(cfg.RepoRoot, titleSlug,
-		duckdb.NewReplayMapRepo(staticSharedReader{db: sharedDB}, metaDB))
+		porte.GarderLesCartes(duckdb.NewReplayMapRepo(staticSharedReader{db: sharedDB}, metaDB)))
 	if err != nil {
 		fmt.Printf("%v — positions desactivees pour cette passe\n", err)
 		return killcollector.DepsCapture{}, fermer

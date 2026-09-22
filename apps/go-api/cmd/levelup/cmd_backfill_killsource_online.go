@@ -110,7 +110,11 @@ func passeDesFilmsEnLigne(ctx context.Context, cfg *config.AppConfig, db *sql.DB
 	// LA CAPTURE DES POSITIONS, CABLEE ICI AUSSI (correction P0-1, 2026-09-07) : ce chemin la
 	// manquait, comme l etape post-sync. Un film telecharge en ligne n a aucune raison de
 	// produire moins que le meme film relu du cache.
-	capture, fermerCapture := positionCaptureDeps(cfg, o.titleSlug, db)
+	// PORTE NIL : la passe en ligne reste EN SERIE (lot 5.24.2). Son cout n est pas le decodage
+	// mais le RESEAU, borne par `--rps` — paralleliser les decodages ne ferait qu attendre plus
+	// vite, et multiplierait les requetes Halo au-dela du debit qu on s est donne. Sans porte, le
+	// passe-plat rend exactement le comportement d avant le lot.
+	capture, fermerCapture := positionCaptureDeps(cfg, o.titleSlug, db, nil)
 	defer fermerCapture()
 
 	collecteur := killcollector.NewKillSourceCollector(

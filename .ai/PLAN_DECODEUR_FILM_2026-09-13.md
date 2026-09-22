@@ -11354,7 +11354,75 @@ reelles, films lus par les jonctions du cache.
   **DECOUVERTE DE MESURE (consignee au § 4)** : les DIX films les moins chers du cache (2 a 5
   chunks) ne produisent RIEN neuf fois sur dix — cinq sans identite au fil des morts, trois sans
   chunk HIGHLIGHT. L echantillon par defaut a ete deplace vers le bas du cout PRODUCTIF.
-- [ ] **5.24.2 — LA VITESSE : N ouvriers de decodage, un seul ecrivain, chargements sortis de la boucle.**
+- [x] **5.24.2 — LA VITESSE : N OUVRIERS DE DECODAGE, UN SEUL ECRIVAIN, ET L ANNUAIRE SORTI DE
+  LA BOUCLE.** Gain mesure **x2,70 a x2,78 a 3 ouvriers** sur 9 films du cache (9,7 s -> 3,5 s),
+  **lignes IDENTIQUES**.
+
+  **(a) LES OUVRIERS.** `internal/sync/killcollector/collector_ouvriers.go` :
+  `CollectMatchesOuvriers(ctx, ids, n)` — un distributeur (qui porte SEUL le budget de passe et
+  l annulation), N ouvriers qui appellent `CollectMatch`, un canal de resultats totalise par un
+  seul goroutine. `n <= 1` rend **la meme fonction** que la boucle historique
+  (`CollectMatches`), pas une imitation : le temoin du test d egalite ne peut pas deriver.
+  Le `switch` de comptage est desormais unique (`comptabiliserFilm`), partage par les deux
+  passes.
+
+  **LE VERROU QUI L INTERDISAIT N EXISTE PLUS, ET C EST VERIFIE SUR PIECES.** `collector.go` et
+  `CollectMatches` affirmaient « les parametres de replication de `grammar` sont des GLOBAUX DE
+  PAQUET ; `killsource.Decode` serialise deja par un verrou ». Les deux affirmations sont
+  perimees : la cloture M3 du chantier decodeur (ADR 0034, 2026-09-17) a **DEPENSE le profil**
+  (`ProfilDeBalayage` voyage en argument jusqu a `calibrate` et `runWalk`) et le dernier reglage
+  global (`SetInferResyncTargets`) a ete supprime au lot E.2 du 2026-09-05 (sa table reste nil et
+  n est jamais ecrite). Balayage du 2026-09-22 : **aucun `Set*` de paquet dans `grammar`, aucun
+  `var` mutable de paquet dans `grammar` ni `killsource`** hors tables constantes ;
+  `registryWarned` est une `sync.Map`, le compteur de replis porte son verrou. Les deux
+  commentaires sont corriges AVEC leur date et leur cause. **La preuve n est pas le raisonnement**
+  (cf. le test ci-dessous).
+
+  **UN SEUL ECRIVAIN — `porte_de_la_base.go`.** Un canal borne a UN jeton. Il est pris par le
+  lease RW (`GarderLeWriter`), par la resolution d identites (`GarderLeRoster`) et par la
+  resolution de carte (`GarderLesCartes`) — les TROIS seuls chemins par lesquels cette passe
+  parle a la base. A tout instant au plus un goroutine y parle, **lectures comprises** : ADR 0013
+  est tenue par une piece, plus par la forme de la boucle. Rien d autre ne change — meme
+  `BatchBuilder`, memes persisters INSERT-only, memes vues `_latest`. Porte nil = passe-plat
+  (post-sync du serveur, `--online`, tests : comportement inchange). Les sept sites d ecriture ont
+  ete verifies DISJOINTS (aucun lease n en contient un autre) et l attente est bornee a 5 min avec
+  un message qui nomme l imbrication — un « programme qui ne finit jamais » devient une erreur
+  lisible.
+
+  **POURQUOI PAS UN GOROUTINE ECRIVAIN A MESSAGES** (la forme canonique, ecartee sur piece) : le
+  contrat d ecriture est un LEASE (`acquireShared` rend `(db, release, err)` et l appelant ecrit
+  ENTRE les deux, sur sept sites). Le convertir en messages exigerait de decouper `collect`,
+  `collectPositions` et `collectHits` en « phase qui calcule » / « phase qui ecrit », c est-a-dire
+  de reecrire ce que la passe FAIT — ce que le perimetre du lot interdit. Le jeton donne le MEME
+  invariant sans toucher une ligne de ce qui est ecrit.
+
+  **LE PLAFOND MEMOIRE EST LA MESURE 5.24.1, PAS UN REGLAGE** : pic de 422 Mio sur le pire film du
+  corpus, plafond de passe a 4 Gio, donc **9 ouvriers au maximum** ; `--workers` au-dela est
+  REFUSE au demarrage, avec le chiffre, le nom du film et le plafond
+  (`TestVerifierLesOuvriers` verifie que les trois figurent dans le message). Defaut **3** :
+  1,3 Gio, loin du plafond, sur une machine PARTAGEE.
+
+  **(b) L ANNUAIRE DE PASSE POUR LA PASSE DES FILMS — D1 (5.12) ferme.**
+  `SharedRoster.AvecAnnuaireDePasse()` : `v_gamertag_lookup` lue UNE FOIS, plus par match. La
+  piece du 5.12 est **partagee, pas recopiee** — `chargeurDAnnuaire` extrait de
+  `credit_annuaire.go`, employe par les deux producteurs. Mesure sur le banc de 180 000 lignes :
+  **50,7 ms -> 4,0 ms par match (facteur 12,5)**, chargement de l annuaire inclus. C etait la
+  SEULE lecture repetee que 5.24.1 ait trouvee, et depuis les ouvriers elle serait SERIALISEE
+  derriere la porte, c est-a-dire un plafond de passe et non une part.
+  L equivalence est exacte sur la forme (la vue ne rend jamais de nom vide — son dernier repli est
+  le libelle masque — et tout xuid de `match_participants` y est par son leg `mp`), et le seul
+  ecart theorique est NOMME dans le code : un `xuid:NNN` ecrit par la passe pourrait, SANS
+  annuaire, etre relu comme nom d affichage par un match suivant (leg 4, `MAX`) — exactement ce
+  que la vue existe pour empecher. L annuaire retire donc un faux nom ; il n en ajoute aucun.
+  **Verifie sur les films du cache** : `TestAnnuaireDePasse_MemesLignesQueLaJointure`, cinq vues
+  identiques. Reglage EXPLICITE, pose par le seul backfill : les chemins live gardent la jointure.
+
+  **(c) LA PASSE CREDIT EST INCHANGEE** (lineaire depuis 5.12) — aucune ligne touchee.
+
+- [~] Le reste de ce que 5.24.1 designait comme evitable : **rien a faire**. Chargement des chunks
+  et resolution de carte a 0,0 %, assemblage a 0,1 %, ecriture a 0,6 % ; le catalogue de bornes et
+  le handle metadata sont DEJA charges une seule fois avant la boucle
+  (`CaptureDepuisCatalogue`, `positionCaptureDeps`) — verifie sur pieces.
 - [ ] **5.24.3 — L OBSERVABILITE : fichier d etat, ligne de progression, `--status`.**
 - [ ] **5.24.4 — LA REPRISE, PROUVEE : interruption, relance, arret propre sur signal.**
 - [ ] **5.24.5 — DOC : `docs/COMMANDS.md` (FR et EN), en-tete de la commande, plan et note.**
@@ -11363,6 +11431,7 @@ reelles, films lus par les jonctions du cache.
 
 | Date | Lot | Découverte | Où elle ira |
 |---|---|---|---|
+| 2026-09-22 | 5.24.2 | **D2 (5.24) — L EN-TETE DU DECODEUR AFFIRME ENCORE UN VERROU DE PAQUET QUI N EXISTE PLUS.** `internal/games/halo_infinite/film/internal/facts/killsource/doc.go:196-202` : « CONTRAINTE D EXECUTION — UN SEUL DECODAGE A LA FOIS DANS UN PROCESS [...] [Decode] serialise donc les passes par un verrou de paquet et remet les globaux a leur valeur d origine a chaque entree ». Ni le verrou ni les globaux n existent : la cloture M3 d ADR 0034 a depense le profil et `SetInferResyncTargets` a disparu au lot E.2. Les deux copies du meme texte dans `sync/killcollector` ont ete corrigees par ce lot ; celle-ci NON. | **NON TRAITE** (regle 7 : `film/internal/` est hors du perimetre ferme du lot, et le depot porte un mecanisme d empreinte de sources sur cet arbre — un octet de commentaire n est pas un geste a faire en aveugle). A prendre par le premier lot qui rouvrira `facts/killsource` : c est une correction d en-tete de 7 lignes, avec la date et la cause, sur le modele de celle posee dans `killcollector/collector.go` |
 | 2026-09-22 | 5.24.1 | **D1 (5.24) — LES DIX FILMS LES MOINS CHERS DU CACHE NE PRODUISENT RIEN, NEUF FOIS SUR DIX.** Les films de 2 a 5 chunks (`e869bcdf`, `f3e3112f`, `07af7c78`, `29206c7c`, `56b51daf`, `5da6fd30` : aucune identite au fil des morts ; `279ac3dd`, `3b865848`, `54ab2608` : `ErrNoKillFeed`, aucun chunk HIGHLIGHT) — un seul, `4555ce28`, ecrit. Ce sont des parties abandonnees ou tres courtes. La passe les redecode a CHAQUE campagne (le critere de fraicheur porte sur `match_kill_events_latest`, qu ils ne peuplent jamais), pour ~250 ms chacun. | **NON TRAITE** (regle 7 : le lot porte sur la vitesse, pas sur la selection). Le cout est borne et connu — quelques dizaines de secondes sur le parc. Le remede serait un marqueur de registre « film sans kill-feed » DUR (`registry_flags.go` en pose un pour le film absent, pas pour celui-ci, et l en-tete de `collector.go` explique pourquoi : le kill-feed pourrait arriver). A reprendre avec le lot qui rouvrira les marqueurs de registre |
 | 2026-09-21 | 5.11.7 | **D1 (5.11.7) — LE SIGNAL DU MANTLING EST DANS LA QUEUE D `i54`, ET ELLE EST BIEN PLUS RICHE QUE LE PORT NE LE CROIT.** Lecture d ecrivain SEULE. `FUN_1408f0264` lit `i54` ; son MIROIR d ecriture est `FUN_142f053f8`. Les deux appellent une queue que le depot CONSOMME ET JETTE : `FUN_1408f02c8` en lecture, **`FUN_1407ea38c` en ecriture** — et c est l ecriture qui donne la provenance. `si bloc[0x9d] == 0 : RIEN (queue = ZERO bit)` ; `R(1) = (bloc[8] != -1)` ; `si bloc[8] != -1 : R(10) = bloc[8]` (`FUN_1406d310c(0x400)`) ; **un vec3 `bloc+0x18`** (`FUN_1407eb600(w, bloc+0x18, 0x10)`) ; **deux vec3 `bloc+0x24` / `+0x30`** (`FUN_141f86118`) ; `bloc+0x3c` (`FUN_1407eb61c(w, bloc+0x3c, 0xffffffff, 0x10, 0)`) ; `R(1) = bloc[0xa1]` (`FUN_1406d310c(2)`) ; **`R(7) = bloc[0x98]`** ; **`R(2) = bloc[0x9c]` = `etat+0x1294`, QUATRE VALEURS** ; `R(1) = bloc[0x9f] & 1`. Donc `i54`, quand sa garde est levee, porte un champ de deux bits ET TROIS VEC3 — pour une escalade, l ancre du geste — la ou le document ne publie que « une action est amorcee » (D9 (5.3)). Vocabulaire ancre : `SpartanAbilityIsClambering` @`1436f7130` -> `FUN_142c66808` = `FUN_1406b8244(idx) == 2`, et `CharacterPhysicsModeClambering` @`143df73d0` nomme cette valeur 2 ; `auto_clamber` @`1436c69e0`, `EnableAutoClamber` @`143ba6b60`, `clamber` @`143bbaa48`. | **NON TRAITE, ET AUCUN PORT** : les quatre valeurs ne sont pas NOMMEES, donc `stances[].kind` `mobility` ne devient pas `clamber`. IL MANQUE UN SEUL MAILLON : qui ECRIT `etat+0x1294` dans l objet vivant — a chercher depuis le CONSOMMATEUR, jamais depuis l offset (`0x1294` collisionne entre classes). **ET QUAND CE SERA NOMME, LE PORT SERA UNE MONTEE DE SCHEMA** : ajouter une valeur a l enum `kind` change la FORME du document (la v66 l a fait pour `sprint` et `jumpDerived`), donc ARRET et compte rendu avant de la prendre |
 | 2026-09-21 | 5.11.0-a | **D1 (5.11) — LA REFERENCE D EQUIVALENCE EST PERIMEE DEPUIS LA FUSION DU LOT 5.10, ET ELLE REND QUATRE ECARTS QUI NE SONT A PERSONNE.** `replay-equiv -films bcb6d393` SANS `-update`, joue au HEAD de fusion `f8c3e8e7a` AVANT tout changement de ce lot : ECART sur `vehicles`, `movementStates` (attendu 4 469, obtenu **1 363**), `movementStates.stats` et `artifact`. Le plus gros — un facteur 3,3 sur le compte des transitions de mouvement — est donc anterieur a ce lot. | **NON TRAITE** — le re-figeage des references d equivalence est un geste du PILOTE, a la fin du chantier, et il est deja au programme (meme nature que D15 (5.3), qui portait sur `positions`). Consigne ici pour que l ecart ne soit impute ni a 5.10 ni a 5.11 : la seule difference que le correctif 5.11.0-a introduit est `movementStates` **1 363 -> 1 364**, un GAIN d une transition |
@@ -11838,6 +11907,11 @@ jamais sur le parc.
 | 2026-09-22 | 5.24.1 | `KILLSOURCE_FIXTURES=<cache> go test -count=1 -tags=integration -p 1 -run PasseDesFilms_OuVaLeTemps ./internal/sync/killcollector/` (echantillon large, 4 films productifs dont le plus gros) | **PASS 64,5 s** — DECODAGE 69,3 %, annexes 29,8 %, roster 0,3 %, ecriture 0,6 %, chargement et carte 0,0 % ; pic HeapInuse **422 Mio**, Sys 769 Mio sur `1c4c63c2` |
 | 2026-09-22 | 5.24.1 | meme gate, echantillon des 9 petits films productifs | **PASS 13,3 s** — DECODAGE 46,6 %, annexes 46,7 %, roster **4,6 %** (49 a 60 ms par match, constants), ecriture 2,1 % |
 | 2026-09-22 | 5.24.1 | meme gate, les 10 films les MOINS CHERS du cache (2 a 5 chunks) | **9 sur 10 ne produisent rien** : 5 « aucune identite au fil des morts », 3 `ErrNoKillFeed`, 1 mesure |
+| 2026-09-22 | 5.24.2 | `KILLSOURCE_FIXTURES=<cache> go test -count=1 -tags=integration -p 1 -run 'Ouvriers\|PorteDeLaBase\|AnnuaireDePasse' ./internal/sync/killcollector/` | **PASS** — `TestOuvriers_MemesLignesQuUnSeulOuvrier` : 9 films, 1 ouvrier **9,7 s** contre 3 ouvriers **3,5 s** (**x2,70 a x2,78** sur trois executions), et les cinq vues `_latest` IDENTIQUES ligne a ligne (242 morts, 150 tirs, 212 vies, 176 contextes, 159 positions = **939 lignes**) ; `TestAnnuaireDePasse_MemesLignesQueLaJointure` : memes 939 lignes ; `TestOuvriers_UnSeulOuvrierEstLaBoucleEnSerie` et les deux tests de la porte : verts |
+| 2026-09-22 | 5.24.2 | `TestRosterDesFilms_AnnuaireContreJointure` (banc 180 000 lignes) | **PASS** — jointure par match **50,7 ms**, annuaire de passe **4,0 ms** (chargement inclus, amorti sur 20 matchs) : **facteur 12,5**, budget exige >= 10 |
+| 2026-09-22 | 5.24.2 | `go test -count=1 ./internal/sync/... ./internal/persist/... ./cmd/levelup/...` | **PASS**, code de sortie **0** |
+| 2026-09-22 | 5.24.2 | `go test -tags=integration -p 1 -count=1 ./internal/persist/... ./internal/sync/... ./internal/migration/...` | **PASS**, code de sortie **0** (ratchets anti-ART compris) |
+| 2026-09-22 | 5.24.2 | `golangci-lint run ./internal/sync/... ./internal/persist/... ./cmd/levelup/...` | **zero issue sur les fichiers du lot** ; le `gocyclo 18` introduit sur `runBackfillKillSource` a ete corrige par extraction de `validerLesOptions` |
 
 ### Post-chantier — lot 5.11 (le declencheur du saut, film temoin), 2026-09-21
 
