@@ -16,8 +16,8 @@ package main
 //
 // # LE PROCEDE, EN TROIS TEMPS
 //
-//	1er SIGNAL   `signal.NotifyContext` annule le contexte d ARRET DOUX. La distribution des
-//	             films s arrete ; ceux qui sont en vol vont au bout, ECRITURE COMPRISE
+//	1er SIGNAL   le releveur (`signal.Notify`, canal dedie) annule le contexte d ARRET DOUX.
+//	             La distribution des films s arrete ; ceux qui sont en vol vont au bout, ECRITURE COMPRISE
 //	             (`KillSourceCollector.AvecArretDoux`). Le contexte de TRAVAIL, lui, n est pas
 //	             annule : aucun decodage n est coupe en deux.
 //	APRES        le releveur de signaux est RENDU au systeme (`stop()`), donc un SECOND Ctrl-C
@@ -39,6 +39,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 )
 
@@ -63,21 +64,41 @@ func (e *interruptionDeLaPasse) Error() string {
 
 // contexteDArret installe le releveur de signaux et rend le contexte d ARRET DOUX.
 //
-// `stop` est a appeler en `defer` : il rend le releveur au systeme. Un goroutine l appelle DEJA
-// des le premier signal, pour qu un second Ctrl-C tue le processus — l appel differe reste
-// necessaire pour le cas nominal (aucun signal recu).
+// `stop` est a appeler en `defer` : il rend le releveur au systeme et libere le goroutine.
+//
+// ⚠ IL N EMPLOIE PAS `signal.NotifyContext`, ET C EST UNE CORRECTION MESUREE (2026-09-22). Cette
+// fonction l employait, avec un goroutine sur `<-ctx.Done()` pour annoncer l arret. Or le
+// contexte de `NotifyContext` est annule PAR LES DEUX CHEMINS — le signal ET l appel a `stop` —
+// donc le `defer stop()` de la fin d une passe NORMALE reveillait ce goroutine : **toute
+// execution reussie finissait par afficher « arret demande »**, y compris un simple
+// `--status`. Constate en lancant la commande. Ici, le signal a son propre canal : seule sa
+// reception annonce et annule.
 func contexteDArret() (ctx context.Context, stop func()) {
-	ctx, stop = signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	ctx, annuler := context.WithCancel(context.Background())
+	signaux := make(chan os.Signal, 1)
+	signal.Notify(signaux, os.Interrupt, syscall.SIGTERM)
+	fini := make(chan struct{})
 	go func() {
-		<-ctx.Done()
-		fmt.Fprintln(os.Stderr,
-			"\narret demande : plus aucun film n est distribue, les decodages en cours vont au "+
-				"bout et sont ecrits. Un SECOND Ctrl-C tue le processus immediatement.")
-		// LE RELEVEUR EST RENDU ICI, pas a la fin : sans cela le second signal serait avale et le
-		// processus paraitrait refuser de mourir.
-		stop()
+		select {
+		case <-signaux:
+			fmt.Fprintln(os.Stderr,
+				"\narret demande : plus aucun film n est distribue, les decodages en cours vont au "+
+					"bout et sont ecrits. Un SECOND Ctrl-C tue le processus immediatement.")
+			// LE RELEVEUR EST RENDU ICI, pas a la fin : sans cela le second signal serait avale
+			// et le processus paraitrait refuser de mourir.
+			signal.Stop(signaux)
+			annuler()
+		case <-fini:
+		}
 	}()
-	return ctx, stop
+	var uneFois sync.Once
+	return ctx, func() {
+		uneFois.Do(func() {
+			close(fini)
+			signal.Stop(signaux)
+			annuler()
+		})
+	}
 }
 
 // causeDArret : pourquoi la passe s est arretee, ou "" si elle est allee au bout.

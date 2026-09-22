@@ -6,8 +6,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
+	"os"
 	"strings"
 	"testing"
+	"time"
 )
 
 // TestSortirSur_CodeDedie — un script doit distinguer « relance-moi » de « repare-moi ».
@@ -54,4 +57,46 @@ func TestCauseDArret_SeLitSurLeContexte(t *testing.T) {
 		t.Error("cause vide sur un contexte annule : la passe sortirait avec le code d une " +
 			"passe finie")
 	}
+}
+
+// TestContexteDArret_UnePasseNORMALENAnnonceAucunArret — LE TEST DE NON-REGRESSION du defaut
+// trouve le 2026-09-22 en lancant simplement la commande.
+//
+// La premiere version employait `signal.NotifyContext` et surveillait `<-ctx.Done()`. Ce
+// contexte est annule PAR LES DEUX CHEMINS — le signal ET l appel a `stop` —, donc le
+// `defer stop()` de la fin d une passe NORMALE reveillait le goroutine d annonce : TOUTE
+// execution reussie finissait par ecrire « arret demande » sur la sortie d erreur, `--status`
+// compris. Le message le plus alarmant de la commande s affichait quand tout allait bien.
+func TestContexteDArret_UnePasseNORMALENAnnonceAucunArret(t *testing.T) {
+	vraiStderr := os.Stderr
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("pipe: %v", err)
+	}
+	os.Stderr = w
+	defer func() { os.Stderr = vraiStderr }()
+
+	ctx, stop := contexteDArret()
+	if causeDArret(ctx) != "" {
+		t.Error("une passe qui demarre est deja annoncee comme interrompue")
+	}
+	stop()
+	// Le goroutine d annonce doit avoir choisi la branche `fini`. On lui laisse le temps de se
+	// tromper : sans ce delai, le test passerait meme avec le defaut.
+	time.Sleep(50 * time.Millisecond)
+
+	if err := w.Close(); err != nil {
+		t.Fatalf("close: %v", err)
+	}
+	sortie, err := io.ReadAll(r)
+	if err != nil {
+		t.Fatalf("read: %v", err)
+	}
+	if len(sortie) != 0 {
+		t.Errorf("une passe NORMALE a ecrit sur la sortie d erreur : %q — le message d arret "+
+			"s affiche quand tout va bien", string(sortie))
+	}
+	// L idempotence de `stop` : un second appel ne doit ni paniquer (canal deja ferme) ni rien
+	// annoncer.
+	stop()
 }
