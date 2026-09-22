@@ -8396,6 +8396,76 @@ qu elle nomme ensuite (Ghidra lecture seule), un commit par maillon. Note de gra
   Aucune ligne de grammaire touchee : `grammar.Rev`, `facts.Rev` et `replay.SchemaVersion`
   INCHANGES, gate reproduit au paquet.
 
+- [!] **5.19.2 — LES ECRIVAINS : QUATRE SUSPECTS LUS, QUATRE CONFORMITES — ET LA MESURE TROUVE LA
+  CAUSE AILLEURS QUE DANS UNE LARGEUR.** La regle d arret du brief est atteinte (trois suspects
+  conformes sans baisse des rejets) ; ce qui la remplace n est pas une absence, c est une CAUSE
+  nommee par trois mesures.
+
+  **(a) `ti=40 i2 object-forward-and-up-dynamic-precision` — CONFORME, ET D3 (5.14) EST RESOLU.**
+  Seul composant `partiel` du record de vehicule (`FUN_140c5f7ec`, niveau 2). Sa forme dominante
+  (64 bits = 3 portes + 61) est le chemin « config » `FUN_142e29bac`, dont le second champ est
+  **`FUN_1406d84b4` — la fonction dont D3 (5.14) disait que la largeur passe par la PILE et que le
+  desassemblage ne la resout pas**. Elle est resolue au site d appel :
+  `142e29cce: MOV dword ptr [RSP + 0x20],0x1e` puis `CALL 0x1406d84b4`, et `FUN_1406d84b4` est un
+  lecteur PLAT (`*(reader+0x2c) += in_stack_00000028`, aucune porte). **R(30) inconditionnel,
+  exactement le port : une largeur ASSUMEE devient PROUVEE.**
+
+  **(b) `ti=40 i4 object-body-vitality` — CONFORME AU BIT.** `FUN_140fb8978` =
+  `FUN_1406d84b4(..., 8, 1, 1)` + trois `FUN_1406cf008` = **R(8) + 3 x R(1) = 11 bits**, sans porte
+  ni branche. Or la classe `ti=40 masque 0x10` (ce composant SEUL) faute a **87,2 %** : la faute
+  n est pas dans le corps du record.
+
+  **(c) LA STRUCTURE DE LA BRANCHE VIVE — CONFORME.** `FUN_1406cd128` (branche `!= 0`) :
+  `[R(1) -> DELTA sinon R(2)]` + `[FUN_1406d310c(filigrane) bits + base]` + `[R(2) tag]` puis
+  `FUN_1406cbaa0`. Rien entre deux records. Le selecteur y est `DAT_144706104` et non le bit de
+  configuration — sans effet, les deux formes coincidant deja (D4 du 5.15).
+
+  **(d) `FUN_1408f1aa4`, LE LECTEUR DE `NEW` DE LA BRANCHE VIVE — CONFORME.** Le 5.15.2 (a) l avait
+  nomme sans le lire : `R(6)` archetype, `vtable[0x60]` default-state, `vtable[0x88]` et
+  `vtable[0x30]` a ZERO bit, puis `R(1)` de porte et `FUN_14076cb60` (masque + boucle). C est
+  EXACTEMENT `TraverseEntity`. Seule nuance : chez l ecrivain la porte est sous un bitmap derive
+  (calcule sans lire un bit) ; le port la lit sans condition et sa doc dit que la retirer
+  desynchronise.
+
+  **(e) LA CAUSE, NOMMEE PAR TROIS MESURES, ET ELLE RENVERSE LE 5.16.2.**
+
+  1. **Le slot rejete, PONDERE PAR SON VOLUME, est un bipede que DEUX sources declarent.**
+     `TestRejets519` : 567 slots distincts pour 23 325 rejets, et les **vingt-sept premiers (72 %
+     du volume) sont dans la bande 521-601, tous declares `ti=35` par le balayeur d ancres ET par
+     la table de datums** (slot 543 : 1 014 rejets ; 539 : 974 ; 556 : 972 ; 552 : 945). Le 5.16.2
+     avait mesure les slots DISTINCTS (632, etendue uniforme sur 13 bits) et conclu « ce ne sont
+     pas des slots » : **pondere par le volume, ce sont des slots, et ils ont un archetype**.
+  2. **A l instant du rejet, 99,0 % d entre eux n ont JAMAIS ete lies** (`TestDelies519` :
+     23 092 / 23 325 ; 211 par un `DEL` — le faux `DEL` du 5.14.3 est ECARTE ; 22 autres), et
+     **99,0 % ne sont meme pas un CANDIDAT d ancre du payload d image-cle du chunk**
+     (`TestEcartes519` : 23 089 dans aucun candidat, 236 parmi les candidats ecartes par la
+     croissance, 0 parmi les retenus — `plusLongueSuiteCroissante` est hors de cause).
+  3. **LA COUVERTURE DE L IMAGE-CLE, CHIFFREE (D2 du 5.16 porte au film dense)** : chaque payload
+     d image-cle de `bfecd02b` pese 1,32 a 1,37 MILLION de bits, et le balayeur d ancres s arrete
+     entre **45,7 % et 55,8 %** du payload, sur 424 a 483 ancres, pour 1 374 a 1 540 candidats
+     ecartes. **La moitie de chaque table n est jamais lue.**
+
+  **ET LE PREMIER SLOT REJETE D UN CHUNK EST LE SLOT MAX DE SON IMAGE-CLE, PLUS UN.**
+  `TestPremierRejet519` : dans TREIZE chunks sur 26 le premier slot rejete vaut exactement
+  `slot max + 1` (chunk 2 : 1 663 -> 1 673 ; chunk 8 : 1 861 -> 1 862 ; chunk 9 : 1 910 -> 1 911 ;
+  chunk 11 : 1 994 -> 1 995 ; chunk 13 : 2 063 -> 2 064 ; chunk 20 : 2 332 -> 2 333 ; chunk 26 :
+  2 588 -> 2 589). C est la signature de l ALLOCATEUR. Et **le chunk 2 lit ZERO record `NEW` sur
+  1 196 paquets delta alors qu au moins dix entites y naissent**.
+
+  **LE 5.15.1 (f) EST REFUTE : C EST UNE CASCADE, ET ELLE A UN POINT DE DEPART.** Le chunk 1 ferme
+  700 paquets d affilee avant sa premiere faute, le chunk 2 en ferme 1 144, le chunk 27 ferme ses
+  106. Apres la premiere faute le chunk s effondre (chunk 5 : faute au rang 1, 61 paquets sains
+  sur 1 176).
+
+  > **Le residu de `bfecd02b` n est pas une largeur de composant : le monde hors ligne n apprend
+  > JAMAIS la naissance d une entite entre deux images-cles. La premiere entite creee apres
+  > l image-cle d un chunk (slot = slot max + 1) est referencee par un delta que la garde rejette,
+  > le rejet emporte la queue du paquet — donc les `NEW` qui y vivaient — et le chunk s effondre.**
+
+  Aucune ligne de grammaire touchee : `grammar.Rev`, `facts.Rev` et `replay.SchemaVersion`
+  INCHANGES ; gate reproduit au paquet (`dad793c7` 5 354/5 365, `bfecd02b` 2 884/30 387, 2 et 32
+  debordements).
+
 ### Post-chantier — lot 5.18 (le controle de corruption lu dans le film), branche `feat/decfilm-68`
 
 Sur les decouvertes D1 et D2 du lot 5.17. METHODE : l ecrivain d abord (Ghidra lecture seule,

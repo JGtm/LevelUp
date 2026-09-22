@@ -188,7 +188,7 @@ func d519Largeur(m map[string]map[int]int, nom string, largeur int) {
 
 // d519Classer ventile UN paquet dans l une des deux populations et cumule tout ce que la
 // differentielle compare.
-func d519Classer(pay []byte, cfg FrameConfig, mar d519Marche, b *d519Bilan) {
+func d519Classer(pay []byte, cfg FrameConfig, mar d519Marche, w *World, b *d519Bilan) {
 	b.paquets++
 	reste := len(pay)*8 - mar.m.FinVueC
 	switch {
@@ -198,7 +198,7 @@ func d519Classer(pay []byte, cfg FrameConfig, mar d519Marche, b *d519Bilan) {
 		return
 	case reste <= m5116GateOctet && c514ResteNul(pay, mar.m.FinVueC):
 		b.fermes++
-		d519Cumuler(mar.recs, b, true)
+		d519Cumuler(mar.recs, w, b, true)
 		return
 	}
 	sortie := t515SortieVueB(pay, cfg, mar.m)
@@ -208,11 +208,11 @@ func d519Classer(pay []byte, cfg FrameConfig, mar d519Marche, b *d519Bilan) {
 		return
 	}
 	b.rejets++
-	d519Cumuler(mar.recs, b, false)
+	d519Cumuler(mar.recs, w, b, false)
 }
 
 // d519Cumuler cumule les ventilations d UN paquet dans la population demandee.
-func d519Cumuler(recs []FrameRecord, b *d519Bilan, ferme bool) {
+func d519Cumuler(recs []FrameRecord, w *World, b *d519Bilan, ferme bool) {
 	ti, dern, masq := b.rejTI, b.rejDernier, b.rejMasque
 	pres, larg, tiPres := b.presRej, b.largRej, b.tiPresRej
 	if ferme {
@@ -291,6 +291,16 @@ func d519Cumuler(recs []FrameRecord, b *d519Bilan, ferme bool) {
 			d519Largeur(larg, fmt.Sprintf("ti=%2d i%-2d %s", r.TypeIndex, c.Index, c.Name),
 				c.Largeur)
 		}
+		// LA PROVENANCE DE L ARCHETYPE, et c est la seule chose qui, dans cette boucle, ne
+		// vienne pas du flux : `HardBound` distingue une liaison de VERITE TERRAIN (image-cle,
+		// table de datums, record NEW propre) d une liaison DEVINEE par l inference de chaine
+		// (`BindSoft`). Un archetype devine faux lit tous les composants du slot avec la
+		// mauvaise liste — meme largeur portee, mauvaise verite.
+		prov := "MOU (inference de chaine)"
+		if w.HardBound(r.Slot) {
+			prov = "dur (image-cle / datum / NEW)"
+		}
+		masq[fmt.Sprintf("ti=%2d PROVENANCE %s", r.TypeIndex, prov)]++
 	}
 	// (e) LES DEUX RECORDS QUI PRECEDENT, et la chaine des trois archetypes.
 	chaine := []string{fmt.Sprintf("ti=%d", last.TypeIndex)}
@@ -339,7 +349,7 @@ func TestDiff519(t *testing.T) {
 					continue
 				}
 			}
-			d519Classer(pay, tc.cfg, t519Marcher(pay, w, tc.cfg, debut), b)
+			d519Classer(pay, tc.cfg, t519Marcher(pay, w, tc.cfg, debut), w, b)
 		}
 	}
 	d519Publier(t, b)

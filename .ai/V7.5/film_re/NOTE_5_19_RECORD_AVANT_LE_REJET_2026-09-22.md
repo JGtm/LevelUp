@@ -167,3 +167,201 @@ Sur le film a un joueur, les derniers records sont `ti=4` (97,8 %), `ti=35` (1,4
 `ti=10` n y apparaissent jamais** — un seul rejet sur 5 365 paquets, sans record lu. Les
 archetypes que la differentielle accuse sont exactement ceux que le film de calibration
 n exerce pas.
+
+---
+
+## 4. LES ECRIVAINS LUS — QUATRE SUSPECTS, QUATRE CONFORMITES, ET UN REPORT REFERME
+
+Ordre pris dans la table de la section 3 : la classe au plus fort taux dont TOUT le corps se lit
+par des feuilles adressables.
+
+### 4.1 `ti=40 i2 object-forward-and-up-dynamic-precision-component` — CONFORME, et D3 (5.14) EST RESOLU
+
+C est le SEUL composant `partiel` du record de vehicule (`FUN_140c5f7ec`, niveau 2 au registre),
+et la differentielle mesure ses deux formes a 31 bits (89,7 % de faute) et 64 bits (73,0 %).
+64 = trois bits de porte + 61, donc le chemin « config » `FUN_142e29bac`, que le port lit
+`R(1) ; si 0 -> R(30) ; puis R(30)`.
+
+Le second champ de ce chemin est `FUN_1406d84b4`, **la fonction dont D3 (5.14) disait que la
+largeur passe PAR LA PILE (`in_stack_00000028`) et que le desassemblage ne la resout pas a ses
+sites d appel nus**. Elle est resolue ICI, au site d appel :
+
+```
+142e29cc4: MOV byte  ptr [RSP + 0x30],0x0     ; 7e argument
+142e29cc9: MOV byte  ptr [RSP + 0x28],0x0     ; 6e argument
+142e29cce: MOV dword ptr [RSP + 0x20],0x1e    ; 5e argument = 0x1e = 30
+142e29cd6: CALL 0x1406d84b4
+```
+
+et `FUN_1406d84b4` est un lecteur de bits PLAT : `*(reader+0x2c) += in_stack_00000028`, aucune
+porte, aucune branche. Le second champ vaut donc **R(30) inconditionnel**, exactement ce que le
+port consomme. **Le port est conforme, et une largeur qui etait ASSUMEE est desormais PROUVEE.**
+
+### 4.2 `ti=40 i4 object-body-vitality-component` — CONFORME AU BIT
+
+`FUN_140fb8978` :
+
+```
+FUN_1406d84b4(reader, reader, DAT_143cd84ec, DAT_143cd8374, 8, 1, 1)   R(8)
+FUN_1406cf008(reader) x 3                                              3 x R(1)
+```
+
+**11 bits, sans porte ni branche** — exactement ce que le port consomme. Or la classe
+`ti=40 masque 0x10` (ce composant SEUL) faute a **87,2 %** : la faute n est donc PAS dans le
+corps de ce record.
+
+### 4.3 LA STRUCTURE DU RECORD DE LA BRANCHE VIVE — CONFORME
+
+`FUN_1406cd128` (branche `DAT_14474cd78 != 0`) lit, par record :
+`[R(1) -> DELTA, sinon R(2) type]` puis `[FUN_1406d310c(filigrane) bits + base]` puis `[R(2) tag]`,
+puis `FUN_1406cbaa0(type, id, ...)`. Le selecteur base/largeur y est `DAT_144706104` (et non le bit
+de configuration) — les deux formes coincidant deja (D4 du 5.15), rien ne change. Le corps DELTA de
+`FUN_1406cbaa0` est `FUN_1406cdc04` (selecteur de baseline) puis `FUN_1406caad8` vers
+`FUN_14076cb60`, ce que le port porte. Rien entre deux records.
+
+### 4.4 `FUN_1408f1aa4` — LE LECTEUR DE CORPS DE `NEW` DE LA BRANCHE VIVE — CONFORME
+
+Le 5.15.2 (a) avait note que la branche vive lit un `NEW` par `FUN_1408f1aa4` et non par
+`FUN_141f86704` (branche 0), sans le porter. Lecture faite :
+
+```
+R(6)                                        l archetype -> descripteur *(param_1+0x18 + 8 + ti*8)
+vtable[0x60](taille, tampon, reader, 1)     le DEFAULT-STATE
+vtable[0x88](...) et vtable[0x30]()         aucun bit (pas d argument lecteur)
+si (bitmap derive != 0 ou porte deja lue) :
+    R(1)                                    la PORTE
+    si posee : FUN_14076cb60                masque + boucle de composants
+```
+
+C est EXACTEMENT la structure de `TraverseEntity` (R(6), default-state par archetype, `t.Gate`
+`R(1)`, `consumeMask`, boucle) — dont le commentaire cite deja `FUN_1408f1aa4`. **Le port est du
+bon cote de la branche.** Seule nuance : chez l ecrivain la porte est lue SOUS un bitmap derive
+(`uVar17`, calcule sans lire un bit) ; le port la lit sans condition, et son commentaire dit que
+la retirer desynchronise — le bitmap est donc non vide en pratique.
+
+### 4.5 LA REGLE D ARRET DU BRIEF EST ATTEINTE
+
+Quatre suspects lus chez l ecrivain, quatre conformites, **aucune baisse des rejets**. Le brief
+prescrit alors de rendre la differentielle — et la differentielle, elle, a trouve la cause
+ailleurs que dans une largeur.
+
+---
+
+## 5. LA CAUSE, NOMMEE PAR LA MESURE : LE SLOT REJETE EST UNE ENTITE QUE PERSONNE N A DECLAREE
+
+Trois mesures, dans cet ordre, et la conclusion du 5.16.2 en est RENVERSEE.
+
+### 5.1 Le slot rejete, PONDERE PAR SON VOLUME, est un slot de bipede que DEUX sources declarent
+
+`TestRejets519` : 567 slots distincts pour 23 325 rejets. Les **vingt-sept premiers slots — 72 %
+du volume — sont dans la bande 521-601, et le balayeur d ancres ET la table de datums les
+declarent tous `ti=35`.**
+
+| slot | rejets | balayeur | datums |
+|---:|---:|---|---|
+| 543 | 1 014 | `ti=35` | `ti=35` |
+| 539 | 974 | `ti=35` | `ti=35` |
+| 556 | 972 | `ti=35` | `ti=35` |
+| 552 | 945 | `ti=35` | `ti=35` |
+| 597 | 894 | `ti=35` | `ti=35` |
+
+**Le 5.16.2 avait mesure les slots DISTINCTS** (632, etendue quasi uniforme sur les treize bits,
+mediane 3 307) et en avait conclu « ce ne sont pas des slots, ce sont des lectures a une position
+FAUSSE ». Pondere par le volume, c est l inverse : **ce sont des slots, ce sont des bipedes, et
+ils ont un archetype declare.** Les 500 slots epars de la queue sont le bruit ; les vingt-sept
+premiers sont le residu.
+
+### 5.2 A l instant du rejet, le slot n a JAMAIS ete lie — et aucun `DEL` n y est pour rien
+
+`TestDelies519`, 290 records `DEL` lus sur tout le film :
+
+| etat du slot au moment du rejet | rejets | part |
+|---|---:|---:|
+| **jamais lie par aucune source avant ce paquet** | **23 092** | **99,0 %** |
+| delie par un record de type 2 (`DEL`) | 211 | 0,9 % |
+| lie un jour par une image-cle, plus lie | 22 | 0,1 % |
+
+Le faux `DEL` du 5.14.3 est donc DEFINITIVEMENT ecarte comme cause du residu.
+
+### 5.3 Le slot n est meme pas un candidat d ancre du chunk, et la croissance n y est pour rien
+
+`TestEcartes519` confronte le slot rejete aux candidats d ancre que `candidatsDeDatum` trouve a
+position LIBRE dans le payload d image-cle du MEME chunk :
+
+| | rejets | part |
+|---|---:|---:|
+| dans les candidats RETENUS par la croissance | 0 | 0,0 % |
+| dans les candidats ECARTES par la croissance | 236 | 1,0 % |
+| **dans AUCUN candidat du payload** | **23 089** | **99,0 %** |
+
+`plusLongueSuiteCroissante` (5.16.4) n est donc pas la cause : le slot n est pas dans la table
+d image-cle du chunk, pas meme parmi ses candidats ecartes.
+
+### 5.4 LA COUVERTURE DE L IMAGE-CLE SUR UN FILM DENSE — D2 (5.16) CHIFFRE
+
+`TestCouverture519`, les 27 chunks de `bfecd02b` : chaque payload d image-cle pese **1,32 a
+1,37 million de bits**, et le balayeur d ancres s arrete entre **45,7 % et 55,8 %** du payload,
+sur 424 a 483 ancres — pour **1 374 a 1 540 candidats ECARTES** par la contrainte de croissance.
+
+| chunk | bits d image-cle | ancres | dernier bit | part du payload | slot max | datums (ambigus) |
+|---:|---:|---:|---:|---:|---:|---|
+| 1 | 1 318 136 | 424 | 602 695 | 45,7 % | 1 580 | 424 (1 374) |
+| 2 | 1 350 712 | 459 | 644 773 | 47,7 % | 1 663 | 460 (1 523) |
+| 8 | 1 360 624 | 471 | 676 069 | 49,7 % | 1 861 | 472 (1 532) |
+| 20 | 1 362 864 | 472 | 729 073 | 53,5 % | 2 332 | 473 (1 525) |
+| 27 | 1 343 112 | 454 | 742 968 | 55,3 % | 2 644 | 456 (1 495) |
+
+**La moitie de chaque table d image-cle n est jamais lue.** C est D2 (5.16) — « la chaine de
+l image-cle se coupe, la fenetre de 120 000 bits en est la cause » — porte du film a un joueur au
+film dense, et chiffre.
+
+### 5.5 ET LE PREMIER SLOT REJETE D UN CHUNK EST LE SLOT MAX DE SON IMAGE-CLE, PLUS UN
+
+`TestPremierRejet519` : le chunk decode PROPREMENT jusqu a sa premiere faute, puis s effondre.
+
+| chunk | premier paquet fautif | sur n deltas | slot rejete | slot max de l image-cle | `NEW` lus dans TOUT le chunk | paquets non fautifs |
+|---:|---:|---:|---:|---:|---:|---:|
+| 1 | 700 | 1 146 | 512 | 1 580 | 20 | 1 049 |
+| 2 | 1 144 | 1 196 | **1 673** | **1 663** | **0** | 1 144 |
+| 3 | 32 | 1 094 | **1 674** | **1 673** | 72 | 609 |
+| 8 | 62 | 1 172 | **1 862** | **1 861** | 6 | 142 |
+| 9 | 51 | 1 173 | **1 911** | **1 910** | 6 | 94 |
+| 11 | 39 | 1 181 | **1 995** | **1 994** | 7 | 85 |
+| 13 | 80 | 1 172 | **2 064** | **2 063** | 3 | 215 |
+| 17 | 64 | 1 180 | **2 205** | 2 203 | 2 | 183 |
+| 18 | 79 | 1 163 | **2 233** | **2 232** | 2 | 305 |
+| 20 | 12 | 1 174 | **2 333** | **2 332** | 2 | 58 |
+| 21 | 50 | 1 171 | **2 388** | **2 387** | 4 | 103 |
+| 23 | 110 | 1 180 | **2 462** | **2 461** | 23 | 279 |
+| 26 | 80 | 1 174 | **2 589** | **2 588** | 6 | 215 |
+| 27 | — | 106 | — | 2 644 | 0 | **106 / 106** |
+
+Dans TREIZE chunks sur 26, **le premier slot rejete est exactement `slot max de l image-cle + 1`**
+(deux fois +2 ou +3). C est la signature de l ALLOCATEUR : la premiere entite creee apres
+l instantane recoit le slot suivant.
+
+**Et le chunk 2 lit ZERO record `NEW` sur 1 196 paquets delta, alors qu au moins dix entites y
+naissent** (slot max 1 663 au chunk 2, 1 673 au chunk 3).
+
+### 5.6 LA CAUSE, EN UNE PHRASE
+
+> **Le residu de `bfecd02b` n est pas une largeur de composant : c est que le monde hors ligne
+> n apprend JAMAIS la naissance d une entite entre deux images-cles. La premiere entite creee
+> apres l image-cle d un chunk (slot = slot max + 1) est referencee par un delta que la garde
+> rejette, le rejet emporte la queue du paquet — donc les `NEW` qui y vivaient — et le chunk
+> s effondre a partir de la.**
+
+Le 5.15.1 (f) (« ce n est pas une cascade ») est REFUTE par `TestPremierRejet519` : le chunk 1
+ferme 700 paquets d affilee avant sa premiere faute, le chunk 2 en ferme 1 144, et le chunk 27
+ferme ses 106 paquets. Le 5.15.1 (g) l avait devine sans le chiffrer (« 685 NEW pour
+160 739 DELTA disent qu elle n en lit pas assez ») ; ce lot le date, le localise et le compte.
+
+Ce qui reste a trouver est donc UNE chose, et elle a deux candidats mesurables, tous deux hors du
+perimetre de ce lot :
+
+1. **la marche d ancres d image-cle** (D2 du 5.16) : elle s arrete a la moitie du payload. La
+   table complete donnerait l archetype de tous les slots du chunk — dont ceux nes apres
+   l instantane du chunk PRECEDENT ;
+2. **le record `NEW` lui-meme** : il faut savoir OU le jeu annonce la naissance d une entite
+   entre deux images-cles. L en-tete rejete lit `prefixe 1` = DELTA (constant sur les six temoins
+   dumpes : slot 1792, tag 1), donc ce n est pas un `NEW` mal cadre a cette position.
