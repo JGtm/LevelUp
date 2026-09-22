@@ -248,5 +248,5 @@ surface `film/replay` 260 -> 263 justifie.
 - [x] Web : nuage T5 remplacant la carte Denivele, halo, medianes, legende, infobulle (i)
 - D26 (2026-09-22) Vocabulaire : « Denivele » -> « Hauteur d engagement » (titres Timeseries et Match view), axe « Hauteur (m) », « en surplomb » / « en contrebas », bandes Escouade « Contrebas / A niveau / Hauteurs » conservees, carte Escouade « Roles de hauteur » conservee ; garde-rail contre « denivele » dans les chaines UI.
 
-### Lot AB — vocabulaire Hauteur d engagement (worktree `LevelUp-wt-ajsup-ab`)
-- [ ] Renommage FR + EN des chaines UI (titres, axes, legendes, infobulles) + garde-rail grep
+### Lot AB — vocabulaire Hauteur d engagement (worktree `LevelUp-wt-ajsup-ab`) — FUSIONNE 5760d8070
+- [x] Renommage FR + EN des chaines UI (titres, axes, legendes, infobulles) + garde-rail grep
