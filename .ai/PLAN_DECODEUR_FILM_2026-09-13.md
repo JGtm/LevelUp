@@ -8489,6 +8489,61 @@ grammaire : `.ai/V7.5/film_re/NOTE_5_23_TABLE_ANTICIPEE_2026-09-22.md`.
   change ; la couverture gagne un compteur, `Observation.LiaisonsParAnticipation`, qui n est PAS
   un champ du contrat — `Observation` n est jamais publie).
 
+- [x] **5.23.3 — LA PRODUCTION : UN SEUL INSTALLATEUR, ET LA MESURE DIT POURQUOI.**
+
+  **(a) OU LA TABLE ENTRE.** `ScanMovementStates` (`movement_states.go`) construit la table du
+  film (`ConstruireTableAnticipee(fc)` — une passe, 1,8 s sur 29 chunks, aucun decodage de
+  trame), la pose sur son monde et annonce le chunk courant avant chaque liaison. **Aucun autre
+  fichier de decodage ne bouge.**
+
+  **(b) ET LES AUTRES MARCHES DE PRODUCTION N EN ONT PAS BESOIN, PARCE QU ELLES ANTICIPENT
+  DEJA — plus largement, sans datation et sans cle.** Relu sur pieces :
+
+  | marche de production | ce qu elle lie AVANT de marcher | anticipe ? |
+  |---|---|---|
+  | `killsource/world.go` `preload()` | la PREMIERE declaration de chaque slot de TOUTES les images-cles du film | **oui** |
+  | `object_deaths_march.go` `newMarchTimeline()` | le meme geste, mot pour mot (vehicules, morts d objets, occupations) | **oui** |
+  | `weapon_hits.go` | les images-cles DE SON CHUNK seulement | non — mais elle marche par `DecodeFrameRecords`, qui n a pas de point de rejet |
+  | `ScanMovementStates` | les images-cles DEJA VUES, chunk par chunk | **non — c est elle qui gagne** |
+
+  C est la raison MESUREE pour laquelle **`facts.Rev` NE MONTE PAS** (le monde de `killsource`
+  connait deja ces slots : `LierParAnticipation` y rendrait `false` sur chacun) et pour laquelle
+  les calques `vehicles` / `rides` / `equipmentEpisodes` du document ne bougent pas d une unite.
+  **Aucun backlog killsource n est ouvert**, et le pilote n a pas de re-decodage de parc a
+  prendre.
+
+  **(c) LE RENDU, AVANT / APRES** (`replay-build`, `bfecd02b`, carte `snowbound`, faits de film
+  PURGES pour forcer le decodage) :
+
+  | calque | avant | apres |
+  |---|---:|---:|
+  | **`stances`** | **616** | **841** |
+  |   dont sprint | 355 | **501** |
+  |   dont saut derive | 252 | **327** |
+  |   dont mobilite | 9 | **12** |
+  |   dont accroupi | 0 | **1** |
+  | pistes · points | 90 · 27 703 | 90 · 27 703 |
+  | vehicules · embarquements · fins | 11 · 3 · 11 | 11 · 3 · 11 |
+  | `equipmentEpisodes` · `equipmentChanges` | 10 · 23 | 10 · 23 |
+  | `shots` · `pickups` · `padPickups` | 2 568 · 142 · 65 | 2 568 · 142 · 65 |
+  | artefact (octets) | 2 238 332 | **2 249 698** |
+
+  `mobility` monte (9 -> 12) ; les vehicules NE montent pas, et (b) dit pourquoi — ils etaient
+  deja anticipes. **`SchemaVersion` reste 67** : aucune forme ne change, aucun champ n est
+  ajoute ; le compteur de couverture (`Observation.LiaisonsParAnticipation`) n est PAS un champ
+  du contrat.
+
+  **(d) GATE AVEC DECODAGE — `replay-equiv -films bcb6d393` SANS `-update`** : **les SIX memes
+  ecarts que les lots 5.14 a 5.21, et AUCUN AUTRE** (`killsource`, `grappleReads.stats`,
+  `vehicles`, `movementStates`, `movementStates.stats`, `artifact`). Deux d entre eux portent la
+  mesure de ce lot : `movementStates` **1 737 -> 2 450** et `artifact` **1 929 397 -> 1 938 579**.
+  La reference est perimee depuis la fusion 5.10 (report D1 (5.11)) ; le re-figeage est un geste
+  du pilote. Decodage 15,8 s, pic 0,19 Gio, un film a la fois.
+
+  `grammar.Rev` -> `grammar-2026-09-22.13` (chronique a l appui). Goldens refiges par leur
+  porte : `grammar_rev.golden`, `facts_rev.golden`, `types/testdata/shapes.golden`, les 8
+  fixtures de contrat + manifeste.
+
 ### Post-chantier — lot 5.21 (le bloc de type 1 : la table de datums du chunk), branche `feat/decfilm-71`
 
 Sur la decouverte D1 du lot 5.20. METHODE : l ecrivain d abord (Ghidra lecture seule,

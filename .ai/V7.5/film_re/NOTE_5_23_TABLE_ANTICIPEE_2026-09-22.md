@@ -144,3 +144,46 @@ a `-3`.
 Aucune de ces etiquettes n est un canal PUBLIE : `replay.SchemaVersion` reste **67**. La
 couverture gagne un compteur, `Observation.LiaisonsParAnticipation`, qui n est PAS un champ du
 contrat — `Observation` n est jamais publie, ni dans le document ni dans les faits persistes.
+
+---
+
+## 4. LA PRODUCTION — UN SEUL INSTALLATEUR, ET LA MESURE DIT POURQUOI
+
+`ScanMovementStates` construit la table (`ConstruireTableAnticipee(fc)`, une passe, 1,8 s sur
+29 chunks), la pose sur son monde et annonce le chunk courant. Aucun autre fichier de decodage
+ne bouge — et c est la decouverte du point.
+
+| marche de production | ce qu elle lie AVANT de marcher | anticipe ? |
+|---|---|---|
+| `killsource/world.go` `preload()` | la PREMIERE declaration de chaque slot de TOUTES les images-cles du film | **oui** |
+| `object_deaths_march.go` `newMarchTimeline()` | le meme geste, mot pour mot | **oui** |
+| `weapon_hits.go` | les images-cles DE SON CHUNK seulement | non, mais elle marche par `DecodeFrameRecords`, sans point de rejet |
+| `ScanMovementStates` | les images-cles DEJA VUES, chunk par chunk | **non — c est elle qui gagne** |
+
+Deux marches de production ANTICIPAIENT DEJA, plus largement que cette table (sans datation,
+sans cle de tete), et depuis des lots anterieurs. C est la raison mesuree pour laquelle
+**`facts.Rev` ne monte pas** — le monde de `killsource` connait deja ces slots, et
+`LierParAnticipation` y rendrait `false` sur chacun — et pour laquelle les calques `vehicles`,
+`rides` et `equipmentEpisodes` ne bougent pas d une unite. Aucun backlog killsource.
+
+### Le rendu (`replay-build`, `bfecd02b`, carte snowbound, faits de film purges)
+
+| calque | avant | apres |
+|---|---:|---:|
+| **`stances`** | **616** | **841** |
+| dont sprint | 355 | **501** |
+| dont saut derive | 252 | **327** |
+| dont mobilite | 9 | **12** |
+| dont accroupi | 0 | **1** |
+| pistes · points | 90 · 27 703 | 90 · 27 703 |
+| vehicules · embarquements · fins | 11 · 3 · 11 | 11 · 3 · 11 |
+| `equipmentEpisodes` · `equipmentChanges` | 10 · 23 | 10 · 23 |
+| `shots` · `pickups` · `padPickups` | 2 568 · 142 · 65 | 2 568 · 142 · 65 |
+| artefact (octets) | 2 238 332 | 2 249 698 |
+
+`replay-equiv -films bcb6d393` sans `-update` : **les SIX memes ecarts que les lots 5.14 a 5.21
+et aucun autre**. Deux portent la mesure de ce lot — `movementStates` 1 737 -> **2 450**,
+`artifact` 1 929 397 -> **1 938 579**. La reference est perimee depuis la fusion 5.10 ; le
+re-figeage est un geste du pilote.
+
+`replay.SchemaVersion` reste **67**.

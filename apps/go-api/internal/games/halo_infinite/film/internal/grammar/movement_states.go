@@ -137,11 +137,19 @@ func ScanMovementStates(fc *FilmContext) ([]types.MovementStateRead, types.Movem
 	obs.EtatMouvementHook = sc.recevoir
 	cfg.Obs = obs
 	sc.monde = NewWorld(reg)
+	// LE REPLI DU LOT 5.23 ENTRE EN PRODUCTION ICI. La table anticipee est construite en UNE
+	// passe sur les images-cles de tous les chunks (1,8 s sur un film de 29 chunks, aucun
+	// decodage de trame) ; au point de rejet, la marche y lit l archetype qu une image-cle
+	// ULTERIEURE donne a un eid que le monde ne connait pas encore. Cf. `keyframe_anticipe.go`
+	// et [World.LierParAnticipation] : le record de naissance n est toujours pas lu.
+	sc.monde.PoserTableAnticipee(ConstruireTableAnticipee(fc))
 	for _, c := range chunks {
 		data, pks, ok := fc.ChunkAt(c)
 		if !ok {
 			continue
 		}
+		// La table ne rend qu une declaration STRICTEMENT POSTERIEURE a ce chunk.
+		sc.monde.PoserChunkCourant(c)
 		sc.lierLeMonde(data, pks)
 		for _, pk := range pks {
 			sc.paquet(c, pk, data, cfg)

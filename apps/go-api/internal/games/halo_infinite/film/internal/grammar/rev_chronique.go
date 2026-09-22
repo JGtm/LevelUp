@@ -273,3 +273,34 @@ package grammar
 // golden est refige parce qu il hache la VALEUR de `grammar.Rev`. `replay.SchemaVersion` reste
 // a 67 : 222 etiquettes de composant lues contre 207, mais aucune n est un canal PUBLIE, et
 // `Observation` n est jamais publie.
+
+// ENTREE `grammar-2026-09-22.13` (2026-09-22, lot 5.23.3) : LE REPLI ENTRE EN PRODUCTION PAR
+// `ScanMovementStates` — ET LA MESURE DIT POURQUOI C EST LE SEUL.
+//
+// CE QUE LE RANG CHANGE. `ScanMovementStates` construit la table anticipee du film
+// (`ConstruireTableAnticipee`, une passe sur les images-cles de tous les chunks, 1,8 s sur
+// `bfecd02b`, aucun decodage de trame), la pose sur son monde et annonce le chunk courant avant
+// chaque liaison. Aucun autre fichier de decodage ne bouge.
+//
+// ET LES AUTRES MARCHES DE PRODUCTION N EN ONT PAS BESOIN, PARCE QU ELLES ANTICIPENT DEJA — plus
+// largement, sans datation et sans cle :
+//
+//	killsource/world.go `preload()`      lie la PREMIERE declaration de chaque slot de TOUTES
+//	                                     les images-cles du film, avant de marcher ;
+//	object_deaths_march.go `newMarchTimeline()`  fait exactement le meme geste (vehicules,
+//	                                     morts d objets, occupations).
+//
+// C est la raison MESUREE pour laquelle `facts.Rev` ne monte pas et pour laquelle les calques
+// `vehicles` / `rides` / `equipmentEpisodes` du document ne bougent pas d une unite : leurs
+// mondes connaissaient deja ces slots. `ScanMovementStates` etait la seule marche de production
+// qui ne liait que les images-cles DEJA VUES, et c est elle qui gagne.
+//
+// LE RENDU, MESURE SUR `bfecd02b` (`replay-build`, carte snowbound, faits de film purges pour
+// forcer le decodage) : `stances` **616 -> 841** — sprint 355 -> 501, saut derive 252 -> 327,
+// mobilite 9 -> 12, accroupi 0 -> 1. Tout le reste a l identique : 90 pistes, 27 703 points,
+// 11 vehicules, 3 embarquements, 10 episodes d equipement, 2 568 tirs, 142 ramassages.
+// Artefact 2 238 332 -> 2 249 698 octets.
+//
+// `replay.SchemaVersion` reste **67** : aucune forme ne change, aucun champ n est ajoute.
+// `facts.Rev` NE MONTE PAS (cf. ci-dessus) — aucun backlog killsource. Les goldens sont refiges
+// parce qu ils hachent ou publient la VALEUR de `grammar.Rev`.
