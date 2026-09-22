@@ -32,6 +32,7 @@ import {
   useGridInks,
   type CardProps,
 } from './SessionUsageShared'
+import { sessionUsageCardsShown } from './sessionSectionVisibility'
 
 export function EquipmentCards({ usage, meLabel, t, locale, compact }: CardProps) {
   const inks = useGridInks()
@@ -42,7 +43,9 @@ export function EquipmentCards({ usage, meLabel, t, locale, compact }: CardProps
     [metrics, squadPlayers, meLabel, t, locale, inks],
   )
   const gaugeRows = useMemo(() => metricGaugeRows(metrics, usage, t, locale), [metrics, usage, t, locale])
-  if (metrics.length === 0) return null
+  // La porte de la carte est celle que le TITRE DE SECTION interroge (sessionSectionVisibility) :
+  // une seule écriture, sinon le titre « Frags et usages » finirait au-dessus du vide.
+  if (!sessionUsageCardsShown(usage).equipment) return null
   const measured = t.measuredFmt(usage.matches_measured, usage.matches_total)
 
   return (
