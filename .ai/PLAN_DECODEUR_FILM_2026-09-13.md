@@ -8538,6 +8538,7 @@ commit par trou. Note de grammaire : `.ai/V7.5/film_re/NOTE_5_14_CLASSES_DE_VUE_
 | 5.14.2 | `[x]` | la charge du `kind` 0 = l entree de controle d un participant, lue jusqu au bloc d actions ; **paquets fermes a reste NUL 140 -> 5 341 et 801 -> 2 884** ; le gate renforce (bourrage prouve a zero, pas tolere a sept bits) |
 | 5.14.3 | `[x]` | dispatch par rang par defaut ; **les faux `DEL` deliaient des entites vivantes : +15 114 records `ti=35` sur `bfecd02b`**, debordements 1 785 -> 32, fantomes 304 -> 0, desyncs constants ; `IDLowBits` balaye ; deux docs perimees corrigees ; `replay-equiv bcb6d393` : les six ecarts du 5.13, inchanges hors les deux attendus |
 | 5.14.4 | `[x]` | l index de controle EST l index du participant (1 sur un film a 1 joueur, 8 sur un film a 8) ; le couple analogique quantifie sur 6 bits, **a zero EXACT sur tout `dad793c7`, fenetre du saut comprise (71 / 71)**, et couvrant ses 64 codes sur `bfecd02b` ; **le canal d actions EXISTE (ouvert 108 fois) et n est pas porte — maillon nomme, pas une absence** |
+| 5.14.5 | `[x]` | le ratchet de taille (`archlint/film_file_size_test.go`) rougissait sur l instrument du lot (699 lignes, seuil 500) : le GATE et son registre de restes sortent dans `mouvement_5_14_gate_research_test.go` par deplacement pur (699 -> 463 + 265). Le gate de 5.14.4 n avait pas rejoue `archlint` — lecon « re-mesurer a l entree » |
 | gate 100 % | `[!]` | **NON ATTEINT**, et la cause dominante est HORS perimetre : 23 852 paquets de `bfecd02b` (environ 1 076 bits chacun) ferment leurs trois rangs et laissent du reste — un trou du rang 1 / du cadrage sur film dense (D1). Les deux autres criteres du gate sont TENUS : 0 record fantome, oracle de contenu conserve |
 | schema | **67, INCHANGEE** | la montee 67 -> 68 etait conditionnee a « si un canal d etat de bipede apparait » : aucune valeur du controle n a d etiquette, le couple analogique est a zero sur le temoin, les bits d action ne sont pas portes. Rien de publiable |
 
@@ -8546,7 +8547,9 @@ Revisions : `grammar-2026-09-22.3` / `.4` / `.5` ; `facts.Rev` INCHANGEE a
 commit : `gofmt`, `go build`, `go vet` (+`research`), `go test -count=1` sur `halo_infinite/...`,
 `archlint`, `replaybuild`, `replaydoc`, `replayview`, `contracttest`, `api`, `golangci-lint`
 (0 issue), `go test -race` sur `grammar` (359 s, vert), `npx vitest run src/features/match-replay`
-(3 014 tests verts). Corpus 19, re-figeage de la reference `replay-equiv` et CI : au pilote.
+(3 014 tests verts). Le ratchet de TAILLE n avait pas ete rejoue au commit 5.14.4 et a rougi :
+corrige par 5.14.5, et le compte de lignes `--- FAIL` est desormais VERIFIE au lieu d etre lu
+dans un grep. Corpus 19, re-figeage de la reference `replay-equiv` et CI : au pilote.
 
 ### Post-chantier — lot 5.11.7 (LES TROIS TABLES D ENTITES PAR VUE), branche `feat/decfilm-63`
 
