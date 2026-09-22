@@ -8326,6 +8326,118 @@ contre 4 469 dans la reference — et 1 489 est EXACTEMENT la valeur que le lot 
 les divergences sont celles de la reference perimee, pas des siennes. Decodage : 14,8 s,
 pic 0,19 Gio, un film a la fois.
 
+### Post-chantier — lot 5.20 (l image-cle entiere et les naissances), branche `feat/decfilm-70`
+
+Sur les decouvertes D1 et D2 du lot 5.19. METHODE : l ecrivain d abord (Ghidra lecture seule),
+la mesure seulement pour VERIFIER un maillon lu, un commit par maillon, jamais une largeur
+inventee. Note de grammaire : `.ai/V7.5/film_re/NOTE_5_20_IMAGE_CLE_ENTIERE_2026-09-22.md`.
+
+- [x] **5.20.1 — LE LECTEUR D IMAGE-CLE, LU EN ENTIER CHEZ L ECRIVAIN — ET LA MARCHE
+  DETERMINISTE PORTE ENFIN SON CADRE.**
+
+  **(a) QUI LIT LE TYPE 2, PAR ADRESSE.** Le bloc d image-cle n est PAS consomme par le
+  repartiteur de paquets : `FUN_1428e22c0` ne connait que neuf types (0, 1, 6, 7, 8, 9, 10,
+  0xb, 0xc) et le type 2 y tombe dans la queue de telemetrie `FilmBlockReadError`. Il passe par
+  la SECONDE voie a en-tete de 16 octets, celle que le 5.19 §6.1 avait nommee sans la suivre :
+
+  ```
+  FUN_1428e2a04(session)
+     FUN_14298924c(session, session+0x224)          ; positionnement
+     FUN_142988338(session, hdr, 0x10, 0)           ; un premier en-tete de 16 octets
+     FUN_1428e2a9c(session)
+        FUN_1429883ec(...)                          ; le bloc precedent (type 7, 0 octet)
+        FUN_142988338(session, hdr2, 0x10, 0)       ; l en-tete du bloc d image-cle
+        FUN_142988338(session, session[0x240], hdr2.taille, 0)   ; LE PAYLOAD
+        FUN_1424c7b4c(lecteur, session[0x240], taille)           ; un lecteur de bits dessus
+        FUN_142e2bfd0(lecteur, tableau)             ; LE LECTEUR D IMAGE-CLE
+  ```
+
+  **(b) `FUN_142e2bfd0`, LA BOUCLE, BIT PAR BIT.** Elle remplit un tableau d entrees de
+  **200 octets** (`0xC8`, confirme par `FUN_142e2bb9c` qui recopie ces entrees au meme pas), une
+  par entite vivante, et s arrete quand le tableau est plein ou `DAT_144dbfc90` atteint :
+
+  ```
+  FUN_1406d5cc0(lecteur, 3) ; FUN_1408be40c(tableau) ; FUN_1408be3c4(tableau+0x20)
+  si FUN_1428e1c0c(&DAT_144c23178) > 7 :  DAT_144706104 = R(1)      <- LE PREFIXE DE 1 BIT
+  extra = FUN_14076cea8()
+  tant que (e != fin && n < DAT_144dbfc90) :
+      e[0x00] = R(32)                     l identifiant (eid)
+      e[0x04] = R(32)                     L ARCHETYPE, MOT PLEIN DE 32 BITS
+      e[0x0c] = R(32)
+      e[0x08] = R(4)                      (FUN_142e29cf8, lecteur de 4 bits)
+      e[0x09] = R(8)                                            = 108 bits d en-tete
+      si e[0x04] != 0xffffffff :
+          desc = *(DAT_144e61d88 + 8 + ti*8)
+          n1 = R(32) ; si n1 > 0 :
+              FUN_142e31de8(ti, &e[0x94], &e[0x98])             ; le tampon d etat par defaut
+              desc->vtable[0x60](e[0x94], e[0x98], lecteur, 0)  ; L ETAT PAR DEFAUT
+              si extra : R(32)                                  ; mot de controle
+          n2 = R(32) ; si n2 > 0 :
+              FUN_142e31e70(ti, &e[0xc0], &e[0xb8])             ; le tampon de composants
+              desc->vtable[0x88](e[0x94], e[0x98], e[0xc0], e[0xb8])   ; AUCUN BIT
+              FUN_1428e2b68(&DAT_144c23178, lecteur, ti, eid, e[0xb8])
+      e += 0xC8
+  ```
+
+  **(c) LA BOUCLE DE COMPOSANTS N A PAS DE MASQUE, ET SA TABLE EST LE REGISTRE DU FILM.**
+  `FUN_1428e2b68` prend le descripteur d archetype et la table `lVar4 + 8 + ti*0x4100`
+  (`lVar4` = `session+0x108`, ou `session+0x120+0x130` selon `FUN_1428e1e94(&DAT_144c23178)`),
+  puis appelle `FUN_142e2c690(desc+1, lecteur, args, table)` :
+
+  ```
+  pour k de 0 a 0x3f, table += 0x104 :
+      si table[0] != 0 :                              ; une entree NOMMEE
+          deser = celui des 64 dont vtable[8]() rend le meme nom
+          deser->vtable[0x28](lecteur, args, &prediction=0, *(u32*)(table + 0x100))
+          si extra et R(1) : R(32)                     ; sentinelle par composant
+  ```
+
+  0x104 octets par entree, 64 entrees, `0x4100` par archetype : c est **exactement le cadrage du
+  registre du film** (`registry.go`, lot 1.2), et c est exactement ce que
+  `WalkKeyframeFullState` porte depuis le lot 1.4. **Le corps d un record d image-cle etait donc
+  deja lu juste ; ce qui manquait etait la MARCHE.**
+
+  **(d) L EN-TETE DE 64 BITS DU DEPOT ETAIT UN MODELE FAUX, ET SON `Field26` N EXISTE PAS.** Les
+  32 bits a `q+32` SONT l archetype : `FUN_142e2bfd0` s en sert tel quel pour indexer
+  `DAT_144e61d88 + 8 + ti*8`, et un mot >= 50 y ferait deriver le jeu sur un descripteur hors
+  table. **L hypothese H1 du lot R5 — « le balayeur saute les records dont `Field26` n est pas
+  nul » — est REFUTEE PAR L ECRIVAIN** : de tels records ne peuvent pas exister. La seule valeur
+  hors table admise est `0xffffffff` = PAS D ARCHETYPE, et l entree s arrete alors a ses 108 bits
+  (`if (puVar12[1] != 0xffffffff)`). `readKeyframeHeader` exige desormais le MOT PLEIN, et
+  `KeyframeChainResult.SkippedFieldNonZero` devient `SkippedSansArchetype`.
+
+  **(e) LA MARCHE, ET CE QU ELLE MESURE.** `WalkKeyframeRecords` enchaine desormais par
+  `WalkKeyframeFullState` (108 bits d en-tete, etat complet, ni porte ni masque) au lieu de
+  `TraverseEntity` a `+58` — il repartait 44 bits trop tot, au milieu du premier corps, d ou
+  l arret « en-tete-invalide » apres UN record sur les deux temoins. Mesure
+  (`TestMarche520`, `dad793c7`, carte `snowbound`) :
+
+  | chunk | payload | balayeur (fenetre 120k) | balayeur SANS fenetre | marche deterministe |
+  |---:|---:|---|---|---|
+  | 1 | 1 028 032 b | 123 ancres, bit 139 754 (13,6 %) | **157** ancres, bit 286 031 (**27,8 %**) | 2 records, arret `i10 tacmap-mapdismissallock` (`ti=32`) |
+  | 2 | 1 043 848 b | 187, bit 303 622 (29,1 %) | **127**, bit 303 622 | idem |
+  | 3-5 | 1 042 992 b | 186, bit 302 518 (29,0 %) | **126**, bit 302 748 | idem |
+
+  **1 record -> 2 records, et l arret n est plus un cadre faux mais un composant NOMME.** La
+  marche est grammaticalement juste ; il lui manque les deserialiseurs du lot 3.6, puisqu un
+  record d image-cle porte TOUS les composants de son archetype sans masque (fermeture mesuree :
+  30,8 %, `keyframe_closure.golden`).
+
+  **(f) LA FENETRE DE 120 000 BITS RESTE, ET LA MESURE DIT POURQUOI.** Elle n existe pas dans le
+  jeu. La retirer N EST PAS un gain net (colonne 4 du tableau : +34 ancres au chunk 1, **-60** aux
+  chunks 2 a 5) parce que `betterThan` elit alors un candidat lointain « meilleur » qui deraille
+  la chaine. **Echanger une heuristique contre une autre n est pas lire la grammaire.** La
+  constante est NOMMEE, DATEE et gagee (`kfScanFenetreBits`) : elle disparait avec le balayeur le
+  jour ou `KeyframeClosure` atteint 100 %.
+
+  `grammar.Rev` -> `grammar-2026-09-22.8` (chronique a l appui, rotation dans
+  `rev_chronique_archive_5.go`). `facts.Rev` NE MONTE PAS (`killsource/` marche par
+  `DecodeFrameRecords` et `WalkKeyframeWorld`, tous deux inchanges) — son golden est refige parce
+  qu il hache la VALEUR de `grammar.Rev`, aucun backlog killsource ouvert.
+  `replay.SchemaVersion` reste a **67**. Goldens refiges par leur porte : `grammar_rev.golden`,
+  `facts_rev.golden`, `types/testdata/shapes.golden`, les 8 fixtures de contrat + manifeste
+  (2 770 833 octets, plafond de 3 Mio tenu ; seul `grammarRev` change dans les documents).
+
 ### Post-chantier — lot 5.19 (le record avant le rejet), branche `feat/decfilm-69`
 
 Sur le residu que les lots 5.15 a 5.18 ont instruit sans le reduire. METHODE INVERSEE : la

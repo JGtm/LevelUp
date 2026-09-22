@@ -6,7 +6,7 @@
    "film": "000d5950",
    "build": "HI_1_13_0",
    "schemaVersion": 67,
-   "bytes": 412704,
+   "bytes": 412705,
    "pointsStride": 1
   },
   {
@@ -38,7 +38,7 @@
    "film": "111fa685",
    "build": "HI_1_10_0",
    "schemaVersion": 67,
-   "bytes": 444247,
+   "bytes": 444249,
    "pointsStride": 5
   },
   {
@@ -54,7 +54,7 @@
    "film": "bcb6d393",
    "build": "HI_1_12_0",
    "schemaVersion": 67,
-   "bytes": 87729,
+   "bytes": 87730,
    "pointsStride": 5
   },
   {
