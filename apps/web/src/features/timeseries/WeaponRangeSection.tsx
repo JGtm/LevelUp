@@ -1,10 +1,15 @@
 /**
- * WeaponRangeSection — LA PORTÉE DES ENGAGEMENTS SUR L'ONGLET RÉSUMÉ.
+ * WeaponRangeSection — LA PORTÉE DES ENGAGEMENTS SUR L'ONGLET USAGES.
  *
  * Elle a vécu sous `features/synthesis/` jusqu'au 2026-09-17, par héritage : la section a
- * quitté la page Synthèse pour le Résumé le 2026-09-13 et ses fichiers n'avaient pas suivi.
- * Un composant rangé sous le nom d'une page qui ne l'affiche plus égare ses lecteurs — c'est
- * arrivé. Le dossier dit maintenant qui la rend.
+ * quitté la page Synthèse pour l'onglet Résumé des Séries temporelles le 2026-09-13 et ses
+ * fichiers n'avaient pas suivi. Un composant rangé sous le nom d'une page qui ne l'affiche
+ * plus égare ses lecteurs — c'est arrivé. Le dossier dit maintenant qui la rend.
+ *
+ * ELLE A CHANGÉ D'ONGLET LE 2026-09-22 : le Résumé pour « Usages », où elle rejoint les
+ * usages d'équipement et les formes retenues — un onglet, un axe de lecture, et le sien est
+ * TOUT CE QUI VIENT DU FILM DÉCODÉ (cf. `TimeseriesPage.usages.tsx`). Son titre de section
+ * a pris le gabarit commun (`SectionTitle`) au même moment.
  *
  * Transposition de la maquette validée par l'utilisateur le 2026-09-06
  * (`.ai/V7.5/MAQUETTE_PORTEE_ENGAGEMENTS_2026-09-06.html`, lot 5 du plan
