@@ -20,7 +20,7 @@ import type {
   MatchTugOfWarBin,
   MatchViewCadence,
 } from '@/lib/api/types'
-import { DetailSection } from './DetailSection'
+import { DetailSection } from '@/components/ui/detail-section'
 import { MatchCadenceChart } from './MatchCadenceChart'
 import { MatchImpactBadgesBar } from './MatchImpactBadgesBar'
 import { MatchKDCumulChart } from './MatchKDCumulChart'

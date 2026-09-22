@@ -42,6 +42,7 @@ import { teamOfLobbyParityPct } from '@/features/_shared/usage/usageParity'
 import { buildRegularityBand } from '@/features/_shared/usage/usageRegularityBandModel'
 
 import { bandAboveCaption, metricGaugeRows, type CardProps } from './SessionUsageShared'
+import { sessionUsageCardsShown } from './sessionSectionVisibility'
 
 /** Le corps d'une carte : centré verticalement quand la voisine de rangée l'étire. */
 function CardBody({ children }: { children: React.ReactNode }) {
@@ -107,7 +108,9 @@ export function PadControlCards({ usage, meLabel, t, locale, compact }: CardProp
   // LES NIVEAUX COMPTENT DANS LA PORTE (revue du 2026-09-14) : ils viennent d'une AUTRE passe,
   // sur d'autres matchs. Sans eux dans cette condition, une session dont seuls les niveaux sont
   // mesurés ne rendait RIEN — une mesure existante avalée par la porte de sa voisine.
-  if (pad == null && gaugeRows.length === 0 && tierRows.length === 0) return null
+  // LA CONDITION S'ÉCRIT DANS `sessionSectionVisibility` ET NULLE PART AILLEURS : le titre de
+  // section « Frags et usages » la lit aussi, et deux écritures divergeraient (règle n° 6).
+  if (!sessionUsageCardsShown(usage).padControl) return null
 
   const visibleTiers: UsageGaugeRowModel[] = []
   const collapsedTiers: UsageGaugeRowModel[] = []

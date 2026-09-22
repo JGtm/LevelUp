@@ -318,3 +318,14 @@ function weaponsOf(
   ]
 }
 
+
+/**
+ * hasPadControl — LA double porte de la carte « Contrôle des armes spéciales », en fonction
+ * pure : pas d'artefact de rejeu (`control` null) ou aucune prise attribuée -> pas de carte.
+ *
+ * Elle vit ICI, avec la mesure qu'elle juge (mêmes raisons que `hasEquipmentUsage`) : le
+ * parent la lit pour poser ou non le titre de section, la carte pour son `return null`.
+ */
+export function hasPadControl(control: PadControl | null | undefined): control is PadControl {
+  return control?.hasData === true
+}

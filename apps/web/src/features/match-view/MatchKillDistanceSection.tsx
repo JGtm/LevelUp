@@ -34,7 +34,6 @@ import { ChartLegend } from '@/components/charts/ChartLegend'
 import { titleWithInfo } from '@/components/ui/title-with-info'
 import { SectionCard } from '@/components/ui/section-card'
 import { resolveToken } from '@/lib/accessibility'
-import { useDataCapability } from '@/lib/capabilities/dataCapabilities'
 import type {
   MatchKillDistancePlayer,
   MatchRosterRow,
@@ -44,6 +43,7 @@ import { getEChartsThemeColors } from '@/lib/echarts/themeColors'
 import { stripBotSuffix } from '@/lib/players/displayName'
 import { useAppShellStore } from '@/stores/appShellStore'
 
+import { useHasKillDistanceSection } from './blockPredicates'
 import { buildMatchPlayerColors } from './colors'
 import {
   buildKillDistanceOption,
@@ -73,7 +73,7 @@ export function MatchKillDistanceSection({
   t,
 }: Props) {
   const locale = useAppShellStore((s) => s.locale)
-  const titreMesureLesPositions = useDataCapability('film.kill_positions')
+  const titreMesureLesPositions = useHasKillDistanceSection()
   const board = useMemo(() => scoreboard ?? [], [scoreboard])
   const rawPlayers = useMemo(() => players ?? [], [players])
 

@@ -86,7 +86,12 @@ import {
   type UsageFamilyBars,
 } from './model/equipmentUsageChart'
 import { uniqueUsageGroups, usageColumnGroups } from './model/equipmentUsageColumns'
-import { buildEquipmentUsage, tallyTotal, type EquipmentUsage } from './model/equipmentUsageLogic'
+import {
+  buildEquipmentUsage,
+  hasEquipmentUsage,
+  tallyTotal,
+  type EquipmentUsage,
+} from './model/equipmentUsageLogic'
 import { REPLAY_TEXT, type ReplayLocale } from './i18n/i18n'
 import type { ReplayText } from './i18n/i18nContract'
 import { useMatchReplay } from '../../lib/replay/queries'
@@ -164,8 +169,9 @@ export function MatchEquipmentUsageSection({
     [usage, groups, meSide, teamLabel, teamAccent],
   )
 
-  // Double porte : pas d'artefact, ou rien de mesuré -> rien du tout.
-  if (!usage?.hasData) return null
+  // Double porte : pas d'artefact, ou rien de mesuré -> rien du tout. MÊME prédicat que
+  // celui lu par le parent pour poser (ou non) son titre de section.
+  if (!hasEquipmentUsage(usage)) return null
 
   // DEUX CARTES SUR LA MÊME RANGÉE depuis le 2026-09-21 (lot D) : « par joueur » et « part de
   // chaque équipe » répondaient à deux questions dans une seule carte, l'une sous l'autre, et
