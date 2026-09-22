@@ -330,6 +330,18 @@ type TimeseriesPageResponse struct {
 	// lecture en échec — jamais une section vide. Gated côté front par la capability
 	// produit `weapon_range`. Cf. service/synthesis_weapon_range.go.
 	WeaponRange *SynthesisWeaponRange `json:"weapon_range,omitempty"`
+	// RangeProfiles : le nuage des RÔLES DE PORTÉE du joueur consulté (lot U, décision
+	// D23-a) — un profil par match de la fenêtre filtrée, portant la médiane du joueur et
+	// celle du LOBBY ENTIER du match, qui en est le référentiel.
+	//
+	// AUTRE QUESTION QUE `WeaponRange`, qui l'accompagne : celle-ci donne des mètres PAR
+	// ARME, celui-là une position relative DANS LE TEMPS (« quel joueur suis-je devenu sur
+	// cette période »). MÊME producteur et MÊME DTO que la page Sessions et l'Escouade —
+	// les trois pages se lisent avec la même grammaire (service/match_range_block.go).
+	//
+	// Nil (champ omis) pour un titre sans décodeur de film, un scope non décodé ou une
+	// lecture en échec — jamais un bloc vide.
+	RangeProfiles *MatchRangeBlock `json:"range_profiles,omitempty"`
 	// Coordination : le bloc « Riposte » et « Appui reçu » DANS LE TEMPS (lot N1,
 	// décisions D22) — les mêmes grandeurs que la page Sessions, groupées PAR SOIRÉE
 	// (`sessions`), sur le MÊME scope filtré que le reste de la page.

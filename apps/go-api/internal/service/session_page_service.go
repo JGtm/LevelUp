@@ -306,14 +306,16 @@ func (s *SessionPageService) GetPage(
 	// compareMatchesForEvents : le même sous-ensemble que les blocs event-based, donc les
 	// deux colonnes du drawer parlent bien des mêmes matchs. `filtered` est la PÉRIODE DE
 	// RÉFÉRENCE du repère d'habituel (celle du filtre de la page, toutes sessions).
-	s.attachSessionUsage(ctx, &resp, sessionBlocksScope{
+	blocsScope := sessionBlocksScope{
 		Matches: currentMatches, CompareMatches: compareMatchesForEvents,
 		ReferenceMatches: filtered, MatchContext: req.Filters.MatchContext, Locale: req.Locale,
-	})
+	}
+	s.attachSessionUsage(ctx, &resp, blocsScope)
 
-	// Bloc « portée des engagements » (D22-4) : même périmètre de matchs que les deux
-	// blocs ci-dessus, best-effort, cf. session_page_range.go.
-	s.attachSessionRange(ctx, &resp, currentMatches, compareMatchesForEvents)
+	// Blocs « portée des engagements » (D22-4) et « période de référence » (D23-4) : même
+	// périmètre de matchs que les deux blocs ci-dessus, et la MÊME période de référence,
+	// best-effort, cf. session_page_range.go.
+	s.attachSessionRange(ctx, &resp, blocsScope)
 
 	slog.InfoContext(ctx, "session page generated",
 		"resolved_session", currentLabel,

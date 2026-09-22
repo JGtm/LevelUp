@@ -410,7 +410,9 @@ func (r *ServiceRegistry) Timeseries(ctx context.Context, slug string) (port.Tim
 		// si ce titre a des positions par kill — il rend games.ErrCapabilityNotSupported et
 		// le service omet la section ; un `if capability` ici prendrait la même décision à
 		// deux endroits qui divergeraient.
-		WithWeaponRangeRepo(duckdb.NewWeaponRangeRepo(pdb, r.killSourceClassifierFor(pdb)))
+		WithWeaponRangeRepo(duckdb.NewWeaponRangeRepo(pdb, r.killSourceClassifierFor(pdb))).
+		// Roles de portee (D23-a) : MEME repo, autre lecture (tout le lobby, par match).
+		WithMatchRange(duckdb.NewWeaponRangeRepo(pdb, r.killSourceClassifierFor(pdb)), pdb.XUID)
 	if a := r.dataAdapterForPDB(pdb); a != nil {
 		svc = svc.WithDataAdapter(a)
 	}

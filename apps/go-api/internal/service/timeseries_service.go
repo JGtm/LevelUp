@@ -114,6 +114,11 @@ type TimeseriesService struct {
 	coordTactical port.TacticalRepository
 	coordAppuis   port.CoordinationRepository
 	coordCaps     games.CapabilityMap
+	// matchRangeRepo / matchRangeXUID : le nuage des rôles de portée (lot U, décision
+	// D23-a) — LE MÊME lecteur et LE MÊME producteur que la page Sessions et l'Escouade,
+	// sur la fenêtre de cette page. Optionnels, gated au câblage.
+	matchRangeRepo port.MatchRangeRepository
+	matchRangeXUID string
 }
 
 // highlightEventsLoader expose la sous-API du HighlightEventsRepo per-player

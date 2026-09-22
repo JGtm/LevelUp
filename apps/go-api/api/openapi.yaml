@@ -18398,6 +18398,12 @@ components:
     MatchRangePlayer:
       additionalProperties: false
       properties:
+        elevation_lobby_delta_m:
+          format: double
+          type: number
+        elevation_median_m:
+          format: double
+          type: number
         gamertag:
           type: string
         lobby_delta_m:
@@ -18420,6 +18426,9 @@ components:
     MatchRangeProfile:
       additionalProperties: false
       properties:
+        lobby_elevation_median_m:
+          format: double
+          type: number
         lobby_measured:
           format: int64
           type: integer
@@ -22312,6 +22321,35 @@ components:
         - axis
         - value
       type: object
+    RangeReferenceBlock:
+      additionalProperties: false
+      properties:
+        matches_measured:
+          format: int64
+          type: integer
+        matches_total:
+          format: int64
+          type: integer
+        period_median_delta_m:
+          format: double
+          type: number
+        profiles:
+          items:
+            $ref: '#/components/schemas/MatchRangeProfile'
+          type:
+            - array
+            - "null"
+        role_high_m:
+          format: double
+          type: number
+        role_low_m:
+          format: double
+          type: number
+      required:
+        - profiles
+        - matches_measured
+        - matches_total
+      type: object
     RankDelta:
       additionalProperties: false
       properties:
@@ -24584,6 +24622,8 @@ components:
           type: string
         range_profiles:
           $ref: '#/components/schemas/MatchRangeBlock'
+        range_reference:
+          $ref: '#/components/schemas/RangeReferenceBlock'
         suggested_compare:
           $ref: '#/components/schemas/SessionCompareSuggestion'
         usage:
@@ -29096,6 +29136,8 @@ components:
           type:
             - array
             - "null"
+        range_profiles:
+          $ref: '#/components/schemas/MatchRangeBlock'
         solo_session_perf:
           $ref: '#/components/schemas/SoloSessionPerfBlock'
         summary_tab:

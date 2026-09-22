@@ -18,6 +18,7 @@ import (
 	"sort"
 	"time"
 
+	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/analysis/sessionusage"
 	"levelup/go-api/internal/analysis/squadformes"
 	"levelup/go-api/internal/domain"
@@ -76,6 +77,16 @@ func (s *TimeseriesService) WithTimeseriesCoordination(
 	return s
 }
 
+// WithMatchRange injecte le lecteur de portée « tout le lobby » et le xuid du joueur
+// consulté — le nuage des rôles de portée de la page (D23-a). Câblage INCONDITIONNEL, pour
+// la même raison que WithWeaponRangeRepo : le repo est le seul à savoir si ce titre a des
+// positions par kill.
+func (s *TimeseriesService) WithMatchRange(repo port.MatchRangeRepository, xuid string) *TimeseriesService {
+	s.matchRangeRepo = repo
+	s.matchRangeXUID = xuid
+	return s
+}
+
 // attachMigratedSections pose les trois blocs sur la réponse, depuis le scope canonique déjà
 // filtré. Best-effort de bout en bout : chaque producteur rend nil plutôt que de casser la page.
 func (s *TimeseriesService) attachMigratedSections(
@@ -109,6 +120,52 @@ func (s *TimeseriesService) attachMigratedSections(
 		Locale:       locale,
 	})
 	s.attachCoordination(ctx, resp, filteredCanon)
+	s.attachMatchRange(ctx, resp, filteredCanon, locale)
+}
+
+// attachMatchRange pose le nuage des rôles de portée du joueur consulté sur la FENÊTRE DE
+// LA PAGE (lot U, décision D23-a).
+//
+// UN SEUL JOUEUR PUBLIÉ, UN LOBBY ENTIER MESURÉ : la médiane de référence de chaque match
+// porte sur tous ses frags mesurés (c'est elle qui neutralise la carte et le mode), mais
+// seule la ligne du joueur consulté est servie — cette page n'est pas un tableau du lobby.
+func (s *TimeseriesService) attachMatchRange(
+	ctx context.Context, resp *domain.TimeseriesPageResponse,
+	filteredCanon []canonical.PlayerMatchRow, locale string,
+) {
+	if s.matchRangeXUID == "" {
+		return
+	}
+	resp.RangeProfiles = buildMatchRangeBlock(ctx, matchRangeQuery{
+		Repo:         s.matchRangeRepo,
+		TitleSlug:    s.titleSlug,
+		Matches:      timeseriesRangeScope(filteredCanon, locale),
+		Publish:      map[string]string{s.matchRangeXUID: s.gamertag},
+		PublishOrder: []string{s.matchRangeXUID},
+		Scope:        "timeseries",
+	})
+}
+
+// timeseriesRangeScope projette le scope canonique en scope de portée, DU PLUS ANCIEN AU
+// PLUS RÉCENT — l'axe des x du nuage, le même ordre que l'Escouade. Le nom de carte vient
+// du canonique déjà chargé et DANS LA LANGUE DE LA REQUÊTE (même arbitrage que
+// timeseriesFormesMetas) : ré-interroger la base aurait fait deux libellés du même match.
+func timeseriesRangeScope(rows []canonical.PlayerMatchRow, locale string) []analysis.MatchRangeMatch {
+	out := make([]analysis.MatchRangeMatch, 0, len(rows))
+	for _, r := range rows {
+		out = append(out, analysis.MatchRangeMatch{
+			MatchID:  r.Summary.MatchID,
+			PlayedAt: r.Summary.StartedAtUTC,
+			MapName:  labelPourLocale(r.Summary.Map, locale),
+		})
+	}
+	sort.SliceStable(out, func(i, j int) bool {
+		if !out[i].PlayedAt.Equal(out[j].PlayedAt) {
+			return out[i].PlayedAt.Before(out[j].PlayedAt)
+		}
+		return out[i].MatchID < out[j].MatchID
+	})
+	return out
 }
 
 // attachCoordination pose le bloc « Coordination » de la page, groupé PAR SOIRÉE.

@@ -8700,6 +8700,10 @@ export interface components {
             profiles: components["schemas"]["MatchRangeProfile"][] | null;
         };
         MatchRangePlayer: {
+            /** Format: double */
+            elevation_lobby_delta_m?: number;
+            /** Format: double */
+            elevation_median_m?: number;
             gamertag?: string;
             /** Format: double */
             lobby_delta_m: number;
@@ -8710,6 +8714,8 @@ export interface components {
             xuid: string;
         };
         MatchRangeProfile: {
+            /** Format: double */
+            lobby_elevation_median_m?: number;
             /** Format: int64 */
             lobby_measured: number;
             /** Format: double */
@@ -10397,6 +10403,19 @@ export interface components {
             /** Format: double */
             value: number;
         };
+        RangeReferenceBlock: {
+            /** Format: int64 */
+            matches_measured: number;
+            /** Format: int64 */
+            matches_total: number;
+            /** Format: double */
+            period_median_delta_m?: number;
+            profiles: components["schemas"]["MatchRangeProfile"][] | null;
+            /** Format: double */
+            role_high_m?: number;
+            /** Format: double */
+            role_low_m?: number;
+        };
         RankDelta: {
             /** Format: int64 */
             count: number;
@@ -11266,6 +11285,7 @@ export interface components {
             next_session_label?: string;
             previous_session_label?: string;
             range_profiles?: components["schemas"]["MatchRangeBlock"];
+            range_reference?: components["schemas"]["RangeReferenceBlock"];
             suggested_compare?: components["schemas"]["SessionCompareSuggestion"];
             usage?: components["schemas"]["SessionUsageBlock"];
         };
@@ -13077,6 +13097,7 @@ export interface components {
             match_rows: components["schemas"]["TimeseriesMatchRow"][] | null;
             objective_stats?: components["schemas"]["ObjectiveAggregate"];
             outcomes_over_time: components["schemas"]["OutcomesPeriodPoint"][] | null;
+            range_profiles?: components["schemas"]["MatchRangeBlock"];
             solo_session_perf?: components["schemas"]["SoloSessionPerfBlock"];
             summary_tab: components["schemas"]["TimeseriesSummaryTab"];
             top_weapons: components["schemas"]["TimeseriesWeaponKill"][] | null;
