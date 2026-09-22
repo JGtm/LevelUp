@@ -112573,7 +112573,7 @@ fusion dans `feat/v75` (CI = verdict d'autorité), suppression des trois worktre
   relance detache (gcc sur le PATH), /health 200, les deux PNG servis en image/png
   (5 283 o et 4 360 o). Reste : meme seed en prod au deploiement ; commit au signal.
 
-## [2026-09-21] Ajustements supplementaires pre-v7.5 (deuxieme vague) — En cours (branche `feat/ajustements-supp-v75`, 9 lots Opus fusionnes, CI a lire, passe visuelle et backfill en attente)
+## [2026-09-21] Ajustements supplementaires pre-v7.5 (deuxieme vague + vagues 3 et 4) — Complete (branche `feat/ajustements-supp-v75`, 27 lots Opus fusionnes, CI verte au niveau job sur 0c520e12d, fusionnee dans `feat/v75` par avance rapide le 2026-09-22)
 
 **Demande** : `Ajustements-supp-prev75.txt` (7 pages, ~45 items) + 17 arbitrages utilisateur
 consignes dans `.ai/V7.5/PLAN_AJUSTEMENTS_SUPP_PRE_V75_2026-09-21.md`. Base : `origin/feat/v75`
@@ -112660,3 +112660,11 @@ bouton lobby (lot Y), E1 roles de hauteur sur l Escouade (lots U+Z2), T5 nuage b
 roles partage (options Z1 + W + Z2 cohabitent). Regle apprise : une remarque du user n est pas une
 validation — reproposer / maquetter puis attendre le ok. Reste : gates completes, CI, serveur v7 pour le
 gate visuel, retrait des ~25 worktrees `ajsup-*`, fusion feat/v75 au signal, backfill des niveaux en prod.
+
+**Cloture du 2026-09-22** : CI verte au niveau job sur l etat final (run 35708436518 relance apres une
+annulation sans cause visible ; le seul rouge de la serie, sur 49cc3803e, etait le garde-rail Locale du
+nuage de hauteur, corrige en bcdceac8e). Vocabulaire final : « Hauteur d engagement », « en surplomb /
+en contrebas » (lot AB, garde-rail). Fusion dans `feat/v75` = avance rapide de 144 commits (la
+distante n avait pas bouge depuis la base 28b93cca5). Reste hors chantier : backfill des niveaux d armes
+a rejouer en prod au deploiement (prevenir), gate visuel utilisateur sur le serveur de branche v7,
+retrait des worktrees `LevelUp-wt-ajsup-*`.
