@@ -250,3 +250,101 @@ func b521Entree(b BlocDeDatums, present bool, slot uint32) (DatumEntry, bool) {
 	}
 	return b.Entrees[slot], true
 }
+
+// ————————————————————————————————————————————————————————————————————————————————————————
+// LA LIAISON (lot 5.21.2) — ELLE VIT ICI, ET LA MESURE DIT POURQUOI.
+//
+// L ordre du jeu est : conteneur vierge (`FUN_142e2aab4`), bloc de TYPE 1, puis IMAGE-CLE qui
+// ecrase, puis `FUN_142f22be8` qui applique au monde. Hors ligne l ordre s inverse, parce que
+// le bloc ne porte PAS l archetype (5.21.1) : l image-cle NOMME les archetypes, le bloc dit
+// quels slots vivent et avec quel MASQUE DE COMPOSANTS, et le masque fait le pont.
+//
+// CE QU ELLE POSE, MESURE : 0 liaison sur `bfecd02b` (12 685 entrees vivantes, TOUTES deja
+// liees par l image-cle) et 1 sur `dad793c7`. Le gate (ii) ne bouge donc d AUCUN paquet —
+// `TestBloc521Rejets` l avait annonce, 0 des 23 325 slots rejetes n etant vivant dans le bloc
+// de son chunk. Elle n est PAS cablee en production : un chemin de cuisson qui lirait
+// 343 019 octets par chunk pour poser zero liaison serait un cout sans contrepartie.
+// ————————————————————————————————————————————————————————————————————————————————————————
+
+// b521Liaison ventile ce qu une passe de liaison a fait d un chunk.
+type b521Liaison struct {
+	vivantes, posees, dejaLiees, ambigus, masqueInconnu int
+}
+
+// b521Lier pose dans `w` les liaisons que le bloc de type 1 porte, sans jamais ecraser.
+func b521Lier(w *World, bloc BlocDeDatums, kf map[uint32]uint32) b521Liaison {
+	var l b521Liaison
+	dico := map[[4]uint64]struct {
+		ti     uint32
+		ambigu bool
+	}{}
+	for slot, e := range bloc.Entrees {
+		ti, nomme := kf[uint32(slot)] //nolint:gosec // slot < 8 191
+		if !e.Vivante() || !nomme {
+			continue
+		}
+		if vu, deja := dico[e.Composants]; deja && vu.ti != ti {
+			vu.ambigu = true
+			dico[e.Composants] = vu
+			continue
+		} else if deja {
+			continue
+		}
+		dico[e.Composants] = struct {
+			ti     uint32
+			ambigu bool
+		}{ti: ti}
+	}
+	for slot, e := range bloc.Entrees {
+		if !e.Vivante() {
+			continue
+		}
+		l.vivantes++
+		s := uint32(slot) //nolint:gosec // slot < 8 191
+		if _, lie := w.ArchetypeForSlot(s); lie {
+			l.dejaLiees++
+			continue
+		}
+		m, connu := dico[e.Composants]
+		switch {
+		case !connu:
+			l.masqueInconnu++
+		case m.ambigu:
+			l.ambigus++
+		default:
+			w.BindDatum(s, m.ti)
+			l.posees++
+		}
+	}
+	return l
+}
+
+// TestBloc521Liaison joue la liaison sur le film et publie son bilan.
+func TestBloc521Liaison(t *testing.T) {
+	tc := t516Cadre(t)
+	w := NewWorld(tc.reg)
+	var tot b521Liaison
+	for _, c := range tc.fc.ChunkNumbers() {
+		data, pks, ok := tc.fc.ChunkAt(c)
+		if !ok {
+			continue
+		}
+		kf := b521ImageCle(data, pks)
+		for slot, ti := range kf {
+			w.BindImageCle(0, slot, ti)
+		}
+		bloc, present := b521Bloc(t, c, data, pks)
+		if !present {
+			continue
+		}
+		l := b521Lier(w, bloc, kf)
+		tot.vivantes += l.vivantes
+		tot.posees += l.posees
+		tot.dejaLiees += l.dejaLiees
+		tot.ambigus += l.ambigus
+		tot.masqueInconnu += l.masqueInconnu
+	}
+	t.Logf("LIAISON DU BLOC DE TYPE 1 : %d entrees vivantes · %d POSEES · %d deja liees par "+
+		"l image-cle · %d masques ambigus · %d masques inconnus", tot.vivantes, tot.posees,
+		tot.dejaLiees, tot.ambigus, tot.masqueInconnu)
+}
