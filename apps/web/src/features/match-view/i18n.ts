@@ -116,10 +116,9 @@ export interface MatchViewText {
   /** Distance moyenne formatée locale-aware, ex. « 12,4 m » (FR) / « 12.4 m » (EN). */
   killDistanceAvgFmt: (m: number) => string
   killDistanceReserve: string
-  // Section médias (dans onglet Résumé)
+  // Section médias (dans onglet Général) — le bloc et son titre ne s'affichent que si le
+  // match a au moins une capture (2026-09-22) : plus d'état vide « Aucune capture ».
   sectionMedia: string
-  mediaNoCaptures: string
-  mediaNoCapturesDesc: string
   // Résumé — médailles & citations
   sectionMedals: string
   sectionCitations: string
@@ -230,6 +229,10 @@ export interface MatchViewText {
   sectionRewards: string
   sectionKillsWeapons: string
   sectionEquipmentTerrain: string
+  // Onglet Armes et terrain quand AUCUNE de ses deux sections n'a de quoi s'afficher (un
+  // titre sans positions de film, sur un match sans frag) : un onglet ne reste jamais vide.
+  arsenalEmptyTitle: string
+  arsenalEmptyDescription: string
   // Scoreboard team header (Eagle / Cobra avec couleur team-ally/enemy)
   scoreboardTitle: string
   scoreboardNoData: string
@@ -439,8 +442,6 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     killDistanceReserve:
       "Ne compte que les frags dont la position du tueur ET de la victime est mesurée ; tous les frags n'ont pas de position (couverture partielle).",
     sectionMedia: 'Médias',
-    mediaNoCaptures: 'Aucune capture',
-    mediaNoCapturesDesc: 'Les screenshots et clips associés à ce match apparaîtront ici.',
     sectionMedals: 'Médailles',
     sectionCitations: 'Citations',
     newlyMastered: 'Maîtrisé !',
@@ -512,6 +513,9 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     sectionRewards: 'Récompenses',
     sectionKillsWeapons: 'Frags et armes',
     sectionEquipmentTerrain: 'Équipement et terrain',
+    arsenalEmptyTitle: "Aucune donnée d'armes ni de film pour ce match",
+    arsenalEmptyDescription:
+      "Ni la répartition des frags ni les calques décodés du film ne sont disponibles ici.",
     scoreboardTitle: 'Tableau des scores',
     scoreboardNoData: 'Aucune donnée de tableau des scores disponible pour ce match.',
     teamLabelFmt: (name) => `Équipe ${name}`,
@@ -765,8 +769,6 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     killDistanceReserve:
       'Only counts kills where both the killer and victim position are measured; not all kills have a position (partial coverage).',
     sectionMedia: 'Media',
-    mediaNoCaptures: 'No captures',
-    mediaNoCapturesDesc: 'Screenshots and clips associated with this match will appear here.',
     sectionMedals: 'Medals',
     sectionCitations: 'Commendations',
     newlyMastered: 'Mastered!',
@@ -837,6 +839,9 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     sectionRewards: 'Rewards',
     sectionKillsWeapons: 'Kills and weapons',
     sectionEquipmentTerrain: 'Equipment and terrain',
+    arsenalEmptyTitle: 'No weapon or film data for this match',
+    arsenalEmptyDescription:
+      'Neither the kill breakdown nor the decoded film layers are available here.',
     scoreboardTitle: 'Scoreboard',
     scoreboardNoData: 'No scoreboard data available for this match.',
     teamLabelFmt: (name) => `Team ${name}`,

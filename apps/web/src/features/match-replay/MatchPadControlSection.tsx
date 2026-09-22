@@ -82,6 +82,19 @@ interface Props {
   locale: ReplayLocale
 }
 
+/**
+ * hasPadControl — LA double porte de la carte, en fonction pure : pas d'artefact de rejeu
+ * (`control` null) ou aucune prise attribuée -> pas de carte.
+ *
+ * Exportée pour que le parent (`match-view/MatchViewTabArsenal`) décide d'afficher ou non
+ * le titre de section qui coiffe cette carte — un titre ne se pose jamais au-dessus de
+ * rien. Le parent construit son `PadControl` avec le MÊME `buildPadControl` et le même
+ * artefact (une seule clé de cache) : le prédicat, lui, ne s'écrit qu'ici.
+ */
+export function hasPadControl(control: PadControl | null | undefined): control is PadControl {
+  return control?.hasData === true
+}
+
 export function MatchPadControlSection({
   playerSlug,
   matchId,
@@ -124,8 +137,10 @@ export function MatchPadControlSection({
     [control, data, t, locale, teamLabel, allyOf],
   )
 
-  // Double porte : pas d'artefact, ou aucune prise attribuée -> rien du tout.
-  if (!control?.hasData || !bars) return null
+  // Double porte : pas d'artefact, ou aucune prise attribuée -> rien du tout. MÊME prédicat
+  // que celui lu par le parent pour poser (ou non) son titre de section (`bars` ne vaut null
+  // que dans les mêmes cas — il se construit du même `control`).
+  if (!hasPadControl(control) || !bars) return null
 
   return (
     <SectionCard

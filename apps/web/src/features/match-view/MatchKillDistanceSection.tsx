@@ -63,6 +63,22 @@ interface Props {
   t: MatchViewText
 }
 
+/**
+ * useHasKillDistanceSection — LE prédicat de rendu de la section, en un seul endroit.
+ *
+ * La PORTE 1 ci-dessus (le TITRE mesure-t-il les positions de frag ?) décide à elle seule
+ * si la section existe : la porte 2 (ce match-là) ne la fait pas disparaître, elle écrit
+ * pourquoi elle est vide. Le parent (`MatchViewTabArsenal`) le lit pour décider d'afficher
+ * ou non le titre de section qui la coiffe — un titre ne se pose jamais au-dessus de rien.
+ *
+ * C'est un HOOK et non une fonction pure parce que la capability se lit dans le cache de
+ * requêtes du titre courant ; l'appeler deux fois ne coûte rien (une lecture de cache,
+ * `staleTime` 5 min — cf. `dataCapabilities`).
+ */
+export function useHasKillDistanceSection(): boolean {
+  return useDataCapability('film.kill_positions')
+}
+
 export function MatchKillDistanceSection({
   players,
   scoreboard,
@@ -72,7 +88,7 @@ export function MatchKillDistanceSection({
   t,
 }: Props) {
   const locale = useAppShellStore((s) => s.locale)
-  const titreMesureLesPositions = useDataCapability('film.kill_positions')
+  const titreMesureLesPositions = useHasKillDistanceSection()
   const board = useMemo(() => scoreboard ?? [], [scoreboard])
   const rawPlayers = useMemo(() => players ?? [], [players])
 

@@ -22,10 +22,30 @@
  * clé de cache) ; le troisième lit les positions keyframe, tirées par la page UNIQUEMENT
  * quand cet onglet est actif. Chaque bloc se masque lui-même sans donnée : l'onglet ne pose
  * aucun cadre vide.
+ *
+ * UN TITRE DE SECTION NE S'AFFICHE JAMAIS AU-DESSUS DE RIEN (règle du chantier, 2026-09-22).
+ * Chaque bloc expose SON prédicat de rendu en fonction pure — `hasMatchFragData`,
+ * `useHasKillDistanceSection`, `hasEquipmentUsage`, `hasPadControl`, `hasPositions` — et
+ * c'est le MÊME prédicat qui commande son `return null` et la pose du titre ici : la règle
+ * ne peut pas diverger d'un côté à l'autre. Les deux mesures de rejeu se rebâtissent ici
+ * depuis le MÊME artefact que les cartes (`useMatchReplay`, une seule clé de cache, aucun
+ * téléchargement de plus). Les deux sections muettes -> un état vide nommé, jamais un
+ * onglet blanc.
  */
-import { MatchEquipmentUsageSection } from '@/features/match-replay/MatchEquipmentUsageSection'
-import { MatchPadControlSection } from '@/features/match-replay/MatchPadControlSection'
+import { useMemo } from 'react'
+
+import {
+  MatchEquipmentUsageSection,
+  hasEquipmentUsage,
+} from '@/features/match-replay/MatchEquipmentUsageSection'
+import {
+  MatchPadControlSection,
+  hasPadControl,
+} from '@/features/match-replay/MatchPadControlSection'
+import { buildEquipmentUsage } from '@/features/match-replay/model/equipmentUsageLogic'
+import { buildPadControl } from '@/features/match-replay/model/padControlLogic'
 import { DetailSection } from '@/components/ui/detail-section'
+import { EmptyStateNotice } from '@/components/ui/empty-state'
 import type {
   FragDistribution,
   MatchKillDistancePlayer,
@@ -35,9 +55,10 @@ import type {
   MatchWeaponKill,
 } from '@/lib/api/types'
 import type { Locale } from '@/lib/i18n/locale'
-import { MatchFragCard } from './MatchFragCard'
-import { MatchKillDistanceSection } from './MatchKillDistanceSection'
-import { MatchPositionsHeatmap } from './MatchPositionsHeatmap'
+import { useMatchReplay } from '@/lib/replay/queries'
+import { MatchFragCard, hasMatchFragData } from './MatchFragCard'
+import { MatchKillDistanceSection, useHasKillDistanceSection } from './MatchKillDistanceSection'
+import { MatchPositionsHeatmap, hasPositions } from './MatchPositionsHeatmap'
 import type { MatchViewText } from './i18n'
 
 interface Props {
@@ -59,6 +80,32 @@ interface Props {
   t: MatchViewText
 }
 
+/**
+ * useReplayBlockPredicates — les deux prédicats des cartes de rejeu, lus à la source.
+ *
+ * Les mesures se rebâtissent ici avec les MÊMES constructeurs que les cartes
+ * (`buildEquipmentUsage` / `buildPadControl`) depuis l'artefact déjà en cache : la question
+ * « cette carte s'affichera-t-elle ? » n'a qu'une réponse, celle que la carte elle-même
+ * donnera.
+ */
+function useReplayBlockPredicates(
+  playerSlug: string,
+  matchId: string,
+  replayAvailable: boolean,
+  scoreboard: MatchScoreboardRow[],
+): { equipment: boolean; pads: boolean } {
+  const { data } = useMatchReplay(playerSlug, matchId, replayAvailable)
+  const equipment = useMemo(
+    () => (data ? hasEquipmentUsage(buildEquipmentUsage(data, scoreboard)) : false),
+    [data, scoreboard],
+  )
+  const pads = useMemo(
+    () => (data ? hasPadControl(buildPadControl(data, scoreboard)) : false),
+    [data, scoreboard],
+  )
+  return { equipment, pads }
+}
+
 export function MatchViewTabArsenal({
   playerSlug,
   matchId,
@@ -74,54 +121,73 @@ export function MatchViewTabArsenal({
   locale,
   t,
 }: Props) {
+  const replayBlocks = useReplayBlockPredicates(playerSlug, matchId, replayAvailable, scoreboard)
+  // La distance des frags a une porte de TITRE (le titre mesure-t-il les positions ?) : quand
+  // elle est ouverte, la section s'affiche même sans donnée pour CE match — elle écrit alors
+  // pourquoi elle est vide, et cette phrase est justement ce qu'il faut montrer.
+  const showKillDistance = useHasKillDistanceSection()
+  const showKillsWeapons = hasMatchFragData(fragDistribution, weaponKills) || showKillDistance
+  const showEquipmentTerrain =
+    replayBlocks.equipment || replayBlocks.pads || hasPositions(matchPositions)
+
+  if (!showKillsWeapons && !showEquipmentTerrain) {
+    return (
+      <EmptyStateNotice title={t.arsenalEmptyTitle} description={t.arsenalEmptyDescription} />
+    )
+  }
+
   return (
     <div className="space-y-6">
-      <DetailSection title={t.sectionKillsWeapons}>
-        {/* Répartition des frags v2 : sunburst (classe→rôle, 2/3 de largeur) + breakdown
-            par arme (1/3). MatchFragCard porte sa propre grille (breakdown pleine largeur
-            si le sunburst n'a pas de données) et rend null sans aucune donnée — pas de
-            wrapper ici, sinon un gap fantôme resterait quand la carte est absente. Non
-            gaté : Infinite = classes sans Spartan ; Halo 5 = avec (capability
-            native_kill_mechanics côté backend). */}
-        <MatchFragCard distribution={fragDistribution} weapons={weaponKills} />
-        {/* Distance par arme, par joueur (LOT G.3, 2026-08-30) — juste après les stats
-            d'armes du viewer. Scoreboard passé pour gamertag + total de kills (le DTO
-            backend ne porte que le xuid). DEUX PORTES, portées par la section elle-même :
-            elle rend null si le TITRE ne déclare pas `film.kill_positions` (rien à espérer,
-            jamais), et affiche un état vide explicite si le titre les produit mais pas pour
-            CE match. Pas de wrapper ici : un gap fantôme resterait quand elle est absente. */}
-        <MatchKillDistanceSection
-          players={killDistance}
-          scoreboard={scoreboard}
-          roster={roster}
-          meXUID={meXUID}
-          friendGamertags={friendGamertags}
-          t={t}
-        />
-      </DetailSection>
+      {showKillsWeapons && (
+        <DetailSection title={t.sectionKillsWeapons}>
+          {/* Répartition des frags v2 : sunburst (classe→rôle, 2/3 de largeur) + breakdown
+              par arme (1/3). MatchFragCard porte sa propre grille (breakdown pleine largeur
+              si le sunburst n'a pas de données) et rend null sans aucune donnée — pas de
+              wrapper ici, sinon un gap fantôme resterait quand la carte est absente. Non
+              gaté : Infinite = classes sans Spartan ; Halo 5 = avec (capability
+              native_kill_mechanics côté backend). */}
+          <MatchFragCard distribution={fragDistribution} weapons={weaponKills} />
+          {/* Distance par arme, par joueur (LOT G.3, 2026-08-30) — juste après les stats
+              d'armes du viewer. Scoreboard passé pour gamertag + total de kills (le DTO
+              backend ne porte que le xuid). DEUX PORTES, portées par la section elle-même :
+              elle rend null si le TITRE ne déclare pas `film.kill_positions` (rien à espérer,
+              jamais), et affiche un état vide explicite si le titre les produit mais pas pour
+              CE match. Pas de wrapper ici : un gap fantôme resterait quand elle est absente. */}
+          <MatchKillDistanceSection
+            players={killDistance}
+            scoreboard={scoreboard}
+            roster={roster}
+            meXUID={meXUID}
+            friendGamertags={friendGamertags}
+            t={t}
+          />
+        </DetailSection>
+      )}
 
-      <DetailSection title={t.sectionEquipmentTerrain}>
-        <MatchEquipmentUsageSection
-          playerSlug={playerSlug}
-          matchId={matchId}
-          replayAvailable={replayAvailable}
-          scoreboard={scoreboard}
-          locale={locale}
-        />
-        <MatchPadControlSection
-          playerSlug={playerSlug}
-          matchId={matchId}
-          replayAvailable={replayAvailable}
-          scoreboard={scoreboard}
-          locale={locale}
-        />
-        <MatchPositionsHeatmap
-          playerSlug={playerSlug}
-          matchId={matchId}
-          positions={matchPositions}
-          locale={locale}
-        />
-      </DetailSection>
+      {showEquipmentTerrain && (
+        <DetailSection title={t.sectionEquipmentTerrain}>
+          <MatchEquipmentUsageSection
+            playerSlug={playerSlug}
+            matchId={matchId}
+            replayAvailable={replayAvailable}
+            scoreboard={scoreboard}
+            locale={locale}
+          />
+          <MatchPadControlSection
+            playerSlug={playerSlug}
+            matchId={matchId}
+            replayAvailable={replayAvailable}
+            scoreboard={scoreboard}
+            locale={locale}
+          />
+          <MatchPositionsHeatmap
+            playerSlug={playerSlug}
+            matchId={matchId}
+            positions={matchPositions}
+            locale={locale}
+          />
+        </DetailSection>
+      )}
     </div>
   )
 }

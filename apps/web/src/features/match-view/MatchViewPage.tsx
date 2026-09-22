@@ -9,7 +9,7 @@ import { useMatchView, useMatchObjectiveEvents, useMatchPositions } from './quer
 import { MatchBreadcrumb, MatchNavigationBar, MatchHeaderCard } from './MatchHeader'
 import { MatchSummaryCardsSection } from './MatchStatCards'
 import { MatchKdaExpectedChart, MatchSpreeChart, MatchSummaryRadarChart } from './MatchSummaryCharts'
-import { MatchMediaTab } from './MatchMediaTab'
+import { MatchMediaTab, hasMediaItems } from './MatchMediaTab'
 import {
   MatchMedalsSection,
   MatchCitationsSection,
@@ -375,18 +375,20 @@ export function MatchViewPage() {
                 (règle produit : aucun bloc seul à largeur partielle). Son bandeau de carte
                 inline a laissé place au gabarit de titre commun le 2026-09-22 — même
                 hiérarchie visuelle que « Combat » et « Récompenses » juste au-dessus.
-                Gaté sur `media` : masque le titre + le bloc entier pour un titre sans
-                captures/clips. */}
-            <FeatureGate capability="media">
-              <DetailSection title={t.sectionMedia}>
-                <MatchMediaTab
-                  items={media_tab.media_items ?? []}
-                  playerSlug={playerSlug}
-                  matchId={matchId}
-                  locale={locale === 'en' ? 'en' : 'fr'}
-                />
-              </DetailSection>
-            </FeatureGate>
+                DEUX PORTES : la capability `media` (le TITRE n'a ni captures ni clips) et
+                `hasMediaItems` (CE match n'en a aucun) — le prédicat du bloc lui-même, pour
+                qu'un titre « Médias » ne se pose jamais au-dessus de rien. */}
+            {hasMediaItems(media_tab.media_items) && (
+              <FeatureGate capability="media">
+                <DetailSection title={t.sectionMedia}>
+                  <MatchMediaTab
+                    items={media_tab.media_items ?? []}
+                    playerSlug={playerSlug}
+                    matchId={matchId}
+                  />
+                </DetailSection>
+              </FeatureGate>
+            )}
           </div>
         )}
 

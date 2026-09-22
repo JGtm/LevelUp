@@ -5,39 +5,27 @@ import { MediaMatchPicker } from '@/features/media/MediaMatchPicker'
 import { useMediaPicker } from '@/features/media/useMediaPicker'
 import { useToggleMediaLike } from '@/features/media/queries'
 import { toMediaItemRow } from './_mediaItemRow'
-import type { MatchViewLocale } from './i18n'
-import { MATCH_VIEW_TEXT } from './i18n'
 
-function CameraOffIcon() {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={1.5}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className="h-8 w-8 text-muted-foreground"
-      aria-hidden="true"
-    >
-      <path d="M2 2l20 20" />
-      <path d="M7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16" />
-      <path d="M9.5 4h5l2 3h3" />
-      <path d="M14.121 15.121A3 3 0 1 1 9.88 10.88" />
-    </svg>
-  )
+/**
+ * hasMediaItems — LE prédicat de rendu du bloc, en fonction pure : aucune capture ni clip
+ * associé au match -> rien du tout.
+ *
+ * Exporté pour que la page décide d'afficher ou non le TITRE de section « Médias » qui
+ * coiffe ce bloc — un titre ne se pose jamais au-dessus de rien (2026-09-22). L'état vide
+ * « Aucune capture » que le bloc peignait jusque-là est mort avec cette règle : il ne
+ * pouvait s'afficher que sous un titre que la page ne pose plus.
+ */
+export function hasMediaItems(items: MatchAssociatedMedia[] | null | undefined): boolean {
+  return (items?.length ?? 0) > 0
 }
 
 interface MatchMediaTabProps {
   items: MatchAssociatedMedia[]
   playerSlug: string
   matchId: string
-  locale: MatchViewLocale
 }
 
-export function MatchMediaTab({ items, playerSlug, matchId, locale }: MatchMediaTabProps) {
-  const t = MATCH_VIEW_TEXT[locale]
+export function MatchMediaTab({ items, playerSlug, matchId }: MatchMediaTabProps) {
   const initialRows = useMemo(
     () => items.map((item) => toMediaItemRow(item, matchId)),
     [items, matchId],
@@ -61,21 +49,8 @@ export function MatchMediaTab({ items, playerSlug, matchId, locale }: MatchMedia
     toggleLike.mutate({ file_path: item.file_path, liked: nextLiked })
   }
 
-  if (mediaRows.length === 0) {
-    return (
-      <div className="flex min-h-48 flex-col items-center justify-center gap-5 px-8 py-12 text-center">
-        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted">
-          <CameraOffIcon />
-        </div>
-        <div className="space-y-1.5">
-          <p className="font-semibold text-foreground">{t.mediaNoCaptures}</p>
-          <p className="mx-auto max-w-xs text-sm text-muted-foreground">
-            {t.mediaNoCapturesDesc}
-          </p>
-        </div>
-      </div>
-    )
-  }
+  // MÊME prédicat que celui lu par la page pour poser (ou non) son titre de section.
+  if (!hasMediaItems(items)) return null
 
   return (
     <>

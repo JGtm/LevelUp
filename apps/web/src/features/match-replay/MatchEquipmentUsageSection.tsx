@@ -93,6 +93,19 @@ interface Props {
   locale: ReplayLocale
 }
 
+/**
+ * hasEquipmentUsage — LA double porte de la carte, en fonction pure : pas d'artefact de
+ * rejeu (`usage` null) ou rien de mesuré -> pas de carte.
+ *
+ * Exportée pour que le parent (`match-view/MatchViewTabArsenal`) décide d'afficher ou non
+ * le titre de section qui coiffe cette carte — un titre ne se pose jamais au-dessus de
+ * rien. Le parent construit son `EquipmentUsage` avec le MÊME `buildEquipmentUsage` et le
+ * même artefact (une seule clé de cache) : le prédicat, lui, ne s'écrit qu'ici.
+ */
+export function hasEquipmentUsage(usage: EquipmentUsage | null | undefined): boolean {
+  return usage?.hasData === true
+}
+
 export function MatchEquipmentUsageSection({
   playerSlug,
   matchId,
@@ -150,8 +163,9 @@ export function MatchEquipmentUsageSection({
     [usage, familles, teamLabel, teamAccent],
   )
 
-  // Double porte : pas d'artefact, ou rien de mesuré -> rien du tout.
-  if (!usage?.hasData) return null
+  // Double porte : pas d'artefact, ou rien de mesuré -> rien du tout. MÊME prédicat que
+  // celui lu par le parent pour poser (ou non) son titre de section.
+  if (!hasEquipmentUsage(usage)) return null
 
   return (
     <SectionCard

@@ -36,6 +36,54 @@ interface Props {
   weapons?: MatchWeaponKill[]
 }
 
+/**
+ * Normalise la liste per-arme du viewer (MatchWeaponKill) vers la forme
+ * `{label, kills, class}` attendue par le breakdown partagé.
+ */
+function normalizeWeapons(weapons?: MatchWeaponKill[]): SynthesisWeaponKillEntry[] {
+  return (weapons ?? []).map((w) => ({
+    label: w.weapon_label,
+    kills: w.kill_count,
+    class: w.class,
+  }))
+}
+
+/**
+ * hasFragSunburst — miroir EXACT du prédicat de rendu de `FragSunburst` (total > 0 ET
+ * classes non vides). Exporté parce que la carte s'en sert deux fois : pour savoir si elle
+ * réserve la colonne du sunburst, et comme première branche de {@link hasMatchFragData}.
+ */
+export function hasFragSunburst(distribution?: FragDistribution | null): boolean {
+  return (distribution?.total_kills ?? 0) > 0 && (distribution?.classes?.length ?? 0) > 0
+}
+
+/**
+ * Résolveurs d'identité : le COMPTE de lignes du breakdown ne dépend pas des libellés
+ * (`buildFragDetailBreakdown` pousse une entrée par rôle/classe retenue, quel que soit son
+ * nom). Compter sans manifeste i18n rend {@link hasMatchFragData} PUR — appelable par le
+ * parent hors rendu, sans store ni locale.
+ */
+const COUNT_ONLY_LABELS = {
+  roleLabel: (role: string) => role,
+  classLabel: (className: string) => className,
+  locale: 'fr' as const,
+}
+
+/**
+ * hasMatchFragData — LE prédicat de rendu de la carte, en fonction pure.
+ *
+ * La carte s'en sert pour son `return null` et le parent (`MatchViewTabArsenal`) pour
+ * décider d'afficher, ou non, le titre de section qui la coiffe : un titre ne se pose
+ * jamais au-dessus de rien, et le prédicat ne s'écrit qu'ICI (règle ≤ 2 copies).
+ */
+export function hasMatchFragData(
+  distribution?: FragDistribution | null,
+  weapons?: MatchWeaponKill[],
+): boolean {
+  if (hasFragSunburst(distribution)) return true
+  return buildFragDetailBreakdown(distribution, normalizeWeapons(weapons), COUNT_ONLY_LABELS).length > 0
+}
+
 export function MatchFragCard({ distribution, weapons }: Props) {
   const appLocale = useAppShellStore((s) => s.locale)
   // Survol partagé entre les deux cartes (sunburst ↔ breakdown).
@@ -48,18 +96,16 @@ export function MatchFragCard({ distribution, weapons }: Props) {
   // « Détails des frags » = armes (per-arme du viewer) + détail mêlée/grenade/capacités depuis
   // la distribution (source unique buildFragDetailBreakdown). On normalise d'abord la liste
   // per-arme du viewer (MatchWeaponKill) vers la forme {label, kills, class}.
-  const weaponsNorm: SynthesisWeaponKillEntry[] = (weapons ?? []).map((w) => ({
-    label: w.weapon_label,
-    kills: w.kill_count,
-    class: w.class,
-  }))
-  const breakdown = buildFragDetailBreakdown(distribution, weaponsNorm, { roleLabel, classLabel, locale: appLocale })
+  const breakdown = buildFragDetailBreakdown(
+    distribution,
+    normalizeWeapons(weapons),
+    { roleLabel, classLabel, locale: appLocale },
+  )
 
-  // Miroir EXACT du prédicat de rendu de FragSunburst (total > 0 ET classes non
-  // vides) : si le sunburst rendrait null, on ne réserve pas sa colonne.
-  const hasSunburst =
-    (distribution?.total_kills ?? 0) > 0 && (distribution?.classes?.length ?? 0) > 0
-  if (!hasSunburst && breakdown.length === 0) return null
+  // Le sunburst rendrait null : on ne réserve pas sa colonne.
+  const hasSunburst = hasFragSunburst(distribution)
+  // MÊME prédicat que celui lu par le parent pour poser (ou non) son titre de section.
+  if (!hasMatchFragData(distribution, weapons)) return null
 
   return (
     <div className={hasSunburst ? 'grid grid-cols-1 gap-4 lg:grid-cols-3' : ''}>

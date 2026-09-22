@@ -83,6 +83,19 @@ const TEXT = {
   },
 } as const satisfies Record<Locale, unknown>
 
+/**
+ * hasPositions — la PREMIÈRE porte du bloc, en fonction pure : sans position décodée du
+ * film, il n'y a rien à peindre.
+ *
+ * Exportée pour que le parent (`MatchViewTabArsenal`) décide d'afficher ou non le titre de
+ * section qui coiffe ce bloc — un titre ne se pose jamais au-dessus de rien. Les deux
+ * portes suivantes (plan de la carte, grille de chaleur) restent INTERNES : elles dépendent
+ * d'une image et d'un calibrage que seul ce composant charge.
+ */
+export function hasPositions(positions: MatchPlayerPosition[] | null | undefined): boolean {
+  return (positions?.length ?? 0) > 0
+}
+
 export function MatchPositionsHeatmap({
   playerSlug,
   matchId,
@@ -139,8 +152,9 @@ export function MatchPositionsHeatmap({
     )
   }, [grid, frame, image, ramp])
 
-  // Portes 1 à 3 : rien à montrer, et rien à promettre.
-  if (all.length === 0 || !frame || !grid) return null
+  // Portes 1 à 3 : rien à montrer, et rien à promettre. La première est le prédicat que le
+  // parent lit aussi pour poser (ou non) son titre de section.
+  if (!hasPositions(all) || !frame || !grid) return null
 
   return (
     <SectionCard
