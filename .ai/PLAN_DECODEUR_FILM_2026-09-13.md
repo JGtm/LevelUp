@@ -8415,7 +8415,78 @@ Note : `.ai/V7.5/film_re/NOTE_5_22_DECLENCHEUR_SAUT_2026-09-22.md`.
   est nomme et il est deja au registre : **le trou du rang 1 sur film dense** (D1 (5.14), nomme au
   5.15, en cours au lot 5.21). Tant qu il n est pas referme, `bfecd02b` ne peut ni prouver ni
   refuter un declencheur dans le canal d entree.
-- [ ] **5.22.2 — L ECRIVAIN**
+- [x] **5.22.2 — L ECRIVAIN : LE SAUT EST UNE ACTION D UNITE, BIT 0x16 D UN MOT DE 64 BITS QUI
+  N EST PAS UN CHAMP D OBJET. ET LE « BLOC D ACTION NON PORTE » DE D2 (5.14) ETAIT DEJA AU DEPOT.**
+
+  **(a) LE CONSOMMATEUR NOMME LE CHAMP, ET IL LE NOMME EN CLAIR** (Ghidra, lecture seule ;
+  methode du piege 6 de la passation 5.11 : une etiquette se cherche par son CONSOMMATEUR).
+  `FUN_140a3f6a4` enregistre les fonctions de script ; `unit_action_test_jump` (`143c2e6a8`) y
+  est branche sur le gestionnaire `FUN_142b79bc4`, qui fait :
+
+  ```
+  FUN_142b79bc4()  ->  FUN_142b7dff4(FUN_140acc920(), 0x16)
+
+  FUN_142b7dff4(unite, action)
+      si unite == 0xffffffff : rien
+      mot = *(u64*)( *(TLS + 0x468) + (unite >> 1 & 0x7fff) * 8 )
+      return (mot >> action) & 1
+  ```
+
+  **`jump` = bit `0x16` d un mot de 64 bits par unite, dans une table THREAD-LOCALE
+  (`TLS + 0x468`)** — pas un champ d objet, donc pas un offset qu un deserialiseur de `ti=35`
+  pourrait ecrire (la liste mesuree au 5.7.1 : `0x4dc`, `0x544`/`0x548`/`0x726`, `0x7e8`/`0x7ec`,
+  `0xaa8`, `0x11f8`/`0x1295`/`0x1296`, `0x129c`, `0x12b4`, `0x12e4`, `0x1324`). C est la meme
+  forme de preuve qu au 5.11.3 pour l etat aerien, et elle est plus forte : ce n est meme pas un
+  offset d objet.
+
+  Le meme gestionnaire rend l ENUM COMPLET des actions d unite, lu sur les 25 enregistrements qui
+  passent une constante en clair (les 31 `player_action_test_*` passent par un autre pont) :
+
+  | action | bit | action | bit | action | bit |
+  |---|---:|---|---:|---|---:|
+  | `action` | 0 | `accept` | 2 | `cancel` | 3 |
+  | `primary_trigger` | 4 | `secondary_trigger` | 5 | `grenade_trigger` | 6 |
+  | `melee` | 7 | `rotate_weapons` | 8 | **`jump`** | **0x16** |
+  | `equipment` | 0x17 | `context_primary` | 0x18 | `vehicle_ability_primary` | 0x19 |
+  | `vehicle_ability_secondary` | 0x1a | `vehicle_ability_tertiary` | 0x1b | `look_relative_up` | 0x1c |
+  | `look_relative_down` | 0x1d | `look_relative_left` | 0x1e | `look_relative_right` | 0x1f |
+  | `move_relative_fwd` | 0x20 | `move_relative_back` | 0x21 | `move_relative_right` | 0x22 |
+  | `move_relative_left` | 0x23 | `start` | 0x24 | `back` | 0x25 |
+  | `vision_trigger` | 0x26 | `dpad_up` | 0x29 | `dpad_down` | 0x2a |
+  | `dpad_left` | 0x2b | `dpad_right` | 0x2c | | |
+
+  **(b) LE « BLOC D ACTION » DE LA VUE DE CONTROLE N ETAIT PAS UN TROU DE GRAMMAIRE, C ETAIT UN
+  TROU DE CABLAGE — ET IL EST REFERME.** D2 (5.14) donnait `FUN_1406d025c` (garde ouverte
+  170 fois sur `bfecd02b`) comme « dans le film et NON PORTE », et le brief de ce lot demandait
+  de le porter en entier. Relu chez l ecrivain, il n y avait rien a porter : c est LE MEME
+  deserialiseur que celui qu `i19 unit-actor-control` appelle depuis `FUN_1408f0778`, et le depot
+  le porte EN ENTIER depuis le lot 2.7 sous le nom `consume1406d025c` (2 x 3 bits par
+  `FUN_1431ab1ec` — qui ecrit `bit` dans `u16 dst[mot]` —, 2 x 2 bits par `FUN_1431ab1cc` — `bit`
+  dans `u8 dst[4 + octet]` —, `FUN_1431a0bbc` R(1)[+R(8)], `FUN_1431a0abc` R(1)[+R(10)], le bloc
+  `FUN_1431a0cbc`, la queue `FUN_1406d0f20` R(3), deux `FUN_1406d00ec` gardees par les drapeaux
+  deja lus, et `FUN_142f26740`). `consumeActionsControle` ne lisait que la garde.
+
+  **AUCUNE LARGEUR N EST NEUVE**, et la borne est posee A LA SORTIE (`br.BitPos() <= frameLen`)
+  parce qu un `placeDisponible` d entree devrait MAJORER une largeur qui depend des gardes — ce
+  que la vue C refuse de faire. Mesure, gate du 5.14.2 inchange (`TestClasses514Bourrage`) :
+
+  | film | paquets fermes AVANT | APRES | dont bits TOUS NULS | portant un 1 |
+  |---|---:|---:|---:|---:|
+  | `bfecd02b` | 2 884 / 30 387 | **2 900** | **2 900 / 2 900** | **0** |
+  | `dad793c7` | 5 354 / 5 365 | 5 354 | 5 354 / 5 354 | 0 |
+
+  `dad793c7` ne bouge pas, et c est ce que le 5.14.4 annonçait : sur ce film la garde d action est
+  FERMEE sur les 5 202 entrees. **Le cablage ne referme pas la fenetre du temoin pour autant** :
+  les 1 199 paquets de [80 ; 100] s restent ouverts par le trou du RANG 1 (case 5.22.1 (d)), qui
+  est en amont de la vue C.
+
+  Revisions : `grammar.Rev` `.8 -> .9` (empreinte + entree de chronique) ; **`facts.Rev` NE MONTE
+  PAS**, decision ecrite et identique a celle du 5.14.3 (`facts` marche par
+  `DecodeFrameRecords`, qui ne deroule pas les vues par rang) — son golden est refige parce qu il
+  hache la VALEUR de `grammar.Rev`, aucun backlog killsource ouvert. `shapes.golden` refige (il
+  porte les revisions) ; 8 fixtures de contrat refigees, **dont le SEUL ecart est la chaine de
+  revision** (piege 6 de la passation 5.7 : elles rejouent des entrees figees, ce cablage ne les
+  traverse pas) — 2 770 834 / 3 145 728 octets.
 - [ ] **5.22.3 — VERIFICATION**
 - [ ] **5.22.4 — LE PORT ET LA MONTEE 67 -> 68**
 
