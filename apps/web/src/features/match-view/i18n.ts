@@ -116,10 +116,9 @@ export interface MatchViewText {
   /** Distance moyenne formatée locale-aware, ex. « 12,4 m » (FR) / « 12.4 m » (EN). */
   killDistanceAvgFmt: (m: number) => string
   killDistanceReserve: string
-  // Section médias (dans onglet Résumé)
+  // Section médias (dans onglet Général) — le bloc et son titre ne s'affichent que si le
+  // match a au moins une capture (2026-09-22) : plus d'état vide « Aucune capture ».
   sectionMedia: string
-  mediaNoCaptures: string
-  mediaNoCapturesDesc: string
   // Résumé — médailles & citations
   sectionMedals: string
   sectionCitations: string
@@ -182,10 +181,12 @@ export interface MatchViewText {
   // Breadcrumb retour (MatchBreadcrumb)
   back: string
   // Onglets de la page (GH2-B2 ; « Détails » scindé en Chronologie + Joueurs ;
-  // « Contrôle » ajouté le 2026-09-19 : équipement, armes, occupation du terrain)
+  // troisième onglet ajouté le 2026-09-19 — équipement, armes, occupation du terrain —
+  // renommé « Armes et terrain » le 2026-09-22 quand il a repris de Général la
+  // répartition des frags et la distance des frags)
   tabGeneral: string
   tabChronology: string
-  tabControl: string
+  tabArsenal: string
   tabPlayers: string
   // Titre du chart Antagonistes (GH2-B2)
   antagonistTitle: string
@@ -219,6 +220,19 @@ export interface MatchViewText {
   sectionFlow: string
   sectionDuels: string
   sectionEncounters: string
+  // Sections des onglets Général et Armes et terrain (2026-09-22) — même gabarit de titre
+  // type-1. Général : la bande de KPI reste sans titre (comme l'accueil), « Combat » coiffe
+  // les trois graphes et « Récompenses » les médailles + citations. Armes et terrain :
+  // « Frags et armes » coiffe la répartition des frags + la distance, « Équipement et
+  // terrain » les trois blocs tirés du film.
+  sectionCombat: string
+  sectionRewards: string
+  sectionKillsWeapons: string
+  sectionEquipmentTerrain: string
+  // Onglet Armes et terrain quand AUCUNE de ses deux sections n'a de quoi s'afficher (un
+  // titre sans positions de film, sur un match sans frag) : un onglet ne reste jamais vide.
+  arsenalEmptyTitle: string
+  arsenalEmptyDescription: string
   // Scoreboard team header (Eagle / Cobra avec couleur team-ally/enemy)
   scoreboardTitle: string
   scoreboardNoData: string
@@ -428,8 +442,6 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     killDistanceReserve:
       "Ne compte que les frags dont la position du tueur ET de la victime est mesurée ; tous les frags n'ont pas de position (couverture partielle).",
     sectionMedia: 'Médias',
-    mediaNoCaptures: 'Aucune capture',
-    mediaNoCapturesDesc: 'Les screenshots et clips associés à ce match apparaîtront ici.',
     sectionMedals: 'Médailles',
     sectionCitations: 'Citations',
     newlyMastered: 'Maîtrisé !',
@@ -483,7 +495,7 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     back: 'Retour',
     tabGeneral: 'Général',
     tabChronology: 'Chronologie',
-    tabControl: 'Contrôle',
+    tabArsenal: 'Armes et terrain',
     tabPlayers: 'Joueurs',
     antagonistTitle: 'Antagonistes',
     assistTitle: 'Assistances',
@@ -497,6 +509,13 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     sectionFlow: 'Déroulé du match',
     sectionDuels: 'Duels & confrontations',
     sectionEncounters: 'Historique des rencontres',
+    sectionCombat: 'Combat',
+    sectionRewards: 'Récompenses',
+    sectionKillsWeapons: 'Frags et armes',
+    sectionEquipmentTerrain: 'Équipement et terrain',
+    arsenalEmptyTitle: "Aucune donnée d'armes ni de film pour ce match",
+    arsenalEmptyDescription:
+      "Ni la répartition des frags ni les calques décodés du film ne sont disponibles ici.",
     scoreboardTitle: 'Tableau des scores',
     scoreboardNoData: 'Aucune donnée de tableau des scores disponible pour ce match.',
     teamLabelFmt: (name) => `Équipe ${name}`,
@@ -750,8 +769,6 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     killDistanceReserve:
       'Only counts kills where both the killer and victim position are measured; not all kills have a position (partial coverage).',
     sectionMedia: 'Media',
-    mediaNoCaptures: 'No captures',
-    mediaNoCapturesDesc: 'Screenshots and clips associated with this match will appear here.',
     sectionMedals: 'Medals',
     sectionCitations: 'Commendations',
     newlyMastered: 'Mastered!',
@@ -804,7 +821,7 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     back: 'Back',
     tabGeneral: 'General',
     tabChronology: 'Timeline',
-    tabControl: 'Control',
+    tabArsenal: 'Weapons and terrain',
     tabPlayers: 'Players',
     antagonistTitle: 'Antagonists',
     assistTitle: 'Assists',
@@ -818,6 +835,13 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     sectionFlow: 'Match flow',
     sectionDuels: 'Duels & head-to-head',
     sectionEncounters: 'Encounter history',
+    sectionCombat: 'Combat',
+    sectionRewards: 'Rewards',
+    sectionKillsWeapons: 'Kills and weapons',
+    sectionEquipmentTerrain: 'Equipment and terrain',
+    arsenalEmptyTitle: 'No weapon or film data for this match',
+    arsenalEmptyDescription:
+      'Neither the kill breakdown nor the decoded film layers are available here.',
     scoreboardTitle: 'Scoreboard',
     scoreboardNoData: 'No scoreboard data available for this match.',
     teamLabelFmt: (name) => `Team ${name}`,

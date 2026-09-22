@@ -1,10 +1,15 @@
 /**
- * WeaponRangeSection — LA PORTÉE DES ENGAGEMENTS SUR L'ONGLET RÉSUMÉ.
+ * WeaponRangeSection — LA PORTÉE DES ENGAGEMENTS SUR L'ONGLET USAGES.
  *
  * Elle a vécu sous `features/synthesis/` jusqu'au 2026-09-17, par héritage : la section a
- * quitté la page Synthèse pour le Résumé le 2026-09-13 et ses fichiers n'avaient pas suivi.
- * Un composant rangé sous le nom d'une page qui ne l'affiche plus égare ses lecteurs — c'est
- * arrivé. Le dossier dit maintenant qui la rend.
+ * quitté la page Synthèse pour l'onglet Résumé des Séries temporelles le 2026-09-13 et ses
+ * fichiers n'avaient pas suivi. Un composant rangé sous le nom d'une page qui ne l'affiche
+ * plus égare ses lecteurs — c'est arrivé. Le dossier dit maintenant qui la rend.
+ *
+ * ELLE A CHANGÉ D'ONGLET LE 2026-09-22 : le Résumé pour « Usages », où elle rejoint les
+ * usages d'équipement et les formes retenues — un onglet, un axe de lecture, et le sien est
+ * TOUT CE QUI VIENT DU FILM DÉCODÉ (cf. `TimeseriesPage.usages.tsx`). Son titre de section
+ * a pris le gabarit commun (`SectionTitle`) au même moment.
  *
  * Transposition de la maquette validée par l'utilisateur le 2026-09-06
  * (`.ai/V7.5/MAQUETTE_PORTEE_ENGAGEMENTS_2026-09-06.html`, lot 5 du plan
@@ -37,7 +42,8 @@ import { formatMessage, type ManifestLocale } from '@/lib/i18n/format'
 import { synthesisManifest } from '@/lib/i18n/generated/synthesis'
 import { useAppShellStore } from '@/stores/appShellStore'
 
-import { AccentCard, SectionSubtitle } from '@/components/ui/section-primitives'
+import { AccentCard } from '@/components/ui/section-primitives'
+import { SectionTitle } from '@/components/ui/detail-section'
 import {
   ELEVATION_KEYS,
   buildWeaponElevationOption,
@@ -376,7 +382,10 @@ export function WeaponRangeSection({ range }: WeaponRangeSectionProps) {
 
   return (
     <section className="space-y-3">
-      <SectionSubtitle>{t('synthesis.weapon_range.heading')}</SectionSubtitle>
+      {/* LE TITRE DE SECTION STANDARD (2026-09-22) : la section portait un sous-titre
+          uppercase `text-3xs` à filet (`SectionSubtitle`), qui se lisait comme une annexe
+          à côté des autres titres de l'onglet Usages. Même texte, gabarit commun. */}
+      <SectionTitle>{t('synthesis.weapon_range.heading')}</SectionTitle>
 
       <RangeTiles range={range} t={t} f={f} />
 

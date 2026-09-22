@@ -1,6 +1,11 @@
 /**
  * SessionColumnBody — corps d'une colonne de session (TOUT ce qui est sous le L3) :
- * bande KPI + pile de graphes + tableau "Détail des matchs".
+ * bande KPI, puis QUATRE SECTIONS TITRÉES — « Bilan » et « Match par match » (montées par
+ * `SessionChartStack`), « Frags et usages » et « Détail des matchs » (montées ici, parce
+ * qu'elles coiffent des blocs que ce composant est seul à monter).
+ *
+ * LA BANDE KPI RESTE SANS TITRE, comme le Home : c'est l'en-tête de la colonne, pas une
+ * section de plus.
  *
  * Monté À L'IDENTIQUE par la colonne principale ET par le drawer compare → garantit que
  * "ce qui est sous le L3" est strictement le même rendu des deux côtés ; seules diffèrent
@@ -17,11 +22,18 @@ import type {
   SessionUsageBlock,
 } from '@/lib/api/types'
 
+import { DetailSection, SectionTitle } from '@/components/ui/detail-section'
+
 import type { CompareScale } from './_compareScale'
 import { SessionChartStack } from './SessionChartStack'
+import { SessionFragCard } from './SessionFragCard'
 import { SessionMatchesTable } from './SessionMatchesTable'
 import { SessionSummaryCard } from './SessionSummaryCard'
 import { SessionUsageSection } from './SessionUsageSection'
+import {
+  sessionFragCardHasContent,
+  sessionUsageShowsSomething,
+} from './sessionSectionVisibility'
 import { useSessionT } from './_shared'
 
 interface Props {
@@ -59,6 +71,11 @@ export function SessionColumnBody({
   usage,
 }: Props) {
   const t = useSessionT()
+  // SECTION 3 — la carte des frags et les cartes d'usage se masquent chacune selon la
+  // donnée : sans aucune des deux, c'est la SECTION ENTIÈRE qui disparaît, titre compris.
+  // Un titre au-dessus de rien annoncerait une mesure qui n'existe pas.
+  const showKillsAndUsage =
+    sessionFragCardHasContent(entry) || sessionUsageShowsSomething(usage)
 
   return (
     <>
@@ -75,15 +92,24 @@ export function SessionColumnBody({
         firstBlood={firstBlood}
       />
 
-      {/* Blocs « usages d'équipement, armes spéciales et objectifs ». `compact` suit la
-          colonne : drawer ouvert = version compacte DES DEUX CÔTÉS, sinon les deux
-          colonnes ne se compareraient pas. Le composant gère lui-même ses états
-          indisponible / sans film ; absent du payload → rien. */}
-      <SessionUsageSection usage={usage} meLabel={playerSlug} compact={compact} />
+      {/* SECTION 3 — « Frags et usages » : d'où viennent les frags, et ce qu'on a ramassé,
+          posé, tenu pour les obtenir. Les blocs « usages d'équipement, armes spéciales et
+          objectifs » gèrent eux-mêmes leurs états indisponible / sans film ; `compact` suit
+          la colonne (drawer ouvert = version compacte DES DEUX CÔTÉS, sinon les deux
+          colonnes ne se compareraient pas). */}
+      {showKillsAndUsage && (
+        <DetailSection title={t('session.detail.section_kills_usage')}>
+          <div className="space-y-6">
+            <SessionFragCard entry={entry} stacked={compact} />
+            <SessionUsageSection usage={usage} meLabel={playerSlug} compact={compact} />
+          </div>
+        </DetailSection>
+      )}
 
-      {/* Tableau "Détail des matchs" — hors bloc/Card (juste un titre + le tableau). */}
+      {/* SECTION 4 — « Détail des matchs », hors bloc/Card (juste un titre + le tableau).
+          `space-y-3` conservé : le tableau se colle plus à son titre que des graphes. */}
       <div className="space-y-3">
-        <h2 className="text-base font-semibold text-foreground">{t('session.detail.matches_card')}</h2>
+        <SectionTitle>{t('session.detail.matches_card')}</SectionTitle>
         <SessionMatchesTable
           matches={matches}
           playerSlug={playerSlug}

@@ -43,6 +43,7 @@ const PLAYER_SUFFIX_OVERRIDES: RouteTitleRule[] = [
   { pattern: '/squad/synergies', title: { fr: 'Synergies', en: 'Synergies' } },
   { pattern: '/squad/contributions', title: { fr: 'Contributions', en: 'Contributions' } },
   { pattern: '/squad/dynamique', title: { fr: 'Dynamique', en: 'Dynamics' } },
+  { pattern: '/squad/usages', title: { fr: 'Usages', en: 'Usage' } },
   { pattern: '/squad', title: { fr: 'Escouade', en: 'Squad' } },
   // Carrière — nuance Citations/Commendations (I18) : la source est fixée par la ROUTE
   // (/career/citations = moteur dérivé Infinite, /career/commendations = totaux natifs

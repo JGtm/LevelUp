@@ -76,6 +76,7 @@ import {
   useGridInks,
   type CardProps,
 } from './SessionUsageShared'
+import { sessionUsageCardsShown } from './sessionSectionVisibility'
 
 /** Le titre d'une vue à l'intérieur d'une carte (même gabarit que la vue match). */
 function ViewTitle({ children }: { children: string }) {
@@ -191,13 +192,11 @@ function PadControlCard({ usage, meLabel, t, locale, compact }: CardProps) {
     [usage.pad_tiers, t, locale],
   )
   const tierNotes = useMemo(() => padTiersNotes(usage.pad_tiers, t), [usage.pad_tiers, t])
-  const powerups = usage.powerup_pickups ?? []
   // LES NIVEAUX COMPTENT DANS LA PORTE (revue du 2026-09-14) : ils viennent d'une AUTRE passe,
-  // sur d'autres matchs. Sans eux dans cette condition, une session dont seuls les niveaux sont
-  // mesures ne rendait RIEN — une mesure existante avalee par la porte de sa voisine.
-  if (pad == null && gaugeRows.length === 0 && powerups.length === 0 && tierRows.length === 0) {
-    return null
-  }
+  // sur d'autres matchs. Sans eux dans la condition, une session dont seuls les niveaux sont
+  // mesures ne rendait RIEN — une mesure existante avalee par la porte de sa voisine. La
+  // condition vit dans `sessionSectionVisibility` : le titre de section l'interroge aussi.
+  if (!sessionUsageCardsShown(usage).padControl) return null
 
   return (
     <SectionCard
@@ -328,7 +327,10 @@ function ObjectivesCard({ usage, meLabel, t, locale, compact }: CardProps) {
     () => buildSquadRoleGrid({ roles, squadPlayers, meLabel, t, locale, ...roleInks }),
     [roles, squadPlayers, meLabel, t, locale, roleInks],
   )
-  if (obj == null || obj.matches_with_objectives <= 0 || roles.length === 0) return null
+  // Même source de vérité que le titre de section (cf. `sessionSectionVisibility`). Le
+  // `obj == null` est REDONDANT à l'exécution (le prédicat l'inclut) : il est là pour que le
+  // compilateur affine `obj` sur la suite, ce qu'un appel de fonction ne fait pas.
+  if (obj == null || !sessionUsageCardsShown(usage).objectives) return null
 
   return (
     <SectionCard

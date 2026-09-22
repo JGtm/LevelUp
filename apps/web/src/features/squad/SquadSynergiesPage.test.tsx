@@ -1,5 +1,5 @@
 /**
- * SquadSynergiesPage.test.tsx — 2 empty states + rendu sans erreur avec données.
+ * SquadSynergiesPage.test.tsx — états vides, titres de section et ratchet du lot 3.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { screen } from '@testing-library/react'
@@ -8,6 +8,8 @@ import { useAppShellStore } from '@/stores/appShellStore'
 import * as squadContextModule from './SquadContext'
 import type { TeammateRow, TeammatesPageResponse } from '@/lib/api/types'
 import { SquadSynergiesPage } from './SquadSynergiesPage'
+import { echangeDe } from './squadEchange.fixtures'
+import { pageWithEquipmentUsage } from './squadUsages.fixtures'
 
 const ROW = (gamertag: string): TeammateRow => ({
   gamertag,
@@ -106,25 +108,60 @@ describe('SquadSynergiesPage — empty states', () => {
     })
     expect(() => renderWithProviders(<SquadSynergiesPage />)).not.toThrow()
   })
+})
 
-  it('capability expected_stats présente → « Écart cumulé au FDA attendu » à gauche de Répartition', () => {
+// LOT 3 « sections » (2026-09-22) — UN SEUL AXE PAR ONGLET. Synergies ne dit plus que ce
+// que la composition PRODUIT ensemble : ce qu'elle UTILISE (frags et armes, équipement,
+// formes) est parti sur Usages, l'impact et les médailles sur Contributions. Ces
+// assertions sont le RATCHET du déménagement : elles échouent si un bloc revient ici.
+describe('SquadSynergiesPage — ce qui a déménagé (lot 3)', () => {
+  it('ni frags et armes, ni équipement, ni impact, ni médailles', () => {
     setTitleCaps(['expected_stats'])
     mockSquadContext({
       selectedRows: [ROW('A'), ROW('B')],
       confirmedGamertags: ['A', 'B'],
+      pageData: pageWithEquipmentUsage(),
     })
     renderWithProviders(<SquadSynergiesPage />)
-    expect(screen.getByText('Écart cumulé au FDA attendu')).toBeInTheDocument()
+    expect(screen.queryByText('Écart cumulé au FDA attendu')).toBeNull()
+    expect(screen.queryByText('Frags et armes')).toBeNull()
+    expect(screen.queryByText("Usages d'équipement")).toBeNull()
+    expect(screen.queryByText('Équipement')).toBeNull()
+    expect(screen.queryByText('Impact des coéquipiers')).toBeNull()
+    expect(screen.queryByText(/^Médailles/)).toBeNull()
   })
+})
 
-  it('capability expected_stats absente (Halo 5) → card Écart FDA masqué', () => {
-    setTitleCaps(['ranked'])
+// Les deux titres de section de l'onglet (lot 3) : « L'échange » coiffe le groupe des
+// cartes de l'échange, « Historique » la bande de résultats ET le tableau des matchs. Un
+// titre coiffe au moins deux blocs, jamais un bloc seul : sans `echange`, pas de titre.
+describe('SquadSynergiesPage — titres de section', () => {
+  it('« Historique » est toujours posé au-dessus de la bande et du tableau', () => {
     mockSquadContext({
       selectedRows: [ROW('A'), ROW('B')],
       confirmedGamertags: ['A', 'B'],
     })
     renderWithProviders(<SquadSynergiesPage />)
-    expect(screen.queryByText('Écart cumulé au FDA attendu')).toBeNull()
+    expect(screen.getByText('Historique')).toBeInTheDocument()
+  })
+
+  it('« L\'échange » se monte avec le bloc echange, et pas sans lui', () => {
+    mockSquadContext({
+      selectedRows: [ROW('A'), ROW('B')],
+      confirmedGamertags: ['A', 'B'],
+    })
+    renderWithProviders(<SquadSynergiesPage />)
+    expect(screen.queryByText("L'échange")).toBeNull()
+  })
+
+  it('« L\'échange » présent quand le bloc echange est mesuré', () => {
+    mockSquadContext({
+      selectedRows: [ROW('A'), ROW('B')],
+      confirmedGamertags: ['A', 'B'],
+      pageData: { ...pageWithAssistPairs(), echange: echangeDe() } as TeammatesPageResponse,
+    })
+    renderWithProviders(<SquadSynergiesPage />)
+    expect(screen.getByText("L'échange")).toBeInTheDocument()
   })
 })
 
@@ -152,58 +189,5 @@ describe('SquadSynergiesPage — section Assistances', () => {
     })
     renderWithProviders(<SquadSynergiesPage />)
     expect(screen.queryByText("Assistances dans l'escouade")).toBeNull()
-  })
-})
-
-// PLAN_EQUIPEMENT_GACHIS_2026-09-09 (E6.2-E6.4) : le bloc « servi ou gâché », variante
-// comptes, une ligne par coéquipier suivi. AUCUNE requête neuve : il lit
-// `pageData.equipment_usage` de la même réponse déjà chargée par `useTeammates`.
-//
-// Contrat : le Go publie ce bloc sur `TeammatesPageResponse` (POST /pages/teammates) depuis le
-// lot E6.1bis du 2026-09-09 (auparavant sur `SquadPageV2Response`, que cette page ne lit pas).
-// Le test « bloc absent » couvre le repli honnete (titre sans resume d usage, scope vide :
-// la section s auto-masque) ; le test « bloc present » prouve le cablage.
-describe('SquadSynergiesPage — bloc équipement (E6.2-E6.4)', () => {
-  function pageWithEquipmentUsage(): TeammatesPageResponse {
-    return {
-      options: [],
-      teammates: [],
-      total_matches: 42,
-      session_labels: { solo: [], squad: [] },
-      friends_count: 0,
-      tracked_players: [{ xuid: 'f1', gamertag: 'Madina' }],
-      equipment_usage: {
-        available: true,
-        matches_measured: 42,
-        matches_total: 42,
-        tracked_players: [{ xuid: 'f1', gamertag: 'Madina' }],
-        players: [
-          { xuid: 'me', taken: 88, used: 55, kept: 9, dropped: 24, pad_pickups: 41 },
-          { xuid: 'f1', taken: 74, used: 60, kept: 4, dropped: 10, pad_pickups: 31 },
-        ],
-      },
-    } as TeammatesPageResponse
-  }
-
-  it('bloc present : une ligne par coequipier suivi (jamais par famille)', () => {
-    mockSquadContext({
-      selectedRows: [ROW('A'), ROW('B')],
-      confirmedGamertags: ['A', 'B'],
-      pageData: pageWithEquipmentUsage(),
-    })
-    renderWithProviders(<SquadSynergiesPage />)
-    expect(screen.getByText("Usages d'équipement")).toBeInTheDocument()
-    expect(screen.getAllByText('Madina').length).toBeGreaterThan(0)
-    expect(screen.getByText('88 pris')).toBeInTheDocument()
-  })
-
-  it('bloc absent (titre sans resume d usage ou scope vide) : la section s auto-masque', () => {
-    mockSquadContext({
-      selectedRows: [ROW('A'), ROW('B')],
-      confirmedGamertags: ['A', 'B'],
-      pageData: pageWithAssistPairs(),
-    })
-    renderWithProviders(<SquadSynergiesPage />)
-    expect(screen.queryByText("Usages d'équipement")).toBeNull()
   })
 })

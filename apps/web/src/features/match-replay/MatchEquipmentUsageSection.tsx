@@ -79,7 +79,12 @@ import {
   usageColumnGroups,
   type UsageColumnGroup,
 } from './model/equipmentUsageColumns'
-import { buildEquipmentUsage, tallyTotal, type EquipmentUsage } from './model/equipmentUsageLogic'
+import {
+  buildEquipmentUsage,
+  hasEquipmentUsage,
+  tallyTotal,
+  type EquipmentUsage,
+} from './model/equipmentUsageLogic'
 import { REPLAY_TEXT, type ReplayLocale } from './i18n/i18n'
 import type { ReplayText } from './i18n/i18nContract'
 import { useMatchReplay } from '../../lib/replay/queries'
@@ -150,8 +155,9 @@ export function MatchEquipmentUsageSection({
     [usage, familles, teamLabel, teamAccent],
   )
 
-  // Double porte : pas d'artefact, ou rien de mesuré -> rien du tout.
-  if (!usage?.hasData) return null
+  // Double porte : pas d'artefact, ou rien de mesuré -> rien du tout. MÊME prédicat que
+  // celui lu par le parent pour poser (ou non) son titre de section.
+  if (!hasEquipmentUsage(usage)) return null
 
   return (
     <SectionCard
