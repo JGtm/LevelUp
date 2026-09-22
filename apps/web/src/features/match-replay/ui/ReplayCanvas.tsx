@@ -376,7 +376,7 @@ export function ReplayCanvas({
     colorOfXuid, nameOfSlot, nameOfXuid,
     offscreenLabelOf: (name, meters) => REPLAY_TEXT[locale].offscreenMarkerFmt(name, meters),
     offscreenGroupLabelOf: (n, meters) => REPLAY_TEXT[locale].offscreenGroupMarkerFmt(n, meters),
-    neutralInk, labelStroke, explosionInk: fxInk, reducedMotion, redraw,
+    neutralInk, labelStroke, markInk, explosionInk: fxInk, reducedMotion, redraw, frameRef,
   }) // schéma 39 ; prédicat embarqué C7 ; cône du conducteur + nom ET couleur par xuid (2026-09-02) ; explosion de destruction (2026-09-03, en avance de phase).
   // LES POSES D'ÉQUIPEMENT (schéma 10) : comptes, axe de temps, bascules et survol dans un
   // seul hook (useReplayPlacements). Les LÂCHÉS DE PUISSANCE suivent leur bascule, et rien
@@ -641,7 +641,8 @@ export function ReplayCanvas({
   // dans useReplayPlayback : le canvas garde le DESSIN, le hook porte le TEMPS.
   const playback = useReplayPlayback({
     doc, playWindow, baseFps, speed: multiplier, renderWidth, frameRef, draw, openAtFrame,
-    soundTick: sound.tick, onEnded: sound.endMatch, onTransportGesture: sound.wake, onPlayingChange: sound.setTransportPlaying,
+    soundTick: sound.tick, soundSeek: sound.seek,
+    onEnded: sound.endMatch, onTransportGesture: sound.wake, onPlayingChange: sound.setTransportPlaying,
   })
   // LA FRISE ET SON CLAVIER (planche 2a) vivent dans useReplayTimeline — treizième extraction
   // imposée par le cliquet : pistes, dominance, médias, horloges et raccourcis sont LA FRISE.
@@ -710,13 +711,13 @@ export function ReplayCanvas({
                 // LA BOÎTE D'ÉCRAN, PAS LA TAILLE DE DESSIN : pendant un export la toile se dessine en
                 // 16:9 et `contain` l'y inscrit sans la déformer (cf. `ReplayView.screen`).
                 style={{ width: screen.width || '100%', height: screen.height, objectFit: 'contain' }}
-                {...hoverHandlers([placements.hover, weaponPads, flags, groundWeapons], drag)}
+                {...hoverHandlers([placements.hover, weaponPads, flags, groundWeapons, vehicles], drag)}
               />
-              {/* Les infobulles des quatre calques survolables (cf. ReplayCanvasTips). */}
+              {/* Les infobulles des CINQ calques survolables (cf. ReplayCanvasTips). */}
               <ReplayCanvasTips
                 locale={locale} width={renderWidth} ownerNameOf={nameOfSlot} playWindow={playWindow}
                 placement={placements.hover.hover} pad={weaponPads.hover} flag={flags.hover}
-                groundWeapon={groundWeapons.hover}
+                groundWeapon={groundWeapons.hover} vehicleCycle={vehicles.cycleHover}
               />
               {/* LES SURCOUCHES DE LA CARTE (2026-09-08) : écran de fin, message inter-manche,
                   compte à rebours de la bombe. Elles arrivent de la page, mais elles se posent

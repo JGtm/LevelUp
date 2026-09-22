@@ -149,6 +149,7 @@ export const replayDocumentSchema = z.strictObject({
   scoreTimeline: bloc<NonNullable<ReplayDocument['scoreTimeline']>>(),
   shots: calque<Elem<'shots'>>(),
   skullCarries: calque<Elem<'skullCarries'>>(),
+  stances: calque<Elem<'stances'>>(),
   structure: calque<Elem<'structure'>>(),
   structureBounds: bornes.optional(),
   t0FilmMs: z.number().optional(),

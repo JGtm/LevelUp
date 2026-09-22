@@ -185,6 +185,10 @@ type Coverage struct {
 	// (le slot est DANS la lecture), le dénominateur est le nombre de vies publiées.
 	// Absente des artefacts antérieurs au schéma 7.
 	Equipment *EquipmentCoverage `json:"equipment,omitempty"`
+	// Stances est la couverture des ETATS DE MOUVEMENT (schema 65, cf. document_stances.go) :
+	// ce que la marche a lu, ce qu elle a jete, et sous quelles largeurs d axe elle a lu.
+	// ABSENTE quand le balayage n a pas tourne du tout (film sans chunk).
+	Stances *StanceCoverage `json:"stances,omitempty"`
 	// Grapple est la couverture des tractions de grappin (schéma 8, cf. grapple_lines.go) :
 	// lectures tir/accroche, tractions publiées, ratés et corps non décodables. Même
 	// logique qu'Equipment : le slot est DANS la lecture, pas à rattacher. Absente des

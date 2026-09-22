@@ -191,7 +191,22 @@ const plafondSurfaceFacade = 166 // 2026-09-17 — base a5d15e634
 //	                                           c est exactement ce que la frontiere interdit.
 //	                                           RE-MESURE A L ENTREE du lot : 260 sur `1840d0cbc`,
 //	                                           263 apres.
-const plafondSurfaceReplay = 263 // 2026-09-21 — base 1840d0cbc + prises d arme (3 natures citees)
+//	262  5.3.6   (2026-09-21)                  la montee de schema 65 : `replay.Stance` et
+//	                                           `replay.StanceCoverage`, l intervalle d etat de
+//	                                           mouvement et sa couverture, cites par les deux
+//	                                           convertisseurs jumeaux
+//	                                           `service/replayview/convert_inventory.go` et
+//	                                           `convert_coverage.go`. DEUX symboles neufs — le
+//	                                           champ `Stances` du document et celui de `Coverage`
+//	                                           n en ajoutent aucun, `replay.ReplayDocument` et
+//	                                           `replay.Coverage` etant deja cites.
+//	                                           RE-MESURE A L ENTREE du lot : 260 sur `0fc6a3349`,
+//	                                           262 apres.
+//	265  fusion serie 5 -> feat/v75 (2026-09-22)  les deux rangs ci-dessus sont INDEPENDANTS (ajsup-E : +3 natures
+//	                                           de prise d arme ; 5.3.6 : +2 pour replay.Stance et
+//	                                           replay.StanceCoverage) et se cumulent : 260 + 3 + 2 = 265,
+//	                                           re-mesure a la fusion.
+const plafondSurfaceReplay = 265 // 2026-09-22 — fusion serie 5 dans feat/v75 : 260 + 3 (ajsup-E) + 2 (5.3.6)
 
 // plafondsParFamilleFacade — la surface de la facade VENTILEE PAR PAQUET D ORIGINE.
 //

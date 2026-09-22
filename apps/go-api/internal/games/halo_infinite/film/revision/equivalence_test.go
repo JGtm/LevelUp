@@ -89,8 +89,12 @@ func couchesMesurees(t *testing.T) []coucheMesuree {
 		{
 			nom: "grammar", revisionDuCode: grammar.Rev,
 			racines: []string{filepath.Join(film, "grammar")},
+			// LA MEME LISTE QUE `grammar/rev_test.go`, ET ELLE COUVRE TOUTE LA CHRONIQUE
+			// (D3 du lot 5.20, corrigee au lot 5.21) : `_3`, `_4` et `_5` etaient hachees
+			// alors que l exclusion existe pour les tenir hors de l empreinte.
 			horsCouche: []string{"rev.go", "rev_chronique.go", "rev_chronique_archive.go",
-				"rev_chronique_archive_2.go"},
+				"rev_chronique_archive_2.go", "rev_chronique_archive_3.go",
+				"rev_chronique_archive_4.go", "rev_chronique_archive_5.go"},
 			amonts: []string{profile.Rev, source.Rev},
 			golden: filepath.Join(film, "grammar", "testdata", "grammar_rev.golden"),
 		},

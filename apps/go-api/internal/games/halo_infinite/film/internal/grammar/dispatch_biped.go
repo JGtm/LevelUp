@@ -92,10 +92,10 @@ func consumeCaptureAndBipedComponent(br *Lecteur, name string, typeIndex uint32,
 		consumeFlockFleeing(br)
 		return variant, nil, true
 	case abilityPredictedName: // i57 (FUN_142f02810 -> FUN_142f268c4)
-		// Rend ported=false sur la seule branche non determinable (tag brut == 3 ->
-		// FUN_142f262d4, gate par des octets d'etat runtime) : desync propre plutot que
-		// desalignement silencieux.
-		return variant, nil, consumeBipedSpartanAbility(br)
+		// PORTE EN ENTIER DEPUIS LE LOT 5.13.3 : l « octet d etat runtime » qui gardait la
+		// branche `tag == 3` n en est pas un (cf. `consumeSpartanAbilityTag3`).
+		consumeBipedSpartanAbility(br)
+		return variant, nil, true
 	case grappleComponentNameAlt, grappleComponentName: // i59 (FUN_142f02994)
 		// Corps tag==3 (FUN_142f25e90, ancre du grappin) porté le 2026-08-16 : rend
 		// ported=false sur les seules valeurs internes jamais observées — désync propre,
@@ -116,10 +116,9 @@ func consumeCaptureAndBipedComponent(br *Lecteur, name string, typeIndex uint32,
 	case "biped-slide", "biped-slide-component": // i62 (FUN_142f02978 -> FUN_142f26ce8)
 		consumeBipedSlide(br, level)
 		return variant, nil, true
-	case "biped-action", "biped-action-component": // i63 (FUN_142f027f4 -> FUN_142f26a20)
-		// Returns ported=false on the value-gated loop1 dispatch (count>0) so the
-		// traversal desyncs cleanly instead of mis-aligning. Common case: 196 bits.
-		return variant, nil, consumeBipedAction(br)
+	case "biped-action", "biped-action-component": // i63, PORTE EN ENTIER (lot 5.11.0-a)
+		consumeBipedAction(br) // FUN_142f027f4 -> FUN_142f26a20 ; 196 bits a masque nul
+		return variant, nil, true
 	default:
 		return consumeManagedAndObjectiveComponent(br, name, level)
 	}
@@ -207,7 +206,7 @@ func consumeManagedAndObjectiveComponent(br *Lecteur, name string, level uint32)
 	case "game-engine-team-mapping", compGameEngineTeamMapping: // typeIdx=0 i0 (FUN_140f58200)
 		consumeGameEngineTeamMapping(br)
 		return variant, nil, true
-	case "unit-control-component":
+	case compUnitControl:
 		consumeUnitControl(br)
 		return variant, nil, true
 	case "unit-grenade-counts-component":

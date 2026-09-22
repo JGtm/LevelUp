@@ -714,9 +714,18 @@ var replaySchemas = []struct {
 //	                      exactement comme `roster[].bid` a 57 ; les neuf compteurs de couverture
 //	                      non plus, pour la meme raison que `coverage.deathsPaths` a 59.
 //
-// Les vingt-trois fois, ce test a ATTRAPE l ecart : une branche publiait le champ avant que le
+//	61 (2026-09-21) : `stances` — LES ETATS DE MOUVEMENT DU SPARTAN, en intervalles par vie
+//	                      (post-chantier lot 5.3.6, schema 64 -> 65). Une liste
+//	                      d intervalles `{slot, kind, t0, t1}` pour trois genres : `crouch`,
+//	                      `slide`, `mobility`. `coverage.stances` nait au meme commit SANS faire
+//	                      monter ce compte — il est un champ de `Coverage`, pas du document,
+//	                      exactement comme `coverage.deathsPaths` a 59.
+//	                      TROIS GENRES SEULEMENT, et c est mesure : le sprint est REFUTE comme
+//	                      observable par la vitesse, le saut est LU mais PAS PROUVE (lot 5.3.5).
+//
+// Les vingt-quatre fois, ce test a ATTRAPE l ecart : une branche publiait le champ avant que le
 // chiffre ne le dise. Contrat regenere (`make openapi-gen`), jamais ecrit a la main.
-const wantReplayDocumentFields = 60
+const wantReplayDocumentFields = 61
 
 // TestReplayContractDescribesEveryPublishedField : AUCUN CHAMP PUBLIE SANS DESCRIPTION, ET
 // AUCUNE DESCRIPTION SANS CHAMP.

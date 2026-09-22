@@ -114,7 +114,32 @@ var plafondsParFichier = map[string]int{
 	// v64 (`zoneStates[].gaugeRamps` et son `capturingTeam`, le seuil d aboutissement mesure, la
 	// forme ECARTEE — un champ sur `GaugePoint`, type partage avec la jauge de retour du drapeau —
 	// et l archetype `zones` ti=23 qui reste non cable).
-	"internal/games/halo_infinite/film/replay/document_chronicle.go": 1825,
+	// SCHEMA 64 -> 65 (2026-09-21, post-chantier lot 5.3.6) : 1825 -> 1863, l entree de chronique
+	// v65 (`stances[]`, ses trois genres, la marche qui les lit, et les DEUX negatifs mesures qui
+	// expliquent pourquoi le sprint et le saut n y sont pas). Exception ecrite, dans le commit qui
+	// monte `SchemaVersion`.
+	// SCHEMA 65 -> 66 (2026-09-21, post-chantier lots 5.9.4 et 5.9.5) : 1863 -> 1933, l entree de
+	// chronique v66. Elle porte DEUX genres neufs de `stances[].kind` et les separe : `sprint`
+	// est LU (`i57` porte l index de la fente de capacite active, et l image nomme les trois
+	// fentes), `jumpDerived` est CALCULE (l integrale de la vitesse verticale, reconnue a sa
+	// hauteur). Elle porte aussi le controle du GRAPPIN qui valide la lecture de l index, et la
+	// raison mesuree pour laquelle la vitesse du sprint ne peut pas trancher. UNE SEULE MONTEE
+	// DE SCHEMA POUR LE LOT, donc une seule entree, dans le commit qui monte `SchemaVersion`.
+	// SCHEMA 66 -> 67 (2026-09-21, post-chantier lot 5.10) : 1933 -> 1974, l entree de chronique
+	// v67. Elle porte le changement de SENS de `rides[].src` (deux valeurs, `film` et
+	// `proximity`, la ou trois disaient la precision des bornes), la regle de PRIMAUTE de la
+	// lecture sur le repli et son prix, les deux compteurs de couverture qui remplacent les
+	// trois anciens, et le verdict Theater qui a nomme le defaut (le Razorback `776/1`). UNE
+	// SEULE MONTEE DE SCHEMA POUR LE LOT, donc une seule entree, dans le commit qui monte
+	// `SchemaVersion`.
+	// SCHEMA 67 -> 68 (2026-09-22, post-chantier lot 5.22.4) : 1974 -> 2018, l entree de
+	// chronique v68. Elle porte le RENOMMAGE de `stances[].kind` `mobility` en `clamber`, la
+	// raison pour laquelle un renommage d enum publie est une montee de FORME (un genre inconnu
+	// est IGNORE cote web), l oracle qui a tranche la ou le binaire ne le pouvait pas (neuf
+	// verdicts Theater sur neuf, lot 5.13.2 reouvert), et le refus de publier un genre `jump`
+	// LU faute de preuve. UNE SEULE MONTEE DE SCHEMA POUR LE LOT, donc une seule entree, dans
+	// le commit qui monte `SchemaVersion`.
+	"internal/games/halo_infinite/film/replay/document_chronicle.go": 2018,
 	// --- production, hors perimetre du lot 2.7 (aucune preuve d equivalence ne couvrait
 	// leur scission : elle se decidera au lot qui les rouvrira).
 	// `assist.go` EST SORTI DE CETTE TABLE LE 2026-09-16 (lot 2.6.2) : le type `Assist` a descendu
@@ -151,7 +176,25 @@ var plafondsParFichier = map[string]int{
 	// qui monte `SchemaVersion`.
 	// SCHEMA 63 -> 64 (2026-09-20, lot 5.2-A) : 1200 -> 1215, la justification que
 	// `TestStructureIsOptionalInDocument` exige avant d accepter la montee.
-	"internal/games/halo_infinite/film/replay/structure_test.go":                                  1215,
+	// SCHEMA 64 -> 65 (2026-09-21, post-chantier lot 5.3.6) : 1215 -> 1221, la justification que
+	// `TestStructureIsOptionalInDocument` exige avant d accepter la montee. Exception ecrite,
+	// meme commit que `SchemaVersion`.
+	// SCHEMA 65 -> 66 (2026-09-21, post-chantier lots 5.9.4 et 5.9.5) : 1221 -> 1236, la
+	// justification que `TestStructureIsOptionalInDocument` exige avant d accepter la montee
+	// (les deux genres neufs, LU et DERIVE, et ce qui valide la lecture de l index de fente) :
+	// 1221 -> 1237.
+	// Exception ecrite, meme commit que `SchemaVersion`.
+	// SCHEMA 66 -> 67 (2026-09-21, post-chantier lot 5.10) : 1237 -> 1250, la justification que
+	// `TestStructureIsOptionalInDocument` exige avant d accepter la montee — la lecture devient
+	// la source primaire de l occupation, la proximite un repli qui lui cede, et `despawn` est
+	// REFUSEE apres mesure de ses trois canaux. Exception ecrite, meme commit que
+	// `SchemaVersion`.
+	// SCHEMA 67 -> 68 (2026-09-22, post-chantier lot 5.22.4) : 1250 -> 1270, la justification
+	// que `TestStructureIsOptionalInDocument` exige — le renommage de `stances[].kind`
+	// `mobility` en `clamber`, pourquoi un renommage d enum publie est une montee de FORME, et
+	// le refus de publier un genre `jump` LU faute de preuve. Exception ecrite, meme commit que
+	// `SchemaVersion`.
+	"internal/games/halo_infinite/film/replay/structure_test.go":                                  1270,
 	"internal/games/halo_infinite/film/replay/t0_mouvement_research_test.go":                      872,
 	"internal/games/halo_infinite/film/replay/inventory_position_i22_test.go":                     833,
 	"internal/games/halo_infinite/film/replay/ground_link_research_test.go":                       814,
@@ -202,8 +245,10 @@ func TestTailleDesFichiersDuFilmNeCroitPas(t *testing.T) {
 			t.Errorf("%s : %d lignes, plafond fige a %d (2026-09-16, lot 2.7).\n"+
 				"UN PLAFOND NE MONTE PAS. Sortir autant de lignes ailleurs dans le fichier, "+
 				"ou le scinder par deplacement pur avec sa preuve d equivalence.\n"+
-				"Seule exception ecrite : document_chronicle.go, dont l entree monte du volume "+
-				"de son entree de chronique, dans le commit qui monte SchemaVersion.", rel, n, plafond)
+				"Seule exception ecrite, et elle couvre DEUX fichiers (cf. l en-tete de "+
+				"plafondsParFichier) : document_chronicle.go et structure_test.go, dont le "+
+				"plafond monte du volume de l entree ajoutee, dans le commit qui monte "+
+				"SchemaVersion.", rel, n, plafond)
 			continue
 		}
 		t.Errorf("%s : %d lignes, seuil %d (CLAUDE.md regle 5).\n"+

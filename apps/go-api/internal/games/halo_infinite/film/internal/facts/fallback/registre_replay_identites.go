@@ -165,19 +165,27 @@ var registreReplayIdentites = []Repli{
 	// 295, 20 artefacts du parc. Elles sont désormais publiées `end = "film_end"`, qui est une
 	// lecture et non une inférence. D14 (d) appliqué : le repli sort du registre avec son code.
 	{
-		Nom:       "repli_cap_vehicule_vitesse_insuffisante",
-		Fait:      "le cap publie d'un vehicule",
-		Mecanisme: "vitesse sous vehicleMinSpeedMPS (5 m/s) : aucun cap n'est rendu et le dernier connu est reporte par l'appelant",
+		Nom:  "repli_cap_vehicule_vitesse_insuffisante",
+		Fait: "le cap publie d'un vehicule",
+		// LE REPLI A CHANGE DE RANG le 2026-09-21 (lot 5.4.3) : il n'est plus la source PRINCIPALE
+		// du cap, il est le SECOND recours. Le film ECRIT l'avant du chassis — la perpendiculaire
+		// reconstruite du couple (vecteur haut, angle de roulis) d'`i2` — et le cap en sort sur le
+		// mode dont la reconstruction est prouvee. La deduction par la velocite ne sert plus que
+		// la ou ce mode est absent : chemin « delta » (aucun angle absolu ecrit) et mode 0, REFUTE
+		// par la mesure sur `a349fea8` (mediane 95,5 deg contre un temoin a 94,5).
+		Mecanisme: "le film ne rend pas de cap sur ce chemin (mode non publie ou roulis relatif) : le cap est DEDUIT de la velocite i1, et sous vehicleMinSpeedMPS (5 m/s) le dernier connu est reporte par l'appelant",
 		Condition: CondFilmMuet,
-		Ordre:     OrdreSansLecture,
+		Ordre:     OrdreApresLecture,
 		Sites: []Site{{
-			Fichier: pkgReplay + "vehicle_tracks.go",
-			Ancre:   "if speed < vehicleMinSpeedMPS {",
+			Fichier: pkgReplay + "vehicle_heading.go",
+			Ancre:   "return vehicleVelocityHeadingOf(p)",
 		}},
-		DatePose:     dateAudit0E,
-		CibleRetrait: "aucune tant que le negatif tient (i2 REFUTE, i21 ABSENT de ti=40) ; le COMPTE des reports est ce qui manque",
-		// Négatif mesuré, table (C11) de l'audit : le repli est légitime, son silence ne l'est pas.
-		CritereRetrait:  "reports comptes dans VehicleCoverage ; retrait si un troisieme canal de cap est etabli",
+		DatePose: dateAudit0E,
+		// LE NEGATIF QUI TENAIT ICI EST TOMBE : « i2 REFUTE » datait du lot 5.2b.2, qui avait
+		// mesure le vecteur HAUT en croyant mesurer l'avant. La cible de retrait est donc
+		// desormais REELLE et datee, et le compte qui manquait existe.
+		CibleRetrait:    "le mode 0 d'i2 rendu publiable (sa direction lue n'est pas verticale sur les vieux builds : |z| median 0,585 contre 0,979 — a instruire avant tout elargissement), ou la reconstruction du chemin delta par registre d'etat par entite",
+		CritereRetrait:  "part de `capParVelocite` nulle au journal `rejeu : source du cap des vehicules` sur le parc",
 		CompteurBranche: false,
 		CibleComptage:   comptageFamille19,
 	},
@@ -187,18 +195,23 @@ var registreReplayIdentites = []Repli{
 		Mecanisme: "aucun evenement d'embarquement ou de sortie n'explique le trou : l'episode est reconstruit du TROU de position (>= 3 s) et du vehicule le plus proche sous 1,5 m en plan",
 		Condition: CondFilmMuet,
 		Ordre:     OrdreApresLecture,
-		Sites: []Site{{
-			Fichier: pkgReplay + "vehicle_rides.go",
-			Ancre:   "st.repli++",
-		}},
+		// DEUX SITES DEPUIS LE LOT 5.10 : le compteur est DECLARE avec les autres statistiques
+		// d assemblage (`vehicle_rides.go`) et INCREMENTE a l etape qui pose le repli
+		// (`vehicle_rides_build.go`, sortie du meme fichier par deplacement pur).
+		Sites: []Site{
+			{Fichier: pkgReplay + "vehicle_rides.go", Ancre: "repli int"},
+			{Fichier: pkgReplay + "vehicle_rides_build.go", Ancre: "b.st.repli++"},
+		},
 		DatePose:     dateAudit0E,
 		CibleRetrait: "lot 2.2 (M2, les lecteurs recoivent le profil : cablage des compteurs) puis le chantier vehicules — le lot 1.9.10 (2026-09-16) a lu la fin de vie au dead-state SANS convertir l episode d occupation par trou de position (cible reecrite a sa fusion)",
-		// Ce repli-ci porte DÉJÀ son nom (`st.repli`) et son compte (`episodesDeRepli` au
-		// journal, `VehicleRideSrcGap` dans le document) : il entre au registre pour que sa
-		// condition de retrait se lise au même endroit que les autres.
-		CritereRetrait:  "0 episode de provenance `gap` sur les 8 builds une fois les evenements d'embarquement complets",
+		// Ce repli-ci porte DÉJÀ son nom (`st.repli`) et son compte — et DEPUIS LE SCHEMA 67 il
+		// le porte jusqu'au document : `rides[].src = "proximity"` et `coverage.vehicles.
+		// ridesProximity` disent, par épisode et en total, ce qui est DÉDUIT plutôt que LU. Le
+		// lot 5.10 a aussi posé sa borne : un épisode de repli n'est publié que si aucune
+		// lecture d'`object-parent-state` de la même vie ne le contredit.
+		CritereRetrait:  "0 episode de provenance `proximity` sur les 8 builds une fois les montees a bord lues sur tous les sieges",
 		CompteurBranche: false,
-		CibleComptage:   "lot 2.2 (M2) : le compte EXISTE deja sous `vehicleRideStats.repli` et `VehicleRideSrcGap`, son entree dans `coverage.fallbacks` viendra avec le cablage general des compteurs",
+		CibleComptage:   "PUBLIE depuis le schema 67 (`coverage.vehicles.ridesProximity`) ; son entree dans `coverage.fallbacks` viendra avec le cablage general des compteurs",
 	},
 	{
 		Nom:       "repli_chassis_vehicule_marqueur_neutre",
@@ -369,6 +382,28 @@ var registreReplayIdentites = []Repli{
 		CritereRetrait:  "0 film a roster vide sur les 8 builds",
 		CompteurBranche: false,
 		CibleComptage:   comptageFamille19,
+	},
+	{
+		Nom:       "repli_zone_camp_de_capture_deduit_de_l_issue",
+		Fait:      "quel CAMP pousse la jauge d'une zone, rampe par rampe",
+		Mecanisme: "aucun canal POUSSEUR n'a ete elu pour cette zone : le camp est DEDUIT de l'issue — le proprietaire juste apres le sommet d'une rampe ABOUTIE. Une rampe avortee reste alors sans camp",
+		// NI `film_muet` NI `lecture_non_portee`, ET LE DIRE EST LE POINT. Le lot 5.6 a MESURE
+		// que le film porte ce fait (un second canal `ti=13 tag 4` par zone : 69 rampes
+		// abouties sur deux films, 69 accords, 0 desaccord) et que le decodeur le LIT deja.
+		// Ce qui manque quand ce repli se declenche, c'est l'ELECTION du canal — elle exige au
+		// moins deux rampes abouties concordantes, et une zone tres peu disputee n'en a pas
+		// assez. Le classer `film_muet` enverrait chercher la correction dans la grammaire,
+		// ou il n'y a rien a faire.
+		Condition: CondNonResolu,
+		Ordre:     OrdreApresLecture,
+		Sites: []Site{{
+			Fichier: pkgReplay + "zone_states_capturer.go",
+			Ancre:   "fb.Declenche(fallback.NomZoneCampDeCaptureDeduitDeLIssue)",
+		}},
+		DatePose:        "2026-09-21",
+		CibleRetrait:    "un critere d'election qui n'exige pas deux rampes abouties — par exemple l'election du POUSSEUR une fois pour le film (les trois zones d'une carte partagent la meme structure de blocs) au lieu d'une election par zone",
+		CritereRetrait:  "0 declenchement sur les films a zones du parc",
+		CompteurBranche: true,
 	},
 	{
 		Nom:       "repli_colline_votes_periode_entiere",

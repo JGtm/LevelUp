@@ -278,9 +278,14 @@ func consumeUnitActiveCamoState(br *Lecteur) {
 // ---------------------------------------------------------------------------
 
 // consumeUnitCrouch: R(1) + dequant R(10).
+//
+// LES DEUX CHAMPS SONT PUBLIES DEPUIS LE LOT 5.3.4 (2026-09-21) : le booleen EST l accroupi a
+// l instant, et le quantum de 10 bits EST la progression de son animation. La consommation de
+// bits est INCHANGEE (cf. `etats_mouvement_hooks.go`).
 func consumeUnitCrouch(br *Lecteur) {
-	br.ReadBit()    // comp+0x7e8
-	br.ReadBits(10) // FUN_1406d84b4 dequant (0xa)
+	flag := br.ReadBit()    // comp+0x7e8
+	prog := br.ReadBits(10) // FUN_1406d84b4 dequant (0xa)
+	br.publishEtatMouvement(EtatAccroupi, bit2u(flag), prog)
 }
 
 // ---------------------------------------------------------------------------

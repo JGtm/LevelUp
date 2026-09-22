@@ -243,6 +243,10 @@ func consumeBipedMobilityAction(br *Lecteur) {
 	if br.obs != nil && br.obs.MobilityActionHook != nil {
 		br.obs.MobilityActionHook(flag1, flag2) // publication seule, aucune largeur ne change
 	}
+	// LA SECONDE PORTE AJOUTE LE SLOT (lot 5.3.6) : un intervalle d etat par VIE l exige, et le
+	// hook historique ne le porte pas. Les deux publient les MEMES deux drapeaux ; aucune
+	// largeur ne change.
+	br.publishEtatMouvement(EtatMobilite, bit2u(flag1), bit2u(flag2))
 	if flag1 {
 		consume1408f0ac4(br, 0) // FUN_1408f0ac4(...,0)
 		if br.p.Grammaire.CorpsActionMobilite {

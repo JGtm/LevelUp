@@ -86,6 +86,11 @@ type FilmInputs struct {
 	// AbilityCharges / AbilityChargeStats sont les charges d'equipement restantes (i56).
 	AbilityCharges     []types.AbilityCharge
 	AbilityChargeStats types.AbilityChargeStats
+	// MovementStates / MovementStateStats sont les ETATS DE MOUVEMENT du Spartan a l instant
+	// (accroupi i29, glissade i62, action de mobilite i54 — lot 5.3.6). Ce sont des LECTURES,
+	// c'est-a-dire des TRANSITIONS : c'est l'assemblage qui les replie en intervalles.
+	MovementStates     []types.MovementStateRead
+	MovementStateStats types.MovementStateStats
 	// ZoomEvents sont les bascules de LUNETTE lues dans la liste d'evenements. Elles entrent ici
 	// BRUTES, et non deja reduites en `Options.Scoped` : c'est `applyTo` qui reconstruit le
 	// palier a l'instant (cf. sa note), pour qu'un fixture n'ait qu'une LISTE a serialiser la ou
@@ -189,6 +194,7 @@ func (in FilmInputs) applyTo(opt *Options) {
 	opt.GrappleReads = in.GrappleReads
 	opt.AbilityImpulses, opt.AbilityImpulseStats = in.AbilityImpulses, in.AbilityImpulseStats
 	opt.AbilityCharges, opt.AbilityChargeStats = in.AbilityCharges, in.AbilityChargeStats
+	opt.MovementStates, opt.MovementStateStats = in.MovementStates, in.MovementStateStats
 	opt.Scoped = buildScopedLookup(in.ZoomEvents,
 		buildLifeSpans(indexBySlot(in.Positions)), zoomHoldUS)
 	opt.Placements, opt.PlacementStats = in.Placements, in.PlacementStats

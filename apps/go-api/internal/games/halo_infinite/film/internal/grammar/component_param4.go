@@ -72,7 +72,7 @@ var paramByComponent = map[string]uint32{
 	compObjectMaximumVitalities:          3,
 	compObjectLowFrequency:               2,
 	compObjectFrameConfiguration:         0,
-	"unit-control-component":             2,
+	compUnitControl:                      2,
 	"unit-malleable-property-component":  4,
 	compObjectParentState:                3,
 	"unit-actor-control-component":       2,

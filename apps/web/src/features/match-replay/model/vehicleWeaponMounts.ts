@@ -32,9 +32,14 @@
  * PAR UN RAPPORT DE RE PEUVENT ENTRER ICI — pas de tag `weap` retrouvé = pas d'entrée, JAMAIS un
  * tag de dégâts `jpt!` réemployé en devinant qu'il coïnciderait. `V3F_TIRS_COVENANT_2026-09-02
  * .md` en documente SEPT (Ghost, Banshee ×2, Chopper, Scorpion, Wasp ×2) plus le Warthog
- * (témoin, un seul, non départagé LAAG/Gauss/Roquettes) ; AUCUN pour le Gungoose, le Shade ou
- * la tourelle LMG posée au sol — ces trois-là restent donc sur le repli centre (comportement
- * d'avant ce fichier), et c'est noté, pas caché.
+ * (témoin, un seul, non départagé LAAG/Gauss/Roquettes).
+ *
+ * DEPUIS LE LOT 5.8.3 (2026-09-21), TROIS AUTRES ENTRENT PAR UNE MESURE DE SPRITE et non par un
+ * rapport de RE — leur TAG, lui, était déjà connu (il sert le SON depuis le 2026-09-04) : le
+ * Wraith (`121b4009`), le Gungoose (`0042678e`) et la tourelle LMG du Falcon (`00015cd3`). La
+ * position vient de l'IMAGE, qui est le repère même où l'ancre se lit (cf. leur bloc). Le SHADE
+ * reste dehors, et pour une autre raison : c'est son TAG qui manque, pas sa position — il garde
+ * donc le repli centre, et c'est noté, pas caché.
  *
  * CLASSE, INDÉPENDANTE DE LA SOURCE DU TAG. `fixe` = solidaire du nez, ne peut viser qu'où le
  * véhicule pointe (Ghost, Banshee, Wasp, Chopper — véhicules MONOPLACES où le pilote EST le
@@ -121,6 +126,61 @@ const CHOPPER_NOSE_TWIN: VehicleWeaponMount = { classe: 'fixe', ax: 0.28, ay: -0
  */
 const SCORPION_TURRET: VehicleWeaponMount = { classe: 'tourelle', ax: 0, ay: -0.05 }
 
+/**
+ * LES TROIS MONTAGES MANQUANTS, MESURÉS SUR LE SPRITE (lot 5.8.3, 2026-09-21).
+ *
+ * POURQUOI ILS MANQUAIENT : aucun rapport de RE ne donne leur position 3D, et l'en-tête de ce
+ * fichier l'écrivait en toutes lettres (« AUCUN pour le Gungoose, le Shade ou la tourelle LMG »).
+ * Depuis 5.2a.5 un montage inconnu ne fait plus perdre la SOURCE, mais l'éclair part du CENTRE du
+ * châssis — pour le Wraith, c'est-à-dire à un mètre et demi derrière la bouche de son mortier.
+ *
+ * LA MESURE EST CELLE DU SPRITE, ET C'EST EXACTEMENT LE BON REPÈRE : `vehicleShotPlacement` lit
+ * `ax`/`ay` en fractions des dimensions PLEINES de l'image (`naturalWidthPx`/`naturalHeightPx`,
+ * origine au centre, nez en haut). Mesurer sur l'image revient donc à mesurer sur ce que le
+ * lecteur voit — il n'y a aucune conversion à croire. Les sprites sont ceux du manifeste du titre
+ * (`static/vehicles-assets/halo_infinite/replay/`, 10 mm/px vérifiés, nez en haut depuis la
+ * correction d'orientation du 2026-09-02) ; la détection est faite sur l'ENCRE du trait
+ * (luminance < 110), l'alpha étant plein sur toute la silhouette.
+ *
+ * LA CLASSE NE SE MESURE PAS, ELLE EST DÉJÀ DÉCIDÉE : `FAMILLES_ARME_FIXE` (5.2a.6, décision
+ * utilisateur du 2026-09-20) range le Wraith et le Gungoose parmi les châssis à arme FIXE — viser,
+ * c'est tourner le véhicule — et le Falcon parmi les châssis à TOURELLE. Leur donner une autre
+ * classe ici ferait dire deux choses au dépôt sur la même famille.
+ */
+
+/**
+ * WRAITH_MORTAR_MUZZLE — MESURÉ sur `wraith.png` (304 × 313, centre 152,0 / 156,5). Le canon du
+ * mortier à plasma est la paire de traits verticaux à x = 148 et 155 (donc un fût centré sur
+ * x ≈ 151,5, soit l'axe du châssis à un demi-pixel près), qui court de y ≈ 96 à y ≈ 135 avant de
+ * rejoindre l'ANNEAU de tourelle (le cercle mesuré à y ≈ 138..182). L'ancre est la BOUCHE, pas le
+ * moyeu : c'est de là que la charge part. `ay = (95 - 156,5) / 313 = -0,196`.
+ */
+const WRAITH_MORTAR_MUZZLE: VehicleWeaponMount = { classe: 'fixe', ax: 0, ay: -0.2 }
+
+/**
+ * GUNGOOSE_NOSE_TWIN — MESURÉ sur `gungoose.png` (78 × 128, centre 39,0 / 64,0). Les canons
+ * jumelés (l'objet `scen` 0x004164ea que le rapport `CONTACT_ARMES_GUNGOOSE_2026-09-02.md` pose
+ * en zone AVANT) sont les deux amas d'encre séparés par un vide en x ∈ [36..41] : fût gauche
+ * x ≈ 34, fût droit x ≈ 43,5, tous deux du haut y ≈ 13 jusqu'à y ≈ 36. L'ancre prend le fût DROIT,
+ * comme le Ghost, la Banshee et le Chopper prennent un seul de leurs jumeaux — une paire dessinée
+ * à son milieu n'aurait plus rien d'une paire. `ax = (43,5 - 39) / 78 = +0,058`,
+ * `ay = (13 - 64) / 128 = -0,398`.
+ */
+const GUNGOOSE_NOSE_TWIN: VehicleWeaponMount = { classe: 'fixe', ax: 0.06, ay: -0.4 }
+
+/**
+ * FALCON_SIDE_LMG — MESURÉ sur `falcon.png` (430 × 390, centre 215,0 / 195,0). Les deux postes
+ * latéraux sont les caissons que l'encre ferme à y = 236 (arrêtes horizontales x 170..194 à gauche
+ * et x 230..256 à droite) et qui descendent jusqu'à y ≈ 255 — de part et d'autre du fuselage, en
+ * arrière du poste de pilotage, exactement là où le Falcon ouvre ses portes. L'ancre prend le
+ * poste DROIT : `ax = (242 - 215) / 430 = +0,063`, `ay = (245 - 195) / 390 = +0,128`.
+ *
+ * `tourelle`, ET C'EST LA DÉCISION DE 5.2a.6 : une mitrailleuse de porte est servie par un
+ * PASSAGER et ne pointe pas où le nez pointe. Depuis 5.5.3 sa décharge prend donc la visée
+ * MESURÉE de son tireur, et la bouffée ronde ne revient qu'à défaut de lecture.
+ */
+const FALCON_SIDE_LMG: VehicleWeaponMount = { classe: 'tourelle', ax: 0.06, ay: 0.13 }
+
 // --- TABLE : `Shot.w` -> montage ----------------------------------------------------------------
 
 /**
@@ -139,14 +199,18 @@ const VEHICLE_WEAPON_MOUNTS: ReadonlyMap<string, VehicleWeaponMount> = new Map([
   [vehicleWeapTag('d3c407ed'), WASP_WING_ROCKETS], // Wasp M2 — documenté, pas observé en direct.
   [vehicleWeapTag('b40e9618'), CHOPPER_NOSE_TWIN], // Chopper — canons jumeaux avant.
   [vehicleWeapTag('00015cfa'), SCORPION_TURRET], // Scorpion — canon principal.
+  // LES TROIS DU LOT 5.8.3, mesurés sur le sprite faute de rapport de RE (cf. leur bloc).
+  [vehicleWeapTag('121b4009'), WRAITH_MORTAR_MUZZLE], // Wraith — mortier à plasma.
+  [vehicleWeapTag('0042678e'), GUNGOOSE_NOSE_TWIN], // Gungoose — mitrailleuses avant.
+  [vehicleWeapTag('00015cd3'), FALCON_SIDE_LMG], // Falcon — tourelle LMG de porte.
 ])
 
 /**
  * vehicleWeaponMountOf — le montage d'un tag d'arme (`Shot.w`), ou `null` : tir à pied, tir
  * d'une arme de JOUEUR tirée depuis un véhicule (un passager qui utilise son arme personnelle —
  * aucun montage à affirmer, cf. en-tête), ou arme de véhicule dont le tag `weap` n'est pas
- * documenté (Gungoose, Shade, tourelle LMG posée au sol). `null` = repli sur le centre du
- * véhicule, le comportement d'avant ce fichier — JAMAIS une position inventée.
+ * documenté (le Shade, dont aucun rapport ne donne le tag `weap`). `null` = repli sur le
+ * centre du véhicule, le comportement d'avant ce fichier — JAMAIS une position inventée.
  */
 export function vehicleWeaponMountOf(tag: string | undefined): VehicleWeaponMount | null {
   if (!tag) return null
@@ -166,8 +230,31 @@ export interface VehicleMountSpriteSize {
 export interface VehicleShotPlacement {
   /** À ajouter au centre déjà projeté du véhicule (`project(world, view)`). */
   offset: XY
-  /** Angle canevas de la décharge, ou `null` (tourelle : visée du tourelleur inconnue). */
+  /** Angle canevas de la décharge, ou `null` (tourelle dont le tireur n'a aucune visée lue). */
   angle: number | null
+}
+
+/**
+ * VehicleShotCaps — LES DEUX CAPS D'UN TIR EN VÉHICULE, et ils ne servent pas à la même chose.
+ *
+ * `chassisDeg` est le cap auquel le SPRITE EST DESSINÉ (`vehicleChassisHeadingAt`) : le montage
+ * est une ancre dans le repère LOCAL du sprite, donc c'est lui, et lui seul, qui place l'éclair.
+ *
+ * `tireurDeg` est la visée MESURÉE de celui qui a tiré (`vehicleShooterAimAt`, apparié par SLOT),
+ * ou `null` quand aucune lecture n'est en vigueur. Il ne sert qu'à ORIENTER la décharge d'une
+ * TOURELLE — là où le châssis ne dit rien, parce que la tourelle tourne indépendamment du corps.
+ * Les deux restent distincts à dessein : confondre le placement et la direction sortirait l'éclair
+ * du châssis qu'il est censé quitter.
+ */
+export interface VehicleShotCaps {
+  chassisDeg: number
+  tireurDeg: number | null
+  /**
+   * CE QUI A TIRÉ (lot 5.8.5) : une arme DE VÉHICULE est solidaire du châssis, donc son cap est un
+   * repli légitime quand le montage manque ; une arme DE JOUEUR tirée d'un siège ne l'est pas —
+   * elle n'accepte que la visée mesurée de son tireur (règle du lot 5.2a.5, qui survit).
+   */
+  arme: 'vehicule' | 'joueur'
 }
 
 /**
@@ -187,26 +274,56 @@ export interface VehicleShotPlacement {
  */
 export function vehicleShotPlacement(
   mount: VehicleWeaponMount | null,
-  headingDeg: number,
+  caps: VehicleShotCaps,
   size: VehicleMountSpriteSize,
   k: number,
   scalePxPerM: number,
 ): VehicleShotPlacement {
   // MONTAGE INCONNU : aucun décalage — l'éclair reste au CENTRE du châssis, la seule position
-  // que le document donne —, mais la DIRECTION du véhicule lui revient (cf. `vehicleShotOrigin`).
-  if (!mount) return { offset: { x: 0, y: 0 }, angle: vehicleAimAngle(headingDeg) }
+  // que le document donne —, mais la DIRECTION lui revient (cf. `vehicleMountAngle`).
+  if (!mount) return { offset: { x: 0, y: 0 }, angle: vehicleSansMontageAngle(caps) }
   const scale = vehicleSpriteScale(size.naturalHeightPx, size.mmPerPx, scalePxPerM) * k
   const localX = mount.ax * size.naturalWidthPx
   const localY = mount.ay * size.naturalHeightPx
-  const screenAngle = vehicleScreenAngle(headingDeg)
+  const screenAngle = vehicleScreenAngle(caps.chassisDeg)
   const cosA = Math.cos(screenAngle)
   const sinA = Math.sin(screenAngle)
   const offset: XY = {
     x: (localX * cosA - localY * sinA) * scale,
     y: (localX * sinA + localY * cosA) * scale,
   }
-  const angle = mount.classe === 'tourelle' ? null : vehicleAimAngle(headingDeg)
-  return { offset, angle }
+  return { offset, angle: vehicleMountAngle(mount, caps) }
+}
+
+/**
+ * vehicleMountAngle — LA DIRECTION D'UNE DÉCHARGE, montage par montage. UN SEUL FOYER pour les
+ * deux appelants (`vehicleShotPlacement` avec le sprite, `vehicleShotOrigin` sans) : la règle y
+ * était écrite DEUX FOIS, et c'est exactement ce qui la ferait re-diverger (CLAUDE.md n° 6).
+ *
+ *   - `fixe` : le cap du CHÂSSIS, inchangé — sur ces familles l'arme ne tourne pas par rapport au
+ *     corps, et depuis 5.2a.6 ce cap EST déjà la visée du conducteur (écart mesuré 0,0 degré).
+ *   - `tourelle` : la visée MESURÉE du tireur quand elle est en vigueur (lot 5.5), sinon `null` —
+ *     le repli d'avant, la bouffée ronde, parce qu'une tourelle ne pointe pas là où le nez pointe.
+ */
+function vehicleMountAngle(mount: VehicleWeaponMount, caps: VehicleShotCaps): number | null {
+  if (mount.classe !== 'tourelle') return vehicleAimAngle(caps.chassisDeg)
+  return caps.tireurDeg === null ? null : vehicleAimAngle(caps.tireurDeg)
+}
+
+/**
+ * vehicleSansMontageAngle — LA DIRECTION QUAND AUCUN MONTAGE N'EST DOCUMENTÉ, et elle dépend de
+ * CE QUI A TIRÉ (lot 5.8.5).
+ *
+ *   - ARME DE VÉHICULE (le Shade, dont le tag `weap` manque) : le cap du CHÂSSIS, inchangé depuis
+ *     5.2a.5 — l'arme est solidaire du corps, c'est la seule direction que le film lui donne.
+ *   - ARME DE JOUEUR tirée d'un siège : la visée MESURÉE de son tireur, et RIEN d'autre. Le cap du
+ *     châssis lui serait une invention (règle du lot 5.2a.5, qui survit entière) ; sans lecture,
+ *     la source n'est pas même créée (`shotFx.vehicleShotSourceOf`), donc ce `null` ne se produit
+ *     qu'en appel direct.
+ */
+function vehicleSansMontageAngle(caps: VehicleShotCaps): number | null {
+  if (caps.arme === 'vehicule') return vehicleAimAngle(caps.chassisDeg)
+  return caps.tireurDeg === null ? null : vehicleAimAngle(caps.tireurDeg)
 }
 
 /**
@@ -216,7 +333,8 @@ export function vehicleShotPlacement(
  * qu'elle appelle.
  *
  * REPLI PAR DÉFAUT (`vehicleShot === null`, l'immense majorité des tirs) : le centre déjà
- * projeté, la direction du REGARD relu dans la trajectoire (`h`, cf. shotFx.ts) — inchangé.
+ * projeté, la direction du REGARD relu dans la trajectoire (`h`, cf. shotFx.ts) — inchangé. C'est
+ * là que retombe encore une arme de JOUEUR tirée d'un siège dont la visée n'est pas lue (5.8.5).
  *
  * TIR EN VÉHICULE AVEC MONTAGE CONNU : la demande utilisateur du 2026-09-03, mot pour mot —
  * « si ça vient du passager, faut que le tir vienne du siège passager qui a une tourelle » —
@@ -231,8 +349,12 @@ export function vehicleShotOrigin(args: {
   h: number | null
   vehicleShot: {
     mount: VehicleWeaponMount | null
+    /** Ce qui a tiré (lot 5.8.5) — cf. `VehicleShotCaps.arme`. */
+    arme: 'vehicule' | 'joueur'
     family: string | undefined
     headingDeg: number
+    /** Visée MESURÉE du tireur (lot 5.5), `null` si aucune lecture en vigueur. */
+    shooterHeadingDeg: number | null
   } | null
   center: XY
   sizeOf: ((family: string) => VehicleMountSpriteSize | null) | undefined
@@ -242,14 +364,18 @@ export function vehicleShotOrigin(args: {
 }): { origin: XY; angle: number | null } {
   const { h, vehicleShot, center, sizeOf, k } = args
   if (!vehicleShot) return { origin: center, angle: h === null ? null : (-h * Math.PI) / 180 }
-  const { mount, family, headingDeg } = vehicleShot
+  const { mount, arme, family, headingDeg, shooterHeadingDeg } = vehicleShot
+  const caps: VehicleShotCaps = { chassisDeg: headingDeg, tireurDeg: shooterHeadingDeg, arme }
   const size = family ? sizeOf?.(family) : null
-  // LA DIRECTION SANS LE SPRITE : une TOURELLE dont on connaît le montage ne dit rien de la
-  // visée de son tourelleur et reste sans direction ; tout le reste — montage fixe, ou montage
-  // INCONNU (2026-09-20) — prend le cap du véhicule.
+  // LA DIRECTION SANS LE SPRITE : même règle qu'avec lui (`vehicleMountAngle`), seul le DÉCALAGE
+  // manque — il exige la taille réelle et ne s'invente pas. Un montage INCONNU (2026-09-20) prend
+  // le cap du véhicule ; une TOURELLE prend la visée de son tireur (lot 5.5) ou rien.
   if (!size) {
-    return { origin: center, angle: mount?.classe === 'tourelle' ? null : vehicleAimAngle(headingDeg) }
+    return {
+      origin: center,
+      angle: mount ? vehicleMountAngle(mount, caps) : vehicleSansMontageAngle(caps),
+    }
   }
-  const { offset, angle } = vehicleShotPlacement(mount, headingDeg, size, k, args.scalePxPerM)
+  const { offset, angle } = vehicleShotPlacement(mount, caps, size, k, args.scalePxPerM)
   return { origin: { x: center.x + offset.x, y: center.y + offset.y }, angle }
 }

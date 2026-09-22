@@ -29,7 +29,7 @@ func Passe(chemin string, w io.Writer) error {
 	}
 	fmt.Fprintf(w, "\n")
 
-	if err := ecrireCalibrations(ex, w); err != nil {
+	if err := Calibrer(ex, w); err != nil {
 		return err
 	}
 	ecrireSignature(ex, w)
@@ -37,7 +37,10 @@ func Passe(chemin string, w io.Writer) error {
 	return nil
 }
 
-func ecrireCalibrations(ex *Executable, w io.Writer) error {
+// Calibrer rejoue la chaine sur les temoins et rend une erreur des qu'un seul rate : c'est LA
+// REGLE DE PUBLICATION, et elle est exportee parce qu'elle vaut pour toute passe, pas seulement
+// pour celle du lot 3.7 (le lot 5.3 interroge d'autres composants de la meme image).
+func Calibrer(ex *Executable, w io.Writer) error {
 	fmt.Fprintf(w, "== CALIBRATION (%d temoins) ==\n", len(Calibrations))
 	rates := 0
 	for _, t := range Calibrations {

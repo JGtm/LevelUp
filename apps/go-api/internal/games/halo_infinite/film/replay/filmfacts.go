@@ -181,6 +181,12 @@ import (
 // les denominateurs de leur balayage. Ils sont LE SIGNAL ECRIT de l origine d une pose de
 // panneau (D13) : sans eux, un golden d assemblage figerait des poses dont l origine vient d un
 // repli alors que la production la LIT.
+// v24 (2026-09-21, lot 5.3.6) : le fixture porte les ETATS DE MOUVEMENT du Spartan
+// (`FilmInputs.MovementStates` et leurs statistiques) — accroupi `i29`, glissade `i62`, action de
+// mobilite `i54`, sous forme de TRANSITIONS datees par vie. Les statistiques voyagent avec la
+// liste, `Absent`, `Scanned` et `MapWidths` compris : sans elles une liste vide ne se distingue
+// pas d un film ou personne ne s accroupit, ni d une marche jouee aux largeurs d une autre carte.
+//
 // v23 (2026-09-18, lot 4.1.3) : LE CODEC CESSE DE PERDRE, ET C EST LE GATE S8 QUI L A MESURE.
 // Trois pertes, toutes sur la voie des OBJETS DU MONDE (armes au sol, socles de power-up), toutes
 // invisibles au fixture et toutes publiees en production :
@@ -213,7 +219,7 @@ import (
 // INCHANGE a l octet, donc les huit fixtures `testdata/inputs_<short8>.bin.gz` restent valides et
 // aucun film n a a etre redecode pour les regenerer. C est [SchemaDesFaits] qui porte le
 // changement (2 -> 3) : lui dit ce que les SECTIONS portent, la magie ce que le BLOB porte.
-const filmFactsMagic = "REPLAYINPUTS23\n"
+const filmFactsMagic = "REPLAYINPUTS25\n"
 
 // ---------------------------------------------------------------------------
 // LES CHAMPS SERIALISES, PAR TYPE — ce sont ceux que l assemblage consomme :

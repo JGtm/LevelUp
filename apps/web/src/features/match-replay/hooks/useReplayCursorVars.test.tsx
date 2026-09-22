@@ -72,6 +72,7 @@ function mount(frame: number) {
       frameRef,
       draw: vi.fn(),
       soundTick: vi.fn(),
+      soundSeek: vi.fn(),
       onEnded: vi.fn(),
       onTransportGesture: vi.fn(),
     }),

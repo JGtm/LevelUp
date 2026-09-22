@@ -22,6 +22,183 @@ func DecodeFrameInfer(buf []byte, w *World, cfg FrameConfig) ([]FrameRecord, int
 	return out, inferred
 }
 
+// --- LE PIED DE TRAME ET LA GARDE D EID DE LA VUE — TROU DE GRAMMAIRE NOMME, NON REFERME
+// --- (lot 5.11.6, 2026-09-21). A LIRE AVANT DE TOUCHER CETTE BOUCLE.
+//
+// # CE QUE L ECRIVAIN FAIT, ET QUE CE PAQUET NE FAIT PAS
+//
+// `FUN_1406cd128` est LA boucle de records, et le frame-processeur `FUN_142987460` l appelle
+// UNE FOIS PAR VUE (trois vues, `vtable[0x40]` ; `FUN_142987460` n ecrit RIEN apres elles —
+// `FUN_1406d07b0` ne recoit pas le lecteur). Sur un record de type DELTA la boucle ne decode un
+// corps QUE si l eid appartient a la table de CETTE vue :
+//
+//	lVar11 = (eid & 0x3fffffff) * 0xa0
+//	if (vue[0x38][lVar11 + 8] == eid && vue[0x38][lVar11 + 2] == (short)type)
+//	      FUN_141f86b58(...)   // le corps
+//	else  uVar14 = 2           // REJET
+//	if (uVar14 != 0) break     // LA VUE S ARRETE, sans avoir lu un seul bit de corps
+//
+// Une vue qui n a rien a rendre ecrit donc, et lit donc, exactement `1 + idLow + 2` bits : un
+// prefixe, un `idLow`, un tag de generation. C EST LA GRAMMAIRE DU PIED DE TRAME.
+//
+// # CE QUE LE TROU COUTE, MESURE SUR `dad793c7` (lot 5.11.6)
+//
+// Ce paquet-ci ne porte PAS la garde — `DecodeFrameRecords` la porte depuis le lot 2.3
+// (`frame_records.go`, `GenerationMatches`), cette boucle NON, et c est elle que
+// `DecodeFrameViews` emprunte, donc toutes les marches du chantier. Sur un slot non lie elle
+// appelle l inference d archetype au lieu de s arreter : l inference « trouve » un archetype
+// pour l en-tete de la vue SUIVANTE et decode un corps qui n existe pas. Le dernier record rendu
+// de chaque paquet de `dad793c7` etait ainsi un `ti=6` a masque vide, FABRIQUE a partir de zeros
+// lus AU-DELA de la fin du payload.
+//
+//	la marche consomme 57 bits de PLUS que le paquet n en porte, sur 95,7 % des paquets
+//	le pied vaut un mot de 32 bits, CONSTANT sur 5 197 des 5 221 paquets (99,54 %)
+//	les 24 paquets qui s en ecartent sont les 23 paquets a liste d evenements... et le paquet
+//	  du DECOLLAGE du saut, seul du film a porter le mot dominant modifie de deux bits
+//
+// # POURQUOI LA GARDE N EST PAS PORTEE ICI, ET CE QU IL FAUDRAIT POUR LA PORTER
+//
+// Le monde hors ligne ne porte PAS les trois tables de vues du jeu : `World` est une seule table
+// slot -> archetype, reconstruite du film, et l inference d archetype existe pour rattraper les
+// liaisons que les images-cles eparses ne donnent pas (lot 5.3.3-b). Deux transcriptions ont ete
+// ESSAYEES ET MESUREES, et les deux perdent :
+//
+//	`GenerationMatches` pose ici comme dans `DecodeFrameRecords` : l A/B du mode strict coute
+//	  12 248 records `ti=35` sur `bfecd02b` (97 343 -> 85 095) et ne referme pas le debordement,
+//	  parce que la liaison du slot fautif vient d une image-cle (`BindWildcard`, `GenAny`) qui
+//	  neutralise le test.
+//	le rejet d un corps qui DEPASSE la fin du payload : `replay-equiv -films bcb6d393` rend
+//	  `movementStates` 1 364 -> 1 254, une PERTE de 110 transitions.
+//
+// CE QU IL FAUT EST LE MODELE MANQUANT, ET IL EST NOMME : les TROIS TABLES D ENTITES PAR VUE
+// (`param_1 + 0x228` donne trois objets de vue, chacun avec sa table `vue + 0x38`). Une entite
+// appartient a UNE vue et une seule ; tant que le monde hors ligne n a qu une table, aucune
+// transcription de la garde ne distingue « eid etranger a cette vue » de « slot non encore lie ».
+// Le gate du trou est `TestMouvement5116Gate` : bits non lus par paquet dans [0 ; 7].
+// --- fin de la note ---------------------------------------------------------------------------
+// --- CE QUE LE LOT 5.15 A TROUVE SUR CETTE GARDE, ET IL FAUT LE LIRE AVANT DE S Y FIER
+// --- (2026-09-22, `.ai/V7.5/film_re/NOTE_5_15_RANG_1_FILM_DENSE_2026-09-22.md` §3)
+//
+// `FUN_1406cd128` porte DEUX grammaires, separees par le global `DAT_14474cd78` (`1406cd24d`) :
+//
+//	branche A (`== 0`) : garde `vue[0x38]` pas de 0xa0, eid ET type, puis `FUN_141f86b58` ;
+//	                    REJET et sortie de boucle sur slot inconnu. C EST CELLE QUE CE FICHIER
+//	                    TRANSCRIT (ci-dessous et [World.VuePossede]).
+//	branche B (`!= 0`) : dispatcheur `FUN_1406cbaa0`, dont le PROLOGUE AGRANDIT `vue[0x38]`
+//	                    (`FUN_1411b3c84(vue+0x38, max(0x1fff, slot+1))`, entrees construites par
+//	                    `FUN_1408f15c8`) : AUCUN rejet sur slot inconnu. Sa garde de delta porte
+//	                    sur la table de datums du DECODEUR PARTAGE (`*(vue+0x20) + 0x20`, pas de
+//	                    200, eid ENTIER), d ou vient aussi l ARCHETYPE, et que `FUN_1408f1314`
+//	                    -> `FUN_1408f1618` alimente A CHAQUE record NEW.
+//
+// `DAT_14474cd78` VAUT 1 DANS L IMAGE, et le seul ecrivain de 0 est `FUN_1428e24bc`, qui
+// l abaisse le temps d un ALLER-RETOUR D ETAT (table pre-remplie depuis une liste de reference)
+// puis le restaure. **LA BRANCHE DU FILM EST DONC B, ET CETTE GARDE-CI TRANSCRIT A.**
+//
+// MESURE (lot 5.15.1, `bfecd02b`) : la vue B sort sur ce rejet 23 452 fois contre 400
+// terminateurs, et 21 988 des 22 112 rejets lisibles portent sur un slot que le monde hors ligne
+// n a JAMAIS lie — ZERO sur un slot lie dans une autre vue. Desarmer la garde ne ferme que
+// 30 paquets sur 22 112 : sans archetype le corps ne se lit pas. Le port correct demande donc la
+// table de datums par slot, pas un changement de garde — c est le report 5.15.3 (D1 du 5.15).
+// --- fin de la note du lot 5.15 ---------------------------------------------------------------
+// --- CE QUE LE LOT 5.16 A PORTE, ET LE « MODELE MANQUANT » CI-DESSUS EST DONC CADUC
+// --- (2026-09-22, `.ai/V7.5/film_re/NOTE_5_16_MODELE_RANG_1_2026-09-22.md`)
+//
+// LE MODELE N ETAIT PAS « LES TROIS TABLES D ENTITES PAR VUE ». La garde vive de
+// `FUN_1406cbaa0` (cas DELTA) porte sur la TABLE DE DATUMS du decodeur PARTAGE — une seule
+// table, indexee par l eid ENTIER : `*(uint *)(slot * 200 + *(*(vue+0x20) + 0x20)) != eid` rend
+// le code 2 ou 3, ZERO bit lu, et la boucle sort ; l archetype se lit en `+0x04`.
+//
+// ET SA SOURCE EST L IMAGE-CLE, qui en est le DUMP : `FUN_142f2e174` (slot `0x10` de la vtable de
+// vue) rend un mot par entite vivante, `FUN_142f2c658` serialise chaque mot selon son genre, et
+// le genre 3 (`FUN_142f30610`) ecrit `FUN_142f2c754(writer, 3, eid, archetype)` avec
+// `archetype = *(int *)(*(vue[0x20] + 0x120) + 4 + slot * 0x18)`. Le monde hors ligne la lit
+// desormais : [TableDeDatums] / [LierTableDeDatums] (`keyframe_datums.go`), et `rejetDeVue`
+// ci-dessous porte les DEUX gardes, chacune COMPTEE.
+//
+// MESURE DU PORT : `dad793c7` paquets a reste NUL 5 341 -> 5 354 sur 5 365 (les douze paquets de
+// 96 bits du temoin D5 du 5.15 ferment 12/12) ; `bfecd02b` 2 884/30 387 INCHANGE, 0 debordement
+// de plus, `ti=35` 129 572 et 4 desyncs constants. Le residu de `bfecd02b` n est PAS un trou de
+// modele : 526 des 632 slots rejetes ne sont declares par aucune source lue et couvrent presque
+// uniformement les treize bits alors que la table du film plafonne vers le slot 1 345 — ce sont
+// des lectures prises a une position FAUSSE. Sa cause NOMMEE est le decalage du masque
+// (`FUN_14076cb60` teste `i - decales`, ce paquet teste `i` brut ; D1 du §4 du lot 5.16).
+// --- fin de la note du lot 5.16 ---------------------------------------------------------------
+// rejetDeVue rend la sortie de la boucle de records de la vue B sur un DELTA, et depuis le lot
+// 5.16.4 elle porte la garde de la BRANCHE VIVE en premier, le repli de vue ensuite — chacun
+// COMPTE, parce que les deux ne disent pas la meme chose.
+//
+//	garde VIVE (`FUN_1406cbaa0`, cas DELTA) : `*(uint *)(slot * 200 + t) != eid` sur la table
+//	  de datums du DECODEUR PARTAGE. Un slot absent de cette table ne rend AUCUN bit de corps,
+//	  et la boucle sort (code 2 ou 3). Hors ligne, « absent de la table » = slot non lie — la
+//	  table de datums de l image-cle est justement ce que `keyframe_datums.go` y verse.
+//	repli de VUE (`FUN_1406cd128`, branche 0 : `vue[0x38]`, pas de 0xa0, eid ET type) : un
+//	  delta dont le slot appartient a une AUTRE vue. Le jeu n emprunte cette branche que pour
+//	  l aller-retour d etat de `FUN_1428e24bc`, et le 5.15.1 (d) a mesure ZERO cas sur 22 112
+//	  rejets lisibles de `bfecd02b`. On le garde, COMPTE, parce qu un zero mesure vaut mieux
+//	  qu une branche supprimee sur une seule paire de films.
+//
+// L appelant remet le curseur a la fin de l EN-TETE et clot la vue — l en-tete, lui, EST ecrit,
+// et c est ce que la vue suivante lira comme son propre en-tete de rejet.
+// LE REPLI DU LOT 5.23 S INTERCALE ICI, ET NULLE PART AILLEURS (2026-09-22). Avant de compter un
+// rejet hors datum, la table anticipee du film est consultee : si une image-cle ULTERIEURE
+// declare cet eid avec son archetype, l entite est liee PAR ANTICIPATION et son corps est lu.
+// Le record de naissance n est toujours pas lu — c est un REPLI, il est NOMME et COMPTE
+// ([Observation.LiaisonsParAnticipation]). Sans table installee, rien ne change d un bit.
+//
+// `id` est l eid COMPLET et non le slot : la cle que `FUN_1406caad8` compare porte les deux bits
+// de tete, et 638 des 23 325 en-tetes rejetes de `bfecd02b` presentent une tete qu AUCUNE
+// image-cle du film n emploie — ceux-la ne doivent pas etre lies.
+func rejetDeVue(typ int, id uint32, w *World, cfg FrameConfig) bool {
+	if typ != recDelta || !cfg.Profil.Grammaire.TablesParVue {
+		return false
+	}
+	slot := id & 0x3fffffff
+	if _, lie := w.ArchetypeForSlot(slot); !lie {
+		ti, anticipe := w.LierParAnticipation(id)
+		if !anticipe {
+			cfg.Obs.compterRejetHorsDatum()
+			return true
+		}
+		cfg.Obs.compterLiaisonParAnticipation(ti)
+	}
+	if !w.VuePossede(slot) {
+		cfg.Obs.compterRejetDeVue()
+		return true
+	}
+	return false
+}
+
+// corpsDeRecordNeuf traverse le corps d un record NEW, tente la reparation de chaine, et LIE
+// l entite a la vue en cours. Rend `true` quand le record a DESYNCHRONISE (l appelant cale).
+//
+// SORTIE DE `decodeInferLoop` PAR DEPLACEMENT PUR (lot 5.11.7) : la boucle avait atteint son
+// plafond de longueur en recevant la garde de vue, et `plafondsParFichier` est datee et fermee.
+// Aucune ligne de logique n a change.
+func corpsDeRecordNeuf(br *Lecteur, buf []byte, w *World, cfg FrameConfig,
+	rec *FrameRecord) (desync bool) {
+	bodyStart := br.BitPos()
+	rec.Trace = TraverseEntity(br, w.Reg, cfg.NewDefaultStateBits)
+	rec.TypeIndex, rec.DesyncAt = rec.Trace.TypeIndex, rec.Trace.DesyncAt
+	repaired := false
+	if rec.DesyncAt != -1 && cfg.Profil.Grammaire.InferenceChaine && inferRepair {
+		if t, end, ok := repairUnportedComponent(
+			buf, bodyStart, recNew, rec.Slot, rec.Trace, w, cfg); ok {
+			rec.Trace, rec.TypeIndex, rec.DesyncAt, repaired = t, t.TypeIndex, -1, true
+			br.SetBitPos(end)
+		}
+	}
+	switch {
+	case rec.DesyncAt != -1:
+		return true
+	case repaired:
+		w.BindSoft(rec.ID, rec.TypeIndex)
+	default:
+		w.BindFull(rec.ID, rec.TypeIndex)
+	}
+	return false
+}
+
 // decodeInferLoop is the core of DecodeFrameInfer operating on a SUPPLIED Lecteur,
 // so several replication "views" of one packet (frame-processor FUN_142987460 = a
 // leading config bit then 3 view record-loops) can be decoded in sequence sharing one
@@ -69,29 +246,19 @@ func decodeInferLoop(br *Lecteur, buf []byte, w *World, cfg FrameConfig) ([]Fram
 		}
 		id := readRecordID(br, cfg.IDLowBits, cfg.IDBase)
 		slot := id & 0x3fffffff
+		finEntete := br.BitPos()
 		rec := FrameRecord{Type: typ, ID: id, Slot: slot, DesyncAt: -1}
+		if rejetDeVue(typ, id, w, cfg) {
+			br.SetBitPos(finEntete)
+			return out, inferred, true
+		}
 		switch typ {
 		case recNew:
-			bodyStart := br.BitPos()
-			rec.Trace = TraverseEntity(br, w.Reg, cfg.NewDefaultStateBits)
-			rec.TypeIndex, rec.DesyncAt = rec.Trace.TypeIndex, rec.Trace.DesyncAt
-			repaired := false
-			if rec.DesyncAt != -1 && cfg.Profil.Grammaire.InferenceChaine && inferRepair {
-				if t, end, ok := repairUnportedComponent(buf, bodyStart, recNew, slot, rec.Trace, w, cfg); ok {
-					rec.Trace, rec.TypeIndex, rec.DesyncAt, repaired = t, t.TypeIndex, -1, true
-					br.SetBitPos(end)
-				}
-			}
-			switch {
-			case rec.DesyncAt != -1:
+			if corpsDeRecordNeuf(br, buf, w, cfg, &rec) {
 				if stall(startPos, rec) {
 					return out, inferred, false
 				}
 				continue
-			case repaired:
-				w.BindSoft(id, rec.TypeIndex)
-			default:
-				w.BindFull(id, rec.TypeIndex)
 			}
 		case recDel:
 			br.Skip(32)

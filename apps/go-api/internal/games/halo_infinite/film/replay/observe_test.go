@@ -43,7 +43,11 @@ import (
 // fonctions qu'ils declarent — descendre dans tout le paquet ramasserait des `observe` et des
 // `Scan*` d'autres chemins (recherche, calques) et le compte cesserait de vouloir dire quelque
 // chose.
-var fichiersDuBalayage = []string{"build_from_film.go", "film_scan.go"}
+// `film_scan_mouvement.go` EST ENTRE DANS LA LISTE LE 2026-09-21 (lot 5.3.6) : `film_scan.go`
+// atteignait 504 lignes et `balayerEtatsDeMouvement` en est sortie par DEPLACEMENT PUR. Le garde
+// suit l etage de balayage, pas un nom de fichier — l oublier ici aurait rendu l etape invisible
+// a la liste, c est-a-dire au harnais d equivalence.
+var fichiersDuBalayage = []string{"build_from_film.go", "film_scan.go", "film_scan_mouvement.go"}
 
 // racineDuBalayage : la fonction par laquelle l'etage commence.
 const racineDuBalayage = "scanFilmInputs"

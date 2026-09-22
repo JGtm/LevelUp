@@ -1,9 +1,9 @@
 # EMPREINTE DE FORME DU DOCUMENT DE REJEU — fige par document_shape_test.go.
 # Ne s'edite JAMAIS a la main : regeneration decrite en tete de ce test.
-schema 64
-empreinte-stockee 8d8c588f07e7e9fe
-empreinte-servie 8d8c588f07e7e9fe
-empreinte-cuite 09b866553ec8007f
+schema 68
+empreinte-stockee 0030535963711419
+empreinte-servie 0030535963711419
+empreinte-cuite 8fa3e3de3052db39
 empreinte-cuite-regle 2
 
 AbilityCharge
@@ -193,6 +193,7 @@ Coverage
   Seats json:"seats,omitempty" *SeatCoverage
   Shots json:"shots" LayerCoverage
   SkullCarries json:"skullCarries,omitempty" *SkullCarriesCoverage
+  Stances json:"stances,omitempty" *StanceCoverage
   T0Film json:"t0Film,omitempty" *T0FilmCoverage
   Teams json:"teams,omitempty" *TeamCoverage
   Tracks json:"tracks,omitempty" *TrackCoverage
@@ -708,6 +709,7 @@ ReplayDocument
   ScoreTimeline json:"scoreTimeline,omitempty" *ScoreTimeline
   Shots json:"shots,omitempty" []Shot
   SkullCarries json:"skullCarries,omitempty" []SkullCarry
+  Stances json:"stances,omitempty" []Stance
   Structure json:"structure,omitempty" []Surface
   StructureBounds json:"structureBounds,omitempty" *Bounds
   T0FilmMs json:"t0FilmMs,omitempty" *int64
@@ -792,6 +794,26 @@ SkullCarry
   T0 json:"t0" int
   T1 json:"t1" int
   XUID json:"xuid" string
+Stance
+  Kind json:"kind" string
+  Slot json:"slot" uint32
+  T0 json:"t0" int
+  T1 json:"t1" int
+StanceCoverage
+  Absent json:"absent,omitempty" bool
+  ByKind json:"byKind,omitempty" map[string]int
+  Desyncs json:"desyncs" int
+  Dropped json:"dropped,omitempty" int
+  EventPacketsUnlocated json:"eventPacketsUnlocated,omitempty" int
+  Intervals json:"intervals" int
+  JumpEpisodes json:"jumpEpisodes,omitempty" int
+  JumpsDerived json:"jumpsDerived,omitempty" int
+  Lives json:"lives" int
+  MapWidths json:"mapWidths,omitempty" [3]uint
+  Reads json:"reads" int
+  Records json:"records" int
+  Scanned json:"scanned" bool
+  TracksTotal json:"tracksTotal" int
 Surface
   Poly json:"poly,omitempty" [][2]float32
   X0 json:"x0" float32
@@ -892,10 +914,9 @@ VehicleCoverage
   NoPosition json:"noPosition" int
   Published json:"published" int
   Rides json:"rides" int
-  RidesFromEvent json:"ridesFromEvent" int
-  RidesFromGap json:"ridesFromGap" int
-  RidesMixed json:"ridesMixed" int
   RidesNamed json:"ridesNamed" int
+  RidesProximity json:"ridesProximity" int
+  RidesRead json:"ridesRead" int
   RidesWithAim json:"ridesWithAim" int
   RidesWithSeat json:"ridesWithSeat" int
   Samples json:"samples" int

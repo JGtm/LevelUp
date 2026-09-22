@@ -292,4 +292,39 @@ var registreFilmdec = []Repli{
 		CompteurBranche: false,
 		CibleComptage:   comptageParFilmContext,
 	},
+	{
+		Nom:       "repli_controle_corruption_section_absente",
+		Fait:      "le CONTROLE DE CORRUPTION PAR COMPOSANT — le bit de `chunk_00 + 0x0CB45C` qui decide si chaque composant present d un corps est suivi d un R(1) de garde et, si ce bit vaut 1, d un R(32) sentinelle 0x0bcddcba",
+		Mecanisme: "le film ne porte PAS de section d identification, donc pas ce bit : la grammaire garde son invariant (faux — la valeur du singleton du jeu a la construction, `FUN_140eff23c`)",
+		Condition: CondSectionAbsente,
+		// APRES LECTURE, et l ordre est le fait : [ReadFilmIdentity] TOURNE d abord et rend
+		// [ErrNoFilmIdentity] — c est son echec, pas une decision prise avant elle, qui ouvre ce
+		// repli (D14 (b) : lire d abord, se replier ensuite).
+		Ordre: OrdreApresLecture,
+		Sites: []Site{{
+			Fichier: pkgFilmdec + "profil_balayage.go",
+			Ancre:   "func grammaireSousFilm(g GrammaireBalayage, p profile.Profile) (GrammaireBalayage, bool) {",
+		}, {
+			Fichier: pkgFilmdec + "controle_corruption_du_film.go",
+			Ancre:   "func (c *FilmContext) ControleDeCorruptionRepli() bool {",
+		}, {
+			Fichier: pkgKillsource + "decode.go",
+			Ancre:   "if !c.calib.ControleDeCorruptionLu {",
+		}},
+		DatePose: "2026-09-22",
+		// POSE PAR LE LOT 5.18.2, QUI TRANSFORME UN DEFAUT MUET EN LECTURE. Jusque-la
+		// `GrammaireBalayage.ControleDeCorruption` etait faux par defaut et n avait d ecrivain
+		// qu un instrument : le decodeur ne lisait PAS ce que le film declare. Il le lit
+		// desormais, et ce repli nomme le seul cas ou le film ne declare rien.
+		//
+		// LA POPULATION EST CONNUE ET BORNEE : les 5 films du cache sans section
+		// d identification (`03af54c3`, `13b00e35`, `47d20b5d`, `50247b26`, `a349fea8`, format
+		// 20), que la production met DEJA de cote ([profile.ErrUnknownBuild]). Sur les 1 605
+		// autres, le bit est LU et vaut zero — l invariant conserve est donc, pour ces cinq-la,
+		// la valeur que tout le parc declare.
+		CibleRetrait:    "lot qui donnera un profil aux films de format 20 (section d identification absente) : le bit se lira alors a une position derivee de la version de format plutot que de l ancre de la chaine de build",
+		CritereRetrait:  "0 film cuit sans declaration de ce bit ; les cinq films de format 20 portent leur position au profil",
+		CompteurBranche: false,
+		CibleComptage:   comptageParFilmContext,
+	},
 }

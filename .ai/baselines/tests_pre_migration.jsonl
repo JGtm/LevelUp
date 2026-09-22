@@ -60483,7 +60483,6 @@
 {"Time":"2026-09-05T23:46:39.255846+02:00","Action":"pass","Package":"levelup/go-api/internal/games/halo_infinite/film/replay","Test":"TestVehicleLifeNamedByEventNearest/entre_deux_fenetres,_plus_pres_de_la_premiere","Elapsed":0}
 {"Time":"2026-09-05T23:46:39.255846+02:00","Action":"pass","Package":"levelup/go-api/internal/games/halo_infinite/film/replay","Test":"TestVehicleLifeNamedByEventNearest/entre_deux_fenetres,_plus_pres_de_la_seconde","Elapsed":0}
 {"Time":"2026-09-05T23:46:39.255846+02:00","Action":"pass","Package":"levelup/go-api/internal/games/halo_infinite/film/replay","Test":"TestVehicleLifeNamedByEventNearest","Elapsed":0}
-{"Time":"2026-09-05T23:46:39.255846+02:00","Action":"pass","Package":"levelup/go-api/internal/games/halo_infinite/film/replay","Test":"TestVehicleEpisodeSeatFromExit","Elapsed":0}
 {"Time":"2026-09-05T23:46:39.255846+02:00","Action":"pass","Package":"levelup/go-api/internal/games/halo_infinite/film/replay","Test":"TestMergeVehicleEventsOrder","Elapsed":0}
 {"Time":"2026-09-05T23:46:39.255846+02:00","Action":"pass","Package":"levelup/go-api/internal/games/halo_infinite/film/replay","Test":"TestVehicleEpisodeCoversGap","Elapsed":0}
 {"Time":"2026-09-05T23:46:39.255846+02:00","Action":"pass","Package":"levelup/go-api/internal/games/halo_infinite/film/replay","Test":"TestVehicleRideFromEpisodeAnchors/ancre_de_debut_sous_le_rayon","Elapsed":0}

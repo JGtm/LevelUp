@@ -1208,8 +1208,63 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   cette montée PUBLIE une lecture existante. `layers` est inchangé, le blob d'entrées est
 	//   inchangé à l'octet, aucune recuisson n'est requise pour les autres calques.
 	//   Détail, seuil mesuré et forme écartée : `document_chronicle.go`.
-	if SchemaVersion != 64 {
-		t.Fatalf("SchemaVersion = %d, attendu 64 : incrémenter exige une raison écrite ci-dessus "+
+	// - v65 (post-chantier lot 5.3.6, 2026-09-21, décision utilisateur) : LES ÉTATS DE
+	//   MOUVEMENT. `stances[]` publie un INTERVALLE par (vie, genre) — `crouch`, `slide`,
+	//   `mobility` — et les types `Stance`/`StanceCoverage` naissent avec lui : la FORME change.
+	//   MONTENT AUSSI, à la différence de la v64 : `grammar.Rev`, `facts.Rev` et le blob
+	//   d'entrées (`REPLAYINPUTS24`) — la couche rend une valeur de PLUS, qui transite par les
+	//   faits. Sprint RÉFUTÉ, saut NON PROUVÉ (lot 5.3.5). Détail : `document_chronicle.go`.
+	// - v66 (post-chantier lots 5.9.4 et 5.9.5, 2026-09-21, décision utilisateur) : LE SPRINT,
+	//   LU — ET LE SAUT, PUBLIÉ ET DIT DÉRIVÉ. `stances[].kind` gagne DEUX valeurs et
+	//   `coverage.stances` deux compteurs (`jumpEpisodes`, `jumpsDerived`) : la FORME change.
+	//   LES DEUX GENRES NE SONT PAS DE MÊME NATURE, et leurs noms le disent. `sprint` est LU :
+	//   `i57` porte l'INDEX DE LA FENTE DE CAPACITÉ ACTIVE, et l'image nomme les trois fentes —
+	//   `FUN_1407e9ce4` aiguille sur le groupe de tag et appelle un désenregistreur qui teste
+	//   l'index actif contre SA fente ('saev' esquive → 0, 'sasp' SPRINT → 1, 'sagh' grappin
+	//   → 2). `jumpDerived` est CALCULÉ : l'intégrale de la vitesse verticale d'`i1`, reconnue à
+	//   sa HAUTEUR (0,85 m ± 10 %, pic mesuré sur deux films au lot 5.7.5) ; son nom porte le
+	//   mot « derived » pour qu'un client ne puisse pas le confondre avec une lecture.
+	//   CE QUI VALIDE LA LECTURE DE L'INDEX EST LE GRAPPIN, pas le sprint : sur `4f77afc1` la
+	//   vitesse au sol pendant les intervalles de la fente 2 atteint 5,84 m/s au p90 contre
+	//   2,88 hors — la traction. La vitesse du sprint, elle, ne peut pas trancher, et le dépôt
+	//   l'avait déjà mesuré (lot 5.3.5 : un seul mode dans la distribution au sol).
+	//   MONTENT AUSSI : `grammar.Rev` et `facts.Rev` — la couche rend des transitions de plus.
+	//   Détail : `document_chronicle.go`.
+	// - v67 (post-chantier lot 5.10, 2026-09-21, arbitrage utilisateur) : L'OCCUPATION D'UN
+	//   VÉHICULE EST LUE. `rides[].src` passe de trois valeurs à DEUX — `film` (le film ÉCRIT la
+	//   montée à bord, `object-parent-state` i10) et `proximity` (REPLI par le trou de position)
+	//   — et `coverage.vehicles` échange `ridesFromEvent`/`ridesMixed`/`ridesFromGap` contre
+	//   `ridesRead`/`ridesProximity` : la FORME change, et le SENS du champ aussi. La question
+	//   du lecteur n'est plus « à quelle milliseconde près ? » mais « est-ce lu, ou déduit ? ».
+	//   LA LECTURE PRIME : un épisode de proximité n'est publié que s'il ne contredit aucune
+	//   lecture de la même vie (ni chevauchement, ni occupant que le film n'a pas nommé pour
+	//   cette vie). C'est ce qui fait disparaître l'occupant FAUX du Razorback `776/1` de
+	//   `4f77afc1`, nommé par le verdict Theater de l'utilisateur du 2026-09-19.
+	//   CE QUI NE MONTE PAS : les révisions de décodage (elles ont monté au commit précédent du
+	//   lot, avec la lecture d'`i10`), `layers`, et la fin de vie `despawn` — REFUSÉE, ses trois
+	//   canaux ayant été mesurés et écartés (lot 5.10.4). Détail : `document_chronicle.go`.
+	// - v68 (post-chantier lot 5.22.4, 2026-09-22, verdict Theater de l'utilisateur) :
+	//   L'ACTION DE MOBILITÉ EST NOMMÉE. `stances[].kind` `mobility` devient `clamber` —
+	//   l'ESCALADE. Le bit publié est le MÊME (le drapeau d'amorce d'`i54`), la marche est la
+	//   même, le nombre d'intervalles est le même ; ce qui change est que le document DIT le
+	//   geste au lieu de nommer le composant. LA FORME CHANGE QUAND MÊME, et c'est la raison de
+	//   la montée : une valeur d'enum publié est de la forme, et `stanceAt` (web) IGNORE un
+	//   genre inconnu — un artefact cuit avant cette montée afficherait des escalades
+	//   muettes chez un client neuf, et l'inverse.
+	//   CE QUI TRANCHE N'EST PAS UNE CHAÎNE DU BINAIRE : le lot 5.13.2 avait mesuré qu'aucune
+	//   des dix chaînes `mobility` du binaire n'étiquette les valeurs d'`i54`, et s'était arrêté
+	//   là. L'oracle est venu de l'écran — l'utilisateur a confronté dans Theater des
+	//   intervalles que ce genre publie sur `bfecd02b` : neuf escalades de rebord, 9/9, aucun
+	//   contre-exemple. Le vocabulaire du jeu corrobore (`_action_hoist`, `_action_vault`,
+	//   `_action_climb_attach` ; `CharacterPhysicsModeClambering`).
+	//   PAS DE GENRE `jump` LU : le lot 5.22 l'a cherché sur une vie répliquée à chaque tick et
+	//   l'ensemble des champs qui basculent au décollage est VIDE, sur les 68 vies de
+	//   `bfecd02b` comme sur les 238 de `4f77afc1`. `jumpDerived` reste le seul genre du saut.
+	//   CE QUI NE MONTE PAS : `facts.Rev` (`killsource` ne lit aucun état de mouvement) et
+	//   `layers`. `grammar.Rev` a monté, la couche écrivant l'étiquette de genre.
+	//   Détail : `document_chronicle.go`.
+	if SchemaVersion != 68 {
+		t.Fatalf("SchemaVersion = %d, attendu 68 : incrémenter exige une raison écrite ci-dessus "+
 			"(un champ optionnel de plus n'en est pas une)", SchemaVersion)
 	}
 }

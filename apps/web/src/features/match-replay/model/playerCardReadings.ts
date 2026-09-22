@@ -21,6 +21,7 @@ import { activeEquipmentAt } from './equipmentFx'
 import { NO_ZONES, zonePresenceAt, type ZonePresence, type ZoneScene } from './equipmentZones'
 import { equippedWeapons, type EquippedReading } from './equippedLogic'
 import { objectiveMarkAt, type ObjectiveMarkKind } from './objectiveMark'
+import { stanceAt, type StanceKind } from './stanceLogic'
 import { lastTeleportAge, type TranslocationMoment } from './placementTeleport'
 import { playerCardFx, type CardFx } from './playerCardFx'
 import type { ReplayText } from '../i18n/i18nContract'
@@ -72,6 +73,15 @@ export interface PlayerCardReadings {
   filmIndex: number | null
   zones: ZonePresence
   objective: ObjectiveMarkKind | null
+  /**
+   * L'ÉTAT DE MOUVEMENT à cette image (schéma 68) : `jumpDerived`, `clamber`, `slide`,
+   * `sprint` ou `crouch`, le plus SPÉCIFIQUE quand deux se recouvrent (le saut passe devant : il dure moins
+   * d'une demi-seconde et dit un geste, là où une posture dit un état tenu).
+   * `null` = aucun intervalle publié ne couvre l'image —
+   * ce n'est PAS « debout et immobile », et un artefact antérieur au schéma 65 n'en a aucun.
+   * Une fiche MORTE n'en porte jamais : les intervalles se ferment à la mort au plus tard.
+   */
+  stance: StanceKind | null
   fx: CardFx
 }
 
@@ -123,6 +133,10 @@ export function playerCardReadings({
   // Comme pour l'équipement et les zones, une fiche morte n'en porte aucun : un mort a lâché
   // ce qu'il tenait, et la tuile ne dit plus que la mort.
   const objective = state.alive ? objectiveMarkAt(doc, player.xuid, frame) : null
+  // L'ÉTAT DE MOUVEMENT de la vie courante : même chaîne slot -> fiche que l'équipement actif.
+  // Une fiche morte n'en porte aucun — un mort ne s'accroupit pas, et la tuile ne dit plus que
+  // la mort.
+  const stance = state.alive && state.life ? stanceAt(doc, state.life.slot, frame) : null
   const teleportAge = state.alive && state.life
     ? lastTeleportAge(fxScene.teleports, state.life.slot, frame)
     : -1
@@ -140,5 +154,5 @@ export function playerCardReadings({
     objective,
     text: t,
   })
-  return { live, state, name, equipped, filmIndex, zones, objective, fx }
+  return { live, state, name, equipped, filmIndex, zones, objective, stance, fx }
 }

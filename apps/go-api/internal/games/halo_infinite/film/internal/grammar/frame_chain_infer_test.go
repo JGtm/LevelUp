@@ -52,10 +52,20 @@ var emptyCfg = FrameConfig{HasExtraFields: false, IDLowBits: 11,
 // withChain joue `f` avec l inference de chaine levee SUR LE CADRE des tests de ce fichier.
 // Depuis le lot 2.3 c est une bascule du PROFIL, plus une variable de paquet — mais elle vit
 // dans le cadre partage par ces tests, qui sont sequentiels.
+// ELLE ABAISSE AUSSI `TablesParVue` (lot 5.11.7), ET C EST LE POINT : la garde de table de vue
+// SUPERSEDE l inference de chaine sur son propre terrain. Un delta sur slot non lie n est pas un
+// record a deviner — chez l ecrivain, l entree de la vue porte `eid = 0`, donc la vue s arrete
+// (`FUN_1406cd128`). Les tests de CE fichier couvrent le mecanisme d inference lui-meme, qui
+// reste joignable ; ils doivent donc le mettre dans l etat ou il travaille.
 func withChain(on bool, f func()) {
-	prev := emptyCfg.Profil.Grammaire.InferenceChaine
+	prevChaine := emptyCfg.Profil.Grammaire.InferenceChaine
+	prevVues := emptyCfg.Profil.Grammaire.TablesParVue
 	emptyCfg.Profil.Grammaire.InferenceChaine = on
-	defer func() { emptyCfg.Profil.Grammaire.InferenceChaine = prev }()
+	emptyCfg.Profil.Grammaire.TablesParVue = false
+	defer func() {
+		emptyCfg.Profil.Grammaire.InferenceChaine = prevChaine
+		emptyCfg.Profil.Grammaire.TablesParVue = prevVues
+	}()
 	f()
 }
 

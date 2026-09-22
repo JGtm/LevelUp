@@ -27,6 +27,7 @@ import type { ReplayVehicleAim, ReplayVehicleRide } from '@/lib/api/types'
 import { lastIndexAt } from '../../../lib/replay/replayLogic'
 import type { ReplayVehicleTrackReady } from '../../../lib/replay/replayNormalize'
 import {
+  vehicleActiveRides,
   vehicleAimAngle,
   vehicleDriverAt,
   vehicleHeadingAt,
@@ -90,6 +91,50 @@ export function vehicleRideAimReading(
     if (a.h !== undefined) return a
   }
   return null
+}
+
+/**
+ * vehicleShooterAimAt — LA VISÉE DU TIREUR D'UN TIR EN VÉHICULE, en degrés monde, ou `null`.
+ *
+ * ## Pourquoi ce n'est PAS une histoire de siège (lot 5.5, 2026-09-21)
+ *
+ * Un tir de TOURELLE (Warthog, Scorpion) partait sans aucune direction : le film ne publie pas
+ * l'orientation de la tourelle, et le lot 5.5.1 l'a établi par DEUX négatifs mesurés — les
+ * composants `ti=40 i41`/`i42` (`vehicle-seats-override-pitch`/`-yaw`) sont une API de SCRIPT
+ * (une paire d'angles en degrés posée par le moteur de mission, pas une valeur par tick) et
+ * AUCUN record ne les déclare : 0 sur 253 863 records de véhicule, deux films, alors que le même
+ * recensement voit des composants présents à UN SEUL record. Même négatif pour la visée de la
+ * tourelle AUTOMATIQUE (`i31`) et pour l'`i21` du véhicule lui-même.
+ *
+ * LA SEULE DIRECTION MESURÉE QUI RESTE EST CELLE DU TIREUR, et le document la publie déjà : la
+ * visée de CHAQUE occupant voyage pendant tout son épisode (schéma 31, justesse 0,2-0,5 degré).
+ *
+ * ## L'APPARIEMENT SE FAIT PAR SLOT, ET C'EST CE QUI REND LA RÈGLE JUSTE
+ *
+ * Un tir porte le slot de son TIREUR (`Shot.slot`, celui qui alimente déjà `heldReading`) et un
+ * épisode d'occupation porte le slot de son OCCUPANT (`ReplayVehicleRide.slot`). Les apparier
+ * rend l'épisode de CELUI QUI A TIRÉ — donc sa visée — sans jamais supposer quel siège sert quelle
+ * arme. C'est indispensable : le tourelleur du Warthog est un passager, alors que le canon du
+ * Scorpion est servi par le CONDUCTEUR ; et la mesure a montré que le champ `seat` ne départage
+ * pas (sur les 100 tirs de tourelle de `4f77afc1`, l'épisode du tireur se déclare `seat = 0`
+ * 84 fois et muet 16 fois — le SIÈGE n'est pas fiable, le SLOT l'est).
+ *
+ * MESURE (documents cuits, aucun décodage) : sur les 100 tirs de tourelle de `4f77afc1`,
+ * l'épisode du tireur est trouvé **100 fois sur 100** et porte une visée EN VIGUEUR **95 fois**.
+ * Son écart au cap auquel le châssis est dessiné vaut **43,5 degrés en médiane** (q75 105,1 ;
+ * q90 146,7) : ce n'est pas un raffinement, c'est la direction que le rendu ignorait.
+ */
+export function vehicleShooterAimAt(
+  track: ReplayVehicleTrackReady,
+  shooterSlot: number,
+  frame: number,
+): number | null {
+  // `vehicleActiveRides` PLUTÔT QU'UN FILTRE À LA MAIN : le prédicat « cet épisode couvre-t-il
+  // cette image » vit là-bas et nulle part ailleurs (CLAUDE.md n° 6) — le recopier ici en ferait
+  // une troisième orthographe de la même borne.
+  const sien = vehicleActiveRides(track, frame).find((r) => r.slot === shooterSlot)
+  if (!sien) return null
+  return vehicleRideAimReading(sien, frame)?.h ?? null
 }
 
 /**

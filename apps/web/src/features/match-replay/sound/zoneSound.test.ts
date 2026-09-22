@@ -22,6 +22,26 @@ function doc(zoneStates: unknown[]): ReplayDocumentReady {
   return { frameIntervalMs: 100, zoneStates } as unknown as ReplayDocumentReady
 }
 
+/**
+ * Le même document, PLUS l'horloge de score du jeu (lot 5.8.6) : `scoreTimeline.teams[].total`
+ * est l'escalier cumulatif d'un camp, ses `t` sont des FRAMES.
+ */
+function docAvecScore(
+  zoneStates: unknown[],
+  teams: { teamId: number; total: { t: number; v: number }[] }[],
+): ReplayDocumentReady {
+  return {
+    frameIntervalMs: 100,
+    zoneStates,
+    scoreTimeline: { teams },
+  } as unknown as ReplayDocumentReady
+}
+
+/** Trois zones tenues par le même camp de `t0` à `t1` : une DOMINATION. */
+function domination(t0: number, t1: number, owner: number) {
+  return [{ spans: [span(t0, t1, owner)] }, { spans: [span(t0, t1, owner)] }, { spans: [span(t0, t1, owner)] }]
+}
+
 /** Une zone tenue par `owner` de `t0` à `t1`. */
 function span(t0: number, t1: number, owner: number | null, active = false) {
   return { t0, t1, owner, active }
@@ -221,6 +241,77 @@ describe('tic de score — un par seconde tant qu un camp tient TOUTES les zones
     // 0 à 30 frames à 100 ms = 3 s : les tics de 0, 1000, 2000 et 3000 ms.
     expect(evs.map((e) => e.ms)).toEqual([0, ZONE_TICK_PERIOD_MS, 2000, 3000])
     expect(new Set(evs.map((e) => e.stem))).toEqual(new Set([ZONE_SOUND_STEMS.tick.ally]))
+  })
+
+  /**
+   * LOT 5.8.6 (a) — L'INSTANT DU TIC VIENT DE L'HORLOGE DE SCORE DU JEU, PAS D'UNE CADENCE.
+   *
+   * Le tic était ancré sur le DÉBUT de la domination et battait la seconde : un tic de score qui
+   * ne tombe pas sur un point est un tic qui mentait — le jeu ne marque pas toutes les secondes,
+   * et la cadence dépend de la variante. `scoreTimeline.teams[].total` la porte.
+   */
+  it('l horloge de score du jeu donne les instants : un tic par MARCHE du camp qui domine', () => {
+    const d = docAvecScore(domination(0, 100, 1), [
+      // Escalier cumulatif : la marche est une montée de `v`, son `t` est une FRAME.
+      { teamId: 1, total: [{ t: 0, v: 0 }, { t: 25, v: 1 }, { t: 63, v: 2 }, { t: 90, v: 3 }] },
+    ])
+    const evs = zoneSoundEvents(d, 1)
+    // 2 500 / 6 300 / 9 000 ms : les trois marches, et RIEN entre elles.
+    expect(evs.map((e) => e.ms)).toEqual([2_500, 6_300, 9_000])
+    expect(new Set(evs.map((e) => e.stem))).toEqual(new Set([ZONE_SOUND_STEMS.tick.ally]))
+  })
+
+  it('le premier point d une série à zéro n est pas une marche : il décrit l état initial', () => {
+    const d = docAvecScore(domination(0, 100, 1), [
+      { teamId: 1, total: [{ t: 0, v: 0 }, { t: 50, v: 1 }] },
+    ])
+    expect(zoneSoundEvents(d, 1).map((e) => e.ms)).toEqual([5_000])
+  })
+
+  it('un point marqué HORS domination ne sonne pas : la fenêtre est celle de la domination', () => {
+    const d = docAvecScore(domination(0, 50, 1), [
+      { teamId: 1, total: [{ t: 20, v: 1 }, { t: 80, v: 2 }] },
+    ])
+    // La domination s'arrête à la frame 50 (5 000 ms) : la seconde marche est dehors.
+    expect(zoneSoundEvents(d, 1).map((e) => e.ms)).toEqual([2_000])
+  })
+
+  it('une série SANS marche dans la fenêtre est une RÉPONSE : aucun tic, et aucun repli', () => {
+    const d = docAvecScore(domination(0, 100, 1), [
+      { teamId: 1, total: [{ t: 500, v: 1 }] },
+    ])
+    // Le camp dominait et n'a rien marqué : inventer une cadence le contredirait.
+    expect(zoneSoundEvents(d, 1)).toEqual([])
+  })
+
+  it('le calque de score qui ne couvre PAS ce camp laisse le repli synthétique répondre', () => {
+    const d = docAvecScore(domination(0, 30, 1), [
+      { teamId: 0, total: [{ t: 10, v: 1 }] },
+    ])
+    expect(zoneSoundEvents(d, 1).map((e) => e.ms)).toEqual([0, 1000, 2000, 3000])
+  })
+
+  /**
+   * LOT 5.8.6 (a) — LE PLAFOND DUR NE TRONQUE PLUS LA FIN DE L'INTERVALLE.
+   *
+   * La boucle s'arrêtait au 180e tic : au-delà de trois minutes de domination continue, le son se
+   * TAISAIT jusqu'à la fin — précisément quand la domination devient l'information la plus utile.
+   */
+  it('une domination plus longue que le budget ÉTIRE ses tics au lieu de s arrêter', () => {
+    // 6 000 frames à 100 ms = 600 s. L'ancien plafond s'arrêtait à 180 s.
+    const evs = zoneSoundEvents(doc(domination(0, 6_000, 1)), 1)
+    expect(evs.length).toBeLessThanOrEqual(181)
+    // LE DERNIER TIC ATTEINT LA FIN : c'est tout le défaut corrigé (il tombait à 179 000 ms).
+    expect(evs[evs.length - 1].ms).toBeGreaterThan(590_000)
+    // Et la cadence est régulière : l'écart entre deux tics vaut la période dérivée.
+    expect(evs[1].ms - evs[0].ms).toBeCloseTo(600_000 / 180, 6)
+  })
+
+  it('sous le budget, la période reste EXACTEMENT la seconde demandée (rendu inchangé)', () => {
+    const evs = zoneSoundEvents(doc(domination(0, 300, 1)), 1)
+    expect(evs.map((e) => e.ms)).toEqual(
+      Array.from({ length: 31 }, (_, i) => i * ZONE_TICK_PERIOD_MS),
+    )
   })
 
   it('une seule zone au camp adverse suffit à faire taire les tics', () => {

@@ -382,8 +382,13 @@ function drawPadIcon(
  * candidat à lui passer : le sommet du LOSANGE. Un compte à rebours ne s'écrit que sur un socle
  * vide, et un socle vide n'a pas de vignette — ancrer plus haut ferait flotter le chiffre
  * au-dessus d'un trou, détaché du socle qu'il annonce.
+ *
+ * EXPORTÉE DEPUIS LE LOT 5.8 : les EMPLACEMENTS DE NAISSANCE DE VÉHICULE (schéma 63) écrivent le
+ * même compte à rebours au-dessus du même losange (`vehicleCyclesLayer.ts`). Une seconde copie de
+ * ces dix lignes aurait fait diverger la police, l'écart et l'épaisseur du contour entre deux
+ * marques que le lecteur voit côte à côte sur la même carte (CLAUDE.md n°6).
  */
-function drawCountdown(
+export function drawCountdown(
   ctx: CanvasRenderingContext2D,
   c: XY,
   topY: number,

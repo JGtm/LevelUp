@@ -171,6 +171,14 @@ type Observation struct {
 	// ou l'un d'eux en gagnerait une.
 	ProbeHook func(ti uint32, comp ProbeComponent, values []uint64)
 
+	// (depuis `etats_mouvement_hooks.go`)
+	// EtatMouvementHook, si non nil, recoit les valeurs des QUATRE composants d etat de
+	// mouvement du bipede — i29 accroupi, i62 glissade, i55 posture, la tete d i18. La FORME de
+	// la tranche est documentee par composant dans `etats_mouvement_hooks.go` ; elle est FIXE
+	// par composant, les champs absents valant zero derriere leur porte. Aucun bit n est lu
+	// autrement : ces quatre deserialiseurs lisaient deja ces champs et les jetaient.
+	EtatMouvementHook func(comp EtatMouvementComposant, slot uint32, values []uint64)
+
 	// (depuis `default_state.go`)
 	// MppHook, si non nil, reçoit chaque lecture d'un champ du bloc. `present` est faux quand la
 	// porte s'est fermée sans transmettre de valeur — une porte fermée n'est pas une valeur nulle.
@@ -274,6 +282,28 @@ type Observation struct {
 	ChaineImmediat, ChaineProfond, ChaineAmbigu, ChaineAucun, ChaineBudget int
 	// ResyncValides compte les reprises par resynchronisation validee (diagnostic).
 	ResyncValides int
+	// RejetsHorsDatum et RejetsDeVue ventilent les deux SORTIES par rejet de la boucle de
+	// records de la vue B, et elles ne portent pas la meme grammaire (lot 5.16.4) :
+	//
+	//	RejetsHorsDatum : la GARDE VIVE — le slot n est dans AUCUNE table de datums connue,
+	//	                  c est-a-dire `*(uint *)(slot * 200 + t) != eid` dans
+	//	                  `FUN_1406cbaa0` (cas DELTA, code 2 ou 3, zero bit lu) ;
+	//	RejetsDeVue     : le REPLI — le slot est connu, mais une AUTRE vue le possede. C est
+	//	                  la garde de la branche 0 de `FUN_1406cd128` (`vue[0x38]`), celle que
+	//	                  le jeu n emprunte que pour l aller-retour d etat de `FUN_1428e24bc`.
+	//	                  Le 5.15.1 (d) l a mesuree a ZERO cas sur 22 112 rejets lisibles de
+	//	                  `bfecd02b` ; le compteur existe pour que ce zero soit VU et non
+	//	                  suppose.
+	RejetsHorsDatum, RejetsDeVue int
+	// LiaisonsParAnticipation compte, PAR ARCHETYPE, les liaisons que le REPLI du lot 5.23 a
+	// posees au point de rejet : l eid n etait dans aucune table de datums connue, mais une
+	// image-cle ULTERIEURE le declare (cf. [World.LierParAnticipation]). Chacune est un rejet
+	// hors datum EVITE — les deux compteurs se lisent ensemble, et leur somme est le nombre de
+	// deltas que le monde hors ligne ne savait pas cadrer.
+	//
+	// C EST UN COMPTEUR D OBSERVATION, PAS UN CHAMP DU CONTRAT : `Observation` n est jamais
+	// publie, `replay.SchemaVersion` ne bouge pas, et la forme des faits persistes non plus.
+	LiaisonsParAnticipation map[uint32]int
 	// IndexAbsolus : histogramme des index de plage rencontres sur les chemins ABSOLUS de i0
 	// (7ter.54 axe 3). Purement observationnel — incremente sur l axe 0 de chaque lecture, ne
 	// change AUCUNE consommation de bits. C est la mesure qui dit si l index dominant est 0
@@ -312,31 +342,100 @@ func NouvelleObservation() *Observation {
 	return &Observation{CompWidths: map[string]map[int]int{}}
 }
 
-// neutraliserCaptures met a nil les DEUX crochets de capture (position, reference d unite) et
-// rend leur restauration.
+// neutraliserCaptures met a nil les TROIS crochets de capture (position, reference d unite, etats
+// de mouvement) et rend leur restauration.
 //
-// POURQUOI CES DEUX-LA, ET POURQUOI TEMPORAIREMENT. Les chemins d INFERENCE essaient une lecture
-// sur des bits qu ils abandonneront peut-etre ; une lecture speculative n est pas une lecture, et
-// sans cette neutralisation les tentatives abandonnees deposeraient des echantillons a des
-// positions que la traversee retenue ne lit jamais. Les COMPTEURS, eux, restent partages : c est
-// le meme observateur, seuls deux champs sont eteints.
+// POURQUOI, ET POURQUOI TEMPORAIREMENT. Les chemins d INFERENCE essaient une lecture sur des bits
+// qu ils abandonneront peut-etre ; UNE LECTURE SPECULATIVE N EST PAS UNE LECTURE, et sans cette
+// neutralisation les tentatives abandonnees deposeraient des echantillons a des positions que la
+// traversee retenue ne lit jamais. Les COMPTEURS, eux, restent partages : c est le meme
+// observateur, seuls les crochets de lecture sont eteints.
+//
+// LE TROISIEME A ETE AJOUTE LE 2026-09-21 (lot 5.7.4), ET SON ABSENCE ETAIT UN DEFAUT MESURE :
+// la porte des etats de mouvement, posee au lot 5.3.4, ne s etait jamais inscrite ici. Elle
+// publiait donc les essais d alignement, dans un rapport de 14 a 152 pour UN selon le composant
+// (`i29` 9 134 lectures publiees pour 60 records retenus sur `bfecd02b`). Cf. la note 5.3
+// § 5.7.2.c.
 func (o *Observation) neutraliserCaptures() func() {
 	if o == nil {
 		return func() {}
 	}
 	pos, ref := o.PosCaptureHook, o.UnitRefHook
 	o.PosCaptureHook, o.UnitRefHook = nil, nil
-	return func() { o.PosCaptureHook, o.UnitRefHook = pos, ref }
+	restaureEtats := o.neutraliserEtatsDeMouvement()
+	return func() {
+		o.PosCaptureHook, o.UnitRefHook = pos, ref
+		restaureEtats()
+	}
 }
 
-// neutraliserCapturePosition met a nil le seul crochet de position et rend sa restauration.
+// neutraliserCapturePosition met a nil le crochet de position ET la porte des etats de mouvement,
+// et rend leur restauration. Elle laisse vivre la reference d unite, que les marches profondes
+// comptent — c est la SEULE difference avec [Observation.neutraliserCaptures].
 func (o *Observation) neutraliserCapturePosition() func() {
 	if o == nil {
 		return func() {}
 	}
 	pos := o.PosCaptureHook
 	o.PosCaptureHook = nil
-	return func() { o.PosCaptureHook = pos }
+	restaureEtats := o.neutraliserEtatsDeMouvement()
+	return func() {
+		o.PosCaptureHook = pos
+		restaureEtats()
+	}
+}
+
+// neutraliserEtatsDeMouvement eteint la porte des ETATS DE MOUVEMENT et rend sa restauration.
+// C EST LA PORTE UNIQUE, ET ELLE SE POSE DANS LA MARCHE, JAMAIS PAR CALQUE.
+//
+// Tous les chemins speculatifs de la marche passent par elle : les deux neutralisations
+// ci-dessus l appellent, et le LOCALISATEUR de paquet (`marchLocateStrict`, `marchLocateFallback`,
+// `marchLocate`) l appelle directement — c est le seul chemin speculatif du depot qui ne
+// declarait RIEN, et il pesait a lui seul 2 359 a 6 358 lectures fantomes par film.
+//
+// POURQUOI UNE PORTE ET PAS UN FILTRE AVAL. Un filtre par calque devrait redecouvrir, apres coup,
+// quel alignement la marche a retenu — c est-a-dire refaire le travail de la marche, et diverger
+// d elle des qu elle change. Ici c est la marche elle-meme qui dit « cette lecture est un essai ».
+//
+// CE QUI N EST PAS ETEINT, ET C EST ASSUME : `MobilityActionHook`, la porte HISTORIQUE d `i54`
+// (celle qui ne porte pas le slot) reste vivante pendant les essais. Elle alimente les balayages
+// de capacite, dont les sorties sont figees par leurs propres references ; l inscrire ici
+// deplacerait ces calques-la sans qu aucune mesure ne l ait demande. Consigne au § 4 du plan.
+func (o *Observation) neutraliserEtatsDeMouvement() func() {
+	if o == nil {
+		return func() {}
+	}
+	etats := o.EtatMouvementHook
+	o.EtatMouvementHook = nil
+	return func() { o.EtatMouvementHook = etats }
+}
+
+// compterRejetHorsDatum compte une sortie de la vue B par la GARDE VIVE : le slot n est dans
+// aucune table de datums connue (cf. [Observation.RejetsHorsDatum]).
+func (o *Observation) compterRejetHorsDatum() {
+	if o != nil {
+		o.RejetsHorsDatum++
+	}
+}
+
+// compterRejetDeVue compte une sortie de la vue B par le REPLI de garde de table de vue
+// (cf. [Observation.RejetsDeVue]).
+func (o *Observation) compterRejetDeVue() {
+	if o != nil {
+		o.RejetsDeVue++
+	}
+}
+
+// compterLiaisonParAnticipation compte une liaison posee par le repli du lot 5.23, par archetype
+// (cf. [Observation.LiaisonsParAnticipation]).
+func (o *Observation) compterLiaisonParAnticipation(ti uint32) {
+	if o == nil {
+		return
+	}
+	if o.LiaisonsParAnticipation == nil {
+		o.LiaisonsParAnticipation = map[uint32]int{}
+	}
+	o.LiaisonsParAnticipation[ti]++
 }
 
 // compterResyncValide compte une reprise par resynchronisation validee (diagnostic).

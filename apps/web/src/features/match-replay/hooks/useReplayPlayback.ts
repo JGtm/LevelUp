@@ -159,6 +159,11 @@ export interface ReplayPlaybackOptions {
   /** Le battement du son : l'instant courant du rejeu, en ms (cf. useReplaySound.tick). */
   soundTick: (ms: number) => void
   /**
+   * LE DÉPLACEMENT du son : pose le curseur sonore à cet instant SANS rien jouer
+   * (cf. `useReplaySound.seek`). Servi par le GLISSÉ de frise, et par lui seul — cf. `onScrub`.
+   */
+  soundSeek: (ms: number) => void
+  /**
    * L'ARRIVÉE EN FIN DE MATCH : appelé quand la lecture FRANCHIT la borne de fin, jamais quand
    * elle y était déjà (cf. l'en-tête). Le son de fin de partie s'y branche.
    */
@@ -229,7 +234,7 @@ export interface ReplayPlayback {
 
 export function useReplayPlayback(o: ReplayPlaybackOptions): ReplayPlayback {
   const { doc, playWindow, baseFps, speed, renderWidth, frameRef, draw, openAtFrame } = o
-  const { soundTick, onEnded, onTransportGesture, onPlayingChange } = o
+  const { soundTick, soundSeek, onEnded, onTransportGesture, onPlayingChange } = o
   // POSÉ VRAI DÈS QUE `openAtFrame` A ÉTÉ APPLIQUÉ (voir l'effet plus bas) : empêche le
   // cadrage au coup d'envoi (juste en dessous) d'écraser un lien tactique déjà positionné si
   // la fenêtre de gameplay arrive PLUS TARD (Match View asynchrone) sur un instant antérieur
@@ -355,12 +360,27 @@ export function useReplayPlayback(o: ReplayPlaybackOptions): ReplayPlayback {
     return () => cancelAnimationFrame(raf)
   }, [playing, baseFps, speed, doc, renderWidth, draw, soundTick, onEnded, endFrame, frameRef, writeCursor])
 
+  /**
+   * onScrub — LE GLISSÉ DE LA FRISE, et depuis le lot 5.8.7 il PRÉVIENT LE SON.
+   *
+   * CE QU'IL NE FAISAIT PAS, ET CE QUE ÇA COÛTAIT. Il ne touchait pas au curseur sonore, resté à
+   * l'instant d'AVANT le geste. Le battement suivant (reprise de lecture) voyait alors un écart
+   * dont la seule amplitude décidait : sous la seconde, tout ce que le glissé avait enjambé
+   * partait EN RAFALE ; au-delà, un recalage silencieux. Deux comportements pour un même geste,
+   * dont un mur de bruit — et un glissé émet des dizaines d'événements de champ.
+   *
+   * IL APPELLE `soundSeek`, PAS `soundTick`, ET C'EST LA RÈGLE : un déplacement pose le curseur
+   * sans rien jouer, quelle que soit son amplitude — on n'a pas écouté ce qu'on a enjambé.
+   * `seekTo`, lui, garde son `soundTick` à dessein : un pas d'image ou un saut vers un repère est
+   * une LECTURE qui atterrit, et entendre ce qui se joue à l'arrivée est ce qu'on attend.
+   */
   const onScrub = (e: ChangeEvent<HTMLInputElement>) => {
     frameRef.current = Number(e.currentTarget.value)
     // LE REMPLISSAGE SUIT LE GLISSÉ : le champ porte déjà sa valeur (c'est lui qui l'émet),
     // mais `--played` ne se met à jour pour personne — sans cet appel, la piste resterait
     // remplie jusqu'à la position d'AVANT le geste.
     writeCursor(frameRef.current)
+    soundSeek(frameToMs(frameRef.current, doc))
     if (!playing) draw()
   }
 

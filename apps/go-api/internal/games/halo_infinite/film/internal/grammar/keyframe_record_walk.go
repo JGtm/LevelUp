@@ -1,58 +1,86 @@
 package grammar
 
-// keyframe_record_walk.go — LE WALKER DETERMINISTE DE LA TABLE D'IMAGE-CLE : parser le
-// corps des records au lieu de balayer leurs en-tetes.
+// keyframe_record_walk.go - LA MARCHE DETERMINISTE DE LA TABLE D'IMAGE-CLE : suivre l'ecrivain
+// d'un record au suivant, sans balayeur ni fenetre.
 //
-// CE QUE CE FICHIER ATTAQUE. Deux lots mesures le 2026-08-17 (R3 `ti=37`, R4 `ti=11`) ont
-// conclu au meme manque : « le deserialiseur du corps d'un record d'image-cle n'est resolu
-// nulle part ». La lecture du code du jeu (journal RE, `WALK_PORT_NOTES.md` section
-// « IMAGE-CLE ») a montre l'inverse de ce qui etait suppose : les DEUX lecteurs de record
-// NEW du jeu (`FUN_141f86704` bufferise, `FUN_1408f1aa4` direct) portent la MEME grammaire,
-// et c'est celle que `TraverseEntity` porte deja ; le chemin DELTA appelle la MEME boucle de
-// composants (`FUN_14076cb60`). Il n'existe pas de variante « image-cle » du corps.
+// CE QUE LE JEU LIT, PAR ADRESSE (lot 5.20.1, Ghidra lecture seule). Le bloc de type 2 d'un
+// film n'est PAS consomme par le repartiteur de paquets (`FUN_1428e22c0` ne connait que neuf
+// types et le 2 n'en est pas) : il passe par la seconde voie a en-tete de 16 octets,
+// `FUN_1428e2a04` -> `FUN_1428e2a9c`, qui charge le payload puis appelle
 //
-// CE QUI RESTAIT SUSPECT, ET C'EST L'ORACLE. `WalkKeyframeWorld` ne PARSE pas : il BALAIE
-// (`kfScanNext`) et n'accepte une ancre QUE si le mot de 32 bits a `q+32` vaut moins de 50
-// (`keyframe_world.go:70`), c'est-a-dire seulement si les 26 bits de `field` de l'en-tete
-// `[id:32][field:26][ti:6]` sont TOUS NULS. Un record dont le `field` n'est pas nul est donc
-// SAUTE, et le « record suivant » que le balayeur rend n'est alors pas le voisin mais le
-// voisin du voisin. Une marche juste atterrirait dans ce cas TROP TOT d'exactement une
-// longueur de record — ce qui est le sens, l'ordre de grandeur et la recurrence de l'ecart
-// mesure par R3 (557 a 1 104 bits, les memes valeurs d'un film a l'autre).
+//	FUN_142e2bfd0(lecteur, tableau)   LE LECTEUR D'IMAGE-CLE
 //
-// CE QUE CE FICHIER FAIT. Il lit l'en-tete de 64 bits SANS ce filtre, puis rejoue le lecteur
-// de record NEW de PRODUCTION (`TraverseEntity`) sur le corps, et enchaine. Il ne recopie
-// AUCUN deserialiseur : c'est le meme code que partout ailleurs, positionne autrement.
+// dont la boucle remplit un tableau d'entrees de 200 octets, UNE PAR ENTITE VIVANTE :
 //
-// HORS LIGNE — jamais depuis un chemin de requete.
+//	[si version > 7] R(1)                 une seule fois, en tete de payload
+//	                                      (`DAT_144706104`, le selecteur de filigrane)
+//	par entite :
+//	  R(32) -> entree+0x00                l'identifiant (`eid`)
+//	  R(32) -> entree+0x04                L'ARCHETYPE, MOT PLEIN DE 32 BITS
+//	  R(32) -> entree+0x0c
+//	  R(4)  -> entree+0x08                (`FUN_142e29cf8`)
+//	  R(8)  -> entree+0x09                = 108 bits d'en-tete par entite
+//	  si archetype != 0xffffffff :
+//	     R(32) n1 ; si n1 > 0 : vtable[0x60] (l'etat par defaut) [+ R(32) de controle si le
+//	                drapeau film est mis]
+//	     R(32) n2 ; si n2 > 0 : vtable[0x88] (aucun bit) puis `FUN_1428e2b68` ->
+//	                `FUN_142e2c690`, la boucle des 64 entrees NOMMEES du registre, SANS
+//	                masque de presence, chacune au niveau lu en `entree + 0x100`
+//
+// Ce corps est deja porte par `WalkKeyframeFullState` (`keyframe_fullstate_loop.go`, lot 1.4) :
+// la marche ci-dessous ne recopie donc AUCUN deserialiseur, elle l'enchaine.
+//
+// CE QUE CETTE LECTURE CORRIGE, ET C'EST LA CAUSE DE L'ARRET SUR « en-tete-invalide ». Le
+// depot modelisait l'en-tete `[id:32][field:26][ti:6]` et lisait le corps par `TraverseEntity`,
+// c'est-a-dire par le cadre du record NEW du chemin DELTA (`R(6)` d'archetype, etat par defaut,
+// PORTE, MASQUE de presence). L'image-cle n'a ni porte ni masque, et son en-tete fait 108 bits,
+// pas 64 : la marche repartait 44 bits trop tot, au milieu du premier corps, et le deuxieme
+// en-tete n'etait jamais valide. Le « champ de 26 bits de semantique non etablie » n'existe pas
+// non plus : les 32 bits a `q+32` SONT l'archetype (`FUN_142e2bfd0` s'en sert tel quel pour
+// indexer `DAT_144e61d88 + 8 + ti*8`), et un mot >= 50 y ferait deriver le jeu sur un
+// descripteur hors table. L'hypothese H1 du lot R5 - « le balayeur saute les records dont
+// `Field26` n'est pas nul » - est donc REFUTEE PAR L'ECRIVAIN : de tels records n'existent pas.
+// La seule valeur hors table admise est `0xffffffff`, qui dit « pas d'archetype » et clot
+// l'entree a ses 108 bits d'en-tete.
+//
+// HORS LIGNE - jamais depuis un chemin de requete.
 
-// keyframeHeaderBits est la largeur de l'en-tete d'un record de la table d'image-cle :
-// `[id:32][field:26][ti:6]`. Le corps commence donc a `BitStart + 64`, et les 6 bits de
-// `typeIndex` par lesquels `TraverseEntity` commence sont a `BitStart + 58`.
+// keyframeHeaderBits est la largeur des DEUX MOTS QUI IDENTIFIENT un record d'image-cle :
+// `[eid:32][archetype:32]`. Ce n'est pas la fin de l'en-tete - le corps commence a
+// `BitStart + profile.KeyframeEnTeteBits` (108) - mais c'est tout ce qu'il faut lire pour
+// decider si une position porte un record, et c'est la fenetre que `kfValidAnchor` teste.
 const keyframeHeaderBits = 64
 
 // keyframePrefixBits est le prefixe de 1 bit en tete du payload d'image-cle, avant le
-// premier record (meme valeur que `WalkKeyframeWorld`, qui demarre a `pos = 1`).
+// premier record : `FUN_142e2bfd0` le lit dans `DAT_144706104` quand la version du film
+// depasse 7 (meme valeur que `WalkKeyframeWorld`, qui demarre a `pos = 1`).
 const keyframePrefixBits = 1
 
-// KeyframeHeader est l'en-tete de 64 bits d'un record de la table d'image-cle, lu SANS le
-// filtre fort du balayeur : `Field26` est rendu tel quel au lieu d'etre exige nul.
+// keyframeArchetypeNone est le mot d'archetype qui dit « pas d'archetype » :
+// `FUN_142e2bfd0` saute alors les deux mots de taille et tout le corps (`if (puVar12[1] !=
+// 0xffffffff)`), et l'entree s'arrete a ses 108 bits d'en-tete.
+const keyframeArchetypeNone = 0xFFFFFFFF
+
+// KeyframeHeader porte les deux mots de 32 bits qui identifient un record de la table
+// d'image-cle.
 type KeyframeHeader struct {
 	// Slot et Gen identifient l'entite (`id = gen<<30 | slot`).
 	Slot, Gen int
-	// TI est le typeIndex de l'archetype, lu sur les 6 bits de queue de l'en-tete.
+	// TI est le typeIndex de l'archetype, valide seulement quand `Archetype` est sous le cap
+	// objet du jeu (50) ; -1 quand l'entree ne porte pas d'archetype.
 	TI int
-	// Field26 porte les 26 bits centraux, dont la semantique n'est PAS etablie (cf. journal
-	// RE, section « ce qui reste NON resolu »). Le balayeur du depot exige qu'ils soient
-	// nuls ; ce lecteur les MESURE.
-	Field26 uint32
+	// Archetype est le MOT PLEIN de 32 bits lu a `q+32` : `FUN_142e2bfd0` l'utilise tel quel
+	// pour indexer la table des descripteurs. `keyframeArchetypeNone` = pas d'archetype.
+	Archetype uint32
 }
 
-// readKeyframeHeader lit l'en-tete de 64 bits a la position bit q. `ok` est faux si
+// SansArchetype dit que l'entree ne porte aucun corps : ni etat par defaut, ni composants.
+func (h KeyframeHeader) SansArchetype() bool { return h.Archetype == keyframeArchetypeNone }
+
+// readKeyframeHeader lit les deux mots identifiants a la position bit q. `ok` est faux si
 // l'en-tete deborde du payload, si l'identifiant est la sentinelle, si la generation est
-// nulle (handle null), si le slot sort de la table ou si le typeIndex depasse le cap objet
-// du jeu (50). AUCUNE contrainte sur `Field26` — c'est toute la difference avec
-// `kfValidAnchor`.
+// nulle (handle null), si le slot sort de la table, ou si le mot d'archetype n'est ni un
+// index sous le cap objet du jeu (50) ni `keyframeArchetypeNone`.
 func readKeyframeHeader(pay []byte, q, total int) (h KeyframeHeader, ok bool) {
 	if q < 0 || q+keyframeHeaderBits > total {
 		return h, false
@@ -69,9 +97,13 @@ func readKeyframeHeader(pay []byte, q, total int) (h KeyframeHeader, ok bool) {
 	if h.Slot >= kfTableCap {
 		return h, false
 	}
-	h.Field26 = uint32(kfReadBits(pay, q+32, 26))
-	h.TI = int(kfReadBits(pay, q+58, 6))
-	return h, h.TI < kfArchMax
+	h.Archetype = uint32(kfReadBits(pay, q+32, 32))
+	if h.SansArchetype() {
+		h.TI = -1
+		return h, true
+	}
+	h.TI = int(h.Archetype)
+	return h, h.Archetype < kfArchMax
 }
 
 // KeyframeWalkStop dit POURQUOI la marche deterministe s'est arretee. Une marche qui
@@ -120,6 +152,11 @@ type KeyframeWalkRec struct {
 	// Mask est le masque de presence lu par le corps, Gate la porte qui le precede.
 	Mask uint64
 	Gate bool
+	// Comps sont les composants traverses, avec leur position de bit et, pour ceux de
+	// `captureNames`, leur VALEUR. La traversee les calcule de toute facon ; les jeter obligeait
+	// tout lecteur d ETAT (l occupation d un vehicule a l instant d une image-cle, lot 5.10) a
+	// re-marcher la table pour son propre compte.
+	Comps []CompResult
 	// DesyncAt est l'index du premier composant present non porte, ou -1.
 	DesyncAt int
 }
@@ -169,20 +206,28 @@ func WalkKeyframeRecords(pay []byte, reg *Registry, ctx ContexteDeLecture) ([]Ke
 	}
 }
 
-// walkOneKeyframeRecord rejoue le corps d'UN record et rend le record, la cause d'arret
-// eventuelle et un booleen d'arret. Extrait de `WalkKeyframeRecords` pour tenir le seuil de
-// 80 lignes par fonction.
+// walkOneKeyframeRecord rejoue le corps d'UN record par la boucle d'ETAT COMPLET du jeu
+// (`WalkKeyframeFullState` = `FUN_142e2bfd0` + `FUN_142e2c690`) et rend le record, la cause
+// d'arret eventuelle et un booleen d'arret. Extrait de `WalkKeyframeRecords` pour tenir le
+// seuil de 80 lignes par fonction.
+//
+// UNE ENTREE SANS ARCHETYPE NE PORTE PAS DE CORPS : le jeu saute alors les deux mots de
+// taille et la boucle de composants, et passe a l'entree suivante 108 bits plus loin.
 func walkOneKeyframeRecord(pay []byte, reg *Registry, pos int, h KeyframeHeader,
 	ctx ContexteDeLecture) (
 	KeyframeWalkRec, KeyframeWalkStop, bool,
 ) {
-	br := LecteurSur(pay)
-	br.PoserContexte(ctx)
-	br.SetBitPos(pos + keyframeRecordTIBit)
-	tr := TraverseEntity(br, reg, 0)
+	if h.SansArchetype() {
+		rec := KeyframeWalkRec{
+			KeyframeHeader: h, BitStart: pos, BitEnd: pos + keyframeFullHeaderBits(ctx),
+			DesyncAt: -1,
+		}
+		return rec, KeyframeStopEnd, false
+	}
+	tr := WalkKeyframeFullState(pay, pos, reg, ctx)
 	rec := KeyframeWalkRec{
 		KeyframeHeader: h, BitStart: pos, BitEnd: tr.EndBit,
-		Mask: tr.Mask, Gate: tr.Gate, DesyncAt: tr.DesyncAt,
+		Mask: tr.Mask, Gate: tr.Gate, Comps: tr.Comps, DesyncAt: tr.DesyncAt,
 	}
 	if tr.DesyncAt >= 0 {
 		return rec, KeyframeStopDesync, true
@@ -190,23 +235,34 @@ func walkOneKeyframeRecord(pay []byte, reg *Registry, pos int, h KeyframeHeader,
 	return rec, KeyframeStopEnd, false
 }
 
+// keyframeFullHeaderBits rend la largeur de l'en-tete PAR ENTITE que porte le profil du
+// lecteur (108 chez `FUN_142e2bfd0`) - la meme que `WalkKeyframeFullState` consomme.
+func keyframeFullHeaderBits(ctx ContexteDeLecture) int {
+	br := LecteurSur(nil)
+	br.PoserContexte(ctx)
+	return br.cadre().EnTeteBits
+}
+
 // KeyframeChainResult est le resultat d'un CHAINAGE : partant de la fin de marche d'un
 // record, combien de records intercales faut-il traverser pour retomber sur une frontiere
 // connue de l'oracle (`WalkKeyframeWorld`) ?
 //
-// C'est la mesure qui tranche l'hypothese H1 du plan R5 : si la grammaire est juste et que
-// c'est le FILTRE du balayeur qui saute des records, le chainage retombe exactement sur la
-// frontiere de l'oracle apres un petit nombre de records intercales, et ces intercales
-// portent un `Field26` NON NUL.
+// C'est la mesure qui chiffre ce que le BALAYEUR saute entre deux de ses ancres : si la
+// grammaire est juste, le chainage retombe exactement sur la frontiere de l'oracle apres
+// un petit nombre de records intercales. (L'hypothese H1 du plan R5 -- « les intercales
+// portent un `Field26` non nul » -- est refutee par l'ecrivain, cf. l'en-tete de ce
+// fichier : le seul intercale que le filtre fort ne peut pas voir est celui SANS
+// ARCHETYPE.)
 type KeyframeChainResult struct {
 	// Reached : le chainage a atteint EXACTEMENT la frontiere visee.
 	Reached bool
 	// Skipped est le nombre de records intercales traverses avant de l'atteindre (0 = la
 	// marche du record lui-meme atterrissait deja juste).
 	Skipped int
-	// SkippedFieldNonZero compte, parmi ces intercales, ceux dont `Field26` n'est pas nul —
-	// c'est-a-dire ceux que le filtre fort du balayeur ne pouvait PAS voir.
-	SkippedFieldNonZero int
+	// SkippedSansArchetype compte, parmi ces intercales, ceux qui ne portent AUCUN
+	// archetype (`keyframeArchetypeNone`) : le balayeur d'ancres ne peut pas les voir,
+	// son filtre fort exigeant un mot d'archetype sous le cap objet.
+	SkippedSansArchetype int
 	// Stop dit ou le chainage s'est arrete quand il n'a pas atteint la frontiere.
 	Stop KeyframeWalkStop
 }
@@ -249,8 +305,8 @@ func ChainKeyframeRecords(pay []byte, reg *Registry, from, want, prevSlot int,
 			return res
 		}
 		res.Skipped++
-		if h.Field26 != 0 {
-			res.SkippedFieldNonZero++
+		if h.SansArchetype() {
+			res.SkippedSansArchetype++
 		}
 		pos, prevSlot = rec.BitEnd, h.Slot
 	}

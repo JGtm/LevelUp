@@ -1,6 +1,7 @@
 package grammar
 
-// rev_chronique_archive_2.go — LA CHRONIQUE DE [Rev], RANGS `.29` A `.38`.
+// rev_chronique_archive_2.go — LA CHRONIQUE DE [Rev], RANGS `.29` A `.42` PUIS LE PREMIER
+// RANG DU 18 (`grammar-2026-09-18`).
 //
 // # POURQUOI UNE SECONDE ARCHIVE (2026-09-18, lot 5.1.7)
 //
@@ -10,6 +11,17 @@ package grammar
 // SE FAIT DONC EN CHAINE, comme pour `.ai/thought_log.md` : chaque archive garde le bloc de rangs
 // qu elle nomme dans son titre, et la suite VIVANTE reste dans `rev_chronique.go`. Le geste est
 // ordinaire ; il se refera, et le fichier suivant s appellera `_3`.
+//
+// ROTATION DU 2026-09-21 (lot 5.9.4) : `rev_chronique.go` a repasse les 500 lignes en recevant
+// l entree du saut derive. Les rangs `.39` a `.42` sont verses ICI plutot que dans un `_3` —
+// ce fichier etait a 326 lignes, il a la place, et une archive de plus pour quatre rangs
+// n aiderait personne a lire la suite.
+//
+// SECONDE ROTATION DU 2026-09-21 (lot 5.11.0-a) : meme cause, meme geste. `rev_chronique.go` a
+// repasse les 500 lignes en recevant l entree du compte du second tour d `i63` ; l entree
+// `grammar-2026-09-18` (la premiere du 18, lot 5.1.1) est versee ici, a la suite du `.42`, ce qui
+// garde l ordre chronologique que le gate exige. DEPLACEMENT PUR : pas un mot de l entree ne
+// change.
 //
 // L ORDRE DE LECTURE EST CELUI DE `fichiersDeChroniqueGrammar` (`rev_test.go`) : archive,
 // archive_2, puis la chronique vivante. Le gate exige que les rangs s y suivent sans trou.
@@ -323,4 +335,166 @@ package grammar
 // portent plus les phrases citees.
 //
 // `SchemaVersion` reste 60 ; aucun match deja decode n est candidat au backlog.
+//
+
+// ENTREE `grammar-2026-09-15.39` (2026-09-17, lot 2.6.1) : HERITAGE, MEME GRAMMAIRE, EMPREINTE
+// RE-POINTEE. AUCUN OCTET N EST LU AUTREMENT.
+//
+// La constante passe de `GrammarRev` a [Rev] et son gate passe sur le mecanisme central
+// (`film/revision`, lot 2.6.0) : c est la derniere des quatre couches a heriter, et l allowlist
+// de `archlint/no_ad_hoc_source_fingerprint_test.go` en devient VIDE.
+//
+// CE QUI CHANGE EST LE PERIMETRE DE L EMPREINTE, ET LUI SEUL. Elle hachait CINQ RACINES EN
+// OCTETS — `source/`, `profile/`, `grammar/`, `facts/killsource/`, `facts/objectives/`, 183
+// fichiers ; elle hache desormais `grammar/` SEUL (143 fichiers) plus les VALEURS de
+// `profile.Rev` et de `source.Rev` (V15 (12)), dans cet ordre. Les couches du dessous ont chacune
+// leur revision depuis le volet facts + source du meme lot : c est `source.Rev` qui hache
+// `source/`, `profile.Rev` qui hache `profile/`, `facts.Rev` qui hache `facts/`. Hacher leurs
+// octets ICI aurait fait monter la grammaire pour une couche du DESSOUS d elle, et surtout
+// rendait le meme diagnostic pour une borne de carte, un ordre de composants et un appariement
+// de kill-feed.
+//
+// RIEN N EST RELACHE : le sens unique passe des octets aux VALEURS AMONT, qui le tiennent plus
+// strictement — une montee de `source.Rev` ou de `profile.Rev` fait monter `Rev`, donc
+// `facts.Rev`, donc le backlog killsource (D6, signal utilisateur), sans que personne ait a y
+// penser.
+//
+// POURQUOI UN RANG NEUF PLUTOT QU UNE EMPREINTE RECOPIEE. La preuve d equivalence du lot 2.6.0
+// disait que le cadre HERITE rend, sur les cinq racines, exactement l empreinte figee au `.38`
+// (`7994ce19…`) : l heritage de l OUTILLAGE ne coute donc rien. Le PERIMETRE, lui, change — 143
+// fichiers et deux valeurs amont au lieu de 183 fichiers — et l empreinte mesuree vaut
+// `966e3f3e…`. Deux quantites differentes ne se figent pas sous la meme ligne : le rang monte,
+// et la raison est ecrite ici.
+//
+// `SchemaVersion` reste 60 ; aucun match deja decode n est candidat au backlog par un changement
+// de sortie — `facts.Rev` monte MECANIQUEMENT parce qu elle hache la valeur ci-dessus, et sa
+// propre entree le dit.
+//
+// ENTREE `grammar-2026-09-15.40` (2026-09-17, lot 3.3.1) : L AMORCE DES LANCERS DEVIENT UNE
+// DONNEE DE PROFIL, ET LE DECODAGE CHANGE. Le balayage comparait 24 bits sur TOUS les films : il
+// lisait donc le bit de poids fort de l identifiant comme un bit d amorce sur les builds
+// anterieurs a `HI_1_12_0`, d ou ZERO lancer publie sur cinq temoins du corpus. Il lit desormais
+// la largeur, la VALEUR de l amorce et la position de l index auteur au profil (neuf clefs,
+// `profile/grenade.go`), derive le motif du `ti` projectile RESOLU PAR NOM dans le registre du
+// film, et ecarte par le sixieme bit d index les naissances de `managed-player`, comptees.
+// `profile.Rev` monte avec elle ; `facts.Rev` derriere ; `SchemaVersion` ne bouge PAS.
+
+// ENTREE `grammar-2026-09-15.41` (2026-09-17, lot 3.4.1) : LA MARCHE DES MORTS CALIBREE PAR LA
+// CARTE. LE CHEMIN ABSOLU D i0 CHANGE DE LARGEUR, DE PLAGE ET DE REGLE D EMISSION.
+//
+// C EST UN CHANGEMENT DE DECODAGE, pas une reformulation : des bits DIFFERENTS sont lus aux
+// memes offsets, et des positions qui etaient jetees sont publiees.
+//
+//	`position_capture.go`        `Lecteur.absoluteAxisW` et `absAxisW` DISPARAISSENT avec le
+//	                             champ `Movement.AbsoluteAxisW` : la largeur UNIFORME de 14 bits
+//	                             ecrasait les trois largeurs de la carte sur le chemin absolu du
+//	                             bipede. `absAxisWFor` suit desormais l index de plage — table
+//	                             DEFAUT du build (`22/22/22`) pour `idx == -1`, table PAR INDEX
+//	                             de la carte pour `idx >= 0` — et `dequantWorldAxis` suit le
+//	                             MEME index pour ses bornes : chez `FUN_14076e524` largeurs et
+//	                             bornes sortent de la meme AABB, les dissocier etait le defaut.
+//	`components_position_i0.go`  CORRECTIF D1 (3.4). Le commentaire « index 1 / no-index =
+//	                             +/-20000 » etait FAUX et le filtre `if idx != 0 { return }`
+//	                             avec lui : seul `index == -1` prend la boite du build. La
+//	                             position n est emise que si l index designe la plage
+//	                             CATALOGUEE (`Region`), nulle sur 78 cartes sur 79 et EGALE A 1
+//	                             sur Live Fire, dont les deux films du corpus voyaient donc
+//	                             leurs 59 376 positions valides jetees et le reste garde.
+//	                             La largeur de l index vient de la CARTE (`DAT_144632be0`,
+//	                             2 bits sur Live Fire) et non plus du descripteur de l appelant.
+//	                             `consumeAbsolutePayload` et `consumePredictedAbsolute` perdent
+//	                             leur parametre `pd`, devenu inutile.
+//
+// CE QUI CHANGE A L ECHELLE DU BIT, sur Cliffhanger : le chemin absolu du bipede lisait
+// `5 + 3x14 + 2 = 49` bits, il en lit `5 + 13+13+14 + 2 = 47` — exactement la mesure Cheat
+// Engine du dispatch (une seule valeur distincte, 100 % de 154 158 releves). Le compte se ferme
+// ou il ne se fermait pas.
+//
+// `facts.Rev` MONTE (elle hache la valeur de celle-ci) : les lignes de kill deja en base
+// deviennent candidates au backlog de redecodage — sur SIGNAL UTILISATEUR (D6), jamais
+// automatiquement. `SchemaVersion` : cf. le volet 3.4.2.
+//
+// ENTREE `grammar-2026-09-15.42` (2026-09-17, lot 3.6.a — RANG PRIS A LA FUSION : la branche
+// portait `.41`, deja occupe par 3.4.1 sur l integration) : `.41` -> `.42`. LE JOUEUR GERE
+// (`ti=9`) N A PLUS AUCUN COMPOSANT SANS LECTEUR.
+//
+// DEUX LECTEURS NEUFS, RELEVES CHEZ L ECRIVAIN (`components_managed_player.go`) :
+//
+//	i4  `managed-player-forge-weather-effect-overrides-component`, ecrivain `FUN_142ed5bc8` :
+//	    `R(32)` + `R(32)`, 64 bits INCONDITIONNELS. C etait le BLOQUANT NOMME des sept bobines.
+//	i9  `managed-player-custom-input-prompt-widget`, ecrivain `FUN_141fcf160` : `R(1)` present,
+//	    `R(2)` mode, puis le SAC TEXTE `FUN_14080b034` (`R(1)` + `R(32)` nom + `n = R(3)` +
+//	    `n` corps `FUN_1407f0ebc` a largeurs litterales). Le depot rendait `ported = false` des
+//	    que `n` depassait 0 — une desynchronisation propre sur une grammaire entierement
+//	    decidable hors ligne.
+//
+// AUCUNE ENTREE DE PROFIL : toutes ces largeurs sont des litteraux d instruction. Le sac texte
+// devient le SEUL lecteur du depot pour `FUN_14080b034` : les deux instruments qui en portaient
+// leur propre copie l appellent desormais.
+//
+// LES DIX `case` DE `ti=9` SONT RASSEMBLES dans `consumeManagedPlayerComponent` — les trois
+// maillons qui se les partageaient etaient AU PLAFOND du ratchet de longueur, et porter `i4` n y
+// avait pas de place. La scission est NEUTRE PAR CONSTRUCTION : aucune etiquette `case` n est
+// dupliquee dans la chaine (verifie sur pieces), donc l ordre des maillons ne decide de rien.
+//
+// CE QUE LA MESURE DIT. Fermeture d image-cle de `ti=9` : sur les sept bobines du ratchet 0.A.3,
+// `0 / 1 717` (bloquant `i4` sur les SEPT) -> `1 716 / 1 717`, plus aucun bloquant nomme ; le
+// 1 717e est une ancre fortuite de `111fa685` (`n1 = 2 154 823 696` contre `12` sur les autres).
+// Sur les SIX FILMS DE RECHERCHE, `0 / 1 679` (100 % de desync) -> **`1 679 / 1 679`**, temoin de
+// hasard a `0 / 1 679` : l archetype ferme a 100 % des qu on quitte le bruit du balayeur d ancres.
+//
+// `facts.Rev` : ce lot ne la fait pas monter de son propre chef (aucune source de `facts/`
+// touchee, aucun fait publie change) ; elle vaut celle de 3.4.1, qui la monte pour sa raison.
+// `SchemaVersion` reste 61 : mesure sur pieces, le document cuit de `084a804d` est identique
+// base -> tete sur TOUS ses chemins sauf `/coverage/decoder/grammarRev`.
+//
+
+// ENTREE `grammar-2026-09-18` (2026-09-18, lot 5.1.1) : `.42` -> le premier rang du 18.
+// LE POINT DE NAVIGATION (`ti=12`) EST LU DE `i1` AU MINUTEUR MANUEL.
+//
+// DOUZE LECTEURS NEUFS, RELEVES CHEZ LE DESERIALISEUR `+0x40` de chaque descripteur et recoupes
+// par son serialiseur `+0x28` (`NOTE_3_6_TI12_GRAMMAIRES_A_2026-09-17`, § 5 a § 16) :
+//
+//	i1        `flags`, `FUN_141094130` : `R(8)`. C ETAIT LE BLOQUANT NOMME de l archetype.
+//	i2..i6    les cinq `*-filter(s)`, qui partagent le bloc `FUN_140dbe400` — masque `R(4)`,
+//	          drapeau `R(v ? 1 : 32)`, puis par filtre present un tag `R(4)` et sa charge (quinze
+//	          tags, note § 3). `i2` y ajoute deux distances `R(16)` et deux par filtre ; `i3`/`i4`
+//	          un `R(1)` et un par filtre ; les trois ferment sur `K` ordres de `v ? 3 : 2` bits.
+//	i7/i8     `docking-order` `R(8)` (`FUN_142ed5050`), `docking-group-name` `R(32)`.
+//	i9        `formatted-text`, `FUN_1410e7b90` : `R(8)` de compte, puis par entree un `R(32)`
+//	          SUIVI DU SAC TEXTE DE `ti=11 i2` — reutilise, jamais recopie.
+//	i10       `timers`, `FUN_1410d9040` : `2 x R(7)`, valeur - 1. MEME CHAMP que `ti=11 i0`, donc
+//	          meme lecteur.
+//	i11/i12   `manual-timer-initial-duration` / `-current-duration`, `FUN_142ed5194` et
+//	          `FUN_142ed512c` : `R(17)` sur [-0,025 ; 6553,5752], soit un pas de 50 ms EXACT. CE
+//	          SONT LES DEUX QUE LE LOT VISE — duree totale et temps restant du compte a rebours
+//	          qu un objectif affiche. Le bassin du moteur, lui, ne le porte pas : `ti=11 i0` vaut
+//	          « aucun minuteur » sur 446 records sur 446 (NOTE_3_7_REAPPARITION § 6 bis.3).
+//
+// UNE ENTREE DE TABLE, ET ELLE N EST PAS COSMETIQUE : `paramByComponent` pose `param_4 = 3` pour
+// `i2` et `= 2` pour `i3`..`i6`. La valeur est LUE, pas ajustee — le slot `+0x10` du descripteur
+// rend une constante (`MOV EAX,0x3 ; RET` a `0x14117e0e0`, `MOV EAX,0x2 ; RET` a `0x141179610`),
+// et la meme chaine rend 3/3 sur trois composants `ti=35` dont la table porte deja la valeur de
+// capture live. Avec le defaut 1, le drapeau ferait 32 bits au lieu d un et l ordre 2 au lieu de
+// 3 : la marche se desynchroniserait des le premier filtre.
+//
+// AUCUNE ENTREE DE PROFIL. La seule largeur de RUNTIME du lot est celle de la reference d entite
+// du domaine 0 (tags 6, 12, 13, 14) : `refDomWidth` et `readRecordID` sont appeles, pas recodes.
+//
+// LES CINQ FILTRES SONT `partiel`, PAS `porte` : un tag hors [0, 14] tombe chez le jeu sur
+// `FUN_1411c8f80`, qui ne revient pas. Le lecteur rend `ported = false` — arret propre — plutot
+// que de deviner une largeur. Un film sain n en porte pas.
+//
+// CE QUE LA MESURE DIT. Ratchet 0.A.3 : le bloquant de `ti=12` avance de `i1` a
+// `i13 managed-navpoint-top-progress` sur les SEPT bobines. 0 ligne monte, 0 descend, aucun total
+// ne bouge — et c etait prevu : la FERMETURE de `ti=12` demande encore `i13` a `i27`, quinze
+// composants. Le bloquant qui avance de douze rangs EST la mesure du lot ; les largeurs sont
+// tenues par `components_navpoint_test.go`, via `consumeByName` (donc le cablage avec).
+//
+// `facts.Rev` MONTE — mecaniquement, parce qu elle hache la VALEUR de cette constante, et non
+// parce qu un fait change (`film/facts/` n est pas touche). Les lignes de kill en base deviennent
+// candidates au backlog de redecodage, sur SIGNAL UTILISATEUR (D6). C EST L UNIQUE MONTEE DE
+// `facts.Rev` DU LOT 5.1 : les volets suivants partagent ce rang.
+//
+// `SchemaVersion` reste 62 : aucun champ neuf n est publie (canal d observation seul).
 //

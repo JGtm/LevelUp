@@ -6,7 +6,7 @@
 
 ## AXE DE TEMPS
 5144 frames · intervalle 100 ms · duree 514400 ms
-schema 64 · titre halo_infinite
+schema 68 · titre halo_infinite
 version majeure du film : 38
 origine de la frame 0 sur l horloge du fil : 86805 ms
 coup d envoi date par le film : 108405 ms · 177/181 piste(s) en mouvement · rafale 15 · marge depuis la frame 0 : 21600 ms
@@ -59,11 +59,11 @@ vies : 182/182 portent une equipe du film
 repartition des vies par designateur : 0 x108 · 1 x74
 
 ## TIRS — rattaches sur DISPONIBLES, et la ventilation de tout ce qui est ecarte
-1704 rattache(s) / 1968 disponible(s) = 86.6 %
-rejets : slot introuvable=264 · slot ambigu=0 · hors fenetre=0 · sans trace publiee=0
+1706 rattache(s) / 1968 disponible(s) = 86.7 %
+rejets : slot introuvable=262 · slot ambigu=0 · hors fenetre=0 · sans trace publiee=0
 somme de controle : rattaches + rejets = disponibles -> 1968 = 1968 (equilibre : true)
 verdict : nominal
-1704 tir(s) publie(s) · 1347 avec un cap de visee lisible · 1704 avec une arme nommee
+1706 tir(s) publie(s) · 1349 avec un cap de visee lisible · 1706 avec une arme nommee
 
 ## GRENADES — le lancer porte son auteur ; ce qui se mesure est OU il est pose
 139 rattache(s) / 145 disponible(s) = 95.9 %
@@ -746,7 +746,7 @@ entrees 28 · sieges 26 · lus 26 · apparies 2 · reprises ecrites 0
 arrivants 4 · presences closes 18 · sans presence 2 · occupants au plus 24 · sans table false
 
 ## REPLIS DECLENCHES — la part de ce document qui ne vient PAS d une lecture du film
-repli_chassis_vehicule_marqueur_neutre           5
+repli_chassis_vehicule_marqueur_neutre           21
 repli_siege_du_remplacant_par_appariement_ordinal 2
 
 ## LIBELLES D ARMES — le tag brut reste A COTE du libelle, jamais a sa place

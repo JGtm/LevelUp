@@ -119,14 +119,14 @@ func kfGramPayloads(t *testing.T, dir string) (*Registry, [][]byte) {
 // kfGramTally compte, pour UNE combinaison de grammaire et UN archetype, ce que la marche a
 // rencontre. Sans ces denominateurs, un taux ne se juge pas.
 type kfGramTally struct {
-	bounded    int // records bornes par un voisin de l'oracle
-	desync     int // marches interrompues par un composant non porte
-	direct     int // marches atterrissant PILE sur la frontiere de l'oracle
-	chained    int // marches y retombant apres des records intercales
-	landedHdr  int // marches atterrissant sur un en-tete VALIDE (relache)
-	skipped    int // total des records intercales traverses
-	skippedF26 int // parmi eux, ceux dont field26 != 0 (invisibles au balayeur)
-	lost       int // marches qui ne retombent jamais sur la frontiere
+	bounded         int // records bornes par un voisin de l'oracle
+	desync          int // marches interrompues par un composant non porte
+	direct          int // marches atterrissant PILE sur la frontiere de l'oracle
+	chained         int // marches y retombant apres des records intercales
+	landedHdr       int // marches atterrissant sur un en-tete VALIDE (relache)
+	skipped         int // total des records intercales traverses
+	skippedSansArch int // parmi eux, ceux SANS archetype (invisibles au balayeur)
+	lost            int // marches qui ne retombent jamais sur la frontiere
 	// stops : cause d'arret du chainage, index parallele a KeyframeWalkStop.
 	stops [5]int
 	// gaps : distribution des ecarts `want - EndBit` (les 6 plus frequents sont publies).
@@ -168,7 +168,7 @@ func TestKFGramChain(t *testing.T) {
 				" | ATTERRISSAGE %.1f %%", k, lay, tal.bounded, tal.direct, tal.chained,
 				tal.lost, tal.desync, tal.exactRate())
 			t.Logf("      atterrissages sur un en-tete valide %d · intercales %d (dont"+
-				" field26 != 0 : %d)", tal.landedHdr, tal.skipped, tal.skippedF26)
+				" sans archetype : %d)", tal.landedHdr, tal.skipped, tal.skippedSansArch)
 			kfGramLogStops(t, tal)
 		}
 	}
@@ -240,7 +240,7 @@ func kfGramOne(reg *Registry, pay []byte, r KeyframeRec, want int, tal *kfGramTa
 	}
 	tal.chained++
 	tal.skipped += ch.Skipped
-	tal.skippedF26 += ch.SkippedFieldNonZero
+	tal.skippedSansArch += ch.SkippedSansArchetype
 }
 
 // kfGramLogArchetypes publie le classement des archetypes par frequence dans les tables

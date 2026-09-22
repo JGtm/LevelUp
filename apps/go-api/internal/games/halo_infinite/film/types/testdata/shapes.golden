@@ -25,7 +25,7 @@
 #
 #   LEVELUP_UPDATE_TYPES_SHAPES=1 go test ./internal/games/halo_infinite/film/types/ \
 #     -run TestFormesDesTypesEgalentLeGolden -update-types-shapes
-revisions	source=source-2026-09-16.2	grammar=grammar-2026-09-20	facts=killsource-2026-09-20
+revisions	source=source-2026-09-16.2	grammar=grammar-2026-09-22.12	facts=killsource-2026-09-22.2
 
 ## ChunkMeta (source)
 Index	int	-
@@ -281,6 +281,34 @@ PacketIndex	int	-
 Slot	uint32	-
 Families	[]uint32	-
 
+## MovementStateRead (grammar)
+Slot	uint32	-
+Kind	string	-
+TimestampUS	uint64	-
+Chunk	int	-
+PacketIndex	int	-
+On	bool	-
+Progress	uint32	-
+
+## MovementStateStats (grammar)
+Records	int	-
+Read	int	-
+Absent	bool	-
+Scanned	bool	-
+Packets	int	-
+EventPackets	int	-
+EventPacketsLocated	int	-
+EventPacketsUnlocated	int	-
+Desyncs	int	-
+SlotUnbound	int	-
+DatumBindings	int	-
+DatumAmbiguous	int	-
+Duplicates	int	-
+VelocityReads	int	-
+JumpEpisodes	int	-
+JumpsDerived	int	-
+MapWidths	[3]uint	-
+
 ## NavpointRadialRead (grammar)
 Slot	uint32	-
 TMS	int32	-
@@ -350,6 +378,16 @@ VehicleSlotValid	bool	-
 VehicleGen	uint32	-
 Seat	uint32	-
 SeatValid	bool	-
+
+## VehicleOccupancy (grammar)
+TimestampUS	uint64	-
+Slot	uint32	-
+Gen	uint32	-
+Attached	bool	-
+ParentSlot	uint32	-
+ParentGen	uint32	-
+HasSeat	bool	-
+Seat	uint32	-
 
 ## ApparStats (facts/killsource)
 Identite	int	-

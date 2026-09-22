@@ -230,6 +230,7 @@ func scanFilmInputs(matchID string, film *source.Film, fc *grammar.FilmContext,
 	s.balayerPortage()
 	s.balayerCapacites()
 	s.balayerMonde()
+	s.balayerEtatsDeMouvement()
 	s.balayerPont()
 	return s.in, nil
 }

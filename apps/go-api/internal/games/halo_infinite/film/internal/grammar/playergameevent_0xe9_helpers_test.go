@@ -39,7 +39,11 @@ type pgesPayload struct {
 	textName     uint64
 	participants []uint64 // sous-type "text" #1 : index de participant R(5) (espace killsource)
 	textParts    int
-	exact        bool // false si un selecteur a largeur runtime (7, ou "text" #2 quantifie) est atteint
+	// mask est le masque FINAL de 32 drapeaux (FUN_14080ae28 : 32 x R(1), inconditionnels). Il
+	// etait SAUTE ; il est desormais rendu, parce que le lot 5.10.5 le note contre les etiquettes
+	// physiques du bipede.
+	mask  uint64
+	exact bool // false si un selecteur a largeur runtime (7, ou "text" #2 quantifie) est atteint
 }
 
 // pgesRef consomme une reference gardee de largeur width : [R(1) porte ; si 1 : R(width)
@@ -105,7 +109,7 @@ func pgesDecodePayload(br *Lecteur) pgesPayload {
 			}
 		}
 	}
-	br.Skip(32) // masque final (FUN_14080ae28 : 32 x R(1))
+	p.mask = br.ReadBits(32) // masque final (FUN_14080ae28 : 32 x R(1))
 	return p
 }
 

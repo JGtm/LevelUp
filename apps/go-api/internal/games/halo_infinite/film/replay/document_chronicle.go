@@ -1760,6 +1760,114 @@ package replay
 //	VERSION MONTE  neuf compteurs entrent dans `coverage` : la FORME change, et le garde-rail de
 //	               forme refuse la regeneration sans montee. Les artefacts deja cuits restent
 //	               servis tels quels, les deux champs absents jusqu'a leur prochaine cuisson.
+// v66 (2026-09-21, post-chantier lots 5.9.4 et 5.9.5, decision utilisateur) : LE SPRINT, LU —
+// ET LE SAUT, PUBLIE ET DIT DERIVE.
+//
+//	`stances[]`    DEUX GENRES DE PLUS, et ils ne sont PAS de la meme nature. `sprint` est LU :
+//	               `ti=35 i57 biped-spartan-ability-component` porte l INDEX DE LA FENTE DE
+//	               CAPACITE ACTIVE, et la fente 1 est le sprint. `jumpDerived` est CALCULE :
+//	               c est l integrale de la vitesse verticale d `i1`, reconnue a sa HAUTEUR, et
+//	               son nom porte le mot pour qu on ne puisse pas confondre les deux. Deux
+//	               compteurs neufs dans `coverage.stances` : `jumpEpisodes` (montees fermees
+//	               examinees) et `jumpsDerived` (celles retenues).
+//
+// LE SPRINT : LES TROIS FENTES SONT NOMMEES PAR L IMAGE, PAS PAR UN SCORE. `FUN_1407e9ce4`
+// aiguille sur le GROUPE DE TAG de la definition de capacite et appelle, pour chacun, un
+// desenregistreur qui teste l index actif contre SA fente : `'saev'` esquive -> `FUN_14319d0ac`,
+// fente 0 ; `'sasp'` SPRINT -> `FUN_14319d1ec`, fente 1 ; `'sagh'` grappin -> `FUN_14319d14c`,
+// fente 2. Le flux ecrit `bloc+3 = R(2) - 1`, donc le brut `2` designe la fente 1. La chaine
+// complete va de la condition d animation `is_sprinting_tlg` au bit 45 des drapeaux d unite,
+// pose par `Sprint::Update` (`FUN_1431a2474`) depuis une fraction rampee LOCALEMENT — ce qui
+// vient du film est l ACTIVATION, pas la fraction, et c est elle qu on publie.
+//
+// LE CONTROLE QUI VALIDE LA LECTURE DE L INDEX EST CELUI DU GRAPPIN, ET IL EST FRANC : sur
+// `4f77afc1`, la vitesse au sol pendant les intervalles de la fente 2 monte a **5,84 m/s** au
+// p90, contre 2,88 hors intervalle — la TRACTION du grappin, deux fois le plateau de course.
+// Si la fente 2 est bien le grappin, la lecture de l index est juste, donc la fente 1 est bien
+// `'sasp'`. C est la preuve croisee la plus forte disponible, et elle porte sur le MEME champ,
+// le MEME pliage, le MEME instrument.
+//
+// CE QUE LA VITESSE DU SPRINT, ELLE, NE PEUT PAS PROUVER — ET C EST MESURE. Le score des
+// intervalles de la fente 1 contre un plateau haut de vitesse rend 37,5 % / 60,8 %
+// (`bfecd02b`) et 42,0 % / 40,5 % (`4f77afc1`). Ce n est pas la fente qui est mal nommee :
+// c est l etiquette physique qui est faible, et le depot l avait deja mesure (lot 5.3.5 : la
+// distribution de vitesse au sol n a QU UN SEUL mode). Vm 2,55 contre Vs 2,84 sur le second
+// film — 0,29 m/s d ecart, couvert par la dispersion. Ce qui converge quand meme : la vitesse
+// MAXIMALE atteinte pendant un intervalle a un p10 de 2,73 m/s contre 1,91 pour un temoin
+// apparie (meme vie, meme duree, cinq secondes plus tot), et sa mediane vaut 2,92 m/s.
+//
+// POURQUOI LE NOM PORTE LE MOT « DERIVE ». Les trois autres genres sont des bits que le
+// deserialiseur publie ; celui-ci est un CALCUL. Un client qui affiche `jumpDerived` doit
+// pouvoir le distinguer d une lecture sans consulter de documentation, d ou le genre distinct
+// plutot qu un drapeau a cote — et d ou le libelle « Saut (derive) » / « Jump (derived) ».
+//
+// LA HAUTEUR EST UN FAIT DE JEU, PAS UN SEUIL D INSTRUMENT. `types.SpartanJumpHeightM` vaut
+// 0,85 m : la distribution des hauteurs d episode aerien, integrees depuis la vitesse verticale
+// TENUE, porte un pic etroit a cette valeur sur DEUX films — `bfecd02b` (snowbound) pic x 10,7
+// au-dessus de ses voisins, montee 0,467 s ; `4f77afc1` (flood gulch) pic x 3,9, montee 0,466 s
+// (lot 5.7.5, 2026-09-21). Tous les Spartans sautent la meme hauteur : c est ce qui autorise la
+// derivation, et la fenetre est de +/- 10 %.
+//
+// CE QUI EST REFUSE, ET C EST DELIBERE. Un episode encore OUVERT a la fin de la marche n a pas
+// d instant de fin mesure et sa hauteur est tronquee par le silence qui la termine : il n est pas
+// publie. Et un silence de replication de plus de 250 ms n est PAS une vitesse tenue — l integrer
+// fabriquerait des hauteurs.
+//
+// CE QUE CETTE VERSION NE FAIT PAS : le SPRINT. Sa chaine de donnees est pourtant complete
+// (lot 5.9.1) — l etiquette d `i57 biped-spartan-ability` est l INDEX DE LA FENTE DE CAPACITE
+// ACTIVE (`-1` = aucune, `0..2` = la fente), applique par `FUN_1406c9b1c` puis `FUN_14319db80`,
+// et le bit 45 des drapeaux d unite que lit `SpartanAbilityIsSprinting` est pose par
+// `Sprint::Update` (`FUN_1431a2474`) depuis une fraction rampee LOCALEMENT. Ce qui manque est le
+// nom de la fente qui porte `'sasp'`. L utilisateur n a autorise aucune derive pour le sprint :
+// le plateau de vitesse au sol n a qu un seul mode.
+//
+// QUAND LE CHAMP REPLIQUE DU SAUT SERA NOMME, un genre `jump` LU remplacera `jumpDerived`, avec
+// sa propre montee. La chaine du declencheur est remontee jusqu au compteur de ticks sans contact
+// `u+0x89b` et NON TROUVEE a `FUN_1408b2f90` (lot 5.9.2) : c est un maillon manquant, pas un
+// refus.
+//
+// POURQUOI LA VERSION MONTE : un genre neuf apparait dans `stances[].kind` et deux compteurs
+// entrent dans `coverage.stances` — la FORME change, et le garde-rail de forme refuse la
+// regeneration sans montee.
+//
+// v65 (2026-09-21, post-chantier lot 5.3.6, decision utilisateur) : LES ETATS DE MOUVEMENT DU
+// SPARTAN, EN INTERVALLES PAR VIE — ET TROIS SEULEMENT, PARCE QUE TROIS SEULEMENT SONT LUS.
+//
+//	`stances[]`    UN INTERVALLE PAR (VIE, GENRE) : `{slot, kind, t0, t1}` sur l axe de
+//	               `Point.T`. Trois genres : `crouch` (accroupi, `ti=35 i29`), `slide`
+//	               (glissade, `i62`), `mobility` (action de mobilite, `i54`). Le type publie
+//	               est neuf, `Stance` ; la couverture aussi, `coverage.stances`.
+//
+// D OU ILS VIENNENT. Le film ECRIT ces trois etats A L INSTANT, pas aux images-cles : un delta
+// ne porte le composant que quand l etat CHANGE. `grammar.ScanMovementStates` rend les
+// TRANSITIONS et `document_stances.go` les replie en intervalles, avec le MEME plieur que les
+// episodes d equipement (`episodeAccum`) — memes fenetres de vie, meme cloture a la mort.
+//
+// CE QUI A RENDU LE CALQUE POSSIBLE, ET C EST TOUT LE LOT 5.3. La marche de production des
+// autres canaux de capacite est un CHERCHEUR D ANCRES : sur `bfecd02b` elle annonce `i29` ZERO
+// fois sur 162 444 records, parce qu elle ne retient que la population pauvre `{i0,i1,i21,i25}`.
+// Le calque emploie donc la marche du FRAME-PROCESSEUR (`DecodeFrameViews`, trois vues — ce que
+// `FUN_142987460` deroule), avec les paquets a liste d evenements localises par la signature du
+// depot. Deux pre-requis, tous deux mesures : la bascule `SimStateComplet` liee a la carte
+// (lot 5.3.3-a, sans quoi `i60` ferme la traversee avant `i61-63`) et les LARGEURS D AXE DE LA
+// CARTE installees sur le contexte (lot 5.3.5, sans quoi `i0` lit aux largeurs de
+// `cliffhanger` : records `ti=35` 31 530 contre 97 447, desyncs 38 contre 3).
+//
+// LE SPRINT ET LE SAUT N Y SONT PAS, ET C EST UNE MESURE. Le sprint est REFUTE comme observable
+// par la vitesse : la loi de dequantification d `i1` est exacte (ecrivain relu, constantes
+// relues), un oracle independant la valide sur deux films (dispersion du rapport
+// deplacement/vitesse 1,7 et 2,3 ; meme facteur d unite 0,240 et 0,236), et la distribution au
+// sol n a QU UN SEUL mode, a 2-3 m/s. Le saut est LU mais PAS PROUVE : sa segmentation repose
+// sur deux seuils d instrument et la signature ne tient pas d un film a l autre (0,632 s contre
+// 1,567 s de duree mediane). Publier l un des deux publierait un SEUIL comme une DONNEE.
+//
+// MESURE DU CALQUE (`bfecd02b`, Snowbound) : 97 447 records `ti=35` dont 3 desynchronises,
+// 7 941 lectures retenues, 101 slots distincts — crouch 2 490 lectures dont 495 posees, slide
+// 2 487 dont 386, mobility 2 964 dont 758.
+//
+// LE CODEC DES FAITS MONTE AVEC (`REPLAYINPUTS24`) : les lectures voyagent par les faits, donc
+// un artefact re-cuit depuis un fixture porte les memes intervalles que la cuisson complete.
+//
 // v64 (2026-09-20, post-chantier lot 5.2-A, demandes utilisateur du 2026-09-19) : LA COULEUR DE
 // LA CAPTURE, C'EST-A-DIRE LE CAMP QUI POUSSE LA JAUGE.
 //
@@ -1823,3 +1931,88 @@ package replay
 //	               telemetrie — le client peint avec. Les artefacts deja cuits restent servis
 //	               tels quels, la cle absente jusqu'a leur prochaine cuisson, et le repli neutre
 //	               du client est exactement celui d'aujourd'hui.
+
+// v67 (2026-09-21, post-chantier lot 5.10, arbitrage utilisateur) : L OCCUPATION D UN VEHICULE
+// EST LUE — LA PROXIMITE N EST PLUS QU UN REPLI, ET ELLE LE DIT.
+//
+//	`rides[].src`  DEUX VALEURS A LA PLACE DE TROIS, et elles ne disent plus la meme chose.
+//	               `film` = le film ECRIT cette montee a bord (`object-parent-state`, `i10`,
+//	               ecrivain `FUN_140c1e4d0`) ; `proximity` = REPLI, l episode vient du trou de
+//	               position de l occupant. Les anciennes valeurs `event` / `mixed` / `gap`
+//	               ventilaient la PRECISION DES BORNES d un episode heuristique ; cette
+//	               ventilation descend au journal de cuisson (`vehicleRideStats`), parce que la
+//	               question du lecteur a change : ce n est plus « a quelle milliseconde pres ? »
+//	               mais « est-ce lu, ou deduit ? ».
+//
+//	`rides[].seat` MEME FORME, AUTRE SOURCE (deja en place au lot 5.10.3) : le siege vient du
+//	               champ de six bits de la queue d `i10` (+0x3a0), plus du champ `R(6)` de
+//	               l evenement, que la mesure D1 (5.5) avait refute — 153 occurrences de
+//	               `seat = 0` pour 100 tirs de tourelle, jamais de siege 1 ni 2.
+//
+//	`coverage.`    DEUX COMPTEURS A LA PLACE DE TROIS : `ridesRead` et `ridesProximity`
+//	`vehicles`     remplacent `ridesFromEvent` / `ridesMixed` / `ridesFromGap`. Leur somme vaut
+//	               toujours `rides`, et ils disent au lecteur du document ce qui est LU et ce
+//	               qui est DEDUIT — la seule ventilation qui porte une decision.
+//
+// LA PRIMAUTE DE LA LECTURE, ET SON PRIX. Un episode de proximite n est publie que s il ne
+// CONTREDIT aucune lecture de la MEME vie de vehicule : ni chevauchement de fenetre, ni occupant
+// absent des occupants que le film a nommes pour cette vie. Une vie dont le film n a RIEN lu
+// n est jamais contredite — l absence de lecture n est pas une absence d occupant. Le prix est
+// ecrit et compte au journal : une vie dont le film n a lu QU UN siege perd les episodes
+// heuristiques de ses autres sieges.
+//
+// CE QUE CETTE REGLE CORRIGE, ET C EST UN VERDICT DE L UTILISATEUR (Theater, 2026-09-19) : le
+// Razorback `776/1` de `4f77afc1` publiait deux episodes — `Dafar8423` et `Yessireezy` — quand
+// le film n y ecrit qu UNE montee a bord, celle du slot `524` (siege 1, a 1:54.5 temps film).
+// Yessireezy ne monte jamais dans ce vehicule ; il est tue A COTE a 3:01 par un tir de mortier.
+// Les deux episodes sont desormais ECARTES par la lecture.
+//
+//	AUCUNE AUTRE   les revisions de DECODAGE ne bougent pas dans cette montee (`grammar` et
+//	DIFFERENCE     `facts` ont monte au commit precedent du lot, avec la lecture d `i10`).
+//	               `layers` est inchange — l occupation reste dans le calque des vehicules. La
+//	               fin de vie `despawn` N EST PAS publiee : la mesure du lot 5.10.4 a refute ses
+//	               trois canaux, et `end` garde ses trois valeurs.
+
+// v68 (2026-09-22, post-chantier lot 5.22.4, verdict Theater de l utilisateur) : L ACTION DE
+// MOBILITE EST NOMMEE — `stances[].kind` `mobility` DEVIENT `clamber`, L ESCALADE.
+//
+//	`stances[]`    UNE VALEUR RENOMMEE, PAS UNE VALEUR NEUVE : le genre `mobility` devient
+//	`.kind`        `clamber`. Le bit publie est le MEME (le drapeau d amorce d
+//	               `i54 biped-mobility-action-component`), la marche est la meme, le nombre
+//	               d intervalles est le meme. Ce qui change est que le document DIT ce que le
+//	               geste est, au lieu de dire quel composant le porte.
+//
+// POURQUOI LA VERSION MONTE ALORS QUE LE BIT NE CHANGE PAS : un client qui connait `mobility` ne
+// reconnaitra plus ce genre, et `stanceAt` (cote web) IGNORE un genre inconnu — un artefact cuit
+// avant cette montee afficherait donc des escalades muettes chez un client neuf, et l inverse.
+// La valeur d un enum publie est de la FORME ; un renommage est une montee, jamais un detail.
+//
+// CE QUI TRANCHE, ET CE N EST PAS UNE CHAINE DU BINAIRE. Le lot 5.13.2 s etait arrete
+// explicitement : la queue d `i54` est la charge utile du message reseau `initiate_mobility_action`
+// (`143c97470`), les dix chaines de `mobility` du binaire sont des noms de BOUTON, d ENTREE
+// d armure ou d IMAGE, et aucune n etiquette les quatre valeurs de `bloc + 0x9c`. La decision
+// d alors — « les quatre valeurs restent non nommees, `mobility` NE DEVIENT PAS `clamber` » —
+// tenait faute d oracle. L oracle est arrive : l utilisateur a ouvert Theater sur `bfecd02b` et
+// confronte neuf intervalles de ce genre, pris sur ce film. **Les neuf sont des escalades
+// de rebord, 9 verdicts sur 9, aucun contre-exemple** ; le plus net est celui du temoin du
+// lot 5.22 (Madina97294, slot 523), un saut date a 96,962 s qui se termine en prise sur un
+// element du decor, ou `i54` s allume de 97,096 a 97,63 s et d ou le Spartan redescend ensuite.
+//
+// LE VOCABULAIRE DU JEU CORROBORE SANS PROUVER : `_action_hoist`, `_action_vault`,
+// `_action_climb_attach`, `_action_climb_detach` (`143ca0100` et suivants) et le mode de physique
+// `CharacterPhysicsModeClambering` (`143df73d0`, `FUN_1406b8244(idx) == 2`). C est le mot du jeu
+// pour ce geste ; le verdict vient de l ecran.
+//
+//	PAS DE GENRE   le lot 5.22 a cherche un `jump` LU et ne l a pas trouve : sur une vie
+//	`jump`         repliquee A CHAQUE TICK (le temoin, 4 557 records sur 80 s), l ensemble des
+//	               champs qui basculent au decollage et nulle part ailleurs est VIDE, et il l est
+//	               sur les 68 vies de `bfecd02b` comme sur les 238 de `4f77afc1`, les 64
+//	               composants du bipede au denominateur. `jumpDerived` reste donc le seul genre
+//	               du saut, et son nom continue de dire qu il est calcule. Ce qui n est pas
+//	               prouve n est pas publie.
+//
+//	AUCUNE AUTRE   `layers` est inchange (l escalade reste dans le calque des etats de
+//	DIFFERENCE     mouvement) ; les compteurs de `coverage.stances` gardent leurs noms et leurs
+//	               valeurs ; aucune revision de DECODAGE ne monte pour ce renommage seul
+//	               (`grammar` a monte au commit precedent du lot, pour le cablage du bloc
+//	               d action de la vue de controle).

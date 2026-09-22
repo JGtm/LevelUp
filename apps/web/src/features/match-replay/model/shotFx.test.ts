@@ -154,10 +154,15 @@ describe('buildShotFx — tirs en véhicule (v), origine au montage plutôt qu�
 
   /**
    * LE CORRECTIF DU 2026-09-20. Une arme DE VÉHICULE dont le tag n'est pas dans la table des
-   * montages (Wraith, Gungoose, Falcon, tourelle posée…) perdait TOUTE la source : plus de
-   * véhicule, plus de cap — et comme le bipède embarqué ne réplique plus, l'éclair tombait sur
-   * la bouffée ronde sans direction. Mesuré : le cap de regard est lisible pour 1 tir de
-   * véhicule sur 241 (`4f77afc1`). La source est désormais gardée, sans montage.
+   * montages perdait TOUTE la source : plus de véhicule, plus de cap — et comme le bipède
+   * embarqué ne réplique plus, l'éclair tombait sur la bouffée ronde sans direction. Mesuré : le
+   * cap de regard est lisible pour 1 tir de véhicule sur 241 (`4f77afc1`). La source est désormais
+   * gardée, sans montage.
+   *
+   * LE TÉMOIN A CHANGÉ AU LOT 5.8.3, et il est MEILLEUR : c'était le mortier du Wraith
+   * (`121b4009`), qui a désormais un montage mesuré. C'est maintenant `850902ef` — un tag d'arme
+   * de véhicule RÉELLEMENT OBSERVÉ dans un document cuit (9 tirs sur `5676a9ba`, §4 D4 du lot 5.8)
+   * qu'aucun rapport de RE ne documente. Le cas de test n'est donc plus une hypothèse.
    */
   it('arme DE VÉHICULE sans montage documenté : la source est gardée, montage null', () => {
     const d = doc({
@@ -168,9 +173,7 @@ describe('buildShotFx — tirs en véhicule (v), origine au montage plutôt qu�
           rides: [],
         },
       ],
-      // `121b4009` = le mortier du Wraith : il SONNE (table de `vehicleShotSound`) mais n'a
-      // aucun montage documenté, et il est absent de `weaponLabels` comme toute arme de véhicule.
-      shots: [{ slot: 1, t: 10, x: 5, y: 5, w: '0x121B400900000000', v: 700 }],
+      shots: [{ slot: 1, t: 10, x: 5, y: 5, w: '0x850902EF00000000', v: 700 }],
     })
     const fx = buildShotFx(d, 50)
     expect(fx[0].vehicleShot).not.toBeNull()
@@ -191,5 +194,94 @@ describe('buildShotFx — tirs en véhicule (v), origine au montage plutôt qu�
       shots: [{ slot: 1, t: 10, x: 0, y: 0, w: GHOST_WEAP_TAG }],
     })
     expect(buildShotFx(d, 50)[0].vehicleShot).toBeNull()
+  })
+
+  /**
+   * LOT 5.8.5 — UNE ARME DE JOUEUR TIRÉE D'UN SIÈGE PREND LA VISÉE DE SON TIREUR.
+   *
+   * 5.2a.5 laissait ces tirs sur leur propre cap de REGARD : la règle était juste, mais ce cap
+   * vient de la trajectoire du bipède, qui ne réplique plus une fois embarqué — lisible pour
+   * 1 tir sur 241 (`4f77afc1`), 76 tirs concernés. 5.5.2 a établi que la visée de l'épisode du
+   * TIREUR (appariée par slot) est son PROPRE regard, et l'utilisateur l'a tranché le 2026-09-21.
+   */
+  it('arme de JOUEUR d’un siège AVEC visée lue : la source est gardée, pour sa visée', () => {
+    const d = doc({
+      vehicles: [
+        {
+          slot: 700, gen: 1, t0: 0, t1: 100, t1max: 100, end: 'unknown', family: 'warthog',
+          samples: [{ t: 0, x: 5, y: 5, h: 45 }],
+          rides: [{ slot: 1, t0: 0, t1: 100, src: 'film', seat: 1, aim: [{ t: 10, h: 200 }] }],
+        },
+      ],
+      weaponLabels: { '0xBR': { en: 'BR75', fr: 'BR75', fx: 'ballistic', tint: 'kinetic' } },
+      shots: [{ slot: 1, t: 10, x: 5, y: 5, w: '0xBR', v: 700 }],
+    })
+    const fx = buildShotFx(d, 50)[0]
+    expect(fx.vehicleShot).not.toBeNull()
+    expect(fx.vehicleShot?.arme).toBe('joueur')
+    expect(fx.vehicleShot?.mount).toBeNull()
+    expect(fx.vehicleShot?.shooterHeadingDeg).toBe(200)
+    // Le STYLE reste celui du registre : c'est bien une arme de joueur.
+    expect(fx.fam).toBe('ballistic')
+  })
+
+  it('arme de JOUEUR d’un siège SANS visée lue : la source n’est pas créée (le regard survit)', () => {
+    const d = doc({
+      vehicles: [
+        {
+          slot: 700, gen: 1, t0: 0, t1: 100, t1max: 100, end: 'unknown', family: 'warthog',
+          samples: [{ t: 0, x: 5, y: 5, h: 45 }],
+          rides: [{ slot: 1, t0: 0, t1: 100, src: 'film', seat: 1, aim: [] }],
+        },
+      ],
+      weaponLabels: { '0xBR': { en: 'BR75', fr: 'BR75', fx: 'ballistic', tint: 'kinetic' } },
+      shots: [{ slot: 1, t: 10, x: 5, y: 5, w: '0xBR', v: 700 }],
+    })
+    // Sans lecture de visée, la source n'apporterait rien et le tir perdrait son propre regard :
+    // c'est exactement le comportement d'avant le lot, et la règle de 5.2a.5 survit.
+    expect(buildShotFx(d, 50)[0].vehicleShot).toBeNull()
+  })
+
+  it('une arme DE VÉHICULE se déclare comme telle (le style et la direction en dépendent)', () => {
+    const d = doc({
+      vehicles: [
+        {
+          slot: 700, gen: 1, t0: 0, t1: 100, t1max: 100, end: 'unknown', family: 'ghost',
+          samples: [{ t: 0, x: 5, y: 5, h: 45 }],
+          rides: [],
+        },
+      ],
+      shots: [{ slot: 1, t: 10, x: 5, y: 5, w: GHOST_WEAP_TAG, v: 700 }],
+    })
+    expect(buildShotFx(d, 50)[0].vehicleShot?.arme).toBe('vehicule')
+  })
+
+  /**
+   * LOT 5.8.2 — LA SECONDE JOINTURE DE STYLE. Sans elle, une arme de véhicule tombait sur la
+   * famille `plain` et la teinte `neutral` (68 % des tirs de véhicule de `4f77afc1`) : un halo
+   * gris pâle centré sur un sprite, qui ne se lit pas comme un tir.
+   */
+  it('une arme DE VÉHICULE prend la famille et la teinte de sa propre table', () => {
+    const d = doc({ shots: [{ slot: 1, t: 10, x: 0, y: 0, w: GHOST_WEAP_TAG }] })
+    const fx = buildShotFx(d, 50)[0]
+    expect(fx.fam).toBe('plasma')
+    expect(fx.tint).toBe('plasma_cool')
+  })
+
+  it('le REGISTRE garde la main : une arme de joueur ne prend jamais le style d’un véhicule', () => {
+    const d = doc({
+      weaponLabels: { '0xBR': { en: 'BR75', fr: 'BR75', fx: 'ballistic', tint: 'kinetic' } },
+      shots: [{ slot: 1, t: 10, x: 0, y: 0, w: '0xBR' }],
+    })
+    const fx = buildShotFx(d, 50)[0]
+    expect(fx.fam).toBe('ballistic')
+    expect(fx.tint).toBe('kinetic')
+  })
+
+  it('une arme de véhicule NON documentée garde le rendu neutre, jamais celui d’une voisine', () => {
+    const d = doc({ shots: [{ slot: 1, t: 10, x: 0, y: 0, w: '0xDEADBEEF00000000' }] })
+    const fx = buildShotFx(d, 50)[0]
+    expect(fx.fam).toBe('plain')
+    expect(fx.tint).toBe('neutral')
   })
 })

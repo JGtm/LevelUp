@@ -124,6 +124,13 @@ export function normalizeReplayDocument(raw: ReplayDocument): ReplayDocumentRead
     // de bloc de réplication n'a pas été tranchée : `layers[equipmentPlacements]` /
     // `coverage.placements.calibrated` distinguent les deux, et c'est pour cela qu'ils sont publiés.
     equipmentPlacements: raw.equipmentPlacements ?? [],
+    // LES ÉTATS DE MOUVEMENT (schéma 66) : un intervalle par (vie, genre) — `crouch`, `slide`,
+    // `clamber`, `sprint` (LUS) et `jumpDerived` (DÉRIVÉ de la vitesse verticale). Absent = artefact
+    // antérieur au schéma 65, OU film dont aucune vie publiée ne porte de transition :
+    // `coverage.stances.scanned` et `.absent` distinguent les deux, et c'est pour cela qu'ils
+    // sont publiés. Un genre de PLUS qui apparaîtrait serait une donnée neuve, pas un libellé
+    // à deviner.
+    stances: raw.stances ?? [],
     // LA VIE DES DRAPEAUX de CTF (schéma 14) : une entrée par objet, une suite d'intervalles
     // d'état. Absent = le film n'est pas reconnu comme du CTF, ou personne ne l'a lu pour ce
     // calque — `layers[flagCarries]` / `coverage.flagCarries` distinguent les deux, et c'est pour

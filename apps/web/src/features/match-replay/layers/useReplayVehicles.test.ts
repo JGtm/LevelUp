@@ -107,11 +107,11 @@ async function monter(family: string, opts: { outline?: string | null } = {}) {
 
   const vue = renderHook(() =>
     useReplayVehicles({
-      doc, view: VUE, enabled: true, locale: 'fr', showNames: false, showAim: false,
+      doc, view: VUE, frameRef: { current: 0 }, enabled: true, locale: 'fr', showNames: false, showAim: false,
       colorOfSlot: () => '#123456', colorOfXuid: () => '#123456',
       nameOfSlot: () => null, nameOfXuid: () => null,
       offscreenLabelOf: () => '', offscreenGroupLabelOf: () => '',
-      neutralInk: 'n', labelStroke: 's', explosionInk: ENCRE_FX, reducedMotion: true,
+      neutralInk: 'n', labelStroke: 's', markInk: { fill: 'm', outline: 'o' }, explosionInk: ENCRE_FX, reducedMotion: true,
       redraw,
     }),
   )

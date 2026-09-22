@@ -18,12 +18,14 @@
 import { ReplayFlagTip } from './ReplayFlagTip'
 import { ReplayGroundWeaponTip } from './ReplayGroundWeaponTip'
 import { ReplayPlacementTip } from './ReplayPlacementTip'
+import { ReplayVehicleCycleTip } from './ReplayVehicleCycleTip'
 import { ReplayWeaponPadTip } from './ReplayWeaponPadTip'
 import type { ReplayLocale } from '../i18n/i18n'
 import type { ReplayWindowBounds } from '../model/replayWindow'
 import type { FlagHover } from '../layers/useReplayFlagCarries'
 import type { GroundWeaponHover } from '../layers/useReplayGroundWeapons'
 import type { PlacementHover } from '../layers/usePlacementHover'
+import type { VehicleCycleHover } from '../layers/useReplayVehicles'
 import type { WeaponPadHover } from '../layers/useReplayWeaponPads'
 
 interface ReplayCanvasTipsProps {
@@ -49,6 +51,11 @@ interface ReplayCanvasTipsProps {
   flag: FlagHover | null
   /** Une ARME AU SOL survolée : son nom, qui l'a lâchée, qui l'a reprise (lot 6.5). */
   groundWeapon: GroundWeaponHover | null
+  /**
+   * Un EMPLACEMENT DE NAISSANCE DE VÉHICULE survolé (schéma 63, lot 5.8) : ce qui y naît, quand
+   * ça revient, et sur combien de cycles la prédiction repose.
+   */
+  vehicleCycle: VehicleCycleHover | null
 }
 
 export function ReplayCanvasTips({
@@ -60,6 +67,7 @@ export function ReplayCanvasTips({
   pad,
   flag,
   groundWeapon,
+  vehicleCycle,
 }: ReplayCanvasTipsProps) {
   return (
     <>
@@ -79,6 +87,9 @@ export function ReplayCanvasTips({
       {flag && <ReplayFlagTip locale={locale} hover={flag} width={width} />}
       {groundWeapon && (
         <ReplayGroundWeaponTip locale={locale} hover={groundWeapon} width={width} />
+      )}
+      {vehicleCycle && (
+        <ReplayVehicleCycleTip locale={locale} hover={vehicleCycle} width={width} />
       )}
     </>
   )

@@ -106,8 +106,9 @@ export type ReplayObjectiveObjectReady = Filled<ReplayObjectiveObjectLife, 'pts'
  * lisait comme une jauge, et c'est ce que le schéma 18 corrige (décision du plan, lot C-ter).
  *
  * `gaugeRamps` (schéma 64) SE COMBLE À VIDE POUR LA MÊME RAISON, et la lecture est la même à un
- * cran de plus : une rampe sans `capturingTeam` est une rampe dont le pousseur n'est PAS mesuré,
- * et le rendu y repeint au neutre — exactement ce qu'il fait quand le tableau est vide.
+ * cran de plus : une rampe sans `capturingTeam` est une rampe dont le pousseur n'est PAS nommé
+ * par le film — le neutre, ou aucun canal pousseur élu sur cette zone —, et le rendu y repeint au
+ * neutre, exactement ce qu'il fait quand le tableau est vide.
  */
 export type ReplayZoneStateReady = Filled<ReplayZoneState, 'spans' | 'gauge' | 'gaugeRamps'>
 /**
@@ -169,6 +170,7 @@ export type ReplayDocumentReady = Omit<
   | 'equipmentChanges'
   | 'equipmentEpisodes'
   | 'equipmentPlacements'
+  | 'stances'
   | 'flagCarries'
   | 'geometry'
   | 'grappleLines'
@@ -282,6 +284,16 @@ export type ReplayDocumentReady = Omit<
   equipmentChanges: NonNullable<ReplayDocument['equipmentChanges']>
   equipmentEpisodes: NonNullable<ReplayDocument['equipmentEpisodes']>
   equipmentPlacements: NonNullable<ReplayDocument['equipmentPlacements']>
+  /**
+   * LES ÉTATS DE MOUVEMENT DU SPARTAN (schéma 66) : un intervalle par (vie, genre) sur l'axe de
+   * frames — `crouch` (accroupi), `slide` (glissade), `clamber` (escalade),
+   * `sprint` (la fente de capacité active d'`i57`), tous quatre LUS dans un composant, et
+   * `jumpDerived` (saut), DÉRIVÉ de l'intégrale de la vitesse
+   * verticale d'`i1` et reconnu à sa hauteur (0,85 m ± 10 %). Vide = artefact antérieur au
+   * schéma 65, ou film dont aucune vie publiée ne porte de transition ; `coverage.stances`
+   * distingue les deux, et `coverage.stances.jumpsDerived` compte les sauts à part.
+   */
+  stances: NonNullable<ReplayDocument['stances']>
   flagCarries: ReplayFlagCarryReady[]
   /**
    * LES ARMES AU SOL individuelles (schéma 27) : une entrée par objet qui a BOUGÉ, avec sa

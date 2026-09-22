@@ -190,26 +190,32 @@ type ZoneState struct {
 	// base NEUTRE la deduction n'existe pas, et le remplissage s'y peignait au neutre alors
 	// qu'une equipe poussait. Ce champ remplace la deduction par une MESURE.
 	//
-	// LE CAMP EST CELUI DE L'ISSUE, ET IL N'EST PUBLIE QUE QUAND LA RAMPE ABOUTIT. Une rampe
-	// qui atteint le PLEIN de la jauge a produit une capture : la valeur du canal de propriete
-	// juste apres son sommet EST le camp qui poussait. Une rampe qui AVORTE n'apprend rien sur
-	// le pousseur — le canal y porte encore le DEFENSEUR —, et `CapturingTeam` est alors
-	// ABSENT : le document ne devine pas.
+	// LE CAMP EST LU DANS LE FILM, ET SUR TOUTE RAMPE — ABOUTIE OU AVORTEE (lot 5.6). Chaque
+	// zone porte DEUX canaux `tag 4` a valeurs d'equipe : le PROPRIETAIRE, et le POUSSEUR, qui
+	// vaut le neutre quand personne ne capture. La valeur du pousseur pendant la rampe nomme le
+	// camp qui la mene, qu'elle aille au bout ou non. Election et mesure :
+	// `zone_states_capturer.go`.
 	//
-	// MESURE DE SEPARATION (2026-09-20, 8 documents a zones du cache, 241 rampes) : 160 rampes
-	// sont suivies d'une bascule de camp dans la fenetre, et leur sommet va de 0,976 a 0,999 ;
-	// les 81 autres n'en produisent AUCUNE, et leur sommet plafonne a 0,986 — dont deux seules
-	// au-dessus de 0,95 (0,983 et 0,986), qui sont des RE-SECURISATIONS par le camp deja en
-	// place : le canal n'y ouvre pas d'intervalle parce que sa valeur ne change pas, mais elle
-	// nomme bien le pousseur. Hors ces deux cas, le plus haut sommet sans bascule vaut 0,938 :
-	// le seuil de `zoneGaugeRampComplete` (0,95) tombe dans une marge mesuree de 0,038.
+	// LE SEUIL D'ABOUTISSEMENT NE GOUVERNE PLUS QUE LE REPLI. Une zone dont aucun canal n'est
+	// elu — l'election exige deux rampes abouties concordantes, et une zone peu disputee n'en a
+	// pas assez — retombe sur la DEDUCTION du schema 64 : le proprietaire juste apres le sommet
+	// d'une rampe ABOUTIE, rien sur une rampe avortee. Le repli est nomme et compte
+	// (`repli_zone_camp_de_capture_deduit_de_l_issue`). Mesure sur trois films a zones :
+	// 0, 1 et 0 declenchements.
+	//
+	// MESURE DE SEPARATION DU SEUIL (2026-09-20, 8 documents a zones du cache, 241 rampes) :
+	// 160 rampes sont suivies d'une bascule de camp dans la fenetre, et leur sommet va de 0,976
+	// a 0,999 ; les 81 autres n'en produisent AUCUNE, et leur sommet plafonne a 0,986 — dont
+	// deux seules au-dessus de 0,95 (0,983 et 0,986), qui sont des RE-SECURISATIONS par le camp
+	// deja en place. Hors ces deux cas, le plus haut sommet sans bascule vaut 0,938 : le seuil
+	// de `zoneGaugeRampComplete` (0,95) tombe dans une marge mesuree de 0,038.
 	//
 	// ABSENT sur une colline (KOTH) comme `Gauge`, et sur tout artefact de schema <= 63.
 	GaugeRamps []ZoneGaugeRamp `json:"gaugeRamps,omitempty"`
 }
 
-// ZoneGaugeRamp est UNE montee de la jauge de capture, et le camp qui la pousse quand elle
-// aboutit (schema 64).
+// ZoneGaugeRamp est UNE montee de la jauge de capture, et le camp qui la pousse (schema 64 pour
+// la forme ; le camp est LU depuis le lot 5.6, et la forme n'a pas bouge).
 //
 // POURQUOI UN SPAN DE RAMPE ET PAS UN CHAMP SUR `GaugePoint`. `GaugePoint` est un type PARTAGE
 // — la jauge de RETOUR DU DRAPEAU l'emploie depuis le schema 63 (`FlagSpan.ReturnProgress`) — et
@@ -229,9 +235,10 @@ type ZoneGaugeRamp struct {
 	// commence ; la poussee commence au premier point NON NUL de `Gauge` dans ces bornes.
 	T0 int `json:"t0"`
 	T1 int `json:"t1"`
-	// CapturingTeam est LE CAMP QUI POUSSE LA JAUGE, mesure a l'issue de la rampe. ABSENT quand
-	// la rampe avorte, quand le canal de propriete se tait dans la fenetre qui suit le sommet,
-	// ou quand la valeur qu'il y porte n'est pas un camp du roster (neutre compris).
+	// CapturingTeam est LE CAMP QUI POUSSE LA JAUGE, LU sur le canal pousseur de la zone
+	// pendant la rampe. ABSENT quand le film y nomme le NEUTRE (« personne ne pousse »), quand
+	// le canal elu se tait dans la fenetre de la rampe, ou quand aucun canal n'a ete elu et que
+	// le repli de deduction ne repond pas non plus (rampe avortee).
 	//
 	// POINTEUR ET `omitempty` : le camp 0 existe, et l'ABSENCE de la cle est le seul moyen de
 	// dire « non mesure » sans le confondre avec « camp 0 » — le client peint alors au neutre.
