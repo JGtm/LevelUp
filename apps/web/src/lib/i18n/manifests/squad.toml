@@ -1076,7 +1076,7 @@ fr = "Hauteur des engagements"
 en = "Engagement elevation"
 
 [squad.hauteur.help]
-fr = "L'écart de hauteur est le dénivelé médian des frags d'un joueur sur un match — la hauteur du tueur moins celle de sa victime — moins celui de tous les joueurs du lobby. Un écart positif veut dire qu'il fraguait d'en haut par rapport au reste du lobby, un écart négatif qu'il fraguait d'en bas. Un match sous {floor, number} frags mesurés donne un point creux, exclu de la tendance et sans rôle."
+fr = "L'écart de hauteur est la hauteur d'engagement médiane des frags d'un joueur sur un match — la hauteur du tueur moins celle de sa victime — moins celle de tous les joueurs du lobby. Un écart positif veut dire qu'il fraguait en surplomb par rapport au reste du lobby, un écart négatif qu'il fraguait en contrebas. Un match sous {floor, number} frags mesurés donne un point creux, exclu de la tendance et sans rôle."
 en = "The elevation gap is a player's median kill elevation on a match — the killer's height minus the victim's — minus that of every player in the lobby. A positive gap means they were killing from above relative to the lobby, a negative gap from below. A match under {floor, number} measured kills gives a hollow dot, excluded from the trend and without a role."
 
 [squad.hauteur.x_axis]
@@ -1112,7 +1112,7 @@ fr = "tendance ({n, number} matchs)"
 en = "trend ({n, number} matches)"
 
 [squad.hauteur.tooltip_median]
-fr = "dénivelé médian {m} m"
+fr = "hauteur médiane {m} m"
 en = "median elevation {m} m"
 
 [squad.hauteur.tooltip_delta]
@@ -1132,7 +1132,7 @@ fr = "Aucune hauteur mesurée"
 en = "No elevation measured"
 
 [squad.hauteur.empty_description]
-fr = "Aucun match de la sélection n'a de film décodé : sans positions de frag, le dénivelé ne se mesure pas."
+fr = "Aucun match de la sélection n'a de film décodé : sans positions de frag, la hauteur ne se mesure pas."
 en = "No match in the selection has a decoded film: without kill positions, elevation cannot be measured."
 
 [squad.hauteur.fold_tape]

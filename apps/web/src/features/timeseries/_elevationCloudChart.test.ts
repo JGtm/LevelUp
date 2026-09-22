@@ -71,7 +71,7 @@ const INPUT = {
     medianKills: 'médiane frags +2,4 m',
     medianDeaths: 'médiane morts -1,9 m',
     xAxis: "Distance de l'engagement",
-    yAxis: 'Dénivelé (m)',
+    yAxis: 'Hauteur (m)',
     levelBand: 'À niveau (± 1 m)',
   },
 }

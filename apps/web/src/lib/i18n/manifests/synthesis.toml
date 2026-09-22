@@ -422,7 +422,9 @@ en = "By mode"
 #
 # Une portée d'USAGE et jamais une portée d'arme (décision D8) : aucune clé ne dit
 # « portée de l'arme ». Vocabulaire FR sans anglicismes — « frags », « morts »,
-# « dénivelé », « d'en haut / à niveau / d'en bas », « distance d'entame ».
+# « hauteur d'engagement », « en surplomb / à niveau / en contrebas », « distance
+# d'entame ». « Dénivelé » est PROSCRIT des chaînes FR depuis la décision D26 (2026-09-22) —
+# garde-rail `vocabulaireHauteur.guard.test.ts`.
 
 [synthesis.weapon_range.heading]
 fr = "Portée des engagements"
@@ -437,20 +439,20 @@ fr = "Le bâton court du 10e au 90e centile ; le losange marque la médiane. Fra
 en = "The bar runs from the 10th to the 90th percentile; the diamond marks the median. Kills on top, deaths below — on deaths, the weapon is the killer's."
 
 [synthesis.weapon_range.elevation_subtitle]
-fr = "Dénivelé"
-en = "Elevation"
+fr = "Hauteur d'engagement"
+en = "Engagement height"
 
 [synthesis.weapon_range.elevation_subtitle_detail]
-fr = "Le dénivelé est votre hauteur moins celle de l'adversaire au moment du coup fatal. Le signe est toujours le vôtre : positif, vous étiez au-dessus, pour un frag comme pour une mort. Seuls les engagements dont les deux positions sont décodées y figurent, et le pied de carte en donne le compte."
-en = "Elevation is your height minus your opponent's at the moment of the killing blow. The sign is always yours: positive means you were above, for a kill as for a death. Only engagements whose two positions are decoded appear here, and the card footer gives the count."
+fr = "La hauteur d'engagement est votre hauteur moins celle de l'adversaire au moment du coup fatal. Le signe est toujours le vôtre : positif, vous étiez en surplomb, pour un frag comme pour une mort. Seuls les engagements dont les deux positions sont décodées y figurent, et le pied de carte en donne le compte."
+en = "Engagement height is your height minus your opponent's at the moment of the killing blow. The sign is always yours: positive means you were on high ground, for a kill as for a death. Only engagements whose two positions are decoded appear here, and the card footer gives the count."
 
 [synthesis.weapon_range.legend_label]
 fr = "Légende"
 en = "Legend"
 
 [synthesis.weapon_range.legend_elevation_label]
-fr = "Légende du dénivelé"
-en = "Elevation legend"
+fr = "Légende de la hauteur d'engagement"
+en = "Engagement height legend"
 
 [synthesis.weapon_range.side_kills]
 fr = "Mes frags"
@@ -468,16 +470,16 @@ en = "p10 · median · p90"
 fr = "aucune mesure"
 en = "no measurement"
 
-# Nuage « distance × dénivelé » (D25, proposition T5). Les trois classes « d'en haut / à
-# niveau / d'en bas » sont parties avec les barres empilées par arme : le nuage montre la
+# Nuage « distance × hauteur » (D25, proposition T5). Les trois classes « en surplomb / à
+# niveau / en contrebas » sont parties avec les barres empilées par arme : le nuage montre la
 # position, il ne la classe pas.
 [synthesis.weapon_range.elev_axis_x]
 fr = "Distance de l'engagement"
 en = "Engagement distance"
 
 [synthesis.weapon_range.elev_axis_y]
-fr = "Dénivelé (m)"
-en = "Elevation (m)"
+fr = "Hauteur (m)"
+en = "Height (m)"
 
 [synthesis.weapon_range.elev_level_band]
 fr = "À niveau (± 1 m)"
@@ -540,12 +542,12 @@ fr = "Portée haute (p90)"
 en = "High range (p90)"
 
 [synthesis.weapon_range.table_above]
-fr = "D'en haut"
-en = "From above"
+fr = "En surplomb"
+en = "On high ground"
 
 [synthesis.weapon_range.table_below]
-fr = "D'en bas"
-en = "From below"
+fr = "En contrebas"
+en = "On low ground"
 
 [synthesis.weapon_range.tile_median_kills]
 fr = "Portée médiane de mes frags"
@@ -586,7 +588,7 @@ en = "You close the distance in {pct} of kills"
 fr = "Aucune arme n'atteint le seuil de {min, number} mesures sur cette période : les portées mesurées restent trop rares pour être publiées arme par arme."
 en = "No weapon reaches the {min, number} measurement threshold over this period: measured ranges are still too rare to publish weapon by weapon."
 
-# État vide NOMMÉ de la carte « Dénivelé ». Le nuage (D25) ne dépend d'AUCUN seuil de
+# État vide NOMMÉ de la carte « Hauteur d'engagement ». Le nuage (D25) ne dépend d'AUCUN seuil de
 # publication — la dimension arme ne compte pas (D23-b) — donc la seule cause d'une carte
 # vide est l'absence de frag mesuré sur la fenêtre : un film non décodé, jamais un seuil.
 # L'ancienne phrase (« aucune arme n'atteint le seuil de N mesures ») décrivait les barres

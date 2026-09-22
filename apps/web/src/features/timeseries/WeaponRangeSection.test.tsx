@@ -119,7 +119,7 @@ describe('WeaponRangeSection — rendu nominal', () => {
   it('affiche les DEUX cartes, chacune avec son graphe', () => {
     renderWithProviders(<WeaponRangeSection range={RANGE} elevation={ELEVATION} />)
     expect(screen.getByRole('region', { name: 'Portée par arme' })).toBeInTheDocument()
-    expect(screen.getByRole('region', { name: 'Dénivelé' })).toBeInTheDocument()
+    expect(screen.getByRole('region', { name: "Hauteur d'engagement" })).toBeInTheDocument()
     // Deux ChartCard : le canvas lui-même est chargé en `lazy`, on pince la carte.
     expect(screen.getAllByTestId('chart-card')).toHaveLength(2)
   })
@@ -156,7 +156,7 @@ describe('WeaponRangeSection — rendu nominal', () => {
     // La légende du nuage (D25) nomme ses cinq entrées : les deux côtés, le halo, les
     // médianes et la bande à niveau. Les trois classes « d'en haut / à niveau / d'en bas »
     // sont parties avec les barres empilées par arme.
-    const nuage = screen.getByRole('list', { name: 'Légende du dénivelé' })
+    const nuage = screen.getByRole('list', { name: "Légende de la hauteur d'engagement" })
     expect(within(nuage).getByText('Un frag')).toBeInTheDocument()
     expect(within(nuage).getByText('Une mort')).toBeInTheDocument()
     expect(within(nuage).getByText('Du 1er au 3e quartile')).toBeInTheDocument()
@@ -181,7 +181,7 @@ describe('WeaponRangeSection — rendu nominal', () => {
     // qualifie ce qu'elle légende (maquette du 2026-09-06).
     renderWithProviders(<WeaponRangeSection range={RANGE} elevation={ELEVATION} />)
     expect(screen.getByRole('list', { name: 'Légende' })).toBeInTheDocument()
-    expect(screen.getByRole('list', { name: 'Légende du dénivelé' })).toBeInTheDocument()
+    expect(screen.getByRole('list', { name: "Légende de la hauteur d'engagement" })).toBeInTheDocument()
   })
 
   it('les pastilles du dénivelé portent l’encre de leur classe', () => {
@@ -190,7 +190,7 @@ describe('WeaponRangeSection — rendu nominal', () => {
     // emprunte le gris des libellés d'axe, qui n'a pas de token d'accessibilité — d'où la
     // variable CSS brute.
     renderWithProviders(<WeaponRangeSection range={RANGE} elevation={ELEVATION} />)
-    const legend = screen.getByRole('list', { name: 'Légende du dénivelé' })
+    const legend = screen.getByRole('list', { name: "Légende de la hauteur d'engagement" })
     const swatch = (name: string) =>
       within(legend).getByText(name).parentElement!.querySelector('span[aria-hidden]') as HTMLElement
     expect(swatch('Un frag').style.backgroundColor).toBe(tokenCssVar('stat-kills'))
