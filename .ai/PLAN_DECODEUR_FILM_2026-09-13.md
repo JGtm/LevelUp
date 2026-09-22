@@ -8326,6 +8326,76 @@ contre 4 469 dans la reference — et 1 489 est EXACTEMENT la valeur que le lot 
 les divergences sont celles de la reference perimee, pas des siennes. Decodage : 14,8 s,
 pic 0,19 Gio, un film a la fois.
 
+### Post-chantier — lot 5.19 (le record avant le rejet), branche `feat/decfilm-69`
+
+Sur le residu que les lots 5.15 a 5.18 ont instruit sans le reduire. METHODE INVERSEE : la
+DIFFERENTIELLE d abord (elle LOCALISE, elle ne conclut pas), l ecrivain de chaque composant
+qu elle nomme ensuite (Ghidra lecture seule), un commit par maillon. Note de grammaire :
+`.ai/V7.5/film_re/NOTE_5_19_RECORD_AVANT_LE_REJET_2026-09-22.md`.
+
+- [x] **5.19.1 — LA DIFFERENTIELLE : LE MASQUE ET LES LARGEURS NE DISTINGUENT RIEN, MAIS LE
+  RECORD AVANT LE REJET, COMPARE A SES PROPRES VOISINS, NOMME SES ARCHETYPES.**
+
+  `mouvement_5_19_differentielle_research_test.go` (collecte) + `mouvement_5_19_tableaux_research_test.go`
+  (publication, deplacement pur sous le seuil de 500 lignes). Une passe, UN decodage par paquet.
+  Le gate du 5.16/5.18 est reproduit AU PAQUET : `dad793c7` 5 354/5 365, `bfecd02b` 2 884/30 387,
+  2 et 32 debordements — l instrument est bien celui qui a mesure le residu.
+
+  **(a) LE MASQUE NE DISTINGUE PAS LES DEUX POPULATIONS.** Les masques les plus frequents du
+  dernier record avant le rejet sont EXACTEMENT ceux des paquets qui ferment : `ti=35 0x2200003`
+  premier des deux cotes (8 007 fautifs, 155 fermes), `0x2000003` troisieme des deux cotes.
+
+  **(b) LES LARGEURS NON PLUS.** `i25` 10 bits (20 997 / 397), `i0` dyn.-prec. 54 bits
+  (20 458 / 395), `i1` dyn.-prec. 31 bits (19 138 / 329), `i21` 25 bits (13 488 / 216). Les seules
+  largeurs « que seuls les fautifs portent » comptent 1 a 6 occurrences : la queue de bruit d un
+  curseur deja faux. **`i25` est re-confirme confondant** (5.15.1 (i)).
+
+  **(c) DEUX CONFONDANTS TUENT LA COMPARAISON « FAUTIFS CONTRE FERMES ».** La DENSITE (`ti=35`
+  present dans 96,6 % des fautifs contre 30,4 % des fermes ; 61,1 % des fermes n ont qu un `ti=4`
+  d un composant) et la DOSE : un paquet SANS delta de bipede ferme a **71,9 %**, avec un seul il
+  tombe a 5,5 %. Et la distribution des fautifs par nombre de bipedes lus n est PAS geometrique
+  (elle serait decroissante) — c est une cloche centree sur 5, donc le nombre de bipedes lus AVANT
+  la faute, tronque par elle.
+
+  **(d) LA DIFFERENTIELLE INTERNE N A AUCUN CONFONDANT, ET C EST ELLE QUI NOMME.** Dans le MEME
+  paquet fautif : le DERNIER record (apres lequel le curseur est faux) contre TOUS CEUX QUI LE
+  PRECEDENT (lus juste — le record suivant s est decode derriere eux). Meme film, meme trame,
+  meme paquet, meme carte. 23 325 derniers contre 114 147 precedents.
+  **Taux de faute = dernier / (dernier + precedents).**
+
+  | classe | taux | dernier | precedents |
+  |---|---:|---:|---:|
+  | `ti=40` masque `0x200000a` · `0x200001f` · `0x2000007` · `0x200000e` | **100 / 98,8 / 92,0 / 88,9 %** | 45 / 82 / 69 / 48 | 0 / 1 / 6 / 6 |
+  | `ti=35` masques a bit **54** (`0x40000002200023`, `0x40000002200003`) | **92,6 / 83,3 %** | 25 / 50 | 2 / 10 |
+  | `ti=40` masque `0x10` (`i4` SEUL) | **87,2 %** | 238 | 35 |
+  | `ti=32` masque `0xf` · `ti=2` masque `0x1` | 82,6 / 80,3 % | 76 / 376 | 16 / 92 |
+  | `ti=40` masque `0x200000f` | **75,0 %** | **1 841** | 615 |
+  | `ti=42` / `ti=37` masques courts | 43 a 91 % | ~1 000 | ~1 000 |
+  | `ti=10` masque `0x4000000` | 53,6 % | 239 | 207 |
+  | `ti=35` masques usuels | **10,7 a 25,1 %** | 18 856 | 85 889 |
+  | `ti= 4` masque `0x1` (`high-frequency`) | **1,1 %** | 244 | 22 604 |
+
+  **TROIS FAITS, ET ILS SONT LA LISTE DES SUSPECTS ORDONNEE :**
+
+  1. **Un record de `ti=40` est terminal trois fois sur quatre, et le taux est UNIFORME sur ses
+     six composants** (`i0` 76,2 %, `i1` 75,7 %, `i2` 73,0 %, `i3` 75,6 %, `i4` 88,9 %, `i25`
+     77,0 %). Ce n est donc pas « un composant de plus a porter » : c est le record entier.
+  2. **Le MEME composant, a la MEME largeur, faute differemment selon l ARCHETYPE.**
+     `object-body-vitality-component`, 11 bits, meme deserialiseur `FUN_140fb8978` : **88,9 % sur
+     `ti=40`, 21,3 % sur `ti=35`**. L archetype change la verite de la lecture sans changer ce que
+     le port lit.
+  3. **`ti=4 high-frequency` mesure 1,1 % sur 22 848 lectures** : c est le seul temoin propre du
+     film. Tout ce qui est au-dessus de 10 % est une lecture a instruire.
+
+  **(e) `dad793c7` N EXERCE AUCUNE DES CLASSES FAUTIVES** : ses derniers records sont `ti=4`
+  (97,8 %), `ti=35` (1,4 %), `ti=47` (0,8 %), `ti=0` et `ti=5` une fois chacun — un seul rejet sur
+  5 365 paquets, sans record lu. `ti=40`, `ti=2`, `ti=32`, `ti=42`, `ti=37`, `ti=10` n y
+  apparaissent JAMAIS. Les archetypes que la differentielle accuse sont exactement ceux que le
+  film de calibration n exerce pas.
+
+  Aucune ligne de grammaire touchee : `grammar.Rev`, `facts.Rev` et `replay.SchemaVersion`
+  INCHANGES, gate reproduit au paquet.
+
 ### Post-chantier — lot 5.18 (le controle de corruption lu dans le film), branche `feat/decfilm-68`
 
 Sur les decouvertes D1 et D2 du lot 5.17. METHODE : l ecrivain d abord (Ghidra lecture seule,
