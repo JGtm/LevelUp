@@ -4,6 +4,7 @@
  * Découpé depuis TimeseriesPage.tsx (audit #6 god-file split).
  * Contenu : 6 histogrammes + 4 scatters de corrélations + MMR team/enemy.
  */
+import { SectionTitle } from '@/components/ui/detail-section'
 import { TimeseriesDistributionHistogram } from './TimeseriesDistributionHistogram'
 import { TimeseriesScatterWithTrend } from './TimeseriesScatterWithTrend'
 import { useCapability } from '@/lib/capabilities/capabilities'
@@ -39,9 +40,7 @@ export function TimeseriesDistributionsTabView({
   )
   return (
     <div className="space-y-8">
-      <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-        {t('timeseries.tabs.distributions')}
-      </h3>
+      <SectionTitle>{t('timeseries.tabs.distributions')}</SectionTitle>
       {/* 6 histogrammes en grille 3×2, chacun avec médiane verticale.
           Performance utilise un coloring par tier (perf-tier-1..5). */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -134,9 +133,7 @@ export function TimeseriesDistributionsTabView({
         ))}
       </div>
 
-      <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-        {t('timeseries.distributions.correlations_title')}
-      </h3>
+      <SectionTitle>{t('timeseries.distributions.correlations_title')}</SectionTitle>
       {/* 4 scatters en grille 2×2 + MMR seul en bas (pleine largeur). */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         {([
