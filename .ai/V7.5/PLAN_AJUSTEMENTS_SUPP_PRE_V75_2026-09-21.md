@@ -136,6 +136,7 @@ surface `film/replay` 260 -> 263 justifie.
 - [x] Fichier `.ai/V7.5/MAQUETTE_TRANSVERSES_RIPOSTE_PORTEE_APPUI_2026-09-21.html` + verification des deux reserves de donnees
 
 ## Decouvertes (hors perimetre, ne pas traiter)
+- Y : `LoadMatch` et `LoadMatchElevation` executent deux fois la meme jointure (~12 ms, en parallele) ; `ScatterChart` ne porte ni markArea ni markLine ni clic (les nuages annotes passent par ChartCard custom).
 - Z2 : `lib/i18n/generated/timeseries.ts` desynchronise du TOML (`coord_y_axis` present dans le genere, absent du TOML, sans lecteur) — vestige du lot V, a regenerer ; couverture de la carte hauteur = couverture des positions (optimiste si un frag mesure n a pas de z).
 - Z1 : ratchet imports inter-features pile au plafond 7/7 (6 emprunts a `explorer/explorerMatchesClientSort`) ; commentaire duplique dans `TimeseriesPage.summary.tsx` ~257.
 - V : une serie sans repere (parite non mesuree) reste tracee en valeur brute a cote de series en ecart (melange d unites, cas rare).
@@ -229,9 +230,9 @@ surface `film/replay` 260 -> 263 justifie.
 - [x] `.ai/V7.5/MAQUETTE_DENIVELE_V2_2026-09-22.html` : T1/T2/T3, M1/M2/M3, E1/E2/E3, Sessions = rien
 - D24 (2026-09-22) Denivele : Match view = M1 (B2 du match, mes frags / mes morts, clic vers le rejeu) avec un BOUTON « comparer au lobby » (= M3, fond gris + mediane du lobby) ; Escouade = E1 (role de hauteur, un point par coequipier par match, ecart au lobby, memes composants que les roles de portee ; champ dz ajoute au lot U) ; Sessions = RIEN (abandonne) ; Timeseries : T1 sous un plancher de points, T2 (densite) au-dela — a confirmer par l utilisateur.
 
-### Lot Y — Match view : Denivele M1 + bouton lobby (worktree `LevelUp-wt-ajsup-y`)
-- [ ] Go : `combat_tab.elevation` = par frag mesure du match (cote tueur ET cote victime pour le joueur consulte ; option tous les frags du lobby) : distance_m, delta_z_m, time_ms, weapon, side ; mediane du lobby
-- [ ] Web : nuage hauteur x distance, bande a niveau, clic vers l instant du rejeu, bouton « comparer au lobby »
+### Lot Y — Match view : Denivele M1 + bouton lobby (worktree `LevelUp-wt-ajsup-y`) — FUSIONNE 0ab4facad
+- [x] Go : `combat_tab.elevation` = par frag mesure du match (cote tueur ET cote victime pour le joueur consulte ; option tous les frags du lobby) : distance_m, delta_z_m, time_ms, weapon, side ; mediane du lobby
+- [x] Web : nuage hauteur x distance, bande a niveau, clic vers l instant du rejeu, bouton « comparer au lobby »
 
 ### Lot W — web Sessions : Portee en 4.A (worktree `LevelUp-wt-ajsup-w`) — FUSIONNE b380afed0 (conflit chart des roles resolu : options Z1 + W)
 - [x] Nuage de la periode (`range_reference`), session en surbrillance, bandes et seuils servis, tendance 5 matchs ; remplace la carte du lot O
