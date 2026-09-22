@@ -8466,6 +8466,104 @@ qu elle nomme ensuite (Ghidra lecture seule), un commit par maillon. Note de gra
   INCHANGES ; gate reproduit au paquet (`dad793c7` 5 354/5 365, `bfecd02b` 2 884/30 387, 2 et 32
   debordements).
 
+- [x] **5.19.3 — LE FLUX LATERAL N EXISTE PAS : `session+0xf8` EST LE CURSEUR D OCTETS DU FLUX DE
+  PAQUETS, ET LE BLOC DE TYPE 9 EST UN PIED DE FILM, UNIQUE, APRES LA DERNIERE TRAME.**
+
+  **(a) `FUN_142988338` EST LE LECTEUR D OCTETS DE LA SESSION, PARTAGE PAR TOUS LES HANDLERS.**
+  `FUN_142988338(session, dst, n, 0)` fait `memcpy(dst, session[0xf0] + session[0xf8], n)` puis
+  `session[0xf8] += n`, sous la borne `session[0xe8]`. Ses DOUZE appelants sont les handlers de
+  paquets eux-memes (`FUN_14298816c` type 0, `FUN_142987bd4` type 8, `FUN_142989418` type 1,
+  `FUN_142988244` type 10, `FUN_142988084` type 6, `FUN_1429882c8` type 0xb, `FUN_1429875e4`
+  type 0xc, `FUN_14298884c` l en-tete de 16 octets) plus `FUN_1428e2a04` / `FUN_1428e2a9c` /
+  `FUN_1429883ec` / `FUN_142986b94`. **`session+0xf8` n est pas un canal lateral : c est LE
+  curseur de lecture sequentielle du fichier.** La question du brief — « un corps de trame
+  puise-t-il dans ce flux ? » — a donc une reponse structurelle : NON, et aucun lecteur de trame,
+  de composant ou d image-cle ne l interroge autrement que pour recevoir SON propre payload.
+
+  **(b) LE REPARTITEUR N A QU UN APPELANT, ET IL JETTE LE TYPE 9.** `FUN_1428e22c0` est appele par
+  le SEUL `FUN_1428e27c0` (la pompe de lecture : elle lit l en-tete de 16 octets par
+  `FUN_14298884c`, puis repartit). La branche `sVar2 == 9` fait
+  `*(int *)(session + 0xf8) += *(int *)(paquet + 2)` et rend 1 : **aucun octet n est copie, aucun
+  pointeur n est conserve.** (Au passage : les types 3, 4, 5 et 2 tombent dans la queue d erreur
+  `FilmBlockReadError` — le repartiteur ne connait que 0, 1, 6, 7, 8, 9, 10, 0xb, 0xc.)
+
+  **(c) ET LE BLOC N EST PAS UN FLUX : C EST UN PIED DE FILM, MESURE.** Recensement hors ligne
+  (`TestType9519`) :
+
+  | | `dad793c7` | `bfecd02b` |
+  |---|---:|---:|
+  | paquets de type 9 | **1** | **1** |
+  | octets | **4** | **631 561** |
+  | chunk | **6 (le dernier)** | **28 (le dernier)** |
+  | premier `u32` | **0** | **207** |
+  | paquets delta du meme chunk | 106 | **0** |
+
+  **Il y a UN SEUL paquet de type 9 par film, dans le DERNIER chunk, apres la derniere trame.**
+  Sur le film a un joueur il pese 4 octets et vaut zero ; sur le film dense il pese 631 561 octets
+  et son premier `u32` vaut 207 — un COMPTE d entrees de taille variable, pas un flux par trame.
+
+  **CONSEQUENCE : D1 (5.18) EST REFUTE PAR LA POSITION, PAS PAR UNE ABSENCE.** « Le type 9 reste le
+  seul bloc dont la taille suit le residu » etait vrai de sa TAILLE et faux de sa PLACE : un bloc
+  unique situe apres tous les paquets delta du film ne peut pas decider de la lecture des
+  chunks 1 a 27. Le suspect qui restait au §4 du 5.18 tombe, et la cause mesuree au 5.19.2 le
+  remplace.
+
+  Population de types re-mesuree sur `bfecd02b` : type 0 = 31 232 paquets / 7 203 888 o ·
+  type 1 = 27 / 9 261 513 o · type 2 = 27 / 4 593 116 o · type 6 = 27 / 108 o · type 7 = 28 / 0 o ·
+  type 8 = 28 / 700 868 o · type 9 = 1 / 631 561 o · type 10 = 31 232 / 251 227 o ·
+  type 12 = 28 / 112 o.
+
+- [x] **5.19.4 — CE QUE LE TROU PORTAIT : RIEN, ET C EST LA CONSEQUENCE NECESSAIRE D UN LOT QUI
+  N A TOUCHE AUCUNE LIGNE DE GRAMMAIRE.** Les quatre ecrivains lus sont conformes au port ; aucun
+  composant n a ete corrige, aucune largeur n a bouge, aucun archetype nouveau n est lu. Le tableau
+  par composant du 5.18.3 tient a l identique (207 etiquettes sur `bfecd02b`, `ti=35` 129 572,
+  desyncs 4) parce que le diff de production est VIDE : les quatre fichiers du lot sont des
+  instruments `//go:build research`, sans appelant de production.
+
+  **AUCUN CANAL D ETAT DE BIPEDE N APPARAIT, donc AUCUNE MONTEE DE SCHEMA** : pas de chronique
+  v68, pas de `structure_test`, pas de `document_shape.golden`, pas de jumeaux
+  `replaydoc`/`replayview`, pas de zod, pas de fixtures `replay_schema_68_*`, pas d OpenAPI.
+  `replay.SchemaVersion` reste a **67**, `grammar.Rev` a `grammar-2026-09-22.7`, `facts.Rev`
+  inchangee — **aucun backlog killsource n est ouvert**.
+
+- [!] **GATE — LES PAQUETS NE FERMENT PAS A 100 %, ET LE LOT DIT LAQUELLE DE SES DEUX PROMESSES IL
+  TIENT.** `dad793c7` 5 354/5 365, `bfecd02b` 2 884/30 387, 2 et 32 debordements : INCHANGES, comme
+  le 5.15, le 5.17 et le 5.18 — le lot ne deplace aucun chiffre et n en abime aucun (diff de
+  production VIDE, prouve par `git diff --stat` : quatre fichiers `_research_test.go`). La seconde
+  promesse du brief — « au minimum une baisse NOMMEE des rejets, composant par composant » — n est
+  pas tenue en chiffres et l est en NATURE : le lot etablit que la baisse ne viendra PAS d un
+  composant, parce que les quatre ecrivains lus sont conformes et parce que 99,0 % des rejets
+  portent sur un slot dont l archetype n a jamais ete declare au monde hors ligne. Les deux
+  suspects nommes au §4 du 5.18 (type 9) et du 5.16 (le masque decale) sont l un et l autre
+  REFUTES par une lecture, pas par une absence.
+
+  Gates sans decodage, tous verts : `gofmt`, `go build ./...`, `go vet` (+ `research`),
+  `go test -count=1` sur `./internal/games/halo_infinite/... ./internal/archlint/
+  ./internal/replaybuild/ ./internal/domain/replaydoc/ ./internal/service/replayview/
+  ./contracttest/ ./internal/api/` (0 `--- FAIL`), `golangci-lint run
+  ./internal/games/halo_infinite/film/...` 0 issue, ratchets (dont le ratchet de taille : les
+  quatre instruments sont scindes sous 500 lignes).
+
+#### §4 du lot 5.19 — DECOUVERTES HORS PERIMETRE, CONSIGNEES ET NON TRAITEES
+
+| # | decouverte | ou la reprendre |
+|---|---|---|
+| **D1 (5.19)** | **LA NAISSANCE D UNE ENTITE ENTRE DEUX IMAGES-CLES N EST LUE PAR RIEN, ET C EST LA CAUSE MESUREE DU RESIDU.** 99,0 % des 23 325 rejets portent sur un slot que rien n a lie avant le paquet (`TestDelies519`) et qui n est meme pas un candidat d ancre du payload d image-cle du chunk (`TestEcartes519`) ; dans 13 chunks sur 26 le PREMIER slot rejete vaut exactement `slot max de l image-cle + 1` (signature de l allocateur), et le chunk 2 lit ZERO record `NEW` sur 1 196 paquets delta alors qu au moins dix entites y naissent. Le chunk decode proprement jusque-la (700, 1 144, 106 paquets d affilee) puis s effondre : **le 5.15.1 (f) « ce n est pas une cascade » est REFUTE**. | **le lot du residu** : trouver OU le jeu annonce la naissance d une entite entre deux images-cles. L en-tete rejete lit `prefixe 1` = DELTA (constant sur six temoins dumpes : slot 1792, tag 1), donc ce n est pas un `NEW` mal cadre a cette position |
+| **D2 (5.19)** | **LA MARCHE D ANCRES D IMAGE-CLE NE LIT QUE LA MOITIE DE SA TABLE SUR UN FILM DENSE** — D2 (5.16) chiffre : payload de 1,32 a 1,37 M bits, arret entre 45,7 % et 55,8 %, 424 a 483 ancres retenues pour 1 374 a 1 540 candidats ecartes par la croissance. C est le second candidat de D1 : une table complete donnerait l archetype de tous les slots du chunk. | le meme lot que D1 (5.19) : rendre `WalkKeyframeWorld` deterministe au-dela de la fenetre de 120 000 bits de `kfScanNext` |
+| **D3 (5.19)** | **LE 5.16.2 EST RENVERSE PAR LA PONDERATION.** « Les slots rejetes ne sont pas des slots » avait ete conclu sur les 632 valeurs DISTINCTES ; pondere par le volume, les 27 premiers slots (72 % des rejets) sont des bipedes que le balayeur d ancres ET la table de datums declarent `ti=35`. Une ventilation de valeurs distinctes ne dit rien d une population. | personne : la lecon est consignee, la doc de `frame_infer.go` n est pas touchee par ce lot |
+| **D4 (5.19)** | **LE REPARTITEUR LIT LA TAILLE D UN BLOC A `paquet + 2`** (`*(int *)(param_3 + 2)`, branche type 9) alors que le lecteur hors ligne la lit a l offset 4 d un en-tete `[u16 type][u16 pad][u32 taille][u64 ts]`. Les deux concordent sur le parc (les paquets de type 8 chainent au bit, lot 5.17), donc la structure en memoire du jeu n est simplement pas celle du fichier. | le lot qui rencontrera un film dont le champ de bourrage n est pas nul |
+| **D5 (5.19)** | **LE REPARTITEUR NE CONNAIT QUE NEUF TYPES** (0, 1, 6, 7, 8, 9, 10, 0xb, 0xc) : les types 2, 3, 4 et 5 tombent dans la queue de telemetrie `FilmBlockReadError`. Or le type 2 est l IMAGE-CLE du fichier, que le depot lit. Le repartiteur du rejeu ne la voit donc pas passer par cette porte. | le lot qui voudra savoir par quelle porte le jeu charge une image-cle (probablement `FUN_1428e2a04` / `FUN_1428e2a9c`, la seconde voie a en-tete de 16 octets) |
+
+#### §5 du lot 5.19 — ETAT DE CLOTURE
+
+| case | statut | ce qui est livre |
+|---|---|---|
+| 5.19.1 | `[x]` | la differentielle : masque et largeurs IDENTIQUES des deux cotes (`i25` re-confirme confondant), deux confondants nommes (densite, dose), et la differentielle INTERNE qui les annule — taux de faute par classe, `ti=40` a 73-89 % uniformement sur ses six composants, `ti=4` a 1,1 % comme temoin propre, et `dad793c7` qui n exerce aucune classe fautive |
+| 5.19.2 | `[!]` | quatre ecrivains lus, quatre conformites (dont **D3 (5.14) RESOLU** : `FUN_1406d84b4` est un lecteur plat et son 5e argument vaut `0x1e` au site d appel) ; la regle d arret du brief est atteinte, et la CAUSE est nommee par trois mesures : le slot rejete est une entite dont la naissance n a jamais ete lue |
+| 5.19.3 | `[x]` | `session+0xf8` est le curseur d octets du flux de paquets, pas un canal lateral ; le bloc de type 9 est UNIQUE, dans le DERNIER chunk, apres la derniere trame (4 o / 631 561 o, premier `u32` 0 / 207) — **D1 (5.18) est refute par la POSITION** |
+| 5.19.4 | `[x]` | rien de nouveau n est lu, diff de production VIDE, `SchemaVersion` 67, `grammar.Rev` et `facts.Rev` inchangees, aucun backlog killsource |
+| GATE | `[!]` | 100 % non atteint, residu non reduit — mais les DEUX suspects qui restaient (type 9, masque decale) sont refutes par lecture, et la cause est nommee, chiffree et adressee au §4 |
+
 ### Post-chantier — lot 5.18 (le controle de corruption lu dans le film), branche `feat/decfilm-68`
 
 Sur les decouvertes D1 et D2 du lot 5.17. METHODE : l ecrivain d abord (Ghidra lecture seule,

@@ -365,3 +365,90 @@ perimetre de ce lot :
 2. **le record `NEW` lui-meme** : il faut savoir OU le jeu annonce la naissance d une entite
    entre deux images-cles. L en-tete rejete lit `prefixe 1` = DELTA (constant sur les six temoins
    dumpes : slot 1792, tag 1), donc ce n est pas un `NEW` mal cadre a cette position.
+
+---
+
+## 6. LE FLUX LATERAL DU TYPE 9 N EXISTE PAS — ET LE BLOC EST UN PIED DE FILM
+
+### 6.1 `session+0xf8` est le curseur d octets du flux de paquets
+
+```
+FUN_142988338(session, dst, n, 0) :
+    si session[0xf8] + n <= session[0xe8] :
+        memcpy(dst, session[0xf0] + session[0xf8], n)
+        session[0xf8] += n
+```
+
+Douze appelants, et ce sont les HANDLERS DE PAQUETS eux-memes : `FUN_14298816c` (type 0, la
+trame), `FUN_142987bd4` (type 8, le roster), `FUN_142989418` (type 1), `FUN_142988244` (type 10),
+`FUN_142988084` (type 6), `FUN_1429882c8` (type 0xb), `FUN_1429875e4` (type 0xc), `FUN_14298884c`
+(l en-tete de 16 octets), plus `FUN_1428e2a04` / `FUN_1428e2a9c` (une seconde voie a en-tete de
+16 octets) et `FUN_1429883ec` / `FUN_142986b94`.
+
+**`session+0xf8` n est donc pas un canal lateral : c est LE curseur de lecture sequentielle du
+fichier.** Aucun lecteur de trame, de corps de composant ou d image-cle n y puise autrement que
+pour recevoir SON propre payload.
+
+### 6.2 Le repartiteur n a qu un appelant, et il JETTE le type 9
+
+`FUN_1428e22c0` est appele par le SEUL `FUN_1428e27c0`, la pompe de lecture (elle lit l en-tete de
+16 octets par `FUN_14298884c` puis repartit). La branche du type 9 est entiere :
+
+```
+if (sVar2 == 9) {
+    piVar1 = (int *)(*(longlong *)(param_1 + 0x130) + 0xf8);
+    *piVar1 = *piVar1 + *(int *)(param_3 + 2);
+    return 1;
+}
+```
+
+Aucun octet copie, aucun pointeur conserve. Et le repartiteur ne connait que NEUF types
+(0, 1, 6, 7, 8, 9, 10, 0xb, 0xc) : les types 2, 3, 4 et 5 tombent dans la queue de telemetrie
+`FilmBlockReadError`.
+
+### 6.3 Le bloc est UNIQUE, dans le DERNIER chunk, apres la derniere trame
+
+`TestType9519`, recensement hors ligne des deux temoins :
+
+| | `dad793c7` | `bfecd02b` |
+|---|---:|---:|
+| paquets de type 9 | **1** | **1** |
+| octets | **4** | **631 561** |
+| chunk | **6 (le dernier)** | **28 (le dernier)** |
+| horodatage | 475 508 372 us | 2 183 052 868 us |
+| premier `u32` | **0** | **207** |
+| paquets delta du meme chunk | 106 | **0** |
+
+Population de types de `bfecd02b` : type 0 = 31 232 paquets / 7 203 888 o · type 1 = 27 /
+9 261 513 o · type 2 = 27 / 4 593 116 o · type 6 = 27 / 108 o · type 7 = 28 / 0 o · type 8 = 28 /
+700 868 o · **type 9 = 1 / 631 561 o** · type 10 = 31 232 / 251 227 o · type 12 = 28 / 112 o.
+
+**Le type 9 est un PIED DE FILM** : un seul bloc, apres tous les paquets delta, dont le premier
+`u32` est un COMPTE (0 sur le film a un joueur, 207 sur le film dense) suivi d entrees de taille
+variable.
+
+### 6.4 D1 (5.18) EST REFUTE PAR LA POSITION, PAS PAR UNE ABSENCE
+
+« Le type 9 reste le seul bloc dont la taille suit le residu » etait vrai de sa TAILLE et faux de
+sa PLACE. Un bloc unique situe apres toutes les trames du film ne peut pas decider de la lecture
+des chunks 1 a 27. Le dernier suspect du §4 du 5.18 tombe ; la cause mesuree a la section 5 le
+remplace.
+
+---
+
+## 7. CE QUE LE TROU PORTAIT, ET L ETAT DE SORTIE
+
+Rien. Les quatre ecrivains lus sont conformes, aucun composant n a ete corrige, aucune largeur
+n a bouge : le diff de production du lot est VIDE (quatre fichiers `//go:build research`, sans
+appelant de production). Le tableau par composant du 5.18.3 tient a l identique — 207 etiquettes
+sur `bfecd02b`, `ti=35` 129 572, desyncs 4.
+
+**Aucun canal d etat de bipede n apparait, donc aucune montee de schema** : `replay.SchemaVersion`
+reste a **67**, `grammar.Rev` a `grammar-2026-09-22.7`, `facts.Rev` inchangee, aucun backlog
+killsource ouvert.
+
+Gate de trame INCHANGE : `dad793c7` 5 354/5 365, `bfecd02b` 2 884/30 387, 2 et 32 debordements.
+
+Ce que le lot laisse au suivant, en une ligne : **trouver ou le jeu annonce la naissance d une
+entite entre deux images-cles** — soit en rendant la marche d ancres complete (D2), soit en
+trouvant le record de creation que le flux de trame ne nous donne pas (D1).

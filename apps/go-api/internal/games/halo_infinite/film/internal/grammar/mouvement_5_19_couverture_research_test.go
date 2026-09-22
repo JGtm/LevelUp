@@ -14,6 +14,7 @@ package grammar
 //	TestPremierRejet519  la premiere faute d un chunk a-t-elle une cause en amont ?
 
 import (
+	"sort"
 	"testing"
 )
 
@@ -223,4 +224,52 @@ func TestPremierRejet519(t *testing.T) {
 			"%d records NEW lus dans tout le chunk · %d paquets non fautifs",
 			c, premier, rang, slot, news, fermes)
 	}
+}
+
+// TestType9519 recense les paquets par TYPE et dump la tete des paquets de type 9 — le bloc que
+// le repartiteur du jeu (`FUN_1428e22c0`, branche `sVar2 == 9`) SAUTE en avancant le curseur
+// d octets de la session (`*(session+0xf8) += *(int *)(paquet+2)`) sans en donner un octet a
+// personne. Il ne cherche pas une grammaire : il dit ce que le bloc PESE et a quoi il ressemble.
+func TestType9519(t *testing.T) {
+	tc := t516Cadre(t)
+	parType := map[uint16][2]int{}
+	tetes, tailles := map[string]int{}, map[int]int{}
+	dumps := 0
+	for _, c := range tc.fc.ChunkNumbers() {
+		data, pks, present := tc.fc.ChunkAt(c)
+		if !present {
+			continue
+		}
+		for _, pk := range pks {
+			e := parType[pk.Type]
+			e[0]++
+			e[1] += pk.Size
+			parType[pk.Type] = e
+			if pk.Type != 9 {
+				continue
+			}
+			pay := pk.Payload(data)
+			tailles[pk.Size]++
+			tetes[m511Bits(pay, 0, 64)]++
+			if dumps < 4 {
+				dumps++
+				t.Logf("  type 9 · chunk %d · paquet %d · %d octets · t=%d us · tete : %s",
+					c, pk.Index, pk.Size, pk.TimestampUS, m511Bits(pay, 0, 256))
+			}
+		}
+	}
+	types := make([]int, 0, len(parType))
+	for k := range parType {
+		types = append(types, int(k))
+	}
+	sort.Ints(types)
+	t.Logf("POPULATION DE TYPES :")
+	for _, k := range types {
+		e := parType[uint16(k)] //nolint:gosec // k vient des cles de la carte, un u16
+		t.Logf("  type %2d : %7d paquets · %10d octets", k, e[0], e[1])
+	}
+	t.Logf("TAILLES DES PAQUETS DE TYPE 9 (les plus frequentes) :")
+	t519Restes(t, tailles)
+	t.Logf("LES 64 PREMIERS BITS D UN PAQUET DE TYPE 9 :")
+	t519Top(t, tetes, 8)
 }
