@@ -410,3 +410,83 @@ func t516Avant(q, arret int) string {
 	}
 	return "APRES"
 }
+
+// t516TableExhaustive construit la TABLE DE DATUMS d un paquet d image-cle par un balayage
+// EXHAUSTIF des positions de bit : a chaque position, les gardes de `kfAnchorFromID` (generation
+// non nulle, slot borne, `field26` nul, `ti` sous le cap objet de 50) — mais SANS la contrainte
+// de croissance des slots, qui est celle d une MARCHE de records et non d une table.
+//
+// C est la forme minimale du modele que la branche vive de `FUN_1406cbaa0` interroge : slot ->
+// archetype, rien d autre. Rend aussi les conflits (un slot vu avec deux archetypes).
+func t516TableExhaustive(pay []byte) (map[uint32]uint32, int) {
+	total := len(pay) * 8
+	out := map[uint32]uint32{}
+	conflits := 0
+	for q := 0; q+64 <= total; q++ {
+		slot, ti, _, ok := kfAnchorFromID(pay, q, kfReadBits(pay, q, 32), -1, total)
+		if !ok {
+			continue
+		}
+		s, t := uint32(slot), uint32(ti) //nolint:gosec // bornes des gardes
+		if vu, deja := out[s]; deja && vu != t {
+			conflits++
+			continue
+		}
+		out[s] = t
+	}
+	return out, conflits
+}
+
+// TestTemoin516Datums MESURE la table de datums exhaustive : combien de slots, combien de
+// conflits, et ce qu elle fait au gate de fermeture des paquets quand la marche s en sert pour
+// l archetype d un slot que ni l image-cle balayee ni un NEW n a lie.
+func TestTemoin516Datums(t *testing.T) {
+	tc := t516Cadre(t)
+	w := NewWorld(tc.reg)
+	var paquets, fermes, nul, hors int
+	for _, c := range tc.fc.ChunkNumbers() {
+		data, pks, ok := tc.fc.ChunkAt(c)
+		if !ok {
+			continue
+		}
+		m533bLierMonde(w, data, pks)
+		for _, pk := range pks {
+			if pk.Type != PacketTypeKeyframe {
+				continue
+			}
+			table, conflits := t516TableExhaustive(pk.Payload(data))
+			t.Logf("CHUNK %d · TABLE DE DATUMS : %d slots · %d conflits · slot 1298 -> %d · "+
+				"slot 1332 -> %d", c, len(table), conflits, table[1298], table[1332])
+			for s, ti := range table {
+				if _, lie := w.ArchetypeForSlot(s); !lie {
+					w.BindSoft(s, ti)
+				}
+			}
+		}
+		for _, pk := range pks {
+			if pk.Type != PacketTypeDelta || pk.Size < 1 {
+				continue
+			}
+			pay := pk.Payload(data)
+			debut := DefaultPacketPreambleBits
+			if _, present := PacketHeadEventType(pay); present {
+				if debut = marchLocateStrict(pay, w, tc.cfg); debut < 0 {
+					continue
+				}
+			}
+			paquets++
+			_, _, curseur := DecodeFrameViewsCurseur(pay, w, tc.cfg, 3, debut)
+			reste := len(pay)*8 - curseur
+			if reste < 0 || reste > m5116GateOctet {
+				hors++
+				continue
+			}
+			fermes++
+			if c514ResteNul(pay, curseur) {
+				nul++
+			}
+		}
+	}
+	t.Logf("GATE AVEC LA TABLE DE DATUMS : %d paquets · fermes %d · a reste NUL %d · "+
+		"hors de [0 ; 7] %d", paquets, fermes, nul, hors)
+}
