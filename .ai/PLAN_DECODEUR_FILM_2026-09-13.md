@@ -8326,6 +8326,130 @@ contre 4 469 dans la reference — et 1 489 est EXACTEMENT la valeur que le lot 
 les divergences sont celles de la reference perimee, pas des siennes. Decodage : 14,8 s,
 pic 0,19 Gio, un film a la fois.
 
+### Post-chantier — lot 5.21 (le bloc de type 1 : la table de datums du chunk), branche `feat/decfilm-71`
+
+Sur la decouverte D1 du lot 5.20. METHODE : l ecrivain d abord (Ghidra lecture seule,
+desassemblage quand le decompilateur perd un argument), la mesure seulement pour VERIFIER un
+maillon lu, un commit par maillon, jamais une largeur inventee. Note de grammaire :
+`.ai/V7.5/film_re/NOTE_5_21_BLOC_TYPE_1_2026-09-22.md`.
+
+- [x] **5.21.1 — LE BLOC DE TYPE 1, LU EN ENTIER — ET SON MOT DE `+4` N EST PAS L ARCHETYPE.**
+  (`3d81da7db`)
+
+  **(a) QUI LE LIT, PAR ADRESSE.** `FUN_142e2aab4` construit un conteneur de datums NEUF
+  (`FUN_1408be284`), **y pre-inscrit `*(entree + 4) = 1` pour chacune de ses entrees** et met sa
+  queue a zero, appelle `FUN_1428e2a04` — qui lit le bloc de TYPE 1 (`FUN_1429883ec`) PUIS
+  l image-cle (`FUN_142e2bfd0`) — puis applique le tout au monde par
+  `FUN_142f22be8(monde + 0x120, conteneur)`. Le 5.16 §2.2 (c) l avait ecarte sur
+  `FUN_142989418`, la pompe de lecture COURANTE : un bloc que la pompe saute n est pas un bloc
+  que le jeu ignore.
+
+  **(b) LA GRAMMAIRE, BIT PAR BIT** (decompilation + desassemblage : `MOV R8,RBX` au site
+  d appel, `MOV byte ptr [RBX+0x1],DL`, `MOV dword ptr [RBX+0x4],EDX`, `LEA R8,[RBX+0x8]`,
+  `ADD RBX,0x18`) :
+
+  ```
+  FUN_1424c7b4c(lecteur, payload, taille) ; FUN_1406d5cc0(lecteur, 3)   ; 0 bit consomme
+  par slot, jusqu a min(cardinal, DAT_144706100) :
+      FUN_14297ea84  R(6)   -> +0x00   drapeaux
+      R(8)                  -> +0x01   generation (les deux bits de tete de l eid)
+      R(32)                 -> +0x04   compteur de generation
+      FUN_140e74e6c  33 x R(1) LSB d abord -> +0x08   masque par vue
+  par slot : 0x100 x R(1) LSB d abord      le MASQUE DE COMPOSANTS
+  5 x R(32)                                monde+0x160 .. +0x170
+  ```
+
+  Les deux largeurs absentes de `FUN_1429883ec` se lisent chez ses appeles : `FUN_14297ea84`
+  prend les SIX bits de tete de sa fenetre (`octet de tete >> 2`), `FUN_140e74e6c` boucle `0x21`
+  = **33** fois — les 33 vues que `FUN_140e74b74` parcourt (`i < 0x21`).
+
+  **(c) LA GRAMMAIRE EST FERMEE PAR L ARITHMETIQUE, PUIS PAR LA MESURE.**
+  `8 191 x (79 + 256) + 160 = 2 744 145 bits = 343 019 octets` a sept bits de bourrage pres, et
+  343 019 est la taille CONSTANTE mesuree du bloc sur les deux films (5.20.3 (d)). Le decoupage
+  n est pas choisi : `2 743 985 = 5 x 67 x 8 191`. **GATE (i) : 32 blocs sur 32 fermes**
+  (5 + 27), 8 191 entrees chacun, 7 bits de bourrage, 0 erreur.
+
+  **(d) `+0x04` EST LE COMPTEUR DE GENERATION, ET D1 (5.20) EST CORRIGE.** Sur les 221 157
+  entrees de `bfecd02b` il ne prend que TROIS valeurs — 1, 2, 3 — et elles valent **toujours
+  `+0x01 + 1`** ; 1 est par ailleurs la valeur que `FUN_142e2aab4` a pre-inscrite. Un archetype
+  en prendrait des dizaines, sans rapport avec la generation. `FUN_142f30610` lit bien
+  `datum+4` pour ecrire une entree d image-cle, mais dans la table du MONDE VIVANT au moment de
+  l ecriture, pas dans ce conteneur-ci, qui est le point de DEPART du chunk. Les drapeaux, eux,
+  sont confirmes : le predicat complet de `FUN_1408f1730` retient exactement la classe `0x5`, et
+  `FUN_1408f12c4` (`|= 2`) explique la classe `0x7`.
+
+  **(e) CE QUE LE BLOC PORTE VRAIMENT : LE MASQUE DE PRESENCE DES COMPOSANTS.** Sous l archetype
+  que l image-cle donne au slot, chaque bit leve du bitmap de 256 bits tombe DANS les bornes de
+  la liste de composants de cet archetype et le NOMME — `ti=34` leve ses quatre `tacmap-*`,
+  `ti=2` treize `game-engine-*`, et les dix `ti=6` d un chunk levent TOUS `{3,5,7,13,15,57}` sur
+  58 composants. **ZERO bit hors bornes sur les 32 blocs.** Le masque est constant par
+  archetype : 184 masques distincts pour 2 ambigus sur `bfecd02b`.
+
+- [x] **5.21.2 — LA LIAISON EST ECRITE, JOUEE ET MESUREE — ELLE NE FERME AUCUN PAQUET, ET LA
+  MESURE L AVAIT DIT AVANT LE CODE.** (`bda6f7e47`)
+
+  L ordre du jeu est : conteneur vierge, bloc de type 1, image-cle qui ECRASE, application au
+  monde. Hors ligne il s inverse, parce que le bloc ne NOMME pas les archetypes : l image-cle
+  d abord, le bloc ensuite, par le pont `masque de composants -> archetype` (un masque ambigu ne
+  lie rien). Ce qu elle pose : **1 liaison sur `dad793c7`** (920 vivantes, 868 deja liees) et
+  **0 sur `bfecd02b`** (12 685 vivantes, 12 681 deja liees).
+
+  **GATE (ii) MESURE APRES CE SEUL CHANGEMENT, ET INCHANGE** — `dad793c7` 5 354/5 365,
+  2 debordements, 5 641 records, `ti=35` 75, 0 desync, 1 fantome, 2 rejets hors datum ;
+  `bfecd02b` 2 884/30 387, 32 debordements, 176 786 records, `ti=35` 129 572, 4 desyncs,
+  31 fantomes, 23 769 rejets hors datum. Chiffre pour chiffre le tableau du 5.16.4.
+
+  **ET LA MESURE A PRECEDE LE CODE** (`TestBloc521Rejets`) : des 23 325 rejets de `bfecd02b`,
+  **0 porte sur un slot que le bloc de son chunk declare vivant**, 23 306 tombent sur une entree
+  ENTIEREMENT VIDE et 19 sur une entree qui ne garde qu une trace. Le bloc est la lecture
+  EXHAUSTIVE et non heuristique de la table de datums du chunk ; il confirme le balayeur d ancres
+  au slot pres (479 contre 479 sur le chunk 22) au lieu de l etendre. **D1 (5.20) est referme des
+  deux bouts.** La liaison n est donc pas cablee en production (regle 7 : 343 019 octets par
+  chunk pour zero liaison) ; elle vit dans l instrument, avec son A/B dans `TestGate516`.
+
+- [x] **5.21.3 — CE QUE LE TROU PORTAIT : RIEN, ET AUCUNE MONTEE DE SCHEMA.**
+
+  `bfecd02b` : 176 786 records, `ti=35` 129 572, `ti=4` 28 531, `ti=40` 5 337, `ti=37` 4 551,
+  `ti=42` 2 804, **207 etiquettes de composant**, 4 desynchronises — identique au 5.16.5 et au
+  5.20.4 ; `i21 unit-desired-aiming-vector` 84 827 lectures, **65,5 %** des records `ti=35`.
+  `dad793c7` : 5 641 records, `ti=35` 75, 0 desynchronise. `replay-equiv -films bcb6d393` : les
+  SIX ecarts connus de la reference perimee et aucun autre (`movementStates` **1 737**,
+  `artifact` **1 929 397**). **AUCUN CANAL D ETAT DE BIPEDE N APPARAIT** : `replay.SchemaVersion`
+  reste a **67**. `facts.Rev` NE MONTE PAS — `LireBlocDeDatums` n a aucun appelant de production,
+  `DecodeFrameRecords` et `WalkKeyframeWorld` sont intouches : **aucun backlog killsource**.
+  `grammar.Rev` monte deux fois : `.9` (le lecteur) et `.10` (D3 du 5.20, un commit a part,
+  `ef586127a`).
+
+- [!] **GATE — LE BLOC FERME A 0 BIT (i), LES PAQUETS NE BOUGENT PAS (ii), ET LA CAUSE CHANGE
+  D ADRESSE.**
+
+  (i) **TENU** : 32 blocs sur 32, 8 191 entrees, 7 bits de bourrage, 0 erreur, et le masque de
+  composants tombe a 100 % dans les bornes de l archetype — la grammaire est verifiee par une
+  quantite qu elle ne portait pas. (ii) **NON TENU et EXPLIQUE** : `dad793c7` 5 354/5 365 et
+  `bfecd02b` 2 884/30 387, inchanges, 0 fantome de plus, oracle de contenu conserve. La source
+  que D1 (5.20) esperait n existe pas : le bloc ne porte pas l archetype, et il ne declare aucun
+  des 23 325 slots rejetes. **Ce que le lot ferme est une piste, et il en nomme une autre** : la
+  naissance est APRES le debut du chunk, dans le flux de trame, la ou le 5.19 (D1) avait mesure
+  ZERO record `NEW` sur les 1 196 paquets du chunk 2 alors qu au moins dix entites y naissent.
+
+#### §4 du lot 5.21 — DECOUVERTES HORS PERIMETRE, CONSIGNEES ET NON TRAITEES
+
+| # | decouverte | ou la reprendre |
+|---|---|---|
+| **D1 (5.21)** | **LE FILM PORTE LE MASQUE DE PRESENCE DES COMPOSANTS DE CHAQUE ENTITE VIVANTE, PAR SLOT, UNE FOIS PAR CHUNK.** 256 bits dans le bloc de type 1, indexes comme `Archetype.Components`, ZERO bit hors bornes sur 32 blocs, 184 masques distincts pour 2 ambigus. Le depot ne s en sert d aucune facon. C est un ORACLE de masque : toute marche de records qui lit un masque de presence pour un slot vivant au debut du chunk peut etre CONFRONTEE a lui. | le lot qui voudra prouver une marche de records au lieu de la mesurer par ses restes — et le lot 3.6, dont la fermeture d image-cle (30,8 %) se verifierait entite par entite |
+| **D2 (5.21)** | **LE BALAYEUR D ANCRES D IMAGE-CLE EST JUSTE AU SLOT PRES, ET ON PEUT ENFIN LE DIRE.** Le bloc de type 1 declare 479 entites vivantes la ou `WalkKeyframeWorld` en trouve 479 (chunk 22), 475/476 et 482/480 ailleurs : l ecart est de 0 a 2 slots sur 27 chunks. D2 (5.19) — « la marche ne lit que la moitie de sa table » — portait sur les POSITIONS, pas sur la population. | le lot 3.6 : la population est acquise, ce qui manque est le CADRE de chaque record |
+| **D3 (5.21)** | **LES CINQ MOTS DE QUEUE DU BLOC SUIVENT LE MAGASIN DE DATUMS.** `bfecd02b` chunk 1 `[123 0 777 0 1581]` -> chunk 27 `[124 603 780 1048 2645]` ; `dad793c7` les fige a `[124 513 0 0 1346]`. Trois des cinq croissent avec le chunk. Aucun n est lu par le depot, et leur sens n est pas etabli. | le lot qui aura besoin d un compte d entites ou d un filigrane de slot sans le deduire — le cinquieme ressemble a une borne haute de slot |
+| **D4 (5.21)** | **`FUN_1429883ec` RESERVE SON TAMPON A `bitmapOctets + 0x14 + nEntrees * 0x18`, SOIT 458 716 OCTETS POUR UN BLOC DE 343 019** — une borne large, pas la taille lue (qui vient de `enTete + 4`). Un film dont le bloc depasserait cette borne serait tronque SANS ERREUR par `FUN_142988338`. | le lot qui rencontrera un film dont la table de datums a grandi (meme famille que D4 du 5.20 : `DAT_144706100` suit la table) |
+
+#### §5 du lot 5.21 — ETAT DE CLOTURE
+
+| item | statut | ce qui est etabli |
+|---|---|---|
+| 5.21.1 | `[x]` | le bloc de type 1 lu en entier chez l ecrivain (`FUN_142e2aab4` -> `FUN_1428e2a04` -> `FUN_1428e2a9c` -> `FUN_1429883ec`, plus `FUN_14297ea84` et `FUN_140e74e6c` pour les deux largeurs) ; 79 bits par entree + 256 de masque + 160 de queue = 343 019 octets, la constante mesuree ; **gate (i) tenu, 32 blocs sur 32** ; `+0x04` est le COMPTEUR DE GENERATION (trois valeurs, toujours `+0x01 + 1`, pre-inscrit a 1 par l appelant) et non l archetype — D1 (5.20) corrige ; le bitmap de 256 bits est le MASQUE DE COMPOSANTS, zero bit hors bornes |
+| 5.21.2 | `[x]` | la liaison ecrite dans l ordre du jeu, jouee, et **mesuree a 1 liaison sur `dad793c7`, 0 sur `bfecd02b`** ; gate (ii) mesure apres ce seul changement et INCHANGE ; `TestBloc521Rejets` : **0 des 23 325 rejets** n est un slot que le bloc declare vivant, 23 306 tombent sur une entree entierement vide. La liaison reste dans l instrument, pas en production |
+| 5.21.3 | `[x]` | rien n est nouvellement lu : 207 etiquettes de composant, `ti=35` 129 572, `i21` a 65,5 %, 4 desyncs ; `replay-equiv` rend les six ecarts connus et aucun autre. **Aucune montee de schema** (67), `facts.Rev` inchangee, aucun backlog killsource. `grammar.Rev` `.9` puis `.10` (D3 du 5.20, commit a part) |
+| GATE | `[!]` | (i) **TENU** : le bloc ferme a 0 bit sur les deux films, et son masque de composants tombe a 100 % dans les bornes de l archetype. (ii) NON TENU : 5 354/5 365 et 2 884/30 387, inchanges — le bloc ne declare AUCUN des slots rejetes. La piste D1 (5.20) est fermee par la mesure, et la cause restante est nommee : le record `NEW` du flux de trame (D1 du 5.19) |
+
 ### Post-chantier — lot 5.20 (l image-cle entiere et les naissances), branche `feat/decfilm-70`
 
 Sur les decouvertes D1 et D2 du lot 5.19. METHODE : l ecrivain d abord (Ghidra lecture seule),
