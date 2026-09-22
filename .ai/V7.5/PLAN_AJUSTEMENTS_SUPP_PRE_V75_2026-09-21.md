@@ -136,6 +136,7 @@ surface `film/replay` 260 -> 263 justifie.
 - [x] Fichier `.ai/V7.5/MAQUETTE_TRANSVERSES_RIPOSTE_PORTEE_APPUI_2026-09-21.html` + verification des deux reserves de donnees
 
 ## Decouvertes (hors perimetre, ne pas traiter)
+- V : une serie sans repere (parite non mesuree) reste tracee en valeur brute a cote de series en ecart (melange d unites, cas rare).
 - O : pas de `compare_coordination` au contrat -> la rangee Coordination affiche le placeholder cote compare ; `MatchRangeBlock` sans ventilation par classe d arme ; `UsageGaugeGrid` refactore (table de colonnes) ; « Je suis couvert » sans repere d habituel (non servi).
 - Q : aucune tendance tracee sur Riposte / Appui de Timeseries (D22-3 = batons + reperes ; la frise partagee la supporte) ; `Couverture` a deux alias (`TacticalCouverture`) ; collision de casse Windows `xChart.ts` / `XChart.tsx`.
 - R : `lib/api/types.ts` est ecrit a la main et ne suit pas `generated.ts` (range_profiles manquait) : les champs de N1 sont a ajouter par les lots web ; `lib/i18n/generated/squad.ts` versionne sans gate de fraicheur.
@@ -218,6 +219,7 @@ surface `film/replay` 260 -> 263 justifie.
 - [ ] `TimeseriesPageResponse.range_profiles` : `MatchRangeBlock` du joueur consulte sur la fenetre de la page (lobby entier pour la mediane)
 - [ ] openapi + generate-types + tests
 
-### Lot V — web Timeseries : 3.B + a.1 (apres U)
+### Lot V — web Timeseries : 3.B (worktree `LevelUp-wt-ajsup-v`) — FUSIONNE 0325b01db ; a.1 dans le lot W bis apres U
+- [x] Mode baseline de `SessionBarsTrendChart`, deux cartes en ecart a leur repere, tendance 3 soirees
 ### Lot W — web Sessions : 4.A (apres U)
 ### Lot X — maquette Denivele v2 (preferences D23-b)
