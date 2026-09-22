@@ -517,6 +517,14 @@ type MatchCombatTab struct {
 	// propre, jamais d'erreur : le front n'affiche alors aucune carte. Périmètre
 	// fermé : arme et distance de l'ASSISTANT hors scope (cadrage utilisateur).
 	KillDistanceByWeapon []MatchKillDistancePlayer `json:"kill_distance_by_weapon,omitempty"`
+
+	// Elevation : le DÉNIVELÉ des engagements du match, un point par frag et par mort du
+	// joueur consulté (lot Y, décision D24). MÊME source que KillDistanceByWeapon, lue au
+	// grain du frag au lieu d'être agrégée par (xuid, arme) : ici la clé est le CÔTÉ, pas
+	// l'arme — « où je frague, où je meurs ». NIL quand le match n'a aucune position
+	// mesurée : la carte ne s'affiche pas, elle n'affiche pas un nuage vide.
+	// Détail de la grandeur et convention de signe : domain/match_elevation.go.
+	Elevation *MatchElevationBlock `json:"elevation,omitempty"`
 }
 
 // ---------------------------------------------------------------------------

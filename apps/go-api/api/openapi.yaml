@@ -17189,6 +17189,8 @@ components:
           $ref: '#/components/schemas/MatchAssistPairs'
         cadence:
           $ref: '#/components/schemas/ChartSeriesChartPointStacked'
+        elevation:
+          $ref: '#/components/schemas/MatchElevationBlock'
         frag_distribution:
           $ref: '#/components/schemas/FragDistribution'
         highlight_events:
@@ -17254,6 +17256,62 @@ components:
         - impact_badges
         - kd_timeline
         - nemesis_duels
+      type: object
+    MatchElevationBlock:
+      additionalProperties: false
+      properties:
+        kills:
+          items:
+            $ref: '#/components/schemas/MatchElevationKill'
+          type:
+            - array
+            - "null"
+        lobby:
+          items:
+            $ref: '#/components/schemas/MatchElevationKill'
+          type:
+            - array
+            - "null"
+        lobby_median_delta_z_m:
+          format: double
+          type: number
+        measured_kills:
+          format: int64
+          type: integer
+        total_kills:
+          format: int64
+          type: integer
+      required:
+        - kills
+        - lobby_median_delta_z_m
+        - measured_kills
+        - total_kills
+      type: object
+    MatchElevationKill:
+      additionalProperties: false
+      properties:
+        delta_z_m:
+          format: double
+          type: number
+        distance_m:
+          format: double
+          type: number
+        opponent:
+          type: string
+        side:
+          type: string
+        time_ms:
+          format: int64
+          type: integer
+        weapon:
+          type: string
+        weapon_en:
+          type: string
+      required:
+        - distance_m
+        - delta_z_m
+        - time_ms
+        - side
       type: object
     MatchEncounterBadge:
       additionalProperties: false

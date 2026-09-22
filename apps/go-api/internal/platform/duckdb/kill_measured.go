@@ -111,6 +111,17 @@ type killMeasured struct {
 	timeMS     int64
 	// sourceTag est la source du dégât, à traduire par un port.KillSourceClassifier.
 	sourceTag uint32
+	// victimXUID, victimGT, killerGT NOMMENT LES DEUX CÔTÉS du frag.
+	//
+	// Le groupe est garanti SOLO par `fragSolo` (`count(*) = 1`) : le `min()` du SQL lit
+	// donc la seule ligne du groupe, jamais un mélange de deux victimes. Ils sont
+	// NULLABLES en base — `victim_xuid` est NULL pour un bot, `feed_killer_gamertag` pour
+	// une mort sans kill-feed — et une chaîne vide dit « non résolu », jamais un repli
+	// inventé. Ajoutés le 2026-09-22 (lot Y, dénivelé de la vue match) : sans le côté
+	// victime, aucune lecture ne peut dire « mes morts », elle ne sait dire que « mes frags ».
+	victimXUID string
+	victimGT   string
+	killerGT   string
 	// distanceM est la distance 3D tueur <-> victime, en mètres.
 	distanceM float64
 	// deltaZ est le dénivelé BRUT `killer_z - victim_z`, en mètres — LA GRANDEUR PHYSIQUE,
@@ -151,6 +162,9 @@ SELECT
     e.feed_killer_xuid,
     e.time_ms,
     min(e.source_tag) AS source_tag,
+    min(e.victim_xuid) AS victim_xuid,
+    min(e.victim_gamertag) AS victim_gamertag,
+    min(e.feed_killer_gamertag) AS feed_killer_gamertag,
     min(kp.killer_x) AS killer_x, min(kp.killer_y) AS killer_y, min(kp.killer_z) AS killer_z,
     min(kp.victim_x) AS victim_x, min(kp.victim_y) AS victim_y, min(kp.victim_z) AS victim_z
 FROM match_kill_events_latest e
@@ -217,11 +231,15 @@ func scanMeasuredKill(dbRows *sql.Rows) (killMeasured, error) {
 		m                         killMeasured
 		killerX, killerY, killerZ float64
 		victimX, victimY, victimZ float64
+		victimXUID, victimGT      sql.NullString
+		killerGT                  sql.NullString
 	)
 	if err := dbRows.Scan(&m.matchID, &m.killerXUID, &m.timeMS, &m.sourceTag,
+		&victimXUID, &victimGT, &killerGT,
 		&killerX, &killerY, &killerZ, &victimX, &victimY, &victimZ); err != nil {
 		return killMeasured{}, err
 	}
+	m.victimXUID, m.victimGT, m.killerGT = victimXUID.String, victimGT.String, killerGT.String
 	m.distanceM = hypot3D(killerX, killerY, killerZ, victimX, victimY, victimZ)
 	m.deltaZ = killerZ - victimZ
 	return m, nil

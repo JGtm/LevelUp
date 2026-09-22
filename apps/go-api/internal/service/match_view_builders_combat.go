@@ -453,3 +453,16 @@ func mergeEventRawByTime(a, b []domain.EventRaw) []domain.EventRaw {
 	})
 	return out
 }
+
+// viewerKillCount rend le nombre de frags de la ligne du joueur de la page, 0 sans ligne ou
+// sans compteur.
+//
+// 0 N'EST PAS « zéro frag » ICI, C'EST « on ne sait pas » : le champ est optionnel au
+// contrat, et son unique lecteur (la réserve de couverture du bloc Dénivelé) n'écrit pas de
+// fraction sur un total nul plutôt que d'annoncer « 0 frag mesuré sur 0 ».
+func viewerKillCount(row *domain.MatchScoreboardRow) int {
+	if row == nil || row.Kills == nil {
+		return 0
+	}
+	return *row.Kills
+}

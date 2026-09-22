@@ -13,6 +13,7 @@ import (
 	"log/slog"
 	"strings"
 
+	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/analysis/timeline"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
@@ -78,7 +79,11 @@ type matchViewData struct {
 	// distance mesurée par (xuid, weapon_key) pour CE match, tous les joueurs
 	// (pas seulement le viewer). Nil si le titre n'a pas de killDistanceRepo
 	// câblé, ou si aucun kill n'a de position mesurée.
-	killDistances  []domain.MatchKillDistancePlayer
+	killDistances []domain.MatchKillDistancePlayer
+	// elevationKills : LES MÊMES frags, un par ligne (lot Y, décision D24) — la matière
+	// de la carte « Dénivelé ». Même porte que killDistances (même repo, même
+	// capability), et chargée EN PARALLÈLE d'elle : le mur d'attente n'en garde qu'une.
+	elevationKills []domain.MatchElevationKillRaw
 	objectiveScore int
 }
 
@@ -231,6 +236,11 @@ func (s *MatchViewService) loadMatchViewDataParallel(ctx context.Context, matchI
 		goLoad(gctx, g, matchID, "kill_distances", func() error {
 			var e error
 			d.killDistances, e = s.killDistanceRepo.LoadMatch(gctx, matchID)
+			return e
+		})
+		goLoad(gctx, g, matchID, "kill_elevation", func() error {
+			var e error
+			d.elevationKills, e = s.killDistanceRepo.LoadMatchElevation(gctx, matchID)
 			return e
 		})
 	}
@@ -516,6 +526,12 @@ func (s *MatchViewService) buildMatchViewFromData(
 	// repo (kill_positions_latest × match_kill_events_latest) — assemblage direct,
 	// contrairement à FragDistribution qui doit croiser scoreboard+bulkWeapons.
 	combat.KillDistanceByWeapon = d.killDistances
+	// Elevation (lot Y, D24) : le MÊME chargement, lu au grain du frag et ramené au point
+	// de vue du joueur de la page. Le total de frags vient de SA ligne de scoreboard — il
+	// est le dénominateur de la réserve de couverture, pas une mesure de plus.
+	combat.Elevation = analysis.BuildMatchElevation(
+		d.elevationKills, s.xuid, viewerKillCount(findViewerScoreboardRow(team.Scoreboard)),
+	)
 	mediaTab := buildMediaTab(d.media)
 
 	// MV4.B' : radar calculé depuis le scoreboard (kills/HS/PK/assists/accuracy/
