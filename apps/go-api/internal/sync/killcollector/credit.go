@@ -107,6 +107,17 @@ type CreditCollector struct {
 	// paralleliserait `CollectMatch` ferait sinon courir une ecriture de carte contre ses
 	// lectures.
 	chargeur chargeurDAnnuaire
+
+	// progression : le suivi EXTERNE de la passe, optionnel (lot 5.24.3). nil = aucun suivi,
+	// et c est le defaut : seul le backfill CLI ecrit un fichier d etat. Appelee AUX MEMES
+	// JALONS que la ligne de journal de 5.12, donc depuis le seul goroutine de la passe.
+	progression func(examines, total int, reste time.Duration)
+}
+
+// AvecProgression branche le suivi externe de la passe credit. nil = aucun suivi.
+func (c *CreditCollector) AvecProgression(f func(examines, total int, reste time.Duration)) *CreditCollector {
+	c.progression = f
+	return c
 }
 
 // NewCreditCollector construit le producteur.
@@ -412,12 +423,18 @@ func (c *CreditCollector) CollectMatches(ctx context.Context, matchIDs []string)
 		// tous les matchs echouent n aurait journalise aucune progression.
 		if examines := sum.examines(); doitJournaliserProgression(examines, sum.Total) {
 			ecoule := time.Since(start)
+			reste := etaLineaire(examines, sum.Total, ecoule)
 			slog.InfoContext(ctx, "killsource: credit — progression",
 				"examines", examines, "total", sum.Total,
 				"ecrits", sum.Written, "enrichis_par_un_film", sum.Enriched,
 				"sans_evenement", sum.NoEvents, "erreurs", sum.Errors,
 				"morts", sum.Deaths, "ecoule", ecoule.Round(time.Second),
-				"eta_lineaire", etaLineaire(examines, sum.Total, ecoule).Round(time.Second))
+				"eta_lineaire", reste.Round(time.Second))
+			// LE MEME JALON SERT LE FICHIER D ETAT (lot 5.24.3), et il n y en a qu UN : deux
+			// cadences pour la meme progression finiraient par annoncer deux avancees.
+			if c.progression != nil {
+				c.progression(examines, sum.Total, reste)
+			}
 		}
 	}
 	sum.ElapsedTime = time.Since(start)

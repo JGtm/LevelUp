@@ -163,6 +163,8 @@ type killsourceOptions struct {
 	rps      int
 	// workers : le nombre de films decodes EN PARALLELE (lot 5.24.2). 1 = la boucle d avant.
 	workers int
+	// status : LIT le fichier d etat et sort. N ouvre aucune base (lot 5.24.3).
+	status bool
 }
 
 func runBackfillKillSource(cfg *config.AppConfig, args []string) error {
@@ -178,6 +180,9 @@ func runBackfillKillSource(cfg *config.AppConfig, args []string) error {
 	fs.BoolVar(&o.online, "online", false, "telecharger les films absents du cache (et les y archiver) au lieu de s en tenir au cache")
 	fs.StringVar(&o.gamertag, "gamertag", "", "joueur dont les films sont traités, les plus récents d abord (obligatoire avec --online) ; les jetons viennent du pool")
 	fs.IntVar(&o.rps, "rps", 4, "debit maximal des requetes Halo de la passe --online")
+	fs.BoolVar(&o.status, "status", false,
+		"LIRE le fichier d etat de la derniere passe et l afficher, une fois, SANS ouvrir "+
+			"aucune base — c est ce qu on tape dans un second terminal pendant que la passe tourne")
 	fs.IntVar(&o.workers, "workers", killcollector.OuvriersParDefaut, fmt.Sprintf(
 		"films decodes EN PARALLELE (1 = la boucle en serie). Le decodage vaut 93 a 99 %% du "+
 			"temps d un film (mesure 5.24.1) et il ne porte plus aucun etat de paquet : N "+
@@ -188,12 +193,19 @@ func runBackfillKillSource(cfg *config.AppConfig, args []string) error {
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
+	ctx := context.Background()
+	pr := titlePkg.NewPathResolver(cfg.RepoRoot)
+	// `--status` SORT AVANT TOUT LE RESTE, et avant meme la validation des autres drapeaux :
+	// c est une LECTURE de fichier, elle n a rien a valider et surtout rien a ouvrir. La passe
+	// qu on interroge tient le shared en ecriture (ADR 0013) — une sous-commande d etat qui
+	// ouvrirait la base echouerait exactement quand on en a besoin.
+	if o.status {
+		return afficherEtatDeLaPasse(pr.BackfillKillSourceStatePath(o.titleSlug))
+	}
 	if err := validerLesOptions(o); err != nil {
 		return err
 	}
 
-	ctx := context.Background()
-	pr := titlePkg.NewPathResolver(cfg.RepoRoot)
 	sharedPath := pr.SharedDBPath(o.titleSlug)
 	if _, err := os.Stat(sharedPath); err != nil {
 		return fmt.Errorf("shared_matches introuvable (%s): %w", sharedPath, err)
@@ -213,19 +225,24 @@ func runBackfillKillSource(cfg *config.AppConfig, args []string) error {
 		return err
 	}
 
+	cheminEtat := pr.BackfillKillSourceStatePath(o.titleSlug)
+	var suivi *suiviDeLaPasse
 	if !o.creditOnly {
 		passe := passeDesFilms
 		if o.online {
 			passe = passeDesFilmsEnLigne
 		}
-		if err := passe(ctx, cfg, db, o); err != nil {
+		if suivi, err = passe(ctx, cfg, db, o, cheminEtat); err != nil {
 			return err
 		}
 	}
 	if !o.filmsOnly {
-		if err := passeDuCredit(ctx, db, o); err != nil {
+		if err := passeDuCredit(ctx, db, o, suivi); err != nil {
 			return err
 		}
+	}
+	if suivi != nil {
+		suivi.Terminee("")
 	}
 	if !o.dryRun {
 		afficherSante(o.online)
@@ -249,30 +266,36 @@ func migrerSchemaPartage(db *sql.DB, slug string) error {
 }
 
 // passeDesFilms : le decodage hors ligne, du film le moins cher au plus cher.
-func passeDesFilms(ctx context.Context, cfg *config.AppConfig, db *sql.DB, o killsourceOptions) error {
+//
+// Elle rend le SUIVI de la passe (lot 5.24.3) pour que la passe credit qui suit ecrive dans le
+// MEME fichier d etat : une commande, un etat. nil quand il n y a rien eu a suivre.
+func passeDesFilms(
+	ctx context.Context, cfg *config.AppConfig, db *sql.DB, o killsourceOptions, cheminEtat string,
+) (*suiviDeLaPasse, error) {
 	cacheRoot := resoudreCacheFilms(cfg, o.cacheDir)
 	cache := haloclient.NewLocalFilmCache(cacheRoot)
 	if cache == nil {
-		return fmt.Errorf("cache de films introuvable sous %s — cette passe est HORS LIGNE, "+
+		return nil, fmt.Errorf("cache de films introuvable sous %s — cette passe est HORS LIGNE, "+
 			"elle n a pas d autre source", cacheRoot)
 	}
 
-	candidats, err := filmsACollecter(ctx, db, cacheRoot, o)
+	candidats, bilan, err := filmsACollecter(ctx, db, cacheRoot, o)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	fmt.Printf("films a decoder : %d (cache %s)\n", len(candidats), cacheRoot)
+	fmt.Println(bilanInitial(candidats, bilan.TotalRegistre, bilan.DejaAJour, o.workers))
 	if len(candidats) == 0 {
-		return nil
+		return nil, nil
 	}
 	if o.dryRun {
 		afficherPlan(candidats)
-		return nil
+		return nil, nil
 	}
 
 	caps, err := capabilitesDuTitre(cfg, o.titleSlug)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	// LA PORTE DE LA BASE (lot 5.24.2) : le jeton unique qui donne le droit de toucher le shared.
 	// Elle enveloppe le lease RW, la resolution d identites et la resolution de carte — les trois
@@ -287,6 +310,11 @@ func passeDesFilms(ctx context.Context, cfg *config.AppConfig, db *sql.DB, o kil
 	capture, cleanupPositions := positionCaptureDeps(cfg, o.titleSlug, db, porte)
 	defer cleanupPositions()
 
+	// LE SUIVI (lot 5.24.3) : il ecrit le fichier d etat APRES CHAQUE FILM et journalise une
+	// ligne de progression tous les 25 films OU toutes les 60 s. Il ne decide rien — ni ce qui
+	// est decode, ni ce qui est ecrit.
+	suivi := nouveauSuivi(cheminEtat, o.titleSlug, candidats, bilan, o)
+
 	collecteur := killcollector.NewKillSourceCollector(
 		killcollector.NewLocalCacheFilms(cache),
 		// L ANNUAIRE DE PASSE (lot 5.24.2) : `v_gamertag_lookup` lue UNE FOIS, pas par match.
@@ -296,7 +324,7 @@ func passeDesFilms(ctx context.Context, cfg *config.AppConfig, db *sql.DB, o kil
 		porte.GarderLeWriter(writerDeja(db)),
 		caps,
 		0, // limite par match : le defaut du collecteur (45 min)
-	).AvecCapture(capture)
+	).AvecCapture(capture).AvecObservateur(suivi)
 
 	ids := make([]string, 0, len(candidats))
 	for _, c := range candidats {
@@ -308,7 +336,7 @@ func passeDesFilms(ctx context.Context, cfg *config.AppConfig, db *sql.DB, o kil
 		"%d abandons sur delai, %d erreurs, %d sans capability — %s\n",
 		sum.Written, sum.Deaths, sum.NoFilm, sum.NoKillFeed, sum.Timeouts, sum.Errors,
 		sum.NotSupport, time.Since(debut).Round(time.Second))
-	return nil
+	return suivi, nil
 }
 
 // validerLesOptions : les incompatibilites de drapeaux, AVANT d ouvrir quoi que ce soit.
@@ -404,7 +432,7 @@ func (s staticSharedReader) Get(context.Context) (*sql.DB, func(), error) {
 // Elle passe sur tous les matchs et pas seulement sur ceux sans film : c est le producteur
 // lui-meme qui applique la preseance (il refuse un match qu une passe de film couvre deja), et
 // centraliser cette regle a UN endroit vaut mieux que de la recopier dans la selection.
-func passeDuCredit(ctx context.Context, db *sql.DB, o killsourceOptions) error {
+func passeDuCredit(ctx context.Context, db *sql.DB, o killsourceOptions, suivi *suiviDeLaPasse) error {
 	ids, err := matchsDuRegistre(ctx, db, o.limit)
 	if err != nil {
 		return err
@@ -413,8 +441,16 @@ func passeDuCredit(ctx context.Context, db *sql.DB, o killsourceOptions) error {
 	if o.dryRun || len(ids) == 0 {
 		return nil
 	}
+	credit := killcollector.NewCreditCollector(db, writerDeja(db))
+	if suivi != nil {
+		// LE MEME FICHIER D ETAT POUR LES DEUX PASSES : la commande en est une, son etat aussi.
+		suivi.PhaseCredit(len(ids))
+		credit = credit.AvecProgression(func(examines, _ int, reste time.Duration) {
+			suivi.ProgressionCredit(examines, reste)
+		})
+	}
 	debut := time.Now()
-	sum := killcollector.NewCreditCollector(db, writerDeja(db)).CollectMatches(ctx, ids)
+	sum := credit.CollectMatches(ctx, ids)
 	fmt.Printf("credit : %d ecrits + %d enrichis par un film (%d morts), "+
 		"%d sans evenement, %d erreurs — %s\n",
 		sum.Written, sum.Enriched, sum.Deaths, sum.NoEvents, sum.Errors,

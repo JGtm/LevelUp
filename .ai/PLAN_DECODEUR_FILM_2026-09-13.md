@@ -11423,7 +11423,77 @@ reelles, films lus par les jonctions du cache.
   et resolution de carte a 0,0 %, assemblage a 0,1 %, ecriture a 0,6 % ; le catalogue de bornes et
   le handle metadata sont DEJA charges une seule fois avant la boucle
   (`CaptureDepuisCatalogue`, `positionCaptureDeps`) — verifie sur pieces.
-- [ ] **5.24.3 — L OBSERVABILITE : fichier d etat, ligne de progression, `--status`.**
+- [x] **5.24.3 — L OBSERVABILITE : TROIS PIECES, TROIS QUESTIONS DIFFERENTES.**
+  `cmd/levelup/cmd_backfill_killsource_etat.go` (l ecrivain) et
+  `cmd_backfill_killsource_status.go` (le lecteur).
+
+  **LE FICHIER D ETAT**, reecrit apres CHAQUE film (et une fois AVANT le premier : `--status`
+  tape dans la seconde qui suit le lancement doit repondre « elle demarre », pas « aucun
+  fichier »). Chemin par `PathResolver` :
+  `pr.BackfillKillSourceStatePath(slug)` = `data/global/admin_state/backfill_killsource_{slug}.json`
+  — le dossier ou vivent deja les etats JSON du depot (`post_sync_snapshot`, `action_journal`,
+  `disk_watch_state`), per-titre pour que deux titres ne s ecrasent pas. Il porte : phase
+  (films / credit / terminee), demarree/mise a jour/ecoulee, PID, **les deux revisions cibles**
+  (journal des morts + isolement — c est ce qui dit POURQUOI la passe redecode), `--force`,
+  total au registre, a faire, **deja a jour (le compte de la REPRISE)**, sans film en cache,
+  chunks a faire / faits, les sept issues (ecrits, morts, sans film, sans kill-feed, cle
+  inconnue, abandons sur delai, erreurs), ouvriers, **les films EN COURS** (id, chunks, depuis
+  quand — il y en a N avec N ouvriers), le dernier fini (id, chunks, duree, resultat), le debit
+  glissant sur 20 films, le **cout par chunk MESURE**, le reste et la fin estimee, et la
+  progression de la passe credit. Ecriture **ATOMIQUE** (temporaire + `os.Rename`) : `--status`
+  peut lire a l instant ou la passe ecrit. Son echec ne fait pas tomber la passe et n est pas
+  avale (`slog.Warn`, CLAUDE.md n 3).
+
+  **L ETA EST PONDERE PAR LA TAILLE, ET C ETAIT LA CONDITION.** Les films partent du moins cher
+  au plus cher : un reste compte en NOMBRE de films annoncerait une fin proche **juste avant la
+  queue la plus chere**, c est-a-dire qu il mentirait au moment ou on le consulte le plus. Le
+  reste compte des CHUNKS — somme des chunks restants x cout par chunk mesure **depuis le debut
+  de la passe** / nombre d ouvriers. Le cout par chunk n est pas une constante qui vieillirait :
+  il se mesure en marchant. (`TestEtat_ResteEstimeEnChunksEtParOuvrier`.)
+
+  **LA LIGNE DE PROGRESSION** : `slog.InfoContext` tous les **25 films OU toutes les 60 s**, le
+  premier des deux, **memes chiffres que le fichier** (deux sources qui diraient deux choses
+  obligeraient a choisir laquelle croire). Les deux cadences et pas une : le compteur dit le
+  debit quand la passe avance, l horloge prouve qu elle vit quand elle est sur un gros film de
+  quarante secondes. Le compteur REPART a chaque ligne quelle qu en soit la cause — sinon une
+  passe lente produit une ligne par minute PUIS une rafale au 25e film
+  (`TestEtat_CadenceDeLaLigneDeProgression`).
+
+  **`--status`** : lit le fichier et l affiche EN CLAIR, **une fois**, **sans ouvrir aucune
+  base** — la seule facon d interroger un process qui tient le shared en ecriture (ADR 0013).
+  Il sort AVANT meme la validation des autres drapeaux. Fichier absent = explication + code 0
+  (une panne annoncee ferait croire a une panne) ; fichier tronque = erreur nommee ; etat vieux
+  de plus de 10 min sur une passe non terminee = **avertissement explicite** (« la passe est
+  probablement morte, ou sur un film pathologique »), borne calibree sur le pire film mesure
+  (52 s) et la limite par match (45 min).
+
+  **`--dry-run`** affiche le meme bilan initial que la passe reelle (`bilanInitial`) : matchs au
+  registre, deja a jour (sautes), films a decoder, chunks au total, films au-dela de 50 chunks,
+  et le temps estime au cout CONNU (0,20 s/chunk, mesure 5.24.1) pour N ouvriers.
+
+  **LA PASSE CREDIT ECRIT DANS LE MEME FICHIER** : `CreditCollector.AvecProgression` est
+  appelee **aux memes jalons** que la ligne de journal de 5.12 (`doitJournaliserProgression`) —
+  la cadence est REUTILISEE, pas recopiee : deux cadences pour la meme progression finiraient
+  par annoncer deux avancees.
+
+  **Exemple de sortie** (journalise par `TestStatus_RenduLisible`, pour qu il ne vieillisse pas
+  en silence) :
+
+        backfill-killsource [halo_infinite] — phase films, PID 11480
+          demarree     2026-09-22T13:19:13+02:00 (il y a 0s)
+          mise a jour  2026-09-22T13:19:14+02:00 (il y a 0s)
+          revisions    morts killsource-2026-09-22.2 | isolement isolement-2026-09-15-decoupage-du-catalogue
+          films        1 / 3 traites — 5 chunks / 100
+                       1 ecrits (42 morts), 0 sans film, 0 sans kill-feed, 0 cle inconnue, 0 abandons sur delai, 0 erreurs
+                       1500 deja a jour au demarrage (sautes : c est la REPRISE, et elle se decide en base)
+                       3 ouvrier(s), 0.00 films/min, 0.400 s/chunk mesure — reste ~13s
+                       fin estimee vers 2026-09-22T13:19:26+02:00
+          dernier fini petit (5 chunks) en 2.00 s — ecrit
+          EN COURS     gros (65 chunks) depuis 12.0 s
+
+  **LE FICHIER N EST PAS UNE SOURCE DE VERITE POUR LA REPRISE**, et c est ecrit a trois endroits
+  (en-tete du fichier, doc du `PathResolver`, sortie de `--status`) : ce qui decide de ce qui
+  reste a faire est `decoder_rev` EN BASE. Supprimer le fichier ne perd qu un affichage.
 - [ ] **5.24.4 — LA REPRISE, PROUVEE : interruption, relance, arret propre sur signal.**
 - [ ] **5.24.5 — DOC : `docs/COMMANDS.md` (FR et EN), en-tete de la commande, plan et note.**
 
@@ -11912,6 +11982,9 @@ jamais sur le parc.
 | 2026-09-22 | 5.24.2 | `go test -count=1 ./internal/sync/... ./internal/persist/... ./cmd/levelup/...` | **PASS**, code de sortie **0** |
 | 2026-09-22 | 5.24.2 | `go test -tags=integration -p 1 -count=1 ./internal/persist/... ./internal/sync/... ./internal/migration/...` | **PASS**, code de sortie **0** (ratchets anti-ART compris) |
 | 2026-09-22 | 5.24.2 | `golangci-lint run ./internal/sync/... ./internal/persist/... ./cmd/levelup/...` | **zero issue sur les fichiers du lot** ; le `gocyclo 18` introduit sur `runBackfillKillSource` a ete corrige par extraction de `validerLesOptions` |
+| 2026-09-22 | 5.24.3 | `go test -count=1 -run 'Etat_\|Status_\|BilanInitial\|Ouvriers\|ValiderLesOptions' ./cmd/levelup/` | **PASS** — 13 tests : ecriture des le demarrage, comptabilite des sept issues, erreur != issue, ETA en chunks et par ouvrier, cadence 25 films OU 60 s avec compteur qui repart, ecriture atomique (pas de `.tmp` residuel), phases films/credit/terminee, rendu lisible, etat perime signale, fichier absent = code 0, fichier tronque = erreur, bilan initial |
+| 2026-09-22 | 5.24.3 | `go test -count=1 ./cmd/levelup/... ./internal/sync/...` | **PASS**, code de sortie **0** |
+| 2026-09-22 | 5.24.3 | `golangci-lint run ./cmd/levelup/... ./internal/sync/... ./internal/domain/title/...` | **zero issue sur les fichiers du lot** (le `goconst` sur le litteral `erreur` a ete ferme par une constante) |
 
 ### Post-chantier — lot 5.11 (le declencheur du saut, film temoin), 2026-09-21
 

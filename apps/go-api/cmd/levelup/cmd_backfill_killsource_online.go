@@ -63,26 +63,28 @@ var compteursEnLigne = []string{
 }
 
 // passeDesFilmsEnLigne : le decodage avec repli reseau et archivage.
-func passeDesFilmsEnLigne(ctx context.Context, cfg *config.AppConfig, db *sql.DB, o killsourceOptions) error {
+func passeDesFilmsEnLigne(
+	ctx context.Context, cfg *config.AppConfig, db *sql.DB, o killsourceOptions, _ string,
+) (*suiviDeLaPasse, error) {
 	cacheRoot := resoudreCacheFilms(cfg, o.cacheDir)
 
 	candidats, err := matchsSansPasseDeFilm(ctx, db, o)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	fmt.Printf("films a traiter en ligne : %d (cache d archivage %s, joueur %s)\n",
 		len(candidats), cacheRoot, o.gamertag)
 	if len(candidats) == 0 {
-		return nil
+		return nil, nil
 	}
 	if o.dryRun {
 		afficherPlanEnLigne(candidats, ordreDecodage)
-		return nil
+		return nil, nil
 	}
 
 	caps, err := capabilitesDuTitre(cfg, o.titleSlug)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	// Les tokens sont resolus APRES le dry-run et APRES les capabilities : une passe qui
 	// n aurait rien a faire, ou un titre sans `film.kill_source`, ne doit pas exiger une
@@ -91,7 +93,7 @@ func passeDesFilmsEnLigne(ctx context.Context, cfg *config.AppConfig, db *sql.DB
 	// (PolicyAnyPublic, D1 du plan 2026-09-16) — plus besoin du token du gamertag nomme.
 	client, closePool, err := newPooledClient(ctx, cfg, o.rps)
 	if err != nil {
-		return fmt.Errorf("passe en ligne (%s): %w", o.gamertag, err)
+		return nil, fmt.Errorf("passe en ligne (%s): %w", o.gamertag, err)
 	}
 	defer closePool()
 	// LE CACHE DOIT EXISTER AVANT D ETRE LU. `NewLocalFilmCache` rend nil quand
@@ -99,7 +101,7 @@ func passeDesFilmsEnLigne(ctx context.Context, cfg *config.AppConfig, db *sql.DB
 	// neuve, la passe archiverait sans jamais relire, et la passe SUIVANTE repaierait le
 	// reseau en entier. Creer les deux dossiers d abord supprime le piege.
 	if err := filmcache.EnsureDirs(cacheRoot); err != nil {
-		return err
+		return nil, err
 	}
 	source := killcollector.NewRemoteFilms(
 		killcollector.NewLocalCacheFilms(haloclient.NewLocalFilmCache(cacheRoot)),
@@ -127,7 +129,10 @@ func passeDesFilmsEnLigne(ctx context.Context, cfg *config.AppConfig, db *sql.DB
 		"%d abandons sur delai, %d erreurs, %d sans capability — %s\n",
 		sum.Written, sum.Deaths, sum.NoFilm, sum.NoKillFeed, sum.Timeouts, sum.Errors,
 		sum.NotSupport, time.Since(debut).Round(time.Second))
-	return nil
+	// AUCUN SUIVI POUR LA PASSE EN LIGNE : elle n a pas de plan de cout (le nombre de chunks
+	// n est connu qu apres un aller-retour reseau), donc pas d ETA a calculer. Elle journalise
+	// film par film comme avant.
+	return nil, nil
 }
 
 // matchsSansPasseDeFilm : les matchs du registre a decoder, DU PLUS RECENT AU PLUS VIEUX.
