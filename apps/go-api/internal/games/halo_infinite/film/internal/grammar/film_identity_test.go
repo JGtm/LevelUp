@@ -201,3 +201,42 @@ func TestReadFilmIdentiteEncoreCompressee(t *testing.T) {
 		t.Errorf("erreur %v, attendue %v", err, ErrRegistryStillCompressed)
 	}
 }
+
+// TestControleDeCorruptionEstLeBitDe0xCB45C : le drapeau rendu est EXACTEMENT le bit de poids
+// fort de l octet `buildOff + identBoolOff`, et rien d autre du tampon ne le decide (lot 5.18.1).
+//
+// C EST UN TEST BIT-EXACT CONTRE L ECRIVAIN, et il fige les deux moities du maillon :
+//
+//	la POSITION   `FUN_14299b198` @14299b25b ecrit ce bit par `FUN_1406d49c4` juste apres la
+//	              changelist (`film+0xCB458`), et `FUN_14299ab50` @14299ac28 le relit par
+//	              `FUN_1406cf008`. Le bit bascule, le drapeau bascule — et AUCUN autre bit de
+//	              l octet ne le fait (les sept suivants appartiennent au premier champ de nom).
+//	le VOISINAGE  l horodatage, qui vit `identDecalageBit` plus loin, ne bouge pas quand le
+//	              drapeau bascule : le decalage d un bit est INDEPENDANT de la valeur du bit.
+func TestControleDeCorruptionEstLeBitDe0xCB45C(t *testing.T) {
+	base := bobineChunk00(t, "fb1a1a72")
+	temoin, err := ReadFilmIdentity(base)
+	if err != nil {
+		t.Fatalf("temoin positif : %v", err)
+	}
+	if temoin.ControleDeCorruption {
+		t.Fatalf("la bobine de reference porte le drapeau LEVE — le cas de base du test tombe")
+	}
+	off := temoin.BuildOffset + identBoolOff
+	for bit := 0; bit < 8; bit++ {
+		d := append([]byte(nil), base...)
+		d[off] |= byte(1) << (7 - uint(bit))
+		got, errBit := ReadFilmIdentity(d)
+		if errBit != nil {
+			t.Fatalf("bit %d : %v", bit, errBit)
+		}
+		if attendu := bit == 0; got.ControleDeCorruption != attendu {
+			t.Errorf("bit %d leve : ControleDeCorruption %v, attendu %v",
+				bit, got.ControleDeCorruption, attendu)
+		}
+		if bit == 0 && got.MatchStartUnix != temoin.MatchStartUnix {
+			t.Errorf("le drapeau leve a deplace l horodatage : %d au lieu de %d",
+				got.MatchStartUnix, temoin.MatchStartUnix)
+		}
+	}
+}
