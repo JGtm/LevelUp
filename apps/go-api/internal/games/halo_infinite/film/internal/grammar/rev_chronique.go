@@ -190,3 +190,19 @@ package grammar
 // `WalkKeyframeWorld`, et ce rang n appelle ni ne modifie l un ni l autre ; `LireBlocDeDatums`
 // n a aucun appelant de production. Son golden est refige parce qu il hache la VALEUR de
 // `grammar.Rev` — aucun backlog killsource n est ouvert. `replay.SchemaVersion` reste a 67.
+
+// ENTREE `grammar-2026-09-22.10` (2026-09-22, lot 5.21) : L EXCLUSION DE LA CHRONIQUE EST ALIGNEE
+// SUR SON INTENTION — AUCUNE GRAMMAIRE NE BOUGE.
+//
+// D3 du lot 5.20 : `fichiersHorsGrammaire` (`rev_test.go`) n excluait que `rev.go`,
+// `rev_chronique.go`, `rev_chronique_archive.go` et `_2`, alors que la chronique est rotee
+// jusqu a `_5`. Ecrire une ligne dans une archive recente faisait donc monter l empreinte de la
+// couche — exactement ce que l exclusion existe pour eviter —, et son commentaire disait « les
+// TROIS fichiers » en en listant quatre. L exclusion DERIVE desormais de
+// `fichiersDeChroniqueGrammar` : une seule liste, et la prochaine rotation ne peut plus les
+// desaccorder. `revision/equivalence_test.go`, qui redeclare le perimetre pour le confronter,
+// est aligne dans le meme commit.
+//
+// CE RANG NE DEPLACE AUCUN OCTET DE DECODAGE : il retire trois fichiers de PROSE de l empreinte.
+// `facts.Rev` ne monte pas ; son golden, celui des formes et les fixtures de contrat sont refiges
+// parce qu ils hachent ou publient la VALEUR de `grammar.Rev`. `replay.SchemaVersion` reste a 67.
