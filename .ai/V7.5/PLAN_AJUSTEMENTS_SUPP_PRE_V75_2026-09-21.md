@@ -136,6 +136,7 @@ surface `film/replay` 260 -> 263 justifie.
 - [x] Fichier `.ai/V7.5/MAQUETTE_TRANSVERSES_RIPOSTE_PORTEE_APPUI_2026-09-21.html` + verification des deux reserves de donnees
 
 ## Decouvertes (hors perimetre, ne pas traiter)
+- AA : volume reel du nuage T5 non mesure (endpoint 403 sans session) — mur ~800 frags a verifier a l ecran ; `WEAPON_RANGE_MIN_MEASURED` et `ELEVATION_LEVEL_BAND_M` = miroirs web de constantes Go non servies.
 - Y : `LoadMatch` et `LoadMatchElevation` executent deux fois la meme jointure (~12 ms, en parallele) ; `ScatterChart` ne porte ni markArea ni markLine ni clic (les nuages annotes passent par ChartCard custom).
 - Z2 : `lib/i18n/generated/timeseries.ts` desynchronise du TOML (`coord_y_axis` present dans le genere, absent du TOML, sans lecteur) — vestige du lot V, a regenerer ; couverture de la carte hauteur = couverture des positions (optimiste si un frag mesure n a pas de z).
 - Z1 : ratchet imports inter-features pile au plafond 7/7 (6 emprunts a `explorer/explorerMatchesClientSort`) ; commentaire duplique dans `TimeseriesPage.summary.tsx` ~257.
@@ -242,6 +243,6 @@ surface `film/replay` 260 -> 263 justifie.
 - [x] Carte « Roles de hauteur » : un point par coequipier par match (`elevation_lobby_delta_m`), bandes Contrebas / A niveau / Hauteurs, tendance 5 matchs, meme composant que les roles de portee
 - D25 (2026-09-22) Denivele Timeseries = T5 (nuage brut un point par frag, distance x dz, deux cotes, halo p25-p75 par cote, medianes en gros points ; quantiles cote Go) ; remplace la carte « Denivele » de WeaponRangeSection.
 
-### Lot AA — Timeseries : Denivele T5 (worktree `LevelUp-wt-ajsup-aa`)
-- [ ] Go : `TimeseriesPageResponse.elevation` = points bruts (distance_m, delta_z_m signe cote joueur, time, match_id, weapon) par cote sur la fenetre + quartiles (p25, p50, p75 en distance et en dz) par cote + couverture
-- [ ] Web : nuage T5 remplacant la carte Denivele, halo, medianes, legende, infobulle (i)
+### Lot AA — Timeseries : Denivele T5 (worktree `LevelUp-wt-ajsup-aa`) — FUSIONNE 4ae0601a3
+- [x] Go : `TimeseriesPageResponse.elevation` = points bruts (distance_m, delta_z_m signe cote joueur, time, match_id, weapon) par cote sur la fenetre + quartiles (p25, p50, p75 en distance et en dz) par cote + couverture
+- [x] Web : nuage T5 remplacant la carte Denivele, halo, medianes, legende, infobulle (i)

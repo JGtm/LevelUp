@@ -112650,3 +112650,13 @@ Appui Timeseries, Portee Sessions, roles de portee Timeseries, Denivele — ce d
 (fa4bebc86 -> c2e27321e). Serveur de branche v4 en ligne sur :8000 (Vite :5173) pour le gate visuel.
 En attente : verdicts utilisateur sur la maquette T ; gate visuel ; puis retrait des worktrees
 `LevelUp-wt-ajsup-*` (jonctions d abord, remove sans --force) et fusion dans `feat/v75` au signal.
+
+**Complement du 2026-09-22 (vague 4)** : decisions D23-D25 — 3.B (Riposte / Appui Timeseries en ecart a
+leur repere autour du zero, lot V), 4.A (Sessions : nuage de periode avec session en surbrillance,
+lots U+W), a.1 (Timeseries : nuage des roles de portee, lot Z1), Denivele : M1 sur la match view avec
+bouton lobby (lot Y), E1 roles de hauteur sur l Escouade (lots U+Z2), T5 nuage brut sur Timeseries
+(lot AA), rien sur Sessions (abandonne). Backend U : `range_reference` (Sessions), `range_profiles`
+(Timeseries), medianes de denivele sur les profils. Trois conflits resolus a la main sur le chart des
+roles partage (options Z1 + W + Z2 cohabitent). Regle apprise : une remarque du user n est pas une
+validation — reproposer / maquetter puis attendre le ok. Reste : gates completes, CI, serveur v7 pour le
+gate visuel, retrait des ~25 worktrees `ajsup-*`, fusion feat/v75 au signal, backfill des niveaux en prod.
