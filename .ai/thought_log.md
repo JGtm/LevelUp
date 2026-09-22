@@ -112831,3 +112831,22 @@ valeurs de `rawObjGrid` qui mordaient la colonne suivante, deux legendes sous le
 **Prochaine étape** : accord utilisateur pour fusionner `feat/sections-transverse` dans `feat/v75`,
 pousser et lire la CI ; puis retrait des cinq worktrees `LevelUp-wt-sections-*` (jonctions
 `node_modules` à retirer d'abord, un tour seul).
+
+**Fusion et clôture (même jour)** : le push de `feat/v75` a été rejeté — la branche distante portait
+déjà les ajustements supplémentaires pré-v7.5 (398 fichiers, lots AA/AB, D5, D16, D19...) et les lots
+étaient partis de `ee22aec27`. Résolution par un agent Opus dans un worktree dédié (`feat/sections-merge`,
+16 conflits, règle « feat/v75 distant a raison ») : formes retenues sans titre propre (D5) ; « L'échange »
+abandonné au profit de la section « Coordination » distante (son h3 migré sur `SectionTitle`) ;
+Sessions = table `SESSION_SECTION_GROUPS` + `groupSessionSections()` dans `_sections.ts`, lue par les
+DEUX rendus de `SessionColumnBody` (pile et rangées partagées de comparaison), `frags` et `usage`
+deviennent des clés conditionnées par `sessionSectionVisibility` ; `MatchElevationSection` suit la
+distance des frags vers « Armes et terrain » ; `usageAvailability` (4 causes) délègue à
+`usageAvailabilityKind` ; `TimeseriesRangeRolesCard` rejoint l'onglet Usages avec la portée.
+Gates complets verts après fusion (8278 tests). Merge `3765c21cd` poussé, CI lancée.
+Garde-rail XS demandé par l'utilisateur, livré direct sur feat/v75 (`34ea65479`) :
+`lib/pageTitle.labels.guard.test.ts` — les titres de page des quatre sous-routes Escouade suivent
+`features/squad/i18n.ts` (FR et EN, + exhaustivité des clés `nav`). Non étendu à Carrière (nuance
+citations/commendations portée par la route) ni Ascension (titres préfixés). Découverte :
+`common.nav.tab_tactique` = « Tactical » vs table « Ascension — Tactics ».
+Six worktrees `LevelUp-wt-sections-*` retirés (jonctions `node_modules` d'abord, 0 reparse point,
+cache de films 1 612 entrées avant et après), branches supprimées.
