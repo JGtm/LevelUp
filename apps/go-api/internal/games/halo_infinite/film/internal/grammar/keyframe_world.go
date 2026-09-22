@@ -191,8 +191,36 @@ func kfScanNext(buf []byte, from, prevSlot, total, maxWin int) (at int) {
 // il parcourt la table keyframe type-2 (payload de frame `buf`) et retourne les records
 // slot->typeIndex reconstruits. Sortie bit-à-bit équivalente à tmp_kfworldpos (249/250).
 func WalkKeyframeWorld(buf []byte) []KeyframeRec {
+	return walkKeyframeWorldFenetre(buf, kfScanFenetreBits)
+}
+
+// kfScanFenetreBits est la FENETRE DE RECHERCHE d'ancre du balayeur. ELLE N'EXISTE PAS DANS LE
+// JEU : `FUN_142e2bfd0` ne balaie rien, il enchaine les entrees. C'est une invention du port,
+// et c'est elle que D2 (5.16) accuse de couper la table a 45-56 % du payload d'un film dense.
+//
+// ELLE RESTE, ET LA MESURE DIT POURQUOI (lot 5.20.1, `TestMarche520`). La retirer n'est PAS un
+// gain net : sans fenetre, le chunk 1 de `dad793c7` passe de 123 a 157 ancres (13,6 % -> 27,8 %
+// du payload) mais les chunks 2 a 5 TOMBENT de 187 a 127, parce que `betterThan` elit alors un
+// candidat lointain « meilleur » (slot plus bas) qui derail la chaine. Echanger une heuristique
+// contre une autre n'est pas lire la grammaire.
+//
+// SON RETRAIT EST GAGE SUR LA MARCHE DETERMINISTE : `WalkKeyframeRecords` porte desormais le
+// cadre exact du jeu (108 bits d'en-tete, etat complet sans masque) et n'a plus besoin d'aucune
+// fenetre ; il ne lui manque que les deserialiseurs de composants du lot 3.6 pour marcher un
+// payload de bout en bout. Le jour ou la fermeture d'image-cle atteint 100 %, ce balayeur et
+// cette constante disparaissent ensemble (critere mesurable : `KeyframeClosure` a 100 % sur les
+// bobines par build ; suivi : `keyframe_closure.golden`).
+const kfScanFenetreBits = 120000
+
+// walkKeyframeWorldFenetre est [WalkKeyframeWorld] avec une FENETRE DE RECHERCHE explicite :
+// `maxWin <= 0` = aucune fenetre (le jeu n'en a pas), sinon la borne en bits. Le parametre
+// n'existe que pour MESURER ce que la fenetre coupait (lot 5.20.1) ; la production passe par
+// [WalkKeyframeWorld], donc sans fenetre.
+func walkKeyframeWorldFenetre(buf []byte, maxWin int) []KeyframeRec {
 	total := len(buf) * 8
-	const maxWin = 120000
+	if maxWin <= 0 {
+		maxWin = total
+	}
 	width := map[int]int{}
 	seen := map[int]int{}
 	var out []KeyframeRec
