@@ -21,29 +21,44 @@ import (
 	"levelup/go-api/internal/sync/killcollector"
 )
 
+// bilanDeSelection : les DENOMINATEURS de la selection, qu elle seule connait.
+//
+// Ils existent depuis le lot 5.24.3 parce que le fichier d etat doit repondre a « il reste
+// combien SUR COMBIEN » : sans eux, la passe ne sait dire que le nombre de films qu elle va
+// decoder, et « 40 films a faire » ne dit pas si 1 500 ont ete sautes ou si le registre en
+// compte 40. `DejaAJour` EST le compte de la reprise.
+type bilanDeSelection struct {
+	TotalRegistre   int
+	DejaAJour       int
+	SansFilmEnCache int
+}
+
 // filmsACollecter : les films du cache qui correspondent a un match du registre, tries par
 // COUT CROISSANT, moins ceux qui sont deja a jour.
 func filmsACollecter(
 	ctx context.Context, db *sql.DB, cacheRoot string, o killsourceOptions,
-) ([]filmCandidat, error) {
+) ([]filmCandidat, bilanDeSelection, error) {
 	registre, err := matchsDuRegistre(ctx, db, 0)
 	if err != nil {
-		return nil, err
+		return nil, bilanDeSelection{}, err
 	}
 	dejaFaits := map[string]bool{}
 	if !o.force {
 		if dejaFaits, err = matchsAJour(ctx, db); err != nil {
-			return nil, err
+			return nil, bilanDeSelection{}, err
 		}
 	}
 
+	bilan := bilanDeSelection{TotalRegistre: len(registre)}
 	out := make([]filmCandidat, 0, len(registre))
 	for _, id := range registre {
 		if dejaFaits[id] {
+			bilan.DejaAJour++
 			continue
 		}
 		n, ok := compterChunks(cacheRoot, id)
 		if !ok {
+			bilan.SansFilmEnCache++
 			continue // pas de film en cache : ce match releve du producteur credit-seul
 		}
 		out = append(out, filmCandidat{matchID: id, chunks: n})
@@ -59,7 +74,7 @@ func filmsACollecter(
 	if o.limit > 0 && len(out) > o.limit {
 		out = out[:o.limit]
 	}
-	return out, nil
+	return out, bilan, nil
 }
 
 // matchsAJour : les matchs dont TOUTES les passes courantes portent leur revision de decodeur

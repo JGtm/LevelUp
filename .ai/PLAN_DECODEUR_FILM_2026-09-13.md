@@ -11432,10 +11432,304 @@ des bases DuckDB temporaires peuplees synthetiquement par les VRAIES migrations.
   `v_gamertag_lookup` par match dans la passe des FILMS (meme defaut, masque par les ~9,5 s de
   decodage que chaque film coute).
 
+### Post-chantier — lot 5.24 (backfill killsource : vitesse, etat, reprise), 2026-09-22
+
+Branche `feat/decfilm-74`, base `f3d52514b` (schema 68). **PERIMETRE FERME** : la commande
+`backfill-killsource` et le collecteur `killcollector`. **AUCUNE grammaire, aucun decodeur,
+aucun changement de ce qui est ecrit en base** — `SchemaVersion`, `grammar.Rev`, `facts.Rev` et
+`IsolationDecoderRev` sont INCHANGES, aucun octet de `film/internal/`. Ce lot change COMMENT la
+passe tourne, pas CE QU ELLE PRODUIT, et un test d egalite 1 contre N ouvriers le prouve.
+**AUCUNE base de production ouverte** (le serveur tourne) : bases DuckDB temporaires, migrations
+reelles, films lus par les jonctions du cache.
+
+- [x] **5.24.1 — LA MESURE AVANT : LE TEMPS EST DANS LE DECODAGE, A 93-99 %.**
+  `internal/sync/killcollector/backfill_cout_integration_test.go` (tag `integration`, banc
+  `peuplerBancCredit` = 180 000 lignes de `match_kill_events` + 50 000 couples, films lus par la
+  jonction du cache). Sept etapes chronometrees par UN appel a la fonction de production chacune.
+
+  | film | chunks | Mio | charg. | assembl. | carte | DECODE | roster | ecrit. | annexes | TOTAL | s/chunk | heap Mio | sys Mio |
+  |---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+  | ee90570b | 6 | 4,4 | 0 | 0 | 0 | 175 ms | 53 ms | 17 ms | 43 ms | **288 ms** | 0,05 | 11 | 31 |
+  | c0a82e88 | 8 | 5,1 | 0 | 4 ms | 0 | 498 ms | 55 ms | 30 ms | 507 ms | **1,09 s** | 0,14 | 22 | 52 |
+  | e157a672 | 8 | 6,6 | 0 | 0 | 0 | 426 ms | 55 ms | 20 ms | 460 ms | **0,96 s** | 0,12 | 14 | 52 |
+  | 1a37bcc8 | 9 | 7,3 | 0 | 0 | 0 | 483 ms | 57 ms | 23 ms | 494 ms | **1,06 s** | 0,12 | 24 | 76 |
+  | 30d3c047 | 10 | 8,7 | 0 | 1 ms | 0 | 901 ms | 56 ms | 38 ms | 806 ms | **1,80 s** | 0,18 | 18 | 76 |
+  | cf040013 | 10 | 8,0 | 0 | 0 | 0 | 529 ms | 53 ms | 15 ms | 540 ms | **1,14 s** | 0,11 | 17 | 76 |
+  | 114b0040 | 11 | 8,9 | 0 | 1 ms | 0 | 791 ms | 49 ms | 31 ms | 718 ms | **1,59 s** | 0,14 | 21 | 80 |
+  | aa056037 | 11 | 8,8 | 0 | 1 ms | 0 | 514 ms | 50 ms | 24 ms | 680 ms | **1,27 s** | 0,12 | 23 | 100 |
+  | bf5ced1b | 11 | 9,0 | 0 | 1 ms | 0 | 663 ms | 60 ms | 21 ms | 747 ms | **1,49 s** | 0,14 | 18 | 100 |
+  | 4555ce28 | 5 | 3,9 | 0 | 0 | 0 | 153 ms | 50 ms | 19 ms | 41 ms | **262 ms** | 0,05 | 7 | 27 |
+  | e624c2a4 | 29 | 22,3 | 0 | 8 ms | 0 | 2,259 s | 54 ms | 61 ms | 2,794 s | **5,18 s** | 0,18 | 59 | 265 |
+  | e85d7bad | 29 | 23,4 | 0 | 2 ms | 0 | 2,073 s | 52 ms | 55 ms | 2,448 s | **4,63 s** | 0,16 | 64 | 265 |
+  | 1c4c63c2 | **69** | 92,2 | 0 | 9 ms | 0 | **38,19 s** | 55 ms | 235 ms | 13,05 s | **51,5 s** | 0,75 | **422** | **769** |
+
+  **LES PARTS** — sur les 9 petits films (10,7 s) : DECODAGE 46,6 %, annexes 46,7 %, roster
+  4,6 %, ecriture 2,1 %, assemblage 0,1 %, chargement et carte **0,0 %**. Sur l echantillon
+  large (4 films, 61,6 s, le gros inclus) : DECODAGE **69,3 %**, annexes **29,8 %**, roster
+  0,3 %, ecriture 0,6 %. Les « annexes » (tirs + positions + touches) sont elles aussi du
+  DECODAGE — elles rebalayent les memes chunks. **93 a 99 % du temps d un film est du CPU
+  hors base.**
+
+  **CE QUE CELA TRANCHE, ET C ETAIT LA QUESTION DU POINT** : le parallelisme est la SEULE reponse
+  qui porte. Le chargement des chunks (jonction, cache chaud) et la resolution de carte sont
+  sous la milliseconde ; l ecriture vaut 15 a 235 ms par film, soit moins de 1 % — un lot
+  d ecriture groupee ne rapporterait rien ici. La seule lecture repetee qui se voie est le
+  ROSTER : **49 a 60 ms par match, CONSTANTS** (independants du film — c est la vue
+  `v_gamertag_lookup` materialisee entierement, D1 du 5.12), soit ~90 s sur 1 612 films.
+
+  **LE PLAFOND MEMOIRE, RE-MESURE** : le pire film du corpus (`1c4c63c2`, 69 chunks, 92,2 Mio)
+  culmine a **422 Mio de HeapInuse** et 769 Mio de `Sys` (process entier, banc DuckDB compris).
+  L affirmation de l en-tete de la commande (« largement sous le gibioctet », 2026-08-24) tient.
+  Les petits films tiennent sous 25 Mio. C est cette mesure qui autorise N ouvriers.
+
+  **DECOUVERTE DE MESURE (consignee au § 4)** : les DIX films les moins chers du cache (2 a 5
+  chunks) ne produisent RIEN neuf fois sur dix — cinq sans identite au fil des morts, trois sans
+  chunk HIGHLIGHT. L echantillon par defaut a ete deplace vers le bas du cout PRODUCTIF.
+- [x] **5.24.2 — LA VITESSE : N OUVRIERS DE DECODAGE, UN SEUL ECRIVAIN, ET L ANNUAIRE SORTI DE
+  LA BOUCLE.** Gain mesure **x2,70 a x2,78 a 3 ouvriers** sur 9 films du cache (9,7 s -> 3,5 s),
+  **lignes IDENTIQUES**.
+
+  **(a) LES OUVRIERS.** `internal/sync/killcollector/collector_ouvriers.go` :
+  `CollectMatchesOuvriers(ctx, ids, n)` — un distributeur (qui porte SEUL le budget de passe et
+  l annulation), N ouvriers qui appellent `CollectMatch`, un canal de resultats totalise par un
+  seul goroutine. `n <= 1` rend **la meme fonction** que la boucle historique
+  (`CollectMatches`), pas une imitation : le temoin du test d egalite ne peut pas deriver.
+  Le `switch` de comptage est desormais unique (`comptabiliserFilm`), partage par les deux
+  passes.
+
+  **LE VERROU QUI L INTERDISAIT N EXISTE PLUS, ET C EST VERIFIE SUR PIECES.** `collector.go` et
+  `CollectMatches` affirmaient « les parametres de replication de `grammar` sont des GLOBAUX DE
+  PAQUET ; `killsource.Decode` serialise deja par un verrou ». Les deux affirmations sont
+  perimees : la cloture M3 du chantier decodeur (ADR 0034, 2026-09-17) a **DEPENSE le profil**
+  (`ProfilDeBalayage` voyage en argument jusqu a `calibrate` et `runWalk`) et le dernier reglage
+  global (`SetInferResyncTargets`) a ete supprime au lot E.2 du 2026-09-05 (sa table reste nil et
+  n est jamais ecrite). Balayage du 2026-09-22 : **aucun `Set*` de paquet dans `grammar`, aucun
+  `var` mutable de paquet dans `grammar` ni `killsource`** hors tables constantes ;
+  `registryWarned` est une `sync.Map`, le compteur de replis porte son verrou. Les deux
+  commentaires sont corriges AVEC leur date et leur cause. **La preuve n est pas le raisonnement**
+  (cf. le test ci-dessous).
+
+  **UN SEUL ECRIVAIN — `porte_de_la_base.go`.** Un canal borne a UN jeton. Il est pris par le
+  lease RW (`GarderLeWriter`), par la resolution d identites (`GarderLeRoster`) et par la
+  resolution de carte (`GarderLesCartes`) — les TROIS seuls chemins par lesquels cette passe
+  parle a la base. A tout instant au plus un goroutine y parle, **lectures comprises** : ADR 0013
+  est tenue par une piece, plus par la forme de la boucle. Rien d autre ne change — meme
+  `BatchBuilder`, memes persisters INSERT-only, memes vues `_latest`. Porte nil = passe-plat
+  (post-sync du serveur, `--online`, tests : comportement inchange). Les sept sites d ecriture ont
+  ete verifies DISJOINTS (aucun lease n en contient un autre) et l attente est bornee a 5 min avec
+  un message qui nomme l imbrication — un « programme qui ne finit jamais » devient une erreur
+  lisible.
+
+  **POURQUOI PAS UN GOROUTINE ECRIVAIN A MESSAGES** (la forme canonique, ecartee sur piece) : le
+  contrat d ecriture est un LEASE (`acquireShared` rend `(db, release, err)` et l appelant ecrit
+  ENTRE les deux, sur sept sites). Le convertir en messages exigerait de decouper `collect`,
+  `collectPositions` et `collectHits` en « phase qui calcule » / « phase qui ecrit », c est-a-dire
+  de reecrire ce que la passe FAIT — ce que le perimetre du lot interdit. Le jeton donne le MEME
+  invariant sans toucher une ligne de ce qui est ecrit.
+
+  **LE PLAFOND MEMOIRE EST LA MESURE 5.24.1, PAS UN REGLAGE** : pic de 422 Mio sur le pire film du
+  corpus, plafond de passe a 4 Gio, donc **9 ouvriers au maximum** ; `--workers` au-dela est
+  REFUSE au demarrage, avec le chiffre, le nom du film et le plafond
+  (`TestVerifierLesOuvriers` verifie que les trois figurent dans le message). Defaut **3** :
+  1,3 Gio, loin du plafond, sur une machine PARTAGEE.
+
+  **(b) L ANNUAIRE DE PASSE POUR LA PASSE DES FILMS — D1 (5.12) ferme.**
+  `SharedRoster.AvecAnnuaireDePasse()` : `v_gamertag_lookup` lue UNE FOIS, plus par match. La
+  piece du 5.12 est **partagee, pas recopiee** — `chargeurDAnnuaire` extrait de
+  `credit_annuaire.go`, employe par les deux producteurs. Mesure sur le banc de 180 000 lignes :
+  **50,7 ms -> 4,0 ms par match (facteur 12,5)**, chargement de l annuaire inclus. C etait la
+  SEULE lecture repetee que 5.24.1 ait trouvee, et depuis les ouvriers elle serait SERIALISEE
+  derriere la porte, c est-a-dire un plafond de passe et non une part.
+  L equivalence est exacte sur la forme (la vue ne rend jamais de nom vide — son dernier repli est
+  le libelle masque — et tout xuid de `match_participants` y est par son leg `mp`), et le seul
+  ecart theorique est NOMME dans le code : un `xuid:NNN` ecrit par la passe pourrait, SANS
+  annuaire, etre relu comme nom d affichage par un match suivant (leg 4, `MAX`) — exactement ce
+  que la vue existe pour empecher. L annuaire retire donc un faux nom ; il n en ajoute aucun.
+  **Verifie sur les films du cache** : `TestAnnuaireDePasse_MemesLignesQueLaJointure`, cinq vues
+  identiques. Reglage EXPLICITE, pose par le seul backfill : les chemins live gardent la jointure.
+
+  **(c) LA PASSE CREDIT EST INCHANGEE** (lineaire depuis 5.12) — aucune ligne touchee.
+
+- [~] Le reste de ce que 5.24.1 designait comme evitable : **rien a faire**. Chargement des chunks
+  et resolution de carte a 0,0 %, assemblage a 0,1 %, ecriture a 0,6 % ; le catalogue de bornes et
+  le handle metadata sont DEJA charges une seule fois avant la boucle
+  (`CaptureDepuisCatalogue`, `positionCaptureDeps`) — verifie sur pieces.
+- [x] **5.24.3 — L OBSERVABILITE : TROIS PIECES, TROIS QUESTIONS DIFFERENTES.**
+  `cmd/levelup/cmd_backfill_killsource_etat.go` (l ecrivain) et
+  `cmd_backfill_killsource_status.go` (le lecteur).
+
+  **LE FICHIER D ETAT**, reecrit apres CHAQUE film (et une fois AVANT le premier : `--status`
+  tape dans la seconde qui suit le lancement doit repondre « elle demarre », pas « aucun
+  fichier »). Chemin par `PathResolver` :
+  `pr.BackfillKillSourceStatePath(slug)` = `data/global/admin_state/backfill_killsource_{slug}.json`
+  — le dossier ou vivent deja les etats JSON du depot (`post_sync_snapshot`, `action_journal`,
+  `disk_watch_state`), per-titre pour que deux titres ne s ecrasent pas. Il porte : phase
+  (films / credit / terminee), demarree/mise a jour/ecoulee, PID, **les deux revisions cibles**
+  (journal des morts + isolement — c est ce qui dit POURQUOI la passe redecode), `--force`,
+  total au registre, a faire, **deja a jour (le compte de la REPRISE)**, sans film en cache,
+  chunks a faire / faits, les sept issues (ecrits, morts, sans film, sans kill-feed, cle
+  inconnue, abandons sur delai, erreurs), ouvriers, **les films EN COURS** (id, chunks, depuis
+  quand — il y en a N avec N ouvriers), le dernier fini (id, chunks, duree, resultat), le debit
+  glissant sur 20 films, le **cout par chunk MESURE**, le reste et la fin estimee, et la
+  progression de la passe credit. Ecriture **ATOMIQUE** (temporaire + `os.Rename`) : `--status`
+  peut lire a l instant ou la passe ecrit. Son echec ne fait pas tomber la passe et n est pas
+  avale (`slog.Warn`, CLAUDE.md n 3).
+
+  **L ETA EST PONDERE PAR LA TAILLE, ET C ETAIT LA CONDITION.** Les films partent du moins cher
+  au plus cher : un reste compte en NOMBRE de films annoncerait une fin proche **juste avant la
+  queue la plus chere**, c est-a-dire qu il mentirait au moment ou on le consulte le plus. Le
+  reste compte des CHUNKS — somme des chunks restants x cout par chunk mesure **depuis le debut
+  de la passe** / nombre d ouvriers. Le cout par chunk n est pas une constante qui vieillirait :
+  il se mesure en marchant. (`TestEtat_ResteEstimeEnChunksEtParOuvrier`.)
+
+  **LA LIGNE DE PROGRESSION** : `slog.InfoContext` tous les **25 films OU toutes les 60 s**, le
+  premier des deux, **memes chiffres que le fichier** (deux sources qui diraient deux choses
+  obligeraient a choisir laquelle croire). Les deux cadences et pas une : le compteur dit le
+  debit quand la passe avance, l horloge prouve qu elle vit quand elle est sur un gros film de
+  quarante secondes. Le compteur REPART a chaque ligne quelle qu en soit la cause — sinon une
+  passe lente produit une ligne par minute PUIS une rafale au 25e film
+  (`TestEtat_CadenceDeLaLigneDeProgression`).
+
+  **`--status`** : lit le fichier et l affiche EN CLAIR, **une fois**, **sans ouvrir aucune
+  base** — la seule facon d interroger un process qui tient le shared en ecriture (ADR 0013).
+  Il sort AVANT meme la validation des autres drapeaux. Fichier absent = explication + code 0
+  (une panne annoncee ferait croire a une panne) ; fichier tronque = erreur nommee ; etat vieux
+  de plus de 10 min sur une passe non terminee = **avertissement explicite** (« la passe est
+  probablement morte, ou sur un film pathologique »), borne calibree sur le pire film mesure
+  (52 s) et la limite par match (45 min).
+
+  **`--dry-run`** affiche le meme bilan initial que la passe reelle (`bilanInitial`) : matchs au
+  registre, deja a jour (sautes), films a decoder, chunks au total, films au-dela de 50 chunks,
+  et le temps estime au cout CONNU (0,20 s/chunk, mesure 5.24.1) pour N ouvriers.
+
+  **LA PASSE CREDIT ECRIT DANS LE MEME FICHIER** : `CreditCollector.AvecProgression` est
+  appelee **aux memes jalons** que la ligne de journal de 5.12 (`doitJournaliserProgression`) —
+  la cadence est REUTILISEE, pas recopiee : deux cadences pour la meme progression finiraient
+  par annoncer deux avancees.
+
+  **Exemple de sortie** (journalise par `TestStatus_RenduLisible`, pour qu il ne vieillisse pas
+  en silence) :
+
+        backfill-killsource [halo_infinite] — phase films, PID 11480
+          demarree     2026-09-22T13:19:13+02:00 (il y a 0s)
+          mise a jour  2026-09-22T13:19:14+02:00 (il y a 0s)
+          revisions    morts killsource-2026-09-22.2 | isolement isolement-2026-09-15-decoupage-du-catalogue
+          films        1 / 3 traites — 5 chunks / 100
+                       1 ecrits (42 morts), 0 sans film, 0 sans kill-feed, 0 cle inconnue, 0 abandons sur delai, 0 erreurs
+                       1500 deja a jour au demarrage (sautes : c est la REPRISE, et elle se decide en base)
+                       3 ouvrier(s), 0.00 films/min, 0.400 s/chunk mesure — reste ~13s
+                       fin estimee vers 2026-09-22T13:19:26+02:00
+          dernier fini petit (5 chunks) en 2.00 s — ecrit
+          EN COURS     gros (65 chunks) depuis 12.0 s
+
+  **LE FICHIER N EST PAS UNE SOURCE DE VERITE POUR LA REPRISE**, et c est ecrit a trois endroits
+  (en-tete du fichier, doc du `PathResolver`, sortie de `--status`) : ce qui decide de ce qui
+  reste a faire est `decoder_rev` EN BASE. Supprimer le fichier ne perd qu un affichage.
+- [x] **5.24.4 — LA REPRISE, PROUVEE ; L ARRET, PROPRE.**
+
+  **LA PREUVE** (`cmd/levelup/cmd_backfill_killsource_reprise_integration_test.go`, tag
+  `integration`, films REELS du cache). L en-tete de la commande affirmait depuis des mois
+  qu elle est « reprenable, et la cle est `decoder_rev` » — c etait vrai et **ce n etait pas
+  verifie** : aucun test n interrompait une passe pour la relancer. Le test le fait de bout en
+  bout : passe temoin d une traite ; puis passe ANNULEE au milieu par **annulation du contexte
+  d arret** (exactement ce qu un SIGINT declenche), l annulation etant declenchee **par la
+  lecture du fichier d etat** — ce qui prouve au passage qu il est lisible et a jour pendant que
+  la passe tourne ; puis la SELECTION DE PRODUCTION (`filmsACollecter` -> `matchsAJour`, vues
+  `_latest`) est rejouee ; puis la relance. **Mesure :** coupure demandee apres 2 films, **4
+  ecrits** (les 2 films EN VOL sont alles au bout — c est l arret doux), la relance annonce
+  **4 films deja a jour (sautes)** et en ecrit **2**, total **6 = le temoin**, et les vues sont
+  IDENTIQUES ligne a ligne (**135** morts + **114** tirs).
+
+  **L ARRET DOUX, ET POURQUOI IL N EST PAS L ARRET DUR** (`AvecArretDoux`,
+  `collector_ouvriers.go`). Deux arrets, deux consequences : l arret DUR annule le contexte de
+  TRAVAIL et coupe le film en cours au milieu de son decodage ; l arret DOUX cesse de
+  DISTRIBUER et laisse aller au bout ce qui est en vol, ECRITURE COMPRISE. Avec N ouvriers, un
+  Ctrl-C en arret dur jetterait N decodages entames — jusqu a une minute chacun sur les gros
+  films — **pour ne rien gagner**, la reprise se decidant de toute facon en base. Les deux
+  restent disponibles : le contexte passe a `CollectMatches`/`CollectMatchesOuvriers` est
+  toujours l arret dur (aucun appelant existant ne change de comportement), et le reglage ajoute
+  le doux par-dessus (nil = rien). La boucle EN SERIE l honore au meme endroit (entre deux
+  films) que la passe a ouvriers.
+  ⚠ Dit explicitement dans le code : **l arret doux ne protege pas la base** — une ecriture
+  interrompue par un contexte annule est ROLLBACK par le pilote, jamais laissee a moitie
+  (ADR 0013/0019/0026). Il protege le TEMPS DE CALCUL deja depense.
+
+  **LE SIGNAL** (`cmd_backfill_killsource_arret.go`), en trois temps : (1)
+  `signal.NotifyContext(SIGINT, SIGTERM)` annule le contexte d ARRET ; le contexte de TRAVAIL en
+  derive par **`context.WithoutCancel`** — aucun decodage n est coupe en deux, aucune ecriture
+  au milieu ; (2) le releveur est **RENDU au systeme des le premier signal**, donc un SECOND
+  Ctrl-C tue le processus immediatement (une passe qui refuserait de mourir au deuxieme signal
+  serait pire que celle qui meurt au premier) ; (3) l etat est ecrit avec sa cause, un message
+  dit **quoi faire** (« relancer LA MEME commande »), et le processus sort avec
+  **`CodeSortieInterrompue` = 130** (128 + SIGINT, la convention POSIX) — distinct du 0 d une
+  passe finie et du 1 d une panne, pour qu un script fasse la difference entre « relance-moi »
+  et « repare-moi ». `main` demande le code a `sortirSur` et ne connait pas le type d erreur ;
+  une interruption ENVELOPPEE (`%w`) reste reconnue (`errors.As`).
+
+  **LA CAUSE SE LIT SUR LE CONTEXTE**, pas sur une chaine partagee : le releveur vit dans un
+  autre goroutine et une variable ecrite la-bas serait une course — sur une donnee que le
+  contexte porte deja.
+
+  **SEUILS** : `cmd_backfill_killsource.go` est repasse a 471 lignes, la passe CREDIT ayant ete
+  extraite dans `cmd_backfill_killsource_credit.go` (deplacement pur, frontiere nette : la-bas
+  les FILMS, ici le SQL -> SQL).
+- [x] **5.24.5 — DOC.** `docs/COMMANDS.md` **et** `docs/FR/COMMANDS.md` (meme PR, regle 15) :
+  une section dediee `backfill-killsource` — elle n en avait aucune, la commande n etait citee
+  qu en passant. Usage complet, `--workers` (avec la mesure qui le justifie, le plafond memoire
+  et le gain observe), `--status` (avec un exemple de sortie reel), lecture du fichier d etat
+  (chemin, cadence, ce que l ETA compte et pourquoi), et la reprise (`decoder_rev` en base,
+  Ctrl-C, code de sortie 130, second Ctrl-C). L en-tete de la commande a ete mis a jour au
+  lot 5.24.2 — le raisonnement « un seul processus » est INTACT et gagne une troisieme ligne
+  (toujours un processus, toujours un handle RW, N goroutines de decodage). `printUsage` de
+  `main.go` cite `--workers` et `--status`. Plan (cette section, §4, §5) et note courte
+  `.ai/V7.5/film_re/NOTE_5_24_BACKFILL_KILLSOURCE_2026-09-22.md`.
+
+
+#### Revue adversariale du lot 5.24 — ronde 1, deux relecteurs aveugles (2026-09-22)
+
+Deux contextes frais, lentilles **L1 (ecritures DuckDB / anti-ART)** et **L6 (ce que les tests
+ne couvrent pas)**, contrat en 6 lignes, regles de recevabilite collees. **Le meme constat P1 a
+ete trouve INDEPENDAMMENT par les deux** — le signal le plus fort que ce dispositif produise.
+
+**L1 — aucun defaut recevable sur l axe assigne**, et **14 conditions verifiees qui tiennent**,
+sur pieces et pas depuis le diff : les 7 sites de lease sont exhaustifs et TOUS gardes ; aucun
+autre acces base depuis le chemin film ; aucune imbrication de jeton (donc aucun interblocage
+possible, et le delai de 5 min ne peut pas se declencher) ; aucune fuite de jeton sur les
+chemins d erreur ; `decode_pass` reste unique par passe (`crypto/rand`) ; les six vues `_latest`
+partitionnent toutes par `match_id` et un match n est traite que par un ouvrier ; aucun
+garde-rail elargi ; **aucun etat mutable de paquet sur le chemin de decodage** (la justification
+centrale du lot, re-verifiee par un tiers) ; aucune carte ni compteur partage sans verrou ;
+l annuaire de passe ne fait ecrire aucun nom que la jointure n aurait pas ecrit ; les appelants
+qui ne parallelisent pas gardent leur comportement.
+
+| # | Constat | Gravite | Suite |
+|---|---|---|---|
+| 1 | **`cmd_backfill_killsource.go` — la passe CREDIT recevait le contexte d ARRET, deja annule.** Apres un Ctrl-C pendant la passe des films, `matchsDuRegistre` faisait `db.QueryContext` sur ce contexte ; `database/sql` teste `ctx.Done()` AVANT de prendre une connexion, donc la requete n etait pas executee et `passeDuCredit` rendait `registre des matchs: context canceled`. La commande sortait sur cette erreur AVANT de fermer l etat. **Les TROIS promesses de l arret tombaient sur le chemin NOMINAL** (sans `--films-only`) : etat fige en phase « films » (`--status` annoncant au bout de 10 min « probablement morte » au lieu de « INTERROMPUE »), code de sortie **1 au lieu de 130**, message « erreur: … context canceled » au lieu des instructions de reprise. **Trouve par les DEUX relecteurs.** | **P1** | **CORRIGE** : `passeDuCredit` derive son contexte de TRAVAIL (`context.WithoutCancel`) et l arret passe par `CreditCollector.AvecArretDoux`, applique ENTRE deux matchs. Test `TestPasseDuCredit_UnArretDejaDemandeNEstPasUneErreur` — **mutation verifiee** : rouge avec `ctx`, vert avec `ctxTravail` |
+| 2 | **`--credit-only` n ecrivait AUCUN fichier d etat** (`suivi` n etait construit que par la passe des films) : `--status` servait l etat d une passe PRECEDENTE pendant toute sa duree — c est-a-dire exactement la passe de 22 heures que le lot cite comme motivation. | **P2 dans le perimetre** | **CORRIGE** : `suiviDuCreditSeul`. Test `TestPasseDuCredit_EcritSonEtatMemeSansFilm` |
+| 3 | **`--online --workers 6` etait accepte, valide contre le plafond memoire, puis ignore** : la passe en ligne decode en serie et ne lit jamais `o.workers`. L utilisateur croyait tourner a six ouvriers. | **P2 dans le perimetre** | **CORRIGE** : refus explicite, qui porte sur un `--workers` REELLEMENT ecrit (`workersExplicite`) — `--online` seul reste accepte. Test `TestValiderLesOptions_OnlineRefuseDesOuvriers` |
+| 4 | **L arret doux de la boucle EN SERIE (`--workers 1`) n etait couvert par aucun test** — le gate de reprise tourne a deux ouvriers. Sans ce chemin, `--workers 1` est ININTERRUPTIBLE (le contexte de travail est `WithoutCancel`, il n existe aucun autre point d arret). | **P2 dans le perimetre** | **CORRIGE** : test `TestArretDoux_LaBoucleEnSerieLHonoreAussi` (temoin a 3 films examines, puis 0 apres arret, source de films non re-interrogee) |
+| 5 | **`TestPorteDeLaBase_UnSeulJetonALaFois` pouvait rougir par ordonnancement** : la prise qui DOIT reussir employait un `WithTimeout(50 ms)` alors que le jeton est disponible — les deux branches du `select` pouvaient etre pretes ensemble. C est le seul test de la porte qui tourne en CI. | **P2 dans le perimetre** | **CORRIGE** : `context.Background()` pour la prise qui doit reussir ; les deux qui doivent echouer gardent leur delai |
+| 6 | **Le test de reprise n avait que deux films de marge** (coupure a 2, 4/6 ecrits) : sur une machine plus rapide il se serait SAUTE en annoncant vert sans rien verifier. | **P2 dans le perimetre** | **CORRIGE** : coupure a 1 film — mesure apres correctif **3/6 ecrits, 3 sautes a la relance** |
+| 7 | **AUCUN job CI ne tient les trois affirmations centrales du lot** : `ci.yml` lance `go test -tags=integration ./...` SANS `KILLSOURCE_FIXTURES`, donc `TestOuvriers_MemesLignesQuUnSeulOuvrier`, `TestAnnuaireDePasse_MemesLignesQueLaJointure` et `TestReprise_…` se SAUTENT tous les trois. Une regression de `gamertagsParLAnnuaire` rendant une map vide ne ferait rougir aucun job. `-race` n est pas joue non plus (incompatible DuckDB). | **P2 hors perimetre** | **NON TRAITE — D4 (5.24) au § 4.** La CI n a pas les films (107 Mo, non versionnes) : le corriger est une decision d infrastructure, pas un geste de ce lot |
+| 8 | Quatre chemins de cablage CLI sans test de mutation (`AvecArretDoux`/`AvecObservateur` de la passe des films, le pont de progression credit, le compteur `sans_film_en_cache`). | **P2 hors perimetre** | **NON TRAITE — D5 (5.24) au § 4.** Le remede est un test qui pilote `runBackfillKillSource` de bout en bout, ce qui exige de fabriquer une racine de depot complete ; l extraction de `jouerLesDeuxPasses` faite dans ce tour la rend possible, mais c est un lot a part |
+
+**Bilan de la ronde 1 : 1 P1 + 5 P2-dans-le-perimetre corriges avec leurs tests, 2 P2 consignes.
+Aucun P0.** Pas de ronde 2 : les corrections sont locales, chacune porte son test, et le nombre
+de P0+P1 tombe de 1 a 0.
+
+**Defaut trouve par l EXECUTION, hors revue** : `--status` terminait par « arret demande » sur
+toute passe REUSSIE (`signal.NotifyContext` annule son contexte par les deux chemins). Corrige,
+test de non-regression `TestContexteDArret_UnePasseNORMALENAnnonceAucunArret`. Aucune relecture
+de diff ne l aurait trouve.
 ## 4. Découvertes (consignées, NON traitées — règle 7)
 
 | Date | Lot | Découverte | Où elle ira |
 |---|---|---|---|
+| 2026-09-22 | 5.24 revue | **D4 (5.24) — AUCUN JOB CI NE TIENT LES TROIS AFFIRMATIONS CENTRALES DU LOT.** `.github/workflows/ci.yml` lance `go test -tags=integration ./...` **sans** `KILLSOURCE_FIXTURES` ; or `TestOuvriers_MemesLignesQuUnSeulOuvrier` (N ouvriers = memes lignes), `TestAnnuaireDePasse_MemesLignesQueLaJointure` (la source des NOMS change) et `TestReprise_UnePasseInterrompueRepartAuDernierEtat` (arret doux + reprise) se SAUTENT tous les trois sans films. Verifie en rejouant avec la variable vide : trois `SKIP`. Une regression de `gamertagsParLAnnuaire` rendant une map vide — tous les gamertags perdus dans la passe des films — ne ferait rougir aucun job. `-race` n est pas joue non plus (incompatible DuckDB), donc une course future n est attrapee par rien. | **NON TRAITE** : la CI n a pas les films (107 Mo, non versionnes, et le cache local est une jonction). Y remedier est une decision d INFRASTRUCTURE — un corpus de films minuscule versionne, ou un job local periodique —, pas un geste de ce lot. En attendant, les trois tests sont joues LOCALEMENT a chaque cloture et leurs resultats sont colles au § 5 |
+| 2026-09-22 | 5.24 revue | **D5 (5.24) — QUATRE CHEMINS DE CABLAGE CLI SANS TEST DE MUTATION.** Retirer `.AvecArretDoux(ctx)` ou `.AvecObservateur(suivi)` de la chaine de construction de `passeDesFilms` (`cmd_backfill_killsource.go`), le pont `AvecProgression` de `passeDuCredit`, ou le compteur `SansFilmEnCache` de `filmsACollecter` ne fait rougir AUCUN test : les tests d integration construisent leur propre collecteur, les tests d etat fabriquent leur `bilanDeSelection` a la main. Consequence d une telle regression : Ctrl-C sans effet pendant 4 h, ou `--status` gele a son etat initial. | **NON TRAITE** (regle 7 : le lot corrige les defauts, pas la couverture du cablage). Le remede est un test qui pilote `runBackfillKillSource` de bout en bout sur une racine de depot fabriquee (capabilities.toml + catalogue de bornes + base migree + cache de films) ; l extraction de `jouerLesDeuxPasses` faite au tour de revue la rend possible. A prendre comme un lot a part |
+| 2026-09-22 | 5.24.4 | **D3 (5.24) — `TestKillSourceFaitsDIsolementFilmReel` EXIGE UNE LISTE DE `named_by` PERIMEE DEPUIS LE 2026-09-08, ET IL EST ROUGE DES QU ON LUI DONNE DES FILMS.** `internal/sync/killcollector/isolation_facts_integration_test.go:185` assert `named_by NOT IN ('death','closure')` ; `persist/lives_persister.go:249-268` declare SEPT valeurs — les deux ci-dessus plus `biped_creation`, `biped_creation_propagee`, `elimination`, `exclusion_temporelle` (lot E2, 2026-09-08) et `tableau_api` (lot 4.3, 2026-09-10). Sur le film `000d5950` : **99 vies sur 99 « hors enum »**, toutes nommees par le registre d identite. Le test ne l a jamais dit parce qu il SE SAUTE sans `KILLSOURCE_FIXTURES`, et tous les gates du depot depuis le 2026-09-08 ont tourne « SANS AUCUN DECODAGE ». Le producteur et le persister, eux, sont justes : c est l ASSERTION du test qui est fausse. | **NON TRAITE** (regle 7 : hors du perimetre ferme du lot — ce lot ne touche ni les faits d isolement ni leur producteur ; le gate du depot, sans fixtures, est VERT). Le remede est de trois lignes : remplacer les deux litteraux par les constantes `persist.NommePar*` (elles existent, et `archlint/no_life_cause_divergence_test.go` garde deja leur alignement avec `replay`). A prendre par le premier lot qui rouvrira les faits d isolement — ou par le pilote avant le prochain backfill, puisque c est la SEULE alerte que le corpus reel declenche |
+| 2026-09-22 | 5.24.2 | **D2 (5.24) — L EN-TETE DU DECODEUR AFFIRME ENCORE UN VERROU DE PAQUET QUI N EXISTE PLUS.** `internal/games/halo_infinite/film/internal/facts/killsource/doc.go:196-202` : « CONTRAINTE D EXECUTION — UN SEUL DECODAGE A LA FOIS DANS UN PROCESS [...] [Decode] serialise donc les passes par un verrou de paquet et remet les globaux a leur valeur d origine a chaque entree ». Ni le verrou ni les globaux n existent : la cloture M3 d ADR 0034 a depense le profil et `SetInferResyncTargets` a disparu au lot E.2. Les deux copies du meme texte dans `sync/killcollector` ont ete corrigees par ce lot ; celle-ci NON. | **NON TRAITE** (regle 7 : `film/internal/` est hors du perimetre ferme du lot, et le depot porte un mecanisme d empreinte de sources sur cet arbre — un octet de commentaire n est pas un geste a faire en aveugle). A prendre par le premier lot qui rouvrira `facts/killsource` : c est une correction d en-tete de 7 lignes, avec la date et la cause, sur le modele de celle posee dans `killcollector/collector.go` |
+| 2026-09-22 | 5.24.1 | **D1 (5.24) — LES DIX FILMS LES MOINS CHERS DU CACHE NE PRODUISENT RIEN, NEUF FOIS SUR DIX.** Les films de 2 a 5 chunks (`e869bcdf`, `f3e3112f`, `07af7c78`, `29206c7c`, `56b51daf`, `5da6fd30` : aucune identite au fil des morts ; `279ac3dd`, `3b865848`, `54ab2608` : `ErrNoKillFeed`, aucun chunk HIGHLIGHT) — un seul, `4555ce28`, ecrit. Ce sont des parties abandonnees ou tres courtes. La passe les redecode a CHAQUE campagne (le critere de fraicheur porte sur `match_kill_events_latest`, qu ils ne peuplent jamais), pour ~250 ms chacun. | **NON TRAITE** (regle 7 : le lot porte sur la vitesse, pas sur la selection). Le cout est borne et connu — quelques dizaines de secondes sur le parc. Le remede serait un marqueur de registre « film sans kill-feed » DUR (`registry_flags.go` en pose un pour le film absent, pas pour celui-ci, et l en-tete de `collector.go` explique pourquoi : le kill-feed pourrait arriver). A reprendre avec le lot qui rouvrira les marqueurs de registre |
 | 2026-09-21 | 5.11.7 | **D1 (5.11.7) — LE SIGNAL DU MANTLING EST DANS LA QUEUE D `i54`, ET ELLE EST BIEN PLUS RICHE QUE LE PORT NE LE CROIT.** Lecture d ecrivain SEULE. `FUN_1408f0264` lit `i54` ; son MIROIR d ecriture est `FUN_142f053f8`. Les deux appellent une queue que le depot CONSOMME ET JETTE : `FUN_1408f02c8` en lecture, **`FUN_1407ea38c` en ecriture** — et c est l ecriture qui donne la provenance. `si bloc[0x9d] == 0 : RIEN (queue = ZERO bit)` ; `R(1) = (bloc[8] != -1)` ; `si bloc[8] != -1 : R(10) = bloc[8]` (`FUN_1406d310c(0x400)`) ; **un vec3 `bloc+0x18`** (`FUN_1407eb600(w, bloc+0x18, 0x10)`) ; **deux vec3 `bloc+0x24` / `+0x30`** (`FUN_141f86118`) ; `bloc+0x3c` (`FUN_1407eb61c(w, bloc+0x3c, 0xffffffff, 0x10, 0)`) ; `R(1) = bloc[0xa1]` (`FUN_1406d310c(2)`) ; **`R(7) = bloc[0x98]`** ; **`R(2) = bloc[0x9c]` = `etat+0x1294`, QUATRE VALEURS** ; `R(1) = bloc[0x9f] & 1`. Donc `i54`, quand sa garde est levee, porte un champ de deux bits ET TROIS VEC3 — pour une escalade, l ancre du geste — la ou le document ne publie que « une action est amorcee » (D9 (5.3)). Vocabulaire ancre : `SpartanAbilityIsClambering` @`1436f7130` -> `FUN_142c66808` = `FUN_1406b8244(idx) == 2`, et `CharacterPhysicsModeClambering` @`143df73d0` nomme cette valeur 2 ; `auto_clamber` @`1436c69e0`, `EnableAutoClamber` @`143ba6b60`, `clamber` @`143bbaa48`. | **NON TRAITE, ET AUCUN PORT** : les quatre valeurs ne sont pas NOMMEES, donc `stances[].kind` `mobility` ne devient pas `clamber`. IL MANQUE UN SEUL MAILLON : qui ECRIT `etat+0x1294` dans l objet vivant — a chercher depuis le CONSOMMATEUR, jamais depuis l offset (`0x1294` collisionne entre classes). **ET QUAND CE SERA NOMME, LE PORT SERA UNE MONTEE DE SCHEMA** : ajouter une valeur a l enum `kind` change la FORME du document (la v66 l a fait pour `sprint` et `jumpDerived`), donc ARRET et compte rendu avant de la prendre |
 | 2026-09-21 | 5.11.0-a | **D1 (5.11) — LA REFERENCE D EQUIVALENCE EST PERIMEE DEPUIS LA FUSION DU LOT 5.10, ET ELLE REND QUATRE ECARTS QUI NE SONT A PERSONNE.** `replay-equiv -films bcb6d393` SANS `-update`, joue au HEAD de fusion `f8c3e8e7a` AVANT tout changement de ce lot : ECART sur `vehicles`, `movementStates` (attendu 4 469, obtenu **1 363**), `movementStates.stats` et `artifact`. Le plus gros — un facteur 3,3 sur le compte des transitions de mouvement — est donc anterieur a ce lot. | **NON TRAITE** — le re-figeage des references d equivalence est un geste du PILOTE, a la fin du chantier, et il est deja au programme (meme nature que D15 (5.3), qui portait sur `positions`). Consigne ici pour que l ecart ne soit impute ni a 5.10 ni a 5.11 : la seule difference que le correctif 5.11.0-a introduit est `movementStates` **1 363 -> 1 364**, un GAIN d une transition |
 | 2026-09-21 | 5.11.0 | **D2 (5.11) — `i60 simulation-state` EST DECLARE `partiel` DANS `ecs_table.tsv` ALORS QUE LA MESURE LE DIT COMPLET.** Relecture a `StartBit` sur les records RENDUS : **58 declarations sur `bfecd02b` et 326 sur `4f77afc1`, ZERO rendue non portee, ZERO fois composant fautif** sur les deux films. Son `ported` est le drapeau `SimStateComplet`, qui suit la carte depuis le 5.3.3-a — donc vrai des qu une carte est installee, ce qui est le cas de toute marche de production. | **NON TRAITE** (regle 7 : le lot porte sur le saut). Le passage a `porte` demande de decider ce que devient le drapeau quand AUCUNE carte n est installee (`ScanFilm*`), et c est un lot `ti=35` a part entiere. Le cout actuel du statut faux est nul en bits et non nul en lecture : il fait croire qu il reste une grammaire a trouver |
@@ -11897,6 +12191,38 @@ des bases DuckDB temporaires peuplees synthetiquement par les VRAIES migrations.
 | 2026-09-21 | 5.3.2 | **D9 (5.3) — LE DOMAINE MESURÉ DES CHAMPS D'`i54` CONTREDIT L'HYPOTHÈSE DE L'ÉCRIVAIN.** L'identifiant optionnel de 10 bits n'est transmis **0 fois sur 2 245 initiations** (il reste à sa sentinelle), et `+0x9c` ne prend que **deux** valeurs, 0 et 2, jamais 1 ni 3. L'hypothèse « Sprint / Thruster / Clamber / Slide sur 2 bits » du § 2.8 est donc réfutée par les valeurs. Seul `+0x98` (R(7)) se comporte en discriminant, et son domaine varie d'un film à l'autre (3 valeurs sur `bfecd02b`, 8 sur `4f77afc1`). | **NON TRAITÉE** : nommer les classes demande de croiser `+0x98` avec la carte et le geste vu dans Theater — c'est un lot en soi, et il a besoin de l'attribution vie -> joueur que 5.3.2 n'a pas faite |
 
 ## 5. Journal des gates locaux (un gate non consigné n'a pas eu lieu)
+
+### Post-chantier — lot 5.24 (backfill killsource : vitesse, etat, reprise), 2026-09-22
+
+Branche `feat/decfilm-74`, base `f3d52514b`. **Aucune base de production ouverte** (le serveur
+tourne) ; films lus par les jonctions du cache, bases DuckDB temporaires migrees par
+`migration.RunForDB`. Machine PARTAGEE : toutes les mesures portent sur l echantillon du lot,
+jamais sur le parc.
+
+| Date | Point | Gate | Resultat |
+|---|---|---|---|
+| 2026-09-22 | 5.24.1 | `KILLSOURCE_FIXTURES=<cache> go test -count=1 -tags=integration -p 1 -run PasseDesFilms_OuVaLeTemps ./internal/sync/killcollector/` (echantillon large, 4 films productifs dont le plus gros) | **PASS 64,5 s** — DECODAGE 69,3 %, annexes 29,8 %, roster 0,3 %, ecriture 0,6 %, chargement et carte 0,0 % ; pic HeapInuse **422 Mio**, Sys 769 Mio sur `1c4c63c2` |
+| 2026-09-22 | 5.24.1 | meme gate, echantillon des 9 petits films productifs | **PASS 13,3 s** — DECODAGE 46,6 %, annexes 46,7 %, roster **4,6 %** (49 a 60 ms par match, constants), ecriture 2,1 % |
+| 2026-09-22 | 5.24.1 | meme gate, les 10 films les MOINS CHERS du cache (2 a 5 chunks) | **9 sur 10 ne produisent rien** : 5 « aucune identite au fil des morts », 3 `ErrNoKillFeed`, 1 mesure |
+| 2026-09-22 | 5.24.2 | `KILLSOURCE_FIXTURES=<cache> go test -count=1 -tags=integration -p 1 -run 'Ouvriers\|PorteDeLaBase\|AnnuaireDePasse' ./internal/sync/killcollector/` | **PASS** — `TestOuvriers_MemesLignesQuUnSeulOuvrier` : 9 films, 1 ouvrier **9,7 s** contre 3 ouvriers **3,5 s** (**x2,70 a x2,78** sur trois executions), et les cinq vues `_latest` IDENTIQUES ligne a ligne (242 morts, 150 tirs, 212 vies, 176 contextes, 159 positions = **939 lignes**) ; `TestAnnuaireDePasse_MemesLignesQueLaJointure` : memes 939 lignes ; `TestOuvriers_UnSeulOuvrierEstLaBoucleEnSerie` et les deux tests de la porte : verts |
+| 2026-09-22 | 5.24.2 | `TestRosterDesFilms_AnnuaireContreJointure` (banc 180 000 lignes) | **PASS** — jointure par match **50,7 ms**, annuaire de passe **4,0 ms** (chargement inclus, amorti sur 20 matchs) : **facteur 12,5**, budget exige >= 10 |
+| 2026-09-22 | 5.24.2 | `go test -count=1 ./internal/sync/... ./internal/persist/... ./cmd/levelup/...` | **PASS**, code de sortie **0** |
+| 2026-09-22 | 5.24.2 | `go test -tags=integration -p 1 -count=1 ./internal/persist/... ./internal/sync/... ./internal/migration/...` | **PASS**, code de sortie **0** (ratchets anti-ART compris) |
+| 2026-09-22 | 5.24.2 | `golangci-lint run ./internal/sync/... ./internal/persist/... ./cmd/levelup/...` | **zero issue sur les fichiers du lot** ; le `gocyclo 18` introduit sur `runBackfillKillSource` a ete corrige par extraction de `validerLesOptions` |
+| 2026-09-22 | 5.24.3 | `go test -count=1 -run 'Etat_\|Status_\|BilanInitial\|Ouvriers\|ValiderLesOptions' ./cmd/levelup/` | **PASS** — 13 tests : ecriture des le demarrage, comptabilite des sept issues, erreur != issue, ETA en chunks et par ouvrier, cadence 25 films OU 60 s avec compteur qui repart, ecriture atomique (pas de `.tmp` residuel), phases films/credit/terminee, rendu lisible, etat perime signale, fichier absent = code 0, fichier tronque = erreur, bilan initial |
+| 2026-09-22 | 5.24.3 | `go test -count=1 ./cmd/levelup/... ./internal/sync/...` | **PASS**, code de sortie **0** |
+| 2026-09-22 | 5.24.3 | `golangci-lint run ./cmd/levelup/... ./internal/sync/... ./internal/domain/title/...` | **zero issue sur les fichiers du lot** (le `goconst` sur le litteral `erreur` a ete ferme par une constante) |
+| 2026-09-22 | 5.24.4 | `KILLSOURCE_FIXTURES=<cache> go test -count=1 -tags=integration -p 1 -run Reprise_ ./cmd/levelup/` | **PASS 8,1 s** — coupure apres 2 films, **4 ecrits** (les films en vol vont au bout), relance : **4 sautes / 2 ecrits**, total 6 = le temoin d une traite ; `match_kill_events_latest` **135 lignes** et `match_weapon_shots_latest` **114 lignes** IDENTIQUES |
+| 2026-09-22 | 5.24.4 | `go test -count=1 -run 'SortirSur\|Interruption_\|CauseDArret' ./cmd/levelup/` | **PASS** — code 130 pour une interruption (enveloppee comprise), 1 pour une panne, message qui dit quoi faire, cause lue sur le contexte |
+| 2026-09-22 | 5.24.4 | `go test -tags=integration -p 1 -count=1 ./internal/persist/... ./internal/sync/... ./internal/migration/... ./cmd/levelup/...` (SANS fixtures, le gate du depot) | **PASS**, code de sortie **0** |
+| 2026-09-22 | 5.24.4 | mêmes paquets AVEC `KILLSOURCE_FIXTURES` | un seul rouge, **PRE-EXISTANT et hors perimetre** : `TestKillSourceFaitsDIsolementFilmReel` (D3 (5.24) au § 4) — sa liste de `named_by` autorises date du 2026-09-07 et ignore les cinq voies du registre d identite ajoutees depuis. Les tests du lot, joues avec fixtures, sont **verts** (`-run 'Ouvriers\|PorteDeLaBase\|AnnuaireDePasse\|Reprise_\|RosterDesFilms'`, code de sortie **0**) |
+| 2026-09-22 | 5.24 revue | `KILLSOURCE_FIXTURES=<cache> go test -count=1 -tags=integration -p 1 -run 'Ouvriers\|PorteDeLaBase\|AnnuaireDePasse\|Reprise_\|RosterDesFilms\|ArretDoux\|PasseDuCredit_' ./internal/sync/killcollector/ ./cmd/levelup/` (APRES les correctifs de revue) | **PASS**, code de sortie **0** — egalite 1 contre 3 ouvriers : **939 lignes identiques** sur 5 vues, gain **x2,73** ; annuaire contre jointure : memes 939 lignes ; reprise : coupure a **3/6**, relance **3 sautes / 3 ecrits**, 135 + 114 lignes identiques ; arret doux en serie, porte, refus de `--online --workers`, credit sur arret deja demande : verts |
+| 2026-09-22 | 5.24 revue | **mutation du correctif P1** : `matchsDuRegistre(ctxTravail, …)` remis a `matchsDuRegistre(ctx, …)` | **ROUGE** comme attendu — `passeDuCredit rend une erreur sur un arret deja demande (registre des matchs: context canceled)`. Le test tient le correctif, il ne l accompagne pas |
+| 2026-09-22 | 5.24 revue | `go test -tags=integration -p 1 -count=1 ./internal/persist/... ./internal/sync/... ./internal/migration/... ./cmd/levelup/...` (sans fixtures, le gate du depot) | **PASS**, code de sortie **0** |
+| 2026-09-22 | 5.24 revue | `go test -count=1 ./internal/sync/... ./internal/persist/... ./cmd/levelup/...` + `go vet ./...` | **PASS**, code de sortie **0** |
+| 2026-09-22 | 5.24 revue | `golangci-lint run ./cmd/levelup/... ./internal/sync/... ./internal/persist/... ./internal/domain/title/...` | **zero issue sur les fichiers du lot** ; le `gocyclo 18` re-introduit sur `runBackfillKillSource` par les correctifs a ete ferme par l extraction de `jouerLesDeuxPasses`, et les 520 lignes du fichier par celle de `cmd_backfill_killsource_positions.go` (469 lignes apres) |
+| 2026-09-22 | 5.24 revue | `go run ./cmd/levelup backfill-killsource --status` rejoue apres correctifs | bilan seul, **aucun « arret demande »**, code de sortie **0** |
+| 2026-09-22 | 5.24.4 | **fumee : `go run ./cmd/levelup backfill-killsource --status` joue pour de vrai** | **DEFAUT TROUVE, corrige dans le lot** : toute passe REUSSIE terminait par « arret demande : plus aucun film n est distribue » — `--status` compris, qui n ouvre aucune base et sort en 0. Cause : `signal.NotifyContext` annule son contexte PAR LES DEUX CHEMINS (le signal ET `stop`), donc le `defer` de fin nominale reveillait le goroutine d annonce. Correctif : canal de signal dedie + canal `fini`, `stop` idempotente ; test de non-regression `TestContexteDArret_UnePasseNORMALENAnnonceAucunArret` (detournement d `os.Stderr`, sortie d erreur exigee VIDE). Apres correctif : la commande n ecrit que son bilan, code de sortie **0** |
 
 ### Post-chantier — lot 5.11 (le declencheur du saut, film temoin), 2026-09-21
 

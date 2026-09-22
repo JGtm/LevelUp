@@ -33,6 +33,9 @@ import (
 // deja au registre).
 type SharedRoster struct {
 	db *sql.DB
+	// chargeur : l ANNUAIRE DE PASSE, optionnel (nil = la jointure par match, le defaut de tous
+	// les appelants live). Cable par [SharedRoster.AvecAnnuaireDePasse], et par le seul backfill.
+	chargeur *chargeurDAnnuaire
 }
 
 // NewSharedRoster construit la resolution. `db` peut etre un handle LECTURE (le collecteur
@@ -103,6 +106,9 @@ func (r *SharedRoster) IdentitiesForMatch(ctx context.Context, matchID string) (
 func (r *SharedRoster) gamertagsForMatch(ctx context.Context, matchID string) (map[string]string, error) {
 	if r == nil || r.db == nil {
 		return nil, fmt.Errorf("SharedRoster: db nil")
+	}
+	if r.chargeur != nil {
+		return r.gamertagsParLAnnuaire(ctx, matchID)
 	}
 	rows, err := r.db.QueryContext(ctx, `
 		SELECT mp.xuid, g.gamertag
@@ -214,12 +220,20 @@ type KillSourceSummary struct {
 	ElapsedTime time.Duration
 }
 
-// CollectMatches : la passe de fond, EN SERIE.
+// CollectMatches : la passe de fond, EN SERIE — le chemin de REFERENCE.
 //
-// LA SERIE N EST PAS UNE SIMPLIFICATION. Les parametres de replication du decodeur sont des
-// globaux de paquet ; `killsource.Decode` serialise deja par un verrou. Lancer N goroutines ne
-// ferait qu empiler des appelants sur ce verrou — meme debit, plus de memoire, et un ordre
-// d abandon imprevisible. On boucle.
+// ⚠ CE QUI ETAIT ECRIT ICI ETAIT PERIME, ET LE CORRIGER EST LE LOT 5.24.2 (2026-09-22). Le
+// commentaire disait : « les parametres de replication du decodeur sont des globaux de paquet ;
+// `killsource.Decode` serialise deja par un verrou ». **Ni l un ni l autre n existe plus.** La
+// cloture M3 du chantier decodeur (ADR 0034, 2026-09-17) a DEPENSE le profil — il voyage en
+// argument jusqu a `calibrate` et `runWalk` — et le dernier reglage global
+// (`SetInferResyncTargets`) a ete supprime au lot E.2 du 2026-09-05. Plusieurs films PEUVENT
+// donc se decoder en parallele : c est ce que fait [KillSourceCollector.CollectMatchesOuvriers],
+// et `collector_ouvriers.go` porte la mesure qui le justifie et la preuve qui l atteste.
+//
+// CETTE BOUCLE RESTE, ET ELLE RESTE LE DEFAUT DE TOUS LES APPELANTS QUI NE DEMANDENT RIEN : le
+// post-sync du serveur, `--online` et les tests. Elle est aussi le TEMOIN du test d egalite —
+// c est a elle que la passe a N ouvriers doit rendre les memes lignes.
 //
 // Une erreur sur UN match n arrete pas la passe : elle est comptee et journalisee. Seul l arret
 // de l appelant (`ctx`) interrompt — et il rend la synthese de ce qui a ete fait, pas une erreur.
@@ -241,37 +255,41 @@ func (c *KillSourceCollector) CollectMatches(ctx context.Context, matchIDs []str
 				"total", sum.Total)
 			break
 		}
+		if c.arretDouxDemande() {
+			// ARRET DOUX (lot 5.24.4) : le film en cours est deja fini — on ne prend pas le
+			// suivant. La boucle en serie et la passe a ouvriers s arretent au meme endroit.
+			slog.InfoContext(ctx, "killsource: arret demande — la passe s arrete entre deux films",
+				"traites", sum.Written+sum.NoFilm+sum.NoKillFeed+sum.Timeouts+sum.Errors,
+				"total", sum.Total)
+			break
+		}
 		if ctx.Err() != nil {
 			slog.InfoContext(ctx, "killsource: passe interrompue par l appelant",
 				"traites", sum.Written+sum.NoFilm+sum.NoKillFeed+sum.Timeouts+sum.Errors,
 				"total", sum.Total)
 			break
 		}
+		debut := time.Now()
+		if c.observateur != nil {
+			c.observateur.FilmDemarre(id, debut)
+		}
 		outcome, deaths, err := c.CollectMatch(ctx, id)
-		if err != nil {
-			sum.Errors++
-			continue
+		ev := EvenementDeFilm{MatchID: id, Outcome: outcome, Morts: deaths,
+			Duree: time.Since(debut), Err: err}
+		if err == nil {
+			// LES MARQUEURS DE FILM DU REGISTRE (cf. registry_flags.go). Ils etaient poses par
+			// l etape 1.55 jusqu au 2026-09-01 ; cette passe telecharge le meme film, au meme
+			// moment, donc elle sait ce qu ils affirment. Ecrire ici et pas dans `collect` :
+			// seule cette boucle distingue une erreur (rien a affirmer) d un outcome.
+			c.marquerFilm(ctx, id, outcome, deaths)
 		}
-		// LES MARQUEURS DE FILM DU REGISTRE (cf. registry_flags.go). Ils etaient poses par
-		// l etape 1.55 jusqu au 2026-09-01 ; cette passe telecharge le meme film, au meme
-		// moment, donc elle sait ce qu ils affirment. Ecrire ici et pas dans `collect` :
-		// seule cette boucle distingue une erreur (rien a affirmer) d un outcome.
-		c.marquerFilm(ctx, id, outcome, deaths)
-		switch outcome {
-		case OutcomeWritten:
-			sum.Written++
-			sum.Deaths += deaths
-		case OutcomeNoFilm:
-			sum.NoFilm++
-		case OutcomeNoKillFeed:
-			sum.NoKillFeed++
-		case OutcomeTimeout:
-			sum.Timeouts++
-		case OutcomeNotSupported:
-			sum.NotSupport++
-		case OutcomeUnknownKey:
-			sum.UnknownKey++
+		if c.observateur != nil {
+			c.observateur.FilmFini(ev)
 		}
+		// UN SEUL CHEMIN DE COMPTAGE POUR LES DEUX PASSES (`comptabiliserFilm`, lot 5.24.2) :
+		// deux copies du meme `switch` diraient tot ou tard deux totaux differents de la meme
+		// passe, et c est exactement le genre d ecart qu on ne voit pas.
+		comptabiliserFilm(&sum, ev)
 	}
 
 	sum.ElapsedTime = time.Since(start)
@@ -282,4 +300,94 @@ func (c *KillSourceCollector) CollectMatches(ctx context.Context, matchIDs []str
 		"ecartes_cle_inconnue", sum.UnknownKey,
 		"duration", sum.ElapsedTime)
 	return sum
+}
+
+// AvecAnnuaireDePasse branche l ANNUAIRE DE PASSE : `v_gamertag_lookup` lue UNE FOIS, au premier
+// match, au lieu d etre jointe par match (lot 5.24.2, 2026-09-22).
+//
+// # LA MESURE QUI L EXIGE
+//
+// D1 du lot 5.12 (§ 4 du plan) avait recense le defaut sans le corriger : `gamertagsForMatch`
+// joint la vue canonique d identite PAR MATCH, et le filtre `mp.match_id = ?` ne peut RIEN
+// pousser dans une vue faite de trois legs agreges en FULL OUTER JOIN — elle est donc
+// materialisee entierement, une fois par film. Mesure 5.24.1 : **49 a 60 ms par match, constants
+// (independants du film)** sur un banc de 180 000 lignes, et « des secondes » sur la base de
+// production, qui en porte plusieurs millions. Sur 1 612 films c est de la minute au quart
+// d heure — et depuis que la passe tourne a N ouvriers cette lecture est SERIALISEE derriere la
+// porte de la base : elle devient le plafond de la passe, quel que soit le nombre d ouvriers.
+//
+// # CE QU IL CHANGE, ET CE QU IL NE CHANGE PAS
+//
+// La SOURCE DES NOMS RESTE `v_gamertag_lookup` — meme vue, meme cascade, meme repli. Ce qui
+// change est le nombre d evaluations. La selection des participants reste une lecture par match,
+// mais elle porte sur `match_participants` seule, qui pousse son predicat.
+//
+// L EQUIVALENCE EST EXACTE SUR LA FORME : la jointure d origine etait un INNER JOIN qui ne
+// gardait que les noms non vides ; la vue ne rend JAMAIS un nom vide (son dernier repli est le
+// libelle masque « Joueur #### »), et tout xuid de `match_participants` est dans la vue par son
+// leg `mp`. Un participant nomme le reste, un participant sans xuid est exclu des deux cotes.
+// L annuaire fait meme MIEUX sur un point : si la vue rendait deux lignes pour un xuid, la
+// jointure retenait l une des deux au hasard de l ordre de sortie de DuckDB, la ou l annuaire
+// retient la premiere d un `ORDER BY` (cf. [requeteAnnuaireDesNoms]).
+//
+// # LE SEUL ECART POSSIBLE EST NOMME, ET IL VA DANS LE BON SENS
+//
+// L instantane est pris au premier match ; la passe ecrit ensuite dans `match_kill_events`, que
+// la vue relit (son leg 4). Un nom ajoute par la passe pourrait donc, sans annuaire, etre relu
+// par un match suivant. Les noms que la passe ecrit viennent de [MatchIdentities.Resoudre], donc
+// de l annuaire lui-meme — SAUF UN : quand le film ne porte aucun gamertag pour un joueur, le
+// decodeur ecrit `xuid:NNN` et `Resoudre` garde cette forme brute si le xuid n est pas au roster
+// du match. La jointure par match pourrait alors, sur un match suivant, servir `xuid:NNN` comme
+// nom d affichage (le leg 4 prend le `MAX` des noms du kill-feed, et `x` est haut) — c est-a-dire
+// exactement le « xuid brut a l affichage » que `v_gamertag_lookup` existe pour empecher.
+// L annuaire ne peut pas le faire. L ecart est donc REEL, RARE, et il retire un faux nom ; il est
+// verifie sur les films du cache par `TestAnnuaireDePasse_MemesIdentitesQueLaJointure`.
+//
+// ⚠ UN COLLECTEUR = UNE PASSE, comme pour le credit : l instantane vit aussi longtemps que le
+// `SharedRoster`. Le brancher sur un roster garde vivant des heures (le post-sync du serveur, le
+// chemin live) servirait des noms vieux de ces heures — d ou le fait que ce soit un reglage
+// EXPLICITE, et que seul le backfill le pose.
+func (r *SharedRoster) AvecAnnuaireDePasse() *SharedRoster {
+	if r != nil {
+		r.chargeur = &chargeurDAnnuaire{}
+	}
+	return r
+}
+
+// requeteParticipantsNommables : les xuids du match, et eux seuls. Le predicat porte sur une
+// TABLE (pas une vue agregee), donc DuckDB le pousse.
+const requeteParticipantsNommables = `
+	SELECT DISTINCT mp.xuid
+	FROM match_participants mp
+	WHERE mp.match_id = ? AND mp.xuid IS NOT NULL AND mp.xuid <> ''`
+
+// gamertagsParLAnnuaire rend `xuid -> gamertag` pour les participants du match, en lisant les
+// noms dans l annuaire de passe au lieu de joindre la vue.
+func (r *SharedRoster) gamertagsParLAnnuaire(ctx context.Context, matchID string) (map[string]string, error) {
+	noms, err := r.chargeur.annuaireDe(ctx, r.db, "films")
+	if err != nil {
+		return nil, fmt.Errorf("SharedRoster(%s): %w", matchID, err)
+	}
+	rows, err := r.db.QueryContext(ctx, requeteParticipantsNommables, matchID)
+	if err != nil {
+		return nil, fmt.Errorf("SharedRoster(%s): %w", matchID, err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	out := make(map[string]string, 16)
+	for rows.Next() {
+		var xuid string
+		if err := rows.Scan(&xuid); err != nil {
+			return nil, fmt.Errorf("SharedRoster(%s) scan: %w", matchID, err)
+		}
+		// MEME PORTE QUE LA JOINTURE : un nom vide n entre pas. La vue n en rend pas, mais la
+		// garde reste — elle est le contrat de la table, pas une precaution sur la vue du jour.
+		if nom := noms.nom(xuid); nom != "" {
+			out[xuid] = nom
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("SharedRoster(%s) rows: %w", matchID, err)
+	}
+	return out, nil
 }

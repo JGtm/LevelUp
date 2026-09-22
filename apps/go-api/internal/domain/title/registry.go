@@ -656,6 +656,26 @@ func (p *PathResolver) DiskWatchStatePath() string {
 	return filepath.Join(p.AdminStateDir(), "disk_watch_state.json")
 }
 
+// BackfillKillSourceStatePath retourne le chemin du FICHIER D ETAT de la passe
+// `levelup backfill-killsource` (lot 5.24.3) — le fichier que `--status` lit dans
+// un second terminal pendant que la passe tourne.
+//
+// IL EST ICI ET PAS DANS UNE BASE, et c'est le point : la passe TIENT le shared en
+// ecriture pendant des heures (un seul writer, ADR 0013), donc un etat ecrit en
+// base ne serait lisible par personne d'autre. Un JSON reecrit apres chaque film
+// se lit par n'importe qui, sans ouvrir quoi que ce soit.
+//
+// IL N'EST PAS UNE SOURCE DE VERITE POUR LA REPRISE : c'est `decoder_rev` en base
+// qui decide ce qui reste a faire. Le supprimer ne perd qu'un affichage.
+//
+// Per-titre : deux titres se backfillent separement et n'ont aucune raison
+// d'ecraser l'etat l'un de l'autre.
+//
+// Ex: data/global/admin_state/backfill_killsource_halo_infinite.json
+func (p *PathResolver) BackfillKillSourceStatePath(titleSlug string) string {
+	return filepath.Join(p.AdminStateDir(), "backfill_killsource_"+titleSlug+".json")
+}
+
 // MetadataDBPath retourne le chemin de la base metadata d'un titre.
 // Ex: data/titles/halo_infinite/warehouse/metadata.duckdb
 func (p *PathResolver) MetadataDBPath(titleSlug string) string {
