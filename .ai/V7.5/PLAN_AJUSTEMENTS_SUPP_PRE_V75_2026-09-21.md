@@ -232,8 +232,8 @@ surface `film/replay` 260 -> 263 justifie.
 - [ ] Go : `combat_tab.elevation` = par frag mesure du match (cote tueur ET cote victime pour le joueur consulte ; option tous les frags du lobby) : distance_m, delta_z_m, time_ms, weapon, side ; mediane du lobby
 - [ ] Web : nuage hauteur x distance, bande a niveau, clic vers l instant du rejeu, bouton « comparer au lobby »
 
-### Lot W — web Sessions : Portee en 4.A (worktree `LevelUp-wt-ajsup-w`)
-- [ ] Nuage de la periode (`range_reference`), session en surbrillance, bandes et seuils servis, tendance 5 matchs ; remplace la carte du lot O
+### Lot W — web Sessions : Portee en 4.A (worktree `LevelUp-wt-ajsup-w`) — FUSIONNE b380afed0 (conflit chart des roles resolu : options Z1 + W)
+- [x] Nuage de la periode (`range_reference`), session en surbrillance, bandes et seuils servis, tendance 5 matchs ; remplace la carte du lot O
 ### Lot Z1 — web Timeseries : roles de portee a.1 (worktree `LevelUp-wt-ajsup-z1`) — FUSIONNE ea78d2115
 - [x] Nuage des roles solo par match (`range_profiles` Timeseries), composant du lot R a une serie
 ### Lot Z2 — web Escouade : Denivele E1 (worktree `LevelUp-wt-ajsup-z2`)
