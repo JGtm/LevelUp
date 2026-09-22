@@ -2,7 +2,7 @@
  * SquadLayout — layout partagé de la section Escouade.
  *
  * Gère la sélection des coéquipiers (via data.options), les KPI cards et la
- * navigation par onglets (Synergies / Contributions). Expose les données
+ * navigation par onglets (Synergies / Contributions / Dynamique / Usages). Expose les données
  * sélectionnées via SquadContext pour les onglets enfants.
  *
  * Multi-titres : tous les libellés métier passent par useFieldMappings
@@ -19,7 +19,7 @@
  * sessions pickées, composition stricte) — ce dont sa requête a besoin.
  *
  * Route parente : /players/$playerSlug/squad
- * Routes enfants : /squad/synergies · /squad/contributions
+ * Routes enfants : /squad/synergies · /squad/contributions · /squad/dynamique · /squad/usages
  */
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { Outlet, useParams, Link, useMatchRoute, useSearch } from '@tanstack/react-router'
@@ -415,9 +415,11 @@ export function SquadLayout() {
   const synergiesRoute = '/{-$lang}/t/$titleSlug/players/$playerSlug/squad/synergies' as const
   const contributionsRoute = '/{-$lang}/t/$titleSlug/players/$playerSlug/squad/contributions' as const
   const dynamiqueRoute = '/{-$lang}/t/$titleSlug/players/$playerSlug/squad/dynamique' as const
+  const usagesRoute = '/{-$lang}/t/$titleSlug/players/$playerSlug/squad/usages' as const
   const isSynergies = !!matchRoute({ to: synergiesRoute, fuzzy: true })
   const isContributions = !!matchRoute({ to: contributionsRoute, fuzzy: true })
   const isDynamique = !!matchRoute({ to: dynamiqueRoute, fuzzy: true })
+  const isUsages = !!matchRoute({ to: usagesRoute, fuzzy: true })
 
   // ── Gestion chargement / erreur ──────────────────────────────────────────
   // La barre de filtres (sticky) est toujours rendue; seul le contenu est
@@ -607,6 +609,13 @@ export function SquadLayout() {
                 className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${isDynamique ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
               >
                 {t.nav.dynamique}
+              </Link>
+              <Link
+                to="/{-$lang}/t/$titleSlug/players/$playerSlug/squad/usages"
+                params={{ titleSlug, playerSlug }}
+                className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${isUsages ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
+              >
+                {t.nav.usages}
               </Link>
             </nav>
           </div>
