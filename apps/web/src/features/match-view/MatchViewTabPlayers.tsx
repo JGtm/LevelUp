@@ -19,7 +19,7 @@ import type {
   MatchViewRank,
 } from '@/lib/api/types'
 import type { Locale } from '@/lib/i18n/locale'
-import { DetailSection } from './DetailSection'
+import { DetailSection } from '@/components/ui/detail-section'
 import { MatchAntagonistChart } from './MatchAntagonistChart'
 import { MatchAssistChart } from './MatchAssistChart'
 import { MatchEncountersTable } from './MatchEncountersTable'

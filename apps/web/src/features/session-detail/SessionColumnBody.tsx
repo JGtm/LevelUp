@@ -17,6 +17,8 @@ import type {
   SessionUsageBlock,
 } from '@/lib/api/types'
 
+import { SectionTitle } from '@/components/ui/detail-section'
+
 import type { CompareScale } from './_compareScale'
 import { SessionChartStack } from './SessionChartStack'
 import { SessionMatchesTable } from './SessionMatchesTable'
@@ -83,7 +85,7 @@ export function SessionColumnBody({
 
       {/* Tableau "Détail des matchs" — hors bloc/Card (juste un titre + le tableau). */}
       <div className="space-y-3">
-        <h2 className="text-base font-semibold text-foreground">{t('session.detail.matches_card')}</h2>
+        <SectionTitle>{t('session.detail.matches_card')}</SectionTitle>
         <SessionMatchesTable
           matches={matches}
           playerSlug={playerSlug}

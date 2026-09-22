@@ -10,6 +10,7 @@
  */
 import { useMemo } from 'react'
 import { Link } from '@tanstack/react-router'
+import { SectionTitle } from '@/components/ui/detail-section'
 import { InfoTooltip } from '@/components/ui/info-tooltip'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { useSquadContext } from './SquadContext'
@@ -107,7 +108,7 @@ export function SquadContributionsPage() {
       </div>
 
       <section className="space-y-3">
-        <h3 className="text-base font-semibold text-foreground">{t.performanceCharts.title}</h3>
+        <SectionTitle>{t.performanceCharts.title}</SectionTitle>
         <SquadPerformanceCharts
           emptyMessage={t.empty.noBlockData}
           rowsByPlayer={perfSeriesByPlayer}

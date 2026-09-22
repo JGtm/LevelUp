@@ -8,6 +8,7 @@
 import { useMemo } from 'react'
 
 import { Card, CardContent } from '@/components/ui/card'
+import { SectionTitle } from '@/components/ui/detail-section'
 import { EmptyStateNotice } from '@/components/ui/empty-state'
 import { InfoTooltip } from '@/components/ui/info-tooltip'
 import { useAppShellStore } from '@/stores/appShellStore'
@@ -305,7 +306,7 @@ export function SquadSynergiesPage() {
       {/* Sections non-graphes toujours montées : titre + état vide géré par le
           composant (cadre bordé / carte), au lieu de disparaître. */}
       <section className="space-y-3">
-        <h3 className="text-base font-semibold text-foreground">{t.impact.title}</h3>
+        <SectionTitle>{t.impact.title}</SectionTitle>
         <SquadImpactScoreboard
           matrix={pageData?.impact_matrix ?? { matches: [], players: [], cells: [], badge_ord: [] }}
         />
@@ -332,7 +333,7 @@ export function SquadSynergiesPage() {
       {/* MÉDAILLES EN DERNIER (décision utilisateur, 2026-09-13) : c'est un palmarès, pas
           une mesure — il se lit après tout ce qui explique le jeu, jamais avant. */}
       <section className="space-y-3">
-        <h3 className="text-base font-semibold text-foreground">{t.medals.title}</h3>
+        <SectionTitle>{t.medals.title}</SectionTitle>
         <MedalDigest
           entries={pageData?.medal_digest ?? []}
           mainPlayer={pageData?.main_player ?? playerSlug}
