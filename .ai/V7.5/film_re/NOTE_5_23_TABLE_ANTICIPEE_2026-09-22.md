@@ -187,3 +187,38 @@ et aucun autre**. Deux portent la mesure de ce lot — `movementStates` 1 737 ->
 re-figeage est un geste du pilote.
 
 `replay.SchemaVersion` reste **67**.
+
+---
+
+## 5. LE RESTE, CHIFFRE
+
+Sur les 23 325 rejets mesures avant le repli, la table en resout 17 432 (74,7 %). Les
+**5 893 (25,3 %)** restants ne sont declares par aucune image-cle du film, et la CLE les coupe
+en deux populations qui ne sont pas de meme nature :
+
+| ce que le reste porte | rejets | part | ce que c est |
+|---|---:|---:|---|
+| tete `1`, slot jamais declare | **5 255** | 89,2 % | l entite est **nee ET morte entre deux images-cles** — la queue de cascade du 5.20.2 |
+| tete `0` (98), `2` (392), `3` (148) | **638** | 10,8 % | un eid que **le jeu lui-meme ne pourrait pas apparier** : ce ne sont pas des naissances, ce sont des lectures prises a une position FAUSSE |
+
+Dix-neuf des 638 seraient resolus par une cle qui ignorerait la tete ; on ne l ignore pas.
+
+Apres le repli, le compte change de POPULATION et non de nature : 16 129 rejets hors datum au
+lieu de 23 769, parce que 1 035 paquets de plus vont jusqu a leur bourrage et que la marche,
+allant plus loin, rencontre des rejets qu elle n atteignait pas.
+
+**L adresse de ce qui fermerait ce reste est connue, et ce lot ne l instruit pas** : le record de
+NAISSANCE du flux de trame — D1 du 5.19, « le chunk 2 lit ZERO record `NEW` sur 1 196 paquets
+delta alors qu au moins dix entites y naissent ». Les deux seules sources de la table de datums
+sont lues et portees (5.20.3 (c)) ; ce qui manque est de voir le `NEW` la ou il est ecrit.
+
+---
+
+## 6. CE QUE LE LOT LAISSE OUVERT
+
+Cinq decouvertes, toutes au §4 du plan et aucune traitee : trois anticipations du meme fait
+coexistent desormais dans trois marches (D1) ; l anticipation du bipede est la moitie du gain et
+la totalite du cout en debordements (D2) ; le film livre enfin `equipment-deployed-component`,
+le signal « deploye / lache » que rien n exploite (D3) ; le masque des navpoints change (D4) ;
+la table coute 1,8 s par balayage et n est pas partagee, faute de place dans `film_context.go`
+(D5).

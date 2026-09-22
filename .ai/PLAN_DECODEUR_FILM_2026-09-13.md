@@ -8544,6 +8544,71 @@ grammaire : `.ai/V7.5/film_re/NOTE_5_23_TABLE_ANTICIPEE_2026-09-22.md`.
   porte : `grammar_rev.golden`, `facts_rev.golden`, `types/testdata/shapes.golden`, les 8
   fixtures de contrat + manifeste.
 
+- [x] **5.23.4 — LE RESTE, CHIFFRE — ET IL SE COUPE EN DEUX MOITIES QUI NE SONT PAS DE MEME
+  NATURE.**
+
+  Sur les **23 325** rejets mesures avant le repli, la table en resout **17 432 (74,7 %)**. Les
+  **5 893 (25,3 %)** restants ne sont declares par AUCUNE image-cle du film, et ils se partagent
+  en deux populations que la CLE separe :
+
+  | ce que le reste porte | rejets | part du reste | ce que c est |
+  |---|---:|---:|---|
+  | tete `1`, slot jamais declare | **5 255** | 89,2 % | l entite est **nee ET morte entre deux images-cles** — la queue de cascade du 5.20.2 |
+  | tete `0` (98), `2` (392), `3` (148) | **638** | 10,8 % | un eid que **le jeu lui-meme ne pourrait pas apparier** : aucune image-cle du film n emploie ces tetes. Ce ne sont pas des naissances, ce sont des lectures prises a une position FAUSSE |
+
+  Dix-neuf des 638 seraient resolus par une cle qui ignorerait la tete ; on ne l ignore pas.
+
+  **APRES LE REPLI, LE COMPTE CHANGE DE POPULATION ET NON DE NATURE** : 16 129 rejets hors datum
+  au lieu de 23 769, parce que 1 035 paquets de plus vont desormais jusqu a leur bourrage et que
+  la marche, allant plus loin, rencontre des rejets qu elle n atteignait pas.
+
+  **L ADRESSE DE CE QUI FERMERAIT CE RESTE EST CONNUE, ET CE LOT NE L INSTRUIT PAS** : le record
+  de **NAISSANCE** du flux de trame — D1 du 5.19, « le chunk 2 lit ZERO record `NEW` sur
+  1 196 paquets delta alors qu au moins dix entites y naissent ». Les deux seules sources de la
+  table de datums sont lues et portees (5.20.3 (c)) ; ce qui manque est de voir le `NEW` la ou il
+  est ecrit.
+
+- [!] **GATE — LES PAQUETS MONTENT DE 36 %, LE FILM DE CALIBRATION NE PERD RIEN, ET DEUX
+  COMPTEURS DE FAUTE MONTENT AVEC LEUR CAUSE NOMMEE.**
+
+  (i) **TENU** : `bfecd02b` paquets a reste NUL **2 884 -> 3 919** (+36 %), rejets hors datum
+  **23 769 -> 16 129**, records 176 786 -> 240 488, `ti=40` x3,02, `ti=37` x2,39 ;
+  `dad793c7` **5 354 -> 5 355** sans rien perdre. L oracle de CONTENU tient : `ti=35`
+  desynchronises **4 avant, 4 apres** sur le film dense, **0** sur le film de calibration.
+  (ii) **NON TENU, ET MESURE** : debordements 32 -> 50 et fantomes 31 -> 49 sur `bfecd02b`.
+  Le balayage par archetype l attribue a l anticipation du BIPEDE (`ti=35` seul : 48 et 47) —
+  la bande 521-601 que toute image-cle ulterieure declare attire les en-tetes pris a une
+  position fausse. Aucun paquet ne passe de FERME a fautif ; les 18 quittent « reste hors
+  bourrage » pour « debordement ». L A/B reste rejouable (`MOUV523_ANTICIPE=0`, `MOUV523_TI`).
+
+#### §4 du lot 5.23 — DECOUVERTES HORS PERIMETRE, CONSIGNEES ET NON TRAITEES
+
+| # | decouverte | ou la reprendre |
+|---|---|---|
+| **D1 (5.23)** | **TROIS MARCHES PORTENT DESORMAIS TROIS ANTICIPATIONS DIFFERENTES DU MEME FAIT.** `killsource/world.go` `preload()` et `object_deaths_march.go` `newMarchTimeline()` lient, chacune avec son propre code, la PREMIERE declaration de chaque slot de toutes les images-cles du film — une anticipation NON datee et NON clee sur la tete ; `TableAnticipee` est la troisieme, datee et clee. C est la 3e copie d un meme geste, et la regle 6 de `CLAUDE.md` dit ce qu on en fait. | le lot qui voudra UNE anticipation pour les trois marches — et qui devra alors mesurer ce que la datation et la cle de tete changent pour `killsource` et pour les vehicules |
+| **D2 (5.23)** | **L ANTICIPATION DU BIPEDE EST LA MOITIE DU GAIN ET LA TOTALITE DU COUT.** `ti=35` seul : +526 paquets fermes, +16 debordements, +16 fantomes ; tous les autres archetypes reunis : +509 paquets fermes et **-14** debordements (`ti=42` seul en retire dix). Ce qui manque pour les separer est un oracle capable de dire « cet en-tete est pris a une position fausse » — le masque de composants du bloc de type 1 (D1 du 5.21) en est un, et il n est pas lu par la marche. | le lot qui voudra le dernier pour-cent : confronter chaque record lu au masque de presence que le bloc de type 1 porte pour son slot |
+| **D3 (5.23)** | **LE FILM LIVRE ENFIN `equipment-deployed-component` ET `equipment-has-infinite-uses-component`** — deux des 29 etiquettes que le repli fait apparaitre sur `bfecd02b`, et le signal « deploye / lache » que l utilisateur a nomme le 2026-09-13 comme FIABLE dans le film. Aucun lecteur du depot ne les exploite : les seuils heuristiques de l equipement sont toujours en place. | le lot de l equipement : remplacer les seuils par le signal, maintenant qu il est lu |
+| **D4 (5.23)** | **LE MASQUE DES NAVPOINTS N EST PLUS LE MEME.** Les records `ti=12` passent de 33 a 37, mais treize etiquettes `managed-navpoint-*` DISPARAISSENT et `managed-navpoint-visual-state-groups-component-0` cede la place a `-3`. Les navpoints lus apres le repli ne sont donc pas les memes entites, ou pas dans le meme etat. Rien ne dit lequel. | le lot qui publiera les navpoints : la variante de groupe d etat visuel est un discriminant non instruit |
+| **D5 (5.23)** | **LA TABLE COUTE 1,8 s PAR BALAYAGE ET N EST PAS PARTAGEE.** `ScanMovementStates` la construit pour lui seul ; un second installateur la reconstruirait. Le cache naturel est `FilmContext` (modele : `BipedSlots`), mais `film_context.go` est a **499 lignes** sur un seuil de 500 — l y mettre demande d abord de scinder le fichier. | le lot qui installera la table sur une deuxieme marche |
+
+#### §5 du lot 5.23 — ETAT DE CLOTURE
+
+| item | statut | ce qui est etabli |
+|---|---|---|
+| 5.23.1 | `[x]` | la cle est celle que `FUN_1406caad8` compare — l eid ENTIER, `(slot, tete)` —, et les deux bits de tete d une image-cle SONT ceux qu un delta doit presenter (meme entree de 200 octets, remplie par `FUN_142e2bfd0`). `TableAnticipee` : 12 688 declarations, 1 015 cles, **0 conflit**, une seule tete (`1`). Couverture **17 432 / 23 325 = 74,7 %**, 17 430 par le chunk suivant. La tete discrimine 638 en-tetes pour un prix de 19 liaisons |
+| 5.23.2 | `[x]` | le repli est cable au SEUL point de rejet, NOMME, DATE et COMPTE par archetype. `bfecd02b` 2 884 -> **3 919** paquets a reste NUL, rejets 23 769 -> **16 129**, records 176 786 -> **240 488** (`ti=40` x3,02, `ti=37` x2,39, `ti=42` x3,59), desyncs 4 -> 4 ; `dad793c7` 5 354 -> **5 355** sans rien perdre. 207 -> 222 etiquettes de composant |
+| 5.23.3 | `[x]` | un SEUL installateur (`ScanMovementStates`), et la mesure dit pourquoi : `killsource` et `object_deaths_march` anticipent DEJA (preload de toutes les images-cles). `facts.Rev` NE MONTE PAS, aucun backlog killsource. Rendu : `stances` **616 -> 841** (sprint 355 -> 501, saut 252 -> 327, mobilite 9 -> 12, accroupi 0 -> 1), tout le reste identique. `replay-equiv bcb6d393` : les SIX ecarts connus et aucun autre. `SchemaVersion` **67** |
+| 5.23.4 | `[x]` | le reste vaut **5 893 (25,3 %)** et se coupe en **5 255** entites nees et mortes entre deux images-cles + **638** en-tetes dont la tete n existe nulle part dans le film (des lectures a une position fausse, pas des naissances). L adresse de ce qui le fermerait — le record `NEW` du flux de trame, D1 du 5.19 — est nommee et NON instruite |
+| GATE | `[!]` | (i) **TENU** : +36 % de paquets fermes sur le film dense, +1 sur le film de calibration, oracle de contenu inchange (`ti=35` desyncs 4 et 0). (ii) **NON TENU ET MESURE** : debordements 32 -> 50, fantomes 31 -> 49, attribues au BIPEDE par le balayage `MOUV523_TI`. Aucun paquet ne passe de FERME a fautif. L A/B et le balayage restent rejouables |
+
+Revisions : `grammar-2026-09-22.11` -> `.12` -> `.13` (un rang par commit qui touche la couche,
+chronique a l appui). `facts.Rev` **INCHANGEE**, `replay.SchemaVersion` **67**. Gates par
+commit : gofmt, build, vet (+`research`), `go test -count=1` sur `halo_infinite/film/...`,
+`archlint`, `replaybuild`, `replaydoc`, `replayview`, `contracttest`, `api` (0 `--- FAIL`,
+code de sortie 0), `golangci-lint run ./internal/games/halo_infinite/film/...` (0 issue),
+`go test -race` sur `grammar` (332 s, 426 s, 370 s, verts). Corpus 19, re-figeage de la
+reference d equivalence, CI et backfill : au pilote.
+
 ### Post-chantier — lot 5.21 (le bloc de type 1 : la table de datums du chunk), branche `feat/decfilm-71`
 
 Sur la decouverte D1 du lot 5.20. METHODE : l ecrivain d abord (Ghidra lecture seule,
