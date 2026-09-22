@@ -182,10 +182,12 @@ export interface MatchViewText {
   // Breadcrumb retour (MatchBreadcrumb)
   back: string
   // Onglets de la page (GH2-B2 ; « Détails » scindé en Chronologie + Joueurs ;
-  // « Contrôle » ajouté le 2026-09-19 : équipement, armes, occupation du terrain)
+  // troisième onglet ajouté le 2026-09-19 — équipement, armes, occupation du terrain —
+  // renommé « Armes et terrain » le 2026-09-22 quand il a repris de Général la
+  // répartition des frags et la distance des frags)
   tabGeneral: string
   tabChronology: string
-  tabControl: string
+  tabArsenal: string
   tabPlayers: string
   // Titre du chart Antagonistes (GH2-B2)
   antagonistTitle: string
@@ -219,6 +221,15 @@ export interface MatchViewText {
   sectionFlow: string
   sectionDuels: string
   sectionEncounters: string
+  // Sections des onglets Général et Armes et terrain (2026-09-22) — même gabarit de titre
+  // type-1. Général : la bande de KPI reste sans titre (comme l'accueil), « Combat » coiffe
+  // les trois graphes et « Récompenses » les médailles + citations. Armes et terrain :
+  // « Frags et armes » coiffe la répartition des frags + la distance, « Équipement et
+  // terrain » les trois blocs tirés du film.
+  sectionCombat: string
+  sectionRewards: string
+  sectionKillsWeapons: string
+  sectionEquipmentTerrain: string
   // Scoreboard team header (Eagle / Cobra avec couleur team-ally/enemy)
   scoreboardTitle: string
   scoreboardNoData: string
@@ -483,7 +494,7 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     back: 'Retour',
     tabGeneral: 'Général',
     tabChronology: 'Chronologie',
-    tabControl: 'Contrôle',
+    tabArsenal: 'Armes et terrain',
     tabPlayers: 'Joueurs',
     antagonistTitle: 'Antagonistes',
     assistTitle: 'Assistances',
@@ -497,6 +508,10 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     sectionFlow: 'Déroulé du match',
     sectionDuels: 'Duels & confrontations',
     sectionEncounters: 'Historique des rencontres',
+    sectionCombat: 'Combat',
+    sectionRewards: 'Récompenses',
+    sectionKillsWeapons: 'Frags et armes',
+    sectionEquipmentTerrain: 'Équipement et terrain',
     scoreboardTitle: 'Tableau des scores',
     scoreboardNoData: 'Aucune donnée de tableau des scores disponible pour ce match.',
     teamLabelFmt: (name) => `Équipe ${name}`,
@@ -804,7 +819,7 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     back: 'Back',
     tabGeneral: 'General',
     tabChronology: 'Timeline',
-    tabControl: 'Control',
+    tabArsenal: 'Weapons and terrain',
     tabPlayers: 'Players',
     antagonistTitle: 'Antagonists',
     assistTitle: 'Assists',
@@ -818,6 +833,10 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     sectionFlow: 'Match flow',
     sectionDuels: 'Duels & head-to-head',
     sectionEncounters: 'Encounter history',
+    sectionCombat: 'Combat',
+    sectionRewards: 'Rewards',
+    sectionKillsWeapons: 'Kills and weapons',
+    sectionEquipmentTerrain: 'Equipment and terrain',
     scoreboardTitle: 'Scoreboard',
     scoreboardNoData: 'No scoreboard data available for this match.',
     teamLabelFmt: (name) => `Team ${name}`,
