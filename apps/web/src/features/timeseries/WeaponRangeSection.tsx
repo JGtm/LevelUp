@@ -37,7 +37,8 @@ import { formatMessage, type ManifestLocale } from '@/lib/i18n/format'
 import { synthesisManifest } from '@/lib/i18n/generated/synthesis'
 import { useAppShellStore } from '@/stores/appShellStore'
 
-import { AccentCard, SectionSubtitle } from '@/components/ui/section-primitives'
+import { AccentCard } from '@/components/ui/section-primitives'
+import { SectionTitle } from '@/components/ui/detail-section'
 import {
   ELEVATION_KEYS,
   buildWeaponElevationOption,
@@ -376,7 +377,10 @@ export function WeaponRangeSection({ range }: WeaponRangeSectionProps) {
 
   return (
     <section className="space-y-3">
-      <SectionSubtitle>{t('synthesis.weapon_range.heading')}</SectionSubtitle>
+      {/* LE TITRE DE SECTION STANDARD (2026-09-22) : la section portait un sous-titre
+          uppercase `text-3xs` à filet (`SectionSubtitle`), qui se lisait comme une annexe
+          à côté des autres titres de l'onglet Usages. Même texte, gabarit commun. */}
+      <SectionTitle>{t('synthesis.weapon_range.heading')}</SectionTitle>
 
       <RangeTiles range={range} t={t} f={f} />
 

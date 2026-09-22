@@ -4,6 +4,9 @@
  * Découpé depuis TimeseriesPage.tsx (audit #6 god-file split).
  * Contenu : outcome sequence + KDA trend + KDA density + avg life + assists +
  * top weapons + KDA trend value + perf session/week/month + map win-rate/perf.
+ *
+ * « Portée des engagements » a quitté cet onglet pour « Usages » (tout ce qui vient du film
+ * décodé y est réuni, cf. TimeseriesPage.usages.tsx).
  */
 import { useMemo, useState } from 'react'
 
@@ -22,9 +25,6 @@ import { buildFragDetailBreakdown } from '@/components/charts/fragDetailBreakdow
 // (timeseries=>synthesis, cf. tools/lint-cross-feature-imports.mjs), analogue à
 // session-detail=>synthesis.
 import { WeaponAccuracyChart } from '@/components/charts/WeaponAccuracyChart'
-// Portée des engagements : section migrée de la Synthèse vers cet onglet le 2026-09-13
-// (pendant de la précision par arme). Même import cross-feature déclaré que ci-dessus.
-import { WeaponRangeSection } from './WeaponRangeSection'
 import {
   TimeseriesAssistsTrend,
   TimeseriesAvgLifeTrend,
@@ -73,10 +73,6 @@ export function TimeseriesSummaryTab({
   // « Écart au FDA attendu » se place à DROITE du FDA (2 colonnes) au lieu d'un bloc
   // pleine largeur en dessous. Absente (Halo 5) → FDA seul, pleine largeur.
   const hasExpectedStats = useCapability('expected_stats')
-  // Portée et dénivelé mesurés des engagements : capability PRODUIT `weapon_range`
-  // (title.CapWeaponRange). Halo 5 ne la déclare pas — ses événements de frag n'ont pas
-  // d'arme, la jointure mesurée rendrait zéro ligne et la section serait vide.
-  const hasWeaponRange = useCapability('weapon_range')
   const soloPerf = data.solo_session_perf
   const soloGranularity: 'session' | 'week' | 'month' =
     soloPerf?.granularity === 'week' || soloPerf?.granularity === 'month'
@@ -243,12 +239,6 @@ export function TimeseriesSummaryTab({
           heightScale={1.1}
         />
       </div>
-
-      {/* Portée des engagements — pleine largeur, juste avant la précision par arme : les
-          deux répondent à « avec quoi, et comment ». La section se retire d'elle-même quand
-          rien n'est mesuré sur le scope ; le gate reste la capability produit `weapon_range`
-          (Halo 5 ne la déclare pas — ses événements de frag n'ont pas d'arme). */}
-      {hasWeaponRange && <WeaponRangeSection range={data.weapon_range} />}
 
       {/* Précision par arme (Halo 5 natif, survol lié au sunburst) | Tendance FDA. Titre
           sans précision native (Infinite → weapon_accuracy vide) : la tendance FDA occupe
