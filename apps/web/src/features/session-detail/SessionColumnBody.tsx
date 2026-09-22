@@ -16,6 +16,7 @@ import type {
   FirstBloodPlayerSeriesDTO,
   IntensityMatchRow,
   MatchRangeBlock,
+  RangeReferenceBlock,
   SessionCompareEntry,
   SessionDetailMatchRow,
   SessionUsageBlock,
@@ -64,6 +65,12 @@ interface Props {
    */
   rangeProfiles?: MatchRangeBlock
   /**
+   * Période de RÉFÉRENCE de la portée (`range_reference`, lot U) — l'axe du nuage. UN SEUL
+   * bloc pour les deux colonnes : la référence dépend du filtre de la page, pas de la
+   * session affichée ; chaque colonne y surligne SA session (lot W, D23-4).
+   */
+  rangeReference?: RangeReferenceBlock | null
+  /**
    * Mode COMPARAISON (D16) : rangées partagées avec la colonne sœur. La page passe
    * l'union ordonnée des clés des deux colonnes ; chaque clé rend ici soit la section,
    * soit le placeholder « Sans équivalent dans cette session ». Absent → pile simple
@@ -84,6 +91,7 @@ function useSessionColumnSections(props: Props): Partial<Record<SessionSectionKe
     usage,
     coordination,
     rangeProfiles,
+    rangeReference,
   } = props
 
   const chartSections = useSessionChartSections({
@@ -122,6 +130,7 @@ function useSessionColumnSections(props: Props): Partial<Record<SessionSectionKe
           range: (
             <SessionRangeCard
               block={rangeProfiles}
+              reference={rangeReference}
               meLabel={playerSlug}
               compact={compact}
               yDomain={props.scale?.rangeDelta}

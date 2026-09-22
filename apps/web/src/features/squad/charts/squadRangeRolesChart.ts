@@ -61,6 +61,30 @@ export interface RangeRolesChartOpts {
   legende?: boolean
   /** Encre des séries sans entrée dans `couleurs` (défaut : jeton `info`). */
   couleurDefaut?: string
+
+  // ── Ouverture au scope « un seul joueur » (Sessions, lot W / D23-4) ─────────────
+  // Le nuage de période des Sessions est CE nuage à une série : même axe, mêmes bandes,
+  // même fenêtre glissante, mêmes points creux. Les quatre options ci-dessous portent la
+  // seule chose qui lui est propre — la session mise en surbrillance dans sa période.
+
+  /**
+   * Bornes Y PLANCHER imposées (échelle partagée A/B du drawer de comparaison). Le nuage
+   * les ÉLARGIT s'il déborde : une borne imposée ne doit jamais rogner un point mesuré.
+   */
+  yDomain?: [number, number]
+  /**
+   * Encre d'un point quand elle ne dit PAS l'identité du joueur mais son appartenance
+   * (Sessions : période en gris, matchs de la session en couleur pleine). Absente :
+   * l'encre du joueur, comme sur l'Escouade.
+   */
+  encrePoint?: (p: PointPortee) => string
+  /**
+   * Fenêtre de matchs mise en surbrillance sur l'axe X (indices INCLUSIFS dans
+   * `categories`) : le fond qui dit « cette session » dans la période.
+   */
+  surbrillance?: { debut: number; fin: number; label: string; couleur: string }
+  /** Masque la légende du graphe — à une seule série, son nom n'apprend rien. */
+  masquerLegende?: boolean
 }
 
 /** La donnée d'un point du nuage : sa position, et le point BRUT pour l'infobulle. */
@@ -75,39 +99,62 @@ interface EchartPointDatum {
  *  que ±`MIN_AMPLITUDE_M` — une escouade homogène ne doit pas voir son bruit grossi. */
 const MIN_AMPLITUDE_M = 5
 
-function bornesY(series: SeriePortee[]): { min: number; max: number } {
+function bornesY(
+  series: SeriePortee[],
+  plancher?: [number, number],
+): { min: number; max: number } {
   const ecarts = series.flatMap((s) => s.points).map((p) => p.ecartM)
-  const amplitude = Math.max(MIN_AMPLITUDE_M, ...ecarts.map((e) => Math.abs(e)))
+  const impose = plancher ? Math.max(Math.abs(plancher[0]), Math.abs(plancher[1])) : 0
+  const amplitude = Math.max(MIN_AMPLITUDE_M, impose, ...ecarts.map((e) => Math.abs(e)))
   const borne = Math.ceil(amplitude) + 1
   return { min: -borne, max: borne }
 }
 
-/** Les trois bandes de rôle, posées sur l'échelle relative. */
-function bandesRoles(
+/**
+ * Les zones de fond : les trois bandes de rôle, plus — quand l'appelant en pose une — la
+ * fenêtre de matchs en surbrillance. Un `markArea` par série et pas deux : ECharts n'en
+ * tient qu'un, les deux familles partagent donc ses données.
+ */
+function zonesDeFond(
   seuils: SeuilsRoles | null,
   bornes: { min: number; max: number },
-  libelles: RangeRolesChartOpts['libelles'],
+  opts: RangeRolesChartOpts,
   couleurBande: string,
 ): Record<string, unknown> | undefined {
-  if (!seuils) return undefined
-  const bande = (bas: number, haut: number, nom: string) => [
-    {
-      yAxis: bas,
-      name: nom,
-      itemStyle: { color: couleurBande, opacity: 0.07 },
-      label: { position: 'insideEndTop' },
-    },
-    { yAxis: haut },
-  ]
-  return {
-    silent: true,
-    label: { show: true, fontSize: 10, position: 'insideEndTop' },
-    data: [
+  const libelles = opts.libelles
+  const data: unknown[] = []
+  if (seuils) {
+    const bande = (bas: number, haut: number, nom: string) => [
+      {
+        yAxis: bas,
+        name: nom,
+        itemStyle: { color: couleurBande, opacity: 0.07 },
+        label: { position: 'insideEndTop' },
+      },
+      { yAxis: haut },
+    ]
+    data.push(
       bande(bornes.min, seuils.bas, libelles.bandes.front),
       bande(seuils.bas, seuils.haut, libelles.bandes.polyvalent),
       bande(seuils.haut, bornes.max, libelles.bandes.sniper),
-    ],
+    )
   }
+  const sur = opts.surbrillance
+  if (sur) {
+    // Les demi-pas débordent la première et la dernière colonne de la fenêtre : une
+    // session d'UN match doit quand même dessiner une bande, pas un trait de largeur nulle.
+    data.push([
+      {
+        xAxis: sur.debut - 0.5,
+        name: sur.label,
+        itemStyle: { color: sur.couleur, opacity: 0.14 },
+        label: { position: 'insideTop' },
+      },
+      { xAxis: sur.fin + 0.5 },
+    ])
+  }
+  if (data.length === 0) return undefined
+  return { silent: true, label: { show: true, fontSize: 10, position: 'insideEndTop' }, data }
 }
 
 /** La série ligne d'un joueur : la moyenne glissante de ses points PLEINS. */
@@ -155,23 +202,26 @@ export function buildSquadRangeRolesOption(
   if (series.length === 0) return { backgroundColor: CHART_BG }
   const tc = getEChartsThemeColors()
   const axis = getAxisBase(tc)
-  const bornes = bornesY(series)
+  const bornes = bornesY(series, opts.yDomain)
   const n = opts.categories.length
   const couleurDefaut = opts.couleurDefaut ?? resolveToken('info')
 
   const nuage = series.map((serie, idx) => {
     const couleur = opts.couleurs[serie.gamertag] ?? couleurDefaut
-    const data: EchartPointDatum[] = serie.points.map((p) => ({
-      value: [p.ordre, p.ecartM],
-      symbolSize: taillePoint(p.mesures, opts.mesuresMin, opts.mesuresMax),
-      // POINT CREUX sous le plancher : contour pointillé, aucun remplissage. Il reste
-      // visible (un essai de style n'est pas une erreur de mesure) mais ne se confond
-      // jamais avec une médiane tenue.
-      itemStyle: p.plein
-        ? { color: couleur, borderColor: tc.card, borderWidth: 2 }
-        : { color: 'transparent', borderColor: couleur, borderWidth: 2, borderType: 'dashed' },
-      raw: p,
-    }))
+    const data: EchartPointDatum[] = serie.points.map((p) => {
+      const encre = opts.encrePoint ? opts.encrePoint(p) : couleur
+      return {
+        value: [p.ordre, p.ecartM],
+        symbolSize: taillePoint(p.mesures, opts.mesuresMin, opts.mesuresMax),
+        // POINT CREUX sous le plancher : contour pointillé, aucun remplissage. Il reste
+        // visible (un essai de style n'est pas une erreur de mesure) mais ne se confond
+        // jamais avec une médiane tenue.
+        itemStyle: p.plein
+          ? { color: encre, borderColor: tc.card, borderWidth: 2 }
+          : { color: 'transparent', borderColor: encre, borderWidth: 2, borderType: 'dashed' },
+        raw: p,
+      }
+    })
     const s: Record<string, unknown> = { type: 'scatter', name: serie.gamertag, data, z: 3 }
     // Les overlays du graphe entier (ligne du lobby, bandes de rôle) sont posés UNE SEULE
     // FOIS, sur la première série : ce ne sont pas des marques d'une série.
@@ -189,8 +239,8 @@ export function buildSquadRangeRolesOption(
         },
         data: [{ yAxis: 0 }],
       }
-      const bandes = bandesRoles(opts.seuils, bornes, opts.libelles, tc.axisLine)
-      if (bandes) s.markArea = bandes
+      const zones = zonesDeFond(opts.seuils, bornes, opts, tc.axisLine)
+      if (zones) s.markArea = zones
     }
     return s
   })
@@ -199,23 +249,26 @@ export function buildSquadRangeRolesOption(
     serieTendance(serie, opts.couleurs[serie.gamertag] ?? couleurDefaut, serie.gamertag),
   )
 
+  const sansLegende = opts.masquerLegende || opts.legende === false
+  const legende = sansLegende
+    ? undefined
+    : {
+        ...getLegendBase(tc),
+        data: legendEntries(
+          series.map((s) => ({
+            name: s.gamertag,
+            color: opts.couleurs[s.gamertag] ?? couleurDefaut,
+          })),
+        ),
+      }
+
   return {
     backgroundColor: CHART_BG,
-    // Sans légende de séries, le bas n'a plus à la loger : la grille descend d'autant.
-    grid: { top: 24, bottom: opts.legende === false ? 52 : 78, left: 56, right: 16 },
+    // Sans légende de séries (lots Z1 et W), le bas n'a plus à la loger : la grille descend d'autant.
+    grid: { top: 24, bottom: sansLegende ? 52 : 78, left: 56, right: 16 },
     tooltip: { ...getTooltipBase(tc), trigger: 'item', formatter: formatTooltip(opts) },
-    legend:
-      opts.legende === false
-        ? { show: false }
-        : {
-            ...getLegendBase(tc),
-            data: legendEntries(
-              series.map((s) => ({
-                name: s.gamertag,
-                color: opts.couleurs[s.gamertag] ?? couleurDefaut,
-              })),
-            ),
-          },
+    // Deux contrats cohabitent (Z1 : `legende: false` -> `{ show: false }` ; W : `masquerLegende` -> absente).
+    ...(legende ? { legend: legende } : opts.legende === false ? { legend: { show: false } } : {}),
     xAxis: {
       ...axis,
       type: 'category',

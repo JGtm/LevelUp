@@ -388,6 +388,7 @@ export function SessionDetailPage() {
               usage={data.usage}
               coordination={data.coordination}
               rangeProfiles={data.range_profiles}
+              rangeReference={data.range_reference}
             />
           </>
         ) : (
@@ -487,6 +488,7 @@ export function SessionDetailPage() {
                   usage={data.compare_usage}
                   coordination={data.compare_coordination}
                   rangeProfiles={data.compare_range_profiles}
+                  rangeReference={data.range_reference}
                 />
               ) : isCompareLoading ? (
                 <div className="flex items-center justify-center py-12">
