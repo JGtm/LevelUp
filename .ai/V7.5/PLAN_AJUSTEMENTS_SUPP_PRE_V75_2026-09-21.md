@@ -205,3 +205,19 @@ surface `film/replay` 260 -> 263 justifie.
 - [x] `SessionPageResponse.compare_coordination` (miroir de `coordination`, meme producteur) ; le drawer rend les memes cartes des deux cotes (plus de placeholder sur la rangee Coordination)
 - [x] Repere d habituel de « Je suis couvert » et « On me prepare » : taux sur la periode de reference (meme reference que l habituel des usages de la session), servi dans `CoordinationBlock` (ex. `riposte.habituel_pct`, `appui.habituel_pct`) et lu par la carte
 - Note de methode (2026-09-22) : les remarques utilisateur sur les points 2/3/4 avaient ete implementees sans « ok » explicite ; a valider a l ecran ou par maquette (3, 4).
+
+## Vague 4 — alternatives retenues (decisions D23, 2026-09-22)
+
+- D23-3 : Timeseries Riposte / Appui = 3.B (chaque serie en ecart a son propre repere, autour d une ligne zero unique, tendances ; mode `baseline` de `SessionBarsTrendChart`).
+- D23-4 : Sessions Portee = 4.A (nuage de la periode a un seul joueur, 30 derniers matchs, session en surbrillance, bandes et fenetre de la periode) ; pre-requis `range_reference`.
+- D23-a : Timeseries = a.1 (nuage des roles de portee solo par match) ; pre-requis scope `range_profiles` sur `TimeseriesPageResponse`.
+- D23-b : Denivele — concept B2 retenu (hauteur x distance, ou je frague / ou je meurs, la dimension arme ne compte pas) ; Sessions : le concept parait inadapte (matchs et cartes trop variables, rien a comparer) -> formule alternative ou rien ; Escouade : UN SEUL graphe, qui parle de role, pas un graphe par joueur. Nouvelle maquette (lot X) avant tout code.
+
+### Lot U — Go : portee de periode (Sessions) + scope Timeseries (worktree `LevelUp-wt-ajsup-u`)
+- [ ] `SessionPageResponse.range_reference` : `MatchRangeProfile[]` du seul joueur consulte sur la periode de reference des usages (30 derniers matchs ou la reference existante — justifier), + seuils de role (`role_low_m`, `role_high_m`) et mediane de periode ; miroir pour la session comparee si la reference differe (sinon partage)
+- [ ] `TimeseriesPageResponse.range_profiles` : `MatchRangeBlock` du joueur consulte sur la fenetre de la page (lobby entier pour la mediane)
+- [ ] openapi + generate-types + tests
+
+### Lot V — web Timeseries : 3.B + a.1 (apres U)
+### Lot W — web Sessions : 4.A (apres U)
+### Lot X — maquette Denivele v2 (preferences D23-b)
