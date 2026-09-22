@@ -122,10 +122,11 @@ describe('SquadUsagesPage — sections', () => {
       pageData: pageWithEquipmentUsage(),
     })
     renderWithProviders(<SquadUsagesPage />)
-    // Le TITRE DE SECTION dit l'axe (« Équipement ») ; la première carte garde son
-    // libellé propre (« Usages d'équipement »). Deux textes distincts, donc deux
-    // `getByText` exacts — plus de `getAllByText` pour absorber un doublon.
-    expect(screen.getByText('Équipement')).toBeInTheDocument()
+    // Le TITRE DE SECTION nomme les deux familles de ramassages (« Équipement et armes
+    // de socle ») ; la première carte garde son libellé propre (« Usages d'équipement »).
+    // Deux textes distincts, donc deux `getByText` exacts — plus de `getAllByText` pour
+    // absorber un doublon.
+    expect(screen.getByText('Équipement et armes de socle')).toBeInTheDocument()
     expect(screen.getByText("Usages d'équipement")).toBeInTheDocument()
     expect(screen.getAllByText('Madina').length).toBeGreaterThan(0)
     expect(screen.getByText('88 pris')).toBeInTheDocument()
@@ -138,7 +139,7 @@ describe('SquadUsagesPage — sections', () => {
       pageData: pageWithFrags(),
     })
     renderWithProviders(<SquadUsagesPage />)
-    expect(screen.queryByText('Équipement')).toBeNull()
+    expect(screen.queryByText('Équipement et armes de socle')).toBeNull()
     expect(screen.queryByText("Usages d'équipement")).toBeNull()
   })
 })

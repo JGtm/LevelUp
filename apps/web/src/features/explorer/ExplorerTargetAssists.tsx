@@ -13,9 +13,11 @@
  * a été décodé : sans aucun match mesuré, le backend n'envoie pas d'objet et le bloc
  * affiche « — » (jamais « 0 assistance »).
  *
- * Pas de `h-full` : empilé sous « Répartition des résultats », chaque bloc garde la
- * hauteur de son contenu ; c'est leur SOMME qui donne la hauteur de la rangée, à
- * laquelle « Portée des frags » s'étire.
+ * Hauteur : colonne d'une rangée `items-stretch` de trois cartes (cf.
+ * ExplorerTargetProfileCard) — la carte prend `h-full` et sa zone de contenu `flex-1
+ * justify-center`, de sorte que les pistes se CENTRENT verticalement quand la voisine de
+ * rangée est plus haute (demande utilisateur du 2026-09-22). Le bandeau de titre reste
+ * en haut, et aucune hauteur minimale n'est ajoutée.
  */
 import { ExplorerAssistExchangeBars } from './ExplorerAssistExchangeBars'
 import { ASSISTS_TEXT } from '@/features/_shared/assists/assistsI18n'
@@ -38,7 +40,7 @@ export function ExplorerTargetAssists({ encounterStats }: Props) {
       <div className="border-b border-border px-3 py-2 text-sm font-medium">
         {t('explorer.target_profile.assists_title')}
       </div>
-      <div className="p-3">
+      <div className="flex flex-1 flex-col justify-center p-3">
         {assists ? (
           <ExplorerAssistExchangeBars assists={assists} locale={appLocale} />
         ) : (

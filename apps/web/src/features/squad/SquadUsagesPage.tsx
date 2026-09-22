@@ -145,13 +145,13 @@ export function SquadUsagesPage() {
           />
         </section>
       )}
-      {/* ÉQUIPEMENT — bloc « servi ou gâché », variante comptes (une ligne par
-          coéquipier suivi). Aucune requête neuve : lit `pageData.equipment_usage` de
-          la réponse déjà chargée par `useTeammates`. LE TITRE DIT L'AXE, PAS LA
-          PREMIÈRE CARTE : il coiffe les quatre cartes de la section (usages, part du
-          lobby, armes spéciales, niveaux), dont l'une s'appelle déjà « Usages
-          d'équipement » — reprendre ce libellé ici l'aurait écrit deux fois de suite
-          (arbitrage du 2026-09-22). La section se retire d'elle-même sans bloc. */}
+      {/* ÉQUIPEMENT ET ARMES DE SOCLE — bloc « servi ou gâché », variante comptes (une
+          ligne par coéquipier suivi). Aucune requête neuve : lit `pageData.equipment_usage`
+          de la réponse déjà chargée par `useTeammates`. LE TITRE NOMME LES DEUX FAMILLES DE
+          RAMASSAGES qu'il coiffe — l'équipement (usages, part du lobby) et les armes posées
+          sur les socles (armes spéciales, niveaux) — PAS SA PREMIÈRE CARTE, qui s'appelle
+          déjà « Usages d'équipement » : reprendre ce libellé ici l'aurait écrit deux fois de
+          suite (arbitrage du 2026-09-22). La section se retire d'elle-même sans bloc. */}
       {hasEquipment && (
         <section className="space-y-3">
           <SectionTitle>{t.sections.equipement}</SectionTitle>

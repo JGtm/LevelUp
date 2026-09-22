@@ -912,11 +912,14 @@ en = "No match in the selection has a decoded film: without kill positions, rang
 # plutôt que de rester muet.
 
 [timeseries.usages.equipment_title]
-# « Équipement », PAS « Usages d'équipement » : ce dernier est mot pour mot le titre de la
-# PREMIÈRE CARTE de la section (usageI18n.blockEquipment) — le libellé se lisait deux fois
-# de suite. Même choix que sur l'Escouade.
-fr = "Équipement"
-en = "Equipment"
+# Le titre NOMME LES DEUX FAMILLES DE RAMASSAGES que la section couvre : l'équipement
+# (usages, part du lobby) et les armes posées sur les socles (contrôle des armes spéciales,
+# contrôle par niveau). Il ne se confond donc ni avec « Portée des engagements », qui la
+# précède, ni avec sa première carte « Usages d'équipement » (usageI18n.blockEquipment),
+# dont reprendre le libellé l'écrirait deux fois de suite. Arbitrage utilisateur du
+# 2026-09-22. Même choix que sur l'Escouade.
+fr = "Équipement et armes de socle"
+en = "Equipment and pad weapons"
 
 [timeseries.usages.empty_title]
 fr = "Aucun film décodé"

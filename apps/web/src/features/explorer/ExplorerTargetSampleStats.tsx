@@ -251,9 +251,12 @@ function WeaponsTop({ weapons, locale, t }: { weapons: ExplorerWeaponKill[]; loc
  * taux en chiffre d'appel, bande des résultats. Ce composant ne garde que le chrome de
  * carte et sa place dans la rangée.
  *
- * Pas de `h-full` : empilé avec « Part des assistances », chaque bloc garde la hauteur de
- * son contenu. C'est leur SOMME qui fixe la hauteur de la rangée — deux `h-full` dans un
- * même flex-col à hauteur définie se disputeraient 100 % chacun et rogneraient le contenu.
+ * Hauteur : colonne d'une rangée `items-stretch` de trois cartes (cf.
+ * ExplorerTargetProfileCard) — la carte prend `h-full` et sa zone de contenu `flex-1
+ * justify-center`, de sorte que le contenu (piste, légendes, bande) se CENTRE
+ * verticalement quand la voisine de rangée est plus haute (demande utilisateur du
+ * 2026-09-22) ; sans `h-full` remontant jusqu'à l'enfant de grille, le centrage ne se
+ * verrait pas. Le bandeau de titre reste en haut.
  */
 export function ExplorerTargetOutcome({
   sampleStats,
@@ -270,7 +273,7 @@ export function ExplorerTargetOutcome({
       <div className="border-b border-border px-3 py-2 text-sm font-medium">
         {t('explorer.target_profile.results_title')}
       </div>
-      <div className="p-3">
+      <div className="flex flex-1 flex-col justify-center p-3">
         <ExplorerOutcomeBreakdown
           wins={sampleStats.wins}
           draws={sampleStats.draws}

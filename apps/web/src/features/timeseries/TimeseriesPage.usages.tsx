@@ -83,10 +83,13 @@ export function TimeseriesUsagesTab({ data, locale, t }: TimeseriesUsagesTabProp
           en écart au lobby plutôt qu'en mètres absolus. */}
       {hasWeaponRange && <TimeseriesRangeRolesCard bloc={data.range_profiles} />}
 
-      {/* « Équipement » — la section ne monte que des cartes, sans titre à elle : le titre de
-          section est posé ici, et il coiffe bien plusieurs cartes (comptes, part du lobby,
-          armes spéciales, niveaux). Il ne reprend PAS le libellé de sa première carte
-          (« Usages d'équipement ») : le lecteur verrait deux fois la même ligne. */}
+      {/* « Équipement et armes de socle » — la section ne monte que des cartes, sans titre à
+          elle : le titre de section est posé ici, et il NOMME LES DEUX FAMILLES DE RAMASSAGES
+          qu'il coiffe — l'équipement (usages, part du lobby) et les armes posées sur les
+          socles (armes spéciales, niveaux). Il ne se confond donc ni avec « Portée des
+          engagements » ci-dessus, ni avec sa première carte (« Usages d'équipement »), dont
+          reprendre le libellé ferait lire deux fois la même ligne (arbitrage du
+          2026-09-22). */}
       {showsEquipment && (
         <DetailSection title={t('timeseries.usages.equipment_title')}>
           <EquipmentUsageSection

@@ -34,10 +34,6 @@ import {
 } from './TimeseriesSquadAdapted'
 import { EngagementTimeseriesSection } from '@/features/engagement/EngagementTimeseriesSection'
 import { TimeseriesEngagementGapTrend } from './TimeseriesEngagementGapTrend'
-import {
-  TimeseriesNetLivesTrend,
-  type TimeseriesNetLivesLabels,
-} from './TimeseriesNetLivesTrend'
 import { TimeseriesCoordinationSection } from './TimeseriesCoordinationSection'
 import { FeatureGate } from '@/lib/capabilities/FeatureGate'
 import { useCapability } from '@/lib/capabilities/capabilities'
@@ -99,16 +95,6 @@ export function TimeseriesProgressionTab({
       },
     ] : [],
     [t, hasExpectedWinProb],
-  )
-  // Libellés d'infobulle de la balance des dégâts, mémoïsés : le composant les reçoit
-  // en objet et les passe à un useMemo d'option (un littéral inline le ferait tourner à
-  // chaque rendu de la page).
-  const netLivesLabels = useMemo<TimeseriesNetLivesLabels>(
-    () => ({
-      series: t('timeseries.progression.net_lives_series'),
-      match: t('timeseries.progression.net_lives_match'),
-    }),
-    [t],
   )
   const emptyMsg = t('timeseries.empty.no_data_description')
   // « Premier frag / première mort » : série solo servie par le payload de page —
@@ -268,23 +254,9 @@ export function TimeseriesProgressionTab({
         perDeathLabel={t('timeseries.progression.per_death')}
       />
 
-      {/* Balance des dégâts cumulée — pleine largeur, JUSTE SOUS « Rendement &
-          Résistance » (lot L, D21) : les deux lisent les mêmes dégâts infligés/subis, et
-          la voisine est elle-même pleine largeur. La scinder en deux colonnes écraserait
-          une série par match qui peut porter des centaines de points (l'intervalle des
-          étiquettes est déjà adaptatif) — la maquette du 2026-09-21 la dessine d'ailleurs
-          sur toute la largeur. Même carte que Sessions et Escouade, aucune requête neuve :
-          les dégâts arrivent avec `match_rows`. */}
-      <TimeseriesNetLivesTrend
-        rows={data.match_rows ?? []}
-        locale={locale}
-        title={t('timeseries.progression.net_lives_title')}
-        tooltip={t('timeseries.progression.net_lives_tooltip')}
-        labels={netLivesLabels}
-        avgCaption={t('timeseries.progression.net_lives_average_caption')}
-        avgUnit={t('timeseries.progression.net_lives_average_unit')}
-        emptyMessage={t('timeseries.progression.net_lives_empty')}
-      />
+      {/* « Balance des dégâts cumulée » N'EST PLUS SUR CET ONGLET (demande utilisateur du
+          2026-09-22) : elle se monte désormais sur le Résumé, sous « Assistances »
+          (cf. TimeseriesPage.summary.tsx). */}
 
       {/* Coordination dans le temps — « Riposte » | « Appui reçu » sur une rangée (lot Q,
           D22-3 et D22-6/7). Un seul graphe par carte : deux séries de bâtons par soirée

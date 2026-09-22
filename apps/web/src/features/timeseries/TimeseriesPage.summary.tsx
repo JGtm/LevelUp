@@ -3,7 +3,8 @@
  *
  * Découpé depuis TimeseriesPage.tsx (audit #6 god-file split).
  * Contenu : outcome sequence + KDA trend + KDA density + avg life + assists +
- * top weapons + KDA trend value + perf session/week/month + map win-rate/perf.
+ * balance des dégâts cumulée + top weapons + KDA trend value + perf session/week/month +
+ * map win-rate/perf.
  *
  * « Portée des engagements » a quitté cet onglet pour « Usages » (tout ce qui vient du film
  * décodé y est réuni, cf. TimeseriesPage.usages.tsx).
@@ -31,6 +32,10 @@ import {
   TimeseriesKdaValueTrend,
 } from './TimeseriesFormCharts'
 import { TimeseriesFdaGapTrend } from './TimeseriesFdaGapTrend'
+import {
+  TimeseriesNetLivesTrend,
+  type TimeseriesNetLivesLabels,
+} from './TimeseriesNetLivesTrend'
 import { TimeseriesSessionPerformance } from './TimeseriesSquadAdapted'
 import { WinRateVsHistoryBulletChart } from '@/features/squad/WinRateVsHistoryBulletChart'
 import { MapPerfVsHistoryChart } from '@/features/squad/MapPerfVsHistoryChart'
@@ -93,6 +98,17 @@ export function TimeseriesSummaryTab({
   // partagée avec la colonne Dominance de l'Explorateur. Mémoïsé : la bande
   // recalcule son option ECharts quand cette référence change.
   const dominanceLabels = useMemo(() => buildDominanceLabels(appLocale), [appLocale])
+  // Libellés d'infobulle de la balance des dégâts, mémoïsés : le composant les reçoit
+  // en objet et les passe à un useMemo d'option (un littéral inline le ferait tourner à
+  // chaque rendu de la page). Les clés restent sous `timeseries.progression.*` : elles
+  // nomment la mesure, pas l'onglet, et les renommer laisserait des clés orphelines.
+  const netLivesLabels = useMemo<TimeseriesNetLivesLabels>(
+    () => ({
+      series: t('timeseries.progression.net_lives_series'),
+      match: t('timeseries.progression.net_lives_match'),
+    }),
+    [t],
+  )
   const [hoveredClass, setHoveredClass] = useState<string | null>(null)
   const classLabel = (c: string) => formatMessage(fragsManifest, `frags.class.${c}` as never, appLocale)
   const roleLabel = (r: string) => formatMessage(fragsManifest, `frags.role.${r}` as never, appLocale)
@@ -214,6 +230,24 @@ export function TimeseriesSummaryTab({
           smoothingLabel={t('timeseries.summary.trend')}
         />
       </div>
+
+      {/* Balance des dégâts cumulée — pleine largeur, SOUS « Assistances » (demande
+          utilisateur du 2026-09-22 ; elle vivait auparavant sur l'onglet Progression,
+          sous « Rendement & Résistance »). Pleine largeur assumée : la série est par
+          match et peut porter des centaines de points (l'intervalle des étiquettes est
+          déjà adaptatif) — la scinder en deux colonnes l'écraserait. Même carte que
+          Sessions et Escouade, aucune requête neuve : les dégâts arrivent avec
+          `match_rows`. */}
+      <TimeseriesNetLivesTrend
+        rows={data.match_rows ?? []}
+        locale={appLocale}
+        title={t('timeseries.progression.net_lives_title')}
+        tooltip={t('timeseries.progression.net_lives_tooltip')}
+        labels={netLivesLabels}
+        avgCaption={t('timeseries.progression.net_lives_average_caption')}
+        avgUnit={t('timeseries.progression.net_lives_average_unit')}
+        emptyMessage={t('timeseries.progression.net_lives_empty')}
+      />
 
       {/* Répartition des frags v2 — MÊME rendu que Match view / Sessions : sunburst
           hiérarchique classe→rôle (compteur seul, légende à gauche, maxW 480) +

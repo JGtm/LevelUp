@@ -167,6 +167,23 @@ describe('Onglet Usages — état vide', () => {
   })
 })
 
+describe('« Balance des dégâts cumulée » — déplacée vers le Résumé (2026-09-22)', () => {
+  it('le Résumé la monte, juste après « Assistances »', () => {
+    renderSummary(page())
+    const titres = screen.getAllByTestId('chart-card').map((n) => n.textContent ?? '')
+    const assistances = titres.findIndex((x) => x.includes('Assistances'))
+    const balance = titres.findIndex((x) => x.includes('timeseries.progression.net_lives_title'))
+    expect(assistances).toBeGreaterThanOrEqual(0)
+    expect(balance).toBe(assistances + 1)
+  })
+
+  it('la Progression ne la monte plus', () => {
+    renderProgression(page())
+    const titres = screen.getAllByTestId('chart-card').map((n) => n.textContent ?? '')
+    expect(titres.some((x) => x.includes('timeseries.progression.net_lives_title'))).toBe(false)
+  })
+})
+
 describe('Onglets d’origine — les sections du film n’y sont plus', () => {
   it('la Synthèse ne monte plus « Portée des engagements »', () => {
     setTitle(['weapon_range'])
