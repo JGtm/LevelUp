@@ -8326,6 +8326,165 @@ contre 4 469 dans la reference — et 1 489 est EXACTEMENT la valeur que le lot 
 les divergences sont celles de la reference perimee, pas des siennes. Decodage : 14,8 s,
 pic 0,19 Gio, un film a la fois.
 
+### Post-chantier — lot 5.16 (le modele du rang 1 : table de datums et baseline), branche `feat/decfilm-66`
+
+Sur les decouvertes D1 et D2 du lot 5.15. METHODE : l ecrivain d abord (Ghidra lecture seule), la
+fermeture des paquets comme seul gate, la mesure seulement pour VERIFIER un maillon lu, un commit
+par maillon. Note de grammaire : `.ai/V7.5/film_re/NOTE_5_16_MODELE_RANG_1_2026-09-22.md`.
+
+- [x] **5.16.1 — LE TEMOIN DE 96 BITS EST FERME AU BIT, ET LA SOURCE DE L ARCHETYPE EST
+  L IMAGE-CLE.** (`bfd80cf60`)
+
+  Le gate du 5.14 est reproduit AU PAQUET avant toute lecture (`dad793c7` 5 341/5 365).
+
+  **(a) LE PREMIER RECORD DU TEMOIN EST JUSTE, ET C EST VERIFIE CHEZ L ECRIVAIN.**
+  `FUN_14076d034` (variante FRAME de `high-frequency`, `ti=4 i0`) lit exactement **8 bits**. Le
+  bit 37 est donc un vrai prefixe de record, pas un mauvais cadrage du record precedent.
+
+  **(b) LE SLOT REJETE EST 1 298, PAS 1 314** (`id 0x40000512`) — correction d une valeur du 5.15.
+
+  **(c) L ORACLE D ARCHETYPE FERME LES DOUZE PAQUETS SANS INVENTER UNE LARGEUR.** Candidats = les
+  50 archetypes du REGISTRE du film (`chunk_00`, artefact LU) ; critere = la FERMETURE DU PAQUET
+  au bit (corps propre, terminateur `000` de la vue B, vue C portee, reste a bourrage NUL).
+  **12/12**, et DEUX archetypes seulement y arrivent (`ti=30`, `ti=47`). L anatomie complete est
+  au §1 de la note : masque `1 << 1`, corps = `managed-object-networked-splash-message-dynamic`
+  = `R(24)`, le compteur de 16 bits a pas 4 584 est DEDANS, terminateur aux bits 88..90, vue C
+  vide au bit 91, quatre bits de bourrage a zero.
+
+  **(d) LA SOURCE, PAR ADRESSE : L IMAGE-CLE EST LE DUMP DE LA TABLE DE DATUMS.**
+  `FUN_142f2e174` (slot `0x10` de la vtable de vue) rend un mot de 32 bits par entite VIVANTE de
+  `vue+0x38`..`vue+0x40` sous le bitmap `vue+0x58` ; `FUN_142f2c658` serialise chaque mot selon
+  son genre ; le genre 3 (`FUN_142f30610`) ecrit l en-tete par
+  `FUN_142f2c754(writer, 3, eid, archetype)` — archetype
+  `= *(int *)(*(vue[0x20] + 0x120) + 4 + slot * 0x18)` — puis le SELECTEUR DE BASELINE par
+  `FUN_140769e08`, puis le corps par `FUN_142e35e60`.
+
+  **(e) ET NOTRE LECTURE LA TRONQUE.** `WalkKeyframeWorld` est un BALAYEUR d ancres borne par une
+  fenetre de 120 000 bits : chunk 1 de `dad793c7` **123 records, dernier slot 122, bit 139 754**
+  sur 1 028 032, contre 186 a 187 (slot 1 345) pour les chunks 2 a 5. Et l identifiant
+  `0x40000512` EST dans l image-cle du chunk 1, a **une seule position, le bit 279 659**,
+  `field26 = 0`, `ti = 47` — **139 841 bits apres l arret**.
+
+  **(f) LES HYPOTHESES (b) ET (c) DU BRIEF TOMBENT PAR LES ADRESSES.** (b) : `FUN_1406d3140`
+  (appele avec `param_3 = 7`) et l inline de la branche vive lisent tous deux la **classe 7** du
+  tableau de couples (base, largeur) a `0x1451f98d0` ; le bit supplementaire n existe que pour la
+  classe 1. Le tableau est **ENTIEREMENT NUL dans l image** (lu, 80 octets) et n est ecrit qu au
+  runtime par `FUN_1408f1618`. (c) : les deux types de paquet non lus sont nommes et ecartes — le
+  type 1 (1 715 095 / 9 261 513 octets) est SAUTE par le jeu lui-meme (`FUN_142989418` lit
+  16 octets et avance un compteur), le type 10 va dans quatre globales (`FUN_142988244` ->
+  `FUN_142991114`). Le repartiteur est `FUN_1428e22c0`.
+
+- [x] **5.16.3 — LA BASELINE CHANGE UNE VALEUR, PAS UNE LARGEUR — ET ELLE S OUVRE 14 FOIS SUR
+  174 606.** (`00f4d8643`) D2 du 5.15 est referme des deux cotes.
+
+  `FUN_14076cb60` lit le MASQUE d abord (`FUN_1406d7610`), puis pour chaque composant present :
+  `niveau = vtable[0x00](deser)` (la PRECISION, du DESCRIPTEUR), `prediction = 0` si
+  `args[4] == 0` sinon `vtable[0x48](deser, tampon, &args[3])`, enfin
+  `vtable[0x28](deser, lecteur, args, &prediction, niveau)`. La baseline n entre que par
+  `&prediction` : **une VALEUR**. `decodeDelta`, qui consomme le selecteur (`FUN_1406cdc04`,
+  ecrivain `FUN_140769e08`) et jette la baseline, ne DERIVE donc jamais.
+
+  Mesure : `dad793c7` 5 616/5 616 FERME, **0 ouvert** ; `bfecd02b` 174 592/174 606 ferme,
+  **14 ouverts** (0,008 %). Les 14 publient leurs valeurs contre une reference NULLE ; le port
+  exigerait l historique des etats de composants des trames precedentes — report ECRIT.
+
+- [x] **5.16.4 — LE PORT DU MODELE : LE MONDE HORS LIGNE RECOIT LA TABLE DE DATUMS PAR SLOT.**
+  (`2ce4afccd`)
+
+  `keyframe_datums.go` — `TableDeDatums` lit `slot -> archetype` sous DEUX contraintes prises de
+  l ecrivain : les gardes d en-tete de `kfAnchorFromID`, ET la **CROISSANCE DES SLOTS**
+  (`FUN_142f2e174` parcourt sa table par index croissant : on retient la plus longue sous-suite
+  croissante, et on COMPTE les candidats ecartes). **La contrainte de croissance n est pas un
+  reglage** : sans elle, +4 paquets en DEBORDEMENT sur `bfecd02b` et 162 liaisons posees sur
+  `dad793c7` au lieu de 54 ; avec elle, zero debordement de plus et tout le gain.
+
+  `LierTableDeDatums` pose ces liaisons par `World.BindDatum` sans ecraser une liaison deja posee
+  (`Soft`, `GenAny`, vue INCONNUE, sans position). Appelants : `movementStateScanner.lierLeMonde`
+  (production) et `m533bLierMonde` (instruments). Compteurs
+  `types.MovementStateStats.DatumBindings` / `DatumAmbiguous`.
+
+  `rejetDeVue` porte les DEUX gardes, COMPTEES : `RejetsHorsDatum` (la garde VIVE de
+  `FUN_1406cbaa0`) puis `RejetsDeVue` (le repli, la garde de la branche 0). **Le repli mesure
+  ZERO sur les deux films** — compte plutot que supprime, pour que ce zero soit vu.
+
+  | mesure (A/B par `MOUV516_DATUMS=0`) | `dad793c7` avant | apres | `bfecd02b` avant | apres |
+  |---|---:|---:|---:|---:|
+  | paquets a reste NUL | 5 341 | **5 354** / 5 365 | 2 884 | 2 884 / 30 387 |
+  | debordements | 2 | 2 | 32 | 32 |
+  | records rendus | 5 628 | 5 641 | 176 323 | 176 786 |
+  | records `ti=35` | 75 | 75 | 129 572 | 129 572 |
+  | desyncs `ti=35` | 0 | 0 | 4 | 4 |
+  | rejets hors datum | 15 | **2** | 23 896 | 23 769 |
+  | rejets de vue (repli) | 0 | 0 | **0** | **0** |
+  | liaisons de datum posees | 0 | 54 | 0 | 10 |
+
+  `grammar.Rev` -> `grammar-2026-09-22.6`, chronique a l appui. **`facts.Rev` NE MONTE PAS** :
+  `killsource/walk.go` marche par `DecodeFrameRecords`, `LierTableDeDatums` n est appele que par
+  `movementStateScanner.lierLeMonde`, et `rejetDeVue` rend exactement les memes verdicts qu avant
+  (seuls ses compteurs sont neufs) — aucun backlog killsource ouvert. `replay.SchemaVersion`
+  reste a **67**. Goldens refiges par leur porte : `grammar_rev.golden`, `facts_rev.golden`,
+  `types/testdata/shapes.golden`, les 8 fixtures de contrat + manifeste (seul `grammarRev` change
+  dans les documents ; 2 770 831 octets, plafond de 3 Mio tenu).
+
+  **GATE AVEC DECODAGE — `replay-equiv -films bcb6d393` SANS `-update`** : les SIX memes ecarts
+  que le lot 5.14, aux memes valeurs (`movementStates` 1 737, artefact 1 929 397 octets). La
+  reference est perimee depuis la fusion 5.10 (report D1 (5.11)) ; ce lot ne la deplace pas d un
+  octet. Decodage 15,1 s, pic 0,19 Gio, un film a la fois.
+
+- [x] **5.16.5 — CE QUE LE TROU PORTAIT, EN CLAIR — ET AUCUNE MONTEE DE SCHEMA.** (`f87ebc7b5`)
+
+  `dad793c7` : un seul archetype bouge, `ti=47` (30 -> 43 records), et un seul composant,
+  `managed-object-networked-splash-message-dynamic-component` (30 -> 43 lectures d un `R(24)`).
+  51 etiquettes de composant lues avant comme apres.
+
+  `bfecd02b` : 463 records de plus, tous sur des archetypes DEJA lus — `ti=37` equipement
+  4 340 -> 4 551, `ti=41` arme 566 -> 696, `ti=42` 2 755 -> 2 804, `ti=38` 19 -> 62, `ti=10`
+  1 003 -> 1 025. 207 etiquettes avant comme apres.
+
+  **AUCUN CANAL D ETAT DE BIPEDE N APPARAIT** : pas une etiquette de plus, sur aucun des deux
+  films. `replay.SchemaVersion` reste a **67** — pas de chronique v68, pas de fixture
+  `replay_schema_68_*`, pas de jumeaux, pas de zod, pas d OpenAPI. La liste exacte du
+  nouvellement lu est celle ci-dessus, et elle est faite de composants deja portes.
+
+- [!] **5.16.2 — LA SOURCE EST NOMMEE ET MESUREE (item 5.16.1 (d) et (e)), MAIS LE TABLEAU
+  « SLOT REJETE -> SOURCE -> ARCHETYPE » DE `bfecd02b` NE SE REMPLIT PAS, ET C EST UN RESULTAT.**
+  Sur `bfecd02b`, 632 slots distincts sont rejetes et **526 ne sont declares par AUCUNE source
+  lue** (ni image-cle, ni NEW) ; leur etendue couvre presque uniformement les treize bits
+  (2 a 8 184, mediane 3 307) alors que la table de datums du film plafonne vers le slot 1 345.
+  Ce ne sont donc pas des slots : ce sont des lectures prises a une position FAUSSE. La doc de
+  `frame_infer.go` (« le modele manquant depuis le 5.11.6 ») est mise a jour par le port du
+  5.16.4 : `keyframe_datums.go` et `rejetDeVue` portent desormais le modele, avec ses deux gardes
+  comptees.
+
+- [!] **GATE — LES PAQUETS NE FERMENT PAS A 100 %, ET LE LOT DIT POURQUOI PAR UNE ADRESSE.**
+  `dad793c7` **5 341 -> 5 354** sur 5 365 (le temoin de 96 bits ferme 12/12) ; `bfecd02b`
+  2 884/30 387, INCHANGE. 0 debordement de plus, oracle de contenu conserve (`ti=35` 129 572,
+  desyncs 4), `replay-equiv` inchange. Les **21 index de controle epars** de la vue C (D5 du 5.14)
+  sont RE-MESURES a la sortie : inchanges (29 classes, index 0 a 7 denses, 8 a 31 a 2-27 entrees)
+  — ils restent du bruit du residu. **LA CAUSE DU RESIDU EST NOMMEE AU §4 (D1 du 5.16) : le bit
+  de masque teste par l ecrivain est `i - decales`, et le depot teste `i` BRUT.**
+
+#### §4 du lot 5.16 — DECOUVERTES HORS PERIMETRE, CONSIGNEES ET NON TRAITEES
+
+| # | decouverte | ou la reprendre |
+|---|---|---|
+| **D1 (5.16)** | **LE MASQUE DE PRESENCE EST INDEXE SUR LES COMPOSANTS RETENUS, PAS SUR CEUX DE L ARCHETYPE.** Dans `FUN_14076cb60` le bit teste est `masque >> ((i - decales) & 0xff)`, ou `decales` compte les composants que `FUN_1428e1dac(&DAT_144c23178, descripteur[0x474c], nom)` ECARTE quand `*(TLS + 0x238)` porte un nom de contexte non vide. Le depot teste le bit `i` BRUT (`traverseComponentLoop`). Et `&DAT_144c23178` est l objet que le repartiteur interroge pour le paquet de **type 8** (`FUN_1428e1e94` puis `FUN_142987bd4`), qui pese **700 868 octets sur `bfecd02b`** contre 20 622 sur `dad793c7`. | **le lot du residu de `bfecd02b`** : lire le type 8, puis porter le decalage. C est le premier suspect des 23 769 rejets sur des identifiants qui ne sont pas des slots |
+| **D2 (5.16)** | **LA CHAINE DE L IMAGE-CLE SE COUPE, ET LA FENETRE DE 120 000 BITS EN EST LA CAUSE MESUREE.** `WalkKeyframeWorld` rend 123 records pour le chunk 1 de `dad793c7` alors que la table continue 139 841 bits plus loin. Le lot 5.16 contourne le probleme (la table de datums se lit a position libre) mais ne repare PAS la marche d ancres, dont les POSITIONS servent aux lecteurs d etat (socles, chargements, occupations). | le lot qui aura besoin des POSITIONS des records d image-cle au-dela de la coupure : rendre la marche deterministe (`WalkKeyframeRecords` s arrete apres UN record, « en-tete-invalide », sur les deux temoins) |
+| **D3 (5.16)** | **L HISTORIQUE DE BASELINE N EST PAS PORTE, ET IL COUTE 14 RECORDS SUR 174 606.** `FUN_1406cdc04` -> `FUN_141fda280` -> `args[3]`/`args[4]` de `FUN_14076cb60`. Ce sont des VALEURS fausses, pas des largeurs. | le lot qui voudra des valeurs justes au dernier pour-cent : tenir hors ligne l historique des etats de composants des trames precedentes |
+| **D4 (5.16)** | **LE FILIGRANE D IDENTIFIANT EST UN TABLEAU DE COUPLES (base, largeur) INDEXE PAR CLASSE**, a `0x1451f98d0`, ENTIEREMENT NUL dans l image et ecrit au runtime par `FUN_1408f1618` (classes 0 et 1 a `slot - 0x1ff`, classes 7 et 8 a `slot + 1`). La boucle de records lit la classe **7** dans les deux branches. La classe 1 (NEW) porte un bit supplementaire decide par `FUN_1405d5d08(eid, …) ∈ {0x23, 0x28}`. | le lot qui rencontrera un film dont un slot depasse 8 191 (amende D3 du 5.15), ou une classe d identifiant autre que 7 |
+| **D5 (5.16)** | **LE MOT MAGIQUE DE `HasExtraFields` EST `0xf0c3a57e`**, ecrit en tete de chaque record par `FUN_142f2c754`, et le controle de corruption par composant est `0x0bcddcba` (`FUN_14076cb60`, message « entity component corrupt: entity id:[0x%x] type:[%s] component:[%s] »). | le lot qui rencontrera un film a `HasExtraFields` leve : deux sentinelles pour valider le cadrage a l octet |
+| **D6 (5.16)** | **`FUN_1428e24bc` EST UN ALLER-RETOUR SERIALISE, ET ON VOIT MAINTENANT POURQUOI SA GARDE NE REJETTE JAMAIS** : il alloue `0x1b000` octets, appelle `vtable[0x10]` pour la liste de reference, SERIALISE chaque entree par `FUN_142f2c658`, retourne le writer en reader, abaisse `DAT_14474cd78`, appelle `vtable[0x40]`, puis restaure. Sa table est complete par construction. | personne : la suspicion sur la branche 0 est definitivement close |
+
+#### §5 du lot 5.16 — ETAT DE CLOTURE
+
+| item | statut | ce qui est etabli |
+|---|---|---|
+| 5.16.1 | `[x]` | le temoin de 96 bits ferme **12/12** a reste de bourrage NUL ; `FUN_14076d034` = `R(8)` confirme le premier record ; le slot est **1 298** et son archetype `ti=47` ; la source est l IMAGE-CLE (`FUN_142f2e174` / `FUN_142f2c658` / `FUN_142f30610` / `FUN_142f2c754`) ; hypotheses (b) et (c) du brief refutees par adresses |
+| 5.16.2 | `[!]` | la source est nommee et mesuree, mais 526 des 632 slots rejetes de `bfecd02b` ne sont declares par AUCUNE source lue et couvrent uniformement les treize bits : ce ne sont pas des slots. Le tableau demande ne se remplit pas, et c est le RESULTAT |
+| 5.16.3 | `[x]` | la baseline change une **VALEUR**, pas une largeur (`FUN_14076cb60` : `niveau` vient du descripteur, la baseline de `&prediction`) ; selecteur ferme 5 616/5 616 et 174 592/174 606 |
+| 5.16.4 | `[x]` | `keyframe_datums.go` + `World.BindDatum` + `rejetDeVue` a deux gardes COMPTEES ; `dad793c7` 5 341 -> **5 354** ; 0 debordement de plus ; `ti=35` et desyncs constants ; `grammar.Rev` `.6`, `facts.Rev` et `SchemaVersion` inchangees ; `replay-equiv bcb6d393` identique au 5.14 |
+| 5.16.5 | `[x]` | ce qui est nouvellement lu : `ti=47` +13 lectures d un `R(24)` sur `dad793c7`, 463 records sur des archetypes deja lus sur `bfecd02b` ; **aucune etiquette de composant de plus**, donc aucune montee de schema |
+
 ### Post-chantier — lot 5.15 (le trou du rang 1 sur film dense), branche `feat/decfilm-65`
 
 Sur la decouverte D1 du lot 5.14. METHODE : l ecrivain d abord (Ghidra lecture seule), la
