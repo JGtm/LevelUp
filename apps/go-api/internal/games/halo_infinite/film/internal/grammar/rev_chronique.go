@@ -439,3 +439,58 @@ package grammar
 // `movementStateScanner.lierLeMonde` ; `killsource` ne voit pas ce rang. `replay.SchemaVersion`
 // reste a 67 : aucun champ n est publie. La FORME de `types.MovementStateStats` gagne
 // `DatumBindings` et `DatumAmbiguous`, et son golden est refige avec les revisions courantes.
+
+// ENTREE `grammar-2026-09-22.7` (2026-09-22, lot 5.18.2) : LE CONTROLE DE CORRUPTION PAR
+// COMPOSANT EST LU DANS LE FILM, ET IL N A PLUS DE DEFAUT MUET.
+//
+// LE MAILLON, DE L ECRIVAIN JUSQU AU LECTEUR DE BITS (Ghidra, `HaloInfinite.exe`, base
+// `0x140000000`, lecture seule) :
+//
+//	W(1)   `FUN_14299b198` @14299b25b  `FUN_1406d49c4(writer, byte[film+0xCB45C])`
+//	R(1)   `FUN_14299ab50` @14299ac28  `FUN_1406cf008(lecteur)` -> `film+0xCB45C`
+//	copie  `FUN_1428e219c` @1428e2239  `*(char *)(singleton + 0x1AE) = film[0xCB45C]`, sous la
+//	                                   garde `*film == 0x29` (la version MAJEURE du film)
+//	usage  `FUN_14076cea8()`           rend `DAT_144c23326` (= `DAT_144c23178 + 0x1AE`) en rejeu
+//	                                   de film ; `FUN_14076cb60` s en sert comme `extra` : un
+//	                                   `R(1)` de garde apres CHAQUE composant present, et si ce
+//	                                   bit vaut 1, un `R(32)` sentinelle `0x0bcddcba`. Idem
+//	                                   `FUN_142e2c690` sur le chemin d etat complet.
+//
+// LE BIT ETAIT DEJA ENJAMBE PAR LE DEPOT DEPUIS LE LOT 1.5.1 — c est le « booleen d un bit » de
+// `base+0x0CB45C` dont `identDecalageBit` decale tout ce qui suit. Il est desormais LU
+// ([lireControleDeCorruption], [profile.FilmIdentity.ControleDeCorruption]) et il DECIDE la
+// grammaire : [grammaireSousFilm] est la regle, ecrite une fois, et elle a deux portes — le
+// contexte de film ([FilmContext.ProfilDeBalayage], qui le DERIVE a chaque rendu pour qu un
+// profil pose par-dessus ne puisse pas l effacer) et [GrammaireSousFilm] pour `killsource`, qui
+// part de l invariant et ne construit pas de contexte.
+//
+// AUCUN BIT LU NE CHANGE SUR LE PARC, ET C EST MESURE : le drapeau vaut ZERO sur les 1 605 films
+// du cache qui portent une section d identification (8 builds, 5 formats : `HI_1_13_0`/27 1349,
+// `HI_1_12_0`/27 147, `HI_1_11_0`/25 57, `HI_1_10_0`/24 34, `HI_1_8_0`/24 13, `HI_1_9_0`/24 3,
+// `HI_1_4_1`/21 1, `HI_1_5_1`/23 1) — c est-a-dire exactement l ancien defaut de structure. Le
+// defaut se trouvait juste ; il l etait par HASARD, et un film qui leverait ce bit aurait
+// desynchronise sans un mot. LE RANG MONTE POUR CELA : la couche lit une decision qu elle
+// ignorait, pas parce qu un octet a bouge.
+//
+// GATE DE TRAME, joue avec la carte `snowbound` (celle qui reproduit le tableau du 5.16.4 a
+// chaque chiffre ; `streets` sur `dad793c7` donne 5 285 et 72 debordements — la carte n est pas
+// indifferente, et le gate n a pas ete joue au hasard) :
+//
+//	dad793c7  paquets a reste NUL 5 354 / 5 365 · debordements 2 · records 5 641
+//	          `ti=35` 75, 0 desynchronise · rejets hors datum 2 · de vue 0 · datums 54
+//	bfecd02b  paquets a reste NUL 2 884 / 30 387 · debordements 32 · records 176 786
+//	          `ti=35` 129 572, 4 desynchronises · rejets hors datum 23 769 · de vue 0 · datums 10
+//
+// Chiffre pour chiffre le tableau du `.6` : le port ne deplace RIEN, et c est le resultat
+// attendu d un drapeau qui vaut zero partout.
+//
+// `facts.Rev` NE MONTE PAS, et la decision est ecrite : sur chaque film du parc la valeur lue
+// EGALE l ancien defaut, donc aucune ligne de `match_kill_events` ne se redecoderait autrement —
+// AUCUN backlog killsource n est ouvert. `profile.Rev` ne monte pas non plus : la couche gagne un
+// champ PORTEUR et son accesseur, pas une ligne de table, pas une largeur, pas une borne.
+// `replay.SchemaVersion` reste a 67 : aucun champ publie ne change.
+//
+// LE REPLI EST NOMME ET DIT : `repli_controle_corruption_section_absente` (registre `filmdec`,
+// `apres_lecture`) — les 5 films du cache sans section d identification ne declarent pas ce bit,
+// la grammaire garde son invariant, [FilmContext.ControleDeCorruptionRepli] le compte et
+// `killsource` l avertit par film.

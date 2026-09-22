@@ -1,6 +1,9 @@
 package grammar
 
-import "levelup/go-api/internal/games/halo_infinite/film/internal/profile"
+import (
+	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
+)
 
 // profil_balayage.go — CE QU UN BALAYAGE POSE SUR LES LECTEURS DE BITS QU IL CONSTRUIT
 // (lot 2.3 du PLAN_DECODEUR_FILM ; remplace `profil_herite.go`, l heritage PAR L ETAT DU
@@ -133,6 +136,49 @@ func grammaireSousCarte(g GrammaireBalayage, carte bool) GrammaireBalayage {
 	return g
 }
 
+// grammaireSousFilm rend la grammaire d un profil selon CE QUE LE FILM DECLARE. C EST LA REGLE,
+// ECRITE UNE FOIS, et son second rendu dit si le film a parle.
+//
+// # UNE SEULE BASCULE VIENT DU FILM, ET ELLE EST LUE CHEZ L ECRIVAIN
+//
+// [GrammaireBalayage.ControleDeCorruption] n est pas un reglage : c est le bit de
+// `chunk_00 + 0x0CB45C`, que `FUN_14299b198` @14299b25b ecrit et que `FUN_14299ab50` @14299ac28
+// relit, que `FUN_1428e219c` @1428e2239 recopie dans le singleton du film (`+0x1AE`) et que
+// `FUN_14076cea8` rend a `FUN_14076cb60` en rejeu. Le film le porte, donc le decodeur le LIT —
+// ADR 0034 : le film est autoportant, jamais un profil par build (cf.
+// [profile.FilmIdentity.ControleDeCorruption]).
+//
+// # POURQUOI ELLE NE SE POSE PLUS A LA MAIN SUR UN CONTEXTE DE FILM
+//
+// Avant le lot 5.18.2 ce champ etait de defaut FAUX et n avait d ecrivain qu un instrument. Le
+// defaut se trouvait JUSTE — le bit vaut zero sur les 1 605 films du cache, 8 builds, 5 formats
+// — mais il l etait par hasard, et un film qui le leverait aurait desynchronise sans un mot.
+// [FilmContext.ProfilDeBalayage] le DERIVE desormais a chaque rendu : rien d autre qu un film
+// n a le droit de le poser, et un profil pose par-dessus ne peut donc pas l effacer.
+//
+// # LE REPLI, NOMME ET COMPTE
+//
+// `lue` faux = le film ne porte PAS de section d identification (5 films du cache, format 20,
+// deja mis de cote par [profile.ErrUnknownBuild]). La grammaire garde alors son invariant : c est
+// le repli `repli_controle_corruption_section_absente` du registre, et il est COMPTE par
+// [FilmContext.ControleDeCorruptionRepli] et par la calibration de `killsource`.
+func grammaireSousFilm(g GrammaireBalayage, p profile.Profile) (GrammaireBalayage, bool) {
+	if !p.IdentityRead() {
+		return g, false
+	}
+	g.ControleDeCorruption = p.Identity().ControleDeCorruption
+	return g, true
+}
+
+// GrammaireSousFilm applique [grammaireSousFilm] a un PROFIL DE BALAYAGE complet, pour les
+// chemins de decodage qui n ouvrent pas de [FilmContext] — `killsource`, qui part de l invariant
+// et calibre. Second rendu : faux = repli `repli_controle_corruption_section_absente`.
+func GrammaireSousFilm(bal ProfilDeBalayage, f *source.Film) (ProfilDeBalayage, bool) {
+	g, lue := grammaireSousFilm(bal.Grammaire, ResolveProfile(f, nil))
+	bal.Grammaire = g
+	return bal, lue
+}
+
 // GrammaireBalayage porte les BASCULES DE GRAMMAIRE d un balayage : les choix de lecture qui
 // changent la consommation de bits sans venir du flux.
 //
@@ -151,8 +197,14 @@ func grammaireSousCarte(g GrammaireBalayage, carte bool) GrammaireBalayage {
 type GrammaireBalayage struct {
 	// ControleDeCorruption : en mode FILM/replay (FUN_1404f2b4c()==2), FUN_14076cb60 lit APRES
 	// chaque composant present un R(1) garde ; si le bit vaut 1, un R(32) sentinelle (marqueur
-	// 0xbcddcba « entity component corrupt »). Defaut false — le decodeur sautait ces bits, et
-	// la mesure live (record NEW bipede a 1924 bits contre 1863 lus) a etabli la grammaire.
+	// 0x0bcddcba « entity component corrupt »). Idem FUN_142e2c690 sur le chemin d etat complet.
+	//
+	// IL VIENT DU FILM DEPUIS LE LOT 5.18.2, ET DE NULLE PART AILLEURS : c est le bit de
+	// `chunk_00 + 0x0CB45C` (cf. [grammaireSousFilm]). Le defaut de structure reste faux — c est
+	// la valeur du singleton du jeu a la construction (`FUN_140eff23c`) et a chaque chargement
+	// (`FUN_140eff3a8`) — mais il n est plus ce que la production LIT : elle derive le champ du
+	// film a chaque rendu de profil. Les instruments qui le posent mesurent l A/B ; ils ne
+	// decident plus de la production.
 	ControleDeCorruption bool
 	// BitsDeQueueRecordNew : bits terminaux consommes APRES la boucle de composants d un record
 	// NEW (candidat : la queue de FUN_1408f1aa4, non identifiee bit-exact). Defaut 0 =

@@ -148,16 +148,20 @@ type SlotsProfile struct {
 //
 // Les champs sont PRIVES : un profil se lit par ses accesseurs, qui rendent des valeurs.
 type Profile struct {
-	identity  FilmIdentity
-	mapEntry  MapQuantEntry
-	highlight HighlightProfile
-	keyframe  KeyframeProfile
-	movement  MovementProfile
-	slots     SlotsProfile
-	mpp       MPPWidths
-	format    int
-	build     string
-	err       error
+	identity FilmIdentity
+	// identityRead : la section 2 a-t-elle ete LUE. Elle distingue « le film declare faux » de
+	// « le film ne declare rien » — la seule distinction qui permette a un repli d etre nomme
+	// plutot que muet (cf. [Profile.IdentityRead]).
+	identityRead bool
+	mapEntry     MapQuantEntry
+	highlight    HighlightProfile
+	keyframe     KeyframeProfile
+	movement     MovementProfile
+	slots        SlotsProfile
+	mpp          MPPWidths
+	format       int
+	build        string
+	err          error
 }
 
 // Identity rend la section 2 de `chunk_00`, CLONEE : sa table par type est une tranche, et la
@@ -169,6 +173,12 @@ func (p Profile) Identity() FilmIdentity {
 	}
 	return id
 }
+
+// IdentityRead dit si la section 2 de `chunk_00` a ete lue. FAUX = le film n en porte pas
+// (5 films du cache, format 20), et tout champ de [Profile.Identity] y est son zero — un
+// lecteur qui ne distingue pas les deux prendrait un zero de structure pour une declaration du
+// film. C est exactement le piege que [grammaireSousFilm] evite.
+func (p Profile) IdentityRead() bool { return p.identityRead }
 
 // Map rend l entree de catalogue de la CARTE du match. Entree nulle quand l appelant n en a pas
 // fourni (instruments, enveloppes hors production).
@@ -266,7 +276,7 @@ func Resoudre(cles ClesDuFilm, entry *MapQuantEntry) Profile {
 		errs = append(errs, ErreurFormatInconnu(p.format))
 	}
 	if cles.IdentiteLue {
-		p.identity, p.build = cles.Identite, cles.Identite.Build
+		p.identity, p.build, p.identityRead = cles.Identite, cles.Identite.Build, true
 	}
 	if octets, connu := PersonnalisationOctets(p.build); connu {
 		p.slots = SlotsProfile{PersoBytes: octets, DeltaBits: PersoDeltaBits(octets), Connu: true}

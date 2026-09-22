@@ -95,6 +95,11 @@ type calibration struct {
 	// les largeurs d UNE carte (`cliffhanger`) appliquees a celle-ci. Jamais un zero muet : le
 	// rendu lisible le dit, et `Decode` l avertit par film.
 	CarteLue bool
+	// ControleDeCorruptionLu : le film a-t-il DECLARE son controle de corruption par composant
+	// (le bit de `chunk_00 + 0x0CB45C`, lot 5.18.2) ? FAUX = le film ne porte pas de section
+	// d identification, et la grammaire garde son invariant : repli
+	// `repli_controle_corruption_section_absente`. Le rendu lisible le dit, comme pour la carte.
+	ControleDeCorruptionLu bool
 	// Desaccords : nombre de grandeurs ou l inference CONTREDIT la valeur lue. UNE SEULE
 	// grandeur y entre — la largeur d axe, hors du voisinage du triplet lu : c est la seule que
 	// l oracle et la carte disent toutes les deux. La largeur du mot de poignee en est SORTIE
@@ -125,6 +130,10 @@ func (c calibration) String() string {
 	if !c.CarteLue {
 		source = "DEFAUT (carte absente)"
 	}
+	corr := fmt.Sprintf("controle_corruption=%v [FILM]", c.Profil.Grammaire.ControleDeCorruption)
+	if !c.ControleDeCorruptionLu {
+		corr = "controle_corruption=INVARIANT (section d identification absente)"
+	}
 	// LE RENDU DIT D OU VIENT LA LARGEUR DU MOT DE POIGNEE. « decidee » = la mesure a discrimine
 	// au triplet lu ; « INVARIANT (non discriminee) » = elle ne l a pas fait, et le repli tient.
 	// Sans cette mention, une valeur devinee sur un ex aequo se lisait comme une valeur mesuree.
@@ -133,9 +142,9 @@ func (c calibration) String() string {
 		poignee = fmt.Sprintf("INVARIANT (non discriminee) [score %d, mediane %d]",
 			c.PoigneeScore, c.PoigneeMedian)
 	}
-	return fmt.Sprintf("LU axisW=%v indexW_plage=%d [%s] | ORACLE axisW=%d [%s] desaccords=%d "+
+	return fmt.Sprintf("LU axisW=%v indexW_plage=%d [%s] %s | ORACLE axisW=%d [%s] desaccords=%d "+
 		"| DECIDE indexW_poignee=%d %s",
-		c.LueAxisW, c.LueIndexW, source, c.AxisW, src, c.Desaccords,
+		c.LueAxisW, c.LueIndexW, source, corr, c.AxisW, src, c.Desaccords,
 		c.PoigneeIndexW, poignee)
 }
 
@@ -158,8 +167,13 @@ const (
 // seul oracle INTERNE AU FILM dont on dispose pour dire qu une entree de catalogue ment.
 func calibrate(f *film, tl *timeline, views int, carte *profile.MapQuantEntry) calibration {
 	profil, carteLue := ProfilDeDepartPourCarte(carte)
+	// LE CONTROLE DE CORRUPTION PAR COMPOSANT VIENT DU FILM (lot 5.18.2), et ce paquet ne passe
+	// pas par un `grammar.FilmContext` : il part de l invariant et calibre. La MEME regle
+	// s applique donc ici, par la seule porte qui l exporte.
+	profil, corrLu := grammar.GrammaireSousFilm(profil, f.src)
 	abs := profil.LargeursObjetDuMonde()
-	res := calibration{Profil: profil, CarteLue: carteLue, LueAxisW: abs.AxisW, LueIndexW: abs.IndexW}
+	res := calibration{Profil: profil, CarteLue: carteLue, ControleDeCorruptionLu: corrLu,
+		LueAxisW: abs.AxisW, LueIndexW: abs.IndexW}
 	infererLargeurs(f, tl, views, &res)
 	return res
 }

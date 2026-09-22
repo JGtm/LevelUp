@@ -141,6 +141,9 @@ type FilmContext struct {
 	// [FilmContext.PoserProfilDeBalayage]. C est ce qui a remplace l heritage par l etat du
 	// processus : rien ici n est partage entre deux films.
 	bal ProfilDeBalayage
+	// corr / corrLue / corrLu : le CONTROLE DE CORRUPTION PAR COMPOSANT derive du film, et
+	// pourquoi il ne vit pas dans `bal` — cf. `controle_corruption_du_film.go`.
+	corr, corrLue, corrLu bool
 	// obs est l OBSERVATEUR de ce contexte (lot 2.3) : jamais nil, tous ses champs nuls en
 	// production. Un balayage qui publie y installe ses crochets ; un instrument aussi, et
 	// c est la seule surface qui lui reste depuis que les vingt-huit reglages publics ont
@@ -157,19 +160,22 @@ func (c *FilmContext) Observation() *Observation {
 }
 
 // ProfilDeBalayage rend le profil que les lecteurs de ce contexte portent. PAR VALEUR : un
-// appelant qui modifie ce qu il recoit ne modifie pas celui du contexte.
+// appelant qui modifie ce qu il recoit ne modifie pas celui du contexte. Le CONTROLE DE
+// CORRUPTION y est derive du film a chaque rendu (`controle_corruption_du_film.go`).
 func (c *FilmContext) ProfilDeBalayage() ProfilDeBalayage {
 	if c == nil {
 		return ProfilDeBalayageParDefaut()
 	}
-	return c.bal
+	bal := c.bal
+	bal.Grammaire.ControleDeCorruption = c.controleDeCorruptionDuFilm()
+	return bal
 }
 
 // PoserProfilDeBalayage installe le profil que les lecteurs SUIVANTS de ce contexte porteront,
 // et rend le precedent — l appelant le restaure s il ne voulait le poser que le temps d un
 // balayage. C est la SEULE porte : un balayage ne pose plus rien dans le processus.
 func (c *FilmContext) PoserProfilDeBalayage(p ProfilDeBalayage) ProfilDeBalayage {
-	prev := c.bal
+	prev := c.ProfilDeBalayage()
 	c.bal = p
 	return prev
 }
