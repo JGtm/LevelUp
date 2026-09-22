@@ -12,10 +12,10 @@ import {
   PLANCHER_MORTS,
   couvertureParJoueur,
   delaisSeries,
-  ecartRiposte,
   extremesCouverture,
   matriceSeries,
   matriceVide,
+  positionMediane,
   resumeDelais,
 } from './squadRiposte.logic'
 
@@ -218,28 +218,6 @@ describe('délais — les deux barres hors fenêtre sont montrées et jamais com
 })
 
 
-describe('ecartRiposte', () => {
-  it('rend l’écart signé et son arrondi en points', () => {
-    const e = echangeDe({ couverture: couverture(27, 45), habituel: couverture(40, 100) })
-    const r = ecartRiposte(e)
-    expect(r.ecartPoints).toBe(20) // 60,0 % − 40,0 %
-    expect(r.ecart).toBeCloseTo(0.2, 6)
-    expect(r.pleinHistorique).toBe(false)
-  })
-
-  it('rend un écart NÉGATIF quand le périmètre est sous son habituel', () => {
-    // Inverser le signe de la soustraction fait tomber ce test — c'est ce qui était
-    // impossible tant que le calcul vivait inliné dans le composant.
-    const e = echangeDe({ couverture: couverture(9, 45), habituel: couverture(40, 100) })
-    expect(ecartRiposte(e).ecartPoints).toBe(-20)
-  })
-
-  it('signale le plein historique : périmètre == référence', () => {
-    const e = echangeDe({ matchs_total: 60, matchs_habituel: 60 })
-    expect(ecartRiposte(e).pleinHistorique).toBe(true)
-  })
-})
-
 // ─── LE CHIFFRE D'APPEL (D19) ─────────────────────────────────────────────────
 
 describe('appelRiposte — le chiffre d’appel de la carte « Riposte »', () => {
@@ -257,21 +235,27 @@ describe('appelRiposte — le chiffre d’appel de la carte « Riposte »', () =
     expect(appelRiposte(e).delaiMedianS).toBeNull()
   })
 
-  it('signale le PLEIN HISTORIQUE : l’écart s’y tait (tautologie, pas mesure)', () => {
-    const e = echangeDe({ matchs_total: 60, matchs_habituel: 60 })
-    expect(appelRiposte(e).pleinHistorique).toBe(true)
+  it('n’expose PLUS d’écart à l’habituel : la phrase sous le donut a disparu', () => {
+    // La comparaison à l'habituel se LIT sur la frise (repère tireté), elle n'est plus
+    // écrite. Ce test tombe si quelqu'un remet un champ d'écart au chiffre d'appel sans
+    // remettre ce que la décision du 2026-09-22 a retiré.
+    const a = appelRiposte(echangeDe()) as unknown as Record<string, unknown>
+    expect(Object.keys(a)).not.toContain('ecart')
+    expect(Object.keys(a)).not.toContain('ecartPoints')
+    expect(Object.keys(a)).not.toContain('pleinHistorique')
   })
 })
 
 // ─── LA FRISE : UNE SOIRÉE = UN BÂTON, PLUS AUCUN REPLI EN LISTE ──────────────
 
 describe('friseRiposte — la frise soirée par soirée', () => {
-  const avecSessions = (taux: number[], morts = 50) =>
+  const avecSessions = (taux: number[], morts = 50, dansLeFiltre: boolean[] = []) =>
     echangeDe({
       habituel: couverture(20, 100),
       taux_par_session: taux.map((t, i) => ({
         session_label: `1${i}/09 22:00–23:00 (4)`,
         matchs_mesures: 4,
+        dans_le_filtre: dansLeFiltre[i] ?? true,
         couverture: { taux: t, brut: Math.round(t * morts), par_match: 1, n: morts, echantillon_faible: morts < 30 },
       })),
     } as Partial<SquadEchange>)
@@ -308,6 +292,21 @@ describe('friseRiposte — la frise soirée par soirée', () => {
   it('rend une frise VIDE (et non une liste) sans soirée mesurée', () => {
     expect(friseRiposte(echangeDe()).soirees).toEqual([])
   })
+
+  // ─── LE PÉRIMÈTRE EST L'HISTORIQUE, LE FILTRE EST UNE SURBRILLANCE (2026-09-22) ──
+
+  it('PROPAGE la surbrillance servie : aucune soirée n’est écartée par le client', () => {
+    const f = friseRiposte(avecSessions([0.3, 0.1, 0.2], 50, [false, true, false]))
+    expect(f.soirees).toHaveLength(3)
+    expect(f.soirees.map((s) => s.dansLeFiltre)).toEqual([false, true, false])
+  })
+
+  it('calcule la TENDANCE sur TOUTES les soirées, pas seulement celles du filtre', () => {
+    // Trois soirées à 10 / 20 / 30 %, une seule dans le filtre : la moyenne glissante du
+    // dernier point vaut 20 — la moyenne des trois —, et non 30, sa seule soirée filtrée.
+    const f = friseRiposte(avecSessions([0.1, 0.2, 0.3], 50, [false, false, true]))
+    expect(f.tendancePct[2]).toBeCloseTo(20, 6)
+  })
 })
 
 describe('moyenneGlissante', () => {
@@ -317,5 +316,36 @@ describe('moyenneGlissante', () => {
 
   it('rend une liste vide sur une série vide', () => {
     expect(moyenneGlissante([], FENETRE_TENDANCE)).toEqual([])
+  })
+})
+
+// ─── LE REPÈRE DE MÉDIANE TOMBE DANS LA BONNE BARRE, À LA BONNE FRACTION ──────
+//
+// Les intervalles servis n'ont pas tous la même largeur (1 s jusqu'à 5 s, puis 5-7 s, puis
+// « 7 s et plus » ouvert). Un repère arrondi à la frontière de barre déplacerait la mesure
+// d'une demi-barre : ces cas-ci cadenassent la position FRACTIONNAIRE.
+
+describe('positionMediane', () => {
+  it('pose la médiane DANS sa barre, à sa fraction (2,1 s → barre 2, un dixième dedans)', () => {
+    // Intervalles du décor : [0-1[ [1-2[ [2-3[ [3-4[ [4-5[ [5-7[ [7-…
+    // 2,1 s tombe dans la troisième barre (indice 2), à 10 % de sa largeur.
+    expect(positionMediane(echangeDe({ delai_median_ms: 2100 }))).toBeCloseTo(1.6, 6)
+  })
+
+  it('pose la médiane sur la FRONTIÈRE quand elle vaut une borne exacte', () => {
+    expect(positionMediane(echangeDe({ delai_median_ms: 2000 }))).toBeCloseTo(1.5, 6)
+  })
+
+  it('tient compte des intervalles PLUS LARGES (5-7 s : 6 s = la moitié)', () => {
+    expect(positionMediane(echangeDe({ delai_median_ms: 6000 }))).toBeCloseTo(5, 6)
+  })
+
+  it('pose la médiane au CENTRE d’un intervalle OUVERT — il n’a pas de borne haute', () => {
+    expect(positionMediane(echangeDe({ delai_median_ms: 42000 }))).toBe(6)
+  })
+
+  it('SE TAIT sans médiane mesurée plutôt que de se poser au hasard', () => {
+    expect(positionMediane(echangeDe({ delai_median_ms: 0 }))).toBeNull()
+    expect(positionMediane(echangeDe({ delais: [], delai_median_ms: 2100 }))).toBeNull()
   })
 })

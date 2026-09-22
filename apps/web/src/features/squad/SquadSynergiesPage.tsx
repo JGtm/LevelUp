@@ -128,16 +128,26 @@ export function SquadSynergiesPage() {
 
   return (
     <div className="space-y-4">
-      {/* SECTION « COORDINATION » (D19, 2026-09-21) — DEUX NOTIONS, TROIS CARTES.
-          Elle en montait HUIT, dont sept portaient la même notion sous quatre noms
-          différents (échange, vengeance, assistance croisée, riposte). La riposte vit
-          désormais dans une seule carte-récit, l'appui dans la sienne, et le nuage — que
-          l'utilisateur garde tel quel — vient APRÈS la riposte parce qu'il répond à la
-          question qu'elle laisse ouverte : « pourquoi tant de morts sans réponse ? ».
+      {/* SECTION « COORDINATION » (D19, 2026-09-21 ; TROIS RANGÉES, 2026-09-22) — DEUX
+          NOTIONS, CINQ CARTES. Elle en montait HUIT empilées, dont sept portaient la même
+          notion sous quatre noms différents (échange, vengeance, assistance croisée,
+          riposte). La riposte vit désormais dans une seule carte-récit, l'appui dans la
+          sienne.
 
-          LES TROIS SE MONTENT INDÉPENDAMMENT : la riposte vient du journal des morts,
-          l'appui du résumé du film. Un titre qui ne nomme pas le tueur de chaque mort
-          garde son appui — les lier aurait fait disparaître une mesure qui existe. */}
+          L'ORDRE EST CELUI DES RANGÉES, pas celui d'une pile :
+            1. « Appui » et « Frags non ripostés » côte à côte — les deux faces de ce que
+               l'escouade se doit l'une à l'autre : ce qu'elle donne, ce qu'elle ne rend pas ;
+            2. la RIPOSTE, en TROIS BLOCS montés par `SquadRiposteCard` (un fragment, pas
+               une carte) : « Morts ripostées » et « Temps de riposte » côte à côte sur une
+               rangée, puis « Riposte » — frise et repli — pleine largeur sous elles ;
+            3. « Rôles de portée » et « Rôles de hauteur » côte à côte — même bloc de
+               données, même nuage, même grammaire (E1, D24 du 2026-09-22).
+
+          CHAQUE CARTE SE MONTE INDÉPENDAMMENT : la riposte vient du journal des morts,
+          l'appui du résumé du film, les rôles des films décodés. Un titre qui ne nomme pas
+          le tueur de chaque mort garde son appui — les lier aurait fait disparaître une
+          mesure qui existe. Une rangée dont une cellule manque reste une grille : la carte
+          présente prend sa colonne. */}
       {(echange || assistPairs || rangeProfiles) && (
         <section className="space-y-4" aria-label={tRiposte.coordinationTitle}>
           <SectionTitle className="flex items-center gap-1.5">
@@ -153,25 +163,30 @@ export function SquadSynergiesPage() {
               }
             />
           </SectionTitle>
-          {echange && <SquadRiposteCard echange={echange} />}
-          {assistPairs && <SquadAppuiCard block={assistPairs} roster={roster} />}
-          {echange?.nuage_isolement && (
-            <SquadIsolementNuageCard
-              nuage={echange.nuage_isolement}
-              joueurs={echange.joueurs ?? []}
-            />
+          {/* RANGÉE 1 — « Appui » à gauche, « Frags non ripostés » à droite. */}
+          {(assistPairs || echange?.nuage_isolement) && (
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+              {assistPairs && <SquadAppuiCard block={assistPairs} roster={roster} />}
+              {echange?.nuage_isolement && (
+                <SquadIsolementNuageCard
+                  nuage={echange.nuage_isolement}
+                  joueurs={echange.joueurs ?? []}
+                />
+              )}
+            </div>
           )}
-          {/* LA PORTÉE VIENT EN DERNIER de la section : elle répond à la même question que
-              les deux précédentes — comment l'escouade occupe l'espace entre ses joueurs —
-              mais c'est la seule qui ne parle pas de morts. Son absence est un ÉTAT (aucun
-              film décodé sur la sélection) : le bloc n'est alors pas monté. */}
-          {rangeProfiles && <SquadRangeRolesCard bloc={rangeProfiles} roster={roster} />}
-          {/* LA HAUTEUR SUIT LA PORTÉE (E1, D24 du 2026-09-22) : même bloc de données, même
-              nuage, même grammaire — qui tient les hauteurs, qui joue en contrebas. Elle se
-              monte toujours : la carte rend son état vide nommé quand aucun match de la
-              sélection ne porte de dénivelé mesuré. */}
+          {/* RANGÉE 2 — la riposte : une rangée de deux blocs, puis la frise pleine largeur. */}
+          {echange && <SquadRiposteCard echange={echange} />}
+          {/* RANGÉE 3 — la PORTÉE et la HAUTEUR côte à côte : même bloc de données, même
+              nuage, même grammaire — qui tient la distance, qui tient la hauteur. Leur
+              absence est un ÉTAT (aucun film décodé sur la sélection) : la rangée n'est
+              alors pas montée. La hauteur, elle, rend son état vide nommé quand aucun match
+              de la sélection ne porte de dénivelé mesuré. */}
           {rangeProfiles && (
-            <SquadRangeRolesCard bloc={rangeProfiles} roster={roster} grandeur="hauteur" />
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+              <SquadRangeRolesCard bloc={rangeProfiles} roster={roster} />
+              <SquadRangeRolesCard bloc={rangeProfiles} roster={roster} grandeur="hauteur" />
+            </div>
           )}
         </section>
       )}

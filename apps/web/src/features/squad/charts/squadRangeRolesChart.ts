@@ -91,11 +91,6 @@ export interface RangeRolesChartOpts {
    * Réserve la marge droite qui va avec. Défaut : non.
    */
   etiquetteBout?: boolean
-  /**
-   * Opacité des points du nuage. Défaut 1 (lot R). Une grandeur dont la LECTURE tient dans
-   * la tendance (E1) baisse les points pour que les courbes passent devant.
-   */
-  opacitePoints?: number
 }
 
 /** Marge droite du `grid` : l'étiquette de bout de courbe a besoin de place. */
@@ -136,6 +131,11 @@ function zonesDeFond(
   opts: RangeRolesChartOpts,
   couleurBande: string,
 ): Record<string, unknown> | undefined {
+  // LES SEULES OPACITÉS QUI RESTENT SUR CE GRAPHE, ET ELLES SONT STRUCTURELLES (2026-09-22,
+  // passage à l'encre pleine) : ce sont des FONDS DE PISTE, pas de l'encre de donnée. Les trois
+  // bandes partagent une seule teinte — ce qui les distingue est leur libellé, jamais leur
+  // densité —, et les rendre opaques peindrait un rectangle uni derrière tout le nuage, faisant
+  // disparaître les tiers qu'elles dessinent. Exception tolérée du skill `color-tokens`.
   const libelles = opts.libelles
   const data: unknown[] = []
   if (seuils) {
@@ -188,7 +188,10 @@ function serieTendance(
     showSymbol: false,
     connectNulls: true,
     silent: true,
-    lineStyle: { color: couleur, width: 1.5, opacity: 0.7 },
+    // ENCRE PLEINE (2026-09-22) : la courbe portait `opacity: 0.7`, qui ne codait rien — elle
+    // délavait la teinte du joueur et la rendait plus pâle que la même teinte sur les cartes
+    // voisines. Sa finesse (1,5 px) et son `z` sous le nuage suffisent à la tenir au second plan.
+    lineStyle: { color: couleur, width: 1.5, opacity: 1 },
     itemStyle: { color: couleur },
     z: 2,
   }
@@ -232,7 +235,6 @@ export function buildSquadRangeRolesOption(
   const bornes = bornesY(series, opts.yDomain)
   const n = opts.categories.length
   const couleurDefaut = opts.couleurDefaut ?? resolveToken('info')
-  const opacitePoints = opts.opacitePoints ?? 1
 
   const nuage = series.map((serie, idx) => {
     const couleur = opts.couleurs[serie.gamertag] ?? couleurDefaut
@@ -243,15 +245,17 @@ export function buildSquadRangeRolesOption(
         symbolSize: taillePoint(p.mesures, opts.mesuresMin, opts.mesuresMax),
         // POINT CREUX sous le plancher : contour pointillé, aucun remplissage. Il reste
         // visible (un essai de style n'est pas une erreur de mesure) mais ne se confond
-        // jamais avec une médiane tenue.
+        // jamais avec une médiane tenue. C'est une FORME, pas une opacité : l'échantillon
+        // faible se lit au trait pointillé et dans la légende (`legendLowSample`), et les
+        // deux familles de points gardent l'ENCRE PLEINE (`opacity: 1`, 2026-09-22).
         itemStyle: p.plein
-          ? { color: encre, borderColor: tc.card, borderWidth: 2, opacity: opacitePoints }
+          ? { color: encre, borderColor: tc.card, borderWidth: 2, opacity: 1 }
           : {
               color: 'transparent',
               borderColor: encre,
               borderWidth: 2,
               borderType: 'dashed',
-              opacity: opacitePoints,
+              opacity: 1,
             },
         raw: p,
       }

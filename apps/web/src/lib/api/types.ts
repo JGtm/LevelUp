@@ -1390,9 +1390,15 @@ export type SquadEchangeSessionPoint = components['schemas']['SquadEchangeSessio
 /**
  * Le nuage « Pourquoi la vengeance ne vient pas » (`SquadEchange.nuage_isolement`) : UN
  * POINT PAR MORT (`morts`, distance au coéquipier visible rapportée à la portée du radar ×
- * délai avant vengeance) et un repère médian par joueur (`reperes`). `part_isolee` et
- * `couverture` du repère sont des `Couverture` (taux + brut + par match + N + échantillon
- * faible), jamais un float nu.
+ * délai avant que le tueur tombe) et un repère médian par joueur (`reperes`). `part_isolee`
+ * et `couverture` du repère sont des `Couverture` (taux + brut + par match + N +
+ * échantillon faible), jamais un float nu.
+ *
+ * TROIS ÉTATS EXCLUSIFS PAR MORT, tranchés par le SERVEUR (décision du 2026-09-22 — la
+ * règle des 5 s vaut partout) : `vengee` (le tueur est tombé DANS `fenetre_ms`, la seule
+ * vraie riposte), `hors_fenetre` (il est tombé après : `delai_ms` est publié pour que le
+ * point reste visible, mais ce n'est pas une riposte), ou ni l'un ni l'autre (aucune
+ * riposte connue, pas de délai). `fenetre_ms` porte la fenêtre : ne jamais coder 5 000 ici.
  */
 export type SquadNuageIsolement = components['schemas']['SquadNuageIsolement']
 export type SquadIsolementMort = components['schemas']['SquadIsolementMort']

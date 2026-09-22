@@ -42,34 +42,162 @@ export function echelleAvecBande(valeurs: number[], pas: number, minimum: number
   return { mesure, bandeDebut, bandeCentre: (bandeDebut + max) / 2, max }
 }
 
-/** Délai d'une mort en SECONDES, ou `null` quand elle n'a jamais été vengée. */
+/**
+ * Une échelle LOGARITHMIQUE qui porte, elle aussi, une bande pour les valeurs absentes.
+ *
+ * POURQUOI LE LOG (décision utilisateur du 2026-09-22) : l'axe des délais court de la
+ * fraction de seconde à la minute. En linéaire, tout le nuage utile — les ripostes sous la
+ * fenêtre de 5 s — s'écrase sur le douzième bas de la hauteur et devient illisible, pendant
+ * que les quelques chutes tardives occupent tout le reste.
+ *
+ * En log, une bande ne peut plus être « `max + 2 × pas` » : elle se réserve par un FACTEUR,
+ * et son centre est la moyenne GÉOMÉTRIQUE de ses bornes — c'est le milieu visuel une fois
+ * l'axe projeté.
+ */
+export interface EchelleLog {
+  /** Bas de l'axe — le PLANCHER d'affichage : un log n'atteint jamais zéro. */
+  min: number
+  /** Haut de la zone MESURÉE — le plafond du contrat (`plafond_ms`). */
+  mesure: number
+  /** Début de la bande des valeurs absentes. */
+  bandeDebut: number
+  /** Position où se posent les points de la bande (son centre GÉOMÉTRIQUE). */
+  bandeCentre: number
+  /** Haut de l'axe. */
+  max: number
+}
+
+/**
+ * PLANCHER D'AFFICHAGE de l'axe des délais, en secondes.
+ *
+ * Un axe logarithmique n'a pas de zéro, et une riposte instantanée (0 ms sur l'horloge du
+ * match, ou 90 ms) n'a nulle part où se poser. Elle est donc POSÉE ici — POUR LE DESSIN
+ * SEULEMENT : `delaiSecondes` et l'infobulle gardent la vraie valeur.
+ */
+export const PLANCHER_DELAI_S = 0.2
+
+/**
+ * FACTEUR de réservation de la bande haute sur un axe log — l'équivalent multiplicatif du
+ * `+ pas` de `echelleAvecBande`. 1,4 laisse la bande lisible (environ un dixième de la
+ * hauteur) sans voler de place au nuage mesuré.
+ */
+const FACTEUR_BANDE_LOG = 1.4
+
+/**
+ * echelleLogAvecBande réserve la bande des valeurs absentes AU-DESSUS du plafond mesuré.
+ *
+ * `mesure` est le plafond DU CONTRAT (`plafond_ms`), jamais le maximum observé : au-delà,
+ * le serveur ne publie plus d'état de riposte, donc l'axe n'a aucune raison de monter plus
+ * haut — et la bande « jamais ripostée » reste dans l'espace réservé, au-dessus.
+ */
+export function echelleLogAvecBande(min: number, mesure: number): EchelleLog {
+  const bandeDebut = mesure * FACTEUR_BANDE_LOG
+  const max = bandeDebut * FACTEUR_BANDE_LOG * FACTEUR_BANDE_LOG
+  return { min, mesure, bandeDebut, bandeCentre: Math.sqrt(bandeDebut * max), max }
+}
+
+/**
+ * GRADUATIONS LISIBLES de l'axe des délais, en secondes. Un axe log laissé à lui-même ne
+ * gradue qu'aux puissances de dix (0,2 · 1 · 10 · 100) : trois repères pour toute la
+ * hauteur, dont un hors plafond. Cette suite nomme les durées qu'un lecteur reconnaît.
+ */
+const GRADUATIONS_DELAI_S = [0.2, 0.5, 1, 2, 5, 10, 30, 60]
+
+/** Les graduations qui tombent dans la zone mesurée de l'échelle — la bande n'en porte
+ *  aucune, elle est nommée par son étiquette. */
+export function graduationsDelai(echelle: EchelleLog): number[] {
+  return GRADUATIONS_DELAI_S.filter((g) => g >= echelle.min && g <= echelle.mesure)
+}
+
+/**
+ * L'ÉTAT d'une mort du nuage — trois valeurs exclusives, décidées par le SERVEUR (règle des
+ * 5 s partout et PLAFOND de 60 s, décisions du 2026-09-22) et jamais recalculées ici :
+ *
+ *   `ripostee`     le tueur est tombé DANS la fenêtre (`fenetre_ms`) — la seule vraie
+ *                  riposte, la même que la carte « Riposte » et le taux d'échange ;
+ *   `horsFenetre`  il est tombé APRÈS la fenêtre mais avant le plafond (`plafond_ms`) : le
+ *                  délai existe, le point reste visible, mais ce n'est pas une riposte ;
+ *   `jamais`       aucune riposte connue — ou une chute au-delà du plafond, que le serveur
+ *                  ne publie plus : pas de délai, bande haute.
+ */
+export type EtatMort = 'ripostee' | 'horsFenetre' | 'jamais'
+
+export function etatMort(mort: SquadIsolementMort): EtatMort {
+  if (mort.vengee) return 'ripostee'
+  if (mort.hors_fenetre && mort.delai_ms != null) return 'horsFenetre'
+  return 'jamais'
+}
+
+/**
+ * Délai d'une mort en SECONDES, ou `null` quand aucune riposte n'est connue.
+ *
+ * LES MORTS HORS FENÊTRE EN ONT UN : c'est toute la demande du 2026-09-22 — un tueur tombé
+ * à 60 s doit se VOIR à 60 s sur l'axe, et non se tasser dans la bande « jamais ripostée »
+ * où il ne dirait plus à quelle distance de la fenêtre la riposte est passée. C'est
+ * `etatMort` qui dit si ce délai compte comme une riposte, jamais sa seule présence.
+ */
 export function delaiSecondes(mort: SquadIsolementMort): number | null {
-  if (!mort.vengee || mort.delai_ms == null) return null
+  if (mort.delai_ms == null) return null
+  if (!mort.vengee && !mort.hors_fenetre) return null
   return mort.delai_ms / 1000
 }
 
-/** Les deux échelles du nuage, calculées sur les morts publiées. */
-export interface EchellesNuage {
-  distance: EchelleBande
-  delai: EchelleBande
+/** La fenêtre de riposte du contrat, en SECONDES — le repère horizontal du graphe. */
+export function fenetreSecondes(nuage: { fenetre_ms: number }): number {
+  return nuage.fenetre_ms / 1000
 }
 
-export function echellesNuage(morts: SquadIsolementMort[]): EchellesNuage {
+/** Le plafond du contrat, en SECONDES — le haut de la zone mesurée de l'axe des délais.
+ *  Jamais un 60 codé en dur : la règle du jeu vient du serveur (`plafond_ms`). */
+export function plafondSecondes(nuage: { plafond_ms: number }): number {
+  return nuage.plafond_ms / 1000
+}
+
+/**
+ * Les deux échelles du nuage.
+ *
+ * L'AXE DES DÉLAIS EST LOGARITHMIQUE ET BORNÉ PAR LE CONTRAT (décision utilisateur du
+ * 2026-09-22). Il court du plancher d'affichage (`PLANCHER_DELAI_S`) au plafond
+ * (`plafond_ms`), et pas plus haut : au-delà, le serveur ne publie plus de délai du tout.
+ * Le log rend enfin lisible la zone qui porte le sens — les ripostes sous la fenêtre de
+ * 5 s — au lieu de l'écraser au ras de l'axe.
+ *
+ * L'axe des DISTANCES, lui, reste linéaire et libre : un ratio de portée de radar se lit en
+ * multiples, pas en décades.
+ */
+export interface EchellesNuage {
+  distance: EchelleBande
+  delai: EchelleLog
+}
+
+export function echellesNuage(morts: SquadIsolementMort[], plafondS: number): EchellesNuage {
   const ratios = morts
     .map((m) => m.distance_ratio)
     .filter((r): r is number => r != null)
-  const delais = morts.map(delaiSecondes).filter((d): d is number => d != null)
   return {
     distance: echelleAvecBande(ratios, 0.5, 2),
-    delai: echelleAvecBande(delais, 1, 10),
+    delai: echelleLogAvecBande(PLANCHER_DELAI_S, plafondS),
   }
+}
+
+/**
+ * ORDONNÉE DE DESSIN d'un délai : le délai lui-même, retenu entre le plancher et le
+ * plafond de l'échelle.
+ *
+ * LE PLANCHER EST UN GESTE DE DESSIN, PAS UNE MESURE : une riposte à 90 ms n'a pas de place
+ * sur un axe log et se pose à 0,2 s, mais `delaiSecondes` et l'infobulle gardent la vraie
+ * valeur. Le plafond ne devrait jamais mordre (le serveur ne publie pas de délai au-delà) —
+ * c'est une ceinture, pour qu'aucun point ne puisse se poser DANS la bande réservée.
+ */
+function ordonneeDelai(secondes: number, echelle: EchelleLog): number {
+  return Math.min(Math.max(secondes, echelle.min), echelle.mesure)
 }
 
 /** La position [x, y] d'une mort sur le nuage, bandes comprises. */
 export function positionMort(mort: SquadIsolementMort, echelles: EchellesNuage): [number, number] {
   const x = mort.distance_ratio ?? echelles.distance.bandeCentre
   const delai = delaiSecondes(mort)
-  return [x, delai ?? echelles.delai.bandeCentre]
+  return [x, delai != null ? ordonneeDelai(delai, echelles.delai) : echelles.delai.bandeCentre]
 }
 
 /** La position [x, y] du GROS point d'un joueur — mêmes bandes que les petits points. */
@@ -79,7 +207,9 @@ export function positionRepere(
 ): [number, number] {
   const x = repere.mediane_distance_ratio ?? echelles.distance.bandeCentre
   const y =
-    repere.mediane_delai_ms != null ? repere.mediane_delai_ms / 1000 : echelles.delai.bandeCentre
+    repere.mediane_delai_ms != null
+      ? ordonneeDelai(repere.mediane_delai_ms / 1000, echelles.delai)
+      : echelles.delai.bandeCentre
   return [x, y]
 }
 
@@ -94,9 +224,12 @@ export const REPERE_PORTEE_RADAR = 1
  *  DISPERSION, jamais le volume — un seul encodage de taille par graphe. */
 export const TAILLE_MORT = 5
 
-/** Opacité d'un petit point : toutes les morts restent visibles sans masquer les repères
- *  par joueur. */
-export const OPACITE_MORT = 0.4
+// AUCUNE CONSTANTE D'OPACITÉ ICI (décision utilisateur du 2026-09-22) : les points, les
+// repères médians et les bandes se peignent à ENCRE PLEINE. `OPACITE_MORT` (0,4),
+// `OPACITE_MORT_HORS_FENETRE` (0,75) et `CONTOUR_MORT_HORS_FENETRE` (1,2 px) ont été
+// retirées avec le point creux qu'elles servaient — une mort hors fenêtre se distingue
+// désormais par sa FORME (losange, `SYMBOLE_MORT_HORS_FENETRE`), et la hiérarchie petit
+// point / gros repère par la TAILLE et l'ordre de superposition.
 
 const TAILLE_REPERE_MIN = 18
 const TAILLE_REPERE_MAX = 46
@@ -117,8 +250,12 @@ export function tailleRepere(nbMorts: number, min: number, max: number): number 
 }
 
 /**
- * repereAttenue dit si le repère d'un joueur doit se peindre ATTÉNUÉ : son taux
- * d'isolement reste sous le plancher de confiance servi par le contrat.
+ * repereAttenue dit si le repère d'un joueur porte une RÉSERVE : son taux d'isolement reste
+ * sous le plancher de confiance servi par le contrat.
+ *
+ * Le nom dit « atténué » pour des raisons d'histoire ; depuis le 2026-09-22 la réserve ne
+ * se peint plus par une opacité mais par une BORDURE TIRETÉE sur un point plein (et par une
+ * note dans l'infobulle).
  */
 export function repereAttenue(repere: SquadIsolementRepere): boolean {
   return repere.part_isolee.echantillon_faible

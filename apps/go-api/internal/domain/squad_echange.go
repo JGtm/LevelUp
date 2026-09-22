@@ -96,6 +96,15 @@ type SquadEchangeSessionPoint struct {
 	// MatchsMesures est le nombre de matchs de la session dont le journal des morts est
 	// lisible — le denominateur qui autorise (ou non) a lire le point.
 	MatchsMesures int `json:"matchs_mesures"`
+
+	// DansLeFiltre dit si la soiree est retenue par les filtres COURANTS de la page.
+	//
+	// La frise couvre TOUT L'HISTORIQUE de la composition (decision utilisateur du
+	// 2026-09-22) : sans ce drapeau, la trame du temps serait celle du filtre, et une
+	// soiree isolee s'y lirait sans la population qui lui donne un sens. Les soirees du
+	// filtre se lisent en encre pleine, les autres attenuees — meme grammaire que le
+	// nuage de la portee, ou la session est en surbrillance dans le nuage de la periode.
+	DansLeFiltre bool `json:"dans_le_filtre"`
 }
 
 // SquadEchange est la section « echange » du pageData de la page Escouade.

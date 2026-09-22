@@ -11838,6 +11838,7 @@ export interface components {
         };
         SquadEchangeSessionPoint: {
             couverture: components["schemas"]["Couverture"];
+            dans_le_filtre: boolean;
             /** Format: int64 */
             matchs_mesures: number;
             session_label: string;
@@ -12012,6 +12013,7 @@ export interface components {
             distance_ratio?: number;
             gamertag: string;
             hors_de_vue: boolean;
+            hors_fenetre: boolean;
             match_id: string;
             /** Format: int64 */
             time_ms: number;
@@ -12109,7 +12111,11 @@ export interface components {
             team_mmr_avg: number;
         };
         SquadNuageIsolement: {
+            /** Format: int64 */
+            fenetre_ms: number;
             morts: components["schemas"]["SquadIsolementMort"][] | null;
+            /** Format: int64 */
+            plafond_ms: number;
             /** Format: int64 */
             plancher_echantillon_faible: number;
             reperes: components["schemas"]["SquadIsolementRepere"][] | null;

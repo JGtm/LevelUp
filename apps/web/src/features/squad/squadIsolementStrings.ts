@@ -24,12 +24,21 @@ export function getSquadIsolementText(locale: Locale) {
     radarLine: m('squad.isolement.radar_line'),
     bandOutOfSight: m('squad.isolement.band_out_of_sight'),
     bandNever: m('squad.isolement.band_never'),
+    /** Repère TIRETÉ de la fenêtre de riposte, posé sur l'axe des délais — même grammaire
+     *  que le `windowMark` de l'histogramme. La valeur vient du contrat (`fenetre_ms`). */
+    windowLine: (seconds: number) => m('squad.isolement.window_line', { seconds }),
+    /** Légende de la FORME des points hors fenêtre — un losange PLEIN, dans l'encre du
+     *  joueur (décision du 2026-09-22 : plus aucun point évidé). */
+    legendOutOfWindow: m('squad.isolement.legend_out_of_window'),
     lowSample: m('squad.isolement.low_sample'),
     /** Infobulle d'UNE mort, ligne par ligne : la couverture s'y dit en portée /
      *  proximité du radar. Le retour à la ligne HTML est posé par le composant. */
     tooltipDeathCoverage: (ratio: string) => m('squad.isolement.tooltip_death_coverage', { ratio }),
     tooltipDeathOutOfSight: m('squad.isolement.tooltip_death_out_of_sight'),
     tooltipRiposted: (seconds: string) => m('squad.isolement.tooltip_riposted', { seconds }),
+    /** Le tueur EST tombé, mais après la fenêtre : le délai se dit, le verdict tranche. */
+    tooltipOutOfWindow: (seconds: string) =>
+      m('squad.isolement.tooltip_out_of_window', { seconds }),
     tooltipNever: m('squad.isolement.tooltip_never'),
     tooltipRepereHead: (v: { gamertag: string; n: number }) =>
       m('squad.isolement.tooltip_repere_head', { ...v }),

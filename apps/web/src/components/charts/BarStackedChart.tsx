@@ -37,6 +37,43 @@ import {
 /** Distance (px) entre les étiquettes d'un axe et son titre, quand il en a un. */
 const AXIS_NAME_GAP = 28
 
+/**
+ * LE TITRE D'UN AXE SE MESURE DEPUIS LA LIGNE D'AXE, PAS DEPUIS SES ÉTIQUETTES — et
+ * `grid.containLabel` ne réserve JAMAIS la place d'un titre (il ne connaît que les
+ * étiquettes). Sous un axe horizontal, la bande d'étiquettes fait la hauteur d'une ligne
+ * (~12 px + marge) : un titre à 28 px la dépasse, il s'affiche. À GAUCHE d'un axe de
+ * CATÉGORIES vertical (barres horizontales), la même bande fait la LARGEUR du plus long
+ * libellé — un gamertag, 60 à 90 px : le titre posé à 28 px tombait DANS les étiquettes,
+ * superposé à elles, donc illisible, pendant que la marge gauche réservée pour lui restait
+ * vide (constat utilisateur du 2026-09-22 sur « Appui », dont le titre d'axe « Larbin »
+ * n'apparaissait pas alors que l'option ECharts le portait bien).
+ *
+ * ECharts ne sait pas mesurer ce texte au moment où l'on construit l'option : on ESTIME la
+ * bande à partir du plus long libellé (police 10 px de `getAxisBase`) et l'on pose le titre
+ * `AXIS_NAME_TO_LABEL_GAP` px plus à gauche. La largeur moyenne d'un caractère est prise AU
+ * MILIEU de la fourchette réelle (~5,5 px tout en bas de casse, ~6,2 px en capitales) : la
+ * sous-estimation est absorbée par la respiration, la sur-estimation par `grid.left`, et le
+ * titre reste entre les deux dans les deux sens (±17 px de tolérance pour un libellé de
+ * 15 caractères — la longueur maximale d'un gamertag Xbox).
+ */
+const AXIS_LABEL_CHAR_PX = 5.8
+/** Marge par défaut d'`axisLabel` dans ECharts, entre la ligne d'axe et son étiquette. */
+const AXIS_LABEL_MARGIN_PX = 8
+/** Plafond de la bande estimée : au-delà, ECharts tronque rarement mais la marge suffit. */
+const AXIS_LABEL_BAND_MAX_PX = 160
+/** Respiration entre le bord gauche des étiquettes et le titre de l'axe. */
+const AXIS_NAME_TO_LABEL_GAP = 14
+
+/**
+ * Largeur estimée de la bande d'étiquettes d'un axe de catégories VERTICAL (marge comprise).
+ * Exportée pour le test : c'est elle qui fixe l'écart du titre d'axe.
+ */
+// eslint-disable-next-line react-refresh/only-export-components
+export function categoryLabelBandPx(categories: readonly string[]): number {
+  const plusLong = categories.reduce((m, c) => Math.max(m, c.length), 0)
+  return Math.min(AXIS_LABEL_BAND_MAX_PX, plusLong * AXIS_LABEL_CHAR_PX) + AXIS_LABEL_MARGIN_PX
+}
+
 export interface ChartPointStacked {
   category: string
   components: Record<string, number>
@@ -307,15 +344,21 @@ function buildStackedAxes(
   // Titre d'axe AU MILIEU, à distance des graduations (même choix que
   // Heatmap2DChart.axisNameOpts) : la seule position qui ne chevauche ni la première ni la
   // dernière étiquette. Sans titre, l'axe reste exactement celui d'avant l'ajout de l'option.
-  const axisName = (name: string | undefined) =>
+  const axisName = (name: string | undefined, gap = AXIS_NAME_GAP) =>
     name
       ? {
           name,
           nameLocation: 'middle' as const,
-          nameGap: AXIS_NAME_GAP,
+          nameGap: gap,
           nameTextStyle: { color: tc.axisLabel, fontSize: 10 },
         }
       : {}
+  // L'axe des CATÉGORIES est vertical quand les barres sont horizontales : son titre doit
+  // alors franchir toute la bande des libellés (voir AXIS_LABEL_CHAR_PX).
+  const categoryNameGap =
+    orientation === 'horizontal'
+      ? categoryLabelBandPx(categories) + AXIS_NAME_TO_LABEL_GAP
+      : AXIS_NAME_GAP
   const valueAxis = { ...axis, type: 'value' as const, ...axisName(valueAxisName) }
   const categoryAxis = {
     ...axis,
@@ -337,7 +380,7 @@ function buildStackedAxes(
           },
         }
       : {}),
-    ...axisName(categoryAxisName),
+    ...axisName(categoryAxisName, categoryNameGap),
   }
   return orientation === 'horizontal'
     ? { xAxis: valueAxis, yAxis: categoryAxis }
@@ -451,6 +494,8 @@ export function buildBarStackedOption(
     backgroundColor: CHART_BG,
     // `containLabel` réserve la place des étiquettes, PAS celle d'un titre d'axe : un axe
     // nommé agrandit sa marge (bas pour X, gauche pour Y), sinon le titre sort du cadre.
+    // Cette marge loge le TITRE SEUL — les étiquettes sont réservées en plus par
+    // `containLabel`, et c'est `nameGap` qui fait franchir leur bande au titre.
     grid: {
       top: 20,
       bottom: 'name' in xAxis ? 40 + AXIS_NAME_GAP : 40,

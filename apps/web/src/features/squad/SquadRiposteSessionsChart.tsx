@@ -5,6 +5,9 @@
  * dans un module PUR (`charts/squadRiposteSessionsChart.ts`), le composant ne fait que la
  * brancher sur `ChartCard`. `frameless` : la frise est déjà DANS la carte « Riposte », un
  * second cadre ferait un cadre dans un cadre.
+ *
+ * SANS TITRE (décision utilisateur du 2026-09-22) : la frise EST le bloc « Riposte », et
+ * son bandeau porte déjà ce nom. Un sous-titre sous un titre est un doublon de plus.
  */
 import { useCallback, useMemo } from 'react'
 
@@ -18,13 +21,11 @@ import type { FriseRiposte } from './squadRiposte.logic'
 
 export interface SquadRiposteSessionsChartProps extends SquadRiposteSessionsOpts {
   frise: FriseRiposte
-  title: string
   emptyMessage: string
 }
 
 export function SquadRiposteSessionsChart({
   frise,
-  title,
   emptyMessage,
   ...opts
 }: SquadRiposteSessionsChartProps) {
@@ -38,7 +39,6 @@ export function SquadRiposteSessionsChart({
   )
   return (
     <ChartCard
-      title={title}
       series={series}
       buildOption={buildOption}
       height={320}

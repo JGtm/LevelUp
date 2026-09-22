@@ -64,6 +64,17 @@ export interface SessionBarsSeriesSpec {
   valuesPct: (number | null)[]
   /** Par soirée : bâton en contour (échantillon faible). */
   hollow?: boolean[]
+  /**
+   * Par soirée : bâton ATTÉNUÉ — il est dans la trame du temps mais hors du périmètre que
+   * le lecteur a demandé.
+   *
+   * MÊME GRAMMAIRE QUE LE NUAGE DE LA PORTÉE (lot W, D23-4 du 2026-09-21) : la population
+   * entière est tracée, et ce que le filtre retient est en ENCRE PLEINE. Retirer les
+   * autres reviendrait à ne montrer qu'un point — et un point n'a pas de population où se
+   * situer. Se combine avec `hollow` : la fiabilité et l'appartenance au filtre sont deux
+   * choses distinctes.
+   */
+  dimmed?: boolean[]
   /** Nom de pile — deux séries de même pile occupent la même colonne (verdicts à trous). */
   stack?: string
   usual?: SessionBarsUsual
@@ -127,17 +138,27 @@ function decalageDe(spec: SessionBarsSeriesSpec, ecart: boolean): number {
   return ecart && spec.usual ? spec.usual.valuePct : 0
 }
 
+/**
+ * Opacité d'un bâton hors du périmètre filtré. Assez basse pour que l'encre pleine du
+ * filtre se détache au premier coup d'œil, assez haute pour que la forme de la population
+ * reste lisible — c'est elle qui justifie de tracer ces bâtons.
+ */
+const OPACITE_HORS_FILTRE = 0.3
+
 function barData(spec: SessionBarsSeriesSpec, decalage: number): unknown[] {
   return spec.valuesPct.map((v, i) => {
     if (v == null) return null
     const value = round1(v - decalage)
-    if (!spec.hollow?.[i]) return value
+    const creux = spec.hollow?.[i] === true
+    const attenue = spec.dimmed?.[i] === true
+    if (!creux && !attenue) return value
     // Bâton CREUX : contour de la couleur de la série sur un fond transparent. Le bâton
     // reste à sa place et à sa hauteur — c'est sa FIABILITÉ qui est dite, pas sa valeur.
-    return {
-      value,
-      itemStyle: { color: 'transparent', borderColor: spec.color, borderWidth: 1.5 },
-    }
+    const itemStyle: Record<string, unknown> = creux
+      ? { color: 'transparent', borderColor: spec.color, borderWidth: 1.5 }
+      : {}
+    if (attenue) itemStyle.opacity = OPACITE_HORS_FILTRE
+    return { value, itemStyle }
   })
 }
 

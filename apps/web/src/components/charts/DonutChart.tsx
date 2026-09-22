@@ -65,6 +65,11 @@ export interface DonutChartProps {
    * (`showPercent`) ; `'value'` écrit le nom et le COMPTE BRUT (`valueLabel` du point,
    * sinon `value`) — pour un donut de PARTS EXCLUSIVES dont le centre porte déjà le
    * volume total, où la légende ne doit plus dire qu'une couleur.
+   *
+   * IL VAUT AUSSI EN `compact` (2026-09-22) : `compact` dit OÙ l'étiquette se pose
+   * (dedans, sans connecteur), `arcLabelKind` dit CE QU'ELLE PORTE. Jusqu'ici le compact
+   * écrasait le second et rendait un `%` là où l'appelant demandait un compte — deux
+   * props qui se contredisaient en silence.
    */
   arcLabelKind?: 'percent' | 'value'
   /**
@@ -251,7 +256,20 @@ export function buildDonutOption(
         // arcLabelKind='value' (P11) : le nom PUIS le compte brut sur l'arc — jamais un %,
         // la légende ne dit plus que la couleur (`valueLabel` du point, sinon `value` nu).
         label: compact
-          ? { show: true, position: 'inside', color: tc.text, fontSize: 11, formatter: '{d}%' }
+          ? {
+              show: true,
+              position: 'inside',
+              color: tc.text,
+              fontSize: 11,
+              // `compact` dit OÙ, `arcLabelKind` dit QUOI : en mode `value` l'arc porte le
+              // compte brut même serré, car le centre y porte déjà le taux — répéter un %
+              // sur l'arc écrirait deux fois la même chose et jamais le volume.
+              formatter:
+                arcLabelKind === 'value'
+                  ? (params: { value: number; data?: { valueLabel?: string } }) =>
+                      `${params.data?.valueLabel ?? params.value}`
+                  : '{d}%',
+            }
           : {
               show: showPercent || arcLabelKind === 'value',
               color: tc.text,

@@ -7,8 +7,25 @@
 // L'ISOLEMENT vient de `match_death_context` (lot 7C, AU SYNC) : la MEME lecture, le MEME
 // rayon PAR MATCH que la lecture « isole » de l'onglet Tactique. LA RIPOSTE vient de
 // `analysis/coordination.Ripostes` — la meme mecanique que « qui echange pour qui », mais
-// SANS BORNE DE FENETRE : le nuage montre la distribution du delai, et une distribution
-// coupee net a 5 s ne dirait pas si les ripostes manquees arrivent a 5,2 s ou a 40 s.
+// SANS BORNE DE FENETRE.
+//
+// ─── LA LECTURE SANS BORNE EST UNE MATIERE DE DESSIN, JAMAIS UNE RIPOSTE ───────────────
+//
+// LA REGLE DES 5 s VAUT PARTOUT (decision utilisateur du 2026-09-22). Le nuage CONTINUE de
+// montrer une mort dont le tueur est tombe a 30 s — sinon le lecteur ne saurait pas si les
+// ripostes manquees arrivent a 5,2 s ou a 40 s —, mais il ne la DIT plus « ripostee » :
+// `pointsDuJoueur` compare le delai a `coordination.FenetreEchangeMs` (borne comprise, la
+// MEME regle que `bucketDelai` dans teammates_squad_echange.go) et tranche entre trois
+// etats exclusifs, `Vengee` / `HorsFenetre` / ni l'un ni l'autre. Le taux de la carte
+// « Riposte », le delai median du bloc et `MedianeDelaiMs` du repere ne comptent que les
+// morts vengees DANS la fenetre : une seule definition de la riposte dans toute la page.
+//
+// ET LA MATIERE DE DESSIN A UN PLAFOND (meme decision du 2026-09-22) :
+// `coordination.PlafondRiposteTardiveMs` (60 s, borne comprise). Au-dela, le tueur est mort
+// de sa propre vie — reapparition 5 a 10 s, vie moyenne 20 a 40 s en arene — et son delai
+// ne dit plus rien de la mort initiale : le point redevient MUET (ni etat, ni delai) et se
+// pose dans la bande « jamais ripostee ». Le bloc publie `plafond_ms` a cote de
+// `fenetre_ms` : le client ne code jamais 60 000 en dur.
 //
 // Ce fichier ne fait que JOINDRE ces deux lectures sur la cle exacte
 // (match_id, victim_xuid, time_ms) et projeter. Il ne calcule aucun taux : `PartIsolee` et
@@ -87,6 +104,8 @@ func (s *TeammatesService) buildSquadIsolementNuage(
 		Morts:                     []domain.SquadIsolementMort{},
 		Reperes:                   []domain.SquadIsolementRepere{},
 		PlancherEchantillonFaible: coordination.SeuilEchantillonFaible,
+		FenetreMs:                 coordination.FenetreEchangeMs,
+		PlafondMs:                 coordination.PlafondRiposteTardiveMs,
 	}
 	for _, xuid := range xuidsOrdered {
 		morts := mortsParJoueur[xuid]
@@ -142,11 +161,20 @@ func indexerRipostes(morts []domain.MortSuivie) map[cleRiposte]domain.MortSuivie
 	return out
 }
 
-// pointsDuJoueur projette les morts d'UN joueur en petits points du nuage.
+// pointsDuJoueur projette les morts d'UN joueur en petits points du nuage, et decide de
+// l'ETAT de chacun — c'est LE point de decision des trois etats du contrat.
+//
+//	delai <= FenetreEchangeMs        Vengee : une riposte, la meme que la carte
+//	                                 « Riposte » (borne COMPRISE, cf. bucketDelai) ;
+//	<= PlafondRiposteTardiveMs       HorsFenetre : le delai est publie pour que le point
+//	                                 reste VISIBLE, mais ce n'est pas une riposte ;
+//	au-dela du plafond, ou aucune    ni l'un ni l'autre, aucun delai.
+//	riposte connue
 //
 // Une mort SANS riposte connue (absente du journal des kills : mort non revendiquee, ou
-// match dont le journal ne porte pas cet instant) n'est PAS vengee et n'a pas de delai —
-// elle va dans la bande haute, jamais a un delai invente.
+// match dont le journal ne porte pas cet instant) n'a pas de delai — elle va dans la bande
+// haute, jamais a un delai invente. Une mort dont le tueur n'est tombe qu'APRES le plafond
+// y va aussi, et pour la meme raison : personne n'a riposte.
 func pointsDuJoueur(
 	morts []domain.MortContexte, xuid, gamertag string,
 	rayon map[string]float64, ripostes map[cleRiposte]domain.MortSuivie,
@@ -164,8 +192,24 @@ func pointsDuJoueur(
 		}
 		if suivie, ok := ripostes[cleRiposte{matchID: m.MatchID, xuid: xuid, timeMs: m.TimeMs}]; ok && suivie.Vengee {
 			delai := suivie.DelaiMs
-			p.Vengee = true
-			p.DelaiMs = &delai
+			// `<=` DEUX FOIS : les deux bornes sont INCLUSES, comme dans
+			// coordination.chercheVengeur (`delai > fenetre` sort) et comme dans
+			// bucketDelai — une riposte a 5 000 ms exactement EST une riposte, et une
+			// chute a 60 000 ms exactement est encore « hors fenetre ».
+			switch {
+			case delai <= coordination.FenetreEchangeMs:
+				p.DelaiMs = &delai
+				p.Vengee = true
+			case delai <= coordination.PlafondRiposteTardiveMs:
+				p.DelaiMs = &delai
+				p.HorsFenetre = true
+			default:
+				// AU-DELA DU PLAFOND, LE POINT REDEVIENT MUET (decision utilisateur du
+				// 2026-09-22) : ni etat, ni delai. Le tueur est mort de sa propre vie, et
+				// publier son delai laisserait le nuage suggerer un lien de cause a effet
+				// que le jeu ne porte plus. La mort reste dessinee — dans la bande
+				// « jamais ripostee », a sa place.
+			}
 		}
 		out = append(out, p)
 	}
@@ -205,8 +249,12 @@ func medianeRatio(points []domain.SquadIsolementMort) *float64 {
 	return &m
 }
 
-// medianeDelai rend la mediane du delai des morts VENGEES. nil quand aucune ne l'est : une
-// mediane a zero placerait le repere sur l'axe, ce qui se lirait « vengeance immediate ».
+// medianeDelai rend la mediane du delai des morts VENGEES — donc des seules ripostes DANS
+// LA FENETRE (`p.Vengee` ne vaut plus vrai hors fenetre, cf. pointsDuJoueur) : la meme
+// population que `delaiMedianDesEchanges` du bloc Riposte. Une mort `HorsFenetre` porte un
+// delai mais n'entre pas ici ; l'inclure tirerait le repere vers une population que le taux
+// ne compte pas. nil quand aucune mort n'est vengee : une mediane a zero placerait le
+// repere sur l'axe, ce qui se lirait « riposte immediate ».
 func medianeDelai(points []domain.SquadIsolementMort) *int64 {
 	v := make([]int64, 0, len(points))
 	for _, p := range points {

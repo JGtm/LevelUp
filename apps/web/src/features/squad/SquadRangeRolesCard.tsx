@@ -54,8 +54,13 @@ import {
 } from './squadRangeRoles.logic'
 import { getSquadRangeRolesText } from './squadRangeRolesStrings'
 
-/** Opacité des points quand la lecture passe par la tendance (grandeur hauteur, E1). */
-const OPACITE_POINTS_HAUTEUR = 0.5
+// ENCRE PLEINE SUR LES DEUX GRANDEURS (2026-09-22, retour utilisateur « rendu terne ») : les
+// points de la grandeur hauteur portaient une opacité de 0,5 pour laisser les courbes de
+// tendance passer devant. Cette atténuation ne codait AUCUNE information — deux points de même
+// nature s'affichaient plus pâles ici que sur la carte voisine, à un mètre d'écart. La
+// lecture qu'elle cherchait à privilégier — la tendance — est tenue autrement : la courbe passe
+// elle aussi en encre pleine et porte le gamertag à son bout. Supprimée ici et dans l'option (la
+// prop `opacitePoints` n'avait pas d'autre appelant).
 
 export interface SquadRangeRolesCardProps {
   bloc: MatchRangeBlock
@@ -78,8 +83,8 @@ export function SquadRangeRolesCard({
   const t = getSquadRangeRolesText(locale, grandeur)
   // Préfixe des `data-testid` : deux cartes cohabitent sur la page, leurs repères aussi.
   const tid = `squad-${grandeur}`
-  // La lecture de E1 tient dans la tendance (4 joueurs x 20 matchs = 80 points) : les
-  // points s'effacent derrière les courbes, et chaque courbe porte son gamertag au bout.
+  // La lecture de E1 tient dans la tendance (4 joueurs x 20 matchs = 80 points) : chaque
+  // courbe porte son gamertag au bout. Les points, eux, restent en encre pleine (2026-09-22).
   const hauteur = grandeur === 'hauteur'
   const numLoc = intlLocale(locale)
 
@@ -135,7 +140,6 @@ export function SquadRangeRolesCard({
         },
         fmtM: (v: number) => numFmt.format(v),
         etiquetteBout: hauteur,
-        opacitePoints: hauteur ? OPACITE_POINTS_HAUTEUR : undefined,
       }),
     [series, categories, seuils, couleurs, mesuresMin, mesuresMax, t, numFmt, hauteur],
   )

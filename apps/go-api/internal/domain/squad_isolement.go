@@ -12,8 +12,24 @@ package domain
 //     DU MATCH (`DistanceRatio` = PlusProcheM / rayon ; 1,0 = « a la portee du radar »).
 //     Absente (nil) quand aucun coequipier n'est visible : le point va dans la bande
 //     « hors de vue » de l'ecran, jamais a une distance inventee.
-//   - Y : le delai avant vengeance (`DelaiMs`, riposte SANS borne de fenetre —
-//     coordination.Ripostes). Une mort jamais vengee n'a pas de delai : bande haute.
+//   - Y : le delai avant que le tueur tombe (`DelaiMs`). LA LECTURE SANS BORNE
+//     (coordination.Ripostes) N'EST QU'UNE MATIERE DE DESSIN, JAMAIS UNE RIPOSTE
+//     (decision utilisateur du 2026-09-22) : la REGLE DES 5 s vaut partout, et le point
+//     porte son etat, pas le client. Une mort jamais suivie n'a pas de delai : bande haute.
+//
+// TROIS ETATS EXCLUSIFS PAR POINT, et c'est le serveur qui tranche :
+//
+//	Vengee                  le tueur est tombe sous un coequipier DANS la fenetre
+//	                        (DelaiMs <= SquadNuageIsolement.FenetreMs, borne comprise) —
+//	                        la MEME riposte que la carte « Riposte » et le taux d'echange ;
+//	HorsFenetre             le tueur est tombe APRES la fenetre mais AVANT le plafond
+//	                        (DelaiMs <= SquadNuageIsolement.PlafondMs, borne comprise) : le
+//	                        delai est publie (le nuage continue de MONTRER ces morts) mais
+//	                        ce n'est PAS une riposte — Vengee reste faux ;
+//	ni l'un ni l'autre      aucune riposte connue, OU une chute du tueur au-dela du plafond
+//	                        (decision utilisateur du 2026-09-22 : passe 60 s le tueur est
+//	                        mort de sa propre vie, le point ne dit plus rien) : pas de
+//	                        delai, bande « jamais ripostee ».
 //
 // Le GROS point d'un joueur (SquadIsolementRepere) est la mediane X x la mediane Y de ses
 // morts, sa taille dit combien de morts, et son infobulle porte encore la part isolee et le
@@ -34,9 +50,21 @@ type SquadIsolementMort struct {
 	// HorsDeVue : aucun coequipier visible a l'instant de la mort (DistanceRatio absent).
 	HorsDeVue bool `json:"hors_de_vue"`
 
-	// Vengee : un coequipier a abattu le tueur apres cette mort (sans borne de temps).
+	// Vengee : un coequipier a abattu le tueur DANS LA FENETRE DE RIPOSTE
+	// (SquadNuageIsolement.FenetreMs, borne comprise). C'est la MEME definition que le
+	// taux de la carte « Riposte » et que le bloc Riposte du match : jamais une riposte
+	// sans borne.
 	Vengee bool `json:"vengee"`
-	// DelaiMs : le delai avant cette vengeance. Absent quand la mort n'est pas vengee.
+	// HorsFenetre : un coequipier a abattu le tueur APRES la fenetre mais AVANT le plafond
+	// (SquadNuageIsolement.PlafondMs, borne comprise). Le delai est publie pour que le
+	// nuage montre encore ces morts, et `Vengee` reste FAUX : ce n'est pas une riposte.
+	// Exclusif de `Vengee`. Au-dela du plafond, ce champ retombe a faux : la chute du
+	// tueur n'a plus de lien avec la mort initiale.
+	HorsFenetre bool `json:"hors_fenetre"`
+	// DelaiMs : le delai avant que le tueur tombe. Present quand `Vengee` OU `HorsFenetre`
+	// est vrai ; absent quand aucune riposte n'est connue, et absent AUSSI quand la chute
+	// du tueur depasse le plafond — publier ce delai laisserait croire a un lien de cause
+	// a effet que le jeu ne porte plus.
 	DelaiMs *int64 `json:"delai_ms,omitempty"`
 }
 
@@ -51,7 +79,10 @@ type SquadIsolementRepere struct {
 	// MedianeDistanceRatio : mediane de DistanceRatio sur les morts qui en portent un.
 	// Absente si aucune mort du joueur n'a de coequipier visible.
 	MedianeDistanceRatio *float64 `json:"mediane_distance_ratio,omitempty"`
-	// MedianeDelaiMs : mediane du delai des morts VENGEES. Absente si aucune ne l'est.
+	// MedianeDelaiMs : mediane du delai des SEULES morts VENGEES — celles dont le tueur
+	// est tombe DANS la fenetre. Les morts `HorsFenetre` en sont exclues (leur delai
+	// tirerait la mediane vers une population que le taux de riposte ne compte pas).
+	// Absente si aucune mort du joueur n'est vengee.
 	MedianeDelaiMs *int64 `json:"mediane_delai_ms,omitempty"`
 
 	// PartIsolee : le taux d'isolement du joueur sur le perimetre (analysis/coordination
@@ -71,6 +102,17 @@ type SquadIsolementRepere struct {
 type SquadNuageIsolement struct {
 	Morts   []SquadIsolementMort   `json:"morts"`
 	Reperes []SquadIsolementRepere `json:"reperes"`
+
+	// FenetreMs republie coordination.FenetreEchangeMs : la fenetre de riposte, bornes
+	// comprises. Publiee pour que le client TRACE le repere de fenetre sans coder 5 000 en
+	// dur — une regle du jeu ne se recopie pas de l'autre cote du contrat.
+	FenetreMs int64 `json:"fenetre_ms"`
+
+	// PlafondMs republie coordination.PlafondRiposteTardiveMs : le delai au-dela duquel
+	// aucun point ne porte plus d'etat de riposte (ni `Vengee`, ni `HorsFenetre`, ni
+	// `DelaiMs`). C'est AUSSI le haut de la zone mesuree de l'axe des delais : le client
+	// ne code jamais 60 000 en dur, il lit cette valeur.
+	PlafondMs int64 `json:"plafond_ms"`
 
 	// PlancherEchantillonFaible republie coordination.SeuilEchantillonFaible : le seuil
 	// sous lequel PartIsolee.EchantillonFaible / Couverture.EchantillonFaible passe a

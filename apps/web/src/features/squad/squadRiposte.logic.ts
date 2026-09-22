@@ -9,13 +9,12 @@
  * COMMENT. Les règles produit qui vivent ici sont celles qu'un test doit pouvoir mettre en
  * défaut sans monter un arbre React :
  *
- *   1. l'écart à l'habituel SE TAIT quand le périmètre couvre tout l'historique ;
+ *   1. le donut ne dit QUE des parts exclusives — l'écart à l'habituel se lit sur la frise ;
  *   2. les badges « le plus / le moins couvert » n'apparaissent qu'à ÉCART RÉEL ;
  *   3. un échantillon faible s'affiche AVEC sa réserve et ne classe personne ;
  *   4. la frise rend UNE barre par soirée — une seule soirée est déjà un graphe.
  */
 import type { SquadEchange, SquadEchangeBucket, SquadEchangeCell } from '@/lib/api/types'
-import { isFullHistoryScope } from '@/lib/baseline'
 import type { ChartSeries } from '@/components/charts/ChartCard'
 import type { ChartPointHeatmap } from '@/components/charts/Heatmap2DChart'
 import type { ChartPointHistogram } from '@/components/charts/HistogramChart'
@@ -38,47 +37,19 @@ export const ECART_BADGE_RIPOSTES = 3
 /** Fenêtre de la moyenne glissante de la frise : trois soirées. */
 export const FENETRE_TENDANCE = 3
 
-/** L'écart d'un périmètre à son habituel — la grandeur commune à la phrase et au chiffre. */
-export interface EcartRiposte {
-  /** Écart brut en unité 0..1 (taux du périmètre moins taux de la référence). */
-  ecart: number
-  /** Le même, arrondi en POINTS entiers signés — la grandeur affichée. */
-  ecartPoints: number
-  /**
-   * Vrai quand le périmètre couvre tout l'historique : l'écart est alors nul par
-   * construction et NE DOIT PAS s'afficher (« ±0 pts vs habituel » ferait croire à
-   * une mesure là où il n'y a qu'une tautologie).
-   */
-  pleinHistorique: boolean
-}
-
-/**
- * ecartRiposte calcule l'écart au taux habituel ET dit s'il doit se taire.
- *
- * IL VIT ICI ET PAS DANS LE COMPOSANT (correction W3, revue du 2026-09-06) : la
- * soustraction, son arrondi et la condition de masquage étaient inlinés, hors de portée de
- * tout test — supprimer le masquage ou inverser le signe passait sans qu'aucune assertion
- * ne bouge.
- */
-export function ecartRiposte(echange: SquadEchange): EcartRiposte {
-  const ecart = echange.couverture.taux - echange.habituel.taux
-  return {
-    ecart,
-    ecartPoints: Math.round(ecart * 100),
-    pleinHistorique: isFullHistoryScope(echange.matchs_total, echange.matchs_habituel),
-  }
-}
-
-/** Le chiffre d'appel de la carte « Riposte » et les grandeurs de sa phrase de lecteur. */
+/** Le chiffre d'appel du bloc « Morts ripostées » et le repère de la frise. */
 export interface AppelRiposte {
   /** Taux de riposte du camp, unité 0..1. */
   taux: number
-  /** Écart à l'habituel et son arrondi en points — voir `ecartRiposte`. */
-  ecart: number
-  ecartPoints: number
-  /** Vrai quand l'écart doit se taire (périmètre = tout l'historique). */
-  pleinHistorique: boolean
-  /** Taux habituel, unité 0..1 — le terme de comparaison écrit à côté de l'écart. */
+  /**
+   * Taux habituel, unité 0..1 — le repère tireté de la frise.
+   *
+   * L'ÉCART À CE REPÈRE N'EST PLUS CALCULÉ ICI (décision utilisateur du 2026-09-22) : la
+   * phrase « -1 pts sous l'habituel » qui le rendait sous le donut a été supprimée, et
+   * avec elle `ecartRiposte` et ses trois champs (`ecart`, `ecartPoints`,
+   * `pleinHistorique`) — du code mort sinon. La comparaison à l'habituel se LIT désormais
+   * sur la frise, soirée par soirée, contre sa ligne tiretée.
+   */
   habituel: number
   /** Délai médian des ripostes survenues, en SECONDES. `null` si aucune riposte mesurée. */
   delaiMedianS: number | null
@@ -92,19 +63,15 @@ export interface AppelRiposte {
 
 /**
  * appelRiposte assemble le chiffre d'appel. Aucun quotient nouveau n'est inventé : le taux
- * et son brut viennent de `couverture` (mesurés côté Go), l'écart de `ecartRiposte`, et les
- * morts sans réponse sont la SOUSTRACTION du brut au dénominateur — pas un taux.
+ * et son brut viennent de `couverture` (mesurés côté Go), et les morts sans réponse sont la
+ * SOUSTRACTION du brut au dénominateur — pas un taux.
  */
 export function appelRiposte(echange: SquadEchange): AppelRiposte {
-  const { ecart, ecartPoints, pleinHistorique } = ecartRiposte(echange)
   const mortsEquipe = echange.couverture.n
   const ripostes = echange.couverture.brut
   const medianMs = echange.delai_median_ms ?? 0
   return {
     taux: echange.couverture.taux,
-    ecart,
-    ecartPoints,
-    pleinHistorique,
     habituel: echange.habituel.taux,
     delaiMedianS: medianMs > 0 ? medianMs / 1000 : null,
     ripostes,
@@ -230,6 +197,39 @@ export function delaisSeries(echange: SquadEchange): ChartSeries<ChartPointHisto
   return [{ key: 'delais', datapoints }]
 }
 
+/**
+ * positionMediane rend la position du délai MÉDIAN sur l'axe des catégories de
+ * l'histogramme — une position FRACTIONNAIRE, jamais une frontière de barre.
+ *
+ * POURQUOI FRACTIONNAIRE. Les intervalles servis ne font pas tous la même largeur (1 s
+ * jusqu'à 5 s, puis 5-7 s, puis « 7 s et plus » ouvert). Une médiane de 2,1 s tombe DANS
+ * la troisième barre, au dixième de sa largeur : l'arrondir à la frontière 2 s ou 3 s
+ * déplacerait la mesure d'une demi-barre et la ferait mentir à la lecture.
+ *
+ * La catégorie d'indice `i` occupe l'axe de `i - 0,5` à `i + 0,5` : la position vaut donc
+ * `i - 0,5 + fraction`, où `fraction` est la place du délai dans SON intervalle. Un
+ * intervalle OUVERT n'a pas de largeur connue — la position y vaut son centre (`i`),
+ * seule valeur qui n'invente aucune borne.
+ *
+ * Rend `null` quand il n'y a pas de médiane mesurée, ou qu'aucun intervalle ne la
+ * contient (le repère se tait plutôt que de se poser au hasard).
+ */
+export function positionMediane(echange: SquadEchange): number | null {
+  const medianMs = echange.delai_median_ms ?? 0
+  if (medianMs <= 0) return null
+  const buckets = echange.delais ?? []
+  for (let i = 0; i < buckets.length; i++) {
+    const b = buckets[i]
+    if (medianMs < b.debut_ms) continue
+    if (b.ouvert) return i
+    if (medianMs >= b.fin_ms) continue
+    const largeur = b.fin_ms - b.debut_ms
+    if (largeur <= 0) return i
+    return i - 0.5 + (medianMs - b.debut_ms) / largeur
+  }
+  return null
+}
+
 /** Comptes de la ligne narrative des délais : dans la fenêtre, hors fenêtre, total. */
 export interface ResumeDelais {
   dansLaFenetre: number
@@ -262,6 +262,12 @@ export interface SoireeRiposte {
   /** Vrai quand la soirée est au-dessus ou à l'habituel : la couleur porte ce verdict. */
   auDessus: boolean
   echantillonFaible: boolean
+  /**
+   * Vrai quand les filtres COURANTS de la page retiennent cette soirée : elle se peint en
+   * encre pleine, les autres atténuées. Servi par le serveur (`dans_le_filtre`) — le
+   * client ne redécide pas d'un périmètre.
+   */
+  dansLeFiltre: boolean
 }
 
 /** Tout ce que la frise peint : les soirées, la tendance glissante, et l'habituel. */
@@ -284,6 +290,11 @@ export interface FriseRiposte {
  * définitions sous trois soirées — et filtrer sur UNE soirée est l'usage nominal de la
  * page : le cas le plus fréquent rendait donc le pire objet. Une soirée = un bâton, lu face
  * à la règle d'habituel ; un bâton unique est déjà un graphe.
+ *
+ * LE PÉRIMÈTRE EST L'HISTORIQUE (décision utilisateur du 2026-09-22). `taux_par_session`
+ * porte désormais TOUTES les soirées de la composition, chacune marquée `dans_le_filtre` :
+ * la tendance et le repère d'habituel se calculent donc sur toute la population, et la
+ * surbrillance dit ce que le filtre retient. Ce module ne filtre RIEN — il propage.
  */
 export function friseRiposte(echange: SquadEchange): FriseRiposte {
   const habituelPct = echange.habituel.taux * 100
@@ -293,6 +304,7 @@ export function friseRiposte(echange: SquadEchange): FriseRiposte {
     morts: p.couverture.n,
     auDessus: p.couverture.taux >= echange.habituel.taux,
     echantillonFaible: p.couverture.echantillon_faible,
+    dansLeFiltre: p.dans_le_filtre,
   }))
   return {
     soirees,

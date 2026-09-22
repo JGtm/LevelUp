@@ -215,4 +215,22 @@ describe('SquadRangeRolesCard — grandeur hauteur', () => {
     const points = series[0].data as Array<{ itemStyle: { opacity?: number } }>
     expect(points[0].itemStyle.opacity).toBe(1)
   })
+
+  // ENCRE PLEINE SUR LES DEUX GRANDEURS (2026-09-22, retour utilisateur « rendu terne ») : la
+  // hauteur délavait ses points (0,5) et sa tendance (0,7). Rien n'était codé par là — la
+  // forme (point creux) dit l'échantillon faible, l'étiquette de bout dit le joueur.
+  it('grandeur HAUTEUR : points ET tendance en encre pleine', async () => {
+    const profils = Array.from({ length: 5 }, (_, i) => profilDz(i, [1, -1]))
+    renderWithProviders(
+      <SquadRangeRolesCard bloc={bloc(profils)} roster={roster} grandeur="hauteur" />,
+    )
+    const series = (await option()).series as Array<Record<string, unknown>>
+    const points = series[0].data as Array<{ itemStyle: { opacity?: number } }>
+    expect(points.every((p) => p.itemStyle.opacity === 1)).toBe(true)
+    const lignes = series.filter((s) => s.type === 'line')
+    expect(lignes.length).toBeGreaterThan(0)
+    expect(
+      lignes.every((s) => (s.lineStyle as { opacity?: number } | undefined)?.opacity === 1),
+    ).toBe(true)
+  })
 })

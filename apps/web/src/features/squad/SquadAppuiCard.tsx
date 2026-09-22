@@ -117,8 +117,17 @@ export function SquadAppuiCard({ block, roster }: SquadAppuiCardProps) {
     <SectionCard
       title={labels.title}
       titleAdornment={titleWithInfo(labels.description)}
+      className="h-full"
     >
-      <div className="space-y-2 px-3 py-2" data-testid="squad-appui">
+      {/* GRAPHE CENTRÉ EN HAUTEUR DANS SON BLOC (2026-09-22) : la carte partage sa rangée
+          avec « Frags non ripostés », plus haute. La chaîne est celle du lot Explorer —
+          `h-full` sur la carte, corps `flex flex-1 flex-col justify-center` — et AUCUNE
+          hauteur minimale ajoutée : le graphe garde sa taille, c'est le vide qui se
+          répartit au-dessus et en dessous au lieu de tomber entièrement en bas. */}
+      <div
+        className="flex flex-1 flex-col justify-center px-3 py-2"
+        data-testid="squad-appui"
+      >
         <BarStackedChart
           series={series}
           height={320}

@@ -25,8 +25,8 @@ const OPTS = {
 function friseDe(over: Partial<FriseRiposte> = {}): FriseRiposte {
   return {
     soirees: [
-      { label: '12/09', tauxPct: 24.8, morts: 84, auDessus: true, echantillonFaible: false },
-      { label: '14/09', tauxPct: 17.2, morts: 61, auDessus: false, echantillonFaible: false },
+      { label: '12/09', tauxPct: 24.8, morts: 84, auDessus: true, echantillonFaible: false, dansLeFiltre: true },
+      { label: '14/09', tauxPct: 17.2, morts: 61, auDessus: false, echantillonFaible: false, dansLeFiltre: true },
     ],
     tendancePct: [24.8, 21],
     habituelPct: 22.1,
@@ -90,7 +90,9 @@ describe('buildSquadRiposteSessionsOption', () => {
 
   it('UNE SEULE SOIRÉE rend UN SEUL bâton — c’est déjà un graphe', () => {
     const une = friseDe({
-      soirees: [{ label: '20/09', tauxPct: 23.4, morts: 121, auDessus: true, echantillonFaible: false }],
+      soirees: [
+        { label: '20/09', tauxPct: 23.4, morts: 121, auDessus: true, echantillonFaible: false, dansLeFiltre: true },
+      ],
       tendancePct: [23.4],
     })
     const series = option(une).series as Record<string, unknown>[]
@@ -100,5 +102,37 @@ describe('buildSquadRiposteSessionsOption', () => {
 
   it('rend une option VIDE sans soirée : pas d’axes fantômes', () => {
     expect(option(friseDe({ soirees: [], tendancePct: [] })).series).toBeUndefined()
+  })
+
+  // ─── LA SURBRILLANCE DU FILTRE (décision utilisateur du 2026-09-22) ──────────
+  //
+  // La frise montre TOUTES les soirées de la composition. Celles du filtre courant sont en
+  // encre pleine, les autres ATTÉNUÉES — sans quoi filtrer sur une soirée, l'usage nominal
+  // de la page, ne rendrait qu'un bâton sans population où le situer.
+
+  it('ATTÉNUE les soirées HORS filtre, et laisse celles du filtre en encre pleine', () => {
+    const melange = friseDe({
+      soirees: [
+        { label: '12/09', tauxPct: 24.8, morts: 84, auDessus: true, echantillonFaible: false, dansLeFiltre: false },
+        { label: '14/09', tauxPct: 17.2, morts: 61, auDessus: false, echantillonFaible: false, dansLeFiltre: true },
+      ],
+    })
+    const series = option(melange).series as Record<string, unknown>[]
+    // La soirée hors filtre (au-dessus de l'habituel) porte une opacité < 1 ; la soirée du
+    // filtre (en dessous) reste une valeur nue, sans `itemStyle`.
+    const above = (series.find((s) => s.name === OPTS.aboveLabel)?.data ?? []) as unknown[]
+    const attenuee = above[0] as { value: number; itemStyle: { opacity?: number } }
+    expect(attenuee.value).toBeCloseTo(24.8, 6)
+    expect(attenuee.itemStyle.opacity).toBeGreaterThan(0)
+    expect(attenuee.itemStyle.opacity).toBeLessThan(1)
+
+    const below = (series.find((s) => s.name === OPTS.belowLabel)?.data ?? []) as unknown[]
+    expect(below[1]).toBe(17.2)
+  })
+
+  it('ne pose AUCUNE atténuation quand toutes les soirées sont dans le filtre', () => {
+    const series = option(friseDe()).series as Record<string, unknown>[]
+    const above = (series.find((s) => s.name === OPTS.aboveLabel)?.data ?? []) as unknown[]
+    expect(above[0]).toBe(24.8)
   })
 })

@@ -19,7 +19,6 @@ import { describe, expect, it } from 'vitest'
 import { squadManifest } from '@/lib/i18n/generated/squad'
 
 import carteSource from './SquadRiposteCard?raw'
-import delaiSource from './SquadRiposteDelaiPanel?raw'
 import matriceSource from './SquadRiposteMatricePanel?raw'
 import pageSource from './SquadSynergiesPage?raw'
 import accesseurSource from './squadRiposteStrings?raw'
@@ -69,7 +68,7 @@ describe('manifest squad.riposte.*', () => {
   })
 
   it('n’expose aucun accesseur que RIEN N’AFFICHE', () => {
-    const composants = [carteSource, delaiSource, matriceSource, pageSource].join('\n')
+    const composants = [carteSource, matriceSource, pageSource].join('\n')
     const accesseurs = [...accesseurSource.matchAll(/^\s{4}([A-Za-z][A-Za-z0-9]*):/gm)].map(
       (m) => m[1],
     )

@@ -80,11 +80,15 @@ describe('buildHistogramOption', () => {
     expect(opt.yAxis?.name).toBe('Matchs')
   })
 
-  it('par défaut yAxisLabel = "Matchs"', () => {
+  // Le builder est PUR : il n'a pas de locale, donc aucun libellé par défaut (ce serait un
+  // littéral FR, cf. chartEmptyStateCanonical.guard.test.ts). Le défaut bilingue
+  // (« Matchs » / « Matches », common.charts.axis_matches) est résolu par le composant,
+  // qui lit la locale du shell — couvert par HistogramChart.locale.test.tsx.
+  it('sans yAxisLabel le builder ne pose aucun libellé (le composant le fournit)', () => {
     const opt = buildHistogramOption(
       makeSeries([{ binStart: 0, binEnd: 1, count: 1 }]),
     ) as OptionShape
-    expect(opt.yAxis?.name).toBe('Matchs')
+    expect(opt.yAxis?.name).toBe('')
   })
 })
 
@@ -200,5 +204,58 @@ describe('buildHistogramOption — showValues et windowMark', () => {
       serie(buildHistogramOption(makeSeries(troisBins), { windowMark: { binIndex: 9, label: 'x' } }))
         .markLine,
     ).toBeUndefined()
+  })
+})
+
+// ─── SEUILS FRACTIONNAIRES, SEULS ET MÊLÉS À LA BORNE DE FENÊTRE ─────────────
+//
+// `thresholds.at` est une position en INDICE DE CATÉGORIE, fractionnaire : un repère de
+// médiane tombe DANS une barre, à sa fraction, jamais sur une frontière. ECharts n'accepte
+// qu'un `markLine` par série : quand la borne de fenêtre et les seuils coexistent (la carte
+// « Riposte » depuis le 2026-09-22), leurs données sont RÉUNIES — et le formatter doit
+// rendre le nom de chaque seuil sans effacer le texte de la borne.
+
+describe('buildHistogramOption — thresholds', () => {
+  function markLine(opt: unknown) {
+    return (
+      opt as {
+        series: Array<{
+          markLine?: {
+            data: Array<{ xAxis: number; name?: string }>
+            label: { formatter: string | ((p: { name?: string }) => string) }
+          }
+        }>
+      }
+    ).series[0].markLine
+  }
+
+  it('pose un seuil à sa position FRACTIONNAIRE, sans l’arrondir à une frontière', () => {
+    const ml = markLine(
+      buildHistogramOption(makeSeries(troisBins), {
+        thresholds: [{ at: 1.6, label: 'médiane 2,1 s' }],
+      }),
+    )
+    expect(ml?.data).toEqual([{ xAxis: 1.6, name: 'médiane 2,1 s' }])
+  })
+
+  it('RÉUNIT la borne de fenêtre et les seuils sur une seule markLine', () => {
+    const ml = markLine(
+      buildHistogramOption(makeSeries(troisBins), {
+        windowMark: { binIndex: 2, label: 'fenêtre 5 s' },
+        thresholds: [{ at: 1.6, label: 'médiane 2,1 s' }],
+      }),
+    )
+    expect(ml?.data).toEqual([
+      { xAxis: 1.5 },
+      { xAxis: 1.6, name: 'médiane 2,1 s' },
+    ])
+    // Le formatter rend le NOM du seuil quand il existe, et le texte de la fenêtre sinon.
+    const fmt = ml?.label.formatter as (p: { name?: string }) => string
+    expect(fmt({ name: 'médiane 2,1 s' })).toBe('médiane 2,1 s')
+    expect(fmt({})).toBe('fenêtre 5 s')
+  })
+
+  it('ne pose AUCUNE markLine sans borne ni seuil', () => {
+    expect(markLine(buildHistogramOption(makeSeries(troisBins), { thresholds: [] }))).toBeUndefined()
   })
 })

@@ -13,7 +13,12 @@
  *      l'habituel (`success`) ou en dessous (`warning`). Les deux verdicts sont DEUX SÉRIES
  *      EMPILÉES À TROUS — c'est ce qui leur donne une entrée de légende chacun, là qu'une
  *      colorisation par `itemStyle` n'aurait nommée nulle part.
- *   2. LE VOLUME DE CHAQUE SOIRÉE (morts mesurées) est un second rang d'étiquettes sous
+ *   2. LA FRISE COUVRE TOUT L'HISTORIQUE des soirées, et les soirées du FILTRE COURANT y
+ *      sont en ENCRE PLEINE, les autres atténuées (`dimmed`, décision utilisateur du
+ *      2026-09-22). C'est la grammaire du nuage de la portée (lot W, D23-4) : la
+ *      population, et dedans ce qu'on regarde. Le périmètre est tranché par le SERVEUR
+ *      (`dans_le_filtre`) — ce module ne fait que le peindre.
+ *   3. LE VOLUME DE CHAQUE SOIRÉE (morts mesurées) est un second rang d'étiquettes sous
  *      l'axe des dates, pas un second graphe : c'est le dénominateur, il n'a pas d'échelle
  *      propre. La courbe que cette frise remplace n'en montrait aucun — une soirée à
  *      3 morts mesurées s'y lisait comme une soirée à 80.
@@ -63,6 +68,7 @@ export function buildSquadRiposteSessionsOption(
       color: above,
       stack: 'soiree',
       valuesPct: frise.soirees.map((s) => (s.auDessus ? s.tauxPct : null)),
+      dimmed: frise.soirees.map((s) => !s.dansLeFiltre),
       usual: { valuePct: frise.habituelPct, label: opts.usualLabel },
       trend: {
         valuesPct: frise.tendancePct,
@@ -75,6 +81,7 @@ export function buildSquadRiposteSessionsOption(
       color: below,
       stack: 'soiree',
       valuesPct: frise.soirees.map((s) => (s.auDessus ? null : s.tauxPct)),
+      dimmed: frise.soirees.map((s) => !s.dansLeFiltre),
     },
   ]
 

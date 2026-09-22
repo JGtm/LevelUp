@@ -143,6 +143,67 @@ func TestBuildSquadEchange_TauxParSession(t *testing.T) {
 	if got.TauxParSession[0].MatchsMesures != 1 {
 		t.Errorf("matchs mesures du 1er point = %d, attendu 1", got.TauxParSession[0].MatchsMesures)
 	}
+	// Ici filtre == historique : les deux soirees sont dans le filtre.
+	for i, p := range got.TauxParSession {
+		if !p.DansLeFiltre {
+			t.Errorf("point %d (%s) hors filtre alors que filtre == historique", i, p.SessionLabel)
+		}
+	}
+}
+
+// TestBuildSquadEchange_TauxParSessionCouvreToutLHistorique cadenasse la decision
+// utilisateur du 2026-09-22 : la frise montre TOUTES les soirees de la composition, pas
+// seulement celles du filtre, et chaque point dit s'il est dans le filtre courant.
+//
+// Avant ce lot, filtrer sur une soiree — l'usage nominal de la page — rendait UN baton
+// sans aucune population autour de lui.
+func TestBuildSquadEchange_TauxParSessionCouvreToutLHistorique(t *testing.T) {
+	// Trois soirees dans l'historique, UNE SEULE retenue par le filtre (m2 / « soir B »).
+	repo := &mockTacticalRepo{lecture: domain.TacticalKillEvents{
+		Univers: universDe("m1", "m2", "m3"),
+		Events: []domain.KillEvent{
+			// soir A : une mort vengeable, vengee.
+			{MatchID: "m1", KillerXUID: "x_adv1", VictimXUID: "x_main", TimeMs: 1000},
+			{MatchID: "m1", KillerXUID: "x_Ami", VictimXUID: "x_adv1", TimeMs: 2000},
+			// soir B : une mort vengeable, JAMAIS vengee.
+			{MatchID: "m2", KillerXUID: "x_adv1", VictimXUID: "x_main", TimeMs: 1000},
+			// soir C : une mort vengeable, vengee.
+			{MatchID: "m3", KillerXUID: "x_adv1", VictimXUID: "x_main", TimeMs: 1000},
+			{MatchID: "m3", KillerXUID: "x_Ami", VictimXUID: "x_adv1", TimeMs: 3000},
+		},
+	}}
+	svc := svcEchange(repo, capsFiables())
+
+	historique := rowsAvecSessions(map[string][]string{
+		"soir A": {"m1"}, "soir B": {"m2"}, "soir C": {"m3"},
+	})
+	filtre := rowsAvecSessions(map[string][]string{"soir B": {"m2"}})
+	got := svc.buildSquadEchange(context.Background(),
+		filtre, historique, "main", "x_main", echangeMates("Ami"))
+	if got == nil {
+		t.Fatal("section attendue, obtenu nil")
+	}
+	// LES TROIS SOIREES SONT LA, dans l'ordre chronologique — pas la seule du filtre.
+	if len(got.TauxParSession) != 3 {
+		t.Fatalf("taux par session = %+v, attendu les 3 soirees de l'historique", got.TauxParSession)
+	}
+	attendu := []struct {
+		label string
+		dans  bool
+	}{{"soir A", false}, {"soir B", true}, {"soir C", false}}
+	for i, a := range attendu {
+		p := got.TauxParSession[i]
+		if p.SessionLabel != a.label {
+			t.Errorf("point %d = %q, attendu %q (ordre chronologique)", i, p.SessionLabel, a.label)
+		}
+		if p.DansLeFiltre != a.dans {
+			t.Errorf("point %q : dans_le_filtre = %v, attendu %v", p.SessionLabel, p.DansLeFiltre, a.dans)
+		}
+	}
+	// La mesure de chaque soiree reste la sienne : vengee / pas vengee / vengee.
+	if got.TauxParSession[0].Couverture.Taux != 1 || got.TauxParSession[1].Couverture.Taux != 0 {
+		t.Errorf("taux par soiree = %+v, attendu 1 puis 0", got.TauxParSession)
+	}
 }
 
 func TestBuildSquadEchange_TauxParSessionIgnoreLesSessionsSansMort(t *testing.T) {

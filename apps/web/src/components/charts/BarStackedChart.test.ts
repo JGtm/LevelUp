@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from 'vitest'
 
 import {
   buildBarStackedOption,
+  categoryLabelBandPx,
   type ChartPointStacked,
 } from './BarStackedChart'
 import type { ChartSeries } from './ChartCard'
@@ -168,7 +169,7 @@ describe('buildBarStackedOption', () => {
   // exactement le graphe d'avant.
   type AxisOpt = {
     xAxis: { name?: string; nameLocation?: string; nameGap?: number }
-    yAxis: { name?: string; nameLocation?: string }
+    yAxis: { name?: string; nameLocation?: string; nameGap?: number }
     grid: { bottom: number; left: number }
   }
 
@@ -209,6 +210,38 @@ describe('buildBarStackedOption', () => {
     expect(opt.xAxis.name).toBe('Assistances par patron')
     expect(opt.grid.left).toBeGreaterThan(8)
     expect(opt.grid.bottom).toBeGreaterThan(40)
+  })
+
+  // LE TITRE DE L'AXE VERTICAL DOIT FRANCHIR SES ÉTIQUETTES (2026-09-22). `nameGap` se mesure
+  // depuis la ligne d'axe, et `containLabel` ne réserve que les étiquettes : un écart fixe de
+  // 28 px posait « Larbin » PAR-DESSUS les gamertags, donc illisible. L'écart suit désormais la
+  // largeur du plus long libellé.
+  it('barres horizontales : le titre des catégories franchit la bande des libellés', () => {
+    const longs: ChartSeries<ChartPointStacked>[] = [
+      {
+        key: 'test.stack',
+        datapoints: [
+          { category: 'UnGamertagTresLong', components: { win: 5 } },
+          { category: 'Court', components: { win: 3 } },
+        ],
+      },
+    ]
+    const opt = buildBarStackedOption(longs, {
+      categoryAxisName: 'Larbin',
+      orientation: 'horizontal',
+    }) as AxisOpt
+    expect(opt.yAxis.nameGap).toBeGreaterThan(categoryLabelBandPx(['UnGamertagTresLong']))
+    // Et il grandit avec le libellé : deux nuages de gamertags ne se valent pas.
+    const courts = buildBarStackedOption(series, {
+      categoryAxisName: 'Larbin',
+      orientation: 'horizontal',
+    }) as AxisOpt
+    expect(opt.yAxis.nameGap!).toBeGreaterThan(courts.yAxis.nameGap!)
+  })
+
+  it('barres verticales : le titre des catégories garde un écart fixe (libellés sous la ligne)', () => {
+    const opt = buildBarStackedOption(series, { categoryAxisName: 'Larbin' }) as AxisOpt
+    expect(opt.xAxis.nameGap).toBe(28)
   })
 
   it('tooltipRoles seul : le formateur s\'installe et nomme les deux rôles', () => {

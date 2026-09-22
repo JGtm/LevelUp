@@ -33,19 +33,17 @@ export function getSquadRiposteText(locale: Locale) {
     lowSampleHint: (floor: number) => m('squad.riposte.low_sample_hint', { floor }),
     emptyTitle: m('squad.riposte.empty_title'),
 
-    // ── Le chiffre d'appel ───────────────────────────────────────────────────
-    appelLabel: (n: number) => m('squad.riposte.appel_label', { n }),
+    // ── Les deux blocs de tête : le donut, puis la distribution du délai ─────
+    donutTitle: m('squad.riposte.donut_title'),
+    donutHelp: (n: number, seconds: number) => m('squad.riposte.donut_help', { n, seconds }),
     appelUnit: m('squad.riposte.appel_unit'),
-    appelBelow: (delta: string, usual: string) => m('squad.riposte.appel_below', { delta, usual }),
-    appelAbove: (delta: string, usual: string) => m('squad.riposte.appel_above', { delta, usual }),
-    delaiLabel: m('squad.riposte.delai_label'),
-    delaiValue: (seconds: string) => m('squad.riposte.delai_value', { seconds }),
-    delaiUnit: m('squad.riposte.delai_unit'),
-    delaiSub: (ripostes: number, sans: number) => m('squad.riposte.delai_sub', { ripostes, sans }),
-    noValue: m('squad.riposte.no_value'),
+    donutUnanswered: m('squad.riposte.donut_unanswered'),
+    donutAlt: (v: { rate: string; morts: number; ripostes: number; sans: number }) =>
+      m('squad.riposte.donut_alt', { ...v }),
+    delaiTitle: m('squad.riposte.delai_title'),
+    delaiMedianMark: (seconds: string) => m('squad.riposte.delai_median_mark', { seconds }),
 
     // ── La frise, soirée par soirée ──────────────────────────────────────────
-    friseTitle: (seconds: number) => m('squad.riposte.frise_title', { seconds }),
     friseAbove: m('squad.riposte.frise_above'),
     friseBelow: m('squad.riposte.frise_below'),
     friseTrend: (n: number) => m('squad.riposte.frise_trend', { n }),
@@ -55,11 +53,10 @@ export function getSquadRiposteText(locale: Locale) {
     friseVolumeAxis: m('squad.riposte.frise_volume_axis'),
     friseEmpty: m('squad.riposte.frise_empty'),
 
-    // ── Les deux replis ──────────────────────────────────────────────────────
-    foldDelay: m('squad.riposte.fold_delay'),
+    // ── Le repli ─────────────────────────────────────────────────────────────
     foldMatrix: m('squad.riposte.fold_matrix'),
 
-    // ── Repli « Combien de temps on met » ────────────────────────────────────
+    // ── La distribution du délai ─────────────────────────────────────────────
     delayXAxis: m('squad.riposte.delay_x_axis'),
     delayYAxis: m('squad.riposte.delay_y_axis'),
     delayBin: (start: number, end: number) => m('squad.riposte.delay_bin', { start, end }),
@@ -67,8 +64,6 @@ export function getSquadRiposteText(locale: Locale) {
     delayOutOfWindowSuffix: m('squad.riposte.delay_out_of_window_suffix'),
     delayWindow: (seconds: number) => m('squad.riposte.delay_window', { seconds }),
     delayNarrativeEmpty: m('squad.riposte.delay_narrative_empty'),
-    delaySay: (v: { morts: number; dedans: number; dehors: number; pic: string }) =>
-      m('squad.riposte.delay_say', { ...v }),
     delayFigure: (n: number, morts: number) => m('squad.riposte.delay_figure', { n, morts }),
     delayWindowMark: (seconds: number) => m('squad.riposte.delay_window_mark', { seconds }),
     delayFoot: (seconds: number) => m('squad.riposte.delay_foot', { seconds }),

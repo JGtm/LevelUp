@@ -132,14 +132,17 @@ func (s *TeammatesService) buildSquadEchange(
 	out.Cellules = cellulesDuRoster(bilan.Paires, gtByXUID, mesures)
 	out.Delais = distributionDesDelais(scope, campScope)
 	out.DelaiMedianMs = delaiMedianDesEchanges(scope, campScope)
-	out.TauxParSession = tauxParSession(scope, scopeRows, campScope)
 
 	habituel := restreindreAuxMatchs(lecture, habituelIDs)
+	campHabituel := campDuJoueur(habituel.Univers.Equipes, mainXUID)
 	bilanHabituel := coordination.Echanges(habituel.Events, habituel.Univers.Equipes)
-	out.Habituel = couvertureDuCamp(
-		bilanHabituel.Morts, campDuJoueur(habituel.Univers.Equipes, mainXUID),
-		matchsMesures(habituel))
+	out.Habituel = couvertureDuCamp(bilanHabituel.Morts, campHabituel, matchsMesures(habituel))
 	out.MatchsHabituel = len(habituelIDs)
+	// LA FRISE SE LIT SUR L'HISTORIQUE, PAS SUR LE FILTRE (decision utilisateur du
+	// 2026-09-22) : elle est decoupee sur `habituel` / `habituelRows`, et chaque soiree
+	// dit si le filtre courant la retient. Aucune requete de plus — `habituelRows` est
+	// deja un parametre de ce constructeur, et `lecture` couvre deja tout l'historique.
+	out.TauxParSession = tauxParSession(habituel, habituelRows, campHabituel, scopeIDs)
 
 	// Nuage « isolement x couverture » (item 7.7) : MEME perimetre filtre (`scope`,
 	// `scopeIDs`) et MEME roster que le reste de la section — decoupes par session.
@@ -356,24 +359,39 @@ func delaiMedianDesEchanges(lecture domain.TacticalKillEvents, camp func(string,
 
 // tauxParSession decoupe la MEME mesure que `Couverture` par session (soiree).
 //
-// La maille est la session (`sessionsDuScope`, ci-dessous) :
-// la session est la plus petite maille ou un taux d'echange veut dire quelque chose, et
-// c'est celle dans laquelle on joue. L'ordre est chronologique.
+// La maille est la session (`sessionsDuScope`, ci-dessous) : la session est la plus petite
+// maille ou un taux d'echange veut dire quelque chose, et c'est celle dans laquelle on
+// joue. L'ordre est chronologique.
+//
+// LE PERIMETRE EST L'HISTORIQUE, PAS LE FILTRE (decision utilisateur du 2026-09-22).
+// `perimetre` / `rows` sont ceux de l'HABITUEL — toutes les soirees de la composition —,
+// et `filtreIDs` porte les matchs retenus par les filtres courants de la page : une soiree
+// qui en touche au moins un est marquee `DansLeFiltre`, les autres restent tracees mais
+// attenuees. Jusqu'ici la frise n'affichait que les soirees du filtre, et l'usage nominal
+// de la page — filtrer sur UNE soiree — lui faisait donc rendre un seul baton, sans la
+// population qui lui donne son sens.
+//
+// AUCUNE REQUETE PAR SESSION : `perimetre` est deja lu, et il est decoupe EN MEMOIRE.
 //
 // Une session dont AUCUN match n'est mesure (journal des morts illisible) n'a pas de
 // point : elle n'a pas un taux nul, elle n'a pas de taux. Meme doctrine que l'omission de
 // la section entiere.
 func tauxParSession(
-	scope domain.TacticalKillEvents, scopeRows []domain.SquadMatchRow, camp func(string, string) bool,
+	perimetre domain.TacticalKillEvents, rows []domain.SquadMatchRow,
+	camp func(string, string) bool, filtreIDs []string,
 ) []domain.SquadEchangeSessionPoint {
-	matchesDuScope := make(map[string]struct{}, len(scope.Univers.Matchs))
-	for _, m := range scope.Univers.Matchs {
-		matchesDuScope[m.MatchID] = struct{}{}
+	matchesDuPerimetre := make(map[string]struct{}, len(perimetre.Univers.Matchs))
+	for _, m := range perimetre.Univers.Matchs {
+		matchesDuPerimetre[m.MatchID] = struct{}{}
 	}
-	sessions, labels := sessionsDuScope(scopeRows, matchesDuScope)
+	filtre := make(map[string]struct{}, len(filtreIDs))
+	for _, id := range filtreIDs {
+		filtre[id] = struct{}{}
+	}
+	sessions, labels := sessionsDuScope(rows, matchesDuPerimetre)
 	out := make([]domain.SquadEchangeSessionPoint, 0, len(labels))
 	for _, label := range labels {
-		sessionScope := restreindreAuxMatchs(scope, sessions[label])
+		sessionScope := restreindreAuxMatchs(perimetre, sessions[label])
 		mesures := matchsMesures(sessionScope)
 		if mesures == 0 {
 			continue
@@ -385,9 +403,23 @@ func tauxParSession(
 		}
 		out = append(out, domain.SquadEchangeSessionPoint{
 			SessionLabel: label, Couverture: couv, MatchsMesures: mesures,
+			DansLeFiltre: toucheLeFiltre(sessions[label], filtre),
 		})
 	}
 	return out
+}
+
+// toucheLeFiltre dit si UN AU MOINS des matchs de la soiree est retenu par les filtres
+// courants. Un « tous » serait faux des qu'un filtre de mode ou de carte ne garde qu'une
+// partie de la soiree : la soiree a bien ete jouee dans le perimetre, et la surbrillance
+// dit « c'est ce que vous regardez », pas « c'est integralement ce que vous regardez ».
+func toucheLeFiltre(matchIDs []string, filtre map[string]struct{}) bool {
+	for _, id := range matchIDs {
+		if _, ok := filtre[id]; ok {
+			return true
+		}
+	}
+	return false
 }
 
 // sessionsDuScope groupe les matchs DU PERIMETRE par session, dedupliques par match_id (une

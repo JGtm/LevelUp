@@ -724,43 +724,40 @@ en = "{auteur} riposted for {pour} {n, plural, one {# time} other {# times}} ({p
 
 
 
-# ─── Le chiffre d'appel ─────────────────────────────────────────────────────
+# ─── Les deux BLOCS de tête : « Morts ripostées » et « Temps de riposte » ───
+#
+# Chacun est une SectionCard de plein droit depuis le 2026-09-22 : son titre est
+# TACTIQUE (ce que la mesure dit), et la MÉTHODE — dénominateur, fenêtre, barres hors
+# fenêtre — vit dans son infobulle (i). Un titre qui porte son dénominateur (« Sur
+# 511 morts des nôtres ») nomme l'échantillon, pas la mesure.
 
-[squad.riposte.appel_label]
-fr = "Sur {n, plural, one {# mort des nôtres} other {# morts des nôtres}}"
-en = "Out of {n, plural, one {# death on our side} other {# deaths on our side}}"
+[squad.riposte.donut_title]
+fr = "Morts ripostées"
+en = "Riposted deaths"
+
+[squad.riposte.donut_help]
+fr = "Sur {n, plural, one {# mort des nôtres} other {# morts des nôtres}}, la part ripostée dans les {seconds, number} s."
+en = "Out of {n, plural, one {# death on our side} other {# deaths on our side}}, the share riposted within {seconds, number} s."
 
 [squad.riposte.appel_unit]
 fr = "ripostées"
 en = "riposted"
 
-[squad.riposte.appel_below]
-fr = "{delta} sous l'habituel ({usual})"
-en = "{delta} below usual ({usual})"
+[squad.riposte.donut_unanswered]
+fr = "sans réponse"
+en = "unanswered"
 
-[squad.riposte.appel_above]
-fr = "{delta} au-dessus de l'habituel ({usual})"
-en = "{delta} above usual ({usual})"
+[squad.riposte.donut_alt]
+fr = "{rate} des {morts, number} morts des nôtres sont ripostées : {ripostes, number} ripostées, {sans, number} sans réponse."
+en = "{rate} of our {morts, number} deaths are riposted: {ripostes, number} riposted, {sans, number} unanswered."
 
-[squad.riposte.delai_label]
-fr = "Et quand on riposte"
-en = "And when we riposte"
+[squad.riposte.delai_title]
+fr = "Temps de riposte"
+en = "Riposte time"
 
-[squad.riposte.delai_value]
-fr = "{seconds} s"
-en = "{seconds} s"
-
-[squad.riposte.delai_unit]
-fr = "de délai médian"
-en = "median delay"
-
-[squad.riposte.delai_sub]
-fr = "{ripostes, plural, one {# riposte} other {# ripostes}}, {sans, plural, one {# mort sans réponse} other {# morts sans réponse}}"
-en = "{ripostes, plural, one {# riposte} other {# ripostes}}, {sans, plural, one {# unanswered death} other {# unanswered deaths}}"
-
-[squad.riposte.no_value]
-fr = "—"
-en = "—"
+[squad.riposte.delai_median_mark]
+fr = "médiane {seconds} s"
+en = "median {seconds} s"
 
 # ─── La frise, soirée par soirée ────────────────────────────────────────────
 #
@@ -770,10 +767,10 @@ en = "—"
 # points de pourcentage, deux axes seraient une faute de lecture. Le volume de
 # chaque soirée (morts mesurées) est un RANG D'ÉTIQUETTES sous l'axe, pas un second
 # graphe — c'est le dénominateur, il n'a pas d'échelle propre.
-
-[squad.riposte.frise_title]
-fr = "Soirée par soirée — part des nôtres ripostée dans les {seconds, number} s"
-en = "Evening by evening — share of our deaths riposted within {seconds, number} s"
+#
+# LA FRISE N'A PLUS DE TITRE PROPRE (2026-09-22) : elle EST le bloc « Riposte », dont le
+# bandeau porte déjà ce nom. Elle couvre TOUTES les soirées de la composition, celles du
+# filtre courant en encre pleine et les autres atténuées.
 
 [squad.riposte.frise_above]
 fr = "soirée au-dessus de l'habituel"
@@ -807,11 +804,7 @@ en = "measured deaths"
 fr = "Aucune soirée mesurée sur cette sélection."
 en = "No measured evening in this selection."
 
-# ─── Les deux replis, fermés par défaut ─────────────────────────────────────
-
-[squad.riposte.fold_delay]
-fr = "Combien de temps on met"
-en = "How long we take"
+# ─── Le repli, fermé par défaut ─────────────────────────────────────────────
 
 [squad.riposte.fold_matrix]
 fr = "Qui riposte pour qui"
@@ -830,20 +823,20 @@ fr = "Isolement et couverture"
 en = "Isolation and coverage"
 
 [squad.isolement.section_label]
-fr = "Une mort par point, distance au coéquipier contre délai de riposte"
-en = "One death per dot, distance to teammate versus riposte delay"
+fr = "Une mort par point, distance au coéquipier contre délai avant que le tueur tombe"
+en = "One death per dot, distance to teammate versus delay before the killer goes down"
 
 [squad.isolement.x_axis]
 fr = "Distance au coéquipier le plus proche (× la portée du radar)"
 en = "Distance to nearest teammate (× radar range)"
 
 [squad.isolement.y_axis]
-fr = "Délai avant la riposte (s)"
-en = "Delay before the riposte (s)"
+fr = "Délai avant que le tueur tombe (s)"
+en = "Delay before the killer goes down (s)"
 
 [squad.isolement.help]
-fr = "Chaque petit point est une mort : à gauche un coéquipier était tout près, à droite il était hors de portée du radar. Plus le point est haut, plus la riposte a tardé. Le gros point est la médiane du joueur, sa taille dit combien de morts."
-en = "Each small dot is one death: on the left a teammate was close by, on the right they were beyond radar range. The higher the dot, the longer the riposte took. The large dot is the player's median, its size says how many deaths."
+fr = "Chaque petit point est une mort : à gauche un coéquipier était tout près, à droite il était hors de portée du radar. L’axe vertical est logarithmique et court de 0,2 s à une minute — sous la fenêtre tiretée c’est une riposte, au-dessus la mort se dessine en losange et ne compte dans aucun taux, et passé une minute elle rejoint la bande « jamais ripostée ». Le gros point est la médiane des ripostes du joueur, sa taille dit combien de morts."
+en = "Each small dot is one death: on the left a teammate was close by, on the right they were beyond radar range. The vertical axis is logarithmic and runs from 0.2 s to one minute — below the dashed window that is a riposte, above it the death is drawn as a diamond and counts in no rate, and past one minute it joins the “never riposted” band. The large dot is the player’s median riposte, its size says how many deaths."
 
 [squad.isolement.radar_line]
 fr = "Portée du radar"
@@ -856,6 +849,25 @@ en = "Out of sight"
 [squad.isolement.band_never]
 fr = "Jamais ripostée"
 en = "Never riposted"
+
+# LA RÈGLE DES 5 s SE TRACE (décision utilisateur du 2026-09-22). Le nuage continue de
+# montrer les morts dont le tueur est tombé bien après (60 s, 100 s) — l'axe des délais
+# reste libre —, mais la fenêtre de riposte y est posée en repère tireté, MÊME GRAMMAIRE
+# que le `windowMark` de l'histogramme des délais : le lecteur voit d'un coup d'œil ce qui
+# compte comme riposte et ce qui n'en est pas une. La valeur vient du contrat
+# (`fenetre_ms`), jamais d'un 5 codé en dur côté web. Et la matière de dessin a un PLAFOND
+# (`plafond_ms`, 60 s) : au-delà, le tueur est mort de sa propre vie, le serveur ne publie
+# plus de délai et la mort rejoint la bande « jamais ripostée ».
+[squad.isolement.window_line]
+fr = "Fenêtre de riposte {seconds, number} s"
+en = "Riposte window {seconds, number} s"
+
+# Légende de la FORME des points (décision du 2026-09-22) : l'encre reste celle du joueur
+# et tous les points sont PLEINS, c'est la silhouette qui dit l'état — disque dans la
+# fenêtre, LOSANGE au-dessus. Un encodage qu'on ne nomme pas ne se lit pas.
+[squad.isolement.legend_out_of_window]
+fr = "tueur tombé hors fenêtre"
+en = "killer downed outside the window"
 
 [squad.isolement.low_sample]
 fr = "échantillon faible"
@@ -876,6 +888,12 @@ en = "Coverage: no teammate in sight"
 [squad.isolement.tooltip_riposted]
 fr = "Ripostée en {seconds} s"
 en = "Riposted in {seconds} s"
+
+# Le tueur EST tombé, mais trop tard : le délai se dit quand même (c'est pour le voir que
+# ces morts restent dessinées), et le verdict tranche — ce n'est pas une riposte.
+[squad.isolement.tooltip_out_of_window]
+fr = "Tueur tombé à {seconds} s, hors fenêtre : sans riposte"
+en = "Killer downed at {seconds} s, outside the window: no riposte"
 
 [squad.isolement.tooltip_never]
 fr = "Jamais ripostée"
@@ -902,8 +920,7 @@ en = "No death measured"
 fr = "Aucune mort de la sélection n'est localisée sur un match dont la portée du radar est connue."
 en = "No death in the selection is located on a match with a known radar range."
 
-# ─── Replis de la carte « Riposte » ─────────────────────────────────────────
-# ─── Repli « Combien de temps on met » (histogramme des délais) ─────────────
+# ─── Le second graphe de tête : la distribution du délai ────────────────────
 
 [squad.riposte.delay_x_axis]
 fr = "Délai avant la riposte"
@@ -932,10 +949,6 @@ en = "Riposte window: {seconds, number} s — the last two bars are outside the 
 [squad.riposte.delay_narrative_empty]
 fr = "Aucune riposte mesurée sur la sélection."
 en = "No riposte measured in this selection."
-
-[squad.riposte.delay_say]
-fr = "Notre riposte est rapide mais rare : sur {morts, number} morts d'équipe, {dedans, number} sont ripostées dans la fenêtre et {dehors, number} arrivent trop tard. Le pic est à {pic} — rien à gagner en réactivité, tout à gagner en volume."
-en = "Our riposte is fast but rare: out of {morts, number} team deaths, {dedans, number} are riposted inside the window and {dehors, number} arrive too late. The peak sits at {pic} — nothing to gain in reactivity, everything to gain in volume."
 
 [squad.riposte.delay_figure]
 fr = "Délai des {n, plural, one {# riposte survenue} other {# ripostes survenues}} — sur {morts, number} morts d'équipe"

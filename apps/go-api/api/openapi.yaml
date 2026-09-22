@@ -25946,6 +25946,8 @@ components:
       properties:
         couverture:
           $ref: '#/components/schemas/Couverture'
+        dans_le_filtre:
+          type: boolean
         matchs_mesures:
           format: int64
           type: integer
@@ -25955,6 +25957,7 @@ components:
         - session_label
         - couverture
         - matchs_mesures
+        - dans_le_filtre
       type: object
     SquadEngagementSession:
       additionalProperties: false
@@ -26439,6 +26442,8 @@ components:
           type: string
         hors_de_vue:
           type: boolean
+        hors_fenetre:
+          type: boolean
         match_id:
           type: string
         time_ms:
@@ -26455,6 +26460,7 @@ components:
         - time_ms
         - hors_de_vue
         - vengee
+        - hors_fenetre
       type: object
     SquadIsolementRepere:
       additionalProperties: false
@@ -26668,12 +26674,18 @@ components:
     SquadNuageIsolement:
       additionalProperties: false
       properties:
+        fenetre_ms:
+          format: int64
+          type: integer
         morts:
           items:
             $ref: '#/components/schemas/SquadIsolementMort'
           type:
             - array
             - "null"
+        plafond_ms:
+          format: int64
+          type: integer
         plancher_echantillon_faible:
           format: int64
           type: integer
@@ -26686,6 +26698,8 @@ components:
       required:
         - morts
         - reperes
+        - fenetre_ms
+        - plafond_ms
         - plancher_echantillon_faible
       type: object
     SquadPageResponse:

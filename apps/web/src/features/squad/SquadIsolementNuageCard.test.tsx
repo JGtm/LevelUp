@@ -19,7 +19,7 @@ import type {
 } from '@/lib/api/types'
 
 import { SquadIsolementNuageCard } from './SquadIsolementNuageCard'
-import { OPACITE_MORT } from './squadIsolement.logic'
+import { SYMBOLE_MORT, SYMBOLE_MORT_HORS_FENETRE } from './squadIsolementNuageOption'
 
 // jsdom n'a pas de canvas : on mocke echarts-for-react (comme FirstBloodLanes) pour
 // capturer l'option ECharts construite, notamment le formatter de tooltip.
@@ -61,9 +61,15 @@ function mort(over: Partial<SquadIsolementMort> = {}): SquadIsolementMort {
     distance_ratio: 0.6,
     hors_de_vue: false,
     vengee: true,
+    hors_fenetre: false,
     delai_ms: 3_000,
     ...over,
   } as SquadIsolementMort
+}
+
+/** Une mort dont le tueur est tombé APRÈS la fenêtre : délai publié, jamais une riposte. */
+function mortHorsFenetre(delaiMs: number): SquadIsolementMort {
+  return mort({ vengee: false, hors_fenetre: true, delai_ms: delaiMs })
 }
 
 function repere(over: Partial<SquadIsolementRepere> = {}): SquadIsolementRepere {
@@ -84,6 +90,8 @@ function nuageDe(over: Partial<SquadNuageIsolement> = {}): SquadNuageIsolement {
     morts: [mort(), mort({ xuid: 'x2', gamertag: 'Bob', distance_ratio: 1.4 })],
     reperes: [repere(), repere({ xuid: 'x2', gamertag: 'Bob', nb_morts: 20 })],
     plancher_echantillon_faible: 30,
+    fenetre_ms: 5_000,
+    plafond_ms: 60_000,
     ...over,
   } as SquadNuageIsolement
 }
@@ -177,7 +185,7 @@ describe('SquadIsolementNuageCard', () => {
     renderWithProviders(
       <SquadIsolementNuageCard
         nuage={nuageDe({
-          morts: [mort({ vengee: false, delai_ms: undefined })],
+          morts: [mort({ vengee: false, hors_fenetre: false, delai_ms: undefined })],
           reperes: [repere()],
         })}
         joueurs={joueurs}
@@ -188,7 +196,8 @@ describe('SquadIsolementNuageCard', () => {
       yAxis: { max: number }
       series: Array<{ data: Array<{ value: [number, number] }> }>
     }>()
-    expect(option.series[0].data[0].value[1]).toBeGreaterThan(10)
+    // La bande est AU-DESSUS du plafond du contrat (60 s), dans l'espace réservé.
+    expect(option.series[0].data[0].value[1]).toBeGreaterThan(60)
     expect(option.series[0].data[0].value[1]).toBeLessThanOrEqual(option.yAxis.max)
   })
 
@@ -200,6 +209,148 @@ describe('SquadIsolementNuageCard', () => {
     }>()
     const ligne = option.series.find((s) => s.markLine)?.markLine
     expect(ligne?.data[0].xAxis).toBe(1)
+  })
+
+  // ─── LA RÈGLE DES 5 s SE TRACE, ELLE NE COUPE PAS (décision du 2026-09-22) ───────
+
+  it('le repère de la FENÊTRE DE RIPOSTE vient du contrat, jamais d’un 5 en dur', async () => {
+    renderWithProviders(
+      <SquadIsolementNuageCard nuage={nuageDe({ fenetre_ms: 8_000 })} joueurs={joueurs} />,
+    )
+    await screen.findByTestId('isolement-nuage-stub')
+    const option = derniereOption<{
+      series: Array<{ markLine?: { data: Array<{ xAxis?: number; yAxis?: number; name?: string }> } }>
+    }>()
+    const ligne = option.series.find((s) => s.markLine)?.markLine
+    const fenetre = ligne?.data.find((d) => d.yAxis != null)
+    expect(fenetre?.yAxis).toBe(8)
+    expect(fenetre?.name).toContain('Fenêtre de riposte')
+  })
+
+  it('une mort HORS FENÊTRE reste VISIBLE à son délai, sous la bande réservée', async () => {
+    renderWithProviders(
+      <SquadIsolementNuageCard
+        nuage={nuageDe({ morts: [mortHorsFenetre(30_000)], reperes: [repere()] })}
+        joueurs={joueurs}
+      />,
+    )
+    await screen.findByTestId('isolement-nuage-stub')
+    const option = derniereOption<{
+      yAxis: { max: number }
+      series: Array<{ data: Array<{ value: [number, number] }> }>
+    }>()
+    expect(option.series[0].data[0].value[1]).toBe(30)
+    expect(option.yAxis.max).toBeGreaterThan(60)
+  })
+
+  // ─── L'AXE DES DÉLAIS EST LOGARITHMIQUE ET BORNÉ (décision du 2026-09-22) ──────
+
+  it('l’axe des délais est en LOG, du plancher 0,2 s au plafond DU CONTRAT', async () => {
+    renderWithProviders(
+      <SquadIsolementNuageCard nuage={nuageDe({ plafond_ms: 30_000 })} joueurs={joueurs} />,
+    )
+    await screen.findByTestId('isolement-nuage-stub')
+    const option = derniereOption<{
+      yAxis: { type: string; min: number; max: number; axisLabel: { customValues: number[] } }
+    }>()
+    expect(option.yAxis.type).toBe('log')
+    expect(option.yAxis.min).toBe(0.2)
+    // Plafond 30 s : l'axe ne monte pas jusqu'à 60, et aucune graduation ne dépasse.
+    expect(option.yAxis.axisLabel.customValues).toEqual([0.2, 0.5, 1, 2, 5, 10, 30])
+    expect(option.yAxis.max).toBeGreaterThan(30)
+  })
+
+  it('les graduations s’écrivent en secondes DANS LA LOCALE, jamais en « 0.2 » brut', async () => {
+    renderWithProviders(<SquadIsolementNuageCard nuage={nuageDe()} joueurs={joueurs} />)
+    await screen.findByTestId('isolement-nuage-stub')
+    const option = derniereOption<{
+      yAxis: { axisLabel: { formatter: (v: number) => string } }
+    }>()
+    expect(option.yAxis.axisLabel.formatter(0.2)).toBe('0,2 s')
+    expect(option.yAxis.axisLabel.formatter(60)).toBe('60 s')
+  })
+
+  // LA FORME DIT L'ÉTAT, ET L'ENCRE RESTE PLEINE (décision utilisateur du 2026-09-22).
+
+  it('une mort HORS FENÊTRE se peint en LOSANGE PLEIN, dans l’encre du joueur', async () => {
+    renderWithProviders(
+      <SquadIsolementNuageCard
+        nuage={nuageDe({ morts: [mort(), mortHorsFenetre(60_000)], reperes: [repere()] })}
+        joueurs={joueurs}
+      />,
+    )
+    await screen.findByTestId('isolement-nuage-stub')
+    const option = derniereOption<{
+      series: Array<{
+        data: Array<{ symbol: string; symbolSize: number; itemStyle: Record<string, unknown> }>
+      }>
+    }>()
+    const [dans, hors] = option.series[0].data
+    expect(dans.symbol).toBe(SYMBOLE_MORT)
+    expect(hors.symbol).toBe(SYMBOLE_MORT_HORS_FENETRE)
+    expect(hors.symbol).toBe('diamond')
+    // MÊME encre, MÊME taille, aucun remplissage retiré : seule la silhouette change.
+    expect(hors.itemStyle.color).toBe(dans.itemStyle.color)
+    expect(hors.itemStyle.color).not.toBe('transparent')
+    expect(hors.symbolSize).toBe(dans.symbolSize)
+  })
+
+  it('AUCUNE opacité sous 1 dans l’option — ni point, ni repère, ni bande', async () => {
+    renderWithProviders(
+      <SquadIsolementNuageCard
+        nuage={nuageDe({
+          morts: [mort(), mortHorsFenetre(60_000), mort({ xuid: 'x2', gamertag: 'Bob' })],
+        })}
+        joueurs={joueurs}
+      />,
+    )
+    await screen.findByTestId('isolement-nuage-stub')
+    const option = derniereOption<Record<string, unknown>>()
+    const attenuations: Array<[string, number]> = []
+    const balaye = (noeud: unknown, chemin: string) => {
+      if (Array.isArray(noeud)) {
+        noeud.forEach((v, i) => balaye(v, `${chemin}[${i}]`))
+        return
+      }
+      if (noeud == null || typeof noeud !== 'object') return
+      for (const [cle, valeur] of Object.entries(noeud as Record<string, unknown>)) {
+        if (cle === 'opacity' && typeof valeur === 'number' && valeur < 1) {
+          attenuations.push([`${chemin}.${cle}`, valeur])
+        }
+        balaye(valeur, `${chemin}.${cle}`)
+      }
+    }
+    balaye(option, 'option')
+    expect(attenuations).toEqual([])
+  })
+
+  it('l’infobulle d’une mort hors fenêtre dit le délai ET le verdict « sans riposte »', async () => {
+    renderWithProviders(
+      <SquadIsolementNuageCard
+        nuage={nuageDe({ morts: [mortHorsFenetre(60_000)], reperes: [repere()] })}
+        joueurs={joueurs}
+      />,
+    )
+    await screen.findByTestId('isolement-nuage-stub')
+    const option = derniereOption<{
+      tooltip: { formatter: (p: unknown) => string }
+      series: Array<{ data: Array<Record<string, unknown>> }>
+    }>()
+    const html = option.tooltip.formatter({ data: option.series[0].data[0] })
+    expect(html).toContain('60,0')
+    expect(html).toContain('hors fenêtre')
+    expect(html).toContain('sans riposte')
+    expect(html).not.toContain('Ripostée en')
+  })
+
+  it('la légende NOMME le losange — un encodage qu’on ne nomme pas ne se lit pas', () => {
+    renderWithProviders(<SquadIsolementNuageCard nuage={nuageDe()} joueurs={joueurs} />)
+    const pastille = screen.getByTestId('squad-isolement-legende-hors-fenetre')
+    // Un LOSANGE PLEIN : un carré tourné d'un quart de tour, jamais un cercle évidé.
+    expect(pastille.getAttribute('style')).toContain('rotate(45deg)')
+    expect(pastille.className).not.toContain('rounded-full')
+    expect(pastille.className).not.toContain('border')
+    expect(screen.getByText(/tueur tombé hors fenêtre/i)).toBeTruthy()
   })
 
   it('l’infobulle d’une mort dit la COUVERTURE en portée du radar, et son délai', async () => {
@@ -219,7 +370,15 @@ describe('SquadIsolementNuageCard', () => {
     renderWithProviders(
       <SquadIsolementNuageCard
         nuage={nuageDe({
-          morts: [mort({ distance_ratio: undefined, hors_de_vue: true, vengee: false, delai_ms: undefined })],
+          morts: [
+            mort({
+              distance_ratio: undefined,
+              hors_de_vue: true,
+              vengee: false,
+              hors_fenetre: false,
+              delai_ms: undefined,
+            }),
+          ],
           reperes: [repere()],
         })}
         joueurs={joueurs}
@@ -274,12 +433,16 @@ describe('SquadIsolementNuageCard', () => {
     expect(repereDatum?.itemStyle.borderType).toBeUndefined()
   })
 
-  it('un petit point garde l’opacité commune des morts', async () => {
+  it('un petit point se peint à ENCRE PLEINE, sans opacité posée', async () => {
     renderWithProviders(<SquadIsolementNuageCard nuage={nuageDe()} joueurs={joueurs} />)
     await screen.findByTestId('isolement-nuage-stub')
     const option = derniereOption<{
       series: Array<{ data: Array<{ itemStyle: Record<string, unknown> }> }>
     }>()
-    expect(option.series[0].data[0].itemStyle.opacity).toBe(OPACITE_MORT)
+    // jsdom ne résout pas les CSS vars : la couleur y est vide, c'est l'ABSENCE d'opacité
+    // et la PRÉSENCE d'un remplissage (jamais « transparent ») qui se vérifient ici.
+    expect(option.series[0].data[0].itemStyle.opacity).toBeUndefined()
+    expect(option.series[0].data[0].itemStyle).toHaveProperty('color')
+    expect(option.series[0].data[0].itemStyle.color).not.toBe('transparent')
   })
 })

@@ -14,6 +14,23 @@ import (
 // nom.
 const FenetreEchangeMs int64 = 5000
 
+// PlafondRiposteTardiveMs est la duree AU-DELA DE LAQUELLE la chute du tueur ne dit plus
+// rien de la mort initiale : 60 s.
+//
+// POURQUOI UN PLAFOND. La lecture sans borne (Ripostes) sert a MONTRER a quelle distance de
+// la fenetre les ripostes manquees passent — « a 5,2 s ou a 40 s ? ». Passe un certain
+// delai, le tueur n'est plus tombe A CAUSE de la mort initiale : il est mort de sa propre
+// vie. Les reperes du jeu : une reapparition prend 5 a 10 s, une vie dure en moyenne 20 a
+// 40 s en arene. A 60 s, le tueur a eu le temps de sortir du combat, d'en gagner un autre
+// et de rentrer — le point ne dit plus rien, et le publier avec un delai laisserait croire
+// a un lien de cause a effet.
+//
+// Valeur arretee par l'utilisateur le 2026-09-22 (autorite mecanique de jeu), choisie parmi
+// 30 / 60 / 120 s. Borne COMPRISE, meme convention que FenetreEchangeMs : un tueur tombe a
+// 60 000 ms exactement est encore « hors fenetre » ; a 60 001 ms, la mort n'a jamais ete
+// ripostee.
+const PlafondRiposteTardiveMs int64 = 60_000
+
 // Echanges suit chaque mort et dit si un coequipier a abattu le tueur dans la fenetre.
 //
 // DEFINITION. Un echange est un evenement dont la victime est le TUEUR de la mort initiale
