@@ -25,6 +25,10 @@ import { WeaponAccuracyChart } from '@/components/charts/WeaponAccuracyChart'
 // Portée des engagements : section migrée de la Synthèse vers cet onglet le 2026-09-13
 // (pendant de la précision par arme). Même import cross-feature déclaré que ci-dessus.
 import { WeaponRangeSection } from './WeaponRangeSection'
+// Rôles de portée (a.1, D23-a du 2026-09-22) : le pendant RELATIF de la carte ci-dessus —
+// elle dit avec quoi je tire, celle-ci dit à quelle distance je me tiens par rapport au
+// lobby, match après match. Même capability produit, donc même gate.
+import { TimeseriesRangeRolesCard } from './TimeseriesRangeRolesCard'
 import {
   TimeseriesAssistsTrend,
   TimeseriesAvgLifeTrend,
@@ -249,6 +253,10 @@ export function TimeseriesSummaryTab({
           rien n'est mesuré sur le scope ; le gate reste la capability produit `weapon_range`
           (Halo 5 ne la déclare pas — ses événements de frag n'ont pas d'arme). */}
       {hasWeaponRange && <WeaponRangeSection range={data.weapon_range} />}
+
+      {/* Rôles de portée — juste après « Portée par arme » : la même famille de sujet, posée
+          en écart au lobby plutôt qu'en mètres absolus. */}
+      {hasWeaponRange && <TimeseriesRangeRolesCard bloc={data.range_profiles} />}
 
       {/* Précision par arme (Halo 5 natif, survol lié au sunburst) | Tendance FDA. Titre
           sans précision native (Infinite → weapon_accuracy vide) : la tendance FDA occupe
