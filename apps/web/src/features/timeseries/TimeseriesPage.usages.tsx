@@ -66,9 +66,10 @@ export function TimeseriesUsagesTab({ data, locale, t }: TimeseriesUsagesTabProp
       {/* Portée des engagements — la section porte son propre titre standard. */}
       {showsRange && <WeaponRangeSection range={data.weapon_range} />}
 
-      {/* Usages d'équipement — la section ne monte que des cartes, sans titre à elle : le
-          titre de section est posé ici, et il coiffe bien plusieurs cartes (comptes, part du
-          lobby, armes spéciales, niveaux). */}
+      {/* « Équipement » — la section ne monte que des cartes, sans titre à elle : le titre de
+          section est posé ici, et il coiffe bien plusieurs cartes (comptes, part du lobby,
+          armes spéciales, niveaux). Il ne reprend PAS le libellé de sa première carte
+          (« Usages d'équipement ») : le lecteur verrait deux fois la même ligne. */}
       {showsEquipment && (
         <DetailSection title={t('timeseries.usages.equipment_title')}>
           <EquipmentUsageSection

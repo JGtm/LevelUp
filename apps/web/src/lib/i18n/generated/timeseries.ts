@@ -164,7 +164,7 @@ export const timeseriesManifest = {
   "timeseries.tabs.usages": { fr: "Usages", en: "Usage" },
   "timeseries.usages.empty_description": { fr: "Aucun film décodé pour cette sélection", en: "No decoded film for this selection" },
   "timeseries.usages.empty_title": { fr: "Aucun film décodé", en: "No decoded film" },
-  "timeseries.usages.equipment_title": { fr: "Usages d'équipement", en: "Equipment usage" },
+  "timeseries.usages.equipment_title": { fr: "Équipement", en: "Equipment" },
 } as const
 
 export type TimeseriesManifestKey = keyof typeof timeseriesManifest
