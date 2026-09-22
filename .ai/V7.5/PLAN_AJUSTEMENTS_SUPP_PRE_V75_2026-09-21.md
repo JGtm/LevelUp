@@ -230,3 +230,10 @@ surface `film/replay` 260 -> 263 justifie.
 ### Lot Y — Match view : Denivele M1 + bouton lobby (worktree `LevelUp-wt-ajsup-y`)
 - [ ] Go : `combat_tab.elevation` = par frag mesure du match (cote tueur ET cote victime pour le joueur consulte ; option tous les frags du lobby) : distance_m, delta_z_m, time_ms, weapon, side ; mediane du lobby
 - [ ] Web : nuage hauteur x distance, bande a niveau, clic vers l instant du rejeu, bouton « comparer au lobby »
+
+### Lot W — web Sessions : Portee en 4.A (worktree `LevelUp-wt-ajsup-w`)
+- [ ] Nuage de la periode (`range_reference`), session en surbrillance, bandes et seuils servis, tendance 5 matchs ; remplace la carte du lot O
+### Lot Z1 — web Timeseries : roles de portee a.1 (worktree `LevelUp-wt-ajsup-z1`)
+- [ ] Nuage des roles solo par match (`range_profiles` Timeseries), composant du lot R a une serie
+### Lot Z2 — web Escouade : Denivele E1 (worktree `LevelUp-wt-ajsup-z2`)
+- [ ] Carte « Roles de hauteur » : un point par coequipier par match (`elevation_lobby_delta_m`), bandes Contrebas / A niveau / Hauteurs, tendance 5 matchs, meme composant que les roles de portee
