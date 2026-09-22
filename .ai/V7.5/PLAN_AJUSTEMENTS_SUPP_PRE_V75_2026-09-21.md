@@ -214,10 +214,11 @@ surface `film/replay` 260 -> 263 justifie.
 - D23-a : Timeseries = a.1 (nuage des roles de portee solo par match) ; pre-requis scope `range_profiles` sur `TimeseriesPageResponse`.
 - D23-b : Denivele — concept B2 retenu (hauteur x distance, ou je frague / ou je meurs, la dimension arme ne compte pas) ; Sessions : le concept parait inadapte (matchs et cartes trop variables, rien a comparer) -> formule alternative ou rien ; Escouade : UN SEUL graphe, qui parle de role, pas un graphe par joueur. Nouvelle maquette (lot X) avant tout code.
 
-### Lot U — Go : portee de periode (Sessions) + scope Timeseries (worktree `LevelUp-wt-ajsup-u`)
-- [ ] `SessionPageResponse.range_reference` : `MatchRangeProfile[]` du seul joueur consulte sur la periode de reference des usages (30 derniers matchs ou la reference existante — justifier), + seuils de role (`role_low_m`, `role_high_m`) et mediane de periode ; miroir pour la session comparee si la reference differe (sinon partage)
-- [ ] `TimeseriesPageResponse.range_profiles` : `MatchRangeBlock` du joueur consulte sur la fenetre de la page (lobby entier pour la mediane)
-- [ ] openapi + generate-types + tests
+### Lot U — Go : portee de periode (Sessions) + scope Timeseries (worktree `LevelUp-wt-ajsup-u`) — FUSIONNE fd0688213
+- [x] `SessionPageResponse.range_reference` : `MatchRangeProfile[]` du seul joueur consulte sur la periode de reference des usages (30 derniers matchs ou la reference existante — justifier), + seuils de role (`role_low_m`, `role_high_m`) et mediane de periode ; miroir pour la session comparee si la reference differe (sinon partage)
+- [x] `TimeseriesPageResponse.range_profiles` : `MatchRangeBlock` du joueur consulte sur la fenetre de la page (lobby entier pour la mediane)
+- [x] openapi + generate-types + tests
+- [x] Denivele E1 : `elevation_median_m`, `elevation_lobby_delta_m` (joueur), `lobby_elevation_median_m` (profil)
 
 ### Lot V — web Timeseries : 3.B (worktree `LevelUp-wt-ajsup-v`) — FUSIONNE 0325b01db ; a.1 dans le lot W bis apres U
 - [x] Mode baseline de `SessionBarsTrendChart`, deux cartes en ecart a leur repere, tendance 3 soirees
