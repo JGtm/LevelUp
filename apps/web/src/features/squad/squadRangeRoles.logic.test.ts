@@ -9,11 +9,12 @@
  */
 import { describe, expect, it } from 'vitest'
 
-import type { MatchRangeProfile } from '@/lib/api/types'
+import type { MatchRangePlayer, MatchRangeProfile } from '@/lib/api/types'
 
 import {
   categoriesMatchs,
   FENETRE_ROLE,
+  mesureDeJoueur,
   moyenneGlissante,
   ordonnerProfils,
   PLANCHER_MESURE,
@@ -176,5 +177,75 @@ describe('typage', () => {
     const p: PointPortee = serieDe([3])!.points[0]
     expect(p.medianeM).toBe(23)
     expect(p.ecartM).toBe(3)
+  })
+})
+
+// ─── La GRANDEUR (E1, D24 du 2026-09-22) : le même nuage lit la hauteur ───────────────
+describe('grandeur hauteur', () => {
+  const profilHauteur = (
+    i: number,
+    joueurs: Array<Partial<MatchRangePlayer> & { xuid: string }>,
+  ): MatchRangeProfile => ({
+    match_id: `h${i}`,
+    played_at: `2026-09-${String(10 + i).padStart(2, '0')}T20:00:00Z`,
+    lobby_median_m: 20,
+    lobby_measured: 80,
+    lobby_elevation_median_m: 0.4,
+    players: joueurs.map((j) => ({
+      gamertag: j.xuid,
+      median_m: 20,
+      lobby_delta_m: 0,
+      measured: 12,
+      ...j,
+    })) as MatchRangePlayer[],
+  })
+
+  it('projette le dénivelé, pas la distance', () => {
+    const profils = ordonnerProfils([
+      profilHauteur(1, [
+        { xuid: 'A', median_m: 30, lobby_delta_m: 10, elevation_median_m: 2.5, elevation_lobby_delta_m: 2.1 },
+      ]),
+    ])
+    const [serie] = seriesPortee(profils, ['A'], 'hauteur')
+    expect(serie.points[0].medianeM).toBeCloseTo(2.5, 6)
+    expect(serie.points[0].ecartM).toBeCloseTo(2.1, 6)
+    // La même entrée en portée rend la distance — la grandeur est le seul commutateur.
+    expect(seriesPortee(profils, ['A'])[0].points[0].ecartM).toBe(10)
+  })
+
+  it('un (match, joueur) SANS dénivelé servi n’est pas un point creux : il n’existe pas', () => {
+    const profils = ordonnerProfils([
+      profilHauteur(1, [
+        { xuid: 'A', elevation_median_m: 1, elevation_lobby_delta_m: 1 },
+        { xuid: 'B' },
+      ]),
+      profilHauteur(2, [{ xuid: 'A', elevation_median_m: 0, elevation_lobby_delta_m: 0 }]),
+    ])
+    const series = seriesPortee(profils, ['A', 'B'], 'hauteur')
+    expect(series.map((s) => s.gamertag)).toEqual(['A'])
+    // 0 m EST une mesure (« à plat ») : le deuxième point existe bel et bien.
+    expect(series[0].points).toHaveLength(2)
+    expect(series[0].points[1].ecartM).toBe(0)
+  })
+
+  it('mesureDeJoueur rend null dès qu’une des deux valeurs de hauteur manque', () => {
+    const base: MatchRangePlayer = { xuid: 'A', median_m: 20, lobby_delta_m: 0, measured: 9 }
+    expect(mesureDeJoueur(base, 'hauteur')).toBeNull()
+    expect(mesureDeJoueur({ ...base, elevation_median_m: 1 }, 'hauteur')).toBeNull()
+    expect(mesureDeJoueur({ ...base, elevation_lobby_delta_m: 1 }, 'hauteur')).toBeNull()
+    expect(mesureDeJoueur(base, 'portee')).toEqual({ medianeM: 20, ecartM: 0 })
+  })
+
+  it('les seuils de rôle restent les TIERS des points pleins de la grandeur lue', () => {
+    const profils = ordonnerProfils(
+      [-3, -1, 0, 1, 3].map((dz, i) =>
+        profilHauteur(i, [
+          { xuid: 'A', elevation_median_m: dz, elevation_lobby_delta_m: dz },
+        ]),
+      ),
+    )
+    const seuils = seuilsRoles(seriesPortee(profils, ['A'], 'hauteur'))!
+    expect(seuils.bas).toBeCloseTo(quantileLineaire([-3, -1, 0, 1, 3], 1 / 3), 6)
+    expect(seuils.haut).toBeCloseTo(quantileLineaire([-3, -1, 0, 1, 3], 2 / 3), 6)
   })
 })

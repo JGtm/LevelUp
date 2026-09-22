@@ -53,7 +53,22 @@ export interface RangeRolesChartOpts {
   }
   /** Formateur des mètres (locale de l'app). */
   fmtM: (v: number) => string
+  /**
+   * Écrit le gamertag AU BOUT de sa courbe de tendance, en plus de la légende (E1 : à
+   * quatre joueurs et vingt matchs, faire l'aller-retour vers la légende coûte la lecture).
+   * Réserve la marge droite qui va avec. Défaut : non.
+   */
+  etiquetteBout?: boolean
+  /**
+   * Opacité des points du nuage. Défaut 1 (lot R). Une grandeur dont la LECTURE tient dans
+   * la tendance (E1) baisse les points pour que les courbes passent devant.
+   */
+  opacitePoints?: number
 }
+
+/** Marge droite du `grid` : l'étiquette de bout de courbe a besoin de place. */
+const MARGE_DROITE = 16
+const MARGE_DROITE_ETIQUETTE = 64
 
 /** La donnée d'un point du nuage : sa position, et le point BRUT pour l'infobulle. */
 interface EchartPointDatum {
@@ -107,10 +122,11 @@ function serieTendance(
   serie: SeriePortee,
   couleur: string,
   nom: string,
+  etiquetteBout = false,
 ): Record<string, unknown> {
   const moyennes = moyenneGlissante(serie.points)
   const data = serie.points.map((p, i) => [p.ordre, moyennes[i]])
-  return {
+  const s: Record<string, unknown> = {
     type: 'line',
     name: nom,
     data,
@@ -121,6 +137,17 @@ function serieTendance(
     itemStyle: { color: couleur },
     z: 2,
   }
+  if (etiquetteBout) {
+    s.endLabel = {
+      show: true,
+      formatter: nom,
+      color: couleur,
+      fontSize: 10,
+      fontWeight: 500,
+      distance: 6,
+    }
+  }
+  return s
 }
 
 /** L'infobulle d'un point : le joueur, le match, la médiane, l'écart, les frags mesurés. */
@@ -150,6 +177,7 @@ export function buildSquadRangeRolesOption(
   const bornes = bornesY(series)
   const n = opts.categories.length
   const couleurDefaut = resolveToken('info')
+  const opacitePoints = opts.opacitePoints ?? 1
 
   const nuage = series.map((serie, idx) => {
     const couleur = opts.couleurs[serie.gamertag] ?? couleurDefaut
@@ -160,8 +188,14 @@ export function buildSquadRangeRolesOption(
       // visible (un essai de style n'est pas une erreur de mesure) mais ne se confond
       // jamais avec une médiane tenue.
       itemStyle: p.plein
-        ? { color: couleur, borderColor: tc.card, borderWidth: 2 }
-        : { color: 'transparent', borderColor: couleur, borderWidth: 2, borderType: 'dashed' },
+        ? { color: couleur, borderColor: tc.card, borderWidth: 2, opacity: opacitePoints }
+        : {
+            color: 'transparent',
+            borderColor: couleur,
+            borderWidth: 2,
+            borderType: 'dashed',
+            opacity: opacitePoints,
+          },
       raw: p,
     }))
     const s: Record<string, unknown> = { type: 'scatter', name: serie.gamertag, data, z: 3 }
@@ -188,12 +222,22 @@ export function buildSquadRangeRolesOption(
   })
 
   const tendances = series.map((serie) =>
-    serieTendance(serie, opts.couleurs[serie.gamertag] ?? couleurDefaut, serie.gamertag),
+    serieTendance(
+      serie,
+      opts.couleurs[serie.gamertag] ?? couleurDefaut,
+      serie.gamertag,
+      opts.etiquetteBout ?? false,
+    ),
   )
 
   return {
     backgroundColor: CHART_BG,
-    grid: { top: 24, bottom: 78, left: 56, right: 16 },
+    grid: {
+      top: 24,
+      bottom: 78,
+      left: 56,
+      right: opts.etiquetteBout ? MARGE_DROITE_ETIQUETTE : MARGE_DROITE,
+    },
     tooltip: { ...getTooltipBase(tc), trigger: 'item', formatter: formatTooltip(opts) },
     legend: {
       ...getLegendBase(tc),

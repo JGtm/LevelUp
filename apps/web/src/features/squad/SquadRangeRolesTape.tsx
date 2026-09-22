@@ -1,6 +1,7 @@
 /**
  * SquadRangeRolesTape — la « bande des rôles » (forme 2 de la maquette du 2026-09-21), le
- * repli fermé de la carte « Rôles de portée ».
+ * repli fermé du nuage des rôles — de portée (lot R) comme de hauteur (E1) : elle ne connaît
+ * que des RANGS, ses libellés lui sont passés par la carte.
  *
  * Une ligne par joueur, un jeton par match, coloré par le rôle LU SUR LA FENÊTRE GLISSANTE
  * de `FENETRE_ROLE` matchs — jamais par l'écart du match seul. Les premiers matchs d'un
@@ -9,8 +10,8 @@
  * l'amplitude.
  *
  * TROIS TEINTES D'UNE SEULE ENCRE, du plus clair au plus marqué (`tokenTone`) : le rôle est
- * ORDINAL (du plus près au plus loin), et une rampe ordonnée se lit sans réapprendre la
- * légende à chaque bloc. Aucune autre encre n'est empruntée (skill color-tokens).
+ * ORDINAL (du tiers bas au tiers haut de la grandeur), et une rampe ordonnée se lit sans
+ * réapprendre la légende à chaque bloc. Aucune autre encre n'est empruntée (skill color-tokens).
  *
  * PAS `OutcomeSequenceTape` : son contrat est soudé à l'issue de match (union
  * `OutcomeValue`, regroupement RLE par issue, crochets au-dessus pour les victoires et
@@ -41,11 +42,19 @@ export interface SquadRangeRolesTapeProps {
   /** Étiquettes des matchs (« #N · carte »), indexées par ordre du match. */
   categories: string[]
   t: SquadRangeRolesText
+  /** Préfixe des `data-testid` — une bande par grandeur cohabite sur la page. */
+  prefixeTest?: string
 }
 
-export function SquadRangeRolesTape({ series, roles, categories, t }: SquadRangeRolesTapeProps) {
+export function SquadRangeRolesTape({
+  series,
+  roles,
+  categories,
+  t,
+  prefixeTest = 'squad-portee',
+}: SquadRangeRolesTapeProps) {
   return (
-    <div className="space-y-2" data-testid="squad-portee-bande">
+    <div className="space-y-2" data-testid={`${prefixeTest}-bande`}>
       {series.map((serie) => (
         <div key={serie.xuid} className="flex items-center gap-2">
           <span className="w-28 shrink-0 truncate text-xs font-medium text-foreground">
@@ -59,7 +68,7 @@ export function SquadRangeRolesTape({ series, roles, categories, t }: SquadRange
                 <span
                   key={point.matchId}
                   className={`h-4 w-5 rounded-sm${role ? '' : ' bg-muted'}`}
-                  data-testid="squad-portee-jeton"
+                  data-testid={`${prefixeTest}-jeton`}
                   data-role={role ?? 'aucun'}
                   title={`${categories[point.ordre] ?? ''} — ${libelle}`}
                   style={role ? { backgroundColor: roleTone(role) } : undefined}

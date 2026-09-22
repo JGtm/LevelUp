@@ -136,3 +136,83 @@ describe('SquadRangeRolesCard', () => {
     expect(screen.getByText('No range measured')).toBeTruthy()
   })
 })
+
+/**
+ * La même carte en grandeur HAUTEUR (« Rôles de hauteur », E1 / D24 du 2026-09-22).
+ *
+ * Ce que ces tests cadenassent : c'est bien le dénivelé qui est projeté (pas la distance) ;
+ * un bloc servi SANS dénivelé rend l'état vide nommé de la hauteur, jamais celui de la
+ * portée ni un nuage à zéro point ; les bandes se nomment Contrebas / À niveau / Hauteurs ;
+ * la ligne du lobby reste à zéro ; et chaque courbe de tendance porte le gamertag à son
+ * bout (à quatre joueurs, la légende seule ne suffit plus).
+ */
+describe('SquadRangeRolesCard — grandeur hauteur', () => {
+  function profilDz(i: number, dz: [number, number]): MatchRangeProfile {
+    const p = profil(i)
+    return {
+      ...p,
+      lobby_elevation_median_m: 0.2,
+      players: [
+        { ...p.players![0], elevation_median_m: dz[0] + 0.2, elevation_lobby_delta_m: dz[0] },
+        { ...p.players![1], elevation_median_m: dz[1] + 0.2, elevation_lobby_delta_m: dz[1] },
+      ],
+    }
+  }
+
+  it('rend l’ÉTAT VIDE NOMMÉ de la hauteur quand aucun dénivelé n’est servi', () => {
+    renderWithProviders(
+      <SquadRangeRolesCard bloc={bloc([profil(0)])} roster={roster} grandeur="hauteur" />,
+    )
+    expect(screen.getByText('Aucune hauteur mesurée')).toBeTruthy()
+    expect(screen.queryByText('Aucune portée mesurée')).toBeNull()
+  })
+
+  it('projette le DÉNIVELÉ en ordonnée, pas la distance', async () => {
+    const profils = Array.from({ length: 5 }, (_, i) => profilDz(i, [2.4, -1.6]))
+    renderWithProviders(
+      <SquadRangeRolesCard bloc={bloc(profils)} roster={roster} grandeur="hauteur" />,
+    )
+    const series = (await option()).series as Array<Record<string, unknown>>
+    const nuage = series.filter((s) => s.type === 'scatter')
+    const premier = (nuage[0].data as Array<{ value: [number, number] }>)[0]
+    expect(premier.value[1]).toBeCloseTo(2.4, 6)
+    const second = (nuage[1].data as Array<{ value: [number, number] }>)[0]
+    expect(second.value[1]).toBeCloseTo(-1.6, 6)
+  })
+
+  it('nomme les bandes Contrebas / À niveau / Hauteurs et garde le lobby à zéro', async () => {
+    const profils = [0, 1, 2, 3, 4].map((i) => profilDz(i, [i - 2, 2 - i]))
+    renderWithProviders(
+      <SquadRangeRolesCard bloc={bloc(profils)} roster={roster} grandeur="hauteur" />,
+    )
+    const series = (await option()).series as Array<Record<string, unknown>>
+    const markArea = series[0].markArea as { data: Array<Array<{ name?: string }>> }
+    expect(markArea.data.map((b) => b[0].name)).toEqual(['Contrebas', 'À niveau', 'Hauteurs'])
+    const markLine = series[0].markLine as { data: Array<{ yAxis: number }> }
+    expect(markLine.data[0].yAxis).toBe(0)
+  })
+
+  it('écrit le gamertag AU BOUT de chaque courbe de tendance', async () => {
+    const profils = Array.from({ length: 5 }, (_, i) => profilDz(i, [1, -1]))
+    renderWithProviders(
+      <SquadRangeRolesCard bloc={bloc(profils)} roster={roster} grandeur="hauteur" />,
+    )
+    const series = (await option()).series as Array<Record<string, unknown>>
+    const lignes = series.filter((s) => s.type === 'line')
+    expect(lignes.map((s) => (s.endLabel as { formatter: string }).formatter)).toEqual([
+      'JGtm',
+      'Kaya',
+    ])
+  })
+
+  it('laisse la carte de PORTÉE intacte : ni étiquette de bout, ni point effacé', async () => {
+    const profils = Array.from({ length: 5 }, (_, i) => profilDz(i, [1, -1]))
+    renderWithProviders(<SquadRangeRolesCard bloc={bloc(profils)} roster={roster} />)
+    const series = (await option()).series as Array<Record<string, unknown>>
+    expect(series.filter((s) => s.type === 'line').every((s) => s.endLabel === undefined)).toBe(
+      true,
+    )
+    const points = series[0].data as Array<{ itemStyle: { opacity?: number } }>
+    expect(points[0].itemStyle.opacity).toBe(1)
+  })
+})
