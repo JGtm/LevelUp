@@ -151,6 +151,20 @@ en = "Smart selection"
 fr = "Aucune session de comparaison"
 en = "No comparison session"
 
+# Titres des quatre sections de la page (gabarit DetailSection/SectionTitle). La bande KPI
+# reste sans titre, comme le Home.
+[session.detail.section_overview]
+fr = "Bilan"
+en = "Overview"
+
+[session.detail.section_match_by_match]
+fr = "Match par match"
+en = "Match by match"
+
+[session.detail.section_kills_usage]
+fr = "Frags et usages"
+en = "Kills and usage"
+
 [session.detail.matches_card]
 fr = "Détail des matchs"
 en = "Match details"

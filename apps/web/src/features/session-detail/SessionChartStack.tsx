@@ -1,11 +1,20 @@
 /**
- * SessionChartStack — pile de graphes analytiques d'UNE session.
+ * SessionChartStack — LES DEUX PREMIÈRES SECTIONS de la page session : « Bilan » (ce que
+ * la session dit d'elle-même : issues, frags, modes, placements, radars) puis « Match par
+ * match » (tout ce qui se lit sur la chronologie des matchs).
+ *
+ * LES DEUX TITRES VIVENT ICI, PAS CHEZ L'APPELANT, et c'est ce qui les aligne : la colonne
+ * principale et le drawer de comparaison montent le MÊME composant (via `SessionColumnBody`),
+ * donc les mêmes sections, dans le même ordre, à la même hauteur. Un titre posé côté A
+ * seulement décalerait les deux colonnes d'une ligne. Les sections 3 (« Frags et usages ») et
+ * 4 (« Détail des matchs ») appartiennent à `SessionColumnBody` : elles coiffent des blocs
+ * qu'il est seul à monter.
  *
  * Rendu identique en vue principale (session active) et dans le drawer (session
  * comparée) → comparaison "côte à côte" : on lit la session A à gauche et la session B
  * à droite, mêmes graphes alignés. Pas de graphe combiné A/B.
  *
- * - `compact` : colonne divisée (drawer ouvert) — donuts en % interne, sunburst frags empilé.
+ * - `compact` : colonne divisée (drawer ouvert) — donuts en % interne.
  * - `participationSide` / `participationColor` : l'axe du profil de participation est à
  *   DROITE + couleur A en vue single, à GAUCHE + couleur B dans le drawer → effet miroir.
  */
@@ -17,6 +26,7 @@ import type {
   SessionDetailMatchRow,
 } from '@/lib/api/types'
 
+import { DetailSection } from '@/components/ui/detail-section'
 import { InfoTooltip } from '@/components/ui/info-tooltip'
 import { EfficiencyTooltipText } from '@/components/charts/EfficiencyTooltipText'
 import { FirstBloodLanes } from '@/components/charts/FirstBloodLanes'
@@ -44,7 +54,6 @@ import { FeatureGate } from '@/lib/capabilities/FeatureGate'
 import { useCapability } from '@/lib/capabilities/capabilities'
 import { SessionDamageComposite } from './SessionDamageComposite'
 import { SessionOcdrBars } from './SessionOcdrBars'
-import { SessionFragCard } from './SessionFragCard'
 import { SessionCareerXP } from './SessionCareerXP'
 
 interface Props {
@@ -194,13 +203,8 @@ export function SessionChartStack({
     />
   )
   const damage = <SessionDamageComposite title={t('session.detail.chart_damage_title')} matches={matches} />
-  // Répartition des frags v2 (sunburst classe→rôle + « Détails des frags ») — alimentée par
-  // l'agrégat de session (P5). Rend null si aucune donnée. Rendu Match view (compteur seul,
-  // légende gauche, survol lié) ; EMPILÉ quand la colonne est étroite (`compact` = colonne
-  // principale rétrécie par le drawer de comparaison).
-  const frags = <SessionFragCard entry={entry} stacked={compact} />
-
-  // XP de carrière estimée (V72-13) — avant-dernier bloc, avant le tableau des matchs.
+  // XP de carrière estimée (V72-13) — DERNIER bloc de la section « Match par match » :
+  // elle se lit match par match, comme ses voisines.
   // Auto-gate data-driven : masqué si aucun match ne porte career_xp_estimated (H5).
   const careerXp = (
     <SessionCareerXP
@@ -216,40 +220,51 @@ export function SessionChartStack({
 
   return (
     <>
-      <div className="grid gap-6 xl:grid-cols-2">
-        {outcomeDonut}
-        {killsDonut}
-      </div>
-      <div className="grid gap-6 xl:grid-cols-2">
-        {modeBreakdown}
-        {placementBreakdown}
-      </div>
-      <div className="grid gap-6 xl:grid-cols-2">
-        {fdaRadar}
-        {fragsRadar}
-      </div>
-      <div className="grid gap-6 xl:grid-cols-2">
-        {netScore}
-        {fdaBars}
-      </div>
-      {fdaGap}
-      {netLives}
-      {intensity}
-      {firstBlood}
-      {participation}
-      {mmr ? (
-        <div className="grid gap-6 xl:grid-cols-2">
-          {mmr}
-          {ocdr}
+      <DetailSection title={t('session.detail.section_overview')}>
+        {/* `space-y-6` INTERNE, et non l'espacement par défaut de DetailSection : les blocs
+            de la page sont espacés de 6 depuis toujours (conteneur de page). Le titre, lui,
+            garde le gabarit standard — c'est lui qui devait être unifié, pas la densité. */}
+        <div className="space-y-6">
+          <div className="grid gap-6 xl:grid-cols-2">
+            {outcomeDonut}
+            {killsDonut}
+          </div>
+          <div className="grid gap-6 xl:grid-cols-2">
+            {modeBreakdown}
+            {placementBreakdown}
+          </div>
+          <div className="grid gap-6 xl:grid-cols-2">
+            {fdaRadar}
+            {fragsRadar}
+          </div>
         </div>
-      ) : (
-        ocdr
-      )}
-      {perf}
-      {engagement}
-      {damage}
-      {frags}
-      {careerXp}
+      </DetailSection>
+
+      <DetailSection title={t('session.detail.section_match_by_match')}>
+        <div className="space-y-6">
+          <div className="grid gap-6 xl:grid-cols-2">
+            {netScore}
+            {fdaBars}
+          </div>
+          {fdaGap}
+          {netLives}
+          {intensity}
+          {firstBlood}
+          {participation}
+          {mmr ? (
+            <div className="grid gap-6 xl:grid-cols-2">
+              {mmr}
+              {ocdr}
+            </div>
+          ) : (
+            ocdr
+          )}
+          {perf}
+          {engagement}
+          {damage}
+          {careerXp}
+        </div>
+      </DetailSection>
     </>
   )
 }

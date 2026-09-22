@@ -34,6 +34,8 @@ import { fragsManifest } from '@/lib/i18n/generated/frags'
 import type { SessionCompareEntry } from '@/lib/api/types'
 import { useAppShellStore } from '@/stores/appShellStore'
 
+import { sessionFragCardHasContent } from './sessionSectionVisibility'
+
 /** Hauteur fixe PARTAGÉE par le sunburst et le 2e graphe (I5 — même hauteur des deux cartes
  *  dans les deux états compare/non-compare). Alignée sur le défaut ChartCard. */
 const FRAG_CARD_HEIGHT = 320
@@ -57,8 +59,9 @@ export function SessionFragCard({ entry, stacked = false }: Props) {
   // devient « Précision par arme » à la place de « Détails des frags » (Infinite = vide → repli).
   const accuracy = entry?.weapon_accuracy ?? []
 
-  const hasSunburst = (distribution?.total_kills ?? 0) > 0
-  if (!hasSunburst && breakdown.length === 0) return null
+  // Porte partagée avec le TITRE DE SECTION « Frags et usages » (sessionSectionVisibility) :
+  // une seule écriture de « y a-t-il quelque chose à dessiner ».
+  if (!sessionFragCardHasContent(entry)) return null
 
   return (
     <div className={stacked ? 'grid grid-cols-1 gap-4' : 'grid grid-cols-1 gap-4 xl:grid-cols-3'}>
@@ -99,3 +102,4 @@ export function SessionFragCard({ entry, stacked = false }: Props) {
     </div>
   )
 }
+
