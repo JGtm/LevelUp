@@ -110,10 +110,7 @@ vi.mock('./MatchSummaryMedalsAndCitations', () => ({
   MatchCitationsSection: () => <div data-testid="citations" />,
   MatchNativeCommendationsSection: () => <div data-testid="native-commendations" />,
 }))
-vi.mock('./MatchMediaTab', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('./MatchMediaTab')>()),
-  MatchMediaTab: () => <div data-testid="media-tab" />,
-}))
+vi.mock('./MatchMediaTab', () => ({ MatchMediaTab: () => <div data-testid="media-tab" /> }))
 
 // Feuilles mockées — onglet Chronologie.
 vi.mock('./MatchImpactBadgesBar', () => ({
@@ -134,25 +131,24 @@ vi.mock('@/features/engagement/EngagementMatchSection', () => ({
 // Chaque bloc expose SON prédicat de rendu : le parent le lit pour poser (ou non) son titre
 // de section. Les mocks conservent donc le prédicat — le VRAI quand il est pur
 // (`hasMatchFragData`, `hasPositions`), un pilotable sinon (capability, artefact de rejeu).
-vi.mock('./MatchFragCard', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('./MatchFragCard')>()),
-  MatchFragCard: () => <div data-testid="frag-card" />,
-}))
+vi.mock('./MatchFragCard', () => ({ MatchFragCard: () => <div data-testid="frag-card" /> }))
 vi.mock('./MatchKillDistanceSection', () => ({
   MatchKillDistanceSection: () => <div data-testid="kill-distance" />,
-  useHasKillDistanceSection: () => hoisted.blocks.killDistance,
 }))
 vi.mock('./MatchPositionsHeatmap', () => ({
   MatchPositionsHeatmap: () => <div data-testid="positions-heatmap" />,
-  hasPositions: (positions: unknown[] | null | undefined) => (positions?.length ?? 0) > 0,
+}))
+// Les prédicats PURS restent les vrais (c'est la donnée de la fixture qui décide) ; seule la
+// capability du titre est pilotée.
+vi.mock('./blockPredicates', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('./blockPredicates')>()),
+  useHasKillDistanceSection: () => hoisted.blocks.killDistance,
 }))
 vi.mock('@/features/match-replay/MatchEquipmentUsageSection', () => ({
   MatchEquipmentUsageSection: () => <div data-testid="equipment-usage" />,
-  hasEquipmentUsage: () => hoisted.blocks.equipment,
 }))
 vi.mock('@/features/match-replay/MatchPadControlSection', () => ({
   MatchPadControlSection: () => <div data-testid="pad-control" />,
-  hasPadControl: () => hoisted.blocks.pads,
 }))
 // Les deux mesures de rejeu se rebâtissent chez le parent depuis l'artefact en cache : ici
 // le document est un jeton de présence et les constructeurs rendent un objet opaque — seul
@@ -160,8 +156,12 @@ vi.mock('@/features/match-replay/MatchPadControlSection', () => ({
 vi.mock('@/lib/replay/queries', () => ({ useMatchReplay: () => ({ data: hoisted.replayDoc }) }))
 vi.mock('@/features/match-replay/model/equipmentUsageLogic', () => ({
   buildEquipmentUsage: () => ({}),
+  hasEquipmentUsage: () => hoisted.blocks.equipment,
 }))
-vi.mock('@/features/match-replay/model/padControlLogic', () => ({ buildPadControl: () => ({}) }))
+vi.mock('@/features/match-replay/model/padControlLogic', () => ({
+  buildPadControl: () => ({}),
+  hasPadControl: () => hoisted.blocks.pads,
+}))
 
 // Feuilles mockées — onglet Joueurs.
 vi.mock('./MatchNemesisCards', () => ({ MatchNemesisCards: () => <div data-testid="nemesis" /> }))

@@ -5,19 +5,7 @@ import { MediaMatchPicker } from '@/features/media/MediaMatchPicker'
 import { useMediaPicker } from '@/features/media/useMediaPicker'
 import { useToggleMediaLike } from '@/features/media/queries'
 import { toMediaItemRow } from './_mediaItemRow'
-
-/**
- * hasMediaItems — LE prédicat de rendu du bloc, en fonction pure : aucune capture ni clip
- * associé au match -> rien du tout.
- *
- * Exporté pour que la page décide d'afficher ou non le TITRE de section « Médias » qui
- * coiffe ce bloc — un titre ne se pose jamais au-dessus de rien (2026-09-22). L'état vide
- * « Aucune capture » que le bloc peignait jusque-là est mort avec cette règle : il ne
- * pouvait s'afficher que sous un titre que la page ne pose plus.
- */
-export function hasMediaItems(items: MatchAssociatedMedia[] | null | undefined): boolean {
-  return (items?.length ?? 0) > 0
-}
+import { hasMediaItems } from './blockPredicates'
 
 interface MatchMediaTabProps {
   items: MatchAssociatedMedia[]

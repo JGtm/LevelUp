@@ -80,10 +80,9 @@ vi.mock('./MatchSummaryMedalsAndCitations', () => ({
   MatchCitationsSection: () => <div data-testid="citations" />,
   MatchNativeCommendationsSection: () => <div data-testid="native-commendations" />,
 }))
-// `hasMediaItems` reste LE vrai prédicat : c'est lui que la page lit pour poser, ou non, le
-// titre « Médias » (2026-09-22).
-vi.mock('./MatchMediaTab', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('./MatchMediaTab')>()),
+// `hasMediaItems` (module `blockPredicates`, non mocké) reste LE vrai prédicat : c'est lui
+// que la page lit pour poser, ou non, le titre « Médias » (2026-09-22).
+vi.mock('./MatchMediaTab', () => ({
   MatchMediaTab: () => <div data-testid="media-tab" />,
 }))
 

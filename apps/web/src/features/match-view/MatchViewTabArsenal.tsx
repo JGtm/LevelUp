@@ -24,26 +24,21 @@
  * aucun cadre vide.
  *
  * UN TITRE DE SECTION NE S'AFFICHE JAMAIS AU-DESSUS DE RIEN (règle du chantier, 2026-09-22).
- * Chaque bloc expose SON prédicat de rendu en fonction pure — `hasMatchFragData`,
- * `useHasKillDistanceSection`, `hasEquipmentUsage`, `hasPadControl`, `hasPositions` — et
- * c'est le MÊME prédicat qui commande son `return null` et la pose du titre ici : la règle
- * ne peut pas diverger d'un côté à l'autre. Les deux mesures de rejeu se rebâtissent ici
+ * Le prédicat de rendu de chaque bloc vit hors de son fichier de composant — `hasMatchFragData`,
+ * `hasPositions` et `useHasKillDistanceSection` dans `./blockPredicates`, `hasEquipmentUsage`
+ * et `hasPadControl` avec leurs mesures dans `match-replay/model/` — et c'est le MÊME
+ * prédicat qui commande le `return null` du bloc et la pose du titre ici : la règle ne peut
+ * pas diverger d'un côté à l'autre. Les deux mesures de rejeu se rebâtissent ici
  * depuis le MÊME artefact que les cartes (`useMatchReplay`, une seule clé de cache, aucun
  * téléchargement de plus). Les deux sections muettes -> un état vide nommé, jamais un
  * onglet blanc.
  */
 import { useMemo } from 'react'
 
-import {
-  MatchEquipmentUsageSection,
-  hasEquipmentUsage,
-} from '@/features/match-replay/MatchEquipmentUsageSection'
-import {
-  MatchPadControlSection,
-  hasPadControl,
-} from '@/features/match-replay/MatchPadControlSection'
-import { buildEquipmentUsage } from '@/features/match-replay/model/equipmentUsageLogic'
-import { buildPadControl } from '@/features/match-replay/model/padControlLogic'
+import { MatchEquipmentUsageSection } from '@/features/match-replay/MatchEquipmentUsageSection'
+import { MatchPadControlSection } from '@/features/match-replay/MatchPadControlSection'
+import { buildEquipmentUsage, hasEquipmentUsage } from '@/features/match-replay/model/equipmentUsageLogic'
+import { buildPadControl, hasPadControl } from '@/features/match-replay/model/padControlLogic'
 import { DetailSection } from '@/components/ui/detail-section'
 import { EmptyStateNotice } from '@/components/ui/empty-state'
 import type {
@@ -56,9 +51,10 @@ import type {
 } from '@/lib/api/types'
 import type { Locale } from '@/lib/i18n/locale'
 import { useMatchReplay } from '@/lib/replay/queries'
-import { MatchFragCard, hasMatchFragData } from './MatchFragCard'
-import { MatchKillDistanceSection, useHasKillDistanceSection } from './MatchKillDistanceSection'
-import { MatchPositionsHeatmap, hasPositions } from './MatchPositionsHeatmap'
+import { MatchFragCard } from './MatchFragCard'
+import { MatchKillDistanceSection } from './MatchKillDistanceSection'
+import { MatchPositionsHeatmap } from './MatchPositionsHeatmap'
+import { hasMatchFragData, hasPositions, useHasKillDistanceSection } from './blockPredicates'
 import type { MatchViewText } from './i18n'
 
 interface Props {

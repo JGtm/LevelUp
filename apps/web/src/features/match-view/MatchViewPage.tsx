@@ -9,7 +9,7 @@ import { useMatchView, useMatchObjectiveEvents, useMatchPositions } from './quer
 import { MatchBreadcrumb, MatchNavigationBar, MatchHeaderCard } from './MatchHeader'
 import { MatchSummaryCardsSection } from './MatchStatCards'
 import { MatchKdaExpectedChart, MatchSpreeChart, MatchSummaryRadarChart } from './MatchSummaryCharts'
-import { MatchMediaTab, hasMediaItems } from './MatchMediaTab'
+import { MatchMediaTab } from './MatchMediaTab'
 import {
   MatchMedalsSection,
   MatchCitationsSection,
@@ -18,6 +18,7 @@ import {
 import { MatchViewTabChronology } from './MatchViewTabChronology'
 import { MatchViewTabArsenal } from './MatchViewTabArsenal'
 import { MatchViewTabPlayers } from './MatchViewTabPlayers'
+import { hasMediaItems } from './blockPredicates'
 import { buildMatchHeadingStr } from './format'
 import { MATCH_VIEW_TEXT } from './i18n'
 import type { MatchViewTab } from './tabs'

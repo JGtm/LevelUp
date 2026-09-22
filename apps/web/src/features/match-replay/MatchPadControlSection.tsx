@@ -64,7 +64,7 @@ import { HeaderLabelTooltip } from '@/lib/table/columnMeta'
 import { REPLAY_TEXT, type ReplayLocale } from './i18n/i18n'
 import type { ReplayText } from './i18n/i18nContract'
 import { buildPadControlBars, type PadBarModel, type PadBarRow } from './model/padControlChart'
-import { buildPadControl, type PadControl } from './model/padControlLogic'
+import { buildPadControl, hasPadControl, type PadControl } from './model/padControlLogic'
 import { PAD_TIER_ORDER, type PadTier } from './model/weaponTier'
 import { useMatchReplay } from '../../lib/replay/queries'
 import { padNameFor } from './layers/useReplayWeaponPads'
@@ -80,19 +80,6 @@ interface Props {
   replayAvailable: boolean
   scoreboard: MatchScoreboardRow[] | null | undefined
   locale: ReplayLocale
-}
-
-/**
- * hasPadControl — LA double porte de la carte, en fonction pure : pas d'artefact de rejeu
- * (`control` null) ou aucune prise attribuée -> pas de carte.
- *
- * Exportée pour que le parent (`match-view/MatchViewTabArsenal`) décide d'afficher ou non
- * le titre de section qui coiffe cette carte — un titre ne se pose jamais au-dessus de
- * rien. Le parent construit son `PadControl` avec le MÊME `buildPadControl` et le même
- * artefact (une seule clé de cache) : le prédicat, lui, ne s'écrit qu'ici.
- */
-export function hasPadControl(control: PadControl | null | undefined): control is PadControl {
-  return control?.hasData === true
 }
 
 export function MatchPadControlSection({

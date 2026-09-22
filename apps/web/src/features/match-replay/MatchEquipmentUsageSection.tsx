@@ -79,7 +79,12 @@ import {
   usageColumnGroups,
   type UsageColumnGroup,
 } from './model/equipmentUsageColumns'
-import { buildEquipmentUsage, tallyTotal, type EquipmentUsage } from './model/equipmentUsageLogic'
+import {
+  buildEquipmentUsage,
+  hasEquipmentUsage,
+  tallyTotal,
+  type EquipmentUsage,
+} from './model/equipmentUsageLogic'
 import { REPLAY_TEXT, type ReplayLocale } from './i18n/i18n'
 import type { ReplayText } from './i18n/i18nContract'
 import { useMatchReplay } from '../../lib/replay/queries'
@@ -91,19 +96,6 @@ interface Props {
   replayAvailable: boolean
   scoreboard: MatchScoreboardRow[] | null | undefined
   locale: ReplayLocale
-}
-
-/**
- * hasEquipmentUsage — LA double porte de la carte, en fonction pure : pas d'artefact de
- * rejeu (`usage` null) ou rien de mesuré -> pas de carte.
- *
- * Exportée pour que le parent (`match-view/MatchViewTabArsenal`) décide d'afficher ou non
- * le titre de section qui coiffe cette carte — un titre ne se pose jamais au-dessus de
- * rien. Le parent construit son `EquipmentUsage` avec le MÊME `buildEquipmentUsage` et le
- * même artefact (une seule clé de cache) : le prédicat, lui, ne s'écrit qu'ici.
- */
-export function hasEquipmentUsage(usage: EquipmentUsage | null | undefined): boolean {
-  return usage?.hasData === true
 }
 
 export function MatchEquipmentUsageSection({

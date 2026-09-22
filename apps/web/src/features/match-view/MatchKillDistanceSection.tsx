@@ -33,7 +33,6 @@ import { ChartCard } from '@/components/charts/ChartCard'
 import { ChartLegend } from '@/components/charts/ChartLegend'
 import { SectionCard } from '@/components/ui/section-card'
 import { resolveToken } from '@/lib/accessibility'
-import { useDataCapability } from '@/lib/capabilities/dataCapabilities'
 import type {
   MatchKillDistancePlayer,
   MatchRosterRow,
@@ -43,6 +42,7 @@ import { getEChartsThemeColors } from '@/lib/echarts/themeColors'
 import { stripBotSuffix } from '@/lib/players/displayName'
 import { useAppShellStore } from '@/stores/appShellStore'
 
+import { useHasKillDistanceSection } from './blockPredicates'
 import { buildMatchPlayerColors } from './colors'
 import {
   buildKillDistanceOption,
@@ -61,22 +61,6 @@ interface Props {
   /** Amis d'escouade (liste du joueur) : encres coéquipier côté allié. */
   friendGamertags?: readonly string[]
   t: MatchViewText
-}
-
-/**
- * useHasKillDistanceSection — LE prédicat de rendu de la section, en un seul endroit.
- *
- * La PORTE 1 ci-dessus (le TITRE mesure-t-il les positions de frag ?) décide à elle seule
- * si la section existe : la porte 2 (ce match-là) ne la fait pas disparaître, elle écrit
- * pourquoi elle est vide. Le parent (`MatchViewTabArsenal`) le lit pour décider d'afficher
- * ou non le titre de section qui la coiffe — un titre ne se pose jamais au-dessus de rien.
- *
- * C'est un HOOK et non une fonction pure parce que la capability se lit dans le cache de
- * requêtes du titre courant ; l'appeler deux fois ne coûte rien (une lecture de cache,
- * `staleTime` 5 min — cf. `dataCapabilities`).
- */
-export function useHasKillDistanceSection(): boolean {
-  return useDataCapability('film.kill_positions')
 }
 
 export function MatchKillDistanceSection({

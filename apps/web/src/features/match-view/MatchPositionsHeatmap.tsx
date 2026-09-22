@@ -43,6 +43,8 @@ import type { Locale } from '@/lib/i18n/locale'
 import { drawTacticalHeatmap, heatRamp } from '@/lib/replay/heatPaint'
 import { useReplayMapBackground, useReplayMapImage } from '@/lib/replay/queries'
 
+import { hasPositions } from './blockPredicates'
+
 import { buildPositionsGrid, hasTeamSplit, mapFrame } from './_positionsHeat'
 
 /**
@@ -82,19 +84,6 @@ const TEXT = {
       'The busiest spots of the map during this match, all sides or side by side. Read it this way: the hotter, the longer it was held.',
   },
 } as const satisfies Record<Locale, unknown>
-
-/**
- * hasPositions — la PREMIÈRE porte du bloc, en fonction pure : sans position décodée du
- * film, il n'y a rien à peindre.
- *
- * Exportée pour que le parent (`MatchViewTabArsenal`) décide d'afficher ou non le titre de
- * section qui coiffe ce bloc — un titre ne se pose jamais au-dessus de rien. Les deux
- * portes suivantes (plan de la carte, grille de chaleur) restent INTERNES : elles dépendent
- * d'une image et d'un calibrage que seul ce composant charge.
- */
-export function hasPositions(positions: MatchPlayerPosition[] | null | undefined): boolean {
-  return (positions?.length ?? 0) > 0
-}
 
 export function MatchPositionsHeatmap({
   playerSlug,
