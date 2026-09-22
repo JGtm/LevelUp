@@ -8326,6 +8326,137 @@ contre 4 469 dans la reference — et 1 489 est EXACTEMENT la valeur que le lot 
 les divergences sont celles de la reference perimee, pas des siennes. Decodage : 14,8 s,
 pic 0,19 Gio, un film a la fois.
 
+### Post-chantier — lot 5.25 (mesure : ticks de joueur perdus par le calque des etats), branche `feat/decfilm-75`
+
+Sur la remarque de l utilisateur du 2026-09-22 : **25 % des REJETS ne veut pas dire 25 % des
+DONNEES**. PERIMETRE FERME — MESURE SEULE : un instrument `research`, une note, cette section,
+un commit. AUCUN code de production, AUCUNE grammaire, AUCUNE lecture Ghidra, AUCUNE hypothese
+sur la cause (elle est nommee : D1 du 5.19), AUCUNE recommandation de lot. Note de mesure :
+`.ai/V7.5/film_re/NOTE_5_25_TICKS_PERDUS_2026-09-22.md`.
+
+- [x] **5.25.1 — LE CALQUE DES ETATS PERD 35,4 % DES TICKS DE JOUEUR SUR `bfecd02b` ET 53,7 %
+  SUR `4f77afc1`, ET LA PERTE VA DE 12,5 % A 90,7 % SELON LE JOUEUR.**
+
+  **L INSTRUMENT.** `mouvement_5_25_ticks_perdus_research_test.go` (la passe, tableaux (a) et
+  (b)) + `mouvement_5_25_tableaux_research_test.go` (tableaux (c), (d), (e)), `TestTicks525`,
+  variables `MOUV511_FILM` / `MOUV511_CARTE` / `MOUV511_BORNES`. UNE passe, UN decodage par
+  paquet, sous la marche de PRODUCTION du calque (`ScanMovementStates` : cadre du film,
+  images-cles, table de datums, TABLE ANTICIPEE du 5.23, trois rangs de vue). Il emprunte
+  `t519Marcher` (5.19) et `a523IdRejete` (5.23) ; aucune marche n est recopiee. Le crochet
+  `Observation.EtatMouvementHook` rend, dans le MEME decodage, les etats lus et la vitesse
+  tenue. Cout : **4,9 s** sur `bfecd02b`, 37,1 s sur `4f77afc1`.
+
+  **CONTROLE** : l instrument rend AU PAQUET ce que `TestGate516` rend sur la meme base —
+  `bfecd02b` 3 940 / 30 387 a reste NUL, 26 397 abandonnees, 50 debordements, 16 129 rejets
+  hors datum, 254 liaisons par anticipation (cinq chiffres sur cinq, rejoue).
+
+  **(a) UNE TRAME ABANDONNEE EST LUE AUX DEUX TIERS.**
+
+  | | `bfecd02b` (snowbound, 8 joueurs) | `4f77afc1` (flood gulch, BTB) |
+  |---|---:|---:|
+  | paquets delta · LOCALISES | 31 232 · **30 387** | 35 499 · **30 490** |
+  | fermees a reste NUL | **3 940 (13,0 %)** | **2 781 (9,1 %)** |
+  | **ABANDONNEES** | **26 397 (86,9 %)** | **27 671 (90,8 %)** |
+  | debordements | 50 | 38 |
+  | bits de payload · LUS | 57 631 104 · **65,0 %** | 197 482 824 · **68,6 %** |
+  | bits NON LUS | 20 156 297 (**35,0 %**) | 62 056 887 (**31,4 %**) |
+
+  Part de trame lue avant l abandon (`bfecd02b`) : 0-10 % **6,3 %**, 50-60 % 16,3 %,
+  60-70 % 16,5 %, 70-80 % 15,5 %, 80-90 % **18,6 %**, 90-100 % 16,3 %. **La marche va LOIN
+  avant de tomber** ; 1 670 trames seulement sont coupees dans leur premier dixieme.
+
+  **(b) LE REJET TOMBE TARD, ET LA COMPARAISON NE PORTE QUE SUR 111 TRAMES SUR 15 474.**
+  L attendu est mesure sur les trames FERMEES de la fenetre +-5 : 7,79 records lus contre
+  **9,17 attendus**, soit **15,0 % de manque** (0,9 % sur `4f77afc1`, 14 trames). 15 363 trames
+  abandonnees n ont AUCUNE voisine fermee — les fermees se groupent au debut de chaque chunk
+  (le chunk s effondre apres sa premiere faute, 5.19.2). Le confondant du 5.19.1 (c) se relit :
+  les abandonnees portent PLUS de records que les fermees (`ti=35` 5,75/trame contre 3,09 ;
+  15,69 contre 1,94 sur `4f77afc1`) — **le compte global de records ne dit rien de la perte**.
+
+  **(c) LE CHIFFRE QUI COMPTE.** Une VIE est un record de creation de bipede
+  (`ScanBipedCreations` : slot, generation, index de participant nomme par `chunk_00`) ; un TICK
+  est une trame delta (~60/s) ; l ATTENDU est l ensemble des trames comprises entre deux
+  lectures consecutives d une meme vie dont au moins une porte une vitesse tenue non nulle.
+
+  | joueur (`bfecd02b`) | vies | attendus | lus | **PERDUS** | perte |
+  |---|---:|---:|---:|---:|---:|
+  | Tataaannn | 9 | 41 337 | 21 446 | **19 891** | 48,1 % |
+  | Chocoboflor | 13 | 38 986 | 19 778 | **19 208** | 49,3 % |
+  | JGtm | 10 | 34 289 | 18 070 | **16 219** | 47,3 % |
+  | indahoopty8751 | 16 | 33 717 | 18 248 | **15 469** | 45,9 % |
+  | MEK1906 | 17 | 21 491 | 16 597 | 4 894 | 22,8 % |
+  | SHN Lups99 | 6 | 26 136 | 22 059 | 4 077 | 15,6 % |
+  | Madina97294 | 12 | 22 892 | 19 800 | 3 092 | 13,5 % |
+  | Draconewt | 7 | 23 863 | 20 870 | 2 993 | 12,5 % |
+  | **TOTAL** | **90** | **242 711** | **156 868** | **85 843** | **35,4 %** |
+
+  **L ATTENDU EST ETALONNE** : sur les paires dont TOUTES les trames intermediaires sont
+  FERMEES, il reste **1,30 %** de trous (141 sur 10 821 trames) — le taux NATUREL de
+  non-replication d un bipede en mouvement. Perte NETTE de l abandon : **34,1 %, 82 681 ticks**.
+  Les 90 vies sont exactement les 90 pistes que le document publie (5.23.3).
+  `4f77afc1` : **330 vies**, 857 388 attendus, 396 763 lus, **460 625 perdus (53,7 %)**, etalon
+  0,27 %, perte nette **53,4 %** ; extremes `AJM002` **90,7 %** et `MiniScotsMin` 23,1 %.
+
+  **(d) LA BORNE DES TRANSITIONS D ETAT.**
+
+  | | `bfecd02b` | `4f77afc1` |
+  |---|---:|---:|
+  | couples (trame, vie) : corps en mouvement, NON LU en trame abandonnee, changement d etat lu a +-5 trames | **286** (263 trames) | **1 881** (1 232 trames) |
+  | intervalles d etat LUS et fermes | 495 | 1 679 |
+  | dont au moins un BORD en trame abandonnee | **473 (95,6 %)** | **1 677 (99,9 %)** |
+  | zones abandonnees contigues > 5 trames, en fenetre de mouvement, sans une lecture | **397** | **2 971** |
+
+  **UN BORD EN TRAME ABANDONNEE N EST PAS UN INTERVALLE PERDU** (le record du bord a ete lu
+  AVANT le rejet) : ce que 95,6 % dit, c est que la quasi-totalite des intervalles publies vient
+  de trames incompletes, donc que leurs bords peuvent etre DECALES. Ce qui peut etre perdu en
+  ENTIER, ce sont les 397 zones (JGtm 82, Tataaannn 74, MEK1906 51, Chocoboflor 48,
+  Madina97294 48, indahoopty8751 41, SHN Lups99 40, Draconewt 13). Les 495 intervalles fermes se
+  comparent aux 514 intervalles LUS du document (sprint 501 + mobilite 12 + accroupi 1) :
+  l instrument ne compte pas ceux qui restent ouverts a la fin du film.
+
+  **(e) CE QUE SONT LES ENTITES REJETEES.** 15 474 en-tetes rejetes pour **801 eid distincts**
+  sur `bfecd02b` (10 434 pour 871 sur `4f77afc1`). **AUCUN de ces eid n est declare par une
+  image-cle du film, a aucune tete** (32 sur 4 820 sur `4f77afc1`) : le repli du 5.23 a pris
+  tout ce qu il pouvait prendre. Tetes : `1` 13 874, `2` 1 232, `3` 237, `0` 131.
+
+  | | duree premier -> dernier rejet | nombre de rejets par eid |
+  |---|---|---|
+  | `bfecd02b` | **0-100 ms : 581 eid (72,5 %)** · 1-5 s : 98 · >= 30 s : 16 | **1 seul : 547 (68,3 %)** · 100-1 000 : 57 (7,1 %) |
+  | `4f77afc1` | **0-100 ms : 539 eid (61,9 %)** · 1-5 s : 108 · >= 30 s : 31 | **1 seul : 489 (56,1 %)** · 5-20 : 162 (18,6 %) |
+
+  **DEUX TIERS DES EID REJETES N APPARAISSENT QU UNE FOIS ET VIVENT MOINS DE 100 ms** ; une
+  poignee (57 eid, 7,1 %) porte des centaines de rejets. Evenement de tete du paquet du PREMIER
+  rejet : aucun **82,8 %** sur `bfecd02b` (type `36 action_weapon_fire` 5,5 %, type `5` 3,7 %) ;
+  sur `4f77afc1` aucun 48,7 % et **`36` 16,4 %**, puis `0` 7,2 %, `21` 5,4 %, `6` 4,6 %.
+  Observation, PAS attribution : rien ici ne dit que l entite rejetee EST le projectile du tir.
+
+  > **LE CALQUE DES ETATS PERD 35,4 % DES TICKS DE BIPEDE DE JOUEUR SUR `bfecd02b`
+  > (85 843 / 242 711 ; 34,1 % nets) ET 53,7 % SUR `4f77afc1` (460 625 / 857 388 ; 53,4 %
+  > nets), ET AU PLUS 286 TRANSITIONS D ETAT SUR `bfecd02b` (1 881 SUR `4f77afc1`), AVEC
+  > 397 ZONES (2 971) ASSEZ LONGUES POUR AVALER UN INTERVALLE ENTIER.**
+
+  Aucune ligne de grammaire touchee : `grammar.Rev`, `facts.Rev` et `replay.SchemaVersion`
+  INCHANGES (68). Aucune recommandation de lot — le pilote et l utilisateur decident sur le
+  chiffre.
+
+#### §4 du lot 5.25 — DECOUVERTES HORS PERIMETRE, CONSIGNEES ET NON TRAITEES
+
+| # | decouverte | ou la reprendre |
+|---|---|---|
+| **D1 (5.25)** | **LE GATE DU 5.23 VAUT 3 940 / 26 397 SUR LA BASE D INTEGRATION, ET NON 3 919 / 26 418.** `TestGate516` rejoue sur `3c7eef0b3` rend 21 paquets fermes de PLUS que le tableau du plan 5.23, dont la base (`f0bd32b0a`) precede la fusion du 5.22. Les trois autres chiffres du gate sont identiques au rejeu (50 debordements, 16 129 rejets, 254 liaisons). Ce n est pas une regression : c est un tableau mesure sur une base anterieure. | le lot qui re-publiera le gate : dire sur quelle base il mesure |
+| **D2 (5.25)** | **L ETALON DE VOISINAGE NE PORTE QUE SUR 111 TRAMES SUR 15 474 (0,7 %).** Les trames fermees se groupent au DEBUT de chaque chunk (le chunk s effondre apres sa premiere faute), si bien qu une trame abandonnee du milieu de chunk n a aucune voisine fermee a +-5. Le tableau (b) est donc juste mais mince ; c est le tableau (c), etalonne par vie, qui porte le chiffre. | le lot qui voudra un etalon dense : il lui faut un film dont les chunks ne s effondrent pas, pas une fenetre plus large |
+
+#### §5 du lot 5.25 — ETAT DE CLOTURE
+
+| item | statut | ce qui est etabli |
+|---|---|---|
+| 5.25.1 | `[x]` | les cinq tableaux rendus sur DEUX films denses, en une passe et un decodage par paquet, sous la marche de production du calque. **35,4 %** des ticks de bipede de joueur perdus sur `bfecd02b` (85 843 / 242 711 ; **34,1 %** nets d un etalon mesure a 1,30 %), **53,7 %** sur `4f77afc1` (460 625 / 857 388 ; 53,4 % nets) ; perte de 12,5 % a 90,7 % selon le joueur ; borne des transitions manquees **286** et **1 881** ; 397 et 2 971 zones abandonnees assez longues pour avaler un intervalle entier ; 801 et 871 eid rejetes, dont deux tiers vus UNE fois et vivant moins de 100 ms, aucun declare par une image-cle du film. Gate de l instrument reproduit au paquet contre `TestGate516` |
+
+Revisions : AUCUNE — `grammar.Rev`, `facts.Rev` et `replay.SchemaVersion` (68) inchangees, la
+mesure ne touche pas une ligne de grammaire. Gates : gofmt, vet (+`research`),
+`go test -count=1` sur `halo_infinite/film/...` et `archlint`, `golangci-lint` sur
+`halo_infinite/film/...`, ratchet de taille (492 et 495 lignes).
+
 ### Post-chantier — lot 5.23 (la table anticipee des archetypes), branche `feat/decfilm-73`
 
 Sur la mesure du lot 5.20.2 : **74,7 % des slots rejetes sont declares, avec leur archetype, par
