@@ -167,9 +167,26 @@ func lireGamertag(r *slotReader) (int, string) {
 	return slotGamertagMaxUnits, string(utf16.Decode(u))
 }
 
-// decodeSlotQueue lit tout ce qui suit le gamertag : le bloc de 16 octets, les deux champs
-// larges, les six champs courts, puis les trois blocs de largeur fixe qu'on enjambe.
+// decodeSlotQueue lit tout ce qui suit le gamertag : le CORPS commun, puis le `u32` de queue
+// propre a la table de `chunk_00` (`slot+0x1448`).
 func decodeSlotQueue(r *slotReader, e *slotEnr, persoBits int) bool {
+	if !decodeSlotCorps(r, e, persoBits) {
+		return false
+	}
+	r.saute(slotQueueU32Bits)
+	return r.ok
+}
+
+// decodeSlotCorps lit le CORPS d'un enregistrement de joueur : le bloc de 16 octets, les deux
+// champs larges, les six champs courts, le bloc de personnalisation et le bloc de 44 octets.
+//
+// IL EST PARTAGE AVEC LE PAQUET DE TYPE 8 (lot 5.17.1). Le corps de `sub+0x000` a `sub+0x142c`
+// est le MEME chez les deux ecrivains — `FUN_1407edea8` pour la table de `chunk_00`,
+// `FUN_1407eeba4` pour une entree de paquet de type 8 — et les deux se lisent donc par
+// `decodeSlotListes` puis cette fonction. Seuls les EN-TETES et la queue diffèrent : 85 bits
+// puis le XUID en MSB pour `chunk_00`, `R(1)[R(5)]` puis le XUID en ordre d'octets du flux pour
+// le type 8, et le `u32` de `slot+0x1448` n'existe que dans `chunk_00`. Cf. `roster_type8.go`.
+func decodeSlotCorps(r *slotReader, e *slotEnr, persoBits int) bool {
 	r.saute(slotBloc16Bits)
 	e.slot.Shorts.Repr = uint32(r.bits(slotReprBits))
 	e.slot.Shorts.Q64 = r.bits(slotQ64Bits)
@@ -181,6 +198,5 @@ func decodeSlotQueue(r *slotReader, e *slotEnr, persoBits int) bool {
 	e.slot.Shorts.F1 = uint32(r.bits(1))
 	r.saute(persoBits)
 	r.saute(slotBloc44Bits)
-	r.saute(slotQueueU32Bits)
 	return r.ok
 }

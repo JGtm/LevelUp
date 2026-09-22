@@ -23,6 +23,28 @@ import (
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 )
 
+// t817Perso rend la largeur, en bits, du bloc de personnalisation du build du film — la MEME
+// valeur que la table de `chunk_00` emploie (`profile.PersonnalisationOctets`). Un build inconnu
+// est un arret : lire le type 8 au profil d un build voisin est exactement ce que l ADR 0034
+// interdit.
+func t817Perso(t *testing.T, fc *FilmContext) int {
+	t.Helper()
+	reg, ok := FilmRegistryChunk(fc.Film())
+	if !ok {
+		t.Fatal("le film ne porte pas son chunk_00")
+	}
+	ident, err := ReadFilmIdentity(reg)
+	if err != nil {
+		t.Fatalf("identite : %v", err)
+	}
+	octets, connu := profile.PersonnalisationOctets(ident.Build)
+	if !connu {
+		t.Fatalf("build %q inconnu : le film est mis de cote", ident.Build)
+	}
+	t.Logf("BUILD %q · bloc de personnalisation %d octets", ident.Build, octets)
+	return octets * 8
+}
+
 // t817Cadre ouvre le film temoin SANS entree de catalogue de carte : le paquet de type 8 ne porte
 // aucune position, donc aucune largeur d axe n entre dans sa grammaire. Poser une carte substitut
 // ici serait exactement le piege du report D3 (5.11) — des largeurs fausses sans erreur.
@@ -44,6 +66,7 @@ type t817Bilan struct {
 // TestType817Population mesure les paquets de type 8 du film courant.
 func TestType817Population(t *testing.T) {
 	fc := t817Cadre(t)
+	persoBits := t817Perso(t, fc)
 	version, ok := FilmFormatVersion(fc.Film())
 	if !ok {
 		t.Fatalf("version de format illisible : sans elle la porte de tete est indecidable")
@@ -63,7 +86,7 @@ func TestType817Population(t *testing.T) {
 			if pk.Type != PacketTypeRoster {
 				continue
 			}
-			t817Paquet(pk.Payload(data), version, &b, cles, ident, etiquettes)
+			t817Paquet(pk.Payload(data), version, persoBits, &b, cles, ident, etiquettes)
 		}
 	}
 	t.Logf("PAQUETS DE TYPE 8 : %d (%d octets) · entrees annoncees %d, lues %d · DEBORDEMENTS %d",
@@ -89,11 +112,11 @@ func TestType817Population(t *testing.T) {
 }
 
 // t817Paquet mesure UN paquet de type 8 et cumule.
-func t817Paquet(pay []byte, version int, b *t817Bilan,
+func t817Paquet(pay []byte, version, persoBits int, b *t817Bilan,
 	cles, ident map[uint64]int, etiquettes map[string]int) {
 	b.paquets++
 	b.octets += len(pay)
-	entrees, bilan := DecodeRoster(pay, version)
+	entrees, bilan := DecodeRoster(pay, version, persoBits)
 	b.entreesAnnoncees += bilan.Annonce
 	b.entreesLues += bilan.Entrees
 	if bilan.Debordement {
@@ -118,10 +141,10 @@ func t817Paquet(pay []byte, version int, b *t817Bilan,
 		b.resteMax = bilan.Reste
 	}
 	for _, e := range entrees {
-		cles[e.Cle]++
+		cles[e.Joueur.Shorts.Q64]++
 		ident[e.Identite]++
-		if e.Etiquette != "" {
-			etiquettes[e.Etiquette]++
+		if e.Joueur.Gamertag != "" {
+			etiquettes[e.Joueur.Gamertag]++
 		}
 	}
 }
@@ -191,11 +214,17 @@ func TestType817Types(t *testing.T) {
 	}
 }
 
-// TestType817Etapes DUMP les positions de bit etape par etape sur la premiere entree du premier
-// paquet de type 8 : c est la mesure qui LOCALISE un maillon court, pas un reglage. Chaque ligne
-// nomme le lecteur de l ecrivain et la position ou il finit.
+// TestType817Etapes publie, entree par entree, la POSITION et la LONGUEUR que le lecteur de
+// production consomme sur le premier paquet de type 8 — plus les champs nommes. C est
+// l instrument qui a LOCALISE le maillon court du lot (`FUN_142bdeddc` rend `R(11) + 1`, pas
+// `R(11)`) : sous le cadrage faux les longueurs d entree sautaient de 16 382 a 45 588 bits et les
+// deux longueurs prefixees sortaient de leurs bornes de structure ; sous le cadrage juste elles
+// se suivent et le paquet ferme.
+//
+// Il ne recopie PAS la grammaire : il lit par [DecodeRoster] et publie ce que le port rend.
 func TestType817Etapes(t *testing.T) {
 	fc := t817Cadre(t)
+	persoBits := t817Perso(t, fc)
 	version, _ := FilmFormatVersion(fc.Film())
 	for _, c := range fc.ChunkNumbers() {
 		data, pks, present := fc.ChunkAt(c)
@@ -206,64 +235,18 @@ func TestType817Etapes(t *testing.T) {
 			if pk.Type != PacketTypeRoster {
 				continue
 			}
-			t817Etapes(t, pk.Payload(data), version)
+			pay := pk.Payload(data)
+			entrees, bilan := DecodeRoster(pay, version, persoBits)
+			t.Logf("payload %d octets = %d bits · %+v", len(pay), len(pay)*8, bilan)
+			for k, e := range entrees {
+				t.Logf("  entree %d : bit %d, %d bits · XUID %#016x · %q · repr %#x · cle %#016x",
+					k, e.Joueur.Bit, e.Joueur.TotalBits, e.Identite, e.Joueur.Gamertag,
+					e.Joueur.Shorts.Repr, e.Joueur.Shorts.Q64)
+			}
 			return
 		}
 	}
 	t.Skip("aucun paquet de type 8")
-}
-
-// t817Etapes rejoue la premiere entree en publiant chaque position.
-func t817Etapes(t *testing.T, pay []byte, version int) {
-	t.Helper()
-	br := LecteurSur(pay)
-	n32 := br.ReadBits(rosterCountBits)
-	t.Logf("payload %d octets = %d bits · N = %d (bit %d)", len(pay), len(pay)*8, n32, br.BitPos())
-	for k := 0; k < int(n32); k++ { //nolint:gosec // n32 borne par le payload de l instrument
-		if br.Remaining() <= 0 {
-			break
-		}
-		t.Logf(" --- entree %d, debut bit %d", k, br.BitPos())
-		t817Entree(t, br, version)
-	}
-	t.Logf("FIN bit %d · RESTE %d bits", br.BitPos(), len(pay)*8-br.BitPos())
-}
-
-// t817Entree publie les positions d UNE entree.
-func t817Entree(t *testing.T, br *Lecteur, version int) {
-	t.Helper()
-	if version >= rosterOptGateVersion {
-		if ouverte := br.ReadBit(); !ouverte {
-			t.Logf("  porte FERMEE -> R(5) = %d (bit %d)", br.ReadBits(rosterOptWidth), br.BitPos())
-		} else {
-			t.Logf("  porte OUVERTE (bit %d)", br.BitPos())
-		}
-	}
-	t.Logf("  identite = %#016x (bit %d)", br.ReadBits(rosterIdentityBits), br.BitPos())
-	nf := br.ReadBits(rosterFlagCountBits) + 1
-	br.Skip(int(nf)) //nolint:gosec // nf est un R(11) + 1
-	t.Logf("  FUN_142bdeddc n = %d -> %d bits de drapeaux (bit %d)", nf, nf, br.BitPos())
-	l1 := br.ReadBits(rosterByteLenBits)
-	br.Skip(int(l1) * 8) //nolint:gosec // l1 est un R(12)
-	t.Logf("  FUN_1411b1bd8 L1 = %d octets (bit %d)", l1, br.BitPos())
-	l2 := br.ReadBits(rosterWordLenBits)
-	br.Skip(int(l2) * 32) //nolint:gosec // l2 est un R(8)
-	t.Logf("  FUN_1411b1b04 L2 = %d mots (bit %d)", l2, br.BitPos())
-	br.Skip(rosterBlobABits)
-	t.Logf("  R(0x340) @rec+0xc48 (bit %d)", br.BitPos())
-	t.Logf("  etiquette = %q (bit %d)", rosterLireEtiquette(br), br.BitPos())
-	br.Skip(rosterBlobBBits)
-	t.Logf("  R(0x80) @rec+0xc38 (bit %d)", br.BitPos())
-	t.Logf("  representation = %#x (bit %d)", br.ReadBits(rosterRepresentationBits), br.BitPos())
-	t.Logf("  CLE = %#016x (bit %d)", br.ReadBits(rosterKeyBits), br.BitPos())
-	t.Logf("  R(10)=%d R(14)=%d R(6)=%d R(8)=%d R(7)=%d",
-		br.ReadBits(rosterF10Bits), br.ReadBits(rosterF14Bits), br.ReadBits(rosterF6Bits),
-		br.ReadBits(rosterByteBits), br.ReadBits(rosterF7Bits))
-	t.Logf("  bit = %v (bit %d)", br.ReadBit(), br.BitPos())
-	br.Skip(rosterBlobCBits)
-	t.Logf("  R(0x39e0) @rec+0xcc0 (bit %d)", br.BitPos())
-	br.Skip(rosterBlobDBits)
-	t.Logf("  R(0x160) @rec+0x1400 (bit %d)", br.BitPos())
 }
 
 // TestType817Dump publie le payload du premier paquet de type 8 en hexadecimal et signale les
