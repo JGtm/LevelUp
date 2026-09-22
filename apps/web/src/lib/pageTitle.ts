@@ -29,7 +29,10 @@ interface RouteTitleRule {
 // canoniques déjà établies ailleurs (`lib/i18n/generated/common.ts` `common.nav.*`,
 // `features/citations/i18n` via `citationsManifest`, `features/compare/i18n.ts`,
 // `features/squad/i18n.ts`) pour rester cohérentes avec la barre d'onglets réellement
-// affichée.
+// affichée. Cette copie est VERROUILLÉE (CLAUDE.md règle n°6 : une copie sans
+// garde-rail re-diverge) par `pageTitle.labels.guard.test.ts` pour les 4 sous-routes
+// Escouade : la table SUIT `features/squad/i18n.ts`, jamais l'inverse. `lib/` ne peut
+// pas importer `features/` (frontière), d'où le verrou par test plutôt que par import.
 const PLAYER_SUFFIX_OVERRIDES: RouteTitleRule[] = [
   // Accueil
   { pattern: '', title: { fr: 'Accueil', en: 'Home' } }, // racine joueur nue
