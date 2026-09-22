@@ -116,6 +116,111 @@ describe('buildSessionBarsTrendOption', () => {
   })
 })
 
+/**
+ * Le MODE ÉCART (3.B, D23-3 du 2026-09-22) : la frise soustrait à chaque série SON
+ * repère. Ce qui est cadenassé ici, c'est le basculement complet de la grammaire — les
+ * valeurs, l'origine de l'axe, l'unique ligne zéro, la disparition des tiretés, le style
+ * de la tendance et les deux lectures de l'infobulle.
+ */
+function enEcart() {
+  return buildSessionBarsTrendOption({
+    labels: LABELS,
+    yAxisLabel: 'Écart (points)',
+    baseline: { label: 'habituel 48 % · parité 25 %', deltaUnit: 'pts' },
+    hollowLegend: { label: 'Échantillon faible', color: '#111111' },
+    series: [
+      {
+        name: 'Je suis couvert',
+        color: '#111111',
+        valuesPct: [54.2, 48, null],
+        hollow: [false, true, false],
+        usual: { valuePct: 48, label: 'habituel 48 %' },
+        trend: { valuesPct: [null, 50, 52], label: 'Tendance — Je suis couvert', color: '#111111' },
+      },
+      {
+        name: 'Je riposte',
+        color: '#222222',
+        valuesPct: [29.1, 26, 24],
+        usual: { valuePct: 25, label: 'parité 25 %' },
+      },
+    ],
+  }) as Record<string, unknown>
+}
+
+describe('buildSessionBarsTrendOption — mode écart', () => {
+  it('trace chaque série en ÉCART à son propre repère, bâton creux compris', () => {
+    const barres = (enEcart().series as Record<string, unknown>[]).filter((s) => s.type === 'bar')
+    expect(barres[0].data).toEqual([
+      6.2,
+      { value: 0, itemStyle: { color: 'transparent', borderColor: '#111111', borderWidth: 1.5 } },
+      null,
+    ])
+    expect(barres[1].data).toEqual([4.1, 1, -1])
+  })
+
+  it('pose UNE SEULE ligne, à zéro et en trait PLEIN — plus aucun tireté de série', () => {
+    const barres = (enEcart().series as Record<string, unknown>[]).filter((s) => s.type === 'bar')
+    const lignes = barres.filter((s) => s.markLine != null)
+    expect(lignes).toHaveLength(1)
+    const m = lignes[0].markLine as {
+      lineStyle: { type: string }
+      label: { formatter: string }
+      data: { yAxis: number }[]
+    }
+    expect(m.lineStyle.type).toBe('solid')
+    expect(m.data[0].yAxis).toBe(0)
+    // L'étiquette NOMME les deux repères qu'elle remplace : sans elle, plus de référence.
+    expect(m.label.formatter).toBe('habituel 48 % · parité 25 %')
+  })
+
+  it('libère l’axe sous zéro et le compte en points signés, plus en parts', () => {
+    const y = enEcart().yAxis as Record<string, unknown>
+    expect(y.min).toBeUndefined()
+    const fmt = (y.axisLabel as { formatter: (v: number) => string }).formatter
+    expect([fmt(10), fmt(0), fmt(-10)]).toEqual(['+10', '0', '-10'])
+  })
+
+  it('décale la tendance comme ses bâtons et la trace en pointillé fin, sans marqueur', () => {
+    const ligne = (enEcart().series as Record<string, unknown>[]).find((s) => s.type === 'line')
+    expect(ligne?.data).toEqual([null, 2, 4])
+    expect(ligne?.lineStyle).toEqual({
+      width: 1.6,
+      type: 'dashed',
+      color: '#111111',
+      opacity: 0.75,
+    })
+    expect(ligne?.symbol).toBe('none')
+  })
+
+  it('porte les DEUX lectures en infobulle : la valeur absolue et l’écart signé', () => {
+    const tooltip = enEcart().tooltip as { formatter: (p: unknown) => string }
+    const rendu = tooltip.formatter([
+      { axisValue: '12/09', dataIndex: 0, marker: '<m>', seriesName: 'Je suis couvert', value: 6.2 },
+      { axisValue: '12/09', dataIndex: 0, marker: '<m>', seriesName: 'Je riposte', value: -1 },
+    ])
+    expect(rendu).toContain('Je suis couvert : 54.2 % (+6.2 pts)')
+    expect(rendu).toContain('Je riposte : 24 % (-1 pts)')
+  })
+
+  it('nomme le bâton creux en légende par un TÉMOIN sans donnée', () => {
+    const option = enEcart()
+    expect((option.legend as { data: string[] }).data).toEqual([
+      'Je suis couvert',
+      'Je riposte',
+      'Tendance — Je suis couvert',
+      'Échantillon faible',
+    ])
+    const temoin = (option.series as Record<string, unknown>[]).at(-1)
+    expect(temoin?.name).toBe('Échantillon faible')
+    expect(temoin?.data).toEqual([])
+    expect(temoin?.itemStyle).toEqual({
+      color: 'transparent',
+      borderColor: '#111111',
+      borderWidth: 1.5,
+    })
+  })
+})
+
 describe('shortSessionLabel', () => {
   it('réduit un libellé de session à sa date, et laisse intact ce qui n’a pas d’espace', () => {
     expect(shortSessionLabel('13/10/2025 22:27–22:46 (3)')).toBe('13/10/2025')

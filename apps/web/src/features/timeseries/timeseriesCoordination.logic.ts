@@ -66,11 +66,6 @@ export function serieDeSoirees(
   }
 }
 
-/** Un taux 0..1 en POURCENTS — l'unité du seul axe Y de la frise. */
-export function enPourcents(c: Couverture): number {
-  return c.taux * 100
-}
-
 /**
  * pariteOuRien rend la part équitable 1/n en POURCENTS, ou `null`.
  *
@@ -79,6 +74,42 @@ export function enPourcents(c: Couverture): number {
  */
 export function pariteOuRien(pct: number | undefined): number | null {
   return typeof pct === 'number' && pct > 0 ? pct : null
+}
+
+/**
+ * habituelOuTaux — le repère d'une grandeur : l'habituel de la PÉRIODE DE RÉFÉRENCE quand
+ * le serveur le mesure (lot S, `riposte.habituel_pct` / `appui.habituel_pct`), sinon le
+ * taux de la fenêtre consultée.
+ *
+ * L'ordre n'est pas indifférent : comparer une soirée à la moyenne de la fenêtre qui la
+ * CONTIENT rend l'écart mécaniquement centré sur zéro. Le repère de référence, lui, est
+ * extérieur — c'est lui qui dit « mieux ou moins bien QUE D'HABITUDE ».
+ */
+export function habituelOuTaux(pct: number | undefined, c: Couverture): number {
+  return typeof pct === 'number' && pct > 0 ? pct : c.taux * 100
+}
+
+/** La fenêtre de la moyenne glissante : trois soirées (D23-3). */
+export const FENETRE_TENDANCE = 3
+
+/**
+ * moyenneGlissante — la tendance d'une grandeur, soirée par soirée.
+ *
+ * DEUX RÈGLES. Une soirée à ÉCHANTILLON FAIBLE (bâton creux) ne nourrit pas la moyenne :
+ * elle est dessinée parce que la trame du temps ne doit pas mentir, pas parce qu'elle
+ * mesure quelque chose. Et une fenêtre incomplète ne rend RIEN — une « moyenne de trois »
+ * calculée sur un point serait la valeur elle-même, déguisée en tendance.
+ */
+export function moyenneGlissante(serie: SerieDeSoirees): (number | null)[] {
+  return serie.valuesPct.map((_, i) => {
+    const fenetre: number[] = []
+    for (let j = Math.max(0, i - FENETRE_TENDANCE + 1); j <= i; j += 1) {
+      const v = serie.valuesPct[j]
+      if (v != null && !serie.hollow[j]) fenetre.push(v)
+    }
+    if (fenetre.length < FENETRE_TENDANCE) return null
+    return fenetre.reduce((a, b) => a + b, 0) / fenetre.length
+  })
 }
 
 /** Le délai médian des ripostes, en SECONDES, ou `null` si aucune riposte mesurée. */
