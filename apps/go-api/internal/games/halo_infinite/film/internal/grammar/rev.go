@@ -107,4 +107,4 @@ package grammar
 // parce que ce fichier avait atteint le seuil de 500 lignes et qu une chronique qui ne peut plus
 // grandir cesse d etre tenue. LE GATE LIT LES DEUX FICHIERS, dans l ordre chronologique, et
 // exige que les rangs s y suivent sans trou a partir du `.12`.
-const Rev = "grammar-2026-09-22.8"
+const Rev = "grammar-2026-09-22.10"

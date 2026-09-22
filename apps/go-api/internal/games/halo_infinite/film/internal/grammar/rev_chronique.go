@@ -163,3 +163,46 @@ package grammar
 // FILTRE sur ce drapeau (seuls les zones le font, et leur balayage n appelle pas ce lecteur) ;
 // les faits de film deja cuits sont de toute facon a recuire, leur en-tete portant la revision
 // de grammaire.
+
+// ENTREE `grammar-2026-09-22.9` (2026-09-22, lot 5.21.1) : LE BLOC DE TYPE 1
+// QUI PRECEDE CHAQUE IMAGE-CLE EST LU (`type1_datums.go`, `FUN_1429883ec`).
+//
+// CE QUE LE RANG AJOUTE. Un lecteur, pas une largeur deplacee : `LireBlocDeDatums` consomme les
+// 343 019 octets du bloc de type 1 — 8 191 entrees de 79 bits (`R(6)` drapeaux, `R(8)`
+// generation, `R(32)` compteur de generation, 33 x `R(1)` de masque par vue, LSB d abord), puis
+// 8 191 masques de composants de 256 bits, puis cinq mots de 32 bits. Aucun decodeur de trame,
+// d image-cle ou de record ne change : la couche GAGNE un lecteur, elle n en modifie aucun.
+//
+// LA GRAMMAIRE EST FERMEE PAR L ARITHMETIQUE, PUIS PAR LA MESURE. 8 191 x (79 + 256) + 160 =
+// 2 744 145 bits = 343 019 octets a sept bits de bourrage pres, et 343 019 est la taille
+// CONSTANTE mesuree du bloc sur les deux films (5.20.3 (d)). Gate (i) : 32 blocs sur 32 (5 sur
+// `dad793c7`, 27 sur `bfecd02b`) fermes a sept bits, cardinal 8 191 partout.
+//
+// D1 (5.20) EST CORRIGE PAR LA MESURE : `+0x04` N EST PAS L ARCHETYPE. `FUN_142e2aab4` pre-remplit
+// le conteneur avec `+0x04 = 1` avant la lecture, et le bloc n y porte que TROIS valeurs sur
+// 221 157 entrees — 1, 2 et 3 —, toujours egales a `+0x01 + 1`. C est le COMPTEUR DE GENERATION
+// du slot. Ce que le bloc porte d utile est ailleurs, et c est mesure : le bitmap de 256 bits par
+// slot est le MASQUE DE PRESENCE DES COMPOSANTS, indexe comme `Archetype.Components` — ZERO bit
+// hors des bornes de l archetype sur les 32 blocs, et 184 masques distincts pour 2 ambigus sur
+// `bfecd02b`.
+//
+// `facts.Rev` NE MONTE PAS : `killsource/` marche par `DecodeFrameRecords` et
+// `WalkKeyframeWorld`, et ce rang n appelle ni ne modifie l un ni l autre ; `LireBlocDeDatums`
+// n a aucun appelant de production. Son golden est refige parce qu il hache la VALEUR de
+// `grammar.Rev` — aucun backlog killsource n est ouvert. `replay.SchemaVersion` reste a 67.
+
+// ENTREE `grammar-2026-09-22.10` (2026-09-22, lot 5.21) : L EXCLUSION DE LA CHRONIQUE EST ALIGNEE
+// SUR SON INTENTION — AUCUNE GRAMMAIRE NE BOUGE.
+//
+// D3 du lot 5.20 : `fichiersHorsGrammaire` (`rev_test.go`) n excluait que `rev.go`,
+// `rev_chronique.go`, `rev_chronique_archive.go` et `_2`, alors que la chronique est rotee
+// jusqu a `_5`. Ecrire une ligne dans une archive recente faisait donc monter l empreinte de la
+// couche — exactement ce que l exclusion existe pour eviter —, et son commentaire disait « les
+// TROIS fichiers » en en listant quatre. L exclusion DERIVE desormais de
+// `fichiersDeChroniqueGrammar` : une seule liste, et la prochaine rotation ne peut plus les
+// desaccorder. `revision/equivalence_test.go`, qui redeclare le perimetre pour le confronter,
+// est aligne dans le meme commit.
+//
+// CE RANG NE DEPLACE AUCUN OCTET DE DECODAGE : il retire trois fichiers de PROSE de l empreinte.
+// `facts.Rev` ne monte pas ; son golden, celui des formes et les fixtures de contrat sont refiges
+// parce qu ils hachent ou publient la VALEUR de `grammar.Rev`. `replay.SchemaVersion` reste a 67.

@@ -77,23 +77,33 @@ const (
 		"-update-grammar-rev"
 )
 
-// fichiersHorsGrammaire : les TROIS fichiers qui PORTENT la revision et sa chronique ne sont pas
-// de la grammaire — ils la DECRIVENT.
-//
-// L EXCLUSION REND LA SECONDE BRANCHE DU GATE ATTEIGNABLE (revue R1, P2-3). Tant que `rev.go`
-// etait hache, faire monter la revision SEULE changeait aussi l empreinte : le cas « la revision
-// a change sans que la grammaire bouge » ne pouvait jamais se produire, et son message etait du
-// code mort.
-var fichiersHorsGrammaire = map[string]bool{
-	"rev.go": true, "rev_chronique.go": true, "rev_chronique_archive.go": true,
-	"rev_chronique_archive_2.go": true,
-}
-
 // fichiersDeChroniqueGrammar : les fichiers qui portent les ENTREES, dans l ordre
 // chronologique — l archive d abord, la suite vivante ensuite.
 var fichiersDeChroniqueGrammar = []string{"rev_chronique_archive.go", "rev_chronique_archive_2.go",
 	"rev_chronique_archive_3.go", "rev_chronique_archive_4.go", "rev_chronique_archive_5.go",
 	"rev_chronique.go"}
+
+// fichiersHorsGrammaire : les fichiers qui PORTENT la revision et sa chronique ne sont pas de la
+// grammaire — ils la DECRIVENT.
+//
+// L EXCLUSION REND LA SECONDE BRANCHE DU GATE ATTEIGNABLE (revue R1, P2-3). Tant que `rev.go`
+// etait hache, faire monter la revision SEULE changeait aussi l empreinte : le cas « la revision
+// a change sans que la grammaire bouge » ne pouvait jamais se produire, et son message etait du
+// code mort.
+//
+// ELLE EST DERIVEE DE [fichiersDeChroniqueGrammar], ET CE N EST PAS UN RAFFINEMENT (D3 du lot
+// 5.20, corrige au lot 5.21). Les deux listes etaient ecrites a la main, et elles avaient
+// DIVERGE : l exclusion s arretait a `_2` quand la chronique etait rotee jusqu a `_5`, si bien
+// qu ecrire une ligne dans une archive recente faisait monter l empreinte de la couche — ce que
+// l exclusion existe precisement pour eviter. Le commentaire, lui, disait « les TROIS fichiers »
+// et en listait quatre. Une seule liste, et la rotation suivante ne peut plus les desaccorder.
+var fichiersHorsGrammaire = func() map[string]bool {
+	hors := map[string]bool{"rev.go": true}
+	for _, f := range fichiersDeChroniqueGrammar {
+		hors[f] = true
+	}
+	return hors
+}()
 
 // porteGrammarRev / messagesGrammarRev : ce que la couche declare au mecanisme central.
 func porteGrammarRev() revision.Porte { return revision.Porte{Nom: "grammar-rev"} }

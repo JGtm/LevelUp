@@ -33,6 +33,8 @@ type g516Bilan struct {
 	fermes, nul, debordements       int
 	fantomes, ti35, desync35        int
 	datums, ambigus                 int
+	blocPosees, blocVivantes        int
+	blocInconnus, blocAmbigus       int
 	rejetsHorsDatum, rejetsDeVue    int
 	recordsTotal, resteHorsBourrage int
 }
@@ -50,14 +52,26 @@ func TestGate516(t *testing.T) {
 		if !ok {
 			continue
 		}
+		kf := map[uint32]uint32{}
 		for _, pk := range pks {
 			if pk.Type != PacketTypeKeyframe {
 				continue
 			}
 			for _, r := range WalkKeyframeWorld(pk.Payload(data)) {
 				//nolint:gosec // slot, TI et Gen viennent du walker, bornes par construction
-				w.BindImageCle(uint32(r.Gen), uint32(r.Slot), uint32(r.TI))
+				slot, ti := uint32(r.Slot), uint32(r.TI)
+				w.BindImageCle(uint32(r.Gen), slot, ti) //nolint:gosec // idem
+				kf[slot] = ti
 			}
+		}
+		if bloc, present := b521Bloc(t, c, data, pks); present {
+			// L A/B DU LOT 5.21 : le bloc de type 1 LIE avant la marche. Mesure : 0 liaison
+			// posee sur `bfecd02b`, 1 sur `dad793c7`, et le gate ne bouge d aucun paquet.
+			l := b521Lier(w, bloc, kf)
+			b.blocVivantes += l.vivantes
+			b.blocPosees += l.posees
+			b.blocInconnus += l.masqueInconnu
+			b.blocAmbigus += l.ambigus
 		}
 		if os.Getenv("MOUV516_DATUMS") != "0" {
 			// L A/B DU LOT : `MOUV516_DATUMS=0` rejoue la marche SANS la table de datums, donc
@@ -85,6 +99,8 @@ func TestGate516(t *testing.T) {
 		b.rejetsHorsDatum, b.rejetsDeVue)
 	t.Logf("TABLE DE DATUMS : %d liaisons posees · %d slots ambigus ecartes",
 		b.datums, b.ambigus)
+	t.Logf("BLOC DE TYPE 1 : %d entrees vivantes · %d liaisons posees · %d masques inconnus · "+
+		"%d masques ambigus", b.blocVivantes, b.blocPosees, b.blocInconnus, b.blocAmbigus)
 }
 
 // g516Paquet mesure UN paquet delta et cumule dans le bilan.
@@ -143,14 +159,20 @@ func TestGate516Contenu(t *testing.T) {
 		if !ok {
 			continue
 		}
+		kf := map[uint32]uint32{}
 		for _, pk := range pks {
 			if pk.Type != PacketTypeKeyframe {
 				continue
 			}
 			for _, r := range WalkKeyframeWorld(pk.Payload(data)) {
 				//nolint:gosec // slot, TI et Gen viennent du walker, bornes par construction
-				w.BindImageCle(uint32(r.Gen), uint32(r.Slot), uint32(r.TI))
+				slot, ti := uint32(r.Slot), uint32(r.TI)
+				w.BindImageCle(uint32(r.Gen), slot, ti) //nolint:gosec // idem
+				kf[slot] = ti
 			}
+		}
+		if bloc, present := b521Bloc(t, c, data, pks); present {
+			b521Lier(w, bloc, kf)
 		}
 		if os.Getenv("MOUV516_DATUMS") != "0" {
 			LierTableDeDatums(w, data, pks)
