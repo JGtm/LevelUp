@@ -29,10 +29,15 @@ package grammar
 // baseline ne DERIVE donc jamais — mais les valeurs qu il publie sur un record a selecteur
 // OUVERT sont relatives a une reference NULLE au lieu de l entree d historique designee.
 //
-// DECOUVERTE HORS PERIMETRE, CONSIGNEE : le bit de masque teste est `i - decales`, ou `decales`
-// compte les composants que `FUN_1428e1dac(&DAT_144c23178, typeIndex, nom)` ECARTE quand
-// `*(TLS + 0x238)` porte un nom de contexte non vide. Le depot teste le bit `i` BRUT
-// (`traverseComponentLoop`). Voir le §4 du lot 5.16.
+// LE DECALAGE DU MASQUE EST REFERME (lot 5.17.2), ET CE N ETAIT PAS UN DEFAUT DU DEPOT. Le bit
+// teste par l ecrivain est `i - decales`, ou `decales` compte les composants que le FILM ne
+// declare pas (`FUN_1428e1dac(&DAT_144c23178, ti, nom)` faux) ou dont le niveau declare par le
+// film est refuse par le deserialiseur du processus (`FUN_1428e1b50` puis `vtable[0x10]`) : les
+// deux sorties sont gardees par `FUN_1404f2b4c`, vrai UNIQUEMENT en rejeu de film. C est donc la
+// conversion du descripteur du build qui rejoue VERS le registre du film, et le depot itere DEJA
+// le registre du film (`arch.Components`). Le jeu le confirme sur son chemin d etat complet :
+// `FUN_142e2c690` parcourt ce bloc entree par entree, sans decalage. Ratchet :
+// `masque_cadre_registre_test.go`.
 //
 // Rejouable :
 //

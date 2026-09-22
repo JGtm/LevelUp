@@ -246,6 +246,24 @@ func traverseComponentLoop(br *Lecteur, arch Archetype, t *EntityTrace) {
 // traverseComponentLoopFrom walks the component loop starting at index `from` —
 // the resume path of component-width inference (frame_chain_infer.go), which skips
 // a failed component by a candidate width and re-decodes the remainder.
+//
+// # LE BIT DU MASQUE EST TESTE A L INDEX `i` BRUT, ET C EST JUSTE (lot 5.17.2)
+//
+// Chez l ecrivain, `FUN_14076cb60` teste `masque >> ((i - decales) & 0xff)` : il parcourt le
+// descripteur d archetype DU PROCESSUS et ECARTE, sans consommer un bit, tout composant que le
+// FILM ne declare pas (`FUN_1428e1dac(&filmSingleton, ti, nom)` faux) ou dont le niveau declare
+// par le film est refuse par le deserialiseur du processus (`FUN_1428e1b50` puis
+// `vtable[0x10]`). Les deux sorties sont gardees par `FUN_1404f2b4c`, vrai UNIQUEMENT en rejeu de
+// film. `i - decales` est donc la conversion « descripteur du build qui rejoue » -> « registre du
+// film ».
+//
+// `arch.Components` EST le registre du film : les entrees nommees du bloc `ti` de `chunk_00`,
+// lues par `registry.go` avec les memes constantes de cadrage que le filtre. Le decodeur hors
+// ligne est deja du cote de l arrivee, et le jeu le confirme sur son chemin d ETAT COMPLET :
+// `FUN_142e2c690` parcourt ce bloc entree par entree (`param_4 += 0x104`), resout le
+// deserialiseur PAR NOM et lui passe le niveau lu en `entree + 0x100`, sans aucun decalage.
+// Porter `i - decales` ici appliquerait deux fois la meme conversion. Ratchet :
+// `masque_cadre_registre_test.go`.
 func traverseComponentLoopFrom(br *Lecteur, arch Archetype, t *EntityTrace, from int) {
 	for i := from; i < len(arch.Components); i++ {
 		if t.Mask&(uint64(1)<<(uint(i)&63)) == 0 {
