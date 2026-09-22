@@ -8326,6 +8326,228 @@ contre 4 469 dans la reference — et 1 489 est EXACTEMENT la valeur que le lot 
 les divergences sont celles de la reference perimee, pas des siennes. Decodage : 14,8 s,
 pic 0,19 Gio, un film a la fois.
 
+### Post-chantier — lot 5.14 (les deux autres classes de vue), branche `feat/decfilm-64`
+
+Sur l acquis du lot 5.13 (item 5.13.1 (e), decouverte D1). METHODE : l ecrivain d abord (Ghidra
+lecture seule), la fermeture des paquets comme seul gate, aucune mesure empirique de grammaire, un
+commit par trou. Note de grammaire : `.ai/V7.5/film_re/NOTE_5_14_CLASSES_DE_VUE_2026-09-22.md`.
+
+- [x] **5.14.1 — LA VUE DE RANG 0 EST UN FLUX DE MESSAGES, ET SON TERMINATEUR EST LE SECOND BIT
+  D AMORCE QUE LE DEPOT NE SAVAIT PAS LOCALISER.** (`9bf110306`)
+
+  **(a) L ORDRE DES TROIS RANGS EST PROUVE, IL N EST PLUS SUPPOSE.** `FUN_141f855b4` enregistre
+  les trois vues du conteneur par `FUN_1409c9860(conteneur+8, rang, vue)` :
+
+  | rang | objet | vtable | `vtable[0x40]` | classe |
+  |---:|---|---|---|---|
+  | 0 | `conteneur + 0x3ce98` | `0x1436a8700` | `FUN_14076a1c4` | **vue A** — flux de MESSAGES |
+  | 1 | `conteneur + 0x21b70` | `0x1436a87e0` | `FUN_1406cd128` | **vue B** — `replication_entity_manager_view.cpp` |
+  | 2 | `conteneur + 0x3d2d8` | `0x1436a8770` | `FUN_1406cf548` | **vue C** — `replication_control_view.cpp` |
+
+  et `FUN_1409c9860` clot le rang dans `*(int *)(vue + 8)`, le champ que `FUN_142f2e174` met dans
+  les deux bits de tete d un identifiant d image-cle. **Le rang 1 mesure sur les images-cles des
+  deux temoins (item 5.13.1 (b)) est donc la vue B** : la correspondance que le lot 5.13 laissait
+  « non etablie » l est, et `vueDeLImageCle` la porte desormais par ecrit.
+
+  **(b) LE BIT.** `FUN_14076a1c4` : `si vue[0x11] != 0 -> ZERO bit ; sinon boucle { R(1) ; 0 ->
+  fin ; corps FUN_14080a9d4 }`, et `*param_6 = 0` SANS CONDITION — elle ne rend jamais un record.
+  La documentation de `DefaultPacketPreambleBits` disait « le SECOND bit n est PAS localise dans
+  le desassemblage : il est etabli par la MESURE ». **C est le terminateur `R(1) = 0` de la vue A
+  vide** : l amorce de deux bits est `[bit de configuration][vue A vide]`. Mesure
+  (`TestClasses514Marche`) : vue A VIDE sur **5 345 paquets sur 5 345** de `dad793c7`, non vide
+  **0** fois ; idem sur `bfecd02b`.
+
+  **(c) CE QUE LA VUE A PORTE.** Son corps `FUN_14080a9d4` lit `R(7)` — un genre parmi **123**
+  (`*(obj[0x18] + 0x210 + genre * 8)`, garde `genre < 0x7b`) — puis la charge du genre par
+  `def->vtable[0x68]`, puis `si HasExtraFields et R(1) : R(32)`. C est le mecanisme des messages
+  reseau, celui dont `initiate_mobility_action` (vtable `143d0a000`, item 5.13.2) est UNE des 123
+  definitions. Les 123 grammaires ne sont pas portees : `consumeVueA` rend `Porte = false` des
+  qu un corps s ouvre, et le paquet est SIGNALE au lieu d etre decadre.
+
+  **(d) LA VUE C EST NOMMEE PAR SON PROPRE CODE, ET SON PROLOGUE COUTE ZERO BIT.** `FUN_142f2539c`
+  ne lit pas le flux : il RECOPIE le tampon (`memcpy(dst, reader+8, reader+0x18)`) et porte le
+  chemin source `replication_control_view.cpp:421` (chaine `143c999f0`). Sa garde runtime
+  `FUN_1409c94b8()` est donc SANS CONSEQUENCE hors ligne. Boucle : `{ R(1) ; 0 -> fin ;
+  kind R(2) ; 0 -> FUN_1406d0388 · 1 -> FUN_142f29b38 · 2 -> FUN_142f29e54 · 3 -> ZERO BIT }`.
+
+  `GrammaireBalayage.ClassesDeVue` est ajoutee et reste A FAUX : aucune mesure ne bouge.
+  `grammar.Rev` -> `grammar-2026-09-22.3` ; `facts.Rev` INCHANGEE (choix ecrit) ; quatrieme
+  archive de chronique.
+
+- [x] **5.14.2 — LA CHARGE DU `kind` 0 DE LA VUE DE CONTROLE EST LUE, ET LE PAQUET FERME AU BIT.**
+  (`35bf02c3f`)
+
+  `FUN_1406d0388` est L ENTREE DE CONTROLE D UN PARTICIPANT :
+
+  ```
+  FUN_1406cdc04(reader)   R(1) ; si 1 -> R(7)        sentinelle 0xff a ZERO bit
+  idx = R(5)              l index de controle, 0..31 ; la garde `0x1f < idx` est INATTEIGNABLE
+  a = R(1)                si a -> FUN_1406cd860  (bloc de 0x68 octets)
+  b = R(1)                si b -> FUN_141fdae44  (bloc de 0xbc octets)
+  ```
+
+  et `FUN_1406cd860` est l entree elle-meme : `R(1) [+ R(2)]`, puis **`FUN_1406d6ef4` = DEUX
+  SCALAIRES QUANTIFIES SUR SIX BITS** (code 0 et code `0x3e` aux bornes, **code `0x1f` a ZERO
+  EXACT**, sinon `(code - 1) * DAT_143cd8908 - DAT_143cd890c`, ecrits dans deux `float`) plus un
+  bit de presence, puis deux bits de presence dont le second ouvre **`FUN_1406d025c` — LES BITS
+  D ACTION**, dont la premiere garde est un bit du flux et dont la charge est VIDE quand ce bit
+  vaut 0.
+
+  **LE PORT REFUSE DE DEVINER** : il porte le chemin dont toutes les largeurs sont resolues chez
+  l ecrivain (branche `FUN_14048ee34() == 0`, largeurs courtes `DAT_145121140 != 1`, chemin
+  quantifie `DAT_145173840 == 0`) et rend `false` des qu une garde ouvre un champ dont la largeur
+  vient de la PILE ou d un sous-arbre non porte. Les deux formes de `DAT_145121140` viennent
+  toutes deux de l ecrivain ; c est la FERMETURE DES PAQUETS qui dit laquelle le film porte, comme
+  elle arbitre `HasExtraFields`.
+
+  **LE GATE EST RENFORCE, ET C EST CE QUI PROUVE LA LECTURE.** « Reste dans [0 ; 7] » ne prouve
+  pas qu un paquet est lu ; le bourrage d octet est ecrit A ZERO, donc un reste qui porte un 1 est
+  de la grammaire manquante meme dans sept bits. `TestClasses514Bourrage` l exige :
+
+  | mesure | avant | apres |
+  |---|---:|---:|
+  | `dad793c7` paquets fermes a reste NUL | 140 | **5 341** sur 5 365 |
+  | `bfecd02b` paquets fermes a reste NUL | 801 | **2 884** sur 30 387 |
+
+  Le reste dominant de `dad793c7` est **UN bit sur 5 068 paquets, et ce bit est zero**.
+  `grammar.Rev` -> `grammar-2026-09-22.4` ; `facts.Rev` inchangee ; flag toujours a faux.
+
+- [x] **5.14.3 — CHAQUE RANG SOUS LA GRAMMAIRE DE SA CLASSE, PAR DEFAUT : LES FAUX `DEL` DU PIED
+  DE TRAME DELIAIENT DES ENTITES VIVANTES.** (`bef3301c3`)
+
+  `ClassesDeVue` passe A VRAI dans l invariant du profil ; `decodeFrameParRangs` applique
+  `FUN_14076a1c4` au rang 0, `FUN_1406cd128` au rang 1, `FUN_1406cf548` au rang 2. Ce n est pas un
+  kill-switch : la bascule reste pour que l A/B du lot soit rejouable, et ne porte donc pas de date
+  de retrait.
+
+  **CE QUE LA GRAMMAIRE D UNE SEULE CLASSE COUTAIT, ET C EST PLUS QU UN DEBORDEMENT.** Les flux
+  des vues A et C etaient decoupes en `[prefixe][idLow][tag]` ; quand ce decoupage rendait un type
+  `DEL`, la boucle faisait `w.Unbind(slot)` — elle DELIAIT une entite VIVANTE, et tous ses deltas
+  suivants etaient perdus. Un faux record ne coute pas un bit : il coute un parc.
+
+  | mesure | `dad793c7` avant | apres | `bfecd02b` avant | apres |
+  |---|---:|---:|---:|---:|
+  | paquets fermes | 5 338 | **5 341** / 5 365 | 888 | **2 884** / 30 387 |
+  | dont reste TOUS BITS A ZERO | — | **5 341 / 5 341** | — | **2 884 / 2 884** |
+  | debordements | 18 (721 bits) | **2** (586) | 1 785 (412 992 865) | **32** (110 998) |
+  | records `ti=35` | 75 | 75 | 114 458 | **129 572** (+15 114) |
+  | desyncs `ti=35` | 0 | 0 | 4 | **4** |
+  | etalon `i21` | 1,3 % | 1,3 % | 65,2 % | 65,5 % |
+  | records fantomes | 13 | **0** | 304 | **0** |
+  | paquets non localises | 5 | 5 | 1 189 | 845 |
+
+  `bcb6d393` : `movementStates` 1 489 -> **1 737**, artefact 1 926 911 -> 1 929 397 octets.
+
+  **`IDLowBits` A ETE BALAYE DE 10 A 15 SOUS LA NOUVELLE GRAMMAIRE** (`TestClasses514IdLow`,
+  piege 10 de la passation 5.11 : suspecter l instrument d abord) : **13 reste le seul candidat**
+  sur les deux films (99,55 % et 9,49 % de fermeture, contre 3,5 % au mieux ailleurs). Le reste de
+  `bfecd02b` n est donc pas un cadrage d en-tete.
+
+  **DEUX DOCUMENTATIONS PERIMEES SONT CORRIGEES DANS LE MEME COMMIT** (anti-patron « doc
+  inversee ») : celle de `DefaultPacketPreambleBits` (« second bit non localise ») et celle de
+  `vueDeLImageCle` (« decalage non etabli »).
+
+  `grammar.Rev` -> `grammar-2026-09-22.5`. **`facts.Rev` NE MONTE PAS, et c est un choix ecrit** :
+  la couche `facts` marche par `DecodeFrameRecords`, pas par `DecodeFrameViews` — `killsource` ne
+  voit pas cette bascule, et son golden de mini-bobine est inchange.
+
+  **GATE AVEC DECODAGE — `replay-equiv -films bcb6d393` SANS `-update`** : 6 ecarts sur 57 etapes,
+  et ce sont EXACTEMENT les six du lot 5.13, tous imputables a la reference perimee depuis la
+  fusion 5.10 (report D1 (5.11), le re-figeage est un geste du pilote) : `killsource`,
+  `grappleReads.stats`, `vehicles`, `movementStates`, `movementStates.stats`, `artifact`. Les deux
+  que ce lot deplace sont `movementStates` et `artifact` ; les quatre autres portent les memes sha
+  qu avant la bascule. Decodage 15,3 s, pic 0,19 Gio, un film a la fois.
+
+- [x] **5.14.4 — CE QUE LES VUES A ET C PORTENT, EN CLAIR : L INDEX DU PARTICIPANT ET UN COUPLE
+  ANALOGIQUE. AUCUNE MONTEE DE SCHEMA.**
+
+  `TestClasses514Contenu`, tout le film puis la fenetre du saut de `dad793c7`.
+
+  | mesure | `dad793c7` (tout) | `dad793c7` (26,0-27,2 s) | `bfecd02b` (tout) |
+  |---|---|---|---|
+  | vue A non vide | **0** paquet | **0** paquet | **0** paquet |
+  | entrees de controle lues | 5 202 | 71 | 20 318 |
+  | index de controle `R(5)` | **{0}** | **{0}** | **{0..7}**, 1 962 a 3 860 chacun, + 21 index epars (2 a 27) |
+  | index `FUN_1406cdc04` `R(7)` | jamais present | jamais present | 27 valeurs, 1 a 5 fois |
+  | second champ `R(2)` | **1** (5 200) | **1** (71) | 1 (20 220) · 0 (3) · 2 (7) · 3 (7) |
+  | scalaire A (6 bits) | **31** sur 5 202 | **31** sur 71 | **64 classes** (0 a 63) |
+  | scalaire B (6 bits) | **31** sur 5 202 | **31** sur 71 | **64 classes** (0 a 63) |
+  | gardes ouvertes non portees | branche longue 1 | branche longue 1 | 3e champ 137 · champ de pile 132 · branche longue 2 061 · **BITS D ACTION 108** · second bloc 1 |
+
+  **L INDEX DE CONTROLE EST L INDEX DU PARTICIPANT** : un film a un joueur ne rend que l index 0,
+  un film a huit joueurs rend les huit index 0 a 7 avec des effectifs du meme ordre, et le nombre
+  d iterations de la boucle de la vue C suit — **une** sur `dad793c7`, **jusqu a huit** sur
+  `bfecd02b` (`kinds [0 0 0 0 0 0 0 0]`).
+
+  **LE COUPLE ANALOGIQUE EST A ZERO EXACT SUR TOUT `dad793c7`** : le code 31 (`0x1f`) est celui
+  que `FUN_1406d6ef4` transforme en `0.0`, et il vaut 31 sur les 5 202 entrees du film, **fenetre
+  du saut comprise (71 sur 71)**. Sur `bfecd02b` les deux canaux couvrent leurs 64 codes. C est ce
+  qui explique la fermeture a 28 bits CONSTANTS de `dad793c7`.
+
+  **AUCUN CANAL D ETAT DE BIPEDE N EST LU, ET LE MAILLON EST NOMME — ce n est pas une absence.** Le
+  canal d ACTIONS existe dans le film : la garde `g = R(1)` de `FUN_1406d025c` est OUVERTE
+  **108 fois** sur `bfecd02b`, et le port s y arrete parce que sa charge (6 bits en 2x3 par
+  `FUN_1431ab1ec`, 4 bits en 2x2 par `FUN_1431ab1cc`, un point de visee par
+  `FUN_1431a0bbc`/`FUN_1431a0abc`/`FUN_1431a0cbc`, puis `FUN_1406d0f20`, deux `FUN_1406d00ec` et
+  `FUN_142f26740`) n est pas portee. Sur `dad793c7` elle est FERMEE sur les 5 202 entrees. Et
+  aucune de ces positions de bit ne porte d ETIQUETTE : la famille `player_action_test_*`
+  (34 chaines, `143c2da40` a `143c2e5a0`, dont `player_action_test_jump` a `143c2dbb8`) est un
+  ensemble de fonctions de SCRIPT enregistrees par `FUN_140a3f6a4`, pas des etiquettes de position.
+
+  **LE LOT NE MONTE DONC PAS DE SCHEMA.** La montee 67 -> 68 etait conditionnee a « si un canal
+  d etat de bipede apparait » : le couple analogique est a zero sur le film temoin, les bits
+  d action ne sont pas portes, et aucune valeur n a d etiquette. Pas de `stances[].kind` neuf, pas
+  de chronique v68, pas de fixtures `replay_schema_68_*`. **`replay.SchemaVersion` reste a 67.**
+
+- [!] **GATE GLOBAL — LES PAQUETS NE FERMENT PAS A 100 %, ET LA PLUS GROSSE CAUSE EST HORS
+  PERIMETRE.** `TestClasses514Restes`, sous la grammaire des trois classes :
+
+  | cause | `dad793c7` | `bfecd02b` |
+  |---|---:|---:|
+  | les trois rangs portes, reste hors bourrage | 14 paquets (6 311 bits) | **23 852 paquets (25 666 138 bits)** |
+  | rang 1 vue B : desynchronisation | 7 (32 bits) | 1 110 (1 751 992 bits) |
+  | rang 2 vue C : `kind` 0 non porte | 1 (14 bits) | environ 2 240 |
+  | rang 2 vue C : `kind` 1 non porte | 1 (23 705 bits) | 157 |
+  | rang 2 vue C : `kind` 2 non porte | 0 | 137 |
+  | rang 2 vue C : debordement | 1 (-2 bits) | 1 (-2 bits) |
+
+  Sur `bfecd02b`, **23 852 paquets ont leurs TROIS rangs lus jusqu au terminateur et laissent
+  pourtant environ 1 076 bits chacun** : la vue B ferme sa liste trop tot. Ce n est ni la vue A
+  (jamais non vide) ni la vue C (lue jusqu a son terminateur), et ce n est pas `IDLowBits` (balaye
+  de 10 a 15). C est un trou du rang 1 ou du cadrage de paquet sur un film dense a huit joueurs,
+  et il est HORS du perimetre « les deux autres classes de vue ». **Le gate « 0 fantome » et
+  « oracle de contenu conserve » sont, eux, TENUS** (fantomes 13 -> 0 et 304 -> 0 ; `ti=35`
+  75 -> 75 et 114 458 -> 129 572 ; desyncs 0 -> 0 et 4 -> 4 ; `i21` 1,3 % et 65,2 -> 65,5 %).
+
+#### §4 du lot 5.14 — DECOUVERTES HORS PERIMETRE, CONSIGNEES ET NON TRAITEES
+
+| # | decouverte | ou la reprendre |
+|---|---|---|
+| **D1 (5.14)** | **LE TROU DU RANG 1 SUR FILM DENSE : 23 852 paquets de `bfecd02b` ont leurs trois rangs lus et laissent environ 1 076 bits chacun.** La vue B ferme sa liste de records trop tot. Ce n est pas `IDLowBits` (balaye de 10 a 15, 13 seul candidat), ni la vue A, ni la vue C. C est la plus grosse grammaire manquante du film aujourd hui, devant tout ce que ce lot a referme. | un lot a soi seul : reprendre `FUN_1406cd128` et le cadrage de paquet sur un film a huit joueurs, avec le gate du bourrage NUL comme critere |
+| **D2 (5.14)** | **LES BITS D ACTION DU CONTROLE SONT DANS LE FILM (garde ouverte 108 fois sur `bfecd02b`) ET NON PORTES.** `FUN_1406d025c` : 6 bits en 2x3, 4 bits en 2x2, un point de visee, puis trois sous-lecteurs. Aucune position n a d etiquette dans le binaire ; la famille `player_action_test_*` est du SCRIPT. | le lot qui rouvrira le saut en ENTREE : porter `FUN_1406d025c`, puis chercher l etiquette d une position par son CONSOMMATEUR (jamais par l offset — piege 6 de la passation 5.11) |
+| **D3 (5.14)** | **LA LARGEUR DE `FUN_1406d84b4` EST PASSEE PAR LA PILE** (`in_stack_00000028`, 5e argument) et le desassemblage ne la resout pas a ses sites d appel nus. Elle ferme le troisieme champ de `FUN_1406d6ef4` et `out[0x10]` de `FUN_1406cd860`. | le lot qui rouvrira le controle : resoudre l argument par les appelants qui le passent en clair (`FUN_1406d6ef4` le passe a 6 dans sa branche non quantifiee) |
+| **D4 (5.14)** | **LE CONTENEUR PORTE DEUX GROUPES DE TROIS VUES** (`FUN_140b87664` : `+0x1a0 / +0x1b4c8 / +0x1b908` puis `+0x21b70 / +0x3ce98 / +0x3d2d8`), et `FUN_141f855b4` n enregistre que le SECOND. Rien dans ce lot ne dit a quoi sert le premier. | le lot qui aura besoin du second canal de replication (fiable / non fiable ?) |
+| **D5 (5.14)** | **LES 21 INDEX DE CONTROLE EPARS DE `bfecd02b`** (index 8 a 31, 2 a 27 entrees chacun) alors que le film a huit participants : ce sont des lectures prises dans des paquets qui ne ferment pas, donc du bruit du trou D1 — a re-mesurer quand D1 sera referme, jamais avant. | le lot D1, comme controle de sortie |
+| **D6 (5.14)** | **LA CHRONIQUE DE `grammar.Rev` A ROTE UNE QUATRIEME FOIS** (`rev_chronique_archive_4.go`) et le fichier vivant est deja a 387 lignes pour un seuil de 500 : la prochaine rotation tombera dans deux ou trois rangs. | le prochain lot qui monte `grammar.Rev` : prevoir le geste, il est ordinaire |
+
+#### §5 du lot 5.14 — ETAT DE CLOTURE
+
+| case | statut | ce qui est livre |
+|---|---|---|
+| 5.14.1 | `[x]` | l ordre des trois rangs PROUVE (`FUN_141f855b4`) ; la vue A = un flux de 123 types de message qui ne rend jamais un record ; **son terminateur EST le second bit d amorce que le depot ne savait pas localiser** (vide sur 5 345 / 5 345) ; la vue C nommee par `replication_control_view.cpp` et son prologue a ZERO bit |
+| 5.14.2 | `[x]` | la charge du `kind` 0 = l entree de controle d un participant, lue jusqu au bloc d actions ; **paquets fermes a reste NUL 140 -> 5 341 et 801 -> 2 884** ; le gate renforce (bourrage prouve a zero, pas tolere a sept bits) |
+| 5.14.3 | `[x]` | dispatch par rang par defaut ; **les faux `DEL` deliaient des entites vivantes : +15 114 records `ti=35` sur `bfecd02b`**, debordements 1 785 -> 32, fantomes 304 -> 0, desyncs constants ; `IDLowBits` balaye ; deux docs perimees corrigees ; `replay-equiv bcb6d393` : les six ecarts du 5.13, inchanges hors les deux attendus |
+| 5.14.4 | `[x]` | l index de controle EST l index du participant (1 sur un film a 1 joueur, 8 sur un film a 8) ; le couple analogique quantifie sur 6 bits, **a zero EXACT sur tout `dad793c7`, fenetre du saut comprise (71 / 71)**, et couvrant ses 64 codes sur `bfecd02b` ; **le canal d actions EXISTE (ouvert 108 fois) et n est pas porte — maillon nomme, pas une absence** |
+| gate 100 % | `[!]` | **NON ATTEINT**, et la cause dominante est HORS perimetre : 23 852 paquets de `bfecd02b` (environ 1 076 bits chacun) ferment leurs trois rangs et laissent du reste — un trou du rang 1 / du cadrage sur film dense (D1). Les deux autres criteres du gate sont TENUS : 0 record fantome, oracle de contenu conserve |
+| schema | **67, INCHANGEE** | la montee 67 -> 68 etait conditionnee a « si un canal d etat de bipede apparait » : aucune valeur du controle n a d etiquette, le couple analogique est a zero sur le temoin, les bits d action ne sont pas portes. Rien de publiable |
+
+Revisions : `grammar-2026-09-22.3` / `.4` / `.5` ; `facts.Rev` INCHANGEE a
+`killsource-2026-09-22.2` (choix ecrit : `facts` marche par `DecodeFrameRecords`). Gates par
+commit : `gofmt`, `go build`, `go vet` (+`research`), `go test -count=1` sur `halo_infinite/...`,
+`archlint`, `replaybuild`, `replaydoc`, `replayview`, `contracttest`, `api`, `golangci-lint`
+(0 issue), `go test -race` sur `grammar` (359 s, vert), `npx vitest run src/features/match-replay`
+(3 014 tests verts). Corpus 19, re-figeage de la reference `replay-equiv` et CI : au pilote.
+
 ### Post-chantier — lot 5.11.7 (LES TROIS TABLES D ENTITES PAR VUE), branche `feat/decfilm-63`
 
 Suite directe du 5.11.6, qui avait NOMME le trou sans le refermer. Le recadrage de l utilisateur

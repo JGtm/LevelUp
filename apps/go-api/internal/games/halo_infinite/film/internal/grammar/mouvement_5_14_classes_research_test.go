@@ -50,6 +50,7 @@ package grammar
 
 import (
 	"fmt"
+	"os"
 	"sort"
 	"strings"
 	"testing"
@@ -471,4 +472,228 @@ func TestClasses514IdLow(t *testing.T) {
 			"ti=35 %7d (%d desynchronises)", low, paquets, ferme,
 			m533bPart(ferme, paquets), nul, ti35, desync)
 	}
+}
+
+// c514Controle est ce qu UNE entree de controle porte, valeurs lues.
+type c514Controle struct {
+	indexPresent bool
+	indexCdc04   int // le R(7) de FUN_1406cdc04, -1 quand absent
+	indexCtrl    int // le R(5) de FUN_1406d0388 : l index de controle, 0..31
+	blocPresent  bool
+	secondPres   bool
+	second       int // le R(2) de FUN_1406cd860, -1 quand absent
+	scalaireA    int // le premier code 6 bits de FUN_1406d6ef4
+	scalaireB    int // le second
+	troisieme    bool
+	champPile    bool
+	brancheLong  bool
+	actionsPres  bool
+	secondBloc   bool // le bit `b` de FUN_1406d0388 (FUN_141fdae44)
+	porte        bool
+}
+
+// c514LireControle rejoue `FUN_1406d0388` EN RENDANT SES VALEURS. Elle emploie les MEMES
+// constantes de largeur que le port (`frame_vue_controle.go`) : aucun litteral n est recopie.
+func c514LireControle(br *Lecteur, frameLen int) c514Controle {
+	out := c514Controle{indexCdc04: -1, second: -1, scalaireA: -1, scalaireB: -1}
+	if !placeDisponible(br, frameLen, 1) {
+		return out
+	}
+	if out.indexPresent = br.ReadBit(); out.indexPresent {
+		if !placeDisponible(br, frameLen, largeurIndexCdc04) {
+			return out
+		}
+		out.indexCdc04 = int(br.ReadBits(largeurIndexCdc04))
+	}
+	if !placeDisponible(br, frameLen, largeurIndexControle+1) {
+		return out
+	}
+	out.indexCtrl = int(br.ReadBits(largeurIndexControle))
+	if out.blocPresent = br.ReadBit(); out.blocPresent {
+		if !placeDisponible(br, frameLen, 1) {
+			return out
+		}
+		if out.secondPres = br.ReadBit(); out.secondPres {
+			if !placeDisponible(br, frameLen, largeurCourteControle) {
+				return out
+			}
+			out.second = int(br.ReadBits(largeurCourteControle))
+		}
+		if !placeDisponible(br, frameLen, 2*LargeurScalaireAnalogique+3) {
+			return out
+		}
+		out.scalaireA = int(br.ReadBits(LargeurScalaireAnalogique))
+		out.scalaireB = int(br.ReadBits(LargeurScalaireAnalogique))
+		out.troisieme = br.ReadBit()
+		out.champPile = br.ReadBit()
+		out.brancheLong = br.ReadBit()
+		if out.troisieme || out.champPile || out.brancheLong {
+			return out
+		}
+		if !placeDisponible(br, frameLen, 1) {
+			return out
+		}
+		out.actionsPres = br.ReadBit()
+		if out.actionsPres {
+			return out
+		}
+	}
+	if !placeDisponible(br, frameLen, 1) {
+		return out
+	}
+	out.secondBloc = br.ReadBit()
+	out.porte = !out.secondBloc
+	return out
+}
+
+// TestClasses514Contenu PUBLIE CE QUE LES VUES A ET C PORTENT, en clair. Fenetre optionnelle par
+// `MOUV511_T0` / `MOUV511_T1` (en secondes depuis le premier paquet delta).
+func TestClasses514Contenu(t *testing.T) {
+	film := m511Film(t)
+	entry := m511Entree(t)
+	fc := m511Contexte(film, entry)
+	reg, err := fc.Registry()
+	if err != nil {
+		t.Fatalf("registre : %v", err)
+	}
+	if restore, errMPP := InstallFilmFormatMPP(fc); errMPP == nil {
+		defer restore()
+	}
+	bal := fc.ProfilDeBalayage()
+	bal.Grammaire.ClassesDeVue = true
+	fc.PoserProfilDeBalayage(bal)
+	cfg := fc.CadreDeBalayage()
+	w := NewWorld(reg)
+	t0, t1 := c514Fenetre()
+
+	var paquets, dansFenetre int
+	genresA := map[int]int{}
+	var aNonVide int
+	idxCtrl, cdc04, seconds := map[int]int{}, map[int]int{}, map[int]int{}
+	scalA, scalB := map[int]int{}, map[int]int{}
+	var blocs, actions, secondsBlocs, troisiemes, champsPile, branchesLong int
+	var origine uint64
+	for _, c := range fc.ChunkNumbers() {
+		data, pks, ok := fc.ChunkAt(c)
+		if !ok {
+			continue
+		}
+		m533bLierMonde(w, data, pks)
+		for _, pk := range pks {
+			if pk.Type != PacketTypeDelta || pk.Size < 1 {
+				continue
+			}
+			if origine == 0 {
+				origine = pk.TimestampUS
+			}
+			sec := float64(pk.TimestampUS-origine) / 1e6
+			paquets++
+			if sec < t0 || sec > t1 {
+				continue
+			}
+			dansFenetre++
+			pay := pk.Payload(data)
+			frameLen := len(pay) * 8
+			br := LecteurSur(pay)
+			br.poserCadre(cfg)
+			if _, present := PacketHeadEventType(pay); present {
+				d := marchLocateStrict(pay, w, cfg)
+				if d < 0 {
+					continue
+				}
+				br.Skip(d)
+			} else {
+				br.Skip(DefaultPacketPreambleBits - 1)
+				a := consumeVueA(br, frameLen)
+				if !a.Vide {
+					aNonVide++
+					for _, g := range a.Genres {
+						genresA[g]++
+					}
+					continue
+				}
+			}
+			w.PoserVueCourante(int(vueDeLImageCle))
+			if _, _, hitEnd := decodeInferLoop(br, pay, w, cfg); !hitEnd {
+				continue
+			}
+			// la vue C, entree par entree
+			for tour := 0; tour < 64; tour++ {
+				if !placeDisponible(br, frameLen, 1) || !br.ReadBit() {
+					break
+				}
+				if !placeDisponible(br, frameLen, LargeurKindVueC) {
+					break
+				}
+				k := int(br.ReadBits(LargeurKindVueC))
+				if k == kindVueCNeant {
+					continue
+				}
+				if k != kindVueCControle {
+					break
+				}
+				e := c514LireControle(br, frameLen)
+				if e.indexPresent {
+					cdc04[e.indexCdc04]++
+				}
+				idxCtrl[e.indexCtrl]++
+				if !e.blocPresent {
+					if !e.porte {
+						break
+					}
+					continue
+				}
+				blocs++
+				if e.secondPres {
+					seconds[e.second]++
+				}
+				scalA[e.scalaireA]++
+				scalB[e.scalaireB]++
+				if e.troisieme {
+					troisiemes++
+				}
+				if e.champPile {
+					champsPile++
+				}
+				if e.brancheLong {
+					branchesLong++
+				}
+				if e.actionsPres {
+					actions++
+				}
+				if e.secondBloc {
+					secondsBlocs++
+				}
+				if !e.porte {
+					break
+				}
+			}
+		}
+	}
+	t.Logf("PAQUETS DELTA : %d, dont %d dans la fenetre [%.3f ; %.3f] s", paquets, dansFenetre,
+		t0, t1)
+	t.Logf("VUE A (rang 0) : non vide sur %d paquets · genres R(7) : %s", aNonVide,
+		c514Hist(genresA))
+	t.Logf("VUE C (rang 2) — L ENTREE DE CONTROLE :")
+	t.Logf("  index de controle R(5)        : %s", c514Hist(idxCtrl))
+	t.Logf("  index FUN_1406cdc04 R(7)      : %s", c514Hist(cdc04))
+	t.Logf("  bloc de 0x68 present          : %d fois · second champ R(2) : %s", blocs,
+		c514Hist(seconds))
+	t.Logf("  scalaire A (6 bits)           : %s", c514Hist(scalA))
+	t.Logf("  scalaire B (6 bits)           : %s", c514Hist(scalB))
+	t.Logf("  gardes ouvertes NON PORTEES   : troisieme champ %d · champ de pile %d · "+
+		"branche longue %d · BITS D ACTION %d · second bloc (0xbc) %d",
+		troisiemes, champsPile, branchesLong, actions, secondsBlocs)
+}
+
+// c514Fenetre lit la fenetre temporelle de l instrument (`MOUV511_T0` / `MOUV511_T1`).
+func c514Fenetre() (float64, float64) {
+	t0, t1 := 0.0, 1e9
+	if v := os.Getenv("MOUV511_T0"); v != "" {
+		fmt.Sscanf(v, "%f", &t0)
+	}
+	if v := os.Getenv("MOUV511_T1"); v != "" {
+		fmt.Sscanf(v, "%f", &t1)
+	}
+	return t0, t1
 }
