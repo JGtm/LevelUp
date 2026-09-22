@@ -35,7 +35,7 @@ function option(kills: ElevationPoint[], lobby: ElevationPoint[], median: number
     colors: { kills: 'k', deaths: 'd', lobby: 'l', band: 'b', zero: 'z' },
     labels: {
       kills: 'Mes frags', deaths: 'Mes morts', lobby: 'Lobby',
-      xAxis: 'Distance', yAxis: 'Dénivelé', lobbyMedian: (m) => `Médiane ${m}`,
+      xAxis: 'Distance', yAxis: 'Hauteur (m)', lobbyMedian: (m) => `Médiane ${m}`,
     },
     tooltip: () => 'tt',
   }) as Record<string, never>
