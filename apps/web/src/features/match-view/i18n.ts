@@ -116,6 +116,31 @@ export interface MatchViewText {
   /** Distance moyenne formatée locale-aware, ex. « 12,4 m » (FR) / « 12.4 m » (EN). */
   killDistanceAvgFmt: (m: number) => string
   killDistanceReserve: string
+  // Dénivelé (D24, 2026-09-22) — nuage distance × hauteur des engagements du match.
+  elevationTitle: string
+  /** Infobulle ⓘ du titre : trois phrases (ce qu'est le dénivelé, le signe, la couverture). */
+  elevationInfo: string
+  elevationAxisDistance: string
+  elevationAxisDelta: string
+  /** Légende : mes frags (N), mes morts (N), la bande, le lobby quand il est affiché. */
+  elevationLegendKillsFmt: (n: number) => string
+  elevationLegendDeathsFmt: (n: number) => string
+  elevationLegendBand: string
+  elevationLegendLobbyFmt: (n: number) => string
+  /** Bouton de comparaison au lobby (bascule, état local à la carte). */
+  elevationCompare: string
+  elevationSideKill: string
+  elevationSideDeath: string
+  /** Première ligne d'infobulle : côté, distance, dénivelé signé. */
+  elevationPointFmt: (side: string, distance: string, delta: string) => string
+  /** Deuxième ligne : arme et instant, l'un ou l'autre pouvant manquer. */
+  elevationPointWeaponFmt: (weapon: string, clock: string) => string
+  elevationOpenReplay: string
+  elevationLobbyMedianFmt: (m: string) => string
+  /** Réserve de couverture en pied : frags mesurés sur frags du match. */
+  elevationCoverageFmt: (measured: number, total: number) => string
+  /** État vide NOMMÉ : le titre mesure les positions, mais pas sur ce match. */
+  elevationEmpty: string
   // Section médias (dans onglet Résumé)
   sectionMedia: string
   mediaNoCaptures: string
@@ -447,6 +472,26 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     killDistanceAvgFmt: (m) => `${new Intl.NumberFormat('fr-FR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(m)} m`,
     killDistanceReserve:
       "Ne compte que les frags dont la position du tueur ET de la victime est mesurée ; tous les frags n'ont pas de position (couverture partielle).",
+    elevationTitle: 'Dénivelé',
+    elevationInfo:
+      "Le dénivelé est l'écart de hauteur entre les deux joueurs à l'instant du coup fatal, en mètres. Il est signé de votre côté : au-dessus de la ligne vous étiez plus haut que l'autre, en dessous vous étiez plus bas, pour un frag comme pour une mort. Ne comptent que les engagements dont la position des deux joueurs est mesurée.",
+    elevationAxisDistance: "Distance de l'engagement (m)",
+    elevationAxisDelta: 'Dénivelé (m)',
+    elevationLegendKillsFmt: (n) => `Mes frags — ${n}`,
+    elevationLegendDeathsFmt: (n) => `Mes morts — ${n}`,
+    elevationLegendBand: 'Bande à niveau (± 1 m)',
+    elevationLegendLobbyFmt: (n) => `Lobby — ${n}`,
+    elevationCompare: 'Comparer au lobby',
+    elevationSideKill: 'Frag',
+    elevationSideDeath: 'Mort',
+    elevationPointFmt: (side, distance, delta) => `${side} · ${distance} m · ${delta} m`,
+    elevationPointWeaponFmt: (weapon, clock) => [weapon, clock].filter(Boolean).join(' · '),
+    elevationOpenReplay: "Ouvrir le rejeu à cet instant",
+    elevationLobbyMedianFmt: (m) => `Médiane du lobby ${m} m`,
+    elevationCoverageFmt: (measured, total) =>
+      `${measured}/${total} frags mesurés`,
+    elevationEmpty:
+      "Dénivelé non mesuré sur ce match — le film a bien été décodé, mais aucun engagement n'y porte la position des deux joueurs.",
     sectionMedia: 'Médias',
     mediaNoCaptures: 'Aucune capture',
     mediaNoCapturesDesc: 'Les screenshots et clips associés à ce match apparaîtront ici.',
@@ -783,6 +828,25 @@ export const MATCH_VIEW_TEXT: Record<MatchViewLocale, MatchViewText> = {
     killDistanceAvgFmt: (m) => `${new Intl.NumberFormat('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(m)} m`,
     killDistanceReserve:
       'Only counts kills where both the killer and victim position are measured; not all kills have a position (partial coverage).',
+    elevationTitle: 'Elevation',
+    elevationInfo:
+      'Elevation is the height gap between both players at the moment of the killing blow, in metres. It is signed from your side: above the line you were higher than the other player, below it you were lower — for a kill as for a death. Only engagements where both positions are measured are counted.',
+    elevationAxisDistance: 'Engagement distance (m)',
+    elevationAxisDelta: 'Elevation (m)',
+    elevationLegendKillsFmt: (n) => `My kills — ${n}`,
+    elevationLegendDeathsFmt: (n) => `My deaths — ${n}`,
+    elevationLegendBand: 'Level band (± 1 m)',
+    elevationLegendLobbyFmt: (n) => `Lobby — ${n}`,
+    elevationCompare: 'Compare with lobby',
+    elevationSideKill: 'Kill',
+    elevationSideDeath: 'Death',
+    elevationPointFmt: (side, distance, delta) => `${side} · ${distance} m · ${delta} m`,
+    elevationPointWeaponFmt: (weapon, clock) => [weapon, clock].filter(Boolean).join(' · '),
+    elevationOpenReplay: 'Open the replay at this moment',
+    elevationLobbyMedianFmt: (m) => `Lobby median ${m} m`,
+    elevationCoverageFmt: (measured, total) => `${measured}/${total} measured kills`,
+    elevationEmpty:
+      'No elevation measured on this match — the film was decoded, but no engagement carries both player positions.',
     sectionMedia: 'Media',
     mediaNoCaptures: 'No captures',
     mediaNoCapturesDesc: 'Screenshots and clips associated with this match will appear here.',

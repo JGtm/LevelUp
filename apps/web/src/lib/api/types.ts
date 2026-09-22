@@ -1972,7 +1972,27 @@ export interface MatchCombatTab {
    * ligne de journal — l'UI nomme alors l'état, elle ne disparaît pas.
    */
   riposte?: MatchRiposteBlock
+  /**
+   * Bloc « Dénivelé » (D24, 2026-09-22) : un point par frag et par mort du joueur consulté,
+   * distance × dénivelé signé de SON côté. ABSENT quand le match n'a aucune position
+   * mesurée — la carte ne s'affiche pas, elle n'affiche pas un nuage vide.
+   */
+  elevation?: MatchElevationBlock
 }
+
+/**
+ * Bloc « Dénivelé » de l'onglet Combat. `kills` = mes engagements (les deux côtés, chacun
+ * portant son `side`) ; `lobby` = les frags des autres, côté tueur, fond de comparaison du
+ * bouton « comparer au lobby » ; `measured_kills` / `total_kills` = la réserve de couverture.
+ */
+export type MatchElevationBlock = components['schemas']['MatchElevationBlock']
+
+/**
+ * Un engagement mesuré. `delta_z_m` est signé DU CÔTÉ DU JOUEUR CONSULTÉ : positif = il était
+ * au-dessus, pour un frag COMME pour une mort. `time_ms` est l'horloge du MATCH (le rejeu
+ * s'ouvre avec `?t=<time_ms>&clock=match`).
+ */
+export type MatchElevationKill = components['schemas']['MatchElevationKill']
 
 /**
  * Bloc « Riposte » de l'onglet Combat. Ré-export DIRECT du contrat (tableaux nullables

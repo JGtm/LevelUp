@@ -183,6 +183,15 @@ type KillDistanceRepository interface {
 	// LoadMatch relit les distances mesurées par (xuid, weapon_key) pour un
 	// match, un joueur par entrée. Ordre déterministe (xuid, puis weapon_key).
 	LoadMatch(ctx context.Context, matchID string) ([]domain.MatchKillDistancePlayer, error)
+
+	// LoadMatchElevation relit LES MÊMES frags, mais UN PAR LIGNE : distance, dénivelé
+	// physique (`killer_z - victim_z`, sans point de vue), instant, arme et les deux
+	// identités. C'est la matière de la carte « Dénivelé » de la vue match (lot Y,
+	// décision D24), qui trace un point par engagement et n'agrège donc rien.
+	//
+	// Mêmes dégradations que LoadMatch : ErrCapabilityNotSupported sans les tables,
+	// (nil, nil) sur un match sans position mesurée.
+	LoadMatchElevation(ctx context.Context, matchID string) ([]domain.MatchElevationKillRaw, error)
 }
 
 // MatchExclusionRepository gère le flag is_excluded dans player_match_enrichment.

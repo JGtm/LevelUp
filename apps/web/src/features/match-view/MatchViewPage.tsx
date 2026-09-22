@@ -9,6 +9,7 @@ import { MatchBreadcrumb, MatchNavigationBar, MatchHeaderCard } from './MatchHea
 import { MatchSummaryCardsSection } from './MatchStatCards'
 import { MatchKdaExpectedChart, MatchSpreeChart, MatchSummaryRadarChart } from './MatchSummaryCharts'
 import { MatchFragCard } from './MatchFragCard'
+import { MatchElevationSection } from './MatchElevationSection'
 import { MatchKillDistanceSection } from './MatchKillDistanceSection'
 import { MatchMediaTab } from './MatchMediaTab'
 import {
@@ -367,6 +368,16 @@ export function MatchViewPage() {
               roster={roster}
               meXUID={meXUID}
               friendGamertags={friendGamertags}
+              t={t}
+            />
+            {/* Dénivelé (D24, 2026-09-22) : LA MÊME source lue au grain du frag — « où je
+                frague, où je meurs ». Juste sous la carte des distances, même grammaire et
+                mêmes deux portes (la section les porte elle-même). Pas de wrapper : un gap
+                fantôme resterait quand la section est absente. */}
+            <MatchElevationSection
+              block={combat_tab.elevation}
+              playerSlug={playerSlug}
+              matchId={matchId}
               t={t}
             />
             {/* Rangée suivante : Médailles À GAUCHE des Citations — grille fluide
