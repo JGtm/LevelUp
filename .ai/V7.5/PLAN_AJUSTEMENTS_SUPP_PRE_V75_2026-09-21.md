@@ -224,3 +224,8 @@ surface `film/replay` 260 -> 263 justifie.
 ### Lot W — web Sessions : 4.A (apres U)
 ### Lot X — maquette Denivele v2 (preferences D23-b) — FUSIONNE c72f19012
 - [x] `.ai/V7.5/MAQUETTE_DENIVELE_V2_2026-09-22.html` : T1/T2/T3, M1/M2/M3, E1/E2/E3, Sessions = rien
+- D24 (2026-09-22) Denivele : Match view = M1 (B2 du match, mes frags / mes morts, clic vers le rejeu) avec un BOUTON « comparer au lobby » (= M3, fond gris + mediane du lobby) ; Escouade = E1 (role de hauteur, un point par coequipier par match, ecart au lobby, memes composants que les roles de portee ; champ dz ajoute au lot U) ; Sessions = RIEN (abandonne) ; Timeseries : T1 sous un plancher de points, T2 (densite) au-dela — a confirmer par l utilisateur.
+
+### Lot Y — Match view : Denivele M1 + bouton lobby (worktree `LevelUp-wt-ajsup-y`)
+- [ ] Go : `combat_tab.elevation` = par frag mesure du match (cote tueur ET cote victime pour le joueur consulte ; option tous les frags du lobby) : distance_m, delta_z_m, time_ms, weapon, side ; mediane du lobby
+- [ ] Web : nuage hauteur x distance, bande a niveau, clic vers l instant du rejeu, bouton « comparer au lobby »
