@@ -80,11 +80,21 @@ func (c FrameConfig) contexte() ContexteDeLecture {
 
 // DefaultPacketPreambleBits est l'amorce de paquet consommee avant le premier record.
 //
-// POURQUOI 2 ALORS QUE LE DESASSEMBLAGE N'EN MONTRE QU'UN. Le desassemblage etablit UN bit :
-// FUN_142987460 fait `DAT_144706104 = FUN_1406cf008(reader)`, et FUN_1406cf008 est un R(1)
-// (`*(p+0x2c) += 1`). Ce bit vaut 1 dans 100,00 % des 30 418 payloads de 000d5950 — signature
-// d'un drapeau de configuration constant. Le SECOND bit, lui, n'est PAS localise dans le
-// desassemblage : il est etabli par la MESURE, et cette distinction doit rester visible.
+// LES DEUX BITS SONT LOCALISES DEPUIS LE LOT 5.14.1, ET CE N'EST PAS UNE AMORCE. Le premier est
+// le bit de configuration du frame-processeur : FUN_142987460 fait
+// `DAT_144706104 = FUN_1406cf008(reader)`, et FUN_1406cf008 est un R(1) (`*(p+0x2c) += 1`). Ce
+// bit vaut 1 dans 100,00 % des 30 418 payloads de 000d5950 — signature d'un drapeau de
+// configuration constant. LE SECOND EST LE TERMINATEUR `R(1) = 0` DE LA VUE DE RANG 0 :
+// `FUN_142987460` parcourt ses trois vues par rang, le rang 0 porte `FUN_14076a1c4`
+// (`frame_vue_messages.go`), et cette boucle-la lit UN bit quand elle n'a rien a ecrire. La
+// « longueur 2 » etablie par la mesure ci-dessous est donc `[configuration][vue A vide]`, et la
+// vue A est vide sur les 5 345 paquets de `dad793c7` (`TestClasses514Marche`).
+//
+// CE QUE `PacketPreambleBits` RESTE : le nombre de bits a sauter pour atteindre le premier
+// record de la VUE B quand la vue A est vide. Les marches qui portent
+// `GrammaireBalayage.ClassesDeVue` ne le sautent plus en entier — elles sautent le bit de
+// configuration et LISENT la vue A (`decodeFrameParRangs`), ce qui DETECTE une vue A non vide au
+// lieu de la prendre pour un bit d'amorce.
 //
 // Trois grammaires donnent le meme en-tete total de 20 bits sur le PREMIER record, et ne se
 // separent qu'a partir du second : amorce 2 + idLow 11 · amorce 1 + idLow 12 · amorce 1 +

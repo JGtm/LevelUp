@@ -349,3 +349,39 @@ package grammar
 // `facts.Rev` NE MONTE PAS — la sortie des faits ne peut pas changer tant que le flag est faux ;
 // seul son golden est refige, son empreinte incluant les revisions amont.
 // `replay.SchemaVersion` reste a 67.
+
+// ENTREE `grammar-2026-09-22.5` (2026-09-22, lot 5.14.3) : CHAQUE RANG DE VUE SOUS LA GRAMMAIRE
+// DE SA CLASSE, PAR DEFAUT — ET LES FAUX `DEL` DU PIED DE TRAME DELIAIENT DES ENTITES VIVANTES.
+//
+// `GrammaireBalayage.ClassesDeVue` passe A VRAI dans l invariant du profil. La marche des trois
+// vues (`decodeFrameParRangs`) applique `FUN_14076a1c4` au rang 0, `FUN_1406cd128` au rang 1 et
+// `FUN_1406cf548` au rang 2, au lieu d appliquer la grammaire du gestionnaire d entites aux trois.
+//
+// CE QUE LA GRAMMAIRE D UNE SEULE CLASSE COUTAIT, ET C EST PLUS QU UN DEBORDEMENT. Les flux des
+// vues A et C etaient decoupes en `[prefixe][idLow][tag]` ; quand ce decoupage rendait un type
+// `DEL`, la boucle faisait `w.Unbind(slot)` — elle DELIAIT une entite vivante. Rebrancher chaque
+// rang sur sa classe rend donc des records que le depot perdait en aval :
+//
+//	dad793c7  paquets fermes 5 338 -> 5 341 sur 5 365 · debordements 18 -> 2 (721 -> 586 bits)
+//	          records `ti=35` 75 -> 75 · 0 desynchronise · `i21` 1,3 % · records fantomes 13 -> 0
+//	bfecd02b  paquets fermes 888 -> 2 884 sur 30 387 · debordements 1 785 -> 32
+//	          (412 992 865 -> 110 998 bits lus en trop)
+//	          records `ti=35` 114 458 -> **129 572** (+15 114) · desyncs 4 -> 4 · `i21` 65,2 ->
+//	          65,5 % · paquets non localises 1 189 -> 845
+//	bcb6d393  `movementStates` (`replay-equiv`) 1 489 -> 1 737 · artefact 1 926 911 ->
+//	          1 929 397 octets
+//
+// ET LA FERMETURE EST PROUVEE AU BIT, pas a sept bits pres : le bourrage d octet est ecrit A
+// ZERO, donc `TestClasses514Bourrage` exige que TOUS les bits du reste soient nuls — 5 341 sur
+// 5 341 sur `dad793c7`, 2 884 sur 2 884 sur `bfecd02b`.
+//
+// DEUX DOCUMENTATIONS PERIMEES SONT CORRIGEES DANS LE MEME RANG (anti-patron « doc inversee ») :
+// celle de [DefaultPacketPreambleBits], qui disait le second bit NON LOCALISE, et celle de
+// `vueDeLImageCle`, qui disait le decalage entre la numerotation du jeu et l ordre de la marche
+// NON ETABLI. Les deux le sont depuis le lot 5.14.1.
+//
+// `facts.Rev` NE MONTE PAS, et c est un choix ecrit : la couche `facts` marche par
+// `DecodeFrameRecords`, pas par `DecodeFrameViews` — `killsource` ne voit pas cette bascule. Le
+// golden de `facts` est refige parce que son empreinte inclut les revisions amont.
+// `replay.SchemaVersion` reste a 67 : la FORME du document ne change pas, aucun champ n est
+// publie par ce rang.

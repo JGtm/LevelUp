@@ -228,7 +228,14 @@ type GrammaireBalayage struct {
 	// Voir `frame_vue_classes.go`.
 	//
 	// Sans elle, les flux des vues A et C sont decoupes en `[prefixe][idLow][tag]` et rendent
-	// des records DEL FANTOMES (13 sur `dad793c7`, 304 sur `bfecd02b`).
+	// des records DEL FANTOMES (13 sur `dad793c7`, 304 sur `bfecd02b`) — et ces faux DEL
+	// DELIENT des entites vivantes : les rebrancher a leur classe rend 15 114 records `ti=35`
+	// sur `bfecd02b` (114 458 -> 129 572), a desyncs constants.
+	//
+	// DEFAUT LEVE DEPUIS LE LOT 5.14.3 (2026-09-22) : c est la grammaire de l ecrivain, et la
+	// fermeture des paquets le prouve au bit (reste NUL sur 5 341 paquets sur 5 341 de
+	// `dad793c7`). Ce n est PAS un kill-switch : il n y a pas de date de retrait, la bascule
+	// existe pour que l A/B du lot reste rejouable.
 	ClassesDeVue bool
 	// LargeursBouchon donne une largeur PROVISOIRE a un composant dont le deserialiseur n est
 	// pas encore porte, pour que la traversee continue au-dela (recherche de la largeur d une
@@ -244,6 +251,7 @@ func grammaireDuProfil() GrammaireBalayage {
 		CorpsActionMobilite:   true,
 		CorpsAncrageCapacite:  true,
 		TablesParVue:          true,
+		ClassesDeVue:          true,
 	}
 }
 
