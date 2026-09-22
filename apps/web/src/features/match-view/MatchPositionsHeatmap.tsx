@@ -43,6 +43,8 @@ import type { Locale } from '@/lib/i18n/locale'
 import { drawTacticalHeatmap, heatRamp } from '@/lib/replay/heatPaint'
 import { useReplayMapBackground, useReplayMapImage } from '@/lib/replay/queries'
 
+import { hasPositions } from './blockPredicates'
+
 import { buildPositionsGrid, hasTeamSplit, mapFrame } from './_positionsHeat'
 
 /**
@@ -139,8 +141,9 @@ export function MatchPositionsHeatmap({
     )
   }, [grid, frame, image, ramp])
 
-  // Portes 1 à 3 : rien à montrer, et rien à promettre.
-  if (all.length === 0 || !frame || !grid) return null
+  // Portes 1 à 3 : rien à montrer, et rien à promettre. La première est le prédicat que le
+  // parent lit aussi pour poser (ou non) son titre de section.
+  if (!hasPositions(all) || !frame || !grid) return null
 
   return (
     <SectionCard

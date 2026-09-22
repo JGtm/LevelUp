@@ -492,3 +492,17 @@ function coverageOf(doc: ReplayDocumentReady): EquipmentUsageCoverage {
     killsRead: equip?.killsRead ?? false,
   }
 }
+
+/**
+ * hasEquipmentUsage — LA double porte de la carte « Usages d'équipement », en fonction
+ * pure : pas d'artefact de rejeu (`usage` null) ou rien de mesuré -> pas de carte.
+ *
+ * Elle vit ICI, avec la mesure qu'elle juge, et non dans le fichier du composant : le
+ * PARENT la lit pour décider d'afficher ou non le titre de section qui coiffe la carte
+ * (règle du 2026-09-22 — un titre ne se pose jamais au-dessus de rien), et un module de
+ * composant qui exporte autre chose qu'un composant casse le rafraîchissement à chaud.
+ * Le prédicat ne s'écrit qu'une fois : la carte et le parent lisent le même.
+ */
+export function hasEquipmentUsage(usage: EquipmentUsage | null | undefined): boolean {
+  return usage?.hasData === true
+}

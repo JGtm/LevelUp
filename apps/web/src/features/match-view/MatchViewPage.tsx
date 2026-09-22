@@ -1,15 +1,14 @@
-/** MatchViewPage — détail d'un match (4 onglets : Général, Chronologie, Contrôle, Joueurs). */
+/** MatchViewPage — détail d'un match (4 onglets : Général, Chronologie, Armes et terrain, Joueurs). */
 import { useParams, useSearch, useNavigate, useRouter } from '@tanstack/react-router'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { DetailSection } from '@/components/ui/detail-section'
 import { useFriendGamertags } from '@/features/friends/queries'
 import { FeatureGate } from '@/lib/capabilities/FeatureGate'
 import { useMatchView, useMatchObjectiveEvents, useMatchPositions } from './queries'
 import { MatchBreadcrumb, MatchNavigationBar, MatchHeaderCard } from './MatchHeader'
 import { MatchSummaryCardsSection } from './MatchStatCards'
 import { MatchKdaExpectedChart, MatchSpreeChart, MatchSummaryRadarChart } from './MatchSummaryCharts'
-import { MatchFragCard } from './MatchFragCard'
-import { MatchKillDistanceSection } from './MatchKillDistanceSection'
 import { MatchMediaTab } from './MatchMediaTab'
 import {
   MatchMedalsSection,
@@ -17,8 +16,9 @@ import {
   MatchNativeCommendationsSection,
 } from './MatchSummaryMedalsAndCitations'
 import { MatchViewTabChronology } from './MatchViewTabChronology'
-import { MatchViewTabControl } from './MatchViewTabControl'
+import { MatchViewTabArsenal } from './MatchViewTabArsenal'
 import { MatchViewTabPlayers } from './MatchViewTabPlayers'
+import { hasMediaItems } from './blockPredicates'
 import { buildMatchHeadingStr } from './format'
 import { MATCH_VIEW_TEXT } from './i18n'
 import type { MatchViewTab } from './tabs'
@@ -76,11 +76,11 @@ function translatePartialReason(code: string, locale: string): string {
 // canoniques et la rétro-compat des deep-links vivent dans `./tabs`.
 const TABS: {
   id: MatchViewTab
-  labelKey: 'tabGeneral' | 'tabChronology' | 'tabControl' | 'tabPlayers'
+  labelKey: 'tabGeneral' | 'tabChronology' | 'tabArsenal' | 'tabPlayers'
 }[] = [
   { id: 'summary', labelKey: 'tabGeneral' },
   { id: 'chronology', labelKey: 'tabChronology' },
-  { id: 'control', labelKey: 'tabControl' },
+  { id: 'arsenal', labelKey: 'tabArsenal' },
   { id: 'players', labelKey: 'tabPlayers' },
 ]
 
@@ -102,12 +102,12 @@ export function MatchViewPage() {
   // Deux calques décodés du film, best-effort : un titre sans film répond 503 et
   // `data` reste undefined — la page s'affiche entière, sans placeholder mort.
   // Chacun n'est tiré QUE sur l'onglet qui le consomme : les événements d'objectif
-  // sur Chronologie (frags cumulés, dominance), les positions sur Contrôle
-  // (occupation du terrain, 2026-09-19).
+  // sur Chronologie (frags cumulés, dominance), les positions sur « Armes et terrain »
+  // (occupation du terrain, 2026-09-19 ; onglet renommé le 2026-09-22).
   const isChronology = activeTab === 'chronology'
-  const isControl = activeTab === 'control'
+  const isArsenal = activeTab === 'arsenal'
   const { data: objectiveEvents } = useMatchObjectiveEvents(playerSlug, matchId, isChronology)
-  const { data: matchPositions } = useMatchPositions(playerSlug, matchId, isControl)
+  const { data: matchPositions } = useMatchPositions(playerSlug, matchId, isArsenal)
   const friendGamertags = useFriendGamertags(playerSlug)
   const locale = useAppShellStore((s) => s.locale)
   const t = MATCH_VIEW_TEXT[locale === 'en' ? 'en' : 'fr']
@@ -319,7 +319,13 @@ export function MatchViewPage() {
 
       <div className="p-6 space-y-6">
         {activeTab === 'summary' && (
-          <div className="space-y-4">
+          /* Onglet Général — LE BILAN DU MATCH. Trois sections titrées depuis le
+             2026-09-22 (gabarit unique `DetailSection`), plus la bande de KPI qui, elle,
+             reste SANS titre : comme sur l'accueil, elle se lit d'elle-même et un titre
+             au-dessus n'y ajouterait rien. La répartition des frags et la distance des
+             frags ont quitté cet onglet pour « Armes et terrain » : elles disent avec quoi
+             on a tué, pas comment le match s'est soldé. */
+          <div className="space-y-6">
             <MatchSummaryCardsSection
               kpis={summary_tab.kpis}
               expectedStats={summary_tab.expected_stats}
@@ -328,81 +334,62 @@ export function MatchViewPage() {
               damagePerKill={meRow?.damage_per_kill ?? null}
               damagePerDeath={meRow?.damage_per_death ?? null}
             />
-            <div className="grid grid-cols-1 gap-4 sm:[grid-template-columns:repeat(auto-fit,minmax(280px,1fr))]">
-              <MatchKdaExpectedChart
-                kpis={summary_tab.kpis}
-                expectedStats={summary_tab.expected_stats}
-                t={t}
-              />
-              <MatchSpreeChart
-                kpis={summary_tab.kpis}
-                expectedStats={summary_tab.expected_stats}
-                t={t}
-              />
-              <MatchSummaryRadarChart
-                radar={radarSeries}
-                meXUID={meXUID}
-                t={t}
-              />
-            </div>
-            {/* Répartition des frags v2 sur SA PROPRE rangée : sunburst (classe→rôle,
-                2/3 de largeur) + breakdown par arme (1/3). MatchFragCard porte sa
-                propre grille (breakdown pleine largeur si le sunburst n'a pas de
-                données) et rend null sans aucune donnée — pas de wrapper ici, sinon
-                un gap fantôme resterait quand la carte est absente. Non gaté :
-                Infinite = classes sans Spartan ; Halo 5 = avec (capability
-                native_kill_mechanics côté backend). */}
-            <MatchFragCard distribution={combat_tab.frag_distribution} weapons={weaponKills} />
-            {/* POC (LOT G.3, 2026-08-30) : distance par arme, par joueur — juste après
-                les stats d'armes du viewer. Scoreboard passé pour gamertag + total de
-                kills (le DTO backend ne porte que le xuid). DEUX PORTES, portées par la
-                section elle-même : elle rend null si le TITRE ne déclare pas
-                `film.kill_positions` (rien à espérer, jamais), et affiche un état vide
-                explicite si le titre les produit mais pas pour CE match (cas de la
-                quasi-totalité tant que le backfill de masse n'a pas tourné). Pas de
-                wrapper ici : un gap fantôme resterait quand la section est absente. */}
-            <MatchKillDistanceSection
-              players={combat_tab.kill_distance_by_weapon}
-              scoreboard={scoreboard}
-              roster={roster}
-              meXUID={meXUID}
-              friendGamertags={friendGamertags}
-              t={t}
-            />
-            {/* Rangée suivante : Médailles À GAUCHE des Citations — grille fluide
+            <DetailSection title={t.sectionCombat}>
+              <div className="grid grid-cols-1 gap-4 sm:[grid-template-columns:repeat(auto-fit,minmax(280px,1fr))]">
+                <MatchKdaExpectedChart
+                  kpis={summary_tab.kpis}
+                  expectedStats={summary_tab.expected_stats}
+                  t={t}
+                />
+                <MatchSpreeChart
+                  kpis={summary_tab.kpis}
+                  expectedStats={summary_tab.expected_stats}
+                  t={t}
+                />
+                <MatchSummaryRadarChart
+                  radar={radarSeries}
+                  meXUID={meXUID}
+                  t={t}
+                />
+              </div>
+            </DetailSection>
+            {/* Récompenses : Médailles À GAUCHE des Citations — grille fluide
                 (auto-fit) : chaque carte garde une largeur pleine ou partagée sans
                 cellule orpheline. Halo 5 : commendations NATIVES (citations_tab.
                 native_commendations) affichées À LA PLACE des citations dérivées
                 d'Infinite (summary_tab.citations vide pour h5). Un seul bloc
                 « commendations » par titre. */}
-            <div className="grid grid-cols-1 gap-4 sm:[grid-template-columns:repeat(auto-fit,minmax(320px,1fr))]">
-              <MatchMedalsSection medals={summary_tab.medals ?? []} t={t} />
-              {(citations_tab?.native_commendations?.length ?? 0) > 0 ? (
-                <MatchNativeCommendationsSection
-                  commendations={citations_tab.native_commendations ?? []}
-                  t={t}
-                />
-              ) : (
-                <MatchCitationsSection citations={summary_tab.citations ?? []} t={t} />
-              )}
-            </div>
+            <DetailSection title={t.sectionRewards}>
+              <div className="grid grid-cols-1 gap-4 sm:[grid-template-columns:repeat(auto-fit,minmax(320px,1fr))]">
+                <MatchMedalsSection medals={summary_tab.medals ?? []} t={t} />
+                {(citations_tab?.native_commendations?.length ?? 0) > 0 ? (
+                  <MatchNativeCommendationsSection
+                    commendations={citations_tab.native_commendations ?? []}
+                    t={t}
+                  />
+                ) : (
+                  <MatchCitationsSection citations={summary_tab.citations ?? []} t={t} />
+                )}
+              </div>
+            </DetailSection>
             {/* Bloc Médias : TOUJOURS en dernier, seul sur sa rangée, PLEINE largeur
-                (règle produit : aucun bloc seul à largeur partielle). Gaté sur
-                `media` : masque l'en-tête + le bloc entier pour un titre sans
-                captures/clips. */}
-            <FeatureGate capability="media">
-              <div className="rounded-lg border border-border bg-card">
-                <div className="border-b border-border px-3 py-2 text-sm font-medium">{t.sectionMedia}</div>
-                <div className="p-3">
+                (règle produit : aucun bloc seul à largeur partielle). Son bandeau de carte
+                inline a laissé place au gabarit de titre commun le 2026-09-22 — même
+                hiérarchie visuelle que « Combat » et « Récompenses » juste au-dessus.
+                DEUX PORTES : la capability `media` (le TITRE n'a ni captures ni clips) et
+                `hasMediaItems` (CE match n'en a aucun) — le prédicat du bloc lui-même, pour
+                qu'un titre « Médias » ne se pose jamais au-dessus de rien. */}
+            {hasMediaItems(media_tab.media_items) && (
+              <FeatureGate capability="media">
+                <DetailSection title={t.sectionMedia}>
                   <MatchMediaTab
                     items={media_tab.media_items ?? []}
                     playerSlug={playerSlug}
                     matchId={matchId}
-                    locale={locale === 'en' ? 'en' : 'fr'}
                   />
-                </div>
-              </div>
-            </FeatureGate>
+                </DetailSection>
+              </FeatureGate>
+            )}
           </div>
         )}
 
@@ -424,14 +411,21 @@ export function MatchViewPage() {
           />
         )}
 
-        {activeTab === 'control' && (
-          <MatchViewTabControl
+        {activeTab === 'arsenal' && (
+          <MatchViewTabArsenal
             playerSlug={playerSlug}
             matchId={matchId}
             replayAvailable={header.replay_available === true}
             scoreboard={scoreboard}
+            roster={roster}
+            fragDistribution={combat_tab.frag_distribution}
+            weaponKills={weaponKills}
+            killDistance={combat_tab.kill_distance_by_weapon}
+            meXUID={meXUID}
+            friendGamertags={friendGamertags}
             matchPositions={matchPositions}
             locale={locale}
+            t={t}
           />
         )}
 

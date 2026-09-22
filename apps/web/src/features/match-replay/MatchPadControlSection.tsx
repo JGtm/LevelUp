@@ -64,7 +64,7 @@ import { HeaderLabelTooltip } from '@/lib/table/columnMeta'
 import { REPLAY_TEXT, type ReplayLocale } from './i18n/i18n'
 import type { ReplayText } from './i18n/i18nContract'
 import { buildPadControlBars, type PadBarModel, type PadBarRow } from './model/padControlChart'
-import { buildPadControl, type PadControl } from './model/padControlLogic'
+import { buildPadControl, hasPadControl, type PadControl } from './model/padControlLogic'
 import { PAD_TIER_ORDER, type PadTier } from './model/weaponTier'
 import { useMatchReplay } from '../../lib/replay/queries'
 import { padNameFor } from './layers/useReplayWeaponPads'
@@ -124,8 +124,10 @@ export function MatchPadControlSection({
     [control, data, t, locale, teamLabel, allyOf],
   )
 
-  // Double porte : pas d'artefact, ou aucune prise attribuée -> rien du tout.
-  if (!control?.hasData || !bars) return null
+  // Double porte : pas d'artefact, ou aucune prise attribuée -> rien du tout. MÊME prédicat
+  // que celui lu par le parent pour poser (ou non) son titre de section (`bars` ne vaut null
+  // que dans les mêmes cas — il se construit du même `control`).
+  if (!hasPadControl(control) || !bars) return null
 
   return (
     <SectionCard
