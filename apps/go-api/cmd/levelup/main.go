@@ -163,8 +163,11 @@ func main() {
 	}
 
 	if exitErr != nil {
-		fmt.Fprintf(os.Stderr, "erreur: %v\n", exitErr)
-		os.Exit(1)
+		// LE CODE DE SORTIE N EST PLUS TOUJOURS 1 (lot 5.24.4) : une passe de backfill
+		// INTERROMPUE par un signal n est pas une panne, et un script doit pouvoir faire la
+		// difference entre « relance-moi » et « repare-moi ». `sortirSur` ecrit le message et
+		// rend le code ; tout ce qui n est pas reconnu reste a 1.
+		os.Exit(sortirSur(exitErr))
 	}
 }
 

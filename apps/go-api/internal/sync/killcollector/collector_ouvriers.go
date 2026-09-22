@@ -126,6 +126,11 @@ func (c *KillSourceCollector) CollectMatchesOuvriers(
 	go func() {
 		defer close(travaux)
 		for _, id := range matchIDs {
+			if c.arretDouxDemande() {
+				slog.InfoContext(ctx, "killsource: arret demande — plus aucun film distribue, "+
+					"les decodages en cours vont au bout", "total", len(matchIDs))
+				return
+			}
 			if c.budget > 0 && time.Since(start) >= c.budget {
 				observability.AddInt(metricBudget, 1)
 				slog.InfoContext(ctx, "killsource: budget de passe epuise — le solde repart au cycle suivant",
@@ -137,6 +142,11 @@ func (c *KillSourceCollector) CollectMatchesOuvriers(
 			case <-ctx.Done():
 				slog.InfoContext(ctx, "killsource: passe interrompue par l appelant",
 					"total", len(matchIDs))
+				return
+			case <-c.canalDArretDoux():
+				// ARRET DOUX : on cesse de distribuer, les films EN VOL vont au bout.
+				slog.InfoContext(ctx, "killsource: arret demande — plus aucun film distribue, "+
+					"les decodages en cours vont au bout", "total", len(matchIDs))
 				return
 			}
 		}
@@ -214,4 +224,45 @@ func comptabiliserFilm(sum *KillSourceSummary, ev EvenementDeFilm) {
 	case OutcomeUnknownKey:
 		sum.UnknownKey++
 	}
+}
+
+// AvecArretDoux installe le contexte d ARRET DOUX (lot 5.24.4).
+//
+// # DEUX ARRETS, ET LES CONFONDRE PERD DU TRAVAIL
+//
+// Une passe de backfill a DEUX facons de s arreter, et elles n ont pas les memes consequences :
+//
+//	ARRET DUR    le contexte de TRAVAIL est annule. Le film en cours s interrompt AU MILIEU de
+//	             son decodage, le collecteur rend une erreur, et rien n est publie pour lui.
+//	             C est ce qu il faut quand le processus doit mourir maintenant.
+//	ARRET DOUX   on cesse de DISTRIBUER de nouveaux films ; ceux qui sont en vol vont au bout,
+//	             ecriture comprise. C est ce qu il faut sur un Ctrl-C : avec N ouvriers, un arret
+//	             dur jetterait N decodages entames — jusqu a une minute de travail sur les gros
+//	             films — pour ne rien gagner, la reprise etant de toute facon decidee en base.
+//
+// LES DEUX RESTENT DISPONIBLES : le contexte passe a `CollectMatches`/`CollectMatchesOuvriers`
+// est toujours l arret DUR (aucun appelant existant ne change de comportement), et ce reglage
+// ajoute le doux par-dessus. nil = pas d arret doux, le defaut.
+//
+// ⚠ IL N Y A AUCUNE TRANSACTION A PROTEGER ICI, ET C EST IMPORTANT DE LE DIRE : une ecriture
+// interrompue par un contexte annule est ROLLBACK par le pilote, pas laissee a moitie (ADR
+// 0013/0019/0026). L arret doux ne protege donc pas la base — il protege le TEMPS DE CALCUL
+// deja depense.
+func (c *KillSourceCollector) AvecArretDoux(ctx context.Context) *KillSourceCollector {
+	c.arretDoux = ctx
+	return c
+}
+
+// arretDouxDemande : faut-il cesser de distribuer ? Faux quand rien n est cable.
+func (c *KillSourceCollector) arretDouxDemande() bool {
+	return c.arretDoux != nil && c.arretDoux.Err() != nil
+}
+
+// canalDArretDoux : le canal a surveiller dans un `select`. nil (bloque a jamais) sans reglage,
+// ce qui est exactement le comportement voulu dans un `select` a plusieurs branches.
+func (c *KillSourceCollector) canalDArretDoux() <-chan struct{} {
+	if c.arretDoux == nil {
+		return nil
+	}
+	return c.arretDoux.Done()
 }

@@ -255,6 +255,14 @@ func (c *KillSourceCollector) CollectMatches(ctx context.Context, matchIDs []str
 				"total", sum.Total)
 			break
 		}
+		if c.arretDouxDemande() {
+			// ARRET DOUX (lot 5.24.4) : le film en cours est deja fini — on ne prend pas le
+			// suivant. La boucle en serie et la passe a ouvriers s arretent au meme endroit.
+			slog.InfoContext(ctx, "killsource: arret demande — la passe s arrete entre deux films",
+				"traites", sum.Written+sum.NoFilm+sum.NoKillFeed+sum.Timeouts+sum.Errors,
+				"total", sum.Total)
+			break
+		}
 		if ctx.Err() != nil {
 			slog.InfoContext(ctx, "killsource: passe interrompue par l appelant",
 				"traites", sum.Written+sum.NoFilm+sum.NoKillFeed+sum.Timeouts+sum.Errors,

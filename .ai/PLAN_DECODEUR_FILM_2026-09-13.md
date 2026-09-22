@@ -11494,13 +11494,61 @@ reelles, films lus par les jonctions du cache.
   **LE FICHIER N EST PAS UNE SOURCE DE VERITE POUR LA REPRISE**, et c est ecrit a trois endroits
   (en-tete du fichier, doc du `PathResolver`, sortie de `--status`) : ce qui decide de ce qui
   reste a faire est `decoder_rev` EN BASE. Supprimer le fichier ne perd qu un affichage.
-- [ ] **5.24.4 — LA REPRISE, PROUVEE : interruption, relance, arret propre sur signal.**
+- [x] **5.24.4 — LA REPRISE, PROUVEE ; L ARRET, PROPRE.**
+
+  **LA PREUVE** (`cmd/levelup/cmd_backfill_killsource_reprise_integration_test.go`, tag
+  `integration`, films REELS du cache). L en-tete de la commande affirmait depuis des mois
+  qu elle est « reprenable, et la cle est `decoder_rev` » — c etait vrai et **ce n etait pas
+  verifie** : aucun test n interrompait une passe pour la relancer. Le test le fait de bout en
+  bout : passe temoin d une traite ; puis passe ANNULEE au milieu par **annulation du contexte
+  d arret** (exactement ce qu un SIGINT declenche), l annulation etant declenchee **par la
+  lecture du fichier d etat** — ce qui prouve au passage qu il est lisible et a jour pendant que
+  la passe tourne ; puis la SELECTION DE PRODUCTION (`filmsACollecter` -> `matchsAJour`, vues
+  `_latest`) est rejouee ; puis la relance. **Mesure :** coupure demandee apres 2 films, **4
+  ecrits** (les 2 films EN VOL sont alles au bout — c est l arret doux), la relance annonce
+  **4 films deja a jour (sautes)** et en ecrit **2**, total **6 = le temoin**, et les vues sont
+  IDENTIQUES ligne a ligne (**135** morts + **114** tirs).
+
+  **L ARRET DOUX, ET POURQUOI IL N EST PAS L ARRET DUR** (`AvecArretDoux`,
+  `collector_ouvriers.go`). Deux arrets, deux consequences : l arret DUR annule le contexte de
+  TRAVAIL et coupe le film en cours au milieu de son decodage ; l arret DOUX cesse de
+  DISTRIBUER et laisse aller au bout ce qui est en vol, ECRITURE COMPRISE. Avec N ouvriers, un
+  Ctrl-C en arret dur jetterait N decodages entames — jusqu a une minute chacun sur les gros
+  films — **pour ne rien gagner**, la reprise se decidant de toute facon en base. Les deux
+  restent disponibles : le contexte passe a `CollectMatches`/`CollectMatchesOuvriers` est
+  toujours l arret dur (aucun appelant existant ne change de comportement), et le reglage ajoute
+  le doux par-dessus (nil = rien). La boucle EN SERIE l honore au meme endroit (entre deux
+  films) que la passe a ouvriers.
+  ⚠ Dit explicitement dans le code : **l arret doux ne protege pas la base** — une ecriture
+  interrompue par un contexte annule est ROLLBACK par le pilote, jamais laissee a moitie
+  (ADR 0013/0019/0026). Il protege le TEMPS DE CALCUL deja depense.
+
+  **LE SIGNAL** (`cmd_backfill_killsource_arret.go`), en trois temps : (1)
+  `signal.NotifyContext(SIGINT, SIGTERM)` annule le contexte d ARRET ; le contexte de TRAVAIL en
+  derive par **`context.WithoutCancel`** — aucun decodage n est coupe en deux, aucune ecriture
+  au milieu ; (2) le releveur est **RENDU au systeme des le premier signal**, donc un SECOND
+  Ctrl-C tue le processus immediatement (une passe qui refuserait de mourir au deuxieme signal
+  serait pire que celle qui meurt au premier) ; (3) l etat est ecrit avec sa cause, un message
+  dit **quoi faire** (« relancer LA MEME commande »), et le processus sort avec
+  **`CodeSortieInterrompue` = 130** (128 + SIGINT, la convention POSIX) — distinct du 0 d une
+  passe finie et du 1 d une panne, pour qu un script fasse la difference entre « relance-moi »
+  et « repare-moi ». `main` demande le code a `sortirSur` et ne connait pas le type d erreur ;
+  une interruption ENVELOPPEE (`%w`) reste reconnue (`errors.As`).
+
+  **LA CAUSE SE LIT SUR LE CONTEXTE**, pas sur une chaine partagee : le releveur vit dans un
+  autre goroutine et une variable ecrite la-bas serait une course — sur une donnee que le
+  contexte porte deja.
+
+  **SEUILS** : `cmd_backfill_killsource.go` est repasse a 471 lignes, la passe CREDIT ayant ete
+  extraite dans `cmd_backfill_killsource_credit.go` (deplacement pur, frontiere nette : la-bas
+  les FILMS, ici le SQL -> SQL).
 - [ ] **5.24.5 — DOC : `docs/COMMANDS.md` (FR et EN), en-tete de la commande, plan et note.**
 
 ## 4. Découvertes (consignées, NON traitées — règle 7)
 
 | Date | Lot | Découverte | Où elle ira |
 |---|---|---|---|
+| 2026-09-22 | 5.24.4 | **D3 (5.24) — `TestKillSourceFaitsDIsolementFilmReel` EXIGE UNE LISTE DE `named_by` PERIMEE DEPUIS LE 2026-09-08, ET IL EST ROUGE DES QU ON LUI DONNE DES FILMS.** `internal/sync/killcollector/isolation_facts_integration_test.go:185` assert `named_by NOT IN ('death','closure')` ; `persist/lives_persister.go:249-268` declare SEPT valeurs — les deux ci-dessus plus `biped_creation`, `biped_creation_propagee`, `elimination`, `exclusion_temporelle` (lot E2, 2026-09-08) et `tableau_api` (lot 4.3, 2026-09-10). Sur le film `000d5950` : **99 vies sur 99 « hors enum »**, toutes nommees par le registre d identite. Le test ne l a jamais dit parce qu il SE SAUTE sans `KILLSOURCE_FIXTURES`, et tous les gates du depot depuis le 2026-09-08 ont tourne « SANS AUCUN DECODAGE ». Le producteur et le persister, eux, sont justes : c est l ASSERTION du test qui est fausse. | **NON TRAITE** (regle 7 : hors du perimetre ferme du lot — ce lot ne touche ni les faits d isolement ni leur producteur ; le gate du depot, sans fixtures, est VERT). Le remede est de trois lignes : remplacer les deux litteraux par les constantes `persist.NommePar*` (elles existent, et `archlint/no_life_cause_divergence_test.go` garde deja leur alignement avec `replay`). A prendre par le premier lot qui rouvrira les faits d isolement — ou par le pilote avant le prochain backfill, puisque c est la SEULE alerte que le corpus reel declenche |
 | 2026-09-22 | 5.24.2 | **D2 (5.24) — L EN-TETE DU DECODEUR AFFIRME ENCORE UN VERROU DE PAQUET QUI N EXISTE PLUS.** `internal/games/halo_infinite/film/internal/facts/killsource/doc.go:196-202` : « CONTRAINTE D EXECUTION — UN SEUL DECODAGE A LA FOIS DANS UN PROCESS [...] [Decode] serialise donc les passes par un verrou de paquet et remet les globaux a leur valeur d origine a chaque entree ». Ni le verrou ni les globaux n existent : la cloture M3 d ADR 0034 a depense le profil et `SetInferResyncTargets` a disparu au lot E.2. Les deux copies du meme texte dans `sync/killcollector` ont ete corrigees par ce lot ; celle-ci NON. | **NON TRAITE** (regle 7 : `film/internal/` est hors du perimetre ferme du lot, et le depot porte un mecanisme d empreinte de sources sur cet arbre — un octet de commentaire n est pas un geste a faire en aveugle). A prendre par le premier lot qui rouvrira `facts/killsource` : c est une correction d en-tete de 7 lignes, avec la date et la cause, sur le modele de celle posee dans `killcollector/collector.go` |
 | 2026-09-22 | 5.24.1 | **D1 (5.24) — LES DIX FILMS LES MOINS CHERS DU CACHE NE PRODUISENT RIEN, NEUF FOIS SUR DIX.** Les films de 2 a 5 chunks (`e869bcdf`, `f3e3112f`, `07af7c78`, `29206c7c`, `56b51daf`, `5da6fd30` : aucune identite au fil des morts ; `279ac3dd`, `3b865848`, `54ab2608` : `ErrNoKillFeed`, aucun chunk HIGHLIGHT) — un seul, `4555ce28`, ecrit. Ce sont des parties abandonnees ou tres courtes. La passe les redecode a CHAQUE campagne (le critere de fraicheur porte sur `match_kill_events_latest`, qu ils ne peuplent jamais), pour ~250 ms chacun. | **NON TRAITE** (regle 7 : le lot porte sur la vitesse, pas sur la selection). Le cout est borne et connu — quelques dizaines de secondes sur le parc. Le remede serait un marqueur de registre « film sans kill-feed » DUR (`registry_flags.go` en pose un pour le film absent, pas pour celui-ci, et l en-tete de `collector.go` explique pourquoi : le kill-feed pourrait arriver). A reprendre avec le lot qui rouvrira les marqueurs de registre |
 | 2026-09-21 | 5.11.7 | **D1 (5.11.7) — LE SIGNAL DU MANTLING EST DANS LA QUEUE D `i54`, ET ELLE EST BIEN PLUS RICHE QUE LE PORT NE LE CROIT.** Lecture d ecrivain SEULE. `FUN_1408f0264` lit `i54` ; son MIROIR d ecriture est `FUN_142f053f8`. Les deux appellent une queue que le depot CONSOMME ET JETTE : `FUN_1408f02c8` en lecture, **`FUN_1407ea38c` en ecriture** — et c est l ecriture qui donne la provenance. `si bloc[0x9d] == 0 : RIEN (queue = ZERO bit)` ; `R(1) = (bloc[8] != -1)` ; `si bloc[8] != -1 : R(10) = bloc[8]` (`FUN_1406d310c(0x400)`) ; **un vec3 `bloc+0x18`** (`FUN_1407eb600(w, bloc+0x18, 0x10)`) ; **deux vec3 `bloc+0x24` / `+0x30`** (`FUN_141f86118`) ; `bloc+0x3c` (`FUN_1407eb61c(w, bloc+0x3c, 0xffffffff, 0x10, 0)`) ; `R(1) = bloc[0xa1]` (`FUN_1406d310c(2)`) ; **`R(7) = bloc[0x98]`** ; **`R(2) = bloc[0x9c]` = `etat+0x1294`, QUATRE VALEURS** ; `R(1) = bloc[0x9f] & 1`. Donc `i54`, quand sa garde est levee, porte un champ de deux bits ET TROIS VEC3 — pour une escalade, l ancre du geste — la ou le document ne publie que « une action est amorcee » (D9 (5.3)). Vocabulaire ancre : `SpartanAbilityIsClambering` @`1436f7130` -> `FUN_142c66808` = `FUN_1406b8244(idx) == 2`, et `CharacterPhysicsModeClambering` @`143df73d0` nomme cette valeur 2 ; `auto_clamber` @`1436c69e0`, `EnableAutoClamber` @`143ba6b60`, `clamber` @`143bbaa48`. | **NON TRAITE, ET AUCUN PORT** : les quatre valeurs ne sont pas NOMMEES, donc `stances[].kind` `mobility` ne devient pas `clamber`. IL MANQUE UN SEUL MAILLON : qui ECRIT `etat+0x1294` dans l objet vivant — a chercher depuis le CONSOMMATEUR, jamais depuis l offset (`0x1294` collisionne entre classes). **ET QUAND CE SERA NOMME, LE PORT SERA UNE MONTEE DE SCHEMA** : ajouter une valeur a l enum `kind` change la FORME du document (la v66 l a fait pour `sprint` et `jumpDerived`), donc ARRET et compte rendu avant de la prendre |
@@ -11985,6 +12033,10 @@ jamais sur le parc.
 | 2026-09-22 | 5.24.3 | `go test -count=1 -run 'Etat_\|Status_\|BilanInitial\|Ouvriers\|ValiderLesOptions' ./cmd/levelup/` | **PASS** — 13 tests : ecriture des le demarrage, comptabilite des sept issues, erreur != issue, ETA en chunks et par ouvrier, cadence 25 films OU 60 s avec compteur qui repart, ecriture atomique (pas de `.tmp` residuel), phases films/credit/terminee, rendu lisible, etat perime signale, fichier absent = code 0, fichier tronque = erreur, bilan initial |
 | 2026-09-22 | 5.24.3 | `go test -count=1 ./cmd/levelup/... ./internal/sync/...` | **PASS**, code de sortie **0** |
 | 2026-09-22 | 5.24.3 | `golangci-lint run ./cmd/levelup/... ./internal/sync/... ./internal/domain/title/...` | **zero issue sur les fichiers du lot** (le `goconst` sur le litteral `erreur` a ete ferme par une constante) |
+| 2026-09-22 | 5.24.4 | `KILLSOURCE_FIXTURES=<cache> go test -count=1 -tags=integration -p 1 -run Reprise_ ./cmd/levelup/` | **PASS 8,1 s** — coupure apres 2 films, **4 ecrits** (les films en vol vont au bout), relance : **4 sautes / 2 ecrits**, total 6 = le temoin d une traite ; `match_kill_events_latest` **135 lignes** et `match_weapon_shots_latest` **114 lignes** IDENTIQUES |
+| 2026-09-22 | 5.24.4 | `go test -count=1 -run 'SortirSur\|Interruption_\|CauseDArret' ./cmd/levelup/` | **PASS** — code 130 pour une interruption (enveloppee comprise), 1 pour une panne, message qui dit quoi faire, cause lue sur le contexte |
+| 2026-09-22 | 5.24.4 | `go test -tags=integration -p 1 -count=1 ./internal/persist/... ./internal/sync/... ./internal/migration/... ./cmd/levelup/...` (SANS fixtures, le gate du depot) | **PASS**, code de sortie **0** |
+| 2026-09-22 | 5.24.4 | mêmes paquets AVEC `KILLSOURCE_FIXTURES` | un seul rouge, **PRE-EXISTANT et hors perimetre** : `TestKillSourceFaitsDIsolementFilmReel` (D3 (5.24) au § 4) — sa liste de `named_by` autorises date du 2026-09-07 et ignore les cinq voies du registre d identite ajoutees depuis. Les tests du lot, joues avec fixtures, sont **verts** (`-run 'Ouvriers\|PorteDeLaBase\|AnnuaireDePasse\|Reprise_\|RosterDesFilms'`, code de sortie **0**) |
 
 ### Post-chantier — lot 5.11 (le declencheur du saut, film temoin), 2026-09-21
 

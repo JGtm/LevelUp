@@ -193,7 +193,11 @@ func runBackfillKillSource(cfg *config.AppConfig, args []string) error {
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
-	ctx := context.Background()
+	// LE CONTEXTE D ARRET (lot 5.24.4) : son annulation par SIGINT/SIGTERM arrete la
+	// DISTRIBUTION des films ; ceux qui sont en vol vont au bout, ecriture comprise. Le contexte
+	// de TRAVAIL en est derive par `context.WithoutCancel` la ou il faut aller au bout.
+	ctx, arreterLeReleveur := contexteDArret()
+	defer arreterLeReleveur()
 	pr := titlePkg.NewPathResolver(cfg.RepoRoot)
 	// `--status` SORT AVANT TOUT LE RESTE, et avant meme la validation des autres drapeaux :
 	// c est une LECTURE de fichier, elle n a rien a valider et surtout rien a ouvrir. La passe
@@ -241,11 +245,15 @@ func runBackfillKillSource(cfg *config.AppConfig, args []string) error {
 			return err
 		}
 	}
+	cause := causeDArret(ctx)
 	if suivi != nil {
-		suivi.Terminee("")
+		suivi.Terminee(cause)
 	}
 	if !o.dryRun {
 		afficherSante(o.online)
+	}
+	if cause != "" {
+		return &interruptionDeLaPasse{cause: cause}
 	}
 	return nil
 }
@@ -279,7 +287,13 @@ func passeDesFilms(
 			"elle n a pas d autre source", cacheRoot)
 	}
 
-	candidats, bilan, err := filmsACollecter(ctx, db, cacheRoot, o)
+	// LE CONTEXTE DE TRAVAIL NE S ANNULE PAS AVEC LE SIGNAL. `ctx` est le contexte d ARRET :
+	// l annuler doit arreter la DISTRIBUTION, pas couper un decodage en deux ni une ecriture au
+	// milieu. `WithoutCancel` garde les valeurs du contexte et lui retire son annulation ; c est
+	// `AvecArretDoux` qui porte l arret, et il l applique ENTRE deux films.
+	ctxTravail := context.WithoutCancel(ctx)
+
+	candidats, bilan, err := filmsACollecter(ctxTravail, db, cacheRoot, o)
 	if err != nil {
 		return nil, err
 	}
@@ -324,14 +338,14 @@ func passeDesFilms(
 		porte.GarderLeWriter(writerDeja(db)),
 		caps,
 		0, // limite par match : le defaut du collecteur (45 min)
-	).AvecCapture(capture).AvecObservateur(suivi)
+	).AvecCapture(capture).AvecObservateur(suivi).AvecArretDoux(ctx)
 
 	ids := make([]string, 0, len(candidats))
 	for _, c := range candidats {
 		ids = append(ids, c.matchID)
 	}
 	debut := time.Now()
-	sum := collecteur.CollectMatchesOuvriers(ctx, ids, o.workers)
+	sum := collecteur.CollectMatchesOuvriers(ctxTravail, ids, o.workers)
 	fmt.Printf("films : %d ecrits (%d morts), %d absents, %d sans kill-feed, "+
 		"%d abandons sur delai, %d erreurs, %d sans capability — %s\n",
 		sum.Written, sum.Deaths, sum.NoFilm, sum.NoKillFeed, sum.Timeouts, sum.Errors,
@@ -425,37 +439,6 @@ type staticSharedReader struct{ db *sql.DB }
 
 func (s staticSharedReader) Get(context.Context) (*sql.DB, func(), error) {
 	return s.db, func() {}, nil
-}
-
-// passeDuCredit : la transformation SQL -> SQL, sur TOUS les matchs du registre.
-//
-// Elle passe sur tous les matchs et pas seulement sur ceux sans film : c est le producteur
-// lui-meme qui applique la preseance (il refuse un match qu une passe de film couvre deja), et
-// centraliser cette regle a UN endroit vaut mieux que de la recopier dans la selection.
-func passeDuCredit(ctx context.Context, db *sql.DB, o killsourceOptions, suivi *suiviDeLaPasse) error {
-	ids, err := matchsDuRegistre(ctx, db, o.limit)
-	if err != nil {
-		return err
-	}
-	fmt.Printf("credit-seul : %d matchs a examiner\n", len(ids))
-	if o.dryRun || len(ids) == 0 {
-		return nil
-	}
-	credit := killcollector.NewCreditCollector(db, writerDeja(db))
-	if suivi != nil {
-		// LE MEME FICHIER D ETAT POUR LES DEUX PASSES : la commande en est une, son etat aussi.
-		suivi.PhaseCredit(len(ids))
-		credit = credit.AvecProgression(func(examines, _ int, reste time.Duration) {
-			suivi.ProgressionCredit(examines, reste)
-		})
-	}
-	debut := time.Now()
-	sum := credit.CollectMatches(ctx, ids)
-	fmt.Printf("credit : %d ecrits + %d enrichis par un film (%d morts), "+
-		"%d sans evenement, %d erreurs — %s\n",
-		sum.Written, sum.Enriched, sum.Deaths, sum.NoEvents, sum.Errors,
-		time.Since(debut).Round(time.Second))
-	return nil
 }
 
 // writerDeja : le handle RW est deja ouvert et le process est seul (serveur arrete). La

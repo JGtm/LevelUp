@@ -123,6 +123,9 @@ type KillSourceCollector struct {
 	// c est le defaut de tous les appelants sauf le backfill CLI. Il n a AUCUN effet sur ce qui
 	// est decode ni sur ce qui est ecrit — voir `collector_ouvriers.go`.
 	observateur ObservateurDePasse
+	// arretDoux : le contexte dont l annulation arrete la DISTRIBUTION des films, jamais un film
+	// en cours (lot 5.24.4, cf. AvecArretDoux). nil = pas d arret doux.
+	arretDoux context.Context
 }
 
 // FilmDirResolver rend le repertoire disque des chunks d un film (chunk_NN.bin, format
