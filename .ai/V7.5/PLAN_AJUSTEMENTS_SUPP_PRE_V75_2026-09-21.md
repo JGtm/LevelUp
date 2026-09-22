@@ -136,6 +136,7 @@ surface `film/replay` 260 -> 263 justifie.
 - [x] Fichier `.ai/V7.5/MAQUETTE_TRANSVERSES_RIPOSTE_PORTEE_APPUI_2026-09-21.html` + verification des deux reserves de donnees
 
 ## Decouvertes (hors perimetre, ne pas traiter)
+- Z2 : `lib/i18n/generated/timeseries.ts` desynchronise du TOML (`coord_y_axis` present dans le genere, absent du TOML, sans lecteur) — vestige du lot V, a regenerer ; couverture de la carte hauteur = couverture des positions (optimiste si un frag mesure n a pas de z).
 - Z1 : ratchet imports inter-features pile au plafond 7/7 (6 emprunts a `explorer/explorerMatchesClientSort`) ; commentaire duplique dans `TimeseriesPage.summary.tsx` ~257.
 - V : une serie sans repere (parite non mesuree) reste tracee en valeur brute a cote de series en ecart (melange d unites, cas rare).
 - O : pas de `compare_coordination` au contrat -> la rangee Coordination affiche le placeholder cote compare ; `MatchRangeBlock` sans ventilation par classe d arme ; `UsageGaugeGrid` refactore (table de colonnes) ; « Je suis couvert » sans repere d habituel (non servi).
@@ -236,8 +237,8 @@ surface `film/replay` 260 -> 263 justifie.
 - [x] Nuage de la periode (`range_reference`), session en surbrillance, bandes et seuils servis, tendance 5 matchs ; remplace la carte du lot O
 ### Lot Z1 — web Timeseries : roles de portee a.1 (worktree `LevelUp-wt-ajsup-z1`) — FUSIONNE ea78d2115
 - [x] Nuage des roles solo par match (`range_profiles` Timeseries), composant du lot R a une serie
-### Lot Z2 — web Escouade : Denivele E1 (worktree `LevelUp-wt-ajsup-z2`)
-- [ ] Carte « Roles de hauteur » : un point par coequipier par match (`elevation_lobby_delta_m`), bandes Contrebas / A niveau / Hauteurs, tendance 5 matchs, meme composant que les roles de portee
+### Lot Z2 — web Escouade : Denivele E1 (worktree `LevelUp-wt-ajsup-z2`) — FUSIONNE 51e350f01 (conflit chart des roles resolu : options Z1 + W + Z2)
+- [x] Carte « Roles de hauteur » : un point par coequipier par match (`elevation_lobby_delta_m`), bandes Contrebas / A niveau / Hauteurs, tendance 5 matchs, meme composant que les roles de portee
 - D25 (2026-09-22) Denivele Timeseries = T5 (nuage brut un point par frag, distance x dz, deux cotes, halo p25-p75 par cote, medianes en gros points ; quantiles cote Go) ; remplace la carte « Denivele » de WeaponRangeSection.
 
 ### Lot AA — Timeseries : Denivele T5 (worktree `LevelUp-wt-ajsup-aa`)
