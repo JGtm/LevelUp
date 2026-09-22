@@ -8326,6 +8326,216 @@ contre 4 469 dans la reference — et 1 489 est EXACTEMENT la valeur que le lot 
 les divergences sont celles de la reference perimee, pas des siennes. Decodage : 14,8 s,
 pic 0,19 Gio, un film a la fois.
 
+### Post-chantier — lot 5.15 (le trou du rang 1 sur film dense), branche `feat/decfilm-65`
+
+Sur la decouverte D1 du lot 5.14. METHODE : l ecrivain d abord (Ghidra lecture seule), la
+fermeture des paquets comme seul gate, la mesure seulement pour LOCALISER, un commit par trou.
+Note de grammaire : `.ai/V7.5/film_re/NOTE_5_15_RANG_1_FILM_DENSE_2026-09-22.md`.
+
+- [x] **5.15.1 — LA POSITION DU RESTE : LA VUE B NE FERME PAS SA LISTE, ELLE LA VOIT REJETEE — ET
+  LE « ~1 076 BITS QUASI CONSTANTS » ETAIT UNE MOYENNE.**
+
+  Cinq instruments `research` (`mouvement_5_15_{position,cascade,dernier,recalage,minimal}_research_test.go`),
+  rejoues sur les deux temoins. Le gate du 5.14 est reproduit AU PAQUET avant toute lecture
+  (`dad793c7` 5 341/5 365, `bfecd02b` 2 884/30 387, causes 14/7/3 et 23 852/1 110/2 541) :
+  l instrument est donc le meme que celui qui a mesure D1.
+
+  **(a) LE RESTE COMMENCE APRES LE TERMINATEUR DE LA VUE C.** Les trois rangs sont lus ; le reste
+  est en queue de paquet, pas au milieu d un rang.
+
+  **(b) SA LARGEUR N EST PAS CONSTANTE, ET C EST LA PREMIERE CORRECTION DU LOT.** Sur `bfecd02b` :
+  **2 226 classes de largeur**, min **42**, max **6 162**, moyenne **1 076,1**, repartition PLATE
+  modulo 16 (1 396 a 1 634 par residu). Le « ~1 076 bits chacun, quasi constants » de D1 est la
+  MOYENNE d une distribution large. Aucune largeur nommee ne s en deduit, et l hypothese « un
+  bloc par participant de 134,5 bits » tombe : elle etait une division.
+
+  **(c) LA VUE B SORT SUR LE REJET, PAS SUR SON TERMINATEUR.** En relisant les bits qui precedent
+  le curseur de sortie (terminateur = `000` ; rejet = le curseur laisse a la fin d un en-tete
+  `[1][idLow 13][tag 2]`) : **23 452 rejets contre 400 terminateurs** sur les 23 852 paquets.
+
+  **(d) LE SLOT REJETE N EST LIE PAR RIEN.** Sur 22 112 rejets lisibles : **21 988 sur un slot que
+  le monde hors ligne n a JAMAIS lie**, 124 sur un slot lie dans LA MEME vue, **0** sur un slot
+  lie dans une AUTRE vue. La garde de vue ne rejette donc pas « une entite d une autre vue » :
+  elle rejette l inconnu.
+
+  **(e) DESARMER LA GARDE NE FERME RIEN** : depuis l en-tete rejete, garde desarmee, 30 paquets
+  sur 22 112 ferment a reste NUL. Le reste n est pas « des records que la garde a refuses » —
+  sans archetype le corps ne se lit pas.
+
+  **(f) CE N EST PAS UNE CASCADE.** Fautifs / fermes tient a environ 2:1 a TOUS les rangs du chunk,
+  **rang 1 compris** (19 des 27 chunks fautent sur leur premier paquet delta), alors que les
+  liaisons d image-cle du chunk sont deja posees. Il n y a pas de premiere cause unique a trouver
+  en amont.
+
+  **(g) LA POPULATION DES SLOTS DIT OU EST LE MAL.** Sur tout le film : **685 records NEW**
+  (526 slots) contre **160 739 DELTA** (402 slots) ; les images-cles declarent 1 015 slots ; les
+  slots rejetes couvrent **2 a 8 184, mediane 3 307** — presque uniformement les treize bits,
+  et **1 364 des 1 465 slots rejetes ne figurent dans AUCUNE image-cle**. Un identifiant lu a une
+  position FAUSSE a exactement cette signature.
+
+  **(h) LE RECALAGE REFUTE « UNE SEULE LARGEUR MANQUANTE A UN SEUL ENDROIT ».** Recherche, par
+  ecart croissant autour de la fin du dernier record lu, d une reprise qui mene la vue B a son
+  terminateur, la vue C au sien et le paquet a reste NUL : **10,4 %** seulement se recalent dans
+  plus ou moins 192 bits, et les ecarts sont DIFFUS (**322 classes**). Le decalage n est ni fixe
+  ni local.
+
+  **(i) `i25 unit-command-tick` DOMINE LA VENTILATION ET C EST UN CONFONDANT, PAS UNE FAUTE.**
+  Dernier composant lu avant le rejet dans environ 85 % des paquets fautifs (9 470 + 3 824 + 3 784
+  sur `ti=35`, 1 965 sur `ti=40`) contre 13 % du temoin ferme — mais `i25` est simplement le bit
+  de masque le PLUS HAUT de la plupart des deltas de bipede. Le port a ete reverifie bit par bit
+  contre l ecrivain (item 5.15.2 (e)) : **il est exact**. Consigne pour ne pas etre re-suspecte.
+
+  **(j) LE TEMOIN LE PLUS COURT, ET IL EST LISIBLE A L OEIL.** Sur `dad793c7`, **douze** paquets
+  fautifs font EXACTEMENT **96 bits**, portent UN record (`ti=4 i0 high-frequency`, slot 123,
+  masque `0x1`, corps fini au bit 37) et laissent EXACTEMENT **42 bits**. Ils sont identiques bit
+  pour bit des le bit 37 sauf un compteur de 16 bits qui croit d un **pas constant de 4 584**
+  (`0x3067`, `0x424F`, `0x5437`). Anatomie mesuree :
+
+  ```
+  bit  0        1 = le bit de configuration du frame-processeur       <- VAUT 1 sur ce film
+  bit  1        0 = terminateur de la vue A vide
+  bit  2        1 = prefixe DELTA
+  bits 3..15    idLow 13 bits = 123
+  bits 16..17   tag = 1
+  bit  18       0 = selecteur de baseline ferme (FUN_1406cdc04)
+  bits 19..29   masque = 0x1
+  bits 29..37   i0 high-frequency
+  bit  37       1 = prefixe DELTA          <- l en-tete que la marche REJETTE
+  bits 38..50   idLow = 1314
+  bits 51..52   tag = 1
+  bit  53       0 = la marche le prend pour le terminateur de la vue C
+  bits 54..69   16 bits CONSTANTS sur les douze paquets
+  bits 70..85   16 bits = le compteur a pas constant
+  bits 86..95   dix bits a zero
+  ```
+
+  **CE PAQUET EST LE BON POINT D ENTREE DU LOT SUIVANT** : douze octets, une seule entite connue,
+  un reste de largeur fixe. La vue C de `dad793c7` consomme normalement **28 bits constants**
+  (item 5.14.4) et n en consomme qu UN ici : le curseur n est pas la ou la vue C l attend.
+
+- [x] **5.15.2 — L ECRIVAIN : `FUN_1406cd128` PORTE DEUX GRAMMAIRES, ET LE DEPOT A TRANSCRIT LA
+  GARDE DE CELLE QUE LE JEU N EMPRUNTE QUE POUR UN ALLER-RETOUR D ETAT.**
+
+  **(a) LE BRANCHEMENT, ET SA VALEUR DANS L IMAGE.** La boucle de records de la vue B se scinde
+  sur `DAT_14474cd78` (`1406cd24d`) :
+
+  | | `DAT_14474cd78 == 0` | `DAT_14474cd78 != 0` |
+  |---|---|---|
+  | en-tete d id | `FUN_1406d3140(0, reader, 7, &id)` | `FUN_1406d310c(largeur)` bits + `R(2)` |
+  | NEW | `FUN_141f86704` | `FUN_1406cbaa0` (via `FUN_1408f1aa4`) |
+  | DEL | opt `R(8)` + `R(32)` | `FUN_1406cbaa0` (opt `R(8)` + `R(32)`) |
+  | DELTA | garde `vue[0x38]` pas de 0xa0, eid ET type, puis `FUN_141f86b58` | `FUN_1406cbaa0` |
+  | table de vue | jamais agrandie | **AGRANDIE** (`FUN_1411b3c84(vue+0x38, max(0x1fff, slot+1))`, entrees par `FUN_1408f15c8`) |
+
+  **`DAT_14474cd78` VAUT 1 DANS L IMAGE** (`read_memory 0x14474cd78` rend `01 00 00 00`), et le
+  SEUL ecrivain de la valeur 0 est `FUN_1428e24bc` (`1428e26a4` / `1428e2701`), qui l abaisse,
+  appelle `vtable[0x40]` puis **la restaure** — apres avoir pre-rempli la table de sa vue depuis
+  une liste de reference (`vtable[0x10]`, entrees `slot = e & 0x1fff` sur **13 bits** et type
+  `e >> 0x17 & 0x7f` sur **7 bits**, posees par `FUN_142f2c658`). C est un ALLER-RETOUR D ETAT sur
+  le PREMIER groupe de vues (`conteneur + 0x1a0`, D4 du 5.14), pas le chemin du film.
+
+  **DONC LA BRANCHE VIVE EST `!= 0`, ET ELLE N A PAS DE REJET SUR SLOT INCONNU** : son prologue
+  AGRANDIT la table de la vue et CONSTRUIT l entree manquante. Sa garde de DELTA porte sur une
+  AUTRE table — celle du decodeur partage (`*(vue+0x20)`, champ `+0x20`, **pas de 200**), sur
+  l eid **ENTIER** plus une borne de cardinal ; `FUN_1406caad8` la reteste et rend 3, et rend
+  **2 d entree** si `*(int *)(DAT_144c1cfa8 + 4) != 2`.
+
+  **`rejetDeVue` / `World.VuePossede` transcrivent la garde de la branche 0** (`vue[0x38]`, pas de
+  0xa0, eid ET type). C est une MAUVAISE TRANSCRIPTION, nommee par adresse — et elle explique
+  l item 5.15.1 (d) : la garde portee rejette l inconnu la ou l ecrivain vif agrandit.
+
+  **(b) LE CADRAGE DE PAQUET EST CLOS, ET L HYPOTHESE (b) DU BRIEF TOMBE.** `FUN_14298816c` est le
+  SEUL appelant de `FUN_142987460` ; il porte le chemin source
+  `shared\engine\source\blofeld\saved_games\SavedFilmChunks.cpp:0x533`, construit **UN** lecteur
+  par paquet de film et appelle le frame-processeur **UNE FOIS**. `FUN_142987460` lit UN bit de
+  configuration, parcourt ses trois vues (`param_1 + 0x228`, budget `0xa00 - rendus`, jamais
+  epuise), applique les records par `vtable[0x48]` et **n ecrit rien apres**. **UN paquet de film
+  = UNE trame** : le reste n est pas une seconde trame, et le premier groupe de vues n est pas
+  dans le chemin du film. Le test de validite du jeu lui-meme est
+  `reader[0x24] != 0 || reader[0x18] * 8 < reader[0x2c]` — un DEBORDEMENT, jamais « tout
+  consomme » : le jeu tolere du reste, c est notre gate qui est plus strict que lui, et c est
+  voulu.
+
+  **(c) `IDLowBits = 13` A DESORMAIS UNE PROVENANCE D ECRIVAIN, PLUS UN BALAYAGE.**
+  `FUN_1406d310c(x)` rend la largeur en bits de `x` (recherche du bit de tete plus arrondi).
+  La branche vive lit `FUN_1406d310c(DAT_144706100)` bits, et `DAT_144706100` vaut **`0x1fff`**
+  dans l image, donc **13**. Ce global est ecrit par `FUN_1408f1618` et `FUN_142f2f0cc` a
+  `slot + 1` quand la table de datums doit depasser son cardinal (plancher `0x1fff`), en meme
+  temps que `DAT_1451f990c` et `DAT_1451f98d4 = slot - 0x1ff` : c est un FILIGRANE. Le balayage
+  du 5.14.3 (13 seul candidat) est confirme par le binaire.
+
+  **ET LE BIT DE CONFIGURATION N EST PAS UN SELECTEUR D IDENTIFIANT, CONTRAIREMENT A CE QUE SA
+  LECTURE SUGGERE.** Il choisit `[base 0 ; largeur bits(DAT_144706100)]` (bit a 0) ou
+  `[base DAT_1451f9908 ; largeur bits(DAT_1451f990c)]` (bit a 1) ; or `DAT_1451f990c` et
+  `DAT_144706100` sont TOUJOURS ecrits ensemble a la meme valeur, et `DAT_1451f9908` vaut 0 dans
+  l image **sans AUCUN ecrivain** (son unique xref est la lecture de `1406cd267`). Les deux
+  formes coincident donc. Mesure de controle : le bit vaut **1** sur les paquets du temoin de
+  l item 5.15.1 (j), et le premier record y decode a 13 bits base 0. Suspicion RETIREE, par
+  ecrit, pour qu elle ne soit pas rouverte.
+
+  **(d) `FUN_1408f1314` N EST PAS UN FILTRE : C EST L ALLOCATION.**
+  `FUN_1408f1314(vue, eid)` appelle `FUN_1408f18d0()` (predicat de mode, SANS argument) et, s il
+  est vrai, **alloue le datum** — `FUN_1408f1618(vue[0x20], eid)` (celui qui deplace le filigrane
+  de (c)) puis `FUN_1408f1358(vue, eid, 3)`. Le jeu pose donc une entree de table A CHAQUE record
+  NEW, et c est de la que la branche vive tient l archetype d un delta.
+
+  **(e) LE PORT DE `i25` EST EXACT, VERIFIE CONTRE L ECRIVAIN.** `FUN_1406cfb28` :
+  `FUN_140c50d1c` (= `R(1) + opt R(8)`, sentinelle `0xffff`) ; `g1 = R(1)`, a 0 les deux champs
+  prennent `-1` et **rien n est lu** ; sinon `g2 = R(1)`, `FUN_140cec0a0` (= `R(1) + opt R(8)`)
+  **deux fois si `g2 == 0`, une seule sinon** ; `g3 = R(1)`, et si `g3 == 0` deux `R(1)`.
+  `consumeUnitCommandTick` porte exactement cela. Rien a corriger.
+
+  **(f) LE MAILLON QUI RESTE, ET IL EST NOMME : LA BASELINE DU CORPS DE DELTA.**
+  `FUN_1406cbaa0` lit `FUN_1406cdc04(reader)` (`R(1)` plus opt `R(7)`) et s en sert pour CHOISIR
+  une entree d historique : `iVar20 = (*param_5 - bVar11) - 1`, puis `FUN_141fda280` la resout en
+  un pointeur `puVar29` passe a `FUN_1406caad8`, qui le transmet a l iterateur `FUN_14076cb60`
+  dans son bloc d arguments (`local_2480..uStack_2474` = le tampon de baseline, `local_2488` =
+  l etat courant). **Le depot lit les bits du selecteur et jette la baseline** (`decodeDelta` :
+  `if br.ReadBit() { br.Skip(7) }`). Tant que l on ne sait pas si `FUN_14076cb60` change de
+  largeur selon la baseline, la marche d un film dense n est pas garantie — et c est le seul
+  maillon du corps de delta qui reste ouvert.
+
+- [!] **5.15.3 — LE PORT : NON TRAITE, ET LA RAISON EST UNE DECOUVERTE DU LOT, PAS UN MANQUE DE
+  TEMPS.** Le port envisage au brief etait « la largeur manquante, la ou la mesure la situe ».
+  Les items 5.15.1 (b), (f) et (h) l ont REFUTE sur pieces : la largeur du reste a 2 226 classes,
+  le decalage ne se recale pas (10,4 %, 322 classes d ecart), et il n y a pas de premiere cause en
+  amont. Et l item 5.15.2 (a) montre que la garde a corriger n est pas une largeur mais un
+  MODELE : la branche vive n a pas de rejet sur slot inconnu, elle agrandit sa table et lit le
+  corps depuis un archetype que le monde hors ligne n a pas. Porter cela demande de donner au
+  monde hors ligne la table de datums du decodeur partage (l archetype par slot, alimente a
+  chaque NEW par `FUN_1408f1618`) — c est-a-dire le modele que `frame_infer.go` declare deja
+  manquant depuis le 5.11.6 — et de statuer d abord sur le maillon de baseline (5.15.2 (f)).
+  **Aucune ligne de grammaire n a donc ete touchee : `grammar.Rev` et `facts.Rev` sont
+  INCHANGEES, `replay.SchemaVersion` reste a 67, et le gate du 5.14 est reproduit au paquet.**
+  Livrer un port ici aurait ete une largeur inventee.
+
+- [!] **5.15.4 — CE QUE LE TROU PORTAIT : NON TRAITE, dependance explicite de 5.15.3.** Rien de
+  nouveau n est lu tant que les paquets ne ferment pas ; publier un tableau « par composant
+  avant/apres » sans port serait un tableau a une colonne. Les 21 index de controle epars (D5 du
+  5.14) restent donc non re-mesures, comme le 5.14 le prescrivait (« a re-mesurer quand D1 sera
+  referme, jamais avant »), et l item 5.15.1 (g) en donne la raison quantifiee : les identifiants
+  rejetes couvrent presque uniformement les treize bits.
+
+- [!] **GATE — LES PAQUETS NE FERMENT PAS A 100 %, ET LE LOT NE LE PRETEND PAS.** `dad793c7`
+  5 341/5 365, `bfecd02b` 2 884/30 387 : INCHANGES, au paquet, par rapport au 5.14 — le lot est
+  un lot de MESURE et de LECTURE, il ne deplace aucun chiffre et n en abime aucun. 0 record
+  fantome, oracle de contenu conserve (aucune grammaire touchee). Gates sans decodage joues :
+  `gofmt`, `go build`, `go vet` (plus `research`), `go test -count=1` sur `halo_infinite/...`,
+  `archlint` (ratchet de taille rejoue : vert, plus gros instrument a 462 lignes pour un seuil de
+  500), `replaybuild`, `replaydoc`, `replayview`, `contracttest`, `api`, `golangci-lint`
+  (0 issue).
+
+#### §4 du lot 5.15 — DECOUVERTES HORS PERIMETRE, CONSIGNEES ET NON TRAITEES
+
+| # | decouverte | ou la reprendre |
+|---|---|---|
+| **D1 (5.15)** | **LE TROU DU RANG 1 EST UN TROU DE MODELE, PAS DE LARGEUR, ET IL EST REQUALIFIE.** La branche vive de `FUN_1406cd128` (`DAT_14474cd78 = 1`) n a AUCUN rejet sur slot inconnu : elle agrandit la table de la vue et lit le corps depuis la table de datums du decodeur partage (`*(vue+0x20) + 0x20`, pas de 200, alimentee a chaque NEW par `FUN_1408f1314` puis `FUN_1408f1618`). Le depot transcrit la garde de la branche 0, celle de l aller-retour d etat. D1 du 5.14 (« la vue B ferme sa liste trop tot ») devient : **la marche hors ligne n a pas la table qui donne l archetype d un slot jamais vu, et 685 NEW pour 160 739 DELTA disent qu elle n en lit pas assez.** | le lot qui donnera au monde hors ligne la table de datums par slot du decodeur partage — le modele que `frame_infer.go` declare manquant depuis le 5.11.6 |
+| **D2 (5.15)** | **LA BASELINE DU CORPS DE DELTA EST LUE PUIS JETEE.** `FUN_1406cdc04` choisit une entree d historique que `FUN_1406caad8` passe a l iterateur `FUN_14076cb60`. `decodeDelta` consomme les bits du selecteur et ignore la baseline. Sur `000d5950` le selecteur etait ferme 54 760 fois sur 54 760 ; personne n a mesure son taux d ouverture sur un film DENSE. | avant tout port du rang 1 : mesurer l ouverture du selecteur sur `bfecd02b`, puis lire `FUN_14076cb60` pour savoir si la baseline change une LARGEUR ou seulement une valeur |
+| **D3 (5.15)** | **LE FILIGRANE D IDENTIFIANT EST DYNAMIQUE DANS LE JEU.** `DAT_144706100` / `DAT_1451f990c` valent `slot + 1` des qu un NEW alloue au-dela du cardinal (`FUN_1408f1618`, `FUN_142f2f0cc`), plancher `0x1fff`. La largeur d en-tete du film est donc `bits(filigrane)` et non une constante de film ; sur les deux temoins les slots plafonnent a 8 186 (sous `0x1fff`), donc 13 partout. | le lot qui rencontrera un film dont un slot depasse 8 191 : la largeur changerait EN COURS de film |
+| **D4 (5.15)** | **`DAT_1451f9908` N A AUCUN ECRIVAIN** (unique xref = la lecture de `1406cd267`) et vaut 0 : la forme « bit de configuration a 1 » de l en-tete d id coincide avec la forme a 0. Le bit de configuration n est donc PAS un selecteur d identifiant — et il vaut 1 sur les paquets du temoin de 96 bits. | personne : suspicion retiree, consignee pour ne pas etre rouverte |
+| **D5 (5.15)** | **LE TEMOIN DE 96 BITS DE `dad793c7`** : douze paquets identiques bit pour bit des le bit 37 sauf un compteur de 16 bits a pas constant de 4 584, un record `ti=4` slot 123, 42 bits de reste dont 10 a zero. | le lot D1 : c est son plan de travail, douze octets au lieu de 25 666 138 bits |
+| **D6 (5.15)** | **LE JEU NE VERIFIE PAS QU UN PAQUET EST ENTIEREMENT CONSOMME** : `FUN_14298816c` ne teste que le DEBORDEMENT (`reader[0x24]`, `reader[0x18]*8 < reader[0x2c]`). Notre gate « reste a bourrage NUL » est donc plus strict que le jeu — ce qui reste le bon choix hors ligne, mais n est pas un invariant du format. | a garder en tete si un jour un paquet legitime portait de la queue non lue |
+
 ### Post-chantier — lot 5.14 (les deux autres classes de vue), branche `feat/decfilm-64`
 
 Sur l acquis du lot 5.13 (item 5.13.1 (e), decouverte D1). METHODE : l ecrivain d abord (Ghidra
