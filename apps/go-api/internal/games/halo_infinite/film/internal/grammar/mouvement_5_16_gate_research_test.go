@@ -14,6 +14,8 @@ package grammar
 //	records `ti=35` et desyncs     l oracle de CONTENU (reference 5.14.3 : 129 572 et 4)
 //	rejets HORS DATUM / DE VUE     les deux sorties par rejet, ventilees (cf. `rejetDeVue`)
 //	liaisons de table de datums    ce que `LierTableDeDatums` ajoute, et ses slots ambigus
+//	liaisons par anticipation      le REPLI du lot 5.23, par archetype (A/B `MOUV523_ANTICIPE=0`)
+//	records par archetype          l oracle de contenu : ti=40, ti=37, ti=32 avant et apres
 //
 // Rejouable :
 //
@@ -22,8 +24,10 @@ package grammar
 //	  ./internal/games/halo_infinite/film/internal/grammar/
 
 import (
+	"fmt"
 	"os"
 	"sort"
+	"strings"
 	"testing"
 )
 
@@ -37,6 +41,12 @@ type g516Bilan struct {
 	blocInconnus, blocAmbigus       int
 	rejetsHorsDatum, rejetsDeVue    int
 	recordsTotal, resteHorsBourrage int
+	// anticipees : les liaisons du REPLI du lot 5.23, par archetype. L A/B est
+	// `MOUV523_ANTICIPE=0`, qui rejoue le gate SANS la table anticipee.
+	anticipees map[uint32]int
+	// parTI : les records rendus par archetype — l oracle de contenu du lot 5.23, qui doit
+	// dire ce que ti=40 (vehicules), ti=37 (equipements) et ti=32 gagnent ou perdent.
+	parTI map[uint32]int
 }
 
 // TestGate516 joue le gate du lot sur le film courant et publie son tableau.
@@ -46,12 +56,23 @@ func TestGate516(t *testing.T) {
 	cfg := tc.cfg
 	cfg.Obs = obs
 	w := NewWorld(tc.reg)
-	var b g516Bilan
+	// L A/B DU LOT 5.23 : `MOUV523_ANTICIPE=0` rejoue le gate SANS la table anticipee, donc
+	// sous le modele du 5.21 — c est la colonne « avant » du tableau, et elle doit rester
+	// rejouable pour que le gain soit un ECART mesure et non un chiffre isole.
+	if os.Getenv("MOUV523_ANTICIPE") != "0" {
+		tab := ConstruireTableAnticipee(tc.fc)
+		if tis := a523TIDemandes(); tis != nil {
+			tab = a523Filtrer(tab, tis) // recherche de cause : un archetype a la fois
+		}
+		w.PoserTableAnticipee(tab)
+	}
+	b := g516Bilan{anticipees: map[uint32]int{}, parTI: map[uint32]int{}}
 	for _, c := range tc.fc.ChunkNumbers() {
 		data, pks, ok := tc.fc.ChunkAt(c)
 		if !ok {
 			continue
 		}
+		w.PoserChunkCourant(c)
 		kf := map[uint32]uint32{}
 		for _, pk := range pks {
 			if pk.Type != PacketTypeKeyframe {
@@ -90,6 +111,7 @@ func TestGate516(t *testing.T) {
 		}
 	}
 	b.rejetsHorsDatum, b.rejetsDeVue = obs.RejetsHorsDatum, obs.RejetsDeVue
+	b.anticipees = obs.LiaisonsParAnticipation
 	t.Logf("PAQUETS %d (%d non localises) · FERMES %d dont a reste NUL %d · debordements %d",
 		b.paquets, b.nonLocalise, b.fermes, b.nul, b.debordements)
 	t.Logf("  reste hors bourrage (paquets) : %d", b.resteHorsBourrage)
@@ -101,6 +123,44 @@ func TestGate516(t *testing.T) {
 		b.datums, b.ambigus)
 	t.Logf("BLOC DE TYPE 1 : %d entrees vivantes · %d liaisons posees · %d masques inconnus · "+
 		"%d masques ambigus", b.blocVivantes, b.blocPosees, b.blocInconnus, b.blocAmbigus)
+	g516Anticipees(t, &b)
+}
+
+// g516Anticipees publie le REPLI du lot 5.23 : combien de liaisons il a posees, par archetype,
+// et ce que la marche rend par archetype (l oracle de contenu).
+func g516Anticipees(t *testing.T, b *g516Bilan) {
+	t.Helper()
+	total := 0
+	for _, n := range b.anticipees {
+		total += n
+	}
+	t.Logf("LIAISONS PAR ANTICIPATION (repli 5.23) : %d au total · %s", total,
+		g516HistTI(b.anticipees))
+	t.Logf("RECORDS PAR ARCHETYPE : %s", g516HistTI(b.parTI))
+}
+
+// g516HistTI rend un histogramme `ti=N:compte` par compte decroissant.
+func g516HistTI(m map[uint32]int) string {
+	cles := make([]int, 0, len(m))
+	for k := range m {
+		cles = append(cles, int(k))
+	}
+	sort.Slice(cles, func(i, j int) bool {
+		//nolint:gosec // les cles viennent de uint32 bornes par le registre
+		if m[uint32(cles[i])] != m[uint32(cles[j])] {
+			return m[uint32(cles[i])] > m[uint32(cles[j])]
+		}
+		return cles[i] < cles[j]
+	})
+	var sb strings.Builder
+	for i, k := range cles {
+		if i > 0 {
+			sb.WriteString(" · ")
+		}
+		//nolint:gosec // idem
+		fmt.Fprintf(&sb, "ti=%d:%d", k, m[uint32(k)])
+	}
+	return sb.String()
 }
 
 // g516Paquet mesure UN paquet delta et cumule dans le bilan.
@@ -130,6 +190,7 @@ func g516Paquet(pay []byte, w *World, cfg FrameConfig, b *g516Bilan) {
 	}
 	for _, r := range recs {
 		b.recordsTotal++
+		b.parTI[r.TypeIndex]++
 		if r.Trace.EndBit > frameLen {
 			b.fantomes++
 		}
@@ -152,6 +213,10 @@ func g516Paquet(pay []byte, w *World, cfg FrameConfig, b *g516Bilan) {
 func TestGate516Contenu(t *testing.T) {
 	tc := t516Cadre(t)
 	w := NewWorld(tc.reg)
+	if os.Getenv("MOUV523_ANTICIPE") != "0" {
+		// MEME A/B QUE `TestGate516` : sans la table, ce tableau est la colonne « avant ».
+		w.PoserTableAnticipee(ConstruireTableAnticipee(tc.fc))
+	}
 	parTI := map[int]int{}
 	parComposant := map[string]int{}
 	for _, c := range tc.fc.ChunkNumbers() {
@@ -159,6 +224,7 @@ func TestGate516Contenu(t *testing.T) {
 		if !ok {
 			continue
 		}
+		w.PoserChunkCourant(c)
 		kf := map[uint32]uint32{}
 		for _, pk := range pks {
 			if pk.Type != PacketTypeKeyframe {

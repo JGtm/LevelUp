@@ -1,5 +1,10 @@
 package grammar
 
+import (
+	"context"
+	"log/slog"
+)
+
 // World tracks entity-id -> archetype (and the last resolved position) ACROSS FRAME records.
 // A FRAME delta (type-3) carries NO typeIndex: it must resolve its archetype from the
 // entity created earlier by a NEW record (or by the keyframe init). This mirrors the
@@ -34,6 +39,13 @@ type World struct {
 	// `nsImageCleInconnu` avant la premiere liaison d image-cle. Voir
 	// [World.vueDeLEspaceDeNoms].
 	nsImageCle int8
+	// anticipee / chunkCourant / anticipations : LE REPLI DU LOT 5.23, cf.
+	// [World.LierParAnticipation]. `anticipee` nil = repli absent, et rien ne change.
+	anticipee     *TableAnticipee
+	chunkCourant  int
+	anticipations map[uint32]int
+	// anticipationDite : le journal du premier usage a-t-il ete ecrit pour ce monde ?
+	anticipationDite bool
 }
 
 // nsImageCleInconnu : la valeur de [World.nsImageCle] avant toute liaison d image-cle.
@@ -68,8 +80,68 @@ const vueInconnue int8 = -1
 
 // NewWorld creates an empty World bound to a parsed archetype registry.
 func NewWorld(reg *Registry) *World {
-	return &World{Reg: reg, slots: map[uint32]slotState{}, nsImageCle: nsImageCleInconnu}
+	return &World{Reg: reg, slots: map[uint32]slotState{}, nsImageCle: nsImageCleInconnu,
+		anticipations: map[uint32]int{}}
 }
+
+// --- LE REPLI DU LOT 5.23 : LA LIAISON PAR ANTICIPATION -------------------------------------
+//
+// CE QUE C EST, ET CE QUE CE N EST PAS. Une entite nee en MILIEU de chunk n est declaree ni par
+// l image-cle de son chunk (0,0 % — 5.20.2, recherche exhaustive a toutes les positions de bit)
+// ni par le bloc de type 1 de ce chunk (0 sur 23 325 rejets — 5.21.2), et le decodeur ne lit
+// AUCUN record `NEW` la ou elle nait. **Le record de naissance reste NON LU** : ce repli ne le
+// remplace pas, il le rend inutile pour la SUITE du flux. Il est NOMME, DATE (2026-09-22) et
+// COMPTE — [Observation.LiaisonsParAnticipation], par archetype, a cote de `RejetsHorsDatum`.
+//
+// SUR QUELLE FOI. L image-cle du chunk SUIVANT declare 74,7 % des slots rejetes, avec leur
+// archetype, sous la cle MEME que `FUN_1406caad8` compare (l eid entier — cf.
+// `keyframe_anticipe.go`). Anticiper, c est lier un slot sur la foi d une image-cle ULTERIEURE.
+//
+// La liaison posee est celle de la table de datums ([World.BindDatum]) : `Soft`, `GenAny`, vue
+// INCONNUE, sans position. Elle ne dit que ce qu elle sait — l archetype.
+
+// PoserTableAnticipee installe (ou retire, avec nil) la table anticipee du film. Sans elle
+// [World.LierParAnticipation] ne pose rien et la marche se comporte exactement comme avant.
+func (w *World) PoserTableAnticipee(t *TableAnticipee) { w.anticipee = t }
+
+// PoserChunkCourant annonce le chunk que la marche parcourt : la table anticipee ne rend qu une
+// declaration STRICTEMENT POSTERIEURE a lui.
+func (w *World) PoserChunkCourant(n int) { w.chunkCourant = n }
+
+// LierParAnticipation lie le slot de l eid `id` a l archetype que la premiere image-cle
+// POSTERIEURE au chunk courant lui donne, et rend cet archetype. `false` = la table est absente,
+// le slot est deja lie, ou aucune image-cle ulterieure ne le declare.
+func (w *World) LierParAnticipation(id uint32) (uint32, bool) {
+	if w.anticipee == nil {
+		return 0, false
+	}
+	slot := id & 0x3fffffff
+	if _, lie := w.slots[slot]; lie {
+		return 0, false
+	}
+	ti, declarant, ok := w.anticipee.ArchetypeApres(id, w.chunkCourant)
+	if !ok {
+		return 0, false
+	}
+	w.BindDatum(slot, ti)
+	if w.anticipations == nil {
+		w.anticipations = map[uint32]int{}
+	}
+	w.anticipations[ti]++
+	if !w.anticipationDite {
+		w.anticipationDite = true
+		// Pas de `ctx` ici : le monde n en porte pas, et `registry_fingerprint.go` a le meme
+		// besoin — meme geste, meme raison.
+		slog.InfoContext(context.Background(),
+			"liaison par anticipation : le repli du lot 5.23 est ACTIF sur ce film",
+			"slot", slot, "archetype", ti, "chunk", w.chunkCourant, "declarant", declarant,
+			"cles_de_la_table", w.anticipee.Entrees())
+	}
+	return ti, true
+}
+
+// AnticipationsParArchetype rend, par archetype, le nombre de liaisons que le repli a posees.
+func (w *World) AnticipationsParArchetype() map[uint32]int { return w.anticipations }
 
 // PoserVueCourante annonce au monde la vue de replication que la marche parcourt.
 func (w *World) PoserVueCourante(v int) { w.vueCourante = int8(v) } //nolint:gosec // v vaut 0..2

@@ -253,3 +253,101 @@ package grammar
 // `facts.Rev` NE MONTE PAS : `killsource` ne lit aucun etat de mouvement. Son golden est refige
 // parce qu il hache la VALEUR de `grammar.Rev`. `replay.SchemaVersion` MONTE (67 -> 68), parce
 // qu une valeur d enum publie est de la FORME.
+
+// ENTREE `grammar-2026-09-22.12` (2026-09-22, lots 5.23.1, 5.23.2 et 5.23.3 — fusionnes au rang .12 dans l integration) : LA TABLE ANTICIPEE DES ARCHETYPES —
+// UN LECTEUR D IMAGE-CLE DE PLUS, AUCUN DECODEUR DEPLACE.
+//
+// CE QUE LE RANG AJOUTE. `keyframe_anticipe.go` : `TableAnticipee` construit, par une passe sur
+// les images-cles de TOUS les chunks, la table `(slot, tete) -> archetype` du film entier, datee
+// par chunk. Elle n a AUCUN appelant a ce rang : aucune marche de trame, d image-cle ou de record
+// ne change d un bit. La couche GAGNE un lecteur, elle n en modifie aucun.
+//
+// LA CLE EST CELLE QUE LE JEU COMPARE, ET ELLE EST LUE CHEZ L ECRIVAIN. `FUN_1406caad8` indexe la
+// table de datums par `eid & 0x3fffffff` puis exige `*(uint *)(slot * 200 + base) == eid` —
+// l eid ENTIER, ses deux bits de tete compris — avant de lire le moindre bit de corps, et rend
+// l archetype en `+0x04`. C est la MEME entree de 200 octets que `FUN_142e2bfd0` remplit depuis
+// l image-cle (lot 5.20.1) : les deux bits de tete d une image-cle sont donc exactement ceux
+// qu un delta doit presenter. Ce qu ils SIGNIFIENT reste ce que le 5.13.1 a etabli (rang de vue
+// chez `FUN_142f2e174`, generation du datum chez `FUN_1408f1730`) et les deux films temoins ne
+// les departagent pas ; la CLE, elle, n est pas ambigue.
+//
+// LA MESURE (`TestTable523`, `bfecd02b`) : 12 688 declarations, 1 015 cles distinctes, **ZERO**
+// cle portee par plus d un archetype, une seule tete rencontree (`1`). Sur les 23 325 rejets,
+// la table en resout **17 432 (74,7 %)** — 17 430 par le chunk SUIVANT, 1 a +8, 1 a +13 —, dont
+// `ti=35` 16 932. Les 5 893 restants (25,3 %) ne sont declares par AUCUNE image-cle du film.
+// Une cle reduite au seul slot ne resoudrait que 19 rejets de plus, et laisserait passer 638
+// en-tetes dont la tete n existe nulle part dans le film : on cle sur ce que le jeu compare.
+//
+// `facts.Rev` NE MONTE PAS : la table n a aucun appelant, `DecodeFrameRecords` et
+// `WalkKeyframeWorld` sont intouches — aucun backlog killsource. Son golden est refige parce
+// qu il hache la VALEUR de `grammar.Rev`. `replay.SchemaVersion` reste a 67.
+
+// SUITE DU MEME RANG `grammar-2026-09-22.12` (2026-09-22, lot 5.23.2) : LA LIAISON PAR ANTICIPATION — UN
+// REPLI NOMME, DATE ET COMPTE, AU SEUL POINT DE REJET.
+//
+// CE QUE LE RANG CHANGE, ET OU. `rejetDeVue` recoit l eid COMPLET (et non le slot : la cle que
+// `FUN_1406caad8` compare porte les deux bits de tete) et consulte la table anticipee du film
+// AVANT de compter un rejet hors datum. `World.LierParAnticipation` pose alors la liaison de la
+// table de datums (`BindDatum` : `Soft`, `GenAny`, vue INCONNUE, sans position), la COMPTE par
+// archetype (`Observation.LiaisonsParAnticipation`) et journalise le premier usage du film.
+// Sans table installee — le cas de tout appelant qui ne la pose pas — pas un bit ne change.
+//
+// CE N EST PAS UNE GRAMMAIRE. Le record de NAISSANCE n est toujours pas lu : le repli lie
+// l entite sur la foi d une image-cle ULTERIEURE, et rend ainsi lisible la SUITE du flux. Il est
+// NOMME, DATE (2026-09-22) et COMPTE, et le code le dit la ou on lirait la naissance.
+//
+// LA MESURE, APRES CE SEUL CHANGEMENT (`TestGate516`, A/B `MOUV523_ANTICIPE=0`) :
+//
+//	dad793c7 : paquets a reste NUL 5 354 -> 5 355 ; debordements 2 ; fantomes 1 ; ti=35 75 a
+//	           0 desynchronise ; rejets hors datum 2 -> 1 ; 8 liaisons (ti=13).
+//	bfecd02b : paquets a reste NUL 2 884 -> 3 919 (+1 035) ; rejets hors datum 23 769 -> 16 129
+//	           (-7 640) ; records 176 786 -> 240 488 ; ti=35 129 572 -> 164 232, desyncs 4 -> 4 ;
+//	           ti=40 5 337 -> 16 141, ti=37 4 551 -> 10 855, ti=42 2 804 -> 10 064, ti=10
+//	           1 025 -> 3 041, ti=32 329 -> 791 ; 254 liaisons.
+//
+// DEUX COMPTEURS DE FAUTE MONTENT SUR LE FILM DENSE, ET LA CAUSE EST DANS CE RANG : debordements
+// 32 -> 50 et fantomes 31 -> 49. Le balayage par archetype (`MOUV523_TI`) l attribue a
+// l anticipation du BIPEDE (ti=35 seul : 48 et 47), et la raison est celle du 5.16.2 — les slots
+// rejetes se concentrent dans la bande 521-601, que toutes les images-cles ulterieures
+// declarent, donc un en-tete pris a une position FAUSSE y tombe et lit un corps qui deborde.
+// AUCUN paquet ne passe de FERME a fautif : les 18 quittent « reste hors bourrage » (27 471 ->
+// 26 418) pour « debordement », et 1 035 le quittent pour « ferme ». `ti=42` anticipe seul RETIRE
+// dix debordements.
+//
+// `facts.Rev` NE MONTE PAS : `killsource/` marche par `DecodeFrameRecords`, qui ne passe pas par
+// `rejetDeVue`, et son monde ANTICIPE DEJA — `killsource/world.go` `preload()` lie la premiere
+// declaration de chaque slot de TOUTES les images-cles du film. Aucun backlog killsource. Son
+// golden est refige parce qu il hache la VALEUR de `grammar.Rev`. `replay.SchemaVersion` reste
+// a 67 : 222 etiquettes de composant lues contre 207, mais aucune n est un canal PUBLIE, et
+// `Observation` n est jamais publie.
+
+// SUITE DU MEME RANG `grammar-2026-09-22.12` (2026-09-22, lot 5.23.3) : LE REPLI ENTRE EN PRODUCTION PAR
+// `ScanMovementStates` — ET LA MESURE DIT POURQUOI C EST LE SEUL.
+//
+// CE QUE LE RANG CHANGE. `ScanMovementStates` construit la table anticipee du film
+// (`ConstruireTableAnticipee`, une passe sur les images-cles de tous les chunks, 1,8 s sur
+// `bfecd02b`, aucun decodage de trame), la pose sur son monde et annonce le chunk courant avant
+// chaque liaison. Aucun autre fichier de decodage ne bouge.
+//
+// ET LES AUTRES MARCHES DE PRODUCTION N EN ONT PAS BESOIN, PARCE QU ELLES ANTICIPENT DEJA — plus
+// largement, sans datation et sans cle :
+//
+//	killsource/world.go `preload()`      lie la PREMIERE declaration de chaque slot de TOUTES
+//	                                     les images-cles du film, avant de marcher ;
+//	object_deaths_march.go `newMarchTimeline()`  fait exactement le meme geste (vehicules,
+//	                                     morts d objets, occupations).
+//
+// C est la raison MESUREE pour laquelle `facts.Rev` ne monte pas et pour laquelle les calques
+// `vehicles` / `rides` / `equipmentEpisodes` du document ne bougent pas d une unite : leurs
+// mondes connaissaient deja ces slots. `ScanMovementStates` etait la seule marche de production
+// qui ne liait que les images-cles DEJA VUES, et c est elle qui gagne.
+//
+// LE RENDU, MESURE SUR `bfecd02b` (`replay-build`, carte snowbound, faits de film purges pour
+// forcer le decodage) : `stances` **616 -> 841** — sprint 355 -> 501, saut derive 252 -> 327,
+// mobilite 9 -> 12, accroupi 0 -> 1. Tout le reste a l identique : 90 pistes, 27 703 points,
+// 11 vehicules, 3 embarquements, 10 episodes d equipement, 2 568 tirs, 142 ramassages.
+// Artefact 2 238 332 -> 2 249 698 octets.
+//
+// `replay.SchemaVersion` reste **67** : aucune forme ne change, aucun champ n est ajoute.
+// `facts.Rev` NE MONTE PAS (cf. ci-dessus) — aucun backlog killsource. Les goldens sont refiges
+// parce qu ils hachent ou publient la VALEUR de `grammar.Rev`.

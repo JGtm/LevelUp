@@ -295,6 +295,15 @@ type Observation struct {
 	//	                  `bfecd02b` ; le compteur existe pour que ce zero soit VU et non
 	//	                  suppose.
 	RejetsHorsDatum, RejetsDeVue int
+	// LiaisonsParAnticipation compte, PAR ARCHETYPE, les liaisons que le REPLI du lot 5.23 a
+	// posees au point de rejet : l eid n etait dans aucune table de datums connue, mais une
+	// image-cle ULTERIEURE le declare (cf. [World.LierParAnticipation]). Chacune est un rejet
+	// hors datum EVITE — les deux compteurs se lisent ensemble, et leur somme est le nombre de
+	// deltas que le monde hors ligne ne savait pas cadrer.
+	//
+	// C EST UN COMPTEUR D OBSERVATION, PAS UN CHAMP DU CONTRAT : `Observation` n est jamais
+	// publie, `replay.SchemaVersion` ne bouge pas, et la forme des faits persistes non plus.
+	LiaisonsParAnticipation map[uint32]int
 	// IndexAbsolus : histogramme des index de plage rencontres sur les chemins ABSOLUS de i0
 	// (7ter.54 axe 3). Purement observationnel — incremente sur l axe 0 de chaque lecture, ne
 	// change AUCUNE consommation de bits. C est la mesure qui dit si l index dominant est 0
@@ -415,6 +424,18 @@ func (o *Observation) compterRejetDeVue() {
 	if o != nil {
 		o.RejetsDeVue++
 	}
+}
+
+// compterLiaisonParAnticipation compte une liaison posee par le repli du lot 5.23, par archetype
+// (cf. [Observation.LiaisonsParAnticipation]).
+func (o *Observation) compterLiaisonParAnticipation(ti uint32) {
+	if o == nil {
+		return
+	}
+	if o.LiaisonsParAnticipation == nil {
+		o.LiaisonsParAnticipation = map[uint32]int{}
+	}
+	o.LiaisonsParAnticipation[ti]++
 }
 
 // compterResyncValide compte une reprise par resynchronisation validee (diagnostic).
