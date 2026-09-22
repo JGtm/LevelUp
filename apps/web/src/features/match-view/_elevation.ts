@@ -31,6 +31,7 @@ import {
   type EChartsThemeColors,
 } from '@/components/charts/_utils'
 import type { MatchElevationKill } from '@/lib/api/types'
+import type { Locale } from '@/lib/i18n/locale'
 
 /**
  * Demi-largeur de la bande « à niveau », en mètres. MIROIR de la constante Go
@@ -88,7 +89,7 @@ export function elevationBounds(...groups: readonly ElevationPoint[][]): Elevati
  */
 export function elevationPoints(
   kills: readonly MatchElevationKill[] | null | undefined,
-  locale: 'fr' | 'en',
+  locale: Locale,
 ): ElevationPoint[] {
   const out: ElevationPoint[] = []
   for (const k of kills ?? []) {
