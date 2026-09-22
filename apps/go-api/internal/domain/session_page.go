@@ -155,6 +155,12 @@ type SessionPageResponse struct {
 	// quand aucun match de la session ne porte de frag mesuré.
 	RangeProfiles        *MatchRangeBlock `json:"range_profiles,omitempty"`
 	CompareRangeProfiles *MatchRangeBlock `json:"compare_range_profiles,omitempty"`
+	// RangeReference : la PÉRIODE DE RÉFÉRENCE de la portée (lot U, décision D23-4) — les
+	// mêmes profils, du seul joueur consulté, sur les matchs du FILTRE de la page (la MÊME
+	// référence que l'habituel des usages et de la coordination), plus les bandes de rôle
+	// et la médiane de la période. Un SEUL bloc pour les deux colonnes du drawer : la
+	// référence ne dépend pas de la session affichée, elle dépend du filtre.
+	RangeReference *RangeReferenceBlock `json:"range_reference,omitempty"`
 	// Coordination : le bloc « Riposte » et « Appui reçu » de la session (lot N1,
 	// décisions D22) — les morts de mon camp ripostées dans les 5 s, ma part des
 	// ripostes, mes frags préparés, ma part des appuis distribués dans mon camp, plus

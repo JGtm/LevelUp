@@ -1410,6 +1410,25 @@ export type MatchRangeBlock = components['schemas']['MatchRangeBlock']
 export type MatchRangeProfile = components['schemas']['MatchRangeProfile']
 export type MatchRangePlayer = components['schemas']['MatchRangePlayer']
 
+// ─── lot U (2026-09-22, D23-4 / D23-a) : la PÉRIODE DE RÉFÉRENCE de la portée ─────────
+// `SessionPageResponse.range_reference` porte les mêmes profils que `range_profiles`, du
+// SEUL joueur consulté, sur les matchs du FILTRE de la page (même référence que l'habituel
+// des usages) — plus les deux bandes de rôle (`role_low_m` / `role_high_m`, tiers 1/3 et
+// 2/3 des matchs à >= 5 frags mesurés) et `period_median_delta_m`. Les trois sont ABSENTS
+// ENSEMBLE sous 3 matchs pleins : pas de bandes fabriquées. Un SEUL bloc pour les deux
+// colonnes du drawer — la référence dépend du filtre, pas de la session affichée.
+// `TimeseriesPageResponse.range_profiles` est, lui, un `MatchRangeBlock` ordinaire sur la
+// fenêtre de la page (joueur consulté seul, lobby entier pour la médiane).
+export type RangeReferenceBlock = components['schemas']['RangeReferenceBlock']
+
+// DÉNIVELÉ (proposition E1, 2026-09-22) : `MatchRangePlayer` porte désormais, à côté de sa
+// portée, `elevation_median_m` (médiane du dénivelé SIGNÉ de ses frags mesurés du match —
+// `killer_z - victim_z`, positif = fragué depuis le haut) et `elevation_lobby_delta_m`
+// (écart à `lobby_elevation_median_m` du profil, médiane du dénivelé de TOUS les frags
+// mesurés du match). Les trois sont OPTIONNELS : absents = pas de dénivelé mesuré ; un 0 m,
+// lui, est une mesure (« à plat »). Servis partout où `MatchRangeProfile` l'est — Escouade,
+// Sessions (session, comparée, référence) et Timeseries.
+
 export interface TeammatesPageResponse {
   options: TeammateOption[]
   teammates: TeammateRow[]

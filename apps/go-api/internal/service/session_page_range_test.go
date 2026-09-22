@@ -75,7 +75,7 @@ func TestSessionRange_JoueurConsulteSeulMaisLobbyEntier(t *testing.T) {
 		},
 		KillsTotal: 6,
 	}}
-	block := sprService(repo).buildSessionRange(context.Background(), sprMatches())
+	block := sprService(repo).buildSessionRange(context.Background(), sprMatches(), "session")
 	if block == nil {
 		t.Fatal("bloc nil, want un bloc")
 	}
@@ -125,7 +125,7 @@ func TestSessionRange_OmissionsSontNil(t *testing.T) {
 	}
 	for _, c := range cas {
 		t.Run(c.nom, func(t *testing.T) {
-			if got := c.svc.buildSessionRange(context.Background(), c.rows); got != nil {
+			if got := c.svc.buildSessionRange(context.Background(), c.rows, "session"); got != nil {
 				t.Fatalf("bloc = %+v, want nil (omission, jamais un bloc vide)", got)
 			}
 		})
