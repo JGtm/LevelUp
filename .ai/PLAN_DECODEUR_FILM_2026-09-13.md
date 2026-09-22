@@ -8326,6 +8326,244 @@ contre 4 469 dans la reference — et 1 489 est EXACTEMENT la valeur que le lot 
 les divergences sont celles de la reference perimee, pas des siennes. Decodage : 14,8 s,
 pic 0,19 Gio, un film a la fois.
 
+### Post-chantier — lot 5.19 (le record avant le rejet), branche `feat/decfilm-69`
+
+Sur le residu que les lots 5.15 a 5.18 ont instruit sans le reduire. METHODE INVERSEE : la
+DIFFERENTIELLE d abord (elle LOCALISE, elle ne conclut pas), l ecrivain de chaque composant
+qu elle nomme ensuite (Ghidra lecture seule), un commit par maillon. Note de grammaire :
+`.ai/V7.5/film_re/NOTE_5_19_RECORD_AVANT_LE_REJET_2026-09-22.md`.
+
+- [x] **5.19.1 — LA DIFFERENTIELLE : LE MASQUE ET LES LARGEURS NE DISTINGUENT RIEN, MAIS LE
+  RECORD AVANT LE REJET, COMPARE A SES PROPRES VOISINS, NOMME SES ARCHETYPES.**
+
+  `mouvement_5_19_differentielle_research_test.go` (collecte) + `mouvement_5_19_tableaux_research_test.go`
+  (publication, deplacement pur sous le seuil de 500 lignes). Une passe, UN decodage par paquet.
+  Le gate du 5.16/5.18 est reproduit AU PAQUET : `dad793c7` 5 354/5 365, `bfecd02b` 2 884/30 387,
+  2 et 32 debordements — l instrument est bien celui qui a mesure le residu.
+
+  **(a) LE MASQUE NE DISTINGUE PAS LES DEUX POPULATIONS.** Les masques les plus frequents du
+  dernier record avant le rejet sont EXACTEMENT ceux des paquets qui ferment : `ti=35 0x2200003`
+  premier des deux cotes (8 007 fautifs, 155 fermes), `0x2000003` troisieme des deux cotes.
+
+  **(b) LES LARGEURS NON PLUS.** `i25` 10 bits (20 997 / 397), `i0` dyn.-prec. 54 bits
+  (20 458 / 395), `i1` dyn.-prec. 31 bits (19 138 / 329), `i21` 25 bits (13 488 / 216). Les seules
+  largeurs « que seuls les fautifs portent » comptent 1 a 6 occurrences : la queue de bruit d un
+  curseur deja faux. **`i25` est re-confirme confondant** (5.15.1 (i)).
+
+  **(c) DEUX CONFONDANTS TUENT LA COMPARAISON « FAUTIFS CONTRE FERMES ».** La DENSITE (`ti=35`
+  present dans 96,6 % des fautifs contre 30,4 % des fermes ; 61,1 % des fermes n ont qu un `ti=4`
+  d un composant) et la DOSE : un paquet SANS delta de bipede ferme a **71,9 %**, avec un seul il
+  tombe a 5,5 %. Et la distribution des fautifs par nombre de bipedes lus n est PAS geometrique
+  (elle serait decroissante) — c est une cloche centree sur 5, donc le nombre de bipedes lus AVANT
+  la faute, tronque par elle.
+
+  **(d) LA DIFFERENTIELLE INTERNE N A AUCUN CONFONDANT, ET C EST ELLE QUI NOMME.** Dans le MEME
+  paquet fautif : le DERNIER record (apres lequel le curseur est faux) contre TOUS CEUX QUI LE
+  PRECEDENT (lus juste — le record suivant s est decode derriere eux). Meme film, meme trame,
+  meme paquet, meme carte. 23 325 derniers contre 114 147 precedents.
+  **Taux de faute = dernier / (dernier + precedents).**
+
+  | classe | taux | dernier | precedents |
+  |---|---:|---:|---:|
+  | `ti=40` masque `0x200000a` · `0x200001f` · `0x2000007` · `0x200000e` | **100 / 98,8 / 92,0 / 88,9 %** | 45 / 82 / 69 / 48 | 0 / 1 / 6 / 6 |
+  | `ti=35` masques a bit **54** (`0x40000002200023`, `0x40000002200003`) | **92,6 / 83,3 %** | 25 / 50 | 2 / 10 |
+  | `ti=40` masque `0x10` (`i4` SEUL) | **87,2 %** | 238 | 35 |
+  | `ti=32` masque `0xf` · `ti=2` masque `0x1` | 82,6 / 80,3 % | 76 / 376 | 16 / 92 |
+  | `ti=40` masque `0x200000f` | **75,0 %** | **1 841** | 615 |
+  | `ti=42` / `ti=37` masques courts | 43 a 91 % | ~1 000 | ~1 000 |
+  | `ti=10` masque `0x4000000` | 53,6 % | 239 | 207 |
+  | `ti=35` masques usuels | **10,7 a 25,1 %** | 18 856 | 85 889 |
+  | `ti= 4` masque `0x1` (`high-frequency`) | **1,1 %** | 244 | 22 604 |
+
+  **TROIS FAITS, ET ILS SONT LA LISTE DES SUSPECTS ORDONNEE :**
+
+  1. **Un record de `ti=40` est terminal trois fois sur quatre, et le taux est UNIFORME sur ses
+     six composants** (`i0` 76,2 %, `i1` 75,7 %, `i2` 73,0 %, `i3` 75,6 %, `i4` 88,9 %, `i25`
+     77,0 %). Ce n est donc pas « un composant de plus a porter » : c est le record entier.
+  2. **Le MEME composant, a la MEME largeur, faute differemment selon l ARCHETYPE.**
+     `object-body-vitality-component`, 11 bits, meme deserialiseur `FUN_140fb8978` : **88,9 % sur
+     `ti=40`, 21,3 % sur `ti=35`**. L archetype change la verite de la lecture sans changer ce que
+     le port lit.
+  3. **`ti=4 high-frequency` mesure 1,1 % sur 22 848 lectures** : c est le seul temoin propre du
+     film. Tout ce qui est au-dessus de 10 % est une lecture a instruire.
+
+  **(e) `dad793c7` N EXERCE AUCUNE DES CLASSES FAUTIVES** : ses derniers records sont `ti=4`
+  (97,8 %), `ti=35` (1,4 %), `ti=47` (0,8 %), `ti=0` et `ti=5` une fois chacun — un seul rejet sur
+  5 365 paquets, sans record lu. `ti=40`, `ti=2`, `ti=32`, `ti=42`, `ti=37`, `ti=10` n y
+  apparaissent JAMAIS. Les archetypes que la differentielle accuse sont exactement ceux que le
+  film de calibration n exerce pas.
+
+  Aucune ligne de grammaire touchee : `grammar.Rev`, `facts.Rev` et `replay.SchemaVersion`
+  INCHANGES, gate reproduit au paquet.
+
+- [!] **5.19.2 — LES ECRIVAINS : QUATRE SUSPECTS LUS, QUATRE CONFORMITES — ET LA MESURE TROUVE LA
+  CAUSE AILLEURS QUE DANS UNE LARGEUR.** La regle d arret du brief est atteinte (trois suspects
+  conformes sans baisse des rejets) ; ce qui la remplace n est pas une absence, c est une CAUSE
+  nommee par trois mesures.
+
+  **(a) `ti=40 i2 object-forward-and-up-dynamic-precision` — CONFORME, ET D3 (5.14) EST RESOLU.**
+  Seul composant `partiel` du record de vehicule (`FUN_140c5f7ec`, niveau 2). Sa forme dominante
+  (64 bits = 3 portes + 61) est le chemin « config » `FUN_142e29bac`, dont le second champ est
+  **`FUN_1406d84b4` — la fonction dont D3 (5.14) disait que la largeur passe par la PILE et que le
+  desassemblage ne la resout pas**. Elle est resolue au site d appel :
+  `142e29cce: MOV dword ptr [RSP + 0x20],0x1e` puis `CALL 0x1406d84b4`, et `FUN_1406d84b4` est un
+  lecteur PLAT (`*(reader+0x2c) += in_stack_00000028`, aucune porte). **R(30) inconditionnel,
+  exactement le port : une largeur ASSUMEE devient PROUVEE.**
+
+  **(b) `ti=40 i4 object-body-vitality` — CONFORME AU BIT.** `FUN_140fb8978` =
+  `FUN_1406d84b4(..., 8, 1, 1)` + trois `FUN_1406cf008` = **R(8) + 3 x R(1) = 11 bits**, sans porte
+  ni branche. Or la classe `ti=40 masque 0x10` (ce composant SEUL) faute a **87,2 %** : la faute
+  n est pas dans le corps du record.
+
+  **(c) LA STRUCTURE DE LA BRANCHE VIVE — CONFORME.** `FUN_1406cd128` (branche `!= 0`) :
+  `[R(1) -> DELTA sinon R(2)]` + `[FUN_1406d310c(filigrane) bits + base]` + `[R(2) tag]` puis
+  `FUN_1406cbaa0`. Rien entre deux records. Le selecteur y est `DAT_144706104` et non le bit de
+  configuration — sans effet, les deux formes coincidant deja (D4 du 5.15).
+
+  **(d) `FUN_1408f1aa4`, LE LECTEUR DE `NEW` DE LA BRANCHE VIVE — CONFORME.** Le 5.15.2 (a) l avait
+  nomme sans le lire : `R(6)` archetype, `vtable[0x60]` default-state, `vtable[0x88]` et
+  `vtable[0x30]` a ZERO bit, puis `R(1)` de porte et `FUN_14076cb60` (masque + boucle). C est
+  EXACTEMENT `TraverseEntity`. Seule nuance : chez l ecrivain la porte est sous un bitmap derive
+  (calcule sans lire un bit) ; le port la lit sans condition et sa doc dit que la retirer
+  desynchronise.
+
+  **(e) LA CAUSE, NOMMEE PAR TROIS MESURES, ET ELLE RENVERSE LE 5.16.2.**
+
+  1. **Le slot rejete, PONDERE PAR SON VOLUME, est un bipede que DEUX sources declarent.**
+     `TestRejets519` : 567 slots distincts pour 23 325 rejets, et les **vingt-sept premiers (72 %
+     du volume) sont dans la bande 521-601, tous declares `ti=35` par le balayeur d ancres ET par
+     la table de datums** (slot 543 : 1 014 rejets ; 539 : 974 ; 556 : 972 ; 552 : 945). Le 5.16.2
+     avait mesure les slots DISTINCTS (632, etendue uniforme sur 13 bits) et conclu « ce ne sont
+     pas des slots » : **pondere par le volume, ce sont des slots, et ils ont un archetype**.
+  2. **A l instant du rejet, 99,0 % d entre eux n ont JAMAIS ete lies** (`TestDelies519` :
+     23 092 / 23 325 ; 211 par un `DEL` — le faux `DEL` du 5.14.3 est ECARTE ; 22 autres), et
+     **99,0 % ne sont meme pas un CANDIDAT d ancre du payload d image-cle du chunk**
+     (`TestEcartes519` : 23 089 dans aucun candidat, 236 parmi les candidats ecartes par la
+     croissance, 0 parmi les retenus — `plusLongueSuiteCroissante` est hors de cause).
+  3. **LA COUVERTURE DE L IMAGE-CLE, CHIFFREE (D2 du 5.16 porte au film dense)** : chaque payload
+     d image-cle de `bfecd02b` pese 1,32 a 1,37 MILLION de bits, et le balayeur d ancres s arrete
+     entre **45,7 % et 55,8 %** du payload, sur 424 a 483 ancres, pour 1 374 a 1 540 candidats
+     ecartes. **La moitie de chaque table n est jamais lue.**
+
+  **ET LE PREMIER SLOT REJETE D UN CHUNK EST LE SLOT MAX DE SON IMAGE-CLE, PLUS UN.**
+  `TestPremierRejet519` : dans TREIZE chunks sur 26 le premier slot rejete vaut exactement
+  `slot max + 1` (chunk 2 : 1 663 -> 1 673 ; chunk 8 : 1 861 -> 1 862 ; chunk 9 : 1 910 -> 1 911 ;
+  chunk 11 : 1 994 -> 1 995 ; chunk 13 : 2 063 -> 2 064 ; chunk 20 : 2 332 -> 2 333 ; chunk 26 :
+  2 588 -> 2 589). C est la signature de l ALLOCATEUR. Et **le chunk 2 lit ZERO record `NEW` sur
+  1 196 paquets delta alors qu au moins dix entites y naissent**.
+
+  **LE 5.15.1 (f) EST REFUTE : C EST UNE CASCADE, ET ELLE A UN POINT DE DEPART.** Le chunk 1 ferme
+  700 paquets d affilee avant sa premiere faute, le chunk 2 en ferme 1 144, le chunk 27 ferme ses
+  106. Apres la premiere faute le chunk s effondre (chunk 5 : faute au rang 1, 61 paquets sains
+  sur 1 176).
+
+  > **Le residu de `bfecd02b` n est pas une largeur de composant : le monde hors ligne n apprend
+  > JAMAIS la naissance d une entite entre deux images-cles. La premiere entite creee apres
+  > l image-cle d un chunk (slot = slot max + 1) est referencee par un delta que la garde rejette,
+  > le rejet emporte la queue du paquet — donc les `NEW` qui y vivaient — et le chunk s effondre.**
+
+  Aucune ligne de grammaire touchee : `grammar.Rev`, `facts.Rev` et `replay.SchemaVersion`
+  INCHANGES ; gate reproduit au paquet (`dad793c7` 5 354/5 365, `bfecd02b` 2 884/30 387, 2 et 32
+  debordements).
+
+- [x] **5.19.3 — LE FLUX LATERAL N EXISTE PAS : `session+0xf8` EST LE CURSEUR D OCTETS DU FLUX DE
+  PAQUETS, ET LE BLOC DE TYPE 9 EST UN PIED DE FILM, UNIQUE, APRES LA DERNIERE TRAME.**
+
+  **(a) `FUN_142988338` EST LE LECTEUR D OCTETS DE LA SESSION, PARTAGE PAR TOUS LES HANDLERS.**
+  `FUN_142988338(session, dst, n, 0)` fait `memcpy(dst, session[0xf0] + session[0xf8], n)` puis
+  `session[0xf8] += n`, sous la borne `session[0xe8]`. Ses DOUZE appelants sont les handlers de
+  paquets eux-memes (`FUN_14298816c` type 0, `FUN_142987bd4` type 8, `FUN_142989418` type 1,
+  `FUN_142988244` type 10, `FUN_142988084` type 6, `FUN_1429882c8` type 0xb, `FUN_1429875e4`
+  type 0xc, `FUN_14298884c` l en-tete de 16 octets) plus `FUN_1428e2a04` / `FUN_1428e2a9c` /
+  `FUN_1429883ec` / `FUN_142986b94`. **`session+0xf8` n est pas un canal lateral : c est LE
+  curseur de lecture sequentielle du fichier.** La question du brief — « un corps de trame
+  puise-t-il dans ce flux ? » — a donc une reponse structurelle : NON, et aucun lecteur de trame,
+  de composant ou d image-cle ne l interroge autrement que pour recevoir SON propre payload.
+
+  **(b) LE REPARTITEUR N A QU UN APPELANT, ET IL JETTE LE TYPE 9.** `FUN_1428e22c0` est appele par
+  le SEUL `FUN_1428e27c0` (la pompe de lecture : elle lit l en-tete de 16 octets par
+  `FUN_14298884c`, puis repartit). La branche `sVar2 == 9` fait
+  `*(int *)(session + 0xf8) += *(int *)(paquet + 2)` et rend 1 : **aucun octet n est copie, aucun
+  pointeur n est conserve.** (Au passage : les types 3, 4, 5 et 2 tombent dans la queue d erreur
+  `FilmBlockReadError` — le repartiteur ne connait que 0, 1, 6, 7, 8, 9, 10, 0xb, 0xc.)
+
+  **(c) ET LE BLOC N EST PAS UN FLUX : C EST UN PIED DE FILM, MESURE.** Recensement hors ligne
+  (`TestType9519`) :
+
+  | | `dad793c7` | `bfecd02b` |
+  |---|---:|---:|
+  | paquets de type 9 | **1** | **1** |
+  | octets | **4** | **631 561** |
+  | chunk | **6 (le dernier)** | **28 (le dernier)** |
+  | premier `u32` | **0** | **207** |
+  | paquets delta du meme chunk | 106 | **0** |
+
+  **Il y a UN SEUL paquet de type 9 par film, dans le DERNIER chunk, apres la derniere trame.**
+  Sur le film a un joueur il pese 4 octets et vaut zero ; sur le film dense il pese 631 561 octets
+  et son premier `u32` vaut 207 — un COMPTE d entrees de taille variable, pas un flux par trame.
+
+  **CONSEQUENCE : D1 (5.18) EST REFUTE PAR LA POSITION, PAS PAR UNE ABSENCE.** « Le type 9 reste le
+  seul bloc dont la taille suit le residu » etait vrai de sa TAILLE et faux de sa PLACE : un bloc
+  unique situe apres tous les paquets delta du film ne peut pas decider de la lecture des
+  chunks 1 a 27. Le suspect qui restait au §4 du 5.18 tombe, et la cause mesuree au 5.19.2 le
+  remplace.
+
+  Population de types re-mesuree sur `bfecd02b` : type 0 = 31 232 paquets / 7 203 888 o ·
+  type 1 = 27 / 9 261 513 o · type 2 = 27 / 4 593 116 o · type 6 = 27 / 108 o · type 7 = 28 / 0 o ·
+  type 8 = 28 / 700 868 o · type 9 = 1 / 631 561 o · type 10 = 31 232 / 251 227 o ·
+  type 12 = 28 / 112 o.
+
+- [x] **5.19.4 — CE QUE LE TROU PORTAIT : RIEN, ET C EST LA CONSEQUENCE NECESSAIRE D UN LOT QUI
+  N A TOUCHE AUCUNE LIGNE DE GRAMMAIRE.** Les quatre ecrivains lus sont conformes au port ; aucun
+  composant n a ete corrige, aucune largeur n a bouge, aucun archetype nouveau n est lu. Le tableau
+  par composant du 5.18.3 tient a l identique (207 etiquettes sur `bfecd02b`, `ti=35` 129 572,
+  desyncs 4) parce que le diff de production est VIDE : les quatre fichiers du lot sont des
+  instruments `//go:build research`, sans appelant de production.
+
+  **AUCUN CANAL D ETAT DE BIPEDE N APPARAIT, donc AUCUNE MONTEE DE SCHEMA** : pas de chronique
+  v68, pas de `structure_test`, pas de `document_shape.golden`, pas de jumeaux
+  `replaydoc`/`replayview`, pas de zod, pas de fixtures `replay_schema_68_*`, pas d OpenAPI.
+  `replay.SchemaVersion` reste a **67**, `grammar.Rev` a `grammar-2026-09-22.7`, `facts.Rev`
+  inchangee — **aucun backlog killsource n est ouvert**.
+
+- [!] **GATE — LES PAQUETS NE FERMENT PAS A 100 %, ET LE LOT DIT LAQUELLE DE SES DEUX PROMESSES IL
+  TIENT.** `dad793c7` 5 354/5 365, `bfecd02b` 2 884/30 387, 2 et 32 debordements : INCHANGES, comme
+  le 5.15, le 5.17 et le 5.18 — le lot ne deplace aucun chiffre et n en abime aucun (diff de
+  production VIDE, prouve par `git diff --stat` : quatre fichiers `_research_test.go`). La seconde
+  promesse du brief — « au minimum une baisse NOMMEE des rejets, composant par composant » — n est
+  pas tenue en chiffres et l est en NATURE : le lot etablit que la baisse ne viendra PAS d un
+  composant, parce que les quatre ecrivains lus sont conformes et parce que 99,0 % des rejets
+  portent sur un slot dont l archetype n a jamais ete declare au monde hors ligne. Les deux
+  suspects nommes au §4 du 5.18 (type 9) et du 5.16 (le masque decale) sont l un et l autre
+  REFUTES par une lecture, pas par une absence.
+
+  Gates sans decodage, tous verts : `gofmt`, `go build ./...`, `go vet` (+ `research`),
+  `go test -count=1` sur `./internal/games/halo_infinite/... ./internal/archlint/
+  ./internal/replaybuild/ ./internal/domain/replaydoc/ ./internal/service/replayview/
+  ./contracttest/ ./internal/api/` (0 `--- FAIL`), `golangci-lint run
+  ./internal/games/halo_infinite/film/...` 0 issue, ratchets (dont le ratchet de taille : les
+  quatre instruments sont scindes sous 500 lignes).
+
+#### §4 du lot 5.19 — DECOUVERTES HORS PERIMETRE, CONSIGNEES ET NON TRAITEES
+
+| # | decouverte | ou la reprendre |
+|---|---|---|
+| **D1 (5.19)** | **LA NAISSANCE D UNE ENTITE ENTRE DEUX IMAGES-CLES N EST LUE PAR RIEN, ET C EST LA CAUSE MESUREE DU RESIDU.** 99,0 % des 23 325 rejets portent sur un slot que rien n a lie avant le paquet (`TestDelies519`) et qui n est meme pas un candidat d ancre du payload d image-cle du chunk (`TestEcartes519`) ; dans 13 chunks sur 26 le PREMIER slot rejete vaut exactement `slot max de l image-cle + 1` (signature de l allocateur), et le chunk 2 lit ZERO record `NEW` sur 1 196 paquets delta alors qu au moins dix entites y naissent. Le chunk decode proprement jusque-la (700, 1 144, 106 paquets d affilee) puis s effondre : **le 5.15.1 (f) « ce n est pas une cascade » est REFUTE**. | **le lot du residu** : trouver OU le jeu annonce la naissance d une entite entre deux images-cles. L en-tete rejete lit `prefixe 1` = DELTA (constant sur six temoins dumpes : slot 1792, tag 1), donc ce n est pas un `NEW` mal cadre a cette position |
+| **D2 (5.19)** | **LA MARCHE D ANCRES D IMAGE-CLE NE LIT QUE LA MOITIE DE SA TABLE SUR UN FILM DENSE** — D2 (5.16) chiffre : payload de 1,32 a 1,37 M bits, arret entre 45,7 % et 55,8 %, 424 a 483 ancres retenues pour 1 374 a 1 540 candidats ecartes par la croissance. C est le second candidat de D1 : une table complete donnerait l archetype de tous les slots du chunk. | le meme lot que D1 (5.19) : rendre `WalkKeyframeWorld` deterministe au-dela de la fenetre de 120 000 bits de `kfScanNext` |
+| **D3 (5.19)** | **LE 5.16.2 EST RENVERSE PAR LA PONDERATION.** « Les slots rejetes ne sont pas des slots » avait ete conclu sur les 632 valeurs DISTINCTES ; pondere par le volume, les 27 premiers slots (72 % des rejets) sont des bipedes que le balayeur d ancres ET la table de datums declarent `ti=35`. Une ventilation de valeurs distinctes ne dit rien d une population. | personne : la lecon est consignee, la doc de `frame_infer.go` n est pas touchee par ce lot |
+| **D4 (5.19)** | **LE REPARTITEUR LIT LA TAILLE D UN BLOC A `paquet + 2`** (`*(int *)(param_3 + 2)`, branche type 9) alors que le lecteur hors ligne la lit a l offset 4 d un en-tete `[u16 type][u16 pad][u32 taille][u64 ts]`. Les deux concordent sur le parc (les paquets de type 8 chainent au bit, lot 5.17), donc la structure en memoire du jeu n est simplement pas celle du fichier. | le lot qui rencontrera un film dont le champ de bourrage n est pas nul |
+| **D5 (5.19)** | **LE REPARTITEUR NE CONNAIT QUE NEUF TYPES** (0, 1, 6, 7, 8, 9, 10, 0xb, 0xc) : les types 2, 3, 4 et 5 tombent dans la queue de telemetrie `FilmBlockReadError`. Or le type 2 est l IMAGE-CLE du fichier, que le depot lit. Le repartiteur du rejeu ne la voit donc pas passer par cette porte. | le lot qui voudra savoir par quelle porte le jeu charge une image-cle (probablement `FUN_1428e2a04` / `FUN_1428e2a9c`, la seconde voie a en-tete de 16 octets) |
+
+#### §5 du lot 5.19 — ETAT DE CLOTURE
+
+| case | statut | ce qui est livre |
+|---|---|---|
+| 5.19.1 | `[x]` | la differentielle : masque et largeurs IDENTIQUES des deux cotes (`i25` re-confirme confondant), deux confondants nommes (densite, dose), et la differentielle INTERNE qui les annule — taux de faute par classe, `ti=40` a 73-89 % uniformement sur ses six composants, `ti=4` a 1,1 % comme temoin propre, et `dad793c7` qui n exerce aucune classe fautive |
+| 5.19.2 | `[!]` | quatre ecrivains lus, quatre conformites (dont **D3 (5.14) RESOLU** : `FUN_1406d84b4` est un lecteur plat et son 5e argument vaut `0x1e` au site d appel) ; la regle d arret du brief est atteinte, et la CAUSE est nommee par trois mesures : le slot rejete est une entite dont la naissance n a jamais ete lue |
+| 5.19.3 | `[x]` | `session+0xf8` est le curseur d octets du flux de paquets, pas un canal lateral ; le bloc de type 9 est UNIQUE, dans le DERNIER chunk, apres la derniere trame (4 o / 631 561 o, premier `u32` 0 / 207) — **D1 (5.18) est refute par la POSITION** |
+| 5.19.4 | `[x]` | rien de nouveau n est lu, diff de production VIDE, `SchemaVersion` 67, `grammar.Rev` et `facts.Rev` inchangees, aucun backlog killsource |
+| GATE | `[!]` | 100 % non atteint, residu non reduit — mais les DEUX suspects qui restaient (type 9, masque decale) sont refutes par lecture, et la cause est nommee, chiffree et adressee au §4 |
+
 ### Post-chantier — lot 5.18 (le controle de corruption lu dans le film), branche `feat/decfilm-68`
 
 Sur les decouvertes D1 et D2 du lot 5.17. METHODE : l ecrivain d abord (Ghidra lecture seule,
