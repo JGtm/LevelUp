@@ -218,6 +218,25 @@ type GrammaireBalayage struct {
 	// lot 5.11.6 sur `dad793c7`, 57 bits de trop sur 95,7 % des paquets, et un record FANTOME
 	// (`ti=6` slot 26) fabrique a partir de zeros. Defaut : cf. le journal du lot 5.11.7.
 	TablesParVue bool
+	// ClassesDeVue applique A CHAQUE RANG DE VUE LA GRAMMAIRE DE SA CLASSE, la ou la marche
+	// appliquait aux trois rangs celle du gestionnaire d entites (lot 5.14).
+	//
+	// Les trois vtables de vue ne portent pas la meme fonction a `+0x40`, et le registraire
+	// `FUN_141f855b4` dit quel rang porte quelle classe : rang 0 = `FUN_14076a1c4` (vue A,
+	// un flux de MESSAGES qui ne rend jamais un record), rang 1 = `FUN_1406cd128` (vue B, le
+	// gestionnaire d entites), rang 2 = `FUN_1406cf548` (vue C, `replication_control_view.cpp`).
+	// Voir `frame_vue_classes.go`.
+	//
+	// Sans elle, les flux des vues A et C sont decoupes en `[prefixe][idLow][tag]` et rendent
+	// des records DEL FANTOMES (13 sur `dad793c7`, 304 sur `bfecd02b`) — et ces faux DEL
+	// DELIENT des entites vivantes : les rebrancher a leur classe rend 15 114 records `ti=35`
+	// sur `bfecd02b` (114 458 -> 129 572), a desyncs constants.
+	//
+	// DEFAUT LEVE DEPUIS LE LOT 5.14.3 (2026-09-22) : c est la grammaire de l ecrivain, et la
+	// fermeture des paquets le prouve au bit (reste NUL sur 5 341 paquets sur 5 341 de
+	// `dad793c7`). Ce n est PAS un kill-switch : il n y a pas de date de retrait, la bascule
+	// existe pour que l A/B du lot reste rejouable.
+	ClassesDeVue bool
 	// LargeursBouchon donne une largeur PROVISOIRE a un composant dont le deserialiseur n est
 	// pas encore porte, pour que la traversee continue au-dela (recherche de la largeur d une
 	// queue manquante par chainage de records). Vide par defaut : un composant non porte
@@ -232,6 +251,7 @@ func grammaireDuProfil() GrammaireBalayage {
 		CorpsActionMobilite:   true,
 		CorpsAncrageCapacite:  true,
 		TablesParVue:          true,
+		ClassesDeVue:          true,
 	}
 }
 

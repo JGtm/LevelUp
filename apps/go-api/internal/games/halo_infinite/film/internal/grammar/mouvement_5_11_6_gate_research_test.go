@@ -54,6 +54,13 @@ func TestMouvement5116Gate(t *testing.T) {
 		fc.PoserProfilDeBalayage(bal)
 		cfg = fc.CadreDeBalayage()
 	}
+	if os.Getenv("MOUV511_CLASSES") != "" {
+		// LE GATE DU LOT 5.14 : chaque rang de vue sous la grammaire de SA classe.
+		bal := fc.ProfilDeBalayage()
+		bal.Grammaire.ClassesDeVue = true
+		fc.PoserProfilDeBalayage(bal)
+		cfg = fc.CadreDeBalayage()
+	}
 	if os.Getenv("MOUV511_GENSTRICTE") != "" {
 		// L A/B QUE LA BASCULE APPELLE DEPUIS LE LOT 2.3 : l ecrivain compare TOUJOURS l eid
 		// complet (FUN_1406caad8, FUN_1406cd128), et le defaut a false etait une prudence de

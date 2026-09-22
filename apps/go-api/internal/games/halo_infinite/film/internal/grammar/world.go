@@ -156,9 +156,12 @@ func (w *World) BindWildcard(slot, typeIndex uint32) {
 // CORRESPONDANCE AVEC LE RANG DE LA MARCHE HORS LIGNE : la vue que la marche parcourt en PREMIER
 // est celle qui rend les records — sur `dad793c7` ses 5 628 records, 5 628 sur 5 628 ; sur
 // `bfecd02b`, 157 250 sur 157 554 (`TestVues513EspaceDeNoms`). C est donc la vue du gestionnaire
-// d entites, celle que l image-cle enumere. Le port ne recopie PAS le numero 1 : il retient le
-// PREMIER rang rencontre (cf. [World.vueDeLEspaceDeNoms]), parce que le decalage entre la
-// numerotation du jeu et l ordre du tableau parcouru n est pas etabli.
+// d entites, celle que l image-cle enumere. LE DECALAGE ENTRE LES DEUX NUMEROTATIONS EST ETABLI
+// DEPUIS LE LOT 5.14.1 : `FUN_141f855b4` enregistre le gestionnaire d entites au RANG 1 du film
+// (`FUN_1409c9860(conteneur+8, 1, conteneur + 0x21b70)`), et le monde hors ligne le range en 0 —
+// cette constante EST ce decalage, et `decodeFrameParRangs` marche la vue B sous elle. Le port
+// retient neanmoins le PREMIER rang rencontre (cf. [World.vueDeLEspaceDeNoms]) : un second rang
+// dans une image-cle serait une vue que rien ne situe, et les deux films temoins sont mono-rang.
 //
 // « Toutes les liaisons d image-cle vont en vue 0 » n est donc pas une limite du portage : c est
 // ce que le film porte, et l image-cle le DIT au lieu qu on le suppose.

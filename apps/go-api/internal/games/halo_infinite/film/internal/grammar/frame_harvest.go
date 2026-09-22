@@ -163,6 +163,9 @@ func DecodeFrameViewsCurseur(buf []byte, w *World, cfg FrameConfig, nViews int,
 	skipLeadBits int) ([]FrameRecord, int, int) {
 	br := LecteurSur(buf)
 	br.poserCadre(cfg) // EN TETE (lots 2.2.a et 2.3)
+	if cfg.Profil.Grammaire.ClassesDeVue {
+		return decodeFrameParRangs(br, buf, w, cfg, skipLeadBits)
+	}
 	br.Skip(skipLeadBits)
 	frameLen := len(buf) * 8
 	var all []FrameRecord
@@ -294,4 +297,49 @@ func boundDeltaCleanAt(buf []byte, p int, w *World, cfg FrameConfig) bool {
 	}
 	t := decodeDelta(br, w, slot)
 	return t.DesyncAt == -1
+}
+
+// decodeFrameParRangs est [DecodeFrameViewsCurseur] SOUS LA GRAMMAIRE DE CHAQUE CLASSE DE VUE
+// (`GrammaireBalayage.ClassesDeVue`, lot 5.14) : rang 0 = vue A, rang 1 = vue B, rang 2 = vue C.
+// Voir `frame_vue_classes.go` pour l ordre, qui est PROUVE (`FUN_141f855b4`).
+//
+// # LA TETE DU PAQUET, ET POURQUOI `skipLeadBits` NE SE SAUTE PLUS EN ENTIER
+//
+// `FUN_142987460` lit UN bit de configuration puis parcourt ses trois vues. L amorce de deux
+// bits que le depot saute ([DefaultPacketPreambleBits]) est donc `[configuration][vue A vide]` :
+// son second bit est le terminateur de la vue A. Quand l appelant part de la TETE du paquet
+// (`skipLeadBits == cfg.PacketPreambleBits`), cette marche saute le bit de configuration et LIT
+// la vue A — une vue A non vide est alors DETECTEE au lieu d etre prise pour un bit d amorce.
+// Quand l appelant part d un debut LOCALISE (paquet a liste d evenements, `marchLocateStrict`),
+// la vue A est derriere le point de depart et la marche commence au rang 1.
+func decodeFrameParRangs(br *Lecteur, buf []byte, w *World, cfg FrameConfig,
+	skipLeadBits int) ([]FrameRecord, int, int) {
+	frameLen := len(buf) * 8
+	rangs := 0
+	if skipLeadBits == cfg.PacketPreambleBits && cfg.PacketPreambleBits >= 1 {
+		br.Skip(cfg.PacketPreambleBits - 1) // le bit de configuration du frame-processeur
+		if a := consumeVueA(br, frameLen); !a.Porte {
+			return nil, rangs, br.BitPos()
+		}
+		rangs++
+	} else {
+		br.Skip(skipLeadBits)
+	}
+	// RANG 1 — le gestionnaire d entites. L index de vue du MONDE HORS LIGNE pour cette classe
+	// est `vueDeLImageCle` : le film la nomme rang 1, le monde la range en 0 (cf.
+	// [World.vueDeLEspaceDeNoms]).
+	w.PoserVueCourante(int(vueDeLImageCle))
+	recs, _, hitEnd := decodeInferLoop(br, buf, w, cfg)
+	if !hitEnd {
+		return recs, rangs, br.BitPos()
+	}
+	rangs++
+	// RANG 2 — la vue de controle. Elle ne rend AUCUN record d entite : ses records vont dans
+	// le tableau que `FUN_142987460` applique par `vtable[0x48]`, et ce ne sont pas des deltas
+	// d entite. La marche hors ligne n en publie donc aucun — c est ce qui supprime les records
+	// DEL fantomes du pied de trame.
+	if c := consumeVueC(br, frameLen); c.Porte {
+		rangs++
+	}
+	return recs, rangs, br.BitPos()
 }
