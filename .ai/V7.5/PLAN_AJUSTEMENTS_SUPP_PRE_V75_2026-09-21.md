@@ -222,4 +222,5 @@ surface `film/replay` 260 -> 263 justifie.
 ### Lot V — web Timeseries : 3.B (worktree `LevelUp-wt-ajsup-v`) — FUSIONNE 0325b01db ; a.1 dans le lot W bis apres U
 - [x] Mode baseline de `SessionBarsTrendChart`, deux cartes en ecart a leur repere, tendance 3 soirees
 ### Lot W — web Sessions : 4.A (apres U)
-### Lot X — maquette Denivele v2 (preferences D23-b)
+### Lot X — maquette Denivele v2 (preferences D23-b) — FUSIONNE c72f19012
+- [x] `.ai/V7.5/MAQUETTE_DENIVELE_V2_2026-09-22.html` : T1/T2/T3, M1/M2/M3, E1/E2/E3, Sessions = rien
