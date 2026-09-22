@@ -8326,6 +8326,99 @@ contre 4 469 dans la reference — et 1 489 est EXACTEMENT la valeur que le lot 
 les divergences sont celles de la reference perimee, pas des siennes. Decodage : 14,8 s,
 pic 0,19 Gio, un film a la fois.
 
+### Post-chantier — lot 5.22 (le declencheur du saut, temoin Madina97294), branche `feat/decfilm-72`
+
+Demande de l utilisateur du 2026-09-22, sa priorite : « un saut est un saut, je ne me contenterai
+pas d un derive ». Le lot 5.11 avait mesure le saut sur `dad793c7`, un film ou le bipede est MUET
+avant le saut : sa fenetre ne separait pas « le saut commence » de « la replication commence »
+(D6 du lot 5.13, qui demandait explicitement un film temoin replique EN CONTINU). `bfecd02b` en
+porte un, et l utilisateur l a VERIFIE dans Theater : **Madina97294** (xuid 2533274858283686,
+slot 523) court sans interruption de 1:19 a 1:41 de barre et y saute SEPT fois.
+
+Instruments (tous `//go:build research`, paquet `grammar`) :
+`mouvement_5_22_{ancres,differentielle,controle}_research_test.go`, variables `MOUV511_FILM`,
+`MOUV511_CARTE`, `MOUV511_BORNES`, `MOUV511_T0` / `T1`, plus `MOUV522_SLOT`, `MOUV522_BITS`.
+Note : `.ai/V7.5/film_re/NOTE_5_22_DECLENCHEUR_SAUT_2026-09-22.md`.
+
+- [x] **5.22.1 — LA DIFFERENTIELLE SUR UNE VIE CONTINUE : AU DECOLLAGE, LE FILM NE TRANSMET QUE
+  LA POSITION, LA VITESSE ET LE TICK DE COMMANDE. ET LA BARRE THEATER EST L HORLOGE DU FILM.**
+
+  **(a) LA CONVERSION DE TEMPS EST TRANCHEE PAR LA MESURE, AVANT TOUTE FENETRE.** Le brief posait
+  `barre = originMs + frame x 100 ms` (`originMs` = 12 547 ms). C est FAUX pour ce film : les six
+  sauts derives que l utilisateur a dates dans Theater tombent aux instants RELATIFS AU PREMIER
+  PAQUET DELTA 84,050 · 85,234 · 86,602 · 89,322 · 93,126 · 96,962 s, c est-a-dire exactement aux
+  temps de barre 1:24,0 · 1:25,1 · 1:26,5 · 1:29,2 · 1:33,0 · 1:36,9 qu il cite ; les trois
+  sprints lus tombent a 88,121 · 90,356 · 95,844 s (barre 1:28,0 · 1:30,3 · 1:35,7) et la queue de
+  `mobility` a 97,096-97,63 s (barre 1:37,0-1:37,6). **La barre EST l horloge relative du film**,
+  au pas de frame pres ; `originMs` recale les evenements de MATCH, pas la barre. La vie du slot
+  523 court de 80,032 s a 159,996 s (79,96 s, 4 557 records) — elle est repliquee a chaque tick.
+
+  **(b) LES SEPT SAUTS SONT TOUS DANS LE CANAL DE VITESSE, Y COMPRIS CELUI QUI MANQUE, ET LA
+  CAUSE DU MANQUE EST CHIFFREE.** `TestMouvement522Ancres` publie TOUS les episodes de montee
+  fermes (86 sur la vie), retenus ou non par la fenetre de hauteur du Spartan :
+
+  | verdict | t0 (s) | duree | hauteur integree | verdict Theater de l utilisateur |
+  |---|---:|---:|---:|---|
+  | RETENU | 84,050 | 0,466 s | 0,8495 m | saut a 1:24 |
+  | RETENU | 85,234 | 0,450 s | 0,8413 m | saut a 1:25 |
+  | RETENU | 86,602 | 0,483 s | 0,8466 m | saut a 1:26,5 |
+  | RETENU | 89,322 | 0,468 s | 0,8430 m | saut « ~1:28 » |
+  | **REJETE** | **91,691** | **0,667 s** | **0,9737 m** | **le saut « ~1:31 » QUI MANQUE** |
+  | RETENU | 93,126 | 0,466 s | 0,8476 m | saut « ~1:32 » |
+  | RETENU | 96,962 | 0,334 s | 0,8104 m | le saut qui finit en escalade |
+
+  Le septieme saut n est pas absent du film : **il est rejete par la fenetre de 10 % autour de
+  `types.SpartanJumpHeightM`** (0,9737 / 0,85 = +14,6 %). Son episode dure 0,667 s au lieu de
+  0,467 — c est une montee prolongee (rebord), pas un saut plat. RIEN N EST CORRIGE ICI : elargir
+  la fenetre deplacerait le compte de `jumpDerived` sur tous les films (§4, D1 (5.22)).
+
+  **(c) LA DIFFERENTIELLE, ET ELLE EST SANS APPEL.** `TestMouvement522Bascule` croise CHAQUE
+  composant declare par les 4 557 records du temoin contre la fenetre de decollage
+  `[t0 - 250 ms ; t0 + 100 ms]` des episodes retenus (277 records dedans, 4 280 hors) :
+
+  | composant | dedans | part | hors | part | facteur |
+  |---|---:|---:|---:|---:|---:|
+  | `i0` position | 277 | 100,00 % | 4 106 | 95,93 % | 1,04 |
+  | `i1` vitesse | 263 | 94,95 % | 3 937 | 91,99 % | 1,03 |
+  | `i25` command-tick | 277 | 100,00 % | 4 148 | 96,92 % | 1,03 |
+  | `i21` desired-aiming | 187 | 67,51 % | 2 801 | 65,44 % | 1,03 |
+  | `i28` active-camo | 9 | 3,25 % | 20 | 0,47 % | 6,95 |
+  | `i57` / `i59` ability | 7 | 2,53 % | 19 | 0,44 % | 5,69 |
+  | `i54` mobility | 11 | 3,97 % | 103 | 2,41 % | 1,65 |
+  | `i16` physics-flags · `i55` posture-physics · `i63` biped-action · `i62` slide · `i29` crouch · `i60` sim-state | **0** chacun | 0,00 % | **0** chacun | — | — |
+
+  **Aucun champ dont TOUS les instants tombent dans une fenetre de decollage : l ensemble est
+  VIDE**, comme au 5.11.2 — mais cette fois sur une vie CONTINUE, ou « le bipede se met a parler »
+  n est plus une explication possible. Et le zoom au record dit la meme chose au tick pres
+  (`TestMouvement522Fenetre`, decollage de 84,050 s) :
+
+  ```
+  + 84.033 s · 2 comps : i0 i25
+  * 84.050 s · 3 comps : i0 i1 i25        <- LE DECOLLAGE
+  + 84.066 s · 5 comps : i0 i1 i25 i57 i59  <- +16 ms : le SPRINT S ETEINT (consequence)
+  + 84.083 s · 4 comps : i0 i1 i25 i28
+  ```
+
+  Le facteur 5,69 d `i57`/`i59` est ce confondant NOMME : le sprint se coupe 16 a 17 ms APRES
+  quatre des six decollages (84,066 · 85,251 · 89,338 · 96,979 s) et pas du tout aux deux autres
+  (86,602 et 93,126 n ont aucune transition de sprint). Un declencheur precede ; celui-la suit, et
+  il manque un tiers des sauts.
+
+  **(d) LE CANAL D ENTREE N EST PAS REFUTE, IL EST ILLISIBLE SUR CE FILM, ET LE CHIFFRE EST
+  DONNE.** D2 (5.14) plaçait l espoir dans les BITS D ACTION de la vue de controle
+  (`FUN_1406d025c`). `TestMouvement522Controle` les DATE : 170 ouvertures de la garde sur tout
+  `bfecd02b`, la plus proche de la fenetre du temoin a 74,040 s puis 160,309 s — **zero entre 80 et
+  100 s**. Mais ce n est PAS une conclusion negative, et `TestMouvement522Fermeture` dit pourquoi :
+  sur les **1 199 paquets delta de la fenetre [80 ; 100] s, ZERO ferme** (reste dans [0 ; 7] a bits
+  nuls) ; 1 115 atteignent le terminateur de la vue C en laissant du reste, 84 n y arrivent pas.
+  Les 12 entrees de controle lues dans cette fenetre sont donc lues a un OFFSET FAUX. Le maillon
+  est nomme et il est deja au registre : **le trou du rang 1 sur film dense** (D1 (5.14), nomme au
+  5.15, en cours au lot 5.21). Tant qu il n est pas referme, `bfecd02b` ne peut ni prouver ni
+  refuter un declencheur dans le canal d entree.
+- [ ] **5.22.2 — L ECRIVAIN**
+- [ ] **5.22.3 — VERIFICATION**
+- [ ] **5.22.4 — LE PORT ET LA MONTEE 67 -> 68**
+
 ### Post-chantier — lot 5.20 (l image-cle entiere et les naissances), branche `feat/decfilm-70`
 
 Sur les decouvertes D1 et D2 du lot 5.19. METHODE : l ecrivain d abord (Ghidra lecture seule),
