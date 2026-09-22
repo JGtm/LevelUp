@@ -14,18 +14,22 @@
  *     deux à l'écran ;
  *   - `available = false` GARDE LA RANGÉE et nomme sa cause (D8) : un bloc escamoté laisse
  *     la rangée bancale et se lit comme un bug ;
- *   - PORTÉE : les bâtons suivent l'ordre des matchs, un bâton sous le plancher est CREUX
- *     (contour pointillé, aucun remplissage), la médiane de session est une markLine, et
- *     sous trois bâtons pleins il n'y a PAS de bandes de rôle — trois bandes assises sur
- *     deux points ne séparent rien.
+ *   - PORTÉE (lot W, D23-4) : le nuage porte la PÉRIODE, la session s'y surligne sur les
+ *     bons matchs, les bandes sont les SEUILS SERVIS (jamais recalculés côté web), la
+ *     référence absente replie sur la session seule sans bandes ni surbrillance, et en
+ *     comparaison les deux colonnes surlignent DEUX fenêtres du MÊME nuage.
  */
 import { describe, expect, it } from 'vitest'
 import { render, screen } from '@testing-library/react'
 
-import type { CoordinationBlock, MatchRangeBlock } from '@/lib/api/types'
+import { buildSquadRangeRolesOption } from '@/features/squad/charts/squadRangeRolesChart'
+import type {
+  CoordinationBlock,
+  MatchRangeBlock,
+  RangeReferenceBlock,
+} from '@/lib/api/types'
 
 import { SessionCoordinationSection } from './SessionCoordinationSection'
-import { buildSessionRangeOption } from './charts/sessionRangeChart'
 import { COORDINATION_TEXT } from './coordinationI18n'
 import {
   bandCaption,
@@ -33,7 +37,7 @@ import {
   buildRiposteBand,
   buildRiposteGaugeRows,
 } from './coordinationModel'
-import { batonsPortee, medianeSession, seuilsSession } from './sessionRange.logic'
+import { nuagePortee, pointDeLaSession, seuilsServis } from './sessionRange.logic'
 
 const t = COORDINATION_TEXT.fr
 
@@ -173,82 +177,147 @@ const profil = (id: string, ordreIso: string, mediane: number, lobby: number, me
   ],
 })
 
-/** Quatre matchs, servis EN DÉSORDRE : le tri chronologique doit les remettre en place. */
-const BLOC_PORTEE: MatchRangeBlock = {
-  kills_measured: 38,
-  kills_total: 50,
+/** Quatre matchs de la période, servis EN DÉSORDRE : le tri chronologique les remet en place. */
+const PROFILS_PERIODE = [
+  profil('p2', '2026-04-20T20:00:00Z', 16, 20, 11),
+  profil('m1', '2026-04-21T19:30:00Z', 14, 20, 12),
+  profil('p1', '2026-04-19T18:00:00Z', 24, 20, 10),
+  profil('m2', '2026-04-21T20:15:00Z', 18, 20, 3), // sous le plancher → creux
+]
+
+const REFERENCE: RangeReferenceBlock = {
+  profiles: PROFILS_PERIODE,
+  role_low_m: -5,
+  role_high_m: 1,
+  period_median_delta_m: -2,
+  matches_measured: 4,
+  matches_total: 5,
+}
+
+/** La session affichée : les deux derniers matchs de la période. */
+const BLOC_SESSION: MatchRangeBlock = {
+  kills_measured: 15,
+  kills_total: 20,
   profiles: [
-    profil('m3', '2026-04-21T21:00:00Z', 22, 20, 9),
     profil('m1', '2026-04-21T19:30:00Z', 14, 20, 12),
-    profil('m4', '2026-04-21T21:30:00Z', 30, 20, 3), // sous le plancher → creux
-    profil('m2', '2026-04-21T20:15:00Z', 18, 20, 8),
+    profil('m2', '2026-04-21T20:15:00Z', 18, 20, 3),
   ],
 }
 
-describe('Carte Portée des engagements (D22-4)', () => {
-  it('range les bâtons du plus ancien au plus récent et étiquette « #N · carte »', () => {
-    const { batons, categories } = batonsPortee(BLOC_PORTEE, 'moi')
-    expect(batons.map((b) => b.matchId)).toEqual(['m1', 'm2', 'm3', 'm4'])
-    expect(batons.map((b) => b.ecartM)).toEqual([-6, -2, 2, 10])
-    expect(categories[0]).toBe('#1 · Streets')
+const LIBELLES = {
+  xAxis: t.rangeXAxisPeriod,
+  yAxis: t.rangeAxis,
+  lobbyLine: t.rangeLobbyLine,
+  bandes: { front: t.roleFront, polyvalent: t.roleVersatile, sniper: t.roleSniper },
+  tooltipMedian: t.rangeTipMedian,
+  tooltipDelta: t.rangeTipDelta,
+  tooltipMeasured: t.rangeTipMeasured,
+}
+
+interface OptionNuage {
+  series: [
+    {
+      data: { value: [number, number]; itemStyle: Record<string, unknown> }[]
+      markArea?: { data: Record<string, unknown>[][] }
+    },
+  ]
+  legend?: unknown
+}
+
+/** Monte l'option du nuage avec deux encres reconnaissables (appartenance, pas identité). */
+function option(nuage: ReturnType<typeof nuagePortee>, encreSession = '#111', encrePeriode = '#999') {
+  return buildSquadRangeRolesOption([nuage.serie!], {
+    categories: nuage.categories,
+    seuils: nuage.seuils,
+    couleurs: { Moi: encreSession },
+    mesuresMin: 3,
+    mesuresMax: 12,
+    masquerLegende: true,
+    encrePoint: (p) => (pointDeLaSession(nuage, p) ? encreSession : encrePeriode),
+    surbrillance: nuage.surbrillance
+      ? { ...nuage.surbrillance, label: t.rangeThisSession, couleur: encreSession }
+      : undefined,
+    libelles: LIBELLES,
+    fmtM: (v: number) => String(v),
+  }) as unknown as OptionNuage
+}
+
+describe('Carte Portée des engagements (lot W, D23-4)', () => {
+  it('pose l’axe sur la période, dans l’ordre chronologique, et surligne les matchs de la session', () => {
+    const nuage = nuagePortee(REFERENCE, BLOC_SESSION, 'moi')
+    expect(nuage.periode).toBe(true)
+    expect(nuage.profils.map((p) => p.match_id)).toEqual(['p1', 'p2', 'm1', 'm2'])
+    expect(nuage.categories[0]).toBe('#1 · Streets')
+    // La session, ce sont les indices 2 et 3 — surtout pas les deux premiers.
+    expect(nuage.surbrillance).toEqual({ debut: 2, fin: 3 })
+    expect(nuage.serie!.points.map((p) => p.plein)).toEqual([true, true, true, false])
   })
 
-  it('dessine creux le bâton sous le plancher et plein les autres', () => {
-    const { batons, categories } = batonsPortee(BLOC_PORTEE, 'moi')
-    expect(batons.map((b) => b.plein)).toEqual([true, true, true, false])
-    const option = buildSessionRangeOption(batons, {
-      categories,
-      seuils: seuilsSession(batons),
-      medianeM: medianeSession(batons),
-      libelles: {
-        yAxis: t.rangeAxis,
-        lobbyLine: t.rangeLobbyLine,
-        medianLine: t.rangeSessionMedian,
-        bandes: { front: t.roleFront, polyvalent: t.roleVersatile, sniper: t.roleSniper },
-        tooltip: () => '',
-      },
-    }) as {
-      series: [{ data: { value: number; itemStyle: Record<string, unknown> }[]; markLine: { data: unknown[] }; markArea?: { data: unknown[] } }]
-    }
-    const data = option.series[0].data
-    expect(data.map((d) => d.value)).toEqual([-6, -2, 2, 10])
-    // Bâton creux : transparent + contour pointillé. Bâtons pleins : une encre, pas de contour.
+  it('peint la session à l’encre du joueur et la période en gris, le point creux reste creux', () => {
+    const nuage = nuagePortee(REFERENCE, BLOC_SESSION, 'moi')
+    const data = option(nuage).series[0].data
+    expect(data.map((d) => d.value[1])).toEqual([4, -4, -6, -2])
+    expect(data[0].itemStyle.color).toBe('#999')
+    expect(data[2].itemStyle.color).toBe('#111')
+    // Le dernier point est de la session ET sous le plancher : creux, contour à l'encre.
     expect(data[3].itemStyle.color).toBe('transparent')
-    expect(data[3].itemStyle.borderType).toBe('dashed')
-    expect(data[0].itemStyle.color).not.toBe('transparent')
-    expect(data[0].itemStyle.borderType).toBeUndefined()
-    // La ligne du lobby (0) ET la médiane de session (-2, sur les trois bâtons pleins).
-    expect(option.series[0].markLine.data).toHaveLength(2)
-    expect(medianeSession(batons)).toBe(-2)
-    // Trois bâtons pleins ⇒ les bandes de rôle existent.
-    expect(option.series[0].markArea?.data).toHaveLength(3)
+    expect(data[3].itemStyle.borderColor).toBe('#111')
   })
 
-  it('n’assied aucune bande de rôle sous trois bâtons pleins', () => {
-    const maigre: MatchRangeBlock = {
-      kills_measured: 14,
-      kills_total: 30,
-      profiles: [
-        profil('m1', '2026-04-21T19:30:00Z', 14, 20, 8),
-        profil('m2', '2026-04-21T20:15:00Z', 18, 20, 6),
-        profil('m3', '2026-04-21T21:00:00Z', 22, 20, 2),
-      ],
+  it('assied les bandes sur les SEUILS SERVIS, sans jamais les recalculer', () => {
+    const nuage = nuagePortee(REFERENCE, BLOC_SESSION, 'moi')
+    expect(nuage.seuils).toEqual({ bas: -5, haut: 1 })
+    // Les tiers des écarts mesurés vaudraient (-4, -4) : la carte ne les invente pas.
+    const opt = option(nuage)
+    const zones = opt.series[0].markArea!.data
+    // Trois bandes de rôle + la fenêtre de surbrillance.
+    expect(zones).toHaveLength(4)
+    expect(zones[1][0].yAxis).toBe(-5)
+    expect(zones[2][0].yAxis).toBe(1)
+    expect(zones[3][0].xAxis).toBe(1.5)
+    expect(zones[3][1].xAxis).toBe(3.5)
+    expect(zones[3][0].name).toBe(t.rangeThisSession)
+    // Une seule série : la légende du graphe n'a rien à nommer.
+    expect(opt.legend).toBeUndefined()
+  })
+
+  it('n’assied aucune bande quand le serveur ne sert pas les seuils', () => {
+    const sansSeuils: RangeReferenceBlock = {
+      ...REFERENCE,
+      role_low_m: undefined,
+      role_high_m: undefined,
     }
-    const { batons, categories } = batonsPortee(maigre, 'moi')
-    expect(batons.filter((b) => b.plein)).toHaveLength(2)
-    expect(seuilsSession(batons)).toBeNull()
-    const option = buildSessionRangeOption(batons, {
-      categories,
-      seuils: seuilsSession(batons),
-      medianeM: medianeSession(batons),
-      libelles: {
-        yAxis: t.rangeAxis,
-        lobbyLine: t.rangeLobbyLine,
-        medianLine: t.rangeSessionMedian,
-        bandes: { front: t.roleFront, polyvalent: t.roleVersatile, sniper: t.roleSniper },
-        tooltip: () => '',
-      },
-    }) as { series: [{ markArea?: unknown }] }
-    expect(option.series[0].markArea).toBeUndefined()
+    expect(seuilsServis(sansSeuils)).toBeNull()
+    const nuage = nuagePortee(sansSeuils, BLOC_SESSION, 'moi')
+    expect(nuage.seuils).toBeNull()
+    // Reste la seule surbrillance.
+    expect(option(nuage).series[0].markArea!.data).toHaveLength(1)
+  })
+
+  it('replie sur la session seule sans référence : pas de bandes, pas de surbrillance', () => {
+    const nuage = nuagePortee(null, BLOC_SESSION, 'moi')
+    expect(nuage.periode).toBe(false)
+    expect(nuage.profils.map((p) => p.match_id)).toEqual(['m1', 'm2'])
+    expect(nuage.seuils).toBeNull()
+    expect(nuage.surbrillance).toBeNull()
+    const opt = option(nuage)
+    expect(opt.series[0].markArea).toBeUndefined()
+    // Tous les points sont ceux de la session : aucun gris de population.
+    expect(opt.series[0].data.map((d) => d.itemStyle.color)).toEqual(['#111', 'transparent'])
+  })
+
+  it('en comparaison, les deux colonnes surlignent deux fenêtres du MÊME nuage', () => {
+    const comparee: MatchRangeBlock = {
+      kills_measured: 20,
+      kills_total: 22,
+      profiles: [profil('p1', '2026-04-19T18:00:00Z', 24, 20, 10)],
+    }
+    const a = nuagePortee(REFERENCE, BLOC_SESSION, 'moi')
+    const b = nuagePortee(REFERENCE, comparee, 'moi')
+    expect(b.categories).toEqual(a.categories)
+    expect(b.surbrillance).toEqual({ debut: 0, fin: 0 })
+    const dataB = option(b).series[0].data
+    expect(dataB[0].itemStyle.color).toBe('#111')
+    expect(dataB[2].itemStyle.color).toBe('#999')
   })
 })

@@ -58,14 +58,21 @@ export interface CoordinationText {
   // ─── Carte Portée des engagements ────────────────────────────────────────────
   cardRange: string
   rangeAxis: string
-  rangeAbove: string
-  rangeBelow: string
+  /** Le nom de l'axe X — selon que le nuage porte la periode ou la seule session (repli). */
+  rangeXAxisPeriod: string
+  rangeXAxisSession: string
   rangeLobbyLine: string
-  rangeSessionMedian: string
+  /** L'etiquette du fond qui marque les matchs de la session dans la periode. */
+  rangeThisSession: string
   roleFront: string
   roleVersatile: string
   roleSniper: string
-  rangeTipFmt: (mediane: string, lobby: string, ecart: string, frags: number) => string
+  rangeLegendPeriod: string
+  rangeLegendSession: string
+  rangeLegendTrend: (fenetre: number) => string
+  rangeTipMedian: (mediane: string) => string
+  rangeTipDelta: (ecart: string) => string
+  rangeTipMeasured: (frags: number) => string
   rangeCoverageFmt: (mesures: number, total: number) => string
   rangeLowSample: (seuil: number) => string
   infoRange1: string
@@ -108,20 +115,26 @@ export const COORDINATION_TEXT: Record<Locale, CoordinationText> = {
 
     cardRange: 'Portée des engagements',
     rangeAxis: 'Écart au lobby (m)',
-    rangeAbove: 'Plus loin que le lobby',
-    rangeBelow: 'Plus près que le lobby',
+    rangeXAxisPeriod: 'Matchs de la période, du plus ancien au plus récent',
+    rangeXAxisSession: 'Matchs de la session, du plus ancien au plus récent',
     rangeLobbyLine: 'Médiane du lobby',
-    rangeSessionMedian: 'Médiane de session',
+    rangeThisSession: 'Cette session',
     roleFront: 'Ligne de front',
     roleVersatile: 'Polyvalent',
     roleSniper: 'Tireur d’élite',
-    rangeTipFmt: (med, lobby, ecart, frags) =>
-      `Médiane ${med} · lobby ${lobby} · écart ${ecart} · ${frags} frags mesurés`,
+    rangeLegendPeriod: 'Période de référence',
+    rangeLegendSession: 'Matchs de la session',
+    rangeLegendTrend: (f) => `Tendance, fenêtre ${f} matchs`,
+    rangeTipMedian: (med) => `Médiane ${med} m`,
+    rangeTipDelta: (ecart) => `Écart au lobby ${ecart} m`,
+    rangeTipMeasured: (frags) => `${frags} frags mesurés`,
     rangeCoverageFmt: (m, t) => `${m} frags mesurés sur ${t}`,
-    rangeLowSample: (s) => `bâton creux : moins de ${s} frags mesurés`,
-    infoRange1: 'Chaque bâton est l’écart entre ma médiane de frag et celle du lobby du match.',
-    infoRange2: 'L’écart neutralise la carte et le mode : quand un lobby joue court, moi aussi.',
-    infoRange3: (s) => `Sous ${s} frags mesurés le bâton reste creux : la médiane est du bruit.`,
+    rangeLowSample: (s) => `point creux : moins de ${s} frags mesurés`,
+    infoRange1:
+      'Chaque point est un match de ma période : l’écart entre ma médiane de frag et celle du lobby.',
+    infoRange2:
+      'Les bandes sont mes rôles sur la période ; le fond marque les matchs de cette session.',
+    infoRange3: (s) => `Sous ${s} frags mesurés le point reste creux : la médiane est du bruit.`,
     rangeEmpty: 'Aucun frag mesuré sur les matchs de cette session.',
   },
   en: {
@@ -154,20 +167,25 @@ export const COORDINATION_TEXT: Record<Locale, CoordinationText> = {
 
     cardRange: 'Engagement range',
     rangeAxis: 'Gap to lobby (m)',
-    rangeAbove: 'Farther than the lobby',
-    rangeBelow: 'Closer than the lobby',
+    rangeXAxisPeriod: 'Matches of the period, oldest to most recent',
+    rangeXAxisSession: 'Matches of the session, oldest to most recent',
     rangeLobbyLine: 'Lobby median',
-    rangeSessionMedian: 'Session median',
+    rangeThisSession: 'This session',
     roleFront: 'Front line',
     roleVersatile: 'All-rounder',
     roleSniper: 'Marksman',
-    rangeTipFmt: (med, lobby, ecart, frags) =>
-      `Median ${med} · lobby ${lobby} · gap ${ecart} · ${frags} measured kills`,
+    rangeLegendPeriod: 'Reference period',
+    rangeLegendSession: 'Session matches',
+    rangeLegendTrend: (f) => `Trend, ${f}-match window`,
+    rangeTipMedian: (med) => `Median ${med} m`,
+    rangeTipDelta: (ecart) => `Gap to lobby ${ecart} m`,
+    rangeTipMeasured: (frags) => `${frags} measured kills`,
     rangeCoverageFmt: (m, t) => `${m} of ${t} kills measured`,
-    rangeLowSample: (s) => `hollow bar: fewer than ${s} measured kills`,
-    infoRange1: 'Each bar is the gap between my kill median and the lobby median of that match.',
-    infoRange2: 'The gap neutralises map and mode: when a lobby plays close, so do I.',
-    infoRange3: (s) => `Below ${s} measured kills the bar stays hollow: the median is noise.`,
+    rangeLowSample: (s) => `hollow dot: fewer than ${s} measured kills`,
+    infoRange1:
+      'Each dot is one match of my period: the gap between my kill median and the lobby median.',
+    infoRange2: 'The bands are my roles over the period; the shading marks this session’s matches.',
+    infoRange3: (s) => `Below ${s} measured kills the dot stays hollow: the median is noise.`,
     rangeEmpty: 'No measured kill across the matches of this session.',
   },
 }

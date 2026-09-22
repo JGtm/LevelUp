@@ -1,20 +1,26 @@
 /**
- * SessionRangeCard — « Portée des engagements » de la colonne de session (lot O, D22-4).
+ * SessionRangeCard — « Portée des engagements » de la colonne de session (lot W, D23-4).
  *
- * UN BÂTON PAR MATCH DE LA SESSION, dans l'ordre chronologique, étiqueté « #N · carte »
- * comme les autres graphes par match. Sa hauteur est MON ÉCART à la médiane du lobby du
- * match : la seule échelle qui neutralise la carte et le mode (D22-4 amende la §4 de la
- * maquette, qui proposait des bâtons p10→p90 par classe d'arme en absolu). Le zéro est la
- * ligne du lobby ; trois bandes de fond portent les rôles, leurs seuils sont les TIERS des
- * bâtons pleins de la session, pas des mètres en dur.
+ * LE NUAGE DE LA PÉRIODE À UN SEUL JOUEUR, SESSION EN SURBRILLANCE. L'axe X porte les matchs
+ * de ma période de référence (`range_reference`, lot U), du plus ancien au plus récent ; en
+ * ordonnée, mon écart à la médiane du lobby de chaque match — la seule échelle qui neutralise
+ * la carte et le mode. Les matchs de la session affichée sont surlignés et peints à l'encre
+ * du joueur ; le reste de la période reste en gris. C'est le concept de l'Escouade (lot R) à
+ * une seule série : SITUER UN POINT DANS SA POPULATION.
+ *
+ * POURQUOI PAS LES BÂTONS DU LOT O : leurs bandes de rôle étaient les tiers de la SESSION,
+ * donc chaque soirée redéfinissait ses rôles et deux soirées n'étaient pas comparables. Ici
+ * les bandes sont les SEUILS SERVIS de la période (`role_low_m` / `role_high_m`) — les mêmes
+ * que l'Escouade, jamais recalculés côté web ; absents, il n'y a pas de bandes.
  *
  * ELLE SUIT LA SECTION COORDINATION plutôt que d'y entrer : le contrat ne sert PAS de
  * miroir `compare_coordination`, alors qu'il sert `compare_range_profiles`. Fondues en une
  * seule clé de section, les deux cartes seraient remplacées par un placeholder dans la
  * colonne comparée alors que la portée, elle, a ses données. Deux clés, deux rangées.
  *
- * PAS DE DÉTAIL PAR CLASSE D'ARME : `MatchRangeBlock` ne sert qu'une médiane par (match,
- * joueur), sans ventilation par arme ni par classe — il n'y a rien à replier.
+ * EN COMPARAISON, LES DEUX COLONNES PARTAGENT LE MÊME NUAGE (un seul `range_reference` : la
+ * référence dépend du filtre, pas de la session) et chacune y surligne SA session — c'est
+ * exactement la lecture demandée : deux soirées situées dans la même population.
  *
  * D22-VERBOSITÉ (LOI) : graphe, légende et couverture. La lecture tient dans l'infobulle
  * (i) du titre, trois phrases.
@@ -26,33 +32,42 @@ import { EmptyStateNotice } from '@/components/ui/empty-state'
 import { TooltipParagraphs } from '@/components/ui/info-tooltip'
 import { SectionCard } from '@/components/ui/section-card'
 import { titleWithInfo } from '@/components/ui/title-with-info'
-import { tokenCssVar } from '@/lib/accessibility'
-import type { MatchRangeBlock } from '@/lib/api/types'
+import { buildSquadRangeRolesOption } from '@/features/squad/charts/squadRangeRolesChart'
+import { getSquadPlayerColors } from '@/features/squad/colors'
+import { resolveToken, tokenCssVar } from '@/lib/accessibility'
+import type { MatchRangeBlock, RangeReferenceBlock } from '@/lib/api/types'
 import { intlLocale } from '@/lib/formatters'
 import { useAppShellStore } from '@/stores/appShellStore'
 
-import { buildSessionRangeOption } from './charts/sessionRangeChart'
 import { COORDINATION_TEXT } from './coordinationI18n'
 import {
-  batonsPortee,
-  medianeSession,
-  seuilsSession,
+  FENETRE_ROLE,
   PLANCHER_MESURE,
+  TAILLE_POINT_MIN,
+  nuagePortee,
+  pointDeLaSession,
 } from './sessionRange.logic'
 
 export function SessionRangeCard({
   block,
+  reference,
   meLabel,
   compact = false,
   yDomain,
 }: {
-  /** Le bloc `range_profiles` de la réponse — absent (vieux serveur) : rien ne se rend. */
+  /** Le bloc `range_profiles` de la réponse — les matchs de CETTE session (surbrillance). */
   block: MatchRangeBlock | null | undefined
+  /**
+   * La période de référence du joueur (`range_reference`) — l'axe du nuage. Absente
+   * (vieux serveur, ou période tautologique) : repli sur les seuls matchs de la session,
+   * sans bandes ni surbrillance.
+   */
+  reference?: RangeReferenceBlock | null
   /** Libellé du joueur de la page (slug de route) — départage un profil multi-joueurs. */
   meLabel: string
   /** Colonne divisée : même graphe, plus court. */
   compact?: boolean
-  /** Bornes d'axe Y partagées A/B (mode comparaison) — figées par la page. */
+  /** Bornes d'axe Y plancher partagées A/B (mode comparaison) — figées par la page. */
   yDomain?: [number, number]
 }) {
   const locale = useAppShellStore((s) => s.locale)
@@ -66,42 +81,57 @@ export function SessionRangeCard({
     [locale],
   )
 
-  const { batons, categories } = useMemo(() => batonsPortee(block, meLabel), [block, meLabel])
-  const seuils = useMemo(() => seuilsSession(batons), [batons])
-  const mediane = useMemo(() => medianeSession(batons), [batons])
+  const nuage = useMemo(() => nuagePortee(reference, block, meLabel), [reference, block, meLabel])
+  const serie = nuage.serie
+
+  // L'encre du joueur consulté — la même source que la pill et les graphes de l'Escouade.
+  const couleurs = useMemo(
+    () => (serie ? getSquadPlayerColors(serie.gamertag, []) : {}),
+    [serie],
+  )
+  const encreSession = serie ? (couleurs[serie.gamertag] ?? resolveToken('info')) : ''
+  // Les matchs hors session n'ont pas d'identité à porter : ils sont la population, pas un
+  // camp — `zone-neutral` est achromatique dans toutes les palettes.
+  const encrePeriode = resolveToken('zone-neutral')
 
   const chartSeries = useMemo(
-    () => (batons.length > 0 ? [{ key: 'session-portee', datapoints: batons }] : []),
-    [batons],
-  )
-
-  const fmtM = useMemo(() => (v: number) => `${numFmt.format(v)} m`, [numFmt])
-  const fmtSigne = useMemo(
-    () => (v: number) => `${v > 0 ? '+' : ''}${numFmt.format(v)} m`,
-    [numFmt],
+    () => (serie ? [{ key: 'session-portee-periode', datapoints: serie.points }] : []),
+    [serie],
   )
 
   const buildOption = useMemo(
-    () => () =>
-      buildSessionRangeOption(batons, {
-        categories,
-        seuils,
-        medianeM: mediane,
+    () => () => {
+      if (!serie) return {}
+      const mesures = serie.points.map((p) => p.mesures)
+      return buildSquadRangeRolesOption([serie], {
+        categories: nuage.categories,
+        seuils: nuage.seuils,
+        couleurs,
+        mesuresMin: mesures.length > 0 ? Math.min(...mesures) : 0,
+        mesuresMax: mesures.length > 0 ? Math.max(...mesures) : 0,
         yDomain,
+        masquerLegende: true,
+        encrePoint: (p) => (pointDeLaSession(nuage, p) ? encreSession : encrePeriode),
+        surbrillance: nuage.surbrillance
+          ? { ...nuage.surbrillance, label: t.rangeThisSession, couleur: encreSession }
+          : undefined,
         libelles: {
+          xAxis: nuage.periode ? t.rangeXAxisPeriod : t.rangeXAxisSession,
           yAxis: t.rangeAxis,
           lobbyLine: t.rangeLobbyLine,
-          medianLine: t.rangeSessionMedian,
           bandes: { front: t.roleFront, polyvalent: t.roleVersatile, sniper: t.roleSniper },
-          tooltip: (b) =>
-            t.rangeTipFmt(fmtM(b.medianeM), fmtM(b.lobbyM), fmtSigne(b.ecartM), b.mesures),
+          tooltipMedian: t.rangeTipMedian,
+          tooltipDelta: t.rangeTipDelta,
+          tooltipMeasured: t.rangeTipMeasured,
         },
-      }),
-    [batons, categories, seuils, mediane, yDomain, t, fmtM, fmtSigne],
+        fmtM: (v: number) => numFmt.format(v),
+      })
+    },
+    [serie, nuage, couleurs, encreSession, encrePeriode, yDomain, t, numFmt],
   )
 
   if (block == null) return null
-  const vide = batons.length === 0
+  const vide = serie == null || serie.points.length === 0
 
   return (
     <SectionCard
@@ -121,35 +151,55 @@ export function SessionRangeCard({
             <ChartCard
               series={chartSeries}
               buildOption={buildOption}
-              height={compact ? 260 : 320}
+              height={compact ? 300 : 360}
               frameless
             />
-            {/* Les trois encodages qu'ECharts ne nomme pas : les deux verdicts et le creux. */}
+            {/* Les quatre encodages qu'ECharts ne nomme pas : les deux appartenances, la
+                tendance et le point creux. */}
             <div
               className="flex flex-wrap items-center gap-4 text-2xs text-muted-foreground"
               data-testid="session-portee-legende"
             >
+              {nuage.periode && (
+                <span className="flex items-center gap-1.5">
+                  <span
+                    className="inline-block rounded-full"
+                    style={{
+                      width: TAILLE_POINT_MIN,
+                      height: TAILLE_POINT_MIN,
+                      backgroundColor: tokenCssVar('zone-neutral'),
+                    }}
+                  />
+                  {t.rangeLegendPeriod}
+                </span>
+              )}
               <span className="flex items-center gap-1.5">
                 <span
-                  className="inline-block h-2.5 w-4"
-                  style={{ backgroundColor: tokenCssVar('divergent-pos') }}
+                  className="inline-block rounded-full"
+                  style={{
+                    width: TAILLE_POINT_MIN,
+                    height: TAILLE_POINT_MIN,
+                    backgroundColor: tokenCssVar('squad-player-1'),
+                  }}
                 />
-                {t.rangeAbove}
+                {t.rangeLegendSession}
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="inline-block h-px w-5 bg-muted-foreground" />
+                {t.rangeLegendTrend(FENETRE_ROLE)}
               </span>
               <span className="flex items-center gap-1.5">
                 <span
-                  className="inline-block h-2.5 w-4"
-                  style={{ backgroundColor: tokenCssVar('divergent-neg') }}
+                  className="inline-block rounded-full border border-dashed border-muted-foreground"
+                  style={{ width: TAILLE_POINT_MIN, height: TAILLE_POINT_MIN }}
                 />
-                {t.rangeBelow}
-              </span>
-              <span className="flex items-center gap-1.5">
-                <span className="inline-block h-2.5 w-4 border border-dashed border-muted-foreground" />
                 {t.rangeLowSample(PLANCHER_MESURE)}
               </span>
             </div>
             <p className="text-2xs text-muted-foreground" data-testid="session-portee-couverture">
-              {t.rangeCoverageFmt(block.kills_measured, block.kills_total)}
+              {nuage.periode && reference
+                ? t.coverageMatchesFmt(reference.matches_measured, reference.matches_total)
+                : t.rangeCoverageFmt(block.kills_measured, block.kills_total)}
             </p>
           </>
         )}
