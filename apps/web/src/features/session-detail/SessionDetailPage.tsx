@@ -291,10 +291,23 @@ export function SessionDetailPage() {
           : 'xl:grid-cols-[minmax(0,1fr)_minmax(0,0fr)]'
       }`}
     >
-      {/* Colonne principale */}
+      {/* Colonne principale.
+          `[&>*]:min-w-0` + `overflow-x-clip` QUAND LE DRAWER EST OUVERT, et pas avant : la
+          colonne cesse alors d'être un bloc pour devenir une grille (`xl:grid` +
+          `grid-rows-subgrid`, lot D16). Un enfant de bloc a `min-width: 0` et rétrécit avec
+          son parent ; un ÉLÉMENT DE GRILLE a `min-width: auto` et refuse de descendre sous
+          la largeur intrinsèque de son contenu — un canevas ECharts, qui porte une largeur
+          en pixels. Sans cette remise à zéro, l'ouverture du drawer rétrécissait la piste
+          sans rétrécir les blocs : les graphes restaient à leur largeur et débordaient sous
+          le drawer, et ECharts, ne voyant jamais son conteneur bouger, ne redessinait
+          jamais. `overflow-x: clip` (et NON `hidden`, qui casserait le `position: sticky` du
+          header L3 en créant un conteneur de scroll) est le même filet que la piste du
+          drawer porte déjà : rien ne peut plus s'échapper vers la colonne voisine. */}
       <div
         className={`min-w-0 space-y-6 p-6 ${
-          drawerOpen ? 'xl:row-span-full xl:grid xl:grid-rows-subgrid xl:gap-6 xl:space-y-0 xl:border-r' : ''
+          drawerOpen
+            ? 'overflow-x-clip [&>*]:min-w-0 xl:row-span-full xl:grid xl:grid-rows-subgrid xl:gap-6 xl:space-y-0 xl:border-r'
+            : ''
         }`}
       >
         {hasSessions ? (

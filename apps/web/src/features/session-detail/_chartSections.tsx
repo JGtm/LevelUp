@@ -59,6 +59,38 @@ import { SessionDamageComposite } from './SessionDamageComposite'
 import { SessionOcdrBars } from './SessionOcdrBars'
 import { SessionCareerXP } from './SessionCareerXP'
 
+/**
+ * pairGridClass — LE GABARIT DE LA RANGEE DE DEUX GRAPHES, et il n'y en a qu'un.
+ *
+ * DEUX COLONNES EN PLEINE PAGE, UNE SEULE EN COLONNE DIVISEE (`compact`). C'est la
+ * grammaire de TOUTES les autres sections de la colonne (`SessionPadControlCards`,
+ * `SessionUsageEquipmentCards`, `SessionCoordinationSection`, `SessionFragCard`) : quand le
+ * drawer de comparaison s'ouvre, la rangee a deux blocs s'empile.
+ *
+ * POURQUOI CE N'EST PAS UNE AFFAIRE DE PALIER `xl:`. Un palier Tailwind se lit sur la
+ * FENETRE, pas sur le conteneur. Or le contenu de l'app est plafonne a 1320 px
+ * (`.app-shell-width`, `styles/globals.css`) : des 1280 px de fenetre, `xl:` est vrai pour
+ * toujours, et la largeur reelle ne bouge plus. Drawer ouvert, la colonne tombe a ~660 px
+ * (~612 px sous le `p-6`) pendant que `xl:grid-cols-2` reste vrai — deux pistes de ~294 px
+ * pour des cartes de graphe dessinees pour la pleine page. C'est LA raison pour laquelle
+ * les graphes de gauche ne retrecissaient pas avec leur colonne alors que tout le reste de
+ * la colonne le faisait : eux seuls decidaient leur mise en page sur la fenetre au lieu de
+ * la decider sur l'etat de la page.
+ *
+ * `min-w-0` DES DEUX COTES DE LA FRONTIERE, et ca reste necessaire. Drawer ouvert, la
+ * colonne de gauche cesse d'etre un bloc pour devenir une grille (`xl:grid` +
+ * `grid-rows-subgrid`, lot D16) : tout ce qu'elle contient devient un ELEMENT DE GRILLE, et
+ * un element de grille a `min-width: auto` — il refuse de descendre sous la largeur
+ * intrinseque de son contenu. Le `min-w-0` sur la rangee laisse la rangee retrecir ; le
+ * `[&>*]:min-w-0` laisse retrecir la ou les cartes qu'elle porte.
+ *
+ * Cinq rangees partageaient ce littéral (regle CLAUDE.md n°6, <= 2 copies) : l'aide est la
+ * source unique, et `sessionShrink.guard.test.ts` interdit le retour du littéral.
+ */
+export function pairGridClass(compact: boolean): string {
+  return `grid min-w-0 gap-6 [&>*]:min-w-0${compact ? '' : ' xl:grid-cols-2'}`
+}
+
 interface Props {
   entry: SessionCompareEntry | null
   matches: SessionDetailMatchRow[]
@@ -221,30 +253,34 @@ export function useSessionChartSections({
     />
   )
 
+  // Gabarit des rangees a deux graphes : deux colonnes en pleine page, une seule des que
+  // la colonne est divisee (drawer de comparaison ouvert).
+  const pairGrid = pairGridClass(compact)
+
   // Chaque entree = UNE section de la colonne (cle stable de `_sections.ts`). Les
   // regroupements deux-colonnes historiques (donuts, radars, ...) restent des sections
   // uniques : le rendu pleine page est strictement identique a avant.
   const sections: Partial<Record<SessionSectionKey, ReactNode>> = {
     outcomes_kills: (
-      <div className="grid gap-6 xl:grid-cols-2">
+      <div className={pairGrid}>
         {outcomeDonut}
         {killsDonut}
       </div>
     ),
     mode_placement: (
-      <div className="grid gap-6 xl:grid-cols-2">
+      <div className={pairGrid}>
         {modeBreakdown}
         {placementBreakdown}
       </div>
     ),
     fda_radars: (
-      <div className="grid gap-6 xl:grid-cols-2">
+      <div className={pairGrid}>
         {fdaRadar}
         {fragsRadar}
       </div>
     ),
     netscore_fda: (
-      <div className="grid gap-6 xl:grid-cols-2">
+      <div className={pairGrid}>
         {netScore}
         {fdaBars}
       </div>
@@ -255,7 +291,7 @@ export function useSessionChartSections({
     first_blood: firstBlood,
     participation,
     mmr_ocdr: mmr ? (
-      <div className="grid gap-6 xl:grid-cols-2">
+      <div className={pairGrid}>
         {mmr}
         {ocdr}
       </div>

@@ -20,6 +20,13 @@
  * Les sections migrées posent elles-mêmes leur `overflow-x-auto`, leurs paragraphes ou leur
  * corps à hauteur plancher — un padding imposé ici aurait décalé quatre rendus d'un coup.
  * Le chrome est commun, la mise en page du contenu reste à l'appelant.
+ *
+ * `min-w-0` SUR LA `<section>`, ajouté le 2026-09-22 : une carte de section est posée dans
+ * une grille ou une colonne flex, et un élément de grille ou de flex a `min-width: auto` —
+ * il refuse de descendre sous la largeur intrinsèque de son contenu (un canevas ECharts
+ * porte une largeur en pixels). Sans cette remise à zéro, la carte garde sa largeur quand
+ * sa colonne rétrécit et déborde chez la voisine. Sans effet sur un enfant de bloc, où
+ * `min-width` vaut déjà 0.
  */
 import type { ReactNode } from 'react'
 
@@ -62,7 +69,7 @@ export function SectionCard({
   // `flex-1` peut ainsi remplir la cellule de grille que sa voisine étire.
   return (
     <section
-      className={`relative flex flex-col rounded-lg border border-border bg-card${className ? ` ${className}` : ''}`}
+      className={`relative flex min-w-0 flex-col rounded-lg border border-border bg-card${className ? ` ${className}` : ''}`}
       aria-label={label}
     >
       <h3 className="flex-none border-b border-border px-3 py-2 text-sm font-medium">
