@@ -25,6 +25,12 @@ GROUP BY match_id`
 // matérialisait la vue entière (3 s) ; le nom vient de l'annuaire de la lecture
 // (squad_repo_annuaire.go), même cascade, sur les xuids du top et les mêmes matchs.
 //
+// ORDRE TOTAL (lot perf L8, 2026-09-23) : games_together DESC, puis wins_together DESC, puis
+// p2.xuid ASC. Sans départage, la coupe du LIMIT 50 parmi les ex aequo changeait d'une lecture
+// à l'autre, donc la liste des coéquipiers connus que la composition exacte exclut aussi : ses
+// sessions et leurs comptes (page Escouade comme lecture légère) n'étaient pas reproductibles
+// (données réelles, lot L4b : cinq pages de suite, quatre différentes de la première).
+//
 // Paramètres positionnels :
 //
 //	?  = xuid (p2.xuid != ? — exclure le joueur principal de p2)
@@ -51,7 +57,7 @@ WHERE p1.match_id IN (%s)
   AND p1.xuid = ?` + campaignExclusionToken + `
   AND p2.xuid NOT LIKE 'bid(%%'
 GROUP BY p2.xuid
-ORDER BY games_together DESC
+ORDER BY games_together DESC, wins_together DESC, p2.xuid ASC
 LIMIT 50`
 
 // (Q30SquadMatches supprimée le 2026-07-18 — code mort : aucun call site actif,
