@@ -36,6 +36,7 @@ import (
 	"levelup/go-api/internal/analysis/coordination"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
+	"levelup/go-api/internal/observability/timing"
 )
 
 // bornesDelaiMs decoupe la distribution du delai : chaque valeur ouvre un intervalle,
@@ -88,6 +89,7 @@ func (s *TeammatesService) buildSquadEchange(
 	mainGamertag, mainXUID string,
 	teammates []domain.TeammateRow,
 ) *domain.SquadEchange {
+	defer timing.FromContext(ctx).Section("echange")()
 	if s.tacticalRepo == nil || !games.JournalDesMortsFiable(s.caps) {
 		return nil
 	}

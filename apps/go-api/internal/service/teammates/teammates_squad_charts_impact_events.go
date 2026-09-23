@@ -15,6 +15,7 @@ import (
 	"levelup/go-api/internal/analysis/timeline"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/domain/highlightevent"
+	"levelup/go-api/internal/observability/timing"
 )
 
 // buildSquadImpactMatrix construit la matrice d'impact (badges par match et
@@ -32,6 +33,7 @@ func (s *TeammatesService) buildSquadImpactMatrix(
 	selectedGamertags []string,
 	allies []domain.AllyParticipant,
 ) *domain.SquadImpactMatrix {
+	defer timing.FromContext(ctx).Section("impact_matrix")()
 	if len(allSquadRows) == 0 || len(selectedGamertags) == 0 {
 		return nil
 	}
@@ -246,6 +248,7 @@ func (s *TeammatesService) buildSquadFirstBlood(
 	mainGamertag, mainXUID string,
 	teammates []domain.TeammateRow,
 ) []domain.FirstBloodPlayerSeries {
+	defer timing.FromContext(ctx).Section("first_blood")()
 	if s.repo == nil {
 		return nil
 	}

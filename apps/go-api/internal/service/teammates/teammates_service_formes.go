@@ -20,6 +20,7 @@ import (
 	"levelup/go-api/internal/analysis/squadformes"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/legacymatch"
+	"levelup/go-api/internal/observability/timing"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/service/squadagg"
 )
@@ -43,6 +44,7 @@ func (s *TeammatesService) loadSquadFormes(
 	ctx context.Context, playerXUID string, filteredMatches []legacymatch.SynthesisMatchRow,
 	history []domain.SquadMatchHistoryRow, req domain.TeammatesQueryRequest,
 ) *domain.SquadFormesBlock {
+	defer timing.FromContext(ctx).Section("squad_formes")()
 	return squadagg.BuildSquadFormesBlock(ctx, squadagg.SquadFormesQuery{
 		Repo:              s.formesUsageRepo,
 		Objectives:        s.formesObjectiveRepo,

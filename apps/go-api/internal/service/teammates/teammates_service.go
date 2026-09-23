@@ -32,6 +32,7 @@ import (
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/canonical"
 	"levelup/go-api/internal/legacymatch"
+	"levelup/go-api/internal/observability/timing"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/service/squadagg"
 )
@@ -225,7 +226,9 @@ func (s *TeammatesService) GetPage(
 	playerXUID string,
 	req domain.TeammatesQueryRequest,
 ) (domain.TeammatesPageResponse, error) {
+	stop := timing.FromContext(ctx).Section("top_teammates")
 	topRows, err := s.repo.LoadTopTeammates(ctx, playerXUID)
+	stop()
 	if err != nil {
 		return domain.TeammatesPageResponse{}, fmt.Errorf("TeammatesService: %w", err)
 	}
@@ -251,9 +254,11 @@ func (s *TeammatesService) GetPage(
 	if s.playerMatchesRepo == nil || s.titleSlug == "" || s.gamertag == "" {
 		return domain.TeammatesPageResponse{}, fmt.Errorf("TeammatesService: PlayerMatchesRepo non câblé (P4.3 finale exige le wiring DI)")
 	}
+	stop = timing.FromContext(ctx).Section("player_matches")
 	canonicalRows, err := s.playerMatchesRepo.LoadPlayerMatches(
 		ctx, s.titleSlug, s.gamertag, port.PlayerMatchFilters{},
 	)
+	stop()
 	if err != nil {
 		return domain.TeammatesPageResponse{}, fmt.Errorf("TeammatesService synthesis: %w", err)
 	}
@@ -397,15 +402,21 @@ func (s *TeammatesService) GetPage(
 		if req.FilterExactComposition {
 			excludeXUIDs = sortedXUIDSlice(extraPool)
 		}
+		stop = timing.FromContext(ctx).Section("map_stats")
 		squadStats, err := s.repo.LoadMapStatsForSquad(ctx, playerXUID, selectedXUIDs, excludeXUIDs)
+		stop()
 		if err != nil {
 			issues.add(ctx, domain.DataIssueMapStats, "", err)
 		}
 		mapBreakdown = enrichMapBreakdownWithSquadStats(mapBreakdown, squadStats)
+		stop = timing.FromContext(ctx).Section("match_history")
 		matchHistory = buildSquadMatchHistory(
 			allSquadRows, squadStatsToWinTotal(squadStats), s.titleSlug,
 			s.replayAvailability(ctx), s.roundsDecide)
+		stop()
+		stop = timing.FromContext(ctx).Section("session_timeline")
 		sessionTimeline = buildSquadSessionTimeline(allSquadRowsForTimeline)
+		stop()
 		mapHeatmap = s.buildSquadMapHeatmap(ctx, allSquadRows, req.SelectedGamertags, issues)
 		impactMatrix = s.buildSquadImpactMatrix(ctx, allSquadRows, playerXUID, s.gamertag, req.SelectedGamertags, allies)
 		perMinuteStats = s.buildSquadPerMinuteStats(ctx, allSquadRows, s.gamertag, req.SelectedGamertags, sessionMatchIDs)
@@ -454,10 +465,12 @@ func (s *TeammatesService) GetPage(
 	var compositionSessions []domain.CompositionSessionEntry
 	var latestCompositionSession string
 	if len(req.SelectedGamertags) > 0 {
+		stop = timing.FromContext(ctx).Section("composition_sessions")
 		compositionSessions = buildCompositionSessionEntries(
 			allSquadRowsForTimeline, rosterRowsForTimeline, excludedForTimeline,
 			mainTeamByMatch, extraPool, topRows,
 		)
+		stop()
 		if len(compositionSessions) > 0 {
 			latestCompositionSession = compositionSessions[0].Label
 		}

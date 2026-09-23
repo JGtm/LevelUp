@@ -15,6 +15,7 @@ import (
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/legacymatch"
+	"levelup/go-api/internal/observability/timing"
 )
 
 func buildTeammateOptions(rows []domain.TopTeammateRow) []domain.TeammateOption {
@@ -41,6 +42,7 @@ func (s *TeammatesService) buildTeammateRowWithMatches(
 	allMatches []legacymatch.SynthesisMatchRow,
 	sessionMatchIDs map[string]bool,
 ) (*domain.TeammateRow, []domain.SquadMatchRow, []domain.SquadMatchRow, error) {
+	defer timing.FromContext(ctx).Section("teammate_rows")()
 	// Étape 1 : chercher le gamertag dans le top 50 escouade — case-insensitive
 	// pour absorber les variations de casse entre la saisie user et la valeur en
 	// DB (Halo API renvoie tantôt "Madina97294" tantôt "madina97294").

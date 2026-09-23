@@ -24,6 +24,7 @@ import (
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/legacymatch"
+	"levelup/go-api/internal/observability/timing"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/service/squadagg"
 )
@@ -45,6 +46,7 @@ func (s *TeammatesService) loadEquipmentUsage(
 	ctx context.Context, playerXUID string,
 	filteredMatches []legacymatch.SynthesisMatchRow, selectedGamertags []string, locale string,
 ) *domain.EquipmentUsageBlock {
+	defer timing.FromContext(ctx).Section("equipment_usage")()
 	return squadagg.BuildEquipmentUsageBlock(ctx, squadagg.EquipmentUsageQuery{
 		Repo:            s.sessionUsageRepo,
 		PlayerXUID:      playerXUID,
