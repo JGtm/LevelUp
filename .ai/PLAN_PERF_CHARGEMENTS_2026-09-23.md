@@ -843,6 +843,7 @@ Items :
 - [ ] C.4 `.env.local` local : `LEVELUP_DUCKDB_THREADS=8`, `LEVELUP_DUCKDB_MEMORY_LIMIT=4GB`
       (poste 16 coeurs / 32 Go ; prod inchangee)
 - [ ] C.5 go utilisateur puis fusion dans `feat/v75` ; entree thought_log ; retrait des worktrees
+- [ ] C.6 garde-rails structurels de perf, poses ou verifies a la cloture : (a) test grep interdisant `LEFT JOIN v_gamertag_lookup` dans les templates SQL des pages (queries_squad.go, squad_repo*.go) une fois L2 fusionne ; (b) tests de fenetres bornees par EXPLAIN ANALYZE sur les vues `_latest` (L5a : `tactical_repo_fenetres_test.go`, `weapon_range_repo_fenetres_test.go`) ; (c) ratchet d invalidation des caches de lecture (L5b : `archlint/player_read_cache_invalidation_test.go`) ; (d) garde-rail du filigrane LUSR (L6 : `lusr_watermark_guardrail_test.go`) ; (e) tableau avant/apres des durees par page dans l etat des lieux, meme protocole que le 23/09 matin.
       (jonctions node_modules retirees AVANT, jamais `--force`)
 
 ## 8 bis. Protocole de mesure (superviseur uniquement)
