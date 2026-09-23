@@ -25,8 +25,14 @@ import (
 	"time"
 )
 
-// motifWriteTimeout capture la valeur du `WriteTimeout` du serveur HTTP, en secondes.
-var motifWriteTimeout = regexp.MustCompile(`WriteTimeout:\s*(\d+)\s*\*\s*time\.Second`)
+// motifWriteTimeout capture la valeur du `WriteTimeout` du serveur HTTP, en secondes. Depuis le
+// 2026-09-23 (plan perf, D3.1 : 30 s -> 120 s) elle vit dans la constante nommee
+// `serverWriteTimeout` de cmd/server/main.go.
+var motifWriteTimeout = regexp.MustCompile(`serverWriteTimeout\s*=\s*(\d+)\s*\*\s*time\.Second`)
+
+// motifWriteTimeoutBranche : le champ `WriteTimeout` du http.Server porte bien cette constante
+// (sinon la valeur verifiee ne serait plus celle qui coupe les connexions).
+var motifWriteTimeoutBranche = regexp.MustCompile(`WriteTimeout:\s*serverWriteTimeout\b`)
 
 // TestBudgetWriterDepotTientDansLeWriteTimeout : l'attente du writer, MAJOREE, doit laisser au
 // serveur de quoi ecrire la reponse.
@@ -38,10 +44,11 @@ func TestBudgetWriterDepotTientDansLeWriteTimeout(t *testing.T) {
 			chemin, err)
 	}
 	m := motifWriteTimeout.FindSubmatch(src)
-	if m == nil {
-		t.Fatalf("`WriteTimeout: N * time.Second` introuvable dans %s — la forme a change, "+
-			"ce garde-rail doit etre mis a jour AVEC elle (ne pas le supprimer : c'est lui qui "+
-			"empeche le depot d'ouvrier de depasser le budget de reponse du serveur)", chemin)
+	if m == nil || !motifWriteTimeoutBranche.Match(src) {
+		t.Fatalf("`const serverWriteTimeout = N * time.Second` ou `WriteTimeout: serverWriteTimeout` "+
+			"introuvable dans %s — la forme a change, ce garde-rail doit etre mis a jour AVEC elle "+
+			"(ne pas le supprimer : c'est lui qui empeche le depot d'ouvrier de depasser le budget "+
+			"de reponse du serveur)", chemin)
 	}
 	secondes, err := strconv.Atoi(string(m[1]))
 	if err != nil {
