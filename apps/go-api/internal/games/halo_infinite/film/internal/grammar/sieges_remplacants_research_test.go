@@ -38,6 +38,7 @@ package grammar
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"sort"
 	"testing"
@@ -69,6 +70,20 @@ type siegeEntite struct {
 
 // TestSiegesDesRemplacants : le tableau des entites ti=9 par temoin, et le verdict de siege.
 func TestSiegesDesRemplacants(t *testing.T) {
+	// SIEGES_FILM (sonde P4, 2026-09-23) : un film COMPLET du cache au lieu des bobines coupees —
+	// la borne de la bobine ne s applique plus, un depart avant le dernier paquet est un fait du film.
+	if dir := os.Getenv("SIEGES_FILM"); dir != "" {
+		film, err := source.LoadDir(dir, nil)
+		if err != nil {
+			t.Fatalf("%s : chargement du film : %v", dir, err)
+		}
+		ents, pk, err := balayerEntitesTi9(NewFilmContext(film))
+		if err != nil {
+			t.Fatalf("%s : %v", dir, err)
+		}
+		rapporterSieges(t, filepath.Base(dir), "cache", ents, pk)
+		return
+	}
 	for _, tem := range siegesTemoins() {
 		dir := filepath.Join("..", "..", "replay", "testdata", "minifilm_"+tem.Court)
 		film, err := source.LoadDir(dir, nil)
