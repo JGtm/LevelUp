@@ -22,6 +22,9 @@ import type { FilterContextInput, FilterContextResolved, SessionOption } from '@
 
 const paramsRef = { titleSlug: 'halo_infinite', playerSlug: 'p' }
 const pathRef = { current: '/t/halo_infinite/players/p/home' }
+// Abonnements au routeur (useRouterState) pendant le rendu : un composant qui rend
+// `<Navigate>` ne doit JAMAIS s'y abonner (cf. le test « slug inconnu »).
+const routerStateCalls = { n: 0 }
 
 vi.mock('@tanstack/react-router', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@tanstack/react-router')>()
@@ -32,10 +35,11 @@ vi.mock('@tanstack/react-router', async (importOriginal) => {
       useParams: () => paramsRef,
     }),
     useRouterState: (opts?: { select?: (s: { location: { pathname: string } }) => unknown }) => {
+      routerStateCalls.n += 1
       const state = { location: { pathname: pathRef.current } }
       return opts?.select ? opts.select(state) : state
     },
-    Navigate: () => null,
+    Navigate: () => <div data-testid="player-navigate" />,
     Outlet: () => <div data-testid="player-outlet" />,
   }
 })
@@ -95,6 +99,8 @@ beforeEach(() => {
   corpsResolve.length = 0
   reponseResolve = resolved([soloSession('s-new', 'NEW (2)')])
   pathRef.current = '/t/halo_infinite/players/p/home'
+  paramsRef.playerSlug = 'p'
+  routerStateCalls.n = 0
   useAppShellStore.setState({
     isBootstrapped: true,
     locale: 'fr',
@@ -163,5 +169,29 @@ describe('PlayerLayout — résolution solo seulement sous la barre solo (D4.4)'
     }
     expect(useSoloFilterStore.getState().filterContext.sessions?.picked_sessions).toEqual(['NEW (2)'])
     expect(vus.some((picked) => picked.includes('OLD (3)'))).toBe(false)
+  })
+})
+
+describe('PlayerLayout — slug inconnu : redirection SANS abonnement au routeur', () => {
+  // Régression du 2026-09-23 (CI E2E, PR vers main, après le lot perf L4a) : PlayerLayout
+  // s'abonnait au routeur (useRouterState) ET rendait `<Navigate params={{...}}>` sur un
+  // slug inconnu. Navigate re-navigue dès que l'identité de ses props change (objet
+  // `params` neuf à chaque rendu) et la navigation re-rend l'abonné : boucle, onglet
+  // figé. L'abonnement vit désormais dans un enfant monté seulement sur un slug valide.
+  it('slug inconnu : <Navigate> rendu, aucun useRouterState, aucune résolution', async () => {
+    paramsRef.playerSlug = 'inconnu'
+    renderWithProviders(<PlayerLayout />)
+    expect(screen.getByTestId('player-navigate')).toBeInTheDocument()
+    expect(screen.queryByTestId('player-outlet')).not.toBeInTheDocument()
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 150))
+    })
+    expect(routerStateCalls.n).toBe(0)
+    expect(corpsResolve).toHaveLength(0)
+  })
+
+  it('slug connu : l abonnement au routeur existe (témoin du garde-fou)', async () => {
+    await monterSur('/t/halo_infinite/players/p/stats/timeseries')
+    expect(routerStateCalls.n).toBeGreaterThan(0)
   })
 })
