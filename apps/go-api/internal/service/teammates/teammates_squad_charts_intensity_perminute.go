@@ -49,30 +49,6 @@ func intensityMatchOrder(allSquadRows []domain.SquadMatchRow) (map[string]intens
 	return metas, order
 }
 
-// resolveIntensityXUIDs résout le xuid du main + de chaque coéquipier via
-// squadLoader.LoadFor — obligatoire : playerMatchesRepo est bound au main, donc
-// tous les toggles « par joueur » affichaient le même xuid (celui du main) →
-// mêmes kill events. Un gamertag non résolu est absent de la map.
-func (s *TeammatesService) resolveIntensityXUIDs(
-	ctx context.Context, mainGamertag string, selectedGamertags []string,
-) map[string]string {
-	xuidByGT := make(map[string]string)
-	if s.squadLoader == nil {
-		return xuidByGT
-	}
-	for _, gt := range append([]string{mainGamertag}, selectedGamertags...) {
-		if _, ok := xuidByGT[gt]; ok {
-			continue
-		}
-		rows, err := s.squadLoader.LoadFor(ctx, s.titleSlug, gt, port.PlayerMatchFilters{})
-		if err != nil || len(rows) == 0 {
-			continue
-		}
-		xuidByGT[gt] = rows[0].Self.Identity.XUID
-	}
-	return xuidByGT
-}
-
 // intensityRowsBuilder produit, pour un filtre d'events, 1 ligne par match
 // avec 10 phases normalisées par le max-bucket du match.
 type intensityRowsBuilder struct {
@@ -154,15 +130,18 @@ func intensityRowsHaveSignal(rows []domain.SquadIntensityMatchRow) bool {
 //     par GetPage). Un match sans équipe résolue → phases nulles sur ce match ;
 //   - `lobby` (domain.SquadIntensityKeyLobby) : tous les frags du match, les
 //     deux camps (les highlight_events du film couvrent tout le lobby) ;
-//   - un gamertag par joueur (main + sélectionnés).
+//   - un gamertag par joueur (main + sélectionnés). Son xuid est celui de la page —
+//     mainXUID et teammates[].XUID, les mêmes que premier frag, échange et armes —,
+//     plus jamais une relecture de l'historique du joueur par LoadFor (D2.3, lot perf
+//     L2) : un coéquipier sans xuid résolu garde une ligne vide.
 //
 // Renvoie nil si <3 matchs (section masquée), aucun kill event, ou aucune
 // ligne ne produit de profil.
 func (s *TeammatesService) buildSquadIntensityProfile(
 	ctx context.Context,
 	allSquadRows []domain.SquadMatchRow,
-	mainGamertag string,
-	selectedGamertags []string,
+	mainGamertag, mainXUID string,
+	selectedGamertags []string, teammates []domain.TeammateRow,
 	mainTeamByMatch map[string]map[string]struct{},
 ) *domain.SquadIntensityProfile {
 	defer timing.FromContext(ctx).Section("intensity_profile")()
@@ -206,7 +185,7 @@ func (s *TeammatesService) buildSquadIntensityProfile(
 
 	// 4. Options + filtre d'events par option. Les lignes agrégées portent leur
 	//    clé en libellé (le front traduit) ; les joueurs, leur gamertag.
-	xuidByGT := s.resolveIntensityXUIDs(ctx, mainGamertag, selectedGamertags)
+	xuidByGT := resolveSquadScope(allSquadRows, mainGamertag, mainXUID, teammates).xuidByPlayer
 	options := []domain.SquadIntensityOption{
 		{Key: domain.SquadIntensityKeyTeam, Label: domain.SquadIntensityKeyTeam},
 		{Key: domain.SquadIntensityKeyLobby, Label: domain.SquadIntensityKeyLobby},

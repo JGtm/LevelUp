@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/analysis/sessionusage"
+	"levelup/go-api/internal/analysis/squadformes"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/legacymatch"
 	"levelup/go-api/internal/port"
@@ -117,4 +118,62 @@ func TestTeammatesService_GetPage_SansRepoLeBlocDitPourquoi(t *testing.T) {
 // « non mesure » : c'est l'etat par defaut de tous les temoins qui n'en parlent pas.
 func (m *mockTeammatesUsageRepo) LoadPadTiers(_ context.Context, _ []string) ([]sessionusage.PadTierRow, error) {
 	return m.padTiers, m.padTiersErr
+}
+
+// compteurUsageRepo compte les lectures du résumé d'usage ; il sert AUSSI de source au bloc
+// « formes retenues » (LoadUsageFilmPads), comme le câblage de production.
+type compteurUsageRepo struct {
+	*mockTeammatesUsageRepo
+	lectures map[string]int
+}
+
+func (c *compteurUsageRepo) LoadUsageFilms(ctx context.Context, ids []string) (map[string]sessionusage.FilmRow, error) {
+	c.lectures["films"]++
+	return c.mockTeammatesUsageRepo.LoadUsageFilms(ctx, ids)
+}
+func (c *compteurUsageRepo) LoadUsagePlayers(ctx context.Context, ids []string) ([]sessionusage.PlayerRow, error) {
+	c.lectures["players"]++
+	return c.mockTeammatesUsageRepo.LoadUsagePlayers(ctx, ids)
+}
+func (c *compteurUsageRepo) LoadParticipants(ctx context.Context, ids []string) ([]sessionusage.ParticipantRow, error) {
+	c.lectures["participants"]++
+	return c.mockTeammatesUsageRepo.LoadParticipants(ctx, ids)
+}
+func (c *compteurUsageRepo) LoadUsageFilmPads(context.Context, []string) (map[string]squadformes.FilmPads, error) {
+	c.lectures["pads"]++
+	return nil, nil
+}
+
+// TestTeammatesService_GetPage_UsageEtFormesPartagentLeursLectures (D2.6, lot perf L2) : les
+// deux blocs du résumé d'usage publient leur section en ne lisant qu'UNE fois les films, les
+// joueurs et les participants du scope (avant : deux fois chacun).
+func TestTeammatesService_GetPage_UsageEtFormesPartagentLeursLectures(t *testing.T) {
+	t.Parallel()
+	t0 := time.Now().UTC().Add(-time.Hour)
+	repo := &mockSquadRepo{
+		topRows:   []domain.TopTeammateRow{{XUID: "x1", Gamertag: "Ally1", GamesTogether: 1}},
+		synthRows: []legacymatch.SynthesisMatchRow{{MatchID: "m1", StartTime: t0, Outcome: domain.OutcomeWin}},
+	}
+	usage := &compteurUsageRepo{lectures: map[string]int{}, mockTeammatesUsageRepo: &mockTeammatesUsageRepo{
+		films: map[string]sessionusage.FilmRow{"m1": {MatchID: "m1", DurationMS: 600000}},
+		participants: []sessionusage.ParticipantRow{
+			{MatchID: "m1", XUID: "player-xuid", Gamertag: "Main", TeamID: teammatesUsageTeam(0), PresentAtCompletion: true},
+		},
+	}}
+	svc := NewTeammatesService(repo, nil).
+		WithPlayerMatchesRepo(newSynthMockFromRows(repo.synthRows, nil), "halo_infinite", "Main").
+		WithEquipmentUsage(usage).
+		WithSquadFormes(usage, nil, "")
+	resp, err := svc.GetPage(context.Background(), "player-xuid", domain.TeammatesQueryRequest{})
+	if err != nil {
+		t.Fatalf("GetPage : %v", err)
+	}
+	if resp.EquipmentUsage == nil || !resp.EquipmentUsage.Available || resp.SquadFormes == nil {
+		t.Fatalf("les deux blocs doivent être publiés : usage %+v, formes %v", resp.EquipmentUsage, resp.SquadFormes != nil)
+	}
+	for _, lecture := range []string{"films", "players", "participants", "pads"} {
+		if usage.lectures[lecture] != 1 {
+			t.Errorf("lecture %s faite %d fois, attendu 1 (lectures %v)", lecture, usage.lectures[lecture], usage.lectures)
+		}
+	}
 }

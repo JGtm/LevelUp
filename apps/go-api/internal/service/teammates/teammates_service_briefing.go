@@ -1,5 +1,5 @@
 // Package service - teammates_service_briefing.go : briefing header +
-// loadTeammatesCanonicalParallel + filtres synthesis (cascade, period,
+// loadTeammatesCanonical + filtres synthesis (cascade, period,
 // picked sessions, session, experience labels). Decoupe de
 // teammates_service.go (god-file split, refactor 2026-05-27).
 package teammates
@@ -12,10 +12,7 @@ import (
 	"log/slog"
 	"slices"
 	"strings"
-	"sync"
 	"time"
-
-	"golang.org/x/sync/errgroup"
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
@@ -46,8 +43,9 @@ func (s *TeammatesService) buildBriefingHeaderForTeammatesPage(
 		return &domain.SquadHeader{SoloKPIs: &kpis}
 	}
 
-	// Mode squad : charge canonical rows par teammate en parallele.
-	teammateRows, err := s.loadTeammatesCanonicalParallel(ctx, selectedGamertags)
+	// Mode squad : les canonical rows de chaque coéquipier, déjà lues pour la requête
+	// (lecturesDeLaPage.precharger, D2.3).
+	teammateRows, err := s.loadTeammatesCanonical(ctx, selectedGamertags)
 	if err != nil {
 		slog.WarnContext(ctx, "teammates_briefing.load_failed",
 			"err", err, "selected_count", len(selectedGamertags))
@@ -97,41 +95,34 @@ func (s *TeammatesService) buildBriefingHeaderForTeammatesPage(
 	return header
 }
 
-// loadTeammatesCanonicalParallel charge les canonical PlayerMatchRow pour
-// chaque gamertag en parallele via errgroup. Capability absente est ignoree
-// silencieusement (le teammate sera juste absent du resultat).
+// loadTeammatesCanonical rend les canonical PlayerMatchRow de chaque gamertag.
+// Capability absente est ignoree silencieusement (le teammate sera juste absent
+// du resultat) ; toute autre erreur degrade le bandeau en mode solo.
+//
+// SEQUENTIEL DEPUIS LE LOT PERF L2 (D2.3) : dans GetPage, ces lectures sont deja
+// faites une fois par requete (lecturesDeLaPage.precharger) et servies de memoire ;
+// la parallelisation par errgroup ne faisait plus que relire la base en double.
 //
 // Utilise squadLoader.LoadFor (resolution dynamique par gamertag) plutot que
 // playerMatchesRepo (qui est bound au main et ignore l'arg gamertag).
 // Si squadLoader est nil, retourne une map vide → mode solo dans le briefing.
-func (s *TeammatesService) loadTeammatesCanonicalParallel(
+func (s *TeammatesService) loadTeammatesCanonical(
 	ctx context.Context,
 	gamertags []string,
 ) (map[string][]canonical.PlayerMatchRow, error) {
-	if s.squadLoader == nil {
-		return map[string][]canonical.PlayerMatchRow{}, nil
-	}
-	g, gctx := errgroup.WithContext(ctx)
-	var mu sync.Mutex
 	out := make(map[string][]canonical.PlayerMatchRow, len(gamertags))
-	for _, gt := range gamertags {
-		gt := gt
-		g.Go(func() error {
-			rows, err := s.squadLoader.LoadFor(gctx, s.titleSlug, gt, port.PlayerMatchFilters{})
-			if err != nil {
-				if errors.Is(err, games.ErrCapabilityNotSupported) {
-					return nil
-				}
-				return fmt.Errorf("LoadFor(%s): %w", gt, err)
-			}
-			mu.Lock()
-			out[gt] = rows
-			mu.Unlock()
-			return nil
-		})
+	if s.squadLoader == nil {
+		return out, nil
 	}
-	if err := g.Wait(); err != nil {
-		return nil, err
+	for _, gt := range gamertags {
+		rows, err := s.squadLoader.LoadFor(ctx, s.titleSlug, gt, port.PlayerMatchFilters{})
+		if err != nil {
+			if errors.Is(err, games.ErrCapabilityNotSupported) {
+				continue
+			}
+			return nil, fmt.Errorf("LoadFor(%s): %w", gt, err)
+		}
+		out[gt] = rows
 	}
 	return out, nil
 }
@@ -334,6 +325,30 @@ func filterSynthesisByPickedSessions(matches []legacymatch.SynthesisMatchRow, pi
 		if _, ok := keep[*m.SessionLabel]; ok {
 			out = append(out, m)
 		}
+	}
+	return out
+}
+
+// sessionMatchIDsDeLaPage rend les match_id retenus par la session piquée, nil sans session
+// piquée (= aucun filtre : tous les matchs escouade). Une session se pique par
+// picked_solo/squad_session_labels OU par filters.sessions.picked_sessions (rail, pastille,
+// sélecteur multiple) : filteredMatches porte déjà le résultat des deux règles
+// (filterSynthesisBySession, filterSynthesisByPickedSessions), l'ensemble se lit donc dessus.
+//
+// D2.5, lot perf L2 (2026-09-23) : seul le premier chemin comptait. Une requête ne portant que
+// filters.sessions — la requête intermédiaire du ré-ancrage front — calculait toutes les
+// sections sur tout l'historique de la composition (38 matchs) au lieu de la session (7).
+func sessionMatchIDsDeLaPage(
+	req domain.TeammatesQueryRequest, filteredMatches []legacymatch.SynthesisMatchRow,
+) map[string]bool {
+	piquee := len(req.PickedSoloSessions) > 0 || len(req.PickedSquadSessions) > 0 ||
+		(req.Filters != nil && len(req.Filters.Sessions.PickedSessions) > 0)
+	if !piquee {
+		return nil
+	}
+	out := make(map[string]bool, len(filteredMatches))
+	for _, m := range filteredMatches {
+		out[m.MatchID] = true
 	}
 	return out
 }

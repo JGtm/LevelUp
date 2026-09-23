@@ -523,18 +523,177 @@ replaylabels/*` (cache), `internal/analysis/*` seulement pour une fonction pure 
 tests associes. Pas de changement de contrat `domain.TeammatesPageResponse`.
 
 Items :
-- [ ] L2.1 annuaire + retrait des jointures (D2.1) + tests de parite des gamertags
-- [ ] L2.2 `LoadImpactEvents` unique (D2.2)
-- [ ] L2.3 `LoadFor` unique par membre + xuids sans LoadFor (D2.3)
-- [ ] L2.4 journal des morts restreint et partage (D2.4)
-- [ ] L2.5 `sessionMatchIDs` depuis `filters.sessions` (D2.5)
-- [ ] L2.6 usage / formes partages + `replaylabels` hors chemin de requete (D2.6)
-- [ ] L2.7 annulation entre sections (D2.7)
+- [x] L2.1 annuaire + retrait des jointures (D2.1) + tests de parite des gamertags — Q29 / Q32 /
+  Q32b sans `LEFT JOIN v_gamertag_lookup` (`queries_squad.go`) ; annuaire par LECTURE
+  (`duckdb/squad_repo_annuaire.go` : une requete alias + participants sur les memes matchs, jambe
+  kill-feed seulement pour les xuids restes sans nom), cascade pure `analysis.AnnuaireGamertags.
+  Resolve` + `MaskedXuidLabel` (`analysis/identity_annuaire.go`) ; jambe kill-feed de la vue
+  extraite en UN generateur partage vue / annuaire (`identity.go`, DDL de la vue inchange a
+  l'octet, sha256 9aebfa6b…) ; tests : `identity_annuaire_test.go` + 4 tests d'integration contre
+  la VRAIE vue (`squad_repo_annuaire_test.go`) ; ecarts et « une fois par GetPage » : cf. journal
+- [x] L2.2 `LoadImpactEvents` unique (D2.2) — `service/teammates/teammates_service_loads.go` :
+  `pourLaRequete` (copie du service par requete, lecteur Q32 memoise par ENSEMBLE de matchs) +
+  `prechargerImpacts` (section `impact_events_shared`, avant les quatre blocs) ; GetPage +2 L ;
+  tests `teammates_service_loads_test.go` (une lecture pour les 4 consommateurs, deux requetes =
+  deux lectures) ; mutation « enveloppe retiree » : 5 lectures, rouge
+- [x] L2.3 `LoadFor` unique par membre + xuids sans LoadFor (D2.3) — `teammates_service_loads.go` :
+  chargeur memoise par (titre, gamertag) + `precharger` (section `squad_members` : coequipiers
+  selectionnes toujours, joueur principal quand la population escouade existe — exactement les
+  lectures que les blocs faisaient) ; bandeau sequentiel (`loadTeammatesCanonical`, errgroup
+  retire) ; intensite : xuids de `resolveSquadScope(...).xuidByPlayer` (`resolveIntensityXUIDs`
+  supprime) ; tests : un LoadFor par membre (avant : 9 pour un coequipier), bandeau seul sans
+  population, intensite sans chargeur ; mutations (enveloppe retiree, xuids de la page retires) :
+  rouges ; effet decide de D2.3 : un coequipier NON suivi a desormais sa ligne d'intensite (cf.
+  journal)
+- [x] L2.4 journal des morts restreint et partage (D2.4) — `teammates_squad_echange.go` :
+  `lireJournalDesMorts` (section `kill_events_shared`) avec `TacticalQuery.Matchs =
+  RestreindreAux(habituel)`, lecture unique partagee par l'echange et le nuage (qui la recoit
+  deja restreinte) ; `teammates_squad_isolement.go` : `MortsAvecContexte` sur la MEME liste
+  blanche ; test `TestBuildSquadEchange_JournalRestreintALaComposition` (une lecture de chaque,
+  liste = [m1 m2]) ; mutations (liste retiree de l'une ou l'autre lecture) : rouges ; parite page
+  9/9. GAIN NUL TANT QUE L5a N'EST PAS FUSIONNE : sur la copie, KillEvents 1,9 -> 1,8 s et
+  MortsAvecContexte 3,3 -> 3,3 s avec la liste — le lecteur tactique l'applique par
+  semi-jointure sur l'univers, sous laquelle DuckDB ne pousse pas les fenetres `_latest` (cf.
+  D5a.1). « Univers calcule une fois » : non atteignable ici (chaque lecture tactique calcule le
+  sien dans `tactical_repo*.go`, perimetre L5a) — cf. journal
+- [x] L2.5 `sessionMatchIDs` depuis `filters.sessions` (D2.5) — `sessionMatchIDsDeLaPage`
+  (`teammates_service_briefing.go`, a cote des filtres de session) : l'ensemble se lit sur
+  `filteredMatches`, qui porte deja les deux regles (labels, comme
+  `filterSynthesisByPickedSessions`) ; GetPage -6 L ; test
+  `TestGetPage_SessionFilter_ParFiltersSessions` (2 matchs sur 3, meme population que par
+  labels), mutation (condition retiree) : rouge ; copie de production : la requete
+  `filters.sessions` seule rend desormais EXACTEMENT la page de `picked_squad_session_labels`
+  (7 matchs au lieu de 38), les 8 autres scenarios inchanges
+- [x] L2.6 usage / formes partages + `replaylabels` hors chemin de requete (D2.6) —
+  `squadagg.LireUsage` + `LecturesUsage` (champ `Lectures` optionnel des deux requetes
+  d'assemblage : Synthese et Sessions inchangees) ; `teammates_service_usage.go` :
+  `loadUsageBlocks` / `lireUsagePartage` (section `usage_shared`), GetPage -3 L ;
+  `replaylabels.Catalogue` (`cache.go`) : catalogue lu une fois par (racine, titre) et par
+  processus, echec non memorise, lu par les deux assemblages squadagg ; la PREMIERE requete le
+  paie encore (un prechargement au boot releverait du cablage, hors perimetre) ; tests : une
+  lecture de chaque (avant : deux), `TestCatalogue_*` ; mutations (partage coupe, cache coupe) :
+  rouges ; parite page 9/9 ; usage + formes 118 -> 91 ms sur la page de reference
+- [x] L2.7 annulation entre sections (D2.7) — `teammates_service_sections.go` (nouveau) : les
+  sections de la population escouade sortent de GetPage (`sectionsDeLaPopulation` ->
+  `tableauxDeLaPopulation` + `graphesDeLaPopulation`, entree `populationEscouade`, sortie
+  `sectionsEscouade`), chacune sous `siVivante` (lancee seulement si `ctx.Err() == nil`) ;
+  GetPage verifie `ctx.Err()` avant l'historique du joueur, avant chaque coequipier, apres la
+  boucle, apres les sections et apres les blocs d'usage -> `requeteAnnulee` (erreur du contexte
+  enveloppee, reponse vide : jamais une page partielle) ; prechargement : controle entre deux
+  membres et avant les impacts (`teammates_service_loads.go`) ; blocs d'usage : trois etapes
+  sous `siVivante` (`teammates_service_usage.go`) ; GetPage 316 -> 263 L, fichier 575 -> 522 L ;
+  tests `teammates_service_sections_test.go` (7 points d'annulation : `context.Canceled`,
+  reponse vide, section en cours presente, suivantes absentes, lecture en cours non refaite ;
+  temoin non annule ; blocs d'usage d'une requete deja annulee) ; 10 mutations (chaque point de
+  controle retire, `siVivante` inconditionnel, prechargement ou blocs d'usage hors garde) :
+  rouges ; parite page 9/9 identique a L2.6
 
 Gate : `gofmt` ; `go build ./...` ; `go vet ./...` ; `go test ./internal/service/...
 ./internal/platform/duckdb/... ./internal/analysis/...` ; `go test -tags=integration -p 1
 ./internal/platform/duckdb/...` si un repo est touche ; lint paquets touches ; chrono SQL sur
 copie (§0) pour Q29 / Q32 / Q32b avant et apres (attendu : secondes → millisecondes).
+
+Journal du lot (2026-09-23, branche `feat/perf-l2` depuis 37cb48167 ; commits 092a43e6b L2.1,
+e0df01c9d L2.1 suite, cf6df1232 L2.2, 033f8d2d5 L2.3, f398b6e29 L2.4, 8c61334ee L2.5, 739fbdefc
+L2.6, 7176aaa45 L2.7, b02ea5020 gate, puis ce journal) :
+
+- Chrono SQL (copie de `shared_matches_v2.duckdb` et de la base joueur JGtm dans le scratchpad,
+  `access_mode=read_only`, `threads=2`, `memory_limit=512MB`, 3 executions, par les VRAIES
+  methodes du repo) : Q29 LoadTopTeammates 1,7-2,4 s -> 21 ms (22-99 ms selon la coupe d'egalite
+  du top 50) ; Q32 LoadImpactEvents sur les 38 matchs de la composition 2,1-2,4 s -> 11-17 ms ;
+  Q32b LoadMainTeamParticipants sur les memes matchs 2,3 s -> 6-7 ms. Sorties Q32 et Q32b
+  identiques ligne a ligne, noms compris ; Q29 identique hors groupe d'egalite du bas.
+- Page (sonde GetPage sur la copie, meme cablage que le serveur, une execution par scenario ;
+  la mesure de reference reste celle du superviseur, §8) : composition de 3 coequipiers (38
+  matchs) 17,3-20,2 s -> 6,6 s ; session de 7 matchs 17,6-18,0 s -> 6,5 s ; session par
+  `filters.sessions` 17,2-18,0 s -> 6,4 s ; composition exacte 17,2-17,8 s -> 6,5 s ; un
+  coequipier (579 matchs) 19,6-25,4 s -> 8,7 s ; periode 18,6-19,6 s -> 8,1 s ; coequipier non
+  suivi 16,5 s -> 6,3 s ; sans selection 2,1-2,3 s -> 0,27 s. Reste, sur la session de 7
+  matchs : `echange` 3,2 s (le nuage d'isolement y lit le contexte des morts) et
+  `kill_events_shared` 1,9 s, les deux lectures tactiques que la liste blanche n'accelere pas
+  tant que D5a.1 (L5a) ne restreint pas l'univers avant les fenetres `_latest` ; le reste de la
+  page : ~1,4 s. Cible D2.8 sur la copie : « a vide » 0,27 s (<= 1 s) ; « a chaud, 7 matchs »
+  6,5 s (> 5 s, dependance L5a).
+- Sections de duree ajoutees (feuilles, cf. L1) : `impact_events_shared` (L2.2), `squad_members`
+  (L2.3), `kill_events_shared` (L2.4), `usage_shared` (L2.6). PAS de section `annuaire` :
+  l'annuaire est une etape de chaque lecture Q29 / Q32 / Q32b, deja dans la section de
+  l'appelant (`top_teammates`, `impact_events_shared`, `main_team_allies`) ; une section imbriquee
+  y serait comptee deux fois dans `total_ms`. Sa duree sort en DEBUG (`squad_annuaire` :
+  `duration_ms`, xuids cherches, restes pour le kill-feed, matchs lus).
+- Ecarts a la lettre des decisions, et pourquoi :
+  (1) D2.1 « annuaire charge UNE fois par GetPage » -> un annuaire par LECTURE (Q29, Q32, Q32b),
+  sur ses xuids et ses matchs : ces trois methodes du port `SquadRepository` servent aussi
+  SquadService et les coequipiers de session de l'accueil, qui lisent le gamertag des lignes ;
+  changer le contrat du port sortait du perimetre. Par page : trois annuaires, Q32 n'etant plus
+  lue qu'une fois (L2.2).
+  (2) D2.1 enumere alias, participants, « Joueur #### », bots ; la vue a un niveau de plus, le
+  kill-feed (journal canonique et historique) : sans lui, 27 des 124 noms de la copie tombaient
+  en « Joueur #### ». Niveau garde, lu seulement pour les xuids restes sans nom et sur les matchs
+  ou la lecture les a rencontres ; son SQL est la jambe MEME de la vue (generateur
+  `gamertagKillFeedSQL` partage, DDL de la vue inchange a l'octet, sha256 9aebfa6b…) et vit dans
+  `analysis` : le garde-rail `TestAucunLecteurNeLitLAncienneTable` interdit
+  `FROM killer_victim_pairs` sous `platform/duckdb`.
+  (3) Porteurs de badges ex aequo de la matrice d'impact : `topKiller`, `falseBrother` et
+  `silentHero` (`analysis/match_impact.go`) donnent le badge au PREMIER participant a egalite,
+  dans l'ordre des lignes Q32b — requete sans ORDER BY, avant comme apres. Retirer la jointure a
+  change l'ordre physique : 33 matchs touches sur l'ensemble des 9 scenarios, verifies sur la
+  copie (29 a egalite de frags max dans l'equipe du main : Bourreau ; 4 a double egalite :
+  Faux-frere x3, Heros silencieux x1) ; ex. Bourreau de c25f8e7c passe de Chocoboflor a
+  Madina97294 (composition) ; sur « un coequipier » (566 matchs dans la matrice), joueur
+  principal : Bourreau 55 -> 50, Faux-frere 59 -> 58, Heros silencieux 11 -> 10. Aucune stat ne
+  change ; le departage etait deja arbitraire (stable pour un plan donne : deux executions de la
+  base identiques, L2.1 a L2.7 identiques entre elles). Non corrige : decouverte (1).
+  (4) D2.3 : un coequipier NON suivi a desormais sa ligne d'intensite (Nilton410 : 15 / 15
+  matchs au lieu de 0) — effet voulu de D2.3.
+  (5) D2.5 : la requete `filters.sessions` seule rend la page de `picked_squad_session_labels`
+  (7 matchs au lieu de 38) — effet voulu.
+  (6) D2.4 « l'univers n'est calcule qu'une fois » : hors d'atteinte dans le perimetre, chaque
+  lecture tactique calcule le sien dans `tactical_repo*.go` (L5a).
+  (7) D2.6 : catalogue d'armes memorise par (racine, titre) et par processus ; la premiere
+  requete le paie encore (un prechargement au boot releve du cablage).
+  (8) D2.7 : les sections de population sortent de GetPage (`teammates_service_sections.go`)
+  pour y poser les points de controle sans l'allonger ; une lecture EN COURS va a son terme (les
+  trois lectures communes d'usage notamment : `squadagg.LireUsage` ne consulte pas le contexte
+  entre elles), la section suivante n'est pas lancee.
+- Parite finale (forme canonique, 9 scenarios, copie) : identique a L2.6 sur les 9. Par rapport a
+  la base, chaque difference a sa cause : `impact_matrix` (ecart 3, cinq scenarios),
+  `intensity_profile` du non suivi (ecart 4), `filters.sessions` = page de la session de 7 matchs
+  (ecart 5) ; `map_heatmap` exclu sur « un coequipier » et « periode » (non-determinisme
+  PREEXISTANT : deux executions de la base different). Hors ces sections, pages identiques a la
+  base.
+- Dette : aucune fonction nouvelle au-dela de 80 L ; GetPage 323 -> 263 L ;
+  `teammates_service.go` 579 -> 522 L (toujours au-dela de 500, en baisse) ; aucun autre fichier
+  touche ne franchit 500 L (max `teammates_squad_echange.go` 477) ; fonctions preexistantes au-dela
+  de 80 L non allongees (buildSquadIntensityProfile 82 = 82, buildSquadPerMinuteStats 107,
+  extractSynthesisSessionLabels 82) ; buildSquadIntensityProfile a 7 parametres (limite revive
+  `argument-limit` = 7). golangci-lint `--new-from-rev=37cb48167` sur les 5 paquets touches :
+  0 issue (ST1023 releve par le gate, corrige en b02ea5020).
+- Gate (code final b02ea5020) : `gofmt -l ./internal ./cmd` vide ; `go build ./...` 0 ;
+  `go vet ./...` 0 ; `go test ./internal/service/... ./internal/platform/duckdb/...
+  ./internal/analysis/...` 0 (27 paquets, aucun `--- FAIL:`) ; `go test -tags=integration -p 1
+  ./internal/platform/duckdb/...` 0 ; `go test ./internal/archlint/` 0 (dont
+  `no_slug_comparison_test.go`) ; les 7 tests de `internal/sync/no_art_patterns_test.go` verts ;
+  aucun test renomme ni supprime (22 ajoutes) : baseline JSONL inchangee.
+- Mutations jouees (toutes rouges puis restaurees, `cmp` a l'appui) : L2.1 — bot connu rendu en
+  xuid brut, xuid inconnu rendu brut au lieu de « Joueur #### », niveau kill-feed saute, libelle
+  masque compte en octets (unitaires), jambe kill-feed jamais lue, niveau participants ignore
+  (integration, contre la vraie vue) ; L2.2 — enveloppe retiree ; L2.3 — enveloppe retiree,
+  xuids de la page retires ; L2.4 — liste blanche retiree de l'une puis l'autre lecture ; L2.5 —
+  condition `filters.sessions` retiree ; L2.6 — partage coupe, cache coupe ; L2.7 — dix (chaque
+  point de controle de GetPage, les deux du prechargement, `siVivante` inconditionnel,
+  prechargement hors garde, blocs d'usage sans garde).
+- Decouvertes (consignees, non traitees) : (1) Q32b sans ORDER BY et departage « premier a
+  egalite » de `topKiller` / `falseBrother` / `silentHero` : le porteur d'un badge ex aequo
+  depend du plan physique de DuckDB ; un ORDER BY (match_id, xuid) ou un departage explicite le
+  rendrait stable — changement de sortie a decider ; (2) `map_heatmap` non deterministe d'une
+  execution a l'autre sur les grandes populations (un coequipier, periode) ; (3)
+  `formes_retenues.matches[].objective.family` alterne zones_koth / zones_strongholds d'une
+  execution a l'autre sur le meme match ; (4) Q29 `ORDER BY games_together` sans departage : la
+  coupe LIMIT 50 du groupe d'egalite du bas est arbitraire ; (5) `api/handlers/teammates.go:72-75`
+  journalise une requete annulee en ERROR (« teammates: erreur service ») et repond 500 — deja le
+  cas quand une lecture echouait sur contexte annule ; distinguer `context.Canceled` releve du
+  handler (hors perimetre) ; (6) les deux lectures tactiques font 5 des 6,5 s de la page de
+  session : D5a.1 (L5a).
 
 ## 7. L5a — Blocs des pages solo (Go) — vague 2, apres L1
 

@@ -57,6 +57,41 @@ type EquipmentUsageQuery struct {
 	RepoRoot  string
 	TitleSlug string
 	Locale    string
+	// Lectures : les trois lectures du résumé d'usage DÉJÀ faites sur ce scope par la page
+	// (LireUsage), partagées avec le bloc « formes retenues » (lot perf L2, D2.6). Nil ⇒
+	// l'assemblage les fait lui-même (Synthèse, Sessions).
+	Lectures *LecturesUsage
+}
+
+// LecturesUsage : les trois lectures communes aux blocs « servi ou gâché » et « formes
+// retenues » sur un scope — les films, les joueurs, les participants —, erreurs comprises.
+type LecturesUsage struct {
+	Films        map[string]sessionusage.FilmRow
+	Players      []sessionusage.PlayerRow
+	Participants []sessionusage.ParticipantRow
+	erreurs      []error // dans l'ordre films, joueurs, participants
+}
+
+// LireUsage fait les trois lectures communes sur le scope, toutes, même après un échec
+// (comme les blocs le faisaient chacun) ; Erreur rend la première en échec.
+func LireUsage(ctx context.Context, repo port.SessionUsageRepository, matchIDs []string) *LecturesUsage {
+	films, filmsErr := repo.LoadUsageFilms(ctx, matchIDs)
+	players, playersErr := repo.LoadUsagePlayers(ctx, matchIDs)
+	participants, partErr := repo.LoadParticipants(ctx, matchIDs)
+	return &LecturesUsage{
+		Films: films, Players: players, Participants: participants,
+		erreurs: []error{filmsErr, playersErr, partErr},
+	}
+}
+
+// Erreur rend la première lecture en échec, dans l'ordre films, joueurs, participants.
+func (l *LecturesUsage) Erreur() error {
+	for _, err := range l.erreurs {
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // BuildEquipmentUsageBlock lit le résumé d'usage sur le scope et rend le bloc
@@ -70,24 +105,24 @@ func BuildEquipmentUsageBlock(ctx context.Context, q EquipmentUsageQuery) *domai
 			UnavailableReason: domain.SessionUsageUnsupported, MatchesTotal: len(q.MatchIDs),
 		}
 	}
-	films, filmsErr := q.Repo.LoadUsageFilms(ctx, q.MatchIDs)
-	players, playersErr := q.Repo.LoadUsagePlayers(ctx, q.MatchIDs)
-	participants, partErr := q.Repo.LoadParticipants(ctx, q.MatchIDs)
-	for _, err := range []error{filmsErr, playersErr, partErr} {
-		if err != nil {
-			slog.ErrorContext(ctx, "equipment usage: lecture du résumé d'usage en échec",
-				"err", err, "match_count", len(q.MatchIDs))
-			return &domain.EquipmentUsageBlock{
-				UnavailableReason: domain.SessionUsageLoadFailed, MatchesTotal: len(q.MatchIDs),
-			}
+	lu := q.Lectures
+	if lu == nil {
+		lu = LireUsage(ctx, q.Repo, q.MatchIDs)
+	}
+	if err := lu.Erreur(); err != nil {
+		slog.ErrorContext(ctx, "equipment usage: lecture du résumé d'usage en échec",
+			"err", err, "match_count", len(q.MatchIDs))
+		return &domain.EquipmentUsageBlock{
+			UnavailableReason: domain.SessionUsageLoadFailed, MatchesTotal: len(q.MatchIDs),
 		}
 	}
+	participants := lu.Participants
 
 	tc := sessionusage.BuildTeamContext(q.PlayerXUID, participants)
 	friends := sessionusage.ResolveScopeFriends(q.PlayerXUID, participants, q.FriendGamertags)
 	in := sessionusage.OverviewInput{
 		PlayerXUID: q.PlayerXUID,
-		Matches:    sessionusage.BuildMatchInputs(q.MatchIDs, films, players, tc),
+		Matches:    sessionusage.BuildMatchInputs(q.MatchIDs, lu.Films, lu.Players, tc),
 	}
 	for _, f := range friends {
 		in.FriendXUIDs = append(in.FriendXUIDs, f.XUID)
@@ -137,7 +172,7 @@ func nommerArmes(ctx context.Context, block *domain.SessionUsagePadTiersBlock, q
 	if block == nil || q.RepoRoot == "" || q.TitleSlug == "" {
 		return
 	}
-	cat, err := replaylabels.Load(q.RepoRoot, q.TitleSlug)
+	cat, err := replaylabels.Catalogue(q.RepoRoot, q.TitleSlug)
 	if err != nil {
 		slog.WarnContext(ctx, "equipment usage: catalogue d'armes illisible — armes des niveaux non nommees",
 			"err", err, "titleSlug", q.TitleSlug)
