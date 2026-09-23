@@ -127,8 +127,10 @@ export const VEHICLE_FILM_FIRST_FRAME = 0
 
 /**
  * vehicleIsScenery — vrai quand la vie est un VÉHICULE DE DÉCOR de la carte : né au début du
- * film, le film ne réplique sa position qu'UNE fois, à la naissance (`samples[0].t === t0`), la
- * vie court jusqu'à la fin du film et personne n'y monte jamais.
+ * film, le DOCUMENT ne lui publie qu'UN échantillon, à la naissance (`samples[0].t === t0`), la
+ * vie court jusqu'à la fin du film et personne n'y monte jamais. (Précision de la sonde C2 du
+ * 2026-09-23, lot M1 : le film réplique la POSE du décor — avant l'origine, sous l'index de
+ * placement Forge — puis plus rien ; c'est cette réplication unique que l'échantillon publie.)
  *
  * DÉCISION UTILISATEUR DU 2026-09-23 (Q13, retours du rejeu, lot L1.3) : MASQUÉS, comme les
  * familles non jouables. Constat : sur Starboard, six véhicules posés par la carte Forge
@@ -460,7 +462,10 @@ export function vehicleVisibleAt(track: ReplayVehicleTrackReady, frame: number):
  * `positionAt` (replayLogic.ts) tient déjà l'interpolation entre échantillons et le maintien de
  * la dernière position connue une fois le dernier échantillon dépassé — LA MÊME logique que pour
  * une trajectoire de joueur, réutilisée telle quelle (`VehicleSample` a le même sous-ensemble de
- * champs que `Point`). Elle rend `null` AVANT le premier échantillon : c'est alors le SPAWN qui
+ * champs que `Point`). Y COMPRIS LA LACUNE (schéma 69, lot M1 des retours du rejeu) : un
+ * échantillon qui porte `g > 0` suit un silence de réplication, et le véhicule est TENU à sa
+ * dernière position au travers — il ne se déplace pas pendant un silence (repli F-2 côté Go).
+ * Avant, un Mongoose immobile « partait seul » pendant 70 s vers un échantillon lointain. Elle rend `null` AVANT le premier échantillon : c'est alors le SPAWN qui
  * répond (la naissance, seule chose connue tant que personne n'a conduit le véhicule). Ni l'un
  * ni l'autre : le record de création n'a pas été lu ET aucun échantillon n'existe — rien ne se
  * dessine, plutôt que d'inventer une position.

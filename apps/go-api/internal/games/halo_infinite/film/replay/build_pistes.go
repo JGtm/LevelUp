@@ -48,6 +48,9 @@ func (a *assemblage) poserLesPistes() {
 		origin: a.origin, step: a.step, minPoints: a.opt.minPoints(), scoped: a.opt.Scoped,
 		vies: a.reg.Vies(), fb: a.opt.Fallbacks,
 	})
+	// CE QUE LA PORTE DES POSITIONS A ECARTE se publie avec la couverture des traces : un point
+	// ecarte est un point que le seuil de publication n a jamais vu (cf. positions_porte.go).
+	a.porte.poserSur(&a.trackCov, a.matchID)
 	// L'IDENTITÉ se pose sur les traces dès que le pont existe : sans elle, un client ne peut
 	// ni nommer un joueur, ni regrouper ses vies, ni colorer une équipe. Le nommage se fait
 	// PAR VIE depuis le 2026-09-02 — un slot recyclé porte une identité par occupant.

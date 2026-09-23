@@ -230,6 +230,12 @@ type TrackCoverage struct {
 	// film ne ferme pas. Cf. `replay.TrackCoverage` (lot 1.9.13).
 	Gaps  int `json:"gaps"`
 	GapMS int `json:"gapMs"`
+	// Ce que la PORTE DES POSITIONS a ecarte avant toute publication, en positions brutes du
+	// film (schema 69, lot M1 des retours du rejeu) : anterieures a la creation de leur corps,
+	// dont les vies ecartees entieres, et hors de l emprise jouee. Cf. `replay.TrackCoverage`.
+	AvantCreation             int `json:"avantCreation"`
+	ViesAvantPremiereCreation int `json:"viesAvantPremiereCreation"`
+	HorsEmprise               int `json:"horsEmprise"`
 }
 
 // ProjectileCoverage est la couverture des TRAJECTOIRES DE PROJECTILE : pistes décodées,

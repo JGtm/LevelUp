@@ -66,10 +66,24 @@ const (
 // l'echantillon isole n'est plus une vie a lui seul — il est le premier point de la vie qui
 // continue. Les six qui restent sont celles que le film ferme vraiment : deux a une mort ecrite,
 // quatre a la fin du film.
+//
+// LA PORTE DES POSITIONS (lot M1 des retours du rejeu, 2026-09-23, schema 69) EN RETIRE DEUX, toutes
+// deux sur `a521164d` :
+//
+//	slot 580, t 150,73 s   « mort ecrite » par COINCIDENCE : le point precede de 11 s le record de
+//	                       creation du corps (t 161,82 s, `gen=1`) et tombe 190 m hors de l emprise
+//	                       jouee — la mort appariee est celle du corps PRECEDENT du meme joueur,
+//	                       dont celui-ci est la reapparition (R-B2)
+//	slot 524, t 244,74 s   « fin de film », un point ISOLE (dernier du slot, mort la plus proche du
+//	                       joueur a 8,5 s), 2,4 m sous le plancher de l emprise : ecarte par le
+//	                       repli `repli_position_hors_emprise_ecartee`. C est un cas A LA MARGE de la
+//	                       garde, et c est pourquoi le repli est compte (`coverage.tracks.horsEmprise`)
+//
+// Reste : 4 vies, 1 mort ecrite, 3 fins de film, 0 orpheline.
 func viesDUnEchantillonAttendues() map[string][4]int {
 	return map[string][4]int{
 		"000d5950": {0, 0, 0, 0},
-		"a521164d": {2, 1, 1, 0},
+		"a521164d": {0, 0, 0, 0},
 		"60ae07c4": {0, 0, 0, 0},
 		"11de8353": {1, 0, 1, 0},
 		"111fa685": {0, 0, 0, 0},
@@ -106,8 +120,8 @@ func TestViesDUnEchantillonOntLeurOracle(t *testing.T) {
 	}
 	t.Logf("TOTAL sur les huit builds : %d vie(s) d'un echantillon · %d mort ecrite · %d fin de "+
 		"film · %d ORPHELINE(S)", total[0], total[1], total[2], total[3])
-	if total != [4]int{6, 2, 4, 0} {
-		t.Errorf("total {6, 2, 4, 0} attendu, mesure %v", total)
+	if total != [4]int{4, 1, 3, 0} {
+		t.Errorf("total {4, 1, 3, 0} attendu, mesure %v", total)
 	}
 	if total[3] != 0 {
 		t.Errorf("%d vie(s) ORPHELINE(S) : ni mort ecrite, ni fin de manche, ni fin de film. "+

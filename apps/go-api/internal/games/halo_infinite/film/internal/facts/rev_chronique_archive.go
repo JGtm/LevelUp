@@ -248,3 +248,11 @@ package facts
 // (cf. l en-tete de `fallback/repli.go`), et son compteur n est pas cable. Aucune lecture, aucune
 // largeur, aucun appariement ne change : les lignes produites sont identiques a l octet et aucun
 // match deja decode n est candidat au backlog.
+// 2026-09-23, LOT M1 DES RETOURS DU REJEU — REVISION INCHANGEE, EMPREINTE SEULE RECOPIEE, ET LE
+// CHOIX EST ECRIT. `fallback/` recoit une HUITIEME tranche de DONNEES (`registre_replay_positions.go`,
+// deux entrees : `repli_position_hors_emprise_ecartee` et
+// `repli_echantillon_vehicule_au_travers_d_un_silence_ecarte`), leurs deux constantes de nom
+// (`noms.go`), la tranche dans `Tranches()` et son plancher de test. Les deux replis sont des gardes
+// de la PUBLICATION (`replay/`), declenchees sur des faits DEJA persistes : aucune lecture, aucune
+// largeur, aucun appariement de `facts` ne change, les lignes produites sont identiques a l octet
+// et aucun match deja decode n est candidat au backlog.

@@ -40,6 +40,7 @@ func toVehicleSample(v replay.VehicleSample) replaydoc.VehicleSample {
 		X: v.X,
 		Y: v.Y,
 		Z: v.Z,
+		G: v.G,
 		H: v.H,
 	}
 }

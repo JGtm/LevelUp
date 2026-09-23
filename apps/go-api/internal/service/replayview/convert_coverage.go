@@ -87,6 +87,10 @@ func toTrackCoverage(v replay.TrackCoverage) replaydoc.TrackCoverage {
 		MinPoints:        v.MinPoints,
 		Gaps:             v.Gaps,
 		GapMS:            v.GapMS,
+		// La porte des positions (schema 69, lot M1 des retours du rejeu).
+		AvantCreation:             v.AvantCreation,
+		ViesAvantPremiereCreation: v.ViesAvantPremiereCreation,
+		HorsEmprise:               v.HorsEmprise,
 	}
 }
 

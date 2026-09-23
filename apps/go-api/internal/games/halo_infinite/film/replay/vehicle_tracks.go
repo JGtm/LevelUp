@@ -118,6 +118,11 @@ func buildVehicleTracks(
 	cov.DeathsUnmatched, cov.DeathsTailDesync = deathTally.unmatched, deathTally.tailDesync
 	spawns := vehicleSpawnsByLife(scan.Creations)
 	bySlot := vehiclePositionsBySlot(scan.Positions)
+	// F-2 AVANT TOUT USAGE DU NUAGE (lot M1 des retours du rejeu) : un echantillon atteint ou quitte
+	// a travers un silence avec un deplacement n est pas une position (cf.
+	// positions_porte_vehicules.go) — ni pour les episodes d occupation, ni pour la trajectoire,
+	// ni pour la derniere preuve de presence.
+	bySlot, cov.EchantillonsAuTraversDUnSilence = ecarterLesSejoursAuTraversDUnSilence(bySlot, lives, clock.fb)
 	rides, st := buildVehicleRides(vehicleRideInputs{
 		vehBySlot: bySlot, bipeds: bipeds, events: scan.Events, reg: reg, lives: lives,
 		occupancy: scan.Occupancy,
@@ -403,6 +408,7 @@ func vehicleSamplesOf(
 		lastSeen uint64
 		heading  float32
 		hasHead  bool
+		lacuneMS int // la lacune que le PROCHAIN echantillon publie portera (cf. VehicleSample.G)
 	)
 	for _, p := range pos {
 		if p.TimestampUS < l.loUS || p.TimestampUS > l.hiUS {
@@ -411,13 +417,18 @@ func vehicleSamplesOf(
 		if h, ok := vehicleHeadingOf(p); ok {
 			heading, hasHead = h, true
 		}
+		if lastSeen > 0 && int64(p.TimestampUS)-int64(lastSeen) > lifeGapUS {
+			// LACUNE : meme regle et meme mesure (instants BRUTS) que `Point.G` des traces.
+			lacuneMS = int((int64(p.TimestampUS) - int64(lastSeen)) / 1000)
+		}
 		lastSeen = p.TimestampUS
 		fr := clock.frame(p.TimestampUS)
 		if lastFr >= 0 && fr-lastFr < vehicleSampleStrideFrames {
 			continue
 		}
 		lastFr = fr
-		s := VehicleSample{T: fr, X: round2(p.X), Y: round2(p.Y), Z: round2(p.Z)}
+		s := VehicleSample{T: fr, X: round2(p.X), Y: round2(p.Y), Z: round2(p.Z), G: lacuneMS}
+		lacuneMS = 0
 		if hasHead {
 			s.H = headingForJSON(heading)
 		}

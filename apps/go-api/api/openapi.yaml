@@ -29836,10 +29836,16 @@ components:
     TrackCoverage:
       additionalProperties: false
       properties:
+        avantCreation:
+          format: int64
+          type: integer
         gapMs:
           format: int64
           type: integer
         gaps:
+          format: int64
+          type: integer
+        horsEmprise:
           format: int64
           type: integer
         minPoints:
@@ -29857,6 +29863,9 @@ components:
         refusedPoints:
           format: int64
           type: integer
+        viesAvantPremiereCreation:
+          format: int64
+          type: integer
       required:
         - published
         - publishedPoints
@@ -29865,6 +29874,9 @@ components:
         - minPoints
         - gaps
         - gapMs
+        - avantCreation
+        - viesAvantPremiereCreation
+        - horsEmprise
       type: object
     Translocation:
       additionalProperties: false
@@ -30055,6 +30067,12 @@ components:
         deathsUnmatched:
           format: int64
           type: integer
+        echantillonsAuTraversDUnSilence:
+          format: int64
+          type: integer
+        echantillonsHorsEmprise:
+          format: int64
+          type: integer
         endDestroyed:
           format: int64
           type: integer
@@ -30123,6 +30141,9 @@ components:
         shotsVehicleWeapon:
           format: int64
           type: integer
+        spawnsHorsEmprise:
+          format: int64
+          type: integer
         unknownChassis:
           additionalProperties:
             format: int64
@@ -30145,6 +30166,9 @@ components:
         - lives
         - published
         - noPosition
+        - echantillonsHorsEmprise
+        - spawnsHorsEmprise
+        - echantillonsAuTraversDUnSilence
         - merged
         - withSpawn
         - withChassis
@@ -30265,6 +30289,9 @@ components:
     VehicleSample:
       additionalProperties: false
       properties:
+        g:
+          format: int64
+          type: integer
         h:
           format: float
           type: number

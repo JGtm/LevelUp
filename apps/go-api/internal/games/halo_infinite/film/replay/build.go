@@ -43,6 +43,7 @@ func BuildFromPositions(matchID, titleSlug string, pos []grammar.BipedPosition,
 		a.poserLesCalquesProduits()
 		return a.doc
 	}
+	a.passerLaPorte()
 	a.poserLesPistes()
 	a.poserLesEquipesEtLeRoster()
 	a.poserTirsProjectilesEtGrenades()
@@ -88,6 +89,11 @@ type assemblage struct {
 	sorted   []grammar.BipedPosition
 	origin   uint64
 	step     uint64
+
+	// La porte des positions (lot M1 des retours du rejeu) : l emprise jouee du film, mesuree sur
+	// les positions de bipede retenues et reprise par les vehicules, et ce qu elle a ecarte.
+	emprise empriseJouee
+	porte   couverturePorte
 
 	// Le registre d'identité et ce que la pose des pistes en a tiré.
 	reg            IdentityRegistry
@@ -146,6 +152,16 @@ func (a *assemblage) ouvrir(titleSlug string) bool {
 	a.doc.FrameCount = frameSpan(a.sorted, a.origin, a.step)
 	a.doc.DurationMS = a.doc.FrameCount * a.interval
 	return true
+}
+
+// passerLaPorte ecarte les positions que le film ne peut pas avoir ecrites — anterieures a la
+// creation de leur corps, ou hors de l emprise jouee (cf. positions_porte.go).
+//
+// APRES `ouvrir`, AVANT toute passe qui lit les positions : l origine et `frameCount` restent lus
+// sur tous les paquets de position (aucun calque ne se decale), et le registre d identite, les
+// traces, les bornes, les etats et les vehicules ne voient plus ces positions.
+func (a *assemblage) passerLaPorte() {
+	a.sorted, a.emprise, a.porte = passerLaPorteDesPositions(a.sorted, a.opt.BipedCreations, a.opt.Fallbacks)
 }
 
 // fireRefs réduit les événements de tir à ce que les fermetures ont le droit de connaître : QUI
