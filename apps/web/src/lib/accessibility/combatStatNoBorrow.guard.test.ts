@@ -1,7 +1,7 @@
 /**
  * combatStatNoBorrow.guard.test.ts — ratchet anti-emprunt pour les stats de combat.
  *
- * Depuis le 2026-09-17 (`.ai/PLAN_COULEURS_STATS_COMBAT_2026-09-17.md`), une couleur qui
+ * Depuis le 2026-09-17 (`.ai/V7.5/chantiers/PLAN_COULEURS_STATS_COMBAT_2026-09-17.md`), une couleur qui
  * dit « frag / mort / assistance / sens d'assistance » passe par la famille dédiée
  * (`stat-kills`, `stat-deaths`, `stat-assists`, `assist-received`, `assist-given`).
  * Avant, chaque page empruntait un rôle voisin et les assistances avaient cinq teintes.

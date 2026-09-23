@@ -1,6 +1,6 @@
 # PLAN — Explorer : le bloc « Portée des frags » remplace son placeholder (2026-09-17)
 
-> Date : 2026-09-17. Suite de `.ai/PLAN_EXPLORER_RANGEE3_2026-09-17.md` (rangée 3 livrée,
+> Date : 2026-09-17. Suite de `.ai/V7.5/chantiers/PLAN_EXPLORER_RANGEE3_2026-09-17.md` (rangée 3 livrée,
 > placeholder posé). Débloqué par la fusion de `wt/compare-armes` dans `feat/v75`
 > (`5b2298f06`). Branche d'exécution : `wt/explorer-portee-frags`, worktree dédié
 > `../LevelUp-wt-explorer-rangee3` (le worktree principal est PARTAGÉ, ne jamais y coder).

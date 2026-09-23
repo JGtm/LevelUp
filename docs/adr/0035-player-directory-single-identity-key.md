@@ -10,6 +10,7 @@ credential source, keyed by xuid), [ADR 0029](0029-multi-user-player-ownership.m
 `user.xuid == profile.xuid`, no `owner` field), [ADR 0008](0008-db-schema-multi-title-and-xuid-global.md)
 (xuid is global, every path through `PathResolver`), [ADR 0027](0027-sync-pipeline-v2-cycle-orchestrator.md)
 (sync entry points). Complements `.ai/PLAN_AMIS_PAR_JOUEUR_ET_INVITATIONS_2026-09-15.md`
+(moved to `.ai/V7.5/chantiers/PLAN_AMIS_PAR_JOUEUR_ET_INVITATIONS_2026-09-15.md`)
 (invitations carry a one-shot provisioning grant); does not supersede it.
 
 ---
@@ -169,6 +170,7 @@ the 2026-07-23 account the same evening.
 - The 2026-07-23 identity is purged with one command, and the procedure is reusable.
 - Three lock copies become one call; the fourth would be caught by the ratchet.
 - The sibling invitation plan (`PLAN_AMIS_PAR_JOUEUR_ET_INVITATIONS_2026-09-15.md`, step 5.4)
+  (moved to `.ai/V7.5/chantiers/PLAN_AMIS_PAR_JOUEUR_ET_INVITATIONS_2026-09-15.md`)
   must take the lock from `authz.InstanceLocked` and the profile creation through `Onboard`.
 - Not done here, deliberately: unifying the three files into one store; an admin HTTP endpoint
   for purge (CLI only); multiple xuids per account (ADR 0029, deferred).
@@ -188,6 +190,7 @@ edit of `app_settings.json`, same inode, backup kept) before any code shipped.
   intrusion counter; round 2 (tests / front + re-verification of the 8 fixes) raised 0 P0/P1,
   2 P2 and 3 reserves, all fixed or accepted with a test. The loop converged (5 → 0).
 - Pilot review register: `.ai/REVUE_ANNUAIRE_JOUEURS_2026-09-15.md` (R1-R6, A1-A8, B1-B5).
+  (moved to `.ai/V7.5/chantiers/REVUE_ANNUAIRE_JOUEURS_2026-09-15.md`)
 - Gates at rest: `go test ./...` green (3 min 34 s warm; the first cold pass of
   `internal/sync` needs `-timeout 30m`, 501 s), `-tags=integration ./internal/sync/...
   ./internal/persist/...` green, `golangci-lint --new-from-merge-base` 0 issue, `tsc` clean,

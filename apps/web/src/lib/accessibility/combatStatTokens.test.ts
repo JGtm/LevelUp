@@ -5,7 +5,7 @@
  * « c'est un frag / une mort / une assistance / ce sens d'assistance » dans toute l'app.
  * Deux d'entre eux trop proches, et un frag se lit comme une assistance, ou « il te
  * sert » comme une mort. Valeurs validées avec l'utilisateur le 2026-09-17
- * (`.ai/PLAN_COULEURS_STATS_COMBAT_2026-09-17.md`) ; mêmes seuils que
+ * (`.ai/V7.5/chantiers/PLAN_COULEURS_STATS_COMBAT_2026-09-17.md`) ; mêmes seuils que
  * `squadPlayerTokens.test.ts` :
  *   1. Lisibilité — contraste WCAG ≥ 3:1 (objet graphique) sur les surfaces produit.
  *   2. Séparation — ΔE OKLab × 100 ≥ 15 entre toutes les paires, et ≥ 8 sous simulation

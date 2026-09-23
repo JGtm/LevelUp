@@ -1,5 +1,5 @@
 > SECONDE NOTE DE PREPARATION DE M4 — ecrite a la cloture de M2 (tete 492cb0923, lot 3.3 fusionne, trois lots M3 en vol),
-> EN COMPLEMENT de `.ai/PREPARATION_M4_2026-09-17.md` (analyse sur pieces de 4.1 a 4.4, base 24b67e339, AVANT la cloture de M2).
+> EN COMPLEMENT de `.ai/V7.5/film_re/PREPARATION_M4_2026-09-17.md` (analyse sur pieces de 4.1 a 4.4, base 24b67e339, AVANT la cloture de M2).
 > Celle-ci porte l ORDRE des lots, les FRONTIERES avec les lots M3 en vol, le cout reel de la recuisson (87 artefacts),
 > la montee de schema unique 61 -> 62 et le decoupage en commits. Produite par un workflow de 8 agents (3 mesures, 3 sceptiques,
 > synthese, critique de completude a 24 constats) puis corrigee constat par constat (§6). Les briefs d executant 4.1 et 4.2+4.4
