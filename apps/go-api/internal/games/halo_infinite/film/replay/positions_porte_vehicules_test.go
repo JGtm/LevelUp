@@ -191,3 +191,51 @@ func TestPorteVehiculeHorsEmpriseAuTraversDeLAssemblage(t *testing.T) {
 		t.Errorf("repli publie = %d declenchements, attendu 3", got)
 	}
 }
+
+// NEGATIF DE F-1 — le corpus temoin `50247b26` : une Wasp, un Ghost, un Warthog TOMBENT dans un
+// vide, un echantillon par image, et la fin de leur chute sort de l emprise : elle reste publiee.
+// Un vehicule largue d en haut (naissance hors emprise, puis descente continue) garde sa naissance.
+// Trois echantillons IDENTIQUES hors carte, eux (la Wraith de 0a44c6cc), sont isoles et ecartes.
+func TestPorteVehiculeContinuiteHorsEmprise(t *testing.T) {
+	vie := types.EquipmentLifeKey{Slot: 770, Gen: 1}
+	largue := types.EquipmentLifeKey{Slot: 771, Gen: 1}
+	times := []uint64{2_000_000, 22_000_000}
+	kf := vehKeyframes(times, vie, times)
+	kf.Band[771] = true
+	kf.SeenUS[largue] = times
+	var positions []grammar.BipedPosition
+	for i := 0; i <= 64; i++ { // chute : z 5 -> -148,6, 2,4 m par image (24 m/s, corpus temoin)
+		p := vehPos(770, 3_000_000+uint64(i)*100_000, 20, 20)
+		p.Z = 5 - 2.4*float32(i)
+		positions = append(positions, p)
+	}
+	for i := 0; i < 3; i++ { // faux en-tete repete, isole
+		p := vehPos(770, 12_000_000+uint64(i)*100_000, -19.41, -346.69)
+		p.Z = 323.74
+		positions = append(positions, p)
+	}
+	naissance := vehCreation(largue, 2_500_000, 30, 30, vehChassisKnown)
+	naissance.Z = 400
+	for i := 0; i <= 156; i++ { // descente du largage : z 395 -> 5, 2,5 m par image
+		p := vehPos(771, 2_550_000+uint64(i)*100_000, 30, 30)
+		p.Z = 395 - 2.5*float32(i)
+		positions = append(positions, p)
+	}
+	scan := VehicleScan{Scanned: true, Keyframes: kf, Positions: positions,
+		Creations: []types.EquipmentCreation{vehCreation(vie, 2_900_000, 20, 20, vehChassisKnown), naissance}}
+	doc := BuildFromPositions("m", "halo_infinite", porteFoule(300, 0), nil, Options{FrameIntervalMS: 100, Vehicles: scan})
+	par := map[uint32]VehicleTrack{}
+	for _, v := range doc.Vehicles {
+		par[v.Slot] = v
+	}
+	if got := len(par[770].Samples); got != 65 {
+		t.Errorf("chute : %d echantillons publies, attendu 65 (les 3 faux ecartes, la chute gardee)", got)
+	}
+	if v := par[771]; v.Spawn == nil || v.Spawn.Z != 400 || len(v.Samples) != 157 {
+		t.Errorf("largage : naissance %+v, %d echantillons ; attendu la naissance a z=400 et 157 echantillons",
+			v.Spawn, len(v.Samples))
+	}
+	if c := doc.Coverage.Vehicles; c.EchantillonsHorsEmprise != 3 || c.SpawnsHorsEmprise != 0 {
+		t.Errorf("couverture : echantillons %d, naissances %d ; attendu 3 et 0", c.EchantillonsHorsEmprise, c.SpawnsHorsEmprise)
+	}
+}

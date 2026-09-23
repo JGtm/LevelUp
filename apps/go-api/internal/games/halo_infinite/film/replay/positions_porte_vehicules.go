@@ -16,7 +16,9 @@ package replay
 // # DEUX REPLIS NOMMES, COMPTES, ET LEUR CRITERE DE RETRAIT
 //
 //	F-1  `repli_position_hors_emprise_ecartee` : echantillon ou naissance hors de l emprise jouee
-//	     du film — la MEME emprise que les joueurs, mesuree une fois (emprise_jouee.go). Une
+//	     du film ET sans continuite physique avec une position dans l emprise (une chute dans un
+//	     vide reste publiee) — la MEME emprise que les joueurs, mesuree une fois
+//	     (emprise_jouee.go). Une
 //	     naissance ecartee laisse la place au record de creation suivant de la meme vie, s il
 //	     existe (`vehicleSpawnsByLife` retient le plus precoce : une fausse naissance anterieure
 //	     l emportait sur la vraie, et donnait une famille de chassis inconnue).
@@ -29,6 +31,8 @@ package replay
 // `NoPosition` qui existait deja (cf. vehicle_tracks.go).
 
 import (
+	"sort"
+
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
@@ -49,17 +53,24 @@ func ecarterVehiculesHorsEmprise(scan VehicleScan, e empriseJouee, fb *fallback.
 	if !scan.Scanned || !e.armee {
 		return out, 0, 0
 	}
-	out.Positions = make([]grammar.BipedPosition, 0, len(scan.Positions))
-	for _, p := range scan.Positions {
-		if p.HasWorld && e.rejette(p.X, p.Y, p.Z) {
+	triees := append([]grammar.BipedPosition(nil), scan.Positions...)
+	sort.SliceStable(triees, func(i, j int) bool { return triees[i].TimestampUS < triees[j].TimestampUS })
+	rejets := rejetsParSlot(triees, e)
+	out.Positions = make([]grammar.BipedPosition, 0, len(triees))
+	gardees := map[uint32][]grammar.BipedPosition{}
+	for i, p := range triees {
+		if rejets[i] {
 			echantillons++
 			continue
 		}
 		out.Positions = append(out.Positions, p)
+		if p.HasWorld {
+			gardees[p.Slot] = append(gardees[p.Slot], p)
+		}
 	}
 	out.Creations = make([]types.EquipmentCreation, 0, len(scan.Creations))
 	for _, c := range scan.Creations {
-		if e.rejette(c.X, c.Y, c.Z) {
+		if e.rejette(c.X, c.Y, c.Z) && !naissanceRelieeAuVol(c, gardees[c.Slot]) {
 			naissances++
 			continue
 		}
@@ -68,6 +79,18 @@ func ecarterVehiculesHorsEmprise(scan VehicleScan, e empriseJouee, fb *fallback.
 	ecartes := echantillons + naissances
 	fb.DeclencheN(fallback.NomPositionHorsEmpriseEcartee, ecartes)
 	return out, echantillons, naissances
+}
+
+// naissanceRelieeAuVol dit si une naissance hors de l emprise est reliee, par continuite, a un
+// echantillon RETENU de son slot (cf. emprise_jouee.go) — un vehicule cree hors de la zone jouee
+// (largue d en haut) puis replique jusqu a elle n est pas un artefact. `pos` est trie par instant.
+func naissanceRelieeAuVol(c types.EquipmentCreation, pos []grammar.BipedPosition) bool {
+	for _, p := range pos {
+		if seRelient([3]float32{c.X, c.Y, c.Z}, [3]float32{p.X, p.Y, p.Z}, c.TimestampUS, p.TimestampUS) {
+			return true
+		}
+	}
+	return false
 }
 
 // sejourDeVehicule est une suite d echantillons d une vie sans silence de plus de `lifeGapUS`,

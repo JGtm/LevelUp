@@ -162,3 +162,29 @@ func TestPorteEmpriseDesarmeeSurUnePoignee(t *testing.T) {
 			boundsMinSamples, doc.Coverage.Tracks.HorsEmprise)
 	}
 }
+
+// NEGATIF DE F-1 — une CHUTE REELLE hors de la carte (un joueur qui tombe dans un vide, une
+// position toutes les 100 ms) sort de l emprise PAR CONTINUITE : elle reste publiee. Un faux
+// en-tete, lui, surgit isole.
+func TestPorteChuteContinueHorsEmpriseConservee(t *testing.T) {
+	// Une foule de 10 000 positions : la chute (65) reste sous le centile 1, comme au parc, et ne
+	// deplace pas l emprise qu elle traverse.
+	in := porteFoule(10_000, 0)
+	for i := 0; i <= 64; i++ {
+		// de z = 5 a z = -148,6 : 2,4 m par 100 ms (24 m/s, la chute mesuree au corpus temoin),
+		// au-dela du plancher de l emprise (~ -108 m)
+		in = append(in, pos(630, 5_000+100*i, 50, 50, 5-2.4*float32(i)))
+	}
+	in = append(in, pos(631, 9_000, 50, 50, -325.4)) // isole, plus profond encore
+	doc := BuildFromPositions("m", "halo_infinite", in, nil, Options{FrameIntervalMS: 100})
+	n := 0
+	for _, tr := range porteTraces(doc, 630) {
+		n += len(tr.Points)
+	}
+	if n != 65 {
+		t.Errorf("chute continue : %d points publies, attendu 65 — la fin de la chute est vraie", n)
+	}
+	if len(porteTraces(doc, 631)) != 0 || doc.Coverage.Tracks.HorsEmprise != 1 {
+		t.Errorf("le point isole doit etre ecarte seul (horsEmprise %d)", doc.Coverage.Tracks.HorsEmprise)
+	}
+}

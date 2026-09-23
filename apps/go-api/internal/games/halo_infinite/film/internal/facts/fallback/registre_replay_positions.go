@@ -30,7 +30,9 @@ var registreReplayPositions = []Repli{
 		Nom:  "repli_position_hors_emprise_ecartee",
 		Fait: "quelles positions decodees sont publiees : points de trace, echantillons et naissances de vehicule",
 		Mecanisme: "une position hors de l emprise jouee du film (p1..p99 plus 12 etendues centrales par axe, " +
-			"la garde de `boundsOf`) est ecartee avant toute publication et comptee",
+			"la garde de `boundsOf`) ET ISOLEE (aucune chaine d instants voisins, au plus 0,5 s et 60 m/s, ne la " +
+			"relie a une position dans l emprise du meme slot : une chute reelle reste publiee) est ecartee " +
+			"avant toute publication et comptee",
 		Condition: CondLectureNonPortee,
 		Ordre:     OrdreApresLecture,
 		Sites: []Site{

@@ -43,8 +43,9 @@ package replay
 //
 // # PUIS L EMPRISE (repli nomme `repli_position_hors_emprise_ecartee`)
 //
-// Ce qui reste hors de l emprise jouee (cf. emprise_jouee.go) est ecarte et compte
-// (`coverage.tracks.horsEmprise`). L emprise se mesure APRES la regle de creation, sur les positions
+// Ce qui reste hors de l emprise jouee (cf. emprise_jouee.go) SANS continuite physique avec une
+// position dans l emprise est ecarte et compte (`coverage.tracks.horsEmprise`) : une chute reelle
+// hors de la carte reste publiee. L emprise se mesure APRES la regle de creation, sur les positions
 // retenues, et elle sert ensuite aux vehicules (positions_porte_vehicules.go) : une seule emprise
 // par document.
 
@@ -92,9 +93,10 @@ func passerLaPorteDesPositions(sorted []grammar.BipedPosition, creations []gramm
 	}
 	retenues := ecarterAvantCreation(sorted, premieres, &cov)
 	emprise := empriseDesAxes(axesDesPositions(retenues))
-	out := retenues[:0:0]
-	for _, p := range retenues {
-		if p.HasWorld && emprise.rejette(p.X, p.Y, p.Z) {
+	rejets := rejetsParSlot(retenues, emprise)
+	out := make([]grammar.BipedPosition, 0, len(retenues))
+	for i, p := range retenues {
+		if rejets[i] {
 			cov.HorsEmprise++
 			continue
 		}
@@ -102,6 +104,29 @@ func passerLaPorteDesPositions(sorted []grammar.BipedPosition, creations []gramm
 	}
 	fb.DeclencheN(fallback.NomPositionHorsEmpriseEcartee, cov.HorsEmprise)
 	return out, emprise, cov
+}
+
+// rejetsParSlot applique la regle d emprise (hors de l emprise ET isolee, cf. emprise_jouee.go)
+// slot par slot, et rend les rejets aux indices de `pos` — trie par instant, tous slots meles.
+func rejetsParSlot(pos []grammar.BipedPosition, e empriseJouee) []bool {
+	rejets := make([]bool, len(pos))
+	if !e.armee {
+		return rejets
+	}
+	indices := map[uint32][]int{}
+	for i, p := range pos {
+		indices[p.Slot] = append(indices[p.Slot], i)
+	}
+	for _, idx := range indices {
+		duSlot := make([]grammar.BipedPosition, len(idx))
+		for k, i := range idx {
+			duSlot[k] = pos[i]
+		}
+		for k, r := range e.rejetsIsoles(duSlot) {
+			rejets[idx[k]] = r
+		}
+	}
+	return rejets
 }
 
 // premieresCreations rend, par slot, le premier record de creation lu (le plus precoce ; a

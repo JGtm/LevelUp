@@ -20,7 +20,7 @@ package replaybuild
 //	la base puis de la branche.
 //
 // Un seul processus, SEQUENTIEL (un document en memoire a la fois), sous `GOMEMLIMIT` et sous la
-// voie film de la campagne.
+// voie film de la campagne. REPRENABLE : un document deja present dans `M1_SORTIE` est saute.
 //
 //	M1_FAITS=<depot>/data/cache/film_facts/halo_infinite M1_ARTEFACTS=<depot>/data/cache/replays/halo_infinite \
 //	M1_CARTES=<maps.tsv> M1_SORTIE=<dossier> GOMEMLIMIT=3GiB \
@@ -79,6 +79,10 @@ func TestM1ParcDepuisLesFaits(t *testing.T) {
 			continue
 		}
 		court := strings.TrimSuffix(e.Name(), ".json")
+		if _, err := os.Stat(filepath.Join(sortie, e.Name())); err == nil {
+			faitsOK++ // REPRISE : deja reconstruit par une passe precedente (ecriture atomique)
+			continue
+		}
 		if raison := m1Reconstruire(b, m1Entree{
 			artefact: filepath.Join(artefacts, e.Name()), faits: filepath.Join(faits, court+".filmfacts.bin"),
 			carte: carteDe[court], sortie: filepath.Join(sortie, e.Name()),
@@ -141,7 +145,12 @@ func m1Reconstruire(b *Builder, in m1Entree) string {
 	if err != nil {
 		return err.Error()
 	}
-	if err := os.WriteFile(in.sortie, built.Blob, 0o600); err != nil {
+	// ECRITURE ATOMIQUE : une passe interrompue ne laisse jamais un document tronque que la
+	// reprise tiendrait pour fait.
+	if err := os.WriteFile(in.sortie+".tmp", built.Blob, 0o600); err != nil {
+		return "ecriture : " + err.Error()
+	}
+	if err := os.Rename(in.sortie+".tmp", in.sortie); err != nil {
 		return "ecriture : " + err.Error()
 	}
 	return ""

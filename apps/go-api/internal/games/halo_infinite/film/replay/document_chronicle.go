@@ -2025,9 +2025,10 @@ package replay
 //	`tracks`       ne portent plus les positions ANTERIEURES a la creation de leur corps (R-B1 :
 //	               une vie ouverte par son record commence au record ; R-B2 : aucune vie avant
 //	               le premier record d un slot), ni les positions hors de l EMPRISE JOUEE du
-//	               film (repli `repli_position_hors_emprise_ecartee`, la garde de `boundsOf`
-//	               desormais ecrite une fois : emprise_jouee.go). La regle de creation se
-//	               DESARME sur un slot dont le premier record lu n est pas `gen=1`.
+//	               film ET ISOLEES (repli `repli_position_hors_emprise_ecartee`, la garde de
+//	               `boundsOf` desormais ecrite une fois : emprise_jouee.go ; une chute reelle,
+//	               continue, reste publiee). La regle de creation se DESARME sur un slot dont
+//	               le premier record lu n est pas `gen=1`.
 //	`vehicles`     meme emprise pour les echantillons et les naissances (une fausse naissance
 //	               anterieure ne l emporte plus sur la vraie) ; un echantillon atteint ou quitte
 //	               a travers un silence de plus de `lifeGapUS` AVEC un deplacement est ecarte
