@@ -265,7 +265,8 @@ describe('buildShotFx — tirs en véhicule (v), origine au montage plutôt qu�
     const d = doc({ shots: [{ slot: 1, t: 10, x: 0, y: 0, w: GHOST_WEAP_TAG }] })
     const fx = buildShotFx(d, 50)[0]
     expect(fx.fam).toBe('plasma')
-    expect(fx.tint).toBe('plasma_cool')
+    // Plasma ROUGE depuis le 2026-09-23 (retours du rejeu, lot L1.5, décision Q6).
+    expect(fx.tint).toBe('plasma_hot')
   })
 
   it('le REGISTRE garde la main : une arme de joueur ne prend jamais le style d’un véhicule', () => {

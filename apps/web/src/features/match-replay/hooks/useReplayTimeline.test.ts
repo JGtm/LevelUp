@@ -340,3 +340,73 @@ describe('useReplayTimeline — ce à quoi le point de vue est branché', () => 
     expect(typeof result.current.onSelectViewpoint).toBe('function')
   })
 })
+
+/**
+ * LA PISTE SCORE D'UN MATCH À SENS UNIQUE (retours du rejeu 2026-09-23, lot L1.2, Q25).
+ *
+ * Le 3-0 ne publie qu'une série, celle du camp qui marque. La piste exigeait deux séries et ne
+ * se dessinait jamais (13 documents du parc, dont bc60b4d9). Elle se lit désormais « égalité
+ * jusqu'à la première capture, puis le camp qui marque en tête » — tant que la série porte son
+ * camp et que le document compte deux camps au roster.
+ */
+describe('useReplayTimeline — la piste Score d’un match à sens unique', () => {
+  const WINDOW: ReplayWindowBounds = { startFrame: 0, leadInFrame: 0, endFrame: 200, startMs: 0, endMs: 20_000 }
+  const PLAYBACK = {
+    sliderRef: { current: null },
+    startFrame: 0,
+    endFrame: 200,
+    onScrub: () => {},
+    playing: false,
+    togglePlay: () => {},
+    restart: () => {},
+    seekBy: () => {},
+    stepFrames: () => {},
+    seekToFrame: () => {},
+  }
+  const ROSTER = [
+    { xuid: 'a', filmIndex: 0, name: 'A', team: 0 },
+    { xuid: 'b', filmIndex: 1, name: 'B', team: 1 },
+  ]
+  const serie = (teamId: number | undefined) => {
+    const pts = [{ t: 50, v: 1 }, { t: 100, v: 2 }, { t: 150, v: 3 }]
+    return { ...(teamId == null ? {} : { teamId }), rounds: [{ round: 0, points: pts }], total: pts }
+  }
+
+  function piste(teamId: number | undefined) {
+    const doc = testReplayDoc({
+      frameCount: 200,
+      frameIntervalMs: 100,
+      originMs: 0,
+      roster: ROSTER,
+      scoreTimeline: { teams: [serie(teamId)], players: [] } as never,
+    })
+    const { result } = renderHook(() =>
+      useReplayTimeline({
+        doc,
+        playWindow: WINDOW,
+        feedEntries: [],
+        marks: new Map(),
+        viewpoint: 'a',
+        identity: new Map(),
+        players: [] as ReplayPlayer[],
+        onSelectViewpoint: () => {},
+        lead: { allyOf: () => null, labelOf: (id: number) => `Équipe ${id}` },
+        playback: PLAYBACK,
+        toggleSound: () => {},
+        renderWidth: 480,
+        locale: 'fr',
+      }),
+    )
+    return result.current.score
+  }
+
+  it('3-0 à camp identifié : la piste existe — égalité, puis le marqueur en tête', () => {
+    const score = piste(0)
+    expect(score).not.toBeNull()
+    expect(score?.segments.map((s) => s.teamId)).toEqual([null, 0])
+  })
+
+  it('série sans camp : aucune piste (on ne sait pas qui mène)', () => {
+    expect(piste(undefined)).toBeNull()
+  })
+})

@@ -13,8 +13,10 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  campCountOf,
   filmClockTrusted,
   leadChanges,
+  leaderStates,
   normalizeScoreTimeline,
   playerCountersAt,
   scoreAtFrame,
@@ -275,5 +277,60 @@ describe('filmClockTrusted — la garde d’horloge (P2 de la revue du lot A pha
 
   it('rend undefined quand l’artefact ne porte simplement aucun calque', () => {
     expect(scoreTimelineOf({})).toBeUndefined()
+  })
+})
+
+/**
+ * LE MATCH À SENS UNIQUE (plan des retours du rejeu, lot L1.2, décision Q25 du 2026-09-23).
+ *
+ * Un 3-0 ne publie qu'UNE série : le camp muet n'a jamais marqué. La piste Score de la frise
+ * en exigeait deux et ne se dessinait donc jamais (13 documents du parc). La règle du module —
+ * « une équipe sans série vaut zéro » — s'y applique désormais, À UNE CONDITION : toutes les
+ * séries publiées ont un camp. Le nombre de camps vient du document (`roster[].team`, lu
+ * dans le film), pas d'une supposition.
+ */
+describe('leaderStates — le match à sens unique : égalité, puis le camp qui marque', () => {
+  const CTF = () => timelineOf({ teams: [equipe(0, [[1347, 1], [4678, 3]])], players: null })
+
+  it('deux camps au document, une seule série à camp : le marqueur prend la tête à sa 1re capture', () => {
+    expect(leaderStates(CTF(), 2)).toEqual([{ frame: 1347, teamId: 0 }])
+  })
+
+  it('une première valeur nulle publiée est une ÉGALITÉ, pas une tête', () => {
+    const t = timelineOf({ teams: [equipe(1, [[4112, 0], [4580, 1]])], players: null })
+    expect(leaderStates(t, 2)).toEqual([
+      { frame: 4112, teamId: null },
+      { frame: 4580, teamId: 1 },
+    ])
+  })
+
+  it('sans nombre de camps, la série seule ne désigne aucun meneur (inchangé)', () => {
+    expect(leaderStates(CTF())).toEqual([])
+    expect(leaderStates(CTF(), 1)).toEqual([])
+  })
+
+  it('une série SANS camp : aucune piste, même si le document compte deux camps', () => {
+    const flou = timelineOf({ teams: [{ rounds: null, total: [{ t: 200, v: 3 }] }], players: null })
+    expect(leaderStates(flou, 2)).toEqual([])
+    const mixte = timelineOf({
+      teams: [equipe(0, [[100, 1]]), { rounds: null, total: [{ t: 200, v: 5 }] }],
+      players: null,
+    })
+    expect(leaderStates(mixte, 2)).toEqual([])
+  })
+
+  it('les retournements du 3-0 restent zéro', () => {
+    expect(leadChanges(CTF())).toEqual([])
+  })
+})
+
+describe('campCountOf — le nombre de camps que le film écrit au roster', () => {
+  it('compte les camps distincts, sans « aucune équipe » (-1) ni silence', () => {
+    expect(campCountOf([{ team: 0 }, { team: 1 }, { team: 1 }, { team: -1 }, {}])).toBe(2)
+  })
+
+  it('rend 0 sur un roster sans camp (artefact antérieur au schéma 57, FFA)', () => {
+    expect(campCountOf([{}, { team: -1 }])).toBe(0)
+    expect(campCountOf([])).toBe(0)
   })
 })

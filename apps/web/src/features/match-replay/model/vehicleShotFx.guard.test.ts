@@ -9,8 +9,8 @@
  *
  * DEUX SOURCES DE VÉRITÉ, ET LE TEST LES JOINT DANS LE BON SENS : toute arme de la table SONORE
  * (10 entrées) doit avoir un style, et tout tag documenté par un MONTAGE aussi. La réciproque
- * n'est PAS exigée — un style peut exister sans son (les missiles du Wasp n'ont aucune
- * reconstruction et se voient pourtant) ni montage (l'éclair part alors du centre du châssis).
+ * n'est PAS exigée — un style peut exister sans son (le second mode du Wasp, `d3c407ed`, n'a
+ * aucune reconstruction et se voit pourtant) ni montage (l'éclair part alors du centre du châssis).
  *
  * LES VALEURS SONT CELLES DES DEUX LISTES FERMÉES DU DÉPÔT : un style qui nommerait une famille
  * ou une teinte hors liste tomberait silencieusement sur le neutre côté rendu (`familyOf` /
@@ -20,36 +20,32 @@ import { describe, expect, it } from 'vitest'
 
 import { fxTintOf } from '../layers/fxInk'
 import { familyOf } from '../layers/shotEffects'
-import {
-  VEHICLE_SHOT_SOUND_BY_CHASSIS,
-  VEHICLE_SHOT_SOUND_STEMS,
-} from '../sound/vehicleShotSound'
+import { VEHICLE_SHOT_SOUND_STEMS } from '../sound/vehicleShotSound'
 import { vehicleShotStyleOf } from './vehicleShotFx'
 import { vehicleWeaponMountOf, vehicleWeapTag } from './vehicleWeaponMounts'
 
 /**
- * LES TAGS QUI SONNENT, DANS LES DEUX TABLES SONORES (lot 5.8.4) : celle des tags sans ambiguïté
- * et celle des tags qui se départagent par la famille du châssis. Un tag passe de l'une à l'autre
- * sans cesser de sonner — le compte, lui, ne doit pas bouger.
+ * LES TAGS QUI SONNENT. La table des tags « ambigus » du lot 5.8.4 a disparu le 2026-09-23 (le
+ * tag du Rockethog n'était pas ambigu, lot L1.5) : une seule table, le même compte.
  */
-const TAGS_QUI_SONNENT = [
-  ...VEHICLE_SHOT_SOUND_STEMS.keys(),
-  ...VEHICLE_SHOT_SOUND_BY_CHASSIS.keys(),
-]
+const TAGS_QUI_SONNENT = [...VEHICLE_SHOT_SOUND_STEMS.keys()]
 
 /**
- * Les tags de la table des MONTAGES, relus par leur seule porte publique : la table elle-même
- * n'est pas exportée (et n'a pas à l'être), mais `vehicleWeaponMountOf` répond sur chacun.
+ * Les tags de la table des MONTAGES, relus par leur porte publique `vehicleWeaponMountOf`. La
+ * table est EXPORTÉE depuis le lot L1.5 (2026-09-23) pour le garde-rail des tags observés
+ * (`vehicleWeaponTags.guard.test.ts`) ; ce test-ci garde sa liste écrite en clair, qui fait
+ * aussi TÉMOIN : un montage perdu par la table y serait vu, pas suivi.
  */
 const TAGS_MONTES = [
-  'c7d50912', // Warthog
+  'c7d50912', // Rockethog
   '00015435', // Ghost
   '0000aa68', // Banshee M1
   '0000aa69', // Banshee M2
   '11725dc4', // Wasp M1
   'd3c407ed', // Wasp M2
   'b40e9618', // Chopper
-  '00015cfa', // Scorpion
+  '49e40d17', // Scorpion (tag publié)
+  '0bb6976b', // Falcon — lance-grenades
 ].map(vehicleWeapTag)
 
 describe('garde-rail : le style d’éclair des armes de véhicule', () => {

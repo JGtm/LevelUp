@@ -22,7 +22,7 @@
 import { useCallback, useMemo, type ChangeEvent, type ComponentProps, type RefObject } from 'react'
 
 import { useCapability } from '@/lib/capabilities'
-import { leaderStates, scoreTimelineOf } from '@/lib/replay/scoreTimeline'
+import { campCountOf, leaderStates, scoreTimelineOf } from '@/lib/replay/scoreTimeline'
 
 import type { ReplayFeedEntry } from '../model/killFeedLogic'
 import { REPLAY_TEXT, type ReplayLocale } from '../i18n/i18n'
@@ -267,7 +267,10 @@ export function useReplayTimeline(o: ReplayTimelineOptions): ReplayTimeline {
  *     2026-09-02). L'ancienne garde comparait les totaux à l'égalité stricte et un seul kill
  *     non attribué réaffichait le doublon.
  *  3. MOINS DE DEUX CAMPS IDENTIFIÉS : `buildScoreDominance` rend alors une liste vide, et une
- *     rangée vide se lirait « personne n'a marqué » au lieu de « on ne sait pas ».
+ *     rangée vide se lirait « personne n'a marqué » au lieu de « on ne sait pas ». Un camp SANS
+ *     SÉRIE compte pourtant, à zéro, quand toutes les séries publiées ont un camp : c'est le
+ *     match à sens unique (3-0), lu « égalité, puis le marqueur en tête » (lot L1.2 du
+ *     2026-09-23) — le nombre de camps vient du roster du document (`campCountOf`).
  *
  * LES SÉPARATEURS DE MANCHE viennent de `roundTransitions` — le foyer des pastilles du bandeau
  * et de l'écran inter-manche. Aucun sur un mode à manche unique, par construction.
@@ -279,7 +282,7 @@ function scoreTrack(
 ): ReplayScoreTrack | null {
   const timeline = scoreTimelineOf(doc)
   if (!timeline) return null
-  const segments = buildScoreDominance(leaderStates(timeline), scale)
+  const segments = buildScoreDominance(leaderStates(timeline, campCountOf(doc.roster)), scale)
   if (segments.length === 0) return null
   if (sameLeadSegments(segments, dominance)) return null
   return { segments, rounds: roundSeparators(roundTransitions(timeline), scale) }

@@ -23,6 +23,7 @@
  * mesure pas la destruction, ce texte ne change RIEN à ce qui s'affiche.
  *
  * SIX RESPONSABILITÉS PURES, TESTABLES SANS CANVAS : le REFUS DU DÉCOR (`vehicleIsDecor`,
+ * `vehicleIsScenery` — le véhicule posé par la carte, jamais simulé —, `vehicleIsHidden`,
  * `vehicleCanEmbark`), l'ORIENTATION (`vehicleHeadingAt`, `vehicleScreenAngle`,
  * `vehicleAimAngle`), la TAILLE (`vehicleSpriteScale`, ancrée sur le pion), l'OCCUPATION
  * (`vehicleActiveRides`, `vehicleDriverAt`, `vehicleColorAt`), le PRÉDICAT EMBARQUÉ
@@ -108,6 +109,66 @@ export const FAMILLES_NON_JOUABLES: ReadonlySet<string> = new Set([
  */
 export function vehicleIsDecor(family: string | undefined): boolean {
   return family !== undefined && FAMILLES_NON_JOUABLES.has(family)
+}
+
+/**
+ * VEHICLE_END_FILM_END — la fin publiée d'une vie qui court jusqu'à la fin du film (côté Go :
+ * `VehicleEndFilmEnd`, `film/replay/document_vehicles.go`). Nommée pour la même raison que
+ * `VEHICLE_END_DESTROYED`.
+ */
+export const VEHICLE_END_FILM_END = 'film_end'
+
+/**
+ * VEHICLE_FILM_FIRST_FRAME — la frame 0 du document, calée sur le premier paquet de POSITION du
+ * film (côté Go : `OriginMs`, `film/replay/document.go`). Une vie née à cette frame — ou avant,
+ * si son record de création précède l'origine — existait avant que la partie ne se joue.
+ */
+export const VEHICLE_FILM_FIRST_FRAME = 0
+
+/**
+ * vehicleIsScenery — vrai quand la vie est un VÉHICULE DE DÉCOR de la carte : né au début du
+ * film, le film ne réplique sa position qu'UNE fois, à la naissance (`samples[0].t === t0`), la
+ * vie court jusqu'à la fin du film et personne n'y monte jamais.
+ *
+ * DÉCISION UTILISATEUR DU 2026-09-23 (Q13, retours du rejeu, lot L1.3) : MASQUÉS, comme les
+ * familles non jouables. Constat : sur Starboard, six véhicules posés par la carte Forge
+ * (1 Scorpion, 2 Wasp, 3 Warthog) à 19-24 m au sud de l'arène, identiques au centimètre dans les
+ * deux matchs du parc ; sur Goliath, un Wasp sous le sol. 13 vies au parc, 0 des 232 vies en
+ * jeu (dont 90 garées jamais occupées, mais SIMULÉES : 52 à 76 positions chacune).
+ *
+ * CE N'EST PAS UN SEUIL : c'est ce que le film écrit. Un véhicule simulé est répliqué, même
+ * immobile ; celui-ci ne l'est jamais. Une vie sans aucun échantillon (tourelle bannie, élément
+ * de carte) n'est pas concernée : elle garde sa règle.
+ *
+ * NÉ AVANT LA PARTIE (revue RR-L1-PARC-02, 2026-09-23) : le décor est posé au chargement de la
+ * carte, donc présent dès la frame 0 (`VEHICLE_FILM_FIRST_FRAME`). Sans cette condition, un
+ * véhicule JOUABLE apparu dans le dernier intervalle d'échantillonnage (un échantillon à `t0`,
+ * fin de film, jamais occupé) serait masqué — et, né sur un emplacement, le tiendrait pour
+ * occupé sans qu'aucun sprite ne s'y dessine. Parc du 23/09 : les 13 vies masquées naissent à 0.
+ *
+ * RÈGLE CLIENTE, SANS COMPTEUR : ce lot est sans schéma, la couverture ne peut pas la compter.
+ * Critère de retrait : quand le producteur publie lui-même le décor de carte (lot M4a des
+ * retours du rejeu : vie marquée décor et comptée dans `coverage.vehicles`), ce prédicat lit ce
+ * marqueur et ses conditions disparaissent d'ici.
+ */
+export function vehicleIsScenery(track: ReplayVehicleTrackReady): boolean {
+  const s = track.samples
+  return (
+    s.length === 1 &&
+    track.t0 <= VEHICLE_FILM_FIRST_FRAME &&
+    s[0].t === track.t0 &&
+    track.end === VEHICLE_END_FILM_END &&
+    track.rides.length === 0
+  )
+}
+
+/**
+ * vehicleIsHidden — la vie ne se montre pas : famille non jouable (`vehicleIsDecor`) OU véhicule
+ * de décor de la carte (`vehicleIsScenery`). Le seul prédicat du DESSIN et de la disponibilité du
+ * calque ; l'embarquement le reprend par `vehicleCanEmbark`.
+ */
+export function vehicleIsHidden(track: ReplayVehicleTrackReady): boolean {
+  return vehicleIsDecor(track.family) || vehicleIsScenery(track)
 }
 
 // --- ÉLÉMENTS DE CARTE (schéma 1.9.9 — EN AVANCE DE PHASE, cf. ReplayVehicleLabel) ------------
@@ -297,7 +358,7 @@ export function vehicleExplosionKindOf(family: string | undefined): VehicleExplo
  * pendant qu'il conduit).
  */
 export function vehicleCanEmbark(track: ReplayVehicleTrackReady, kind?: string): boolean {
-  if (track.family === undefined || track.family === '' || vehicleIsDecor(track.family)) return false
+  if (track.family === undefined || track.family === '' || vehicleIsHidden(track)) return false
   // UN TROISIÈME REFUS DEPUIS LE 2026-09-16 (lot 1.9.9), pour la MÊME raison que les deux
   // autres : un ÉLÉMENT DE CARTE ne porte personne. Le serveur ne lui attribue déjà aucun
   // épisode (`vehicleFamillesNonPilotables`, côté Go) ; la garde est ici AUSSI parce que le prix

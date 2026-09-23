@@ -34,7 +34,7 @@ describe('vehicleWeaponMountOf — la table et son repli', () => {
     expect(vehicleWeaponMountOf('0xB619D84A42C9679F')).toBeNull()
   })
 
-  it('le Warthog (témoin, vérifié en direct) est TOURELLE, ancre du plateau arrière', () => {
+  it('le Rockethog (c7d50912, vérifié en direct) est TOURELLE, ancre du plateau arrière', () => {
     const m = vehicleWeaponMountOf(shotW('c7d50912'))
     expect(m).not.toBeNull()
     expect(m?.classe).toBe('tourelle')
@@ -52,8 +52,14 @@ describe('vehicleWeaponMountOf — la table et son repli', () => {
     }
   })
 
-  it('le Scorpion est tourelle : le plateau tourne indépendamment des chenilles', () => {
-    expect(vehicleWeaponMountOf(shotW('00015cfa'))?.classe).toBe('tourelle')
+  it('le Scorpion (tag PUBLIÉ 49e40d17) est tourelle : le plateau tourne indépendamment des chenilles', () => {
+    expect(vehicleWeaponMountOf(shotW('49e40d17'))?.classe).toBe('tourelle')
+    // Le tag du module (00015cfa) n'a jamais été vu dans un document : il n'indexe plus rien.
+    expect(vehicleWeaponMountOf(shotW('00015cfa'))).toBeNull()
+  })
+
+  it('le lance-grenades du Falcon (0bb6976b) sort du même poste de porte que la LMG', () => {
+    expect(vehicleWeaponMountOf(shotW('0bb6976b'))).toEqual(vehicleWeaponMountOf(shotW('00015cd3')))
   })
 
   it('le Shade reste sans montage : c est son TAG qui manque, pas sa position', () => {
@@ -91,7 +97,7 @@ describe('vehicleWeaponMountOf — la table et son repli', () => {
 
   it('toutes les ancres de la table tiennent dans [-0,5 ; +0,5]', () => {
     const weaps = ['c7d50912', '00015435', '0000aa68', '0000aa69', '11725dc4', 'd3c407ed',
-      'b40e9618', '00015cfa', '121b4009', '0042678e', '00015cd3']
+      'b40e9618', '49e40d17', '121b4009', '0042678e', '00015cd3', '0bb6976b']
     for (const weap of weaps) {
       const m = vehicleWeaponMountOf(shotW(weap))
       expect(m).not.toBeNull()

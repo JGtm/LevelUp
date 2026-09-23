@@ -908,22 +908,6 @@ export interface ReplayText {
    */
   markMe: string
   healthLabel: string
-  /**
-   * L'ÉTAT DE MOUVEMENT COURANT, sur la fiche du joueur (schéma 68, lots 5.3.6, 5.9.4, 5.22.4).
-   * CINQ clés : quatre pour des états LUS dans le film — accroupi, glissade, ESCALADE, SPRINT —
-   * et une pour un état DÉRIVÉ, le saut. Le libellé du dérivé DIT qu'il est dérivé
-   * (« Saut (dérivé) » / « Jump (derived) »), parce qu'il ne vient d'aucun composant mais de
-   * l'intégrale de la vitesse verticale, reconnue à sa hauteur. Le SPRINT est LU : `i57` porte
-   * l'INDEX DE LA FENTE DE CAPACITÉ ACTIVE, et l'image nomme les trois fentes — esquive,
-   * sprint, grappin (lot 5.9.5).
-   *
-   * `clamber` DIT « ESCALADE » DEPUIS LE SCHÉMA 68, ET CE N'EST PAS UN CHOIX À LA PLACE DE LA
-   * MESURE. Ce libellé disait « Action » tant qu'aucune étiquette du binaire ne nommait les
-   * valeurs d'`i54` (note 5.3, § 2.8 et D9). L'oracle est venu de l'écran : NEUF intervalles
-   * de ce genre, pris sur `bfecd02b`, ont été confrontés image par image dans Theater — neuf
-   * escalades de rebord, 9/9, aucun contre-exemple (lot 5.22.4).
-   */
-  stanceKind: Record<'crouch' | 'slide' | 'clamber' | 'sprint' | 'jumpDerived', string>
   shieldLabel: string
   abilityLabel: string
   loadoutUnread: string

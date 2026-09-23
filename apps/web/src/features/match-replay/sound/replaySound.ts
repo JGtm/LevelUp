@@ -516,21 +516,19 @@ export const SOUND_CATEGORIES_DEFAULT: SoundCategoryFilter = {
  * — leurs identifiants (`0x<weap>00000000`) sont ABSENTS de `weaponLabels`, c'est la table de
  * `vehicleShotSound.ts` qui les nomme. Aucune des deux ne répond = silence propre, inchangé.
  *
- * ELLE PREND LE TIR ENTIER DEPUIS LE LOT 5.8.4, et non plus son seul identifiant d'arme : un tag
- * AMBIGU (le Warthog, dont le `weap` unique couvre LAAG / Gauss / roquettes) se départage par la
- * FAMILLE DU CHÂSSIS TIREUR, que le document publie et que seul `Shot.v` permet d'atteindre.
+ * LE PORTEUR N'EST PLUS LU (retours du 2026-09-23, lot L1.5) : le lot 5.8.4 départageait le tag
+ * du Warthog par la famille du châssis tireur — et le prenait sur la PREMIÈRE vie du slot, pas
+ * sur celle qui couvre le tir. Ce tag n'était pas ambigu (c'est le lance-roquettes du Rockethog,
+ * cf. `vehicleShotSound.ts`) : le tag seul décide, aucun châssis n'est plus cherché.
  */
 export function shotSoundStem(
   doc: ReplayDocumentReady,
-  shot: { w?: string; v?: number },
+  shot: { w?: string },
 ): string | undefined {
   if (!shot.w) return undefined
   const key = doc.weaponLabels?.[shot.w]?.key
   if (key) return WEAPON_SOUND_STEMS[key]
-  // LA FAMILLE N'EST CHERCHÉE QUE POUR UN TIR EN VÉHICULE : un tir à pied n'a pas de porteur, et
-  // balayer les véhicules pour lui serait un travail inutile à chaque tir du match.
-  const porteur = shot.v === undefined ? undefined : doc.vehicles.find((v) => v.slot === shot.v)
-  return vehicleShotSoundStem(shot.w, porteur?.family)
+  return vehicleShotSoundStem(shot.w)
 }
 
 /**

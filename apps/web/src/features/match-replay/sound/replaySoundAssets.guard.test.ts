@@ -63,7 +63,6 @@ import {
 } from './vehicleDestructionSound'
 import { allEngineStems, VEHICLE_ENGINE_STEMS } from './vehicleEngineSound'
 import {
-  VEHICLE_SHOT_SOUND_BY_CHASSIS,
   VEHICLE_SHOT_SOUND_STEMS,
   VEHICLE_SHOT_SOUND_VARIANTS,
 } from './vehicleShotSound'
@@ -672,14 +671,10 @@ describe('garde-rail : moteurs de vehicules (categorie boucles, banque du 2026-0
  */
 describe('garde-rail : tirs d armes de vehicule (lot du 2026-09-04)', () => {
   it('chaque arme cablee tire dans ses variantes, et la premiere porte le stem de la table', () => {
-    // DEUX TABLES DEPUIS LE LOT 5.8.4 : les tags sans ambiguite, et ceux qui se departagent par
-    // la famille du chassis (le Warthog). Un stem cable dans la seconde et oublie ici jouerait
-    // un seul fichier nomme `_1` — exactement le defaut que ce cas attrape.
-    const stems = [
-      ...VEHICLE_SHOT_SOUND_STEMS.values(),
-      ...[...VEHICLE_SHOT_SOUND_BY_CHASSIS.values()].flatMap((m) => [...m.values()]),
-    ]
-    expect(stems.length, 'les deux tables ont change de taille').toBe(10)
+    // UNE SEULE TABLE depuis le 2026-09-23 (lot L1.5) : la table des tags « ambigus » du lot
+    // 5.8.4 a disparu avec l'erreur qui la fondait (c7d50912 = lance-roquettes du Rockethog).
+    const stems = [...VEHICLE_SHOT_SOUND_STEMS.values()]
+    expect(stems.length, 'la table a change de taille').toBe(10)
     for (const stem of stems) {
       const variants = VEHICLE_SHOT_SOUND_VARIANTS[stem]
       expect(variants, stem).toBeTruthy()
@@ -688,19 +683,12 @@ describe('garde-rail : tirs d armes de vehicule (lot du 2026-09-04)', () => {
   })
 
   /**
-   * LOT 5.8.4 — LE WARTHOG SE DEPARTAGE PAR SA FAMILLE DE CHASSIS, ET LES DEUX AUTRES SE TAISENT.
-   * Mesure du parc cuit : les 105 tirs du tag `c7d50912` viennent TOUS d'un chassis `warthog`
-   * (100 avec vehicule publie, 5 sans), zero `rockethog`, zero `warthog_gauss` — le seul son de
-   * Warthog jamais joue etait donc FAUX dans 100 % des cas mesures.
+   * RETOURS DU 2026-09-23 (lot L1.5, decision Q9) — LE ROCKETHOG SONNE PAR SON TAG. Le lot 5.8.4
+   * l'avait rendu muet en le croyant partage par LAAG, Gauss et roquettes ; `c7d50912` est le
+   * lance-roquettes (`WARTHOG_FINAL_2026-09-02.md` §1). Le son valide le 31/08 revient.
    */
-  it('le Warthog : le Rockethog sonne, le LAAG et le Gauss se taisent (aucune reconstruction)', () => {
-    const parChassis = VEHICLE_SHOT_SOUND_BY_CHASSIS.get('0xC7D5091200000000')
-    expect(parChassis, 'le tag ambigu du Warthog a disparu de la table').toBeTruthy()
-    expect(parChassis?.get('rockethog')).toBe('vehicle_shot_warthog_rocket_1')
-    expect(parChassis?.get('warthog')).toBeUndefined()
-    expect(parChassis?.get('warthog_gauss')).toBeUndefined()
-    // Et le tag ambigu n'est PAS dans la table des tags simples : un tag, une seule regle.
-    expect(VEHICLE_SHOT_SOUND_STEMS.get('0xC7D5091200000000')).toBeUndefined()
+  it('le Rockethog : son tag sonne les roquettes validees le 31/08', () => {
+    expect(VEHICLE_SHOT_SOUND_STEMS.get('0xC7D5091200000000')).toBe('vehicle_shot_warthog_rocket_1')
   })
 
   it('format canonique de la livraison : 48 kHz, 16 bits, stereo', () => {

@@ -37,18 +37,26 @@
  * du thème, résolu par `fxInk`. Les valeurs sont celles des deux listes fermées du dépôt, pas
  * des noms neufs.
  *
- * LE PARTAGE SUIT LA DÉCISION DU LOT : énergie pour le Ghost, la Banshee et le Wraith (armes à
- * plasma Banished), cinétique pour le Warthog, le Scorpion, le Wasp, le Chopper, le Gungoose et
- * la tourelle du Falcon. Il ne cherche pas la finesse d'un catalogue d'armes de joueur : deux
- * styles franchement distincts valent mieux à l'écran qu'une taxonomie que rien ne mesure.
+ * LE PARTAGE, DEPUIS LES RETOURS DU 2026-09-23 (lot L1.5, décisions utilisateur Q6, Q7, Q8) :
+ * le plasma Banished est ROUGE — `plasma_hot`, la teinte du Ravageur — pour le Ghost, les canons
+ * de la Banshee, le mortier du Wraith et les canons du Chopper (forme plasma) ; cinétique pour le
+ * Warthog, le Wasp, le Gungoose et les tourelles du Falcon ; OBUS (forme `explosive`, explosion à
+ * l'impact) pour le canon du Scorpion et le lance-grenades du Falcon. La bombe de la Banshee
+ * (`0000aa69`) garde le plasma froid : sa teinte n'est pas décidée.
  *
- * LE SHADE N'Y EST PAS, ET IL NE PEUT PAS Y ÊTRE : aucun rapport de RE ne documente son tag
- * `weap` (même trou que pour son montage et son son). Pas de tag = pas d'entrée, jamais un tag
- * voisin réemployé en devinant.
+ * LES CLÉS SONT DES TAGS OBSERVÉS, et un garde-rail le tient (`vehicleWeaponTags.guard.test.ts`,
+ * fixture datée du parc) : le Scorpion est publié sous `49E40D17` (et non `00015cfa`, le tag du
+ * module jamais vu dans un document) ; les armes à TIR CONTINU (Ghost, canons de la Banshee,
+ * Chopper, LMG du Falcon, second mode du Wasp) gardent leur entrée — elles serviront dès que le
+ * décodeur lira le tir continu (lot M4b) — et sont inscrites comme ATTENDUES NON OBSERVÉES.
  *
- * LE WARTHOG GARDE SA RÉSERVE ÉCRITE : son unique tag (`c7d50912`) ne départage pas LAAG / Gauss
- * / roquettes. Les trois sont cinétiques, la ligne vaut donc pour les trois — c'est le SON qui
- * souffre de l'ambiguïté, pas le style.
+ * LE SHADE ET LA TOURELLE DU WRAITH N'Y SONT PAS, ET ILS NE PEUVENT PAS Y ÊTRE : aucun tag `weap`
+ * n'est documenté pour eux (décision Q6 : ils seront `plasma_hot` le jour où leur tag sera lu).
+ * Pas de tag = pas d'entrée, jamais un tag voisin réemployé en devinant.
+ *
+ * `c7d50912` N'EST PAS AMBIGU (erratum du 2026-09-23 sur le lot 5.8.4) : c'est le LANCE-ROQUETTES
+ * du Rockethog (`WARTHOG_FINAL_2026-09-02.md` §1 : `vehi bcfb852f -> weap c7d50912`, banque
+ * `veh_un_rockethog`) ; la LAAG est `0c6fd911` et le canon Gauss `8647925a`, jamais observés.
  */
 import type { FxTint } from '../layers/fxInk'
 import type { ShotFamily } from '../layers/shotEffects'
@@ -65,26 +73,31 @@ export interface VehicleShotStyle {
  * aurait invité à les faire diverger une ligne à la fois.
  */
 const PLASMA: VehicleShotStyle = { fx: 'plasma', tint: 'plasma_cool' }
+const PLASMA_ROUGE: VehicleShotStyle = { fx: 'plasma', tint: 'plasma_hot' }
 const BALISTIQUE: VehicleShotStyle = { fx: 'ballistic', tint: 'kinetic' }
+const OBUS: VehicleShotStyle = { fx: 'explosive', tint: 'kinetic' }
 
 /**
  * VEHICLE_SHOT_FX — `Shot.w` (gabarit `weap`) -> style. Un tag absent garde le rendu neutre :
- * c'est le comportement d'avant ce fichier, jamais le style d'une arme voisine.
+ * c'est le comportement d'avant ce fichier, jamais le style d'une arme voisine. EXPORTÉE pour le
+ * garde-rail des tags observés (retrait avec les trois tables client, lot M4a).
  */
-const VEHICLE_SHOT_FX: ReadonlyMap<string, VehicleShotStyle> = new Map([
-  // ÉNERGIE (plasma Banished).
-  [vehicleWeapTag('00015435'), PLASMA], // Ghost — canons à plasma jumeaux.
-  [vehicleWeapTag('0000aa68'), PLASMA], // Banshee M1 — canons à plasma.
-  [vehicleWeapTag('0000aa69'), PLASMA], // Banshee M2 — bombe à combustible.
-  [vehicleWeapTag('121b4009'), PLASMA], // Wraith — mortier à plasma.
+export const VEHICLE_SHOT_FX: ReadonlyMap<string, VehicleShotStyle> = new Map([
+  // ÉNERGIE (plasma Banished) — ROUGE depuis le 2026-09-23 (Q6, Q7, Q8).
+  [vehicleWeapTag('00015435'), PLASMA_ROUGE], // Ghost — canons à plasma jumeaux (tir continu, M4b).
+  [vehicleWeapTag('0000aa68'), PLASMA_ROUGE], // Banshee M1 — canons à plasma (tir continu, M4b).
+  [vehicleWeapTag('0000aa69'), PLASMA], // Banshee M2 — bombe à combustible (teinte non décidée).
+  [vehicleWeapTag('121b4009'), PLASMA_ROUGE], // Wraith — mortier à plasma (172 tirs, 142 en véhicule).
+  [vehicleWeapTag('b40e9618'), PLASMA_ROUGE], // Chopper — canons avant (tir continu, M4b).
   // CINÉTIQUE.
-  [vehicleWeapTag('c7d50912'), BALISTIQUE], // Warthog — LAAG / Gauss / roquettes (tag non départagé).
-  [vehicleWeapTag('00015cfa'), BALISTIQUE], // Scorpion — canon principal.
-  [vehicleWeapTag('11725dc4'), BALISTIQUE], // Wasp M1 — autocanon de menton.
-  [vehicleWeapTag('d3c407ed'), BALISTIQUE], // Wasp M2 — missiles (muets, mais ils se VOIENT).
-  [vehicleWeapTag('b40e9618'), BALISTIQUE], // Chopper — canons jumeaux avant.
-  [vehicleWeapTag('0042678e'), BALISTIQUE], // Gungoose — mitrailleuses avant.
-  [vehicleWeapTag('00015cd3'), BALISTIQUE], // Falcon — tourelle LMG.
+  [vehicleWeapTag('c7d50912'), BALISTIQUE], // Rockethog — lance-roquettes (132 tirs, 127 en véhicule).
+  [vehicleWeapTag('11725dc4'), BALISTIQUE], // Wasp M1 — son au coup, 450/min (4 tirs, 4 en véhicule).
+  [vehicleWeapTag('d3c407ed'), BALISTIQUE], // Wasp M2 — son en boucle, 600/min (jamais vu).
+  [vehicleWeapTag('0042678e'), BALISTIQUE], // Gungoose — mitrailleuses avant (40 tirs, 15 en véhicule).
+  [vehicleWeapTag('00015cd3'), BALISTIQUE], // Falcon — tourelle LMG (tir continu, M4b).
+  // OBUS : explosion à l'impact.
+  [vehicleWeapTag('49e40d17'), OBUS], // Scorpion — canon principal (tag PUBLIÉ, 13 tirs, 13 en véhicule).
+  [vehicleWeapTag('0bb6976b'), OBUS], // Falcon — lance-grenades de porte (Q10, 52 tirs, 51 en véhicule).
 ])
 
 /**
