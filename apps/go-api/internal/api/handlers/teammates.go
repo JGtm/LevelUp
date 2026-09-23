@@ -83,6 +83,11 @@ type teammatesSessionsOutput struct{ Body compositionSessionsResponse }
 // ─── Endpoint ────────────────────────────────────────────────────────────────
 
 // handleGetPage traite POST /api/v1/players/{player_slug}/pages/teammates.
+//
+// Erreurs : capability absente du titre -> 503 `capability_not_supported`
+// (MapCapabilityError, sonde `teammates.page`), comme la route légère des sessions (lot perf
+// L8, 2026-09-23 : ce chemin rendait 500) ; le reste par mapServiceError (499 client parti,
+// 503 base occupée, 500 sinon).
 func (h *TeammatesHandler) handleGetPage(ctx context.Context, in *teammatesQueryInput) (*teammatesPageOutput, error) {
 	svc, xuid, _, err := h.newSvc(ctx, in.PlayerSlug)
 	if err != nil {
@@ -96,6 +101,9 @@ func (h *TeammatesHandler) handleGetPage(ctx context.Context, in *teammatesQuery
 
 	resp, svcErr := svc.GetPage(ctx, xuid, req)
 	if svcErr != nil {
+		if mapped, ok := MapCapabilityError(ctx, svcErr, "teammates.page"); ok {
+			return nil, mapped
+		}
 		return nil, mapServiceError(ctx, svcErr, "teammates_error")
 	}
 

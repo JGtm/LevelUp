@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -14,6 +15,7 @@ import (
 
 	"levelup/go-api/internal/api/handlers"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/port"
 )
 
@@ -98,6 +100,28 @@ func TestTeammatesHandler_ServiceError(t *testing.T) {
 
 	if w.Code != http.StatusInternalServerError {
 		t.Fatalf("expected 500, got %d", w.Code)
+	}
+}
+
+// TestTeammatesHandler_CapabilityAbsente_503 : un titre sans la capability rend un 503 propre
+// `capability_not_supported` (MapCapabilityError), jamais le 500 de mapServiceError — comme la
+// route légère des sessions (lot perf L8, 2026-09-23).
+func TestTeammatesHandler_CapabilityAbsente_503(t *testing.T) {
+	mock := &mockTeammatesService{pageErr: fmt.Errorf("historique: %w", games.ErrCapabilityNotSupported)}
+	r := newTeammatesRouter(func(_ context.Context, _ string) (port.TeammatesService, string, string, error) {
+		return mock, testXUID, testGamertag, nil
+	})
+	body, _ := json.Marshal(domain.TeammatesQueryRequest{})
+	req := httptest.NewRequest(http.MethodPost, "/players/test-player/pages/teammates", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusServiceUnavailable {
+		t.Fatalf("statut %d, attendu 503 : %s", w.Code, w.Body.String())
+	}
+	if code := errorCode(t, w); code != "capability_not_supported" {
+		t.Errorf("code %q, attendu capability_not_supported", code)
 	}
 }
 
