@@ -210,6 +210,26 @@
     neutre ?) — aucun changement sans ok ;
   - Q23 : « si un humain arrive oui il remplace celui du bot normalement ».
 
+- **DÉCISIONS DU 23/09 (nuit) — elles PRIMENT sur toute consigne antérieure, y compris le brief d'un
+  lot déjà lancé (M4a) :**
+  - Wasp (Q11 tranchée) : « le coup par coup c'est le lance-missile, l'autre doit être la LMG de la
+    Wasp (dont on a le son normalement déjà) » → `11725DC4` (son au coup, 450/min, observé) = LANCE-
+    MISSILES ; `d3c407ed` (son en boucle, 600/min, tir continu) = LMG de la Wasp. Les libellés, styles
+    et montages suivent ; le son actuel `vehicle_shot_wasp` (reconstruit depuis `11725dc4`) est donc
+    celui des missiles ; le son de la LMG est à retrouver (V3E / manifeste V3) pour M4b.
+  - Bombe de la Banshee : ROUGE et PLUS GROSSE (éclair et explosion). Obus du Scorpion : explosion
+    comme la grenade. Roquettes du Rockethog : explosions comme le lance-roquettes SPNKR.
+  - Lance-grenades du Falcon : l'utilisateur pensait avoir le son → le reconstruire depuis la banque
+    `sb_010_veh_un_falcongrenadelauncher.pck` par la méthode V3E (gains des parents actor-mixer,
+    `MakeUpGain` AkPropID 6, `InitialDelay` AkPropID 59, mode de cadence du conteneur, variantes,
+    plafond −1 dBTP) ; désignation à l'oreille par l'utilisateur avant câblage.
+  - Véhicules de décor (Starboard, Goliath) : l'utilisateur ne les a jamais vus en jeu → MASQUÉS
+    (confirmé). Question de l'utilisateur : « on n'a pas moyen de savoir s'ils sont jouables avant ? »
+    → la règle actuelle est générale (lue dans le comportement écrit par le film, pas au cas par
+    cas) ; sonde C2 lancée pour trouver un champ de grammaire qui le dise dès la naissance.
+  - `00007CA9` (3e emplacement au coup d'envoi) : inconnu de l'utilisateur → non affiché ; recherche
+    de son identité (Ghidra / données du jeu).
+  - Ghidra lancé, pont HTTP accessible → sonde P1-S3 lancée.
 - **EXIGENCE DE L'UTILISATEUR (citation, 23/09)** : « faut réparer les films mentionnés mais faut faire
   attention aux régressions et surtout que les correctifs soient propres, pérennes et solides et valides
   pour les autres films et les futurs films ». Conséquences pour TOUS les lots :
