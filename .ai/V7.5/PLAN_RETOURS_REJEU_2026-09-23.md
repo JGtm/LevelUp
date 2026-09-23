@@ -254,6 +254,21 @@
      un véhicule posé jouable que personne ne touche pendant le match serait masqué à tort par L1.3 →
      proposition d'affinage en attente (voir §9). Takamanohara : l'objet posé `3a8060e2` = une des deux
      TOURELLES FIXES (gatling / mortier) symétriques en hauteur → famille « tourelle fixe », occupable.
+- **DÉCISIONS DU 24/09 (suite) :**
+  - Tir continu : l'utilisateur demande si seul le Ghost est concerné. Réponse lue dans Ghidra (P1-S3) :
+    le mécanisme est GÉNÉRAL, par type de prédiction du barillet (`FUN_140de87fc`) — types 2 et 4 :
+    événement de tir écrit à chaque coup ; types 1 et 3 : écrit seulement si le seau à jetons le
+    permet, sinon bit « gâchette tenue » dans la vue de contrôle. Toute arme à tir continu en relève,
+    véhicule ou non : Ghost, canons de la Banshee, Chopper, LAAG, LMG du Falcon, LMG de la Wasp, et à
+    pied le Rayon de Sentinelle (sauts du compteur mesurés sur chacun en P1). M4b est donc générique :
+    cadence lue dans le tag de CHAQUE arme, gate G1/G2 par FAMILLE (pas seulement le Ghost), Rayon de
+    Sentinelle compris ; la réparation de la clôture de la vue B profite à tous les joueurs.
+  - Variantes lointaines des sons : non retenues (confirmé).
+  - Behemoth (hors Super Fiesta) : des Mongoose / Gungoose y sont toujours posés au départ → règle du
+    décor AFFINÉE, VALIDÉE : « hors de la zone jouable » s'ajoute aux conditions de L1.3 (une seule pose,
+    vie jusqu'à la fin, jamais occupé) — un véhicule jouable garé dans l'aire de jeu reste toujours
+    affiché. Lot M7 (vague C), zone lue dans les références de carte du dépôt, jamais une liste de
+    cartes.
 - **EXIGENCE DE L'UTILISATEUR (citation, 23/09)** : « faut réparer les films mentionnés mais faut faire
   attention aux régressions et surtout que les correctifs soient propres, pérennes et solides et valides
   pour les autres films et les futurs films ». Conséquences pour TOUS les lots :
@@ -618,6 +633,37 @@ contrat.
   journaux) ; message périmé de `film_scan.go` corrigé.
 - Gate : `teamIdentity unresolved` sur les documents à une seule série 6 → 0 (ab526724 après O1).
 
+#### M6 — Registre et catalogue : décisions du 24/09 (après M4a)
+
+Périmètre : registre des armes de véhicule (M4a), catalogue des armes / objets (libellés FR + EN),
+publication des ramassages (`film/replay/document_pickups.go` et voisins), sons statiques du rejeu.
+
+- [ ] M6.1 Sons validés à l'oreille : lance-grenades du Falcon `0BB6976B` → stems
+  `vehicle_shot_warthog_rocket_*` (même événement) ; missiles de la Wasp `11725DC4` → rendu V3E
+  rééquilibré (`Downloads/Halo Infinite - Sons v75/rr_2026-09-23/wasp_missiles_controle/`, gain et
+  plafond du pipeline des sons) ; stems de la LMG de la Wasp déposés pour M4b ; garde-rail des assets.
+- [ ] M6.2 Si M4a ne l'a pas fait : libellés Wasp (coup = missiles, boucle = LMG), bombe de la Banshee
+  rouge et plus grosse, obus du Scorpion = explosion de grenade, roquettes du Rockethog = explosion du
+  SPNKR ; famille « tourelle fixe » pour `3a8060e2` (Takamanohara, occupable).
+- [ ] M6.3 Mains nues `00007CA9` : exclu de la dotation affichée par une règle nommée, remise du coup
+  d'envoi classée « remise mains nues » (compteur, hors `unknownFamilies`), entrée « Mains nues » /
+  « Unarmed ».
+- [ ] M6.4 Bobine à fusion `E9E7FF79` (vérifier les variantes déjà au catalogue) ; vérification sur
+  pièces des libellés `2AC9C2FF` (hotrod) et `230447B1` (proto_heatwave) contre Calcineur / Crémateur.
+- Gate : tests rouges/verts ; reconstruction depuis les faits base vs branche + `replay-diff` (seuls les
+  calques visés bougent).
+
+#### M7 — Décor : « hors de la zone jouable » (après M1)
+
+- [ ] M7.1 La règle du décor (L1.3) exige EN PLUS que la vie soit hors de la zone jouable de la carte,
+  lue dans les références de carte du dépôt (`data/titles/halo_infinite/reference/map_geometry/`,
+  `map_positions_jouees.json`, calage des fonds — établir laquelle est la zone de JEU, en 3D si
+  possible : le Wasp de Goliath est sous le sol) ; carte sans zone connue → la règle ne masque rien
+  (repli nommé, compté). Commentaire de L1.3 corrigé (le film réplique la pose avant l'origine).
+- [ ] M7.2 Tests : décors de Starboard et de Goliath toujours masqués ; un véhicule posé dans l'aire de
+  jeu, jamais touché (fixture construite sur le modèle des Mongoose / Gungoose de Behemoth) reste
+  affiché ; parc : 13 → 13 masqués, 0 véhicule en jeu masqué.
+
 #### Clôture de la vague C
 
 - [ ] Fusions M1, M4a, M5 dans la campagne ; `replay-equiv` et `replay-corpus-gate` (changements
@@ -771,6 +817,9 @@ de `FireEvent` recensé à l'item M4b.1.
 - Tests : mini-film extrait de 81c02726 (fenêtre d'un frag au Ghost) → un tir de Ghost décodé et posé
   sur le Ghost (rouge aujourd'hui) ; ratchet Go « aucune lecture à offset fixe du record 36 hors
   grammaire ».
+- Gate G2 étendu (décision du 24/09) : par FAMILLE d'arme à tir continu — Ghost, canons de la Banshee,
+  Chopper, LAAG, LMG du Falcon, LMG de la Wasp, Rayon de Sentinelle — rafales publiées là où le film
+  les porte, cadence propre à chaque arme lue dans son tag.
 - Gate parc (`instruments/tirs_vehicules/kills_vs_tirs.mjs`) : G1 81c02726 — un tir de Ghost publié
   dans les 2 s avant chacun des 6 frags de G MONEY (0/6 aujourd'hui), aucun hors de ses épisodes, posé
   à ≤ 3 m du sprite ; G2 — frags de classe véhicule précédés d'un tir de l'arme du tueur ≥ 90 % par
