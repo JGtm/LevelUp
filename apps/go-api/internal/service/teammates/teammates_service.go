@@ -287,7 +287,7 @@ func (s *TeammatesService) GetPage(
 		// Vit en parallele de PickedSquadSessions/PickedSoloSessions ; intersection
 		// volontaire pour le cas multi-select + nav, en pratique l'un est vide quand
 		// l'autre est pose donc l'effet net est equivalent a "remplacement".
-		filteredMatches = filterSynthesisByPickedSessions(filteredMatches, req.Filters.Sessions.PickedSessions)
+		filteredMatches = filterSynthesisByPickedSessions(filteredMatches, req.Filters.Sessions.PickedSessions, canonicalRows)
 	}
 
 	totalMatches := len(filteredMatches)

@@ -65,7 +65,7 @@ func (s *TeammatesService) buildBriefingHeaderForTeammatesPage(
 			c := filters.Cascade
 			filtered = squadagg.FilterRowsByCascade(filtered, c.ExperienceTypes, c.Playlists, c.Maps, c.Modes)
 		}
-		if len(sessionMatchIDs) > 0 {
+		if sessionMatchIDs != nil { // vide non nil : session piquée sans match → aucun match
 			kept := make([]canonical.PlayerMatchRow, 0, len(filtered))
 			for _, r := range filtered {
 				if sessionMatchIDs[r.Summary.MatchID] {
@@ -303,26 +303,37 @@ func filterSynthesisByPeriodInput(matches []legacymatch.SynthesisMatchRow, p dom
 	return out
 }
 
-// filterSynthesisByPickedSessions filtre par labels presents dans
-// req.Filters.Sessions.PickedSessions (rail nav, FilterOmnibar SessionPill,
-// applySessionLabels squad). SynthesisMatchRow ne porte que SessionLabel ;
-// les valeurs envoyees par le frontend doivent donc etre des labels (cf. fix
-// goToPrevSession qui ecrit target.label, applySessionLabels qui propage les
-// labels du SessionMultiSelect). Slice vide = no-op.
-func filterSynthesisByPickedSessions(matches []legacymatch.SynthesisMatchRow, pickedSessions []string) []legacymatch.SynthesisMatchRow {
+// filterSynthesisByPickedSessions filtre par req.Filters.Sessions.PickedSessions : chaque
+// valeur est un LIBELLÉ de session (rail nav, SessionMultiSelect, applySessionLabels squad)
+// ou un SESSION_ID (FilterOmnibar SessionPill) — les deux sont acceptés, comme
+// applySessionFilter (service/filters_service.go ; lot perf L9-go, revue adversariale D).
+// SynthesisMatchRow ne porte que le libellé : l'identifiant se lit sur les lignes canoniques
+// (Enrichment.SessionID), seulement quand une session est piquée. Slice vide = no-op.
+func filterSynthesisByPickedSessions(
+	matches []legacymatch.SynthesisMatchRow, pickedSessions []string, canonicalRows []canonical.PlayerMatchRow,
+) []legacymatch.SynthesisMatchRow {
 	if len(pickedSessions) == 0 {
 		return matches
 	}
 	keep := make(map[string]struct{}, len(pickedSessions))
-	for _, lbl := range pickedSessions {
-		keep[lbl] = struct{}{}
+	for _, v := range pickedSessions {
+		keep[v] = struct{}{}
+	}
+	sessionIDs := make(map[string]string, len(canonicalRows))
+	for _, r := range canonicalRows {
+		if r.Enrichment.SessionID != nil && *r.Enrichment.SessionID != "" {
+			sessionIDs[r.Summary.MatchID] = *r.Enrichment.SessionID
+		}
 	}
 	out := matches[:0:0]
 	for _, m := range matches {
-		if m.SessionLabel == nil {
-			continue
+		id := sessionIDs[m.MatchID]
+		_, parID := keep[id]
+		parLibelle := false
+		if m.SessionLabel != nil {
+			_, parLibelle = keep[*m.SessionLabel]
 		}
-		if _, ok := keep[*m.SessionLabel]; ok {
+		if (id != "" && parID) || parLibelle {
 			out = append(out, m)
 		}
 	}
@@ -330,10 +341,14 @@ func filterSynthesisByPickedSessions(matches []legacymatch.SynthesisMatchRow, pi
 }
 
 // sessionMatchIDsDeLaPage rend les match_id retenus par la session piquée, nil sans session
-// piquée (= aucun filtre : tous les matchs escouade). Une session se pique par
-// picked_solo/squad_session_labels OU par filters.sessions.picked_sessions (rail, pastille,
-// sélecteur multiple) : filteredMatches porte déjà le résultat des deux règles
-// (filterSynthesisBySession, filterSynthesisByPickedSessions), l'ensemble se lit donc dessus.
+// piquée (= aucun filtre : tous les matchs escouade). Une session piquée qui ne retient AUCUN
+// match (libellé inconnu ou périmé, session_id sans match) rend un ensemble VIDE NON NIL, que
+// les consommateurs lisent « aucun match », jamais « pas de filtre » (lot perf L9-go, revue
+// adversariale D : la page servait alors tout l'historique de la composition). Une session se
+// pique par picked_solo/squad_session_labels OU par filters.sessions.picked_sessions (rail,
+// pastille, sélecteur multiple ; libellé ou session_id) : filteredMatches porte déjà le
+// résultat des deux règles (filterSynthesisBySession, filterSynthesisByPickedSessions),
+// l'ensemble se lit donc dessus.
 //
 // D2.5, lot perf L2 (2026-09-23) : seul le premier chemin comptait. Une requête ne portant que
 // filters.sessions — la requête intermédiaire du ré-ancrage front — calculait toutes les
