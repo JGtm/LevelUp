@@ -365,14 +365,14 @@ const shapeEnteteCuiteRegle = "empreinte-cuite-regle "
 //	  qu'elle existe pour ne pas faire.
 const cuiteRegleCourante = 2
 
-// calquesALaRequete — les balises JSON des champs du document que la CUISSON N'ÉCRIT JAMAIS.
-// Toute entrée ici se justifie par un grep : aucun chemin de `build*.go` ne pose le champ.
-// Dernière vérification : 2026-09-17 — `vehicleLabels` y entre au schéma 62 (cf. layers.go).
+// calquesALaRequete — les balises JSON des champs que la CUISSON N'ÉCRIT JAMAIS (justifié par un grep :
+// aucun `build*.go` ne pose le champ). Vérifié le 2026-09-23 : `vehicleLabels` schéma 62, `vehicleWeapons` 69.
 var calquesALaRequete = map[string]bool{
-	"mapObjectives": true, // objectives_catalog.go + service/replay_map_objectives.go
-	"mapWeaponPads": true, // map_weapon_pads_catalog.go + service/replay_map_weapon_pads.go
-	"weaponTiers":   true, // map_weapon_pads.go (WeaponTiersInfo) + service/replay_weapon_tiers.go
-	"vehicleLabels": true, // service/replay_vehicle_labels.go (resolveVehicleLabels) — sprites de chassis
+	"mapObjectives":  true, // objectives_catalog.go + service/replay_map_objectives.go
+	"mapWeaponPads":  true, // map_weapon_pads_catalog.go + service/replay_map_weapon_pads.go
+	"weaponTiers":    true, // map_weapon_pads.go (WeaponTiersInfo) + service/replay_weapon_tiers.go
+	"vehicleLabels":  true, // service/replay_vehicle_labels.go (resolveVehicleLabels) — sprites de chassis
+	"vehicleWeapons": true, // service/replay_vehicle_weapons.go (resolveVehicleWeapons) — registre des armes
 }
 
 // documentShapeRenderCuite rend la forme du document PRIVÉE des types que seuls les calques

@@ -248,3 +248,10 @@ package facts
 // (cf. l en-tete de `fallback/repli.go`), et son compteur n est pas cable. Aucune lecture, aucune
 // largeur, aucun appariement ne change : les lignes produites sont identiques a l octet et aucun
 // match deja decode n est candidat au backlog.
+// 2026-09-23, LOT M4a (PLAN_RETOURS_REJEU_2026-09-23) — REVISION INCHANGEE, EMPREINTE SEULE
+// RECOPIEE, ET LE CHOIX EST ECRIT. `fallback/` recoit une entree de DONNEES,
+// `repli_tourelle_porteur_voisin_de_slot` (fichier neuf `registre_replay_vehicules.go`, une tranche
+// de plus a `Tranches`, une constante a `noms.go`) : le registre DECLARE et COMPTE, il ne decide
+// rien, et le site qui le declenche est dans la couche de PUBLICATION (`replay/vehicle_turrets.go`),
+// qui ne produit aucune ligne de kill. Aucune lecture, aucune largeur, aucun appariement ne change :
+// les lignes produites sont identiques a l octet et aucun match deja decode n est candidat au backlog.

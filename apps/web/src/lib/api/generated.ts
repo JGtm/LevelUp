@@ -10759,6 +10759,9 @@ export interface components {
             vehicleLabels?: {
                 [key: string]: components["schemas"]["VehicleLabel"];
             };
+            vehicleWeapons?: {
+                [key: string]: components["schemas"]["VehicleWeapon"];
+            };
             vehicles?: components["schemas"]["VehicleTrack"][] | null;
             vipCrown?: components["schemas"]["VipPeriod"][] | null;
             weaponChanges?: components["schemas"]["WeaponChange"][] | null;
@@ -13530,12 +13533,24 @@ export interface components {
             /** Format: int64 */
             shotsNoRide: number;
             /** Format: int64 */
+            shotsOnCarrier: number;
+            /** Format: int64 */
             shotsUnplaced: number;
             /** Format: int64 */
             shotsVehicleWeapon: number;
+            /** Format: int64 */
+            turretRides: number;
+            /** Format: int64 */
+            turretRidesDropped: number;
+            /** Format: int64 */
+            turrets: number;
+            /** Format: int64 */
+            turretsOnCarrier: number;
             unknownChassis?: {
                 [key: string]: number;
             };
+            /** Format: int64 */
+            variants: number;
             /** Format: int64 */
             vehiclesRidden: number;
             /** Format: int64 */
@@ -13569,6 +13584,12 @@ export interface components {
             kind?: string;
             tinted?: boolean;
         };
+        VehicleLifeRef: {
+            /** Format: int32 */
+            gen: number;
+            /** Format: int32 */
+            slot: number;
+        };
         VehicleRide: {
             aim?: components["schemas"]["VehicleAim"][] | null;
             /** Format: int64 */
@@ -13580,6 +13601,7 @@ export interface components {
             t0: number;
             /** Format: int64 */
             t1: number;
+            turret?: components["schemas"]["VehicleLifeRef"];
             xuid?: string;
         };
         VehicleSample: {
@@ -13605,11 +13627,13 @@ export interface components {
             z?: number;
         };
         VehicleTrack: {
+            carrier?: components["schemas"]["VehicleLifeRef"];
             chassis?: string;
             end: string;
             family?: string;
             /** Format: int32 */
             gen: number;
+            part?: string;
             rides?: components["schemas"]["VehicleRide"][] | null;
             samples?: components["schemas"]["VehicleSample"][] | null;
             /** Format: int32 */
@@ -13623,6 +13647,24 @@ export interface components {
             t1max: number;
             /** Format: int64 */
             tEnd?: number;
+            variant?: string;
+        };
+        VehicleWeapon: {
+            en: string;
+            fire: string;
+            fr: string;
+            fx: string;
+            mount?: components["schemas"]["VehicleWeaponMount"];
+            sound?: string;
+            tint: string;
+            vehicle: string;
+        };
+        VehicleWeaponMount: {
+            aim: string;
+            /** Format: double */
+            ax: number;
+            /** Format: double */
+            ay: number;
         };
         VipCrownCoverage: {
             /** Format: int64 */

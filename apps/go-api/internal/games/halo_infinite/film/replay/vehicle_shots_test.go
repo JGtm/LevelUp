@@ -169,3 +169,65 @@ func TestTirEnVehiculeSansEpisodeNeTouchePasLeDocument(t *testing.T) {
 		t.Errorf("document modifie sans aucun vehicule : %+v", doc.Coverage.Shots)
 	}
 }
+
+// vsTourelle monte un Warthog (slot 701, roule de (0,0) a (90,0)) et sa LAAG (slot 700, nee a
+// (500, 500)), l artilleur (slot 10) lu a bord de la LAAG — le gabarit mesure au parc.
+func vsTourelle() *ReplayDocument {
+	doc := vsDoc(nil, nil)
+	seat := 0
+	doc.Vehicles = []VehicleTrack{
+		{Slot: 700, Gen: 1, Chassis: "dd7f9102", T0: 0, T1: 90, T1Max: 90, Spawn: &VehicleSpawn{X: 500, Y: 500},
+			Rides: []VehicleRide{{T0: 10, T1: 40, Slot: 10, Seat: &seat, Src: VehicleRideSrcFilm}}},
+		{Slot: 701, Gen: 1, Family: familleWarthog, T0: 0, T1: 90, T1Max: 90,
+			Samples: []VehicleSample{{T: 0, X: 0, Y: 0}, {T: 90, X: 90, Y: 0}}},
+	}
+	return doc
+}
+
+// TestTirDArtilleurPoseSurLePorteur — RETOURS DU REJEU 2026-09-23 (M4a.1) : le tir d un artilleur
+// sort du VEHICULE qui porte la tourelle, pas de la naissance de la tourelle (mediane 44,7 m au
+// parc avant ce lot). Episode reporte sur le porteur par `poseTurretsOnCarriers`.
+func TestTirDArtilleurPoseSurLePorteur(t *testing.T) {
+	doc := vsTourelle()
+	poseTurretsOnCarriers(doc.Vehicles, nil)
+	attachVehicleShots(doc, []orphanShot{vsOrphan(20, 0xC7D5091200000000)}, vsOwn(), vsClock())
+	if len(doc.Shots) != 1 {
+		t.Fatalf("tirs publies = %d, attendu 1", len(doc.Shots))
+	}
+	s := doc.Shots[0]
+	if s.Vehicle == nil || *s.Vehicle != 701 || s.X != 20 || s.Y != 0 {
+		t.Errorf("tir = v %v (%v, %v), attendu v 701 en (20, 0)", s.Vehicle, s.X, s.Y)
+	}
+	if doc.Coverage.Vehicles.ShotsOnCarrier != 1 {
+		t.Errorf("shotsOnCarrier = %d, attendu 1", doc.Coverage.Vehicles.ShotsOnCarrier)
+	}
+}
+
+// TestTirDArtilleurDUnePieceNonReporteeSurLePorteur — l episode est reste sur la piece (porteur
+// non pilotable, ou occupant deja a bord) : le tir sort QUAND MEME du porteur designe.
+func TestTirDArtilleurDUnePieceNonReporteeSurLePorteur(t *testing.T) {
+	doc := vsTourelle()
+	doc.Vehicles[0].Carrier = &VehicleLifeRef{Slot: 701, Gen: 1}
+	attachVehicleShots(doc, []orphanShot{vsOrphan(30, 0x0BB6976B00000000)}, vsOwn(), vsClock())
+	if len(doc.Shots) != 1 || *doc.Shots[0].Vehicle != 701 || doc.Shots[0].X != 30 {
+		t.Fatalf("tirs = %+v, attendu un tir pose sur 701 en x = 30", doc.Shots)
+	}
+}
+
+// TestLArmeNommeLaVarianteGungoose — M4a.2 : le Gungoose partage le chassis du Mongoose ; son
+// ARME (`0042678E`) le designe. Une arme du Gungoose lue sur une autre famille ne nomme rien.
+func TestLArmeNommeLaVarianteGungoose(t *testing.T) {
+	doc := vsDoc(nil, []VehicleSample{{T: 10, X: 0, Y: 0}, {T: 30, X: 20, Y: 40}})
+	doc.Vehicles[0].Family = familleMongoose
+	attachVehicleShots(doc, []orphanShot{vsOrphan(20, 0x0042678E00000000)}, vsOwn(), vsClock())
+	if doc.Vehicles[0].Variant != familleGungoose || doc.Coverage.Vehicles.Variants != 1 {
+		t.Errorf("variante = %q (%d), attendu gungoose (1)", doc.Vehicles[0].Variant,
+			doc.Coverage.Vehicles.Variants)
+	}
+	doc = vsDoc(nil, []VehicleSample{{T: 10, X: 0, Y: 0}, {T: 30, X: 20, Y: 40}})
+	doc.Vehicles[0].Family = familleWarthog
+	attachVehicleShots(doc, []orphanShot{vsOrphan(20, 0x0042678E00000000)}, vsOwn(), vsClock())
+	if doc.Vehicles[0].Variant != "" {
+		t.Errorf("variante = %q sur un Warthog, attendu aucune", doc.Vehicles[0].Variant)
+	}
+}

@@ -23329,6 +23329,10 @@ components:
           additionalProperties:
             $ref: '#/components/schemas/VehicleLabel'
           type: object
+        vehicleWeapons:
+          additionalProperties:
+            $ref: '#/components/schemas/VehicleWeapon'
+          type: object
         vehicles:
           items:
             $ref: '#/components/schemas/VehicleTrack'
@@ -30117,10 +30121,25 @@ components:
         shotsNoRide:
           format: int64
           type: integer
+        shotsOnCarrier:
+          format: int64
+          type: integer
         shotsUnplaced:
           format: int64
           type: integer
         shotsVehicleWeapon:
+          format: int64
+          type: integer
+        turretRides:
+          format: int64
+          type: integer
+        turretRidesDropped:
+          format: int64
+          type: integer
+        turrets:
+          format: int64
+          type: integer
+        turretsOnCarrier:
           format: int64
           type: integer
         unknownChassis:
@@ -30128,6 +30147,9 @@ components:
             format: int64
             type: integer
           type: object
+        variants:
+          format: int64
+          type: integer
         vehiclesRidden:
           format: int64
           type: integer
@@ -30176,6 +30198,12 @@ components:
         - shotsUnplaced
         - shotsNoRide
         - shotsVehicleWeapon
+        - turrets
+        - turretsOnCarrier
+        - turretRides
+        - turretRidesDropped
+        - shotsOnCarrier
+        - variants
         - cycleLocations
         - cycles
         - cycleGaps
@@ -30230,6 +30258,21 @@ components:
         tinted:
           type: boolean
       type: object
+    VehicleLifeRef:
+      additionalProperties: false
+      properties:
+        gen:
+          format: int32
+          minimum: 0
+          type: integer
+        slot:
+          format: int32
+          minimum: 0
+          type: integer
+      required:
+        - slot
+        - gen
+      type: object
     VehicleRide:
       additionalProperties: false
       properties:
@@ -30254,6 +30297,8 @@ components:
         t1:
           format: int64
           type: integer
+        turret:
+          $ref: '#/components/schemas/VehicleLifeRef'
         xuid:
           type: string
       required:
@@ -30307,6 +30352,8 @@ components:
     VehicleTrack:
       additionalProperties: false
       properties:
+        carrier:
+          $ref: '#/components/schemas/VehicleLifeRef'
         chassis:
           type: string
         end:
@@ -30317,6 +30364,8 @@ components:
           format: int32
           minimum: 0
           type: integer
+        part:
+          type: string
         rides:
           items:
             $ref: '#/components/schemas/VehicleRide'
@@ -30347,6 +30396,8 @@ components:
         tEnd:
           format: int64
           type: integer
+        variant:
+          type: string
       required:
         - slot
         - gen
@@ -30354,6 +30405,49 @@ components:
         - t1
         - t1max
         - end
+      type: object
+    VehicleWeapon:
+      additionalProperties: false
+      properties:
+        en:
+          type: string
+        fire:
+          type: string
+        fr:
+          type: string
+        fx:
+          type: string
+        mount:
+          $ref: '#/components/schemas/VehicleWeaponMount'
+        sound:
+          type: string
+        tint:
+          type: string
+        vehicle:
+          type: string
+      required:
+        - vehicle
+        - en
+        - fr
+        - fire
+        - fx
+        - tint
+      type: object
+    VehicleWeaponMount:
+      additionalProperties: false
+      properties:
+        aim:
+          type: string
+        ax:
+          format: double
+          type: number
+        ay:
+          format: double
+          type: number
+      required:
+        - aim
+        - ax
+        - ay
       type: object
     VipCrownCoverage:
       additionalProperties: false

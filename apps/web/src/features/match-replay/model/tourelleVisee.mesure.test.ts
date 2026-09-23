@@ -38,6 +38,9 @@
  *
  * Lecture seule sur des documents DÉJÀ CUITS : aucun décodage de film, aucune base ouverte.
  * Sans `TOURELLE_MESURE`, la suite est ignorée — même porte que `ReplayTeams.perf.test.tsx`.
+ * DEPUIS LE SCHÉMA 69 (lot M4a) les montages viennent du registre `vehicleWeapons`, RÉSOLU À LA
+ * REQUÊTE : un artefact lu sur disque n'en porte pas — le lire tel que l'API le sert pour mesurer
+ * les montages.
  */
 import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
@@ -56,7 +59,8 @@ import {
   vehicleChassisHeadingAt,
   vehicleRideAimReading,
 } from './vehiclesAim'
-import { vehicleShotOrigin, vehicleWeaponMountOf } from './vehicleWeaponMounts'
+import { vehicleShotOrigin } from './vehicleWeaponMounts'
+import { vehicleWeaponMountOf } from './vehicleWeaponRegistry'
 
 /** Les témoins : un BTB à Warthogs, et deux films où un Scorpion tire. */
 const TEMOINS = ['4f77afc1', '8a485699', '0a44c6cc'] as const
@@ -168,7 +172,7 @@ function mesurer(doc: ReplayDocumentReady): Mesure {
     m.tirsVehicule++
     const track = doc.vehicles.find((v) => v.slot === s.v)
     if (track) ventilerTireur(m.tireur, track, s.slot, s.t)
-    const mount = vehicleWeaponMountOf(s.w)
+    const mount = vehicleWeaponMountOf(doc, s.w)
     if (!mount) {
       m.sansMontage++
       continue

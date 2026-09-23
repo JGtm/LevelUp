@@ -182,7 +182,7 @@ import { frameToMs } from '../../../lib/replay/replayLogic'
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 import { soundEvent, type ReplaySoundEvent } from './replaySoundVariants'
 import { vehicleDestructionSound } from './vehicleDestructionSound'
-import { vehicleShotSoundStem } from './vehicleShotSound'
+import { vehicleShotSoundStem } from '../model/vehicleWeaponRegistry'
 
 export { pickVariantStem, SOUND_VARIANTS, stemsOf, type ReplaySoundEvent } from './replaySoundVariants'
 export { OBJECTIVE_SOUND_STEMS, objectiveSoundStem, type ObjectiveSide } from './objectiveSound'
@@ -513,13 +513,12 @@ export const SOUND_CATEGORIES_DEFAULT: SoundCategoryFilter = {
  *
  * DEUX JOINTURES DEPUIS LE LOT VÉHICULES (2026-09-04), DANS CET ORDRE : le registre d'armes
  * d'abord (les armes de joueur, tirées à pied OU depuis un siège), puis les armes DE VÉHICULE
- * — leurs identifiants (`0x<weap>00000000`) sont ABSENTS de `weaponLabels`, c'est la table de
- * `vehicleShotSound.ts` qui les nomme. Aucune des deux ne répond = silence propre, inchangé.
+ * — leurs identifiants sont ABSENTS de `weaponLabels`, c'est le REGISTRE DES ARMES DE VÉHICULE
+ * du document qui les nomme (schéma 69, `vehicleWeaponRegistry.ts` ; il remplace la table client
+ * du lot). Aucune des deux ne répond, ou silence décidé par le registre = silence propre.
  *
- * LE PORTEUR N'EST PLUS LU (retours du 2026-09-23, lot L1.5) : le lot 5.8.4 départageait le tag
- * du Warthog par la famille du châssis tireur — et le prenait sur la PREMIÈRE vie du slot, pas
- * sur celle qui couvre le tir. Ce tag n'était pas ambigu (c'est le lance-roquettes du Rockethog,
- * cf. `vehicleShotSound.ts`) : le tag seul décide, aucun châssis n'est plus cherché.
+ * LE PORTEUR N'EST PAS LU (retours du 2026-09-23, lot L1.5) : l'arme seule décide, aucun châssis
+ * n'est cherché.
  */
 export function shotSoundStem(
   doc: ReplayDocumentReady,
@@ -528,7 +527,7 @@ export function shotSoundStem(
   if (!shot.w) return undefined
   const key = doc.weaponLabels?.[shot.w]?.key
   if (key) return WEAPON_SOUND_STEMS[key]
-  return vehicleShotSoundStem(shot.w)
+  return vehicleShotSoundStem(doc, shot.w)
 }
 
 /**

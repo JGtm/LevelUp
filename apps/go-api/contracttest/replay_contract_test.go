@@ -723,9 +723,17 @@ var replaySchemas = []struct {
 //	                      TROIS GENRES SEULEMENT, et c est mesure : le sprint est REFUTE comme
 //	                      observable par la vitesse, le saut est LU mais PAS PROUVE (lot 5.3.5).
 //
-// Les vingt-quatre fois, ce test a ATTRAPE l ecart : une branche publiait le champ avant que le
+//	62 (2026-09-23) : `vehicleWeapons` — LE REGISTRE DES ARMES DE VEHICULE du titre (retours du
+//	                      rejeu, lot M4a, schema 68 -> 69), RESOLU A LA REQUETE comme
+//	                      `vehicleLabels` et keye par `Shot.w` : forme, teinte, son (ou silence
+//	                      decide), montage, libelle FR/EN. Il remplace trois tables client clees
+//	                      par des tags jamais vus dans un film. `vehicles[].part` / `carrier` /
+//	                      `variant`, `rides[].turret` et les six compteurs de `coverage.vehicles`
+//	                      naissent au meme commit SANS faire monter ce compte (types imbriques).
+//
+// Les vingt-cinq fois, ce test a ATTRAPE l ecart : une branche publiait le champ avant que le
 // chiffre ne le dise. Contrat regenere (`make openapi-gen`), jamais ecrit a la main.
-const wantReplayDocumentFields = 61
+const wantReplayDocumentFields = 62
 
 // TestReplayContractDescribesEveryPublishedField : AUCUN CHAMP PUBLIE SANS DESCRIPTION, ET
 // AUCUNE DESCRIPTION SANS CHAMP.

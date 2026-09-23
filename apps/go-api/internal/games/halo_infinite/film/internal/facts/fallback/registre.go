@@ -55,6 +55,7 @@ func Tranches() []Tranche {
 		{"killsource/calibration", registreKillsourceCalibration},
 		{"objectifs et construction", registreObjectifsEtConstruction},
 		{"filmdec", registreFilmdec},
+		{"replay/vehicules", registreReplayVehicules},
 	}
 }
 

@@ -22,7 +22,31 @@ func toVehicleTrack(v replay.VehicleTrack) replaydoc.VehicleTrack {
 		Spawn:   ptrOf(v.Spawn, toVehicleSpawn),
 		Samples: sliceOf(v.Samples, toVehicleSample),
 		Rides:   sliceOf(v.Rides, toVehicleRide),
+		Part:    v.Part,
+		Carrier: ptrOf(v.Carrier, toVehicleLifeRef),
+		Variant: v.Variant,
 	}
+}
+
+func toVehicleLifeRef(v replay.VehicleLifeRef) replaydoc.VehicleLifeRef {
+	return replaydoc.VehicleLifeRef{Slot: v.Slot, Gen: v.Gen}
+}
+
+func toVehicleWeapon(v replay.VehicleWeapon) replaydoc.VehicleWeapon {
+	return replaydoc.VehicleWeapon{
+		Vehicle: v.Vehicle,
+		En:      v.En,
+		Fr:      v.Fr,
+		Fire:    v.Fire,
+		Fx:      v.Fx,
+		Tint:    v.Tint,
+		Sound:   v.Sound,
+		Mount:   ptrOf(v.Mount, toVehicleWeaponMount),
+	}
+}
+
+func toVehicleWeaponMount(v replay.VehicleWeaponMount) replaydoc.VehicleWeaponMount {
+	return replaydoc.VehicleWeaponMount{Aim: v.Aim, AX: v.AX, AY: v.AY}
 }
 
 func toVehicleSpawn(v replay.VehicleSpawn) replaydoc.VehicleSpawn {
@@ -53,6 +77,8 @@ func toVehicleRide(v replay.VehicleRide) replaydoc.VehicleRide {
 		Seat: v.Seat,
 		Src:  v.Src,
 		Aim:  sliceOf(v.Aim, toVehicleAim),
+		// Turret : schema 69.
+		Turret: ptrOf(v.Turret, toVehicleLifeRef),
 	}
 }
 

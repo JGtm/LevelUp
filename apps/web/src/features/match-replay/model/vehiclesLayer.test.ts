@@ -22,7 +22,10 @@ import {
   vehicleDriverAt,
   vehicleExplosionKindOf,
   vehicleIsDecor,
+  vehicleIsHidden,
+  vehicleIsMountedPart,
   vehicleMapElementGlyph,
+  vehicleSpriteFamily,
   vehicleColorAt,
   vehicleHeadingAt,
   vehiclePositionAt,
@@ -34,6 +37,7 @@ import {
   VEHICLE_HUMAN_FAMILIES,
   VEHICLE_KIND_MAP_ELEMENT,
   VEHICLE_MAP_ELEMENT_RENDER,
+  VEHICLE_PART_TURRET,
   VEHICLE_PLASMA_FAMILIES,
 } from './vehiclesLayer'
 import { CORE_RADIUS, PION_VISIBLE_DIAMETER_PX } from '../layers/replayMarkers'
@@ -618,5 +622,44 @@ describe('éléments de carte (lot 1.9.9, décision utilisateur du 2026-09-14)',
 
   it('un élément de carte N’EST PAS du décor : le décor ne se dessine pas, lui SI', () => {
     expect(vehicleIsDecor('tourelle_auto_bannie')).toBe(false)
+  })
+})
+
+/**
+ * RETOURS DU REJEU 2026-09-23 (lot M4a, décision Q12) — LES PIÈCES MONTÉES NE SE DESSINENT PAS
+ * SEULES. Une tourelle (`part = turret`) n'a aucun échantillon : dessinée, elle restait à sa
+ * naissance pendant que son véhicule roulait. Le serveur a reporté son artilleur sur le porteur ;
+ * côté calque elle est cachée, n'embarque personne et ne rend pas le calque disponible à elle seule.
+ */
+describe('vehicleIsMountedPart — une tourelle se dessine sur son véhicule, jamais seule', () => {
+  const tourelle = track({
+    family: undefined, chassis: 'dd7f9102', part: VEHICLE_PART_TURRET,
+    carrier: { slot: 701, gen: 1 }, rides: [ride({ slot: 20, seat: undefined })],
+  })
+
+  it('une pièce montée est cachée et n embarque personne', () => {
+    expect(vehicleIsMountedPart(tourelle)).toBe(true)
+    expect(vehicleIsHidden(tourelle)).toBe(true)
+    expect(vehicleCanEmbark(tourelle)).toBe(false)
+    expect(buildEmbarkedPredicate([tourelle])(20, 10)).toBe(false)
+  })
+
+  it('un véhicule n est pas une pièce montée', () => {
+    expect(vehicleIsMountedPart(track())).toBe(false)
+    expect(vehicleIsHidden(track())).toBe(false)
+  })
+})
+
+/**
+ * LA VARIANTE NOMME LE SPRITE (schéma 69) : un Rockethog (famille `warthog`, variante `rockethog`)
+ * se dessine en Rockethog ; sans variante, la famille.
+ */
+describe('vehicleSpriteFamily — la variante avant la famille', () => {
+  it('variante publiée : son sprite', () => {
+    expect(vehicleSpriteFamily(track({ variant: 'rockethog' }))).toBe('rockethog')
+  })
+  it('sans variante : la famille ; sans rien : indéfini', () => {
+    expect(vehicleSpriteFamily(track())).toBe('warthog')
+    expect(vehicleSpriteFamily(track({ family: undefined }))).toBeUndefined()
   })
 })

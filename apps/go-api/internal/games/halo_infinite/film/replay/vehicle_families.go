@@ -31,7 +31,10 @@ package replay
 // les refs d armement du `vehi`, pas dans le chassis (V4 § 6, `REWORK_WARTHOG_GUNGOOSE_2026-09-01`
 // § 5). Le lot A sert bien un sprite par variante, mais aucun `MPPWord32` observe n a ete resolu
 // vers l une d elles : les entrees `rockethog` / `razorback` / `warthog_gauss` / `gungoose` de
-// l index de sprites restent donc SANS cle ici, plutot que devinees.
+// l index de sprites restent donc SANS cle ici, plutot que devinees. DEPUIS LE SCHEMA 69 (retours
+// du rejeu 2026-09-23, lot M4a) la variante se LIT AILLEURS que dans le chassis, et elle est
+// publiee a cote de la famille, jamais a sa place (`VehicleTrack.Variant`) : par la TOURELLE que
+// le chassis porte (`vehicle_turrets.go`) ou par l ARME qu il tire (`vehicleVariantByWeapon`).
 //
 // UN MEME VEHICULE PORTE PLUSIEURS `vehi`, ET CE N EST PAS UNE VARIANTE : C EST LE MODULE.
 //
@@ -55,10 +58,13 @@ package replay
 // que le manifeste lui rattache sont en table. Chaque entree ci-dessous cite sa piece.
 //
 // CE QUI N ENTRE PAS ICI : les tags `vehi` ENFANTS (tourelles et canons montes — `0000d4ff`,
-// `0000d500`, `64b925eb`, `bcfb852f`, `dd7f9102`), que le manifeste range sous « Falcon
-// (tourelle LMG) et autres objets-enfants » avec le verdict « PAS DE SON DE DESTRUCTION
-// PROPRE ». Un enfant n est pas un chassis : lui donner une famille ferait dessiner un vehicule
-// la ou il n y a qu une piece d armement. Aucun n a d ailleurs ete observe au parc.
+// `0000d500`, `64b925eb`, `bcfb852f`, `dd7f9102`, les tourelles du Falcon et du Wraith), que le
+// manifeste range sous « Falcon (tourelle LMG) et autres objets-enfants » avec le verdict « PAS DE
+// SON DE DESTRUCTION PROPRE ». Un enfant n est pas un chassis : lui donner une famille ferait
+// dessiner un vehicule la ou il n y a qu une piece d armement. ILS SONT OBSERVES AU PARC — le
+// commentaire d avant ce lot disait le contraire, et c etait faux (mesure du 2026-09-23 : 45 vies
+// de LAAG, 16 de lance-roquettes, 49 de tourelles du Falcon, 31 pieces du Wraith). Ils ont leur
+// PROPRE table, celle des pieces montees (`vehicle_turrets.go`), qui les pose sur leur porteur.
 //
 // VALEUR INCONNUE = FAMILLE VIDE, ET C EST UN REPLI NOMME (D14 du plan decodeur). Le vehicule
 // reste publie (sa trajectoire est vraie), sans sprite : le client dessine un marqueur neutre.
@@ -101,6 +107,11 @@ const (
 	familleSkiff    = "skiff"
 	familleShade    = "shade"
 	familleFalcon   = "falcon"
+	// LES VARIANTES (schema 69) : jamais une famille de chassis, toujours une `VehicleTrack.Variant`
+	// — le nom du sprite de l index du lot A, lu par la tourelle ou par l arme.
+	familleRockethog    = "rockethog"
+	familleWarthogGauss = "warthog_gauss"
+	familleGungoose     = "gungoose"
 	// familleTourelleAutoBannie n est PAS un vehicule : c est un ELEMENT DE CARTE (lot 1.9.9,
 	// decision utilisateur du 2026-09-14). Voir la table ci-dessous pour la preuve, et
 	// `config/titles/{slug}/mappings/replay_labels.toml` pour son libelle et sa nature publies.

@@ -7,7 +7,8 @@
  * VÉHICULE (centre), pas celle d'un tireur (le bipède ne réplique plus une fois embarqué,
  * `document.go`). Ce module résout ICI, une fois, ce qui NE DÉPEND QUE DU FILM (le véhicule
  * porteur et son cap à l'instant du tir, `vehicleChassisHeadingAt`) et le montage de l'arme
- * (`vehicleWeaponMountOf`, table statique) ; ce qui dépend du SPRITE CHARGÉ (sa taille, donc le
+ * (`vehicleWeaponMountOf`, registre du titre publié dans le document, schéma 69) ; ce qui dépend
+ * du SPRITE CHARGÉ (sa taille, donc le
  * décalage écran réel) reste au tracé (`drawShotsLayer`), qui seul connaît `sizeOf` — même
  * découpage précalcul/canevas que le reste du fichier.
  *
@@ -37,8 +38,9 @@ import { familyOf, type ShotFamily } from '../layers/shotEffects'
 import { heldReading } from '../../../lib/replay/replayLogic'
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 import { vehicleChassisHeadingAt, vehicleShooterAimAt } from './vehiclesAim'
-import { vehicleShotStyleOf } from './vehicleShotFx'
-import { vehicleWeaponMountOf, type VehicleWeaponMount } from './vehicleWeaponMounts'
+import { vehicleShotStyleOf, vehicleWeaponMountOf } from './vehicleWeaponRegistry'
+import type { VehicleWeaponMount } from './vehicleWeaponMounts'
+import { vehicleSpriteFamily } from './vehiclesLayer'
 import { buildLivesBySlot, lifeOfSlotAt } from './livesPosition'
 
 /**
@@ -50,9 +52,9 @@ import { buildLivesBySlot, lifeOfSlotAt } from './livesPosition'
  */
 export interface VehicleShotSource {
   /**
-   * Le montage de l'arme sur le châssis, ou `null` quand le tag d'arme n'est pas documenté
-   * (le Shade, dont le tag `weap` manque — le Wraith, le Gungoose et le Falcon sont mesurés depuis
-   * le lot 5.8.3), OU quand l'arme n'est pas une arme de véhicule du tout (`arme: 'joueur'`).
+   * Le montage de l'arme sur le châssis, ou `null` quand le registre du document ne le porte pas
+   * (arme absente du registre, ou entrée sans montage), OU quand l'arme n'est pas une arme de
+   * véhicule du tout (`arme: 'joueur'`).
    * `null` ne fait PLUS perdre la source : l'éclair reste au CENTRE du véhicule, mais il garde sa
    * DIRECTION (cf. `vehicleShotPlacement`).
    */
@@ -124,10 +126,11 @@ export function buildShotFx(doc: ReplayDocumentReady, aimHoldFrames: number): Sh
   for (const s of doc.shots) {
     const label = s.w ? doc.weaponLabels?.[s.w] : undefined
     // DEUX JOINTURES, DANS CET ORDRE — la MÊME que celle du son (`shotSoundStem`) : le registre
-    // des armes de JOUEUR d'abord, puis la table des armes DE VÉHICULE (lot 5.8.2). Sans la
-    // seconde, 68 % des tirs de véhicule de `4f77afc1` tombaient sur la famille `plain` et la
-    // teinte `neutral` — un halo gris pâle centré sur un sprite, qui ne se lit pas comme un tir.
-    const style = label ? null : vehicleShotStyleOf(s.w)
+    // des armes de JOUEUR d'abord, puis le REGISTRE DES ARMES DE VÉHICULE du document (schéma 69,
+    // qui remplace la table client du lot 5.8.2). Sans la seconde, 68 % des tirs de véhicule de
+    // `4f77afc1` tombaient sur la famille `plain` et la teinte `neutral` — un halo gris pâle
+    // centré sur un sprite, qui ne se lit pas comme un tir.
+    const style = label ? null : vehicleShotStyleOf(doc, s.w)
     const fam = familyOf(label?.fx ?? style?.fx)
     if (fam === 'melee') continue
     const track = lifeOfSlotAt(bySlot, s.slot, s.t)
@@ -195,7 +198,7 @@ function vehicleShotSourceOf(
   if (shot.v === undefined) return null
   const track = doc.vehicles.find((v) => v.slot === shot.v)
   if (!track) return null
-  const mount = vehicleWeaponMountOf(shot.w)
+  const mount = vehicleWeaponMountOf(doc, shot.w)
   // ARME DE VÉHICULE = absente du registre d'armes de joueur (cf. l'en-tête de cette fonction).
   const armeDeVehicule = shot.w !== undefined && doc.weaponLabels?.[shot.w] === undefined
   // LE SLOT DU TIREUR, PAS SON SIÈGE (lot 5.5) : c'est la seule clé qui désigne l'occupant qui a
@@ -208,7 +211,8 @@ function vehicleShotSourceOf(
   return {
     mount,
     arme: armeDeVehicule ? 'vehicule' : 'joueur',
-    family: track.family,
+    // LE SPRITE DESSINÉ, variante comprise (schéma 69) : c'est sur SES dimensions que l'ancre se lit.
+    family: vehicleSpriteFamily(track),
     headingDeg: vehicleChassisHeadingAt(track, t),
     shooterHeadingDeg: viseeTireur,
   }

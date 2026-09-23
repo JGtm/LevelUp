@@ -206,7 +206,14 @@ const plafondSurfaceFacade = 166 // 2026-09-17 — base a5d15e634
 //	                                           de prise d arme ; 5.3.6 : +2 pour replay.Stance et
 //	                                           replay.StanceCoverage) et se cumulent : 260 + 3 + 2 = 265,
 //	                                           re-mesure a la fusion.
-const plafondSurfaceReplay = 265 // 2026-09-22 — fusion serie 5 dans feat/v75 : 260 + 3 (ajsup-E) + 2 (5.3.6)
+//	269  retours du rejeu M4a (2026-09-23)       +4 : le registre des armes de vehicule pose a la
+//	                                           requete (`replay.VehicleWeapon`,
+//	                                           `replay.VehicleWeaponMount`, `replay.VehicleWeaponKey`,
+//	                                           cites par `service/replay_vehicle_weapons.go` et
+//	                                           `replayview`) et la reference de vie des pieces
+//	                                           montees (`replay.VehicleLifeRef`, `replayview`).
+//	                                           RE-MESURE A L ENTREE du lot : 265 sur `b74c8f294`.
+const plafondSurfaceReplay = 269 // 2026-09-23 — retours du rejeu M4a : 265 + 4 (registre des armes de vehicule, pieces montees)
 
 // plafondsParFamilleFacade — la surface de la facade VENTILEE PAR PAQUET D ORIGINE.
 //

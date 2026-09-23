@@ -45,7 +45,7 @@ package replay
 // donc aux deux : le retrait de ces notes-ci a fait disparaitre la seule description de la v51,
 // restauree a la chronique le meme jour. Une entree de chronique se pose DANS LE COMMIT qui
 // monte la version, jamais apres.
-const SchemaVersion = 68
+const SchemaVersion = 69
 
 // ReplayDocument est le rejeu 2D sérialisé d'un match.
 type ReplayDocument struct {
@@ -274,6 +274,10 @@ type ReplayDocument struct {
 	// service, sinon les artefacts déjà cuits resteraient muets). Absent quand aucune famille
 	// n'est résolue.
 	VehicleLabels map[string]VehicleLabel `json:"vehicleLabels,omitempty"`
+	// VehicleWeapons est LE REGISTRE DES ARMES DE VÉHICULE employées par `shots` (schéma 69, cf.
+	// vehicle_weapons.go), keyé comme `Shot.Weapon` — REMPLI À LA REQUÊTE, même règle que
+	// `vehicleLabels`. Absent quand aucun tir n'emploie une arme du registre.
+	VehicleWeapons map[string]VehicleWeapon `json:"vehicleWeapons,omitempty"`
 	// VehicleCycles est LE CYCLE DE REAPPARITION de chaque EMPLACEMENT de naissance de vehicule
 	// (cf. vehicle_cycles.go) : le delai mediane entre la destruction d un vehicule et la
 	// naissance du suivant au meme endroit, avec ses deciles et les deux moities de son

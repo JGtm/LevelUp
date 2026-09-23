@@ -9,6 +9,19 @@ import type { ReplayDocument } from '@/lib/api/types'
 import { buildShotFx } from './shotFx'
 import { testReplayDoc } from '../test/testDoc'
 
+// Une arme de véhicule telle que `Shot.w` la porte (`0x` + tag `weap` + 32 bits nuls). Une arme de
+// véhicule N'A PAS d'entrée dans `weaponLabels` : c'est le REGISTRE DES ARMES DE VÉHICULE du
+// document (`vehicleWeapons`, schéma 69) qui la nomme — ici une entrée de test au gabarit du
+// Ghost (plasma rouge, canons de nez fixes).
+const GHOST_WEAP_TAG = '0x0001543500000000'
+const REGISTRE_TEST: NonNullable<ReplayDocument['vehicleWeapons']> = {
+  [GHOST_WEAP_TAG]: {
+    vehicle: 'ghost', en: 'Plasma Cannons', fr: 'Canons à plasma', fire: 'continuous',
+    fx: 'plasma', tint: 'plasma_hot', sound: 'vehicle_shot_ghost_1',
+    mount: { aim: 'fixed', ax: 0.22, ay: -0.35 },
+  },
+}
+
 /** Document 10 Hz : une vie au slot 1, dont le regard n'est transmis qu'à certaines frames. */
 function doc(over: Partial<ReplayDocument> = {}) {
   return testReplayDoc({
@@ -32,6 +45,7 @@ function doc(over: Partial<ReplayDocument> = {}) {
       '0xSWORD': { en: 'Épée', fr: 'Épée', fx: 'melee' },
       '0xNIL': { en: '?', fr: '?' },
     },
+    vehicleWeapons: REGISTRE_TEST,
     ...over,
   })
 }
@@ -111,10 +125,6 @@ describe('buildShotFx', () => {
   })
 })
 
-// Le tag `weap` du Ghost tel que le porte réellement `Shot.w` (`vehicleWeaponMounts.ts` :
-// `0x` + tag weap 8 hex + 32 bits nuls, vérifié en direct sur le Warthog et le Wasp). Une
-// arme de véhicule N'A PAS d'entrée dans `weaponLabels` (ce ne sont pas des armes de joueur).
-const GHOST_WEAP_TAG = '0x0001543500000000'
 
 describe('buildShotFx — tirs en véhicule (v), origine au montage plutôt qu’au centre', () => {
   it('v marqué + arme au montage connu (fixe) : vehicleShot porte le montage et le cap', () => {
@@ -261,7 +271,7 @@ describe('buildShotFx — tirs en véhicule (v), origine au montage plutôt qu�
    * famille `plain` et la teinte `neutral` (68 % des tirs de véhicule de `4f77afc1`) : un halo
    * gris pâle centré sur un sprite, qui ne se lit pas comme un tir.
    */
-  it('une arme DE VÉHICULE prend la famille et la teinte de sa propre table', () => {
+  it('une arme DE VÉHICULE prend la famille et la teinte du registre du document', () => {
     const d = doc({ shots: [{ slot: 1, t: 10, x: 0, y: 0, w: GHOST_WEAP_TAG }] })
     const fx = buildShotFx(d, 50)[0]
     expect(fx.fam).toBe('plasma')

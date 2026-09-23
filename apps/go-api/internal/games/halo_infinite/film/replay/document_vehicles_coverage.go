@@ -31,9 +31,14 @@ func tallyVehicleCoverage(tracks []VehicleTrack, cov *VehicleCoverage, fb *fallb
 		}
 		if tr.Chassis != "" {
 			cov.WithChassis++
-			if tr.Family != "" {
+			switch {
+			case tr.Family != "":
 				cov.FamilyResolved++
-			} else {
+			case tr.Part != "":
+				// UNE PIECE MONTEE N EST PAS UN CHASSIS INCONNU (schema 69) : la table des pieces
+				// la nomme (`vehicle_turrets.go`) et `coverage.vehicles.turrets` la compte. La
+				// ranger ici ferait declencher le marqueur neutre sur une vie qui n est pas dessinee.
+			default:
 				cov.FamilyUnknown++
 				cov.UnknownChassis[tr.Chassis]++
 				// D14 (b) : la LECTURE a eu lieu (`tr.Chassis` est le mot d identite lu dans le

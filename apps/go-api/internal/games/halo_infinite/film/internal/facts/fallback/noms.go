@@ -62,6 +62,8 @@ const (
 	NomSiegeDuRemplacantParAppariementOrdinal Nom = "repli_siege_du_remplacant_par_appariement_ordinal"
 	// NomChassisVehiculeMarqueurNeutre : `replay/document_vehicles_coverage.go`, `tallyVehicleCoverage`.
 	NomChassisVehiculeMarqueurNeutre Nom = "repli_chassis_vehicule_marqueur_neutre"
+	// NomTourellePorteurVoisinDeSlot : `replay/vehicle_turrets.go`, `carrierOfTurret`.
+	NomTourellePorteurVoisinDeSlot Nom = "repli_tourelle_porteur_voisin_de_slot"
 	// NomZoneCampDeCaptureDeduitDeLIssue : `replay/zone_states_capturer.go`,
 	// `zoneRampCapturerDeduit`.
 	NomZoneCampDeCaptureDeduitDeLIssue Nom = "repli_zone_camp_de_capture_deduit_de_l_issue"

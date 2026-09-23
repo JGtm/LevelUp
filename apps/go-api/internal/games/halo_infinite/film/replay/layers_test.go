@@ -366,7 +366,9 @@ func TestLayersEstPoseParLaCuisson(t *testing.T) {
 		t.Errorf("`layers[tracks]` vaut %q, attendu %q : la table n est pas celle qui est posee",
 			doc.Layers["tracks"], grammar.Rev)
 	}
-	for _, requete := range []string{"mapObjectives", "mapWeaponPads", "weaponTiers", "vehicleLabels"} {
+	for _, requete := range []string{
+		"mapObjectives", "mapWeaponPads", "weaponTiers", "vehicleLabels", "vehicleWeapons",
+	} {
 		if _, ok := doc.Layers[requete]; ok {
 			t.Errorf("le calque a la requete %q est declare produit par la cuisson", requete)
 		}
