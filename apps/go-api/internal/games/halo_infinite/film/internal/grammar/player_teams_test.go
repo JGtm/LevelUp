@@ -188,7 +188,7 @@ func TestScanPlayerTeamsIndexEstLeSiege(t *testing.T) {
 		if len(slots) != b.sieges {
 			t.Fatalf("%s : %d sieges, attendu %d", b.film, len(slots), b.sieges)
 		}
-		lus := indexDuPremierPaquet(t, fc, reg)
+		lus := indexDuPremierPaquetComplet(t, fc, reg, b.premiers)
 		if len(lus) != b.premiers {
 			t.Fatalf("%s : %d entites au premier paquet, attendu %d", b.film, len(lus), b.premiers)
 		}
@@ -206,9 +206,17 @@ func TestScanPlayerTeamsIndexEstLeSiege(t *testing.T) {
 	}
 }
 
-// indexDuPremierPaquet rend les index de joueur des records ti=9 du PREMIER paquet d'image-cle
-// qui en porte, dans l'ordre des positions de bit.
-func indexDuPremierPaquet(t *testing.T, fc *FilmContext, reg *Registry) []int {
+// indexDuPremierPaquetComplet rend les index de joueur des records ti=9 du PREMIER paquet
+// d'image-cle qui en porte AU MOINS `attendus`, dans l'ordre des positions de bit.
+//
+// « COMPLET » DEPUIS LE LOT M3.1 (2026-09-23) : la marche d'image-cle ne s'arrete plus sur une
+// fenetre vide, et elle atteint desormais l'image-cle d'AVANT-MATCH de `bcb6d393` (chunk 1,
+// paquet 0), qu'elle coupait. Elle y lit sept records ti=9 sur huit : le premier (slot 1297,
+// index 0) perd contre une fausse ancre de slot bas prise dans son propre corps (192/ti 1) —
+// c'est le repli nomme `repli_ancre_d_image_cle_par_election`, compte et documente au registre.
+// Le controle ORDINAL de ce test (le k-ieme record porte l'index du k-ieme siege) se joue donc
+// sur la premiere image-cle dont la marche atteint tous les sieges, comme avant ce lot.
+func indexDuPremierPaquetComplet(t *testing.T, fc *FilmContext, reg *Registry, attendus int) []int {
 	t.Helper()
 	for _, c := range fc.ChunkNumbers() {
 		raw, paquets, ok := fc.ChunkAt(c)
@@ -229,7 +237,7 @@ func indexDuPremierPaquet(t *testing.T, fc *FilmContext, reg *Registry) []int {
 					out = append(out, idx)
 				}
 			}
-			if len(out) > 0 {
+			if len(out) >= attendus {
 				return out
 			}
 		}

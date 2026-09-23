@@ -336,3 +336,18 @@ package facts
 // Les lignes de kill deja en base deviennent candidates au backlog de redecodage — geste de
 // PRODUCTION, pilote, SUR SIGNAL UTILISATEUR (D6), jamais automatique. `SchemaVersion` ne monte
 // pas : la forme du document ne change pas.
+
+// ENTREE `killsource-2026-09-23` (2026-09-23, campagne « retours rejeu », lot M3) : LE MONDE DE
+// `killsource` LIE LES SLOTS QUE LA MARCHE D IMAGE-CLE REPAREE REND.
+//
+// AUCUN OCTET DE `facts/killsource/` N EST TOUCHE, mais `grammar.Rev` passe a
+// `grammar-2026-09-23` : le balayeur d image-cle recale sur l en-tete exact d un bipede et ne
+// s arrete plus sur une fenetre vide (lot M3.1, chronique de `grammar`). `world.go` `preload()`
+// lie la premiere declaration de chaque slot de TOUTES les images-cles du film par ce balayeur :
+// les slots qu il atteint desormais (bipedes perdus par une fausse ancre de slot bas, suffixes
+// que la fenetre coupait) entrent dans le monde de la marche des kills. La sortie PEUT donc
+// changer — plus de records atteints, jamais une lecture autre d un record deja atteint.
+//
+// Les lignes de kill deja en base deviennent candidates au backlog de redecodage — geste de
+// PRODUCTION, pilote, SUR SIGNAL UTILISATEUR (D6), jamais automatique (Q3 du plan des retours
+// rejeu : backfill killsource si la revision le chaine).

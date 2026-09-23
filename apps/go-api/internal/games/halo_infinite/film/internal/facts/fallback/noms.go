@@ -65,4 +65,7 @@ const (
 	// NomZoneCampDeCaptureDeduitDeLIssue : `replay/zone_states_capturer.go`,
 	// `zoneRampCapturerDeduit`.
 	NomZoneCampDeCaptureDeduitDeLIssue Nom = "repli_zone_camp_de_capture_deduit_de_l_issue"
+	// NomAncreDImageCleParElection : `filmdec/keyframe_world.go`, `kfScanNext` ; compte par
+	// `replay/film_scan.go`, `balayerPositions` (lot M3.1).
+	NomAncreDImageCleParElection Nom = "repli_ancre_d_image_cle_par_election"
 )

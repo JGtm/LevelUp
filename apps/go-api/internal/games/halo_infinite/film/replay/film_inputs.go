@@ -57,6 +57,9 @@ type FilmInputs struct {
 	Fire []grammar.FireEvent
 	// Loadouts sont les armes portees relevees aux images-cles.
 	Loadouts []types.KeyframeLoadout
+	// KeyframeWalk est la sante de la marche d image-cle du film (lot M3.1) : ses decisions et
+	// les bipedes qu elle a manques entre deux images-cles qui les portaient.
+	KeyframeWalk grammar.KeyframeWalkCoverage
 	// WeaponChanges sont les prises et lachers d'arme lus dans le flux delta.
 	WeaponChanges []types.HeldWeaponChange
 	// Pickups / PickupStats sont les ramassages NATIFS (evenement `biped_pickup`) et la mesure
@@ -183,6 +186,7 @@ func (in FilmInputs) applyTo(opt *Options) {
 	opt.Translocations = in.Translocations
 	opt.BipedCreations = in.BipedCreations
 	opt.Loadouts = in.Loadouts
+	opt.KeyframeWalk = in.KeyframeWalk
 	opt.WeaponChanges = in.WeaponChanges
 	opt.Pickups, opt.PickupStats = in.Pickups, in.PickupStats
 	opt.Inventory = in.Inventory

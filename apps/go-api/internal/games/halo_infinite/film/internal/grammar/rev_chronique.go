@@ -351,3 +351,42 @@ package grammar
 // `replay.SchemaVersion` reste **67** : aucune forme ne change, aucun champ n est ajoute.
 // `facts.Rev` NE MONTE PAS (cf. ci-dessus) — aucun backlog killsource. Les goldens sont refiges
 // parce qu ils hachent ou publient la VALEUR de `grammar.Rev`.
+
+// ENTREE `grammar-2026-09-23` (2026-09-23, campagne « retours rejeu », lot M3.1) : LA MARCHE
+// D IMAGE-CLE NE COUPE PLUS LA TABLE, ET SON ELECTION DEVIENT UN REPLI NOMME.
+//
+// CE QUE LE RANG CHANGE (`keyframe_world.go`, `keyframe_loadout.go`). Le balayeur d ancres
+// d image-cle (`WalkKeyframeWorld`, lu par une quinzaine de balayages de cuisson et par le monde
+// de `killsource`) choisit l ancre suivante par TROIS decisions dans cet ordre : le VOISIN
+// immediat (slot+1, generation 1 — inchange), puis le RECALAGE sur l en-tete EXACT d un bipede
+// (generation 1, mot d archetype de 32 bits egal a 35) quand il precede l ancre que l election
+// retiendrait, puis l ELECTION (generation basse, slot bas), desormais le repli nomme
+// `repli_ancre_d_image_cle_par_election`, compte par cuisson. Et une fenetre de 120 000 bits SANS
+// candidat n arrete plus la marche : la recherche glisse jusqu au candidat suivant ou a la fin
+// de table.
+//
+// LA MESURE QUI A DECIDE (quatre films, voie film, un a la fois) :
+//
+//	                    ancres           bipedes      perdues vs base   ajoutees confirmees
+//	dad793c7  base 868  -> 902            4 -> 4       0                 33 / 34
+//	81c02726  base 8619 -> 8896           116 -> 129   2 (fausses)       262 / 263 (+ 13 bipedes)
+//	a0c36016  base 14659 -> 14890         159 -> 304   25 (la fausse     110 / 111 (+ 145 bipedes)
+//	                                                   ancre 385/ti 19)
+//	b1f01a33  base 6719 -> 6816           192 -> 198   5 (fausses)       67 / 96 (+ 6 bipedes)
+//
+// Les ancres « perdues » sont les fausses ancres de slot bas que l election retenait : 30 sur 32
+// ne se repetent dans aucune autre image-cle, et les 25 d a0c36016 sont la MEME fausse ancre
+// structurelle (slot 385, ti 19, a +825 bits de l en-tete du bipede 519 dans chaque image-cle —
+// sonde P2). Les 29 ajouts non confirmes de b1f01a33 sont la chaine de slots CONSECUTIFS
+// 1349..1376 de l image-cle 0, que la fenetre coupait (mecanisme B de la sonde P2).
+//
+// LA REGLE « GENERATION 1 PUIS LE PLUS PROCHE » (V2 de la sonde P2) A ETE MESUREE ET ECARTEE :
+// elle rend les bipedes mais perd les autres ancres par milliers (a0c36016 14 659 -> 11 890,
+// b1f01a33 6 719 -> 5 524 et trois bipedes perdus). La fenetre n est PAS retiree : la marche
+// sans aucune fenetre rend EXACTEMENT les memes ancres que la fenetre glissante sur les quatre
+// films, pour un temps multiplie par 5 a 6 ; elle ne borne plus que la PORTEE de l election.
+//
+// `facts.Rev` MONTE : le monde de `killsource` (`world.go` `preload()`) lie les slots que cette
+// marche rend. Le codec des faits passe en v26 (`SchemaDesFaits` 4) et porte la SANTE de la marche
+// (decisions et bipedes absents encadres) ; le document la publiera en `coverage.keyframes` au
+// commit de la montee de schema 69 du meme lot (M3.2), une seule montee pour le lot.

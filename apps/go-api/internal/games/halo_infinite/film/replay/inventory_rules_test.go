@@ -438,16 +438,21 @@ func TestInventoryRulesOnRealBinary(t *testing.T) {
 
 // Le rendement mesure de chaque regle sur le film de reference. Ces valeurs sont ECRITES, pas
 // derivees : une valeur attendue qui se recalcule depuis la sortie ne teste rien.
+//
+// LOT M3.1 (2026-09-23) : la marche d image-cle reparee atteint HUIT records bipedes de plus
+// (184 -> 192 etats). Chaque regle lit donc davantage — capacite 132 -> 136, grenades et
+// munitions 150 -> 154, plusieurs candidats 51 -> 52, selection 106 -> 110, ancre 120 -> 124 —
+// et la voie par la POSITION ne bouge pas (30) : les records gagnes se lisent tous par l ancre.
 const (
-	wantInvAbility        = 132
-	wantInvGrenades       = 150
-	wantInvAmmo           = 150
-	wantInvMultiCandidate = 51
-	wantInvGrenadeSel     = 106
+	wantInvAbility        = 136
+	wantInvGrenades       = 154
+	wantInvAmmo           = 154
+	wantInvMultiCandidate = 52
+	wantInvGrenadeSel     = 110
 	// LA REPARTITION PAR VOIE EST TENUE A PART de son total : si une regression faisait basculer
 	// des lectures de l ancre vers la position (ou l inverse) sans changer la somme, seul ce
 	// couple de crans le dirait. R2a garde ses 120 lectures — la voie par l ancre reste
 	// prioritaire, donc AUCUNE lecture existante n a change de valeur.
-	wantInvGrenAnchor   = 120
+	wantInvGrenAnchor   = 124
 	wantInvGrenPosition = 30
 )

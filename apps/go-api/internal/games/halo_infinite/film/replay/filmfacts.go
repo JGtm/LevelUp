@@ -219,7 +219,12 @@ import (
 // INCHANGE a l octet, donc les huit fixtures `testdata/inputs_<short8>.bin.gz` restent valides et
 // aucun film n a a etre redecode pour les regenerer. C est [SchemaDesFaits] qui porte le
 // changement (2 -> 3) : lui dit ce que les SECTIONS portent, la magie ce que le BLOB porte.
-const filmFactsMagic = "REPLAYINPUTS25\n"
+//
+// v26 (2026-09-23, lot M3.1 de la campagne « retours rejeu ») : le blob porte LA SANTE DE LA
+// MARCHE D IMAGE-CLE (`FilmInputs.KeyframeWalk` : decisions du balayeur et bipedes absents
+// encadres), a la suite des evenements (cf. `filmfacts_naissances.go`). Le document la publie en
+// `coverage.keyframes` ; sans elle un rejeu depuis les faits la perdrait.
+const filmFactsMagic = "REPLAYINPUTS26\n"
 
 // ---------------------------------------------------------------------------
 // LES CHAMPS SERIALISES, PAR TYPE — ce sont ceux que l assemblage consomme :

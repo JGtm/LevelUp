@@ -133,7 +133,12 @@ const VersionCodecFaits = 1
 // SCHEMA 3 (2026-09-19, post-chantier lot 5.1) : la CHARGE de la section 1 change encore — le blob
 // des entrees passe en v24 (la JAUGE DE RETOUR du drapeau et son temoin). Meme raisonnement qu au
 // schema 2 : le refus doit tomber sur l EN-TETE, pas au decodage de la section.
-const SchemaDesFaits = 3
+// SCHEMA 4 (2026-09-23, campagne « retours rejeu », lot M3) : la CHARGE de la section 1 change —
+// le blob passe en v26 (la sante de la marche d image-cle, puis les dotations de naissance lues
+// dans le record NEW du bipede). Meme raisonnement qu aux schemas 2 et 3 : le refus tombe sur
+// l EN-TETE. La grammaire monte avec (`grammar.Rev`) : les faits d avant sont PERIMES, il faut
+// redecoder.
+const SchemaDesFaits = 4
 
 // Identifiants de section. Ils ne se reutilisent JAMAIS : un identifiant retire reste retire, sinon
 // un vieux fichier se relit comme une section qui n est pas la sienne.

@@ -79,17 +79,17 @@ par type : Dynamo=5 · Frag=76 · Plasma=16 · Spike=3
 couverture : 174 piste(s) decodee(s) · 169 publiee(s) · 8 coupee(s) a un pas impossible
 
 ## INVENTAIRE — lu aux images-cles, jamais interpole entre deux
-372 etat(s) publie(s) · 305 avec grenades lues · 305 avec munitions lues
+395 etat(s) publie(s) · 322 avec grenades lues · 322 avec munitions lues
 27 lecture(s) de munitions a PLUSIEURS candidats : la plus longue a ete retenue et le
 nombre de candidats est publie, pour que le departage reste visible
-67 lecture(s) VIDE(S) : 49 corroboree(s) par le fil des morts (`dead`), 18 inexpliquee(s)
-couverture : 380 lecture(s) decodee(s) -> 0 ecartee(s) avant l origine du rejeu · 8 ecartee(s) faute de piste publiee -> 372 publiee(s)
+73 lecture(s) VIDE(S) : 53 corroboree(s) par le fil des morts (`dead`), 20 inexpliquee(s)
+couverture : 403 lecture(s) decodee(s) -> 0 ecartee(s) avant l origine du rejeu · 8 ecartee(s) faute de piste publiee -> 395 publiee(s)
 rangs de grenade : 0:en="Frag"/fr="Fragmentation", 1:en="Plasma"/fr="Plasma", 2:en="Dynamo"/fr="Dynamo", 3:en="Spike"/fr="Spike"
 
 ## GRENADES PORTEES — un axe, DEUX canaux, chaque lecture disant d ou elle vient
-496 lecture(s) · 305 par image-cle (~20 s) · 191 par delta (transmis AU CHANGEMENT)
+513 lecture(s) · 322 par image-cle (~20 s) · 191 par delta (transmis AU CHANGEMENT)
 75 lecture(s) portent le rang SELECTIONNE — une selection ne se devine pas
-couverture : 305 image-cle · 191 delta · 0 ecartee(s) sans piste · canal munitions refuse : true
+couverture : 322 image-cle · 191 delta · 0 ecartee(s) sans piste · canal munitions refuse : true
 
 ## CAPACITE PORTEE — le RANG de palette, deux canaux pour une seule grandeur
 56 lecture(s) · 56 par i48 (rang complet, paquets delta) · 0 par image-cle (fenetre 16..23)
@@ -601,7 +601,7 @@ POWER-UPS (voie ti=37) — balaye=true · 688 creation(s) acceptee(s) -> 14 rete
 69 occupation(s) achevee(s) publiee(s) · 40 datee(s) a l instant exact par l evenement natif · 40 avec un ramasseur nomme
 
 ## ARMES PORTEES — l inventaire, pas la main : le loadout ne dit pas QUELLE arme est degainee
-311 loadout(s) publie(s) · 17 famille(s) distincte(s)
+328 loadout(s) publie(s) · 17 famille(s) distincte(s)
 
 ## PONT SLOT -> JOUEUR — deux sources nommees : la LECTURE, puis la FERMETURE
 128 entree(s) · 128 issue(s) de la lecture (un ecart NON EXPLIQUE par les fermetures signalerait une TROISIEME SOURCE)

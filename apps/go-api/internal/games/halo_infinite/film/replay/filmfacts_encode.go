@@ -44,6 +44,7 @@ func encodeurDeFaits(g *FilmFacts) *gwriter {
 	encodePositionSection(w, g.Positions)
 	encodeBipedCreations(w, g.BipedCreations)
 	encodeEvenements(w, g)
+	encodeMarcheImageCle(w, g.KeyframeWalk)
 	encodeWeaponChanges(w, g.WeaponChanges)
 	encodePickups(w, g.Pickups, g.PickupStats)
 	encodeInventaire(w, g)

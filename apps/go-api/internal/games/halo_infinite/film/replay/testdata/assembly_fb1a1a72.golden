@@ -32,7 +32,7 @@ jamais une categorie de donnee (decision produit du 2026-09-07)
   2535450323793545  idx=7  equipe=0  "Fennec87607"
 
 ### EQUIPES — lues dans le film (ti=9 i0), JAMAIS dans la base (decision utilisateur V4)
-lue=true refus="" · 312 record(s) ti=9, 0 rejete(s), 0 divergence(s)
+lue=true refus="" · 326 record(s) ti=9, 0 rejete(s), 0 divergence(s)
 roster : 8 joueur(s) dont le film donne l equipe (0 sans equipe) · 0 non lu(s)
 controle (feuille de match) : accord=0 contradiction=0 silence=8
 vies : 144/144 portent une equipe du film
@@ -59,17 +59,17 @@ par type : Frag=134 · Plasma=11 · Spike=20
 couverture : 533 piste(s) decodee(s) · 258 publiee(s) · 32 coupee(s) a un pas impossible
 
 ## INVENTAIRE — lu aux images-cles, jamais interpole entre deux
-292 etat(s) publie(s) · 226 avec grenades lues · 226 avec munitions lues
-26 lecture(s) de munitions a PLUSIEURS candidats : la plus longue a ete retenue et le
+305 etat(s) publie(s) · 236 avec grenades lues · 236 avec munitions lues
+27 lecture(s) de munitions a PLUSIEURS candidats : la plus longue a ete retenue et le
 nombre de candidats est publie, pour que le departage reste visible
-66 lecture(s) VIDE(S) : 49 corroboree(s) par le fil des morts (`dead`), 17 inexpliquee(s)
-couverture : 301 lecture(s) decodee(s) -> 8 ecartee(s) avant l origine du rejeu · 1 ecartee(s) faute de piste publiee -> 292 publiee(s)
+69 lecture(s) VIDE(S) : 51 corroboree(s) par le fil des morts (`dead`), 18 inexpliquee(s)
+couverture : 314 lecture(s) decodee(s) -> 8 ecartee(s) avant l origine du rejeu · 1 ecartee(s) faute de piste publiee -> 305 publiee(s)
 rangs de grenade : 0:en="Frag"/fr="Fragmentation", 1:en="Plasma"/fr="Plasma", 2:en="Dynamo"/fr="Dynamo", 3:en="Spike"/fr="Spike"
 
 ## GRENADES PORTEES — un axe, DEUX canaux, chaque lecture disant d ou elle vient
-546 lecture(s) · 226 par image-cle (~20 s) · 320 par delta (transmis AU CHANGEMENT)
+556 lecture(s) · 236 par image-cle (~20 s) · 320 par delta (transmis AU CHANGEMENT)
 130 lecture(s) portent le rang SELECTIONNE — une selection ne se devine pas
-couverture : 226 image-cle · 320 delta · 1 ecartee(s) sans piste · canal munitions refuse : false
+couverture : 236 image-cle · 320 delta · 1 ecartee(s) sans piste · canal munitions refuse : false
 
 ## CAPACITE PORTEE — le RANG de palette, deux canaux pour une seule grandeur
 67 lecture(s) · 67 par i48 (rang complet, paquets delta) · 0 par image-cle (fenetre 16..23)
@@ -459,7 +459,7 @@ provenance : 0 evenement(s) 103 lu(s) sur 7850 liste(s) d evenements non vides
   grenade_frag dropped 0xbcabbe43 t=[7440, 7494] pos=(24.30, 4.86, 61.02) poseur=656 cap=72.8 deg
 
 ## SOCLES D ARME AU SOL — la RECURRENCE fait le socle, et le film dit quand il se vide
-balaye=true · bande 1464 slot(s) · 15361 ancre(s) -> 695 acceptee(s) -> 387 retenue(s) par l IDENTITE (308 ecartee(s))
+balaye=true · bande 1462 slot(s) · 15354 ancre(s) -> 695 acceptee(s) -> 387 retenue(s) par l IDENTITE (308 ecartee(s))
 273 lachee(s) a une mort · 114 apparue(s) sans mort a proximite, dont 60 AU REPOS (jamais bougee : le seul jeu qui fait des socles)
 14 grappe(s) -> 10 socle(s) publie(s) · 80 occupation(s) : 58 datee(s) · 12 sans passage · 10 jamais videe(s)
 2 cycle(s) ETABLI(s) — un cycle instable publie `null`, jamais un chiffre
@@ -559,7 +559,7 @@ POWER-UPS (voie ti=37) — balaye=true · 769 creation(s) acceptee(s) -> 26 rete
 70 occupation(s) achevee(s) publiee(s) · 33 datee(s) a l instant exact par l evenement natif · 33 avec un ramasseur nomme
 
 ## ARMES PORTEES — l inventaire, pas la main : le loadout ne dit pas QUELLE arme est degainee
-228 loadout(s) publie(s) · 8 famille(s) distincte(s)
+239 loadout(s) publie(s) · 8 famille(s) distincte(s)
 
 ## PONT SLOT -> JOUEUR — deux sources nommees : la LECTURE, puis la FERMETURE
 145 entree(s) · 145 issue(s) de la lecture (un ecart NON EXPLIQUE par les fermetures signalerait une TROISIEME SOURCE)

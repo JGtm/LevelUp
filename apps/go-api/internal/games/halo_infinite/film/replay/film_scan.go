@@ -17,6 +17,7 @@ package replay
 import (
 	"log/slog"
 
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
@@ -82,12 +83,23 @@ func (s *filmScan) balayerPositions() error {
 	s.opt.observe("fire", s.in.Fire)
 	// Armes portées : lues dans les keyframes du MÊME film, sur la MÊME horloge. Leur
 	// absence n'est pas fatale (un rejeu sans armes reste un rejeu valide).
-	loadouts, err := grammar.ScanKeyframeLoadouts(s.film, loadoutFamilies())
+	//
+	// LA MARCHE D'IMAGE-CLÉ SE COMPTE ICI (lot M3.1) : ce balayage marche chaque payload
+	// d'image-clé du film exactement une fois. L'élection de l'ancre suivante est un REPLI nommé,
+	// et son compte voyage dans `coverage.fallbacks` ; la santé complète de la marche est
+	// portée par les faits (`KeyframeWalk`).
+	loadouts, marche, err := grammar.ScanKeyframeLoadoutsMarche(s.film, loadoutFamilies())
 	if err != nil {
 		slog.Warn("keyframes illisibles — rejeu sans armes portées", "err", err, "match_id", s.matchID)
 		loadouts = nil
 	}
-	s.in.Loadouts = loadouts
+	s.in.Loadouts, s.in.KeyframeWalk = loadouts, marche
+	s.opt.Fallbacks.DeclencheN(fallback.NomAncreDImageCleParElection, marche.Elections)
+	if marche.BipedesAbsentsEncadres > 0 {
+		slog.Info("image-cle : bipedes manques par la marche entre deux images-cles qui les portent",
+			"match_id", s.matchID, "absentsEncadres", marche.BipedesAbsentsEncadres,
+			"elections", marche.Elections, "recalages", marche.Recalages)
+	}
 	s.opt.observe("loadouts", s.in.Loadouts)
 	return nil
 }
