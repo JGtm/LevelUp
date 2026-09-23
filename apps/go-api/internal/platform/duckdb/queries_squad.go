@@ -21,6 +21,10 @@ GROUP BY match_id`
 //
 // IN-list dynamique : %s remplacé par Placeholders(len(matchIDs)).
 //
+// AUCUN GAMERTAG EN SQL (lot perf L2, 2026-09-23) : la jointure sur v_gamertag_lookup
+// matérialisait la vue entière (3 s) ; le nom vient de l'annuaire de la lecture
+// (squad_repo_annuaire.go), même cascade, sur les xuids du top et les mêmes matchs.
+//
 // Paramètres positionnels :
 //
 //	?  = xuid (p2.xuid != ? — exclure le joueur principal de p2)
@@ -29,7 +33,6 @@ GROUP BY match_id`
 const Q29TopTeammatesSharedTpl = `
 SELECT
     p2.xuid,
-    COALESCE(vg.gamertag, ('Joueur ' || RIGHT(p2.xuid, 4))) AS gamertag,
     COUNT(DISTINCT p1.match_id)                  AS games_together,
     SUM(CASE WHEN %s THEN 1 ELSE 0 END) AS wins_together,
     ROUND(
@@ -44,11 +47,10 @@ JOIN match_participants p2
     ON p2.match_id = p1.match_id
     AND p2.team_id  = p1.team_id
     AND p2.xuid    != ?
-LEFT JOIN v_gamertag_lookup vg ON vg.xuid = p2.xuid
 WHERE p1.match_id IN (%s)
   AND p1.xuid = ?` + campaignExclusionToken + `
   AND p2.xuid NOT LIKE 'bid(%%'
-GROUP BY p2.xuid, vg.gamertag
+GROUP BY p2.xuid
 ORDER BY games_together DESC
 LIMIT 50`
 
@@ -172,17 +174,17 @@ ORDER BY ` + StartTimeCanonicalSQL("r") + ` DESC`
 // Q32SquadImpactEventsTemplate : template SQL pour charger les events d'impact escouade.
 // Les '?' positionnels sont insérés dynamiquement (fmt.Sprintf(Q32SquadImpactEventsTemplate, placeholders)).
 // Ne PAS utiliser directement — passer par squad_repo.LoadImpactEvents().
+//
+// Aucun gamertag en SQL (lot perf L2, 2026-09-23) : il vient de l'annuaire de la lecture
+// (squad_repo_annuaire.go) — même cascade que v_gamertag_lookup, jusqu'au libellé masqué
+// « Joueur #### » d'un xuid qu'aucune source ne nomme — sans matérialiser la vue.
 const Q32SquadImpactEventsTemplate = `
 SELECT
     he.match_id,
     he.xuid,
-    -- he.xuid (highlight_events) peut être orphelin de la vue → fallback masqué
-    -- "Joueur ####" (jamais de xuid brut, miroir de analysis.MaskedXuidLabelSQL).
-    COALESCE(vg.gamertag, ('Joueur ' || RIGHT(he.xuid, 4)))   AS gamertag,
     he.event_type,
     COALESCE(he.time_ms, 0)           AS time_ms
 FROM highlight_events he
-LEFT JOIN v_gamertag_lookup vg ON vg.xuid = he.xuid
 WHERE he.match_id IN (%s)
 ORDER BY he.match_id, he.time_ms`
 
@@ -291,11 +293,13 @@ ORDER BY p.assist_count DESC, p.assist_xuid, p.feed_killer_xuid`
 //
 // Le 1er '?' est l'XUID du main player, suivi de N '?' pour les match_ids.
 // Ne PAS utiliser directement — passer par squad_repo.LoadMainTeamParticipants().
+//
+// Aucun gamertag en SQL (lot perf L2, 2026-09-23) : il vient de l'annuaire de la lecture
+// (squad_repo_annuaire.go), même cascade que v_gamertag_lookup, sans matérialiser la vue.
 const Q32bMainTeamParticipantsTemplate = `
 SELECT
     p.match_id,
     p.xuid,
-    COALESCE(vg.gamertag, ('Joueur ' || RIGHT(p.xuid, 4))) AS gamertag,
     COALESCE(p.kills, 0)                 AS kills,
     COALESCE(p.deaths, 0)                AS deaths,
     COALESCE(p.assists, 0)               AS assists,
@@ -305,7 +309,6 @@ JOIN match_participants main
     ON main.match_id = p.match_id
     AND main.xuid    = ?
     AND p.team_id    = main.team_id
-LEFT JOIN v_gamertag_lookup vg ON vg.xuid = p.xuid
 WHERE p.match_id IN (%s)`
 
 // Q33 : Synthèse — heatmap win rate par combinaison carte × mode.

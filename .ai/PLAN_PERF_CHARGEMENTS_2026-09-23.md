@@ -320,7 +320,14 @@ replaylabels/*` (cache), `internal/analysis/*` seulement pour une fonction pure 
 tests associes. Pas de changement de contrat `domain.TeammatesPageResponse`.
 
 Items :
-- [ ] L2.1 annuaire + retrait des jointures (D2.1) + tests de parite des gamertags
+- [x] L2.1 annuaire + retrait des jointures (D2.1) + tests de parite des gamertags — Q29 / Q32 /
+  Q32b sans `LEFT JOIN v_gamertag_lookup` (`queries_squad.go`) ; annuaire par LECTURE
+  (`duckdb/squad_repo_annuaire.go` : une requete alias + participants sur les memes matchs, jambe
+  kill-feed seulement pour les xuids restes sans nom), cascade pure `analysis.AnnuaireGamertags.
+  Resolve` + `MaskedXuidLabel` (`analysis/identity_annuaire.go`) ; jambe kill-feed de la vue
+  extraite en UN generateur partage vue / annuaire (`identity.go`, DDL de la vue inchange a
+  l'octet, sha256 9aebfa6b…) ; tests : `identity_annuaire_test.go` + 4 tests d'integration contre
+  la VRAIE vue (`squad_repo_annuaire_test.go`) ; ecarts et « une fois par GetPage » : cf. journal
 - [ ] L2.2 `LoadImpactEvents` unique (D2.2)
 - [ ] L2.3 `LoadFor` unique par membre + xuids sans LoadFor (D2.3)
 - [ ] L2.4 journal des morts restreint et partage (D2.4)
