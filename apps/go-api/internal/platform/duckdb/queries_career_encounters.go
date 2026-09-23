@@ -1,5 +1,8 @@
 package duckdb
 
+// Q26CareerTopEncountersTpl : Carrière — les 10 joueurs les plus croisés, hors amis (dernier %s).
+// AUCUN GAMERTAG EN SQL (lot perf L7, 2026-09-23) : plus de `LEFT JOIN v_gamertag_lookup` (vue
+// matérialisée entière à chaque page) ; l'annuaire de la lecture nomme les lignes (squad_repo_annuaire.go).
 var Q26CareerTopEncountersTpl = `
 WITH my_history AS (
     SELECT match_id, team_id, outcome
@@ -53,9 +56,6 @@ kv_stats AS (
 )
 SELECT
     es.xuid,
-    -- es.xuid (encounter_stats) peut être orphelin de la vue → fallback masqué
-    -- "Joueur ####" (jamais de xuid brut, miroir de analysis.MaskedXuidLabelSQL).
-    COALESCE(vg.gamertag, ('Joueur ' || RIGHT(es.xuid, 4))) AS gamertag,
     es.count_together,
     es.ally_count,
     es.enemy_count,
@@ -68,7 +68,6 @@ SELECT
     es.first_seen_at,
     es.last_seen_at
 FROM encounter_stats es
-LEFT JOIN v_gamertag_lookup vg ON vg.xuid = es.xuid
 LEFT JOIN kv_stats kv ON kv.xuid = es.xuid
 WHERE 1=1 %s
 ORDER BY es.count_together DESC, es.xuid ASC
