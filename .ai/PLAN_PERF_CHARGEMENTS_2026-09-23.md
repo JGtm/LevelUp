@@ -1894,6 +1894,21 @@ Aucun autre process ne tient les bases pendant la mesure.
   `cli_auth: refresh_token mort — reauth_required` (xuid 2535469190789936) : reconnexion SSO
   du compte a faire par l'utilisateur, jamais de re-capture (ADR 0023).
 
+- (epilogue, 2026-09-23 soir, apres la fusion dans feat/v75) L'E2E Playwright (`e2e-react`) ne
+  tourne QUE sur les PR vers main (`if: github.event_name == 'pull_request'`) : la branche de
+  campagne etait « verte au niveau job » avec une REGRESSION E2E invisible — le lot L4a (D4.4)
+  avait abonne `PlayerLayout` au routeur (`useRouterState`) alors que ce composant rend
+  `<Navigate params={{...}}>` sur un slug inconnu ; `Navigate` re-navigue a chaque changement
+  d'identite de ses props (objet neuf a chaque rendu) et la navigation re-rend l'abonne : boucle,
+  onglet fige (demo synthetique de la CI, slug JGtm inconnu). Corrige sur feat/v75 (46aec098c :
+  hooks abonnes dans un enfant `SoloFiltersSync` monte sur slug valide, garde-fou « aucun
+  useRouterState sur slug inconnu », mutation rouge, E2E local rejoue). Lecon pour les prochaines
+  campagnes web : `npx playwright test --project=chromium` en local contre la demo synthetique
+  (`levelup seed-demo --synthetic --out <scratch>/demo`, serveur `LEVELUP_DEMO_MODE=true` +
+  `LEVELUP_DEMO_FIXTURES_DIR`) avant la fusion, ou une PR de controle. Second rouge, anterieur a
+  la campagne : `archlint.TestAucuneCibleDeRepliNeNommeUnLotClos` lisait le plan du decodeur a la
+  racine de `.ai/`, deplace sous `.ai/V7.5/` par l'archivage fe2106f4b (corrige en 6d8644181).
+
 ## 12. Journal
 
 - 2026-09-23 : plan ecrit, branche de campagne creee depuis origin/feat/v75 c89aa4bdc,
@@ -1929,3 +1944,11 @@ Aucun autre process ne tient les bases pendant la mesure.
   fusionne, push de `feat/v75` ; retrait de `LevelUp-wt-perf` (jonction node_modules d'abord) et
   des branches locales `feat/perf-*`. Campagne CLOSE ; suite = decision utilisateur sur l'ADR
   « lectures par perimetre » et un eventuel plan structurel (§11).
+- 2026-09-23 (21:48 -> 2026-09-24 00:00, epilogue) : fusion dans feat/v75 (4693062d5). CI de
+  feat/v75 : (1) job coverage + baseline rouge sur un test ANTERIEUR (chemin du plan du decodeur,
+  archivage fe2106f4b) — corrige 6d8644181 ; (2) job Frontend tombe sur un echec TLS du runner au
+  checkout — relance, vert ; (3) E2E Playwright de la PR vers main rouge : regression du lot L4a
+  (boucle `<Navigate>` sur slug inconnu, §11) — corrigee 46aec098c apres reproduction locale sur
+  la demo synthetique. Verdict final sur 46aec098c : run push VERT (9 jobs, E2E ignore par
+  conception), run pull_request VERT (E2E compris), gitleaks, Deploy Pre-Check et gate ADR 0021
+  verts. Campagne CLOSE. Suite : decision utilisateur sur l'ADR « lectures par perimetre ».
