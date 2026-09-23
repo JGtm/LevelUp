@@ -328,7 +328,11 @@ Items :
   extraite en UN generateur partage vue / annuaire (`identity.go`, DDL de la vue inchange a
   l'octet, sha256 9aebfa6b…) ; tests : `identity_annuaire_test.go` + 4 tests d'integration contre
   la VRAIE vue (`squad_repo_annuaire_test.go`) ; ecarts et « une fois par GetPage » : cf. journal
-- [ ] L2.2 `LoadImpactEvents` unique (D2.2)
+- [x] L2.2 `LoadImpactEvents` unique (D2.2) — `service/teammates/teammates_service_loads.go` :
+  `pourLaRequete` (copie du service par requete, lecteur Q32 memoise par ENSEMBLE de matchs) +
+  `prechargerImpacts` (section `impact_events_shared`, avant les quatre blocs) ; GetPage +2 L ;
+  tests `teammates_service_loads_test.go` (une lecture pour les 4 consommateurs, deux requetes =
+  deux lectures) ; mutation « enveloppe retiree » : 5 lectures, rouge
 - [ ] L2.3 `LoadFor` unique par membre + xuids sans LoadFor (D2.3)
 - [ ] L2.4 journal des morts restreint et partage (D2.4)
 - [ ] L2.5 `sessionMatchIDs` depuis `filters.sessions` (D2.5)

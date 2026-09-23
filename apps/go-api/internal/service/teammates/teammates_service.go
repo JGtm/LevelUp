@@ -226,6 +226,7 @@ func (s *TeammatesService) GetPage(
 	playerXUID string,
 	req domain.TeammatesQueryRequest,
 ) (domain.TeammatesPageResponse, error) {
+	s, lectures := s.pourLaRequete() // lectures partagées par les blocs (teammates_service_loads.go)
 	stop := timing.FromContext(ctx).Section("top_teammates")
 	topRows, err := s.repo.LoadTopTeammates(ctx, playerXUID)
 	stop()
@@ -388,6 +389,7 @@ func (s *TeammatesService) GetPage(
 		// Résout map/playlist/mode FR sur les rows (mode via la cascade
 		// canonique asset_translations + mode_name_tr, cf. enrichSquadMatchAssets).
 		enrichSquadMatchAssets(ctx, s.repo, allSquadRows)
+		lectures.prechargerImpacts(ctx, allSquadRows)
 		timeseries = analysis.ComputeSquadTimeseries(allSquadRows, 20)
 		mapBreakdown = computeMapBreakdown(allSquadRows)
 
