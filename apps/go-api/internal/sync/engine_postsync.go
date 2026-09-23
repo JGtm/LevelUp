@@ -167,6 +167,7 @@ func (e *SyncEngine) runPostSyncPipeline(
 	client HaloClient,
 	insertedIDs []string,
 ) (r domain.PostSyncResult) {
+	defer duckdbpkg.InvalidatePlayerReadCaches(ctx, e.xuid, e.titleSlug) // perf L5b : fin du post-sync = lectures joueur cachées périmées (posé en premier, exécuté en dernier)
 	// Capture des panics du pipeline post-sync — avant ce defer un panic dans
 	// n'importe quelle étape (perf scores, LUSR, citations, etc.) tuait
 	// silencieusement tout le process server sans laisser de stack trace dans

@@ -1,11 +1,11 @@
-// Package duckdb — player_matches_adapter.go : adapteur per-player qui implémente
-// `port.PlayerMatchesRepository` à partir d'un `*PlayerMatchesRepo` lié à un
-// PlayerDB précis (P4.3 finale, ADR 0011).
+// Package duckdb — player_matches_adapter.go : adapteur per-player qui charge
+// l'historique canonique ENRICHI (libellés FR/EN résolus) à partir d'un
+// `*PlayerMatchesRepo` lié à un PlayerDB précis (P4.3 finale, ADR 0011).
 //
 // L'adapteur ignore les paramètres slug/gamertag de l'interface (déjà fixés au
-// constructeur). Il existe pour faire le pont entre l'interface globale du
-// port et l'implémentation per-player concrète. Permet aux services
-// (HomeService, StatsService, etc.) de consommer canonical via le port unifié.
+// constructeur). Depuis le plan perf 2026-09-23 (D5b.4), il n'est plus câblé seul :
+// CachedPlayerMatchesRepo (player_matches_cache.go) l'enveloppe et implémente
+// `port.PlayerMatchesRepository` pour les services (HomeService, StatsService, etc.).
 package duckdb
 
 import (
@@ -66,8 +66,3 @@ func (a *PlayerMatchesAdapter) LobbySizesAtCompletion(
 ) (map[string]int, error) {
 	return a.repo.LobbySizesAtCompletion(ctx, matchIDs)
 }
-
-// InvalidatePlayer est un no-op pour cette implémentation per-player. Le cache
-// LRU n'est pas applicable ici car chaque PlayerDB est déjà résolu une fois par
-// requête HTTP via le pool.
-func (a *PlayerMatchesAdapter) InvalidatePlayer(_, _ string) {}

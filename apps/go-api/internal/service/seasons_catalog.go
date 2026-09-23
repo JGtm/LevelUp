@@ -20,18 +20,41 @@
 //
 // Le merge garantit qu'une nouvelle Operation Halo apparaît dans la SaisonPill
 // dès qu'un user authentifié déclenche le filtre — sans intervention manuelle.
+//
+// Cache (plan perf 2026-09-23, lot L5b, décision D5b.1) : le catalogue résolu est
+// gardé en mémoire PAR TITRE (seasonsCatalogTTL) et l'échec du fetch live est
+// mémorisé par titre (seasonsLiveFetchBackoff). Avant, chaque /filters/resolve,
+// field-mappings et highlight-matches relisait la base puis retentait le GET Waypoint
+// (403, environ 100 ms, 38 échecs sur une matinée — état des lieux C6).
 package service
 
 import (
 	"context"
 	"errors"
 	"log/slog"
+	"maps"
 	"sort"
+	"sync"
 	"time"
 
+	"golang.org/x/sync/singleflight"
+
+	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/mappings"
+	"levelup/go-api/internal/observability/timing"
 	"levelup/go-api/internal/port"
+)
+
+// Durées du cache du catalogue (D5b.1).
+const (
+	// seasonsCatalogTTL : durée de vie d'un catalogue résolu. Les dates d'une saison
+	// bougent à l'échelle de la semaine ; une heure borne l'écart avec la base.
+	seasonsCatalogTTL = time.Hour
+	// seasonsLiveFetchBackoff : après un échec du fetch live, plus aucun appel réseau
+	// pour ce titre pendant cette durée. Le catalogue de repli (TOML + base) est gardé
+	// jusqu'au terme de l'attente, puis la requête suivante retente le fetch.
+	seasonsLiveFetchBackoff = 30 * time.Minute
 )
 
 // SeasonCatalogEntry est une saison résolue (TOML + DB unifiés) prête pour
@@ -65,14 +88,28 @@ const (
 	SeasonSourceMerged   SeasonSource = "merged"
 )
 
-// SeasonsCatalog est le résolveur unifié. Stateless et concurrence-safe :
-// chaque appel à Load(ctx, titleID) déclenche éventuellement un fetch live
-// si la DB est vide (best-effort, fallback gracieux).
+// SeasonsCatalog est le résolveur unifié, concurrence-safe. Un catalogue résolu
+// est servi depuis la mémoire tant qu'il est frais ; sinon Load relit la base et,
+// si elle est vide, tente un fetch live (best-effort, fallback gracieux). Après un
+// échec live, le repli reste caché seasonsLiveFetchBackoff : aucun appel réseau
+// pendant cette attente.
 type SeasonsCatalog struct {
 	repo     port.MetadataRepository // peut être nil → DB skipée
 	provider port.SeasonProvider     // peut être nil → pas de lazy-fetch
 	static   []SeasonCatalogEntry    // projection TOML, pré-calculée au boot
 	logger   *slog.Logger
+
+	now     func() time.Time   // horloge (time.Now hors tests)
+	flights singleflight.Group // une seule résolution en vol par titre
+	mu      sync.Mutex         // protège byTitle
+	byTitle map[string]*seasonsTitleState
+}
+
+// seasonsTitleState est l'état du cache pour un titre. Après un échec du fetch
+// live, expiresAt porte le terme de l'attente (seasonsLiveFetchBackoff).
+type seasonsTitleState struct {
+	entries   []SeasonCatalogEntry // catalogue résolu (jamais rendu tel quel : copie à la lecture)
+	expiresAt time.Time            // fin de validité du catalogue caché
 }
 
 // NewSeasonsCatalog construit un résolveur. `staticAssets` est l'AssetMappingSet
@@ -93,6 +130,8 @@ func NewSeasonsCatalog(
 		provider: provider,
 		static:   projectTOMLSeasons(staticAssets),
 		logger:   logger,
+		now:      time.Now,
+		byTitle:  make(map[string]*seasonsTitleState),
 	}
 }
 
@@ -128,15 +167,6 @@ func projectTOMLSeasons(assets *mappings.AssetMappingSet) []SeasonCatalogEntry {
 	return out
 }
 
-// Load résout le catalog complet pour un titre. Pipeline :
-//
-//  1. Lit DB via repo.ListSeasons (si repo != nil)
-//  2. Si DB vide ET provider != nil → tente FetchSeasonCalendar + UpsertSeason,
-//     puis relit DB. Tokens lus depuis ctx (échec gracieux si absent).
-//  3. Merge DB + static TOML par ID
-//
-// Retourne toujours une slice (possiblement vide). Aucune erreur fatale —
-// les échecs de I/O sont loggués et l'appelant reçoit ce qu'on a pu collecter.
 // seasonsCatalogLoader est le contrat minimal consommé par CareerService et
 // FiltersService : charger les entrées saison d'un titre. Interface consumer-side
 // (K1i, ARCHI 8) — leurs champs ne sont plus typés sur *SeasonsCatalog concret,
@@ -145,36 +175,96 @@ type seasonsCatalogLoader interface {
 	Load(ctx context.Context, titleID string) []SeasonCatalogEntry
 }
 
+// Load résout le catalog complet pour un titre. Pipeline :
+//
+//  0. Catalogue en cache et frais → copie rendue sans aucune I/O (marqueur timing
+//     `seasons_catalog_hit`) ; c'est aussi le cas pendant l'attente qui suit un
+//     échec live (le repli y est caché). Sinon marqueur `seasons_catalog_miss` puis :
+//  1. Lit DB via repo.ListSeasons (si repo != nil)
+//  2. Si DB vide ET provider != nil → tente FetchSeasonCalendar + UpsertSeason,
+//     puis relit DB. Tokens lus depuis ctx (échec gracieux si absent).
+//  3. Merge DB + static TOML par ID, mis en cache pour la durée que la lecture
+//     autorise (pas de cache après un échec de lecture de la base).
+//
+// Retourne toujours une slice (possiblement vide) que l'appelant peut modifier :
+// c'est une copie. Aucune erreur fatale — les échecs de I/O sont loggués et
+// l'appelant reçoit ce qu'on a pu collecter.
 func (c *SeasonsCatalog) Load(ctx context.Context, titleID string) []SeasonCatalogEntry {
-	dbSeasons := c.loadDBWithFallback(ctx, titleID)
-	return mergeSeasonSources(c.static, dbSeasons)
+	if entries, ok := c.cachedEntries(titleID); ok {
+		timing.FromContext(ctx).Section("seasons_catalog_hit")()
+		return cloneSeasonCatalog(entries)
+	}
+	timing.FromContext(ctx).Section("seasons_catalog_miss")()
+	// Une seule résolution en vol par titre : les requêtes concurrentes attendent
+	// son résultat au lieu de relire la base et de retenter le réseau chacune. Le
+	// cache est relu dans le vol : une requête arrivée juste après la fin d'un vol
+	// précédent ne relance pas la résolution.
+	v, _, _ := c.flights.Do(titleID, func() (any, error) {
+		if entries, ok := c.cachedEntries(titleID); ok {
+			return entries, nil
+		}
+		return c.resolve(ctx, titleID), nil
+	})
+	entries, _ := v.([]SeasonCatalogEntry)
+	return cloneSeasonCatalog(entries)
 }
 
-// loadDBWithFallback lit la DB, et si vide tente le fetch live + persist.
-func (c *SeasonsCatalog) loadDBWithFallback(ctx context.Context, titleID string) []domain.SeasonCalendar {
+// resolve lit les sources, fusionne et met le résultat en cache pour la durée
+// que la lecture autorise (0 = pas de cache).
+func (c *SeasonsCatalog) resolve(ctx context.Context, titleID string) []SeasonCatalogEntry {
+	dbSeasons, cacheFor := c.loadDBWithFallback(ctx, titleID)
+	merged := mergeSeasonSources(c.static, dbSeasons)
+	if cacheFor > 0 {
+		c.mu.Lock()
+		c.byTitle[titleID] = &seasonsTitleState{entries: merged, expiresAt: c.now().Add(cacheFor)}
+		c.mu.Unlock()
+	}
+	return merged
+}
+
+// cachedEntries rend le catalogue caché du titre s'il est encore frais.
+func (c *SeasonsCatalog) cachedEntries(titleID string) ([]SeasonCatalogEntry, bool) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	st, ok := c.byTitle[titleID]
+	if !ok || !c.now().Before(st.expiresAt) {
+		return nil, false
+	}
+	return st.entries, true
+}
+
+// loadDBWithFallback lit la DB, et si vide tente le fetch live + persist. Rend
+// aussi la durée pendant laquelle le résultat peut être caché (0 = ne pas cacher).
+func (c *SeasonsCatalog) loadDBWithFallback(ctx context.Context, titleID string) ([]domain.SeasonCalendar, time.Duration) {
 	if c.repo == nil {
-		return nil
+		return nil, seasonsCatalogTTL
 	}
 	rows, err := c.repo.ListSeasons(ctx, titleID)
 	if err != nil {
+		// Pas de cache : une base momentanément illisible ne doit pas figer le
+		// repli TOML pour une heure — la requête suivante relit.
 		c.logger.WarnContext(ctx, "seasons_catalog: ListSeasons échec — fallback static TOML",
 			"titleSlug", titleID, "err", err)
-		return nil
+		return nil, 0
 	}
 	if len(rows) > 0 {
-		return rows
+		return rows, seasonsCatalogTTL
 	}
 	if c.provider == nil {
-		return nil
+		return nil, seasonsCatalogTTL
 	}
+	return c.fetchLive(ctx, titleID)
+}
+
+// fetchLive tente le fetch Waypoint pour une base vide et rend la durée de cache
+// du résultat. Un succès persiste les saisons (catalogue caché seasonsCatalogTTL) ;
+// un échec est mémorisé par recordFetchFailure.
+func (c *SeasonsCatalog) fetchLive(ctx context.Context, titleID string) ([]domain.SeasonCalendar, time.Duration) {
 	c.logger.DebugContext(ctx, "seasons_catalog: DB vide → tentative fetch live",
 		"titleSlug", titleID)
 	fetched, _, err := c.provider.FetchSeasonCalendar(ctx, titleID)
 	if err != nil {
-		// Pas une erreur fatale : token absent ou Waypoint indispo. Tomber sur TOML.
-		c.logger.InfoContext(ctx, "seasons_catalog: fetch live échec — fallback static TOML",
-			"titleSlug", titleID, "err", err)
-		return nil
+		return nil, c.recordFetchFailure(ctx, titleID, err)
 	}
 	for _, s := range fetched {
 		if uerr := c.repo.UpsertSeason(ctx, s); uerr != nil {
@@ -185,13 +275,50 @@ func (c *SeasonsCatalog) loadDBWithFallback(ctx context.Context, titleID string)
 	c.logger.InfoContext(ctx, "seasons_catalog: catalog rafraîchi depuis Waypoint",
 		"titleSlug", titleID, "count", len(fetched))
 	// Relit la DB pour bénéficier du tri ASC stabilisé par la persistance.
-	rows, err = c.repo.ListSeasons(ctx, titleID)
+	rows, err := c.repo.ListSeasons(ctx, titleID)
 	if err != nil {
 		c.logger.WarnContext(ctx, "seasons_catalog: relecture après fetch échec",
 			"titleSlug", titleID, "err", err)
-		return fetched // best effort : retourne ce qu'on a fetché
+		return fetched, seasonsCatalogTTL // best effort : retourne ce qu'on a fetché
 	}
-	return rows
+	return rows, seasonsCatalogTTL
+}
+
+// recordFetchFailure journalise l'échec du fetch live et rend la durée de cache du
+// repli (TOML + base vide). La MÉMOIRE DE L'ÉCHEC EST CE CACHE : tant que le repli
+// est frais, Load le sert sans relire la base ni rappeler le réseau ; à son terme,
+// la requête suivante retente le fetch (et un succès remplace le repli).
+//
+// Un échec SANS jeton dans le contexte n'a fait aucun appel réseau (le provider
+// refuse avant) : il n'est pas mémorisé — sinon une requête anonyme bloquerait
+// 30 min le fetch d'une requête authentifiée qui, elle, peut réussir.
+func (c *SeasonsCatalog) recordFetchFailure(ctx context.Context, titleID string, err error) time.Duration {
+	if ctxkeys.HaloTokens(ctx) == nil {
+		c.logger.InfoContext(ctx, "seasons_catalog: fetch live impossible sans jeton — fallback static TOML",
+			"titleSlug", titleID, "err", err)
+		return 0
+	}
+	c.logger.ErrorContext(ctx, "seasons_catalog: fetch live échec — fallback static TOML, aucun nouvel essai avant retry_at",
+		"titleSlug", titleID, "retry_at", c.now().Add(seasonsLiveFetchBackoff), "err", err)
+	return seasonsLiveFetchBackoff
+}
+
+// cloneSeasonCatalog copie un catalogue (Extra et End compris) : le catalogue caché
+// est partagé entre requêtes, aucun appelant ne doit pouvoir le modifier.
+func cloneSeasonCatalog(entries []SeasonCatalogEntry) []SeasonCatalogEntry {
+	if entries == nil {
+		return nil
+	}
+	out := make([]SeasonCatalogEntry, len(entries))
+	for i, e := range entries {
+		if e.End != nil {
+			end := *e.End
+			e.End = &end
+		}
+		e.Extra = maps.Clone(e.Extra)
+		out[i] = e
+	}
+	return out
 }
 
 // mergeSeasonSources fusionne TOML + DB par ID :
