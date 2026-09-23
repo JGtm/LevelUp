@@ -13,13 +13,20 @@
  * Oracles : les requêtes reçues par MSW (ce qui est réellement parti, dans l'ordre) et
  * le cache TanStack Query — avec le gcTime par défaut il garde TOUTES les clés
  * chargées, même abandonnées au rendu suivant : « une seule nouvelle clé » s'y lit.
+ *
+ * Lot perf L9-web (2026-09-23, revue adversariale C) : trois chemins envoyaient encore
+ * DEUX requêtes lourdes pour une page affichée — cache léger périmé au retour sur la page
+ * (décision prise sur la donnée en cours de revalidation), exploration sans coéquipier
+ * avec une session au suffixe « (N) » périmé (lourde partie avant la réconciliation), 503
+ * transitoire sur la légère (repli immédiat) — et la page tient sa promesse sous
+ * StrictMode (dev) : ni légère ni lourde doublées.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import type { ReactNode } from 'react'
+import { StrictMode, type ReactNode } from 'react'
 import { server } from '@/test/setup'
 import { queryKeys } from '@/lib/query/keys'
 import { useSquadFilterStore } from '@/stores/squadFilterStore'
@@ -93,6 +100,8 @@ const journal: string[] = []
 let reponseTeammates: Record<string, unknown> = TEAMMATES_BASE
 let reponseSessions: Record<string, unknown> = SESSIONS_VIDES
 let sessionsEnEchec = false
+/** Nombre de 503 « base occupée » que la lecture légère rend avant de répondre. */
+let legeres503 = 0
 let qcCourant: QueryClient | null = null
 
 beforeEach(() => {
@@ -107,6 +116,7 @@ beforeEach(() => {
   reponseTeammates = TEAMMATES_BASE
   reponseSessions = SESSIONS_VIDES
   sessionsEnEchec = false
+  legeres503 = 0
   server.use(
     http.post('/api/v1/players/:playerSlug/pages/teammates', async ({ request }) => {
       journal.push('lourde')
@@ -116,6 +126,10 @@ beforeEach(() => {
     http.get('/api/v1/players/:playerSlug/pages/teammates/sessions', ({ request }) => {
       journal.push('legere')
       urlsSessions.push(new URL(request.url))
+      if (legeres503 > 0) {
+        legeres503 -= 1
+        return HttpResponse.json({ code: 'db_busy', retryable: true }, { status: 503 })
+      }
       return sessionsEnEchec
         ? HttpResponse.json({ code: 'teammates_sessions_error' }, { status: 500 })
         : HttpResponse.json(reponseSessions)
@@ -132,15 +146,20 @@ afterEach(() => {
   qcCourant = null
 })
 
-function monter(): QueryClient {
-  // gcTime par défaut (et non 0) : une clé abandonnée reste lisible dans le cache.
-  const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+/** Client des tests : gcTime par défaut (et non 0), une clé abandonnée reste lisible. */
+function nouveauClient(): QueryClient {
+  return new QueryClient({ defaultOptions: { queries: { retry: false } } })
+}
+
+function monter(options: { qc?: QueryClient; strict?: boolean } = {}): QueryClient {
+  const qc = options.qc ?? nouveauClient()
   qcCourant = qc
-  render(
+  const arbre = (
     <QueryClientProvider client={qc}>
       <SquadLayout />
-    </QueryClientProvider>,
+    </QueryClientProvider>
   )
+  render(options.strict ? <StrictMode>{arbre}</StrictMode> : arbre)
   return qc
 }
 
@@ -309,5 +328,115 @@ describe('Escouade — aperçu et résolu (D4.3)', () => {
     expect(corpsResolve[2].match_context).toBe('squad')
     // Rien n'est commité : la requête lourde n'est pas repartie.
     expect(corpsTeammates).toHaveLength(2)
+  })
+})
+
+/** Une nouvelle soirée (S3) est arrivée depuis la visite précédente. */
+const TROIS_SESSIONS = {
+  composition_sessions: [session('S3 (1)'), session('S2 (3)'), session('S1 (2)')],
+  latest_composition_session: 'S3 (1)',
+}
+
+describe('Escouade — retour sur la page avec un cache léger PÉRIMÉ (L9-web)', () => {
+  it.each([
+    ['store vide', () => {}],
+    ['store ancré sur l ancienne dernière session', () => {
+      useSquadFilterStore.getState().autoSnapToLatestSession({ session_id: 'S2 (3)', label: 'S2 (3)' }, true)
+    }],
+  ])('%s : la décision attend la revalidation — UNE lourde, sur la nouvelle dernière session', async (_nom, etatDeLaVisitePrecedente) => {
+    localStorage.setItem('squad-teammates-p', JSON.stringify(['Alice']))
+    localStorage.setItem('squad-exact-composition-p', 'true')
+    etatDeLaVisitePrecedente()
+    const qc = nouveauClient()
+    // Visite précédente il y a 6 min : au-delà du staleTime (5 min), en deçà du gcTime (10 min).
+    const titre = useAppShellStore.getState().currentTitleSlug
+    qc.setQueryData(queryKeys.compositionSessions('p', titre, ['Alice'], true), DEUX_SESSIONS, {
+      updatedAt: Date.now() - 6 * 60_000,
+    })
+    reponseSessions = TROIS_SESSIONS
+    reponseTeammates = { ...TEAMMATES_BASE, ...TROIS_SESSIONS }
+    monter({ qc })
+    await waitFor(() => expect(corpsTeammates).toHaveLength(1))
+    await laisserRetomber()
+
+    // La légère est la revalidation du cache ; la lourde part APRÈS elle, une seule fois.
+    expect(journal).toEqual(['legere', 'lourde'])
+    expect(corpsTeammates[0].picked_squad_session_labels).toEqual(['S3 (1)'])
+    expect(useSquadFilterStore.getState().filterContext.sessions?.picked_sessions).toEqual(['S3 (1)'])
+  })
+})
+
+describe('Escouade — sans coéquipier, session pickée (L9-web)', () => {
+  it('suffixe « (N) » périmé : la lourde attend la légère — UNE lourde, sur la forme courante du label', async () => {
+    // Amis : handler par défaut (liste vide) → exploration sans coéquipier.
+    useSquadFilterStore.getState().setSessions({ picked_sessions: ['S1 (2)'], gap_minutes: 120 })
+    reponseSessions = { composition_sessions: [session('S1 (4)'), session('S0 (1)')], latest_composition_session: '' }
+    monter()
+    await waitFor(() => expect(corpsTeammates).toHaveLength(1))
+    await laisserRetomber()
+
+    expect(journal).toEqual(['legere', 'lourde'])
+    expect(corpsTeammates[0].selected_gamertags).toBeUndefined()
+    expect(corpsTeammates[0].picked_squad_session_labels).toEqual(['S1 (4)'])
+    expect(corpsTeammates[0].filters?.sessions?.picked_sessions).toEqual(['S1 (4)'])
+  })
+})
+
+describe('Escouade — 503 transitoire (base occupée) sur la lecture légère (L9-web)', () => {
+  it('503 puis 200 : la légère est rejouée UNE fois, puis UNE lourde déjà sur la dernière session', async () => {
+    localStorage.setItem('squad-teammates-p', JSON.stringify(['Alice']))
+    legeres503 = 1
+    reponseSessions = DEUX_SESSIONS
+    reponseTeammates = { ...TEAMMATES_BASE, ...DEUX_SESSIONS }
+    monter()
+    await waitFor(() => expect(corpsTeammates).toHaveLength(1), { timeout: 3000 })
+    await laisserRetomber()
+
+    expect(journal).toEqual(['legere', 'legere', 'lourde'])
+    expect(corpsTeammates[0].picked_squad_session_labels).toEqual(['S2 (3)'])
+  })
+
+  it('503 deux fois : pas de troisième légère, repli sur la séquence L4a', async () => {
+    localStorage.setItem('squad-teammates-p', JSON.stringify(['Alice']))
+    legeres503 = 2
+    reponseTeammates = { ...TEAMMATES_BASE, ...DEUX_SESSIONS }
+    monter()
+    await waitFor(() => expect(corpsTeammates).toHaveLength(2), { timeout: 3000 })
+    await laisserRetomber()
+
+    expect(journal).toEqual(['legere', 'legere', 'lourde', 'lourde'])
+    expect(corpsTeammates[0].picked_squad_session_labels).toBeUndefined()
+    expect(corpsTeammates[1].picked_squad_session_labels).toEqual(['S2 (3)'])
+  })
+})
+
+describe('Escouade — StrictMode (dev) : requêtes ni doublées ni abandonnées', () => {
+  // StrictMode monte, démonte puis remonte : query-core abandonne un fetch dont la
+  // queryFn a lu `signal` quand son dernier observateur part, puis le relance (double
+  // requête des pages solo en dev, jamais en production). L'Escouade y échappe : ses deux
+  // requêtes sont désactivées au premier rendu (verrou de montage `teammatesReady`).
+  it('à froid avec coéquipier : UNE légère et UNE lourde, aucune abandonnée', async () => {
+    localStorage.setItem('squad-teammates-p', JSON.stringify(['Alice']))
+    reponseSessions = DEUX_SESSIONS
+    reponseTeammates = { ...TEAMMATES_BASE, ...DEUX_SESSIONS }
+    const signaux: (AbortSignal | null | undefined)[] = []
+    const fetchReel = globalThis.fetch
+    const espion = vi.spyOn(globalThis, 'fetch').mockImplementation((entree, init) => {
+      const url = typeof entree === 'string' ? entree : entree instanceof URL ? entree.href : entree.url
+      if (url.includes('/pages/teammates')) signaux.push(init?.signal)
+      return fetchReel(entree, init)
+    })
+    try {
+      monter({ strict: true })
+      await waitFor(() => expect(corpsTeammates).toHaveLength(1))
+      await laisserRetomber()
+    } finally {
+      espion.mockRestore()
+    }
+
+    expect(journal).toEqual(['legere', 'lourde'])
+    expect(signaux).toHaveLength(2)
+    expect(signaux.every((signal) => signal?.aborted === false)).toBe(true)
+    expect(corpsTeammates[0].picked_squad_session_labels).toEqual(['S2 (3)'])
   })
 })

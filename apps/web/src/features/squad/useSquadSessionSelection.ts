@@ -88,6 +88,20 @@ function writeStoredTeammates(key: string, value: string[]): void {
 }
 
 /**
+ * Le lien profond de l'accueil, capturé UNE fois au montage (état, donc lisible au
+ * rendu), AVANT le redirect index → /squad/synergies qui drop la query.
+ *
+ * Deux lecteurs, dans le même rendu de `SquadLayout` : cette sélection (composition et
+ * session posées au montage) et `useSquadPageRequests`, pour qui la session du lien ne
+ * vaut que jusqu'au premier ancrage de sa composition (lot perf L9-web, 2026-09-23).
+ */
+export function useSquadDeepLink(): SquadDeepLink | null {
+  const search = useSearch({ strict: false }) as { session?: string; teammates?: string }
+  const [deepLink] = useState(() => readDeepLink(search))
+  return deepLink
+}
+
+/**
  * Lit PUIS retire l'ancienne clé `squad-sessions-<slug>` (miroir local des sessions
  * pickées, supprimé par D4.1). Retirée dans tous les cas : le store est désormais la
  * seule source, la clé ne doit plus jamais être relue.
@@ -135,10 +149,7 @@ function useSquadMountState(
 }
 
 export function useSquadSessionSelection(playerSlug: string): SquadSessionSelection {
-  // Lien profond capturé UNE fois au montage (état, donc lisible au rendu), AVANT le
-  // redirect index → /squad/synergies qui drop la query.
-  const search = useSearch({ strict: false }) as { session?: string; teammates?: string }
-  const [deepLink] = useState(() => readDeepLink(search))
+  const deepLink = useSquadDeepLink()
   const teammatesKey = `squad-teammates-${playerSlug}`
 
   // ── Composition ────────────────────────────────────────────────────────
