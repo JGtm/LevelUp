@@ -2,7 +2,9 @@
 //
 // Le middleware lit le cookie "levelup_session", valide la signature HMAC,
 // charge (ou crée) la SessionData, et l'injecte dans context.Context.
-// La session est sauvegardée et le cookie rafraîchi en fin de requête.
+// En fin de requête, le cookie est rafraîchi et la session persistée par Store.Touch,
+// qui n'écrit le fichier que si la session a changé ou si sa dernière écriture date
+// de plus de 5 min (plan perf 2026-09-23, D3.5 : plus d'écriture à chaque polling).
 package middleware
 
 import (
@@ -55,7 +57,9 @@ func WithSession(store *session.Store, policy SecureCookiePolicy) func(http.Hand
 			sw.commitCookie() // au cas où le handler n'a rien écrit
 			// Persistance disque : seulement pour une session déjà persistée (TTL
 			// glissant) ou devenue significative. Une session anonyme vierge n'est
-			// jamais écrite → plus de spam dans data/sessions/.
+			// jamais écrite → plus de spam dans data/sessions/. Touch lui-même s'abstient
+			// pour une session inchangée écrite il y a moins de 5 min (TTL glissant
+			// préservé à 5 min près, plan perf 2026-09-23 D3.5).
 			if loaded || sess.IsMeaningful() {
 				if err := store.Touch(sess); err != nil {
 					slog.ErrorContext(r.Context(), "session touch failed", "err", err)
