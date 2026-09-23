@@ -36,7 +36,7 @@
 import { fxTintOf, type FxTint } from '../layers/fxInk'
 import { familyOf, type ShotFamily } from '../layers/shotEffects'
 import { heldReading } from '../../../lib/replay/replayLogic'
-import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
+import type { ReplayDocumentReady, ReplayVehicleTrackReady } from '../../../lib/replay/replayNormalize'
 import { vehicleChassisHeadingAt, vehicleShooterAimAt } from './vehiclesAim'
 import { vehicleShotStyleOf, vehicleWeaponMountOf } from './vehicleWeaponRegistry'
 import type { VehicleWeaponMount } from './vehicleWeaponMounts'
@@ -204,7 +204,8 @@ function vehicleShotSourceOf(
   // LE SLOT DU TIREUR, PAS SON SIÈGE (lot 5.5) : c'est la seule clé qui désigne l'occupant qui a
   // tiré, et elle vaut pour le tourelleur passager du Warthog comme pour le conducteur artilleur
   // du Scorpion — comme pour le passager qui tire sa propre arme.
-  const viseeTireur = vehicleShooterAimAt(track, shot.slot, t)
+  const viseeTireur =
+    vehicleShooterAimAt(track, shot.slot, t) ?? viseeSurUnePiecePortee(doc, track, shot.slot, t)
   // UNE ARME DE JOUEUR N'ENTRE QUE SI SA VISÉE EST LUE : sans elle, la source n'apporterait rien
   // et le tir perdrait son propre regard (`h`), qui est parfois lisible.
   if (!mount && !armeDeVehicule && viseeTireur === null) return null
@@ -216,4 +217,30 @@ function vehicleShotSourceOf(
     headingDeg: vehicleChassisHeadingAt(track, t),
     shooterHeadingDeg: viseeTireur,
   }
+}
+
+/**
+ * viseeSurUnePiecePortee — LA VISÉE DU TIREUR QUAND SON ÉPISODE EST RESTÉ SUR UNE PIÈCE MONTÉE du
+ * véhicule qui porte le tir (schéma 69, revue adverse du lot M4a, F1).
+ *
+ * Le serveur pose un tir de tourelle sur le PORTEUR (`v` = le châssis) dès que la pièce a un
+ * `carrier`, mais il ne reporte l'épisode de l'artilleur sur ce porteur que s'il le peut : un
+ * porteur non pilotable (Falcon), un épisode hors de la fenêtre du porteur ou un occupant déjà à
+ * bord le laissent sur la pièce. Chercher la visée sur le seul porteur la perdait alors — mesure
+ * du 2026-09-24 : 174 tirs sur 276 perdaient leur visée lue, et le montage `turret` retombait sur
+ * la bouffée ronde. La pièce appartient au porteur par `carrier {slot, gen}` : son épisode EST
+ * l'épisode du tireur, apparié par SLOT comme partout ailleurs.
+ */
+function viseeSurUnePiecePortee(
+  doc: ReplayDocumentReady,
+  porteur: ReplayVehicleTrackReady,
+  slotTireur: number,
+  t: number,
+): number | null {
+  for (const piece of doc.vehicles) {
+    if (piece.carrier?.slot !== porteur.slot || piece.carrier.gen !== porteur.gen) continue
+    const visee = vehicleShooterAimAt(piece, slotTireur, t)
+    if (visee !== null) return visee
+  }
+  return null
 }

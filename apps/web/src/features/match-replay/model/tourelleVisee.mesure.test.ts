@@ -39,8 +39,10 @@
  * Lecture seule sur des documents DÉJÀ CUITS : aucun décodage de film, aucune base ouverte.
  * Sans `TOURELLE_MESURE`, la suite est ignorée — même porte que `ReplayTeams.perf.test.tsx`.
  * DEPUIS LE SCHÉMA 69 (lot M4a) les montages viennent du registre `vehicleWeapons`, RÉSOLU À LA
- * REQUÊTE : un artefact lu sur disque n'en porte pas — le lire tel que l'API le sert pour mesurer
- * les montages.
+ * REQUÊTE : un artefact lu sur disque n'en porte pas. L'instrument y repose donc la table telle
+ * que l'API la sert, relue dans le registre versionné du titre (`test/vehicleWeaponsTitre.ts`) —
+ * sans elle, chaque tir tombait dans « sans montage » et la mesure était muette sans le dire
+ * (revue adverse du lot M4a, F7). Un document qui porte déjà la table (lu depuis l'API) la garde.
  */
 import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
@@ -50,6 +52,7 @@ import type { ReplayDocument, ReplayVehicleRide } from '@/lib/api/types'
 
 import { racineDuDepot } from '../test/featureFiles'
 import { testReplayDoc } from '../test/testDoc'
+import { registreDuTitre } from '../test/vehicleWeaponsTitre'
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 import type { ReplayVehicleTrackReady } from '../../../lib/replay/replayNormalize'
 import { buildShotFx, type VehicleShotSource } from './shotFx'
@@ -76,7 +79,7 @@ function charger(court: string): ReplayDocumentReady | null {
   const p = join(dossierTemoins(), `${court}.json`)
   if (!existsSync(p)) return null
   const brut = JSON.parse(readFileSync(p, 'utf8')) as Partial<ReplayDocument>
-  return testReplayDoc(brut)
+  return testReplayDoc({ ...brut, vehicleWeapons: brut.vehicleWeapons ?? registreDuTitre().armes })
 }
 
 /** Écart angulaire absolu entre deux caps en degrés, replié sur [0, 180]. */

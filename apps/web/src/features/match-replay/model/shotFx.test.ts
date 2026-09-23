@@ -14,6 +14,8 @@ import { testReplayDoc } from '../test/testDoc'
 // document (`vehicleWeapons`, schéma 69) qui la nomme — ici une entrée de test au gabarit du
 // Ghost (plasma rouge, canons de nez fixes).
 const GHOST_WEAP_TAG = '0x0001543500000000'
+/** Une arme de TOURELLE de test (montage `turret`) : la direction vient de la visée du tireur. */
+const TOURELLE_WEAP_TAG = '0x0000000100000000'
 const REGISTRE_TEST: NonNullable<ReplayDocument['vehicleWeapons']> = {
   [GHOST_WEAP_TAG]: {
     vehicle: 'ghost', en: 'Plasma Cannons', fr: 'Canons à plasma', fire: 'continuous',
@@ -294,5 +296,70 @@ describe('buildShotFx — tirs en véhicule (v), origine au montage plutôt qu�
     const fx = buildShotFx(d, 50)[0]
     expect(fx.fam).toBe('plain')
     expect(fx.tint).toBe('neutral')
+  })
+
+  /**
+   * RETOURS DU REJEU 2026-09-23, REVUE ADVERSE DU LOT M4a (F1). Le tir de tourelle est posé sur le
+   * PORTEUR (`v` = le châssis), mais l épisode de l artilleur est resté sur la PIÈCE (porteur non
+   * pilotable, épisode hors de la fenêtre du porteur, occupant déjà à bord). La visée se lit alors
+   * sur la pièce que le porteur porte (`carrier`) : sans elle, 174 tirs sur 276 perdaient leur
+   * direction et tombaient sur la bouffée ronde.
+   */
+  it('tir de tourelle posé sur le porteur, épisode resté sur la pièce : la visée du tireur est gardée', () => {
+    const d = doc({
+      vehicleWeapons: {
+        [TOURELLE_WEAP_TAG]: {
+          vehicle: 'warthog', en: 'Turret', fr: 'Tourelle', fire: 'single', fx: 'ballistic',
+          tint: 'kinetic', sound: 'vehicle_shot_test_1', mount: { aim: 'turret', ax: 0, ay: 0.26 },
+        },
+      },
+      vehicles: [
+        {
+          slot: 700, gen: 1, t0: 0, t1: 100, t1max: 100, end: 'unknown', part: 'turret',
+          carrier: { slot: 701, gen: 3 }, samples: [],
+          rides: [{ slot: 1, t0: 0, t1: 100, src: 'film', seat: 0, aim: [{ t: 10, h: 200 }] }],
+        },
+        {
+          slot: 701, gen: 3, t0: 0, t1: 100, t1max: 100, end: 'unknown', family: 'warthog',
+          samples: [{ t: 0, x: 5, y: 5, h: 45 }], rides: [],
+        },
+      ],
+      shots: [{ slot: 1, t: 10, x: 5, y: 5, w: TOURELLE_WEAP_TAG, v: 701 }],
+    })
+    const fx = buildShotFx(d, 50)[0]
+    expect(fx.vehicleShot?.shooterHeadingDeg).toBe(200)
+    expect(fx.vehicleShot?.headingDeg).toBe(45)
+  })
+
+  it('négatif : la pièce d un AUTRE porteur ne prête pas sa visée', () => {
+    const d = doc({
+      vehicles: [
+        {
+          slot: 700, gen: 1, t0: 0, t1: 100, t1max: 100, end: 'unknown', part: 'turret',
+          carrier: { slot: 701, gen: 2 }, samples: [],
+          rides: [{ slot: 1, t0: 0, t1: 100, src: 'film', seat: 0, aim: [{ t: 10, h: 200 }] }],
+        },
+        {
+          slot: 701, gen: 3, t0: 0, t1: 100, t1max: 100, end: 'unknown', family: 'warthog',
+          samples: [{ t: 0, x: 5, y: 5, h: 45 }], rides: [],
+        },
+      ],
+      shots: [{ slot: 1, t: 10, x: 5, y: 5, w: GHOST_WEAP_TAG, v: 701 }],
+    })
+    expect(buildShotFx(d, 50)[0].vehicleShot?.shooterHeadingDeg).toBeNull()
+  })
+
+  // REVUE ADVERSE DU LOT M4a (F6) : l ancre du montage se lit sur le SPRITE DESSINÉ, variante comprise.
+  it('la famille de la source est la VARIANTE du porteur quand le document la nomme', () => {
+    const d = doc({
+      vehicles: [
+        {
+          slot: 701, gen: 1, t0: 0, t1: 100, t1max: 100, end: 'unknown', family: 'warthog',
+          variant: 'rockethog', samples: [{ t: 0, x: 5, y: 5, h: 45 }], rides: [],
+        },
+      ],
+      shots: [{ slot: 1, t: 10, x: 5, y: 5, w: GHOST_WEAP_TAG, v: 701 }],
+    })
+    expect(buildShotFx(d, 50)[0].vehicleShot?.family).toBe('rockethog')
   })
 })

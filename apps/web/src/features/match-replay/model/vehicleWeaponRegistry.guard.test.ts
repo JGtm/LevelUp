@@ -13,13 +13,27 @@
  * LA RÈGLE, SUR LES SOURCES DE LA FEATURE (hors tests) :
  *  1. aucun littéral au gabarit d'une arme de véhicule (`0x` + 8 chiffres hex + `00000000`) ;
  *  2. aucune trace de l'ancien assembleur de gabarit (`vehicleWeapTag`) ;
- *  3. `vehicleWeapons` n'est lu que par le lecteur du registre.
+ *  3. `vehicleWeapons` n'est lu que par le lecteur du registre ;
+ *  4. aucun TAG du registre du titre, sous quelque forme que ce soit (tag nu, casse indifférente,
+ *     concaténation comprise dès qu'un tag entier est écrit) — le gabarit seul laissait passer une
+ *     table clée par `'c7d50912'` (revue adverse du lot M4a, F8). Les tags sont RELUS dans le
+ *     registre versionné (`test/vehicleWeaponsTitre.ts`) : un tag ajouté au registre est interdit
+ *     ici sans autre geste.
  */
 import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 
 import { describe, expect, it } from 'vitest'
 
-import { cheminCourt, nomDe, sourcesDeLaFeature, tousLesFichiers } from '../test/featureFiles'
+import {
+  cheminCourt,
+  fichiersSous,
+  nomDe,
+  racineWeb,
+  sourcesDeLaFeature,
+  tousLesFichiers,
+} from '../test/featureFiles'
+import { registreDuTitre } from '../test/vehicleWeaponsTitre'
 
 const LECTEUR = 'vehicleWeaponRegistry.ts'
 const GABARIT_ARME_DE_VEHICULE = /0x[0-9A-Fa-f]{8}00000000/
@@ -50,5 +64,25 @@ describe('garde-rail : aucun tag d arme de véhicule côté client', () => {
     const lecteur = sourcesDeLaFeature().find((f) => nomDe(f) === LECTEUR)
     expect(lecteur, LECTEUR).toBeDefined()
     expect(readFileSync(lecteur!, 'utf8')).toMatch(/\.vehicleWeapons\?\.\[/)
+  })
+
+  it('aucun tag du registre du titre dans les sources du rejeu (casse indifférente)', () => {
+    const { tags } = registreDuTitre()
+    const motif = new RegExp(tags.join('|'), 'i')
+    const sources = [
+      ...sourcesDeLaFeature(),
+      ...fichiersSous(join(racineWeb(), 'src', 'lib', 'replay')).filter((f) => !/\.test\.(ts|tsx)$/.test(f)),
+    ]
+    const fautifs = sources.filter((f) => motif.test(readFileSync(f, 'utf8')))
+    expect(fautifs.map((f) => nomDe(f))).toEqual([])
+  })
+
+  it('contre-test : le registre du titre est lu, et il porte des tags', () => {
+    const { tags, armes: table } = registreDuTitre()
+    const armes = Object.keys(table).map((cle) => cle.slice(2, 10))
+    expect(armes.length).toBeGreaterThan(0)
+    expect(tags).toEqual(expect.arrayContaining(armes))
+    // Le motif prend un tag NU, en minuscules — la forme que le gabarit seul laissait passer.
+    expect(new RegExp(tags.join('|'), 'i').test(`const t = '${tags[0].toLowerCase()}'`)).toBe(true)
   })
 })
