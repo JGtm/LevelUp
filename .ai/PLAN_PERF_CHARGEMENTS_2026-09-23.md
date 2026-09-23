@@ -990,6 +990,37 @@ Items :
 - [ ] L4b.2 front : hook, selecteur, ancrage, `enabled` de la requete lourde + tests
 - [ ] L4b.3 chrono : endpoint leger < 300 ms sur copie ou en mesure de reference
 
+
+## 9 ter. L7 — Carriere : rencontres et rivaux sans `v_gamertag_lookup` (Go) — ajoute le 2026-09-23 a la mesure intermediaire
+
+Decouverte de la mesure intermediaire (campagne sans L4b, serveur du worktree d'integration sur
+les donnees reelles) : `GET /pages/career/top-encounters` 10,7 s et `GET /pages/career/rivals`
+10,1 s, en parallele, a chaque ouverture de la page Carriere (non capte le matin : mon attente
+etait trop courte, ce n'est donc pas une regression). Cause : quatre `LEFT JOIN v_gamertag_lookup`
+dans `platform/duckdb/queries_career_encounters.go` (:71, :118, :218, :321), meme defaut que C1,
+meme remede que L2 (annuaire par lecture, `squad_repo_annuaire.go`).
+
+Decisions tranchees :
+- D7.1 Retirer les quatre jointures ; nommer les lignes par l'annuaire de L2 (`nommerLignes` /
+  `annuaireDeLecture` ou une variante partagee, sans dupliquer la cascade : alias, participants
+  des matchs de la lecture, kill-feed pour les restes, `Joueur ####`, bots `bid(`).
+- D7.2 Parite stricte des gamertags et des compteurs sur les fixtures existantes et sur copie
+  (empreintes avant/apres) ; les ex aequo eventuels sont journalises comme pour L2.
+- D7.3 Chrono avant/apres sur copie (recette §0) : attendu secondes vers dizaines de ms.
+- D7.4 Sections `timing` sur les lectures.
+
+Perimetre : `internal/platform/duckdb/{queries_career_encounters.go,career_repo_encounters.go,
+career_repo.go}` (+ `squad_repo_annuaire.go` seulement pour exposer un helper commun, sans
+changer son comportement), `internal/service/career_service_encounters.go` si une signature
+change, tests associes.
+
+Items :
+- [ ] L7.1 rencontres (top-encounters) sans jointure + parite + chrono
+- [ ] L7.2 rivaux sans jointure + parite + chrono
+- [ ] L7.3 autres lecteurs du meme fichier (grep `v_gamertag_lookup` dans `queries_career*.go`,
+      `career_repo*.go`, `home_repo*.go`) : traites s'ils sont sur une page, sinon consignes
+
+Gate : comme L2 (paquets touches) ; `-tags=integration -p 1 ./internal/platform/duckdb/...`.
 ## 10. Cloture de campagne (superviseur)
 
 - [ ] C.1 mesure de reference (§8 protocole) : Escouade a froid / a chaud / clic rail, Synthese,
