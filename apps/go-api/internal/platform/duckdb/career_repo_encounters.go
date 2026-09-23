@@ -201,9 +201,12 @@ func (r *CareerRepo) GetRivals(ctx context.Context) (nemeses, victims []domain.C
 
 // projeterRivaux rend les lignes du contrat (nil pour une liste vide, comme la lecture d'origine).
 func projeterRivaux(lus []rivalLu) []domain.CareerRivalRawRow {
-	var out []domain.CareerRivalRawRow
-	for _, l := range lus {
-		out = append(out, l.CareerRivalRawRow)
+	if len(lus) == 0 {
+		return nil
+	}
+	out := make([]domain.CareerRivalRawRow, len(lus))
+	for i, l := range lus {
+		out[i] = l.CareerRivalRawRow
 	}
 	return out
 }
