@@ -266,3 +266,47 @@ pprof ; `/debug/vars` seulement (pool DuckDB, provider).
   extraites et ont ete verifiees sur pieces pour les points structurants (cache jamais cable,
   reglages DuckDB, rafale de bascules, echecs du catalogue de saisons, ecriture de session,
   timeout serveur, jointure sur la vue).
+
+## 6. Resultats de la campagne (mesure de cloture du 2026-09-23, 17:19-17:22 et 17:45, meme protocole que §1)
+
+Serveur `air` du worktree d'integration (`feat/perf-chargements`), `LEVELUP_REPO_ROOT` sur le
+checkout principal (donnees reelles), `LEVELUP_LOGS_FILE_LEVEL=debug`, Vite du worktree,
+instance Chrome du MCP avec la session de l'utilisateur, DuckDB `threads=2` / `512MB` inchange.
+Durees client = jusqu'a la derniere reponse d'API de la page ; durees serveur = `duration_ms`
+du middleware, sections = ligne `http_timings` (lot L1).
+
+| Page / geste | Avant (matin) | Apres (cloture) | Ce qui reste |
+|---|---|---|---|
+| Escouade, premier passage (localStorage vide) | 194 s, 7 POST teammates dont 4 en 502 | 2,6 s : lecture legere 197 ms puis UNE requete lourde 1 256 ms, deja sur la bonne session | squad_members 276 ms, echange 186, range_profiles 159 |
+| Escouade, rechargement | 26,3 s | 1,6 s (legere 133 ms + lourde 858 ms) | |
+| Escouade, clic « session precedente » (11 matchs) | 8,2 s a vide + 26,8 s | 0,24 s (une requete de 236 ms) | |
+| Synthese, toutes les periodes | 6,2 s | 2,4 s (synthesis 2 098 ms) | weapon_records 1 640 ms (historique complet : plan structurel) |
+| Sessions | 6,1 s | 0,7 s (sessions/detail 284 ms) | |
+| Series temporelles | 9,5 s | 0,9 s (timeseries 499 ms) | |
+| Carriere (page + matchs marquants) | 2,8 s + 2,5 s | career 122-275 ms, highlight-matches 940-1 139 ms | rencontres / rivaux : voir ci-dessous |
+| Carriere, rencontres et rivaux (hors sync, 19:47-19:50, apres L9-go, trois passages) | 10,7 s et 10,1 s (non captes le matin) | page complete en 3,0 / 7,1 / 4,6 s ; top-encounters 1 574 / 4 493 / 3 387 ms, rivals 2 105 / 6 472 / 4 090 ms ; annuaire 21-60 ms, plus aucune lecture par ami (amis suivis resolus par le registre, section `career_friends` absente) | la fenetre `_latest` du kill-feed (Q26, Q27 x2) sur tout l'historique : 0,8-2,2 s par lecture sur copie a vide, 3-6 s sous la concurrence de la page a 2 threads / 512 Mo (plan structurel + reglage local C.4) |
+| Carriere, memes lectures, serveur relance avec `LEVELUP_DUCKDB_THREADS=8` et `LEVELUP_DUCKDB_MEMORY_LIMIT=4GB` dans l'environnement du processus (reglage local C.4, deux passages 19:57-19:58) | idem | page complete en 1,8 / 2,6 s ; top-encounters 805 / 2 021 ms, rivals 1 118 / 2 031 ms | le meme cout SQL, 2 a 4 fois moins long avec 8 threads et 4 Go : le defaut 2 threads / 512 Mo (calibre pour le VPS) etait la moitie du temps restant sur le poste de dev |
+| Accueil (hors sync, 18:34) | 4,2 s + 2,6 s | 2,1 s : pages/home 1 642 ms (310 Ko), season-pass 298 ms ; sections paresseuses ensuite (prestige, series, citations, medias) 1-50 ms | pages/home 1,6 s et 310 Ko de charge utile (historique complet : plan structurel) ; 2,5 s pendant un cycle de sync |
+| Socle : /filters/resolve, field-mappings, /bootstrap | 0,2-0,6 s a chaque appel, x2-3 par page | 1 a 8 ms apres le premier appel du process (caches L5b) | |
+| Cycle d'auto-sync (post-sync LUSR) | 1 243 bascules RO/RW en 75 s | 11 bascules sur le cycle de 16 h (4 joueurs « rien de nouveau », 1 rafale) | |
+| Reponses tronquees (502) et rejeux | 4 sur 7 requetes Escouade | 0 ; requetes abandonnees en 499 (5 sur la fenetre) | |
+
+Chronos SQL sur copie (2 threads / 512 Mo) : Q29 1,7-2,4 s -> 21 ms ; Q32 (38 matchs) 2,1-2,4 s
+-> 11-17 ms ; Q32b 2,3 s -> 6-7 ms ; KillEvents 6 matchs 1,79 s -> 59 ms ; MortsAvecContexte
+3,26 s -> 80 ms ; LoadWeaponRange 1,32 s -> 64 ms ; rencontres (Q26) 2,6-3,7 s -> 0,8-1,3 s ;
+rivaux (Q27 x2) 6,6-7,0 s -> 1,9-2,2 s ; Q10 et Comparer 2,3-2,6 s -> 9-30 ms ; lecture
+legere des sessions de composition 45-197 ms.
+
+Verification : 12 lots (L1, L3, L4a, L6, L5a, L5b, L2, L4b, L7, L8, L9-go, L9-web) et le lot de
+cloture C4, chacun avec tests de parite et mutations ; gates complets sur l'arbre fusionne le
+2026-09-23 au soir (gofmt vide, build, vet, `go test ./...` 190 paquets sans echec,
+integration `-p 1` sync/persist/duckdb/migration 18 paquets sans echec en 13 min, golangci-lint 0 issue nouvelle par
+lot, `tsc -b --force` 0, eslint 0 erreur, vitest 791 fichiers / 8 503 tests) ; revue
+adversariale a quatre lentilles sur le diff cumule (1 P0, 3 P1, 12 P2, tous corriges par L9-go
+et L9-web ou consignes au plan) ; CI de branche lancee au push de cloture, verdict consigne au §12 du plan.
+
+Caveats : mesure sur le serveur de dev (Vite HTTP/1.1, StrictMode : la premiere requete de
+chaque page est annulee a ~20 ms puis rejouee, propre au dev) ; un cycle d'auto-sync a tourne
+pendant la premiere mesure de Carriere et Accueil (attente du lecteur partage pendant la phase
+d'ecriture : 5,7 s hors sections sur top-encounters) ; la prod (VPS, moins de coeurs) reste a
+mesurer apres deploiement, les lignes `http_timings` le permettent.

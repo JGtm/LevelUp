@@ -1805,18 +1805,50 @@ exécuteur Opus ; commits 54118fe6f L9w.1 à L9w.4 (+ témoin L9w.6), 7ecdc99bf 
 
 ## 10. Cloture de campagne (superviseur)
 
-- [ ] C.1 mesure de reference (§8 protocole) : Escouade a froid / a chaud / clic rail, Synthese,
-      Sessions, Series temporelles, Carriere, Accueil ; tableau avant/apres dans l'etat des lieux
-- [ ] C.2 revue adversariale du diff cumule `origin/feat/v75..feat/perf-chargements` :
+- [x] C.1 mesure de reference (§8 protocole) : Escouade a froid / a chaud / clic rail, Synthese,
+      Sessions, Series temporelles, Carriere, Accueil ; tableau avant/apres dans l'etat des lieux —
+      fait le 2026-09-23 : mesure finale 17:19-17:22 (tous les lots sauf L9), Accueil hors sync a
+      18:34, Carriere hors sync apres L9-go a 19:47-19:50 (trois passages) puis avec le reglage
+      local C.4 dans l'environnement du processus a 19:57-19:58 (deux passages) ; tableau au §6 de
+      `.ai/ETAT_DES_LIEUX_PERF_CHARGEMENTS_2026-09-23.md`
+- [x] C.2 revue adversariale du diff cumule `origin/feat/v75..feat/perf-chargements` :
       fan-out aveugle (lentilles : parite des chiffres ; annulation / timeouts / erreurs ;
-      caches et invalidation ; front sources de verite et cles de query), deux rondes max
+      caches et invalidation ; front sources de verite et cles de query), deux rondes max — faite
+      le 2026-09-23 (quatre relecteurs Opus, lentilles A a D, une ronde : 1 P0, 3 P1, 12 P2, tous
+      traites par L9-go (§9 quinquies) et L9-web (§9 sexies) ou consignes au §11)
 - [ ] C.3 correctifs, gates complets (`go test ./...`, `-tags=integration -p 1`, typecheck `tsc -b
-      --force`, eslint, vitest), push, CI verte au niveau job
-- [ ] C.4 `.env.local` local : `LEVELUP_DUCKDB_THREADS=8`, `LEVELUP_DUCKDB_MEMORY_LIMIT=4GB`
-      (poste 16 coeurs / 32 Go ; prod inchangee)
+      --force`, eslint, vitest), push, CI verte au niveau job — correctifs : L9-go, L9-web, C4 ;
+      gates rejoues par le superviseur sur l'arbre fusionne le 2026-09-23 au soir : gofmt vide,
+      build 0, vet 0, `go test ./...` 190 paquets sans echec, integration `-p 1`
+      sync/persist/duckdb/migration 18 paquets sans echec (13 min), `tsc -b --force` 0, eslint
+      0 erreur (26 avertissements anterieurs), vitest 791 fichiers / 8 503 tests ; apres C4 :
+      build, vet, tests duckdb / api / observability / archlint (`-count=1`), golangci-lint
+      `--new-from-rev=origin/feat/v75` (verdicts au §12) ; push et CI : au §12
+- [x] C.4 `.env.local` local : `LEVELUP_DUCKDB_THREADS=8`, `LEVELUP_DUCKDB_MEMORY_LIMIT=4GB`
+      (poste 16 coeurs / 32 Go ; prod inchangee) — pose le 2026-09-23 a 19:52. DECOUVERTE a la
+      pose : `LEVELUP_DUCKDB_MEMORY_LIMIT` / `_THREADS` etaient lues par des variables de paquet
+      (`platform/duckdb/db.go`), evaluees avant `config.BootstrapEnvLocal()` : `.env.local` etait
+      ignore en silence (serveur relance avec le fichier : budgets et durees inchanges ; relance avec
+      les variables dans l'environnement du processus : rencontres 3,1-4,5 s vers 0,8-2,0 s). Lot C4
+      (executeur Opus, `feat/perf-c4` 9fa4aa625, fusion 95ea5f010) : les deux bornes sont relues a
+      l'ouverture de chaque connexion (`duckMemoryLimit()` / `duckThreads()` dans
+      `applyDuckSessionInit` et `BudgetsSnapshot`) ; defauts 512MB / 2 et validation inchanges,
+      l'environnement du processus reste prioritaire. Test sans tag
+      `TestResourceLimits_EnvSetAfterPackageInitIsHonored` (3 / 300MB poses apres l'init :
+      instantane 3 / "300MB", connexion neuve threads=3 et 286.1 MiB), rouge sur l'ancien code
+      (mutation : 4 assertions). Gates verts (duckdb defaut + integration, api, observability,
+      archlint, golangci 0 issue). Aucune autre variable de paquet du meme genre dans
+      `platform/duckdb` ; une ailleurs, consignee au §11 (`LEVELUP_REPLAY_PUBLIC`).
 - [ ] C.5 go utilisateur puis fusion dans `feat/v75` ; entree thought_log ; retrait des worktrees
-- [ ] C.6 garde-rails structurels de perf, poses ou verifies a la cloture : (a) test grep interdisant `LEFT JOIN v_gamertag_lookup` dans les templates SQL des pages (queries_squad.go, squad_repo*.go) une fois L2 fusionne ; (b) tests de fenetres bornees par EXPLAIN ANALYZE sur les vues `_latest` (L5a : `tactical_repo_fenetres_test.go`, `weapon_range_repo_fenetres_test.go`) ; (c) ratchet d invalidation des caches de lecture (L5b : `archlint/player_read_cache_invalidation_test.go`) ; (d) garde-rail du filigrane LUSR (L6 : `lusr_watermark_guardrail_test.go`) ; (e) tableau avant/apres des durees par page dans l etat des lieux, meme protocole que le 23/09 matin.
-      (jonctions node_modules retirees AVANT, jamais `--force`)
+      — entree thought_log de cloture ecrite le 2026-09-23 ; worktrees des lots (l1 a l8, l9web,
+      l9go, c4, relecteurs) retires (jonctions d'abord, jamais `--force`) ; reste la fusion sur go
+      de l'utilisateur, puis le retrait de `LevelUp-wt-perf` et des branches `feat/perf-*`
+- [x] C.6 garde-rails structurels de perf, poses ou verifies a la cloture : (a) test grep interdisant `LEFT JOIN v_gamertag_lookup` dans les templates SQL des pages (queries_squad.go, squad_repo*.go) une fois L2 fusionne ; (b) tests de fenetres bornees par EXPLAIN ANALYZE sur les vues `_latest` (L5a : `tactical_repo_fenetres_test.go`, `weapon_range_repo_fenetres_test.go`) ; (c) ratchet d invalidation des caches de lecture (L5b : `archlint/player_read_cache_invalidation_test.go`) ; (d) garde-rail du filigrane LUSR (L6 : `lusr_watermark_guardrail_test.go`) ; (e) tableau avant/apres des durees par page dans l etat des lieux, meme protocole que le 23/09 matin.
+      (jonctions node_modules retirees AVANT, jamais `--force`) — verifie sur pieces le 2026-09-23
+      a 18:40 : (a) `annuaire_ratchet_test.go` (L7, etendu par L9-go a tout `internal/`, identifiant
+      nu, table datee des occurrences restantes ; plus aucune lecture dans `queries_squad.go` ni
+      `squad_repo*.go`), (b) les deux fichiers presents, (c) present, (d) present, (e) §6 de
+      l'etat des lieux
 
 ## 8 bis. Protocole de mesure (superviseur uniquement)
 
@@ -1836,6 +1868,29 @@ Aucun autre process ne tient les bases pendant la mesure.
   `CareerLiveBudget` inutilise et en-tete de fichier perime ; provider `sharedprovider` passe
   en « error state » pendant la rafale LUSR du 2026-09-23 10:33.
 
+- (cloture, superviseur, 2026-09-23 soir) Accueil : `GET /pages/home` rend 310 Ko en 1,6 s hors
+  sync (historique complet dans une seule reponse) — charge utile a decouper ou a materialiser (plan
+  structurel). Carriere : trois passages hors sync apres L9-go, rencontres 1,6 / 4,5 / 3,4 s et
+  rivaux 2,1 / 6,5 / 4,1 s — le premier passage (requetes etalees par le socle) est le plus rapide,
+  les rechargements lancent 6 lectures DuckDB en meme temps sur 2 threads / 512 Mo et chacune
+  ralentit (csrs 18 -> 638 ms, achievements 16 -> 706 ms) : la fenetre `_latest` du kill-feed sur
+  tout l'historique reste le cout (plan structurel), le reglage local C.4 en attenue l'effet.
+  `platform/duckdb/db_query.go:136` (`logDBError`) journalise un `context canceled` en ERROR
+  (« query failed (after recovery) », 3 par ouverture de la Carriere en dev a cause de StrictMode ;
+  37 le 2026-09-22 a 18 h, avant la campagne) — meme classe que D9g.3, candidat a
+  `observability.LevelUnlessCanceled`. `friends_xp` (bootstrap) tente d'ouvrir EN RW la DB de
+  chaque ami non suivi pour la migrer (« chemin introuvable », 5 WARN par bootstrap, deja le matin
+  a 10 h) : resoudre l'existence du profil avant d'ouvrir. Chocoboflor est « joueur en echec » a
+  chaque cycle d'auto-sync (HTTP 429 de halostats a la decouverte, page 0) : externe a la
+  campagne, a surveiller. Le cron des noms d'assets au boot (`asset_name_sweep_cron`, 60 s apres
+  le demarrage) et l'expansion du catalogue de playlists (une trentaine de GET Waypoint, 19:47:20
+  a 19:47:33) tournent pendant les premieres requetes de l'utilisateur apres un redemarrage.
+  Lot C4 : `internal/api/handlers/replay_local_gate.go:74` lit `LEVELUP_REPLAY_PUBLIC` dans une
+  variable de paquet a l'init (meme defaut que les bornes DuckDB : ignoree depuis `.env.local`),
+  son commentaire presente la lecture unique comme voulue — a trancher. Chocoboflor : au boot,
+  `cli_auth: refresh_token mort — reauth_required` (xuid 2535469190789936) : reconnexion SSO
+  du compte a faire par l'utilisateur, jamais de re-capture (ADR 0023).
+
 ## 12. Journal
 
 - 2026-09-23 : plan ecrit, branche de campagne creee depuis origin/feat/v75 c89aa4bdc,
@@ -1845,3 +1900,10 @@ Aucun autre process ne tient les bases pendant la mesure.
 - 2026-09-23 (soir) : L2 fusionne (8d016c94a, sans conflit), gates rejoues (build, vet, tests service/duckdb/analysis/archlint/api) ; vague 2 close ; L4b lance depuis 8d016c94a (worktree LevelUp-wt-perf-l4b). Decision utilisateur en attente : departage stable des badges ex aequo (Q32b sans ORDER BY).
 - 2026-09-23 (16:30) : L4b fusionne (sans conflit), gates rejoues (build, tests teammates/api/port, typecheck, vitest). Mesure intermediaire 15:39-15:44 (sans L4b) consignee au scratchpad et reprise dans l'etat des lieux a la cloture : Escouade a froid 194 s -> 2,7 s, a chaud 26 s -> 2,8 s, Synthese 6,2 -> 2,7 s, Sessions 6,1 -> 0,3 s, Series temporelles 9,5 -> 0,5 s, Carriere 5,6 -> 1,5 s (hors rencontres/rivaux 10 s : lot L7), Accueil 4,2 -> 1,4 s ; cycle de sync 16 h : 11 bascules au lieu de 1 243. Lot L8 ajoute (departages stables Q29 / Q32b + MapCapabilityError sur POST /pages/teammates).
 - 2026-09-23 (17:40) : L7 fusionne (b7bbe593f, conflit du plan resolu) et L8 fusionne (conflit du plan resolu) ; tous les lots sont dans la campagne. Cloture : gates complets, mesure finale, revue adversariale, CI.
+- 2026-09-23 (18:30-20:00, cloture) : L9-web fusionne (ef5809933, sans conflit ; thought_log
+  ac387b66f), worktree l9web retire ; L9-go fusionne (e1cf9da81 ; conflit du plan : §9 quinquies
+  perdu a la resolution puis retabli en 98c79d9d5 avec le thought_log du lot ; arbre `apps/go-api`
+  identique a celui du lot) ; Accueil mesure hors sync (2,1 s), Carriere mesuree hors sync apres
+  L9-go (rencontres 1,6-4,5 s, rivaux 2,1-6,5 s) puis avec 8 threads / 4 Go (0,8-2,0 s) ;
+  decouverte C.4 (reglages DuckDB lus avant `.env.local`) traitee par le lot C4 ; serveurs de
+  mesure arretes a 20:00. Gates complets verts sur l arbre fusionne (C.3) ; lot C4 fusionne (95ea5f010, worktree retire) ; entree thought_log de cloture ; push de la branche et CI de cloture : ligne suivante.
