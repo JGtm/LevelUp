@@ -182,12 +182,16 @@ func TestAssetService_ListMaps_LibelleFRPresentAvantAbsent(t *testing.T) {
 
 func TestAssetService_ListMaps_TriParNom(t *testing.T) {
 	// Sans builder d'image, l'URL est dérivée de l'ID : deux assets homonymes restent deux
-	// cartes (visuels distincts), triées par nom anglais puis par ID.
+	// cartes (visuels distincts), triées par nom anglais puis par ID. Chasm/Gouffre et
+	// Forest/Forêt fixent la clé : l'ordre anglais (Chasm, Forest) contredit l'ordre des
+	// libellés FR (Forêt, Gouffre) — un tri par NameFR échoue ici.
 	svc := NewAssetService(&mockAssetMetaRepo{maps: []canonical.AssetMeta{
-		{ID: "c", NameEN: "Recharge"},
-		{ID: "b", NameEN: "aquarius"},
-		{ID: "z", NameEN: "Behemoth"},
-		{ID: "a", NameEN: "Behemoth"},
+		{ID: "c", NameEN: "Recharge", NameFR: "Recharge"},
+		{ID: "d", NameEN: "Forest", NameFR: "Forêt"},
+		{ID: "b", NameEN: "aquarius", NameFR: "aquarius"},
+		{ID: "z", NameEN: "Behemoth", NameFR: "Behemoth"},
+		{ID: "e", NameEN: "Chasm", NameFR: "Gouffre"},
+		{ID: "a", NameEN: "Behemoth", NameFR: "Behemoth"},
 	}})
 	items, err := svc.ListMaps(context.Background(), "titre", "")
 	if err != nil {
@@ -197,7 +201,7 @@ func TestAssetService_ListMaps_TriParNom(t *testing.T) {
 	for _, m := range items {
 		got = append(got, m.NameEN+"/"+m.ID)
 	}
-	want := "aquarius/b Behemoth/a Behemoth/z Recharge/c"
+	want := "aquarius/b Behemoth/a Behemoth/z Chasm/e Forest/d Recharge/c"
 	if strings.Join(got, " ") != want {
 		t.Errorf("ordre = %q, want %q", strings.Join(got, " "), want)
 	}
@@ -241,20 +245,43 @@ func TestAssetService_ListMaps_AucuneImageEnDouble(t *testing.T) {
 }
 
 func TestAssetService_ListMaps_RechercheAvantRegroupement(t *testing.T) {
-	// La recherche filtre d'abord (dépôt) ; le regroupement porte sur ce qui reste.
+	// La recherche filtre d'abord (dépôt) ; le regroupement porte sur ce qui reste. Deux
+	// versions d'un même visuel portent deux libellés FR traduits différents : le
+	// représentant GLOBAL serait « Flanc droit » (plus petit ID), qui ne contient pas
+	// « tribord ». Regrouper avant de chercher rendrait donc 0 carte ; chercher d'abord
+	// rend la version dont le libellé correspond à la saisie.
 	repo := NewStaticAssetMetaRepo([]canonical.AssetMeta{
-		{ID: "10000000", NameEN: "Solution", NameFR: "Solution"},
-		{ID: "20000000", NameEN: "Solution", NameFR: "Solution"},
-		{ID: "30000000", NameEN: "Absolution", NameFR: "Absolution"},
+		{ID: "10000000", NameEN: "Starboard", NameFR: "Flanc droit"},
+		{ID: "90000000", NameEN: "Starboard", NameFR: "Tribord"},
 		{ID: "40000000", NameEN: "Aquarius", NameFR: "Aquarius"},
 	}, nil)
 	svc := NewAssetService(repo).WithMapImageURL(imageParNomAnglais)
-	items, err := svc.ListMaps(context.Background(), "titre", "solution")
+	items, err := svc.ListMaps(context.Background(), "titre", "tribord")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if len(items) != 2 {
-		t.Fatalf("len=%d, want 2 : %+v", len(items), items)
+	if len(items) != 1 || items[0].ID != "90000000" || items[0].NameFR != "Tribord" {
+		t.Fatalf("got %+v, want une seule carte 90000000/Tribord", items)
+	}
+}
+
+func TestOneCardPerImage_EntreeIntacte(t *testing.T) {
+	// Le helper ne réordonne ni ne modifie la tranche reçue : il rend une tranche neuve.
+	in := []canonical.AssetMeta{
+		{ID: "2", NameEN: "Solution", NameFR: "Solution", ImageURL: "/s.jpg"},
+		{ID: "1", NameEN: "Solution", NameFR: "Solution", ImageURL: "/s.jpg"},
+		{ID: "3", NameEN: "Perilous", NameFR: "Périlleux", ImageURL: "/p.jpg"},
+		{ID: "0", NameEN: "Perilous", NameFR: "Perilous", ImageURL: "/p.jpg"},
+	}
+	avant := append([]canonical.AssetMeta(nil), in...)
+	out := oneCardPerImage(in)
+	if len(out) != 2 {
+		t.Fatalf("len=%d, want 2 : %+v", len(out), out)
+	}
+	for i := range in {
+		if in[i] != avant[i] {
+			t.Fatalf("entrée modifiée en position %d : %+v, want %+v", i, in[i], avant[i])
+		}
 	}
 }
 

@@ -31,8 +31,9 @@ import (
 // fusionnée avec une autre (ListMaps n'en produit pas ; la garde protège un appelant
 // futur contre la fusion silencieuse de cartes sans rapport).
 //
-// Tri de sortie : NameEN sans casse, puis NameEN, puis ID. La tranche reçue n'est pas
-// modifiée (elle peut être l'instantané en mémoire du StaticAssetMetaRepo).
+// Tri de sortie : NameEN sans casse, puis NameEN, puis ID. La fonction ne réordonne ni
+// ne modifie la tranche reçue : elle rend une tranche neuve. (Cela ne rend pas
+// immuable la tranche du dépôt en amont : c'est l'affaire de l'appelant.)
 func oneCardPerImage(items []canonical.AssetMeta) []canonical.AssetMeta {
 	bestByImage := make(map[string]int, len(items))
 	out := make([]canonical.AssetMeta, 0, len(items))
