@@ -16,7 +16,7 @@
  *
  * LA RÈGLE, DANS LES DEUX SENS :
  *  1. toute clé de table est OBSERVÉE (fixture datée `vehicle_weapon_tags_observed.json`, sortie de
- *     l'instrument de parc) OU inscrite dans `ATTENDUS_NON_OBSERVES` — les armes à TIR CONTINU, que
+ *     l'instrument `test/fixtures/sweep_vehicle_weapon_tags.mjs`) OU inscrite dans `ATTENDUS_NON_OBSERVES` — les armes à TIR CONTINU, que
  *     le décodeur ne lit pas encore (lot M4b), et leur voisine ;
  *  2. tout tag observé au moins `SEUIL_OBSERVE` fois a une entrée de STYLE, ou une ligne de
  *     `INCONNUS` motivée ; et un son, ou une ligne de `SILENCES_DECIDES`.
@@ -25,7 +25,7 @@
  * côté Go, clé = tag observé, garde-rail Go équivalent). Critère : les trois tables client
  * supprimées.
  */
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 import { describe, expect, it } from 'vitest'
@@ -42,6 +42,8 @@ interface TagObserve {
 }
 
 const FIXTURE = join(featureRoot(), 'test', 'fixtures', 'vehicle_weapon_tags_observed.json')
+/** L'instrument VERSIONNÉ qui écrit la fixture (revue RR-L1-06) : `node <lui> <parc> [--check]`. */
+const INSTRUMENT = 'sweep_vehicle_weapon_tags.mjs'
 const OBSERVES: TagObserve[] = JSON.parse(readFileSync(FIXTURE, 'utf8')).tags
 
 /** Un tag observé moins souvent peut attendre sa ligne (le Wasp `11725DC4` en a 4, et l'a). */
@@ -88,6 +90,12 @@ describe('garde-rail : tables d’armes de véhicule clées par des tags OBSERV�
     expect(brut.generatedAt).toBe('2026-09-23')
     expect(brut.corpus.documents).toBe(111)
     expect(OBSERVES.length).toBeGreaterThan(0)
+  })
+
+  it('la fixture se régénère depuis un instrument versionné, posé à côté d’elle', () => {
+    const brut = JSON.parse(readFileSync(FIXTURE, 'utf8'))
+    expect(brut.source, 'la fixture doit citer son instrument').toContain(INSTRUMENT)
+    expect(existsSync(join(featureRoot(), 'test', 'fixtures', INSTRUMENT)), INSTRUMENT).toBe(true)
   })
 
   const tables: Array<[string, Iterable<string>]> = [
