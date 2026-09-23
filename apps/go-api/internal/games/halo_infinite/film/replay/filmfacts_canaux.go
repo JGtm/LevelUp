@@ -76,8 +76,9 @@ func decodeBipedCreations(r *greader) []grammar.BipedCreation {
 // Prises et lachers d arme — le flux delta (i43..i46)
 // ---------------------------------------------------------------------------
 
-// encodeWeaponChanges / decodeWeaponChanges : l emplacement, l identite d arme et la QUALIFICATION
-// du changement. `Low` (la variante cosmetique) et `Chunk` sont du diagnostic de balayage.
+// encodeWeaponChanges / decodeWeaponChanges : l emplacement (index de composant ET rang, v26), l
+// identite d arme et la QUALIFICATION du changement. `Low` (la variante cosmetique) et `Chunk`
+// sont du diagnostic de balayage.
 //
 // `Kind` EST UNE CHAINE, et elle voyage telle quelle : c est elle que le calque publie
 // (« prise », « lacher »), et la re-deriver a la relecture serait un second decideur.
@@ -89,6 +90,7 @@ func encodeWeaponChanges(w *gwriter, changes []types.HeldWeaponChange) {
 		lastTS = c.TimestampUS
 		w.u(uint64(c.Slot))
 		w.i(int64(c.SlotIndex))
+		w.i(int64(c.Emplacement))
 		w.u(uint64(c.Family))
 		w.u(uint64(c.Previous))
 		w.str(string(c.Kind))
@@ -103,6 +105,7 @@ func decodeWeaponChanges(r *greader) []types.HeldWeaponChange {
 		lastTS += r.u()
 		c := types.HeldWeaponChange{TimestampUS: lastTS, Slot: uint32(r.u())}
 		c.SlotIndex = int(r.i())
+		c.Emplacement = int(r.i())
 		c.Family = uint32(r.u())
 		c.Previous = uint32(r.u())
 		c.Kind = types.HeldWeaponChangeKind(r.str())

@@ -3215,6 +3215,11 @@ export interface ReplayWeaponChange {
   w?: string
   /** Famille précédente, quand elle est connue. Vide sinon. */
   from?: string
+  /**
+   * EMPLACEMENT d'arme touché (schéma 69) : 0 = la première arme, 1 = la seconde — la même
+   * clé que `ReplayLoadout.k` d'une dotation de naissance. Absent des artefacts antérieurs.
+   */
+  k?: number
 }
 
 /**

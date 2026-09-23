@@ -60,6 +60,10 @@ type FilmInputs struct {
 	// KeyframeWalk est la sante de la marche d image-cle du film (lot M3.1) : ses decisions et
 	// les bipedes qu elle a manques entre deux images-cles qui les portaient.
 	KeyframeWalk grammar.KeyframeWalkCoverage
+	// BirthLoadouts / BirthLoadoutStats sont les DOTATIONS DE NAISSANCE (lot M3.2) : les armes de
+	// chaque corps lues dans son record NEW de creation, et les refus comptes par cause.
+	BirthLoadouts     []types.BirthLoadout
+	BirthLoadoutStats types.BirthLoadoutStats
 	// WeaponChanges sont les prises et lachers d'arme lus dans le flux delta.
 	WeaponChanges []types.HeldWeaponChange
 	// Pickups / PickupStats sont les ramassages NATIFS (evenement `biped_pickup`) et la mesure
@@ -187,6 +191,7 @@ func (in FilmInputs) applyTo(opt *Options) {
 	opt.BipedCreations = in.BipedCreations
 	opt.Loadouts = in.Loadouts
 	opt.KeyframeWalk = in.KeyframeWalk
+	opt.BirthLoadouts, opt.BirthLoadoutStats = in.BirthLoadouts, in.BirthLoadoutStats
 	opt.WeaponChanges = in.WeaponChanges
 	opt.Pickups, opt.PickupStats = in.Pickups, in.PickupStats
 	opt.Inventory = in.Inventory

@@ -119,6 +119,30 @@ RefusedNoCatalog	int	-
 RefusedOffBand	int	-
 UnexpectedWideRef	int	-
 
+## BirthLoadout (grammar)
+TimestampUS	uint64	-
+Chunk	int	-
+PacketIndex	int	-
+Slot	uint32	-
+Generation	uint32	-
+Weapons	[]types.BirthWeapon	-
+
+## BirthLoadoutStats (grammar)
+Creations	int	-
+Read	int	-
+Desync	int	-
+Overflow	int	-
+Unconfirmed	int	-
+NoWeaponComponent	int	-
+ClosedByDelta	int	-
+ClosedByBoundNew	int	-
+ClosedByAnticipatedNew	int	-
+
+## BirthWeapon (grammar)
+Emplacement	int	-
+Family	uint32	-
+Low	uint32	-
+
 ## CamoRead (grammar)
 Slot	uint32	-
 Chunk	int	-
@@ -252,6 +276,7 @@ TimestampUS	uint64	-
 Chunk	int	-
 Slot	uint32	-
 SlotIndex	int	-
+Emplacement	int	-
 Family	uint32	-
 Low	uint32	-
 Previous	uint32	-

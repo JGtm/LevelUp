@@ -211,7 +211,7 @@ func TestLienPickupObjetAuSol(t *testing.T) {
 	if err != nil {
 		t.Fatalf("loadouts : %v", err)
 	}
-	changes, _, err := grammar.ScanFilmHeldWeaponChanges(s.dir, spawnSetFrom(loadouts))
+	changes, _, err := grammar.ScanFilmHeldWeaponChanges(s.dir, spawnSetFrom(loadouts, nil, nil))
 	if err != nil {
 		t.Fatalf("changements d arme : %v", err)
 	}

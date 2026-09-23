@@ -1263,8 +1263,20 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   CE QUI NE MONTE PAS : `facts.Rev` (`killsource` ne lit aucun état de mouvement) et
 	//   `layers`. `grammar.Rev` a monté, la couche écrivant l'étiquette de genre.
 	//   Détail : `document_chronicle.go`.
-	if SchemaVersion != 68 {
-		t.Fatalf("SchemaVersion = %d, attendu 68 : incrémenter exige une raison écrite ci-dessus "+
+	// - v69 (campagne « retours rejeu », lot M3, 2026-09-23) : LES ARMES À L'INSTANT. Quatre
+	//   ajouts de FORME : `loadouts[].src` (`birth` : la DOTATION DE NAISSANCE, lue dans le record
+	//   de création du corps) et `loadouts[].k` (l'emplacement de chaque arme), `weaponChanges[].k`
+	//   (l'emplacement d'arme touché — la clé que la naissance partage avec le flux),
+	//   `coverage.keyframes` (la santé de la marche d'image-clé) et `coverage.birthLoadouts`. ET
+	//   UN CHANGEMENT DE SENS : la première émission d'arme de chaque VIE se juge contre sa
+	//   naissance et jamais contre une image-clé À VENIR — des prises que le repli futur
+	//   effaçait sont publiées. Un client qui ignore `k` et `src` lirait une dotation de naissance
+	//   comme un relevé d'image-clé et ne saurait pas situer une prise sur emplacement vide.
+	//   MONTENT AUSSI : `grammar.Rev` et `facts.Rev` (la marche d'image-clé réparée, l'état par
+	//   défaut du bipède qui lit enfin le R(32) de sa dernière feuille) et le codec des faits (v26).
+	//   Détail : `document_chronicle.go`.
+	if SchemaVersion != 69 {
+		t.Fatalf("SchemaVersion = %d, attendu 69 : incrémenter exige une raison écrite ci-dessus "+
 			"(un champ optionnel de plus n'en est pas une)", SchemaVersion)
 	}
 }

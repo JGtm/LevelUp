@@ -6,7 +6,7 @@
 
 ## AXE DE TEMPS
 3465 frames · intervalle 100 ms · duree 346500 ms
-schema 68 · titre halo_infinite
+schema 69 · titre halo_infinite
 version majeure du film : 40
 origine de la frame 0 sur l horloge du fil : 12904 ms
 coup d envoi date par le film : 35704 ms · 55/55 piste(s) en mouvement · rafale 5 · marge depuis la frame 0 : 22800 ms
@@ -300,7 +300,7 @@ POWER-UPS (voie ti=37) — balaye=true · 198 creation(s) acceptee(s) -> 6 reten
 26 occupation(s) achevee(s) publiee(s) · 15 datee(s) a l instant exact par l evenement natif · 15 avec un ramasseur nomme
 
 ## ARMES PORTEES — l inventaire, pas la main : le loadout ne dit pas QUELLE arme est degainee
-107 loadout(s) publie(s) · 12 famille(s) distincte(s)
+162 loadout(s) publie(s) · 12 famille(s) distincte(s)
 
 ## PONT SLOT -> JOUEUR — deux sources nommees : la LECTURE, puis la FERMETURE
 57 entree(s) · 57 issue(s) de la lecture (un ecart NON EXPLIQUE par les fermetures signalerait une TROISIEME SOURCE)

@@ -29,6 +29,8 @@ func toCoverage(v replay.Coverage) replaydoc.Coverage {
 		BombCarries:       ptrOf(v.BombCarries, toBombCarriesCoverage),
 		BombArmings:       ptrOf(v.BombArmings, toBombArmingsCoverage),
 		WeaponChanges:     ptrOf(v.WeaponChanges, toWeaponChangeCoverage),
+		Keyframes:         ptrOf(v.Keyframes, toKeyframeCoverage),
+		BirthLoadouts:     ptrOf(v.BirthLoadouts, toBirthLoadoutCoverage),
 		Pickups:           ptrOf(v.Pickups, toPickupCoverage),
 		PadDating:         ptrOf(v.PadDating, toPadDatingStats),
 		EquipmentChanges:  ptrOf(v.EquipmentChanges, toEquipmentChangeCoverage),

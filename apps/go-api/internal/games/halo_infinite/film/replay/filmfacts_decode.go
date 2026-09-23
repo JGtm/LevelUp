@@ -26,6 +26,7 @@ func DecodeFilmFacts(blob []byte, entry profile.MapQuantEntry) (*FilmFacts, erro
 	g.BipedCreations = decodeBipedCreations(r)
 	decodeEvenements(r, g)
 	g.KeyframeWalk = decodeMarcheImageCle(r)
+	g.BirthLoadouts, g.BirthLoadoutStats = decodeNaissances(r)
 	g.WeaponChanges = decodeWeaponChanges(r)
 	g.Pickups, g.PickupStats = decodePickups(r)
 	decodeInventaire(r, g)

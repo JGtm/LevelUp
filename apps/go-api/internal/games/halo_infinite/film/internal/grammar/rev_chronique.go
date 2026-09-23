@@ -388,5 +388,28 @@ package grammar
 //
 // `facts.Rev` MONTE : le monde de `killsource` (`world.go` `preload()`) lie les slots que cette
 // marche rend. Le codec des faits passe en v26 (`SchemaDesFaits` 4) et porte la SANTE de la marche
-// (decisions et bipedes absents encadres) ; le document la publiera en `coverage.keyframes` au
+// (decisions et bipedes absents encadres) ; le document la publie en `coverage.keyframes` au
 // commit de la montee de schema 69 du meme lot (M3.2), une seule montee pour le lot.
+//
+// LE MEME RANG PORTE LE LOT M3.2 (meme lot, une seule montee de revision) :
+//
+//   - L ETAT PAR DEFAUT DU BIPEDE LIT LE R(32) DE SA DERNIERE FEUILLE (`default_state.go`,
+//     `uVar10 >= 12` : `FUN_14080d69c` = R(1) ; si 1, R(32) — la grammaire de l en-tete du
+//     fichier, que le port avait amputee sur la foi de « 166 = 198 - 32 »). DEUX ORACLES : la
+//     famille d i43 d un record NEW de naissance tombe sur celle que le catalogue du match
+//     localise dans 293 records sur 293 (45 Arena, 106 Super Fiesta, 142 CTF ; 0 sans ce
+//     R(32)) ; et `n2`, lu apres l etat par defaut d un record d image-cle, vaut 5088 sur
+//     128 + 197 + 304 records des trois films, contre 2136725276 sans lui — la valeur de ce
+//     R(32) lue a la place de `n2`. Tout record NEW de bipede des paquets delta se traverse
+//     desormais aligne, et le chemin d etat complet de l image-cle aussi.
+//   - LA DOTATION DE NAISSANCE EST LUE (`birth_loadouts.go`, `ScanBirthLoadouts`) : le record NEW
+//     de chaque creation reconnue par `ScanBipedCreations`, traverse, et rendu SEULEMENT s il se
+//     FERME — suivi d un delta propre sur un slot lie ou d un record NEW dont le monde ou une
+//     image-cle ulterieure confirme l archetype. Mesure : 48/48, 104/106, 139/142 naissances
+//     fermees sur les trois films ; 3 fermetures sur 1 776 au temoin decale. Aucune lecture de
+//     repli : un record qui ne se ferme pas ne rend rien, et le refus se compte par cause.
+//   - L EMPLACEMENT D ARME : `HeldWeaponChange.Emplacement` (rang du composant
+//     `weapon-state-type-info` dans l archetype du film). La PREMIERE emission d un emplacement se
+//     juge, POUR CHAQUE VIE, contre la dotation de naissance puis contre le dernier releve
+//     d image-cle PASSE (`SpawnPredicate`, jamais un releve a venir), et la chaine des emissions
+//     d un slot se coupe a chaque nouvelle creation du corps qui l occupe.

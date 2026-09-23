@@ -4776,6 +4776,32 @@ export interface components {
             non_resolu: number;
             non_resolu_par_cause: components["schemas"]["UnresolvedCauses"];
         };
+        BirthLoadoutCoverage: {
+            /** Format: int64 */
+            beforeOrigin: number;
+            /** Format: int64 */
+            creations: number;
+            /** Format: int64 */
+            desync: number;
+            /** Format: int64 */
+            noDisplayable: number;
+            /** Format: int64 */
+            noLife: number;
+            /** Format: int64 */
+            noWeaponComponent: number;
+            /** Format: int64 */
+            nonWeapon: number;
+            /** Format: int64 */
+            overflow: number;
+            /** Format: int64 */
+            published: number;
+            /** Format: int64 */
+            read: number;
+            /** Format: int64 */
+            snapped: number;
+            /** Format: int64 */
+            unconfirmed: number;
+        };
         BombArming: {
             /** Format: int64 */
             fuseMs: number;
@@ -5911,6 +5937,7 @@ export interface components {
             abilities?: components["schemas"]["AbilityCoverage"];
             abilityCharges?: components["schemas"]["AbilityChargeCoverage"];
             abilityImpulses?: components["schemas"]["AbilityImpulseCoverage"];
+            birthLoadouts?: components["schemas"]["BirthLoadoutCoverage"];
             bombArmings?: components["schemas"]["BombArmingsCoverage"];
             bombCarries?: components["schemas"]["BombCarriesCoverage"];
             bridge: components["schemas"]["BridgeHealth"];
@@ -5928,6 +5955,7 @@ export interface components {
             groundWeaponItems?: components["schemas"]["GroundWeaponItemsCoverage"];
             groundWeapons?: components["schemas"]["GroundWeaponCoverage"];
             inventory?: components["schemas"]["InventoryCoverage"];
+            keyframes?: components["schemas"]["KeyframeCoverage"];
             objectiveObjects?: components["schemas"]["ObjectiveObjectsCoverage"];
             objectives: components["schemas"]["LayerCoverage"];
             originResolved: boolean;
@@ -7776,6 +7804,26 @@ export interface components {
             /** Format: int64 */
             wins: number;
         };
+        KeyframeCoverage: {
+            /** Format: int64 */
+            bipeds: number;
+            /** Format: int64 */
+            elections: number;
+            /** Format: int64 */
+            framedAbsentBipeds: number;
+            /** Format: int64 */
+            jumps: number;
+            /** Format: int64 */
+            keyframes: number;
+            /** Format: int64 */
+            neighbors: number;
+            /** Format: int64 */
+            records: number;
+            /** Format: int64 */
+            resyncs: number;
+            /** Format: int64 */
+            slides: number;
+        };
         LOWESSTrend: {
             Metric: string;
             /** Format: double */
@@ -8047,8 +8095,10 @@ export interface components {
             next_cursor?: number;
         };
         Loadout: {
+            k?: number[] | null;
             /** Format: int32 */
             slot: number;
+            src?: string;
             /** Format: int64 */
             t: number;
             w: string[] | null;
@@ -13686,6 +13736,8 @@ export interface components {
         };
         WeaponChange: {
             from?: string;
+            /** Format: int64 */
+            k?: number;
             kind: string;
             /** Format: int32 */
             slot: number;

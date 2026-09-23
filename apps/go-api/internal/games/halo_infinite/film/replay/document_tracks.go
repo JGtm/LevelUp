@@ -32,6 +32,13 @@ type Loadout struct {
 	// de l'arme, le suffixe bas ne porte que la variante cosmétique (cf. weaponv3.CanonWeaponID) ;
 	// les alias d'un même canon sont repliés — un canon = une entrée.
 	W []string `json:"w"`
+	// Src est la PROVENANCE du relevé (schéma 69, lot M3.2) : `birth` pour la DOTATION DE
+	// NAISSANCE lue dans le record de création du corps, absent pour un relevé d'image-clé.
+	Src string `json:"src,omitempty"`
+	// K donne, pour chaque arme de W, son EMPLACEMENT (0 = la première arme, 1 = la seconde),
+	// la même clé que `weaponChanges[].k`. Une dotation de naissance le porte ; un relevé
+	// d'image-clé, qui ne situe pas ses familles, non.
+	K []int `json:"k,omitempty"`
 }
 
 // Shot est un tir décodé, placé à la position de son tireur.

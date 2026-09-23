@@ -174,7 +174,7 @@ func TestGroundWeaponLifecycleVsHeldWeapon(t *testing.T) {
 		case seen[k] && prev[k] == noVariant:
 			prises = append(prises, e.TimestampUS)
 		case !seen[k]:
-			if ref, ok := kfRef.setAt(e.Slot, e.TimestampUS); ok && !ref[e.IDHigh] {
+			if ref, ok := kfRef.setAt(e.Slot, e.TimestampUS); ok && !ref.Families[e.IDHigh] {
 				prises = append(prises, e.TimestampUS)
 			}
 		}
@@ -238,7 +238,7 @@ func TestGroundWeaponNearestDelta(t *testing.T) {
 		case seen[k] && prev[k] == noVariant:
 			prises = append(prises, e.TimestampUS)
 		case !seen[k]:
-			if ref, ok := kfRef.setAt(e.Slot, e.TimestampUS); ok && !ref[e.IDHigh] {
+			if ref, ok := kfRef.setAt(e.Slot, e.TimestampUS); ok && !ref.Families[e.IDHigh] {
 				prises = append(prises, e.TimestampUS)
 			}
 		}

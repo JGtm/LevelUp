@@ -359,6 +359,8 @@ const NULLABLE_ARRAY_PATHS = [
   'inventory[].am',
   'inventory[].g',
   'loadouts[].w',
+  // `loadouts[].k` (schéma 69) : l'emplacement de chaque arme d'une dotation de naissance.
+  'loadouts[].k',
   'projectiles[].p',
   'structure[].poly',
   'tracks[].points',

@@ -348,6 +348,11 @@ package facts
 // que la fenetre coupait) entrent dans le monde de la marche des kills. La sortie PEUT donc
 // changer — plus de records atteints, jamais une lecture autre d un record deja atteint.
 //
+// LE MEME RANG PORTE LE LOT M3.2 : l etat par defaut du bipede lit enfin le R(32) de sa derniere
+// feuille (chronique de `grammar`). `killsource` traverse ce meme etat par defaut (calibration
+// des largeurs, marche des morts) : sur la mini-bobine, seul l oracle de calibration bouge
+// (profil plat, score 0 -> 1, decision inchangee), et aucune ligne de kill.
+//
 // Les lignes de kill deja en base deviennent candidates au backlog de redecodage — geste de
 // PRODUCTION, pilote, SUR SIGNAL UTILISATEUR (D6), jamais automatique (Q3 du plan des retours
 // rejeu : backfill killsource si la revision le chaine).

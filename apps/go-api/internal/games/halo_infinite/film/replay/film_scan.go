@@ -101,6 +101,7 @@ func (s *filmScan) balayerPositions() error {
 			"elections", marche.Elections, "recalages", marche.Recalages)
 	}
 	s.opt.observe("loadouts", s.in.Loadouts)
+	s.balayerNaissances()
 	return nil
 }
 
@@ -144,7 +145,8 @@ func (s *filmScan) balayerPortage() {
 	// emission d'un emplacement serait comptee comme une prise alors qu'elle peut n'etre que
 	// la re-annonce d'une arme deja portee. Absence non fatale — le rejeu sort sans
 	// ramassages, jamais avec des ramassages devines.
-	weaponChanges, wStats, err := grammar.ScanHeldWeaponChanges(s.fc, spawnSetFrom(s.in.Loadouts))
+	weaponChanges, wStats, err := grammar.ScanHeldWeaponChanges(s.fc,
+		spawnSetFrom(s.in.Loadouts, s.in.BirthLoadouts, s.in.BipedCreations))
 	if err != nil {
 		slog.Warn("changements d arme illisibles — rejeu sans ramassages", "err", err, "match_id", s.matchID)
 		weaponChanges = nil

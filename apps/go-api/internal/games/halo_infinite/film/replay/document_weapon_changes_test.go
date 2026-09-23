@@ -85,16 +85,75 @@ func TestSpawnSetFromRendLeRelevePrecedent(t *testing.T) {
 	pred := spawnSetFrom([]types.KeyframeLoadout{
 		{Slot: 9, TimestampUS: 100, Families: []uint32{1, 2}},
 		{Slot: 9, TimestampUS: 300, Families: []uint32{3}},
-	})
+	}, nil, nil)
 	if pred == nil {
 		t.Fatal("prédicat nil alors que des loadouts existent")
 	}
-	set, ok := pred(9, 200)
-	if !ok || !set[1] || !set[2] || set[3] {
-		t.Errorf("à t=200 le relevé retenu doit être celui de t=100 : got=%v ok=%v", set, ok)
+	st, ok := pred(9, 200)
+	if !ok || !st.Families[1] || !st.Families[2] || st.Families[3] {
+		t.Errorf("à t=200 le relevé retenu doit être celui de t=100 : got=%v ok=%v", st.Families, ok)
 	}
 	if _, ok := pred(42, 200); ok {
 		t.Error("un slot sans relevé doit rendre ok=false, pas un ensemble vide — les deux ne " +
 			"veulent pas dire la même chose pour le classement d'une première émission")
+	}
+}
+
+// TestSpawnSetFromNeLitJamaisLAvenir — LOT M3.2, ROUGE SUR LA BASE : sans relevé passé, le
+// prédicat rendait le PREMIER relevé du slot, fût-il postérieur — une arme ramassée entre-temps
+// y figurait déjà, et sa prise se classait « ré-annonce », écartée du document.
+func TestSpawnSetFromNeLitJamaisLAvenir(t *testing.T) {
+	pred := spawnSetFrom([]types.KeyframeLoadout{
+		{Slot: 9, TimestampUS: 300, Families: []uint32{3}},
+	}, nil, nil)
+	if st, ok := pred(9, 200); ok {
+		t.Fatalf("à t=200 aucun relevé ne précède : le relevé de t=300 (%v) a été lu dans l'avenir",
+			st.Families)
+	}
+}
+
+// TestSpawnSetFromBorneALaVie : un relevé antérieur à la CRÉATION du corps qui occupe le slot
+// appartient à la vie précédente ; la création voyage dans `DebutDeVie`, même sans relevé.
+func TestSpawnSetFromBorneALaVie(t *testing.T) {
+	pred := spawnSetFrom([]types.KeyframeLoadout{
+		{Slot: 9, TimestampUS: 100, Families: []uint32{1}},
+	}, nil, []grammar.BipedCreation{{Slot: 9, TimestampUS: 50}, {Slot: 9, TimestampUS: 250}})
+	if st, ok := pred(9, 260); ok || st.DebutDeVie != 250 {
+		t.Errorf("t=260, vie née à 250 : ok=%v (attendu false) début=%d (attendu 250)", ok, st.DebutDeVie)
+	}
+	if st, ok := pred(9, 200); !ok || !st.Families[1] || st.DebutDeVie != 50 {
+		t.Errorf("t=200, vie née à 50 : ok=%v familles=%v début=%d", ok, st.Families, st.DebutDeVie)
+	}
+}
+
+// TestSpawnSetFromDotationDeNaissance : la dotation de naissance situe ses familles par
+// emplacement, et l'emporte sur un relevé d'image-clé du MÊME instant.
+func TestSpawnSetFromDotationDeNaissance(t *testing.T) {
+	births := []types.BirthLoadout{{Slot: 9, TimestampUS: 250, Weapons: []types.BirthWeapon{
+		{Emplacement: 0, Family: 0xA}, {Emplacement: 1, Family: 0xB},
+		{Emplacement: 2, Family: grammar.NoWeaponVariant},
+	}}}
+	pred := spawnSetFrom([]types.KeyframeLoadout{{Slot: 9, TimestampUS: 250, Families: []uint32{0xC}}},
+		births, []grammar.BipedCreation{{Slot: 9, TimestampUS: 250}})
+	st, ok := pred(9, 300)
+	if !ok || st.ParEmplacement[0] != 0xA || st.ParEmplacement[1] != 0xB ||
+		st.ParEmplacement[2] != grammar.NoWeaponVariant || st.Families[0xC] || !st.Families[0xA] {
+		t.Fatalf("dotation mal rendue : ok=%v par emplacement=%v familles=%v", ok, st.ParEmplacement,
+			st.Families)
+	}
+}
+
+// TestBuildWeaponChangesPublieLEmplacement : `k` porte le rang de l'emplacement — 0 compris,
+// d'où le pointeur (schéma 69, lot M3.2).
+func TestBuildWeaponChangesPublieLEmplacement(t *testing.T) {
+	in := []types.HeldWeaponChange{
+		{TimestampUS: wcOrigin, Slot: 3, Emplacement: 0, Family: 0xAABBCCDD, Previous: grammar.NoWeaponVariant,
+			Kind: types.HeldWeaponTaken},
+		{TimestampUS: wcOrigin, Slot: 3, Emplacement: 1, Family: grammar.NoWeaponVariant, Previous: 0x11223344,
+			Kind: types.HeldWeaponDropped},
+	}
+	got, _ := buildWeaponChanges(in, wcOrigin, wcStep)
+	if len(got) != 2 || got[0].K == nil || *got[0].K != 0 || got[1].K == nil || *got[1].K != 1 {
+		t.Fatalf("emplacements publiés %+v : attendu k=0 puis k=1", got)
 	}
 }

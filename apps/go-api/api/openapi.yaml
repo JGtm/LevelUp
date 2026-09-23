@@ -9013,6 +9013,59 @@ components:
         - deduit
         - non_resolu
       type: object
+    BirthLoadoutCoverage:
+      additionalProperties: false
+      properties:
+        beforeOrigin:
+          format: int64
+          type: integer
+        creations:
+          format: int64
+          type: integer
+        desync:
+          format: int64
+          type: integer
+        noDisplayable:
+          format: int64
+          type: integer
+        noLife:
+          format: int64
+          type: integer
+        noWeaponComponent:
+          format: int64
+          type: integer
+        nonWeapon:
+          format: int64
+          type: integer
+        overflow:
+          format: int64
+          type: integer
+        published:
+          format: int64
+          type: integer
+        read:
+          format: int64
+          type: integer
+        snapped:
+          format: int64
+          type: integer
+        unconfirmed:
+          format: int64
+          type: integer
+      required:
+        - creations
+        - read
+        - desync
+        - overflow
+        - unconfirmed
+        - noWeaponComponent
+        - published
+        - snapped
+        - noLife
+        - beforeOrigin
+        - nonWeapon
+        - noDisplayable
+      type: object
     BombArming:
       additionalProperties: false
       properties:
@@ -11841,6 +11894,8 @@ components:
           $ref: '#/components/schemas/AbilityChargeCoverage'
         abilityImpulses:
           $ref: '#/components/schemas/AbilityImpulseCoverage'
+        birthLoadouts:
+          $ref: '#/components/schemas/BirthLoadoutCoverage'
         bombArmings:
           $ref: '#/components/schemas/BombArmingsCoverage'
         bombCarries:
@@ -11878,6 +11933,8 @@ components:
           $ref: '#/components/schemas/GroundWeaponCoverage'
         inventory:
           $ref: '#/components/schemas/InventoryCoverage'
+        keyframes:
+          $ref: '#/components/schemas/KeyframeCoverage'
         objectiveObjects:
           $ref: '#/components/schemas/ObjectiveObjectsCoverage'
         objectives:
@@ -16133,6 +16190,47 @@ components:
         - ties
         - dnf
       type: object
+    KeyframeCoverage:
+      additionalProperties: false
+      properties:
+        bipeds:
+          format: int64
+          type: integer
+        elections:
+          format: int64
+          type: integer
+        framedAbsentBipeds:
+          format: int64
+          type: integer
+        jumps:
+          format: int64
+          type: integer
+        keyframes:
+          format: int64
+          type: integer
+        neighbors:
+          format: int64
+          type: integer
+        records:
+          format: int64
+          type: integer
+        resyncs:
+          format: int64
+          type: integer
+        slides:
+          format: int64
+          type: integer
+      required:
+        - keyframes
+        - records
+        - bipeds
+        - neighbors
+        - jumps
+        - resyncs
+        - elections
+        - slides
+        - framedAbsentBipeds
+      type: object
     LOWESSTrend:
       additionalProperties: false
       properties:
@@ -16768,10 +16866,19 @@ components:
     Loadout:
       additionalProperties: false
       properties:
+        k:
+          items:
+            format: int64
+            type: integer
+          type:
+            - array
+            - "null"
         slot:
           format: int32
           minimum: 0
           type: integer
+        src:
+          type: string
         t:
           format: int64
           type: integer
@@ -30513,6 +30620,9 @@ components:
       properties:
         from:
           type: string
+        k:
+          format: int64
+          type: integer
         kind:
           type: string
         slot:

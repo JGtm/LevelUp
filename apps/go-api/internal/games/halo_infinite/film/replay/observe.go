@@ -45,6 +45,9 @@ type Observer func(step string, v any)
 var BuildFromFilmSteps = []string{
 	"translocations",
 	"positions", "bipedCreations", "fire", "loadouts",
+	// LES DOTATIONS DE NAISSANCE (lot M3.2) : apres les images-cles, avant les prises d arme
+	// dont elles qualifient la premiere emission de chaque vie.
+	"birthLoadouts", "birthLoadouts.stats",
 	"heldWeaponChanges", "heldWeaponChanges.stats",
 	"pickups", "pickups.stats",
 	"inventory", "inventory.stats",
