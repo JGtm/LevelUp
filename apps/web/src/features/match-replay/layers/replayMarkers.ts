@@ -38,6 +38,7 @@ import type { ReplayTrackReady } from '../../../lib/replay/replayNormalize'
 
 import {
   altitudeAt,
+  inGapAt,
   isAliveAt,
   positionAt,
   trackWindow,
@@ -149,6 +150,14 @@ const SELF_HALO_ALPHA = 0.22
 const DEATH_RADIUS = 3.6
 const DEATH_WIDTH = 2.6
 const DEATH_ALPHA = 0.9
+
+/**
+ * LE PION PENDANT UNE LACUNE DE RÉPLICATION (`Point.g`, décision utilisateur Q14 du 2026-09-23 :
+ * « tenu, pâli »). La position est tenue au dernier point connu (`positionAt`) et le pion se
+ * dessine à cette fraction de son opacité : il dit « on ne sait plus où il est depuis », pas
+ * « il est là ». Ni cône de visée (la visée n'est pas répliquée non plus) ni anneaux d'étage.
+ */
+const GAP_ALPHA = 0.35
 const SPAWN_RADIUS = 2
 const SPAWN_GROWTH = 12
 const SPAWN_WIDTH = 1.2
@@ -351,14 +360,16 @@ function drawLivingTrack(
   }
   const c = project(head, view)
   const fl = floorIndex(track, style)
+  // DANS UNE LACUNE, le pion est tenu (`positionAt`) et PÂLI, sans cône (cf. `GAP_ALPHA`).
+  const alpha = inGapAt(track.points, style.frame) ? GAP_ALPHA : 1
 
   if (style.showTrail) drawTrail(ctx, track, view, style, color)
-  if (style.showAim) drawAimCone(ctx, track, c, style, color)
+  if (style.showAim && alpha === 1) drawAimCone(ctx, track, c, style, color)
   drawSpawnRing(ctx, track, c, style, color)
   // Vie EN COURS : l'image courante est dans sa fenêtre, elle désigne donc bien le propriétaire
   // de CETTE vie (les vies d'un slot sont disjointes).
   const shape = shapeOfMark(style.markOfSlot(track.slot, style.frame))
-  drawMarker(ctx, c, style, color, fl, shape)
+  drawMarker(ctx, c, style, color, fl, shape, alpha)
   // LE NOM SOUS LE POINT, jamais à côté d'une croix de mort : la ligne ci-dessus n'est
   // atteinte que pour une vie EN COURS (drawDeathMark rend avant).
   const name = style.nameOfSlot(track.slot, style.frame)
@@ -473,25 +484,28 @@ function drawMarker(
   color: string,
   fl: number,
   shape: MarkerShape,
+  /** Fraction d'opacité du pion : 1, ou `GAP_ALPHA` pendant une lacune de réplication. */
+  alpha = 1,
 ): void {
   const core = (CORE_RADIUS + CORE_PER_FLOOR * fl) * style.k
 
   // LE HALO EN PREMIER, sous tout le reste : c'est une lueur, pas un trait.
-  if (shape === 'ring') drawSelfHalo(ctx, c, style, fl)
+  if (shape === 'ring') drawSelfHalo(ctx, c, style, fl, alpha)
 
-  drawFloorRings(ctx, c, fl, color, { k: style.k })
+  if (alpha === 1) drawFloorRings(ctx, c, fl, color, { k: style.k })
 
-  ctx.globalAlpha = OUTLINE_ALPHA
+  ctx.globalAlpha = OUTLINE_ALPHA * alpha
   ctx.fillStyle = style.ink
   corePath(ctx, c, core + OUTLINE_PAD * style.k, shape)
   ctx.fill()
 
-  ctx.globalAlpha = 1
+  ctx.globalAlpha = alpha
   ctx.fillStyle = color
   corePath(ctx, c, core, shape)
   ctx.fill()
+  ctx.globalAlpha = 1
 
-  if (shape === 'ring') drawSelfRings(ctx, c, style, fl)
+  if (shape === 'ring') drawSelfRings(ctx, c, style, fl, alpha)
 }
 
 /**
@@ -506,14 +520,15 @@ function drawSelfRings(
   c: XY,
   style: MarkerStyle,
   fl: number,
+  alpha: number,
 ): void {
   ctx.strokeStyle = style.selfInk
-  ctx.globalAlpha = 1
+  ctx.globalAlpha = alpha
   ctx.lineWidth = SELF_RING_WIDTH * style.k
   ctx.beginPath()
   ctx.arc(c.x, c.y, selfRingRadius(fl) * style.k, 0, Math.PI * 2)
   ctx.stroke()
-  ctx.globalAlpha = 0.75
+  ctx.globalAlpha = 0.75 * alpha
   ctx.lineWidth = (SELF_RING_WIDTH / 2) * style.k
   ctx.beginPath()
   ctx.arc(c.x, c.y, selfRingRadius2(fl) * style.k, 0, Math.PI * 2)
@@ -527,12 +542,13 @@ function drawSelfHalo(
   c: XY,
   style: MarkerStyle,
   fl: number,
+  alpha: number,
 ): void {
   const r = (selfRingRadius2(fl) + SELF_HALO_PAD) * style.k
   const gradient = ctx.createRadialGradient(c.x, c.y, 0, c.x, c.y, r)
   gradient.addColorStop(0, style.selfInk)
   gradient.addColorStop(1, 'transparent')
-  ctx.globalAlpha = SELF_HALO_ALPHA
+  ctx.globalAlpha = SELF_HALO_ALPHA * alpha
   ctx.fillStyle = gradient
   ctx.beginPath()
   ctx.arc(c.x, c.y, r, 0, Math.PI * 2)

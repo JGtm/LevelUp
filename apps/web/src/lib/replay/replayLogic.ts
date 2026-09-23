@@ -21,10 +21,40 @@ const FALLBACK_FPS = 60
 export const FLOOR_BANDS = 3
 
 /**
+ * LES LACUNES DE RÉPLICATION (`Point.g`, lot 1.9.13 côté Go ; lues ici depuis le 2026-09-23,
+ * lot L1.4 des retours du rejeu, décision Q14). Un point qui porte `g > 0` dit : « avant moi, le
+ * film n'a RIEN répliqué pendant `g` ms — ne pas interpoler au travers, ni segment, ni position
+ * intermédiaire » (`film/replay/document_aim.go`, champ G). Pendant une lacune, la position (et
+ * l'altitude) est donc TENUE au dernier point qui la précède ; la traînée ne relie jamais ses deux
+ * côtés ; le dessin du pion la pâlit (`inGapAt`, `layers/replayMarkers.ts`). Avant cette
+ * lecture, un pion glissait des dizaines de secondes vers un point lointain (974 lacunes au parc,
+ * 222 à plus de 10 m).
+ */
+function isGapPoint(p: { g?: number }): boolean {
+  return (p.g ?? 0) > 0
+}
+
+/**
+ * bracketAt rend les deux échantillons qui encadrent `t` (`a.t <= t < b.t`), `t` étant
+ * STRICTEMENT à l'intérieur de la piste (recherche binaire). L'appelant traite les bords.
+ */
+function bracketAt<P extends { t: number }>(points: readonly P[], t: number): { a: P; b: P } {
+  let lo = 0
+  let hi = points.length - 1
+  while (hi - lo > 1) {
+    const mid = (lo + hi) >> 1
+    if (points[mid].t <= t) lo = mid
+    else hi = mid
+  }
+  return { a: points[lo], b: points[hi] }
+}
+
+/**
  * positionAt renvoie la position d'une track au temps `t` (index de frame) :
  * - null avant le 1er point échantillonné ;
  * - le dernier point maintenu après le dernier échantillon ;
- * - interpolation linéaire entre deux échantillons connus (recherche binaire).
+ * - interpolation linéaire entre deux échantillons connus (recherche binaire) ;
+ * - SAUF au travers d'une lacune (`b.g > 0`) : la position est tenue au point qui la précède.
  */
 export function positionAt(points: ReplayPoint[], t: number): XY | null {
   if (points.length === 0) return null
@@ -33,23 +63,28 @@ export function positionAt(points: ReplayPoint[], t: number): XY | null {
   const last = points[points.length - 1]
   if (t >= last.t) return { x: last.x, y: last.y }
 
-  let lo = 0
-  let hi = points.length - 1
-  while (hi - lo > 1) {
-    const mid = (lo + hi) >> 1
-    if (points[mid].t <= t) lo = mid
-    else hi = mid
-  }
-  const a = points[lo]
-  const b = points[hi]
+  const { a, b } = bracketAt(points, t)
+  if (isGapPoint(b)) return { x: a.x, y: a.y }
   const span = b.t - a.t
   const f = span === 0 ? 0 : (t - a.t) / span
   return { x: a.x + (b.x - a.x) * f, y: a.y + (b.y - a.y) * f }
 }
 
 /**
+ * inGapAt dit si l'image `t` tombe DANS une lacune de réplication : strictement après le point
+ * qui la précède et avant le point (`g > 0`) qui la clôt. Faux sur un point, avant la vie et
+ * après son dernier point.
+ */
+export function inGapAt(points: readonly ReplayPoint[], t: number): boolean {
+  if (points.length < 2 || t <= points[0].t || t >= points[points.length - 1].t) return false
+  const { a, b } = bracketAt(points, t)
+  return t > a.t && isGapPoint(b)
+}
+
+/**
  * trailAt renvoie les points de la traînée d'une track dans la fenêtre [t-window, t]
- * (échantillons bruts) plus la tête interpolée à `t`.
+ * (échantillons bruts) plus la tête interpolée à `t`. Un point qui clôt une lacune REPART la
+ * traînée : aucun segment ne relie les deux côtés d'un silence du film.
  */
 export function trailAt(points: ReplayPoint[], t: number, windowFrames: number): XY[] {
   const start = t - windowFrames
@@ -57,6 +92,7 @@ export function trailAt(points: ReplayPoint[], t: number, windowFrames: number):
   for (const p of points) {
     if (p.t < start) continue
     if (p.t > t) break
+    if (isGapPoint(p)) out.length = 0
     out.push({ x: p.x, y: p.y })
   }
   const head = positionAt(points, t)
@@ -67,7 +103,10 @@ export function trailAt(points: ReplayPoint[], t: number, windowFrames: number):
   return out
 }
 
-/** altitudeAt renvoie le Z interpolé d'une track au temps `t` (0 si l'artefact n'a pas de Z). */
+/**
+ * altitudeAt renvoie le Z interpolé d'une track au temps `t` (0 si l'artefact n'a pas de Z),
+ * tenu au travers d'une lacune comme la position.
+ */
 export function altitudeAt(points: ReplayPoint[], t: number): number | null {
   if (points.length === 0) return null
   const first = points[0]
@@ -75,15 +114,8 @@ export function altitudeAt(points: ReplayPoint[], t: number): number | null {
   const last = points[points.length - 1]
   if (t >= last.t) return last.z ?? 0
 
-  let lo = 0
-  let hi = points.length - 1
-  while (hi - lo > 1) {
-    const mid = (lo + hi) >> 1
-    if (points[mid].t <= t) lo = mid
-    else hi = mid
-  }
-  const a = points[lo]
-  const b = points[hi]
+  const { a, b } = bracketAt(points, t)
+  if (isGapPoint(b)) return a.z ?? 0
   const span = b.t - a.t
   const f = span === 0 ? 0 : (t - a.t) / span
   return (a.z ?? 0) + ((b.z ?? 0) - (a.z ?? 0)) * f
