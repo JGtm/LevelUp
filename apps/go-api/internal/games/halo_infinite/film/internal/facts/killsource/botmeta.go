@@ -23,6 +23,20 @@ package killsource
 // CRITERE PRE-ENREGISTRE ATTEINT : `343 Aloysius`/bid(39.0) et `343 PardonMy`/bid(7.0), les deux
 // declarant `slot=8`. L identification << indice 8 = le bot >> est donc LUE, plus deduite d une
 // coincidence de K/D.
+//
+// # LE PAQUET EST UN ETAT, ET SON INSTANT EST UNE LECTURE (sonde P4, 2026-09-23 ; lot M2.1)
+//
+// Mesure sur `b1ad85eb` (41 paquets) : le paquet de type 12 est REECRIT en tete de CHAQUE chunk
+// et a chaque CHANGEMENT de bots en milieu de chunk ; un paquet de 4 octets (`nbBots=0`) dit
+// « plus aucun bot ». Le depart d un bot est donc DATE a la frame pres par le premier paquet qui
+// ne le declare plus (`343 Hundy` f273, `343 PardonMy` f831), et son arrivee par le premier qui
+// le declare (exacte sur un paquet de changement, `343 Brew Dog` f3155 ; bornee par la tete de
+// chunk sinon). L agregat d avant dedupliquait par (slot, bid) et perdait tout instant : trois
+// bots qui se relaient sur l index 8 ne se distinguaient plus que par leur nom.
+//
+// [bot.declarations] porte ces intervalles. Un paquet dont le scan ne retrouve pas `nbBots`
+// entrees est INCOMPLET : il ouvre ce qu il lit, il ne FERME rien (un bot manque a la lecture
+// n est pas un bot parti), et il se compte ([botMeta.Incomplets]).
 
 import (
 	"sort"
@@ -35,6 +49,39 @@ type bot struct {
 	BotID  int
 	Name   string
 	bitPos int // position dans le payload : sert a ecarter la copie bit-decalee
+	// declarations : les intervalles pendant lesquels BOT_METADATA declare ce bot, dans l ordre
+	// du film (cf. l en-tete).
+	declarations []BotDeclaration
+}
+
+// BotDeclaration est UN intervalle pendant lequel BOT_METADATA declare un bot : du premier paquet
+// qui le declare (inclus) au premier paquet COMPLET suivant qui ne le declare plus (exclu).
+type BotDeclaration struct {
+	// FromUS est l horodatage du premier paquet qui le declare.
+	FromUS uint64
+	// ToUS est l horodatage du premier paquet complet qui ne le declare plus. ZERO = il est
+	// encore declare au dernier paquet du film.
+	ToUS uint64
+}
+
+// BotEntry : un bot tel que le film le declare.
+//
+// DEPLACE DE roster.go LE 2026-09-23 (lot M2.1) avec son champ neuf : roster.go est a la borne des
+// 500 lignes, et le type est la forme PUBLIEE d un [bot] de ce fichier.
+type BotEntry struct {
+	Slot  int
+	BotID int
+	Name  string
+	// Declarations : les intervalles de declaration BOT_METADATA (cf. [BotDeclaration]). Ils
+	// lient le bot a SON entite `ti=9` par le temps (publication du rejeu) ; aucune ligne de kill
+	// ne les lit.
+	Declarations []BotDeclaration
+}
+
+// entree rend la forme publiee d un bot.
+func (b bot) entree() BotEntry {
+	return BotEntry{Slot: b.Slot, BotID: b.BotID, Name: b.Name,
+		Declarations: append([]BotDeclaration(nil), b.declarations...)}
 }
 
 // botMeta : ce que le film declare sur ses bots, tous chunks confondus.
@@ -42,6 +89,9 @@ type botMeta struct {
 	NBots int // max des nbBots vus (le roster peut se remplir en cours de film)
 	NPkt  int
 	Bots  []bot
+	// Incomplets : paquets dont le scan n a pas retrouve `nbBots` entrees. Ils n ont ferme aucune
+	// declaration (cf. l en-tete).
+	Incomplets int
 }
 
 const (
@@ -54,14 +104,16 @@ const (
 )
 
 // loadBotMeta : agrege tous les paquets type 12 d un film deja decoupe.
+//
+// L AGREGAT EST INCHANGE (lot M2.1) : memes bots, meme ordre, meme `NBots` — c est lui qu epingle
+// le roster du kill-feed, et aucune ligne de kill ne doit bouger. Ce qui s ajoute est l INSTANT :
+// les paquets sont parcourus dans l ordre du film et chaque bot garde ses intervalles de
+// declaration (cf. l en-tete).
 func loadBotMeta(f *film) botMeta {
 	m := botMeta{}
-	seen := map[[2]int]bool{}
-	for i := range f.packets {
-		p := &f.packets[i]
-		if p.typ != packetTypeBotMeta || len(p.payload) < 4 {
-			continue
-		}
+	rang := map[[2]int]int{}       // (slot, bid) -> position dans m.Bots
+	ouverts := map[[2]int]uint64{} // declares au dernier paquet lu -> debut de leur declaration
+	for _, p := range paquetsBotMeta(f) {
 		m.NPkt++
 		n := int(uint32(p.payload[0])<<24 | uint32(p.payload[1])<<16 |
 			uint32(p.payload[2])<<8 | uint32(p.payload[3]))
@@ -71,17 +123,79 @@ func loadBotMeta(f *film) botMeta {
 		if n > m.NBots {
 			m.NBots = n
 		}
-		for _, b := range scanBotEntries(p.payload) {
+		entrees := scanBotEntries(p.payload)
+		declares := make(map[[2]int]bool, len(entrees))
+		for _, b := range entrees {
 			k := [2]int{b.Slot, b.BotID}
-			if seen[k] {
-				continue
+			declares[k] = true
+			if _, vu := rang[k]; !vu {
+				rang[k] = len(m.Bots)
+				m.Bots = append(m.Bots, b)
 			}
-			seen[k] = true
-			m.Bots = append(m.Bots, b)
+			if _, ouvert := ouverts[k]; !ouvert {
+				ouverts[k] = p.ts
+			}
 		}
+		if len(entrees) != n {
+			m.Incomplets++ // un bot manque a la LECTURE n est pas un bot parti : rien ne se ferme
+			continue
+		}
+		fermerLesAbsents(&m, rang, ouverts, declares, p.ts)
+	}
+	for _, k := range clesTriees(ouverts) {
+		i := rang[k]
+		m.Bots[i].declarations = append(m.Bots[i].declarations, BotDeclaration{FromUS: ouverts[k]})
 	}
 	sort.Slice(m.Bots, func(i, j int) bool { return m.Bots[i].Slot < m.Bots[j].Slot })
 	return m
+}
+
+// paquetsBotMeta rend les paquets type 12 LISIBLES (au moins le mot `nbBots`), dans l ORDRE DU
+// FILM — chunk par chunk, paquet par paquet, c est-a-dire l ordre des horodatages.
+//
+// L ORDRE N EST PAS RETRIE, ET C EST VOULU : c est celui dans lequel l agregat d avant decouvrait
+// ses bots, et deux bots d un meme slot gardent ainsi leur rang relatif — celui qui decide lequel
+// nomme l indice au kill-feed ([roster.pinBots]). Retrier ici pourrait deplacer une ligne de kill.
+func paquetsBotMeta(f *film) []*packet {
+	var out []*packet
+	for i := range f.packets {
+		p := &f.packets[i]
+		if p.typ == packetTypeBotMeta && len(p.payload) >= 4 {
+			out = append(out, p)
+		}
+	}
+	return out
+}
+
+// fermerLesAbsents ferme, a l instant d un paquet COMPLET, la declaration de chaque bot ouvert que
+// ce paquet ne porte plus.
+func fermerLesAbsents(m *botMeta, rang map[[2]int]int, ouverts map[[2]int]uint64,
+	declares map[[2]int]bool, ts uint64) {
+	for _, k := range clesTriees(ouverts) {
+		if declares[k] {
+			continue
+		}
+		i := rang[k]
+		m.Bots[i].declarations = append(m.Bots[i].declarations,
+			BotDeclaration{FromUS: ouverts[k], ToUS: ts})
+		delete(ouverts, k)
+	}
+}
+
+// clesTriees rend les cles d une table de declarations ouvertes, triees : l ordre d iteration
+// d une map Go est aleatoire, et les faits doivent etre reproductibles a l octet.
+func clesTriees(m map[[2]int]uint64) [][2]int {
+	out := make([][2]int, 0, len(m))
+	for k := range m {
+		out = append(out, k)
+	}
+	sort.Slice(out, func(i, j int) bool {
+		if out[i][0] != out[j][0] {
+			return out[i][0] < out[j][0]
+		}
+		return out[i][1] < out[j][1]
+	})
+	return out
 }
 
 // scanBotEntries : enumere les entrees d un payload type 12, SANS hypothese de stride. Un nom

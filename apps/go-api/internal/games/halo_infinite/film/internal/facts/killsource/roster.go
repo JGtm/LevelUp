@@ -45,6 +45,9 @@ type Roster struct {
 	// dernier declare nomme l indice ; les precedents sont comptes ici, jamais laisses en noms
 	// libres (cf. [roster.pinBots]).
 	BotsSuccedes int
+	// BotPaquetsIncomplets : paquets BOT_METADATA dont le scan n a pas retrouve `nbBots` entrees —
+	// ils n ont ferme aucune declaration (cf. botmeta.go, lot M2.1).
+	BotPaquetsIncomplets int
 	// IndexSource : la PROVENANCE de chaque indice, meme longueur qu `IndexToName`. Un artefact
 	// doit pouvoir dire quelle part de lui vient d une LECTURE et quelle part d un REPLI
 	// (doctrine D14 c du chantier, D-10 d ADR 0034).
@@ -151,13 +154,6 @@ func (t FilmTablePinning) AffectationUnique() bool {
 	default:
 		return false
 	}
-}
-
-// BotEntry : un bot tel que le film le declare.
-type BotEntry struct {
-	Slot  int
-	BotID int
-	Name  string
 }
 
 // roster : l etat interne. `pin` associe un indice absolu a une position de `names`.
@@ -479,12 +475,12 @@ func (r *roster) isBotIndex(i int) bool {
 // public : la vue exportee.
 func (r *roster) public() Roster {
 	out := Roster{Names: append([]string(nil), r.names...), Humans: r.nHumans,
-		BotsSuccedes: r.botsSuccedes}
+		BotsSuccedes: r.botsSuccedes, BotPaquetsIncomplets: r.bots.Incomplets}
 	for _, b := range r.bots.Bots {
-		out.Bots = append(out.Bots, BotEntry{Slot: b.Slot, BotID: b.BotID, Name: b.Name})
+		out.Bots = append(out.Bots, b.entree())
 	}
 	for _, b := range r.unpinned {
-		out.UnpinnedBots = append(out.UnpinnedBots, BotEntry{Slot: b.Slot, BotID: b.BotID, Name: b.Name})
+		out.UnpinnedBots = append(out.UnpinnedBots, b.entree())
 	}
 	out.IndexToName = make([]string, r.nPlay)
 	out.IndexSource = make([]IndexOrigin, r.nPlay)

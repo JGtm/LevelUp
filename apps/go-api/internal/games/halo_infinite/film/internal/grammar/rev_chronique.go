@@ -351,3 +351,24 @@ package grammar
 // `replay.SchemaVersion` reste **67** : aucune forme ne change, aucun champ n est ajoute.
 // `facts.Rev` NE MONTE PAS (cf. ci-dessus) — aucun backlog killsource. Les goldens sont refiges
 // parce qu ils hachent ou publient la VALEUR de `grammar.Rev`.
+
+// ENTREE `grammar-2026-09-23` (2026-09-23, lot M2.1 de la campagne « retours rejeu ») : LES
+// OCCUPANTS DU MATCH SONT LUS PAR ENTITE `ti=9`, ET LA TABLE PAR INDEX DEVIENT LE CONTROLE.
+//
+// CE QUE LE RANG CHANGE. `ScanPlayerTeams` rend, de la MEME passe sur les images-cles, les
+// ENTITES (`player_entities.go`) : slot de replication, index de joueur, designateur, rangs de la
+// premiere et de la derniere image-cle PORTEUSE, trous, instabilite. Aucun bit n est lu autrement
+// — meme marche d etat complet, meme lecteur `lireEquipeDuRecord`, memes domaines —, et la table
+// `index -> designateur` rendue est la meme a l octet (l etape observee `playerTeams` le prouve).
+// Ce qui naît est une DONNEE que la passe jetait : la sonde P4 (`b1ad85eb`) a mesure trois entites
+// d index 8 (designateurs 0, 0, 1 : trois bots de deux equipes), que l agregation par index
+// rendait « divergentes » et donc muettes.
+//
+// LE RANG MONTE PARCE QUE LA COUCHE REND UNE LECTURE DE PLUS, pas parce qu une largeur bouge : la
+// publication (`replay/occupants.go`) en tire la PRESENCE, l EQUIPE PAR ENTREE et la PLACE du
+// roster, donc le contenu cuit change et `replay.SchemaVersion` monte au commit de publication.
+//
+// `facts.Rev` NE MONTE PAS : `killsource/` ne lit pas `ScanPlayerTeams`, et ce qu il gagne au meme
+// lot (l instant des paquets BOT_METADATA) ne nourrit que le rejeu — aucune ligne de kill ne
+// bouge. Son golden est refige parce qu il hache la VALEUR de `grammar.Rev` et ses propres
+// sources (cf. la chronique de `facts`).

@@ -416,7 +416,9 @@ func (s *filmScan) balayerPont() {
 	// L'EQUIPE DE CHAQUE JOUEUR (lot 1.7) : le composant i0 de ti=9 de la trame d'etat, a une
 	// position DERIVEE de la grammaire. C'est la SEULE source d'equipe du document (V4) ; la
 	// base ne fait que controler. Un refus est NOMME et publie (`coverage.teams.refusal`).
-	s.in.PlayerTeams, s.in.TeamScan = grammar.ScanPlayerTeams(s.fc)
+	// LES ENTITES SORTENT DE LA MEME PASSE (lot M2.1) ; elles n'entrent dans les faits qu'au lot
+	// M2.2. L'etape observee reste la TABLE par index, a l'octet.
+	s.in.PlayerTeams, s.in.TeamScan, _ = grammar.ScanPlayerTeams(s.fc)
 	s.opt.observe("playerTeams", s.in.PlayerTeams)
 	// L'index de joueur SE LIT dans le film (cf. player_index.go) : le roster vient du fil des
 	// morts, et les 5 bits qui précèdent chaque xuid donnent son index. Sans cette table, aucun
