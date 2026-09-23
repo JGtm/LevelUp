@@ -868,3 +868,4 @@ Aucun autre process ne tient les bases pendant la mesure.
 - 2026-09-23 : plan ecrit, branche de campagne creee depuis origin/feat/v75 c89aa4bdc,
   vague 1 lancee (L1, L3, L4a, L6).
 - 2026-09-23 (apres-midi) : vague 1 fusionnee dans la campagne — L1 (6fba84c96), L3 (b10ec25b3), L6 (aba010a07), L4a (7088906ee, conflit filters/queries.ts resolu par le superviseur : signal de L3 + matchContext/enabled de L4a) ; gates rejoues sur l'arbre fusionne (build/vet/tests Go, typecheck, vitest 105 fichiers / 967 tests) ; vague 2 lancee (L2, L5a, L5b depuis 37cb48167). Reprises pour L4b : signal sur useTeammates (decouverte L3/L4a).
+- 2026-09-23 (fin d'apres-midi) : L5a fusionne (1198c721e) et L5b fusionne (e1f173b74, conflit handlers/career.go resolu par le superviseur : requete unique de L5b + mapServiceError de L3) ; gates rejoues sur l'arbre fusionne. L2 encore en cours (relance envoyee a 13:35 apres 30 min sans activite, reprise constatee a 13:57).
