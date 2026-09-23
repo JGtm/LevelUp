@@ -51,7 +51,7 @@ func TestRRM4AGates(t *testing.T) {
 	}
 	noms, _ := filepath.Glob(filepath.Join(dir, "*.json"))
 	sort.Strings(noms)
-	var ecarts, embarquements, naissances []float64
+	var ecarts, embarquements, embarquementsFrais, naissances []float64
 	g4 := map[string]int{}
 	for _, n := range noms {
 		raw, err := os.ReadFile(n) //nolint:gosec // instrument de mesure
@@ -63,11 +63,15 @@ func TestRRM4AGates(t *testing.T) {
 			t.Fatal(err)
 		}
 		ecarts = append(ecarts, rrG3Ecarts(doc)...)
-		embarquements = append(embarquements, rrG3Embarquements(doc)...)
+		tous, frais := rrG3Embarquements(doc)
+		embarquements = append(embarquements, tous...)
+		embarquementsFrais = append(embarquementsFrais, frais...)
 		naissances = append(naissances, rrG3Naissances(doc)...)
 		rrG4Compter(doc, reg, g4)
 	}
 	t.Logf("G3-embarquement (PREUVE) : %s", rrQuantiles(embarquements))
+	t.Logf("G3-embarquement, point du bipede de moins de %d frames : %s", rrBipedeFraisFrames,
+		rrQuantiles(embarquementsFrais))
 	t.Logf("G3-naissance (controle, exige par la regle) : %s", rrQuantiles(naissances))
 	t.Logf("G3-annexe (tir -> porteur, tautologique apres le lot) : %s", rrQuantiles(ecarts))
 	t.Logf("G4 : tirs d arme de vehicule %d ; registre complet %d ; silence decide %d ; "+
@@ -85,10 +89,16 @@ func rrQuantiles(v []float64) string {
 	return fmt.Sprintf("n = %d ; mediane %.1f m, p90 %.1f m, max %.1f m", len(v), q(0.5), q(0.9), q(1))
 }
 
+// rrBipedeFraisFrames : l age maximal (frames, 2 s) du dernier point du bipede pour la serie
+// « fraiche ». Un artilleur qui CONDUISAIT le vehicule juste avant (changement de siege) n a plus
+// de point de bipede depuis qu il est monte : son dernier point date d avant le volant, loin du
+// point d embarquement dans la tourelle — un ecart qui ne dit rien du porteur.
+const rrBipedeFraisFrames = 20
+
 // rrG3Embarquements rend, pour chaque episode d artilleur reporte sur un porteur, l ecart entre le
-// dernier point du bipede de l artilleur avant l episode et la position du porteur a l entree.
-func rrG3Embarquements(doc ReplayDocument) []float64 {
-	var out []float64
+// dernier point du bipede de l artilleur avant l episode et la position du porteur a l entree ;
+// puis la meme serie restreinte aux points de moins de `rrBipedeFraisFrames`.
+func rrG3Embarquements(doc ReplayDocument) (out, frais []float64) {
 	for _, v := range doc.Vehicles {
 		for _, r := range v.Rides {
 			if r.Turret == nil {
@@ -102,10 +112,14 @@ func rrG3Embarquements(doc ReplayDocument) []float64 {
 			if !ok {
 				continue
 			}
-			out = append(out, math.Hypot(float64(x-b.X), float64(y-b.Y)))
+			d := math.Hypot(float64(x-b.X), float64(y-b.Y))
+			out = append(out, d)
+			if r.T0-b.T <= rrBipedeFraisFrames {
+				frais = append(frais, d)
+			}
 		}
 	}
-	return out
+	return out, frais
 }
 
 // rrDernierPointAvant rend le dernier point publie d un slot strictement avant la frame `t`.
