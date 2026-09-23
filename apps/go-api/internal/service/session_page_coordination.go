@@ -64,31 +64,35 @@ func (s *SessionPageService) WithSessionCoordination(
 // LES EFFECTIFS DE CAMP viennent du bloc d'usage, qui vient de les calculer (réserve R1) :
 // bloc d'usage indisponible ⇒ table vide ⇒ le bloc de coordination n'a pas de parité, et
 // le dit. Il ne la réinvente jamais.
+//
+// UNE SEULE LECTURE DU JOURNAL POUR LES TROIS SCOPES (lot L5a du plan perf, 2026-09-23) :
+// la session affichée et la session comparée sont lues ENSEMBLE, puis découpées ; la
+// référence, si elle sert, ne complète la lecture que des matchs qui lui manquent (cf.
+// l'en-tête de coordination_block.go). Aucun match n'est lu deux fois par requête.
 func (s *SessionPageService) attachSessionCoordination(
 	ctx context.Context, resp *domain.SessionPageResponse, sc sessionBlocksScope,
 	teamSize, compareTeamSize map[string]int,
 ) {
-	resp.Coordination = buildCoordinationBlock(ctx,
-		s.coordinationQuery(matchIDsFromStatsRows(sc.Matches), teamSize))
-	if len(sc.CompareMatches) > 0 {
-		resp.CompareCoordination = buildCoordinationBlock(ctx,
-			s.coordinationQuery(matchIDsFromStatsRows(sc.CompareMatches), compareTeamSize))
+	courant := matchIDsFromStatsRows(sc.Matches)
+	compare := matchIDsFromStatsRows(sc.CompareMatches)
+	deuxSessions := append(append(make([]string, 0, len(courant)+len(compare)), courant...), compare...)
+	lecture := lireCoordination(ctx, s.lecteursDeCoordination(), deuxSessions)
+	resp.Coordination = lecture.bloc(ctx, courant, teamSize, nil)
+	if len(compare) > 0 {
+		resp.CompareCoordination = lecture.bloc(ctx, compare, compareTeamSize, nil)
 	}
-	s.attachCoordinationHabituel(ctx, resp, sc)
+	s.attachCoordinationHabituel(ctx, resp, sc, lecture)
 }
 
-// coordinationQuery assemble la requête du producteur pour UN scope. Un seul point de
-// montage : les trois scopes lisent la même chose, par les mêmes lecteurs.
-func (s *SessionPageService) coordinationQuery(
-	matchIDs []string, teamSize map[string]int,
-) coordinationQuery {
+// lecteursDeCoordination assemble les lecteurs du producteur. Un seul point de montage :
+// les trois scopes lisent la même chose, par les mêmes lecteurs — et désormais dans la même
+// lecture.
+func (s *SessionPageService) lecteursDeCoordination() coordinationQuery {
 	return coordinationQuery{
 		Tactical:   s.coordTactical,
 		Appuis:     s.coordAppuis,
 		Caps:       s.coordCaps,
 		PlayerXUID: s.usageXUID,
-		MatchIDs:   matchIDs,
-		TeamSize:   teamSize,
 	}
 }
 
@@ -96,13 +100,16 @@ func (s *SessionPageService) coordinationQuery(
 // blocs servis.
 //
 // LA LECTURE DE RÉFÉRENCE N'A LIEU QUE SI ELLE SERT : si les deux blocs sont tautologiques
-// (ou absents), on rend la main sans ouvrir le journal des morts une troisième fois.
+// (ou absents), on rend la main sans ouvrir le journal des morts une seconde fois. Quand elle
+// sert, elle COMPLÈTE la lecture des deux sessions : seuls les matchs de la référence qui n'y
+// sont pas encore sont lus.
 //
 // AUCUN EFFECTIF DE CAMP n'est passé à la référence, et c'est voulu : les deux grandeurs
 // d'habituel (« je suis couvert », « on me prépare ») ne se rapportent à aucune parité,
 // donc le producteur n'a pas besoin de `TeamSize` pour les calculer.
 func (s *SessionPageService) attachCoordinationHabituel(
 	ctx context.Context, resp *domain.SessionPageResponse, sc sessionBlocksScope,
+	lecture *lectureCoordination,
 ) {
 	refIDs := matchIDsFromStatsRows(sc.ReferenceMatches)
 	if len(refIDs) == 0 {
@@ -113,7 +120,8 @@ func (s *SessionPageService) attachCoordinationHabituel(
 	if courant == nil && compare == nil {
 		return
 	}
-	ref := buildCoordinationBlock(ctx, s.coordinationQuery(refIDs, nil))
+	lecture.completer(ctx, refIDs)
+	ref := lecture.bloc(ctx, refIDs, nil, nil)
 	if ref == nil || !ref.Available {
 		slog.DebugContext(ctx, "coordination: aucun habituel sur la periode de reference",
 			"matchs_reference", len(refIDs))

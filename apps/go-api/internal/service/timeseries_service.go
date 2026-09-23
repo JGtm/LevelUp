@@ -351,10 +351,10 @@ func (s *TimeseriesService) GetPage(
 		synthesisWeaponChartTopN,
 	)
 
-	// First events distribution (chart .11) + Intensity heatmap : RÉUTILISE les events
-	// déjà chargés (highlightEvents). Correction chronologie T0 ici (ramène les TimeMS
-	// au référentiel gameplay) — distincte du fallback spree, qui reste order-based sur
-	// les events bruts (invariant par décalage T0).
+	// First events (chart .11) + Intensity : RÉUTILISE les events déjà chargés et les
+	// participants lus UNE fois (`equipes`, partagés avec la coordination). Correction T0 ici,
+	// distincte du fallback spree (order-based sur les events bruts, invariant par T0).
+	equipes := s.lireEquipesDuScope(ctx, matchIDsFromStatsRows(matches))
 	stop = timing.FromContext(ctx).Section("event_blocks")
 	if len(highlightEvents) > 0 {
 		timelines := timeline.BuildTimelinesFromPlayerMatches(canonicalRows)
@@ -366,14 +366,14 @@ func (s *TimeseriesService) GetPage(
 		)
 		durations := timeline.GameplayDurationsMS(timelines)
 		resp.IntensityRows = buildIntensityRows(corrected, matches, s.playerXUID, durations)
-		s.attachIntensityOverlays(ctx, &resp, corrected, matches, matchIDs, durations)
+		attachIntensityOverlays(&resp, corrected, matches, durations, equipes)
 	}
 	stop()
 
 	// Portée des engagements (onglet Résumé) + Usages d'équipement (onglet Progression) :
 	// sections migrées depuis la Synthèse, MÊME producteur, MÊME scope filtré.
 	filteredCanon := filterCanonicalByMatchIDs(canonicalRows, matches)
-	s.attachMigratedSections(ctx, &resp, filteredCanon, ctxkeys.Locale(ctx))
+	s.attachMigratedSections(ctx, &resp, filteredCanon, ctxkeys.Locale(ctx), equipes)
 
 	// BriefingKPIs : KPIs sur les rows canoniques filtres (memes match_ids que
 	// matches). Alimente le composant <SessionBriefing> en mode solo. Reutilise
