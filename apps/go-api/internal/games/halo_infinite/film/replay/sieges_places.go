@@ -287,6 +287,22 @@ func (pp *poseDesPlaces) bornerAuSuccesseur() (bornes, chevauchements int) {
 	return bornes, chevauchements
 }
 
+// retirerLesAffichagesVides retire les intervalles que la borne au successeur a VIDES (affichage
+// fini avant son debut) : un occupant releve des son arrivee n'est affiche a aucune frame de cet
+// intervalle, et le publier dirait le contraire. Joue APRES la borne, et apres le dernier usage
+// des occupations (qui designent les intervalles par leur rang).
+func (pp *poseDesPlaces) retirerLesAffichagesVides() {
+	for i := range pp.occ.parEntree {
+		gardes := pp.occ.parEntree[i].presence[:0]
+		for _, iv := range pp.occ.parEntree[i].presence {
+			if iv.aMax >= iv.de {
+				gardes = append(gardes, iv)
+			}
+		}
+		pp.occ.parEntree[i].presence = gardes
+	}
+}
+
 // intervalle rend l'intervalle de presence qu'une occupation designe, pour le modifier en place.
 func (pp *poseDesPlaces) intervalle(o occupation) *intervalleDePresence {
 	return &pp.occ.parEntree[o.entree].presence[o.intervalle]

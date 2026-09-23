@@ -191,6 +191,7 @@ func poserLesSieges(roster []RosterEntry, occ occupants, in entreesDesPlaces) Se
 		pp.marquerLesArrivantsSansPresence()
 	}
 	cov.RelaisBornes, cov.Chevauchements = pp.bornerAuSuccesseur()
+	pp.retirerLesAffichagesVides()
 	if !occ.balaye {
 		in.horloge.fb.DeclencheN(fallback.NomPresenceParEnveloppeDesVies, pp.tenirLesDerniersJusquALaFin())
 	}

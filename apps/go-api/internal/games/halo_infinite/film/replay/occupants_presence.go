@@ -104,12 +104,16 @@ func declarationsDe(e RosterEntry, bots []BotIdentity) [][2]uint64 {
 func presenceDe(e RosterEntry, occ occupantDuRoster, in entreesDesOccupants) ([]intervalleDePresence, bool) {
 	ents := make([]intervalleDePresence, 0, len(occ.entites))
 	for _, k := range occ.entites {
-		ents = append(ents, presenceDeLEntite(in.scan, in.scan.Entities[k], in.horloge))
+		if iv, ok := presenceDeLEntite(in.scan, in.scan.Entities[k], in.horloge); ok {
+			ents = append(ents, iv)
+		}
 	}
 	var decls []intervalleDePresence
 	if e.Bot {
 		for _, d := range declarationsDe(e, in.bots) {
-			decls = append(decls, presenceDeLaDeclaration(d, in.horloge))
+			if iv, ok := presenceDeLaDeclaration(d, in.horloge); ok {
+				decls = append(decls, iv)
+			}
 		}
 	}
 	switch {
@@ -124,35 +128,67 @@ func presenceDe(e RosterEntry, occ occupantDuRoster, in entreesDesOccupants) ([]
 	}
 }
 
-// presenceDeLEntite traduit une entite en presence : de la frame 0 si elle est lue au coup
-// d'envoi, sinon de sa premiere image-cle ; certaine jusqu'a sa derniere image-cle, affichee
-// jusqu'a la veille de la suivante (Q22) — jusqu'au bout si elle est lue a la fin.
-func presenceDeLEntite(scan grammar.PlayerEntityScan, e grammar.PlayerEntity, h replayClock) intervalleDePresence {
+// presenceDeLEntite traduit une entite en presence : depuis avant la frame 0 si elle est lue au
+// coup d'envoi, sinon de sa premiere image-cle ; certaine jusqu'a sa derniere image-cle, affichee
+// jusqu'a la veille de la suivante (Q22) — jusqu'au bout si elle est lue a la fin. Faux : elle ne
+// touche pas la grille du document (cf. [bornerALaGrille]).
+func presenceDeLEntite(scan grammar.PlayerEntityScan, e grammar.PlayerEntity, h replayClock) (intervalleDePresence, bool) {
 	derniere := h.frames - 1
 	de, a := fenetreStricteUS(scan, e)
-	iv := intervalleDePresence{de: frameDInstant(h, de), a: frameDInstant(h, a)}
+	iv := intervalleDePresence{de: frameBrute(h, de), a: frameBrute(h, a)}
 	if scan.AtStart(e) {
-		iv.de = 0
+		iv.de = min(iv.de, 0)
 	}
 	iv.aMax = iv.a
 	if scan.AtEnd(e) {
 		iv.a, iv.aMax = derniere, derniere
 	} else if suivante, ok := scan.KeyframeUS(e.LastKF + 1); ok {
-		iv.aMax = max(iv.a, frameDInstant(h, suivante)-1)
+		iv.aMax = max(iv.a, frameBrute(h, suivante)-1)
 	}
-	return iv
+	return bornerALaGrille(iv, h.frames)
 }
 
 // presenceDeLaDeclaration traduit une declaration BOT_METADATA en presence EXACTE : du paquet qui
-// declare le bot a la veille du paquet qui ne le declare plus.
-func presenceDeLaDeclaration(d [2]uint64, h replayClock) intervalleDePresence {
-	iv := intervalleDePresence{de: frameDInstant(h, d[0])}
+// declare le bot a la veille du paquet qui ne le declare plus. Faux : elle ne touche pas la grille.
+func presenceDeLaDeclaration(d [2]uint64, h replayClock) (intervalleDePresence, bool) {
+	iv := intervalleDePresence{de: frameBrute(h, d[0])}
 	fin := h.frames - 1
 	if d[1] != 0 {
-		fin = max(iv.de, frameDInstant(h, d[1])-1)
+		fin = max(iv.de, frameBrute(h, d[1])-1)
 	}
 	iv.a, iv.aMax = fin, fin
-	return iv
+	return bornerALaGrille(iv, h.frames)
+}
+
+// frameBrute rend la frame d'un instant du film SANS la borner a la grille : negative avant
+// l'origine du document. Les presences se calculent sur elle et ne se bornent qu'a la fin
+// ([bornerALaGrille]) — borner chaque instant d'abord ramenait a la frame 0 un occupant PARTI
+// avant elle (`396cfc92` : un joueur vu a la seule image-cle d'avant l'origine, et le bot qui l'a
+// remplace, tous deux « certains » a la frame 0 — la place refusee au bot).
+func frameBrute(h replayClock, us uint64) int {
+	if h.step == 0 {
+		return 0
+	}
+	return frameOf(us, h.origin, h.step)
+}
+
+// bornerALaGrille ramene une presence a la grille du document `[0, frames-1]`. Faux quand elle
+// s'acheve avant la frame 0 ou commence apres la derniere : l'occupant n'est la a aucune frame du
+// document. Sa part CERTAINE peut etre VIDE (`a < de`) : un occupant vu pour la derniere fois
+// avant l'origine, peut-etre encore la ensuite, n'est certain a aucune frame — il n'en revendique
+// donc aucune a un autre occupant de sa place.
+func bornerALaGrille(iv intervalleDePresence, frames int) (intervalleDePresence, bool) {
+	derniere := frames - 1
+	if iv.aMax < 0 || iv.de > derniere {
+		return iv, false
+	}
+	iv.de = max(iv.de, 0)
+	iv.a = min(iv.a, derniere)
+	iv.aMax = min(iv.aMax, derniere)
+	if iv.a < iv.de {
+		iv.a = iv.de - 1
+	}
+	return iv, true
 }
 
 // avancerParLesEntites avance l'arrivee de chaque declaration a celle des entites qui la croisent

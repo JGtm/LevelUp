@@ -162,8 +162,9 @@ type RosterEntry struct {
 }
 
 // PresenceInterval est UN intervalle de presence d une entree de roster, en frames, bornes
-// incluses : `to` est la derniere frame CERTAINE, `toMax` la derniere ou l occupant PEUT encore
-// etre la (l entite ne se lit qu aux images-cles) ; absent quand il vaut `to`.
+// incluses : `to` est la derniere frame CERTAINE (`to < from` : aucune, l occupant n a ete vu
+// qu avant l origine du document), `toMax` la derniere ou il PEUT encore etre la (l entite ne se
+// lit qu aux images-cles) ; absent quand il vaut `to`.
 type PresenceInterval struct {
 	From  int  `json:"from"`
 	To    int  `json:"to"`

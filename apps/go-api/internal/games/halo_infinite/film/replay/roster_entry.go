@@ -103,7 +103,8 @@ type PresenceInterval struct {
 	// From est la première frame où l'occupant tient sa place.
 	From int `json:"from"`
 	// To est la dernière frame où sa présence est CERTAINE (une vie, une image-clé, un paquet
-	// BOT_METADATA l'y voient).
+	// BOT_METADATA l'y voient). `To < From` quand AUCUNE ne l'est : l'occupant n'a été vu qu'avant
+	// l'origine du document, et `ToMax` dit seulement jusqu'où il peut encore être là.
 	To int `json:"to"`
 	// ToMax est la dernière frame où il PEUT encore être là : l'entité ne se lit qu'aux
 	// images-clés, et son départ n'est borné que par la première image-clé qui ne la porte plus

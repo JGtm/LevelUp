@@ -2034,8 +2034,8 @@ package replay
 // depassent la taille d equipe, 22 affichent des joueurs partis.
 //
 //	`roster[]`     `presence` NAIT : une liste d intervalles `{from, to, toMax?}` en frames. `to`
-//	.presence      est la derniere frame CERTAINE (une vie, une image-cle, un paquet BOT_METADATA
-//	               voient l occupant), `toMax` la derniere frame ou il PEUT encore etre la —
+//	.presence      est la derniere frame CERTAINE (vie, image-cle, paquet BOT_METADATA ; `to <
+//	               from` : aucune, vu avant l origine), `toMax` la derniere ou il PEUT etre la —
 //	               l entite ti=9 ne se lit qu aux images-cles (~20 s), et un depart pendant la
 //	               mort sort a la premiere image-cle qui ne la porte plus (Q22), ou a l arrivee
 //	               du remplacant sur la meme place. Un bot sort a la frame EXACTE de son retrait
