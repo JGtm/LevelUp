@@ -14,6 +14,7 @@ import (
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/observability/timing"
 	"levelup/go-api/internal/port"
 )
@@ -113,7 +114,7 @@ func (s *FiltersService) Resolve(
 	rows, err := s.repo.LoadMatchesForFilters(ctx)
 	stop()
 	if err != nil {
-		slog.ErrorContext(ctx, "load matches for filters", "err", err)
+		slog.Log(ctx, observability.LevelUnlessCanceled(ctx, err, slog.LevelError), "load matches for filters", "err", err)
 		return domain.FilterContextResolved{}, err
 	}
 	stop = timing.FromContext(ctx).Section("resolve_rows")
@@ -159,7 +160,7 @@ func (s *FiltersService) ResolveMatchIDs(
 ) ([]string, error) {
 	rows, err := s.repo.LoadMatchesForFilters(ctx)
 	if err != nil {
-		slog.ErrorContext(ctx, "load matches for filter match-ids", "err", err)
+		slog.Log(ctx, observability.LevelUnlessCanceled(ctx, err, slog.LevelError), "load matches for filter match-ids", "err", err)
 		return nil, err
 	}
 	ids := FilteredMatchIDs(rows, input)

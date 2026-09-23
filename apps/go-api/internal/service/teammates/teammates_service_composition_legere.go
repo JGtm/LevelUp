@@ -36,6 +36,7 @@ import (
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/observability/timing"
 	"levelup/go-api/internal/port"
 )
@@ -126,7 +127,8 @@ func (s *TeammatesService) lireComposition(
 		}
 		rows, err := s.repo.LoadSquadMatches(ctx, playerXUID, xuid)
 		if err != nil {
-			slog.ErrorContext(ctx, "teammates_load_squad_matches_failed",
+			// DEBUG quand la requête a pris fin (client parti, lot perf L9-go) : pas une panne.
+			slog.Log(ctx, observability.LevelUnlessCanceled(ctx, err, slog.LevelError), "teammates_load_squad_matches_failed",
 				"player_xuid", playerXUID, "teammate_xuid", xuid, "gamertag", gt, "err", err)
 			continue
 		}

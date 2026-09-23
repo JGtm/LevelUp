@@ -292,9 +292,20 @@ func (c *SeasonsCatalog) fetchLive(ctx context.Context, titleID string) ([]domai
 // Un échec SANS jeton dans le contexte n'a fait aucun appel réseau (le provider
 // refuse avant) : il n'est pas mémorisé — sinon une requête anonyme bloquerait
 // 30 min le fetch d'une requête authentifiée qui, elle, peut réussir.
+//
+// Une FIN DE CONTEXTE (annulation ou échéance de la requête appelante) n'est pas un
+// verdict de Waypoint non plus : jamais mémorisée, la requête suivante réessaie (lot
+// perf L9-go, revue adversariale B ; miroir de privacyFailure,
+// platform/halo/privacy_provider.go). Avant, un client parti pendant l'appel ouvrait
+// 30 min de repli TOML pour tout le titre.
 func (c *SeasonsCatalog) recordFetchFailure(ctx context.Context, titleID string, err error) time.Duration {
 	if ctxkeys.HaloTokens(ctx) == nil {
 		c.logger.InfoContext(ctx, "seasons_catalog: fetch live impossible sans jeton — fallback static TOML",
+			"titleSlug", titleID, "err", err)
+		return 0
+	}
+	if ctx.Err() != nil || errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+		c.logger.DebugContext(ctx, "seasons_catalog: fetch live interrompu par le contexte — non mémorisé",
 			"titleSlug", titleID, "err", err)
 		return 0
 	}

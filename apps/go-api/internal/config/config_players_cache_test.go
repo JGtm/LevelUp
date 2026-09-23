@@ -126,3 +126,32 @@ func TestLoadPlayers_ReturnsFreshSlices(t *testing.T) {
 		t.Errorf("liste partagée entre appels : %q", got)
 	}
 }
+
+// TestLoadPlayers_RacyWindowSnapshotNeverStored (lot perf L9-go, revue adversariale B) :
+// un contenu lu PENDANT la fenêtre de méfiance n'est pas mémorisé. Scénario de la revue :
+// quatre écritures dans le même tic (même horodatage, même taille), la dernière dit Omega ;
+// la lecture faite une fois la fenêtre passée doit rendre Omega, pas l'instantané Alpha lu
+// dans la fenêtre.
+func TestLoadPlayers_RacyWindowSnapshotNeverStored(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "db_profiles.json")
+	cfg := &AppConfig{DBProfilesPath: path}
+	tic := time.Now().Add(-dbProfilesRacyWindow + 300*time.Millisecond) // dans la fenêtre
+
+	writeProfiles(t, path, profilesV3("Alpha"), tic)
+	if got := onlyGamertag(t, cfg); got != "Alpha" {
+		t.Fatalf("1re lecture (dans la fenêtre) = %q, want Alpha", got)
+	}
+	writeProfiles(t, path, profilesV3("Omega"), tic)
+	if got := onlyGamertag(t, cfg); got != "Omega" {
+		t.Fatalf("2e lecture (dans la fenêtre) = %q, want Omega", got)
+	}
+	writeProfiles(t, path, profilesV3("Alpha"), tic)
+	if got := onlyGamertag(t, cfg); got != "Alpha" {
+		t.Fatalf("3e lecture (dans la fenêtre) = %q, want Alpha", got)
+	}
+	writeProfiles(t, path, profilesV3("Omega"), tic) // même tic, même taille : le fichier dit Omega
+	time.Sleep(600 * time.Millisecond)               // la fenêtre est passée
+	if got := onlyGamertag(t, cfg); got != "Omega" {
+		t.Errorf("après la fenêtre : %q servi, alors que le fichier contient Omega (instantané pris dans la fenêtre)", got)
+	}
+}

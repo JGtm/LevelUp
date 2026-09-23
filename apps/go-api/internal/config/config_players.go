@@ -88,7 +88,13 @@ func readDBProfiles(path string) (data []byte, exists bool, err error) {
 		}
 		return nil, false, err
 	}
-	dbProfilesReads.Store(path, &dbProfilesSnapshot{modTime: info.ModTime(), size: info.Size(), data: data})
+	// Un instantané lu DANS la fenêtre de méfiance n'est jamais gardé : une écriture
+	// suivante dans le même tic (même horodatage, même taille) le rendrait indiscernable
+	// du fichier une fois la fenêtre passée, et il serait servi à la place du contenu
+	// réel (lot perf L9-go, revue adversariale B).
+	if time.Since(info.ModTime()) > dbProfilesRacyWindow {
+		dbProfilesReads.Store(path, &dbProfilesSnapshot{modTime: info.ModTime(), size: info.Size(), data: data})
+	}
 	return data, true, nil
 }
 

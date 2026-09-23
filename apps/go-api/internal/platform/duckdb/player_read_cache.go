@@ -55,6 +55,7 @@ import (
 	"golang.org/x/sync/singleflight"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/observability/timing"
 )
 
@@ -249,11 +250,8 @@ func bestEffortFailed(ctx context.Context, step string, err error) {
 	if isTableNotFoundErr(err) {
 		return
 	}
-	level := slog.LevelWarn
-	if ctx.Err() != nil {
-		level = slog.LevelDebug
-	}
-	slog.Log(ctx, level, "lecture best-effort en échec : libellés incomplets", "step", step, "err", err)
+	slog.Log(ctx, observability.LevelUnlessCanceled(ctx, err, slog.LevelWarn),
+		"lecture best-effort en échec : libellés incomplets", "step", step, "err", err)
 	noteDegraded(ctx, step)
 }
 
