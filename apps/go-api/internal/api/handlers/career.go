@@ -110,7 +110,7 @@ func (h *CareerHandler) handleGetCareer(ctx context.Context, in *careerPlayerInp
 	}
 	resp, err := svc.GetCareerPage(ctx)
 	if err != nil {
-		return nil, humacore.NewError(http.StatusInternalServerError, "career_error", err.Error())
+		return nil, mapServiceError(ctx, err, "career_error")
 	}
 	return &careerPageOutput{Body: resp}, nil
 }
@@ -123,7 +123,7 @@ func (h *CareerHandler) handleGetTopMatches(ctx context.Context, in *careerPlaye
 	}
 	resp, err := svc.GetTopMatches(ctx)
 	if err != nil {
-		return nil, humacore.NewError(http.StatusInternalServerError, "top_matches_error", err.Error())
+		return nil, mapServiceError(ctx, err, "top_matches_error")
 	}
 	return &careerTopMatchesOutput{Body: resp}, nil
 }
@@ -136,7 +136,7 @@ func (h *CareerHandler) handleGetEncounters(ctx context.Context, in *careerPlaye
 	}
 	resp, err := svc.GetEncounters(ctx)
 	if err != nil {
-		return nil, humacore.NewError(http.StatusInternalServerError, "encounters_error", err.Error())
+		return nil, mapServiceError(ctx, err, "encounters_error")
 	}
 	return &careerEncountersOutput{Body: resp}, nil
 }
@@ -168,7 +168,7 @@ func (h *CareerHandler) handleGetHighlightMatches(ctx context.Context, in *caree
 	input := parseHighlightFilterInput(in.highlightQuery())
 	data, err := svc.GetHighlightMatchIDs(ctx, input)
 	if err != nil {
-		return nil, humacore.NewError(http.StatusInternalServerError, "highlight_matches_error", err.Error())
+		return nil, mapServiceError(ctx, err, "highlight_matches_error")
 	}
 
 	var bestRows, worstRows []domain.HighlightMatchIDRow
@@ -183,11 +183,11 @@ func (h *CareerHandler) handleGetHighlightMatches(ctx context.Context, in *caree
 
 	bestMatches, err := enrichHighlightMatches(ctx, mhSvc, bestRows)
 	if err != nil {
-		return nil, humacore.NewError(http.StatusInternalServerError, "highlight_best_enrich_error", err.Error())
+		return nil, mapServiceError(ctx, err, "highlight_best_enrich_error")
 	}
 	worstMatches, err := enrichHighlightMatches(ctx, mhSvc, worstRows)
 	if err != nil {
-		return nil, humacore.NewError(http.StatusInternalServerError, "highlight_worst_enrich_error", err.Error())
+		return nil, mapServiceError(ctx, err, "highlight_worst_enrich_error")
 	}
 
 	return &careerHighlightOutput{Body: domain.CareerHighlightMatchesResponse{
@@ -250,7 +250,7 @@ func (h *CareerHandler) handleGetTopEncountersRich(ctx context.Context, in *care
 	}
 	resp, err := svc.GetTopEncounters(ctx)
 	if err != nil {
-		return nil, humacore.NewError(http.StatusInternalServerError, "top_encounters_error", err.Error())
+		return nil, mapServiceError(ctx, err, "top_encounters_error")
 	}
 	return &careerTopEncountersOutput{Body: resp}, nil
 }
@@ -266,7 +266,7 @@ func (h *CareerHandler) handleGetRivals(ctx context.Context, in *careerPlayerInp
 	}
 	resp, err := svc.GetRivals(ctx)
 	if err != nil {
-		return nil, humacore.NewError(http.StatusInternalServerError, "rivals_error", err.Error())
+		return nil, mapServiceError(ctx, err, "rivals_error")
 	}
 	return &careerRivalsOutput{Body: resp}, nil
 }
@@ -282,7 +282,7 @@ func (h *CareerHandler) handleGetCareerCSRs(ctx context.Context, in *careerCSRsI
 	season := strings.TrimSpace(in.Season)
 	resp, err := svc.GetCareerCSRs(ctx, season)
 	if err != nil {
-		return nil, humacore.NewError(http.StatusInternalServerError, "csrs_error", err.Error())
+		return nil, mapServiceError(ctx, err, "csrs_error")
 	}
 	return &careerCSRsOutput{Body: resp}, nil
 }

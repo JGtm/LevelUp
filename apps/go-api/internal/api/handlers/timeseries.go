@@ -15,7 +15,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"log/slog"
 	"net/http"
 
 	"github.com/danielgtaylor/huma/v2"
@@ -71,8 +70,7 @@ func (h *TimeseriesHandler) GetPage(ctx context.Context, in *timeseriesQueryInpu
 
 	resp, svcErr := svc.GetPage(ctx, req)
 	if svcErr != nil {
-		slog.ErrorContext(ctx, "timeseries: erreur service", "player", in.PlayerSlug, "err", svcErr)
-		return nil, humacore.NewError(http.StatusInternalServerError, "timeseries_error", svcErr.Error())
+		return nil, mapServiceError(ctx, svcErr, "timeseries_error")
 	}
 
 	return &timeseriesPageOutput{Body: resp}, nil

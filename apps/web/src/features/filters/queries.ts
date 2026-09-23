@@ -40,10 +40,12 @@ export function useFiltersResolve(playerSlug: string, filterStore: FilterStore =
 
   const query = useQuery<FilterContextResolved>({
     queryKey: queryKeys.filtersResolve(playerSlug, titleSlug, filterContextHash),
-    queryFn: () =>
+    queryFn: ({ signal }) =>
       api.post<FilterContextResolved>(
         `/players/${playerSlug}/filters/resolve`,
         filterContext satisfies FilterContextInput,
+        undefined,
+        { signal },
       ),
     enabled: !!playerSlug,
     staleTime: 5 * 60 * 1000,
@@ -156,8 +158,13 @@ export function useFiltersPreview(playerSlug: string, input: FilterContextInput)
   })()
   return useQuery<FilterContextResolved>({
     queryKey: queryKeys.filtersPreview(playerSlug, titleSlug, hash),
-    queryFn: () =>
-      api.post<FilterContextResolved>(`/players/${playerSlug}/filters/resolve`, input),
+    queryFn: ({ signal }) =>
+      api.post<FilterContextResolved>(
+        `/players/${playerSlug}/filters/resolve`,
+        input,
+        undefined,
+        { signal },
+      ),
     enabled: !!playerSlug,
     staleTime: 30 * 1000,
     placeholderData: keepPreviousData,

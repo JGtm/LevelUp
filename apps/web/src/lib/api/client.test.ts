@@ -203,3 +203,65 @@ describe('api client — course de bascule PENDANT le vol (titre actif ≠ titre
     })
   })
 })
+
+/**
+ * Annulation (plan perf 2026-09-23, D3.3) : le `signal` passé par un hook de page
+ * (celui de TanStack Query) atteint `fetch`. Sans lui, une requête devenue inutile
+ * n'était jamais abandonnée et le serveur calculait jusqu'au bout.
+ */
+describe('api client — signal d’annulation transmis à fetch', () => {
+  let fetchSpy: ReturnType<typeof vi.spyOn>
+
+  beforeEach(() => {
+    setApiTitleSlug(null)
+    fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify({}), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    )
+  })
+
+  afterEach(() => {
+    fetchSpy.mockRestore()
+    setApiTitleSlug(null)
+  })
+
+  function lastSignal(): AbortSignal | null | undefined {
+    const calls = fetchSpy.mock.calls
+    expect(calls.length).toBeGreaterThan(0)
+    return (calls[calls.length - 1][1] as RequestInit).signal
+  }
+
+  it('get transmet le signal à fetch', async () => {
+    const controller = new AbortController()
+    await api.get('/players/p/pages/career', undefined, { signal: controller.signal })
+    expect(lastSignal()).toBe(controller.signal)
+  })
+
+  it('post transmet le signal à fetch', async () => {
+    const controller = new AbortController()
+    await api.post('/players/p/pages/timeseries', { filters: {} }, undefined, { signal: controller.signal })
+    expect(lastSignal()).toBe(controller.signal)
+  })
+
+  it('sans option, aucun signal (appels existants inchangés)', async () => {
+    await api.get('/home')
+    expect(lastSignal()).toBeUndefined()
+  })
+
+  it('un signal abandonné pendant le vol rejette la requête (AbortError)', async () => {
+    fetchSpy.mockImplementation(
+      (_url: unknown, init?: RequestInit) =>
+        new Promise<Response>((_resolve, reject) => {
+          init?.signal?.addEventListener('abort', () =>
+            reject(new DOMException('The operation was aborted.', 'AbortError')),
+          )
+        }),
+    )
+    const controller = new AbortController()
+    const pending = api.post('/players/p/pages/synthesis', {}, undefined, { signal: controller.signal })
+    controller.abort()
+    await expect(pending).rejects.toMatchObject({ name: 'AbortError' })
+  })
+})

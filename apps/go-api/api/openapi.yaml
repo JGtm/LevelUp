@@ -3282,6 +3282,10 @@ paths:
           $ref: '#/components/responses/BadRequest'
         "404":
           $ref: '#/components/responses/NotFound'
+        "499":
+          $ref: '#/components/responses/ClientClosed'
+        "503":
+          $ref: '#/components/responses/DbBusy'
         default:
           content:
             application/json:
@@ -3326,8 +3330,12 @@ paths:
           $ref: '#/components/responses/BadRequest'
         "404":
           $ref: '#/components/responses/NotFound'
+        "499":
+          $ref: '#/components/responses/ClientClosed'
         "500":
           $ref: '#/components/responses/InternalError'
+        "503":
+          $ref: '#/components/responses/DbBusy'
         default:
           content:
             application/json:
@@ -4389,8 +4397,12 @@ paths:
           description: Page Carrière
         "404":
           $ref: '#/components/responses/NotFound'
+        "499":
+          $ref: '#/components/responses/ClientClosed'
         "500":
           $ref: '#/components/responses/InternalError'
+        "503":
+          $ref: '#/components/responses/DbBusy'
         default:
           content:
             application/json:
@@ -4436,8 +4448,12 @@ paths:
           description: Classements CSR par playlist
         "404":
           $ref: '#/components/responses/NotFound'
+        "499":
+          $ref: '#/components/responses/ClientClosed'
         "500":
           $ref: '#/components/responses/InternalError'
+        "503":
+          $ref: '#/components/responses/DbBusy'
         default:
           content:
             application/json:
@@ -4467,8 +4483,12 @@ paths:
           description: Encounters
         "404":
           $ref: '#/components/responses/NotFound'
+        "499":
+          $ref: '#/components/responses/ClientClosed'
         "500":
           $ref: '#/components/responses/InternalError'
+        "503":
+          $ref: '#/components/responses/DbBusy'
         default:
           content:
             application/json:
@@ -4538,10 +4558,24 @@ paths:
           description: Highlight matches
         "404":
           $ref: '#/components/responses/NotFound'
+        "499":
+          $ref: '#/components/responses/ClientClosed'
         "500":
           $ref: '#/components/responses/InternalError'
         "503":
-          description: MatchHistoryService factory indisponible (cas test)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+          description: |
+            Base momentanément occupée (`db_busy`, réessayer après `Retry-After`), ou
+            MatchHistoryService non câblé (`match_history_unavailable`, cas test, sans
+            `Retry-After`).
+          headers:
+            Retry-After:
+              description: Délai conseillé avant un nouvel essai, en secondes
+              schema:
+                type: integer
         default:
           content:
             application/json:
@@ -4577,8 +4611,12 @@ paths:
           description: Rivals
         "404":
           $ref: '#/components/responses/NotFound'
+        "499":
+          $ref: '#/components/responses/ClientClosed'
         "500":
           $ref: '#/components/responses/InternalError'
+        "503":
+          $ref: '#/components/responses/DbBusy'
         default:
           content:
             application/json:
@@ -4613,8 +4651,12 @@ paths:
           description: Top encounters
         "404":
           $ref: '#/components/responses/NotFound'
+        "499":
+          $ref: '#/components/responses/ClientClosed'
         "500":
           $ref: '#/components/responses/InternalError'
+        "503":
+          $ref: '#/components/responses/DbBusy'
         default:
           content:
             application/json:
@@ -4644,8 +4686,12 @@ paths:
           description: Top matchs
         "404":
           $ref: '#/components/responses/NotFound'
+        "499":
+          $ref: '#/components/responses/ClientClosed'
         "500":
           $ref: '#/components/responses/InternalError'
+        "503":
+          $ref: '#/components/responses/DbBusy'
         default:
           content:
             application/json:
@@ -4775,8 +4821,12 @@ paths:
           $ref: '#/components/responses/BadRequest'
         "404":
           $ref: '#/components/responses/NotFound'
+        "499":
+          $ref: '#/components/responses/ClientClosed'
         "500":
           $ref: '#/components/responses/InternalError'
+        "503":
+          $ref: '#/components/responses/DbBusy'
         default:
           content:
             application/json:
@@ -4814,8 +4864,12 @@ paths:
           $ref: '#/components/responses/BadRequest'
         "404":
           $ref: '#/components/responses/NotFound'
+        "499":
+          $ref: '#/components/responses/ClientClosed'
         "500":
           $ref: '#/components/responses/InternalError'
+        "503":
+          $ref: '#/components/responses/DbBusy'
         default:
           content:
             application/json:
@@ -4863,8 +4917,25 @@ paths:
                 type: string
         "404":
           $ref: '#/components/responses/NotFound'
+        "499":
+          $ref: '#/components/responses/ClientClosed'
         "500":
           $ref: '#/components/responses/InternalError'
+        "503":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+          description: |
+            Page momentanément indisponible, réessayer après `Retry-After` :
+            `home_page_db_busy` (bascule RO/RW d'une synchronisation),
+            `home_page_db_recovering` (connexion en cours de récupération) ou
+            `db_busy` (verrou d'écriture).
+          headers:
+            Retry-After:
+              description: Délai conseillé avant un nouvel essai, en secondes
+              schema:
+                type: integer
         default:
           content:
             application/json:
@@ -5223,6 +5294,10 @@ paths:
           description: Liste des sessions avec stats agrégées
         "404":
           $ref: '#/components/responses/NotFound'
+        "499":
+          $ref: '#/components/responses/ClientClosed'
+        "503":
+          $ref: '#/components/responses/DbBusy'
         default:
           content:
             application/json:
@@ -5260,6 +5335,10 @@ paths:
           $ref: '#/components/responses/BadRequest'
         "404":
           $ref: '#/components/responses/NotFound'
+        "499":
+          $ref: '#/components/responses/ClientClosed'
+        "503":
+          $ref: '#/components/responses/DbBusy'
         default:
           content:
             application/json:
@@ -5444,6 +5523,10 @@ paths:
           description: Synthèse globale (heatmap, top semaines, comparaison KPIs)
         "404":
           $ref: '#/components/responses/NotFound'
+        "499":
+          $ref: '#/components/responses/ClientClosed'
+        "503":
+          $ref: '#/components/responses/DbBusy'
         default:
           content:
             application/json:
@@ -5478,6 +5561,10 @@ paths:
           description: Analyse coéquipiers avec statistiques
         "404":
           $ref: '#/components/responses/NotFound'
+        "499":
+          $ref: '#/components/responses/ClientClosed'
+        "503":
+          $ref: '#/components/responses/DbBusy'
         default:
           content:
             application/json:
@@ -5506,6 +5593,10 @@ paths:
           description: Données séries temporelles
         "400":
           $ref: '#/components/responses/BadRequest'
+        "499":
+          $ref: '#/components/responses/ClientClosed'
+        "503":
+          $ref: '#/components/responses/DbBusy'
         default:
           content:
             application/json:
@@ -7221,6 +7312,19 @@ components:
           schema:
             $ref: '#/components/schemas/ApiError'
       description: Requête invalide
+    ClientClosed:
+      content:
+        application/json:
+          example:
+            code: client_closed
+            message: client closed request
+            retryable: false
+          schema:
+            $ref: '#/components/schemas/ApiError'
+      description: |
+        Requête abandonnée par le client avant la réponse (contexte annulé : onglet fermé,
+        requête remplacée). Convention nginx 499 : aucun client ne lit cette réponse, le
+        statut sert au journal d'accès et aux compteurs (classe 4xx, jamais 5xx).
     Conflict:
       content:
         application/json:
@@ -7231,6 +7335,23 @@ components:
           schema:
             $ref: '#/components/schemas/ApiError'
       description: Conflit avec l'état courant de la ressource
+    DbBusy:
+      content:
+        application/json:
+          example:
+            code: db_busy
+            message: database is currently busy, please retry
+            retryable: true
+          schema:
+            $ref: '#/components/schemas/ApiError'
+      description: |
+        Base momentanément occupée (verrou d'écriture, ou bascule RO/RW du provider
+        partagé pendant une synchronisation) : transitoire, réessayer après `Retry-After`.
+      headers:
+        Retry-After:
+          description: Délai conseillé avant un nouvel essai, en secondes
+          schema:
+            type: integer
     InternalError:
       content:
         application/json:

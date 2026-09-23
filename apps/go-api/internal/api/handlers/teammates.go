@@ -15,7 +15,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"log/slog"
 	"net/http"
 
 	"github.com/danielgtaylor/huma/v2"
@@ -71,8 +70,7 @@ func (h *TeammatesHandler) handleGetPage(ctx context.Context, in *teammatesQuery
 
 	resp, svcErr := svc.GetPage(ctx, xuid, req)
 	if svcErr != nil {
-		slog.ErrorContext(ctx, "teammates: erreur service", "player", in.PlayerSlug, "err", svcErr)
-		return nil, humacore.NewError(http.StatusInternalServerError, "teammates_error", svcErr.Error())
+		return nil, mapServiceError(ctx, svcErr, "teammates_error")
 	}
 
 	return &teammatesPageOutput{Body: resp}, nil

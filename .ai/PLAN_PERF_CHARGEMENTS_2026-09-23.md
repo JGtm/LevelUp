@@ -191,11 +191,27 @@ Perimetre : `cmd/server/main.go`, `internal/api/handlers/helpers.go` + handlers 
 `apps/web/src/app/queryClient.ts` (+ test), hooks `queries.ts` des features listees en D3.4.
 
 Items :
-- [ ] L3.1 WriteTimeout 120 s + commentaire date
-- [ ] L3.2 helper `mapServiceError` + application aux handlers de pages + OpenAPI + tests
-- [ ] L3.3 client.ts `signal` + queryClient sans retry 502/504 + tests
-- [ ] L3.4 `signal` transmis dans les hooks de page listes
-- [ ] L3.5 Touch de session throttle + test
+- [x] L3.1 WriteTimeout 120 s + commentaire date — `cmd/server/main.go:90` (constante
+  `serverWriteTimeout`, date, cause, nginx 300 s) lue par `http.Server` (`:1478`) ; le
+  garde-rail `internal/api/wire/build_queue_writer_budget_test.go` lisait la forme littérale
+  `WriteTimeout: N * time.Second` : réaligné sur la constante (gate rouge sinon)
+- [x] L3.2 helper `mapServiceError` + application aux handlers de pages + OpenAPI + tests —
+  `handlers/helpers.go:90` (499 DEBUG, puis 503 `errDBBusy()` WARN, sinon 500 ERROR) ; 18
+  sites (teammates, filters x2, synthesis, sessions, sessions/detail, timeseries,
+  explorer x2, career x9) + `home.go:153` `homePageError` (`home_page_db_busy` et
+  `home_page_db_recovering` gardés) ; fragment OpenAPI (réponses partagées `DbBusy`,
+  `ClientClosed` ; 499 + 503 sur les 17 opérations) puis `openapi.yaml` et `generated.ts`
+  régénérés ; tests `map_service_error_test.go`, `page_service_errors_test.go`
+- [x] L3.3 client.ts `signal` + queryClient sans retry 502/504 + tests —
+  `lib/api/client.ts:272,321,353` ; `app/queryClient.ts:18` ; `client.test.ts` (4 cas),
+  `app/queryClient.test.ts` (nouveau)
+- [x] L3.4 `signal` transmis dans les hooks de page listes — 13 `useQuery` (filtres 2,
+  synthèse 1, détail de session 1, séries temporelles 1, carrière 6, accueil 2) ;
+  `features/timeseries/queries.test.tsx` (démontage pendant le calcul = requête abandonnée)
+- [x] L3.5 Touch de session throttle + test — `platform/session/store.go:237` (Touch),
+  `:429` (persistedRecently), `:101` (persistMark), `:115` (WithClock), `:301` (purge des
+  marques) ; `middleware/session.go` (commentaires) ; tests `store_touch_test.go`,
+  `store_marks_test.go`, `middleware/session_touch_test.go`
 
 Gate Go : `gofmt`, `go build ./...`, `go vet ./...`, `go test ./internal/api/... ./internal/platform/
 session/...`, `go run ./cmd/openapi-gen -check` (ou la commande documentee dans `docs/COMMANDS.md`),
@@ -203,6 +219,43 @@ lint paquets touches. Gate web (depuis `apps/web`, `node_modules\.tmp` purge ava
 `npm run typecheck`, `npm run lint`, `npx vitest run src/lib/api src/app src/features/filters
 src/features/synthesis src/features/session-detail src/features/timeseries src/features/career
 src/features/home`.
+
+Journal du lot (2026-09-23, branche `feat/perf-l3`, exécuteur Opus) :
+- Choix d'exécution dans le cadre des décisions : (a) le 499 se décide sur le contexte DE LA
+  REQUÊTE (`ctx.Err()`), testé avant le 503 (une attente de verrou interrompue par
+  l'annulation remonte en `ErrDBLocked`) ; un `context.Canceled` interne (errgroup) alors
+  que le client attend reste un 500 ; (b) `isDBBusy` réutilise `isSharedSwapContention`
+  (home.go), seul prédicat de contention du paquet : il couvre aussi `ErrProviderClosed`,
+  dont le contrat de la sentinelle demande 503 ; (c) Accueil : ses deux 503 historiques
+  sont testés d'abord, `ErrDBLocked` passe en 503 `db_busy`, le reste par
+  `mapServiceError` ; (d) les lignes ERROR propres à chaque handler (attribut joueur) sont
+  remplacées par la ligne unique de `mapServiceError` (`code` + `err`) ; la corrélation
+  passe par l'`event_id` du contexte et la ligne d'accès qui porte le chemin ; filters,
+  sessions, explorer et carrière rendaient leur 500 sans aucun log : ils journalisent
+  désormais l'erreur ; (e) `LastPersistedAt` vit dans le Store (table en mémoire `marks`
+  par session : last_seen_at PERSISTÉ + empreinte du contenu hors last_seen_at), car
+  `domain.SessionData` est hors périmètre ; la marque retient le last_seen_at écrit et non
+  l'heure d'écriture (un `Save` de handler qui réécrit un last_seen_at ancien ne dispense
+  pas Touch de rafraîchir : sinon une session active pourrait expirer) ; marques oubliées
+  par `Delete` et `PurgeExpired` ; (f) les deux tests de concurrence du store écrivent par
+  `Save` (un Touch throttlé ne produirait plus la rafale d'écritures qu'ils exigent).
+- Gates : `gofmt -l ./internal ./cmd` vide ; `go build ./...` 0 ; `go vet ./...` 0 ;
+  `go test ./internal/api/... ./internal/platform/session/...` 0 (6 paquets testés, aucun
+  `--- FAIL:`) ; `go run ./cmd/openapi-gen -check` 0 et `tools/check-generated-types-fresh.mjs`
+  0 ; `golangci-lint` 2.12.2 sur les paquets touchés, `--new-from-rev=HEAD` : 0 issue ;
+  `npm run typecheck` 0 ; `npm run lint` 0 erreur (26 avertissements antérieurs, aucun sur
+  les fichiers du lot) ; vitest 69 fichiers, 511 tests verts (14 skips antérieurs de
+  `SynthesisPage.test.tsx`).
+- Mutations jouées, toutes détectées puis restaurées : 502 rejoué ; 503 non rejoué ; 499
+  journalisé en ERROR ; branche 499 neutralisée (500 sur les 18 routes, compteur) ; branche
+  503 neutralisée ; throttle neutralisé (deux requêtes à 1 s = deux écritures) ; marque sur
+  l'heure d'écriture ; `serverWriteTimeout` à 10 s (garde-rail du dépôt d'ouvrier).
+- Découvertes (non traitées) : commentaires devenus faux « le serveur ferme l'écriture à
+  30 s » (`internal/api/wire/registry_build_queue.go:253,259,311`,
+  `internal/sync/replayartifacts/derivations.go:165`) ; 8 handlers d'écriture testent encore
+  `errors.Is(err, dblease.ErrDBLocked)` à la main ; `handlers/setup.go:271` avale l'erreur de
+  `Touch` (`_ =`) ; la ligne d'accès du middleware classe le 499 en WARN (classe 4xx,
+  compteur 4xx) — `slog_logger.go` est au périmètre L1.
 
 ## 4. L4a — Front Escouade : une seule source de verite, pas de requete a vide (web)
 

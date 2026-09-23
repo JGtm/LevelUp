@@ -16,7 +16,8 @@ export function useHomePage(playerSlug: string) {
   const locale = useAppShellStore((s) => s.locale)
   return useQuery({
     queryKey: queryKeys.home(playerSlug, titleSlug, locale),
-    queryFn: () => api.get<HomePageResponse>(`/players/${playerSlug}/pages/home`),
+    queryFn: ({ signal }) =>
+      api.get<HomePageResponse>(`/players/${playerSlug}/pages/home`, undefined, { signal }),
     enabled: !!playerSlug,
     staleTime: 5 * 60 * 1000,
     // AXE E first-sync : tant que le joueur n'a AUCUN match synchronisé (première
@@ -40,7 +41,12 @@ export function useSeasonPassPreview(playerSlug: string, enabled = true) {
   const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
   return useQuery({
     queryKey: queryKeys.seasonPass(playerSlug, titleSlug, locale),
-    queryFn: () => api.get<SeasonPassPageResponse>(`/players/${playerSlug}/pages/palmares/season-pass`),
+    queryFn: ({ signal }) =>
+      api.get<SeasonPassPageResponse>(
+        `/players/${playerSlug}/pages/palmares/season-pass`,
+        undefined,
+        { signal },
+      ),
     enabled: !!playerSlug && enabled,
     staleTime: 5 * 60 * 1000,
     retry: false,
