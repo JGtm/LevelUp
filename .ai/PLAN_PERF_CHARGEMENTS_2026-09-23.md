@@ -330,13 +330,84 @@ nouveau fichier doit etre reference (sans allowlist), `docs/SYNC_GUIDE.md` (EN +
 paragraphe sur le filigrane.
 
 Items :
-- [ ] L6.1 filigrane lu avant l'ecrivain, zero writer en stationnaire + test
-- [ ] L6.2 une rafale par joueur + test
-- [ ] L6.3 ligne INFO par cycle + doc EN/FR
+- [x] L6.1 filigrane lu avant l'ecrivain, zero writer en stationnaire + test —
+  `skill/skill_v2_watermark.go:58` (`selectShadowWorkUnderRead` : candidats, filigranes par
+  `loadGroupWatermarks` sur la vue `_latest`, eligibilite des candidats au-dessus, sous le Read
+  relache avant toute rafale) ; `skill/skill_v2_shadow.go:136` (aucun notable au-dessus du
+  filigrane → retour sans `Write`) ; tests `skill/skill_v2_watermark_test.go:22` (base fichier,
+  lecteur attache READ_ONLY : cycle 2 = 0 `Write`, 1 `Read`, 0 ligne ecrite) et `:76` (joueur
+  sans candidat).
+- [x] L6.2 une rafale par joueur + test — `skill/skill_v2_shared_access.go:67`
+  (`runSingleWriterBurst` : un `Write("lusr")` par joueur et par cycle ; lots de 3 retires, aucune
+  transaction ne couvre plusieurs matchs) ; tests `skill/skill_v2_shadow_burst_test.go:207`
+  (4 neufs → 1 rafale ; 3 neufs sur historique traite → 1 de plus) et
+  `skill/skill_v2_parity_test.go:88` (parite des ecritures, 1 rafale).
+- [x] L6.3 ligne INFO par cycle + doc EN/FR — `skill/skill_v2_watermark.go:126`
+  (`lusr_v2: rien de nouveau`) et `:140` (`lusr_v2: rafale terminee`), `candidates` et `new` dans
+  les deux ; `docs/SYNC_GUIDE.md:182` et `docs/FR/SYNC_GUIDE.md:182`.
 
 Gate : `gofmt` ; `go build ./...` ; `go vet ./...` ; `go test ./internal/sync/...` ;
 `go test -tags=integration -p 1 ./internal/sync/... ./internal/persist/...` (OBLIGATOIRE, code
 de sortie 0 verifie) ; lint paquets touches.
+
+Journal du lot (2026-09-23, branche `feat/perf-l6`, base 97cc0d0c8) :
+- Mesure de depart relue dans les journaux du checkout principal : 1 233 `AcquireWriter` au label
+  `sync_v2_postsync/lusr` entre 10:32 et 10:34 (`provider.log`), cinq joueurs, 9 416 candidats,
+  `processed` = 0 partout (`general.log`) ; le cinquieme joueur (6 414 candidats) a vu sa rafale
+  echouer au 232e triplet (provider en erreur a l'ouverture RW), 5 721 candidats reportes.
+- Choix d'implementation (dans D6.1, sans rien rouvrir) : « nouveau » = candidat d'une chaine LUSR
+  au-dessus du filigrane de son groupe ET notable (predicat partage `classifyLUSREligibility`,
+  evalue sur le lecteur, arret au premier notable). Raison mesuree : un joueur sur cinq garde a
+  chaque cycle UN match non notable au-dessus de son filigrane (`skipped_non_two_team=1` a tous les
+  cycles depuis la veille : equipes differentes de 2, owner sans equipe ou issue non notable) ; au
+  seul filigrane, il prendrait une rafale par cycle pour rien.
+  Sous l'ecrivain, `processOneShadowMatch` garde tous ses controles (groupe tenu, filigrane relu
+  sur le handle RW, eligibilite) : le pre-filtre n'est qu'une optimisation. Attendu sur le cycle
+  mesure : 1 rafale (le joueur dont l'ecriture canonique echoue, retente a chaque cycle) au lieu
+  de 1 233.
+- Regle n°6 : le predicat « deja traite » a desormais trois consommateurs (scoreur, pre-filtre,
+  detecteur de trous) → helper unique `lusrWatermarkCovers` (`skill_v2_watermark.go:37`) + garde-rail
+  `lusr_watermark_guardrail_test.go` (et test de la frontiere ≤). Constructeur `newShadowRunContext`
+  extrait (partage avec la reference du test de parite). `postsyncLUSRBurstChunk` et
+  `loadShadowMatchesUnderRead` supprimes (code mort). Echec d'acquisition de l'ecrivain :
+  `slog.ErrorContext` (etait WARN ; au plus une fois par joueur et par cycle).
+- Invariants ART : aucune ecriture modifiee (INSERT seuls via `SkillV2Repo.UpsertState` et
+  `persist.AppendOnlyLUSRPersister`), lectures par `player_skill_state_v2_latest`, aucune allowlist
+  touchee (`no_art_patterns_test.go` et `internal/persist/*` inchanges).
+- Parite (point d'attention 5) : `TestLUSRV2Shadow_ParityWithLegacyOrchestration` joue
+  l'orchestration d'avant (reference figee dans le test) et la nouvelle sur deux bases jumelles,
+  historique deja traite + 10 arrivees (hors ordre sous le filigrane, trois equipes, 3 contre 1,
+  abandon, sans chaine, groupe neuf, ecriture canonique en echec puis groupe tenu), mode canonique,
+  fuite inter-modes et offsets d'escouade actifs : lignes `player_skill_state_v2` et
+  `match_skill_rank` identiques (identifiants, ordre, valeurs), 3 traites des deux cotes, 1 rafale.
+- Mutations jouees (chacune restauree ensuite, fichiers verifies identiques) : M1 ecrivain pris
+  meme sans notable → rouges stationnaire et sans-candidat (`writeCalls = 1`) ; M2 lots de 3 sous
+  l'ecrivain → rouges rafale unique (2 puis 3 rafales) et parite (4 traites contre 3 : le groupe
+  tenu n'est plus partage d'un lot a l'autre) ; M3 pre-filtre « groupe deja score = deja vu » →
+  rouges parite (1 contre 3), rafale et stationnaire ; M4 eligibilite du seul premier candidat →
+  rouge parite (0 contre 3) ; M5 ancienne orchestration restauree en production → ecritures
+  identiques a la reference (la reference est fidele), rouges rafale (5 rafales), stationnaire et
+  sans-candidat.
+- Gates : `gofmt -l ./internal ./cmd` vide ; `go build ./...` 0 ; `go vet ./...` 0 ;
+  `go test ./internal/sync/...` 0 ; `go test -tags=integration -p 1 ./internal/sync/...
+  ./internal/persist/...` 0 (440 s, zero `^--- FAIL:`, 12 paquets ok) ; `golangci-lint run
+  ./internal/sync/...` : 30 constats avant, les memes 30 apres (0 nouveau), `--new-from-rev=97cc0d0c8`
+  → 0 ; en plus `go test ./internal/archlint/` 0 et `go test ./internal/games/halo_5/livesync/
+  ./internal/service/` 0.
+- Decouvertes (non traitees) : (a) joueur 2535469190789936 : l'ecriture canonique LUSR echoue a
+  chaque cycle depuis au moins 09:49 (« Duplicate key id: N violates primary key constraint » sur
+  `match_skill_rank` de sa base joueur : sequence `match_skill_rank_id_seq` en retard sur max(id)) —
+  deux groupes tenus, 5 matchs sautes par cycle, trou LUSR tant que la sequence n'a pas depasse
+  max(id) (109 occurrences dans `general.log`) ; (b) `buildTwoTeamRosters`
+  (`skill_v2_shadow.go`) avale ses erreurs SQL (`return nil, nil, false`, `continue`) : une erreur de
+  lecture passe pour « non notable » ; (c) type `shadowParticipant` inutilise (`skill_v2_shadow.go:57`,
+  signale par `unused`) ; (d) la vue `player_skill_state_v2_latest` arbitre par `MAX(written_at)` sans
+  departage par `id` (recette ADR 0026 : `ROW_NUMBER ... written_at DESC, id DESC`) — deux lignes
+  pour un meme (xuid, groupe) si deux horodatages sont egaux, `LoadState` en prend une au hasard ;
+  (e) le joueur aux 6 414 candidats en a 3 530 sans chaine LUSR alors que le filtre SQL ecarte
+  deja `is_ranked` / `is_firefight` : a verifier (pair_name classe Ranked ou Firefight avec des
+  drapeaux a FALSE ?) ; (f) l'appelant `internal/sync/engine_postsync_scoring.go:164` journalise en
+  WARN l'erreur rendue par le shadow (lecture du filigrane comprise), hors perimetre du lot.
 
 ## 6. L2 — Escouade backend (Go) — vague 2, apres L1
 
