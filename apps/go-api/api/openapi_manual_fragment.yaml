@@ -973,6 +973,31 @@ paths:
           $ref: '#/components/responses/ClientClosed'
         '503':
           $ref: '#/components/responses/DbBusy'
+  /players/{player_slug}/pages/teammates/sessions:
+    get:
+      description: |
+        Lecture LÉGÈRE des sessions de la composition (lot perf L4b, 2026-09-23) : les
+        champs `composition_sessions` et `latest_composition_session` de
+        `POST /pages/teammates`, mêmes valeurs pour la même composition et la même option
+        composition exacte, sans calculer la page. La page Escouade s'y ancre sur la
+        dernière session de la composition AVANT d'envoyer la requête lourde.
+
+        Sans coéquipier : les sessions escouade du joueur principal, dernière session vide.
+        Les deux champs sont toujours présents (liste vide, chaîne vide). Un titre sans la
+        capability requise répond 503 `capability_not_supported`.
+      parameters:
+        - name: player_slug
+          in: path
+          description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+      responses:
+        '200':
+          description: Sessions de la composition, de la plus récente à la plus ancienne
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '499':
+          $ref: '#/components/responses/ClientClosed'
+        '503':
+          $ref: '#/components/responses/DbBusy'
   /players/{player_slug}/pages/synthesis:
     post:
       parameters:

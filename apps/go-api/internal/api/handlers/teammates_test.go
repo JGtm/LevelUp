@@ -17,14 +17,26 @@ import (
 	"levelup/go-api/internal/port"
 )
 
-// mockTeammatesService implémente port.TeammatesService.
+// mockTeammatesService implémente port.TeammatesService. pageErr fait échouer les DEUX
+// routes (page et sessions) ; les champs got* retiennent l'appel de CompositionSessions.
 type mockTeammatesService struct {
 	page    domain.TeammatesPageResponse
 	pageErr error
+
+	sessions     []domain.CompositionSessionEntry
+	latest       string
+	gotXUID      string
+	gotTeammates []string
+	gotExact     bool
 }
 
 func (m *mockTeammatesService) GetPage(_ context.Context, _ string, _ domain.TeammatesQueryRequest) (domain.TeammatesPageResponse, error) {
 	return m.page, m.pageErr
+}
+
+func (m *mockTeammatesService) CompositionSessions(_ context.Context, xuid string, teammates []string, exact bool) ([]domain.CompositionSessionEntry, string, error) {
+	m.gotXUID, m.gotTeammates, m.gotExact = xuid, teammates, exact
+	return m.sessions, m.latest, m.pageErr
 }
 
 func newTeammatesRouter(factory handlers.ContextFactory[port.TeammatesService]) *chi.Mux {

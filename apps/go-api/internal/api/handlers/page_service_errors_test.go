@@ -102,7 +102,7 @@ func careerRoute(name, suffix string, svc func(err error) *failingCareerService,
 	}
 }
 
-// soloPageRoutes : teammates, filtres, synthèse, sessions, séries temporelles, accueil.
+// soloPageRoutes : teammates (page et sessions), filtres, synthèse, sessions, séries temporelles, accueil.
 func soloPageRoutes() []pageRoute {
 	filtersRouter := func(err error) http.Handler {
 		return newFiltersRouter(func(context.Context, string) (port.FiltersService, error) {
@@ -113,6 +113,17 @@ func soloPageRoutes() []pageRoute {
 		{
 			name: "teammates", method: http.MethodPost, body: `{}`,
 			path: "/players/test-player/pages/teammates", docPath: "/players/{player_slug}/pages/teammates",
+			mount: func(err error) http.Handler {
+				return newTeammatesRouter(func(context.Context, string) (port.TeammatesService, string, string, error) {
+					return &mockTeammatesService{pageErr: err}, testXUID, testGamertag, nil
+				})
+			},
+		},
+		{
+			// Lot perf L4b (2026-09-23) : la lecture légère des sessions de la composition.
+			name: "teammates sessions", method: http.MethodGet,
+			path:    "/players/test-player/pages/teammates/sessions?teammates=Alice&exact=true",
+			docPath: "/players/{player_slug}/pages/teammates/sessions",
 			mount: func(err error) http.Handler {
 				return newTeammatesRouter(func(context.Context, string) (port.TeammatesService, string, string, error) {
 					return &mockTeammatesService{pageErr: err}, testXUID, testGamertag, nil
