@@ -154,7 +154,10 @@ Journal du lot (2026-09-23, branche `feat/perf-l1` depuis 97cc0d0c8 ; commits c5
   `internal/observability/README.md` ne cite pas le sous-paquet `timing` (hors perimetre) ; (5)
   processus : le scratchpad de session est partage entre agents de lot — mon `lint_baseline.txt`
   a ete ecrase a 11:58 par un fichier du lot L4a (meme nom), reference retrouvee dans ma copie
-  normalisee de 11:54 ; un sous-dossier par lot evite la collision.
+  normalisee de 11:54 ; un sous-dossier par lot evite la collision ; (6) `go test ./internal/api/...`
+  a cree `data/titles/halo_5/warehouse/metadata.duckdb` (12 Ko, ignore par git, 12:21) dans l'arbre
+  du worktree : un test existant ecrit sous `data/` du depot au lieu d'un repertoire temporaire ;
+  artefact retire apres coup, test non identifie (hors perimetre).
 
 ## 3. L3 — Timeouts, retry, annulation, session (Go + web)
 
