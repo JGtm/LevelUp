@@ -14,6 +14,12 @@ The biggest release so far. Halo records a film of every match; until now the ap
 - **Zoom and framing** — wheel, keyboard or a directional pad; the canvas takes the whole block and zooming never crops the map
 - **Capture and record** — a PNG in one click, or a video of the replay with its soundtrack, encoded away from real time so the file is clean whatever your machine was doing
 - **You get in from everywhere** — the match view, the home tiles, the Explorer and the Tactics tab
+- **The Spartan's movement, at the instant** — the player card says when a Spartan is crouched, sliding, clambering or sprinting, read from the film itself; the jump, which the film does not write, is shown as derived and labelled so
+- **Vehicles, seat by seat** — who sits where is read from the film, a vehicle points where it is actually heading, a turret shot goes where its gunner aims, and the map shows when a vehicle comes back at its spot
+- **Captures in the right colour** — a zone fills with the colour of the side actually pushing, neutral bases included, and a flag on the ground shows its return gauge ("Return N %")
+- **Busy matches read more completely** — on the densest matches the replay now follows far more of the film, so movement that used to be lost shows up
+- **A clearer field** — mode objectives stand on their floor like the players, with a "Mode objectives" switch and its help; vehicles are larger, with redrawn sprites and weapon flashes of their own; markers keep a readable size at every zoom level; base sounds follow the action, and the score tick keeps time with the game clock
+- **Video export in standard formats** — 1080p or 720p, with the framing of your choice when the map is zoomed
 
 **What the film knows, and the API never said**
 - **The weapon behind every elimination** — read from the damage source in the film instead of being guessed from the scoreboard, including the deaths with no firearm at all: repulsor, fall, the environment
@@ -23,6 +29,10 @@ The biggest release so far. Halo records a film of every match; until now the ap
 - **Net flag grabs** — juggling folded into a 1.5-second window, so picking your own flag back up twice in a second counts once
 - **Assault** — bomb plants, defuses, carriers killed and the rest of the mode's statistics
 - **Rounds are counted as rounds** — on modes decided by rounds, the score shown is the number of rounds won and lost; the API's point score is kept alongside because on those modes it can hand the advantage to the side that lost
+- **Payback and support** — when a teammate dies, does your side take down the killer within 5 seconds? One rule everywhere — Squad, Sessions, Timeseries and the match view — and support counts the assists between teammates
+- **Range and height against your lobby** — your kill range and the height you fight from, read against the whole lobby of each match rather than against the playlist: range roles, height roles, and the engagement height of every kill on the match view
+- **Distance records by weapon** — your longest measured kill with each weapon, on the Synthesis
+- **Starting weapons read right** — a weapon picked up in the first seconds of a life no longer counts as a starting weapon
 
 **Equipment: used, kept or wasted**
 - **The three outcomes of every piece of equipment** — used, kept without ever using it, or dropped when you died, family by family
@@ -40,12 +50,21 @@ The biggest release so far. Halo records a film of every match; until now the ap
 - **Per-match cadence** — every usage number is now a number per measured match, not per minute
 - **The exchange in six cards** — assists as stacked bars, player-by-map with a single legend, medals last
 - **First kill / first death, ranges and usages** on the Timeseries page, objectives trimmed down to what the mode actually offered
+- **New badges** — "Thief" (the most kills stolen from a friend) in the Squad impact matrix, "Scuttled" and "Selfless" on objective modes when the score and the kills tell opposite stories, and "Lackey / Boss" roles on the assist charts
+- **Assists exchanged with each relation** — a column in Relations, a "Duo partner" card and an "Inner circle" card
+- **A "Usage" tab on the Timeseries and the Squad** — range, equipment and "the shapes you keep" in one place, and the cumulative damage balance on the Timeseries Summary
+- **Sessions in four sections**, and a side-by-side comparison in shared rows that stays readable when the drawer opens
+- **Squad intensity against your real team and the lobby**, and a filter bar that no longer replays every chart's animation on each click
+- **Explorer and Head-to-head** — the briefing shows the favourite weapon of the selection and the kill range of the player you scout; the Head-to-head gets a weapon profile: kill share by weapon class, range by role, top 3 weapons
+- **The home match tile** shows how many of your kills a teammate assisted
 
 **Match view**
 - **One card template for the whole page** — the three tables that were hard to compare became charts
 - **Score over time, per mode** — a round-based mode no longer draws a points curve that contradicts its own result
 - **Distance per weapon**, frag distribution in two levels, and special weapon control broken down by weapon level
 - **Game changers first** — equipment and weapons that changed nothing fold away
+- **A "Weapons and terrain" tab** — kills and weapons, distance, engagement height, equipment usage, pad control and film positions in one place; special weapon control in columns per pad, each team's share as horizontal tracks, and a larger field occupation map you can zoom
+- **Payback per player**, one chart per side
 
 **Maps, medals and media**
 - **109 map backgrounds**, converted losslessly and served whatever the format, with Forge zones named 100 %
@@ -53,6 +72,8 @@ The biggest release so far. Halo records a film of every match; until now the ap
 - **The VIP medal "Clash of Kings" has a name and an image again**, and medal images are refreshed from the game's own catalog
 - **Likes are per viewer** — your like is yours, not the account's
 - **Media in the replay** — your screenshots and clips sit on their own track, at the second they were captured
+- **Mode names read right** — playlists whose internal name is written the other way round now show their real mode
+- **Clips play one after another** — opening the next clip in the viewer no longer breaks its neighbours
 
 **Repairs**
 - **The World ranking page works again** (shipped as v7.3.1) — the source pages it reads had moved, and the page was serving a stale ranking instead of saying so; it can no longer degrade in silence, and an empty ranking and a failed fetch are no longer shown the same way
@@ -64,6 +85,10 @@ The biggest release so far. Halo records a film of every match; until now the ap
 - **A project footer** — the source, the licence, the feedback issues and a support button, with the non-affiliation notice
 - **A bilingual privacy page**
 - **The public demo carries no credential at all** — the seed switched from excluding known secrets to publishing only an explicit list of harmless fields
+- **Friends belong to a player**, invitations work without a group, and an admin can close the instance and see every identity in one place
+- **Copy the Xbox sign-in code in one click**
+- **An empty block says why** — every chart card and usage block names the reason when it has nothing to show
+- **Backups include the friend lists and Xbox aliases**
 
 **Halo 5** — everything read from a film is Halo Infinite only: Halo 5 keeps its own pages and never borrows another title's data. Where a feature cannot exist there, the app says so instead of showing an empty tab.
 
