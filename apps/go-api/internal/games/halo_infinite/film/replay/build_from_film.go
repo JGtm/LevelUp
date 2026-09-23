@@ -94,7 +94,7 @@ func BuildFromFilmAvecFaits(matchID, titleSlug string, film *source.Film, opt Op
 	// l a DEJA lue a sa resolution : la reprendre ici ne relit pas un octet. Elle porte la cle du
 	// profil (`build`) et l empreinte du registre ECS, que `coverage.decoder` publie.
 	opt.FilmIdentity = identiteDuFilm(fc)
-	in, err := scanFilmInputs(matchID, film, fc, opt)
+	in, filDesMorts, err := scanFilmInputs(matchID, film, fc, opt)
 	if err != nil {
 		return ReplayDocument{}, nil, err
 	}
@@ -102,6 +102,7 @@ func BuildFromFilmAvecFaits(matchID, titleSlug string, film *source.Film, opt Op
 	// de replis ne doit porter que les declenchements DU BALAYAGE (cf. `build_from_facts.go`).
 	faits := faitsDuBalayage(matchID, fc, opt, in)
 	in.applyTo(&opt)
+	opt.DeathsFeed = filDesMorts
 	return BuildFromPositions(matchID, titleSlug, in.Positions, in.Fire, opt), faits, nil
 }
 
@@ -151,6 +152,10 @@ type filmScan struct {
 	// balayages n'y ECRIVENT jamais — leurs sorties vont dans `in`.
 	opt Options
 	in  FilmInputs
+	// filDesMorts : le VERDICT de la lecture du fil des morts (cf. [lectureDuFilDesMorts]). Hors
+	// de `in` parce qu il n est pas une entree de faits : il sort par le second retour de
+	// [scanFilmInputs] et va en `Options.DeathsFeed`.
+	filDesMorts string
 }
 
 // decoupageForce rend le decoupage d'i0 que l'APPELANT impose, ou nil.
@@ -181,7 +186,7 @@ func decoupageForce(opt Options) *profile.I0Layout {
 // deja lus, les changements d'equipement sur les naissances lues dans les positions, et les
 // socles comme les vehicules heritent des largeurs MPP calibrees par les poses.
 func scanFilmInputs(matchID string, film *source.Film, fc *grammar.FilmContext,
-	opt Options) (FilmInputs, error) {
+	opt Options) (FilmInputs, string, error) {
 	s := &filmScan{matchID: matchID, film: film, fc: fc, opt: opt, world: opt.MapQuant.Range()}
 	s.scan = grammar.DefaultScanFilmOptions()
 	if opt.Scan != nil {
@@ -225,12 +230,12 @@ func scanFilmInputs(matchID string, film *source.Film, fc *grammar.FilmContext,
 	// (cf. observe.go).
 	s.opt.clock = &stepClock{last: time.Now()}
 	if err := s.balayerPositions(); err != nil {
-		return FilmInputs{}, err
+		return FilmInputs{}, "", err
 	}
 	s.balayerPortage()
 	s.balayerCapacites()
 	s.balayerMonde()
 	s.balayerEtatsDeMouvement()
 	s.balayerPont()
-	return s.in, nil
+	return s.in, s.filDesMorts, nil
 }

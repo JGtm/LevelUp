@@ -1,9 +1,9 @@
 # EMPREINTE DE FORME DU DOCUMENT DE REJEU — fige par document_shape_test.go.
 # Ne s'edite JAMAIS a la main : regeneration decrite en tete de ce test.
 schema 69
-empreinte-stockee 0030535963711419
-empreinte-servie 0030535963711419
-empreinte-cuite 8fa3e3de3052db39
+empreinte-stockee e2d0e86da7d73413
+empreinte-servie e2d0e86da7d73413
+empreinte-cuite 36de0b43db9df02f
 empreinte-cuite-regle 2
 
 AbilityCharge
@@ -147,6 +147,7 @@ BridgeHealth
   DeathOffsetMatched json:"deathOffsetMatched" int
   DeathOffsetMs json:"deathOffsetMs,omitempty" *int64
   DeathOffsetRunnerUp json:"deathOffsetRunnerUp" int
+  DeathsFeed json:"deathsFeed,omitempty" string
   DirectByCreation json:"directByCreation" int
   DirectByCreationPropagated json:"directByCreationPropagated" int
   Discordant json:"discordant" int

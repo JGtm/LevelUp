@@ -181,6 +181,12 @@ type Options struct {
 	// 2026-07-28. Un rejeu muet se voit ; un rejeu qui pose des tirs sur le mauvais joueur ne
 	// se voit pas.
 	Deaths []Death
+	// DeathsFeed est le VERDICT de la lecture du fil des morts ([DeathsFeedRead],
+	// [DeathsFeedEmpty], [DeathsFeedUnreadable]), pose par [BuildFromFilmAvecFaits] apres le
+	// balayage et publie en `coverage.bridge.deathsFeed`. Vide = aucun balayage de film dans
+	// cet assemblage (positions fournies, ou rejeu depuis les faits) : cf. [deathsFeedPublie].
+	// PAS UNE ENTREE DE FAITS : les faits persistes ne portent pas l erreur de lecture.
+	DeathsFeed string
 	// PlayerIndices est la table identité -> index de joueur, LUE dans le film (cf.
 	// player_index.go). Second maillon du pont, et lui aussi une lecture. Absente, aucun tir
 	// ni lancer n'est publié.

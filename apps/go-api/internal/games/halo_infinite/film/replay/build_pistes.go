@@ -224,6 +224,9 @@ func (a *assemblage) composerLaCouverture() {
 	a.doc.Coverage.Bridge.NamedBySlotBridge = a.unnamed.byBridge
 	a.doc.Coverage.Bridge.UnnamedLives = a.unnamed.remaining
 	a.doc.Coverage.Bridge.UnnamedLivesContested = a.unnamed.contested
+	// LE VERDICT DU FIL DES MORTS (schema 69, lot M5.2) : vide et illisible ne sont pas la meme
+	// chose, et le document le dit (cf. BridgeHealth.DeathsFeed).
+	a.doc.Coverage.Bridge.DeathsFeed = deathsFeedPublie(a.opt.DeathsFeed, len(a.opt.Deaths))
 	// La couverture des episodes d'equipement se publie AVEC eux : « N episodes » sans
 	// « sur M vies » se lirait comme une exhaustivite.
 	a.doc.Coverage.Equipment = equipmentCoverage(a.doc.EquipmentEpisodes, a.doc.Tracks, a.clotureesParMort)

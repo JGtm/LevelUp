@@ -1269,6 +1269,8 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   vaut zéro (le statborg n'émet qu'au changement). Une valeur d'enum publié est de la
 	//   forme, et la règle de publication du calque change. Garde-fou testé : une série à 2
 	//   contre un registre à 3 reste `unresolved`. Aucune révision de décodage ne monte.
+	//   Même montée (lot M5.2) : `coverage.bridge.deathsFeed` (`read` / `empty` /
+	//   `unreadable`) — un fil des morts vide est une mesure, un fil illisible une panne.
 	//   Détail : `document_chronicle.go`.
 	if SchemaVersion != 69 {
 		t.Fatalf("SchemaVersion = %d, attendu 69 : incrémenter exige une raison écrite ci-dessus "+

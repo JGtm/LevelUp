@@ -86,13 +86,17 @@ type LayerCoverage struct {
 
 // BridgeHealth résume la santé du pont slot -> joueur.
 type BridgeHealth struct {
-	Slots              int `json:"slots"`
-	FromReading        int `json:"fromReading"`
-	LivesNamed         int `json:"livesNamed"`
-	LivesTotal         int `json:"livesTotal"`
-	IndexReadings      int `json:"indexReadings"`
-	IndexDisagreements int `json:"indexDisagreements"`
-	SlotCollisions     int `json:"slotCollisions"`
+	Slots       int `json:"slots"`
+	FromReading int `json:"fromReading"`
+	LivesNamed  int `json:"livesNamed"`
+	LivesTotal  int `json:"livesTotal"`
+	// DeathsFeed : le VERDICT de la lecture du fil des morts (schéma 69) — `read`, `empty` (le
+	// morceau des temps forts est lu et ne porte aucune mort) ou `unreadable` (panne). Absent =
+	// non mesuré. `omitempty` comme côté stocké (garde-rail de parité).
+	DeathsFeed         string `json:"deathsFeed,omitempty"`
+	IndexReadings      int    `json:"indexReadings"`
+	IndexDisagreements int    `json:"indexDisagreements"`
+	SlotCollisions     int    `json:"slotCollisions"`
 	// Concordant / Discordant : LE PONT PAR MORTS EN TÉMOIN (lot E2, 2026-09-08). Le record de
 	// création du bipède écrit le propriétaire du corps ; le pont ne nomme plus, il confronte.
 	// Parmi les vies qu'une mort termine ET que la lecture directe nomme, `Concordant` compte

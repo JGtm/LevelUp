@@ -2047,6 +2047,19 @@ package replay
 // (b) resolvait deja, la valeur publiee passe de `b` a `a0` et le CAMP ne change pas — c est le
 // controle croise de la montee (le desaccord d un seul camp aurait ete un defaut).
 //
+//	`coverage.`    UN CHAMP NEUF (lot M5.2, meme montee) : le VERDICT de la lecture du fil des
+//	`bridge.`      morts — `read`, `empty` (le morceau des temps forts est lu et ne porte aucune
+//	`deathsFeed`   mort : une MESURE) ou `unreadable` (pas de morceau des temps forts, morceau
+//	               absent, evenements illisibles : une PANNE). Absent = non mesure (assemblage
+//	               sans balayage). Avant, un fil illisible ne se lisait que dans les journaux :
+//	               le diagnostic d `ab526724` a exige les journaux ET le code.
+//
+// LA LIMITE ECRITE DU CHAMP : les faits persistes ne portent PAS l erreur de lecture. Rejoue
+// depuis ses faits, un film dont le fil etait illisible publie la cle ABSENTE (jamais `empty` ni
+// `read` : le champ se tait plutot que de choisir) — c est la breche d equivalence consignee au
+// plan des retours rejeu (§8, decouverte 4), que ce champ rend VISIBLE sans la creer. Depuis le
+// lot L3, un film sans morceau des temps forts n est plus cuit du tout.
+//
 // POURQUOI LA VERSION MONTE : une valeur d enum publie est de la FORME, et la regle de
-// publication du calque de score change. Republication DEPUIS LES FAITS (aucune revision de
+// publication du calque de score change ; `deathsFeed` est un champ neuf de la couverture. Republication DEPUIS LES FAITS (aucune revision de
 // DECODAGE ne monte : `grammar`, `facts`, `layers` et le blob d entrees sont inchanges).

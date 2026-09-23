@@ -397,11 +397,23 @@ func (s *filmScan) balayerPont() {
 	}
 	s.in.Projectiles = proj
 	s.opt.observe("projectiles", s.in.Projectiles)
-	// Le fil des morts NOMME les vies. Sans lui, le pont est vide et NI les tirs NI les lancers
-	// ne sont publiés : ce n'est pas une dégradation cosmétique, d'où un warn explicite.
+	// Le fil des morts NOMME les vies par le pont par morts, cale l'horloge des morts et ouvre la
+	// lecture de la table d'index. Son VERDICT est publie (`coverage.bridge.deathsFeed`, lot M5.2
+	// des retours rejeu) : un fil VIDE est une mesure, un fil ILLISIBLE une panne, et le document
+	// les distingue au lieu de les laisser aux seuls journaux.
+	//
+	// CE QUE LE FIL ILLISIBLE NE COUPE PLUS (message corrige le 2026-09-23) : les tirs et les
+	// lancers. Ils sont nommes par la table des sieges que le film ecrit (`chunk_00`, lot 1.6) —
+	// mesure : 2 838 tirs publies sur `ab526724` quand son fil etait illisible.
 	deaths, err := ScanDeaths(s.film)
-	if err != nil {
-		slog.Warn("fil des morts illisible — aucun tir ni lancer ne sera publie",
+	s.filDesMorts = lectureDuFilDesMorts(deaths, err)
+	switch s.filDesMorts {
+	case DeathsFeedUnreadable:
+		slog.Warn("fil des morts illisible — ni calage d horloge des morts, ni table d index, ni "+
+			"pont par morts (coverage.bridge.deathsFeed = unreadable)", "err", err, "match_id", s.matchID)
+		deaths = nil
+	case DeathsFeedEmpty:
+		slog.Info("fil des morts lu et VIDE — aucune mort a nommer (coverage.bridge.deathsFeed = empty)",
 			"err", err, "match_id", s.matchID)
 		deaths = nil
 	}
