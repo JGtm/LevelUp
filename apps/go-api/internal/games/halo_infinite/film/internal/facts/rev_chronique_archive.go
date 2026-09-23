@@ -235,3 +235,16 @@ package facts
 // aucune largeur, aucun appariement ne change, les lignes produites sont identiques a l octet et
 // aucun match deja decode n est candidat au backlog. Le critere de retrait ecrit dans les deux
 // fichiers supprimes est tenu, et il etait mesurable au `grep`.
+// 2026-09-23, LOT L3 (PLAN_RETOURS_REJEU_2026-09-23) — REVISION INCHANGEE, EMPREINTE SEULE
+// RECOPIEE, ET LE CHOIX EST ECRIT. `objectives/film.go` ne change QUE DE COMMENTAIRE : la godoc
+// de `manifestChunks` citait `7b0d89c4` au present (« un film du cache est dans ce cas »), faux
+// depuis la restauration du cache du 2026-09-16 (doc inversee, rapport `ctf_ab526724` §5.5) ; elle
+// dit desormais l histoire au passe et renvoie au refus de la cuisson pose par le lot. Aucun octet
+// de code, aucune lecture, aucune largeur ne change : les lignes produites sont identiques a
+// l octet et aucun match deja decode n est candidat au backlog.
+// 2026-09-23, LOT L3 (reprise apres revue adverse, constat L3-R8) — REVISION INCHANGEE, EMPREINTE
+// SEULE RECOPIEE, ET LE CHOIX EST ECRIT. `fallback/registre_objectifs.go` recoit UNE entree de
+// DONNEES, `repli_temps_forts_dernier_numero` : le registre DECLARE et COMPTE, il ne decide rien
+// (cf. l en-tete de `fallback/repli.go`), et son compteur n est pas cable. Aucune lecture, aucune
+// largeur, aucun appariement ne change : les lignes produites sont identiques a l octet et aucun
+// match deja decode n est candidat au backlog.

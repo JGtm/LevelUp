@@ -6,16 +6,21 @@ import (
 	"testing"
 )
 
+// filmFinalise : trois morceaux (en-tete, replication, temps forts) — la forme minimale d'un
+// film que le writer accepte de valider.
+func filmFinalise(tempsForts string) []WriteChunk {
+	return []WriteChunk{
+		{Index: 0, ChunkType: 1, StartMS: 0, DurationMS: 0, Data: []byte("header")},
+		{Index: 1, ChunkType: 2, StartMS: 0, DurationMS: 20000, Data: []byte("replication")},
+		{Index: 2, ChunkType: ChunkTypeTempsForts, StartMS: 0, DurationMS: 20000, Data: []byte(tempsForts)},
+	}
+}
+
 // TestWrite_PuisOpenRelit — le contrat central du writer : ce que Write persiste, Open
 // le relit (manifeste + chunks), et ListShortIDs l'enumere.
 func TestWrite_PuisOpenRelit(t *testing.T) {
 	root := t.TempDir()
-	chunks := []WriteChunk{
-		{Index: 0, ChunkType: 1, StartMS: 0, DurationMS: 0, Data: []byte("header")},
-		{Index: 1, ChunkType: 2, StartMS: 0, DurationMS: 20000, Data: []byte("replication")},
-		{Index: 2, ChunkType: 3, StartMS: 0, DurationMS: 20000, Data: []byte("killfeed")},
-	}
-	if err := Write(root, "0badf00d", chunks); err != nil {
+	if err := Write(root, "0badf00d", filmFinalise("killfeed")); err != nil {
 		t.Fatalf("Write: %v", err)
 	}
 	src, found, err := Open(root, "0badf00d")
@@ -34,11 +39,12 @@ func TestWrite_PuisOpenRelit(t *testing.T) {
 	}
 }
 
-// TestWrite_NEcrasePasLeManifesteHistorique — un manifeste deja present (cache Python,
+// TestWrite_NEcrasePasLeManifesteHistorique — un manifeste FINALISE deja present (cache Python,
 // blob_prefix CDN) est CONSERVE : l'ecraser perdrait le repli reseau des chunks absents.
 func TestWrite_NEcrasePasLeManifesteHistorique(t *testing.T) {
 	root := t.TempDir()
-	historique := []byte(`{"blob_prefix":"https://cdn/x","chunks":[{"index":0,"chunk_type":1,"start_ms":0}]}`)
+	historique := []byte(`{"blob_prefix":"https://cdn/x","chunks":[{"index":0,"chunk_type":1,"start_ms":0},` +
+		`{"index":1,"chunk_type":3,"start_ms":0}]}`)
 	if err := os.MkdirAll(filepath.Join(root, "film_manifests"), 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -46,7 +52,10 @@ func TestWrite_NEcrasePasLeManifesteHistorique(t *testing.T) {
 	if err := os.WriteFile(mfPath, historique, 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := Write(root, "cafe0001", []WriteChunk{{Index: 0, ChunkType: 1, Data: []byte("h")}}); err != nil {
+	if err := Write(root, "cafe0001", []WriteChunk{
+		{Index: 0, ChunkType: 1, Data: []byte("h")},
+		{Index: 1, ChunkType: ChunkTypeTempsForts, Data: []byte("tf")},
+	}); err != nil {
 		t.Fatalf("Write: %v", err)
 	}
 	got, err := os.ReadFile(mfPath)
@@ -66,20 +75,23 @@ func TestWrite_NEcrasePasLeManifesteHistorique(t *testing.T) {
 // immuable) ; un second Write complete seulement ce qui manque.
 func TestWrite_IdempotentSurLesChunks(t *testing.T) {
 	root := t.TempDir()
-	if err := Write(root, "beef0002", []WriteChunk{{Index: 0, ChunkType: 2, Data: []byte("v1")}}); err != nil {
+	if err := Write(root, "beef0002", filmFinalise("tf")); err != nil {
 		t.Fatalf("Write 1: %v", err)
 	}
-	if err := Write(root, "beef0002", []WriteChunk{
-		{Index: 0, ChunkType: 2, Data: []byte("ECRASE")},
-		{Index: 1, ChunkType: 3, Data: []byte("nouveau")},
-	}); err != nil {
+	manquant := filepath.Join(ChunkDir(root, "beef0002"), "chunk_01.bin")
+	if err := os.Remove(manquant); err != nil {
+		t.Fatal(err)
+	}
+	second := filmFinalise("tf")
+	second[0].Data = []byte("ECRASE")
+	if err := Write(root, "beef0002", second); err != nil {
 		t.Fatalf("Write 2: %v", err)
 	}
 	got, err := os.ReadFile(filepath.Join(ChunkDir(root, "beef0002"), "chunk_00.bin"))
-	if err != nil || string(got) != "v1" {
-		t.Errorf("chunk 0 = %q (err %v), attendu v1 (jamais reecrit)", got, err)
+	if err != nil || string(got) != "header" {
+		t.Errorf("chunk 0 = %q (err %v), attendu header (jamais reecrit)", got, err)
 	}
-	if _, err := os.Stat(filepath.Join(ChunkDir(root, "beef0002"), "chunk_01.bin")); err != nil {
+	if _, err := os.Stat(manquant); err != nil {
 		t.Errorf("chunk 1 manquant apres le second Write : %v", err)
 	}
 }

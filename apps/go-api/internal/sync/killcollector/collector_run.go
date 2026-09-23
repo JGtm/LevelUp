@@ -17,6 +17,7 @@ import (
 
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
+	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/persist"
@@ -92,6 +93,9 @@ func (c *KillSourceCollector) decodeFilmForMatch(ctx context.Context, matchID st
 	[]haloclient.FilmChunk, *decfilm.Film, *decfilm.Result, KillSourceOutcome, error,
 ) {
 	chunks, found, err := FilmChunksForMatch(ctx, c.client, matchID)
+	if filmPasEncoreFinalise(ctx, matchID, err) {
+		return nil, nil, nil, OutcomeNoKillFeed, nil
+	}
 	if err != nil {
 		// EXPIRATION PARTIELLE = DEFINITIVE (bilan fork ChaseWoodhams 2026-09-11, point 4b) :
 		// le manifeste repond encore mais un chunk (blob CDN pre-signe) rend 404/410. Sans
@@ -304,4 +308,25 @@ func (c *KillSourceCollector) writeShots(ctx context.Context, batch persist.Weap
 	}
 	defer release()
 	return persist.NewWeaponShotsPersister(db).PersistPass(ctx, batch)
+}
+
+// filmPasEncoreFinalise dit si `err` est le refus d un film que le serveur n a pas encore
+// FINALISE, et le compte et le journalise alors.
+//
+// FILM PAS ENCORE FINALISE = SANS KILL-FEED, PAS UNE PANNE (lot L3, 2026-09-23 ; constat L3-R2 de
+// sa revue adverse). Le client (`haloclient.fetchFilmChunks`) et le cache local
+// (`LocalCacheFilms`) refusent un manifeste sans morceau des temps forts : le film existe, son
+// kill-feed n est juste pas encore publie. C est mot pour mot [OutcomeNoKillFeed], qui ne pose
+// AUCUN marqueur (le match reste candidat au cycle suivant, film complet). Le classer en erreur,
+// comme la branche generique de `decodeFilmForMatch` le ferait, journalisait un ERROR et
+// comptait un echec pour chaque match detecte moins d une minute apres sa fin — 23 sur 96 au
+// parc mesure (rapport `ctf_ab526724` §2.3).
+func filmPasEncoreFinalise(ctx context.Context, matchID string, err error) bool {
+	if !errors.Is(err, filmcache.ErrFilmNonFinalise) {
+		return false
+	}
+	observability.AddInt(metricNonFinalise, 1)
+	slog.InfoContext(ctx, "killsource: film pas encore finalise (sans morceau des temps forts) — "+
+		"sans kill-feed ce cycle, repris au suivant", "match_id", matchID, "err", err)
+	return true
 }

@@ -81,9 +81,11 @@ func TestFilmDejaEnCache(t *testing.T) {
 			"recuperer — sinon une ecriture interrompue le perd definitivement")
 	}
 
-	// Manifeste ecrit : le film est archive.
+	// Manifeste ecrit : le film est archive. Un film FINALISE (lot L3, 2026-09-23) : le writer
+	// refuse une liste sans morceau des temps forts.
 	if err := filmcache.Write(racine, court, []filmcache.WriteChunk{
 		{Index: 0, ChunkType: 1, Data: []byte("entete")},
+		{Index: 1, ChunkType: filmcache.ChunkTypeTempsForts, Data: []byte("temps forts")},
 	}); err != nil {
 		t.Fatal(err)
 	}

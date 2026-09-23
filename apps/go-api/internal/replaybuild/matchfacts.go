@@ -153,7 +153,10 @@ func assemblerFilmStats(ctx context.Context, matchID string, sb replay.FilmStatb
 // jeu, 3 pour le pied — et jamais 0. Un chunk hors manifeste n'a donc pas de debut connu, et
 // l'inscrire a zero dans l'horloge dirait au balayage de l'anneau « ce chunk commence a 0 » au
 // lieu de « je ne sais pas » (`filmdec/navpoint_radial_scan.go`, `hasStart`). Un film du cache
-// est dans ce cas : `7b0d89c4` porte les fichiers 31 et 32 sans les avoir au manifeste.
+// A ETE dans ce cas : `7b0d89c4` portait le 2026-09-02 les fichiers 31 et 32 sans les avoir au
+// manifeste — un film archive avant sa finalisation, restaure complet le 2026-09-16. Depuis le
+// lot L3 (2026-09-23), la cuisson REFUSE un tel film (`refuserMorceauxHorsManifeste`) : ce filtre
+// reste la garde de datation des films charges hors de cette porte.
 func chunksDuManifeste(film *decfilm.Film) []decfilm.ChunkMeta {
 	if film == nil {
 		return nil

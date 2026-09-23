@@ -44,7 +44,12 @@ import (
 type fetcherRaster struct{}
 
 func (fetcherRaster) GetFilmChunks(context.Context, string) ([]haloclient.FilmChunk, bool, error) {
-	return []haloclient.FilmChunk{{Index: 0, ChunkType: 2, Data: []byte("x")}}, true, nil
+	// UN FILM FINALISE (lot L3, 2026-09-23) : le writer du cache refuse une liste sans morceau
+	// des temps forts.
+	return []haloclient.FilmChunk{
+		{Index: 0, ChunkType: haloclient.FilmChunkTypeReplicationData, Data: []byte("x")},
+		{Index: 1, ChunkType: haloclient.FilmChunkTypeHighlightEvents, Data: []byte("tf")},
+	}, true, nil
 }
 
 // racineCuisson prepare une racine temporaire complete : manifestes du titre + catalogue de

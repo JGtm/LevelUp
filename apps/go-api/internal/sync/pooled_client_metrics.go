@@ -15,6 +15,7 @@ import (
 	"errors"
 	"time"
 
+	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
 	"levelup/go-api/internal/observability"
 )
 
@@ -45,6 +46,17 @@ func HaloAPICallNames() []string {
 // par joueur — vide pour les appels match-level (match_stats, film, film_chunk,
 // match_skill) qui ne concernent pas un joueur unique.
 func observeHaloCall(title, call, player string, start time.Time, err error) {
+	// UN FILM PAS ENCORE FINALISE N EST PAS UNE ERREUR D APPEL (lot L3 du 2026-09-23, constat
+	// L3-R3 de sa revue adverse). La requete a abouti et le manifeste est lisible : il dit seulement
+	// que le serveur n a pas fini de publier le film (pas de morceau des temps forts), et
+	// l appelant REPORTE (`haloclient.fetchFilmChunks`). Le compter ici le rangeait en erreur
+	// RESEAU (pas une `HTTPError`) : la colonne « Network » du monitoring montait pour chaque
+	// match detecte moins d une minute apres sa fin — une panne a chercher qui n existe pas. Ce
+	// report se compte chez ses appelants (`postsync_replay_films_non_finalises_total`,
+	// `killsource_films_non_finalises`).
+	if errors.Is(err, filmcache.ErrFilmNonFinalise) {
+		err = nil
+	}
 	ms := time.Since(start).Milliseconds()
 	observability.RecordDurationMST(title, "halo_api_ms_"+call, ms)
 	observability.RecordPlayerAPICallT(title, call, player, ms, err != nil)

@@ -31,11 +31,13 @@ import (
 	"time"
 )
 
-// resultatFilm : ce que le pont disque rend d'un match — le film a-t-il ete persiste, et
-// est-il disponible.
+// resultatFilm : ce que le pont disque rend d'un match — le film a-t-il ete persiste, est-il
+// disponible, ou son archivage est-il REPORTE parce que le serveur ne l a pas encore finalise
+// (lot L3, cf. cuisson_non_finalise.go : un report n est pas un film absent).
 type resultatFilm struct {
-	sauve bool
-	dispo bool
+	sauve   bool
+	dispo   bool
+	reporte bool
 }
 
 // prefetchFilm : UN telechargement en vol, et le seul.
@@ -72,8 +74,7 @@ func (p *pontDisque) film(ctx context.Context, matchID string) resultatFilm {
 		en.annuler()
 		<-en.fini
 	}
-	saved, ok := persistFilmToCache(ctx, p.d, matchID)
-	return resultatFilm{sauve: saved, dispo: ok}
+	return persistFilmToCache(ctx, p.d, matchID)
 }
 
 // precharger lance le telechargement du film suivant, SI le budget du cycle en laisse le temps.
@@ -88,8 +89,7 @@ func (p *pontDisque) precharger(ctx context.Context, matchID string, restant tim
 	pctx, annuler := context.WithCancel(ctx)
 	en := &prefetchFilm{matchID: matchID, annuler: annuler, fini: make(chan resultatFilm, 1)}
 	go func() {
-		saved, ok := persistFilmToCache(pctx, p.d, matchID)
-		en.fini <- resultatFilm{sauve: saved, dispo: ok}
+		en.fini <- persistFilmToCache(pctx, p.d, matchID)
 	}()
 	p.enVol = en
 	slog.DebugContext(ctx, "post-sync: rejeu 2D — prechargement du film suivant",

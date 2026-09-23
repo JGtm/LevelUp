@@ -175,6 +175,17 @@
 #               l octet et AUCUN match deja decode n est candidat au backlog. Le critere de
 #               retrait ecrit dans les deux fichiers supprimes est tenu : plus aucun
 #               `killsource.{ApparStats,Assist,CoupleStats}` ni `objectives.{...}` dans le depot.
+#
+#   2026-09-23  REVISION INCHANGEE, EMPREINTE SEULE RECOPIEE (lot L3 des retours rejeu), ET LE
+#               CHOIX EST EXPLICITE. Un commentaire de `objectives/film.go` (doc inversee sur
+#               `7b0d89c4`) et la note correspondante de `rev_chronique_archive.go` : aucun octet
+#               de code, sortie identique a l octet, AUCUN match candidat au backlog.
+#
+#   2026-09-23  REVISION INCHANGEE, EMPREINTE SEULE RECOPIEE (reprise du lot L3 apres sa revue
+#               adverse, constat L3-R8). Une entree de DONNEES au registre des replis
+#               (`repli_temps_forts_dernier_numero`, compteur non cable) et sa note dans
+#               `rev_chronique_archive.go` : aucune decision de decodage, sortie identique a l octet,
+#               AUCUN match candidat au backlog.
 killsource-2026-09-16.2	d09f5d19636bbb5eff1c4d38b54489868bafa127c01ce91b6cb028e9dd7bc131
 killsource-2026-09-16.3	8c87a14f4d72f8f2b05350a39c9a93b80479a372d61f3a9416628689e2b8e67e
 killsource-2026-09-16.4	a3fcc9fed6be58eeab197aaa212dd2e0e386750671ff6a67858454d76935eac8
@@ -195,4 +206,4 @@ killsource-2026-09-21.7	f450440225a280104489d2f9e79d2c85b2a40072b8d583df87c005c8
 killsource-2026-09-21.8	31745c89f06053b37e79b79810c5d1f8e1ba4e762fbf85cfa0fb21af9eb19855
 killsource-2026-09-21.9	9e7a8df4984025506ce1e0b7474c5e2e10516e2b3d93b7c48561485100ca5726
 killsource-2026-09-22	eb0c32d7d98f49b8f90979270d6925327033adcf6cede45b6c945883f5f39460
-killsource-2026-09-22.2	85d102ed787e23a58d3ca0d8e18f2164619769fdb0378f84f1392f7cdb417c95
+killsource-2026-09-22.2	98ea377c20687222ef8ac0ef19e82991467663caa9fc32402ec4859b2fff2447

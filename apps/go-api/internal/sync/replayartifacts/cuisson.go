@@ -116,12 +116,17 @@ type bilanCuisson struct {
 	filmsSauves int
 	dejaAJour   int
 	sansFilm    int
-	echecs      int
-	// ecartes : films MIS DE COTE parce que leur cle ecrite est absente de la table de profil
-	// (lot 3.1.1, `replaybuild.ErrUnknownFilmKey`). SEPARE DES ECHECS, et ce n est pas cosmetique :
-	// un echec appelle un diagnostic, un ecarte appelle une LIGNE DE TABLE
-	// (`docs/RUNBOOK_FILM_PROFILES.md`) — les melanger noierait l evenement « le jeu a change »
-	// dans le bruit des cuissons qui plantent.
+	// reportes : films que le serveur n'a pas encore FINALISÉS (lot L3, cf. cuisson_non_finalise.go)
+	// — ni archivés ni cuits, repris au cycle suivant. SÉPARÉS DE `sansFilm`, qui dit « absent ou
+	// expiré » : un film reporté existe, et il sera complet dans une minute.
+	reportes int
+	echecs   int
+	// ecartes : films MIS DE COTE, jamais comptes en echec : cle ecrite absente de la table de
+	// profil (lot 3.1.1, `replaybuild.ErrUnknownFilmKey`), ou film au cache que la cuisson refuse
+	// comme NON FINALISE (lot L3, `filmcache.ErrFilmNonFinalise`). SEPARE DES ECHECS, et ce n est
+	// pas cosmetique : un echec appelle un diagnostic, un ecarte appelle une LIGNE DE TABLE
+	// (`docs/RUNBOOK_FILM_PROFILES.md`) ou un film a completer — les melanger noierait l evenement
+	// « le jeu a change » dans le bruit des cuissons qui plantent. Le journal PAR MATCH dit lequel.
 	ecartes      int
 	budgetEpuise bool
 	// ranges : les artefacts RANGÉS par ce cycle, à dériver une fois TOUTE cuisson terminée
@@ -133,6 +138,12 @@ type bilanCuisson struct {
 	// document rangé. Deux listes séparées auraient divergé au premier crochet ajouté — c'est
 	// déjà ce que disait l'ancien champ `usage`, qui servait aussi les statistiques d'Assaut.
 	ranges []ArtefactRange
+}
+
+// traites : les matchs que la boucle a examinés et décidés (construits, à jour, sans film,
+// reportés, en échec) — la ligne « traites » des journaux de budget.
+func (b bilanCuisson) traites() int {
+	return b.construits + b.dejaAJour + b.sansFilm + b.reportes + b.echecs
 }
 
 // DeadlineParFilm : la borne DURE de la cuisson d'UN film, quand le budget du cycle en laisse
@@ -216,7 +227,7 @@ func buildAll(ctx context.Context, d Deps, work []buildWork) bilanCuisson {
 		if time.Since(debut) >= budget {
 			b.budgetEpuise = true
 			slog.InfoContext(ctx, "post-sync: rejeu 2D — budget de cycle épuisé, solde au cycle suivant",
-				"gamertag", d.Gamertag, "budget", budget, "traites", b.construits+b.dejaAJour+b.sansFilm+b.echecs)
+				"gamertag", d.Gamertag, "budget", budget, "traites", b.traites())
 			break
 		}
 		film := pont.film(ctx, w.matchID)
@@ -225,6 +236,10 @@ func buildAll(ctx context.Context, d Deps, work []buildWork) bilanCuisson {
 		// jour ne doit pas priver le SUIVANT de son avance.
 		if i+1 < len(work) {
 			pont.precharger(ctx, work[i+1].matchID, budget-time.Since(debut))
+		}
+		if film.reporte {
+			b.reportes++
+			continue // film pas encore finalisé : compté et journalisé par reporterNonFinalise
 		}
 		if !film.dispo {
 			b.sansFilm++
@@ -251,7 +266,7 @@ func buildAll(ctx context.Context, d Deps, work []buildWork) bilanCuisson {
 			slog.InfoContext(ctx, "post-sync: rejeu 2D — solde de budget sous le plancher de cuisson, match reporté au cycle suivant",
 				"gamertag", d.Gamertag, "match_id", w.matchID, "solde", solde,
 				"plancher", PlancherCuisson,
-				"traites", b.construits+b.dejaAJour+b.sansFilm+b.echecs)
+				"traites", b.traites())
 			break
 		}
 		cuireUnMatch(ctx, d, w, &b, solde)
@@ -317,6 +332,16 @@ func cuireUnMatch(ctx context.Context, d Deps, w buildWork, b *bilanCuisson, res
 			b.ecartes++
 			return
 		}
+		// FILM NON FINALISÉ = ÉCARTÉ, PAS UN ÉCHEC (lot L3, 2026-09-23). La cuisson refuse un
+		// film dont le manifeste ne porte pas le morceau des temps forts, ou dont des morceaux ne
+		// sont pas décrits par le manifeste : cuire un film TRONQUÉ publierait un document faux
+		// (`ab526724`). Même frontière de processus, donc même test sur le texte.
+		if strings.Contains(berr.Error(), filmcache.ErrFilmNonFinalise.Error()) {
+			slog.InfoContext(ctx, "post-sync: artefact rejeu ÉCARTÉ — film non finalisé au cache",
+				"gamertag", d.Gamertag, "match_id", w.matchID, "err", berr)
+			b.ecartes++
+			return
+		}
 		logFn(ctx, "post-sync: artefact rejeu non construit",
 			"gamertag", d.Gamertag, "match_id", w.matchID, "err", berr)
 		b.echecs++
@@ -338,9 +363,14 @@ func cuireUnMatch(ctx context.Context, d Deps, w buildWork, b *bilanCuisson, res
 }
 
 // persistFilmToCache télécharge les chunks COMPLETS du film et les persiste au cache
-// (pont disque). Rend (persisté, film disponible). Un film déjà entièrement en cache ne
-// re-télécharge rien (GetFilmChunks est cache-first chunk par chunk).
-func persistFilmToCache(ctx context.Context, d Deps, matchID string) (saved, available bool) {
+// (pont disque). Rend ce que le cycle doit en savoir : persisté, disponible, ou REPORTÉ. Un film
+// déjà entièrement en cache ne re-télécharge rien (GetFilmChunks est cache-first chunk par chunk).
+//
+// UN FILM NON FINALISÉ N'EST NI ARCHIVÉ NI DISPONIBLE (lot L3) : refusé par le client ou par le
+// writer, il est REPORTÉ ([reporterNonFinalise]) — le match revient au cycle suivant par le
+// rattrapage, avec un film complet. Le report est un poste DISTINCT du bilan : le ranger avec
+// les films absents dirait « expiré » d'un film qui existe (constat L3-R3 de la revue adverse).
+func persistFilmToCache(ctx context.Context, d Deps, matchID string) resultatFilm {
 	chunks, found, err := d.Fetcher.GetFilmChunks(ctx, matchID)
 	if err != nil {
 		// UN PRECHARGEMENT ABANDONNE N'EST PAS UN FILM ILLISIBLE. Le pont disque tourne aussi en
@@ -350,16 +380,19 @@ func persistFilmToCache(ctx context.Context, d Deps, matchID string) (saved, ava
 		if ctx.Err() != nil {
 			slog.DebugContext(ctx, "post-sync: rejeu 2D — téléchargement de film abandonné (cycle terminé)",
 				"gamertag", d.Gamertag, "match_id", matchID, "err", err)
-			return false, false
+			return resultatFilm{}
+		}
+		if reporterNonFinalise(ctx, d, matchID, err) {
+			return resultatFilm{reporte: true}
 		}
 		slog.WarnContext(ctx, "post-sync: film illisible — rejeu non construit",
 			"gamertag", d.Gamertag, "match_id", matchID, "err", err)
-		return false, false
+		return resultatFilm{}
 	}
 	if !found || len(chunks) == 0 {
 		slog.DebugContext(ctx, "post-sync: film absent côté serveur — rejeu non construit",
 			"match_id", matchID)
-		return false, false
+		return resultatFilm{}
 	}
 	wc := make([]filmcache.WriteChunk, 0, len(chunks))
 	for _, c := range chunks {
@@ -369,9 +402,16 @@ func persistFilmToCache(ctx context.Context, d Deps, matchID string) (saved, ava
 		})
 	}
 	if err := filmcache.Write(d.CacheRoot, titlePkg.FilmShortMatchID(matchID), wc); err != nil {
+		// Un client qui n'aurait pas vérifié la finalisation : le writer la vérifie, et c'est le
+		// même report.
+		if reporterNonFinalise(ctx, d, matchID, err) {
+			return resultatFilm{reporte: true}
+		}
 		slog.WarnContext(ctx, "post-sync: persistance du film au cache échouée",
 			"gamertag", d.Gamertag, "match_id", matchID, "err", err)
-		return false, false
+		return resultatFilm{}
 	}
-	return true, true
+	// LE FILM EST ARCHIVÉ, FINALISÉ : son attente (s'il en avait une) est close.
+	attentes.oublier(cleDAttente(ctx, matchID))
+	return resultatFilm{sauve: true, dispo: true}
 }

@@ -37,6 +37,7 @@ package killcollector
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 
 	titlePkg "levelup/go-api/internal/domain/title"
@@ -89,6 +90,13 @@ func (r *RemoteFilms) GetFilmChunks(
 	if chunks, found, err := r.local.GetFilmChunks(ctx, matchID); err == nil && found {
 		observability.IncCounter(CompteurFilmsDepuisCache)
 		return chunks, true, nil
+	} else if errors.Is(err, filmcache.ErrFilmNonFinalise) {
+		// UN MANIFESTE LOCAL NON FINALISE N EST PAS UN CACHE CASSE (lot L3, constat L3-R2) : il a
+		// ete valide avant que le serveur publie les temps forts. Le reseau le complete, et
+		// l archivage ci-dessous remplace le manifeste partiel (`filmcache.Write`). Un etat a
+		// reparer, pas une panne : INFO, deja compte par `LocalCacheFilms`.
+		slog.InfoContext(ctx, "killsource_cache_non_finalise_repli_reseau",
+			"match_id", matchID, "err", err)
 	} else if err != nil {
 		// Un cache illisible (manifeste corrompu) ne doit pas empecher le reseau de servir :
 		// on le signale et on continue, plutot que de faire echouer tout le match.
