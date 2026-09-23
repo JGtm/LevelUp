@@ -345,28 +345,28 @@ Tailles : L1 M, L2 S, L3 M, L4 S, O1 S, P1 M, P2-P4 S, M1 M, M4a M, M5 S, M2 L, 
 Périmètre : `apps/web/src/features/match-replay/**`, `apps/web/src/lib/replay/**` (fichiers nommés
 ci-dessous + leurs tests), i18n de la feature.
 
-- [ ] **L1.1 États sur la fiche** (Q16). Si « retirer » : supprimer le mot (`ReplayPlayerCard.tsx`
+- [x] [`996f948f5`] **L1.1 États sur la fiche** (Q16). Si « retirer » : supprimer le mot (`ReplayPlayerCard.tsx`
   déstructuration + `:200-209`), le champ `stance` de `playerCardReadings.ts`, `stanceLogic.ts`
   (plus aucun appelant), la clé `stanceKind` FR/EN + contrat ; la couche de contrat du document
   (`replayDocumentSchema.ts`, `replayNormalize.ts`, `replayReadyTypes.ts`) reste. Test : « la fiche
   n'affiche aucun état de mouvement sur un document qui en porte ». Si « réglage » : bascule neuve
   « États de mouvement sur les fiches » (`useReplaySettings.ts`, `ReplaySettingsLayers.tsx`, FR + EN),
   défaut selon Q16, visible seulement si `coverage.stances.scanned`.
-- [ ] **L1.2 Score** (Q25). `scoreBannerLogic.ts:139` : bandeau `null` dès qu'une série publiée n'a
+- [x] [`9ad997d1d`, commentaire des trois lecteurs `59d378a6f`] **L1.2 Score** (Q25). `scoreBannerLogic.ts:139` : bandeau `null` dès qu'une série publiée n'a
   pas de camp (plus de 0 — 0 inventé). `scoreTimeline.ts` `leaderStates` (l. 402-415) +
   `useReplayTimeline.ts:275-285` : quand toutes les séries publiées ont un camp, les camps absents
   valent 0 (règle déjà écrite en tête du module). Tests rouges avant : 3-0 à camp identifié → piste
   présente ; série sans camp → bandeau `null`.
-- [ ] **L1.3 Véhicules de décor** (Q13). `vehiclesLayer.ts`, à côté de `FAMILLES_NON_JOUABLES` : une
+- [x] [`98fe73fda` ; revue `23ad43977` ; contrôle de parc `59d378a6f` : le décor exige aussi une naissance à la frame 0] **L1.3 Véhicules de décor** (Q13). `vehiclesLayer.ts`, à côté de `FAMILLES_NON_JOUABLES` : une
   vie dont le film ne réplique la position qu'UNE fois, à la naissance (`samples.length === 1` et
   `samples[0].t === t0`), qui court jusqu'à la fin du film (`end === 'film_end'`) et n'a aucun
   occupant = objet de décor ; exclue du prédicat « embarqué ». Tests : fixtures ab526724 771-778 et
   d8b13ec2 768 (rouges : dessinés aujourd'hui) ; négatifs 0301037e 779 et tourelles de bfecd02b.
-- [ ] **L1.4 Lacunes de piste** (Q14). `lib/replay/replayLogic.ts` : `positionAt`, `trailAt`,
+- [x] [`6f256a143` ; revue `23ad43977` (liseré, anneaux, halo pâlis pendant la lacune)] **L1.4 Lacunes de piste** (Q14). `lib/replay/replayLogic.ts` : `positionAt`, `trailAt`,
   `altitudeAt` respectent `Point.g` (aucune interpolation ni segment au travers) ; rendu du pion
   pendant la lacune selon Q14 (fichiers de dessin du pion dans `layers/`). Tests vitest au travers
   d'un point `g`.
-- [ ] **L1.5 Tables d'armes de véhicule sur les tags OBSERVÉS** (Q6, Q9, Q10). Ghost → `plasma_hot`
+- [x] [`03b1da54c` ; revue `cb36f3c31`, `cedc64cc8` (instrument de la fixture versionné) ; Wasp (Q11) laissée en l'état, écart signalé] **L1.5 Tables d'armes de véhicule sur les tags OBSERVÉS** (Q6, Q9, Q10). Ghost → `plasma_hot`
   (entrée gardée : elle servira dès M4b) ; Scorpion `49E40D17` (style + son `vehicle_shot_scorpion`,
   montage) ; Falcon `0BB6976B` selon Q10 ; Rockethog `C7D50912` audible sans dépendre d'une famille
   qu'aucun châssis ne porte (son « roquettes » validé le 31/08) ; `replaySound.ts` : prendre la vie
@@ -381,32 +381,35 @@ ci-dessous + leurs tests), i18n de la feature.
   visuel utilisateur sur 81c02726 (pions sans vol au travers des lacunes, fiches), bc60b4d9 (piste
   Score d'un 3-0), fb1a1a72 (bandeau muet), ab526724 (décor absent), un match à Rockethog
   (4f77afc1 ou f2966f08 : son des roquettes).
+- Clôture L1 : fusionné dans la campagne (`0a608ae13`, intégration de la vague A) ; mesure de parc
+  `8161669d8` (111 documents : 0 régression). Verdict visuel utilisateur : EN ATTENTE.
 
 #### L2 — Tactique : le fond ne bouge plus (`LevelUp-wt-rr-l2`, `feat/rr-l2`)
 
 Périmètre : `apps/web/src/features/tactical/**` (+ leurs tests), i18n de la feature.
 
-- [ ] L2.1 `queries.ts` : `placeholderData: keepPreviousData` sur `useTacticalMatchIDs`,
+- [x] [`f1daed909` ; revue `d904fed2d` : `keepPreviousData` remplacé par `precedenteDuMemeJoueur` (réponse gardée à portée égale joueur/titre/carte)] L2.1 `queries.ts` : `placeholderData: keepPreviousData` sur `useTacticalMatchIDs`,
   `useTacticalMaps`, `useTacticalRaster` (pas sur `useTacticalCellule`) ; `useCoequipierOptions`
   mémoïsé.
-- [ ] L2.2 `TacticalPage.tsx` : `key={scope.carte}` sur `TacticalAnalysisView` ; `enChargement` =
+- [x] [`5bb656d33`] L2.2 `TacticalPage.tsx` : `key={scope.carte}` sur `TacticalAnalysisView` ; `enChargement` =
   « aucune donnée encore » ; commentaire `:109-120` mis à jour dans le même commit.
-- [ ] L2.3 `TacticalAnalysisView.tsx` : premier chargement → cadre + fond posés, indicateur
+- [x] [`5bb656d33` ; revue `d904fed2d` (échec du périmètre prime, tout le périmé estompé) ; parc `af8caff1e` (coéquipier introuvable nommé)] L2.3 `TacticalAnalysisView.tsx` : premier chargement → cadre + fond posés, indicateur
   par-dessus ; relecture → rien n'est démonté, `aria-busy`, calque et KPI selon Q26, mention
   « Mise à jour… » (FR + EN) ; légende, unité et source calculées depuis `raster.data.question`.
-- [ ] L2.4 `TacticalPlanCard.tsx` : cadre + `<img>` du fond extraits dans un composant qui ne reçoit
+- [x] [`5bb656d33` : `TacticalPlanFond.tsx`] L2.4 `TacticalPlanCard.tsx` : cadre + `<img>` du fond extraits dans un composant qui ne reçoit
   que `mapId` et le calage ; le canvas du calque en enfant.
-- [ ] L2.5 Tests : `TacticalAnalysisView.fond.test.tsx` (vraie `useTacticalRaster`, `api.post`
+- [x] [`5bb656d33`, `d904fed2d`, `af8caff1e` ; mesure de parc rejouable `e06031d66` (109 cartes, 111 documents)] L2.5 Tests : `TacticalAnalysisView.fond.test.tsx` (vraie `useTacticalRaster`, `api.post`
   moqué, réponse différée : pendant l'attente, pas d'indicateur de remplacement, même nœud `<img>`
   connecté, `getBlob` appelé une fois — rouge aujourd'hui) ; variante filtre (`matchIds` →
   `null` → autre liste) ; `TacticalPage` : vignette et titre stables pendant l'attente ; réécriture du
   test « EN ATTENTE » (`TacticalAnalysisView.test.tsx:128-133`).
-- [ ] L2.6 Garde-rail `queriesPlaceholder.guard.test.ts` : toute lecture de `features/tactical/
+- [x] [`f1daed909` ; revue `d904fed2d` : clé lue multi-lignes] L2.6 Garde-rail `queriesPlaceholder.guard.test.ts` : toute lecture de `features/tactical/
   queries.ts` dont la clé embarque `hashFiltre(` déclare `placeholderData` ; allowlist datée
   (2026-09-23) d'une entrée, `useTacticalCellule`, avec sa raison.
 - Gate L2 : typecheck après purge, lint, vitest `src/features/tactical` ; verdict visuel utilisateur
   (ouvrir une carte, passer « Où je meurs » → « Où je tue », cocher une session : le fond ne
   clignote pas).
+- Clôture L2 : fusionné (`c51b45489`). Verdict visuel utilisateur : EN ATTENTE.
 
 #### L3 — Un film n'est archivé, décodé ni cuit que FINALISÉ (`LevelUp-wt-rr-l3`, `feat/rr-l3`)
 
@@ -419,21 +422,21 @@ cache_films.go`, `internal/replaybuild/filmfacts_cuisson.go`, `internal/games/ha
 replay/deaths_source.go`, `internal/archlint/` (ratchet), commentaires de `facts/objectives/film.go`
 et `replaybuild/matchfacts.go`, leurs tests.
 
-- [ ] L3.1 Prédicat unique `Finalise(chunks)` ; `Write` refuse de valider un manifeste sans type 3
+- [x] [`2a5ba69c9` ; revue `8e4586b26` (sur-ensemble exact entièrement gardé)] L3.1 Prédicat unique `Finalise(chunks)` ; `Write` refuse de valider un manifeste sans type 3
   (`ErrFilmNonFinalise`) et REMPLACE un manifeste existant sans type 3 par une liste qui le complète
   (sur-ensemble exact par index) — seule réécriture permise.
-- [ ] L3.2 `fetchFilmChunks` : manifeste API sans type 3 → `ErrFilmNonFinalise` (ni 404 ni panne).
-- [ ] L3.3 `persistFilmToCache` : cuisson reportée au cycle suivant, compteur + `slog.InfoContext`.
-- [ ] L3.4 `LocalCacheFilms` : un manifeste local sans type 3 compte comme absent (le réseau le
+- [x] [`2a5ba69c9` ; étendu à `GetFilmChunkURLs` et au manifeste du CACHE non finalisé (relu à l'API)] L3.2 `fetchFilmChunks` : manifeste API sans type 3 → `ErrFilmNonFinalise` (ni 404 ni panne).
+- [x] [`2a5ba69c9` ; revue `73ad0138d` : poste `reportes` distinct de `sansFilm`, film non finalisé au-delà de `DelaiDeFinalisation` = 15 min → WARN + compteur distinct] L3.3 `persistFilmToCache` : cuisson reportée au cycle suivant, compteur + `slog.InfoContext`.
+- [x] [`2a5ba69c9`, ÉCART DÉCLARÉ : erreur `ErrFilmNonFinalise` et non `found=false` (hors ligne, `found=false` poserait le marqueur TERMINAL `MBitFilmAbsent`) ; revue `e2d97d4ed` : le killsource sort « sans kill-feed » sans marqueur, INFO, jamais ERROR] L3.4 `LocalCacheFilms` : un manifeste local sans type 3 compte comme absent (le réseau le
   complète : ab526724 se répare seul côté killsource).
-- [ ] L3.5 Chargement de la cuisson : refus d'un film sans type 3 ou dont des morceaux sont hors
+- [x] [`2a5ba69c9` ; revue `a0b05c3e2` : branchement testé, manifeste illisible refusé, repli « dernier numéro » inscrit au registre `facts/fallback`] L3.5 Chargement de la cuisson : refus d'un film sans type 3 ou dont des morceaux sont hors
   manifeste, erreur typée comptée « écartés » (jamais d'artefact dégradé silencieux).
-- [ ] L3.6 `ScanDeaths` : le morceau des temps forts choisi par son TYPE quand le manifeste est là
+- [x] [`2a5ba69c9` : `ErrFilSansTempsForts` ; parc : type 3 = dernier index sur 1 625 / 1 625, aucune sortie changée] L3.6 `ScanDeaths` : le morceau des temps forts choisi par son TYPE quand le manifeste est là
   (plus « le dernier numéro ») ; erreur typée distincte si le dernier morceau est de type 2.
-- [ ] L3.7 Commentaires « doc inversée » sur `7b0d89c4` corrigés.
-- [ ] L3.8 Établir si l'en-tête des faits persistés porte l'inventaire des morceaux ; sinon, le
+- [x] [`a4e4615a3` : `facts.Rev` INCHANGÉE (killsource-2026-09-22.2), empreinte seule recopiée, puis de nouveau par `a0b05c3e2`] L3.7 Commentaires « doc inversée » sur `7b0d89c4` corrigés.
+- [x] [`2a5ba69c9` : NON, `FilmFactsEntete` ne porte pas l'inventaire des morceaux — consigné §8.20] L3.8 Établir si l'en-tête des faits persistés porte l'inventaire des morceaux ; sinon, le
   consigner (§8) — O1 renomme les faits d'ab526724 à la main.
-- [ ] L3.9 Ratchet archlint : aucune comparaison au type 3 hors du prédicat.
+- [x] [`f89bae9d1` ; revue `8e4586b26` : comparaisons d'ordre, compte gelé par fichier, allowlist datée de 3 sites (§8.23)] L3.9 Ratchet archlint : aucune comparaison au type 3 hors du prédicat.
 - Tests rouges avant : `Write` sans type 3 refusé ; `Write` qui complète un manifeste partiel ;
   `LocalCacheFilms` sur manifeste partiel → absent ; fetch d'un manifeste API partiel → erreur typée ;
   cuisson d'un répertoire « 34 au manifeste + 3 hors manifeste » refusée ; `ScanDeaths` sur un film
@@ -442,6 +445,8 @@ et `replaybuild/matchfacts.go`, leurs tests.
   + `./internal/himap/` (ratchet du chemin du jeu) ; `go test -tags=integration -p 1
   ./internal/sync/...` (sync touché) ; `make go-api-lint` ; parc : 0 manifeste sans type 3 hors
   ab526724 (`instruments/ctf_ab526724/manifests.mjs`).
+- Clôture L3 : fusionné (`3748ca8e5`) ; découvertes D4-D7 consignées au §8 (20-23), D1-D3 corrigées
+  dans le lot (`e2d97d4ed`, `73ad0138d`).
 
 #### L4 — Tiroir des assets : une carte par visuel (`LevelUp-wt-rr-l4`, `feat/rr-l4`)
 
@@ -450,16 +455,17 @@ Périmètre : `apps/go-api/internal/service/asset_service.go` (+ un fichier vois
 périmé l. 18-23). Coordination : la campagne perf a touché `AssetDrawer.tsx` et `useAssetDrawer.ts`,
 hors de ce périmètre.
 
-- [ ] L4.1 `AssetService.ListMaps` : après résolution de l'image, UNE entrée par `ImageURL` ;
+- [x] [`df59448f5` : `asset_map_cards.go` ; mesure sur copie : 157 cartes / 93 images → 93 / 93] L4.1 `AssetService.ListMaps` : après résolution de l'image, UNE entrée par `ImageURL` ;
   représentant par ordre total — libellé FR traduit (Q27) d'abord, puis `NameFR` non vide, puis le
   plus petit `ID` ; sortie triée par `NameEN` puis `ID`. Le dépôt garde son grain « un asset par
   ligne » (test D15 vert).
-- [ ] L4.2 Tests rouges avant : les trois « Solution » + « Absolution » → 2 ;
+- [x] [`df59448f5` ; revue `2262e2d2b` (tri anglais, recherche avant regroupement, entrée intacte)] L4.2 Tests rouges avant : les trois « Solution » + « Absolution » → 2 ;
   Starboard ×4 → une carte au libellé retenu ; tri.
-- [ ] L4.3 Commentaire de `assetDrawerLogic.ts` corrigé.
+- [x] [`df59448f5`] L4.3 Commentaire de `assetDrawerLogic.ts` corrigé.
 - Gate L4 : `go test ./internal/service/...`, `make go-api-lint` ; après redémarrage (superviseur) :
   `GET /api/v1/assets/halo_infinite/maps?q=Solution` → 2 éléments ; catalogue complet → 93
   éléments, `image_url` toutes distinctes.
+- Clôture L4 : fusionné (`62ad5ebf7`). Contrôle après redémarrage (superviseur) : EN ATTENTE.
 
 #### P1 — Sonde : où le film porte le tir continu (superviseur, après Q1)
 
@@ -475,17 +481,20 @@ hors de ce périmètre.
   retour à l'utilisateur (règle du 22/09).
 - Gate de la sonde : un signal dont une occurrence précède chacun des 6 frags de G MONEY dans les 2 s,
   absent au témoin décalé, nul hors de ses épisodes. Verdict écrit ici (§9) avant M4b.
+- [x] Verdict (§9, note `retours_rejeu_2026-09-23/SONDE_P1_tir_continu.md`, `fee612d28`) : S1 et S2
+  NÉGATIFS pour le tir par tir, positifs sur les touches et le compteur ; S3 (Ghidra) POSITIF : le tir
+  continu est dans la vue de contrôle (branche `feat/rr-ghidra`, pas encore fusionnée dans la campagne).
 
 ### 4.3 Vague B
 
 #### O1 — Réparation des données d'ab526724 (superviseur, après Q2, serveur arrêté, prévenu avant)
 
-- [ ] Renommer `data/cache/film_manifests/ab526724.json` → `ab526724.json.partiel-34` (pièce gardée).
-- [ ] `levelup archive-films --gamertag JGtm --match ab526724 --dry-run`, puis sans `--dry-run`.
-- [ ] Renommer `data/cache/film_facts/halo_infinite/ab526724.filmfacts.bin` (sinon la recuisson
+- [x] [§9, nuit du 23/09] Renommer `data/cache/film_manifests/ab526724.json` → `ab526724.json.partiel-34` (pièce gardée).
+- [x] [§9] `levelup archive-films --gamertag JGtm --match ab526724 --dry-run`, puis sans `--dry-run`.
+- [x] [§9] Renommer `data/cache/film_facts/halo_infinite/ab526724.filmfacts.bin` (sinon la recuisson
   rejoue les faits du film tronqué).
-- [ ] `levelup backfill-replay --one ab526724-3684-4335-b759-a18edcccc137` (jamais sans `--one`).
-- [ ] Killsource : laisser le post-sync le reprendre, sinon `backfill-killsource` ciblé ; dérivés
+- [x] [§9 : 35,6 s, pic 415 Mo] `levelup backfill-replay --one ab526724-3684-4335-b759-a18edcccc137` (jamais sans `--one`).
+- [~] [§9 : killsource laissé au post-sync (le CLI n'a pas de `--match`), dérivés à la prochaine séquence habituelle ; les lignes `*_latest` du gate en dépendent] Killsource : laisser le post-sync le reprendre, sinon `backfill-killsource` ciblé ; dérivés
   (résumé d'usage, paliers de socles) selon la séquence habituelle.
 - Gate O1 (`instruments/ctf_ab526724/sweep_ctf.mjs ab526724`) : manifeste 37 entrées dont un type 3 ;
   `coverage.bridge.deathOffsetMatched > 0` ; `identity.statborgSlot.non_resolu = 0` ;
@@ -506,6 +515,12 @@ hors de ce périmètre.
 - P4 entités d'équipe : `TestSiegesDesRemplacants` pointé sur `data/cache/film_chunks/b1ad85eb` +
   horodatage des paquets BOT_METADATA. Attendu : trois entités d'index 8 (désignateurs 0, 0, 1),
   entité d'index 1 absente dès l'image-clé qui suit f3117, aucune entité d'index 5.
+- [x] P2 (`772b02fe6`, `SONDE_P2_marche_image_cle.md`) : perte par élection d'une fausse ancre de slot
+  bas, fenêtre de 120 000 bits qui coupe un suffixe → M3.1 réécrit.
+- [x] P3 (`90381fc90`, `SONDE_P3_armes_naissance.md`) : le record NEW du bipède porte les armes de
+  naissance (i43/i44/i46), aucun chemin de production ne les lit → M3.2 précisé.
+- [x] P4 (`a49237d3d`, `SONDE_P4_equipes_places.md`) : CONFIRMÉ (trois entités d'index 8, index 1
+  absent, aucune entité d'index 5 ; les tirs donnent la place 5 à Claudors) → M2 précisé.
 
 ### 4.4 Vague C — montée 69, republication DEPUIS LES FAITS (aucun décodage)
 
@@ -844,6 +859,32 @@ vivent au §9 ; aucun lot de la vague D ne démarre sans eux.
 18. Commentaire périmé `biped_creation.go` (« ~120 bits sur ~380 ») contredit `traverse.go:103-110`.
 19. Option 2 des positions (porte grammaticale au décodage : `TryDeltaAt` à l'ancre + record suivant
     valide, refus de `gen=0`) : permettrait de retirer F-1 et F-2 ; sonde d'un film à prévoir après M1.
+20. (L3.8) L'en-tête des faits persistés (`replay/filmfacts_fichier.go`, `FilmFactsEntete`) ne porte
+    PAS l'inventaire des morceaux (seulement VersionCodec, Schema, les quatre révisions, build,
+    registre et la clé de cuisson) : `Utilisable` ne peut pas voir que des faits viennent d'un film
+    tronqué — d'où le renommage manuel d'O1. Résidu borné : depuis L3 aucun fait ne s'écrit depuis un
+    film non finalisé ; 0 cas au parc après O1.
+21. (L3 D4) Aucun plafond de tentatives ni marqueur non terminal pour un film qui ne serait JAMAIS
+    finalisé : la reprise n'est bornée que par l'horizon de rattrapage de chaque étape
+    (`replayartifacts.BacklogHorizon` = 64, `killcollector.PostSyncBacklogHorizon`). Même famille
+    que 8.1. L3-R1 ajoute un WARN + compteur au-delà de 15 min, pas de quarantaine.
+22. (L3 D5) `cmd/levelup/cmd_archive_films.go` `filmDejaEnCache` juge sur l'EXISTENCE du manifeste,
+    pas sur `filmcache.Finalise` : `archive-films` ne répare pas seul un manifeste partiel d'avant L3.
+23. (L3 D6) Trois sites comparent encore au type 3 (allowlist datée du ratchet
+    `archlint/film_finalise_predicate_test.go`) : `cmd/levelup/cmd_backfill_medailles_feed.go`,
+    `facts/objectives/extract.go` (`chunkTypePied` ; migrer recopie l'empreinte de `facts.Rev`),
+    `testfixtures/jgtm_full_match.go`. Copies locales du type 2 : `cmd/fetch_film_chunks`,
+    `grammar/positions`, `objectives`. Heuristique `nums[:len(nums)-1]` non gardée par le ratchet :
+    `replay/player_index.go`, `facts/killsource/index_motif.go`.
+24. (L4) `AssetService.ListMaps` écrit `ImageURL` dans la tranche rendue par le dépôt (préexistant) :
+    la tranche du dépôt en amont n'est pas immuable.
+25. (L1) Wasp (Q11) : V3F donne un son au coup 450/min contre un son en boucle 600/min, ce qui
+    contredit peut-être M1 = autocanon ; ancres renommées par leur place, valeurs inchangées. Le
+    commentaire « une seule position » de `vehiclesLayer.ts` est inexact (sonde C2, §9).
+26. (intégration) Une soixantaine de COMMENTAIRES Go citent encore `.ai/<document>` à son ancien
+    chemin (déplacés sous `.ai/V7.5/` par `fe2106f4b`, ou avant) ; seul un chemin LU par un test
+    était cassé (corrigé, `8be964717`). Ceux de `film/` entrent dans les empreintes de révision :
+    à corriger dans un lot qui assume la recopie d'empreinte.
 
 ---
 
@@ -892,3 +933,13 @@ vivent au §9 ; aucun lot de la vague D ne démarre sans eux.
   - Découverte : `archlint/no_stale_fallback_target_test.go:59` lit `../../.ai/PLAN_DECODEUR_FILM_2026-09-13.md`,
     déplacé sous `.ai/V7.5/` par le commit d'archivage `fe2106f4b` : test ROUGE sur la base, donc sur la
     CI de `feat/v75` — corrigé à l'intégration de la campagne (bloque la CI).
+- 2026-09-23 (nuit, intégration de la vague A) : `feat/rr-sondes`, `feat/rr-l3`, `feat/rr-l4`, `feat/rr-l2`,
+  `feat/rr-l1` fusionnées `--no-ff` dans `feat/retours-rejeu` (`5e1e97be5`, `3748ca8e5`, `62ad5ebf7`,
+  `c51b45489`, `0a608ae13`), aucun conflit ; casse de la base corrigée (`8be964717`, chemin du plan du
+  décodeur archivé ; aucune autre lecture de document `.ai` déplacé). Gates sur la tête : build, vet,
+  `go test ./...` (189 paquets ok, 0 FAIL), `-tags=integration -count=1 -p 1 -json ./...` (exit 0,
+  17 103 pass / 786 skip / 0 fail), baseline JSONL OK (9 701 tests de la baseline tous présents),
+  golangci-lint ratchet 0 issue ; web : `tsc -b`, eslint 0 erreur (26 avertissements antérieurs),
+  lint:colors 0, vitest 792 fichiers / 8 510 tests ok, knip 0, manifestes i18n régénérés sans écart.
+  Restent : verdicts visuels utilisateur L1 / L2, contrôle après redémarrage L4, killsource
+  d'ab526724 au post-sync ; `feat/rr-ghidra` et `feat/rr-c2` non fusionnées (hors de cette intégration).

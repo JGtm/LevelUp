@@ -112979,3 +112979,98 @@ note 5.3) décrit une décision du pilote, non adossée à un message de l'utili
 réparation d'ab526724, deux montées de schéma avec republication, calendrier v7.5, rendus). Rien n'est
 lancé avant son go. Aucun fichier de code touché ; le plan et ses annexes ne sont pas commités (commit
 sur demande).
+
+## [2026-09-23] Retours rejeu, sondes P1-P4 (feat/rr-sondes) — Complété (fusionné dans feat/retours-rejeu, 5e1e97be5)
+
+**Décision technique principale.** Quatre sondes de décodage menées par le superviseur, un film à la
+fois sous verrou, en tests `research` du paquet `grammar` / `replay` (aucun code de production, aucun
+artefact écrit) ; une note par sonde sous `.ai/V7.5/retours_rejeu_2026-09-23/SONDE_P*.md`.
+
+**Résultats observés.** P1 : le tir continu (Ghost) n'est dans aucun canal lisible du film par tir ; ses
+touches et son compteur le sont (S3 Ghidra, branche `feat/rr-ghidra` : il est dans la vue de contrôle).
+P2 : la marche d'image-clé perd les bipèdes par élection d'une fausse ancre de slot bas, et la fenêtre de
+120 000 bits coupe un suffixe. P3 : les armes de naissance sont dans le record NEW du bipède
+(i43/i44/i46), la marche ne l'atteint pas. P4 : sur b1ad85eb, trois entités ti=9 d'index 8, index 1
+absent des f3213, aucune d'index 5 ; BOT_METADATA date les bots ; les tirs donnent la place 5 à Claudors.
+
+**Suite.** M3.1 réécrit, M3.2 et M2 précisés d'après P2-P4 ; M4b après M3 (plan §4.5).
+
+## [2026-09-23] Retours rejeu, L3 : un film n'est archivé, décodé ni cuit que FINALISÉ (feat/rr-l3) — Complété (fusionné, 3748ca8e5)
+
+**Décision technique principale.** Prédicat unique `filmcache.Finalise` (morceau de temps forts,
+`chunk_type 3`, seul littéral du dépôt dans `filmcache/finalise.go`). `filmcache.Write` refuse une liste
+non finalisée et ne remplace un manifeste partiel que par un sur-ensemble exact (sinon
+`ErrManifesteDivergent`). Le client (`fetchFilmChunks`, `GetFilmChunkURLs`, manifeste du cache relu à
+l'API), la cuisson post-sync (report compté, WARN au-delà de `DelaiDeFinalisation` = 15 min), le cache
+killsource (erreur plutôt que « absent » : hors ligne, « absent » poserait le marqueur TERMINAL
+`MBitFilmAbsent`), le chargement de la cuisson (refus typé, compté « écartés ») et `ScanDeaths` (temps
+forts choisis par leur TYPE) appliquent la règle. Ratchet archlint `film_finalise_predicate_test.go`
+(égalités et ordres, compte gelé par fichier, allowlist datée de 3 sites).
+
+**Résultats observés.** Témoin réel ab526724.json.partiel-34 en fixture. Revue adverse L3-R1 à R8
+corrigée (killsource en « sans kill-feed » sans marqueur ni ERROR, monitoring API sans fausse erreur
+réseau, gardes de cuisson testées par mutation, repli « dernier numéro » inscrit au registre
+`facts/fallback`). `facts.Rev` INCHANGÉE (killsource-2026-09-22.2), empreinte seule recopiée ; aucun
+backlog. Parc : type 3 = dernier index sur 1 625 / 1 625, aucune sortie changée.
+
+**Suite.** Découvertes consignées au §8 du plan (20-23) : en-tête des faits sans inventaire des
+morceaux, pas de plafond pour un film jamais finalisé, `archive-films` juge sur l'existence du manifeste,
+trois sites qui comparent encore au type 3.
+
+## [2026-09-23] Retours rejeu, L4 : tiroir des assets, une carte par visuel (feat/rr-l4) — Complété (fusionné, 62ad5ebf7)
+
+**Décision technique principale.** `AssetService.ListMaps` regroupe après résolution de l'image les
+assets de même URL (`asset_map_cards.go`) ; représentant par ordre total (libellé FR traduit, puis
+`NameFR`, puis plus petit ID), tri par nom anglais puis ID ; le dépôt garde son grain. Aucun slug.
+
+**Résultats observés.** Sur une copie de metadata.duckdb : 157 cartes / 93 images → 93 / 93,
+« solution » 4 → 2. Revue R1-R3 fixée par des tests (tri anglais, recherche avant regroupement, entrée
+intacte). Commentaire périmé de `assetDrawerLogic.ts` corrigé.
+
+**Suite.** Contrôle HTTP après redémarrage par le superviseur (`?q=Solution` → 2, catalogue → 93).
+
+## [2026-09-23] Retours rejeu, L2 : Tactique, le fond de carte ne bouge plus (feat/rr-l2) — Complété (fusionné, c51b45489)
+
+**Décision technique principale.** Les lectures filtrées de `features/tactical/queries.ts` gardent leur
+réponse précédente, mais bornée à portée égale (`precedenteDuMemeJoueur` : joueur, titre, carte) après
+la revue ; `key={scope.carte}` sur la vue d'analyse ; fond extrait dans `TacticalPlanFond.tsx` qui ne
+reçoit que la carte et le calage ; quatre états de lecture (`tacticalLecture.logic.ts`) ; relecture
+estompée sous « Mise à jour… » / « Updating… » ; garde-rail `queriesPlaceholder.guard.test.ts`.
+
+**Résultats observés.** Revue adverse : 2 P1 (échec du périmètre, placeholder d'un autre joueur) et 7 P2
+corrigés, mutations jouées. Contrôle de parc : un coéquipier introuvable est nommé au lieu d'une
+relecture sans fin. Mesure rejouable sur 109 cartes et 111 documents : le fond ne se démonte plus.
+
+**Suite.** Verdict visuel de l'utilisateur (changer de question, cocher une session : le fond ne
+clignote pas).
+
+## [2026-09-23] Retours rejeu, L1 : rejeu web sans schéma (feat/rr-l1) — Complété (fusionné, 0a608ae13)
+
+**Décision technique principale.** Fiche sans état de mouvement (Q16 : `stanceLogic.ts` et la clé i18n
+retirés, le document garde `stances[]`) ; bandeau de score muet sur une série sans camp, piste Score
+d'un match à sens unique (camps absents à 0 quand toutes les séries ont un camp) ; véhicules de décor
+masqués (une position unique à la naissance en frame 0, jusqu'à la fin du film, jamais occupés) ;
+lacunes de piste respectées (`Point.g` : position tenue, pion pâli, aucun segment au travers) ; tables
+d'armes de véhicule clées par les tags OBSERVÉS, garde-rail sur une fixture datée produite par un
+instrument versionné.
+
+**Résultats observés.** Mesure de parc avant/après (111 documents, schéma 68) : 0 régression, 5 400 mots
+d'état retirés, bandeau muet sur 6 documents, piste Score apparue sur 8 matchs, 13 vies de décor
+masquées (0 en jeu), 7 686 déplacements au travers de lacunes évités, 189 009 tirs d'arme personnelle
+identiques. Revue et contrôle de parc corrigés (RR-L1-02/03/05/06, PARC-01/02).
+
+**Suite.** Verdict visuel de l'utilisateur (81c02726, bc60b4d9, fb1a1a72, ab526724, un match à
+Rockethog). Wasp (Q11) laissée en l'état, écart signalé.
+
+## [2026-09-23] Retours rejeu : intégration de la vague A — Complété (feat/retours-rejeu, rien de poussé)
+
+**Décision technique principale.** Fusions `--no-ff` dans l'ordre sondes, L3, L4, L2, L1, sans conflit ;
+correction de la casse de la base (`8be964717` : `archlint/no_stale_fallback_target_test.go` lisait le
+plan du décodeur à son chemin d'avant l'archivage `fe2106f4b`).
+
+**Résultats observés.** Tête de campagne : build, vet, `go test ./...` (189 paquets ok), intégration
+`-count=1 -p 1` (17 103 pass, 0 fail), baseline JSONL OK, golangci-lint ratchet 0 issue, web (tsc,
+eslint 0 erreur, lint:colors, vitest 8 510 tests, knip, manifestes i18n) verts.
+
+**Suite.** Verdicts visuels L1/L2, contrôle L4 après redémarrage ; fusion de `feat/rr-ghidra` et
+`feat/rr-c2` à une prochaine intégration ; vague C (M1, M4a, M5).
