@@ -247,7 +247,7 @@ func (s *TeammatesService) buildSquadPerMinuteStats(
 	for _, m := range allSquadRows {
 		matchIDsAllowed[m.MatchID] = struct{}{}
 	}
-	if len(sessionMatchIDs) > 0 {
+	if sessionMatchIDs != nil { // vide non nil : session piquée sans match → aucun match
 		filtered := make(map[string]struct{}, len(sessionMatchIDs))
 		for id := range matchIDsAllowed {
 			if sessionMatchIDs[id] {

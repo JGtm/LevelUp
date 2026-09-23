@@ -36,6 +36,7 @@ import (
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/observability/timing"
 	"levelup/go-api/internal/port"
 )
@@ -59,10 +60,12 @@ type filtreDeComposition struct {
 }
 
 // CompositionSessions : cf. l'en-tête du fichier. Mêmes erreurs fatales que GetPage (Q29 ;
-// l'historique du joueur principal quand aucun coéquipier n'est désigné), mêmes
-// dégradations pour le reste — un coéquipier introuvable, ou dont les matchs communs ne se
-// lisent pas, sort de l'intersection ; une équipe alliée illisible laisse le roster non
-// filtré — et une requête annulée rend l'erreur du contexte, jamais un résultat partiel.
+// l'historique du joueur principal quand aucun coéquipier n'est désigné), plus une : sous
+// l'option composition exacte, une équipe alliée illisible (Q32b) est une ERREUR (la page,
+// elle, dégrade et le dit dans ses data_issues, que cette réponse ne porte pas —
+// appliquerCompositionExacte). Mêmes dégradations pour le reste — un coéquipier
+// introuvable, ou dont les matchs communs ne se lisent pas, sort de l'intersection — et une
+// requête annulée rend l'erreur du contexte, jamais un résultat partiel.
 func (s *TeammatesService) CompositionSessions(
 	ctx context.Context, playerXUID string, gamertags []string, exact bool,
 ) ([]domain.CompositionSessionEntry, string, error) {
@@ -83,9 +86,12 @@ func (s *TeammatesService) CompositionSessions(
 	if err != nil {
 		return nil, "", err
 	}
-	f := s.appliquerCompositionExacte(ctx, playerXUID, compo, exact)
+	f, err := s.appliquerCompositionExacte(ctx, playerXUID, compo, exact)
 	if err := ctx.Err(); err != nil {
 		return nil, "", fmt.Errorf("TeammatesService: requete annulee: %w", err)
+	}
+	if err != nil {
+		return nil, "", err
 	}
 
 	stop = timing.FromContext(ctx).Section("composition_sessions")
@@ -126,7 +132,8 @@ func (s *TeammatesService) lireComposition(
 		}
 		rows, err := s.repo.LoadSquadMatches(ctx, playerXUID, xuid)
 		if err != nil {
-			slog.ErrorContext(ctx, "teammates_load_squad_matches_failed",
+			// DEBUG quand la requête a pris fin (client parti, lot perf L9-go) : pas une panne.
+			slog.Log(ctx, observability.LevelUnlessCanceled(ctx, err, slog.LevelError), "teammates_load_squad_matches_failed",
 				"player_xuid", playerXUID, "teammate_xuid", xuid, "gamertag", gt, "err", err)
 			continue
 		}
@@ -175,27 +182,35 @@ func (s *TeammatesService) xuidDuCoequipier(
 // appliquerCompositionExacte applique l'option composition exacte au roster comme GetPage :
 // l'extraPool (top coéquipiers et amis, hors composition et hors joueur principal), l'équipe
 // alliée lue une fois (Q32b) sur les matchs du roster, puis filterExactComposition. Hors
-// option, sans coéquipier résolu ou sans équipe lisible : roster intact, aucun écart.
+// option, sans coéquipier résolu ou sans match : roster intact, aucun écart.
+//
+// Sous l'option, une équipe alliée ILLISIBLE est une erreur rendue (lot perf L9-go, revue
+// adversariale A) : la page dégrade en roster non filtré et le dit dans ses data_issues,
+// mais cette réponse n'en porte pas — un 200 aux sessions non filtrées ancrait le front sur
+// une session que la page, elle, écartait. Le handler la route par mapServiceError (503 si
+// la base est occupée, 500 sinon) et le front se replie sur la réponse lourde.
 func (s *TeammatesService) appliquerCompositionExacte(
 	ctx context.Context, playerXUID string, compo compositionLue, exact bool,
-) filtreDeComposition {
+) (filtreDeComposition, error) {
 	f := filtreDeComposition{kept: compo.roster}
 	if !exact || len(compo.selectedXUIDs) == 0 {
-		return f
+		return f, nil
 	}
 	var friendGTs []string
 	if s.friendGamertags != nil {
 		friendGTs = s.friendGamertags(ctx)
 	}
 	f.extraPool = buildExtraPoolXUIDs(compo.topRows, resolveFriendXUIDs(friendGTs, compo.topRows), compo.selectedXUIDs, playerXUID)
-	// Échec de lecture journalisé en ERROR par loadMainTeamAllies, comme pour la page (qui le
-	// publie en plus dans ses data_issues ; cette réponse-ci n'en porte pas).
-	_, f.teamByMatch = s.loadMainTeamAllies(ctx, playerXUID, collectMatchIDs(compo.roster), true, nil)
-	if f.teamByMatch == nil {
-		return f
+	_, teamByMatch, err := s.lireEquipeAlliee(ctx, playerXUID, collectMatchIDs(compo.roster))
+	if err != nil {
+		return filtreDeComposition{}, fmt.Errorf("TeammatesService: equipe alliee (composition exacte): %w", err)
 	}
+	if teamByMatch == nil {
+		return f, nil
+	}
+	f.teamByMatch = teamByMatch
 	f.kept, f.excluded = filterExactComposition(compo.roster, f.teamByMatch, f.extraPool, compo.selectedXUIDs)
-	return f
+	return f, nil
 }
 
 // sessionsEscouadeDuPrincipal : sans coéquipier, les sessions escouade du joueur principal

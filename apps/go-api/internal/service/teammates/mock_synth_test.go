@@ -15,6 +15,9 @@ import (
 type mockSynthPlayerMatches struct {
 	rows []legacymatch.SynthesisMatchRow
 	err  error
+	// sessionIDs : match_id → session_id posé dans Enrichment.SessionID (SynthesisMatchRow ne
+	// porte que le libellé) — nil : aucune ligne n'a d'identifiant de session.
+	sessionIDs map[string]string
 }
 
 func (m *mockSynthPlayerMatches) LoadPlayerMatches(_ context.Context, _, _ string, _ port.PlayerMatchFilters) ([]canonical.PlayerMatchRow, error) {
@@ -55,6 +58,9 @@ func (m *mockSynthPlayerMatches) LoadPlayerMatches(_ context.Context, _, _ strin
 				PerformanceScore: r.PerformanceScore,
 				SessionLabel:     r.SessionLabel,
 			},
+		}
+		if id, ok := m.sessionIDs[r.MatchID]; ok {
+			out[i].Enrichment.SessionID = &id
 		}
 	}
 	return out, nil

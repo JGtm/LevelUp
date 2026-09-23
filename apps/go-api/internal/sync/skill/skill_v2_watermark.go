@@ -12,9 +12,9 @@ package skill
 // Désormais, sous le segment LECTURE : les candidats SQL, le filigrane de chaque
 // groupe (last_match_at, vue _latest) et, pour les candidats situés au-dessus,
 // l'éligibilité (prédicat partagé classifyLUSREligibility). Aucun candidat notable
-// au-dessus du filigrane → aucun écrivain. Sinon UNE rafale par joueur et par cycle
-// (runSingleWriterBurst), sous laquelle processOneShadowMatch garde TOUS ses
-// contrôles (groupe tenu, filigrane relu sur le handle RW, éligibilité) : le
+// au-dessus du filigrane → aucun écrivain. Sinon des rafales BORNÉES (runWriterBursts :
+// au plus 50 matchs ou 2 s chacune, lot perf L9-go), sous lesquelles processOneShadowMatch
+// garde TOUS ses contrôles (groupe tenu, filigrane relu sur le handle RW, éligibilité) : le
 // pré-filtre n'est qu'une optimisation, la suite des écritures est celle d'avant
 // (TestLUSRV2Shadow_ParityWithLegacyOrchestration).
 
@@ -135,13 +135,15 @@ func logShadowIdle(ctx context.Context, xuid string, w shadowWork, s shadowRunSt
 	)
 }
 
-// logShadowBurstDone émet la ligne INFO d'un cycle avec rafale d'écrivain (une par
-// joueur et par cycle) : new = candidats passés sous l'écrivain.
-func logShadowBurstDone(ctx context.Context, xuid string, w shadowWork, s shadowRunStats) {
+// logShadowBurstDone émet la ligne INFO d'un cycle avec écrivain (une par joueur et par
+// cycle, après ses rafales) : new = candidats passés sous l'écrivain, bursts = rafales
+// prises (une ligne `lusr_v2: rafale bornée` chacune).
+func logShadowBurstDone(ctx context.Context, xuid string, w shadowWork, s shadowRunStats, bursts int) {
 	slog.InfoContext(ctx, "lusr_v2: rafale terminée",
 		"xuid", xuid,
 		"candidates", w.candidates,
 		"new", len(w.pending),
+		"bursts", bursts,
 		"processed", s.processed,
 		"skipped_chain", s.skippedChain,
 		"skipped_already_seen", s.skippedAlready,

@@ -91,9 +91,9 @@ func (s *TeammatesService) buildTeammateRowWithMatches(
 		return nil, nil, nil, fmt.Errorf("buildTeammateRowWithMatches LoadSquadMatches: %w", err)
 	}
 
-	// Restreindre aux matchs de la session sélectionnée pour les KPIs/historique.
+	// Session sélectionnée (vide non nil = piquée sans match : AUCUN match) → KPIs/historique.
 	squadMatches := allSquadMatches
-	if len(sessionMatchIDs) > 0 {
+	if sessionMatchIDs != nil {
 		filtered := make([]domain.SquadMatchRow, 0, len(allSquadMatches))
 		for _, m := range allSquadMatches {
 			if sessionMatchIDs[m.MatchID] {

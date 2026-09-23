@@ -12,6 +12,10 @@
 // l'ordre ecrit en clair. Les lignes sont inserees dans un ordre qui n'est ni l'ordre voulu
 // ni son inverse, pour que retirer un departage rende le test rouge au lieu de le laisser
 // passer par chance.
+//
+// Lot perf L9-go (2026-09-23, revue adversariale D) : memes preuves pour les ordres PARTIELS
+// devenus totaux — Q32 (LoadImpactEvents : + xuid, event_type), Q32c (LoadKVPairs : + tueur,
+// victime) et Q10 (CareerRepo.GetEncounters : + xuid, coupe du LIMIT 50 comprise).
 package duckdb
 
 import (
@@ -240,5 +244,136 @@ func TestSquadRepo_Q32b_OrdreStableEtPorteursExAequo(t *testing.T) {
 			t.Errorf("%s, %s : porteur %q, attendu %q (le plus petit xuid parmi les ex aequo)",
 				c.match, c.badge, got, c.porteur)
 		}
+	}
+}
+
+// ─── Lot perf L9-go (2026-09-23, revue adversariale D) : ordres TOTAUX de Q32, Q32c et Q10 ───
+
+// evenementsQ32 : 8 événements au MÊME instant dans me1 (quatre xuids, deux types), insérés
+// dans un ordre qui n'est ni l'ordre voulu ni son inverse, plus un plus tôt dans me1 et un
+// dans me0.
+var evenementsQ32 = [][4]any{
+	{"me1", "x_3", "kill", 1000}, {"me1", "x_1", "kill", 1000}, {"me0", "x_9", "kill", 2000},
+	{"me1", "x_4", "death", 1000}, {"me1", "x_2", "death", 1000}, {"me1", "x_1", "death", 1000},
+	{"me1", "x_5", "kill", 500}, {"me1", "x_4", "kill", 1000}, {"me1", "x_2", "kill", 1000},
+	{"me1", "x_3", "death", 1000},
+}
+
+// TestSquadRepo_Q32_OrdreTotal : deux lectures des événements d'impact, mêmes lignes dans le
+// même ordre — match_id, time_ms, xuid, event_type : à temps égal, le premier retenu par
+// Premier sang, Finisseur, Boulet ou Top Gun ne dépend plus du plan de DuckDB.
+func TestSquadRepo_Q32_OrdreTotal(t *testing.T) {
+	pdb := newTestPlayerDB(t)
+	ctx := context.Background()
+	for _, e := range evenementsQ32 {
+		execOnSharedDBs(t, pdb, ctx, `INSERT INTO shared.highlight_events (match_id, xuid, event_type, time_ms)
+			VALUES (?, ?, ?, ?)`, e[0], e[1], e[2], e[3])
+	}
+	lire := func(n string) []string {
+		rows, err := NewSquadRepo(pdb).LoadImpactEvents(ctx, []string{"me1", "me0"})
+		if err != nil {
+			t.Fatalf("LoadImpactEvents (%s) : %v", n, err)
+		}
+		out := make([]string, 0, len(rows))
+		for _, r := range rows {
+			out = append(out, fmt.Sprintf("%s %d %s %s", r.MatchID, r.TimeMS, r.XUID, r.EventType))
+		}
+		return out
+	}
+	premiere, seconde := lire("1re lecture"), lire("2e lecture")
+	attendu := []string{
+		"me0 2000 x_9 kill",
+		"me1 500 x_5 kill",
+		"me1 1000 x_1 death", "me1 1000 x_1 kill", "me1 1000 x_2 death", "me1 1000 x_2 kill",
+		"me1 1000 x_3 death", "me1 1000 x_3 kill", "me1 1000 x_4 death", "me1 1000 x_4 kill",
+	}
+	if !slices.Equal(premiere, seconde) {
+		t.Errorf("deux lectures consécutives diffèrent — %s", premierEcart(seconde, premiere))
+	}
+	if !slices.Equal(premiere, attendu) {
+		t.Errorf("hors de l'ordre (match_id, time_ms, xuid, event_type) — %s\nobtenu :\n%s",
+			premierEcart(premiere, attendu), strings.Join(premiere, "\n"))
+	}
+}
+
+// TestSquadRepo_Q32c_OrdreTotal : deux lectures des paires tueur -> victime horodatées, mêmes
+// lignes dans le même ordre — match_id, time_ms, tueur, victime — ; une mort de bot (xuid
+// NULL) reste écartée.
+func TestSquadRepo_Q32c_OrdreTotal(t *testing.T) {
+	pdb := newTestPlayerDB(t)
+	ctx := context.Background()
+	for _, k := range [][3]any{
+		{"k1", "v2", 3000}, {"k2", "v2", 3000}, {"k3", "v3", 1000}, {"k2", "v1", 3000},
+		{nil, "v4", 3000}, {"k1", "v1", 3000}, {"k2", "v3", 3000},
+	} {
+		execOnSharedDBs(t, pdb, ctx, `INSERT INTO shared.match_kill_events_latest
+			(match_id, feed_killer_xuid, victim_xuid, time_ms) VALUES ('mk1', ?, ?, ?)`, k[0], k[1], k[2])
+	}
+	lire := func(n string) []string {
+		paires, err := NewSquadRepo(pdb).LoadKVPairs(ctx, []string{"mk1"})
+		if err != nil {
+			t.Fatalf("LoadKVPairs (%s) : %v", n, err)
+		}
+		out := make([]string, 0, len(paires))
+		for _, p := range paires {
+			out = append(out, fmt.Sprintf("%d %s>%s", p.TimeMS, p.KillerXUID, p.VictimXUID))
+		}
+		return out
+	}
+	premiere, seconde := lire("1re lecture"), lire("2e lecture")
+	attendu := []string{"1000 k3>v3", "3000 k1>v1", "3000 k1>v2", "3000 k2>v1", "3000 k2>v2", "3000 k2>v3"}
+	if !slices.Equal(premiere, seconde) {
+		t.Errorf("deux lectures consécutives diffèrent — %s", premierEcart(seconde, premiere))
+	}
+	if !slices.Equal(premiere, attendu) {
+		t.Errorf("hors de l'ordre (match_id, time_ms, tueur, victime) — %s\nobtenu : %v",
+			premierEcart(premiere, attendu), premiere)
+	}
+}
+
+// TestCareerRepo_Q10_DepartageStable : Q10 (rencontres de la Carrière, sélecteur de
+// composition de l'onglet Tactique) — un joueur croisé 3 fois, puis 52 ex aequo croisés 2 fois,
+// insérés dans un ordre brouillé : deux lectures rendent la même liste, match_count DESC puis
+// xuid ASC, et la coupe du LIMIT 50 garde les 49 plus petits xuids du groupe à égalité.
+func TestCareerRepo_Q10_DepartageStable(t *testing.T) {
+	pdb := newTestPlayerDB(t)
+	ctx := context.Background()
+	participant := `INSERT INTO shared.match_participants (match_id, xuid, gamertag, outcome, team_id) VALUES (?, ?, ?, 2, 0)`
+	for _, m := range []string{"mq10_1", "mq10_2", "mq10_3"} {
+		execOnSharedDBs(t, pdb, ctx, `INSERT INTO shared.match_registry (match_id) VALUES (?)`, m)
+		execOnSharedDBs(t, pdb, ctx, participant, m, pTestXUID, pTestGamertag)
+		execOnSharedDBs(t, pdb, ctx, participant, m, "2533274890000000", "GTtrois")
+	}
+	// 52 ex aequo : ordre d'insertion brouillé (pas à pas de 23 modulo 52, ni croissant ni décroissant).
+	var egaux []string
+	for i := 0; i < 52; i++ {
+		x := fmt.Sprintf("25332748910000%02d", (i*23)%52)
+		egaux = append(egaux, x)
+		for _, m := range []string{"mq10_1", "mq10_2"} {
+			execOnSharedDBs(t, pdb, ctx, participant, m, x, "GT"+x)
+		}
+	}
+	lire := func(n string) []string {
+		rows, err := NewCareerRepo(pdb).GetEncounters(ctx)
+		if err != nil {
+			t.Fatalf("GetEncounters (%s) : %v", n, err)
+		}
+		out := make([]string, 0, len(rows))
+		for _, r := range rows {
+			out = append(out, fmt.Sprintf("%s %d", r.XUID, r.MatchCount))
+		}
+		return out
+	}
+	premiere, seconde := lire("1re lecture"), lire("2e lecture")
+	slices.Sort(egaux)
+	attendu := []string{"2533274890000000 3"}
+	for _, x := range egaux[:49] {
+		attendu = append(attendu, x+" 2")
+	}
+	if !slices.Equal(premiere, seconde) {
+		t.Errorf("deux lectures consécutives diffèrent — %s", premierEcart(seconde, premiere))
+	}
+	if !slices.Equal(premiere, attendu) {
+		t.Errorf("hors de l'ordre (match_count DESC, xuid ASC) ou coupe du LIMIT 50 — %s", premierEcart(premiere, attendu))
 	}
 }
