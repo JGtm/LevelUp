@@ -10,14 +10,23 @@ réfuté. Ce qui reste à faire ou à terminer n'est pas ici mais à la racine d
 
 ## Organisation
 
+Comptes relevés le 2026-09-23 (lot d'archivage de la racine) : fichiers posés directement dans
+le dossier / fichiers suivis par git, sous-dossiers compris (un seul nombre quand ils sont égaux).
+
 | Dossier | Contenu | Fichiers |
 |---|---|---|
-| `film_re/` | Format du film Theater : grammaire, chunks, décodeur ECS, keyframes, RE Ghidra, handoffs externes | 25 |
-| `killweapon/` | Arme / source de dégât par kill : kill feed, dead-state, same-clock, walk biped, journal RE | 22 |
-| `replay2d/` | POC du rejeu 2D puis ses chantiers : trajectoires, inventaire/loadout, vérité terrain, plans de lots | 42 |
-| `cartes/` | Géométrie 2D des maps depuis les `.module`, triangles, noms de zones | 3 |
-| `icones/` | Icônes d'armes et du **kill feed** extraites des `.module` : chaîne, tables de correspondance, page de nommage, planches-contact | 5 |
-| `dumps/` | Captures binaires, CSV, PNG (ex-`.ai/re_dump/`) — 69 Mo, lus par du code | 40 entrées |
+| racine de `V7.5/` | Plans, audits, rapports et handoffs de la campagne v7.5 archivés avant la création des sous-dossiers thématiques (passes H6 et 2026-09-13) | 152 |
+| `film_re/` | Format du film Theater : grammaire, chunks, décodeur ECS, keyframes, RE Ghidra, handoffs externes, préparations des jalons du décodeur | 158 / 203 |
+| `killweapon/` | Arme / source de dégât par kill : kill feed, dead-state, same-clock, walk biped, journal RE, précision des projectiles | 26 |
+| `replay2d/` | POC du rejeu 2D puis ses chantiers : trajectoires, inventaire/loadout, vérité terrain, plans de lots, export vidéo, retours du rejeu | 103 / 735 |
+| `chantiers/` | **Créé le 2026-09-23.** Chantiers v7.5 hors film : UI (Explorer, couleurs), escouade et annuaire, sync, fork, classement mondial, pilotage, arbitrages, revues | 14 |
+| `cartes/` | Géométrie 2D des maps depuis les `.module`, triangles, noms de zones | 27 / 28 |
+| `icones/` | Icônes d'armes et du **kill feed** extraites des `.module` : chaîne, tables de correspondance, page de nommage, planches-contact | 8 |
+| `v2/` | Chantier v2 rejeu/film (gelé le 2026-09-07 ; suite `../PLAN_V2_RESTES_2026-09-07.md`) | 31 |
+| `briefs_ajustements_2026-09-13/` | Briefs d'exécutant des lots de `../PLAN_AJUSTEMENTS_PRE_V75_2026-09-13.md` | 9 |
+| `outillage/` | Sorties d'outillage (couverture des objectifs, palette Forge, précision des projectiles) | 0 / 41 |
+| `reference/` | Référence de mécanique de jeu (disparition des armes) | 1 |
+| `dumps/` | Captures binaires, CSV, PNG (ex-`.ai/re_dump/`) — 76 Mo, lus par du code | 39 / 78 |
 
 Plan actif d'habillage du rejeu 2D (marqueurs, noms, amis, logo, rangee `fil | carte | fiches`) :
 `replay2d/PLAN_HABILLAGE_REJEU_2D.md` (ecrit le 2026-08-16, decisions D1-D8 a valider par le user).
@@ -109,10 +118,120 @@ sept grandeurs de non-régression des trois films, encore citées comme gate par
   tables index → arme/nom, pistes réfutées. Le nommage restant se fait dans
   `icones/NOMMAGE_ICONES.html` (page locale, hors app).
 
-## Ce qui est resté à la racine de `.ai/`
+## Ce qui est resté à la racine de `.ai/` (état final au 2026-09-23)
 
-Les documents **encore vivants** : les états de l'art (référence courante), l'index maître
-arme-par-kill, et les plans/handoffs qui restent à traiter ou à terminer.
+La racine porte **52 fichiers suivis** (plus `mock_effets_fiches_zones.html`, ignoré par
+`.gitignore`, présent dans le seul checkout de l'utilisateur). Chaque document y est pour une
+raison écrite ci-dessous ; le verdict a été rendu sur preuves le 2026-09-23 (en-tête du
+document, `thought_log.md`, `git log`, références entrantes). Les chemins sont relatifs à `.ai/`.
+
+**Journal, carte, backlog** : `thought_log.md`, `project_map.md`, `BACKLOG.md`.
+
+**Chantier vivant du décodeur de film** : `PLAN_DECODEUR_FILM_2026-09-13.md` (le lot 5.26 s'y
+écrit) et `HANDOFF_DECODEUR_FILM_SERIE5_2026-09-22.md` (vivant tant que 5.26 n'est pas statué).
+
+**Plans et handoffs ouverts (VIVANT)** :
+
+| Document | Pourquoi il reste |
+|---|---|
+| `PLAN_FINITIONS_2026-09-13.md` | arbitrages utilisateur en attente |
+| `PLAN_NIVEAUX_ARMES_2026-09-13.md` | planifié, non démarré |
+| `PLAN_PRISES_NETTES_DRAPEAU_2026-09-13.md` | décision utilisateur du 13/09, non livré |
+| `PLAN_LIBELLES_EN_DUR_GO_2026-09-07.md` | ouvert, six décisions en attente |
+| `PLAN_TACTIQUE_SUITE_2026-09-07.md`, `DECOUVERTES_TACTIQUE_2026-09-07.md` | suite du chantier Tactique et son registre de découvertes |
+| `PLAN_V2_RESTES_2026-09-07.md` | restes du chantier v2 (lot P) |
+| `PLAN_DUELS_PORTEE_2026-09-06.md` | livré sur `feat/duels`, non fusionné (décisions utilisateur) |
+| `PLAN_FRISE_POINT_DE_VUE_2026-09-06.md` | livré, non poussé |
+| `PLAN_FICHES_COMPACTES_BTB_2026-09-06.md` | livré, fusion au signal |
+| `PLAN_AJUSTEMENTS_PRE_V75_2026-09-13.md` | livré, découvertes §4 en attente d'arbitrage |
+| `PLAN_FORK_ET_RELEASE_2026-09-11.md`, `PROCEDURE_BASCULE_LEVELUP_2026-09-13.md` | F.4 (bascule vers le dossier `LevelUp`) non faite ; la procédure attend le signal de l'utilisateur |
+| `PLAN_EQUIPEMENT_GACHIS_2026-09-09.md` | en-tête : « reste ouvert ici : les découvertes §6 et P5 » |
+| `PLAN_ORCHESTRATION_2026-09-07.md` | table de suivi ouverte sur P3-P5, L6-L8 et R9 (release) |
+| `PLAN_QUANTUM_PROJECTILES_ET_BORNES_FORGE_2026-09-14.md` | plan écrit le 14/09, 30 cases vides, aucune exécution au journal |
+| `PLAN_REPLI_GAME_CHANGERS_2026-09-05.md` | lot I (graphes partagés) non fait, « les graphes attendent la clé » (journal du 05/09) |
+| `PLAN_RETOURS_REJEU_MATCHVIEW_2026-09-02.md` | lots 1-3 et 5 faits, lot 4 (effets de fiche) jamais exécuté |
+| `HANDOFF_ASSAUT_DESAMORCAGE_2026-09-04.md` | désamorçage hors lot, condition de reprise écrite |
+| `HANDOFF_VEHICULES_2026-09-04.md` | journal du 04/09 : « 3 validations utilisateur en attente » |
+
+**Références (citées par `CLAUDE.md`, du code, un ADR ou un plan vivant)** :
+`REFERENCE_CANAUX_EQUIPEMENT_2026-09-09.md` (CLAUDE.md), `ETAT_DE_L_ART_KILLWEAPON.md` et son
+`ADDENDUM_ETAT_DE_L_ART_2026-07-26.md`, `README_KILLWEAPON_INDEX.md`, `GUIDE_WEAPON_SHOTS.md`,
+`ETAT_DE_L_ART_FORGE_PALETTE_ZONES.md` (chantier Forge post-release),
+`ARCHITECTURE_CIBLE_DECODEUR_FILM_2026-09-12.md` (ADR 0034, plan du décodeur),
+`AUDIT_LECTEURS_VIES_ANONYMES_2026-09-06.md` (code web, restes v2), `REFERENCE_WEAPON_IDS.md`
+(`docs/WEAPONS.md`), `I18N_REFERENCE.md`, `ENRICHMENTS_CATALOG.md` (`persist/doc.go`, ADR 0019),
+`CHARTS_AND_TABLES.md` (`charts_specs/README.md`), `MCC_UNOFFICIAL_API_REFERENCE.md`
+(`cmd/probe-mcc`), `STEAKTACULAR.md` (code du comeback), `duckdb_7659_upstream_report.md`
+(ADR 0021, réponse amont attendue).
+
+**À ARBITRER (restés en place, la question est posée à l'utilisateur)** :
+
+| Document | Question |
+|---|---|
+| `HANDOFF_DECODEUR_FILM_2026-09-13.md`, `PREPARATION_M2_PAS_4_A_6_2026-09-17.md`, `PREPARATION_M4_ORDRE_ET_FRONTIERES_2026-09-17.md` | Recherche close et jalons M2/M4 clos, mais `PLAN_DECODEUR_FILM_2026-09-13.md` les cite et ne se touche pas pendant 5.26 : les déplacer vers `film_re/` à la clôture de 5.26, avec la citation réécrite ? |
+| `PLAN_ARME_FAVORITE_BRIEFING_EXPLORER_2026-09-17.md` | Journal « gate visuel en attente », puis trois fusions dont deux « retour du gate visuel » (`e80841a6f`, `a21640979`, `248f49750`) ; les cinq scénarios de l'étape 7 ne sont pas cochés. Gate visuel tenu ? |
+| `PLAN_COMPARE_PROFIL_ARMES_2026-09-17.md` | Fusionné (`5b2298f06`) ; 5.2, 5.4 (gate visuel) et 5.5 non cochés, journal « gate visuel et fusion en attente ». Gate visuel tenu ? |
+| `PLAN_EXPLORER_PORTEE_FRAGS_2026-09-17.md` | Fusionné (`753005b1a`) ; journal : gate visuel encore à faire, 4.2/4.4/4.5 non cochés. Gate visuel tenu ? |
+| `PLAN_ESCOUADE_HORS_CADRE_2026-09-09.md` | Phases fusionnées (vagues 1, 3, 4) ; R1-R4 (revues, checklist, journal de clôture) jamais statués. Couverts par les revues de vague du plan maître ? |
+| `PLAN_FINALISATION_REJEU_2D.md` | Plan « actif » au 2026-08-05, intact depuis le 08/08, 36 cases vides : encore l'autorité du rejeu 2D, ou dépassé par les chantiers v2 et décodeur ? |
+| `PLAN_MASTER_FILM_KILLFEED_REJEU.md` | J5.1-J5.4 (merge, backfill prod, archivage des branches de recherche) non cochés ; cité par `migration/build_queue_schema.go`. Clos par la release v7.5 à venir ? |
+| `PLAN_OBJECTIFS_TEMPS_REEL.md` | 16 cases vides depuis le 31/07 ; cité avec son chemin par `apps/go-api/internal/games/halo_infinite/film/internal/grammar/sonde_ti11_objectifs_test.go`, source hachée de la révision de grammaire : le déplacer exige soit une référence cassée, soit une montée de `grammar.Rev`. Le garder ici ? |
+| `PLAN_DEPS_ECHARTS_TS7_2026-07-27.md` | Lots A (deps Go : `httprate` 0.16.0) et B (`echarts` ^6.1.0) faits hors plan ; lot C (TypeScript 7) non fait (`typescript` ~6.0.2). Garder pour TS7 ou clore ? |
+| `PLAN_REVUE_ANALYTIQUE_TIMESERIES_SQUAD_2026-07.md` | Seul Z1 (tournée visuelle avec l'utilisateur) reste vide depuis le 26/07 (v7.2.1) : faite, ou à clore vers `archive/` ? |
+| `mock_effets_fiches_zones.html` (hors git) | Maquette locale ignorée par `.gitignore` : liée au lot 4 de `PLAN_RETOURS_REJEU_MATCHVIEW_2026-09-02.md` ? La garder, la ranger sous `mocks/`, ou la supprimer ? |
+
+Documents autrefois listés dans cette section et archivés depuis (chemins relatifs à `V7.5/`) :
+`killweapon/ETAT_DE_L_ART_CHANTIER_VOISIN.md`, `killweapon/HANDOFF_PRECISION_PROJECTILES.md`,
+`killweapon/PLAN_BRANCHEMENT_KILLSOURCE.md`, `replay2d/CONCEPTION_INVERSION_PRESEANCE.md`,
+`PLAN_DETTE_AVANT_MERGE.md`, `HANDOFF_SUPERVISEUR_2026-08-03.md`, `PLAN_CAPTURE_EXPORT_REJEU.md`,
+`PLAN_EXPORT_VIDEO_HORS_TEMPS_REEL.md`, `replay2d/SUIVI_REPLAY_2D.md`, `replay2d/ETAT_DU_POC.md`,
+`replay2d/CAHIER_DES_CHARGES_POC.md`, `replay2d/HANDOFF_REPLAY_2D_2026-07-29.md`,
+`replay2d/PLAN_CAPACITES_ACTIVES.md`, `icones/PLAN_RECHERCHE_ASSETS_ICONES.md`,
+`cartes/PLAN_BELLE_CARTE_TRIANGLES.md`, `replay2d/CLE_USB_REJEU_2D.md`,
+`film_re/PLAN_VARIABLES_JETEES.md`, `film_re/HANDOFF_DUMPS_2026-07-31.md`,
+`film_re/SESSION_CAPTURE_AVANT_PC.md`, `replay2d/thought_log_replay.md`.
+
+## Passes d'hygiène de la racine (historique)
+
+> **Passe d'archivage du 2026-09-23 (lot `feat/ai-archivage-v75`).** 21 documents clos ont quitté
+> la racine par `git mv`, contenu intact ; les références de chemin ont été réécrites dans les
+> documents restés vivants, dans cinq commentaires de code et, pour l'ADR 0035, par une ligne
+> « moved to » à côté de la citation. Une ligne par document, rangée par dossier :
+>
+> `chantiers/` (nouveau) :
+>
+> - `chantiers/ARBITRAGE_DETTE_2026-09-11.md` (11/09) — la dette consignée de la vague 6 pesée en gain × effort ; tranchée par l'utilisateur le 13/09, décisions reprises dans `../PLAN_FINITIONS_2026-09-13.md`.
+> - `chantiers/BILAN_FORK_CHASEWOODHAMS_2026-09-11.md` (11/09) — inventaire du fork, point par point contre notre arbre ; devenu `../PLAN_FORK_ET_RELEASE_2026-09-11.md`, dont les lots A à C sont fusionnés (journal du 12/09).
+> - `chantiers/PLAN_AMIS_PAR_JOUEUR_ET_INVITATIONS_2026-09-15.md` (15/09) — amis par profil et invitations sans groupe ; étapes 0 à 7 closes, fusionné (`13c4b6c61`).
+> - `chantiers/PLAN_ANNUAIRE_JOUEURS_2026-09-15.md` (15/09) — annuaire des joueurs, une clé d'identité (ADR 0035) ; clôturé au journal du 16/09, fusionné (`9ee1835c8`).
+> - `chantiers/REVUE_ANNUAIRE_JOUEURS_2026-09-15.md` (15/09) — registre des revues du pilote et des deux rondes adversariales de l'annuaire (R1-R6, A1-A8, B1-B5), clos avec le plan.
+> - `chantiers/PLAN_CORRECTIFS_REVUE_LOTS_V75_2026-09-17.md` (17/09) — les correctifs de la revue des huit lots ; fusionné (`ed04d6c0f`), CI verte.
+> - `chantiers/PLAN_COULEURS_STATS_COMBAT_2026-09-17.md` (17/09) — jetons de couleur dédiés aux stats de combat, garde-rail anti-emprunt ; fusionné dans `feat/v75` (journal du 17/09).
+> - `chantiers/PLAN_EXPLORER_RANGEE3_2026-09-17.md` (17/09) — troisième rangée de l'encart cible de l'Explorer ; cinq étapes closes, fusionné (`c8ee9b188`) ; suite dans `../PLAN_EXPLORER_PORTEE_FRAGS_2026-09-17.md`.
+> - `chantiers/PLAN_LEADERBOARD_MONDE_REPRISE_2026-09-03.md` (03/09) — reprise du scrape du classement mondial ; lots 1 à 4 et revue clos, livré en hotfix 7.3.1 (`2751a484f`).
+> - `chantiers/PLAN_MASTER_2026-09-09.md` (09/09) — pilotage des vagues 0 à 6 ; vague 6 close le 11/09 (CI 3/3) ; le reste consigné devient `chantiers/ARBITRAGE_DETTE_2026-09-11.md`.
+> - `chantiers/PLAN_REPRISE_FORK_2026-09-05.md` (05/09) — reprise du fork en deux volets ; volet A fusionné sur `main` (`cf333a388`), volet B fermé sans code ; le soak restant est au `REGISTRE_REPORTS.md`.
+> - `chantiers/PLAN_RETOURS_UTILISATEUR_2026-08-29.md` (29/08) — huit retours utilisateur, lots A à G ; G.3 plein fermé par DEC-8 ; la portée par arme a repris dans `../PLAN_DUELS_PORTEE_2026-09-06.md`.
+> - `chantiers/PLAN_ROBUSTESSE_SYNC_2026-09-16.md` (16/09) — verdict fidèle du sync, rejeu du 429, plafond de slots ; fusionné (`3858eae59`).
+> - `chantiers/PLAN_SYNC_POOL_SEAMS_SCHEMA_2026-09-16.md` (16/09) — sync par le pool pour tout profil suivi, dérive de schéma `match_registry` ; fusionné (`b4de1fc16`).
+>
+> `film_re/` :
+>
+> - `film_re/MESURE_ENTETE_TI9_47BITS_2026-09-11.md` (11/09) — l'en-tête d'un record d'image-clé est propre au type d'entité (`ti=9` : 47 bits) ; branche de mesure fusionnée (`f899967db`).
+> - `film_re/PREPARATION_M3_3_2_A_3_4_2026-09-17.md` (17/09) — préparation des lots 3.2 à 3.4 du décodeur ; jalon M3 clos (`f9c2a5c74`).
+> - `film_re/PREPARATION_M4_2026-09-17.md` (17/09) — préparation des lots 4.1 à 4.4 ; jalon M4 clos (`7df45f4f4`) ; son complément `../PREPARATION_M4_ORDRE_ET_FRONTIERES_2026-09-17.md` reste à la racine (cité par le plan du décodeur).
+>
+> `killweapon/` :
+>
+> - `killweapon/ETAT_DE_L_ART_CHANTIER_VOISIN.md` (27/07) — index de renvoi vers le worktree `filmdec-killweapon` ; sans objet depuis la réconciliation des deux lignées (`PLAN_RECONCILIATION_BRANCHES.md`, close le 31/07).
+> - `killweapon/HANDOFF_PRECISION_PROJECTILES.md` (08/08) — déclaré « CONSOMMÉ » par son propre en-tête ; l'état fait foi dans `HANDOFF_PRECISION_PROJECTILES_2026-08-08.md` et `VERDICT_PRECISION_PROJECTILES.md`.
+>
+> `replay2d/` :
+>
+> - `replay2d/PLAN_EXPORT_FORMATS_VIDEO_2026-09-16.md` (16/09) — formats 1080p / 720p de l'export du rejeu ; gate visuel validé le 17/09, plan clos (`720c62a33`).
+> - `replay2d/PLAN_RETOURS_VAGUE_A_LOT_COURT_2026-09-08.md` (08/09) — les sept correctifs courts des retours du 08/09 ; fusionnés (`e7926ded3`), item 0.2 du plan maître statué « reste = 0 ».
+>
+> Restés à la racine faute de preuve nette : la table « À ARBITRER » ci-dessus.
 
 > **Passe d'hygiène du 2026-08-05 (lot H6).** Trois documents 100 % clos ont rejoint `V7.5/`
 > et leurs liens croisés ont été mis à jour : `PLAN_RECONCILIATION_BRANCHES.md` (racine
@@ -135,7 +254,7 @@ arme-par-kill, et les plans/handoffs qui restent à traiter ou à terminer.
 > - `ETAT_DE_L_ART_MODE_SCORE_EVENEMENTS.md` -- recherche mode->score, integree le 2026-08-05 (`feat/re-mode-score`).
 > - `HANDOFF_CONTAINMENT_ZONES_2026-08-08.md` -- lot 4 v7.5, negatifs etablis (lettre de zone hors portee).
 > - `HANDOFF_LECTURE_EQUIPEMENT_2026-09-04.md` -- chantier equipement du 03/09, "tout est merge" (dixit le handoff).
-> - `HANDOFF_PRECISION_PROJECTILES_2026-08-08.md` -- piste close le jour meme (doublon date du `HANDOFF_PRECISION_PROJECTILES.md` reste a la racine).
+> - `HANDOFF_PRECISION_PROJECTILES_2026-08-08.md` -- piste close le jour meme (doublon date du `HANDOFF_PRECISION_PROJECTILES.md` reste a la racine ; deplace vers `killweapon/HANDOFF_PRECISION_PROJECTILES.md` le 2026-09-23).
 > - `HANDOFF_SESSION_USAGE_BDD_2026-09-04.md` -- a nourri `PLAN_SESSION_USAGE_BDD_EXECUTION.md`, clos avec lui.
 > - `HANDOFF_TACTIQUE_2026-09-07.md` -- chantier Tactique fusionne dans `feat/v75` le 07/09.
 > - `v2/HANDOFF_V2_REJEU_FILM_2026-09-06.md` et `v2/HANDOFF_V2_REJEU_FILM_2026-09-07.md` -- etat du chantier v2, fusionne (schema 48).
@@ -144,7 +263,7 @@ arme-par-kill, et les plans/handoffs qui restent à traiter ou à terminer.
 > - `PLAN_LEGENDES_COULEURS_RETOURS_2026-09-09.md` -- statut CLOS (E1->E7) declare en tete du fichier.
 > - `PLAN_PERF_NOTE_OBJECTIFS.md` et `RAPPORT_SIM_PERF_NOTE_2026-08.md` -- note de perf, close le 28/08.
 > - `PLAN_RETOURS_VAGUE_B_IDENTITES_2026-09-08.md` -- abandonne le 09/09, objectif atteint par une autre voie (sondage E2).
-> - `PLAN_RETOURS_VAGUE_C_FORMES_2026-09-08.md` -- execute via `PLAN_MASTER_2026-09-09.md`, "reste ouvert ici : rien".
+> - `PLAN_RETOURS_VAGUE_C_FORMES_2026-09-08.md` -- execute via `PLAN_MASTER_2026-09-09.md` (deplace vers `chantiers/PLAN_MASTER_2026-09-09.md` le 2026-09-23), "reste ouvert ici : rien".
 > - `PLAN_SCORE_PAR_MANCHES.md` -- E0-E7 clos (ADR 0032), seul E2 partiel non bloquant.
 > - `PLAN_SESSION_USAGE_BDD_EXECUTION.md` et `PLAN_SESSION_USAGE_LISIBILITE_2026-09-09.md` -- toutes etapes `[x]`, commits identifies.
 > - `PLAN_TACTIQUE_2026-09-06.md` -- fusionne dans `feat/v75` le 07/09 (suite : `PLAN_TACTIQUE_SUITE_2026-09-07.md`, reste a la racine).
@@ -155,7 +274,7 @@ arme-par-kill, et les plans/handoffs qui restent à traiter ou à terminer.
 >   tous fusionnes dans `feat/v75`.
 >
 > References croisees mises a jour dans les documents restes vivants (`REFERENCE_CANAUX_EQUIPEMENT_2026-09-09.md`,
-> `HANDOFF_PRECISION_PROJECTILES.md`, `PLAN_EQUIPEMENT_GACHIS_2026-09-09.md`, `DECOUVERTES_TACTIQUE_2026-09-07.md`,
+> `HANDOFF_PRECISION_PROJECTILES.md` (deplace vers `killweapon/HANDOFF_PRECISION_PROJECTILES.md` le 2026-09-23), `PLAN_EQUIPEMENT_GACHIS_2026-09-09.md`, `DECOUVERTES_TACTIQUE_2026-09-07.md`,
 > `PLAN_ORCHESTRATION_2026-09-07.md`, `PLAN_V2_RESTES_2026-09-07.md`, `docs/COMMANDS.md`, `docs/FR/COMMANDS.md`) ;
 > les references internes aux documents deja archives (V7.5 ou eux-memes deplaces dans cette meme passe)
 > ne sont pas reecrites (convention posee par ce README au H6 ci-dessus).
@@ -173,32 +292,6 @@ arme-par-kill, et les plans/handoffs qui restent à traiter ou à terminer.
 > `PLAN_ORCHESTRATION_2026-09-07.md` (table de suivi encore ouverte sur P3-P5/L6-L8/R9),
 > `STEAKTACULAR.md` et `duckdb_7659_upstream_report.md` (hors du perimetre thematique de `V7.5`,
 > qui ne couvre que la recherche rejeu/film ; le second attend une reponse amont externe).
-
-État de l'art et index : `ETAT_DE_L_ART_KILLWEAPON.md`,
-`ADDENDUM_ETAT_DE_L_ART_2026-07-26.md`, `ETAT_DE_L_ART_CHANTIER_VOISIN.md`,
-`README_KILLWEAPON_INDEX.md`.
-
-Dette et merge : `PLAN_DETTE_AVANT_MERGE.md`, `PLAN_MASTER_FILM_KILLFEED_REJEU.md`
-(document d'autorité), `HANDOFF_SUPERVISEUR_2026-08-03.md` (point d'entrée du rôle superviseur).
-
-Sortie du rejeu (image, video) : `PLAN_CAPTURE_EXPORT_REJEU.md` (capture temps reel, livree le
-2026-08-26 — le bouton d'enregistrement FILME l'ecran, donc coute une duree de match) puis
-`PLAN_EXPORT_VIDEO_HORS_TEMPS_REEL.md` (livre le 2026-08-28 — l'export RECALCULE le film par
-WebCodecs, environ 18x plus vite que le temps reel, avec le son mixe hors ligne et les
-surimpressions repeintes dans la toile ; l'enregistrement temps reel y devient un repli pour les
-navigateurs sans `VideoEncoder`).
-
-Rejeu 2D : `PLAN_FINALISATION_REJEU_2D.md`, `SUIVI_REPLAY_2D.md`, `ETAT_DU_POC.md`,
-`CAHIER_DES_CHARGES_POC.md`, `HANDOFF_REPLAY_2D_2026-07-29.md`,
-`PLAN_OBJECTIFS_TEMPS_REEL.md`, `PLAN_CAPACITES_ACTIVES.md`,
-`PLAN_RECHERCHE_ASSETS_ICONES.md`, `PLAN_BELLE_CARTE_TRIANGLES.md`, `CLE_USB_REJEU_2D.md`.
-
-Killsource / armes : `PLAN_BRANCHEMENT_KILLSOURCE.md`, `CONCEPTION_INVERSION_PRESEANCE.md`,
-`GUIDE_WEAPON_SHOTS.md`, `HANDOFF_PRECISION_PROJECTILES.md`, `PLAN_VARIABLES_JETEES.md`.
-
-Captures et dumps : `HANDOFF_DUMPS_2026-07-31.md`, `SESSION_CAPTURE_AVANT_PC.md`.
-
-Journaux : `thought_log.md` (principal) et `thought_log_replay.md` (chantier rejeu 2D).
 
 ## Pièges
 
