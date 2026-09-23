@@ -6,6 +6,7 @@ package teammates
 
 import (
 	"context"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -189,6 +190,54 @@ func TestBuildSquadIntensityProfile_XUIDsDeLaPage(t *testing.T) {
 	for _, gt := range []string{"main", "Ally"} {
 		if r := tlRowFor(t, got, gt, "m1"); r.Phases[1] != 1 {
 			t.Errorf("ligne %s : attendu le frag du bucket 1 (xuid de la page), phases %v", gt, r.Phases)
+		}
+	}
+}
+
+// tacticalRepoEspion capture aussi les requêtes du contexte des morts (nuage d'isolement).
+type tacticalRepoEspion struct {
+	*mockTacticalRepo
+	vuesMorts []domain.TacticalQuery
+}
+
+func (e *tacticalRepoEspion) MortsAvecContexte(ctx context.Context, q domain.TacticalQuery) (domain.TacticalMortsContexte, error) {
+	e.vuesMorts = append(e.vuesMorts, q)
+	return e.mockTacticalRepo.MortsAvecContexte(ctx, q)
+}
+
+// TestBuildSquadEchange_JournalRestreintALaComposition (L2.4 / D2.4) : le journal des morts et
+// le contexte des morts sont lus UNE fois chacun, avec pour liste blanche l'historique de la
+// COMPOSITION (l'habituel), jamais tout l'historique du joueur.
+func TestBuildSquadEchange_JournalRestreintALaComposition(t *testing.T) {
+	ids := []string{"m1", "m2"}
+	espion := &tacticalRepoEspion{mockTacticalRepo: &mockTacticalRepo{
+		lecture: domain.TacticalKillEvents{
+			Univers: domain.TacticalUnivers{Matchs: isolementMatches("Arena", ids...), Equipes: equipesDeuxContreDeux(ids...)},
+			Events: []domain.KillEvent{
+				{MatchID: "m2", KillerXUID: "x_adv1", VictimXUID: "x_main", TimeMs: 10_000},
+				{MatchID: "m2", KillerXUID: "x_Ami", VictimXUID: "x_adv1", TimeMs: 12_000},
+			},
+		},
+		morts: domain.TacticalMortsContexte{Morts: []domain.MortContexte{
+			mortContexte("m2", "x_main", 10_000, metres(9), 1, 0),
+		}},
+	}}
+	svc := &TeammatesService{
+		titleSlug: "halo_infinite", gamertag: "main",
+		tacticalRepo: espion, caps: capsFiables(), radarRange: isolementRadar(),
+	}
+	// Le filtre de la page retient m2 ; l'historique de la composition compte m1 et m2.
+	got := svc.buildSquadEchange(context.Background(),
+		isolementRows("m2"), isolementRows("m1", "m2"), "main", "x_main", echangeMates("Ami"))
+	if got == nil || got.NuageIsolement == nil {
+		t.Fatalf("section echange et nuage attendus, obtenu %+v", got)
+	}
+	if len(espion.vues) != 1 || len(espion.vuesMorts) != 1 {
+		t.Fatalf("lectures : journal %d, contexte %d — attendu une de chaque", len(espion.vues), len(espion.vuesMorts))
+	}
+	for _, q := range []domain.TacticalQuery{espion.vues[0], espion.vuesMorts[0]} {
+		if !q.Matchs.Restreint() || strings.Join(q.Matchs.IDs(), ",") != "m1,m2" {
+			t.Errorf("liste blanche = %v (restreinte %v), attendu l'habituel [m1 m2]", q.Matchs.IDs(), q.Matchs.Restreint())
 		}
 	}
 }

@@ -342,7 +342,17 @@ Items :
   population, intensite sans chargeur ; mutations (enveloppe retiree, xuids de la page retires) :
   rouges ; effet decide de D2.3 : un coequipier NON suivi a desormais sa ligne d'intensite (cf.
   journal)
-- [ ] L2.4 journal des morts restreint et partage (D2.4)
+- [x] L2.4 journal des morts restreint et partage (D2.4) — `teammates_squad_echange.go` :
+  `lireJournalDesMorts` (section `kill_events_shared`) avec `TacticalQuery.Matchs =
+  RestreindreAux(habituel)`, lecture unique partagee par l'echange et le nuage (qui la recoit
+  deja restreinte) ; `teammates_squad_isolement.go` : `MortsAvecContexte` sur la MEME liste
+  blanche ; test `TestBuildSquadEchange_JournalRestreintALaComposition` (une lecture de chaque,
+  liste = [m1 m2]) ; mutations (liste retiree de l'une ou l'autre lecture) : rouges ; parite page
+  9/9. GAIN NUL TANT QUE L5a N'EST PAS FUSIONNE : sur la copie, KillEvents 1,9 -> 1,8 s et
+  MortsAvecContexte 3,3 -> 3,3 s avec la liste — le lecteur tactique l'applique par
+  semi-jointure sur l'univers, sous laquelle DuckDB ne pousse pas les fenetres `_latest` (cf.
+  D5a.1). « Univers calcule une fois » : non atteignable ici (chaque lecture tactique calcule le
+  sien dans `tactical_repo*.go`, perimetre L5a) — cf. journal
 - [ ] L2.5 `sessionMatchIDs` depuis `filters.sessions` (D2.5)
 - [ ] L2.6 usage / formes partages + `replaylabels` hors chemin de requete (D2.6)
 - [ ] L2.7 annulation entre sections (D2.7)
