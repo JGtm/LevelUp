@@ -7,13 +7,10 @@
  * `AssetDrawer` dans `AppShell` (le tiroir reste dans le DOM, translaté hors écran,
  * même fermé) — donc visible sur TOUTE page, rejeu compris.
  *
- * Root cause CÔTÉ SERVEUR (Go, hors périmètre de ce lot — cf. thought_log) :
- * `MetadataRepo.ListMapsByTitle` (apps/go-api/internal/platform/duckdb/
- * metadata_repo_assets_list.go) dédoublonne par `SELECT DISTINCT ON (m.name_canonical)`,
- * PAS par `map_asset_id`. Si `maps_catalog` porte deux `name_canonical` distincts pour
- * le MÊME `map_asset_id` (rename de carte, doublon de catalogue), la requête rend deux
- * lignes avec le même `id` et des libellés différents — exactement la forme du bug
- * observé. Ce test prouve le dédoublonnage CÔTÉ WEB, en dernier rempart avant le rendu.
+ * Côté serveur, depuis : le dépôt rend une ligne par `map_asset_id` (D15, 2026-09-13) et
+ * `AssetService.ListMaps` une carte par visuel (lot rr/L4, 2026-09-23) — cf. la doc de
+ * `dedupeAssetsById`. Ce test prouve le filet CÔTÉ WEB (un `id` en double ne passe pas
+ * jusqu'à la clé React), en dernier rempart avant le rendu.
  */
 import { describe, it, expect } from 'vitest'
 import type { AssetMeta } from '@/lib/api/types'

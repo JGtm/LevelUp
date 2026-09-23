@@ -38,7 +38,8 @@ func (s *AssetService) WithWeaponImageURL(fn func(titleID string, weaponID int64
 	return s
 }
 
-// ListMaps retourne les maps d'un titre avec image_url.
+// ListMaps retourne les maps d'un titre avec image_url, UNE entrée par visuel (cf.
+// oneCardPerImage) triée par nom anglais.
 func (s *AssetService) ListMaps(ctx context.Context, titleID, search string) ([]canonical.AssetMeta, error) {
 	items, err := s.repo.ListMapsByTitle(ctx, titleID, search)
 	if err != nil {
@@ -62,7 +63,8 @@ func (s *AssetService) ListMaps(ctx context.Context, titleID, search string) ([]
 		}
 		out = append(out, items[i])
 	}
-	return out, nil
+	// Une carte par VISUEL (URL d'image résolue), pas par asset : cf. oneCardPerImage.
+	return oneCardPerImage(out), nil
 }
 
 // ListWeapons retourne les armes avec image_url.
