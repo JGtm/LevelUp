@@ -28,7 +28,7 @@ var lectureDeLaVueDesNoms = regexp.MustCompile(`(?i)\b(JOIN|FROM)\s+v_gamertag_l
 // lecturesDeLaVueRestantes : fichier -> nombre de lectures SQL de la vue, et pourquoi elles
 // restent (lot perf L7, 2026-09-23 ; le détail et le coût de chacune : plan perf §9 ter).
 var lecturesDeLaVueRestantes = map[string]int{
-	"explorer_repo.go":             1, // Explorer : ResolveXUIDByGamertag, recherche par NOM
+	"explorer_repo.go":             1, // Explorer : ResolveXUIDByGamertag, un joueur cherché par NOM — plus lue par la Carrière (amis : career_repo_friends.go, lot L9-go)
 	"gamertag_repo.go":             1, // ResolveGamertags : des xuids sans matchs
 	"leaderboard_world_repo.go":    1, // classement mondial
 	"media_repo_filters.go":        1, // Médias : lobbies des matchs
