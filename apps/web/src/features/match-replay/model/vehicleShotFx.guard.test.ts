@@ -9,8 +9,8 @@
  *
  * DEUX SOURCES DE VÉRITÉ, ET LE TEST LES JOINT DANS LE BON SENS : toute arme de la table SONORE
  * (10 entrées) doit avoir un style, et tout tag documenté par un MONTAGE aussi. La réciproque
- * n'est PAS exigée — un style peut exister sans son (les missiles du Wasp n'ont aucune
- * reconstruction et se voient pourtant) ni montage (l'éclair part alors du centre du châssis).
+ * n'est PAS exigée — un style peut exister sans son (le second mode du Wasp, `d3c407ed`, n'a
+ * aucune reconstruction et se voit pourtant) ni montage (l'éclair part alors du centre du châssis).
  *
  * LES VALEURS SONT CELLES DES DEUX LISTES FERMÉES DU DÉPÔT : un style qui nommerait une famille
  * ou une teinte hors liste tomberait silencieusement sur le neutre côté rendu (`familyOf` /
@@ -31,8 +31,10 @@ import { vehicleWeaponMountOf, vehicleWeapTag } from './vehicleWeaponMounts'
 const TAGS_QUI_SONNENT = [...VEHICLE_SHOT_SOUND_STEMS.keys()]
 
 /**
- * Les tags de la table des MONTAGES, relus par leur seule porte publique : la table elle-même
- * n'est pas exportée (et n'a pas à l'être), mais `vehicleWeaponMountOf` répond sur chacun.
+ * Les tags de la table des MONTAGES, relus par leur porte publique `vehicleWeaponMountOf`. La
+ * table est EXPORTÉE depuis le lot L1.5 (2026-09-23) pour le garde-rail des tags observés
+ * (`vehicleWeaponTags.guard.test.ts`) ; ce test-ci garde sa liste écrite en clair, qui fait
+ * aussi TÉMOIN : un montage perdu par la table y serait vu, pas suivi.
  */
 const TAGS_MONTES = [
   'c7d50912', // Rockethog

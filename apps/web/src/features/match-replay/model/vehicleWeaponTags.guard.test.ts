@@ -6,9 +6,13 @@
  * LE DÉFAUT QU'IL FERME. Les trois tables client (style, son, montage) étaient clées par les tags
  * `weap` du lot V3F — lus dans le module du jeu, jamais confrontés à un document. Mesure du
  * 2026-09-23 sur les 111 documents du parc : 7 des 11 clés n'apparaissaient dans AUCUN document, et
- * 3 tags réellement publiés en étaient absents (`0BB6976B` lance-grenades du Falcon, 51 tirs ;
- * `49E40D17` canon du Scorpion, 13 ; `850902EF`, 25, non identifié). Le Rockethog (`C7D50912`, 127
- * tirs) était muet : il ne sonnait que pour une famille `rockethog` qu'aucun châssis ne porte.
+ * 3 tags réellement publiés en étaient absents (`0BB6976B` lance-grenades du Falcon, 52 tirs
+ * dont 51 en véhicule ; `49E40D17` canon du Scorpion, 13 dont 13 ; `850902EF`, 25 dont 15, non
+ * identifié). Le Rockethog (`C7D50912`, 132 tirs dont 127 en véhicule) était muet : il ne sonnait
+ * que pour une famille `rockethog` qu'aucun châssis ne porte.
+ *
+ * LES COMPTES : « N tirs dont M en véhicule » = `shots` / `shotsWithVehicle` de la fixture (tous les
+ * tirs publiés sous le tag / ceux qui portent `v`). Le seuil ci-dessous porte sur `shots`.
  *
  * LA RÈGLE, DANS LES DEUX SENS :
  *  1. toute clé de table est OBSERVÉE (fixture datée `vehicle_weapon_tags_observed.json`, sortie de
@@ -62,7 +66,7 @@ const ATTENDUS_NON_OBSERVES: ReadonlyMap<string, string> = new Map([
 const INCONNUS: ReadonlyMap<string, string> = new Map([
   [
     vehicleWeapTag('850902ef'),
-    '25 tirs, un seul document (5676a9ba), porteurs Banshee 11 / Warthog 4 : aucune arme ne '
+    '25 tirs dont 15 en véhicule, un seul document (5676a9ba), porteurs Banshee 11 / Warthog 4 : aucune arme ne '
       + 'le nomme (candidat : bombe de la Banshee 0000aa69) — à identifier au lot M4a',
   ],
 ])

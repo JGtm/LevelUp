@@ -87,17 +87,17 @@ export const VEHICLE_SHOT_FX: ReadonlyMap<string, VehicleShotStyle> = new Map([
   [vehicleWeapTag('00015435'), PLASMA_ROUGE], // Ghost — canons à plasma jumeaux (tir continu, M4b).
   [vehicleWeapTag('0000aa68'), PLASMA_ROUGE], // Banshee M1 — canons à plasma (tir continu, M4b).
   [vehicleWeapTag('0000aa69'), PLASMA], // Banshee M2 — bombe à combustible (teinte non décidée).
-  [vehicleWeapTag('121b4009'), PLASMA_ROUGE], // Wraith — mortier à plasma (observé, 172 tirs).
+  [vehicleWeapTag('121b4009'), PLASMA_ROUGE], // Wraith — mortier à plasma (172 tirs, 142 en véhicule).
   [vehicleWeapTag('b40e9618'), PLASMA_ROUGE], // Chopper — canons avant (tir continu, M4b).
   // CINÉTIQUE.
-  [vehicleWeapTag('c7d50912'), BALISTIQUE], // Rockethog — lance-roquettes (observé, 132 tirs).
-  [vehicleWeapTag('11725dc4'), BALISTIQUE], // Wasp M1 — autocanon de menton (observé, 4 tirs).
-  [vehicleWeapTag('d3c407ed'), BALISTIQUE], // Wasp M2 — missiles (son en boucle, jamais vu).
-  [vehicleWeapTag('0042678e'), BALISTIQUE], // Gungoose — mitrailleuses avant (observé, 40 tirs).
+  [vehicleWeapTag('c7d50912'), BALISTIQUE], // Rockethog — lance-roquettes (132 tirs, 127 en véhicule).
+  [vehicleWeapTag('11725dc4'), BALISTIQUE], // Wasp M1 — son au coup, 450/min (4 tirs, 4 en véhicule).
+  [vehicleWeapTag('d3c407ed'), BALISTIQUE], // Wasp M2 — son en boucle, 600/min (jamais vu).
+  [vehicleWeapTag('0042678e'), BALISTIQUE], // Gungoose — mitrailleuses avant (40 tirs, 15 en véhicule).
   [vehicleWeapTag('00015cd3'), BALISTIQUE], // Falcon — tourelle LMG (tir continu, M4b).
   // OBUS : explosion à l'impact.
-  [vehicleWeapTag('49e40d17'), OBUS], // Scorpion — canon principal (tag PUBLIÉ, 13 tirs).
-  [vehicleWeapTag('0bb6976b'), OBUS], // Falcon — lance-grenades de porte (Q10, 52 tirs).
+  [vehicleWeapTag('49e40d17'), OBUS], // Scorpion — canon principal (tag PUBLIÉ, 13 tirs, 13 en véhicule).
+  [vehicleWeapTag('0bb6976b'), OBUS], // Falcon — lance-grenades de porte (Q10, 52 tirs, 51 en véhicule).
 ])
 
 /**

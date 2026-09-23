@@ -3,13 +3,13 @@
  *
  * Décisions utilisateur appliquées (plan des retours du rejeu, §3.0 et §5) :
  *  - Q6 : Ghost et canons de la Banshee en plasma ROUGE (`plasma_hot`, la teinte du Ravageur) ;
- *  - Q7 : mortier du Wraith (`121B4009`, 142 tirs observés) ROUGE ;
+ *  - Q7 : mortier du Wraith (`121B4009`, 172 tirs publiés dont 142 en véhicule) ROUGE ;
  *  - Q8 : canons du Chopper ROUGES, forme plasma ;
- *  - Q9 : le Rockethog (`C7D50912`, 127 tirs, porté par sa tourelle enfant `bcfb852f` de famille
+ *  - Q9 : le Rockethog (`C7D50912`, 132 tirs dont 127 en véhicule, porté par sa tourelle enfant `bcfb852f` de famille
  *    vide) SONNE de nouveau — le tag est celui du lance-roquettes (`WARTHOG_FINAL_2026-09-02.md`
  *    §1 : `vehi bcfb852f -> weap c7d50912`, banque `veh_un_rockethog`), il n'y a rien à départager ;
- *  - le canon du Scorpion est publié sous `49E40D17` (13 tirs), pas sous `00015cfa` (jamais vu) ;
- *  - Q10 : `0BB6976B` (51 tirs, tourelle enfant `1a043c29`) = LANCE-GRENADES du Falcon : explosion
+ *  - le canon du Scorpion est publié sous `49E40D17` (13 tirs, tous en véhicule), pas sous `00015cfa` (jamais vu) ;
+ *  - Q10 : `0BB6976B` (52 tirs dont 51 en véhicule, tourelle enfant `1a043c29`) = LANCE-GRENADES du Falcon : explosion
  *    à l'impact, teinte cinétique, poste de porte ; aucune reconstruction sonore = silence décidé.
  */
 import { describe, expect, it } from 'vitest'

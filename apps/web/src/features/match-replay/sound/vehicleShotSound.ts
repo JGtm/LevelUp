@@ -33,10 +33,11 @@
  * plafond -1 dBTP, comme la prise extérieure 1 du Ghost.
  *
  * CE QUI NE SONNE PAS, ET POURQUOI (mesuré ou décidé, jamais supposé) :
- *  - les MISSILES du Wasp (weap d3c407ed) : aucune reconstruction n'existe — silence ;
- *  - le LANCE-GRENADES du Falcon (`0bb6976b`, 52 tirs observés, décision Q10 du 2026-09-23) :
- *    aucune reconstruction (ni au manifeste V3, ni sur les planches, ni sous `static/sounds`) —
- *    silence DÉCIDÉ, question posée à l'utilisateur ;
+ *  - le SECOND MODE du Wasp (weap d3c407ed, son en boucle à 600/min selon V3F) : aucune
+ *    reconstruction n'existe — silence ;
+ *  - le LANCE-GRENADES du Falcon (`0bb6976b`, 52 tirs publiés dont 51 en véhicule, décision Q10
+ *    du 2026-09-23) : aucune reconstruction (ni au manifeste V3, ni sur les planches, ni sous
+ *    `static/sounds`) — silence DÉCIDÉ, question posée à l'utilisateur ;
  *  - toute arme de véhicule dont le tag `weap` n'est pas documenté (Shade...) : la clé
  *    n'existe pas, la table ne répond pas, même règle que les montages.
  *
@@ -77,8 +78,8 @@ export const VEHICLE_SHOT_SOUND_STEMS: ReadonlyMap<string, string> = new Map([
   [vehicleWeapTag('49e40d17'), 'vehicle_shot_scorpion_1'],
   [vehicleWeapTag('c7d50912'), 'vehicle_shot_warthog_rocket_1'], // Rockethog — lance-roquettes (Q9).
   // Falcon lance-grenades (0bb6976b) : pas de reconstruction — silence DÉCIDÉ, cf. en-tête.
-  [vehicleWeapTag('11725dc4'), 'vehicle_shot_wasp_1'], // Wasp M1 — autocanon de menton.
-  // Wasp M2 (d3c407ed, missiles) : pas de reconstruction — silence, cf. en-tête.
+  [vehicleWeapTag('11725dc4'), 'vehicle_shot_wasp_1'], // Wasp M1 — son au coup, 450/min (V3F).
+  // Wasp M2 (d3c407ed, son en boucle) : pas de reconstruction — silence, cf. en-tête.
   [vehicleWeapTag('0042678e'), 'vehicle_shot_gungoose_1'], // Gungoose — mitrailleuses avant.
   [vehicleWeapTag('00015cd3'), 'vehicle_shot_falcon_lmg_1'], // Falcon — tourelle LMG.
 ])
