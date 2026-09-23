@@ -141,8 +141,7 @@ func (s *TeammatesService) buildSquadIntensityProfile(
 	ctx context.Context,
 	allSquadRows []domain.SquadMatchRow,
 	mainGamertag, mainXUID string,
-	selectedGamertags []string,
-	teammates []domain.TeammateRow,
+	selectedGamertags []string, teammates []domain.TeammateRow,
 	mainTeamByMatch map[string]map[string]struct{},
 ) *domain.SquadIntensityProfile {
 	defer timing.FromContext(ctx).Section("intensity_profile")()

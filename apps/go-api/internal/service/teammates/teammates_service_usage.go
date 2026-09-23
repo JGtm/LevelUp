@@ -65,7 +65,7 @@ func (s *TeammatesService) loadUsageBlocks(
 func (s *TeammatesService) lireUsagePartage(
 	ctx context.Context, playerXUID string, filteredMatches []legacymatch.SynthesisMatchRow,
 ) *squadagg.LecturesUsage {
-	var repo port.SessionUsageRepository = s.sessionUsageRepo
+	repo := s.sessionUsageRepo
 	if repo == nil && s.formesUsageRepo != nil {
 		repo = s.formesUsageRepo
 	}
