@@ -16,9 +16,15 @@ import (
 
 // Compteurs de sante du collecteur (ADR 0009 : entiers, snake_case, aucun ratio).
 const (
-	metricCollected   = "killsource_matchs_collectes"
-	metricNoFilm      = "killsource_films_absents"
-	metricNoKillFeed  = "killsource_sans_killfeed"
+	metricCollected  = "killsource_matchs_collectes"
+	metricNoFilm     = "killsource_films_absents"
+	metricNoKillFeed = "killsource_sans_killfeed"
+	// metricNonFinalise : films que le serveur n a pas encore FINALISES (manifeste sans morceau
+	// des temps forts, lot L3 du 2026-09-23, cf. `filmcache/finalise.go`). Ils sortent en
+	// [OutcomeNoKillFeed] — le film existe, son kill-feed n est pas encore publie — et se
+	// comptent ICI, a part : sans ce compteur, un film frais se confondait avec une panne de
+	// decodage (constat L3-R2 de la revue adverse du lot).
+	metricNonFinalise = "killsource_films_non_finalises"
 	metricDecodeError = "killsource_erreurs_decodage"
 	metricTimeout     = "killsource_abandons_delai"
 	// metricBudget : passes arretees par leur budget. UN ARRET NOMINAL, pas une erreur —

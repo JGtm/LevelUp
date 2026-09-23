@@ -8,14 +8,18 @@ package killcollector
 // qui avait finalise le film onze secondes plus tard, soit jamais consulte.
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"os"
+	"strings"
 	"testing"
 
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
+	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/sync/haloclient"
 )
 
@@ -91,5 +95,65 @@ func TestRemoteFilms_ManifesteLocalPartiel_SeRepareParLeReseau(t *testing.T) {
 	}
 	if distant.appels != 1 {
 		t.Errorf("appels reseau = %d apres reparation, attendu 1 — le disque doit servir", distant.appels)
+	}
+}
+
+// journalDuTestNonFinalise remplace le journal par defaut par un tampon texte le temps du test.
+func journalDuTestNonFinalise(t *testing.T) *bytes.Buffer {
+	t.Helper()
+	var buf bytes.Buffer
+	precedent := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug})))
+	t.Cleanup(func() { slog.SetDefault(precedent) })
+	return &buf
+}
+
+// TestRemoteFilms_ManifesteLocalPartiel_RepliEnInfo : CONSTAT L3-R2. Un manifeste local non
+// finalise n'est pas un cache illisible : le repli reseau se dit en INFO, jamais en WARN.
+func TestRemoteFilms_ManifesteLocalPartiel_RepliEnInfo(t *testing.T) {
+	racine := cacheAvecManifestePartiel(t)
+	distant := &filmsEnMemoire{chunks: map[string][]haloclient.FilmChunk{matchRemote: chunksTemoins()}}
+	src := NewRemoteFilms(NewLocalCacheFilms(haloclient.NewLocalFilmCache(racine)), distant, racine)
+	journal := journalDuTestNonFinalise(t)
+
+	if _, _, err := src.GetFilmChunks(context.Background(), matchRemote); err != nil {
+		t.Fatalf("GetFilmChunks : %v", err)
+	}
+	if strings.Contains(journal.String(), "level=WARN") {
+		t.Errorf("repli reseau d'un manifeste non finalise journalise en WARN :\n%s", journal)
+	}
+	if !strings.Contains(journal.String(), "killsource_cache_non_finalise_repli_reseau") {
+		t.Errorf("repli reseau d'un manifeste non finalise non journalise :\n%s", journal)
+	}
+}
+
+// TestDecodeFilmForMatch_NonFinalise_SansKillFeedPasUnePanne : CONSTAT L3-R2. Le cas de la passe
+// HORS LIGNE (`backfill-killsource`, `LocalCacheFilms` seul) sur le manifeste partiel : l'issue est
+// « sans kill-feed » (aucun marqueur), pas une erreur de decodage — qui comptait un echec et
+// journalisait un ERROR a chaque passe pour un film qui n'etait que frais.
+func TestDecodeFilmForMatch_NonFinalise_SansKillFeedPasUnePanne(t *testing.T) {
+	racine := cacheAvecManifestePartiel(t)
+	c := &KillSourceCollector{client: NewLocalCacheFilms(haloclient.NewLocalFilmCache(racine))}
+	nonFinalises := observability.LoadCounter(metricNonFinalise)
+	erreurs := observability.LoadCounter(metricDecodeError)
+
+	_, film, res, outcome, err := c.decodeFilmForMatch(context.Background(), matchRemote)
+	if err != nil || outcome != OutcomeNoKillFeed || film != nil || res != nil {
+		t.Fatalf("decodeFilmForMatch = (%v, %v, film=%v, res=%v), attendu (%s, nil, rien)",
+			outcome, err, film != nil, res != nil, OutcomeNoKillFeed)
+	}
+	if n := observability.LoadCounter(metricNonFinalise) - nonFinalises; n != 1 {
+		t.Errorf("%s : +%d, attendu +1", metricNonFinalise, n)
+	}
+	if n := observability.LoadCounter(metricDecodeError) - erreurs; n != 0 {
+		t.Errorf("%s : +%d, attendu 0 — un film frais n'est pas une panne", metricDecodeError, n)
+	}
+	if _, marquer := marquerFilmParOutcome(outcome, 0); marquer {
+		t.Error("l'issue d'un film non finalise pose un marqueur de registre")
+	}
+	var sum KillSourceSummary
+	comptabiliserFilm(&sum, EvenementDeFilm{Outcome: outcome})
+	if sum.Errors != 0 || sum.NoKillFeed != 1 {
+		t.Errorf("synthese = %+v, attendu 1 sans kill-feed et 0 erreur", sum)
 	}
 }
