@@ -26,13 +26,18 @@
  *    moteur derive Infinite) de /career/commendations (en: 'Commendations', totaux
  *    natifs H5) — la nuance est portee par la ROUTE, documentee dans `pageTitle.ts` :
  *    une egalite stricte y serait fausse.
- *  - Ascension : les titres de la table sont prefixes (« Ascension — Objectifs »), donc
- *    jamais strictement egaux a `common.nav.tab_*` ; et `tab_tactique` vaut en:
- *    'Tactical' quand la table dit 'Tactics'. A traiter hors de ce lot.
+ *  - Ascension (ajoute le 2026-09-23) : les titres de la table sont PREFIXES
+ *    (« Ascension — Objectifs »), la relation est donc « prefixe + `common.nav.tab_*` »,
+ *    pas l'egalite stricte. C'est la relation verrouillee ci-dessous pour les quatre
+ *    sous-routes : la premiere divergence attrapee etait `tab_tactique` = 'Tactical'
+ *    quand la table disait 'Tactics' — un mot que l'onglet n'a jamais porte.
+ *    `/ascension` (onglet « Profil ») reste titre « Ascension » sans prefixe : c'est
+ *    l'entree de la rubrique, pas un onglet de plus ; hors garde-rail.
  */
 import { describe, it, expect } from 'vitest'
 import { resolvePageTitle } from './pageTitle'
 import { getSquadText } from '@/features/squad/i18n'
+import { commonManifest } from './i18n/generated/common'
 import type { Locale } from './i18n/locale'
 
 const LOCALES: readonly Locale[] = ['fr', 'en']
@@ -62,5 +67,30 @@ describe('garde-rail : les titres de page des onglets Escouade suivent features/
     expect(Object.keys(getSquadText('fr').nav).sort()).toEqual(
       SQUAD_TAB_SOURCES.map((s) => s.navKey).slice().sort(),
     )
+  })
+})
+
+/**
+ * Suffixe de route Ascension -> cle `common.nav.*` que l'onglet L1/L2 affiche reellement
+ * (`components/shell/navL1Sections.tsx`). Le titre de page est le libellé de l'onglet
+ * PREFIXE par la rubrique, dans les deux langues.
+ */
+const ASCENSION_TITLE_PREFIX = 'Ascension — '
+const ASCENSION_TAB_SOURCES = [
+  { suffix: '/ascension/objectifs', navKey: 'common.nav.tab_objectives' },
+  { suffix: '/ascension/coaching', navKey: 'common.nav.tab_coaching' },
+  { suffix: '/ascension/realisations', navKey: 'common.nav.tab_realisations' },
+  { suffix: '/ascension/tactique', navKey: 'common.nav.tab_tactique' },
+] as const
+
+describe('garde-rail : les titres de page des onglets Ascension = prefixe + common.nav.*', () => {
+  it.each(ASCENSION_TAB_SOURCES)('$suffix === prefixe + $navKey (FR + EN)', ({ suffix, navKey }) => {
+    for (const locale of LOCALES) {
+      const expected = `${ASCENSION_TITLE_PREFIX}${commonManifest[navKey][locale]}`
+      expect(
+        resolvePageTitle(`/t/halo_infinite/players/x${suffix}`, locale),
+        `locale=${locale} suffix=${suffix} : la TABLE pageTitle.ts doit s'aligner sur le manifeste common (${navKey} = "${commonManifest[navKey][locale]}"), jamais l'inverse`,
+      ).toBe(`LevelUp - ${expected}`)
+    }
   })
 })

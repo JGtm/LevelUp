@@ -112906,3 +112906,13 @@ cache de films 1 612 entrées avant et après), branches supprimées.
 **Prochaine etape.** Gate visuel utilisateur, puis commits sur `feat/v75` (proposition : un commit par sujet — riposte/nuage Go+web, carte Riposte + layout Escouade, drawer Sessions, deplacements timeseries/explorer + renommage section) ; CI a lire apres push.
 
 **Complement (meme jour, apres retour utilisateur « les graphes a gauche debordent toujours »).** Le `min-w-0` ne traitait que la moitie du probleme. Cause reelle : `.app-shell-width` plafonne le contenu a 1320 px alors que le palier `xl:` se lit sur la FENETRE (1280 px) — drawer ouvert la colonne gauche tombe a ~612 px mais `xl:grid-cols-2` reste vrai, et `_chartSections.tsx` etait la SEULE section a ne pas decider son nombre de colonnes sur `compact` (toutes les autres le font). Correctif : `pairGridClass(compact)` (une colonne drawer ouvert), `min-w-0` retire de `DetailSection` (jamais rendu en comparaison), ratchet transverse : aucun `className` de session-detail ne fige un palier `*:grid-cols-*`. ECharts resize par ResizeObserver (echarts-for-react autoResize + size-sensor) : piste ecartee sur pieces. Etats vides des blocs Usages : `UsageEmptyNotice` et `FormesRetenuesSection` alignes sur `EmptyStateNotice` (cadre tirete, titre par cause, description), garde-rail `usageEmptyStateCanonical.guard.test.ts`. Decouverte non traitee : `ChartCardEmpty` (« Aucune donnee a afficher », FR en dur dans `components/`) diverge du canon sur toute l'app.
+
+## [2026-09-23] Titre de page de l'onglet Tactique aligné sur l'onglet réel + garde-rail Ascension — Complété (feat/v75)
+
+**Décision** : la table `lib/pageTitle.ts` suit les dictionnaires, jamais l'inverse. `/ascension/tactique`
+disait « Ascension — Tactics » en EN alors que l'onglet L1/L2 lit `common.nav.tab_tactique` =
+« Tactical » (divergence relevée par le garde-rail Escouade du 22/09). Corrigé en « Ascension — Tactical ».
+Le garde-rail `pageTitle.labels.guard.test.ts` couvre désormais aussi les quatre sous-routes préfixées
+d'Ascension (objectifs, coaching, réalisations, tactique) : titre = « Ascension — » + `common.nav.tab_*`,
+FR et EN. `/ascension` (Profil) reste « Ascension » sans préfixe, hors garde-rail. Prouvé rouge sur
+l'ancien libellé. Gates : vitest pageTitle 69 verts, eslint, tsc.
