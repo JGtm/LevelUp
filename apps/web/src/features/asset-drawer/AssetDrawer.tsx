@@ -17,9 +17,10 @@ export function AssetDrawer() {
 
   const t = (key: keyof typeof assetDrawerManifest) => formatMessage(assetDrawerManifest, key, locale)
 
-  const mapsQuery = useAssetMaps(titleSlug, activeTab === 'maps' ? search : '')
-  const weaponsQuery = useAssetWeapons(titleSlug, activeTab === 'weapons' ? search : '')
-  const medalsQuery = useAssetMedals(titleSlug, activeTab === 'medals' ? search : '')
+  // Tiroir fermé : aucune requête (il est monté sur toutes les pages).
+  const mapsQuery = useAssetMaps(titleSlug, activeTab === 'maps' ? search : '', isOpen)
+  const weaponsQuery = useAssetWeapons(titleSlug, activeTab === 'weapons' ? search : '', isOpen)
+  const medalsQuery = useAssetMedals(titleSlug, activeTab === 'medals' ? search : '', isOpen)
 
   // Phase 3 — fermeture au clavier Escape
   useEffect(() => {
