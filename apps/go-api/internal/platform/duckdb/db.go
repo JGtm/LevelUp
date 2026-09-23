@@ -33,22 +33,23 @@ import (
 //
 //	LEVELUP_DUCKDB_MEMORY_LIMIT (ex. "2GB")   LEVELUP_DUCKDB_THREADS (ex. "4")
 //
+// Lus À L'OUVERTURE de chaque connexion (applyDuckSessionInit), donc APRÈS
+// config.BootstrapEnvLocal() : .env.local est honoré, l'environnement du process
+// restant prioritaire (C.4, 2026-09-23 ; lus à l'init du paquet, ils l'ignoraient).
+// Pas de sync.Once : aucun code ne les modifie en cours de process (et t.Setenv les teste).
 // Knob permanent (pas de date de retrait) ; critère : memory_limit doit rester
 // < (RAM - baseline conteneur - marge démo/OS).
-var (
-	duckMemoryLimit = envOr("LEVELUP_DUCKDB_MEMORY_LIMIT", "512MB")
-	duckThreads     = envIntOr("LEVELUP_DUCKDB_THREADS", 2)
-)
+func duckMemoryLimit() string { return envOr("LEVELUP_DUCKDB_MEMORY_LIMIT", "512MB") }
+func duckThreads() int        { return envIntOr("LEVELUP_DUCKDB_THREADS", 2) }
 
-// BudgetsSnapshot expose les bornes ressources DuckDB effectives (J2) pour
-// l'observabilité — publiées sous /debug/vars levelup/duckdb_budgets, à côté de
-// duckdb_pool_stats (J1). Valeurs statiques résolues au boot (env ou défauts) :
-// permet de vérifier en un coup d'œil la config mémoire/threads/pool RÉELLEMENT
-// appliquée sur un hôte donné (prérequis de la calibration measure-first).
+// BudgetsSnapshot expose les bornes ressources DuckDB (J2) pour l'observabilité —
+// publiées sous /debug/vars levelup/duckdb_budgets, à côté de duckdb_pool_stats (J1).
+// Relues à chaque appel : ce que reçoit toute NOUVELLE connexion, soit la config
+// mémoire/threads/pool réellement appliquée sur l'hôte (calibration measure-first).
 func BudgetsSnapshot() map[string]any {
 	return map[string]any{
-		"memory_limit":         duckMemoryLimit,
-		"threads":              duckThreads,
+		"memory_limit":         duckMemoryLimit(),
+		"threads":              duckThreads(),
 		"pool_max_open_shared": poolMaxOpenShared,
 		"pool_max_idle_shared": poolMaxIdleShared,
 		"pool_single_conn":     poolSingleConn,
@@ -467,12 +468,12 @@ func openSQLDBFor(dsn, timezone, op, path string) (*sql.DB, error) {
 
 // applyDuckSessionInit borne les ressources de CHAQUE connexion (J2) puis applique
 // la timezone si fournie. memory_limit protège le conteneur d'un OOM ; threads borne
-// le parallélisme au nombre de vCPU. Cf. vars duckMemoryLimit / duckThreads.
+// le parallélisme au nombre de vCPU. Cf. duckMemoryLimit() / duckThreads(), relus ici.
 func applyDuckSessionInit(execer driver.ExecerContext, timezone string) error {
 	ctx := context.Background()
 	stmts := []string{
-		"SET memory_limit='" + duckMemoryLimit + "'",
-		"SET threads=" + strconv.Itoa(duckThreads),
+		"SET memory_limit='" + duckMemoryLimit() + "'",
+		"SET threads=" + strconv.Itoa(duckThreads()),
 	}
 	if timezone != "" {
 		stmts = append(stmts, "SET TimeZone='"+timezone+"'")
