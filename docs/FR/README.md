@@ -8,6 +8,7 @@
 [![DuckDB](https://img.shields.io/badge/DuckDB-1.5%2B-FEE14E.svg)](https://duckdb.org/)
 [![ECharts](https://img.shields.io/badge/ECharts-5-AA344D.svg)](https://echarts.apache.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Feedback issues](https://img.shields.io/github/issues-search/JGtm/LevelUp?query=label%3Afeedback%20is%3Aopen&label=feedback&color=0e8a16)](https://github.com/JGtm/LevelUp/issues?q=is%3Aissue+is%3Aopen+label%3Afeedback)
 
 ---
 
@@ -15,11 +16,11 @@
 
 **v7.5 — Le rejeu 2D, le film Theater décodé & un onglet Tactique**
 
-La plus grosse version à ce jour. Halo enregistre un film de chaque match ; jusqu'ici l'application ne l'avait jamais ouvert. C'est fait — un match se revoit désormais vu du dessus, seconde par seconde, avec tout ce que le film sait écrit autour : qui a tué qui et avec quoi, à quelle distance, qui portait le drapeau, qui a raflé l'arme de puissance, qui est mort avec un équipement qu'il n'a jamais utilisé.
+La plus grosse version à ce jour. Halo Infinite enregistre un film de chaque match ; jusqu'ici, personne n'était vraiment parvenu à le décoder. LevelUp y parvient désormais — un match se revoit vu du dessus, seconde par seconde, avec tout ce que le film sait écrit autour : qui a tué qui et avec quoi, à quelle distance, qui portait le drapeau, qui a raflé l'arme de puissance, qui est mort avec un équipement qu'il n'a jamais utilisé.
 
 **Rejeu 2D**
 - **Chaque match, revu du dessus** — tous les joueurs se déplacent sur le vrai fond de la carte, sous leur nom, avec une barre de lecture, quatre pistes sur la frise (Toi, Alliés, Dominance, Médias), le réglage de vitesse et les sauts de 10 secondes
-- **Un fil des éliminations qui suit le curseur** — tueur, arme, victime, médaille et assistance avec sa part de dégâts ; une mort sans tueur crédité le dit, au lieu d'inventer un coupable
+- **Un fil des éliminations qui suit le curseur** — tueur, arme, victime, médaille et assistance avec sa part de dégâts
 - **Des calques à cocher** — visée, traînées, effets de tirs et de mort, carte de chaleur, emplacements d'armes, armes au sol, équipements posés, véhicules, zones nommées, et les objectifs vivants (drapeau, crâne, colline, bastions, bombe, couronne du VIP)
 - **Le son du jeu**, coupé par défaut et filtrable par catégorie, plus une capture PNG et un enregistrement vidéo du rejeu avec sa bande-son
 
@@ -27,20 +28,18 @@ La plus grosse version à ce jour. Halo enregistre un film de chaque match ; jus
 - **L'arme de chaque élimination**, y compris les morts sans arme à feu (répulseur, chute, environnement), et l'endroit de la carte où l'on tue et où l'on meurt
 - **La portée des engagements** — basse (p10), médiane et haute (p90) par arme, avec le dénivelé signé
 - **Le niveau des armes** — les prises de socle ventilées en armes de base, de terrain et de puissance ; ce que vaut un emplacement vient de la carte, jamais du nom de l'arme
-- **Les prises nettes de drapeau**, les statistiques d'Assaut, et l'équipement lu comme utilisé, gardé ou lâché en mourant
+- **Les prises de drapeau**, les statistiques d'Assaut, et l'équipement lu comme utilisé, gardé ou lâché en mourant
 - **Les manches comptent comme des manches** — sur les modes à manches, le score affiché est le nombre de manches gagnées et perdues, parce que le score en points de l'API peut donner l'avantage au camp qui a perdu
 
 **Onglet Tactique**
 - **Les cartes que tu joues**, leur bilan, et une vue d'analyse sur le plan de la carte : où tu passes ton temps, où tu meurs, où tu tues, où tu meurs isolé, où les victoires et les défaites se séparent, et les routes que tu empruntes
-- **Une cellule ouvre le rejeu à l'instant exact** où ça s'est joué
 
 **Escouade, sessions et fiche de match**
-- **« Les formes retenues »** — six lectures d'une escouade sur dix-neuf cartes, et le bloc équipement utilisé / gardé / gâché sur la Synthèse, l'Escouade et les Sessions
+- **« Les formes retenues »** — six lectures d'une escouade sur dix-neuf cartes, et le bloc équipement utilisé / gardé / gâché sur l'Escouade et les Sessions
 - **La cadence par match** partout, la distance par arme, la répartition des frags en deux niveaux, et une courbe de score dans le temps qui respecte le mode
 
 **Cartes, médias et réparations**
-- **109 fonds de carte** avec les zones Forge nommées à 100 %, les repères officiels, les images de médailles rafraîchies depuis le catalogue du jeu, les mentions J'aime par spectateur
-- **La page Classement mondial est réparée** et ne peut plus se dégrader en silence ; une note LUSR d'arène Halo 5 corrompue est réparée à la source
+- **109 fonds de carte** avec les zones Forge nommées à 100 %, les repères officiels
 
 Tout ce qui se lit dans un film est réservé à Halo Infinite — Halo 5 garde ses propres pages et n'emprunte jamais les données d'un autre titre.
 
@@ -48,7 +47,7 @@ Tout ce qui se lit dans un film est réservé à Halo Infinite — Halo 5 garde 
 
 > Tout ce qui se lit dans le film Theater — le rejeu 2D, l'onglet Tactique, l'arme de chaque frag, la portée des engagements, le niveau des armes, les usages d'équipement, les prises nettes de drapeau, les statistiques d'Assaut — est réservé à **Halo Infinite** et gardé par des capabilities fines. Halo 5 garde ses propres pages et n'emprunte jamais les données d'un autre titre.
 
-### Revoir son match — le rejeu 2D
+### Le rejeu 2D — revoir son match
 - **Tout le match, vu du dessus** — chaque joueur se déplace sur le vrai fond de la carte, sous son nom, du coup d'envoi à la fin, décodé depuis le film Theater que le jeu enregistre
 - **Une barre de lecture à quatre pistes** — Toi, Alliés, Dominance et Médias sur une même frise, avec les pastilles de manche, les messages inter-manches, la lecture/pause, les sauts de 10 secondes, un menu de vitesse et des raccourcis clavier
 - **Le fil des éliminations calé sur le curseur** — tueur, icône d'arme, victime, médaille, et l'assistance avec sa part de dégâts ; une mort sans tueur crédité le dit au lieu d'inventer un coupable, et dit *de quoi* on est mort
@@ -59,7 +58,6 @@ Tout ce qui se lit dans un film est réservé à Halo Infinite — Halo 5 garde 
 - **Le son du jeu** — 177 sons tirés du jeu (armes, grenades, corps à corps, équipements, objectifs, annonceur, fanfare de fin), coupés par défaut, filtrables par catégorie
 - **Zoom, glissement et cadrage** — paliers, molette, clavier ou croix directionnelle ; la toile prend tout le bloc et le zoom ne recadre jamais la carte
 - **Capture et enregistrement** — une image PNG en un clic, ou un export vidéo complet du rejeu avec sa bande-son mixée, encodé hors du temps réel
-- **On y entre de partout** — la fiche du match, les tuiles de l'accueil, l'Explorateur, et une cellule de la Tactique qui ouvre le rejeu à la seconde exacte
 
 ### Lire un match
 - **Tableau des scores complet** — F/M, médailles, armes, note de performance, repères d'impact, et un panneau d'historique des rencontres pour les adversaires récurrents
@@ -68,7 +66,6 @@ Tout ce qui se lit dans un film est réservé à Halo Infinite — Halo 5 garde 
 - **La distance par arme**, la répartition des frags en deux niveaux, et le contrôle des armes spéciales ventilé par niveau d'arme (armes de base / de terrain / de puissance, socles de bonus)
 - **Section Objectifs** — une colonne par statistique du mode joué, avec un total d'équipe, pour Capture du drapeau, Bastions, Roi de la colline, Oddball, Réserve, Extraction, VIP et Assaut
 - **Les manches comptent comme des manches** — sur les modes à manches, le score affiché est le nombre de manches gagnées et perdues, le score en points de l'API restant à côté puisqu'il peut donner l'avantage au camp qui a perdu
-- **Repère de prolongation** — un match allé au-delà du temps réglementaire est signalé, avec le temps de jeu supplémentaire
 - **Cadence des frags** — frags par tranches de 15 secondes pour vous et l'équipe adverse avec une moyenne mobile, plus une courbe de tir à la corde et un F/M cumulé
 - **Repères de retournement** — *Remontada*, *Effondrement* et *Contre-Remontada*
 - **Onglets Chronologie et Médias** — les événements du match dans l'ordre, et les clips et captures qui lui sont rattachés
@@ -76,7 +73,6 @@ Tout ce qui se lit dans un film est réservé à Halo Infinite — Halo 5 garde 
 ### Suivez votre carrière
 - **Historique des rangs** — rating LUSR et CSR par playlist dans le temps, avec votre nom de rang à chaque étape
 - **Path to Hero** — graphique de projection montrant à quelle distance vous êtes du rang Hero
-- **Cartes de KPI de carrière** — 8 cartes en un coup d'œil : matchs joués, temps total, frags, morts, assistances, précision, temps en vie, barre V/D/É/DNF — chacune colorée en fonction de votre moyenne de toujours
 - **Citations** — suivez vos citations Halo avec grilles de médailles et distributions par médaille
 - **Médailles** — le catalogue complet des médailles avec vos compteurs, les images servies depuis le catalogue du jeu
 - **Pass saisonnier** — progression des paliers avec le carrousel des récompenses et un résumé du contenu
@@ -86,7 +82,6 @@ Tout ce qui se lit dans un film est réservé à Halo Infinite — Halo 5 garde 
 
 ### Analysez vos matchs
 - **Explorateur** — parcourez tous vos matchs avec filtres en cascade (carte, mode, playlist, résultat, date, session), recherche partielle par identifiant de match, repères de rencontre, une bande de briefing et un profil de combat ; fonctionne aussi sur **un autre joueur** pour le repérer avant un match
-- **Synthèse** — graphe bipolaire, résultats par groupe, meilleures semaines, précision par arme, carte de chaleur d'activité, et la section **portée des engagements** : portée basse (p10) / médiane / haute (p90) par arme, avec le dénivelé signé
 - **Séries temporelles** — tendance, densité et barres de KDA, histogrammes de distribution, progression du niveau, écart d'engagement, et premier frag / première mort sur une bande par joueur
 - **Sessions** — détail par session avec frags, dégâts, profil d'intensité, ventilation par mode, placement, vies nettes, participation, haltère de MMR, XP de carrière, et le bloc des usages d'équipement
 - **Comparaison de sessions** — analyse côte à côte de deux sessions de jeu
@@ -127,7 +122,7 @@ Tout ce qui se lit dans un film est réservé à Halo Infinite — Halo 5 garde 
 ### Clips & médias
 - **Médiathèque** — parcourez captures et clips vidéo liés à leur match ; filtrez par propriétaire, carte, mode, résultat ou contexte solo/escouade
 - **Indexation automatique** — clips rebalayés automatiquement toutes les quelques heures et après chaque synchronisation
-- **Réassociation manuelle** — corrigez en un clic un clip mal associé : un sélecteur intégré propose les matchs autour de l'horodatage de capture (±15 / ±60 / ±180 min) avec vignettes des cartes, résultat et lobby complet
+- **Gestion des médias** — corrigez en un clic un clip mal associé : un sélecteur intégré propose les matchs autour de l'horodatage de capture (±15 / ±60 / ±180 min) avec vignettes des cartes, résultat et lobby complet, ou supprimez simplement un média directement depuis l'application
 - **Mentions J'aime par spectateur** — votre J'aime est le vôtre, pas celui du compte
 - **Dans le rejeu** — vos captures occupent leur propre piste de la frise, à la seconde où elles ont été prises
 
@@ -135,7 +130,7 @@ Tout ce qui se lit dans un film est réservé à Halo Infinite — Halo 5 garde 
 - **Centre de notifications intégré** — fil par joueur avec repère de non-lus, filtres par catégorie, frise groupée par jour et actions groupées ; rafraîchissement toutes les 60 secondes ; préférences par joueur
 - **Alertes Discord** — notifications configurables après la synchronisation, après le rattrapage et quand les rejeux sont prêts, indépendamment
 - **Configuration en un clic** — connexion Xbox par code d'appareil (`xbox.com/activate`) avec provisionnement automatique du joueur ; aucun compte Azure requis
-- **Personnalisation du Spartan** — votre armure et vos couleurs, recolorées en direct
+- **Personnalisation du Spartan de Halo 5** — votre armure et vos couleurs, recolorées en direct
 - **Multi-titre** — Halo Infinite et Halo 5: Guardians côte à côte, chacun avec son stockage, ses catalogues et ses capabilities
 
 ---
@@ -315,7 +310,9 @@ Cette variable d'environnement a priorité sur l'ID embarqué.
 | [testing.md](../testing.md) | Stratégie de tests Go (CGO, ratchet de couverture, tag `gamefiles`) |
 | [WEAPONS.md](WEAPONS.md) | Référentiel des armes (clés, familles, icônes) |
 | [CITATIONS.md](CITATIONS.md) · [référence](CITATIONS_REFERENCE.md) | Système de citations et référence complète |
+| [COMMENDATIONS.md](../COMMENDATIONS.md) · [référence](../COMMENDATIONS_REFERENCE.md) | Citations (Commendations) : architecture et référence complète (en anglais) |
 | [CHANGELOG.md](CHANGELOG.md) · [RELEASE_NOTES.md](RELEASE_NOTES.md) | Journal technique · notes de version utilisateur |
+| [ACKNOWLEDGMENTS.md](ACKNOWLEDGMENTS.md) | Remerciements et travaux tiers |
 
 Docs anglaises : [../](../)
 

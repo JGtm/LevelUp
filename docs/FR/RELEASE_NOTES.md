@@ -14,6 +14,12 @@ La plus grosse version à ce jour. Halo enregistre un film de chaque match ; jus
 - **Zoom et cadrage** — molette, clavier ou croix directionnelle ; la toile prend tout le bloc et le zoom ne recadre jamais la carte
 - **Capture et enregistrement** — une image PNG en un clic, ou une vidéo du rejeu avec sa bande-son, encodée hors du temps réel pour que le fichier soit net quoi que fasse la machine
 - **On y entre de partout** — la fiche du match, les tuiles de l'accueil, l'Explorateur et l'onglet Tactique
+- **Les gestes du Spartan, à l'instant** — la fiche du joueur dit quand un Spartan est accroupi, glisse, escalade ou sprinte, lu dans le film lui-même ; le saut, que le film n'écrit pas, s'affiche comme dérivé et le dit
+- **Les véhicules, siège par siège** — qui est assis où se lit dans le film, un véhicule pointe là où il va vraiment, un tir de tourelle part là où vise son tireur, et la carte montre quand un véhicule réapparaît à son emplacement
+- **Les captures de la bonne couleur** — une zone se remplit de la couleur du camp qui pousse vraiment, bases neutres comprises, et un drapeau au sol montre sa jauge de retour (« Retour N % »)
+- **Les matchs chargés lus plus complètement** — sur les matchs les plus denses, le rejeu suit désormais bien plus du film, et des mouvements qui se perdaient apparaissent
+- **Un terrain plus lisible** — les objectifs du mode se posent sur leur étage comme les joueurs, avec une bascule « Objectifs du mode » et son aide ; les véhicules sont plus grands, avec des silhouettes redessinées et leurs propres éclairs de tir ; les marqueurs gardent une taille lisible à tous les zooms ; les sons des bases suivent l'action, et le tic de score bat au rythme de l'horloge du jeu
+- **L'export vidéo aux formats standard** — 1080p ou 720p, avec le cadrage de ton choix quand la carte est zoomée
 
 **Ce que le film sait, et que l'API n'a jamais dit**
 - **L'arme de chaque élimination** — lue dans la source de dégât du film au lieu d'être devinée sur le tableau des scores, y compris pour les morts sans arme à feu : répulseur, chute, environnement
@@ -23,6 +29,10 @@ La plus grosse version à ce jour. Halo enregistre un film de chaque match ; jus
 - **Les prises nettes de drapeau** — le jonglage replié sur une fenêtre de 1,5 seconde : reprendre son propre drapeau deux fois en une seconde compte pour une prise
 - **Assaut** — poses et désamorçages de la bombe, porteurs tués, et le reste des statistiques du mode
 - **Les manches comptent comme des manches** — sur les modes qui se jouent en manches, le score affiché est le nombre de manches gagnées et perdues ; le score en points de l'API est conservé à côté, parce que sur ces modes il peut donner l'avantage au camp qui a perdu
+- **La riposte et l'appui** — quand un coéquipier meurt, ton camp abat-il son tueur dans les 5 secondes ? Une seule règle partout — Escouade, Sessions, Séries temporelles et fiche du match — et l'appui compte les assistances entre coéquipiers
+- **La portée et la hauteur face à ton lobby** — ta portée de frag et la hauteur d'où tu te bats, lues face à tout le lobby de chaque match plutôt que face à la playlist : rôles de portée, rôles de hauteur, et la hauteur d'engagement de chaque frag sur la fiche du match
+- **Les records de distance par arme** — ton frag mesuré le plus lointain avec chaque arme, sur la Synthèse
+- **Les armes de départ lues juste** — une arme ramassée dans les premières secondes d'une vie ne compte plus comme une arme de départ
 
 **L'équipement : utilisé, gardé ou gâché**
 - **Les trois issues de chaque équipement** — utilisé, gardé sans l'utiliser, ou lâché en mourant, famille par famille
@@ -40,12 +50,21 @@ La plus grosse version à ce jour. Halo enregistre un film de chaque match ; jus
 - **La cadence par match** — chaque valeur d'usage est désormais un nombre par match mesuré, plus un nombre par minute
 - **L'échange en six cartes** — assistances en barres empilées, joueur par carte avec une légende unique, médailles en dernier
 - **Premier frag / première mort, portées et usages** sur les Séries temporelles, et des objectifs ramenés à ce que le mode offrait vraiment
+- **De nouveaux badges** — « Voleur » (le plus de frags volés à un ami) dans la matrice d'impact de l'Escouade, « Sabordage » et « Abnégation » sur les modes à objectif quand le score et les frags racontent deux histoires opposées, et les rôles « Larbin / Patron » sur les graphes d'assistances
+- **Les assistances échangées avec chaque relation** — une colonne dans Relations, une carte « Binôme » et une carte « Noyau dur »
+- **Un onglet « Usages » sur les Séries temporelles et l'Escouade** — portée, équipement et « les formes retenues » au même endroit, et la balance des dégâts cumulée dans le Résumé des Séries temporelles
+- **Les Sessions en quatre sections**, et une comparaison côte à côte en rangées partagées qui reste lisible quand le tiroir s'ouvre
+- **L'intensité de l'Escouade face à ta vraie équipe et au lobby**, et une barre de filtres qui ne rejoue plus l'animation de chaque graphe à chaque clic
+- **Explorateur et Face-à-face** — le briefing montre l'arme favorite de la sélection et la portée de frag du joueur que tu repères ; le Face-à-face gagne un profil d'armes : part des frags par classe d'arme, portée par rôle, trois armes de tête
+- **La tuile de match de l'accueil** montre combien de tes frags un coéquipier a assistés
 
 **Fiche du match**
 - **Un seul gabarit de carte pour toute la page** — les trois tableaux difficiles à comparer sont devenus des graphes
 - **Le score dans le temps, selon le mode** — un mode à manches ne trace plus une courbe de points qui contredit son propre résultat
 - **La distance par arme**, la répartition des frags en deux niveaux, et le contrôle des armes spéciales ventilé par niveau d'arme
 - **Les tournants d'abord** — les équipements et les armes qui n'ont rien changé se replient
+- **Un onglet « Armes et terrain »** — frags et armes, distance, hauteur d'engagement, usages d'équipement, contrôle des socles et positions du film au même endroit ; le contrôle des armes spéciales en colonnes par socle, la part de chaque équipe en pistes horizontales, et une occupation du terrain plus grande et zoomable
+- **La riposte par joueur**, un graphe par camp
 
 **Cartes, médailles et médias**
 - **109 fonds de carte**, convertis sans perte et lus quel que soit leur format, avec les zones Forge nommées à 100 %
@@ -53,6 +72,8 @@ La plus grosse version à ce jour. Halo enregistre un film de chaque match ; jus
 - **La médaille VIP « Clash of Kings » retrouve son nom et son image**, et les images de médailles se rafraîchissent depuis le catalogue du jeu
 - **Les mentions J'aime sont par spectateur** — ton J'aime est le tien, pas celui du compte
 - **Les médias dans le rejeu** — tes captures et tes clips occupent leur propre piste, à la seconde où ils ont été pris
+- **Les noms de mode lus juste** — les playlists dont le nom interne s'écrit à l'envers affichent enfin leur vrai mode
+- **Les clips s'enchaînent** — ouvrir le clip suivant dans la visionneuse ne casse plus ses voisins
 
 **Réparations**
 - **La page Classement mondial refonctionne** (livrée en v7.3.1) — les pages qu'elle lit avaient déménagé, et la page servait un classement périmé au lieu de le dire ; elle ne peut plus se dégrader en silence, et un classement vide ne s'affiche plus comme une récupération en échec
@@ -64,6 +85,10 @@ La plus grosse version à ce jour. Halo enregistre un film de chaque match ; jus
 - **Un pied de page** — la source, la licence, les retours et un bouton de soutien, avec la mention de non-affiliation
 - **Une page de confidentialité bilingue**
 - **La démo publique n'embarque plus aucun identifiant** — le seed est passé d'une liste d'exclusion des secrets connus à la publication d'une liste explicite de champs inoffensifs
+- **Les amis appartiennent à un joueur**, les invitations fonctionnent sans groupe, et un administrateur peut fermer l'instance et voir toutes les identités au même endroit
+- **Le code de connexion Xbox se copie en un clic**
+- **Un bloc vide dit pourquoi** — chaque carte de graphe et chaque bloc d'usage nomme la raison quand il n'a rien à montrer
+- **Les sauvegardes incluent les listes d'amis et les alias Xbox**
 
 **Halo 5** — tout ce qui se lit dans un film est réservé à Halo Infinite : Halo 5 garde ses propres pages et n'emprunte jamais les données d'un autre titre. Là où une fonctionnalité ne peut pas exister, l'application le dit au lieu d'afficher un onglet vide.
 
