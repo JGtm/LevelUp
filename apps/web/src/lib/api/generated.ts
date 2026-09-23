@@ -10368,6 +10368,14 @@ export interface components {
             delivery: string;
             enabled: boolean;
         };
+        PresenceInterval: {
+            /** Format: int64 */
+            from: number;
+            /** Format: int64 */
+            to: number;
+            /** Format: int64 */
+            toMax?: number;
+        };
         PresenceSnapshot: {
             /**
              * Format: int64
@@ -10819,6 +10827,7 @@ export interface components {
             /** Format: int64 */
             filmIndex: number;
             name?: string;
+            presence?: components["schemas"]["PresenceInterval"][] | null;
             /** Format: int64 */
             seat: number;
             seatSource?: string;
@@ -11011,20 +11020,42 @@ export interface components {
             /** Format: int64 */
             arrivants: number;
             /** Format: int64 */
+            chevauchements: number;
+            /** Format: int64 */
+            depassements: number;
+            /** Format: int64 */
+            entitesContestees: number;
+            /** Format: int64 */
+            entitesNonLiees: number;
+            /** Format: int64 */
             entrees: number;
             /** Format: int64 */
             lus: number;
             /** Format: int64 */
             occupantsMax: number;
             /** Format: int64 */
+            placesOuvertes: number;
+            /** Format: int64 */
+            placesTirs: number;
+            presences: string;
+            /** Format: int64 */
             presencesCloses: number;
             /** Format: int64 */
+            relaisBornes: number;
+            /** Format: int64 */
             reprisesEcrites: number;
+            /** Format: int64 */
+            sansPlace: number;
             /** Format: int64 */
             sansPresence: number;
             sansTableDuFilm?: boolean;
             /** Format: int64 */
             sieges: number;
+            /** Format: int64 */
+            tirsContestes: number;
+            tirsIndexTronque?: boolean;
+            /** Format: int64 */
+            trousDEntite: number;
         };
         SelectedTeammateData: {
             gamertag: string;

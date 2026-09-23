@@ -197,22 +197,37 @@ type TeamCoverage struct {
 	TracksSlotAmbiguous int `json:"tracksSlotAmbiguous,omitempty"`
 }
 
-// SeatCoverage est ce que la pose des SIEGES a lu et ce qu elle a APPARIE (lot 1.9.14).
+// SeatCoverage est ce que la pose des PLACES a lu, deduit, borne et laisse sans place (lot
+// 1.9.14 ; refondu au lot M2.3, schema 69, sur la regle des places de l utilisateur).
 //
-// SON COUPLE CENTRAL EST `entrees` / `occupantsMax` : leur ECART est le nombre de fiches qu un
-// client retire de l ecran en n affichant que les occupants PRESENTS a l instant lu. `lus` et
-// `apparies` disent, eux, quelle part des sieges vient du film et quelle part d un repli.
+// SON CHIFFRE CENTRAL EST `depassements` (0 attendu : les couples frame x equipe ou une equipe
+// affiche plus d occupants que de places). `lus` / `placesTirs` disent la part LUE des places,
+// `apparies` celle du chainage et `placesOuvertes` celle des places ouvertes sous la capacite
+// estimee (deux replis), `sansPlace` ce qui n en a trouve aucune ; `presences`
+// vaut `film` (entites ti=9, BOT_METADATA) ou `vies` (repli sans entite).
 type SeatCoverage struct {
-	Entrees         int  `json:"entrees"`
-	Sieges          int  `json:"sieges"`
-	Lus             int  `json:"lus"`
-	Apparies        int  `json:"apparies"`
-	ReprisesEcrites int  `json:"reprisesEcrites"`
-	Arrivants       int  `json:"arrivants"`
-	PresencesCloses int  `json:"presencesCloses"`
-	SansPresence    int  `json:"sansPresence"`
-	OccupantsMax    int  `json:"occupantsMax"`
-	SansTableDuFilm bool `json:"sansTableDuFilm,omitempty"`
+	Entrees           int    `json:"entrees"`
+	Sieges            int    `json:"sieges"`
+	Lus               int    `json:"lus"`
+	PlacesTirs        int    `json:"placesTirs"`
+	Apparies          int    `json:"apparies"`
+	PlacesOuvertes    int    `json:"placesOuvertes"`
+	SansPlace         int    `json:"sansPlace"`
+	ReprisesEcrites   int    `json:"reprisesEcrites"`
+	Arrivants         int    `json:"arrivants"`
+	PresencesCloses   int    `json:"presencesCloses"`
+	SansPresence      int    `json:"sansPresence"`
+	OccupantsMax      int    `json:"occupantsMax"`
+	Depassements      int    `json:"depassements"`
+	RelaisBornes      int    `json:"relaisBornes"`
+	Chevauchements    int    `json:"chevauchements"`
+	TirsContestes     int    `json:"tirsContestes"`
+	TirsIndexTronque  bool   `json:"tirsIndexTronque,omitempty"`
+	Presences         string `json:"presences"`
+	EntitesNonLiees   int    `json:"entitesNonLiees"`
+	EntitesContestees int    `json:"entitesContestees"`
+	TrousDEntite      int    `json:"trousDEntite"`
+	SansTableDuFilm   bool   `json:"sansTableDuFilm,omitempty"`
 }
 
 // TrackCoverage est ce que le SEUIL DE PUBLICATION des traces retient et refuse. Le refus était

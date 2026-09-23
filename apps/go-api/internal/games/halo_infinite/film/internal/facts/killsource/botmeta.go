@@ -57,7 +57,8 @@ type bot struct {
 // BotDeclaration est UN intervalle pendant lequel BOT_METADATA declare un bot : du premier paquet
 // qui le declare (inclus) au premier paquet COMPLET suivant qui ne le declare plus (exclu).
 type BotDeclaration struct {
-	// FromUS est l horodatage du premier paquet qui le declare.
+	// FromUS est l instant du premier paquet qui le declare — celui de l IMAGE-CLE de son chunk
+	// quand ce paquet appartient a l instantane de tete (cf. [paquetsBotMeta]).
 	FromUS uint64
 	// ToUS est l horodatage du premier paquet complet qui ne le declare plus. ZERO = il est
 	// encore declare au dernier paquet du film.
@@ -113,7 +114,8 @@ func loadBotMeta(f *film) botMeta {
 	m := botMeta{}
 	rang := map[[2]int]int{}       // (slot, bid) -> position dans m.Bots
 	ouverts := map[[2]int]uint64{} // declares au dernier paquet lu -> debut de leur declaration
-	for _, p := range paquetsBotMeta(f) {
+	for _, pi := range paquetsBotMeta(f) {
+		p := pi.p
 		m.NPkt++
 		n := int(uint32(p.payload[0])<<24 | uint32(p.payload[1])<<16 |
 			uint32(p.payload[2])<<8 | uint32(p.payload[3]))
@@ -133,14 +135,14 @@ func loadBotMeta(f *film) botMeta {
 				m.Bots = append(m.Bots, b)
 			}
 			if _, ouvert := ouverts[k]; !ouvert {
-				ouverts[k] = p.ts
+				ouverts[k] = pi.instant
 			}
 		}
 		if len(entrees) != n {
 			m.Incomplets++ // un bot manque a la LECTURE n est pas un bot parti : rien ne se ferme
 			continue
 		}
-		fermerLesAbsents(&m, rang, ouverts, declares, p.ts)
+		fermerLesAbsents(&m, rang, ouverts, declares, pi.instant)
 	}
 	for _, k := range clesTriees(ouverts) {
 		i := rang[k]
@@ -150,18 +152,46 @@ func loadBotMeta(f *film) botMeta {
 	return m
 }
 
+// paquetBotMeta : un paquet type 12 et l INSTANT qu il declare.
+type paquetBotMeta struct {
+	p *packet
+	// instant : l horodatage du paquet — ou celui de l IMAGE-CLE de son chunk quand le paquet
+	// appartient a l INSTANTANE DE TETE (cf. [paquetsBotMeta]).
+	instant uint64
+}
+
 // paquetsBotMeta rend les paquets type 12 LISIBLES (au moins le mot `nbBots`), dans l ORDRE DU
 // FILM — chunk par chunk, paquet par paquet, c est-a-dire l ordre des horodatages.
 //
 // L ORDRE N EST PAS RETRIE, ET C EST VOULU : c est celui dans lequel l agregat d avant decouvrait
 // ses bots, et deux bots d un meme slot gardent ainsi leur rang relatif — celui qui decide lequel
 // nomme l indice au kill-feed ([roster.pinBots]). Retrier ici pourrait deplacer une ligne de kill.
-func paquetsBotMeta(f *film) []*packet {
-	var out []*packet
+//
+// L INSTANTANE DE TETE (mesure du 2026-09-23, `b1ad85eb`) : un chunk s ouvre par son image-cle
+// (paquet 1), puis quelques paquets d etat — dont le BOT_METADATA de tete (paquet 4) — AVANT sa
+// premiere trame de replication (type 0). Ce paquet de tete porte l etat des bots A L IMAGE-CLE ;
+// il est seulement ecrit apres elle (390 us plus tard sur le chunk 2 de `b1ad85eb`). Son instant
+// est donc celui de l image-cle : sans cela, un bot vu a UNE seule image-cle (`343 PardonMy`,
+// f813) se trouverait declare « apres » l unique instant ou son entite est lue.
+func paquetsBotMeta(f *film) []paquetBotMeta {
+	var out []paquetBotMeta
+	chunk, imageCle, enTete := -1, uint64(0), false
 	for i := range f.packets {
 		p := &f.packets[i]
-		if p.typ == packetTypeBotMeta && len(p.payload) >= 4 {
-			out = append(out, p)
+		if p.chunk != chunk {
+			chunk, imageCle, enTete = p.chunk, 0, true
+		}
+		switch {
+		case p.typ == packetTypeKeyframe && enTete && imageCle == 0:
+			imageCle = p.ts
+		case p.typ == packetType0:
+			enTete = false
+		case p.typ == packetTypeBotMeta && len(p.payload) >= 4:
+			instant := p.ts
+			if enTete && imageCle != 0 {
+				instant = imageCle
+			}
+			out = append(out, paquetBotMeta{p: p, instant: instant})
 		}
 	}
 	return out

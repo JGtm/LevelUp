@@ -37,14 +37,16 @@ const plancherEntrees = 60
 //
 // IL ÉTAIT À 2 ET NE MORDAIT SUR RIEN (revue de jalon M1, ronde 2, constat F1) : la garde
 // `len(tranches) < 2` laissait passer 6 -> 5, donc le retrait d'un fichier de tranche entier.
+// Mesuré le 2026-09-23 : HUIT familles (la huitième, `replay/places`, est née au lot M2.3 de la
+// campagne « retours rejeu » : les places et les présences du roster).
 // Mesuré le 2026-09-17 : SEPT familles (la septième, `killsource/calibration`, est née au
 // lot 3.4.1 : ce que le décodeur décide encore par balayage, faute de source lue)
 // Mesuré le 2026-09-16 : SIX familles (`replay/equipement` 14, `replay/identites` 22,
 // `killsource` 26, `killsource/carte` 2, `objectifs et construction` 21, `grammar` 11 — 96
 // entrées). Le plancher vaut donc la valeur réelle : une famille en moins se voit.
-const plancherTranches = 7
+const plancherTranches = 8
 
-// famillesAttendues : LES SEPT FAMILLES, NOMMÉES, DANS L'ORDRE DE L'ASSEMBLAGE.
+// famillesAttendues : LES HUIT FAMILLES, NOMMÉES, DANS L'ORDRE DE L'ASSEMBLAGE.
 //
 // POURQUOI UNE LISTE DE NOMS, ET PAS UN CHAÎNON ARITHMÉTIQUE (revue de jalon M1, ronde 2,
 // constat F1). Le test refermait sa boucle sur `somme(tranches) == len(Table())` — une
@@ -63,6 +65,7 @@ const plancherTranches = 7
 var famillesAttendues = []string{
 	"replay/equipement",
 	"replay/identites",
+	"replay/places",
 	"killsource",
 	"killsource/carte",
 	"killsource/calibration",

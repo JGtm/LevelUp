@@ -19,9 +19,9 @@ import (
 // suffisent, et c est ce qui rend la fabrique simple.
 const strideEntreeBotMeta = 2076
 
-// paquetBotMeta fabrique un payload de type 12 : `nbBots` puis une entree par bot (slot et bid
+// payloadBotMeta fabrique un payload de type 12 : `nbBots` puis une entree par bot (slot et bid
 // en big-endian, nom en UTF-16BE ferme par 0x0000, aux offsets que le lecteur mesure).
-func paquetBotMeta(nbBots int, bots ...bot) []byte {
+func payloadBotMeta(nbBots int, bots ...bot) []byte {
 	if nbBots == 0 && len(bots) == 0 {
 		return []byte{0, 0, 0, 0}
 	}
@@ -56,13 +56,13 @@ func TestBotMetaDeclarationsDesRelais(t *testing.T) {
 	pardon := bot{Slot: 8, BotID: 7, Name: "343 PardonMy"}
 	brew := bot{Slot: 8, BotID: 19, Name: "343 Brew Dog"}
 	f := filmDePaquetsBotMeta(
-		packet{chunk: 0, ts: 1_000, payload: paquetBotMeta(1, hundy)},
-		packet{chunk: 1, ts: 21_000, payload: paquetBotMeta(1, hundy)},
-		packet{chunk: 1, ts: 27_300, payload: paquetBotMeta(0)}, // Hundy retire : son depart
-		packet{chunk: 4, ts: 81_300, payload: paquetBotMeta(1, pardon)},
-		packet{chunk: 4, ts: 83_100, payload: paquetBotMeta(0)},
-		packet{chunk: 17, ts: 315_500, payload: paquetBotMeta(1, brew)}, // paquet de changement
-		packet{chunk: 18, ts: 321_300, payload: paquetBotMeta(1, brew)},
+		packet{chunk: 0, ts: 1_000, payload: payloadBotMeta(1, hundy)},
+		packet{chunk: 1, ts: 21_000, payload: payloadBotMeta(1, hundy)},
+		packet{chunk: 1, ts: 27_300, payload: payloadBotMeta(0)}, // Hundy retire : son depart
+		packet{chunk: 4, ts: 81_300, payload: payloadBotMeta(1, pardon)},
+		packet{chunk: 4, ts: 83_100, payload: payloadBotMeta(0)},
+		packet{chunk: 17, ts: 315_500, payload: payloadBotMeta(1, brew)}, // paquet de changement
+		packet{chunk: 18, ts: 321_300, payload: payloadBotMeta(1, brew)},
 	)
 	m := loadBotMeta(f)
 	if m.NBots != 1 || m.NPkt != 7 || m.Incomplets != 0 {
@@ -92,9 +92,9 @@ func TestBotMetaPaquetIncompletNeFermeRien(t *testing.T) {
 	a := bot{Slot: 8, BotID: 16, Name: "343 Hundy"}
 	b := bot{Slot: 9, BotID: 7, Name: "343 PardonMy"}
 	f := filmDePaquetsBotMeta(
-		packet{ts: 1_000, payload: paquetBotMeta(2, a, b)},
-		packet{ts: 2_000, payload: paquetBotMeta(2, a)}, // nbBots dit 2, une seule entree lue
-		packet{ts: 3_000, payload: paquetBotMeta(1, a)}, // complet : b est parti ici
+		packet{ts: 1_000, payload: payloadBotMeta(2, a, b)},
+		packet{ts: 2_000, payload: payloadBotMeta(2, a)}, // nbBots dit 2, une seule entree lue
+		packet{ts: 3_000, payload: payloadBotMeta(1, a)}, // complet : b est parti ici
 	)
 	m := loadBotMeta(f)
 	if m.Incomplets != 1 {
@@ -112,5 +112,24 @@ func TestBotMetaPaquetIncompletNeFermeRien(t *testing.T) {
 				t.Errorf("PardonMy : %+v — le paquet incomplet de 2000 ne devait RIEN fermer", d)
 			}
 		}
+	}
+}
+
+// TestBotMetaInstantaneDeTete (DECL-TETE) : le BOT_METADATA de tete de chunk porte l etat A
+// L IMAGE-CLE (mesure `b1ad85eb` : ecrit 390 us apres elle) ; un paquet de changement ecrit apres
+// la premiere trame garde son propre instant.
+func TestBotMetaInstantaneDeTete(t *testing.T) {
+	pardon := bot{Slot: 8, BotID: 7, Name: "343 PardonMy"}
+	f := &film{packets: []packet{
+		{chunk: 6, idx: 1, typ: packetTypeKeyframe, ts: 1_000_000},
+		{chunk: 6, idx: 4, typ: packetTypeBotMeta, ts: 1_000_390, payload: payloadBotMeta(1, pardon)},
+		{chunk: 6, idx: 5, typ: packetType0, ts: 1_100_000},
+		{chunk: 6, idx: 9, typ: packetTypeBotMeta, ts: 2_800_000, payload: payloadBotMeta(0)},
+	}}
+	m := loadBotMeta(f)
+	want := []BotDeclaration{{FromUS: 1_000_000, ToUS: 2_800_000}}
+	if len(m.Bots) != 1 || !reflect.DeepEqual(m.Bots[0].entree().Declarations, want) {
+		t.Fatalf("declarations %+v, attendu %+v : l ouverture en tete de chunk est l instant de "+
+			"l image-cle, la fermeture en milieu de chunk garde le sien", m.Bots, want)
 	}
 }

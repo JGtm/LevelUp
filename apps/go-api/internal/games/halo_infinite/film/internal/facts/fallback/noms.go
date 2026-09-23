@@ -58,8 +58,15 @@ const (
 	// rend son verdict en donnee pure ([objectives.RoundsDecision]) et l'appelant, qui
 	// porte le compteur de la cuisson, le compte.
 	NomReplayMancheZeroDecretee Nom = "repli_manche_zero_decretee"
-	// NomSiegeDuRemplacantParAppariementOrdinal : `replay/sieges.go`, `poserLesSieges`.
-	NomSiegeDuRemplacantParAppariementOrdinal Nom = "repli_siege_du_remplacant_par_appariement_ordinal"
+	// NomPlaceDuRemplacantParChainageDEquipe : `replay/sieges.go`, `poserLesSieges` (lot M2.3 ;
+	// remplace l'appariement ordinal du lot 1.9.14).
+	NomPlaceDuRemplacantParChainageDEquipe Nom = "repli_place_du_remplacant_par_chainage_d_equipe"
+	// NomPlaceOuverteSousLaCapaciteEstimee : `replay/sieges.go`, `poserLesSieges` (lot M2.3).
+	NomPlaceOuverteSousLaCapaciteEstimee Nom = "repli_place_ouverte_sous_la_capacite_estimee"
+	// NomPresenceParEnveloppeDesVies : `replay/sieges.go`, `poserLesSieges` (lot M2.3).
+	NomPresenceParEnveloppeDesVies Nom = "repli_presence_par_enveloppe_des_vies"
+	// NomVieDeBotParRelaisDeLaBase : `replay/successions.go`, `attributeSuccessions` (lot M2.3).
+	NomVieDeBotParRelaisDeLaBase Nom = "repli_vie_de_bot_par_relais_de_la_base"
 	// NomChassisVehiculeMarqueurNeutre : `replay/document_vehicles_coverage.go`, `tallyVehicleCoverage`.
 	NomChassisVehiculeMarqueurNeutre Nom = "repli_chassis_vehicule_marqueur_neutre"
 	// NomZoneCampDeCaptureDeduitDeLIssue : `replay/zone_states_capturer.go`,

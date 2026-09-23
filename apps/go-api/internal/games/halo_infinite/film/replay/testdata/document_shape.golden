@@ -1,9 +1,9 @@
 # EMPREINTE DE FORME DU DOCUMENT DE REJEU — fige par document_shape_test.go.
 # Ne s'edite JAMAIS a la main : regeneration decrite en tete de ce test.
-schema 68
-empreinte-stockee 0030535963711419
-empreinte-servie 0030535963711419
-empreinte-cuite 8fa3e3de3052db39
+schema 69
+empreinte-stockee 6e0faa59c1c17877
+empreinte-servie 6e0faa59c1c17877
+empreinte-cuite 824791b858b06601
 empreinte-cuite-regle 2
 
 AbilityCharge
@@ -650,6 +650,10 @@ Point
   X json:"x" float32
   Y json:"y" float32
   Z json:"z,omitempty" float32
+PresenceInterval
+  From json:"from" int
+  To json:"to" int
+  ToMax json:"toMax,omitempty" *int
 Projectile
   P json:"p" [][3]float32
   Rest json:"rest,omitempty" bool
@@ -730,6 +734,7 @@ RosterEntry
   Bot json:"bot,omitempty" bool
   FilmIndex json:"filmIndex" int
   Name json:"name,omitempty" string
+  Presence json:"presence,omitempty" []PresenceInterval
   Seat json:"seat" int
   SeatSource json:"seatSource,omitempty" string
   Team json:"team,omitempty" *int
@@ -763,14 +768,26 @@ ScoreTimeline
 SeatCoverage
   Apparies json:"apparies" int
   Arrivants json:"arrivants" int
+  Chevauchements json:"chevauchements" int
+  Depassements json:"depassements" int
+  EntitesContestees json:"entitesContestees" int
+  EntitesNonLiees json:"entitesNonLiees" int
   Entrees json:"entrees" int
   Lus json:"lus" int
   OccupantsMax json:"occupantsMax" int
+  PlacesOuvertes json:"placesOuvertes" int
+  PlacesTirs json:"placesTirs" int
+  Presences json:"presences" string
   PresencesCloses json:"presencesCloses" int
+  RelaisBornes json:"relaisBornes" int
   ReprisesEcrites json:"reprisesEcrites" int
+  SansPlace json:"sansPlace" int
   SansPresence json:"sansPresence" int
   SansTableDuFilm json:"sansTableDuFilm,omitempty" bool
   Sieges json:"sieges" int
+  TirsContestes json:"tirsContestes" int
+  TirsIndexTronque json:"tirsIndexTronque,omitempty" bool
+  TrousDEntite json:"trousDEntite" int
 Shot
   H json:"h,omitempty" float32
   Slot json:"slot" uint32

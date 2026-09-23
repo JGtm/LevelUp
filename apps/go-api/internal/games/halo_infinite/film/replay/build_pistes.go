@@ -11,6 +11,12 @@ package replay
 
 import "log/slog"
 
+// horloge rend la grille du document et le compteur de replis de la cuisson, sous la forme que
+// les passes du roster partagent.
+func (a *assemblage) horloge() replayClock {
+	return replayClock{origin: a.origin, step: a.step, frames: a.doc.FrameCount, fb: a.opt.Fallbacks}
+}
+
 // poserLesPistes construit le registre d identite, publie les trajectoires et les nomme.
 //
 // PREMIERE PASSE APRES L OUVERTURE, et tout le reste en depend : un calque ne publie que ce qui
@@ -31,7 +37,7 @@ func (a *assemblage) poserLesPistes() {
 	a.reg = BuildIdentityRegistry(IdentityInput{
 		Positions: a.sorted, BipedCreations: a.opt.BipedCreations,
 		Deaths: a.opt.Deaths, PlayerIndices: a.opt.PlayerIndices, FilmTable: a.opt.FilmTable,
-		Bots: a.opt.Bots, Fire: refs, RosterXUIDs: a.opt.RosterXUIDs,
+		Bots: a.opt.Bots, Entities: a.opt.PlayerEntities, Fire: refs, RosterXUIDs: a.opt.RosterXUIDs,
 		Participants: a.opt.Participants,
 		Statborg: StatborgIdentityInput{
 			Identity: a.opt.StatborgIdentity, Records: scoreRecordsOf(a.opt.Score)},
@@ -52,13 +58,17 @@ func (a *assemblage) poserLesPistes() {
 	// ni nommer un joueur, ni regrouper ses vies, ni colorer une équipe. Le nommage se fait
 	// PAR VIE depuis le 2026-09-02 — un slot recyclé porte une identité par occupant.
 	nameTracksByLives(a.doc.Tracks, a.reg.Vies(), a.origin, a.step, a.opt.Fallbacks)
-	// LES BOTS ENTRENT APRÈS LES HUMAINS : une vie nommée par un xuid n'est jamais écrasée,
-	// et seuls les slots que le pont attribue à un index de bot prennent son nom.
+	// LES BOTS ENTRENT APRÈS LES HUMAINS : une vie nommée par un xuid n'est jamais écrasée.
+	// D'abord les vies que le registre a nommées par le `bid` de leur bot — le corps d'un index
+	// partagé, lu par l'entité qui vit à sa création (lot M2.3) —, puis les slots que le pont
+	// attribue à l'index d'un bot unique.
+	nommerLesPistesDeBotParLeurVie(a.doc.Tracks, a.reg.Vies(), a.opt.Bots, a.horloge())
 	nameBotTracks(a.doc.Tracks, a.reg.IndexParSlot(), a.opt.Bots)
 	// LES RELAIS EN DERNIER : le remplaçant hérite des vies restées anonymes après tout ce
-	// que la lecture et les fermetures savaient nommer (cf. successions.go).
-	attributeSuccessions(a.doc.Tracks, a.opt.Successions, a.origin, a.step,
-		a.reg.DeathOffsetMS(), a.reg.DeathOffsetMatches(), refs)
+	// que la lecture et les fermetures savaient nommer (cf. successions.go). C'est un repli.
+	attributeSuccessions(a.doc.Tracks, a.opt.Successions, calageDesRelais{origin: a.origin,
+		step: a.step, deathOffsetMS: a.reg.DeathOffsetMS(), offsetMatches: a.reg.DeathOffsetMatches(),
+		fb: a.opt.Fallbacks}, refs)
 	// LE NOMMAGE FINAL, ET IL EST LA CONSEQUENCE D'UNE DECISION PRODUIT (2026-09-07) : « les vies
 	// anonymes n'existent pas ; une vie est un humain ou un bot, point ». Ce qui reste sans nom
 	// apres les quatre passes ci-dessus est un DEFAUT du pont, pas une categorie de donnee : il
@@ -85,11 +95,18 @@ func (a *assemblage) poserLesEquipesEtLeRoster() {
 	// sur les vies ET sur le roster ; la base n'entre que dans `coverage.teams` comme CONTROLE.
 	// Posee APRES le nommage : le xuid d'une vie est ce qui la relie a son index de joueur.
 	a.equipes = newTeamPublication(a.reg, a.opt.PlayerTeams, a.opt.TeamScan, a.opt.ScoreboardTeams)
-	a.viesTotal, a.viesNommees, a.viesSlotAmbigu = a.equipes.poserSurLesTraces(a.doc.Tracks)
 	a.doc.Roster = buildRoster(a.reg.TableDIndex(), nomsDesJoueurs(a.reg, a.opt.Deaths), a.opt.Bots, a.equipes)
-	// LE SIEGE APRES LE ROSTER ET APRES LES TRACES, parce qu'il a besoin des deux : l'index lu
-	// pour le siege, les vies publiees pour savoir qui libere et qui arrive (cf. sieges.go).
-	a.siegeCov = poserLesSieges(a.doc.Roster, a.doc.Tracks, a.opt.FilmTable, a.doc.FrameCount, a.opt.Fallbacks)
+	// LES OCCUPANTS (lot M2.3) : chaque entree du roster liee a SES entites ti=9 — son equipe, sa
+	// presence. L'equipe par entree remplace celle de l'index sur le roster, les vies et le
+	// drapeau ; sans entite lue, elle vaut celle de l'index et rien ne change.
+	occ := lierLesOccupants(a.doc.Roster, a.doc.Tracks, entreesDesOccupants{
+		scan: a.opt.PlayerEntities, bots: a.opt.Bots, horloge: a.horloge(), parIndex: a.opt.PlayerTeams})
+	a.equipes.poserEquipesParEntree(a.doc.Roster, occ)
+	a.viesTotal, a.viesNommees, a.viesSlotAmbigu = a.equipes.poserSurLesTraces(a.doc.Tracks)
+	// LA PLACE APRES LE ROSTER ET APRES LES TRACES, parce qu'elle a besoin des deux : l'index lu,
+	// la presence de chaque occupant et ses tirs (cf. sieges.go).
+	a.siegeCov = poserLesSieges(a.doc.Roster, occ, entreesDesPlaces{
+		table: a.opt.FilmTable, fire: fireRefs(a.fire), horloge: a.horloge()})
 	// L'ORIGINE se publie APRÈS le pont : son témoin (le calage du fil des morts) en sort.
 	a.doc.OriginMs = resolveOriginMs(a.origin, a.opt.FilmClockOriginUS, a.reg.DeathOffsetMS(), a.reg.DeathOffsetMatches())
 	a.reg.logRegistry(a.matchID)

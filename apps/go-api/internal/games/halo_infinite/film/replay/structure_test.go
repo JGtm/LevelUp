@@ -1263,8 +1263,22 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   CE QUI NE MONTE PAS : `facts.Rev` (`killsource` ne lit aucun état de mouvement) et
 	//   `layers`. `grammar.Rev` a monté, la couche écrivant l'étiquette de genre.
 	//   Détail : `document_chronicle.go`.
-	if SchemaVersion != 68 {
-		t.Fatalf("SchemaVersion = %d, attendu 68 : incrémenter exige une raison écrite ci-dessus "+
+	// - v69 (lot M2.3 de la campagne « retours rejeu », 2026-09-23, règle des places de
+	//   l'utilisateur) : LA PLACE ET LA PRÉSENCE DE CHAQUE OCCUPANT SONT LUES DANS LE FILM.
+	//   `roster[].presence` NAÎT (intervalles `from` / `to` / `toMax`, en frames) : c'est elle, et
+	//   plus l'absence de successeur, qui dit qu'un joueur est parti. `roster[].seat` devient la
+	//   PLACE (un siège de la table du début, ou une place ouverte) et `roster[].seatSource`
+	//   gagne `tirs`, `ouverte` et `index` ; `roster[].team` est l'équipe de l'ENTITÉ ti=9 ;
+	//   `coverage.seats` gagne onze compteurs (`placesTirs`, `placesOuvertes`, `sansPlace`,
+	//   `depassements`, `relaisBornes`, `chevauchements`, `tirsContestes`, `tirsIndexTronque`,
+	//   `presences`, `entitesNonLiees` / `entitesContestees` / `trousDEntite`). Un champ de plus, un sens
+	//   changé sur trois autres, et la clé de reprise du backfill : un v68 affiche encore un
+	//   joueur parti, il doit se lire « à re-cuire ». MONTENT AUSSI : `grammar.Rev` (les
+	//   entités) et `SchemaDesFaits` (4 : les faits portent les entités et les instants
+	//   BOT_METADATA, donc un re-décodage). NE MONTE PAS : `facts.Rev` (aucune ligne de kill ne
+	//   bouge). Détail : `document_chronicle.go`.
+	if SchemaVersion != 69 {
+		t.Fatalf("SchemaVersion = %d, attendu 69 : incrémenter exige une raison écrite ci-dessus "+
 			"(un champ optionnel de plus n'en est pas une)", SchemaVersion)
 	}
 }

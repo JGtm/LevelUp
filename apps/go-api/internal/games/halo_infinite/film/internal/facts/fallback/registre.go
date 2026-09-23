@@ -26,9 +26,10 @@ package fallback
 //
 // # L'ORDRE DE CE FICHIER NE COMPTE PAS
 //
-// [Table] trie par nom. Le découpage en SIX fichiers (cinq jusqu au lot 1.9.4, qui a
-// scindé `registre_killsource.go` à 523 lignes) ne suit que la limite de 500 lignes du dépôt et
-// le paquet des sites. Un septième fichier s'ajoute à [Tranches], et à rien d'autre.
+// [Table] trie par nom. Le découpage en fichiers (cinq jusqu au lot 1.9.4, qui a scindé
+// `registre_killsource.go` à 523 lignes ; `registre_replay_places.go` né au lot M2.3) ne suit que
+// la limite de 500 lignes du dépôt et le paquet des sites. Un fichier de plus s'ajoute à
+// [Tranches], et à rien d'autre.
 
 // Tranche est une famille du registre : son nom de lecture et les entrées qu'elle porte.
 //
@@ -50,6 +51,7 @@ func Tranches() []Tranche {
 	return []Tranche{
 		{"replay/equipement", registreReplayEquipement},
 		{"replay/identites", registreReplayIdentites},
+		{"replay/places", registreReplayPlaces},
 		{"killsource", registreKillsource},
 		{"killsource/carte", registreKillsourceCarte},
 		{"killsource/calibration", registreKillsourceCalibration},

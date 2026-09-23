@@ -1,7 +1,8 @@
 package fallback
 
 // registre_replay_identites.go — les replis des calques IDENTITÉ, VIES, DRAPEAU, ZONE,
-// VÉHICULE, CRÂNE et BOMBE (`internal/games/halo_infinite/film/replay/`).
+// VÉHICULE, CRÂNE et BOMBE (`internal/games/halo_infinite/film/replay/`). Les replis des PLACES
+// et des PRÉSENCES du roster vivent dans `registre_replay_places.go` depuis le lot M2.3.
 
 var registreReplayIdentites = []Repli{
 	{
@@ -464,34 +465,6 @@ var registreReplayIdentites = []Repli{
 		DatePose:        dateAudit0E,
 		CibleRetrait:    "lot de conversion de l'origine du rejeu (coverage.originResolved)",
 		CritereRetrait:  "0 armement anterieur a la frame 0 sur les films d'Assaut du corpus",
-		CompteurBranche: true,
-	},
-	{
-		Nom:  "repli_siege_du_remplacant_par_appariement_ordinal",
-		Fait: "quelle fiche (siege) un joueur arrive en cours de partie occupe a l'ecran",
-		Mecanisme: "le film ecrit un index NEUF au lieu de reprendre celui d'un partant : " +
-			"le k-ieme arrivant d'un camp est chaine sur le k-ieme siege que ce camp libere, " +
-			"a presences disjointes (modele des sieges du 2026-09-02, ramene au rang de repli)",
-		// FILM MUET, ET LE NEGATIF EST MESURE : sur les 35 arrivees des 18 films du lot 1.7,
-		// 33 prennent un index NEUF et 2 seulement REPRENNENT celui d'un partant (`11de8353`
-		// index 23, `51101d1d` index 6) ; sur les 11 arrivees que les bobines des quatre
-		// temoins du lot 1.9.14 couvrent, 1 seule est une reprise. Le film ecrit donc l'index
-		// de l'arrivant — c'est lu, et le siege en decoule — mais il n'ecrit NULLE PART
-		// « cet arrivant continue ce partant ».
-		Condition: CondFilmMuet,
-		// APRES LA LECTURE, ET JAMAIS PAR-DESSUS : une entree dont le film a REUTILISE l'index
-		// est ecartee de l'appariement (`partages[...] == 1`), un film sans table de depart
-		// n'apparie RIEN (abstention publiee, cf. SeatCoverage.SansTableDuFilm).
-		Ordre: OrdreApresLecture,
-		Sites: []Site{{
-			Fichier: pkgReplay + "sieges.go",
-			Ancre:   "roster[a].Seat, roster[a].SeatSource = roster[partants[k]].Seat, SeatSourceApparie",
-		}},
-		DatePose:     dateVague2,
-		CibleRetrait: "le lot qui fermera la chaine `index -> xuid` d'un arrivant (D-remplacants du lot 1.7) ou M3 (divergences par build)",
-		CritereRetrait: "coverage.seats.apparies a 0 et coverage.seats.reprisesEcrites egal au nombre " +
-			"de relais sur les temoins `e5adf7b2`, `bcb6d393`, `a521164d`, `11de8353` : " +
-			"le film publie alors lui-meme chaque reprise de siege",
 		CompteurBranche: true,
 	},
 }
