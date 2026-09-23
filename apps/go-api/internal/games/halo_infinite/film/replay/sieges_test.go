@@ -137,9 +137,10 @@ func TestPlacesLaCapaciteBorneLesPlacesJamaisTenues(t *testing.T) {
 		{FilmIndex: 3, XUID: "300", Name: "parti avant le coup d'envoi"},
 		entree(9, "900"),  // bot de l'equipe 1, present au depart : il prend le siege 3
 		entree(10, "910"), // arrivant de l'equipe 0 : son equipe est pleine
+		entree(12, "920"), // arrivant que rien ne montre : aucune fiche, aucune place comptee
 	}
-	occ := occupantsFabriques([]int{0, 0, 1, 1, 1, 0}, iv(0, 99), iv(0, 99), iv(0, 99), nil,
-		iv(0, 99), iv(50, 99))
+	occ := occupantsFabriques([]int{0, 0, 1, 1, 1, 0, 1}, iv(0, 99), iv(0, 99), iv(0, 99), nil,
+		iv(0, 99), iv(50, 99), nil)
 	cov := poserLesSieges(roster, occ, entreesDesPlaces{table: tableDeDebut(0, 1, 2, 3),
 		horloge: horlogeDeSieges(nil)})
 
@@ -149,8 +150,9 @@ func TestPlacesLaCapaciteBorneLesPlacesJamaisTenues(t *testing.T) {
 	if roster[5].SeatSource != SeatSourceIndex {
 		t.Errorf("arrivant de l'equipe 0 : %q — son equipe tient deja ses deux places", roster[5].SeatSource)
 	}
-	if cov.SansPresence != 1 || cov.SansPlace != 1 {
-		t.Errorf("couverture %+v : 1 entree sans presence, 1 sans place", cov)
+	if cov.SansPresence != 2 || cov.SansPlace != 1 || cov.Sieges != 5 || roster[6].SeatSource != SeatSourceIndex {
+		t.Errorf("couverture %+v (source %q) : 2 entrees sans presence, 1 sans place, 5 places "+
+			"affichees — l'arrivant jamais present n'en ajoute aucune", cov, roster[6].SeatSource)
 	}
 }
 

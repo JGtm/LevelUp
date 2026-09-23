@@ -955,7 +955,7 @@ controle (lecture des chunks) : 23 accord · 0 contradiction · 0 silence — la
 voies des liens d index : PlayerIndexTable=5 · film_table=23
 
 ## SIEGES — la fiche d un occupant, et la part qui vient d un appariement
-entrees 28 · sieges 25 · lus 23 · tirs 0 · apparies 3 · ouvertes 1 · sans place 0 · reprises ecrites 0 · presences vies
+entrees 28 · sieges 24 · lus 23 · tirs 0 · apparies 3 · ouvertes 1 · sans place 0 · reprises ecrites 0 · presences vies
 arrivants 5 · presences closes 3 · sans presence 1 · occupants au plus 24 · depassements 0 · relais bornes 0 · sans table false
 
 ## REPLIS DECLENCHES — la part de ce document qui ne vient PAS d une lecture du film

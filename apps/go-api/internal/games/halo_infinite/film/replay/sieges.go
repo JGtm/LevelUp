@@ -71,8 +71,8 @@ import (
 // cinq provenances d'un siege publie (cf. l'en-tete).
 //
 // ELLES NE SONT PAS DECORATIVES. Un client qui dessine une place tenue par deux joueurs
-// successifs doit pouvoir distinguer ce que le film ECRIT (`lu`, `tirs`) de ce qu'un chainage a
-// DEDUIT (`apparie`) et de ce qui n'a pas trouve de place (`index`).
+// successifs doit pouvoir distinguer ce que le film ECRIT (`lu`, `tirs`) de ce que la pose a
+// DEDUIT (`apparie`, `ouverte`) et de ce qui n'a pas trouve de place (`index`).
 const (
 	// SeatSourceLu : le siege est l'index que le film ecrit pour cette entree — un siege de la
 	// table du debut.
@@ -104,8 +104,9 @@ const (
 type SeatCoverage struct {
 	// Entrees est le denominateur : les entrees de roster publiees.
 	Entrees int `json:"entrees"`
-	// Sieges est le nombre de sieges DISTINCTS apres la pose — les places tenues, plus les
-	// index des entrees restees sans place.
+	// Sieges est le nombre de places que la colonne AFFICHE : les sieges DISTINCTS des entrees
+	// qu'une presence couvre (les places tenues, plus l'index d'une entree presente restee sans
+	// place). Une entree que rien ne montre n'a de fiche a aucune image, et ne compte pas.
 	Sieges int `json:"sieges"`
 	// Lus : les entrees dont le siege est l'index que le film ecrit (siege de la table).
 	Lus int `json:"lus"`
@@ -205,7 +206,9 @@ func (c *SeatCoverage) compterLesEntrees(roster []RosterEntry, pp *poseDesPlaces
 	partages, sieges := map[int]int{}, map[int]bool{}
 	derniere := pp.in.horloge.frames - 1
 	for i, e := range roster {
-		sieges[e.Seat] = true
+		if len(pp.occ.parEntree[i].presence) > 0 {
+			sieges[e.Seat] = true
+		}
 		if e.SeatSource == SeatSourceLu {
 			c.Lus++
 			partages[e.FilmIndex]++
