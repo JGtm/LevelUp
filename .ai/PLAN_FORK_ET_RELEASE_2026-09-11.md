@@ -4,7 +4,7 @@
 > véhicules FIGÉE (Warthog, Gungoose, Scorpion) ; nettoyage limité au fusionné dans feat/v75,
 > bascule LevelUp guidée ; mesure ti=9 lancée en parallèle du lot A.
 > Base : feat/v75 `81f15be30`. Un lot = un worktree `LevelUp-wt-<slug>` + branche `wt/<slug>`.
-> Source des points : `.ai/BILAN_FORK_CHASEWOODHAMS_2026-09-11.md`. Contrat : skill plan-execution.
+> Source des points : `.ai/V7.5/chantiers/BILAN_FORK_CHASEWOODHAMS_2026-09-11.md`. Contrat : skill plan-execution.
 
 ## Lot A — badge admin « version de schéma » sur la page rejeu (`wt/badge-schema`)
 - [x] A.1 API : la réponse du document de rejeu porte la version COURANTE du producteur à côté
@@ -19,7 +19,7 @@
 ## Mesure (parallèle du lot A) — bilan point 3, en-tête keyframe 47 bits ti=9 (`wt/mesure-ti9`)
 - [x] M.1 Banc `keyframe_fullstate_loop` avec HeaderBits=47 restreint aux entités ti=9 sur 3 films.
 - [x] M.2 Critères : 8 entités, 4-4 stables sur tout le film ; comparaison à la table des scores.
-- [x] M.3 Rapport `.ai/MESURE_ENTETE_TI9_47BITS_2026-09-11.md` ; aucun code de production.
+- [x] M.3 Rapport `.ai/V7.5/film_re/MESURE_ENTETE_TI9_47BITS_2026-09-11.md` ; aucun code de production.
 
 ## Lot B — corrections du décodeur (bilan 1, 2 garde-fou, 5) + recuisson (23 min)
 - [x] B.1 Mesure grenades sur 3 films (médiane distance lancer→lanceur, part > 4 m).

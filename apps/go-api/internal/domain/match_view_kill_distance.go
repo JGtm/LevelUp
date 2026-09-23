@@ -1,7 +1,7 @@
 package domain
 
 // match_view_kill_distance.go — LOT G.3-POC (2026-08-30, plan
-// .ai/PLAN_RETOURS_UTILISATEUR_2026-08-29.md §3bis, DEC-8) : kills mesurés et
+// .ai/V7.5/chantiers/PLAN_RETOURS_UTILISATEUR_2026-08-29.md §3bis, DEC-8) : kills mesurés et
 // distance tueur-victime moyenne PAR ARME, PAR JOUEUR, pour UN match. Périmètre
 // fermé par décision utilisateur (cadrage mot pour mot) : « mettre le nombre de
 // kills par armes sur la distance et indiquer la distance moyenne pour chaque

@@ -1,6 +1,6 @@
 // Package duckdb — kill_distance_repo.go : implémentation DuckDB du loader
 // « distance par arme, par joueur » pour UN match (POC LOT G.3, 2026-08-30,
-// plan .ai/PLAN_RETOURS_UTILISATEUR_2026-08-29.md §3bis DEC-8).
+// plan .ai/V7.5/chantiers/PLAN_RETOURS_UTILISATEUR_2026-08-29.md §3bis DEC-8).
 //
 // Source : la jointure « mort mesurée » — `match_kill_events_latest` × la table
 // de positions — qui ne s'écrit plus ici : elle vit dans kill_measured.go depuis

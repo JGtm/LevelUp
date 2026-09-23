@@ -7,7 +7,7 @@
 // (re-taper l'API sous 10 s quand on est rate-limité n'ajoute que des 429) et compte sur le
 // caller — qui ne retentait pas.
 //
-// POLITIQUE (D1, plan `.ai/PLAN_ROBUSTESSE_SYNC_2026-09-16.md`) :
+// POLITIQUE (D1, plan `.ai/V7.5/chantiers/PLAN_ROBUSTESSE_SYNC_2026-09-16.md`) :
 //   - 429 : rejeu IMMÉDIAT de la même page. L'acquisition suivante saute le slot en cooldown
 //     et sert un autre token ; avec un seul slot, le rejeu retombe sur le cas suivant.
 //   - `pool.ErrNoHealthySlot` : tout le parc est en pause — attendre le cooldown du pool, borné

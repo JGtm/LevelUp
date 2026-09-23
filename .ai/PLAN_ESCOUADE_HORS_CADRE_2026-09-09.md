@@ -477,7 +477,7 @@ phase non close. `git log --oneline -10` sur `wt/escouade-hors-cadre` pour l'eta
 - `[x]` Vehicules occupes hors cadre : un pion embarque n'est pas dessine (`vehiclesLayer`
   porte l'info) ; sans bornage du vehicule, il disparait sans repere. Hors perimetre (D3) A
   L'ECRITURE de cette decouverte (2026-09-10) — TRAITE le meme jour, lot 4.4 du master plan
-  (`.ai/PLAN_MASTER_2026-09-09.md`, vague 4), worktree `LevelUp-wt-escouade-hors-cadre` /
+  (`.ai/V7.5/chantiers/PLAN_MASTER_2026-09-09.md`, vague 4), worktree `LevelUp-wt-escouade-hors-cadre` /
   branche `wt/escouade-hors-cadre`. Le glyphe du vehicule (sprite ou losange neutre) est
   desormais plaque a la marge via `edgeMarkFor` — MEME regle que les porteurs d'objectif
   (B3.2) : seule sa POSITION change, jamais sa forme. Chaque occupant embarque recoit EN PLUS
