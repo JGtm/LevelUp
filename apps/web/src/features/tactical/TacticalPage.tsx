@@ -39,6 +39,7 @@ import { getTacticalText } from './i18n'
 import { TacticalAnalysisView } from './TacticalAnalysisView'
 import { TacticalFilterBar } from './TacticalFilterBar'
 import { TacticalMapTile } from './TacticalMapTile'
+import { classeRelecture } from './tacticalLecture.logic'
 import { useCoequipierOptions, useTacticalMaps, useTacticalMatchIDs } from './queries'
 import {
   contexteFiltre,
@@ -114,7 +115,8 @@ export function TacticalPage() {
   // c'est-à-dire le PREMIER chargement seulement. Depuis que le périmètre et la grille
   // gardent leur réponse précédente pendant une relecture (`placeholderData`, cf.
   // `queries.ts`), un changement de filtre n'efface plus la grille : les vignettes restent
-  // montées, marquées `aria-busy`, jusqu'à la nouvelle réponse. Auparavant, chaque clic
+  // montées, `aria-busy`, ESTOMPÉES sous « Mise à jour… » (leurs compteurs sont ceux de
+  // l'ancien périmètre), jusqu'à la nouvelle réponse. Auparavant, chaque clic
   // (session, « Analyser ») créait une clé sans donnée et remplaçait toutes les vignettes
   // par « Chargement… » avant de les reconstruire.
   //
@@ -174,6 +176,7 @@ export function TacticalPage() {
           matchIds={matchIDs}
           coequipiers={composition.xuids}
           perimetreEnRelecture={perimetreEnRelecture}
+          perimetreEnEchec={perimetreEnEchec}
         />
       </>
     )
@@ -224,9 +227,10 @@ export function TacticalPage() {
 }
 
 /**
- * ContenuGrille — le corps de la carte « Cartes jouées », dans l'ORDRE des états : composition
- * impossible, attente (premier chargement), échec, état vide, puis la grille. Pendant une
- * RELECTURE (nouveau filtre), la grille précédente reste montée, `aria-busy`.
+ * ContenuGrille — le corps de la carte « Cartes jouées », dans l'ORDRE des états du bloc
+ * principal : composition impossible, échec, attente (premier chargement), état vide, puis
+ * la grille. Pendant une RELECTURE (nouveau filtre), la grille précédente reste montée,
+ * `aria-busy`, estompée sous « Mise à jour… » : ses compteurs répondent à l'ANCIEN filtre.
  */
 function ContenuGrille({
   t,
@@ -258,7 +262,6 @@ function ContenuGrille({
       />
     )
   }
-  if (etat.enChargement) return <p className="text-sm text-muted-foreground">{t.loading}</p>
   if (etat.enEchec) {
     return (
       <p className="text-sm text-muted-foreground" data-testid="tactical-erreur">
@@ -266,28 +269,40 @@ function ContenuGrille({
       </p>
     )
   }
+  if (etat.enChargement) return <p className="text-sm text-muted-foreground">{t.loading}</p>
   if (cartes.length === 0) {
     return <EmptyStateNotice title={t.emptyTitle} description={t.emptyDescription} />
   }
   return (
-    <div
-      className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
-      aria-busy={etat.enRelecture}
-      data-testid="tactical-grille"
-    >
-      {cartes.map((carte) => (
-        <TacticalMapTile
-          key={carte.map_id}
-          carte={carte}
-          plancher={plancher}
-          playerSlug={playerSlug}
-          locale={locale}
-          t={t}
-          selectionnee={carteChoisie === carte.map_id}
-          onSelect={onSelect}
-        />
-      ))}
-    </div>
+    <>
+      {etat.enRelecture && (
+        <p
+          role="status"
+          className="mb-2 text-sm text-muted-foreground"
+          data-testid="tactical-grille-updating"
+        >
+          {t.analysisUpdating}
+        </p>
+      )}
+      <div
+        className={`grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 ${classeRelecture(etat.enRelecture)}`}
+        aria-busy={etat.enRelecture}
+        data-testid="tactical-grille"
+      >
+        {cartes.map((carte) => (
+          <TacticalMapTile
+            key={carte.map_id}
+            carte={carte}
+            plancher={plancher}
+            playerSlug={playerSlug}
+            locale={locale}
+            t={t}
+            selectionnee={carteChoisie === carte.map_id}
+            onSelect={onSelect}
+          />
+        ))}
+      </div>
+    </>
   )
 }
 

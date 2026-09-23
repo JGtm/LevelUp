@@ -19,15 +19,16 @@
  * QUATRE ÉTATS, UN SEUL CORPS (retours rejeu L2, 2026-09-23 ; `tacticalLecture.logic.ts`) :
  * premier chargement → le cadre et le fond sont posés, l'indicateur par-dessus ; relecture
  * (changement de question, de qui, de spawn ou de filtre) → rien n'est démonté, la réponse
- * PRÉCÉDENTE reste affichée, calque et KPI ESTOMPÉS sous « Mise à jour… » (décision Q26) ;
- * échec → le message, le fond reste. Auparavant `isPending` démontait tout le corps, fond
- * compris, à chaque nouvelle clé de cache.
+ * PRÉCÉDENTE reste affichée, ESTOMPÉE sous « Mise à jour… » (décision Q26) — KPI, calque,
+ * cartes Cellule et Coordination ; échec (de la lecture OU de son périmètre) → le message, le
+ * fond reste. Auparavant `isPending` démontait tout le corps, fond compris, à chaque nouvelle
+ * clé de cache.
  */
 import { useMemo, useState } from 'react'
 
 import { KPIStrip, type KPICardData } from '@/components/layout/KPIStrip'
 import { EmptyStateNotice } from '@/components/ui/empty-state'
-import type { TacticalRaster } from '@/lib/api/types'
+import type { TacticalCelluleReponse, TacticalRaster } from '@/lib/api/types'
 import { intlLocale } from '@/lib/formatters'
 import { withLowSampleNote } from '@/lib/formatters/lowSampleNote'
 import type { Locale } from '@/lib/i18n/locale'
@@ -36,7 +37,7 @@ import type { TacticalText } from './i18n'
 import { useTacticalCellule, useTacticalRaster } from './queries'
 import { TacticalCellCard } from './TacticalCellCard'
 import { TacticalCoordinationCard } from './TacticalCoordinationCard'
-import { etatLecture, questionServie } from './tacticalLecture.logic'
+import { classeRelecture, etatLecture, questionServie } from './tacticalLecture.logic'
 import { TacticalPlanCard } from './TacticalPlanCard'
 import { TacticalToolbar } from './TacticalToolbar'
 import {
@@ -64,6 +65,9 @@ export interface TacticalAnalysisViewProps {
   /** Le périmètre affiché est l'ANCIEN (un nouveau filtre est en cours de résolution) :
    *  la lecture affichée est donc périmée, la vue le dit (« Mise à jour… »). */
   perimetreEnRelecture?: boolean
+  /** La résolution du périmètre a ÉCHOUÉ : le raster, suspendu, ne répondra pas — l'échec
+   *  prime sur la relecture (revue L2-R1). */
+  perimetreEnEchec?: boolean
 }
 
 export function TacticalAnalysisView({
@@ -75,6 +79,7 @@ export function TacticalAnalysisView({
   matchIds,
   coequipiers,
   perimetreEnRelecture = false,
+  perimetreEnEchec = false,
 }: TacticalAnalysisViewProps) {
   const [question, setQuestion] = useState<TacticalQuestion>('morts')
   const [qui, setQui] = useState<TacticalQui>('moi')
@@ -96,13 +101,10 @@ export function TacticalAnalysisView({
     }),
     [matchIds, coequipiers, question, effectiveQui, spawn],
   )
-  const { etat, lecture, questionLue } = useLecturePlan(
-    playerSlug,
-    mapId,
-    params,
-    question,
-    perimetreEnRelecture,
-  )
+  const { etat, lecture, questionLue } = useLecturePlan(playerSlug, mapId, params, question, {
+    enRelecture: perimetreEnRelecture,
+    enEchec: perimetreEnEchec,
+  })
 
   // La cellule affichée n'a plus de sens dès que la lecture change de forme. Ajustée
   // PENDANT LE RENDU (patron React officiel « adjusting state when a prop changes »),
@@ -158,7 +160,7 @@ export function TacticalAnalysisView({
         {lecture && (
           <KPIStrip
             cards={buildKpiCards(t, locale, lecture, questionLue)}
-            className={etat === 'relecture' ? 'opacity-50 transition-opacity' : 'transition-opacity'}
+            className={classeRelecture(etat === 'relecture')}
           />
         )}
         <TacticalPlanCard
@@ -173,18 +175,65 @@ export function TacticalAnalysisView({
           onCellSelect={(col, row) => setSelected({ col, row })}
         />
         {lecture && (
-          <TacticalCellCard
+          <CartesDeLecture
             t={t}
             locale={locale}
             playerSlug={playerSlug}
             question={questionLue}
-            cellule={celluleSelectionnee}
-            contributions={cellule.data?.contributions ?? null}
-            contributionsLoading={cellule.isPending && selected !== null}
-            matchsNonOuvrables={cellule.data?.matchs_non_ouvrables ?? 0}
+            lecture={lecture}
+            enRelecture={etat === 'relecture'}
+            celluleSelectionnee={celluleSelectionnee}
+            detail={{ data: cellule.data, isPending: cellule.isPending, attendu: selected !== null }}
           />
         )}
-        {lecture?.coordination && (
+      </div>
+    </>
+  )
+}
+
+/**
+ * CartesDeLecture — les cartes « Cellule sélectionnée » et « Coordination » sous le plan.
+ * Elles aussi viennent de la réponse AFFICHÉE : pendant une relecture, elles sont estompées
+ * comme le calque et les KPI (revue L2-R6) — des chiffres périmés ne se présentent pas comme
+ * courants.
+ */
+function CartesDeLecture({
+  t,
+  locale,
+  playerSlug,
+  question,
+  lecture,
+  enRelecture,
+  celluleSelectionnee,
+  detail,
+}: {
+  t: TacticalText
+  locale: Locale
+  playerSlug: string
+  question: TacticalQuestion
+  lecture: TacticalRaster
+  enRelecture: boolean
+  celluleSelectionnee: ReturnType<typeof trouveCellule>
+  /** Le détail de la cellule (`useTacticalCellule`) ; `attendu` = une cellule est choisie. */
+  detail: { data?: TacticalCelluleReponse; isPending: boolean; attendu: boolean }
+}) {
+  const classe = classeRelecture(enRelecture)
+  return (
+    <>
+      <div className={classe}>
+        <TacticalCellCard
+          t={t}
+          locale={locale}
+          playerSlug={playerSlug}
+          question={question}
+          cellule={celluleSelectionnee}
+          contributions={detail.data?.contributions ?? null}
+          contributionsLoading={detail.isPending && detail.attendu}
+          matchsNonOuvrables={detail.data?.matchs_non_ouvrables ?? 0}
+        />
+      </div>
+      {lecture.coordination && (
+        <div className={classe}>
           <TacticalCoordinationCard
             t={t}
             locale={locale}
@@ -193,8 +242,8 @@ export function TacticalAnalysisView({
             isolement={lecture.isolement ?? null}
             matchsFiltres={lecture.matchs_filtres}
           />
-        )}
-      </div>
+        </div>
+      )}
     </>
   )
 }
@@ -206,23 +255,23 @@ type ParamsLecture = Parameters<typeof useTacticalRaster>[2]
  * elle répond.
  *
  * LA LECTURE AFFICHÉE est la réponse courante, ou la PRÉCÉDENTE pendant une relecture
- * (`placeholderData`) ; une lecture en échec n'affiche rien de périmé comme courant. Unité,
- * légende et source se calculent sur `questionLue` : pendant une relecture, c'est encore
- * l'ancienne question.
+ * (`placeholderData`) ; une lecture en échec — la sienne ou celle de son PÉRIMÈTRE —
+ * n'affiche rien de périmé comme courant. Unité, légende et source se calculent sur
+ * `questionLue` : pendant une relecture, c'est encore l'ancienne question.
  */
 function useLecturePlan(
   playerSlug: string,
   mapId: string,
   params: ParamsLecture,
   question: TacticalQuestion,
-  perimetreEnRelecture: boolean,
+  perimetre: { enRelecture: boolean; enEchec: boolean },
 ) {
   const raster = useTacticalRaster(playerSlug, mapId, params)
   const etat = etatLecture({
     aDesDonnees: raster.data !== undefined,
-    enEchec: raster.isError,
+    enEchec: raster.isError || perimetre.enEchec,
     surPlaceholder: raster.isPlaceholderData,
-    perimetreEnRelecture,
+    perimetreEnRelecture: perimetre.enRelecture,
   })
   const lecture = etat === 'echec' ? undefined : raster.data
   const questionLue = lecture ? questionServie(lecture.question, question) : question

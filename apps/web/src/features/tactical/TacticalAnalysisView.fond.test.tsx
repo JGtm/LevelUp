@@ -9,7 +9,9 @@
  * Ce que ces tests cadenassent, avec la VRAIE `useTacticalRaster` (seul `api` est moqué) et
  * une réponse DIFFÉRÉE : pendant l'attente, aucun indicateur ne REMPLACE le plan, le MÊME
  * nœud `<img>` reste connecté, l'ancien calque est dit « Mise à jour… », et l'image n'est
- * demandée qu'UNE fois. Le fichier voisin (`TacticalAnalysisView.test.tsx`) moque la
+ * demandée qu'UNE fois. Et le détail d'une cellule choisie ne repart pas pendant la
+ * relecture (revue L2-R5) : il attend la nouvelle réponse et son `pas_m`. Le fichier voisin
+ * (`TacticalAnalysisView.test.tsx`) moque la
  * lecture : il ne joue aucune transition de clé, et c'est pourquoi le défaut y passait.
  *
  * UN SEUL `QueryClient` PAR TEST, stable d'un `rerender` à l'autre : le wrapper de
@@ -94,7 +96,9 @@ beforeEach(() => {
   post.mockImplementation((path: string, corps: unknown) =>
     path.endsWith('/tactical/streets/raster')
       ? repondre(corps as CorpsRaster)
-      : Promise.reject(new Error(`appel inattendu : ${path}`)),
+      : path.endsWith('/tactical/streets/cellule')
+        ? Promise.resolve({ contributions: [], matchs_non_ouvrables: 0 })
+        : Promise.reject(new Error(`appel inattendu : ${path}`)),
   )
 })
 afterEach(() => {
@@ -209,6 +213,45 @@ describe('TacticalAnalysisView — le fond de carte ne se démonte jamais après
       expect(screen.queryByTestId('tactical-analysis-updating')).toBeNull(),
     )
     relectureFinie(img)
+  })
+
+  // Revue L2-R5 (a) : pendant une relecture, la réponse affichée est la PRÉCÉDENTE ; son
+  // `pas_m` n'adresse pas forcément la même cellule dans la nouvelle. Le détail attend.
+  it('détail de cellule : aucun /cellule pendant une relecture de filtre, reparti ensuite', async () => {
+    // jsdom ne mesure rien : sans taille de canevas, le clic ne désigne aucune cellule.
+    const largeur = vi.spyOn(Element.prototype, 'clientWidth', 'get').mockReturnValue(100)
+    const hauteur = vi.spyOn(Element.prototype, 'clientHeight', 'get').mockReturnValue(50)
+    const contexte = vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(null)
+    const detail = () =>
+      post.mock.calls.filter(([path]) => (path as string).endsWith('/tactical/streets/cellule'))
+    try {
+      const autre = differe<TacticalRaster>()
+      const vue = monter(['m1', 'm2'])
+      await screen.findByTestId('kpi-strip')
+      fireEvent.click(screen.getByTestId('tactical-plan-canvas'), { clientX: 30, clientY: 20 })
+      await waitFor(() => expect(detail()).toHaveLength(1))
+
+      repondre = (corps) =>
+        corps.match_ids.length === 1 ? autre.promesse : Promise.resolve(raster('morts', 5))
+      vue.rerender(null)
+      vue.rerender(['m1'])
+      await waitFor(() =>
+        expect(post).toHaveBeenCalledWith(
+          '/players/JGtm/tactical/streets/raster',
+          expect.objectContaining({ match_ids: ['m1'] }),
+        ),
+      )
+      expect(screen.getByTestId('tactical-analysis-updating')).toBeInTheDocument()
+      expect(detail()).toHaveLength(1)
+
+      autre.liberer(raster('morts', 9))
+      await waitFor(() => expect(detail()).toHaveLength(2))
+      expect(detail()[1][1]).toEqual(expect.objectContaining({ match_ids: ['m1'] }))
+    } finally {
+      largeur.mockRestore()
+      hauteur.mockRestore()
+      contexte.mockRestore()
+    }
   })
 
   it('PREMIER CHARGEMENT : le fond est posé, l’indicateur PAR-DESSUS, puis le calque sur le même fond', async () => {

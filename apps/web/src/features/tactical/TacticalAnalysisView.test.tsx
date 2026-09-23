@@ -6,9 +6,11 @@
  * la vraie lecture, dans `TacticalAnalysisView.fond.test.tsx`) :
  *   - PREMIER CHARGEMENT (aucune donnée) -> le cadre du plan est posé, l'indicateur
  *     par-dessus, aucun KPI ;
- *   - EN ÉCHEC (`isError`) -> le message d'échec, aucun KPI, le cadre reste ;
+ *   - EN ÉCHEC (`isError`, ou le PÉRIMÈTRE en échec) -> le message d'échec, aucun KPI ni
+ *     calque — même quand une réponse précédente est gardée —, le cadre reste ;
  *   - RELECTURE (`isPlaceholderData`) -> la réponse précédente estompée sous « Mise à
- *     jour… », légende et source de la question À LAQUELLE elle répond ;
+ *     jour… » (KPI, calque, cartes Cellule et Coordination, messages d'état du plan),
+ *     légende et source de la question À LAQUELLE elle répond ;
  *   - VIDE (réponse reçue, aucune cellule au-dessus du plancher) -> le message du
  *     plancher dans la carte « Plan », le bandeau de KPI reste servi ;
  *   - NOMINAL -> les quatre tuiles de KPI, le canevas du plan, le placeholder de la
@@ -110,7 +112,7 @@ function mockRaster(partial: Partial<UseQueryResult<TacticalRaster>>) {
   } as UseQueryResult<TacticalRaster>)
 }
 
-function renderVue() {
+function renderVue(perimetre: { perimetreEnEchec?: boolean } = {}) {
   return renderWithProviders(
     <TacticalAnalysisView
       playerSlug="JGtm"
@@ -120,8 +122,23 @@ function renderVue() {
       t={t}
       matchIds={['m1', 'm2']}
       coequipiers={[]}
+      {...perimetre}
     />,
   )
+}
+
+/** La réponse NOMINALE avec sa carte Coordination et des matchs en attente de cuisson. */
+const RASTER_COMPLET: TacticalRaster = {
+  ...RASTER_NOMINAL,
+  matchs_en_attente: 2,
+  coordination: {
+    fenetre_echange_secondes: 5,
+    matchs_mesures: 40,
+    morts_sans_distance: 0,
+    n_distances: 0,
+    distribution_distances: [],
+    rayons_m: [30],
+  },
 }
 
 afterEach(() => {
@@ -150,6 +167,28 @@ describe('TacticalAnalysisView — états de la lecture', () => {
     expect(screen.queryByTestId('tactical-analysis-pending')).not.toBeInTheDocument()
   })
 
+  // Revue L2-R5 (b) : une lecture qui vient d'échouer peut encore porter la réponse d'avant
+  // (`data` gardée) ; elle ne se présente JAMAIS comme courante.
+  it('EN ÉCHEC avec une réponse gardée : ni KPI, ni calque, ni carte Coordination', () => {
+    mockRaster({ isError: true, data: RASTER_COMPLET })
+    renderVue()
+    expect(screen.getByText(t.analysisErrorTitle)).toBeInTheDocument()
+    expect(screen.queryByTestId('kpi-strip')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('tactical-plan-canvas')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('tactical-coordination')).not.toBeInTheDocument()
+  })
+
+  // Revue L2-R1 : le PÉRIMÈTRE a échoué — le raster, suspendu, garde son placeholder. L'échec
+  // prime : jamais une « Mise à jour… » qui ne viendra pas.
+  it('PÉRIMÈTRE EN ÉCHEC : le message d’échec, jamais « Mise à jour… »', () => {
+    mockRaster({ data: RASTER_NOMINAL, isPlaceholderData: true })
+    renderVue({ perimetreEnEchec: true })
+    expect(screen.getByText(t.analysisErrorTitle)).toBeInTheDocument()
+    expect(screen.queryByTestId('tactical-analysis-updating')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('kpi-strip')).not.toBeInTheDocument()
+    expect(screen.getByTestId('tactical-analysis-body')).toHaveAttribute('aria-busy', 'false')
+  })
+
   // RELECTURE : la réponse affichée est la PRÉCÉDENTE. Légende, unité et source décrivent
   // la question À LAQUELLE ELLE RÉPOND (`raster.data.question`), pas la question demandée
   // (« Où je meurs » par défaut ici) — sinon la légende mentirait pendant l'attente.
@@ -164,12 +203,26 @@ describe('TacticalAnalysisView — états de la lecture', () => {
     expect(screen.getByTestId('tactical-plan-retained')).toHaveTextContent(t.sourceReplay)
   })
 
+  // Revue L2-R6 : TOUT ce qui vient de la réponse précédente est dit périmé, pas seulement le
+  // calque et les KPI — la carte Coordination (échange, isolement, rayons), la carte Cellule
+  // et les messages d'état du plan aussi.
+  it('RELECTURE : cartes Coordination et Cellule, messages d’état du plan estompés', () => {
+    mockRaster({ data: RASTER_COMPLET, isPlaceholderData: true })
+    renderVue()
+    expect(screen.getByTestId('tactical-coordination').closest('.opacity-50')).not.toBeNull()
+    expect(screen.getByTestId('tactical-cell-card').closest('.opacity-50')).not.toBeNull()
+    expect(screen.getByText(t.statusPending(2)).closest('.opacity-50')).not.toBeNull()
+  })
+
   it('RÉPONSE COURANTE : ni mention, ni estompage, corps non occupé', () => {
-    mockRaster({ data: RASTER_NOMINAL })
+    mockRaster({ data: RASTER_COMPLET })
     renderVue()
     expect(screen.queryByTestId('tactical-analysis-updating')).not.toBeInTheDocument()
     expect(screen.getByTestId('tactical-analysis-body')).toHaveAttribute('aria-busy', 'false')
     expect(screen.getByTestId('kpi-strip').className).not.toContain('opacity-50')
+    expect(screen.getByTestId('tactical-coordination').closest('.opacity-50')).toBeNull()
+    expect(screen.getByTestId('tactical-cell-card').closest('.opacity-50')).toBeNull()
+    expect(screen.getByText(t.statusPending(2)).closest('.opacity-50')).toBeNull()
   })
 
   // VIDE — TROIS CAUSES, TROIS MESSAGES (point 21, lot 3.2). Le message générique « pas

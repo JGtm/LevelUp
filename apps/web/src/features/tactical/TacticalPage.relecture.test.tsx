@@ -8,12 +8,20 @@
  * le titre retombait un instant sur l'identifiant brut de la carte, le fond du plan étant
  * démonté avec la lecture.
  *
- * Ce que ces tests cadenassent, la résolution du NOUVEAU périmètre étant différée : sur la
- * grille, la vignette reste le même nœud (et la grille dit `aria-busy`) ; sur l'écran
- * d'analyse, le titre garde le nom de la carte, le fond reste le même `<img>`, et la vue dit
- * « Mise à jour… ». Et à l'inverse, changer de CARTE remet la vue à zéro : la réponse d'une
- * carte ne sert jamais de placeholder à une autre. Un seul `QueryClient` stable par test
- * (cf. la note de `TacticalAnalysisView.fond.test.tsx` sur `renderWithProviders`).
+ * Ce que ces tests cadenassent :
+ *   - le NOUVEAU périmètre en cours de résolution : sur la grille, la vignette reste le même
+ *     nœud, la grille est `aria-busy`, estompée et dit « Mise à jour… » ; sur l'écran
+ *     d'analyse, le titre garde le nom de la carte, le fond reste le même `<img>`, la vue dit
+ *     « Mise à jour… » ;
+ *   - le nouveau périmètre RÉSOLU, la grille encore en relecture (revue L2-R3) : même
+ *     vignette, même titre — c'est le placeholder de la GRILLE qui répond ;
+ *   - le nouveau périmètre en ÉCHEC sur l'écran d'analyse (revue L2-R1) : le message
+ *     d'échec, jamais une « Mise à jour… » qui ne viendra pas ;
+ *   - changer de JOUEUR (revue L2-R2) : aucune réponse d'un joueur ne sert de placeholder à
+ *     un autre, et aucune requête du nouveau joueur ne porte les `match_id` de l'ancien ;
+ *   - changer de CARTE remet la vue à zéro.
+ * Un seul `QueryClient` stable par test (cf. la note de `TacticalAnalysisView.fond.test.tsx`
+ * sur `renderWithProviders`).
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
@@ -28,12 +36,13 @@ import { getTacticalText } from './i18n'
 import { TacticalPage } from './TacticalPage'
 
 let searchCourant: Record<string, unknown> = {}
+let paramsCourants: Record<string, string> = {}
 vi.mock('@tanstack/react-router', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@tanstack/react-router')>()
   return {
     ...actual,
     useNavigate: () => vi.fn(),
-    useParams: () => ({ playerSlug: 'JGtm', titleSlug: 'halo_infinite' }),
+    useParams: () => paramsCourants,
     useSearch: () => searchCourant,
   }
 })
@@ -56,6 +65,7 @@ vi.mock('@/lib/api/client', async (importOriginal) => {
 
 const t = getTacticalText('fr')
 const URL_FOND = 'blob:tactique/streets'
+const TITRE_RUELLES = 'Plan de Ruelles — Où je meurs'
 
 const PAGE: TacticalMapsPage = {
   plancher_matchs: 10,
@@ -91,11 +101,27 @@ const RASTER: TacticalRaster = {
   points_ignores: 0,
 }
 
+/**
+ * Le sort du périmètre d'une SESSION épinglée : `jamais` (il ne se résout pas pendant le
+ * test — la fenêtre de relecture qu'on observe), `rejet` (la résolution échoue) ou `resolu`
+ * (il rend `['m1']`, dont la GRILLE ne répond jamais).
+ */
+let perimetreSession: 'jamais' | 'rejet' | 'resolu' = 'jamais'
+
+function perimetre(corps: FilterContextInput): Promise<unknown> {
+  if (corps.filter_mode !== 'sessions') return Promise.resolve({ match_ids: ['m1', 'm2', 'm3'] })
+  if (perimetreSession === 'rejet') return Promise.reject(new Error('résolution en échec'))
+  if (perimetreSession === 'resolu') return Promise.resolve({ match_ids: ['m1'] })
+  return new Promise(() => {})
+}
+
 let creerURL: ReturnType<typeof vi.spyOn>
 
 beforeEach(() => {
   useAppShellStore.setState({ locale: 'fr' })
   searchCourant = {}
+  paramsCourants = { playerSlug: 'JGtm', titleSlug: 'halo_infinite' }
+  perimetreSession = 'jamais'
   localStorage.clear()
   get.mockReset()
   get.mockResolvedValue({ teammates: [], enemies: [], total: 0 })
@@ -104,14 +130,13 @@ beforeEach(() => {
   creerURL = vi.spyOn(URL, 'createObjectURL').mockReturnValue(URL_FOND)
   post.mockReset()
   post.mockImplementation((path: string, corps: unknown) => {
-    if (path.endsWith('/filters/match-ids')) {
-      // Le périmètre d'une SESSION épinglée ne se résout jamais pendant le test : c'est
-      // la fenêtre de relecture qu'on observe.
-      return (corps as FilterContextInput).filter_mode === 'sessions'
-        ? new Promise(() => {})
-        : Promise.resolve({ match_ids: ['m1', 'm2', 'm3'] })
+    // Le périmètre d'un AUTRE joueur ne se résout jamais pendant le test.
+    if (path === '/players/Autre/filters/match-ids') return new Promise(() => {})
+    if (path.endsWith('/filters/match-ids')) return perimetre(corps as FilterContextInput)
+    if (path.endsWith('/tactical/maps')) {
+      const ids = (corps as { match_ids: string[] }).match_ids
+      return ids.length === 1 ? new Promise(() => {}) : Promise.resolve(PAGE)
     }
-    if (path.endsWith('/tactical/maps')) return Promise.resolve(PAGE)
     if (path.endsWith('/tactical/streets/raster')) return Promise.resolve(RASTER)
     // La lecture d'une AUTRE carte ne répond pas pendant le test : on observe ce que la vue
     // montre en l'attendant.
@@ -140,54 +165,135 @@ function monter() {
       searchCourant = { ...searchCourant, ses: 'Session du 3 mars' }
       rendu.rerender(<TacticalPage />)
     },
+    /** Passe sur un autre joueur : la route garde la page MONTÉE, seul le paramètre change. */
+    changerDeJoueur: (playerSlug: string) => {
+      paramsCourants = { ...paramsCourants, playerSlug }
+      rendu.rerender(<TacticalPage />)
+    },
   }
 }
 
+async function attendrePerimetreSession() {
+  await waitFor(() =>
+    expect(post).toHaveBeenCalledWith(
+      '/players/JGtm/filters/match-ids',
+      expect.objectContaining({ filter_mode: 'sessions' }),
+    ),
+  )
+}
+
+/** L'écran d'analyse de Ruelles est chargé ; rend le `<img>` de son fond. */
+async function analyseChargee(): Promise<HTMLImageElement> {
+  expect(await screen.findByText(TITRE_RUELLES)).toBeInTheDocument()
+  await screen.findByTestId('kpi-strip')
+  await waitFor(() =>
+    expect(screen.getByTestId('tactical-plan-frame').querySelector('img')).not.toBeNull(),
+  )
+  return screen.getByTestId('tactical-plan-frame').querySelector('img') as HTMLImageElement
+}
+
+/** Les requêtes tactiques postées pour `joueur`. */
+function lecturesTactiques(joueur: string) {
+  return post.mock.calls.filter(([path]) =>
+    (path as string).startsWith(`/players/${joueur}/tactical/`),
+  )
+}
+
 describe('TacticalPage — un changement de filtre garde la page à l’écran', () => {
-  it('GRILLE : la vignette reste le même nœud pendant la résolution du nouveau périmètre', async () => {
+  it('GRILLE : la vignette reste le même nœud, la grille dit « Mise à jour… »', async () => {
+    const page = monter()
+    const vignette = await screen.findByTestId('tactical-map-streets')
+
+    page.cocherSession()
+    await attendrePerimetreSession()
+
+    expect(screen.queryByText(t.loading)).toBeNull()
+    expect(screen.getByTestId('tactical-map-streets')).toBe(vignette)
+    expect(vignette.isConnected).toBe(true)
+    const grille = screen.getByTestId('tactical-grille')
+    expect(grille).toHaveAttribute('aria-busy', 'true')
+    // Revue L2-R7 : les compteurs de l'ANCIEN périmètre ne se présentent pas comme courants.
+    expect(grille.className).toContain('opacity-50')
+    expect(screen.getByTestId('tactical-grille-updating')).toHaveTextContent(t.analysisUpdating)
+  })
+
+  it('GRILLE, relecture finie : ni estompage, ni mention', async () => {
+    monter()
+    await screen.findByTestId('tactical-map-streets')
+    const grille = screen.getByTestId('tactical-grille')
+    expect(grille).toHaveAttribute('aria-busy', 'false')
+    expect(grille.className).not.toContain('opacity-50')
+    expect(screen.queryByTestId('tactical-grille-updating')).toBeNull()
+  })
+
+  // Revue L2-R3 : le périmètre arrive, la GRILLE relit sous une clé neuve. C'est son
+  // placeholder à elle qui garde la vignette montée et le nom de la carte au titre.
+  it('GRILLE : le nouveau périmètre résolu, la grille en relecture — même vignette', async () => {
+    perimetreSession = 'resolu'
     const page = monter()
     const vignette = await screen.findByTestId('tactical-map-streets')
 
     page.cocherSession()
     await waitFor(() =>
       expect(post).toHaveBeenCalledWith(
-        '/players/JGtm/filters/match-ids',
-        expect.objectContaining({ filter_mode: 'sessions' }),
+        '/players/JGtm/tactical/maps',
+        expect.objectContaining({ match_ids: ['m1'] }),
       ),
     )
 
     expect(screen.queryByText(t.loading)).toBeNull()
     expect(screen.getByTestId('tactical-map-streets')).toBe(vignette)
-    expect(vignette.isConnected).toBe(true)
     expect(screen.getByTestId('tactical-grille')).toHaveAttribute('aria-busy', 'true')
+  })
+
+  it('ANALYSE : le nouveau périmètre résolu, la grille en relecture — le titre garde le nom', async () => {
+    perimetreSession = 'resolu'
+    searchCourant = { carte: 'streets' }
+    const page = monter()
+    await analyseChargee()
+
+    page.cocherSession()
+    await waitFor(() =>
+      expect(post).toHaveBeenCalledWith(
+        '/players/JGtm/tactical/maps',
+        expect.objectContaining({ match_ids: ['m1'] }),
+      ),
+    )
+
+    expect(screen.getByTestId('tactical-analysis-title')).toHaveTextContent(TITRE_RUELLES)
   })
 
   it('ANALYSE : le titre garde le nom de la carte, le fond reste le même <img>', async () => {
     searchCourant = { carte: 'streets' }
     const page = monter()
-    const titre = 'Plan de Ruelles — Où je meurs'
-    expect(await screen.findByText(titre)).toBeInTheDocument()
-    await screen.findByTestId('kpi-strip')
-    await waitFor(() =>
-      expect(screen.getByTestId('tactical-plan-frame').querySelector('img')).not.toBeNull(),
-    )
-    const img = screen.getByTestId('tactical-plan-frame').querySelector('img') as HTMLImageElement
+    const img = await analyseChargee()
 
     page.cocherSession()
-    await waitFor(() =>
-      expect(post).toHaveBeenCalledWith(
-        '/players/JGtm/filters/match-ids',
-        expect.objectContaining({ filter_mode: 'sessions' }),
-      ),
-    )
+    await attendrePerimetreSession()
 
     // Jamais l'identifiant brut (« Plan de streets — … ») pendant la relecture.
-    expect(screen.getByTestId('tactical-analysis-title')).toHaveTextContent(titre)
+    expect(screen.getByTestId('tactical-analysis-title')).toHaveTextContent(TITRE_RUELLES)
     expect(screen.queryByTestId('tactical-analysis-pending')).toBeNull()
     expect(img.isConnected).toBe(true)
     expect(screen.getByTestId('tactical-plan-frame').querySelector('img')).toBe(img)
     expect(screen.getByTestId('tactical-analysis-updating')).toHaveTextContent(t.analysisUpdating)
     expect(getBlob).toHaveBeenCalledTimes(1)
+  })
+
+  // Revue L2-R1 : la requête en échec n'a plus de données, le raster se suspend et garde son
+  // placeholder. Sans l'échec du périmètre transmis à la vue, elle restait sur « Mise à
+  // jour… » pour toujours, l'ancien calque estompé.
+  it('ANALYSE : le nouveau périmètre ÉCHOUE — le message d’échec, jamais « Mise à jour… »', async () => {
+    perimetreSession = 'rejet'
+    searchCourant = { carte: 'streets' }
+    const page = monter()
+    await analyseChargee()
+
+    page.cocherSession()
+    expect(await screen.findByText(t.analysisErrorTitle)).toBeInTheDocument()
+    expect(screen.queryByTestId('tactical-analysis-updating')).toBeNull()
+    expect(screen.queryByTestId('kpi-strip')).toBeNull()
+    expect(screen.getByTestId('tactical-analysis-body')).toHaveAttribute('aria-busy', 'false')
   })
 
   // `key={scope.carte}` : la réponse d'une carte ne sert JAMAIS de placeholder à une autre
@@ -209,6 +315,41 @@ describe('TacticalPage — un changement de filtre garde la page à l’écran',
     expect(questionApres.value).toBe('morts')
     expect(screen.queryByTestId('tactical-analysis-updating')).toBeNull()
     expect(screen.queryByTestId('kpi-strip')).toBeNull()
+    expect(screen.getByTestId('tactical-analysis-pending')).toBeInTheDocument()
+  })
+})
+
+// Revue L2-R2 : la page reste MONTÉE quand le joueur change (aucune `key` sur la route). La
+// réponse précédente n'est gardée qu'au MÊME joueur : sinon la liste de `match_id` du joueur
+// A partait sur les lectures du joueur B, et s'affichait comme sa réponse.
+describe('TacticalPage — changer de joueur ne garde rien de l’ancien', () => {
+  it('GRILLE : aucune lecture du nouveau joueur, aucune vignette de l’ancien', async () => {
+    const page = monter()
+    await screen.findByTestId('tactical-map-streets')
+
+    page.changerDeJoueur('Autre')
+    await waitFor(() =>
+      expect(post).toHaveBeenCalledWith('/players/Autre/filters/match-ids', expect.anything()),
+    )
+
+    expect(lecturesTactiques('Autre')).toEqual([])
+    expect(screen.queryByTestId('tactical-map-streets')).toBeNull()
+    expect(screen.getByText(t.loading)).toBeInTheDocument()
+  })
+
+  it('ANALYSE : aucune lecture du nouveau joueur, aucun calque de l’ancien', async () => {
+    searchCourant = { carte: 'streets' }
+    const page = monter()
+    await analyseChargee()
+
+    page.changerDeJoueur('Autre')
+    await waitFor(() =>
+      expect(post).toHaveBeenCalledWith('/players/Autre/filters/match-ids', expect.anything()),
+    )
+
+    expect(lecturesTactiques('Autre')).toEqual([])
+    expect(screen.queryByTestId('kpi-strip')).toBeNull()
+    expect(screen.queryByTestId('tactical-analysis-updating')).toBeNull()
     expect(screen.getByTestId('tactical-analysis-pending')).toBeInTheDocument()
   })
 })

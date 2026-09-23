@@ -10,8 +10,8 @@
  * et le calage. La lecture (`lecture`) est optionnelle et son ÉTAT (`etat`, cf.
  * `tacticalLecture.logic.ts`) décide de ce qui se pose PAR-DESSUS le fond :
  *   - `attente`   : l'indicateur de chargement, sur le cadre déjà posé ;
- *   - `relecture` : l'ancien calque, sa légende et son pied ESTOMPÉS sous « Mise à jour… »
- *                   (décision Q26) ;
+ *   - `relecture` : l'ancien calque, sa légende, son pied et ses messages d'état ESTOMPÉS
+ *                   sous « Mise à jour… » (décision Q26) ;
  *   - `echec`     : rien (le message d'échec est rendu par la vue, au-dessus) ;
  *   - `pret`      : le calque.
  *
@@ -71,7 +71,7 @@ import {
 } from '@/lib/replay/heatPaint'
 import type { TacticalText } from './i18n'
 import { useTacticalMapBackgroundFrame } from './queries'
-import { aspectDuPlan, type TacticalEtatLecture } from './tacticalLecture.logic'
+import { aspectDuPlan, ESTOMPE, type TacticalEtatLecture } from './tacticalLecture.logic'
 import { TacticalPlanFond } from './TacticalPlanFond'
 import {
   celluleDuClic,
@@ -89,9 +89,6 @@ import {
   type RepereTactique,
   type TacticalQuestion,
 } from './tacticalView.logic'
-
-/** Classe d'estompage d'une réponse PRÉCÉDENTE pendant la relecture (décision Q26). */
-const ESTOMPE = 'opacity-50'
 
 export interface TacticalPlanCardProps {
   t: TacticalText
@@ -155,7 +152,7 @@ export function TacticalPlanCard({
     >
       <div className="p-3">
         {messages.length > 0 && (
-          <div role="status" className="mb-2 flex flex-col gap-1 text-xs text-warning">
+          <div role="status" className={`mb-2 flex flex-col gap-1 text-xs text-warning${estompe}`}>
             {messages.map((msg) => (
               <p key={msg}>{msg}</p>
             ))}

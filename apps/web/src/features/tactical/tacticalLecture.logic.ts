@@ -12,8 +12,15 @@
  *   - `relecture` : la réponse affichée est la PRÉCÉDENTE (placeholder, ou périmètre en
  *                   cours de relecture) — calque et KPI ESTOMPÉS sous « Mise à jour… »
  *                   (décision Q26 du 2026-09-23) ;
- *   - `echec`     : la lecture a échoué — le message d'échec, le fond reste ;
+ *   - `echec`     : la lecture OU la résolution de son périmètre a échoué — le message
+ *                   d'échec, le fond reste, rien de périmé (revue L2-R1 : un périmètre en
+ *                   échec suspend le raster, qui gardait son placeholder « Mise à jour… »
+ *                   pour toujours) ;
  *   - `pret`      : la réponse affichée répond à la demande courante.
+ *
+ * ESTOMPER, C'EST TOUT CE QUI VIENT DE LA RÉPONSE PRÉCÉDENTE (revue L2-R6/R7) : KPI, calque,
+ * légende, pied, messages d'état, cartes Cellule et Coordination — et, sur l'écran d'entrée,
+ * la grille des cartes. Une seule classe (`ESTOMPE`), un seul helper (`classeRelecture`).
  */
 import type { MapFrame } from '@/lib/replay/heatPaint'
 
@@ -25,6 +32,14 @@ import {
 } from './tacticalView.logic'
 
 export type TacticalEtatLecture = 'attente' | 'relecture' | 'echec' | 'pret'
+
+/** Classe d'estompage d'une réponse PRÉCÉDENTE pendant la relecture (décision Q26). */
+export const ESTOMPE = 'opacity-50'
+
+/** La classe d'un bloc tiré de la réponse affichée : estompé pendant une relecture seulement. */
+export function classeRelecture(enRelecture: boolean): string {
+  return enRelecture ? `transition-opacity ${ESTOMPE}` : 'transition-opacity'
+}
 
 /**
  * etatLecture — l'état de la lecture du plan.
