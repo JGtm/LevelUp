@@ -86,6 +86,7 @@ const titleScopedInvocations: Record<string, () => readonly unknown[]> = {
   tacticalCellule: () => queryKeys.tacticalCellule(P, T, 'map-1', 'h'),
   // Escouade / synthèse / sessions / compare.
   teammates: () => queryKeys.teammates(P, T, 'h', []),
+  compositionSessions: () => queryKeys.compositionSessions(P, T, [], true),
   synthesis: () => queryKeys.synthesis(P, T, 'h'),
   sessionDetail: () => queryKeys.sessionDetail(P, T, 'h', 's', 'c', false, 'fr'),
   comparePlayer: () => queryKeys.comparePlayer(P, T, 'gt'),

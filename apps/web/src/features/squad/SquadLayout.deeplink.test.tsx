@@ -10,6 +10,11 @@
  * Lot perf L4a (2026-09-23, D4.2) : la composition et la session du lien sont
  * posées AVANT la première requête — même quand une composition restaurée et une
  * session persistée concurrentes existent (ce que vérifie le 3e cas).
+ *
+ * Lot perf L4b (2026-09-23) : l'ancrage se décide désormais sur la lecture légère des
+ * sessions (GET /pages/teammates/sessions). Elle est mise en erreur elle aussi, pour la
+ * même raison : sans données de sessions, pas de ré-ancrage, et la requête lourde part
+ * aussitôt (repli L4a) avec l'état posé par le lien.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { act, waitFor } from '@testing-library/react'
@@ -42,9 +47,13 @@ beforeEach(() => {
   localStorage.clear()
   useSquadFilterStore.getState().resetFilters()
   searchMock.mockReturnValue({ session: 'S1', teammates: 'Alice,Bob' })
-  // Neutralise le ré-ancrage : sans données teammates, l'effet retourne tôt.
+  // Neutralise le ré-ancrage : sans données de sessions (légères ou lourdes), l'effet
+  // retourne tôt.
   server.use(
     http.post('/api/v1/players/:playerSlug/pages/teammates', () =>
+      HttpResponse.json({ error: 'isolate-consume' }, { status: 500 }),
+    ),
+    http.get('/api/v1/players/:playerSlug/pages/teammates/sessions', () =>
       HttpResponse.json({ error: 'isolate-consume' }, { status: 500 }),
     ),
   )

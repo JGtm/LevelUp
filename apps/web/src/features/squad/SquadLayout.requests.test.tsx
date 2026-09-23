@@ -1,15 +1,18 @@
 /**
- * Tests — les REQUÊTES de la page Escouade (lot perf L4a, 2026-09-23).
+ * Tests — les REQUÊTES de la page Escouade (lots perf L4a puis L4b, 2026-09-23).
  *
  * Séquence mesurée le 2026-09-23 (`.ai/ETAT_DES_LIEUX_PERF_CHARGEMENTS_2026-09-23.md`
  * §1.2, C3) : une requête teammates SANS coéquipier au premier passage (la
  * composition arrive par GET /friends), puis, à chaque snap ou clic du rail, DEUX
  * requêtes (deux sources de vérité de la session, deux clés : 8,2 s à vide +
- * 26,8 s), et un aperçu /filters/resolve relancé même sans filtre en attente.
+ * 26,8 s), et un aperçu /filters/resolve relancé même sans filtre en attente (L4a).
+ * Puis, même corrigé, un premier passage calculait la page DEUX fois : sur tout
+ * l'historique, puis sur la session où l'ancrage la relançait (L4b : l'ancrage se
+ * décide désormais sur la lecture légère des sessions, AVANT la requête lourde).
  *
- * Oracles : les corps reçus par MSW (ce qui est réellement parti) et le cache
- * TanStack Query — avec le gcTime par défaut il garde TOUTES les clés construites,
- * même abandonnées au rendu suivant : « une seule nouvelle clé » s'y lit.
+ * Oracles : les requêtes reçues par MSW (ce qui est réellement parti, dans l'ordre) et
+ * le cache TanStack Query — avec le gcTime par défaut il garde TOUTES les clés
+ * chargées, même abandonnées au rendu suivant : « une seule nouvelle clé » s'y lit.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { act, render, screen, waitFor } from '@testing-library/react'
@@ -48,8 +51,16 @@ const TEAMMATES_BASE = {
   match_history: [],
 }
 
+const SESSIONS_VIDES = { composition_sessions: [], latest_composition_session: '' }
+
 function session(label: string) {
   return { label, started_at: '2026-09-20T19:00:00Z', ended_at: '2026-09-20T22:00:00Z', match_count: 3 }
+}
+
+/** La composition a joué deux sessions ; S2 est la dernière (mêmes champs des deux côtés). */
+const DEUX_SESSIONS = {
+  composition_sessions: [session('S2 (3)'), session('S1 (2)')],
+  latest_composition_session: 'S2 (3)',
 }
 
 /** Une playlist cochable (pour mettre un filtre EN ATTENTE) + les presets. */
@@ -75,8 +86,13 @@ const RESOLVE = {
 }
 
 const corpsTeammates: TeammatesQueryRequest[] = []
+const urlsSessions: URL[] = []
 const corpsResolve: FilterContextInput[] = []
+/** L'ordre d'arrivée des requêtes de la page : 'legere' (sessions) ou 'lourde' (page). */
+const journal: string[] = []
 let reponseTeammates: Record<string, unknown> = TEAMMATES_BASE
+let reponseSessions: Record<string, unknown> = SESSIONS_VIDES
+let sessionsEnEchec = false
 let qcCourant: QueryClient | null = null
 
 beforeEach(() => {
@@ -85,12 +101,24 @@ beforeEach(() => {
   useSquadFilterStore.setState({ lastKnownLatestSessionId: null, isAutoSnappingToLatest: false })
   useAppShellStore.setState({ locale: 'fr' })
   corpsTeammates.length = 0
+  urlsSessions.length = 0
   corpsResolve.length = 0
+  journal.length = 0
   reponseTeammates = TEAMMATES_BASE
+  reponseSessions = SESSIONS_VIDES
+  sessionsEnEchec = false
   server.use(
     http.post('/api/v1/players/:playerSlug/pages/teammates', async ({ request }) => {
+      journal.push('lourde')
       corpsTeammates.push((await request.json()) as TeammatesQueryRequest)
       return HttpResponse.json(reponseTeammates)
+    }),
+    http.get('/api/v1/players/:playerSlug/pages/teammates/sessions', ({ request }) => {
+      journal.push('legere')
+      urlsSessions.push(new URL(request.url))
+      return sessionsEnEchec
+        ? HttpResponse.json({ code: 'teammates_sessions_error' }, { status: 500 })
+        : HttpResponse.json(reponseSessions)
     }),
     http.post('/api/v1/players/:playerSlug/filters/resolve', async ({ request }) => {
       corpsResolve.push((await request.json()) as FilterContextInput)
@@ -123,12 +151,20 @@ async function laisserRetomber() {
   })
 }
 
-/** Toutes les clés teammates jamais construites par le cache. */
-const clesTeammates = (qc: QueryClient) =>
-  qc.getQueryCache().findAll({ queryKey: queryKeys.teammatesAll }).map((q) => q.queryKey)
+/**
+ * Clés de la requête LOURDE effectivement CHARGÉES (la légère partage le préfixe). Depuis
+ * L4b, la clé d'avant l'ancrage peut exister dans le cache sans avoir jamais été chargée :
+ * la requête y était désactivée, en attente de la décision — elle ne compte pas.
+ */
+const clesLourdes = (qc: QueryClient) =>
+  qc
+    .getQueryCache()
+    .findAll({ queryKey: queryKeys.teammatesAll })
+    .filter((q) => q.queryKey[3] !== 'composition-sessions' && q.state.dataUpdateCount > 0)
+    .map((q) => q.queryKey)
 
-describe('Escouade — pas de requête teammates à vide (D4.2)', () => {
-  it('amis en attente : aucune requête, « Chargement… » (pas l état vide) ; puis UNE requête avec la composition', async () => {
+describe('Escouade — pas de requête à vide (D4.2)', () => {
+  it('amis en attente : aucune requête, « Chargement… » (pas l état vide) ; puis la légère et UNE lourde avec la composition', async () => {
     let libererAmis: () => void = () => {}
     const amis = new Promise<void>((resolve) => {
       libererAmis = resolve
@@ -141,66 +177,74 @@ describe('Escouade — pas de requête teammates à vide (D4.2)', () => {
     )
     monter()
     await laisserRetomber()
-    expect(corpsTeammates).toHaveLength(0)
+    expect(journal).toEqual([])
     expect(screen.getByText('Chargement…')).toBeInTheDocument()
 
     libererAmis()
     await waitFor(() => expect(corpsTeammates).toHaveLength(1))
     await laisserRetomber()
-    expect(corpsTeammates).toHaveLength(1)
+    expect(journal).toEqual(['legere', 'lourde'])
+    expect(urlsSessions[0].searchParams.get('teammates')).toBe('Alice')
     expect(corpsTeammates[0].selected_gamertags).toEqual(['Alice'])
   })
 
-  it('amis résolus et vides : UNE requête, sans coéquipier (exploration)', async () => {
+  it('amis résolus et vides : UNE requête lourde, sans coéquipier, sans attendre la légère', async () => {
     monter() // handler par défaut : liste d'amis vide
     await waitFor(() => expect(corpsTeammates).toHaveLength(1))
     await laisserRetomber()
     expect(corpsTeammates).toHaveLength(1)
     expect(corpsTeammates[0].selected_gamertags).toBeUndefined()
+    // La légère nourrit le sélecteur (sessions escouade du joueur principal) : sans coéquipier.
+    expect(urlsSessions).toHaveLength(1)
+    expect(urlsSessions[0].searchParams.has('teammates')).toBe(false)
   })
 })
 
-describe('Escouade — une seule source de vérité pour la session (D4.1)', () => {
-  it('snap sur la dernière session de la composition : UNE nouvelle clé, UNE requête, pas d intermédiaire', async () => {
+describe('Escouade — ancrage avant la requête lourde (L4b)', () => {
+  it('à froid : UNE requête légère, puis UNE lourde portant DÉJÀ la dernière session de la composition', async () => {
     localStorage.setItem('squad-teammates-p', JSON.stringify(['Alice']))
-    reponseTeammates = {
-      ...TEAMMATES_BASE,
-      composition_sessions: [session('S2 (3)'), session('S1 (2)')],
-      latest_composition_session: 'S2 (3)',
-    }
+    localStorage.setItem('squad-exact-composition-p', 'true')
+    reponseSessions = DEUX_SESSIONS
+    reponseTeammates = { ...TEAMMATES_BASE, ...DEUX_SESSIONS }
     const qc = monter()
-    await waitFor(() =>
-      expect(useSquadFilterStore.getState().filterContext.sessions?.picked_sessions).toEqual(['S2 (3)']),
-    )
-    await waitFor(() => expect(corpsTeammates).toHaveLength(2))
+    await waitFor(() => expect(corpsTeammates).toHaveLength(1))
     await laisserRetomber()
 
+    expect(journal).toEqual(['legere', 'lourde'])
+    expect(urlsSessions[0].searchParams.get('teammates')).toBe('Alice')
+    expect(urlsSessions[0].searchParams.get('exact')).toBe('true')
+    // La seule requête lourde part sur la session, dans les DEUX champs.
+    expect(corpsTeammates[0].picked_squad_session_labels).toEqual(['S2 (3)'])
+    expect(corpsTeammates[0].filters?.sessions?.picked_sessions).toEqual(['S2 (3)'])
+    expect(clesLourdes(qc)).toHaveLength(1)
     expect(useSquadFilterStore.getState().isAutoSnappingToLatest).toBe(true)
-    // Avant : tout l'historique. Après le snap : la session, dans les DEUX champs.
-    expect(corpsTeammates).toHaveLength(2)
-    expect(corpsTeammates[0].picked_squad_session_labels).toBeUndefined()
-    expect(corpsTeammates[1].picked_squad_session_labels).toEqual(['S2 (3)'])
-    expect(corpsTeammates[1].filters?.sessions?.picked_sessions).toEqual(['S2 (3)'])
-    // Deux clés en tout : celle d'avant et celle du snap. Une requête intermédiaire
-    // (filters.sessions posé, picked_squad_session_labels pas encore) en ferait trois.
-    expect(clesTeammates(qc)).toHaveLength(2)
-    // Et pas d'aperçu : deux résolutions, celles du commité (montage, snap).
+    // Deux résolutions, celles du commité (montage, snap) ; aucun aperçu.
     expect(corpsResolve).toHaveLength(2)
   })
 
-  it('changement de session (clic du rail, sélecteur) : UNE clé, UNE requête, champs alignés', async () => {
+  it('composition sans session commune : la session restaurée est vidée AVANT la requête lourde', async () => {
     localStorage.setItem('squad-teammates-p', JSON.stringify(['Alice']))
-    reponseTeammates = {
-      ...TEAMMATES_BASE,
-      composition_sessions: [session('S2 (3)'), session('S1 (2)')],
-      latest_composition_session: 'S2 (3)',
-    }
+    useSquadFilterStore.getState().setSessions({ picked_sessions: ['Ailleurs (4)'], gap_minutes: 120 })
+    monter() // légère par défaut : aucune session commune
+    await waitFor(() => expect(corpsTeammates).toHaveLength(1))
+    await laisserRetomber()
+
+    expect(journal).toEqual(['legere', 'lourde'])
+    expect(corpsTeammates[0].picked_squad_session_labels).toBeUndefined()
+    expect(useSquadFilterStore.getState().filterContext.sessions?.picked_sessions).toEqual([])
+  })
+
+  it('changement de session (clic du rail, sélecteur) : UNE clé, UNE requête lourde, aucune relecture légère', async () => {
+    localStorage.setItem('squad-teammates-p', JSON.stringify(['Alice']))
+    reponseSessions = DEUX_SESSIONS
+    reponseTeammates = { ...TEAMMATES_BASE, ...DEUX_SESSIONS }
     // Déjà ancré sur la dernière : aucun snap au montage.
     useSquadFilterStore.getState().setSessions({ picked_sessions: ['S2 (3)'], gap_minutes: 120 })
     useSquadFilterStore.setState({ lastKnownLatestSessionId: 'S2 (3)' })
     const qc = monter()
     await waitFor(() => expect(corpsTeammates).toHaveLength(1))
     await laisserRetomber()
+    expect(corpsTeammates[0].picked_squad_session_labels).toEqual(['S2 (3)'])
 
     act(() => {
       useSquadFilterStore.getState().setSessions({ picked_sessions: ['S1 (2)'], gap_minutes: 120 })
@@ -211,7 +255,28 @@ describe('Escouade — une seule source de vérité pour la session (D4.1)', () 
     expect(corpsTeammates).toHaveLength(2)
     expect(corpsTeammates[1].picked_squad_session_labels).toEqual(['S1 (2)'])
     expect(corpsTeammates[1].filters?.sessions?.picked_sessions).toEqual(['S1 (2)'])
-    expect(clesTeammates(qc)).toHaveLength(2)
+    expect(clesLourdes(qc)).toHaveLength(2)
+    expect(journal).toEqual(['legere', 'lourde', 'lourde'])
+  })
+
+  it('endpoint léger en échec : repli sur le comportement L4a (lourde aussitôt, ancrage lu dans sa réponse)', async () => {
+    localStorage.setItem('squad-teammates-p', JSON.stringify(['Alice']))
+    sessionsEnEchec = true
+    reponseTeammates = { ...TEAMMATES_BASE, ...DEUX_SESSIONS }
+    const qc = monter()
+    await waitFor(() =>
+      expect(useSquadFilterStore.getState().filterContext.sessions?.picked_sessions).toEqual(['S2 (3)']),
+    )
+    await waitFor(() => expect(corpsTeammates).toHaveLength(2))
+    await laisserRetomber()
+
+    // Exactement la séquence L4a : tout l'historique, puis la session du snap.
+    expect(journal).toEqual(['legere', 'lourde', 'lourde'])
+    expect(corpsTeammates[0].picked_squad_session_labels).toBeUndefined()
+    expect(corpsTeammates[1].picked_squad_session_labels).toEqual(['S2 (3)'])
+    expect(clesLourdes(qc)).toHaveLength(2)
+    // La page n'est pas bloquée : le contenu est monté.
+    expect(screen.getByTestId('contenu-onglet')).toBeInTheDocument()
   })
 })
 
