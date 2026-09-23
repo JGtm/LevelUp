@@ -1,6 +1,20 @@
 /**
  * TacticalPlanCard — la carte « Plan » de la vue d'analyse (item 5.4).
  *
+ * ─── LE FOND NE BOUGE PLUS (retours rejeu L2, 2026-09-23) ───────────────────────
+ *
+ * Constat utilisateur : changer de question ou cocher une session faisait CLIGNOTER le fond
+ * de carte. La carte n'était rendue qu'une fois la lecture servie : chaque nouvelle clé de
+ * cache la démontait, fond compris, puis la reconstruisait. Désormais la carte est TOUJOURS
+ * rendue, et le cadre + le fond vivent dans `TacticalPlanFond`, qui ne reçoit que la carte
+ * et le calage. La lecture (`lecture`) est optionnelle et son ÉTAT (`etat`, cf.
+ * `tacticalLecture.logic.ts`) décide de ce qui se pose PAR-DESSUS le fond :
+ *   - `attente`   : l'indicateur de chargement, sur le cadre déjà posé ;
+ *   - `relecture` : l'ancien calque, sa légende et son pied ESTOMPÉS sous « Mise à jour… »
+ *                   (décision Q26) ;
+ *   - `echec`     : rien (le message d'échec est rendu par la vue, au-dessus) ;
+ *   - `pret`      : le calque.
+ *
  * ─── LA PROJECTION A ÉTÉ REFAITE LE 2026-09-13 ───────────────────────────────
  *
  * Constat utilisateur : sur Illusion, le calque était quasi vide et ses quelques cellules
@@ -16,13 +30,11 @@
  *
  * LE FOND (`<img>`) ET LE CALQUE DE CHALEUR (`<canvas>`, `drawTacticalHeatmap` de
  * `lib/replay/heatPaint.ts` — noyau partagé avec le rejeu depuis le lot Q7, 2026-09-07)
- * PARTAGENT EXACTEMENT LE MÊME CADRE MONDE : celui du CALAGE du fond. Le conteneur prend son
- * rapport, donc `object-cover` n'y rogne rien, et le calque s'y pose au mètre près.
+ * PARTAGENT EXACTEMENT LE MÊME CADRE MONDE : celui du CALAGE du fond.
  *
  * LE CADRE EST POSÉ MÊME QUAND RIEN N'EST PEINT (lot 3.2, 2026-09-09), et sa hauteur est
  * BORNÉE (`PLAN_HAUTEUR_MAX_PX`) : sans repère exploitable il prend le rapport par défaut,
- * et l'état vide se pose PAR-DESSUS. Auparavant, l'état vide remplaçait le cadre, et un
- * rapport très allongé rendait un canvas de 1 070 x 13 375 px.
+ * et l'état vide se pose PAR-DESSUS.
  *
  * COULEURS : rampe d'INTENSITÉ (bleu → rouge → violet), MÊME token que la carte de
  * chaleur du rejeu (`useReplayHeatmap.ts`) — grandeur neutre (des morts, des kills, du
@@ -35,22 +47,32 @@
  *
  * LÉGENDE ET PIED sont ceux de la maquette : la rampe avec ses deux bornes et l'unité, la
  * phrase d'échelle, puis les dénominateurs (« N matchs retenus sur M filtrés · source »).
+ * Unité et source viennent de la question À LAQUELLE LA LECTURE RÉPOND (`question`, cf.
+ * `questionServie`), jamais de la question demandée.
  */
 import { useEffect, useMemo, useRef } from 'react'
 
 import { heatmapRampTokens } from '@/components/charts/heatmapColors'
 import { EmptyStateNotice } from '@/components/ui/empty-state'
 import { SectionCard } from '@/components/ui/section-card'
+import { Spinner } from '@/components/ui/spinner'
 import { resolveToken } from '@/lib/accessibility/resolveToken'
 import { tokenCssVar } from '@/lib/accessibility/semantic-tokens'
 import { useColorPaletteVersion } from '@/lib/accessibility/useColorPaletteVersion'
-import type { BornesMonde, CelluleTactique, EchelleTactique } from '@/lib/api/types'
+import type { TacticalRaster } from '@/lib/api/types'
 import { intlLocale } from '@/lib/formatters'
 import type { Locale } from '@/lib/i18n/locale'
 
-import { drawTacticalHeatmap, heatRamp, heatRampDivergent } from '@/lib/replay/heatPaint'
+import {
+  drawTacticalHeatmap,
+  heatRamp,
+  heatRampDivergent,
+  type TacticalGrid,
+} from '@/lib/replay/heatPaint'
 import type { TacticalText } from './i18n'
-import { useTacticalMapBackgroundFrame, useTacticalMapBackgroundUrl } from './queries'
+import { useTacticalMapBackgroundFrame } from './queries'
+import { aspectDuPlan, type TacticalEtatLecture } from './tacticalLecture.logic'
+import { TacticalPlanFond } from './TacticalPlanFond'
 import {
   celluleDuClic,
   grilleDuPlan,
@@ -58,37 +80,31 @@ import {
   planEmptyText,
   planLegend,
   rectSelection,
-  repereAspect,
   repereDuPlan,
   sourceForQuestion,
   statusMessages,
   TACTICAL_CELL_FLOOR,
   unitForQuestion,
   vueDuPlan,
-  PLAN_ASPECT_DEFAUT,
-  PLAN_HAUTEUR_MAX_PX,
+  type RepereTactique,
   type TacticalQuestion,
 } from './tacticalView.logic'
+
+/** Classe d'estompage d'une réponse PRÉCÉDENTE pendant la relecture (décision Q26). */
+const ESTOMPE = 'opacity-50'
 
 export interface TacticalPlanCardProps {
   t: TacticalText
   locale: Locale
   playerSlug: string
   mapId: string
+  /** La question À LAQUELLE `lecture` RÉPOND (`questionServie`) — elle décide de l'unité,
+   *  de la source et de la rampe ; jamais la question demandée. */
   question: TacticalQuestion
-  /** Les cellules SERVEUR, adressées sur l'origine du monde — la projection est faite ici,
-   *  parce qu'elle dépend du cadre du fond, que seule cette carte connaît. */
-  cellules: readonly CelluleTactique[]
-  bornes: BornesMonde
-  /** L'échelle publiée par la lecture — elle décide de la rampe ET des bornes affichées. */
-  echelle: EchelleTactique
-  pasM: number
-  /** Les deux dénominateurs publiés par la lecture — ils DISENT pourquoi un plan est vide
-   *  (périmètre vide, aucune mesure, ou densité insuffisante). */
-  matchsFiltres: number
-  matchsRetenus: number
-  matchsEnAttente: number
-  matchsNonCuisables: number
+  /** La lecture AFFICHÉE : la réponse courante, ou la précédente pendant une relecture.
+   *  `undefined` = aucune donnée (premier chargement, échec) : le cadre et le fond restent. */
+  lecture: TacticalRaster | undefined
+  etat: TacticalEtatLecture
   /** La cellule choisie, encadrée sur le plan — `null` tant que rien n'est cliqué. */
   selected: { col: number; row: number } | null
   onCellSelect: (col: number, row: number) => void
@@ -100,46 +116,156 @@ export function TacticalPlanCard({
   playerSlug,
   mapId,
   question,
-  cellules,
-  bornes,
-  echelle,
-  pasM,
-  matchsFiltres,
-  matchsRetenus,
-  matchsEnAttente,
-  matchsNonCuisables,
+  lecture,
+  etat,
   selected,
   onCellSelect,
 }: TacticalPlanCardProps) {
-  const fond = useTacticalMapBackgroundUrl(playerSlug, mapId)
   // LE CADRE DU FOND EST LE REPÈRE, quand il existe : c'est lui, et lui seul, qui fait
-  // coïncider le calque et l'image.
+  // coïncider le calque et l'image. Sans lecture, il donne encore le rapport du cadre.
   const cadreFond = useTacticalMapBackgroundFrame(playerSlug, mapId)
-  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const repere = lecture ? repereDuPlan(cadreFond, lecture.bornes, lecture.pas_m) : null
+  const peinture = usePeinture(t, locale, question, lecture, repere)
+  const estompe = etat === 'relecture' ? ` ${ESTOMPE}` : ''
 
-  // Rampe précalculée PAR THÈME, résolue une fois par changement de palette d'accessibilité
-  // (même patron que `useReplayHeatmap.ts`) — jamais recalculée par cellule.
+  // POURQUOI le plan est vide, pas seulement QU'IL l'est (cf. `planEmptyReason`).
+  const raisonVide = lecture
+    ? planEmptyReason(peinture.grid?.filled ?? 0, lecture.matchs_retenus, lecture.matchs_filtres)
+    : null
+  const messages = lecture
+    ? statusMessages(t, lecture.matchs_en_attente ?? 0, lecture.matchs_non_cuisables ?? 0)
+    : []
+
+  return (
+    <SectionCard
+      title={t.planTitle}
+      label={t.planTitle}
+      footer={
+        lecture && raisonVide === null ? (
+          <PiedDuPlan
+            t={t}
+            lecture={lecture}
+            question={question}
+            divergent={peinture.modeRampe === 'divergent'}
+            peintes={peinture.grid?.filled ?? 0}
+            estompe={estompe}
+          />
+        ) : undefined
+      }
+    >
+      <div className="p-3">
+        {messages.length > 0 && (
+          <div role="status" className="mb-2 flex flex-col gap-1 text-xs text-warning">
+            {messages.map((msg) => (
+              <p key={msg}>{msg}</p>
+            ))}
+          </div>
+        )}
+        <TacticalPlanFond playerSlug={playerSlug} mapId={mapId} aspect={aspectDuPlan(cadreFond, repere)}>
+          {lecture && raisonVide ? (
+            // L'ÉTAT VIDE SE POSE SUR LE CADRE, il ne le remplace pas : la carte garde la
+            // taille qu'elle aura une fois remplie, et le message dit ce qui manque
+            // au-dessus du fond plutôt qu'à la place de tout.
+            <div className={`absolute inset-0 flex items-center justify-center p-3${estompe}`}>
+              <EmptyStateNotice {...planEmptyText(t, raisonVide, lecture.matchs_retenus, lecture.pas_m)} />
+            </div>
+          ) : (
+            lecture && (
+              <CalqueDuPlan
+                grid={peinture.grid}
+                repere={repere}
+                ramp={peinture.ramp}
+                selected={selected}
+                onCellSelect={onCellSelect}
+                estompe={estompe}
+              />
+            )
+          )}
+          <IndicateurDeLecture t={t} etat={etat} />
+        </TacticalPlanFond>
+        {lecture && raisonVide === null && peinture.legende && (
+          <LegendeDuPlan t={t} legende={peinture.legende} estompe={estompe} />
+        )}
+      </div>
+    </SectionCard>
+  )
+}
+
+/** LegendeDuPlan — la rampe avec ses deux bornes et l'unité (maquette 034b1915). */
+function LegendeDuPlan({
+  t,
+  legende,
+  estompe,
+}: {
+  t: TacticalText
+  legende: { lo: string; hi: string; mode: 'intensity' | 'divergent' }
+  estompe: string
+}) {
+  return (
+    <div
+      className={`mt-2 flex flex-wrap items-center gap-2${estompe}`}
+      data-testid="tactical-plan-legend"
+    >
+      <span className="font-mono text-2xs tabular-nums text-muted-foreground">{legende.lo}</span>
+      <span
+        role="img"
+        aria-label={t.planLegendLabel(legende.lo, legende.hi)}
+        className="h-2 min-w-32 flex-1 rounded-full"
+        style={{ background: rampeCss(legende.mode) }}
+      />
+      <span className="font-mono text-2xs tabular-nums text-muted-foreground">{legende.hi}</span>
+    </div>
+  )
+}
+
+/**
+ * usePeinture — la légende, la rampe et la grille de peinture d'une lecture.
+ *
+ * Rampe précalculée PAR THÈME, résolue une fois par changement de palette d'accessibilité
+ * (même patron que `useReplayHeatmap.ts`) — jamais recalculée par cellule.
+ */
+function usePeinture(
+  t: TacticalText,
+  locale: Locale,
+  question: TacticalQuestion,
+  lecture: TacticalRaster | undefined,
+  repere: RepereTactique | null,
+) {
   const paletteVersion = useColorPaletteVersion()
   const numFmt = useMemo(
     () => new Intl.NumberFormat(intlLocale(locale), { maximumFractionDigits: 2 }),
     [locale],
   )
-  const unite = unitForQuestion(t, question)
-  const legende = planLegend(echelle, unite, (n) => numFmt.format(n))
-  const modeRampe = legende.mode
+  const legende = lecture
+    ? planLegend(lecture.echelle, unitForQuestion(t, question), (n) => numFmt.format(n))
+    : null
+  const modeRampe = legende?.mode ?? 'intensity'
   const ramp = useMemo(() => {
     void paletteVersion
     const tokens = heatmapRampTokens(modeRampe).map(resolveToken)
     return modeRampe === 'divergent' ? heatRampDivergent(tokens) : heatRamp(tokens)
   }, [paletteVersion, modeRampe])
+  const grid = lecture && repere ? grilleDuPlan(lecture.cellules ?? [], repere, lecture.echelle) : null
+  return { legende, modeRampe, ramp, grid }
+}
 
-  // LE REPÈRE : le cadre du fond quand la carte en a un, la boîte englobante des cellules
-  // sinon. Le cadre de la carte prend son rapport, hauteur bornée (c'est ce qui ferme le
-  // canvas de 13 375 px constaté sur Illusion en 2026-09).
-  const repere = repereDuPlan(cadreFond, bornes, pasM)
-  const aspect = repere ? repereAspect(repere) : PLAN_ASPECT_DEFAUT
-  const cadre = { aspectRatio: aspect, maxWidth: `${aspect * PLAN_HAUTEUR_MAX_PX}px` }
-  const grid = repere ? grilleDuPlan(cellules, repere, echelle) : null
+/** CalqueDuPlan — le `<canvas>` du calque de chaleur, posé sur le fond, et son clic. */
+function CalqueDuPlan({
+  grid,
+  repere,
+  ramp,
+  selected,
+  onCellSelect,
+  estompe,
+}: {
+  grid: TacticalGrid | null
+  repere: RepereTactique | null
+  ramp: readonly string[]
+  selected: { col: number; row: number } | null
+  onCellSelect: (col: number, row: number) => void
+  estompe: string
+}) {
+  const canvasRef = useRef<HTMLCanvasElement>(null)
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -183,94 +309,89 @@ export function TacticalPlanCard({
     if (cellule) onCellSelect(cellule.col, cellule.row)
   }
 
-  const messages = statusMessages(t, matchsEnAttente, matchsNonCuisables)
-  const source = sourceForQuestion(t, question)
-  // POURQUOI le plan est vide, pas seulement QU'IL l'est : les trois causes n'appellent
-  // pas la même action de l'utilisateur (cf. `planEmptyReason`).
-  const raisonVide = planEmptyReason(grid?.filled ?? 0, matchsRetenus, matchsFiltres)
+  return (
+    <canvas
+      ref={canvasRef}
+      className={`absolute inset-0 h-full w-full cursor-crosshair text-foreground transition-opacity${estompe}`}
+      onClick={handleClick}
+      data-testid="tactical-plan-canvas"
+    />
+  )
+}
+
+/**
+ * IndicateurDeLecture — ce qui se pose PAR-DESSUS le fond selon l'état de la lecture :
+ * l'indicateur du premier chargement, ou la mention « Mise à jour… » d'une relecture.
+ * Jamais À LA PLACE du fond.
+ */
+function IndicateurDeLecture({ t, etat }: { t: TacticalText; etat: TacticalEtatLecture }) {
+  if (etat === 'attente') {
+    return (
+      <div
+        className="absolute inset-0 flex items-center justify-center"
+        data-testid="tactical-analysis-pending"
+      >
+        <Spinner label={t.loading} />
+      </div>
+    )
+  }
+  if (etat === 'relecture') {
+    return (
+      <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+        <p
+          role="status"
+          className="rounded-md border border-border bg-card px-3 py-1.5 text-sm text-foreground shadow-sm"
+          data-testid="tactical-analysis-updating"
+        >
+          {t.analysisUpdating}
+        </p>
+      </div>
+    )
+  }
+  return null
+}
+
+/** PiedDuPlan — la phrase d'échelle, les dénominateurs, le pas, les cellules hors cadre. */
+function PiedDuPlan({
+  t,
+  lecture,
+  question,
+  divergent,
+  peintes,
+  estompe,
+}: {
+  t: TacticalText
+  lecture: TacticalRaster
+  question: TacticalQuestion
+  divergent: boolean
+  peintes: number
+  estompe: string
+}) {
+  const cellules = lecture.cellules ?? []
   // Les cellules SERVIES mais tombées hors du cadre du fond : dites, jamais avalées — un
   // plan amputé ressemblerait sinon à un plan complet.
-  const horsCadre = cellules.length - (grid?.filled ?? 0)
-  const aucuneCellule = raisonVide !== null
-
+  const horsCadre = cellules.length - peintes
   return (
-    <SectionCard
-      title={t.planTitle}
-      label={t.planTitle}
-      footer={
-        !aucuneCellule ? (
-          <div className="border-t border-border px-3 py-2 text-xs text-muted-foreground">
-            <p data-testid="tactical-plan-scale-note">
-              {modeRampe === 'divergent'
-                ? t.planScaleDivergent(TACTICAL_CELL_FLOOR)
-                : t.planScaleQuantile}
-            </p>
-            <p className="mt-1" data-testid="tactical-plan-retained">
-              {t.planFooterRetained(matchsRetenus, matchsFiltres, source)}
-            </p>
-            <p className="mt-1" data-testid="tactical-plan-grid-step">
-              {t.footerGrid(pasM)} · {t.footerFloor(TACTICAL_CELL_FLOOR)}
-            </p>
-            {horsCadre > 0 && (
-              <p className="mt-1" data-testid="tactical-plan-off-frame">
-                {t.footerOffFrame(horsCadre, cellules.length)}
-              </p>
-            )}
-          </div>
-        ) : undefined
-      }
-    >
-      <div className="p-3">
-        {messages.length > 0 && (
-          <div role="status" className="mb-2 flex flex-col gap-1 text-xs text-warning">
-            {messages.map((msg) => (
-              <p key={msg}>{msg}</p>
-            ))}
-          </div>
+    <div className={`border-t border-border px-3 py-2 text-xs text-muted-foreground${estompe}`}>
+      <p data-testid="tactical-plan-scale-note">
+        {divergent ? t.planScaleDivergent(TACTICAL_CELL_FLOOR) : t.planScaleQuantile}
+      </p>
+      <p className="mt-1" data-testid="tactical-plan-retained">
+        {t.planFooterRetained(
+          lecture.matchs_retenus,
+          lecture.matchs_filtres,
+          sourceForQuestion(t, question),
         )}
-        <div
-          className="relative w-full overflow-hidden rounded-md bg-muted"
-          style={cadre}
-          data-testid="tactical-plan-frame"
-        >
-          {fond && <img src={fond} alt="" aria-hidden className="h-full w-full object-cover" />}
-          {raisonVide ? (
-            // L'ÉTAT VIDE SE POSE SUR LE CADRE, il ne le remplace pas : la carte garde la
-            // taille qu'elle aura une fois remplie, et le message dit ce qui manque
-            // au-dessus du fond plutôt qu'à la place de tout.
-            <div className="absolute inset-0 flex items-center justify-center p-3">
-              <EmptyStateNotice {...planEmptyText(t, raisonVide, matchsRetenus, pasM)} />
-            </div>
-          ) : (
-            <canvas
-              ref={canvasRef}
-              className="absolute inset-0 h-full w-full cursor-crosshair text-foreground"
-              onClick={handleClick}
-              data-testid="tactical-plan-canvas"
-            />
-          )}
-        </div>
-        {!aucuneCellule && (
-          <div
-            className="mt-2 flex flex-wrap items-center gap-2"
-            data-testid="tactical-plan-legend"
-          >
-            <span className="font-mono text-2xs tabular-nums text-muted-foreground">
-              {legende.lo}
-            </span>
-            <span
-              role="img"
-              aria-label={t.planLegendLabel(legende.lo, legende.hi)}
-              className="h-2 min-w-32 flex-1 rounded-full"
-              style={{ background: rampeCss(modeRampe) }}
-            />
-            <span className="font-mono text-2xs tabular-nums text-muted-foreground">
-              {legende.hi}
-            </span>
-          </div>
-        )}
-      </div>
-    </SectionCard>
+      </p>
+      <p className="mt-1" data-testid="tactical-plan-grid-step">
+        {t.footerGrid(lecture.pas_m)} · {t.footerFloor(TACTICAL_CELL_FLOOR)}
+      </p>
+      {horsCadre > 0 && (
+        <p className="mt-1" data-testid="tactical-plan-off-frame">
+          {t.footerOffFrame(horsCadre, cellules.length)}
+        </p>
+      )}
+    </div>
   )
 }
 

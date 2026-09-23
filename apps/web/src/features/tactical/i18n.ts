@@ -140,6 +140,8 @@ export function getTacticalText(locale: Locale) {
       m('tactical.analysis.page_title', { map, question }),
     analysisErrorTitle: m('tactical.analysis.error_title'),
     analysisErrorDescription: m('tactical.analysis.error_description'),
+    // Relecture : l'ancien calque reste affiché, estompé, sous cette mention (Q26).
+    analysisUpdating: m('tactical.analysis.updating'),
     questionLabel: m('tactical.toolbar.question_label'),
     whoLabel: m('tactical.toolbar.who_label'),
     whoMe: m('tactical.toolbar.who_me'),

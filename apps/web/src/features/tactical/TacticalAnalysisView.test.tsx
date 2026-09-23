@@ -2,9 +2,13 @@
  * TacticalAnalysisView — la vue d'analyse d'une carte (items 5.2-5.6).
  *
  * Ce que ces tests cadenassent, `useTacticalRaster` MOQUÉ (la lecture réseau est déjà
- * couverte côté contrat par les tests Go et par `queries.ts`) :
- *   - EN ATTENTE (`isPending`) -> un indicateur de chargement, aucun KPI ;
- *   - EN ÉCHEC (`isError`) -> le message d'échec, aucun KPI ;
+ * couverte côté contrat par les tests Go et par `queries.ts` ; les TRANSITIONS de clé, avec
+ * la vraie lecture, dans `TacticalAnalysisView.fond.test.tsx`) :
+ *   - PREMIER CHARGEMENT (aucune donnée) -> le cadre du plan est posé, l'indicateur
+ *     par-dessus, aucun KPI ;
+ *   - EN ÉCHEC (`isError`) -> le message d'échec, aucun KPI, le cadre reste ;
+ *   - RELECTURE (`isPlaceholderData`) -> la réponse précédente estompée sous « Mise à
+ *     jour… », légende et source de la question À LAQUELLE elle répond ;
  *   - VIDE (réponse reçue, aucune cellule au-dessus du plancher) -> le message du
  *     plancher dans la carte « Plan », le bandeau de KPI reste servi ;
  *   - NOMINAL -> les quatre tuiles de KPI, le canevas du plan, le placeholder de la
@@ -14,7 +18,7 @@
  * son `if (!ctx) return`, ces tests ne vérifient que le rendu React autour.
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { screen } from '@testing-library/react'
+import { screen, within } from '@testing-library/react'
 import type { UseQueryResult } from '@tanstack/react-query'
 
 import type { TacticalRaster } from '@/lib/api/types'
@@ -125,18 +129,47 @@ afterEach(() => {
 })
 
 describe('TacticalAnalysisView — états de la lecture', () => {
-  it('EN ATTENTE : un indicateur de chargement, aucun KPI', () => {
+  // PREMIER CHARGEMENT (retours rejeu L2, 2026-09-23) : l'indicateur se pose SUR le cadre
+  // du plan, il ne le remplace plus — le fond est là dès le premier rendu et n'est jamais
+  // démonté ensuite (la transition de clé est jouée dans `TacticalAnalysisView.fond.test.tsx`).
+  it('PREMIER CHARGEMENT : le cadre est posé, l’indicateur par-dessus, aucun KPI', () => {
     mockRaster({ isPending: true })
     renderVue()
-    expect(screen.getByTestId('tactical-analysis-pending')).toBeInTheDocument()
+    const cadre = screen.getByTestId('tactical-plan-frame')
+    expect(within(cadre).getByTestId('tactical-analysis-pending')).toBeInTheDocument()
     expect(screen.queryByTestId('kpi-strip')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('tactical-plan-canvas')).not.toBeInTheDocument()
   })
 
-  it('EN ÉCHEC : le message d’échec, aucun KPI', () => {
+  it('EN ÉCHEC : le message d’échec, aucun KPI, le cadre du fond reste', () => {
     mockRaster({ isError: true })
     renderVue()
     expect(screen.getByText(t.analysisErrorTitle)).toBeInTheDocument()
     expect(screen.queryByTestId('kpi-strip')).not.toBeInTheDocument()
+    expect(screen.getByTestId('tactical-plan-frame')).toBeInTheDocument()
+    expect(screen.queryByTestId('tactical-analysis-pending')).not.toBeInTheDocument()
+  })
+
+  // RELECTURE : la réponse affichée est la PRÉCÉDENTE. Légende, unité et source décrivent
+  // la question À LAQUELLE ELLE RÉPOND (`raster.data.question`), pas la question demandée
+  // (« Où je meurs » par défaut ici) — sinon la légende mentirait pendant l'attente.
+  it('RELECTURE : réponse précédente estompée sous « Mise à jour… », légende de SA question', () => {
+    mockRaster({ data: { ...RASTER_NOMINAL, question: 'temps' }, isPlaceholderData: true })
+    renderVue()
+    expect(screen.getByTestId('tactical-analysis-updating')).toHaveTextContent(t.analysisUpdating)
+    expect(screen.getByTestId('tactical-analysis-body')).toHaveAttribute('aria-busy', 'true')
+    expect(screen.getByTestId('kpi-strip').className).toContain('opacity-50')
+    expect(screen.getByTestId('tactical-plan-canvas').getAttribute('class')).toContain('opacity-50')
+    expect(screen.getByTestId('tactical-plan-legend')).toHaveTextContent(t.units.temps)
+    expect(screen.getByTestId('tactical-plan-retained')).toHaveTextContent(t.sourceReplay)
+  })
+
+  it('RÉPONSE COURANTE : ni mention, ni estompage, corps non occupé', () => {
+    mockRaster({ data: RASTER_NOMINAL })
+    renderVue()
+    expect(screen.queryByTestId('tactical-analysis-updating')).not.toBeInTheDocument()
+    expect(screen.getByTestId('tactical-analysis-body')).toHaveAttribute('aria-busy', 'false')
+    expect(screen.getByTestId('kpi-strip').className).not.toContain('opacity-50')
   })
 
   // VIDE — TROIS CAUSES, TROIS MESSAGES (point 21, lot 3.2). Le message générique « pas

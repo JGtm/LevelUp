@@ -246,6 +246,12 @@ en = "The analysis could not be loaded."
 fr = "Réessaie plus tard ou change de question."
 en = "Try again later or change the question."
 
+# Mention posée SUR le plan pendant une relecture (changement de question ou de filtre) :
+# l'ancien calque reste affiché, estompé, dessous (décision Q26 du 2026-09-23).
+[tactical.analysis.updating]
+fr = "Mise à jour…"
+en = "Updating…"
+
 # ── Barre d'outils (question / qui / spawn) ───────────────────────────────────
 [tactical.toolbar.question_label]
 fr = "La question"
