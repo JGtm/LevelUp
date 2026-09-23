@@ -68,10 +68,10 @@ func (r *SquadRepo) LoadTopTeammates(ctx context.Context, xuid string) ([]domain
 	}
 	// Noms : l'annuaire de la lecture (squad_repo_annuaire.go) — les xuids du top, sur les
 	// matchs « avec amis » que Q29 vient de lire.
-	if err := nommerLignes(ctx, db, matchIDs, result,
-		func(r domain.TopTeammateRow) string { return r.XUID },
-		func(r *domain.TopTeammateRow, gt string) { r.Gamertag = gt },
-	); err != nil {
+	if err := nommerLignes(ctx, db, matchIDs, result, accesLigne[domain.TopTeammateRow]{
+		xuid:   func(r domain.TopTeammateRow) string { return r.XUID },
+		nommer: func(r *domain.TopTeammateRow, gt string) { r.Gamertag = gt },
+	}); err != nil {
 		return nil, fmt.Errorf("LoadTopTeammates: %w", err)
 	}
 	return result, nil
@@ -426,10 +426,11 @@ func (r *SquadRepo) LoadImpactEvents(ctx context.Context, matchIDs []string) ([]
 	}
 	// Noms des acteurs : l'annuaire de la lecture (squad_repo_annuaire.go), sur les mêmes
 	// matchs. Les events synthétisés plus bas gardent un gamertag vide, comme avant.
-	if err := nommerLignes(ctx, db, matchIDs, result,
-		func(r domain.ImpactEventRow) string { return r.XUID },
-		func(r *domain.ImpactEventRow, gt string) { r.Gamertag = gt },
-	); err != nil {
+	if err := nommerLignes(ctx, db, matchIDs, result, accesLigne[domain.ImpactEventRow]{
+		xuid:   func(r domain.ImpactEventRow) string { return r.XUID },
+		match:  func(r domain.ImpactEventRow) string { return r.MatchID },
+		nommer: func(r *domain.ImpactEventRow, gt string) { r.Gamertag = gt },
+	}); err != nil {
 		return nil, fmt.Errorf("LoadImpactEvents: %w", err)
 	}
 
