@@ -59,8 +59,10 @@ func ScanFilmDeaths(filmDir string) ([]Death, error) {
 //
 // MANIFESTE ABSENT (film charge sans metadonnees — enveloppes D2, instruments, tests —, ou
 // repertoire sans manifeste, 0 au parc du 2026-09-23) : le DERNIER numero, la regle d avant le
-// lot. Ce n est pas un repli de publication : la cuisson ne charge jamais un film sans manifeste
-// qu elle n ait deja juge (`replaybuild.refuserManifesteNonFinalise`).
+// lot, et c est un REPLI NOMME, `repli_temps_forts_dernier_numero` (registre `facts/fallback`,
+// critere de retrait ecrit la-bas). En cuisson il n est atteint que par un repertoire VRAIMENT
+// sans manifeste, que `replaybuild.jugerFilmSansManifeste` laisse passer en le journalisant ; un
+// manifeste present mais illisible y est refuse (constat L3-R8 de la revue adverse du lot).
 func numeroDesTempsForts(film *source.Film, nums []int) (int, error) {
 	n, type3, typee := -1, false, false
 	for _, m := range film.Meta() {

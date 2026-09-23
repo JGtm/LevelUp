@@ -8,10 +8,13 @@ package replaybuild
 // morceaux, dont 3 que le manifeste ne decrit pas : exactement l'etat du cache au moment ou la
 // cuisson du 2026-09-22 a charge le film. Le match n'est qu'un TEMOIN de la forme.
 //
-// COMME `cle_inconnue_test.go`, LES TESTS MORDENT SUR LES DEUX GARDES ET NON SUR `BuildBytes`,
-// qui exige le catalogue de bornes et les libelles du titre (donnees de `data/`). Le point
-// d insertion est garde par la compilation : chaque garde n a qu un appelant,
-// `entreesDeLaCuisson`, qui les appelle avant toute lecture du film.
+// COMME `cle_inconnue_test.go`, LES PREMIERS TESTS MORDENT SUR LES DEUX GARDES, et les suivants
+// sur leur POINT D INSERTION, `entreesDeLaCuisson` : une garde dont on ignorerait le retour
+// compile et passe ses propres tests (constat L3-R4 de la revue adverse, mutation M10 : les deux
+// gardes neutralisees par `false &&`, paquet vert). `BuildBytes` reste hors de portee — il exige
+// le catalogue de bornes et les libelles du titre (donnees de `data/`) —, mais
+// `entreesDeLaCuisson` ne lit que le repertoire de morceaux et le chemin des faits persistes,
+// que ces tests fabriquent.
 
 import (
 	"context"
@@ -23,6 +26,7 @@ import (
 	"strings"
 	"testing"
 
+	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
 )
@@ -111,8 +115,8 @@ func verifierRefusEcarte(t *testing.T, err error) {
 // TestCuisson_RefuseLeTemoinPartiel : « 34 au manifeste + 3 hors manifeste », sans temps forts —
 // refuse AVANT le chargement.
 func TestCuisson_RefuseLeTemoinPartiel(t *testing.T) {
-	_, src := repertoireDuTemoin(t, temoinPartiel(t))
-	verifierRefusEcarte(t, refuserManifesteNonFinalise(context.Background(), "ab526724", src))
+	dir, src := repertoireDuTemoin(t, temoinPartiel(t))
+	verifierRefusEcarte(t, refuserManifesteNonFinalise(context.Background(), "ab526724", dir, src))
 }
 
 // TestCuisson_RefuseDesMorceauxHorsManifeste : le manifeste porte ses temps forts, mais deux
@@ -121,7 +125,7 @@ func TestCuisson_RefuseDesMorceauxHorsManifeste(t *testing.T) {
 	entrees := append(temoinPartiel(t), filmcache.WriteChunk{Index: 36,
 		ChunkType: filmcache.ChunkTypeTempsForts, StartMS: 681909, DurationMS: 3})
 	dir, src := repertoireDuTemoin(t, entrees)
-	if err := refuserManifesteNonFinalise(context.Background(), "ab526724", src); err != nil {
+	if err := refuserManifesteNonFinalise(context.Background(), "ab526724", dir, src); err != nil {
 		t.Fatalf("manifeste finalise refuse : %v", err)
 	}
 	film, err := decfilm.LoadDir(dir, src.Meta())
@@ -144,7 +148,7 @@ func TestCuisson_AccepteLeFilmFinalise(t *testing.T) {
 		filmcache.WriteChunk{Index: 36, ChunkType: filmcache.ChunkTypeTempsForts, StartMS: 681909, DurationMS: 3})
 	dir, src := repertoireDuTemoin(t, entrees)
 	ctx := context.Background()
-	if err := refuserManifesteNonFinalise(ctx, "ab526724", src); err != nil {
+	if err := refuserManifesteNonFinalise(ctx, "ab526724", dir, src); err != nil {
 		t.Fatalf("film finalise refuse avant chargement : %v", err)
 	}
 	film, err := decfilm.LoadDir(dir, src.Meta())
@@ -154,10 +158,82 @@ func TestCuisson_AccepteLeFilmFinalise(t *testing.T) {
 	if err := refuserMorceauxHorsManifeste(ctx, "ab526724", src, film); err != nil {
 		t.Fatalf("film finalise refuse apres chargement : %v", err)
 	}
-	if err := refuserManifesteNonFinalise(ctx, "ab526724", nil); err != nil {
+	if err := refuserManifesteNonFinalise(ctx, "ab526724", t.TempDir(), nil); err != nil {
 		t.Errorf("film sans manifeste juge : %v", err)
 	}
 	if err := refuserMorceauxHorsManifeste(ctx, "ab526724", nil, film); err != nil {
 		t.Errorf("film sans manifeste juge : %v", err)
+	}
+}
+
+// constructeurSansFaits : un Builder dont la racine ne porte aucun fait persiste — la bascule
+// prend donc la branche « decoder », celle que les gardes protegent.
+func constructeurSansFaits(t *testing.T) *Builder {
+	t.Helper()
+	return &Builder{repoRoot: t.TempDir(), titleSlug: title.DefaultSlug}
+}
+
+// verifierRefusAvantBalayage : le refus sort de `entreesDeLaCuisson`, avec des entrees VIDES —
+// aucun film charge rendu, aucun statborg, aucun fil des morts, aucun resultat killsource.
+func verifierRefusAvantBalayage(t *testing.T, e entreesDeCuisson, err error) {
+	t.Helper()
+	verifierRefusEcarte(t, err)
+	if e.film != nil || e.faits != nil || e.kills != nil || len(e.deaths.list) != 0 {
+		t.Errorf("entrees rendues avec le refus : %+v", e)
+	}
+}
+
+// TestEntreesDeLaCuisson_RefuseLeTemoinPartiel : LE BRANCHEMENT de la garde avant chargement
+// (constat L3-R4). Le temoin « 34 au manifeste + 3 hors manifeste » ne traverse pas la bascule.
+func TestEntreesDeLaCuisson_RefuseLeTemoinPartiel(t *testing.T) {
+	dir, _ := repertoireDuTemoin(t, temoinPartiel(t))
+	e, err := constructeurSansFaits(t).entreesDeLaCuisson(context.Background(), "ab526724", nil,
+		dir, decfilm.MapQuantEntry{})
+	verifierRefusAvantBalayage(t, e, err)
+}
+
+// TestEntreesDeLaCuisson_RefuseDesMorceauxHorsManifeste : LE BRANCHEMENT de la garde apres
+// chargement. Manifeste finalise, mais deux morceaux du repertoire n y sont pas decrits.
+func TestEntreesDeLaCuisson_RefuseDesMorceauxHorsManifeste(t *testing.T) {
+	entrees := append(temoinPartiel(t), filmcache.WriteChunk{Index: 36,
+		ChunkType: filmcache.ChunkTypeTempsForts, StartMS: 681909, DurationMS: 3})
+	dir, _ := repertoireDuTemoin(t, entrees)
+	e, err := constructeurSansFaits(t).entreesDeLaCuisson(context.Background(), "ab526724", nil,
+		dir, decfilm.MapQuantEntry{})
+	verifierRefusAvantBalayage(t, e, err)
+	if !strings.Contains(err.Error(), "[34 35]") {
+		t.Errorf("le refus ne nomme pas les morceaux hors manifeste : %q", err)
+	}
+}
+
+// TestEntreesDeLaCuisson_RefuseUnManifesteIllisible : CONSTAT L3-R8. Un manifeste PRESENT mais
+// corrompu ne prouve pas la finalisation : il etait traite comme un film sans manifeste, passait
+// les deux gardes et laissait le fil des morts au « dernier numero ». Il est desormais refuse.
+func TestEntreesDeLaCuisson_RefuseUnManifesteIllisible(t *testing.T) {
+	dir, _ := repertoireDuTemoin(t, temoinPartiel(t))
+	manifeste := filmcache.ManifestPath(filepath.Dir(filepath.Dir(dir)), "ab526724")
+	if err := os.WriteFile(manifeste, []byte("{ceci n est pas un manifeste"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := filmcache.OpenChunkDir(dir); err == nil {
+		t.Fatal("temoin : le manifeste corrompu se lit — le cas ne teste rien")
+	}
+	e, err := constructeurSansFaits(t).entreesDeLaCuisson(context.Background(), "ab526724", nil,
+		dir, decfilm.MapQuantEntry{})
+	verifierRefusAvantBalayage(t, e, err)
+	if !strings.Contains(err.Error(), "illisible") {
+		t.Errorf("le refus ne dit pas la cause : %q", err)
+	}
+}
+
+// TestJugerFilmSansManifeste_AbsentCuitParLeRepliNomme : LE CONTROLE NEGATIF de L3-R8 — un film
+// VRAIMENT sans manifeste reste cuit (chemin degrade d avant le lot, repli nomme au registre).
+func TestJugerFilmSansManifeste_AbsentCuitParLeRepliNomme(t *testing.T) {
+	dir, _ := repertoireDuTemoin(t, temoinPartiel(t))
+	if err := os.Remove(filmcache.ManifestPath(filepath.Dir(filepath.Dir(dir)), "ab526724")); err != nil {
+		t.Fatal(err)
+	}
+	if err := jugerFilmSansManifeste(context.Background(), "ab526724", dir); err != nil {
+		t.Errorf("film sans manifeste refuse : %v", err)
 	}
 }

@@ -242,3 +242,9 @@ package facts
 // dit desormais l histoire au passe et renvoie au refus de la cuisson pose par le lot. Aucun octet
 // de code, aucune lecture, aucune largeur ne change : les lignes produites sont identiques a
 // l octet et aucun match deja decode n est candidat au backlog.
+// 2026-09-23, LOT L3 (reprise apres revue adverse, constat L3-R8) — REVISION INCHANGEE, EMPREINTE
+// SEULE RECOPIEE, ET LE CHOIX EST ECRIT. `fallback/registre_objectifs.go` recoit UNE entree de
+// DONNEES, `repli_temps_forts_dernier_numero` : le registre DECLARE et COMPTE, il ne decide rien
+// (cf. l en-tete de `fallback/repli.go`), et son compteur n est pas cable. Aucune lecture, aucune
+// largeur, aucun appariement ne change : les lignes produites sont identiques a l octet et aucun
+// match deja decode n est candidat au backlog.

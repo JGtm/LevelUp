@@ -401,4 +401,25 @@ var registreObjectifsEtConstruction = []Repli{
 		CompteurBranche: false,
 		CibleComptage:   "lot 4.4",
 	},
+	{
+		// POSE AU LOT L3 DES RETOURS REJEU (2026-09-23, constat L3-R8 de sa revue adverse). La regle
+		// « le dernier numero porte les temps forts » valait pour TOUS les films avant le lot ; elle
+		// ne vaut plus que pour un film charge sans manifeste — le constructeur l accepte, le fil
+		// des morts s y replie. L inscrire ici est la regle commune du plan (§4.0) : un repli est
+		// nomme, date, et porte son critere de retrait.
+		Nom:       "repli_temps_forts_dernier_numero",
+		Fait:      "quel morceau du film porte les temps forts (fil des morts, kill-feed) quand aucun morceau n'est type par un manifeste",
+		Mecanisme: "le morceau de plus grand numero present dans le repertoire est lu comme celui des temps forts ; un seul morceau type par le manifeste court-circuite ce repli (selection par le type, filmcache.EstTempsForts)",
+		Condition: CondSectionAbsente,
+		Ordre:     OrdreApresLecture,
+		Sites: []Site{
+			{Fichier: pkgReplay + "deaths_source.go", Ancre: "return nums[len(nums)-1], nil"},
+			{Fichier: pkgReplaybuild + "filmfacts_cuisson.go", Ancre: "func jugerFilmSansManifeste("},
+		},
+		DatePose:        "2026-09-23",
+		CibleRetrait:    "le refus des films sans manifeste par la cuisson (replaybuild.jugerFilmSansManifeste), le jour ou replay-build et les instruments qui chargent un repertoire nu (replay.ScanFilmDeaths) lisent aussi son manifeste",
+		CritereRetrait:  "0 repertoire de morceaux sans manifeste au cache (1 625 sur 1 625 en portent un le 2026-09-23) et 0 WARN (film SANS manifeste) de la cuisson sur une republication complete du parc",
+		CompteurBranche: false,
+		CibleComptage:   "le lot qui passera le compteur de la cuisson a replay.ScanDeaths (appele deux fois par cuisson, sans match_id) ; d ici la, chaque declenchement en cuisson est journalise en WARN par replaybuild.jugerFilmSansManifeste",
+	},
 }

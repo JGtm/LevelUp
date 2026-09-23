@@ -40,14 +40,16 @@ import (
 //
 // nil = pas de manifeste exploitable, et les deux causes gardent leur niveau d'origine : un
 // manifeste PRESENT mais illisible est un Warn (quelque chose est casse), un film ABSENT du
-// cache est un Info (le cache est local et partiel, c'est le cas nominal). Le document sort
-// alors sans courbe de score ET sans couverture de score, ce qui dit « rien n'a ete lu » plutot
-// que « rien n'existait ».
+// cache est un Info (le cache est local et partiel, c'est le cas nominal). Depuis le lot L3
+// (2026-09-23) les deux ne finissent plus pareil : l'illisible est REFUSE juste apres
+// (`jugerFilmSansManifeste`, la finalisation n'est pas prouvable), l'absent seul est cuit — et
+// son document sort alors sans courbe de score ET sans couverture de score, ce qui dit « rien
+// n'a ete lu » plutot que « rien n'existait ».
 func ouvrirManifeste(ctx context.Context, matchID, filmDir string) *filmcache.Source {
 	src, found, err := filmcache.OpenChunkDir(filmDir)
 	switch {
 	case err != nil:
-		slog.WarnContext(ctx, "replaybuild: manifeste de film illisible — rejeu sans courbe de score",
+		slog.WarnContext(ctx, "replaybuild: manifeste de film illisible",
 			"err", err, "match_id", matchID, "filmDir", filmDir)
 		return nil
 	case !found:
