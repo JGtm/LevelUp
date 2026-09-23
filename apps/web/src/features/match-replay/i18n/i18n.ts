@@ -261,8 +261,10 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
       "Échelle étalonnée sur les lieux fréquentés (médiane au bas, 95e centile en haut) : au-delà, la couleur sature. Un seul point extrême ne peut donc pas écraser le reste de la carte.",
     rosterEmpty:
       "Aucune vie du film n'a pu être rattachée à un joueur : le rejeu reste anonyme.",
-    seatLeft: 'A quitté',
-    seatSubstitute: 'Remplaçant',
+    seatVacant: 'Place libre',
+    seatVacantHint: "Personne ne tient cette place à cet instant : elle attend son prochain occupant.",
+    seatNotSpawned: 'Pas encore apparu',
+    seatNotSpawnedHint: "Ce joueur tient sa place, mais il n'est pas encore apparu sur la carte.",
     bridgeDiag: (named: number, total: number, collisions: number) =>
       `Pont du film : ${named}/${total} vies nommées, ${collisions} collision(s) de slot.`,
     teamUnknown: 'Sans équipe',
@@ -717,8 +719,10 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     heatLegendHint:
       'Scale calibrated on the visited places (median at the bottom, 95th percentile at the top): beyond that, the colour saturates. A single extreme spot therefore cannot flatten the rest of the map.',
     rosterEmpty: 'No life from the film could be attached to a player: the replay stays anonymous.',
-    seatLeft: 'Left',
-    seatSubstitute: 'Substitute',
+    seatVacant: 'Open slot',
+    seatVacantHint: 'Nobody holds this slot at this moment: it is waiting for its next occupant.',
+    seatNotSpawned: 'Not spawned yet',
+    seatNotSpawnedHint: 'This player holds the slot but has not spawned on the map yet.',
     bridgeDiag: (named: number, total: number, collisions: number) =>
       `Film bridge: ${named}/${total} lives named, ${collisions} slot collision(s).`,
     teamUnknown: 'No team',

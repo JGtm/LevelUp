@@ -21,6 +21,7 @@ import type {
   ReplayInventory,
   ReplayLoadout,
   ReplayProjectile,
+  ReplayRosterEntry,
   ReplaySurface,
   ReplayTrack,
   ReplayVehicleLabel,
@@ -48,6 +49,13 @@ export type ReplayInventoryReady = Filled<ReplayInventory, 'am' | 'g'>
 export type ReplayGrenadeReadReady = Filled<ReplayGrenadeRead, 'g'>
 export type ReplaySurfaceReady = Omit<ReplaySurface, 'poly'> & { poly: ReplayXY[] }
 export type ReplayProjectileReady = Omit<ReplayProjectile, 'p'> & { p: ReplayStep[] }
+/**
+ * ReplayRosterEntryReady — une entrée de roster dont la PRÉSENCE est comblée (schéma 69, lot
+ * M2.4). Vide = l'entrée ne tient sa place à aucune image, OU l'artefact est antérieur au schéma
+ * 69 et n'en publie aucune — `seatLogic` distingue les deux au niveau du document
+ * (`publieDesPresences`), jamais entrée par entrée.
+ */
+export type ReplayRosterEntryReady = Filled<ReplayRosterEntry, 'presence'>
 /**
  * ReplayWeaponPadReady — un socle dont les DEUX tableaux imbriqués sont comblés.
  *
@@ -341,7 +349,7 @@ export type ReplayDocumentReady = Omit<
   objectives: NonNullable<ReplayDocument['objectives']>
   padPickups: NonNullable<ReplayDocument['padPickups']>
   projectiles: ReplayProjectileReady[]
-  roster: NonNullable<ReplayDocument['roster']>
+  roster: ReplayRosterEntryReady[]
   /**
    * LE CALQUE DE SCORE RESTE OPTIONNEL, et c'est la seule façon honnête de l'écrire : un
    * artefact de schéma antérieur à 12 n'en porte AUCUN, et un objet vide se lirait comme

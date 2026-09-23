@@ -704,13 +704,17 @@ export interface ReplayText {
   /** Fiches joueur : ce qui est lu, et ce qui ne l'est pas. */
   rosterEmpty: string
   /**
-   * Siège entre deux occupants (lot 1.9.14) : `seatLeft` est ce que la tuile AFFICHE — le
-   * titulaire est sorti —, `seatSubstitute` sa description accessible : la place est tenue pour
-   * le remplaçant qui arrive. Les deux ne se confondent pas : l'une dit un fait passé, l'autre
-   * dit à quoi sert la tuile.
+   * Les deux tuiles d'une place SANS FICHE (règle des places, lot M2.4, 2026-09-23) :
+   * `seatVacant` est ce qu'affiche une place que personne ne tient (Q20 — elle reste visible,
+   * vide, jusqu'à l'arrivée du remplaçant ; aucun nom : un parti n'est jamais affiché) ;
+   * `seatNotSpawned` ce qu'affiche, sous son nom, un occupant qui tient sa place sans être encore
+   * apparu (Q21). Les deux `*Hint` sont leurs descriptions accessibles : ce que la tuile dit, pas
+   * ce qu'elle montre.
    */
-  seatLeft: string
-  seatSubstitute: string
+  seatVacant: string
+  seatVacantHint: string
+  seatNotSpawned: string
+  seatNotSpawnedHint: string
   bridgeDiag: (named: number, total: number, collisions: number) => string
   teamUnknown: string
   /** Libellé d'équipe (cascade `lib/halo/teamLabel.ts`, mêmes textes que la Match View). */

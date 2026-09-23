@@ -249,7 +249,7 @@ type NullableArrayPaths<T, D extends number = 6> = [D] extends [never]
       }[keyof T & string]
 
 /**
- * NULLABLE_ARRAY_PATHS — la CARTE du contrat : 54 chemins, racine et profondeurs confondues.
+ * NULLABLE_ARRAY_PATHS — la CARTE du contrat : 86 chemins (schéma 69), racine et profondeurs confondues.
  *
  * Elle n'est pas décorative : l'assertion (3) la confronte au contrat généré. Le Go publie un
  * tableau de plus, où que ce soit, et `tsc -b` refuse de compiler en nommant le chemin.
@@ -360,6 +360,10 @@ const NULLABLE_ARRAY_PATHS = [
   'inventory[].g',
   'loadouts[].w',
   'projectiles[].p',
+  // `roster[].presence` (schéma 69, lot M2.3) : les intervalles pendant lesquels un occupant
+  // TIENT sa place. Comblée à VIDE par la frontière, comme `tracks[].points` : l'absence d'un
+  // artefact antérieur se lit au niveau du document (`seatLogic.publieDesPresences`).
+  'roster[].presence',
   'structure[].poly',
   'tracks[].points',
   'weaponPads[].presence',

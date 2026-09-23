@@ -42,6 +42,7 @@ export type {
   ReplayInventoryReady,
   ReplayObjectiveObjectReady,
   ReplayProjectileReady,
+  ReplayRosterEntryReady,
   ReplaySkullCarry,
   ReplaySurfaceReady,
   ReplayTrackReady,
@@ -225,7 +226,11 @@ export function normalizeReplayDocument(raw: ReplayDocument): ReplayDocumentRead
     // `as` sur l'arité seule : le contenu est celui du contrat, seule la longueur fixe du
     // tuple que JSON Schema ne sait pas dire est réaffirmée (cf. en-tête).
     projectiles: (raw.projectiles ?? []).map((pr) => ({ ...pr, p: (pr.p ?? []) as ReplayStep[] })),
-    roster: raw.roster ?? [],
+    // LA PRÉSENCE DE CHAQUE OCCUPANT (schéma 69) : les intervalles pendant lesquels il TIENT sa
+    // place. Comblée à VIDE quand elle manque — un artefact antérieur au schéma 69 n'en publie
+    // aucune, et `seatLogic.publieDesPresences` le lit au niveau du DOCUMENT pour retomber sur
+    // l'enveloppe des vies (repli daté) ; jamais un intervalle inventé ici.
+    roster: (raw.roster ?? []).map((e) => ({ ...e, presence: e.presence ?? [] })),
     // Le SCORE DANS LE TEMPS (schéma 12) : quatre étages de tableaux nullables comblés d'un
     // coup (cf. normalizeScoreTimeline). L'OBJET, lui, garde le droit d'être absent.
     scoreTimeline: normalizeScoreTimeline(raw.scoreTimeline),

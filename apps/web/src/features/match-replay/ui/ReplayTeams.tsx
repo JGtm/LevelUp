@@ -93,9 +93,8 @@ interface ReplayTeamsProps {
   /** Camp de chaque xuid : il donne sa couleur au titre de la colonne (allié / adverse). */
   xuidMeta?: XuidMeta
   /**
-   * En-tête du match : l'heure de début (le repère des relais de siège, cf. seatLogic) et la
-   * catégorie de mode (le gabarit des fiches, cf. cardDensity). Absent = pas de relais,
-   * gabarit normal.
+   * En-tête du match : la catégorie de mode (le gabarit des fiches, cf. cardDensity). Absent =
+   * gabarit normal. Les relais de place, eux, viennent du document (`roster[].presence`).
    */
   header?: PresenceHeader | null
 }
@@ -105,10 +104,10 @@ export function ReplayTeams({
 }: ReplayTeamsProps) {
   const t = REPLAY_TEXT[locale]
   const players = useMemo(() => buildPlayers(doc, scoreboard), [doc, scoreboard])
-  // LA FICHE EST UN SIÈGE, PAS UN JOUEUR (retour user 2026-09-02) : un remplacé cède sa
-  // fiche à son remplaçant — un 4v4 garde huit fiches, quel que soit le nombre de relais.
-  // LE SIÈGE VIENT DU DOCUMENT depuis le lot 1.9.14 (`roster[].seat`, lu au film) : le web ne
-  // l'apparie plus lui-même sur la participation API.
+  // LA FICHE EST UNE PLACE, PAS UN JOUEUR (retour user 2026-09-02, règle des places du
+  // 2026-09-23) : un partant libère sa place pour son remplaçant — un 4v4 garde huit places,
+  // quel que soit le nombre de relais. LA PLACE ET LA PRÉSENCE VIENNENT DU DOCUMENT
+  // (`roster[].seat`, `roster[].presence`, schéma 69) : le web ne les déduit pas.
   const seats = useMemo(() => buildSeats(players, doc), [players, doc])
   const groups = useMemo(() => groupSeatsByTeam(seats), [seats])
   // LE GABARIT DU MATCH, un seul pour toute la colonne (D1) : il ne dépend que de l'en-tête.
@@ -206,15 +205,17 @@ export function ReplayTeams({
             locale={locale}
           />
           <div className={gabarit.seatGrid ? SEATS_GRID_CLASS : SEATS_COLUMN_CLASS}>
-            {/* À L'INSTANT LU, LES SEULS OCCUPANTS PRÉSENTS (constat user du 2026-09-15).
-                Un siège `absent` ne rend AUCUNE fiche ; un siège `parti` garde la sienne,
-                marquée, le temps que son successeur arrive — sans quoi la grille sauterait
-                d'un cran puis reviendrait. */}
+            {/* UNE TUILE PAR PLACE, À CHAQUE IMAGE (règle des places, 2026-09-23) : son
+                occupant à l'instant lu, « pas encore apparu » s'il n'a pas encore de corps
+                (Q21), ou la place VIDE (Q20) — jamais un joueur parti, et jamais plus de
+                tuiles que de places. */}
             {group.seats.map((seat) => {
               const lu = seatOccupantAt(seat, frame)
-              if (lu.kind === 'absent' || lu.player === null) return null
-              if (lu.kind === 'parti') {
-                return <ReplaySeatLeft key={seat.key} player={lu.player} locale={locale} />
+              if (lu.kind === 'vide' || lu.player === null) {
+                return <ReplaySeatVacant key={seat.key} locale={locale} />
+              }
+              if (lu.kind === 'pasEncoreApparu') {
+                return <ReplaySeatNotSpawned key={seat.key} player={lu.player} locale={locale} />
               }
               return (
                 <ReplayPlayerCard
@@ -241,41 +242,60 @@ export function ReplayTeams({
 }
 
 /**
- * occupantsPresents — les joueurs qui TIENNENT une fiche de ce camp à cette image.
+ * occupantsPresents — les joueurs qui TIENNENT une place de ce camp à cette image, apparus ou
+ * pas encore.
  *
  * L'en-tête de colonne s'en sert pour son libellé et pour la couleur allié / adverse : lui
- * passer les occupants d'un siège vide ferait nommer un camp par quelqu'un qui n'y joue plus.
+ * passer un joueur parti ferait nommer un camp par quelqu'un qui n'y joue plus.
  */
 function occupantsPresents(seats: readonly ReplaySeat[], frame: number): ReplayPlayer[] {
   const out: ReplayPlayer[] = []
   for (const s of seats) {
     const lu = seatOccupantAt(s, frame)
-    if (lu.kind === 'present' && lu.player !== null) out.push(lu.player)
+    if (lu.kind !== 'vide' && lu.player !== null) out.push(lu.player)
   }
   return out
 }
 
 /**
- * ReplaySeatLeft — LA TUILE D'UN SIÈGE ENTRE DEUX OCCUPANTS : son titulaire est sorti, son
- * remplaçant n'est pas encore arrivé.
- *
- * ELLE EXISTE POUR QUE LA GRILLE NE SAUTE PAS. Retirer la fiche à la seconde du départ puis la
- * remettre à celle de l'arrivée décalerait toute la colonne deux fois pour un relais de vingt
- * secondes. Elle ne montre AUCUNE lecture — ni vitalité, ni armes, ni compteurs : le joueur
- * n'est plus là, et lui prêter un état serait inventer.
- *
- * Aucun littéral de couleur : `border` / `card` / `muted-foreground`, les tokens sémantiques.
+ * La tuile d'une place SANS FICHE DE JOUEUR — vide, ou tenue par un occupant sans corps. Même
+ * chrome discret pour les deux : bordure tiretée, fond de carte, encre atténuée — les tokens
+ * sémantiques `border` / `card` / `muted-foreground`, aucun littéral de couleur.
  */
-function ReplaySeatLeft({ player, locale }: { player: ReplayPlayer; locale: ReplayLocale }) {
+const SEAT_PLACEHOLDER_CLASS =
+  'flex min-w-0 flex-col justify-center rounded border border-dashed border-border bg-card px-2 py-1'
+
+/**
+ * ReplaySeatVacant — (Q20) LA PLACE LIBRE : personne ne la tient à l'instant lu — son occupant
+ * est parti et son remplaçant n'est pas encore arrivé, ou elle attend son premier occupant.
+ *
+ * ELLE RESTE À L'ÉCRAN parce que le nombre de places est FINI (règle des places) : la retirer
+ * ferait croire à une équipe plus petite, et la grille sauterait d'un cran puis reviendrait.
+ * Elle ne montre AUCUN nom : un joueur parti n'est jamais affiché.
+ */
+function ReplaySeatVacant({ locale }: { locale: ReplayLocale }) {
   const t = REPLAY_TEXT[locale]
   return (
-    <div
-      className="flex min-w-0 flex-col justify-center rounded border border-dashed border-border bg-card px-2 py-1"
-      title={t.seatSubstitute}
-    >
+    <div className={SEAT_PLACEHOLDER_CLASS} title={t.seatVacantHint}>
+      <span className="truncate text-3xs uppercase tracking-wider text-muted-foreground">
+        {t.seatVacant}
+      </span>
+    </div>
+  )
+}
+
+/**
+ * ReplaySeatNotSpawned — (Q21) L'OCCUPANT TIENT LA PLACE, SANS CORPS ENCORE : au coup d'envoi,
+ * ou à son arrivée, avant sa première apparition. Son nom, et rien d'autre — ni vitalité, ni
+ * armes, ni compteurs : il n'a encore rien à en dire, et lui prêter un état serait inventer.
+ */
+function ReplaySeatNotSpawned({ player, locale }: { player: ReplayPlayer; locale: ReplayLocale }) {
+  const t = REPLAY_TEXT[locale]
+  return (
+    <div className={SEAT_PLACEHOLDER_CLASS} title={t.seatNotSpawnedHint}>
       <span className="truncate text-2xs text-muted-foreground">{playerName(player) ?? ''}</span>
       <span className="truncate text-3xs uppercase tracking-wider text-muted-foreground">
-        {t.seatLeft}
+        {t.seatNotSpawned}
       </span>
     </div>
   )
