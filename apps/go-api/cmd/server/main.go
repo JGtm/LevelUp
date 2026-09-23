@@ -79,6 +79,16 @@ import (
 // version est injectée au build via -ldflags "-X main.version=X.Y.Z".
 var version = "dev"
 
+// serverWriteTimeout borne l'écriture d'une réponse HTTP (http.Server.WriteTimeout).
+//
+// 2026-09-23 : 30 s -> 120 s. Cause : les pages lourdes (Escouade, 25 à 55 s de calcul
+// mesurées ce jour-là) étaient coupées à 30 s — 4 096 octets écrits, 502 renvoyé par le
+// proxy, puis rejeu du front qui triplait le travail serveur (état des lieux perf du
+// 2026-09-23, constat C2). Compatible avec la prod : nginx `proxy_read_timeout 300s`
+// (packaging/nginx/levelup.conf). ReadTimeout et IdleTimeout inchangés. Le garde-rail
+// internal/api/wire/build_queue_writer_budget_test.go lit cette constante.
+const serverWriteTimeout = 120 * time.Second
+
 // buildTokenProvider instancie le TokenProvider : SISU, seul provider depuis le
 // retrait de MSAL (2026-07-15, SISU validé bout-en-bout — authentification
 // native Xbox, ZÉRO app Azure : LevelUp est distribué à des self-hosters qui ne
@@ -1465,7 +1475,7 @@ func main() {
 		Addr:         cfg.ServerAddr(),
 		Handler:      router,
 		ReadTimeout:  15 * time.Second,
-		WriteTimeout: 30 * time.Second,
+		WriteTimeout: serverWriteTimeout,
 		IdleTimeout:  60 * time.Second,
 	}
 

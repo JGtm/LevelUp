@@ -20,6 +20,7 @@ import (
 	"levelup/go-api/internal/analysis/squadformes"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/legacymatch"
+	"levelup/go-api/internal/observability/timing"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/service/squadagg"
 )
@@ -38,13 +39,17 @@ func (s *TeammatesService) WithSquadFormes(
 	return s
 }
 
-// loadSquadFormes publie le bloc sur le scope filtré de la page.
+// loadSquadFormes publie le bloc sur le scope filtré de la page. lectures : les lectures
+// communes au bloc « servi ou gâché », déjà faites (nil ⇒ le bloc les fait).
 func (s *TeammatesService) loadSquadFormes(
 	ctx context.Context, playerXUID string, filteredMatches []legacymatch.SynthesisMatchRow,
 	history []domain.SquadMatchHistoryRow, req domain.TeammatesQueryRequest,
+	lectures *squadagg.LecturesUsage,
 ) *domain.SquadFormesBlock {
+	defer timing.FromContext(ctx).Section("squad_formes")()
 	return squadagg.BuildSquadFormesBlock(ctx, squadagg.SquadFormesQuery{
 		Repo:              s.formesUsageRepo,
+		Lectures:          lectures,
 		Objectives:        s.formesObjectiveRepo,
 		PlayerXUID:        playerXUID,
 		MainGamertag:      s.gamertag,

@@ -7,6 +7,8 @@ import (
 	"levelup/go-api/internal/domain/title"
 	"os"
 	"path/filepath"
+	"sync"
+	"time"
 )
 
 type dbProfilesFile struct {
@@ -40,9 +42,67 @@ type dbProfileEntry struct {
 	AuthOnly bool `json:"auth_only,omitempty"`
 }
 
+// dbProfilesSnapshot est le contenu de db_profiles.json lu à une version du fichier
+// (horodatage de modification + taille).
+type dbProfilesSnapshot struct {
+	modTime time.Time
+	size    int64
+	data    []byte // partagé entre appelants : lecture seule (json.Unmarshal)
+}
+
+// dbProfilesReads garde, par chemin, le dernier contenu lu de db_profiles.json (plan
+// perf 2026-09-23, D5b.5) : la résolution d'un joueur le relisait à chaque appel —
+// deux fois par résolution par gamertag, environ 80 lectures par page Escouade.
+var dbProfilesReads sync.Map // chemin → *dbProfilesSnapshot
+
+// dbProfilesRacyWindow : un fichier modifié depuis moins longtemps que ce délai est
+// relu à chaque appel. Deux écritures dans le même tic d'horloge du système de
+// fichiers garderaient le même horodatage : on ne croit un horodatage qu'une fois
+// ce délai passé.
+const dbProfilesRacyWindow = 2 * time.Second
+
+// readDBProfiles rend le contenu de db_profiles.json en ne le relisant que si le
+// fichier a changé depuis la dernière lecture (horodatage ou taille) : le PATCH des
+// réglages, qui réécrit le fichier (écriture atomique, nouvel horodatage), reste
+// visible sans redémarrage. exists=false si le fichier est absent.
+func readDBProfiles(path string) (data []byte, exists bool, err error) {
+	info, err := os.Stat(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			dbProfilesReads.Delete(path)
+			return nil, false, nil
+		}
+		return nil, false, err
+	}
+	if v, ok := dbProfilesReads.Load(path); ok {
+		snap := v.(*dbProfilesSnapshot)
+		if snap.modTime.Equal(info.ModTime()) && snap.size == info.Size() &&
+			time.Since(info.ModTime()) > dbProfilesRacyWindow {
+			return snap.data, true, nil
+		}
+	}
+	data, err = os.ReadFile(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, false, nil
+		}
+		return nil, false, err
+	}
+	// Un instantané lu DANS la fenêtre de méfiance n'est jamais gardé : une écriture
+	// suivante dans le même tic (même horodatage, même taille) le rendrait indiscernable
+	// du fichier une fois la fenêtre passée, et il serait servi à la place du contenu
+	// réel (lot perf L9-go, revue adversariale B).
+	if time.Since(info.ModTime()) > dbProfilesRacyWindow {
+		dbProfilesReads.Store(path, &dbProfilesSnapshot{modTime: info.ModTime(), size: info.Size(), data: data})
+	}
+	return data, true, nil
+}
+
 // LoadPlayers charge db_profiles.json et retourne la liste des joueurs.
 // Supporte les formats v2.1 (flat) et v3.0 (title-scoped).
 // Si titleFilter est non vide, ne retourne que les joueurs de ce titre.
+// Le fichier n'est relu que s'il a changé (readDBProfiles) ; chaque appel rend une
+// liste neuve.
 func (c *AppConfig) LoadPlayers(titleFilter ...string) ([]domain.PlayerSummary, error) {
 	if c.DemoMode {
 		titleSlug := title.DefaultSlug
@@ -80,12 +140,12 @@ func (c *AppConfig) LoadPlayers(titleFilter ...string) ([]domain.PlayerSummary, 
 		return out, nil
 	}
 
-	data, err := os.ReadFile(c.DBProfilesPath)
+	data, exists, err := readDBProfiles(c.DBProfilesPath)
 	if err != nil {
-		if os.IsNotExist(err) {
-			return []domain.PlayerSummary{}, nil
-		}
 		return nil, fmt.Errorf("lecture db_profiles.json : %w", err)
+	}
+	if !exists {
+		return []domain.PlayerSummary{}, nil
 	}
 
 	// Détecter la version pour choisir le parser.

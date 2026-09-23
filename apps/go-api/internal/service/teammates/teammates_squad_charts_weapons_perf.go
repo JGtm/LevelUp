@@ -13,6 +13,7 @@ import (
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/observability/timing"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/service/fragdist"
 )
@@ -84,6 +85,7 @@ func (s *TeammatesService) buildSquadWeaponKills(
 	teammates []domain.TeammateRow,
 	perf map[string][]domain.SquadPerformanceSeriesPoint,
 ) (*domain.SquadWeaponKills, map[string][]domain.FragClassEntry) {
+	defer timing.FromContext(ctx).Section("weapon_kills")()
 	if s.squadLoader == nil || len(allSquadRows) == 0 || len(teammates) == 0 {
 		slog.DebugContext(ctx, "teammates_weapon_kills_skipped",
 			"squad_loader_nil", s.squadLoader == nil,
@@ -352,6 +354,7 @@ func (s *TeammatesService) buildSquadKillMechanics(
 	mainGamertag, mainXUID string,
 	teammates []domain.TeammateRow,
 ) *domain.SquadKillMechanics {
+	defer timing.FromContext(ctx).Section("kill_mechanics")()
 	if s.squadLoader == nil || len(allSquadRows) == 0 || len(teammates) == 0 {
 		return nil
 	}
@@ -441,6 +444,7 @@ func (s *TeammatesService) buildSquadPerformanceSeries(
 	selectedGamertags []string,
 	teammates []domain.TeammateRow,
 ) map[string][]domain.SquadPerformanceSeriesPoint {
+	defer timing.FromContext(ctx).Section("performance_series")()
 	if len(allSquadRows) == 0 || len(selectedGamertags) == 0 {
 		return nil
 	}

@@ -54,8 +54,12 @@ export const queryKeys = {
   // implicite ») — servait des options périmées de l'autre titre, la clé ne
   // changeant pas. Défense en profondeur du chantier D7 (titre dans l'URL) — cf.
   // §7 PLAN_TITLE_SLUG_URL.
-  filtersResolve: (playerSlug: string, titleSlug: string, filterHash: string) =>
-    ['filters-resolve', playerSlug, titleSlug, filterHash] as const,
+  // `matchContext` ('solo' | 'squad' | 'all') : même filterContext, populations
+  // différentes — le store escouade résout en 'squad' (lot perf L4a, D4.3,
+  // 2026-09-23), le solo sans contexte (= 'all' côté serveur). Sans ce segment,
+  // deux stores au même hash partageraient une entrée de cache.
+  filtersResolve: (playerSlug: string, titleSlug: string, filterHash: string, matchContext: string) =>
+    ['filters-resolve', playerSlug, titleSlug, filterHash, matchContext] as const,
   filtersPreview: (playerSlug: string, titleSlug: string, filterHash: string) =>
     ['filters-preview', playerSlug, titleSlug, filterHash] as const,
 
@@ -169,8 +173,21 @@ export const queryKeys = {
   // exactComposition : l'option « composition exacte » change la POPULATION servie
   // (matchs commencés ensemble vs composition exclusive) — sans elle dans la clé,
   // le cache resservirait les nombres de l'autre réglage.
-  teammates: (playerSlug: string, titleSlug: string, filterHash: string, selectedGts: string[], sessionLabels: string[] = [], locale = '', exactComposition = true) =>
-    ['teammates', playerSlug, titleSlug, filterHash, [...selectedGts].sort().join(','), [...sessionLabels].sort().join(','), locale, exactComposition] as const,
+  // Pas de segment « sessions pickées » (retiré le 2026-09-23, lot perf L4a, D4.1) :
+  // la session pickée vit UNIQUEMENT dans le store escouade
+  // (`filterContext.sessions.picked_sessions`), déjà couvert par `filterHash`.
+  // Deux segments pour une même information faisaient d'un snap ou d'un clic du
+  // rail DEUX clés successives, donc une requête intermédiaire jamais affichée
+  // (mesurée : 8,2 s + 26,8 s par clic).
+  teammates: (playerSlug: string, titleSlug: string, filterHash: string, selectedGts: string[], locale = '', exactComposition = true) =>
+    ['teammates', playerSlug, titleSlug, filterHash, [...selectedGts].sort().join(','), locale, exactComposition] as const,
+  // Sessions de la composition SANS la page (GET /pages/teammates/sessions, lot perf L4b,
+  // 2026-09-23). Sous le préfixe `teammates` : toute invalidation de l'Escouade la couvre
+  // (un ami ajouté entre dans l'extraPool de la composition exacte). Ni filtres ni locale :
+  // la réponse se calcule sur l'historique COMPLET de la composition et ne porte aucun
+  // libellé traduit.
+  compositionSessions: (playerSlug: string, titleSlug: string, selectedGts: string[], exactComposition: boolean) =>
+    ['teammates', playerSlug, titleSlug, 'composition-sessions', [...selectedGts].sort().join(','), exactComposition] as const,
   /** Préfixe broad — invalide toutes les queries teammates (ex. après ajout d'ami).
    *  Title-agnostic PAR DESIGN (balaie tous les joueurs/titres). */
   teammatesAll: ['teammates'] as const,
@@ -452,7 +469,7 @@ export const queryKeys = {
     filePath: string | null,
     windowMinutes: number,
   ) => ['media', 'match-candidates', playerSlug, titleSlug, filePath, windowMinutes] as const,
-  /** Préfixe broad — invalide tous les `filtersResolve(playerSlug, *, *)`.
+  /** Préfixe broad — invalide tous les `filtersResolve(playerSlug, *, *, *)` (solo ET escouade).
    *  RESTE broad PAR JOUEUR (n'inclut PAS le titre) : son unique usage
    *  (invalidation post-sync, $playerSlug.tsx) doit rafraîchir la résolution du
    *  joueur, et le préfixe `['filters-resolve', playerSlug]` matche toujours la clé

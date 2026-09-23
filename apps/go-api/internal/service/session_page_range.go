@@ -41,6 +41,7 @@ import (
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/legacymatch"
+	"levelup/go-api/internal/observability/timing"
 	"levelup/go-api/internal/port"
 )
 
@@ -66,6 +67,7 @@ func (s *SessionPageService) WithMatchRange(repo port.MatchRangeRepository, xuid
 func (s *SessionPageService) attachSessionRange(
 	ctx context.Context, resp *domain.SessionPageResponse, sc sessionBlocksScope,
 ) {
+	defer timing.FromContext(ctx).Section("range_profiles")()
 	resp.RangeProfiles = s.buildSessionRange(ctx, sc.Matches, "session")
 	if len(sc.CompareMatches) > 0 {
 		resp.CompareRangeProfiles = s.buildSessionRange(ctx, sc.CompareMatches, "session_comparee")

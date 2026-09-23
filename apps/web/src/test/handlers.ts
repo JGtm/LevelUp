@@ -486,6 +486,9 @@ export const handlers = [
 
   // Squad / Teammates
   http.post(p(`/players/${SLUG}/pages/teammates`), () => HttpResponse.json(teammatesFixture)),
+  // Sessions de la composition, sans la page (lot perf L4b) — défaut : aucune session.
+  http.get(p(`/players/${SLUG}/pages/teammates/sessions`), () =>
+    HttpResponse.json({ composition_sessions: [], latest_composition_session: '' })),
 
   // Synthesis
   http.post(p(`/players/${SLUG}/pages/synthesis`), () => HttpResponse.json(synthesisFixture)),

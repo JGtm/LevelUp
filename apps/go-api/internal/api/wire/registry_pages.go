@@ -23,6 +23,10 @@ import (
 
 // Filters retourne un FiltersService pour le joueur.
 //
+// Les lignes de filtres du joueur passent par le cache des lectures joueur
+// (duckdb.NewCachedFiltersRepo, plan perf 2026-09-23 D5b.3) : les appels
+// `/filters/resolve` d'une même page ne relisent plus tout l'historique.
+//
 // Injecte le catalog unifié des saisons (TOML + DB live + lazy fetch) pour
 // alimenter les SeasonCounts du folding SaisonPill. Si le catalog n'est
 // pas câblé OU si le titre n'a aucune saison résolue → aucun SeasonCount
@@ -33,7 +37,7 @@ func (r *ServiceRegistry) Filters(ctx context.Context, slug string) (port.Filter
 	if err != nil {
 		return nil, err
 	}
-	svc := service.NewFiltersService(duckdb.NewFiltersRepo(pdb))
+	svc := service.NewFiltersService(duckdb.NewCachedFiltersRepo(pdb))
 	if r.seasonsCatalog != nil {
 		// Bug fix 2026-05-08 : passer pdb.TitleSlug (le titre du joueur, ex
 		// "halo_infinite") et NON le `slug` paramètre qui est le **player
@@ -312,12 +316,13 @@ func (r *ServiceRegistry) Sessions(ctx context.Context, slug string) (port.Sessi
 	return service.NewSessionsService(duckdb.NewSessionsRepo(pdb)), nil
 }
 
-// playerMatchesAdapterFor construit un adapter PlayerMatchesRepository pour le
-// joueur (pdb). P4.3 finale : permet aux services match-rows de consommer
-// canonical exclusivement (legacy fallback path supprimé).
+// playerMatchesAdapterFor construit le PlayerMatchesRepository du joueur (pdb).
+// P4.3 finale : permet aux services match-rows de consommer canonical
+// exclusivement (legacy fallback path supprimé). L'historique ENRICHI (libellés
+// FR/EN résolus) passe par le cache des lectures joueur, clé (xuid, titre, base,
+// filtres), invalidé en fin de post-sync (plan perf 2026-09-23, D5b.4).
 func (r *ServiceRegistry) playerMatchesAdapterFor(pdb *duckdb.PlayerDB) port.PlayerMatchesRepository {
-	pmRepo := duckdb.NewPlayerMatchesRepo(pdb)
-	return duckdb.NewPlayerMatchesAdapter(pmRepo, pdb.TitleSlug, pdb.Gamertag)
+	return duckdb.NewCachedPlayerMatchesRepo(pdb)
 }
 
 // SessionPage retourne un SessionPageService pour le joueur.

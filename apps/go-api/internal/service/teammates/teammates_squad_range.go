@@ -31,6 +31,7 @@ import (
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
+	"levelup/go-api/internal/observability/timing"
 	"levelup/go-api/internal/port"
 )
 
@@ -53,6 +54,7 @@ func (s *TeammatesService) buildSquadRange(
 	mainGamertag, mainXUID string,
 	teammates []domain.TeammateRow,
 ) *domain.MatchRangeBlock {
+	defer timing.FromContext(ctx).Section("range_profiles")()
 	if s.matchRangeRepo == nil {
 		return nil
 	}

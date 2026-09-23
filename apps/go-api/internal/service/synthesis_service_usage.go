@@ -17,6 +17,7 @@ import (
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/observability/timing"
 )
 
 // synthesisMatchIDs — les identifiants d'un scope canonical, dans l'ordre. Helper
@@ -36,6 +37,7 @@ func synthesisMatchIDs(rows []canonical.PlayerMatchRow) []string {
 func (s *SynthesisService) loadObjectiveStats(
 	ctx context.Context, filteredCanon []canonical.PlayerMatchRow,
 ) *domain.ObjectiveAggregate {
+	defer timing.FromContext(ctx).Section("objective_stats")()
 	if s.objectiveStatsRepo == nil || s.playerXUID == "" || len(filteredCanon) == 0 {
 		return nil
 	}

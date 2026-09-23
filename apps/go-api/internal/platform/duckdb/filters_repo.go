@@ -19,6 +19,40 @@ func NewFiltersRepo(pdb *PlayerDB) *FiltersRepo {
 	return &FiltersRepo{pdb: pdb}
 }
 
+// filterRowsLoader est la lecture que CachedFiltersRepo met en cache (*FiltersRepo
+// en production, un faux en test).
+type filterRowsLoader interface {
+	LoadMatchesForFilters(ctx context.Context) ([]domain.FilterMatchRow, error)
+}
+
+// CachedFiltersRepo implémente port.FiltersRepository derrière le cache des
+// lectures joueur (plan perf 2026-09-23, D5b.3) : les lignes de
+// LoadMatchesForFilters sont gardées par (xuid, titre, base), TTL 60 s, invalidées
+// par la fin du sync du joueur (cf. player_read_cache.go). Les deux ou trois
+// `/filters/resolve` d'une page (solo, escouade, aperçu) ne lisent plus la base
+// qu'une fois : le contexte est appliqué en Go sur les mêmes lignes. Des lignes dont
+// une traduction best-effort a échoué, ou lues par une requête annulée en cours de
+// route, ne sont jamais gardées (chargement dégradé, player_read_cache.go).
+type CachedFiltersRepo struct {
+	*FiltersRepo // comptes et listes (non cachés), délégués tels quels
+
+	rows  filterRowsLoader // la lecture cachée : le FiltersRepo lui-même en production
+	cache *playerReadCache[[]domain.FilterMatchRow]
+	scope playerCacheScope
+}
+
+// NewCachedFiltersRepo enveloppe le FiltersRepo du joueur dans le cache
+// process-wide des lignes de filtres.
+func NewCachedFiltersRepo(pdb *PlayerDB) *CachedFiltersRepo {
+	repo := NewFiltersRepo(pdb)
+	return &CachedFiltersRepo{FiltersRepo: repo, rows: repo, cache: filterRowsReadCache, scope: scopeOf(pdb)}
+}
+
+// LoadMatchesForFilters rend une copie des lignes cachées du joueur, ou les charge.
+func (r *CachedFiltersRepo) LoadMatchesForFilters(ctx context.Context) ([]domain.FilterMatchRow, error) {
+	return r.cache.load(ctx, r.scope, "", r.rows.LoadMatchesForFilters)
+}
+
 // LoadMatchesForFilters charge tous les matchs du joueur pour la résolution cascade.
 // Utilise mv_player_matches si disponible, sinon fallback sur match_registry.
 //

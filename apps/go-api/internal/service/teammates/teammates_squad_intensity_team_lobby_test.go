@@ -70,7 +70,7 @@ func TestBuildSquadIntensityProfile_TeamExcludesEnemies_LobbyIncludesThem(t *tes
 		"m1": {tlMainXUID: {}, tlAllyXUID: {}},
 	}
 
-	got := svc.buildSquadIntensityProfile(context.Background(), rows, "main", nil, mainTeam)
+	got := svc.buildSquadIntensityProfile(context.Background(), rows, "main", "", nil, nil, mainTeam)
 
 	team := tlRowFor(t, got, domain.SquadIntensityKeyTeam, "m1")
 	lobby := tlRowFor(t, got, domain.SquadIntensityKeyLobby, "m1")
@@ -97,7 +97,7 @@ func TestBuildSquadIntensityProfile_NoAllies_TeamEmpty_LobbyIntact(t *testing.T)
 	repo, rows := tlFixture()
 	svc := &TeammatesService{titleSlug: "halo_infinite", gamertag: "main", repo: repo}
 
-	got := svc.buildSquadIntensityProfile(context.Background(), rows, "main", nil, nil)
+	got := svc.buildSquadIntensityProfile(context.Background(), rows, "main", "", nil, nil, nil)
 
 	team := tlRowFor(t, got, domain.SquadIntensityKeyTeam, "m1")
 	if team.Phases != [intensityBuckets]float64{} {

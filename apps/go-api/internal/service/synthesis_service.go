@@ -36,6 +36,7 @@ import (
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/observability/timing"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/service/fragdist"
 )
@@ -203,7 +204,9 @@ func (s *SynthesisService) GetSynthesisPage(
 	soloKPIs := analysis.ComputeSynthesisKPIsFromCanonical(filteredCanon, false, hp)
 	squadKPIs := analysis.ComputeSynthesisKPIsFromCanonical(filteredCanon, true, hp)
 	topWeeks := analysis.ComputeSynthesisTopWeeksFromCanonical(filteredCanon)
+	stop := timing.FromContext(ctx).Section("heatmap")
 	heatmap := analysis.ComputeTemporalHeatmapFromCanonical(filteredCanon)
+	stop()
 	provideSpree := games.ProvidesMaxKillingSpree(s.titleSlug)
 	overview := buildSynthesisOverviewCanonical(filteredCanon, soloKPIs, provideSpree)
 	slog.DebugContext(ctx, "synthesis: best refs detected",
@@ -262,7 +265,9 @@ func (s *SynthesisService) GetSynthesisPage(
 		ComputedAt:     time.Now().UTC(),
 	}
 
+	stop = timing.FromContext(ctx).Section("combat_profile")
 	combatProfile := buildCombatProfileFromCanonical(filteredCanon, hp)
+	stop()
 	if combatProfile != nil {
 		slog.DebugContext(ctx, "synthesis: combat profile computed",
 			"matches", combatProfile.MatchCount,
@@ -295,14 +300,17 @@ func (s *SynthesisService) GetSynthesisPage(
 // loadAndEnrichCanonicalRows charge les canonical rows et applique
 // EnrichCanonicalAssetTranslations + log diagnostic FR. Best-effort sur enrich.
 func (s *SynthesisService) loadAndEnrichCanonicalRows(ctx context.Context) ([]canonical.PlayerMatchRow, error) {
+	stop := timing.FromContext(ctx).Section("player_matches")
 	canonicalRows, err := s.playerMatchesRepo.LoadPlayerMatches(
 		ctx, s.titleSlug, s.gamertag, port.PlayerMatchFilters{},
 	)
+	stop()
 	if err != nil {
 		return nil, fmt.Errorf("SynthesisService load: %w", err)
 	}
 	slog.DebugContext(ctx, "synthesis: loaded canonical",
 		"rows", len(canonicalRows), "title_slug", s.titleSlug)
+	defer timing.FromContext(ctx).Section("enrich_translations")()
 	if err := s.repo.EnrichCanonicalAssetTranslations(ctx, canonicalRows); err != nil {
 		slog.WarnContext(ctx, "synthesis: EnrichCanonicalAssetTranslations failed", "err", err)
 		return canonicalRows, nil
@@ -333,6 +341,7 @@ func (s *SynthesisService) loadAndEnrichCanonicalRows(ctx context.Context) ([]ca
 func (s *SynthesisService) applyFunStatsToDetailedStats(
 	ctx context.Context, detailedStats *domain.SynthesisDetailedStats, filteredCanon []canonical.PlayerMatchRow,
 ) {
+	defer timing.FromContext(ctx).Section("fun_stats")()
 	if s.playerXUID == "" {
 		return
 	}
@@ -377,6 +386,7 @@ func (s *SynthesisService) loadTopWeaponKills(
 	detailedStats domain.SynthesisDetailedStats,
 	totalKills int,
 ) ([]domain.SynthesisWeaponKillEntry, *domain.FragDistribution) {
+	defer timing.FromContext(ctx).Section("frag_distribution")()
 	if len(filteredCanon) == 0 || totalKills <= 0 {
 		return nil, nil
 	}
@@ -440,6 +450,7 @@ func titleHasNativeKillMechanics(slug string) bool {
 func (s *SynthesisService) loadWeaponAccuracy(
 	ctx context.Context, filteredCanon []canonical.PlayerMatchRow,
 ) []domain.SynthesisWeaponAccuracyEntry {
+	defer timing.FromContext(ctx).Section("weapon_accuracy")()
 	if s.weaponAccuracyRepo == nil || s.gamertag == "" || len(filteredCanon) == 0 {
 		return nil
 	}

@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -14,17 +15,30 @@ import (
 
 	"levelup/go-api/internal/api/handlers"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/port"
 )
 
-// mockTeammatesService implémente port.TeammatesService.
+// mockTeammatesService implémente port.TeammatesService. pageErr fait échouer les DEUX
+// routes (page et sessions) ; les champs got* retiennent l'appel de CompositionSessions.
 type mockTeammatesService struct {
 	page    domain.TeammatesPageResponse
 	pageErr error
+
+	sessions     []domain.CompositionSessionEntry
+	latest       string
+	gotXUID      string
+	gotTeammates []string
+	gotExact     bool
 }
 
 func (m *mockTeammatesService) GetPage(_ context.Context, _ string, _ domain.TeammatesQueryRequest) (domain.TeammatesPageResponse, error) {
 	return m.page, m.pageErr
+}
+
+func (m *mockTeammatesService) CompositionSessions(_ context.Context, xuid string, teammates []string, exact bool) ([]domain.CompositionSessionEntry, string, error) {
+	m.gotXUID, m.gotTeammates, m.gotExact = xuid, teammates, exact
+	return m.sessions, m.latest, m.pageErr
 }
 
 func newTeammatesRouter(factory handlers.ContextFactory[port.TeammatesService]) *chi.Mux {
@@ -86,6 +100,28 @@ func TestTeammatesHandler_ServiceError(t *testing.T) {
 
 	if w.Code != http.StatusInternalServerError {
 		t.Fatalf("expected 500, got %d", w.Code)
+	}
+}
+
+// TestTeammatesHandler_CapabilityAbsente_503 : un titre sans la capability rend un 503 propre
+// `capability_not_supported` (MapCapabilityError), jamais le 500 de mapServiceError — comme la
+// route légère des sessions (lot perf L8, 2026-09-23).
+func TestTeammatesHandler_CapabilityAbsente_503(t *testing.T) {
+	mock := &mockTeammatesService{pageErr: fmt.Errorf("historique: %w", games.ErrCapabilityNotSupported)}
+	r := newTeammatesRouter(func(_ context.Context, _ string) (port.TeammatesService, string, string, error) {
+		return mock, testXUID, testGamertag, nil
+	})
+	body, _ := json.Marshal(domain.TeammatesQueryRequest{})
+	req := httptest.NewRequest(http.MethodPost, "/players/test-player/pages/teammates", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusServiceUnavailable {
+		t.Fatalf("statut %d, attendu 503 : %s", w.Code, w.Body.String())
+	}
+	if code := errorCode(t, w); code != "capability_not_supported" {
+		t.Errorf("code %q, attendu capability_not_supported", code)
 	}
 }
 

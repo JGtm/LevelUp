@@ -446,7 +446,7 @@ func TestBuildSquadIntensityProfile_NoSquadLoader_NoPanic(t *testing.T) {
 		{MatchID: "m3", StartTime: t0.Add(2 * time.Hour)},
 	}
 	// Pas de panic attendu — retourne nil car pas d'events.
-	got := svc.buildSquadIntensityProfile(context.Background(), allSquadRows, "main", []string{"friend1"}, nil)
+	got := svc.buildSquadIntensityProfile(context.Background(), allSquadRows, "main", "", []string{"friend1"}, nil, nil)
 	if got != nil {
 		t.Errorf("sans events : want nil, got profile avec %d options", len(got.Options))
 	}
@@ -584,7 +584,7 @@ func TestBuildSquadIntensityProfile_AppliesT0AndSkipsCountdown(t *testing.T) {
 		{MatchID: "m2", StartTime: base.Add(time.Hour), DurationSeconds: 600, T0Ms: &t0ms},
 		{MatchID: "m3", StartTime: base.Add(2 * time.Hour), DurationSeconds: 600, T0Ms: &t0ms},
 	}
-	got := svc.buildSquadIntensityProfile(context.Background(), rows, "main", nil, nil)
+	got := svc.buildSquadIntensityProfile(context.Background(), rows, "main", "", nil, nil, nil)
 	if got == nil {
 		t.Fatal("profil non nil attendu (kill gameplay présent sur m1)")
 	}
@@ -755,7 +755,7 @@ func TestBuildSquadImpactMatrix_TeamWideAllyDropped(t *testing.T) {
 	allSquadRows := []domain.SquadMatchRow{
 		{MatchID: matchID, StartTime: startTime, Outcome: domain.OutcomeWin},
 	}
-	matrix := svc.buildSquadImpactMatrix(context.Background(), allSquadRows, mainXUID, "main", []string{"A"}, repo.allyRows)
+	matrix := svc.buildSquadImpactMatrix(context.Background(), allSquadRows, mainXUID, []string{"A"}, coequipierA(), repo.allyRows)
 	if matrix == nil {
 		t.Fatal("matrix should be non-nil")
 	}
@@ -820,7 +820,7 @@ func TestBuildSquadImpactMatrix_TeamWideNoFallback(t *testing.T) {
 	allSquadRows := []domain.SquadMatchRow{
 		{MatchID: matchID, StartTime: startTime, Outcome: domain.OutcomeLoss},
 	}
-	matrix := svc.buildSquadImpactMatrix(context.Background(), allSquadRows, mainXUID, "main", []string{"A"}, repo.allyRows)
+	matrix := svc.buildSquadImpactMatrix(context.Background(), allSquadRows, mainXUID, []string{"A"}, coequipierA(), repo.allyRows)
 
 	// false_brother doit aller à NS (max deaths=9, min assists=0). Donc :
 	// - A ne doit PAS recevoir false_brother malgré ses 5 deaths (squad-only,
@@ -1260,7 +1260,7 @@ func TestBuildSquadImpactMatrix_ThiefBadge(t *testing.T) {
 	}
 	svc := &TeammatesService{repo: repo, titleSlug: "halo_infinite", gamertag: "main"}
 	rows := []domain.SquadMatchRow{{MatchID: matchID, StartTime: time.Now(), Outcome: domain.OutcomeWin}}
-	matrix := svc.buildSquadImpactMatrix(context.Background(), rows, mainXUID, "main", []string{"A"}, repo.allyRows)
+	matrix := svc.buildSquadImpactMatrix(context.Background(), rows, mainXUID, []string{"A"}, coequipierA(), repo.allyRows)
 	if matrix == nil {
 		t.Fatal("matrix should be non-nil")
 	}

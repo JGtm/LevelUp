@@ -6,16 +6,16 @@ import "levelup/go-api/internal/analysis"
 // Q10 : Career — encounters (adversaires et coéquipiers fréquents).
 // Paramètre : ? = xuid du joueur.
 //
-// Résolveur canonique : v_gamertag_lookup gère bots + cascade
-// xuid_aliases / match_participants. Fallback masqué "Joueur ####" (jamais de
-// xuid brut, miroir de analysis.MaskedXuidLabelSQL) pour les xuids orphelins
-// (absents de la vue) — garantit aussi gamertag NON NULL pour le scan Go.
+// AUCUN GAMERTAG EN SQL (lot perf L7, 2026-09-23) : la jointure sur v_gamertag_lookup
+// matérialisait la vue entière à chaque lecture. GetEncounters nomme les lignes par l'annuaire
+// de la lecture (squad_repo_annuaire.go) sur l'historique du joueur : même cascade, bots compris.
+// ORDRE TOTAL (lot perf L9-go, revue D) : match_count DESC puis p2.xuid ASC — sans départage, les
+// ex aequo et la coupe du LIMIT 50 parmi eux variaient d'une lecture à l'autre (L7, découverte 5).
 //
 // Exécutée sur SharedReader (ADR 0016) — pas de préfixe `shared.`.
 const Q10Encounters = `
 SELECT
     p2.xuid,
-    COALESCE(vg.gamertag, ('Joueur ' || RIGHT(p2.xuid, 4))) AS gamertag,
     COUNT(*) AS match_count,
     SUM(CASE WHEN p2.team_id = p1.team_id THEN 1 ELSE 0 END) AS as_teammate,
     SUM(CASE WHEN p2.team_id != p1.team_id THEN 1 ELSE 0 END) AS as_enemy,
@@ -23,11 +23,10 @@ SELECT
 FROM match_participants p1
 JOIN match_participants p2
     ON p1.match_id = p2.match_id AND p2.xuid != p1.xuid
-LEFT JOIN v_gamertag_lookup vg ON vg.xuid = p2.xuid
 WHERE p1.xuid = ?` + campaignExclusionToken + `
-GROUP BY p2.xuid, vg.gamertag
+GROUP BY p2.xuid
 HAVING COUNT(*) >= 2
-ORDER BY match_count DESC
+ORDER BY match_count DESC, p2.xuid ASC
 LIMIT 50`
 
 // Q12 : Match view — scoreboard complet d'un match.

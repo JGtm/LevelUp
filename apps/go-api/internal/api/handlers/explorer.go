@@ -95,7 +95,7 @@ func (h *ExplorerHandler) handleQueryPlayer(ctx context.Context, in *explorerQue
 
 	resp, err := svc.GetCommonMatches(enrichedCtx, req.TargetGamertag, req.TargetXUID, req.Page)
 	if err != nil {
-		return nil, humacore.NewError(http.StatusInternalServerError, "explorer_error", err.Error())
+		return nil, mapServiceError(ctx, err, "explorer_error")
 	}
 	return &explorerPlayerQueryOutput{Body: resp}, nil
 }
@@ -142,7 +142,7 @@ func (h *ExplorerHandler) handleQueryMatches(ctx context.Context, in *explorerQu
 
 	mhResp, err := mhSvc.GetPage(ctx, mhReq)
 	if err != nil {
-		return nil, humacore.NewError(http.StatusInternalServerError, "explorer_matches_error", err.Error())
+		return nil, mapServiceError(ctx, err, "explorer_matches_error")
 	}
 
 	// Génération du token d'export si demandé (même mécanisme que MatchHistoryHandler.Query).

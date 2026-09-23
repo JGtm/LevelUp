@@ -24,6 +24,7 @@ import (
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/observability/timing"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/service/squadagg"
 	"levelup/go-api/internal/service/teammates"
@@ -89,13 +90,17 @@ func (s *TimeseriesService) WithMatchRange(repo port.MatchRangeRepository, xuid 
 
 // attachMigratedSections pose les trois blocs sur la réponse, depuis le scope canonique déjà
 // filtré. Best-effort de bout en bout : chaque producteur rend nil plutôt que de casser la page.
+// `equipes` : les participants du scope, déjà lus par la page (cf. lireEquipesDuScope).
 func (s *TimeseriesService) attachMigratedSections(
 	ctx context.Context, resp *domain.TimeseriesPageResponse,
-	filteredCanon []canonical.PlayerMatchRow, locale string,
+	filteredCanon []canonical.PlayerMatchRow, locale string, equipes equipesDuScope,
 ) {
+	stop := timing.FromContext(ctx).Section("weapon_range")
 	resp.WeaponRange, resp.Elevation = buildWeaponRangeSections(ctx, weaponRangeQuery{
 		Repo: s.weaponRangeRepo, TitleSlug: s.titleSlug, Gamertag: s.gamertag, Rows: filteredCanon,
 	})
+	stop()
+	stop = timing.FromContext(ctx).Section("equipment_usage")
 	resp.EquipmentUsage = buildEquipmentUsageBlock(ctx, equipmentUsageQuery{
 		Repo:            s.sessionUsageRepo,
 		PlayerXUID:      s.playerXUID,
@@ -106,9 +111,11 @@ func (s *TimeseriesService) attachMigratedSections(
 		TitleSlug: s.titleSlug,
 		Locale:    locale,
 	})
+	stop()
 	// « Les formes retenues », contexte SOLO : MÊMES match_id que le bloc d'usage
 	// ci-dessus. `SelectedGamertags` reste vide — cette page n'a pas d'escouade, et les
 	// cartes du contexte escouade ne s'y montent pas.
+	stop = timing.FromContext(ctx).Section("squad_formes")
 	resp.SquadFormes = squadagg.BuildSquadFormesBlock(ctx, squadagg.SquadFormesQuery{
 		Repo:         s.formesUsageRepo,
 		Objectives:   s.formesObjectiveRepo,
@@ -119,7 +126,8 @@ func (s *TimeseriesService) attachMigratedSections(
 		TitleSlug:    s.titleSlug,
 		Locale:       locale,
 	})
-	s.attachCoordination(ctx, resp, filteredCanon)
+	stop()
+	s.attachCoordination(ctx, resp, filteredCanon, equipes)
 	s.attachMatchRange(ctx, resp, filteredCanon, locale)
 }
 
@@ -133,6 +141,7 @@ func (s *TimeseriesService) attachMatchRange(
 	ctx context.Context, resp *domain.TimeseriesPageResponse,
 	filteredCanon []canonical.PlayerMatchRow, locale string,
 ) {
+	defer timing.FromContext(ctx).Section("range_profiles")()
 	if s.matchRangeXUID == "" {
 		return
 	}
@@ -179,10 +188,15 @@ func timeseriesRangeScope(rows []canonical.PlayerMatchRow, locale string) []anal
 // jamais une parité inventée.
 func (s *TimeseriesService) attachCoordination(
 	ctx context.Context, resp *domain.TimeseriesPageResponse, filteredCanon []canonical.PlayerMatchRow,
+	equipes equipesDuScope,
 ) {
 	matchIDs := synthesisMatchIDs(filteredCanon)
 	if len(matchIDs) == 0 {
 		return
+	}
+	var teamSize map[string]int
+	if equipes.lues {
+		teamSize = equipes.tc.TeamSize
 	}
 	resp.Coordination = buildCoordinationBlock(ctx, coordinationQuery{
 		Tactical:   s.coordTactical,
@@ -190,23 +204,37 @@ func (s *TimeseriesService) attachCoordination(
 		Caps:       s.coordCaps,
 		PlayerXUID: s.playerXUID,
 		MatchIDs:   matchIDs,
-		TeamSize:   s.coordinationTeamSizes(ctx, matchIDs),
+		TeamSize:   teamSize,
 		Soirees:    soireesDesRows(filteredCanon),
 	})
 }
 
-// coordinationTeamSizes rend l'effectif de mon camp par match, ou nil (pas de parité).
-func (s *TimeseriesService) coordinationTeamSizes(ctx context.Context, matchIDs []string) map[string]int {
-	if s.formesUsageRepo == nil || s.playerXUID == "" {
-		return nil
+// equipesDuScope — LES PARTICIPANTS DU SCOPE, lus UNE FOIS par requête (lot L5a du plan
+// perf, 2026-09-23). La courbe d'équipe du profil d'intensité et l'effectif de camp de la
+// coordination posaient la même question aux mêmes matchs : deux lectures identiques de
+// `match_participants` pour une réponse.
+//
+// `lues` faux : port non câblé, joueur inconnu, scope vide ou lecture en échec (journalisée)
+// — les deux consommateurs dégradent alors comme avant (courbe d'équipe absente, bloc de
+// coordination sans parité), jamais une valeur inventée.
+type equipesDuScope struct {
+	tc   sessionusage.TeamContext
+	lues bool
+}
+
+// lireEquipesDuScope fait LA lecture, sous sa propre section (`participants`).
+func (s *TimeseriesService) lireEquipesDuScope(ctx context.Context, matchIDs []string) equipesDuScope {
+	defer timing.FromContext(ctx).Section("participants")()
+	if s.formesUsageRepo == nil || s.playerXUID == "" || len(matchIDs) == 0 {
+		return equipesDuScope{}
 	}
 	participants, err := s.formesUsageRepo.LoadParticipants(ctx, matchIDs)
 	if err != nil {
-		slog.WarnContext(ctx, "timeseries_coordination_participants_en_echec",
+		slog.WarnContext(ctx, "timeseries_participants_en_echec", "degrade", "courbe_equipe,parite_coordination",
 			"err", err, "matchs", len(matchIDs))
-		return nil
+		return equipesDuScope{}
 	}
-	return sessionusage.BuildTeamContext(s.playerXUID, participants).TeamSize
+	return equipesDuScope{tc: sessionusage.BuildTeamContext(s.playerXUID, participants), lues: true}
 }
 
 // soireesDesRows groupe les matchs du scope par SOIRÉE, dans l'ordre chronologique du

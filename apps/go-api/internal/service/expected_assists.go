@@ -11,6 +11,7 @@ import (
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/legacymatch"
+	"levelup/go-api/internal/observability/timing"
 )
 
 // assistsModelReader résout le modèle personnel OLS d'assists attendus d'un mode
@@ -44,6 +45,7 @@ func computeExpectedAssistsBatch(
 	coefs assistsCoefReader,
 	matches []legacymatch.StatsMatchRow,
 ) map[string]*float64 {
+	defer timing.FromContext(ctx).Section("expected_assists")()
 	if models == nil || len(matches) == 0 {
 		return nil
 	}
