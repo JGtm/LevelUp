@@ -396,17 +396,93 @@ bootstrap_service.go`, `internal/platform/halo/privacy_provider.go`, `internal/s
 pour le point d'invalidation (une ligne d'appel), tests associes.
 
 Items :
-- [ ] L5b.1 saisons : echec memorise + cache (D5b.1) + test
-- [ ] L5b.2 field-mappings : cache + ETag avant construction (D5b.2) + test
-- [ ] L5b.3 cache filtres + invalidation post-sync (D5b.3) + test
-- [ ] L5b.4 `CachedPlayerMatchesRepo` cable + invalidation (D5b.4) + test
-- [ ] L5b.5 `db_profiles.json` par mtime (D5b.5) + test
-- [ ] L5b.6 highlight-matches par identifiants (D5b.6) + test
-- [ ] L5b.7 privacy : echec memorise (D5b.7) + test
+- [x] L5b.1 saisons : echec memorise + cache (D5b.1) + test — `service/seasons_catalog.go` : catalogue resolu cache par titre (`seasonsCatalogTTL` 1 h, :53), singleflight par titre (:202), copie rendue a chaque lecture (`cloneSeasonCatalog`, :308) ; l'echec live garde le repli TOML + base `seasonsLiveFetchBackoff` 30 min (:57, `recordFetchFailure` :295) : pendant l'attente, cache hit, ni base ni reseau ; au terme, la requete suivante retente et un succes remplace le repli ; echec de lecture de la base jamais cache ; echec SANS jeton dans le contexte (le provider refuse avant tout appel reseau) non memorise. Marqueurs timing `seasons_catalog_hit/miss`. Tests `seasons_catalog_cache_test.go` (7, horloge pilotee)
+- [x] L5b.2 field-mappings : cache + ETag avant construction (D5b.2) + test — `api/handlers/field_mappings.go` `handleGet` (:181) : version = empreinte du CONTENU des trois TOML du titre (memorisee par jeu de sets charges, `field_mappings_cache.go` :62-110) + empreinte du catalogue de saisons (:117) ; DTO cache par (titre, locale fr/en) a cette version, If-None-Match compare avant toute construction (:210, :227) ; ETag = hash du corps (stable d'un process a l'autre, change des qu'un TOML ou une saison change). Corrige au passage le defaut de l'ancien `etagFor` (ETag fige au 1er corps par (titre, locale, schema) : une saison decouverte gardait l'ancien ETag). Locales hors fr/en servies sans cache (cache borne). Marqueurs `field_mappings_cache_hit/miss`. Tests `field_mappings_cache_test.go` (5)
+- [x] L5b.3 cache filtres + invalidation post-sync (D5b.3) + test — `platform/duckdb/player_read_cache.go` (nouveau) : cache process-wide generique, cle (xuid, titre, chemin de la base, variante), TTL 60 s (:49), FIFO 256, singleflight, generation par (xuid, titre) (un chargement commence avant une invalidation ne remplit pas le cache, et la requete suivante ne se greffe pas sur lui : cle de vol + generation, :153), copie a la lecture, requete vivante qui recharge si le vol partage a ete annule avec la requete qui le portait ; `CachedFiltersRepo` (`filters_repo.go` :34-52) cable dans `wire/registry_pages.go:40`. Les trois contextes (solo, escouade, apercu) partagent une entree : `LoadMatchesForFilters` n'a aucun parametre, le contexte est applique en Go. Invalidation `InvalidatePlayerReadCaches` (:64) : `sync/engine_postsync.go:170` (defer en tete de `runPostSyncPipeline` = fin du post-sync du joueur, V1 et V2, y compris panic recupere), `sync/friends_recompute.go:62` (recalcul is_with_friends hors sync), `platform/duckdb/match_exclusion_repo.go:63` (exclusion). Ratchet `archlint/player_read_cache_invalidation_test.go`. Marqueurs `filter_rows_cache_hit/miss`. Tests `player_read_cache_test.go` (10) + `wire/registry_pages_cache_test.go`
+- [x] L5b.4 `CachedPlayerMatchesRepo` cable + invalidation (D5b.4) + test — `platform/duckdb/player_matches_cache.go` refondu sur le cache generique : enveloppe `PlayerMatchesAdapter` donc cache les lignes APRES l'enrichissement FR (:49), une variante par jeu de filtres (`filtersCacheKey`), delegue `LobbySizesAtCompletion` (capacite lue par assertion de type dans SessionPageService, :71), `InvalidatePlayer` du port = invalidation du joueur ; cable dans `wire/registry_pages.go:325` (`playerMatchesAdapterFor`). Grep des consommateurs : Home et Synthese RE-ENRICHISSENT les lignes recues (`EnrichCanonicalAssetTranslations` ecrit `Labels[...]`, `DefaultLabel`, `IconURL` a travers les pointeurs d'AssetReference) — une map partagee entre requetes serait un « concurrent map writes » fatal : `clonePlayerMatchRows` (:91) copie la tranche et les quatre AssetReference ; autres references partagees (aucune ecriture, grep du 2026-09-23), inventaire fige par `TestClonePlayerMatchRows_ReferenceInventory`. Ancien `ttlCache` et `InvalidatePlayer` no-op de l'adapter (debranche) supprimes. Marqueurs `player_matches_cache_hit/miss`. Tests `player_matches_cache_test.go` (11)
+- [x] L5b.5 `db_profiles.json` par mtime (D5b.5) + test — `config/config_players.go` `readDBProfiles` (:68) : contenu garde par chemin, relu seulement si horodatage ou taille change ; horodatage de moins de 2 s jamais cru (`dbProfilesRacyWindow`, :62 : deux ecritures dans le meme tic) ; fichier absent = liste vide, recree = relu ; chaque appel rend une liste neuve. Le PATCH des reglages (ecriture atomique, nouvel horodatage) reste visible sans redemarrage. Tests `config_players_cache_test.go` (5)
+- [!] L5b.6 highlight-matches par identifiants (D5b.6) + test — PARTIEL. Fait : `api/handlers/career.go` `enrichHighlightSections` (:308) enrichit les deux sections en UNE requete par identifiants (union des match_id, liste blanche `MatchIDs`) : l'historique complet (`MatchHistoryRepo.LoadAll`) n'est plus charge qu'une fois par requete au lieu de deux, et le `LoadPlayerMatches` du meme GetPage passe par le cache L5b.4 ; codes d'erreur inchanges ; parite ligne a ligne avec l'ancien enrichissement section par section testee (`career_highlight_test.go`, oracle = l'ancien code). Non fait : la requete SQL `IN` — `MatchHistoryService.GetPage` calcule sur l'historique COMPLET des colonnes des lignes servies (taux de victoire par carte `computeMapWinRates`, placements LUSR `applyMatchPlacements`) : un chargement par identifiants changerait ces valeurs (parite rompue) et exige port + repo + service hors perimetre §8
+- [x] L5b.7 privacy : echec memorise (D5b.7) + test — deux memoires, chacune garde la reponse d'avant : (1) provider `platform/halo/privacy_provider.go` : un echec Waypoint (statut HTTP, reseau, reponse illisible) garde son repli `fetch_error` `PrivacyFailureTTL` 5 min (:39, `privacyFailure` :156), une fin de contexte (annulation, echeance de l'appelant) n'est jamais memorisee ; (2) `/bootstrap` `service/bootstrap_privacy.go` (extrait de bootstrap_service.go) : budget depasse ou erreur du provider = 5 min sans appel live ni attente de 2 s, nil immediat (repli E3 sur le state persiste, ce que la page servait deja apres les 2 s) (:31, :80) ; annulation de la requete non memorisee. Marqueurs `privacy_cache_hit/miss`, `privacy_live_backoff`. Tests `privacy_provider_failure_test.go` (3), `bootstrap_privacy_test.go` (4)
 
 Gate : `gofmt`, build, vet, `go test ./internal/service/... ./internal/api/... ./internal/config/...
 ./internal/platform/...`, `-tags=integration -p 1 ./internal/sync/...` si le sync est touche,
 lint paquets touches.
+
+Journal du lot (2026-09-23, branche `feat/perf-l5b` depuis `feat/perf-chargements` 37cb48167 ; commits
+8507e3dd4 L5b.1, 21dc72cc6 L5b.2, 7cd64d664 L5b.3 + L5b.4, 881011db7 L5b.5, cda8b236f L5b.6,
+87ef765e1 L5b.7, puis ce journal) :
+
+- Lectures retenues : (a) saisons — la memoire de l'echec live EST le cache : le repli (TOML +
+  base vide) est garde jusqu'au terme de l'attente de 30 min, puis la requete suivante retente ; un
+  echec sans jeton dans le contexte (aucun appel reseau fait) n'est ni memorise ni cache, sinon une
+  requete anonyme bloquerait 30 min une requete authentifiee ; (b) sections timing (point 9 du
+  lot) : MARQUEURS de duree nulle `<cache>_hit` / `<cache>_miss` (et `privacy_live_backoff`) — la
+  duree du chargement reste portee par la section appelante deja posee par L1 (`load_matches`,
+  `season_counts`, `player_matches`...) : une section chronometree a l'interieur serait comptee deux
+  fois dans `total_ms` (les sections sont des feuilles) ; `db_profiles.json` sans marqueur
+  (`LoadPlayers` ne recoit pas de ctx, ~100 appelants) ; (c) les caches filtres et historique sont
+  PROCESS-WIDE dans `platform/duckdb` (la struct du registre vit dans `wire/registry.go`, hors
+  perimetre, et l'invalidation doit etre appelable depuis `internal/sync`), cle (xuid, titre, chemin
+  de la base, variante) : deux bases qui porteraient le meme joueur (fixtures de tests, demo) ne
+  partagent rien ; (d) point 1 du lot, writers de `player_match_enrichment` hors sync verifies :
+  recalcul « avec amis » (`sync.RecomputeIsWithFriends`, declenche par le PUT de la liste d'amis)
+  invalide ; exclusion (`MatchExclusionRepo.SetExclusion`) invalide par prudence (les lignes cachees
+  ne portent pas is_excluded aujourd'hui) ; favoris : `shared_social`, jamais lu par ces deux
+  chargeurs, rien a invalider ; import OpenSpartan (couche service) et sync Halo 5 (runner
+  `games/halo_5/livesync`, qui ne passe pas par `runPostSyncPipeline`) : TTL 60 s seulement, hors
+  perimetre (Decouvertes) ; les CLI (backfill, `recompute-friends`) sont un autre process : TTL ;
+  (e) privacy — DEUX memoires pour que chaque cas garde la reponse d'avant : echec rapide = le
+  provider resservait deja `fetch_error` (desormais sans appel reseau pendant 5 min) ; budget de 2 s
+  depasse = `/bootstrap` servait le state persiste (E3) apres 2 s, il le sert maintenant tout de
+  suite pendant 5 min. Memoriser le depassement dans le provider aurait fait servir `fetch_error`
+  (et reecrire le state persiste) la ou E3 s'appliquait : ecarte.
+- Fichiers touches hors de la liste litterale du §8, justifies : `platform/duckdb/player_read_cache.go`
+  (nouveau, cache generique commun L5b.3/L5b.4 — 2 caches sur la meme mecanique, pas de 3e copie du
+  ttlCache) ; `platform/duckdb/player_matches_adapter.go` (doc + `InvalidatePlayer` no-op supprime :
+  l'adapter n'est plus le port, code mort, regle 7) ; `platform/duckdb/match_exclusion_repo.go` et
+  `sync/friends_recompute.go` (point 1, une ligne d'appel chacun) ; `config/config_players.go` (lieu
+  de la lecture de `db_profiles.json`, D5b.5) ; `api/handlers/field_mappings_cache.go` et
+  `service/bootstrap_privacy.go` (extraits pour tenir les 500 L : field_mappings.go serait monte a
+  524 L ; bootstrap_service.go 630 -> 604 L) ; tests `wire/registry_pages_cache_test.go`,
+  `archlint/player_read_cache_invalidation_test.go` (ratchet des trois points d'invalidation).
+  `internal/sync` : deux lignes d'appel (+ un import), aucune autre modification.
+- Dette : 0 issue lint nouvelle (`golangci-lint run --new-from-rev=37cb48167` sur les 8 paquets
+  touches : « 0 issues. ») ; aucune fonction nouvelle > 80 L ni > 5 parametres ; fichiers : tous les
+  fichiers crees ou modifies < 500 L sauf deux deja au-dela : `sync/engine_postsync.go` 526 -> 527
+  (la ligne d'appel), `service/bootstrap_service.go` 630 -> 604 (baisse). Ratchet FR : un message de
+  log accentue passe par `h.logger` (hors exclusion `slog.*`) a ete reformule sans accent.
+- Gate (codes de sortie) : `gofmt -l ./internal ./cmd` vide (0) ; `go build ./...` 0 ; `go vet ./...`
+  0 ; `go test ./internal/service/... ./internal/api/... ./internal/config/... ./internal/platform/...`
+  0, aucun `^--- FAIL:` ; `go test -tags=integration -p 1 ./internal/sync/...` 0 (267 s) ;
+  `go test ./internal/archlint/...` 0 ; golangci-lint 0 issue nouvelle.
+- Mutations jouees (toutes rouges puis restaurees, `cmp` a l'appui) : saisons — echec non memorise,
+  echec sans jeton memorise, copie retiree sur hit puis sur miss, cache desactive, singleflight retire
+  (20 fetchs au lieu de 1) ; field-mappings — version sans catalogue de saisons, version sans TOML,
+  cache jamais servi ; cache lectures — generation ignoree au store (le chargement perime ecrase le
+  frais), cle de vol sans generation (la requete post-invalidation attend le vol perime), copie
+  retiree, relance de la requete vivante retiree, invalidation publique sans effet, appel post-sync
+  retire de `runPostSyncPipeline` (ratchet archlint rouge) ; historique — AssetReference Map non
+  copiee (inventaire rouge + « fatal error: concurrent map writes » sur la re-ecriture concurrente),
+  invalidation publique sans le cache historique, cablage Filters sur le repo non cache ;
+  db_profiles — horodatage ignore, fenetre de mefiance retiree, cache desactive ; highlight-matches —
+  union sans la section des pires, HadBotTeammate non propage ; privacy — echec provider non
+  memorise, fin de contexte memorisee, depassement de budget non memorise, annulation memorisee.
+- Decouvertes (consignees, non traitees) : (1) `platform/duckdb/highlight_events_cache.go` :
+  `CachedHighlightEventsRepo` jamais instancie (code mort) et en-tete perime (« meme strategie que
+  player_matches_cache.go ... ttlCache existant ... si un 3e cache emerge, extraire un
+  ttlCacheGeneric ») : le generique existe (`playerReadCache`) ; `cacheMetrics` n'est plus garde que
+  pour lui ; (2) `service/seasons_catalog.go` : `errEmpty` + `var _ = errEmpty` (musee de code mort) ;
+  (3) sync Halo 5 (`games/halo_5/livesync/runner.go`) hors `runPostSyncPipeline` : ses lectures
+  cachees ne sont invalidees que par le TTL de 60 s — une ligne d'appel en fin de cycle H5
+  l'alignerait ; (4) `service/openspartan_post_import_service.go:213` ecrit `player_match_enrichment`
+  depuis la couche service sans invalidation (TTL) ; (5) `/bootstrap` persiste un echec Waypoint
+  (`fetch_error`, IsPrivate=false, source « waypoint ») comme etat observe (`Build` ->
+  `UpsertPrivacyState`), ecrasant le state persiste reel — preexistant ; (6) la decouverte (6) de L1
+  persiste : `go test ./internal/api/...` recree `data/titles/halo_5/warehouse/metadata.duckdb`
+  (12 Ko, ignore par git) dans l'arbre du worktree — retire apres le gate ; de meme,
+  `go test -tags=integration ./internal/sync/...` cree des repertoires VIDES
+  `data/cache/{film_chunks,film_manifests,replays/halo_5,replays/halo_infinite}` dans l'arbre (laisses
+  en place : vides, ignores, et on ne supprime rien sous `data/cache` sans raison).
 
 ## 9. L4b — Endpoint leger + ancrage avant la requete lourde — vague 3, apres L2 et L4a
 
