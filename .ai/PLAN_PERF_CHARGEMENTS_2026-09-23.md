@@ -476,7 +476,10 @@ Gate : comme L2 (paquets touches) ; `-tags=integration -p 1 ./internal/platform/
   0,16 / 0,43 / 0,82 s contre 0,75 / 0,91 / 1,07 s) ; seul un changement de conception (vues `_latest`
   materialisees) changerait l'ordre de grandeur ; (7) risque de conflit de fusion avec L2 si L2 change
   la signature de `squadagg.BuildSquadFormesBlock` / `BuildEquipmentUsageBlock`, appelees depuis
-  `timeseries_service_sections.go` (modifie ici).
+  `timeseries_service_sections.go` (modifie ici) ; (8) `listeDeLUnivers` lie la liste des matchs de
+  l'univers une fois par vue (3 x N arguments pour l'isolement) : mesure jusqu'a 1 158 matchs (3 474
+  arguments, 1,7 s), non mesure au-dela — un univers NON restreint (page Escouade tant que D2.4 n'est
+  pas fusionne) porte tout l'historique du joueur.
 
 ## 8. L5b — Socle (Go) — vague 2, apres L1
 
