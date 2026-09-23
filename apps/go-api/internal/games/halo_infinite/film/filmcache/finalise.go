@@ -23,12 +23,19 @@ package filmcache
 // toute comparaison au type des temps forts hors de ce fichier (allowlist datee des sites
 // anterieurs au lot, chacun avec son critere de retrait).
 //
-// # CE QUE LA REGLE N'EST PAS
+// # CE QUE LA REGLE COUTE SI ELLE SE TROMPE
 //
-// Ce n'est PAS une constante mesuree : c'est la definition du film, et elle vaut pour les films
-// anciens comme pour les builds futurs. Un film qui ne serait JAMAIS finalise (aucun cas au
-// parc) n'est ni perdu ni marque : il est retente a chaque cycle, dans la borne de l'horizon de
-// rattrapage de chaque etape, et chaque refus se compte et se journalise chez l'appelant.
+// La regle est LUE dans la grammaire du film (le serveur ecrit ce morceau en dernier), et elle
+// est MESUREE : 1 624 manifestes sur 1 625 la verifiaient le 2026-09-23. Elle n'est donc pas une
+// loi garantie pour les builds futurs, et son cout si elle se trompait est ecrit ici plutot que
+// tu (constat L3-R1 de la revue adverse du lot) : un film qui ne serait JAMAIS finalise n'est ni
+// archive ni cuit, et il EXPIRE cote serveur si personne ne s'en apercoit. Il n'est jamais marque
+// (aucun marqueur terminal) : il est retente a chaque cycle dans la borne de l'horizon de
+// rattrapage, chaque refus se compte chez l'appelant, et au-dela du delai de finalisation
+// (`sync/replayartifacts.DelaiDeFinalisation`) il sort du journal INFO pour un WARN sous un
+// compteur distinct, qui doit rester a zero. Un film vit des semaines cote serveur et
+// `levelup archive-films` rattrape tout match sans film au cache : le signal laisse le temps
+// d'instruire la derive et d'archiver apres correction.
 
 import (
 	"errors"
