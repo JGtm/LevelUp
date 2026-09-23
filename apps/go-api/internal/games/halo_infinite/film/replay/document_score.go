@@ -56,18 +56,26 @@ package replay
 // Identites d'equipe possibles pour `coverage.score.teamIdentity` : la METHODE qui a
 // rattache un slot d'entite (6 / 8) a un camp du registre (D3 du plan registre-film).
 //
-// L'ORDRE EST CELUI DE LA FORCE DE PREUVE, et la troisieme valeur est un refus explicite :
+// L'ORDRE EST CELUI DE LA FORCE DE PREUVE, et la DERNIERE valeur est un refus explicite :
 // une courbe `unresolved` est publiee SANS `teamId`, jamais avec un camp devine. Sur une
 // carte, l'erreur serait invisible et credible.
 const (
 	// ScoreIdentityFinal (a) : le score FINAL de chaque slot d'equipe designe un camp sans
 	// ambiguite parce que `team_0_score` et `team_1_score` different.
 	ScoreIdentityFinal = "a"
+	// ScoreIdentityFinalOneSided (a0) : la preuve (a) sur un match A SENS UNIQUE (schema 69,
+	// lot M5.1 des retours rejeu du 2026-09-23). Un SEUL slot d'equipe porte une serie de score :
+	// le camp muet n'a jamais quitte zero, et le statborg n'emet un composant qu'a son CHANGEMENT
+	// (regle deja ecrite en tete de `lib/replay/scoreTimeline.ts`, mesuree sur `530820e5`). Quand
+	// le registre dit X-0 (X > 0) et que la serie finit EXACTEMENT a X, elle est le camp X, et le
+	// slot muet l'autre. Une methode A PART, et pas `a` : elle ajoute une premisse (« absent vaut
+	// zero ») que la preuve (a) n'a pas, et la couverture doit dire laquelle a tranche.
+	ScoreIdentityFinalOneSided = "a0"
 	// ScoreIdentityFrags (b) : les scores du registre sont egaux (ou absents) ; c'est alors
 	// la somme des FRAGS des joueurs identifies de chaque camp qui designe le slot — le
 	// statborg replique le total de frags du camp en `comp 2 A` du slot d'equipe.
 	ScoreIdentityFrags = "b"
-	// ScoreIdentityUnresolved (c) : ni l'un ni l'autre. Les courbes sortent sans `teamId`.
+	// ScoreIdentityUnresolved (c) : aucune des trois preuves. Les courbes sortent sans `teamId`.
 	ScoreIdentityUnresolved = "unresolved"
 )
 
@@ -207,7 +215,8 @@ type TeamHold struct {
 // a une exhaustivite que la mesure ne garantit pas.
 type ScoreCoverage struct {
 	// TeamIdentity nomme la METHODE qui a rattache les slots d'equipe aux camps :
-	// `a` (score final), `b` (somme des frags) ou `unresolved`.
+	// `a` (score final), `a0` (score final d un match a sens unique, schema 69), `b` (somme des
+	// frags) ou `unresolved`.
 	TeamIdentity string `json:"teamIdentity"`
 	// Rounds est le nombre de manches RETENUES par le decodeur (les manches fantomes,
 	// ancrages fortuits, sont ecartees). 1 sur un match sans manches multiples.

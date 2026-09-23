@@ -1263,8 +1263,15 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   CE QUI NE MONTE PAS : `facts.Rev` (`killsource` ne lit aucun état de mouvement) et
 	//   `layers`. `grammar.Rev` a monté, la couche écrivant l'étiquette de genre.
 	//   Détail : `document_chronicle.go`.
-	if SchemaVersion != 68 {
-		t.Fatalf("SchemaVersion = %d, attendu 68 : incrémenter exige une raison écrite ci-dessus "+
+	// - v69 (lot M5 des retours rejeu, 2026-09-23) : LE MATCH À SENS UNIQUE A UN CAMP.
+	//   `coverage.score.teamIdentity` gagne la valeur `a0` : un seul slot d'équipe porte une
+	//   série de score, le registre dit X-0 et la série finit EXACTEMENT à X — le score absent
+	//   vaut zéro (le statborg n'émet qu'au changement). Une valeur d'enum publié est de la
+	//   forme, et la règle de publication du calque change. Garde-fou testé : une série à 2
+	//   contre un registre à 3 reste `unresolved`. Aucune révision de décodage ne monte.
+	//   Détail : `document_chronicle.go`.
+	if SchemaVersion != 69 {
+		t.Fatalf("SchemaVersion = %d, attendu 69 : incrémenter exige une raison écrite ci-dessus "+
 			"(un champ optionnel de plus n'en est pas une)", SchemaVersion)
 	}
 }

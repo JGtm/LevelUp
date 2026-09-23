@@ -2016,3 +2016,37 @@ package replay
 //	               valeurs ; aucune revision de DECODAGE ne monte pour ce renommage seul
 //	               (`grammar` a monte au commit precedent du lot, pour le cablage du bloc
 //	               d action de la vue de controle).
+
+// v69 (2026-09-23, lot M5 des retours rejeu, plan `.ai/V7.5/PLAN_RETOURS_REJEU_2026-09-23.md`) :
+// LE MATCH A SENS UNIQUE A UN CAMP — `coverage.score.teamIdentity` GAGNE LA VALEUR `a0`.
+//
+//	`coverage.`    UNE VALEUR D ENUM NEUVE, `a0` : la preuve (a) du score final, appliquee au
+//	`score.`       match ou UN SEUL slot d equipe porte une serie de score. Le camp muet n a
+//	`teamIdentity` jamais quitte zero et le statborg n emet un composant qu a son CHANGEMENT ;
+//	               quand le registre dit X-0 (X > 0) et que la serie finit EXACTEMENT a X, elle
+//	               est le camp X et le slot muet l autre. Un slot seul vu (le camp muet n a rien
+//	               emis, ni score ni frags) suit la meme regle.
+//	`scoreTimeline` CONSEQUENCE, PAS FORME : la serie d un match a sens unique porte desormais
+//	`.teams[]`     son `teamId`. Avant, elle sortait sans camp (`unresolved`) des que le perdant
+//	`.teamId`      n avait jamais marque — la preuve (a) exigeait un score final sur les DEUX
+//	               slots. Mesure du 2026-09-23 : six documents a une seule serie sans camp au
+//	               parc, dont cinq sains (le sixieme, `ab526724`, etait un film tronque, repare
+//	               depuis par O1). Le client affichait 0 — 0 tout le match sur ces documents.
+//
+// POURQUOI UNE VALEUR A PART ET PAS `a`. La preuve ajoute une premisse — « absent vaut zero » —
+// que (a) n a pas. La couverture doit dire laquelle a tranche : un camp resolu par (a0) repose
+// sur la grammaire d emission du statborg, pas sur deux lectures.
+//
+// LE GARDE-FOU EST L EGALITE EXACTE, et il est teste : une serie a 2 contre un registre a 3 (film
+// tronque avant sa derniere capture) reste `unresolved` ; un registre 1-3 avec une seule serie a
+// 3 aussi — le camp muet du FILM aurait marque au REGISTRE, son absence est un trou de lecture,
+// pas un zero. Aucun identifiant de match dans la regle.
+//
+// L ORDRE DES PREUVES : (a), puis (a0), puis (b). (a0) passe avant la somme des frags parce
+// qu elle n emprunte rien au pont d identite des joueurs. Sur les documents a une seule serie que
+// (b) resolvait deja, la valeur publiee passe de `b` a `a0` et le CAMP ne change pas — c est le
+// controle croise de la montee (le desaccord d un seul camp aurait ete un defaut).
+//
+// POURQUOI LA VERSION MONTE : une valeur d enum publie est de la FORME, et la regle de
+// publication du calque de score change. Republication DEPUIS LES FAITS (aucune revision de
+// DECODAGE ne monte : `grammar`, `facts`, `layers` et le blob d entrees sont inchanges).

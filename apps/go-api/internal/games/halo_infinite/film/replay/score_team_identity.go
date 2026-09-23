@@ -11,15 +11,21 @@ import "sort"
 // l'ordre des camps, et le supposer colorerait la courbe du mauvais camp — une erreur que
 // personne ne verrait a l'ecran, puisque les deux courbes existent bien.
 //
-// # LES DEUX PREUVES, DANS L'ORDRE DE LEUR FORCE (D3 du plan registre-film)
+// # LES TROIS PREUVES, DANS L'ORDRE DE LEUR FORCE (D3 du plan registre-film, (a0) au lot M5.1)
 //
 //	(a) LE SCORE FINAL. Quand `team_0_score` et `team_1_score` DIFFERENT, le score final de
 //	    chaque slot les designe sans ambiguite. C'est la preuve la plus forte, et la seule qui
 //	    n'emprunte rien au pont d'identite des joueurs.
+//	(a0) LE MATCH A SENS UNIQUE (schema 69, lot M5.1 des retours rejeu du 2026-09-23). Un
+//	    SEUL slot d'equipe porte une serie de score : le camp muet n'a jamais quitte zero (le
+//	    statborg n'emet un composant qu'a son changement). Le score absent vaut donc 0, et
+//	    quand le registre dit X-0 (X > 0) avec une serie qui finit EXACTEMENT a X, cette serie
+//	    est le camp X. Garde-fou : une serie a 2 contre un registre a 3 (film tronque avant la
+//	    derniere capture) ne prouve rien et reste `unresolved`.
 //	(b) LA SOMME DES FRAGS. A egalite de scores (ou sans scores du tout), le slot d'equipe
 //	    porte en `comp 2 A` le total de frags de son camp — acquis mesure a la phase 0-bis du
 //	    lot A. On le compare a la somme des frags des joueurs IDENTIFIES de chaque camp.
-//	(c) NI L'UN NI L'AUTRE : refus explicite. Les courbes sortent sans `teamId`.
+//	(c) AUCUNE DES TROIS : refus explicite. Les courbes sortent sans `teamId`.
 //
 // # LA REGLE DE PRUDENCE EST LA MEME QU'AILLEURS
 //
@@ -33,11 +39,22 @@ import "sort"
 // publiees, seulement sans camp.
 func resolveTeamIdentity(in *ScoreInput, slots []int, score, teamFrags, playerFrags scoreSeriesSet,
 	identity map[int]string) (map[int]int, string) {
-	if in == nil || len(slots) != 2 {
+	if in == nil || len(slots) == 0 || len(slots) > 2 {
+		return nil, ScoreIdentityUnresolved
+	}
+	// UN SEUL SLOT VU : le camp muet n'a rien emis du tout, ni score ni frags. Seule (a0) peut
+	// trancher — (a) et (b) exigent les deux slots.
+	if len(slots) == 1 {
+		if m := identityByOneSidedScore(in.TeamScores, slots, score); m != nil {
+			return m, ScoreIdentityFinalOneSided
+		}
 		return nil, ScoreIdentityUnresolved
 	}
 	if m := identityByFinalScore(in.TeamScores, slots, score); m != nil {
 		return m, ScoreIdentityFinal
+	}
+	if m := identityByOneSidedScore(in.TeamScores, slots, score); m != nil {
+		return m, ScoreIdentityFinalOneSided
 	}
 	if m := identityByFrags(in.TeamByXUID, slots, teamFrags, playerFrags, identity); m != nil {
 		return m, ScoreIdentityFrags
@@ -68,6 +85,51 @@ func identityByFinalScore(scores *[2]int, slots []int, score scoreSeriesSet) map
 		return map[int]int{slots[0]: 1, slots[1]: 0}
 	}
 	return nil
+}
+
+// identityByOneSidedScore est la preuve (a0) : UNE SEULE serie de score parmi les slots
+// d'equipe, un registre a X-0 (X > 0), et une serie qui finit EXACTEMENT a X.
+//
+// POURQUOI « ABSENT VAUT ZERO » EST UNE LECTURE ET PAS UN PARI. Le statborg n'emet un composant
+// qu'a son CHANGEMENT : un camp qui ne marque jamais ne publie jamais de score de mode, alors
+// que son slot existe (il porte ses frags). C'est la regle que le client applique deja au
+// bandeau (en-tete de `lib/replay/scoreTimeline.ts`, temoin CTF 3-0 `530820e5`) ; elle est
+// ecrite ici pour que le DOCUMENT la porte, au lieu de laisser chaque lecteur la re-deduire.
+//
+// LE REGISTRE DOIT DIRE ZERO POUR LE CAMP MUET. Un registre 1-3 avec une seule serie a 3 ne
+// prouve rien : le camp du registre a 1 a marque, et son absence du film est un TROU de lecture,
+// pas un zero — on se tait. Et l'egalite reste EXACTE, comme en (a) : une serie a 2 contre un
+// registre a 3 (film tronque avant sa derniere capture) ne designe aucun camp.
+func identityByOneSidedScore(scores *[2]int, slots []int, score scoreSeriesSet) map[int]int {
+	if scores == nil || scores[0] == scores[1] {
+		return nil
+	}
+	porteur, muet, n := -1, -1, 0
+	for _, slot := range slots {
+		if _, ok := score.final(slot); ok {
+			porteur, n = slot, n+1
+		} else {
+			muet = slot
+		}
+	}
+	if n != 1 {
+		return nil
+	}
+	v, _ := score.final(porteur)
+	var marque int
+	switch {
+	case scores[1] == 0 && scores[0] > 0 && v == int64(scores[0]):
+		marque = 0
+	case scores[0] == 0 && scores[1] > 0 && v == int64(scores[1]):
+		marque = 1
+	default:
+		return nil
+	}
+	out := map[int]int{porteur: marque}
+	if muet >= 0 {
+		out[muet] = 1 - marque
+	}
+	return out
 }
 
 // identityByFrags est la preuve (b) : `comp 2 A` du slot d'equipe contre la somme des frags
