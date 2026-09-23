@@ -54,7 +54,7 @@ import { GRENADE_THROW_HOLD_MS, grenadeThrowActive } from '../model/grenadeFx'
 import { REPLAY_TEXT, type ReplayLocale } from '../i18n/i18n'
 import { formatSeconds, frameToMs, freshness, msToFrames, READING_FADE } from '../../../lib/replay/replayLogic'
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
-import type { PlayerState } from '../../../lib/replay/rosterLogic'
+import { LOADOUT_SRC_BIRTH, type PlayerState } from '../../../lib/replay/rosterLogic'
 import { MIRROR_STYLE, weaponFullIcon } from '../model/weaponFullIcon'
 
 /** Durée de l'animation d'échange — celle du POC, calée sur la rémanence des lancers. */
@@ -132,13 +132,16 @@ export function ReplayWeaponsRow({
   const swapFrames = Math.max(1, msToFrames(SWAP_ANIM_MS, doc))
   const swapAge = drawnSwapAt(doc, state.life.slot, frame, swapFrames)
   const drawnKnown = read.drawn !== null
-  // Âge NÉGATIF = lecture d'une image-clé À VENIR (début de vie, cf. loadoutAt) : l'infobulle
-  // le dit — l'estompage, lui, porte déjà sur la valeur absolue.
+  // Âge NÉGATIF = lecture d'une image-clé À VENIR (début de vie d'un artefact antérieur au schéma
+  // 69, cf. loadoutAt) : l'infobulle le dit — l'estompage, lui, porte déjà sur la valeur absolue.
+  // LA PROVENANCE se dit aussi : une dotation de naissance n'est pas un relevé d'image-clé.
   const ageMs = frameToMs(Math.abs(read.age), doc)
-  const ageTxt =
-    read.age < 0
-      ? `${t.loadoutAhead} ${formatSeconds(ageMs)}`
-      : `${t.loadoutAge} ${formatSeconds(ageMs)}`
+  const ageTxt = [
+    read.src === LOADOUT_SRC_BIRTH ? t.loadoutBirth : null,
+    read.age < 0 ? `${t.loadoutAhead} ${formatSeconds(ageMs)}` : `${t.loadoutAge} ${formatSeconds(ageMs)}`,
+  ]
+    .filter((p): p is string => !!p)
+    .join(' · ')
   const cells: (typeof read.weapons[number] | null)[] = seule
     ? [read.weapons[0] ?? null]
     : [read.weapons[0] ?? null, read.weapons[1] ?? null]

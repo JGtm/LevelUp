@@ -323,6 +323,7 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     abilityLabel: "Capacité d'armure équipée",
     loadoutUnread: 'armes non lues sur cette vie',
     loadoutAge: 'Armes lues il y a',
+    loadoutBirth: 'Dotation de naissance',
     loadoutAhead:
       'Armes de la première image-clé de cette vie, lue dans',
     weaponSecondaryHint: 'secondaire (arme rangée à la dernière lecture)',
@@ -779,6 +780,7 @@ export const REPLAY_TEXT: Record<ReplayLocale, ReplayText> = {
     abilityLabel: 'Equipped armor ability',
     loadoutUnread: 'weapons not read on this life',
     loadoutAge: 'Weapons read',
+    loadoutBirth: 'Spawn loadout',
     loadoutAhead: 'Weapons from the first keyframe of this life, read in',
     weaponSecondaryHint: 'secondary (weapon holstered at the last reading)',
     weaponStowedFmt: (name) => `Stowed weapon: ${name}`,

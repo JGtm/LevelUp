@@ -20,21 +20,23 @@
  * la première émission manquée. On part donc du relevé, et on n'applique QUE ce qui s'est passé
  * APRÈS lui : la prochaine image-clé resynchronise tout, quoi qu'il arrive.
  *
- * CE QUE LA VERSION DE CE LOT N'APPLIQUE PAS, ET POURQUOI C'EST ÉCRIT ICI PLUTÔT QUE FAIT :
+ * LES SUBSTITUTIONS D'IDENTITÉ s'appliquent toujours — `from` connue ET présente dans la rangée
+ * lue, `w` non vide. Elles ne changent NI la longueur de la rangée NI l'ordre de ses
+ * emplacements : c'est la seule transformation qui ne peut pas désaligner le sélecteur
+ * d'emplacement dégainé (`Inventory.d`, lu à une AUTRE image-clé, avec son propre âge).
  *
- *   - LES LÂCHERS (`kind: 'dropped'`, `w` vide) ne retirent pas l'arme de la rangée. Le film ne
- *     donne AUCUN index d'emplacement sur l'événement : retirer une entrée décalerait les
- *     indices que le sélecteur d'emplacement dégainé (`Inventory.d`, lu à une AUTRE image-clé,
- *     avec son propre âge) adresse — la fiche marquerait « en main » l'arme voisine. Le prix de
- *     l'abstention est nommé : une arme lâchée reste affichée, estompée, jusqu'au prochain
- *     relevé. C'est exactement le comportement d'avant ce lot.
- *   - LES PRISES SUR EMPLACEMENT VIDE (`from` vide) n'ajoutent rien à la rangée, pour la même
- *     raison inversée : la rangée lue n'a pas d'emplacement libre déclaré, et en inventer un
- *     ferait apparaître une troisième arme sur une fiche qui n'en porte que deux.
+ * LES FAMILLES SE COMPARENT PAR LEUR ÉCRITURE CANONIQUE (schéma 69, lot M3.3). La rangée vient de
+ * `loadouts[].w` (`0x%08X`), les changements de `weaponChanges[]` (`%08x`) : comparées telles
+ * quelles, elles ne s'égalaient JAMAIS, et aucune substitution ne s'appliquait sur un artefact
+ * réel — les tests de ce module écrivaient les deux côtés dans la même casse.
  *
- * NE SONT DONC APPLIQUÉES QUE LES SUBSTITUTIONS D'IDENTITÉ — `from` connue ET présente dans la
- * rangée lue, `w` non vide. Elles ne changent NI la longueur de la rangée NI l'ordre de ses
- * emplacements : c'est la seule transformation qui ne peut pas désaligner le sélecteur.
+ * LES LÂCHERS ET LES PRISES SUR EMPLACEMENT VIDE ne s'appliquent QUE sur une rangée SITUÉE — une
+ * dotation de naissance, qui porte l'emplacement de chaque arme (`k`) — et par un changement qui
+ * porte le sien (`weaponChanges[].k`, schéma 69). Même alors, seulement aux bords, pour que la
+ * rangée reste contiguë et donc alignée sur le sélecteur : une prise sur l'emplacement qui SUIT
+ * le dernier occupé, un lâcher du DERNIER. Ailleurs — et sur un relevé d'image-clé, qui ne situe
+ * pas ses familles —, l'abstention d'avant reste la règle : une arme lâchée reste affichée,
+ * estompée, jusqu'au prochain relevé, et aucune troisième arme n'est inventée.
  *
  * Tout ce fichier est PUR : aucun React, aucun document, donc testable sans monter quoi que ce
  * soit — même partage que `equippedLogic.ts` et `weaponPadTime.ts`.
@@ -58,6 +60,22 @@ export const ABILITY_SRC_CHANGE = 'chg'
 export interface WeaponsReading {
   weapons: string[]
   age: number
+  /** Provenance du relevé : `birth` = la dotation de naissance (schéma 69) ; absent = image-clé. */
+  src?: string
+  /** Emplacement de chaque arme de `weapons`, quand le relevé le situe (dotation de naissance). */
+  k?: number[]
+}
+
+/**
+ * familyKey — l'écriture CANONIQUE d'une famille d'arme (`0x%08X`), celle de `loadouts[].w` et
+ * des clés de `weaponLabels`. SECONDE COPIE de la règle de `weaponLabelKeyOf`
+ * (`features/match-replay/layers/useReplayWeaponPads.ts`) : `lib/` ne dépend jamais de
+ * `features/`. Une troisième copie se centralise, avec son garde-rail (règle n°6 du dépôt).
+ */
+function familyKey(w: string): string {
+  const hex = w.startsWith('0x') || w.startsWith('0X') ? w.slice(2) : w
+  if (!/^[0-9a-fA-F]{1,8}$/.test(hex)) return w
+  return `0x${hex.toUpperCase().padStart(8, '0')}`
 }
 
 /**
@@ -79,28 +97,62 @@ export function refineWeaponsReading(
 ): WeaponsReading {
   if (base.age < 0 || changes.length === 0) return base
   const readFrame = frame - base.age
-  const weapons = [...base.weapons]
+  const rangee: Rangee = { weapons: [...base.weapons], k: base.k ? [...base.k] : undefined }
   let applied = -1
   // L'ORDRE CHRONOLOGIQUE EST OBLIGATOIRE, et la liste du document ne le garantit pas : deux
   // substitutions sur le même emplacement doivent s'enchaîner dans l'ordre où elles ont eu
   // lieu, sans quoi la fiche montrerait l'avant-dernière arme.
   const utiles = changes
-    .filter(
-      (c): c is ReplayWeaponChange & { w: string; from: string } =>
-        c.slot === slot && c.t > readFrame && c.t <= frame && !!c.w && !!c.from,
-    )
+    .filter((c) => c.slot === slot && c.t > readFrame && c.t <= frame)
     .sort((a, b) => a.t - b.t)
   for (const c of utiles) {
-    const at = weapons.indexOf(c.from)
+    if (appliquerChangement(rangee, c)) applied = c.t
+  }
+  if (applied < 0) return base
+  return { ...base, weapons: rangee.weapons, k: rangee.k, age: frame - applied }
+}
+
+/** La rangée en cours de raffinement : ses armes et, quand elle est située, leurs emplacements. */
+interface Rangee {
+  weapons: string[]
+  k: number[] | undefined
+}
+
+/**
+ * appliquerChangement applique UN changement à la rangée et dit s'il l'a fait (cf. l'en-tête :
+ * substitutions partout, prises et lâchers aux seuls bords d'une rangée située).
+ */
+function appliquerChangement(r: Rangee, c: ReplayWeaponChange): boolean {
+  const { weapons, k } = r
+  if (c.w && c.from) {
     // LA RANGÉE DOIT NOMMER L'ARME QU'ON REMPLACE. Sinon les deux lectures sont désappariées
     // (le relevé ne portait pas cette arme) et on s'abstient — même honnêteté que la mise en
     // valeur « en main », qui refuse de désigner un emplacement que le loadout ne porte pas.
-    if (at < 0) continue
-    weapons[at] = c.w
-    applied = c.t
+    // L'emplacement du changement, quand la rangée est située, départage deux armes égales.
+    const from = familyKey(c.from)
+    const situe = k && c.k !== undefined ? k.indexOf(c.k) : -1
+    const at = situe >= 0 && familyKey(weapons[situe]) === from
+      ? situe
+      : weapons.findIndex((w) => familyKey(w) === from)
+    if (at < 0) return false
+    weapons[at] = familyKey(c.w)
+    return true
   }
-  if (applied < 0) return base
-  return { weapons, age: frame - applied }
+  if (!k || c.k === undefined) return false
+  if (c.w) {
+    // Prise sur emplacement vide : seulement celui qui SUIT le dernier occupé.
+    if (k.includes(c.k) || c.k !== weapons.length || k.some((e, i) => e !== i)) return false
+    weapons.push(familyKey(c.w))
+    k.push(c.k)
+    return true
+  }
+  // Lâcher : seulement le DERNIER emplacement, et seulement l'arme que le changement nomme.
+  const at = k.indexOf(c.k)
+  if (at < 0 || at !== weapons.length - 1) return false
+  if (c.from && familyKey(weapons[at]) !== familyKey(c.from)) return false
+  weapons.pop()
+  k.pop()
+  return true
 }
 
 /** Une lecture de capacité : le rang de palette, l'âge du relevé, et son canal. */
