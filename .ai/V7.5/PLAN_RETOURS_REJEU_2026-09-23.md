@@ -210,6 +210,24 @@
     neutre ?) — aucun changement sans ok ;
   - Q23 : « si un humain arrive oui il remplace celui du bot normalement ».
 
+- **EXIGENCE DE L'UTILISATEUR (citation, 23/09)** : « faut réparer les films mentionnés mais faut faire
+  attention aux régressions et surtout que les correctifs soient propres, pérennes et solides et valides
+  pour les autres films et les futurs films ». Conséquences pour TOUS les lots :
+  - aucun correctif propre à un film (identifiant de match, slot, carte, instant en dur) : chaque règle
+    est générale, lue dans le film ou dans le contrat du document, et les trois matchs signalés
+    (81c02726, b1ad85eb, ab526724) ne sont que des TÉMOINS ;
+  - validation sur TOUT le parc (111 documents) avant/après : la métrique visée bouge dans le bon sens ET
+    les autres calques ne bougent pas (diff par calque, changements attendus déclarés d'avance) ;
+  - lots Go de publication ou de décodage : `replay-equiv` + `replay-corpus-gate` (un témoin par build,
+    donc valable pour les films anciens ET les builds futurs ; le film est autoportant, jamais de profil
+    par build) ;
+  - films futurs : toute règle qui dépend d'une constante mesurée est un repli NOMMÉ, compté en
+    couverture, avec critère de retrait ; le compteur rend visible une dérive sur un film neuf au lieu
+    de la taire ;
+  - les films signalés sont réparés par la REPUBLICATION du parc (vagues C et D), pas à la main — sauf
+    ab526724 dont les DONNÉES (film tronqué) sont réparées par O1, et dont le défaut amont (archivage
+    avant finalisation) est corrigé pour tous les films futurs par L3.
+
 Une décision non validée bloque les items qui en dépendent (colonne « bloque »), pas le reste.
 
 ### 3.1 Autorisations et calendrier
