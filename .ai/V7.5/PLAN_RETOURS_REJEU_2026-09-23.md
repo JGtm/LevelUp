@@ -653,7 +653,13 @@ Périmètre : `film/internal/grammar/keyframe_world.go`, `grammar/birth_loadouts
   naissance (retire le repli futur de `spawnSetFrom`, qui efface de vraies prises). La lecture « par
   catalogue » de l'instrument est une heuristique de mesure, JAMAIS portée en production ; un repli de
   lecture (si i1..i42 ne se ferme pas à 100 %) attend la décision de l'utilisateur. Objet `00007CA9`
-  au 3e emplacement au coup d'envoi : décision de l'utilisateur (masquer ou nommer).
+  au 3e emplacement au coup d'envoi : IDENTIFIÉ (sonde CA9, 24/09, `SONDE_CA9_objet_00007CA9.md`,
+  branche `feat/rr-ghidra` 82d553419) = l'arme « mains nues » (`WeaponTags.unarmed` du Lua global,
+  tag weap du module globals) ; le jeu la remet au 3e emplacement de chaque bipède au coup d'envoi, et
+  les ramassages de classe arme à t=0 qui la portent sont cette remise, pas des prises. Traitement
+  (décision de l'utilisateur attendue, proposition) : l'exclure de la dotation affichée par une règle
+  NOMMÉE (famille « mains nues », constante unique) ; classer ses remises à t=0 en « remise mains
+  nues » avec compteur, hors `unknownFamilies` ; entrée de catalogue « Mains nues » / « Unarmed ».
 - [ ] M3.3 Web : `loadoutAt` prend la dotation de naissance comme base ; `refineWeaponsReading`
   applique les prises avec `k` ; provenance en infobulle (FR + EN) ; lecture « à venir » retirée (Q18).
 - Tests : payload synthétique qui fait sauter la marche aujourd'hui ; première émission avant toute
@@ -664,8 +670,33 @@ Périmètre : `film/internal/grammar/keyframe_world.go`, `grammar/birth_loadouts
 
 #### M4b — Tir des véhicules décodé par la grammaire (après P1)
 
-> **Verdict P1 (23/09, `SONDE_P1_tir_continu.md`, branche `feat/rr-sondes`) — BLOQUE M4b jusqu'à
-> décision de l'utilisateur.** Mesuré sur 81c02726 et 8a485699 : aucun record 36/35/37/10 du pilote
+> **VERDICT P1-S3 (Ghidra, 24/09, `SONDE_P1S3_tir_continu_vue_controle.md`, branche `feat/rr-ghidra`
+> d97b178aa) — REMPLACE la conclusion de P1 ci-dessous.** Le tir continu EST écrit dans le film, dans
+> la VUE DE CONTRÔLE (vue C, rang 2 de chaque trame delta) : entrée kind 0 du joueur
+> (`FUN_1406d0388`), bloc d'action (`FUN_1406d025c`) — m0 = R(3) gâchettes de la main 0 (0b100 =
+> principale), m2 = R(3) main 1, m4/m5 = R(2) barillets ; le tireur = index de contrôle R(5) (= index
+> du roster), le véhicule vient de la monture. Mécanisme lu : le numéro de tir avance à chaque tir
+> (`FUN_14202f3a0`), mais `action_weapon_fire` n'est émis que si le seau à jetons du barillet
+> (types de prédiction 1 et 3, `FUN_140de87fc`) l'autorise ; à défaut, l'écrivain de la vue C pose le
+> bit « gâchette tenue ». Theater rejoue ce bit et simule la rafale à la cadence du tag : les instants
+> de chaque coup ne sont pas dans le film, le DÉBUT et la FIN de rafale le sont, au tick. Mesuré sur
+> 81c02726 : 1 050 entrées qui tirent, toutes de G MONEY, 6/6 frags précédés d'une entrée qui tire,
+> témoin −60 s à 0. Limite : la vue C n'est lue que si la vue B se ferme (34 % des paquets) ;
+> couverture des épisodes 29 %/55 % (marche) → 83 %/91 % avec un balayage par la fin étalonné (0,13 %
+> d'erreur). La production refuse aujourd'hui trois branches de l'entrée et lit faux deux sous-lecteurs
+> du bloc d'action. Découverte : une 3e monture de G MONEY sur le Ghost 771 (≈ 4:55-5:12) manque au
+> document.
+> M4b devient : (1) grammaire — porter l'entrée complète `FUN_1406cd860` et corriger le bloc d'action
+> (catégories 1/2 de `FUN_140c9e990`, vecteur `FUN_1431a0cbc`), mesurer l'effet sur la clôture de la
+> vue B ; (2) faits — par joueur et par tick m0/m2/m4/m5 et l'arme de main → intervalles de tir continu ;
+> (3) publication — une rafale par intervalle posée sur le véhicule monté, cadence du tag (Ghost
+> 7,5/s, lue dans le tag : barillet +0x70/+0x74/+0x78/+0x7c), son prolongé du début à la fin ; touches
+> `damage_aftermath` gardées ; contrôle : nombre de coups ≈ saut du numéro de tir ; (4) trous — vue C
+> non atteinte = trou NOMMÉ et compté, jamais « pas de tir » ; (5) gate G1 : entrée qui tire avant
+> chacun des 6 frags, 0 au témoin, 0 hors montures après correction de la 3e monture. M4b démarre
+> APRÈS M3 (qui répare le départ de la vue B, dont dépend la lecture de la vue C).
+>
+> **Verdict P1 (23/09, `SONDE_P1_tir_continu.md`, branche `feat/rr-sondes`) — historique.** Mesuré sur 81c02726 et 8a485699 : aucun record 36/35/37/10 du pilote
 > ou du Ghost, en tête ou hors tête (marche de liste validée par un oracle indépendant) ; aucun
 > composant `ti=40`/`ti=35` qui bascule avec le tir ; vue C réfutée par étalonnage. MAIS : (1) le film
 > porte les TOUCHES des armes continues (`damage_aftermath` type 0 à toute position de liste, ref1 =
@@ -843,6 +874,21 @@ vivent au §9 ; aucun lot de la vague D ne démarre sans eux.
     du filtre de sécurité), aucun commit : relancés.
   - Sondes : P1 négatif sur le tir continu par tir, positif sur les touches et le compteur (M4b bloqué,
     décision utilisateur) ; P2 → M3.1 réécrit ; P3 positif → M3.2 précisé ; P4 confirmé → M2 précisé.
+  - Workflow `wf_dd706355-a4e` (24/09) : P1-S3 POSITIF (tir continu dans la vue de contrôle, voir M4b) ;
+    CA9 : `00007CA9` = arme « mains nues » (voir M3.2) ; découvertes CA9 : `E9E7FF79` =
+    `forge_fusion_coil_mp` (bobine à fusion de Forge), libellés à vérifier `2AC9C2FF` (hotrod) et
+    `230447B1` (proto_heatwave) ; C2 : le film dit « posé par la carte » (index de placement Forge,
+    6e champ du bloc object-multiplayer-properties, `FUN_14080d524`), pas « non jouable » — 13/13 décors,
+    0/100 véhicules en jeu, mais aussi des tourelles actives posées : la règle L1.3 reste (générale,
+    identique sur le parc), seul son commentaire (« une seule position ») est inexact (le film réplique
+    la pose avant l'origine) — à corriger au prochain lot qui touche `vehiclesLayer.ts` ; SONS : le
+    lance-grenades du Falcon (`0BB6976B` → snd! 541792a4, banque falcongrenadelauncher, PAS le Gauss)
+    joue le MÊME événement que le tir du Rockethog (18 médias identiques) → réutiliser
+    `vehicle_shot_warthog_rocket_*` ; LMG de la Wasp reconstruite (V3E, boucle cadencée 0,100 s) ; le son
+    actuel de la Wasp est bien celui des missiles (équilibre de couches de l'ancien rendu rev9). Rendus et
+    page d'écoute hors dépôt : `Downloads/Halo Infinite - Sons v75/rr_2026-09-23/index.html`, en attente
+    de l'oreille de l'utilisateur. Branches de recherche à fusionner à la prochaine intégration :
+    `feat/rr-ghidra`, `feat/rr-c2`.
   - Découverte : `archlint/no_stale_fallback_target_test.go:59` lit `../../.ai/PLAN_DECODEUR_FILM_2026-09-13.md`,
     déplacé sous `.ai/V7.5/` par le commit d'archivage `fe2106f4b` : test ROUGE sur la base, donc sur la
     CI de `feat/v75` — corrigé à l'intégration de la campagne (bloque la CI).
