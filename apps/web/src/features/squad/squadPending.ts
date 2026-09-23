@@ -1,10 +1,12 @@
 /**
  * squadPending — dérivation pure de FilterContextInput pour le preview Escouade.
  *
- * SquadLayout maintient deux états parallèles :
- *  - `pending` (FilterContextInput) : période + cascade, commité via Analyser.
- *  - `pickedSquadSessionLabels` (string[]) : multi-sélection sessions, persistée
- *    en localStorage et appliquée immédiatement (sans Analyser).
+ * La barre Escouade combine deux états :
+ *  - `pending` (FilterContextInput, `useSquadFilterBarState`) : période + cascade,
+ *    commité via Analyser.
+ *  - `pickedSquadSessionLabels` (string[]) : multi-sélection sessions, appliquée
+ *    immédiatement (sans Analyser) dans le store escouade — sa source UNIQUE depuis
+ *    le 2026-09-23 (lot perf L4a, D4.1 : plus d'état local ni de miroir localStorage).
  *
  * Le compteur sticky et le calcul des available_options proviennent du POST
  * `filters/resolve`, qui ne consomme que `FilterContextInput`. Sans cette

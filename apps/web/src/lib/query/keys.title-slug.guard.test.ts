@@ -33,7 +33,7 @@ const U = '__USER__'
  */
 const titleScopedInvocations: Record<string, () => readonly unknown[]> = {
   // Filtres (déjà title-scopés avant V72-29 — verrouillés ici).
-  filtersResolve: () => queryKeys.filtersResolve(P, T, 'h'),
+  filtersResolve: () => queryKeys.filtersResolve(P, T, 'h', 'squad'),
   filtersPreview: () => queryKeys.filtersPreview(P, T, 'h'),
   // `player` retiré le 2026-07-25 : fabrique sans AUCUN call-site (enrichie du
   // titre « par cohérence » en V72-29, jamais consommée) — code mort supprimé,

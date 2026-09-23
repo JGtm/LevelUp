@@ -6,14 +6,19 @@
  * session. L'endpoint teammates est mis en erreur ici pour neutraliser le
  * ré-ancrage composition (qui dépend des données) et isoler la consommation du
  * deep-link — le ré-ancrage a ses propres tests (decideCompositionReanchor).
+ *
+ * Lot perf L4a (2026-09-23, D4.2) : la composition et la session du lien sont
+ * posées AVANT la première requête — même quand une composition restaurée et une
+ * session persistée concurrentes existent (ce que vérifie le 3e cas).
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { waitFor } from '@testing-library/react'
+import { act, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import type { ReactNode } from 'react'
 import { renderWithProviders } from '@/test/render-utils'
 import { server } from '@/test/setup'
 import { useSquadFilterStore } from '@/stores/squadFilterStore'
+import type { FilterContextInput, TeammatesQueryRequest } from '@/lib/api/types'
 import { SquadLayout } from './SquadLayout'
 
 const { searchMock } = vi.hoisted(() => ({
@@ -61,5 +66,35 @@ describe('SquadLayout — deep-link accueil (card session escouade)', () => {
     await waitFor(() => expect(document.body).toBeTruthy())
     expect(useSquadFilterStore.getState().filterContext.sessions?.picked_sessions ?? []).toEqual([])
     expect(localStorage.getItem('squad-teammates-p')).toBeNull()
+  })
+
+  it('la PREMIÈRE requête porte déjà la composition et la session du lien (état restauré concurrent)', async () => {
+    localStorage.setItem('squad-teammates-p', JSON.stringify(['Carol']))
+    useSquadFilterStore.getState().setSessions({ picked_sessions: ['S0 (9)'], gap_minutes: 120 })
+    const corps: TeammatesQueryRequest[] = []
+    const resolutions: FilterContextInput[] = []
+    server.use(
+      http.post('/api/v1/players/:playerSlug/pages/teammates', async ({ request }) => {
+        corps.push((await request.json()) as TeammatesQueryRequest)
+        return HttpResponse.json({ error: 'isolate-consume' }, { status: 500 })
+      }),
+      http.post('/api/v1/players/:playerSlug/filters/resolve', async ({ request }) => {
+        resolutions.push((await request.json()) as FilterContextInput)
+        return HttpResponse.json({ error: 'isolate-consume' }, { status: 500 })
+      }),
+    )
+    renderWithProviders(<SquadLayout />)
+
+    await waitFor(() => expect(corps.length).toBeGreaterThan(0))
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 150))
+    })
+    expect(corps).toHaveLength(1)
+    expect(corps[0].selected_gamertags).toEqual(['Alice', 'Bob'])
+    expect(corps[0].picked_squad_session_labels).toEqual(['S1'])
+    expect(corps[0].filters?.sessions?.picked_sessions).toEqual(['S1'])
+    // Même verrou pour la résolution escouade : aucune ne part sur la session restaurée.
+    expect(resolutions.length).toBeGreaterThan(0)
+    expect(resolutions.every((r) => (r.sessions?.picked_sessions ?? []).join() === 'S1')).toBe(true)
   })
 })

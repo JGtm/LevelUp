@@ -14,12 +14,13 @@
  * « Analyser » — période, cascade, popover ouvert, preview live — vit ici, donc
  * sous `SquadFilterBar`. Ce qui s'applique en direct (coéquipiers, sessions
  * pickées, composition stricte) reste chez `SquadLayout`, qui en a besoin pour
- * sa requête `useTeammates`, et descend ici par props.
+ * sa requête `useTeammates`, et descend ici par props — les sessions pickées
+ * étant lues dans le store escouade, leur source unique (lot perf L4a, D4.1).
  *
  * Ce module ne rend rien : il tient l'état et les dérivés. Le rendu est dans
  * `SquadFilterBar.tsx`.
  */
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 
 import { useSquadFilterStore } from '@/stores/squadFilterStore'
 import { useFiltersPreview } from '@/features/filters/queries'
@@ -72,7 +73,7 @@ export interface SquadRailSessionCount {
 export interface SquadFilterBarStateInput {
   playerSlug: string
   locale: Locale
-  /** Sessions pickées (état immédiat, propriété de SquadLayout). */
+  /** Sessions pickées (store escouade, `filterContext.sessions.picked_sessions`). */
   pickedSquadSessionLabels: string[]
   /** Sessions de la composition courante (réponse teammates, source unique ADR 0033). */
   compositionSessions: SessionLabelEntry[]
@@ -140,14 +141,14 @@ export function useSquadFilterBarState({
   const t = getSquadText(locale)
 
   // ── Filtres en attente (période + cascade) — commités via « Analyser » ────
+  // Recalés sur le commité PENDANT le rendu, pas dans un effet : sinon la barre
+  // paraît « sale » un commit après chaque snap ou clic du rail (aperçu relancé).
   const [pending, setPending] = useState<FilterContextInput>(() => filterContext)
-  const lastSyncedHash = useRef(filterContextHash)
-  useEffect(() => {
-    if (filterContextHash !== lastSyncedHash.current) {
-      lastSyncedHash.current = filterContextHash
-      setPending(filterContext)
-    }
-  }, [filterContextHash, filterContext])
+  const [pendingBaseHash, setPendingBaseHash] = useState(filterContextHash)
+  if (pendingBaseHash !== filterContextHash) {
+    setPendingBaseHash(filterContextHash)
+    setPending(filterContext)
+  }
 
   const [activePopover, setActivePopover] = useState<SquadActivePopover>(null)
 
@@ -176,7 +177,10 @@ export function useSquadFilterBarState({
     () => deriveSquadPending(pending, pickedSquadSessionLabels),
     [pending, pickedSquadSessionLabels],
   )
-  const { data: previewResolve } = useFiltersPreview(playerSlug, squadPending)
+  // Aperçu seulement filtres EN ATTENTE (D4.3) ; sinon le résolu commité (squad) sert.
+  const isDirty = filterContextHash !== computePendingHash(pending)
+  const { data: previewData } = useFiltersPreview(playerSlug, squadPending, { enabled: isDirty })
+  const previewResolve = isDirty ? previewData : undefined
 
   const rawAvailable = previewResolve?.available_options ?? resolvedContext?.available_options
   const available = useMemo(() => cleanCascadeOptions(rawAvailable), [rawAvailable])
@@ -191,11 +195,9 @@ export function useSquadFilterBarState({
     (n, k) => n + ((pendingCascade[k] as string[] | undefined)?.length ?? 0),
     0,
   )
-  const isDirty = filterContextHash !== computePendingHash(pending)
 
   const analyser = () => {
     setFilterContext(pending)
-    lastSyncedHash.current = computePendingHash(pending)
   }
 
   // Labels des playlists/modes du filtre courant → tri-en-tête des escouades dont

@@ -9,7 +9,7 @@ import { describe, it, expect } from 'vitest'
 import { renderHook, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { usePlayerFriends, useFriendGamertags } from './queries'
+import { usePlayerFriends, useFriendGamertags, useFriendGamertagsState } from './queries'
 import { server } from '@/test/setup'
 import { queryKeys } from '@/lib/query/keys'
 
@@ -68,5 +68,34 @@ describe('usePlayerFriends', () => {
     const qc = newClient()
     const { result } = renderHook(() => useFriendGamertags('alice'), { wrapper: wrapper(qc) })
     expect(result.current).toEqual([])
+  })
+})
+
+// Lot perf L4a (D4.2, 2026-09-23) : l'Escouade doit distinguer « liste vide » (une
+// réponse, donc une composition) de « pas encore là » (aucune requête ne doit partir).
+describe('useFriendGamertagsState', () => {
+  it('pas encore là : ni succès ni échec ; arrivée VIDE : succès, liste vide', async () => {
+    server.use(
+      http.get('/api/v1/players/alice/friends', () =>
+        HttpResponse.json({ xuid: 'xuid-alice', gamertags: [], can_edit: true }),
+      ),
+    )
+    const qc = newClient()
+    const { result } = renderHook(() => useFriendGamertagsState('alice'), { wrapper: wrapper(qc) })
+    expect(result.current).toEqual({ gamertags: [], isSuccess: false, isError: false })
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    expect(result.current.gamertags).toEqual([])
+    expect(result.current.isError).toBe(false)
+  })
+
+  it('échec : isError, liste vide (même valeur que useFriendGamertags)', async () => {
+    server.use(
+      http.get('/api/v1/players/alice/friends', () => HttpResponse.json({ error: 'x' }, { status: 500 })),
+    )
+    const qc = newClient()
+    const { result } = renderHook(() => useFriendGamertagsState('alice'), { wrapper: wrapper(qc) })
+    await waitFor(() => expect(result.current.isError).toBe(true))
+    expect(result.current.gamertags).toEqual([])
+    expect(result.current.isSuccess).toBe(false)
   })
 })

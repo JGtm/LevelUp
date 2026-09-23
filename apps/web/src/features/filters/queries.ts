@@ -20,32 +20,56 @@ import { useSoloFilterStore } from '@/stores/soloFilterStore'
 import type { FilterStore } from '@/stores/createFilterStore'
 import type { FilterContextInput, FilterContextResolved } from '@/lib/api/types'
 
+/** Options de `useFiltersResolve` (lot perf L4a, 2026-09-23). */
+export interface FiltersResolveOptions {
+  /**
+   * `match_context` injecté dans le corps ET porté par la clé (jamais un résolu
+   * solo servi à l'escouade, ni l'inverse). L'escouade passe 'squad' : son résolu
+   * commité est le repli de l'aperçu, qui ne tourne plus que filtres en attente
+   * (D4.3) — il doit donc résoudre la même population que lui. Absent : corps
+   * inchangé, tous les matchs (le serveur lit l'absence comme 'all').
+   */
+  matchContext?: NonNullable<FilterContextInput['match_context']>
+  /** Faux : aucune requête (résolu solo hors pages Stats, D4.4). Défaut : vrai. */
+  enabled?: boolean
+}
+
 /**
  * Résout le filterContext courant côté backend (sessions disponibles + options
  * cascade) et synchronise le résultat dans le store contextuel passé en arg.
  *
  * À monter une fois par page joueur ; le PlayerLayout l'appelle pour le store
- * solo, SquadLayout pour le store squad. Le hook re-fetch automatiquement
+ * solo (actif seulement sous la barre solo, D4.4), SquadLayout pour le store
+ * squad (en match_context 'squad', D4.3). Le hook re-fetch automatiquement
  * quand `filterContextHash` change.
  *
  * Défaut : `useSoloFilterStore` (rétrocompat avec PlayerLayout).
  */
-export function useFiltersResolve(playerSlug: string, filterStore: FilterStore = useSoloFilterStore) {
-  const filterContext = filterStore((s) => s.filterContext)
+export function useFiltersResolve(
+  playerSlug: string,
+  filterStore: FilterStore = useSoloFilterStore,
+  { matchContext, enabled = true }: FiltersResolveOptions = {},
+) {
+  const storedFilterContext = filterStore((s) => s.filterContext)
   const filterContextHash = filterStore((s) => s.filterContextHash)
   const setResolvedContext = filterStore((s) => s.setResolvedContext)
   // Le titre courant scope la clé (cf. queryKeys.filtersResolve) : au switch de
   // titre la clé change → refetch des options du bon titre, jamais de serve périmé.
   const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
+  // Corps envoyé : le filterContext du store, avec `match_context` quand il est
+  // demandé (sans lui le corps est celui du store, tel quel).
+  const filterContext: FilterContextInput = matchContext
+    ? { ...storedFilterContext, match_context: matchContext }
+    : storedFilterContext
 
   const query = useQuery<FilterContextResolved>({
-    queryKey: queryKeys.filtersResolve(playerSlug, titleSlug, filterContextHash),
+    queryKey: queryKeys.filtersResolve(playerSlug, titleSlug, filterContextHash, matchContext ?? 'all'),
     queryFn: () =>
       api.post<FilterContextResolved>(
         `/players/${playerSlug}/filters/resolve`,
         filterContext satisfies FilterContextInput,
       ),
-    enabled: !!playerSlug,
+    enabled: !!playerSlug && enabled,
     staleTime: 5 * 60 * 1000,
   })
 
@@ -90,12 +114,15 @@ export function useFollowLatestSession(
   playerSlug: string,
   filterStore: FilterStore,
   scope: 'solo' | 'squad',
+  // Faux : aucun snap (hors pages Stats, D4.4 — le résolu n'y est pas rafraîchi,
+  // `resolvedContext` peut y dater d'une autre page, voire d'un autre joueur).
+  { enabled = true }: { enabled?: boolean } = {},
 ) {
   const resolvedContext = filterStore((s) => s.resolvedContext)
   const isAutoSnapping = filterStore((s) => s.isAutoSnappingToLatest)
 
   useEffect(() => {
-    if (!resolvedContext) return
+    if (!enabled || !resolvedContext) return
     const all = resolvedContext.session_options?.all_sessions ?? []
     const latest = all.find((s) => (scope === 'squad' ? s.is_squad : !s.is_squad))
     if (!latest) return
@@ -128,17 +155,27 @@ export function useFollowLatestSession(
     autoSnapToLatestSession(latest, true)
     // filterContext/lastKnownLatestSessionId sont lus via getState() (hors closure)
     // pour ne PAS re-déclencher l'effet à chaque frappe de filtre ; les vrais
-    // déclencheurs sont resolvedContext, isAutoSnapping et playerSlug (changement
-    // de joueur). Le tableau de deps reste donc exhaustif côté react-hooks.
-  }, [resolvedContext, isAutoSnapping, playerSlug, scope, filterStore])
+    // déclencheurs sont resolvedContext, isAutoSnapping, playerSlug (changement
+    // de joueur) et enabled (retour sur une page Stats). Le tableau de deps reste
+    // donc exhaustif côté react-hooks.
+  }, [resolvedContext, isAutoSnapping, playerSlug, scope, filterStore, enabled])
 }
 
 /**
  * Résout un FilterContextInput arbitraire (état pending) sans écrire dans le store.
  * Utilisé pour le feedback immédiat sur les incompatibilités de filtres dans le
  * dropdown, avant que l'utilisateur clique sur Analyser.
+ *
+ * `enabled` : l'Escouade ne l'active que si des filtres sont EN ATTENTE (D4.3,
+ * 2026-09-23) — sinon le résolu commité dit déjà la même chose. Désactivée, la
+ * requête peut encore rendre la donnée d'une clé précédente (placeholder
+ * `keepPreviousData`) : l'appelant qui la désactive doit l'ignorer.
  */
-export function useFiltersPreview(playerSlug: string, input: FilterContextInput) {
+export function useFiltersPreview(
+  playerSlug: string,
+  input: FilterContextInput,
+  { enabled = true }: { enabled?: boolean } = {},
+) {
   // Le titre courant scope la clé (cf. queryKeys.filtersPreview) — même motif que
   // useFiltersResolve : pas de preview périmé d'un autre titre après bascule.
   const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
@@ -158,7 +195,7 @@ export function useFiltersPreview(playerSlug: string, input: FilterContextInput)
     queryKey: queryKeys.filtersPreview(playerSlug, titleSlug, hash),
     queryFn: () =>
       api.post<FilterContextResolved>(`/players/${playerSlug}/filters/resolve`, input),
-    enabled: !!playerSlug,
+    enabled: !!playerSlug && enabled,
     staleTime: 30 * 1000,
     placeholderData: keepPreviousData,
   })
