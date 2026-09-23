@@ -4,12 +4,14 @@ package handlers
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"log/slog"
 	"net/http"
 
 	"github.com/danielgtaylor/huma/v2"
 
 	"levelup/go-api/internal/api/humacore"
+	"levelup/go-api/internal/platform/dblease"
 )
 
 // Clés JSON partagées entre handlers (params actor logs, response error envelopes).
@@ -61,6 +63,57 @@ func errDBBusy() error {
 			"database is currently busy, please retry"),
 		http.Header{headerRetryAfter: []string{"5"}},
 	)
+}
+
+// Réponse « client parti » des handlers de pages (plan perf du 2026-09-23, D3.2).
+const (
+	// statusClientClosed : 499, convention nginx « Client Closed Request », que Huma
+	// emploie lui-même quand l'écriture d'une réponse échoue sur un client déconnecté.
+	// Personne ne lit cette réponse : le statut sert au journal d'accès et aux compteurs
+	// du middleware, où il compte en 4xx — jamais en 5xx, ce n'est pas une panne serveur.
+	statusClientClosed = 499
+	codeClientClosed   = "client_closed"
+)
+
+// mapServiceError traduit l'erreur d'un service de page en réponse HTTP (plan perf du
+// 2026-09-23, D3.2). Trois issues, testées dans cet ordre :
+//
+//  1. le client est parti (contexte de la requête annulé : onglet fermé, requête
+//     remplacée — le front transmet l'AbortSignal de TanStack Query à fetch) : 499
+//     `client_closed`, journalisé en DEBUG. Testé EN PREMIER : une attente de verrou
+//     interrompue par l'annulation remonte en dblease.ErrDBLocked, et un 503 à un
+//     client disparu ne servirait qu'à gonfler les compteurs 5xx ;
+//  2. base momentanément indisponible (isDBBusy) : errDBBusy(), 503 + Retry-After,
+//     journalisé en WARN — transitoire, le front rejoue ;
+//  3. sinon : 500 avec le code propre à la page, journalisé en ERROR (le client ne
+//     reçoit que le message générique, cf. humacore.NewError).
+func mapServiceError(ctx context.Context, err error, code string) error {
+	switch {
+	case isClientClosed(ctx):
+		slog.DebugContext(ctx, "page: requête abandonnée par le client", jsonKeyCode, code, "err", err)
+		return humacore.NewError(statusClientClosed, codeClientClosed, "client closed request")
+	case isDBBusy(err):
+		slog.WarnContext(ctx, "page: base occupée", jsonKeyCode, code, "err", err)
+		return errDBBusy()
+	default:
+		slog.ErrorContext(ctx, "page: erreur service", jsonKeyCode, code, "err", err)
+		return humacore.NewError(http.StatusInternalServerError, code, err.Error())
+	}
+}
+
+// isClientClosed : la requête a été annulée par le client. Seul le contexte DE LA
+// REQUÊTE fait foi : un context.Canceled né d'une annulation interne (un errgroup qui
+// arrête ses goroutines sœurs après une erreur) alors que le client attend toujours
+// reste une erreur serveur, pas un départ du client.
+func isClientClosed(ctx context.Context) bool {
+	return errors.Is(ctx.Err(), context.Canceled)
+}
+
+// isDBBusy : l'erreur signale une base momentanément indisponible — verrou d'écriture
+// non obtenu (dblease.ErrDBLocked) ou bascule RO/RW du provider partagé pendant une
+// synchronisation (isSharedSwapContention, home.go : un seul prédicat pour le paquet).
+func isDBBusy(err error) bool {
+	return errors.Is(err, dblease.ErrDBLocked) || isSharedSwapContention(err)
 }
 
 // writeJSON sérialise v en JSON et l'écrit dans w avec le code HTTP donné.

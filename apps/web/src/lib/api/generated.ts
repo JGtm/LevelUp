@@ -13912,6 +13912,26 @@ export interface components {
                 "application/json": components["schemas"]["ApiError"];
             };
         };
+        /**
+         * @description Requête abandonnée par le client avant la réponse (contexte annulé : onglet fermé,
+         *     requête remplacée). Convention nginx 499 : aucun client ne lit cette réponse, le
+         *     statut sert au journal d'accès et aux compteurs (classe 4xx, jamais 5xx).
+         */
+        ClientClosed: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                /**
+                 * @example {
+                 *       "code": "client_closed",
+                 *       "message": "client closed request",
+                 *       "retryable": false
+                 *     }
+                 */
+                "application/json": components["schemas"]["ApiError"];
+            };
+        };
         /** @description Conflit avec l'état courant de la ressource */
         Conflict: {
             headers: {
@@ -13923,6 +13943,27 @@ export interface components {
                  *       "code": "last_active_title",
                  *       "message": "Au moins un titre doit rester actif pour ce joueur.",
                  *       "retryable": false
+                 *     }
+                 */
+                "application/json": components["schemas"]["ApiError"];
+            };
+        };
+        /**
+         * @description Base momentanément occupée (verrou d'écriture, ou bascule RO/RW du provider
+         *     partagé pendant une synchronisation) : transitoire, réessayer après `Retry-After`.
+         */
+        DbBusy: {
+            headers: {
+                /** @description Délai conseillé avant un nouvel essai, en secondes */
+                "Retry-After"?: number;
+                [name: string]: unknown;
+            };
+            content: {
+                /**
+                 * @example {
+                 *       "code": "db_busy",
+                 *       "message": "database is currently busy, please retry",
+                 *       "retryable": true
                  *     }
                  */
                 "application/json": components["schemas"]["ApiError"];
@@ -17971,6 +18012,8 @@ export interface operations {
             };
             400: components["responses"]["BadRequest"];
             404: components["responses"]["NotFound"];
+            499: components["responses"]["ClientClosed"];
+            503: components["responses"]["DbBusy"];
             /** @description Error */
             default: {
                 headers: {
@@ -18009,7 +18052,9 @@ export interface operations {
             };
             400: components["responses"]["BadRequest"];
             404: components["responses"]["NotFound"];
+            499: components["responses"]["ClientClosed"];
             500: components["responses"]["InternalError"];
+            503: components["responses"]["DbBusy"];
             /** @description Error */
             default: {
                 headers: {
@@ -19143,7 +19188,9 @@ export interface operations {
                 };
             };
             404: components["responses"]["NotFound"];
+            499: components["responses"]["ClientClosed"];
             500: components["responses"]["InternalError"];
+            503: components["responses"]["DbBusy"];
             /** @description Error */
             default: {
                 headers: {
@@ -19180,7 +19227,9 @@ export interface operations {
                 };
             };
             404: components["responses"]["NotFound"];
+            499: components["responses"]["ClientClosed"];
             500: components["responses"]["InternalError"];
+            503: components["responses"]["DbBusy"];
             /** @description Error */
             default: {
                 headers: {
@@ -19214,7 +19263,9 @@ export interface operations {
                 };
             };
             404: components["responses"]["NotFound"];
+            499: components["responses"]["ClientClosed"];
             500: components["responses"]["InternalError"];
+            503: components["responses"]["DbBusy"];
             /** @description Error */
             default: {
                 headers: {
@@ -19254,13 +19305,22 @@ export interface operations {
                 };
             };
             404: components["responses"]["NotFound"];
+            499: components["responses"]["ClientClosed"];
             500: components["responses"]["InternalError"];
-            /** @description MatchHistoryService factory indisponible (cas test) */
+            /**
+             * @description Base momentanément occupée (`db_busy`, réessayer après `Retry-After`), ou
+             *     MatchHistoryService non câblé (`match_history_unavailable`, cas test, sans
+             *     `Retry-After`).
+             */
             503: {
                 headers: {
+                    /** @description Délai conseillé avant un nouvel essai, en secondes */
+                    "Retry-After"?: number;
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
             };
             /** @description Error */
             default: {
@@ -19295,7 +19355,9 @@ export interface operations {
                 };
             };
             404: components["responses"]["NotFound"];
+            499: components["responses"]["ClientClosed"];
             500: components["responses"]["InternalError"];
+            503: components["responses"]["DbBusy"];
             /** @description Error */
             default: {
                 headers: {
@@ -19329,7 +19391,9 @@ export interface operations {
                 };
             };
             404: components["responses"]["NotFound"];
+            499: components["responses"]["ClientClosed"];
             500: components["responses"]["InternalError"];
+            503: components["responses"]["DbBusy"];
             /** @description Error */
             default: {
                 headers: {
@@ -19363,7 +19427,9 @@ export interface operations {
                 };
             };
             404: components["responses"]["NotFound"];
+            499: components["responses"]["ClientClosed"];
             500: components["responses"]["InternalError"];
+            503: components["responses"]["DbBusy"];
             /** @description Error */
             default: {
                 headers: {
@@ -19506,7 +19572,9 @@ export interface operations {
             };
             400: components["responses"]["BadRequest"];
             404: components["responses"]["NotFound"];
+            499: components["responses"]["ClientClosed"];
             500: components["responses"]["InternalError"];
+            503: components["responses"]["DbBusy"];
             /** @description Error */
             default: {
                 headers: {
@@ -19545,7 +19613,9 @@ export interface operations {
             };
             400: components["responses"]["BadRequest"];
             404: components["responses"]["NotFound"];
+            499: components["responses"]["ClientClosed"];
             500: components["responses"]["InternalError"];
+            503: components["responses"]["DbBusy"];
             /** @description Error */
             default: {
                 headers: {
@@ -19585,7 +19655,24 @@ export interface operations {
                 };
             };
             404: components["responses"]["NotFound"];
+            499: components["responses"]["ClientClosed"];
             500: components["responses"]["InternalError"];
+            /**
+             * @description Page momentanément indisponible, réessayer après `Retry-After` :
+             *     `home_page_db_busy` (bascule RO/RW d'une synchronisation),
+             *     `home_page_db_recovering` (connexion en cours de récupération) ou
+             *     `db_busy` (verrou d'écriture).
+             */
+            503: {
+                headers: {
+                    /** @description Délai conseillé avant un nouvel essai, en secondes */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
             /** @description Error */
             default: {
                 headers: {
@@ -19953,6 +20040,8 @@ export interface operations {
                 };
             };
             404: components["responses"]["NotFound"];
+            499: components["responses"]["ClientClosed"];
+            503: components["responses"]["DbBusy"];
             /** @description Error */
             default: {
                 headers: {
@@ -19991,6 +20080,8 @@ export interface operations {
             };
             400: components["responses"]["BadRequest"];
             404: components["responses"]["NotFound"];
+            499: components["responses"]["ClientClosed"];
+            503: components["responses"]["DbBusy"];
             /** @description Error */
             default: {
                 headers: {
@@ -20165,6 +20256,8 @@ export interface operations {
                 };
             };
             404: components["responses"]["NotFound"];
+            499: components["responses"]["ClientClosed"];
+            503: components["responses"]["DbBusy"];
             /** @description Error */
             default: {
                 headers: {
@@ -20202,6 +20295,8 @@ export interface operations {
                 };
             };
             404: components["responses"]["NotFound"];
+            499: components["responses"]["ClientClosed"];
+            503: components["responses"]["DbBusy"];
             /** @description Error */
             default: {
                 headers: {
@@ -20235,6 +20330,8 @@ export interface operations {
                 };
             };
             400: components["responses"]["BadRequest"];
+            499: components["responses"]["ClientClosed"];
+            503: components["responses"]["DbBusy"];
             /** @description Error */
             default: {
                 headers: {

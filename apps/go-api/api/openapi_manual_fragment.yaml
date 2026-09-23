@@ -11,7 +11,7 @@
 #   3. la sémantique d'opération non portable en tag struct : description
 #      d'opération, descriptions de réponse, réponses d'erreur (4xx/5xx),
 #      descriptions et enum/default de paramètres ;
-#   4. les 5 exemples d'erreur au niveau réponse (components.responses) ;
+#   4. les exemples d'erreur au niveau réponse (components.responses) ;
 #   5. les descriptions de schéma RACINE (Huma n'a aucun tag type-level) ;
 #   6. les schémas SANS type Go généré par Huma (entrées décodées à la main,
 #      routes chi-brut, legacy) ;
@@ -200,6 +200,10 @@ paths:
           $ref: '#/components/responses/NotFound'
         '500':
           $ref: '#/components/responses/InternalError'
+        '499':
+          $ref: '#/components/responses/ClientClosed'
+        '503':
+          $ref: '#/components/responses/DbBusy'
   /players/{player_slug}/filters/match-ids:
     post:
       parameters:
@@ -219,6 +223,10 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '404':
           $ref: '#/components/responses/NotFound'
+        '499':
+          $ref: '#/components/responses/ClientClosed'
+        '503':
+          $ref: '#/components/responses/DbBusy'
   /players/{player_slug}/pages/career:
     get:
       description: |
@@ -240,6 +248,10 @@ paths:
           $ref: '#/components/responses/NotFound'
         '500':
           $ref: '#/components/responses/InternalError'
+        '499':
+          $ref: '#/components/responses/ClientClosed'
+        '503':
+          $ref: '#/components/responses/DbBusy'
   /players/{player_slug}/pages/career/top-matches:
     get:
       description: Retourne les meilleurs et pires matchs du joueur (tous critères confondus).
@@ -254,6 +266,10 @@ paths:
           $ref: '#/components/responses/NotFound'
         '500':
           $ref: '#/components/responses/InternalError'
+        '499':
+          $ref: '#/components/responses/ClientClosed'
+        '503':
+          $ref: '#/components/responses/DbBusy'
   /players/{player_slug}/pages/career/encounters:
     get:
       description: Retourne les adversaires et coéquipiers fréquents.
@@ -268,6 +284,10 @@ paths:
           $ref: '#/components/responses/NotFound'
         '500':
           $ref: '#/components/responses/InternalError'
+        '499':
+          $ref: '#/components/responses/ClientClosed'
+        '503':
+          $ref: '#/components/responses/DbBusy'
   /players/{player_slug}/pages/career/highlight-matches:
     get:
       description: |
@@ -307,8 +327,22 @@ paths:
           $ref: '#/components/responses/NotFound'
         '500':
           $ref: '#/components/responses/InternalError'
+        '499':
+          $ref: '#/components/responses/ClientClosed'
         '503':
-          description: MatchHistoryService factory indisponible (cas test)
+          description: |
+            Base momentanément occupée (`db_busy`, réessayer après `Retry-After`), ou
+            MatchHistoryService non câblé (`match_history_unavailable`, cas test, sans
+            `Retry-After`).
+          headers:
+            Retry-After:
+              description: Délai conseillé avant un nouvel essai, en secondes
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /players/{player_slug}/pages/career/top-encounters:
     get:
       description: |
@@ -328,6 +362,10 @@ paths:
           $ref: '#/components/responses/NotFound'
         '500':
           $ref: '#/components/responses/InternalError'
+        '499':
+          $ref: '#/components/responses/ClientClosed'
+        '503':
+          $ref: '#/components/responses/DbBusy'
   /players/{player_slug}/pages/career/rivals:
     get:
       description: |
@@ -348,6 +386,10 @@ paths:
           $ref: '#/components/responses/NotFound'
         '500':
           $ref: '#/components/responses/InternalError'
+        '499':
+          $ref: '#/components/responses/ClientClosed'
+        '503':
+          $ref: '#/components/responses/DbBusy'
   /players/{player_slug}/pages/career/csrs:
     get:
       description: |
@@ -375,6 +417,10 @@ paths:
           $ref: '#/components/responses/NotFound'
         '500':
           $ref: '#/components/responses/InternalError'
+        '499':
+          $ref: '#/components/responses/ClientClosed'
+        '503':
+          $ref: '#/components/responses/DbBusy'
   /players/{player_slug}/patterns:
     get:
       description: |
@@ -534,6 +580,10 @@ paths:
           $ref: '#/components/responses/NotFound'
         '500':
           $ref: '#/components/responses/InternalError'
+        '499':
+          $ref: '#/components/responses/ClientClosed'
+        '503':
+          $ref: '#/components/responses/DbBusy'
   /players/{player_slug}/pages/explorer/player-query:
     post:
       description: Retourne le profil d'encounter et les matchs communs avec un joueur cible.
@@ -556,6 +606,10 @@ paths:
           $ref: '#/components/responses/NotFound'
         '500':
           $ref: '#/components/responses/InternalError'
+        '499':
+          $ref: '#/components/responses/ClientClosed'
+        '503':
+          $ref: '#/components/responses/DbBusy'
   /players/{player_slug}/matches/{match_id}:
     get:
       description: |
@@ -805,6 +859,23 @@ paths:
           $ref: '#/components/responses/NotFound'
         '500':
           $ref: '#/components/responses/InternalError'
+        '499':
+          $ref: '#/components/responses/ClientClosed'
+        '503':
+          description: |
+            Page momentanément indisponible, réessayer après `Retry-After` :
+            `home_page_db_busy` (bascule RO/RW d'une synchronisation),
+            `home_page_db_recovering` (connexion en cours de récupération) ou
+            `db_busy` (verrou d'écriture).
+          headers:
+            Retry-After:
+              description: Délai conseillé avant un nouvel essai, en secondes
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /players/{player_slug}/pages/sessions:
     get:
       parameters:
@@ -816,6 +887,10 @@ paths:
           description: Liste des sessions avec stats agrégées
         '404':
           $ref: '#/components/responses/NotFound'
+        '499':
+          $ref: '#/components/responses/ClientClosed'
+        '503':
+          $ref: '#/components/responses/DbBusy'
   /players/{player_slug}/pages/sessions/detail:
     post:
       parameters:
@@ -836,6 +911,10 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '404':
           $ref: '#/components/responses/NotFound'
+        '499':
+          $ref: '#/components/responses/ClientClosed'
+        '503':
+          $ref: '#/components/responses/DbBusy'
   /players/{player_slug}/pages/stats/query:
     post:
       parameters:
@@ -858,6 +937,10 @@ paths:
           description: Données séries temporelles
         '400':
           $ref: '#/components/responses/BadRequest'
+        '499':
+          $ref: '#/components/responses/ClientClosed'
+        '503':
+          $ref: '#/components/responses/DbBusy'
   /players/{player_slug}/pages/squad:
     get:
       parameters:
@@ -886,6 +969,10 @@ paths:
           description: Analyse coéquipiers avec statistiques
         '404':
           $ref: '#/components/responses/NotFound'
+        '499':
+          $ref: '#/components/responses/ClientClosed'
+        '503':
+          $ref: '#/components/responses/DbBusy'
   /players/{player_slug}/pages/synthesis:
     post:
       parameters:
@@ -897,6 +984,10 @@ paths:
           description: Synthèse globale (heatmap, top semaines, comparaison KPIs)
         '404':
           $ref: '#/components/responses/NotFound'
+        '499':
+          $ref: '#/components/responses/ClientClosed'
+        '503':
+          $ref: '#/components/responses/DbBusy'
   /players/{player_slug}/pages/citations:
     post:
       parameters:
@@ -2316,6 +2407,36 @@ components:
           example:
             code: last_active_title
             message: Au moins un titre doit rester actif pour ce joueur.
+            retryable: false
+    DbBusy:
+      description: |
+        Base momentanément occupée (verrou d'écriture, ou bascule RO/RW du provider
+        partagé pendant une synchronisation) : transitoire, réessayer après `Retry-After`.
+      headers:
+        Retry-After:
+          description: Délai conseillé avant un nouvel essai, en secondes
+          schema:
+            type: integer
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+          example:
+            code: db_busy
+            message: database is currently busy, please retry
+            retryable: true
+    ClientClosed:
+      description: |
+        Requête abandonnée par le client avant la réponse (contexte annulé : onglet fermé,
+        requête remplacée). Convention nginx 499 : aucun client ne lit cette réponse, le
+        statut sert au journal d'accès et aux compteurs (classe 4xx, jamais 5xx).
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+          example:
+            code: client_closed
+            message: client closed request
             retryable: false
   schemas:
     # Nullabilité d'un POINTEUR VERS STRUCT : Huma émet un `$ref` nu (il ne sait pas

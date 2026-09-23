@@ -94,8 +94,7 @@ func (h *SessionPageHandler) GetPage(ctx context.Context, in *sessionPageInput) 
 				"player_slug", slug, "session_label", derefReqString(req.SessionLabel))
 			return nil, humacore.NewError(http.StatusNotFound, "session_not_found", apiErr.Message)
 		}
-		slog.ErrorContext(ctx, "session page: erreur service", "player_slug", slug, "err", err)
-		return nil, humacore.NewError(http.StatusInternalServerError, "session_page_error", err.Error())
+		return nil, mapServiceError(ctx, err, "session_page_error")
 	}
 
 	slog.InfoContext(ctx, "session page: générée",
