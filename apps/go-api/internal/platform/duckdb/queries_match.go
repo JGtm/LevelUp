@@ -9,6 +9,8 @@ import "levelup/go-api/internal/analysis"
 // AUCUN GAMERTAG EN SQL (lot perf L7, 2026-09-23) : la jointure sur v_gamertag_lookup
 // matérialisait la vue entière à chaque lecture. GetEncounters nomme les lignes par l'annuaire
 // de la lecture (squad_repo_annuaire.go) sur l'historique du joueur : même cascade, bots compris.
+// ORDRE TOTAL (lot perf L9-go, revue D) : match_count DESC puis p2.xuid ASC — sans départage, les
+// ex aequo et la coupe du LIMIT 50 parmi eux variaient d'une lecture à l'autre (L7, découverte 5).
 //
 // Exécutée sur SharedReader (ADR 0016) — pas de préfixe `shared.`.
 const Q10Encounters = `
@@ -24,7 +26,7 @@ JOIN match_participants p2
 WHERE p1.xuid = ?` + campaignExclusionToken + `
 GROUP BY p2.xuid
 HAVING COUNT(*) >= 2
-ORDER BY match_count DESC
+ORDER BY match_count DESC, p2.xuid ASC
 LIMIT 50`
 
 // Q12 : Match view — scoreboard complet d'un match.

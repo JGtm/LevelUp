@@ -184,6 +184,13 @@ ORDER BY ` + StartTimeCanonicalSQL("r") + ` DESC`
 // Aucun gamertag en SQL (lot perf L2, 2026-09-23) : il vient de l'annuaire de la lecture
 // (squad_repo_annuaire.go) — même cascade que v_gamertag_lookup, jusqu'au libellé masqué
 // « Joueur #### » d'un xuid qu'aucune source ne nomme — sans matérialiser la vue.
+//
+// ORDRE TOTAL (lot perf L9-go, 2026-09-23, revue adversariale D) : match_id, time_ms, puis
+// xuid, puis event_type. À temps égal, Premier sang et Première victime (firstByTime),
+// Finisseur et Boulet (lastByTimeFiltered), Top Gun (tri stable puis premier au seuil)
+// retiennent le premier événement dans l'ordre des lignes, que choisissait le plan de DuckDB
+// (découverte (2) du lot L8). Règle en vigueur : à égalité de temps, le plus petit xuid, puis
+// le plus petit type ; deux lignes égales sur les quatre clés sont indiscernables.
 const Q32SquadImpactEventsTemplate = `
 SELECT
     he.match_id,
@@ -192,7 +199,7 @@ SELECT
     COALESCE(he.time_ms, 0)           AS time_ms
 FROM highlight_events he
 WHERE he.match_id IN (%s)
-ORDER BY he.match_id, he.time_ms`
+ORDER BY he.match_id, he.time_ms, he.xuid, he.event_type`
 
 // Q32cSquadKVPairsTemplate : lecture batch des paires killer→victim horodatées
 // (killer_victim_pairs) pour une liste de match_ids. Source du fallback
@@ -217,6 +224,11 @@ ORDER BY he.match_id, he.time_ms`
 // `COALESCE(xuid, ”)` fusionnerait tous les bots en UN acteur de chaîne vide ; la seule
 // question qu'un event d'impact escouade sait poser porte sur des JOUEURS, donc on écarte au
 // plus près de la source, où l'intention est lisible.
+//
+// ORDRE TOTAL (lot perf L9-go, 2026-09-23, revue adversariale D) : match_id, time_ms, puis
+// tueur, puis victime — les events synthétisés de ces paires alimentent les mêmes badges « au
+// premier / au dernier » que Q32 (ci-dessus). Deux paires égales sur les quatre clés portent
+// les mêmes colonnes (kill_count = 1) : indiscernables.
 const Q32cSquadKVPairsTemplate = `
 SELECT
     kv.match_id,
@@ -228,7 +240,7 @@ FROM ` + KillEventsCanonicalTable + ` kv
 WHERE kv.match_id IN (%s)
   AND kv.feed_killer_xuid IS NOT NULL
   AND kv.victim_xuid      IS NOT NULL
-ORDER BY kv.match_id, kv.time_ms`
+ORDER BY kv.match_id, kv.time_ms, kv.feed_killer_xuid, kv.victim_xuid`
 
 // Q32dSquadAssistPairsTemplate : les paires (ASSISTANT -> TUEUR ASSISTÉ) INTERNES à
 // l'escouade sur une sélection de matchs, et la COUVERTURE de la mesure.
