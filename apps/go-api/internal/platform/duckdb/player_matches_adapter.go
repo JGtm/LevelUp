@@ -49,9 +49,12 @@ func (a *PlayerMatchesAdapter) LoadPlayerMatches(
 	// canonical (Stats, Session, SessionCompare, etc.) affichent les libellés en
 	// EN. Le Home/Synthesis l'appellent déjà via leurs propres repos ; on le
 	// centralise ici pour tous les consommateurs du port. Best-effort : on
-	// n'échoue pas le chargement si l'enrichissement échoue (DB metadata absente…).
+	// n'échoue pas le chargement si l'enrichissement échoue (DB metadata absente…),
+	// mais chaque étape en échec le consigne (noteDegraded) : CachedPlayerMatchesRepo
+	// ne met pas en cache des lignes aux libellés incomplets (player_read_cache.go).
 	if err := NewHomeRepo(a.repo.pdb).EnrichCanonicalAssetTranslations(ctx, rows); err != nil {
 		slog.WarnContext(ctx, "PlayerMatchesAdapter: FR asset enrichment failed", "err", err)
+		noteDegraded(ctx, "asset_enrichment")
 	}
 	return rows, nil
 }

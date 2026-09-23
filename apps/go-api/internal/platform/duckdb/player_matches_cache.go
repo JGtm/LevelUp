@@ -5,7 +5,9 @@
 // CachedPlayerMatchesRepo est le port.PlayerMatchesRepository câblé par le registre
 // (wire.playerMatchesAdapterFor). Il enveloppe PlayerMatchesAdapter, donc met en cache
 // les lignes APRÈS l'enrichissement FR/EN des libellés : un hit ne relance ni les
-// quatre requêtes du chargement ni les lectures metadata de l'enrichissement.
+// quatre requêtes du chargement ni les lectures metadata de l'enrichissement. Un
+// enrichissement en échec (étape consignée par noteDegraded) ou une requête annulée
+// en cours de chargement rend les lignes dégradées : jamais mises en cache.
 //
 // Clé : (xuid, titre, base) + une variante par jeu de filtres (filtersCacheKey,
 // SHA-256 du JSON canonique des filtres, slices triés). TTL, coalescence,

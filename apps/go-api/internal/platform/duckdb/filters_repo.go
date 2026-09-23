@@ -30,7 +30,9 @@ type filterRowsLoader interface {
 // LoadMatchesForFilters sont gardées par (xuid, titre, base), TTL 60 s, invalidées
 // par la fin du sync du joueur (cf. player_read_cache.go). Les deux ou trois
 // `/filters/resolve` d'une page (solo, escouade, aperçu) ne lisent plus la base
-// qu'une fois : le contexte est appliqué en Go sur les mêmes lignes.
+// qu'une fois : le contexte est appliqué en Go sur les mêmes lignes. Des lignes dont
+// une traduction best-effort a échoué, ou lues par une requête annulée en cours de
+// route, ne sont jamais gardées (chargement dégradé, player_read_cache.go).
 type CachedFiltersRepo struct {
 	*FiltersRepo // comptes et listes (non cachés), délégués tels quels
 

@@ -22,6 +22,18 @@
 // précéder l'écriture), et une requête arrivée après l'invalidation ne se greffe pas
 // sur lui (la clé de coalescence porte la génération).
 //
+// # Chargement dégradé
+//
+// Les chargeurs cachés ont des étapes best-effort (traductions FR/EN, noms d'assets,
+// images de carte) qui rendent des lignes incomplètes SANS erreur quand elles
+// échouent. Un tel chargement n'est jamais mis en cache, ni partagé aux requêtes qui
+// attendaient le même vol (elles rechargent pour leur compte) : sinon une requête
+// annulée ou un échec ponctuel de metadata servait des libellés non traduits pendant
+// tout le TTL (revue adversariale de la campagne perf, lot L9-go). Deux signaux :
+// l'étape en échec le consigne (noteDegraded, dans la sonde que fetch pose sur le
+// contexte du chargement), et une requête terminée pendant le chargement le rend
+// dégradé d'office (une étape a pu avaler l'annulation).
+//
 // # Lignes partagées
 //
 // La valeur cachée n'est JAMAIS rendue telle quelle : chaque appelant reçoit une
@@ -32,9 +44,11 @@ package duckdb
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"slices"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -135,7 +149,9 @@ func newPlayerReadCache[V any](name string, clone func(V) V) *playerReadCache[V]
 // load rend une copie de la valeur cachée pour (scope, variant), ou la charge via
 // loadFn. Pose un marqueur timing de durée nulle `<name>_hit` ou `<name>_miss` : la
 // durée du chargement reste portée par la section de l'appelant (les sections
-// timing sont des feuilles). Une erreur de chargement n'est pas cachée.
+// timing sont des feuilles). Une erreur de chargement n'est pas cachée ; un
+// chargement dégradé non plus (fetch) : la requête qui le portait le reçoit tel quel,
+// sans erreur (best-effort, comme sans cache), celles qui l'attendaient rechargent.
 func (c *playerReadCache[V]) load(
 	ctx context.Context,
 	scope playerCacheScope,
@@ -151,23 +167,27 @@ func (c *playerReadCache[V]) load(
 
 	gen := c.generation(scope.playerIdentity)
 	flightKey := key + "\x00" + strconv.FormatUint(gen, 10)
-	v, err, shared := c.flights.Do(flightKey, func() (any, error) {
+	porteur := false // cette requête a-t-elle porté le chargement (la fonction du vol) ?
+	v, err, _ := c.flights.Do(flightKey, func() (any, error) {
+		porteur = true
 		return c.fetch(ctx, key, scope.playerIdentity, gen, loadFn)
 	})
-	if err != nil && shared && ctx.Err() == nil && isContextEnd(err) {
-		// Le chargement partagé a été annulé avec la requête qui le portait ; celle-ci,
-		// toujours vivante, recharge pour son propre compte.
+	if !porteur && ctx.Err() == nil && (isContextEnd(err) || errors.Is(err, errDegraded)) {
+		// Le chargement partagé a été annulé avec la requête qui le portait, ou il est
+		// dégradé : la requête qui l'attendait, toujours vivante, recharge pour son compte.
 		v, err = c.fetch(ctx, key, scope.playerIdentity, gen, loadFn)
 	}
-	if err != nil {
+	if err != nil && !errors.Is(err, errDegraded) {
 		var zero V
 		return zero, err
 	}
 	return c.clone(v.(V)), nil
 }
 
-// fetch charge la valeur et la met en cache si aucune invalidation n'est survenue
-// depuis la génération `gen` lue avant le chargement.
+// fetch charge la valeur et la met en cache si elle est COMPLÈTE et si aucune
+// invalidation n'est survenue depuis la génération `gen` lue avant le chargement.
+// Une valeur dégradée — une étape best-effort a échoué (noteDegraded), ou la requête a
+// pris fin pendant le chargement — est rendue avec errDegraded, jamais mise en cache.
 func (c *playerReadCache[V]) fetch(
 	ctx context.Context,
 	key string,
@@ -175,12 +195,79 @@ func (c *playerReadCache[V]) fetch(
 	gen uint64,
 	loadFn func(context.Context) (V, error),
 ) (any, error) {
-	v, err := loadFn(ctx)
+	probeCtx, probe := withDegradationProbe(ctx)
+	v, err := loadFn(probeCtx)
 	if err != nil {
 		return nil, err
 	}
+	if cause := probe.cause(ctx); cause != nil {
+		timing.FromContext(ctx).Section(c.name + "_degraded")()
+		slog.DebugContext(ctx, "cache des lectures joueur : chargement dégradé, non mis en cache",
+			"cache", c.name, "cause", cause)
+		return v, fmt.Errorf("%w: %w", errDegraded, cause)
+	}
 	c.store(key, id, gen, v)
 	return v, nil
+}
+
+// errDegraded : valeur rendue par un chargement dégradé (cf. en-tête). Interne au
+// cache : elle n'en sort jamais (la requête porteuse reçoit la valeur sans erreur).
+var errDegraded = errors.New("chargement degrade : non mis en cache")
+
+// degradationProbeKey : clé de contexte de la sonde du chargement mis en cache en cours.
+type degradationProbeKey struct{}
+
+// degradationProbe consigne les étapes best-effort en échec d'un chargement.
+type degradationProbe struct {
+	mu    sync.Mutex
+	steps []string
+}
+
+// withDegradationProbe pose une sonde neuve sur le contexte du chargement.
+func withDegradationProbe(ctx context.Context) (context.Context, *degradationProbe) {
+	p := &degradationProbe{}
+	return context.WithValue(ctx, degradationProbeKey{}, p), p
+}
+
+// noteDegraded consigne l'échec de l'étape best-effort `step` dans la sonde du
+// chargement mis en cache en cours : sa valeur ne sera ni mise en cache ni partagée.
+// Sans effet hors d'un tel chargement (lecture non cachée). L'appelant journalise
+// l'erreur lui-même (ou passe par bestEffortFailed).
+func noteDegraded(ctx context.Context, step string) {
+	if p, ok := ctx.Value(degradationProbeKey{}).(*degradationProbe); ok {
+		p.mu.Lock()
+		p.steps = append(p.steps, step)
+		p.mu.Unlock()
+	}
+}
+
+// bestEffortFailed journalise l'échec d'une étape best-effort d'une lecture — WARN, ou
+// DEBUG quand la requête a pris fin (un départ du client n'est pas une anomalie) — et
+// le consigne (noteDegraded). Une table absente (base non migrée : même donnée à
+// chaque lecture) n'est pas un échec.
+func bestEffortFailed(ctx context.Context, step string, err error) {
+	if isTableNotFoundErr(err) {
+		return
+	}
+	level := slog.LevelWarn
+	if ctx.Err() != nil {
+		level = slog.LevelDebug
+	}
+	slog.Log(ctx, level, "lecture best-effort en échec : libellés incomplets", "step", step, "err", err)
+	noteDegraded(ctx, step)
+}
+
+// cause rend la raison de ne pas mettre la valeur en cache, nil si elle est complète.
+func (p *degradationProbe) cause(ctx context.Context) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if len(p.steps) == 0 {
+		return nil
+	}
+	return fmt.Errorf("étapes best-effort en échec : %s", strings.Join(p.steps, ", "))
 }
 
 // isContextEnd dit si err vient de l'annulation ou de l'échéance d'un contexte.

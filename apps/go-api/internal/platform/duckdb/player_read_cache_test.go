@@ -7,6 +7,7 @@ package duckdb
 import (
 	"context"
 	"errors"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -313,4 +314,132 @@ func TestPlayerReadCache_TimingMarkers(t *testing.T) {
 	if calls["filter_rows_cache_miss"] != 1 || calls["filter_rows_cache_hit"] != 2 {
 		t.Errorf("marqueurs = %v, want miss=1 hit=2", calls)
 	}
+}
+
+// TestPlayerReadCache_DegradedLoadNotStored (lot L9-go, revue adversariale B, P0) : une
+// étape best-effort en échec (noteDegraded) rend ses lignes à la requête qui les a
+// chargées, sans erreur (best-effort, comme sans cache), mais ne les met pas en cache ;
+// le chargement complet suivant, lui, l'est. Marqueur timing `<cache>_degraded`.
+func TestPlayerReadCache_DegradedLoadNotStored(t *testing.T) {
+	t.Parallel()
+	cache := newPlayerReadCache("filter_rows_cache", cloneFilterRows)
+	scope := testScope("x1", "halo_infinite", "p")
+	var calls atomic.Int32
+	load := func(ctx context.Context) ([]domain.FilterMatchRow, error) {
+		if calls.Add(1) == 1 {
+			noteDegraded(ctx, "traductions")
+			return []domain.FilterMatchRow{{MatchID: "non-traduit"}}, nil
+		}
+		return []domain.FilterMatchRow{{MatchID: "traduit"}}, nil
+	}
+	ctx, tm := timing.WithTimings(context.Background())
+	for i, want := range []string{"non-traduit", "traduit", "traduit"} {
+		rows, err := cache.load(ctx, scope, "", load)
+		if err != nil || len(rows) != 1 || rows[0].MatchID != want {
+			t.Fatalf("appel %d : %v (err=%v), want [%s]", i, rows, err, want)
+		}
+	}
+	if got := calls.Load(); got != 2 {
+		t.Errorf("chargements = %d, want 2 (le dégradé n'est pas caché, le complet l'est)", got)
+	}
+	marqueurs := map[string]int{}
+	for _, s := range tm.Snapshot() {
+		marqueurs[s.Name] = s.Calls
+	}
+	if marqueurs["filter_rows_cache_degraded"] != 1 || marqueurs["filter_rows_cache_miss"] != 2 ||
+		marqueurs["filter_rows_cache_hit"] != 1 {
+		t.Errorf("marqueurs = %v, want degraded=1 miss=2 hit=1", marqueurs)
+	}
+}
+
+// TestPlayerReadCache_RequestEndedDuringLoadNotStored : la requête qui porte le
+// chargement prend fin pendant qu'il tourne, et une étape best-effort avale
+// l'annulation (lignes non traduites, AUCUNE erreur, rien de consigné). Elles ne sont
+// pas mises en cache : la requête vivante suivante recharge (revue B : 25 empoisonnements
+// sur 400 annulations réparties avant le correctif).
+func TestPlayerReadCache_RequestEndedDuringLoadNotStored(t *testing.T) {
+	t.Parallel()
+	cache := newPlayerReadCache("filter_rows_cache", cloneFilterRows)
+	scope := testScope("x1", "halo_infinite", "p")
+	var calls atomic.Int32
+	reqCtx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	load := func(context.Context) ([]domain.FilterMatchRow, error) {
+		if calls.Add(1) == 1 {
+			cancel() // le client part pendant la traduction, que l'étape avale
+			return []domain.FilterMatchRow{{MatchID: "non-traduit"}}, nil
+		}
+		return []domain.FilterMatchRow{{MatchID: "traduit"}}, nil
+	}
+	rows, err := cache.load(reqCtx, scope, "", load)
+	if err != nil || len(rows) != 1 || rows[0].MatchID != "non-traduit" {
+		t.Fatalf("requête annulée : %v (err=%v), want ses lignes sans erreur", rows, err)
+	}
+	rows, err = cache.load(context.Background(), scope, "", load)
+	if err != nil || len(rows) != 1 || rows[0].MatchID != "traduit" {
+		t.Errorf("requête vivante suivante : %v (err=%v), want [traduit] (rechargé, pas servi du cache)", rows, err)
+	}
+	if got := calls.Load(); got != 2 {
+		t.Errorf("chargements = %d, want 2", got)
+	}
+}
+
+// TestPlayerReadCache_DegradedLoadNotSharedWithWaiters : une requête greffée sur le
+// vol d'un chargement qui se révèle dégradé ne reçoit pas ses lignes : elle recharge
+// pour son compte, et c'est son chargement complet qui entre en cache.
+func TestPlayerReadCache_DegradedLoadNotSharedWithWaiters(t *testing.T) {
+	t.Parallel()
+	cache := newPlayerReadCache("filter_rows_cache", cloneFilterRows)
+	scope := testScope("x1", "halo_infinite", "p")
+	var calls atomic.Int32
+	started, release := make(chan struct{}), make(chan struct{})
+	load := func(ctx context.Context) ([]domain.FilterMatchRow, error) {
+		if calls.Add(1) == 1 {
+			close(started)
+			<-release
+			noteDegraded(ctx, "traductions")
+			return []domain.FilterMatchRow{{MatchID: "dégradé"}}, nil
+		}
+		return []domain.FilterMatchRow{{MatchID: "complet"}}, nil
+	}
+	porteur, attente := make(chan []domain.FilterMatchRow, 1), make(chan []domain.FilterMatchRow, 1)
+	go func() {
+		rows, _ := cache.load(context.Background(), scope, "", load)
+		porteur <- rows
+	}()
+	<-started
+	go func() {
+		rows, _ := cache.load(context.Background(), scope, "", load)
+		attente <- rows
+	}()
+	time.Sleep(50 * time.Millisecond) // la seconde requête se greffe sur le vol du porteur
+	close(release)
+	if rows := <-porteur; len(rows) != 1 || rows[0].MatchID != "dégradé" {
+		t.Errorf("porteur : %v, want [dégradé] (best-effort : ses propres lignes)", rows)
+	}
+	if rows := <-attente; len(rows) != 1 || rows[0].MatchID != "complet" {
+		t.Errorf("requête en attente : %v, want [complet] — le chargement dégradé ne se partage pas", rows)
+	}
+	rows, err := cache.load(context.Background(), scope, "", load)
+	if err != nil || len(rows) != 1 || rows[0].MatchID != "complet" || calls.Load() != 2 {
+		t.Errorf("après : %v (err=%v, %d chargements), want [complet] depuis le cache, 2 chargements",
+			rows, err, calls.Load())
+	}
+}
+
+// TestBestEffortFailed_Consignation : un échec consigne l'étape dans la sonde du
+// chargement en cours ; une table absente (base non migrée, même résultat à chaque
+// lecture) non ; hors chargement mis en cache, rien à consigner ni panique.
+func TestBestEffortFailed_Consignation(t *testing.T) {
+	t.Parallel()
+	ctx, probe := withDegradationProbe(context.Background())
+	bestEffortFailed(ctx, "absente", errors.New("Catalog Error: Table with name x does not exist"))
+	if cause := probe.cause(ctx); cause != nil {
+		t.Errorf("table absente consignée : %v", cause)
+	}
+	bestEffortFailed(ctx, "asset_fr_translations", errors.New("IO Error: lecture interrompue"))
+	if cause := probe.cause(ctx); cause == nil || !strings.Contains(cause.Error(), "asset_fr_translations") {
+		t.Errorf("échec non consigné : %v", cause)
+	}
+	bestEffortFailed(context.Background(), "hors_cache", errors.New("boom")) // aucune sonde : sans effet
 }
