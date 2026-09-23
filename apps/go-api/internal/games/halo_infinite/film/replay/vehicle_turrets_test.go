@@ -158,3 +158,18 @@ func TestPieceMonteeHorsDesChassisInconnus(t *testing.T) {
 			cov.UnknownChassis, fb.Rapport())
 	}
 }
+
+// TestArtilleurReporteNEstPasUneAmbiguite — le conducteur et l artilleur reporte d une tourelle se
+// chevauchent sur le porteur : ce n est pas une ambiguite (compteur `ambiguous` inchange).
+func TestArtilleurReporteNEstPasUneAmbiguite(t *testing.T) {
+	tracks := []VehicleTrack{
+		vtPiece(100, vtLAAG, vtRide(20, 10, 40)),
+		vtChassis(101, familleWarthog, vtRide(21, 5, 80)),
+	}
+	poseTurretsOnCarriers(tracks, nil)
+	cov := VehicleCoverage{UnknownChassis: map[string]int{}}
+	tallyVehicleCoverage(tracks, &cov, nil)
+	if cov.Ambiguous != 0 || cov.Rides != 2 {
+		t.Errorf("ambigus = %d, episodes = %d : attendu 0 et 2", cov.Ambiguous, cov.Rides)
+	}
+}

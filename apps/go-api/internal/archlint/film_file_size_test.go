@@ -139,12 +139,12 @@ var plafondsParFichier = map[string]int{
 	// verdicts Theater sur neuf, lot 5.13.2 reouvert), et le refus de publier un genre `jump`
 	// LU faute de preuve. UNE SEULE MONTEE DE SCHEMA POUR LE LOT, donc une seule entree, dans
 	// le commit qui monte `SchemaVersion`.
-	// SCHEMA 68 -> 69 (2026-09-23, retours du rejeu, lot M4a) : 2018 -> 2048, l entree de
+	// SCHEMA 68 -> 69 (2026-09-23, retours du rejeu, lot M4a) : 2018 -> 2049, l entree de
 	// chronique v69. Elle porte les PIECES MONTEES (`part`, `carrier`, `rides[].turret`), la
 	// variante nommee par la piece ou par l arme, les six compteurs de couverture et la racine
 	// `vehicleWeapons` resolue a la requete. UNE SEULE MONTEE DE SCHEMA POUR LE LOT, donc une
 	// seule entree, dans le commit qui monte `SchemaVersion`.
-	"internal/games/halo_infinite/film/replay/document_chronicle.go": 2048,
+	"internal/games/halo_infinite/film/replay/document_chronicle.go": 2049,
 	// --- production, hors perimetre du lot 2.7 (aucune preuve d equivalence ne couvrait
 	// leur scission : elle se decidera au lot qui les rouvrira).
 	// `assist.go` EST SORTI DE CETTE TABLE LE 2026-09-16 (lot 2.6.2) : le type `Assist` a descendu

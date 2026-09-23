@@ -81,7 +81,7 @@ func rrG3Ecarts(doc ReplayDocument) []float64 {
 			continue
 		}
 		vie := rrVieQuiCouvre(doc.Vehicles, *s.Vehicle, s.T)
-		if vie == nil || !rrTirDeTourelle(*vie, s) {
+		if vie == nil || !(rrTirDeTourelle(*vie, s) || rrTirDUnePiecePortee(doc.Vehicles, *vie, s)) {
 			continue
 		}
 		porteur := rrPorteur(doc.Vehicles, *vie, s.T)
@@ -113,6 +113,22 @@ func rrTirDeTourelle(vie VehicleTrack, s Shot) bool {
 	for _, r := range vie.Rides {
 		if r.Slot == s.Slot && r.Turret != nil && s.T >= r.T0 && s.T <= r.T1 {
 			return true
+		}
+	}
+	return false
+}
+
+// rrTirDUnePiecePortee : le tir est pose sur un porteur (`v` = le chassis) alors que l episode du
+// tireur est reste sur une de ses pieces (porteur non pilotable, occupant deja a bord).
+func rrTirDUnePiecePortee(vies []VehicleTrack, porteur VehicleTrack, s Shot) bool {
+	for _, p := range vies {
+		if p.Carrier == nil || p.Carrier.Slot != porteur.Slot || p.Carrier.Gen != porteur.Gen {
+			continue
+		}
+		for _, r := range p.Rides {
+			if r.Slot == s.Slot && s.T >= r.T0 && s.T <= r.T1 {
+				return true
+			}
 		}
 	}
 	return false

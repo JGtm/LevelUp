@@ -2034,8 +2034,9 @@ package replay
 //	               plus de la naissance de la tourelle (mediane 44,7 m au parc avant ce lot).
 //	`coverage.`    SIX COMPTEURS : `turrets`, `turretsOnCarrier`, `turretRides`,
 //	`vehicles`     `turretRidesDropped`, `shotsOnCarrier`, `variants`. Une piece montee ne compte
-//	               plus dans `familyUnknown` / `unknownChassis`, ni dans le repli
-//	               `repli_chassis_vehicule_marqueur_neutre` : elle est nommee.
+//	               plus dans `familyUnknown` / `unknownChassis` ni dans le repli
+//	               `repli_chassis_vehicule_marqueur_neutre` (elle est nommee), et un artilleur
+//	               reporte ne compte pas dans `ambiguous` (sa place est designee par la piece).
 //	`vehicle`      RACINE NEUVE, RESOLUE A LA REQUETE (`calquesALaRequete`, jamais cuite) : le
 //	`Weapons`      registre `config/titles/{slug}/mappings/vehicle_weapons.toml` (forme, teinte,
 //	               son ou silence decide, montage, libelle FR/EN) des armes que les tirs emploient,

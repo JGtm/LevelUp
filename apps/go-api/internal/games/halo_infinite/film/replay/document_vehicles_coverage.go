@@ -83,7 +83,9 @@ func tallyVehicleRides(rides []VehicleRide, cov *VehicleCoverage) {
 			cov.RidesProximity++
 		}
 		// Les episodes d une vie sont TRIES par T0 : un chevauchement se voit sur le voisin.
-		if i > 0 && r.T0 <= rides[i-1].T1 {
+		// UN ARTILLEUR REPORTE D UNE TOURELLE (`Turret`, schema 69) N EST PAS UNE AMBIGUITE : sa
+		// place a bord est designee par la piece qu il sert, il ne dispute rien au conducteur.
+		if i > 0 && r.T0 <= rides[i-1].T1 && r.Turret == nil && rides[i-1].Turret == nil {
 			cov.Ambiguous++
 		}
 	}
