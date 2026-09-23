@@ -99,6 +99,9 @@ func (l *lecturesDeLaPage) precharger(ctx context.Context, selected []string, al
 		}
 		l.prechargerMembres(ctx, membres)
 	}
+	if ctx.Err() != nil {
+		return // requête annulée (D2.7) : GetPage rend l'erreur
+	}
 	l.prechargerImpacts(ctx, allSquadRows)
 }
 
@@ -143,6 +146,9 @@ func (l *lecturesDeLaPage) prechargerMembres(ctx context.Context, gamertags []st
 	}
 	defer timing.FromContext(ctx).Section("squad_members")()
 	for _, gt := range gamertags {
+		if ctx.Err() != nil {
+			return // requête annulée (D2.7)
+		}
 		if _, err := l.membre(ctx, l.slug, gt); err != nil {
 			slog.DebugContext(ctx, "teammates_squad_member_load_failed", "gamertag", gt, "err", err)
 		}

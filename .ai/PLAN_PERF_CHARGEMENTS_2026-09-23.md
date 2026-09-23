@@ -370,7 +370,20 @@ Items :
   paie encore (un prechargement au boot releverait du cablage, hors perimetre) ; tests : une
   lecture de chaque (avant : deux), `TestCatalogue_*` ; mutations (partage coupe, cache coupe) :
   rouges ; parite page 9/9 ; usage + formes 118 -> 91 ms sur la page de reference
-- [ ] L2.7 annulation entre sections (D2.7)
+- [x] L2.7 annulation entre sections (D2.7) — `teammates_service_sections.go` (nouveau) : les
+  sections de la population escouade sortent de GetPage (`sectionsDeLaPopulation` ->
+  `tableauxDeLaPopulation` + `graphesDeLaPopulation`, entree `populationEscouade`, sortie
+  `sectionsEscouade`), chacune sous `siVivante` (lancee seulement si `ctx.Err() == nil`) ;
+  GetPage verifie `ctx.Err()` avant l'historique du joueur, avant chaque coequipier, apres la
+  boucle, apres les sections et apres les blocs d'usage -> `requeteAnnulee` (erreur du contexte
+  enveloppee, reponse vide : jamais une page partielle) ; prechargement : controle entre deux
+  membres et avant les impacts (`teammates_service_loads.go`) ; blocs d'usage : trois etapes
+  sous `siVivante` (`teammates_service_usage.go`) ; GetPage 316 -> 263 L, fichier 575 -> 522 L ;
+  tests `teammates_service_sections_test.go` (7 points d'annulation : `context.Canceled`,
+  reponse vide, section en cours presente, suivantes absentes, lecture en cours non refaite ;
+  temoin non annule ; blocs d'usage d'une requete deja annulee) ; 10 mutations (chaque point de
+  controle retire, `siVivante` inconditionnel, prechargement ou blocs d'usage hors garde) :
+  rouges ; parite page 9/9 identique a L2.6
 
 Gate : `gofmt` ; `go build ./...` ; `go vet ./...` ; `go test ./internal/service/...
 ./internal/platform/duckdb/... ./internal/analysis/...` ; `go test -tags=integration -p 1

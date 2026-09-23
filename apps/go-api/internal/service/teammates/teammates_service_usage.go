@@ -40,14 +40,21 @@ func (s *TeammatesService) WithEquipmentUsage(repo port.SessionUsageRepository) 
 
 // loadUsageBlocks publie les deux blocs du résumé d'usage — « servi ou gâché » et « formes
 // retenues » — sur le MÊME scope (filteredMatches) : leurs trois lectures communes (films,
-// joueurs, participants) sont faites une fois pour les deux (D2.6, lot perf L2).
+// joueurs, participants) sont faites une fois pour les deux (D2.6, lot perf L2). Chaque étape
+// est sautée dès que la requête est annulée (D2.7) : GetPage rend alors l'erreur.
 func (s *TeammatesService) loadUsageBlocks(
 	ctx context.Context, playerXUID string, filteredMatches []legacymatch.SynthesisMatchRow,
 	history []domain.SquadMatchHistoryRow, req domain.TeammatesQueryRequest,
 ) (*domain.EquipmentUsageBlock, *domain.SquadFormesBlock) {
-	lectures := s.lireUsagePartage(ctx, playerXUID, filteredMatches)
-	return s.loadEquipmentUsage(ctx, playerXUID, filteredMatches, req.SelectedGamertags, req.Locale, lectures),
-		s.loadSquadFormes(ctx, playerXUID, filteredMatches, history, req, lectures)
+	var lectures *squadagg.LecturesUsage
+	var equipement *domain.EquipmentUsageBlock
+	var formes *domain.SquadFormesBlock
+	siVivante(ctx, func() { lectures = s.lireUsagePartage(ctx, playerXUID, filteredMatches) })
+	siVivante(ctx, func() {
+		equipement = s.loadEquipmentUsage(ctx, playerXUID, filteredMatches, req.SelectedGamertags, req.Locale, lectures)
+	})
+	siVivante(ctx, func() { formes = s.loadSquadFormes(ctx, playerXUID, filteredMatches, history, req, lectures) })
+	return equipement, formes
 }
 
 // lireUsagePartage fait les trois lectures communes, sous la section `usage_shared`, quand au
