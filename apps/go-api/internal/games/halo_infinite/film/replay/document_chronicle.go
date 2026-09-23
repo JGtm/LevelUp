@@ -2054,10 +2054,10 @@ package replay
 //	               sans balayage). Avant, un fil illisible ne se lisait que dans les journaux :
 //	               le diagnostic d `ab526724` a exige les journaux ET le code.
 //
-// LA LIMITE ECRITE DU CHAMP : les faits persistes ne portent PAS l erreur de lecture. Rejoue
-// depuis ses faits, un film dont le fil etait illisible publie la cle ABSENTE (jamais `empty` ni
-// `read` : le champ se tait plutot que de choisir) — c est la breche d equivalence consignee au
-// plan des retours rejeu (§8, decouverte 4), que ce champ rend VISIBLE sans la creer. Depuis le
+// LA LIMITE ECRITE DU CHAMP : les faits persistes ne portent PAS le verdict. Rejoue depuis ses
+// faits, un fil VIDE OU ILLISIBLE publie la cle ABSENTE (le champ se tait plutot que de choisir) :
+// film et faits DIVERGENT sur ce champ — ecart NEUF, a declarer a replay-equiv et au gate de parc
+// (§8, decouverte 4 : il se ferme avec la revision de faits qui persistera le verdict). Depuis le
 // lot L3, un film sans morceau des temps forts n est plus cuit du tout.
 //
 // POURQUOI LA VERSION MONTE : une valeur d enum publie est de la FORME, et la regle de

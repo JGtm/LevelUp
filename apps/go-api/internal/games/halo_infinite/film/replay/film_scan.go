@@ -398,26 +398,9 @@ func (s *filmScan) balayerPont() {
 	s.in.Projectiles = proj
 	s.opt.observe("projectiles", s.in.Projectiles)
 	// Le fil des morts NOMME les vies par le pont par morts, cale l'horloge des morts et ouvre la
-	// lecture de la table d'index. Son VERDICT est publie (`coverage.bridge.deathsFeed`, lot M5.2
-	// des retours rejeu) : un fil VIDE est une mesure, un fil ILLISIBLE une panne, et le document
-	// les distingue au lieu de les laisser aux seuls journaux.
-	//
-	// CE QUE LE FIL ILLISIBLE NE COUPE PLUS (message corrige le 2026-09-23) : les tirs et les
-	// lancers. Ils sont nommes par la table des sieges que le film ecrit (`chunk_00`, lot 1.6) —
-	// mesure : 2 838 tirs publies sur `ab526724` quand son fil etait illisible.
-	deaths, err := ScanDeaths(s.film)
-	s.filDesMorts = lectureDuFilDesMorts(deaths, err)
-	switch s.filDesMorts {
-	case DeathsFeedUnreadable:
-		slog.Warn("fil des morts illisible — ni calage d horloge des morts, ni table d index, ni "+
-			"pont par morts (coverage.bridge.deathsFeed = unreadable)", "err", err, "match_id", s.matchID)
-		deaths = nil
-	case DeathsFeedEmpty:
-		slog.Info("fil des morts lu et VIDE — aucune mort a nommer (coverage.bridge.deathsFeed = empty)",
-			"err", err, "match_id", s.matchID)
-		deaths = nil
-	}
-	s.in.Deaths = deaths
+	// lecture de la table d'index (cf. [filmScan.lireLeFilDesMorts]).
+	s.lireLeFilDesMorts()
+	deaths := s.in.Deaths
 	s.opt.observe("deaths", s.in.Deaths)
 	// LA TABLE DES JOUEURS QUE LE FILM ÉCRIT (lot 1.6) : `chunk_00` porte les 32 sièges du match
 	// avec leur XUID et leur gamertag. C'est le lien DIRECT, et il se lit AVANT la table des
@@ -431,13 +414,15 @@ func (s *filmScan) balayerPont() {
 	s.in.PlayerTeams, s.in.TeamScan = grammar.ScanPlayerTeams(s.fc)
 	s.opt.observe("playerTeams", s.in.PlayerTeams)
 	// L'index de joueur SE LIT dans le film (cf. player_index.go) : le roster vient du fil des
-	// morts, et les 5 bits qui précèdent chaque xuid donnent son index. Sans cette table, aucun
-	// tir ni lancer n'est publié — comme sans le fil des morts.
+	// morts, et les 5 bits qui précèdent chaque xuid donnent son index. Sans cette table, un tir
+	// ou un lancer reste publie des que le registre d'identite nomme son slot par ses AUTRES
+	// lectures — la table des sieges du film (`FilmTable`) en tete (message corrige a la revue
+	// adverse M5, constat R3, 2026-09-24 : il disait « aucun tir ni lancer n'est publie »).
 	if len(deaths) > 0 {
 		idx, err := ScanPlayerIndices(s.film, rosterOf(deaths, s.opt.RosterXUIDs))
 		if err != nil {
-			slog.Warn("index de joueur illisible — aucun tir ni lancer ne sera publie",
-				"err", err, "match_id", s.matchID)
+			slog.Warn("index de joueur illisible — les tireurs ne seront nommes que par les autres "+
+				"lectures du registre (table des sieges du film)", "err", err, "match_id", s.matchID)
 		}
 		table, collisions := injectiveOrEmpty(idx)
 		if collisions > 0 {
@@ -457,6 +442,32 @@ func (s *filmScan) balayerPont() {
 	}
 	s.in.FilmClockOriginUS = clockUS
 	s.opt.observe("clockOrigin", s.in.FilmClockOriginUS)
+}
+
+// lireLeFilDesMorts lit le fil des morts, pose son VERDICT (`coverage.bridge.deathsFeed`, lot M5.2
+// des retours rejeu) et le fil lui-meme dans les entrees. Un fil VIDE est une mesure, un fil
+// ILLISIBLE une panne, et le document les distingue au lieu de les laisser aux seuls journaux.
+//
+// CE QUE LE FIL ILLISIBLE NE COUPE PLUS (message corrige le 2026-09-23) : les tirs et les
+// lancers. Ils sont nommes par la table des sieges que le film ecrit (`chunk_00`, lot 1.6) —
+// mesure : 2 838 tirs publies sur `ab526724` quand son fil etait illisible.
+//
+// UNE METHODE A PART (revue adverse M5, constat R1, 2026-09-24) pour que le trajet « octets ->
+// verdict -> document » se teste sur la bobine du depot, que le balayage des positions refuse.
+func (s *filmScan) lireLeFilDesMorts() {
+	deaths, err := ScanDeaths(s.film)
+	s.filDesMorts = lectureDuFilDesMorts(deaths, err)
+	switch s.filDesMorts {
+	case DeathsFeedUnreadable:
+		slog.Warn("fil des morts illisible — ni calage d horloge des morts, ni table d index, ni "+
+			"pont par morts (coverage.bridge.deathsFeed = unreadable)", "err", err, "match_id", s.matchID)
+		deaths = nil
+	case DeathsFeedEmpty:
+		slog.Info("fil des morts lu et VIDE — aucune mort a nommer (coverage.bridge.deathsFeed = empty)",
+			"err", err, "match_id", s.matchID)
+		deaths = nil
+	}
+	s.in.Deaths = deaths
 }
 
 // balayerProprietesTi13 sert les DEUX consommateurs de `ti=13` — l etat des zones et la jauge de

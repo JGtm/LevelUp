@@ -175,7 +175,7 @@ func lectureDuFilDesMorts(deaths []Death, err error) string {
 
 // deathsFeedPublie rend la valeur publiee de `coverage.bridge.deathsFeed`.
 //
-// LE VERDICT DU BALAYAGE PRIME (`Options.DeathsFeed`, pose par [BuildFromFilmAvecFaits]). Sans
+// LE VERDICT DU BALAYAGE PRIME (`Options.DeathsFeed`, pose par [filmScan.assembler]). Sans
 // lui — document assemble depuis des positions, ou rejoue depuis les faits persistes —, un fil
 // NON VIDE ne peut venir que d une lecture reussie et se dit `read` ; un fil vide ne dit rien de
 // sa cause, et le champ se TAIT plutot que de choisir entre `empty` et `unreadable`.

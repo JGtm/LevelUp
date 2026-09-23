@@ -104,12 +104,10 @@ func identityByOneSidedScore(scores *[2]int, slots []int, score scoreSeriesSet) 
 	if scores == nil || scores[0] == scores[1] {
 		return nil
 	}
-	porteur, muet, n := -1, -1, 0
+	porteur, n := -1, 0
 	for _, slot := range slots {
 		if _, ok := score.final(slot); ok {
 			porteur, n = slot, n+1
-		} else {
-			muet = slot
 		}
 	}
 	if n != 1 {
@@ -125,11 +123,10 @@ func identityByOneSidedScore(scores *[2]int, slots []int, score scoreSeriesSet) 
 	default:
 		return nil
 	}
-	out := map[int]int{porteur: marque}
-	if muet >= 0 {
-		out[muet] = 1 - marque
-	}
-	return out
+	// LE SLOT MUET N EST PAS DANS LA CARTE (revue adverse M5, constat R4, 2026-09-24) : son camp
+	// s en deduirait (1 - marque), mais aucun lecteur ne le lirait — [buildTeamScores] ne publie
+	// que les slots qui portent une serie, et le slot muet n en a pas par definition.
+	return map[int]int{porteur: marque}
 }
 
 // identityByFrags est la preuve (b) : `comp 2 A` du slot d'equipe contre la somme des frags

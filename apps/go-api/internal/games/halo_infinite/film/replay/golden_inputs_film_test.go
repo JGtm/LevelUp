@@ -85,7 +85,7 @@ func decodeFilmInputsForEntry(film, dir string, entry profile.MapQuantEntry) (*F
 	opt := Options{MapQuant: &entry, RosterXUIDs: roster}
 	fc := grammar.NewFilmContextForMap(charge, opt.MapQuant, decoupageForce(opt))
 	installWorldObjectPrecision(fc, film, opt.Fallbacks)
-	in, _, err := scanFilmInputs(film, charge, fc, opt)
+	scan, err := scanFilmInputs(film, charge, fc, opt)
 	if err != nil {
 		return nil, err
 	}
@@ -95,7 +95,7 @@ func decodeFilmInputsForEntry(film, dir string, entry profile.MapQuantEntry) (*F
 	}
 	return &FilmFacts{
 		Film: film, MapModule: entry.Module, AxisW: lay.AxisW, LayoutDetected: detecte,
-		FilmInputs: in,
+		FilmInputs: scan.in,
 	}, nil
 }
 

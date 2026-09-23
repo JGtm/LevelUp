@@ -176,20 +176,22 @@ type Options struct {
 	// Deaths : le fil des morts du film (chunk highlight), qui NOMME les vies et fonde TOUT le
 	// rattachement (cf. lives.go). Entrée de DONNÉES comme les précédentes.
 	//
-	// SANS ELLE, AUCUN TIR NI LANCER N'EST PUBLIÉ — et c'est voulu. Il n'existe plus de repli :
-	// les deux méthodes qui faisaient élire un propriétaire de slot ont été retirées le
-	// 2026-07-28. Un rejeu muet se voit ; un rejeu qui pose des tirs sur le mauvais joueur ne
-	// se voit pas.
+	// SANS ELLE, NI PONT PAR MORTS NI CALAGE D'HORLOGE DES MORTS NI LECTURE DE LA TABLE D'INDEX.
+	// Les tirs et les lancers, eux, restent publies des que le registre d'identite nomme leur
+	// slot par la table des sieges du film (`FilmTable`) — il n'existe toujours AUCUN repli qui
+	// elise un proprietaire de slot (retires le 2026-07-28) : un rejeu muet se voit, un rejeu qui
+	// pose des tirs sur le mauvais joueur ne se voit pas. (Ce paragraphe disait « aucun tir ni
+	// lancer n'est publie » : faux depuis la table des sieges, lot 1.6 — revue adverse M5, R3.)
 	Deaths []Death
 	// DeathsFeed est le VERDICT de la lecture du fil des morts ([DeathsFeedRead],
-	// [DeathsFeedEmpty], [DeathsFeedUnreadable]), pose par [BuildFromFilmAvecFaits] apres le
+	// [DeathsFeedEmpty], [DeathsFeedUnreadable]), pose par [filmScan.assembler] apres le
 	// balayage et publie en `coverage.bridge.deathsFeed`. Vide = aucun balayage de film dans
 	// cet assemblage (positions fournies, ou rejeu depuis les faits) : cf. [deathsFeedPublie].
 	// PAS UNE ENTREE DE FAITS : les faits persistes ne portent pas l erreur de lecture.
 	DeathsFeed string
 	// PlayerIndices est la table identité -> index de joueur, LUE dans le film (cf.
-	// player_index.go). Second maillon du pont, et lui aussi une lecture. Absente, aucun tir
-	// ni lancer n'est publié.
+	// player_index.go). Second maillon du pont, et lui aussi une lecture. Absente, un tir ou un
+	// lancer reste publie si le registre nomme son slot par la table des sieges (`FilmTable`).
 	PlayerIndices PlayerIndexTable
 	// FilmTable est la TABLE DES JOUEURS que le film écrit lui-même (`chunk_00`), lue par
 	// [ScanFilmPlayerTable] : le lien DIRECT `index <-> xuid <-> gamertag`.

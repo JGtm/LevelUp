@@ -3,6 +3,7 @@ package replay
 import (
 	"testing"
 
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
@@ -105,5 +106,40 @@ func TestScoreTimelineTeamIdentityOneSidedGuards(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+// TestScoreTimelineTeamIdentityOneSidedBeforeFrags — L ORDRE DES PREUVES EST (a), (a0), (b), et il
+// est tenu (revue adverse M5, constat R4, 2026-09-24). Sur un match a sens unique ou la somme des
+// frags tranche AUSSI (camps identifies des deux cotes, totaux distincts), c est `a0` qui est
+// publiee : elle n emprunte rien au pont d identite des joueurs. La chronique v69 annonce ce
+// basculement `b` -> `a0` sur huit documents du parc ; sans ce test, deplacer (a0) apres (b)
+// laissait le paquet vert.
+func TestScoreTimelineTeamIdentityOneSidedBeforeFrags(t *testing.T) {
+	in := fragsIdentityInput()
+	var recs []types.StatRecord
+	for _, r := range in.Records {
+		if _, mode := r.Comps[0]; mode && r.Slot == 6 {
+			continue // le slot 6 (camp 0, 5 frags) ne marque jamais : le match est a sens unique
+		}
+		recs = append(recs, r)
+	}
+	in.Records = recs
+	scores := [2]int{0, 3} // le slot 8 (camp 1, 7 frags) finit a 3
+	in.TeamScores = &scores
+	// Controle : sans registre de score, (b) SEULE tranche, et dans le meme sens.
+	if m := identityByFrags(in.TeamByXUID, []int{6, 8},
+		loadScoreSeries(recs, objectives.KillsComponent, true), loadScoreSeries(recs, objectives.KillsComponent, false),
+		objectives.SlotIdentityFrom(recs, in.Lines)); m[8] != 1 || m[6] != 0 {
+		t.Fatalf("CONTROLE FAUX : la somme des frags ne tranche pas ce gabarit (%v) — le test ne "+
+			"prouverait pas l ordre des preuves", m)
+	}
+	tl, cov := buildScoreTimeline(in, nil, testClock(), nil)
+	if cov.TeamIdentity != ScoreIdentityFinalOneSided {
+		t.Fatalf("identite = %q, attendu %q (la preuve (a0) passe avant la somme des frags)",
+			cov.TeamIdentity, ScoreIdentityFinalOneSided)
+	}
+	if tl == nil || len(tl.Teams) != 1 || tl.Teams[0].TeamID == nil || *tl.Teams[0].TeamID != 1 {
+		t.Fatalf("attendu UNE courbe d equipe au camp 1, obtenu %+v", tl)
 	}
 }
