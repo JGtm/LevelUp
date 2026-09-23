@@ -305,7 +305,7 @@ func (c *SeasonsCatalog) recordFetchFailure(ctx context.Context, titleID string,
 		return 0
 	}
 	if ctx.Err() != nil || errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
-		c.logger.DebugContext(ctx, "seasons_catalog: fetch live interrompu par le contexte — non mémorisé",
+		c.logger.DebugContext(ctx, "seasons_catalog: fetch live interrompu par le contexte, non memorise",
 			"titleSlug", titleID, "err", err)
 		return 0
 	}
