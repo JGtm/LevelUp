@@ -1,0 +1,272 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Planche v3 — effets des fiches joueur (rejeu 2D)</title>
+<style>
+  /* Tokens du thème SOMBRE de l'app (valeurs de la palette par défaut) */
+  :root {
+    --card: #1c1f26;
+    --background: #12141a;
+    --foreground: #e5e9f0;
+    --border: #2a2f3a;
+    --muted-foreground: #8a9099;
+    --ac-destructive: #EF4444;
+    --ac-success: #10B981;
+    --ac-info: #3B82F6;
+    --ac-legendary: #FBBF24;
+    --ac-bonus: #A855F7;
+    --ac-warning: #F59E0B;
+    --replay-label-stroke: rgb(8 12 18 / 0.92);
+  }
+  body { background: var(--background); color: var(--foreground); font: 12px/1.35 "Segoe UI", system-ui, sans-serif; margin: 24px; }
+  h1 { font-size: 15px; } h2 { font-size: 12px; font-weight: 600; margin: 0 0 6px; color: var(--muted-foreground); }
+  .note { color: var(--muted-foreground); font-size: 10.5px; }
+  .grille { display: grid; grid-template-columns: repeat(3, 260px); gap: 18px; align-items: start; }
+  .colonne { border: 1px solid var(--border); background: var(--card); border-radius: 8px; padding: 8px; }
+
+  /* ── La fiche, structure fidèle : couche d'effets EN RETRAIT + rangées + incrustation ── */
+  .fiche { position: relative; display: flex; flex-direction: column; gap: 2px; border-top: 1px solid var(--border); padding: 4px 2px; }
+  .fiche:first-of-type { border-top: 0; }
+  .fiche > .rang { position: relative; }
+  .nom { font-size: 11.5px; font-weight: 500; display: flex; justify-content: space-between; }
+  .kda { color: var(--muted-foreground); font-size: 10px; }
+  .jauges { height: 14px; display: flex; flex-direction: column; justify-content: center; gap: 2px; }
+  .jauge { height: 4px; border-radius: 2px; background: color-mix(in srgb, var(--ac-info) 85%, transparent); }
+  .jauge.sante { background: color-mix(in srgb, var(--ac-success) 85%, transparent); width: 92%; }
+  .rangee { height: 18px; display: flex; align-items: center; gap: 4px; color: var(--muted-foreground); font-size: 10px; }
+  .pastille { width: 26px; height: 12px; border: 1px solid var(--border); border-radius: 2px; }
+
+  /* LA COUCHE D'EFFETS et L'INCRUSTATION : même géométrie, en retrait de 2 px, arrondies. */
+  .couche, .incrustation { position: absolute; inset: 2px; border-radius: 6px; pointer-events: none; }
+  .incrustation { overflow: hidden; }
+
+  /* ── Copie VERBATIM des keyframes/classes de globals.css ─────────────────────── */
+  @property --replay-beam-angle { syntax: '<angle>'; inherits: false; initial-value: 0deg; }
+  @keyframes replay-translocation-spin {
+    to { --replay-beam-angle: 360deg; }
+  }
+  @keyframes replay-translocation-fade {
+    0%, 75% { opacity: 1; }
+    100%    { opacity: 0; }
+  }
+  .replay-flash-translocation {
+    border: 2px solid transparent;
+    background: conic-gradient(from var(--replay-beam-angle),
+        transparent 0% 8%,
+        var(--ac-bonus) 20%,
+        var(--ac-warning) 30%,
+        transparent 42% 100%) border-box;
+    -webkit-mask: linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask: linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0);
+    mask-composite: exclude;
+    animation:
+      replay-translocation-spin 0.9s linear infinite,
+      replay-translocation-fade 1.2s linear 1 both;
+  }
+  /* Variante DÉMO : la même bordure en rotation SANS le fondu de fin — ce qu'on voit tant
+     que l'effet est affiché. Dans l'app, le fondu n'arrive qu'au dernier quart de la
+     fenêtre, PENDANT que la lumière tourne. */
+  .demo-fourreau-continu {
+    animation: replay-translocation-spin 0.9s linear infinite;
+  }
+  @keyframes replay-zone-sensor-ping {
+    0%          { opacity: 0.95; }
+    41.7%, 100% { opacity: 0.35; }
+  }
+  .replay-zone-sensor { opacity: 0.55; animation: replay-zone-sensor-ping 1.8s linear infinite; }
+  .replay-zone-cloud {
+    background-image:
+      radial-gradient(58% 120% at 14% 30%,
+        color-mix(in srgb, var(--replay-label-stroke) 92%, transparent) 0%,
+        color-mix(in srgb, var(--replay-label-stroke) 68%, transparent) 45%, transparent 74%),
+      radial-gradient(46% 95% at 50% 80%,
+        color-mix(in srgb, var(--replay-label-stroke) 85%, transparent) 0%, transparent 70%),
+      radial-gradient(60% 130% at 88% 22%,
+        color-mix(in srgb, var(--replay-label-stroke) 92%, transparent) 0%, transparent 72%),
+      radial-gradient(36% 80% at 34% 52%,
+        color-mix(in srgb, var(--replay-label-stroke) 60%, transparent) 0%, transparent 78%);
+    opacity: 0.72;
+  }
+  @keyframes replay-zone-cross-rise {
+    0%   { transform: translateY(20px); opacity: 0; }
+    18%  { opacity: 0.9; }
+    78%  { opacity: 0.9; }
+    100% { transform: translateY(-22px); opacity: 0; }
+  }
+  .replay-zone-cross { opacity: 0.7; animation: replay-zone-cross-rise 2.4s linear infinite; }
+  @keyframes replay-death-flash {
+    0%, 49%   { background-color: color-mix(in srgb, var(--ac-destructive) 42%, transparent); }
+    50%, 100% { background-color: color-mix(in srgb, var(--ac-destructive) 10%, transparent); }
+  }
+
+  /* ── Styles inline générés par playerCardFx (underStyle), recopiés en classes ── */
+  .fx-mort {
+    background-color: color-mix(in srgb, var(--replay-label-stroke) 30%, transparent);
+    background-image: linear-gradient(90deg,
+        color-mix(in srgb, var(--ac-destructive) 30%, transparent),
+        color-mix(in srgb, var(--ac-destructive) 6%, transparent) 55%, transparent);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ac-destructive) 55%, transparent);
+  }
+  .nom-mort { color: var(--ac-destructive); }
+  .fx-camo {
+    backdrop-filter: blur(6px);
+    background-color: color-mix(in srgb, var(--foreground) 12%, var(--card));
+    background-image: linear-gradient(115deg, transparent 30%,
+      color-mix(in srgb, var(--foreground) 9%, transparent) 30%,
+      color-mix(in srgb, var(--foreground) 9%, transparent) 46%,
+      transparent 46%, transparent 58%,
+      color-mix(in srgb, var(--foreground) 9%, transparent) 58%,
+      color-mix(in srgb, var(--foreground) 9%, transparent) 64%, transparent 64%);
+    box-shadow: inset 0 0 0 1px var(--border),
+      inset 0 1px 0 color-mix(in srgb, var(--foreground) 28%, transparent);
+  }
+  .fx-surbouclier {
+    box-shadow: inset 0 0 0 2px var(--ac-legendary),
+      0 0 10px color-mix(in srgb, var(--ac-legendary) 60%, transparent);
+  }
+  .fx-reparation {
+    box-shadow: inset 0 0 0 2px var(--ac-success),
+      0 0 8px color-mix(in srgb, var(--ac-success) 45%, transparent);
+  }
+  .fx-ecran {
+    backdrop-filter: blur(3px);
+    background-color: color-mix(in srgb, var(--replay-label-stroke) 14%, var(--card));
+    box-shadow: inset 0 0 0 2px var(--replay-label-stroke);
+  }
+  /* Camo + écran, la VRAIE composition de playerCardFx : flou max, voile sombre POSÉ SUR
+     le voile du verre, reflets conservés, liseré + tranche du verre + contour sombre. */
+  .fx-camo-ecran {
+    backdrop-filter: blur(6px);
+    background-color: color-mix(in srgb, var(--replay-label-stroke) 14%,
+      color-mix(in srgb, var(--foreground) 12%, var(--card)));
+    background-image: linear-gradient(115deg, transparent 30%,
+      color-mix(in srgb, var(--foreground) 9%, transparent) 30%,
+      color-mix(in srgb, var(--foreground) 9%, transparent) 46%,
+      transparent 46%, transparent 58%,
+      color-mix(in srgb, var(--foreground) 9%, transparent) 58%,
+      color-mix(in srgb, var(--foreground) 9%, transparent) 64%, transparent 64%);
+    box-shadow: inset 0 0 0 1px var(--border),
+      inset 0 1px 0 color-mix(in srgb, var(--foreground) 28%, transparent),
+      inset 0 0 0 2px var(--replay-label-stroke);
+  }
+  .anneau-capteur { position: absolute; inset: 0; border-radius: 6px; border: 1.5px dashed var(--ac-destructive); }
+  .croix { position: absolute; top: 40%; font-size: 10px; font-weight: 700; line-height: 1; color: var(--ac-success); }
+</style>
+</head>
+<body>
+<h1>Fiches joueur du rejeu 2D — planche v3 (2e retours du 2026-08-27)</h1>
+<p class="note">Fourreau de translocation en rotation CONTINUE (le fondu de fin n'arrête plus la rotation).
+Écran occultant : NUAGE NOIR au lieu des rayures. Camo + écran : la vraie composition, reflets conservés.</p>
+<div class="grille">
+  <div class="colonne">
+    <h2>Écran occultant — le nuage, seul et composé</h2>
+    <div class="fiche">
+      <div class="couche fx-camo"></div>
+      <div class="rang nom"><span>Camouflage seul (repère)</span><span class="kda">8/2/1</span></div>
+      <div class="rang jauges"><div class="jauge"></div><div class="jauge sante"></div></div>
+      <div class="rang rangee"><span class="pastille"></span><span class="pastille"></span><span>x1</span></div>
+    </div>
+    <div class="fiche">
+      <div class="couche fx-ecran"></div>
+      <div class="rang nom"><span>Écran occultant (nuage)</span><span class="kda">4/4/1</span></div>
+      <div class="rang jauges"><div class="jauge"></div><div class="jauge sante"></div></div>
+      <div class="rang rangee"><span class="pastille"></span><span class="pastille"></span><span>x1</span></div>
+      <div class="incrustation">
+        <div class="replay-zone-cloud" style="position:absolute; inset:0"></div>
+      </div>
+    </div>
+    <div class="fiche">
+      <div class="couche fx-camo-ecran"></div>
+      <div class="rang nom"><span>Camo + écran (composé)</span><span class="kda">1/0/0</span></div>
+      <div class="rang jauges"><div class="jauge"></div><div class="jauge sante"></div></div>
+      <div class="rang rangee"><span class="pastille"></span><span class="pastille"></span><span>x1</span></div>
+      <div class="incrustation">
+        <div class="replay-zone-cloud" style="position:absolute; inset:0"></div>
+      </div>
+    </div>
+    <p class="note">Le composé garde les reflets du verre SOUS le nuage : verre = bandes claires
+    en diagonale, écran = volutes sombres — deux signatures.</p>
+  </div>
+
+  <div class="colonne">
+    <h2>Translocation — rotation continue</h2>
+    <div class="fiche">
+      <div class="rang nom"><span>Pendant l'effet (boucle)</span><span class="kda">10/3/1</span></div>
+      <div class="rang jauges"><div class="jauge"></div><div class="jauge sante"></div></div>
+      <div class="rang rangee"><span class="pastille"></span><span class="pastille"></span><span>x2</span></div>
+      <div class="incrustation">
+        <div class="replay-flash-translocation demo-fourreau-continu" style="position:absolute; inset:0; border-radius:6px"></div>
+      </div>
+    </div>
+    <div class="fiche" id="fiche-passage">
+      <div class="rang nom"><span>Un passage complet (rejoué)</span><span class="kda">10/3/1</span></div>
+      <div class="rang jauges"><div class="jauge"></div><div class="jauge sante"></div></div>
+      <div class="rang rangee"><span class="pastille"></span><span class="pastille"></span><span>x2</span></div>
+      <div class="incrustation" id="incrust-passage"></div>
+    </div>
+    <p class="note">En haut : la rotation, jamais interrompue. En bas : un passage réel de
+    l'app — la lumière tourne, puis S'ÉTEINT EN TOURNANT sur le dernier quart (rejoué
+    toutes les 3,5 s pour la démo ; dans l'app, une fois par téléportation).</p>
+  </div>
+
+  <div class="colonne">
+    <h2>Rappels (inchangés)</h2>
+    <div class="fiche">
+      <div class="couche fx-reparation"></div>
+      <div class="rang nom"><span>Champ de réparation</span><span class="kda">6/3/4</span></div>
+      <div class="rang jauges"><div class="jauge"></div><div class="jauge sante"></div></div>
+      <div class="rang rangee"><span class="pastille"></span><span class="pastille"></span><span>x2</span></div>
+      <div class="incrustation">
+        <span class="croix replay-zone-cross" style="left:16%; animation-delay:-0.3s">+</span>
+        <span class="croix replay-zone-cross" style="left:46%; animation-delay:-1.1s">+</span>
+        <span class="croix replay-zone-cross" style="left:74%; animation-delay:-1.9s">+</span>
+      </div>
+    </div>
+    <div class="fiche">
+      <div class="rang nom"><span>Capteur adverse (détecté)</span><span class="kda">9/6/2</span></div>
+      <div class="rang jauges"><div class="jauge"></div><div class="jauge sante"></div></div>
+      <div class="rang rangee"><span class="pastille"></span><span class="pastille"></span><span>x2</span></div>
+      <div class="incrustation">
+        <div class="anneau-capteur replay-zone-sensor"></div>
+      </div>
+    </div>
+    <div class="fiche">
+      <div class="couche fx-surbouclier"></div>
+      <div class="rang nom"><span>Surbouclier</span><span class="kda">5/5/0</span></div>
+      <div class="rang jauges"><div class="jauge"></div><div class="jauge sante"></div></div>
+      <div class="rang rangee"><span class="pastille"></span><span class="pastille"></span><span>x3</span></div>
+    </div>
+    <div class="fiche">
+      <div class="couche fx-mort" id="couche-mort"></div>
+      <div class="rang nom nom-mort"><span>Fiche morte (redessinée)</span><span class="kda">2/7/1</span></div>
+      <div class="rang jauges"><span class="kda">Réapparition dans 4,0 s</span></div>
+      <div class="rang rangee"></div>
+    </div>
+    <p class="note">La fiche morte rejoue son éclat de coup fatal toutes les 4 s (démo).</p>
+  </div>
+</div>
+<script>
+  const incrust = document.getElementById('incrust-passage')
+  function passage() {
+    incrust.innerHTML = ''
+    const b = document.createElement('div')
+    b.className = 'replay-flash-translocation'
+    b.style.position = 'absolute'
+    b.style.inset = '0'
+    b.style.borderRadius = '6px'
+    incrust.appendChild(b)
+  }
+  passage()
+  setInterval(passage, 3500)
+
+  const mort = document.getElementById('couche-mort')
+  setInterval(() => {
+    mort.style.animation = 'none'
+    void mort.offsetWidth
+    mort.style.animation = 'replay-death-flash 0.62s steps(1) 3'
+  }, 4000)
+</script>
+</body>
+</html>
