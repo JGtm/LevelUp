@@ -17,7 +17,8 @@ package archlint
 //
 // # CE QU IL CHERCHE, DANS LES SOURCES DE PRODUCTION DE `cmd/` ET `internal/`
 //
-//	une comparaison (`==`, `!=`) ou un `case` dont un operande designe le type des temps forts :
+//	une comparaison (`==`, `!=`, `<`, `>`, `<=`, `>=`) ou un `case` dont un operande designe le type
+//	des temps forts :
 //	  - `FilmChunkTypeHighlightEvents` ou `ChunkTypeTempsForts`, qualifies ou non ;
 //	  - une constante LOCALE de valeur 3 dont le nom contient « chunk » et « type » (le patron de
 //	    `objectives.chunkTypePied`) ;
@@ -32,7 +33,19 @@ package archlint
 //     2026-09-23 dans `sync/killcollector/cache_films.go`, et figee par
 //     [TestDetecteurDeComparaisonAuTypeTempsForts]) ;
 //   - remettre `chunk.ChunkType != FilmChunkTypeHighlightEvents` dans `haloclient` ;
+//   - ecrire `if m.ChunkType >= 3 {` a la place de `filmcache.EstTempsForts` (mutation R-b de la
+//     revue adverse du lot, invisible avant que l ordre entre dans le detecteur) ;
+//   - ajouter une SECONDE comparaison dans un fichier tolere (compte gele, constat L3-R7) ;
 //   - migrer un site allowliste sans retirer son entree : « entree perimee, la retirer ».
+//
+// # CE QU IL NE GARDE PAS, ET QUI EST CONSIGNE
+//
+// L heuristique « le DERNIER numero porte les temps forts » (`nums[:len(nums)-1]`) ne se detecte
+// pas par un motif sur le type : elle survit hors du perimetre du lot dans
+// `film/replay/player_index.go` et `film/internal/facts/killsource/index_motif.go`, qui excluent le
+// dernier numero en le croyant celui des temps forts. Consignee en decouverte (lot L3, 2026-09-23),
+// migration future : exclure le morceau par son TYPE. Et un repli nomme la porte encore, pour un
+// film charge sans manifeste (`repli_temps_forts_dernier_numero`, registre `facts/fallback`).
 
 import (
 	"go/ast"
@@ -49,15 +62,33 @@ import (
 // fichierDuPredicatFinalise : le SEUL fichier qui compare au type des temps forts.
 const fichierDuPredicatFinalise = "internal/games/halo_infinite/film/filmcache/finalise.go"
 
+// operateursDeComparaison : egalite ET ordre. L ORDRE EN FAIT PARTIE depuis la reprise du lot
+// (constat L3-R7 de la revue adverse, mutation R-b : `m.ChunkType >= 3` a la place de
+// `filmcache.EstTempsForts(m.ChunkType)` restait vert) — « au moins le type des temps forts »
+// est une regle recopiee au meme titre que « egal au type des temps forts ».
+var operateursDeComparaison = map[token.Token]bool{
+	token.EQL: true, token.NEQ: true, token.LSS: true, token.GTR: true, token.LEQ: true, token.GEQ: true,
+}
+
 // nomsDuTypeTempsForts : les constantes nommees du type des temps forts.
 var nomsDuTypeTempsForts = map[string]bool{
 	"FilmChunkTypeHighlightEvents": true,
 	"ChunkTypeTempsForts":          true,
 }
 
+// comparaisonsDuPredicat : le nombre de comparaisons au type des temps forts que porte le
+// predicat lui-meme — UNE, celle d `EstTempsForts`. Gele comme les tolerances : une seconde
+// comparaison dans `finalise.go` serait une regle de plus a cote de la regle.
+const comparaisonsDuPredicat = 1
+
 // comparaisonAuTypeTempsFortsToleree : un site ANTERIEUR au lot, hors de son perimetre.
+//
+// `sites` GELE LE COMPTE DU FICHIER (constat L3-R7 de la revue adverse) : une allowlist par
+// fichier laissait un fichier tolere recevoir de NOUVELLES comparaisons sans rougir. Un compte
+// qui monte est une violation ; un compte qui baisse est une entree a reduire.
 type comparaisonAuTypeTempsFortsToleree struct {
 	fichier string
+	sites   int
 	pose    string
 	retrait string
 }
@@ -69,32 +100,40 @@ type comparaisonAuTypeTempsFortsToleree struct {
 // commit.
 var comparaisonsAuTypeTempsFortsTolerees = []comparaisonAuTypeTempsFortsToleree{
 	{
-		fichier: "cmd/levelup/cmd_backfill_medailles_feed.go", pose: "2026-09-23",
+		fichier: "cmd/levelup/cmd_backfill_medailles_feed.go", sites: 1, pose: "2026-09-23",
 		retrait: "remplacer `chunk.ChunkType != haloclient.FilmChunkTypeHighlightEvents` par " +
 			"`!filmcache.EstTempsForts(chunk.ChunkType)`",
 	},
 	{
 		fichier: "internal/games/halo_infinite/film/internal/facts/objectives/extract.go",
+		sites:   1,
 		pose:    "2026-09-23",
 		retrait: "remplacer `chunkTypePied` par `filmcache.EstTempsForts` — geste de la couche " +
 			"`facts` : l empreinte de `facts.Rev` bouge, a recopier a revision constante avec une " +
 			"note ecrite (sortie identique)",
 	},
 	{
-		fichier: "internal/testfixtures/jgtm_full_match.go", pose: "2026-09-23",
+		fichier: "internal/testfixtures/jgtm_full_match.go", sites: 1, pose: "2026-09-23",
 		retrait: "remplacer `c.ChunkType == 3` par `filmcache.EstTempsForts(c.ChunkType)`",
 	},
 }
 
-// TestAucuneComparaisonAuTypeTempsFortsHorsDuPredicat : LE RATCHET.
+// TestAucuneComparaisonAuTypeTempsFortsHorsDuPredicat : LE RATCHET. Hors du predicat et des
+// tolerances, toute comparaison est une violation ; DANS un fichier tolere (ou dans le predicat),
+// toute comparaison AU-DELA du compte gele en est une aussi.
 func TestAucuneComparaisonAuTypeTempsFortsHorsDuPredicat(t *testing.T) {
-	tolere := map[string]bool{}
+	gele := map[string]int{fichierDuPredicatFinalise: comparaisonsDuPredicat}
 	for _, c := range comparaisonsAuTypeTempsFortsTolerees {
-		tolere[c.fichier] = true
+		gele[c.fichier] = c.sites
 	}
 	var violations []string
 	for rel, lignes := range sitesDeComparaisonAuTypeTempsForts(t) {
-		if rel == fichierDuPredicatFinalise || tolere[rel] {
+		if plafond, ok := gele[rel]; ok {
+			if len(lignes) > plafond {
+				violations = append(violations, rel+" : "+strconv.Itoa(len(lignes))+
+					" comparaisons pour un compte gele a "+strconv.Itoa(plafond)+" (lignes "+
+					joindreLignes(lignes)+")")
+			}
 			continue
 		}
 		for _, l := range lignes {
@@ -112,22 +151,36 @@ func TestAucuneComparaisonAuTypeTempsFortsHorsDuPredicat(t *testing.T) {
 		len(violations), strings.Join(violations, "\n  "))
 }
 
-// TestAllowlistDuTypeTempsFortsNEstPasPerimee : une entree qui ne compare plus se RETIRE.
+// TestAllowlistDuTypeTempsFortsNEstPasPerimee : une entree qui ne compare plus se RETIRE, et une
+// entree dont le compte a BAISSE se reduit — le ratchet ne tolere jamais plus que ce qui existe.
 func TestAllowlistDuTypeTempsFortsNEstPasPerimee(t *testing.T) {
 	sites := sitesDeComparaisonAuTypeTempsForts(t)
-	if len(sites[fichierDuPredicatFinalise]) == 0 {
-		t.Errorf("%s ne compare plus au type des temps forts : le ratchet ne garde plus rien "+
-			"(fichier deplace ? mettre a jour fichierDuPredicatFinalise)", fichierDuPredicatFinalise)
+	if n := len(sites[fichierDuPredicatFinalise]); n != comparaisonsDuPredicat {
+		t.Errorf("%s porte %d comparaison(s) au type des temps forts, attendu %d (fichier deplace ? "+
+			"mettre a jour fichierDuPredicatFinalise)", fichierDuPredicatFinalise, n, comparaisonsDuPredicat)
 	}
 	for _, c := range comparaisonsAuTypeTempsFortsTolerees {
-		if strings.TrimSpace(c.retrait) == "" || c.pose == "" {
-			t.Errorf("%s : tolerance sans date ou sans critere de retrait", c.fichier)
+		if strings.TrimSpace(c.retrait) == "" || c.pose == "" || c.sites <= 0 {
+			t.Errorf("%s : tolerance sans date, sans critere de retrait ou sans compte", c.fichier)
 		}
-		if len(sites[c.fichier]) == 0 {
+		switch n := len(sites[c.fichier]); {
+		case n == 0:
 			t.Errorf("%s (pose %s) ne compare plus au type des temps forts : entree perimee, la "+
 				"retirer de comparaisonsAuTypeTempsFortsTolerees", c.fichier, c.pose)
+		case n < c.sites:
+			t.Errorf("%s : %d comparaison(s) pour un compte gele a %d — reduire le compte", c.fichier,
+				n, c.sites)
 		}
 	}
+}
+
+// joindreLignes rend « 12, 40 ».
+func joindreLignes(lignes []int) string {
+	out := make([]string, 0, len(lignes))
+	for _, l := range lignes {
+		out = append(out, strconv.Itoa(l))
+	}
+	return strings.Join(out, ", ")
 }
 
 // TestDetecteurDeComparaisonAuTypeTempsForts : le detecteur, sur des sources construites — la
@@ -142,7 +195,10 @@ func TestDetecteurDeComparaisonAuTypeTempsForts(t *testing.T) {
 		{"constante nommee", `package p; import "x"; func f(t int) bool { return t == x.FilmChunkTypeHighlightEvents }`, 1},
 		{"constante locale", `package p; const chunkTypePied = 3; func f(t int) bool { return t == chunkTypePied }`, 1},
 		{"case", `package p; func f(c struct{ChunkType int}) { switch c.ChunkType { case 3: } }`, 1},
+		{"ordre", `package p; func f(c struct{ChunkType int}) bool { return c.ChunkType >= 3 }`, 1},
+		{"ordre nommee", `package p; import "x"; func f(t int) bool { return t < x.ChunkTypeTempsForts }`, 1},
 		{"autre type", `package p; func f(c struct{ChunkType int}) bool { return c.ChunkType == 2 }`, 0},
+		{"autre ordre", `package p; func f(n int) bool { return n > 3 }`, 0},
 		{"autre trois", `package p; func f(n int) bool { return n == 3 }`, 0},
 		{"accesseur", `package p; func f(c struct{ChunkType int}) int { return c.ChunkType }`, 0},
 	}
@@ -229,7 +285,7 @@ func comparaisonsAuTypeTempsForts(fset *token.FileSet, f *ast.File, locales map[
 	ast.Inspect(f, func(n ast.Node) bool {
 		switch x := n.(type) {
 		case *ast.BinaryExpr:
-			if x.Op != token.EQL && x.Op != token.NEQ {
+			if !operateursDeComparaison[x.Op] {
 				return true
 			}
 			if designe(x.X) || designe(x.Y) ||

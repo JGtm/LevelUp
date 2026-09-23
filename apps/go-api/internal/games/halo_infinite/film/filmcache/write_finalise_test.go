@@ -122,24 +122,47 @@ func TestWrite_CompleteUnManifestePartiel(t *testing.T) {
 
 // TestWrite_RefuseDeCompleterUnManifesteDivergent : la liste finalisee doit etre un SUR-ENSEMBLE
 // EXACT du manifeste partiel, entree par entree. Une entree deja validee qui aurait change de
-// debut n'est pas une completion : les morceaux deja ecrits ne sont plus dignes de confiance, et
-// rien n'est touche.
+// debut, de type ou de duree n'est pas une completion, et une entree deja validee ABSENTE de la
+// liste non plus : remplacer le manifeste ferait disparaitre un morceau decrit. Dans les quatre
+// cas les morceaux deja ecrits ne sont plus dignes de confiance, et rien n'est touche.
+//
+// LE CAS « OMISE » EST CELUI QUE LA REVUE ADVERSE DU LOT A TROUVE NON GARDE (L3-R5, mutation
+// M3b : ignorer l'absence d'un index laissait tous les tests verts).
 func TestWrite_RefuseDeCompleterUnManifesteDivergent(t *testing.T) {
-	root := t.TempDir()
-	blob, entrees := manifestePartielTemoin(t)
-	poserManifeste(t, root, "ab526724", blob)
-	liste := completerLeTemoin(entrees)
-	liste[5].StartMS++
+	_, entrees := manifestePartielTemoin(t)
+	if entrees[5].ChunkType == 1 {
+		t.Fatalf("temoin inattendu : l'entree 5 est deja de type 1, le cas « type change » ne mordrait pas")
+	}
+	cas := []struct {
+		nom      string
+		deformer func([]WriteChunk) []WriteChunk
+	}{
+		{"debut decale", func(l []WriteChunk) []WriteChunk { l[5].StartMS++; return l }},
+		{"type change", func(l []WriteChunk) []WriteChunk { l[5].ChunkType = 1; return l }},
+		{"duree changee", func(l []WriteChunk) []WriteChunk { l[5].DurationMS++; return l }},
+		{"entree omise", func(l []WriteChunk) []WriteChunk { return append(l[:5:5], l[6:]...) }},
+	}
+	for _, c := range cas {
+		t.Run(c.nom, func(t *testing.T) {
+			root := t.TempDir()
+			blob, entrees := manifestePartielTemoin(t)
+			poserManifeste(t, root, "ab526724", blob)
+			liste := c.deformer(completerLeTemoin(entrees))
+			if !Finalise(liste, typeAEcrire) {
+				t.Fatalf("la liste deformee n'est plus finalisee : le cas ne teste pas la divergence")
+			}
 
-	err := Write(root, "ab526724", liste)
-	if !errors.Is(err, ErrManifesteDivergent) {
-		t.Fatalf("err = %v, attendu ErrManifesteDivergent", err)
-	}
-	if got, _ := os.ReadFile(ManifestPath(root, "ab526724")); string(got) != string(blob) {
-		t.Error("le manifeste partiel a ete reecrit malgre la divergence")
-	}
-	if fichiers, _ := filepath.Glob(filepath.Join(ChunkDir(root, "ab526724"), "chunk_*.bin")); len(fichiers) != 0 {
-		t.Errorf("%d morceaux ecrits malgre la divergence", len(fichiers))
+			err := Write(root, "ab526724", liste)
+			if !errors.Is(err, ErrManifesteDivergent) {
+				t.Fatalf("err = %v, attendu ErrManifesteDivergent", err)
+			}
+			if got, _ := os.ReadFile(ManifestPath(root, "ab526724")); string(got) != string(blob) {
+				t.Error("le manifeste partiel a ete reecrit malgre la divergence")
+			}
+			if fichiers, _ := filepath.Glob(filepath.Join(ChunkDir(root, "ab526724"), "chunk_*.bin")); len(fichiers) != 0 {
+				t.Errorf("%d morceaux ecrits malgre la divergence", len(fichiers))
+			}
+		})
 	}
 }
 
