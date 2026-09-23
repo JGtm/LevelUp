@@ -23,6 +23,7 @@
  * mesure pas la destruction, ce texte ne change RIEN à ce qui s'affiche.
  *
  * SIX RESPONSABILITÉS PURES, TESTABLES SANS CANVAS : le REFUS DU DÉCOR (`vehicleIsDecor`,
+ * `vehicleIsScenery` — le véhicule posé par la carte, jamais simulé —, `vehicleIsHidden`,
  * `vehicleCanEmbark`), l'ORIENTATION (`vehicleHeadingAt`, `vehicleScreenAngle`,
  * `vehicleAimAngle`), la TAILLE (`vehicleSpriteScale`, ancrée sur le pion), l'OCCUPATION
  * (`vehicleActiveRides`, `vehicleDriverAt`, `vehicleColorAt`), le PRÉDICAT EMBARQUÉ
@@ -108,6 +109,47 @@ export const FAMILLES_NON_JOUABLES: ReadonlySet<string> = new Set([
  */
 export function vehicleIsDecor(family: string | undefined): boolean {
   return family !== undefined && FAMILLES_NON_JOUABLES.has(family)
+}
+
+/**
+ * VEHICLE_END_FILM_END — la fin publiée d'une vie qui court jusqu'à la fin du film (côté Go :
+ * `VehicleEndFilmEnd`, `film/replay/document_vehicles.go`). Nommée pour la même raison que
+ * `VEHICLE_END_DESTROYED`.
+ */
+export const VEHICLE_END_FILM_END = 'film_end'
+
+/**
+ * vehicleIsScenery — vrai quand la vie est un VÉHICULE DE DÉCOR de la carte : le film ne réplique
+ * sa position qu'UNE fois, à la naissance (`samples[0].t === t0`), la vie court jusqu'à la fin du
+ * film et personne n'y monte jamais.
+ *
+ * DÉCISION UTILISATEUR DU 2026-09-23 (Q13, retours du rejeu, lot L1.3) : MASQUÉS, comme les
+ * familles non jouables. Constat : sur Starboard, six véhicules posés par la carte Forge
+ * (1 Scorpion, 2 Wasp, 3 Warthog) à 19-24 m au sud de l'arène, identiques au centimètre dans les
+ * deux matchs du parc ; sur Goliath, un Wasp sous le sol. 13 vies au parc, 0 des 232 vies en
+ * jeu (dont 90 garées jamais occupées, mais SIMULÉES : 52 à 76 positions chacune).
+ *
+ * CE N'EST PAS UN SEUIL : c'est ce que le film écrit. Un véhicule simulé est répliqué, même
+ * immobile ; celui-ci ne l'est jamais. Une vie sans aucun échantillon (tourelle bannie, élément
+ * de carte) n'est pas concernée : elle garde sa règle.
+ */
+export function vehicleIsScenery(track: ReplayVehicleTrackReady): boolean {
+  const s = track.samples
+  return (
+    s.length === 1 &&
+    s[0].t === track.t0 &&
+    track.end === VEHICLE_END_FILM_END &&
+    track.rides.length === 0
+  )
+}
+
+/**
+ * vehicleIsHidden — la vie ne se montre pas : famille non jouable (`vehicleIsDecor`) OU véhicule
+ * de décor de la carte (`vehicleIsScenery`). Le seul prédicat du DESSIN et de la disponibilité du
+ * calque ; l'embarquement le reprend par `vehicleCanEmbark`.
+ */
+export function vehicleIsHidden(track: ReplayVehicleTrackReady): boolean {
+  return vehicleIsDecor(track.family) || vehicleIsScenery(track)
 }
 
 // --- ÉLÉMENTS DE CARTE (schéma 1.9.9 — EN AVANCE DE PHASE, cf. ReplayVehicleLabel) ------------
@@ -297,7 +339,7 @@ export function vehicleExplosionKindOf(family: string | undefined): VehicleExplo
  * pendant qu'il conduit).
  */
 export function vehicleCanEmbark(track: ReplayVehicleTrackReady, kind?: string): boolean {
-  if (track.family === undefined || track.family === '' || vehicleIsDecor(track.family)) return false
+  if (track.family === undefined || track.family === '' || vehicleIsHidden(track)) return false
   // UN TROISIÈME REFUS DEPUIS LE 2026-09-16 (lot 1.9.9), pour la MÊME raison que les deux
   // autres : un ÉLÉMENT DE CARTE ne porte personne. Le serveur ne lui attribue déjà aucun
   // épisode (`vehicleFamillesNonPilotables`, côté Go) ; la garde est ici AUSSI parce que le prix

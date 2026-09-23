@@ -31,7 +31,7 @@ import {
   vehicleColorAt,
   vehicleDestructionFrame,
   vehicleExplosionKindOf,
-  vehicleIsDecor,
+  vehicleIsHidden,
   vehicleMapElementGlyph,
   vehiclePositionAt,
   vehicleRideColor,
@@ -497,8 +497,9 @@ export function drawVehiclesLayer(
   for (const track of tracks) {
     // LE DÉCOR NE SE DESSINE PAS (verdict utilisateur 2026-09-02) : ni sprite, ni losange de
     // repli, ni nom, ni explosion — le refus est en tête de boucle pour qu'aucune branche n'y
-    // échappe.
-    if (vehicleIsDecor(track.family)) continue
+    // échappe. LE DÉCOR DE CARTE (véhicule posé, jamais simulé) est masqué de même
+    // (décision utilisateur du 2026-09-23, Q13) : `vehicleIsHidden` réunit les deux refus.
+    if (vehicleIsHidden(track)) continue
     if (vehicleVisibleAt(track, time.frame)) {
       const world = vehiclePositionAt(track, time.frame)
       if (world) {

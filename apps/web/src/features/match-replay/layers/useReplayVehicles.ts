@@ -52,7 +52,7 @@ import {
   vehicleManifestAssetId,
   type VehicleManifestEntry,
 } from '../model/vehicleSpriteManifest'
-import { buildEmbarkedPredicate, vehicleIsDecor } from '../model/vehiclesLayer'
+import { buildEmbarkedPredicate, vehicleIsDecor, vehicleIsHidden } from '../model/vehiclesLayer'
 import { drawVehicleCyclesLayer, vehicleCycleIndexAt } from './vehicleCyclesLayer'
 import { drawVehiclesLayer, type VehicleSpriteSize } from './vehiclesPaint'
 
@@ -486,8 +486,9 @@ export function useReplayVehicles({
 
   // « DISPONIBLE » = AU MOINS UN VÉHICULE QUE LE CALQUE DESSINERAIT. Un film qui ne porte que du
   // décor (Falcon & consorts, cf. `FAMILLES_NON_JOUABLES`) n'a pas de calque à commander : la
-  // bascule ne s'affiche pas, plutôt que d'allumer un calque resté vide.
-  const available = useMemo(() => tracks.some((t) => !vehicleIsDecor(t.family)), [tracks])
+  // bascule ne s'affiche pas, plutôt que d'allumer un calque resté vide. Le DÉCOR DE CARTE
+  // (véhicule posé, jamais simulé — `vehicleIsScenery`, 2026-09-23) compte de même.
+  const available = useMemo(() => tracks.some((t) => !vehicleIsHidden(t)), [tracks])
 
   // UNE SEULE LIGNE, ET C'EST UN RATCHET : `sceneBinding.guard.test.ts` exige que l'id du calque
   // soit rendu ICI, en tete de l'objet — c'est ce qui rend impossible de peindre ce geste sous
