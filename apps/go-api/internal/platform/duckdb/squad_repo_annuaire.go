@@ -1,15 +1,15 @@
 // Package duckdb — squad_repo_annuaire.go : L'ANNUAIRE DES NOMS des lectures qui ne joignent plus
 // v_gamertag_lookup. Escouade (lot perf L2) : Q29 LoadTopTeammates, Q32 LoadImpactEvents, Q32b
-// LoadMainTeamParticipants. Carriere (lot perf L7) : Q26 GetTopEncountersGlobal — le fichier
-// garde son nom d'origine, et sa ligne DEBUG le sien (`squad_annuaire`), pour toutes.
+// LoadMainTeamParticipants. Carriere (lot perf L7) : Q26 GetTopEncountersGlobal, Q27 GetRivals —
+// le fichier garde son nom d'origine, et sa ligne DEBUG le sien (`squad_annuaire`), pour toutes.
 //
 // # LE DEFAUT SUPPRIME (lots perf L2 et L7, 2026-09-23)
 //
 // Ces lectures portaient `LEFT JOIN v_gamertag_lookup`. Aucun filtre ne se pousse dans
 // cette vue (agregats en FULL OUTER JOIN) : elle etait materialisee EN ENTIER a chaque
 // jointure, 3 s par evaluation sur la base de production. Escouade : six evaluations par page
-// (Q32 etait lue quatre fois), Q29 3,0-3,3 s AVEC la jointure, 32 ms sans. Carriere : rencontres
-// 10,7 s a la mesure de campagne.
+// (Q32 etait lue quatre fois), Q29 3,0-3,3 s AVEC la jointure, 32 ms sans. Carriere : trois par
+// ouverture (Q26, Q27 deux fois), rencontres 10,7 s et rivaux 10,1 s a la mesure de campagne.
 //
 // # CE QUI NE CHANGE PAS : LA SOURCE DES NOMS
 //
@@ -23,7 +23,9 @@
 // coequipiers de session de l'accueil) recoivent donc les memes noms qu'avant.
 //
 // Les lectures AGREGEES de la Carriere (une ligne par joueur, tous matchs confondus) lisent
-// l'annuaire sur les matchs de l'historique du joueur (QMatchsDuJoueurTpl).
+// l'annuaire sur les matchs de l'historique du joueur (QMatchsDuJoueurTpl) ; les rivaux, venus du
+// kill-feed, portent en plus UN match du duel par ligne (`match_rencontre`) : la jambe kill-feed y
+// trouve un adversaire qu'aucune ligne participant ne connait.
 //
 // # LES ECARTS POSSIBLES AVEC LA VUE, NOMMES
 //
@@ -40,7 +42,8 @@
 // Carriere (L7), meme copie, sur TOUS les joueurs croises ou affrontes par les cinq joueurs
 // suivis (58 353 couples joueur / croise, pas seulement les lignes servies) : zero ecart pour
 // quatre d'entre eux ; 8 chez Nuzzles, « Joueur #### » la ou la vue trouve un nom HORS de ses
-// 7 190 matchs (ses participants n'ont pas de gamertag), aucun dans une ligne servie.
+// 7 190 matchs (ses participants n'ont pas de gamertag), aucun dans une ligne servie. Les 269
+// rivaux sans alias ni nom de participant (JGtm, Madina97294, Chocoboflor) y ont le nom de la vue.
 package duckdb
 
 import (

@@ -33,7 +33,7 @@ var lecturesDeLaVueRestantes = map[string]int{
 	"gamertag_repo.go":             1, // ResolveGamertags : des xuids sans matchs
 	"leaderboard_world_repo.go":    1, // classement mondial
 	"media_repo_filters.go":        1, // Médias : lobbies des matchs
-	"queries_career_encounters.go": 3, // Carrière : Q27 rivaux ; Relations : Q28 et Q28 scopé
+	"queries_career_encounters.go": 2, // Relations : Q28 et Q28 scopé
 	"queries_match.go":             3, // Q10 (/career/encounters), Q12 tableau de score, Q21 événements
 	"queries_match_detail.go":      2, // vue match : Q23 et Q23b
 	"queries_relations_moments.go": 1, // Relations : heatmap Q29

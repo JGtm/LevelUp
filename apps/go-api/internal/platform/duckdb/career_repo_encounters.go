@@ -2,10 +2,10 @@
 // (top neměsis / top souffre-douleur) pour la page Carrière. Découpé de
 // career_repo.go (god-file split, refactor 2026-05-27).
 //
-// NOMS (lot perf L7, 2026-09-23) : Q26 ne joint plus v_gamertag_lookup, qui se matérialisait
-// en entier à chaque lecture (1,7 à 3 s). Ses lignes sont nommées par l'annuaire de la lecture
-// (squad_repo_annuaire.go), sur les matchs de l'historique du joueur (QMatchsDuJoueurTpl) : même
-// cascade que la vue.
+// NOMS (lot perf L7, 2026-09-23) : Q26 et Q27 ne joignent plus v_gamertag_lookup, qui se
+// matérialisait en entier à chaque lecture (1,7 à 3 s, trois fois par ouverture de la page
+// Carrière). Leurs lignes sont nommées par l'annuaire de la lecture (squad_repo_annuaire.go), sur
+// les matchs de l'historique du joueur (QMatchsDuJoueurTpl) : même cascade que la vue.
 package duckdb
 
 import (
@@ -144,45 +144,77 @@ func encounterFromStats(st domain.EncounterStatsRaw, countTogether int, lastSeen
 	return enc
 }
 
-// GetRivals retourne les top némésis (par deaths DESC) et top souffre-douleur
-// (par frags DESC), 10 chacun, depuis killer_victim_pairs via SharedReader.
-// Pas de seuil min — le ratio est calculé côté service.
-//
 // rivalsOrderColXxx : colonnes SQL acceptées par queryRivals.
 const (
 	rivalsOrderColFrags  = "frags"
 	rivalsOrderColDeaths = "deaths"
 )
 
+// rivalLu : une ligne de Q27 avant projection — `match` est le match de la rencontre où
+// l'annuaire cherche un adversaire que seul le kill-feed connaît (cf. Q27CareerRivalsTpl).
+type rivalLu struct {
+	domain.CareerRivalRawRow
+	match string
+}
+
+// GetRivals retourne les top némésis (par deaths DESC) et top souffre-douleur
+// (par frags DESC), 10 chacun, depuis le kill-feed canonique via SharedReader.
+// Pas de seuil min — le ratio est calculé côté service.
 func (r *CareerRepo) GetRivals(ctx context.Context) (nemeses, victims []domain.CareerRivalRawRow, err error) {
 	ctx, cancel := context.WithTimeout(ctx, careerRivalsTimeout)
 	defer cancel()
 
-	nemeses, err = r.queryRivals(ctx, rivalsOrderColDeaths)
-	if err != nil {
-		return nil, nil, err
-	}
-	victims, err = r.queryRivals(ctx, rivalsOrderColFrags)
-	if err != nil {
-		return nil, nil, err
-	}
-	return nemeses, victims, nil
-}
-
-// queryRivals exécute Q27CareerRivalsTpl avec orderCol pour le tri (frags ou deaths).
-func (r *CareerRepo) queryRivals(ctx context.Context, orderCol string) ([]domain.CareerRivalRawRow, error) {
-	if orderCol != rivalsOrderColFrags && orderCol != rivalsOrderColDeaths {
-		return nil, fmt.Errorf("CareerRepo.queryRivals: invalid order column %q", orderCol)
-	}
-	sqlText := fmt.Sprintf(Q27CareerRivalsTpl, orderCol)
-	// migré vers SharedReader. Q27 est shared-only
-	// (killer_victim_pairs + v_gamertag_lookup, tous root-level).
 	db, release, err := r.pdb.SharedReadDB().Get(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("CareerRepo.queryRivals(%s): shared reader: %w", orderCol, err)
+		return nil, nil, fmt.Errorf("CareerRepo.GetRivals: shared reader: %w", err)
 	}
 	defer release()
 
+	nem, err := r.queryRivals(ctx, db, rivalsOrderColDeaths)
+	if err != nil {
+		return nil, nil, err
+	}
+	vic, err := r.queryRivals(ctx, db, rivalsOrderColFrags)
+	if err != nil {
+		return nil, nil, err
+	}
+	// Noms : UN annuaire pour les deux listes (un même adversaire y figure souvent deux fois).
+	lus := make([]*rivalLu, 0, len(nem)+len(vic))
+	for i := range nem {
+		lus = append(lus, &nem[i])
+	}
+	for i := range vic {
+		lus = append(lus, &vic[i])
+	}
+	stop := timing.FromContext(ctx).Section("rivals_annuaire")
+	err = nommerSurLHistorique(ctx, r, db, lus, accesLigne[*rivalLu]{
+		xuid:   func(l *rivalLu) string { return l.XUID },
+		match:  func(l *rivalLu) string { return l.match },
+		nommer: func(l **rivalLu, gt string) { (*l).Gamertag = gt },
+	})
+	stop()
+	if err != nil {
+		return nil, nil, fmt.Errorf("CareerRepo.GetRivals: %w", err)
+	}
+	return projeterRivaux(nem), projeterRivaux(vic), nil
+}
+
+// projeterRivaux rend les lignes du contrat (nil pour une liste vide, comme la lecture d'origine).
+func projeterRivaux(lus []rivalLu) []domain.CareerRivalRawRow {
+	var out []domain.CareerRivalRawRow
+	for _, l := range lus {
+		out = append(out, l.CareerRivalRawRow)
+	}
+	return out
+}
+
+// queryRivals exécute Q27CareerRivalsTpl avec orderCol pour le tri (frags ou deaths), SANS nom.
+func (r *CareerRepo) queryRivals(ctx context.Context, db *sql.DB, orderCol string) ([]rivalLu, error) {
+	if orderCol != rivalsOrderColFrags && orderCol != rivalsOrderColDeaths {
+		return nil, fmt.Errorf("CareerRepo.queryRivals: invalid order column %q", orderCol)
+	}
+	defer timing.FromContext(ctx).Section("rivals")()
+	sqlText := fmt.Sprintf(Q27CareerRivalsTpl, orderCol)
 	rows, err := db.QueryContext(
 		ctx, sqlText,
 		r.pdb.XUID, r.pdb.XUID, r.pdb.XUID, r.pdb.XUID, r.pdb.XUID, r.pdb.XUID,
@@ -192,13 +224,13 @@ func (r *CareerRepo) queryRivals(ctx context.Context, orderCol string) ([]domain
 	}
 	defer rows.Close()
 
-	var results []domain.CareerRivalRawRow
+	var results []rivalLu
 	for rows.Next() {
-		var row domain.CareerRivalRawRow
-		if err := rows.Scan(&row.XUID, &row.Gamertag, &row.Frags, &row.Deaths, &row.MatchCount); err != nil {
+		var l rivalLu
+		if err := rows.Scan(&l.XUID, &l.Frags, &l.Deaths, &l.MatchCount, &l.match); err != nil {
 			return nil, fmt.Errorf("CareerRepo.queryRivals(%s) scan: %w", orderCol, err)
 		}
-		results = append(results, row)
+		results = append(results, l)
 	}
 	return results, rows.Err()
 }

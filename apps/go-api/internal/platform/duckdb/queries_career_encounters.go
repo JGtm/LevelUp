@@ -94,27 +94,28 @@ LIMIT 10`
 // dans la canonique) et le reste. Ce qui les exclut, c'est `opp_xuid <> ?` sur un
 // xuid NULL — mesuré le 2026-08-03. NE PAS retirer le filtre pour autant : il
 // garde les formes `bid(...)` que d'autres titres pourraient écrire.
+//
+// AUCUN GAMERTAG EN SQL (lot perf L7) : cf. Q26 et GetRivals. `match_rencontre` (un match du
+// duel) dit à l'annuaire où chercher un adversaire que seul le kill-feed connaît.
 const Q27CareerRivalsTpl = `
 WITH pairs AS (
     SELECT
         CASE WHEN kv.feed_killer_xuid = ? THEN kv.victim_xuid ELSE kv.feed_killer_xuid END AS opp_xuid,
         COUNT(*) FILTER (WHERE kv.feed_killer_xuid = ?) AS frags,
         COUNT(*) FILTER (WHERE kv.victim_xuid     = ?) AS deaths,
-        COUNT(DISTINCT kv.match_id) AS match_count
+        COUNT(DISTINCT kv.match_id) AS match_count,
+        MIN(kv.match_id) AS match_rencontre
     FROM ` + KillEventsCanonicalTable + ` kv
     WHERE kv.feed_killer_xuid = ? OR kv.victim_xuid = ?
     GROUP BY opp_xuid
 )
 SELECT
     p.opp_xuid AS xuid,
-    -- opp_xuid peut être orphelin de la vue → fallback masqué
-    -- "Joueur ####" (jamais de xuid brut, miroir de analysis.MaskedXuidLabelSQL).
-    COALESCE(vg.gamertag, ('Joueur ' || RIGHT(p.opp_xuid, 4))) AS gamertag,
     p.frags,
     p.deaths,
-    p.match_count
+    p.match_count,
+    p.match_rencontre
 FROM pairs p
-LEFT JOIN v_gamertag_lookup vg ON vg.xuid = p.opp_xuid
 WHERE p.opp_xuid <> ?
   AND p.opp_xuid NOT LIKE 'bid(%%'
 ORDER BY %s DESC, p.match_count DESC, p.opp_xuid ASC
