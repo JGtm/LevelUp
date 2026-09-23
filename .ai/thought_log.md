@@ -112926,3 +112926,56 @@ l'ancien libellé. Gates : vitest pageTitle 69 verts, eslint, tsc.
 **Resultats observes.** Escouade a froid : 194 s avant l'etat stable, 7 POST teammates cote serveur (6 ; 44,8 et 41,4 en 502 ; 24,4 ; 53,8 et 54,1 en 502 ; 25,3 s), 4 reponses tronquees par `WriteTimeout` 30 s puis rejouees par le retry front, calcul serveur poursuivi apres la coupure. A chaud : 26,3 s pour une session de 7 matchs ; un clic du rail = 2 requetes (8,2 s a vide + 26,8 s). Le cout ne depend pas du perimetre (0 match 8,2 s, 38 matchs 24,4 s). Chrono SQL (copie, 2 threads/512 Mo) : `v_gamertag_lookup` 3,0 a 3,3 s par evaluation, six evaluations par `GetPage` (Q29, Q32b, 4x Q32) = environ 18 s fixes ; Q29 sans la jointure 32 ms, Q32 sans 8 a 55 ms ; `LoadPlayerMatches` complet environ 100 ms de SQL. Pages solo : Synthese 6,2 s dont 5,6 s dans le bloc records de distance/portee, Sessions 6,1 s dont 3,9 s de bloc coordination (journal des morts sur tout l'historique) + 1,6 s de portee, Series temporelles 9,5 s, Carriere 2,8 + 2,5 s en cascade, Accueil 4,2 + 2,6 s. Socle : `/filters/resolve` x2-3 par page (0,2 a 0,6 s, sans cache), catalogue de saisons en 403 a chaque appel (~100 ms), `field-mappings` 0,4 s meme en 304. Sync : 1 243 bascules RO/RW en 75 s (post-sync LUSR v2) sans ecriture, provider en error state. CPU : 1,3 a 1,9 coeur par requete (DuckDB 2 threads).
 
 **Conclusion / prochaine etape.** Causes classees C1-C9 dans l'etat des lieux ; plan propose : (1) instrumentation des durees (requetes > 1 s en INFO, chrono par section), (2) Escouade backend (retirer les jointures `v_gamertag_lookup`, un seul `LoadImpactEvents`, un `LoadFor` par membre, perimetre pousse au journal des morts, `sessionMatchIDs` depuis `filters.sessions`), (3) `WriteTimeout` + retry + `AbortSignal`, (4) front Escouade (ancrage avant la requete lourde, une seule source de verite de session), (5) pages solo (perimetre des blocs coordination/portee, caches, saisons, ETag), (6) sync sans ecrivain a vide, (7) reglages locaux. Attente du go utilisateur sur l'ordre. Serveurs de dev arretes en fin de session (etat initial), arbre git propre hors ce document et ce journal.
+
+## [2026-09-23] Retours rejeu 2D, Tactique et tiroir des assets : enquête sur pièces et plan — Complété (plan proposé, aucun code modifié)
+
+**Demande.** Neuf retours de l'utilisateur, « investigue sur preuve et planifie des solutions » : Ghost
+sans tir ni son ni éclair (81c02726, signalé de nombreuses fois) ; Mongoose inoccupé qui part seul et
+finit hors zone jouable ; Madina97294 qui réapparaît hors carte et « vole » ; fiche de XxDaemonGamerxX
+sans armes à 2:08 ; b1ad85eb à 3 puis 5 joueurs par équipe ; « Sprint » sur les fiches, jamais demandé ;
+page Tactique qui recharge tout ; ab526724 sans drapeau, score ni frise, avec des véhicules ; doublons
+« Solution » dans le tiroir des assets.
+
+**Décision technique principale.** Six enquêteurs Opus en lecture seule, en parallèle (brief commun :
+aucun serveur, aucun navigateur, aucun décodage de film ; bases lues sur COPIES ; commandes `go`
+sérialisées par un verrou machine dans des worktrees détachés, retirés en fin d'enquête) ; trois sondes
+Go `research` sur faits persistés seulement. Affirmations structurantes revérifiées par le superviseur
+sur le code et les documents avant d'être retenues. Livrable : `.ai/V7.5/PLAN_RETOURS_REJEU_2026-09-23.md`
+(verdicts, causes, 27 décisions utilisateur avec recommandation, quatre vagues de lots, gates sur
+documents réels) et annexes `.ai/V7.5/retours_rejeu_2026-09-23/` (six rapports, instruments).
+
+**Résultats observés (causes prouvées).**
+- Ghost : le décodeur des tirs (`grammar/fire_events.go` `ScanFireEvents`) ne lit que l'événement de tête
+  des paquets `0xD2`, variante longue, à offsets fixes ; aucune arme à tir continu (Ghost, canons de la
+  Banshee, Chopper, LAAG, LMG du Falcon, tourelle du Wraith, Rayon de Sentinelle à pied) n'entre dans un
+  document : 0 tir de Ghost au parc pour 1 522 s de pilotage et 63 frags au Ghost. En aval : 7 des 11
+  tags des tables client jamais vus, 3 tags observés absents, Rockethog muet depuis le lot 5.8.4 (21/09),
+  tirs de tourelle posés à la naissance de la tourelle (44,7 m du porteur en médiane).
+- Positions : faux positifs des balayages ancrés bit à bit (même suite de bits sur des cartes aux
+  quantifications différentes), laissés par les filtres et interpolés sans borne par le client, qui ne
+  lit pas `Point.g` ; 33 documents sur 111. Le premier point de Madina précède de 4,65 s la création de
+  son corps.
+- Fiche : l'image-clé t 1494 a perdu le préfixe de sa table (`WalkKeyframeWorld`) ; 7,4 % des images-clés
+  du parc trouées, 18,9 % des vies sans arme publiée ; les armes de naissance ne sont lues nulle part.
+- Équipes b1ad85eb : l'utilisateur a raison sur les trois instants. Web : un joueur parti reste
+  `present` sans successeur sur son siège ; Go : siège = index, équipe agrégée par index (3 bots sur
+  l'index 8, deux équipes), corps de bots non nommés. L'index de tireur est la PLACE (3 remplacements
+  sur 3).
+- ab526724 : film archivé avant sa finalisation (manifeste 34/37, sans morceau de temps forts ;
+  `filmcache.Write` ne réécrit jamais un manifeste) ; + bandeau 0 — 0 sur série sans camp (7 documents) et
+  piste Score absente sur match à sens unique (13). Ses véhicules sont du décor de la carte Forge
+  Starboard.
+- Tactique : fond de carte rendu sous la condition « données prêtes » et lectures sans `placeholderData`.
+  Tiroir : doublon d'affichage (3 assets de même nom anglais, même image ; 157 cartes pour 93 images).
+- « Sprint » : affichage introduit le 21/09 sur décision du pilote, jamais demandé par l'utilisateur.
+
+**Errata.** (1) L'entrée du 2026-09-08 « Point 8 — CLOS » (« deux Ghost courts », « le facteur
+limitant est le nombre de chevauchées armées ») est fausse : sur 81c02726 les deux épisodes de Ghost
+durent 78 et 80 s et portent 6 frags au Ghost ; aucun lot n'avait vérifié un tir de Ghost dans un
+document réel. (2) La mention « DECISION UTILISATEUR » du commit `b832320d4` (et du plan du décodeur,
+note 5.3) décrit une décision du pilote, non adossée à un message de l'utilisateur.
+
+**Prochaine étape.** Décisions de l'utilisateur sur le §3 du plan (autorisations des sondes de film,
+réparation d'ab526724, deux montées de schéma avec republication, calendrier v7.5, rendus). Rien n'est
+lancé avant son go. Aucun fichier de code touché ; le plan et ses annexes ne sont pas commités (commit
+sur demande).
