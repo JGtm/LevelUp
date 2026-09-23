@@ -117,7 +117,7 @@ func TestCareerRepo_Annuaire_EcartNomme_NomHorsHistorique(t *testing.T) {
 
 // TestCareerRepo_Annuaire_SectionsDeDuree : D7.4 — chaque lecture et son annuaire ont leur
 // section (des feuilles, cf. observability/timing) ; Q27 est lue deux fois (némésis puis
-// souffre-douleur), son annuaire une seule.
+// souffre-douleur), son annuaire une seule. Mêmes sections pour Q10 et la page Comparer (L7.3).
 func TestCareerRepo_Annuaire_SectionsDeDuree(t *testing.T) {
 	pdb := newTestPlayerDB(t)
 	seedAnnuaire(t, pdb)
@@ -130,13 +130,56 @@ func TestCareerRepo_Annuaire_SectionsDeDuree(t *testing.T) {
 	if _, _, err := repo.GetRivals(ctx); err != nil {
 		t.Fatalf("GetRivals : %v", err)
 	}
+	if _, err := repo.GetEncounters(ctx); err != nil {
+		t.Fatalf("GetEncounters : %v", err)
+	}
+	if _, err := NewCompareRepo(pdb).GetLocalStats(ctx, "x_part", pdb.TitleSlug); err != nil {
+		t.Fatalf("GetLocalStats : %v", err)
+	}
 	appels := map[string]int{}
 	for _, s := range chrono.Snapshot() {
 		appels[s.Name] = s.Calls
 	}
-	for nom, n := range map[string]int{"top_encounters": 1, "top_encounters_annuaire": 1, "rivals": 2, "rivals_annuaire": 1} {
+	for nom, n := range map[string]int{"top_encounters": 1, "top_encounters_annuaire": 1, "rivals": 2,
+		"rivals_annuaire": 1, "encounters": 1, "encounters_annuaire": 1, "compare_local_stats": 1,
+		"compare_local_stats_annuaire": 1} {
 		if appels[nom] != n {
 			t.Errorf("section %q : %d appel(s), attendu %d (sections : %v)", nom, appels[nom], n, appels)
+		}
+	}
+}
+
+// seedSecondMatch : mq10, un match du joueur où rejouent tous les xuids de seedAnnuaire (sans
+// gamertag : les noms ne changent pas) — Q10 ne garde que les joueurs croisés deux fois.
+func seedSecondMatch(t *testing.T, pdb *PlayerDB) {
+	t.Helper()
+	ctx := context.Background()
+	execOnSharedDBs(t, pdb, ctx, `INSERT INTO shared.match_registry (match_id) VALUES ('mq10')`)
+	for _, x := range []string{pTestXUID, "x_alias", "x_alias_vide", "x_triple", "x_kfl", "x_ennemi", "x_kvp", "x_rien", "bid(1.0)", "bid(99.0)"} {
+		execOnSharedDBs(t, pdb, ctx, `INSERT INTO shared.match_participants (match_id, xuid, gamertag, outcome, team_id)
+			VALUES ('mq10', ?, '', 2, 0)`, x)
+	}
+}
+
+// TestCareerRepo_Annuaire_Q10MemeNomsQueLaVue : les rencontres de /career/encounters (Q10, liste
+// de l'onglet Tactique) portent le nom que la jointure leur donnait — bots compris : Q10 ne les
+// écarte pas, et le niveau 1 de la cascade (BotSQLCase) est le même.
+func TestCareerRepo_Annuaire_Q10MemeNomsQueLaVue(t *testing.T) {
+	pdb := newTestPlayerDB(t)
+	seedAnnuaire(t, pdb)
+	seedSecondMatch(t, pdb)
+	got, err := NewCareerRepo(pdb).GetEncounters(context.Background())
+	if err != nil {
+		t.Fatalf("GetEncounters : %v", err)
+	}
+	// Croisés deux fois : x_part (ma1, ma2) et les neuf de mq10 (déjà croisés sur ma1 ou ma2).
+	if len(got) != 10 {
+		t.Fatalf("%d rencontres, attendu 10 : %+v", len(got), got)
+	}
+	for _, e := range got {
+		verifierNom(t, pdb, "Q10", e.XUID, e.Gamertag)
+		if e.MatchCount != 2 {
+			t.Errorf("%s : %d matchs, attendu 2", e.XUID, e.MatchCount)
 		}
 	}
 }

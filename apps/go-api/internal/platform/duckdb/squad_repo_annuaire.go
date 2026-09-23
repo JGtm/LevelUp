@@ -1,7 +1,8 @@
 // Package duckdb — squad_repo_annuaire.go : L'ANNUAIRE DES NOMS des lectures qui ne joignent plus
 // v_gamertag_lookup. Escouade (lot perf L2) : Q29 LoadTopTeammates, Q32 LoadImpactEvents, Q32b
-// LoadMainTeamParticipants. Carriere (lot perf L7) : Q26 GetTopEncountersGlobal, Q27 GetRivals —
-// le fichier garde son nom d'origine, et sa ligne DEBUG le sien (`squad_annuaire`), pour toutes.
+// LoadMainTeamParticipants. Carriere (lot perf L7) : Q26 GetTopEncountersGlobal, Q27 GetRivals,
+// Q10 GetEncounters ; Comparer : GetLocalStats — le fichier garde son nom d'origine, et sa ligne
+// DEBUG le sien (`squad_annuaire`), pour toutes.
 //
 // # LE DEFAUT SUPPRIME (lots perf L2 et L7, 2026-09-23)
 //
@@ -22,8 +23,9 @@
 // « Joueur #### ». Les consommateurs de ces lectures hors Escouade (SquadService legacy,
 // coequipiers de session de l'accueil) recoivent donc les memes noms qu'avant.
 //
-// Les lectures AGREGEES de la Carriere (une ligne par joueur, tous matchs confondus) lisent
-// l'annuaire sur les matchs de l'historique du joueur (QMatchsDuJoueurTpl) ; les rivaux, venus du
+// Les lectures AGREGEES de la Carriere et de Comparer (une ligne par joueur, tous matchs
+// confondus) lisent l'annuaire sur les matchs de l'historique du joueur (QMatchsDuJoueurTpl ; pour
+// Comparer, celui du joueur compare, que la lecture agrege en entier) ; les rivaux, venus du
 // kill-feed, portent en plus UN match du duel par ligne (`match_rencontre`) : la jambe kill-feed y
 // trouve un adversaire qu'aucune ligne participant ne connait.
 //
@@ -44,6 +46,7 @@
 // quatre d'entre eux ; 8 chez Nuzzles, « Joueur #### » la ou la vue trouve un nom HORS de ses
 // 7 190 matchs (ses participants n'ont pas de gamertag), aucun dans une ligne servie. Les 269
 // rivaux sans alias ni nom de participant (JGtm, Madina97294, Chocoboflor) y ont le nom de la vue.
+// Comparer : zero ecart sur les 53 061 xuids de la base (la lecture couvre tout leur historique).
 package duckdb
 
 import (

@@ -2,8 +2,8 @@
 // (top neměsis / top souffre-douleur) pour la page Carrière. Découpé de
 // career_repo.go (god-file split, refactor 2026-05-27).
 //
-// NOMS (lot perf L7, 2026-09-23) : Q26 et Q27 ne joignent plus v_gamertag_lookup, qui se
-// matérialisait en entier à chaque lecture (1,7 à 3 s, trois fois par ouverture de la page
+// NOMS (lot perf L7, 2026-09-23) : Q26, Q27 et Q10 ne joignent plus v_gamertag_lookup, qui se
+// matérialisait en entier à chaque lecture (1,7 à 3 s ; trois fois par ouverture de la page
 // Carrière). Leurs lignes sont nommées par l'annuaire de la lecture (squad_repo_annuaire.go), sur
 // les matchs de l'historique du joueur (QMatchsDuJoueurTpl) : même cascade que la vue.
 package duckdb
@@ -47,7 +47,7 @@ func (r *CareerRepo) GetTopEncountersGlobal(ctx context.Context, excludeXUIDs []
 	}
 	// Noms : l'annuaire de la lecture — les xuids du top, sur l'historique que Q26 vient d'agréger.
 	stop = timing.FromContext(ctx).Section("top_encounters_annuaire")
-	err = nommerSurLHistorique(ctx, r, db, encounters, accesLigne[domain.MatchEncounterRow]{
+	err = nommerSurLHistorique(ctx, db, r.historique(), encounters, accesLigne[domain.MatchEncounterRow]{
 		xuid:   func(e domain.MatchEncounterRow) string { return e.XUID },
 		nommer: func(e *domain.MatchEncounterRow, gt string) { e.Gamertag = gt },
 	})
@@ -187,7 +187,7 @@ func (r *CareerRepo) GetRivals(ctx context.Context) (nemeses, victims []domain.C
 		lus = append(lus, &vic[i])
 	}
 	stop := timing.FromContext(ctx).Section("rivals_annuaire")
-	err = nommerSurLHistorique(ctx, r, db, lus, accesLigne[*rivalLu]{
+	err = nommerSurLHistorique(ctx, db, r.historique(), lus, accesLigne[*rivalLu]{
 		xuid:   func(l *rivalLu) string { return l.XUID },
 		match:  func(l *rivalLu) string { return l.match },
 		nommer: func(l **rivalLu, gt string) { (*l).Gamertag = gt },
@@ -235,23 +235,34 @@ func (r *CareerRepo) queryRivals(ctx context.Context, db *sql.DB, orderCol strin
 	return results, rows.Err()
 }
 
-// nommerSurLHistorique nomme les lignes d'une lecture Carrière agrégée par l'annuaire de la
-// lecture (squad_repo_annuaire.go), sur les matchs de l'historique du joueur. Sans ligne : rien à lire.
-func nommerSurLHistorique[T any](ctx context.Context, r *CareerRepo, db *sql.DB, lignes []T, acces accesLigne[T]) error {
+// historique : le joueur sur les matchs duquel l'annuaire nomme une lecture agrégée
+// (QMatchsDuJoueurTpl), et le titre qui décide l'exclusion Campagne.
+type historique struct {
+	xuid, titre string
+}
+
+// historique du joueur du repo (même titre que Q26 pour l'exclusion Campagne).
+func (r *CareerRepo) historique() historique {
+	return historique{xuid: r.pdb.XUID, titre: r.pdb.TitleSlug}
+}
+
+// nommerSurLHistorique nomme les lignes d'une lecture agrégée par l'annuaire de la lecture
+// (squad_repo_annuaire.go), sur les matchs de l'historique `h`. Sans ligne : rien à lire.
+func nommerSurLHistorique[T any](ctx context.Context, db *sql.DB, h historique, lignes []T, acces accesLigne[T]) error {
 	if len(lignes) == 0 {
 		return nil
 	}
-	matchs, err := r.matchsDuJoueur(ctx, db)
+	matchs, err := matchsDeLHistorique(ctx, db, h)
 	if err != nil {
 		return err
 	}
 	return nommerLignes(ctx, db, matchs, lignes, acces)
 }
 
-// matchsDuJoueur rend les matchs de QMatchsDuJoueurTpl (exclusion Campagne résolue par match).
-func (r *CareerRepo) matchsDuJoueur(ctx context.Context, db *sql.DB) ([]string, error) {
-	q := resolveCampaignExclusionByMatchID(QMatchsDuJoueurTpl, r.pdb.TitleSlug, "match_id")
-	rows, err := db.QueryContext(ctx, q, r.pdb.XUID)
+// matchsDeLHistorique rend les matchs de QMatchsDuJoueurTpl (exclusion Campagne résolue par match).
+func matchsDeLHistorique(ctx context.Context, db *sql.DB, h historique) ([]string, error) {
+	q := resolveCampaignExclusionByMatchID(QMatchsDuJoueurTpl, h.titre, "match_id")
+	rows, err := db.QueryContext(ctx, q, h.xuid)
 	if err != nil {
 		return nil, fmt.Errorf("matchs du joueur: %w", err)
 	}
@@ -267,7 +278,8 @@ func (r *CareerRepo) matchsDuJoueur(ctx context.Context, db *sql.DB) ([]string, 
 	return out, rows.Err()
 }
 
-// GetEncounters retourne les adversaires/coéquipiers fréquents.
+// GetEncounters retourne les adversaires/coéquipiers fréquents (Q10), nommés par l'annuaire de
+// la lecture sur l'historique du joueur (lot perf L7 : plus de jointure v_gamertag_lookup).
 func (r *CareerRepo) GetEncounters(ctx context.Context) ([]domain.EncounterRawRow, error) {
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
@@ -278,22 +290,40 @@ func (r *CareerRepo) GetEncounters(ctx context.Context) ([]domain.EncounterRawRo
 	}
 	defer release()
 
+	stop := timing.FromContext(ctx).Section("encounters")
+	results, err := r.scanEncounters(ctx, db)
+	stop()
+	if err != nil {
+		return nil, fmt.Errorf("CareerRepo.GetEncounters: %w", err)
+	}
+	stop = timing.FromContext(ctx).Section("encounters_annuaire")
+	err = nommerSurLHistorique(ctx, db, r.historique(), results, accesLigne[domain.EncounterRawRow]{
+		xuid:   func(e domain.EncounterRawRow) string { return e.XUID },
+		nommer: func(e *domain.EncounterRawRow, gt string) { e.Gamertag = gt },
+	})
+	stop()
+	if err != nil {
+		return nil, fmt.Errorf("CareerRepo.GetEncounters: %w", err)
+	}
+	return results, nil
+}
+
+// scanEncounters exécute Q10 et rend ses lignes, SANS nom (cf. GetEncounters).
+func (r *CareerRepo) scanEncounters(ctx context.Context, db *sql.DB) ([]domain.EncounterRawRow, error) {
 	// Masquage Campagne (Halo 5) : Q10 ne joint pas match_registry → forme
 	// sous-requête by-match-id (p1.match_id). No-op Infinite. Item backlog H1.
 	q := resolveCampaignExclusionByMatchID(Q10Encounters, r.pdb.TitleSlug, "p1.match_id")
 	rows, err := db.QueryContext(ctx, q, r.pdb.XUID)
 	if err != nil {
-		return nil, fmt.Errorf("CareerRepo.GetEncounters: %w", err)
+		return nil, err
 	}
 	defer rows.Close()
 
 	var results []domain.EncounterRawRow
 	for rows.Next() {
 		var e domain.EncounterRawRow
-		if err := rows.Scan(
-			&e.XUID, &e.Gamertag, &e.MatchCount, &e.AsTeammate, &e.AsEnemy, &e.AvgKDA,
-		); err != nil {
-			return nil, fmt.Errorf("CareerRepo.GetEncounters scan: %w", err)
+		if err := rows.Scan(&e.XUID, &e.MatchCount, &e.AsTeammate, &e.AsEnemy, &e.AvgKDA); err != nil {
+			return nil, fmt.Errorf("scan: %w", err)
 		}
 		results = append(results, e)
 	}
