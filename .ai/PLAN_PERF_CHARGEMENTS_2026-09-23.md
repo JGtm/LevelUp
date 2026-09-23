@@ -1125,12 +1125,147 @@ changer son comportement), `internal/service/career_service_encounters.go` si un
 change, tests associes.
 
 Items :
-- [ ] L7.1 rencontres (top-encounters) sans jointure + parite + chrono
-- [ ] L7.2 rivaux sans jointure + parite + chrono
-- [ ] L7.3 autres lecteurs du meme fichier (grep `v_gamertag_lookup` dans `queries_career*.go`,
-      `career_repo*.go`, `home_repo*.go`) : traites s'ils sont sur une page, sinon consignes
+- [x] L7.1 rencontres (top-encounters) sans jointure + parite + chrono — Q26 sans jointure ni
+      colonne de nom (`queries_career_encounters.go:6`) ; `GetTopEncountersGlobal`
+      (`career_repo_encounters.go:31`, 102 -> 29 L : `topEncountersQuery`, `scanTopEncounters` :86,
+      `encounterFromStats` :116) nomme par l'annuaire de L2 reutilise tel quel (`nommerLignes`,
+      `squad_repo_annuaire.go`, seul l'en-tete change) sur les matchs de l'historique du joueur
+      (`QMatchsDuJoueurTpl` :26, token Campagne ; `nommerSurLHistorique` :254) ; sections
+      `top_encounters` / `top_encounters_annuaire` (:42, :49) ; tests `career_repo_annuaire_test.go:20`
+      (un niveau de la cascade par xuid, contre la VRAIE vue), `:92` (ecart nomme : nom hors de
+      l'historique), `:121` (sections) ; ratchet `annuaire_ratchet_test.go:41` ; 200 lignes servies
+      identiques a l'octet sur la copie (5 joueurs, avec et sans amis) ; 2,6-3,7 s -> 0,82-1,33 s
+      (reste : fenetre du kill-feed, cf. journal) ; commit aae43375a
+- [x] L7.2 rivaux sans jointure + parite + chrono — Q27 sans jointure, `MIN(kv.match_id) AS
+      match_rencontre` (`queries_career_encounters.go:100`, :107) ; `GetRivals`
+      (`career_repo_encounters.go:163`) : une connexion, deux lectures, UN annuaire pour les deux
+      listes, lignes `rivalLu` (:155) portant le match du duel ou la jambe kill-feed cherche un
+      adversaire qu'aucune ligne participant ne connait ; sections `rivals` (2 appels) /
+      `rivals_annuaire` (:219, :189) ; test `career_repo_annuaire_test.go:63` (dont x_kfseul, connu du
+      seul kill-feed) ; 100 lignes servies identiques a l'octet ; 6,6-7,0 s -> 1,94-2,18 s ; commit
+      cc72023b8
+- [x] L7.3 autres lecteurs du meme fichier (grep `v_gamertag_lookup` dans `queries_career*.go`,
+      `career_repo*.go`, `home_repo*.go`) : traites s'ils sont sur une page, sinon consignes — grep
+      etendu par la consigne (Relations, Comparer, Explorer, vue match, Medias, gamertag_repo) ; 2
+      lectures traitees, remplacement mecanique et parite tenue : Q10 (`queries_match.go:14`,
+      `GetEncounters` `career_repo_encounters.go:286`, liste `/career/encounters` du selecteur de
+      composition de l'onglet Tactique) 2,25-2,62 s -> 28-30 ms ; Comparer (`GetLocalStats`
+      `compare_repo.go:30`, `localStatsQuery` :87) 2,3-2,6 s -> 9-29 ms par appel ; tests
+      `career_repo_annuaire_test.go:167`, `compare_repo_annuaire_test.go:18` ; `home_repo*.go` : aucune
+      lecture de la vue ; le reste CONSIGNE avec son cout (journal, (a) a (f)) et fige par le ratchet ;
+      commit 0406132ff
 
 Gate : comme L2 (paquets touches) ; `-tags=integration -p 1 ./internal/platform/duckdb/...`.
+
+Journal du lot L7 (2026-09-23, branche `feat/perf-l7` depuis `feat/perf-chargements` 2beeba665 ;
+commits aae43375a L7.1, cc72023b8 L7.2, 0406132ff L7.3, aa2ec4880 gate, puis ce journal) :
+
+- Mesure : COPIE de `shared_matches_v2.duckdb` (1,3 Go ; la copie L2 de 12:41 recopiee dans `l7/` :
+  la base reelle, tenue par le serveur de mesure, n'a pas ete ouverte), sonde temporaire
+  `cmd/perfprobe_l7_tmp/` (jamais commitee) appelant les VRAIS repos a travers un driver chronometre,
+  `access_mode=read_only`, 2 threads, 512 Mo ; binaire « avant » construit sur l'arbre de base exporte
+  (`git archive 2beeba665`), « apres » sur le worktree ; cinq joueurs suivis (JGtm 1 160 matchs,
+  Madina97294 1 275, Chocoboflor 587, XxDaemonGamerxX 39, Nuzzles 7 190). La vue seule
+  (`SELECT count(*) FROM v_gamertag_lookup`) : 1,7-1,8 s au repos.
+- Chrono avant -> apres (JGtm, deux tours intercales de 3 executions) : rencontres (Q26) 2,6-3,7 s ->
+  0,82-1,33 s (Q26 0,84-1,30 s + matchs de l'historique 13-21 ms + annuaire 9-17 ms) ; rivaux (Q27 x 2)
+  6,6-7,0 s -> 1,94-2,18 s (Q27 1,06-1,08 s par lecture + 14 ms + 9 ms) ; Q10 2,25-2,62 s -> 28-30 ms ;
+  Comparer 2,27-2,59 s -> 9-29 ms par appel (4 appels : 9,3-9,9 s -> 81-87 ms). Cinq joueurs, apres :
+  rencontres 0,80-1,37 s, rivaux 1,54-2,24 s (Nuzzles : annuaire 40 ms + jambe kill-feed 42 + 85 ms
+  pour ses deux « Joueur #### »), Q10 9-180 ms, Comparer 67-86 ms le bloc de 4.
+  ATTENDU « DIZAINES DE MS » NON ATTEINT POUR Q26 ET Q27 : ce qui reste est la fenetre `QUALIFY ...
+  OVER (PARTITION BY match_id)` de `match_kill_events_latest` (3,95 M lignes), que le filtre tueur /
+  victime ne traverse pas (kv_stats seule : 0,76-1,14 s) — meme defaut que D5a.1 / decouverte (6) de
+  L5a, hors des decisions D7 : decouvertes (1) et (2).
+- Parite (D7.2) : L7.1 / L7.2 : 300 lignes servies (rencontres avec et sans amis, rivaux, 5 joueurs)
+  identiques a l'octet avant/apres (noms, compteurs, ordre), au code final. Au-dela des lignes servies,
+  sur TOUS les joueurs croises ou affrontes des cinq joueurs (58 353 couples joueur / croise) : zero
+  ecart pour quatre joueurs ; 8 chez Nuzzles, « Joueur #### » la ou la vue trouve un nom hors de ses
+  7 190 matchs (ses participants n'ont pas de gamertag), aucun dans une ligne servie — l'ecart nomme de
+  D7.1 (participants des matchs de la lecture), fige par `TestCareerRepo_Annuaire_EcartNomme_
+  NomHorsHistorique`. Rivaux : les 269 adversaires sans alias ni nom de participant (JGtm, Madina97294,
+  Chocoboflor) recoivent le nom de la vue ; un adversaire connu du SEUL kill-feed (aucune ligne
+  participant ; 1 sur la copie, chez Nuzzles, nomme par alias) serait reste masque par la lecture
+  agregee — d'ou `match_rencontre`. Q10 : lignes communes identiques (noms, compteurs) ; ne different
+  que les ex aequo de la coupe LIMIT 50 (`ORDER BY match_count DESC` sans departage, deja differents
+  d'une execution a l'autre AVANT le lot : deux ensembles sur deux executions pour JGtm et Nuzzles) —
+  JGtm 1 ligne, Madina97294 4, Chocoboflor 2, Nuzzles et XxDaemonGamerxX 0. Comparer : 20 sorties
+  (joueur + ses trois co-participants les plus frequents, 5 joueurs) identiques a l'octet ; zero ecart de
+  nom sur les 53 061 xuids de la base (la lecture couvre tout l'historique du joueur compare).
+- Lectures de la vue CONSIGNEES (L7.3), cout mesure (JGtm, dernier match, un appel) :
+  (a) Relations `GetRelations` (Q28 et Q28 scope, `queries_career_encounters.go:146,249`) : 3,4-4,0 s
+  (scope 30 matchs : 2,4-2,7 s) ; remplacement mecanique mais parite NON tenue : 2 lignes servies de
+  Nuzzles (sur 7 450) passeraient a « Joueur #### », et l'annuaire nommerait jusqu'a 7 450 xuids dont
+  2 973 sans alias ni nom ; sans la vue : ~0,9 s (fenetre du kill-feed, comme Q26) + annuaire (non mesure) ;
+  (b) vue match : Q12 tableau de score 1,7-2,2 s (3-6 ms sans la jointure, mesure), Q21 evenements 2,2 s,
+  Q23 rencontres 2,2 s, Q23b stats de rencontre 3,6 s (dont ~0,9 s de fenetre du kill-feed) — de l'ordre
+  de 10 s de vue par ouverture si les quatre sont servies ; Q12 / Q23 / Q23b mecaniques (annuaire du
+  match) mais parite NON tenue : 11 couples (match, joueur) sur 93 636, dans 10 matchs, passeraient a
+  « Joueur #### » (la vue les nomme hors du match) ; Q21 non mecanique (un xuid absent de la vue y est
+  NIL et le service affiche le xuid brut ; l'annuaire rendrait « Joueur #### ») ;
+  (c) `GamertagRepo.ResolveGamertags` (evenements de match) : 2,1 s ; non mecanique (le port ne porte
+  aucun match, et un xuid inconnu doit y etre ABSENT de la carte) ;
+  (d) Explorer `ResolveXUIDByGamertag` : 2,3 s ; non mecanique (recherche par NOM en ILIKE ; l'annuaire
+  nomme des xuids) ;
+  (e) Medias `loadMatchLobbies` (associations media / match) : une evaluation de la vue par appel
+  (1,7-3 s, non mesuree seule) ; page hors de la liste ; lecture par match comme Q12 ;
+  (f) hors de la liste de la consigne : heatmap Relations Q29 (`queries_relations_moments.go`, 2,3 s) et
+  classement mondial (`leaderboard_world_repo.go`), une evaluation de la vue chacune.
+  Le ratchet `TestLecturesDeLaVueDesNoms_Ratchet` (analyse des litteraux SQL, pas des commentaires) fige
+  ces 11 lectures fichier par fichier : une lecture ajoutee ou reintroduite le fait echouer, une lecture
+  retiree aussi (la table descend).
+- Sections de duree (D7.4 ; feuilles ; `TestCareerRepo_Annuaire_SectionsDeDuree`) : `top_encounters`,
+  `top_encounters_annuaire`, `rivals` (2 appels), `rivals_annuaire`, `encounters`, `encounters_annuaire`,
+  `compare_local_stats`, `compare_local_stats_annuaire` (Comparer : 2 appels par requete, A puis B).
+- Ecarts a la lettre, et pourquoi : (1) l'annuaire reste dans `squad_repo_annuaire.go` : `nommerLignes`
+  est deja commun au paquet, et un deplacement vers `annuaire_repo.go` laissait six references de
+  fichier dans des sources Escouade hors perimetre ; seul son en-tete change (lecteurs, mesures L7), sa
+  ligne DEBUG garde son nom (`squad_annuaire`) ; (2) les « matchs de la lecture » d'une lecture agregee
+  de la Carriere (et de Comparer) sont ceux de l'historique du joueur (`QMatchsDuJoueurTpl` = le
+  `my_history` de Q26, exclusion Campagne comprise ; 2-26 ms) ; les rivaux y ajoutent le match du duel
+  par l'acces `match` existant de l'annuaire — aucune ligne de l'annuaire modifiee ; (3) L7.3 depasse la
+  liste de fichiers du plan, comme la consigne le demande ; Q10 vit dans `queries_match.go` mais son
+  lecteur est `career_repo_encounters.go` ; (4) refactors imposes par la taille des fonctions touchees :
+  GetTopEncountersGlobal 102 -> 29 L, GetLocalStats 82 -> 54 L ; (5) Comparer : la jointure
+  `xuid_aliases` part avec la vue (elle ne servait que le nom ; xuid PRIMARY KEY : les compteurs ne
+  pouvaient pas en etre gonfles).
+- Mutations jouees (toutes rouges puis restaurees, `cmp` a l'appui) : jointure reintroduite dans Q26,
+  Q27, Q10, Comparer (ratchet) ; rivaux sans le match du duel (x_kfseul masque) ; annuaire sans les matchs
+  de l'historique ; rencontres, rivaux, Q10, Comparer jamais nommes ; nemesis hors de l'annuaire ;
+  Comparer nomme sur l'historique du joueur du repo au lieu de celui du compare ; jeton Campagne retire
+  de `QMatchsDuJoueurTpl` (garde-rail structurel) ; sections `rivals`, `top_encounters_annuaire`,
+  `encounters`, `compare_local_stats_annuaire` retirees. Deux mutations d'abord VERTES, tests rendus
+  discriminants : « rivaux sans match du duel » (x_kfseul partageait un match avec un autre xuid sans
+  nom : son duel est desormais dans ma3, ou aucun autre ne joue) et « Comparer sur l'historique du
+  joueur du repo » (x_autre, jamais croise par lui, ajoute).
+- Dette : aucun fichier touche ne grossit (queries_career_encounters.go 568 = 568, queries_match.go
+  623 -> 620, geles au-dela de 500 L ; les autres sous 500) ; aucune fonction nouvelle au-dela de 80 L ;
+  golangci `--new-from-rev=2beeba665` : 1 issue (prealloc, `projeterRivaux`) corrigee en aa2ec4880,
+  puis 0 (avec et sans le tag integration).
+- Gate (code final aa2ec4880) : `gofmt -l ./internal ./cmd` vide ; `go build ./...` 0 ; `go vet ./...`
+  0 ; `go test ./internal/service/... ./internal/platform/duckdb/... ./internal/analysis/...
+  ./internal/api/...` 0 (32 paquets ok, aucun `--- FAIL:`) ; `go test -tags=integration -p 1
+  ./internal/platform/duckdb/...` 0 (5 paquets ok) ; `go test ./internal/archlint/` 0 ; les 8
+  garde-rails ART / legacy de `internal/sync` verts ; aucun test renomme ni supprime (7 ajoutes) :
+  baseline JSONL inchangee ; l'artefact `data/titles/halo_5/warehouse/metadata.duckdb` recree par
+  `./internal/api/...` dans le worktree (decouverte (6) de L1) retire.
+- Decouvertes (consignees, non traitees) : (1) Q26 et Q27 paient la fenetre `_latest` du kill-feed sur
+  3,95 M lignes (0,8-1,1 s par lecture) ; une liste CONSTANTE des matchs du joueur poussee sous la
+  fenetre la ramene a 0,51-0,56 s (JGtm) / 0,21-0,24 s (Nuzzles), mesure ; seule une vue materialisee
+  changerait l'ordre de grandeur (cf. L5a (6)) ; (2) GetRivals lit deux fois le meme agregat (ORDER BY
+  deaths puis frags) : une lecture et deux tris en Go economiseraient une fenetre (~1 s par requete) ;
+  (3) la vue match evalue la vue des noms quatre fois par ouverture, plus ResolveGamertags (cf. (b),
+  (c)) ; (4) `EncounterStatsRaw.FirstSeen` / `LastSeenAt` ne sont jamais poses par
+  GetTopEncountersGlobal (Q26 lit `first_seen_at` sans le rendre) : les badges temporels (recrue,
+  ancien) des rencontres de la Carriere ne peuvent pas s'allumer — preexistant, inchange ; (5) Q10 (coupe
+  LIMIT 50) et Q23 (`ORDER BY count_together DESC`) n'ont pas de departage : ensemble et ordre des ex
+  aequo arbitraires d'une execution a l'autre (comme Q29, decouverte (4) de L2) ; (6) Q10 n'ecarte pas
+  les bots : 93 des 224 lignes servies aux cinq joueurs sont des bots (JGtm : « 343 Chilies » 4e), que le
+  selecteur de composition de l'onglet Tactique peut proposer comme coequipiers ; (7) la heatmap
+  Relations (Q29) rend un ordre non deterministe (ORDER BY xuid, heure : le jour ne departage pas) ;
+  (8) Relations : 2 973 des 7 450 joueurs recurrents de Nuzzles n'ont ni alias ni gamertag de
+  participant (import sans gamertag ?) — la vue comme l'annuaire les masquent.
+
 ## 10. Cloture de campagne (superviseur)
 
 - [ ] C.1 mesure de reference (§8 protocole) : Escouade a froid / a chaud / clic rail, Synthese,

@@ -1,12 +1,16 @@
-// Package duckdb — squad_repo_annuaire.go : L'ANNUAIRE DES NOMS des lectures Escouade (Q29
-// LoadTopTeammates, Q32 LoadImpactEvents, Q32b LoadMainTeamParticipants).
+// Package duckdb — squad_repo_annuaire.go : L'ANNUAIRE DES NOMS des lectures qui ne joignent plus
+// v_gamertag_lookup. Escouade (lot perf L2) : Q29 LoadTopTeammates, Q32 LoadImpactEvents, Q32b
+// LoadMainTeamParticipants. Carriere (lot perf L7) : Q26 GetTopEncountersGlobal, Q27 GetRivals,
+// Q10 GetEncounters ; Comparer : GetLocalStats — le fichier garde son nom d'origine, et sa ligne
+// DEBUG le sien (`squad_annuaire`), pour toutes.
 //
-// # LE DEFAUT SUPPRIME (lot perf L2, 2026-09-23)
+// # LE DEFAUT SUPPRIME (lots perf L2 et L7, 2026-09-23)
 //
-// Les trois lectures portaient `LEFT JOIN v_gamertag_lookup`. Aucun filtre ne se pousse dans
+// Ces lectures portaient `LEFT JOIN v_gamertag_lookup`. Aucun filtre ne se pousse dans
 // cette vue (agregats en FULL OUTER JOIN) : elle etait materialisee EN ENTIER a chaque
-// jointure, 3 s par evaluation sur la base de production et six evaluations par page
-// Escouade (Q32 etait lue quatre fois). Mesure : Q29 3,0-3,3 s AVEC la jointure, 32 ms sans.
+// jointure, 3 s par evaluation sur la base de production. Escouade : six evaluations par page
+// (Q32 etait lue quatre fois), Q29 3,0-3,3 s AVEC la jointure, 32 ms sans. Carriere : trois par
+// ouverture (Q26, Q27 deux fois), rencontres 10,7 s et rivaux 10,1 s a la mesure de campagne.
 //
 // # CE QUI NE CHANGE PAS : LA SOURCE DES NOMS
 //
@@ -19,6 +23,12 @@
 // « Joueur #### ». Les consommateurs de ces lectures hors Escouade (SquadService legacy,
 // coequipiers de session de l'accueil) recoivent donc les memes noms qu'avant.
 //
+// Les lectures AGREGEES de la Carriere et de Comparer (une ligne par joueur, tous matchs
+// confondus) lisent l'annuaire sur les matchs de l'historique du joueur (QMatchsDuJoueurTpl ; pour
+// Comparer, celui du joueur compare, que la lecture agrege en entier) ; les rivaux, venus du
+// kill-feed, portent en plus UN match du duel par ligne (`match_rencontre`) : la jambe kill-feed y
+// trouve un adversaire qu'aucune ligne participant ne connait.
+//
 // # LES ECARTS POSSIBLES AVEC LA VUE, NOMMES
 //
 // La vue prend le MAX des participants et du kill-feed sur TOUTE la base ; l'annuaire, sur les
@@ -30,6 +40,13 @@
 // seul le kill-feed nomme parmi les 579 matchs JGtm + Madina97294. Et un xuid de bot absent
 // de toutes les sources prend le nom du bot la ou la jointure rendait le libelle masque
 // (aucun bot dans highlight_events, seule lecture ou ce cas pouvait se produire).
+//
+// Carriere (L7), meme copie, sur TOUS les joueurs croises ou affrontes par les cinq joueurs
+// suivis (58 353 couples joueur / croise, pas seulement les lignes servies) : zero ecart pour
+// quatre d'entre eux ; 8 chez Nuzzles, « Joueur #### » la ou la vue trouve un nom HORS de ses
+// 7 190 matchs (ses participants n'ont pas de gamertag), aucun dans une ligne servie. Les 269
+// rivaux sans alias ni nom de participant (JGtm, Madina97294, Chocoboflor) y ont le nom de la vue.
+// Comparer : zero ecart sur les 53 061 xuids de la base (la lecture couvre tout leur historique).
 package duckdb
 
 import (
@@ -53,7 +70,7 @@ type accesLigne[T any] struct {
 
 // nommerLignes pose le nom d'affichage de chaque ligne d'une lecture : collecte ses xuids,
 // charge l'annuaire UNE fois sur les matchs de la lecture, applique la cascade. C'est le seul
-// chemin par lequel Q29, Q32 et Q32b nomment leurs lignes.
+// chemin par lequel les lectures de l'en-tete nomment leurs lignes.
 func nommerLignes[T any](ctx context.Context, db *sql.DB, matchIDs []string, lignes []T, acces accesLigne[T]) error {
 	if len(lignes) == 0 {
 		return nil
