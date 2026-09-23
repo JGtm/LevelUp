@@ -1422,6 +1422,190 @@ executeur Opus ; commits 077269adc L8.1, beece4926 L8.2, 38fd541ef L8.3, puis ce
   apres regeneration) ; `go test ./internal/archlint/ ./internal/api/handlers/` 0 ;
   `TestOpenAPIYAMLIsUpToDate` PASS et `go test ./internal/api/` 0 ; aucun `--- FAIL:`.
 
+## 9 sexies. L9-web — correctifs de la revue adversariale (web)
+
+Ajouté le 2026-09-23 à la clôture (C.2, revue adversariale du diff cumulé) : constats web du
+relecteur C, reproduits par ses tests `scratchpad/revC/*.revc.test.tsx` (verts = défaut présent).
+Lot parallèle de L9-go (`apps/go-api`, hors de ce lot).
+
+Décisions tranchées (superviseur), dans l'ordre :
+- D9w.1 (P1) Lien profond vers une session ancienne écrasé par le snap : `useSquadSessionSelection.ts`
+  pose la session du lien, puis `useSquadPageRequests.ts` et `squadPending.ts` décidaient un `snap`
+  parce que `lastKnownLatestSessionId` (global au store) valait null ou celui d'une autre
+  composition. Correction : au PREMIER ancrage d'une composition arrivée par lien profond, décider
+  `none` et mémoriser la dernière session de la composition. Test : légère EN SUCCÈS
+  `[S2 (3), S1 (2)]`, lien `?session=S1 (2)&teammates=Alice` : l'unique lourde part sur `S1 (2)`,
+  le store reste sur `S1 (2)`.
+- D9w.2 (P2) Cache léger périmé : `fresh` exige aussi `!light.isFetching` (pas de décision sur une
+  donnée en cours de revalidation). Test : retour sur la page avec un cache léger périmé, une seule
+  lourde.
+- D9w.3 (P2) Sans coéquipier, label au suffixe périmé : la lourde n'attend la légère QUE si une
+  session est pickée (réconciliation du suffixe avant la lourde). Test : store sur `S1 (2)`, légère
+  `[S1 (4)]`, une seule lourde sur `S1 (4)`.
+- D9w.4 (P2) 503 transitoire sur la légère (`retry: false`) : rejouer UNE fois sur 503, délai court,
+  avant le repli. Test : 503 puis 200, une légère rejouée, une seule lourde.
+- D9w.5 (P2) Capture globale des erreurs : ne rien enregistrer quand `err.name === 'AbortError'`
+  (les annulations volontaires évinçaient les vraies erreurs du tampon de 5 entrées joint aux
+  tickets). Test.
+- D9w.6 (P2) Double requête au montage en dev (StrictMode + `signal`) : pas de changement de code ;
+  explication au journal, pour que la mesure de clôture l'exclue.
+
+Périmètre : `apps/web/src/features/squad/{useSquadSessionSelection.ts,useSquadPageRequests.ts,
+squadPending.ts,queries.ts}` (+ tests), `apps/web/src/lib/global-capture/install.ts` (+ test), ce
+plan (§9 sexies). Aucune string UI, aucune couleur, aucune clé de query nouvelles.
+
+Items :
+- [x] L9w.1 lien profond gardé au premier ancrage (D9w.1) — `features/squad/squadPending.ts:118`
+  (`pinnedByDeepLink && stillValid` → `none`), champ `:76`, règle documentée `:84-88` ;
+  `useSquadPageRequests.ts:185-196` (lien consommé au PREMIER ancrage, retenu seulement si sa
+  composition est la courante), `:103` (transmis à la décision ; la dernière session de la
+  composition est mémorisée par la branche « pas de snap » existante d'`appliquerAncrage`) ;
+  `useSquadSessionSelection.ts:98` (`useSquadDeepLink`, capture au montage partagée, `:152`).
+  Preuves : `SquadLayout.deeplink.test.tsx:146` (légère en succès `[S2 (3), S1 (2)]`, lien
+  `S1 (2)` + Alice : une légère puis UNE lourde, sur `S1 (2)` dans les deux champs ; store sur
+  `S1 (2)`, `lastKnownLatestSessionId` = `S2 (3)`, `isAutoSnappingToLatest` faux ; ancrage
+  antérieur nul ou d'une autre composition), `:170` (session du lien inconnue de la composition :
+  snap sur sa dernière AVANT l'unique lourde) ; `useSquadPageRequests.test.tsx:240` (après le
+  premier ancrage, une nouvelle session arrivée re-snappe : règle à usage unique), `:263` (lien
+  d'une autre composition : règles ordinaires) ; `squadPending.deeplink.test.ts:25-58` (6 cas purs,
+  dont le témoin sans lien)
+- [x] L9w.2 cache léger périmé (D9w.2) — `squadPending.ts:197` (`fresh` de la légère =
+  `isEnabled && !isPlaceholderData && !isFetching`), `:146-149` (`LightQueryView`), motif
+  `:179-185` ; `useSquadPageRequests.ts:135-159` (vue transmise) ; `isEnabled` en plus de la
+  décision : journal (b). Preuves : `SquadLayout.requests.test.tsx:341` (cache léger
+  `[S2 (3), S1 (2)]` vieux de 6 min, revalidation `[S3 (1), …]` : la légère PUIS une seule lourde,
+  sur `S3 (1)` ; store vide, ou ancré sur `S2 (3)` par la visite précédente) ;
+  `squadPending.test.ts:375` (en revalidation : lue, pas fraîche), `:384` (requête fermée : lue,
+  pas fraîche)
+- [x] L9w.3 sans coéquipier, session pickée (D9w.3) — `useSquadPageRequests.ts:131-132`
+  (`attendLaLegere` = coéquipier OU session pickée). Preuves : `SquadLayout.requests.test.tsx:370`
+  (store `S1 (2)`, légère `[S1 (4), S0 (1)]`, amis vides : une légère puis UNE lourde sur `S1 (4)`,
+  dans les deux champs), `useSquadPageRequests.test.tsx:214` (légère retenue : aucune lourde tant
+  qu'elle vole) ; témoins inchangés `useSquadPageRequests.test.tsx:196` et
+  `SquadLayout.requests.test.tsx:210` (sans session pickée, la lourde n'attend pas)
+- [x] L9w.4 503 rejoué une fois (D9w.4) — `features/squad/queries.ts:84`
+  (`retryCompositionSessions` : `failureCount < 1` et statut 503), `:75-77` (`STATUS_DB_BUSY`,
+  `COMPOSITION_SESSIONS_RETRY_DELAY_MS` = 500 ms), `:118-119`. Preuves :
+  `SquadLayout.requests.test.tsx:386` (503 puis 200 : deux légères puis UNE lourde, sur `S2 (3)`),
+  `:399` (503 deux fois : pas de troisième légère, repli L4a) ; `queries.test.tsx:132`, `:139`,
+  `:146` (500, 502, erreur réseau : jamais rejoués)
+- [x] L9w.5 capture globale sans les annulations (D9w.5) — `lib/global-capture/install.ts:162`
+  (garde), `:179` (`isAbortError`, par le nom). Preuves : `install.test.ts:247` (rejet `AbortError`
+  simulé : rien d'enregistré, erreur propagée), `:254` (fetch en vol annulé par son signal, fetch de
+  l'environnement sous MSW : rien d'enregistré) ; la capture d'une vraie erreur réseau (`:235`,
+  antérieur) reste verte
+- [x] L9w.6 double requête au montage en dev (D9w.6) — aucun code ; explication au journal (f) ;
+  témoin durable `SquadLayout.requests.test.tsx:418` (Escouade sous StrictMode : une légère et une
+  lourde, aucune abandonnée)
+
+Gate (depuis `apps/web`, `node_modules\.tmp` purgé avant) : `npm run typecheck` ; `npm run lint`
+(0 erreur) ; `npx vitest run src/features/squad src/features/filters src/lib/query src/lib/api
+src/lib/global-capture` ; `npx vitest run` (suite complète).
+
+Journal du lot (2026-09-23, branche `feat/perf-l9web` depuis `feat/perf-chargements` 8830aebe2,
+exécuteur Opus ; commits 54118fe6f L9w.1 à L9w.4 (+ témoin L9w.6), 7ecdc99bf L9w.5, puis ce journal) :
+
+- Reproductions du relecteur C (configuration recopiée sur ce worktree) : 11 tests verts sur la
+  base 8830aebe2 (défauts présents) ; sur le code final, les 5 qui reproduisent un défaut de ce lot
+  sont ROUGES (défauts corrigés) et les 6 autres restent verts (comportement dev de StrictMode sur
+  Carrière et Séries temporelles, témoin « avec coéquipier », Escouade sous StrictMode). Tests
+  durables : 26 écrits AVANT les correctifs, 17 rouges sur la base (les défauts) et 9 témoins
+  verts ; un 27e (légère fermée, `squadPending.test.ts:384`) avec le complément de D9w.2 (journal
+  (b)), rouge sous la mutation M2b ; tous verts sur le code final.
+- Précisions d'implémentation (aucune décision rouverte) :
+  (a) D9w.1 — `SquadLayout.tsx` étant hors périmètre, le lien n'y est pas relayé :
+  `useSquadPageRequests` le relit par le crochet partagé `useSquadDeepLink` (capture au montage,
+  dans le même rendu de `SquadLayout` que `useSquadSessionSelection`). « Premier ancrage » = le
+  premier ancrage appliqué par la page, consommé dans tous les cas ; le lien n'y vaut que si sa
+  composition (triée) est la composition courante. « Décider `none` » s'applique quand la session du
+  lien appartient à la composition (comparaison sans le suffixe « (N) ») ; une session du lien
+  inconnue de la composition retombe sur les règles ordinaires (snap sur la dernière, ou « clear »),
+  sinon la lourde partirait sur un label qu'aucune ligne ne porte (filtre serveur à l'égalité
+  exacte, `filterSynthesisByPickedSessions`) : page vide — c'est le repli que promet le commentaire
+  de la réconciliation (« si TOUS sont des zombies, le ré-ancrage reprend la main »). Mémorisation :
+  la branche « pas de snap » d'`appliquerAncrage` (inchangée) écrit la dernière session de la
+  composition dans `lastKnownLatestSessionId` ; un rechargement garde donc la session du lien
+  (sélection épinglée, dernière déjà ancrée). Repli (légère en échec) : le premier ancrage se lit
+  dans la réponse lourde, le lien y est gardé de même. Défaut antérieur à la campagne (même
+  séquence dans `SquadLayout.tsx` à c89aa4bdc).
+  (b) D9w.2 — `!isFetching` seul ne suffisait pas (mesuré : le test restait rouge, requêtes
+  `lourde, legere, lourde`) : pendant le verrou de montage (`teammatesReady` faux) la légère est
+  DÉSACTIVÉE, donc ni en cours, ni périmée aux yeux de TanStack (`isStale` est faux pour une requête
+  désactivée, `@tanstack/query-core` 5.102.8, `queryObserver.js:333`), et sa donnée en cache
+  décidait l'ancrage AVANT l'ouverture. `fresh` exige donc aussi `isEnabled` (champ du résultat de
+  `useQuery`). À l'ouverture, la revalidation d'une donnée périmée part dans le même rendu
+  (`isFetching` optimiste, `shouldFetchOptionally`) : aucun rendu ne décide sur la donnée périmée.
+  Effet de bord : sur un cache léger frais (retour avant 5 min), la décision attend l'ouverture du
+  verrou (un rendu plus tard), sans requête en plus.
+  (c) D9w.3 — `attendLaLegere = hasTeammates || session pickée` ; l'échec de la légère libère
+  toujours la lourde aussitôt (repli L4a).
+  (d) D9w.4 — délai 500 ms (la moitié du premier délai de rejeu de l'application, 1 s ; le serveur
+  annonce `Retry-After: 5`, trop long pour une lecture de quelques dizaines de ms qui a un repli) ;
+  seul le 503 est rejoué : 500, 502, 504 et erreur réseau retombent aussitôt sur la lourde, comme
+  avant. La règle est portée par la requête et prime sur la politique de l'application (les tests
+  tournent sous un client à `retry: false` par défaut).
+  (e) D9w.5 — détection par le NOM (`AbortError`), pas par `instanceof DOMException` (un polyfill
+  peut rejeter une `Error` nommée). Une annulation avec une raison personnalisée (`abort(raison)`)
+  rejette avec cette raison et resterait enregistrée : aucun appelant du dépôt n'en passe (TanStack
+  Query appelle `abort()` sans argument, `query.js:225`) ; un dépassement `AbortSignal.timeout`
+  (`TimeoutError`) reste enregistré, à dessein.
+  (f) D9w.6 — double requête au montage en dev. StrictMode (`main.tsx`) monte, démonte puis remonte
+  chaque composant. Quand le dernier observateur d'une requête part, `query-core` ANNULE son fetch
+  en vol si la `queryFn` a lu `signal` (`Query.removeObserver` : `#abortSignalConsumed` →
+  `retryer.cancel({ revert: true })`, `query.js:138`), puis le ré-abonnement du remontage relance
+  la requête : deux fetch, le premier abandonné. Avant L3, les `queryFn` ne lisaient pas `signal` :
+  `cancelRetry()` seul, le remontage récupérait la promesse en vol, une seule requête (reproduit par
+  le relecteur C : Carrière et Séries temporelles, deux fetch dont le premier abandonné sous
+  StrictMode, un seul sans StrictMode ou sans `signal`). Production non touchée : le double montage
+  de StrictMode n'existe qu'en développement. L'Escouade y échappe : ses deux requêtes sont
+  désactivées au premier rendu (verrou de montage `teammatesReady`, posé par un effet) et ne partent
+  qu'au rendu suivant, après le double montage (témoin `SquadLayout.requests.test.tsx:418`, rouge si
+  le verrou est retiré). Pour la mesure de clôture C.1 (Vite, donc StrictMode) : exclure des comptes
+  la PREMIÈRE requête, abandonnée, de chaque requête à `signal` ACTIVE dès le premier rendu de sa
+  page (constaté sur Carrière et Séries temporelles ; même mécanisme pour les autres hooks à
+  `signal` du lot L3 : Synthèse, Sessions, détail de session, Accueil, résolution et aperçu des
+  filtres solo) — « annulée » dans l'onglet Réseau ; si elle a atteint le serveur, 499
+  `client_closed` dans `http.log` — : ni une régression, ni un coût de production.
+- Gates (code final 7ecdc99bf, `node_modules\.tmp` purgé) : `npm run typecheck` 0 ; `npm run lint`
+  0 (0 erreur, 26 avertissements, tous antérieurs, aucun sur les fichiers du lot) ; `npx vitest run
+  src/features/squad src/features/filters src/lib/query src/lib/api src/lib/global-capture` 0 (88
+  fichiers, 827 tests) ; suite complète `npx vitest run` 0 (791 fichiers et 8 503 tests verts ; 3
+  fichiers et 19 tests ignorés, antérieurs ; 27 tests ajoutés, 1 renommé : « sans coéquipier ni
+  session pickée … »). Hors gate : ratchets du pre-push `lint-no-hardcoded-fields`,
+  `lint-no-hardcoded-colors`, `lint-cross-feature-imports` (7 ≤ 7), `knip-ratchet` (0/0/0),
+  `lint-contract-ratchet` : verts. Tailles : `useSquadPageRequests.ts` 158 → 206 L,
+  `squadPending.ts` 192 → 226 L, `useSquadSessionSelection.ts` 203 → 214 L, `queries.ts` 105 →
+  121 L, `install.ts` 171 → 187 L ; les cas purs du lien profond vivent dans
+  `squadPending.deeplink.test.ts` (nouveau, 68 L) pour garder `squadPending.test.ts` sous 500 L
+  (489 L).
+- Mutations jouées (13), toutes rouges puis restaurées (fichiers identiques à l'octet aux
+  versions finales, empreinte du diff inchangée) : M1 règle du lien retirée de la décision (6
+  rouges) ; M1b lien jamais transmis à la décision (3) ; M1c `none` sans condition, session du lien
+  inconnue gardée (3) ; M1d lien jamais consommé (1) ; M1e lien appliqué à une autre composition
+  (1) ; M2 `fresh` sans `!isFetching` (3) ; M2b `fresh` sans `isEnabled`, forme de la décision
+  seule (3) ; M3 sans coéquipier la lourde n'attend jamais la légère (2) ; M4 `retry: false` (4) ;
+  M4b 503 rejoué deux fois (2) ; M4c tout 5xx et erreur réseau rejoués (3) ; M5 garde `AbortError`
+  retirée (2) ; M6 témoin StrictMode, verrou de montage retiré (1).
+- Découvertes (non traitées, hors périmètre) :
+  (1) La réconciliation des suffixes (`useSquadPageRequests.ts:165-175`) lit `source.sessions` même
+  quand la source n'est pas fraîche (placeholder d'une autre composition, cache léger fermé ou en
+  revalidation) : si un suffixe « (N) » a bougé entre deux visites, le label pické est réécrit
+  d'après la donnée périmée puis d'après la revalidation (deux écritures du store, donc jusqu'à deux
+  résolutions escouade) ; aucune requête lourde en plus (D9w.2).
+  (2) Repli sur la lourde (légère en échec) : la fraîcheur de la réponse lourde ignore `isFetching`
+  — au retour sur la page avec un cache lourd périmé ET la légère en échec, l'ancrage se décide sur
+  la réponse lourde périmée (comportement L4a, hors de la lettre de D9w.2).
+  (3) Le lien profond est relu par `useSquadPageRequests` (`useSquadDeepLink`) faute de pouvoir le
+  faire passer par `SquadLayout.tsx` (hors périmètre) : deux captures de la même URL dans le même
+  rendu. Le relayer par `SquadLayout` (un champ de `SquadPageRequestsInput`) rendrait le flux
+  explicite ; si `useSquadPageRequests` était un jour monté après la redirection qui retire la
+  query, la règle s'éteindrait sans bruit (`SquadLayout.deeplink.test.tsx:146` la garde).
+  (4) `lib/global-capture/install.test.ts` : `_uninstallGlobalCaptureForTests` rend à `window` le
+  fetch présent à l'installation, et l'`afterEach` du bloc « wrap fetch » restaure AVANT la
+  désinstallation : chaque test à mock laisse ce mock dans `window.fetch` pour le suivant (mesuré
+  par une sonde : au début du nouveau test, `window.fetch` est le `vi.fn` du test précédent) ;
+  contourné dans le nouveau test par une capture du fetch de l'environnement en `beforeAll`.
+
 ## 10. Cloture de campagne (superviseur)
 
 - [ ] C.1 mesure de reference (§8 protocole) : Escouade a froid / a chaud / clic rail, Synthese,

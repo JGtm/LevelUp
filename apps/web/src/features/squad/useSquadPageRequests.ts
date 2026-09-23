@@ -19,9 +19,18 @@
  *     change pas la composition : une seule requête lourde, sans relecture légère.
  *
  * Sans coéquipier, la décision est connue d'avance (`none` : l'ancrage n'est pas piloté
- * par la composition) : la requête lourde part sans attendre. Si l'endpoint léger
- * échoue, la page retombe sur le comportement du lot L4a (sessions et ancrage lus dans la
- * réponse lourde, activée aussitôt) : cet échec ne bloque jamais la page.
+ * par la composition) : la requête lourde part sans attendre — sauf si une session est
+ * pickée : elle attend alors la légère, où le suffixe « (N) » volatil de son label se
+ * réconcilie. Si l'endpoint léger échoue, la page retombe sur le comportement du lot L4a
+ * (sessions et ancrage lus dans la réponse lourde, activée aussitôt) : cet échec ne bloque
+ * jamais la page.
+ *
+ * Revue adversariale du lot L9-web (2026-09-23), trois chemins qui envoyaient encore deux
+ * requêtes lourdes ou la mauvaise : (1) lien profond de l'accueil vers une session
+ * ANCIENNE — le premier ancrage de sa composition garde la session du lien
+ * (`decideCompositionReanchor`, `pinnedByDeepLink`) ; (2) cache léger périmé au retour sur
+ * la page — aucune décision tant que la légère se revalide (`pickCompositionSessionsSource`) ;
+ * (3) sans coéquipier, session pickée au suffixe périmé — la règle ci-dessus.
  */
 import { useEffect, useMemo, useRef, useState } from 'react'
 
@@ -36,6 +45,7 @@ import {
   pickCompositionSessionsSource,
   type CompositionSessionsSource,
 } from './squadPending'
+import { useSquadDeepLink } from './useSquadSessionSelection'
 
 export interface SquadPageRequestsInput {
   playerSlug: string
@@ -52,14 +62,21 @@ export interface SquadPageRequestsInput {
   applySessionLabels: (labels: string[]) => void
 }
 
+/** Clé d'une composition : l'ordre de sélection des coéquipiers n'en change pas l'identité. */
+function cleDeComposition(gts: string[]): string {
+  return [...gts].sort().join(',')
+}
+
 /**
  * Applique la décision d'ancrage au store escouade : le corps de l'effet que portait
- * `SquadLayout` avant le lot L4b, inchangé — seule la source des sessions a changé.
+ * `SquadLayout` avant le lot L4b — la source des sessions a changé au lot L4b, le lien
+ * profond (`pinnedByDeepLink`) s'y ajoute au lot L9-web.
  */
 function appliquerAncrage(
   hasTeammates: boolean,
   source: CompositionSessionsSource,
   applySessionLabels: (labels: string[]) => void,
+  pinnedByDeepLink: boolean,
 ): void {
   const {
     filterContext: fc,
@@ -81,6 +98,9 @@ function appliquerAncrage(
     // Ancrage déjà posé (persisté) : distingue « l'utilisateur a épinglé cette session »
     // de « une nouvelle session est arrivée depuis ».
     lastAnchoredLatestSession: lastKnownLatestSessionId ?? '',
+    // Premier ancrage de la composition du lien profond : la session du lien est gardée,
+    // et la dernière session de la composition mémorisée par la branche « pas de snap ».
+    pinnedByDeepLink,
   })
   if (action.kind === 'clear') {
     // Composition sans session commune : on vide, la page affiche l'état vide.
@@ -100,23 +120,42 @@ export function useSquadPageRequests(input: SquadPageRequestsInput) {
   const { pickedSquadSessionLabels, applySessionLabels } = input
   const hasTeammates = selectedGts.length > 0
   const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
+  const deepLink = useSquadDeepLink()
   const light = useCompositionSessions(playerSlug, selectedGts, exactComposition, teammatesReady)
 
   // La composition dont la décision d'ancrage est prise : la requête lourde n'a le droit
-  // de partir que pour elle (ou sans coéquipier, ou quand l'endpoint léger a échoué).
-  const compositionKey = [titleSlug, playerSlug, [...selectedGts].sort().join(','), exactComposition].join('|')
+  // de partir que pour elle (ou quand l'endpoint léger a échoué). Sans coéquipier ni
+  // session pickée, rien à décider ni à réconcilier : elle part sans attendre la légère.
+  const compositionKey = [titleSlug, playerSlug, cleDeComposition(selectedGts), exactComposition].join('|')
   const [decidedFor, setDecidedFor] = useState<string | null>(null)
-  const heavyEnabled = teammatesReady && (!hasTeammates || light.isError || decidedFor === compositionKey)
+  const attendLaLegere = hasTeammates || pickedSquadSessionLabels.length > 0
+  const heavyEnabled = teammatesReady && (!attendLaLegere || light.isError || decidedFor === compositionKey)
   const heavy = useTeammates(playerSlug, request, filterContextHash, selectedGts, heavyEnabled)
 
   const source = useMemo(
     () =>
       pickCompositionSessionsSource(
-        { data: light.data, isError: light.isError, isPlaceholderData: light.isPlaceholderData },
+        {
+          data: light.data,
+          isError: light.isError,
+          isPlaceholderData: light.isPlaceholderData,
+          isEnabled: light.isEnabled,
+          isFetching: light.isFetching,
+        },
         { data: heavy.data, isError: heavy.isError, isPlaceholderData: heavy.isPlaceholderData },
         hasTeammates,
       ),
-    [light.data, light.isError, light.isPlaceholderData, heavy.data, heavy.isError, heavy.isPlaceholderData, hasTeammates],
+    [
+      light.data,
+      light.isError,
+      light.isPlaceholderData,
+      light.isEnabled,
+      light.isFetching,
+      heavy.data,
+      heavy.isError,
+      heavy.isPlaceholderData,
+      hasTeammates,
+    ],
   )
 
   // Réconciliation anti-zombie des sessions pickées (suffixe « (N) » volatil, cf.
@@ -137,15 +176,24 @@ export function useSquadPageRequests(input: SquadPageRequestsInput) {
   // Ré-ancrage composition-aware : UNE fois par couple (composition, dernière session) —
   // clé sans le suffixe « (N) » volatil, pour qu'une nouvelle soirée arrivée pendant que
   // la page est montée rouvre la décision — et seulement sur une donnée FRAÎCHE (jamais le
-  // placeholder d'une composition précédente). La navigation du rail et les filtres ne
-  // changent ni l'une ni l'autre : pas de conflit avec une sélection délibérée.
+  // placeholder d'une composition précédente, ni un cache pas encore revalidé). La
+  // navigation du rail et les filtres ne changent ni l'une ni l'autre : pas de conflit
+  // avec une sélection délibérée.
   const lastAnchoredRef = useRef<string | null>(null)
+  // Le lien profond ne vaut que pour le PREMIER ancrage, et pour SA composition : ensuite
+  // (nouvelle session arrivée, autre composition), les règles ordinaires s'appliquent.
+  const deepLinkPendingRef = useRef(deepLink !== null)
   useEffect(() => {
     if (!source.fresh) return
-    const anchorKey = `${hasTeammates ? [...selectedGts].sort().join(',') : ''}|${stripSessionCountSuffix(source.latest)}`
+    const anchorKey = `${hasTeammates ? cleDeComposition(selectedGts) : ''}|${stripSessionCountSuffix(source.latest)}`
     if (anchorKey !== lastAnchoredRef.current) {
       lastAnchoredRef.current = anchorKey
-      appliquerAncrage(hasTeammates, source, applySessionLabels)
+      const pinnedByDeepLink =
+        deepLinkPendingRef.current &&
+        deepLink !== null &&
+        cleDeComposition(deepLink.teammates) === cleDeComposition(selectedGts)
+      deepLinkPendingRef.current = false
+      appliquerAncrage(hasTeammates, source, applySessionLabels, pinnedByDeepLink)
     }
     if (source.origin === 'light') {
       // eslint-disable-next-line react-hooks/set-state-in-effect -- feu vert de la requête lourde, posé APRÈS l'écriture de l'ancrage dans le store externe : sans cet ordre elle partirait sur la session d'avant (lot perf L4b, 2026-09-23)

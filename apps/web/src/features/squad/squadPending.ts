@@ -68,6 +68,12 @@ export interface CompositionReanchorInput {
    * des suffixes « (N) »), et pas seulement sur un choix délibéré.
    */
   lastAnchoredLatestSession: string
+  /**
+   * PREMIER ancrage d'une composition arrivée par le lien profond de l'accueil
+   * (`?session=…&teammates=…`, carrousel des sessions) : la session pickée est celle du
+   * lien, un choix délibéré — souvent une session ANCIENNE. Absent = false.
+   */
+  pinnedByDeepLink?: boolean
 }
 
 /**
@@ -75,6 +81,11 @@ export interface CompositionReanchorInput {
  * (joueur principal + coéquipiers sélectionnés).
  *
  *  - aucun coéquipier → 'none' (l'ancrage n'est pas piloté par la composition) ;
+ *  - premier ancrage d'un lien profond dont la session appartient à la composition →
+ *    'none' (lot perf L9-web, 2026-09-23 : le store ne connaît pas la composition du
+ *    lien — `lastKnownLatestSessionId` nul ou celui d'une autre —, sa dernière session
+ *    passait donc pour « jamais ancrée » et le snap écrasait le lien) ; une session du
+ *    lien inconnue de la composition retombe sur les règles suivantes ;
  *  - sélection MANUELLE (followLatest=false) encore valide pour la composition ET
  *    dernière session déjà ancrée → 'none' (on respecte le choix, ex. session
  *    restaurée au reload) ;
@@ -95,6 +106,7 @@ export function decideCompositionReanchor(input: CompositionReanchorInput): Comp
     pickedSessions,
     compositionSessionLabels,
     lastAnchoredLatestSession,
+    pinnedByDeepLink = false,
   } = input
   if (!hasTeammates) return { kind: 'none' }
 
@@ -103,6 +115,7 @@ export function decideCompositionReanchor(input: CompositionReanchorInput): Comp
     pickedSessions.every((p) =>
       compositionSessionLabels.some((l) => stripSessionCountSuffix(l) === stripSessionCountSuffix(p)),
     )
+  if (pinnedByDeepLink && stillValid) return { kind: 'none' }
   // Comparaison par clé sans le suffixe « (N) » : ce compte grossit à chaque sync
   // sur une session en cours et ne dénote donc pas une session différente.
   const latestKey = stripSessionCountSuffix(latestCompositionSession)
@@ -126,6 +139,16 @@ interface QueryView<T> {
 }
 
 /**
+ * La lecture légère dit aussi si elle est OUVERTE (`isEnabled`) et EN COURS
+ * (`isFetching`) : une donnée servie avant l'ouverture ou pendant la revalidation — cache
+ * périmé au retour sur la page — n'est pas fraîche.
+ */
+interface LightQueryView extends QueryView<CompositionSessionsResponse> {
+  isEnabled: boolean
+  isFetching: boolean
+}
+
+/**
  * Les sessions de la composition et la dernière d'entre elles, d'où qu'elles viennent :
  * de quoi nourrir le sélecteur de sessions ET `decideCompositionReanchor`.
  */
@@ -135,7 +158,10 @@ export interface CompositionSessionsSource {
   sessions: SessionLabelEntry[]
   /** Dernière session de la composition, '' si jamais jouée ensemble (ou sans coéquipier). */
   latest: string
-  /** Donnée de la composition COURANTE : ni absente, ni placeholder d'une clé précédente. */
+  /**
+   * Donnée de la composition COURANTE et à jour : ni absente, ni placeholder d'une clé
+   * précédente, ni (lecture légère) lue requête fermée ou en cours de revalidation.
+   */
   fresh: boolean
   /** Identité de la donnée lue : l'ancrage se rejoue quand elle change. */
   data: unknown
@@ -149,9 +175,17 @@ export interface CompositionSessionsSource {
  * L4a) ou pas encore arrivé. Les champs sont les mêmes des deux côtés (parité testée
  * côté serveur), à une nuance près, héritée : sans coéquipier, la réponse lourde se lit
  * dans `session_labels.squad`, la légère dans `composition_sessions`.
+ *
+ * Fraîcheur de la légère (lot perf L9-web, 2026-09-23, revue C) : au retour sur la page,
+ * le cache périmé (staleTime 5 min) est servi AVANT sa revalidation. L'ancrage décidé
+ * dessus lançait une lourde sur l'ancienne dernière session, puis une seconde quand la
+ * revalidation apportait la nouvelle : pas de décision tant que la lecture est en cours
+ * (`isFetching`) — ni tant qu'elle est fermée (`isEnabled`, verrou de montage) : une
+ * requête désactivée ne se revalide pas et TanStack ne la dit jamais périmée ; à son
+ * ouverture, la revalidation d'une donnée périmée part dans le même rendu.
  */
 export function pickCompositionSessionsSource(
-  light: QueryView<CompositionSessionsResponse>,
+  light: LightQueryView,
   heavy: QueryView<TeammatesPageResponse>,
   hasTeammates: boolean,
 ): CompositionSessionsSource {
@@ -160,7 +194,7 @@ export function pickCompositionSessionsSource(
       origin: 'light',
       sessions: light.data.composition_sessions ?? [],
       latest: light.data.latest_composition_session ?? '',
-      fresh: !light.isPlaceholderData,
+      fresh: light.isEnabled && !light.isPlaceholderData && !light.isFetching,
       data: light.data,
     }
   }

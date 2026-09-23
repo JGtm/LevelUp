@@ -319,10 +319,16 @@ describe('decideCompositionReanchor', () => {
 function legere(
   sessions: SessionLabelEntry[] | null,
   latest: string,
-  etat: { isError?: boolean; isPlaceholderData?: boolean } = {},
+  etat: { isError?: boolean; isPlaceholderData?: boolean; isFetching?: boolean; isEnabled?: boolean } = {},
 ) {
   const data: CompositionSessionsResponse = { composition_sessions: sessions, latest_composition_session: latest }
-  return { data, isError: etat.isError ?? false, isPlaceholderData: etat.isPlaceholderData ?? false }
+  return {
+    data,
+    isError: etat.isError ?? false,
+    isPlaceholderData: etat.isPlaceholderData ?? false,
+    isFetching: etat.isFetching ?? false,
+    isEnabled: etat.isEnabled ?? true,
+  }
 }
 
 function lourde(
@@ -341,8 +347,8 @@ function lourde(
   return { data, isError: false, isPlaceholderData: etat.isPlaceholderData ?? false }
 }
 
-const RIEN = { data: undefined, isError: false, isPlaceholderData: false }
-const ECHEC = { data: undefined, isError: true, isPlaceholderData: false }
+const RIEN = { data: undefined, isError: false, isPlaceholderData: false, isFetching: false, isEnabled: true }
+const ECHEC = { data: undefined, isError: true, isPlaceholderData: false, isFetching: false, isEnabled: true }
 
 describe('pickCompositionSessionsSource', () => {
   const s2 = session('S2 (3)')
@@ -360,6 +366,25 @@ describe('pickCompositionSessionsSource', () => {
     const src = pickCompositionSessionsSource(legere([s2], 'S2 (3)', { isPlaceholderData: true }), RIEN, true)
     expect(src.origin).toBe('light')
     expect(src.sessions).toHaveLength(1)
+    expect(src.fresh).toBe(false)
+  })
+
+  // Lot perf L9-web (2026-09-23, revue C) : au retour sur la page, le cache léger périmé
+  // (staleTime 5 min) est servi PENDANT sa revalidation ; décider l'ancrage dessus lançait
+  // une lourde sur l'ancienne dernière session, puis une seconde après la revalidation.
+  it('cache léger en cours de revalidation : lu (sélecteur visible) mais PAS frais (aucune décision)', () => {
+    const src = pickCompositionSessionsSource(legere([s2, s1], 'S2 (3)', { isFetching: true }), RIEN, true)
+    expect(src.origin).toBe('light')
+    expect(src.sessions.map((s) => s.label)).toEqual(['S2 (3)', 'S1 (2)'])
+    expect(src.fresh).toBe(false)
+    // Revalidation terminée : frais.
+    expect(pickCompositionSessionsSource(legere([s2, s1], 'S2 (3)'), RIEN, true).fresh).toBe(true)
+  })
+
+  it('cache léger d une requête FERMÉE (verrou de montage) : lu mais PAS frais — à l ouverture il se revalide', () => {
+    const src = pickCompositionSessionsSource(legere([s2, s1], 'S2 (3)', { isEnabled: false }), RIEN, true)
+    expect(src.origin).toBe('light')
+    expect(src.sessions).toHaveLength(2)
     expect(src.fresh).toBe(false)
   })
 

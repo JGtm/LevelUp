@@ -3,16 +3,32 @@
  * l'Escouade n'est activée qu'une fois l'ancrage décidé sur la lecture légère des
  * sessions de la composition — donc elle part DÉJÀ sur la bonne session, une seule fois
  * par composition. Oracle : l'ordre et le contenu des requêtes reçues par MSW.
+ *
+ * Lot perf L9-web (2026-09-23, revue C) : le lien profond de l'accueil (relu au montage
+ * par `useSquadDeepLink`) ne vaut que pour le PREMIER ancrage de sa composition ; sans
+ * coéquipier, la lourde attend la légère dès qu'une session est pickée.
  */
-import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import type { ReactNode } from 'react'
 import { server } from '@/test/setup'
+import { queryKeys } from '@/lib/query/keys'
+import { useAppShellStore } from '@/stores/appShellStore'
 import { useSquadFilterStore } from '@/stores/squadFilterStore'
 import type { TeammatesQueryRequest } from '@/lib/api/types'
 import { useSquadPageRequests } from './useSquadPageRequests'
+
+const { searchMock } = vi.hoisted(() => ({
+  searchMock: vi.fn<() => Record<string, unknown>>(() => ({})),
+}))
+
+// Le lien profond de l'accueil se lit dans l'URL au montage (`useSquadDeepLink`).
+vi.mock('@tanstack/react-router', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@tanstack/react-router')>()
+  return { ...actual, useSearch: () => searchMock() }
+})
 
 const SANS_SESSION: string[] = []
 
@@ -36,6 +52,8 @@ interface Requete {
 }
 
 const journal: Requete[] = []
+/** Réponses légères propres à un test (priment sur `SESSIONS`). */
+let sessionsDuTest: typeof SESSIONS = {}
 let retenirLegere: Promise<void> | null = null
 let qcCourant: QueryClient | null = null
 
@@ -44,14 +62,16 @@ beforeEach(() => {
   useSquadFilterStore.getState().resetFilters()
   useSquadFilterStore.setState({ lastKnownLatestSessionId: null, isAutoSnappingToLatest: false })
   journal.length = 0
+  sessionsDuTest = {}
   retenirLegere = null
+  searchMock.mockReturnValue({})
   server.use(
     http.get('/api/v1/players/:playerSlug/pages/teammates/sessions', async ({ request }) => {
       const url = new URL(request.url)
       const cle = `${url.searchParams.get('teammates') ?? ''}|${url.searchParams.get('exact')}`
       journal.push({ quoi: 'legere', cle })
       if (retenirLegere) await retenirLegere
-      return HttpResponse.json(SESSIONS[cle] ?? { composition_sessions: [], latest_composition_session: '' })
+      return HttpResponse.json(sessionsDuTest[cle] ?? SESSIONS[cle] ?? { composition_sessions: [], latest_composition_session: '' })
     }),
     http.post('/api/v1/players/:playerSlug/pages/teammates', async ({ request }) => {
       const corps = (await request.json()) as TeammatesQueryRequest
@@ -173,7 +193,7 @@ describe('useSquadPageRequests — la requête lourde attend la décision d ancr
     expect(useSquadFilterStore.getState().isAutoSnappingToLatest).toBe(false)
   })
 
-  it('sans coéquipier : la lourde part sans attendre la légère (décision connue d avance)', async () => {
+  it('sans coéquipier ni session pickée : la lourde part sans attendre la légère (décision connue d avance)', async () => {
     let liberer: () => void = () => {}
     retenirLegere = new Promise<void>((resolve) => {
       liberer = resolve
@@ -187,5 +207,64 @@ describe('useSquadPageRequests — la requête lourde attend la décision d ancr
     liberer()
     await waitFor(() => expect(result.current.compositionSessions.map((s) => s.label)).toEqual(['P1 (5)']))
     expect(lourdes()).toHaveLength(1)
+  })
+})
+
+describe('useSquadPageRequests — sans coéquipier, session pickée (L9-web)', () => {
+  it('la lourde attend la légère (réconciliation du suffixe « (N) ») : UNE lourde, sur la forme courante', async () => {
+    let liberer: () => void = () => {}
+    retenirLegere = new Promise<void>((resolve) => {
+      liberer = resolve
+    })
+    useSquadFilterStore.getState().setSessions({ picked_sessions: ['P1 (3)'], gap_minutes: 120 })
+    monter({ gts: [], exact: false, ready: true })
+    await laisserRetomber()
+    // Légère en vol : la lourde ne part pas sur le label au suffixe périmé.
+    expect(journal.map((r) => r.quoi)).toEqual(['legere'])
+
+    liberer()
+    await waitFor(() => expect(lourdes()).toHaveLength(1))
+    await laisserRetomber()
+    expect(journal.map((r) => r.quoi)).toEqual(['legere', 'lourde'])
+    expect(lourdes()[0].corps?.picked_squad_session_labels).toEqual(['P1 (5)'])
+  })
+})
+
+describe('useSquadPageRequests — lien profond de l accueil (L9-web)', () => {
+  function lienVers(session: string, teammates: string) {
+    searchMock.mockReturnValue({ session, teammates })
+    // État de montage posé par useSquadSessionSelection : la session du lien, dans le store.
+    useSquadFilterStore.getState().setSessions({ picked_sessions: [session], gap_minutes: 120 })
+  }
+
+  it('le PREMIER ancrage garde la session du lien ; un ancrage ultérieur (nouvelle session) suit les règles ordinaires', async () => {
+    lienVers('A1 (2)', 'Alice')
+    monter({ gts: ['Alice'], exact: false, ready: true })
+    await waitFor(() => expect(lourdes()).toHaveLength(1))
+    await laisserRetomber()
+    expect(lourdes()[0].corps?.picked_squad_session_labels).toEqual(['A1 (2)'])
+    expect(useSquadFilterStore.getState().lastKnownLatestSessionId).toBe('A2 (4)')
+
+    // Une nouvelle soirée de la composition arrive (sync) : relecture de la légère.
+    sessionsDuTest['Alice|false'] = {
+      composition_sessions: [session('A3 (1)'), session('A2 (4)'), session('A1 (2)')],
+      latest_composition_session: 'A3 (1)',
+    }
+    const titre = useAppShellStore.getState().currentTitleSlug
+    await act(async () => {
+      await qcCourant?.invalidateQueries({ queryKey: queryKeys.compositionSessions('p', titre, ['Alice'], false) })
+    })
+    await waitFor(() => expect(lourdes()).toHaveLength(2))
+    await laisserRetomber()
+    expect(lourdes()[1].corps?.picked_squad_session_labels).toEqual(['A3 (1)'])
+    expect(useSquadFilterStore.getState().isAutoSnappingToLatest).toBe(true)
+  })
+
+  it('lien d une AUTRE composition que la courante : règles ordinaires (snap sur la dernière)', async () => {
+    lienVers('A1 (2)', 'Bob')
+    monter({ gts: ['Alice'], exact: false, ready: true })
+    await waitFor(() => expect(lourdes()).toHaveLength(1))
+    await laisserRetomber()
+    expect(lourdes()[0].corps?.picked_squad_session_labels).toEqual(['A2 (4)'])
   })
 })
