@@ -9,7 +9,7 @@
 // responsabilites vivent dans :
 //
 //   - teammates_service_briefing.go : briefing header +
-//     loadTeammatesCanonicalParallel +
+//     loadTeammatesCanonical +
 //     filtres synthesis (cascade, period,
 //     picked sessions, session,
 //     experience labels)
@@ -139,8 +139,8 @@ func (s *TeammatesService) WithRoundsDecide(roundsDecide map[string]bool) *Teamm
 }
 
 // WithSquadLoader injecte le loader per-gamertag utilise pour le SessionBriefing
-// mode squad (chargement des canonical rows de chaque coequipier en parallele
-// via TitlePlayerResolver). Si non cable, le briefing degrade en mode solo.
+// mode squad (canonical rows de chaque coequipier via TitlePlayerResolver, lues une
+// fois par requete — lecturesDeLaPage). Si non cable, le briefing degrade en mode solo.
 func (s *TeammatesService) WithSquadLoader(loader squadagg.SquadV2Loader) *TeammatesService {
 	s.squadLoader = loader
 	return s
@@ -385,11 +385,11 @@ func (s *TeammatesService) GetPage(
 	var echange *domain.SquadEchange
 	var rangeProfiles *domain.MatchRangeBlock
 	var medalDigest []domain.MedalDigestEntry
+	lectures.precharger(ctx, req.SelectedGamertags, allSquadRows)
 	if len(allSquadRows) > 0 {
 		// Résout map/playlist/mode FR sur les rows (mode via la cascade
 		// canonique asset_translations + mode_name_tr, cf. enrichSquadMatchAssets).
 		enrichSquadMatchAssets(ctx, s.repo, allSquadRows)
-		lectures.prechargerImpacts(ctx, allSquadRows)
 		timeseries = analysis.ComputeSquadTimeseries(allSquadRows, 20)
 		mapBreakdown = computeMapBreakdown(allSquadRows)
 
@@ -423,7 +423,7 @@ func (s *TeammatesService) GetPage(
 		impactMatrix = s.buildSquadImpactMatrix(ctx, allSquadRows, playerXUID, s.gamertag, req.SelectedGamertags, allies)
 		perMinuteStats = s.buildSquadPerMinuteStats(ctx, allSquadRows, s.gamertag, req.SelectedGamertags, sessionMatchIDs)
 		synergyRadar = s.buildSquadSynergyRadar(ctx, allSquadRows, s.gamertag, req.SelectedGamertags)
-		intensityProfile = s.buildSquadIntensityProfile(ctx, allSquadRows, s.gamertag, req.SelectedGamertags, mainTeamByMatch)
+		intensityProfile = s.buildSquadIntensityProfile(ctx, allSquadRows, s.gamertag, playerXUID, req.SelectedGamertags, teammates, mainTeamByMatch)
 		performanceSeries = s.buildSquadPerformanceSeries(ctx, allSquadRows, s.gamertag, playerXUID, req.SelectedGamertags, teammates)
 		weaponKills, fragClasses = s.buildSquadWeaponKills(ctx, allSquadRows, s.gamertag, playerXUID, teammates, performanceSeries)
 		weaponAccuracy = s.buildSquadWeaponAccuracy(ctx, allSquadRows, s.gamertag, playerXUID, teammates)
@@ -573,8 +573,8 @@ func filterCanonicalByMatchIDsSet(
 
 // buildBriefingHeaderForTeammatesPage construit le SquadHeader pour la page
 // Teammates. Mode solo si selectedGamertags vide ; mode squad complet sinon
-// (charge les canonical rows par teammate en parallele puis appelle le builder
-// existant squadagg.BuildSquadHeader).
+// (relit les canonical rows de chaque teammate, lues une fois par requete, puis appelle
+// le builder existant squadagg.BuildSquadHeader).
 //
 // Degradation gracieuse : si le chargement des teammates echoue (capability
 // absente, erreur DB), retourne au moins le SoloKPIs du joueur principal pour

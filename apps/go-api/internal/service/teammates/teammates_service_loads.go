@@ -23,24 +23,40 @@ package teammates
 import (
 	"context"
 	"log/slog"
+	"reflect"
 	"slices"
 	"strings"
 	"sync"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/games/canonical"
 	"levelup/go-api/internal/observability/timing"
 	"levelup/go-api/internal/port"
+	"levelup/go-api/internal/service/squadagg"
 )
 
 // lecturesDeLaPage : les lectures qu'au moins deux blocs de la page consomment, faites une
 // fois par requête. Sûre en concurrence (un bloc parallélisé la verrait entière).
 type lecturesDeLaPage struct {
-	mu   sync.Mutex
-	repo port.SquadRepository // le lecteur réel (jamais l'enveloppe)
+	mu     sync.Mutex
+	repo   port.SquadRepository   // le lecteur réel (jamais l'enveloppe)
+	loader squadagg.SquadV2Loader // idem pour l'historique des membres
+	// slug, principal : le titre et le joueur de la page (clés du préchargement).
+	slug, principal string
 	// impacts : Q32 par ENSEMBLE de match_id (clé canonique, cf. cleDEnsemble). Les blocs
 	// passent tous les matchs uniques de la population escouade, dans des ordres
 	// différents : l'ensemble, pas la liste, identifie la lecture.
 	impacts map[string]lectureImpacts
+	// membres : LoadFor par (titre, gamertag), filtres nuls — la seule forme que la page
+	// appelle ; tout autre filtre passe tel quel au chargeur réel.
+	membres map[string]lectureMembre
+}
+
+// lectureMembre : l'historique canonique d'UN membre, erreur comprise. Les blocs le lisent
+// sans le modifier (vérifié : filtres et agrégats rendent de nouvelles tranches).
+type lectureMembre struct {
+	rows []canonical.PlayerMatchRow
+	err  error
 }
 
 // lectureImpacts : le résultat d'UNE lecture Q32, erreur comprise — chaque bloc
@@ -54,12 +70,83 @@ type lectureImpacts struct {
 // de CETTE requête, et cette mémoire. Un lecteur non câblé (nil) le reste : les blocs gardent
 // leur dégradation d'origine.
 func (s *TeammatesService) pourLaRequete() (*TeammatesService, *lecturesDeLaPage) {
-	l := &lecturesDeLaPage{repo: s.repo, impacts: map[string]lectureImpacts{}}
+	l := &lecturesDeLaPage{
+		repo: s.repo, loader: s.squadLoader, slug: s.titleSlug, principal: s.gamertag,
+		impacts: map[string]lectureImpacts{}, membres: map[string]lectureMembre{},
+	}
 	cp := *s
 	if s.repo != nil {
 		cp.repo = repoDeLaPage{SquadRepository: s.repo, lectures: l}
 	}
+	if s.squadLoader != nil {
+		cp.squadLoader = loaderDeLaPage{SquadV2Loader: s.squadLoader, lectures: l}
+	}
 	return &cp, l
+}
+
+// precharger fait, AVANT les blocs, les lectures qu'ils partagent (D2.2, D2.3) :
+//   - l'historique de chaque membre — les coéquipiers sélectionnés dès qu'il y en a (le
+//     bandeau les lit toujours), le joueur principal quand la population escouade existe
+//     (radar et séries de performance, seuls à le relire par LoadFor) ;
+//   - les événements d'impact de la population escouade.
+//
+// Exactement les lectures que les blocs faisaient au moins une fois : aucune de plus.
+func (l *lecturesDeLaPage) precharger(ctx context.Context, selected []string, allSquadRows []domain.SquadMatchRow) {
+	if len(selected) > 0 {
+		membres := selected
+		if len(allSquadRows) > 0 {
+			membres = append([]string{l.principal}, selected...)
+		}
+		l.prechargerMembres(ctx, membres)
+	}
+	l.prechargerImpacts(ctx, allSquadRows)
+}
+
+// loaderDeLaPage : le chargeur d'historiques de la requête. Seul LoadFor est partagé ; tout le
+// reste passe tel quel au chargeur réel.
+type loaderDeLaPage struct {
+	squadagg.SquadV2Loader
+	lectures *lecturesDeLaPage
+}
+
+// LoadFor sert l'historique d'un membre, lu une fois par requête (D2.3). Des filtres non nuls
+// — que la page n'emploie pas — passent au chargeur réel sans mémoire.
+func (d loaderDeLaPage) LoadFor(
+	ctx context.Context, slug, gamertag string, filters port.PlayerMatchFilters,
+) ([]canonical.PlayerMatchRow, error) {
+	if !reflect.ValueOf(filters).IsZero() {
+		return d.SquadV2Loader.LoadFor(ctx, slug, gamertag, filters)
+	}
+	return d.lectures.membre(ctx, slug, gamertag)
+}
+
+// membre rend l'historique d'un membre, lu au premier appel puis servi de mémoire.
+func (l *lecturesDeLaPage) membre(ctx context.Context, slug, gamertag string) ([]canonical.PlayerMatchRow, error) {
+	cle := slug + "\x00" + gamertag
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	lu, ok := l.membres[cle]
+	if !ok {
+		rows, err := l.loader.LoadFor(ctx, slug, gamertag, port.PlayerMatchFilters{})
+		lu = lectureMembre{rows: rows, err: err}
+		l.membres[cle] = lu
+	}
+	return lu.rows, lu.err
+}
+
+// prechargerMembres lit l'historique de chaque membre UNE fois (D2.3), sous la section
+// `squad_members`. Une erreur est servie telle quelle à chaque bloc qui relit ce membre, et il
+// la journalise comme avant ; ici elle n'est que tracée.
+func (l *lecturesDeLaPage) prechargerMembres(ctx context.Context, gamertags []string) {
+	if l.loader == nil || len(gamertags) == 0 {
+		return
+	}
+	defer timing.FromContext(ctx).Section("squad_members")()
+	for _, gt := range gamertags {
+		if _, err := l.membre(ctx, l.slug, gt); err != nil {
+			slog.DebugContext(ctx, "teammates_squad_member_load_failed", "gamertag", gt, "err", err)
+		}
+	}
 }
 
 // repoDeLaPage : le lecteur Escouade de la requête. Seul LoadImpactEvents est partagé ; tout

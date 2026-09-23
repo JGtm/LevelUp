@@ -333,7 +333,15 @@ Items :
   `prechargerImpacts` (section `impact_events_shared`, avant les quatre blocs) ; GetPage +2 L ;
   tests `teammates_service_loads_test.go` (une lecture pour les 4 consommateurs, deux requetes =
   deux lectures) ; mutation « enveloppe retiree » : 5 lectures, rouge
-- [ ] L2.3 `LoadFor` unique par membre + xuids sans LoadFor (D2.3)
+- [x] L2.3 `LoadFor` unique par membre + xuids sans LoadFor (D2.3) — `teammates_service_loads.go` :
+  chargeur memoise par (titre, gamertag) + `precharger` (section `squad_members` : coequipiers
+  selectionnes toujours, joueur principal quand la population escouade existe — exactement les
+  lectures que les blocs faisaient) ; bandeau sequentiel (`loadTeammatesCanonical`, errgroup
+  retire) ; intensite : xuids de `resolveSquadScope(...).xuidByPlayer` (`resolveIntensityXUIDs`
+  supprime) ; tests : un LoadFor par membre (avant : 9 pour un coequipier), bandeau seul sans
+  population, intensite sans chargeur ; mutations (enveloppe retiree, xuids de la page retires) :
+  rouges ; effet decide de D2.3 : un coequipier NON suivi a desormais sa ligne d'intensite (cf.
+  journal)
 - [ ] L2.4 journal des morts restreint et partage (D2.4)
 - [ ] L2.5 `sessionMatchIDs` depuis `filters.sessions` (D2.5)
 - [ ] L2.6 usage / formes partages + `replaylabels` hors chemin de requete (D2.6)

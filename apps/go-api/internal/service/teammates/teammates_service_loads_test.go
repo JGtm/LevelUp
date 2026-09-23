@@ -136,3 +136,59 @@ func TestCleDEnsemble(t *testing.T) {
 		t.Error("deux ensembles différents ne partagent pas la lecture")
 	}
 }
+
+// TestGetPage_UnLoadForParMembre (L2.3 / D2.3) : heatmap, stats par minute, radar, séries de
+// performance et bandeau relisent l'historique des membres ; chaque membre n'est lu qu'UNE
+// fois par requête (avant le lot : 9 lectures pour un coéquipier, dont 2 par l'intensité).
+func TestGetPage_UnLoadForParMembre(t *testing.T) {
+	repo, loader := pageCompleteFixture()
+	resp, err := servicePageComplete(repo, loader).GetPage(context.Background(), "x_main",
+		domain.TeammatesQueryRequest{SelectedGamertags: []string{"Ally"}})
+	if err != nil {
+		t.Fatalf("GetPage : %v", err)
+	}
+	if resp.MapHeatmap == nil || len(resp.PerMinuteStats) == 0 || len(resp.SynergyRadar) == 0 ||
+		len(resp.PerformanceSeries) == 0 || resp.Header == nil || len(resp.Header.PlayerCards) == 0 {
+		t.Fatal("les consommateurs de LoadFor doivent tous rendre leur section")
+	}
+	parMembre := map[string]int{}
+	for _, gt := range loader.calls {
+		parMembre[gt]++
+	}
+	if parMembre["Main"] != 1 || parMembre["Ally"] != 1 || len(loader.calls) != 2 {
+		t.Fatalf("LoadFor par membre = %v (appels %v), attendu une lecture chacun", parMembre, loader.calls)
+	}
+}
+
+// TestGetPage_SansPopulationEscouade_BandeauSeulLitLesCoequipiers : sans match commun, seul le
+// bandeau relit les coéquipiers — le préchargement ne lit pas le joueur principal pour rien.
+func TestGetPage_SansPopulationEscouade_BandeauSeulLitLesCoequipiers(t *testing.T) {
+	repo, loader := pageCompleteFixture()
+	repo.squadRows = nil
+	if _, err := servicePageComplete(repo, loader).GetPage(context.Background(), "x_main",
+		domain.TeammatesQueryRequest{SelectedGamertags: []string{"Ally"}}); err != nil {
+		t.Fatalf("GetPage : %v", err)
+	}
+	if len(loader.calls) != 1 || loader.calls[0] != "Ally" {
+		t.Fatalf("LoadFor = %v, attendu [Ally] (bandeau seul)", loader.calls)
+	}
+	if repo.impactCalls != 0 {
+		t.Fatalf("LoadImpactEvents appelé %d fois sans population escouade, attendu 0", repo.impactCalls)
+	}
+}
+
+// TestBuildSquadIntensityProfile_XUIDsDeLaPage (D2.3) : la ligne d'un joueur lit son xuid dans
+// la page (mainXUID, teammates[].XUID), jamais par LoadFor — un coéquipier sans historique
+// chargeable (non suivi, chargeur absent) a quand même sa ligne, comme au premier frag.
+func TestBuildSquadIntensityProfile_XUIDsDeLaPage(t *testing.T) {
+	repo, rows := tlFixture()
+	svc := &TeammatesService{titleSlug: "halo_infinite", gamertag: "main", repo: repo}
+	ally := tlAllyXUID
+	got := svc.buildSquadIntensityProfile(context.Background(), rows, "main", tlMainXUID,
+		[]string{"Ally"}, []domain.TeammateRow{{Gamertag: "Ally", XUID: &ally}}, nil)
+	for _, gt := range []string{"main", "Ally"} {
+		if r := tlRowFor(t, got, gt, "m1"); r.Phases[1] != 1 {
+			t.Errorf("ligne %s : attendu le frag du bucket 1 (xuid de la page), phases %v", gt, r.Phases)
+		}
+	}
+}
