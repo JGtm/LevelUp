@@ -37,7 +37,7 @@ portent le detail mesure, et trois d'entre eux sont des NEGATIFS qui ferment des
 
 - `replay2d/PLAN_R3_IDENTITE_TI37.md` — l'identite de l'objet `ti=37` est le GlobalID d'un tag
   `eqip` (428 occurrences sur 428, zero ailleurs). Confirmation INDEPENDANTE de la meme
-  decouverte que le lot de production `PLAN_IDENTITE_TI37.md` ; c'est ce dernier qui a livre
+  decouverte que le lot de production `replay2d/PLAN_IDENTITE_TI37.md` ; c'est ce dernier qui a livre
   les poses et le nommage. Le code d'instrumentation de R3 n'a PAS ete fusionne (il aurait
   double le lecteur de `equipment_creation.go`).
 - `replay2d/PLAN_R4_OBJECTIFS_VIVANTS_TI11.md` — `ti=11` est le DESCRIPTEUR d'objectif du HUD,
@@ -91,16 +91,16 @@ brutes sont sous `replay2d/mesures_ctf_2026-08-08/`.
 À la racine de `V7.5/` également : `PLAN_RECONCILIATION_BRANCHES.md` — la réconciliation des deux
 lignées (killweapon + rejeu 2D) sur `feat/replay2d-prod`, close le 2026-07-31. Son §5 porte les
 sept grandeurs de non-régression des trois films, encore citées comme gate par
-`../PLAN_DETTE_AVANT_MERGE.md`.
+`PLAN_DETTE_AVANT_MERGE.md`.
 
 ### Points d'entrée par sujet
 
 - **Arme par kill** : `../README_KILLWEAPON_INDEX.md` (index maître, à greper en premier),
   puis `killweapon/RE_LOG_KILLWEAPON.md` (journal, ne jamais le lire par le haut).
 - **Grammaire ECS (archétype × composant)** : la table de référence est
-  `apps/go-api/internal/analysis/filmdec/testdata/ecs_table.tsv` (1 067 couples du registre du
+  `apps/go-api/internal/games/halo_infinite/film/internal/grammar/testdata/ecs_table.tsv` (1 067 couples du registre du
   film + 14 alias ; statut de portage, niveau, source `fichier:ligne`, deser, champ du document),
-  tenue par les garde-rails G1-G3 de `filmdec/ecs_table_guard_test.go`. Le plan qui l’a produite
+  tenue par les garde-rails G1-G3 de `film/internal/grammar/ecs_table_guard_test.go`. Le plan qui l’a produite
   et la vérification de l’inventaire qui l’a précédée : `film_re/PLAN_TABLE_ECS.md`.
 - **Format du film** : `film_re/GRAMMAIRE_RECORD_FILM.md` puis
   `film_re/RECETTE_DECODAGE_FILM_CHUNKS.md`.
@@ -295,7 +295,7 @@ Documents autrefois listés dans cette section et archivés depuis (chemins rela
 
 ## Pièges
 
-- **Les journaux n'ont pas été réécrits.** `thought_log.md` et `thought_log_replay.md`
+- **Les journaux n'ont pas été réécrits.** `thought_log.md` et `replay2d/thought_log_replay.md`
   citent les anciens chemins plats (de la forme `.ai/<NOM>.md`, `.ai/re_dump/...`) pour les
   entrées antérieures au 2026-07-31 : ce sont des archives, on ne réécrit pas l'histoire.
   Pour retrouver un document cité dans une vieille entrée, chercher son nom, pas son chemin.
