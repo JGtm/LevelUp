@@ -298,3 +298,57 @@ func TestFiltersCacheKey_DistinctValues(t *testing.T) {
 		t.Error("distinct values should produce distinct keys")
 	}
 }
+
+// TestFiltersCacheKey_ChaqueChampCompte (lot perf L9-go, revue adversariale D) : CHAQUE champ de
+// port.PlayerMatchFilters change la clé du cache de l'historique. Un champ ajouté au type sans
+// entrer dans filtersCacheKey ferait servir, pour ce filtre, les lignes cachées d'un autre jeu
+// de filtres : ce test échoue alors (parcours par réflexion, aucun champ listé à la main).
+func TestFiltersCacheKey_ChaqueChampCompte(t *testing.T) {
+	t.Parallel()
+	zero := filtersCacheKey(port.PlayerMatchFilters{})
+	typ := reflect.TypeOf(port.PlayerMatchFilters{})
+	if typ.NumField() == 0 {
+		t.Fatal("PlayerMatchFilters sans champ : le test ne prouverait rien")
+	}
+	for i := 0; i < typ.NumField(); i++ {
+		var f port.PlayerMatchFilters
+		if !valeurNonNulle(reflect.ValueOf(&f).Elem().Field(i)) {
+			t.Fatalf("champ %s : type %s sans valeur de test — compléter valeurNonNulle", typ.Field(i).Name, typ.Field(i).Type)
+		}
+		if filtersCacheKey(f) == zero {
+			t.Errorf("champ %s : la clé du cache ne change pas — l'ajouter à filtersCacheKey", typ.Field(i).Name)
+		}
+	}
+}
+
+// valeurNonNulle pose dans v une valeur non nulle de son genre (pointeurs et tranches compris) ;
+// false pour un genre non pris en charge.
+func valeurNonNulle(v reflect.Value) bool {
+	switch v.Kind() {
+	case reflect.Pointer:
+		elem := reflect.New(v.Type().Elem())
+		if !valeurNonNulle(elem.Elem()) {
+			return false
+		}
+		v.Set(elem)
+	case reflect.Slice:
+		s := reflect.MakeSlice(v.Type(), 1, 1)
+		if !valeurNonNulle(s.Index(0)) {
+			return false
+		}
+		v.Set(s)
+	case reflect.String:
+		v.SetString("x")
+	case reflect.Bool:
+		v.SetBool(true)
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		v.SetInt(1)
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		v.SetUint(1)
+	case reflect.Float32, reflect.Float64:
+		v.SetFloat(1)
+	default:
+		return false
+	}
+	return true
+}
