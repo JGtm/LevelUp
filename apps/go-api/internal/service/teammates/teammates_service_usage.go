@@ -38,13 +38,46 @@ func (s *TeammatesService) WithEquipmentUsage(repo port.SessionUsageRepository) 
 	return s
 }
 
+// loadUsageBlocks publie les deux blocs du résumé d'usage — « servi ou gâché » et « formes
+// retenues » — sur le MÊME scope (filteredMatches) : leurs trois lectures communes (films,
+// joueurs, participants) sont faites une fois pour les deux (D2.6, lot perf L2).
+func (s *TeammatesService) loadUsageBlocks(
+	ctx context.Context, playerXUID string, filteredMatches []legacymatch.SynthesisMatchRow,
+	history []domain.SquadMatchHistoryRow, req domain.TeammatesQueryRequest,
+) (*domain.EquipmentUsageBlock, *domain.SquadFormesBlock) {
+	lectures := s.lireUsagePartage(ctx, playerXUID, filteredMatches)
+	return s.loadEquipmentUsage(ctx, playerXUID, filteredMatches, req.SelectedGamertags, req.Locale, lectures),
+		s.loadSquadFormes(ctx, playerXUID, filteredMatches, history, req, lectures)
+}
+
+// lireUsagePartage fait les trois lectures communes, sous la section `usage_shared`, quand au
+// moins un des deux blocs les ferait : scope non vide, joueur connu, un résumé d'usage câblé.
+// Sinon nil, et chaque bloc garde sa dégradation (scope vide ⇒ nil, source absente ⇒
+// indisponible). Les deux sources sont le MÊME lecteur (duckdb.SessionUsageRepo, câblé deux
+// fois sur la base du joueur) : la lecture passe par celle du bloc « servi ou gâché ».
+func (s *TeammatesService) lireUsagePartage(
+	ctx context.Context, playerXUID string, filteredMatches []legacymatch.SynthesisMatchRow,
+) *squadagg.LecturesUsage {
+	var repo port.SessionUsageRepository = s.sessionUsageRepo
+	if repo == nil && s.formesUsageRepo != nil {
+		repo = s.formesUsageRepo
+	}
+	if repo == nil || playerXUID == "" || len(filteredMatches) == 0 {
+		return nil
+	}
+	defer timing.FromContext(ctx).Section("usage_shared")()
+	return squadagg.LireUsage(ctx, repo, teammatesMatchIDs(filteredMatches))
+}
+
 // loadEquipmentUsage publie le bloc sur le scope FILTRÉ de la page (voir
 // commentaire de fichier). playerXUID est le sujet de la page (le joueur
 // principal, paramètre de route de GetPage) ; selectedGamertags sont les
 // coéquipiers sélectionnés dans l'UI, qui deviennent les « amis » du bloc.
+// lectures : les lectures communes déjà faites (nil ⇒ le bloc les fait).
 func (s *TeammatesService) loadEquipmentUsage(
 	ctx context.Context, playerXUID string,
 	filteredMatches []legacymatch.SynthesisMatchRow, selectedGamertags []string, locale string,
+	lectures *squadagg.LecturesUsage,
 ) *domain.EquipmentUsageBlock {
 	defer timing.FromContext(ctx).Section("equipment_usage")()
 	return squadagg.BuildEquipmentUsageBlock(ctx, squadagg.EquipmentUsageQuery{
@@ -52,6 +85,7 @@ func (s *TeammatesService) loadEquipmentUsage(
 		PlayerXUID:      playerXUID,
 		MatchIDs:        teammatesMatchIDs(filteredMatches),
 		FriendGamertags: selectedGamertags,
+		Lectures:        lectures,
 		// De quoi NOMMER les armes du detail par niveau, DANS LA LANGUE DE LA REQUETE. La
 		// locale etait oubliee (revue 2026-09-14) : sans elle, `q.Locale != "en"` rendait vrai
 		// par accident sur la chaine vide — le FR sortait, mais par hasard, et un titre dont le

@@ -361,7 +361,15 @@ Items :
   labels), mutation (condition retiree) : rouge ; copie de production : la requete
   `filters.sessions` seule rend desormais EXACTEMENT la page de `picked_squad_session_labels`
   (7 matchs au lieu de 38), les 8 autres scenarios inchanges
-- [ ] L2.6 usage / formes partages + `replaylabels` hors chemin de requete (D2.6)
+- [x] L2.6 usage / formes partages + `replaylabels` hors chemin de requete (D2.6) —
+  `squadagg.LireUsage` + `LecturesUsage` (champ `Lectures` optionnel des deux requetes
+  d'assemblage : Synthese et Sessions inchangees) ; `teammates_service_usage.go` :
+  `loadUsageBlocks` / `lireUsagePartage` (section `usage_shared`), GetPage -3 L ;
+  `replaylabels.Catalogue` (`cache.go`) : catalogue lu une fois par (racine, titre) et par
+  processus, echec non memorise, lu par les deux assemblages squadagg ; la PREMIERE requete le
+  paie encore (un prechargement au boot releverait du cablage, hors perimetre) ; tests : une
+  lecture de chaque (avant : deux), `TestCatalogue_*` ; mutations (partage coupe, cache coupe) :
+  rouges ; parite page 9/9 ; usage + formes 118 -> 91 ms sur la page de reference
 - [ ] L2.7 annulation entre sections (D2.7)
 
 Gate : `gofmt` ; `go build ./...` ; `go vet ./...` ; `go test ./internal/service/...

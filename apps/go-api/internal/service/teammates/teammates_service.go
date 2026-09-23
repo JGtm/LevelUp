@@ -496,13 +496,10 @@ func (s *TeammatesService) GetPage(
 		compositionSessions = wrapSessionLabelsAsComposition(sessionLabels.Squad)
 	}
 
-	// Bloc « servi ou gâché » de l'équipement (étape E6.1bis) : best-effort, gaté
-	// par film.usage_summary, sur le scope FILTRÉ de la page (filteredMatches) —
-	// jamais l'intersection escouade, cf. teammates_service_usage.go.
-	equipmentUsage := s.loadEquipmentUsage(ctx, playerXUID, filteredMatches, req.SelectedGamertags, req.Locale)
-
-	// Bloc « formes retenues » (lot D2) : même scope, même escouade que ci-dessus.
-	squadFormes := s.loadSquadFormes(ctx, playerXUID, filteredMatches, matchHistory, req)
+	// Blocs « servi ou gâché » (E6.1bis) et « formes retenues » (lot D2) : best-effort, gatés
+	// par film.usage_summary, sur le scope FILTRÉ de la page (filteredMatches) — jamais
+	// l'intersection escouade ; lectures communes faites une fois (teammates_service_usage.go).
+	equipmentUsage, squadFormes := s.loadUsageBlocks(ctx, playerXUID, filteredMatches, matchHistory, req)
 
 	return domain.TeammatesPageResponse{
 		Options:             options,
