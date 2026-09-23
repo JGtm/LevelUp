@@ -12296,6 +12296,10 @@ de diff ne l aurait trouve.
 
 ## 5. Journal des gates locaux (un gate non consigné n'a pas eu lieu)
 
+### Cloture de la serie 5 et du post-chantier, 2026-09-23 (pilote)
+
+**Serie 5 dans feat/v75** : `feat/v75` = 43a01721e contient les lots 5.1 a 5.25 + 5.24 (CI verte au niveau job le 22/09, Coverage 34 min 35 s sous le budget 60). L integration `feat/recherche-decodeur-film` est avancee sur cette tete le 23/09 puis recoit trois lots fusionnes le meme jour : archivage `.ai` (8dc8aeb03), docs de release v7.5 (df03e21cc), lot 5.26 (4adafc1b4 : deux pistes fermees, aucune revision, aucun backfill). Aucun gate de decodage de corpus ni re-figeage d equivalence n est requis : `grammar.Rev`, `facts.Rev` et `SchemaVersion` sont inchanges depuis 43a01721e. Le residu de film dense (25,3 % des rejets, 35,4 % des ticks de joueur sur `bfecd02b`) est CLOS sur decision utilisateur du 22/09 : dernier lot, pas de troisieme suspect ; ce qui le fermerait (le record de naissance des entites nees et mortes entre deux images-cles) reste au §4 avec ses adresses.
+
 ### Post-chantier — lot 5.26 (le quart de trames abandonne sur film dense), 2026-09-23
 
 Branche `feat/decfilm-76`, worktree `LevelUp-wt-decfilm-76`, base `43a01721e`. Aucune base

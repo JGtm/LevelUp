@@ -26,7 +26,7 @@ en Go ou TypeScript. **SQLite interdit** : DuckDB uniquement.
 
 **AVANT TOUTE ACTION** :
 - `.ai/thought_log.md` — journal des décisions (lire les entrées récentes)
-- Le plan actif du chantier en cours (`.ai/V7/PLAN_*.md`) s'il existe
+- Le plan actif du chantier en cours (`.ai/PLAN_*.md`, les plans clos vivent sous `.ai/V7.5/`) s'il existe
 - `docs/ARCHITECTURE_V6.md` + `docs/FOUNDATIONS_GUIDE.md` (onboarding)
 - `.ai/project_map.md` — cartographie (vérifier la date : doctrine RE-VÉRIFIER, les
   documents `.ai/` rotent plus vite qu'ils ne sont maintenus)
