@@ -177,6 +177,7 @@ export function TacticalPage() {
           coequipiers={composition.xuids}
           perimetreEnRelecture={perimetreEnRelecture}
           perimetreEnEchec={perimetreEnEchec}
+          coequipiersInconnus={compositionImpossible ? composition.inconnus : null}
         />
       </>
     )

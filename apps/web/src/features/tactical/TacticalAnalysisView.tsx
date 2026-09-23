@@ -20,8 +20,8 @@
  * premier chargement → le cadre et le fond sont posés, l'indicateur par-dessus ; relecture
  * (changement de question, de qui, de spawn ou de filtre) → rien n'est démonté, la réponse
  * PRÉCÉDENTE reste affichée, ESTOMPÉE sous « Mise à jour… » (décision Q26) — KPI, calque,
- * cartes Cellule et Coordination ; échec (de la lecture OU de son périmètre) → le message, le
- * fond reste. Auparavant `isPending` démontait tout le corps, fond compris, à chaque nouvelle
+ * cartes Cellule et Coordination ; échec (de la lecture OU de son périmètre, ou composition
+ * impossible — contrôle L2-PARC-1) → le message, le fond reste. Auparavant `isPending` démontait tout le corps, fond compris, à chaque nouvelle
  * clé de cache.
  */
 import { useMemo, useState } from 'react'
@@ -68,6 +68,10 @@ export interface TacticalAnalysisViewProps {
   /** La résolution du périmètre a ÉCHOUÉ : le raster, suspendu, ne répondra pas — l'échec
    *  prime sur la relecture (revue L2-R1). */
   perimetreEnEchec?: boolean
+  /** Les coéquipiers INTROUVABLES quand la composition est impossible, `null` sinon : le
+   *  raster, suspendu, ne répondra pas non plus. La vue le dit comme la grille (« Coéquipier
+   *  introuvable »), jamais « Mise à jour… » ni la panne générique (contrôle L2-PARC-1). */
+  coequipiersInconnus?: string[] | null
 }
 
 export function TacticalAnalysisView({
@@ -80,6 +84,7 @@ export function TacticalAnalysisView({
   coequipiers,
   perimetreEnRelecture = false,
   perimetreEnEchec = false,
+  coequipiersInconnus = null,
 }: TacticalAnalysisViewProps) {
   const [question, setQuestion] = useState<TacticalQuestion>('morts')
   const [qui, setQui] = useState<TacticalQui>('moi')
@@ -103,7 +108,7 @@ export function TacticalAnalysisView({
   )
   const { etat, lecture, questionLue } = useLecturePlan(playerSlug, mapId, params, question, {
     enRelecture: perimetreEnRelecture,
-    enEchec: perimetreEnEchec,
+    enEchec: perimetreEnEchec || coequipiersInconnus !== null,
   })
 
   // La cellule affichée n'a plus de sens dès que la lecture change de forme. Ajustée
@@ -146,11 +151,7 @@ export function TacticalAnalysisView({
         onSpawnChange={setSpawn}
         grappes={lecture?.grappes ?? []}
       />
-      {etat === 'echec' && (
-        <div className="p-3">
-          <EmptyStateNotice title={t.analysisErrorTitle} description={t.analysisErrorDescription} />
-        </div>
-      )}
+      {etat === 'echec' && <AvisEchec t={t} inconnus={coequipiersInconnus} />}
       {/* LE CORPS N'EST JAMAIS DÉMONTÉ : la carte « Plan » est toujours rendue (cf. en-tête). */}
       <div
         className="flex flex-col gap-3 p-3"
@@ -188,6 +189,25 @@ export function TacticalAnalysisView({
         )}
       </div>
     </>
+  )
+}
+
+/**
+ * AvisEchec — pourquoi la lecture ne répond pas. Dans l'ORDRE de la grille : la composition
+ * impossible d'abord (ce n'est pas une panne : « réessaie plus tard » mentirait), puis l'échec.
+ */
+function AvisEchec({ t, inconnus }: { t: TacticalText; inconnus: string[] | null }) {
+  return (
+    <div className="p-3">
+      {inconnus ? (
+        <EmptyStateNotice
+          title={t.unknownTeammateTitle}
+          description={t.unknownTeammateDescription(inconnus.join(', '))}
+        />
+      ) : (
+        <EmptyStateNotice title={t.analysisErrorTitle} description={t.analysisErrorDescription} />
+      )}
+    </div>
   )
 }
 

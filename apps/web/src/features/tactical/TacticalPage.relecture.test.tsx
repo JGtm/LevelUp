@@ -17,6 +17,8 @@
  *     vignette, même titre — c'est le placeholder de la GRILLE qui répond ;
  *   - le nouveau périmètre en ÉCHEC sur l'écran d'analyse (revue L2-R1) : le message
  *     d'échec, jamais une « Mise à jour… » qui ne viendra pas ;
+ *   - un coéquipier INTROUVABLE sur l'écran d'analyse (contrôle de parc L2-PARC-1) :
+ *     « Coéquipier introuvable » comme sur la grille, jamais une relecture sans fin ;
  *   - changer de JOUEUR (revue L2-R2) : aucune réponse d'un joueur ne sert de placeholder à
  *     un autre, et aucune requête du nouveau joueur ne porte les `match_id` de l'ancien ;
  *   - changer de CARTE remet la vue à zéro.
@@ -165,6 +167,11 @@ function monter() {
       searchCourant = { ...searchCourant, ses: 'Session du 3 mars' }
       rendu.rerender(<TacticalPage />)
     },
+    /** Met un coéquipier dans la composition : la barre L2 écrit `eq` dans l'URL. */
+    choisirCoequipier: (gamertag: string) => {
+      searchCourant = { ...searchCourant, eq: gamertag }
+      rendu.rerender(<TacticalPage />)
+    },
     /** Passe sur un autre joueur : la route garde la page MONTÉE, seul le paramètre change. */
     changerDeJoueur: (playerSlug: string) => {
       paramsCourants = { ...paramsCourants, playerSlug }
@@ -294,6 +301,36 @@ describe('TacticalPage — un changement de filtre garde la page à l’écran',
     expect(screen.queryByTestId('tactical-analysis-updating')).toBeNull()
     expect(screen.queryByTestId('kpi-strip')).toBeNull()
     expect(screen.getByTestId('tactical-analysis-body')).toHaveAttribute('aria-busy', 'false')
+  })
+
+  // Contrôle de parc L2-PARC-1 : un coéquipier INTROUVABLE (URL, scope mémorisé, liste
+  // rechargée sans lui) suspend le raster (`match_ids` à `null`) sur son placeholder. Sans la
+  // composition impossible transmise à la vue, elle restait sur « Mise à jour… » pour
+  // toujours, les KPI de l'ancienne composition affichés, sans jamais dire pourquoi.
+  it('ANALYSE : un coéquipier introuvable — « Coéquipier introuvable », jamais « Mise à jour… »', async () => {
+    searchCourant = { carte: 'streets' }
+    const page = monter()
+    const img = await analyseChargee()
+
+    page.choisirCoequipier('Inconnu')
+    expect(await screen.findByText(t.unknownTeammateTitle)).toBeInTheDocument()
+    expect(screen.getByText(t.unknownTeammateDescription('Inconnu'))).toBeInTheDocument()
+    // Ce n'est pas une panne : le message générique (« réessaie plus tard ») mentirait.
+    expect(screen.queryByText(t.analysisErrorTitle)).toBeNull()
+    expect(screen.queryByTestId('tactical-analysis-updating')).toBeNull()
+    expect(screen.queryByTestId('kpi-strip')).toBeNull()
+    expect(screen.getByTestId('tactical-analysis-body')).toHaveAttribute('aria-busy', 'false')
+    // Le fond reste le même nœud : la composition corrigée relira sans le démonter.
+    expect(screen.getByTestId('tactical-plan-frame').querySelector('img')).toBe(img)
+  })
+
+  it('ANALYSE ouverte sur un coéquipier introuvable : le message, jamais une attente sans fin', async () => {
+    searchCourant = { carte: 'streets', eq: 'Inconnu' }
+    monter()
+    expect(await screen.findByText(t.unknownTeammateTitle)).toBeInTheDocument()
+    expect(screen.queryByTestId('tactical-analysis-pending')).toBeNull()
+    expect(screen.getByTestId('tactical-analysis-body')).toHaveAttribute('aria-busy', 'false')
+    expect(lecturesTactiques('JGtm').filter(([path]) => (path as string).endsWith('/raster'))).toEqual([])
   })
 
   // `key={scope.carte}` : la réponse d'une carte ne sert JAMAIS de placeholder à une autre

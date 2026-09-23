@@ -15,7 +15,8 @@
  *   - `echec`     : la lecture OU la résolution de son périmètre a échoué — le message
  *                   d'échec, le fond reste, rien de périmé (revue L2-R1 : un périmètre en
  *                   échec suspend le raster, qui gardait son placeholder « Mise à jour… »
- *                   pour toujours) ;
+ *                   pour toujours) — et, pour la même raison, la composition IMPOSSIBLE
+ *                   (coéquipier introuvable, contrôle L2-PARC-1), que la vue nomme ;
  *   - `pret`      : la réponse affichée répond à la demande courante.
  *
  * ESTOMPER, C'EST TOUT CE QUI VIENT DE LA RÉPONSE PRÉCÉDENTE (revue L2-R6/R7) : KPI, calque,
