@@ -197,6 +197,10 @@ func (r *TacticalRepo) habillerNomsFR(ctx context.Context, rows []domain.Tactica
 // CONTRIBUTEUR qu'un detail de cellule doit pouvoir citer pour ouvrir le rejeu 2D au bon
 // moment (`?frame=`). Il fait partie de la clef du GROUP BY, donc le projeter ne change ni
 // le nombre de lignes ni les gardes ci-dessus — seule une colonne de plus est lue.
+//
+// %s = la table de positions, puis DEUX FOIS la liste des matchs de l'univers : une par vue.
+// La liste posee sur `kp` ne descend pas dans `e` a travers la jointure (lot L5a, mesure :
+// cf. listeDeLUnivers) — chaque vue `_latest` porte donc la sienne.
 const QTacticalPositions = `
 SELECT kp.match_id,
        COALESCE(kp.killer_xuid, '')     AS killer_xuid,
@@ -209,7 +213,8 @@ JOIN match_kill_events_latest e
     ON e.match_id = kp.match_id
    AND e.feed_killer_xuid = kp.killer_xuid
    AND e.time_ms = kp.time_ms
-WHERE kp.match_id IN (SELECT u.match_id FROM (%s) u)
+WHERE kp.match_id IN (%s)
+  AND e.match_id IN (%s)
   AND e.publishable
   AND kp.killer_x IS NOT NULL AND kp.killer_y IS NOT NULL
   AND kp.victim_x IS NOT NULL AND kp.victim_y IS NOT NULL
@@ -243,13 +248,13 @@ func (r *TacticalRepo) KillPositions(ctx context.Context, q domain.TacticalQuery
 		return out, nil
 	}
 
-	selectSQL, args := r.universSQL(q)
+	liste, args := listeDeLUnivers(univ, 2)
 	// Le nom de la table de positions passe par la constante de kill_measured.go, PAS par un
 	// littéral ici : c'est le seul propriétaire du nom (garde-rail
 	// kill_measured_guard_test.go, lot 3 v75 du 2026-09-06). Cette lecture n'emprunte PAS
 	// measuredKillsQuery (pas de classificateur d'arme, pas de garde d'unanimité — cf.
 	// l'en-tête du fichier) ; seul le NOM de la table est partagé.
-	rows, err := db.QueryContext(ctx, fmt.Sprintf(QTacticalPositions, positionsAtKill, selectSQL), args...)
+	rows, err := db.QueryContext(ctx, fmt.Sprintf(QTacticalPositions, positionsAtKill, liste, liste), args...)
 	if err != nil {
 		return out, r.degrader(ctx, "KillPositions", err)
 	}
@@ -270,13 +275,16 @@ func (r *TacticalRepo) KillPositions(ctx context.Context, q domain.TacticalQuery
 // Aucune jointure sur les positions : l'echange se mesure sur des INSTANTS et des
 // IDENTITES, pas sur des coordonnees — exiger une position mesuree ecarterait les
 // morts d'un match non decode et gonflerait le taux.
+//
+// %s = la liste des matchs de l'univers (listeDeLUnivers) : une liste de constantes, que
+// DuckDB pousse sous la fenetre de la vue (0,74 s -> 0,05 s pour 6 matchs, mesure lot L5a).
 const QTacticalEvents = `
 SELECT e.match_id,
        COALESCE(e.feed_killer_xuid, '') AS killer_xuid,
        COALESCE(e.victim_xuid, '')      AS victim_xuid,
        e.time_ms
 FROM match_kill_events_latest e
-WHERE e.match_id IN (SELECT u.match_id FROM (%s) u)
+WHERE e.match_id IN (%s)
   AND e.publishable
 ORDER BY e.match_id, e.time_ms, e.victim_xuid, e.feed_killer_xuid`
 
@@ -300,8 +308,8 @@ func (r *TacticalRepo) KillEvents(ctx context.Context, q domain.TacticalQuery) (
 		return out, nil
 	}
 
-	selectSQL, args := r.universSQL(q)
-	rows, err := db.QueryContext(ctx, fmt.Sprintf(QTacticalEvents, selectSQL), args...)
+	liste, args := listeDeLUnivers(univ, 1)
+	rows, err := db.QueryContext(ctx, fmt.Sprintf(QTacticalEvents, liste), args...)
 	if err != nil {
 		return out, r.degrader(ctx, "KillEvents", err)
 	}

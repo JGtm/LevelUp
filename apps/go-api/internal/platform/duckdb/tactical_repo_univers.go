@@ -78,14 +78,29 @@ import (
 // l'univers des rasters alors que l'Explorateur les masque. Le token est resolu au
 // call site par resolveCampaignExclusion, qui connait le titre du joueur (no-op
 // pour Infinite, qui n'a aucun match Campagne au registre).
+//
+// LA LISTE BLANCHE EST POSEE UNE SECONDE FOIS, DANS LE EXISTS (lot L5a du plan perf,
+// 2026-09-23). La vue `match_kill_events_latest` porte une fenetre (`QUALIFY ... OVER
+// (PARTITION BY match_id ...)`) : DuckDB n'y pousse qu'un filtre CONSTANT sur sa cle de
+// partition. Le `mr.match_id IN (...)` de la requete externe ne descend pas dans la
+// sous-requete correlee — la fenetre etait donc calculee sur les 3,95 M lignes de la
+// table a chaque lecture, quel que soit le perimetre (mesure sur copie : 0,52 s pour 6
+// matchs comme pour 1 158). Recopiee dans le EXISTS, la meme liste le ramene a 12 ms pour
+// 6 matchs. C'est la MEME liste, pas un second predicat : elle ne peut rien retirer que le
+// WHERE externe n'ait deja retire.
 const QTacticalUnivers = `
 SELECT mr.match_id, COALESCE(mp.outcome, ?) AS outcome, ` + colonneEligible + `,
        COALESCE(mr.game_variant_name, '') AS game_variant_name,
        EXISTS (SELECT 1 FROM match_kill_events_latest e
-               WHERE e.match_id = mr.match_id AND e.publishable) AS mesure
+               WHERE e.match_id = mr.match_id AND e.publishable` + journalPerimetre + `) AS mesure
 FROM match_registry mr
 JOIN match_participants mp ON mp.match_id = mr.match_id
 WHERE mp.xuid = ? AND (? = '' OR mr.map_id = ?)` + clausePvEExclu + campaignExclusionToken
+
+// journalPerimetre : le jeton que `universSQL` remplace par la liste blanche recopiee dans
+// le EXISTS (cf. QTacticalUnivers), ou par rien quand le perimetre n'est pas restreint.
+// Un jeton et non un assemblage, pour la meme raison que `colonneEligible`.
+const journalPerimetre = "%PERIMETRE_JOURNAL%"
 
 // colonneEligible : le jeton que `universSQL` remplace par le predicat d'eligibilite a la
 // cuisson (`analysis.SQLEligibleALaCuisson`).
@@ -156,10 +171,26 @@ func clausePerimetre(q domain.TacticalQuery) (string, []any) {
 	return sb.String(), args
 }
 
+// clauseJournalPerimetre rend la liste blanche recopiee DANS le EXISTS de QTacticalUnivers
+// (cf. sa doc), avec ses arguments. Vide quand le perimetre n'est pas restreint : l'univers
+// est alors tout l'historique du joueur, et aucune liste n'existe encore a pousser. Une
+// liste restreinte VIDE rend le meme `AND FALSE` que la clause externe (clauseAucunMatch).
+func clauseJournalPerimetre(q domain.TacticalQuery) (string, []any) {
+	if !q.Matchs.Restreint() {
+		return "", nil
+	}
+	ids := q.Matchs.IDs()
+	if len(ids) == 0 {
+		return clauseAucunMatch, nil
+	}
+	return "\n                 AND e.match_id IN (" + Placeholders(len(ids)) + ")", ToAnySlice(ids)
+}
+
 // universSQL assemble le SELECT de l'univers et ses arguments, token Campagne
 // resolu pour le titre du joueur. `q.MapID` vide = toutes les cartes.
 func (r *TacticalRepo) universSQL(q domain.TacticalQuery) (string, []any) {
 	perim, perimArgs := clausePerimetre(q)
+	journal, journalArgs := clauseJournalPerimetre(q)
 
 	// LA COLONNE D'ELIGIBILITE EST RESOLUE ICI, ET SES ARGUMENTS SUIVENT SA PLACE DANS LE
 	// SELECT (juste apres le defaut d'outcome). Un `?` ajoute sans son argument au bon rang
@@ -169,21 +200,58 @@ func (r *TacticalRepo) universSQL(q domain.TacticalQuery) (string, []any) {
 	// lui qui garantit que « en attente » veut dire « la file le reprendra », et non « il
 	// n'a pas d'artefact ». Il ne vaut jamais NULL (cf. sa doc), donc il se scanne dans un
 	// `bool` nu.
+	//
+	// LA LISTE DU EXISTS SUIT LE MEME ORDRE TEXTUEL : elle vit dans le SELECT, donc AVANT
+	// le xuid, la carte et la liste blanche du WHERE.
 	predicat, predArgs := analysis.SQLEligibleALaCuisson("mr", q.RetentionMois, int64(matchflags.MBitFilmAbsent))
-	args := make([]any, 0, 4+len(predArgs)+len(perimArgs))
+	args := make([]any, 0, 4+len(predArgs)+len(journalArgs)+len(perimArgs))
 	args = append(args, domain.OutcomeUnknown)
 	args = append(args, predArgs...)
+	args = append(args, journalArgs...)
 	args = append(args, q.PlayerXUID, q.MapID, q.MapID)
 	args = append(args, perimArgs...)
 	sql := strings.Replace(QTacticalUnivers, colonneEligible, "("+predicat+") AS eligible_cuisson", 1)
+	sql = strings.Replace(sql, journalPerimetre, journal, 1)
 	return resolveCampaignExclusion(sql, r.pdb.TitleSlug, "mr") + perim, args
+}
+
+// listeDeLUnivers rend la liste `IN` des matchs RETENUS par l'univers deja lu : ses points
+// d'interrogation, et ses arguments repetes `fois` fois de suite — une fois par vue qui la
+// porte, dans l'ordre textuel des `IN (%s)` de la requete.
+//
+// POURQUOI LES IDENTIFIANTS RENDUS, ET PLUS L'UNIVERS EN SOUS-REQUETE (lot L5a du plan
+// perf, 2026-09-23). Jusque-la, les equipes et les trois lectures du journal
+// re-selectionnaient l'univers en sous-requete (`IN (SELECT u.match_id FROM (...) u)`),
+// pour que son predicat ne s'ecrive qu'a un endroit. Deux couts, mesures sur une copie de
+// la base : chaque lecture RE-EVALUAIT l'univers, EXISTS sur le journal compris (0,45 a
+// 0,5 s a chaque fois), et une semi-jointure ne descend pas sous la fenetre des vues
+// `_latest` — le journal, le contexte des morts et les positions etaient calcules sur la
+// table ENTIERE, quel que soit le perimetre (KillEvents : 1,7 s pour 6 matchs comme pour
+// 1 158). Une liste de CONSTANTES descend, elle, jusqu'au scan de chaque vue.
+//
+// LE PREDICAT RESTE ECRIT A UN SEUL ENDROIT : ces identifiants sont le RESULTAT de
+// universSQL, pas une seconde definition du perimetre. Et la lecture est plus coherente
+// qu'avant : les quatre requetes portent exactement les memes matchs, la ou chaque
+// re-evaluation pouvait en voir un de plus si une synchro s'intercalait.
+//
+// Appelee sur un univers NON VIDE (les lecteurs rendent la main avant sinon) : `IN ()`
+// n'est pas du SQL valide.
+func listeDeLUnivers(univ domain.TacticalUnivers, fois int) (string, []any) {
+	ids := make([]any, 0, len(univ.Matchs))
+	for _, m := range univ.Matchs {
+		ids = append(ids, m.MatchID)
+	}
+	args := make([]any, 0, fois*len(ids))
+	for i := 0; i < fois; i++ {
+		args = append(args, ids...)
+	}
+	return Placeholders(len(ids)), args
 }
 
 // chargerUnivers lit les matchs retenus PUIS la composition de leurs equipes.
 //
-// Les equipes sont lues par une SECONDE requete qui re-selectionne l'univers en
-// sous-requete, plutot que par une liste `IN (?, ?, ...)` construite en Go : le
-// predicat serait alors ecrit a deux endroits au lieu d'un.
+// Les equipes sont lues sur la liste des matchs que l'univers vient de rendre
+// (listeDeLUnivers), jamais en re-selectionnant l'univers en sous-requete.
 func (r *TacticalRepo) chargerUnivers(ctx context.Context, db *sql.DB, q domain.TacticalQuery) (domain.TacticalUnivers, error) {
 	univ := domain.TacticalUnivers{Equipes: domain.EquipesParMatch{}}
 
@@ -207,10 +275,11 @@ func (r *TacticalRepo) chargerUnivers(ctx context.Context, db *sql.DB, q domain.
 		return univ, nil
 	}
 
+	liste, listeArgs := listeDeLUnivers(univ, 1)
 	equipesSQL := `SELECT p.match_id, p.xuid, p.team_id FROM match_participants p
-		WHERE p.match_id IN (SELECT u.match_id FROM (` + selectSQL + `) u)
+		WHERE p.match_id IN (` + liste + `)
 		  AND p.xuid IS NOT NULL AND p.xuid <> '' AND p.team_id IS NOT NULL`
-	rows, err = db.QueryContext(ctx, equipesSQL, args...)
+	rows, err = db.QueryContext(ctx, equipesSQL, listeArgs...)
 	if err != nil {
 		return univ, fmt.Errorf("equipes: %w", err)
 	}

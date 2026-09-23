@@ -5,13 +5,11 @@ package service
 
 import (
 	"context"
-	"log/slog"
 	"sort"
 	"time"
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/analysis/narrative"
-	"levelup/go-api/internal/analysis/sessionusage"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/canonical"
 	"levelup/go-api/internal/legacymatch"
@@ -258,33 +256,27 @@ func statsMatchRowFirstBloodMeta(m legacymatch.StatsMatchRow) domain.FirstBloodM
 //
 // LE LOBBY NE COÛTE RIEN : les highlight events du scope couvrent déjà les deux camps
 // (`loadHighlightEvents` ne filtre pas par joueur). L'ÉQUIPE exige de savoir qui était
-// allié PAR MATCH : elle se lit dans `match_participants` via le MÊME port que le bloc
-// « formes retenues », et le MÊME `sessionusage.BuildTeamContext` que le bloc d'usage —
-// jamais une seconde définition de « mon équipe ».
+// allié PAR MATCH : elle se lit dans `match_participants`, par la lecture UNIQUE du scope
+// (`lireEquipesDuScope`, partagée avec l'effectif de camp de la coordination — lot L5a,
+// 2026-09-23), et le MÊME `sessionusage.BuildTeamContext` que le bloc d'usage — jamais une
+// seconde définition de « mon équipe ».
 //
 // DÉGRADATION NOMMÉE : port non câblé (titre sans résumé d'usage) ou lecture en échec ⇒
 // la courbe d'équipe est absente, le reste est servi. Jamais une courbe plate.
-func (s *TimeseriesService) attachIntensityOverlays(
-	ctx context.Context,
+func attachIntensityOverlays(
 	resp *domain.TimeseriesPageResponse,
 	events []canonical.HighlightEvent,
 	matches []legacymatch.StatsMatchRow,
-	matchIDs []string,
 	gameplayDurationsMS map[string]int64,
+	equipes equipesDuScope,
 ) {
 	resp.IntensityRowsLobby = buildIntensityRowsPour(events, matches, gameplayDurationsMS,
 		func(string, string) bool { return true })
 
-	if s.formesUsageRepo == nil || s.playerXUID == "" || len(matchIDs) == 0 {
+	if !equipes.lues {
 		return
 	}
-	participants, err := s.formesUsageRepo.LoadParticipants(ctx, matchIDs)
-	if err != nil {
-		slog.WarnContext(ctx, "timeseries_intensity_equipe_participants_en_echec",
-			"err", err, "matchs", len(matchIDs))
-		return
-	}
-	tc := sessionusage.BuildTeamContext(s.playerXUID, participants)
+	tc := equipes.tc
 	resp.IntensityRowsTeam = buildIntensityRowsPour(events, matches, gameplayDurationsMS,
 		func(matchID, killer string) bool {
 			camp, connu := tc.PlayerTeam[matchID]
