@@ -580,6 +580,12 @@ botmeta.go`, faits (`film_inputs.go`, `filmfacts_encode.go`, `filmfacts_decode.g
 `identity_registry_scoreboard.go`, `successions.go`), web `model/seatLogic.ts`, `ui/ReplayTeams.tsx`,
 `lib/replay/replayNormalize.ts`, i18n.
 
+- P4 CONFIRMÉ (`SONDE_P4_*.md`) : 3 entités d'index 8 (désignateurs 0/0/1 = Hundy, PardonMy, Brew
+  Dog), FairyNectar absente dès f3213, aucune entité d'index 5 ; « présent au départ » = présent à la
+  PREMIÈRE image-clé qui porte des entités (la toute première peut être vide) ; un trou au milieu de la
+  fenêtre d'une entité n'est pas un départ (MONEY à f613 = perte de marche, cf. P2) ; BOT_METADATA doit
+  garder l'instant de chaque paquet ; liens bot → entité par intersection avec la fenêtre STRICTE,
+  corps → entité par création dans la fenêtre LARGE ; place de Claudors = 5 lue dans ses tirs.
 - [ ] M2.1 Balayage `ti=9` par ENTITÉ (slot, index, désignateur, première/dernière image-clé) ; la
   table par index devient un contrôle ; BOT_METADATA garde l'instant de ses paquets pour lier chaque
   bot à SON entité.
@@ -606,13 +612,28 @@ Périmètre : `film/internal/grammar/keyframe_world.go`, `grammar/birth_loadouts
 `document_weapon_changes.go`, `coverage.go`, `document_chronicle.go`), web `lib/replay/rosterLogic.ts`,
 `changeRefine.ts`, `ui/ReplayWeaponsRow.tsx`, i18n, contrat.
 
-- [ ] M3.1 Marche d'image-clé : enchaîner les entrées sans archétype (108 bits) comme l'écrivain ;
-  resynchroniser sur l'en-tête EXACT d'un eid connu ; l'élection par (génération, slot) devient un
-  repli nommé et compté ; publier le compteur des bipèdes absents encadrés (`coverage.inventory`).
-- [ ] M3.2 Canal « armes de naissance » (si P3 confirme) → faits → document : entrée `loadouts` à la
-  frame de naissance avec provenance, `weaponChanges[].k` (emplacement 0/1) ; reclassement des
-  premières émissions contre la dotation de naissance (retire le repli futur de `spawnSetFrom`,
-  qui efface de vraies prises).
+- [ ] M3.1 Marche d'image-clé — RÉÉCRIT d'après P2 (note `retours_rejeu_2026-09-23/SONDE_P2_*.md`,
+  branche `feat/rr-sondes`) : les records perdus SONT dans le film (8 en-têtes exacts à t 1494, dont
+  532 absent du rapport initial) ; la cause n'est PAS l'entrée sans archétype (0 mesurée) mais la
+  règle d'élection `kfCand.betterThan` (`keyframe_world.go:135`) qui préfère une fausse ancre de
+  génération 1 et de slot plus BAS, placée plus loin. Corriger : élection « génération 1 puis le
+  candidat le PLUS PROCHE » (V2) ; recalage sur l'en-tête EXACT `[(1<<30)|slot][35]` d'un eid connu
+  (n1 = 152) ; l'élection reste un repli nommé et compté (`coverage.fallbacks`) ; publier le compteur
+  des bipèdes absents encadrés. Fenêtre `kfScanFenetreBits` (120 000 bits, coupe un suffixe sur
+  a0c36016) : la retirer SEULEMENT si une mesure V2-sans-fenêtre sur un film dense (dad793c7) et sur le
+  parc ne déraille pas (la mesure 5.20.1 datait de l'ancienne règle) ; sinon la garder et le dire.
+- [ ] M3.2 Canal « armes de naissance » — CONFIRMÉ par P3 (`SONDE_P3_*.md`) : record NEW `ti=35` de la
+  naissance, emplacements i43 (arme 1), i44 (arme 2), i46 (3e emplacement), famille = moitié haute ;
+  45/45, 106/107, 142/142 naissances ; Super Fiesta 98,8 % contre témoin 0 %. DEUX RÉPARATIONS DE
+  GRAMMAIRE PRÉALABLES : (a) la vue B d'un paquet à liste démarre à la FIN de la liste d'événements,
+  dont le premier record est ce NEW (aujourd'hui `marchLocate` le saute) ; (b) grammaire au bit près
+  des composants i1..i42 d'un record NEW de bipède (désalignement mesuré −599 à +731 bits avant i43).
+  Puis : faits → document : entrée `loadouts` à la frame de naissance avec provenance,
+  `weaponChanges[].k` (emplacement 0/1) ; reclassement des premières émissions contre la dotation de
+  naissance (retire le repli futur de `spawnSetFrom`, qui efface de vraies prises). La lecture « par
+  catalogue » de l'instrument est une heuristique de mesure, JAMAIS portée en production ; un repli de
+  lecture (si i1..i42 ne se ferme pas à 100 %) attend la décision de l'utilisateur. Objet `00007CA9`
+  au 3e emplacement au coup d'envoi : décision de l'utilisateur (masquer ou nommer).
 - [ ] M3.3 Web : `loadoutAt` prend la dotation de naissance comme base ; `refineWeaponsReading`
   applique les prises avec `k` ; provenance en infobulle (FR + EN) ; lecture « à venir » retirée (Q18).
 - Tests : payload synthétique qui fait sauter la marche aujourd'hui ; première émission avant toute
@@ -622,6 +643,23 @@ Périmètre : `film/internal/grammar/keyframe_world.go`, `grammar/birth_loadouts
   du temps de vie → < 0,5 % ; 81c02726 : slot 534 armé dès 1:59.5, sept bipèdes présents à t 1494.
 
 #### M4b — Tir des véhicules décodé par la grammaire (après P1)
+
+> **Verdict P1 (23/09, `SONDE_P1_tir_continu.md`, branche `feat/rr-sondes`) — BLOQUE M4b jusqu'à
+> décision de l'utilisateur.** Mesuré sur 81c02726 et 8a485699 : aucun record 36/35/37/10 du pilote
+> ou du Ghost, en tête ou hors tête (marche de liste validée par un oracle indépendant) ; aucun
+> composant `ti=40`/`ti=35` qui bascule avec le tir ; vue C réfutée par étalonnage. MAIS : (1) le film
+> porte les TOUCHES des armes continues (`damage_aftermath` type 0 à toute position de liste, ref1 =
+> corps du pilote, source = tag du véhicule : Ghost F712C64A, Banshee FA4FAD21) — gate 6/6 frags sur
+> 81c02726, 0/12 au témoin, cadence 133 ms (7,5/s) ; (2) le record 36 porte un NUMÉRO DE TIR par
+> joueur (8 bits, `n mod 256`) qui saute du nombre de tirs continus non écrits (Ghost +56, Banshee +37,
+> Chopper +6, canon continu du Wasp, Rayon de Sentinelle) — nombre sans instant. S3 (Ghidra, lecture de
+> l'émetteur d'`action_weapon_fire` pour un canon à son en boucle) NON jouée : Ghidra n'était pas
+> lancé. Doctrine de l'utilisateur : Theater montre ces tirs, donc « pas dans un canal lu » ≠ « pas dans
+> le film » tant que S3 n'est pas faite. Décisions attendues : (a) ouvrir Ghidra pour S3 ; (b) en
+> attendant ou à défaut, rendre le tir continu depuis les touches (un éclair par touche, véhicule →
+> victime) + une rafale du nombre de tirs numérotés en repli nommé et compté ; gate G1 redéfini en
+> conséquence. Le même saut de compteur distingue les deux modes du Wasp (`11725DC4` écrit, mode
+> continu seulement compté).
 
 Périmètre : `film/internal/grammar/fire_events.go`, faits, `film/replay/` (`shots.go`,
 `vehicle_shots.go`, `film_inputs.go`, `filmfacts_*`), web (rendu du tir continu), et tout consommateur
@@ -770,3 +808,21 @@ vivent au §9 ; aucun lot de la vague D ne démarre sans eux.
   correction) ; en parallèle, la VOIE DE DÉCODAGE sérialisée : O1 (réparation d'ab526724) puis P1, P2,
   P3, P4 (worktree `LevelUp-wt-rr-sondes`, branche `feat/rr-sondes`), un film à la fois. Q10 ouverte :
   dans L1.5, `0BB6976B` reste une ligne « inconnu » motivée (ni style ni son) jusqu'à la réponse.
+- 2026-09-23 (nuit) : workflow `wf_1bda9ef2-c42` terminé.
+  - O1 [x] : ab526724 réparé (manifeste 37 entrées dont le type 3 ; faits et artefact reconstruits par
+    `backfill-replay --one`, 35,6 s, pic 415 Mo). Vérifié par le superviseur sur le document : pont
+    `nominal`, `flagCarries` 31 portages (noBridge 0, outOfWindow 0, 3 captures), 2 drapeaux,
+    `flagReturnZone` présent, objectifs 76/76, statborg 8/8 déduits, série d'équipe du camp 1 finale à
+    3, `teamIdentity` b. Killsource non ciblable par le CLI (aucun `--match`) : le post-sync le
+    reprendra ; dérivés (`.derived.json`, usage-summary, paliers) à la prochaine séquence. Critère
+    « frameCount ≈ 6 600 » de l'annexe mal calibré : 6 458 frames = fin de réplication − 6 s, comme les
+    témoins sains.
+  - L1 [x] (8 commits, revue adverse : 8 constats P2, corrigés ou classés) et L2 [x] (3 commits, revue :
+    2 P1 + 7 P2, corrigés) — en attente du contrôle de parc indépendant (exigence du 23/09) puis de la
+    fusion. L3 et L4 : l'agent d'implémentation a été interrompu par une erreur de l'API (faux positif
+    du filtre de sécurité), aucun commit : relancés.
+  - Sondes : P1 négatif sur le tir continu par tir, positif sur les touches et le compteur (M4b bloqué,
+    décision utilisateur) ; P2 → M3.1 réécrit ; P3 positif → M3.2 précisé ; P4 confirmé → M2 précisé.
+  - Découverte : `archlint/no_stale_fallback_target_test.go:59` lit `../../.ai/PLAN_DECODEUR_FILM_2026-09-13.md`,
+    déplacé sous `.ai/V7.5/` par le commit d'archivage `fe2106f4b` : test ROUGE sur la base, donc sur la
+    CI de `feat/v75` — corrigé à l'intégration de la campagne (bloque la CI).
