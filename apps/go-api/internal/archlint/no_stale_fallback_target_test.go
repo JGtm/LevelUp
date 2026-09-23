@@ -1,7 +1,7 @@
 package archlint
 
 // no_stale_fallback_target_test.go — UNE CIBLE DE RETRAIT QUI NOMME UN LOT DEJA CLOS EST ROUGE
-// (D14 d du plan `.ai/PLAN_DECODEUR_FILM_2026-09-13.md`, ADR 0034 ; pose le 2026-09-16 par la
+// (D14 d du plan `.ai/V7.5/PLAN_DECODEUR_FILM_2026-09-13.md`, ADR 0034 ; pose le 2026-09-16 par la
 // revue de jalon M1, lentille L3).
 //
 // # LE DEFAUT QUE CE GARDE-RAIL FERME
@@ -56,7 +56,7 @@ import (
 )
 
 // cheminDuPlanDecodeur : le plan est la SOURCE des cases. Chemin depuis `apps/go-api`.
-const cheminDuPlanDecodeur = "../../.ai/PLAN_DECODEUR_FILM_2026-09-13.md"
+const cheminDuPlanDecodeur = "../../.ai/V7.5/PLAN_DECODEUR_FILM_2026-09-13.md"
 
 // planchersLotsDuPlan : le nombre minimal d'items que le balayage du plan doit voir. Mesure du
 // 2026-09-16 : 96 items coches. Plancher a 60 — un parcours casse (plan renomme, format des
