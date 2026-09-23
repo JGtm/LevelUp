@@ -13,8 +13,9 @@ package skill
 //      même accès est en vol (le garde de SharedAccess.Write transformerait le bug
 //      en erreur).
 //   3. Lot perf L6 (2026-09-23, D6.2) : UNE rafale d'écrivain par joueur et par
-//      cycle, quel que soit le nombre de candidats nouveaux (avant : une par lot
-//      de 3 candidats, déjà traités compris).
+//      cycle tant que la file tient dans les bornes d'une rafale (avant : une par lot
+//      de 3 candidats, déjà traités compris). Au-delà de 50 matchs ou de 2 s, la file
+//      se découpe en rafales bornées (lot L9-go : skill_v2_bounded_bursts_test.go).
 
 import (
 	"context"
@@ -199,11 +200,12 @@ func (a *orderTrackingAccess) Write(_ context.Context, step string) (*sql.DB, fu
 	return a.db, func() {}, nil
 }
 
-// TestLUSRV2Shadow_OneWriterBurstPerCycle (lot perf L6, D6.2) : quel que soit le
-// nombre de candidats nouveaux, UNE rafale d'écrivain par joueur et par cycle,
-// jamais demandée pendant qu'un Read est en vol. Cycle 1 : 4 matchs neufs (plus
-// qu'un ancien lot de 3) ; cycle 2 : 3 neufs par-dessus cet historique déjà
-// traité, plus un candidat sans chaîne LUSR → une seule rafale de plus.
+// TestLUSRV2Shadow_OneWriterBurstPerCycle (lot perf L6, D6.2) : une file qui tient
+// dans les bornes d'une rafale (lot L9-go : 50 matchs, 2 s) prend UNE rafale
+// d'écrivain par joueur et par cycle, jamais demandée pendant qu'un Read est en vol.
+// Cycle 1 : 4 matchs neufs (plus qu'un ancien lot de 3) ; cycle 2 : 3 neufs
+// par-dessus cet historique déjà traité, plus un candidat sans chaîne LUSR → une
+// seule rafale de plus.
 func TestLUSRV2Shadow_OneWriterBurstPerCycle(t *testing.T) {
 	t.Setenv(lusrV2EnvFlag, "1")
 	t.Setenv(lusrCanonicalEnvFlag, "")

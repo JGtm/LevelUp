@@ -139,11 +139,12 @@ func runLUSRV2Shadow(ctx context.Context, playerDB *sql.DB, shared SharedAccesso
 		logShadowIdle(ctx, xuid, work, s)
 		return 0, nil
 	}
-	// UNE rafale d'écrivain par joueur et par cycle pour tous les candidats en
-	// attente : la dépendance séquentielle des états EP impose de persister au fil
-	// de l'eau, dans l'ordre chronologique, sous cette même rafale.
-	runSingleWriterBurst(ctx, shared, newShadowRunContext(playerDB, xuid, canonical, ownerOnlyPersist), work.pending, &s)
-	logShadowBurstDone(ctx, xuid, work, s)
+	// Des rafales d'écrivain BORNÉES (au plus 50 matchs ou 2 s chacune, lot perf L9-go)
+	// pour tous les candidats en attente : la dépendance séquentielle des états EP
+	// impose de persister au fil de l'eau, dans l'ordre chronologique, rafale après
+	// rafale, dans ce même cycle.
+	bursts := runWriterBursts(ctx, shared, newShadowRunContext(playerDB, xuid, canonical, ownerOnlyPersist), work, &s)
+	logShadowBurstDone(ctx, xuid, work, s, bursts)
 	return s.processed, nil
 }
 
@@ -161,6 +162,7 @@ func newShadowRunContext(playerDB *sql.DB, xuid string, canonical, ownerOnlyPers
 		squadEnabled:     IsLUSRV2SquadOffsetEnabled(),
 		priorsCache:      make(map[string]skillv2.Priors),
 		countHypCache:    make(map[string]map[skillv2.CountType]skillv2.CountHyperparams),
+		burst:            defaultLUSRBurstLimits,
 	}
 }
 
@@ -188,6 +190,8 @@ type shadowRunContext struct {
 	squadEnabled  bool
 	priorsCache   map[string]skillv2.Priors
 	countHypCache map[string]map[skillv2.CountType]skillv2.CountHyperparams
+	// burst : bornes d'une rafale d'écrivain (skill_v2_shared_access.go).
+	burst lusrBurstLimits
 }
 
 // shadowRunStats compte les buckets de skip pour le log de fin de run.
