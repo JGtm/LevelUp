@@ -1276,6 +1276,18 @@ executeur Opus ; commits 077269adc L8.1, beece4926 L8.2, 38fd541ef L8.3, puis ce
   la regle de `analysis.MaskedXuidLabel` (en octets, la ou celle-ci compte des runes).
   (6) `squad_repo.go:472-475` : le commentaire de `LoadMainTeamParticipants` est detache en fin de
   fichier ; la fonction (`squad_repo_synthesis.go:15`) n'en a pas.
+- Complement superviseur (2026-09-23, commit « perf(l8): archlint — tags doc de la route legere
+  sans accent ») : decouverte (1) CORRIGEE. Les deux tags `doc:` de `teammates.go:69-70` sont
+  reformules sans caractere accentue, sens identique (« Gamertags des membres de la composition,
+  joints par des virgules. Absent ou vide : sessions escouade du joueur principal. » ; « Option
+  composition exacte (filter_exact_composition de POST /pages/teammates). Absent : false. ») ;
+  `api/openapi.yaml` (4 descriptions) et `apps/web/src/lib/api/generated.ts` (2 commentaires)
+  regeneres par les commandes documentees (`go run ./cmd/openapi-gen`, `npm run generate-types`,
+  openapi-typescript 7.13.0). Seul litteral accentue restant du fichier : le resume de la page
+  (`teammates.go:48`, « Analyse coequipiers » accentue), le 1 que l'allowlist compte deja, non
+  modifie. Controles : `openapi-gen -check` 0 et `check-generated-types-fresh.mjs` 0 (avant et
+  apres regeneration) ; `go test ./internal/archlint/ ./internal/api/handlers/` 0 ;
+  `TestOpenAPIYAMLIsUpToDate` PASS et `go test ./internal/api/` 0 ; aucun `--- FAIL:`.
 
 ## 10. Cloture de campagne (superviseur)
 

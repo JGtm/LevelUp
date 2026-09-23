@@ -66,8 +66,8 @@ type teammatesPageOutput struct{ Body domain.TeammatesPageResponse }
 // POST /pages/teammates.
 type teammatesSessionsInput struct {
 	PlayerSlug string   `path:"player_slug"`
-	Teammates  []string `query:"teammates" doc:"Coéquipiers de la composition (gamertags séparés par des virgules). Absent ou vide : sessions escouade du joueur principal."`
-	Exact      bool     `query:"exact" doc:"Option composition exacte (filter_exact_composition de POST /pages/teammates). Défaut false."`
+	Teammates  []string `query:"teammates" doc:"Gamertags des membres de la composition, joints par des virgules. Absent ou vide : sessions escouade du joueur principal."`
+	Exact      bool     `query:"exact" doc:"Option composition exacte (filter_exact_composition de POST /pages/teammates). Absent : false."`
 }
 
 // compositionSessionsResponse : les deux champs homonymes de TeammatesPageResponse, mêmes
