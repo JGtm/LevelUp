@@ -133,7 +133,13 @@ const VersionCodecFaits = 1
 // SCHEMA 3 (2026-09-19, post-chantier lot 5.1) : la CHARGE de la section 1 change encore — le blob
 // des entrees passe en v24 (la JAUGE DE RETOUR du drapeau et son temoin). Meme raisonnement qu au
 // schema 2 : le refus doit tomber sur l EN-TETE, pas au decodage de la section.
-const SchemaDesFaits = 3
+// SCHEMA 4 (2026-09-23, lot M2.2 de la campagne « retours rejeu ») : le complement de la section 1
+// porte LES OCCUPANTS DU MATCH (`FilmInputs.PlayerEntities`, une entree par entite `ti=9`), et la
+// section 5 les INSTANTS de BOT_METADATA (`BotEntry.Declarations`). Le blob des entrees est
+// inchange a l octet (les huit fixtures restent valides) ; un fichier du schema 3 n a ni les uns ni
+// les autres, et le rejouer publierait le roster sans presence lue : il est PERIME sur son en-tete
+// et se REDECODE.
+const SchemaDesFaits = 4
 
 // Identifiants de section. Ils ne se reutilisent JAMAIS : un identifiant retire reste retire, sinon
 // un vieux fichier se relit comme une section qui n est pas la sienne.
@@ -239,6 +245,7 @@ func EncodeFilmFactsFile(f *FilmFactsFile) ([]byte, error) {
 	entrees.u(uint64(len(blob)))
 	entrees.b = append(entrees.b, blob...)
 	encodeGardesDeMode(entrees, f.Facts.FilmInputs)
+	encodeEntitesDesJoueurs(entrees, f.Facts.PlayerEntities)
 	if entrees.echec != nil {
 		return nil, entrees.echec
 	}
@@ -379,6 +386,7 @@ func (f *FilmFactsFile) lireSection(id int, charge []byte, entry profile.MapQuan
 		}
 		f.Facts = *g
 		decodeGardesDeMode(r, &f.Facts.FilmInputs)
+		f.Facts.PlayerEntities = decodeEntitesDesJoueurs(r)
 		if r.err != nil {
 			return fmt.Errorf("faits de film : canaux gardes : %w", r.err)
 		}

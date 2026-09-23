@@ -156,6 +156,11 @@ type FilmInputs struct {
 	// TeamScan est le rapport de cette lecture. Il voyage avec la table parce qu'une table vide
 	// et une lecture refusee ne disent pas la meme chose.
 	TeamScan grammar.TeamScanReport
+	// PlayerEntities sont les OCCUPANTS du match, un par entite ti=9, lus dans la MEME passe
+	// que `PlayerTeams` (lot M2.1, 2026-09-23) : slot, index, designateur, premiere et derniere
+	// image-cle porteuse. C'est la source de la PRESENCE et de l'EQUIPE PAR ENTREE du roster ;
+	// `PlayerTeams` n'en est plus que le controle par index.
+	PlayerEntities grammar.PlayerEntityScan
 	// FilmClockOriginUS est l'horodatage moteur du PREMIER paquet du film. Zero = origine
 	// incalculable : le document sort sans origine.
 	FilmClockOriginUS uint64
@@ -211,5 +216,6 @@ func (in FilmInputs) applyTo(opt *Options) {
 	opt.PlayerIndices = in.PlayerIndices
 	opt.FilmTable = in.FilmTable
 	opt.PlayerTeams, opt.TeamScan = in.PlayerTeams, in.TeamScan
+	opt.PlayerEntities = in.PlayerEntities
 	opt.FilmClockOriginUS = in.FilmClockOriginUS
 }

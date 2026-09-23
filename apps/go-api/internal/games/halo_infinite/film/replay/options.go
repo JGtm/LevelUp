@@ -204,6 +204,11 @@ type Options struct {
 	// voyage avec la table parce qu'une table vide et une lecture refusée ne disent pas la même
 	// chose, et que la couverture publie la différence.
 	TeamScan grammar.TeamScanReport
+	// PlayerEntities sont les OCCUPANTS lus dans la même passe que `PlayerTeams`, un par entité
+	// ti=9 (lot M2.1) — la source de la présence, de l'équipe par entrée et de la place du
+	// roster (cf. occupants.go). `Scanned` faux = aucune entité lue : le roster retombe alors sur
+	// l'enveloppe des vies, repli nommé et compté.
+	PlayerEntities grammar.PlayerEntityScan
 	// ScoreboardTeams est la table `xuid -> équipe` de la FEUILLE DE MATCH, et elle n'est qu'un
 	// CONTRÔLE : aucune équipe publiée n'en sort. Elle alimente
 	// `coverage.teams.{accord, contradiction, silence}` — une contradiction se compte, elle ne

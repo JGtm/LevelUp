@@ -401,6 +401,35 @@ func encodePlayerTeams(w *gwriter, teams map[int]int, rep grammar.TeamScanReport
 	}
 }
 
+// encodeEntitesDesJoueurs ecrit LES OCCUPANTS DU MATCH, un par entite `ti=9` (SchemaDesFaits 4,
+// lot M2.2) : le temoin `Scanned`, les instants des images-cles porteuses (delta-codes), puis les
+// entites. Il voyage dans le COMPLEMENT de la section 1, a la suite de `encodeGardesDeMode`, et pas
+// dans le blob des entrees : le blob est le format des huit fixtures d assemblage, qu aucun film
+// n a a etre redecode pour garder valides (cf. `TestCodecCouvreFilmInputs`, qui nomme les deux
+// places).
+//
+// `Scanned` VOYAGE AVEC LA LISTE, et il le faut : une liste vide et un balayage qui n a pas eu lieu
+// ne disent pas la meme chose — l un publie « personne », l autre retombe sur l enveloppe des vies.
+func encodeEntitesDesJoueurs(w *gwriter, s grammar.PlayerEntityScan) {
+	w.bool8(s.Scanned)
+	w.u(uint64(len(s.KeyframesUS)))
+	var last uint64
+	for _, ts := range s.KeyframesUS {
+		w.u(ts - last) // les images-cles porteuses sont dans l ordre du film
+		last = ts
+	}
+	w.u(uint64(len(s.Entities)))
+	for _, e := range s.Entities {
+		w.u(uint64(e.Slot))
+		w.i(int64(e.Index))
+		w.i(int64(e.Team))
+		w.u(uint64(e.FirstKF))
+		w.u(uint64(e.LastKF))
+		w.u(uint64(e.Seen))
+		w.bool8(e.Unstable)
+	}
+}
+
 // encodeFilmTable ecrit la TABLE DES JOUEURS DU FILM (v20, lot 1.6). Elle porte son REFUS comme
 // elle porte ses sieges : une table non lue n'est pas une table vide, et le document publie la
 // difference (`coverage.identity.filmTable.refus`).
