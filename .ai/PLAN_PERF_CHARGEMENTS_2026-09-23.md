@@ -299,16 +299,95 @@ queries.ts` (exposer `isSuccess`), `features/filters/queries.ts` (option `matchC
 createFilterStore.ts` seulement si D4.1 l'exige (documenter).
 
 Items :
-- [ ] L4a.1 source unique de la session (D4.1) + migration localStorage + tests (un snap = une cle)
-- [ ] L4a.2 `enabled` de teammates (D4.2) + deep-link + tests
-- [ ] L4a.3 aperçu conditionnel + `matchContext` dans resolve et cle (D4.3) + tests
-- [ ] L4a.4 predicat `routeShowsSoloFilters` partage NavL2 / PlayerLayout (D4.4) + tests
-- [ ] L4a.5 AssetDrawer `enabled: isOpen` (D4.5) + test
-- [ ] L4a.6 i18n : aucune string nouvelle ; sinon FR + EN
+- [x] L4a.1 source unique de la session (D4.1) + migration localStorage + tests (un snap = une cle)
+  — `features/squad/useSquadSessionSelection.ts:178-186` (session lue dans le store,
+  `applySessionLabels` = `setSessions`), `:114-135` (migration unique de `squad-sessions-<slug>` :
+  appliquee si le store est vide, retiree dans tous les cas), `lib/query/keys.ts:182` (cle teammates
+  sans segment sessions), `features/squad/queries.ts` ; etat local + deux effets de synchro supprimes
+  de `SquadLayout.tsx` (638 → 531 L). Preuves : `SquadLayout.requests.test.tsx:164` (snap : 2 cles en
+  tout, 2 requetes, les deux champs alignes), `:191` (clic du rail : idem), `useSquadSessionSelection.
+  test.tsx:152-194` (store = source, migration, store prioritaire, cle illisible).
+- [x] L4a.2 `enabled` de teammates (D4.2) + deep-link + tests — `features/squad/queries.ts:26,43`,
+  `useSquadSessionSelection.ts:190-201` (`teammatesReady` = etat de montage pose ET composition
+  initiale connue), `features/friends/queries.ts:82` (`useFriendGamertagsState` : `isSuccess`,
+  `isError`), `SquadLayout.tsx:166,390` (`isPending` : « Chargement… » tant que desactive, jamais
+  l'etat vide). Lien profond : composition posee des le premier rendu (`useSquadSessionSelection.ts:
+  148`), session posee dans le store avant l'ouverture des requetes (`:114-135`). Preuves :
+  `SquadLayout.requests.test.tsx:131,154`, `SquadLayout.deeplink.test.tsx:71`, `useSquadSessionSelection.
+  test.tsx:69-133`.
+- [x] L4a.3 aperçu conditionnel + `matchContext` dans resolve et cle (D4.3) + tests —
+  `features/squad/useSquadFilterBarState.ts:148` (recalage de `pending` pendant le rendu), `:182-183`
+  (apercu `enabled: isDirty`, donnee ignoree hors attente), `features/filters/queries.ts:66,72,198`,
+  `lib/query/keys.ts:61`, `SquadLayout.tsx:114` (`{ matchContext: 'squad', enabled: mountApplied }`).
+  Preuves : `SquadLayout.requests.test.tsx:219`, `features/filters/useFiltersResolve.options.test.tsx`.
+- [x] L4a.4 predicat `routeShowsSoloFilters` partage NavL2 / PlayerLayout (D4.4) + tests —
+  `components/shell/shellNavigation.ts:55`, `NavL2.tsx:74`, `routes/{-$lang}/t/$titleSlug/players/
+  $playerSlug.tsx:73-84`, `features/filters/queries.ts:125` (`enabled` de `useFollowLatestSession`).
+  Preuves : `routes/.../$playerSlug.test.tsx:127` (`/squad/synergies`, `/career`, `/home`,
+  `/stats/synthesis` : 0 resolve solo), `:137,147,154`, `shellNavigation.test.ts:12-32`,
+  `useFollowLatestSession.test.tsx:139`.
+- [x] L4a.5 AssetDrawer `enabled: isOpen` (D4.5) + test — `features/asset-drawer/useAssetDrawer.ts:19,31,
+  43`, `AssetDrawer.tsx:21-23` ; preuve `features/asset-drawer/AssetDrawer.test.tsx:38,47`.
+- [x] L4a.6 i18n : aucune string nouvelle (aucun texte JSX ajoute ; `no-hardcoded-strings` vert).
 
 Gate (depuis `apps/web`, `node_modules\.tmp` purge avant) : `npm run typecheck` (tsc -b) ;
 `npm run lint` ; `npx vitest run src/features/squad src/features/filters src/features/friends
 src/features/asset-drawer src/stores src/components/shell src/routes src/lib/query`.
+
+Journal du lot (2026-09-23, executeur Opus, branche `feat/perf-l4a` depuis 97cc0d0c8) :
+- Commits : f70bb0772 (L4a.1 a L4a.3, Escouade), d011f3ae7 (L4a.4, resolution solo), 32fbc29fc
+  (L4a.5, AssetDrawer), puis ce plan. Pas de push (superviseur).
+- Gate : `npm run typecheck` (tsc -b, `node_modules\.tmp` purge) 0 ; `npm run lint` 0 (26
+  avertissements, les memes fichiers que la base, aucun nouveau) ; vitest (8 dossiers du gate)
+  0 : 113 fichiers, 1 032 tests (rejoue sur l'etat final). Hors gate : suite web complete 0 (786
+  fichiers, 8 444 tests ; 3 fichiers et 19 tests ignores preexistants), ratchets knip (0/0/0),
+  couleurs, champs, imports croises (7 ≤ 7, `squad=>friends` deja autorise) verts.
+- Mutations jouees (code restaure apres chaque) : M1 copie locale de la session synchronisee par
+  effet → snap et clic du rail rouges ; M1b idem + sessions dans la cle (ancien schema) → 3
+  requetes au lieu de 2 (la requete intermediaire mesuree) ; M2 sans attente de la composition →
+  requete sans coequipier, rouge ; M4 sans verrou de montage → premiere requete sur la composition
+  ou la session restauree, rouge (lien profond, migration) ; M3 apercu toujours actif et M3b recalage
+  de `pending` par effet → apercu relance a chaque snap / changement de session, rouges ; M5
+  resolve solo toujours actif → 4 routes rouges ; M6 suivi sans garde d'egalite → snap sur un
+  resolu perime, rouge ; M7 suivi toujours actif → rouge ; M8 catalogues tiroir ferme → rouge ;
+  M9 resolve escouade sans verrou de montage → premiere resolution sur la session restauree, rouge.
+- Precisions d'implementation (aucune decision rouverte) : (a) D4.2 : `isSuccess` est expose par un
+  hook frere `useFriendGamertagsState` (et `useFriendGamertags` en derive) pour ne pas changer la
+  signature lue par trois autres consommateurs et trois mocks de test hors perimetre (vue match,
+  Prestige, rejeu) ; un `/friends` en ECHEC vaut
+  liste vide resolue (comportement historique de `useFriendGamertags`), sinon la page resterait sur
+  « Chargement… » ; vider la composition est un choix qui garde la requete active ; le verrou de
+  montage (`mountApplied`) ouvre aussi le resolve escouade, pour que lien profond et migration
+  soient poses avant la PREMIERE resolution aussi. (b) D4.3 : le recalage de `pending` sur le
+  commite passe dans le rendu (motif « etat du rendu precedent ») — avec l'effet d'origine, un
+  commit « sale » relancait l'apercu a chaque snap (M3b) ; la donnee d'apercu est ignoree quand il
+  est desactive (placeholder `keepPreviousData` d'une cle precedente). (c) D4.4 :
+  `useFollowLatestSession` n'est actif que si le resolu du store EST celui de la requete courante
+  (`soloResolvedContext === soloResolve.data`) : hors Stats le store garde un resolu d'une autre
+  page ou d'un autre joueur, y snapper en revenant sur Stats enverrait une requete sur une session
+  perimee (M6). (d) `createFilterStore.ts` non modifie (D4.1 ne l'exige pas). (e) `SquadLayout` :
+  `isPending` remplace `isLoading` (requete desactivee = « Chargement… ») ; `onReset={resetFilters}`
+  (le `applySessionLabels([])` suivant etait devenu un no-op) ; deux directives
+  `set-state-in-effect` devenues sans objet retirees. (f) Cles : `filtersResolve` gagne un 4e
+  segment `matchContext` (« all » pour le solo, corps solo inchange), `teammates` perd son segment
+  sessions ; garde `keys.title-slug.guard.test.ts` adapte a la signature.
+- Consequences observables : sur l'Escouade, le rail (precedente / suivante, totaux) parcourt les
+  seules sessions escouade (resolu en `match_context` 'squad', D4.3) et non plus toutes les
+  sessions du joueur. Sur les pages solo, la resolution solo part a l'arrivee sur une page Stats
+  (plus pendant les autres pages) : si une session est apparue entre-temps, la page Stats
+  interroge une fois avec le filtre persiste puis une fois apres le snap, comme un chargement a
+  froid (a regarder a la mesure de cloture C.1).
+- Decouvertes (non traitees, hors perimetre) : (1) `useTeammates` ne transmet pas `signal` (L3 D3.4
+  exclut `features/squad/queries.ts`, L4a ne le prevoit pas) : une requete teammates devenue
+  inutile n'est pas annulee cote client — a arbitrer (L4b ou cloture). (2) Le store escouade
+  (`levelup-squad-filter-v1`) est global, pas par joueur : la session pickee d'un joueur est
+  proposee au suivant (le re-ancrage converge, au prix d'une requete) ; la memoire par joueur
+  `squad-sessions-<slug>` a disparu avec D4.1. (3) `SquadLayout` s'abonne au store escouade entier
+  (`useSquadFilterStore()` sans selecteur) : il se re-rend a chaque `resolvedContext`. (4) Strings
+  FR en dur preexistantes, non bilingues : « Chargement… » et les replis de `formatError`
+  (`SquadLayout.tsx`), « Analyser » (`SquadFilterBar.tsx`). (5) Un test existant de
+  `components/shell` emet « Not implemented: navigation to another Document » (jsdom), bruit
+  preexistant.
 
 ## 5. L6 — Synchronisation : zero ecrivain quand rien n'est nouveau (Go)
 

@@ -35,6 +35,30 @@ export function isCommunityPath(pathname: string): boolean {
   return community || legacy
 }
 
+// Routes _personal : PersonalStatsLayout gère sa propre barre de filtres. Matchers
+// sur le SUFFIXE relatif au joueur (playerRelativePath) — aucun littéral `/players/`.
+const PERSONAL_STATS_RE = /^\/stats\/(summary|maps-modes|distributions|progression|advanced)/
+// Synthèse : sa propre barre (PeriodePill/SaisonPill), pas la barre solo.
+const SYNTHESIS_RE = /^\/stats\/synthesis/
+const STATS_RE = /^\/stats\//
+
+/**
+ * La page courante montre-t-elle la barre de filtres SOLO (FilterOmnibar + rail du
+ * store solo) ? Pages Stats uniquement, hors stats personnelles et Synthèse, qui
+ * ont chacune leur propre barre.
+ *
+ * Source UNIQUE (lot perf L4a, D4.4, 2026-09-23) : NavL2 s'en sert pour rendre la
+ * barre, PlayerLayout pour n'activer QUE là la résolution des filtres solo et le
+ * suivi de la dernière session solo — ailleurs (Escouade, Carrière, Accueil…)
+ * personne ne lit ce résolu, et il coûtait un POST /filters/resolve par page.
+ */
+export function routeShowsSoloFilters(pathname: string): boolean {
+  const suffix = playerRelativePath(pathname)
+  if (suffix === null) return false
+  if (PERSONAL_STATS_RE.test(suffix) || SYNTHESIS_RE.test(suffix)) return false
+  return STATS_RE.test(suffix)
+}
+
 /**
  * Verdict de routage de la route index ('/'). Fonction pure (logique hors
  * composant, règle 7) : IndexPage se contente de projeter le résultat.
