@@ -230,6 +230,30 @@
   - `00007CA9` (3e emplacement au coup d'envoi) : inconnu de l'utilisateur → non affiché ; recherche
     de son identité (Ghidra / données du jeu).
   - Ghidra lancé, pont HTTP accessible → sonde P1-S3 lancée.
+- **DÉCISIONS DU 24/09 (réponses aux verdicts Ghidra) :**
+  1. Tir continu rendu COMME THEATER : début et fin de rafale lus dans le film (vue de contrôle),
+     coups simulés à la cadence propre de l'arme lue dans le tag. VALIDÉ.
+  2. PAS de solution temporaire quand la vue de contrôle n'est pas atteinte : on RÉPARE la lecture
+     (clôture de la vue B, M3 puis M4b). En attendant, trou nommé et compté, rejeu muet sur ce passage ;
+     le balayage par la fin (0,13 %) n'est PAS porté en production.
+  3. Mains nues (`00007CA9`) : VALIDÉ les trois — exclu de la dotation affichée (règle nommée), remise du
+     coup d'envoi classée comme telle (pas un ramassage, compteur dédié), « Mains nues » / « Unarmed »
+     nommé s'il apparaît en cours de partie. L'utilisateur précise que c'est quasi impossible en jeu
+     (jeter toutes ses armes) : cas extrêmement rare, peut-être jamais sur ~10 000 matchs.
+  4. Catalogue : ajouter `E9E7FF79` = bobine à fusion de Forge (l'utilisateur croyait l'avoir : « on
+     avait sorti les 4 variantes de la bobine » → vérifier lesquelles sont au catalogue et ajouter la
+     variante manquante) ; vérifier les libellés `2AC9C2FF` (hotrod) et `230447B1` (proto_heatwave)
+     contre Calcineur / Crémateur. VALIDÉ.
+  5. Sons, désignés à l'oreille par l'utilisateur (« les premiers candidats sont tous bons ») :
+     lance-grenades du Falcon = réutiliser `vehicle_shot_warthog_rocket_*` (même événement, aucun
+     nouveau fichier) ; LMG de la Wasp = rendus V3E `wasp_lmg/` (boucle 3P tenue pendant le tir, coup
+     3P en queue) pour M4b ; missiles de la Wasp = rendu V3E rééquilibré `wasp_missiles_controle/`
+     (remplace `vehicle_shot_wasp_*`). Variantes lointaines A-E : non retenues (non câblées).
+  6. Forge (information de l'utilisateur) : des petits véhicules (Mongoose, Gungoose) sont souvent POSÉS
+     directement sur la carte, même officielle → « posé par la carte » n'est jamais « décor » à lui seul ;
+     un véhicule posé jouable que personne ne touche pendant le match serait masqué à tort par L1.3 →
+     proposition d'affinage en attente (voir §9). Takamanohara : l'objet posé `3a8060e2` = une des deux
+     TOURELLES FIXES (gatling / mortier) symétriques en hauteur → famille « tourelle fixe », occupable.
 - **EXIGENCE DE L'UTILISATEUR (citation, 23/09)** : « faut réparer les films mentionnés mais faut faire
   attention aux régressions et surtout que les correctifs soient propres, pérennes et solides et valides
   pour les autres films et les futurs films ». Conséquences pour TOUS les lots :
