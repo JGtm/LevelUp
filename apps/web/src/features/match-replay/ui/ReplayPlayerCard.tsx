@@ -135,7 +135,7 @@ export function ReplayPlayerCard({
   player, doc, frame, presence, vitalityFade, readingFull, flashFrames, locale, scoreTimeline, fxScene, gabarit,
 }: ReplayPlayerCardProps) {
   const t = REPLAY_TEXT[locale]
-  const { live, state, name, equipped, filmIndex, zones, objective, stance, fx } = playerCardReadings({
+  const { live, state, name, equipped, filmIndex, zones, objective, fx } = playerCardReadings({
     player, doc, frame, presence, flashFrames, scoreTimeline, fxScene, text: t,
   })
   const L = TILE_LAYOUT[gabarit.bodyPx]
@@ -197,16 +197,9 @@ export function ReplayPlayerCard({
         >
           {name}
         </span>
-        {/* L'ÉTAT DE MOUVEMENT COURANT (schéma 65) : un seul mot, sur la ligne du nom, et
-            SEULEMENT quand le film en publie un à cette image. Rien quand `stances` est vide —
-            un artefact antérieur au schéma 65, ou une image sans transition lue : l'absence de
-            libellé est ce qui doit se lire, jamais un « Debout » deviné. Le nom est
-            `truncate` : c'est lui qui cède la place, pas cette étiquette. */}
-        {stance && (
-          <span className="shrink-0 pl-1 text-[9px] uppercase tracking-[.06em] text-muted-foreground">
-            {t.stanceKind[stance]}
-          </span>
-        )}
+        {/* AUCUN ÉTAT DE MOUVEMENT SUR LA FICHE (décision utilisateur du 2026-09-23, Q16) :
+            le mot « Sprint », « Glissade »… posé ici du 21/09 au 23/09 n'avait jamais été
+            demandé. Le document garde `stances[]` ; la fiche ne le lit pas. */}
         {L.countersOnNameLine && counters}
       </div>
       {/* HAUTEUR CONSTANTE vivant/mort : le CORPS de la fiche est une zone à hauteur FIXE
