@@ -139,9 +139,7 @@ func buildVehicleTracks(
 	out, cov.Merged = mergeVehicleRelays(out)
 	// LES PIECES MONTEES SE POSENT SUR LEUR PORTEUR AVANT LE COMPTAGE, pour la meme raison que
 	// les relais : les episodes d artilleur changent de vie (cf. vehicle_turrets.go).
-	tt := poseTurretsOnCarriers(out, clock.fb)
-	cov.Turrets, cov.TurretsOnCarrier = tt.turrets, tt.onCarrier
-	cov.TurretRides, cov.TurretRidesDropped, cov.Variants = tt.rides, tt.dropped, tt.variants
+	poseTurretsOnCarriers(out, clock.fb).applyTo(&cov)
 	tallyVehicleCoverage(out, &cov, clock.fb)
 	tallyVehicleEnds(out, &cov)
 	return out, cov, st

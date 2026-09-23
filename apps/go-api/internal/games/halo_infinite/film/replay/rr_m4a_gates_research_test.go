@@ -8,12 +8,17 @@ package replay
 // Il lit un dossier de DOCUMENTS (la sortie de `TestRRM4AParcDepuisLesFaits`, base ou branche —
 // jamais `data/`), et mesure :
 //
-//	G3  l ECART entre un tir de TOURELLE et le vehicule qui la porte, en metres. Un tir de tourelle
-//	    est un tir dont la vie `v` est une piece montee (chassis de la table, ou `part`), ou dont
-//	    l episode du tireur a ete reporte d une tourelle (`rides[].turret`). Le porteur est la vie
-//	    `v` elle-meme quand elle n est pas une piece ; `carrier` quand la piece le nomme ; a defaut
-//	    (documents d avant le lot), la regle de l instrument de l annexe : la premiere vie du slot
-//	    +1 puis +2 qui porte des echantillons et couvre l instant.
+//	G3  LE BON PORTEUR, PAR UNE PREUVE QUI NE DOIT RIEN A LA REGLE (revue adverse du lot, F5). L ecart
+//	    tir -> porteur est TAUTOLOGIQUE apres le lot : le tir est pose A la position du porteur que
+//	    la regle a choisi (0,0 m par construction) ; il reste mesure (`G3-annexe`), comme chiffre
+//	    AVANT sur les documents de base (regle de l instrument de l annexe : premiere vie du slot +1
+//	    puis +2 qui porte des echantillons et couvre l instant), jamais comme preuve. LA PREUVE est
+//	    `G3-embarquement` : pour chaque episode d artilleur REPORTE sur un porteur
+//	    (`rides[].turret`), le DERNIER POINT DU BIPEDE de l artilleur avant l episode contre la
+//	    position du porteur a l entree — le joueur monte la ou le vehicule est. Ni le slot, ni la
+//	    naissance, ni le tir n y entrent. Cible : mediane <= 2 m. `G3-naissance` (piece et porteur
+//	    nes au meme point, au meme instant) est rapporte comme CONTROLE : depuis la reprise, la
+//	    regle l exige, il n est donc plus independant.
 //	G4  la part des tirs d arme de VEHICULE (moitie basse nulle) dont l arme a, au registre du
 //	    titre, un style ET un son (ou un silence decide) ; les tags `[[unknown]]` sont comptes a
 //	    part, avec leur raison.
@@ -23,6 +28,7 @@ package replay
 
 import (
 	"encoding/json"
+	"fmt"
 	"math"
 	"os"
 	"path/filepath"
@@ -45,7 +51,7 @@ func TestRRM4AGates(t *testing.T) {
 	}
 	noms, _ := filepath.Glob(filepath.Join(dir, "*.json"))
 	sort.Strings(noms)
-	var ecarts []float64
+	var ecarts, embarquements, naissances []float64
 	g4 := map[string]int{}
 	for _, n := range noms {
 		raw, err := os.ReadFile(n) //nolint:gosec // instrument de mesure
@@ -57,20 +63,82 @@ func TestRRM4AGates(t *testing.T) {
 			t.Fatal(err)
 		}
 		ecarts = append(ecarts, rrG3Ecarts(doc)...)
+		embarquements = append(embarquements, rrG3Embarquements(doc)...)
+		naissances = append(naissances, rrG3Naissances(doc)...)
 		rrG4Compter(doc, reg, g4)
 	}
-	sort.Float64s(ecarts)
-	q := func(p float64) float64 {
-		if len(ecarts) == 0 {
-			return math.NaN()
-		}
-		return ecarts[int(p*float64(len(ecarts)-1))]
-	}
-	t.Logf("G3 : %d tirs de tourelle ; ecart au porteur mediane %.1f m, p90 %.1f m, max %.1f m",
-		len(ecarts), q(0.5), q(0.9), q(1))
+	t.Logf("G3-embarquement (PREUVE) : %s", rrQuantiles(embarquements))
+	t.Logf("G3-naissance (controle, exige par la regle) : %s", rrQuantiles(naissances))
+	t.Logf("G3-annexe (tir -> porteur, tautologique apres le lot) : %s", rrQuantiles(ecarts))
 	t.Logf("G4 : tirs d arme de vehicule %d ; registre complet %d ; silence decide %d ; "+
 		"inconnu motive %d ; hors registre %d", g4["total"], g4["complet"], g4["silence"],
 		g4["inconnu"], g4["hors"])
+}
+
+// rrQuantiles rend « n, mediane, p90, max » d une serie en metres.
+func rrQuantiles(v []float64) string {
+	if len(v) == 0 {
+		return "n = 0"
+	}
+	sort.Float64s(v)
+	q := func(p float64) float64 { return v[int(p*float64(len(v)-1))] }
+	return fmt.Sprintf("n = %d ; mediane %.1f m, p90 %.1f m, max %.1f m", len(v), q(0.5), q(0.9), q(1))
+}
+
+// rrG3Embarquements rend, pour chaque episode d artilleur reporte sur un porteur, l ecart entre le
+// dernier point du bipede de l artilleur avant l episode et la position du porteur a l entree.
+func rrG3Embarquements(doc ReplayDocument) []float64 {
+	var out []float64
+	for _, v := range doc.Vehicles {
+		for _, r := range v.Rides {
+			if r.Turret == nil {
+				continue
+			}
+			b, ok := rrDernierPointAvant(doc.Tracks, r.Slot, r.T0)
+			if !ok {
+				continue
+			}
+			x, y, ok := vehiclePosAt(v, r.T0)
+			if !ok {
+				continue
+			}
+			out = append(out, math.Hypot(float64(x-b.X), float64(y-b.Y)))
+		}
+	}
+	return out
+}
+
+// rrDernierPointAvant rend le dernier point publie d un slot strictement avant la frame `t`.
+func rrDernierPointAvant(tracks []Track, slot uint32, t int) (Point, bool) {
+	var best Point
+	trouve := false
+	for _, tr := range tracks {
+		if tr.Slot != slot {
+			continue
+		}
+		for _, p := range tr.Points {
+			if p.T < t && (!trouve || p.T > best.T) {
+				best, trouve = p, true
+			}
+		}
+	}
+	return best, trouve
+}
+
+// rrG3Naissances rend l ecart entre la naissance d une piece posee et celle de son porteur.
+func rrG3Naissances(doc ReplayDocument) []float64 {
+	var out []float64
+	for _, v := range doc.Vehicles {
+		if v.Carrier == nil || v.Spawn == nil {
+			continue
+		}
+		for _, c := range doc.Vehicles {
+			if c.Slot == v.Carrier.Slot && c.Gen == v.Carrier.Gen && c.Spawn != nil {
+				out = append(out, math.Hypot(float64(v.Spawn.X-c.Spawn.X), float64(v.Spawn.Y-c.Spawn.Y)))
+			}
+		}
+	}
+	return out
 }
 
 // rrG3Ecarts rend l ecart au porteur de chaque tir de tourelle d un document.

@@ -125,7 +125,7 @@ func TestTourelleDuFalconPorteurASlotPlusDeux(t *testing.T) {
 			t.Errorf("piece %d : porteur %+v, attendu 102", i, tracks[i].Carrier)
 		}
 	}
-	if len(tracks[0].Rides) != 1 || len(tracks[2].Rides) != 0 || tally.dropped != 1 {
+	if len(tracks[0].Rides) != 1 || len(tracks[2].Rides) != 0 || tally.kept.total() != 1 {
 		t.Errorf("episodes piece/Falcon = %d/%d (bilan %+v) : un Falcon ne porte aucun occupant",
 			len(tracks[0].Rides), len(tracks[2].Rides), tally)
 	}
@@ -139,7 +139,7 @@ func TestTourelleOccupantDejaABordNonDouble(t *testing.T) {
 		vtChassis(101, familleWarthog, vtRide(21, 5, 80)),
 	}
 	tally := poseTurretsOnCarriers(tracks, nil)
-	if len(tracks[1].Rides) != 1 || len(tracks[0].Rides) != 1 || tally.dropped != 1 {
+	if len(tracks[1].Rides) != 1 || len(tracks[0].Rides) != 1 || tally.kept.total() != 1 {
 		t.Errorf("episodes porteur/piece = %d/%d, attendu 1/1", len(tracks[1].Rides), len(tracks[0].Rides))
 	}
 }
@@ -171,5 +171,87 @@ func TestArtilleurReporteNEstPasUneAmbiguite(t *testing.T) {
 	tallyVehicleCoverage(tracks, &cov, nil)
 	if cov.Ambiguous != 0 || cov.Rides != 2 {
 		t.Errorf("ambigus = %d, episodes = %d : attendu 0 et 2", cov.Ambiguous, cov.Rides)
+	}
+}
+
+// TestTourelleChangementDeSiegeBornesJointivesReporte — revue adverse du lot M4a (F2). Le meme
+// joueur CONDUIT le Warthog jusqu a la frame 40 puis passe a la LAAG a la frame 40 : ses deux
+// episodes se TOUCHENT a une frame, ils ne se recouvrent pas. L episode d artilleur est reporte
+// sur le porteur (sinon l artilleur restait sur la piece cachee, sans pion ni cone).
+func TestTourelleChangementDeSiegeBornesJointivesReporte(t *testing.T) {
+	tracks := []VehicleTrack{
+		vtPiece(100, vtLAAG, vtRide(21, 40, 70)),
+		vtChassis(101, familleWarthog, vtRide(21, 5, 40)),
+	}
+	tally := poseTurretsOnCarriers(tracks, nil)
+	if len(tracks[0].Rides) != 0 || len(tracks[1].Rides) != 2 || tally.rides != 1 {
+		t.Fatalf("episodes piece/porteur = %d/%d (bilan %+v), attendu 0/2 : un changement de siege "+
+			"n est pas un doublon", len(tracks[0].Rides), len(tracks[1].Rides), tally)
+	}
+	if tally.kept.total() != 0 {
+		t.Errorf("episodes gardes = %+v, attendu aucun", tally.kept)
+	}
+}
+
+// TestTourelleRefusVentilesParRaison — revue adverse du lot M4a (F4) : les TROIS refus de report
+// sont comptes chacun sous leur raison, et `turretRidesDropped` est leur somme.
+func TestTourelleRefusVentilesParRaison(t *testing.T) {
+	porteurCourt := vtChassis(101, familleWarthog, vtRide(21, 5, 30))
+	porteurCourt.T1, porteurCourt.T1Max = 50, 50
+	tracks := []VehicleTrack{
+		// hors fenetre (60-80 apres la fin du porteur a 50) et deja a bord (10-20 dans 5-30).
+		vtPiece(100, vtLAAG, vtRide(20, 60, 80), vtRide(21, 10, 20)),
+		porteurCourt,
+		// porteur non pilotable : la chaine du Falcon.
+		vtPiece(200, vtFalconGL, vtRide(30, 10, 40)),
+		vtPiece(201, vtFalconLMG),
+		vtChassis(202, familleFalcon),
+	}
+	tally := poseTurretsOnCarriers(tracks, nil)
+	if tally.kept != (turretRidesKept{notRideable: 1, outOfWindow: 1, alreadyAboard: 1}) {
+		t.Fatalf("refus = %+v, attendu un par raison", tally.kept)
+	}
+	var cov VehicleCoverage
+	tally.applyTo(&cov)
+	if cov.TurretRidesDropped != 3 || cov.TurretRidesNotRideable != 1 ||
+		cov.TurretRidesOutOfWindow != 1 || cov.TurretRidesAlreadyAboard != 1 {
+		t.Errorf("couverture = %+v", cov)
+	}
+}
+
+// TestTourelleVoisinPasNeAvecLaPieceRefuse — revue adverse du lot M4a (F5). Le voisin de slot est
+// de la bonne famille et present au meme moment, mais il n est pas NE avec la piece (autre point,
+// ou autre instant) : ce n est pas son porteur. La piece reste sans porteur, le refus est COMPTE,
+// et le repli du voisinage ne se declenche pas.
+func TestTourelleVoisinPasNeAvecLaPieceRefuse(t *testing.T) {
+	for _, c := range []struct {
+		nom      string
+		t0       int
+		spawn    *VehicleSpawn
+		refusDit bool
+	}{
+		{"meme instant, autre point", 0, &VehicleSpawn{X: 0, Y: 0}, true},
+		{"meme point, autre instant", 30, &VehicleSpawn{X: 500, Y: 500}, true},
+		{"ne ensemble, naissance du porteur non lue", 1, nil, false},
+		{"ne ensemble", 0, &VehicleSpawn{X: 500.4, Y: 500}, false},
+	} {
+		t.Run(c.nom, func(t *testing.T) {
+			porteur := vtChassis(101, familleWarthog)
+			porteur.T0, porteur.Spawn = c.t0, c.spawn
+			tracks := []VehicleTrack{vtPiece(100, vtLAAG), porteur}
+			fb := fallback.NouveauCompteur()
+			tally := poseTurretsOnCarriers(tracks, fb)
+			if c.refusDit {
+				if tracks[0].Carrier != nil || tally.birthMismatch != 1 || len(fb.Rapport()) != 0 {
+					t.Errorf("porteur %+v, refus %d, replis %+v : attendu aucun porteur, 1 refus compte",
+						tracks[0].Carrier, tally.birthMismatch, fb.Rapport())
+				}
+				return
+			}
+			if tracks[0].Carrier == nil || tally.birthMismatch != 0 {
+				t.Errorf("porteur %+v, refus %d : attendu pose, aucun refus", tracks[0].Carrier,
+					tally.birthMismatch)
+			}
+		})
 	}
 }

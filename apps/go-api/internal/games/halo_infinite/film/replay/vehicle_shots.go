@@ -160,6 +160,12 @@ func (b vehicleShotBoard) shotOf(o orphanShot, slots []uint32) (Shot, vehicleSho
 		}
 	}
 	at, onCarrier := b.shotHolder(pick)
+	// HORS DE LA FENETRE DU PORTEUR, sa position serait TENUE (premier / dernier echantillon) :
+	// une position perimee, peut-etre a des centaines de metres. Le tir n est pas pose, et il
+	// est compte (`shotsUnplaced`) — revue adverse du lot M4a, F4.
+	if onCarrier && (fr < b.tracks[at].T0 || fr > b.tracks[at].T1Max) {
+		return Shot{}, vehicleShotUnplaced, false
+	}
 	x, y, ok := vehiclePosAt(b.tracks[at], fr)
 	if !ok {
 		return Shot{}, vehicleShotUnplaced, false

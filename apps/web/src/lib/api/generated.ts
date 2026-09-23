@@ -13539,9 +13539,17 @@ export interface components {
             /** Format: int64 */
             shotsVehicleWeapon: number;
             /** Format: int64 */
+            turretCarrierBirthMismatch: number;
+            /** Format: int64 */
             turretRides: number;
             /** Format: int64 */
+            turretRidesAlreadyAboard: number;
+            /** Format: int64 */
             turretRidesDropped: number;
+            /** Format: int64 */
+            turretRidesNotRideable: number;
+            /** Format: int64 */
+            turretRidesOutOfWindow: number;
             /** Format: int64 */
             turrets: number;
             /** Format: int64 */

@@ -2020,30 +2020,30 @@ package replay
 // v69 (2026-09-23, retours du rejeu, lot M4a) : LES VEHICULES — PIECES MONTEES POSEES SUR LEUR
 // PORTEUR, VARIANTE NOMMEE, REGISTRE DES ARMES DE VEHICULE PUBLIE.
 //
-//	`vehicles[]`   TROIS CHAMPS. `part = "turret"` : la vie est une PIECE MONTEE (LAAG,
-//	               lance-roquettes, tourelles du Falcon et du Wraith, canon du Scorpion), jamais
-//	               dessinee seule. `carrier {slot, gen}` : la vie du chassis qui la porte, trouvee
-//	               par le REPLI NOMME `repli_tourelle_porteur_voisin_de_slot` (slot +1 / +2, famille
-//	               attendue, fenetres qui se recouvrent ; le lien parent n est pas lu). `variant` :
-//	               `rockethog` / `warthog_gauss` par la piece, `gungoose` par l arme — le sprite ;
-//	               la famille ne change pas (moteur, explosion, classe d arme).
-//	`rides[]`      `turret {slot, gen}` : l episode d artilleur REPORTE de la piece sur le porteur,
-//	               SANS `seat` (le siege lu etait celui de la tourelle). Un porteur non pilotable
-//	               (Falcon) garde ses artilleurs sur la piece, comme avant.
-//	`shots[]`      un tir d artilleur sort du PORTEUR (`v` = le chassis, `x`/`y` sa position) et non
-//	               plus de la naissance de la tourelle (mediane 44,7 m au parc avant ce lot).
-//	`coverage.`    SIX COMPTEURS : `turrets`, `turretsOnCarrier`, `turretRides`,
-//	`vehicles`     `turretRidesDropped`, `shotsOnCarrier`, `variants`. Une piece montee ne compte
-//	               plus dans `familyUnknown` / `unknownChassis` ni dans le repli
-//	               `repli_chassis_vehicule_marqueur_neutre` (elle est nommee), et un artilleur
-//	               reporte ne compte pas dans `ambiguous` (sa place est designee par la piece).
-//	`vehicle`      RACINE NEUVE, RESOLUE A LA REQUETE (`calquesALaRequete`, jamais cuite) : le
-//	`Weapons`      registre `config/titles/{slug}/mappings/vehicle_weapons.toml` (forme, teinte,
-//	               son ou silence decide, montage, libelle FR/EN) des armes que les tirs emploient,
-//	               keye par `Shot.w`. Il remplace les trois tables CLIENT clees par des tags jamais
-//	               vus dans un film.
+//	`vehicles[]`   `part = "turret"` : PIECE MONTEE (LAAG, lance-roquettes, tourelles du Falcon et
+//	               du Wraith, canon du Scorpion), jamais dessinee seule. `carrier {slot, gen}` : le
+//	               chassis qui la porte, par le REPLI NOMME `repli_tourelle_porteur_voisin_de_slot`
+//	               (slot +1 / +2, famille attendue, fenetres qui se recouvrent, NES ENSEMBLE a 1
+//	               frame et 1 m pres ; le lien parent n est pas lu). `variant` : `rockethog` /
+//	               `warthog_gauss` par la piece, `gungoose` par l arme — le sprite ; la famille ne
+//	               change pas (moteur, explosion, classe d arme).
+//	`rides[]`      `turret {slot, gen}` : l episode d artilleur REPORTE sur le porteur, SANS `seat`
+//	               (le siege lu etait celui de la tourelle). Trois refus le gardent sur la piece :
+//	               porteur non pilotable (Falcon), hors de la fenetre du porteur, occupant deja a
+//	               bord (episodes qui se RECOUVRENT ; un changement de siege jointif est reporte).
+//	`shots[]`      un tir d artilleur sort du PORTEUR (`v` = le chassis, `x`/`y` sa position), plus
+//	               de la naissance de la tourelle (mediane 44,7 m au parc avant ce lot) ; hors de la
+//	               fenetre du porteur, il n est pas pose (`shotsUnplaced`).
+//	`coverage.`    DIX COMPTEURS : `turrets`, `turretsOnCarrier`, `turretCarrierBirthMismatch`,
+//	`vehicles`     `turretRides`, `turretRidesDropped` = `turretRidesNotRideable` +
+//	               `turretRidesOutOfWindow` + `turretRidesAlreadyAboard`, `shotsOnCarrier`,
+//	               `variants`. Une piece ne compte plus dans `familyUnknown` / `unknownChassis` /
+//	               `repli_chassis_vehicule_marqueur_neutre`, un artilleur reporte pas dans `ambiguous`.
+//	`vehicle`      RACINE NEUVE, RESOLUE A LA REQUETE (`calquesALaRequete`, jamais cuite) : le registre
+//	`Weapons`      `config/titles/{slug}/mappings/vehicle_weapons.toml` (forme, teinte, son ou silence
+//	               decide, montage, libelle FR/EN) des armes que les tirs emploient, keye par
+//	               `Shot.w` ; il remplace les trois tables CLIENT clees par des tags jamais filmes.
 //
-//	AUCUNE REVISION DE DECODAGE ne monte : tout se joue sur les vies deja assemblees, et la
-//	republication DEPUIS LES FAITS suffit. `facts.Rev` INCHANGEE (le registre des replis recoit
-//	une entree de DONNEES ; empreinte seule recopiee). `layers` inchange : les pieces restent
-//	dans le calque des vehicules.
+//	AUCUNE REVISION DE DECODAGE ne monte (vies deja assemblees : la republication DEPUIS LES FAITS
+//	suffit). `facts.Rev` INCHANGEE (le registre des replis recoit une entree de DONNEES ; empreinte
+//	seule recopiee). `layers` inchange : les pieces restent dans le calque des vehicules.

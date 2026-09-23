@@ -392,7 +392,9 @@ type VehicleCoverage struct {
 	// mille. `Shots` compte les tirs POSES (donc publies dans `shots` avec leur marqueur `v`),
 	// `ShotsAmbiguous` ceux que DEUX vehicules distincts se disputent au meme instant (artefact
 	// du pont, jamais tranche), `ShotsUnplaced` ceux dont la vie de vehicule n avait ni
-	// echantillon ni naissance ou poser le tir.
+	// echantillon ni naissance ou poser le tir — et, depuis le schema 69, le tir d un artilleur
+	// reste sur une piece montee qui tombe HORS de la fenetre de son porteur (la position du
+	// porteur y serait perimee : le tir n est pas pose plutot que pose au mauvais endroit).
 	Shots          int `json:"shots"`
 	ShotsAmbiguous int `json:"shotsAmbiguous"`
 	ShotsUnplaced  int `json:"shotsUnplaced"`
@@ -414,20 +416,33 @@ type VehicleCoverage struct {
 	//	TurretsOnCarrier  parmi elles, celles dont le porteur est trouve — par le REPLI
 	//	                  `repli_tourelle_porteur_voisin_de_slot` : `Turrets - TurretsOnCarrier`
 	//	                  est le reste sans porteur, publie et non dessine.
+	//	TurretCarrierBirthMismatch  pieces dont un voisin de slot de la bonne famille, present
+	//	                  au meme moment, a ete REFUSE parce qu il n est pas NE AVEC la piece
+	//	                  (meme instant, meme point). C est le temoin independant du repli : 0 au
+	//	                  parc du 2026-09-23 ; un chiffre non nul sur un film neuf dit que le
+	//	                  voisinage de slot a cesse de designer le porteur.
 	//	TurretRides       episodes d artilleur REPORTES de la tourelle sur son porteur ;
-	//	                  TurretRidesDropped ceux qui ne l ont pas ete parce que le porteur ne
-	//	                  porte pas d occupant (famille non pilotable) ou porte deja le meme
-	//	                  occupant au meme instant.
+	//	                  TurretRidesDropped ceux qui sont GARDES sur la piece, somme des TROIS
+	//	                  refus ventiles : TurretRidesNotRideable (le porteur est d une famille
+	//	                  non pilotable), TurretRidesOutOfWindow (l episode tombe hors de la
+	//	                  fenetre du porteur, dont la vie publiee s arrete avant celle de sa
+	//	                  tourelle) et TurretRidesAlreadyAboard (le meme occupant a deja un
+	//	                  episode du porteur qui RECOUVRE le sien — un changement de siege, qui ne
+	//	                  fait que toucher, n en est pas un).
 	//	ShotsOnCarrier    tirs d artilleur poses sur le PORTEUR plutot que sur la naissance de la
 	//	                  tourelle. Parmi `Shots`.
 	//	Variants          vies dont la VARIANTE est nommee (`variant`), par sa tourelle ou par
 	//	                  son arme.
-	Turrets            int `json:"turrets"`
-	TurretsOnCarrier   int `json:"turretsOnCarrier"`
-	TurretRides        int `json:"turretRides"`
-	TurretRidesDropped int `json:"turretRidesDropped"`
-	ShotsOnCarrier     int `json:"shotsOnCarrier"`
-	Variants           int `json:"variants"`
+	Turrets                    int `json:"turrets"`
+	TurretsOnCarrier           int `json:"turretsOnCarrier"`
+	TurretCarrierBirthMismatch int `json:"turretCarrierBirthMismatch"`
+	TurretRides                int `json:"turretRides"`
+	TurretRidesDropped         int `json:"turretRidesDropped"`
+	TurretRidesNotRideable     int `json:"turretRidesNotRideable"`
+	TurretRidesOutOfWindow     int `json:"turretRidesOutOfWindow"`
+	TurretRidesAlreadyAboard   int `json:"turretRidesAlreadyAboard"`
+	ShotsOnCarrier             int `json:"shotsOnCarrier"`
+	Variants                   int `json:"variants"`
 	// LES QUATRE DENOMINATEURS DU CYCLE DE REAPPARITION (schema 63, cf. vehicle_cycles.go).
 	// `vehicleCycles` ne porte que les emplacements dont le cycle est ETABLI : sans ces quatre
 	// compteurs, une liste vide ne dirait pas si le film n a aucun emplacement, si aucun n a

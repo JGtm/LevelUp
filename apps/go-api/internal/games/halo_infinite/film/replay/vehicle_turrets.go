@@ -18,7 +18,9 @@ package replay
 //  2. il cherche son PORTEUR — REPLI NOMME ET COMPTE `repli_tourelle_porteur_voisin_de_slot` :
 //     le lien parent n est pas lu dans le film (sonde P1-S2, 2026-09-23) ; la piece est creee
 //     juste AVANT son chassis, qui prend le slot suivant (+1) ou le surlendemain quand une autre
-//     piece s intercale (+2), et la famille du voisin doit etre celle que la piece attend ;
+//     piece s intercale (+2), et la famille du voisin doit etre celle que la piece attend ; un
+//     voisin qui n est pas NE AVEC la piece (meme instant, meme point) est refuse et COMPTE
+//     (`turretCarrierBirthMismatch`) : c est le temoin INDEPENDANT du voisinage de slot ;
 //  3. il REPORTE les episodes d occupation de la piece sur le porteur (l artilleur est a bord du
 //     vehicule), SANS leur siege : le siege lu etait celui de la tourelle, et le publier sur le
 //     porteur ferait de l artilleur un conducteur ;
@@ -79,6 +81,18 @@ var vehicleTurretByChassis = map[uint32]vehicleTurret{
 // nomme pour que son elargissement soit une decision datee.
 const vehicleTurretSlotReach = 2
 
+// LA NAISSANCE COMMUNE, TEMOIN INDEPENDANT DU VOISINAGE DE SLOT (revue adverse du lot M4a, F5).
+// Une piece montee et son chassis sont crees ENSEMBLE : MESURE du 2026-09-23 sur les 111 documents
+// du parc, 141 pieces posees sur 141 — naissances au meme point (ecart 0,0 m, maximum 0,0 m) et au
+// meme instant (ecart <= 1 frame). Un voisin de slot qui n est pas ne avec la piece n est PAS son
+// porteur : le poser la ferait tirer depuis un autre vehicule. Les deux tolerances sont le
+// parametre du repli `repli_tourelle_porteur_voisin_de_slot` (meme registre, meme critere de
+// retrait) ; la distance ne se juge que si les DEUX naissances sont lues.
+const (
+	vehicleTurretBirthFrames = 1
+	vehicleTurretBirthMeters = 1.0
+)
+
 // vehicleTurretOf rend la piece montee d une vie, ou faux si la vie n en est pas une.
 func vehicleTurretOf(tr VehicleTrack) (vehicleTurret, bool) {
 	if tr.Chassis == "" {
@@ -94,7 +108,33 @@ func vehicleTurretOf(tr VehicleTrack) (vehicleTurret, bool) {
 
 // turretTally est le bilan de la pose des pieces montees, verse a la couverture.
 type turretTally struct {
-	turrets, onCarrier, rides, dropped, variants int
+	turrets, onCarrier, birthMismatch, rides, variants int
+	// kept ventile les episodes GARDES sur la piece par raison ; `dropped()` est leur somme.
+	kept turretRidesKept
+}
+
+// turretRidesKept : les TROIS refus de report d un episode d artilleur (cf. `moveTurretRides`).
+type turretRidesKept struct {
+	notRideable, outOfWindow, alreadyAboard int
+}
+
+func (k turretRidesKept) total() int { return k.notRideable + k.outOfWindow + k.alreadyAboard }
+
+func (k *turretRidesKept) add(o turretRidesKept) {
+	k.notRideable += o.notRideable
+	k.outOfWindow += o.outOfWindow
+	k.alreadyAboard += o.alreadyAboard
+}
+
+// applyTo verse le bilan a la couverture du calque (`coverage.vehicles`).
+func (t turretTally) applyTo(cov *VehicleCoverage) {
+	cov.Turrets, cov.TurretsOnCarrier = t.turrets, t.onCarrier
+	cov.TurretCarrierBirthMismatch = t.birthMismatch
+	cov.TurretRides, cov.Variants = t.rides, t.variants
+	cov.TurretRidesDropped = t.kept.total()
+	cov.TurretRidesNotRideable = t.kept.notRideable
+	cov.TurretRidesOutOfWindow = t.kept.outOfWindow
+	cov.TurretRidesAlreadyAboard = t.kept.alreadyAboard
 }
 
 // poseTurretsOnCarriers nomme les pieces montees, trouve leur porteur, y reporte leurs occupants
@@ -109,7 +149,10 @@ func poseTurretsOnCarriers(tracks []VehicleTrack, fb *fallback.Compteur) turretT
 		}
 		tally.turrets++
 		tracks[i].Part = VehiclePartTurret
-		c, ok := carrierOfTurret(tracks, bySlot, i, spec, fb)
+		c, ok, mismatch := carrierOfTurret(tracks, bySlot, i, spec, fb)
+		if mismatch {
+			tally.birthMismatch++
+		}
 		if !ok {
 			continue
 		}
@@ -120,9 +163,9 @@ func poseTurretsOnCarriers(tracks []VehicleTrack, fb *fallback.Compteur) turretT
 			carrier.Variant = spec.variant
 			tally.variants++
 		}
-		moved, dropped := moveTurretRides(&tracks[i], carrier)
+		moved, kept := moveTurretRides(&tracks[i], carrier)
 		tally.rides += moved
-		tally.dropped += dropped
+		tally.kept.add(kept)
 	}
 	return tally
 }
@@ -136,14 +179,16 @@ func vehicleTracksBySlot(tracks []VehicleTrack) map[uint32][]int {
 	return out
 }
 
-// carrierOfTurret rend le rang du porteur de la piece `i`, par le REPLI du voisin de slot.
+// carrierOfTurret rend le rang du porteur de la piece `i`, par le REPLI du voisin de slot. Le
+// troisieme retour dit qu un voisin de la bonne famille, present au meme moment, a ete REFUSE
+// parce qu il n est pas ne avec la piece (`vehicleBornTogether`).
 //
 // LE REPLI SE COMPTE A CHAQUE PORTEUR QU IL DECIDE : c est lui, et non une lecture, qui dit
 // « ce vehicule porte cette tourelle ». Une piece sans candidat n est pas un declenchement : le
 // repli n a rien decide, et la couverture la compte a part (`turrets - turretsOnCarrier`).
 func carrierOfTurret(
 	tracks []VehicleTrack, bySlot map[uint32][]int, i int, spec vehicleTurret, fb *fallback.Compteur,
-) (int, bool) {
+) (carrier int, found, birthMismatch bool) {
 	t := tracks[i]
 	for d := uint32(1); d <= vehicleTurretSlotReach; d++ {
 		for _, c := range bySlot[t.Slot+d] {
@@ -151,11 +196,29 @@ func carrierOfTurret(
 			if cand.Part != "" || cand.Family != spec.carrier || !vehicleWindowsOverlap(t, cand) {
 				continue
 			}
+			if !vehicleBornTogether(t, cand) {
+				birthMismatch = true
+				continue
+			}
 			fb.Declenche(fallback.NomTourellePorteurVoisinDeSlot)
-			return c, true
+			return c, true, birthMismatch
 		}
 	}
-	return 0, false
+	return 0, false, birthMismatch
+}
+
+// vehicleBornTogether dit si deux vies sont nees ensemble : au meme instant, et au meme point
+// quand les deux naissances sont lues (cf. `vehicleTurretBirthFrames`).
+func vehicleBornTogether(a, b VehicleTrack) bool {
+	dt := a.T0 - b.T0
+	if dt < -vehicleTurretBirthFrames || dt > vehicleTurretBirthFrames {
+		return false
+	}
+	if a.Spawn == nil || b.Spawn == nil {
+		return true
+	}
+	dx, dy := float64(a.Spawn.X-b.Spawn.X), float64(a.Spawn.Y-b.Spawn.Y)
+	return dx*dx+dy*dy <= vehicleTurretBirthMeters*vehicleTurretBirthMeters
 }
 
 // vehicleWindowsOverlap dit si deux vies coexistent a au moins une frame d affichage.
@@ -164,29 +227,38 @@ func vehicleWindowsOverlap(a, b VehicleTrack) bool {
 }
 
 // moveTurretRides reporte les occupants de la piece sur son porteur. Rend le nombre d episodes
-// reportes et celui des episodes GARDES sur la piece.
+// reportes et celui des episodes GARDES sur la piece, ventile par raison.
 //
-// DEUX REFUS, ET AUCUN N EFFACE L EPISODE (il reste sur la piece, qui est publiee) :
+// TROIS REFUS, ET AUCUN N EFFACE L EPISODE (il reste sur la piece, qui est publiee) :
 //   - un porteur NON PILOTABLE ne porte aucun occupant (`vehicleFamilyIsRideable`, decision du
 //     2026-09-02 sur le Falcon, le Pelican, le Phantom et le Skiff) — le document ne l affirmera
 //     pas plus par la tourelle que par le chassis ;
+//   - un episode HORS DE LA FENETRE du porteur : le reporter l amputerait ou l effacerait. Cause
+//     amont mesuree (revue adverse du lot M4a, F4) : la vie publiee d un chassis peut s arreter
+//     (`end = unknown`) bien avant celle de sa tourelle — 13 des 23 episodes gardes hors Falcon au
+//     parc du 2026-09-23 ;
 //   - un occupant DEJA a bord du porteur au meme instant (le conducteur entre a la naissance, le
 //     trou de position le designe aussi pour la piece nee au meme point) n y monte pas deux fois.
-func moveTurretRides(turret, carrier *VehicleTrack) (moved, kept int) {
+func moveTurretRides(turret, carrier *VehicleTrack) (moved int, kept turretRidesKept) {
 	if len(turret.Rides) == 0 {
-		return 0, 0
+		return 0, kept
 	}
 	if !vehicleFamilyIsRideable(carrier.Family) {
-		return 0, len(turret.Rides)
+		kept.notRideable = len(turret.Rides)
+		return 0, kept
 	}
 	ref := &VehicleLifeRef{Slot: turret.Slot, Gen: turret.Gen}
 	var restent []VehicleRide
 	var ajout []VehicleRide
 	for _, r := range turret.Rides {
-		// UN EPISODE HORS DE LA FENETRE DU PORTEUR reste sur la piece : le reporter l amputerait
-		// ou l effacerait, et le compte des episodes publies ne doit rien perdre en route.
 		bornes := clampVehicleRides([]VehicleRide{r}, carrier.T0, carrier.T1Max)
-		if len(bornes) == 0 || occupantAlreadyAboard(carrier.Rides, r) {
+		switch {
+		case len(bornes) == 0:
+			kept.outOfWindow++
+			restent = append(restent, r)
+			continue
+		case occupantAlreadyAboard(carrier.Rides, r):
+			kept.alreadyAboard++
 			restent = append(restent, r)
 			continue
 		}
@@ -197,17 +269,23 @@ func moveTurretRides(turret, carrier *VehicleTrack) (moved, kept int) {
 	}
 	turret.Rides = restent
 	if len(ajout) == 0 {
-		return 0, len(restent)
+		return 0, kept
 	}
 	carrier.Rides = append(carrier.Rides, ajout...)
 	sort.SliceStable(carrier.Rides, func(a, b int) bool { return carrier.Rides[a].T0 < carrier.Rides[b].T0 })
-	return len(ajout), len(restent)
+	return len(ajout), kept
 }
 
-// occupantAlreadyAboard dit si l occupant de `r` a deja un episode du porteur qui recouvre le sien.
+// occupantAlreadyAboard dit si l occupant de `r` a deja un episode du porteur qui RECOUVRE le sien.
+//
+// BORNES STRICTES (revue adverse du lot M4a, F2) : un CHANGEMENT DE SIEGE — conducteur puis
+// artilleur, ou l inverse — laisse deux episodes qui se TOUCHENT a une seule frame (la sortie de
+// l un est l entree de l autre). Ce n est pas un doublon : l occupant passe d un poste a l autre du
+// meme vehicule. Mesure du 2026-09-23 : 7 des 10 refus « deja a bord » hors Falcon ne faisaient
+// que se toucher (l artilleur restait sur la piece cachee, 18 a 21 s sans pion ni cone).
 func occupantAlreadyAboard(rides []VehicleRide, r VehicleRide) bool {
 	for _, o := range rides {
-		if o.Slot == r.Slot && o.T0 <= r.T1 && r.T0 <= o.T1 {
+		if o.Slot == r.Slot && o.T0 < r.T1 && r.T0 < o.T1 {
 			return true
 		}
 	}

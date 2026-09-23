@@ -14,7 +14,9 @@ var registreReplayVehicules = []Repli{
 		Fait: "le vehicule qui PORTE une tourelle (piece montee `ti=40` sans aucun echantillon de position)",
 		Mecanisme: "la premiere vie du slot +1 puis +2 de la tourelle, de la famille de chassis que " +
 			"la table des pieces montees attend pour elle, dont la fenetre d affichage recouvre la " +
-			"sienne ; aucune candidate = tourelle sans porteur, publiee et non dessinee",
+			"sienne, NEE AVEC elle (meme instant a 1 frame, meme point a 1 m quand les deux naissances " +
+			"sont lues ; un voisin refuse est compte `turretCarrierBirthMismatch`) ; aucune candidate = " +
+			"tourelle sans porteur, publiee et non dessinee",
 		// LA RELATION EXISTE DANS LE JEU (la tourelle est attachee a son chassis) ; la sonde P1-S2
 		// du 2026-09-23 n a trouve aucun lien lisible (`object-parent-state` ne rattache aucun
 		// objet au vehicule sur les deux films sondes). C est une DETTE de lecteur, pas un
@@ -30,7 +32,9 @@ var registreReplayVehicules = []Repli{
 		// MESURE DU 2026-09-23 sur les 111 documents du parc (instrument `enfants.mjs` de
 		// l annexe, relu par le lot) : LAAG `dd7f9102` 45 vies, voisin `slot+1` Warthog 44/45 ;
 		// roquettes `bcfb852f` 16 vies, 15/16 ; tourelles du Falcon `1a043c29` puis `f4c45d71`,
-		// chaine `[1a043c29][f4c45d71][Falcon]` ; Wraith `[233c877d][001b33fc][Wraith]`.
+		// chaine `[1a043c29][f4c45d71][Falcon]` ; Wraith `[233c877d][001b33fc][Wraith]`. Temoin
+		// independant (revue adverse du lot, meme parc) : 141 pieces posees sur 141 nees au meme
+		// point (0,0 m) et au meme instant (<= 1 frame) que leur porteur.
 		CritereRetrait:  "le porteur de chaque tourelle est LU dans le film sur les 8 builds, et la lecture s accorde au voisin de slot sur le parc (0 desaccord) — alors le voisinage devient un temoin, jamais une decision",
 		CompteurBranche: true,
 	},

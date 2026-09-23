@@ -231,3 +231,20 @@ func TestLArmeNommeLaVarianteGungoose(t *testing.T) {
 		t.Errorf("variante = %q sur un Warthog, attendu aucune", doc.Vehicles[0].Variant)
 	}
 }
+
+// TestTirDArtilleurHorsDeLaFenetreDuPorteurNonPose — revue adverse du lot M4a (F4). L episode est
+// reste sur la piece parce que la vie publiee du porteur s arrete AVANT lui : un tir dans ce trou
+// n est PAS pose a la derniere position tenue du porteur (perimee) — il est compte `shotsUnplaced`.
+func TestTirDArtilleurHorsDeLaFenetreDuPorteurNonPose(t *testing.T) {
+	doc := vsTourelle()
+	doc.Vehicles[0].Carrier = &VehicleLifeRef{Slot: 701, Gen: 1}
+	doc.Vehicles[1].T1, doc.Vehicles[1].T1Max = 25, 25
+	attachVehicleShots(doc, []orphanShot{vsOrphan(30, 0x0BB6976B00000000)}, vsOwn(), vsClock())
+	if len(doc.Shots) != 0 {
+		t.Fatalf("tirs = %+v, attendu aucun (le porteur n est plus publie a la frame 30)", doc.Shots)
+	}
+	if doc.Coverage.Vehicles.ShotsUnplaced != 1 || doc.Coverage.Vehicles.ShotsOnCarrier != 0 {
+		t.Errorf("shotsUnplaced = %d, shotsOnCarrier = %d : attendu 1 et 0",
+			doc.Coverage.Vehicles.ShotsUnplaced, doc.Coverage.Vehicles.ShotsOnCarrier)
+	}
+}

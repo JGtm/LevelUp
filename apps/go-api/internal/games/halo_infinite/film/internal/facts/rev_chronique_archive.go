@@ -255,3 +255,7 @@ package facts
 // rien, et le site qui le declenche est dans la couche de PUBLICATION (`replay/vehicle_turrets.go`),
 // qui ne produit aucune ligne de kill. Aucune lecture, aucune largeur, aucun appariement ne change :
 // les lignes produites sont identiques a l octet et aucun match deja decode n est candidat au backlog.
+// 2026-09-24, LOT M4a, REPRISE APRES REVUE ADVERSE — REVISION INCHANGEE, EMPREINTE SEULE RECOPIEE.
+// Le `Mecanisme` de `repli_tourelle_porteur_voisin_de_slot` dit desormais la NAISSANCE COMMUNE que
+// la publication exige du voisin (meme instant, meme point) : une chaine de DONNEES du registre, le
+// site reste dans la couche de publication. Aucune ligne de kill ne change.

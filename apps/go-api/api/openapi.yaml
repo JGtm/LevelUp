@@ -30130,10 +30130,22 @@ components:
         shotsVehicleWeapon:
           format: int64
           type: integer
+        turretCarrierBirthMismatch:
+          format: int64
+          type: integer
         turretRides:
           format: int64
           type: integer
+        turretRidesAlreadyAboard:
+          format: int64
+          type: integer
         turretRidesDropped:
+          format: int64
+          type: integer
+        turretRidesNotRideable:
+          format: int64
+          type: integer
+        turretRidesOutOfWindow:
           format: int64
           type: integer
         turrets:
@@ -30200,8 +30212,12 @@ components:
         - shotsVehicleWeapon
         - turrets
         - turretsOnCarrier
+        - turretCarrierBirthMismatch
         - turretRides
         - turretRidesDropped
+        - turretRidesNotRideable
+        - turretRidesOutOfWindow
+        - turretRidesAlreadyAboard
         - shotsOnCarrier
         - variants
         - cycleLocations
