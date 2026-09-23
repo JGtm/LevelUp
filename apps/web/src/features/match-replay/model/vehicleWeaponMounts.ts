@@ -95,9 +95,9 @@ export function vehicleWeapTag(weap8hex: string): string {
  * soit ~26 % de la demi-longueur (1,05 m) VERS L'ARRIÈRE, donc `ay = +0,26` dans notre
  * convention (+0,5 = arrière). `ax = 0` : le rectangle est centré en Y (candidat 1 seul,
  * robuste à l'érosion 0/1/2 px). MÊME POINT pour les trois armes (LAAG, Gauss, roquettes) —
- * le rapport le dit explicitement : « Même (cx, cy) pour les trois armes ». Le seul tag
- * `weap` retrouvé (`c7d50912`, témoin V3F §4) ne départage pas laquelle des trois a tiré ;
- * sans conséquence ici puisque le point d'ancrage est identique pour les trois.
+ * le rapport le dit explicitement : « Même (cx, cy) pour les trois armes ». Le tag `c7d50912`
+ * est celui des ROQUETTES (`WARTHOG_FINAL_2026-09-02.md` §1, erratum du 2026-09-23) ; la LAAG
+ * (`0c6fd911`) et le Gauss (`8647925a`) n'ont jamais été observés dans un document.
  */
 const WARTHOG_REAR_MOUNT: VehicleWeaponMount = { classe: 'tourelle', ax: 0, ay: 0.26 }
 
@@ -169,40 +169,45 @@ const WRAITH_MORTAR_MUZZLE: VehicleWeaponMount = { classe: 'fixe', ax: 0, ay: -0
 const GUNGOOSE_NOSE_TWIN: VehicleWeaponMount = { classe: 'fixe', ax: 0.06, ay: -0.4 }
 
 /**
- * FALCON_SIDE_LMG — MESURÉ sur `falcon.png` (430 × 390, centre 215,0 / 195,0). Les deux postes
+ * FALCON_SIDE_POST — MESURÉ sur `falcon.png` (430 × 390, centre 215,0 / 195,0). Les deux postes
  * latéraux sont les caissons que l'encre ferme à y = 236 (arrêtes horizontales x 170..194 à gauche
  * et x 230..256 à droite) et qui descendent jusqu'à y ≈ 255 — de part et d'autre du fuselage, en
  * arrière du poste de pilotage, exactement là où le Falcon ouvre ses portes. L'ancre prend le
  * poste DROIT : `ax = (242 - 215) / 430 = +0,063`, `ay = (245 - 195) / 390 = +0,128`.
  *
+ * LE LANCE-GRENADES (`0bb6976b`, décision Q10 du 2026-09-23) SORT DU MÊME POSTE DE PORTE : le
+ * Falcon porte à cet endroit une LMG OU un lance-grenades, et c'est le tag du tir qui dit lequel.
+ *
  * `tourelle`, ET C'EST LA DÉCISION DE 5.2a.6 : une mitrailleuse de porte est servie par un
  * PASSAGER et ne pointe pas où le nez pointe. Depuis 5.5.3 sa décharge prend donc la visée
  * MESURÉE de son tireur, et la bouffée ronde ne revient qu'à défaut de lecture.
  */
-const FALCON_SIDE_LMG: VehicleWeaponMount = { classe: 'tourelle', ax: 0.06, ay: 0.13 }
+const FALCON_SIDE_POST: VehicleWeaponMount = { classe: 'tourelle', ax: 0.06, ay: 0.13 }
 
 // --- TABLE : `Shot.w` -> montage ----------------------------------------------------------------
 
 /**
  * VEHICLE_WEAPON_MOUNTS — un tag `weap` par arme de véhicule DOCUMENTÉE (source : le tableau
- * ci-dessus). AUCUNE entrée « partagée entre familles » ici : chaque tag `weap` appartient à
+ * ci-dessus). EXPORTÉE pour le garde-rail des tags observés (`vehicleWeaponTags.guard.test.ts` :
+ * toute clé est observée dans un document ou attendue, retrait au lot M4a). AUCUNE entrée « partagée entre familles » ici : chaque tag `weap` appartient à
  * UNE seule arme d'UNE seule famille (à la différence des tags `jpt!` de dégâts, qui peuvent
  * être réutilisés entre variantes) — le risque d'ambiguïté qui justifiait des exclusions dans
  * la V1 de ce fichier ne se pose donc plus.
  */
-const VEHICLE_WEAPON_MOUNTS: ReadonlyMap<string, VehicleWeaponMount> = new Map([
-  [vehicleWeapTag('c7d50912'), WARTHOG_REAR_MOUNT], // Warthog (témoin, LAAG/Gauss/Roquettes non départagés).
+export const VEHICLE_WEAPON_MOUNTS: ReadonlyMap<string, VehicleWeaponMount> = new Map([
+  [vehicleWeapTag('c7d50912'), WARTHOG_REAR_MOUNT], // Rockethog — lance-roquettes (plateau arrière).
   [vehicleWeapTag('00015435'), GHOST_NOSE_TWIN], // Ghost — canons à plasma jumeaux.
   [vehicleWeapTag('0000aa68'), BANSHEE_NOSE_TWIN], // Banshee M1 — canons à plasma jumeaux.
   [vehicleWeapTag('0000aa69'), BANSHEE_CENTER_HEAVY], // Banshee M2 — tir lourd unique.
   [vehicleWeapTag('11725dc4'), WASP_CHIN_AUTOCANNON], // Wasp M1 — confirmé tiré, artefact 0d76e8f1.
   [vehicleWeapTag('d3c407ed'), WASP_WING_ROCKETS], // Wasp M2 — documenté, pas observé en direct.
   [vehicleWeapTag('b40e9618'), CHOPPER_NOSE_TWIN], // Chopper — canons jumeaux avant.
-  [vehicleWeapTag('00015cfa'), SCORPION_TURRET], // Scorpion — canon principal.
+  [vehicleWeapTag('49e40d17'), SCORPION_TURRET], // Scorpion — canon principal (tag PUBLIÉ ; 00015cfa jamais vu).
   // LES TROIS DU LOT 5.8.3, mesurés sur le sprite faute de rapport de RE (cf. leur bloc).
   [vehicleWeapTag('121b4009'), WRAITH_MORTAR_MUZZLE], // Wraith — mortier à plasma.
   [vehicleWeapTag('0042678e'), GUNGOOSE_NOSE_TWIN], // Gungoose — mitrailleuses avant.
-  [vehicleWeapTag('00015cd3'), FALCON_SIDE_LMG], // Falcon — tourelle LMG de porte.
+  [vehicleWeapTag('00015cd3'), FALCON_SIDE_POST], // Falcon — tourelle LMG de porte.
+  [vehicleWeapTag('0bb6976b'), FALCON_SIDE_POST], // Falcon — lance-grenades de porte (Q10).
 ])
 
 /**

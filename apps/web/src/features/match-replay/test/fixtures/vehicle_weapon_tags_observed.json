@@ -1,0 +1,102 @@
+{
+  "generatedAt": "2026-09-23",
+  "source": "instrument .ai/V7.5/retours_rejeu_2026-09-23/instruments/superviseur/sweep_vw.mjs (meme filtre), etendu aux tirs sans vehicule publie et au porteur dont la vie COUVRE l instant",
+  "corpus": {
+    "documents": 111,
+    "schemaVersions": [
+      68
+    ],
+    "dir": "data/cache/replays/halo_infinite (111 documents, lecture seule)"
+  },
+  "tags": [
+    {
+      "tag": "0x121B400900000000",
+      "shots": 172,
+      "shotsWithVehicle": 142,
+      "docs": [
+        "0a44c6cc",
+        "4f77afc1",
+        "5676a9ba",
+        "8a485699"
+      ],
+      "carriers": {
+        "wraith:ae845375": 140,
+        "warthog:fe32c0f4": 2
+      }
+    },
+    {
+      "tag": "0xC7D5091200000000",
+      "shots": 132,
+      "shotsWithVehicle": 127,
+      "docs": [
+        "4f77afc1",
+        "f2966f08"
+      ],
+      "carriers": {
+        "?:bcfb852f": 125,
+        "warthog:fe32c0f4": 2
+      }
+    },
+    {
+      "tag": "0x0BB6976B00000000",
+      "shots": 52,
+      "shotsWithVehicle": 51,
+      "docs": [
+        "4f77afc1",
+        "879a4dba",
+        "a464e20b"
+      ],
+      "carriers": {
+        "?:1a043c29": 51
+      }
+    },
+    {
+      "tag": "0x0042678E00000000",
+      "shots": 40,
+      "shotsWithVehicle": 15,
+      "docs": [
+        "4f77afc1",
+        "8a485699",
+        "fccc61cd"
+      ],
+      "carriers": {
+        "mongoose:af31ab1a": 15
+      }
+    },
+    {
+      "tag": "0x850902EF00000000",
+      "shots": 25,
+      "shotsWithVehicle": 15,
+      "docs": [
+        "5676a9ba"
+      ],
+      "carriers": {
+        "banshee:c6e79dcc": 11,
+        "warthog:fe32c0f4": 4
+      }
+    },
+    {
+      "tag": "0x49E40D1700000000",
+      "shots": 13,
+      "shotsWithVehicle": 13,
+      "docs": [
+        "0a44c6cc",
+        "8a485699"
+      ],
+      "carriers": {
+        "scorpion:f6f54e56": 13
+      }
+    },
+    {
+      "tag": "0x11725DC400000000",
+      "shots": 4,
+      "shotsWithVehicle": 4,
+      "docs": [
+        "8a485699"
+      ],
+      "carriers": {
+        "wasp:b65b3b4a": 4
+      }
+    }
+  ]
+}
