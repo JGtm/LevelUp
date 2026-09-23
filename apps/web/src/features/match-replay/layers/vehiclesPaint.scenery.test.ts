@@ -20,7 +20,6 @@ import type { PlacementView } from './placementShapes'
 import type { ReplayVehicleTrackReady } from '../../../lib/replay/replayNormalize'
 import { drawVehiclesLayer, type VehicleStyle } from './vehiclesPaint'
 import {
-  buildEmbarkedPredicate,
   vehicleCanEmbark,
   vehicleIsHidden,
   vehicleIsScenery,
@@ -189,14 +188,17 @@ describe('drawVehiclesLayer — le décor de carte est MASQUÉ (décision Q13 du
   })
 })
 
+/**
+ * L'EMBARQUEMENT SE PROUVE PAR `vehicleCanEmbark`, ET PAR LUI SEUL. Une vie de décor n'a, PAR
+ * DÉFINITION, aucun occupant (`rides` vide est une des quatre conditions de `vehicleIsScenery`) :
+ * un test de `buildEmbarkedPredicate` sur ces vies n'aurait rien à refuser et resterait vert avec
+ * ou sans le refus (revue RR-L1-02, 2026-09-23 — ce test-là a été retiré). Le refus porte sur la
+ * porte commune des deux lecteurs (`buildEmbarkedPredicate`, `carrierPosition`), et c'est elle
+ * qu'on verrouille.
+ */
 describe('le décor de carte n’embarque personne', () => {
   it('vehicleCanEmbark refuse une vie de décor, accepte le Warthog garé simulé', () => {
     for (const t of [...STARBOARD, GOLIATH_WASP]) expect(vehicleCanEmbark(t), `slot ${t.slot}`).toBe(false)
     expect(vehicleCanEmbark(REFUGE_WARTHOG)).toBe(true)
-  })
-
-  it('le prédicat embarqué ne voit aucune vie de décor', () => {
-    const embarked = buildEmbarkedPredicate(STARBOARD)
-    expect(embarked(1, 50)).toBe(false)
   })
 })
