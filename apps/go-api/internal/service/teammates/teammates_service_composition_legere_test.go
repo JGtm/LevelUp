@@ -7,7 +7,9 @@ package teammates
 //     sessions (même ordre, mêmes match_count, match_count_roster et
 //     excluded_by_exact_composition) et la même dernière session — sur les scénarios déjà
 //     posés par le paquet (composition exacte, écart nommé, départ en cours de partie,
-//     coéquipier hors top ou introuvable, lectures en échec, sans coéquipier) ;
+//     coéquipier hors top ou introuvable, lectures en échec, sans coéquipier) — hors l'équipe
+//     alliée illisible sous l'option, une ERREUR ici (lot L9-go), une dégradation dite sur la
+//     page ;
 //   - ce qu'elle NE lit PAS : aucune lecture d'une section de la page, pas d'historique de
 //     membre, pas d'équipe alliée hors option ;
 //   - annulation et sections de durée.
@@ -83,11 +85,9 @@ func casDeLaParite() []casDeParite {
 		repo.squadErr = errors.New("q30 en echec")
 		return repo
 	}
-	echecQ32b := func() *mockSquadRepo {
-		repo := newExtraTeammateRepo()
-		repo.allyErr = errors.New("q32b en echec")
-		return repo
-	}
+	// Q32b en échec sous l'option n'est plus un cas de parité (lot perf L9-go) : la page
+	// dégrade et le dit, la lecture légère rend une erreur —
+	// TestCompositionSessions_EquipeAllieeIllisible_Erreur.
 	debut := time.Date(2026, 6, 5, 0, 0, 0, 0, time.UTC)
 	filtresDePage := func(req *domain.TeammatesQueryRequest) {
 		req.PickedSquadSessions = []string{"S_exact"}
@@ -110,7 +110,6 @@ func casDeLaParite() []casDeParite {
 		{nom: "coequipier hors top 50 (alias)", repo: avecAliasHorsTop, gts: both, exact: true, attendu: []string{"S_exact"}},
 		{nom: "coequipier introuvable", repo: newExtraTeammateRepo, gts: []string{"AllyA", "Inconnu"}, attendu: []string{"S_with_C", "S_exact"}},
 		{nom: "Q30 en echec : personne dans l intersection", repo: echecQ30, gts: both, exact: true, attendu: nil},
-		{nom: "Q32b en echec : roster non filtre", repo: echecQ32b, gts: both, exact: true, attendu: []string{"S_with_C", "S_exact"}},
 		{nom: "filtres de page sans effet sur les sessions", repo: newExtraTeammateRepo, gts: both, page: filtresDePage, attendu: []string{"S_with_C", "S_exact"}},
 		{nom: "sans coequipier : sessions escouade du principal", repo: historiqueDuPrincipal, attendu: []string{"S_recente (1)", "S_ancienne (2)"}},
 		{nom: "sans coequipier ni match", repo: func() *mockSquadRepo { return &mockSquadRepo{} }, attendu: nil},
@@ -391,5 +390,56 @@ func TestCompositionSessions_SectionsDeDuree(t *testing.T) {
 				t.Errorf("sections : %v, attendu %v", noms, c.sections)
 			}
 		})
+	}
+}
+
+// q32bEnEchecAuPremierAppel : l'équipe alliée (Q32b) illisible au PREMIER appel seulement —
+// une base occupée le temps d'une bascule, le scénario de la revue adversariale A.
+type q32bEnEchecAuPremierAppel struct {
+	*mockSquadRepo
+	err    error
+	appels int
+}
+
+func (r *q32bEnEchecAuPremierAppel) LoadMainTeamParticipants(ctx context.Context, main string, ids []string) ([]domain.AllyParticipant, error) {
+	r.appels++
+	if r.appels == 1 {
+		return nil, r.err
+	}
+	return r.mockSquadRepo.LoadMainTeamParticipants(ctx, main, ids)
+}
+
+// TestCompositionSessions_EquipeAllieeIllisible_Erreur (lot perf L9-go, revue adversariale A :
+// TestRevA_LegereDegradeeSansSignal inversé) : sous l'option composition exacte, une équipe
+// alliée illisible est une ERREUR qui garde sa cause — le handler en fait un 503 quand la base
+// est occupée, un 500 sinon, et le front se replie sur la page. Jamais un 200 aux sessions non
+// filtrées : le front s'y ancrait (« S_with_C ») alors que la page, elle, publie « S_exact ».
+// Hors option, Q32b n'est pas lue : aucune erreur.
+func TestCompositionSessions_EquipeAllieeIllisible_Erreur(t *testing.T) {
+	baseOccupee := errors.New("database is locked")
+	gts := []string{"AllyA", "AllyB"}
+	repo := &q32bEnEchecAuPremierAppel{mockSquadRepo: newExtraTeammateRepo(), err: baseOccupee}
+	svc := NewTeammatesService(repo, nil).WithPlayerMatchesRepo(
+		newSynthMockFromRows(repo.synthRows, repo.synthErr), "halo_infinite", "Test")
+
+	sessions, latest, err := svc.CompositionSessions(context.Background(), "px", gts, true)
+	if !errors.Is(err, baseOccupee) {
+		t.Fatalf("lecture légère, Q32b illisible : err=%v, want une erreur enveloppant la cause", err)
+	}
+	if sessions != nil || latest != "" {
+		t.Errorf("lecture légère en erreur : sessions %v, dernière %q rendues", labelsDe(sessions), latest)
+	}
+	// Le repli du front : la page, Q32b lisible cette fois, filtre la composition.
+	page, err := svc.GetPage(context.Background(), "px", domain.TeammatesQueryRequest{
+		SelectedGamertags: gts, FilterExactComposition: true})
+	if err != nil || page.LatestCompositionSession != "S_exact" {
+		t.Errorf("page de repli : err=%v, dernière session %q, want S_exact", err, page.LatestCompositionSession)
+	}
+
+	horsOption := newExtraTeammateRepo()
+	horsOption.allyErr = baseOccupee
+	sessions, _, err = serviceDe(horsOption, nil).CompositionSessions(context.Background(), "px", gts, false)
+	if err != nil || !slices.Equal(labelsDe(sessions), []string{"S_with_C", "S_exact"}) {
+		t.Errorf("hors option (Q32b non lue) : err=%v, sessions %v", err, labelsDe(sessions))
 	}
 }
