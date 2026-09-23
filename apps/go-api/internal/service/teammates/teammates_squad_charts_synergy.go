@@ -12,6 +12,7 @@ import (
 	"levelup/go-api/internal/analysis/narrative"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
+	"levelup/go-api/internal/observability/timing"
 	"levelup/go-api/internal/port"
 )
 
@@ -194,6 +195,7 @@ func (s *TeammatesService) buildSquadSynergyRadar(
 	mainGamertag string,
 	selectedGamertags []string,
 ) []domain.SquadSynergyRadarSeries {
+	defer timing.FromContext(ctx).Section("synergy_radar")()
 	if len(allSquadRows) == 0 || len(selectedGamertags) == 0 {
 		return nil
 	}

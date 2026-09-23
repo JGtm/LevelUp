@@ -34,6 +34,7 @@ import (
 	"levelup/go-api/internal/analysis/coordination"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
+	"levelup/go-api/internal/observability/timing"
 	"levelup/go-api/internal/port"
 )
 
@@ -77,10 +78,12 @@ func buildCoordinationBlock(ctx context.Context, q coordinationQuery) *domain.Co
 			MatchesTotal:      len(q.MatchIDs),
 		}
 	}
+	stop := timing.FromContext(ctx).Section("kill_events")
 	lecture, err := q.Tactical.KillEvents(ctx, domain.TacticalQuery{
 		PlayerXUID: q.PlayerXUID,
 		Matchs:     domain.RestreindreAux(q.MatchIDs),
 	})
+	stop()
 	if err != nil {
 		slog.ErrorContext(ctx, "coordination: journal des morts en echec", "err", err,
 			"match_count", len(q.MatchIDs))
@@ -94,6 +97,7 @@ func buildCoordinationBlock(ctx context.Context, q coordinationQuery) *domain.Co
 	entree := coordinationEntree(q, lecture)
 	entree.Appuis = q.chargerAppuis(ctx)
 
+	stop = timing.FromContext(ctx).Section("bloc")
 	bloc := coordination.Bloc(entree)
 	if len(q.Soirees) > 0 {
 		// La frise temporelle ne peint pas de cases par match : ses bâtons sont les
@@ -101,6 +105,7 @@ func buildCoordinationBlock(ctx context.Context, q coordinationQuery) *domain.Co
 		bloc.PerMatch = nil
 		bloc.Sessions = soireesDuScope(entree, q.Soirees)
 	}
+	stop()
 	slog.InfoContext(ctx, "coordination_bloc",
 		"player", q.PlayerXUID, "matchs", bloc.MatchesTotal, "matchs_mesures", bloc.MatchesMeasured,
 		"morts_de_camp", bloc.Riposte.TeamDeaths, "morts_ripostees", bloc.Riposte.TeamDeathsAvenged,
@@ -112,6 +117,7 @@ func buildCoordinationBlock(ctx context.Context, q coordinationQuery) *domain.Co
 // le versant appui a alors des dénominateurs vides (que la couverture publie), et le
 // versant riposte reste servi. Dégrader UN sujet vaut mieux que retirer le bloc entier.
 func (q coordinationQuery) chargerAppuis(ctx context.Context) []domain.CoordinationAppuiRow {
+	defer timing.FromContext(ctx).Section("appuis")()
 	if q.Appuis == nil {
 		slog.DebugContext(ctx, "coordination: aucun lecteur d'appuis cable",
 			"player", q.PlayerXUID)

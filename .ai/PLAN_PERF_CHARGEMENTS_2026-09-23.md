@@ -82,15 +82,82 @@ slog_logger.go` (+ test), les fichiers de service listes en D1.4 (ajout de `defe
 `docs/COMMANDS.md` ou `docs/SYNC_GUIDE.md` : une ligne sur `LEVELUP_SLOW_REQUEST_MS` (EN + FR).
 
 Items :
-- [ ] L1.1 paquet `timing` + tests
-- [ ] L1.2 middleware : seuil + `http_timings` + test (seuil respecte, 2xx lent en INFO, 2xx rapide en DEBUG)
-- [ ] L1.3 sections GetPage (26)
-- [ ] L1.4 sections filtres, synthese, sessions, series temporelles, coordination
-- [ ] L1.5 doc de la variable (EN + FR)
+- [x] L1.1 paquet `timing` + tests — `internal/observability/timing/timing.go` (Timings, WithTimings, FromContext nil-safe, Section, Snapshot, LogAttrs) + `timing_test.go` (11 tests purs sur horloge pilotee, `-race` vert ; mutation « garde nil retiree » = panique detectee)
+- [x] L1.2 middleware : seuil + `http_timings` + test (seuil respecte, 2xx lent en INFO, 2xx rapide en DEBUG) — `internal/api/middleware/slog_logger.go` (seuil lu au montage, `slow: true`, 4xx/5xx lents gardent WARN/ERROR, valeur invalide = ERROR + defaut 1000) + 10 tests nouveaux dans `slog_logger_test.go` ; mutations jouees : seuil ramene a 0 (6 tests rouges), porte `http_timings` toujours ouverte (2 rouges), condition « au moins une section » retiree (1 rouge)
+- [x] L1.3 sections GetPage (26) — 20 `defer` en tete des builders appeles (16 fichiers `service/teammates/teammates_*.go`, consigne : ne pas allonger GetPage) + 6 sections inline dans GetPage (`top_teammates`, `player_matches`, `map_stats` = appels de repo ; `match_history`, `session_timeline`, `composition_sessions` = fonctions pures sans ctx), GetPage +12 L ; sonde temporaire (supprimee) : 26 sections remontees, `teammate_rows` calls=2 ; lint : 0 issue nouvelle, 3 funlen preexistants a +1 (buildTeammateRowWithMatches 89 L, buildSquadImpactMatrix 84 instructions, buildSquadPerMinuteStats 97 L)
+- [x] L1.4 sections filtres, synthese, sessions, series temporelles, coordination — 38 sites de section (table au journal du lot) : filtres 3 (inline dans Resolve), synthese 9, sessions 10 et series temporelles 14 (dont `expected_assists`, un seul site partage par les deux pages), coordination 3 (`kill_events`, `appuis`, `bloc`) ; `defer` dans les builders appeles quand ils ont un ctx, sinon section inline ; sonde temporaire (supprimee) : 9 / 10 / 12 / 2 / 3 sections remontees sur les fixtures existantes (les sections conditionnelles absentes quand leur repo n est pas cable) ; lint : 0 issue nouvelle, funlen preexistants GetSynthesisPage 107->111, GetPage sessions 138->140, GetPage series 136->144
+- [x] L1.5 doc de la variable (EN + FR) — `docs/COMMANDS.md` et `docs/FR/COMMANDS.md`, section « Run the app / Lancement » : seuil, defaut 1000, lu au demarrage, `slow: true`, ligne `http_timings` (champs), DEBUG via `LEVELUP_LOGS_FILE_LEVEL=debug`
 
 Gate : `gofmt -l` vide ; `go build ./...` ; `go vet ./...` ; `go test ./internal/observability/...
 ./internal/api/middleware/... ./internal/service/... ./internal/service/teammates/...` ;
 `golangci-lint run` sur les paquets touches : 0 issue nouvelle.
+
+Journal du lot (2026-09-23, branche `feat/perf-l1` depuis 97cc0d0c8 ; commits c5c50f499 L1.1,
+108ac8661 L1.2, 0a2ce5c10 L1.3, 4ee02dbcd L1.4, puis L1.5 + ce journal) :
+
+- Lecture retenue de D1.1 : une requete lente 4xx/5xx garde son niveau WARN/ERROR (jamais
+  retrogradee en INFO) et porte `slow: true` ; seul un 2xx/3xx lent passe de DEBUG a INFO. Valeur
+  invalide ou <= 0 : ERROR journalisee au montage, seuil par defaut 1000.
+- `total_ms` = somme des cumuls de TOUTES les sections (y compris au-dela des 15 listees). Les
+  sections sont des feuilles (aucune fonction instrumentee n'en appelle une autre, appelants
+  recenses) : `duration_ms - total_ms` = temps hors sections (factory de
+  service et resolution du joueur dans le handler, calculs purs non listes, encodage, middlewares
+  en aval dont l'ecriture de session).
+- Placement : `defer` en premiere instruction du builder appele quand il recoit un ctx (consigne :
+  ne pas allonger les orchestrateurs deja au-dela du seuil funlen) ; sinon section inline par la
+  fonction d'arret (`stop := ...Section(...)` puis `stop()`), la ou un defer ne se declencherait
+  qu'en sortie de fonction : appels de repo, fonctions pures sans ctx, blocs d'orchestrateur.
+- Fichiers de builders touches au-dela de la liste litterale de D1.4 (defer + import uniquement,
+  en application de la consigne « poser les defer dans les builders appeles ») : 16 fichiers
+  `service/teammates/teammates_*.go` ; `service/{expected_assists,session_page_frag_distribution,
+  session_page_usage,session_page_range,synthesis_weapon_records}.go`.
+- Table des sections hors Escouade (nom = fonction chronometree) : filtres `load_matches`
+  (LoadMatchesForFilters), `resolve_rows` (ResolveFiltersFromRows), `season_counts` (catalogue +
+  BuildSeasonCounts, seulement si le catalogue est cable) ; synthese `player_matches`,
+  `enrich_translations` (enrichissement FR), `heatmap`, `combat_profile`, `fun_stats` (awards et
+  vehicules), `frag_distribution` (loadTopWeaponKills), `weapon_accuracy` (armes),
+  `objective_stats`, `weapon_records` (records de distance) ; sessions `player_matches`,
+  `placements` (LUSR / CSR), `objective_index`, `expected_assists`, `frag_distribution`,
+  `weapon_accuracy`, `event_blocks`, `lobby_sizes`, `session_usage`, `range_profiles` (portee) ;
+  series temporelles `player_matches`, `highlight_events`, `expected_assists`, `tabs` (onglets),
+  `objective_stats`, `weapon_kills`, `frag_distribution`, `weapon_accuracy`, `event_blocks`,
+  `weapon_range` (portee des engagements), `equipment_usage`, `squad_formes`, `team_sizes`,
+  `range_profiles` ; bloc coordination (sessions et series) `kill_events`, `appuis`, `bloc`, sans
+  section englobante (elle serait comptee deux fois dans `total_ms`). En mode comparaison, les
+  blocs de la session comparee cumulent sous le meme nom (`calls` = 2) ; le journal des morts de
+  la reference d'habituel aussi (`kill_events` jusqu'a 3 appels).
+- Dette : 0 issue lint nouvelle (51 = 51 sur les trois paquets du gate ; `--new-from-rev=97cc0d0c8` :
+  0 issue). Six compteurs funlen preexistants augmentent : buildTeammateRowWithMatches 88->89,
+  buildSquadImpactMatrix 83->84 instructions, buildSquadPerMinuteStats 96->97, GetSynthesisPage
+  107->111, GetPage sessions 138->140, GetPage series 136->144 ; GetPage Escouade (nolint funlen)
+  +12 L. Quatre fichiers deja au-dela de 500 L grossissent : filters_service.go 606->613,
+  session_page_service.go 887->894, teammates_service.go 566->579,
+  teammates_squad_charts_weapons_perf.go 674->678 ; aucun fichier ne franchit 500 L.
+- Gate : `gofmt -l ./internal ./cmd` vide ; `go build ./...` 0 ; `go vet ./...` 0 ; `go test` des
+  quatre motifs du gate 0 (aucun `--- FAIL:`) ; golangci-lint 0 issue nouvelle. En plus, verts :
+  `go test ./internal/archlint/... ./internal/config/... ./internal/api/...`, `-race` sur `timing`.
+- Mutations jouees (toutes rouges puis restaurees, `cmp` a l'appui) : garde nil de `Section`
+  retiree (panique) ; seuil ramene a 0 (6 tests rouges, dont « seuil non atteint = pas de ligne
+  INFO ») ; porte `http_timings` toujours ouverte (2 rouges) ; condition « au moins une section »
+  retiree (1 rouge).
+- Exemple de ligne produite par un test : `{"level":"INFO","msg":"http_timings",
+  "path":"/api/v1/players/x/pages/teammates","duration_ms":6,"total_ms":6,
+  "sections":"load=6 build=0","calls":"load=2"}`.
+- Decouvertes du lot (consignees ici, non traitees) : (1) `title_slug` de la ligne `http` et les
+  compteurs HTTP par titre valent toujours le repli `halo_infinite` pour la chaine racine : le
+  middleware est monte avant `TitleExtractor` (`api/server.go:640` puis `:645`), qui ne passe le
+  titre qu'a une requete derivee (`middleware/title.go:40-42`) — lecture de code, non mesure ;
+  (2) commentaire de doc orphelin en fin de `service/teammates/teammates_service.go` (doc de
+  buildBriefingHeaderForTeammatesPage, dont la fonction, `teammates_service_briefing.go`, n'en a
+  pas) ; (3) directives `//nolint:PLR0913 — ...` invalides (`service/match_view_builders_team.go:
+  47-48`) : avertissement « unknown linters » a chaque golangci-lint ; (4)
+  `internal/observability/README.md` ne cite pas le sous-paquet `timing` (hors perimetre) ; (5)
+  processus : le scratchpad de session est partage entre agents de lot — mon `lint_baseline.txt`
+  a ete ecrase a 11:58 par un fichier du lot L4a (meme nom), reference retrouvee dans ma copie
+  normalisee de 11:54 ; un sous-dossier par lot evite la collision ; (6) `go test ./internal/api/...`
+  a cree `data/titles/halo_5/warehouse/metadata.duckdb` (12 Ko, ignore par git, 12:21) dans l'arbre
+  du worktree : un test existant ecrit sous `data/` du depot au lieu d'un repertoire temporaire ;
+  artefact retire apres coup, test non identifie (hors perimetre).
 
 ## 3. L3 — Timeouts, retry, annulation, session (Go + web)
 

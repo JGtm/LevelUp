@@ -11,6 +11,7 @@ import (
 	"levelup/go-api/internal/analysis/timeline"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/domain/highlightevent"
+	"levelup/go-api/internal/observability/timing"
 	"levelup/go-api/internal/port"
 )
 
@@ -164,6 +165,7 @@ func (s *TeammatesService) buildSquadIntensityProfile(
 	selectedGamertags []string,
 	mainTeamByMatch map[string]map[string]struct{},
 ) *domain.SquadIntensityProfile {
+	defer timing.FromContext(ctx).Section("intensity_profile")()
 	if s.repo == nil || len(allSquadRows) == 0 {
 		return nil
 	}
@@ -256,6 +258,7 @@ func (s *TeammatesService) buildSquadPerMinuteStats(
 	selectedGamertags []string,
 	sessionMatchIDs map[string]bool,
 ) []domain.SquadPerMinuteEntry {
+	defer timing.FromContext(ctx).Section("per_minute")()
 	if len(allSquadRows) == 0 {
 		return nil
 	}

@@ -15,6 +15,7 @@ import (
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/canonical"
 	"levelup/go-api/internal/legacymatch"
+	"levelup/go-api/internal/observability/timing"
 	"levelup/go-api/internal/port"
 )
 
@@ -62,6 +63,7 @@ func enrichMatchesMaxKillingSpree(
 func (s *TimeseriesService) loadHighlightEvents(
 	ctx context.Context, matchIDs []string,
 ) ([]canonical.HighlightEvent, error) {
+	defer timing.FromContext(ctx).Section("highlight_events")()
 	filters := port.HighlightEventFilters{
 		MatchIDs: matchIDs,
 		EventTypes: []canonical.HighlightEventType{

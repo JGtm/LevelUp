@@ -20,6 +20,13 @@ make restart      # stop + dev
 
 Ouvrir http://localhost:5173 une fois `make dev` lancé.
 
+Requêtes lentes : une requête d'API d'au moins `LEVELUP_SLOW_REQUEST_MS` millisecondes (défaut `1000`, lu
+une fois au démarrage du serveur) est journalisée dans `logs/http.log` avec `slow: true`, au moins en INFO.
+Si elle a chronométré des sections (pages Escouade, Synthèse, Sessions et Séries temporelles, filtres),
+une ligne `http_timings` suit et montre où est passé le temps (`total_ms`, `sections` = jusqu'à 15
+`nom=ms`, les plus longues d'abord, `calls`) ; si le niveau DEBUG est actif (`LEVELUP_LOGS_FILE_LEVEL=debug`),
+toute requête qui a chronométré des sections en reçoit une.
+
 ---
 
 ## Build

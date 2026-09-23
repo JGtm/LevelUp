@@ -24,6 +24,7 @@ import (
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/observability/timing"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/service/squadagg"
 	"levelup/go-api/internal/service/teammates"
@@ -93,9 +94,12 @@ func (s *TimeseriesService) attachMigratedSections(
 	ctx context.Context, resp *domain.TimeseriesPageResponse,
 	filteredCanon []canonical.PlayerMatchRow, locale string,
 ) {
+	stop := timing.FromContext(ctx).Section("weapon_range")
 	resp.WeaponRange, resp.Elevation = buildWeaponRangeSections(ctx, weaponRangeQuery{
 		Repo: s.weaponRangeRepo, TitleSlug: s.titleSlug, Gamertag: s.gamertag, Rows: filteredCanon,
 	})
+	stop()
+	stop = timing.FromContext(ctx).Section("equipment_usage")
 	resp.EquipmentUsage = buildEquipmentUsageBlock(ctx, equipmentUsageQuery{
 		Repo:            s.sessionUsageRepo,
 		PlayerXUID:      s.playerXUID,
@@ -106,9 +110,11 @@ func (s *TimeseriesService) attachMigratedSections(
 		TitleSlug: s.titleSlug,
 		Locale:    locale,
 	})
+	stop()
 	// « Les formes retenues », contexte SOLO : MÊMES match_id que le bloc d'usage
 	// ci-dessus. `SelectedGamertags` reste vide — cette page n'a pas d'escouade, et les
 	// cartes du contexte escouade ne s'y montent pas.
+	stop = timing.FromContext(ctx).Section("squad_formes")
 	resp.SquadFormes = squadagg.BuildSquadFormesBlock(ctx, squadagg.SquadFormesQuery{
 		Repo:         s.formesUsageRepo,
 		Objectives:   s.formesObjectiveRepo,
@@ -119,6 +125,7 @@ func (s *TimeseriesService) attachMigratedSections(
 		TitleSlug:    s.titleSlug,
 		Locale:       locale,
 	})
+	stop()
 	s.attachCoordination(ctx, resp, filteredCanon)
 	s.attachMatchRange(ctx, resp, filteredCanon, locale)
 }
@@ -133,6 +140,7 @@ func (s *TimeseriesService) attachMatchRange(
 	ctx context.Context, resp *domain.TimeseriesPageResponse,
 	filteredCanon []canonical.PlayerMatchRow, locale string,
 ) {
+	defer timing.FromContext(ctx).Section("range_profiles")()
 	if s.matchRangeXUID == "" {
 		return
 	}
@@ -197,6 +205,7 @@ func (s *TimeseriesService) attachCoordination(
 
 // coordinationTeamSizes rend l'effectif de mon camp par match, ou nil (pas de parité).
 func (s *TimeseriesService) coordinationTeamSizes(ctx context.Context, matchIDs []string) map[string]int {
+	defer timing.FromContext(ctx).Section("team_sizes")()
 	if s.formesUsageRepo == nil || s.playerXUID == "" {
 		return nil
 	}

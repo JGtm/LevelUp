@@ -19,6 +19,7 @@ import (
 	"strings"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/observability/timing"
 )
 
 // intersectSquadRowsByMatchID retourne les matchs présents chez TOUS les
@@ -324,6 +325,7 @@ func (f *exactCompositionFilter) applyShared(matches []domain.SquadSharedMatch) 
 func (s *TeammatesService) loadMainTeamAllies(
 	ctx context.Context, playerXUID string, matchIDs []string, reportIssue bool, issues *dataIssues,
 ) ([]domain.AllyParticipant, map[string]map[string]struct{}) {
+	defer timing.FromContext(ctx).Section("main_team_allies")()
 	if playerXUID == "" || len(matchIDs) == 0 {
 		return nil, nil
 	}

@@ -22,6 +22,7 @@ import (
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/canonical"
 	"levelup/go-api/internal/legacymatch"
+	"levelup/go-api/internal/observability/timing"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/service/squadagg"
 )
@@ -34,6 +35,7 @@ func (s *TeammatesService) buildBriefingHeaderForTeammatesPage(
 	sessionMatchIDs map[string]bool,
 	compFilter *exactCompositionFilter,
 ) *domain.SquadHeader {
+	defer timing.FromContext(ctx).Section("briefing_header")()
 	// Mode solo : SoloKPIs uniquement (pas de verdict squad).
 	// Egalement le cas si squadLoader pas cable (degradation gracieuse).
 	if len(selectedGamertags) == 0 || s.squadLoader == nil {
