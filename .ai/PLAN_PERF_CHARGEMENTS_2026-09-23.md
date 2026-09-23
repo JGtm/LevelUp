@@ -1422,6 +1422,203 @@ executeur Opus ; commits 077269adc L8.1, beece4926 L8.2, 38fd541ef L8.3, puis ce
   apres regeneration) ; `go test ./internal/archlint/ ./internal/api/handlers/` 0 ;
   `TestOpenAPIYAMLIsUpToDate` PASS et `go test ./internal/api/` 0 ; aucun `--- FAIL:`.
 
+## 9 quinquies. L9-go — correctifs de la revue adversariale (Go)
+
+Ajoute le 2026-09-23 a la cloture (C.2) : revue adversariale du diff cumule, fan-out aveugle
+(revues A, B, D pour le Go ; le lot L9-web traite la revue C en parallele). Decisions tranchees
+par le superviseur, dans l'ordre d'execution :
+
+- D9.1 (revue B, P0) : le cache des lectures joueur ne stocke jamais un chargement degrade — ni
+  requete terminee pendant le chargement, ni etape best-effort en echec ; un chargement degrade
+  n'est ni stocke ni partage aux requetes en attente (elles rechargent). Couvre le P2 de la revue
+  D (« un echec ponctuel de metadata est mis en cache 60 s »).
+- D9.2 (revue B, P1) : rafale LUSR bornee — zero ecrivain en regime stationnaire conserve (D6.1) ;
+  ecrivain rendu puis repris tous les K = 50 matchs ou des 2 s de detention, reprise du reste de
+  la file dans le meme cycle ; journal INFO par rafale (`candidates`, `new`, `bursts`).
+- D9.3 (revue B, P2) : (a) saisons — une fin de contexte n'est jamais memorisee comme echec
+  Waypoint ; (b) db_profiles.json — un instantane lu dans la fenetre de mefiance n'est jamais
+  garde ; (c) journaux en DEBUG quand la requete a pris fin (filters_service, data issues
+  Escouade, lireComposition).
+- D9.4 (revue A, P1) : matrice d'impact — appartenance a l'escouade par xuid.
+- D9.5 (revue A, P2) : lecture legere — sous `exact=true`, un echec de Q32b est une erreur
+  (503 / 500 par mapServiceError), jamais un 200 au roster non filtre.
+- D9.6 (revue D, P1) : Carriere — amis des rencontres resolus sans `v_gamertag_lookup`, en une
+  lecture (registre des profils, puis `xuid_aliases`, puis participants de l'historique, ILIKE).
+- D9.7 (revue D, P2) : session piquee sans match = aucun match ; `session_id` accepte.
+- D9.8 (revue D, P2) : ordres totaux de Q32, Q32c et Q10.
+- D9.9 (revue D, P2) : ratchet de l'annuaire sur tout `internal/`, identifiant nu, exceptions
+  datees.
+- D9.10 (revue D, P2) : `filtersCacheKey` — chaque champ de `port.PlayerMatchFilters` change la
+  cle (test par reflexion).
+
+Perimetre : les fichiers cites par les decisions et leurs tests ; ce plan (§9 quinquies). Hors
+perimetre : `apps/web` (lot L9-web), `.ai/thought_log.md` (texte de l'entree au rapport).
+Invariants : ART (INSERT-only, `_latest`, aucune allowlist), title-agnostic, `slog.*Context`,
+fichiers <= 500 L / fonctions <= 80 L (dette gelee).
+
+Items :
+- [x] L9.1 cache sans chargement degrade (D9.1) — `platform/duckdb/player_read_cache.go:192`
+  (`fetch` pose une sonde de degradation sur le contexte du chargement ; valeur degradee = rendue
+  avec `errDegraded` (:216), jamais stockee, marqueur `<cache>_degraded`), `:176` (une requete
+  greffee sur un vol degrade ou annule recharge pour son compte ; la porteuse recoit ses lignes
+  sans erreur, best-effort comme sans cache), `:237` `noteDegraded`, `:249` `bestEffortFailed`,
+  `:259` (requete terminee = degrade d'office). Sites consignes : `filters_repo_asset_names.go:95`,
+  `filters_repo_fr_cascades.go:95,102,115,146,161` (deux lectures jusque-la avalees en silence,
+  `rows.Err` verifie), `mode_name_tr.go:101`, `match_history_fr_translations.go:224,239`,
+  `home_repo_translations.go:215`, `home_repo_translations_canonical.go:109,143` (erreur des
+  modes FR jusque-la ignoree), `player_matches_adapter.go:57`. Tests
+  `player_read_cache_test.go:323,360,390,433` ; integration `player_read_cache_degraded_test.go:73`
+  (panne de metadata, filtres), `:97` (panne, historique enrichi), `:161` (annulations reparties,
+  reprise durable de `TestRevB_FilterRowsCachePoisonedByCancelledRequest`) ; commit f4d8c2af5
+- [x] L9.2 rafales LUSR bornees (D9.2) — `sync/skill/skill_v2_shared_access.go:75`
+  (`defaultLUSRBurstLimits` : 50 matchs, 2 s = `sharedprovider.defaultRWHoldWatchdog`), `:97`
+  (`runWriterBursts`, `heldGroups` traverse les rafales :98, INFO `lusr_v2: rafale bornee` :111),
+  `:144` (`processShadowBurst` borne) ; `skill_v2_shadow.go:146` ; `skill_v2_watermark.go:146`
+  (`bursts` dans `lusr_v2: rafale terminee`) ; tests `skill_v2_bounded_bursts_test.go:70` (300
+  candidats), `:123` (horloge pilotee), `:162` (parite en rafales de 2) ; parite existante verte ;
+  docs `SYNC_GUIDE.md` EN + FR ; gate integration sync + persist code 0 ; commit f6edd85a3
+- [x] L9.3 (a) saisons, (b) db_profiles, (c) journaux (D9.3) — (a) `service/seasons_catalog.go:307`,
+  test `seasons_catalog_cache_test.go:307` (annulation, echeance) ; (b) `config/config_players.go:95`,
+  test `config_players_cache_test.go:135` (scenario de la revue) ; (c)
+  `observability/level.go:20` (`LevelUnlessCanceled`, source unique gardee par
+  `level_test.go:45`), `service/filters_service.go:117,163`,
+  `teammates/teammates_data_issues.go:31`, `teammates_service_composition_legere.go:136`, test
+  `teammates_log_test.go:212` ; commits 778efcb9e, 3a7c21d28 (message DEBUG sans accent, cf. journal)
+- [x] L9.4 matrice d'impact par xuid (D9.4) — `teammates/teammates_squad_charts_impact_events.go:94`
+  (`resolveSquadScope(...).gtByXUID`, lignes = noms choisis), `teammates_service_sections.go:129` ;
+  test `teammates_impact_matrix_membership_test.go:25` (« Madina » / « madina » / « MADINA ») ;
+  commit 3b89ac6b2
+- [x] L9.5 lecture legere : Q32b illisible = erreur (D9.5) — `teammates_service_intersect.go:346`
+  (`lireEquipeAlliee`, seul appel de Q32b), `teammates_service_composition_legere.go:192,206` ;
+  test `teammates_service_composition_legere_test.go:418` (`TestRevA_LegereDegradeeSansSignal`
+  inverse) ; cas de parite « Q32b en echec : roster non filtre » retire (divergence voulue) ;
+  handler inchange (mapServiceError : 503 / 500, `page_service_errors_test.go`) ; commit 5cb42f7ae
+- [x] L9.6 Carriere, amis sans la vue (D9.6) — `platform/duckdb/career_repo_friends.go:36`
+  (`QAmisParGamertagTpl`), `:61` (`ResolveFriendXUIDs`, une lecture, section `career_friends`) ;
+  `service/career_service_encounters.go:189` (registre d'abord, puis la lecture unique),
+  `career_service.go:148` (`WithFriendXUIDSources`) ; `api/wire/registry_career.go:73,118` ;
+  libelle du ratchet corrige (`annuaire_ratchet_test.go:49`) ; tests
+  `career_service_friends_test.go:56,73,86`, integration `career_repo_friends_test.go:29,72` ;
+  chrono au journal ; commits f2a4757c1, 54a2244ec (requete enrolee au garde-rail des seeds, cf. journal)
+- [x] L9.7 session piquee sans match (D9.7) — `teammates_service_briefing.go:356` (contrat ecrit),
+  consommateurs `teammates_service_kpis.go:96`, `teammates_service_briefing.go:68`,
+  `teammates_squad_charts_intensity_perminute.go:250` (`!= nil`) ; `session_id` :
+  `teammates_service_briefing.go:312` ; tests `teammates_session_filter_test.go:328` (scenario 5),
+  `:355`, `teammates_filter_helpers_test.go:141` ; test du relecteur vert ; commit 329c21663
+- [x] L9.8 ordres totaux (D9.8) — `queries_squad.go:202` (Q32), `:243` (Q32c),
+  `queries_match.go:29` (Q10), regle en commentaire au-dessus de chaque gabarit ; tests
+  `squad_repo_departages_test.go:265,302,338` ; commit 145abc97b
+- [x] L9.9 ratchet de l'annuaire (D9.9) — `annuaire_ratchet_test.go:38` (table datee : DDL et
+  migrations, lectures consignees L7, deux lectures du sync killcollector), `:105` (parcours de
+  tout `internal/`, identifiant nu dans tout litteral) ; commit 58ae43598
+- [x] L9.10 cle du cache par reflexion (D9.10) — `player_matches_cache_test.go:306` ; commit
+  31851e885
+
+Gate : `gofmt -l ./internal ./cmd` ; `go build ./...` ; `go vet ./...` ; `go test ./...` ;
+`go test -tags=integration -p 1 ./internal/sync/... ./internal/persist/... ./internal/platform/duckdb/...` ;
+`go run ./cmd/openapi-gen -check` ; `golangci-lint run --new-from-rev=8830aebe2 ./...`.
+
+Journal du lot (2026-09-23, branche `feat/perf-l9go` depuis `feat/perf-chargements` 8830aebe2,
+executeur Opus ; un commit par item, puis ce journal) :
+
+- Chrono du point 6 (sonde temporaire compilee hors de l'arbre, jamais commitee : binaire « avant »
+  construit sur 5cb42f7ae, « apres » sur f2a4757c1 ; copie de `shared_matches_v2.duckdb` du
+  23/09 17:25 — celle de la revue D, recopiee dans le scratchpad du lot —, copies de
+  `db_profiles.json` et `player_friends.json` ; `OpenReadOnly`, 2 threads, 512 Mo ;
+  `CareerService.GetTopEncounters` de bout en bout, cablage de `wire.Career` reproduit, 3 tours) :
+  avant 6,6-19,3 s (JGtm 14,3-19,3 s, XxDaemonGamerxX 6,6-13,0 s,
+  Madina97294 7,3-8,9 s, Chocoboflor 7,2-7,7 s ; la vue seule : 1,9-4,8 s PAR AMI, trois amis
+  par joueur) ; apres 0,79-0,98 s (registre + lecture) ; la lecture seule des amis, sans
+  registre : 7,8-20,7 ms, et le service 0,80-0,98 s. Parite : 12 amis sur 12 resolus au meme
+  xuid par le registre, la lecture et la vue ; 40 rencontres servies (4 joueurs x 10) identiques
+  a l'octet avant / apres. Ce qui reste (~0,8 s) : Q26 (fenetre `_latest` du kill-feed,
+  decouvertes (1) et (2) du lot L7).
+- Precisions d'implementation (aucune decision rouverte) : (1) L9.1 — le signal de degradation
+  des chargeurs est une SONDE posee par le cache sur le contexte du chargement, renseignee aux
+  sites best-effort (`noteDegraded` / `bestEffortFailed`) ; ces sites sont des helpers partages
+  par des lecteurs non caches (historique de match, medias, accueil) dont la signature ne change
+  pas (sans sonde : sans effet). L'erreur typee `errDegraded` porte le verdict de `fetch` a
+  `load` ; non exportee, elle ne sort jamais du cache. Une table absente (base non migree) n'est
+  pas une degradation (meme resultat a chaque lecture). (2) L9.1 — les cascades FR carte /
+  selection sont extraites sans changement dans `filters_repo_fr_cascades.go` :
+  `filters_repo_asset_names.go` (491 L) aurait depasse 500 L. (3) L9.2 — la duree se teste APRES
+  chaque match : une rafale peut depasser 2 s de la duree d'un match ; mesure sur la base de test
+  : 6 rafales de 50 matchs, 374-401 ms chacune. (4) L9.3 (c) — cinq sites choisissent le niveau
+  par la vie de la requete : helper unique `observability.LevelUnlessCanceled` + garde-rail
+  (CLAUDE.md n6) plutot que cinq copies du predicat. (5) L9.4 — `mainGamertag` retire de la
+  signature (le joueur principal est `s.gamertag`, seul appelant), `teammates` ajoute : six
+  parametres comme avant. (6) L9.6 — le registre est `cfg.LoadPlayers` (relu seulement quand le
+  fichier change, L5b) ; tous les amis configures de la base de production sont des profils
+  suivis : en production, la resolution ne lit plus la base du tout. Ecarts nommes avec la vue
+  (tests `career_repo_friends_test.go:72`) : un ancien nom porte dans l'historique du joueur est
+  reconnu ; un nom porte seulement hors de son historique ne l'est plus (un joueur jamais croise
+  ne peut pas figurer dans ses rencontres) ; homonymes : niveau le plus fort puis plus petit
+  xuid (la vue : au hasard). Le niveau kill-feed de la vue n'est pas repris (la decision enumere
+  trois niveaux). (7) L9.7 — le `session_id` se lit sur les lignes canoniques
+  (`Enrichment.SessionID`), `SynthesisMatchRow` ne portant que le libelle. (8) L9.9 — un nom
+  d'etape de migration qui contient l'identifiant sans le nommer seul
+  (`upgrade_v_gamertag_lookup_...`) n'est pas compte (`\bv_gamertag_lookup\b`).
+- Mutations jouees (toutes rouges puis restaurees, `cmp` a l'appui) : L9.1 — stockage
+  inconditionnel (5 tests rouges dont les annulations reparties : 36 empoisonnements / 36),
+  partage aux requetes en attente, sonde muette, fin de requete ignoree, sites de consignation
+  retires ; L9.2 — `heldGroups` par rafale (parite rouge : 4 traites contre 3), borne de matchs
+  retiree (2 rafales au lieu de 6), borne de duree retiree, pas de reprise ; L9.3 — fin de
+  contexte memorisee, instantane stocke dans la fenetre, niveau inconditionnel, copie en ligne du
+  predicat ; L9.4 — appartenance par nom ; L9.5 — degradation silencieuse, cause perdue (`%v`) ;
+  L9.6 — registre ignore, niveau participants retire, comparaison sensible a la casse, bots admis ;
+  L9.7 — consommateur `len() > 0`, `session_id` ignore ; L9.8 — ORDER BY d'avant sur Q32, Q32c,
+  Q10 (rouge 5/5 chacun) ; L9.9 — lecture ajoutee, gabarit assemble dans un autre paquet ;
+  L9.10 — `OrderBy` retire de la cle, champ ajoute au type sans entrer dans la cle.
+- Tests des relecteurs rejoues par overlay sur le code final (hors de l'arbre) :
+  `TestRevB_FilterRowsCachePoisonedByCancelledRequest` (400 annulations, 0 empoisonnement, 73 s),
+  `TestRevB_CancelledFetchMemorisedAsFailure`, `TestRevB_RacyWindowSnapshotTrustedAfterWindow`,
+  `TestRevD_SessionPiqueeSansMatch` : verts ; `TestRevA_MatriceImpact_NomQ32bDifferentDuNomChoisi`
+  et `TestRevA_LegereDegradeeSansSignal` remplaces par leurs versions durables (signature de la
+  matrice changee ; attente inversee pour la lecture legere).
+- Dette : aucune fonction nouvelle au-dela de 80 L ni de 5 parametres (`buildSquadImpactMatrix`
+  garde ses six) ; `buildSquadImpactMatrix` raccourcie ; fichiers nouveaux sous 500 L. Deux
+  fichiers deja au-dela de 500 L grossissent : `service/filters_service.go` 613 -> 614 (ligne
+  d'import du helper de niveau) et `platform/duckdb/queries_match.go` 620 -> 622 (deux lignes
+  de documentation de l'ordre total demandees par D9.8) ; `filters_repo_asset_names.go`
+  491 -> 305 (extraction).
+- Gate (code final 54a2244ec) : `gofmt -l ./internal ./cmd` vide ; `go build ./...` 0 ;
+  `go vet ./...` 0 ; `go test ./...` 0 (190 paquets ok, 152 sans test, aucun `--- FAIL:`,
+  254 s). La premiere passe (code 31851e885) avait releve deux rouges, corrigees : ratchet
+  `TestNoNewFrenchLabelLiteral` (le message DEBUG de la fin de contexte, dans
+  `seasons_catalog.go`, passe par `c.logger`, hors de l'exclusion `slog.*` : reformule sans
+  accent, 3a7c21d28) et cliquet `TestSeedParityEnrollmentRatchet` (`mp.gamertag` de
+  `QAmisParGamertagTpl` couverte par aucune requete enrolee : requete enrolee sur
+  `seedPlayerSchema`, seuil d'extraction propre dans `seedParityMinRefs`, 54a2244ec).
+  `go test -tags=integration -p 1 ./internal/sync/... ./internal/persist/...
+  ./internal/platform/duckdb/...` 0 (17 paquets ok, 648 s, aucun `--- FAIL:`) ; a L9.2,
+  sync + persist seuls : 0 (301 s). `go run ./cmd/openapi-gen -check` 0 (aucun handler
+  touche). `golangci-lint run --new-from-rev=8830aebe2 ./...` : 0 issue ; avec
+  `--build-tags=integration` sur `platform/duckdb` et `sync` : 0 ; `go vet -tags=integration`
+  de duckdb, sync, persist, service : 0. Aucun test renomme ni supprime (le cas « Q32b en
+  echec » retire est une ligne de la table d'un test de L4b, absent de la baseline JSONL) :
+  baseline inchangee. Artefact `data/titles/halo_5/warehouse/metadata.duckdb` (recree par
+  `./internal/api/...`, decouverte (6) de L1) retire de l'arbre du worktree.
+- Decouvertes (consignees, non traitees) : (1) `service/seasons_catalog.go` : le singleflight
+  partage aux requetes en attente le repli (TOML + base vide) d'une porteuse annulee pendant le
+  fetch — non memorise desormais, mais servi a ces requetes-la (meme classe que D9.1) ;
+  (2) `teammates_service_kpis.go:88` : `teammates_load_squad_matches_failed` reste un ERROR
+  inconditionnel sur la page (la degradation qui suit, `issues.add`, passe en DEBUG sur
+  annulation) ; (3) `home_repo_translations.go:33,53` (accueil legacy, non cache) :
+  `mapImageURLs, _ :=` et `modeNamesFR, _ :=` avalent leurs erreurs sans journal ;
+  (4) `filters_repo.go` `hasMVPlayerMatches` rend false sur erreur (repli sur `v_match_full`,
+  memes lignes) sans journal ; (5) lecture legere : un coequipier dont Q30 echoue sort
+  silencieusement de l'intersection (la page le dit dans `data_issues`, la reponse legere n'en
+  porte pas) — meme classe que D9.5, hors de sa lettre ; (6) les deux lectures de la vue du
+  sync killcollector (`credit_annuaire.go`, `roster.go`) materialisent la vue a chaque passe
+  (cout non mesure) ; (7) saisons : un Waypoint lent (echeance du client HTTP) n'est plus
+  memorise — sur base vide, chaque requete authentifiee retente (miroir voulu de
+  `privacyFailure`) ; (8) le test d'annulations reparties est probabiliste (la fenetre des
+  traductions est courte : 14 chargements degrades sur 150 sur ce poste) ; les tests
+  deterministes (unitaires, panne de metadata) sont les gardes de D9.1 ; (9) `go test ./...`
+  ecrit des rasters JSON sous `data/cache/replays/*/rasters/` de l'arbre (marqueA.json,
+  writer1.json...) : un test du rejeu ecrit sous `data/` du depot au lieu d'un repertoire
+  temporaire (meme classe que la decouverte (6) de L1) ; laisses en place (ignores par git).
+
 ## 10. Cloture de campagne (superviseur)
 
 - [ ] C.1 mesure de reference (§8 protocole) : Escouade a froid / a chaud / clic rail, Synthese,
