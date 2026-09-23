@@ -126,7 +126,7 @@ func (s *TeammatesService) graphesDeLaPopulation(
 ) {
 	gt, px, sel, tm := s.gamertag, p.playerXUID, p.req.SelectedGamertags, p.teammates
 	siVivante(ctx, func() { out.mapHeatmap = s.buildSquadMapHeatmap(ctx, p.rows, sel, p.issues) })
-	siVivante(ctx, func() { out.impactMatrix = s.buildSquadImpactMatrix(ctx, p.rows, px, gt, sel, p.allies) })
+	siVivante(ctx, func() { out.impactMatrix = s.buildSquadImpactMatrix(ctx, p.rows, px, sel, tm, p.allies) })
 	siVivante(ctx, func() { out.perMinuteStats = s.buildSquadPerMinuteStats(ctx, p.rows, gt, sel, p.sessionMatchIDs) })
 	siVivante(ctx, func() { out.synergyRadar = s.buildSquadSynergyRadar(ctx, p.rows, gt, sel) })
 	siVivante(ctx, func() {
