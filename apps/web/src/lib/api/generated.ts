@@ -20343,9 +20343,9 @@ export interface operations {
     getTeammatesSessions: {
         parameters: {
             query?: {
-                /** @description Coéquipiers de la composition (gamertags séparés par des virgules). Absent ou vide : sessions escouade du joueur principal. */
+                /** @description Gamertags des membres de la composition, joints par des virgules. Absent ou vide : sessions escouade du joueur principal. */
                 teammates?: string[] | null;
-                /** @description Option composition exacte (filter_exact_composition de POST /pages/teammates). Défaut false. */
+                /** @description Option composition exacte (filter_exact_composition de POST /pages/teammates). Absent : false. */
                 exact?: boolean;
             };
             header?: never;

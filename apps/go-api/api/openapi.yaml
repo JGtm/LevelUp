@@ -5594,23 +5594,23 @@ paths:
           required: true
           schema:
             type: string
-        - description: 'Coéquipiers de la composition (gamertags séparés par des virgules). Absent ou vide : sessions escouade du joueur principal.'
+        - description: 'Gamertags des membres de la composition, joints par des virgules. Absent ou vide : sessions escouade du joueur principal.'
           explode: false
           in: query
           name: teammates
           schema:
-            description: 'Coéquipiers de la composition (gamertags séparés par des virgules). Absent ou vide : sessions escouade du joueur principal.'
+            description: 'Gamertags des membres de la composition, joints par des virgules. Absent ou vide : sessions escouade du joueur principal.'
             items:
               type: string
             type:
               - array
               - "null"
-        - description: Option composition exacte (filter_exact_composition de POST /pages/teammates). Défaut false.
+        - description: 'Option composition exacte (filter_exact_composition de POST /pages/teammates). Absent : false.'
           explode: false
           in: query
           name: exact
           schema:
-            description: Option composition exacte (filter_exact_composition de POST /pages/teammates). Défaut false.
+            description: 'Option composition exacte (filter_exact_composition de POST /pages/teammates). Absent : false.'
             type: boolean
       responses:
         "200":
