@@ -11,6 +11,7 @@ export const tacticalManifest = {
   "tactical.analysis.questions.morts": { fr: "Où je meurs", en: "Where I die" },
   "tactical.analysis.questions.routes": { fr: "Mes routes de spawn", en: "My spawn routes" },
   "tactical.analysis.questions.temps": { fr: "Où je passe mon temps", en: "Where I spend time" },
+  "tactical.analysis.updating": { fr: "Mise à jour…", en: "Updating…" },
   "tactical.cell.contribution_label": { fr: "Match du {date} à {instant} — ouvrir dans le rejeu", en: "Match of {date} at {instant} — open in replay" },
   "tactical.cell.contribution_open": { fr: "ouvrir à {instant}", en: "open at {instant}" },
   "tactical.cell.contributions_empty": { fr: "Aucun match ouvrable pour cette cellule.", en: "No openable match for this cell." },

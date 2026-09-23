@@ -13,7 +13,23 @@
  * rend les `match_id` ; l'onglet les poste en LISTE BLANCHE. Une seule définition du
  * périmètre dans l'app — et c'est la seule qui sache lire les sessions, que les
  * requêtes shared du lecteur tactique ne joignent pas.
+ *
+ * ─── UNE RELECTURE GARDE LA RÉPONSE PRÉCÉDENTE (retours rejeu L2, 2026-09-23) ──────
+ *
+ * Les trois lectures dont la clé porte l'empreinte d'un filtre (`hashFiltre(`) — périmètre,
+ * grille, raster — déclarent `placeholderData: precedenteDuMemeJoueur(…)`. Sans lui, changer
+ * de question ou cocher une session créait une clé SANS DONNÉE : la vue repassait par
+ * « en attente » et démontait tout, fond de carte compris, avant de le reconstruire. Avec
+ * lui, la réponse précédente reste affichée (`isPlaceholderData`) pendant la relecture, et
+ * la vue dit qu'elle se met à jour. Garde-rail : `queriesPlaceholder.guard.test.ts`.
+ * SEULE EXCEPTION : `useTacticalCellule` — les contributions d'une AUTRE cellule mentiraient.
+ *
+ * AU MÊME JOUEUR SEULEMENT (revue L2-R2) : la page reste montée quand le joueur change, et un
+ * `keepPreviousData` nu gardait le périmètre du joueur A pendant la résolution de celui de B
+ * — la liste de `match_id` de A partait alors sur les lectures de B, et la réponse
+ * s'affichait comme celle de B.
  */
+import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 
 import { api } from '@/lib/api/client'
@@ -41,6 +57,24 @@ export function hashFiltre(valeur: unknown): string {
     h = Math.imul(h, 0x01000193) >>> 0
   }
   return h.toString(16).padStart(8, '0')
+}
+
+/**
+ * precedenteDuMemeJoueur — `keepPreviousData`, BORNÉ à la même portée : la réponse
+ * précédente n'est gardée que si la requête précédente visait le même joueur, le même titre
+ * (et, pour le raster, la même carte). Sinon, aucune donnée : la vue repasse par le premier
+ * chargement, ce qui est vrai.
+ *
+ * `portee` = les éléments de la clé qui SUIVENT son nom, dans l'ordre des fabriques
+ * `queryKeys.tactical*` : `[playerSlug, titleSlug]`, puis `mapId` pour le raster. Seule
+ * l'empreinte du filtre (dernier élément) peut différer.
+ */
+function precedenteDuMemeJoueur(...portee: string[]) {
+  return <T>(
+    precedente: T | undefined,
+    requete: { queryKey: readonly unknown[] } | undefined,
+  ): T | undefined =>
+    requete && portee.every((v, i) => requete.queryKey[i + 1] === v) ? precedente : undefined
 }
 
 /**
@@ -72,6 +106,10 @@ export function useTacticalMatchIDs(playerSlug: string, contexte: FilterContextI
     },
     enabled: !!playerSlug,
     staleTime: 2 * 60 * 1000,
+    // Un nouveau filtre garde l'ancien périmètre jusqu'à la réponse : sans lui, la liste
+    // retombait à `null`, et la grille comme le raster repassaient par « en attente ».
+    // Jamais celui d'un AUTRE joueur (cf. `precedenteDuMemeJoueur`).
+    placeholderData: precedenteDuMemeJoueur(playerSlug, titleSlug),
   })
 }
 
@@ -101,6 +139,10 @@ export function useTacticalMaps(
     queryFn: () => api.post<TacticalMapsPage>(`/players/${playerSlug}/tactical/maps`, corps),
     enabled: !!playerSlug && matchIDs !== null,
     staleTime: 2 * 60 * 1000,
+    // La grille précédente reste affichée pendant la relecture : les vignettes (fond et
+    // mini-plan) ne sont plus démontées, et le titre de l'écran d'analyse, qui lit le NOM
+    // de la carte dans cette grille, ne retombe plus sur l'identifiant brut.
+    placeholderData: precedenteDuMemeJoueur(playerSlug, titleSlug),
   })
 }
 
@@ -129,11 +171,18 @@ export function useCoequipierOptions(playerSlug: string): {
     enabled: !!playerSlug,
     staleTime: 5 * 60 * 1000,
   })
-  const options = (data?.teammates ?? []).map((t) => ({
-    gamertag: t.gamertag,
-    xuid: t.xuid,
-    encounter_count: t.match_count,
-  }))
+  // MÉMOÏSÉ sur la réponse : un tableau neuf à chaque rendu recalculait la composition, puis
+  // les paramètres du raster et leur empreinte (`hashFiltre` sur toute la liste de
+  // `match_id`), à chaque rendu de la page.
+  const options = useMemo(
+    () =>
+      (data?.teammates ?? []).map((t) => ({
+        gamertag: t.gamertag,
+        xuid: t.xuid,
+        encounter_count: t.match_count,
+      })),
+    [data],
+  )
   return { options, chargees: isSuccess }
 }
 
@@ -241,6 +290,12 @@ export function useTacticalRaster(
       ),
     enabled: !!playerSlug && !!mapId && params.match_ids !== null,
     staleTime: 2 * 60 * 1000,
+    // La réponse précédente reste servie pendant la relecture (`isPlaceholderData`) : la
+    // vue la montre ESTOMPÉE sous « Mise à jour… » (décision Q26 du 2026-09-23) et ne
+    // démonte jamais le fond. Elle ne passe jamais d'une carte à l'autre (la vue est
+    // remontée par carte, `key={scope.carte}` dans `TacticalPage`, et la portée compare la
+    // carte), ni d'un joueur à l'autre.
+    placeholderData: precedenteDuMemeJoueur(playerSlug, titleSlug, mapId),
   })
 }
 
