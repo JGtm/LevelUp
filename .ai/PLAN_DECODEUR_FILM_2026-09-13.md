@@ -8326,6 +8326,110 @@ contre 4 469 dans la reference — et 1 489 est EXACTEMENT la valeur que le lot 
 les divergences sont celles de la reference perimee, pas des siennes. Decodage : 14,8 s,
 pic 0,19 Gio, un film a la fois.
 
+### Post-chantier — lot 5.26 (le quart de trames abandonne sur film dense : deux pistes, une adresse chacune), branche `feat/decfilm-76`, base `43a01721e`
+
+**Le lien avec l objectif de l utilisateur** (un rendu DENSE et COMPLET du rejeu 2D) : sur film
+dense le calque des etats perd **35,4 %** des ticks de bipede de joueur sur `bfecd02b`
+(85 843 / 242 711) et **53,7 %** sur `4f77afc1` (5.25), parce que les trames s abandonnent sur
+des entites NEES ET MORTES entre deux images-cles. Ce lot a instruit les deux dernieres pistes
+(decision utilisateur du 22/09 : dernier lot sur ce sujet). **Aucune ne tient : aucun tick de
+joueur n est rendu au rejeu, les chiffres du 5.25 restent les chiffres.** Note :
+`.ai/V7.5/film_re/NOTE_5_26_NAISSANCES_NON_DECLAREES_2026-09-23.md`.
+
+Ce que le depot dispatche (verifie sur pieces) : la pompe `source.Paquets` ENUMERE tous les
+types ; en production les lecteurs ne consomment que le type **0** (trame delta,
+`PacketTypeDelta`) et le type **2** (image-cle) ; les types **1** (`LireBlocDeDatums`) et **8**
+(`PacketTypeRoster`) ne sont lus que par des instruments `research` ; le type 7 (CHUNK_END) arrete
+la marche ; **6, 9, 10, 0xb, 0xc ne sont lus par rien**.
+
+- [!] **5.26.1 — LES TROIS HANDLERS (6, 0xb, 0xc) : FERMES PAR L ECRIVAIN, CONFIRMES PAR LA
+  MESURE.** (`3dc334a9d`)
+
+  | type | handler | lit | ecrit | consommateur |
+  |---|---|---|---|---|
+  | 6 | `FUN_142988084` | R(32) | indice de joueur -> `FUN_1410de6c4` ; `session+0x114` (`0x1428e2388`) = `DAT_144c2328c`, `+0x118 = 0` | le SEUL `FUN_142e2e104` (vue Theater « Film View » : `FUN_1428c53e8` joueur local ?, puis `FUN_1428e24bc`, re-serialisation du monde VIVANT, aucun octet du film) |
+  | 0xb | `FUN_1429882c8` | le bloc entier | **rien** (tampon libere) | personne |
+  | 0xc | `FUN_1429875e4` | R(32) compte ; par entree R(32) x 3 + `FUN_1407eeba4` | table de BOTS (`FUN_142c26748` « botHandle », participants de pas `0x610`) | gestionnaire de bots |
+
+  Aucun n atteint `FUN_1406cd128`, `FUN_1406caad8` ni la table de datums (dont les deux seules
+  entrees restent `FUN_1408f1314` et `FUN_1408f1618`, 5.20.3 (c)). **Mesure**
+  (`TestHandlers526`) :
+
+  | | `dad793c7` | `bfecd02b` |
+  |---|---:|---:|
+  | type 6 : paquets · taille · R(32) · rang apres l image-cle | 5 · 4 o · **0** · +1 | 27 · 4 o · **0** · +1 |
+  | type 0xb | **0** | **0** |
+  | type 0xc : paquets · taille · compte · rang | 6 · 4 o · **0** · +3 (5), +5 (1) | 28 · 4 o · **0** · +3 (27), +5 (1) |
+  | eid rejetes avec un paquet 6/0xb/0xc entre image-cle et premier rejet | — | **801 / 801** (structurel : en-tete de chunk) |
+  | paquets 6/0xb/0xc suivis immediatement d un premier rejet | 0 / 11 | **2 / 55** (taux de base 801 / 31 232 = 2,56 %) |
+
+  Contenu CONSTANT (indice de joueur 0, compte de bots nul), position STRUCTURELLE, aucun lien
+  avec une naissance au-dela du hasard. Population des autres types reproduite contre le 5.19.3.
+
+- [!] **5.26.2 — LE RECORD 36 NE NOMME PAS L ENTITE REJETEE : 0 / 44 ET 0 / 143.**
+  (`4b6c6241b`)
+
+  Chez l ecrivain : le repartiteur `FUN_14080a9d4` lit trois references gardees par
+  `FUN_1406d3140`, de domaines **1, 8, 7** (vtable du descripteur `0x143d0aca0`, entree `+0x58`
+  = `0x14080a048`) ; le domaine 7 (`DAT_1451f9908`) est celui des trames, c est la SEULE
+  reference qui puisse nommer une entite de trame. Le corps `FUN_14080c1f8` (5e argument = 1,
+  `0x14080aad1`) : variante, bloc, attaquant (`FUN_141fcf670`), `FUN_1407f2034`,
+  `FUN_1406d00ec`, arme famille / variante (`FUN_14080d69c`, `FUN_14080dec4` — un TAG 64 bits,
+  pas un datum ni un archetype), drapeaux, horodatage de bloc, comptes (`FUN_14080cc68`), boucle
+  sur `+0x34` (identifiants de domaine 1, `0x14080c580`), boucle sur `+0xf8` (sans identifiant),
+  deux references TYPEES (`FUN_140c9e990`, `FUN_1408eff64` : domaine = genre R(2), 1 ou 2), visee
+  R(30), queue sans identifiant. **Aucun champ de domaine 7, aucun archetype.** `fire_events.go`
+  lit a offsets fixes l attaquant (bits 35..40), l arme (44..107), les drapeaux (108..112), la
+  visee (113 ou post-comptes + 2) ; `fire_aim_modal.go` SAUTE les trois references, `c`, `d`,
+  `e`, `f`, `g`, et tout ce qui suit la visee. **Mesure** (`TestTir526`, liste d eid de
+  `TestTicks525`) :
+
+  | | `bfecd02b` | `4f77afc1` |
+  |---|---:|---:|
+  | eid rejetes · premier rejet sous un record 36 | 801 · **44** | 871 · **143** |
+  | ref0 (domaine 1, sonde 1) presente · = eid rejete | 44 · **0** | 143 · **0** |
+  | ref1 (domaine 8) · ref2 (domaine 7) presentes | **0 · 0** | **0 · 0** |
+  | balayage bit a bit de l etendue localisee (index 13 + tete 2) · temoin | **0** · 0 | **0** · 0 |
+  | TOUS les records 36 du film : ref2 presente | **0 / 2 611** | **0 / 5 079** |
+
+- [!] **5.26.3 — LA LIAISON : NON FAITE, AUCUNE PISTE NE TIENT.** Ni `FUN_142988084` /
+  `FUN_1429882c8` / `FUN_1429875e4` (aucun n ecrit dans la table de datums ni n alimente
+  `FUN_1406caad8`), ni le record 36 (`FUN_14080a9d4` : ref2 de domaine 7 jamais presente ;
+  `FUN_14080c1f8` : aucun identifiant de domaine 7, aucun archetype) ne declarent une entite.
+  Pas de liaison, pas d archetype suppose, aucune ligne de production : `grammar.Rev`
+  (`grammar-2026-09-22.12`), `facts.Rev` et `replay.SchemaVersion` (**68**) INCHANGES, AUCUN
+  backfill, aucun re-figeage de fixture.
+
+- [x] **5.26.4 — LE PLAN ET LA NOTE.** Cette section, la ligne du §5 general, la note
+  `NOTE_5_26_NAISSANCES_NON_DECLAREES_2026-09-23.md`.
+
+#### §4 du lot 5.26 — DECOUVERTES HORS PERIMETRE, CONSIGNEES ET NON TRAITEES
+
+| # | decouverte | ou la reprendre |
+|---|---|---|
+| **D1 (5.26)** | **D4 (5.19) N EST PAS UN ECART : `*(int *)(param_3 + 2)` porte sur un `short *`, donc l OCTET 4** — le champ taille de l en-tete `[u16 type][u16][u32 taille][u64 ts]`, exactement celui du lecteur hors ligne. | personne : le §4 du 5.19 peut etre corrige d une ligne |
+| **D2 (5.26)** | **LE BRIEF DU LOT DISAIT « LE TYPE 7 EST LA TRAME DELTA » ; la trame delta est le type 0** (31 232 paquets sur `bfecd02b`, `FUN_1428e2778` ; `PacketTypeDelta = 0`), le type 7 est CHUNK_END (0 octet, `FUN_142985698`). | les prochains briefs |
+| **D3 (5.26)** | **`fire_aim_modal.go` nomme `FUN_1406cd5b8` comme lecteur composite du chemin modal ; en rejeu le repartiteur appelle le corps avec son 5e argument a 1, qui prend `FUN_140c9e4d8` a sa place** (et `FUN_1406d3140` au lieu de R(32) dans la boucle sur `+0x34`). La position mesuree de la visee n en depend pas (0 cible, 0 composante) ; seule la prose est inexacte. | le lot qui touchera `fire_aim_modal.go` |
+| **D4 (5.26)** | **LE RECORD 36 NE PORTE JAMAIS ref1 NI ref2** (0 / 7 690 records sur deux films) **ET ref0 A TOUJOURS SA SONDE A 1** (5 079 / 5 079 sur `4f77afc1`) : les deux `Skip(15)` gardes de `modalPostCountsBit` ne sont jamais pris sur les deux films mesures. | personne : constat |
+| **D5 (5.26)** | **`bfecd02b` A ETE DECODE DEUX FOIS PAR L INSTRUMENT DE 5.26.1** (une commande de sortie redondante de l executant, 1,75 s chacune), contre la regle « un film entier decode par mesure ». Aucun resultat n en depend. | personne : consigne |
+
+#### §5 du lot 5.26 — ETAT DE CLOTURE
+
+| item | statut | ce qui est etabli |
+|---|---|---|
+| 5.26.1 | `[!]` | piste FERMEE : type 6 = indice de joueur (`DAT_144c2328c`, lu par la seule vue Theater `FUN_142e2e104`), 0xb = lu et jete, 0xc = table de bots (`FUN_142c26748`) ; contenu constant (0, 0), position d en-tete de chunk, 2 / 55 suivis d un premier rejet contre 2,56 % de base |
+| 5.26.2 | `[!]` | piste FERMEE : le record 36 n a qu une reference presente, ref0 (domaine 1, sonde 1) ; ref2 (domaine 7) jamais presente (0 / 7 690) ; eid rejete dans le record du meme paquet **0 / 44** et **0 / 143** ; aucun archetype de projectile dans le canal |
+| 5.26.3 | `[!]` | non faite : aucune piste ne tient (adresses ci-dessus) ; aucune ligne de production, aucune revision, aucun backfill |
+| 5.26.4 | `[x]` | plan, §5 general, note |
+| GATE | `[!]` | sans objet : pas de changement de production, donc ni `TestGate516` A/B ni `TestTicks525` apres ; les chiffres restent **3 940 / 30 387** et **85 843 / 242 711 = 35,4 %** |
+
+Revisions : AUCUNE (`grammar-2026-09-22.12`, `facts.Rev` inchangee, schema **68**). Gates par
+commit : gofmt, `go build ./...`, `go vet ./...` et `-tags research` sur `film/...`,
+`go test -count=1` sur `halo_infinite/...`, `archlint`, `replaybuild`, `replaydoc`,
+`replayview`, `contracttest`, `api` (0 `--- FAIL`, code de sortie 0), `golangci-lint run
+./internal/games/halo_infinite/film/...` (0 issue) ; paquet `grammar` (ex-`filmdec`) sans tag,
+seul, `CGO_ENABLED=0` : **23,5 s**.
+
 ### Post-chantier — lot 5.25 (mesure : ticks de joueur perdus par le calque des etats), branche `feat/decfilm-75`
 
 Sur la remarque de l utilisateur du 2026-09-22 : **25 % des REJETS ne veut pas dire 25 % des
@@ -12191,6 +12295,22 @@ de diff ne l aurait trouve.
 | 2026-09-21 | 5.3.2 | **D9 (5.3) — LE DOMAINE MESURÉ DES CHAMPS D'`i54` CONTREDIT L'HYPOTHÈSE DE L'ÉCRIVAIN.** L'identifiant optionnel de 10 bits n'est transmis **0 fois sur 2 245 initiations** (il reste à sa sentinelle), et `+0x9c` ne prend que **deux** valeurs, 0 et 2, jamais 1 ni 3. L'hypothèse « Sprint / Thruster / Clamber / Slide sur 2 bits » du § 2.8 est donc réfutée par les valeurs. Seul `+0x98` (R(7)) se comporte en discriminant, et son domaine varie d'un film à l'autre (3 valeurs sur `bfecd02b`, 8 sur `4f77afc1`). | **NON TRAITÉE** : nommer les classes demande de croiser `+0x98` avec la carte et le geste vu dans Theater — c'est un lot en soi, et il a besoin de l'attribution vie -> joueur que 5.3.2 n'a pas faite |
 
 ## 5. Journal des gates locaux (un gate non consigné n'a pas eu lieu)
+
+### Post-chantier — lot 5.26 (le quart de trames abandonne sur film dense), 2026-09-23
+
+Branche `feat/decfilm-76`, worktree `LevelUp-wt-decfilm-76`, base `43a01721e`. Aucune base
+DuckDB ouverte, aucun backfill ; un decodage a la fois.
+
+| Date | Point | Gate | Resultat |
+|---|---|---|---|
+| 2026-09-23 | 5.26.1 | `MOUV511_FILM=<dad793c7> MOUV511_CARTE=snowbound go test -tags=research -run '^TestHandlers526$'` | **PASS 0,08 s** — types 6 : 5 x 4 o (R(32) = 0), 0xb : 0, 0xc : 6 x 4 o (compte 0) ; 0 eid rejete |
+| 2026-09-23 | 5.26.1 | idem sur `bfecd02b` | **PASS 1,75 s** — 6 : 27 x 4 o (0), 0xb : 0, 0xc : 28 x 4 o (0) ; 801 eid, 801 / 801 avec un tel paquet avant (structurel), 2 / 55 suivis d un premier rejet (base 2,56 %) ; film decode DEUX fois (D5 (5.26)) |
+| 2026-09-23 | 5.26.1 | gofmt, build, vet, vet `research`, `go test -count=1` (halo_infinite, archlint, replaybuild, replaydoc, replayview, contracttest, api), `golangci-lint` film | **tout vert**, code de sortie 0, 0 `--- FAIL`, 0 issue |
+| 2026-09-23 | 5.26.2 | `MOUV511_FILM=<bfecd02b> MOUV511_CARTE=snowbound go test -tags=research -run '^TestTir526$'` | **PASS 4,43 s** — 44 cibles, ref0 44 (= eid 0), ref1 0, ref2 0 ; balayage 0 / 44 (temoin 0) ; ref2 0 / 2 611 records 36 |
+| 2026-09-23 | 5.26.2 | idem sur `4f77afc1`, `MOUV511_CARTE="flood gulch"` | **PASS 12,72 s** — 143 cibles, ref0 143 (= eid 0), ref1 0, ref2 0 ; balayage 0 / 143 (temoin 0) ; ref2 0 / 5 079, ref0 5 079 (sonde 1 : 5 079) |
+| 2026-09-23 | 5.26.2 | memes gates sans decodage | **tout vert**, code de sortie 0, 0 `--- FAIL`, 0 issue |
+| 2026-09-23 | 5.26.2 | `CGO_ENABLED=0 go test -count=1 ./internal/games/halo_infinite/film/internal/grammar/` (paquet ex-`filmdec`, seul) | **ok 23,5 s** (31,6 et 33,3 s dans la suite complete, machine partagee) |
+| 2026-09-23 | 5.26.3 | — | **non joue** : aucune piste ne tient, aucun changement de production ; `TestGate516`, `TestTicks525`, `replay-equiv` et le rendu sont sans objet |
 
 ### Post-chantier — lot 5.24 (backfill killsource : vitesse, etat, reprise), 2026-09-22
 
