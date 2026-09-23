@@ -1,8 +1,12 @@
+// player_matches_cache_test.go — historique canonique enrichi derrière le cache des
+// lectures joueur (plan perf 2026-09-23, lot L5b, D5b.4). Aucune base : source
+// factice.
 package duckdb
 
 import (
 	"context"
-	"errors"
+	"reflect"
+	"sort"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -13,201 +17,259 @@ import (
 	"levelup/go-api/internal/port"
 )
 
-// fakeLoader compte les appels et permet d'injecter une latence ou une erreur.
-type fakeLoader struct {
-	calls int64
-	mu    sync.Mutex
-	rows  []canonical.PlayerMatchRow
-	err   error
-	delay time.Duration
+// fakePlayerMatches compte ses chargements et rend des lignes neuves à chaque
+// appel, avec des AssetReference porteuses de libellés (comme l'adapter enrichi).
+type fakePlayerMatches struct {
+	calls      atomic.Int32
+	lobbyCalls atomic.Int32
+	delay      time.Duration
 }
 
-func (f *fakeLoader) Load(_ context.Context, _ port.PlayerMatchFilters) ([]canonical.PlayerMatchRow, error) {
-	atomic.AddInt64(&f.calls, 1)
+func (f *fakePlayerMatches) LoadPlayerMatches(_ context.Context, _, _ string, _ port.PlayerMatchFilters) ([]canonical.PlayerMatchRow, error) {
+	f.calls.Add(1)
 	if f.delay > 0 {
 		time.Sleep(f.delay)
 	}
-	if f.err != nil {
-		return nil, f.err
+	ref := func(kind, id, fr string) *canonical.AssetReference {
+		return &canonical.AssetReference{Kind: kind, ID: id, DefaultLabel: id, Labels: map[string]string{"fr": fr, "en": id}}
 	}
-	f.mu.Lock()
-	rows := append([]canonical.PlayerMatchRow{}, f.rows...)
-	f.mu.Unlock()
-	return rows, nil
+	return []canonical.PlayerMatchRow{
+		{Summary: canonical.MatchSummary{MatchID: "m1", Map: ref("map", "Aquarius", "Aquarius FR"),
+			Playlist: ref("playlist", "Ranked", "Classé"), PairMode: ref("pair", "Slayer", "Assassin")}},
+		{Summary: canonical.MatchSummary{MatchID: "m2", Map: ref("map", "Streets", "Rues")}},
+	}, nil
 }
 
-func TestCachedPlayerMatchesRepo_HitMiss(t *testing.T) {
-	t.Parallel()
-	loader := &fakeLoader{rows: []canonical.PlayerMatchRow{{Summary: canonical.MatchSummary{MatchID: "m1"}}}}
-	repo := NewCachedPlayerMatchesRepo(loader, 10, time.Minute)
+func (f *fakePlayerMatches) LobbySizesAtCompletion(_ context.Context, _ string, ids []string) (map[string]int, error) {
+	f.lobbyCalls.Add(1)
+	return map[string]int{ids[0]: 8}, nil
+}
 
-	filters := port.PlayerMatchFilters{}
-	if _, err := repo.Load(context.Background(), filters); err != nil {
-		t.Fatalf("first call err: %v", err)
-	}
-	if _, err := repo.Load(context.Background(), filters); err != nil {
-		t.Fatalf("second call err: %v", err)
-	}
-	if got := atomic.LoadInt64(&loader.calls); got != 1 {
-		t.Errorf("inner should be called once (cache hit on second), got %d", got)
-	}
-	hits, misses := repo.MetricsSnapshot()
-	if hits != 1 || misses != 1 {
-		t.Errorf("metrics: hits=%d misses=%d, want hits=1 misses=1", hits, misses)
+func newTestPlayerMatches(src *fakePlayerMatches, xuid string) *CachedPlayerMatchesRepo {
+	return &CachedPlayerMatchesRepo{
+		inner: src,
+		cache: newPlayerReadCache("player_matches_cache", clonePlayerMatchRows),
+		scope: testScope(xuid, "halo_infinite", "p"),
 	}
 }
 
-func TestCachedPlayerMatchesRepo_DistinctFiltersDifferentKeys(t *testing.T) {
+func TestCachedPlayerMatchesRepo_HitPerFilters(t *testing.T) {
 	t.Parallel()
-	loader := &fakeLoader{}
-	repo := NewCachedPlayerMatchesRepo(loader, 10, time.Minute)
-	period1y := temporal.Period1Y
-	period1m := temporal.Period1M
-
-	if _, err := repo.Load(context.Background(), port.PlayerMatchFilters{Period: &period1y}); err != nil {
-		t.Fatalf("err: %v", err)
+	src := &fakePlayerMatches{}
+	repo := newTestPlayerMatches(src, "x1")
+	oneYear, oneMonth := temporal.Period1Y, temporal.Period1M
+	for i := 0; i < 2; i++ {
+		for _, f := range []port.PlayerMatchFilters{{}, {Period: &oneYear}, {Period: &oneMonth}} {
+			if rows, err := repo.LoadPlayerMatches(context.Background(), "halo_infinite", "GT", f); err != nil || len(rows) != 2 {
+				t.Fatalf("chargement : %d lignes, err=%v", len(rows), err)
+			}
+		}
 	}
-	if _, err := repo.Load(context.Background(), port.PlayerMatchFilters{Period: &period1m}); err != nil {
-		t.Fatalf("err: %v", err)
-	}
-	if got := atomic.LoadInt64(&loader.calls); got != 2 {
-		t.Errorf("distinct filters should produce 2 inner calls, got %d", got)
+	if got := src.calls.Load(); got != 3 {
+		t.Errorf("chargements = %d, want 3 (une variante par jeu de filtres, puis hits)", got)
 	}
 }
 
 func TestCachedPlayerMatchesRepo_OutcomeOrderInsensitive(t *testing.T) {
 	t.Parallel()
-	loader := &fakeLoader{}
-	repo := NewCachedPlayerMatchesRepo(loader, 10, time.Minute)
-
-	a := port.PlayerMatchFilters{
-		OutcomeIn: []canonical.Outcome{canonical.OutcomeWin, canonical.OutcomeLoss},
-	}
-	b := port.PlayerMatchFilters{
-		OutcomeIn: []canonical.Outcome{canonical.OutcomeLoss, canonical.OutcomeWin},
-	}
-	if _, err := repo.Load(context.Background(), a); err != nil {
-		t.Fatalf("err: %v", err)
-	}
-	if _, err := repo.Load(context.Background(), b); err != nil {
-		t.Fatalf("err: %v", err)
-	}
-	if got := atomic.LoadInt64(&loader.calls); got != 1 {
-		t.Errorf("same filters with different ordering should hit cache, got %d calls", got)
+	src := &fakePlayerMatches{}
+	repo := newTestPlayerMatches(src, "x1")
+	a := port.PlayerMatchFilters{OutcomeIn: []canonical.Outcome{canonical.OutcomeWin, canonical.OutcomeLoss}}
+	b := port.PlayerMatchFilters{OutcomeIn: []canonical.Outcome{canonical.OutcomeLoss, canonical.OutcomeWin}}
+	_, _ = repo.LoadPlayerMatches(context.Background(), "", "", a)
+	_, _ = repo.LoadPlayerMatches(context.Background(), "", "", b)
+	if got := src.calls.Load(); got != 1 {
+		t.Errorf("mêmes filtres dans un autre ordre : %d chargements, want 1", got)
 	}
 }
 
-func TestCachedPlayerMatchesRepo_TTLExpiration(t *testing.T) {
+// TestCachedPlayerMatchesRepo_ReturnsCopies : re-enrichir (écrire Labels, DefaultLabel,
+// IconURL comme EnrichCanonicalAssetTranslations), trier ou modifier les lignes
+// rendues ne touche ni le cache ni les autres lecteurs.
+func TestCachedPlayerMatchesRepo_ReturnsCopies(t *testing.T) {
 	t.Parallel()
-	loader := &fakeLoader{}
-	repo := NewCachedPlayerMatchesRepo(loader, 10, 50*time.Millisecond)
-
-	filters := port.PlayerMatchFilters{}
-	if _, err := repo.Load(context.Background(), filters); err != nil {
-		t.Fatalf("err1: %v", err)
+	repo := newTestPlayerMatches(&fakePlayerMatches{}, "x1")
+	for i := 0; i < 2; i++ { // 1re lecture = chargement, 2e = cache
+		rows, _ := repo.LoadPlayerMatches(context.Background(), "", "", port.PlayerMatchFilters{})
+		rows[0].Summary.Map.Labels["fr"] = "muté"
+		rows[0].Summary.Map.DefaultLabel = "muté"
+		rows[0].Summary.Map.IconURL = "muté"
+		rows[0].Summary.Playlist.Labels["fr"] = "muté"
+		rows[0].Summary.PairMode.Labels["fr"] = "muté"
+		rows[0].Summary.MatchID = "muté"
+		sort.Slice(rows, func(a, b int) bool { return rows[a].Summary.MatchID > rows[b].Summary.MatchID })
 	}
-	time.Sleep(80 * time.Millisecond) // > TTL
-	if _, err := repo.Load(context.Background(), filters); err != nil {
-		t.Fatalf("err2: %v", err)
-	}
-	if got := atomic.LoadInt64(&loader.calls); got != 2 {
-		t.Errorf("TTL expired -> 2 inner calls expected, got %d", got)
+	rows, _ := repo.LoadPlayerMatches(context.Background(), "", "", port.PlayerMatchFilters{})
+	m := rows[0].Summary
+	if m.MatchID != "m1" || m.Map.Labels["fr"] != "Aquarius FR" || m.Map.DefaultLabel != "Aquarius" || m.Map.IconURL != "" ||
+		m.Playlist.Labels["fr"] != "Classé" || m.PairMode.Labels["fr"] != "Assassin" {
+		t.Errorf("cache modifié par un lecteur : %+v / map=%+v", m.MatchID, *m.Map)
 	}
 }
 
-func TestCachedPlayerMatchesRepo_Coalescence(t *testing.T) {
+// TestCachedPlayerMatchesRepo_ConcurrentReEnrichment : des requêtes concurrentes qui
+// ré-enrichissent leurs lignes (Home, Synthèse) écrivent chacune dans SES maps — un
+// Labels partagé ferait « concurrent map writes » (erreur fatale du runtime).
+func TestCachedPlayerMatchesRepo_ConcurrentReEnrichment(t *testing.T) {
 	t.Parallel()
-	loader := &fakeLoader{
-		rows:  []canonical.PlayerMatchRow{{Summary: canonical.MatchSummary{MatchID: "m1"}}},
-		delay: 50 * time.Millisecond, // forces concurrent goroutines to overlap
-	}
-	repo := NewCachedPlayerMatchesRepo(loader, 10, time.Minute)
-	filters := port.PlayerMatchFilters{}
-
-	const N = 30
+	repo := newTestPlayerMatches(&fakePlayerMatches{}, "x1")
+	_, _ = repo.LoadPlayerMatches(context.Background(), "", "", port.PlayerMatchFilters{})
 	var wg sync.WaitGroup
-	wg.Add(N)
-	errs := make([]error, N)
-	for i := 0; i < N; i++ {
-		i := i
+	for g := 0; g < 32; g++ {
+		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			_, errs[i] = repo.Load(context.Background(), filters)
+			rows, _ := repo.LoadPlayerMatches(context.Background(), "", "", port.PlayerMatchFilters{})
+			for i := 0; i < 200; i++ {
+				rows[0].Summary.Map.Labels["fr"] = "ré-enrichi"
+				rows[1].Summary.Map.Labels["en"] = "re-enriched"
+			}
 		}()
 	}
 	wg.Wait()
-	for i, err := range errs {
-		if err != nil {
-			t.Errorf("goroutine %d err: %v", i, err)
-		}
+}
+
+func TestCachedPlayerMatchesRepo_ConcurrentMissesCoalesce(t *testing.T) {
+	t.Parallel()
+	src := &fakePlayerMatches{delay: 50 * time.Millisecond}
+	repo := newTestPlayerMatches(src, "x1")
+	var wg sync.WaitGroup
+	for g := 0; g < 25; g++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			_, _ = repo.LoadPlayerMatches(context.Background(), "", "", port.PlayerMatchFilters{})
+		}()
 	}
-	if got := atomic.LoadInt64(&loader.calls); got != 1 {
-		t.Errorf("singleflight: 30 concurrent calls -> 1 inner call expected, got %d", got)
+	wg.Wait()
+	if got := src.calls.Load(); got != 1 {
+		t.Errorf("chargements = %d, want 1 (coalescence)", got)
 	}
 }
 
-func TestCachedPlayerMatchesRepo_ErrorNotCached(t *testing.T) {
+// TestCachedPlayerMatchesRepo_LobbySizesDelegates : la capacité optionnelle lue par
+// SessionPageService (assertion de type sur ce jeu de méthodes) reste exposée.
+func TestCachedPlayerMatchesRepo_LobbySizesDelegates(t *testing.T) {
 	t.Parallel()
-	loader := &fakeLoader{err: errors.New("boom")}
-	repo := NewCachedPlayerMatchesRepo(loader, 10, time.Minute)
-	filters := port.PlayerMatchFilters{}
-
-	for i := 0; i < 3; i++ {
-		if _, err := repo.Load(context.Background(), filters); err == nil {
-			t.Errorf("call %d: expected error, got nil", i)
-		}
+	src := &fakePlayerMatches{}
+	var repo port.PlayerMatchesRepository = newTestPlayerMatches(src, "x1")
+	provider, ok := repo.(interface {
+		LobbySizesAtCompletion(ctx context.Context, slug string, matchIDs []string) (map[string]int, error)
+	})
+	if !ok {
+		t.Fatal("CachedPlayerMatchesRepo n'expose plus LobbySizesAtCompletion : le breakdown de placements de la page Sessions disparaîtrait")
 	}
-	if got := atomic.LoadInt64(&loader.calls); got != 3 {
-		t.Errorf("errors should not be cached, want 3 inner calls, got %d", got)
+	sizes, err := provider.LobbySizesAtCompletion(context.Background(), "halo_infinite", []string{"m1"})
+	if err != nil || sizes["m1"] != 8 || src.lobbyCalls.Load() != 1 {
+		t.Errorf("délégation : %v, err=%v, appels=%d", sizes, err, src.lobbyCalls.Load())
 	}
 }
 
-func TestCachedPlayerMatchesRepo_Invalidate(t *testing.T) {
+func TestCachedPlayerMatchesRepo_InvalidatePlayer(t *testing.T) {
 	t.Parallel()
-	loader := &fakeLoader{}
-	repo := NewCachedPlayerMatchesRepo(loader, 10, time.Minute)
-	filters := port.PlayerMatchFilters{}
-
-	if _, err := repo.Load(context.Background(), filters); err != nil {
-		t.Fatalf("err1: %v", err)
-	}
-	repo.Invalidate()
-	if _, err := repo.Load(context.Background(), filters); err != nil {
-		t.Fatalf("err2: %v", err)
-	}
-	if got := atomic.LoadInt64(&loader.calls); got != 2 {
-		t.Errorf("after Invalidate, expected 2 calls, got %d", got)
+	src := &fakePlayerMatches{}
+	repo := newTestPlayerMatches(src, "x1")
+	_, _ = repo.LoadPlayerMatches(context.Background(), "", "", port.PlayerMatchFilters{})
+	repo.InvalidatePlayer("halo_infinite", "GT")
+	_, _ = repo.LoadPlayerMatches(context.Background(), "", "", port.PlayerMatchFilters{})
+	if got := src.calls.Load(); got != 2 {
+		t.Errorf("chargements = %d, want 2 après InvalidatePlayer", got)
 	}
 }
 
-func TestCachedPlayerMatchesRepo_FIFOEviction(t *testing.T) {
+// TestInvalidatePlayerReadCaches_PlayerMatches : la fonction appelée par le post-sync
+// vide aussi le cache process-wide de l'historique, pour le seul joueur/titre visé.
+func TestInvalidatePlayerReadCaches_PlayerMatches(t *testing.T) {
 	t.Parallel()
-	loader := &fakeLoader{}
-	// capacity = 2, on insere 3 entrees distinctes
-	repo := NewCachedPlayerMatchesRepo(loader, 2, time.Minute)
+	target, other := &fakePlayerMatches{}, &fakePlayerMatches{}
+	repoTarget := &CachedPlayerMatchesRepo{inner: target, cache: playerMatchesReadCache,
+		scope: testScope("l5b-test-pm-target", "halo_infinite", "p")}
+	repoOther := &CachedPlayerMatchesRepo{inner: other, cache: playerMatchesReadCache,
+		scope: testScope("l5b-test-pm-other", "halo_infinite", "p")}
+	for _, r := range []*CachedPlayerMatchesRepo{repoTarget, repoOther, repoTarget, repoOther} {
+		_, _ = r.LoadPlayerMatches(context.Background(), "", "", port.PlayerMatchFilters{})
+	}
+	InvalidatePlayerReadCaches(context.Background(), "l5b-test-pm-target", "halo_infinite")
+	_, _ = repoTarget.LoadPlayerMatches(context.Background(), "", "", port.PlayerMatchFilters{})
+	_, _ = repoOther.LoadPlayerMatches(context.Background(), "", "", port.PlayerMatchFilters{})
+	if target.calls.Load() != 2 || other.calls.Load() != 1 {
+		t.Errorf("chargements cible=%d autre=%d, want 2 et 1", target.calls.Load(), other.calls.Load())
+	}
+}
 
-	r1 := port.PlayerMatchFilters{Limit: 1}
-	r2 := port.PlayerMatchFilters{Limit: 2}
-	r3 := port.PlayerMatchFilters{Limit: 3}
-	for _, f := range []port.PlayerMatchFilters{r1, r2, r3} {
-		if _, err := repo.Load(context.Background(), f); err != nil {
-			t.Fatalf("err loading: %v", err)
+// TestClonePlayerMatchRows_ReferenceInventory fige l'inventaire des champs
+// référence de canonical.PlayerMatchRow (pointeurs de struct, slices, maps) : chacun
+// est soit COPIÉ par clonePlayerMatchRows, soit PARTAGÉ parce qu'aucun consommateur
+// n'écrit à travers lui (grep du 2026-09-23). Un champ référence ajouté au type fait
+// échouer ce test : décider copie ou partage, puis l'inscrire ici. Les pointeurs de
+// scalaires (*int, *float64, *string, *bool, *int64) sont partagés en bloc.
+func TestClonePlayerMatchRows_ReferenceInventory(t *testing.T) {
+	want := map[string]string{
+		"Summary.Playlist":                "copié",
+		"Summary.Playlist.Labels":         "copié",
+		"Summary.Map":                     "copié",
+		"Summary.Map.Labels":              "copié",
+		"Summary.GameVariant":             "copié",
+		"Summary.GameVariant.Labels":      "copié",
+		"Summary.PairMode":                "copié",
+		"Summary.PairMode.Labels":         "copié",
+		"Summary.Teams":                   "partagé",
+		"Summary.Teams.ParticipantsXUIDs": "partagé",
+		"Enrichment.FriendsXUIDs":         "partagé",
+		"Enrichment.SkillSnapshot":        "partagé",
+	}
+	got := map[string]bool{}
+	collectReferenceFields(reflect.TypeOf(canonical.PlayerMatchRow{}), "", got)
+	for path := range got {
+		if _, ok := want[path]; !ok {
+			t.Errorf("champ référence non inventorié : %s — le copier dans clonePlayerMatchRows ou le déclarer partagé", path)
 		}
 	}
-	// Apres r1, r2, r3 avec capacity=2 : r1 est evince. cache = {r2, r3}.
-	// Re-charger r1 declenche un nouvel appel (et evince r2 -> cache = {r3, r1}).
-	if _, err := repo.Load(context.Background(), r1); err != nil {
-		t.Fatalf("err r1 reload: %v", err)
+	for path := range want {
+		if !got[path] {
+			t.Errorf("champ inventorié disparu du type : %s — mettre l'inventaire à jour", path)
+		}
 	}
-	if got := atomic.LoadInt64(&loader.calls); got != 4 {
-		t.Errorf("FIFO eviction: 3 distinct + 1 reload = 4 inner calls, got %d", got)
+
+	// Les champs « copié » le sont réellement : aucune référence commune après clone.
+	src, _ := (&fakePlayerMatches{}).LoadPlayerMatches(context.Background(), "", "", port.PlayerMatchFilters{})
+	src[0].Summary.GameVariant = &canonical.AssetReference{Labels: map[string]string{"fr": "v"}}
+	cl := clonePlayerMatchRows(src)
+	for name, pair := range map[string][2]*canonical.AssetReference{
+		"Playlist": {src[0].Summary.Playlist, cl[0].Summary.Playlist}, "Map": {src[0].Summary.Map, cl[0].Summary.Map},
+		"GameVariant": {src[0].Summary.GameVariant, cl[0].Summary.GameVariant}, "PairMode": {src[0].Summary.PairMode, cl[0].Summary.PairMode},
+	} {
+		if pair[0] == pair[1] || reflect.ValueOf(pair[0].Labels).Pointer() == reflect.ValueOf(pair[1].Labels).Pointer() {
+			t.Errorf("Summary.%s partagé après clone", name)
+		}
 	}
-	// r3 est toujours cache (n'a pas ete evince apres reload r1).
-	if _, err := repo.Load(context.Background(), r3); err != nil {
-		t.Fatalf("err r3 reload: %v", err)
-	}
-	if got := atomic.LoadInt64(&loader.calls); got != 4 {
-		t.Errorf("r3 should still be cached, calls jumped to %d", got)
+}
+
+// collectReferenceFields parcourt les champs de t et note les chemins des champs
+// référence : pointeurs de struct (parcourus), slices et maps (éléments struct
+// parcourus). time.Time et les pointeurs de scalaires sont ignorés.
+func collectReferenceFields(t reflect.Type, prefix string, out map[string]bool) {
+	timeType := reflect.TypeOf(time.Time{})
+	for i := 0; i < t.NumField(); i++ {
+		f := t.Field(i)
+		path := prefix + f.Name
+		ft := f.Type
+		switch ft.Kind() {
+		case reflect.Struct:
+			if ft != timeType {
+				collectReferenceFields(ft, path+".", out)
+			}
+		case reflect.Pointer:
+			if ft.Elem().Kind() == reflect.Struct && ft.Elem() != timeType {
+				out[path] = true
+				collectReferenceFields(ft.Elem(), path+".", out)
+			}
+		case reflect.Slice, reflect.Map:
+			out[path] = true
+			if ft.Elem().Kind() == reflect.Struct && ft.Elem() != timeType {
+				collectReferenceFields(ft.Elem(), path+".", out)
+			}
+		}
 	}
 }
 
@@ -234,19 +296,5 @@ func TestFiltersCacheKey_DistinctValues(t *testing.T) {
 	b := port.PlayerMatchFilters{Limit: 20}
 	if filtersCacheKey(a) == filtersCacheKey(b) {
 		t.Error("distinct values should produce distinct keys")
-	}
-}
-
-func TestTTLCache_LenAndInvalidateAll(t *testing.T) {
-	t.Parallel()
-	c := newTTLCache(5, time.Minute)
-	c.Set("k1", []canonical.PlayerMatchRow{})
-	c.Set("k2", []canonical.PlayerMatchRow{})
-	if c.Len() != 2 {
-		t.Errorf("len after 2 inserts: %d", c.Len())
-	}
-	c.InvalidateAll()
-	if c.Len() != 0 {
-		t.Errorf("len after InvalidateAll: %d", c.Len())
 	}
 }

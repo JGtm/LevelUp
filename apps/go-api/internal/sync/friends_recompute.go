@@ -23,6 +23,7 @@ import (
 
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/platform/dblease"
+	duckdbpkg "levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/platform/duckdb/sharedprovider"
 )
 
@@ -58,6 +59,7 @@ func RecomputeIsWithFriends(
 	playerDBPath, sharedDBPath, playerXUID string,
 	friendGamertags []string,
 ) (FriendsRecomputeResult, error) {
+	defer duckdbpkg.InvalidatePlayerReadCaches(ctx, playerXUID, "") // perf L5b : is_with_friends recalculé hors sync = lectures joueur cachées périmées
 	// Sémantique convergente : on NE court-circuite PLUS sur liste vide — une liste
 	// vide signifie « plus aucun ami », donc tous les matchs TRUE doivent être
 	// démotés. On acquiert les leases et on laisse Core réconcilier.

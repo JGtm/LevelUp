@@ -56,6 +56,11 @@ func (r *MatchExclusionRepo) SetExclusion(ctx context.Context, matchID string, e
 	if err != nil {
 		return fmt.Errorf("MatchExclusionRepo.SetExclusion exec: %w", err)
 	}
+	// Écriture locale sur player_match_enrichment (plan perf 2026-09-23, L5b) : les
+	// lectures joueur mises en cache ne portent pas is_excluded aujourd'hui, mais
+	// toute écriture de la table les invalide — un champ ajouté demain resterait
+	// sinon périmé jusqu'au TTL.
+	InvalidatePlayerReadCaches(ctx, r.pdb.XUID, r.pdb.TitleSlug)
 	return nil
 }
 
