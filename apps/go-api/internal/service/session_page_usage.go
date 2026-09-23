@@ -19,6 +19,7 @@ import (
 	"levelup/go-api/internal/analysis/sessionusage"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/legacymatch"
+	"levelup/go-api/internal/observability/timing"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/service/teammates"
 )
@@ -97,6 +98,7 @@ func (s *SessionPageService) attachSessionUsage(
 func (s *SessionPageService) buildSessionUsage(
 	ctx context.Context, matches []legacymatch.StatsMatchRow, matchContext, locale string,
 ) (*domain.SessionUsageBlock, map[string]int) {
+	defer timing.FromContext(ctx).Section("session_usage")()
 	if len(matches) == 0 {
 		return nil, nil
 	}

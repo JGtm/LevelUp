@@ -16,6 +16,7 @@ import (
 	"levelup/go-api/internal/games/canonical"
 	"levelup/go-api/internal/games/mappings"
 	"levelup/go-api/internal/legacymatch"
+	"levelup/go-api/internal/observability/timing"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/service/teammates"
 )
@@ -164,9 +165,11 @@ func (s *SessionPageService) GetPage(
 	if s.playerMatchesRepo == nil || s.titleSlug == "" || s.gamertag == "" {
 		return domain.SessionPageResponse{}, fmt.Errorf("SessionPageService: PlayerMatchesRepo non câblé (P4.3 finale exige le wiring DI)")
 	}
+	stop := timing.FromContext(ctx).Section("player_matches")
 	canonicalRows, err := s.playerMatchesRepo.LoadPlayerMatches(
 		ctx, s.titleSlug, s.gamertag, port.PlayerMatchFilters{},
 	)
+	stop()
 	if err != nil {
 		return domain.SessionPageResponse{}, fmt.Errorf("SessionPageService.GetPage: %w", err)
 	}
@@ -350,6 +353,7 @@ func (s *SessionPageService) attachSessionEventBlocks(
 	canonicalRows []canonical.PlayerMatchRow,
 	currentMatches, compareMatches []legacymatch.StatsMatchRow,
 ) {
+	defer timing.FromContext(ctx).Section("event_blocks")()
 	if s.highlightEventsRepo == nil || s.playerXUID == "" || len(currentMatches) == 0 {
 		return
 	}
@@ -429,6 +433,7 @@ type lobbySizeProvider interface {
 // n'est pas câblé (titre sans capability match.objective.stats), si le xuid est
 // inconnu, ou en cas d'erreur (best-effort) → l'axe est retiré du profil.
 func (s *SessionPageService) objectiveIndexFor(ctx context.Context, matches []legacymatch.StatsMatchRow) narrative.ObjectiveIndexInput {
+	defer timing.FromContext(ctx).Section("objective_index")()
 	if s.objectiveIndex == nil || s.objectiveXUID == "" || len(matches) == 0 {
 		return nil
 	}
@@ -447,6 +452,7 @@ func (s *SessionPageService) objectiveIndexFor(ctx context.Context, matches []le
 // attachLobbySizes renseigne LobbySize sur chaque row à partir du provider optionnel.
 // Best-effort : no-op si le repo ne fournit pas la capability ou si la requête échoue.
 func (s *SessionPageService) attachLobbySizes(ctx context.Context, rowSets ...[]domain.SessionDetailMatchRow) {
+	defer timing.FromContext(ctx).Section("lobby_sizes")()
 	provider, ok := s.playerMatchesRepo.(lobbySizeProvider)
 	if !ok {
 		return
@@ -567,6 +573,7 @@ type sessionPlacement struct {
 // vieux par chaîne. `rows` DOIT contenir TOUS les matchs (pas que la session) pour
 // que le calcul LUSR (chronologique global par chaîne) soit correct.
 func (s *SessionPageService) computeSessionPlacements(ctx context.Context, rows []legacymatch.StatsMatchRow) map[string]sessionPlacement {
+	defer timing.FromContext(ctx).Section("placements")()
 	if len(rows) == 0 {
 		return nil
 	}
