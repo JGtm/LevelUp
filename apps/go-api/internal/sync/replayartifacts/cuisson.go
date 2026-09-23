@@ -9,6 +9,7 @@ package replayartifacts
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"strings"
 	"time"
@@ -317,6 +318,16 @@ func cuireUnMatch(ctx context.Context, d Deps, w buildWork, b *bilanCuisson, res
 			b.ecartes++
 			return
 		}
+		// FILM NON FINALISÉ = ÉCARTÉ, PAS UN ÉCHEC (lot L3, 2026-09-23). La cuisson refuse un
+		// film dont le manifeste ne porte pas le morceau des temps forts, ou dont des morceaux ne
+		// sont pas décrits par le manifeste : cuire un film TRONQUÉ publierait un document faux
+		// (`ab526724`). Même frontière de processus, donc même test sur le texte.
+		if strings.Contains(berr.Error(), filmcache.ErrFilmNonFinalise.Error()) {
+			slog.InfoContext(ctx, "post-sync: artefact rejeu ÉCARTÉ — film non finalisé au cache",
+				"gamertag", d.Gamertag, "match_id", w.matchID, "err", berr)
+			b.ecartes++
+			return
+		}
 		logFn(ctx, "post-sync: artefact rejeu non construit",
 			"gamertag", d.Gamertag, "match_id", w.matchID, "err", berr)
 		b.echecs++
@@ -337,9 +348,38 @@ func cuireUnMatch(ctx context.Context, d Deps, w buildWork, b *bilanCuisson, res
 		"duration", out.dur, "pic_octets", out.peak)
 }
 
+// CompteurFilmsNonFinalises : films dont l'archivage et la cuisson sont REPORTÉS au cycle suivant
+// parce que le serveur ne les a pas encore FINALISÉS — leur manifeste ne porte pas le morceau des
+// temps forts (lot L3, 2026-09-23, cf. `filmcache/finalise.go`). Compté PAR TITRE, comme le reste
+// du paquet.
+//
+// CE N'EST PAS UN ÉCHEC : le serveur finalise un film environ une minute après la fin du match, et
+// 23 matchs sur 96 sont détectés avant (rapport `ctf_ab526724` §2.3). Un compteur qui monte au
+// rythme des matchs frais est donc NOMINAL ; un match qui y revient cycle après cycle est un film
+// que le serveur ne finalise pas — il reste retenté dans la borne de l'horizon de rattrapage
+// ([BacklogHorizon]), et chaque tentative se dit en INFO.
+const CompteurFilmsNonFinalises = "postsync_replay_films_non_finalises_total"
+
+// reporterNonFinalise compte et journalise le report d'un film non finalisé. Rend vrai quand
+// `err` en est un — l'appelant s'arrête alors là, sans WARN : un report n'est pas une panne.
+func reporterNonFinalise(ctx context.Context, d Deps, matchID string, err error) bool {
+	if !errors.Is(err, filmcache.ErrFilmNonFinalise) {
+		return false
+	}
+	observability.AddIntT(ctxkeys.TitleSlug(ctx), CompteurFilmsNonFinalises, 1)
+	slog.InfoContext(ctx, "post-sync: rejeu 2D — film pas encore finalisé côté serveur (sans temps "+
+		"forts), archivage et cuisson reportés au cycle suivant",
+		"gamertag", d.Gamertag, "match_id", matchID, "err", err)
+	return true
+}
+
 // persistFilmToCache télécharge les chunks COMPLETS du film et les persiste au cache
 // (pont disque). Rend (persisté, film disponible). Un film déjà entièrement en cache ne
 // re-télécharge rien (GetFilmChunks est cache-first chunk par chunk).
+//
+// UN FILM NON FINALISÉ N'EST NI ARCHIVÉ NI DISPONIBLE (lot L3) : refusé par le client ou par le
+// writer, il est REPORTÉ ([reporterNonFinalise]) — le match revient au cycle suivant par le
+// rattrapage, avec un film complet.
 func persistFilmToCache(ctx context.Context, d Deps, matchID string) (saved, available bool) {
 	chunks, found, err := d.Fetcher.GetFilmChunks(ctx, matchID)
 	if err != nil {
@@ -350,6 +390,9 @@ func persistFilmToCache(ctx context.Context, d Deps, matchID string) (saved, ava
 		if ctx.Err() != nil {
 			slog.DebugContext(ctx, "post-sync: rejeu 2D — téléchargement de film abandonné (cycle terminé)",
 				"gamertag", d.Gamertag, "match_id", matchID, "err", err)
+			return false, false
+		}
+		if reporterNonFinalise(ctx, d, matchID, err) {
 			return false, false
 		}
 		slog.WarnContext(ctx, "post-sync: film illisible — rejeu non construit",
@@ -369,6 +412,11 @@ func persistFilmToCache(ctx context.Context, d Deps, matchID string) (saved, ava
 		})
 	}
 	if err := filmcache.Write(d.CacheRoot, titlePkg.FilmShortMatchID(matchID), wc); err != nil {
+		// Un client qui n'aurait pas vérifié la finalisation : le writer la vérifie, et c'est le
+		// même report.
+		if reporterNonFinalise(ctx, d, matchID, err) {
+			return false, false
+		}
 		slog.WarnContext(ctx, "post-sync: persistance du film au cache échouée",
 			"gamertag", d.Gamertag, "match_id", matchID, "err", err)
 		return false, false

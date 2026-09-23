@@ -303,7 +303,12 @@ func TestBuildAndSend_NEcritAucunArtefactLocal(t *testing.T) {
 		Payload: &domain.BuildQueuePayload{
 			MatchID: "64e8adfa-0000-0000-0000-000000000000", ShortID: short,
 			TitleSlug: "halo_infinite", MapNames: []string{"Catalyst"},
-			Chunks: []domain.BuildQueueChunk{{Index: 0, ChunkType: 2, URL: srv.URL + "/c0"}},
+			// UN FILM FINALISE (lot L3, 2026-09-23) : le writer du cache refuse une liste sans
+			// morceau des temps forts (type 3), et ce cas porte sur le pont disque, pas sur elle.
+			Chunks: []domain.BuildQueueChunk{
+				{Index: 0, ChunkType: 2, URL: srv.URL + "/c0"},
+				{Index: 1, ChunkType: 3, URL: srv.URL + "/c1"},
+			},
 		},
 	}
 	w := &worker{repoRoot: repoRoot, workDir: workDir,

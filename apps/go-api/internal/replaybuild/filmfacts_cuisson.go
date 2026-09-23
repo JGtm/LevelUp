@@ -56,6 +56,7 @@ import (
 
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
+	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/platform/atomicfile"
 )
@@ -101,7 +102,16 @@ func (b *Builder) entreesDeLaCuisson(ctx context.Context, matchID string, mapNam
 	// type et le debut de chaque chunk ; les NUMEROS, eux, viennent des fichiers presents.
 	tFilm := time.Now()
 	src := ouvrirManifeste(ctx, matchID, filmDir)
+	// UN FILM NON FINALISE NE SE CUIT PAS (lot L3, 2026-09-23) : refuse AVANT le chargement quand
+	// son manifeste ne porte pas le morceau des temps forts, JUSTE APRES quand des morceaux du
+	// repertoire n y sont pas decrits (cf. [refuserManifesteNonFinalise]).
+	if err := refuserManifesteNonFinalise(ctx, matchID, src); err != nil {
+		return entreesDeCuisson{}, err
+	}
 	film := chargerFilm(ctx, matchID, filmDir, src)
+	if err := refuserMorceauxHorsManifeste(ctx, matchID, src, film); err != nil {
+		return entreesDeCuisson{}, err
+	}
 	// LA PORTE DE LA CLÉ, AVANT TOUTE LECTURE (lot 3.1.1, cf. cle_du_film.go).
 	if err := ecarterSiCleInconnue(ctx, matchID, film); err != nil {
 		return entreesDeCuisson{}, err
@@ -122,6 +132,61 @@ func (b *Builder) entreesDeLaCuisson(ctx context.Context, matchID string, mapNam
 	logPhase("killsource", matchID, tKS)
 	return entreesDeCuisson{film: film, statborg: statborg, deaths: deaths, kills: kills}, nil
 }
+
+// refuserManifesteNonFinalise rend [filmcache.ErrFilmNonFinalise] enveloppee quand le manifeste du
+// film ne porte pas le morceau des TEMPS FORTS — la signature d'un film archive avant que le
+// serveur l ait finalise (`ab526724`, 2026-09-22 : 34 morceaux sur 37, fil des morts illisible,
+// toute la chaine d identite tombee).
+//
+// CUIRE QUAND MEME PUBLIERAIT UN DOCUMENT FAUX, et plausible : c est exactement ce qui s est passe.
+// Le refus est ECARTE, jamais echec : le parent (`sync/replayartifacts`) le classe sur le TEXTE de
+// la sentinelle, comme `ErrUnknownFilmKey` — l erreur traverse une frontiere de processus.
+//
+// UN FILM SANS MANIFESTE N EST PAS JUGE ICI (`src == nil`) : rien ne dit ce qu il devrait contenir,
+// et le chemin degrade d avant le lot est conserve (`ouvrirManifeste` l a deja journalise). Au parc
+// du 2026-09-23, aucun repertoire de morceaux n est sans manifeste (1 625 / 1 625).
+func refuserManifesteNonFinalise(ctx context.Context, matchID string, src *filmcache.Source) error {
+	if src == nil || filmcache.Finalise(src.Meta(), typeDeChunkMeta) {
+		return nil
+	}
+	slog.WarnContext(ctx, "cuisson: film ECARTE — manifeste non finalise (sans morceau des temps "+
+		"forts) ; aucun artefact n est cuit", "match_id", matchID, "entrees", len(src.Meta()))
+	return fmt.Errorf("%w (match %s, %d entrees au manifeste)", filmcache.ErrFilmNonFinalise,
+		matchID, len(src.Meta()))
+}
+
+// refuserMorceauxHorsManifeste rend [filmcache.ErrFilmNonFinalise] enveloppee quand le repertoire
+// porte des morceaux que le manifeste ne decrit pas — l autre moitie de la signature
+// d `ab526724` : les morceaux 34 a 36 etaient arrives sur le disque onze secondes apres un
+// manifeste deja valide. Un tel manifeste ne dit pas le film entier ; les morceaux en trop n ont
+// ni type ni debut connus.
+func refuserMorceauxHorsManifeste(ctx context.Context, matchID string, src *filmcache.Source,
+	film *decfilm.Film,
+) error {
+	if src == nil || film == nil {
+		return nil
+	}
+	decrits := make(map[int]bool, len(src.Meta()))
+	for _, m := range src.Meta() {
+		decrits[m.Index] = true
+	}
+	var horsManifeste []int
+	for _, m := range film.Meta() {
+		if !decrits[m.Index] {
+			horsManifeste = append(horsManifeste, m.Index)
+		}
+	}
+	if len(horsManifeste) == 0 {
+		return nil
+	}
+	slog.WarnContext(ctx, "cuisson: film ECARTE — morceaux presents au cache mais absents du "+
+		"manifeste ; aucun artefact n est cuit", "match_id", matchID, "hors_manifeste", horsManifeste)
+	return fmt.Errorf("%w (match %s, morceaux hors manifeste %v)", filmcache.ErrFilmNonFinalise,
+		matchID, horsManifeste)
+}
+
+// typeDeChunkMeta : l accesseur de type que [filmcache.Finalise] recoit.
+func typeDeChunkMeta(m decfilm.ChunkMeta) int { return m.ChunkType }
 
 // filmFactsPath rend le chemin des faits de ce match, par le PathResolver et jamais a la main.
 func (b *Builder) filmFactsPath(matchID string) string {
