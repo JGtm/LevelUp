@@ -1131,6 +1131,152 @@ Items :
       `career_repo*.go`, `home_repo*.go`) : traites s'ils sont sur une page, sinon consignes
 
 Gate : comme L2 (paquets touches) ; `-tags=integration -p 1 ./internal/platform/duckdb/...`.
+
+## 9 quater. L8 — Escouade : departages stables et capability sur la page (Go)
+
+Ajoute le 2026-09-23 a la fusion de L4b : decouverte (4) du lot L2, decouvertes (1) et (2) du lot
+L4b, et decision « departage stable des badges ex aequo » en attente au journal §12.
+
+Decisions tranchees (superviseur) :
+- D8.1 `Q29TopTeammatesSharedTpl` (`internal/platform/duckdb/queries_squad.go`, `ORDER BY
+  games_together DESC LIMIT 50`) : ordre deterministe `ORDER BY games_together DESC,
+  wins_together DESC, p2.xuid ASC`. Motif : sans departage, la coupe du LIMIT 50 parmi les ex
+  aequo varie d'une lecture a l'autre, donc la liste des coequipiers connus a exclure
+  (composition exacte) varie aussi, et les sessions / compteurs de la page Escouade et de la
+  lecture legere ne sont pas reproductibles (4 pages sur 5 differentes sur donnees reelles, L4b).
+- D8.2 `Q32bMainTeamParticipantsTemplate` (meme fichier, sans ORDER BY) : `ORDER BY p.match_id,
+  p.xuid`. Les porteurs de badges ex aequo (`topKiller`, `falseBrother`, `silentHero`, premier ex
+  aequo dans l'ordre des lignes) dependaient du plan d'execution DuckDB ; la regle devient « le
+  plus petit xuid parmi les ex aequo », stable, documentee en commentaire au-dessus du template
+  et ici (l'utilisateur pourra choisir une autre regle plus tard). Autres templates de
+  `queries_squad.go` consommes en « premier ex aequo » et sans ORDER BY : traites de meme si
+  c'est mecanique, sinon consignes.
+- D8.3 `internal/api/handlers/teammates.go` : POST `/pages/teammates` passe par
+  `MapCapabilityError(ctx, err, "teammates.page")` AVANT `mapServiceError`, comme la route legere
+  `GET /pages/teammates/sessions` (L4b) : 503 `capability_not_supported` au lieu de 500 quand
+  `match.history` manque. Test handler : capability absente = 503.
+- D8.4 Tests : (a) deux lectures consecutives de Q29 et de Q32b sur une base `:memory:` avec des
+  ex aequo construits rendent le MEME resultat dans le MEME ordre ; la mutation « ORDER BY
+  retire » rend le test rouge de facon fiable (ordre d'insertion different de l'ordre voulu) ;
+  (b) tests existants `squad_repo*_test.go` / `teammates_*_test.go` adaptes s'ils figeaient un
+  ordre ou un porteur (chaque fixture changee, au journal) ; (c) golden JSON regenere et
+  explique s'il change.
+
+Perimetre : `internal/platform/duckdb/queries_squad.go`, `internal/platform/duckdb/squad_repo*.go`
+(tests), `internal/api/handlers/teammates.go` (+ tests), `internal/service/teammates/*_test.go`
+(fixtures seulement), ce plan (§9 quater). Interdits (L7 en parallele) :
+`queries_career_encounters.go`, `career_repo*.go`.
+
+Items :
+- [x] L8.1 Q29, ordre total — `queries_squad.go:60` (`ORDER BY games_together DESC,
+  wins_together DESC, p2.xuid ASC`), motif en commentaire `:28-32` ; preuve
+  `squad_repo_departages_test.go:95` (`TestSquadRepo_Q29_DepartageStable`)
+- [x] L8.2 Q32b + autres templates — `queries_squad.go:328` (`ORDER BY p.match_id, p.xuid`), regle
+  des ex aequo en commentaire `:306-313` ; preuve `squad_repo_departages_test.go:189`
+  (`TestSquadRepo_Q32b_OrdreStableEtPorteursExAequo`). Recensement des 12 constantes de
+  `queries_squad.go` : trois autres sans ORDER BY, aucune consommee en « premier ex aequo »,
+  laissees telles quelles — `QSquadExpectedWinProbTpl` (`:8`, une ligne par match, lue dans une
+  map par `loadExpectedWinProbs`, `squad_repo.go:248`), `Q42MapStatsForSquadSharedTpl` et son
+  fragment `Q42MapStatsSquadExtraExclusionFrag` (`:382`, `:406`, agreges par carte dans une map,
+  `squad_repo_mapstats.go:44-71`, seul lecteur `LoadMapStatsForSquad`)
+- [x] L8.3 MapCapabilityError — `handlers/teammates.go:104` (sonde `teammates.page`, avant
+  `mapServiceError`), doc `:87-90` ; test `teammates_test.go:109`
+  (`TestTeammatesHandler_CapabilityAbsente_503`)
+- [x] L8.4 tests — (a) les trois tests ci-dessus, chacun livre dans le commit du changement qu'il
+  prouve ; (b) aucun test existant a adapter, aucune fixture modifiee ; (c) aucun golden
+  concerne (detail au journal)
+
+Gate : `gofmt -l ./internal ./cmd` ; `go build ./...` ; `go vet ./...` ; `go test
+./internal/platform/duckdb/... ./internal/service/teammates/... ./internal/api/handlers/...` ;
+`go test -tags=integration -p 1 ./internal/platform/duckdb/...` ; golangci-lint
+`--new-from-rev=436dc7200` sur les paquets touches.
+
+Journal du lot (2026-09-23, branche `feat/perf-l8` depuis `feat/perf-chargements` 436dc7200,
+executeur Opus ; commits 077269adc L8.1, beece4926 L8.2, 38fd541ef L8.3, puis ce journal) :
+
+- Q29 : les trois lecteurs (`TeammatesService.GetPage`, `TeammatesService.CompositionSessions`,
+  `SquadService`) recoivent le meme top 50 dans le meme ordre a chaque lecture ; la liste
+  deroulante, l'extraPool de la composition exacte (`buildExtraPoolXUIDs`), la resolution d'un
+  coequipier par gamertag (premier du top 50 sans casse) et `resolveFriendXUIDs` (map gamertag ->
+  xuid) ne dependent plus du plan. Seuls changent, a egalite de matchs communs, l'ordre (victoires
+  puis xuid) et, a la coupe du LIMIT 50, l'appartenance (les plus petits xuids entrent).
+- Q32b : l'ordre des lignes arrive intact jusqu'aux badges (`nommerLignes` nomme en place,
+  `squad_repo_annuaire.go:57-76` ; `allyByMatch[...] = append(...)`,
+  `teammates_squad_charts_impact_events.go:82` ; snaps dans l'ordre, `:132`) et `topKiller`,
+  `silentHero`, `falseBrother` (`analysis/match_impact.go:402`, `:426`, `:463`) retiennent le
+  premier a egalite. Regle en vigueur : le plus petit xuid parmi les ex aequo, ordre binaire de
+  la chaine (aucune `default_collation` dans le depot). Les autres lecteurs de Q32b sont
+  insensibles a l'ordre (`buildMainTeamXUIDSet`, ensemble par match) ou y gagnent un nom
+  d'affichage stable (accueil, `sessionCoreTeammates` : premier gamertag vu par cle minuscule).
+- Templates sans ORDER BY laisses tels quels (cf. L8.2) : seul effet d'ordre possible, le dernier
+  bit de la moyenne flottante `PerfAvg` de Q42, sommee dans l'ordre des lignes (theorique, pas un
+  « premier ex aequo »). Templates a ORDER BY PARTIEL (Q32, Q32c) : decouverte (2).
+- Effet sur donnees reelles : non mesure (bases de `data/` interdites a ce lot, serveur de mesure
+  en cours). Attendu : les porteurs de badges ex aequo des 33 matchs releves au lot L2 (ecart 3)
+  deviennent le plus petit xuid, aucune statistique ne change, et la page Escouade comme la
+  lecture legere rendent le meme resultat d'une requete a l'autre sur une meme base. Cout non
+  mesure : Q29 etait deja un tri borne (deux cles de plus), Q32b trie ses lignes (une par allie
+  et par match).
+- Tests (D8.4 a) : `squad_repo_departages_test.go` (nouveau, `//go:build integration`, base
+  `:memory:` de `newTestPlayerDB`, vraies methodes du repo, aucune DDL recopiee).
+  `TestSquadRepo_Q29_DepartageStable` : 54 coequipiers sur six matchs « avec amis », groupes a
+  egalite inseres dans un ordre qui n'est ni l'ordre voulu ni son inverse (45 a 3 matchs / 3
+  victoires par xuid decroissant ; 3 a 3 matchs dont l'ordre des xuids est l'inverse de celui des
+  victoires ; 5 a 2 / 1 inseres 5, 3, 1, 4, 2, coupes par le LIMIT 50 au milieu du groupe) ; deux
+  lectures egales, liste attendue ecrite en clair. `TestSquadRepo_Q32b_OrdreStableEtPorteursExAequo` :
+  trois matchs inseres mb2, mb3, mb1, dans chacun trois allies a egalite sur le critere d'un badge
+  (le plus petit xuid ni premier ni dernier insere) et un adversaire ; deux lectures egales, ordre
+  (match_id, xuid) ecrit en clair, et la matrice rejouee (`ComputeMatchImpactFull` sur les lignes
+  dans leur ordre, comme `buildSquadImpactMatrix`) donne Heros silencieux, Bourreau et Faux-frere
+  ex aequo au plus petit xuid (Bourreau sans egalite en temoin). L8.3 :
+  `TestTeammatesHandler_CapabilityAbsente_503`.
+- Tests existants (D8.4 b) : aucun a adapter, aucune fixture modifiee — aucun ne figeait un ordre
+  ni un porteur (tests Q32b existants compares par cle triee, `squad_repo_main_team_test.go:81-89` ;
+  tests d'annuaire : un nom par ligne ; tests du service teammates : depots simules, l'ordre est
+  celui que le test fournit). Goldens (D8.4 c) : aucun concerne, aucun fichier golden ni
+  `testdata` de l'Escouade dans le depot, les tests de page passent par des depots simules.
+- Mutations jouees (toutes restaurees, `cmp` a l'appui) : Q29 — ORDER BY d'avant L8
+  (`games_together DESC` seul) : rouge 10/10, et deux lectures consecutives differentes 9/10
+  (l'instabilite de production reproduite sur 54 lignes) ; sans `p2.xuid ASC` : rouge 10/10 ;
+  sans `wins_together DESC` : rouge 5/5, deterministe (position 45). Q32b — ORDER BY retire :
+  rouge 10/10 (ordre et les trois porteurs ex aequo) ; `ORDER BY p.match_id` seul : rouge 10/10.
+  L8.3 — bloc `MapCapabilityError` retire : rouge (500 `teammates_error`, marque retryable).
+- Gates (code final 38fd541ef) : `gofmt -l ./internal ./cmd` vide ; `go build ./...` 0 ;
+  `go vet ./...` 0 ; `go test ./internal/platform/duckdb/... ./internal/service/teammates/...
+  ./internal/api/handlers/...` 0 (6 paquets, aucun `--- FAIL:`) ; `go test -tags=integration -p 1
+  ./internal/platform/duckdb/...` 0 (5 paquets, aucun `--- FAIL:`) ; golangci-lint 2.12.2
+  `--new-from-rev=436dc7200` sur `platform/duckdb/...` et `api/handlers/...` : 0 issue, et avec
+  `--build-tags=integration` sur `platform/duckdb/...` : 0 issue. Hors gate : `go vet
+  -tags=integration` des trois arbres 0 ; `go test ./internal/archlint/` ROUGE, preexistant
+  (decouverte 1). Aucun test renomme ni supprime (3 ajoutes) : baseline JSONL inchangee.
+  Tailles : `queries_squad.go` 401 -> 417 L, `teammates.go` 142 -> 150 L, `teammates_test.go`
+  119 -> 143 L, test nouveau 244 L.
+- Decouvertes (non traitees, hors perimetre) :
+  (1) `internal/archlint` ROUGE des la base de campagne 436dc7200 : `TestNoNewFrenchLabelLiteral`,
+  `api/handlers/teammates.go` porte 3 litteraux accentues pour 1 alloue ; les deux de trop sont les
+  tags `doc:` des parametres `teammates` et `exact` de la route legere (`teammates.go:69-70`),
+  ajoutes par L4b (87b53622e) et publies dans `openapi.yaml` ; ce lot n'ajoute aucun litteral
+  accentue. A reparer avant la CI de cloture (C.3, `go test ./...` avec `-tags=integration`) : le
+  ratchet ne se remonte jamais, la correction touche le texte des deux tags donc le contrat et
+  les types generes.
+  (2) Q32 (`ORDER BY he.match_id, he.time_ms`) et Q32c (`ORDER BY kv.match_id, kv.time_ms`) : ordre
+  PARTIEL ; a temps egal, Premier sang et Premiere victime (`firstByTime`), Finisseur et Boulet
+  (`lastByTimeFiltered`), Top Gun (tri stable puis premier au seuil) retiennent le premier
+  evenement dans l'ordre des lignes, que choisit le plan. Meme classe que Q32b mais hors de la
+  lettre de D8.2 (templates AVEC ORDER BY) ; un departage (xuid, event_type) changerait des
+  porteurs : a decider.
+  (3) `analysis.slowestFirstKillerWithTime` (Touriste, `match_impact.go:374`) parcourt une map : a
+  egalite de premier frag, le porteur change d'une execution a l'autre quel que soit l'ordre SQL
+  (iteration des maps Go aleatoire) ; `analysis` hors perimetre.
+  (4) La description OpenAPI de POST `/pages/teammates` ne mentionne pas le 503
+  `capability_not_supported` (celle de GET `/pages/teammates/sessions` le fait) ; le statut 503
+  est deja documente (reponse partagee `DbBusy`), seul le texte manque.
+  (5) `teammates_service_composition_sessions.go:146-157` : `resolveGamertagFallback` se dit « meme
+  repli que la requete SQL Q32b », perime depuis L2 (Q32b ne porte plus de gamertag), et recopie
+  la regle de `analysis.MaskedXuidLabel` (en octets, la ou celle-ci compte des runes).
+  (6) `squad_repo.go:472-475` : le commentaire de `LoadMainTeamParticipants` est detache en fin de
+  fichier ; la fonction (`squad_repo_synthesis.go:15`) n'en a pas.
+
 ## 10. Cloture de campagne (superviseur)
 
 - [ ] C.1 mesure de reference (§8 protocole) : Escouade a froid / a chaud / clic rail, Synthese,
