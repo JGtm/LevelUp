@@ -1816,7 +1816,7 @@ exécuteur Opus ; commits 54118fe6f L9w.1 à L9w.4 (+ témoin L9w.6), 7ecdc99bf 
       caches et invalidation ; front sources de verite et cles de query), deux rondes max — faite
       le 2026-09-23 (quatre relecteurs Opus, lentilles A a D, une ronde : 1 P0, 3 P1, 12 P2, tous
       traites par L9-go (§9 quinquies) et L9-web (§9 sexies) ou consignes au §11)
-- [ ] C.3 correctifs, gates complets (`go test ./...`, `-tags=integration -p 1`, typecheck `tsc -b
+- [x] C.3 correctifs, gates complets (`go test ./...`, `-tags=integration -p 1`, typecheck `tsc -b
       --force`, eslint, vitest), push, CI verte au niveau job — correctifs : L9-go, L9-web, C4 ;
       gates rejoues par le superviseur sur l'arbre fusionne le 2026-09-23 au soir : gofmt vide,
       build 0, vet 0, `go test ./...` 190 paquets sans echec, integration `-p 1`
@@ -1839,10 +1839,13 @@ exécuteur Opus ; commits 54118fe6f L9w.1 à L9w.4 (+ témoin L9w.6), 7ecdc99bf 
       (mutation : 4 assertions). Gates verts (duckdb defaut + integration, api, observability,
       archlint, golangci 0 issue). Aucune autre variable de paquet du meme genre dans
       `platform/duckdb` ; une ailleurs, consignee au §11 (`LEVELUP_REPLAY_PUBLIC`).
-- [ ] C.5 go utilisateur puis fusion dans `feat/v75` ; entree thought_log ; retrait des worktrees
+- [x] C.5 go utilisateur puis fusion dans `feat/v75` ; entree thought_log ; retrait des worktrees
       — entree thought_log de cloture ecrite le 2026-09-23 ; worktrees des lots (l1 a l8, l9web,
-      l9go, c4, relecteurs) retires (jonctions d'abord, jamais `--force`) ; reste la fusion sur go
-      de l'utilisateur, puis le retrait de `LevelUp-wt-perf` et des branches `feat/perf-*`
+      l9go, c4, relecteurs) retires (jonctions d'abord, jamais `--force`) ; go de l'utilisateur
+      recu le 2026-09-23 au soir (« ok tu pourras merge dans feat/v75 quand tout sera vert »), CI
+      verte au niveau job sur 433375983 ; fusion `--no-ff` dans `feat/v75` depuis le checkout
+      principal, push de `feat/v75`, puis retrait de `LevelUp-wt-perf` et des branches locales
+      `feat/perf-*` (journal §12)
 - [x] C.6 garde-rails structurels de perf, poses ou verifies a la cloture : (a) test grep interdisant `LEFT JOIN v_gamertag_lookup` dans les templates SQL des pages (queries_squad.go, squad_repo*.go) une fois L2 fusionne ; (b) tests de fenetres bornees par EXPLAIN ANALYZE sur les vues `_latest` (L5a : `tactical_repo_fenetres_test.go`, `weapon_range_repo_fenetres_test.go`) ; (c) ratchet d invalidation des caches de lecture (L5b : `archlint/player_read_cache_invalidation_test.go`) ; (d) garde-rail du filigrane LUSR (L6 : `lusr_watermark_guardrail_test.go`) ; (e) tableau avant/apres des durees par page dans l etat des lieux, meme protocole que le 23/09 matin.
       (jonctions node_modules retirees AVANT, jamais `--force`) — verifie sur pieces le 2026-09-23
       a 18:40 : (a) `annuaire_ratchet_test.go` (L7, etendu par L9-go a tout `internal/`, identifiant
@@ -1917,3 +1920,12 @@ Aucun autre process ne tient les bases pendant la mesure.
   retirees, paragraphe date dans l'en-tete du script ; le check rejoue en local sur le JSONL du
   run CI (artefact `go-baseline-current-jsonl`) : tous presents, 0 test en echec, 0 paquet en
   echec. Re-push pour la CI.
+- 2026-09-23 (21:44) : second run CI sur 433375983 VERT au niveau job (run 35907271317 : build +
+  test Linux et Windows, lint, contrat OpenAPI, lease ADR 0013, OpenAPI lint, front, coverage +
+  baseline ; E2E Playwright ignore comme d'habitude ; gitleaks et Deploy Pre-Check verts ; la gate
+  ADR 0021 n'est pas declenchee par un push docs + baseline). Go utilisateur recu ; fusion
+  `--no-ff` de `feat/perf-chargements` dans `feat/v75` (checkout principal, arbre propre, local =
+  origin fe2106f4b, simulation merge-tree sans conflit), build Go et typecheck sur l'arbre
+  fusionne, push de `feat/v75` ; retrait de `LevelUp-wt-perf` (jonction node_modules d'abord) et
+  des branches locales `feat/perf-*`. Campagne CLOSE ; suite = decision utilisateur sur l'ADR
+  « lectures par perimetre » et un eventuel plan structurel (§11).

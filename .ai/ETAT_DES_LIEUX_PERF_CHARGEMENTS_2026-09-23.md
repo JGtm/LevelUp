@@ -267,7 +267,7 @@ pprof ; `/debug/vars` seulement (pool DuckDB, provider).
   reglages DuckDB, rafale de bascules, echecs du catalogue de saisons, ecriture de session,
   timeout serveur, jointure sur la vue).
 
-## 6. Resultats de la campagne (mesure de cloture du 2026-09-23, 17:19-17:22 et 17:45, meme protocole que §1)
+## 6. Resultats de la campagne (mesures de cloture du 2026-09-23 : 17:19-17:22, 18:34 et 19:47-19:58, meme protocole que §1)
 
 Serveur `air` du worktree d'integration (`feat/perf-chargements`), `LEVELUP_REPO_ROOT` sur le
 checkout principal (donnees reelles), `LEVELUP_LOGS_FILE_LEVEL=debug`, Vite du worktree,
