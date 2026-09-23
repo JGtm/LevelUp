@@ -1907,3 +1907,13 @@ Aucun autre process ne tient les bases pendant la mesure.
   L9-go (rencontres 1,6-4,5 s, rivaux 2,1-6,5 s) puis avec 8 threads / 4 Go (0,8-2,0 s) ;
   decouverte C.4 (reglages DuckDB lus avant `.env.local`) traitee par le lot C4 ; serveurs de
   mesure arretes a 20:00. Gates complets verts sur l arbre fusionne (C.3) ; lot C4 fusionne (95ea5f010, worktree retire) ; entree thought_log de cloture ; push de la branche et CI de cloture : ligne suivante.
+- 2026-09-23 (21:05, CI de cloture) : push a9bffbd1c — gitleaks, gate ADR 0021 et Deploy Pre-Check
+  verts ; workflow CI : 8 jobs verts (build + test Linux et Windows, lint, contrat OpenAPI, lease
+  ADR 0013, OpenAPI lint, front), UN job rouge, « Go Coverage + Baseline non-regression » : 8 tests
+  de la baseline absents du run (`internal/platform/duckdb`, TestCachedPlayerMatchesRepo_{7} et
+  TestTTLCache_LenAndInvalidateAll — retires par L5b 7cd64d664 avec la reecriture du cache, sans
+  retrait de la baseline dans le meme commit, contrairement a la regle). Remede prescrit par
+  `scripts/check_test_baseline.sh` : 80 lignes JSONL / exactement 8 paires (Package, Test)
+  retirees, paragraphe date dans l'en-tete du script ; le check rejoue en local sur le JSONL du
+  run CI (artefact `go-baseline-current-jsonl`) : tous presents, 0 test en echec, 0 paquet en
+  echec. Re-push pour la CI.
