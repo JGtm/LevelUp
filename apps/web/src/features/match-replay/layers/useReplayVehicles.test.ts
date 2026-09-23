@@ -211,8 +211,8 @@ describe('useReplayVehicles — sprite et bordure sont indissociables', () => {
 /**
  * « DISPONIBLE » ET LE DÉCOR DE CARTE (retours du rejeu 2026-09-23, lot L1.3 ; revue RR-L1-02).
  * Un document qui ne porte que des véhicules POSÉS par la carte (une seule position, à la
- * naissance, vie jusqu'à la fin du film, aucun occupant — `vehicleIsScenery`) n'a rien que le
- * calque dessinerait : la bascule ne doit pas s'afficher. Sans ce cas, remplacer
+ * naissance au début du film, vie jusqu'à la fin du film, aucun occupant — `vehicleIsScenery`)
+ * n'a rien que le calque dessinerait : la bascule ne doit pas s'afficher. Sans ce cas, remplacer
  * `vehicleIsHidden` par `vehicleIsDecor` dans le hook ne faisait tomber aucun test.
  */
 function decor(slot: number, family: string): ReplayVehicleTrack {

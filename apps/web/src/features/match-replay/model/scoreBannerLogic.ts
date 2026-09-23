@@ -134,6 +134,12 @@ type AllyIndex = ReadonlyMap<string, { ally: boolean }>
  * readScoreBanner rend la lecture du bandeau, ou `null` quand il ne doit pas se rendre :
  * calque sans aucun camp, série publiée sans camp, mode qui n'oppose pas exactement deux camps, ou côté allié
  * indéterminable (cf. en-tête).
+ *
+ * TROIS LECTEURS, UNE RÈGLE (revue RR-L1-PARC-01, 2026-09-23) : le bandeau
+ * (`ReplayScoreBanner`), le panneau de victoire (`ReplayVictoryOverlay`, ligne de score finale)
+ * et l'export vidéo (`buildOverlayPanelSource`). Ces deux derniers ne lisent le calque qu'à
+ * défaut du score servi par l'API ; sur une série publiée sans camp, ils taisent donc la ligne
+ * de score au lieu d'écrire « 0 — 0 », comme le bandeau (6 documents au parc du 23/09).
  */
 export function readScoreBanner(
   timeline: ReplayScoreTimelineReady | undefined,

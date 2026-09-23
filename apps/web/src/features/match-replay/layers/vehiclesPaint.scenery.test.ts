@@ -5,8 +5,8 @@
  * f0220a96), six véhicules garés à 19-24 m au sud de l'arène — 1 Scorpion, 2 Wasp, 3 Warthog —
  * se dessinaient tout le match ; sur Goliath (d8b13ec2) un Wasp 3 m sous le sol. Ce sont des
  * objets posés par la carte Forge, jamais simulés : le film ne réplique leur position qu'UNE
- * fois, à la naissance, pour une vie qui court jusqu'à la fin du film, sans aucun occupant.
- * La règle est ce que le film écrit, pas un seuil de distance ni de durée.
+ * fois, à la naissance — au début du film —, pour une vie qui court jusqu'à la fin du film, sans
+ * aucun occupant. La règle est ce que le film écrit, pas un seuil de distance ni de durée.
  *
  * LES FIXTURES SONT LES VIES RÉELLES (documents du 2026-09-23, schéma 68), recopiées champ pour
  * champ ; les négatifs aussi : un Warthog garé mais simulé (0301037e 779, 52 positions), une
@@ -151,6 +151,22 @@ describe('vehicleIsScenery — la vie de décor, lue dans le document', () => {
     expect(vehicleIsScenery(TARDIVE)).toBe(false)
   })
 
+  /**
+   * REVUE RR-L1-PARC-02 (2026-09-23) : UN VÉHICULE NÉ TARD N'EST JAMAIS DU DÉCOR. Un véhicule
+   * jouable qui apparaît dans le dernier intervalle d'échantillonnage du film porte, lui aussi,
+   * un seul échantillon à `t0`, une fin `film_end` et aucun occupant : sans la condition de
+   * naissance au début du film, il était masqué — et, né sur un emplacement, il tenait cet
+   * emplacement pour occupé sans qu'aucun sprite ne s'y dessine. Le décor de carte est posé au
+   * chargement de la carte, avant la frame 0 : c'est la condition qui les sépare.
+   */
+  it('un véhicule jouable né dans le dernier intervalle du film n’est pas du décor', () => {
+    const [scorpion] = STARBOARD
+    const tardif = { ...scorpion, t0: 6400, samples: [{ t: 6400, x: 8.96, y: -132.79 }] }
+    expect(vehicleIsScenery(tardif)).toBe(false)
+    expect(vehicleIsHidden(tardif)).toBe(false)
+    expect(vehicleCanEmbark(tardif)).toBe(true)
+  })
+
   it('une vie occupée ou close avant la fin du film n’est pas du décor', () => {
     const [scorpion] = STARBOARD
     expect(vehicleIsScenery({ ...scorpion, rides: [{ t0: 0, t1: 10, slot: 1, src: 'event', aim: [] }] })).toBe(false)
@@ -182,6 +198,12 @@ describe('drawVehiclesLayer — le décor de carte est MASQUÉ (décision Q13 du
     expect(count(paint([REFUGE_WARTHOG], 1500), 'drawImage')).toBe(1)
   })
 
+  it('négatif (RR-L1-PARC-02) : un véhicule né dans le dernier intervalle du film se dessine', () => {
+    const [scorpion] = STARBOARD
+    const tardif = { ...scorpion, t0: 6400, samples: [{ t: 6400, x: 8.96, y: -132.79 }] }
+    expect(count(paint([tardif], 6420), 'drawImage')).toBe(1)
+  })
+
   it('négatif : la tourelle bannie de bfecd02b garde son pictogramme', () => {
     const ops = paint([TOURELLE])
     expect(count(ops, 'drawImage') + count(ops, 'fill') + count(ops, 'stroke')).toBeGreaterThan(0)
@@ -190,7 +212,7 @@ describe('drawVehiclesLayer — le décor de carte est MASQUÉ (décision Q13 du
 
 /**
  * L'EMBARQUEMENT SE PROUVE PAR `vehicleCanEmbark`, ET PAR LUI SEUL. Une vie de décor n'a, PAR
- * DÉFINITION, aucun occupant (`rides` vide est une des quatre conditions de `vehicleIsScenery`) :
+ * DÉFINITION, aucun occupant (`rides` vide est une des cinq conditions de `vehicleIsScenery`) :
  * un test de `buildEmbarkedPredicate` sur ces vies n'aurait rien à refuser et resterait vert avec
  * ou sans le refus (revue RR-L1-02, 2026-09-23 — ce test-là a été retiré). Le refus porte sur la
  * porte commune des deux lecteurs (`buildEmbarkedPredicate`, `carrierPosition`), et c'est elle
