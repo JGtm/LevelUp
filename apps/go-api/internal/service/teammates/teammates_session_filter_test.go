@@ -243,3 +243,55 @@ func TestGetPage_SessionFilter_MultipleTeammates(t *testing.T) {
 		t.Errorf("expected 2 map entries, got %d", len(resp.MapBreakdown))
 	}
 }
+
+// TestGetPage_SessionFilter_ParFiltersSessions (D2.5, lot perf L2) : une session piquée par
+// `filters.sessions.picked_sessions` SEUL restreint la population escouade exactement comme
+// `picked_squad_session_labels` — jusque-là, cette requête (l'intermédiaire du ré-ancrage
+// front) calculait toutes les sections sur tout l'historique de la composition.
+func TestGetPage_SessionFilter_ParFiltersSessions(t *testing.T) {
+	const sessionLabel = "2026-04-21 19h"
+	synthRows := []legacymatch.SynthesisMatchRow{
+		makeSynthRow("m1", sessionLabel),
+		makeSynthRow("m2", sessionLabel),
+		makeSynthRow("m3", "2026-04-22 20h"),
+	}
+	repo := &mockSquadRepo{
+		topRows: []domain.TopTeammateRow{{XUID: "tm1", Gamertag: "Ally", GamesTogether: 3}},
+		squadRows: []domain.SquadMatchRow{
+			makeSquadRow("m1", "Bazaar", domain.OutcomeWin),
+			makeSquadRow("m2", "Aquarius", domain.OutcomeWin),
+			makeSquadRow("m3", "Recharge", domain.OutcomeLoss), // autre session
+		},
+		synthRows: synthRows,
+	}
+	svc := NewTeammatesService(repo, nil).WithPlayerMatchesRepo(
+		newSynthMockFromRows(synthRows, nil), "halo_infinite", "Test",
+	)
+	parFiltres, err := svc.GetPage(context.Background(), "px", domain.TeammatesQueryRequest{
+		SelectedGamertags: []string{"Ally"},
+		Filters: &domain.FilterContextInput{
+			FilterMode: "sessions",
+			Sessions:   domain.SessionsFilter{PickedSessions: []string{sessionLabel}},
+		},
+	})
+	if err != nil {
+		t.Fatalf("GetPage (filters.sessions) : %v", err)
+	}
+	parLabels, err := svc.GetPage(context.Background(), "px", domain.TeammatesQueryRequest{
+		SelectedGamertags:   []string{"Ally"},
+		PickedSquadSessions: []string{sessionLabel},
+	})
+	if err != nil {
+		t.Fatalf("GetPage (picked_squad_session_labels) : %v", err)
+	}
+	if n := parFiltres.Teammates[0].WithKPIs.MatchCount; n != 2 {
+		t.Errorf("matchs avec Ally = %d, attendu 2 (la session seule, pas m3)", n)
+	}
+	if len(parFiltres.MapBreakdown) != 2 || len(parFiltres.MatchHistory) != 2 {
+		t.Errorf("cartes %d, historique %d : attendu 2 et 2 (m1, m2)", len(parFiltres.MapBreakdown), len(parFiltres.MatchHistory))
+	}
+	if parFiltres.Teammates[0].WithKPIs.MatchCount != parLabels.Teammates[0].WithKPIs.MatchCount ||
+		len(parFiltres.MatchHistory) != len(parLabels.MatchHistory) {
+		t.Error("les deux chemins de piquage d'une session doivent restreindre la même population")
+	}
+}

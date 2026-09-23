@@ -286,15 +286,9 @@ func (s *TeammatesService) GetPage(
 
 	totalMatches := len(filteredMatches)
 
-	// Construire le set d'IDs de session si un filtre de session est actif.
+	// Set d'IDs de session si une session est piquée, par l'un OU l'autre chemin (D2.5).
 	// Nil = pas de filtre = tous les matchs escouade retournés.
-	var sessionMatchIDs map[string]bool
-	if len(req.PickedSoloSessions) > 0 || len(req.PickedSquadSessions) > 0 {
-		sessionMatchIDs = make(map[string]bool, len(filteredMatches))
-		for _, m := range filteredMatches {
-			sessionMatchIDs[m.MatchID] = true
-		}
-	}
+	sessionMatchIDs := sessionMatchIDsDeLaPage(req, filteredMatches)
 
 	// Calculs détaillés pour les gamertags sélectionnés.
 	teammates := make([]domain.TeammateRow, 0, len(req.SelectedGamertags))

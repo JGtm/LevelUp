@@ -353,7 +353,14 @@ Items :
   semi-jointure sur l'univers, sous laquelle DuckDB ne pousse pas les fenetres `_latest` (cf.
   D5a.1). « Univers calcule une fois » : non atteignable ici (chaque lecture tactique calcule le
   sien dans `tactical_repo*.go`, perimetre L5a) — cf. journal
-- [ ] L2.5 `sessionMatchIDs` depuis `filters.sessions` (D2.5)
+- [x] L2.5 `sessionMatchIDs` depuis `filters.sessions` (D2.5) — `sessionMatchIDsDeLaPage`
+  (`teammates_service_briefing.go`, a cote des filtres de session) : l'ensemble se lit sur
+  `filteredMatches`, qui porte deja les deux regles (labels, comme
+  `filterSynthesisByPickedSessions`) ; GetPage -6 L ; test
+  `TestGetPage_SessionFilter_ParFiltersSessions` (2 matchs sur 3, meme population que par
+  labels), mutation (condition retiree) : rouge ; copie de production : la requete
+  `filters.sessions` seule rend desormais EXACTEMENT la page de `picked_squad_session_labels`
+  (7 matchs au lieu de 38), les 8 autres scenarios inchanges
 - [ ] L2.6 usage / formes partages + `replaylabels` hors chemin de requete (D2.6)
 - [ ] L2.7 annulation entre sections (D2.7)
 

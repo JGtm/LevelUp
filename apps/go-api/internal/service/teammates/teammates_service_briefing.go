@@ -329,6 +329,30 @@ func filterSynthesisByPickedSessions(matches []legacymatch.SynthesisMatchRow, pi
 	return out
 }
 
+// sessionMatchIDsDeLaPage rend les match_id retenus par la session piquée, nil sans session
+// piquée (= aucun filtre : tous les matchs escouade). Une session se pique par
+// picked_solo/squad_session_labels OU par filters.sessions.picked_sessions (rail, pastille,
+// sélecteur multiple) : filteredMatches porte déjà le résultat des deux règles
+// (filterSynthesisBySession, filterSynthesisByPickedSessions), l'ensemble se lit donc dessus.
+//
+// D2.5, lot perf L2 (2026-09-23) : seul le premier chemin comptait. Une requête ne portant que
+// filters.sessions — la requête intermédiaire du ré-ancrage front — calculait toutes les
+// sections sur tout l'historique de la composition (38 matchs) au lieu de la session (7).
+func sessionMatchIDsDeLaPage(
+	req domain.TeammatesQueryRequest, filteredMatches []legacymatch.SynthesisMatchRow,
+) map[string]bool {
+	piquee := len(req.PickedSoloSessions) > 0 || len(req.PickedSquadSessions) > 0 ||
+		(req.Filters != nil && len(req.Filters.Sessions.PickedSessions) > 0)
+	if !piquee {
+		return nil
+	}
+	out := make(map[string]bool, len(filteredMatches))
+	for _, m := range filteredMatches {
+		out[m.MatchID] = true
+	}
+	return out
+}
+
 func filterSynthesisBySession(
 	matches []legacymatch.SynthesisMatchRow,
 	pickedSolo []string,
