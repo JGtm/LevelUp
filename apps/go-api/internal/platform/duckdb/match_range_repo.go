@@ -4,12 +4,12 @@
 //
 // # UN SEUL CÔTÉ, ET C'EST LE POINT
 //
-// `WeaponRangeRepo.loadBothSides` lit deux fois : côté tueur puis côté victime. Sans filtre
-// de joueur, ces deux lectures rendraient EXACTEMENT LES MÊMES FRAGS — chaque frag du scope
-// est à la fois « un frag de quelqu'un » et « une mort de quelqu'un d'autre » — et chaque
-// mesure compterait double dans la médiane du lobby. Cette lecture-ci ne prend donc que le
-// côté TUEUR : la question posée est « à quelle distance CE JOUEUR frague », et le tueur est
-// celui que `kill_positions` clé.
+// `WeaponRangeRepo.loadBothSides` rend deux côtés : tueur et victime. Sans filtre de joueur,
+// ces deux côtés porteraient EXACTEMENT LES MÊMES FRAGS — chaque frag du scope est à la fois
+// « un frag de quelqu'un » et « une mort de quelqu'un d'autre » — et chaque mesure compterait
+// double dans la médiane du lobby. Cette lecture-ci ne prend donc que le côté TUEUR : la
+// question posée est « à quelle distance CE JOUEUR frague », et le tueur est celui que
+// `kill_positions` clé.
 //
 // # LA JOINTURE N'EST PAS RECOPIÉE
 //
