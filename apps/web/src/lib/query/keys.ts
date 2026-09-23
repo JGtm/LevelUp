@@ -181,6 +181,13 @@ export const queryKeys = {
   // (mesurée : 8,2 s + 26,8 s par clic).
   teammates: (playerSlug: string, titleSlug: string, filterHash: string, selectedGts: string[], locale = '', exactComposition = true) =>
     ['teammates', playerSlug, titleSlug, filterHash, [...selectedGts].sort().join(','), locale, exactComposition] as const,
+  // Sessions de la composition SANS la page (GET /pages/teammates/sessions, lot perf L4b,
+  // 2026-09-23). Sous le préfixe `teammates` : toute invalidation de l'Escouade la couvre
+  // (un ami ajouté entre dans l'extraPool de la composition exacte). Ni filtres ni locale :
+  // la réponse se calcule sur l'historique COMPLET de la composition et ne porte aucun
+  // libellé traduit.
+  compositionSessions: (playerSlug: string, titleSlug: string, selectedGts: string[], exactComposition: boolean) =>
+    ['teammates', playerSlug, titleSlug, 'composition-sessions', [...selectedGts].sort().join(','), exactComposition] as const,
   /** Préfixe broad — invalide toutes les queries teammates (ex. après ajout d'ami).
    *  Title-agnostic PAR DESIGN (balaie tous les joueurs/titres). */
   teammatesAll: ['teammates'] as const,

@@ -20,7 +20,14 @@
  * silencieusement ignorée pour le preview tant qu'une session est sélectionnée
  * — le `pending` d'origine reste intact pour le commit Analyser.
  */
-import type { FilterContextInput, SessionsInput, PeriodInput } from '@/lib/api/types'
+import type {
+  CompositionSessionsResponse,
+  FilterContextInput,
+  PeriodInput,
+  SessionLabelEntry,
+  SessionsInput,
+  TeammatesPageResponse,
+} from '@/lib/api/types'
 // L'identite d'un label de session (suffixe « (N) » volatil) vit dans `lib/sessions` :
 // deux features la lisent depuis le 2026-09-06 (Escouade et Tactique).
 import { stripSessionCountSuffix } from '@/lib/sessions/sessionLabels'
@@ -109,6 +116,62 @@ export function decideCompositionReanchor(input: CompositionReanchorInput): Comp
   const alreadyOnLatest =
     pickedSessions.length === 1 && stripSessionCountSuffix(pickedSessions[0]) === latestKey
   return alreadyOnLatest ? { kind: 'none' } : { kind: 'snap', label: latestCompositionSession }
+}
+
+/** Ce qu'une requête TanStack Query expose et dont la source des sessions a besoin. */
+interface QueryView<T> {
+  data?: T
+  isError: boolean
+  isPlaceholderData: boolean
+}
+
+/**
+ * Les sessions de la composition et la dernière d'entre elles, d'où qu'elles viennent :
+ * de quoi nourrir le sélecteur de sessions ET `decideCompositionReanchor`.
+ */
+export interface CompositionSessionsSource {
+  /** 'light' : GET `/pages/teammates/sessions` ; 'heavy' : repli sur POST `/pages/teammates`. */
+  origin: 'light' | 'heavy'
+  sessions: SessionLabelEntry[]
+  /** Dernière session de la composition, '' si jamais jouée ensemble (ou sans coéquipier). */
+  latest: string
+  /** Donnée de la composition COURANTE : ni absente, ni placeholder d'une clé précédente. */
+  fresh: boolean
+  /** Identité de la donnée lue : l'ancrage se rejoue quand elle change. */
+  data: unknown
+}
+
+/**
+ * Choisit la source des sessions (lot perf L4b, 2026-09-23) : la réponse LÉGÈRE dès
+ * qu'elle a une donnée (placeholder compris : il garde la sélection visible pendant le
+ * chargement de la composition suivante, comme la réponse lourde le faisait), la
+ * réponse LOURDE sinon — endpoint léger en échec (repli : exactement la lecture du lot
+ * L4a) ou pas encore arrivé. Les champs sont les mêmes des deux côtés (parité testée
+ * côté serveur), à une nuance près, héritée : sans coéquipier, la réponse lourde se lit
+ * dans `session_labels.squad`, la légère dans `composition_sessions`.
+ */
+export function pickCompositionSessionsSource(
+  light: QueryView<CompositionSessionsResponse>,
+  heavy: QueryView<TeammatesPageResponse>,
+  hasTeammates: boolean,
+): CompositionSessionsSource {
+  if (light.data !== undefined && !light.isError) {
+    return {
+      origin: 'light',
+      sessions: light.data.composition_sessions ?? [],
+      latest: light.data.latest_composition_session ?? '',
+      fresh: !light.isPlaceholderData,
+      data: light.data,
+    }
+  }
+  const data = heavy.data
+  return {
+    origin: 'heavy',
+    sessions: (hasTeammates ? data?.composition_sessions : data?.session_labels?.squad) ?? [],
+    latest: data?.latest_composition_session ?? '',
+    fresh: data !== undefined && !heavy.isPlaceholderData,
+    data,
+  }
 }
 
 export function deriveSquadPending(

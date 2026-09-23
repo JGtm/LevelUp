@@ -21,19 +21,15 @@
  * Route parente : /players/$playerSlug/squad
  * Routes enfants : /squad/synergies · /squad/contributions · /squad/dynamique · /squad/usages
  */
-import { useState, useEffect, useMemo, useRef } from 'react'
+import { useState, useMemo } from 'react'
 import { Outlet, useParams, Link, useMatchRoute } from '@tanstack/react-router'
 import { useTitleSlug } from '@/lib/title-routing'
 import { useSquadFilterStore } from '@/stores/squadFilterStore'
 import { useAppShellStore } from '@/stores/appShellStore'
-import { useTeammates } from './queries'
+import { useSquadPageRequests } from './useSquadPageRequests'
 import { useSquadSessionSelection } from './useSquadSessionSelection'
 import { useFiltersResolve } from '@/features/filters/queries'
 import { EmptyStateCard } from '@/components/ui/empty-state'
-import {
-  reconcileSquadSessionLabels,
-  stripSessionCountSuffix,
-} from '@/lib/sessions/sessionLabels'
 import { AddFriendModal } from '@/features/friends/AddFriendFlow'
 import { getSquadText } from './i18n'
 import { SquadObjectiveStatsPanel } from './SquadObjectiveStatsPanel'
@@ -46,7 +42,6 @@ import { SquadFocusStrip } from './SquadFocusStrip'
 import type { KPIStats, TeammateRow, TeammatesQueryRequest } from '@/lib/api/types'
 import type { KPIStats as V2KPIStats } from './v2/types'
 import { SessionBriefing } from '@/features/_shared/SessionBriefing'
-import { decideCompositionReanchor } from './squadPending'
 import { formatDataIssues } from './squadDataIssues'
 import { exactCompositionDefault } from './exactComposition'
 
@@ -95,7 +90,6 @@ export function SquadLayout() {
     filterContext,
     filterContextHash,
     resetFilters,
-    autoSnapToLatestSession,
   } = useSquadFilterStore()
   // Composition (lien profond de l'accueil, amis, choix), session pickée — source
   // UNIQUE : le store escouade — et moment où la requête lourde peut partir.
@@ -156,27 +150,30 @@ export function SquadLayout() {
     locale,
     filter_exact_composition: exactComposition,
   }
-  // `isPending` et non `isLoading` : tant que la composition initiale n'est pas
-  // connue, la requête est DÉSACTIVÉE (D4.2) — « Chargement… », jamais l'état vide.
-  const { data, isPending, isError, error, isPlaceholderData } = useTeammates(
+  // Deux requêtes (lot perf L4b) : la LÉGÈRE (sessions de la composition) décide de
+  // l'ancrage, la LOURDE ne part qu'ensuite, déjà sur la bonne session — cf.
+  // useSquadPageRequests, qui porte aussi le ré-ancrage et la réconciliation des
+  // sessions pickées. `isPending` et non `isLoading` : tant qu'elle attend (composition
+  // initiale inconnue, D4.2 ; ancrage pas encore décidé, L4b), la requête lourde est
+  // DÉSACTIVÉE — « Chargement… », jamais l'état vide.
+  const {
+    teammates: { data, isPending, isError, error },
+    compositionSessions,
+  } = useSquadPageRequests({
     playerSlug,
     request,
     filterContextHash,
-    confirmedGts,
+    selectedGts: confirmedGts,
+    exactComposition,
     teammatesReady,
-  )
-
-  // Sessions à afficher (multi-select) + référence pour le ré-ancrage.
-  // Avec coéquipier(s) : sessions de la COMPOSITION EXACTE (intersection back-end,
-  // historique complet). Sans coéquipier : sessions squad du joueur principal.
-  // On ne retombe PAS sur les sessions du main quand l'intersection est vide
-  // (sinon on afficherait des sessions non jouées par la composition).
+    pickedSquadSessionLabels,
+    applySessionLabels,
+  })
+  // `compositionSessions` (sélecteur, rail, état vide) : avec coéquipier(s), les sessions
+  // de la COMPOSITION (intersection, historique complet) — jamais celles du joueur
+  // principal quand elle est vide, on afficherait des sessions non jouées par la
+  // composition ; sans coéquipier, les sessions escouade du joueur principal.
   const hasTeammates = confirmedGts.length > 0
-  const compositionSessions = useMemo(
-    () => (hasTeammates ? (data?.composition_sessions ?? []) : (data?.session_labels?.squad ?? [])),
-    [hasTeammates, data],
-  )
-  const latestCompositionSession = data?.latest_composition_session ?? ''
 
   // Dégradations remontées par l'API (chargements best-effort en échec) :
   // affichées telles quelles — un chiffre partiel doit se voir, pas se deviner.
@@ -229,82 +226,6 @@ export function SquadLayout() {
         {tCommon('common.filters.browse_label')}
       </button>
     ) : null
-
-  // Réconciliation anti-zombie des sessions pickées (suffixe " (N)" volatil, cf.
-  // buildSessionLabel côté Go). On remappe chaque label pické vers sa forme
-  // courante dans compositionSessions et on droppe les doublons. Si TOUS les
-  // labels sont des zombies pour la composition courante, on ne fait rien : le
-  // ré-ancrage composition (effet suivant) reprend la main proprement.
-  useEffect(() => {
-    if (compositionSessions.length === 0 || pickedSquadSessionLabels.length === 0) return
-    const reconciled = reconcileSquadSessionLabels(pickedSquadSessionLabels, compositionSessions)
-    if (reconciled.length === 0) return
-    const unchanged =
-      reconciled.length === pickedSquadSessionLabels.length &&
-      reconciled.every((l, i) => l === pickedSquadSessionLabels[i])
-    if (!unchanged) applySessionLabels(reconciled)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [compositionSessions])
-
-  // ── Ré-ancrage composition-aware ─────────────────────────────────────────
-  // Quand la composition change (ajout/retrait d'un coéquipier), on retombe sur
-  // la dernière session où exactement cette composition a joué ensemble
-  // (data.latest_composition_session, calculé back-end sur l'intersection), ou un
-  // état vide si elle n'a jamais joué ensemble.
-  //
-  // Anti-boucle : on n'agit qu'UNE fois par couple (composition, dernière session)
-  // — ref — et seulement sur des données FRAÎCHES (!isPlaceholderData = data
-  // correspond à la sélection courante, pas au placeholder keepPreviousData). La
-  // navigation rail/manuelle et les changements de filtre ne changent ni la
-  // composition ni la dernière session → pas de ré-ancrage, donc pas de conflit
-  // avec une sélection de session délibérée.
-  //
-  // La clé de garde inclut la DERNIÈRE SESSION (clé sans le suffixe « (N) »
-  // volatil) : avec la composition seule, l'arrivée d'une nouvelle soirée pendant
-  // que la page est montée (refetch post-sync) ne rouvrait jamais la décision —
-  // l'escouade ne monte pas useFollowLatestSession (seul le solo l'a).
-  const lastAnchoredCompositionRef = useRef<string | null>(null)
-  useEffect(() => {
-    if (!data || isPlaceholderData) return
-    const compositionKey = hasTeammates ? [...confirmedGts].sort().join(',') : ''
-    const anchorKey = `${compositionKey}|${stripSessionCountSuffix(latestCompositionSession)}`
-    if (anchorKey === lastAnchoredCompositionRef.current) return
-    lastAnchoredCompositionRef.current = anchorKey
-
-    const {
-      filterContext: fc,
-      isAutoSnappingToLatest,
-      lastKnownLatestSessionId,
-      setLastKnownLatestSessionId,
-    } = useSquadFilterStore.getState()
-    const picked = fc.sessions?.picked_sessions ?? []
-    const hasPeriod = !!(fc.period?.start_date || fc.period?.end_date)
-    // « follow-latest » : pas de sélection manuelle épinglée (cf. useFollowLatestSession).
-    const followLatest = isAutoSnappingToLatest || (!hasPeriod && picked.length === 0)
-    const action = decideCompositionReanchor({
-      hasTeammates,
-      followLatest,
-      latestCompositionSession,
-      pickedSessions: picked,
-      compositionSessionLabels: compositionSessions.map((s) => s.label),
-      // Ancrage déjà posé (persisté) : distingue « l'utilisateur a épinglé cette
-      // session » de « une nouvelle session est arrivée depuis ».
-      lastAnchoredLatestSession: lastKnownLatestSessionId ?? '',
-    })
-    if (action.kind === 'clear') {
-      // Composition sans session commune → on vide et on affiche l'état vide
-      // (le backend logge déjà composition_resolved avec composition_sessions=0).
-      applySessionLabels([])
-    } else if (action.kind === 'snap') {
-      autoSnapToLatestSession({ session_id: action.label, label: action.label }, true)
-    } else if (latestCompositionSession && latestCompositionSession !== lastKnownLatestSessionId) {
-      // Pas de snap (déjà dessus, ou sélection délibérée respectée) : on mémorise
-      // quand même la dernière session vue, sinon elle resterait « jamais ancrée »
-      // et re-déclencherait un snap à chaque montage.
-      setLastKnownLatestSessionId(latestCompositionSession)
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [data, isPlaceholderData, confirmedGts, hasTeammates, latestCompositionSession])
 
   // ── Routes actives ───────────────────────────────────────────────────────
   const synergiesRoute = '/{-$lang}/t/$titleSlug/players/$playerSlug/squad/synergies' as const

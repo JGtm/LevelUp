@@ -986,9 +986,119 @@ composition_sessions.go` (+ nouveau fichier), `internal/port/*` (methode), `api/
 `apps/web/src/features/squad/*`, `lib/api/types.ts`, `lib/query/keys.ts`, tests.
 
 Items :
-- [ ] L4b.1 endpoint + service + contrat + tests
-- [ ] L4b.2 front : hook, selecteur, ancrage, `enabled` de la requete lourde + tests
-- [ ] L4b.3 chrono : endpoint leger < 300 ms sur copie ou en mesure de reference
+- [x] L4b.1 endpoint + service + contrat + tests — port `internal/port/services.go:403`
+  (`CompositionSessions(ctx, playerXUID, teammates, exact)`) ; service
+  `internal/service/teammates/teammates_service_composition_legere.go:66` (nouveau fichier) :
+  Q29 puis `lireComposition` (`:113`, Q30 par coéquipier, `intersectSquadRowsByMatchID`),
+  `appliquerCompositionExacte` (`:179`, extraPool, Q32b SOUS L'OPTION seulement,
+  `filterExactComposition`), `buildCompositionSessionEntries` ; sans coéquipier
+  `sessionsEscouadeDuPrincipal` (`:205`, historique du principal,
+  `wrapSessionLabelsAsComposition`) ; jamais une section de la page ; sections de durée
+  `top_teammates`, `squad_matches`, `main_team_allies`, `player_matches`,
+  `composition_sessions`. Handler `internal/api/handlers/teammates.go:49` (route dans le MÊME
+  Mount que la page : mêmes middlewares ownership et titre), `:110` (`MapCapabilityError`
+  sonde `match.history`, puis `mapServiceError`), `:134` (composition rognée, vides écartés).
+  Contrat : `api/openapi_manual_fragment.yaml:976`, `openapi.yaml` et `generated.ts`
+  régénérés, `lib/api/types.ts:1265` (`CompositionSessionsResponse`, re-export du schéma).
+  Tests : `teammates_service_composition_legere_test.go:139` (parité avec GetPage sur 16
+  scénarios existants du paquet : liste, ordre, `match_count`, `match_count_roster`,
+  `excluded_by_exact_composition`, dernière session), `:290` (lectures faites / jamais
+  faites), `:346` (annulation), `:366` (sections) ; `handlers/teammates_sessions_test.go`
+  (6 cas) ; `page_service_errors_test.go:124` (499, 503, contrat)
+- [x] L4b.2 front : hook, sélecteur, ancrage, `enabled` de la requête lourde + tests —
+  `features/squad/queries.ts:85` (`useCompositionSessions` : `signal`, `staleTime` 5 min,
+  `keepPreviousData`, `retry: false`), `:48` (`signal` transmis par `useTeammates`) ;
+  `lib/query/keys.ts:189` (`compositionSessions`, sous le préfixe `teammates`) ;
+  `features/squad/useSquadPageRequests.ts` (nouveau) : `:109` (`enabled` de la lourde),
+  `:112` (source des sessions), `:126` et `:143` (réconciliation et ré-ancrage, déplacés de
+  `SquadLayout` sans changement) ; `squadPending.ts:153` (`pickCompositionSessionsSource`) ;
+  `SquadLayout.tsx:162` (531 → 452 L). Preuves : `SquadLayout.requests.test.tsx:204` (à
+  froid : une légère puis UNE lourde déjà sur la dernière session), `:225` (composition
+  sans session commune vidée avant la lourde), `:237` (clic du rail = une lourde, aucune
+  relecture légère), `:262` (légère en échec = séquence L4a) ;
+  `useSquadPageRequests.test.tsx:117-176` (verrou de montage, changement de composition,
+  bascule de l'option, sélection manuelle valide, sans coéquipier la lourde n'attend pas) ;
+  `queries.test.tsx:46-100` (annulation des deux requêtes, URL) ; `squadPending.test.ts:347`
+  (source) et `:396` (parité de la décision depuis la légère ou la lourde, scénarios de
+  `decideCompositionReanchor`)
+- [x] L4b.3 chrono : endpoint léger < 300 ms sur copie — 45 à 197 ms selon la composition
+  (détail au journal)
+
+Journal du lot (2026-09-23, branche `feat/perf-l4b` depuis `feat/perf-chargements`
+8d016c94a, exécuteur Opus ; commits 87b53622e L4b.1, 382c0fe90 L4b.2, puis ce journal) :
+
+- Chrono (sonde temporaire compilée depuis `cmd/perfprobe_l4b_tmp/`, retirée ; copie de
+  `shared_matches_v2.duckdb` du 23/09 16:02 ; `metadata.duckdb` et bases joueurs : copies du
+  lot L2, les originales étant tenues par le serveur du checkout principal ; `threads=2`,
+  `512MB` = défauts du pool ; câblage de `wire.TeammatesCtx`), 5 exécutions par scénario :
+  composition de 3 coéquipiers (7 sessions) 90-197 ms ; la même en composition exacte
+  88-149 ms ; un coéquipier (76 sessions) 45-110 ms ; un coéquipier en composition exacte
+  (20 sessions, Q32b sur tout l'historique commun : 84-96 ms) 144-196 ms ; coéquipier non
+  suivi en composition exacte 70-140 ms ; sans coéquipier 101 ms à froid (process neuf),
+  1 ms ensuite (cache de lecture du lot L5b). Sections : `top_teammates` 18-102 ms (bimodal
+  20 / 80 ms d'un appel à l'autre), `squad_matches` 24-94 ms, `main_team_allies` 5-96 ms,
+  `composition_sessions` ≤ 1 ms. Avant L4b, ces deux champs n'arrivaient qu'avec la page :
+  sur la même copie 0,95-1,19 s (3 coéquipiers), 3,8-4,7 s (un coéquipier), 1,2-1,3 s (un
+  coéquipier, exacte), 0,16-0,19 s (sans coéquipier). Cible < 300 ms : tenue partout.
+- Parité sur données réelles (même sonde) : à Q29 FIGÉ (une lecture servie aux deux chemins),
+  les deux champs sont identiques à l'octet sur les 6 scénarios. À Q29 réel, 2 scénarios
+  « exacte » sur 6 diffèrent de la page : Q29 rend deux ensembles de 50 xuids DIFFÉRENTS sur
+  deux lectures consécutives (coupe arbitraire du groupe d'égalité, découverte (4) du lot L2),
+  donc un extraPool différent ; la page elle-même n'est pas stable (5 pages de suite, un
+  coéquipier en composition exacte : 4 différentes de la première). Non corrigé (hors
+  périmètre) : découverte (1) ci-dessous.
+- Précisions d'implémentation (aucune décision rouverte) : (a) réponse : les deux champs
+  TOUJOURS présents (liste vide, chaîne vide) là où la page les omet ; (b) `exact` absent =
+  false, comme `filter_exact_composition` absent du corps de la page ; (c) composition rognée,
+  vides écartés (`?teammates=` = aucun coéquipier) ; (d) la résolution d'un coéquipier (top
+  50 sans casse, puis alias) est une seconde copie de celle de `buildTeammateRowWithMatches`
+  (`teammates_service_kpis.go`, hors périmètre ; CLAUDE.md n°6 : deux au plus), verrouillée par
+  le test de parité ; (e) `pourLaRequete` est appelée : aucune lecture mémorisée par elle
+  (Q32, LoadFor) n'est empruntée sur ce chemin aujourd'hui, une lecture partagée qui s'y
+  ajouterait passerait par la même mémoire ; l'annuaire de L2 est celui de Q29 et Q32b ;
+  (f) Q32b n'est lue que sous l'option : hors option la page ne s'en sert que pour ses
+  sections ; (g) front : la décision est retenue par composition (titre, joueur, composition
+  triée, option), posée APRÈS l'écriture de l'ancrage dans le store ; sans coéquipier la
+  lourde part aussitôt (la décision est `none` par construction) et la légère nourrit
+  seulement le sélecteur ; (h) `retry: false` sur la légère : son échec retombe aussitôt sur
+  la lourde plutôt qu'après le backoff (1 s + 2 s) ; (i) clé sous le préfixe `teammates`
+  (l'invalidation après ajout d'ami la couvre ; l'extraPool dépend des amis), sans locale ni
+  filtres ; (j) la clé lourde d'avant l'ancrage existe dans le cache sans avoir été chargée
+  (requête désactivée) : les tests comptent les clés CHARGÉES ; (k) infrastructure de test :
+  handler MSW par défaut de la route légère (`src/test/handlers.ts`), et le test du lien
+  profond neutralise aussi la légère (même intention que pour la lourde) ; (l) les deux tests
+  L4a qui attendaient DEUX requêtes lourdes au snap (`SquadLayout.requests.test.tsx`) sont
+  réécrits pour l'ordre L4b (une légère, une lourde), la séquence L4a restant exigée, elle,
+  quand la légère échoue.
+- Gates (code final 382c0fe90) : `gofmt -l ./internal ./cmd` vide ; `go build ./...` 0 ;
+  `go vet ./...` 0 ; `go test ./internal/service/... ./internal/api/... ./internal/port/...` 0
+  (12 paquets, aucun `--- FAIL:`) ; `go run ./cmd/openapi-gen -check` 0 ;
+  `node tools/check-generated-types-fresh.mjs` 0 ; golangci-lint 2.12.2
+  `--new-from-rev=8d016c94a` sur les 3 paquets touchés : 0 issue ; `npm run typecheck` 0 ;
+  `npm run lint` 0 erreur (26 avertissements, tous antérieurs, aucun sur les fichiers du
+  lot) ; vitest `src/features/squad src/features/filters src/lib/query src/lib/api` 0 (85
+  fichiers, 770 tests). Hors gate : suite web complète 0 (790 fichiers, 8 476 tests ; 3
+  fichiers et 19 tests ignorés, antérieurs) ; ratchets knip (0/0/0), imports croisés (7 ≤ 7),
+  couleurs, champs, contrat : verts. Aucun test renommé ni supprimé côté Go (baseline JSONL
+  inchangée).
+- Mutations jouées, toutes rouges puis restaurées (`cmp`) : Go — option exacte ignorée,
+  dernière session = la plus ancienne, Q32b lue hors option, sessions solo au lieu d'escouade
+  sans coéquipier, contrôle d'annulation retiré, coéquipier introuvable gardé dans
+  l'intersection, composition non nettoyée, `MapCapabilityError` retiré, liste nulle non
+  normalisée ; web — lourde sans attendre la décision, repli retiré, ancrage sur un
+  placeholder, sans coéquipier la lourde attend la légère, `signal` retiré de la lourde puis
+  de la légère, option absente de la clé légère, source légère ignorée.
+- Découvertes (non traitées, hors périmètre) : (1) Q29 (`LoadTopTeammates`, `ORDER BY
+  games_together DESC LIMIT 50` sans départage, `queries_squad.go:54`) : l'ensemble du top 50 change d'une
+  lecture à l'autre, donc l'extraPool de la composition exacte, donc les sessions, comptes et
+  responsables nommés de la composition exacte ne sont pas reproductibles d'une requête à la
+  suivante — page comme lecture légère (mesuré ci-dessus) ; conséquence plus lourde que la
+  découverte (4) de L2 ; un départage (`xuid`) le rendrait stable. (2) POST `/pages/teammates`
+  ne passe pas par `MapCapabilityError` : une `ErrCapabilityNotSupported` y rendrait 500 (la
+  route légère rend 503). (3) `buildCompositionSessionLabels` trie par `StartedAt` avec
+  `sort.Slice` sur une tranche issue d'une map : ordre non déterministe entre deux sessions de
+  même début (théorique). (4) La lecture légère sans coéquipier lit tout l'historique du
+  joueur principal (101 ms à froid) pour n'en garder que les sessions escouade.
 
 
 ## 9 ter. L7 — Carriere : rencontres et rivaux sans `v_gamertag_lookup` (Go) — ajoute le 2026-09-23 a la mesure intermediaire
