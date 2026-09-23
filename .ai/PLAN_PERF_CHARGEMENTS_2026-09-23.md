@@ -356,11 +356,127 @@ records.go,session_page_service*.go,timeseries_service*.go}`, `internal/platform
 kill_distance_repo.go}` + tests. Pas de changement de contrat des reponses.
 
 Items :
-- [ ] L5a.1 univers restreint a la liste (D5a.1) + chrono avant/apres sur copie
-- [ ] L5a.2 portee / records sur le perimetre (D5a.2) + tests de parite
-- [ ] L5a.3 evenements une fois par requete (D5a.3)
+- [x] L5a.1 univers restreint a la liste (D5a.1) + chrono avant/apres sur copie
+- [x] L5a.2 portee / records sur le perimetre (D5a.2) + tests de parite
+- [x] L5a.3 evenements une fois par requete (D5a.3)
 
 Gate : comme L2 (paquets touches) ; `-tags=integration -p 1 ./internal/platform/duckdb/...`.
+
+### Journal du lot L5a (2026-09-23, branche `feat/perf-l5a` depuis `feat/perf-chargements` 37cb48167)
+
+- Mesure : COPIE de `shared_matches_v2.duckdb` (1,3 Go) dans le scratchpad `l5a/`, outil temporaire
+  `cmd/perfprobe_l5a_tmp/` (supprime avant commit) appelant les VRAIS repos a travers un driver
+  chronometre, `access_mode=read_only`, 2 threads, 512 Mo ; joueur JGtm (xuid 2533274823110022,
+  1 158 matchs hors Firefight) ; perimetres = 6 derniers matchs, 30, tout l'historique ; seconde
+  execution retenue (cache chaud). Les binaires avant/apres sont construits sur le code de base
+  (fichiers repos de 37cb48167 remis le temps de la construction) puis sur le code du lot.
+- Diagnostic (question de la consigne) : la liste etait deja appliquee EN SQL (`clausePerimetre`
+  ajoute `mr.match_id IN (...)` au WHERE de l'univers), pas en Go apres balayage. Mais (a) le EXISTS
+  correle sur `match_kill_events_latest` ne la recevait pas, et la fenetre `QUALIFY ... OVER
+  (PARTITION BY match_id)` de la vue se calculait sur les 3,95 M lignes a chaque lecture ; (b) les
+  equipes, le journal, les positions et l'isolement re-selectionnaient l'univers en sous-requete
+  (`IN (SELECT u.match_id FROM (univers) u)`) : univers re-evalue avec son EXISTS (0,45 a 0,5 s par
+  requete) et semi-jointure jamais poussee sous les fenetres des vues `_latest`. Meme defaut dans
+  `WeaponRangeRepo` : le `e.match_id IN (...)` ne traverse pas la jointure jusqu'a
+  `kill_positions_latest` / `kill_openings_latest`. DuckDB ne pousse sous une fenetre qu'un filtre
+  CONSTANT sur la cle de partition ; seule une EGALITE `= ?` se propage par la jointure
+  (`KillDistanceRepo`, un match : 15 ms contre 10 ms, non touche).
+- L5a.1 (`tactical_repo_univers.go:95,178,239,278`, `tactical_repo.go:216,251,287,311`,
+  `tactical_repo_isolement.go:71,106`) : liste recopiee DANS le EXISTS (jeton `%PERIMETRE_JOURNAL%`) ;
+  equipes, journal, positions et isolement lus sur la liste des matchs RENDUS par l'univers
+  (`listeDeLUnivers`), posee sur CHAQUE vue `_latest` (e ; kp + e ; e + c + p). Avant -> apres, ms,
+  n = 6 / 30 / 1 158 : `KillEvents` 1 794 / 1 867 / 1 901 -> 59 / 79 / 996 ; `KillEvents` sans liste
+  (page Escouade aujourd'hui) 1 827-2 056 -> 1 078-1 250 ; `MortsAvecContexte` 3 260 / 3 361 / 3 529 ->
+  80 / 122 / 1 727 ; `Univers` 1 055 / 995 / 1 088 -> 16 / 22 / 389. Detail a 6 matchs avant :
+  univers 502, equipes 464, journal 743 ; apres : 12, 2, 44 (isolement : 14, 3, 63).
+- L5a.2 (`weapon_range_repo.go:106,164,212,235,268`) : `kp.match_id IN (...)` ajoute a la portee
+  (`buildWeaponRangeScope`, liste liee trois fois : `fragSolo`, `e`, `kp`) ; `LoadWeaponRange` et
+  `LoadWeaponOpening` lisent les DEUX cotes en UNE requete (« le joueur est tueur OU victime »,
+  separation en Go par `separerCotes`, joueurs designes par `joueursDuFiltre` via `appendXUIDFilter`,
+  jamais une copie du sous-select `xuid_aliases`). Avant -> apres, ms, 6 / 30 / 1 158 :
+  `LoadWeaponRange` 1 324 / 1 449 / 3 692 -> 64 / 88 / 2 024 ; `LoadWeaponOpening` 630 / 734 / 3 025 ->
+  60 / 104 / 1 838 ; `LoadMatchRangeKills` 733 / 776 / 2 231-2 963 -> 85 / 165 / 2 126-2 894 (neutre a
+  l'historique complet : ecart dans le bruit de six executions). `synthesis_weapon_records.go`
+  inchange : la section profite de la lecture unique.
+- L5a.3 : page Sessions (`coordination_block.go:109,126,178,202`, `session_page_coordination.go:79,
+  90,123`) : journal des morts + appuis des TROIS scopes (session, comparee, reference) en une
+  lecture COMPLETEE (`lectureCoordination` : les deux sessions ensemble, puis le seul complement de
+  la reference, et seulement si elle sert) ; chaque bloc se decoupe par `coordination.Restreindre`.
+  Series temporelles (`timeseries_service.go:357,369,376`, `timeseries_service_sections.go:220,
+  226`) : participants lus UNE fois (`lireEquipesDuScope`, section `participants` qui remplace
+  `team_sizes`) pour la courbe d'equipe de l'intensite et la parite de la coordination.
+  `highlight_events` : deja charges une fois par requete et sur le perimetre (Sessions : un appel
+  pour courante + comparee, `attachSessionEventBlocks` ; Series : `loadHighlightEvents`, un appel) —
+  constat, rien a changer (8 / 11 / 195 ms). Attribution des 5 s sans journal de Series temporelles :
+  dans `attachMigratedSections`, le seul producteur apres la coordination est `range_profiles`
+  (`LoadMatchRangeKills` tous joueurs + compte des frags publiables sur le perimetre de la page :
+  2,2 a 2,9 s sur copie a l'historique complet) — pas une relecture identique, une lecture VOISINE de
+  la portee (cf. decouverte 2) ; traitee par la restriction de L5a.2 (85 / 165 ms a 6 / 30 matchs).
+- Scenarios de page (SQL seul, sur copie, meme outil) avant -> apres, ms : Sessions coordination
+  (session 6 + comparee 6 + reference 1 158) 7 971-8 258 -> 1 940-2 891 (la variante « trois lectures »
+  sur le nouveau code : 1 919-3 017, le partage gagne ~0,1 s, dans le bruit) ; Sessions portee (6 + 6 +
+  reference 30) 2 604-2 772 -> 423-539 ; Synthese records (perimetre 6 / 30 / 1 158) 1 755 /
+  1 727-1 782 / 4 542-4 608 -> 100-111 / 129-143 / 2 113-2 133 ; Series temporelles (portee + entame +
+  roles + coordination, 6 / 30 / 1 158) 5 892-6 008 / 5 922-5 996 / 17 124-21 187 -> 468-474 / 616-619 /
+  8 547-9 291.
+- Cible D5a.4 (indicative, verifiee par le superviseur §8 bis) : sur un perimetre de session ou de
+  periode (<= 30 matchs), ces lectures passent sous 0,7 s par page. Sur TOUT l'historique, elles
+  restent : Synthese ~2,1 s (records), Sessions ~2 a 2,9 s (reference d'habituel = periode de la
+  page), Series temporelles ~8,5 a 9,3 s — le reste tient a la conception (vues `_latest` a fenetre
+  sur tables entieres, lectures voisines non partageables sans changer port/analysis : decouvertes 1
+  a 3 et 6).
+- Parite : empreintes (multiset ET ordre) identiques avant/apres sur la copie pour `KillEvents`,
+  `KillEvents` sans liste, `MortsAvecContexte`, `Univers` (6 / 30 / 1 158) ; multiset identique pour
+  `LoadWeaponRange` (gamertag et xuid), `LoadWeaponOpening`, `LoadMatchRangeKills` (6 / 30 / 1 158,
+  l'ordre de ces lectures n'a jamais ete deterministe : agregat par hachage, sans ORDER BY) — 22
+  comparaisons, 22 identiques. Tests : `tactical_repo_fenetres_test.go` (fenetres `_latest` bornees au
+  perimetre pour les quatre lectures, mesure inchangee, gardes de l'isolement),
+  `weapon_range_repo_fenetres_test.go` (fenetres bornees pour les trois lectures ; parite une lecture /
+  deux lectures sur un corpus qui exerce double frag, unanimite, publiable, bot, suicide, hors scope,
+  gamertag a deux xuid, gamertag inconnu, tous les joueurs, pour les deux tables),
+  `fenetres_perimetre_helpers_test.go` (outil : note les requetes REELLEMENT envoyees et les rejoue
+  sous `EXPLAIN (ANALYZE, FORMAT JSON)`, cardinalite de chaque WINDOW), `session_page_coordination_
+  test.go` (une lecture par match ; parite avec trois lectures separees, `reflect.DeepEqual`),
+  `timeseries_service_equipes_test.go` (section `participants` appelee une fois, les deux
+  consommateurs nourris). Stub `appuisRepoStub` aligne sur le contrat reel (honore la liste).
+- Mutations jouees (toutes rouges, puis restaurees depuis copie) : liste retiree du EXISTS (4 rouges :
+  fenetres 30 > 6) ; journal en semi-jointure `IN (SELECT unnest([...]))` et contexte des morts idem
+  (2 rouges) ; `kp` en semi-jointure (5 rouges : trois lectures du repo) ; suicide absent du cote
+  victime et colonne victime neutralisee (parite rouge, 4 cas chacun) ; complement qui relit tout
+  (lectures `[[m1 m2] [m1 m2 m3]]` au lieu de `[[m1 m2] [m3]]`, parite rouge) ; decoupage par scope
+  retire (2 rouges) ; coordination qui relit les participants et intensite privee de la lecture
+  (section `participants` = 2, courbe d'equipe absente).
+- Gate : `gofmt -l ./internal ./cmd` vide ; `go build ./...` 0 ; `go vet ./...` 0 ; `go test
+  ./internal/service/... ./internal/platform/duckdb/... ./internal/analysis/...` 0 (27 paquets ok,
+  aucun `--- FAIL:`) ; `go test -tags=integration -p 1 ./internal/platform/duckdb/...` 0 (5 paquets
+  ok) ; `golangci-lint run --new-from-rev=37cb48167` sur `internal/platform/duckdb/...` et
+  `internal/service/...` : 0 issue. En plus : `./internal/archlint/...` ok, garde-rails SQL de
+  `./internal/sync/` ok. Aucun fichier au-dela de 500 L cree ou grossi ; `GetPage` des Series
+  temporelles a longueur constante (commentaire resserre d'une ligne).
+- Commits : a16e66820 (L5a.1), 6e5b14f80 (L5a.2), c1596ee4d (L5a.3), puis ce journal.
+- Perimetre : `session_page_coordination.go` (attachement du bloc coordination de la page Sessions)
+  touche en plus des motifs du plan, au meme titre que `session_page_range.go` nomme dans la consigne ;
+  tests associes adaptes : `equipment_usage_block_test.go` (signature d'`attachMigratedSections`),
+  `kill_measured_scope_test.go` (arguments lies 2N -> 3N), `coordination_block_test.go` (stub).
+- Decouvertes du lot (consignees ici, non traitees) : (1) les records de distance (Synthese) n'usent
+  que le cote tueur : une lecture d'un seul cote au port ramenerait l'historique complet de ~2,1 s a
+  ~1,3 s (`port/weapon_range.go`, hors perimetre) ; (2) Series temporelles : `weapon_range` (portee +
+  entame du joueur) et `range_profiles` (tous les joueurs) relisent les memes frags mesures du meme
+  scope ; les partager exige la victime sur `analysis.MeasuredKill` ou un port commun (hors
+  perimetre) ; (3) Sessions : la portee de la session, de la comparee et de la fenetre de reference
+  (qui les contient) sont trois lectures ; les partager exige un total de frags PAR MATCH dans
+  `port.MatchRangeRead` (hors perimetre ; cout residuel 0,4 a 0,5 s) ; (4) Series temporelles : les
+  blocs usage et formes (`squadagg`, perimetre L2) relisent films, joueurs et participants du meme
+  scope (participants : 4 lectures par page avant le lot, 2 apres) ; (5) `TacticalRepo.MortsParCarte`
+  (ecran d'entree de l'onglet Tactique) pose la liste sur `mr` seulement : les vues `kp` et `e` se
+  calculent sur l'historique entier (meme defaut que D5a.1, page hors lot) ; (6) a l'historique
+  complet, une liste `IN` de 1 158 valeurs coute ~0,3 s par vue `_latest` (jointure MARK sur la liste
+  sous la fenetre) : pour l'isolement, 1,8 s avec les trois listes contre 1,5 s avec la seule liste de
+  `e` (au-dela de ~800 matchs la liste coute plus que la fenetre entiere ; a 100 / 300 / 600 matchs :
+  0,16 / 0,43 / 0,82 s contre 0,75 / 0,91 / 1,07 s) ; seul un changement de conception (vues `_latest`
+  materialisees) changerait l'ordre de grandeur ; (7) risque de conflit de fusion avec L2 si L2 change
+  la signature de `squadagg.BuildSquadFormesBlock` / `BuildEquipmentUsageBlock`, appelees depuis
+  `timeseries_service_sections.go` (modifie ici).
 
 ## 8. L5b — Socle (Go) — vague 2, apres L1
 
