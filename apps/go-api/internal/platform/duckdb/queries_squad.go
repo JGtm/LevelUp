@@ -302,6 +302,15 @@ ORDER BY p.assist_count DESC, p.assist_xuid, p.feed_killer_xuid`
 //
 // Aucun gamertag en SQL (lot perf L2, 2026-09-23) : il vient de l'annuaire de la lecture
 // (squad_repo_annuaire.go), même cascade que v_gamertag_lookup, sans matérialiser la vue.
+//
+// L'ORDRE DES LIGNES EST LA RÈGLE DES EX AEQUO (lot perf L8, 2026-09-23) : ORDER BY
+// p.match_id, p.xuid. Les badges Bourreau, Faux-frère et Héros silencieux
+// (analysis/match_impact.go : topKiller, falseBrother, silentHero) vont au PREMIER participant
+// à égalité dans l'ordre des lignes de cette lecture. Sans ORDER BY, cet ordre était celui du
+// plan d'exécution de DuckDB : le porteur d'un badge ex aequo changeait avec lui (lot L2,
+// écart 3). Règle en vigueur : le plus petit xuid parmi les ex aequo (ordre binaire de la
+// chaîne), le même à chaque lecture. Une autre règle se poserait en départage explicite dans
+// analysis ; ce tri garderait alors stables les égalités qu'elle laisse.
 const Q32bMainTeamParticipantsTemplate = `
 SELECT
     p.match_id,
@@ -315,7 +324,8 @@ JOIN match_participants main
     ON main.match_id = p.match_id
     AND main.xuid    = ?
     AND p.team_id    = main.team_id
-WHERE p.match_id IN (%s)`
+WHERE p.match_id IN (%s)
+ORDER BY p.match_id, p.xuid`
 
 // Q33 : Synthèse — heatmap win rate par combinaison carte × mode.
 // Paramètre : ?1 = xuid du joueur.
