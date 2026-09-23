@@ -195,6 +195,11 @@ type seedParitySeed struct {
 //
 // Q12MatchScoreboard enrôlée le 2026-08-30 sur SIGNALEMENT du cliquet : elle lit
 // kills_stddev / deaths_stddev, que le trio initial ne projetait pas.
+//
+// QAmisParGamertagTpl enrôlée le 2026-09-23 (lot perf L9-go) sur SIGNALEMENT du cliquet :
+// elle lit mp.gamertag, qu'aucune requête enrôlée ne lisait ; elle tourne sur ce seed
+// (career_repo_friends_test.go, newTestPlayerDB). Requête courte : son seuil d'extraction
+// est déclaré dans seedParityMinRefs.
 var seedParityCarte = []seedParitySeed{
 	{"seedPlayerSchema", "player_repos_test.go", []seedParityQuery{
 		{"Q5SharedHistory", Q5SharedHistory, "r", "match_registry"},
@@ -203,6 +208,7 @@ var seedParityCarte = []seedParitySeed{
 		{"playerMatchesSharedBaseSelect", playerMatchesSharedBaseSelect, "r", "match_registry"},
 		{"playerMatchesSharedBaseSelect", playerMatchesSharedBaseSelect, "p", "match_participants"},
 		{"Q12MatchScoreboard", Q12MatchScoreboard, "p", "match_participants"},
+		{"QAmisParGamertagTpl", QAmisParGamertagTpl, "mp", "match_participants"},
 	}},
 	{"seedSharedDBSchema", "player_repos_test.go", []seedParityQuery{
 		{"playerMatchesSharedBaseSelect", playerMatchesSharedBaseSelect, "r", "match_registry"},
@@ -213,6 +219,13 @@ var seedParityCarte = []seedParitySeed{
 		{"Q5SharedHistory", Q5SharedHistory, "r", "match_registry"},
 		{"Q5SharedHistory", Q5SharedHistory, "p", "match_participants"},
 	}},
+}
+
+// seedParityMinRefs : seuil d'extraction propre à une requête COURTE (défaut : 5 références
+// alias.* au moins — en deçà, l'extracteur est présumé cassé ou l'alias renommé). Toute entrée
+// porte son compte exact, pour qu'un extracteur cassé la fasse encore tomber.
+var seedParityMinRefs = map[string]int{
+	"QAmisParGamertagTpl": 3, // 2026-09-23, lot perf L9-go : mp.gamertag, mp.xuid, mp.match_id
 }
 
 // TestSeedSchemaColumnParity : le garde-rail. Pour chaque seed, pour chaque
@@ -239,7 +252,11 @@ func TestSeedSchemaColumnParity(t *testing.T) {
 		}
 		for _, q := range tc.queries {
 			refs := seedParityAliasRefs(q.sql, q.alias)
-			if len(refs) < 5 {
+			minRefs := 5
+			if m, ok := seedParityMinRefs[q.name]; ok {
+				minRefs = m
+			}
+			if len(refs) < minRefs {
 				t.Errorf("%s : %d référence(s) %s.* extraite(s) — extracteur cassé ou alias renommé dans la requête ?",
 					q.name, len(refs), q.alias)
 				continue
