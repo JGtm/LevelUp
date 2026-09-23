@@ -73,10 +73,13 @@ const PLAYER_SUFFIX_OVERRIDES: RouteTitleRule[] = [
     title: { fr: 'Ascension — Réalisations', en: 'Ascension — Achievements' },
   },
   // 5e onglet « Tactique » (2026-09-06, plan Tactique phase 4) — masqué pour un titre
-  // sans rejeu mais la route reste réelle : titre non-fallback exigé.
+  // sans rejeu mais la route reste réelle : titre non-fallback exigé. EN aligné sur
+  // `common.nav.tab_tactique` (« Tactical », le libellé de l'onglet réel) le 2026-09-23 :
+  // la table disait « Tactics », un mot que l'onglet n'a jamais porté. Les quatre titres
+  // préfixés d'Ascension sont sous garde-rail (`pageTitle.labels.guard.test.ts`).
   {
     pattern: '/ascension/tactique',
-    title: { fr: 'Ascension — Tactique', en: 'Ascension — Tactics' },
+    title: { fr: 'Ascension — Tactique', en: 'Ascension — Tactical' },
   },
   { pattern: '/ascension', title: { fr: 'Ascension', en: 'Ascension' } },
   // Route historique /objectifs redirect → /ascension/objectifs (préservée pour bookmarks).
