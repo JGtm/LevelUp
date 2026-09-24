@@ -113074,3 +113074,85 @@ eslint 0 erreur, lint:colors, vitest 8 510 tests, knip, manifestes i18n) verts.
 
 **Suite.** Verdicts visuels L1/L2, contrôle L4 après redémarrage ; fusion de `feat/rr-ghidra` et
 `feat/rr-c2` à une prochaine intégration ; vague C (M1, M4a, M5).
+
+## [2026-09-24] Retours rejeu, sondes Ghidra P1-S3 et CA9 (feat/rr-ghidra) — Complété (fusionné, 0dd5ad1c7)
+
+**Décision technique principale.** Instruments `research` et notes seulement, aucun code de production :
+le tir continu vit dans la VUE DE CONTRÔLE (bloc d'action de l'entrée du joueur, `m0` = gâchette de
+type 1 tenue), pas dans un record 36 ; `00007CA9` = l'arme « mains nues » (`WeaponTags.unarmed`).
+
+**Résultats observés.** P1-S3 : 6/6 frags au Ghost de 81c02726 précédés du signal, 0 au témoin −60 s.
+Aucune révision de décodage touchée (`grammar.Rev` et `facts.Rev` inchangées à la fusion).
+
+**Suite.** M4b (tir continu générique par type de barillet) et M6.3 (mains nues), selon les décisions
+du 24/09.
+
+## [2026-09-24] Retours rejeu, sonde C2 : décor de véhicule à la naissance (feat/rr-c2) — Complété (fusionné, 0dff5a39c)
+
+**Décision technique principale.** Instrument `research` et note : le bloc MPP porte l'index de
+placement de carte (`FUN_14080d524`) — « posé par la carte », pas « non jouable » ; la règle L1.3
+reste la règle générale.
+
+**Résultats observés.** 13/13 décors et 0/100 véhicules en jeu sur 22 films non-BTB portent l'index ;
+des tourelles actives posées le portent aussi, d'où l'absence de champ « non jouable ».
+
+**Suite.** M7 (« hors de la zone jouable » ajouté à L1.3).
+
+## [2026-09-24] Retours rejeu, M1 : positions — grammaire de la vie, replis nommés (feat/rr-m1) — Complété (fusionné, cf2638fdc)
+
+**Décision technique principale.** Aucune position d'un corps avant sa création (R-B1, R-B2), replis
+nommés et comptés F-1 (position hors de l'emprise jouée ET isolée) et F-2 (échantillon de véhicule au
+travers d'un silence, départagé par la naissance, borné à 3 échantillons), `vehicles[].samples[].g`
+publié et tenu par le client ; schéma 69 (montée commune de la vague C).
+
+**Résultats observés.** À l'intégration, 107 documents reconstruits depuis les faits : T1-T4 hors garde
+0, V1-V3 0, paires de motifs ≥ 24 bits 73 → 0, véhicules déplacés pendant un silence 22 → 0, chute de
+Behemoth conservée, décors 13 → 13 ; pertes collatérales déclarées par le lot retrouvées à l'identique.
+
+**Suite.** Republication de la vague C (superviseur) ; la porte grammaticale au décodage (vague D) est
+le critère de retrait des deux replis.
+
+## [2026-09-24] Retours rejeu, M5 : score à sens unique et fil des morts (feat/rr-m5) — Complété (fusionné, b4783ad2f)
+
+**Décision technique principale.** Preuve (a0) de `coverage.score.teamIdentity` : une seule série, le
+registre dit X-0 et la série finit EXACTEMENT à X → camp X (absent vaut zéro), ordre (a) → (a0) → (b) ;
+`coverage.bridge.deathsFeed` (`read` / `empty` / `unreadable`), message périmé de `film_scan` corrigé.
+
+**Résultats observés.** Histogramme au parc (107 documents) : unresolved 6 → 2 (les deux restants à
+deux séries), a0 12 (4 séries sans camp résolues, 8 b → a0 au camp inchangé). À l'intégration, le
+test `-tags=integration` de l'ouvrier réel (Husky Raid 3-0, une série) exigeait encore une courbe
+sans camp : aligné sur (a0), camp 0 (`7fd5fa82f`).
+
+**Suite.** Verdict du fil des morts porté dans les faits en vague D (lot M8).
+
+## [2026-09-24] Retours rejeu, M4a : véhicules — pièces montées, registre (feat/rr-m4a) — Complété (fusionné, 5df75db45)
+
+**Décision technique principale.** Tourelles posées sur leur porteur (repli nommé « voisin de slot »,
+naissance commune exigée), variante nommée (Rockethog, Gauss, Gungoose), registre
+`vehicle_weapons.toml` résolu à la requête, trois tables client supprimées, garde-rails Go et web.
+Réconciliation : la famille `replay/vehicules` du registre des replis, que le lot n'avait pas inscrite
+au test des familles, y est ajoutée (plancher 8 → 9).
+
+**Résultats observés.** G3-embarquement médiane 1,3 m (cible ≤ 2 m), G3-annexe 39,8 m → 0 m, G4 : 438
+tirs d'arme de véhicule, 0 hors registre. Composition avec M1 mesurée : M1 corrige des naissances, M4a
+pose alors plus de pièces (4f77afc1 48 → 50, a349fea8 43 → 47).
+
+**Suite.** M6 (sons validés, libellés, mains nues, bobine), M4b (tir continu).
+
+## [2026-09-24] Retours rejeu : intégration de la vague C — Complété (feat/retours-rejeu, rien de poussé)
+
+**Décision technique principale.** Une seule montée 68 → 69 : chronique v69 unique (en-tête commun +
+une partie par lot), plafonds archlint justifiés en une entrée datée, artefacts générés régénérés par
+leurs portes (golden de forme depuis celui du schéma 68, fixtures de contrat, goldens d'assemblage,
+`openapi.yaml`, `generated.ts`), empreinte de `facts.Rev` recopiée sans montée.
+
+**Résultats observés.** Gates verts sur la tête (build, vet + research, `go test ./...`, intégration
+`-p 1` 17 173 pass / 0 fail après correction, baseline, golangci 0 issue, web complet). Contrôle de
+parc : tête = union exacte de M1, M4a et M5 (0 orphelin, 0 perdu) sur 107 documents et sur les 19
+témoins du `replay-corpus-gate` joué sur une copie du parc ; décodé ≡ rejoué des faits. Découverte :
+20 fichiers de faits du checkout principal réécrits cette nuit aux révisions de la vague D (4 illisibles
+par le code de la vague C).
+
+**Suite.** Superviseur : arbitrer ces 20 fichiers de faits avant la republication, `replay-equiv` sur
+une copie, push et CI au niveau job, republication depuis les faits (serveur arrêté, utilisateur
+prévenu), verdicts visuels.

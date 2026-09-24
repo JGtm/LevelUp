@@ -572,17 +572,17 @@ Périmètre : `film/replay/` (`build.go`, `identity_registry_creation.go`, `live
 `vehicle_tracks.go`, `geometry.go`, couverture, chronique), registre `facts/fallback`, web
 `model/vehiclesLayer.ts`, `lib/replay/replayNormalize.ts`, contrat (`openapi.yaml`, types générés).
 
-- [ ] M1.1 R-B1 : une vie ouverte par un record de création commence à ce record ; les points
+- [x] M1.1 R-B1 : une vie ouverte par un record de création commence à ce record ; les points
   antérieurs sont écartés et comptés (`coverage.tracks.avantCreation`). Filtrer AVANT `ouvrir`
   (sinon `originMs` bouge).
-- [ ] M1.2 R-B2 (Q15) : aucune vie avant la première création de son slot quand le slot en porte une
+- [x] M1.2 R-B2 (Q15) : aucune vie avant la première création de son slot quand le slot en porte une
   (`coverage.tracks.viesAvantPremiereCreation`).
-- [ ] M1.3 Repli F-1 : position hors de l'emprise jouée (même règle et même constante que `boundsOf`,
+- [x] M1.3 Repli F-1 : position hors de l'emprise jouée (même règle et même constante que `boundsOf`,
   `boundsRejectSpreads = 12`), appliqué aux points de trace, échantillons de véhicule et `spawn` ;
   3e usage → centraliser `guardOf/axisGuard` + garde-rail grep ; nommé, compté, registre daté.
-- [ ] M1.4 Repli F-2 : échantillon de véhicule atteint ou quitté à travers un silence > `lifeGapUS`
+- [x] M1.4 Repli F-2 : échantillon de véhicule atteint ou quitté à travers un silence > `lifeGapUS`
   avec déplacement ; une vie de véhicule sans position restante n'est plus publiée (`NoPosition++`).
-- [ ] M1.5 `VehicleSample.g` publié (même sémantique que `Point.g`) ; `vehiclePositionAt` TIENT la
+- [x] M1.5 `VehicleSample.g` publié (même sémantique que `Point.g`) ; `vehiclePositionAt` TIENT la
   dernière position au travers.
 - Tests rouges avant : vie dont le premier point précède sa création ; vie entièrement avant la
   première création ; point, échantillon, spawn hors emprise ; aller-retour au travers d'un silence ;
@@ -594,6 +594,13 @@ Périmètre : `film/replay/` (`build.go`, `identity_registry_creation.go`, `live
   garde = 0, V1 = V2 = V3 = 0, paires de motifs transverses ≥ 24 bits = 0, chutes réelles de Behemoth
   identiques, points retirés = somme des nouveaux compteurs, véhicules déplacés pendant un silence
   > 5 s : 21 → 0.
+- [x] Mesuré à l'intégration de la vague C (2026-09-24, tête intégrée, 107 documents reconstruits depuis
+  les faits, cf. Clôture) : T1 9 → 0, T2 21 → 0, T3/T4 hors garde 0 (les 1 + 2 cas restants sont DANS la
+  garde, identiques à la branche M1), V1 11 → 0, V2 5 → 0, V3 5 → 0 ; paires ≥ 24 bits 73 → 0 ;
+  véhicules déplacés pendant un silence 22 → 0 ; points retirés 48 pour des compteurs avantCreation +
+  horsEmprise de 52 (positions BRUTES avant décimation), échantillons retirés 27 pour 105 ; chute de
+  Behemoth 771 (t 3371-3384) conservée ; 13 → 13 décors. Pertes collatérales déclarées par le lot
+  (grappin 1cd3848a, épisode 2cf24f30, bornes de 5 documents) retrouvées à l'identique.
 
 #### M4a — Véhicules : pose, registre, familles (sans décodage)
 
@@ -602,36 +609,47 @@ publication du registre), `config/titles/halo_infinite/mappings/vehicle_weapons.
 `model/vehicleShotFx.ts`, `sound/vehicleShotSound.ts`, `model/vehicleWeaponMounts.ts`,
 `sound/replaySound.ts`, `model/vehiclesLayer.ts`, contrat.
 
-- [ ] M4a.1 Tourelles enfants posées sur leur châssis porteur (repli nommé et compté « voisin
+- [x] M4a.1 Tourelles enfants posées sur leur châssis porteur (repli nommé et compté « voisin
   `slot+1/+2` de même fenêtre », mesuré 44/45 sur la LAAG ; lecture du parent dans le film si P1-S2
   le trouve — alors en M4b). Tir, artilleur et cône posés sur le porteur ; plus de tourelle dessinée
   seule à sa naissance (Q12).
-- [ ] M4a.2 La tourelle nomme la variante du châssis (`bcfb852f` → Rockethog, `64b925eb` → Gauss) ;
+- [x] M4a.2 La tourelle nomme la variante du châssis (`bcfb852f` → Rockethog, `64b925eb` → Gauss) ;
   Gungoose reconnu par son arme `0042678E` (dessiné Mongoose aujourd'hui) ; commentaire faux de
   `vehicle_families.go:57-61` corrigé.
-- [ ] M4a.3 Registre `vehicle_weapons.toml`, clé = tag OBSERVÉ dans un film ; par entrée : véhicule,
+- [x] M4a.3 Registre `vehicle_weapons.toml`, clé = tag OBSERVÉ dans un film ; par entrée : véhicule,
   arme, tir continu ou coup, forme, teinte, son, montage, PREUVE (documents, nombre de tirs, tag de
   dégât co-occurrent) ; publié dans le document ; libellés FR + EN ; les trois tables client indexées
   par `vehicleWeapTag` supprimées (0 code mort), liste `attendusNonObserves` de L1.5 retirée.
-- [ ] M4a.4 Garde-rails : test Go « toute clé du registre figure dans la fixture datée des tags
+- [x] M4a.4 Garde-rails : test Go « toute clé du registre figure dans la fixture datée des tags
   observés », réciproque « tout tag de classe véhicule observé ≥ 5 fois a une entrée ou une ligne
   inconnu motivée » ; ratchet web : aucun littéral de tag ni `vehicleWeapTag(` hors du lecteur de
   registre.
 - Gate (`instruments/tirs_vehicules/tirs_enfants.mjs`, `sweep_w.mjs`) : tirs de tourelle à ≤ 2 m du
   porteur en médiane (44,7 m aujourd'hui) ; 100 % des tirs d'arme de véhicule publiés ont style et son
   venus du registre (ou un silence DÉCIDÉ).
+- [x] Mesuré à l'intégration de la vague C (2026-09-24, 107 documents, `TestRRM4AGates`) : G3-annexe
+  (tir → porteur) 39,8 m → 0,0 m (tautologique après le lot) ; G3-embarquement (PREUVE) n = 32, médiane
+  1,3 m (points de bipède frais : n = 23, médiane 1,3 m, p90 2,0 m) ; G3-naissance 143/143 à 0 m ; G4 :
+  438 tirs d'arme de véhicule, 361 registre complet + 52 silence décidé + 25 inconnu motivé, 0 hors
+  registre. Composition avec M1 : M1 écarte les fausses naissances, la naissance commune de M4a passe
+  sur plus de pièces (turretsOnCarrier 4f77afc1 48 → 50, a349fea8 43 → 47, 084a804d 19 → 20).
 
 #### M5 — Score à sens unique et fil des morts illisible
 
 Périmètre : `film/replay/score_team_identity.go`, couverture, `film_scan.go` (message l. ~404),
 contrat.
 
-- [ ] M5.1 Preuve (a′) : si un seul slot d'équipe porte une série, le score absent vaut 0 ; si le
+- [x] M5.1 Preuve (a′) : si un seul slot d'équipe porte une série, le score absent vaut 0 ; si le
   registre dit X-0 et que la série finit exactement à X, cette série est le camp X. Test rouge sur une
   fixture 3-0 au gabarit de bf5ced1b ; série à 2 contre un registre à 3 → reste `unresolved`.
-- [ ] M5.2 Champ de couverture « fil des morts illisible » (aujourd'hui seulement déductible des
+- [x] M5.2 Champ de couverture « fil des morts illisible » (aujourd'hui seulement déductible des
   journaux) ; message périmé de `film_scan.go` corrigé.
 - Gate : `teamIdentity unresolved` sur les documents à une seule série 6 → 0 (ab526724 après O1).
+- [x] Mesuré à l'intégration de la vague C (2026-09-24, 107 documents, faits du match exportés d'une
+  COPIE des bases) : histogramme `teamIdentity` a 92 / b 9 / unresolved 6 → a 92 / b 1 / a0 12 /
+  unresolved 2 ; séries uniques sans camp 4 → 0 (fb1a1a72, 5e du lot, hors mesure : faits au schéma
+  de faits 4, cf. §9) ; 8 documents b → a0 au camp inchangé ; `coverage.bridge.deathsFeed` = read sur
+  106, absent sur db1b00b3 (fil vide, rejeu depuis les faits : clé absente, limite écrite du lot).
 
 #### M6 — Registre et catalogue : décisions du 24/09 (après M4a)
 
@@ -666,9 +684,14 @@ publication des ramassages (`film/replay/document_pickups.go` et voisins), sons 
 
 #### Clôture de la vague C
 
-- [ ] Fusions M1, M4a, M5 dans la campagne ; `replay-equiv` et `replay-corpus-gate` (changements
-  attendus déclarés) ; CI verte au niveau job.
-- [ ] Republication des 111 artefacts DEPUIS LES FAITS (Q3), serveur arrêté, prévenu avant ;
+- [!] Fusions M1, M4a, M5 dans la campagne ; `replay-equiv` et `replay-corpus-gate` (changements
+  attendus déclarés) ; CI verte au niveau job. — FAIT : fusions (2026-09-24, une seule montée 69),
+  gates locaux verts, `replay-corpus-gate --reference=base` (b74c8f294) sur une COPIE du parc : 19
+  témoins, 7 ok, 1 changement, 11 pertes, TOUTES attribuées (cf. §9). NON FAIT, au superviseur :
+  `replay-equiv` (décode des films, écrit des faits sous LEVELUP_REPO_ROOT), push et CI.
+- [!] (superviseur : serveur arrêté, utilisateur prévenu — hors du rôle de l'intégrateur ; attention
+  aux 20 fichiers de faits réécrits le 2026-09-24 aux révisions de la vague D, cf. §9)
+  Republication des 111 artefacts DEPUIS LES FAITS (Q3), serveur arrêté, prévenu avant ;
   redémarrage ; gates parc M1/M4a/M5 rejoués ; verdict visuel utilisateur sur 81c02726 (Mongoose,
   Madina), 4f77afc1 (tourelles sur leur véhicule), ab526724.
 
@@ -1035,3 +1058,24 @@ vivent au §9 ; aucun lot de la vague D ne démarre sans eux.
   lint:colors 0, vitest 792 fichiers / 8 510 tests ok, knip 0, manifestes i18n régénérés sans écart.
   Restent : verdicts visuels utilisateur L1 / L2, contrôle après redémarrage L4, killsource
   d'ab526724 au post-sync ; `feat/rr-ghidra` et `feat/rr-c2` non fusionnées (hors de cette intégration).
+- 2026-09-24 (intégration de la vague C) : `feat/rr-ghidra`, `feat/rr-c2`, `feat/rr-m1`, `feat/rr-m5`,
+  `feat/rr-m4a` fusionnées `--no-ff` dans `feat/retours-rejeu` (`0dd5ad1c7`, `0dff5a39c`, `cf2638fdc`,
+  `b4783ad2f`, `5df75db45`) ; UNE montée 69 : chronique v69 unique (en-tête commun + une partie par
+  lot), plafonds archlint de la chronique (2142) et de `structure_test.go` (1293) justifiés dans une
+  entrée datée, golden de forme régénéré depuis celui du schéma 68, fixtures de contrat, goldens
+  d'assemblage, `openapi.yaml` et `generated.ts` régénérés par leurs portes ; facts.Rev inchangée,
+  empreinte recopiée ; registre des replis : famille `replay/vehicules` (M4a) inscrite au test des
+  familles (plancher 8 → 9) ; test d'intégration de l'ouvrier réel aligné sur la preuve (a0) de M5
+  (`7fd5fa82f`). Gates : build, vet (+ research), `go test ./...` 189 paquets 0 FAIL, intégration
+  `-p 1` 17 173 pass / 786 skip / 0 fail (après correction), baseline 9 701 présents, golangci 0 issue,
+  web tsc/eslint (0 erreur)/couleurs/vitest 8 493 tests/knip/i18n verts. CONTRÔLE DE PARC : 107 des 111
+  documents reconstruits depuis une copie des faits persistés, au code de la base, des trois branches
+  et de la tête ; `replay-diff` : la tête = l'union exacte des trois lots (0 chemin orphelin, 0 changement
+  de lot perdu), 14 chemins composés M1 × M4a expliqués (additifs, ou M1 corrige une naissance et M4a
+  pose une pièce de plus) ; même verdict sur les 19 témoins du gate de corpus, et document décodé du
+  film ≡ document rejoué des faits à la tête comme à la base (seuls `coverage.stances.jump*` diffèrent,
+  écart antérieur). DÉCOUVERTE : 20 fichiers de `data/cache/film_facts/halo_infinite` du checkout
+  principal ont été réécrits le 2026-09-24 entre 04:36 et 05:00 aux révisions de la vague D
+  (`grammar-2026-09-23`, `killsource-2026-09-23` ; 4 au schéma de faits 4, illisibles par le code de la
+  vague C : 01e1f945, 64e8adfa, d9781168, fb1a1a72) — vraisemblablement un `replay-equiv` lancé avec
+  `LEVELUP_REPO_ROOT` sur le checkout vivant ; à arbitrer AVANT la republication de la vague C.
