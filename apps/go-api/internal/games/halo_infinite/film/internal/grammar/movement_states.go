@@ -138,6 +138,7 @@ func ScanMovementStates(fc *FilmContext) ([]types.MovementStateRead, types.Movem
 	obs := NouvelleObservation()
 	obs.EtatMouvementHook = sc.recevoir
 	cfg.Obs = obs
+	sc.obs = obs
 	sc.monde = NewWorld(reg)
 	// LE REPLI DU LOT 5.23 ENTRE EN PRODUCTION ICI. La table anticipee est construite en UNE
 	// passe sur les images-cles de tous les chunks (1,8 s sur un film de 29 chunks, aucun
@@ -157,7 +158,11 @@ func ScanMovementStates(fc *FilmContext) ([]types.MovementStateRead, types.Movem
 			sc.paquet(c, pk, data, cfg)
 		}
 	}
+	obs.solderLesNeufsRefuses()
 	st.NeufsContreUnVivant = obs.NeufsContreUnVivant
+	st.NeufsRefusesLecturesFausses = obs.NeufsRefusesLecturesFausses
+	st.NeufsRefusesCreationsPerdues = obs.NeufsRefusesCreationsPerdues
+	st.NeufsRefusesIndecis = obs.NeufsRefusesIndecis
 	sc.deriverLesSauts()
 	sc.publier()
 	st.Scanned = true
@@ -193,6 +198,9 @@ type movementStateScanner struct {
 	vit map[uint32][]jumpVelSample
 	// marche : la marche d image-cle DU FILM (preuve comprise, lot D-fix), qui pose les liaisons.
 	marche MarcheDImageCle
+	// obs : l observation de la marche des trames, dont les NEW refuses attendent le verdict de
+	// l image-cle suivante (constat DFIX-R6, `keyframe_liaison.go`).
+	obs *Observation
 }
 
 // lierLeMonde ajoute au monde les liaisons slot -> archetype portees par les images-cles du
@@ -205,7 +213,7 @@ type movementStateScanner struct {
 // n est pas ecrasee) — et, avant les deux, l OUBLI de ce que l image-cle ne porte plus (lot
 // D-fix, `keyframe_liaison.go`).
 func (sc *movementStateScanner) lierLeMonde(data []byte, pks []FilmPacket) {
-	l := lierLeChunkAuMonde(sc.monde, sc.marche, data, pks)
+	l := lierLeChunkAuMonde(sc.monde, sc.marche, data, pks, sc.obs)
 	sc.st.DatumBindings += l.Datums
 	sc.st.DatumAmbiguous += l.Ambigus
 	sc.st.LiaisonsOubliees += l.Oubliees

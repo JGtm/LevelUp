@@ -272,6 +272,11 @@ func toStanceCoverage(v replay.StanceCoverage) replaydoc.StanceCoverage {
 		TracksTotal:           v.TracksTotal,
 		Dropped:               v.Dropped,
 		EventPacketsUnlocated: v.EventPacketsUnlocated,
+		ForgottenBindings:     v.ForgottenBindings,
+		RefusedNews:           v.RefusedNews,
+		RefusedNewFalseReads:  v.RefusedNewFalseReads,
+		RefusedNewLostCreates: v.RefusedNewLostCreates,
+		RefusedNewUndecided:   v.RefusedNewUndecided,
 		MapWidths:             v.MapWidths,
 	}
 	if len(v.ByKind) > 0 {

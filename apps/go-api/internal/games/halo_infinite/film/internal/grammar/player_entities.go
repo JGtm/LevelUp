@@ -32,16 +32,18 @@ package grammar
 // depart ne se datent qu'a l'image-cle pres : c'est la publication qui les affine par les vies et
 // par BOT_METADATA, jamais ce fichier.
 //
-// # UNE ABSENCE NE SE CONCLUT QUE SI LA MARCHE LA PROUVE (lot D-fix, 2026-09-24)
+// # UNE ABSENCE NE SE CONCLUT QUE SI LE PAYLOAD LA PROUVE (lot D-fix, 2026-09-24)
 //
-// Les records d'une image-cle viennent de la marche d'ancres, et son REPLI (recalage, election)
-// ecarte des candidats : un vrai record ecarte est PERDU, et son occupant manque a l'image-cle
-// sans l'avoir quittee. Mesure : l'image-cle d'avant-match de `bcb6d393` et de `fb1a1a72`, que la
+// Les records d'une image-cle viennent de la marche d'ancres, et la marche peut PERDRE un vrai
+// record (election de repli, saut de largeur, faux voisin, record au-dela de sa fenetre) : son
+// occupant manque alors a l'image-cle sans l'avoir quittee. Mesure : l'image-cle d'avant-match de `bcb6d393` et de `fb1a1a72`, que la
 // marche glissante du lot M3.1 atteint desormais, perdait le joueur gere de l'index 0 (slot 1297)
 // sur une fausse ancre elue — le lot M2 le lisait ARRIVE plus tard (`000d5950` : absent 16,3 s au
 // depart). La marche ne perd plus ce record (keyframe_world_preuve.go) ; LE PRINCIPE, lui, vaut
-// pour tout film : une absence que la marche ne prouve pas ne conclut NI une arrivee tardive NI un
-// depart. Elle se lit dans [PlayerEntityScan.Doutes], image-cle par image-cle, et les bornes de
+// pour tout film : une absence n'est PROUVEE que si l'en-tete exact du record de l'entite n'apparait
+// NULLE PART dans le payload (`player_entities_entetes.go`, recherche exhaustive, independante des
+// chemins de la marche) ; sinon elle ne conclut NI une arrivee tardive NI un depart. Elle se lit
+// dans [PlayerEntityScan.Doutes], image-cle par image-cle, et les bornes de
 // presence ne se posent que sur une absence PROUVEE ([PlayerEntityScan.AbsenceProuveeAvant] /
 // [PlayerEntityScan.AbsenceProuveeApres]) — sinon l'occupant reste present jusqu'au bord du film.
 //
@@ -85,8 +87,8 @@ type PlayerEntityScan struct {
 	// Entities : une entree par entite, triees par (FirstKF, Slot).
 	Entities []PlayerEntity
 	// Doutes : les couples (image-cle porteuse, entite) ou l'ABSENCE de l'entite N'EST PAS
-	// PROUVEE — la marche de cette image-cle a ecarte par REPLI un candidat ti=9 de son slot, ou a
-	// atteint son record sans pouvoir le lire (lot D-fix, 2026-09-24 ; cf. l'en-tete du fichier).
+	// PROUVEE — l'en-tete exact de son record ti=9 apparait dans le payload de cette image-cle et
+	// la marche ne l'a pas lu (lot D-fix, 2026-09-24 ; cf. l'en-tete du fichier).
 	// Tries par (Rang, Slot), restreints aux slots des entites lues. Vide : toutes les absences
 	// sont prouvees.
 	Doutes []DouteDAbsence
@@ -223,31 +225,23 @@ func nouvelAccumulateurDEntites() *accumulateurDEntites {
 	return &accumulateurDEntites{entites: map[int]*entiteEnCours{}, doutes: map[int]map[int]bool{}}
 }
 
-// douterDe note, a l'image-cle porteuse de rang `rang`, les slots ti=9 dont l'absence n'est pas
-// prouvee : les records atteints mais illisibles, et les candidats ti=9 que le repli de la marche
-// a ecartes — sauf ceux qu'elle a lus ailleurs dans la meme image-cle.
-func (a *accumulateurDEntites) douterDe(rang int, lus map[int]bool, illisibles []int,
-	ecartes []KeyframeRec) {
-	douter := func(slot int) {
-		if lus[slot] {
-			return
+// douterDe note, a l'image-cle porteuse de rang `rang`, les slots dont l'absence n'est pas prouvee :
+// ceux dont l'en-tete exact de record ti=9 apparait dans le payload (`entetes`,
+// [slotsDEntetesExacts]) sans que la marche les ait LUS — un record perdu par la marche, par
+// quelque chemin que ce soit, ou atteint mais illisible.
+func (a *accumulateurDEntites) douterDe(rang int, lus, entetes map[int]bool) {
+	for slot, present := range entetes {
+		if !present || lus[slot] {
+			continue
 		}
 		if a.doutes[rang] == nil {
 			a.doutes[rang] = map[int]bool{}
 		}
 		a.doutes[rang][slot] = true
 	}
-	for _, s := range illisibles {
-		douter(s)
-	}
-	for _, r := range ecartes {
-		if r.TI == managedPlayerTypeIndex {
-			douter(r.Slot)
-		}
-	}
 }
 
-// doutesPublies rend les doutes restreints aux slots des entites LUES (un candidat ecarte d'un
+// doutesPublies rend les doutes restreints aux slots des entites LUES (un en-tete trouve d'un
 // slot qu'aucune image-cle ne lit n'est l'occupant de personne), tries par (Rang, Slot).
 func (a *accumulateurDEntites) doutesPublies() []DouteDAbsence {
 	var out []DouteDAbsence

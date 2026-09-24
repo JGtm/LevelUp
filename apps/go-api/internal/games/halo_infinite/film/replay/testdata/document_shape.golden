@@ -1,9 +1,9 @@
 # EMPREINTE DE FORME DU DOCUMENT DE REJEU — fige par document_shape_test.go.
 # Ne s'edite JAMAIS a la main : regeneration decrite en tete de ce test.
 schema 70
-empreinte-stockee 6f4645097fe15783
-empreinte-servie 6f4645097fe15783
-empreinte-cuite 82f498cf83cdca53
+empreinte-stockee b5c02af58686278e
+empreinte-servie b5c02af58686278e
+empreinte-cuite 3288b13056f82b66
 empreinte-cuite-regle 2
 
 AbilityCharge
@@ -507,6 +507,7 @@ InventoryCoverage
   Unpublished json:"unpublished" int
 KeyframeCoverage
   Bipeds json:"bipeds" int
+  ContradictoryProofs json:"contradictoryProofs" int
   Elections json:"elections" int
   FramedAbsentBipeds json:"framedAbsentBipeds" int
   Jumps json:"jumps" int
@@ -864,6 +865,7 @@ StanceCoverage
   Desyncs json:"desyncs" int
   Dropped json:"dropped,omitempty" int
   EventPacketsUnlocated json:"eventPacketsUnlocated,omitempty" int
+  ForgottenBindings json:"forgottenBindings,omitempty" int
   Intervals json:"intervals" int
   JumpEpisodes json:"jumpEpisodes,omitempty" int
   JumpsDerived json:"jumpsDerived,omitempty" int
@@ -871,6 +873,10 @@ StanceCoverage
   MapWidths json:"mapWidths,omitempty" [3]uint
   Reads json:"reads" int
   Records json:"records" int
+  RefusedNewFalseReads json:"refusedNewFalseReads,omitempty" int
+  RefusedNewLostCreates json:"refusedNewLostCreations,omitempty" int
+  RefusedNewUndecided json:"refusedNewUndecided,omitempty" int
+  RefusedNews json:"refusedNews,omitempty" int
   Scanned json:"scanned" bool
   TracksTotal json:"tracksTotal" int
 Surface

@@ -330,6 +330,9 @@ DatumBindings	int	-
 DatumAmbiguous	int	-
 LiaisonsOubliees	int	-
 NeufsContreUnVivant	int	-
+NeufsRefusesLecturesFausses	int	-
+NeufsRefusesCreationsPerdues	int	-
+NeufsRefusesIndecis	int	-
 Duplicates	int	-
 VelocityReads	int	-
 JumpEpisodes	int	-

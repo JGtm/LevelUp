@@ -196,7 +196,7 @@ func corpsDeRecordNeuf(br *Lecteur, buf []byte, w *World, cfg FrameConfig,
 		// ecrasait l archetype d une entite vivante), pas la traversee. Si celle-ci est mal alignee,
 		// le record suivant desynchronise de lui-meme ; arreter la trame ici perdait les records
 		// qui suivent une traversee tombee juste (`81c02726` : un sprint perdu a cet essai).
-		cfg.Obs.compterNeufContreUnVivant()
+		cfg.Obs.refuserUnNeuf(w, rec)
 	case repaired:
 		w.BindSoft(rec.ID, rec.TypeIndex)
 	default:
@@ -225,11 +225,15 @@ func contreditUneEntiteVivante(w *World, rec *FrameRecord) bool {
 	return lie && !s.Soft && s.TypeIndex != rec.TypeIndex
 }
 
-// compterNeufContreUnVivant compte un NEW refuse (cf. [Observation.NeufsContreUnVivant]).
-func (o *Observation) compterNeufContreUnVivant() {
-	if o != nil {
-		o.NeufsContreUnVivant++
+// refuserUnNeuf compte un NEW refuse (cf. [Observation.NeufsContreUnVivant]) et le met en attente du
+// verdict de l image-cle suivante (`keyframe_liaison.go`).
+func (o *Observation) refuserUnNeuf(w *World, rec *FrameRecord) {
+	if o == nil {
+		return
 	}
+	o.NeufsContreUnVivant++
+	vivant, _ := w.ArchetypeForSlot(rec.Slot)
+	o.neufsRefuses = append(o.neufsRefuses, neufRefuse{slot: rec.Slot, neuf: rec.TypeIndex, vivant: vivant})
 }
 
 // decodeInferLoop is the core of DecodeFrameInfer operating on a SUPPLIED Lecteur,

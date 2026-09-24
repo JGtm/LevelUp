@@ -30,6 +30,49 @@ package grammar
 // tort (absent des trois lectures) se relie par l anticipation a son prochain delta — la
 // premiere image-cle ulterieure qui le declare. Le compte est rendu ([LiaisonDUnChunk.Oubliees]).
 
+// # LE VERDICT DES NEW REFUSES (constat DFIX-R6 de la revue adverse, 2026-09-24)
+//
+// Un NEW qui contredit une entite vivante est refuse ([contreditUneEntiteVivante]) : c est une
+// lecture fausse, SAUF quand la croyance du monde est perimee — le DEL du vivant n a pas ete lu, et
+// le NEW est une vraie creation, perdue jusqu a l image-cle suivante. Les deux cas ne se separent
+// pas au decodage ; l image-cle suivante les separe : elle redonne au slot l archetype du vivant
+// (lecture fausse confirmee), celui du NEW (creation perdue), ou aucun des deux (indecis). Chaque
+// refus recoit son verdict a la PREMIERE image-cle du chunk suivant, avant l oubli et les liaisons.
+
+// neufRefuse : un NEW refuse, en attente du verdict de l image-cle suivante.
+type neufRefuse struct {
+	slot, neuf, vivant uint32
+}
+
+// jugerLesNeufsRefuses rend le verdict des refus en attente contre les archetypes que l image-cle
+// suivante declare (`declares` : chaine de ses records, puis table de datums).
+func (o *Observation) jugerLesNeufsRefuses(declares map[uint32]uint32) {
+	if o == nil {
+		return
+	}
+	for _, n := range o.neufsRefuses {
+		ti, porte := declares[n.slot]
+		switch {
+		case porte && ti == n.vivant:
+			o.NeufsRefusesLecturesFausses++
+		case porte && ti == n.neuf:
+			o.NeufsRefusesCreationsPerdues++
+		default:
+			o.NeufsRefusesIndecis++
+		}
+	}
+	o.neufsRefuses = o.neufsRefuses[:0]
+}
+
+// solderLesNeufsRefuses classe INDECIS les refus qu aucune image-cle n a suivis (fin du film).
+func (o *Observation) solderLesNeufsRefuses() {
+	if o == nil {
+		return
+	}
+	o.NeufsRefusesIndecis += len(o.neufsRefuses)
+	o.neufsRefuses = o.neufsRefuses[:0]
+}
+
 // LiaisonDUnChunk : ce que la liaison des images-cles d un chunk a fait au monde.
 type LiaisonDUnChunk struct {
 	// Datums / Ambigus : les liaisons que la table de datums a posees, et ses candidats ecartes.
@@ -41,8 +84,10 @@ type LiaisonDUnChunk struct {
 // lierLeChunkAuMonde pose sur le monde ce que les images-cles d un chunk declarent — en
 // commencant par oublier ce qu elles ne portent plus (cf. l en-tete). Les images-cles du chunk
 // se jouent dans l ordre du chunk : la suivante est l etat d un instant plus tardif.
-func lierLeChunkAuMonde(w *World, marche MarcheDImageCle, data []byte, pks []FilmPacket) LiaisonDUnChunk {
+func lierLeChunkAuMonde(w *World, marche MarcheDImageCle, data []byte, pks []FilmPacket,
+	obs *Observation) LiaisonDUnChunk {
 	var out LiaisonDUnChunk
+	premiere := true
 	for _, pk := range pks {
 		if pk.Type != PacketTypeKeyframe {
 			continue
@@ -61,12 +106,29 @@ func lierLeChunkAuMonde(w *World, marche MarcheDImageCle, data []byte, pks []Fil
 		for s := range table {
 			portes[s] = true
 		}
+		if premiere {
+			obs.jugerLesNeufsRefuses(archetypesDeclares(mp.Records, table))
+			premiere = false
+		}
 		out.Oubliees += w.OublierLesSlotsNonPortes(portes)
 		for _, r := range mp.Records {
 			//nolint:gosec // slot, TI et Gen viennent du walker d image-cle, bornes par construction
 			w.BindImageCle(uint32(r.Gen), uint32(r.Slot), uint32(r.TI))
 		}
 		out.Datums += lierLesDatums(w, table)
+	}
+	return out
+}
+
+// archetypesDeclares rend l archetype que l image-cle donne a chaque slot : la chaine de ses records
+// d abord, la table de datums pour les slots que la chaine n a pas atteints.
+func archetypesDeclares(recs []KeyframeRec, table map[uint32]uint32) map[uint32]uint32 {
+	out := make(map[uint32]uint32, len(recs)+len(table))
+	for s, ti := range table {
+		out[s] = ti
+	}
+	for _, r := range recs {
+		out[uint32(r.Slot)] = uint32(r.TI) //nolint:gosec // slot et TI bornes par le walker
 	}
 	return out
 }

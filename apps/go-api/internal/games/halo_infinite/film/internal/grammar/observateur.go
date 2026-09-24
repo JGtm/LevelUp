@@ -304,9 +304,11 @@ type Observation struct {
 	// C EST UN COMPTEUR D OBSERVATION, PAS UN CHAMP DU CONTRAT : `Observation` n est jamais
 	// publie, `replay.SchemaVersion` ne bouge pas, et la forme des faits persistes non plus.
 	LiaisonsParAnticipation map[uint32]int
-	// NeufsContreUnVivant : les records NEW propres REFUSES parce qu ils contredisent une entite VIVANTE
-	// du monde (lot D-fix, cf. [contreditUneEntiteVivante]).
-	NeufsContreUnVivant int
+	// NeufsContreUnVivant : NEW refuses ([contreditUneEntiteVivante]), ventiles par le verdict de
+	// l image-cle suivante (DFIX-R6, `keyframe_liaison.go`) ; `neufsRefuses` attend ce verdict.
+	NeufsContreUnVivant                                                            int
+	NeufsRefusesLecturesFausses, NeufsRefusesCreationsPerdues, NeufsRefusesIndecis int
+	neufsRefuses                                                                   []neufRefuse
 	// IndexAbsolus : histogramme des index de plage rencontres sur les chemins ABSOLUS de i0
 	// (7ter.54 axe 3). Purement observationnel — incremente sur l axe 0 de chaque lecture, ne
 	// change AUCUNE consommation de bits. C est la mesure qui dit si l index dominant est 0

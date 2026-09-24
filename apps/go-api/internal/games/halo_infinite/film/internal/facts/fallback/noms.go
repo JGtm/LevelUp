@@ -68,6 +68,9 @@ const (
 	// NomPresenceDUneEntreeParSesVies : `replay/sieges.go`, `poserLesSieges` (revue M2-R5,
 	// 2026-09-24).
 	NomPresenceDUneEntreeParSesVies Nom = "repli_presence_d_une_entree_par_ses_vies"
+	// NomBorneDePresenceDiffereeSurDoute : `replay/sieges.go`, `poserLesSieges` (lot D-fix,
+	// constat DFIX-R7 de la revue adverse, 2026-09-24).
+	NomBorneDePresenceDiffereeSurDoute Nom = "repli_borne_de_presence_differee_sur_doute"
 	// NomVieDeBotParRelaisDeLaBase : `replay/successions.go`, `attributeSuccessions` (lot M2.3).
 	NomVieDeBotParRelaisDeLaBase Nom = "repli_vie_de_bot_par_relais_de_la_base"
 	// NomChassisVehiculeMarqueurNeutre : `replay/document_vehicles_coverage.go`, `tallyVehicleCoverage`.

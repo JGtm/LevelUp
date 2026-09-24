@@ -13,8 +13,10 @@ type MarcheDePayload struct {
 	Records []KeyframeRec
 	// Ecartes : les candidats que le REPLI (recalage, élection) a rendus inatteignables — ceux
 	// qui précédaient l'ancre retenue, ou la suivaient avec un slot inférieur ou égal. Un vrai
-	// record que le repli a perdu est l'un d'eux : son absence de `Records` ne prouve rien
-	// (lot D-fix, 2026-09-24 ; cf. la santé des images-clés de `player_entities.go`).
+	// record que le repli a perdu est l'un d'eux : la liaison des images-clés ne l'oublie pas
+	// (`keyframe_liaison.go`). L'absence d'un JOUEUR, elle, ne se juge pas sur cette liste — la
+	// marche perd aussi par d'autres chemins — mais sur l'en-tête exact cherché dans tout le payload
+	// (`player_entities_entetes.go`, lot D-fix, 2026-09-24).
 	Ecartes []KeyframeRec
 	// Stats : les décisions de la marche.
 	Stats KeyframeWalkStats

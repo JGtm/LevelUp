@@ -16402,6 +16402,9 @@ components:
         bipeds:
           format: int64
           type: integer
+        contradictoryProofs:
+          format: int64
+          type: integer
         elections:
           format: int64
           type: integer
@@ -16438,6 +16441,7 @@ components:
         - resyncs
         - elections
         - refutations
+        - contradictoryProofs
         - slides
         - framedAbsentBipeds
       type: object
@@ -27668,6 +27672,9 @@ components:
         eventPacketsUnlocated:
           format: int64
           type: integer
+        forgottenBindings:
+          format: int64
+          type: integer
         intervals:
           format: int64
           type: integer
@@ -27694,6 +27701,18 @@ components:
           format: int64
           type: integer
         records:
+          format: int64
+          type: integer
+        refusedNewFalseReads:
+          format: int64
+          type: integer
+        refusedNewLostCreations:
+          format: int64
+          type: integer
+        refusedNewUndecided:
+          format: int64
+          type: integer
+        refusedNews:
           format: int64
           type: integer
         scanned:

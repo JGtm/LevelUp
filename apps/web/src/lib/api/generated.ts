@@ -7845,6 +7845,8 @@ export interface components {
             /** Format: int64 */
             bipeds: number;
             /** Format: int64 */
+            contradictoryProofs: number;
+            /** Format: int64 */
             elections: number;
             /** Format: int64 */
             framedAbsentBipeds: number;
@@ -12496,6 +12498,8 @@ export interface components {
             /** Format: int64 */
             eventPacketsUnlocated?: number;
             /** Format: int64 */
+            forgottenBindings?: number;
+            /** Format: int64 */
             intervals: number;
             /** Format: int64 */
             jumpEpisodes?: number;
@@ -12508,6 +12512,14 @@ export interface components {
             reads: number;
             /** Format: int64 */
             records: number;
+            /** Format: int64 */
+            refusedNewFalseReads?: number;
+            /** Format: int64 */
+            refusedNewLostCreations?: number;
+            /** Format: int64 */
+            refusedNewUndecided?: number;
+            /** Format: int64 */
+            refusedNews?: number;
             scanned: boolean;
             /** Format: int64 */
             tracksTotal: number;

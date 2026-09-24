@@ -167,8 +167,8 @@ func TestSansPreuveLeDouteRattrapeLaPerte(t *testing.T) {
 // porteuses ; E1 lue aux rangs 1-2 avec un doute au rang 0 (arrivee NON prouvee : au depart) ; E2
 // lue aux rangs 1-3 sans doute (arrivee prouvee au rang 0) ; E3 lue aux rangs 0-1, un doute au
 // rang 2, absence prouvee au rang 3 ; E4 lue aux rangs 0-1, doutes aux rangs 2 et 3 (depart non
-// prouve : jusqu'au bout). Un candidat ecarte d'un slot qu'aucune image-cle ne lit (99) n'est
-// l'occupant de personne ; un slot lu dans la meme image-cle n'est pas un doute.
+// prouve : jusqu'au bout). L'en-tete d'un slot qu'aucune image-cle ne lit (99) n'est l'occupant de
+// personne ; un en-tete dont le record est lu dans la meme image-cle n'est pas un doute.
 func TestDoutesDAbsence(t *testing.T) {
 	a := nouvelAccumulateurDEntites()
 	for rang := 0; rang < 4; rang++ {
@@ -183,11 +183,17 @@ func TestDoutesDAbsence(t *testing.T) {
 	lire(11, 1, 3)
 	lire(12, 0, 1)
 	lire(13, 0, 1)
-	ecarte := func(slot int) []KeyframeRec { return []KeyframeRec{{Slot: slot, TI: managedPlayerTypeIndex}} }
-	a.douterDe(0, map[int]bool{12: true, 13: true}, nil, append(ecarte(10), ecarte(12)...))
-	a.douterDe(2, map[int]bool{10: true, 11: true}, []int{12}, ecarte(99))
-	a.douterDe(3, map[int]bool{11: true}, nil, append(ecarte(13), KeyframeRec{Slot: 12, TI: 38}))
-	a.douterDe(2, map[int]bool{10: true, 11: true}, nil, ecarte(13))
+	entetes := func(slots ...int) map[int]bool {
+		m := map[int]bool{}
+		for _, x := range slots {
+			m[x] = true
+		}
+		return m
+	}
+	a.douterDe(0, entetes(12, 13), entetes(10, 12))
+	a.douterDe(2, entetes(10, 11), entetes(12, 99))
+	a.douterDe(3, entetes(11), entetes(13))
+	a.douterDe(2, entetes(10, 11), entetes(13))
 	s := a.publier()
 	want := []DouteDAbsence{{0, 10}, {2, 12}, {2, 13}, {3, 13}}
 	if len(s.Doutes) != len(want) {

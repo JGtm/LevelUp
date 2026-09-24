@@ -194,15 +194,15 @@ type lecturesDEquipe struct {
 // des presences, et une image-cle qui ne porte aucun occupant (le preambule) ne dit l'absence de
 // personne.
 //
-// CE QU'ELLE NE PROUVE PAS SE NOTE (lot D-fix, 2026-09-24) : le slot d'un record ti=9 que sa
-// marche a ecarte par REPLI ([MarcheDePayload.Ecartes]), ou qu'elle a atteint sans pouvoir le lire,
-// est un occupant peut-etre present — son absence a cette image-cle n'est pas prouvee
-// ([PlayerEntityScan.AbsenceProuvee]).
+// CE QU'ELLE NE PROUVE PAS SE NOTE (lot D-fix, 2026-09-24) : le slot dont l'en-tete EXACT de
+// record ti=9 apparait dans le payload sans que la marche l'ait LU — record perdu par n'importe quel
+// chemin de la marche, ou atteint mais illisible — est un occupant peut-etre present ; son absence a
+// cette image-cle n'est pas prouvee ([PlayerEntityScan.AbsenceProuvee],
+// `player_entities_entetes.go`).
 func scanPaquetEquipes(pay []byte, ts uint64, reg *Registry, rep *TeamScanReport, l lecturesDEquipe) {
 	rang := -1
 	mp := l.marche.Marcher(pay)
 	lus := map[int]bool{}
-	var illisibles []int
 	for _, b := range keyframeBornesDe(mp.Records) {
 		if b.TI != managedPlayerTypeIndex {
 			continue
@@ -216,13 +216,10 @@ func scanPaquetEquipes(pay []byte, ts uint64, reg *Registry, rep *TeamScanReport
 		switch {
 		case !ok:
 			rep.Unreached++
-			illisibles = append(illisibles, b.Slot)
 		case idx < 0 || idx >= playerTableSlots:
 			rep.OutOfDomainIndex++
-			illisibles = append(illisibles, b.Slot)
 		case brut < 0 || brut > teamDesignatorRawMax:
 			rep.OutOfDomainValue++
-			illisibles = append(illisibles, b.Slot)
 		default:
 			rep.Read++
 			lus[b.Slot] = true
@@ -231,7 +228,7 @@ func scanPaquetEquipes(pay []byte, ts uint64, reg *Registry, rep *TeamScanReport
 		}
 	}
 	if rang >= 0 {
-		l.entites.douterDe(rang, lus, illisibles, mp.Ecartes)
+		l.entites.douterDe(rang, lus, slotsDEntetesExacts(pay, managedPlayerTypeIndex))
 	}
 }
 

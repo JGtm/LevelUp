@@ -384,3 +384,12 @@ package facts
 // Les lignes de kill deja en base deviennent candidates au backlog de redecodage — geste de
 // PRODUCTION, pilote, SUR SIGNAL UTILISATEUR (D6), jamais automatique (Q3 du plan des retours
 // rejeu : backfill killsource si la revision le chaine).
+//
+// PARTIE D-fix (2026-09-24, lot correctif de la pre-integration de la vague D, MEME RANG) : le monde
+// de `killsource` (`world.go` `preload()`) lie les slots par la marche d image-cle DU FILM
+// (`FilmContext.MarcheDImageCle`), qui refuse l elu qu un record prouve contredit : les fausses
+// ancres 192 et 1536 ne se lient plus, les records qu elles effacaient si. Le registre des replis
+// gagne `repli_borne_de_presence_differee_sur_doute` (tranche `replay/places`, revue adverse
+// DFIX-R7). La sortie peut changer comme au rang M3 (plus de records atteints) ; la revision reste
+// celle de la vague, empreinte recopiee. EXCEPTION NOMMEE : la precision par arme
+// (`ScanFilmWeaponDamages`) marche encore sans preuve — decision de backfill a l utilisateur.

@@ -37,6 +37,10 @@ type KeyframeCoverage struct {
 	// l'élection a repris sans eux. Chacun est une fausse ancre qui aurait effacé les vrais
 	// records qui la précédaient.
 	Refutations int `json:"refutations"`
+	// ContradictoryProofs : élections où TOUS les candidats étaient contredits par un record prouvé
+	// (deux preuves contradictoires) : l'élu d'avant la preuve est gardé, et la preuve n'a pas
+	// tranché (constat DFIX-R8, 2026-09-24).
+	ContradictoryProofs int `json:"contradictoryProofs"`
 	// Slides : fenêtres de 120 000 bits SANS candidat traversées sans arrêter la marche.
 	Slides int `json:"slides"`
 	// FramedAbsentBipeds : couples (image-clé, bipède) où le bipède est ancré aux deux
@@ -53,6 +57,6 @@ func buildKeyframeCoverage(c grammar.KeyframeWalkCoverage) *KeyframeCoverage {
 	return &KeyframeCoverage{
 		Keyframes: c.Payloads, Records: c.Records, Bipeds: c.Bipedes,
 		Neighbors: c.Voisins, Jumps: c.Sauts, Resyncs: c.Recalages, Elections: c.Elections,
-		Refutations: c.Refutations, Slides: c.Glissements, FramedAbsentBipeds: c.BipedesAbsentsEncadres,
+		Refutations: c.Refutations, ContradictoryProofs: c.PreuvesContradictoires, Slides: c.Glissements, FramedAbsentBipeds: c.BipedesAbsentsEncadres,
 	}
 }

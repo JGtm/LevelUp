@@ -39,7 +39,7 @@ func TestLImageCleOublieCeQuElleNePortePlus(t *testing.T) {
 				ecarte = mp.Ecartes[0].Slot
 				w.BindFull(uint32(ecarte|1<<30), 30) //nolint:gosec // slot borne par le walker
 			}
-			l := lierLeChunkAuMonde(w, marche, data, pks[pi:pi+1])
+			l := lierLeChunkAuMonde(w, marche, data, pks[pi:pi+1], nil)
 			if _, lie := w.ArchetypeForSlot(slotMortDeTest); lie || l.Oubliees < 1 {
 				t.Fatalf("c%d p%d : la liaison d un slot que l image-cle ne porte pas survit (oubliees %d)",
 					c, pi, l.Oubliees)

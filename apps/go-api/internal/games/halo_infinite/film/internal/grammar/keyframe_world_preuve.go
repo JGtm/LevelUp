@@ -41,9 +41,9 @@ package grammar
 //
 // LE CONTENU EST EXIGÉ, ET C'EST MESURÉ : un record VIDE (`n1 <= 0` ou `n2 <= 0`, 172 bits
 // d'en-tête et de mots de taille) ferme aussi LU UN BIT À CÔTÉ — la lecture décalée d'une chaîne
-// de records vides est une chaîne de records vides. Sur les sept bobines, les seules « preuves »
-// de candidats sûrement faux (entre deux voisins de slots consécutifs) étaient ces chaînes
-// décalées (`ti 41`, `ti 21`, `ti 25`) : 61 sur 163 579 candidats faux sans l'exigence, 0 avec.
+// de records vides est une chaîne de records vides. Sur les sept bobines, les candidats SÛREMENT
+// faux (en-tête valide strictement entre deux records de slots consécutifs de la marche) : 39 471,
+// dont 55 « prouvés » sans l'exigence, 0 avec (re-mesure du 2026-09-24, revue adverse DFIX-R9).
 //
 // # CE QUI NE CHANGE PAS
 //

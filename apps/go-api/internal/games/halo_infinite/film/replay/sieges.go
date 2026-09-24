@@ -206,6 +206,7 @@ func poserLesSieges(roster []RosterEntry, occ occupants, in entreesDesPlaces) Se
 		BornesDifferees: occ.bornesDifferees}
 	if occ.balaye {
 		cov.Presences = PresencesDuFilm
+		in.horloge.fb.DeclencheN(fallback.NomBorneDePresenceDiffereeSurDoute, cov.BornesDifferees)
 	}
 	if len(roster) == 0 {
 		return cov

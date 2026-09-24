@@ -197,6 +197,10 @@ type kfIssue struct {
 	traine int
 	// refutes : les élus refusés parce qu'un record prouvé les contredit.
 	refutes int
+	// contradictoire : TOUS les candidats de la fenêtre sont contredits par un record prouvé — les
+	// preuves se contredisent entre elles. L'élu sans preuve est gardé, et ce défaut de preuve se
+	// compte ([KeyframeWalkStats.PreuvesContradictoires]).
+	contradictoire bool
 	// glissements : les fenêtres VIDES franchies pour atteindre l'ancre.
 	glissements int
 }
@@ -261,6 +265,8 @@ func (r *kfRecherche) suivante(from, prevSlot int) kfIssue {
 	if iss.at >= 0 && r.preuve != nil {
 		if elu, refutes := r.elire(prevSlot); elu >= 0 {
 			iss.at, iss.refutes = elu, refutes
+		} else {
+			iss.contradictoire = true // constat DFIX-R8 : plus de retombée muette
 		}
 	}
 	switch {
@@ -343,6 +349,11 @@ type KeyframeWalkStats struct {
 	// Refutations : élus que le repli a REFUSÉS parce qu'un record prouvé par la grammaire du film
 	// les contredisait (lot D-fix, keyframe_world_preuve.go) ; l'élection a repris sans eux.
 	Refutations int
+	// PreuvesContradictoires : élections où TOUS les candidats étaient contredits par un record
+	// prouvé — deux preuves s'y contredisent, donc l'une au moins est fausse. L'élu d'avant la
+	// preuve est gardé ; ce compteur dit que la preuve n'a pas tranché (constat DFIX-R8 de la revue
+	// adverse du lot D-fix, 2026-09-24).
+	PreuvesContradictoires int
 	// Glissements : fenêtres VIDES traversées sans arrêter la marche (cf. [kfRecherche.glissante]).
 	Glissements int
 }
@@ -357,6 +368,7 @@ func (s *KeyframeWalkStats) Ajouter(o KeyframeWalkStats) {
 	s.Recalages += o.Recalages
 	s.Elections += o.Elections
 	s.Refutations += o.Refutations
+	s.PreuvesContradictoires += o.PreuvesContradictoires
 	s.Glissements += o.Glissements
 }
 
@@ -364,6 +376,9 @@ func (s *KeyframeWalkStats) Ajouter(o KeyframeWalkStats) {
 func (s *KeyframeWalkStats) compter(iss kfIssue) {
 	s.Glissements += iss.glissements
 	s.Refutations += iss.refutes
+	if iss.contradictoire {
+		s.PreuvesContradictoires++
+	}
 	switch iss.dec {
 	case kfVoisin:
 		s.Voisins++

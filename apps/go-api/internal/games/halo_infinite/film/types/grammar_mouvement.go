@@ -190,11 +190,15 @@ type MovementStateStats struct {
 	// LiaisonsOubliees compte les liaisons du monde qu une image-cle ne portait plus — ni dans la
 	// chaine de ses records, ni dans sa table de datums, ni parmi les candidats ecartes par sa
 	// marche : la suppression de l entite n avait pas ete lue (lot D-fix, 2026-09-24,
-	// `grammar/keyframe_liaison.go`). Journalise, pas persiste, comme les deux precedents.
+	// `grammar/keyframe_liaison.go`). PERSISTE et PUBLIE (`coverage.stances.forgottenBindings`,
+	// constat DFIX-R6 de la revue adverse).
 	LiaisonsOubliees int
 	// NeufsContreUnVivant compte les records NEW REFUSES parce qu ils contredisaient une entite vivante
-	// du monde (lot D-fix, `grammar/frame_infer.go`). Journalise, pas persiste.
-	NeufsContreUnVivant int
+	// du monde (lot D-fix, `grammar/frame_infer.go`). Les trois suivants le VENTILENT par le verdict
+	// de l image-cle suivante (constat DFIX-R6) : lecture fausse confirmee, vraie creation perdue
+	// (le DEL du vivant n avait pas ete lu), indecis. Persistes et publies (`coverage.stances`).
+	NeufsContreUnVivant                                                            int
+	NeufsRefusesLecturesFausses, NeufsRefusesCreationsPerdues, NeufsRefusesIndecis int
 	// Duplicates compte les re-publications de la MEME transition (meme slot, meme genre, meme
 	// instant) : le chemin d inference re-parcourt un record quand une chaine de transitoires le
 	// demande. Deduplique, pas compte deux fois.

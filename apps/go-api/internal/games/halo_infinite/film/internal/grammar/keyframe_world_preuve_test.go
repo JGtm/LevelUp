@@ -169,3 +169,32 @@ func TestPreuveRefuseUnRecordVide(t *testing.T) {
 		t.Fatal("un record vide qui ferme sur un en-tete valide est dit PROUVE")
 	}
 }
+
+// TestLesPreuvesContradictoiresSeComptent (constat DFIX-R8) : quand TOUS les candidats d une
+// fenetre sont contredits par un record prouve (deux preuves se contredisent), la recherche garde
+// l elu d avant la preuve — et le COMPTE, au lieu de retomber en silence. ROUGE AVANT : aucun
+// compteur, `refutes` jete.
+func TestLesPreuvesContradictoiresSeComptent(t *testing.T) {
+	w := &bitWriter{}
+	// archetype 40 : lu decale d un bit, le mot d archetype vaut 80 ou 81 (>= 50) — aucune ancre
+	// parasite ne s ajoute aux deux candidats.
+	a := w.n
+	kfEcrireRecord(w, 1, 20, 40, 50)
+	b := w.n
+	kfEcrireRecord(w, 1, 15, 40, 50)
+	for i := 0; i < 2100; i++ {
+		w.bits(kfSent, 32)
+	}
+	r := &kfRecherche{buf: w.buf, total: len(w.buf) * 8, maxWin: kfScanFenetreBits,
+		preuve: &PreuveDImageCle{}, prouves: map[int]bool{a: true, b: true}}
+	iss := r.suivante(0, 10)
+	if !iss.contradictoire || iss.at != b || iss.dec != kfElection || iss.refutes != 0 {
+		t.Fatalf("issue %+v : attendu contradictoire, l elu d avant la preuve (bit %d), election, 0 refute", iss, b)
+	}
+	var st KeyframeWalkStats
+	st.compter(iss)
+	st.Ajouter(st)
+	if st.PreuvesContradictoires != 2 || st.Refutations != 0 {
+		t.Fatalf("stats %+v : attendu 2 preuves contradictoires (compte puis cumul), 0 refutation", st)
+	}
+}

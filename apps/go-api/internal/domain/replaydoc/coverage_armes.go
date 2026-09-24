@@ -8,16 +8,17 @@ package replaydoc
 // KeyframeCoverage dit, pour le film entier, comment le balayeur d'image-clé a atteint chaque
 // record, et combien de bipèdes il a manqués alors que les images-clés voisines les portaient.
 type KeyframeCoverage struct {
-	Keyframes          int `json:"keyframes"`
-	Records            int `json:"records"`
-	Bipeds             int `json:"bipeds"`
-	Neighbors          int `json:"neighbors"`
-	Jumps              int `json:"jumps"`
-	Resyncs            int `json:"resyncs"`
-	Elections          int `json:"elections"`
-	Refutations        int `json:"refutations"`
-	Slides             int `json:"slides"`
-	FramedAbsentBipeds int `json:"framedAbsentBipeds"`
+	Keyframes           int `json:"keyframes"`
+	Records             int `json:"records"`
+	Bipeds              int `json:"bipeds"`
+	Neighbors           int `json:"neighbors"`
+	Jumps               int `json:"jumps"`
+	Resyncs             int `json:"resyncs"`
+	Elections           int `json:"elections"`
+	Refutations         int `json:"refutations"`
+	ContradictoryProofs int `json:"contradictoryProofs"`
+	Slides              int `json:"slides"`
+	FramedAbsentBipeds  int `json:"framedAbsentBipeds"`
 }
 
 // BirthLoadoutCoverage dit ce que la lecture des dotations de naissance a vu, refusé et publié.

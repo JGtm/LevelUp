@@ -308,6 +308,10 @@ func decodeEtatsDeMouvement(r *greader, g *FilmFacts) {
 		EventPacketsUnlocated: int(r.u()), Desyncs: int(r.u()), SlotUnbound: int(r.u()),
 		Duplicates: int(r.u()),
 	}
+	for _, p := range []*int{&st.LiaisonsOubliees, &st.NeufsContreUnVivant, &st.NeufsRefusesLecturesFausses,
+		&st.NeufsRefusesCreationsPerdues, &st.NeufsRefusesIndecis} { // constat DFIX-R6
+		*p = int(r.u()) //nolint:gosec // compteurs ecrits positifs
+	}
 	for i := range st.MapWidths {
 		st.MapWidths[i] = uint(r.u())
 	}

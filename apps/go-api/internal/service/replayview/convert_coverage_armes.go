@@ -11,16 +11,17 @@ import (
 
 func toKeyframeCoverage(v replay.KeyframeCoverage) replaydoc.KeyframeCoverage {
 	return replaydoc.KeyframeCoverage{
-		Keyframes:          v.Keyframes,
-		Records:            v.Records,
-		Bipeds:             v.Bipeds,
-		Neighbors:          v.Neighbors,
-		Jumps:              v.Jumps,
-		Resyncs:            v.Resyncs,
-		Elections:          v.Elections,
-		Refutations:        v.Refutations,
-		Slides:             v.Slides,
-		FramedAbsentBipeds: v.FramedAbsentBipeds,
+		Keyframes:           v.Keyframes,
+		Records:             v.Records,
+		Bipeds:              v.Bipeds,
+		Neighbors:           v.Neighbors,
+		Jumps:               v.Jumps,
+		Resyncs:             v.Resyncs,
+		Elections:           v.Elections,
+		Refutations:         v.Refutations,
+		ContradictoryProofs: v.ContradictoryProofs,
+		Slides:              v.Slides,
+		FramedAbsentBipeds:  v.FramedAbsentBipeds,
 	}
 }
 

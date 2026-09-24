@@ -177,8 +177,13 @@ var plafondsParFichier = map[string]int{
 	// ne concluent rien, trois compteurs neufs et le compteur des mains nues de la naissance, les
 	// deux regressions residuelles de M3 corrigees dans la marche des etats de mouvement, la mesure
 	// au parc et le verdict ecrit des six ecarts de la pre-integration.
+	// Reprise de la partie D-fix apres sa revue adverse (2026-09-24, meme montee 70, pre-integration
+	// non fusionnee), +57 : la regle des en-tetes exacts, les compteurs neufs (preuves
+	// contradictoires, verdict des NEW refuses), le repli nomme de la borne differee, les
+	// changements des entrees figees declares et expliques, le choix du codec des faits (purge) et
+	// les verdicts sur documents des vehicules fusionnes.
 	// Exception ecrite, dans les commits de fusion qui reunissent la montee.
-	"internal/games/halo_infinite/film/replay/document_chronicle.go": 2412,
+	"internal/games/halo_infinite/film/replay/document_chronicle.go": 2469,
 	// --- production, hors perimetre du lot 2.7 (aucune preuve d equivalence ne couvrait
 	// leur scission : elle se decidera au lot qui les rouvrira).
 	// `assist.go` EST SORTI DE CETTE TABLE LE 2026-09-16 (lot 2.6.2) : le type `Assist` a descendu

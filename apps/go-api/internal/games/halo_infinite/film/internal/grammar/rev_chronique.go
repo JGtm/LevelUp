@@ -456,7 +456,8 @@ package grammar
 // TRAMES NE GARDE PAS UNE LIAISON QUE LE FILM DEMENT.
 //
 // LA CAUSE (rouge M2 x M3 `TestEntitesTi9SurLesBobines`). Dans l image-cle d avant-match de
-// `bcb6d393` (c1 p0), `fb1a1a72` (c1 p0, p1) et de la mini-bobine `000d5950` (c1 p1), le record du
+// `bcb6d393` (c1 p0), `fb1a1a72` (c1 p0, p1) et de `000d5950` (c1 p1, sur le film ENTIER : la
+// mini-bobine n a pas de registre lisible, sa marche reste sans preuve), le record du
 // slot 122 (ti 45) couvre ~125 000 bits ; la fenetre suivante porte les vrais 1280..1298 ET une
 // fausse ancre 192 / ti 1 dans le corps du record 1298. L election (slot bas) la retenait : 1280..
 // 1298 disparaissaient, dont 1297, le joueur gere de l index 0, que M2 lisait ARRIVE plus tard.
@@ -467,16 +468,20 @@ package grammar
 // de son format —, `n1 > 0`, composants sans desynchronisation, fin EXACTE sur un en-tete valide de
 // slot superieur) interdit tout elu qui contredit l ordre bit/slot ; l election se rejoue sans les
 // refutes. Aucun seuil. L exigence de CONTENU est mesuree : un record vide (172 bits) se ferme meme
-// lu decale d un bit — 61 fausses preuves sur 163 559 candidats surement faux sans elle, 0 avec.
-// Compteur `KeyframeWalkStats.Refutations`. Tous les balayages de cuisson marchent par
-// `FilmContext.MarcheDImageCle` (garde-rail `archlint/keyframe_walk_proof_test.go`). Mesure (7
-// bobines + mini-bobine) : 5 paquets changent, 1 refutation chacun ; perdues SEULEMENT les fausses
-// ancres 192 (x4) et 1536 ; fermeture ti=9 1 738 -> 1 741 ; golden des familles : `carrierMarks`.
+// lu decale d un bit — 55 fausses preuves sur 39 471 candidats surement faux sans elle, 0 avec
+// (re-mesure, DFIX-R9). Compteurs `Refutations` et `PreuvesContradictoires` (DFIX-R8). Toute marche
+// de CUISSON est celle du film (garde-rail `archlint/keyframe_walk_proof_test.go`) ; hors cuisson,
+// `ScanFilmWeaponDamages` marche sans preuve — backfill a decider par l utilisateur (DFIX-R4).
+// Mesure (sept bobines) : 4 paquets changent, 1 refutation chacun ; perdues SEULEMENT les fausses
+// ancres 192 (x3) et 1536 ; fermeture ti=9 1 738 -> 1 741 ; golden des familles : `carrierMarks`.
 //
-// LE PRINCIPE (`player_entities.go`). Les candidats ECARTES par recalage ou election et les records
-// ti=9 illisibles font une image-cle DOUTEUSE pour ces slots (`DouteDAbsence`, persiste) : une
-// absence n y prouve ni un depart ni une arrivee tardive, et la presence ne borne que sur une absence
-// PROUVEE. Compteurs `coverage.seats.imagesClesDouteuses` / `bornesDifferees` (0 sur les bobines).
+// LE PRINCIPE (`player_entities.go`, `player_entities_entetes.go`). Une absence n est PROUVEE que si
+// l en-tete EXACT du record ti=9 de l entite n apparait a AUCUNE position de bit du payload : la
+// marche perd aussi par le saut de largeur, le faux voisin et le record au-dela de sa fenetre, sans
+// rien « ecarter » (DFIX-R2). Un en-tete trouve et non lu fait une image-cle DOUTEUSE pour ce slot
+// (`DouteDAbsence`, persiste) : ni depart ni arrivee tardive, la presence ne borne que sur une
+// absence PROUVEE. Compteurs `coverage.seats.imagesClesDouteuses` / `bornesDifferees` (0 sur les
+// bobines avec la preuve ; sans elle, le seul slot 1297 de `bcb6d393` et `fb1a1a72`).
 //
 // L IMAGE-CLE DIT QUI N EST PLUS LA (`keyframe_liaison.go`). La marche des etats de mouvement ne
 // retirait une liaison que sur un DEL LU : un DEL manque laissait celle du mort, et l occupant
@@ -489,5 +494,7 @@ package grammar
 // EN DUR (chaine ou NEW) d un autre archetype est une lecture fausse, que la traversee du NEW de
 // bipede (R(32), M3.2) atteignait (`0797ce72` c12 : « 123 ti 2 » ecrasait le `ti 4` de chaque paquet,
 // onze vies perdues ; `396cfc92` : sept). Il n est plus lie, la marche continue (compteur
-// `NeufsContreUnVivant`). Mesure (seize films non BTB, base -> tete) : aucune vie ne perd un
+// `NeufsContreUnVivant`, dont l image-cle suivante rend le VERDICT — lecture fausse confirmee,
+// vraie creation perdue par un DEL non lu, indecis — publie avec `LiaisonsOubliees` dans
+// `coverage.stances`, DFIX-R6). Mesure (seize films non BTB, base -> tete) : aucune vie ne perd un
 // intervalle, hors un accroupi d une frame de `c75f33b8` que l alignement de M3.2 efface.

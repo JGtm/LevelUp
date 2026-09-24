@@ -132,6 +132,35 @@ var registreReplayPlaces = []Repli{
 		CompteurBranche: true,
 	},
 	{
+		Nom: "repli_borne_de_presence_differee_sur_doute",
+		Fait: "quand un occupant ARRIVE ou PART, quand l'image-cle voisine de sa fenetre de lecture " +
+			"porte l'en-tete exact de son record ti=9 sans que la marche d'image-cle l'ait lu",
+		Mecanisme: "la borne ne se pose pas sur cette image-cle : l'arrivee recule a la premiere " +
+			"image-cle anterieure qui PROUVE son absence (au coup d'envoi s'il n'y en a aucune), le " +
+			"depart a la premiere posterieure qui la prouve ; a defaut, l'affichage court jusqu'a " +
+			"l'arrivee de son successeur sur la place (regle des places), jusqu'au bout du film s'il " +
+			"n'en a pas",
+		// LA LECTURE A TOURNE ET N'A PAS TRANCHE : l'en-tete est dans le payload (le record y est
+		// peut-etre), la marche ne l'a pas lu (record perdu, ou illisible). Mesure au lot D-fix :
+		// 0 image-cle douteuse sur les sept bobines, les cinq temoins et les onze temoins du gate.
+		Condition: CondNonResolu,
+		Ordre:     OrdreApresLecture,
+		Sites: []Site{{
+			Fichier: pkgReplay + "sieges.go",
+			Ancre:   "in.horloge.fb.DeclencheN(fallback.NomBorneDePresenceDiffereeSurDoute, cov.BornesDifferees)",
+		}, {
+			Fichier: pkgReplay + "occupants_presence.go",
+			Ancre:   "rang, prouvee := scan.AbsenceProuveeApres(e)",
+		}},
+		DatePose: dateM2RevueRetoursRejeu,
+		CibleRetrait: "le lot qui rendra la marche d'image-cle deterministe (cadre exact de " +
+			"l'ecrivain, `WalkKeyframeRecords`, fermeture a 100 %) : plus aucun record present n'y " +
+			"reste non lu",
+		CritereRetrait: "marche deterministe en production ET coverage.seats.bornesDifferees a 0 sur " +
+			"le parc re-decode (111 documents)",
+		CompteurBranche: true,
+	},
+	{
 		Nom: "repli_vie_de_bot_par_relais_de_la_base",
 		Fait: "a quel bot appartient une vie restee anonyme apres la lecture des corps, des " +
 			"entites et des sieges de bot",
