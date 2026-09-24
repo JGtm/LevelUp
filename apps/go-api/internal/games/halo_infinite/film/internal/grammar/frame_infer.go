@@ -191,12 +191,45 @@ func corpsDeRecordNeuf(br *Lecteur, buf []byte, w *World, cfg FrameConfig,
 	switch {
 	case rec.DesyncAt != -1:
 		return true
+	case contreditUneEntiteVivante(w, rec):
+		// NON LIE, et la marche CONTINUE : le dommage d une lecture fausse etait la LIAISON (elle
+		// ecrasait l archetype d une entite vivante), pas la traversee. Si celle-ci est mal alignee,
+		// le record suivant desynchronise de lui-meme ; arreter la trame ici perdait les records
+		// qui suivent une traversee tombee juste (`81c02726` : un sprint perdu a cet essai).
+		cfg.Obs.compterNeufContreUnVivant()
 	case repaired:
 		w.BindSoft(rec.ID, rec.TypeIndex)
 	default:
 		w.BindFull(rec.ID, rec.TypeIndex)
 	}
 	return false
+}
+
+// contreditUneEntiteVivante dit si un record NEW, traverse proprement, contredit une entite que
+// le monde tient pour VIVANTE : son slot est lie EN DUR (chaine d une image-cle, ou NEW propre
+// anterieur — jamais une liaison de datum ou d anticipation, `Soft`) a un AUTRE archetype, et
+// aucun DEL ne l a libere depuis (lot D-fix, 2026-09-24).
+//
+// LE JEU NE CREE PAS UNE ENTITE SUR UNE ENTREE OCCUPEE de sa table de datums : une creation prend
+// une entree LIBRE, et une entree ne se libere que par la suppression de son occupant. Un tel
+// NEW est donc une lecture fausse — un record mal aligne dont la traversee « tombe juste ». Le
+// lier ecrasait l archetype d une entite vivante, et chaque delta suivant de ce slot se lisait
+// sous le mauvais archetype jusqu a l image-cle suivante. MESURE (`0797ce72`, chunk 12) : un NEW
+// « slot 123, ti 2 » lu apres un NEW de bipede (traverse depuis que l etat par defaut lit son
+// R(32), lot M3.2) ecrasait le `ti 4` que l image-cle et chaque paquet donnaient a ce slot ; les
+// paquets suivants s arretaient apres un ou deux records, et onze vies perdaient leurs etats de
+// mouvement. Un DEL manque (suppression non lue) laisse une liaison que l image-cle suivante
+// OUBLIE (`keyframe_liaison.go`) : le refus ne survit pas a son chunk.
+func contreditUneEntiteVivante(w *World, rec *FrameRecord) bool {
+	s, lie := w.slots[rec.Slot]
+	return lie && !s.Soft && s.TypeIndex != rec.TypeIndex
+}
+
+// compterNeufContreUnVivant compte un NEW refuse (cf. [Observation.NeufsContreUnVivant]).
+func (o *Observation) compterNeufContreUnVivant() {
+	if o != nil {
+		o.NeufsContreUnVivant++
+	}
 }
 
 // decodeInferLoop is the core of DecodeFrameInfer operating on a SUPPLIED Lecteur,

@@ -157,6 +157,7 @@ func ScanMovementStates(fc *FilmContext) ([]types.MovementStateRead, types.Movem
 			sc.paquet(c, pk, data, cfg)
 		}
 	}
+	st.NeufsContreUnVivant = obs.NeufsContreUnVivant
 	sc.deriverLesSauts()
 	sc.publier()
 	st.Scanned = true

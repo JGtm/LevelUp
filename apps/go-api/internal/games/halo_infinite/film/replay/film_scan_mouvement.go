@@ -38,7 +38,7 @@ func (s *filmScan) balayerEtatsDeMouvement() {
 			"paquets", st.Packets, "paquetsEvenements", st.EventPackets,
 			"paquetsEvenementsLocalises", st.EventPacketsLocated,
 			"paquetsEvenementsNonLocalises", st.EventPacketsUnlocated,
-			"slotNonLie", st.SlotUnbound, "doublons", st.Duplicates, "liaisonsOubliees", st.LiaisonsOubliees,
+			"slotNonLie", st.SlotUnbound, "doublons", st.Duplicates, "liaisonsOubliees", st.LiaisonsOubliees, "neufsContreUnVivant", st.NeufsContreUnVivant,
 			"largeursCarte", st.MapWidths, "absent", st.Absent)
 	}
 	s.in.MovementStates, s.in.MovementStateStats = reads, st

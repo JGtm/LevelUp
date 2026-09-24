@@ -192,6 +192,9 @@ type MovementStateStats struct {
 	// marche : la suppression de l entite n avait pas ete lue (lot D-fix, 2026-09-24,
 	// `grammar/keyframe_liaison.go`). Journalise, pas persiste, comme les deux precedents.
 	LiaisonsOubliees int
+	// NeufsContreUnVivant compte les records NEW REFUSES parce qu ils contredisaient une entite vivante
+	// du monde (lot D-fix, `grammar/frame_infer.go`). Journalise, pas persiste.
+	NeufsContreUnVivant int
 	// Duplicates compte les re-publications de la MEME transition (meme slot, meme genre, meme
 	// instant) : le chemin d inference re-parcourt un record quand une chaine de transitoires le
 	// demande. Deduplique, pas compte deux fois.
