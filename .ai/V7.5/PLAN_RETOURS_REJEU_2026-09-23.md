@@ -1003,6 +1003,25 @@ vivent au §9 ; aucun lot de la vague D ne démarre sans eux.
     page d'écoute hors dépôt : `Downloads/Halo Infinite - Sons v75/rr_2026-09-23/index.html`, en attente
     de l'oreille de l'utilisateur. Branches de recherche à fusionner à la prochaine intégration :
     `feat/rr-ghidra`, `feat/rr-c2`.
+  - Workflow `wf_3add3bf4-008` terminé (24/09) : intégration A (b74c8f294, CI verte) ; M1, M4a, M5
+    (vague C) et M2, M3 (vague D) livrés sur leurs branches, chacun relu par un relecteur adverse
+    (M2 : 1 P0 + 4 P1 ; M3 : 4 P1 ; M4a : 3 P1 ; M1 : 1 P1 ; M5 : 1 P1) puis corrigé. Arbitrages
+    TECHNIQUES du superviseur sur les questions des lots (tranchés, pas des décisions produit) :
+    M3 — réparation (a) par l'ancre de signature du NEW de naissance (mesurée) plutôt que par le départ
+    de la vue B, M3.1 par recalage sur l'en-tête exact + élection en repli (la règle V2 a été mesurée
+    et écartée), Q18 appliquée PAR VIE (une vie sans dotation lue garde « à venir »), effet de bord sur
+    la marche des états (+327 paquets non localisés) accepté et déclaré ; M5 — preuve (a0) avant (b)
+    (8 documents b → a0, camp identique 8/8) ; la brèche d'équivalence « faits sans verdict du fil des
+    morts » est fermée PROPREMENT en vague D (lot M8 : le verdict porté dans les faits, avec la montée
+    de SchemaDesFaits de la vague D) ; M2 — place vide visible aussi avant le premier occupant, humain
+    qui remplace un bot : présence lue dans le film (aucun repli), chaînage FIFO, kill-switch web daté
+    retrait 2026-12-01, capacité d'équipe estimée en repli nommé (lecture de la taille d'équipe de la
+    variante : découverte à instruire) ; M1 — constantes de continuité de F-1 acceptées, pertes
+    collatérales déclarées (D1 grappin, D2 épisode de proximité, a349fea8, a521164d) consignées en
+    découvertes. Question produit ouverte : les Falcon MOBILES de BTB (23 vies, 7 documents) sont
+    masqués comme décor depuis la décision du 02/09 — les rendre visibles et pilotables quand le film
+    les fait bouger ? `850902EF` (25 tirs) : identité à établir en M6 (bombe de la Banshee ?).
+    Montées de schéma : chaque lot a posé 69 ; l'intégrateur réconcilie — vague C = 69, vague D = 70.
   - Découverte : `archlint/no_stale_fallback_target_test.go:59` lit `../../.ai/PLAN_DECODEUR_FILM_2026-09-13.md`,
     déplacé sous `.ai/V7.5/` par le commit d'archivage `fe2106f4b` : test ROUGE sur la base, donc sur la
     CI de `feat/v75` — corrigé à l'intégration de la campagne (bloque la CI).
