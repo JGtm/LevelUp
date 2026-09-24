@@ -42,3 +42,25 @@ func TestCatalogueM6MainsNuesBobineEtHeatwave(t *testing.T) {
 		}
 	}
 }
+
+// TestCatalogueM6EffetsDeMortDesArmesDeVehicule — LES EXPLOSIONS A LA MORT (lot M6.2, decisions de
+// l utilisateur du 2026-09-23 nuit ; revue adverse du lot, constat R5). La mort se dessine par la
+// cle du kill (`killEffects`, table `[shot_effects]`) : l obus du Scorpion explose comme la grenade,
+// les roquettes du Rockethog comme le SPNKR — deux cles dont TOUTES les sources de degat sont
+// l arme visee. `hinf_banshee` n a PAS d entree : ses sources melent la bombe et d autres
+// projectiles, une famille par cle serait fausse sur l un des deux (limite ecrite).
+func TestCatalogueM6EffetsDeMortDesArmesDeVehicule(t *testing.T) {
+	cat, err := Load(repoRoot(t), "halo_infinite")
+	if err != nil {
+		t.Fatalf("chargement du catalogue : %v", err)
+	}
+	for _, cle := range []string{"hinf_scorpion", "hinf_rockethog"} {
+		if got := cat.Effects[cle]; got != cat.Effects["hinf_frag_grenade"] || got != cat.Effects["hinf_m41_spnkr"] {
+			t.Errorf("effet de mort de %s = %q, attendu l explosion de la grenade et du SPNKR (%q / %q)",
+				cle, got, cat.Effects["hinf_frag_grenade"], cat.Effects["hinf_m41_spnkr"])
+		}
+	}
+	if got, ok := cat.Effects["hinf_banshee"]; ok {
+		t.Errorf("hinf_banshee a un effet de mort (%q) : ses sources melent la bombe et d autres projectiles", got)
+	}
+}

@@ -75,7 +75,7 @@ type PickupCoverage struct {
 	Weapons         int `json:"weapons"`
 	Items           int `json:"items"`
 	UnknownFamilies int `json:"unknownFamilies"`
-	// UnarmedGrants (schema 70) : les remises des mains nues, hors des ramassages publies.
+	// UnarmedGrants (schema 69, lot M6) : les remises des mains nues, hors des ramassages publies.
 	UnarmedGrants      int            `json:"unarmedGrants"`
 	BeforeOrigin       int            `json:"beforeOrigin"`
 	MultiEvent         int            `json:"multiEvent"`

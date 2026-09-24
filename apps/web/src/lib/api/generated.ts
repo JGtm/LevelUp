@@ -13781,6 +13781,8 @@ export interface components {
             swapped: number;
             /** Format: int64 */
             taken: number;
+            /** Format: int64 */
+            unarmedGrants: number;
         };
         WeaponDistanceRecordRow: {
             class?: string;

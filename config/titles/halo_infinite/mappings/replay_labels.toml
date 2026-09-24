@@ -273,6 +273,24 @@ hinf_plasma_grenade = "explosive"
 hinf_dynamo_grenade = "shock"
 hinf_bandit         = "ballistic"
 hinf_ma5k_avenger   = "ballistic"
+# EFFETS DE MORT DES ARMES DE VEHICULE (retours du rejeu, lot M6.2, decisions de l'utilisateur du
+# 2026-09-23 nuit ; revue adverse du lot, constat R5). La mort se dessine par la CLE du kill, que
+# killicon rend par source de degat : une cle de vehicule ne recoit une famille que si TOUTES ses
+# sources sont la meme arme. C'est le cas de deux vehicules :
+#   - `hinf_scorpion` : ses seules sources resolues sont les degats du CANON (`0bece71e`,
+#     `19bd6810`, regle BANQUE veh_un_scorpion ; les tags partages avec le fusil a lumiere sont
+#     ambigus et ne rendent aucune cle) -> explosion COMME LA GRENADE (`explosive`) ;
+#   - `hinf_rockethog` : ses seules sources sont les roquettes (`5a4450e4`, `798a239d`, vehi
+#     bcfb852f) -> explosion COMME LE SPNKR (`explosive`, la famille de `hinf_m41_spnkr`).
+# LA BOMBE DE LA BANSHEE N'A PAS D'ENTREE, ET C'EST VOULU : la regle BANQUE veh_cv_banshee rend
+# `hinf_banshee` pour les degats de la bombe (projectile 83189ef3 : `53b1e6c5`, `a21bf18a`) ET pour
+# ceux de trois autres projectiles de la Banshee (0001535a : `0001535b`, `0001535c` ; 0001535f :
+# `00015360` ; 79665713 : `fa4fad21`) ; une famille par cle poserait l'explosion de la bombe sur une
+# mort aux canons. La bombe est rouge et
+# plus grosse sur son TIR (registre `vehicle_weapons.toml`, forme `bomb`) ; a la MORT, elle attend
+# une cle par source de degat (limite ecrite du lot M6, consignee).
+hinf_scorpion       = "explosive"
+hinf_rockethog      = "explosive"
 
 # TEINTE d'un tir, par weapon_key — LA NATURE DE LA DECHARGE, pas le camp du tireur.
 #

@@ -9,21 +9,28 @@ package filmshell
 // que le script Lua global nomme `WeaponTags.unarmed`. Sa liste de variantes porte `42C9679F`,
 // comme les armes de l arsenal : l identifiant d arme du film vaut donc `00007CA942C9679F`.
 //
-// CE QUE LE JEU EN FAIT, MESURE AU PARC (111 documents, 2026-09-24) : il le REMET a chaque bipede
-// au debut de chaque vie — 590 ramassages natifs de classe ARME dans 79 documents, 487 au coup
-// d envoi (t <= 5 frames), 75 a moins de 2 s d une reapparition, 28 a la bascule de manche d un
-// match a manches. Aucun n est une prise dans le monde. Un joueur ne le TIENT en main que s il a
-// jete toutes ses armes — cas « quasi impossible » selon l utilisateur (1 changement d arme sur le
-// parc).
+// CE QUE LE JEU EN FAIT, MESURE AU PARC (107 documents reconstruits depuis les faits persistes a la
+// tete de la vague C, 2026-09-24 ; instrument `replaybuild/m1_parc_depuis_faits_research_test.go`) :
+// il le REMET a chaque bipede au debut de chaque vie. Le film l ecrit sur DEUX canaux, chaque fois
+// comme une prise : 562 ramassages natifs de classe ARME dans 77 documents — 481 au coup d envoi
+// (t <= 5 frames), 457 a moins de 2 s du premier point d une vie du meme slot, 105 AVANT le premier
+// point publie de la vie de leur slot, aucun au milieu d une vie —, et 1 prise (`taken`) du canal
+// `weaponChanges`, au premier point d une vie elle aussi. Aucune n est une prise dans le monde. Un
+// joueur ne le TIENT en main que s il a jete toutes ses armes — cas « quasi impossible » selon
+// l utilisateur, jamais observe au parc : il apparaitrait comme un ECHANGE (`swapped`) vers
+// l objet, publie et nomme.
 //
 // DECISIONS DE L UTILISATEUR (2026-09-24) : exclu de la dotation affichee par une regle NOMMEE ;
 // sa remise classee comme telle, hors des ramassages, avec un compteur dedie ; nomme « Mains
 // nues » / « Unarmed » s il apparait en cours de partie (le libelle vit dans
 // `config/titles/halo_infinite/mappings/weapon_names.toml`, cle `hinf_unarmed`).
 //
-// UNE SEULE ECRITURE : ce fichier est le seul de production a porter le litteral (garde-rail
-// `internal/archlint/unarmed_family_literal_test.go`). Les dotations de naissance du lot M3
-// (vague D) se rebranchent sur `IsUnarmedFamily`.
+// OU LA REGLE S APPLIQUE (trois chemins de publication) : `pickups` et `weaponChanges` (la remise
+// sort des publies, comptee dans leur `unarmedGrants`), et les dotations, par le passage unique
+// `dotationWeaponName` (`film/replay/loadouts.go`). UNE SEULE ECRITURE du litteral : ce fichier
+// (garde-rail `internal/archlint/unarmed_family_literal_test.go`) ; UN SEUL passage des dotations
+// vers le catalogue d armes (garde-rail `internal/archlint/unarmed_dotation_gate_test.go`) — les
+// dotations de naissance du lot M3 (vague D) devront l emprunter pour passer ce garde-rail.
 
 // UnarmedFamily est le GlobalID du tag `weap` « mains nues » — la famille d arme (32 bits hauts
 // de l identifiant d arme du film) sous laquelle le film ecrit l objet.
@@ -37,8 +44,9 @@ const unarmedVariant uint64 = 0x42c9679f
 const UnarmedWeaponID = uint64(UnarmedFamily)<<32 | unarmedVariant
 
 // IsUnarmedFamily dit si une famille d arme est l objet « mains nues ». C EST LA REGLE NOMMEE :
-// une famille pour laquelle elle repond vrai n entre dans AUCUNE dotation publiee, et son
-// ramassage natif est une remise du jeu, pas une prise.
+// une famille pour laquelle elle repond vrai n entre dans AUCUNE dotation publiee, et sa PRISE
+// (ramassage natif de classe arme, `taken` du canal des changements d arme) est une remise du
+// jeu, pas un ramassage.
 func IsUnarmedFamily(family uint32) bool {
 	return family == UnarmedFamily
 }

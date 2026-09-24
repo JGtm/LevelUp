@@ -1,9 +1,9 @@
 # EMPREINTE DE FORME DU DOCUMENT DE REJEU — fige par document_shape_test.go.
 # Ne s'edite JAMAIS a la main : regeneration decrite en tete de ce test.
-schema 70
-empreinte-stockee f9147d70dab6bf7c
-empreinte-servie f9147d70dab6bf7c
-empreinte-cuite 74bfee7032b0e06a
+schema 69
+empreinte-stockee 218b466cc6ef2c62
+empreinte-servie 218b466cc6ef2c62
+empreinte-cuite 0b86a97ffb022f43
 empreinte-cuite-regle 2
 
 AbilityCharge
@@ -1051,6 +1051,7 @@ WeaponChangeCoverage
   Restated json:"restated" int
   Swapped json:"swapped" int
   Taken json:"taken" int
+  UnarmedGrants json:"unarmedGrants" int
 WeaponLabel
   En json:"en" string
   Fr json:"fr" string

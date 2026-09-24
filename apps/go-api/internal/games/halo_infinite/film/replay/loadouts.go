@@ -69,12 +69,7 @@ func buildLoadouts(raw []types.KeyframeLoadout, origin, step uint64) []Loadout {
 		seen := map[string]bool{}
 		var ids []string
 		for _, fam := range l.Families {
-			// LES MAINS NUES NE SONT JAMAIS UNE DOTATION (règle nommée, lot M6.3) — quel que soit
-			// le catalogue de décodage, qui ne les connaît pas aujourd'hui.
-			if filmshell.IsUnarmedFamily(fam) {
-				continue
-			}
-			name := weaponv3.WeaponName(fam)
+			name := dotationWeaponName(fam)
 			if name == "" || seen[name] {
 				continue
 			}
@@ -100,6 +95,26 @@ func buildLoadouts(raw []types.KeyframeLoadout, origin, step uint64) []Loadout {
 		return out[i].Slot < out[j].Slot
 	})
 	return out
+}
+
+// dotationWeaponName rend le NOM qu'une famille porte dans une DOTATION PUBLIÉE, "" quand elle
+// n'y entre pas. C'EST LE SEUL PASSAGE d'un constructeur de dotation vers le catalogue d'armes
+// (garde-rail `internal/archlint/unarmed_family_literal_test.go`, revue adverse du lot M6,
+// constat R6) : la règle NOMMÉE des mains nues (`filmshell.IsUnarmedFamily`, décision de
+// l'utilisateur du 2026-09-24) s'y applique AVANT le catalogue, de sorte qu'elle tienne le jour où
+// le catalogue de décodage connaîtrait l'objet — et qu'un constructeur neuf (dotations de
+// naissance, lot M3) ne puisse pas la contourner en interrogeant le catalogue lui-même.
+func dotationWeaponName(fam uint32) string {
+	return nomDeDotation(fam, weaponv3.WeaponName)
+}
+
+// nomDeDotation : la règle, le catalogue injecté (les tests lui passent un catalogue qui CONNAÎT
+// l'objet « mains nues » — sans quoi la règle ne serait pas éprouvée).
+func nomDeDotation(fam uint32, catalogue func(uint32) string) string {
+	if filmshell.IsUnarmedFamily(fam) {
+		return ""
+	}
+	return catalogue(fam)
 }
 
 // keepLoadoutsOfPublishedTracks écarte les loadouts dont le slot n'a pas de trajectoire

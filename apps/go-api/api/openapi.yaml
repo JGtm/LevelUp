@@ -30708,6 +30708,9 @@ components:
         taken:
           format: int64
           type: integer
+        unarmedGrants:
+          format: int64
+          type: integer
       required:
         - decoded
         - published
@@ -30716,6 +30719,7 @@ components:
         - taken
         - dropped
         - swapped
+        - unarmedGrants
       type: object
     WeaponDistanceRecordRow:
       additionalProperties: false
