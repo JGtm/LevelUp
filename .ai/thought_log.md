@@ -113156,3 +113156,45 @@ par le code de la vague C).
 **Suite.** Superviseur : arbitrer ces 20 fichiers de faits avant la republication, `replay-equiv` sur
 une copie, push et CI au niveau job, republication depuis les faits (serveur arrêté, utilisateur
 prévenu), verdicts visuels.
+
+## [2026-09-24] Retours rejeu, M6 : registre et catalogue (feat/rr-m6) — Complété (fusionné, c49f07687)
+
+**Décision technique principale.** Sons désignés à l'oreille (lance-grenades du Falcon = événement du
+Rockethog, missiles du Wasp au rendu V3E, LMG du Wasp déposée et déclarée pour M4b avec échéance) ;
+`850902EF` établi bombe de la Banshee (configuration multijoueur) et nommé au registre ; châssis
+`3a8060e2` = tourelle fixe ; `00007CA9` = mains nues : la remise de début de vie sort des ramassages et
+des changements d'arme (compteurs `unarmedGrants`) et des dotations, par une règle nommée ; bobine à
+fusion UNSC au catalogue, d'où l'arme favorite décidée par la classe. Montée rabattue sur 69 par la
+revue (une seule montée par vague).
+
+**Résultats observés.** Parc (107 documents) : seuls les calques visés bougent ; G4 438 tirs tous au
+registre (0 silence, 0 inconnu).
+
+**Suite.** M4b câble la boucle LMG (ou supprime le fichier) ; familles d'arme encore anonymes et tirs
+de `850902EF` posés sur un Warthog consignés en découvertes.
+
+## [2026-09-24] Retours rejeu, M7 : décor hors de la zone jouable (feat/rr-m7) — Complété (fusionné, b08ba6688)
+
+**Décision technique principale.** Le verdict de décor est décidé à la requête par le service (calque
+`vehicleScenery`, hors cuisson) : pose seule ET hors de la matière praticable du fond de carte publié,
+en hauteur sous le sol foulé du match ; carte sans fond = rien masqué ; deux replis nommés au registre ;
+le client ne lit plus que le verdict.
+
+**Résultats observés.** Parc : 13 → 13 masqués, 0 vie en jeu masquée, 0 zone inconnue ; empreinte cuite
+inchangée, rien à re-cuire.
+
+**Suite.** Verdict visuel utilisateur (Starboard, Goliath, Behemoth).
+
+## [2026-09-24] Retours rejeu : intégration de M6 et M7 — Complété (feat/retours-rejeu, rien de poussé)
+
+**Décision technique principale.** Fusions `--no-ff` M6 puis M7 ; une seule chronique v69 : partie M7
+ajoutée (forme servie seule), plafond archlint 2174 → 2186 justifié ; golden de forme re-figé par sa
+porte (seul conflit), contrat et types générés vérifiés par leurs portes.
+
+**Résultats observés.** Gates verts sur la tête (build, vet + integration + research, `go test ./...`,
+intégration `-p 1` 17 219 pass / 0 fail, baseline, golangci 0 issue, web complet). Contrôle de parc
+depuis une copie des faits : base → tête = exactement les changements déclarés de M6, rien de M7 dans
+le cuit ; M7 13 → 13 au parc.
+
+**Suite.** Superviseur : push et CI au niveau job, arbitrage des 20 fichiers de faits réécrits,
+republication 69 depuis les faits (serveur arrêté, utilisateur prévenu), verdicts à l'oreille et visuels.
