@@ -120,7 +120,22 @@ describe('refineWeaponsReading — une rangée SITUÉE (dotation de naissance, s
   it('ajoute une prise sur l’emplacement qui SUIT le dernier occupé', () => {
     const base = { weapons: [ROW_BR75], k: [0], age: 20, src: 'birth' }
     const out = refineWeaponsReading(base, [chg({ t: 50, kind: 'taken', w: SNIPER, from: undefined, k: 1 })], 1, 60)
-    expect(out).toEqual({ weapons: [ROW_BR75, ROW_SNIPER], k: [0, 1], age: 10, src: 'birth' })
+    expect(out).toEqual({ weapons: [ROW_BR75, ROW_SNIPER], k: [0, 1], age: 10 })
+  })
+
+  it('ne dit plus « dotation de naissance » d’une rangée qu’un échange a modifiée', () => {
+    // Revue adverse du lot M3.3 (2026-09-24) : la provenance `birth` survivait au raffinement,
+    // et l'infobulle disait « Dotation de naissance · Armes lues il y a 1 s » d'une rangée qui
+    // n'était plus la dotation.
+    const base = { weapons: [ROW_BR75, ROW_SPNKR], k: [0, 1], age: 20, src: 'birth' }
+    const out = refineWeaponsReading(base, [chg({ t: 59, k: 1 })], 1, 60)
+    expect(out.src).toBeUndefined()
+    expect(out.age).toBe(1)
+  })
+
+  it('garde la provenance quand aucun changement ne s’applique', () => {
+    const base = { weapons: [ROW_BR75], k: [0], age: 20, src: 'birth' }
+    expect(refineWeaponsReading(base, [], 1, 60)).toBe(base)
   })
 
   it('s’abstient d’une prise qui laisserait un TROU dans la rangée', () => {

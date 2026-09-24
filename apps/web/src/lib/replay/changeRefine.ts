@@ -109,7 +109,10 @@ export function refineWeaponsReading(
     if (appliquerChangement(rangee, c)) applied = c.t
   }
   if (applied < 0) return base
-  return { ...base, weapons: rangee.weapons, k: rangee.k, age: frame - applied }
+  // LA PROVENANCE NE SURVIT PAS À UN CHANGEMENT APPLIQUÉ (revue adverse du lot M3.3, 2026-09-24) :
+  // la rangée n'est plus la dotation de naissance, c'est elle PLUS ce qui s'est passé depuis —
+  // l'infobulle ne doit plus dire « Dotation de naissance ». `k` reste : la rangée reste située.
+  return { weapons: rangee.weapons, age: frame - applied, ...(rangee.k ? { k: rangee.k } : {}) }
 }
 
 /** La rangée en cours de raffinement : ses armes et, quand elle est située, leurs emplacements. */
