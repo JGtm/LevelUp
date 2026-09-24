@@ -413,3 +413,13 @@ package grammar
 //     juge, POUR CHAQUE VIE, contre la dotation de naissance puis contre le dernier releve
 //     d image-cle PASSE (`SpawnPredicate`, jamais un releve a venir), et la chaine des emissions
 //     d un slot se coupe a chaque nouvelle creation du corps qui l occupe.
+//
+// REPRISE APRES LA REVUE ADVERSE DU LOT (2026-09-24), MEME RANG :
+//
+//   - UNE FIN DE TABLE A CHEVAL SUR DEUX FENETRES SE RECONNAIT (`kfScanGlissant`, constat F5). Le
+//     compteur de sentinelles repartait de zero a chaque fenetre : une trainee coupee par la
+//     frontiere (moins de 2 048 sentinelles de chaque cote) n etait jamais une fin de table, et le
+//     glissement allait lire des ancres au-dela. La fenetre suivante reprend desormais au DEBUT de
+//     la trainee sur laquelle la precedente a fini (`traine`, rendu par `kfScanNext`).
+//   - `Glissements` ne compte plus que les fenetres vides FRANCHIES pour atteindre une ancre ; une
+//     recherche qui finit sur la fin de table ou du payload n a rien franchi.

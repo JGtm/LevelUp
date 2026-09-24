@@ -146,3 +146,31 @@ func TestBipedesAbsentsEncadres(t *testing.T) {
 		t.Fatalf("deux images-clés ne encadrent rien : %d", n)
 	}
 }
+
+// TestKeyframeWorldUneFinDeTableAChevalSurDeuxFenetres : une traînée de sentinelles COUPÉE par la
+// frontière de deux fenêtres de 120 000 bits reste une fin de table (constat F5 de la revue
+// adverse du lot M3.1, 2026-09-24). ROUGE sur 533fe7d91 : le compteur de sentinelles repartait de
+// zéro à chaque fenêtre, aucune des deux moitiés n'atteignait 2 048, et le glissement allait lire
+// l'ancre 11 au-delà de la table.
+func TestKeyframeWorldUneFinDeTableAChevalSurDeuxFenetres(t *testing.T) {
+	w := &bitWriter{}
+	w.bit(0)
+	kfEcrireRecord(w, 1, 10, 5, 300)
+	// La fenêtre du record 10 commence à la fin de son en-tête de 64 bits (bit 65) : la traînée
+	// de 100 mots (3 200 bits) commence 1 600 bits avant sa fin, et la chevauche.
+	debutFenetre := 1 + 64
+	w.bits(0, debutFenetre+kfScanFenetreBits-1600-w.n)
+	for i := 0; i < 100; i++ {
+		w.bits(kfSent, 32)
+	}
+	w.bits(0, 500)
+	kfEcrireRecord(w, 1, 11, 5, 300) // au-delà de la table : jamais atteint
+	w.bits(0, 500)
+	recs, st := WalkKeyframeWorldStats(w.buf)
+	if len(recs) != 1 || recs[0].Slot != 10 {
+		t.Fatalf("records %+v : la marche a lu au-delà d'une fin de table à cheval sur deux fenêtres", recs)
+	}
+	if st.Glissements != 0 {
+		t.Fatalf("compteurs %+v : aucun glissement attendu, la fin de table arrête la recherche", st)
+	}
+}

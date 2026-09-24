@@ -170,8 +170,11 @@ const (
 )
 
 // kfScanNext : POSITION EN BITS de la prochaine ancre après `from` dans la fenêtre `maxWin`
-// (-1 si aucune), la décision qui l'a choisie, et `finDeTable` quand la fenêtre a rencontré la
-// fin de table (2 048 identifiants sentinelles d'affilée).
+// (-1 si aucune), la décision qui l'a choisie, `finDeTable` quand la fenêtre a rencontré la fin
+// de table (2 048 identifiants sentinelles d'affilée), et `traine` : la longueur de la traînée de
+// sentinelles sur laquelle la fenêtre FINIT sans candidat — [kfScanGlissant] reprend la fenêtre
+// suivante à son début, pour qu'une fin de table à cheval sur deux fenêtres se reconnaisse
+// (constat F5 de la revue adverse du lot M3.1, 2026-09-24).
 //
 // TROIS DÉCISIONS, DANS CET ORDRE (lot M3.1, 2026-09-23) :
 //
@@ -190,7 +193,7 @@ const (
 // (a0c36016 : 14 659 -> 11 890 ; b1f01a33 : 6 719 -> 5 524, trois bipèdes perdus), parce qu'une
 // fausse ancre de génération 1 plus proche que le vrai record suivant se trouve presque partout
 // hors de la bande des bipèdes. Le recalage ne change l'élection QUE devant un en-tête exact.
-func kfScanNext(buf []byte, from, prevSlot, total, maxWin int) (at int, dec kfDecision, finDeTable bool) {
+func kfScanNext(buf []byte, from, prevSlot, total, maxWin int) (at int, dec kfDecision, finDeTable bool, traine int) {
 	at = -1
 	best := kfCand{consecutive: -1, gen: 1 << 30, slot: 1 << 30, bit: 1 << 30}
 	exact := -1
@@ -214,7 +217,7 @@ func kfScanNext(buf []byte, from, prevSlot, total, maxWin int) (at int, dec kfDe
 			continue
 		}
 		if s == prevSlot+1 && g == 1 {
-			return q, kfVoisin, false // consécutif gen-1 : non ambigu
+			return q, kfVoisin, false, 0 // consécutif gen-1 : non ambigu
 		}
 		if exact < 0 && g == 1 && ti == BipedTypeIndex {
 			exact = q
@@ -231,11 +234,11 @@ func kfScanNext(buf []byte, from, prevSlot, total, maxWin int) (at int, dec kfDe
 	case exact >= 0 && (at < 0 || exact <= at):
 		// `<=` : quand l'élection retient elle-même l'en-tête exact, c'est lui qui la justifie —
 		// la décision se compte en recalage, et `Elections` ne compte que les choix du repli.
-		return exact, kfRecalage, finDeTable
+		return exact, kfRecalage, finDeTable, 0
 	case at >= 0:
-		return at, kfElection, finDeTable
+		return at, kfElection, finDeTable, 0
 	}
-	return -1, kfAucune, finDeTable
+	return -1, kfAucune, finDeTable, sentStreak
 }
 
 // kfScanGlissant est [kfScanNext] dont une fenêtre SANS AUCUN candidat n'arrête plus la marche :
@@ -246,16 +249,32 @@ func kfScanNext(buf []byte, from, prevSlot, total, maxWin int) (at int, dec kfDe
 // aucun candidat dans les 120 000 bits qui suivent le slot 122, le premier en-tête crédible à
 // +125 270 bits — 120 ancres perdues). Le jeu n'a pas de fenêtre ; une fenêtre vide n'est pas
 // une fin de table.
+//
+// UNE FENÊTRE QUI FINIT SUR DES SENTINELLES ne sait pas encore si c'est la fin de table : la
+// suivante reprend au DÉBUT de cette traînée et la recompte en entier. Sans cette reprise, une fin
+// de table coupée par la frontière de deux fenêtres (moins de 2 048 sentinelles de chaque côté)
+// n'était jamais reconnue, et le glissement lisait des ancres au-delà de la table — ce que
+// l'ancienne fenêtre, qui arrêtait la marche, ne pouvait pas faire. La reprise recule de moins de
+// 2 048 bits sur une fenêtre de 120 000 : la recherche avance toujours.
+//
+// `glissements` ne compte que les fenêtres vides FRANCHIES pour atteindre une ancre : une
+// recherche qui s'achève sur la fin de table ou du payload n'a rien franchi, elle rend 0.
 func kfScanGlissant(buf []byte, from, prevSlot, total, maxWin int) (at int, dec kfDecision, glissements int) {
-	for f := from; f+64 <= total; f += maxWin {
+	vides := 0
+	for f := from; f+64 <= total; {
 		var fin bool
-		at, dec, fin = kfScanNext(buf, f, prevSlot, total, maxWin)
-		if at >= 0 || fin {
-			return at, dec, glissements
+		var traine int
+		at, dec, fin, traine = kfScanNext(buf, f, prevSlot, total, maxWin)
+		if at >= 0 {
+			return at, dec, vides
 		}
-		glissements++
+		if fin {
+			break
+		}
+		vides++
+		f += maxWin - traine
 	}
-	return -1, kfAucune, glissements
+	return -1, kfAucune, 0
 }
 
 // KeyframeWalkStats compte ce que le balayeur d'image-clé a décidé, par payload ou cumulé sur
