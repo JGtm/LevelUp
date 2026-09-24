@@ -44,7 +44,6 @@ import (
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
-	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
@@ -121,11 +120,11 @@ type FlagInput struct {
 // silence ici laisserait croire que les images-cles ne portaient rien.
 //
 // HORS LIGNE — appelee par BuildFromFilm.
-func decodeFilmCarrierMarks(film *source.Film, matchID string, in FlagInput) grammar.CarrierMarkScan {
+func decodeFilmCarrierMarks(fc *grammar.FilmContext, matchID string, in FlagInput) grammar.CarrierMarkScan {
 	if !in.Scanned || !flagFilmSignalsOf(in).IsFlagFilm() {
 		return grammar.CarrierMarkScan{}
 	}
-	marks, err := grammar.ScanCarrierMarks(film)
+	marks, err := grammar.ScanCarrierMarks(fc)
 	if err != nil {
 		slog.Warn("drapeau : marqueur de portage illisible — calque publie sans son controle",
 			"err", err, "match_id", matchID)

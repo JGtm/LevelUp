@@ -169,81 +169,116 @@ const (
 	kfElection
 )
 
-// kfScanNext : POSITION EN BITS de la prochaine ancre après `from` dans la fenêtre `maxWin`
-// (-1 si aucune), la décision qui l'a choisie, `finDeTable` quand la fenêtre a rencontré la fin
-// de table (2 048 identifiants sentinelles d'affilée), et `traine` : la longueur de la traînée de
-// sentinelles sur laquelle la fenêtre FINIT sans candidat — [kfScanGlissant] reprend la fenêtre
-// suivante à son début, pour qu'une fin de table à cheval sur deux fenêtres se reconnaisse
-// (constat F5 de la revue adverse du lot M3.1, 2026-09-24).
+// kfRecherche porte la recherche d'ancres d'UN payload : ce que ses fenêtres partagent. La
+// PREUVE (nil : l'élection sans réfutation d'avant le lot D-fix) et la mémoire des preuves déjà
+// calculées vivent le temps du payload ; les candidats, le temps d'une fenêtre.
+type kfRecherche struct {
+	buf    []byte
+	total  int
+	maxWin int
+	preuve *PreuveDImageCle
+	// cands : les candidats de la DERNIÈRE fenêtre balayée, dans l'ordre des bits.
+	cands []kfCandidat
+	// prouves : [PreuveDImageCle.prouve] par position, pour tout le payload.
+	prouves map[int]bool
+}
+
+// kfIssue est ce qu'une recherche d'ancre rend.
+type kfIssue struct {
+	// at : la position en bits de l'ancre retenue, -1 si aucune.
+	at int
+	// dec : la décision qui l'a retenue.
+	dec kfDecision
+	// fin : la fenêtre a rencontré la fin de table (2 048 identifiants sentinelles d'affilée).
+	fin bool
+	// traine : la traînée de sentinelles sur laquelle la fenêtre FINIT sans candidat —
+	// [kfRecherche.glissante] reprend la fenêtre suivante à son début, pour qu'une fin de table à
+	// cheval sur deux fenêtres se reconnaisse (constat F5 de la revue adverse du lot M3.1).
+	traine int
+	// refutes : les élus refusés parce qu'un record prouvé les contredit.
+	refutes int
+	// glissements : les fenêtres VIDES franchies pour atteindre l'ancre.
+	glissements int
+}
+
+// suivante : la prochaine ancre après `from` dans une fenêtre de `maxWin` bits.
 //
 // TROIS DÉCISIONS, DANS CET ORDRE (lot M3.1, 2026-09-23) :
 //
 //  1. VOISIN : slot==prev+1 ET gen==1, n'importe où dans la fenêtre — retour immédiat, non
 //     ambigu, inchangé.
 //  2. RECALAGE : le PREMIER en-tête exact de bipède (gen==1, mot d'archétype == 35) quand il
-//     précède l'ancre que l'élection retiendrait, ou qu'il EST cette ancre. Recensement exhaustif des payloads d'image-clé
-//     de quatre films (dad793c7, 81c02726, a0c36016, b1f01a33) : 649 en-têtes de cette forme,
-//     ZÉRO faux — les 14 faux d'a0c36016 portent tous une génération 2 ou 3 et un mot de taille
-//     `n1` aberrant. Une ancre élue PLUS LOIN et de slot plus bas que ce bipède est
-//     nécessairement fausse : la table est à slots croissants.
-//  3. ÉLECTION : le repli ([kfCand.betterThan]).
+//     précède l'ancre que l'élection retiendrait, ou qu'il EST cette ancre. Recensement exhaustif
+//     des payloads d'image-clé de quatre films (dad793c7, 81c02726, a0c36016, b1f01a33) : 649
+//     en-têtes de cette forme, ZÉRO faux — les 14 faux d'a0c36016 portent tous une génération 2
+//     ou 3 et un mot de taille `n1` aberrant. Une ancre élue PLUS LOIN et de slot plus bas que ce
+//     bipède est nécessairement fausse : la table est à slots croissants.
+//  3. ÉLECTION : le repli ([kfCand.betterThan]) — DEPUIS LE LOT D-fix (2026-09-24), l'élu qu'un
+//     record PROUVÉ contredit est refusé et l'élection reprend parmi les candidats restants
+//     (keyframe_world_preuve.go). Le recalage se juge contre l'élu RETENU.
 //
 // LA RÈGLE « GÉNÉRATION 1 PUIS LE PLUS PROCHE » (V2 de la sonde P2) A ÉTÉ MESURÉE ET ÉCARTÉE :
 // sur les quatre films elle rend les bipèdes, mais PERD les autres ancres par milliers
 // (a0c36016 : 14 659 -> 11 890 ; b1f01a33 : 6 719 -> 5 524, trois bipèdes perdus), parce qu'une
 // fausse ancre de génération 1 plus proche que le vrai record suivant se trouve presque partout
 // hors de la bande des bipèdes. Le recalage ne change l'élection QUE devant un en-tête exact.
-func kfScanNext(buf []byte, from, prevSlot, total, maxWin int) (at int, dec kfDecision, finDeTable bool, traine int) {
-	at = -1
+func (r *kfRecherche) suivante(from, prevSlot int) kfIssue {
+	iss := kfIssue{at: -1}
 	best := kfCand{consecutive: -1, gen: 1 << 30, slot: 1 << 30, bit: 1 << 30}
 	exact := -1
-	end := from + maxWin
-	if end > total {
-		end = total
-	}
+	end := min(from+r.maxWin, r.total)
+	r.cands = r.cands[:0]
 	sentStreak := 0
-	for q := from; q < end && q+64 <= total; q++ {
-		id := kfReadBits(buf, q, 32)
+	for q := from; q < end && q+64 <= r.total; q++ {
+		id := kfReadBits(r.buf, q, 32)
 		if id == kfSent {
 			if sentStreak++; sentStreak >= 2048 {
-				finDeTable = true
+				iss.fin = true
 				break
 			}
 			continue
 		}
 		sentStreak = 0
-		s, ti, g, ok := kfAnchorFromID(buf, q, id, prevSlot, total)
+		s, ti, g, ok := kfAnchorFromID(r.buf, q, id, prevSlot, r.total)
 		if !ok {
 			continue
 		}
 		if s == prevSlot+1 && g == 1 {
-			return q, kfVoisin, false, 0 // consécutif gen-1 : non ambigu
+			return kfIssue{at: q, dec: kfVoisin} // consécutif gen-1 : non ambigu
 		}
 		if exact < 0 && g == 1 && ti == BipedTypeIndex {
 			exact = q
 		}
+		r.cands = append(r.cands, kfCandidat{gen: g, slot: s, bit: q, ti: ti})
 		cand := kfCand{gen: g, slot: s, bit: q}
 		if s == prevSlot+1 {
 			cand.consecutive = 1
 		}
-		if at < 0 || cand.betterThan(best) {
-			at, best = q, cand
+		if iss.at < 0 || cand.betterThan(best) {
+			iss.at, best = q, cand
+		}
+	}
+	if iss.at >= 0 && r.preuve != nil {
+		if elu, refutes := r.elire(prevSlot); elu >= 0 {
+			iss.at, iss.refutes = elu, refutes
 		}
 	}
 	switch {
-	case exact >= 0 && (at < 0 || exact <= at):
+	case exact >= 0 && (iss.at < 0 || exact <= iss.at):
 		// `<=` : quand l'élection retient elle-même l'en-tête exact, c'est lui qui la justifie —
 		// la décision se compte en recalage, et `Elections` ne compte que les choix du repli.
-		return exact, kfRecalage, finDeTable, 0
-	case at >= 0:
-		return at, kfElection, finDeTable, 0
+		iss.at, iss.dec = exact, kfRecalage
+	case iss.at >= 0:
+		iss.dec = kfElection // repli nomme `repli_ancre_d_image_cle_par_election`
+	default:
+		iss.traine = sentStreak
 	}
-	return -1, kfAucune, finDeTable, sentStreak
+	return iss
 }
 
-// kfScanGlissant est [kfScanNext] dont une fenêtre SANS AUCUN candidat n'arrête plus la marche :
-// la recherche GLISSE de fenêtre en fenêtre jusqu'au premier candidat, à la fin de table ou à la
-// fin du payload. Il rend aussi le nombre de glissements.
+// glissante est [kfRecherche.suivante] dont une fenêtre SANS AUCUN candidat n'arrête plus la
+// marche : la recherche GLISSE de fenêtre en fenêtre jusqu'au premier candidat, à la fin de table
+// ou à la fin du payload.
 //
 // C'EST CE QUI COUPAIT LE SUFFIXE DE LA TABLE (mécanisme B de la sonde P2 : a0c36016 morceau 1,
 // aucun candidat dans les 120 000 bits qui suivent le slot 122, le premier en-tête crédible à
@@ -259,22 +294,35 @@ func kfScanNext(buf []byte, from, prevSlot, total, maxWin int) (at int, dec kfDe
 //
 // `glissements` ne compte que les fenêtres vides FRANCHIES pour atteindre une ancre : une
 // recherche qui s'achève sur la fin de table ou du payload n'a rien franchi, elle rend 0.
-func kfScanGlissant(buf []byte, from, prevSlot, total, maxWin int) (at int, dec kfDecision, glissements int) {
+func (r *kfRecherche) glissante(from, prevSlot int) kfIssue {
 	vides := 0
-	for f := from; f+64 <= total; {
-		var fin bool
-		var traine int
-		at, dec, fin, traine = kfScanNext(buf, f, prevSlot, total, maxWin)
-		if at >= 0 {
-			return at, dec, vides
+	for f := from; f+64 <= r.total; {
+		iss := r.suivante(f, prevSlot)
+		if iss.at >= 0 {
+			iss.glissements = vides
+			return iss
 		}
-		if fin {
+		if iss.fin {
 			break
 		}
 		vides++
-		f += maxWin - traine
+		f += r.maxWin - iss.traine
 	}
-	return -1, kfAucune, 0
+	r.cands = r.cands[:0]
+	return kfIssue{at: -1, dec: kfAucune}
+}
+
+// ecartes rend les candidats de la dernière fenêtre que l'ancre retenue à `at` (slot `slot`) rend
+// INATTEIGNABLES : ceux qui la précèdent, et ceux qui la suivent avec un slot inférieur ou égal
+// (la marche repart d'elle, à slots croissants).
+func (r *kfRecherche) ecartes(at, slot int) []KeyframeRec {
+	var out []KeyframeRec
+	for _, c := range r.cands {
+		if c.bit != at && (c.bit < at || c.slot <= slot) {
+			out = append(out, KeyframeRec{Slot: c.slot, TI: c.ti, Gen: c.gen, Bit: c.bit})
+		}
+	}
+	return out
 }
 
 // KeyframeWalkStats compte ce que le balayeur d'image-clé a décidé, par payload ou cumulé sur
@@ -292,7 +340,10 @@ type KeyframeWalkStats struct {
 	Recalages int
 	// Elections : ancres choisies par le REPLI nommé (`repli_ancre_d_image_cle_par_election`).
 	Elections int
-	// Glissements : fenêtres VIDES traversées sans arrêter la marche (cf. [kfScanGlissant]).
+	// Refutations : élus que le repli a REFUSÉS parce qu'un record prouvé par la grammaire du film
+	// les contredisait (lot D-fix, keyframe_world_preuve.go) ; l'élection a repris sans eux.
+	Refutations int
+	// Glissements : fenêtres VIDES traversées sans arrêter la marche (cf. [kfRecherche.glissante]).
 	Glissements int
 }
 
@@ -305,13 +356,15 @@ func (s *KeyframeWalkStats) Ajouter(o KeyframeWalkStats) {
 	s.Sauts += o.Sauts
 	s.Recalages += o.Recalages
 	s.Elections += o.Elections
+	s.Refutations += o.Refutations
 	s.Glissements += o.Glissements
 }
 
-// compter note une décision de balayage.
-func (s *KeyframeWalkStats) compter(dec kfDecision, glissements int) {
-	s.Glissements += glissements
-	switch dec {
+// compter note une recherche d'ancre.
+func (s *KeyframeWalkStats) compter(iss kfIssue) {
+	s.Glissements += iss.glissements
+	s.Refutations += iss.refutes
+	switch iss.dec {
 	case kfVoisin:
 		s.Voisins++
 	case kfRecalage:
@@ -321,25 +374,11 @@ func (s *KeyframeWalkStats) compter(dec kfDecision, glissements int) {
 	}
 }
 
-// WalkKeyframeWorld porte la logique durcie de walkOffline (cmd/tmp_kfworldpos) : il parcourt
-// la table keyframe type-2 (payload de frame `buf`) et retourne les records slot->typeIndex
-// reconstruits. Depuis le lot M3.1 (2026-09-23) le choix de l'ancre suivante passe par
-// [kfScanNext] (voisin, recalage, élection) et une fenêtre vide ne coupe plus la table.
-func WalkKeyframeWorld(buf []byte) []KeyframeRec {
-	return walkKeyframeWorldFenetre(buf, kfScanFenetreBits)
-}
-
-// WalkKeyframeWorldStats est [WalkKeyframeWorld] qui rend AUSSI ses décisions : c'est la forme
-// que le balayage des armes portées emploie, pour publier la santé de la marche dans le document.
-func WalkKeyframeWorldStats(buf []byte) ([]KeyframeRec, KeyframeWalkStats) {
-	return walkKeyframeWorldStats(buf, kfScanFenetreBits)
-}
-
 // kfScanFenetreBits est la PORTÉE DE L'ÉLECTION du balayeur. ELLE N'EXISTE PAS DANS LE JEU :
 // `FUN_142e2bfd0` ne balaie rien, il enchaîne les entrées. C'est une invention du port.
 //
 // DEPUIS LE LOT M3.1 (2026-09-23) ELLE NE COUPE PLUS LA TABLE : une fenêtre sans candidat glisse
-// ([kfScanGlissant]). Elle ne borne plus que la région où l'élection cherche son meilleur
+// ([kfRecherche.glissante]). Elle ne borne plus que la région où l'élection cherche son meilleur
 // candidat, et c'est une borne de COÛT, mesurée : sur quatre films (dad793c7, 81c02726,
 // a0c36016, b1f01a33) la marche sans aucune fenêtre rend EXACTEMENT les mêmes ancres que la
 // fenêtre glissante — 0 ajoutée, 0 perdue — pour un temps multiplié par 5 à 6 (a0c36016 :
@@ -354,69 +393,6 @@ func WalkKeyframeWorldStats(buf []byte) ([]KeyframeRec, KeyframeWalkStats) {
 // ensemble (critère mesurable : `KeyframeClosure` à 100 % sur les bobines par build ; suivi :
 // `keyframe_closure.golden`).
 const kfScanFenetreBits = 120000
-
-// walkKeyframeWorldFenetre est [WalkKeyframeWorld] avec une FENÊTRE explicite : `maxWin <= 0` =
-// une seule fenêtre, le payload entier. Le paramètre n'existe que pour MESURER ce que la fenêtre
-// change (lots 5.20.1 et M3.1) ; la production passe par [WalkKeyframeWorld].
-func walkKeyframeWorldFenetre(buf []byte, maxWin int) []KeyframeRec {
-	recs, _ := walkKeyframeWorldStats(buf, maxWin)
-	return recs
-}
-
-// walkKeyframeWorldStats est le corps du balayeur.
-func walkKeyframeWorldStats(buf []byte, maxWin int) ([]KeyframeRec, KeyframeWalkStats) {
-	st := KeyframeWalkStats{Payloads: 1}
-	total := len(buf) * 8
-	if maxWin <= 0 {
-		maxWin = total
-	}
-	width := map[int]int{}
-	seen := map[int]int{}
-	var out []KeyframeRec
-	pos := 1 // préfixe 1 bit
-	prev := -1
-	if _, _, _, ok := kfValidAnchor(buf, pos, prev, total); !ok {
-		var dec kfDecision
-		var g int
-		pos, dec, g = kfScanGlissant(buf, pos, prev, total, maxWin)
-		st.compter(dec, g)
-	}
-	for pos >= 0 {
-		slot, ti, gen, ok := kfValidAnchor(buf, pos, prev, total)
-		if !ok {
-			break
-		}
-		startState := pos + 64
-		nat := -1
-		// fast-path saut-de-largeur : n'accepte QUE gen==1 (non ambigu). Les faux ancres
-		// gen 2/3 de la zone d'état peuvent tomber pile sur startState+w ; on ne saute pas
-		// dessus. Un vrai record gen≥2 (mid-match) est résolu par kfScanGlissant (fallback).
-		if w, has := width[ti]; has {
-			if _, _, jg, vok := kfValidAnchor(buf, startState+w, slot, total); vok && jg == 1 {
-				nat = startState + w
-				st.Sauts++
-			}
-		}
-		if nat < 0 {
-			var dec kfDecision
-			var g int
-			nat, dec, g = kfScanGlissant(buf, startState, slot, total, maxWin)
-			st.compter(dec, g)
-		}
-		out = append(out, KeyframeRec{Slot: slot, TI: ti, Gen: gen, Bit: pos})
-		if ti == BipedTypeIndex {
-			st.Bipedes++
-		}
-		prev = slot
-		if nat < 0 {
-			break
-		}
-		kfApprendreLargeur(width, seen, ti, nat-startState)
-		pos = nat
-	}
-	st.Records = len(out)
-	return out, st
-}
 
 // kfApprendreLargeur retient la largeur d'un archétype quand deux records consécutifs de cet
 // archétype l'ont donnée identique, et l'oublie dès qu'elle varie.

@@ -26,7 +26,7 @@ bipedPickups	21	47cccac009159d6193ee2fff1a12cb6782e877f4021fdbb91cbe76141ed2957e
 zoomEvents	37	d2686333cb17a0d976c69cbaf1650eb000c84924a23c9562321c23d08e2dbf51	{TimestampUS:4551203771 Slot:517 Level:1}
 translocatorTeleports	0	4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945	(population vide)
 vehicleEvents	0	4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945	(population vide)
-carrierMarks	0	29f71313b44376b1e51987a890fe37346b5b1049af704eada54d8b59b57e185c	(population vide)
+carrierMarks	0	61efe5c8574b3c55271bf4ef5cfb14c44c66160b62e140d5d76a4fbf8f45552d	(population vide)
 catalogueFamillesDuFilm	15	2b1b39c60ec667315a3442ffe5127dc3d6d7c93b6ccb665157edb399f7e7f66b	map[1120495519:true 169448124:true 1907034668:true 2157411237:true 220251241:true 2216347109:true 2226989549:true 2475141305:true 2694143646...
 keyframeLoadouts	30	1c6ac856b1cb74bef5271b0b29afe1071ca97ce04ee254bbf3ed78a86ce91a6c	{TimestampUS:4537898226 Chunk:2 PacketIndex:1 Slot:512 Families:[1120495519 2216347109 1120495519]}
 keyframeGroundWeapons	32	e1ce056c91c18456959fa427fd3e8ca6f3cf980ea368c59d84bbba3e620ce7aa	{TimestampUS:4517903407 Chunk:1 PacketIndex:1 Slot:1346 Gen:1 Families:[3924295545]}

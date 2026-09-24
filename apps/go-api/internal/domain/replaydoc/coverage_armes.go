@@ -15,6 +15,7 @@ type KeyframeCoverage struct {
 	Jumps              int `json:"jumps"`
 	Resyncs            int `json:"resyncs"`
 	Elections          int `json:"elections"`
+	Refutations        int `json:"refutations"`
 	Slides             int `json:"slides"`
 	FramedAbsentBipeds int `json:"framedAbsentBipeds"`
 }

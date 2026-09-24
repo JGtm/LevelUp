@@ -242,6 +242,8 @@ type SeatCoverage struct {
 	EntitesNonLiees     int    `json:"entitesNonLiees"`
 	EntitesContestees   int    `json:"entitesContestees"`
 	TrousDEntite        int    `json:"trousDEntite"`
+	ImagesClesDouteuses int    `json:"imagesClesDouteuses"`
+	BornesDifferees     int    `json:"bornesDifferees"`
 	SansTableDuFilm     bool   `json:"sansTableDuFilm,omitempty"`
 }
 

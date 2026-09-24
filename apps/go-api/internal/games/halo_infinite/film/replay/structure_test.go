@@ -1321,6 +1321,11 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   MONTENT AUSSI : `grammar.Rev` et `facts.Rev` (la marche d'image-clé réparée, l'état par
 	//   défaut du bipède qui lit enfin le R(32) de sa dernière feuille) et le codec des faits (v26).
 	//   Détail : `document_chronicle.go`.
+	//   Lot D-fix (même montée v70, 2026-09-24) : UNE IMAGE-CLÉ QUE LA MARCHE NE PROUVE PAS NE
+	//   CONCLUT RIEN. Trois compteurs neufs (`coverage.keyframes.refutations`,
+	//   `coverage.seats.imagesClesDouteuses` / `bornesDifferees`) et `coverage.birthLoadouts
+	//   .unarmedGrants` ; un sens change : `roster[].presence` ne pose une arrivée ou un départ que
+	//   sur une absence PROUVÉE. Détail : `document_chronicle.go`.
 	if SchemaVersion != 70 {
 		t.Fatalf("SchemaVersion = %d, attendu 70 : incrémenter exige une raison écrite ci-dessus "+
 			"(un champ optionnel de plus n'en est pas une)", SchemaVersion)

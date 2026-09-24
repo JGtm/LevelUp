@@ -1,7 +1,5 @@
 package grammar
 
-import "levelup/go-api/internal/games/halo_infinite/film/internal/source"
-
 // slot_band_observed.go — L'AUTRE REGLE DE BANDE : les slots REELLEMENT OBSERVES, sans
 // comblement.
 //
@@ -39,10 +37,11 @@ import "levelup/go-api/internal/games/halo_infinite/film/internal/source"
 
 // observedSlotBand rend les slots d'un archetype REELLEMENT OBSERVES aux images-cles, SANS
 // combler les trous — cf. l'en-tete pour le depart entre les deux regles.
-func observedSlotBand(film *source.Film, typeIndex int) map[uint32]bool {
+func observedSlotBand(fc *FilmContext, typeIndex int) map[uint32]bool {
 	seen, others := map[uint32]bool{}, map[uint32]bool{}
-	for _, c := range FilmChunkNumbers(film) {
-		data, pks, ok := FilmChunkAt(film, c)
+	marche := fc.MarcheDImageCle()
+	for _, c := range fc.ChunkNumbers() {
+		data, pks, ok := fc.ChunkAt(c)
 		if !ok {
 			continue
 		}
@@ -50,7 +49,7 @@ func observedSlotBand(film *source.Film, typeIndex int) map[uint32]bool {
 			if pk.Type != PacketTypeKeyframe {
 				continue
 			}
-			for _, r := range WalkKeyframeWorld(pk.Payload(data)) {
+			for _, r := range marche.Records(pk.Payload(data)) {
 				if r.TI == typeIndex {
 					seen[uint32(r.Slot)] = true
 					continue

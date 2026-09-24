@@ -130,8 +130,18 @@ func (r TeamScanReport) Lu() bool { return !r.ArchetypeAbsent && !r.ComponentMis
 // occupants d'equipes differentes y diverge et ne se publie pas, alors que chaque entite garde
 // le sien (sonde P4, `b1ad85eb` : trois bots d'index 8, deux equipes).
 //
+// LA MARCHE D IMAGE-CLE EST CELLE DU FILM ([FilmContext.MarcheDImageCle], lot D-fix) : elle ne perd
+// plus le joueur gere qu une fausse ancre elue effacait, et ce qu elle ecarte encore par repli se
+// note en DOUTE (cf. player_entities.go).
+//
 // HORS LIGNE (parcourt les chunks de donnees du film) ; un appel par cuisson.
 func ScanPlayerTeams(fc *FilmContext) (map[int]int, TeamScanReport, PlayerEntityScan) {
+	return scanPlayerTeamsAvec(fc, fc.MarcheDImageCle())
+}
+
+// scanPlayerTeamsAvec est [ScanPlayerTeams] sous une marche donnee : les tests y rejouent la marche
+// SANS preuve, pour eprouver le principe des doutes sur de vrais octets.
+func scanPlayerTeamsAvec(fc *FilmContext, marche MarcheDImageCle) (map[int]int, TeamScanReport, PlayerEntityScan) {
 	var rep TeamScanReport
 	reg, err := fc.Registry()
 	if err != nil {
@@ -160,7 +170,7 @@ func ScanPlayerTeams(fc *FilmContext) (map[int]int, TeamScanReport, PlayerEntity
 				continue
 			}
 			scanPaquetEquipes(pk.Payload(raw), pk.TimestampUS, reg, &rep, lecturesDEquipe{
-				entites: entites, parIndex: parIndex, ctx: fc.ContexteDeLecture()})
+				entites: entites, parIndex: parIndex, ctx: fc.ContexteDeLecture(), marche: marche})
 		}
 	}
 	rep.Entities = len(entites.entites)
@@ -169,12 +179,13 @@ func ScanPlayerTeams(fc *FilmContext) (map[int]int, TeamScanReport, PlayerEntity
 }
 
 // lecturesDEquipe porte ce que chaque paquet alimente : les entites, la table de controle par
-// index, et le contexte de lecture. Une structure plutot que trois parametres de plus : le depot
-// borne a cinq, et les trois voyagent toujours ensemble.
+// index, le contexte de lecture et la marche d'ancres du film. Une structure plutot que quatre
+// parametres de plus : le depot borne a cinq, et les quatre voyagent toujours ensemble.
 type lecturesDEquipe struct {
 	entites  *accumulateurDEntites
 	parIndex map[int]map[int]int
 	ctx      ContexteDeLecture
+	marche   MarcheDImageCle
 }
 
 // scanPaquetEquipes lit les records ti=9 d'UN payload d'image-cle. Chaque refus est compte.
@@ -182,9 +193,17 @@ type lecturesDEquipe struct {
 // L'IMAGE-CLE N'EST INSCRITE QUE SI ELLE EST PORTEUSE (au moins un record ti=9) : c'est le pas
 // des presences, et une image-cle qui ne porte aucun occupant (le preambule) ne dit l'absence de
 // personne.
+//
+// CE QU'ELLE NE PROUVE PAS SE NOTE (lot D-fix, 2026-09-24) : le slot d'un record ti=9 que sa
+// marche a ecarte par REPLI ([MarcheDePayload.Ecartes]), ou qu'elle a atteint sans pouvoir le lire,
+// est un occupant peut-etre present — son absence a cette image-cle n'est pas prouvee
+// ([PlayerEntityScan.AbsenceProuvee]).
 func scanPaquetEquipes(pay []byte, ts uint64, reg *Registry, rep *TeamScanReport, l lecturesDEquipe) {
 	rang := -1
-	for _, b := range keyframeBornesToutes(pay) {
+	mp := l.marche.Marcher(pay)
+	lus := map[int]bool{}
+	var illisibles []int
+	for _, b := range keyframeBornesDe(mp.Records) {
 		if b.TI != managedPlayerTypeIndex {
 			continue
 		}
@@ -197,15 +216,22 @@ func scanPaquetEquipes(pay []byte, ts uint64, reg *Registry, rep *TeamScanReport
 		switch {
 		case !ok:
 			rep.Unreached++
+			illisibles = append(illisibles, b.Slot)
 		case idx < 0 || idx >= playerTableSlots:
 			rep.OutOfDomainIndex++
+			illisibles = append(illisibles, b.Slot)
 		case brut < 0 || brut > teamDesignatorRawMax:
 			rep.OutOfDomainValue++
+			illisibles = append(illisibles, b.Slot)
 		default:
 			rep.Read++
+			lus[b.Slot] = true
 			l.entites.noter(rang, b.Slot, idx, brut-1)
 			noter(l.parIndex, idx, brut-1)
 		}
+	}
+	if rang >= 0 {
+		l.entites.douterDe(rang, lus, illisibles, mp.Ecartes)
 	}
 }
 

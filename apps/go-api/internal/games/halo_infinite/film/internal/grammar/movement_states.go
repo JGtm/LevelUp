@@ -125,6 +125,7 @@ func ScanMovementStates(fc *FilmContext) ([]types.MovementStateRead, types.Movem
 		mobility: componentIndexOfAny(arch, mobilityComponentName, mobilityComponentAlt),
 		ability:  componentIndexOfAny(arch, abilityComponentName, abilityComponentAlt),
 		vues:     map[movementStateKey]types.MovementStateRead{},
+		marche:   fc.MarcheDImageCle(),
 	}
 	if sc.crouch < 0 && sc.slide < 0 && sc.mobility < 0 && sc.ability < 0 {
 		// AUCUNE ERREUR, et c est delibere : un film dont l archetype bipede ne declare aucun
@@ -189,6 +190,8 @@ type movementStateScanner struct {
 	// (`movement_states_jump.go`). Elle n est pas publiee telle quelle : seules les montees
 	// reconnues a leur hauteur deviennent des transitions.
 	vit map[uint32][]jumpVelSample
+	// marche : la marche d image-cle DU FILM (preuve comprise, lot D-fix), qui pose les liaisons.
+	marche MarcheDImageCle
 }
 
 // lierLeMonde ajoute au monde les liaisons slot -> archetype portees par les images-cles du
@@ -199,7 +202,7 @@ func (sc *movementStateScanner) lierLeMonde(data []byte, pks []FilmPacket) {
 		if pk.Type != PacketTypeKeyframe {
 			continue
 		}
-		for _, r := range WalkKeyframeWorld(pk.Payload(data)) {
+		for _, r := range sc.marche.Records(pk.Payload(data)) {
 			//nolint:gosec // slot, TI et Gen viennent du walker d image-cle, bornes par construction
 			sc.monde.BindImageCle(uint32(r.Gen), uint32(r.Slot), uint32(r.TI))
 		}

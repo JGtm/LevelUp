@@ -230,6 +230,13 @@
 #               `killsource-2026-09-24`, la montee UNIQUE de la vague D, recopie son empreinte sur
 #               l arbre reuni. Aucune decision de decodage de `killsource/` ne change a cette
 #               fusion : pas de backlog au-dela de celui que la montee de la vague D ouvre deja.
+#   2026-09-24  REVISION INCHANGEE, EMPREINTE SEULE RECOPIEE (lot D-fix, correctif de la marche
+#               d image-cle). `killsource/world.go` lie les records de la marche DU FILM
+#               (`FilmContext.MarcheDImageCle` : l elu qu un record prouve contredit est refuse,
+#               cf. `grammar-2026-09-24`, partie D-fix) et `fallback/` ecrit le nouveau mecanisme
+#               de `repli_ancre_d_image_cle_par_election`. Les liaisons du monde peuvent changer
+#               (fausses ancres 192 / 1536 retirees, 1280..1298 et 1537..1601 rendus) : c est la
+#               montee UNIQUE de la vague D, `killsource-2026-09-24`, qui en porte le backlog.
 killsource-2026-09-16.2	d09f5d19636bbb5eff1c4d38b54489868bafa127c01ce91b6cb028e9dd7bc131
 killsource-2026-09-16.3	8c87a14f4d72f8f2b05350a39c9a93b80479a372d61f3a9416628689e2b8e67e
 killsource-2026-09-16.4	a3fcc9fed6be58eeab197aaa212dd2e0e386750671ff6a67858454d76935eac8
@@ -251,4 +258,4 @@ killsource-2026-09-21.8	31745c89f06053b37e79b79810c5d1f8e1ba4e762fbf85cfa0fb21af
 killsource-2026-09-21.9	9e7a8df4984025506ce1e0b7474c5e2e10516e2b3d93b7c48561485100ca5726
 killsource-2026-09-22	eb0c32d7d98f49b8f90979270d6925327033adcf6cede45b6c945883f5f39460
 killsource-2026-09-22.2	7043543f50cecfdb485f382e9738d5d67b45776a44a4cb763af472497852b875
-killsource-2026-09-24	66eb03c60efb51d37aec8400cf64436cd1df2f96bf1189547589bb5f7c6cc5dc
+killsource-2026-09-24	8eae4e625dde3fd807c59d71d4e7c8d799bdff7b60ffb3b72835f6d4f9f2fbf5

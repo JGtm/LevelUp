@@ -142,15 +142,17 @@ func toSeatCoverage(v replay.SeatCoverage) replaydoc.SeatCoverage {
 		BotsSuccesseurs:     v.BotsSuccesseurs,
 		PresencesParLesVies: v.PresencesParLesVies,
 
-		RelaisBornes:      v.RelaisBornes,
-		Chevauchements:    v.Chevauchements,
-		TirsContestes:     v.TirsContestes,
-		TirsIndexTronque:  v.TirsIndexTronque,
-		Presences:         v.Presences,
-		EntitesNonLiees:   v.EntitesNonLiees,
-		EntitesContestees: v.EntitesContestees,
-		TrousDEntite:      v.TrousDEntite,
-		SansTableDuFilm:   v.SansTableDuFilm,
+		RelaisBornes:        v.RelaisBornes,
+		Chevauchements:      v.Chevauchements,
+		TirsContestes:       v.TirsContestes,
+		TirsIndexTronque:    v.TirsIndexTronque,
+		Presences:           v.Presences,
+		EntitesNonLiees:     v.EntitesNonLiees,
+		EntitesContestees:   v.EntitesContestees,
+		TrousDEntite:        v.TrousDEntite,
+		ImagesClesDouteuses: v.ImagesClesDouteuses,
+		BornesDifferees:     v.BornesDifferees,
+		SansTableDuFilm:     v.SansTableDuFilm,
 	}
 }
 

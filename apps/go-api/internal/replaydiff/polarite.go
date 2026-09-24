@@ -72,6 +72,11 @@ var compteursDEchec = map[string]bool{
 	"trousDEntite":        true,
 	"placesOuvertes":      true,
 	"presencesParLesVies": true,
+	// 2026-09-24 (lot D-fix des retours du rejeu) : les deux compteurs de la SANTE DES IMAGES-CLES
+	// du balayage des entites ti=9 — une absence que la marche ne prouve pas ne conclut rien, et ces
+	// deux comptes (0 attendus) montent quand la marche perd des occupants.
+	"imagesClesDouteuses": true,
+	"bornesDifferees":     true,
 }
 
 // marqueurParXUID / marqueurParSlot : segments des cles ventilees par joueur

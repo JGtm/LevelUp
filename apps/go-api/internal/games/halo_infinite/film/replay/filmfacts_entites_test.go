@@ -28,6 +28,8 @@ func TestFaitsTransportentLesEntitesDesJoueurs(t *testing.T) {
 				{Slot: 2145, Index: 8, Team: 1, FirstKF: 3, LastKF: 3, Seen: 1},
 				{Slot: 9, Index: 2, Team: grammar.TeamNone, FirstKF: 2, LastKF: 2, Seen: 1, Unstable: true},
 			},
+			// Les absences non prouvees (lot D-fix) voyagent avec les entites.
+			Doutes: []grammar.DouteDAbsence{{Rang: 0, Slot: 2145}, {Rang: 2, Slot: 1530}},
 		},
 		"balaye, personne": {Scanned: true},
 		"non balaye":       {},

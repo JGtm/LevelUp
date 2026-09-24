@@ -450,3 +450,38 @@ package grammar
 //     la trainee sur laquelle la precedente a fini (`traine`, rendu par `kfScanNext`).
 //   - `Glissements` ne compte plus que les fenetres vides FRANCHIES pour atteindre une ancre ; une
 //     recherche qui finit sur la fin de table ou du payload n a rien franchi.
+//
+// PARTIE D-fix (2026-09-24, pre-integration de la vague D, meme rang) : L ELECTION NE CONTREDIT
+// PLUS UN RECORD PROUVE PAR LA GRAMMAIRE DU FILM, ET UNE ABSENCE LUE PAR REPLI NE PROUVE RIEN.
+//
+// LA CAUSE (rouge M2 x M3 `TestEntitesTi9SurLesBobines`). Dans l image-cle d avant-match de
+// `bcb6d393` (c1 p0), `fb1a1a72` (c1 p0, p1) et de la mini-bobine `000d5950` (c1 p1), le record du
+// slot 122 (ti 45) couvre ~125 000 bits ; la fenetre suivante porte les vrais 1280..1298 ET une
+// fausse ancre 192 / ti 1 (`0x400000C0 00000001`) a l interieur du record 1298. L election (slot
+// bas) la retenait, et 1280..1298 disparaissaient — dont 1297, le joueur gere de l index 0, que M2
+// lisait alors ARRIVE plus tard. Meme geste en c1 p3 de `bcb6d393` : la fausse 1536 (ti 0) effacait
+// 1537..1601 (29 records).
+//
+// LA REGLE (`keyframe_world_preuve.go`). La table est croissante en slot. Un candidat PROUVE —
+// marche d etat complet sous le cadre du film (profil par defaut, drapeau de controle de
+// corruption, MPP de son format : invariants du film), `n1 > 0`, composants traverses sans
+// desynchronisation, fin EXACTE sur un en-tete valide de slot superieur — interdit tout elu qui
+// contredit l ordre bit/slot ; l election se rejoue sans les refutes (si tous le sont, l ancienne
+// election tient). Aucun seuil. L exigence de CONTENU est mesuree : un record vide (172 bits) se
+// ferme meme lu decale d un bit (chaines ti 41/21/25) — 61 fausses preuves sur 163 559 candidats
+// surement faux sans elle, 0 changement hors des quatre paquets cibles avec elle. Compteur :
+// `KeyframeWalkStats.Refutations` (`coverage.keyframes.refutations`).
+//
+// L UNIFORMITE. Tous les balayages de cuisson marchent par `FilmContext.MarcheDImageCle` ; la forme
+// SANS preuve (`WalkKeyframeWorld`) reste celle des instruments, allowlist fermee
+// (`archlint/keyframe_walk_proof_test.go`). Mesure (7 bobines + mini-bobine) : 5 paquets changent,
+// 1 refutation chacun ; perdues SEULEMENT les fausses ancres 192 (x4) et 1536 ; regagnes 1280..1298
+// (x4) et les 29 records de 1537..1601. Fermeture : ti=9 1 738 -> 1 741 records, tous fermes.
+// Golden des familles : `carrierMarks` seul (records marches 1456 -> 1474, marques 0).
+//
+// LE PRINCIPE (`player_entities.go`). Les candidats ECARTES par recalage ou election, et les
+// records ti=9 illisibles d une image-cle, en font une image-cle DOUTEUSE pour ces slots
+// (`DouteDAbsence`, persiste avec les entites) : une absence n y prouve ni un depart ni une arrivee
+// tardive. La presence (`replay/occupants_presence.go`) ne borne que sur une absence PROUVEE, sinon
+// elle differe la borne a l image-cle prouvee suivante. Compteurs `coverage.seats.imagesClesDouteuses`
+// et `bornesDifferees` (0 et 0 sur les sept bobines apres la regle).

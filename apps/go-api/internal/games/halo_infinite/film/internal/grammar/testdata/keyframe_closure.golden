@@ -151,6 +151,14 @@
 #   2026-09-24 reprise du lot M3.1 : une fin de table a cheval sur deux fenetres arrete
 #     le glissement (`kfScanGlissant` reprend au debut de la trainee de sentinelles).
 #     AUCUNE ligne ne bouge sur les sept bobines.
+#   2026-09-24 lot D-fix (retours rejeu) : L ELECTION NE CONTREDIT PLUS UN RECORD PROUVE.
+#     La mesure porte sur la marche DU FILM (`FilmContext.MarcheDImageCle`), celle des
+#     balayages : l elu qu un record prouve par la grammaire contredit est refuse. Les deux
+#     lignes bcb6d393 `ti=1` et `ti=0` (0/1 chacune : les fausses ancres 192 et 1536)
+#     DISPARAISSENT, fb1a1a72 `ti=1` 0/3 -> 0/1 (la valeur d avant le lot M3.1 : les deux
+#     lectures de la fausse ancre 192 s en vont), et les records qu elles effacaient
+#     reviennent (bcb6d393 ti=9 151 -> 152, ti=38 1878 -> 1894 ; fb1a1a72 ti=9 94 -> 96,
+#     ti=38 2550 -> 2584 ; ti=37, 42, 43, 47, 10 aussi). 0 ligne `fermes` ne descend.
 a521164d	ti=2	0	11	i11 game-engine-soft-ceilings-component
 a521164d	ti=4	10	10	
 a521164d	ti=5	0	352	i22 player-aim-assist-component
@@ -306,15 +314,13 @@ e5adf7b2	ti=42	13	187
 e5adf7b2	ti=43	0	414	i19 device-position-animation-name-component
 e5adf7b2	ti=45	0	11	i0 matchflow-sequence-data-component
 e5adf7b2	ti=47	0	261	i2 personal-ai-data-component
-bcb6d393	ti=0	0	1	
-bcb6d393	ti=1	0	1	
 bcb6d393	ti=2	0	19	i11 game-engine-soft-ceilings-component
 bcb6d393	ti=3	0	1	i0 low-frequency
 bcb6d393	ti=4	18	18	
 bcb6d393	ti=5	0	608	i22 player-aim-assist-component
 bcb6d393	ti=6	910	911	
-bcb6d393	ti=9	151	151	
-bcb6d393	ti=10	2	419	i2 managed-object-navpoint-component
+bcb6d393	ti=9	152	152	
+bcb6d393	ti=10	2	428	i2 managed-object-navpoint-component
 bcb6d393	ti=11	0	85	i4 managed-objective-interaction-filter-component
 bcb6d393	ti=12	4	160	i13 managed-navpoint-top-progress
 bcb6d393	ti=13	0	331	
@@ -331,20 +337,20 @@ bcb6d393	ti=27	0	19	i0 supply-lines-item-unlocked-component
 bcb6d393	ti=29	19	19	
 bcb6d393	ti=34	0	19	i10 tacmap-mapdismissallock
 bcb6d393	ti=35	3	137	i60 simulation-state-component
-bcb6d393	ti=37	5	352	
-bcb6d393	ti=38	133	1878	
+bcb6d393	ti=37	5	367	
+bcb6d393	ti=38	134	1894	
 bcb6d393	ti=41	0	5	
-bcb6d393	ti=42	5	441	
-bcb6d393	ti=43	0	624	i19 device-position-animation-name-component
+bcb6d393	ti=42	5	445	
+bcb6d393	ti=43	0	626	i19 device-position-animation-name-component
 bcb6d393	ti=45	0	19	i0 matchflow-sequence-data-component
-bcb6d393	ti=47	0	151	i2 personal-ai-data-component
-fb1a1a72	ti=1	0	3	i11 game-engine-soft-ceilings-component
+bcb6d393	ti=47	0	152	i2 personal-ai-data-component
+fb1a1a72	ti=1	0	1	i11 game-engine-soft-ceilings-component
 fb1a1a72	ti=2	0	12	i11 game-engine-soft-ceilings-component
 fb1a1a72	ti=3	0	26	i0 low-frequency
 fb1a1a72	ti=4	0	11	
 fb1a1a72	ti=5	0	384	i22 player-aim-assist-component
 fb1a1a72	ti=6	574	575	
-fb1a1a72	ti=9	94	94	
+fb1a1a72	ti=9	96	96	
 fb1a1a72	ti=10	0	461	i2 managed-object-navpoint-component
 fb1a1a72	ti=11	0	55	i4 managed-objective-interaction-filter-component
 fb1a1a72	ti=12	0	122	i13 managed-navpoint-top-progress
@@ -362,9 +368,9 @@ fb1a1a72	ti=29	12	12
 fb1a1a72	ti=34	0	12	i10 tacmap-mapdismissallock
 fb1a1a72	ti=35	0	80	i60 simulation-state-component
 fb1a1a72	ti=37	0	220	
-fb1a1a72	ti=38	305	2550	
+fb1a1a72	ti=38	317	2584	
 fb1a1a72	ti=41	1	6	
 fb1a1a72	ti=42	9	226	
 fb1a1a72	ti=43	0	396	i19 device-position-animation-name-component
 fb1a1a72	ti=45	0	12	i0 matchflow-sequence-data-component
-fb1a1a72	ti=47	0	94	i2 personal-ai-data-component
+fb1a1a72	ti=47	0	96	i2 personal-ai-data-component

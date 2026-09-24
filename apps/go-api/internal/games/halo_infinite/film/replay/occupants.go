@@ -83,6 +83,10 @@ type occupants struct {
 	entitesNonLiees, entitesContestees, equipesDivergentes int
 	// trous : les trous d'entite (images-cles manquees entre la premiere et la derniere).
 	trous int
+	// imagesDouteuses / bornesDifferees : les images-cles porteuses ou l'absence d'au moins une entite
+	// n'est pas prouvee, et les entites dont une borne de presence recule jusqu'a une absence
+	// prouvee (lot D-fix, cf. `grammar/player_entities.go`).
+	imagesDouteuses, bornesDifferees int
 	// simultanees : par designateur, le plus grand nombre d'entites stables lues a une meme
 	// image-cle porteuse (cf. [entitesSimultanees]). Nil sans balayage.
 	simultanees map[int]int
@@ -125,6 +129,8 @@ func lierLesOccupants(roster []RosterEntry, tracks []Track, in entreesDesOccupan
 	}
 	if out.balaye {
 		out.trous = in.scan.Holes()
+		out.imagesDouteuses = in.scan.ImagesClesDouteuses()
+		out.bornesDifferees = in.scan.BornesDifferees()
 		out.simultanees = entitesSimultanees(in.scan)
 		out.lierLesEntites(roster, in)
 	}

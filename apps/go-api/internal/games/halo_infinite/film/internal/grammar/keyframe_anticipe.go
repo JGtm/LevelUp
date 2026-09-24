@@ -89,6 +89,9 @@ type TableAnticipee struct {
 	// tetes recense les deux bits de tete rencontres : c est la mesure qui dit si la cle
 	// `(slot, tete)` se distingue de la cle `slot` sur ce film.
 	tetes map[uint8]int
+	// marche : la marche d image-cle qui LIT les declarations — celle du film (preuve comprise, lot
+	// D-fix) quand la table est construite depuis son contexte, sans preuve sinon.
+	marche MarcheDImageCle
 }
 
 // NouvelleTableAnticipee rend une table vide.
@@ -104,6 +107,7 @@ func ConstruireTableAnticipee(fc *FilmContext) *TableAnticipee {
 	if fc == nil {
 		return t
 	}
+	t.marche = fc.MarcheDImageCle()
 	for _, c := range fc.ChunkNumbers() {
 		data, pks, ok := fc.ChunkAt(c)
 		if !ok {
@@ -118,14 +122,14 @@ func ConstruireTableAnticipee(fc *FilmContext) *TableAnticipee {
 // AjouterChunk verse dans la table ce que les images-cles d un chunk declarent.
 //
 // La lecture est celle que le monde emprunte deja pour ses liaisons d image-cle
-// ([WalkKeyframeWorld]) : elle rend `(Slot, TI, Gen)`, c est-a-dire exactement le mot de 32 bits
+// ([MarcheDImageCle]) : elle rend `(Slot, TI, Gen)`, c est-a-dire exactement le mot de 32 bits
 // que `FUN_1406caad8` compare, decompose. Aucune seconde lecture d image-cle n est ecrite ici.
 func (t *TableAnticipee) AjouterChunk(num int, data []byte, pks []FilmPacket) {
 	for _, pk := range pks {
 		if pk.Type != PacketTypeKeyframe {
 			continue
 		}
-		for _, r := range WalkKeyframeWorld(pk.Payload(data)) {
+		for _, r := range t.marche.Records(pk.Payload(data)) {
 			if r.Slot < 0 || r.TI < 0 {
 				continue
 			}

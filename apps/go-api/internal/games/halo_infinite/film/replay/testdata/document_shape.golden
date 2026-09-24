@@ -1,9 +1,9 @@
 # EMPREINTE DE FORME DU DOCUMENT DE REJEU — fige par document_shape_test.go.
 # Ne s'edite JAMAIS a la main : regeneration decrite en tete de ce test.
 schema 70
-empreinte-stockee 0ee277b235652abe
-empreinte-servie 0ee277b235652abe
-empreinte-cuite 769cfbd43fd8a4ff
+empreinte-stockee 6f4645097fe15783
+empreinte-servie 6f4645097fe15783
+empreinte-cuite 82f498cf83cdca53
 empreinte-cuite-regle 2
 
 AbilityCharge
@@ -513,6 +513,7 @@ KeyframeCoverage
   Keyframes json:"keyframes" int
   Neighbors json:"neighbors" int
   Records json:"records" int
+  Refutations json:"refutations" int
   Resyncs json:"resyncs" int
   Slides json:"slides" int
 Label
@@ -801,6 +802,7 @@ ScoreTimeline
 SeatCoverage
   Apparies json:"apparies" int
   Arrivants json:"arrivants" int
+  BornesDifferees json:"bornesDifferees" int
   BotsSuccesseurs json:"botsSuccesseurs" int
   Capacite json:"capacite" int
   Chevauchements json:"chevauchements" int
@@ -809,6 +811,7 @@ SeatCoverage
   EntitesNonLiees json:"entitesNonLiees" int
   Entrees json:"entrees" int
   IdentitesHorsRoster json:"identitesHorsRoster" int
+  ImagesClesDouteuses json:"imagesClesDouteuses" int
   Lus json:"lus" int
   OccupantsMax json:"occupantsMax" int
   PlacesEnTrop json:"placesEnTrop" int

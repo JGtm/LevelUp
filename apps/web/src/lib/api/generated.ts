@@ -7825,6 +7825,8 @@ export interface components {
             /** Format: int64 */
             records: number;
             /** Format: int64 */
+            refutations: number;
+            /** Format: int64 */
             resyncs: number;
             /** Format: int64 */
             slides: number;
@@ -11081,6 +11083,8 @@ export interface components {
             /** Format: int64 */
             arrivants: number;
             /** Format: int64 */
+            bornesDifferees: number;
+            /** Format: int64 */
             botsSuccesseurs: number;
             /** Format: int64 */
             capacite: number;
@@ -11096,6 +11100,8 @@ export interface components {
             entrees: number;
             /** Format: int64 */
             identitesHorsRoster: number;
+            /** Format: int64 */
+            imagesClesDouteuses: number;
             /** Format: int64 */
             lus: number;
             /** Format: int64 */

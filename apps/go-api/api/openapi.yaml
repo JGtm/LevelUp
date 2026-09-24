@@ -16224,6 +16224,9 @@ components:
         records:
           format: int64
           type: integer
+        refutations:
+          format: int64
+          type: integer
         resyncs:
           format: int64
           type: integer
@@ -16238,6 +16241,7 @@ components:
         - jumps
         - resyncs
         - elections
+        - refutations
         - slides
         - framedAbsentBipeds
       type: object
@@ -24107,6 +24111,9 @@ components:
         arrivants:
           format: int64
           type: integer
+        bornesDifferees:
+          format: int64
+          type: integer
         botsSuccesseurs:
           format: int64
           type: integer
@@ -24129,6 +24136,9 @@ components:
           format: int64
           type: integer
         identitesHorsRoster:
+          format: int64
+          type: integer
+        imagesClesDouteuses:
           format: int64
           type: integer
         lus:
@@ -24209,6 +24219,8 @@ components:
         - entitesNonLiees
         - entitesContestees
         - trousDEntite
+        - imagesClesDouteuses
+        - bornesDifferees
       type: object
     SelectedTeammateData:
       additionalProperties: false

@@ -66,7 +66,7 @@ func ScanKeyframeLoadouts(film *source.Film, known map[uint32]bool) ([]types.Key
 	if len(known) == 0 {
 		return nil, nil
 	}
-	out, _, err := ScanKeyframeLoadoutsMarche(film, known)
+	out, _, err := ScanKeyframeLoadoutsMarche(NewFilmContext(film), known)
 	return out, err
 }
 
@@ -84,16 +84,18 @@ type KeyframeWalkCoverage struct {
 
 // ScanKeyframeLoadoutsMarche est [ScanKeyframeLoadouts] qui rend AUSSI la couverture de la
 // marche d'image-clé du film. C'est la forme de la cuisson : ce balayage marche chaque payload
-// d'image-clé du film exactement une fois, il est donc le bon endroit pour compter.
-func ScanKeyframeLoadoutsMarche(film *source.Film, known map[uint32]bool) (
+// d'image-clé du film exactement une fois, il est donc le bon endroit pour compter. Il marche par
+// la marche DU FILM ([FilmContext.MarcheDImageCle], lot D-fix) : ses réfutations s'y comptent.
+func ScanKeyframeLoadoutsMarche(fc *FilmContext, known map[uint32]bool) (
 	[]types.KeyframeLoadout, KeyframeWalkCoverage, error,
 ) {
 	var cov KeyframeWalkCoverage
 	var out []types.KeyframeLoadout
 	var bipedes []map[uint32]bool // bipèdes ancrés, par image-clé, dans l'ordre du film
 	read := 0
-	for _, c := range FilmChunkNumbers(film) {
-		chunk, pks, ok := FilmChunkAt(film, c)
+	marche := fc.MarcheDImageCle()
+	for _, c := range fc.ChunkNumbers() {
+		chunk, pks, ok := fc.ChunkAt(c)
 		if !ok {
 			continue
 		}
@@ -103,7 +105,7 @@ func ScanKeyframeLoadoutsMarche(film *source.Film, known map[uint32]bool) (
 				continue
 			}
 			pay := p.Payload(chunk)
-			recs, st := WalkKeyframeWorldStats(pay)
+			recs, st := marche.RecordsStats(pay)
 			cov.Ajouter(st)
 			bipedes = append(bipedes, bipedesAncres(recs))
 			for _, l := range keyframeLoadoutsDe(pay, recs, known) {

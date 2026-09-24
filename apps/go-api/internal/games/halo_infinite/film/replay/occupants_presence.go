@@ -36,8 +36,10 @@ func fenetreStricteUS(scan grammar.PlayerEntityScan, e grammar.PlayerEntity) (de
 }
 
 // fenetreLarge est la fenetre LARGE d'une entite, bornes EXCLUES : de l'image-cle porteuse qui
-// precede sa premiere a celle qui suit sa derniere. OUVERTE au bord du film — l'occupant d'une
-// entite lue a la premiere image-cle etait la avant elle, et celui lu a la derniere apres elle.
+// PROUVE son absence avant sa premiere lecture a celle qui la prouve apres sa derniere (lot D-fix :
+// une image-cle dont la marche ne prouve pas l'absence ne borne rien, cf. `grammar/player_entities.go`).
+// OUVERTE au bord du film — l'occupant d'une entite dont aucune image-cle anterieure ne prouve
+// l'absence etait la avant elle, et de meme apres.
 type fenetreLarge struct {
 	de, a                      uint64
 	ouverteAvant, ouverteApres bool
@@ -51,11 +53,15 @@ func (f fenetreLarge) contient(t uint64) bool {
 // fenetreLargeDe rend la fenetre large d'une entite.
 func fenetreLargeDe(scan grammar.PlayerEntityScan, e grammar.PlayerEntity) fenetreLarge {
 	f := fenetreLarge{ouverteAvant: true, ouverteApres: true}
-	if v, ok := scan.KeyframeUS(e.FirstKF - 1); ok {
-		f.de, f.ouverteAvant = v, false
+	if r, ok := scan.AbsenceProuveeAvant(e); ok {
+		if v, ok := scan.KeyframeUS(r); ok {
+			f.de, f.ouverteAvant = v, false
+		}
 	}
-	if v, ok := scan.KeyframeUS(e.LastKF + 1); ok {
-		f.a, f.ouverteApres = v, false
+	if r, ok := scan.AbsenceProuveeApres(e); ok {
+		if v, ok := scan.KeyframeUS(r); ok {
+			f.a, f.ouverteApres = v, false
+		}
 	}
 	return f
 }
@@ -149,10 +155,17 @@ func jusquALImageCleSuivante(ivs []intervalleDePresence, scan grammar.PlayerEnti
 	return ivs
 }
 
-// presenceDeLEntite traduit une entite en presence : depuis avant la frame 0 si elle est lue au
+// presenceDeLEntite traduit une entite en presence : depuis avant la frame 0 si elle etait la au
 // coup d'envoi, sinon de sa premiere image-cle ; certaine jusqu'a sa derniere image-cle, affichee
-// jusqu'a la veille de la suivante (Q22) — jusqu'au bout si elle est lue a la fin. Faux : elle ne
+// jusqu'a la veille de la premiere image-cle qui PROUVE son absence (Q22) — jusqu'au bout si elle
+// est lue a la derniere image-cle porteuse, ou si aucune ne prouve son depart. Faux : elle ne
 // touche pas la grille du document (cf. [bornerALaGrille]).
+//
+// UNE IMAGE-CLE DOUTEUSE NE CONCLUT RIEN (lot D-fix, 2026-09-24) : « au coup d'envoi » veut dire
+// qu'aucune image-cle anterieure a sa premiere lecture ne prouve son absence
+// ([grammar.PlayerEntityScan.AtStart]) — une image-cle dont la marche a pu perdre son record n'en
+// fait pas un arrivant tardif (`000d5950` : un joueur absent 16,3 s au depart). De meme, le depart
+// ne se pose que sur une absence prouvee ([grammar.PlayerEntityScan.AbsenceProuveeApres]).
 func presenceDeLEntite(scan grammar.PlayerEntityScan, e grammar.PlayerEntity, h replayClock) (intervalleDePresence, bool) {
 	derniere := h.frames - 1
 	de, a := fenetreStricteUS(scan, e)
@@ -161,10 +174,16 @@ func presenceDeLEntite(scan grammar.PlayerEntityScan, e grammar.PlayerEntity, h 
 		iv.de = min(iv.de, 0)
 	}
 	iv.aMax = iv.a
-	if scan.AtEnd(e) {
+	rang, prouvee := scan.AbsenceProuveeApres(e)
+	switch {
+	case e.LastKF == len(scan.KeyframesUS)-1:
 		iv.a, iv.aMax = derniere, derniere
-	} else if suivante, ok := scan.KeyframeUS(e.LastKF + 1); ok {
-		iv.aMax = max(iv.a, frameBrute(h, suivante)-1)
+	case !prouvee:
+		iv.aMax = derniere
+	default:
+		if suivante, ok := scan.KeyframeUS(rang); ok {
+			iv.aMax = max(iv.a, frameBrute(h, suivante)-1)
+		}
 	}
 	return bornerALaGrille(iv, h.frames)
 }

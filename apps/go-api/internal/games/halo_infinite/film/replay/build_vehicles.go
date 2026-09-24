@@ -104,7 +104,7 @@ func decodeFilmVehicleScan(
 	fc *grammar.FilmContext, matchID string, wr *profile.Vec3Range, mpp profile.MPPWidths,
 ) VehicleScan {
 	defer gwInstallMPPWidths(fc, gwWidthsForFilm(fc, mpp))()
-	kf := grammar.ScanWorldObjectKeyframes(fc.Film(), grammar.VehicleTypeIndex)
+	kf := grammar.ScanWorldObjectKeyframes(fc, grammar.VehicleTypeIndex)
 	if len(kf.Band) == 0 {
 		slog.Info("vehicules : aucun slot ti=40 aux images-cles — rejeu sans ce calque",
 			"match_id", matchID, "imagesCles", len(kf.TimesUS))

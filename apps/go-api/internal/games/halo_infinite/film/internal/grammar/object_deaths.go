@@ -168,6 +168,7 @@ func ScanMarchFacts(fc *FilmContext) (MarchFacts, error) {
 func marchPacketsOf(fc *FilmContext) ([]marchKeyframe, []marchDelta) {
 	var kfs []marchKeyframe
 	var deltas []marchDelta
+	marche := fc.MarcheDImageCle()
 	for _, c := range fc.ChunkNumbers() {
 		data, pks, ok := fc.ChunkAt(c)
 		if !ok {
@@ -176,7 +177,7 @@ func marchPacketsOf(fc *FilmContext) ([]marchKeyframe, []marchDelta) {
 		for _, pk := range pks {
 			switch pk.Type {
 			case PacketTypeKeyframe:
-				kfs = append(kfs, marchKeyframe{pk.TimestampUS, WalkKeyframeWorld(pk.Payload(data))})
+				kfs = append(kfs, marchKeyframe{pk.TimestampUS, marche.Records(pk.Payload(data))})
 			case PacketTypeDelta:
 				deltas = append(deltas, marchDelta{pk.TimestampUS, pk.Payload(data)})
 			}

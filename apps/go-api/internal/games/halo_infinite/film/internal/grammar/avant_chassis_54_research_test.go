@@ -118,7 +118,7 @@ func TestAvantChassisMiniBobines(t *testing.T) {
 // avantBalayer rend la ventilation du nuage `ti=40` d un contexte deja ouvert.
 func avantBalayer(t *testing.T, fc *FilmContext, wr *profile.Vec3Range) *avantVentilation {
 	t.Helper()
-	kf := ScanWorldObjectKeyframes(fc.Film(), VehicleTypeIndex)
+	kf := ScanWorldObjectKeyframes(fc, VehicleTypeIndex)
 	if len(kf.Band) == 0 {
 		return nil
 	}

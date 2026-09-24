@@ -119,7 +119,7 @@ func ScanNavpointRadial(fc *FilmContext, chunkStartMS map[int]int) (*NavpointRad
 	if len(nums) == 0 {
 		return sc, ErrNoFilmChunk
 	}
-	kf := ScanWorldObjectKeyframes(fc.Film(), navpointRadialArchIndex)
+	kf := ScanWorldObjectKeyframes(fc, navpointRadialArchIndex)
 	band := bandeObserveeKeyframes(kf)
 	sc.KeyCensus, sc.SlotsBand, sc.SlotsObserved = len(kf.SeenUS), len(kf.Band), len(band)
 	if len(band) == 0 {
@@ -129,7 +129,8 @@ func ScanNavpointRadial(fc *FilmContext, chunkStartMS map[int]int) (*NavpointRad
 	if err != nil {
 		return sc, err
 	}
-	w := navpointRadialWalk{prof: fc.ProfilDeBalayage(), arch: arch, reg: reg, sc: sc}
+	w := navpointRadialWalk{prof: fc.ProfilDeBalayage(), arch: arch, reg: reg, sc: sc,
+		marche: fc.MarcheDImageCle()}
 	w.obs = w.install()
 	for _, c := range nums {
 		data, pks, ok := fc.ChunkAt(c)
@@ -187,6 +188,8 @@ type navpointRadialWalk struct {
 	got  bool
 	sc   *NavpointRadialScan
 	key  bool
+	// marche : la marche d image-cle DU FILM (preuve comprise, lot D-fix).
+	marche MarcheDImageCle
 }
 
 // contexte rend le profil et l observateur que cette marche pose sur ses lecteurs.
@@ -338,7 +341,7 @@ func (w *navpointRadialWalk) scanKeyframe(pay []byte, ms int32) {
 	total := len(pay) * 8
 	w.key = true
 	defer func() { w.key = false }()
-	for _, b := range keyframeBornesToutes(pay) {
+	for _, b := range keyframeBornesDe(w.marche.Records(pay)) {
 		if b.TI != navpointRadialArchIndex {
 			continue
 		}

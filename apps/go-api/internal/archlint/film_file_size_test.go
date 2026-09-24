@@ -172,8 +172,11 @@ var plafondsParFichier = map[string]int{
 	// complete a sa fusion (`facts.Rev`), +59 : la dotation de naissance, `loadouts[].src` et
 	// `.k`, `weaponChanges[].k`, le changement de SENS des premieres emissions,
 	// `coverage.keyframes` et `.birthLoadouts`.
+	// Partie D-fix (2026-09-24, lot correctif de la pre-integration de la vague D), +40 : la marche
+	// qui ne perd plus ce qu un record prouve lui interdit de perdre, les images-cles douteuses qui
+	// ne concluent rien, trois compteurs neufs et le compteur des mains nues de la naissance.
 	// Exception ecrite, dans les commits de fusion qui reunissent la montee.
-	"internal/games/halo_infinite/film/replay/document_chronicle.go": 2320,
+	"internal/games/halo_infinite/film/replay/document_chronicle.go": 2360,
 	// --- production, hors perimetre du lot 2.7 (aucune preuve d equivalence ne couvrait
 	// leur scission : elle se decidera au lot qui les rouvrira).
 	// `assist.go` EST SORTI DE CETTE TABLE LE 2026-09-16 (lot 2.6.2) : le type `Assist` a descendu
@@ -245,7 +248,8 @@ var plafondsParFichier = map[string]int{
 	// changement de sens : la premiere emission de chaque vie jugee contre sa naissance, jamais
 	// contre un releve a venir). Exception ecrite, dans les commits de fusion qui reunissent la
 	// montee.
-	"internal/games/halo_infinite/film/replay/structure_test.go":                                  1328,
+	// Lot D-fix (meme montee v70, 2026-09-24) : 1328 -> 1333, sa ligne dans la justification v70.
+	"internal/games/halo_infinite/film/replay/structure_test.go":                                  1333,
 	"internal/games/halo_infinite/film/replay/t0_mouvement_research_test.go":                      872,
 	"internal/games/halo_infinite/film/replay/inventory_position_i22_test.go":                     833,
 	"internal/games/halo_infinite/film/replay/ground_link_research_test.go":                       814,

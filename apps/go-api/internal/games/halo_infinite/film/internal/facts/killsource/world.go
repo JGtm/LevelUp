@@ -61,9 +61,12 @@ func newTimeline(f *film) (*timeline, error) {
 		return nil, errRegistry(err)
 	}
 	tl := &timeline{}
+	// LA MARCHE D IMAGE-CLE DU FILM (lot D-fix, 2026-09-24) : celle des balayages de la cuisson,
+	// qui refuse l elu qu un record prouve par la grammaire du film contredit.
+	marche := grammar.NewFilmContext(f.src).MarcheDImageCle()
 	for i := range f.packets {
 		if f.packets[i].typ == packetTypeKeyframe {
-			tl.events = append(tl.events, keyframeEvent{f.packets[i].ts, keyframeRecs(f.packets[i].payload)})
+			tl.events = append(tl.events, keyframeEvent{f.packets[i].ts, keyframeRecs(f.packets[i].payload, marche)})
 		}
 	}
 	sort.Slice(tl.events, func(i, j int) bool { return tl.events[i].ts < tl.events[j].ts })
@@ -222,8 +225,8 @@ func (tl *timeline) declaredBipeds() (map[int]bool, []int, int, int) {
 
 // keyframeRecs : mecanisme 2 — sortie du walker de keyframe COMPLETEE par le balayage restreint
 // aux ancres d archetype biped que le walker a sautees.
-func keyframeRecs(pl []byte) []grammar.KeyframeRec {
-	recs := grammar.WalkKeyframeWorld(pl)
+func keyframeRecs(pl []byte, marche grammar.MarcheDImageCle) []grammar.KeyframeRec {
+	recs := marche.Records(pl)
 	have := map[int]bool{}
 	for _, r := range recs {
 		have[r.Slot] = true

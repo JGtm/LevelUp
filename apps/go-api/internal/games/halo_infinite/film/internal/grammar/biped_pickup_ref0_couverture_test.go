@@ -57,7 +57,7 @@ func TestBipedPickupRef0Couverture(t *testing.T) {
 	if err != nil {
 		t.Fatalf("chargement du film %s : %v", f.dir, err)
 	}
-	bande := bipedSlotBand(film, chunks)
+	bande := bipedSlotBand(NewFilmContext(film), chunks)
 	if bande.Count() == 0 {
 		t.Skip("bande de bipedes vide : pas de mesure possible")
 	}

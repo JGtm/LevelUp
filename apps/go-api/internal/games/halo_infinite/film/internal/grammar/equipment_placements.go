@@ -139,7 +139,7 @@ func ScanEquipmentPlacements(
 	if len(fc.ChunkNumbers()) == 0 {
 		return nil, st, ErrNoFilmChunk
 	}
-	band := worldObjectSlotBand(fc.Film(), EquipmentTypeIndex)
+	band := worldObjectSlotBand(fc, EquipmentTypeIndex)
 	if len(band) == 0 {
 		return nil, st, fmt.Errorf("aucun slot d'archétype ti=%d dans les keyframes du film",
 			EquipmentTypeIndex)

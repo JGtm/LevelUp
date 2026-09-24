@@ -157,7 +157,7 @@ func m532Lire(t *testing.T, dir string) ([]m532Ech, []m532Ech, uint64) {
 	if err != nil {
 		t.Fatalf("chunks : %v", err)
 	}
-	band := bipedSlotBand(film, chunks)
+	band := bipedSlotBand(NewFilmContext(film), chunks)
 	if band.Count() == 0 {
 		t.Fatalf("aucun slot bipede dans les images-cles")
 	}

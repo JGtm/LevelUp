@@ -2318,3 +2318,43 @@ package replay
 //	                1 075 -> 1 257. Prix nommé : la marche des états de mouvement, qui traverse
 //	                enfin le record NEW d un bipède, va plus loin dans certains paquets et y lie
 //	                des records NEW mal lus — 327 paquets à liste de plus non localisés au corpus.
+//
+// v70, PARTIE D-fix (2026-09-24, lot correctif de la pré-intégration de la vague D) : UNE
+// IMAGE-CLÉ QUE LA MARCHE NE PROUVE PAS NE CONCLUT RIEN, ET LA MARCHE NE PERD PLUS CE QU UN
+// RECORD PROUVÉ LUI INTERDIT DE PERDRE.
+//
+// CE QUI ÉTAIT FAUX, MESURÉ : la marche glissante de M3 atteint désormais l image-clé d AVANT-MATCH
+// (après un record de 125 270 bits) ; son élection y retenait une fausse ancre (slot 192, `ti 1`,
+// dans le corps du record 1298) et effaçait les dix-neuf vrais records 1280..1298 — dont le joueur
+// géré de l index 0 (slot 1297). Le lot M2 lisait alors cet occupant ARRIVÉ à l image-clé suivante
+// (`000d5950` : absent 16,3 s au départ ; `bcb6d393`, `fb1a1a72` : 7 entités sur 8 au départ).
+//
+//	CAUSE          la table est à slots CROISSANTS : un candidat que la grammaire du film PROUVE
+//	               (sa marche d état complet, contenu compris, ferme sur l en-tête valide suivant)
+//	               interdit tout élu qui contredit cet ordre avec lui ; l élu contredit est refusé
+//	               et l élection reprend (`grammar/keyframe_world_preuve.go`). Aucun seuil. TOUTE
+//	               marche de production est celle du film (`FilmContext.MarcheDImageCle`,
+//	               garde-rail `archlint/keyframe_walk_proof_test.go`) : deux balayages d un même
+//	               payload lisent la même table.
+//	`coverage.`    `refutations` NEUF : les élus refusés (repli `repli_ancre_d_image_cle_par_
+//	keyframes      election`, qui reste le repli nommé là où rien de prouvé ne le contredit).
+//	PRINCIPE       une absence que la marche ne prouve pas (un candidat ti=9 écarté par son repli,
+//	               ou un record atteint mais illisible) ne conclut NI une arrivée tardive NI un
+//	               départ : la santé des images-clés voyage dans les faits (`Doutes` des entités),
+//	               et `roster[].presence` ne pose ses bornes que sur une absence PROUVÉE — sinon
+//	               l occupant reste présent jusqu au bord du film.
+//	`coverage.`    `imagesClesDouteuses` et `bornesDifferees` NEUFS (0 attendus) : les images-clés
+//	seats          porteuses dont une absence n est pas prouvée, et les entités dont une borne a
+//	               reculé jusqu à une absence prouvée.
+//	`coverage.`    `unarmedGrants` NEUF : la dotation de naissance écarte l objet « mains nues »
+//	birthLoadouts  par la règle nommée de M6.3 (`dotationWeaponName`), compté à part de `nonWeapon`.
+//
+// LA MESURE SUR LES SEPT BOBINES PAR BUILD : quatre images-clés changent (`bcb6d393` morceau 1
+// paquets 0 et 3, `fb1a1a72` morceau 1 paquets 0 et 1), une réfutation chacune ; les records
+// regagnés sont exactement ceux que la fausse ancre effaçait (1280..1298 trois fois ; 1537..1601,
+// vingt-neuf équipements, armes au sol et objets, derrière la fausse ancre 1536 `ti 0`) ; 8 entités
+// sur 8 lues au départ sur `bcb6d393` et `fb1a1a72` ; 0 doute sur les sept bobines.
+//
+//	CE QUI MONTE    rien de plus que la vague : `grammar.Rev`, `facts.Rev` et `SchemaDesFaits`
+//	AVEC ELLE       gardent leur UNIQUE montée de la vague D, empreintes recopiées ; le codec des
+//	                faits porte la santé des images-clés (`Doutes`) et le compte des réfutations.

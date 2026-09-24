@@ -329,7 +329,7 @@ func famillesObjetsDuMonde(r *recueil, fc *FilmContext, film *source.Film) {
 	places, _, err := ScanEquipmentPlacements(fc, &wr)
 	ajouterSlice(r, "equipmentPlacements", places, err)
 
-	kf := ScanWorldObjectKeyframes(film, BipedTypeIndex)
+	kf := ScanWorldObjectKeyframes(NewFilmContext(film), BipedTypeIndex)
 	r.ajouter("worldObjectKeyframes_ti35", len(kf.Band), kf, kf.TimesUS, nil)
 
 	props, err := ScanManagedProperties(fc)
@@ -367,7 +367,7 @@ func famillesEvenementsEtImagesCles(r *recueil, fc *FilmContext, film *source.Fi
 	veh, err := ScanVehicleEvents(fc)
 	ajouterSlice(r, "vehicleEvents", veh, err)
 
-	marks, err := ScanCarrierMarks(film)
+	marks, err := ScanCarrierMarks(NewFilmContext(film))
 	var pm any
 	if len(marks.Marks) > 0 {
 		pm = marks.Marks[0]

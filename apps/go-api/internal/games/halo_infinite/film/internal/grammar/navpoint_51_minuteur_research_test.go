@@ -118,7 +118,7 @@ func TestNavpoint51MinuteurSurFilm(t *testing.T) {
 	if w.iInitial < 0 || w.iCourant < 0 {
 		t.Fatalf("%s : l archetype ti=12 ne declare pas les deux minuteurs manuels", court)
 	}
-	w.bande = bandeObserveeKeyframes(ScanWorldObjectKeyframes(fc.Film(), navpointRadialArchIndex))
+	w.bande = bandeObserveeKeyframes(ScanWorldObjectKeyframes(fc, navpointRadialArchIndex))
 	w.obs = w.installer()
 	for _, c := range fc.ChunkNumbers() {
 		data, pks, ok := fc.ChunkAt(c)

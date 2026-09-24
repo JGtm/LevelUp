@@ -32,6 +32,19 @@ package grammar
 // depart ne se datent qu'a l'image-cle pres : c'est la publication qui les affine par les vies et
 // par BOT_METADATA, jamais ce fichier.
 //
+// # UNE ABSENCE NE SE CONCLUT QUE SI LA MARCHE LA PROUVE (lot D-fix, 2026-09-24)
+//
+// Les records d'une image-cle viennent de la marche d'ancres, et son REPLI (recalage, election)
+// ecarte des candidats : un vrai record ecarte est PERDU, et son occupant manque a l'image-cle
+// sans l'avoir quittee. Mesure : l'image-cle d'avant-match de `bcb6d393` et de `fb1a1a72`, que la
+// marche glissante du lot M3.1 atteint desormais, perdait le joueur gere de l'index 0 (slot 1297)
+// sur une fausse ancre elue — le lot M2 le lisait ARRIVE plus tard (`000d5950` : absent 16,3 s au
+// depart). La marche ne perd plus ce record (keyframe_world_preuve.go) ; LE PRINCIPE, lui, vaut
+// pour tout film : une absence que la marche ne prouve pas ne conclut NI une arrivee tardive NI un
+// depart. Elle se lit dans [PlayerEntityScan.Doutes], image-cle par image-cle, et les bornes de
+// presence ne se posent que sur une absence PROUVEE ([PlayerEntityScan.AbsenceProuveeAvant] /
+// [PlayerEntityScan.AbsenceProuveeApres]) — sinon l'occupant reste present jusqu'au bord du film.
+//
 // HORS LIGNE, comme player_teams.go : aucune ecriture, aucun schema.
 
 import "sort"
@@ -71,6 +84,18 @@ type PlayerEntityScan struct {
 	KeyframesUS []uint64
 	// Entities : une entree par entite, triees par (FirstKF, Slot).
 	Entities []PlayerEntity
+	// Doutes : les couples (image-cle porteuse, entite) ou l'ABSENCE de l'entite N'EST PAS
+	// PROUVEE — la marche de cette image-cle a ecarte par REPLI un candidat ti=9 de son slot, ou a
+	// atteint son record sans pouvoir le lire (lot D-fix, 2026-09-24 ; cf. l'en-tete du fichier).
+	// Tries par (Rang, Slot), restreints aux slots des entites lues. Vide : toutes les absences
+	// sont prouvees.
+	Doutes []DouteDAbsence
+}
+
+// DouteDAbsence est UNE absence non prouvee : a l'image-cle porteuse de rang `Rang`, l'entite du
+// slot `Slot` n'a pas ete lue, et la marche ne prouve pas qu'elle n'y etait pas.
+type DouteDAbsence struct {
+	Rang, Slot int
 }
 
 // Holes rend le nombre total de TROUS : les couples (entite, image-cle porteuse) ou l'entite
@@ -102,13 +127,80 @@ func (s PlayerEntityScan) KeyframeUS(rang int) (uint64, bool) {
 	return s.KeyframesUS[rang], true
 }
 
-// AtStart dit que l'entite est lue a la PREMIERE image-cle porteuse : son occupant etait la au
-// coup d'envoi du film.
-func (s PlayerEntityScan) AtStart(e PlayerEntity) bool { return e.FirstKF == 0 }
+// AtStart dit que l'occupant de l'entite etait la au coup d'envoi du film : aucune image-cle
+// porteuse ANTERIEURE a sa premiere lecture ne PROUVE son absence (cf. l'en-tete du fichier). Sans
+// doute, c'est « lue a la premiere image-cle porteuse ».
+func (s PlayerEntityScan) AtStart(e PlayerEntity) bool {
+	_, ok := s.AbsenceProuveeAvant(e)
+	return !ok
+}
 
-// AtEnd dit que l'entite est lue a la DERNIERE image-cle porteuse : son occupant etait encore la
-// a la fin du film.
-func (s PlayerEntityScan) AtEnd(e PlayerEntity) bool { return e.LastKF == len(s.KeyframesUS)-1 }
+// AtEnd dit que l'occupant de l'entite etait encore la a la fin du film : aucune image-cle
+// porteuse POSTERIEURE a sa derniere lecture ne prouve son absence.
+func (s PlayerEntityScan) AtEnd(e PlayerEntity) bool {
+	_, ok := s.AbsenceProuveeApres(e)
+	return !ok
+}
+
+// AbsenceProuvee dit si l'absence de l'entite du slot `slot` a l'image-cle porteuse de rang `rang`
+// est PROUVEE : aucun doute n'y porte sur son slot. Elle ne dit rien d'une image-cle ou l'entite
+// est lue.
+func (s PlayerEntityScan) AbsenceProuvee(slot, rang int) bool {
+	i := sort.Search(len(s.Doutes), func(k int) bool {
+		d := s.Doutes[k]
+		return d.Rang > rang || (d.Rang == rang && d.Slot >= slot)
+	})
+	return i >= len(s.Doutes) || s.Doutes[i] != DouteDAbsence{Rang: rang, Slot: slot}
+}
+
+// AbsenceProuveeAvant rend le rang de la DERNIERE image-cle porteuse, anterieure a la premiere
+// lecture de l'entite, qui prouve son absence — faux s'il n'y en a aucune.
+func (s PlayerEntityScan) AbsenceProuveeAvant(e PlayerEntity) (int, bool) {
+	for r := e.FirstKF - 1; r >= 0; r-- {
+		if s.AbsenceProuvee(e.Slot, r) {
+			return r, true
+		}
+	}
+	return -1, false
+}
+
+// AbsenceProuveeApres rend le rang de la PREMIERE image-cle porteuse, posterieure a la derniere
+// lecture de l'entite, qui prouve son absence — faux s'il n'y en a aucune.
+func (s PlayerEntityScan) AbsenceProuveeApres(e PlayerEntity) (int, bool) {
+	for r := e.LastKF + 1; r < len(s.KeyframesUS); r++ {
+		if s.AbsenceProuvee(e.Slot, r) {
+			return r, true
+		}
+	}
+	return -1, false
+}
+
+// ImagesClesDouteuses rend le nombre d'images-cles porteuses ou l'absence d'au moins une entite
+// lue n'est pas prouvee.
+func (s PlayerEntityScan) ImagesClesDouteuses() int {
+	n, dernier := 0, -1
+	for _, d := range s.Doutes {
+		if d.Rang != dernier {
+			n, dernier = n+1, d.Rang
+		}
+	}
+	return n
+}
+
+// BornesDifferees rend le nombre d'entites dont une borne de presence (arrivee ou depart) N'EST
+// PAS posee sur l'image-cle voisine de sa fenetre, parce que celle-ci ne prouve pas son absence :
+// la borne recule a la premiere absence prouvee, ou jusqu'au bord du film.
+func (s PlayerEntityScan) BornesDifferees() int {
+	n := 0
+	for _, e := range s.Entities {
+		avant := e.FirstKF > 0 && !s.AbsenceProuvee(e.Slot, e.FirstKF-1)
+		apres := e.LastKF < len(s.KeyframesUS)-1 && !s.AbsenceProuvee(e.Slot, e.LastKF+1)
+		if avant || apres {
+			n++
+		}
+	}
+	return n
+}
 
 // entiteEnCours accumule les lectures d'UNE entite pendant le balayage.
 type entiteEnCours struct {
@@ -123,10 +215,56 @@ type entiteEnCours struct {
 type accumulateurDEntites struct {
 	keyframes []uint64
 	entites   map[int]*entiteEnCours
+	// doutes : par rang d'image-cle porteuse, les slots dont l'absence n'y est pas prouvee.
+	doutes map[int]map[int]bool
 }
 
 func nouvelAccumulateurDEntites() *accumulateurDEntites {
-	return &accumulateurDEntites{entites: map[int]*entiteEnCours{}}
+	return &accumulateurDEntites{entites: map[int]*entiteEnCours{}, doutes: map[int]map[int]bool{}}
+}
+
+// douterDe note, a l'image-cle porteuse de rang `rang`, les slots ti=9 dont l'absence n'est pas
+// prouvee : les records atteints mais illisibles, et les candidats ti=9 que le repli de la marche
+// a ecartes — sauf ceux qu'elle a lus ailleurs dans la meme image-cle.
+func (a *accumulateurDEntites) douterDe(rang int, lus map[int]bool, illisibles []int,
+	ecartes []KeyframeRec) {
+	douter := func(slot int) {
+		if lus[slot] {
+			return
+		}
+		if a.doutes[rang] == nil {
+			a.doutes[rang] = map[int]bool{}
+		}
+		a.doutes[rang][slot] = true
+	}
+	for _, s := range illisibles {
+		douter(s)
+	}
+	for _, r := range ecartes {
+		if r.TI == managedPlayerTypeIndex {
+			douter(r.Slot)
+		}
+	}
+}
+
+// doutesPublies rend les doutes restreints aux slots des entites LUES (un candidat ecarte d'un
+// slot qu'aucune image-cle ne lit n'est l'occupant de personne), tries par (Rang, Slot).
+func (a *accumulateurDEntites) doutesPublies() []DouteDAbsence {
+	var out []DouteDAbsence
+	for rang, slots := range a.doutes {
+		for s := range slots {
+			if _, connue := a.entites[s]; connue {
+				out = append(out, DouteDAbsence{Rang: rang, Slot: s})
+			}
+		}
+	}
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].Rang != out[j].Rang {
+			return out[i].Rang < out[j].Rang
+		}
+		return out[i].Slot < out[j].Slot
+	})
+	return out
 }
 
 // ouvrirImageCle inscrit une image-cle PORTEUSE et rend son rang.
@@ -170,6 +308,7 @@ func (a *accumulateurDEntites) publier() PlayerEntityScan {
 	if len(a.entites) == 0 {
 		return out
 	}
+	out.Doutes = a.doutesPublies()
 	out.Entities = make([]PlayerEntity, 0, len(a.entites))
 	for _, e := range a.entites {
 		idx, idxInstable := majoritaire(e.index)

@@ -21,7 +21,7 @@ import (
 // encodeMarcheImageCle ecrit la couverture de la marche d image-cle, champ par champ.
 func encodeMarcheImageCle(w *gwriter, c grammar.KeyframeWalkCoverage) {
 	for _, v := range []int{c.Payloads, c.Records, c.Bipedes, c.Voisins, c.Sauts, c.Recalages,
-		c.Elections, c.Glissements, c.BipedesAbsentsEncadres} {
+		c.Elections, c.Refutations, c.Glissements, c.BipedesAbsentsEncadres} {
 		w.u(uint64(v)) //nolint:gosec // compteurs positifs
 	}
 }
@@ -30,7 +30,7 @@ func encodeMarcheImageCle(w *gwriter, c grammar.KeyframeWalkCoverage) {
 func decodeMarcheImageCle(r *greader) grammar.KeyframeWalkCoverage {
 	var c grammar.KeyframeWalkCoverage
 	for _, p := range []*int{&c.Payloads, &c.Records, &c.Bipedes, &c.Voisins, &c.Sauts, &c.Recalages,
-		&c.Elections, &c.Glissements, &c.BipedesAbsentsEncadres} {
+		&c.Elections, &c.Refutations, &c.Glissements, &c.BipedesAbsentsEncadres} {
 		*p = int(r.u()) //nolint:gosec // compteurs ecrits positifs
 	}
 	return c

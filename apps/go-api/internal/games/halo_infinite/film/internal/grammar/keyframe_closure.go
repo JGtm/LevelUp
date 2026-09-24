@@ -79,8 +79,15 @@ type keyframeBorne struct {
 // recherche (`imcBornes`), et il en fallait deux de plus dans les balayages de production au
 // lot 1.4 : a la troisieme copie on centralise. La mesure, l'oracle et la production comptent
 // desormais sur la MEME population — sans quoi aucun des trois ne prouve rien des deux autres.
+//
+// SANS PREUVE : c'est la forme des instruments. Un balayage de production passe par
+// [keyframeBornesDe] sur les records de la marche de son film ([FilmContext.MarcheDImageCle]).
 func keyframeBornesToutes(pay []byte) []keyframeBorne {
-	recs := WalkKeyframeWorld(pay)
+	return keyframeBornesDe(WalkKeyframeWorld(pay))
+}
+
+// keyframeBornesDe rend les bornes de records DEJA marches (cf. [keyframeBornesToutes]).
+func keyframeBornesDe(recs []KeyframeRec) []keyframeBorne {
 	sort.Slice(recs, func(i, j int) bool { return recs[i].Bit < recs[j].Bit })
 	out := make([]keyframeBorne, 0, len(recs))
 	for i := range recs {
@@ -95,8 +102,13 @@ func keyframeBornesToutes(pay []byte) []keyframeBorne {
 }
 
 // keyframeBornes rend les seuls records BORNES : le denominateur de toute mesure de fermeture.
+// Sans preuve (instruments) ; la mesure de production borne les records de la marche de son film.
 func keyframeBornes(pay []byte) []keyframeBorne {
-	toutes := keyframeBornesToutes(pay)
+	return seulesBornees(keyframeBornesToutes(pay))
+}
+
+// seulesBornees garde les records qui ont une frontiere visee.
+func seulesBornees(toutes []keyframeBorne) []keyframeBorne {
 	out := make([]keyframeBorne, 0, len(toutes))
 	for _, b := range toutes {
 		if b.Want >= 0 {
@@ -108,6 +120,10 @@ func keyframeBornes(pay []byte) []keyframeBorne {
 
 // KeyframeClosure mesure, archetype par archetype, la fermeture des records d'image-cle d'un
 // film, sous le cadre d'etat complet — celui que la production lit depuis le lot 1.4.
+//
+// LES RECORDS MESURES SONT CEUX DE LA MARCHE DE PRODUCTION (lot D-fix, 2026-09-24) : la marche du
+// film ([FilmContext.MarcheDImageCle]), qui refuse l'elu qu'un record prouve contredit. La mesure
+// porte donc sur la population que les balayages lisent.
 func KeyframeClosure(fc *FilmContext) (map[uint32]KeyframeClosureStat, error) {
 	if fc == nil {
 		return nil, fmt.Errorf("filmdec: contexte de film nil — aucune fermeture a mesurer")
@@ -116,6 +132,7 @@ func KeyframeClosure(fc *FilmContext) (map[uint32]KeyframeClosureStat, error) {
 	if err != nil {
 		return nil, fmt.Errorf("filmdec: registre illisible, la fermeture n'a pas de grammaire: %w", err)
 	}
+	marche := fc.MarcheDImageCle()
 	// LE PROFIL DU BUILD EST INSTALLE POUR LA DUREE DE LA MESURE (lot 1.9.1 bis, pas 3).
 	// Les largeurs du bloc MPP varient par build et vivent dans `build_profile.go` ; sans
 	// elles, la fermeture des archetypes qui portent ce bloc (ti=36, 37, 38, 39, 42, 43) est
@@ -124,9 +141,8 @@ func KeyframeClosure(fc *FilmContext) (map[uint32]KeyframeClosureStat, error) {
 	if restore, err := InstallFilmFormatMPP(fc); err == nil {
 		defer restore()
 	}
-	stats := map[uint32]KeyframeClosureStat{}
-	// bloquants compte, par archetype, combien de records chaque composant non porte a arretes.
-	bloquants := map[uint32]map[string]int{}
+	m := mesureDeFermeture{reg: reg, ctx: fc.ContexteDeLecture(),
+		stats: map[uint32]KeyframeClosureStat{}, bloquants: map[uint32]map[string]int{}}
 	for _, num := range fc.ChunkNumbers() {
 		data, packets, ok := fc.ChunkAt(num)
 		if !ok {
@@ -136,42 +152,50 @@ func KeyframeClosure(fc *FilmContext) (map[uint32]KeyframeClosureStat, error) {
 			if pk.Type != PacketTypeKeyframe {
 				continue
 			}
-			accumulerFermeture(pk.Payload(data), reg, stats, bloquants, fc.ContexteDeLecture())
+			pay := pk.Payload(data)
+			m.accumuler(pay, seulesBornees(keyframeBornesDe(marche.Records(pay))))
 		}
 	}
-	for ti, parComposant := range bloquants {
-		s := stats[ti]
+	for ti, parComposant := range m.bloquants {
+		s := m.stats[ti]
 		s.Blocking = composantLePlusBloquant(parComposant)
-		stats[ti] = s
+		m.stats[ti] = s
 	}
-	return stats, nil
+	return m.stats, nil
 }
 
-// accumulerFermeture classe les records BORNES d'un payload dans les comptes par archetype.
+// mesureDeFermeture porte ce que la mesure accumule d'un payload a l'autre.
+type mesureDeFermeture struct {
+	reg *Registry
+	ctx ContexteDeLecture
+	// stats : les comptes par archetype ; bloquants : par archetype, combien de records chaque
+	// composant non porte a arretes.
+	stats     map[uint32]KeyframeClosureStat
+	bloquants map[uint32]map[string]int
+}
+
+// accumuler classe les records BORNES d'un payload dans les comptes par archetype.
 //
 // Le dernier record d'un payload est ecarte : sans record suivant il n'a pas de frontiere visee,
 // donc la question « ferme-t-il ? » ne se pose pas. Le compter en echec gonflerait le
 // denominateur d'un record par payload sans qu'aucun port ne puisse jamais le fermer.
-func accumulerFermeture(pay []byte, reg *Registry,
-	stats map[uint32]KeyframeClosureStat, bloquants map[uint32]map[string]int,
-	ctx ContexteDeLecture,
-) {
-	for _, b := range keyframeBornes(pay) {
+func (m *mesureDeFermeture) accumuler(pay []byte, bornes []keyframeBorne) {
+	for _, b := range bornes {
 		ti := uint32(b.TI) //nolint:gosec // TI est un index d'archetype, jamais negatif
-		tr := WalkKeyframeFullState(pay, b.Bit, reg, ctx)
-		s := stats[ti]
+		tr := WalkKeyframeFullState(pay, b.Bit, m.reg, m.ctx)
+		s := m.stats[ti]
 		s.Total++
 		switch {
 		case tr.DesyncAt >= 0:
-			nom := nomComposantBloquant(reg, b.TI, tr.DesyncAt)
-			if bloquants[ti] == nil {
-				bloquants[ti] = map[string]int{}
+			nom := nomComposantBloquant(m.reg, b.TI, tr.DesyncAt)
+			if m.bloquants[ti] == nil {
+				m.bloquants[ti] = map[string]int{}
 			}
-			bloquants[ti][nom]++
+			m.bloquants[ti][nom]++
 		case tr.EndBit == b.Want:
 			s.Closed++
 		}
-		stats[ti] = s
+		m.stats[ti] = s
 	}
 }
 

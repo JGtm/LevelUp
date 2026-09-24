@@ -88,7 +88,7 @@ func (s *filmScan) balayerPositions() error {
 	// d'image-clé du film exactement une fois. L'élection de l'ancre suivante est un REPLI nommé,
 	// et son compte voyage dans `coverage.fallbacks` ; la santé complète de la marche est
 	// portée par les faits (`KeyframeWalk`).
-	loadouts, marche, err := grammar.ScanKeyframeLoadoutsMarche(s.film, loadoutFamilies())
+	loadouts, marche, err := grammar.ScanKeyframeLoadoutsMarche(s.fc, loadoutFamilies())
 	if err != nil {
 		slog.Warn("keyframes illisibles — rejeu sans armes portées", "err", err, "match_id", s.matchID)
 		loadouts = nil
@@ -183,7 +183,7 @@ func (s *filmScan) balayerPortage() {
 // delta. MÊMES images-clés, MÊME horloge, même record de biped que les armes portées.
 func (s *filmScan) balayerInventaire() {
 	// Absence non fatale — un rejeu sans grenades reste un rejeu valide.
-	inventory, invStats, err := ScanKeyframeInventory(s.film, loadoutFamilies(), 0, s.opt.Fallbacks)
+	inventory, invStats, err := ScanKeyframeInventory(s.fc, loadoutFamilies(), 0, s.opt.Fallbacks)
 	if err != nil {
 		slog.Warn("inventaire illisible — rejeu sans grenades ni munitions", "err", err, "match_id", s.matchID)
 		inventory = nil
@@ -374,7 +374,7 @@ func (s *filmScan) balayerMonde() {
 func (s *filmScan) balayerCalquesGardes() {
 	// MARQUEUR DE PORTAGE : le controle independant du calque du drapeau, lu aux images-cles du
 	// MEME film — sur les seuls films de CTF (cf. build_objectives_live.go).
-	s.in.FlagMarks = decodeFilmCarrierMarks(s.film, s.matchID, s.opt.Flag)
+	s.in.FlagMarks = decodeFilmCarrierMarks(s.fc, s.matchID, s.opt.Flag)
 	s.opt.observe("carrierMarks", s.in.FlagMarks)
 	// PROPRIETES RESEAU ti=13 : UN SEUL BALAYAGE, DEUX CONSOMMATEURS ET DEUX GARDES. L'etat des
 	// zones (jauge de capture, proprietaire) le veut sur les matchs dont l'appelant a fourni le

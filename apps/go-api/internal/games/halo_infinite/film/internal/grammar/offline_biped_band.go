@@ -160,11 +160,12 @@ func scanBipedChunks(film *source.Film, chunks []int, band SlotBand, lay profile
 // n'apparaît que dans le keyframe d'après), trous comblés entre min et max — les slots
 // biped sont alloués dans une bande contiguë, et un biped créé PUIS détruit à l'intérieur
 // d'un chunk n'apparaît dans aucun keyframe.
-func bipedSlotBand(film *source.Film, chunks []int) SlotBand {
+func bipedSlotBand(fc *FilmContext, chunks []int) SlotBand {
 	seen := map[uint32]bool{}
+	marche := fc.MarcheDImageCle()
 	scan := append(append([]int{}, chunks...), chunks[len(chunks)-1]+1)
 	for _, c := range scan {
-		data, pks, ok := FilmChunkAt(film, c)
+		data, pks, ok := fc.ChunkAt(c)
 		if !ok {
 			continue
 		}
@@ -172,7 +173,7 @@ func bipedSlotBand(film *source.Film, chunks []int) SlotBand {
 			if pk.Type != PacketTypeKeyframe {
 				continue
 			}
-			for _, r := range WalkKeyframeWorld(pk.Payload(data)) {
+			for _, r := range marche.Records(pk.Payload(data)) {
 				if r.TI == BipedTypeIndex && r.Slot >= 0 {
 					seen[uint32(r.Slot)] = true
 				}

@@ -418,6 +418,10 @@ func decodeEntitesDesJoueurs(r *greader) grammar.PlayerEntityScan {
 			LastKF: int(r.u()), Seen: int(r.u()), Unstable: r.bool8(),
 		})
 	}
+	n = int(r.u())
+	for k := 0; k < n && r.err == nil; k++ {
+		s.Doutes = append(s.Doutes, grammar.DouteDAbsence{Rang: int(r.u()), Slot: int(r.u())})
+	}
 	return s
 }
 

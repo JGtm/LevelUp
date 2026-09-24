@@ -125,6 +125,8 @@ type birthScan struct {
 	fc  *FilmContext
 	cfg FrameConfig
 	emp map[int]int
+	// marche : la marche d image-cle DU FILM (preuve comprise, lot D-fix).
+	marche MarcheDImageCle
 	// monde porte les liaisons slot -> archétype du chunk courant : c'est lui qui dit qu'un delta
 	// qui suit une naissance tombe sur un slot connu.
 	monde *World
@@ -139,7 +141,8 @@ type birthScan struct {
 }
 
 func newBirthScan(fc *FilmContext, reg *Registry, emp map[int]int, st *types.BirthLoadoutStats) *birthScan {
-	s := &birthScan{fc: fc, cfg: fc.CadreDeBalayage(), emp: emp, monde: NewWorld(reg), st: st}
+	s := &birthScan{fc: fc, cfg: fc.CadreDeBalayage(), emp: emp, monde: NewWorld(reg), st: st,
+		marche: fc.MarcheDImageCle()}
 	s.obs = NouvelleObservation()
 	s.obs.HeldWeaponHook = func(h, l uint32) { s.lus = append(s.lus, heldWeaponRead{h, l}) }
 	return s
@@ -154,7 +157,7 @@ func (s *birthScan) lierLeChunk(num int, data []byte, pks []FilmPacket) {
 		if pk.Type != PacketTypeKeyframe {
 			continue
 		}
-		for _, r := range WalkKeyframeWorld(pk.Payload(data)) {
+		for _, r := range s.marche.Records(pk.Payload(data)) {
 			//nolint:gosec // slot, TI et Gen viennent du walker d image-cle, bornes par construction
 			s.monde.BindImageCle(uint32(r.Gen), uint32(r.Slot), uint32(r.TI))
 		}

@@ -32,6 +32,11 @@ type KeyframeCoverage struct {
 	Resyncs int `json:"resyncs"`
 	// Elections : records choisis par le repli (génération basse, slot bas).
 	Elections int `json:"elections"`
+	// Refutations : élus que le repli a REFUSÉS parce qu'un record prouvé par la grammaire du
+	// film les contredisait (lot D-fix, 2026-09-24, `grammar/keyframe_world_preuve.go`) ;
+	// l'élection a repris sans eux. Chacun est une fausse ancre qui aurait effacé les vrais
+	// records qui la précédaient.
+	Refutations int `json:"refutations"`
 	// Slides : fenêtres de 120 000 bits SANS candidat traversées sans arrêter la marche.
 	Slides int `json:"slides"`
 	// FramedAbsentBipeds : couples (image-clé, bipède) où le bipède est ancré aux deux
@@ -48,6 +53,6 @@ func buildKeyframeCoverage(c grammar.KeyframeWalkCoverage) *KeyframeCoverage {
 	return &KeyframeCoverage{
 		Keyframes: c.Payloads, Records: c.Records, Bipeds: c.Bipedes,
 		Neighbors: c.Voisins, Jumps: c.Sauts, Resyncs: c.Recalages, Elections: c.Elections,
-		Slides: c.Glissements, FramedAbsentBipeds: c.BipedesAbsentsEncadres,
+		Refutations: c.Refutations, Slides: c.Glissements, FramedAbsentBipeds: c.BipedesAbsentsEncadres,
 	}
 }

@@ -175,6 +175,15 @@ type SeatCoverage struct {
 	EntitesNonLiees   int `json:"entitesNonLiees"`
 	EntitesContestees int `json:"entitesContestees"`
 	TrousDEntite      int `json:"trousDEntite"`
+	// ImagesClesDouteuses : les images-cles porteuses ou l'ABSENCE d'au moins une entite lue N'EST PAS
+	// PROUVEE — la marche de leur table a ecarte par repli un candidat ti=9 de son slot, ou a atteint
+	// son record sans pouvoir le lire (lot D-fix, 2026-09-24). Aucune arrivee tardive ni aucun depart
+	// ne s'y conclut. 0 attendu.
+	ImagesClesDouteuses int `json:"imagesClesDouteuses"`
+	// BornesDifferees : les entites dont une borne de presence (arrivee ou depart) n'est PAS posee
+	// sur l'image-cle voisine de leur fenetre, douteuse, mais recule jusqu'a la premiere absence
+	// prouvee — ou jusqu'au bord du film. 0 attendu.
+	BornesDifferees int `json:"bornesDifferees"`
 	// SansTableDuFilm : le film ne porte pas sa table de depart, donc aucune place n'est
 	// decidable. Ce n'est pas un repli : c'est une abstention, et elle se lit ici.
 	SansTableDuFilm bool `json:"sansTableDuFilm,omitempty"`
@@ -193,7 +202,8 @@ type entreesDesPlaces struct {
 func poserLesSieges(roster []RosterEntry, occ occupants, in entreesDesPlaces) SeatCoverage {
 	cov := SeatCoverage{Entrees: len(roster), Presences: PresencesDesVies,
 		EntitesNonLiees: occ.entitesNonLiees, EntitesContestees: occ.entitesContestees,
-		TrousDEntite: occ.trous}
+		TrousDEntite: occ.trous, ImagesClesDouteuses: occ.imagesDouteuses,
+		BornesDifferees: occ.bornesDifferees}
 	if occ.balaye {
 		cov.Presences = PresencesDuFilm
 	}

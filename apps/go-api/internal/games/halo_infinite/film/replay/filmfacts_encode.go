@@ -430,6 +430,13 @@ func encodeEntitesDesJoueurs(w *gwriter, s grammar.PlayerEntityScan) {
 		w.u(uint64(e.Seen))
 		w.bool8(e.Unstable)
 	}
+	// LES DOUTES (lot D-fix, 2026-09-24, meme SchemaDesFaits 4 que la vague D) : les absences que la
+	// marche ne prouve pas, tries par (rang, slot).
+	w.u(uint64(len(s.Doutes)))
+	for _, d := range s.Doutes {
+		w.u(uint64(d.Rang))
+		w.u(uint64(d.Slot))
+	}
 }
 
 // encodeFilmTable ecrit la TABLE DES JOUEURS DU FILM (v20, lot 1.6). Elle porte son REFUS comme

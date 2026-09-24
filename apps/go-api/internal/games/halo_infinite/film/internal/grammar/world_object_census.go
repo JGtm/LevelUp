@@ -73,15 +73,17 @@ func ScanFilmWorldObjectKeyframes(dir string, ti int) WorldObjectKeyframes {
 	if err != nil {
 		return WorldObjectKeyframes{SeenUS: map[types.EquipmentLifeKey][]uint64{}}
 	}
-	return ScanWorldObjectKeyframes(film, ti)
+	return ScanWorldObjectKeyframes(NewFilmContext(film), ti)
 }
 
-// ScanWorldObjectKeyframes marche les images-clés d'un film DEJA CHARGE.
-func ScanWorldObjectKeyframes(film *source.Film, ti int) WorldObjectKeyframes {
+// ScanWorldObjectKeyframes marche les images-clés d'un film DEJA CHARGE, par la marche
+// d'image-clé du film ([FilmContext.MarcheDImageCle], lot D-fix).
+func ScanWorldObjectKeyframes(fc *FilmContext, ti int) WorldObjectKeyframes {
 	out := WorldObjectKeyframes{SeenUS: map[types.EquipmentLifeKey][]uint64{}}
 	seen, others := map[uint32]bool{}, map[uint32]bool{}
-	for _, c := range FilmChunkNumbers(film) {
-		data, pks, ok := FilmChunkAt(film, c)
+	marche := fc.MarcheDImageCle()
+	for _, c := range fc.ChunkNumbers() {
+		data, pks, ok := fc.ChunkAt(c)
 		if !ok {
 			continue
 		}
@@ -90,7 +92,7 @@ func ScanWorldObjectKeyframes(film *source.Film, ti int) WorldObjectKeyframes {
 				continue
 			}
 			out.TimesUS = append(out.TimesUS, pk.TimestampUS)
-			out.censusPacket(WalkKeyframeWorld(pk.Payload(data)), ti, pk.TimestampUS, seen, others)
+			out.censusPacket(marche.Records(pk.Payload(data)), ti, pk.TimestampUS, seen, others)
 		}
 	}
 	out.Band = slotBandExcluding(seen, others)
