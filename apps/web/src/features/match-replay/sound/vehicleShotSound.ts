@@ -36,7 +36,10 @@
  *    BOUCLE 3P (8 s, `boucle_8s_3p`) tenue pendant le tir et le COUP 3P isolé (0,2 s, deux prises)
  *    en queue à l'arrêt. La boucle est égalisée par la recette ; la queue reçoit le MÊME gain
  *    rapporté au rendu (écart de normalisation du manifeste : 1,64 contre 3,97 dB), pour que le
- *    dernier coup ne sonne pas plus fort que la rafale qu'il termine. Câblage : lot M4b.
+ *    dernier coup ne sonne pas plus fort que la rafale qu'il termine. Câblage : lot M4b. LA
+ *    BOUCLE N'EST DANS AUCUNE TABLE DE PRODUCTION tant que rien ne la joue (0 code inerte) : elle
+ *    est DÉPOSÉE et déclarée au garde-rail d'assets (`replaySoundAssets.guard.test.ts`,
+ *    `DEPOSES_POUR_M4B`, avec son échéance).
  *  - LANCE-GRENADES DU FALCON : AUCUN fichier — le registre lui donne les roquettes du
  *    Rockethog, le jeu joue le MÊME événement (18 médias identiques, sonde SONS du 2026-09-24).
  *  - Variantes lointaines A-E : NON retenues (décision du 2026-09-24), non livrées.
@@ -71,20 +74,3 @@ export const VEHICLE_SHOT_SOUND_VARIANTS: Readonly<Record<string, readonly strin
   vehicle_shot_wasp_lmg_1: ['vehicle_shot_wasp_lmg_1', 'vehicle_shot_wasp_lmg_2'],
 }
 
-/**
- * VEHICLE_SHOT_HELD_LOOPS — LE CORPS DE BOUCLE d'une arme à TIR CONTINU, keyé par le stem de la
- * première variante de son COUP (celui que le registre du titre nommera, comme pour une arme au
- * coup). Décision de l'utilisateur du 2026-09-24 : la boucle se tient du DÉBUT à la FIN de la
- * rafale, jamais relancée à chaque coup (Q5), et le coup isolé sonne en queue à l'arrêt.
- *
- * INERTE AUJOURD'HUI, ET DÉCLARÉ QUAND MÊME : aucun film ne publie encore d'intervalle de tir
- * continu — c'est le lot M4b (vue de contrôle) qui le lira et qui câblera cette table. Elle existe
- * dès la livraison parce que le garde-rail d'assets exige que tout fichier livré soit DÉCLARÉ (un
- * fichier que rien ne nomme est un asset mort), et parce que ses propriétés (format, durée de
- * boucle, variante de coup existante) se vérifient sur le fichier, pas sur le câblage.
- * Ce ne sont pas des sons d'ARME au sens de la règle de durée (1,2 s) : une boucle de rafale
- * retronquée à la coupe des armes deviendrait un hoquet.
- */
-export const VEHICLE_SHOT_HELD_LOOPS: Readonly<Record<string, string>> = {
-  vehicle_shot_wasp_lmg_1: 'vehicle_shot_wasp_lmg_loop',
-}
