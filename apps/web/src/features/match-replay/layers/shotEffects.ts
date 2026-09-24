@@ -22,6 +22,9 @@
  * plus. La feuille de style ne peut rien pour un canvas dessiné en JS : la préférence se lit
  * donc ici.
  */
+// L'échelle de la bombe vit dans le module feuille de l'éclair (voir sa doc) : c'est lui que
+// le garde-rail de rastérisation transpile seul, sans import de valeur.
+import { BOMB_SCALE } from './muzzleFlash'
 
 /** Familles de rendu. `sobre` n'est pas une famille : c'est l'absence de famille connue. */
 export type ShotFamily =
@@ -57,17 +60,6 @@ const DRAWN_FAMILIES: Record<string, ShotFamily> = {
   melee: 'melee',
   needles: 'needles',
 }
-
-/**
- * BOMB_SCALE — L'ÉCHELLE DE LA BOMBE face à la déflagration (`explosive`), sur l'éclair de bouche
- * comme sur l'effet de mort : même dessin, halo et onde plus grands.
- *
- * DÉCISION UTILISATEUR DU 2026-09-23 (nuit, retours du rejeu, lot M6.2) : la bombe de la Banshee
- * « ROUGE et PLUS GROSSE (éclair et explosion) ». La rougeur est la TEINTE (`plasma_hot`, registre
- * du titre) ; la taille est cette FORME. C'est un réglage de MISE EN SCÈNE, pas une mesure : le
- * film ne dit rien du rayon d'une explosion, et une charge larguée se lit plus lourde qu'un obus.
- */
-export const BOMB_SCALE = 1.6
 
 /**
  * familyOf valide la famille annoncée par le document.

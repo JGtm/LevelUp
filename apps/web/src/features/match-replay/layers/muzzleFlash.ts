@@ -25,7 +25,25 @@
  * exactement la même image.
  */
 import type { FxInk, FxTint } from './fxInk'
-import { BOMB_SCALE, type ShotFamily } from './shotEffects'
+import type { ShotFamily } from './shotEffects'
+
+/**
+ * BOMB_SCALE — L'ÉCHELLE DE LA BOMBE face à la déflagration (`explosive`), sur l'éclair de bouche
+ * comme sur l'effet de mort (`shotEffects.ts` l'importe d'ici) : même dessin, halo et onde plus
+ * grands.
+ *
+ * DÉCISION UTILISATEUR DU 2026-09-23 (nuit, retours du rejeu, lot M6.2) : la bombe de la Banshee
+ * « ROUGE et PLUS GROSSE (éclair et explosion) ». La rougeur est la TEINTE (`plasma_hot`, registre
+ * du titre) ; la taille est cette FORME. C'est un réglage de MISE EN SCÈNE, pas une mesure : le
+ * film ne dit rien du rayon d'une explosion, et une charge larguée se lit plus lourde qu'un obus.
+ *
+ * POURQUOI ICI ET PAS DANS `shotEffects.ts` (2026-09-24, CI de feat/retours-rejeu). Ce module
+ * n'a que des imports de TYPE : le garde-rail de rastérisation (`e2e/replay-muzzle-raster.spec.ts`)
+ * le transpile SEUL, sans bundler, et refuse tout import de valeur. Posée d'abord dans
+ * `shotEffects.ts`, la constante y faisait entrer un import de valeur et rougissait ce garde-rail.
+ * La constante vit donc dans le module feuille ; celui qui dépend de l'autre l'importe.
+ */
+export const BOMB_SCALE = 1.6
 
 /** Géométrie d'un éclair, en pixels d'ÉCRAN (le facteur de densité est appliqué par `k`). */
 export interface MuzzleShape {
