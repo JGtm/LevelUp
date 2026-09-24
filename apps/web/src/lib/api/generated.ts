@@ -4981,6 +4981,7 @@ export interface components {
             deathOffsetMs?: number;
             /** Format: int64 */
             deathOffsetRunnerUp: number;
+            deathsFeed?: string;
             /** Format: int64 */
             directByCreation: number;
             /** Format: int64 */

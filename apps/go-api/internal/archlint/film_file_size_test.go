@@ -139,14 +139,18 @@ var plafondsParFichier = map[string]int{
 	// verdicts Theater sur neuf, lot 5.13.2 reouvert), et le refus de publier un genre `jump`
 	// LU faute de preuve. UNE SEULE MONTEE DE SCHEMA POUR LE LOT, donc une seule entree, dans
 	// le commit qui monte `SchemaVersion`.
-	// SCHEMA 68 -> 69 (2026-09-23, lot M1 des retours du rejeu) : 2018 -> 2054, l entree de
-	// chronique v69 — la grammaire de la vie et les deux replis nommes de la publication des
-	// positions, le champ `vehicles[].samples[].g`, les six compteurs de couverture, et pourquoi
-	// « si le film le dit, on publie » ne couvrait pas des points que le BALAYAGE lit. UNE SEULE
-	// MONTEE DE SCHEMA POUR LE LOT, dans le commit qui monte `SchemaVersion`. 2054 -> 2058
-	// (2026-09-24, reprise apres revue adverse) : le departage de F-2, sa borne, et les trois
-	// compteurs ajoutes a la meme v69 (`slotsArmes`, `slotsDesarmes`, `silencesNonTranches`).
-	"internal/games/halo_infinite/film/replay/document_chronicle.go": 2058,
+	// SCHEMA 68 -> 69 (2026-09-24, integration de la vague C des retours du rejeu) : 2018 -> 2111,
+	// L ENTREE UNIQUE de chronique v69 qui reunit les trois lots de la vague sous une seule
+	// montee (un en-tete commun de 5 lignes, puis une partie par lot). Partie M1 (2026-09-23,
+	// +40 dont +4 a la reprise apres revue adverse du 2026-09-24) : la grammaire de la vie et les
+	// deux replis nommes de la publication des positions, le champ `vehicles[].samples[].g`, les
+	// compteurs de couverture (`slotsArmes`, `slotsDesarmes`, `silencesNonTranches` compris), et
+	// pourquoi « si le film le dit, on publie » ne couvrait pas des points que le BALAYAGE lit.
+	// Partie M5 (2026-09-23, +47) : la valeur `a0` de `coverage.score.teamIdentity`, la premisse
+	// « absent vaut zero » et ses deux garde-fous testes, l ordre des preuves, puis (M5.2, meme
+	// montee) le champ `coverage.bridge.deathsFeed` et sa limite ecrite. Exception ecrite, dans
+	// le commit de fusion qui reunit la montee.
+	"internal/games/halo_infinite/film/replay/document_chronicle.go": 2111,
 	// --- production, hors perimetre du lot 2.7 (aucune preuve d equivalence ne couvrait
 	// leur scission : elle se decidera au lot qui les rouvrira).
 	// `assist.go` EST SORTI DE CETTE TABLE LE 2026-09-16 (lot 2.6.2) : le type `Assist` a descendu
@@ -201,10 +205,12 @@ var plafondsParFichier = map[string]int{
 	// `mobility` en `clamber`, pourquoi un renommage d enum publie est une montee de FORME, et
 	// le refus de publier un genre `jump` LU faute de preuve. Exception ecrite, meme commit que
 	// `SchemaVersion`.
-	// SCHEMA 68 -> 69 (2026-09-23, lot M1 des retours du rejeu) : 1270 -> 1275, la
-	// justification que `TestStructureIsOptionalInDocument` exige (grammaire de la vie, replis
-	// nommes, `samples[].g`). Exception ecrite, meme commit que `SchemaVersion`.
-	"internal/games/halo_infinite/film/replay/structure_test.go":                                  1275,
+	// SCHEMA 68 -> 69 (2026-09-24, integration de la vague C des retours du rejeu) : 1270 -> 1285,
+	// la justification UNIQUE que `TestStructureIsOptionalInDocument` exige pour la montee commune
+	// des lots M1 (grammaire de la vie, replis nommes, `samples[].g`) et M5 (valeur d enum `a0`
+	// du camp d un match a sens unique, champ `coverage.bridge.deathsFeed`). Exception ecrite,
+	// dans le commit de fusion qui reunit la montee.
+	"internal/games/halo_infinite/film/replay/structure_test.go":                                  1285,
 	"internal/games/halo_infinite/film/replay/t0_mouvement_research_test.go":                      872,
 	"internal/games/halo_infinite/film/replay/inventory_position_i22_test.go":                     833,
 	"internal/games/halo_infinite/film/replay/ground_link_research_test.go":                       814,

@@ -146,6 +146,7 @@ func toBridgeHealth(v replay.BridgeHealth) replaydoc.BridgeHealth {
 		FromReading:        v.FromReading,
 		LivesNamed:         v.LivesNamed,
 		LivesTotal:         v.LivesTotal,
+		DeathsFeed:         v.DeathsFeed,
 		IndexReadings:      v.IndexReadings,
 		IndexDisagreements: v.IndexDisagreements,
 		SlotCollisions:     v.SlotCollisions,

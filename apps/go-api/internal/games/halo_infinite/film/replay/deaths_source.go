@@ -1,6 +1,7 @@
 package replay
 
 import (
+	"errors"
 	"fmt"
 	"sort"
 
@@ -35,6 +36,11 @@ import (
 // [filmcache.ErrFilmNonFinalise] : `errors.Is` repond vrai pour les deux.
 var ErrFilSansTempsForts = fmt.Errorf("fil des morts : aucun morceau des temps forts parmi les "+
 	"morceaux types du film : %w", filmcache.ErrFilmNonFinalise)
+
+// ErrFilDesMortsSansMort : le morceau des temps forts a ete LU et ne porte aucune mort. C est une
+// MESURE, pas une panne — `coverage.bridge.deathsFeed` la publie `empty`, distincte de
+// `unreadable` (lot M5.2 des retours rejeu, 2026-09-23). Le texte du message est celui d avant.
+var ErrFilDesMortsSansMort = errors.New("aucune mort")
 
 // ScanFilmDeaths lit le fil des morts du film de filmDir.
 //
@@ -133,7 +139,7 @@ func ScanDeaths(film *source.Film) ([]Death, error) {
 		out = append(out, Death{XUID: e.XUID, Gamertag: e.Gamertag, TimeMS: int64(e.TimeMS)})
 	}
 	if len(out) == 0 {
-		return nil, fmt.Errorf("chunk highlight (%d) : aucune mort", n)
+		return nil, fmt.Errorf("chunk highlight (%d) : %w", n, ErrFilDesMortsSansMort)
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].TimeMS < out[j].TimeMS })
 	return out, nil

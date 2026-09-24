@@ -9,8 +9,8 @@ package replay
 // testable sans fichier). Le fichier pesait 928 lignes ; la separation rend chacun lisible seul.
 //
 // LE SECOND DECOUPAGE (lot 1.0 du PLAN_DECODEUR_FILM, 2026-09-14) : la SEQUENCE de balayages
-// n'est plus dans le corps de `BuildFromFilm` mais dans `scanFilmInputs`, qui rend un
-// [FilmInputs] — le type de ce que l'assemblage consomme (cf. film_inputs.go). `BuildFromFilm`
+// n'est plus dans le corps de `BuildFromFilm` mais dans `scanFilmInputs`, dont le balayage porte
+// un [FilmInputs] — le type de ce que l'assemblage consomme (cf. film_inputs.go). `BuildFromFilm`
 // est desormais exactement « cet etage, puis `BuildFromPositions` ». CE QUE CELA FERME : le
 // fixture d'entrees (`golden_inputs_film_test.go`) RECOPIAIT la sequence a la main, et les deux
 // copies avaient diverge de cinq canaux entiers (decouverte D7 du lot 0.D). Il appelle
@@ -94,15 +94,33 @@ func BuildFromFilmAvecFaits(matchID, titleSlug string, film *source.Film, opt Op
 	// l a DEJA lue a sa resolution : la reprendre ici ne relit pas un octet. Elle porte la cle du
 	// profil (`build`) et l empreinte du registre ECS, que `coverage.decoder` publie.
 	opt.FilmIdentity = identiteDuFilm(fc)
-	in, err := scanFilmInputs(matchID, film, fc, opt)
+	s, err := scanFilmInputs(matchID, film, fc, opt)
 	if err != nil {
 		return ReplayDocument{}, nil, err
 	}
 	// LES FAITS SE CAPTURENT ICI, ENTRE LE BALAYAGE ET L ASSEMBLAGE, et pas apres : le rapport
 	// de replis ne doit porter que les declenchements DU BALAYAGE (cf. `build_from_facts.go`).
-	faits := faitsDuBalayage(matchID, fc, opt, in)
-	in.applyTo(&opt)
-	return BuildFromPositions(matchID, titleSlug, in.Positions, in.Fire, opt), faits, nil
+	faits := faitsDuBalayage(matchID, fc, opt, s.in)
+	return s.assembler(titleSlug, opt), faits, nil
+}
+
+// assembler est L ETAGE D ASSEMBLAGE du decodage d un film : les entrees balayees, PLUS ce que le
+// balayage a MESURE sans que ce soit une entree de faits — le verdict du fil des morts
+// (`coverage.bridge.deathsFeed`, lot M5.2 des retours rejeu).
+//
+// LE BALAYAGE ENTIER VOYAGE, PAS SES MORCEAUX (revue adverse M5, constat R1, 2026-09-24) : le
+// verdict sortait par un second retour de [scanFilmInputs] puis une affectation dans
+// [BuildFromFilmAvecFaits], deux maillons qu aucun test ne pouvait atteindre (la seule bobine du
+// depot n a aucune image-cle de bipede, et le balayage des positions la refuse). Ici, le trajet
+// « octets du film -> verdict -> document » tient dans [filmScan.lireLeFilDesMorts] puis cette
+// methode, et `TestLeBalayagePublieLeVerdictDuFilDesMorts` le parcourt sur de vrais octets.
+//
+// `opt` est celui de l APPELANT (identite du film, compteur de replis), pas `s.opt` : le
+// balayage y a pose son horloge d etapes, qui ne concerne pas l assemblage.
+func (s *filmScan) assembler(titleSlug string, opt Options) ReplayDocument {
+	s.in.applyTo(&opt)
+	opt.DeathsFeed = s.filDesMorts
+	return BuildFromPositions(s.matchID, titleSlug, s.in.Positions, s.in.Fire, opt)
 }
 
 // poserProfilPuisCarte installe sur le contexte, DANS CET ORDRE, le profil de balayage calibre
@@ -151,6 +169,10 @@ type filmScan struct {
 	// balayages n'y ECRIVENT jamais — leurs sorties vont dans `in`.
 	opt Options
 	in  FilmInputs
+	// filDesMorts : le VERDICT de la lecture du fil des morts (cf. [lectureDuFilDesMorts]). Hors
+	// de `in` parce qu il n est pas une entree de faits : [filmScan.assembler] le pose en
+	// `Options.DeathsFeed`.
+	filDesMorts string
 }
 
 // decoupageForce rend le decoupage d'i0 que l'APPELANT impose, ou nil.
@@ -169,7 +191,8 @@ func decoupageForce(opt Options) *profile.I0Layout {
 	return opt.Scan.Layout
 }
 
-// scanFilmInputs EST L'ETAGE DE BALAYAGE : il lit le film et rend ce que l'assemblage consomme.
+// scanFilmInputs EST L'ETAGE DE BALAYAGE : il lit le film et rend le balayage — ses entrees
+// (`in`, les faits) et le verdict du fil des morts —, que [filmScan.assembler] consomme.
 //
 // PRE-REQUIS : l'appelant a pose sur le CONTEXTE DU FILM le profil de balayage calibre puis
 // les largeurs d'axe de la carte (`installWorldObjectPrecision`), DANS CET ORDRE — poser le
@@ -181,7 +204,7 @@ func decoupageForce(opt Options) *profile.I0Layout {
 // deja lus, les changements d'equipement sur les naissances lues dans les positions, et les
 // socles comme les vehicules heritent des largeurs MPP calibrees par les poses.
 func scanFilmInputs(matchID string, film *source.Film, fc *grammar.FilmContext,
-	opt Options) (FilmInputs, error) {
+	opt Options) (*filmScan, error) {
 	s := &filmScan{matchID: matchID, film: film, fc: fc, opt: opt, world: opt.MapQuant.Range()}
 	s.scan = grammar.DefaultScanFilmOptions()
 	if opt.Scan != nil {
@@ -225,12 +248,12 @@ func scanFilmInputs(matchID string, film *source.Film, fc *grammar.FilmContext,
 	// (cf. observe.go).
 	s.opt.clock = &stepClock{last: time.Now()}
 	if err := s.balayerPositions(); err != nil {
-		return FilmInputs{}, err
+		return nil, err
 	}
 	s.balayerPortage()
 	s.balayerCapacites()
 	s.balayerMonde()
 	s.balayerEtatsDeMouvement()
 	s.balayerPont()
-	return s.in, nil
+	return s, nil
 }

@@ -2017,7 +2017,13 @@ package replay
 //	               (`grammar` a monte au commit precedent du lot, pour le cablage du bloc
 //	               d action de la vue de controle).
 
-// v69 (2026-09-23, lot M1 des retours du rejeu, decision utilisateur Q15) : LA PUBLICATION DES
+// v69 (2026-09-24, vague C des retours du rejeu, plan `.ai/V7.5/PLAN_RETOURS_REJEU_2026-09-23.md`
+// §4.4) : UNE SEULE MONTEE POUR TROIS LOTS — M1 (positions), M5 (score a sens unique et fil des
+// morts), M4a (vehicules : pieces montees, registre). Chaque lot avait pose 69 sur sa branche ;
+// l integration les reunit sous ce seul numero (un artefact au schema 69 porte les trois). Aucune
+// revision de DECODAGE ne monte : republication DEPUIS LES FAITS. Les trois parties suivent.
+//
+// v69, PARTIE M1 (2026-09-23, decision utilisateur Q15) : LA PUBLICATION DES
 // POSITIONS APPLIQUE LA GRAMMAIRE DE LA VIE, DEUX REPLIS NOMMES, ET DIT SES SILENCES AUX VEHICULES.
 // Republication DEPUIS LES FAITS : aucune revision de decodage ne monte (`grammar.Rev`,
 // `facts.Rev`, `SchemaDesFaits` inchanges), la montee perime les seuls calques de publication.
@@ -2056,3 +2062,50 @@ package replay
 // position — ecarter un point ne decale aucun calque ; `layers` ; les revisions de decodage. Les
 // deux replis tombent avec la porte grammaticale au decodage (option 2 du rapport), dont ils sont
 // le critere de retrait. Temoins : 81c02726 (Mongoose 770, Madina97294), ab526724, 879a4dba.
+//
+// v69, PARTIE M5 (2026-09-23) :
+// LE MATCH A SENS UNIQUE A UN CAMP — `coverage.score.teamIdentity` GAGNE LA VALEUR `a0`.
+//
+//	`coverage.`    UNE VALEUR D ENUM NEUVE, `a0` : la preuve (a) du score final, appliquee au
+//	`score.`       match ou UN SEUL slot d equipe porte une serie de score. Le camp muet n a
+//	`teamIdentity` jamais quitte zero et le statborg n emet un composant qu a son CHANGEMENT ;
+//	               quand le registre dit X-0 (X > 0) et que la serie finit EXACTEMENT a X, elle
+//	               est le camp X et le slot muet l autre. Un slot seul vu (le camp muet n a rien
+//	               emis, ni score ni frags) suit la meme regle.
+//	`scoreTimeline` CONSEQUENCE, PAS FORME : la serie d un match a sens unique porte desormais
+//	`.teams[]`     son `teamId`. Avant, elle sortait sans camp (`unresolved`) des que le perdant
+//	`.teamId`      n avait jamais marque — la preuve (a) exigeait un score final sur les DEUX
+//	               slots. Mesure du 2026-09-23 : six documents a une seule serie sans camp au
+//	               parc, dont cinq sains (le sixieme, `ab526724`, etait un film tronque, repare
+//	               depuis par O1). Le client affichait 0 — 0 tout le match sur ces documents.
+//
+// POURQUOI UNE VALEUR A PART ET PAS `a`. La preuve ajoute une premisse — « absent vaut zero » —
+// que (a) n a pas. La couverture doit dire laquelle a tranche : un camp resolu par (a0) repose
+// sur la grammaire d emission du statborg, pas sur deux lectures.
+//
+// LE GARDE-FOU EST L EGALITE EXACTE, et il est teste : une serie a 2 contre un registre a 3 (film
+// tronque avant sa derniere capture) reste `unresolved` ; un registre 1-3 avec une seule serie a
+// 3 aussi — le camp muet du FILM aurait marque au REGISTRE, son absence est un trou de lecture,
+// pas un zero. Aucun identifiant de match dans la regle.
+//
+// L ORDRE DES PREUVES : (a), puis (a0), puis (b). (a0) passe avant la somme des frags parce
+// qu elle n emprunte rien au pont d identite des joueurs. Sur les documents a une seule serie que
+// (b) resolvait deja, la valeur publiee passe de `b` a `a0` et le CAMP ne change pas — c est le
+// controle croise de la montee (le desaccord d un seul camp aurait ete un defaut).
+//
+//	`coverage.`    UN CHAMP NEUF (lot M5.2, meme montee) : le VERDICT de la lecture du fil des
+//	`bridge.`      morts — `read`, `empty` (le morceau des temps forts est lu et ne porte aucune
+//	`deathsFeed`   mort : une MESURE) ou `unreadable` (pas de morceau des temps forts, morceau
+//	               absent, evenements illisibles : une PANNE). Absent = non mesure (assemblage
+//	               sans balayage). Avant, un fil illisible ne se lisait que dans les journaux :
+//	               le diagnostic d `ab526724` a exige les journaux ET le code.
+//
+// LA LIMITE ECRITE DU CHAMP : les faits persistes ne portent PAS le verdict. Rejoue depuis ses
+// faits, un fil VIDE OU ILLISIBLE publie la cle ABSENTE (le champ se tait plutot que de choisir) :
+// film et faits DIVERGENT sur ce champ — ecart NEUF, a declarer a replay-equiv et au gate de parc
+// (§8, decouverte 4 : il se ferme avec la revision de faits qui persistera le verdict). Depuis le
+// lot L3, un film sans morceau des temps forts n est plus cuit du tout.
+//
+// POURQUOI LA VERSION MONTE : une valeur d enum publie est de la FORME, et la regle de
+// publication du calque de score change ; `deathsFeed` est un champ neuf de la couverture. Republication DEPUIS LES FAITS (aucune revision de
+// DECODAGE ne monte : `grammar`, `facts`, `layers` et le blob d entrees sont inchanges).

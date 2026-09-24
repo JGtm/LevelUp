@@ -3042,7 +3042,8 @@ export type ReplayScoreTimeline = components['schemas']['ScoreTimeline']
 // du tout (`non_resolu`, publie et compte, jamais invente).
 export type ReplayIdentitySection = components['schemas']['IdentitySection']
 // La COUVERTURE du calque de score : par quelle voie l'identité des équipes a été résolue
-// (`teamIdentity` : a | b | unresolved), si le mode porte le compteur, si la lecture a été
+// (`teamIdentity` : a | a0 | b | unresolved — `a0` = score final d'un match à sens unique,
+// schéma 69), si le mode porte le compteur, si la lecture a été
 // tronquée, et le nombre de points publiés. `oracle` dit à quelle grandeur le décodage a été
 // confronté (`displayed` = le score affiché en jeu).
 export type ReplayScoreCoverage = components['schemas']['ScoreCoverage']

@@ -1263,11 +1263,21 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   CE QUI NE MONTE PAS : `facts.Rev` (`killsource` ne lit aucun état de mouvement) et
 	//   `layers`. `grammar.Rev` a monté, la couche écrivant l'étiquette de genre.
 	//   Détail : `document_chronicle.go`.
-	// - v69 (lot M1 des retours du rejeu, 2026-09-23, décision utilisateur Q15) : la publication
+	// - v69 (vague C des retours du rejeu, 2026-09-24) : UNE montée pour trois lots (M1, M5,
+	//   M4a), aucune révision de décodage : republication DEPUIS LES FAITS.
+	//   Lot M1 (2026-09-23, décision utilisateur Q15) : la publication
 	//   des positions applique la GRAMMAIRE DE LA VIE (aucune position d'un corps avant sa
 	//   création) et deux REPLIS NOMMÉS (emprise jouée, silence d'un véhicule) ; champ neuf
-	//   `vehicles[].samples[].g` et six compteurs de couverture. Aucune révision de décodage ne
-	//   monte : republication DEPUIS LES FAITS. Détail : `document_chronicle.go`.
+	//   `vehicles[].samples[].g` et six compteurs de couverture.
+	//   Lot M5 (2026-09-23) : LE MATCH À SENS UNIQUE A UN CAMP.
+	//   `coverage.score.teamIdentity` gagne la valeur `a0` : un seul slot d'équipe porte une
+	//   série de score, le registre dit X-0 et la série finit EXACTEMENT à X — le score absent
+	//   vaut zéro (le statborg n'émet qu'au changement). Une valeur d'enum publié est de la
+	//   forme, et la règle de publication du calque change. Garde-fou testé : une série à 2
+	//   contre un registre à 3 reste `unresolved`. Aucune révision de décodage ne monte.
+	//   Même montée (lot M5.2) : `coverage.bridge.deathsFeed` (`read` / `empty` /
+	//   `unreadable`) — un fil des morts vide est une mesure, un fil illisible une panne.
+	//   Détail : `document_chronicle.go`.
 	if SchemaVersion != 69 {
 		t.Fatalf("SchemaVersion = %d, attendu 69 : incrémenter exige une raison écrite ci-dessus "+
 			"(un champ optionnel de plus n'en est pas une)", SchemaVersion)
