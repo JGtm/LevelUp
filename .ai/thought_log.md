@@ -113198,3 +113198,26 @@ le cuit ; M7 13 → 13 au parc.
 
 **Suite.** Superviseur : push et CI au niveau job, arbitrage des 20 fichiers de faits réécrits,
 republication 69 depuis les faits (serveur arrêté, utilisateur prévenu), verdicts à l'oreille et visuels.
+
+## [2026-09-24] Retours rejeu : CI rouge de ba475d2e4 (run 35973349701), deux jobs — Complété (feat/retours-rejeu, non poussé)
+
+**Décision technique principale.** (1) Frontend : `muzzleFlash.ts` avait gagné un import de VALEUR
+(`BOMB_SCALE` depuis `shotEffects.ts`, commit M6.2 7abf82d7e), que le garde-rail de rastérisation
+`e2e/replay-muzzle-raster.spec.ts` refuse (il transpile le module SEUL, sans bundler). La constante
+déménage dans le module feuille `muzzleFlash.ts` ; `shotEffects.ts` (qui n'est transpilé seul par
+aucun garde-rail) l'importe de là. Garde-rail intact. (2) Go : `TestFilmPassForMatch_CoutParAppel`
+(12,09 ms pour un budget de 10 ms) n'est PAS une régression : aucune ligne de `internal/persist`,
+`internal/migration`, des migrations du titre ni de `go.mod` n'a bougé depuis b74c8f294 ; sur six runs
+CI antérieurs la même lecture coûtait 6,6 à 8,4 ms (65-84 % du budget), 3,5 à 6 ms en local ; la
+lecture témoin du second test (non bornée) est passée de 2,4-3,0 à 4,48 ms sur le même run, même
+rapport (~2,7) : runner lent. Le budget à l'horloge murale est remplacé par le critère que la durée
+ne faisait que trahir : les lignes qui ENTRENT dans la fenêtre de `match_kill_events_latest`
+(`EXPLAIN (ANALYZE, FORMAT JSON)`), bornées à celles d'un match (90), avec un témoin négatif exécuté
+à chaque fois (filtre bloqué par `LIMIT` : 180 000 lignes, 72 ms/appel en local). Durée gardée en
+mesure.
+
+**Résultats observés.** Playwright local (chromium déjà installé) : rouge reproduit avant, 3/3 vert
+après (la famille `bomb` est désormais rastérisée). Mutation de `filmPassQuery` vers la forme du
+défaut : le garde rougit (180 000 > 90), code restauré. Gates : voir le compte rendu de l'exécutant.
+
+**Suite.** Superviseur : push, CI au niveau job.
