@@ -9019,6 +9019,9 @@ components:
         beforeOrigin:
           format: int64
           type: integer
+        closed:
+          format: int64
+          type: integer
         creations:
           format: int64
           type: integer
@@ -9054,6 +9057,7 @@ components:
           type: integer
       required:
         - creations
+        - closed
         - read
         - desync
         - overflow

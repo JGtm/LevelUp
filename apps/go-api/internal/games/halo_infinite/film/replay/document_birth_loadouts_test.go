@@ -104,3 +104,29 @@ func TestMergeLoadoutsImageCleDAbordAInstantEgal(t *testing.T) {
 		t.Fatalf("ordre %+v", out)
 	}
 }
+
+// TestFermetureSansArmeNEstPasUneLecture : un record qui se FERME mais dont aucun emplacement ne
+// porte une arme du catalogue n'est pas une dotation lue (constat F3 de la revue adverse du lot
+// M3.2, 2026-09-24 : sur les builds antérieurs à HI_1_12_0, `read` annonçait 11 dotations
+// « lues » dont aucune n'avait d'arme). ROUGE sur 73dda0fb5 : `read` recopiait les fermetures.
+// La partition est `closed` = `read` + `noDisplayable`, et `read` = `published` + `noLife` +
+// `beforeOrigin`.
+func TestFermetureSansArmeNEstPasUneLecture(t *testing.T) {
+	arme := bdNaissance(9, 10)
+	bruit := types.BirthLoadout{TimestampUS: wcOrigin + 50*wcStep, Slot: 11, Generation: 1,
+		Weapons: []types.BirthWeapon{{Emplacement: 0, Family: 0x12345678}, {Emplacement: 1, Family: bdDepart}}}
+	sansVie := bdNaissance(13, 400)
+	in := birthInputs{births: []types.BirthLoadout{arme, bruit, sansVie},
+		stats:     types.BirthLoadoutStats{Creations: 3, Read: 3},
+		creations: []grammar.BipedCreation{bdCreation(arme), bdCreation(bruit), bdCreation(sansVie)}}
+	pistes := []Track{bdPiste(9, 5, 100), bdPiste(11, 40, 120), bdPiste(13, 0, 100)}
+	out, cov := buildBirthLoadouts(in, pistes, wcOrigin, wcStep)
+	if len(out) != 1 {
+		t.Fatalf("relevés %+v : attendu la seule dotation armée du slot 9", out)
+	}
+	want := BirthLoadoutCoverage{Creations: 3, Closed: 3, Read: 2, Published: 1, NoLife: 1,
+		NonWeapon: 4, NoDisplayable: 1}
+	if *cov != want {
+		t.Fatalf("couverture %+v, attendu %+v", *cov, want)
+	}
+}

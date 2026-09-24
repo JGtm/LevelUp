@@ -22,6 +22,7 @@ type KeyframeCoverage struct {
 // BirthLoadoutCoverage dit ce que la lecture des dotations de naissance a vu, refusé et publié.
 type BirthLoadoutCoverage struct {
 	Creations         int `json:"creations"`
+	Closed            int `json:"closed"`
 	Read              int `json:"read"`
 	Desync            int `json:"desync"`
 	Overflow          int `json:"overflow"`

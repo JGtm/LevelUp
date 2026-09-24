@@ -1,9 +1,9 @@
 # EMPREINTE DE FORME DU DOCUMENT DE REJEU — fige par document_shape_test.go.
 # Ne s'edite JAMAIS a la main : regeneration decrite en tete de ce test.
 schema 69
-empreinte-stockee 144578b83de2294e
-empreinte-servie 144578b83de2294e
-empreinte-cuite 7d273578f4e4bfea
+empreinte-stockee 10e08e06b6a3d20a
+empreinte-servie 10e08e06b6a3d20a
+empreinte-cuite 792eb017a4274c94
 empreinte-cuite-regle 2
 
 AbilityCharge
@@ -62,6 +62,7 @@ BipedLinkCounts
   UnresolvedByCause json:"non_resolu_par_cause" UnresolvedCauses
 BirthLoadoutCoverage
   BeforeOrigin json:"beforeOrigin" int
+  Closed json:"closed" int
   Creations json:"creations" int
   Desync json:"desync" int
   NoDisplayable json:"noDisplayable" int

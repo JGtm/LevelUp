@@ -26,6 +26,7 @@ func toKeyframeCoverage(v replay.KeyframeCoverage) replaydoc.KeyframeCoverage {
 func toBirthLoadoutCoverage(v replay.BirthLoadoutCoverage) replaydoc.BirthLoadoutCoverage {
 	return replaydoc.BirthLoadoutCoverage{
 		Creations:         v.Creations,
+		Closed:            v.Closed,
 		Read:              v.Read,
 		Desync:            v.Desync,
 		Overflow:          v.Overflow,

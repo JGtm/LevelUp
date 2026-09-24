@@ -206,7 +206,18 @@ const plafondSurfaceFacade = 166 // 2026-09-17 — base a5d15e634
 //	                                           de prise d arme ; 5.3.6 : +2 pour replay.Stance et
 //	                                           replay.StanceCoverage) et se cumulent : 260 + 3 + 2 = 265,
 //	                                           re-mesure a la fusion.
-const plafondSurfaceReplay = 265 // 2026-09-22 — fusion serie 5 dans feat/v75 : 260 + 3 (ajsup-E) + 2 (5.3.6)
+//	267  rr(m3)  (2026-09-24)                  la montee de schema 69 de la campagne « retours
+//	                                           rejeu » : `replay.KeyframeCoverage` (sante de la
+//	                                           marche d image-cle, lot M3.1) et
+//	                                           `replay.BirthLoadoutCoverage` (dotations de
+//	                                           naissance, lot M3.2), cites par le convertisseur
+//	                                           jumeau `service/replayview/convert_coverage_armes.go`.
+//	                                           DEUX symboles neufs — les champs `Coverage.Keyframes`,
+//	                                           `Coverage.BirthLoadouts`, `Loadout.Src`/`K` et
+//	                                           `WeaponChange.K` n en ajoutent aucun.
+//	                                           RE-MESURE A L ENTREE du lot : 265 sur `fe7079f41`,
+//	                                           267 apres.
+const plafondSurfaceReplay = 267 // 2026-09-24 — rr(m3) sur fe7079f41 : 265 + 2 (KeyframeCoverage, BirthLoadoutCoverage)
 
 // plafondsParFamilleFacade — la surface de la facade VENTILEE PAR PAQUET D ORIGINE.
 //

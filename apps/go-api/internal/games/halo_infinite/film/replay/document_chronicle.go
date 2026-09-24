@@ -2049,7 +2049,10 @@ package replay
 //	               deux images-clés qui les portaient. `birthLoadouts` NEUF : les créations lues,
 //	               celles dont le record ne se FERME pas (désynchronisé, débordant, non confirmé
 //	               par le record qui suit — AUCUNE lecture de repli ne les remplace), et ce que la
-//	               publication a posé, ramené dans la fenêtre de sa vie, ou écarté.
+//	               publication a posé, ramené dans la fenêtre de sa vie, ou écarté. `closed`
+//	               compte les records FERMÉS, `read` ceux d entre eux qui portent au moins une
+//	               arme du catalogue — une fermeture sans arme n est pas une dotation lue
+//	               (`noDisplayable` ; `closed` = `read` + `noDisplayable`).
 //
 // LES DEUX RÉPARATIONS DE GRAMMAIRE QUI OUVRENT LE CANAL (sonde P3) : l état par défaut du
 // bipède lit enfin le R(32) de sa dernière feuille (`default_state.go` — deux oracles, la famille

@@ -43,8 +43,14 @@ const LoadoutSrcBirth = "birth"
 type BirthLoadoutCoverage struct {
 	// Creations est le nombre de créations de bipède soumises à la lecture.
 	Creations int `json:"creations"`
-	// Read est le nombre de records de création qui se sont FERMÉS (dotation lue).
-	Read int `json:"read"`
+	// Closed est le nombre de records de création qui se sont FERMÉS ; Read ceux d'entre eux dont
+	// au moins un emplacement porte une arme du catalogue — une DOTATION LUE. Une fermeture sans
+	// arme n'en est pas une (`noDisplayable`) : sur les builds antérieurs à HI_1_12_0, les
+	// quelques records qui se ferment ne portent aucune arme (revue adverse du lot M3.2,
+	// 2026-09-24, constat F3). Partition : `closed` = `read` + `noDisplayable`, et `read` =
+	// `published` + `noLife` + `beforeOrigin`.
+	Closed int `json:"closed"`
+	Read   int `json:"read"`
 	// Desync / Overflow / Unconfirmed : les records qui ne se ferment pas, par cause. Aucune
 	// lecture de repli ne les remplace.
 	Desync      int `json:"desync"`
@@ -62,7 +68,7 @@ type BirthLoadoutCoverage struct {
 	BeforeOrigin int `json:"beforeOrigin"`
 	// NonWeapon : emplacements d'une famille hors du catalogue d'armes, non publiés comme armes.
 	NonWeapon int `json:"nonWeapon"`
-	// NoDisplayable : dotations lues dont aucun emplacement ne porte d'arme publiable.
+	// NoDisplayable : records fermés dont aucun emplacement ne porte d'arme publiable.
 	NoDisplayable int `json:"noDisplayable"`
 }
 
@@ -82,7 +88,7 @@ func buildBirthLoadouts(in birthInputs, tracks []Track, origin, step uint64) ([]
 	if st.Creations == 0 && len(in.births) == 0 {
 		return nil, nil
 	}
-	cov := &BirthLoadoutCoverage{Creations: st.Creations, Read: st.Read, Desync: st.Desync,
+	cov := &BirthLoadoutCoverage{Creations: st.Creations, Closed: st.Read, Desync: st.Desync,
 		Overflow: st.Overflow, Unconfirmed: st.Unconfirmed, NoWeaponComponent: st.NoWeaponComponent}
 	if step == 0 {
 		return nil, cov
@@ -96,6 +102,15 @@ func buildBirthLoadouts(in birthInputs, tracks []Track, origin, step uint64) ([]
 	vies := apparierLesVies(fenetresParSlot(tracks), creees)
 	var out []Loadout
 	for _, b := range in.births {
+		// L'ARME D'ABORD : une fermeture sans arme du catalogue n'est pas une dotation lue, où
+		// qu'elle tombe sur l'axe du rejeu.
+		w, k, nonArme := armesPubliables(b.Weapons)
+		cov.NonWeapon += nonArme
+		if len(w) == 0 {
+			cov.NoDisplayable++
+			continue
+		}
+		cov.Read++
 		if b.TimestampUS < origin {
 			cov.BeforeOrigin++
 			continue
@@ -105,12 +120,6 @@ func buildBirthLoadouts(in birthInputs, tracks []Track, origin, step uint64) ([]
 		t := min(max(fb, v.debut), v.fin)
 		if !ok {
 			cov.NoLife++
-			continue
-		}
-		w, k, nonArme := armesPubliables(b.Weapons)
-		cov.NonWeapon += nonArme
-		if len(w) == 0 {
-			cov.NoDisplayable++
 			continue
 		}
 		if t != fb {

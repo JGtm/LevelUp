@@ -4780,6 +4780,8 @@ export interface components {
             /** Format: int64 */
             beforeOrigin: number;
             /** Format: int64 */
+            closed: number;
+            /** Format: int64 */
             creations: number;
             /** Format: int64 */
             desync: number;
