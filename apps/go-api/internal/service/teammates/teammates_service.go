@@ -9,7 +9,7 @@
 // responsabilites vivent dans :
 //
 //   - teammates_service_briefing.go : briefing header +
-//     loadTeammatesCanonicalParallel +
+//     loadTeammatesCanonical +
 //     filtres synthesis (cascade, period,
 //     picked sessions, session,
 //     experience labels)
@@ -32,6 +32,7 @@ import (
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/canonical"
 	"levelup/go-api/internal/legacymatch"
+	"levelup/go-api/internal/observability/timing"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/service/squadagg"
 )
@@ -138,8 +139,8 @@ func (s *TeammatesService) WithRoundsDecide(roundsDecide map[string]bool) *Teamm
 }
 
 // WithSquadLoader injecte le loader per-gamertag utilise pour le SessionBriefing
-// mode squad (chargement des canonical rows de chaque coequipier en parallele
-// via TitlePlayerResolver). Si non cable, le briefing degrade en mode solo.
+// mode squad (canonical rows de chaque coequipier via TitlePlayerResolver, lues une
+// fois par requete — lecturesDeLaPage). Si non cable, le briefing degrade en mode solo.
 func (s *TeammatesService) WithSquadLoader(loader squadagg.SquadV2Loader) *TeammatesService {
 	s.squadLoader = loader
 	return s
@@ -219,13 +220,19 @@ func (s *TeammatesService) replayAvailability(ctx context.Context) port.ReplayAv
 // boucle gamertags → calcule timeseries/heatmap/impact. Splitter en sous-fonctions
 // nécessiterait 5+ params chacune et perdrait la vue d'ensemble du flow.
 //
+// Annulation (D2.7) : ctx.Err() est vérifié entre les sections ; une requête annulée rend
+// l'erreur du contexte (requeteAnnulee), jamais une page partielle.
+//
 //nolint:funlen // Orchestrateur séquentiel : charge top → filtre → applique cascade →
 func (s *TeammatesService) GetPage(
 	ctx context.Context,
 	playerXUID string,
 	req domain.TeammatesQueryRequest,
 ) (domain.TeammatesPageResponse, error) {
+	s, lectures := s.pourLaRequete() // lectures partagées par les blocs (teammates_service_loads.go)
+	stop := timing.FromContext(ctx).Section("top_teammates")
 	topRows, err := s.repo.LoadTopTeammates(ctx, playerXUID)
+	stop()
 	if err != nil {
 		return domain.TeammatesPageResponse{}, fmt.Errorf("TeammatesService: %w", err)
 	}
@@ -251,9 +258,14 @@ func (s *TeammatesService) GetPage(
 	if s.playerMatchesRepo == nil || s.titleSlug == "" || s.gamertag == "" {
 		return domain.TeammatesPageResponse{}, fmt.Errorf("TeammatesService: PlayerMatchesRepo non câblé (P4.3 finale exige le wiring DI)")
 	}
+	if err := ctx.Err(); err != nil {
+		return requeteAnnulee(err)
+	}
+	stop = timing.FromContext(ctx).Section("player_matches")
 	canonicalRows, err := s.playerMatchesRepo.LoadPlayerMatches(
 		ctx, s.titleSlug, s.gamertag, port.PlayerMatchFilters{},
 	)
+	stop()
 	if err != nil {
 		return domain.TeammatesPageResponse{}, fmt.Errorf("TeammatesService synthesis: %w", err)
 	}
@@ -275,20 +287,14 @@ func (s *TeammatesService) GetPage(
 		// Vit en parallele de PickedSquadSessions/PickedSoloSessions ; intersection
 		// volontaire pour le cas multi-select + nav, en pratique l'un est vide quand
 		// l'autre est pose donc l'effet net est equivalent a "remplacement".
-		filteredMatches = filterSynthesisByPickedSessions(filteredMatches, req.Filters.Sessions.PickedSessions)
+		filteredMatches = filterSynthesisByPickedSessions(filteredMatches, req.Filters.Sessions.PickedSessions, canonicalRows)
 	}
 
 	totalMatches := len(filteredMatches)
 
-	// Construire le set d'IDs de session si un filtre de session est actif.
+	// Set d'IDs de session si une session est piquée, par l'un OU l'autre chemin (D2.5).
 	// Nil = pas de filtre = tous les matchs escouade retournés.
-	var sessionMatchIDs map[string]bool
-	if len(req.PickedSoloSessions) > 0 || len(req.PickedSquadSessions) > 0 {
-		sessionMatchIDs = make(map[string]bool, len(filteredMatches))
-		for _, m := range filteredMatches {
-			sessionMatchIDs[m.MatchID] = true
-		}
-	}
+	sessionMatchIDs := sessionMatchIDsDeLaPage(req, filteredMatches)
 
 	// Calculs détaillés pour les gamertags sélectionnés.
 	teammates := make([]domain.TeammateRow, 0, len(req.SelectedGamertags))
@@ -306,6 +312,9 @@ func (s *TeammatesService) GetPage(
 	issues := &dataIssues{}
 
 	for _, gt := range req.SelectedGamertags {
+		if err := ctx.Err(); err != nil {
+			return requeteAnnulee(err)
+		}
 		row, squadMatches, allSquadMatchesTm, err := s.buildTeammateRowWithMatches(ctx, playerXUID, gt, topRows, filteredMatches, sessionMatchIDs)
 		if err != nil {
 			// Le coéquipier disparaît de la population commune : la page reste
@@ -321,6 +330,9 @@ func (s *TeammatesService) GetPage(
 			// volontairement non intersecté.
 			matchSeries[gt] = buildMatchSeries(squadMatches)
 		}
+	}
+	if err := ctx.Err(); err != nil {
+		return requeteAnnulee(err)
 	}
 
 	// Population canonique du contexte escouade : « matchs commencés ensemble » =
@@ -359,75 +371,17 @@ func (s *TeammatesService) GetPage(
 		allSquadRowsForTimeline, excludedForTimeline = filterExactComposition(allSquadRowsForTimeline, mainTeamByMatch, extraPool, selectedXUIDs)
 	}
 
-	// Timeseries + MapBreakdown sur l'intersection des matchs escouade (composition exacte).
-	var timeseries []domain.SquadTimeseriesPoint
-	var mapBreakdown []domain.MapBreakdownRow
-	var matchHistory []domain.SquadMatchHistoryRow
-	var sessionTimeline []domain.SquadSessionPoint
-	var mapHeatmap *domain.SquadMapHeatmap
-	var impactMatrix *domain.SquadImpactMatrix
-	var perMinuteStats []domain.SquadPerMinuteEntry
-	var synergyRadar []domain.SquadSynergyRadarSeries
-	var intensityProfile *domain.SquadIntensityProfile
-	var performanceSeries map[string][]domain.SquadPerformanceSeriesPoint
-	var weaponKills *domain.SquadWeaponKills
-	var weaponAccuracy *domain.SquadWeaponAccuracy
-	var fragClasses map[string][]domain.FragClassEntry
-	var nativeKillMechanics *domain.SquadKillMechanics
-	var firstBlood []domain.FirstBloodPlayerSeries
-	var assistPairs *domain.SquadAssistPairs
-	var echange *domain.SquadEchange
-	var rangeProfiles *domain.MatchRangeBlock
-	var medalDigest []domain.MedalDigestEntry
-	if len(allSquadRows) > 0 {
-		// Résout map/playlist/mode FR sur les rows (mode via la cascade
-		// canonique asset_translations + mode_name_tr, cf. enrichSquadMatchAssets).
-		enrichSquadMatchAssets(ctx, s.repo, allSquadRows)
-		timeseries = analysis.ComputeSquadTimeseries(allSquadRows, 20)
-		mapBreakdown = computeMapBreakdown(allSquadRows)
-
-		// Historique par carte "avec cette escouade". squadXUIDs = coéquipiers
-		// sélectionnés (selectedXUIDs) ; excludeXUIDs = autres coéquipiers connus
-		// (extraPool) → anti-join qui écarte les matchs où l'un d'eux était sur
-		// l'équipe du main. L'anti-join n'est posé QUE sous l'option composition
-		// exacte : sinon la référence historique porterait sur une population plus
-		// étroite que les nombres affichés (parité stricte avec allSquadRows).
-		// Aucun filtre période/session : référence historique complète.
-		var excludeXUIDs []string
-		if req.FilterExactComposition {
-			excludeXUIDs = sortedXUIDSlice(extraPool)
-		}
-		squadStats, err := s.repo.LoadMapStatsForSquad(ctx, playerXUID, selectedXUIDs, excludeXUIDs)
-		if err != nil {
-			issues.add(ctx, domain.DataIssueMapStats, "", err)
-		}
-		mapBreakdown = enrichMapBreakdownWithSquadStats(mapBreakdown, squadStats)
-		matchHistory = buildSquadMatchHistory(
-			allSquadRows, squadStatsToWinTotal(squadStats), s.titleSlug,
-			s.replayAvailability(ctx), s.roundsDecide)
-		sessionTimeline = buildSquadSessionTimeline(allSquadRowsForTimeline)
-		mapHeatmap = s.buildSquadMapHeatmap(ctx, allSquadRows, req.SelectedGamertags, issues)
-		impactMatrix = s.buildSquadImpactMatrix(ctx, allSquadRows, playerXUID, s.gamertag, req.SelectedGamertags, allies)
-		perMinuteStats = s.buildSquadPerMinuteStats(ctx, allSquadRows, s.gamertag, req.SelectedGamertags, sessionMatchIDs)
-		synergyRadar = s.buildSquadSynergyRadar(ctx, allSquadRows, s.gamertag, req.SelectedGamertags)
-		intensityProfile = s.buildSquadIntensityProfile(ctx, allSquadRows, s.gamertag, req.SelectedGamertags, mainTeamByMatch)
-		performanceSeries = s.buildSquadPerformanceSeries(ctx, allSquadRows, s.gamertag, playerXUID, req.SelectedGamertags, teammates)
-		weaponKills, fragClasses = s.buildSquadWeaponKills(ctx, allSquadRows, s.gamertag, playerXUID, teammates, performanceSeries)
-		weaponAccuracy = s.buildSquadWeaponAccuracy(ctx, allSquadRows, s.gamertag, playerXUID, teammates)
-		nativeKillMechanics = s.buildSquadKillMechanics(ctx, allSquadRows, s.gamertag, playerXUID, teammates)
-		firstBlood = s.buildSquadFirstBlood(ctx, allSquadRows, s.gamertag, playerXUID, teammates)
-		assistPairs = s.buildSquadAssistPairs(ctx, allSquadRows, s.gamertag, playerXUID, teammates)
-		// L'échange compare DEUX périmètres : les matchs filtrés (allSquadRows) et
-		// l'historique complet de la composition (allSquadRowsForTimeline, non filtré
-		// par session/période) — la baseline « habituelle », dont le périmètre filtré
-		// est toujours un sous-ensemble. Même mécanique que buildBriefingBaseline.
-		echange = s.buildSquadEchange(
-			ctx, allSquadRows, allSquadRowsForTimeline, s.gamertag, playerXUID, teammates)
-		// Roles de portee (D22-5) : MEME cadrage de perimetre et de roster que
-		// l'echange ci-dessus, sur les seuls matchs filtres — la tendance se lit sur ce
-		// que la page affiche, jamais sur un historique que le filtre a ecarte.
-		rangeProfiles = s.buildSquadRange(ctx, allSquadRows, s.gamertag, playerXUID, teammates)
-		medalDigest = s.buildMedalDigest(ctx, allSquadRows, s.gamertag, playerXUID, teammates, req.Locale)
+	// Sections de la population escouade (composition exacte comprise) : tableaux puis graphes,
+	// chacune sautée dès que la requête est annulée (teammates_service_sections.go).
+	siVivante(ctx, func() { lectures.precharger(ctx, req.SelectedGamertags, allSquadRows) })
+	sec := s.sectionsDeLaPopulation(ctx, populationEscouade{
+		playerXUID: playerXUID, req: req, rows: allSquadRows, rowsTimeline: allSquadRowsForTimeline,
+		teammates: teammates, allies: allies, mainTeamByMatch: mainTeamByMatch,
+		sessionMatchIDs: sessionMatchIDs, selectedXUIDs: selectedXUIDs, extraPool: extraPool,
+		issues: issues,
+	})
+	if err := ctx.Err(); err != nil {
+		return requeteAnnulee(err)
 	}
 
 	// Header (SessionBriefing) — alimente le composant <SessionBriefing> dans
@@ -454,10 +408,12 @@ func (s *TeammatesService) GetPage(
 	var compositionSessions []domain.CompositionSessionEntry
 	var latestCompositionSession string
 	if len(req.SelectedGamertags) > 0 {
+		stop = timing.FromContext(ctx).Section("composition_sessions")
 		compositionSessions = buildCompositionSessionEntries(
 			allSquadRowsForTimeline, rosterRowsForTimeline, excludedForTimeline,
 			mainTeamByMatch, extraPool, topRows,
 		)
+		stop()
 		if len(compositionSessions) > 0 {
 			latestCompositionSession = compositionSessions[0].Label
 		}
@@ -487,13 +443,13 @@ func (s *TeammatesService) GetPage(
 		compositionSessions = wrapSessionLabelsAsComposition(sessionLabels.Squad)
 	}
 
-	// Bloc « servi ou gâché » de l'équipement (étape E6.1bis) : best-effort, gaté
-	// par film.usage_summary, sur le scope FILTRÉ de la page (filteredMatches) —
-	// jamais l'intersection escouade, cf. teammates_service_usage.go.
-	equipmentUsage := s.loadEquipmentUsage(ctx, playerXUID, filteredMatches, req.SelectedGamertags, req.Locale)
-
-	// Bloc « formes retenues » (lot D2) : même scope, même escouade que ci-dessus.
-	squadFormes := s.loadSquadFormes(ctx, playerXUID, filteredMatches, matchHistory, req)
+	// Blocs « servi ou gâché » (E6.1bis) et « formes retenues » (lot D2) : best-effort, gatés
+	// par film.usage_summary, sur le scope FILTRÉ de la page (filteredMatches) — jamais
+	// l'intersection escouade ; lectures communes faites une fois (teammates_service_usage.go).
+	equipmentUsage, squadFormes := s.loadUsageBlocks(ctx, playerXUID, filteredMatches, sec.matchHistory, req)
+	if err := ctx.Err(); err != nil {
+		return requeteAnnulee(err)
+	}
 
 	return domain.TeammatesPageResponse{
 		Options:             options,
@@ -501,28 +457,28 @@ func (s *TeammatesService) GetPage(
 		TotalMatches:        totalMatches,
 		SessionLabels:       sessionLabels,
 		FriendsCount:        len(friendGTs),
-		Timeseries:          timeseries,
-		MapBreakdown:        mapBreakdown,
+		Timeseries:          sec.timeseries,
+		MapBreakdown:        sec.mapBreakdown,
 		MatchSeries:         matchSeries,
-		MatchHistory:        matchHistory,
-		SessionTimeline:     sessionTimeline,
-		MapHeatmap:          mapHeatmap,
-		ImpactMatrix:        impactMatrix,
-		PerMinuteStats:      perMinuteStats,
-		SynergyRadar:        synergyRadar,
-		IntensityProfile:    intensityProfile,
-		PerformanceSeries:   performanceSeries,
-		FragClasses:         fragClasses,
-		WeaponKills:         weaponKills,
-		WeaponAccuracy:      weaponAccuracy,
-		NativeKillMechanics: nativeKillMechanics,
-		FirstBlood:          firstBlood,
-		AssistPairs:         assistPairs,
-		Echange:             echange,
-		RangeProfiles:       rangeProfiles,
+		MatchHistory:        sec.matchHistory,
+		SessionTimeline:     sec.sessionTimeline,
+		MapHeatmap:          sec.mapHeatmap,
+		ImpactMatrix:        sec.impactMatrix,
+		PerMinuteStats:      sec.perMinuteStats,
+		SynergyRadar:        sec.synergyRadar,
+		IntensityProfile:    sec.intensityProfile,
+		PerformanceSeries:   sec.performanceSeries,
+		FragClasses:         sec.fragClasses,
+		WeaponKills:         sec.weaponKills,
+		WeaponAccuracy:      sec.weaponAccuracy,
+		NativeKillMechanics: sec.nativeKillMechanics,
+		FirstBlood:          sec.firstBlood,
+		AssistPairs:         sec.assistPairs,
+		Echange:             sec.echange,
+		RangeProfiles:       sec.rangeProfiles,
 		Header:              header,
 		MainPlayer:          s.gamertag,
-		MedalDigest:         medalDigest,
+		MedalDigest:         sec.medalDigest,
 
 		CompositionSessions:      compositionSessions,
 		LatestCompositionSession: latestCompositionSession,
@@ -558,8 +514,8 @@ func filterCanonicalByMatchIDsSet(
 
 // buildBriefingHeaderForTeammatesPage construit le SquadHeader pour la page
 // Teammates. Mode solo si selectedGamertags vide ; mode squad complet sinon
-// (charge les canonical rows par teammate en parallele puis appelle le builder
-// existant squadagg.BuildSquadHeader).
+// (relit les canonical rows de chaque teammate, lues une fois par requete, puis appelle
+// le builder existant squadagg.BuildSquadHeader).
 //
 // Degradation gracieuse : si le chargement des teammates echoue (capability
 // absente, erreur DB), retourne au moins le SoloKPIs du joueur principal pour

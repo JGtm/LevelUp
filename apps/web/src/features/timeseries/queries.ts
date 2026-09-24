@@ -18,8 +18,13 @@ export function useTimeseriesPage(
   const titleSlug = useAppShellStore((s) => s.currentTitleSlug)
   return useQuery({
     queryKey: queryKeys.timeseries(playerSlug, titleSlug, filterHash),
-    queryFn: () =>
-      api.post<TimeseriesPageResponse>(`/players/${playerSlug}/pages/timeseries`, request),
+    queryFn: ({ signal }) =>
+      api.post<TimeseriesPageResponse>(
+        `/players/${playerSlug}/pages/timeseries`,
+        request,
+        undefined,
+        { signal },
+      ),
     enabled: !!playerSlug,
     staleTime: 5 * 60 * 1000,
   })

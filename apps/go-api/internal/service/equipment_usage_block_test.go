@@ -115,7 +115,7 @@ func TestTimeseriesPage_AttacheLeBlocEquipement(t *testing.T) {
 	svc.playerXUID = "P"
 
 	var resp domain.TimeseriesPageResponse
-	svc.attachMigratedSections(context.Background(), &resp, eqUsageCanonRows("m1"), "fr")
+	svc.attachMigratedSections(context.Background(), &resp, eqUsageCanonRows("m1"), "fr", equipesDuScope{})
 
 	block := resp.EquipmentUsage
 	if block == nil || !block.Available {
@@ -151,7 +151,7 @@ func TestTimeseriesPage_SansCapabiliteLeBlocDitPourquoi(t *testing.T) {
 	svc.playerXUID = "P"
 
 	var resp domain.TimeseriesPageResponse
-	svc.attachMigratedSections(context.Background(), &resp, eqUsageCanonRows("m1"), "fr")
+	svc.attachMigratedSections(context.Background(), &resp, eqUsageCanonRows("m1"), "fr", equipesDuScope{})
 
 	if resp.EquipmentUsage == nil || resp.EquipmentUsage.Available ||
 		resp.EquipmentUsage.UnavailableReason != domain.SessionUsageUnsupported {

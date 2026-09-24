@@ -75,6 +75,19 @@
 # courant. 8 lignes JSONL, exactement 2 paires (Package, Test), verifie par difference
 # avant/apres. Compte PARTIEL d absences volontaires -> remede prescrit ici meme.
 #
+# RETRAIT DU 2026-09-23 (campagne perf, lot L5b commit 7cd64d664, constate par la CI de
+# cloture) : 8 tests de `internal/platform/duckdb` retires — TestCachedPlayerMatchesRepo_
+# {Coalescence, DistinctFiltersDifferentKeys, ErrorNotCached, FIFOEviction, HitMiss,
+# Invalidate, TTLExpiration} et TestTTLCache_LenAndInvalidateAll. Le lot a reecrit
+# `player_matches_cache.go` (cache FIFO/TTL jamais instancie) sur le cache generique
+# `player_read_cache.go` (singleflight, generation d invalidation, copies) : les tests du
+# cache FIFO/TTL n ont plus d objet, remplaces par TestCachedPlayerMatchesRepo_
+# {HitPerFilters, ReturnsCopies, ConcurrentReEnrichment, ConcurrentMissesCoalesce,
+# LobbySizesDelegates, InvalidatePlayer, PanneMetadataNonMiseEnCache,
+# KeyCoversAllFilterFields}, presents dans le run courant. 80 lignes JSONL, exactement
+# 8 paires (Package, Test), verifie par difference avant/apres. Compte PARTIEL d absences
+# volontaires -> remede prescrit ici meme.
+#
 # Le contrôle 2 a été ajouté le 2026-07-26 : le `|| true` sur le `go test -json`
 # (nécessaire pour pouvoir analyser le JSONL même quand la suite échoue) rendait
 # le gate MENTEUR — un test FAIL était compté comme « présent » par le contrôle 1

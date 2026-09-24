@@ -16,15 +16,14 @@
 // son modèle, sans branchement par slug ni mapping TOML (les libellés viennent
 // de la donnée bilingue par titre).
 //
-// Les cascades FR historiques (applyModeFRTranslations / applyMapFRTranslations /
-// applyPlaylistFRTranslations, déménagées ici depuis filters_repo.go pour tenir
-// le seuil 500 L) restent des raffinements idempotents appliqués APRÈS cette
-// résolution.
+// Les cascades FR historiques (applyModeFRTranslations ici ; applyMapFRTranslations /
+// applyPlaylistFRTranslations dans filters_repo_fr_cascades.go — déménagées depuis
+// filters_repo.go puis ce fichier pour tenir le seuil 500 L) restent des raffinements
+// idempotents appliqués APRÈS cette résolution.
 package duckdb
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
 	"strings"
 	"time"
@@ -77,9 +76,9 @@ func (r *FiltersRepo) applyAssetNamesFromMetadata(ctx context.Context, rows []do
 	logResolvedAssetNames(ctx, res, len(mapIDs), len(playlistIDs), len(variantIDs))
 }
 
-// resolveAssetNamesBulkBestEffort encapsule ResolveAssetNamesBulk avec log
-// WarnContext sur erreur (ne pas avaler en silence) puis retour best-effort.
-// Retourne nil pour une liste d'ids vide (aucune requête).
+// resolveAssetNamesBulkBestEffort encapsule ResolveAssetNamesBulk : échec journalisé
+// (WarnContext, jamais avalé) et consigné (noteDegraded : lignes jamais mises en cache),
+// retour best-effort. Retourne nil pour une liste d'ids vide (aucune requête).
 func (r *FiltersRepo) resolveAssetNamesBulkBestEffort(
 	ctx context.Context,
 	metaRepo *MetadataRepo,
@@ -93,6 +92,7 @@ func (r *FiltersRepo) resolveAssetNamesBulkBestEffort(
 	if err != nil {
 		slog.WarnContext(ctx, "filters: résolution asset_translations échouée",
 			"kind", kind, "err", err)
+		noteDegraded(ctx, "asset_names")
 		return nil
 	}
 	return names
@@ -228,8 +228,8 @@ func countResolved(enMap, frMap map[string]string) int {
 // cohabiter "CTF" + "Capture du drapeau" dans available_modes (cf. thought_log
 // 2026-05-09 root cause P2).
 //
-// Best-effort : les erreurs sont silencieuses pour ne pas bloquer la
-// résolution des filtres.
+// Best-effort : un échec (journalisé et consigné par les helpers) ne bloque pas
+// la résolution des filtres.
 func (r *FiltersRepo) applyModeFRTranslations(ctx context.Context, rows []domain.FilterMatchRow) {
 	if r.pdb.Metadata == nil || len(rows) == 0 {
 		return
@@ -302,190 +302,4 @@ func collectDistinctPairIDsForFilters(rows []domain.FilterMatchRow) []string {
 		out = append(out, id)
 	}
 	return out
-}
-
-// applyMapFRTranslations enrichit MapNameFR quand map_name_fr est absent de match_registry
-// (MapNameFR == MapName = COALESCE fallback EN). Interroge match_registry pour les map_id
-// puis asset_translations pour les noms FR. Best-effort : erreurs silencieuses.
-func (r *FiltersRepo) applyMapFRTranslations(ctx context.Context, rows []domain.FilterMatchRow) {
-	if r.pdb.Metadata == nil {
-		return
-	}
-	uniqueEN := r.collectMapENNeedingFR(rows)
-	if len(uniqueEN) == 0 {
-		return
-	}
-
-	ctx2, cancel := context.WithTimeout(ctx, 5*time.Second)
-	defer cancel()
-
-	nameToID, ok := r.resolveSharedAssetNameToID(ctx2, uniqueEN, "map_name", "map_id")
-	if !ok || len(nameToID) == 0 {
-		return
-	}
-
-	idToFR := r.loadAssetFRTranslations(ctx2, nameToID, "map")
-	if len(idToFR) == 0 {
-		return
-	}
-
-	for i := range rows {
-		en := derefString(rows[i].MapName)
-		if en == "" || en != derefString(rows[i].MapNameFR) {
-			continue
-		}
-		if mapID, ok := nameToID[en]; ok {
-			if fr, ok2 := idToFR[mapID]; ok2 && fr != "" {
-				rows[i].MapNameFR = &fr
-			}
-		}
-	}
-}
-
-// collectMapENNeedingFR retourne les noms EN distincts pour lesquels la traduction FR
-// est manquante (MapNameFR == MapName : fallback COALESCE).
-func (r *FiltersRepo) collectMapENNeedingFR(rows []domain.FilterMatchRow) map[string]struct{} {
-	uniqueEN := make(map[string]struct{}, 16)
-	for _, row := range rows {
-		en := derefString(row.MapName)
-		if en != "" && en == derefString(row.MapNameFR) {
-			uniqueEN[en] = struct{}{}
-		}
-	}
-	return uniqueEN
-}
-
-// resolveSharedAssetNameToID résout en map (name → id) depuis shared.match_registry pour
-// un set de noms EN. Helper générique pour FR translations (map, playlist).
-func (r *FiltersRepo) resolveSharedAssetNameToID(
-	ctx context.Context,
-	uniqueEN map[string]struct{},
-	nameCol, idCol string,
-) (map[string]string, bool) {
-	names := make([]string, 0, len(uniqueEN))
-	for n := range uniqueEN {
-		names = append(names, n)
-	}
-	ph := Placeholders(len(names))
-	q := fmt.Sprintf(
-		`SELECT DISTINCT %s, %s FROM match_registry WHERE %s IN (%s) AND %s IS NOT NULL`,
-		nameCol, idCol, nameCol, ph, idCol,
-	)
-	args := make([]any, len(names))
-	for i, n := range names {
-		args[i] = n
-	}
-
-	db, release, err := r.pdb.SharedReadDB().Get(ctx)
-	if err != nil {
-		return nil, false
-	}
-	defer release()
-
-	idRows, err := db.QueryContext(ctx, q, args...)
-	if err != nil {
-		return nil, false
-	}
-	defer idRows.Close()
-
-	nameToID := make(map[string]string, len(names))
-	for idRows.Next() {
-		var name, id string
-		if idRows.Scan(&name, &id) == nil && name != "" && id != "" {
-			nameToID[name] = id
-		}
-	}
-	return nameToID, true
-}
-
-// loadAssetFRTranslations charge les traductions FR (fr-FR > fr) depuis metadata.asset_translations
-// pour un set d'IDs résolus, en priorisant fr-FR > fr.
-func (r *FiltersRepo) loadAssetFRTranslations(
-	ctx context.Context,
-	nameToID map[string]string,
-	assetType string,
-) map[string]string {
-	ids := make([]string, 0, len(nameToID))
-	for _, id := range nameToID {
-		ids = append(ids, id)
-	}
-	ph := Placeholders(len(ids))
-	q := fmt.Sprintf(
-		`SELECT asset_id, name FROM asset_translations WHERE asset_type = ? AND lang IN ('fr-FR', 'fr') AND asset_id IN (%s) ORDER BY asset_id, CASE WHEN lang = 'fr-FR' THEN 0 ELSE 1 END`,
-		ph,
-	)
-	args := make([]any, 0, len(ids)+1)
-	args = append(args, assetType)
-	for _, id := range ids {
-		args = append(args, id)
-	}
-
-	// QueryRecovered : auto-réparation si handle metadata FATAL-invalidated (bug ART).
-	trRows, err := r.pdb.Metadata.QueryRecovered(ctx, q, args...)
-	if err != nil {
-		return nil
-	}
-	defer trRows.Close()
-
-	idToFR := make(map[string]string, len(ids))
-	for trRows.Next() {
-		var assetID, name string
-		if trRows.Scan(&assetID, &name) == nil {
-			if _, exists := idToFR[assetID]; !exists {
-				idToFR[assetID] = name
-			}
-		}
-	}
-	return idToFR
-}
-
-// applyPlaylistFRTranslations enrichit PlaylistName quand playlist_name_fr est absent de
-// match_registry (PlaylistName == PlaylistNameEN = COALESCE fallback EN).
-// Best-effort : erreurs silencieuses.
-func (r *FiltersRepo) applyPlaylistFRTranslations(ctx context.Context, rows []domain.FilterMatchRow) {
-	if r.pdb.Metadata == nil {
-		return
-	}
-	uniqueEN := r.collectPlaylistENNeedingFR(rows)
-	if len(uniqueEN) == 0 {
-		return
-	}
-
-	ctx2, cancel := context.WithTimeout(ctx, 5*time.Second)
-	defer cancel()
-
-	nameToID, ok := r.resolveSharedAssetNameToID(ctx2, uniqueEN, "playlist_name", "playlist_id")
-	if !ok || len(nameToID) == 0 {
-		return
-	}
-
-	idToFR := r.loadAssetFRTranslations(ctx2, nameToID, "playlist")
-	if len(idToFR) == 0 {
-		return
-	}
-
-	for i := range rows {
-		en := derefString(rows[i].PlaylistNameEN)
-		if en == "" || en != derefString(rows[i].PlaylistName) {
-			continue
-		}
-		if plID, ok := nameToID[en]; ok {
-			if fr, ok2 := idToFR[plID]; ok2 && fr != "" {
-				rows[i].PlaylistName = &fr
-			}
-		}
-	}
-}
-
-// collectPlaylistENNeedingFR retourne les playlist names EN distincts dont la traduction FR
-// est absente de match_registry.
-func (r *FiltersRepo) collectPlaylistENNeedingFR(rows []domain.FilterMatchRow) map[string]struct{} {
-	uniqueEN := make(map[string]struct{}, 8)
-	for _, row := range rows {
-		en := derefString(row.PlaylistNameEN)
-		if en != "" && en == derefString(row.PlaylistName) {
-			uniqueEN[en] = struct{}{}
-		}
-	}
-	return uniqueEN
 }

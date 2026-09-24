@@ -394,6 +394,13 @@ type StatsService interface {
 // TeammatesService construit la page Coéquipiers.
 type TeammatesService interface {
 	GetPage(ctx context.Context, playerXUID string, req domain.TeammatesQueryRequest) (domain.TeammatesPageResponse, error)
+	// CompositionSessions rend les sessions de la composition (joueur principal +
+	// coéquipiers désignés) et la plus récente : les MÊMES valeurs que
+	// composition_sessions et latest_composition_session de GetPage pour la même
+	// composition et la même option composition exacte, sans calculer la page (lot
+	// perf L4b, 2026-09-23). Sans coéquipier : les sessions escouade du joueur
+	// principal, et une dernière session vide — comme GetPage.
+	CompositionSessions(ctx context.Context, playerXUID string, teammates []string, exact bool) ([]domain.CompositionSessionEntry, string, error)
 }
 
 // TimeseriesService construit la page Séries temporelles.

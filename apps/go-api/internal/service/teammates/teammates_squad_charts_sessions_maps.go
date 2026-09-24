@@ -11,6 +11,7 @@ import (
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/observability/timing"
 	"levelup/go-api/internal/port"
 )
 
@@ -190,6 +191,7 @@ func (s *TeammatesService) buildSquadMapHeatmap(
 	selectedGamertags []string,
 	issues *dataIssues,
 ) *domain.SquadMapHeatmap {
+	defer timing.FromContext(ctx).Section("map_heatmap")()
 	if len(allSquadRows) == 0 {
 		return nil
 	}

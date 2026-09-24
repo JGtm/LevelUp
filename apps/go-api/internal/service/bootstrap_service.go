@@ -45,6 +45,9 @@ type BootstrapService struct {
 	// service ne recalcule JAMAIS le verrou de son côté (garde-rail archlint).
 	// nil = jamais verrouillé (seam de test, cohérent avec les autres consommateurs).
 	instanceLocked func() bool
+	// privacyLive borne l'appel live de privacy et mémorise ses échecs
+	// (bootstrap_privacy.go, plan perf 2026-09-23 D5b.7).
+	privacyLive *privacyLiveFetch
 }
 
 // setupCountBudget borne le temps d'attente du décompte des matchs servant à
@@ -56,7 +59,7 @@ const setupCountBudget = 2 * time.Second
 
 // NewBootstrapService crée un BootstrapService.
 func NewBootstrapService(cfg *config.AppConfig, bootRepo port.BootstrapRepository) *BootstrapService {
-	return &BootstrapService{cfg: cfg, bootRepo: bootRepo}
+	return &BootstrapService{cfg: cfg, bootRepo: bootRepo, privacyLive: newPrivacyLiveFetch()}
 }
 
 // WithPrivacyProvider injecte le provider de match privacy (optionnel).
@@ -327,35 +330,6 @@ func (s *BootstrapService) resolveCoMembers(sess *domain.SessionData) map[string
 		return nil
 	}
 	return s.coMembers(user.XUID)
-}
-
-// fetchPrivacyNonBlocking fetche la privacy avec un timeout court (2 s).
-// En cas d'échec, renvoie nil sans bloquer le bootstrap.
-func (s *BootstrapService) fetchPrivacyNonBlocking(ctx context.Context, xuid string) *domain.MatchPrivacyInfo {
-	type result struct {
-		info *domain.MatchPrivacyInfo
-	}
-	ch := make(chan result, 1)
-	timeoutCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
-	defer cancel()
-
-	go func() {
-		info, err := s.privacyProvider.GetMatchPrivacy(timeoutCtx, xuid)
-		if err != nil {
-			slog.DebugContext(ctx, "bootstrap: privacy fetch échoué", "xuid", xuid, "err", err)
-			ch <- result{nil}
-			return
-		}
-		ch <- result{info}
-	}()
-
-	select {
-	case r := <-ch:
-		return r.info
-	case <-timeoutCtx.Done():
-		slog.DebugContext(ctx, "bootstrap: privacy fetch timeout", "xuid", xuid)
-		return nil
-	}
 }
 
 // BuildPlayersList construit la liste des joueurs pour GET /api/v1/players.

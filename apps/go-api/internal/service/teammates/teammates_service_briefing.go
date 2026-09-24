@@ -1,5 +1,5 @@
 // Package service - teammates_service_briefing.go : briefing header +
-// loadTeammatesCanonicalParallel + filtres synthesis (cascade, period,
+// loadTeammatesCanonical + filtres synthesis (cascade, period,
 // picked sessions, session, experience labels). Decoupe de
 // teammates_service.go (god-file split, refactor 2026-05-27).
 package teammates
@@ -12,16 +12,14 @@ import (
 	"log/slog"
 	"slices"
 	"strings"
-	"sync"
 	"time"
-
-	"golang.org/x/sync/errgroup"
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/canonical"
 	"levelup/go-api/internal/legacymatch"
+	"levelup/go-api/internal/observability/timing"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/service/squadagg"
 )
@@ -34,6 +32,7 @@ func (s *TeammatesService) buildBriefingHeaderForTeammatesPage(
 	sessionMatchIDs map[string]bool,
 	compFilter *exactCompositionFilter,
 ) *domain.SquadHeader {
+	defer timing.FromContext(ctx).Section("briefing_header")()
 	// Mode solo : SoloKPIs uniquement (pas de verdict squad).
 	// Egalement le cas si squadLoader pas cable (degradation gracieuse).
 	if len(selectedGamertags) == 0 || s.squadLoader == nil {
@@ -44,8 +43,9 @@ func (s *TeammatesService) buildBriefingHeaderForTeammatesPage(
 		return &domain.SquadHeader{SoloKPIs: &kpis}
 	}
 
-	// Mode squad : charge canonical rows par teammate en parallele.
-	teammateRows, err := s.loadTeammatesCanonicalParallel(ctx, selectedGamertags)
+	// Mode squad : les canonical rows de chaque coéquipier, déjà lues pour la requête
+	// (lecturesDeLaPage.precharger, D2.3).
+	teammateRows, err := s.loadTeammatesCanonical(ctx, selectedGamertags)
 	if err != nil {
 		slog.WarnContext(ctx, "teammates_briefing.load_failed",
 			"err", err, "selected_count", len(selectedGamertags))
@@ -65,7 +65,7 @@ func (s *TeammatesService) buildBriefingHeaderForTeammatesPage(
 			c := filters.Cascade
 			filtered = squadagg.FilterRowsByCascade(filtered, c.ExperienceTypes, c.Playlists, c.Maps, c.Modes)
 		}
-		if len(sessionMatchIDs) > 0 {
+		if sessionMatchIDs != nil { // vide non nil : session piquée sans match → aucun match
 			kept := make([]canonical.PlayerMatchRow, 0, len(filtered))
 			for _, r := range filtered {
 				if sessionMatchIDs[r.Summary.MatchID] {
@@ -95,41 +95,34 @@ func (s *TeammatesService) buildBriefingHeaderForTeammatesPage(
 	return header
 }
 
-// loadTeammatesCanonicalParallel charge les canonical PlayerMatchRow pour
-// chaque gamertag en parallele via errgroup. Capability absente est ignoree
-// silencieusement (le teammate sera juste absent du resultat).
+// loadTeammatesCanonical rend les canonical PlayerMatchRow de chaque gamertag.
+// Capability absente est ignoree silencieusement (le teammate sera juste absent
+// du resultat) ; toute autre erreur degrade le bandeau en mode solo.
+//
+// SEQUENTIEL DEPUIS LE LOT PERF L2 (D2.3) : dans GetPage, ces lectures sont deja
+// faites une fois par requete (lecturesDeLaPage.precharger) et servies de memoire ;
+// la parallelisation par errgroup ne faisait plus que relire la base en double.
 //
 // Utilise squadLoader.LoadFor (resolution dynamique par gamertag) plutot que
 // playerMatchesRepo (qui est bound au main et ignore l'arg gamertag).
 // Si squadLoader est nil, retourne une map vide → mode solo dans le briefing.
-func (s *TeammatesService) loadTeammatesCanonicalParallel(
+func (s *TeammatesService) loadTeammatesCanonical(
 	ctx context.Context,
 	gamertags []string,
 ) (map[string][]canonical.PlayerMatchRow, error) {
-	if s.squadLoader == nil {
-		return map[string][]canonical.PlayerMatchRow{}, nil
-	}
-	g, gctx := errgroup.WithContext(ctx)
-	var mu sync.Mutex
 	out := make(map[string][]canonical.PlayerMatchRow, len(gamertags))
-	for _, gt := range gamertags {
-		gt := gt
-		g.Go(func() error {
-			rows, err := s.squadLoader.LoadFor(gctx, s.titleSlug, gt, port.PlayerMatchFilters{})
-			if err != nil {
-				if errors.Is(err, games.ErrCapabilityNotSupported) {
-					return nil
-				}
-				return fmt.Errorf("LoadFor(%s): %w", gt, err)
-			}
-			mu.Lock()
-			out[gt] = rows
-			mu.Unlock()
-			return nil
-		})
+	if s.squadLoader == nil {
+		return out, nil
 	}
-	if err := g.Wait(); err != nil {
-		return nil, err
+	for _, gt := range gamertags {
+		rows, err := s.squadLoader.LoadFor(ctx, s.titleSlug, gt, port.PlayerMatchFilters{})
+		if err != nil {
+			if errors.Is(err, games.ErrCapabilityNotSupported) {
+				continue
+			}
+			return nil, fmt.Errorf("LoadFor(%s): %w", gt, err)
+		}
+		out[gt] = rows
 	}
 	return out, nil
 }
@@ -310,28 +303,67 @@ func filterSynthesisByPeriodInput(matches []legacymatch.SynthesisMatchRow, p dom
 	return out
 }
 
-// filterSynthesisByPickedSessions filtre par labels presents dans
-// req.Filters.Sessions.PickedSessions (rail nav, FilterOmnibar SessionPill,
-// applySessionLabels squad). SynthesisMatchRow ne porte que SessionLabel ;
-// les valeurs envoyees par le frontend doivent donc etre des labels (cf. fix
-// goToPrevSession qui ecrit target.label, applySessionLabels qui propage les
-// labels du SessionMultiSelect). Slice vide = no-op.
-func filterSynthesisByPickedSessions(matches []legacymatch.SynthesisMatchRow, pickedSessions []string) []legacymatch.SynthesisMatchRow {
+// filterSynthesisByPickedSessions filtre par req.Filters.Sessions.PickedSessions : chaque
+// valeur est un LIBELLÉ de session (rail nav, SessionMultiSelect, applySessionLabels squad)
+// ou un SESSION_ID (FilterOmnibar SessionPill) — les deux sont acceptés, comme
+// applySessionFilter (service/filters_service.go ; lot perf L9-go, revue adversariale D).
+// SynthesisMatchRow ne porte que le libellé : l'identifiant se lit sur les lignes canoniques
+// (Enrichment.SessionID), seulement quand une session est piquée. Slice vide = no-op.
+func filterSynthesisByPickedSessions(
+	matches []legacymatch.SynthesisMatchRow, pickedSessions []string, canonicalRows []canonical.PlayerMatchRow,
+) []legacymatch.SynthesisMatchRow {
 	if len(pickedSessions) == 0 {
 		return matches
 	}
 	keep := make(map[string]struct{}, len(pickedSessions))
-	for _, lbl := range pickedSessions {
-		keep[lbl] = struct{}{}
+	for _, v := range pickedSessions {
+		keep[v] = struct{}{}
+	}
+	sessionIDs := make(map[string]string, len(canonicalRows))
+	for _, r := range canonicalRows {
+		if r.Enrichment.SessionID != nil && *r.Enrichment.SessionID != "" {
+			sessionIDs[r.Summary.MatchID] = *r.Enrichment.SessionID
+		}
 	}
 	out := matches[:0:0]
 	for _, m := range matches {
-		if m.SessionLabel == nil {
-			continue
+		id := sessionIDs[m.MatchID]
+		_, parID := keep[id]
+		parLibelle := false
+		if m.SessionLabel != nil {
+			_, parLibelle = keep[*m.SessionLabel]
 		}
-		if _, ok := keep[*m.SessionLabel]; ok {
+		if (id != "" && parID) || parLibelle {
 			out = append(out, m)
 		}
+	}
+	return out
+}
+
+// sessionMatchIDsDeLaPage rend les match_id retenus par la session piquée, nil sans session
+// piquée (= aucun filtre : tous les matchs escouade). Une session piquée qui ne retient AUCUN
+// match (libellé inconnu ou périmé, session_id sans match) rend un ensemble VIDE NON NIL, que
+// les consommateurs lisent « aucun match », jamais « pas de filtre » (lot perf L9-go, revue
+// adversariale D : la page servait alors tout l'historique de la composition). Une session se
+// pique par picked_solo/squad_session_labels OU par filters.sessions.picked_sessions (rail,
+// pastille, sélecteur multiple ; libellé ou session_id) : filteredMatches porte déjà le
+// résultat des deux règles (filterSynthesisBySession, filterSynthesisByPickedSessions),
+// l'ensemble se lit donc dessus.
+//
+// D2.5, lot perf L2 (2026-09-23) : seul le premier chemin comptait. Une requête ne portant que
+// filters.sessions — la requête intermédiaire du ré-ancrage front — calculait toutes les
+// sections sur tout l'historique de la composition (38 matchs) au lieu de la session (7).
+func sessionMatchIDsDeLaPage(
+	req domain.TeammatesQueryRequest, filteredMatches []legacymatch.SynthesisMatchRow,
+) map[string]bool {
+	piquee := len(req.PickedSoloSessions) > 0 || len(req.PickedSquadSessions) > 0 ||
+		(req.Filters != nil && len(req.Filters.Sessions.PickedSessions) > 0)
+	if !piquee {
+		return nil
+	}
+	out := make(map[string]bool, len(filteredMatches))
+	for _, m := range filteredMatches {
+		out[m.MatchID] = true
 	}
 	return out
 }

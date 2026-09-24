@@ -62,9 +62,27 @@ func (r *SquadRepo) LoadTopTeammates(ctx context.Context, xuid string) ([]domain
 	args = append(args, ToAnySlice(matchIDs)...)
 	args = append(args, xuid)
 
-	rows, err := db.QueryContext(ctx, query, args...)
+	result, err := scanTopTeammates(ctx, db, query, args)
 	if err != nil {
 		return nil, fmt.Errorf("LoadTopTeammates: %w", err)
+	}
+	// Noms : l'annuaire de la lecture (squad_repo_annuaire.go) — les xuids du top, sur les
+	// matchs « avec amis » que Q29 vient de lire.
+	if err := nommerLignes(ctx, db, matchIDs, result, accesLigne[domain.TopTeammateRow]{
+		xuid:   func(r domain.TopTeammateRow) string { return r.XUID },
+		nommer: func(r *domain.TopTeammateRow, gt string) { r.Gamertag = gt },
+	}); err != nil {
+		return nil, fmt.Errorf("LoadTopTeammates: %w", err)
+	}
+	return result, nil
+}
+
+// scanTopTeammates execute Q29 et rend ses lignes, SANS nom (cf. nommerLignes). Le curseur
+// est ferme au retour : l'annuaire relit la meme connexion ensuite.
+func scanTopTeammates(ctx context.Context, db *sql.DB, query string, args []any) ([]domain.TopTeammateRow, error) {
+	rows, err := db.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, err
 	}
 	defer rows.Close()
 
@@ -73,7 +91,6 @@ func (r *SquadRepo) LoadTopTeammates(ctx context.Context, xuid string) ([]domain
 		var row domain.TopTeammateRow
 		if err := rows.Scan(
 			&row.XUID,
-			&row.Gamertag,
 			&row.GamesTogether,
 			&row.WinsTogether,
 			&row.WinRate,
@@ -81,7 +98,7 @@ func (r *SquadRepo) LoadTopTeammates(ctx context.Context, xuid string) ([]domain
 			&row.AvgDeaths,
 			&row.AvgKDA,
 		); err != nil {
-			return nil, fmt.Errorf("LoadTopTeammates scan: %w", err)
+			return nil, fmt.Errorf("scan: %w", err)
 		}
 		result = append(result, row)
 	}
@@ -403,28 +420,18 @@ func (r *SquadRepo) LoadImpactEvents(ctx context.Context, matchIDs []string) ([]
 	}
 	defer release()
 
-	rows, err := db.QueryContext(ctx, query, args...)
+	result, err := scanImpactEvents(ctx, db, query, args)
 	if err != nil {
 		return nil, fmt.Errorf("LoadImpactEvents: %w", err)
 	}
-	defer rows.Close()
-
-	var result []domain.ImpactEventRow
-	for rows.Next() {
-		var row domain.ImpactEventRow
-		if err := rows.Scan(
-			&row.MatchID,
-			&row.XUID,
-			&row.Gamertag,
-			&row.EventType,
-			&row.TimeMS,
-		); err != nil {
-			return nil, fmt.Errorf("LoadImpactEvents scan: %w", err)
-		}
-		result = append(result, row)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
+	// Noms des acteurs : l'annuaire de la lecture (squad_repo_annuaire.go), sur les mêmes
+	// matchs. Les events synthétisés plus bas gardent un gamertag vide, comme avant.
+	if err := nommerLignes(ctx, db, matchIDs, result, accesLigne[domain.ImpactEventRow]{
+		xuid:   func(r domain.ImpactEventRow) string { return r.XUID },
+		match:  func(r domain.ImpactEventRow) string { return r.MatchID },
+		nommer: func(r *domain.ImpactEventRow, gt string) { r.Gamertag = gt },
+	}); err != nil {
+		return nil, fmt.Errorf("LoadImpactEvents: %w", err)
 	}
 
 	// Fallback title-agnostic : kills/deaths absents → synthèse depuis kvPairs.
@@ -440,6 +447,26 @@ func (r *SquadRepo) LoadImpactEvents(ctx context.Context, matchIDs []string) ([]
 		}
 	}
 	return result, nil
+}
+
+// scanImpactEvents exécute Q32 et rend ses lignes, SANS nom (cf. nommerLignes). Le curseur
+// est fermé au retour : l'annuaire et le repli kvPairs relisent la même connexion ensuite.
+func scanImpactEvents(ctx context.Context, db *sql.DB, query string, args []any) ([]domain.ImpactEventRow, error) {
+	rows, err := db.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var result []domain.ImpactEventRow
+	for rows.Next() {
+		var row domain.ImpactEventRow
+		if err := rows.Scan(&row.MatchID, &row.XUID, &row.EventType, &row.TimeMS); err != nil {
+			return nil, fmt.Errorf("scan: %w", err)
+		}
+		result = append(result, row)
+	}
+	return result, rows.Err()
 }
 
 // LoadMainTeamParticipants charge tous les participants de l'équipe alliée

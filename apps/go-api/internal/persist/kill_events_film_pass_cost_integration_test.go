@@ -20,13 +20,34 @@
 //
 // CE TEST EST LA MESURE, ET IL RESTE COMME GARDE-FOU : il peuple une table de la MEME FORME que la
 // production (2 000 matchs x 3 passes x 30 morts = 180 000 lignes), colle les plans DuckDB
-// (`EXPLAIN`) et exige que la lecture DE PRODUCTION tienne un budget par appel. Sans budget, la
-// regression serait invisible — elle ne casse rien, elle rend seulement la passe interminable.
+// (`EXPLAIN`) et exige que la lecture DE PRODUCTION filtre le match SOUS la fenetre. Sans garde,
+// la regression serait invisible — elle ne casse rien, elle rend seulement la passe interminable.
+//
+// # UN CRITERE DE PLAN, PAS UN CHRONOMETRE (2026-09-24, CI de feat/retours-rejeu)
+//
+// Le garde exigeait d abord 10 ms par appel, a l horloge murale. Il a rougi sur le run CI
+// 35973349701 (12,09 ms) sans qu une ligne du code mesure ait change depuis le dernier vert
+// (`internal/persist`, `internal/migration`, les migrations du titre et `go.mod` identiques
+// depuis b74c8f294). Les pieces : sur les runs CI precedents la meme lecture coutait 6,6 a
+// 8,4 ms (65 a 84 % du budget), 3,5 ms en local ; et la lecture TEMOIN du second test, que rien
+// ne borne, est passee de 2,4-3,0 ms a 4,48 ms sur le meme run — meme rapport (2,7) entre les
+// deux, donc un runner plus lent, pas une lecture plus chere. Un budget absolu mesurait la
+// machine.
+//
+// Ce que le garde protege n est pas une duree : c est la FORME du plan, que la duree ne faisait
+// que trahir. Le defaut (lot 5.12) est une fenetre calculee sur toute la table append-only a
+// chaque appel ; la forme saine filtre `match_id` sous la fenetre, qui ne voit alors que les
+// lignes d UN match. Le garde lit donc le profil DuckDB (`EXPLAIN (ANALYZE, FORMAT JSON)`) et
+// borne les lignes qui ENTRENT dans la fenetre — deterministe, independant du runner. Un temoin
+// NEGATIF (la meme lecture dont le filtre est empeche de descendre) prouve a chaque execution
+// que ce critere voit le defaut : 180 000 lignes dans la fenetre, 72 ms par appel en local
+// contre 3,5 ms. La duree reste mesuree et collee dans la sortie, comme piece.
 package persist
 
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"strings"
 	"testing"
@@ -42,11 +63,10 @@ const (
 	// nbLecturesBanc : le nombre d appels chronometres. 200 sort du bruit et garde le test court
 	// meme quand la lecture est le defaut quadratique — qui, lui, ne tiendrait pas 9 144 appels.
 	nbLecturesBanc = 200
-	// budgetParAppel : LE BUDGET. Une lecture par match doit couter un acces a UN match, pas un
-	// balayage de la table. 10 ms par appel = les 9 144 matchs du registre en moins de deux
-	// minutes ; le defaut mesure, lui, met des dizaines de millisecondes par appel des
-	// 180 000 lignes, et s aggrave a chaque backfill.
-	budgetParAppel = 10 * time.Millisecond
+	// lignesDUnMatch : LA BORNE. Une lecture par match doit faire entrer dans la fenetre les
+	// lignes d UN match (toutes ses passes : la fenetre choisit la derniere), pas la table. Le
+	// defaut y fait entrer les 180 000 lignes du banc a chaque appel, et plus a chaque backfill.
+	lignesDUnMatch = nbPassesBanc * nbMortsBanc
 )
 
 // peuplerBancKillEvents remplit `match_kill_events` : `nbMatchsBanc` matchs, chacun avec
@@ -115,6 +135,47 @@ func collerPlan(t *testing.T, db *sql.DB, titre, requete string, args ...any) {
 	t.Logf("PLAN — %s\n%s", titre, plan.String())
 }
 
+// noeudProfil : un operateur du profil JSON de DuckDB, reduit a ce que le garde lit.
+type noeudProfil struct {
+	Nom         string        `json:"operator_name"`
+	Cardinalite int64         `json:"operator_cardinality"`
+	Enfants     []noeudProfil `json:"children"`
+}
+
+// lignesEntreesDansLaFenetre execute la requete sous `EXPLAIN (ANALYZE, FORMAT JSON)` et rend la
+// plus grande cardinalite vue par un operateur `WINDOW` — les lignes sur lesquelles la fenetre
+// de la vue `_latest` a ete calculee. Un plan SANS fenetre fait echouer le test : la vue aurait
+// change de forme, et le critere serait vide de sens — c est au garde d etre relu, pas a lui de
+// passer en silence.
+func lignesEntreesDansLaFenetre(t *testing.T, db *sql.DB, titre, requete string, args ...any) int64 {
+	t.Helper()
+	var cle, profil string
+	if err := db.QueryRow("EXPLAIN (ANALYZE, FORMAT JSON) "+requete, args...).Scan(&cle, &profil); err != nil {
+		t.Fatalf("EXPLAIN ANALYZE %s: %v", titre, err)
+	}
+	var racine noeudProfil
+	if err := json.Unmarshal([]byte(profil), &racine); err != nil {
+		t.Fatalf("EXPLAIN ANALYZE %s (json): %v", titre, err)
+	}
+	fenetres, maxi := 0, int64(0)
+	var parcourir func(n noeudProfil)
+	parcourir = func(n noeudProfil) {
+		if n.Nom == "WINDOW" {
+			fenetres++
+			maxi = max(maxi, n.Cardinalite)
+		}
+		for _, e := range n.Enfants {
+			parcourir(e)
+		}
+	}
+	parcourir(racine)
+	if fenetres == 0 {
+		t.Fatalf("%s : aucun operateur WINDOW dans le profil — la vue `match_kill_events_latest` a "+
+			"change de forme, ce garde doit etre relu", titre)
+	}
+	return maxi
+}
+
 // chronometrer joue `nbLecturesBanc` lectures et rend la duree MOYENNE par appel.
 func chronometrer(t *testing.T, lire func(matchID string) (int, error)) time.Duration {
 	t.Helper()
@@ -134,9 +195,10 @@ func chronometrer(t *testing.T, lire func(matchID string) (int, error)) time.Dur
 	return total / nbLecturesBanc
 }
 
-// TestFilmPassForMatch_CoutParAppel — LE BUDGET DE LA LECTURE DE PRODUCTION.
+// TestFilmPassForMatch_CoutParAppel — LE COUT DE LA LECTURE DE PRODUCTION, PAR SON PLAN.
 //
-// Rouge = la passe credit du backfill est redevenue quadratique.
+// Rouge = la passe credit du backfill est redevenue quadratique : la fenetre de la vue `_latest`
+// est calculee sur toute la table a chaque appel au lieu des lignes d un seul match.
 func TestFilmPassForMatch_CoutParAppel(t *testing.T) {
 	db := baseDeTest(t)
 	peuplerBancKillEvents(t, db)
@@ -147,16 +209,30 @@ func TestFilmPassForMatch_CoutParAppel(t *testing.T) {
 	requete, args := filmPassQuery("match-00001")
 	collerPlan(t, db, "production — FilmPassForMatch", requete, args...)
 
+	// LE TEMOIN NEGATIF : la meme lecture, le filtre bloque au-dessus de la fenetre par un `LIMIT`
+	// (barriere de descente des predicats). C est la forme du defaut ; si le critere ne la voyait
+	// pas, il ne garderait rien.
+	defaut := `SELECT ` + filmPassColumns + ` FROM (SELECT * FROM match_kill_events_latest ` +
+		`LIMIT 1000000000) AS v WHERE match_id = ? AND read_path IN (?, ?) ORDER BY time_ms, id`
+	lignesDefaut := lignesEntreesDansLaFenetre(t, db, "temoin du defaut", defaut,
+		"match-00001", FilmReadPaths[0], FilmReadPaths[1])
+	if want := int64(nbMatchsBanc * nbPassesBanc * nbMortsBanc); lignesDefaut != want {
+		t.Fatalf("temoin du defaut : %d lignes dans la fenetre, attendu %d (la table entiere) — "+
+			"le critere ne distingue plus le defaut, ce garde doit etre relu", lignesDefaut, want)
+	}
+
+	lignes := lignesEntreesDansLaFenetre(t, db, "production — FilmPassForMatch", requete, args...)
 	moyenne := chronometrer(t, func(matchID string) (int, error) {
 		batch, err := FilmPassForMatch(ctx, db, matchID)
 		return len(batch.Deaths), err
 	})
-	t.Logf("FilmPassForMatch : %s par appel sur %d lignes (%d appels) — budget %s",
-		moyenne.Round(time.Microsecond), nbMatchsBanc*nbPassesBanc*nbMortsBanc,
-		nbLecturesBanc, budgetParAppel)
-	if moyenne > budgetParAppel {
-		t.Fatalf("FilmPassForMatch coute %s par appel, budget %s : la lecture par match balaie "+
-			"la table append-only entiere (lot 5.12)", moyenne, budgetParAppel)
+	t.Logf("FilmPassForMatch : %d lignes dans la fenetre (borne %d, defaut %d), %s par appel "+
+		"sur %d lignes (%d appels, mesure seulement)", lignes, lignesDUnMatch, lignesDefaut,
+		moyenne.Round(time.Microsecond), nbMatchsBanc*nbPassesBanc*nbMortsBanc, nbLecturesBanc)
+	if lignes > lignesDUnMatch {
+		t.Fatalf("FilmPassForMatch fait entrer %d lignes dans la fenetre de la vue _latest, borne %d "+
+			"(un match) : la lecture par match calcule la fenetre sur la table append-only entiere "+
+			"(lot 5.12)", lignes, lignesDUnMatch)
 	}
 }
 

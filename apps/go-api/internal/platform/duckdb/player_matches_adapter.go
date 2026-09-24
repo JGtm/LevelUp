@@ -1,11 +1,11 @@
-// Package duckdb — player_matches_adapter.go : adapteur per-player qui implémente
-// `port.PlayerMatchesRepository` à partir d'un `*PlayerMatchesRepo` lié à un
-// PlayerDB précis (P4.3 finale, ADR 0011).
+// Package duckdb — player_matches_adapter.go : adapteur per-player qui charge
+// l'historique canonique ENRICHI (libellés FR/EN résolus) à partir d'un
+// `*PlayerMatchesRepo` lié à un PlayerDB précis (P4.3 finale, ADR 0011).
 //
 // L'adapteur ignore les paramètres slug/gamertag de l'interface (déjà fixés au
-// constructeur). Il existe pour faire le pont entre l'interface globale du
-// port et l'implémentation per-player concrète. Permet aux services
-// (HomeService, StatsService, etc.) de consommer canonical via le port unifié.
+// constructeur). Depuis le plan perf 2026-09-23 (D5b.4), il n'est plus câblé seul :
+// CachedPlayerMatchesRepo (player_matches_cache.go) l'enveloppe et implémente
+// `port.PlayerMatchesRepository` pour les services (HomeService, StatsService, etc.).
 package duckdb
 
 import (
@@ -49,9 +49,12 @@ func (a *PlayerMatchesAdapter) LoadPlayerMatches(
 	// canonical (Stats, Session, SessionCompare, etc.) affichent les libellés en
 	// EN. Le Home/Synthesis l'appellent déjà via leurs propres repos ; on le
 	// centralise ici pour tous les consommateurs du port. Best-effort : on
-	// n'échoue pas le chargement si l'enrichissement échoue (DB metadata absente…).
+	// n'échoue pas le chargement si l'enrichissement échoue (DB metadata absente…),
+	// mais chaque étape en échec le consigne (noteDegraded) : CachedPlayerMatchesRepo
+	// ne met pas en cache des lignes aux libellés incomplets (player_read_cache.go).
 	if err := NewHomeRepo(a.repo.pdb).EnrichCanonicalAssetTranslations(ctx, rows); err != nil {
 		slog.WarnContext(ctx, "PlayerMatchesAdapter: FR asset enrichment failed", "err", err)
+		noteDegraded(ctx, "asset_enrichment")
 	}
 	return rows, nil
 }
@@ -66,8 +69,3 @@ func (a *PlayerMatchesAdapter) LobbySizesAtCompletion(
 ) (map[string]int, error) {
 	return a.repo.LobbySizesAtCompletion(ctx, matchIDs)
 }
-
-// InvalidatePlayer est un no-op pour cette implémentation per-player. Le cache
-// LRU n'est pas applicable ici car chaque PlayerDB est déjà résolu une fois par
-// requête HTTP via le pool.
-func (a *PlayerMatchesAdapter) InvalidatePlayer(_, _ string) {}

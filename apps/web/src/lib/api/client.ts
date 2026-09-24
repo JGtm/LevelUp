@@ -230,6 +230,20 @@ interface RequestOptions {
    * l'onglet (flush best-effort au unload). Voir `api.postKeepalive`.
    */
   keepalive?: boolean
+  /**
+   * Signal d'annulation transmis à `fetch`. TanStack Query l'abandonne quand la requête
+   * devient inutile (clé remplacée, composant démonté) : la connexion se ferme et le
+   * serveur arrête son calcul (contexte Go annulé → 499 `client_closed`).
+   */
+  signal?: AbortSignal
+}
+
+/**
+ * Options d'appel de `api.get` / `api.post` (plan perf 2026-09-23, D3.3) : les hooks de
+ * page y passent le `signal` que TanStack Query fournit à leur `queryFn`.
+ */
+interface CallOptions {
+  signal?: AbortSignal
 }
 
 /**
@@ -255,6 +269,7 @@ async function sendRequest(
     method,
     credentials: 'include', // cookies httpOnly (session)
     keepalive: options?.keepalive,
+    signal: options?.signal,
     headers: {
       'Content-Type': 'application/json',
       Accept: 'application/json',
@@ -303,8 +318,8 @@ async function request<T>(method: string, path: string, options?: RequestOptions
 }
 
 export const api = {
-  get: <T>(path: string, headers?: Record<string, string>) =>
-    request<T>('GET', path, { headers }),
+  get: <T>(path: string, headers?: Record<string, string>, options?: CallOptions) =>
+    request<T>('GET', path, { headers, signal: options?.signal }),
 
   /**
    * GET d'une ressource BINAIRE (image, export). Même client que `get` — donc mêmes
@@ -335,8 +350,8 @@ export const api = {
     return { data, header: response.headers.get(header) }
   },
 
-  post: <T>(path: string, body?: unknown, headers?: Record<string, string>) =>
-    request<T>('POST', path, { body, headers }),
+  post: <T>(path: string, body?: unknown, headers?: Record<string, string>, options?: CallOptions) =>
+    request<T>('POST', path, { body, headers, signal: options?.signal }),
 
   /**
    * POST « keepalive » : la requête survit à la fermeture / au rechargement de

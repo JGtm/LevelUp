@@ -59,16 +59,36 @@ export function useUpdatePlayerFriends(slug: string) {
   })
 }
 
-/**
- * Raccourci des consommateurs qui n'ont besoin que des gamertags (coloration de
- * la vue match, présélection Escouade, escouade Prestige) : liste vide tant que
- * la requête n'a pas abouti.
- */
 // Reference STABLE : un `?? []` neuf a chaque rendu casserait les useMemo aval
 // (le rejeu 2D se re-rend toutes les 150 ms en lecture).
 const NO_FRIENDS: readonly string[] = []
 
+/** Gamertags d'amis + l'issue de leur lecture (cf. `useFriendGamertagsState`). */
+export interface FriendGamertagsState {
+  gamertags: readonly string[]
+  /** La liste est arrivée — éventuellement VIDE, ce qui est une réponse. */
+  isSuccess: boolean
+  /** La lecture a échoué : `gamertags` vaut alors la liste vide. */
+  isError: boolean
+}
+
+/**
+ * Gamertags d'amis AVEC l'issue de la requête. Sert au consommateur qui doit
+ * distinguer « liste vide » de « pas encore là » : l'Escouade n'envoie sa requête
+ * lourde qu'une fois la composition initiale connue (lot perf L4a, D4.2,
+ * 2026-09-23) — une liste d'amis vide RÉSOLUE est une composition (exploration
+ * sans coéquipier), une liste pas encore arrivée n'en est pas une.
+ */
+export function useFriendGamertagsState(slug: string | undefined): FriendGamertagsState {
+  const { data, isSuccess, isError } = usePlayerFriends(slug)
+  return { gamertags: data?.gamertags ?? NO_FRIENDS, isSuccess, isError }
+}
+
+/**
+ * Raccourci des consommateurs qui n'ont besoin que des gamertags (coloration de
+ * la vue match, escouade Prestige, rejeu) : liste vide tant que la requête n'a
+ * pas abouti.
+ */
 export function useFriendGamertags(slug: string | undefined): readonly string[] {
-  const { data } = usePlayerFriends(slug)
-  return data?.gamertags ?? NO_FRIENDS
+  return useFriendGamertagsState(slug).gamertags
 }

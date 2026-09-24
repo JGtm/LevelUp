@@ -9,10 +9,12 @@ package teammates
 // rien aux charts/tableaux.
 
 import (
+	"slices"
 	"testing"
 	"time"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/games/canonical"
 	"levelup/go-api/internal/legacymatch"
 )
 
@@ -92,7 +94,7 @@ func TestFilterSynthesisByPickedSessions_NoFilter(t *testing.T) {
 		makeSynthAt("m1", time.Now(), "30/04/2026 18h"),
 		makeSynthAt("m2", time.Now(), "01/05/2026 14h"),
 	}
-	got := filterSynthesisByPickedSessions(rows, nil)
+	got := filterSynthesisByPickedSessions(rows, nil, nil)
 	if len(got) != 2 {
 		t.Errorf("expected 2 (empty picked), got %d", len(got))
 	}
@@ -105,7 +107,7 @@ func TestFilterSynthesisByPickedSessions_SingleLabel(t *testing.T) {
 		makeSynthAt("m1", time.Now(), "30/04/2026 18h"),
 		makeSynthAt("m2", time.Now(), "01/05/2026 14h"),
 	}
-	got := filterSynthesisByPickedSessions(rows, []string{"01/05/2026 14h"})
+	got := filterSynthesisByPickedSessions(rows, []string{"01/05/2026 14h"}, nil)
 	if len(got) != 1 {
 		t.Fatalf("expected 1 row matching label, got %d", len(got))
 	}
@@ -120,7 +122,7 @@ func TestFilterSynthesisByPickedSessions_MultiLabels(t *testing.T) {
 		makeSynthAt("m2", time.Now(), "B"),
 		makeSynthAt("m3", time.Now(), "C"),
 	}
-	got := filterSynthesisByPickedSessions(rows, []string{"A", "C"})
+	got := filterSynthesisByPickedSessions(rows, []string{"A", "C"}, nil)
 	if len(got) != 2 {
 		t.Fatalf("expected 2 rows (A + C), got %d", len(got))
 	}
@@ -128,8 +130,44 @@ func TestFilterSynthesisByPickedSessions_MultiLabels(t *testing.T) {
 
 func TestFilterSynthesisByPickedSessions_NilLabel(t *testing.T) {
 	row := legacymatch.SynthesisMatchRow{MatchID: "m1", StartTime: time.Now(), SessionLabel: nil}
-	got := filterSynthesisByPickedSessions([]legacymatch.SynthesisMatchRow{row}, []string{"anything"})
+	got := filterSynthesisByPickedSessions([]legacymatch.SynthesisMatchRow{row}, []string{"anything"}, nil)
 	if len(got) != 0 {
 		t.Errorf("expected 0 (nil label can't match), got %d", len(got))
+	}
+}
+
+// TestFilterSynthesisByPickedSessions_LibelleOuSessionID (lot perf L9-go) : une valeur piquée
+// est un libellé OU un session_id (lu sur la ligne canonique), comme applySessionFilter.
+func TestFilterSynthesisByPickedSessions_LibelleOuSessionID(t *testing.T) {
+	lbl := func(s string) *string { return &s }
+	rows := []legacymatch.SynthesisMatchRow{
+		{MatchID: "m1", SessionLabel: lbl("S1")},
+		{MatchID: "m2", SessionLabel: lbl("S2")},
+		{MatchID: "m3"}, // sans libellé
+	}
+	id := func(s string) *string { return &s }
+	canon := []canonical.PlayerMatchRow{
+		{Summary: canonical.MatchSummary{MatchID: "m1"}, Enrichment: canonical.PlayerMatchEnrichment{SessionID: id("7")}},
+		{Summary: canonical.MatchSummary{MatchID: "m2"}, Enrichment: canonical.PlayerMatchEnrichment{SessionID: id("8")}},
+		{Summary: canonical.MatchSummary{MatchID: "m3"}, Enrichment: canonical.PlayerMatchEnrichment{SessionID: id("9")}},
+	}
+	garde := func(picked []string) []string {
+		var out []string
+		for _, r := range filterSynthesisByPickedSessions(rows, picked, canon) {
+			out = append(out, r.MatchID)
+		}
+		return out
+	}
+	for _, c := range []struct {
+		picked, want []string
+	}{
+		{[]string{"S1"}, []string{"m1"}},
+		{[]string{"9"}, []string{"m3"}},
+		{[]string{"S2", "7"}, []string{"m1", "m2"}},
+		{[]string{"inconnu"}, nil},
+	} {
+		if got := garde(c.picked); !slices.Equal(got, c.want) {
+			t.Errorf("piqué %v : %v, want %v", c.picked, got, c.want)
+		}
 	}
 }

@@ -106,6 +106,7 @@ func (r *HomeRepo) resolveCanonicalAssetTranslations(
 	mapImageURLs, mapImageURLErr := r.loadHomeMapImageURLs(ctx, allMapIDs)
 	if mapImageURLErr != nil {
 		slog.WarnContext(ctx, "home: loadHomeMapImageURLs failed", "err", mapImageURLErr)
+		noteDegraded(ctx, "map_image_urls")
 	}
 	t.mapImageURLs = mapImageURLs
 
@@ -137,7 +138,10 @@ func (r *HomeRepo) loadCanonicalModeNamesFR(
 	for k := range modeENSet {
 		modeENList = append(modeENList, k)
 	}
-	modeNamesFR, _ := r.loadHomeModeNameTranslations(ctx, modeENList)
+	modeNamesFR, err := r.loadHomeModeNameTranslations(ctx, modeENList)
+	if err != nil {
+		bestEffortFailed(ctx, "mode_names_fr", err)
+	}
 	return modeNamesFR
 }
 

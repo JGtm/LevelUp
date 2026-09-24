@@ -14,6 +14,8 @@ import (
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/observability"
+	"levelup/go-api/internal/observability/timing"
 	"levelup/go-api/internal/port"
 )
 
@@ -108,12 +110,16 @@ func (s *FiltersService) Resolve(
 	ctx context.Context,
 	input domain.FilterContextInput,
 ) (domain.FilterContextResolved, error) {
+	stop := timing.FromContext(ctx).Section("load_matches")
 	rows, err := s.repo.LoadMatchesForFilters(ctx)
+	stop()
 	if err != nil {
-		slog.ErrorContext(ctx, "load matches for filters", "err", err)
+		slog.Log(ctx, observability.LevelUnlessCanceled(ctx, err, slog.LevelError), "load matches for filters", "err", err)
 		return domain.FilterContextResolved{}, err
 	}
+	stop = timing.FromContext(ctx).Section("resolve_rows")
 	resolved := ResolveFiltersFromRows(rows, input)
+	stop()
 	// Localise le LABEL des options d'expérience vers la locale de requête
 	// (Value FR conservée — contrat cascade/substring). C'est le seul chemin prod
 	// qui surface ces options à l'UI ; la couche pure reste canonique FR. GH5-2.
@@ -124,12 +130,14 @@ func (s *FiltersService) Resolve(
 		// match_context à rows et on calcule sur la base post-context.
 		// Le catalog peut déclencher un fetch live + persist si la DB est
 		// vide — best-effort, échec gracieux vers TOML statique.
+		stop = timing.FromContext(ctx).Section("season_counts")
 		catalog := s.catalog.Load(ctx, s.titleSlug)
 		if len(catalog) > 0 {
 			seasonRows := applyMatchContextFilter(rows, input.MatchContext)
 			windows := SeasonWindowsFromCatalog(catalog)
 			resolved.SeasonCounts = BuildSeasonCounts(seasonRows, resolved.Effective.Cascade, windows)
 		}
+		stop()
 	}
 	slog.DebugContext(ctx, "filters resolved",
 		"rows_in", resolved.Counts.TotalMatchesBeforeFilters,
@@ -152,7 +160,7 @@ func (s *FiltersService) ResolveMatchIDs(
 ) ([]string, error) {
 	rows, err := s.repo.LoadMatchesForFilters(ctx)
 	if err != nil {
-		slog.ErrorContext(ctx, "load matches for filter match-ids", "err", err)
+		slog.Log(ctx, observability.LevelUnlessCanceled(ctx, err, slog.LevelError), "load matches for filter match-ids", "err", err)
 		return nil, err
 	}
 	ids := FilteredMatchIDs(rows, input)

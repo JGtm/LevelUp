@@ -103,11 +103,10 @@ func ScanLUSRGaps(ctx context.Context, playerDB, sharedDB *sql.DB, xuid string) 
 		}
 		// Non noté : trou d'intérieur (sous le watermark) vs récent-en-attente.
 		// Sous le watermark = le scoreur considère ce match « déjà vu »
-		// (skippedAlready : !start_time.After(last_match_at)) → note définitivement
+		// (skippedAlready, prédicat partagé lusrWatermarkCovers) → note définitivement
 		// absente = trou permanent. Pas de watermark (groupe jamais scoré) → rien
 		// n'a encore été traité, donc « en attente », pas un trou.
-		wm := watermarks[group]
-		if wm != nil && !m.startTime.After(*wm) {
+		if lusrWatermarkCovers(watermarks[group], m.startTime) {
 			g.InteriorGaps = append(g.InteriorGaps, LUSRGapMatch{
 				MatchID: m.matchID, Group: group, PairName: m.pairName, StartTime: m.startTime,
 			})
@@ -162,6 +161,8 @@ func loadRatedLUSRMatchIDs(ctx context.Context, playerDB *sql.DB) (map[string]bo
 
 // loadGroupWatermarks retourne last_match_at par groupe pour le joueur, depuis la
 // vue _latest (règle ART n°2). Un groupe absent = jamais scoré (nil dans la map).
+// Deux consommateurs : ce détecteur et le pré-filtre du shadow, lu sur le lecteur
+// avant toute prise d'écrivain (selectShadowWorkUnderRead, skill_v2_watermark.go).
 func loadGroupWatermarks(ctx context.Context, sharedDB *sql.DB, xuid string) (map[string]*time.Time, error) {
 	rows, err := sharedDB.QueryContext(ctx,
 		`SELECT playlist_group, last_match_at
