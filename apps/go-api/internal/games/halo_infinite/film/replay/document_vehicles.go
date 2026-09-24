@@ -115,6 +115,29 @@ type VehicleTrack struct {
 	// aucun episode mesure — ce qui n est PAS « personne ne l a conduit » : la primitive
 	// n attribue que 15,6 a 21,1 % des vies (limite publiee au rapport V1, item 1).
 	Rides []VehicleRide `json:"rides,omitempty"`
+	// Part dit que cette vie n est PAS un vehicule mais une PIECE MONTEE sur un vehicule —
+	// `turret` (schema 69, retours du rejeu 2026-09-23, lot M4a). Le film cree les tourelles
+	// comme des objets `ti=40` a part entiere, sans aucun echantillon de position : dessinee seule,
+	// une tourelle restait a sa NAISSANCE pendant que son vehicule roulait (mediane 44,7 m). VIDE =
+	// un vehicule, le regime de toutes les autres vies. Le client ne la dessine JAMAIS seule.
+	Part string `json:"part,omitempty"`
+	// Carrier designe la vie du CHASSIS qui porte cette piece, quand elle est trouvee (cf.
+	// `vehicle_turrets.go`, repli nomme `repli_tourelle_porteur_voisin_de_slot`). Absent sur une
+	// piece dont le porteur n est pas trouve — elle reste publiee, comptee, et non dessinee.
+	Carrier *VehicleLifeRef `json:"carrier,omitempty"`
+	// Variant est la VARIANTE du chassis quand le film la NOMME (schema 69) : `rockethog` ou
+	// `warthog_gauss` par la tourelle que le chassis porte, `gungoose` par l arme qu il tire. Elle
+	// nomme le SPRITE ; la famille (`Family`) reste celle du chassis et continue de porter le son
+	// du moteur, l explosion et la classe d arme — une variante n est pas un autre vehicule.
+	// VIDE = le film ne dit pas la variante, ou le chassis n en a pas.
+	Variant string `json:"variant,omitempty"`
+}
+
+// VehicleLifeRef designe UNE vie de vehicule : `(slot, gen)`, la seule cle d une vie (cf.
+// `VehicleTrack`).
+type VehicleLifeRef struct {
+	Slot uint32 `json:"slot"`
+	Gen  uint32 `json:"gen"`
 }
 
 // VehicleSpawn est la naissance d un vehicule : ou, et sous quel cap.
@@ -235,6 +258,12 @@ type VehicleRide struct {
 	//
 	// Provenance, gates et convention d echantillonnage : `vehicle_rides_aim.go`.
 	Aim []VehicleAim `json:"aim,omitempty"`
+	// Turret designe la TOURELLE dans laquelle cet occupant est monte, quand l episode a ete
+	// lu sur la piece montee puis reporte sur son porteur (schema 69, cf. `vehicle_turrets.go`).
+	// C est l ARTILLEUR : il est a bord du vehicule porteur, il n en est pas le conducteur. Son
+	// `Seat` est alors ABSENT — le siege lu etait celui de la TOURELLE (0), et le publier tel quel
+	// sur le porteur ferait de l artilleur un conducteur.
+	Turret *VehicleLifeRef `json:"turret,omitempty"`
 }
 
 // VehicleAim est UNE lecture de visee d occupant, posee sur l axe de frames.
@@ -305,9 +334,10 @@ type VehicleCoverage struct {
 	WithSpawn   int `json:"withSpawn"`
 	WithChassis int `json:"withChassis"`
 	// FamilyResolved / FamilyUnknown ventilent `WithChassis` selon que la table nomme la famille
-	// ou non. LEUR SOMME EST LE DENOMINATEUR HONNETE du calque de sprites : publier
-	// « N vehicules dessines » sans dire combien restent sans sprite laisserait croire a
-	// l exhaustivite.
+	// ou non — DEPUIS LE SCHEMA 69, hors pieces montees (`Turrets`), qui ne sont pas des chassis :
+	// `WithChassis = FamilyResolved + FamilyUnknown + (pieces dont le chassis est lu)`. LEUR SOMME
+	// EST LE DENOMINATEUR HONNETE du calque de sprites : publier « N vehicules dessines » sans dire
+	// combien restent sans sprite laisserait croire a l exhaustivite.
 	FamilyResolved int `json:"familyResolved"`
 	FamilyUnknown  int `json:"familyUnknown"`
 	// UnknownChassis compte les vies par mot d identite NON RESOLU (hexadecimal 8 chiffres).
@@ -387,7 +417,9 @@ type VehicleCoverage struct {
 	// mille. `Shots` compte les tirs POSES (donc publies dans `shots` avec leur marqueur `v`),
 	// `ShotsAmbiguous` ceux que DEUX vehicules distincts se disputent au meme instant (artefact
 	// du pont, jamais tranche), `ShotsUnplaced` ceux dont la vie de vehicule n avait ni
-	// echantillon ni naissance ou poser le tir.
+	// echantillon ni naissance ou poser le tir — et, depuis le schema 69, le tir d un artilleur
+	// reste sur une piece montee qui tombe HORS de la fenetre de son porteur (la position du
+	// porteur y serait perimee : le tir n est pas pose plutot que pose au mauvais endroit).
 	Shots          int `json:"shots"`
 	ShotsAmbiguous int `json:"shotsAmbiguous"`
 	ShotsUnplaced  int `json:"shotsUnplaced"`
@@ -401,6 +433,41 @@ type VehicleCoverage struct {
 	// porte s est mise a ramasser des tirs a pied. Le reste (`Shots - ShotsVehicleWeapon`) n est
 	// PAS du bruit par construction : un passager tire son propre fusil depuis le vehicule.
 	ShotsVehicleWeapon int `json:"shotsVehicleWeapon"`
+	// LES PIECES MONTEES (schema 69, lot M4a, cf. `vehicle_turrets.go`).
+	//
+	//	Turrets           vies publiees que la table des pieces montees NOMME (tourelles
+	//	                  enfants). Elles ne comptent plus dans `familyUnknown` : leur chassis
+	//	                  n est pas inconnu, il n est pas un vehicule.
+	//	TurretsOnCarrier  parmi elles, celles dont le porteur est trouve — par le REPLI
+	//	                  `repli_tourelle_porteur_voisin_de_slot` : `Turrets - TurretsOnCarrier`
+	//	                  est le reste sans porteur, publie et non dessine.
+	//	TurretCarrierBirthMismatch  pieces dont un voisin de slot de la bonne famille, present
+	//	                  au meme moment, a ete REFUSE parce qu il n est pas NE AVEC la piece
+	//	                  (meme instant, meme point). C est le temoin independant du repli : 0 au
+	//	                  parc du 2026-09-23 ; un chiffre non nul sur un film neuf dit que le
+	//	                  voisinage de slot a cesse de designer le porteur.
+	//	TurretRides       episodes d artilleur REPORTES de la tourelle sur son porteur ;
+	//	                  TurretRidesDropped ceux qui sont GARDES sur la piece, somme des TROIS
+	//	                  refus ventiles : TurretRidesNotRideable (le porteur est d une famille
+	//	                  non pilotable), TurretRidesOutOfWindow (l episode tombe hors de la
+	//	                  fenetre du porteur, dont la vie publiee s arrete avant celle de sa
+	//	                  tourelle) et TurretRidesAlreadyAboard (le meme occupant a deja un
+	//	                  episode du porteur qui RECOUVRE le sien — un changement de siege, qui ne
+	//	                  fait que toucher, n en est pas un).
+	//	ShotsOnCarrier    tirs d artilleur poses sur le PORTEUR plutot que sur la naissance de la
+	//	                  tourelle. Parmi `Shots`.
+	//	Variants          vies dont la VARIANTE est nommee (`variant`), par sa tourelle ou par
+	//	                  son arme.
+	Turrets                    int `json:"turrets"`
+	TurretsOnCarrier           int `json:"turretsOnCarrier"`
+	TurretCarrierBirthMismatch int `json:"turretCarrierBirthMismatch"`
+	TurretRides                int `json:"turretRides"`
+	TurretRidesDropped         int `json:"turretRidesDropped"`
+	TurretRidesNotRideable     int `json:"turretRidesNotRideable"`
+	TurretRidesOutOfWindow     int `json:"turretRidesOutOfWindow"`
+	TurretRidesAlreadyAboard   int `json:"turretRidesAlreadyAboard"`
+	ShotsOnCarrier             int `json:"shotsOnCarrier"`
+	Variants                   int `json:"variants"`
 	// LES QUATRE DENOMINATEURS DU CYCLE DE REAPPARITION (schema 63, cf. vehicle_cycles.go).
 	// `vehicleCycles` ne porte que les emplacements dont le cycle est ETABLI : sans ces quatre
 	// compteurs, une liste vide ne dirait pas si le film n a aucun emplacement, si aucun n a

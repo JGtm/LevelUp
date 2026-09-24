@@ -3173,6 +3173,10 @@ export type ReplayVehicleLabel = components['schemas']['VehicleLabel'] & {
 // Ce que le calque véhicules a vu, résolu, et refusé de dire — publiée même sans véhicule (même
 // raison que `placements`/`groundWeapons` : distinguer une carte sans véhicule d'un film non lu).
 export type ReplayVehicleCoverage = components['schemas']['VehicleCoverage']
+// Une arme du REGISTRE DES ARMES DE VÉHICULE du titre (schéma 69, `doc.vehicleWeapons`, keyé par
+// `Shot.w`) : forme, teinte, son (absent = silence décidé) et ancre sur le sprite. Lue par le
+// SEUL `model/vehicleWeaponRegistry.ts`.
+export type ReplayVehicleWeapon = components['schemas']['VehicleWeapon']
 
 // ---------------------------------------------------------------------------
 // Schémas 25 à 27 du document de rejeu — ÉCRITS À LA MAIN, et voici pourquoi.

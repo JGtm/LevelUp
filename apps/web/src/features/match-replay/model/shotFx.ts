@@ -7,7 +7,8 @@
  * VÉHICULE (centre), pas celle d'un tireur (le bipède ne réplique plus une fois embarqué,
  * `document.go`). Ce module résout ICI, une fois, ce qui NE DÉPEND QUE DU FILM (le véhicule
  * porteur et son cap à l'instant du tir, `vehicleChassisHeadingAt`) et le montage de l'arme
- * (`vehicleWeaponMountOf`, table statique) ; ce qui dépend du SPRITE CHARGÉ (sa taille, donc le
+ * (`vehicleWeaponMountOf`, registre du titre publié dans le document, schéma 69) ; ce qui dépend
+ * du SPRITE CHARGÉ (sa taille, donc le
  * décalage écran réel) reste au tracé (`drawShotsLayer`), qui seul connaît `sizeOf` — même
  * découpage précalcul/canevas que le reste du fichier.
  *
@@ -35,10 +36,11 @@
 import { fxTintOf, type FxTint } from '../layers/fxInk'
 import { familyOf, type ShotFamily } from '../layers/shotEffects'
 import { heldReading } from '../../../lib/replay/replayLogic'
-import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
+import type { ReplayDocumentReady, ReplayVehicleTrackReady } from '../../../lib/replay/replayNormalize'
 import { vehicleChassisHeadingAt, vehicleShooterAimAt } from './vehiclesAim'
-import { vehicleShotStyleOf } from './vehicleShotFx'
-import { vehicleWeaponMountOf, type VehicleWeaponMount } from './vehicleWeaponMounts'
+import { vehicleShotStyleOf, vehicleWeaponMountOf } from './vehicleWeaponRegistry'
+import type { VehicleWeaponMount } from './vehicleWeaponMounts'
+import { vehicleSpriteFamily } from './vehiclesLayer'
 import { buildLivesBySlot, lifeOfSlotAt } from './livesPosition'
 
 /**
@@ -50,9 +52,9 @@ import { buildLivesBySlot, lifeOfSlotAt } from './livesPosition'
  */
 export interface VehicleShotSource {
   /**
-   * Le montage de l'arme sur le châssis, ou `null` quand le tag d'arme n'est pas documenté
-   * (le Shade, dont le tag `weap` manque — le Wraith, le Gungoose et le Falcon sont mesurés depuis
-   * le lot 5.8.3), OU quand l'arme n'est pas une arme de véhicule du tout (`arme: 'joueur'`).
+   * Le montage de l'arme sur le châssis, ou `null` quand le registre du document ne le porte pas
+   * (arme absente du registre, ou entrée sans montage), OU quand l'arme n'est pas une arme de
+   * véhicule du tout (`arme: 'joueur'`).
    * `null` ne fait PLUS perdre la source : l'éclair reste au CENTRE du véhicule, mais il garde sa
    * DIRECTION (cf. `vehicleShotPlacement`).
    */
@@ -124,10 +126,11 @@ export function buildShotFx(doc: ReplayDocumentReady, aimHoldFrames: number): Sh
   for (const s of doc.shots) {
     const label = s.w ? doc.weaponLabels?.[s.w] : undefined
     // DEUX JOINTURES, DANS CET ORDRE — la MÊME que celle du son (`shotSoundStem`) : le registre
-    // des armes de JOUEUR d'abord, puis la table des armes DE VÉHICULE (lot 5.8.2). Sans la
-    // seconde, 68 % des tirs de véhicule de `4f77afc1` tombaient sur la famille `plain` et la
-    // teinte `neutral` — un halo gris pâle centré sur un sprite, qui ne se lit pas comme un tir.
-    const style = label ? null : vehicleShotStyleOf(s.w)
+    // des armes de JOUEUR d'abord, puis le REGISTRE DES ARMES DE VÉHICULE du document (schéma 69,
+    // qui remplace la table client du lot 5.8.2). Sans la seconde, 68 % des tirs de véhicule de
+    // `4f77afc1` tombaient sur la famille `plain` et la teinte `neutral` — un halo gris pâle
+    // centré sur un sprite, qui ne se lit pas comme un tir.
+    const style = label ? null : vehicleShotStyleOf(doc, s.w)
     const fam = familyOf(label?.fx ?? style?.fx)
     if (fam === 'melee') continue
     const track = lifeOfSlotAt(bySlot, s.slot, s.t)
@@ -195,21 +198,49 @@ function vehicleShotSourceOf(
   if (shot.v === undefined) return null
   const track = doc.vehicles.find((v) => v.slot === shot.v)
   if (!track) return null
-  const mount = vehicleWeaponMountOf(shot.w)
+  const mount = vehicleWeaponMountOf(doc, shot.w)
   // ARME DE VÉHICULE = absente du registre d'armes de joueur (cf. l'en-tête de cette fonction).
   const armeDeVehicule = shot.w !== undefined && doc.weaponLabels?.[shot.w] === undefined
   // LE SLOT DU TIREUR, PAS SON SIÈGE (lot 5.5) : c'est la seule clé qui désigne l'occupant qui a
   // tiré, et elle vaut pour le tourelleur passager du Warthog comme pour le conducteur artilleur
   // du Scorpion — comme pour le passager qui tire sa propre arme.
-  const viseeTireur = vehicleShooterAimAt(track, shot.slot, t)
+  const viseeTireur =
+    vehicleShooterAimAt(track, shot.slot, t) ?? viseeSurUnePiecePortee(doc, track, shot.slot, t)
   // UNE ARME DE JOUEUR N'ENTRE QUE SI SA VISÉE EST LUE : sans elle, la source n'apporterait rien
   // et le tir perdrait son propre regard (`h`), qui est parfois lisible.
   if (!mount && !armeDeVehicule && viseeTireur === null) return null
   return {
     mount,
     arme: armeDeVehicule ? 'vehicule' : 'joueur',
-    family: track.family,
+    // LE SPRITE DESSINÉ, variante comprise (schéma 69) : c'est sur SES dimensions que l'ancre se lit.
+    family: vehicleSpriteFamily(track),
     headingDeg: vehicleChassisHeadingAt(track, t),
     shooterHeadingDeg: viseeTireur,
   }
+}
+
+/**
+ * viseeSurUnePiecePortee — LA VISÉE DU TIREUR QUAND SON ÉPISODE EST RESTÉ SUR UNE PIÈCE MONTÉE du
+ * véhicule qui porte le tir (schéma 69, revue adverse du lot M4a, F1).
+ *
+ * Le serveur pose un tir de tourelle sur le PORTEUR (`v` = le châssis) dès que la pièce a un
+ * `carrier`, mais il ne reporte l'épisode de l'artilleur sur ce porteur que s'il le peut : un
+ * porteur non pilotable (Falcon), un épisode hors de la fenêtre du porteur ou un occupant déjà à
+ * bord le laissent sur la pièce. Chercher la visée sur le seul porteur la perdait alors — mesure
+ * du 2026-09-24 : 174 tirs sur 276 perdaient leur visée lue, et le montage `turret` retombait sur
+ * la bouffée ronde. La pièce appartient au porteur par `carrier {slot, gen}` : son épisode EST
+ * l'épisode du tireur, apparié par SLOT comme partout ailleurs.
+ */
+function viseeSurUnePiecePortee(
+  doc: ReplayDocumentReady,
+  porteur: ReplayVehicleTrackReady,
+  slotTireur: number,
+  t: number,
+): number | null {
+  for (const piece of doc.vehicles) {
+    if (piece.carrier?.slot !== porteur.slot || piece.carrier.gen !== porteur.gen) continue
+    const visee = vehicleShooterAimAt(piece, slotTireur, t)
+    if (visee !== null) return visee
+  }
+  return null
 }

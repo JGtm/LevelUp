@@ -144,6 +144,9 @@ func buildVehicleTracks(
 	// LES RELAIS SE FUSIONNENT AVANT LE COMPTAGE : la couverture doit decrire ce qui est PUBLIE,
 	// pas ce qui a ete assemble. `Published` baisse donc exactement de `Merged`.
 	out, cov.Merged = mergeVehicleRelays(out)
+	// LES PIECES MONTEES SE POSENT SUR LEUR PORTEUR AVANT LE COMPTAGE, pour la meme raison que
+	// les relais : les episodes d artilleur changent de vie (cf. vehicle_turrets.go).
+	poseTurretsOnCarriers(out, clock.fb).applyTo(&cov)
 	tallyVehicleCoverage(out, &cov, clock.fb)
 	tallyVehicleEnds(out, &cov)
 	return out, cov, st

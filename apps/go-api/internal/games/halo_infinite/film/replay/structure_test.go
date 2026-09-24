@@ -1277,7 +1277,15 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   contre un registre à 3 reste `unresolved`. Aucune révision de décodage ne monte.
 	//   Même montée (lot M5.2) : `coverage.bridge.deathsFeed` (`read` / `empty` /
 	//   `unreadable`) — un fil des morts vide est une mesure, un fil illisible une panne.
-	//   Détail : `document_chronicle.go`.
+	//   Lot M4a (2026-09-23) : LES TOURELLES SE POSENT SUR LEUR
+	//   VÉHICULE. Trois champs de vie (`part`, `carrier`, `variant`), un champ d'épisode
+	//   (`rides[].turret`), six compteurs de couverture et une racine résolue à la requête
+	//   (`vehicleWeapons`, le registre des armes de véhicule qui remplace trois tables client).
+	//   LA FORME CHANGE ET LE SENS AUSSI : un tir d'artilleur porte `v` = le PORTEUR (plus la
+	//   tourelle), un artilleur reporté perd son `seat`, une pièce montée sort de
+	//   `familyUnknown`. CE QUI NE MONTE PAS : aucune révision de décodage (tout se joue sur les
+	//   vies assemblées ; la republication depuis les faits suffit), `layers`. Détail :
+	//   `document_chronicle.go`.
 	if SchemaVersion != 69 {
 		t.Fatalf("SchemaVersion = %d, attendu 69 : incrémenter exige une raison écrite ci-dessus "+
 			"(un champ optionnel de plus n'en est pas une)", SchemaVersion)

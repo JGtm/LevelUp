@@ -131,6 +131,17 @@ type VehicleCoverage struct {
 	ShotsUnplaced                   int            `json:"shotsUnplaced"`
 	ShotsNoRide                     int            `json:"shotsNoRide"`
 	ShotsVehicleWeapon              int            `json:"shotsVehicleWeapon"`
+	// Les pieces montees (schema 69, cf. `replay.VehicleCoverage`).
+	Turrets                    int `json:"turrets"`
+	TurretsOnCarrier           int `json:"turretsOnCarrier"`
+	TurretCarrierBirthMismatch int `json:"turretCarrierBirthMismatch"`
+	TurretRides                int `json:"turretRides"`
+	TurretRidesDropped         int `json:"turretRidesDropped"`
+	TurretRidesNotRideable     int `json:"turretRidesNotRideable"`
+	TurretRidesOutOfWindow     int `json:"turretRidesOutOfWindow"`
+	TurretRidesAlreadyAboard   int `json:"turretRidesAlreadyAboard"`
+	ShotsOnCarrier             int `json:"shotsOnCarrier"`
+	Variants                   int `json:"variants"`
 	// LES QUATRE DENOMINATEURS DU CYCLE DE REAPPARITION (schema 63).
 	CycleLocations int `json:"cycleLocations"`
 	Cycles         int `json:"cycles"`

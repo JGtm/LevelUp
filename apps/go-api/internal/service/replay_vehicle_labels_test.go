@@ -199,3 +199,15 @@ func TestVehicleLabelOf_ElementDeCarteAvecAsset(t *testing.T) {
 		t.Errorf("libelle = %+v : un asset ne fait pas d un element de carte un vehicule", lbl)
 	}
 }
+
+// TestVehicleFamiliesUsed_LaVarianteAppelleSonSprite — schema 69 : un Rockethog (famille warthog,
+// variante rockethog) fait composer les DEUX sprites — la variante est ce que le client dessine,
+// la famille reste employee par ce qui n est pas le sprite.
+func TestVehicleFamiliesUsed_LaVarianteAppelleSonSprite(t *testing.T) {
+	tracks := replayVehicleTracks("warthog", "mongoose")
+	tracks[0].Variant = "rockethog"
+	got, _ := vehicleFamiliesUsed(tracks)
+	if len(got) != 3 || got[0] != "mongoose" || got[1] != "rockethog" || got[2] != "warthog" {
+		t.Errorf("familles = %v, attendu [mongoose rockethog warthog]", got)
+	}
+}

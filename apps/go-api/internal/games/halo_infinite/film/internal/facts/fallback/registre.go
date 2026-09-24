@@ -57,6 +57,7 @@ func Tranches() []Tranche {
 		{"objectifs et construction", registreObjectifsEtConstruction},
 		{"filmdec", registreFilmdec},
 		{"replay/positions", registreReplayPositions},
+		{"replay/vehicules", registreReplayVehicules},
 	}
 }
 

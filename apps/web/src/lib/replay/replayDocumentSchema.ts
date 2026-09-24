@@ -161,6 +161,8 @@ export const replayDocumentSchema = z.strictObject({
   translocations: calque<Elem<'translocations'>>(),
   vehicleCycles: calque<Elem<'vehicleCycles'>>(),
   vehicleLabels: table<Valeur<'vehicleLabels'>>(),
+  // Registre des armes de véhicule employées par les tirs (schéma 69), résolu à la requête.
+  vehicleWeapons: table<Valeur<'vehicleWeapons'>>(),
   vehicles: calque<Elem<'vehicles'>>(),
   vipCrown: calque<Elem<'vipCrown'>>(),
   weaponChanges: calque<Elem<'weaponChanges'>>(),

@@ -1,24 +1,26 @@
-// sweep_vehicle_weapon_tags.mjs — L'INSTRUMENT QUI ÉCRIT `vehicle_weapon_tags_observed.json`.
+// sweep_vehicle_weapon_tags.mjs — L'INSTRUMENT QUI ECRIT `vehicle_weapon_tags_observed.json`.
 //
-// Retours du rejeu 2026-09-23, lot L1.5 (revue RR-L1-06) : la fixture du garde-rail
-// `model/vehicleWeaponTags.guard.test.ts` doit se RÉGÉNÉRER depuis un instrument versionné, pas
-// depuis un script resté dans un bloc-notes. C'est celui-ci.
+// Retours du rejeu 2026-09-23. Pose au lot L1.5 (revue RR-L1-06) a cote du garde-rail CLIENT des
+// tables d'armes de vehicule ; DEPLACE au lot M4a (sans changer une ligne de mesure) a cote du
+// garde-rail GO du registre `config/titles/halo_infinite/mappings/vehicle_weapons.toml`
+// (`internal/games/mappings/loader_vehicle_weapons_test.go`), quand les tables client ont ete
+// remplacees par ce registre publie dans le document.
 //
-// LECTURE SEULE : il lit les documents de rejeu publiés (`<dépôt>/data/cache/replays/halo_infinite`,
-// fichiers `*.json` hors `*.derived.json`), n'ouvre aucune base, n'écrit que la fixture.
+// LECTURE SEULE : il lit les documents de rejeu publies (`<depot>/data/cache/replays/halo_infinite`,
+// fichiers `*.json` hors `*.derived.json`), n'ouvre aucune base, n'ecrit que la fixture.
 //
-// CE QU'IL COMPTE, par tag d'arme de VÉHICULE (`Shot.w` au gabarit `0x<weap>00000000`) :
-//  - `shots` : tous les tirs publiés sous ce tag ;
-//  - `shotsWithVehicle` : ceux qui portent `v` (slot du véhicule) — « N tirs (dont M en véhicule) » ;
-//  - `docs` : les documents (8 premiers caractères) qui en publient au moins un ;
-//  - `carriers` : pour chaque tir à `v`, la vie du véhicule `v` qui COUVRE l'instant du tir
-//    (`t0 <= t <= t1max`), clé `famille:châssis` (`?` pour une famille vide) ; une vie introuvable
-//    est comptée sous `?:?`.
+// CE QU'IL COMPTE, par tag d'arme de VEHICULE (`Shot.w` au gabarit `0x<weap>00000000`) :
+//  - `shots` : tous les tirs publies sous ce tag ;
+//  - `shotsWithVehicle` : ceux qui portent `v` (slot du vehicule) — « N tirs (dont M en vehicule) » ;
+//  - `docs` : les documents (8 premiers caracteres) qui en publient au moins un ;
+//  - `carriers` : pour chaque tir a `v`, la vie du vehicule `v` qui COUVRE l'instant du tir
+//    (`t0 <= t <= t1max`), cle `famille:chassis` (`?` pour une famille vide) ; une vie introuvable
+//    est comptee sous `?:?`.
 //
-// Usage (depuis apps/web) :
-//   node src/features/match-replay/test/fixtures/sweep_vehicle_weapon_tags.mjs <dossier du parc> [--check]
+// Usage (depuis apps/go-api) :
+//   node internal/games/mappings/testdata/vehicle_weapons/sweep_vehicle_weapon_tags.mjs <dossier du parc> [--check]
 // Le dossier est OBLIGATOIRE (un worktree n'a pas de `data/` : passer celui du checkout qui porte
-// le parc) ; `--check` compare au lieu d'écrire (code de sortie 1 sur un écart).
+// le parc) ; `--check` compare au lieu d'ecrire (code de sortie 1 sur un ecart).
 import { readdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -79,7 +81,7 @@ const tags = [...byTag.values()]
 const out = {
   generatedAt: GENERATED_AT,
   source:
-    'instrument apps/web/src/features/match-replay/test/fixtures/sweep_vehicle_weapon_tags.mjs '
+    'instrument apps/go-api/internal/games/mappings/testdata/vehicle_weapons/sweep_vehicle_weapon_tags.mjs '
     + '(tirs au gabarit 0x<weap>00000000 ; porteur = vie du vehicule v qui COUVRE l instant, t0 <= t <= t1max)',
   corpus: {
     documents: files.length,

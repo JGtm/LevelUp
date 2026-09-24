@@ -37,6 +37,7 @@ import {
   vehicleRideColor,
   vehicleScreenAngle,
   vehicleScreenLengthPx,
+  vehicleSpriteFamily,
   vehicleSpriteScale,
   vehicleVisibleAt,
 } from '../model/vehiclesLayer'
@@ -411,7 +412,8 @@ function vehicleExplosionEdgePx(
   k: number,
   scalePxPerM: number,
 ): number {
-  const size = track.family ? style.sizeOf(track.family) : null
+  const dessin = vehicleSpriteFamily(track)
+  const size = dessin ? style.sizeOf(dessin) : null
   if (!size) return vehicleUnknownHalfPx(scalePxPerM) * k
   return (vehicleScreenLengthPx(size.naturalHeightPx, size.mmPerPx, scalePxPerM) / 2) * k
 }
@@ -531,8 +533,10 @@ export function drawVehiclesLayer(
           drawUnknownVehicleMarker(ctx, c, color, time.k, demiLosange)
           edgePx = demiLosange * time.k
         } else {
-          const size = style.sizeOf(track.family)
-          const sprite = size ? style.spriteOf(track.family, color) : null
+          // LA VARIANTE NOMME LE SPRITE quand le document la dit (schéma 69 : Rockethog, Gungoose).
+          const dessin = vehicleSpriteFamily(track) ?? track.family
+          const size = style.sizeOf(dessin)
+          const sprite = size ? style.spriteOf(dessin, color) : null
           if (size && sprite) {
             const angle = vehicleScreenAngle(vehicleChassisHeadingAt(track, time.frame))
             const scaleRatio = vehicleSpriteScale(size.naturalHeightPx, size.mmPerPx, echelle)

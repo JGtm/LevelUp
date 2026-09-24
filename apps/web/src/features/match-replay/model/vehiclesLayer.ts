@@ -170,7 +170,36 @@ export function vehicleIsScenery(track: ReplayVehicleTrackReady): boolean {
  * calque ; l'embarquement le reprend par `vehicleCanEmbark`.
  */
 export function vehicleIsHidden(track: ReplayVehicleTrackReady): boolean {
-  return vehicleIsDecor(track.family) || vehicleIsScenery(track)
+  return vehicleIsDecor(track.family) || vehicleIsScenery(track) || vehicleIsMountedPart(track)
+}
+
+/**
+ * VEHICLE_PART_TURRET — la seule valeur de `track.part` (schéma 69, côté Go : `VehiclePartTurret`,
+ * `film/replay/vehicle_turrets.go`). Nommée pour la même raison que `VEHICLE_END_DESTROYED`.
+ */
+export const VEHICLE_PART_TURRET = 'turret'
+
+/**
+ * vehicleIsMountedPart — vrai quand la vie est une PIÈCE MONTÉE (tourelle de Warthog, du Falcon,
+ * du Wraith, canon du Scorpion) : un objet que le film crée à part mais qui ne se déplace pas seul
+ * — il n'a aucun échantillon de position, et le dessiner le laisserait à sa NAISSANCE pendant que
+ * son véhicule roule (médiane 44,7 m au parc, retours du 2026-09-23). DÉCISION UTILISATEUR Q12 :
+ * l'artilleur se dessine SUR le véhicule porteur, sans marqueur de tourelle séparé. Le serveur a
+ * déjà reporté ses occupants et posé ses tirs sur le porteur (`carrier`) : la pièce ne se dessine
+ * plus, n'embarque personne, et ne compte pas dans la disponibilité du calque.
+ */
+export function vehicleIsMountedPart(track: ReplayVehicleTrackReady): boolean {
+  return track.part === VEHICLE_PART_TURRET
+}
+
+/**
+ * vehicleSpriteFamily — la famille dont le SPRITE se dessine : la VARIANTE quand le document la
+ * nomme (schéma 69 : `rockethog` par sa tourelle, `gungoose` par son arme), la famille sinon. La
+ * famille, elle, garde tout le reste (moteur, explosion, classe d'arme) — une variante n'est pas un
+ * autre véhicule.
+ */
+export function vehicleSpriteFamily(track: Pick<ReplayVehicleTrackReady, 'family' | 'variant'>): string | undefined {
+  return track.variant || track.family
 }
 
 // --- ÉLÉMENTS DE CARTE (schéma 1.9.9 — EN AVANCE DE PHASE, cf. ReplayVehicleLabel) ------------

@@ -256,3 +256,18 @@ package facts
 // de la PUBLICATION (`replay/`), declenchees sur des faits DEJA persistes : aucune lecture, aucune
 // largeur, aucun appariement de `facts` ne change, les lignes produites sont identiques a l octet
 // et aucun match deja decode n est candidat au backlog.
+// 2026-09-23, LOT M4a (PLAN_RETOURS_REJEU_2026-09-23) — REVISION INCHANGEE, EMPREINTE SEULE
+// RECOPIEE, ET LE CHOIX EST ECRIT. `fallback/` recoit une entree de DONNEES,
+// `repli_tourelle_porteur_voisin_de_slot` (fichier neuf `registre_replay_vehicules.go`, une tranche
+// de plus a `Tranches`, une constante a `noms.go`) : le registre DECLARE et COMPTE, il ne decide
+// rien, et le site qui le declenche est dans la couche de PUBLICATION (`replay/vehicle_turrets.go`),
+// qui ne produit aucune ligne de kill. Aucune lecture, aucune largeur, aucun appariement ne change :
+// les lignes produites sont identiques a l octet et aucun match deja decode n est candidat au backlog.
+// 2026-09-24, LOT M4a, REPRISE APRES REVUE ADVERSE — REVISION INCHANGEE, EMPREINTE SEULE RECOPIEE.
+// Le `Mecanisme` de `repli_tourelle_porteur_voisin_de_slot` dit desormais la NAISSANCE COMMUNE que
+// la publication exige du voisin (meme instant, meme point) : une chaine de DONNEES du registre, le
+// site reste dans la couche de publication. Aucune ligne de kill ne change.
+// 2026-09-24, INTEGRATION DE LA VAGUE C DES RETOURS DU REJEU — REVISION INCHANGEE, EMPREINTE SEULE
+// RECOPIEE. Les tranches `replay/positions` (M1) et `replay/vehicules` (M4a) sont reunies dans
+// `Tranches()` : l arbre hache est l union des deux lots, chacun deja sans effet sur les lignes de
+// kill. Aucune lecture, aucune largeur, aucun appariement ne change.

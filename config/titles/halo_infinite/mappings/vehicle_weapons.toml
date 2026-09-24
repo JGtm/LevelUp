@@ -1,0 +1,120 @@
+# vehicle_weapons.toml — LE REGISTRE DES ARMES DE VEHICULE du rejeu 2D (schema 69 du document).
+#
+# Retours du rejeu du 2026-09-23, lot M4a (PLAN_RETOURS_REJEU_2026-09-23 §4.4 et §5). Il remplace
+# les trois tables CLIENT (style, son, montage) qui etaient clees par des tags `weap` lus dans le
+# module du jeu et jamais confrontes a un film : 7 des 11 cles n apparaissaient dans aucun
+# document du parc, et 3 tags reellement publies en etaient absents.
+#
+# LA CLE EST UN TAG OBSERVE DANS UN FILM. `tag` = les 8 chiffres hexadecimaux (majuscules) de la
+# moitie HAUTE de `Shot.w` (`0x<tag>00000000`). Le garde-rail Go
+# (`internal/games/mappings/loader_vehicle_weapons_test.go`) exige que toute cle figure dans la
+# fixture datee des tags observes au parc (`testdata/vehicle_weapons/vehicle_weapon_tags_observed.json`),
+# et que tout tag de vehicule observe au moins 5 fois ait une entree ou une ligne `[[unknown]]`
+# motivee. Une arme jamais vue dans un film (Ghost, canons de la Banshee, Chopper, LMG du Falcon,
+# LMG du Wasp : toutes a TIR CONTINU, que le decodeur ne lit pas encore — lot M4b) n entre ici
+# qu au jour ou un document la publie.
+#
+# CHAQUE ENTREE PORTE :
+#   vehicle   famille ou variante du vehicule porteur (vocabulaire de `VehicleTrack.family` /
+#             `variant` : wraith, rockethog, falcon, gungoose, scorpion, wasp...)
+#   en / fr   le nom de l arme, publie dans le document (jamais ecrit en Go)
+#   fire      single (un evenement par coup) | continuous (tir tenu)
+#   fx        forme de l eclair — liste de [shot_effects] : ballistic | plasma | light | shock |
+#             explosive | melee | needles
+#   tint      nature de la decharge — liste de [shot_tints] : kinetic | plasma_cool | plasma_hot |
+#             forerunner | electric | needle | blast
+#   sound     stem de la PREMIERE variante du son de tir (fichier `static/sounds/{slug}/<stem>.wav`,
+#             les variantes se tirent cote client) — OU `silence`, la raison d un silence DECIDE
+#   mount     ancre sur le sprite, en fractions (repere nez en haut ; ax -0,5 gauche .. +0,5
+#             droite, ay -0,5 nez .. +0,5 arriere) et classe de visee : aim = fixed (solidaire du
+#             nez) | turret (visee du tireur)
+#   proof     la PREUVE : documents, nombre de tirs, porteur mesure, tag de degat co-occurrent,
+#             piece de RE ; `decision` quand un choix de l utilisateur tranche le rendu
+#
+# Mesures : fixture du 2026-09-23 (111 documents, schema 68), instrument
+# `testdata/vehicle_weapons/sweep_vehicle_weapon_tags.mjs`.
+
+[meta]
+title_slug     = "halo_infinite"
+schema_version = 1
+
+[[weapons]]
+tag      = "121B4009"
+vehicle  = "wraith"
+en       = "Plasma Mortar"
+fr       = "Mortier à plasma"
+fire     = "single"
+fx       = "plasma"
+tint     = "plasma_hot"
+sound    = "vehicle_shot_wraith_1"
+mount    = { aim = "fixed", ax = 0.0, ay = -0.2 }
+proof    = "172 tirs publies dont 142 en vehicule, 4 documents (0a44c6cc, 4f77afc1, 5676a9ba, 8a485699) ; porteur mesure wraith:ae845375 (140) ; degats 7c4f8a28 / deffdc6b (banque sb_010_veh_cv_wraith), 37 frags sur 40 dans une vie ae845375 ; ancre mesuree sur wraith.png (bouche du mortier)"
+decision = "teinte ROUGE plasma_hot (utilisateur, Q7, 2026-09-23)"
+
+[[weapons]]
+tag      = "C7D50912"
+vehicle  = "rockethog"
+en       = "Rocket Launcher"
+fr       = "Lance-roquettes"
+fire     = "single"
+fx       = "explosive"
+tint     = "blast"
+sound    = "vehicle_shot_warthog_rocket_1"
+mount    = { aim = "turret", ax = 0.0, ay = 0.26 }
+proof    = "132 tirs publies dont 127 en vehicule, 2 documents (4f77afc1, f2966f08) ; porteur mesure : la tourelle enfant bcfb852f (125) ; WARTHOG_FINAL_2026-09-02 §1 vehi bcfb852f -> weap c7d50912 (banque veh_un_rockethog) ; degat 5a4450e4 ; ancre MESUREE du plateau arriere (WARTHOG_FINAL_V2 §§1-2)"
+decision = "explosions comme le lance-roquettes SPNKR (forme explosive, teinte blast : utilisateur, 2026-09-23 nuit) ; son des roquettes valide le 31/08 (Q9)"
+
+[[weapons]]
+tag      = "0BB6976B"
+vehicle  = "falcon"
+en       = "Grenade Launcher"
+fr       = "Lance-grenades"
+fire     = "single"
+fx       = "explosive"
+tint     = "kinetic"
+silence  = "aucune reconstruction cablee : la banque sb_010_veh_un_falcongrenadelauncher joue le MEME evenement que le tir du Rockethog (18 medias identiques, sonde SONS du 2026-09-24) ; designation a l oreille par l utilisateur avant cablage (decision du 2026-09-23 nuit)"
+mount    = { aim = "turret", ax = 0.06, ay = 0.13 }
+proof    = "52 tirs publies dont 51 en vehicule, 3 documents (4f77afc1, 879a4dba, a464e20b) ; porteur mesure : la tourelle enfant 1a043c29 (51), banque sb_010_veh_un_falcongrenadelauncher (labels.tsv) ; degats 674a7d69 / a859230a, 32 frags ; tire AU COUP et observe, alors que la LMG du Falcon (00015cd3) tire en continu"
+decision = "lance-grenades du Falcon (Q10, 2026-09-23 : deduit du tir au coup, le Falcon porte l un ou l autre)"
+
+[[weapons]]
+tag      = "0042678E"
+vehicle  = "gungoose"
+en       = "Forward Machine Guns"
+fr       = "Mitrailleuses avant"
+fire     = "single"
+fx       = "ballistic"
+tint     = "kinetic"
+sound    = "vehicle_shot_gungoose_1"
+mount    = { aim = "fixed", ax = 0.06, ay = -0.4 }
+proof    = "40 tirs publies dont 15 en vehicule, 3 documents (4f77afc1, 8a485699, fccc61cd) ; porteur mesure mongoose:af31ab1a (15) — le Gungoose partage le chassis du Mongoose ; CONTACT_ARMES_GUNGOOSE_2026-09-02 (objet scen 0x004164ea en zone avant) ; degat 00426796 ; ancre mesuree sur gungoose.png"
+
+[[weapons]]
+tag      = "49E40D17"
+vehicle  = "scorpion"
+en       = "Main Cannon"
+fr       = "Canon principal"
+fire     = "single"
+fx       = "explosive"
+tint     = "blast"
+sound    = "vehicle_shot_scorpion_1"
+mount    = { aim = "turret", ax = 0.0, ay = -0.05 }
+proof    = "13 tirs publies dont 13 en vehicule, 2 documents (0a44c6cc, 8a485699) ; porteur mesure scorpion:f6f54e56 (13) ; degats 19bd6810 / 0bece71e (banque sb_010_veh_un_scorpion), 4 frags sur 4 precedes d un tir ; le tag du module (00015cfa) n apparait dans aucun document"
+decision = "explosion comme la grenade (utilisateur, 2026-09-23 nuit) : forme explosive, teinte blast"
+
+[[weapons]]
+tag      = "11725DC4"
+vehicle  = "wasp"
+en       = "Missile Launcher"
+fr       = "Lance-missiles"
+fire     = "single"
+fx       = "explosive"
+tint     = "blast"
+sound    = "vehicle_shot_wasp_1"
+mount    = { aim = "fixed", ax = 0.3, ay = -0.05 }
+proof    = "4 tirs publies dont 4 en vehicule, 1 document (8a485699) ; porteur mesure wasp:b65b3b4a (4) ; V3F_TIRS_COVENANT_2026-09-02 §4 : son AU COUP (snd!, 450/min) ; le son vehicle_shot_wasp est celui des missiles (sonde SONS du 2026-09-24, equilibre de couches du rendu rev9)"
+decision = "le coup par coup est le LANCE-MISSILES, l autre mode (d3c407ed, son en boucle 600/min, tir continu) est la LMG (utilisateur, Q11, 2026-09-23 nuit) ; ancre sur l aile"
+
+[[unknown]]
+tag    = "850902EF"
+reason = "25 tirs publies dont 15 en vehicule, un seul document (5676a9ba), porteurs banshee:c6e79dcc 11 / warthog:fe32c0f4 4 : aucune piece ne nomme ce tag (candidat : bombe de la Banshee 0000aa69, jamais vue sous ce tag) — sans style ni son jusqu a son identification"

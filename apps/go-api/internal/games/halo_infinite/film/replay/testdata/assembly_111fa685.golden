@@ -944,8 +944,9 @@ entrees 25 · sieges 25 · lus 25 · apparies 0 · reprises ecrites 0
 arrivants 1 · presences closes 16 · sans presence 1 · occupants au plus 24 · sans table false
 
 ## REPLIS DECLENCHES — la part de ce document qui ne vient PAS d une lecture du film
-repli_chassis_vehicule_marqueur_neutre           4
+repli_chassis_vehicule_marqueur_neutre           2
 repli_position_hors_emprise_ecartee              1
+repli_tourelle_porteur_voisin_de_slot            2
 
 ## LIBELLES D ARMES — le tag brut reste A COTE du libelle, jamais a sa place
 48 identifiant(s) nomme(s) ; un identifiant absent garde son hexadecimal a l ecran et

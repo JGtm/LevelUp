@@ -613,13 +613,25 @@ describe('buildSoundTimeline — filtre par catégorie (tiroir de réglages, pha
  * §1) ; aucun châssis ne porte la famille `rockethog`, et ses 127 tirs du parc (tourelle enfant
  * `bcfb852f` de famille vide, ou châssis `warthog`) étaient muets depuis le 21/09.
  */
-describe('shotSoundStem — le tag seul décide (plus de départage par châssis)', () => {
+describe('shotSoundStem — l arme seule décide (plus de départage par châssis)', () => {
   const HOG = '0xC7D5091200000000'
+  // Le registre des armes de véhicule du document (schéma 69) : c'est lui qui nomme le son.
+  const REGISTRE: NonNullable<ReplayDocument['vehicleWeapons']> = {
+    [HOG]: {
+      vehicle: 'rockethog', en: 'Rocket Launcher', fr: 'Lance-roquettes', fire: 'single',
+      fx: 'explosive', tint: 'blast', sound: 'vehicle_shot_warthog_rocket_1',
+    },
+    '0x0001543500000000': {
+      vehicle: 'ghost', en: 'Plasma Cannons', fr: 'Canons à plasma', fire: 'continuous',
+      fx: 'plasma', tint: 'plasma_hot', sound: 'vehicle_shot_ghost_1',
+    },
+  }
 
   /** Un document portant UN véhicule de la famille donnée au slot 700. */
   function docAvecHog(family: string | undefined) {
     return testReplayDoc({
       frameIntervalMs: 100,
+      vehicleWeapons: REGISTRE,
       vehicles: [
         { slot: 700, gen: 1, t0: 0, t1: 50, t1max: 50, end: 'unknown', family, samples: [], rides: [] },
       ],
@@ -637,6 +649,7 @@ describe('shotSoundStem — le tag seul décide (plus de départage par châssis
   it('un tag SANS ambiguïté ne dépend d aucune famille : le Ghost sonne même sans porteur lu', () => {
     const doc = testReplayDoc({
       frameIntervalMs: 100,
+      vehicleWeapons: REGISTRE,
       vehicles: [],
       shots: [{ slot: 1, t: 0, x: 0, y: 0, w: '0x0001543500000000', v: 700 }],
     })

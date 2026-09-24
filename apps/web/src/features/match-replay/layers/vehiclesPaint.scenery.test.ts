@@ -224,3 +224,27 @@ describe('le décor de carte n’embarque personne', () => {
     expect(vehicleCanEmbark(REFUGE_WARTHOG)).toBe(true)
   })
 })
+
+/**
+ * LA VARIANTE NOMME LE SPRITE DESSINÉ (schéma 69, revue adverse du lot M4a, F6). Un Rockethog est
+ * un Warthog dont la tourelle nomme la variante : sa famille (moteur, explosion) reste `warthog`,
+ * mais c'est le sprite `rockethog` qui se dessine — taille et image lues sous ce nom.
+ */
+describe('drawVehiclesLayer — la variante nomme le sprite', () => {
+  it('un Warthog de variante `rockethog` se dessine avec le sprite du Rockethog', () => {
+    const lus: string[] = []
+    const s: VehicleStyle = {
+      ...style(),
+      sizeOf: (f) => {
+        lus.push(f)
+        return { naturalWidthPx: 128, naturalHeightPx: 128, mmPerPx: 10 }
+      },
+    }
+    const rockethog: ReplayVehicleTrackReady = { ...REFUGE_WARTHOG, variant: 'rockethog' }
+    const { ops, ctx } = recordingContext()
+    drawVehiclesLayer(ctx, [rockethog], VIEW, { frame: 1500, k: 1, frameMs: 100 }, s)
+    expect(count(ops, 'drawImage')).toBe(1)
+    expect(lus).toContain('rockethog')
+    expect(lus).not.toContain('warthog')
+  })
+})

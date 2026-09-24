@@ -74,9 +74,10 @@ package replay
 // exactement la distinction que `coverage` tient aujourd hui a coups de blocs `omitempty`, et
 // qu un tableau vide seul ne sait pas dire.
 //
-// # LES QUATRE CALQUES A LA REQUETE N Y ENTRENT JAMAIS
+// # LES CINQ CALQUES A LA REQUETE N Y ENTRENT JAMAIS
 //
-// `mapObjectives`, `mapWeaponPads`, `weaponTiers` et `vehicleLabels` sont resolus PAR LE SERVICE,
+// `mapObjectives`, `mapWeaponPads`, `weaponTiers`, `vehicleLabels` et — depuis le schema 69 —
+// `vehicleWeapons` (registre des armes de vehicule) sont resolus PAR LE SERVICE,
 // a la requete : la cuisson ne les ecrit pas (garde
 // `TestDocumentShapeCalquesALaRequeteRestentHorsCuisson`, `document_shape_test.go`). Ils ne sont
 // ni dans la table, ni dans les exemptions.

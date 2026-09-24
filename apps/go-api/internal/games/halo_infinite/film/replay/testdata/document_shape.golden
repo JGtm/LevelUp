@@ -1,9 +1,9 @@
 # EMPREINTE DE FORME DU DOCUMENT DE REJEU — fige par document_shape_test.go.
 # Ne s'edite JAMAIS a la main : regeneration decrite en tete de ce test.
 schema 69
-empreinte-stockee f1f7602714ec48f4
-empreinte-servie f1f7602714ec48f4
-empreinte-cuite 49f120f451a77618
+empreinte-stockee 7948083c3ece0b7e
+empreinte-servie 7948083c3ece0b7e
+empreinte-cuite d4f0261b525ed90a
 empreinte-cuite-regle 2
 
 AbilityCharge
@@ -719,6 +719,7 @@ ReplayDocument
   Translocations json:"translocations,omitempty" []Translocation
   VehicleCycles json:"vehicleCycles,omitempty" []VehicleCycle
   VehicleLabels json:"vehicleLabels,omitempty" map[string]VehicleLabel
+  VehicleWeapons json:"vehicleWeapons,omitempty" map[string]VehicleWeapon
   Vehicles json:"vehicles,omitempty" []VehicleTrack
   VipCrown json:"vipCrown,omitempty" []VipPeriod
   WeaponChanges json:"weaponChanges,omitempty" []WeaponChange
@@ -933,11 +934,21 @@ VehicleCoverage
   Shots json:"shots" int
   ShotsAmbiguous json:"shotsAmbiguous" int
   ShotsNoRide json:"shotsNoRide" int
+  ShotsOnCarrier json:"shotsOnCarrier" int
   ShotsUnplaced json:"shotsUnplaced" int
   ShotsVehicleWeapon json:"shotsVehicleWeapon" int
   SilencesNonTranches json:"silencesNonTranches" int
   SpawnsHorsEmprise json:"spawnsHorsEmprise" int
+  TurretCarrierBirthMismatch json:"turretCarrierBirthMismatch" int
+  TurretRides json:"turretRides" int
+  TurretRidesAlreadyAboard json:"turretRidesAlreadyAboard" int
+  TurretRidesDropped json:"turretRidesDropped" int
+  TurretRidesNotRideable json:"turretRidesNotRideable" int
+  TurretRidesOutOfWindow json:"turretRidesOutOfWindow" int
+  Turrets json:"turrets" int
+  TurretsOnCarrier json:"turretsOnCarrier" int
   UnknownChassis json:"unknownChassis,omitempty" map[string]int
+  Variants json:"variants" int
   VehiclesRidden json:"vehiclesRidden" int
   WithChassis json:"withChassis" int
   WithHeading json:"withHeading" int
@@ -957,6 +968,9 @@ VehicleLabel
   Img json:"img,omitempty" string
   Kind json:"kind,omitempty" string
   Tinted json:"tinted,omitempty" bool
+VehicleLifeRef
+  Gen json:"gen" uint32
+  Slot json:"slot" uint32
 VehicleRide
   Aim json:"aim,omitempty" []VehicleAim
   Seat json:"seat,omitempty" *int
@@ -964,6 +978,7 @@ VehicleRide
   Src json:"src" string
   T0 json:"t0" int
   T1 json:"t1" int
+  Turret json:"turret,omitempty" *VehicleLifeRef
   XUID json:"xuid,omitempty" string
 VehicleSample
   G json:"g,omitempty" int
@@ -978,10 +993,12 @@ VehicleSpawn
   Y json:"y" float32
   Z json:"z,omitempty" float32
 VehicleTrack
+  Carrier json:"carrier,omitempty" *VehicleLifeRef
   Chassis json:"chassis,omitempty" string
   End json:"end" string
   Family json:"family,omitempty" string
   Gen json:"gen" uint32
+  Part json:"part,omitempty" string
   Rides json:"rides,omitempty" []VehicleRide
   Samples json:"samples,omitempty" []VehicleSample
   Slot json:"slot" uint32
@@ -990,6 +1007,20 @@ VehicleTrack
   T1 json:"t1" int
   T1Max json:"t1max" int
   TEnd json:"tEnd,omitempty" *int
+  Variant json:"variant,omitempty" string
+VehicleWeapon
+  En json:"en" string
+  Fire json:"fire" string
+  Fr json:"fr" string
+  Fx json:"fx" string
+  Mount json:"mount,omitempty" *VehicleWeaponMount
+  Sound json:"sound,omitempty" string
+  Tint json:"tint" string
+  Vehicle json:"vehicle" string
+VehicleWeaponMount
+  AX json:"ax" float64
+  AY json:"ay" float64
+  Aim json:"aim" string
 VipCrownCoverage
   Closed json:"closed" int
   ClosedByDeath json:"closedByDeath" int
