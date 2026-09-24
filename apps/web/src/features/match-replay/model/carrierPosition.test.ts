@@ -169,8 +169,8 @@ describe('buildCarrierPosAt — les replis, tous identiques au comportement d’
     expect(buildCarrierPosAt(doc)('A', 50)).toEqual(buildPlayerPosAt(doc)('A', 50))
   })
 
-  it('un épisode posé sur du DÉCOR n’embarque personne (bug du prop Falcon)', () => {
-    const doc = docWithVehicles([vehicle({ family: 'falcon' })])
+  it('un épisode posé sur du DÉCOR n’embarque personne (bug du prop Falcon du 2026-09-02)', () => {
+    const doc = docWithVehicles([vehicle({ family: 'pelican' })])
     expect(buildCarrierPosAt(doc)('A', 50)).toEqual(buildPlayerPosAt(doc)('A', 50))
   })
 

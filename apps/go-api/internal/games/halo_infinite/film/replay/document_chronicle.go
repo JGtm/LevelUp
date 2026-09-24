@@ -2025,7 +2025,8 @@ package replay
 // republication 69 n est pas faite, et la vague D pose deja SON 70) ; l integration les reunit
 // sous ce seul numero (un artefact au schema 69 porte les quatre). Aucune revision de DECODAGE ne
 // monte : republication DEPUIS LES FAITS. Les quatre parties suivent, puis celle de M7 (decor de
-// carte), qui ne touche que la forme SERVIE : aucun artefact cuit n en porte la trace.
+// carte), qui ne touche que la forme SERVIE : aucun artefact cuit n en porte la trace, puis celle
+// de M7b (le Falcon pilotable).
 //
 // v69, PARTIE M1 (2026-09-23, decision utilisateur Q15) : LA PUBLICATION DES
 // POSITIONS APPLIQUE LA GRAMMAIRE DE LA VIE, DEUX REPLIS NOMMES, ET DIT SES SILENCES AUX VEHICULES.
@@ -2126,8 +2127,9 @@ package replay
 //	               change pas (moteur, explosion, classe d arme).
 //	`rides[]`      `turret {slot, gen}` : l episode d artilleur REPORTE sur le porteur, SANS `seat`
 //	               (le siege lu etait celui de la tourelle). Trois refus le gardent sur la piece :
-//	               porteur non pilotable (Falcon), hors de la fenetre du porteur, occupant deja a
-//	               bord (episodes qui se RECOUVRENT ; un changement de siege jointif est reporte).
+//	               porteur non pilotable (aucun depuis M7b), hors de la fenetre du porteur,
+//	               occupant deja a bord (episodes qui se RECOUVRENT ; un changement de siege
+//	               jointif est reporte).
 //	`shots[]`      un tir d artilleur sort du PORTEUR (`v` = le chassis, `x`/`y` sa position), plus
 //	               de la naissance de la tourelle (mediane 44,7 m au parc avant ce lot) ; hors de la
 //	               fenetre du porteur, il n est pas pose (`shotsUnplaced`).
@@ -2184,3 +2186,15 @@ package replay
 //	               replis nommes au registre (`repli_decor_sous_le_sol_foule_du_match`,
 //	               `repli_decor_carte_sans_zone_affiche`). Le client ne decide plus : L1.3 lit ce
 //	               verdict. Empreinte CUITE inchangee, `facts.Rev` inchangee : rien a re-cuire.
+//
+// v69, PARTIE M7b (2026-09-24, decision de l utilisateur du 2026-09-24 : « les Pelican c est
+// toujours du decor ; le Falcon ca depend ») : LE FALCON EST PILOTABLE. AUCUNE forme ne change.
+//
+//	`vehicles[]`   le Falcon sort des familles non pilotables : ses episodes d occupation sont
+//	`.rides`       publies, et ceux de ses artilleurs (pieces `1a043c29` / `f4c45d71`) REPORTES sur
+//	               lui. Son decor se decide vie par vie par la regle de M7. Pelican, Phantom, Skiff
+//	               restent refuses. `coverage.vehicles.turretRidesNotRideable` vaut 0 par
+//	               construction (garde d une piece future).
+//	`shots[]`      les tirs de ses occupants sont poses sur lui ; une piece et son porteur sont le
+//	               MEME vehicule pour l ambiguite (`shotsAmbiguous`). Parc (107 documents rejoues
+//	               des faits) : 5 documents touches, 70 episodes, 339 tirs publies en plus.

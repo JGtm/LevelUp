@@ -225,8 +225,8 @@ function vehicleShotSourceOf(
  *
  * Le serveur pose un tir de tourelle sur le PORTEUR (`v` = le châssis) dès que la pièce a un
  * `carrier`, mais il ne reporte l'épisode de l'artilleur sur ce porteur que s'il le peut : un
- * porteur non pilotable (Falcon), un épisode hors de la fenêtre du porteur ou un occupant déjà à
- * bord le laissent sur la pièce. Chercher la visée sur le seul porteur la perdait alors — mesure
+ * porteur non pilotable (aucun depuis le 2026-09-24 : le Falcon est pilotable), un épisode hors
+ * de la fenêtre du porteur ou un occupant déjà à bord le laissent sur la pièce. Chercher la visée sur le seul porteur la perdait alors — mesure
  * du 2026-09-24 : 174 tirs sur 276 perdaient leur visée lue, et le montage `turret` retombait sur
  * la bouffée ronde. La pièce appartient au porteur par `carrier {slot, gen}` : son épisode EST
  * l'épisode du tireur, apparié par SLOT comme partout ailleurs.

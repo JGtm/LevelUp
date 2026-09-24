@@ -39,9 +39,9 @@
  * la direction du cône, il n'en est que le REPLI.
  *
  * CE QUE CE CALQUE REFUSE DE DESSINER — LES FAMILLES NON JOUABLES (verdict utilisateur du
- * 2026-09-02, après visionnage réel). Voir `FAMILLES_NON_JOUABLES` : ce sont des entités de
- * DÉCOR, pas des véhicules de la partie, et elles ne doivent NI se dessiner, NI nommer
- * quiconque, NI faire disparaître un pion.
+ * 2026-09-02, après visionnage réel, amendé le 2026-09-24 : le Falcon en est sorti). Voir
+ * `FAMILLES_NON_JOUABLES` : ce sont des entités de DÉCOR, pas des véhicules de la partie, et elles
+ * ne doivent NI se dessiner, NI nommer quiconque, NI faire disparaître un pion.
  *
  * ORIENTATION — LA CONSTANTE D'ÉCART D'ÉCRAN (GATE C6). Les échantillons portent un cap MONDE
  * (`VehicleSample.h`, convention `Point.h` : 0° = +X, 90° = +Y, sens `atan2(y,x)`), mais les
@@ -76,11 +76,18 @@ import { covers } from './replaySpans'
  *
  * SOURCE : verdict utilisateur du 2026-09-02 après visionnage réel du rejeu (« sur Behemoth,
  * des falcon apparaissent alors que la partie n'en avait aucun »), recoupé sur l'artefact
- * `0d76e8f1` — le châssis `0x0000254b` est bien le modèle du Falcon, mais il est porté par des
- * entités de DÉCOR : vitesse moyenne 0,3-0,8 m/s sur toute leur vie (l'une n'a parcouru
- * strictement aucune distance), vivantes du début à la fin du film. Le Falcon, le Pelican, le
- * Phantom et le Skiff ne sont PAS pilotables en multijoueur Halo Infinite : une entité qui porte
- * leur modèle est un élément de mise en scène, jamais un véhicule de la partie.
+ * `0d76e8f1`. Le Pelican, le Phantom et le Skiff ne sont PAS pilotables en multijoueur Halo
+ * Infinite : une entité qui porte leur modèle est un élément de mise en scène, jamais un véhicule
+ * de la partie.
+ *
+ * LE FALCON EN EST SORTI LE 2026-09-24 (décision utilisateur : « les Pelican c'est toujours du
+ * décor ; le Falcon ça dépend »). Il est pilotable en multijoueur, avec ses artilleurs (parc du
+ * 2026-09-24 : 19 Falcon occupés dans 5 documents — Grande bataille, Escouade, et un vol sur
+ * Launch Site en Super Fiesta). Sa famille ne décide donc plus rien : il se dessine comme tout
+ * véhicule pilotable, et un Falcon de décor se masque VIE PAR VIE par la règle générale du décor
+ * de carte (`vehicleIsScenery`, lot M7 : posé une seule fois, vivant jusqu'à la fin, jamais occupé
+ * ET hors de la zone jouable — décidé par le serveur). Même sortie côté Go
+ * (`vehicleFamillesNonPilotables`, `film/replay/vehicle_tracks.go`).
  *
  * CE N'EST PAS UNE CORRECTION DU DOCUMENT. Le serveur a raison de publier ces vies : il recense
  * ce que le film contient (archétype ti=40), et le châssis EST celui d'un Falcon. C'est
@@ -91,12 +98,11 @@ import { covers } from './replaySpans'
  *     véhicule (c'est la plainte initiale).
  *  2. AUCUN NOM — les noms d'occupants ne sont écrits que sur des véhicules réels.
  *  3. AUCUNE PARTICIPATION AU PRÉDICAT EMBARQUÉ — et c'était le dégât le plus grave : le liant
- *     « trou de position » a prêté à un de ces props TROIS épisodes d'occupation (slot 771 de
- *     l'artefact cité), ce qui ESCAMOTAIT le pion des joueurs passés à côté. Un faux embarquement
- *     efface un joueur bien réel de la carte ; le refus doit donc porter d'abord ici.
+ *     « trou de position » a prêté à un prop alors rangé en `falcon` TROIS épisodes d'occupation
+ *     (slot 771 de l'artefact cité), ce qui ESCAMOTAIT le pion des joueurs passés à côté. Un faux
+ *     embarquement efface un joueur bien réel de la carte ; le refus doit donc porter d'abord ici.
  */
 export const FAMILLES_NON_JOUABLES: ReadonlySet<string> = new Set([
-  'falcon',
   'pelican',
   'phantom',
   'skiff',
@@ -182,7 +188,7 @@ export function vehicleSpriteFamily(track: Pick<ReplayVehicleTrackReady, 'family
  * carte**. Nommée plutôt que semée en littéral, même raison que `VEHICLE_END_DESTROYED`.
  *
  * ELLE NE SE CONFOND PAS AVEC `FAMILLES_NON_JOUABLES`, ET LA DIFFÉRENCE EST LE POINT DU LOT.
- * Le décor (Falcon, Pelican…) ne se dessine PAS : c'est la plainte de l'utilisateur du
+ * Le décor (Pelican, Phantom, Skiff) ne se dessine PAS : c'est la plainte de l'utilisateur du
  * 2026-09-02, des transports scriptés qui passaient pour des véhicules de la partie. Un élément
  * de carte, LUI, SE DESSINE — décision utilisateur du 2026-09-14 : « ce sont des éléments de la
  * map ». Ce qu'il ne fait pas, c'est porter un occupant ou passer pour un châssis non résolu.

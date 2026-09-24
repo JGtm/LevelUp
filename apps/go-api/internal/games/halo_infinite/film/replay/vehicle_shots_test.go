@@ -248,3 +248,23 @@ func TestTirDArtilleurHorsDeLaFenetreDuPorteurNonPose(t *testing.T) {
 			doc.Coverage.Vehicles.ShotsUnplaced, doc.Coverage.Vehicles.ShotsOnCarrier)
 	}
 }
+
+// TestTirDUnOccupantALaFoisSurLaPieceEtSurSonPorteurNEstPasAmbigu — 2026-09-24 (le Falcon devient
+// pilotable). Un occupant deja a bord du porteur garde AUSSI l episode que le trou de position lui
+// a prete sur la piece montee (refus « deja a bord » de `moveTurretRides`) : ses deux episodes
+// designent la piece ET son porteur, c est-a-dire LE MEME vehicule. Ce n est pas l ambiguite de
+// deux vehicules distincts : le tir sort du porteur. Mesure au parc : 7 tirs de `4f77afc1` (occupant
+// du Falcon 787 et de sa tourelle LMG 786) passaient de « pose sur le porteur » a « ambigu ».
+func TestTirDUnOccupantALaFoisSurLaPieceEtSurSonPorteurNEstPasAmbigu(t *testing.T) {
+	doc := vsTourelle()
+	seat := 1
+	doc.Vehicles[0].Carrier = &VehicleLifeRef{Slot: 701, Gen: 1}
+	doc.Vehicles[1].Rides = []VehicleRide{{T0: 5, T1: 60, Slot: 10, Seat: &seat, Src: VehicleRideSrcFilm}}
+	attachVehicleShots(doc, []orphanShot{vsOrphan(30, 0x0BB6976B00000000)}, vsOwn(), vsClock())
+	if len(doc.Shots) != 1 || *doc.Shots[0].Vehicle != 701 || doc.Shots[0].X != 30 {
+		t.Fatalf("tirs = %+v, attendu un tir pose sur le porteur 701 en x = 30", doc.Shots)
+	}
+	if doc.Coverage.Vehicles.ShotsAmbiguous != 0 {
+		t.Errorf("shotsAmbiguous = %d, attendu 0 : la piece est SUR son porteur", doc.Coverage.Vehicles.ShotsAmbiguous)
+	}
+}

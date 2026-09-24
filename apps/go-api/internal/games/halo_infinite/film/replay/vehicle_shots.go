@@ -153,13 +153,16 @@ func (b vehicleShotBoard) shotOf(o orphanShot, slots []uint32) (Shot, vehicleSho
 	if len(cand) == 0 {
 		return Shot{}, vehicleShotNoRide, false
 	}
+	// L AMBIGUITE SE JUGE SUR LE VEHICULE QUI PORTE LE TIR, pas sur la vie qui porte l episode : une
+	// piece montee et son porteur sont le MEME vehicule (2026-09-24, le Falcon devenu pilotable —
+	// un occupant « deja a bord » garde aussi son episode sur la piece, cf. `moveTurretRides`).
 	pick := cand[0]
+	at, onCarrier := b.shotHolder(pick)
 	for _, c := range cand[1:] {
-		if c.track != pick.track {
+		if h, _ := b.shotHolder(c); h != at {
 			return Shot{}, vehicleShotAmbiguous, false
 		}
 	}
-	at, onCarrier := b.shotHolder(pick)
 	// HORS DE LA FENETRE DU PORTEUR, sa position serait TENUE (premier / dernier echantillon) :
 	// une position perimee, peut-etre a des centaines de metres. Le tir n est pas pose, et il
 	// est compte (`shotsUnplaced`) — revue adverse du lot M4a, F4.

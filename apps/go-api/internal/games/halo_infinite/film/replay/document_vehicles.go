@@ -449,7 +449,8 @@ type VehicleCoverage struct {
 	//	TurretRides       episodes d artilleur REPORTES de la tourelle sur son porteur ;
 	//	                  TurretRidesDropped ceux qui sont GARDES sur la piece, somme des TROIS
 	//	                  refus ventiles : TurretRidesNotRideable (le porteur est d une famille
-	//	                  non pilotable), TurretRidesOutOfWindow (l episode tombe hors de la
+	//	                  non pilotable ; 0 par construction depuis que le Falcon est pilotable,
+	//	                  2026-09-24 — garde d une piece future), TurretRidesOutOfWindow (l episode tombe hors de la
 	//	                  fenetre du porteur, dont la vie publiee s arrete avant celle de sa
 	//	                  tourelle) et TurretRidesAlreadyAboard (le meme occupant a deja un
 	//	                  episode du porteur qui RECOUVRE le sien — un changement de siege, qui ne

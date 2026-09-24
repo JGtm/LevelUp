@@ -111,8 +111,9 @@ func TestTourelleHorsDeLaFenetreDuVoisinRefusee(t *testing.T) {
 }
 
 // TestTourelleDuFalconPorteurASlotPlusDeux — la chaine mesuree `[1a043c29][f4c45d71][Falcon]` :
-// la premiere piece trouve son porteur en +2, par-dessus sa jumelle. Le Falcon est NON PILOTABLE
-// (decision du 2026-09-02) : ses artilleurs restent sur la piece, comptes, jamais affirmes a bord.
+// la premiere piece trouve son porteur en +2, par-dessus sa jumelle. Le Falcon est PILOTABLE
+// depuis la decision du 2026-09-24 (« le Falcon ca depend ») : son artilleur passe a bord, SANS
+// siege et avec la reference de sa piece — il se dessine sur le Falcon, comme celui d un Warthog.
 func TestTourelleDuFalconPorteurASlotPlusDeux(t *testing.T) {
 	tracks := []VehicleTrack{
 		vtPiece(100, vtFalconGL, vtRide(20, 10, 40)),
@@ -125,9 +126,27 @@ func TestTourelleDuFalconPorteurASlotPlusDeux(t *testing.T) {
 			t.Errorf("piece %d : porteur %+v, attendu 102", i, tracks[i].Carrier)
 		}
 	}
-	if len(tracks[0].Rides) != 1 || len(tracks[2].Rides) != 0 || tally.kept.total() != 1 {
-		t.Errorf("episodes piece/Falcon = %d/%d (bilan %+v) : un Falcon ne porte aucun occupant",
+	if len(tracks[0].Rides) != 0 || len(tracks[2].Rides) != 1 || tally.rides != 1 || tally.kept.total() != 0 {
+		t.Fatalf("episodes piece/Falcon = %d/%d (bilan %+v) : l artilleur du Falcon passe a bord",
 			len(tracks[0].Rides), len(tracks[2].Rides), tally)
+	}
+	r := tracks[2].Rides[0]
+	if r.Slot != 20 || r.Seat != nil || r.Turret == nil || *r.Turret != (VehicleLifeRef{Slot: 100, Gen: 1}) {
+		t.Errorf("episode reporte = %+v (turret %+v), attendu l artilleur 20 sans siege, piece {100 1}", r, r.Turret)
+	}
+}
+
+// TestTourellePorteurNonPilotableGardeLArtilleur — la garde de `moveTurretRides` pour un porteur
+// NON PILOTABLE (Pelican, Phantom, Skiff). Aucune piece de la table n en a aujourd hui
+// (`TestPiecesMonteesOntUnPorteurPilotable`) : le porteur est donc pose a la main, sans passer par
+// la recherche du voisin de slot.
+func TestTourellePorteurNonPilotableGardeLArtilleur(t *testing.T) {
+	piece := vtPiece(100, vtFalconGL, vtRide(20, 10, 40))
+	porteur := vtChassis(101, famillePelican)
+	moved, kept := moveTurretRides(&piece, &porteur)
+	if moved != 0 || kept != (turretRidesKept{notRideable: 1}) || len(piece.Rides) != 1 || len(porteur.Rides) != 0 {
+		t.Errorf("reportes %d, gardes %+v, piece/porteur %d/%d : un Pelican ne porte aucun occupant",
+			moved, kept, len(piece.Rides), len(porteur.Rides))
 	}
 }
 
@@ -202,12 +221,13 @@ func TestTourelleRefusVentilesParRaison(t *testing.T) {
 		// hors fenetre (60-80 apres la fin du porteur a 50) et deja a bord (10-20 dans 5-30).
 		vtPiece(100, vtLAAG, vtRide(20, 60, 80), vtRide(21, 10, 20)),
 		porteurCourt,
-		// porteur non pilotable : la chaine du Falcon.
-		vtPiece(200, vtFalconGL, vtRide(30, 10, 40)),
-		vtPiece(201, vtFalconLMG),
-		vtChassis(202, familleFalcon),
 	}
 	tally := poseTurretsOnCarriers(tracks, nil)
+	// Le porteur non pilotable n a plus de piece dans la table (le Falcon est pilotable depuis le
+	// 2026-09-24) : sa garde est exercee a la main, et son refus verse au meme bilan.
+	piece, pelican := vtPiece(200, vtFalconGL, vtRide(30, 10, 40)), vtChassis(202, famillePelican)
+	_, garde := moveTurretRides(&piece, &pelican)
+	tally.kept.add(garde)
 	if tally.kept != (turretRidesKept{notRideable: 1, outOfWindow: 1, alreadyAboard: 1}) {
 		t.Fatalf("refus = %+v, attendu un par raison", tally.kept)
 	}

@@ -230,9 +230,12 @@ func vehicleWindowsOverlap(a, b VehicleTrack) bool {
 // reportes et celui des episodes GARDES sur la piece, ventile par raison.
 //
 // TROIS REFUS, ET AUCUN N EFFACE L EPISODE (il reste sur la piece, qui est publiee) :
-//   - un porteur NON PILOTABLE ne porte aucun occupant (`vehicleFamilyIsRideable`, decision du
-//     2026-09-02 sur le Falcon, le Pelican, le Phantom et le Skiff) — le document ne l affirmera
-//     pas plus par la tourelle que par le chassis ;
+//   - un porteur NON PILOTABLE ne porte aucun occupant (`vehicleFamilyIsRideable` : le Pelican, le
+//     Phantom et le Skiff, decision du 2026-09-02) — le document ne l affirmera pas plus par la
+//     tourelle que par le chassis. Le Falcon n y est plus depuis le 2026-09-24 (decision
+//     utilisateur « le Falcon ca depend ») : ses artilleurs passent a bord. AUCUNE piece de
+//     `vehicleTurretByChassis` n a aujourd hui un porteur non pilotable ; la garde tient pour
+//     une piece future (les tourelles d un Phantom, par exemple) ;
 //   - un episode HORS DE LA FENETRE du porteur : le reporter l amputerait ou l effacerait. Cause
 //     amont mesuree (revue adverse du lot M4a, F4) : la vie publiee d un chassis peut s arreter
 //     (`end = unknown`) bien avant celle de sa tourelle — 13 des 23 episodes gardes hors Falcon au

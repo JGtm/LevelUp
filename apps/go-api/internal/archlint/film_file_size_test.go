@@ -161,7 +161,12 @@ var plafondsParFichier = map[string]int{
 	// 2186, une ligne d en-tete v69 et la partie M7 — la racine `vehicleScenery` resolue a la
 	// requete (verdict de decor du service, deux replis nommes), sans effet sur l empreinte cuite.
 	// Exception ecrite, dans le commit de fusion qui reunit la partie a la montee.
-	"internal/games/halo_infinite/film/replay/document_chronicle.go": 2186,
+	// SCHEMA 69, PARTIE M7b (2026-09-24, lot M7b des retours du rejeu, decision utilisateur « le
+	// Falcon ca depend ») : 2186 -> 2200, une ligne d en-tete v69, la partie M7b (le Falcon
+	// pilotable : episodes publies, artilleurs reportes, tirs poses, ambiguite jugee sur le
+	// vehicule porteur) et une ligne de la partie M4a reecrite (le refus « porteur non pilotable »
+	// ne vise plus le Falcon — doc inversee evitee). Exception ecrite, meme commit que la partie.
+	"internal/games/halo_infinite/film/replay/document_chronicle.go": 2200,
 	// --- production, hors perimetre du lot 2.7 (aucune preuve d equivalence ne couvrait
 	// leur scission : elle se decidera au lot qui les rouvrira).
 	// `assist.go` EST SORTI DE CETTE TABLE LE 2026-09-16 (lot 2.6.2) : le type `Assist` a descendu

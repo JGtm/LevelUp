@@ -77,8 +77,8 @@ function ride(over: Partial<ReplayVehicleRideReady> = {}): ReplayVehicleRideRead
 }
 
 describe('vehicleIsDecor / vehicleCanEmbark — le refus des familles non jouables', () => {
-  it('les quatre familles de DÉCOR sont refusées (Falcon, Pelican, Phantom, Skiff)', () => {
-    for (const f of ['falcon', 'pelican', 'phantom', 'skiff']) expect(vehicleIsDecor(f)).toBe(true)
+  it('les trois familles de DÉCOR sont refusées (Pelican, Phantom, Skiff)', () => {
+    for (const f of ['pelican', 'phantom', 'skiff']) expect(vehicleIsDecor(f)).toBe(true)
   })
 
   it('une famille JOUABLE et un CHÂSSIS NON RÉSOLU ne sont pas du décor', () => {
@@ -88,7 +88,7 @@ describe('vehicleIsDecor / vehicleCanEmbark — le refus des familles non jouabl
 
   it('EMBARQUER — donc effacer un pion — n’est permis qu’à une famille jouable ET résolue', () => {
     expect(vehicleCanEmbark(track({ family: 'warthog' }))).toBe(true)
-    expect(vehicleCanEmbark(track({ family: 'falcon' }))).toBe(false)
+    expect(vehicleCanEmbark(track({ family: 'pelican' }))).toBe(false)
     expect(vehicleCanEmbark(track({ family: undefined }))).toBe(false)
     expect(vehicleCanEmbark(track({ family: '' }))).toBe(false)
   })
@@ -372,9 +372,9 @@ describe('buildEmbarkedPredicate — pion embarqué, MULTI-PASSAGERS (C7, rappel
   })
 
   it('un FAUX épisode posé sur un prop de DÉCOR n’embarque PERSONNE (bug du 2026-09-02)', () => {
-    // Le liant « trou de position » a prêté trois épisodes à un prop Falcon : le pion des
-    // joueurs passés à côté disparaissait de la carte. Un décor n’embarque plus.
-    const prop = track({ family: 'falcon', rides: [ride({ slot: 10, seat: 0, t0: 0, t1: 100 })] })
+    // Le liant « trou de position » a prêté trois épisodes à un prop alors rangé en Falcon : le pion
+    // des joueurs passés à côté disparaissait de la carte. Un décor n’embarque plus.
+    const prop = track({ family: 'pelican', rides: [ride({ slot: 10, seat: 0, t0: 0, t1: 100 })] })
     expect(buildEmbarkedPredicate([prop])(10, 50)).toBe(false)
   })
 

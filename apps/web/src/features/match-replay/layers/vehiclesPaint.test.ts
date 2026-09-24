@@ -147,13 +147,19 @@ function fillColorAtText(ops: CanvasOp[], nth = 0): unknown {
 
 describe('drawVehiclesLayer — familles non jouables (verdict utilisateur 2026-09-02)', () => {
   it('une famille de DÉCOR ne pose RIEN : ni sprite, ni losange, ni nom', () => {
-    for (const family of ['falcon', 'pelican', 'phantom', 'skiff']) {
+    for (const family of ['pelican', 'phantom', 'skiff']) {
       const ops = paint([track({ family, rides: [ride({ slot: 7, seat: 0 })] })])
       expect(count(ops, 'drawImage'), family).toBe(0)
       expect(count(ops, 'fillText'), family).toBe(0)
       expect(count(ops, 'fill'), family).toBe(0)
       expect(count(ops, 'createRadialGradient'), family).toBe(0)
     }
+  })
+
+  it('un FALCON occupé se dessine comme un véhicule pilotable (décision du 2026-09-24)', () => {
+    const ops = paint([track({ family: 'falcon', rides: [ride({ slot: 7, seat: 0 })] })])
+    expect(count(ops, 'drawImage')).toBe(1)
+    expect(texts(ops)).toEqual(['PION-BRIDGE'])
   })
 
   it('une famille JOUABLE est inchangée : sprite posé, nom écrit, cône tracé', () => {
@@ -412,8 +418,8 @@ describe('drawVehiclesLayer — LA DESTRUCTION (schéma 39, demande utilisateur 
     // Même refus qu'à l'accoutumée (cf. le premier `describe` du fichier) : `drawVehiclesLayer`
     // pose SON PROPRE save/restore quel que soit le contenu de la boucle — le signal reste donc
     // l'ABSENCE de toute primitive DE VÉHICULE, explosion comprise.
-    const falcon = track({ end: 'destroyed', tEnd: 50, rides: [], family: 'falcon' })
-    const ops = paint([falcon], style(), { frame: 50 })
+    const pelican = track({ end: 'destroyed', tEnd: 50, rides: [], family: 'pelican' })
+    const ops = paint([pelican], style(), { frame: 50 })
     expect(count(ops, 'drawImage')).toBe(0)
     expect(count(ops, 'fill')).toBe(0)
     expect(count(ops, 'createRadialGradient')).toBe(0)
@@ -522,7 +528,7 @@ describe('drawVehiclesLayer — bornage hors cadre du véhicule (lot 4.4)', () =
   })
 
   it('UNE FAMILLE DE DÉCOR hors cadre reste muette (aucune régression du refus D2026-09-02)', () => {
-    const ops = paint([offscreenTrack({ family: 'falcon', rides: [ride({ slot: 7, seat: 0 })] })])
+    const ops = paint([offscreenTrack({ family: 'pelican', rides: [ride({ slot: 7, seat: 0 })] })])
     expect(count(ops, 'rotate')).toBe(0)
     expect(count(ops, 'fill')).toBe(0)
     expect(count(ops, 'fillText')).toBe(0)

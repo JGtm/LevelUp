@@ -278,9 +278,10 @@ func vehicleTrackOf(
 		// AUCUN EPISODE SUR UN VEHICULE NON PILOTABLE. La vie reste publiee (sa trajectoire est
 		// vraie) mais elle ne porte pas d occupant : un episode accroche a un decor escamoterait
 		// le pion d un joueur reel passe a proximite. Vu par l utilisateur en visionnage
-		// (2026-09-02) sur `fccc61cd`, ou un prop de la famille `falcon` — quasi immobile, vivant
-		// tout le match — s etait vu attribuer un trajet. Le calque web filtre deja ces familles
-		// a l affichage ; la garde est ici AUSSI pour que le document ne l affirme pas.
+		// (2026-09-02) sur `fccc61cd`, ou un prop alors range dans la famille `falcon` s etait vu
+		// attribuer un trajet. Le calque web filtre deja ces familles a l affichage ; la garde est
+		// ici AUSSI pour que le document ne l affirme pas. Le Falcon n en fait plus partie depuis
+		// le 2026-09-24 (cf. `vehicleFamillesNonPilotables`).
 		tr.Rides = nil
 		return tr, true
 	}
@@ -293,12 +294,22 @@ func vehicleTrackOf(
 // sont pas jouables en multiplayer a ce jour (sauf parties custom locales, mais on ne les gere
 // pas dans l app, par decision) ».
 //
+// LE FALCON EN EST SORTI LE 2026-09-24 (decision utilisateur : « les Pelican c est toujours du
+// decor ; le Falcon ca depend »). La decision du 2026-09-02 l y avait mis sur la foi des Falcon de
+// decor vus en visionnage ; mais le Falcon est PILOTABLE en multijoueur, avec ses artilleurs aux
+// tourelles laterales (pieces `1a043c29` / `f4c45d71`, `vehicle_turrets.go`) — parc du 2026-09-24,
+// 107 documents : 19 Falcon occupes dans 5 documents (Grande bataille, Escouade, et un Falcon de
+// Launch Site en Super Fiesta, pris au sol puis pilote). Sa famille ne decide donc plus rien : un
+// Falcon porte ses occupants comme tout vehicule, et le decor se decide VIE PAR VIE par la regle
+// generale du decor de carte (lot M7 : posee une seule fois, vivante jusqu a la fin, jamais occupee
+// ET hors de la zone jouable — decidee a la requete par `internal/service/
+// replay_vehicle_scenery_rule.go`). Le Pelican, le Phantom et le Skiff restent : la famille suffit.
+//
 // ELLES RESTENT PUBLIEES : leur vie est vraie, et le client choisit de ne pas les dessiner. Ce
 // qui est interdit ici, c est de leur attribuer un OCCUPANT — une affirmation, elle, qui serait
 // fausse. La meme liste vit cote web (`vehiclesLayer.FAMILLES_NON_JOUABLES`) ; les deux se
 // justifient : le document refuse de l affirmer, le calque refuse de le dessiner.
 var vehicleFamillesNonPilotables = map[string]bool{
-	familleFalcon:  true,
 	famillePelican: true,
 	famillePhantom: true,
 	familleSkiff:   true,
