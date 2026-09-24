@@ -74,3 +74,15 @@ export const VEHICLE_SHOT_SOUND_VARIANTS: Readonly<Record<string, readonly strin
   vehicle_shot_wasp_lmg_1: ['vehicle_shot_wasp_lmg_1', 'vehicle_shot_wasp_lmg_2'],
 }
 
+/**
+ * VEHICLE_SHOT_LOOPS — LES BOUCLES DE TIR TENU livrées, keyées par la PREMIÈRE variante du COUP de
+ * leur arme (lot M6.1, câblage au lot M4b, schéma 71). Le registre du titre publie la boucle d'une
+ * arme (`vehicleWeapons[w].loop`) ; cette table est le MANIFESTE des boucles que le client sait
+ * tenir — une boucle absente d'ici se tait plutôt que de jouer un fichier non vérifié, et le coup
+ * se rejoue alors à la cadence (`fireBurstSound.ts`). Le garde-rail d'assets vérifie leur format,
+ * leur durée (au-delà de la coupe des armes, sous le plafond de sûreté) et leur coup déclaré.
+ */
+export const VEHICLE_SHOT_LOOPS: Readonly<Record<string, string>> = {
+  vehicle_shot_wasp_lmg_1: 'vehicle_shot_wasp_lmg_loop',
+}
+

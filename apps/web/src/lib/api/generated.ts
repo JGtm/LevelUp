@@ -5863,6 +5863,74 @@ export interface components {
             /** Format: double */
             win_rate: number;
         };
+        ContinuousFireCoverage: {
+            /** Format: int64 */
+            ambiguous: number;
+            /** Format: int64 */
+            burstsRead: number;
+            /** Format: int64 */
+            burstsWithHole: number;
+            /** Format: int64 */
+            byPlace: number;
+            /** Format: int64 */
+            clippedToMount: number;
+            /** Format: int64 */
+            closed: number;
+            /** Format: int64 */
+            empty: number;
+            /** Format: int64 */
+            entries: number;
+            /** Format: int64 */
+            firing: number;
+            /** Format: int64 */
+            heldHoleMs: number;
+            /** Format: int64 */
+            holeRuns: number;
+            /** Format: int64 */
+            holes: number;
+            /** Format: int64 */
+            holesBlockBC: number;
+            /** Format: int64 */
+            holesCap: number;
+            /** Format: int64 */
+            holesKind: number;
+            /** Format: int64 */
+            holesNotClosing: number;
+            /** Format: int64 */
+            holesOpenViewB: number;
+            /** Format: int64 */
+            holesOverflow: number;
+            /** Format: int64 */
+            holesUnlocated: number;
+            /** Format: int64 */
+            innerHoles: number;
+            /** Format: int64 */
+            noPlayer: number;
+            /** Format: int64 */
+            noTrack: number;
+            /** Format: int64 */
+            notContinuous: number;
+            /** Format: int64 */
+            onFoot: number;
+            /** Format: int64 */
+            onVehicle: number;
+            /** Format: int64 */
+            otherInput: number;
+            /** Format: int64 */
+            packets: number;
+            /** Format: int64 */
+            published: number;
+            /** Format: int64 */
+            reached: number;
+            /** Format: int64 */
+            shots: number;
+            /** Format: int64 */
+            vehicleNoWeapon: number;
+            /** Format: int64 */
+            weaponUnknown: number;
+            /** Format: int64 */
+            withAction: number;
+        };
         ConvergenceTotalsSinceBoot: {
             /** Format: int64 */
             aliases_upserted: number;
@@ -5978,6 +6046,7 @@ export interface components {
             bombArmings?: components["schemas"]["BombArmingsCoverage"];
             bombCarries?: components["schemas"]["BombCarriesCoverage"];
             bridge: components["schemas"]["BridgeHealth"];
+            continuousFire?: components["schemas"]["ContinuousFireCoverage"];
             deathsPaths?: components["schemas"]["DeathsPathsCoverage"];
             decoder?: components["schemas"]["DecoderCoverage"];
             equipment?: components["schemas"]["EquipmentCoverage"];
@@ -7115,6 +7184,32 @@ export interface components {
         FilterMatchIDsResponse: {
             match_ids: string[] | null;
         };
+        FireBurst: {
+            b0: string;
+            b1: string;
+            holes?: components["schemas"]["FireBurstHole"][] | null;
+            /** Format: double */
+            ramp?: number;
+            /** Format: double */
+            rate: number;
+            /** Format: double */
+            rate0?: number;
+            /** Format: int32 */
+            slot: number;
+            /** Format: int64 */
+            t0: number;
+            /** Format: int64 */
+            t1: number;
+            /** Format: int32 */
+            v?: number;
+            w: string;
+        };
+        FireBurstHole: {
+            /** Format: int64 */
+            t0: number;
+            /** Format: int64 */
+            t1: number;
+        };
         FirstBloodMatchPoint: {
             /** Format: double */
             first_death_sec: number | null;
@@ -7987,11 +8082,15 @@ export interface components {
             /** Format: int64 */
             available: number;
             /** Format: int64 */
+            byUnit?: number;
+            /** Format: int64 */
             noSlot: number;
             /** Format: int64 */
             outOfWindow: number;
             /** Format: int64 */
             refusedByRoster?: number;
+            /** Format: int64 */
+            unitOtherIndex?: number;
             /** Format: int64 */
             unpublished: number;
         };
@@ -10803,6 +10902,7 @@ export interface components {
             bombEvents?: components["schemas"]["BombEvent"][] | null;
             bombStats?: components["schemas"]["BombMatchStats"];
             bounds: components["schemas"]["Bounds"];
+            bursts?: components["schemas"]["FireBurst"][] | null;
             coverage?: components["schemas"]["Coverage"];
             /** Format: int64 */
             durationMs?: number;
@@ -11166,7 +11266,10 @@ export interface components {
             sieges: number;
             /** Format: int64 */
             tirsContestes: number;
+            tirsIndexNonPlace?: boolean;
             tirsIndexTronque?: boolean;
+            /** Format: int64 */
+            tirsParPlace: number;
             /** Format: int64 */
             trousDEntite: number;
         };
@@ -13696,6 +13799,10 @@ export interface components {
             /** Format: int64 */
             shotsAmbiguous: number;
             /** Format: int64 */
+            shotsByUnit: number;
+            /** Format: int64 */
+            shotsByUnitNoRide: number;
+            /** Format: int64 */
             shotsNoRide: number;
             /** Format: int64 */
             shotsOnCarrier: number;
@@ -13851,6 +13958,7 @@ export interface components {
             fire: string;
             fr: string;
             fx: string;
+            loop?: string;
             mount?: components["schemas"]["VehicleWeaponMount"];
             sound?: string;
             tint: string;

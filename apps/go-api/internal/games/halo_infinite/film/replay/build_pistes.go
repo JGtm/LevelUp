@@ -112,9 +112,18 @@ func (a *assemblage) poserLesEquipesEtLeRoster() {
 	a.viesTotal, a.viesNommees, a.viesSlotAmbigu = a.equipes.poserSurLesTraces(a.doc.Tracks)
 	// LA PLACE APRES LE ROSTER ET APRES LES TRACES, parce qu'elle a besoin des deux : l'index lu,
 	// la presence de chaque occupant et ses tirs (cf. sieges.go).
+	// L INDEX DE TIREUR N EST LU COMME PLACE QUE S IL L EST SUR CE FILM (lot M4b.4,
+	// tirs_index_fiable.go) : sinon la lecture des places par les tirs s abstient.
+	a.indexTireur = mesurerIndexDeTireur(a.fire, a.reg.IndexParSlot())
+	a.indexTireur.journaliser(a.matchID)
+	var tirsDesPlaces []FireEventRef
+	if a.indexTireur.estLaPlace() {
+		tirsDesPlaces = fireRefs(a.fire)
+	}
 	a.siegeCov = poserLesSieges(a.doc.Roster, occ, entreesDesPlaces{
-		table: a.opt.FilmTable, fire: fireRefs(a.fire), horloge: a.horloge()})
+		table: a.opt.FilmTable, fire: tirsDesPlaces, horloge: a.horloge()})
 	a.siegeCov.BotsSuccesseurs = botsSuccesseurs
+	a.siegeCov.TirsIndexNonPlace = !a.indexTireur.estLaPlace()
 	// L'ORIGINE se publie APRÈS le pont : son témoin (le calage du fil des morts) en sort.
 	a.doc.OriginMs = resolveOriginMs(a.origin, a.opt.FilmClockOriginUS, a.reg.DeathOffsetMS(), a.reg.DeathOffsetMatches())
 	a.reg.logRegistry(a.matchID)
@@ -127,8 +136,11 @@ func (a *assemblage) poserTirsProjectilesEtGrenades() {
 	var shots []Shot
 	// LE TIREUR EST L OCCUPANT DE SA PLACE (lot M4b.4, tirs_par_place.go) : l index d un tir est
 	// la place, et le remplacant en herite. Les evenements de `a.fire` restent ceux du film.
-	fire, parPlace := nouveauxTireursParPlace(a.doc.Roster).tirsParPlace(a.fire, a.horloge())
-	a.siegeCov.TirsParPlace = parPlace
+	// Sur un film ou l index n est pas la place, seule la reference 0 pose un tir.
+	fire := sansIndexDeTireur(a.fire)
+	if a.indexTireur.estLaPlace() {
+		fire, a.siegeCov.TirsParPlace = nouveauxTireursParPlace(a.doc.Roster).tirsParPlace(a.fire, a.horloge())
+	}
 	shots, a.shotOrphans, a.shotCov = buildShots(a.sorted, fire, a.origin, a.step, a.reg.IndexParSlot())
 	a.doc.Shots = keepShotsOfPublishedTracks(shots, a.doc.Tracks)
 	a.shotCov.Unpublished = countUnpublished(len(shots), len(a.doc.Shots))

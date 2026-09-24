@@ -80,3 +80,41 @@ func TestM4bUniteContrePlace(t *testing.T) {
 			100*float64(parUnite)/float64(max(1, len(g.Fire))))
 	}
 }
+
+// TestM4bAccordIndexUnite mesure, sur chaque fixture de build, l ACCORD entre l index de tireur BRUT
+// du record 36 et l index du joueur dont le bipede est l unite tireuse (reference 0), lu dans le
+// document assemble (piste du slot -> xuid -> entree du roster).
+func TestM4bAccordIndexUnite(t *testing.T) {
+	for _, b := range goldenBuilds() {
+		g, entry := chargerGoldenBuild(t, b)
+		doc := assemblerGoldenBuild(t, b, g, entry)
+		idxParXUID := map[string]int{}
+		for _, r := range doc.Roster {
+			idxParXUID[r.XUID] = r.FilmIndex
+		}
+		accord, desaccord := 0, 0
+		for _, e := range g.Fire {
+			if !e.Unit.Present || !e.HasShooter {
+				continue
+			}
+			x := ""
+			for _, tr := range doc.Tracks {
+				if tr.Slot == e.Unit.Slot && tr.XUID != "" {
+					x = tr.XUID
+					break
+				}
+			}
+			idx, ok := idxParXUID[x]
+			if !ok {
+				continue
+			}
+			if idx == e.FilmIndex {
+				accord++
+			} else {
+				desaccord++
+			}
+		}
+		t.Logf("%s : accord index brut / unite %d, desaccord %d (%.1f %% d accord)", b.Short8, accord, desaccord,
+			100*float64(accord)/float64(max(1, accord+desaccord)))
+	}
+}

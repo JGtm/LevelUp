@@ -40,7 +40,10 @@ type SeatCoverage struct {
 	TirsIndexTronque    bool `json:"tirsIndexTronque,omitempty"`
 	// TirsParPlace : les tirs rendus a l occupant de leur place (lot M4b.4, cf.
 	// `replay.SeatCoverage`).
-	TirsParPlace        int    `json:"tirsParPlace"`
+	TirsParPlace int `json:"tirsParPlace"`
+	// TirsIndexNonPlace : l index de tireur n est pas la place sur ce film (lot M4b.4, cf.
+	// `replay.SeatCoverage`).
+	TirsIndexNonPlace   bool   `json:"tirsIndexNonPlace,omitempty"`
 	Presences           string `json:"presences"`
 	EntitesNonLiees     int    `json:"entitesNonLiees"`
 	EntitesContestees   int    `json:"entitesContestees"`

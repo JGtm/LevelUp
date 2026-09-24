@@ -172,6 +172,10 @@ type SeatCoverage struct {
 	// TirsParPlace : les tirs rendus a l OCCUPANT de leur place quand il n est pas l index de la
 	// table — le remplacant d un partant (lot M4b.4, `tirs_par_place.go`).
 	TirsParPlace int `json:"tirsParPlace"`
+	// TirsIndexNonPlace : sur ce film, l index de tireur ne s accorde pas avec l unite tireuse (build
+	// HI_1_4_1) — il n est pas la place ; les places ne se lisent pas dans les tirs, et seule la
+	// reference 0 pose un tir (repli nomme, `tirs_index_fiable.go`).
+	TirsIndexNonPlace bool `json:"tirsIndexNonPlace,omitempty"`
 	// Presences dit d'ou viennent les presences publiees : `film` ou `vies` (repli).
 	Presences string `json:"presences"`
 	// EntitesNonLiees / EntitesContestees / TrousDEntite : ce que la liaison aux entites ti=9 n'a

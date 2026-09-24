@@ -24598,6 +24598,8 @@ components:
         tirsContestes:
           format: int64
           type: integer
+        tirsIndexNonPlace:
+          type: boolean
         tirsIndexTronque:
           type: boolean
         tirsParPlace:

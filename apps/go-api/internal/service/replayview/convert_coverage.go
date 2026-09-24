@@ -150,6 +150,7 @@ func toSeatCoverage(v replay.SeatCoverage) replaydoc.SeatCoverage {
 		TirsContestes:       v.TirsContestes,
 		TirsIndexTronque:    v.TirsIndexTronque,
 		TirsParPlace:        v.TirsParPlace,
+		TirsIndexNonPlace:   v.TirsIndexNonPlace,
 		Presences:           v.Presences,
 		EntitesNonLiees:     v.EntitesNonLiees,
 		EntitesContestees:   v.EntitesContestees,

@@ -96,7 +96,9 @@ type assemblage struct {
 	porte   couverturePorte
 
 	// Le registre d'identité et ce que la pose des pistes en a tiré.
-	reg            IdentityRegistry
+	reg IdentityRegistry
+	// indexTireur : l index de tireur des tirs est-il la place sur ce film (lot M4b.4) ?
+	indexTireur    accordIndexUnite
 	trackCov       TrackCoverage
 	unnamed        unnamedLivesReport
 	equipes        teamPublication

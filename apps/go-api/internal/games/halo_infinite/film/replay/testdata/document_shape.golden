@@ -1,9 +1,9 @@
 # EMPREINTE DE FORME DU DOCUMENT DE REJEU — fige par document_shape_test.go.
 # Ne s'edite JAMAIS a la main : regeneration decrite en tete de ce test.
 schema 71
-empreinte-stockee 933e47cb9718fc37
-empreinte-servie 933e47cb9718fc37
-empreinte-cuite 2f5430621ca0fd0f
+empreinte-stockee 60f69b934a703941
+empreinte-servie 60f69b934a703941
+empreinte-cuite 09c8817ef7c67780
 empreinte-cuite-regle 2
 
 AbilityCharge
@@ -882,6 +882,7 @@ SeatCoverage
   SansTableDuFilm json:"sansTableDuFilm,omitempty" bool
   Sieges json:"sieges" int
   TirsContestes json:"tirsContestes" int
+  TirsIndexNonPlace json:"tirsIndexNonPlace,omitempty" bool
   TirsIndexTronque json:"tirsIndexTronque,omitempty" bool
   TirsParPlace json:"tirsParPlace" int
   TrousDEntite json:"trousDEntite" int

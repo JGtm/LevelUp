@@ -104,6 +104,48 @@ export function soundEnvelope(durationS: number): { fadeStartS: number; stopS: n
 }
 
 /**
+ * La FORME d'un son de rafale (schéma 71, lot M4b) : tenu en boucle pendant `holdS`, ou coupé à
+ * `cutS` (le coup suivant d'une rafale sans boucle). Absente = l'enveloppe ordinaire.
+ */
+export interface SoundShape {
+  holdS?: number
+  cutS?: number
+}
+
+/**
+ * Durée du RELÂCHEMENT d'un son tenu, en secondes : la boucle s'éteint en 50 ms au lâcher de la
+ * gâchette — assez pour ne pas claquer, assez court pour que le coup de queue qui suit se lise.
+ */
+export const SOUND_HOLD_RELEASE_S = 0.05
+
+/**
+ * soundEnvelopeOf — l'enveloppe d'un son SELON SA FORME : tenu (boucle jusqu'à `holdS`, puis
+ * relâchement), coupé (arrêt à `cutS`, fondu borné à la moitié), ou ordinaire (`soundEnvelope`).
+ * Pure, et la MÊME pour la lecture et pour l'export.
+ */
+export function soundEnvelopeOf(
+  durationS: number,
+  shape?: SoundShape,
+): { fadeStartS: number; stopS: number; loop: boolean } {
+  if (shape?.holdS !== undefined && shape.holdS > 0) {
+    const hold = Math.min(shape.holdS, SOUND_CUT_MAX_S)
+    return { fadeStartS: hold, stopS: hold + SOUND_HOLD_RELEASE_S, loop: true }
+  }
+  if (shape?.cutS !== undefined && shape.cutS > 0) {
+    const stopS = Math.min(Math.max(durationS, 0), shape.cutS, SOUND_CUT_MAX_S)
+    return { fadeStartS: stopS - Math.min(SOUND_FADE_S, stopS / 2), stopS, loop: false }
+  }
+  return { ...soundEnvelope(durationS), loop: false }
+}
+
+/** soundShapeOf — la forme d'un événement de la piste, en secondes. */
+export function soundShapeOf(e: { holdMs?: number; cutMs?: number }): SoundShape | undefined {
+  if (e.holdMs !== undefined) return { holdS: e.holdMs / 1000 }
+  if (e.cutMs !== undefined) return { cutS: e.cutMs / 1000 }
+  return undefined
+}
+
+/**
  * ReplayAudioPlayer — contexte, volume maître, cache de buffers, lecture enveloppée.
  *
  * Le constructeur DOIT être appelé dans un geste utilisateur (clic sur le bouton son).
@@ -115,6 +157,8 @@ export class ReplayAudioPlayer {
   private buffers = new Map<string, AudioBuffer | null>()
   private pending = new Set<string>()
   private voices = 0
+  /** Les sons TENUS en vol (rafales de tir continu), que la pause et le saut éteignent. */
+  private held = new Set<{ src: AudioBufferSourceNode; gain: GainNode }>()
   /** Chaîne de distance (réglage d'instance, page admin). Nulle = AUCUN nœud ajouté :
    *  le chemin du signal reste celui d'origine, source -> enveloppe -> maître. */
   private distGain: GainNode | null = null
@@ -268,14 +312,14 @@ export class ReplayAudioPlayer {
    * chargée (scrub avant la fin du preload) ou absente : silence, jamais d'attente — un
    * son en retard sur son image est pire qu'un son manqué.
    */
-  play(url: string, draw?: SoundDraw): void {
+  play(url: string, draw?: SoundDraw, shape?: SoundShape): void {
     const buf = this.buffers.get(url)
     if (!buf || this.voices >= SOUND_MAX_VOICES) {
       if (buf === undefined) this.preload([url])
       return
     }
     const t0 = this.ctx.currentTime
-    const { fadeStartS, stopS } = soundEnvelope(buf.duration)
+    const { fadeStartS, stopS, loop } = soundEnvelopeOf(buf.duration, shape)
     // La VARIATION de cette lecture (fourchettes RANGED du jeu, tirées en amont) : un gain
     // de départ et une vitesse de lecture. Sans tirage, la tenue est à 1 — inchangé.
     const tenue = draw ? gainFromDb(draw.gainDb) : 1
@@ -285,16 +329,34 @@ export class ReplayAudioPlayer {
     gain.gain.linearRampToValueAtTime(0, t0 + stopS)
     const src = this.ctx.createBufferSource()
     src.buffer = buf
+    src.loop = loop
     if (draw && draw.playbackRate !== 1) src.playbackRate.value = draw.playbackRate
     src.connect(gain)
     gain.connect(this.master)
     this.voices++
+    // UN SON TENU se retient : la pause et le saut l'éteignent (`stopHeld`), sinon une rafale de
+    // dix secondes continuerait de tirer sur une image arrêtée.
+    const tenu = loop ? { src, gain } : null
+    if (tenu) this.held.add(tenu)
     src.onended = () => {
       this.voices--
+      if (tenu) this.held.delete(tenu)
       src.disconnect()
       gain.disconnect()
     }
     src.start(t0)
     src.stop(t0 + stopS)
+  }
+
+  /** stopHeld éteint les sons TENUS en vol (rampe de volume), à la pause et au saut. */
+  stopHeld(): void {
+    const t0 = this.ctx.currentTime
+    for (const { src, gain } of this.held) {
+      gain.gain.cancelScheduledValues(t0)
+      gain.gain.setValueAtTime(gain.gain.value, t0)
+      gain.gain.linearRampToValueAtTime(0, t0 + VOLUME_RAMP_S)
+      src.stop(t0 + VOLUME_RAMP_S)
+    }
+    this.held.clear()
   }
 }

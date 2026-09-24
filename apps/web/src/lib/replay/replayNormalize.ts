@@ -37,6 +37,7 @@ export type {
   ReplayBombCarry,
   ReplayBombStatsReady,
   ReplayDocumentReady,
+  ReplayFireBurstReady,
   ReplayFlagCarryReady,
   ReplayGrenadeReadReady,
   ReplayInventoryReady,
@@ -238,6 +239,8 @@ export function normalizeReplayDocument(raw: ReplayDocument): ReplayDocumentRead
     // coup (cf. normalizeScoreTimeline). L'OBJET, lui, garde le droit d'être absent.
     scoreTimeline: normalizeScoreTimeline(raw.scoreTimeline),
     shots: raw.shots ?? [],
+    // LES RAFALES DE TIR CONTINU (schéma 71) : le tableau ET ses passages muets comblés.
+    bursts: (raw.bursts ?? []).map((b) => ({ ...b, holes: b.holes ?? [] })),
     structure: (raw.structure ?? []).map((s) => ({ ...s, poly: (s.poly ?? []) as ReplayXY[] })),
     tracks: (raw.tracks ?? []).map((t) => ({ ...t, points: t.points ?? [] })),
     // LA VIE DE CHAQUE VÉHICULE (schéma 29). Absent = artefact antérieur, ou film sans véhicule

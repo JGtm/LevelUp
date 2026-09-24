@@ -299,6 +299,11 @@ func coupsDeLaRafale(f FireBurst, frameMS int) int {
 	return n
 }
 
+// epsilonFrame : la tolerance de la borne de fin. Les coups s accumulent en flottants, et un coup qui
+// tombe EXACTEMENT sur la derniere frame (60/s : six coups par frame) ne doit pas s en perdre par
+// l arrondi. La meme que le client (`model/fireBursts.ts`, `EPSILON_FRAME`).
+const epsilonFrame = 1e-6
+
 // instantsDesCoups rend les instants des coups d une rafale, en frames (fractionnaires).
 func instantsDesCoups(f FireBurst, frameMS int) []float64 {
 	if f.Rate <= 0 || frameMS <= 0 {
@@ -306,7 +311,7 @@ func instantsDesCoups(f FireBurst, frameMS int) []float64 {
 	}
 	parFrame := float64(frameMS) / 1000
 	var out []float64
-	for t := float64(f.T0); t <= float64(f.T1); {
+	for t := float64(f.T0); t <= float64(f.T1)+epsilonFrame; {
 		out = append(out, t)
 		ecoule := (t - float64(f.T0)) * parFrame
 		cadence := f.Rate

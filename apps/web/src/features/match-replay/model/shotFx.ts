@@ -42,6 +42,7 @@ import { vehicleShotStyleOf, vehicleWeaponMountOf } from './vehicleWeaponRegistr
 import type { VehicleWeaponMount } from './vehicleWeaponMounts'
 import { vehicleSpriteFamily } from './vehiclesLayer'
 import { buildLivesBySlot, lifeOfSlotAt } from './livesPosition'
+import { fireBurstShots } from './fireBursts'
 
 /**
  * VehicleShotSource — CE QU'IL FAUT, EN PLUS DU CENTRE, POUR PLACER L'EFFET AU BON MONTAGE
@@ -117,13 +118,16 @@ export interface ShotFxEntry {
  * regardait, et une direction périmée affirmerait ce qu'on ignore.
  */
 export function buildShotFx(doc: ReplayDocumentReady, aimHoldFrames: number): ShotFxEntry[] {
-  if (doc.shots.length === 0) return []
+  // LES COUPS DU TIR CONTINU (schéma 71) entrent comme des tirs : même éclair, même montage, même
+  // regard — ils ne diffèrent que par leur source, simulée à la cadence du tag (`fireBursts.ts`).
+  const tirs = [...doc.shots, ...fireBurstShots(doc)]
+  if (tirs.length === 0) return []
   // UNE TRACE = UNE VIE, et le slot de biped est réattribué à chaque réapparition : on
   // groupe donc par slot, puis on retient la vie QUI COUVRE l'instant du tir. Prendre la
   // première venue lirait le regard d'une autre vie du même joueur.
   const bySlot = buildLivesBySlot(doc.tracks)
   const out: ShotFxEntry[] = []
-  for (const s of doc.shots) {
+  for (const s of tirs) {
     const label = s.w ? doc.weaponLabels?.[s.w] : undefined
     // DEUX JOINTURES, DANS CET ORDRE — la MÊME que celle du son (`shotSoundStem`) : le registre
     // des armes de JOUEUR d'abord, puis le REGISTRE DES ARMES DE VÉHICULE du document (schéma 69,

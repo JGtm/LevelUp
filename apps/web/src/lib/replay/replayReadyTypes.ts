@@ -164,6 +164,11 @@ export type ReplayVehicleRideReady = Filled<ReplayVehicleRide, 'aim'>
  */
 export type ReplayBombStatsReady = Filled<NonNullable<ReplayDocument['bombStats']>, 'players'>
 
+/** Une rafale de tir continu, ses passages muets comblés (schéma 71). */
+export type ReplayFireBurstReady = Omit<NonNullable<ReplayDocument['bursts']>[number], 'holes'> & {
+  holes: NonNullable<NonNullable<ReplayDocument['bursts']>[number]['holes']>
+}
+
 /**
  * ReplayDocumentReady — le document tel que le rendu a le droit de le lire : chaque
  * tableau est présent, jamais null, et les coordonnées ont retrouvé leur arité.
@@ -178,6 +183,7 @@ export type ReplayDocumentReady = Omit<
   | 'bombCarries'
   | 'bombEvents'
   | 'bombStats'
+  | 'bursts'
   | 'equipmentChanges'
   | 'equipmentEpisodes'
   | 'equipmentPlacements'
@@ -368,6 +374,15 @@ export type ReplayDocumentReady = Omit<
    */
   identity?: ReplayIdentityReady
   shots: NonNullable<ReplayDocument['shots']>
+  /**
+   * LES RAFALES DE TIR CONTINU (schéma 71, lot M4b) : la gâchette tenue lue dans la vue de
+   * contrôle, posée sur l'arme qui tire (`w`, `v` pour un véhicule) avec la cadence de son tag
+   * (`rate`, et `rate0`/`ramp` pour une arme qui monte en cadence). Le client y pose les
+   * coups (`model/fireBursts.ts`) ; les `holes` — comblés à vide — sont des passages que la
+   * lecture n'a pas atteints : muets. Vide = artefact antérieur au schéma 71, ou film sans tir
+   * continu lu — `coverage.continuousFire` distingue les deux.
+   */
+  bursts: ReplayFireBurstReady[]
   structure: ReplaySurfaceReady[]
   tracks: ReplayTrackReady[]
   /**
