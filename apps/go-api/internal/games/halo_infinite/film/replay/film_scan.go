@@ -464,6 +464,8 @@ func (s *filmScan) balayerPont() {
 // lireLeFilDesMorts lit le fil des morts, pose son VERDICT (`coverage.bridge.deathsFeed`, lot M5.2
 // des retours rejeu) et le fil lui-meme dans les entrees. Un fil VIDE est une mesure, un fil
 // ILLISIBLE une panne, et le document les distingue au lieu de les laisser aux seuls journaux.
+// Le verdict et sa cause sont des ENTREES depuis le lot M8 (2026-09-24) : ils voyagent dans les
+// faits persistes (cf. fil_des_morts_verdict.go).
 //
 // CE QUE LE FIL ILLISIBLE NE COUPE PLUS (message corrige le 2026-09-23) : les tirs et les
 // lancers. Ils sont nommes par la table des sieges que le film ecrit (`chunk_00`, lot 1.6) —
@@ -473,8 +475,8 @@ func (s *filmScan) balayerPont() {
 // verdict -> document » se teste sur la bobine du depot, que le balayage des positions refuse.
 func (s *filmScan) lireLeFilDesMorts() {
 	deaths, err := ScanDeaths(s.film)
-	s.filDesMorts = lectureDuFilDesMorts(deaths, err)
-	switch s.filDesMorts {
+	s.in.DeathsFeed = verdictDeLaLecture(deaths, err)
+	switch s.in.DeathsFeed.Verdict {
 	case DeathsFeedUnreadable:
 		slog.Warn("fil des morts illisible — ni calage d horloge des morts, ni table d index, ni "+
 			"pont par morts (coverage.bridge.deathsFeed = unreadable)", "err", err, "match_id", s.matchID)

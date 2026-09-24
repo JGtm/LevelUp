@@ -192,10 +192,10 @@ type Options struct {
 	// lancer n'est publie » : faux depuis la table des sieges, lot 1.6 — revue adverse M5, R3.)
 	Deaths []Death
 	// DeathsFeed est le VERDICT de la lecture du fil des morts ([DeathsFeedRead],
-	// [DeathsFeedEmpty], [DeathsFeedUnreadable]), pose par [filmScan.assembler] apres le
-	// balayage et publie en `coverage.bridge.deathsFeed`. Vide = aucun balayage de film dans
-	// cet assemblage (positions fournies, ou rejeu depuis les faits) : cf. [deathsFeedPublie].
-	// PAS UNE ENTREE DE FAITS : les faits persistes ne portent pas l erreur de lecture.
+	// [DeathsFeedEmpty], [DeathsFeedUnreadable]), pose par `FilmInputs.applyTo` depuis
+	// `FilmInputs.DeathsFeed` et publie en `coverage.bridge.deathsFeed`. Les faits persistes le
+	// portent avec sa cause (lot M8, 2026-09-24) : le rejeu depuis les faits pose le meme. Vide =
+	// aucune lecture de film derriere ces entrees (positions fournies) : cf. [deathsFeedPublie].
 	DeathsFeed string
 	// PlayerIndices est la table identité -> index de joueur, LUE dans le film (cf.
 	// player_index.go). Second maillon du pont, et lui aussi une lecture. Absente, un tir ou un

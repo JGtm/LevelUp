@@ -140,6 +140,10 @@ type FilmInputs struct {
 	Projectiles []types.ProjectileTrack
 	// Deaths est le fil des morts : il NOMME les vies et fonde tout le rattachement.
 	Deaths []Death
+	// DeathsFeed est le VERDICT de la lecture du fil des morts et sa cause (lot M8 des retours
+	// rejeu) : une entree comme les autres, pour que le rejeu depuis les faits publie le meme
+	// `coverage.bridge.deathsFeed` que le decodage (cf. fil_des_morts_verdict.go).
+	DeathsFeed VerdictDuFilDesMorts
 	// PlayerIndices est la table identite -> index de joueur, LUE dans le film.
 	//
 	// ELLE N'EST LUE QUE SI LE FIL DES MORTS EST NON VIDE (sans roster, il n'y a rien a
@@ -222,6 +226,7 @@ func (in FilmInputs) applyTo(opt *Options) {
 	opt.Grenades = in.Grenades
 	opt.Projectiles = in.Projectiles
 	opt.Deaths = in.Deaths
+	opt.DeathsFeed = in.DeathsFeed.Verdict
 	opt.PlayerIndices = in.PlayerIndices
 	opt.FilmTable = in.FilmTable
 	opt.PlayerTeams, opt.TeamScan = in.PlayerTeams, in.TeamScan

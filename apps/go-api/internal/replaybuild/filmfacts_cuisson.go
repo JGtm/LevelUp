@@ -90,11 +90,7 @@ func (b *Builder) entreesDeLaCuisson(ctx context.Context, matchID string, mapNam
 	filmDir string, entry decfilm.MapQuantEntry,
 ) (entreesDeCuisson, error) {
 	if f := b.lireLesFaitsFrais(ctx, matchID, entry); f != nil {
-		// LE FIL DES MORTS NE SE DUPLIQUE PAS : il est deja dans `FilmInputs.Deaths`. L ERREUR,
-		// elle, n a pas a voyager — un fil illisible aurait fait echouer le decodage qui a
-		// produit ces faits, donc des faits existants portent une lecture reussie.
-		return entreesDeCuisson{faits: f, statborg: f.Statborg,
-			deaths: filmDeaths{list: f.Facts.Deaths}, kills: f.Kills}, nil
+		return entreesDesFaits(f), nil
 	}
 	// LE FILM EST DECOMPRESSE UNE FOIS ICI, POUR TOUTE LA CUISSON (lot 1, PLAN_CUISSON_PERF
 	// item 1.3). Avant, chacun des ~20 balayages de `BuildFromFilm` relisait et redecompressait
@@ -131,6 +127,20 @@ func (b *Builder) entreesDeLaCuisson(ctx context.Context, matchID string, mapNam
 	kills := b.decodeKillSource(matchID, mapNames, film)
 	logPhase("killsource", matchID, tKS)
 	return entreesDeCuisson{film: film, statborg: statborg, deaths: deaths, kills: kills}, nil
+}
+
+// entreesDesFaits rend les entrees de la branche « relire ».
+//
+// LE FIL DES MORTS NE SE DUPLIQUE PAS : il est deja dans `FilmInputs.Deaths`. SON ERREUR, ELLE,
+// VOYAGE (lot M8 des retours rejeu, 2026-09-24) : les faits portent le verdict de la lecture et sa
+// cause (`FilmInputs.DeathsFeed`), et `Erreur()` la reconstruit, au meme texte. Sans elle, un fil
+// vide ou illisible arrivait ici SANS erreur : les actions d objectif s identifiaient sur un pont
+// sans mort et les frags sous effet actif se disaient lus, la ou le decodage du meme film refuse
+// les deux (`identifiedEvents`, `killRefs`). L ancien commentaire (« des faits existants portent
+// une lecture reussie ») etait faux : le decodage n echoue pas sur un fil illisible, il le publie.
+func entreesDesFaits(f *replay.FilmFactsFile) entreesDeCuisson {
+	return entreesDeCuisson{faits: f, statborg: f.Statborg,
+		deaths: filmDeaths{list: f.Facts.Deaths, err: f.Facts.DeathsFeed.Erreur()}, kills: f.Kills}
 }
 
 // refuserManifesteNonFinalise rend [filmcache.ErrFilmNonFinalise] enveloppee quand le manifeste du
