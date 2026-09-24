@@ -171,3 +171,22 @@ proof = "p"
 		t.Errorf("entree valide refusee : %v", err)
 	}
 }
+
+// TestRegistreArmesVehicule_SonsDesignesALOreille — les sons designes A L OREILLE par
+// l utilisateur le 2026-09-24 (retours du rejeu, lot M6.1) : le lance-grenades du Falcon joue les
+// roquettes du Rockethog (le jeu joue le MEME evenement : 18 medias identiques, sonde SONS), les
+// missiles du Wasp gardent leur stem (fichiers remplaces par le rendu V3E reequilibre).
+func TestRegistreArmesVehicule_SonsDesignesALOreille(t *testing.T) {
+	set := vwRegistre(t)
+	attendus := map[string]string{
+		"0BB6976B": "vehicle_shot_warthog_rocket_1", // lance-grenades du Falcon
+		"C7D50912": "vehicle_shot_warthog_rocket_1", // lance-roquettes du Rockethog
+		"11725DC4": "vehicle_shot_wasp_1",           // lance-missiles du Wasp
+	}
+	for tag, son := range attendus {
+		w, ok := set.Weapon(tag)
+		if !ok || w.Sound != son || w.Silence != "" {
+			t.Errorf("%s : son %q (silence %q), attendu %q", tag, w.Sound, w.Silence, son)
+		}
+	}
+}

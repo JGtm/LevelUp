@@ -72,10 +72,10 @@ fr       = "Lance-grenades"
 fire     = "single"
 fx       = "explosive"
 tint     = "kinetic"
-silence  = "aucune reconstruction cablee : la banque sb_010_veh_un_falcongrenadelauncher joue le MEME evenement que le tir du Rockethog (18 medias identiques, sonde SONS du 2026-09-24) ; designation a l oreille par l utilisateur avant cablage (decision du 2026-09-23 nuit)"
+sound    = "vehicle_shot_warthog_rocket_1"
 mount    = { aim = "turret", ax = 0.06, ay = 0.13 }
-proof    = "52 tirs publies dont 51 en vehicule, 3 documents (4f77afc1, 879a4dba, a464e20b) ; porteur mesure : la tourelle enfant 1a043c29 (51), banque sb_010_veh_un_falcongrenadelauncher (labels.tsv) ; degats 674a7d69 / a859230a, 32 frags ; tire AU COUP et observe, alors que la LMG du Falcon (00015cd3) tire en continu"
-decision = "lance-grenades du Falcon (Q10, 2026-09-23 : deduit du tir au coup, le Falcon porte l un ou l autre)"
+proof    = "52 tirs publies dont 51 en vehicule, 3 documents (4f77afc1, 879a4dba, a464e20b) ; porteur mesure : la tourelle enfant 1a043c29 (51), banque sb_010_veh_un_falcongrenadelauncher (labels.tsv) ; degats 674a7d69 / a859230a, 32 frags ; tire AU COUP et observe, alors que la LMG du Falcon (00015cd3) tire en continu ; son : weap 0bb6976b -> snd! 541792a4 -> evenement 3P a99352ab, dont les 18 medias et les trois gains de chemin sont IDENTIQUES a ceux du tir 3P du Rockethog (sonde SONS du 2026-09-24, manifeste rr_2026-09-23 : 0 % d energie non expliquee sur vehicle_shot_warthog_rocket_1/_2)"
+decision = "lance-grenades du Falcon (Q10, 2026-09-23 : deduit du tir au coup, le Falcon porte l un ou l autre) ; son = les roquettes du Rockethog, designe A L OREILLE (utilisateur, 2026-09-24 : meme evenement, aucun nouveau fichier)"
 
 [[weapons]]
 tag      = "0042678E"
@@ -112,8 +112,8 @@ fx       = "explosive"
 tint     = "blast"
 sound    = "vehicle_shot_wasp_1"
 mount    = { aim = "fixed", ax = 0.3, ay = -0.05 }
-proof    = "4 tirs publies dont 4 en vehicule, 1 document (8a485699) ; porteur mesure wasp:b65b3b4a (4) ; V3F_TIRS_COVENANT_2026-09-02 §4 : son AU COUP (snd!, 450/min) ; le son vehicle_shot_wasp est celui des missiles (sonde SONS du 2026-09-24, equilibre de couches du rendu rev9)"
-decision = "le coup par coup est le LANCE-MISSILES, l autre mode (d3c407ed, son en boucle 600/min, tir continu) est la LMG (utilisateur, Q11, 2026-09-23 nuit) ; ancre sur l aile"
+proof    = "4 tirs publies dont 4 en vehicule, 1 document (8a485699) ; porteur mesure wasp:b65b3b4a (4) ; V3F_TIRS_COVENANT_2026-09-02 §4 : son AU COUP (snd!, 450/min) ; le son vehicle_shot_wasp est celui des missiles (sonde SONS du 2026-09-24 : evenement 3P e22a0d32, 0 % d energie non expliquee)"
+decision = "le coup par coup est le LANCE-MISSILES, l autre mode (d3c407ed, son en boucle 600/min, tir continu) est la LMG (utilisateur, Q11, 2026-09-23 nuit) ; ancre sur l aile ; fichiers vehicle_shot_wasp_1/_2 REMPLACES par le rendu V3E reequilibre (gains de chemin complets +22 / +13 / +8 dB au lieu de l equilibre rev9), designe A L OREILLE (utilisateur, 2026-09-24)"
 
 [[unknown]]
 tag    = "850902EF"
