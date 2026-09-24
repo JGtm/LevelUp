@@ -47,7 +47,12 @@ import (
 // atteignait 504 lignes et `balayerEtatsDeMouvement` en est sortie par DEPLACEMENT PUR. Le garde
 // suit l etage de balayage, pas un nom de fichier — l oublier ici aurait rendu l etape invisible
 // a la liste, c est-a-dire au harnais d equivalence.
-var fichiersDuBalayage = []string{"build_from_film.go", "film_scan.go", "film_scan_mouvement.go"}
+// `film_scan_naissances.go` Y EST ENTRE LE 2026-09-23 (lot M3.2), pour la meme raison : `film_scan.go`
+// frolait le seuil, et le balayage des dotations de naissance y serait devenu invisible.
+// `film_scan_ti13.go` Y EST ENTRE LE 2026-09-24 (integration de la vague D des retours du rejeu) :
+// `film_scan.go` atteignait 512 lignes et `balayerProprietesTi13` en est sortie par DEPLACEMENT PUR.
+var fichiersDuBalayage = []string{"build_from_film.go", "film_scan.go", "film_scan_mouvement.go",
+	"film_scan_naissances.go", "film_scan_ti13.go"}
 
 // racineDuBalayage : la fonction par laquelle l'etage commence.
 const racineDuBalayage = "scanFilmInputs"

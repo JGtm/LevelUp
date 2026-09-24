@@ -207,7 +207,9 @@ export function normalizeReplayDocument(raw: ReplayDocument): ReplayDocumentRead
     // Une ENTRÉE absente dans un objet présent est une réponse : ce calque n'a pas été produit.
     layers: raw.layers,
     inventory: (raw.inventory ?? []).map((inv) => ({ ...inv, am: inv.am ?? [], g: inv.g ?? [] })),
-    loadouts: (raw.loadouts ?? []).map((lo) => ({ ...lo, w: lo.w ?? [] })),
+    // `k` (schéma 69) : l'emplacement de chaque arme d'une dotation de naissance. Comblé comme
+    // `w` ; un relevé d'image-clé n'en porte aucun (`k` vide = relevé NON situé, cf. loadoutAt).
+    loadouts: (raw.loadouts ?? []).map((lo) => ({ ...lo, w: lo.w ?? [], k: lo.k ?? [] })),
     // Le TYPE des morts que personne ne revendique (chute, hors-limites, sa propre arme) :
     // le fil déduit ces lignes de ses pistes, cette table dit seulement DE QUOI le joueur
     // est mort. Absente = aucune n'est établie, le fil garde son repère neutre.

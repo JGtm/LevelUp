@@ -60,17 +60,24 @@ import "testing"
 const ti9TypeIndex = 9
 
 // ti9RecordsAttendus : le nombre de records d image-cle `ti=9` BORNES que portent les sept
-// bobines (337 + 393 + 240 + 262 + 144 + 261 + 80).
+// bobines (337 + 393 + 240 + 262 + 151 + 261 + 94).
 //
 // C EST UNE MESURE, PAS UNE CIBLE, et elle est ecrite ici pour qu une bobine perdue ou tronquee
 // rougisse au lieu de rendre « 100 % de pas grand-chose ».
-const ti9RecordsAttendus = 1717
+//
+// 1 717 -> 1 738 AU LOT M3.1 (2026-09-23, campagne « retours rejeu ») : LA MARCHE D IMAGE-CLE
+// NE S ARRETE PLUS SUR UNE FENETRE VIDE. `bcb6d393` passe de 144 a 151 records et `fb1a1a72` de
+// 80 a 94 : ce sont les records ti=9 des images-cles que la fenetre de 120 000 bits coupait (la
+// premiere image-cle de `bcb6d393` rendait 123 records et s arretait avant sa table de joueurs).
+// Les 21 records gagnes FERMENT tous. Ce n est pas le corpus qui a bouge, c est la marche.
+const ti9RecordsAttendus = 1738
 
 // ti9FermesAttendus : les records qui ATTERRISSENT sur la frontiere du record suivant.
 //
-// 1 716 / 1 717 AU 2026-09-17. Le reste est l ancre fortuite de `111fa685` decrite en tete de
-// fichier — pas une largeur.
-const ti9FermesAttendus = 1716
+// 1 716 / 1 717 AU 2026-09-17 ; 1 737 / 1 738 AU LOT M3.1 (2026-09-23 : les 21 records gagnes
+// ferment tous). Le reste est l ancre fortuite de `111fa685` decrite en tete de fichier — pas
+// une largeur.
+const ti9FermesAttendus = 1737
 
 // ti9BloquantPorte : le composant que le golden nommait comme bloquant des SEPT bobines avant ce
 // lot. Il ne doit plus bloquer aucune d elles.

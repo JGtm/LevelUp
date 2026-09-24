@@ -916,6 +916,12 @@ export interface ReplayText {
   abilityLabel: string
   loadoutUnread: string
   loadoutAge: string
+  /**
+   * PROVENANCE d'un relevé d'armes lu à la CRÉATION du corps (`loadouts[].src === 'birth'`,
+   * schéma 69) : l'infobulle la dit avant l'âge — une dotation de naissance n'est pas une
+   * image-clé, et le lecteur doit savoir d'où vient ce qu'il voit.
+   */
+  loadoutBirth: string
   loadoutAhead: string
   weaponSecondaryHint: string
   /**

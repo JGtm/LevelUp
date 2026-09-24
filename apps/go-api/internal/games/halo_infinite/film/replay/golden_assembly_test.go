@@ -110,8 +110,8 @@ const (
 	// a eux seuls 634 des 947 trajectoires coupees.
 	wantProjectileTracks     = 580
 	wantProjectilesTruncated = 3
-	// wantInventory : 184 etats d inventaire publies.
-	wantInventory = 184
+	// wantInventory : 192 etats publies (184 avant M3.1 : 8 bipedes que la marche perdait).
+	wantInventory = 192
 	// wantIndexReadings : 26 chunks de replication livrent la MEME table identite -> index.
 	wantIndexReadings = 26
 )
@@ -299,7 +299,7 @@ func TestSeventyGrenadeThrowsAreAllPlaced(t *testing.T) {
 
 // TestProjectilesAndInventoryCounts : les deux calques que rien ne verrouillait.
 //
-// 439 trajectoires et 184 etats d inventaire. Ce sont les deux sorties dont les decodeurs
+// 439 trajectoires et 184 etats d inventaire (192 depuis le lot M3.1). Ce sont les deux sorties dont les decodeurs
 // etaient a 0 % de couverture de test avant ce jalon.
 func TestProjectilesAndInventoryCounts(t *testing.T) {
 	doc := buildGolden(t)

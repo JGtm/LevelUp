@@ -377,3 +377,76 @@ package grammar
 // lot (l instant des paquets BOT_METADATA) ne nourrit que le rejeu — aucune ligne de kill ne
 // bouge. Son golden est refige parce qu il hache la VALEUR de `grammar.Rev` et ses propres
 // sources (cf. la chronique de `facts`).
+//
+// PARTIE M3 (2026-09-23, campagne « retours rejeu », lot M3.1, puis M3.2 au meme rang) : LA
+// MARCHE D IMAGE-CLE NE COUPE PLUS LA TABLE, ET SON ELECTION DEVIENT UN REPLI NOMME.
+//
+// CE QUE LE RANG CHANGE (`keyframe_world.go`, `keyframe_loadout.go`). Le balayeur d ancres
+// d image-cle (`WalkKeyframeWorld`, lu par une quinzaine de balayages de cuisson et par le monde
+// de `killsource`) choisit l ancre suivante par TROIS decisions dans cet ordre : le VOISIN
+// immediat (slot+1, generation 1 — inchange), puis le RECALAGE sur l en-tete EXACT d un bipede
+// (generation 1, mot d archetype de 32 bits egal a 35) quand il precede l ancre que l election
+// retiendrait, puis l ELECTION (generation basse, slot bas), desormais le repli nomme
+// `repli_ancre_d_image_cle_par_election`, compte par cuisson. Et une fenetre de 120 000 bits SANS
+// candidat n arrete plus la marche : la recherche glisse jusqu au candidat suivant ou a la fin
+// de table.
+//
+// LA MESURE QUI A DECIDE (quatre films, voie film, un a la fois) :
+//
+//	                    ancres           bipedes      perdues vs base   ajoutees confirmees
+//	dad793c7  base 868  -> 902            4 -> 4       0                 33 / 34
+//	81c02726  base 8619 -> 8896           116 -> 129   2 (fausses)       262 / 263 (+ 13 bipedes)
+//	a0c36016  base 14659 -> 14890         159 -> 304   25 (la fausse     110 / 111 (+ 145 bipedes)
+//	                                                   ancre 385/ti 19)
+//	b1f01a33  base 6719 -> 6816           192 -> 198   5 (fausses)       67 / 96 (+ 6 bipedes)
+//
+// Les ancres « perdues » sont les fausses ancres de slot bas que l election retenait : 30 sur 32
+// ne se repetent dans aucune autre image-cle, et les 25 d a0c36016 sont la MEME fausse ancre
+// structurelle (slot 385, ti 19, a +825 bits de l en-tete du bipede 519 dans chaque image-cle —
+// sonde P2). Les 29 ajouts non confirmes de b1f01a33 sont la chaine de slots CONSECUTIFS
+// 1349..1376 de l image-cle 0, que la fenetre coupait (mecanisme B de la sonde P2).
+//
+// LA REGLE « GENERATION 1 PUIS LE PLUS PROCHE » (V2 de la sonde P2) A ETE MESUREE ET ECARTEE :
+// elle rend les bipedes mais perd les autres ancres par milliers (a0c36016 14 659 -> 11 890,
+// b1f01a33 6 719 -> 5 524 et trois bipedes perdus). La fenetre n est PAS retiree : la marche
+// sans aucune fenetre rend EXACTEMENT les memes ancres que la fenetre glissante sur les quatre
+// films, pour un temps multiplie par 5 a 6 ; elle ne borne plus que la PORTEE de l election.
+//
+// `facts.Rev` MONTE : le monde de `killsource` (`world.go` `preload()`) lie les slots que cette
+// marche rend. Le codec des faits passe en v26 (`SchemaDesFaits` 4) et porte la SANTE de la marche
+// (decisions et bipedes absents encadres) ; le document la publie en `coverage.keyframes` au
+// commit de la montee de schema du meme lot (M3.2 : 69 sur la branche, 70 a l integration de la
+// vague D), une seule montee pour le lot.
+//
+// LE MEME RANG PORTE LE LOT M3.2 (meme lot, une seule montee de revision) :
+//
+//   - L ETAT PAR DEFAUT DU BIPEDE LIT LE R(32) DE SA DERNIERE FEUILLE (`default_state.go`,
+//     `uVar10 >= 12` : `FUN_14080d69c` = R(1) ; si 1, R(32) — la grammaire de l en-tete du
+//     fichier, que le port avait amputee sur la foi de « 166 = 198 - 32 »). DEUX ORACLES : la
+//     famille d i43 d un record NEW de naissance tombe sur celle que le catalogue du match
+//     localise dans 293 records sur 293 (45 Arena, 106 Super Fiesta, 142 CTF ; 0 sans ce
+//     R(32)) ; et `n2`, lu apres l etat par defaut d un record d image-cle, vaut 5088 sur
+//     128 + 197 + 304 records des trois films, contre 2136725276 sans lui — la valeur de ce
+//     R(32) lue a la place de `n2`. Tout record NEW de bipede des paquets delta se traverse
+//     desormais aligne, et le chemin d etat complet de l image-cle aussi.
+//   - LA DOTATION DE NAISSANCE EST LUE (`birth_loadouts.go`, `ScanBirthLoadouts`) : le record NEW
+//     de chaque creation reconnue par `ScanBipedCreations`, traverse, et rendu SEULEMENT s il se
+//     FERME — suivi d un delta propre sur un slot lie ou d un record NEW dont le monde ou une
+//     image-cle ulterieure confirme l archetype. Mesure : 48/48, 104/106, 139/142 naissances
+//     fermees sur les trois films ; 3 fermetures sur 1 776 au temoin decale. Aucune lecture de
+//     repli : un record qui ne se ferme pas ne rend rien, et le refus se compte par cause.
+//   - L EMPLACEMENT D ARME : `HeldWeaponChange.Emplacement` (rang du composant
+//     `weapon-state-type-info` dans l archetype du film). La PREMIERE emission d un emplacement se
+//     juge, POUR CHAQUE VIE, contre la dotation de naissance puis contre le dernier releve
+//     d image-cle PASSE (`SpawnPredicate`, jamais un releve a venir), et la chaine des emissions
+//     d un slot se coupe a chaque nouvelle creation du corps qui l occupe.
+//
+// REPRISE APRES LA REVUE ADVERSE DU LOT (2026-09-24), MEME RANG :
+//
+//   - UNE FIN DE TABLE A CHEVAL SUR DEUX FENETRES SE RECONNAIT (`kfScanGlissant`, constat F5). Le
+//     compteur de sentinelles repartait de zero a chaque fenetre : une trainee coupee par la
+//     frontiere (moins de 2 048 sentinelles de chaque cote) n etait jamais une fin de table, et le
+//     glissement allait lire des ancres au-dela. La fenetre suivante reprend desormais au DEBUT de
+//     la trainee sur laquelle la precedente a fini (`traine`, rendu par `kfScanNext`).
+//   - `Glissements` ne compte plus que les fenetres vides FRANCHIES pour atteindre une ancre ; une
+//     recherche qui finit sur la fin de table ou du payload n a rien franchi.

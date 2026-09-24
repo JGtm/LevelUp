@@ -213,7 +213,20 @@ const plafondSurfaceFacade = 166 // 2026-09-17 — base a5d15e634
 //	                                           `replayview`) et la reference de vie des pieces
 //	                                           montees (`replay.VehicleLifeRef`, `replayview`).
 //	                                           RE-MESURE A L ENTREE du lot : 265 sur `b74c8f294`.
-const plafondSurfaceReplay = 269 // 2026-09-23 — retours du rejeu M4a : 265 + 4 (registre des armes de vehicule, pieces montees)
+//	271  rr(m3)  (2026-09-24)                  la montee de schema de la vague D des « retours
+//	                                           rejeu » (69 sur la branche, 70 a l integration) :
+//	                                           `replay.KeyframeCoverage` (sante de la
+//	                                           marche d image-cle, lot M3.1) et
+//	                                           `replay.BirthLoadoutCoverage` (dotations de
+//	                                           naissance, lot M3.2), cites par le convertisseur
+//	                                           jumeau `service/replayview/convert_coverage_armes.go`.
+//	                                           DEUX symboles neufs — les champs `Coverage.Keyframes`,
+//	                                           `Coverage.BirthLoadouts`, `Loadout.Src`/`K` et
+//	                                           `WeaponChange.K` n en ajoutent aucun.
+//	                                           RE-MESURE A L ENTREE du lot : 265 sur `fe7079f41`,
+//	                                           267 apres ; a l integration de la vague D
+//	                                           (2026-09-24), sur la vague C (269) : 271.
+const plafondSurfaceReplay = 271 // 2026-09-24 — integration vague D : 269 (vague C, M4a) + 2 (rr(m3) : KeyframeCoverage, BirthLoadoutCoverage)
 
 // plafondsParFamilleFacade — la surface de la facade VENTILEE PAR PAQUET D ORIGINE.
 //

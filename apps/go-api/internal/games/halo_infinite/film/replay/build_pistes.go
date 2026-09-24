@@ -131,7 +131,13 @@ func (a *assemblage) poserTirsProjectilesEtGrenades() {
 	a.shotCov.Attached = len(a.doc.Shots)
 	a.shotCov.warnIfLossy("tirs")
 
-	a.doc.Loadouts = keepLoadoutsOfPublishedTracks(buildLoadouts(a.opt.Loadouts, a.origin, a.step), a.doc.Tracks)
+	// LES DOTATIONS DE NAISSANCE (schéma 69, lot M3.2) rejoignent les relevés d'image-clé : elles
+	// sont le premier relevé PASSÉ de chaque vie, posées sur la vie que leur création ouvre.
+	var naissances []Loadout
+	naissances, a.birthCov = buildBirthLoadouts(birthInputs{births: a.opt.BirthLoadouts,
+		stats: a.opt.BirthLoadoutStats, creations: a.opt.BipedCreations}, a.doc.Tracks, a.origin, a.step)
+	a.doc.Loadouts = keepLoadoutsOfPublishedTracks(
+		mergeLoadouts(buildLoadouts(a.opt.Loadouts, a.origin, a.step), naissances), a.doc.Tracks)
 
 	// Les projectiles se construisent AVANT les lancers : le lancer publie son lien vers le
 	// projectile né de lui (Grenade.Proj), qui pointe un index de la tranche PUBLIÉE.
@@ -222,6 +228,10 @@ func (a *assemblage) poserEpisodesDEquipement() {
 func (a *assemblage) composerLaCouverture() {
 	a.doc.Coverage = buildCoverage(a.shotCov, a.grenCov, a.objCov, a.reg, a.doc.OriginMs != nil, a.scoreCov)
 	a.doc.Coverage.Projectiles = a.projCov
+	// LES ARMES A L INSTANT (schema 69, lot M3) : la sante de la marche d image-cle et les
+	// dotations de naissance, mesurees avant la couverture et posees ici.
+	a.doc.Coverage.Keyframes = buildKeyframeCoverage(a.opt.KeyframeWalk)
+	a.doc.Coverage.BirthLoadouts = a.birthCov
 	// CE QUE LE SEUIL DE PUBLICATION A REFUSE (schema 55) : mesure faite en tete de fonction,
 	// posee ici. Sans elle, un artefact publiant 90 traces la ou le film en porte 95 etait
 	// indistinguable d'un film a 90 vies.

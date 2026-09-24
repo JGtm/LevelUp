@@ -35,7 +35,7 @@ jamais une categorie de donnee (decision produit du 2026-09-07)
   2533274811363842  idx=11  equipe=1  "xNeuromancer"
 
 ### EQUIPES — lues dans le film (ti=9 i0), JAMAIS dans la base (decision utilisateur V4)
-lue=true refus="" · 144 record(s) ti=9, 0 rejete(s), 0 divergence(s)
+lue=true refus="" · 151 record(s) ti=9, 0 rejete(s), 0 divergence(s)
 roster : 11 joueur(s) dont le film donne l equipe (0 sans equipe) · 0 non lu(s)
 controle (feuille de match) : accord=0 contradiction=0 silence=11
 vies : 57/57 portent une equipe du film
@@ -300,7 +300,7 @@ POWER-UPS (voie ti=37) — balaye=true · 198 creation(s) acceptee(s) -> 6 reten
 26 occupation(s) achevee(s) publiee(s) · 15 datee(s) a l instant exact par l evenement natif · 15 avec un ramasseur nomme
 
 ## ARMES PORTEES — l inventaire, pas la main : le loadout ne dit pas QUELLE arme est degainee
-107 loadout(s) publie(s) · 12 famille(s) distincte(s)
+162 loadout(s) publie(s) · 12 famille(s) distincte(s)
 
 ## PONT SLOT -> JOUEUR — deux sources nommees : la LECTURE, puis la FERMETURE
 57 entree(s) · 57 issue(s) de la lecture (un ecart NON EXPLIQUE par les fermetures signalerait une TROISIEME SOURCE)

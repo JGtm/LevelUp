@@ -40,7 +40,7 @@ func TestScanFilmKeyframeLoadouts_SansCatalogue(t *testing.T) {
 
 // TestKeyframeLoadouts_PayloadVide : un payload sans record ne doit produire aucun loadout.
 func TestKeyframeLoadouts_PayloadVide(t *testing.T) {
-	if got := keyframeLoadouts(nil, map[uint32]bool{1: true}); got != nil {
+	if got := keyframeLoadoutsDe(nil, nil, map[uint32]bool{1: true}); got != nil {
 		t.Fatalf("aucun loadout attendu, obtenu %+v", got)
 	}
 }

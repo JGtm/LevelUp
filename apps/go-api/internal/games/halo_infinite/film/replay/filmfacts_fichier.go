@@ -133,12 +133,15 @@ const VersionCodecFaits = 1
 // SCHEMA 3 (2026-09-19, post-chantier lot 5.1) : la CHARGE de la section 1 change encore — le blob
 // des entrees passe en v24 (la JAUGE DE RETOUR du drapeau et son temoin). Meme raisonnement qu au
 // schema 2 : le refus doit tomber sur l EN-TETE, pas au decodage de la section.
-// SCHEMA 4 (2026-09-23, lot M2.2 de la campagne « retours rejeu ») : le complement de la section 1
-// porte LES OCCUPANTS DU MATCH (`FilmInputs.PlayerEntities`, une entree par entite `ti=9`), et la
-// section 5 les INSTANTS de BOT_METADATA (`BotEntry.Declarations`). Le blob des entrees est
-// inchange a l octet (les huit fixtures restent valides) ; un fichier du schema 3 n a ni les uns ni
-// les autres, et le rejouer publierait le roster sans presence lue : il est PERIME sur son en-tete
-// et se REDECODE.
+// SCHEMA 4 (2026-09-24, integration de la vague D de la campagne « retours rejeu » : UNE montee
+// pour les lots M2 et M3, qui avaient chacun pose 4 sur leur branche). Lot M3 : la CHARGE de la
+// section 1 change — le blob passe en v26 (la sante de la marche d image-cle, puis les dotations
+// de naissance lues dans le record NEW du bipede). Lot M2.2 : le complement de la section 1 porte
+// LES OCCUPANTS DU MATCH (`FilmInputs.PlayerEntities`, une entree par entite `ti=9`), et la
+// section 5 les INSTANTS de BOT_METADATA (`BotEntry.Declarations`). Meme raisonnement qu aux
+// schemas 2 et 3 : le refus tombe sur l EN-TETE. Un fichier du schema 3 n a ni les uns ni les
+// autres ; la grammaire monte avec (`grammar.Rev`) : les faits d avant sont PERIMES, il faut
+// redecoder.
 const SchemaDesFaits = 4
 
 // Identifiants de section. Ils ne se reutilisent JAMAIS : un identifiant retire reste retire, sinon

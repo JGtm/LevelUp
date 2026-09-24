@@ -25,6 +25,8 @@ type Coverage struct {
 	BombCarries       *BombCarriesCoverage        `json:"bombCarries,omitempty"`
 	BombArmings       *BombArmingsCoverage        `json:"bombArmings,omitempty"`
 	WeaponChanges     *WeaponChangeCoverage       `json:"weaponChanges,omitempty"`
+	Keyframes         *KeyframeCoverage           `json:"keyframes,omitempty"`
+	BirthLoadouts     *BirthLoadoutCoverage       `json:"birthLoadouts,omitempty"`
 	Pickups           *PickupCoverage             `json:"pickups,omitempty"`
 	PadDating         *PadDatingStats             `json:"padDating,omitempty"`
 	EquipmentChanges  *EquipmentChangeCoverage    `json:"equipmentChanges,omitempty"`

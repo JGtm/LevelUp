@@ -43,26 +43,48 @@ type HeldWeaponChangeStats struct {
 
 // ScanFilmHeldWeaponChanges décode tous les changements d'arme en main du film de `dir`.
 //
-// `spawnSet` donne, pour un slot et un instant, l'ensemble des familles portées au dernier
-// relevé d'image-clé qui précède — il sert à qualifier la PREMIÈRE émission d'un emplacement,
-// dont l'état de départ vient du spawn et non du flux. Il peut être nil : les premières
-// émissions sont alors qualifiées `taken` par défaut, ce qui surestime les prises.
+// `spawn` donne, pour un slot et un instant, ce que la vie portait au dernier relevé PASSÉ que
+// l'appelant connaît (sa dotation de naissance, ou un relevé d'image-clé) — il sert à qualifier
+// la PREMIÈRE émission d'un emplacement, dont l'état de départ vient du spawn et non du flux. Il
+// peut être nil : les premières émissions sont alors qualifiées `taken` par défaut, ce qui
+// surestime les prises.
 //
 // ScanFilmHeldWeaponChanges est l'ENVELOPPE D2, HORS PRODUCTION ; la cuisson appelle
 // [ScanHeldWeaponChanges].
 func ScanFilmHeldWeaponChanges(
-	dir string, spawnSet func(slot uint32, at uint64) (map[uint32]bool, bool),
+	dir string, spawn SpawnPredicate,
 ) ([]types.HeldWeaponChange, HeldWeaponChangeStats, error) {
 	film, err := source.LoadDir(dir, nil)
 	if err != nil {
 		return nil, HeldWeaponChangeStats{}, err
 	}
-	return ScanHeldWeaponChanges(contexteDeBobine(film), spawnSet)
+	return ScanHeldWeaponChanges(contexteDeBobine(film), spawn)
 }
+
+// SpawnState est ce qu'une vie portait au dernier relevé PASSÉ : l'ensemble de ses familles et,
+// quand le relevé est une DOTATION DE NAISSANCE, la famille de chaque emplacement (lot M3.2).
+type SpawnState struct {
+	// Families est l'ensemble des familles portées.
+	Families map[uint32]bool
+	// ParEmplacement, quand il n'est pas nil, donne la famille de CHAQUE emplacement annoncé
+	// (rang -> famille, [NoWeaponVariant] pour un emplacement vide). Une dotation de naissance
+	// le porte ; un relevé d'image-clé, qui ne situe pas ses familles, non.
+	ParEmplacement map[int]uint32
+	// DebutDeVie est l'instant de la CRÉATION du corps qui occupe le slot (0 = inconnu). Un slot
+	// se réattribue d'une vie à l'autre : une émission postérieure à une nouvelle création est
+	// la PREMIÈRE de sa vie, jamais la suite de la vie précédente.
+	DebutDeVie uint64
+}
+
+// SpawnPredicate rend ce que la vie du slot portait au dernier relevé passé avant `at`, et s'il
+// en existe un (second retour). JAMAIS un relevé à venir : il effacerait une vraie prise faite
+// avant lui. `DebutDeVie` est rendu MÊME sans relevé : c'est lui qui coupe la chaîne des
+// émissions à chaque nouvelle vie du slot.
+type SpawnPredicate func(slot uint32, at uint64) (SpawnState, bool)
 
 // ScanHeldWeaponChanges décode les changements d'arme en main d'un film DEJA CHARGE.
 func ScanHeldWeaponChanges(
-	fc *FilmContext, spawnSet func(slot uint32, at uint64) (map[uint32]bool, bool),
+	fc *FilmContext, spawn SpawnPredicate,
 ) ([]types.HeldWeaponChange, HeldWeaponChangeStats, error) {
 	var st HeldWeaponChangeStats
 	cfg, err := newHeldWeaponScan(fc)
@@ -77,74 +99,133 @@ func ScanHeldWeaponChanges(
 	obs.HeldWeaponHook = func(h, l uint32) { last.high, last.low, last.got = h, l, true }
 	cfg.gram.obs = obs
 
-	type key struct {
-		slot uint32
-		comp int
-	}
-	prevFam, seen := map[key]uint32{}, map[key]bool{}
+	chaine := newHeldWeaponChain(spawn)
 	var out []types.HeldWeaponChange
 	walkDeltaBipedRecords(fc, cfg.chunks, cfg.slots, cfg.gram.lay, func(r deltaBipedRecord) {
 		st.Records++
-		if !heldWeaponMaskHas(r.Mask, cfg.weaponIdx) {
+		if !heldWeaponMaskHas(r.Mask, cfg.emplacements) {
 			return
 		}
 		st.WithComponent++
 		walkRecordComponents(r.Payload, r.I0, r.Total, r.Mask, cfg.gram, func(id int) bool {
-			if !cfg.weaponIdx[id] || !last.got {
+			rang, arme := cfg.emplacements[id]
+			if !arme || !last.got {
 				last.got = false
 				return true
 			}
 			last.got = false
 			st.Emissions++
-			k := key{r.Slot, id}
 			ch := types.HeldWeaponChange{
 				TimestampUS: r.Packet.TimestampUS, Chunk: r.Chunk, Slot: r.Slot, SlotIndex: id,
-				Family: last.high, Low: last.low, Previous: noVariant,
+				Emplacement: rang, Family: last.high, Low: last.low, Previous: noVariant,
 			}
-			if seen[k] {
-				ch.Previous = prevFam[k]
-				if prevFam[k] == last.high {
-					st.Repeats++
-				}
+			if chaine.qualifier(&ch) {
+				st.Repeats++
 			}
-			ch.Kind = classifyHeldWeaponChange(ch, seen[k], spawnSet)
 			out = append(out, ch)
-			seen[k], prevFam[k] = true, last.high
 			return true
 		})
 	})
 	return out, st, nil
 }
 
-// classifyHeldWeaponChange qualifie un changement. La PREMIÈRE émission d'un emplacement se
-// juge contre le loadout de spawn : une famille absente du spawn est une acquisition, une
-// famille déjà présente n'est qu'une ré-annonce.
-func classifyHeldWeaponChange(
-	ch types.HeldWeaponChange, hadPrevious bool,
-	spawnSet func(uint32, uint64) (map[uint32]bool, bool),
-) types.HeldWeaponChangeKind {
+// heldWeaponChain enchaîne les émissions d'un emplacement : chacune se lit contre la précédente
+// de la MÊME VIE, et la première d'une vie contre son spawn.
+type heldWeaponChain struct {
+	spawn SpawnPredicate
+	prev  map[heldWeaponKey]heldWeaponPrev
+}
+
+// heldWeaponKey désigne un emplacement d'un slot (par son index de composant).
+type heldWeaponKey struct {
+	slot uint32
+	comp int
+}
+
+// heldWeaponPrev est la dernière famille émise sur l'emplacement, et le début de la vie qui l'a
+// émise — une émission d'une vie POSTÉRIEURE ne s'enchaîne pas sur elle.
+type heldWeaponPrev struct {
+	fam   uint32
+	debut uint64
+}
+
+func newHeldWeaponChain(spawn SpawnPredicate) *heldWeaponChain {
+	return &heldWeaponChain{spawn: spawn, prev: map[heldWeaponKey]heldWeaponPrev{}}
+}
+
+// qualifier pose `Previous` et `Kind` de l'émission `ch`, et dit si elle RÉPÈTE la famille
+// précédente de sa vie (propriété que le canal ne devrait jamais violer, cf. `Repeats`).
+func (c *heldWeaponChain) qualifier(ch *types.HeldWeaponChange) (repete bool) {
+	var sp SpawnState
+	spOK := false
+	if c.spawn != nil {
+		sp, spOK = c.spawn(ch.Slot, ch.TimestampUS)
+	}
+	k := heldWeaponKey{ch.Slot, ch.SlotIndex}
+	p, vu := c.prev[k]
+	if vu && sp.DebutDeVie > p.debut {
+		vu = false // une nouvelle vie a commencé sur ce slot depuis l'émission précédente
+	}
+	if vu {
+		ch.Previous = p.fam
+		repete = p.fam == ch.Family
+	}
+	qualifyHeldWeaponChange(ch, vu, sp, spOK)
+	c.prev[k] = heldWeaponPrev{fam: ch.Family, debut: sp.DebutDeVie}
+	return repete
+}
+
+// qualifyHeldWeaponChange qualifie un changement. Une émission qui SUIT une autre sur le même
+// emplacement se lit contre elle. La PREMIÈRE émission d'un emplacement se juge contre le spawn :
+//
+//   - DOTATION DE NAISSANCE connue pour cet emplacement (lot M3.2) : la même famille est une
+//     ré-annonce ; sinon le changement part de l'arme de naissance, qui devient `Previous` — une
+//     prise sur emplacement vide, un échange, ou un lâcher qui NOMME l'arme lâchée ;
+//   - sinon, un ENSEMBLE de familles (relevé d'image-clé passé) : une famille déjà portée n'est
+//     qu'une ré-annonce, une famille absente est une acquisition.
+func qualifyHeldWeaponChange(ch *types.HeldWeaponChange, hadPrevious bool, st SpawnState, ok bool) {
+	switch {
+	case hadPrevious && ch.Family == noVariant:
+		ch.Kind = types.HeldWeaponDropped
+		return
+	case hadPrevious && ch.Previous == noVariant:
+		ch.Kind = types.HeldWeaponTaken
+		return
+	case hadPrevious:
+		ch.Kind = types.HeldWeaponSwapped
+		return
+	}
+	if prev, connu := st.ParEmplacement[ch.Emplacement]; ok && connu {
+		switch {
+		case ch.Family == prev:
+			ch.Kind = types.HeldWeaponRestated
+		case ch.Family == noVariant:
+			ch.Previous, ch.Kind = prev, types.HeldWeaponDropped
+		case prev == noVariant:
+			ch.Kind = types.HeldWeaponTaken
+		default:
+			ch.Previous, ch.Kind = prev, types.HeldWeaponSwapped
+		}
+		return
+	}
 	switch {
 	case ch.Family == noVariant:
-		return types.HeldWeaponDropped
-	case hadPrevious && ch.Previous == noVariant:
-		return types.HeldWeaponTaken
-	case hadPrevious:
-		return types.HeldWeaponSwapped
+		ch.Kind = types.HeldWeaponDropped
+	case ok && st.Families[ch.Family]:
+		ch.Kind = types.HeldWeaponRestated
+	default:
+		ch.Kind = types.HeldWeaponTaken
 	}
-	if spawnSet != nil {
-		if set, ok := spawnSet(ch.Slot, ch.TimestampUS); ok && set[ch.Family] {
-			return types.HeldWeaponRestated
-		}
-	}
-	return types.HeldWeaponTaken
 }
 
 // heldWeaponScan porte la configuration résolue une fois pour un film.
 type heldWeaponScan struct {
-	chunks    []int
-	slots     SlotBand
-	gram      grammaireRecord
-	weaponIdx map[int]bool
+	chunks []int
+	slots  SlotBand
+	gram   grammaireRecord
+	// emplacements donne le RANG de chaque composant `weapon-state-type-info` (index de
+	// composant -> rang), cf. [weaponEmplacements].
+	emplacements map[int]int
 }
 
 // newHeldWeaponScan résout la configuration. Les index d'emplacement d'arme viennent des NOMS
@@ -168,22 +249,17 @@ func newHeldWeaponScan(fc *FilmContext) (heldWeaponScan, error) {
 		return s, err
 	}
 	s.gram = grammaireRecord{lay: lay, arch: arch, prof: fc.ProfilDeBalayage()}
-	s.weaponIdx = map[int]bool{}
-	for id := 0; id < archetypeBlockSlots; id++ {
-		if arch.component(id) == compWeaponStateTypeInfo {
-			s.weaponIdx[id] = true
-		}
-	}
-	if len(s.weaponIdx) == 0 {
+	s.emplacements = weaponEmplacements(arch)
+	if len(s.emplacements) == 0 {
 		return s, fmt.Errorf("aucun %s dans l'archétype biped du film", compWeaponStateTypeInfo)
 	}
 	return s, nil
 }
 
 // heldWeaponMaskHas dit si le masque annonce au moins un emplacement d'arme.
-func heldWeaponMaskHas(idx []int, weaponIdx map[int]bool) bool {
+func heldWeaponMaskHas(idx []int, emplacements map[int]int) bool {
 	for _, id := range idx {
-		if weaponIdx[id] {
+		if _, ok := emplacements[id]; ok {
 			return true
 		}
 	}

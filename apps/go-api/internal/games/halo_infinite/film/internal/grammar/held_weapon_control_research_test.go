@@ -93,7 +93,7 @@ func TestHeldWeaponDeltaClasse(t *testing.T) {
 			switch {
 			case !ok:
 				kind, from, indetermines = "INDETERMINE", "(aucune image-cle)", indetermines+1
-			case ref[e.IDHigh]:
+			case ref.Families[e.IDHigh]:
 				kind, from, dejaPortees = "DEJA PORTEE", "(deja au spawn)", dejaPortees+1
 			default:
 				kind, from, prises = "PRISE      ", "(absente au spawn)", prises+1
@@ -254,10 +254,10 @@ func hwKeyframeRef(t *testing.T, dir string) hwKFRef {
 // setAt rend l'ensemble des familles du dernier releve a ts <= at ; a defaut le PREMIER
 // releve du slot (une emission peut preceder la premiere image-cle de la vie). Le second
 // retour dit si un releve existe pour ce slot.
-func (r hwKFRef) setAt(slot uint32, at uint64) (map[uint32]bool, bool) {
+func (r hwKFRef) setAt(slot uint32, at uint64) (SpawnState, bool) {
 	l := r.bySlot[slot]
 	if len(l) == 0 {
-		return nil, false
+		return SpawnState{}, false
 	}
 	pick := l[0]
 	for _, k := range l {
@@ -265,5 +265,5 @@ func (r hwKFRef) setAt(slot uint32, at uint64) (map[uint32]bool, bool) {
 			pick = k
 		}
 	}
-	return hwFamilies(pick), true
+	return SpawnState{Families: hwFamilies(pick)}, true
 }

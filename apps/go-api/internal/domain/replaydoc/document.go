@@ -188,6 +188,8 @@ type Loadout struct {
 	T    int      `json:"t"`
 	Slot uint32   `json:"slot"`
 	W    []string `json:"w"`
+	Src  string   `json:"src,omitempty"`
+	K    []int    `json:"k,omitempty"`
 }
 
 // Grenade est un lancer de grenade, situé dans le temps et l'espace.

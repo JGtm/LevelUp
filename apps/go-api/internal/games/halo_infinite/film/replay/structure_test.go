@@ -1287,7 +1287,8 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   vies assemblées ; la republication depuis les faits suffit), `layers`. Détail :
 	//   `document_chronicle.go`.
 	// - v70 (vague D des retours du rejeu, 2026-09-24) : UNE montée pour les lots de la vague,
-	//   partis avant la vague C ; `grammar.Rev` et `SchemaDesFaits` montent une fois (re-décodage).
+	//   partis avant la vague C ; `grammar.Rev`, `SchemaDesFaits` et `facts.Rev` (M3) montent une
+	//   fois (re-décodage).
 	//   Lot M2.3 (2026-09-23, règle des places de l'utilisateur) : LA PLACE ET LA PRÉSENCE DE
 	//   CHAQUE OCCUPANT SONT LUES DANS LE FILM.
 	//   `roster[].presence` NAÎT (intervalles `from` / `to` / `toMax`, en frames) : c'est elle, et
@@ -1304,6 +1305,18 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   bouge). Revue adverse du lot (2026-09-24), même schéma : `coverage.seats` gagne six
 	//   compteurs (`capacite`, `placesEnTrop`, `sansEquipe`, `identitesHorsRoster`,
 	//   `botsSuccesseurs`, `presencesParLesVies`) et `depassements` se mesure contre la capacité.
+	//   Détail : `document_chronicle.go`.
+	//   Lot M3 (même montée v70, 2026-09-23) : LES ARMES À L'INSTANT. Quatre
+	//   ajouts de FORME : `loadouts[].src` (`birth` : la DOTATION DE NAISSANCE, lue dans le record
+	//   de création du corps) et `loadouts[].k` (l'emplacement de chaque arme), `weaponChanges[].k`
+	//   (l'emplacement d'arme touché — la clé que la naissance partage avec le flux),
+	//   `coverage.keyframes` (la santé de la marche d'image-clé) et `coverage.birthLoadouts`. ET
+	//   UN CHANGEMENT DE SENS : la première émission d'arme de chaque VIE se juge contre sa
+	//   naissance et jamais contre une image-clé À VENIR — des prises que le repli futur
+	//   effaçait sont publiées. Un client qui ignore `k` et `src` lirait une dotation de naissance
+	//   comme un relevé d'image-clé et ne saurait pas situer une prise sur emplacement vide.
+	//   MONTENT AUSSI : `grammar.Rev` et `facts.Rev` (la marche d'image-clé réparée, l'état par
+	//   défaut du bipède qui lit enfin le R(32) de sa dernière feuille) et le codec des faits (v26).
 	//   Détail : `document_chronicle.go`.
 	if SchemaVersion != 70 {
 		t.Fatalf("SchemaVersion = %d, attendu 70 : incrémenter exige une raison écrite ci-dessus "+

@@ -1,9 +1,9 @@
 # EMPREINTE DE FORME DU DOCUMENT DE REJEU — fige par document_shape_test.go.
 # Ne s'edite JAMAIS a la main : regeneration decrite en tete de ce test.
 schema 70
-empreinte-stockee 643b3fd74871065a
-empreinte-servie 643b3fd74871065a
-empreinte-cuite c3ba59c52019e956
+empreinte-stockee 99c0fcc015771ab4
+empreinte-servie 99c0fcc015771ab4
+empreinte-cuite f2fdac157fe27b5c
 empreinte-cuite-regle 2
 
 AbilityCharge
@@ -60,6 +60,20 @@ BipedLinkCounts
   DirectPropagated json:"direct_propage" int
   LinkCounts json:"" LinkCounts
   UnresolvedByCause json:"non_resolu_par_cause" UnresolvedCauses
+BirthLoadoutCoverage
+  BeforeOrigin json:"beforeOrigin" int
+  Closed json:"closed" int
+  Creations json:"creations" int
+  Desync json:"desync" int
+  NoDisplayable json:"noDisplayable" int
+  NoLife json:"noLife" int
+  NoWeaponComponent json:"noWeaponComponent" int
+  NonWeapon json:"nonWeapon" int
+  Overflow json:"overflow" int
+  Published json:"published" int
+  Read json:"read" int
+  Snapped json:"snapped" int
+  Unconfirmed json:"unconfirmed" int
 BombArming
   FuseMS json:"fuseMs" int
   StartMS json:"startMs" int
@@ -167,6 +181,7 @@ Coverage
   Abilities json:"abilities,omitempty" *AbilityCoverage
   AbilityCharges json:"abilityCharges,omitempty" *AbilityChargeCoverage
   AbilityImpulses json:"abilityImpulses,omitempty" *AbilityImpulseCoverage
+  BirthLoadouts json:"birthLoadouts,omitempty" *BirthLoadoutCoverage
   BombArmings json:"bombArmings,omitempty" *BombArmingsCoverage
   BombCarries json:"bombCarries,omitempty" *BombCarriesCoverage
   Bridge json:"bridge" BridgeHealth
@@ -183,6 +198,7 @@ Coverage
   GroundWeaponItems json:"groundWeaponItems,omitempty" *GroundWeaponItemsCoverage
   GroundWeapons json:"groundWeapons,omitempty" *GroundWeaponCoverage
   Inventory json:"inventory,omitempty" *InventoryCoverage
+  Keyframes json:"keyframes,omitempty" *KeyframeCoverage
   ObjectiveObjects json:"objectiveObjects,omitempty" *ObjectiveObjectsCoverage
   Objectives json:"objectives" LayerCoverage
   OriginResolved json:"originResolved" bool
@@ -488,6 +504,16 @@ InventoryCoverage
   DroppedBeforeOrigin json:"droppedBeforeOrigin" int
   Published json:"published" int
   Unpublished json:"unpublished" int
+KeyframeCoverage
+  Bipeds json:"bipeds" int
+  Elections json:"elections" int
+  FramedAbsentBipeds json:"framedAbsentBipeds" int
+  Jumps json:"jumps" int
+  Keyframes json:"keyframes" int
+  Neighbors json:"neighbors" int
+  Records json:"records" int
+  Resyncs json:"resyncs" int
+  Slides json:"slides" int
 Label
   En json:"en" string
   Family json:"family,omitempty" string
@@ -516,7 +542,9 @@ LinkCounts
   Inferred json:"deduit" int
   Unresolved json:"non_resolu" int
 Loadout
+  K json:"k,omitempty" []int
   Slot json:"slot" uint32
+  Src json:"src,omitempty" string
   T json:"t" int
   W json:"w" []string
 MapObject
@@ -1061,6 +1089,7 @@ VipPeriod
   XUID json:"xuid" string
 WeaponChange
   From json:"from,omitempty" string
+  K json:"k,omitempty" *int
   Kind json:"kind" string
   Slot json:"slot" uint32
   T json:"t" int

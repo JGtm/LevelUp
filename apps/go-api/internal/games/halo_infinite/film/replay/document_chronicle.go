@@ -2143,11 +2143,13 @@ package replay
 //
 // v70 (2026-09-24, vague D des retours du rejeu, plan `.ai/V7.5/PLAN_RETOURS_REJEU_2026-09-23.md`
 // §4.5) : UNE SEULE MONTEE POUR LES LOTS DE LA VAGUE — M2 (equipes, presence et place lues dans
-// le film), puis M3 (marche d image-cle, armes de naissance) a sa fusion. Chaque lot, parti de
+// le film) et M3 (marche d image-cle, armes de naissance). Chaque lot, parti de
 // `fe7079f41` AVANT la vague C, avait pose 69 sur sa branche ; l integration les reunit sous ce
 // seul numero, apres le 69 de la vague C (dont l entree ci-dessus n est pas touchee). Les
 // revisions de DECODAGE montent UNE fois pour la vague, a des valeurs datees de l integration :
-// `grammar.Rev` -> `grammar-2026-09-24`, `SchemaDesFaits` 3 -> 4. Republication apres
+// `grammar.Rev` -> `grammar-2026-09-24`, `SchemaDesFaits` 3 -> 4, `facts.Rev` ->
+// `killsource-2026-09-24` (par M3 seul : la marche d image-cle que `killsource` traverse ;
+// backlog killsource ouvert, geste de production sur signal). Republication apres
 // RE-DECODAGE des films (verdict « redecoder »). Les parties suivent.
 //
 // v70, PARTIE M2 (2026-09-23, lot M2.3 de la campagne « retours rejeu », decision Q24 : option
@@ -2215,3 +2217,60 @@ package replay
 // gagne six compteurs : `capacite`, `placesEnTrop` et `sansEquipe` (ce que la colonne rend au-dela
 // de la capacite, ou hors de toute), `identitesHorsRoster` (0 attendu), `botsSuccesseurs`,
 // `presencesParLesVies`.
+//
+// v70, PARTIE M3 (2026-09-23, campagne « retours rejeu », lot M3) : LES ARMES À L INSTANT — la dotation de
+// naissance, l emplacement d arme, et la santé de la marche d image-clé.
+//
+//	`loadouts[]`   `src` NEUF (`birth` = la DOTATION DE NAISSANCE, lue dans le record NEW de
+//	.src / .k      création du corps ; absent = relevé d image-clé) et `k` NEUF (l EMPLACEMENT
+//	               de chaque arme de `w`, porté par les seules dotations de naissance). La
+//	               dotation se pose sur la vie que sa création OUVRE (appariement des vies du
+//	               slot à la création la plus proche de leur début) ; un emplacement vide ou une
+//	               famille hors du catalogue d armes n est pas publié (l objet de départ
+//	               `00007CA9` du coup d envoi, compté en `nonWeapon`, décision de l utilisateur
+//	               attendue : le masquer ou le nommer).
+//	`weaponChanges` `k` NEUF, TOUJOURS PRÉSENT : le rang de l emplacement `weapon-state-type-info`
+//	.k             touché (0 = la première arme), lu dans le registre du film — jamais un index
+//	               de composant en dur. C est la clé qu une dotation de naissance partage avec le
+//	               flux : elle situe une prise sur un emplacement VIDE, que `from` ne nomme pas.
+//	SENS           la PREMIÈRE émission d un emplacement se juge, POUR CHAQUE VIE, contre la
+//	               dotation de naissance de cet emplacement (même arme = ré-annonce, écartée ;
+//	               sinon une prise, un échange ou un lâcher dont `from` NOMME l arme de
+//	               naissance), puis contre le dernier relevé d image-clé PASSÉ de la vie —
+//	               JAMAIS un relevé À VENIR. Jusqu au schéma 68, un slot sans relevé passé rendait
+//	               son premier relevé, fût-il vingt secondes plus tard : une arme ramassée
+//	               entre-temps y figurait déjà et sa prise, classée ré-annonce, disparaissait. Et
+//	               la chaîne des émissions d un slot ne se coupait pas à la réapparition : la
+//	               première émission d une vie se lisait contre la dernière arme de la vie
+//	               PRÉCÉDENTE du même slot.
+//	`coverage`     `keyframes` NEUF (lot M3.1) : comment la marche d image-clé a atteint chaque
+//	               record — voisin, saut de largeur, recalage sur l en-tête exact d un bipède,
+//	               élection (le repli nommé `repli_ancre_d_image_cle_par_election`), fenêtres
+//	               traversées sans candidat — et `framedAbsentBipeds`, les bipèdes manqués entre
+//	               deux images-clés qui les portaient. `birthLoadouts` NEUF : les créations lues,
+//	               celles dont le record ne se FERME pas (désynchronisé, débordant, non confirmé
+//	               par le record qui suit — AUCUNE lecture de repli ne les remplace), et ce que la
+//	               publication a posé, ramené dans la fenêtre de sa vie, ou écarté. `closed`
+//	               compte les records FERMÉS, `read` ceux d entre eux qui portent au moins une
+//	               arme du catalogue — une fermeture sans arme n est pas une dotation lue
+//	               (`noDisplayable` ; `closed` = `read` + `noDisplayable`).
+//
+// LES DEUX RÉPARATIONS DE GRAMMAIRE QUI OUVRENT LE CANAL (sonde P3) : l état par défaut du
+// bipède lit enfin le R(32) de sa dernière feuille (`default_state.go` — deux oracles, la famille
+// d i43 au catalogue du match pour 293 naissances sur 293 et `n2` des images-clés, constant et
+// plausible sur trois films) ; et le record NEW de naissance est pris comme ANCRE par la signature
+// que `ScanBipedCreations` reconnaît déjà, faute de pouvoir démarrer la marche à la fin d une
+// liste d événements sans la grammaire de chacun de ses types.
+//
+//	CE QUI MONTE    `grammar.Rev` et `facts.Rev` (la marche d image-clé et l état par défaut du
+//	AVEC ELLE       bipède, que `killsource` traverse aussi) et le codec des faits (v26 : la santé
+//	                de la marche, les dotations de naissance et leurs refus, l emplacement de
+//	                chaque changement d arme). `layers` ne gagne aucun calque : `loadouts` et
+//	                `weaponChanges` restent attribués à `grammar`.
+//	LA MESURE       vingt-deux témoins cuits deux fois (base / lot) : vies sans aucun relevé
+//	                d armes 18,7 % -> 10,2 % (1,3 % sur les builds HI_1_12_0 et HI_1_13_0, où les
+//	                naissances se lisent ; celles des builds antérieurs ne se ferment pas et rien
+//	                n est publié), images-clés trouées 8,6 % -> 1,0 %, prises et échanges publiés
+//	                1 075 -> 1 257. Prix nommé : la marche des états de mouvement, qui traverse
+//	                enfin le record NEW d un bipède, va plus loin dans certains paquets et y lie
+//	                des records NEW mal lus — 327 paquets à liste de plus non localisés au corpus.

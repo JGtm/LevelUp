@@ -536,6 +536,12 @@ export function playerStateAt(
 }
 
 /**
+ * LOADOUT_SRC_BIRTH — la provenance d'un relevé lu dans le record de CRÉATION du corps
+ * (`loadouts[].src`, schéma 69 ; miroir de `replay.LoadoutSrcBirth` côté Go).
+ */
+export const LOADOUT_SRC_BIRTH = 'birth'
+
+/**
  * LoadoutReading — les armes portées et l'ÂGE de cette lecture.
  *
  * L'ÂGE EST INDISSOCIABLE DE LA VALEUR. Le loadout ne se lit qu'aux images-clés, une toutes les
@@ -547,6 +553,13 @@ export function playerStateAt(
 export interface LoadoutReading {
   weapons: string[]
   age: number
+  /**
+   * PROVENANCE du relevé de base (schéma 69) : `birth` = la DOTATION DE NAISSANCE, lue dans le
+   * record de création du corps ; absent = un relevé d'image-clé. L'infobulle de la fiche la dit.
+   */
+  src?: string
+  /** Emplacement de chaque arme de `weapons`, quand le relevé le situe (dotation de naissance). */
+  k?: number[]
 }
 
 /**
@@ -563,28 +576,54 @@ export interface LoadoutReading {
  * `currentLifeOf` désigne la vie qui couvre `frame` sur ce slot ; sans elle, aucune recherche
  * n'a lieu — `null`, jamais une lecture volée à une autre vie.
  *
- * AVANT LA PREMIÈRE IMAGE-CLÉ D'UNE VIE, la lecture rendue est la plus proche À VENIR du même
- * slot — donc de la MÊME vie, jamais d'une autre : c'est ce qui rend le repli sûr, et
- * désormais une propriété VÉRIFIÉE plutôt que seulement énoncée. L'âge est alors NÉGATIF et
- * publié tel quel : l'affichage l'estompe sur sa valeur absolue et l'infobulle le dit « à
- * venir », jamais déguisé en lecture passée. C'est la doctrine du POC (readAgeAt) : 25,2 % de
- * ses fiches affichaient des armes lues dans le futur — sans ce repli, chaque début de vie dit
- * « armes non lues » pendant jusqu'à 20 s.
+ * LA DOTATION DE NAISSANCE EST LE PREMIER RELEVÉ DE LA VIE (schéma 69, lot M3.3). Le document
+ * publie, dans `loadouts`, les armes que le record de création du corps transmet (`src:
+ * 'birth'`), posées sur la vie qu'il ouvre : c'est le relevé PASSÉ du début de vie, et
+ * `nearestReading` le retient comme n'importe quel autre.
+ *
+ * LA LECTURE « À VENIR » EST RETIRÉE D'UNE VIE DONT LA NAISSANCE EST LUE (décision utilisateur
+ * Q18 du 2026-09-23) : avant la première image-clé, elle montrait les armes lues JUSQU'À vingt
+ * secondes plus tard — dont une arme ramassée entre-temps. La règle est PAR VIE, parce que la
+ * lecture de naissance l'est : sur les films des builds antérieurs à HI_1_12_0, le record de
+ * création ne se ferme pas et aucune dotation n'est publiée (mesure du lot M3 : neuf témoins sur
+ * vingt-deux) — une règle par DOCUMENT les privait du repli, et la fiche « armes non lues »
+ * passait de 4,1 % à 13,9 % du temps de vie sur les dix-neuf témoins du gate de corpus.
+ * Une vie SANS dotation garde donc l'ancien repli : la plus proche lecture À VENIR de la même
+ * vie, âge NÉGATIF publié tel quel et dit « à venir ».
  */
 export function loadoutAt(doc: ReplayDocumentReady, slot: number, frame: number): LoadoutReading | null {
   const life = currentLifeOf(doc, slot, frame)
   if (!life) return null
-  const read = nearestReading(doc.loadouts ?? [], slot, frame, trackWindow(life))
+  const window = trackWindow(life)
+  const loadouts = doc.loadouts ?? []
+  const read = nearestReading(loadouts, slot, frame, window, !lifeHasBirthLoadout(loadouts, slot, window))
   if (!read) return null
-  // LA DATATION FINE (schéma 25) : le relevé d'image-clé donne l'ÉTAT, les changements d'arme
-  // datés donnent les TRANSITIONS survenues depuis. Ce qu'ils appliquent et ce qu'ils refusent
-  // d'appliquer est écrit dans changeRefine.ts — un artefact qui n'en porte aucun rend la
-  // lecture inchangée, c'est-à-dire exactement l'affichage d'avant.
+  // LA DATATION FINE (schéma 25) : le relevé donne l'ÉTAT, les changements d'arme datés donnent
+  // les TRANSITIONS survenues depuis. Ce qu'ils appliquent et ce qu'ils refusent d'appliquer est
+  // écrit dans changeRefine.ts — un artefact qui n'en porte aucun rend la lecture inchangée.
   return refineWeaponsReading(
-    { weapons: read.value.w, age: read.age },
+    {
+      weapons: read.value.w,
+      age: read.age,
+      src: read.value.src,
+      // SITUÉ seulement quand chaque arme a son emplacement : un relevé d'image-clé n'en porte
+      // aucun, et une rangée à moitié située ne l'est pas.
+      k: read.value.k.length > 0 && read.value.k.length === read.value.w.length ? read.value.k : undefined,
+    },
     doc.weaponChanges,
     slot,
     frame,
+  )
+}
+
+/** lifeHasBirthLoadout dit si la vie du slot, dans ces bornes, porte sa DOTATION DE NAISSANCE. */
+function lifeHasBirthLoadout(
+  loadouts: ReadonlyArray<{ slot: number; t: number; src?: string | null }>,
+  slot: number,
+  window: { start: number; end: number },
+): boolean {
+  return loadouts.some(
+    (l) => l.slot === slot && l.src === LOADOUT_SRC_BIRTH && l.t >= window.start && l.t <= window.end,
   )
 }
 
@@ -637,6 +676,9 @@ export function currentLifeOf(
  * parfois celui d'un AUTRE joueur sur un slot recyclé. `life` vient de `currentLifeOf` ; sans
  * vie couvrante, ou sans lecture dans ses bornes, la fonction rend `null`.
  *
+ * `allowAhead` (vrai par défaut) autorise ce repli « à venir » ; `loadoutAt` le refuse à une vie
+ * dont la dotation de naissance est lue (Q18, cf. sa note) — les autres calques le gardent.
+ *
  * `null` NE VEUT PAS DIRE « IDENTITÉ INCONNUE » — décision produit du 2026-09-06 : une vie est
  * un humain ou un bot, jamais une entité anonyme (le nommage se corrige à la source côté Go,
  * hors de ce lot). `null` dit uniquement « aucune lecture encore observée depuis le début de
@@ -647,6 +689,7 @@ export function nearestReading<T extends { slot: number; t: number }>(
   slot: number,
   frame: number,
   life: { start: number; end: number } | undefined,
+  allowAhead = true,
 ): { value: T; age: number } | null {
   if (!life) return null
   let best: { value: T; age: number } | null = null
@@ -664,7 +707,7 @@ export function nearestReading<T extends { slot: number; t: number }>(
     }
     if (!best || age < best.age) best = { value: s, age }
   }
-  return best ?? ahead
+  return best ?? (allowAhead ? ahead : null)
 }
 
 /**

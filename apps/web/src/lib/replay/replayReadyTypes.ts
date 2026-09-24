@@ -44,7 +44,7 @@ type Filled<T, K extends keyof T> = Omit<T, K> & { [P in K]-?: NonNullable<T[P]>
 export type ReplayTrackReady = Filled<ReplayTrack, 'points'>
 /** La couverture dont la liste des replis déclenchés (schéma 58) est comblée. */
 export type ReplayCoverageReady = Filled<NonNullable<ReplayDocument['coverage']>, 'fallbacks'>
-type ReplayLoadoutReady = Filled<ReplayLoadout, 'w'>
+type ReplayLoadoutReady = Filled<ReplayLoadout, 'w' | 'k'>
 export type ReplayInventoryReady = Filled<ReplayInventory, 'am' | 'g'>
 export type ReplayGrenadeReadReady = Filled<ReplayGrenadeRead, 'g'>
 export type ReplaySurfaceReady = Omit<ReplaySurface, 'poly'> & { poly: ReplayXY[] }

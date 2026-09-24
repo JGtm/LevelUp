@@ -56,6 +56,14 @@ type Options struct {
 	// et non de réglage — elle vit ici plutôt qu'en paramètre pour ne pas pousser
 	// BuildFromPositions au-delà de 5 arguments. Absente = rejeu sans armes portées.
 	Loadouts []types.KeyframeLoadout
+	// KeyframeWalk : ce que la marche des images-clés du film a décidé et manqué (lot M3.1),
+	// publié en `coverage.keyframes`. Entrée de DONNÉES lue dans le film.
+	KeyframeWalk grammar.KeyframeWalkCoverage
+	// BirthLoadouts / BirthLoadoutStats : les DOTATIONS DE NAISSANCE lues dans le record NEW de
+	// chaque corps (lot M3.2), publiées en `loadouts` (provenance `birth`) et comptées en
+	// `coverage.birthLoadouts`. Entrées de DONNÉES lues dans le film.
+	BirthLoadouts     []types.BirthLoadout
+	BirthLoadoutStats types.BirthLoadoutStats
 	// Grenades : lancers de grenade décodés des paquets delta (cf. grenades.go). Comme
 	// Loadouts, c'est une entrée de DONNÉES. Absente = rejeu sans lancers. Le rattachement
 	// à un slot passe par le pont du fil des morts : sans morts lisibles, les lancers décodés

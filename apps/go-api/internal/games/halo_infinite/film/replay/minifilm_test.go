@@ -516,8 +516,8 @@ func TestMiniFilmDecodesTheDeathThread(t *testing.T) {
 
 // TestMiniFilmDecodesTheKeyframes : les images-cles servent les armes portees ET l inventaire.
 //
-// LES DEUX COMPTES SONT CEUX DE L ETAGE 1, ET C EST LE POINT : le fixture d entrees porte 150
-// loadouts et 184 inventaires parce qu on les y a mis ; ici ils sont RELUS du binaire. Si les
+// LES DEUX COMPTES SONT CEUX DE L ETAGE 1, ET C EST LE POINT : le fixture d entrees porte 154
+// loadouts et 192 inventaires parce qu on les y a mis ; ici ils sont RELUS du binaire. Si les
 // deux etages divergeaient, l un des deux serait perime — et on saurait lequel.
 func TestMiniFilmDecodesTheKeyframes(t *testing.T) {
 	lo, err := grammar.ScanFilmKeyframeLoadouts(MiniFilmDir, loadoutFamilies())
@@ -573,9 +573,9 @@ func TestMiniFilmDecodesTheKeyframes(t *testing.T) {
 const wantDeaths = 93
 
 // wantLoadouts / wantInventoryRead : ce que les images-cles rendent AVANT tout filtrage par
-// trace publiee. `wantInventory` (184) est le compte APRES publication ; ici les deux coincident
+// trace publiee. `wantInventory` (192) est le compte APRES publication ; ici les deux coincident
 // parce qu aucun etat n est ecarte sur ce film, mais ils repondent a deux questions distinctes.
-const (
-	wantLoadouts      = 150
-	wantInventoryRead = 184
+const ( // 150 / 184 avant M3.1 (2026-09-23) : la marche reparee rend 4 loadouts et 8 etats de plus.
+	wantLoadouts      = 154
+	wantInventoryRead = 192
 )

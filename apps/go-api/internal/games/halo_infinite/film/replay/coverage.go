@@ -262,6 +262,14 @@ type Coverage struct {
 	// `placements` et `groundWeapons` : un film sans ramassage et un film qu'on n'a pas su
 	// balayer rendent tous deux zéro changement — seuls ces compteurs les distinguent.
 	WeaponChanges *WeaponChangeCoverage `json:"weaponChanges,omitempty"`
+	// Keyframes est la SANTÉ DE LA MARCHE D'IMAGE-CLÉ (schéma 69, lot M3.1, cf.
+	// coverage_keyframes.go) : comment chaque record a été atteint, et combien de bipèdes la
+	// marche a manqués entre deux images-clés qui les portaient.
+	Keyframes *KeyframeCoverage `json:"keyframes,omitempty"`
+	// BirthLoadouts est la couverture des DOTATIONS DE NAISSANCE (schéma 69, lot M3.2, cf.
+	// document_birth_loadouts.go) : les créations lues, celles dont le record ne se ferme pas
+	// (par cause), et ce que la publication a posé ou écarté.
+	BirthLoadouts *BirthLoadoutCoverage `json:"birthLoadouts,omitempty"`
 	// Pickups est la couverture des RAMASSAGES NATIFS (cf. document_pickups.go). Elle porte,
 	// comme celle de l'équipement, un TÉMOIN DE CE QU'ELLE NE VOIT PAS : `multiEvent` compte
 	// les listes d'événements qui en portent un autre après le ramassage — le balayage ne

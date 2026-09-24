@@ -79,24 +79,24 @@ par type : Dynamo=49 · Frag=19 · Plasma=36 · Spike=35
 couverture : 477 piste(s) decodee(s) · 464 publiee(s) · 10 coupee(s) a un pas impossible
 
 ## INVENTAIRE — lu aux images-cles, jamais interpole entre deux
-583 etat(s) publie(s) · 501 avec grenades lues · 500 avec munitions lues
-129 lecture(s) de munitions a PLUSIEURS candidats : la plus longue a ete retenue et le
+585 etat(s) publie(s) · 503 avec grenades lues · 502 avec munitions lues
+130 lecture(s) de munitions a PLUSIEURS candidats : la plus longue a ete retenue et le
 nombre de candidats est publie, pour que le departage reste visible
 82 lecture(s) VIDE(S) : 56 corroboree(s) par le fil des morts (`dead`), 26 inexpliquee(s)
-couverture : 583 lecture(s) decodee(s) -> 0 ecartee(s) avant l origine du rejeu · 0 ecartee(s) faute de piste publiee -> 583 publiee(s)
+couverture : 585 lecture(s) decodee(s) -> 0 ecartee(s) avant l origine du rejeu · 0 ecartee(s) faute de piste publiee -> 585 publiee(s)
 rangs de grenade : 0:en="Frag"/fr="Fragmentation", 1:en="Plasma"/fr="Plasma", 2:en="Dynamo"/fr="Dynamo", 3:en="Spike"/fr="Spike"
 
 ## GRENADES PORTEES — un axe, DEUX canaux, chaque lecture disant d ou elle vient
-699 lecture(s) · 501 par image-cle (~20 s) · 198 par delta (transmis AU CHANGEMENT)
+701 lecture(s) · 503 par image-cle (~20 s) · 198 par delta (transmis AU CHANGEMENT)
 76 lecture(s) portent le rang SELECTIONNE — une selection ne se devine pas
-couverture : 501 image-cle · 198 delta · 0 ecartee(s) sans piste · canal munitions refuse : true
+couverture : 503 image-cle · 198 delta · 0 ecartee(s) sans piste · canal munitions refuse : true
 
 ## CAPACITE PORTEE — le RANG de palette, deux canaux pour une seule grandeur
-261 lecture(s) · 191 par i48 (rang complet, paquets delta) · 70 par image-cle (fenetre 16..23)
-rangs observes : 1:28 2:29 4:29 5:26 6:24 10:28 23:97
-lectures NOMMEES 261/261 — un rang hors table garde son numero, et la table est propre a la palette du film
+262 lecture(s) · 191 par i48 (rang complet, paquets delta) · 71 par image-cle (fenetre 16..23)
+rangs observes : 1:28 2:29 4:29 5:26 6:24 10:28 23:98
+lectures NOMMEES 262/262 — un rang hors table garde son numero, et la table est propre a la palette du film
 capacites nommees : 1=en:"Threat Sensor"/fr:"detecteur de menaces"/fam:"sensor", 10=en:"Shroud Screen"/fr:"ecran occultant"/fam:"shroud_screen", 2=en:"Drop Wall"/fr:"mur de protection"/fam:"wall", 23=en:"Repair Field"/fr:"champ de reparation"/fam:"repair_field", 4=en:"Grappleshot"/fr:"grappin"/fam:"grapple", 5=en:"Thruster"/fr:"propulseur"/fam:"thruster", 6=en:"Repulsor"/fr:"repulseur"/fam:"repulsor"
-couverture : 261 lecture(s) -> 0 ecartee(s) bruit de balayage · 0 ecartee(s) sans trajectoire publiee -> 261 publiee(s)
+couverture : 262 lecture(s) -> 0 ecartee(s) bruit de balayage · 0 ecartee(s) sans trajectoire publiee -> 262 publiee(s)
 
 ## EQUIPEMENT ACTIF — episodes dates par vie, DEUX familles mesurees et rien d autre
 0 episode(s) publie(s) · par famille : aucun · 0 fin(s) MESUREE(s) (le reste ferme a la mort)
@@ -724,7 +724,7 @@ POWER-UPS (voie ti=37) — balaye=true · 712 creation(s) acceptee(s) -> 0 reten
 0 occupation(s) achevee(s) publiee(s) · 0 datee(s) a l instant exact par l evenement natif · 0 avec un ramasseur nomme
 
 ## ARMES PORTEES — l inventaire, pas la main : le loadout ne dit pas QUELLE arme est degainee
-508 loadout(s) publie(s) · 24 famille(s) distincte(s)
+510 loadout(s) publie(s) · 24 famille(s) distincte(s)
 
 ## PONT SLOT -> JOUEUR — deux sources nommees : la LECTURE, puis la FERMETURE
 182 entree(s) · 182 issue(s) de la lecture (un ecart NON EXPLIQUE par les fermetures signalerait une TROISIEME SOURCE)

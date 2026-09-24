@@ -26,9 +26,16 @@ import {
 
 import { ABILITY_SRC_CHANGE, refineAbilityReading, refineWeaponsReading } from './changeRefine'
 
+// LES DEUX ÉCRITURES D'UNE FAMILLE, COMME LES ARTEFACTS LES PUBLIENT : la rangée vient de
+// `loadouts[].w` (`0x%08X`), les changements de `weaponChanges[]` (`%08x`). Jusqu'au schéma 69
+// ces tests écrivaient les deux côtés dans la même casse — et ne voyaient donc pas que, sur un
+// artefact réel, aucune substitution ne s'appliquait.
 const BR75 = '2b1824d5'
 const SNIPER = '0a1992bc'
 const SPNKR = '5eb0f0d1'
+const ROW_BR75 = '0x2B1824D5'
+const ROW_SNIPER = '0x0A1992BC'
+const ROW_SPNKR = '0x5EB0F0D1'
 
 function chg(over: Partial<ReplayWeaponChange> = {}): ReplayWeaponChange {
   return { t: 50, slot: 1, kind: 'swapped', w: SNIPER, from: BR75, ...over }
@@ -37,68 +44,131 @@ function chg(over: Partial<ReplayWeaponChange> = {}): ReplayWeaponChange {
 describe('refineWeaponsReading — la bascule à la frame de l’événement', () => {
   it('substitue l’arme quand le changement suit le relevé, et rajeunit la lecture', () => {
     // Relevé à l'image 40 (âge 20 sur l'image 60), échange à l'image 50.
-    const out = refineWeaponsReading({ weapons: [BR75, SPNKR], age: 20 }, [chg({ t: 50 })], 1, 60)
-    expect(out.weapons).toEqual([SNIPER, SPNKR])
+    const out = refineWeaponsReading({ weapons: [ROW_BR75, ROW_SPNKR], age: 20 }, [chg({ t: 50 })], 1, 60)
+    expect(out.weapons).toEqual([ROW_SNIPER, ROW_SPNKR])
     expect(out.age).toBe(10)
+  })
+
+  it('compare les familles par leur écriture CANONIQUE — la rangée en 0x%08X, le flux en %08x', () => {
+    // ROUGE SUR LA BASE fe7079f41 : la comparaison brute ne trouvait jamais `2b1824d5` dans
+    // `0x2B1824D5`, et la lecture sortait inchangée. L'arme écrite prend l'écriture de la rangée.
+    const out = refineWeaponsReading({ weapons: [ROW_BR75], age: 20 }, [chg({ t: 50 })], 1, 60)
+    expect(out.weapons).toEqual([ROW_SNIPER])
   })
 
   it('ne rejoue PAS un changement déjà compris dans le relevé', () => {
     // Relevé à l'image 40 ; l'échange date de l'image 30, il est donc DANS la lecture.
-    const base = { weapons: [SNIPER, SPNKR], age: 20 }
+    const base = { weapons: [ROW_SNIPER, ROW_SPNKR], age: 20 }
     expect(refineWeaponsReading(base, [chg({ t: 30 })], 1, 60)).toBe(base)
   })
 
   it('ne lit JAMAIS un changement à venir — le rejeu connaît la suite, la fiche non', () => {
-    const base = { weapons: [BR75, SPNKR], age: 20 }
+    const base = { weapons: [ROW_BR75, ROW_SPNKR], age: 20 }
     expect(refineWeaponsReading(base, [chg({ t: 80 })], 1, 60)).toBe(base)
   })
 
   it('ignore les changements d’un AUTRE slot', () => {
-    const base = { weapons: [BR75, SPNKR], age: 20 }
+    const base = { weapons: [ROW_BR75, ROW_SPNKR], age: 20 }
     expect(refineWeaponsReading(base, [chg({ t: 50, slot: 7 })], 1, 60)).toBe(base)
   })
 
   it('enchaîne deux substitutions DANS L’ORDRE, même servies à l’envers', () => {
     const out = refineWeaponsReading(
-      { weapons: [BR75, SPNKR], age: 40 },
+      { weapons: [ROW_BR75, ROW_SPNKR], age: 40 },
       [chg({ t: 55, from: SNIPER, w: SPNKR }), chg({ t: 45, from: BR75, w: SNIPER })],
       1,
       60,
     )
-    expect(out.weapons).toEqual([SPNKR, SPNKR])
+    expect(out.weapons).toEqual([ROW_SPNKR, ROW_SPNKR])
     expect(out.age).toBe(5)
   })
 })
 
-describe('refineWeaponsReading — ce qu’elle refuse d’appliquer', () => {
+describe('refineWeaponsReading — ce qu’elle refuse d’appliquer sur un relevé NON situé', () => {
   it('n’applique pas un LÂCHER : la longueur de la rangée ne bouge pas', () => {
     // Retirer une entrée décalerait les indices que le sélecteur d'emplacement dégainé adresse.
-    const base = { weapons: [BR75, SPNKR], age: 20 }
-    const out = refineWeaponsReading(base, [chg({ t: 50, kind: 'dropped', w: '', from: BR75 })], 1, 60)
+    const base = { weapons: [ROW_BR75, ROW_SPNKR], age: 20 }
+    const out = refineWeaponsReading(base, [chg({ t: 50, kind: 'dropped', w: '', from: BR75, k: 0 })], 1, 60)
     expect(out).toBe(base)
   })
 
   it('n’applique pas une PRISE sur emplacement vide : rien n’est ajouté', () => {
-    const base = { weapons: [BR75], age: 20 }
-    const out = refineWeaponsReading(base, [chg({ t: 50, kind: 'taken', w: SNIPER, from: '' })], 1, 60)
+    const base = { weapons: [ROW_BR75], age: 20 }
+    const out = refineWeaponsReading(base, [chg({ t: 50, kind: 'taken', w: SNIPER, from: '', k: 1 })], 1, 60)
     expect(out).toBe(base)
   })
 
   it('s’abstient quand la rangée lue ne NOMME PAS l’arme remplacée', () => {
     // Lectures désappariées : le relevé ne portait pas cette arme. On ne devine pas laquelle
     // des deux emplacements changer.
-    const base = { weapons: [SPNKR], age: 20 }
+    const base = { weapons: [ROW_SPNKR], age: 20 }
     expect(refineWeaponsReading(base, [chg({ t: 50 })], 1, 60)).toBe(base)
   })
 
   it('ne raffine PAS une lecture À VENIR (âge négatif)', () => {
-    const base = { weapons: [BR75, SPNKR], age: -30 }
+    const base = { weapons: [ROW_BR75, ROW_SPNKR], age: -30 }
     expect(refineWeaponsReading(base, [chg({ t: 50 })], 1, 60)).toBe(base)
   })
 
   it('rend la lecture telle quelle sur un artefact sans changements', () => {
-    const base = { weapons: [BR75], age: 5 }
+    const base = { weapons: [ROW_BR75], age: 5 }
     expect(refineWeaponsReading(base, [], 1, 60)).toBe(base)
+  })
+})
+
+describe('refineWeaponsReading — une rangée SITUÉE (dotation de naissance, schéma 69)', () => {
+  it('ajoute une prise sur l’emplacement qui SUIT le dernier occupé', () => {
+    const base = { weapons: [ROW_BR75], k: [0], age: 20, src: 'birth' }
+    const out = refineWeaponsReading(base, [chg({ t: 50, kind: 'taken', w: SNIPER, from: undefined, k: 1 })], 1, 60)
+    expect(out).toEqual({ weapons: [ROW_BR75, ROW_SNIPER], k: [0, 1], age: 10 })
+  })
+
+  it('ne dit plus « dotation de naissance » d’une rangée qu’un échange a modifiée', () => {
+    // Revue adverse du lot M3.3 (2026-09-24) : la provenance `birth` survivait au raffinement,
+    // et l'infobulle disait « Dotation de naissance · Armes lues il y a 1 s » d'une rangée qui
+    // n'était plus la dotation.
+    const base = { weapons: [ROW_BR75, ROW_SPNKR], k: [0, 1], age: 20, src: 'birth' }
+    const out = refineWeaponsReading(base, [chg({ t: 59, k: 1 })], 1, 60)
+    expect(out.src).toBeUndefined()
+    expect(out.age).toBe(1)
+  })
+
+  it('garde la provenance quand aucun changement ne s’applique', () => {
+    const base = { weapons: [ROW_BR75], k: [0], age: 20, src: 'birth' }
+    expect(refineWeaponsReading(base, [], 1, 60)).toBe(base)
+  })
+
+  it('s’abstient d’une prise qui laisserait un TROU dans la rangée', () => {
+    const base = { weapons: [ROW_BR75], k: [0], age: 20 }
+    const out = refineWeaponsReading(base, [chg({ t: 50, kind: 'taken', w: SNIPER, from: undefined, k: 2 })], 1, 60)
+    expect(out).toBe(base)
+  })
+
+  it('s’abstient d’une prise que le flux ne situe pas (artefact sans `k`)', () => {
+    const base = { weapons: [ROW_BR75], k: [0], age: 20 }
+    const out = refineWeaponsReading(base, [chg({ t: 50, kind: 'taken', w: SNIPER, from: undefined })], 1, 60)
+    expect(out).toBe(base)
+  })
+
+  it('retire l’arme lâchée du DERNIER emplacement', () => {
+    const base = { weapons: [ROW_BR75, ROW_SNIPER], k: [0, 1], age: 20 }
+    const out = refineWeaponsReading(base, [chg({ t: 50, kind: 'dropped', w: undefined, from: SNIPER, k: 1 })], 1, 60)
+    expect(out.weapons).toEqual([ROW_BR75])
+    expect(out.k).toEqual([0])
+  })
+
+  it('s’abstient d’un lâcher du PREMIER emplacement quand le second est occupé', () => {
+    // Retirer l'arme 0 ferait glisser l'arme 1 à l'indice 0 : le sélecteur dégainé désignerait
+    // la mauvaise arme. L'arme lâchée reste affichée, estompée, jusqu'au prochain relevé.
+    const base = { weapons: [ROW_BR75, ROW_SNIPER], k: [0, 1], age: 20 }
+    const out = refineWeaponsReading(base, [chg({ t: 50, kind: 'dropped', w: undefined, from: BR75, k: 0 })], 1, 60)
+    expect(out).toBe(base)
+  })
+
+  it('l’emplacement départage deux armes identiques', () => {
+    const base = { weapons: [ROW_BR75, ROW_BR75], k: [0, 1], age: 20 }
+    const out = refineWeaponsReading(base, [chg({ t: 50, k: 1 })], 1, 60)
+    expect(out.weapons).toEqual([ROW_BR75, ROW_SNIPER])
   })
 })
 

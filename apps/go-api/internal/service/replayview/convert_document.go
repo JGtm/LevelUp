@@ -166,6 +166,8 @@ func toLoadout(v replay.Loadout) replaydoc.Loadout {
 		T:    v.T,
 		Slot: v.Slot,
 		W:    v.W,
+		Src:  v.Src,
+		K:    v.K,
 	}
 }
 

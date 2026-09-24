@@ -327,4 +327,34 @@ var registreFilmdec = []Repli{
 		CompteurBranche: false,
 		CibleComptage:   comptageParFilmContext,
 	},
+	{
+		Nom:       "repli_ancre_d_image_cle_par_election",
+		Fait:      "le record SUIVANT de la table d image-cle, quand aucun voisin immediat (slot+1, generation 1) ne suit et qu aucun en-tete exact de bipede ne precede le candidat retenu",
+		Mecanisme: "election sur la fenetre de 120 000 bits : consecutif d abord, puis generation basse, puis SLOT BAS, puis bit bas (`kfCand.betterThan`)",
+		// LECTURE NON PORTEE : le film ECRIT la table comme une chaine (`FUN_142e2bfd0` enchaine
+		// les entrees, une par entite vivante) et la marche deterministe qui la suivrait
+		// (`WalkKeyframeRecords`) ne ferme pas encore tous les archetypes. C est une dette nommee.
+		Condition: CondLectureNonPortee,
+		// APRES LECTURE : le voisin immediat et le recalage sur l en-tete exact d un bipede sont
+		// tentes d abord ; l election n entre que si les deux se taisent.
+		Ordre: OrdreApresLecture,
+		Sites: []Site{{
+			Fichier: pkgFilmdec + "keyframe_world.go",
+			Ancre:   "return at, kfElection, finDeTable",
+		}, {
+			Fichier: "internal/games/halo_infinite/film/replay/film_scan.go",
+			Ancre:   "s.opt.Fallbacks.DeclencheN(fallback.NomAncreDImageCleParElection, marche.Elections)",
+		}},
+		DatePose: "2026-09-23",
+		// POSE PAR LE LOT M3.1 DE LA CAMPAGNE « RETOURS REJEU » : l election etait la regle
+		// UNIQUE du balayeur, muette ; elle devient le repli d une lecture (voisin, recalage) et se
+		// compte. Son defaut est MESURE (sonde P2, 81c02726 morceau 9 et a0c36016 morceau 2 : une
+		// fausse ancre de slot bas, prise dans le corps du dernier bipede, elue devant les vrais
+		// bipedes) ; le recalage le ferme pour les bipedes, pas pour les autres archetypes
+		// (minibobine bcb6d393, image-cle 0 : le record ti=9 slot 1297 perd contre la fausse
+		// ancre 192/ti 1 de son propre corps).
+		CibleRetrait:    "la marche deterministe (`WalkKeyframeRecords`, cadre d etat complet de l ecrivain) fermant tous les archetypes des bobines par build",
+		CritereRetrait:  "`KeyframeClosure` a 100 % sur les sept bobines par build ET 0 election comptee sur le corpus du gate de rejeu",
+		CompteurBranche: true,
+	},
 }
