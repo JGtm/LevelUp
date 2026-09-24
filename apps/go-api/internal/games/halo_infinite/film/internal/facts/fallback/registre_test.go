@@ -37,12 +37,14 @@ const plancherEntrees = 60
 //
 // IL ÉTAIT À 2 ET NE MORDAIT SUR RIEN (revue de jalon M1, ronde 2, constat F1) : la garde
 // `len(tranches) < 2` laissait passer 6 -> 5, donc le retrait d'un fichier de tranche entier.
+// Mesuré le 2026-09-23 : HUIT familles (la huitième, `replay/positions`, est née au lot M1 des
+// retours du rejeu : les deux gardes mesurées de la publication des positions).
 // Mesuré le 2026-09-17 : SEPT familles (la septième, `killsource/calibration`, est née au
 // lot 3.4.1 : ce que le décodeur décide encore par balayage, faute de source lue)
 // Mesuré le 2026-09-16 : SIX familles (`replay/equipement` 14, `replay/identites` 22,
 // `killsource` 26, `killsource/carte` 2, `objectifs et construction` 21, `grammar` 11 — 96
 // entrées). Le plancher vaut donc la valeur réelle : une famille en moins se voit.
-const plancherTranches = 7
+const plancherTranches = 8
 
 // famillesAttendues : LES SEPT FAMILLES, NOMMÉES, DANS L'ORDRE DE L'ASSEMBLAGE.
 //
@@ -68,6 +70,7 @@ var famillesAttendues = []string{
 	"killsource/calibration",
 	"objectifs et construction",
 	"filmdec",
+	"replay/positions",
 }
 
 func TestRegistrePorteToutesSesFamilles(t *testing.T) {

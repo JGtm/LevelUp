@@ -139,7 +139,14 @@ var plafondsParFichier = map[string]int{
 	// verdicts Theater sur neuf, lot 5.13.2 reouvert), et le refus de publier un genre `jump`
 	// LU faute de preuve. UNE SEULE MONTEE DE SCHEMA POUR LE LOT, donc une seule entree, dans
 	// le commit qui monte `SchemaVersion`.
-	"internal/games/halo_infinite/film/replay/document_chronicle.go": 2018,
+	// SCHEMA 68 -> 69 (2026-09-23, lot M1 des retours du rejeu) : 2018 -> 2054, l entree de
+	// chronique v69 — la grammaire de la vie et les deux replis nommes de la publication des
+	// positions, le champ `vehicles[].samples[].g`, les six compteurs de couverture, et pourquoi
+	// « si le film le dit, on publie » ne couvrait pas des points que le BALAYAGE lit. UNE SEULE
+	// MONTEE DE SCHEMA POUR LE LOT, dans le commit qui monte `SchemaVersion`. 2054 -> 2058
+	// (2026-09-24, reprise apres revue adverse) : le departage de F-2, sa borne, et les trois
+	// compteurs ajoutes a la meme v69 (`slotsArmes`, `slotsDesarmes`, `silencesNonTranches`).
+	"internal/games/halo_infinite/film/replay/document_chronicle.go": 2058,
 	// --- production, hors perimetre du lot 2.7 (aucune preuve d equivalence ne couvrait
 	// leur scission : elle se decidera au lot qui les rouvrira).
 	// `assist.go` EST SORTI DE CETTE TABLE LE 2026-09-16 (lot 2.6.2) : le type `Assist` a descendu
@@ -194,7 +201,10 @@ var plafondsParFichier = map[string]int{
 	// `mobility` en `clamber`, pourquoi un renommage d enum publie est une montee de FORME, et
 	// le refus de publier un genre `jump` LU faute de preuve. Exception ecrite, meme commit que
 	// `SchemaVersion`.
-	"internal/games/halo_infinite/film/replay/structure_test.go":                                  1270,
+	// SCHEMA 68 -> 69 (2026-09-23, lot M1 des retours du rejeu) : 1270 -> 1275, la
+	// justification que `TestStructureIsOptionalInDocument` exige (grammaire de la vie, replis
+	// nommes, `samples[].g`). Exception ecrite, meme commit que `SchemaVersion`.
+	"internal/games/halo_infinite/film/replay/structure_test.go":                                  1275,
 	"internal/games/halo_infinite/film/replay/t0_mouvement_research_test.go":                      872,
 	"internal/games/halo_infinite/film/replay/inventory_position_i22_test.go":                     833,
 	"internal/games/halo_infinite/film/replay/ground_link_research_test.go":                       814,

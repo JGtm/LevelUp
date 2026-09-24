@@ -116,8 +116,15 @@ func buildVehicleTracks(
 	cov.Lives = len(lives)
 	cov.DeathsRead, cov.DeathsMatched = deathTally.read, deathTally.matched
 	cov.DeathsUnmatched, cov.DeathsTailDesync = deathTally.unmatched, deathTally.tailDesync
-	spawns := vehicleSpawnsByLife(scan.Creations)
+	spawns := vehicleSpawnsByLife(scan.Creations, lives)
 	bySlot := vehiclePositionsBySlot(scan.Positions)
+	// F-2 AVANT TOUT USAGE DU NUAGE (lot M1 des retours du rejeu) : un echantillon atteint ou quitte
+	// a travers un silence avec un deplacement n est pas une position (cf.
+	// positions_porte_vehicules.go) — ni pour les episodes d occupation, ni pour la trajectoire,
+	// ni pour la derniere preuve de presence. La naissance de la vie y departage.
+	var silences bilanSilences
+	bySlot, silences = ecarterLesSejoursAuTraversDUnSilence(bySlot, lives, spawns, clock.fb)
+	cov.EchantillonsAuTraversDUnSilence, cov.SilencesNonTranches = silences.ecartes, silences.nonTranches
 	rides, st := buildVehicleRides(vehicleRideInputs{
 		vehBySlot: bySlot, bipeds: bipeds, events: scan.Events, reg: reg, lives: lives,
 		occupancy: scan.Occupancy,
@@ -196,13 +203,26 @@ func assignVehicleWindows(lives []vehicleLife) {
 	}
 }
 
-// vehicleSpawnsByLife retient, par vie, le record de creation le PLUS PRECOCE : c est la
-// naissance. Les records suivants d une meme vie sont des re-annonces, et le mot d identite y est
-// constant (gate 1 de V1.5 : 100 % de constance par vie sur les deux films mesures).
-func vehicleSpawnsByLife(cre []types.EquipmentCreation) map[types.EquipmentLifeKey]types.EquipmentCreation {
+// vehicleSpawnsByLife retient, par vie, le record de creation le PLUS PRECOCE qui ne suit pas sa fin :
+// c est la naissance. Les records suivants d une meme vie sont des re-annonces, et le mot d identite
+// y est constant (gate 1 de V1.5 : 100 % de constance par vie sur les deux films mesures).
+//
+// UN RECORD POSTERIEUR A LA FIN DE LA VIE (`hiUS` : la premiere image-cle qui ne la recense plus, ou
+// le premier recensement de la vie suivante du slot) N EST PAS SA NAISSANCE : la generation ne fait
+// que 2 bits, et ce record est celui d un objet ulterieur du meme (slot, gen). Il ne pesait pas tant
+// que le plus precoce gagnait ; il le peut depuis que F-1 ecarte une fausse naissance anterieure
+// (revue adverse du lot M1, 2026-09-24).
+func vehicleSpawnsByLife(cre []types.EquipmentCreation, lives []vehicleLife) map[types.EquipmentLifeKey]types.EquipmentCreation {
+	fin := make(map[types.EquipmentLifeKey]uint64, len(lives))
+	for _, l := range lives {
+		fin[l.key] = l.hiUS
+	}
 	out := map[types.EquipmentLifeKey]types.EquipmentCreation{}
 	for _, c := range cre {
 		k := types.EquipmentLifeKey{Slot: c.Slot, Gen: c.Gen}
+		if hi, vie := fin[k]; !vie || c.TimestampUS > hi {
+			continue
+		}
 		if prev, ok := out[k]; ok && prev.TimestampUS <= c.TimestampUS {
 			continue
 		}
@@ -403,6 +423,7 @@ func vehicleSamplesOf(
 		lastSeen uint64
 		heading  float32
 		hasHead  bool
+		lacuneMS int // la lacune que le PROCHAIN echantillon publie portera (cf. VehicleSample.G)
 	)
 	for _, p := range pos {
 		if p.TimestampUS < l.loUS || p.TimestampUS > l.hiUS {
@@ -411,13 +432,18 @@ func vehicleSamplesOf(
 		if h, ok := vehicleHeadingOf(p); ok {
 			heading, hasHead = h, true
 		}
+		if lastSeen > 0 && int64(p.TimestampUS)-int64(lastSeen) > lifeGapUS {
+			// LACUNE : meme regle et meme mesure (instants BRUTS) que `Point.G` des traces.
+			lacuneMS = int((int64(p.TimestampUS) - int64(lastSeen)) / 1000)
+		}
 		lastSeen = p.TimestampUS
 		fr := clock.frame(p.TimestampUS)
 		if lastFr >= 0 && fr-lastFr < vehicleSampleStrideFrames {
 			continue
 		}
 		lastFr = fr
-		s := VehicleSample{T: fr, X: round2(p.X), Y: round2(p.Y), Z: round2(p.Z)}
+		s := VehicleSample{T: fr, X: round2(p.X), Y: round2(p.Y), Z: round2(p.Z), G: lacuneMS}
+		lacuneMS = 0
 		if hasHead {
 			s.H = headingForJSON(heading)
 		}

@@ -1263,8 +1263,13 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   CE QUI NE MONTE PAS : `facts.Rev` (`killsource` ne lit aucun état de mouvement) et
 	//   `layers`. `grammar.Rev` a monté, la couche écrivant l'étiquette de genre.
 	//   Détail : `document_chronicle.go`.
-	if SchemaVersion != 68 {
-		t.Fatalf("SchemaVersion = %d, attendu 68 : incrémenter exige une raison écrite ci-dessus "+
+	// - v69 (lot M1 des retours du rejeu, 2026-09-23, décision utilisateur Q15) : la publication
+	//   des positions applique la GRAMMAIRE DE LA VIE (aucune position d'un corps avant sa
+	//   création) et deux REPLIS NOMMÉS (emprise jouée, silence d'un véhicule) ; champ neuf
+	//   `vehicles[].samples[].g` et six compteurs de couverture. Aucune révision de décodage ne
+	//   monte : republication DEPUIS LES FAITS. Détail : `document_chronicle.go`.
+	if SchemaVersion != 69 {
+		t.Fatalf("SchemaVersion = %d, attendu 69 : incrémenter exige une raison écrite ci-dessus "+
 			"(un champ optionnel de plus n'en est pas une)", SchemaVersion)
 	}
 }

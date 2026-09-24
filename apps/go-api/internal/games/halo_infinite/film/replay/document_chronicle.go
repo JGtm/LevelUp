@@ -2016,3 +2016,43 @@ package replay
 //	               valeurs ; aucune revision de DECODAGE ne monte pour ce renommage seul
 //	               (`grammar` a monte au commit precedent du lot, pour le cablage du bloc
 //	               d action de la vue de controle).
+
+// v69 (2026-09-23, lot M1 des retours du rejeu, decision utilisateur Q15) : LA PUBLICATION DES
+// POSITIONS APPLIQUE LA GRAMMAIRE DE LA VIE, DEUX REPLIS NOMMES, ET DIT SES SILENCES AUX VEHICULES.
+// Republication DEPUIS LES FAITS : aucune revision de decodage ne monte (`grammar.Rev`,
+// `facts.Rev`, `SchemaDesFaits` inchanges), la montee perime les seuls calques de publication.
+//
+//	`tracks`       ne portent plus les positions ANTERIEURES a la creation de leur corps (R-B1 :
+//	               une vie ouverte par son record commence au record ; R-B2 : aucune vie avant
+//	               le premier record d un slot), ni les positions hors de l EMPRISE JOUEE du
+//	               film ET ISOLEES (repli `repli_position_hors_emprise_ecartee`, la garde de
+//	               `boundsOf` desormais ecrite une fois : emprise_jouee.go ; une chute reelle,
+//	               continue, reste publiee). La regle de creation se DESARME sur un slot dont
+//	               le premier record lu n est pas `gen=1`.
+//	`vehicles`     meme emprise pour les echantillons et les naissances (une fausse naissance
+//	               anterieure ne l emporte plus sur la vraie ; un record posterieur a la fin de la
+//	               vie n est pas sa naissance) ; de deux sejours qui se contredisent au travers
+//	               d un silence de plus de `lifeGapUS`, celui que son autre voisin contredit (la
+//	               naissance pour le premier), a soutien egal le plus court, est ecarte s il fait
+//	               au plus 3 echantillons (repli `repli_echantillon_vehicule_au_travers_d_un_
+//	               silence_ecarte`) — sinon rien, et le refus se compte ; une vie sans position
+//	               restante sort en `noPosition`.
+//	`vehicles[]    CHAMP NEUF : `g`, la lacune de replication qui precede l echantillon, en ms
+//	.samples[].g`  — la semantique de `Point.g`. Le client TIENT la derniere position au travers.
+//	`coverage      `avantCreation`, `viesAvantPremiereCreation`, `horsEmprise` (positions
+//	.tracks`       BRUTES du film, avant decimation), `slotsArmes` / `slotsDesarmes` (derive de
+//	               la generation du premier corps ; parc du 2026-09-24 : 11 407 et 1)
+//	`coverage      `echantillonsHorsEmprise`, `spawnsHorsEmprise`, `echantillonsAuTraversDUnSilence`
+//	.vehicles`     (echantillons BRUTS, fenetres de vie comprises ou non), `silencesNonTranches`
+//
+// POURQUOI « si le film le dit, on publie » (2026-09-14) NE COUVRAIT PAS CES POINTS : le film ne
+// les dit pas, c est le BALAYAGE ANCRE qui les lit. La meme suite de bits revient au meme decalage
+// sur des cartes aux quantifications differentes (annexe `RAPPORT_positions_limbe.md` §1.2 :
+// 62 paires de 24 bits communs sur 1 926 chez les aberrants, 1 sur 49 600 chez les normaux), et
+// le moteur ne replique aucune position d un corps avant de le creer. L utilisateur a tranche le
+// 2026-09-23 (Q15) : ces vies ne sont plus publiees, elles sont COMPTEES.
+//
+// CE QUI NE BOUGE PAS : l origine (`originMs`, `frameCount`) reste lue sur TOUS les paquets de
+// position — ecarter un point ne decale aucun calque ; `layers` ; les revisions de decodage. Les
+// deux replis tombent avec la porte grammaticale au decodage (option 2 du rapport), dont ils sont
+// le critere de retrait. Temoins : 81c02726 (Mongoose 770, Madina97294), ab526724, 879a4dba.

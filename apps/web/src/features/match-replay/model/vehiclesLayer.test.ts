@@ -196,6 +196,24 @@ describe('vehiclePositionAt / vehicleVisibleAt', () => {
     expect(vehiclePositionAt(t, 500)).toEqual({ x: 9, y: 9 })
   })
 
+  // Schéma 69 (lot M1 des retours du rejeu) : `g` sur un échantillon de véhicule a la sémantique de
+  // `Point.g`. Témoin de forme : le Mongoose de 81c02726, immobile, dont un échantillon lointain
+  // arrivait après 70 s de silence — le client l'interpolait, le véhicule « partait seul ».
+  it('au travers d’une LACUNE (`g > 0`) : la dernière position est TENUE, jamais interpolée', () => {
+    const t = track({
+      samples: [
+        sample({ t: 0, x: -42, y: -21 }),
+        sample({ t: 704, x: -201, y: 88, g: 70_400 }),
+        sample({ t: 706, x: -200, y: 88 }),
+      ],
+    })
+    expect(vehiclePositionAt(t, 50)).toEqual({ x: -42, y: -21 })
+    expect(vehiclePositionAt(t, 703)).toEqual({ x: -42, y: -21 })
+    expect(vehiclePositionAt(t, 704)).toEqual({ x: -201, y: 88 })
+    // Sans lacune, l'interpolation reste la règle entre deux échantillons.
+    expect(vehiclePositionAt(t, 705)).toEqual({ x: -200.5, y: 88 })
+  })
+
   it('la fenêtre [t0, t1max] est INCLUSIVE aux deux bornes, rien au-delà', () => {
     const t = track({ t0: 10, t1: 90, t1max: 100 })
     expect(vehicleVisibleAt(t, 9)).toBe(false)

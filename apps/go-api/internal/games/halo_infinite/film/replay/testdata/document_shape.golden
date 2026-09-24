@@ -1,9 +1,9 @@
 # EMPREINTE DE FORME DU DOCUMENT DE REJEU — fige par document_shape_test.go.
 # Ne s'edite JAMAIS a la main : regeneration decrite en tete de ce test.
-schema 68
-empreinte-stockee 0030535963711419
-empreinte-servie 0030535963711419
-empreinte-cuite 8fa3e3de3052db39
+schema 69
+empreinte-stockee 4c5dbd29cfe3db91
+empreinte-servie 4c5dbd29cfe3db91
+empreinte-cuite 5bd8599b9f2f1176
 empreinte-cuite-regle 2
 
 AbilityCharge
@@ -861,13 +861,18 @@ Track
   Team json:"team" int
   XUID json:"xuid,omitempty" string
 TrackCoverage
+  AvantCreation json:"avantCreation" int
   GapMS json:"gapMs" int
   Gaps json:"gaps" int
+  HorsEmprise json:"horsEmprise" int
   MinPoints json:"minPoints" int
   Published json:"published" int
   PublishedPoints json:"publishedPoints" int
   RefusedMinPoints json:"refusedMinPoints" int
   RefusedPoints json:"refusedPoints" int
+  SlotsArmes json:"slotsArmes" int
+  SlotsDesarmes json:"slotsDesarmes" int
+  ViesAvantPremiereCreation json:"viesAvantPremiereCreation" int
 Translocation
   FX json:"fx,omitempty" *float32
   FY json:"fy,omitempty" *float32
@@ -904,6 +909,8 @@ VehicleCoverage
   DeathsRead json:"deathsRead" int
   DeathsTailDesync json:"deathsTailDesync" int
   DeathsUnmatched json:"deathsUnmatched" int
+  EchantillonsAuTraversDUnSilence json:"echantillonsAuTraversDUnSilence" int
+  EchantillonsHorsEmprise json:"echantillonsHorsEmprise" int
   EndDestroyed json:"endDestroyed" int
   EndFilmEnd json:"endFilmEnd" int
   EndUnknown json:"endUnknown" int
@@ -927,6 +934,8 @@ VehicleCoverage
   ShotsNoRide json:"shotsNoRide" int
   ShotsUnplaced json:"shotsUnplaced" int
   ShotsVehicleWeapon json:"shotsVehicleWeapon" int
+  SilencesNonTranches json:"silencesNonTranches" int
+  SpawnsHorsEmprise json:"spawnsHorsEmprise" int
   UnknownChassis json:"unknownChassis,omitempty" map[string]int
   VehiclesRidden json:"vehiclesRidden" int
   WithChassis json:"withChassis" int
@@ -956,6 +965,7 @@ VehicleRide
   T1 json:"t1" int
   XUID json:"xuid,omitempty" string
 VehicleSample
+  G json:"g,omitempty" int
   H json:"h,omitempty" float32
   T json:"t" int
   X json:"x" float32

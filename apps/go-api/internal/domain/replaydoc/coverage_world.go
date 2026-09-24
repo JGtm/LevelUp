@@ -88,42 +88,49 @@ type PickupCoverage struct {
 
 // VehicleCoverage dit ce que le calque a vu, resolu, et refuse de dire.
 type VehicleCoverage struct {
-	Scanned            bool           `json:"scanned"`
-	Lives              int            `json:"lives"`
-	Published          int            `json:"published"`
-	NoPosition         int            `json:"noPosition"`
-	Merged             int            `json:"merged"`
-	WithSpawn          int            `json:"withSpawn"`
-	WithChassis        int            `json:"withChassis"`
-	FamilyResolved     int            `json:"familyResolved"`
-	FamilyUnknown      int            `json:"familyUnknown"`
-	UnknownChassis     map[string]int `json:"unknownChassis,omitempty"`
-	Samples            int            `json:"samples"`
-	WithHeading        int            `json:"withHeading"`
-	DeathsRead         int            `json:"deathsRead"`
-	DeathsMatched      int            `json:"deathsMatched"`
-	DeathsUnmatched    int            `json:"deathsUnmatched"`
-	DeathsTailDesync   int            `json:"deathsTailDesync"`
-	EndDestroyed       int            `json:"endDestroyed"`
-	EndFilmEnd         int            `json:"endFilmEnd"`
-	EndUnknown         int            `json:"endUnknown"`
-	SamplesAfterEnd    int            `json:"samplesAfterEnd"`
-	Rides              int            `json:"rides"`
-	VehiclesRidden     int            `json:"vehiclesRidden"`
-	RidesNamed         int            `json:"ridesNamed"`
-	RidesRead          int            `json:"ridesRead"`
-	RidesProximity     int            `json:"ridesProximity"`
-	RidesWithSeat      int            `json:"ridesWithSeat"`
-	AimReads           int            `json:"aimReads"`
-	RidesWithAim       int            `json:"ridesWithAim"`
-	AimSamples         int            `json:"aimSamples"`
-	AimRideFrames      int            `json:"aimRideFrames"`
-	Ambiguous          int            `json:"ambiguous"`
-	Shots              int            `json:"shots"`
-	ShotsAmbiguous     int            `json:"shotsAmbiguous"`
-	ShotsUnplaced      int            `json:"shotsUnplaced"`
-	ShotsNoRide        int            `json:"shotsNoRide"`
-	ShotsVehicleWeapon int            `json:"shotsVehicleWeapon"`
+	Scanned    bool `json:"scanned"`
+	Lives      int  `json:"lives"`
+	Published  int  `json:"published"`
+	NoPosition int  `json:"noPosition"`
+	// La PORTE DES POSITIONS (schema 69) : echantillons et naissances hors de l emprise jouee,
+	// echantillons atteints ou quittes a travers un silence avec un deplacement, silences que F-2
+	// a refuse de trancher. Cf. `replay.VehicleCoverage`.
+	EchantillonsHorsEmprise         int            `json:"echantillonsHorsEmprise"`
+	SpawnsHorsEmprise               int            `json:"spawnsHorsEmprise"`
+	EchantillonsAuTraversDUnSilence int            `json:"echantillonsAuTraversDUnSilence"`
+	SilencesNonTranches             int            `json:"silencesNonTranches"`
+	Merged                          int            `json:"merged"`
+	WithSpawn                       int            `json:"withSpawn"`
+	WithChassis                     int            `json:"withChassis"`
+	FamilyResolved                  int            `json:"familyResolved"`
+	FamilyUnknown                   int            `json:"familyUnknown"`
+	UnknownChassis                  map[string]int `json:"unknownChassis,omitempty"`
+	Samples                         int            `json:"samples"`
+	WithHeading                     int            `json:"withHeading"`
+	DeathsRead                      int            `json:"deathsRead"`
+	DeathsMatched                   int            `json:"deathsMatched"`
+	DeathsUnmatched                 int            `json:"deathsUnmatched"`
+	DeathsTailDesync                int            `json:"deathsTailDesync"`
+	EndDestroyed                    int            `json:"endDestroyed"`
+	EndFilmEnd                      int            `json:"endFilmEnd"`
+	EndUnknown                      int            `json:"endUnknown"`
+	SamplesAfterEnd                 int            `json:"samplesAfterEnd"`
+	Rides                           int            `json:"rides"`
+	VehiclesRidden                  int            `json:"vehiclesRidden"`
+	RidesNamed                      int            `json:"ridesNamed"`
+	RidesRead                       int            `json:"ridesRead"`
+	RidesProximity                  int            `json:"ridesProximity"`
+	RidesWithSeat                   int            `json:"ridesWithSeat"`
+	AimReads                        int            `json:"aimReads"`
+	RidesWithAim                    int            `json:"ridesWithAim"`
+	AimSamples                      int            `json:"aimSamples"`
+	AimRideFrames                   int            `json:"aimRideFrames"`
+	Ambiguous                       int            `json:"ambiguous"`
+	Shots                           int            `json:"shots"`
+	ShotsAmbiguous                  int            `json:"shotsAmbiguous"`
+	ShotsUnplaced                   int            `json:"shotsUnplaced"`
+	ShotsNoRide                     int            `json:"shotsNoRide"`
+	ShotsVehicleWeapon              int            `json:"shotsVehicleWeapon"`
 	// LES QUATRE DENOMINATEURS DU CYCLE DE REAPPARITION (schema 63).
 	CycleLocations int `json:"cycleLocations"`
 	Cycles         int `json:"cycles"`

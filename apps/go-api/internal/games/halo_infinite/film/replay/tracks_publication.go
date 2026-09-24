@@ -37,6 +37,13 @@ import (
 // réplication et la mort la plus proche du même joueur est à 0,95 s à 300 s. Ce n'est pas une raison
 // de les filtrer (décision utilisateur) : c'est un DÉFAUT DE LECTURE nommé, consigné au plan §4, et
 // le publier est ce qui le rend visible.
+//
+// LE SEUIL RESTE A 1, ET LA DECISION DU 2026-09-23 (Q15) NE LE CONTREDIT PAS : les vies d un ou deux
+// points anterieures a la creation de leur corps, et celles d un point hors de la carte, ne sont
+// plus publiees parce que LE FILM NE LES DIT PAS — c est le balayage ancre qui les lit. Elles sont
+// ecartees EN AMONT, par la porte des positions (positions_porte.go), et comptees dans
+// `coverage.tracks.{avantCreation, viesAvantPremiereCreation, horsEmprise}` ; ce seuil ne les voit
+// jamais.
 const DefaultMinPoints = 1
 
 // decoupeDesTraces porte ce dont la publication des traces a besoin. Une structure plutôt que
@@ -300,6 +307,25 @@ type TrackCoverage struct {
 	// 8 builds n'étaient justifiées par RIEN — cf. lives_decoupe.go).
 	Gaps  int `json:"gaps"`
 	GapMS int `json:"gapMs"`
+	// CE QUE LA PORTE DES POSITIONS A ECARTE AVANT TOUTE PUBLICATION (schema 69, lot M1 des retours
+	// du rejeu), en positions BRUTES du film — cf. positions_porte.go.
+	//
+	//	AvantCreation              positions anterieures au premier record de creation de leur
+	//	                           corps (regles R-B1 et R-B2 : le film ne replique aucune position
+	//	                           d un corps avant de le creer)
+	//	ViesAvantPremiereCreation  parmi elles, les VIES ecartees entieres (R-B2) — leurs points
+	//	                           sont comptes dans `AvantCreation`
+	//	HorsEmprise                positions hors de l emprise jouee (repli nomme
+	//	                           `repli_position_hors_emprise_ecartee`)
+	//	SlotsArmes / SlotsDesarmes slots dont le PREMIER record de creation lu est, ou n est pas,
+	//	                           celui du premier corps (`premiereGenerationDuCorps`) : la regle
+	//	                           ne s applique qu aux premiers. Un desarmement massif dit que la
+	//	                           numerotation des generations a derive (cf. positions_porte.go)
+	AvantCreation             int `json:"avantCreation"`
+	ViesAvantPremiereCreation int `json:"viesAvantPremiereCreation"`
+	HorsEmprise               int `json:"horsEmprise"`
+	SlotsArmes                int `json:"slotsArmes"`
+	SlotsDesarmes             int `json:"slotsDesarmes"`
 }
 
 // logTrackCoverage journalise ce que la publication des traces a refusé et ce que le film a tu.

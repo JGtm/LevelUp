@@ -34,6 +34,9 @@ type VehicleSample struct {
 	X float32 `json:"x"`
 	Y float32 `json:"y"`
 	Z float32 `json:"z,omitempty"`
+	// G : la lacune de replication qui precede cet echantillon, en ms (schema 69) — meme
+	// semantique que `Point.G` : le client TIENT la derniere position au travers.
+	G int     `json:"g,omitempty"`
 	H float32 `json:"h,omitempty"`
 }
 

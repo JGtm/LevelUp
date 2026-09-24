@@ -65,4 +65,9 @@ const (
 	// NomZoneCampDeCaptureDeduitDeLIssue : `replay/zone_states_capturer.go`,
 	// `zoneRampCapturerDeduit`.
 	NomZoneCampDeCaptureDeduitDeLIssue Nom = "repli_zone_camp_de_capture_deduit_de_l_issue"
+	// NomPositionHorsEmpriseEcartee : `replay/positions_porte.go` (points de trace) et
+	// `replay/positions_porte_vehicules.go` (echantillons et naissances de vehicule).
+	NomPositionHorsEmpriseEcartee Nom = "repli_position_hors_emprise_ecartee"
+	// NomEchantillonVehiculeAuTraversDUnSilenceEcarte : `replay/positions_porte_vehicules.go`.
+	NomEchantillonVehiculeAuTraversDUnSilenceEcarte Nom = "repli_echantillon_vehicule_au_travers_d_un_silence_ecarte"
 )

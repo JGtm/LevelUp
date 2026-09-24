@@ -13375,9 +13375,13 @@ export interface components {
         };
         TrackCoverage: {
             /** Format: int64 */
+            avantCreation: number;
+            /** Format: int64 */
             gapMs: number;
             /** Format: int64 */
             gaps: number;
+            /** Format: int64 */
+            horsEmprise: number;
             /** Format: int64 */
             minPoints: number;
             /** Format: int64 */
@@ -13388,6 +13392,12 @@ export interface components {
             refusedMinPoints: number;
             /** Format: int64 */
             refusedPoints: number;
+            /** Format: int64 */
+            slotsArmes: number;
+            /** Format: int64 */
+            slotsDesarmes: number;
+            /** Format: int64 */
+            viesAvantPremiereCreation: number;
         };
         Translocation: {
             /** Format: float */
@@ -13489,6 +13499,10 @@ export interface components {
             /** Format: int64 */
             deathsUnmatched: number;
             /** Format: int64 */
+            echantillonsAuTraversDUnSilence: number;
+            /** Format: int64 */
+            echantillonsHorsEmprise: number;
+            /** Format: int64 */
             endDestroyed: number;
             /** Format: int64 */
             endFilmEnd: number;
@@ -13533,6 +13547,10 @@ export interface components {
             shotsUnplaced: number;
             /** Format: int64 */
             shotsVehicleWeapon: number;
+            /** Format: int64 */
+            silencesNonTranches: number;
+            /** Format: int64 */
+            spawnsHorsEmprise: number;
             unknownChassis?: {
                 [key: string]: number;
             };
@@ -13583,6 +13601,8 @@ export interface components {
             xuid?: string;
         };
         VehicleSample: {
+            /** Format: int64 */
+            g?: number;
             /** Format: float */
             h?: number;
             /** Format: int64 */

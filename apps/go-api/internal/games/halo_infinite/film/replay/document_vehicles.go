@@ -142,6 +142,13 @@ type VehicleSample struct {
 	X float32 `json:"x"`
 	Y float32 `json:"y"`
 	Z float32 `json:"z,omitempty"`
+	// G (optionnel, schema 69) est la DUREE DE LA LACUNE qui precede cet echantillon, en
+	// millisecondes — MEME semantique que `Point.G` (document_aim.go) : entre l echantillon
+	// precedent et celui-ci, le film n a RIEN replique de ce vehicule pendant plus de `lifeGapUS`,
+	// et le client ne doit pas interpoler au travers — il TIENT la derniere position (un vehicule ne
+	// se deplace pas pendant un silence : cf. positions_porte_vehicules.go, repli F-2). Mesure sur
+	// les instants BRUTS, pas sur la grille de frames. Absent = aucun silence.
+	G int `json:"g,omitempty"`
 	// H est le CAP en degres dans le plan XY, MEME convention que `Point.H` (0 = +X, 90 = +Y,
 	// meme origine et meme sens que `atan2(Y, X)`).
 	//
@@ -269,6 +276,24 @@ type VehicleCoverage struct {
 	Lives      int `json:"lives"`
 	Published  int `json:"published"`
 	NoPosition int `json:"noPosition"`
+	// LA PORTE DES POSITIONS (schema 69, lot M1 des retours du rejeu), en positions BRUTES du film
+	// (cf. positions_porte_vehicules.go) :
+	//
+	//	EchantillonsHorsEmprise          echantillons hors de l emprise jouee (repli F-1)
+	//	SpawnsHorsEmprise                records de creation hors de l emprise jouee (repli F-1) :
+	//	                                 la vie garde le record suivant s il en existe un
+	//	EchantillonsAuTraversDUnSilence  echantillons atteints ou quittes a travers un silence avec
+	//	                                 un deplacement (repli F-2)
+	//	SilencesNonTranches              silences avec deplacement que F-2 a REFUSE de trancher (rien
+	//	                                 ne departage les deux sejours, ou celui qu il faudrait
+	//	                                 ecarter depasse `vehicleSejourAberrantMax`) : les deux
+	//	                                 restent publies
+	//
+	// Une vie privee ainsi de toute position est comptee dans `NoPosition` et n est pas publiee.
+	EchantillonsHorsEmprise         int `json:"echantillonsHorsEmprise"`
+	SpawnsHorsEmprise               int `json:"spawnsHorsEmprise"`
+	EchantillonsAuTraversDUnSilence int `json:"echantillonsAuTraversDUnSilence"`
+	SilencesNonTranches             int `json:"silencesNonTranches"`
 	// Merged compte les vies FONDUES dans leur precedente (cf. `mergeVehicleRelays`) : le film
 	// RE-CREE un vehicule sous un nouveau slot au lieu de le deplacer, et sans cette fusion
 	// l ancienne vie restait a l ecran comme un DOUBLE, a l ancienne place, pendant l intervalle
