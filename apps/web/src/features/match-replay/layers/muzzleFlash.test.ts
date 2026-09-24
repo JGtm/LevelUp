@@ -45,7 +45,7 @@ function trace(fam: ShotFamily, tint: FxTint = 'kinetic', over: Partial<MuzzleSh
   return ops
 }
 
-const DRAWN: ShotFamily[] = ['ballistic', 'plasma', 'light', 'shock', 'explosive', 'needles', 'plain']
+const DRAWN: ShotFamily[] = ['ballistic', 'plasma', 'light', 'shock', 'explosive', 'bomb', 'needles', 'plain']
 
 describe('l’éclair de bouche', () => {
   it('donne une signature DISTINCTE à chaque famille dessinée', () => {
@@ -206,5 +206,25 @@ describe('l’éclair de bouche', () => {
     // L'anneau est centré sur la bouche (x > 100 dans l'axe), pas au bout d'une portée.
     const centre = anneaux[anneaux.length - 1]
     expect(centre?.args[0] as number).toBeLessThan(120)
+  })
+
+  /**
+   * LA BOMBE (retours du rejeu, lot M6.2 — décision utilisateur du 2026-09-23 nuit : la bombe de
+   * la Banshee « ROUGE et PLUS GROSSE, éclair et explosion »). La rougeur est la TEINTE (du
+   * registre) ; la taille est la FORME : la déflagration, à l'échelle d'une charge larguée —
+   * halo et onde plus grands que ceux de l'explosif, même dessin.
+   */
+  it('la bombe : la forme de la déflagration, plus grosse (éclair ET onde)', () => {
+    const rayons = (f: ShotFamily) =>
+      trace(f, 'plasma_hot', { angle: 0, fade: 0.5 })
+        .filter((o) => o.op === 'createRadialGradient')
+        .map((o) => o.args[5] as number)
+    const onde = (f: ShotFamily) => {
+      const arcs = trace(f, 'plasma_hot', { angle: 0, fade: 0.5 }).filter((o) => o.op === 'arc')
+      return arcs[arcs.length - 1]?.args[2] as number
+    }
+    expect(Math.max(...rayons('bomb'))).toBeGreaterThan(Math.max(...rayons('explosive')))
+    expect(onde('bomb')).toBeGreaterThan(onde('explosive'))
+    expect(trace('bomb').map((o) => o.op)).toEqual(trace('explosive').map((o) => o.op))
   })
 })

@@ -152,7 +152,12 @@ var plafondsParFichier = map[string]int{
 	// +31) : les PIECES MONTEES (`part`, `carrier`, `rides[].turret`), la variante nommee par la
 	// piece ou par l arme, les compteurs de couverture et la racine `vehicleWeapons` resolue a la
 	// requete. Exception ecrite, dans les commits de fusion qui reunissent la montee.
-	"internal/games/halo_infinite/film/replay/document_chronicle.go": 2142,
+	// SCHEMA 69, PARTIE M6 (2026-09-24, lot M6 des retours du rejeu, rabattu de 70 sur 69 par sa
+	// revue adverse — une seule montee par vague) : 2142 -> 2174, l en-tete v69 a quatre lots et la
+	// partie M6 — la remise des mains nues sort des ramassages et des changements d arme (deux
+	// compteurs `unarmedGrants`), les consequences declarees hors du document (son, paliers de
+	// socle) et les familles nommees au catalogue. Exception ecrite, meme commit que la partie.
+	"internal/games/halo_infinite/film/replay/document_chronicle.go": 2174,
 	// --- production, hors perimetre du lot 2.7 (aucune preuve d equivalence ne couvrait
 	// leur scission : elle se decidera au lot qui les rouvrira).
 	// `assist.go` EST SORTI DE CETTE TABLE LE 2026-09-16 (lot 2.6.2) : le type `Assist` a descendu
@@ -213,7 +218,10 @@ var plafondsParFichier = map[string]int{
 	// du camp d un match a sens unique, champ `coverage.bridge.deathsFeed`) et M4a (pieces
 	// montees posees sur leur porteur, sens neuf de `v` d un tir d artilleur et du `seat`
 	// reporte). Exception ecrite, dans les commits de fusion qui reunissent la montee.
-	"internal/games/halo_infinite/film/replay/structure_test.go":                                  1293,
+	// SCHEMA 69, PARTIE M6 (2026-09-24, lot M6 des retours du rejeu) : 1293 -> 1296, la ligne du
+	// lot dans la justification de la montee 69 (remise des mains nues hors des ramassages et des
+	// changements d arme). Exception ecrite, meme commit que la partie de chronique.
+	"internal/games/halo_infinite/film/replay/structure_test.go":                                  1296,
 	"internal/games/halo_infinite/film/replay/t0_mouvement_research_test.go":                      872,
 	"internal/games/halo_infinite/film/replay/inventory_position_i22_test.go":                     833,
 	"internal/games/halo_infinite/film/replay/ground_link_research_test.go":                       814,

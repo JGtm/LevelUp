@@ -236,7 +236,8 @@ type WeaponLabel struct {
 // `Kind`, `En` et `Fr` sont OPTIONNELS et presque toujours vides : le nom d une famille de
 // vehicule est un nom propre du jeu, qui ne se traduit pas, et la cle de la table EST ce nom. Ils
 // ne se remplissent que pour les familles que le titre QUALIFIE dans son manifeste — la tourelle
-// automatique bannie (`kind = "map_element"`), aujourd hui la seule.
+// automatique bannie (`kind = "map_element"`) et, depuis le 2026-09-24 (lot M6.2), la tourelle fixe
+// occupable (`kind = "fixed_turret"`).
 type VehicleLabel struct {
 	Img    string `json:"img,omitempty"`
 	Tinted bool   `json:"tinted,omitempty"`

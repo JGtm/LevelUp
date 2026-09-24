@@ -222,5 +222,13 @@
   "statut": "sans_asset",
   "source_report": "PLAN_DECODEUR_FILM_2026-09-13.md (lot 1.9.9)",
   "note": "AUCUN ASSET A CE JOUR, et c est une entree DELIBEREE. Le chassis 0x038df01a n est pas un vehicule : c est un ELEMENT DE CARTE (decision utilisateur du 2026-09-14, « ce sont des elements de la map ») — une tourelle automatique bannie qui interdit la sortie de la zone de jeu, immobile, que personne ne conduit. Nommee par damagetag/data/labels.tsv (trois tags a porteur vehi 038df01a, banque sb_003_lvl_moments_ge_shared_autoturret_banished : prefixe sb_003_lvl = banque de NIVEAU, pas sb_010_veh) et par la forme de ses vies (18 vies sur deux films, 17 sans aucun echantillon, 18 avec une fenetre = le match entier). Tant que cette ligne n a ni file ni scale_mm_per_px, le client la dessine par un PICTOGRAMME DE TOURELLE dedie, jamais le marqueur neutre. LE JOUR OU UN ASSET EXISTE : deposer le PNG, renseigner file + scale_mm_per_px + statut valide ici, et passer sprite = true dans replay_labels.toml. Aucune ligne de Go ni de TypeScript ne change."
+ },
+ {
+  "famille": "tourelle_fixe",
+  "libelle": "Tourelle fixe",
+  "date": "2026-09-24",
+  "statut": "sans_asset",
+  "source_report": "PLAN_RETOURS_REJEU_2026-09-23.md (lot M6.2)",
+  "note": "AUCUN ASSET A CE JOUR, et c est une entree DELIBEREE. Le chassis 0x3a8060e2 est une TOURELLE FIXE (gatling / mortier) de Takamanohara, posee par la carte et OCCUPEE par les joueurs (information de l utilisateur du 2026-09-24 ; vehi turret_g, mode 0x1c645961, armes 4d39877f et 3d30b955 = gatling_mortar du script Lua global). Tant que cette ligne n a ni file ni scale_mm_per_px, le client la dessine par le PICTOGRAMME DE TOURELLE (nature fixed_turret de replay_labels.toml), occupant compris. LE JOUR OU UN ASSET EXISTE : deposer le PNG, renseigner file + scale_mm_per_px + statut valide ici, et passer sprite = true dans replay_labels.toml."
  }
 ]

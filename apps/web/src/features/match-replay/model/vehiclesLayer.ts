@@ -241,7 +241,29 @@ export const VEHICLE_MAP_ELEMENT_RENDER: Readonly<Record<string, VehicleMapEleme
   // d'assets change (`static/vehicles-assets/{slug}/replay/index.json` + `sprite = true` dans
   // `replay_labels.toml`) — pas une ligne d'ici.
   tourelle_auto_bannie: 'turret',
+  // LA TOURELLE FIXE (châssis `0x3a8060e2`, retours du rejeu lot M6.2, 2026-09-24) : les tourelles
+  // gatling / mortier de Takamanohara, que les joueurs OCCUPENT. Même pictogramme faute d'asset ;
+  // sa nature (`fixed_turret`) la laisse embarquer son occupant.
+  tourelle_fixe: 'turret',
 }
+
+/**
+ * VEHICLE_KIND_FIXED_TURRET — la nature publiée d'une TOURELLE FIXE posée par la carte et OCCUPÉE
+ * par un joueur (côté Go : `mappings.VehicleFamilyKindFixedTurret`, lot M6.2 du 2026-09-24). Elle
+ * se DESSINE comme un élément de carte (le pictogramme de sa famille), mais elle EMBARQUE : c'est
+ * le poste de tir d'un joueur, pas un objet inerte.
+ */
+export const VEHICLE_KIND_FIXED_TURRET = 'fixed_turret'
+
+/**
+ * VEHICLE_GLYPH_KINDS — les natures publiées qui se dessinent par le pictogramme de leur famille
+ * (`VEHICLE_MAP_ELEMENT_RENDER`) quand aucun asset n'est servi. L'embarquement, lui, reste décidé
+ * par la seule nature `map_element` (`vehicleCanEmbark`).
+ */
+const VEHICLE_GLYPH_KINDS: ReadonlySet<string> = new Set([
+  VEHICLE_KIND_MAP_ELEMENT,
+  VEHICLE_KIND_FIXED_TURRET,
+])
 
 /**
  * vehicleMapElementGlyph — le pictogramme à dessiner pour cette famille, ou `null`.
@@ -255,7 +277,7 @@ export function vehicleMapElementGlyph(
   family: string | undefined,
   kind: string | undefined,
 ): VehicleMapElementGlyph | null {
-  if (family === undefined || kind !== VEHICLE_KIND_MAP_ELEMENT) return null
+  if (family === undefined || kind === undefined || !VEHICLE_GLYPH_KINDS.has(kind)) return null
   return VEHICLE_MAP_ELEMENT_RENDER[family] ?? null
 }
 
@@ -342,8 +364,8 @@ export const VEHICLE_HUMAN_FAMILIES: ReadonlySet<string> = new Set([
  * visée de son conducteur (`rides[].aim`, schéma 31 — justesse 0,2 à 0,5 degré contre la
  * référence publiée, couverture 35 épisodes attestés sur 35).
  *
- * POURQUOI CES NEUF FAMILLES, ET PAS LES AUTRES. Sur un Ghost, une Banshee, un Wraith, une Wasp,
- * un Chopper, une Shade ou une tourelle montée, l'arme NE TOURNE PAS par rapport au corps :
+ * POURQUOI CES DIX FAMILLES, ET PAS LES AUTRES. Sur un Ghost, une Banshee, un Wraith, une Wasp,
+ * un Chopper, une Shade, une tourelle montée ou fixe, l'arme NE TOURNE PAS par rapport au corps :
  * viser, c'est tourner le véhicule, donc la visée EST l'avant du châssis. Le Mongoose et le
  * Gungoose n'ont pas d'arme de conducteur mais leur avant suit le conducteur de la même façon.
  *
@@ -365,6 +387,8 @@ export const FAMILLES_ARME_FIXE: ReadonlySet<string> = new Set([
   'chopper',
   'shade',
   'tourelle_montee',
+  // La TOURELLE FIXE de Takamanohara (lot M6.2, 2026-09-24) : viser, c'est tourner la tourelle.
+  'tourelle_fixe',
   'mongoose',
   'gungoose',
 ])

@@ -10040,6 +10040,8 @@ export interface components {
                 [key: string]: number;
             };
             /** Format: int64 */
+            unarmedGrants: number;
+            /** Format: int64 */
             unknownFamilies: number;
             /** Format: int64 */
             weapons: number;
@@ -13779,6 +13781,8 @@ export interface components {
             swapped: number;
             /** Format: int64 */
             taken: number;
+            /** Format: int64 */
+            unarmedGrants: number;
         };
         WeaponDistanceRecordRow: {
             class?: string;

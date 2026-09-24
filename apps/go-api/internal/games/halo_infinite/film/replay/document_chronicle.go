@@ -2018,10 +2018,13 @@ package replay
 //	               d action de la vue de controle).
 
 // v69 (2026-09-24, vague C des retours du rejeu, plan `.ai/V7.5/PLAN_RETOURS_REJEU_2026-09-23.md`
-// §4.4) : UNE SEULE MONTEE POUR TROIS LOTS — M1 (positions), M5 (score a sens unique et fil des
-// morts), M4a (vehicules : pieces montees, registre). Chaque lot avait pose 69 sur sa branche ;
-// l integration les reunit sous ce seul numero (un artefact au schema 69 porte les trois). Aucune
-// revision de DECODAGE ne monte : republication DEPUIS LES FAITS. Les trois parties suivent.
+// §4.4) : UNE SEULE MONTEE POUR QUATRE LOTS — M1 (positions), M5 (score a sens unique et fil des
+// morts), M4a (vehicules : pieces montees, registre), M6 (registre et catalogue : la remise des
+// mains nues). Chaque lot avait pose 69 sur sa branche (M6 avait d abord pose 70, rabattu sur 69
+// par sa revue adverse, constat R4 : le plan ne fait qu UNE montee par vague tant que la
+// republication 69 n est pas faite, et la vague D pose deja SON 70) ; l integration les reunit
+// sous ce seul numero (un artefact au schema 69 porte les quatre). Aucune revision de DECODAGE ne
+// monte : republication DEPUIS LES FAITS. Les quatre parties suivent.
 //
 // v69, PARTIE M1 (2026-09-23, decision utilisateur Q15) : LA PUBLICATION DES
 // POSITIONS APPLIQUE LA GRAMMAIRE DE LA VIE, DEUX REPLIS NOMMES, ET DIT SES SILENCES AUX VEHICULES.
@@ -2140,3 +2143,32 @@ package replay
 //	AUCUNE REVISION DE DECODAGE ne monte (vies deja assemblees : la republication DEPUIS LES FAITS
 //	suffit). `facts.Rev` INCHANGEE (le registre des replis recoit une entree de DONNEES ; empreinte
 //	seule recopiee). `layers` inchange : les pieces restent dans le calque des vehicules.
+//
+// v69, PARTIE M6 (2026-09-24, lot M6 des retours du rejeu, decisions de l utilisateur du
+// 2026-09-24) : LA REMISE DES MAINS NUES N EST PAS UNE PRISE. `00007CA9` est l objet « mains nues »
+// du jeu (sonde CA9 : `WeaponTags.unarmed` du Lua global) ; le jeu le REMET a chaque bipede au
+// debut de chaque vie, et le film l ecrit comme une prise sur DEUX canaux (parc de la tete de la
+// vague C, 107 documents : 562 ramassages natifs de classe ARME dans 77 documents, et 1 `taken`
+// du canal des changements d arme — aucun au milieu d une vie).
+//
+//	`pickups[]`    SENS : la remise n y est plus publiee (regle nommee `filmshell.IsUnarmedFamily`,
+//	               une seule ecriture du litteral, garde-rail archlint).
+//	`coverage.`    UN CHAMP NEUF, `unarmedGrants` : le compte des remises. `unknownFamilies` cesse
+//	`pickups.`     de les compter ; `decoded` = `published` + `beforeOrigin` + `unarmedGrants`.
+//	`weaponChanges[]` SENS : une PRISE (`taken`) de l objet n est plus publiee ; un ECHANGE vers
+//	               lui (le joueur a tout jete) le reste, nomme.
+//	`coverage.`    UN CHAMP NEUF, `unarmedGrants` ; `decoded` = `published` + `restated` +
+//	`weaponChanges.` `beforeOrigin` + `unarmedGrants`.
+//	`loadouts[]`   la meme regle ecarte l objet de toute dotation publiee (passage unique
+//	               `dotationWeaponName`, garde-rail archlint).
+//
+// CONSEQUENCES DECLAREES, HORS DU DOCUMENT : le rejeu ne joue plus le son de ramassage d une
+// remise (elle sonnait `weapon_pickup` a chaque debut de vie), et la mesure des armes de base des
+// paliers de socle (`prisesPour` / `prisesEnVie`, qui lisent ces deux canaux) cesse de tenir une
+// remise pour une prise.
+//
+//	AUCUNE REVISION DE DECODAGE ne monte : republication DEPUIS LES FAITS. Meme lot, SANS effet de
+//	forme : le catalogue d armes du titre nomme trois familles jusqu ici publiees en hexadecimal
+//	(`hinf_unarmed`, et la bobine a fusion UNSC `hinf_coil_kinetic` pour `e9e7ff79` / `1d63a8cd`),
+//	et `weaponLabels` les porte ; `killEffects` gagne l explosion a la mort de `hinf_scorpion` et
+//	`hinf_rockethog`.

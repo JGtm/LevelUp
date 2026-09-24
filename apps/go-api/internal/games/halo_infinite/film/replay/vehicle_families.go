@@ -116,6 +116,10 @@ const (
 	// decision utilisateur du 2026-09-14). Voir la table ci-dessous pour la preuve, et
 	// `config/titles/{slug}/mappings/replay_labels.toml` pour son libelle et sa nature publies.
 	familleTourelleAutoBannie = "tourelle_auto_bannie"
+	// familleTourelleFixe EST un poste de tir de la partie, pose par la carte et OCCUPABLE (lot
+	// M6.2 des retours du rejeu, 2026-09-24) : pilotable au sens de `vehicleFamilyIsRideable`,
+	// dessinee par le pictogramme de tourelle faute d asset (nature `fixed_turret` du titre).
+	familleTourelleFixe = "tourelle_fixe"
 )
 
 // vehicleFamilyByChassis associe le `MPPWord32` d un record de creation `ti=40` a la FAMILLE de
@@ -274,6 +278,23 @@ var vehicleFamilyByChassis = map[uint32]string{
 	// son film. `8aab20b4`, l autre chassis irresolu du parc, RESTE irresolu : l utilisateur ne
 	// l a pas vu, et on ne devine pas le second parce qu on a nomme le premier.
 	0x10754375: familleWraith,
+
+	// --- TOURELLE FIXE OCCUPABLE (retours du rejeu, lot M6.2, 2026-09-24) ---
+	//
+	// `3a8060e2`, sur Takamanohara : un objet POSE PAR LA CARTE (sonde C2 du 2026-09-23 : il porte
+	// l index de placement du bloc `object-multiplayer-properties`, recree aux slots 770 et 771 de
+	// `7fce3219` sous le MEME index que le slot 768) auquel la publication attribuait deja un
+	// occupant. TROIS PIECES :
+	//   1. l UTILISATEUR (2026-09-24) : c est une des deux tourelles fixes gatling / mortier,
+	//      symetriques en hauteur, de Takamanohara ;
+	//   2. le tag `vehi` (`CONTACT_ARMES_GUNGOOSE_2026-09-02.md` : maillage `turret_g`, mode
+	//      `0x1c645961`) declare les `weap` `4d39877f` et `3d30b955` ;
+	//   3. le script Lua global nomme `3d30b955` `gatling_mortar` (sonde CA9 du 2026-09-23,
+	//      `SONDE_CA9_objet_00007CA9.md`, decouvertes).
+	// UNE FAMILLE NOMMEE ET PILOTABLE : le poste de tir d un joueur, pas un element de carte. Aucun
+	// sprite n existe (`sprite = false`) : le titre la qualifie `fixed_turret` et le client la
+	// dessine par le pictogramme de tourelle, occupant compris.
+	0x3a8060e2: familleTourelleFixe,
 }
 
 // vehicleFamilyOf rend la famille de chassis d un `MPPWord32`, ou la chaine VIDE quand la table

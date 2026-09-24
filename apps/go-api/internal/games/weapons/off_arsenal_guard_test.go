@@ -47,7 +47,12 @@ var horsArsenalHINF = []string{
 	"hinf_banshee",
 	"hinf_chopper",
 	"hinf_coil_hardlight",
-	"hinf_coil_kinetic",
+	// Bobine a fusion UNSC : RETIREE LE 2026-09-24 (retours du rejeu, lot M6.4). Ses deux
+	// identifiants de film (`forge_fusion_coil_mp` 0xe9e7ff79..., `fusion_coil` 0x1d63a8cd...,
+	// lus dans les modules du jeu) sont ceux de l OBJET que le joueur ramasse et tient : poses au
+	// registre pour le nommer sur les fiches et les socles. DOUBLE COMPTAGE REVERIFIE, comme pour
+	// le Mutilator : une seule voie de comptage depuis D11 (2026-09-01), et l objet tenu n emet de
+	// toute facon aucun record de degat 0xd2 — ses kills restent resolus par le pont killicon.
 	"hinf_coil_plasma",
 	"hinf_coil_shock",
 	"hinf_environment",

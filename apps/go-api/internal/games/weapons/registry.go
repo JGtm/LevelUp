@@ -39,6 +39,7 @@ import (
 	"log/slog"
 	"strconv"
 
+	"levelup/go-api/internal/games/weapons/filmshell"
 	"levelup/go-api/internal/migration"
 )
 
@@ -193,6 +194,8 @@ const (
 	keyHinfGravityHammer = "hinf_gravity_hammer"
 	keyHinfShockRifle    = "hinf_shock_rifle"
 	keyHinfEnergySword   = "hinf_energy_sword"
+	keyHinfUnarmed       = "hinf_unarmed"
+	keyHinfCoilKinetic   = "hinf_coil_kinetic"
 	keyH5Magnum          = "h5_magnum"
 	keyH5OtherUGC        = "h5_other_ugc"
 	nameM41SPNKr         = "M41 SPNKr"
@@ -413,6 +416,8 @@ var weaponRegistryFamilies = []weaponFamilyRow{
 	// Long-tail H5 (frags v_weapon_kills réels) : armes de mêlée d'objectif / REQ.
 	{"golf_club"},
 	{"oddball"},
+	// mains nues : posee le 2026-09-24 avec `hinf_unarmed` (retours du rejeu, lot M6.3).
+	{"unarmed"},
 	// Hors-arsenal H5 (frags non-combat classés 2026-07-17) : familles neutres par
 	// catégorie (véhicule/tourelle/environnement/non-attribué/autres). Réceptacle
 	// pour le donut « Frags par type d'arme » ; exclues de l'insight coach côté web.
@@ -508,7 +513,7 @@ var weaponRegistryWeapons = []weaponRow{
 	// Les quatre bobines : le film ne dit PAS quel modèle de bidon a explosé, il dit le
 	// TYPE D'ÉNERGIE (la racine de banque sonore). C'est donc l'énergie qui nomme, et
 	// c'est aussi ce que fait le kill feed du jeu — quatre vignettes distinctes.
-	{"hinf_coil_kinetic", titleHINF, "UNSC Fusion Coil", clsEnvironmental, clsEnvironmental, clsEnvironmental, "", dmgExplosive, ""},
+	{keyHinfCoilKinetic, titleHINF, "UNSC Fusion Coil", clsEnvironmental, clsEnvironmental, clsEnvironmental, "", dmgExplosive, ""},
 	{"hinf_coil_plasma", titleHINF, "Plasma Coil", clsEnvironmental, clsEnvironmental, clsEnvironmental, "", dmgPlasma, ""},
 	{"hinf_coil_shock", titleHINF, "Shock Coil", clsEnvironmental, clsEnvironmental, clsEnvironmental, "", "shock", ""},
 	{"hinf_coil_hardlight", titleHINF, "Blast Coil", clsEnvironmental, clsEnvironmental, clsEnvironmental, "", "hardlight", ""},
@@ -518,6 +523,12 @@ var weaponRegistryWeapons = []weaponRow{
 	// choisir l'une des deux pour les neuf tags mettrait une icône fausse sur la moitié
 	// des cas. Une icône absente est un repli, une icône fausse est un mensonge.
 	{"hinf_environment", titleHINF, "Environment", clsEnvironmental, clsEnvironmental, clsEnvironmental, "", "", ""},
+	// MAINS NUES (retours du rejeu, lot M6.3, 2026-09-24) : l objet que le jeu remet a chaque
+	// bipede au debut de chaque vie (`filmshell.UnarmedFamily`, `WeaponTags.unarmed` du Lua
+	// global). Classe et role `melee` : sans arme, le joueur n a que le corps a corps. Il n est
+	// JAMAIS une dotation affichee ni un ramassage (regle `filmshell.IsUnarmedFamily`) ; il est
+	// nomme pour le cas « quasi impossible » d un joueur qui le TIENT en cours de partie.
+	{keyHinfUnarmed, titleHINF, "Unarmed", clsMelee, clsMelee, "unarmed", "", "", ""},
 	// ── Halo Infinite VÉHICULES ET TOURELLES (étape A6, 2026-09-01) ──
 	//
 	// MÊME RECETTE que les six entrées hors arsenal ci-dessus, et pour la même raison :
@@ -681,6 +692,18 @@ var weaponRegistryInfiniteFilmshell = []weaponNumericID{
 	{"hinf_frag_grenade", 0xb6dbead842c9679f},
 	{"hinf_plasma_grenade", 0xc1e1bab042c9679f},
 	{"hinf_dynamo_grenade", 0x3ad55da442c9679f},
+	// RETOURS DU REJEU, lots M6.3 et M6.4 (2026-09-24) — trois familles OBSERVEES au parc sous leur
+	// seul hexadecimal, etablies sur pieces (instrument
+	// `internal/himodule/m6_bobine_mains_nues_research_test.go`, modules installes en lecture
+	// seule ; la variante est lue dans la liste du tag, comme `42C9679F` pour l arsenal) :
+	//   - MAINS NUES : l objet que le jeu remet a chaque bipede (cf. filmshell/unarmed.go) ;
+	//   - BOBINE A FUSION UNSC : `forge_fusion_coil_mp` (table `MiscWeaponTags` du Lua global,
+	//     31 documents) et `fusion_coil` (table `WeaponTags`, 5 documents) — chacune DECLARE le
+	//     degat que `damagetag/data/labels.tsv` range en explosion `kineticunsc`, celle de cette
+	//     cle. Ramassees, tenues, lachees, elles s affichaient « 0xE9E7FF79 » et « 0x1D63A8CD ».
+	{keyHinfUnarmed, filmshell.UnarmedWeaponID},
+	{keyHinfCoilKinetic, 0xe9e7ff79fab48286}, // forge_fusion_coil_mp
+	{keyHinfCoilKinetic, 0x1d63a8cdfab48286}, // fusion_coil
 }
 
 // weaponRegistryH5Stock — stock_ids H5 (source : catalogue officiel weapon_labels
