@@ -108,8 +108,8 @@ export interface EngineStems {
  *
  * LE FALCON SONNE DEPUIS LE 2026-09-24 : il est sorti des familles de DÉCOR
  * (`FAMILLES_NON_JOUABLES`, décision utilisateur « le Falcon ça dépend »), et un Falcon occupé
- * joue son moteur comme tout véhicule. Un Falcon de décor de carte (`vehicleIsScenery`, lot M7)
- * n'a jamais d'occupant, donc jamais de moteur.
+ * joue son moteur comme tout véhicule. Un Falcon sans occupant n'a pas de moteur, qu'il soit
+ * garé, de décor de carte (`vehicleIsScenery`, lot M7) ou planant en décor de Behemoth.
  */
 export const VEHICLE_ENGINE_STEMS: Readonly<Record<string, EngineStems>> = {
   warthog: { enter: 'vehicle_warthog_enter', loop: 'vehicle_warthog_loop', exit: 'vehicle_warthog_exit' },

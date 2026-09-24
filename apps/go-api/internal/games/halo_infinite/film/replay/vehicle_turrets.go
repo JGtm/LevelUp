@@ -23,7 +23,8 @@ package replay
 //     (`turretCarrierBirthMismatch`) : c est le temoin INDEPENDANT du voisinage de slot ;
 //  3. il REPORTE les episodes d occupation de la piece sur le porteur (l artilleur est a bord du
 //     vehicule), SANS leur siege : le siege lu etait celui de la tourelle, et le publier sur le
-//     porteur ferait de l artilleur un conducteur ;
+//     porteur ferait de l artilleur un conducteur — un episode de REPLI dont la montee a bord ne
+//     se voit pas PRES du porteur est ecarte (`vehicle_turrets_boarding.go`, 2026-09-24) ;
 //  4. il nomme la VARIANTE du porteur quand la piece la designe (le lance-roquettes fait le
 //     Rockethog, le canon Gauss le Warthog Gauss).
 //
@@ -113,15 +114,16 @@ type turretTally struct {
 	kept turretRidesKept
 }
 
-// turretRidesKept : les TROIS refus de report d un episode d artilleur (cf. `moveTurretRides`).
+// turretRidesKept : les refus de report qui GARDENT l episode d artilleur sur sa piece (cf.
+// `moveTurretRides`). Le troisieme refus publie, `turretRidesNotRideable`, vaut 0 depuis le
+// 2026-09-24 et n a plus de branche (cf. `moveTurretRides`).
 type turretRidesKept struct {
-	notRideable, outOfWindow, alreadyAboard int
+	outOfWindow, alreadyAboard int
 }
 
-func (k turretRidesKept) total() int { return k.notRideable + k.outOfWindow + k.alreadyAboard }
+func (k turretRidesKept) total() int { return k.outOfWindow + k.alreadyAboard }
 
 func (k *turretRidesKept) add(o turretRidesKept) {
-	k.notRideable += o.notRideable
 	k.outOfWindow += o.outOfWindow
 	k.alreadyAboard += o.alreadyAboard
 }
@@ -132,14 +134,16 @@ func (t turretTally) applyTo(cov *VehicleCoverage) {
 	cov.TurretCarrierBirthMismatch = t.birthMismatch
 	cov.TurretRides, cov.Variants = t.rides, t.variants
 	cov.TurretRidesDropped = t.kept.total()
-	cov.TurretRidesNotRideable = t.kept.notRideable
 	cov.TurretRidesOutOfWindow = t.kept.outOfWindow
 	cov.TurretRidesAlreadyAboard = t.kept.alreadyAboard
 }
 
 // poseTurretsOnCarriers nomme les pieces montees, trouve leur porteur, y reporte leurs occupants
 // et nomme la variante du porteur. `tracks` est modifiee en place ; l ordre ne change pas.
-func poseTurretsOnCarriers(tracks []VehicleTrack, fb *fallback.Compteur) turretTally {
+// `anchors` porte le nuage des bipedes qui juge la montee a bord d un episode de repli.
+func poseTurretsOnCarriers(
+	tracks []VehicleTrack, anchors vehicleBoardingAnchors, fb *fallback.Compteur,
+) turretTally {
 	var tally turretTally
 	bySlot := vehicleTracksBySlot(tracks)
 	for i := range tracks {
@@ -163,7 +167,7 @@ func poseTurretsOnCarriers(tracks []VehicleTrack, fb *fallback.Compteur) turretT
 			carrier.Variant = spec.variant
 			tally.variants++
 		}
-		moved, kept := moveTurretRides(&tracks[i], carrier)
+		moved, kept := moveTurretRides(&tracks[i], carrier, anchors, fb)
 		tally.rides += moved
 		tally.kept.add(kept)
 	}
@@ -229,25 +233,34 @@ func vehicleWindowsOverlap(a, b VehicleTrack) bool {
 // moveTurretRides reporte les occupants de la piece sur son porteur. Rend le nombre d episodes
 // reportes et celui des episodes GARDES sur la piece, ventile par raison.
 //
-// TROIS REFUS, ET AUCUN N EFFACE L EPISODE (il reste sur la piece, qui est publiee) :
-//   - un porteur NON PILOTABLE ne porte aucun occupant (`vehicleFamilyIsRideable` : le Pelican, le
-//     Phantom et le Skiff, decision du 2026-09-02) — le document ne l affirmera pas plus par la
-//     tourelle que par le chassis. Le Falcon n y est plus depuis le 2026-09-24 (decision
-//     utilisateur « le Falcon ca depend ») : ses artilleurs passent a bord. AUCUNE piece de
-//     `vehicleTurretByChassis` n a aujourd hui un porteur non pilotable ; la garde tient pour
-//     une piece future (les tourelles d un Phantom, par exemple) ;
+// DEUX REFUS GARDENT L EPISODE SUR LA PIECE (publiee, et que le client ne dessine pas) — il est
+// cru VRAI, seulement pas reportable :
 //   - un episode HORS DE LA FENETRE du porteur : le reporter l amputerait ou l effacerait. Cause
 //     amont mesuree (revue adverse du lot M4a, F4) : la vie publiee d un chassis peut s arreter
 //     (`end = unknown`) bien avant celle de sa tourelle — 13 des 23 episodes gardes hors Falcon au
 //     parc du 2026-09-23 ;
 //   - un occupant DEJA a bord du porteur au meme instant (le conducteur entre a la naissance, le
 //     trou de position le designe aussi pour la piece nee au meme point) n y monte pas deux fois.
-func moveTurretRides(turret, carrier *VehicleTrack) (moved int, kept turretRidesKept) {
+//
+// UNE GARDE L ECARTE, parce qu il est cru FAUX : un episode de REPLI dont la montee a bord ne se
+// voit pas PRES du porteur (dernier point de l occupant perime, ou a plus de 3 m) n a pas de
+// montee a bord a affirmer, ni sur le porteur ni sur la piece — laisse sur la piece, il poserait
+// encore les tirs de ce joueur sur le porteur (`shotHolder`). `turretRideBoardsCarrier`, repli
+// nomme `repli_tourelle_montee_loin_du_porteur`, compte au registre (2026-09-24, revue adverse
+// du lot M7b, RR-M7b-01).
+//
+// LE REFUS « PORTEUR NON PILOTABLE » A ETE RETIRE LE 2026-09-24 (revue adverse du lot M7b,
+// RR-M7b-04) : depuis que le Falcon est pilotable, aucune piece de `vehicleTurretByChassis` n a
+// de porteur non pilotable, et `carrierOfTurret` n elit qu un porteur de la famille que la table
+// attend — la branche ne pouvait plus s ouvrir. L invariant vit dans
+// `TestPiecesMonteesOntUnPorteurPilotable` : une piece ajoutee a un Pelican, un Phantom ou un Skiff
+// le fait rougir, et c est une DECISION a ecrire. Son compteur publie
+// `coverage.vehicles.turretRidesNotRideable` reste dans la forme 69 a 0 : il sortira a la prochaine
+// montee de schema (cf. `VehicleCoverage`).
+func moveTurretRides(
+	turret, carrier *VehicleTrack, anchors vehicleBoardingAnchors, fb *fallback.Compteur,
+) (moved int, kept turretRidesKept) {
 	if len(turret.Rides) == 0 {
-		return 0, kept
-	}
-	if !vehicleFamilyIsRideable(carrier.Family) {
-		kept.notRideable = len(turret.Rides)
 		return 0, kept
 	}
 	ref := &VehicleLifeRef{Slot: turret.Slot, Gen: turret.Gen}
@@ -255,6 +268,8 @@ func moveTurretRides(turret, carrier *VehicleTrack) (moved int, kept turretRides
 	var ajout []VehicleRide
 	for _, r := range turret.Rides {
 		bornes := clampVehicleRides([]VehicleRide{r}, carrier.T0, carrier.T1Max)
+		// LA GARDE DE LA MONTEE A BORD PASSE EN DERNIER : elle ne juge que ce qui serait reporte,
+		// et les deux refus plus anciens gardent leur compte. Elle ECARTE l episode (cf. en-tete).
 		switch {
 		case len(bornes) == 0:
 			kept.outOfWindow++
@@ -263,6 +278,8 @@ func moveTurretRides(turret, carrier *VehicleTrack) (moved int, kept turretRides
 		case occupantAlreadyAboard(carrier.Rides, r):
 			kept.alreadyAboard++
 			restent = append(restent, r)
+			continue
+		case !turretRideBoardsCarrier(r, *carrier, anchors, fb):
 			continue
 		}
 		b := bornes[0]

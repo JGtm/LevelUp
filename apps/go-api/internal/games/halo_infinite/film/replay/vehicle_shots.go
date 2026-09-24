@@ -153,15 +153,10 @@ func (b vehicleShotBoard) shotOf(o orphanShot, slots []uint32) (Shot, vehicleSho
 	if len(cand) == 0 {
 		return Shot{}, vehicleShotNoRide, false
 	}
-	// L AMBIGUITE SE JUGE SUR LE VEHICULE QUI PORTE LE TIR, pas sur la vie qui porte l episode : une
-	// piece montee et son porteur sont le MEME vehicule (2026-09-24, le Falcon devenu pilotable —
-	// un occupant « deja a bord » garde aussi son episode sur la piece, cf. `moveTurretRides`).
 	pick := cand[0]
-	at, onCarrier := b.shotHolder(pick)
-	for _, c := range cand[1:] {
-		if h, _ := b.shotHolder(c); h != at {
-			return Shot{}, vehicleShotAmbiguous, false
-		}
+	at, onCarrier, ok := b.shotVehicle(cand)
+	if !ok {
+		return Shot{}, vehicleShotAmbiguous, false
 	}
 	// HORS DE LA FENETRE DU PORTEUR, sa position serait TENUE (premier / dernier echantillon) :
 	// une position perimee, peut-etre a des centaines de metres. Le tir n est pas pose, et il
@@ -182,6 +177,49 @@ func (b vehicleShotBoard) shotOf(o orphanShot, slots []uint32) (Shot, vehicleSho
 		s.Weapon = formatWeaponID(o.ev.WeaponID)
 	}
 	return s, vehicleShotPlaced, onCarrier
+}
+
+// shotVehicle dit si les candidats d un tir designent UN SEUL vehicule, et lequel : la vie qui porte
+// le tir, et si elle le porte comme PORTEUR d une piece montee.
+//
+// L AMBIGUITE SE JUGE SUR LE VEHICULE, pas sur la vie qui porte l episode (2026-09-24, le Falcon
+// devenu pilotable) : une piece montee et son porteur sont le MEME vehicule — un occupant « deja a
+// bord » garde aussi son episode sur la piece (cf. `moveTurretRides`). MAIS DEUX PIECES DISTINCTES
+// du meme porteur (le lance-grenades ET la LMG d un Falcon) tenues au meme instant par le meme
+// tireur restent une ambiguite : c est un artefact du liant, physiquement impossible (revue
+// adverse RR-M7b-03). « Pose sur le porteur » se lit sur TOUS les candidats, pas sur le premier :
+// le premier est le siege le plus bas, souvent l episode propre au chassis.
+func (b vehicleShotBoard) shotVehicle(cand []vehicleShotRide) (at int, onCarrier, ok bool) {
+	at, piece := -1, -1
+	for _, c := range cand {
+		h, on := b.shotHolder(c)
+		if at >= 0 && h != at {
+			return 0, false, false
+		}
+		at, onCarrier = h, onCarrier || on
+		if p, isPiece := b.shotPiece(c); isPiece {
+			if piece >= 0 && p != piece {
+				return 0, false, false
+			}
+			piece = p
+		}
+	}
+	return at, onCarrier, true
+}
+
+// shotPiece rend la PIECE MONTEE par laquelle un candidat tient le vehicule : la vie de l episode
+// quand elle est une piece posee sur un porteur (`Carrier`, le meme critere que `shotHolder`), ou
+// la piece d ou un episode REPORTE vient (`ride.Turret`).
+func (b vehicleShotBoard) shotPiece(c vehicleShotRide) (int, bool) {
+	if b.tracks[c.track].Carrier != nil {
+		return c.track, true
+	}
+	if c.ride.Turret != nil {
+		if p, ok := b.lives[*c.ride.Turret]; ok {
+			return p, true
+		}
+	}
+	return 0, false
 }
 
 // shotHolder rend la vie qui PORTE le tir : celle de l'épisode, sauf quand cette vie est une

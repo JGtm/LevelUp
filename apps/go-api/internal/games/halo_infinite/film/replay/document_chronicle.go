@@ -2127,15 +2127,15 @@ package replay
 //	               change pas (moteur, explosion, classe d arme).
 //	`rides[]`      `turret {slot, gen}` : l episode d artilleur REPORTE sur le porteur, SANS `seat`
 //	               (le siege lu etait celui de la tourelle). Trois refus le gardent sur la piece :
-//	               porteur non pilotable (aucun depuis M7b), hors de la fenetre du porteur,
-//	               occupant deja a bord (episodes qui se RECOUVRENT ; un changement de siege
-//	               jointif est reporte).
+//	               porteur non pilotable (SANS BRANCHE depuis M7b, cf. sa partie), hors de la
+//	               fenetre du porteur, occupant deja a bord (episodes qui se RECOUVRENT ; un changement de
+//	               siege jointif est reporte).
 //	`shots[]`      un tir d artilleur sort du PORTEUR (`v` = le chassis, `x`/`y` sa position), plus
 //	               de la naissance de la tourelle (mediane 44,7 m au parc avant ce lot) ; hors de la
 //	               fenetre du porteur, il n est pas pose (`shotsUnplaced`).
 //	`coverage.`    DIX COMPTEURS : `turrets`, `turretsOnCarrier`, `turretCarrierBirthMismatch`,
-//	`vehicles`     `turretRides`, `turretRidesDropped` = `turretRidesNotRideable` +
-//	               `turretRidesOutOfWindow` + `turretRidesAlreadyAboard`, `shotsOnCarrier`,
+//	`vehicles`     `turretRides`, `turretRidesDropped` = `turretRidesNotRideable` (0 depuis
+//	               M7b) + `turretRidesOutOfWindow` + `turretRidesAlreadyAboard`, `shotsOnCarrier`,
 //	               `variants`. Une piece ne compte plus dans `familyUnknown` / `unknownChassis` /
 //	               `repli_chassis_vehicule_marqueur_neutre`, un artilleur reporte pas dans `ambiguous`.
 //	`vehicle`      RACINE NEUVE, RESOLUE A LA REQUETE (`calquesALaRequete`, jamais cuite) : le registre
@@ -2188,13 +2188,20 @@ package replay
 //	               verdict. Empreinte CUITE inchangee, `facts.Rev` inchangee : rien a re-cuire.
 //
 // v69, PARTIE M7b (2026-09-24, decision de l utilisateur du 2026-09-24 : « les Pelican c est
-// toujours du decor ; le Falcon ca depend ») : LE FALCON EST PILOTABLE. AUCUNE forme ne change.
+// toujours du decor ; le Falcon ca depend » ; reprise apres revue adverse le meme jour) : LE FALCON
+// EST PILOTABLE, ET DEUX GARDES GENERALES TIENNENT LES FAUX EPISODES QUE SA FAMILLE TENAIT.
+// AUCUNE FORME NE CHANGE.
 //
-//	`vehicles[]`   le Falcon sort des familles non pilotables : ses episodes d occupation sont
-//	`.rides`       publies, et ceux de ses artilleurs (pieces `1a043c29` / `f4c45d71`) REPORTES sur
-//	               lui. Son decor se decide vie par vie par la regle de M7. Pelican, Phantom, Skiff
-//	               restent refuses. `coverage.vehicles.turretRidesNotRideable` vaut 0 par
-//	               construction (garde d une piece future).
-//	`shots[]`      les tirs de ses occupants sont poses sur lui ; une piece et son porteur sont le
-//	               MEME vehicule pour l ambiguite (`shotsAmbiguous`). Parc (107 documents rejoues
-//	               des faits) : 5 documents touches, 70 episodes, 339 tirs publies en plus.
+//	`vehicles[]`   le Falcon sort des familles non pilotables : ses episodes sont publies, ceux de
+//	`.rides`       ses artilleurs (pieces `1a043c29` / `f4c45d71`) REPORTES sur lui. Un episode de
+//	               REPLI dont l occupant n est pas vu a <= 3 m du porteur, <= 2 s avant, est ECARTE
+//	               (`repli_tourelle_montee_loin_du_porteur`). TOUT episode, toutes familles et
+//	               sources, s arrete avant la naissance d une autre vie publiee du meme joueur
+//	               (`repli_episode_borne_par_la_vie_suivante`). Les deux se comptent dans
+//	               `coverage.fallbacks`. `turretRidesNotRideable` vaut 0 (branche retiree, champ a
+//	               retirer a la prochaine montee). Pelican, Phantom, Skiff restent refuses. Le decor
+//	               du Falcon n est decide par AUCUNE regle (M7 exige une pose seule : aucun Falcon).
+//	`shots[]`      une piece et son porteur sont le MEME vehicule pour l ambiguite, deux pieces
+//	               distinctes non ; « pose sur le porteur » se lit sur tous les candidats.
+//	               Parc (107 documents rejoues des faits, base -> reprise) : 7 documents touches,
+//	               19 Falcon occupes, 64 episodes, 6 ecartes, 16 coupes, +365 tirs.

@@ -449,12 +449,19 @@ type VehicleCoverage struct {
 	//	TurretRides       episodes d artilleur REPORTES de la tourelle sur son porteur ;
 	//	                  TurretRidesDropped ceux qui sont GARDES sur la piece, somme des TROIS
 	//	                  refus ventiles : TurretRidesNotRideable (le porteur est d une famille
-	//	                  non pilotable ; 0 par construction depuis que le Falcon est pilotable,
-	//	                  2026-09-24 — garde d une piece future), TurretRidesOutOfWindow (l episode tombe hors de la
-	//	                  fenetre du porteur, dont la vie publiee s arrete avant celle de sa
-	//	                  tourelle) et TurretRidesAlreadyAboard (le meme occupant a deja un
-	//	                  episode du porteur qui RECOUVRE le sien — un changement de siege, qui ne
-	//	                  fait que toucher, n en est pas un).
+	//	                  non pilotable — VAUT 0 DEPUIS LE 2026-09-24 : le Falcon est sorti de ces
+	//	                  familles, le refus a ete retire de `moveTurretRides` et aucune piece de la
+	//	                  table n a de porteur non pilotable, invariant
+	//	                  `TestPiecesMonteesOntUnPorteurPilotable` ; CHAMP A RETIRER a la prochaine
+	//	                  montee de schema, 70 de la vague D, critere : aucun lecteur ne le cite),
+	//	                  TurretRidesOutOfWindow (l episode tombe hors de la fenetre du porteur,
+	//	                  dont la vie publiee s arrete avant celle de sa tourelle) et
+	//	                  TurretRidesAlreadyAboard (le meme occupant a deja un episode du porteur
+	//	                  qui RECOUVRE le sien — un changement de siege, qui ne fait que toucher,
+	//	                  n en est pas un). Un episode de REPLI dont la montee a bord ne se voit pas
+	//	                  pres du porteur (2026-09-24) n est NI reporte NI garde : il est ECARTE, et
+	//	                  compte au registre des replis (`coverage.fallbacks`,
+	//	                  `repli_tourelle_montee_loin_du_porteur`).
 	//	ShotsOnCarrier    tirs d artilleur poses sur le PORTEUR plutot que sur la naissance de la
 	//	                  tourelle. Parmi `Shots`.
 	//	Variants          vies dont la VARIANTE est nommee (`variant`), par sa tourelle ou par

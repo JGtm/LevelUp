@@ -76,18 +76,26 @@ import { covers } from './replaySpans'
  *
  * SOURCE : verdict utilisateur du 2026-09-02 après visionnage réel du rejeu (« sur Behemoth,
  * des falcon apparaissent alors que la partie n'en avait aucun »), recoupé sur l'artefact
- * `0d76e8f1`. Le Pelican, le Phantom et le Skiff ne sont PAS pilotables en multijoueur Halo
- * Infinite : une entité qui porte leur modèle est un élément de mise en scène, jamais un véhicule
- * de la partie.
+ * `0d76e8f1` — le châssis `0x0000254b` est bien le modèle du Falcon, mais il est porté par des
+ * entités de DÉCOR : vitesse moyenne 0,3-0,8 m/s sur toute leur vie (l'une n'a parcouru
+ * strictement aucune distance), vivantes du début à la fin du film. Le Pelican, le Phantom et le
+ * Skiff ne sont PAS pilotables en multijoueur Halo Infinite : une entité qui porte leur modèle est
+ * un élément de mise en scène, jamais un véhicule de la partie.
  *
  * LE FALCON EN EST SORTI LE 2026-09-24 (décision utilisateur : « les Pelican c'est toujours du
- * décor ; le Falcon ça dépend »). Il est pilotable en multijoueur, avec ses artilleurs (parc du
- * 2026-09-24 : 19 Falcon occupés dans 5 documents — Grande bataille, Escouade, et un vol sur
- * Launch Site en Super Fiesta). Sa famille ne décide donc plus rien : il se dessine comme tout
- * véhicule pilotable, et un Falcon de décor se masque VIE PAR VIE par la règle générale du décor
- * de carte (`vehicleIsScenery`, lot M7 : posé une seule fois, vivant jusqu'à la fin, jamais occupé
- * ET hors de la zone jouable — décidé par le serveur). Même sortie côté Go
- * (`vehicleFamillesNonPilotables`, `film/replay/vehicle_tracks.go`).
+ * décor ; le Falcon ça dépend »). Il est pilotable en multijoueur, avec ses artilleurs : sa famille
+ * ne refuse plus ses occupants, et il se dessine comme tout véhicule pilotable (même sortie côté
+ * Go, `vehicleFamillesNonPilotables`). Ce qui tient désormais les FAUX épisodes du 2026-09-02,
+ * c'est le serveur, par deux gardes générales : la montée à bord d'un artilleur reporté se voit
+ * près du porteur, et un épisode s'arrête à la naissance de la vie suivante du même joueur
+ * (`film/replay/vehicle_turrets_boarding.go`, `vehicle_rides_next_life.go`).
+ *
+ * LE DÉCOR DU FALCON N'EST DÉCIDÉ PAR AUCUNE RÈGLE À CE JOUR. La règle générale du décor de carte
+ * (`vehicleIsScenery`, lot M7) exige une pose SEULE (un échantillon, né à l'origine, vivant jusqu'à
+ * la fin, jamais occupé, hors de la zone jouable) : aucun Falcon du parc ne la remplit — ceux de
+ * Behemoth PLANENT (0,3-0,7 m/s, mesure du 2026-09-24 sur `1cd3848a`), exactement le profil
+ * ci-dessus. Ils sont donc DESSINÉS, et la question est posée à l'utilisateur (reprise du lot M7b,
+ * revue adverse RR-M7b-02).
  *
  * CE N'EST PAS UNE CORRECTION DU DOCUMENT. Le serveur a raison de publier ces vies : il recense
  * ce que le film contient (archétype ti=40), et le châssis EST celui d'un Falcon. C'est
@@ -98,8 +106,8 @@ import { covers } from './replaySpans'
  *     véhicule (c'est la plainte initiale).
  *  2. AUCUN NOM — les noms d'occupants ne sont écrits que sur des véhicules réels.
  *  3. AUCUNE PARTICIPATION AU PRÉDICAT EMBARQUÉ — et c'était le dégât le plus grave : le liant
- *     « trou de position » a prêté à un prop alors rangé en `falcon` TROIS épisodes d'occupation
- *     (slot 771 de l'artefact cité), ce qui ESCAMOTAIT le pion des joueurs passés à côté. Un faux
+ *     « trou de position » a prêté à un de ces props TROIS épisodes d'occupation (slot 771 de
+ *     l'artefact cité, un Falcon), ce qui ESCAMOTAIT le pion des joueurs passés à côté. Un faux
  *     embarquement efface un joueur bien réel de la carte ; le refus doit donc porter d'abord ici.
  */
 export const FAMILLES_NON_JOUABLES: ReadonlySet<string> = new Set([
@@ -396,8 +404,8 @@ export function vehicleCanEmbark(track: ReplayVehicleTrackReady, kind?: string):
   // autres : un ÉLÉMENT DE CARTE ne porte personne. Le serveur ne lui attribue déjà aucun
   // épisode (`vehicleFamillesNonPilotables`, côté Go) ; la garde est ici AUSSI parce que le prix
   // de l'erreur est un joueur réel effacé de la carte — exactement ce qu'ont produit les trois
-  // faux épisodes du prop Falcon de `0d76e8f1`, et on ne laisse pas un seul verrou sur ce
-  // chemin-là.
+  // faux épisodes du prop Falcon de `0d76e8f1` (2026-09-02, quand le Falcon était encore refusé
+  // par sa famille), et on ne laisse pas un seul verrou sur ce chemin-là.
   return kind !== VEHICLE_KIND_MAP_ELEMENT
 }
 
@@ -654,7 +662,8 @@ export function vehicleColorAt(
  * SEULES LES VIES QUI PASSENT `vehicleCanEmbark` Y ENTRENT (2026-09-02) : ni décor, ni châssis
  * non résolu. Un épisode posé sur l'un ou l'autre effacerait un joueur bien réel de la carte,
  * sans rien montrer à sa place — c'est exactement ce qu'ont produit les trois faux épisodes du
- * prop Falcon de l'artefact `0d76e8f1`.
+ * prop Falcon de l'artefact `0d76e8f1` (2026-09-02 ; le Falcon n'est plus refusé depuis le
+ * 2026-09-24, ce sont les gardes du serveur qui tiennent ces faux épisodes).
  */
 export function buildEmbarkedPredicate(
   tracks: readonly ReplayVehicleTrackReady[],

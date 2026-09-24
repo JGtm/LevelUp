@@ -166,7 +166,10 @@ var plafondsParFichier = map[string]int{
 	// pilotable : episodes publies, artilleurs reportes, tirs poses, ambiguite jugee sur le
 	// vehicule porteur) et une ligne de la partie M4a reecrite (le refus « porteur non pilotable »
 	// ne vise plus le Falcon — doc inversee evitee). Exception ecrite, meme commit que la partie.
-	"internal/games/halo_infinite/film/replay/document_chronicle.go": 2200,
+	// REPRISE DE M7b APRES REVUE ADVERSE (2026-09-24) : 2200 -> 2207, la partie M7b decrit les
+	// deux gardes generales et leurs replis nommes (forme inchangee, `turretRidesNotRideable` a 0)
+	// et une ligne de la partie M4a de plus. Exception ecrite, meme commit que la partie.
+	"internal/games/halo_infinite/film/replay/document_chronicle.go": 2207,
 	// --- production, hors perimetre du lot 2.7 (aucune preuve d equivalence ne couvrait
 	// leur scission : elle se decidera au lot qui les rouvrira).
 	// `assist.go` EST SORTI DE CETTE TABLE LE 2026-09-16 (lot 2.6.2) : le type `Assist` a descendu

@@ -945,6 +945,7 @@ arrivants 1 · presences closes 16 · sans presence 1 · occupants au plus 24 ·
 
 ## REPLIS DECLENCHES — la part de ce document qui ne vient PAS d une lecture du film
 repli_chassis_vehicule_marqueur_neutre           2
+repli_episode_borne_par_la_vie_suivante          1
 repli_position_hors_emprise_ecartee              1
 repli_tourelle_porteur_voisin_de_slot            2
 

@@ -2,19 +2,25 @@ package replay
 
 // vehicle_rideable_test.go — AUCUN OCCUPANT SUR UN VEHICULE NON PILOTABLE.
 //
-// D OU IL VIENT : visionnage utilisateur du 2026-09-02 sur `fccc61cd`. Un prop alors range dans la
-// famille `falcon` (chassis 0x0000254b) s etait vu attribuer un episode d occupation par le liant
-// « trou de position » — un joueur passe a proximite, son bipede cesse de repliquer une seconde,
-// et le decor herite d un conducteur. Consequence a l ecran : le pion du joueur reel etait
-// escamote SANS qu aucun vehicule ne soit dessine a la place (le calque filtre deja ces familles),
-// donc un joueur disparaissait.
+// D OU IL VIENT : visionnage utilisateur du 2026-09-02 sur `fccc61cd`. Un prop de la famille
+// `falcon` (chassis 0x0000254b, quasi immobile, vivant tout le match) s etait vu attribuer un
+// episode d occupation par le liant « trou de position » — un joueur passe a proximite, son
+// bipede cesse de repliquer une seconde, et le decor herite d un conducteur. Consequence a
+// l ecran : le pion du joueur reel etait escamote SANS qu aucun vehicule ne soit dessine a la
+// place (le calque filtre deja ces familles), donc un joueur disparaissait.
 //
 // LA GARDE EST DES DEUX COTES, ET C EST VOULU : le calque refuse de DESSINER ces familles, le
 // document refuse d AFFIRMER qu elles portent quelqu un.
 //
 // AMENDE LE 2026-09-24 (decision utilisateur : « les Pelican c est toujours du decor ; le Falcon ca
-// depend ») : le Falcon SORT des familles non pilotables. Il porte ses occupants comme tout
-// vehicule, et son decor se decide vie par vie par la regle generale du decor de carte (lot M7).
+// depend ») : le Falcon SORT des familles non pilotables. Le chassis 0x0000254b reste classe
+// `falcon` (conflit `labels.tsv` « +1 pelican » non tranche, `vehicle_families.go`). Le defaut du
+// 2026-09-02 — un faux episode qui escamote un vrai joueur — n est plus tenu par la famille mais
+// par deux gardes generales : la montee a bord d un artilleur reporte se voit pres du porteur
+// (`vehicle_turrets_boarding.go`), et un episode s arrete a la naissance de la vie suivante du meme
+// joueur (`vehicle_rides_next_life.go`). Le decor du Falcon N EST DECIDE PAR AUCUNE REGLE a ce jour :
+// la regle generale du decor de carte (lot M7) exige une pose SEULE, qu aucun Falcon du parc ne
+// remplit (les Falcon de decor de Behemoth planent : 0,3-0,8 m/s) — question posee a l utilisateur.
 
 import "testing"
 
@@ -27,7 +33,7 @@ func TestVehicleFamilyIsRideable(t *testing.T) {
 		{"warthog", true, "pilotable"},
 		{"ghost", true, "pilotable"},
 		{"shade", true, "tourelle : on y monte, elle porte un occupant"},
-		{"falcon", true, "pilotable (decision du 2026-09-24) : le decor se decide vie par vie (lot M7)"},
+		{"falcon", true, "pilotable (decision du 2026-09-24) : sa famille ne refuse plus ses occupants"},
 		{"pelican", false, "toujours du decor (decisions utilisateur du 2026-09-02 et du 2026-09-24)"},
 		{"phantom", false, "transport scripte"},
 		{"skiff", false, "decor"},
@@ -64,10 +70,10 @@ func TestVehicleTrackOfEcarteLesEpisodesDuDecor(t *testing.T) {
 
 // TestPiecesMonteesOntUnPorteurPilotable — INVARIANT DE LA TABLE DES PIECES (2026-09-24). Depuis
 // que le Falcon est pilotable, AUCUNE piece de `vehicleTurretByChassis` n a un porteur non
-// pilotable : leurs artilleurs passent tous a bord. Une piece ajoutee a un porteur non pilotable
-// (une tourelle de Phantom, par exemple) fait rougir ce test : c est une DECISION a ecrire (ses
-// artilleurs resteraient sur la piece, comptes dans `turretRidesNotRideable`), pas un ajout de
-// donnee.
+// pilotable : leurs artilleurs passent tous a bord. Le refus « porteur non pilotable » de
+// `moveTurretRides` a ete RETIRE avec son compteur (revue adverse RR-M7b-04) : c est CE test qui
+// le remplace. Une piece ajoutee a un porteur non pilotable (une tourelle de Phantom, par exemple)
+// le fait rougir : c est une DECISION a ecrire, pas un ajout de donnee.
 func TestPiecesMonteesOntUnPorteurPilotable(t *testing.T) {
 	for id, piece := range vehicleTurretByChassis {
 		if !vehicleFamilyIsRideable(piece.carrier) {

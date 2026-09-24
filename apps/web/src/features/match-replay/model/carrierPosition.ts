@@ -60,7 +60,9 @@ interface EmbarkedEpisode {
  * de TOUS les véhicules sont regroupés UNE fois, et seules les vies qui passent `vehicleCanEmbark`
  * y entrent — ni décor, ni châssis non résolu. Le filtre doit rester le MÊME que celui du prédicat
  * du pion, sans quoi un faux épisode déplacerait un glyphe là où il ne cache aucun pion (les trois
- * épisodes prêtés au prop Falcon de l'artefact `0d76e8f1`).
+ * épisodes prêtés au prop Falcon de l'artefact `0d76e8f1`, le 2026-09-02, quand le Falcon était
+ * encore refusé par sa famille ; depuis le 2026-09-24 ce sont les gardes du serveur qui tiennent
+ * ces faux épisodes).
  *
  * Le prédicat, lui, indexe par SLOT : c'est ce que le calque des pions tient. Ici c'est le xuid —
  * deux clés pour deux appelants, pas deux règles d'occupation.

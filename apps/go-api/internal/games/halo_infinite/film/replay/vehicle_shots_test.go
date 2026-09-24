@@ -189,7 +189,7 @@ func vsTourelle() *ReplayDocument {
 // parc avant ce lot). Episode reporte sur le porteur par `poseTurretsOnCarriers`.
 func TestTirDArtilleurPoseSurLePorteur(t *testing.T) {
 	doc := vsTourelle()
-	poseTurretsOnCarriers(doc.Vehicles, nil)
+	poseTurretsOnCarriers(doc.Vehicles, vehicleBoardingAnchors{}, nil)
 	attachVehicleShots(doc, []orphanShot{vsOrphan(20, 0xC7D5091200000000)}, vsOwn(), vsClock())
 	if len(doc.Shots) != 1 {
 		t.Fatalf("tirs publies = %d, attendu 1", len(doc.Shots))
@@ -266,5 +266,46 @@ func TestTirDUnOccupantALaFoisSurLaPieceEtSurSonPorteurNEstPasAmbigu(t *testing.
 	}
 	if doc.Coverage.Vehicles.ShotsAmbiguous != 0 {
 		t.Errorf("shotsAmbiguous = %d, attendu 0 : la piece est SUR son porteur", doc.Coverage.Vehicles.ShotsAmbiguous)
+	}
+}
+
+// TestTirDeDeuxPiecesDistinctesDuMemePorteurEstAmbigu — REVUE ADVERSE DU LOT M7b (RR-M7b-03). Le
+// meme tireur tenu au meme instant par DEUX pieces distinctes du meme porteur (le lance-grenades
+// et la LMG d un Falcon) : physiquement impossible, c est un artefact du liant. Le porteur commun
+// ne suffit pas a trancher — le tir reste AMBIGU, compte, non pose.
+func TestTirDeDeuxPiecesDistinctesDuMemePorteurEstAmbigu(t *testing.T) {
+	doc := vsTourelle()
+	seat := 0
+	porteur := &VehicleLifeRef{Slot: 701, Gen: 1}
+	doc.Vehicles[0].Carrier = porteur
+	doc.Vehicles = append(doc.Vehicles, VehicleTrack{
+		Slot: 702, Gen: 1, Chassis: "f4c45d71", T0: 0, T1: 90, T1Max: 90, Carrier: porteur,
+		Spawn: &VehicleSpawn{X: 500, Y: 500},
+		Rides: []VehicleRide{{T0: 10, T1: 40, Slot: 10, Seat: &seat, Src: VehicleRideSrcProximity}},
+	})
+	attachVehicleShots(doc, []orphanShot{vsOrphan(30, 0x0BB6976B00000000)}, vsOwn(), vsClock())
+	if len(doc.Shots) != 0 || doc.Coverage.Vehicles.ShotsAmbiguous != 1 {
+		t.Errorf("tirs = %+v, shotsAmbiguous = %d : attendu aucun tir pose, 1 ambigu",
+			doc.Shots, doc.Coverage.Vehicles.ShotsAmbiguous)
+	}
+}
+
+// TestTirPoseSurLePorteurSeLitSurTousLesCandidats — REVUE ADVERSE DU LOT M7b (RR-M7b-03). Le
+// premier candidat (siege le plus bas) est l episode propre au chassis ; le second tient le meme
+// vehicule par sa piece. Le tir est pose sur le porteur, et « pose sur le porteur » se lit sur
+// l ENSEMBLE des candidats : il est compte `shotsOnCarrier`, quel que soit l ordre des sieges.
+func TestTirPoseSurLePorteurSeLitSurTousLesCandidats(t *testing.T) {
+	doc := vsTourelle()
+	seat := 0
+	doc.Vehicles[0].Carrier = &VehicleLifeRef{Slot: 701, Gen: 1}
+	doc.Vehicles[0].Rides[0].Seat = nil
+	doc.Vehicles[1].Rides = []VehicleRide{{T0: 5, T1: 60, Slot: 10, Seat: &seat, Src: VehicleRideSrcFilm}}
+	attachVehicleShots(doc, []orphanShot{vsOrphan(30, 0x0BB6976B00000000)}, vsOwn(), vsClock())
+	if len(doc.Shots) != 1 || *doc.Shots[0].Vehicle != 701 {
+		t.Fatalf("tirs = %+v, attendu un tir pose sur le porteur 701", doc.Shots)
+	}
+	if doc.Coverage.Vehicles.ShotsOnCarrier != 1 {
+		t.Errorf("shotsOnCarrier = %d, attendu 1 : un candidat tient le porteur par sa piece",
+			doc.Coverage.Vehicles.ShotsOnCarrier)
 	}
 }

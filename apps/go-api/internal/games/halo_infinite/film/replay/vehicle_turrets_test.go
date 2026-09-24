@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
 // vtLAAG / vtRoquettes / vtFalconGL / vtFalconLMG : les mots d identite des pieces, ecrits comme
@@ -50,7 +51,7 @@ func TestTourellePoseeSurLeChassisVoisin(t *testing.T) {
 		vtChassis(101, familleWarthog, vtRide(21, 5, 80)),
 	}
 	fb := fallback.NouveauCompteur()
-	tally := poseTurretsOnCarriers(tracks, fb)
+	tally := poseTurretsOnCarriers(tracks, vehicleBoardingAnchors{}, fb)
 	piece, porteur := tracks[0], tracks[1]
 	if piece.Part != VehiclePartTurret {
 		t.Fatalf("piece.Part = %q, attendu %q", piece.Part, VehiclePartTurret)
@@ -78,7 +79,7 @@ func TestTourellePoseeSurLeChassisVoisin(t *testing.T) {
 // porteur ne change pas (son moteur, son explosion) : seule la variante (le sprite) est nommee.
 func TestTourelleNommeLaVarianteDuPorteur(t *testing.T) {
 	tracks := []VehicleTrack{vtPiece(100, vtRoquettes), vtChassis(101, familleWarthog)}
-	poseTurretsOnCarriers(tracks, nil)
+	poseTurretsOnCarriers(tracks, vehicleBoardingAnchors{}, nil)
 	if tracks[1].Variant != familleRockethog || tracks[1].Family != familleWarthog {
 		t.Errorf("porteur = famille %q variante %q, attendu warthog / rockethog",
 			tracks[1].Family, tracks[1].Variant)
@@ -90,7 +91,7 @@ func TestTourelleNommeLaVarianteDuPorteur(t *testing.T) {
 func TestTourelleVoisinDUneAutreFamilleRefuse(t *testing.T) {
 	tracks := []VehicleTrack{vtPiece(100, vtLAAG, vtRide(20, 10, 40)), vtChassis(101, familleMongoose)}
 	fb := fallback.NouveauCompteur()
-	tally := poseTurretsOnCarriers(tracks, fb)
+	tally := poseTurretsOnCarriers(tracks, vehicleBoardingAnchors{}, fb)
 	if tracks[0].Carrier != nil || tracks[0].Part != VehiclePartTurret || len(tracks[0].Rides) != 1 {
 		t.Errorf("piece = %+v, attendu marquee, sans porteur, episode garde", tracks[0])
 	}
@@ -104,7 +105,7 @@ func TestTourelleHorsDeLaFenetreDuVoisinRefusee(t *testing.T) {
 	porteur := vtChassis(101, familleWarthog)
 	porteur.T0, porteur.T1, porteur.T1Max = 200, 300, 310
 	tracks := []VehicleTrack{vtPiece(100, vtLAAG), porteur}
-	poseTurretsOnCarriers(tracks, nil)
+	poseTurretsOnCarriers(tracks, vehicleBoardingAnchors{}, nil)
 	if tracks[0].Carrier != nil {
 		t.Errorf("porteur = %+v, attendu aucun (fenetres disjointes)", tracks[0].Carrier)
 	}
@@ -120,7 +121,7 @@ func TestTourelleDuFalconPorteurASlotPlusDeux(t *testing.T) {
 		vtPiece(101, vtFalconLMG),
 		vtChassis(102, familleFalcon),
 	}
-	tally := poseTurretsOnCarriers(tracks, nil)
+	tally := poseTurretsOnCarriers(tracks, vehicleBoardingAnchors{}, nil)
 	for i := 0; i < 2; i++ {
 		if tracks[i].Carrier == nil || tracks[i].Carrier.Slot != 102 {
 			t.Errorf("piece %d : porteur %+v, attendu 102", i, tracks[i].Carrier)
@@ -136,18 +137,72 @@ func TestTourelleDuFalconPorteurASlotPlusDeux(t *testing.T) {
 	}
 }
 
-// TestTourellePorteurNonPilotableGardeLArtilleur — la garde de `moveTurretRides` pour un porteur
-// NON PILOTABLE (Pelican, Phantom, Skiff). Aucune piece de la table n en a aujourd hui
-// (`TestPiecesMonteesOntUnPorteurPilotable`) : le porteur est donc pose a la main, sans passer par
-// la recherche du voisin de slot.
-func TestTourellePorteurNonPilotableGardeLArtilleur(t *testing.T) {
-	piece := vtPiece(100, vtFalconGL, vtRide(20, 10, 40))
-	porteur := vtChassis(101, famillePelican)
-	moved, kept := moveTurretRides(&piece, &porteur)
-	if moved != 0 || kept != (turretRidesKept{notRideable: 1}) || len(piece.Rides) != 1 || len(porteur.Rides) != 0 {
-		t.Errorf("reportes %d, gardes %+v, piece/porteur %d/%d : un Pelican ne porte aucun occupant",
-			moved, kept, len(piece.Rides), len(porteur.Rides))
+// vtClock : l horloge des gabarits — origine 0, une frame = 100 ms, 200 frames.
+func vtClock() replayClock { return replayClock{origin: 0, step: 100_000, frames: 200} }
+
+// vtAnchors : le nuage des bipedes des gabarits, un point par (slot, frame, x, y).
+func vtAnchors(pts ...[4]float32) vehicleBoardingAnchors {
+	a := vehicleBoardingAnchors{bySlot: map[uint32][]grammar.BipedPosition{}, clock: vtClock()}
+	for _, p := range pts {
+		s := uint32(p[0])
+		a.bySlot[s] = append(a.bySlot[s], grammar.BipedPosition{
+			Slot: s, TimestampUS: uint64(p[1]) * 100_000, X: p[2], Y: p[3], HasWorld: true})
 	}
+	return a
+}
+
+// vtRepli : un episode de REPLI (`proximity`), sans siege — la seule source que la garde juge.
+func vtRepli(slot uint32, t0, t1 int) VehicleRide {
+	return VehicleRide{T0: t0, T1: t1, Slot: slot, Src: VehicleRideSrcProximity}
+}
+
+// TestTourelleMonteeLoinDuPorteurEcartee — REVUE ADVERSE DU LOT M7b (RR-M7b-01). Un episode de
+// REPLI sur une piece n est reporte sur son porteur que si l occupant a ete vu PRES de lui a la
+// montee ; sinon il est ECARTE (ni sur le porteur, ni sur la piece) et le repli nomme est compte. Le gabarit reproduit la forme mesuree au parc (fin d une vie loin du vehicule, point
+// d une vie anterieure du slot, occupant pas encore ne), jamais un match : le Warthog roule de
+// (0, 0) a (90, 0), le bipede est vu a la frame du debut de l episode.
+func TestTourelleMonteeLoinDuPorteurEcartee(t *testing.T) {
+	for _, c := range []struct {
+		nom     string
+		ride    VehicleRide
+		anchors vehicleBoardingAnchors
+		reporte bool
+	}{
+		{"repli, dernier point a 1 m du porteur", vtRepli(20, 10, 40), vtAnchors([4]float32{20, 10, 10, 1}), true},
+		{"repli, dernier point a 2 s pile", vtRepli(20, 30, 40), vtAnchors([4]float32{20, 10, 10, 1}), true},
+		{"repli, dernier point a 35 m (fin d une vie ailleurs)", vtRepli(20, 10, 40), vtAnchors([4]float32{20, 10, 10, 35}), false},
+		{"repli, dernier point PERIME (vie anterieure du slot)", vtRepli(20, 40, 60), vtAnchors([4]float32{20, 10, 10, 0}), false},
+		{"repli, aucun point (occupant pas encore ne)", vtRepli(20, 10, 40), vtAnchors([4]float32{20, 50, 50, 0}), false},
+		{"lu dans le film, loin : jamais juge", vtRide(20, 10, 40), vtAnchors([4]float32{20, 10, 10, 35}), true},
+	} {
+		t.Run(c.nom, func(t *testing.T) {
+			tracks := []VehicleTrack{vtPiece(100, vtLAAG, c.ride), vtChassis(101, familleWarthog)}
+			fb := fallback.NouveauCompteur()
+			tally := poseTurretsOnCarriers(tracks, c.anchors, fb)
+			porteur, piece := len(tracks[1].Rides), len(tracks[0].Rides)
+			refus, attendu := 0, 1
+			if !c.reporte {
+				refus, attendu = 1, 0
+			}
+			if porteur != attendu || piece != 0 || tally.rides != attendu {
+				t.Fatalf("piece/porteur = %d/%d (bilan %+v), attendu 0/%d : ecarte, jamais garde",
+					piece, porteur, tally, attendu)
+			}
+			if tally.kept.total() != 0 || fbCount(fb, fallback.NomTourelleMonteeLoinDuPorteur) != refus {
+				t.Errorf("bilan %+v, replis %+v : attendu %d declenchement, aucun episode garde", tally.kept, fb.Rapport(), refus)
+			}
+		})
+	}
+}
+
+// fbCount rend le nombre de declenchements d un repli dans un compteur.
+func fbCount(fb *fallback.Compteur, nom fallback.Nom) int {
+	for _, e := range fb.Rapport() {
+		if e.Nom == nom {
+			return e.Declenchements
+		}
+	}
+	return 0
 }
 
 // TestTourelleOccupantDejaABordNonDouble — le conducteur que le trou de position designe AUSSI
@@ -157,7 +212,7 @@ func TestTourelleOccupantDejaABordNonDouble(t *testing.T) {
 		vtPiece(100, vtLAAG, vtRide(21, 10, 30)),
 		vtChassis(101, familleWarthog, vtRide(21, 5, 80)),
 	}
-	tally := poseTurretsOnCarriers(tracks, nil)
+	tally := poseTurretsOnCarriers(tracks, vehicleBoardingAnchors{}, nil)
 	if len(tracks[1].Rides) != 1 || len(tracks[0].Rides) != 1 || tally.kept.total() != 1 {
 		t.Errorf("episodes porteur/piece = %d/%d, attendu 1/1", len(tracks[1].Rides), len(tracks[0].Rides))
 	}
@@ -168,7 +223,7 @@ func TestTourelleOccupantDejaABordNonDouble(t *testing.T) {
 func TestPieceMonteeHorsDesChassisInconnus(t *testing.T) {
 	tracks := []VehicleTrack{vtPiece(100, vtLAAG), vtChassis(101, familleWarthog)}
 	tracks[1].Chassis = "fe32c0f4"
-	poseTurretsOnCarriers(tracks, nil)
+	poseTurretsOnCarriers(tracks, vehicleBoardingAnchors{}, nil)
 	cov := VehicleCoverage{UnknownChassis: map[string]int{}}
 	fb := fallback.NouveauCompteur()
 	tallyVehicleCoverage(tracks, &cov, fb)
@@ -185,7 +240,7 @@ func TestArtilleurReporteNEstPasUneAmbiguite(t *testing.T) {
 		vtPiece(100, vtLAAG, vtRide(20, 10, 40)),
 		vtChassis(101, familleWarthog, vtRide(21, 5, 80)),
 	}
-	poseTurretsOnCarriers(tracks, nil)
+	poseTurretsOnCarriers(tracks, vehicleBoardingAnchors{}, nil)
 	cov := VehicleCoverage{UnknownChassis: map[string]int{}}
 	tallyVehicleCoverage(tracks, &cov, nil)
 	if cov.Ambiguous != 0 || cov.Rides != 2 {
@@ -202,7 +257,7 @@ func TestTourelleChangementDeSiegeBornesJointivesReporte(t *testing.T) {
 		vtPiece(100, vtLAAG, vtRide(21, 40, 70)),
 		vtChassis(101, familleWarthog, vtRide(21, 5, 40)),
 	}
-	tally := poseTurretsOnCarriers(tracks, nil)
+	tally := poseTurretsOnCarriers(tracks, vehicleBoardingAnchors{}, nil)
 	if len(tracks[0].Rides) != 0 || len(tracks[1].Rides) != 2 || tally.rides != 1 {
 		t.Fatalf("episodes piece/porteur = %d/%d (bilan %+v), attendu 0/2 : un changement de siege "+
 			"n est pas un doublon", len(tracks[0].Rides), len(tracks[1].Rides), tally)
@@ -212,28 +267,28 @@ func TestTourelleChangementDeSiegeBornesJointivesReporte(t *testing.T) {
 	}
 }
 
-// TestTourelleRefusVentilesParRaison — revue adverse du lot M4a (F4) : les TROIS refus de report
-// sont comptes chacun sous leur raison, et `turretRidesDropped` est leur somme.
+// TestTourelleRefusVentilesParRaison — revue adverse du lot M4a (F4) : les refus qui GARDENT un
+// episode sur sa piece sont comptes chacun sous leur raison par `poseTurretsOnCarriers`, et
+// `turretRidesDropped` est leur somme. Depuis la reprise du lot M7b (2026-09-24) : le porteur non
+// pilotable n a plus de branche (`turretRidesNotRideable` = 0), et la montee a bord non vue pres
+// du porteur ECARTE l episode — elle ne compte pas parmi les episodes gardes.
 func TestTourelleRefusVentilesParRaison(t *testing.T) {
 	porteurCourt := vtChassis(101, familleWarthog, vtRide(21, 5, 30))
 	porteurCourt.T1, porteurCourt.T1Max = 50, 50
 	tracks := []VehicleTrack{
-		// hors fenetre (60-80 apres la fin du porteur a 50) et deja a bord (10-20 dans 5-30).
-		vtPiece(100, vtLAAG, vtRide(20, 60, 80), vtRide(21, 10, 20)),
+		// hors fenetre (60-80 apres la fin du porteur a 50), deja a bord (10-20 dans 5-30) et
+		// monte loin du porteur (repli 35-45, occupant vu a 40 m a la frame 35).
+		vtPiece(100, vtLAAG, vtRide(20, 60, 80), vtRide(21, 10, 20), vtRepli(22, 35, 45)),
 		porteurCourt,
 	}
-	tally := poseTurretsOnCarriers(tracks, nil)
-	// Le porteur non pilotable n a plus de piece dans la table (le Falcon est pilotable depuis le
-	// 2026-09-24) : sa garde est exercee a la main, et son refus verse au meme bilan.
-	piece, pelican := vtPiece(200, vtFalconGL, vtRide(30, 10, 40)), vtChassis(202, famillePelican)
-	_, garde := moveTurretRides(&piece, &pelican)
-	tally.kept.add(garde)
-	if tally.kept != (turretRidesKept{notRideable: 1, outOfWindow: 1, alreadyAboard: 1}) {
-		t.Fatalf("refus = %+v, attendu un par raison", tally.kept)
+	tally := poseTurretsOnCarriers(tracks, vtAnchors([4]float32{22, 35, 35, 40}), nil)
+	if tally.kept != (turretRidesKept{outOfWindow: 1, alreadyAboard: 1}) || len(tracks[0].Rides) != 2 {
+		t.Fatalf("refus = %+v, episodes gardes = %d : attendu un par raison, l episode monte loin ecarte",
+			tally.kept, len(tracks[0].Rides))
 	}
 	var cov VehicleCoverage
 	tally.applyTo(&cov)
-	if cov.TurretRidesDropped != 3 || cov.TurretRidesNotRideable != 1 ||
+	if cov.TurretRidesDropped != 2 || cov.TurretRidesNotRideable != 0 ||
 		cov.TurretRidesOutOfWindow != 1 || cov.TurretRidesAlreadyAboard != 1 {
 		t.Errorf("couverture = %+v", cov)
 	}
@@ -260,7 +315,7 @@ func TestTourelleVoisinPasNeAvecLaPieceRefuse(t *testing.T) {
 			porteur.T0, porteur.Spawn = c.t0, c.spawn
 			tracks := []VehicleTrack{vtPiece(100, vtLAAG), porteur}
 			fb := fallback.NouveauCompteur()
-			tally := poseTurretsOnCarriers(tracks, fb)
+			tally := poseTurretsOnCarriers(tracks, vehicleBoardingAnchors{}, fb)
 			if c.refusDit {
 				if tracks[0].Carrier != nil || tally.birthMismatch != 1 || len(fb.Rapport()) != 0 {
 					t.Errorf("porteur %+v, refus %d, replis %+v : attendu aucun porteur, 1 refus compte",
