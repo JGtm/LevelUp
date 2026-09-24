@@ -2320,8 +2320,8 @@ package replay
 //	                des records NEW mal lus — 327 paquets à liste de plus non localisés au corpus.
 //
 // v70, PARTIE D-fix (2026-09-24, lot correctif de la pré-intégration de la vague D) : UNE
-// IMAGE-CLÉ QUE LA MARCHE NE PROUVE PAS NE CONCLUT RIEN, ET LA MARCHE NE PERD PLUS CE QU UN
-// RECORD PROUVÉ LUI INTERDIT DE PERDRE.
+// IMAGE-CLÉ QUE LA MARCHE NE PROUVE PAS NE CONCLUT RIEN, LA MARCHE NE PERD PLUS CE QU UN RECORD
+// PROUVÉ LUI INTERDIT DE PERDRE, ET LE MONDE DES ÉTATS DE MOUVEMENT NE GARDE PLUS UNE LIAISON FAUSSE.
 //
 // CE QUI ÉTAIT FAUX, MESURÉ : la marche glissante de M3 atteint désormais l image-clé d AVANT-MATCH
 // (après un record de 125 270 bits) ; son élection y retenait une fausse ancre (slot 192, `ti 1`,
@@ -2342,18 +2342,67 @@ package replay
 //	               ou un record atteint mais illisible) ne conclut NI une arrivée tardive NI un
 //	               départ : la santé des images-clés voyage dans les faits (`Doutes` des entités),
 //	               et `roster[].presence` ne pose ses bornes que sur une absence PROUVÉE — sinon
-//	               l occupant reste présent jusqu au bord du film.
+//	               l affichage court jusqu à l arrivée d un successeur sur la place (règle des
+//	               places), au plus jusqu au bord du film.
 //	`coverage.`    `imagesClesDouteuses` et `bornesDifferees` NEUFS (0 attendus) : les images-clés
 //	seats          porteuses dont une absence n est pas prouvée, et les entités dont une borne a
 //	               reculé jusqu à une absence prouvée.
 //	`coverage.`    `unarmedGrants` NEUF : la dotation de naissance écarte l objet « mains nues »
 //	birthLoadouts  par la règle nommée de M6.3 (`dotationWeaponName`), compté à part de `nonWeapon`.
+//	`stances[]`    DEUX RÉGRESSIONS RÉSIDUELLES DE M3, instruites par bisection, CORRIGÉES dans la
+//	               marche des états de mouvement : (1) l image-clé dit aussi qui n est plus là — une
+//	               liaison qu aucune de ses lectures ne porte est oubliée (un DEL non lu laissait la
+//	               liaison du mort : `a0c36016`, 5 vies, M3.1 ; `grammar/keyframe_liaison.go`) ;
+//	               (2) un NEW ne remplace pas une entité vivante — un NEW propre qui contredit une
+//	               liaison en dur d un autre archétype est une lecture fausse, non liée (`0797ce72`,
+//	               11 vies ; `396cfc92`, 7 ; M3.2 ; `grammar/frame_infer.go`).
 //
 // LA MESURE SUR LES SEPT BOBINES PAR BUILD : quatre images-clés changent (`bcb6d393` morceau 1
 // paquets 0 et 3, `fb1a1a72` morceau 1 paquets 0 et 1), une réfutation chacune ; les records
 // regagnés sont exactement ceux que la fausse ancre effaçait (1280..1298 trois fois ; 1537..1601,
 // vingt-neuf équipements, armes au sol et objets, derrière la fausse ancre 1536 `ti 0`) ; 8 entités
 // sur 8 lues au départ sur `bcb6d393` et `fb1a1a72` ; 0 doute sur les sept bobines.
+//
+// LA MESURE AU PARC (racines temporaires, un film à la fois, aucun BTB). Cinq témoins cuits à la
+// base (`ba475d2e4`), avant le lot (`ed0806a20`) et à la tête : le lot ne change que
+// `coverage.keyframes` (records +18 / +18 / +38 / +9 / +30, réfutations 1 / 1 / 3 / 1 / 2), la
+// présence du joueur géré de l index 0 de `000d5950` (dès la frame 0 : 4 contre 4 à chaque frame),
+// un objet d arme au sol de plus sur `b1f01a33` (lâché puis ramassé, nommé) et les états de
+// mouvement. Règle des places tenue sur les cinq : au plus 4 fiches par équipe à chaque frame, 4
+// places par équipe, aucune place à deux fiches, 0 image-clé douteuse, 0 borne différée ;
+// `b1ad85eb` 4 + 4 aux trois instants signalés (Eagle à 3 pendant 332 frames : la place vide d un
+// relais, Q20). ÉTATS DE MOUVEMENT, base -> tête, sur huit films : 0 vie ne perd un intervalle.
+//
+// LES SIX ÉCARTS DE LA PRÉ-INTÉGRATION, INSTRUITS SUR PIÈCES :
+//
+//	identitesHors- `c75f33b8` 0 -> 1 : le bot `343 Robot Hoida` (index 8, non épinglé par
+//	Roster,        `killsource` avec dix humains) a une vie nommée sans entrée ; la base lui
+//	tirsContestes  dessinait une place de plus, la tête aucune fiche et le compte le montre — sa
+//	               correction est l épinglage, hors de la vague. `tirsContestes` 0 -> 1 : un
+//	               arrivant dont les tirs désignent une place prise, posé par le chaînage nommé ;
+//	               règle des places tenue (au plus 4 fiches par équipe, aucune place à deux).
+//	entitesNonLiees `a349fea8` 25, `50247b26` 30 : films SANS section d identification (v33, v31),
+//	               AUCUN roster (0 entrée à la base comme à la tête) — chaque entité lue reste sans
+//	               entrée. Mesure d une impossibilité du film, pas une perte.
+//	inventory.     +4 / +1 sur ces deux films : des lectures rattachées à un slot SANS trajectoire
+//	unpublished    publiée (par définition, pas un échec de rattachement), qui suivent la hausse des
+//	               lectures de M3 (faits de la pré-intégration republiés sans décodage : 969 / 984 et
+//	               650 / 668 publiées).
+//	véhicules      `084a804d` 117 -> 114, `50247b26` 64 -> 60 : la règle des RELAIS existante
+//	fusionnés      (`vehicle_relays.go` : même châssis, même point, née dans l intervalle non
+//	               observé) s applique sur des bornes justes, M3 lisant les images-clés entières
+//	               (republication sans décodage : 68 et 29 fusions). BTB : non rejoué base / tête.
+//	jauge du       `1c4c63c2` (BTB) : la référence d équivalence date du 22/09, avant les vagues A
+//	drapeau,       et C ; aucun des cinq CTF non BTB de la référence ne diverge sur ces étapes ; au
+//	poses          parc, plus de lectures et aucune perte (origines inconnues des poses 18 -> 11 sur
+//	               `81c02726`, marques de porteur confirmées 5 -> 14 sur `a0c36016`).
+//	weaponChanges  les prises « perdues » sont RECLASSÉES (même instant, même slot, même arme :
+//	.taken         `swapped`, `from` = l arme de naissance) ou reconnues ré-annonces de la dotation,
+//	               et un lâcher sans arme de `bfecd02b` que le relevé suivant dément disparaît :
+//	               0 prise perdue sans contrepartie sur les seize films. C est le SENS de M3.
+//	états de       gain net (`a0c36016` 1 432 -> 1 634 intervalles ; glissade de 41 s, escalade de
+//	mouvement      30 s et accroupi de 43 s impossibles retirés) ; les pertes résiduelles de M3 sont
+//	               corrigées ci-dessus.
 //
 //	CE QUI MONTE    rien de plus que la vague : `grammar.Rev`, `facts.Rev` et `SchemaDesFaits`
 //	AVEC ELLE       gardent leur UNIQUE montée de la vague D, empreintes recopiées ; le codec des

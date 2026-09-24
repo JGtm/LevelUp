@@ -32,7 +32,7 @@ jamais une categorie de donnee (decision produit du 2026-09-07)
   2535450323793545  idx=7  equipe=0  "Fennec87607"
 
 ### EQUIPES — lues dans le film (ti=9 i0), JAMAIS dans la base (decision utilisateur V4)
-lue=true refus="" · 326 record(s) ti=9, 0 rejete(s), 0 divergence(s)
+lue=true refus="" · 328 record(s) ti=9, 0 rejete(s), 0 divergence(s)
 roster : 8 joueur(s) dont le film donne l equipe (0 sans equipe) · 0 non lu(s)
 controle (feuille de match) : accord=0 contradiction=0 silence=8
 vies : 144/144 portent une equipe du film

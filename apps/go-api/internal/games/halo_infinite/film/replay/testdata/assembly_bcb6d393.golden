@@ -35,7 +35,7 @@ jamais une categorie de donnee (decision produit du 2026-09-07)
   2533274811363842  idx=11  equipe=1  "xNeuromancer"
 
 ### EQUIPES — lues dans le film (ti=9 i0), JAMAIS dans la base (decision utilisateur V4)
-lue=true refus="" · 151 record(s) ti=9, 0 rejete(s), 0 divergence(s)
+lue=true refus="" · 152 record(s) ti=9, 0 rejete(s), 0 divergence(s)
 roster : 11 joueur(s) dont le film donne l equipe (0 sans equipe) · 0 non lu(s)
 controle (feuille de match) : accord=0 contradiction=0 silence=11
 vies : 57/57 portent une equipe du film
@@ -121,7 +121,7 @@ couverture : 57 vie(s) publiee(s) · camo 2 vie(s) / 3 episode(s) · surbouclier
   slot=536 t=[3067, 3083] ancre=(5.49, -1.61, 0.86)
 
 ## OBJETS D EQUIPEMENT — objets DEPLOYES et objets LACHES a la mort, par famille et origine
-calibre=true decoupage="9/5" · 184 vie(s) d objet · 2986 ancre(s) -> 115 confirmee(s) par l oracle de position -> 101 pose(s)
+calibre=true decoupage="9/5" · 182 vie(s) d objet · 2983 ancre(s) -> 115 confirmee(s) par l oracle de position -> 101 pose(s)
 101 nommee(s) · 0 `other` (nature non etablie : le manifeste ne les revendique pas) · 97 avec poseur mesure · 90 avec cap de visee
 origine lue : 0 deployee(s) (piece engendree) · 94 lachee(s) · 7 inconnue(s)
 provenance : 1 evenement(s) 103 lu(s) sur 2730 liste(s) d evenements non vides
@@ -247,9 +247,9 @@ provenance : 1 evenement(s) 103 lu(s) sur 2730 liste(s) d evenements non vides
   grenade_frag dropped 0xbcabbe43 t=[3383, 3421] pos=(17.40, 4.53, 1.16) poseur=567 cap=277.5 deg
 
 ## SOCLES D ARME AU SOL — la RECURRENCE fait le socle, et le film dit quand il se vide
-balaye=true · bande 582 slot(s) · 2377 ancre(s) -> 219 acceptee(s) -> 159 retenue(s) par l IDENTITE (60 ecartee(s))
+balaye=true · bande 579 slot(s) · 2369 ancre(s) -> 219 acceptee(s) -> 159 retenue(s) par l IDENTITE (60 ecartee(s))
 99 lachee(s) a une mort · 60 apparue(s) sans mort a proximite, dont 34 AU REPOS (jamais bougee : le seul jeu qui fait des socles)
-16 grappe(s) -> 10 socle(s) publie(s) · 34 occupation(s) : 22 datee(s) · 4 sans passage · 8 jamais videe(s)
+16 grappe(s) -> 10 socle(s) publie(s) · 34 occupation(s) : 23 datee(s) · 3 sans passage · 8 jamais videe(s)
 3 cycle(s) ETABLI(s) — un cycle instable publie `null`, jamais un chiffre
 POWER-UPS (voie ti=37) — balaye=true · 198 creation(s) acceptee(s) -> 6 retenue(s) par l IDENTITE `powerup_*` -> 1 socle(s) publie(s)
   socle 0 0xB619D84A pos=(-0.74, 20.50, -2.92) apparitions=[0 1979] cycle=non etabli
@@ -263,7 +263,7 @@ POWER-UPS (voie ti=37) — balaye=true · 198 creation(s) acceptee(s) -> 6 reten
     presence t0=903 prouvee jusqu a 1071, absente a 1271
     presence t0=1512 prouvee jusqu a 3464, absente a 3464
   socle 3 0xD7915565 pos=(14.83, 27.24, -3.26) apparitions=[223 523 2324 2625] cycle=non etabli
-    presence t0=223 prouvee jusqu a 270, absente a 470
+    presence t0=223 prouvee jusqu a 470, absente a 670
     presence t0=523 prouvee jusqu a 871, absente a 1071
     presence t0=2324 prouvee jusqu a 2471, absente a 2671
     presence t0=2625 prouvee jusqu a 2625, absente a 2671
@@ -278,7 +278,7 @@ POWER-UPS (voie ti=37) — balaye=true · 198 creation(s) acceptee(s) -> 6 reten
     presence t0=1137 prouvee jusqu a 2471, absente a 2671
     presence t0=2856 prouvee jusqu a 3464, absente a 3464
   socle 7 0x0A1992BC pos=(20.31, -23.44, -3.12) apparitions=[223 523 1123 1424 2324 2625] cycle=33.9 s (p10 33.9 · p90 33.9 · 2 ecarts mesures, 3 manques)
-    presence t0=223 prouvee jusqu a 270, absente a 470
+    presence t0=223 prouvee jusqu a 470, absente a 670
     presence t0=523 prouvee jusqu a 523, absente a 670
     presence t0=1123 prouvee jusqu a 1271, absente a 1471
     presence t0=1424 prouvee jusqu a 1871, absente a 2071
@@ -291,13 +291,13 @@ POWER-UPS (voie ti=37) — balaye=true · 198 creation(s) acceptee(s) -> 6 reten
     presence t0=0 prouvee jusqu a 871, absente a 1071
     presence t0=1254 prouvee jusqu a 3464, absente a 3464
   socle 10 powerup_camo pos=(19.86, -2.30, -2.39) apparitions=[223 525 1123 1426 2324 2628] cycle=non etabli
-    presence t0=223 prouvee jusqu a 270, absente a 470
+    presence t0=223 prouvee jusqu a 470, absente a 670
     presence t0=525 prouvee jusqu a 525, absente a 670
     presence t0=1123 prouvee jusqu a 1271, absente a 1471
     presence t0=1426 prouvee jusqu a 1426, absente a 1471
     presence t0=2324 prouvee jusqu a 2471, absente a 2671
     presence t0=2628 prouvee jusqu a 2628, absente a 2671
-26 occupation(s) achevee(s) publiee(s) · 15 datee(s) a l instant exact par l evenement natif · 15 avec un ramasseur nomme
+26 occupation(s) achevee(s) publiee(s) · 16 datee(s) a l instant exact par l evenement natif · 16 avec un ramasseur nomme
 
 ## ARMES PORTEES — l inventaire, pas la main : le loadout ne dit pas QUELLE arme est degainee
 162 loadout(s) publie(s) · 12 famille(s) distincte(s)

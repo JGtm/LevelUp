@@ -52,7 +52,7 @@ jamais une categorie de donnee (decision produit du 2026-09-07)
   2535451406659668  idx=27  equipe=0  ""
 
 ### EQUIPES — lues dans le film (ti=9 i0), JAMAIS dans la base (decision utilisateur V4)
-lue=true refus="" · 753 record(s) ti=9, 0 rejete(s), 0 divergence(s)
+lue=true refus="" · 754 record(s) ti=9, 0 rejete(s), 0 divergence(s)
 roster : 28 joueur(s) dont le film donne l equipe (0 sans equipe) · 0 non lu(s)
 controle (feuille de match) : accord=0 contradiction=0 silence=28
 vies : 182/182 portent une equipe du film
@@ -716,8 +716,8 @@ provenance : 62 evenement(s) 103 lu(s) sur 7325 liste(s) d evenements non vides
   grenade_dynamo unknown 0xaada07f3 t=[5096, 5114] pos=(-51.17, 89.10, 54.82) poseur=685 cap=281.9 deg
 
 ## SOCLES D ARME AU SOL — la RECURRENCE fait le socle, et le film dit quand il se vide
-balaye=true · bande 1525 slot(s) · 14697 ancre(s) -> 515 acceptee(s) -> 363 retenue(s) par l IDENTITE (152 ecartee(s))
-296 lachee(s) a une mort · 67 apparue(s) sans mort a proximite, dont 0 AU REPOS (jamais bougee : le seul jeu qui fait des socles)
+balaye=true · bande 1526 slot(s) · 21634 ancre(s) -> 556 acceptee(s) -> 364 retenue(s) par l IDENTITE (192 ecartee(s))
+297 lachee(s) a une mort · 67 apparue(s) sans mort a proximite, dont 0 AU REPOS (jamais bougee : le seul jeu qui fait des socles)
 0 grappe(s) -> 0 socle(s) publie(s) · 0 occupation(s) : 0 datee(s) · 0 sans passage · 0 jamais videe(s)
 0 cycle(s) ETABLI(s) — un cycle instable publie `null`, jamais un chiffre
 POWER-UPS (voie ti=37) — balaye=true · 712 creation(s) acceptee(s) -> 0 retenue(s) par l IDENTITE `powerup_*` -> 0 socle(s) publie(s)
