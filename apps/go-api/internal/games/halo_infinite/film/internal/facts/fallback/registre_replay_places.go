@@ -13,6 +13,9 @@ package fallback
 // titre une troisième occurrence du littéral. Une DATE, pas un lot (cf. [dateVague2]).
 const dateM2RetoursRejeu = "2026-09-23"
 
+// dateM2RevueRetoursRejeu : le jour de la reprise du lot M2 apres sa revue adverse.
+const dateM2RevueRetoursRejeu = "2026-09-24"
+
 var registreReplayPlaces = []Repli{
 	{
 		Nom: "repli_place_du_remplacant_par_chainage_d_equipe",
@@ -52,7 +55,8 @@ var registreReplayPlaces = []Repli{
 		Mecanisme: "capacite ESTIMEE de l'equipe = la plus haute de trois bornes basses : les " +
 			"sieges de la table repartis entre les equipes lues, la plus grande equipe de la table " +
 			"apres la pose des origines (equipes d'un mode de meme taille), le plus grand nombre de " +
-			"ses entites ti=9 lues a une meme image-cle ; sous cette capacite, l'arrivant OUVRE une " +
+			"ses entites ti=9 lues a une meme image-cle (chacune lue a au moins deux images-cles : " +
+			"une entite d'une seule est un relais transitoire) ; sous cette capacite, l'arrivant OUVRE une " +
 			"place (son index, ou un numero au-dela des 64 index) ; a la capacite, aucune place",
 		// LA LECTURE A TOURNE ET N'A PAS TRANCHE : l'index (`lu`), les tirs (`tirs`) et le chainage
 		// n'ont trouve aucune place libre pour cet arrivant. La TAILLE D'EQUIPE DU MODE n'est pas
@@ -96,6 +100,35 @@ var registreReplayPlaces = []Repli{
 			"sync y compris) ; ce qui reste est un film sans ti=9, a mesurer",
 		CritereRetrait: "0 declenchement sur le parc republie apres re-decodage (111 documents) : " +
 			"`coverage.seats.presences` vaut `film` partout",
+		CompteurBranche: true,
+	},
+	{
+		Nom: "repli_presence_d_une_entree_par_ses_vies",
+		Fait: "de quand a quand un joueur tient sa place quand le film a ete lu par entite ti=9 " +
+			"mais qu'aucune entite ni declaration BOT_METADATA n'est liee a son entree",
+		Mecanisme: "presence = enveloppe de ses vies publiees ; son AFFICHAGE court jusqu'a la veille " +
+			"de la premiere image-cle porteuse qui suit sa derniere vie (l'instant ou son entite " +
+			"aurait dit son depart, Q22), jusqu'au bout s'il n'y en a plus ; l'occupant qu'un siege " +
+			"de la table nomme par son xuid la tient des la frame 0 (la table l'assoit au coup " +
+			"d'envoi)",
+		// LA LECTURE A TOURNE ET N'A PAS TRANCHE : le balayage ti=9 a eu lieu, mais l'entite de
+		// cette entree est contestee (deux entrees la revendiquent), instable, ou absente (occupant
+		// present moins d'une image-cle) — compte a part (`coverage.seats.entitesNonLiees`,
+		// `entitesContestees`).
+		Condition: CondNonResolu,
+		Ordre:     OrdreApresLecture,
+		Sites: []Site{{
+			Fichier: pkgReplay + "sieges.go",
+			Ancre:   "in.horloge.fb.DeclencheN(fallback.NomPresenceDUneEntreeParSesVies, cov.PresencesParLesVies)",
+		}, {
+			Fichier: pkgReplay + "occupants_presence.go",
+			Ancre:   "return jusquALImageCleSuivante(enveloppeDesVies(occ.vies), in.scan, in.horloge), false",
+		}},
+		DatePose: dateM2RevueRetoursRejeu,
+		CibleRetrait: "le lot qui liera toute entree a son entite (entite d'un occupant de moins " +
+			"d'une image-cle lue par sa creation de corps, revendications departagees)",
+		CritereRetrait: "coverage.seats.presencesParLesVies a 0 sur le parc re-decode (111 " +
+			"documents), `entitesNonLiees` et `entitesContestees` a 0",
 		CompteurBranche: true,
 	},
 	{

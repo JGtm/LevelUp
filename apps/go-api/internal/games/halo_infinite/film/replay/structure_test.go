@@ -1276,7 +1276,10 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   joueur parti, il doit se lire « à re-cuire ». MONTENT AUSSI : `grammar.Rev` (les
 	//   entités) et `SchemaDesFaits` (4 : les faits portent les entités et les instants
 	//   BOT_METADATA, donc un re-décodage). NE MONTE PAS : `facts.Rev` (aucune ligne de kill ne
-	//   bouge). Détail : `document_chronicle.go`.
+	//   bouge). Revue adverse du lot (2026-09-24), même schéma : `coverage.seats` gagne six
+	//   compteurs (`capacite`, `placesEnTrop`, `sansEquipe`, `identitesHorsRoster`,
+	//   `botsSuccesseurs`, `presencesParLesVies`) et `depassements` se mesure contre la capacité.
+	//   Détail : `document_chronicle.go`.
 	if SchemaVersion != 69 {
 		t.Fatalf("SchemaVersion = %d, attendu 69 : incrémenter exige une raison écrite ci-dessus "+
 			"(un champ optionnel de plus n'en est pas une)", SchemaVersion)

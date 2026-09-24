@@ -142,30 +142,52 @@ func couvre(ivs []intervalleDePresence, fr int, affichage bool) bool {
 	return false
 }
 
-// mesurerLAffichage rend le plus grand nombre d'entrees affichees a une meme frame, et les couples
-// (frame, equipe) ou une equipe affiche plus d'occupants que de places.
-func (pp *poseDesPlaces) mesurerLAffichage() (occupantsMax, depassements int) {
+// mesureDeLAffichage : ce que [poseDesPlaces.mesurerLAffichage] rend (cf. SeatCoverage).
+type mesureDeLAffichage struct {
+	occupantsMax, depassements, capacite, placesEnTrop, sansEquipe int
+}
+
+// mesurerLAffichage mesure ce que le web va dessiner, CONTRE LA CAPACITE ESTIMEE de chaque equipe
+// et non contre les places que la pose a attribuees (revue M2-R6 : ce plafond-la etait circulaire,
+// il rendait 0 quelle que soit la pose). Rend le plus grand nombre d'entrees affichees a une meme
+// frame ; les couples (frame, equipe) ou une equipe affiche plus d'occupants que sa capacite —
+// entrees sans place (`index`) comprises ; la plus grande capacite ; les places affichees au-dela
+// de la capacite de leur equipe ; et les entrees presentes sans equipe, que rien ne plafonne.
+func (pp *poseDesPlaces) mesurerLAffichage() mesureDeLAffichage {
+	var m mesureDeLAffichage
 	tous := []borneDAffichage{}
 	parEquipe := map[int][]borneDAffichage{}
+	placesParEquipe := map[int]map[int]bool{}
 	for i := range pp.roster {
+		ivs := pp.occ.parEntree[i].presence
 		t := pp.occ.parEntree[i].equipe
-		for _, iv := range pp.occ.parEntree[i].presence {
+		if t == nil && len(ivs) > 0 {
+			m.sansEquipe++
+		}
+		for _, iv := range ivs {
 			b := []borneDAffichage{{iv.de, +1}, {iv.aMax + 1, -1}}
 			tous = append(tous, b...)
 			if t != nil {
 				parEquipe[*t] = append(parEquipe[*t], b...)
+				if placesParEquipe[*t] == nil {
+					placesParEquipe[*t] = map[int]bool{}
+				}
+				placesParEquipe[*t][pp.roster[i].Seat] = true
 			}
 		}
 	}
-	occupantsMax, _ = balayerLesBornes(tous, sansPlafond)
+	m.occupantsMax, _ = balayerLesBornes(tous, sansPlafond)
 	if pp.places == nil {
-		return occupantsMax, 0
+		return m
 	}
 	for t, bornes := range parEquipe {
-		_, au := balayerLesBornes(bornes, pp.placesDeLEquipe(t))
-		depassements += au
+		c := pp.capaciteDe(t)
+		m.capacite = max(m.capacite, c)
+		_, au := balayerLesBornes(bornes, c)
+		m.depassements += au
+		m.placesEnTrop += max(0, len(placesParEquipe[t])-c)
 	}
-	return occupantsMax, depassements
+	return m
 }
 
 // borneDAffichage : l'ouverture (+1) ou la fermeture (-1) d'un affichage a une frame.

@@ -123,9 +123,30 @@ func presenceDe(e RosterEntry, occ occupantDuRoster, in entreesDesOccupants) ([]
 		return etendreParLesVies(avancerParLesEntites(decls, ents), occ.vies), true
 	case len(ents) > 0:
 		return etendreParLesVies(fusionnerLesPresences(ents), occ.vies), true
+	case in.scan.Scanned:
+		return jusquALImageCleSuivante(enveloppeDesVies(occ.vies), in.scan, in.horloge), false
 	default:
 		return enveloppeDesVies(occ.vies), false
 	}
+}
+
+// jusquALImageCleSuivante est le REPLI PAR ENTREE d'un film balaye (cf. l'en-tete de occupants.go,
+// revue M2-R5) : l'affichage d'une presence tiree des vies court jusqu'a la veille de la premiere
+// image-cle porteuse qui suit sa derniere vie, jusqu'au bout s'il n'y en a plus. Sans vie : rien.
+func jusquALImageCleSuivante(ivs []intervalleDePresence, scan grammar.PlayerEntityScan,
+	h replayClock) []intervalleDePresence {
+	if len(ivs) == 0 {
+		return ivs
+	}
+	iv := &ivs[len(ivs)-1]
+	iv.aMax = h.frames - 1
+	for _, us := range scan.KeyframesUS {
+		if f := frameBrute(h, us); f > iv.a {
+			iv.aMax = max(iv.a, min(f-1, h.frames-1))
+			break
+		}
+	}
+	return ivs
 }
 
 // presenceDeLEntite traduit une entite en presence : depuis avant la frame 0 si elle est lue au

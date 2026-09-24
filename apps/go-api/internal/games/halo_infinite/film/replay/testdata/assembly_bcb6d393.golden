@@ -318,12 +318,11 @@ controle (lecture des chunks) : 8 accord · 0 contradiction · 0 silence — la 
 voies des liens d index : PlayerIndexTable=3 · film_table=8
 
 ## SIEGES — la fiche d un occupant, et la part qui vient d un appariement
-entrees 11 · sieges 8 · lus 8 · tirs 2 · apparies 1 · ouvertes 0 · sans place 0 · reprises ecrites 0 · presences vies
-arrivants 3 · presences closes 3 · sans presence 0 · occupants au plus 8 · depassements 0 · relais bornes 0 · sans table false
+entrees 11 · sieges 8 · lus 8 · tirs 0 · apparies 3 · ouvertes 0 · sans place 0 · reprises ecrites 0 · presences film
+arrivants 3 · presences closes 4 · sans presence 0 · occupants au plus 8 · depassements 0 · relais bornes 0 · sans table false
 
 ## REPLIS DECLENCHES — la part de ce document qui ne vient PAS d une lecture du film
-repli_place_du_remplacant_par_chainage_d_equipe  1
-repli_presence_par_enveloppe_des_vies            6
+repli_place_du_remplacant_par_chainage_d_equipe  3
 
 ## LIBELLES D ARMES — le tag brut reste A COTE du libelle, jamais a sa place
 21 identifiant(s) nomme(s) ; un identifiant absent garde son hexadecimal a l ecran et

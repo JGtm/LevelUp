@@ -2070,3 +2070,14 @@ package replay
 // POURQUOI LA VERSION MONTE : un champ naît, trois changent de sens, et c est la CLE DE REPRISE du
 // backfill — un v68 affiche encore un joueur parti et doit se lire « a re-cuire ». Le client lit
 // un artefact anterieur sans `presence` par l enveloppe des vies (repli transitoire date, cote web).
+//
+// REVUE ADVERSE DU LOT (2026-09-24), MEME SCHEMA : le BOT QUI SUCCEDE A UN HUMAIN sur son index
+// entre au roster quand ses entites et celles de l humain sont DISJOINTES (`c75f33b8`, `4f77afc1` :
+// ses vies etaient nommees sans entree, et le web lui dessinait une place de plus, vide tout le
+// match) ; `depassements` se mesure contre la CAPACITE estimee et non plus contre les places posees
+// (mesure circulaire) ; une entree d un film balaye qu aucune entite ne porte tient sa place par ses
+// vies jusqu a l image-cle porteuse suivante (repli par entree, nomme et compte) ; l occupant qu un
+// siege de la table nomme par son xuid est la des la frame 0 meme sans entite. `coverage.seats`
+// gagne six compteurs : `capacite`, `placesEnTrop` et `sansEquipe` (ce que la colonne rend au-dela
+// de la capacite, ou hors de toute), `identitesHorsRoster` (0 attendu), `botsSuccesseurs`,
+// `presencesParLesVies`.

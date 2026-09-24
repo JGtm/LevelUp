@@ -23980,6 +23980,12 @@ components:
         arrivants:
           format: int64
           type: integer
+        botsSuccesseurs:
+          format: int64
+          type: integer
+        capacite:
+          format: int64
+          type: integer
         chevauchements:
           format: int64
           type: integer
@@ -23995,10 +24001,16 @@ components:
         entrees:
           format: int64
           type: integer
+        identitesHorsRoster:
+          format: int64
+          type: integer
         lus:
           format: int64
           type: integer
         occupantsMax:
+          format: int64
+          type: integer
+        placesEnTrop:
           format: int64
           type: integer
         placesOuvertes:
@@ -24012,10 +24024,16 @@ components:
         presencesCloses:
           format: int64
           type: integer
+        presencesParLesVies:
+          format: int64
+          type: integer
         relaisBornes:
           format: int64
           type: integer
         reprisesEcrites:
+          format: int64
+          type: integer
+        sansEquipe:
           format: int64
           type: integer
         sansPlace:
@@ -24050,7 +24068,13 @@ components:
         - presencesCloses
         - sansPresence
         - occupantsMax
+        - capacite
         - depassements
+        - placesEnTrop
+        - sansEquipe
+        - identitesHorsRoster
+        - botsSuccesseurs
+        - presencesParLesVies
         - relaisBornes
         - chevauchements
         - tirsContestes

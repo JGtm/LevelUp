@@ -104,8 +104,10 @@ func vieDe(xuid string, debut, fin int) Track {
 }
 
 // TestEntitesSimultaneesComptentLesTrousEtPasLesInstables (O-SIMULTANEES) : a l'image-cle 1,
-// l'equipe 0 tient trois entites — dont une dans un TROU (lue avant et apres, pas un depart) ; une
-// entite instable ne compte pas, et une entite partie avant l'arrivee d'une autre ne s'y ajoute pas.
+// l'equipe 0 tient trois entites — dont une dans un TROU (lue avant et apres, pas un depart) et une
+// lue a cette SEULE image-cle, un relais transitoire qui ne compte pas (revue M2-R6, `43e96765`) ;
+// une entite instable ne compte pas, et une entite partie avant l'arrivee d'une autre ne s'y ajoute
+// pas.
 func TestEntitesSimultaneesComptentLesTrousEtPasLesInstables(t *testing.T) {
 	scan := scanDeTest([]int{10, 30, 50},
 		grammar.PlayerEntity{Slot: 1, Index: 0, Team: 0, FirstKF: 0, LastKF: 2, Seen: 3},
@@ -115,8 +117,8 @@ func TestEntitesSimultaneesComptentLesTrousEtPasLesInstables(t *testing.T) {
 		grammar.PlayerEntity{Slot: 5, Index: 4, Team: 1, FirstKF: 0, LastKF: 0, Seen: 1},
 		grammar.PlayerEntity{Slot: 6, Index: 5, Team: 1, FirstKF: 1, LastKF: 2, Seen: 2})
 	got := entitesSimultanees(scan)
-	if got[0] != 3 || got[1] != 1 || len(got) != 2 {
-		t.Fatalf("simultanees %v : attendu equipe 0 -> 3 (trou compris, instable exclue), "+
-			"equipe 1 -> 1 (un relais n'est pas deux occupants)", got)
+	if got[0] != 2 || got[1] != 1 || len(got) != 2 {
+		t.Fatalf("simultanees %v : attendu equipe 0 -> 2 (trou compris, instable et entite d'une "+
+			"seule image-cle exclues), equipe 1 -> 1 (un relais n'est pas deux occupants)", got)
 	}
 }

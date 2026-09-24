@@ -1,9 +1,9 @@
 # EMPREINTE DE FORME DU DOCUMENT DE REJEU — fige par document_shape_test.go.
 # Ne s'edite JAMAIS a la main : regeneration decrite en tete de ce test.
 schema 69
-empreinte-stockee 6e0faa59c1c17877
-empreinte-servie 6e0faa59c1c17877
-empreinte-cuite 824791b858b06601
+empreinte-stockee 41976899d03ff275
+empreinte-servie 41976899d03ff275
+empreinte-cuite 327132f6bc023d75
 empreinte-cuite-regle 2
 
 AbilityCharge
@@ -768,19 +768,25 @@ ScoreTimeline
 SeatCoverage
   Apparies json:"apparies" int
   Arrivants json:"arrivants" int
+  BotsSuccesseurs json:"botsSuccesseurs" int
+  Capacite json:"capacite" int
   Chevauchements json:"chevauchements" int
   Depassements json:"depassements" int
   EntitesContestees json:"entitesContestees" int
   EntitesNonLiees json:"entitesNonLiees" int
   Entrees json:"entrees" int
+  IdentitesHorsRoster json:"identitesHorsRoster" int
   Lus json:"lus" int
   OccupantsMax json:"occupantsMax" int
+  PlacesEnTrop json:"placesEnTrop" int
   PlacesOuvertes json:"placesOuvertes" int
   PlacesTirs json:"placesTirs" int
   Presences json:"presences" string
   PresencesCloses json:"presencesCloses" int
+  PresencesParLesVies json:"presencesParLesVies" int
   RelaisBornes json:"relaisBornes" int
   ReprisesEcrites json:"reprisesEcrites" int
+  SansEquipe json:"sansEquipe" int
   SansPlace json:"sansPlace" int
   SansPresence json:"sansPresence" int
   SansTableDuFilm json:"sansTableDuFilm,omitempty" bool

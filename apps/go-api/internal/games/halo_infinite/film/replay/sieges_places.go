@@ -7,6 +7,7 @@ package replay
 import (
 	"math"
 	"sort"
+	"strconv"
 )
 
 // occupation : une entree sur une place, pendant UN de ses intervalles de presence.
@@ -106,6 +107,25 @@ func (pp *poseDesPlaces) poserLesOrigines() {
 	for i, e := range pp.roster {
 		if p := pp.places[e.FilmIndex]; p != nil && len(pp.occ.parEntree[i].presence) > 0 {
 			pp.asseoir(i, p, SeatSourceLu)
+		}
+	}
+}
+
+// ouvrirAuCoupDEnvoi : l'occupant qu'un siege de la table NOMME (son xuid y est ecrit), quand sa
+// presence ne vient que de ses vies (repli : aucune entite ne le porte), la tient depuis la frame 0.
+// C'est une LECTURE, pas un prolongement : la table de `chunk_00` l'assoit au coup d'envoi (revue
+// M2-R7 — sans elle, sa place s'affichait VIDE pendant le preambule, alors que le joueur est la et
+// n'a seulement pas encore apparu). Le xuid, et pas l'index : un arrivant qui reprend l'index d'un
+// partant n'etait pas a la table. Une presence lue (entite, BOT_METADATA) n'y passe pas : l'entite
+// dit deja s'il etait la au debut.
+func (pp *poseDesPlaces) ouvrirAuCoupDEnvoi() {
+	for _, s := range pp.in.table.Seats {
+		x := strconv.FormatUint(s.XUID, 10)
+		for i, e := range pp.roster {
+			o := &pp.occ.parEntree[i]
+			if e.XUID == x && e.FilmIndex == s.FilmIndex && !o.lue && len(o.presence) > 0 {
+				o.presence[0].de = 0
+			}
 		}
 	}
 }

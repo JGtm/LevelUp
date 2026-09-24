@@ -39,6 +39,13 @@ package replay
 // presence retombe sur l'enveloppe des vies — c'est un REPLI, nomme et compte par la pose des
 // places (cf. sieges.go), qui y ajoute la regle d'avant « le dernier occupant d'une place reste
 // jusqu'a la fin » (mourir n'est pas partir, et sans entite on ne sait pas qui est parti).
+//
+// SUR UN FILM BALAYE, UNE ENTREE QU'AUCUNE ENTITE NE PORTE (entite contestee, instable, occupant
+// present moins d'une image-cle) a le meme repli, PAR ENTREE, et il se compte a part (revue
+// M2-R5, `coverage.seats.presencesParLesVies`) : son affichage court jusqu'a la veille de la
+// premiere image-cle porteuse qui suit sa derniere vie — l'instant ou son entite, s'il en avait
+// une, aurait dit qu'il n'est plus la (Q22) —, jusqu'au bout s'il n'y en a plus. Mourir n'y est
+// donc pas partir : un mort qui attend sa reapparition garde sa fiche jusqu'a l'image-cle.
 
 import (
 	"sort"
@@ -82,6 +89,10 @@ type occupants struct {
 	// horloge : la grille du document — la liaison compare des debuts de vie (frames) a des
 	// fenetres d'entite (microsecondes de film).
 	horloge replayClock
+	// horsRoster : les identites qui nomment au moins une vie publiee et qu'aucune entree du roster
+	// ne porte (revue M2-R1). Chacune est un occupant sans place ni presence : le web ne lui rend
+	// aucune tuile (la regle des places prime), et ce compteur la rend visible. 0 attendu.
+	horsRoster int
 }
 
 // entreesDesOccupants porte ce que la liaison consomme hors du roster et des pistes. Une
@@ -102,8 +113,15 @@ func lierLesOccupants(roster []RosterEntry, tracks []Track, in entreesDesOccupan
 	out := occupants{parEntree: make([]occupantDuRoster, len(roster)), balaye: in.scan.Scanned,
 		horloge: in.horloge}
 	vies := viesParIdentite(tracks)
+	portees := make(map[string]bool, len(roster))
 	for i := range roster {
 		out.parEntree[i].vies = vies[cleDeRoster(roster[i])]
+		portees[cleDeRoster(roster[i])] = true
+	}
+	for cle := range vies {
+		if !portees[cle] {
+			out.horsRoster++
+		}
 	}
 	if out.balaye {
 		out.trous = in.scan.Holes()
@@ -117,16 +135,25 @@ func lierLesOccupants(roster []RosterEntry, tracks []Track, in entreesDesOccupan
 	return out
 }
 
-// entitesSimultanees rend, par designateur, le plus grand nombre d'entites STABLES lues a une meme
-// image-cle porteuse, trous compris (un trou n'est pas un depart) : le nombre d'occupants que le
-// JEU a tenus ensemble dans cette equipe — une borne basse LUE de sa taille, qui ne doit rien a la
-// liaison des entrees (une liaison fausse ne la fait pas monter).
+// imagesClesDUnOccupantDurable : une entite ne compte dans [entitesSimultanees] que lue a au moins
+// DEUX images-cles porteuses (revue M2-R6, 2026-09-24). Une entite d'une seule image-cle peut etre
+// un RELAIS TRANSITOIRE : sur `43e96765`, le bot `343 PardonMy`, declare 21 s, est lu a la meme
+// image-cle que l'humain qui le remplace — cinq entites pour une equipe de quatre, et une capacite
+// estimee a 5 qui aurait laisse ouvrir une cinquieme place. Ce n'est pas un seuil mesure : c'est le
+// plus petit nombre de lectures qui distingue un occupant d'un relais.
+const imagesClesDUnOccupantDurable = 2
+
+// entitesSimultanees rend, par designateur, le plus grand nombre d'entites STABLES et DURABLES
+// (cf. [imagesClesDUnOccupantDurable]) lues a une meme image-cle porteuse, trous compris (un trou
+// n'est pas un depart) : le nombre d'occupants que le JEU a tenus ensemble dans cette equipe — une
+// borne basse LUE de sa taille, qui ne doit rien a la liaison des entrees (une liaison fausse ne la
+// fait pas monter).
 func entitesSimultanees(scan grammar.PlayerEntityScan) map[int]int {
 	out := map[int]int{}
 	for r := range scan.KeyframesUS {
 		ici := map[int]int{}
 		for _, e := range scan.Entities {
-			if !e.Unstable && e.FirstKF <= r && r <= e.LastKF {
+			if !e.Unstable && e.Seen >= imagesClesDUnOccupantDurable && e.FirstKF <= r && r <= e.LastKF {
 				ici[e.Team]++
 			}
 		}

@@ -95,7 +95,11 @@ func (a *assemblage) poserLesEquipesEtLeRoster() {
 	// sur les vies ET sur le roster ; la base n'entre que dans `coverage.teams` comme CONTROLE.
 	// Posee APRES le nommage : le xuid d'une vie est ce qui la relie a son index de joueur.
 	a.equipes = newTeamPublication(a.reg, a.opt.PlayerTeams, a.opt.TeamScan, a.opt.ScoreboardTeams)
-	a.doc.Roster = buildRoster(a.reg.TableDIndex(), nomsDesJoueurs(a.reg, a.opt.Deaths), a.opt.Bots, a.equipes)
+	// LE BOT QUI SUCCEDE A UN HUMAIN SUR SON INDEX Y ENTRE AUSSI (revue M2-R1) : ses vies sont
+	// nommees, il lui faut son entree, donc sa place — celle du partant (roster_bots_successeurs.go).
+	var botsSuccesseurs int
+	a.doc.Roster, botsSuccesseurs = rosterDesOccupants(a.reg.TableDIndex(), nomsDesJoueurs(a.reg, a.opt.Deaths),
+		a.opt.Bots, a.opt.PlayerEntities, a.equipes)
 	// LES OCCUPANTS (lot M2.3) : chaque entree du roster liee a SES entites ti=9 — son equipe, sa
 	// presence. L'equipe par entree remplace celle de l'index sur le roster, les vies et le
 	// drapeau ; sans entite lue, elle vaut celle de l'index et rien ne change.
@@ -107,6 +111,7 @@ func (a *assemblage) poserLesEquipesEtLeRoster() {
 	// la presence de chaque occupant et ses tirs (cf. sieges.go).
 	a.siegeCov = poserLesSieges(a.doc.Roster, occ, entreesDesPlaces{
 		table: a.opt.FilmTable, fire: fireRefs(a.fire), horloge: a.horloge()})
+	a.siegeCov.BotsSuccesseurs = botsSuccesseurs
 	// L'ORIGINE se publie APRÈS le pont : son témoin (le calage du fil des morts) en sort.
 	a.doc.OriginMs = resolveOriginMs(a.origin, a.opt.FilmClockOriginUS, a.reg.DeathOffsetMS(), a.reg.DeathOffsetMatches())
 	a.reg.logRegistry(a.matchID)

@@ -193,6 +193,12 @@
 #               declaration change, l agregat reste le meme ; et `fallback/` gagne la tranche
 #               `replay/places` (quatre replis de la publication du roster). Aucune ligne de
 #               `match_kill_events` ne bouge, AUCUN BACKLOG.
+#   2026-09-24  REVISION INCHANGEE, EMPREINTE SEULE RECOPIEE (revue adverse du lot M2), ET LE
+#               CHOIX EST EXPLICITE. Seul `fallback/` bouge : un cinquieme repli de la tranche
+#               `replay/places` (`repli_presence_d_une_entree_par_ses_vies`, publication du
+#               roster) et le mecanisme ecrit de `repli_place_ouverte_sous_la_capacite_estimee`
+#               (entites durables). `killsource/` n est pas touche : AUCUNE ligne de
+#               `match_kill_events` ne bouge, AUCUN BACKLOG.
 killsource-2026-09-16.2	d09f5d19636bbb5eff1c4d38b54489868bafa127c01ce91b6cb028e9dd7bc131
 killsource-2026-09-16.3	8c87a14f4d72f8f2b05350a39c9a93b80479a372d61f3a9416628689e2b8e67e
 killsource-2026-09-16.4	a3fcc9fed6be58eeab197aaa212dd2e0e386750671ff6a67858454d76935eac8
@@ -213,4 +219,4 @@ killsource-2026-09-21.7	f450440225a280104489d2f9e79d2c85b2a40072b8d583df87c005c8
 killsource-2026-09-21.8	31745c89f06053b37e79b79810c5d1f8e1ba4e762fbf85cfa0fb21af9eb19855
 killsource-2026-09-21.9	9e7a8df4984025506ce1e0b7474c5e2e10516e2b3d93b7c48561485100ca5726
 killsource-2026-09-22	eb0c32d7d98f49b8f90979270d6925327033adcf6cede45b6c945883f5f39460
-killsource-2026-09-22.2	61ee3f82deb1dd62bebb2eb72643bd287a1e4ba5fd44fc31686c27eb6ef873c3
+killsource-2026-09-22.2	37d9f80c558d6b66bf7d4b63864fd8b06bc5bef105f2988810412aa798244bc0

@@ -11020,6 +11020,10 @@ export interface components {
             /** Format: int64 */
             arrivants: number;
             /** Format: int64 */
+            botsSuccesseurs: number;
+            /** Format: int64 */
+            capacite: number;
+            /** Format: int64 */
             chevauchements: number;
             /** Format: int64 */
             depassements: number;
@@ -11030,9 +11034,13 @@ export interface components {
             /** Format: int64 */
             entrees: number;
             /** Format: int64 */
+            identitesHorsRoster: number;
+            /** Format: int64 */
             lus: number;
             /** Format: int64 */
             occupantsMax: number;
+            /** Format: int64 */
+            placesEnTrop: number;
             /** Format: int64 */
             placesOuvertes: number;
             /** Format: int64 */
@@ -11041,9 +11049,13 @@ export interface components {
             /** Format: int64 */
             presencesCloses: number;
             /** Format: int64 */
+            presencesParLesVies: number;
+            /** Format: int64 */
             relaisBornes: number;
             /** Format: int64 */
             reprisesEcrites: number;
+            /** Format: int64 */
+            sansEquipe: number;
             /** Format: int64 */
             sansPlace: number;
             /** Format: int64 */

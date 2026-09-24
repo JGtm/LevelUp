@@ -132,8 +132,31 @@ type SeatCoverage struct {
 	SansPresence int `json:"sansPresence"`
 	// OccupantsMax : le plus grand nombre d'entrees affichees a une meme frame.
 	OccupantsMax int `json:"occupantsMax"`
-	// Depassements : les frames ou une equipe affiche plus d'occupants que de places. 0 attendu.
+	// Capacite : la plus grande capacite ESTIMEE d'une equipe (cf. sieges_places.go,
+	// [poseDesPlaces.capaciteDe]) — table du debut et entites lues, jamais les places posees. 0
+	// sans table.
+	Capacite int `json:"capacite"`
+	// Depassements : les couples (frame, equipe) ou une equipe affiche plus d'occupants que sa
+	// CAPACITE (revue M2-R6 : le plafond etait les places que la pose elle-meme avait attribuees,
+	// une mesure circulaire). Les entrees sans place (`index`) y comptent. 0 attendu.
 	Depassements int `json:"depassements"`
+	// PlacesEnTrop : par equipe, les places AFFICHEES au-dela de sa capacite, sommees. Le web rend
+	// une tuile par place a chaque image (vide ou non) : c'est le nombre de tuiles de trop. 0
+	// attendu.
+	PlacesEnTrop int `json:"placesEnTrop"`
+	// SansEquipe : les entrees presentes sans equipe lue. Leur tuile se range par la feuille de
+	// match (cote web), hors de toute capacite : chacune est a lire.
+	SansEquipe int `json:"sansEquipe"`
+	// IdentitesHorsRoster : les identites qui nomment une vie publiee sans entree de roster (revue
+	// M2-R1). Sans place ni presence, le web ne leur rend aucune tuile. 0 attendu.
+	IdentitesHorsRoster int `json:"identitesHorsRoster"`
+	// BotsSuccesseurs : les bots entres au roster sur l'index d'un humain dont ils sont les
+	// successeurs LUS (entites disjointes, cf. roster_bots_successeurs.go).
+	BotsSuccesseurs int `json:"botsSuccesseurs"`
+	// PresencesParLesVies : sur un film balaye, les entrees presentes qu'aucune entite ni
+	// declaration ne porte — leur presence vient de leurs seules vies (REPLI par entree,
+	// `repli_presence_d_une_entree_par_ses_vies`).
+	PresencesParLesVies int `json:"presencesParLesVies"`
 	// RelaisBornes : les presences dont l'affichage a ete borne par l'arrivee du successeur sur
 	// la meme place.
 	RelaisBornes int `json:"relaisBornes"`
@@ -184,6 +207,7 @@ func poserLesSieges(roster []RosterEntry, occ occupants, in entreesDesPlaces) Se
 	}
 	if pp.places != nil {
 		pp.poserLesOrigines()
+		pp.ouvrirAuCoupDEnvoi()
 		pp.estimerLaCapacite()
 		cov.PlacesTirs, cov.TirsContestes, cov.TirsIndexTronque = pp.lireLesPlacesDansLesTirs(in.fire)
 		cov.Apparies, cov.PlacesOuvertes, cov.SansPlace = pp.chainerLesArrivants()
@@ -195,10 +219,25 @@ func poserLesSieges(roster []RosterEntry, occ occupants, in entreesDesPlaces) Se
 	pp.retirerLesAffichagesVides()
 	if !occ.balaye {
 		in.horloge.fb.DeclencheN(fallback.NomPresenceParEnveloppeDesVies, pp.tenirLesDerniersJusquALaFin())
+	} else {
+		cov.PresencesParLesVies = occ.presencesParLesVies()
+		in.horloge.fb.DeclencheN(fallback.NomPresenceDUneEntreeParSesVies, cov.PresencesParLesVies)
 	}
 	pp.publierLesPresences()
+	cov.IdentitesHorsRoster = occ.horsRoster
 	cov.compterLesEntrees(roster, pp)
 	return cov
+}
+
+// presencesParLesVies compte les entrees presentes dont la presence ne vient que de leurs vies.
+func (o *occupants) presencesParLesVies() int {
+	n := 0
+	for _, e := range o.parEntree {
+		if !e.lue && len(e.presence) > 0 {
+			n++
+		}
+	}
+	return n
 }
 
 // compterLesEntrees pose les compteurs que le roster publie renseigne.
@@ -230,7 +269,9 @@ func (c *SeatCoverage) compterLesEntrees(roster []RosterEntry, pp *poseDesPlaces
 		}
 	}
 	c.Sieges = len(sieges)
-	c.OccupantsMax, c.Depassements = pp.mesurerLAffichage()
+	m := pp.mesurerLAffichage()
+	c.OccupantsMax, c.Depassements, c.Capacite = m.occupantsMax, m.depassements, m.capacite
+	c.PlacesEnTrop, c.SansEquipe = m.placesEnTrop, m.sansEquipe
 }
 
 // siegesDuDebut rend les index que la table de `chunk_00` occupe, ou NIL quand le film ne porte

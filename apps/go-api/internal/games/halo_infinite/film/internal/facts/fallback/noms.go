@@ -65,6 +65,9 @@ const (
 	NomPlaceOuverteSousLaCapaciteEstimee Nom = "repli_place_ouverte_sous_la_capacite_estimee"
 	// NomPresenceParEnveloppeDesVies : `replay/sieges.go`, `poserLesSieges` (lot M2.3).
 	NomPresenceParEnveloppeDesVies Nom = "repli_presence_par_enveloppe_des_vies"
+	// NomPresenceDUneEntreeParSesVies : `replay/sieges.go`, `poserLesSieges` (revue M2-R5,
+	// 2026-09-24).
+	NomPresenceDUneEntreeParSesVies Nom = "repli_presence_d_une_entree_par_ses_vies"
 	// NomVieDeBotParRelaisDeLaBase : `replay/successions.go`, `attributeSuccessions` (lot M2.3).
 	NomVieDeBotParRelaisDeLaBase Nom = "repli_vie_de_bot_par_relais_de_la_base"
 	// NomChassisVehiculeMarqueurNeutre : `replay/document_vehicles_coverage.go`, `tallyVehicleCoverage`.
