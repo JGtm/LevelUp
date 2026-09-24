@@ -213,7 +213,16 @@ const plafondSurfaceFacade = 166 // 2026-09-17 — base a5d15e634
 //	                                           `replayview`) et la reference de vie des pieces
 //	                                           montees (`replay.VehicleLifeRef`, `replayview`).
 //	                                           RE-MESURE A L ENTREE du lot : 265 sur `b74c8f294`.
-const plafondSurfaceReplay = 269 // 2026-09-23 — retours du rejeu M4a : 265 + 4 (registre des armes de vehicule, pieces montees)
+//	273  retours du rejeu M7 (2026-09-24)        +4 : le verdict de decor de carte pose a la requete
+//	                                           (`replay.VehicleScenery`, `replay.VehicleSceneryLife`,
+//	                                           cites par `service/replay_vehicle_scenery_rule.go`
+//	                                           et `replayview`) et les deux fins de vie que la
+//	                                           regle de pose lit (`replay.VehicleEndFilmEnd`) et que
+//	                                           son test ecarte (`replay.VehicleEndDestroyed`). La
+//	                                           regle elle-meme vit dans le service : ses constantes
+//	                                           et fonctions n entrent pas dans cette surface.
+//	                                           RE-MESURE A L ENTREE du lot : 269 sur `cd60b6ac5`.
+const plafondSurfaceReplay = 273 // 2026-09-24 — retours du rejeu M7 : 269 + 4 (verdict de decor de carte)
 
 // plafondsParFamilleFacade — la surface de la facade VENTILEE PAR PAQUET D ORIGINE.
 //

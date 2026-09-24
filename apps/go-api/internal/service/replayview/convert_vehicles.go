@@ -103,3 +103,18 @@ func toVehicleCycle(v replay.VehicleCycle) replaydoc.VehicleCycle {
 		Missing: v.Missing,
 	}
 }
+
+func toVehicleScenery(v replay.VehicleScenery) replaydoc.VehicleScenery {
+	return replaydoc.VehicleScenery{
+		Zone:        v.Zone,
+		Floor:       v.Floor,
+		Candidates:  v.Candidates,
+		InPlayArea:  v.InPlayArea,
+		ZoneUnknown: v.ZoneUnknown,
+		Hidden:      sliceOf(v.Hidden, toVehicleSceneryLife),
+	}
+}
+
+func toVehicleSceneryLife(v replay.VehicleSceneryLife) replaydoc.VehicleSceneryLife {
+	return replaydoc.VehicleSceneryLife{Slot: v.Slot, Gen: v.Gen, Reason: v.Reason}
+}

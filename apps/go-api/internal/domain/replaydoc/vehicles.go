@@ -105,3 +105,21 @@ type VehicleCycle struct {
 	Gaps    int     `json:"gaps"`
 	Missing int     `json:"missing"`
 }
+
+// VehicleScenery est le verdict de decor des vies de vehicule posees par la carte hors de la
+// zone jouable (lot M7, cf. `replay.VehicleScenery`), resolu a la requete.
+type VehicleScenery struct {
+	Zone        string               `json:"zone"`
+	Floor       string               `json:"floor"`
+	Candidates  int                  `json:"candidates"`
+	InPlayArea  int                  `json:"inPlayArea"`
+	ZoneUnknown int                  `json:"zoneUnknown"`
+	Hidden      []VehicleSceneryLife `json:"hidden,omitempty"`
+}
+
+// VehicleSceneryLife designe une vie de decor et la raison de son masquage.
+type VehicleSceneryLife struct {
+	Slot   uint32 `json:"slot"`
+	Gen    uint32 `json:"gen"`
+	Reason string `json:"reason"`
+}

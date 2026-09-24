@@ -2024,7 +2024,8 @@ package replay
 // par sa revue adverse, constat R4 : le plan ne fait qu UNE montee par vague tant que la
 // republication 69 n est pas faite, et la vague D pose deja SON 70) ; l integration les reunit
 // sous ce seul numero (un artefact au schema 69 porte les quatre). Aucune revision de DECODAGE ne
-// monte : republication DEPUIS LES FAITS. Les quatre parties suivent.
+// monte : republication DEPUIS LES FAITS. Les quatre parties suivent, puis celle de M7 (decor de
+// carte), qui ne touche que la forme SERVIE : aucun artefact cuit n en porte la trace.
 //
 // v69, PARTIE M1 (2026-09-23, decision utilisateur Q15) : LA PUBLICATION DES
 // POSITIONS APPLIQUE LA GRAMMAIRE DE LA VIE, DEUX REPLIS NOMMES, ET DIT SES SILENCES AUX VEHICULES.
@@ -2172,3 +2173,14 @@ package replay
 //	(`hinf_unarmed`, et la bobine a fusion UNSC `hinf_coil_kinetic` pour `e9e7ff79` / `1d63a8cd`),
 //	et `weaponLabels` les porte ; `killEffects` gagne l explosion a la mort de `hinf_scorpion` et
 //	`hinf_rockethog`.
+//
+// v69, PARTIE M7 (2026-09-24, lot M7 des retours du rejeu, decision de l utilisateur du
+// 2026-09-24) : LE DECOR DE CARTE EST POSE ET HORS DE LA ZONE JOUABLE, DECIDE PAR LE SERVICE.
+//
+//	`vehicle`      RACINE NEUVE, RESOLUE A LA REQUETE (`calquesALaRequete`, jamais cuite) : les
+//	`Scenery`      cinq conditions de pose de L1.3 ET hors de la zone jouable (matiere praticable
+//	               du fond de carte publie en plan, sol foule du match en hauteur). `zone`, `floor`,
+//	               `candidates`, `inPlayArea`, `zoneUnknown`, `hidden[] {slot, gen, reason}` ; deux
+//	               replis nommes au registre (`repli_decor_sous_le_sol_foule_du_match`,
+//	               `repli_decor_carte_sans_zone_affiche`). Le client ne decide plus : L1.3 lit ce
+//	               verdict. Empreinte CUITE inchangee, `facts.Rev` inchangee : rien a re-cuire.

@@ -157,7 +157,11 @@ var plafondsParFichier = map[string]int{
 	// partie M6 — la remise des mains nues sort des ramassages et des changements d arme (deux
 	// compteurs `unarmedGrants`), les consequences declarees hors du document (son, paliers de
 	// socle) et les familles nommees au catalogue. Exception ecrite, meme commit que la partie.
-	"internal/games/halo_infinite/film/replay/document_chronicle.go": 2174,
+	// SCHEMA 69, PARTIE M7 (2026-09-24, integration de M6 et M7 des retours du rejeu) : 2174 ->
+	// 2186, une ligne d en-tete v69 et la partie M7 — la racine `vehicleScenery` resolue a la
+	// requete (verdict de decor du service, deux replis nommes), sans effet sur l empreinte cuite.
+	// Exception ecrite, dans le commit de fusion qui reunit la partie a la montee.
+	"internal/games/halo_infinite/film/replay/document_chronicle.go": 2186,
 	// --- production, hors perimetre du lot 2.7 (aucune preuve d equivalence ne couvrait
 	// leur scission : elle se decidera au lot qui les rouvrira).
 	// `assist.go` EST SORTI DE CETTE TABLE LE 2026-09-16 (lot 2.6.2) : le type `Assist` a descendu
