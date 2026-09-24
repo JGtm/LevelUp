@@ -228,10 +228,10 @@ func assertArtefactLivreEtComplet(t *testing.T, serveurRepo string, jobs []domai
 	if doc.Coverage == nil || doc.Coverage.Score == nil {
 		t.Fatal("artefact livré sans couverture de score : impossible de dire ce que vaut la courbe")
 	}
-	// L'IDENTITÉ DES CAMPS EST INFORMATIVE, PAS UN CRITÈRE. Sur ce film Husky Raid:CTF elle reste
-	// `unresolved` (le décodeur ne rattache qu'UN camp aux slots d'entité de ce mode, et le signale
-	// proprement) — ce n'est PAS l'appauvrissement (qui est l'ABSENCE de joueurs), c'est une
-	// propriété de ce film. La ligne dure ci-dessus (joueurs présents) porte la preuve.
+	// L'IDENTITÉ DES CAMPS EST INFORMATIVE ICI, PAS UN CRITÈRE. Sur ce film Husky Raid:CTF un seul
+	// camp a marqué : elle est `a0` depuis le schéma 69 (lot M5 des retours du rejeu ; elle était
+	// `unresolved` avant) et `assertScoreCamp` la vérifie — ce n'est PAS l'appauvrissement (qui
+	// est l'ABSENCE de joueurs). La ligne dure ci-dessus (joueurs présents) porte la preuve.
 	t.Logf("artefact COMPLET : %d joueurs de courbe de score, identité des camps = %q (informatif)",
 		len(doc.ScoreTimeline.Players), doc.Coverage.Score.TeamIdentity)
 
