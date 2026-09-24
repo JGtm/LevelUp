@@ -23331,6 +23331,8 @@ components:
           additionalProperties:
             $ref: '#/components/schemas/VehicleLabel'
           type: object
+        vehicleScenery:
+          $ref: '#/components/schemas/VehicleScenery'
         vehicleWeapons:
           additionalProperties:
             $ref: '#/components/schemas/VehicleWeapon'
@@ -30386,6 +30388,53 @@ components:
         - t
         - x
         - "y"
+      type: object
+    VehicleScenery:
+      additionalProperties: false
+      properties:
+        candidates:
+          format: int64
+          type: integer
+        floor:
+          type: string
+        hidden:
+          items:
+            $ref: '#/components/schemas/VehicleSceneryLife'
+          type:
+            - array
+            - "null"
+        inPlayArea:
+          format: int64
+          type: integer
+        zone:
+          type: string
+        zoneUnknown:
+          format: int64
+          type: integer
+      required:
+        - zone
+        - floor
+        - candidates
+        - inPlayArea
+        - zoneUnknown
+      type: object
+    VehicleSceneryLife:
+      additionalProperties: false
+      properties:
+        gen:
+          format: int32
+          minimum: 0
+          type: integer
+        reason:
+          type: string
+        slot:
+          format: int32
+          minimum: 0
+          type: integer
+      required:
+        - slot
+        - gen
+        - reason
       type: object
     VehicleSpawn:
       additionalProperties: false

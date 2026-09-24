@@ -365,14 +365,14 @@ const shapeEnteteCuiteRegle = "empreinte-cuite-regle "
 //	  qu'elle existe pour ne pas faire.
 const cuiteRegleCourante = 2
 
-// calquesALaRequete — les balises JSON des champs que la CUISSON N'ÉCRIT JAMAIS (justifié par un grep :
-// aucun `build*.go` ne pose le champ). Vérifié le 2026-09-23 : `vehicleLabels` schéma 62, `vehicleWeapons` 69.
+// calquesALaRequete — les balises JSON des champs que la CUISSON N'ÉCRIT JAMAIS (grep : aucun `build*.go` ne pose le champ ; vérifié le 2026-09-23 pour `vehicleLabels` 62 et `vehicleWeapons` 69, le 2026-09-24 pour `vehicleScenery`).
 var calquesALaRequete = map[string]bool{
 	"mapObjectives":  true, // objectives_catalog.go + service/replay_map_objectives.go
 	"mapWeaponPads":  true, // map_weapon_pads_catalog.go + service/replay_map_weapon_pads.go
 	"weaponTiers":    true, // map_weapon_pads.go (WeaponTiersInfo) + service/replay_weapon_tiers.go
 	"vehicleLabels":  true, // service/replay_vehicle_labels.go (resolveVehicleLabels) — sprites de chassis
 	"vehicleWeapons": true, // service/replay_vehicle_weapons.go (resolveVehicleWeapons) — registre des armes
+	"vehicleScenery": true, // service/replay_vehicle_scenery.go (resolveVehicleScenery) — decor hors zone jouable (M7)
 }
 
 // documentShapeRenderCuite rend la forme du document PRIVÉE des types que seuls les calques
@@ -501,7 +501,7 @@ func TestDocumentShapeCalquesALaRequeteRestentHorsCuisson(t *testing.T) {
 		if err != nil {
 			t.Fatalf("lecture de %s : %v", f, err)
 		}
-		for _, champ := range []string{"MapObjectives", "MapWeaponPads", "WeaponTiers", "VehicleLabels"} {
+		for _, champ := range []string{"MapObjectives", "MapWeaponPads", "WeaponTiers", "VehicleLabels", "VehicleScenery"} {
 			if strings.Contains(string(src), "."+champ+" =") {
 				t.Errorf("%s ecrit %s a la CUISSON : ce calque n'est plus resolu a la requete, "+
 					"retirer son entree de calquesALaRequete et remonter SchemaVersion", f, champ)

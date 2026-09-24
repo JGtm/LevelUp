@@ -731,9 +731,15 @@ var replaySchemas = []struct {
 //	                      `variant`, `rides[].turret` et les six compteurs de `coverage.vehicles`
 //	                      naissent au meme commit SANS faire monter ce compte (types imbriques).
 //
-// Les vingt-cinq fois, ce test a ATTRAPE l ecart : une branche publiait le champ avant que le
+//	63 (2026-09-24) : `vehicleScenery` — LE VERDICT DE DECOR DE CARTE (retours du rejeu, lot M7,
+//	                      sans montee de schema), RESOLU A LA REQUETE comme `vehicleWeapons` : les
+//	                      vies posees par la carte hors de sa zone jouable (masque du fond publie,
+//	                      sol joue du match) et les compteurs du repli « zone inconnue ». Il
+//	                      remplace la regle cliente `vehicleIsScenery` du lot L1.3.
+//
+// Les vingt-six fois, ce test a ATTRAPE l ecart : une branche publiait le champ avant que le
 // chiffre ne le dise. Contrat regenere (`make openapi-gen`), jamais ecrit a la main.
-const wantReplayDocumentFields = 62
+const wantReplayDocumentFields = 63
 
 // TestReplayContractDescribesEveryPublishedField : AUCUN CHAMP PUBLIE SANS DESCRIPTION, ET
 // AUCUNE DESCRIPTION SANS CHAMP.

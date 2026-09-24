@@ -135,18 +135,10 @@ func (s *replayService) MapBackgroundImageForMap(ctx context.Context, mapID stri
 // blanche (mimeParExtensionDeFond). Tout autre cas est une donnée corrompue, jamais une
 // panique ni une erreur avalée en silence.
 func (s *replayService) readBackgroundImage(ctx context.Context, key string) ([]byte, string, error) {
-	bg, err := s.loadMapBackground(ctx, key)
+	path, mime, err := s.backgroundImageFile(ctx, key)
 	if err != nil {
 		return nil, "", err
 	}
-	nom := filepath.Base(bg.Image)
-	mime, connue := mimeParExtensionDeFond[strings.ToLower(filepath.Ext(nom))]
-	if nom != bg.Image || !connue {
-		slog.ErrorContext(ctx, "fond de carte : nom de fichier image refusé",
-			"image", bg.Image, "cle", key, "titleSlug", s.titleSlug)
-		return nil, "", port.ErrMapBackgroundNotAvailable
-	}
-	path := title.NewPathResolver(s.repoRoot).MapBackgroundImageFilePath(s.titleSlug, nom)
 	blob, err := os.ReadFile(path)
 	if errors.Is(err, os.ErrNotExist) {
 		return nil, "", port.ErrMapBackgroundNotAvailable
@@ -155,6 +147,25 @@ func (s *replayService) readBackgroundImage(ctx context.Context, key string) ([]
 		return nil, "", fmt.Errorf("lecture image de fond %s: %w", key, err)
 	}
 	return blob, mime, nil
+}
+
+// backgroundImageFile rend le chemin de l'image d'une clé de fond et son type MIME, après avoir
+// exigé son calage et validé le nom de fichier porté par le sidecar (cf. readBackgroundImage).
+// Seul point qui passe d'une clé à un fichier image : l'image SERVIE et le masque de la zone
+// jouable (replay_vehicle_scenery.go) le partagent.
+func (s *replayService) backgroundImageFile(ctx context.Context, key string) (string, string, error) {
+	bg, err := s.loadMapBackground(ctx, key)
+	if err != nil {
+		return "", "", err
+	}
+	nom := filepath.Base(bg.Image)
+	mime, connue := mimeParExtensionDeFond[strings.ToLower(filepath.Ext(nom))]
+	if nom != bg.Image || !connue {
+		slog.ErrorContext(ctx, "fond de carte : nom de fichier image refusé",
+			"image", bg.Image, "cle", key, "titleSlug", s.titleSlug)
+		return "", "", port.ErrMapBackgroundNotAvailable
+	}
+	return title.NewPathResolver(s.repoRoot).MapBackgroundImageFilePath(s.titleSlug, nom), mime, nil
 }
 
 // resolveBackgroundKey traduit le match en clé de fond.

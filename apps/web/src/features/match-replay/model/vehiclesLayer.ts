@@ -23,7 +23,7 @@
  * mesure pas la destruction, ce texte ne change RIEN à ce qui s'affiche.
  *
  * SIX RESPONSABILITÉS PURES, TESTABLES SANS CANVAS : le REFUS DU DÉCOR (`vehicleIsDecor`,
- * `vehicleIsScenery` — le véhicule posé par la carte, jamais simulé —, `vehicleIsHidden`,
+ * `vehicleIsScenery` — le décor de carte déclaré par le serveur —, `vehicleIsHidden`,
  * `vehicleCanEmbark`), l'ORIENTATION (`vehicleHeadingAt`, `vehicleScreenAngle`,
  * `vehicleAimAngle`), la TAILLE (`vehicleSpriteScale`, ancrée sur le pion), l'OCCUPATION
  * (`vehicleActiveRides`, `vehicleDriverAt`, `vehicleColorAt`), le PRÉDICAT EMBARQUÉ
@@ -112,56 +112,27 @@ export function vehicleIsDecor(family: string | undefined): boolean {
 }
 
 /**
- * VEHICLE_END_FILM_END — la fin publiée d'une vie qui court jusqu'à la fin du film (côté Go :
- * `VehicleEndFilmEnd`, `film/replay/document_vehicles.go`). Nommée pour la même raison que
- * `VEHICLE_END_DESTROYED`.
- */
-export const VEHICLE_END_FILM_END = 'film_end'
-
-/**
- * VEHICLE_FILM_FIRST_FRAME — la frame 0 du document, calée sur le premier paquet de POSITION du
- * film (côté Go : `OriginMs`, `film/replay/document.go`). Une vie née à cette frame — ou avant,
- * si son record de création précède l'origine — existait avant que la partie ne se joue.
- */
-export const VEHICLE_FILM_FIRST_FRAME = 0
-
-/**
- * vehicleIsScenery — vrai quand la vie est un VÉHICULE DE DÉCOR de la carte : né au début du
- * film, le DOCUMENT ne lui publie qu'UN échantillon, à la naissance (`samples[0].t === t0`), la
- * vie court jusqu'à la fin du film et personne n'y monte jamais. (Précision de la sonde C2 du
- * 2026-09-23, lot M1 : le film réplique la POSE du décor — avant l'origine, sous l'index de
- * placement Forge — puis plus rien ; c'est cette réplication unique que l'échantillon publie.)
+ * vehicleIsScenery — vrai quand le SERVEUR a déclaré la vie VÉHICULE DE DÉCOR de la carte
+ * (`doc.vehicleScenery.hidden`, posé à la requête — lot M7 des retours du rejeu, 2026-09-24 ;
+ * replié sur chaque vie en `track.scenery` par `normalizeReplayDocument`).
  *
- * DÉCISION UTILISATEUR DU 2026-09-23 (Q13, retours du rejeu, lot L1.3) : MASQUÉS, comme les
- * familles non jouables. Constat : sur Starboard, six véhicules posés par la carte Forge
- * (1 Scorpion, 2 Wasp, 3 Warthog) à 19-24 m au sud de l'arène, identiques au centimètre dans les
- * deux matchs du parc ; sur Goliath, un Wasp sous le sol. 13 vies au parc, 0 des 232 vies en
- * jeu (dont 90 garées jamais occupées, mais SIMULÉES : 52 à 76 positions chacune).
+ * LA RÈGLE VIT CÔTÉ GO (`film/replay/vehicle_scenery.go`), PLUS ICI. Elle a quitté ce fichier par
+ * son propre critère de retrait (lot L1.3 : « quand le producteur publie lui-même le décor de
+ * carte, ce prédicat lit ce marqueur et ses conditions disparaissent d'ici »), parce que la
+ * décision utilisateur du 2026-09-24 lui ajoute une condition que le client ne sait pas lire : la
+ * vie doit être POSÉE par la carte (un seul échantillon, à sa naissance à la frame 0, vie jusqu'à
+ * la fin du film, aucun occupant) ET HORS DE LA ZONE JOUABLE — la matière praticable du fond de
+ * carte publié, en plan, et le sol joué du match, en hauteur. Sur Behemoth, des Mongoose posés
+ * dans l'aire de jeu que personne ne touche restent donc dessinés.
  *
- * CE N'EST PAS UN SEUIL : c'est ce que le film écrit. Un véhicule simulé est répliqué, même
- * immobile ; celui-ci ne l'est jamais. Une vie sans aucun échantillon (tourelle bannie, élément
- * de carte) n'est pas concernée : elle garde sa règle.
+ * Le film réplique la POSE du décor avant l'origine du match (7 à 117 records, sonde C2) ; la
+ * publication n'en garde qu'un échantillon, ramené à la naissance : c'est lui que la règle lit.
  *
- * NÉ AVANT LA PARTIE (revue RR-L1-PARC-02, 2026-09-23) : le décor est posé au chargement de la
- * carte, donc présent dès la frame 0 (`VEHICLE_FILM_FIRST_FRAME`). Sans cette condition, un
- * véhicule JOUABLE apparu dans le dernier intervalle d'échantillonnage (un échantillon à `t0`,
- * fin de film, jamais occupé) serait masqué — et, né sur un emplacement, le tiendrait pour
- * occupé sans qu'aucun sprite ne s'y dessine. Parc du 23/09 : les 13 vies masquées naissent à 0.
- *
- * RÈGLE CLIENTE, SANS COMPTEUR : ce lot est sans schéma, la couverture ne peut pas la compter.
- * Critère de retrait : quand le producteur publie lui-même le décor de carte (lot M4a des
- * retours du rejeu : vie marquée décor et comptée dans `coverage.vehicles`), ce prédicat lit ce
- * marqueur et ses conditions disparaissent d'ici.
+ * Verdict absent (carte sans zone connue, document servi sans ce calque) : rien n'est masqué. Le
+ * serveur compte ce repli (`vehicleScenery.zoneUnknown`) ; le client ne le devine jamais.
  */
 export function vehicleIsScenery(track: ReplayVehicleTrackReady): boolean {
-  const s = track.samples
-  return (
-    s.length === 1 &&
-    track.t0 <= VEHICLE_FILM_FIRST_FRAME &&
-    s[0].t === track.t0 &&
-    track.end === VEHICLE_END_FILM_END &&
-    track.rides.length === 0
-  )
+  return track.scenery === true
 }
 
 /**

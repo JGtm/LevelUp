@@ -1,8 +1,8 @@
 # EMPREINTE DE FORME DU DOCUMENT DE REJEU — fige par document_shape_test.go.
 # Ne s'edite JAMAIS a la main : regeneration decrite en tete de ce test.
 schema 69
-empreinte-stockee 7948083c3ece0b7e
-empreinte-servie 7948083c3ece0b7e
+empreinte-stockee 7ea64113aea8e16e
+empreinte-servie 7ea64113aea8e16e
 empreinte-cuite d4f0261b525ed90a
 empreinte-cuite-regle 2
 
@@ -719,6 +719,7 @@ ReplayDocument
   Translocations json:"translocations,omitempty" []Translocation
   VehicleCycles json:"vehicleCycles,omitempty" []VehicleCycle
   VehicleLabels json:"vehicleLabels,omitempty" map[string]VehicleLabel
+  VehicleScenery json:"vehicleScenery,omitempty" *VehicleScenery
   VehicleWeapons json:"vehicleWeapons,omitempty" map[string]VehicleWeapon
   Vehicles json:"vehicles,omitempty" []VehicleTrack
   VipCrown json:"vipCrown,omitempty" []VipPeriod
@@ -987,6 +988,17 @@ VehicleSample
   X json:"x" float32
   Y json:"y" float32
   Z json:"z,omitempty" float32
+VehicleScenery
+  Candidates json:"candidates" int
+  Floor json:"floor" string
+  Hidden json:"hidden,omitempty" []VehicleSceneryLife
+  InPlayArea json:"inPlayArea" int
+  Zone json:"zone" string
+  ZoneUnknown json:"zoneUnknown" int
+VehicleSceneryLife
+  Gen json:"gen" uint32
+  Reason json:"reason" string
+  Slot json:"slot" uint32
 VehicleSpawn
   H json:"h,omitempty" *float32
   X json:"x" float32
