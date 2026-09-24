@@ -2501,3 +2501,22 @@ package replay
 //	                le record 36 par sa grammaire) ; `SchemaDesFaits` reste 4, le codec des faits
 //	                monte (`REPLAYINPUTS27` : le canal du tir continu et les champs du record 36) ;
 //	                `facts.Rev` inchangee. Republication apres RE-DECODAGE (verdict « redecoder »).
+//
+//	L INDEX DE      `coverage.seats.tirsIndexNonPlace` : l index de tireur n est lu comme place que
+//	TIREUR JUGE     s il s accorde avec l unite tireuse (88,4 a 100 % sur sept builds, 0 % sur la
+//	                build HI_1_4_1 de `a521164d`, ou le champ est constant) — sinon seule la
+//	                reference 0 pose un tir (tirs_index_fiable.go, repli nomme).
+//
+// LA MESURE (racines temporaires, un film a la fois, aucun BTB decode en gate). Faits d equivalence,
+// base `c9ef97ec6` -> tete, sur `000d5950`, `60ae07c4`, `fb1a1a72`, `d9781168` : SEULES `fire` (memes
+// comptes, champs neufs), `continuousFire` (neuve) et `artifact` bougent. Gate de corpus (huit temoins
+// non BTB) : 0 perte sur sept ; `f75e7053` perd deux intervalles d etat — un accroupi de 7,2 s du
+// slot 585 qui chevauchait deux sprints et un saut, et l accroupi du slot 530 (1761-1811) relu en
+// glissade — effet du bloc d action lu juste dans `i19` (vue B). Tirs rattaches des fixtures de
+// build : `111fa685` 88,7 -> 97,6 %, `11de8353` 86,7 -> 98,9 %, `e5adf7b2` 84,3 -> 96,8 %,
+// `bcb6d393` 85,7 -> 97,3 %, `a521164d` 82,6 -> 92,3 % (par l unite ; l ancien rattachement y rendait
+// les tirs au joueur 2, lu dans quatre bits d un champ constant) ; `b1ad85eb` 992 -> 1 061 (les
+// remplacants). Tir continu : `81c02726` 10 rafales de G MONEY posees sur les Ghost 769 et 771
+// (224 coups), une rafale dans les 2 s de 4 frags sur 6 (623 et 650 tombent dans un trou de lecture
+// 500-658, nomme et muet), 0 au temoin -60 s, 0 hors monture ; `8a485699` 20 rafales (Chopper 1,
+// LMG du Wasp 2, Rayon de Sentinelle 17) ; les coups publies restent sous les sauts du numero de tir.
