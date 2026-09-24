@@ -18,7 +18,7 @@ import { formatMessage } from '@/lib/i18n/format'
 import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { useCapability } from '@/lib/capabilities/capabilities'
-import { isCommunityPath, type RouteTo } from './shellNavigation'
+import { isCommunityPath, routeShowsSoloFilters, type RouteTo } from './shellNavigation'
 import { playerRelativePath, routeTemplateSuffix, useTitleSlug } from '@/lib/title-routing'
 
 // Onglet « Classements » de la section Communauté (gaté sur world.leaderboard).
@@ -65,17 +65,14 @@ const COMMUNITY_TABS = [
 
 type ActiveSection = 'stats' | 'squad' | 'career' | 'community' | null
 
-// Routes _personal : PersonalStatsLayout gère sa propre barre de filtres. Matchers
-// sur le SUFFIXE relatif au joueur (playerRelativePath) — aucun littéral `/players/`.
-const PERSONAL_STATS_RE = /^\/stats\/(summary|maps-modes|distributions|progression|advanced)/
-
 function detectSection(pathname: string): ActiveSection {
   const suffix = playerRelativePath(pathname)
   if (suffix === null) return null
-  if (PERSONAL_STATS_RE.test(suffix)) return null
-  // Synthèse gère sa propre barre de filtres (PeriodePill/SaisonPill) → pas de NavL2.
-  if (/^\/stats\/synthesis/.test(suffix)) return null
-  if (/^\/stats\//.test(suffix)) return 'stats'
+  // Barre solo : même règle que la résolution des filtres solo de PlayerLayout
+  // (routeShowsSoloFilters, source unique). Les autres pages Stats (stats
+  // personnelles, Synthèse) gèrent leur propre barre → pas de NavL2.
+  if (routeShowsSoloFilters(pathname)) return 'stats'
+  if (/^\/stats\//.test(suffix)) return null
   if (/^\/squad/.test(suffix)) return 'squad'
   if (/^\/(career|citations|commendations)/.test(suffix)) return 'career'
   if (isCommunityPath(pathname)) return 'community'

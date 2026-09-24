@@ -58,6 +58,9 @@ type SquadFormesQuery struct {
 	RepoRoot  string
 	TitleSlug string
 	Locale    string
+	// Lectures : les trois lectures du résumé d'usage déjà faites sur ce scope par la page,
+	// partagées avec le bloc « servi ou gâché » (lot perf L2, D2.6). Nil ⇒ lues ici.
+	Lectures *LecturesUsage
 }
 
 // BuildSquadFormesBlock lit le scope et rend le bloc contractuel. Scope vide ⇒
@@ -75,11 +78,13 @@ func BuildSquadFormesBlock(ctx context.Context, q SquadFormesQuery) *domain.Squa
 	for _, m := range q.Metas {
 		matchIDs = append(matchIDs, m.MatchID)
 	}
-	films, filmsErr := q.Repo.LoadUsageFilms(ctx, matchIDs)
-	players, playersErr := q.Repo.LoadUsagePlayers(ctx, matchIDs)
-	participants, partErr := q.Repo.LoadParticipants(ctx, matchIDs)
+	lu := q.Lectures
+	if lu == nil {
+		lu = LireUsage(ctx, q.Repo, matchIDs)
+	}
+	films, players, participants := lu.Films, lu.Players, lu.Participants
 	pads, padsErr := q.Repo.LoadUsageFilmPads(ctx, matchIDs)
-	for _, err := range []error{filmsErr, playersErr, partErr, padsErr} {
+	for _, err := range []error{lu.Erreur(), padsErr} {
 		if err != nil {
 			slog.ErrorContext(ctx, "formes retenues: lecture du résumé d'usage en échec",
 				"err", err, "match_count", len(matchIDs))
@@ -225,7 +230,7 @@ func formesWeaponCatalog(ctx context.Context, q SquadFormesQuery) map[string]squ
 	if q.RepoRoot == "" || q.TitleSlug == "" {
 		return out
 	}
-	cat, err := replaylabels.Load(q.RepoRoot, q.TitleSlug)
+	cat, err := replaylabels.Catalogue(q.RepoRoot, q.TitleSlug)
 	if err != nil {
 		slog.WarnContext(ctx, "formes retenues: catalogue d'armes illisible — socles non nommés",
 			"err", err, "titleSlug", q.TitleSlug)

@@ -20,6 +20,7 @@ import (
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/observability"
+	"levelup/go-api/internal/observability/timing"
 )
 
 // compteurAssistPairsSansMesure : le nombre de fois où la page a RETIRÉ le tableau faute de
@@ -54,6 +55,7 @@ func (s *TeammatesService) buildSquadAssistPairs(
 	mainGamertag, mainXUID string,
 	teammates []domain.TeammateRow,
 ) *domain.SquadAssistPairs {
+	defer timing.FromContext(ctx).Section("assist_pairs")()
 	if s.repo == nil {
 		return nil
 	}

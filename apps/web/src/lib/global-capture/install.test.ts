@@ -1,4 +1,6 @@
-import { describe, expect, it, beforeEach, vi, afterEach } from 'vitest'
+import { describe, expect, it, beforeAll, beforeEach, vi, afterEach } from 'vitest'
+import { http, HttpResponse } from 'msw'
+import { server } from '@/test/setup'
 import {
   _resetInstallFlagForTests,
   _uninstallGlobalCaptureForTests,
@@ -9,6 +11,15 @@ import {
   getRecentFailedRequests,
   resetCaptureBuffersForTests,
 } from './buffers'
+
+/**
+ * fetch de l'environnement (intercepté par MSW), capturé avant qu'un test ne le remplace :
+ * la désinstallation rend à window le fetch présent à l'installation, parfois un mock.
+ */
+let fetchDeLEnvironnement: typeof window.fetch
+beforeAll(() => {
+  fetchDeLEnvironnement = window.fetch
+})
 
 beforeEach(() => {
   _resetInstallFlagForTests()
@@ -227,6 +238,33 @@ describe('installGlobalCapture — wrap fetch', () => {
     await expect(window.fetch('/api/v1/foo')).rejects.toThrow('network')
     const [req] = getRecentFailedRequests()
     expect(req?.status).toBe(0)
+  })
+
+  // Lot perf L9-web (2026-09-23, revue C) : depuis que les pages transmettent le `signal`
+  // de TanStack Query à fetch (lot L3), chaque requête devenue inutile (clic du rail,
+  // démontage) est ANNULÉE. Enregistrées en « status 0 », ces annulations volontaires
+  // évinçaient les vraies erreurs du tampon de 5 entrées joint aux tickets de retour.
+  it('une annulation (AbortError) n est pas enregistrée, et l erreur est propagée', async () => {
+    window.fetch = vi.fn().mockRejectedValue(new DOMException('The operation was aborted.', 'AbortError'))
+    installGlobalCapture()
+    await expect(window.fetch('/api/v1/foo')).rejects.toMatchObject({ name: 'AbortError' })
+    expect(getRecentFailedRequests()).toHaveLength(0)
+  })
+
+  it('annulation réelle par le signal (fetch de l environnement) : rien d enregistré', async () => {
+    server.use(
+      http.get('/api/v1/annulation-sonde', async () => {
+        await new Promise((resolve) => setTimeout(resolve, 200))
+        return HttpResponse.json({ ok: true })
+      }),
+    )
+    window.fetch = fetchDeLEnvironnement
+    installGlobalCapture()
+    const controleur = new AbortController()
+    const enVol = window.fetch('/api/v1/annulation-sonde', { signal: controleur.signal })
+    controleur.abort()
+    await expect(enVol).rejects.toMatchObject({ name: 'AbortError' })
+    expect(getRecentFailedRequests()).toHaveLength(0)
   })
 
   it('strippe la query string sensible avant stockage', async () => {

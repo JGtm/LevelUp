@@ -92,8 +92,7 @@ func (h *SynthesisHandler) handleGetSynthesisPage(ctx context.Context, in *synth
 
 	page, err := svc.GetSynthesisPage(ctx, xuid, req)
 	if err != nil {
-		slog.ErrorContext(ctx, "synthesis: erreur service", "player_slug", in.PlayerSlug, "err", err)
-		return nil, humacore.NewError(http.StatusInternalServerError, "synthesis_page_error", err.Error())
+		return nil, mapServiceError(ctx, err, "synthesis_page_error")
 	}
 
 	slog.InfoContext(ctx, "synthesis: page générée",

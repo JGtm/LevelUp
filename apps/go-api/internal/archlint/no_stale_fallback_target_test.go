@@ -55,7 +55,8 @@ import (
 	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 )
 
-// cheminDuPlanDecodeur : le plan est la SOURCE des cases. Chemin depuis `apps/go-api`.
+// cheminDuPlanDecodeur : le plan est la SOURCE des cases. Chemin depuis `apps/go-api` ; le plan
+// clos vit sous `.ai/V7.5/` depuis l archivage du 2026-09-23 (fe2106f4b).
 const cheminDuPlanDecodeur = "../../.ai/V7.5/PLAN_DECODEUR_FILM_2026-09-13.md"
 
 // planchersLotsDuPlan : le nombre minimal d'items que le balayage du plan doit voir. Mesure du

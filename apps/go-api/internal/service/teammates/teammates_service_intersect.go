@@ -19,6 +19,7 @@ import (
 	"strings"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/observability/timing"
 )
 
 // intersectSquadRowsByMatchID retourne les matchs présents chez TOUS les
@@ -314,9 +315,9 @@ func (f *exactCompositionFilter) applyShared(matches []domain.SquadSharedMatch) 
 }
 
 // loadMainTeamAllies charge UNE fois l'équipe alliée du main par match (Q32b,
-// LoadMainTeamParticipants) et l'indexe (buildMainTeamXUIDSet). C'est le SEUL
-// appel de Q32b du service : ses trois consommateurs (filtre composition
-// exacte, matrice d'impact, courbe « équipe » du profil d'intensité) lisent le
+// LoadMainTeamParticipants, par lireEquipeAlliee — le SEUL appel de Q32b du service)
+// et l'indexe (buildMainTeamXUIDSet) : ses trois consommateurs de la page (filtre
+// composition exacte, matrice d'impact, courbe « équipe » du profil d'intensité) lisent le
 // résultat (CLAUDE.md n°6). Sans xuid ni match : rien à charger. Best-effort :
 // en échec, warn + (nil, nil) — chaque consommateur dégrade seul ; l'issue
 // DataIssueMainTeamParticipants n'est posée que si l'option composition exacte
@@ -324,13 +325,10 @@ func (f *exactCompositionFilter) applyShared(matches []domain.SquadSharedMatch) 
 func (s *TeammatesService) loadMainTeamAllies(
 	ctx context.Context, playerXUID string, matchIDs []string, reportIssue bool, issues *dataIssues,
 ) ([]domain.AllyParticipant, map[string]map[string]struct{}) {
-	if playerXUID == "" || len(matchIDs) == 0 {
-		return nil, nil
-	}
-	allies, err := s.repo.LoadMainTeamParticipants(ctx, playerXUID, matchIDs)
+	allies, teamByMatch, err := s.lireEquipeAlliee(ctx, playerXUID, matchIDs)
 	if err != nil {
 		if reportIssue {
-			// issues.add logge déjà en ErrorContext.
+			// issues.add journalise déjà (ERROR, DEBUG si la requête a pris fin).
 			issues.add(ctx, domain.DataIssueMainTeamParticipants, "", err)
 		} else {
 			slog.WarnContext(ctx, "teammates_main_team_load_failed",
@@ -338,5 +336,23 @@ func (s *TeammatesService) loadMainTeamAllies(
 		}
 		return nil, nil
 	}
-	return allies, buildMainTeamXUIDSet(allies)
+	return allies, teamByMatch
+}
+
+// lireEquipeAlliee : la lecture Q32b et son index, l'erreur RENDUE (le seul appel de Q32b
+// du service). loadMainTeamAllies (la page) la dégrade ; la lecture légère des sessions
+// d'une composition, sous l'option composition exacte, la rend au handler (lot perf L9-go :
+// jamais un 200 avec un roster non filtré).
+func (s *TeammatesService) lireEquipeAlliee(
+	ctx context.Context, playerXUID string, matchIDs []string,
+) ([]domain.AllyParticipant, map[string]map[string]struct{}, error) {
+	defer timing.FromContext(ctx).Section("main_team_allies")()
+	if playerXUID == "" || len(matchIDs) == 0 {
+		return nil, nil, nil
+	}
+	allies, err := s.repo.LoadMainTeamParticipants(ctx, playerXUID, matchIDs)
+	if err != nil {
+		return nil, nil, err
+	}
+	return allies, buildMainTeamXUIDSet(allies), nil
 }

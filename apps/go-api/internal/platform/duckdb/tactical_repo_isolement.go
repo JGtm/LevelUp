@@ -51,6 +51,11 @@ import (
 // clef du GROUP BY (avec match_id et feed_killer_xuid), donc le projeter ne change ni le
 // nombre de lignes ni les gardes — c'est l'INSTANT CONTRIBUTEUR qu'un detail de cellule doit
 // pouvoir citer.
+//
+// %s = la table de positions, puis TROIS FOIS la liste des matchs de l'univers : une par vue
+// `_latest` (lot L5a, 2026-09-23). La liste posee sur `e` ne descend ni dans `c` ni dans `p`
+// a travers les jointures : chacune de ces deux vues etait calculee sur la table ENTIERE
+// (mesure sur copie, 6 matchs : 0,70 s avec la seule liste de `e`, 0,06 s avec les trois).
 const QTacticalIsolement = `
 SELECT e.match_id, min(e.victim_xuid) AS victim_xuid,
        min(p.victim_x) AS victim_x, min(p.victim_y) AS victim_y,
@@ -63,7 +68,9 @@ JOIN match_death_context_latest c
   ON c.match_id = e.match_id AND c.victim_xuid = e.victim_xuid AND c.time_ms = e.time_ms
 JOIN %s p
   ON p.match_id = e.match_id AND p.killer_xuid = e.feed_killer_xuid AND p.time_ms = e.time_ms
-WHERE e.match_id IN (SELECT u.match_id FROM (%s) u)
+WHERE e.match_id IN (%s)
+  AND c.match_id IN (%s)
+  AND p.match_id IN (%s)
   AND e.publishable
   AND e.victim_xuid IS NOT NULL AND e.victim_xuid <> ''
   AND p.victim_x IS NOT NULL AND p.victim_y IS NOT NULL
@@ -96,10 +103,10 @@ func (r *TacticalRepo) MortsAvecContexte(ctx context.Context, q domain.TacticalQ
 		return out, nil
 	}
 
-	selectSQL, args := r.universSQL(q)
+	liste, args := listeDeLUnivers(univ, 3)
 	// Le nom de la table de positions passe par la constante de kill_measured.go, PAS par un
 	// littéral ici — même règle et même raison que QTacticalPositions (tactical_repo.go).
-	rows, err := db.QueryContext(ctx, fmt.Sprintf(QTacticalIsolement, positionsAtKill, selectSQL), args...)
+	rows, err := db.QueryContext(ctx, fmt.Sprintf(QTacticalIsolement, positionsAtKill, liste, liste, liste), args...)
 	if err != nil {
 		return out, r.degrader(ctx, "MortsAvecContexte", err)
 	}

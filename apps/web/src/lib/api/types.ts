@@ -1254,6 +1254,16 @@ export type SessionLabelEntry = components['schemas']['SessionLabelEntry']
 
 export type SessionLabelsList = components['schemas']['SessionLabelsList']
 
+/**
+ * `GET /players/{slug}/pages/teammates/sessions` (lot perf L4b, 2026-09-23) : les deux champs
+ * `composition_sessions` et `latest_composition_session` de `TeammatesPageResponse`, mêmes
+ * valeurs pour la même composition et la même option composition exacte, SANS calculer la
+ * page — la page Escouade s'y ancre avant d'envoyer sa requête lourde. Les deux champs sont
+ * toujours présents (liste vide, chaîne vide) ; le contrat déclare la liste nullable (tranche
+ * Go) : la lire par `?? []`.
+ */
+export type CompositionSessionsResponse = components['schemas']['CompositionSessionsResponse']
+
 export interface SquadTimeseriesPoint {
   period_label: string
   match_count: number

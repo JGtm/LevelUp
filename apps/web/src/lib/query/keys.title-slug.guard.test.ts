@@ -33,7 +33,7 @@ const U = '__USER__'
  */
 const titleScopedInvocations: Record<string, () => readonly unknown[]> = {
   // Filtres (déjà title-scopés avant V72-29 — verrouillés ici).
-  filtersResolve: () => queryKeys.filtersResolve(P, T, 'h'),
+  filtersResolve: () => queryKeys.filtersResolve(P, T, 'h', 'squad'),
   filtersPreview: () => queryKeys.filtersPreview(P, T, 'h'),
   // `player` retiré le 2026-07-25 : fabrique sans AUCUN call-site (enrichie du
   // titre « par cohérence » en V72-29, jamais consommée) — code mort supprimé,
@@ -86,6 +86,7 @@ const titleScopedInvocations: Record<string, () => readonly unknown[]> = {
   tacticalCellule: () => queryKeys.tacticalCellule(P, T, 'map-1', 'h'),
   // Escouade / synthèse / sessions / compare.
   teammates: () => queryKeys.teammates(P, T, 'h', []),
+  compositionSessions: () => queryKeys.compositionSessions(P, T, [], true),
   synthesis: () => queryKeys.synthesis(P, T, 'h'),
   sessionDetail: () => queryKeys.sessionDetail(P, T, 'h', 's', 'c', false, 'fr'),
   comparePlayer: () => queryKeys.comparePlayer(P, T, 'gt'),

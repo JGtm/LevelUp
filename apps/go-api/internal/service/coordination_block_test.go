@@ -39,14 +39,33 @@ func (s *tacticalRepoStub) KillEvents(_ context.Context, q domain.TacticalQuery)
 	return s.lecture, s.err
 }
 
-// appuisRepoStub — mock du port des appuis.
+// appuisRepoStub — mock du port des appuis. Il HONORE la liste demandée, comme le lecteur
+// réel (`WHERE match_id IN (...)`) : depuis que la page Sessions lit ses trois scopes en
+// une lecture complétée (lot L5a, 2026-09-23), un stub qui rendrait toutes ses lignes à
+// chaque appel ferait compter deux fois les appuis d'un match. Il garde la trace de chaque
+// appel.
 type appuisRepoStub struct {
-	rows []domain.CoordinationAppuiRow
-	err  error
+	rows   []domain.CoordinationAppuiRow
+	err    error
+	appels [][]string
 }
 
-func (s *appuisRepoStub) LoadAppuis(context.Context, []string) ([]domain.CoordinationAppuiRow, error) {
-	return s.rows, s.err
+func (s *appuisRepoStub) LoadAppuis(_ context.Context, ids []string) ([]domain.CoordinationAppuiRow, error) {
+	s.appels = append(s.appels, ids)
+	if s.err != nil {
+		return nil, s.err
+	}
+	garde := make(map[string]struct{}, len(ids))
+	for _, id := range ids {
+		garde[id] = struct{}{}
+	}
+	out := make([]domain.CoordinationAppuiRow, 0, len(s.rows))
+	for _, r := range s.rows {
+		if _, ok := garde[r.MatchID]; ok {
+			out = append(out, r)
+		}
+	}
+	return out, nil
 }
 
 // lectureDeTest — deux matchs mesurés, deux soirées, un camp à quatre.

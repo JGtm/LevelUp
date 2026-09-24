@@ -20,6 +20,12 @@ make restart      # stop + dev
 
 Open http://localhost:5173 once `make dev` is running.
 
+Slow requests: an API request taking at least `LEVELUP_SLOW_REQUEST_MS` milliseconds (default `1000`,
+read once at server start) is logged in `logs/http.log` with `slow: true`, at least at INFO. If it timed
+sections (Squad, Synthesis, Sessions and Timeseries pages, filters), an `http_timings` line follows,
+showing where the time went (`total_ms`, `sections` = up to 15 `name=ms`, slowest first, `calls`); with
+DEBUG enabled (`LEVELUP_LOGS_FILE_LEVEL=debug`), every request that timed sections gets one.
+
 ---
 
 ## Build

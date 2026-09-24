@@ -22,6 +22,7 @@ import (
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/observability/timing"
 	"levelup/go-api/internal/port"
 )
 
@@ -53,6 +54,7 @@ type weaponRecordsQuery struct {
 // (`games.ErrCapabilityNotSupported` -> Debug) ou si la lecture échoue (-> Warn). Une section
 // absente ne casse jamais la page.
 func buildWeaponRecordsSection(ctx context.Context, q weaponRecordsQuery) *domain.SynthesisWeaponRecords {
+	defer timing.FromContext(ctx).Section("weapon_records")()
 	if q.Repo == nil || q.Gamertag == "" || len(q.Rows) == 0 {
 		return nil
 	}

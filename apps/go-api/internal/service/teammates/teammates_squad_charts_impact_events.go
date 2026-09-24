@@ -15,23 +15,26 @@ import (
 	"levelup/go-api/internal/analysis/timeline"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/domain/highlightevent"
+	"levelup/go-api/internal/observability/timing"
 )
 
 // buildSquadImpactMatrix construit la matrice d'impact (badges par match et
 // par joueur de l'escouade). `allies` = équipe alliée du main par match
 // (Q32b), chargée UNE fois par GetPage et partagée avec le filtre composition
 // exacte et le profil d'intensité (CLAUDE.md n°6 : trois appelants, un seul
-// chargement). Six paramètres : cinq identités de scope + le chargement partagé,
-// l'idiome des autres builders (ctx, rows, gamertag, xuid, teammates) ne
-// laisse pas de place pour regrouper sans struct ad hoc.
+// chargement). Le joueur principal est s.gamertag ; `teammates` = les coéquipiers
+// résolus (xuid), `selectedGamertags` = les lignes de la matrice (noms choisis).
+// Six paramètres : l'idiome des autres builders (ctx, rows, xuid, sélection,
+// teammates) + le chargement partagé, sans place pour regrouper sans struct ad hoc.
 func (s *TeammatesService) buildSquadImpactMatrix(
 	ctx context.Context,
 	allSquadRows []domain.SquadMatchRow,
 	mainXUID string,
-	mainGamertag string,
 	selectedGamertags []string,
+	teammates []domain.TeammateRow,
 	allies []domain.AllyParticipant,
 ) *domain.SquadImpactMatrix {
+	defer timing.FromContext(ctx).Section("impact_matrix")()
 	if len(allSquadRows) == 0 || len(selectedGamertags) == 0 {
 		return nil
 	}
@@ -81,25 +84,17 @@ func (s *TeammatesService) buildSquadImpactMatrix(
 		}
 	}
 
-	// xuid → gamertag des squad members uniquement (main + selected). Sert à
-	// filtrer les badges affichés dans le scoreboard.
-	xuidToGT := map[string]string{}
-	gamertagSet := map[string]bool{mainGamertag: true}
+	// xuid → gamertag des squad members uniquement (main + coéquipiers résolus), sous le
+	// nom de leur ligne (le nom choisi). Sert à filtrer les badges affichés dans le
+	// scoreboard. L'APPARTENANCE SE DÉCIDE PAR XUID (teammates[].XUID, comme l'intensité :
+	// resolveSquadScope), jamais par égalité de gamertag : Q29 (noms choisis) et Q32b
+	// (équipe alliée) nomment chacune par l'annuaire de SES matchs, et un même xuid peut y
+	// porter deux casses — « madina » choisi, « Madina » dans Q32b : badges perdus (revue
+	// adversariale A, lot perf L9-go).
+	xuidToGT := resolveSquadScope(allSquadRows, s.gamertag, mainXUID, teammates).gtByXUID
+	gamertagSet := map[string]bool{s.gamertag: true}
 	for _, gt := range selectedGamertags {
 		gamertagSet[gt] = true
-	}
-	if mainXUID != "" {
-		xuidToGT[mainXUID] = mainGamertag
-	}
-	for _, allies := range allyByMatch {
-		for _, a := range allies {
-			if a.XUID == "" {
-				continue
-			}
-			if _, isSquad := gamertagSet[a.Gamertag]; isSquad {
-				xuidToGT[a.XUID] = a.Gamertag
-			}
-		}
 	}
 
 	// 3-bis. Badge « Voleur » : calculé sur l'escouade SEULE (tueur ET assistant amis),
@@ -246,6 +241,7 @@ func (s *TeammatesService) buildSquadFirstBlood(
 	mainGamertag, mainXUID string,
 	teammates []domain.TeammateRow,
 ) []domain.FirstBloodPlayerSeries {
+	defer timing.FromContext(ctx).Section("first_blood")()
 	if s.repo == nil {
 		return nil
 	}

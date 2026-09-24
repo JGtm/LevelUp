@@ -14,17 +14,19 @@
 //
 // ─── UNE SEULE LECTURE DE BASE, DEUX PERIMETRES ────────────────────────────────────────
 //
-// Le journal des morts est lu UNE FOIS, sur tout l'historique du joueur (aucune carte,
-// aucun filtre : `TacticalQuery{PlayerXUID}`), puis resserre EN GO sur deux ensembles de
-// matchs :
+// Le journal des morts est lu UNE FOIS, sur l'historique de la COMPOSITION (aucune carte ;
+// liste blanche `TacticalQuery.Matchs` = les matchs de l'habituel, lot perf L2 / D2.4 —
+// jusque-la tout l'historique du joueur, 1 160 matchs lus pour en garder 38), puis resserre
+// EN GO sur deux ensembles de matchs :
 //
 //	le PERIMETRE FILTRE   les matchs de la composition retenus par les filtres de la page ;
 //	l'HABITUEL            tout l'historique de la composition — la reference.
 //
 // C'est la mecanique de baseline du briefing de l'Explorateur (buildBriefingBaseline :
 // le scope compare a l'historique complet, dont il est un sous-ensemble). La lire en deux
-// requetes filtrees differemment aurait donne deux univers a reconcilier ; et l'habituel
-// exige de toute facon l'historique entier.
+// requetes filtrees differemment aurait donne deux univers a reconcilier ; l'habituel, qui
+// contient le perimetre filtre, est donc la liste blanche de l'UNIQUE lecture. Le nuage
+// d'isolement lit le meme perimetre (teammates_squad_isolement.go).
 package teammates
 
 import (
@@ -36,6 +38,7 @@ import (
 	"levelup/go-api/internal/analysis/coordination"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
+	"levelup/go-api/internal/observability/timing"
 )
 
 // bornesDelaiMs decoupe la distribution du delai : chaque valeur ouvre un intervalle,
@@ -97,13 +100,15 @@ func (s *TeammatesService) buildSquadEchange(
 		return nil
 	}
 	habituelIDs, _, _ := firstBloodScope(habituelRows, mainGamertag, mainXUID, teammates)
+	perimetre := domain.RestreindreAux(habituelIDs)
 
-	lecture, err := s.tacticalRepo.KillEvents(ctx, domain.TacticalQuery{PlayerXUID: mainXUID})
+	lecture, err := s.lireJournalDesMorts(ctx, mainXUID, perimetre)
 	if err != nil {
 		slog.WarnContext(ctx, "teammates_echange_journal_en_echec",
 			"player", mainGamertag, "matchs", len(scopeIDs), "err", err)
 		return nil
 	}
+	defer timing.FromContext(ctx).Section("echange")()
 
 	scope := restreindreAuxMatchs(lecture, scopeIDs)
 	mesures := matchsMesures(scope)
@@ -141,12 +146,13 @@ func (s *TeammatesService) buildSquadEchange(
 	// LA FRISE SE LIT SUR L'HISTORIQUE, PAS SUR LE FILTRE (decision utilisateur du
 	// 2026-09-22) : elle est decoupee sur `habituel` / `habituelRows`, et chaque soiree
 	// dit si le filtre courant la retient. Aucune requete de plus — `habituelRows` est
-	// deja un parametre de ce constructeur, et `lecture` couvre deja tout l'historique.
+	// deja un parametre de ce constructeur, et `lecture` couvre deja tout l'historique de la
+	// composition (sa liste blanche, D2.4).
 	out.TauxParSession = tauxParSession(habituel, habituelRows, campHabituel, scopeIDs)
 
 	// Nuage « isolement x couverture » (item 7.7) : MEME perimetre filtre (`scope`,
 	// `scopeIDs`) et MEME roster que le reste de la section — decoupes par session.
-	out.NuageIsolement = s.buildSquadIsolementNuage(ctx, scope, xuidsOrdered, gtByXUID, mainXUID)
+	out.NuageIsolement = s.buildSquadIsolementNuage(ctx, scope, perimetre, xuidsOrdered, gtByXUID, mainXUID)
 
 	slog.InfoContext(ctx, "teammates_echange",
 		"player", mainGamertag, "matchs", out.MatchsTotal, "matchs_mesures", out.MatchsMesures,
@@ -154,6 +160,18 @@ func (s *TeammatesService) buildSquadEchange(
 		"echantillon_faible", out.Couverture.EchantillonFaible,
 		"matchs_habituel", out.MatchsHabituel, "paires", len(out.Cellules))
 	return out
+}
+
+// lireJournalDesMorts lit UNE fois le journal des morts de la composition — la lecture que
+// l'echange et le nuage d'isolement se partagent (D2.4) — sous la section de duree
+// `kill_events_shared`, distincte de celle du calcul (`echange`) : les sections restent des
+// feuilles. La liste blanche est l'historique de la composition (l'habituel), jamais tout
+// l'historique du joueur.
+func (s *TeammatesService) lireJournalDesMorts(
+	ctx context.Context, mainXUID string, perimetre domain.ListeBlancheMatchs,
+) (domain.TacticalKillEvents, error) {
+	defer timing.FromContext(ctx).Section("kill_events_shared")()
+	return s.tacticalRepo.KillEvents(ctx, domain.TacticalQuery{PlayerXUID: mainXUID, Matchs: perimetre})
 }
 
 // restreindreAuxMatchs decoupe la lecture sur un ensemble de matchs. L'UNIVERS est decoupe

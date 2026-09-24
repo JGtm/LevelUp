@@ -182,8 +182,9 @@ func TestFragSolo_ScopeBorneLeBalayageDuKillFeed(t *testing.T) {
 
 	f := wrFilters()
 	q, args := buildWeaponRangeQuery(positionsAtKill, weaponRangeKillerColumn, f)
-	// 2 × les match_id (sous-requête puis portée externe) + le filtre de joueur par xuid.
-	verifieFragSoloPorteLeScope(t, q, args, 2*len(f.MatchIDs)+len(f.XUIDs))
+	// 3 × les match_id (sous-requête `fragSolo`, puis les deux vues de la portée externe `e` et
+	// `kp` — lot L5a, 2026-09-23) + le filtre de joueur par xuid.
+	verifieFragSoloPorteLeScope(t, q, args, 3*len(f.MatchIDs)+len(f.XUIDs))
 	verifieScopePousse(t, planDe(t, pdb, q, args))
 }
 

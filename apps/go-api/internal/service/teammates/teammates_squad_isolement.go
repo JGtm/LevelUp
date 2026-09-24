@@ -52,7 +52,9 @@ import (
 
 // buildSquadIsolementNuage assemble le nuage. `scope` est la lecture d'echange DEJA
 // restreinte au meme perimetre filtre que le reste de la section (`restreindreAuxMatchs`
-// dans buildSquadEchange) : memes matchs, memes joueurs.
+// dans buildSquadEchange) : memes matchs, memes joueurs. `perimetre` est la liste blanche de
+// la lecture du journal (l'historique de la composition, D2.4) : le contexte des morts est
+// lu sur les memes matchs, jamais sur tout l'historique du joueur.
 //
 // Absent (nil) : table de rayon non cablee, aucun match du perimetre a rayon connu,
 // journal d'isolement en echec, ou aucune mort du roster localisee — une OMISSION, jamais
@@ -60,6 +62,7 @@ import (
 func (s *TeammatesService) buildSquadIsolementNuage(
 	ctx context.Context,
 	scope domain.TacticalKillEvents,
+	perimetre domain.ListeBlancheMatchs,
 	xuidsOrdered []string,
 	gtByXUID map[string]string,
 	mainXUID string,
@@ -75,7 +78,7 @@ func (s *TeammatesService) buildSquadIsolementNuage(
 	// LECTURE SEPAREE, MEME PORT : le contexte de mort (voisinage au sync) ne voyage pas
 	// dans `TacticalKillEvents` — c'est une table differente, jointe par la meme cle
 	// (match_id, victim_xuid, time_ms) que le journal des kills.
-	ctxLecture, err := s.tacticalRepo.MortsAvecContexte(ctx, domain.TacticalQuery{PlayerXUID: mainXUID})
+	ctxLecture, err := s.tacticalRepo.MortsAvecContexte(ctx, domain.TacticalQuery{PlayerXUID: mainXUID, Matchs: perimetre})
 	if err != nil {
 		slog.WarnContext(ctx, "teammates_isolement_journal_en_echec",
 			"player", gtByXUID[mainXUID], "err", err)
