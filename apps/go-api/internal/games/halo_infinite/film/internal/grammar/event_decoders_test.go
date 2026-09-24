@@ -47,79 +47,13 @@ func (w *bitw) pad(n int) {
 }
 
 // ---------------------------------------------------------------------------
-// Le record de tir (type 105)
+// Le record de tir (type 36)
 // ---------------------------------------------------------------------------
 
-// buildFireRecord ecrit la TETE du record type 105 selon le layout documente.
-//
-// LE PREMIER OCTET EST LE DISCRIMINANT : type sur 7 bits, puis le bit de variante. C est lui qui
-// rend le typage en O(1) et qui a rendu inutile le balayage par « marqueur 11 bits ».
-func buildFireRecord(attacker int, weapon uint64, flags [5]uint8, aim uint32) []byte {
-	w := &bitw{}
-	w.put(FireEventType, 7)
-	w.put(0, 1) // variante 0 = record LONG, celui qui porte l arme
-	w.pad(fireAttackerBit - w.n)
-	w.put(uint64(attacker)<<1, fireAttackerW) // l index est ecrit x2 : le decodeur decale a droite
-	w.pad(fireWeaponHiBit - w.n)
-	w.put(weapon>>32, fireWeaponW)
-	w.put(weapon&0xFFFFFFFF, fireWeaponW)
-	for _, f := range flags {
-		w.put(uint64(f), 1)
-	}
-	w.put(uint64(aim), int(FireAimBits))
-	w.pad(64)
-	return w.buf
-}
-
-// TestFireRecordLayout : chaque champ est lu a l offset mesure.
-func TestFireRecordLayout(t *testing.T) {
-	const weapon = uint64(0x48C19D2D42C9679F)
-	e, ok := decodeFireEvent(buildFireRecord(6, weapon, [5]uint8{0, 0, 0, 0, 0}, 0))
-	if !ok {
-		t.Fatal("record complet refuse par la garde de longueur")
-	}
-	if e.Variant != 0 {
-		t.Errorf("variante %d, attendu 0 (record long)", e.Variant)
-	}
-	if e.FilmIndex != 6 {
-		t.Errorf("index du tireur %d, attendu 6 — l index est ecrit x2 dans le film et le "+
-			"decodeur le decale a droite ; un oubli du decalage donnerait 12", e.FilmIndex)
-	}
-	if e.WeaponID != weapon {
-		t.Errorf("arme %016X, attendu %016X — les deux moities 32 bits ne sont plus lues aux "+
-			"bits %d et %d", e.WeaponID, weapon, fireWeaponHiBit, fireWeaponLoBit)
-	}
-}
-
-// TestFireRecordAimOnlyOnTheSafePath : LA VISEE N EST LUE QUE LA OU ELLE EST LOCALISABLE.
-//
-// L ENSEMBLE LOCALISABLE S EST ELARGI le 2026-08-31 (cablage de la visee modale). Il reunit
-// desormais deux chemins : l ANCRE a offsets fixes (le record vide, drapeaux 110=1, 111=0, 112=0,
-// visee au bit 113) ET le decodeur forward de la grammaire Ghidra (fire_aim_modal.go), qui pose
-// la visee sur TOUT le record MODAL (0 cible, 0 composante) a post-comptes+2. Ce qui reste HORS du
-// localisable, et que le decodeur refuse toujours, ce sont les records NON MODAUX : au moins une
-// cible ou une composante de degat, dont les boucles ont une largeur venant d une table remplie au
-// runtime. Le decodeur ne devine pas : sur ces records, il n expose rien — un refactor « qui lit
-// toujours la visee » serait une regression silencieuse.
-//
-// NOTE : les anciens cas negatifs de ce test (drapeaux hors motif vide sur un paquet a offsets
-// FIXES) ne prouvent plus rien — un tel paquet est modal par la grammaire et porte donc une visee.
-// Le negatif se prouve maintenant sur des records reellement non modaux, construits a la grammaire.
-func TestFireRecordAimOnlyOnTheSafePath(t *testing.T) {
-	const aim = 0x15555555 & ((1 << 30) - 1)
-	// Ancre : le record vide garde sa visee au bit 113 fixe (zero regression).
-	sur, _ := decodeFireEvent(buildFireRecord(1, 1, [5]uint8{0, 0, 1, 0, 0}, aim))
-	if !sur.HasAim {
-		t.Error("chemin fixe (110=1, 111=0, 112=0) : la visee doit etre lue au bit 113")
-	}
-	// Hors du localisable : un record NON MODAL n expose aucune visee.
-	for _, nm := range []struct{ targets, comps int }{{1, 0}, {0, 2}, {3, 1}} {
-		if e, _ := decodeFireEvent(buildNonModalFire(nm.targets, nm.comps)); e.HasAim {
-			t.Errorf("visee lue sur un record non modal (%d cible(s), %d composante(s)) — hors du "+
-				"localisable, la lire revient a inventer une direction", nm.targets, nm.comps)
-		}
-	}
-}
+// LA GRAMMAIRE DU RECORD DE TIR se teste dans `fire_events_test.go` (lot M4b) : ses deux tests
+// d'ici — `TestFireRecordLayout` et `TestFireRecordAimOnlyOnTheSafePath` — ecrivaient la tete a
+// des OFFSETS FIXES (le layout « type 105 + variante ») que le decodeur ne lit plus ; ils sont
+// remplaces par des records ecrits a la grammaire, canoniques et non canoniques.
 
 // TestFireHeadingConventionMatchesPositions : le cap du tir et celui des positions ont la MEME
 // origine et le MEME sens (atan2(Y, X)). Sans quoi les tirs partiraient de travers.

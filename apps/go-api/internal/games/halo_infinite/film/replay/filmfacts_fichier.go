@@ -142,6 +142,10 @@ const VersionCodecFaits = 1
 // schemas 2 et 3 : le refus tombe sur l EN-TETE. Un fichier du schema 3 n a ni les uns ni les
 // autres ; la grammaire monte avec (`grammar.Rev`) : les faits d avant sont PERIMES, il faut
 // redecoder.
+// LE MEME SCHEMA 4 PORTE LE LOT M4b (2026-09-24, meme vague D, jamais publiee) : le blob passe en
+// v27 (tirs lus par la grammaire du record — indice sur cinq bits, numero de tir, unite tireuse — et
+// le TIR CONTINU de la vue de controle). Un fichier ecrit par le code de la vague D d avant M4b porte
+// le blob v26 : il est refuse a la magie du blob, et redecode.
 const SchemaDesFaits = 4
 
 // Identifiants de section. Ils ne se reutilisent JAMAIS : un identifiant retire reste retire, sinon

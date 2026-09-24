@@ -165,9 +165,13 @@ type SeatCoverage struct {
 	Chevauchements int `json:"chevauchements"`
 	// TirsContestes : les arrivants dont les tirs designent plusieurs places, ou une place prise.
 	TirsContestes int `json:"tirsContestes"`
-	// TirsIndexTronque : l'index de tireur persiste (4 bits) ne distingue pas les places au-dela
-	// de 15 (BTB) — la lecture par les tirs s'est abstenue sur tout le film.
+	// TirsIndexTronque : l'index de tireur persiste ne distingue pas toutes les places du film —
+	// la lecture par les tirs s'est abstenue sur tout le film. Il est lu sur CINQ bits depuis le
+	// lot M4b (quatre avant : les places 16 a 31 d un BTB se confondaient avec 0 a 15).
 	TirsIndexTronque bool `json:"tirsIndexTronque,omitempty"`
+	// TirsParPlace : les tirs rendus a l OCCUPANT de leur place quand il n est pas l index de la
+	// table — le remplacant d un partant (lot M4b.4, `tirs_par_place.go`).
+	TirsParPlace int `json:"tirsParPlace"`
 	// Presences dit d'ou viennent les presences publiees : `film` ou `vies` (repli).
 	Presences string `json:"presences"`
 	// EntitesNonLiees / EntitesContestees / TrousDEntite : ce que la liaison aux entites ti=9 n'a

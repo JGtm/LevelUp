@@ -63,6 +63,8 @@ var BuildFromFilmSteps = []string{
 	// LES ETATS DE MOUVEMENT (schema 65, lot 5.3.6) : `balayerEtatsDeMouvement` tourne apres le
 	// monde et avant le pont, et cette liste suit l ORDRE des appels.
 	"movementStates", "movementStates.stats",
+	// LE TIR CONTINU (lot M4b) : la MEME marche, la vue C de chaque trame.
+	"continuousFire", "continuousFire.stats",
 	"grenades", "projectiles", "deaths", "filmTable", "playerTeams", "playerIndices", "clockOrigin",
 }
 

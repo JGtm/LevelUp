@@ -2469,3 +2469,35 @@ package replay
 //
 //	CE QUI MONTE    rien de plus que la vague : `grammar.Rev`, `facts.Rev` et `SchemaDesFaits`
 //	AVEC ELLE       gardent leur UNIQUE montée de la vague D, empreintes recopiées.
+//
+// v71 (2026-09-24, lot M4b de la campagne « retours rejeu », plan
+// `.ai/V7.5/PLAN_RETOURS_REJEU_2026-09-23.md` §4.5 « M4b — Tir des vehicules ») : LE TIR CONTINU,
+// LU DANS LA VUE DE CONTROLE ET RENDU COMME THEATER. Une montee de plus que la vague D (70) : la
+// FORME du document change (un calque racine et quatre blocs de couverture), et le garde-rail de
+// forme refuse une forme nouvelle sous le numero de la vague.
+//
+//	`bursts`       NOUVEAU calque racine (document_fire_bursts.go, fire_bursts.go) : une rafale par
+//	               gachette principale TENUE, lue dans l entree de controle du joueur (sonde P1-S3 :
+//	               le jeu n ecrit le tir d une arme a type de prediction 1 et debit nul que par ce
+//	               bit). Bornes au tick, projetees sur les frames ; l arme vient de la MONTURE (le
+//	               chassis ou la piece montee de l episode, `tir_continu_armes.go`) ou de
+//	               l EMPLACEMENT degaine a pied (Rayon de Sentinelle) ; la cadence est celle du TAG
+//	               (Ghost 7,5/s, canons de la Banshee 8/s, Chopper 4/s, LMG du Wasp 10/s, LAAG
+//	               5 -> 18/s, LMG du Falcon et mitrailleuse du Scorpion 13/s, tourelle du Wraith
+//	               6 -> 12/s, Rayon 60/s). Les TROUS de lecture portes par une rafale sont publies,
+//	               muets ; aucun balayage de repli (decision utilisateur du 2026-09-24).
+//	`coverage.     NOUVEAU bloc : paquets lus et trous PAR CAUSE, rafales lues et le sort de
+//	continuous-    chacune (publiee sur un vehicule ou a pied, ecartee par bit, joueur, monture sans
+//	Fire`          arme, piste, arme inconnue ou arme a charge), coups poses (`shots`, le controle).
+//	`coverage.     `shotsByUnit` / `shotsByUnitNoRide` : un tir dont la REFERENCE 0 (l unite
+//	vehicles`      tireuse du record 36, lue par la grammaire) est un vehicule se pose sur LUI ;
+//	               l episode ne sert plus qu a nommer l occupant (vehicle_shots_unit.go).
+//	`coverage.     `tirsParPlace` : un tir est rendu a l OCCUPANT de sa place (le remplacant), plus
+//	seats`         au partant dont la place porte l index (tirs_par_place.go) ; l index de tireur est
+//	               lu sur CINQ bits (les places 16 a 31 d un BTB ne se confondent plus).
+//
+//	CE QUI MONTE    `grammar.Rev` garde son nom de vague (`grammar-2026-09-24`), empreinte
+//	AVEC ELLE       recopiee (la marche lit l entree de controle complete, le bloc d action corrige,
+//	                le record 36 par sa grammaire) ; `SchemaDesFaits` reste 4, le codec des faits
+//	                monte (`REPLAYINPUTS27` : le canal du tir continu et les champs du record 36) ;
+//	                `facts.Rev` inchangee. Republication apres RE-DECODAGE (verdict « redecoder »).

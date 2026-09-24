@@ -6,7 +6,7 @@
 
 ## AXE DE TEMPS
 5399 frames · intervalle 100 ms · duree 539900 ms
-schema 70 · titre halo_infinite
+schema 71 · titre halo_infinite
 version majeure du film : 40
 origine de la frame 0 sur l horloge du fil : 15914 ms
 coup d envoi date par le film : 38514 ms · 212/216 piste(s) en mouvement · rafale 17 · marge depuis la frame 0 : 22600 ms
@@ -59,11 +59,11 @@ vies : 217/217 portent une equipe du film
 repartition des vies par designateur : 0 x110 · 1 x107
 
 ## TIRS — rattaches sur DISPONIBLES, et la ventilation de tout ce qui est ecarte
-1505 rattache(s) / 1786 disponible(s) = 84.3 %
-rejets : slot introuvable=281 · slot ambigu=0 · hors fenetre=0 · sans trace publiee=0
+1729 rattache(s) / 1786 disponible(s) = 96.8 %
+rejets : slot introuvable=57 · slot ambigu=0 · hors fenetre=0 · sans trace publiee=0
 somme de controle : rattaches + rejets = disponibles -> 1786 = 1786 (equilibre : true)
 verdict : nominal
-1505 tir(s) publie(s) · 1134 avec un cap de visee lisible · 1505 avec une arme nommee
+1729 tir(s) publie(s) · 1314 avec un cap de visee lisible · 1729 avec une arme nommee
 
 ## GRENADES — le lancer porte son auteur ; ce qui se mesure est OU il est pose
 133 rattache(s) / 138 disponible(s) = 96.4 %
@@ -955,12 +955,12 @@ controle (lecture des chunks) : 23 accord · 0 contradiction · 0 silence — la
 voies des liens d index : PlayerIndexTable=5 · film_table=23
 
 ## SIEGES — la fiche d un occupant, et la part qui vient d un appariement
-entrees 28 · sieges 24 · lus 23 · tirs 0 · apparies 4 · ouvertes 1 · sans place 0 · reprises ecrites 0 · presences film
+entrees 28 · sieges 24 · lus 23 · tirs 1 · apparies 3 · ouvertes 1 · sans place 0 · reprises ecrites 0 · presences film
 arrivants 5 · presences closes 6 · sans presence 0 · occupants au plus 24 · depassements 0 · relais bornes 0 · sans table false
 
 ## REPLIS DECLENCHES — la part de ce document qui ne vient PAS d une lecture du film
 repli_chassis_vehicule_marqueur_neutre           3
-repli_place_du_remplacant_par_chainage_d_equipe  4
+repli_place_du_remplacant_par_chainage_d_equipe  3
 repli_place_ouverte_sous_la_capacite_estimee     1
 repli_position_hors_emprise_ecartee              13
 repli_tourelle_porteur_voisin_de_slot            12

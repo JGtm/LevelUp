@@ -20,7 +20,7 @@ worldObjectKeyframes_ti35	17	aebfa0835bf11525be8795fec905c18479b386e5bd72c868425
 managedProperties	141	ae860c480b97cb154624642a8a1d86ac2c121d325ff786432412615f196d1014	{Slot:1456 TimestampUS:4545479952 Field:1 FilmIndex:25 Tag:12 Value:10 HasValue:true Chained:false}
 objectives_ti11	-1	f7d5dbed66d7463ee2e5d71a9585905f9175625ea45a3759f1d67f3a621de46b	ERREUR: aucun slot d'archetype ti=11 dans les keyframes du film
 navpointRadial	0	ebac416024f8c10876dc39e7c9941f98a40431ece0bc38257ae3d468dee4f630	(population vide)
-fireEvents	45	0112a2bb8caa4c809dc3b5a847d3260609f4eaf2cafabf9b3159f36f00eae996	{Chunk:2 PacketIndex:1666 TimestampUS:4551737292 Variant:0 FilmIndex:4 ShooterIndex5:4 WeaponID:9564847282609285023 Flags:[0 1 1 1 0] HasAim...
+fireEvents	45	b732213304cb28407a46920de803e19a9738f7acb01bd1bda7adca3f3cc36179	{Chunk:2 PacketIndex:1666 TimestampUS:4551737292 FilmIndex:4 HasShooter:true FireNumber:0 Unit:{Present:true Slot:516 Gen:1 Probe:true} Shor...
 grenadeThrows	10	40158cec7a4d35b9b031b87cf766bfd6d9ebd26cdd1d2c0a5562953bbb29cc96	{TimestampUS:4554940701 Chunk:2 PacketIndex:2050 BitPos:195 FilmIndex:4 TypeID:3236121668}
 bipedPickups	21	47cccac009159d6193ee2fff1a12cb6782e877f4021fdbb91cbe76141ed2957e	{TimestampUS:4521524430 Chunk:1 Slot:512 CatalogID:31913 Class:0}
 zoomEvents	37	d2686333cb17a0d976c69cbaf1650eb000c84924a23c9562321c23d08e2dbf51	{TimestampUS:4551203771 Slot:517 Level:1}

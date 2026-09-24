@@ -113,6 +113,12 @@ type Options struct {
 	// sans eux serait indistinguable d'un film ou personne ne s'accroupit.
 	MovementStates     []types.MovementStateRead
 	MovementStateStats types.MovementStateStats
+	// ContinuousFire / ContinuousFireStats : le TIR CONTINU lu dans la vue de controle (lot M4b) —
+	// les rafales, bornees et trouees comme le film les ecrit, et les compteurs de la lecture. Entree
+	// de DONNEES ; LES STATISTIQUES VOYAGENT AVEC LA LISTE : une liste vide sans elles ne
+	// distinguerait pas un film sans tir continu d un film dont la vue de controle n est pas lue.
+	ContinuousFire      []types.ContinuousFireBurst
+	ContinuousFireStats types.ContinuousFireStats
 	// AbilityCharges / AbilityChargeStats : les CHARGES RESTANTES lues sur les emplacements
 	// ARMES du composant i56 (cf. filmdec/ability_charges.go). Entree de DONNEES, comme
 	// AbilityImpulses — meme canal d'identite (i48), autre grandeur.

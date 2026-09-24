@@ -98,6 +98,10 @@ type FilmInputs struct {
 	// c'est-a-dire des TRANSITIONS : c'est l'assemblage qui les replie en intervalles.
 	MovementStates     []types.MovementStateRead
 	MovementStateStats types.MovementStateStats
+	// ContinuousFire / ContinuousFireStats sont le TIR CONTINU (lot M4b), lu par la MEME marche que
+	// les etats de mouvement : les rafales de la vue de controle, et ce que sa lecture n a pas atteint.
+	ContinuousFire      []types.ContinuousFireBurst
+	ContinuousFireStats types.ContinuousFireStats
 	// ZoomEvents sont les bascules de LUNETTE lues dans la liste d'evenements. Elles entrent ici
 	// BRUTES, et non deja reduites en `Options.Scoped` : c'est `applyTo` qui reconstruit le
 	// palier a l'instant (cf. sa note), pour qu'un fixture n'ait qu'une LISTE a serialiser la ou
@@ -209,6 +213,7 @@ func (in FilmInputs) applyTo(opt *Options) {
 	opt.AbilityImpulses, opt.AbilityImpulseStats = in.AbilityImpulses, in.AbilityImpulseStats
 	opt.AbilityCharges, opt.AbilityChargeStats = in.AbilityCharges, in.AbilityChargeStats
 	opt.MovementStates, opt.MovementStateStats = in.MovementStates, in.MovementStateStats
+	opt.ContinuousFire, opt.ContinuousFireStats = in.ContinuousFire, in.ContinuousFireStats
 	opt.Scoped = buildScopedLookup(in.ZoomEvents,
 		buildLifeSpans(indexBySlot(in.Positions)), zoomHoldUS)
 	opt.Placements, opt.PlacementStats = in.Placements, in.PlacementStats

@@ -33,6 +33,10 @@ type VehicleWeapon struct {
 	// Sound est le stem de la PREMIERE variante du son de tir. VIDE = SILENCE DECIDE : le registre
 	// porte la raison (`silence`), le document ne publie que le silence.
 	Sound string `json:"sound,omitempty"`
+	// Loop est le stem du son TENU pendant une rafale d une arme a tir continu (schema 71, lot
+	// M4b) — la BOUCLE ; `Sound` est alors le coup en queue. Absent : le coup se rejoue a la cadence
+	// de l arme, comme le conteneur du jeu en mode « cadence de declenchement ».
+	Loop string `json:"loop,omitempty"`
 	// Mount est l ANCRE de l arme sur le sprite de son vehicule. Absent = arme sans montage
 	// documente : l eclair part du centre du vehicule.
 	Mount *VehicleWeaponMount `json:"mount,omitempty"`

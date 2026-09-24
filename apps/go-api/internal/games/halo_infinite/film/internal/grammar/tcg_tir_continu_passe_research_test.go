@@ -84,10 +84,10 @@ func (p *tcgPasse) paquet(c int, pk FilmPacket, pay []byte, w *World, cfg FrameC
 	if typ, present := PacketHeadEventType(pay); present {
 		p.avecListe++
 		p.tetes[typ]++
-		if typ == 36 && len(pay)*8 < FireHeadBits {
+		if typ == 36 && len(pay)*8 < ancienneGardeTeteTir {
 			p.courtes113[len(pay)*8]++
 		}
-		p.prodTetes[pay[0] == 0xD2 && len(pay)*8 >= FireHeadBits]++
+		p.prodTetes[pay[0] == 0xD2 && len(pay)*8 >= ancienneGardeTeteTir]++
 		debut = marchLocate(pay, w, cfg)
 		p.liste(c, pk, pay, tr, debut, ctx)
 		if debut < 0 {
@@ -374,3 +374,7 @@ func tcgNonNuls(v []int) int {
 	}
 	return n
 }
+
+// ancienneGardeTeteTir est l ancienne garde de longueur de la tete (le cinquieme « drapeau », bit
+// 112) : l instrument `tcg_tir_continu_passe_research_test.go` mesure les tetes qu elle ecartait.
+const ancienneGardeTeteTir = fireFlagsBit + 5

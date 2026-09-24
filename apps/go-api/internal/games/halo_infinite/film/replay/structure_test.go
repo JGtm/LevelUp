@@ -1326,8 +1326,18 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   `coverage.seats.imagesClesDouteuses` / `bornesDifferees`) et `coverage.birthLoadouts
 	//   .unarmedGrants` ; un sens change : `roster[].presence` ne pose une arrivée ou un départ que
 	//   sur une absence PROUVÉE. Détail : `document_chronicle.go`.
-	if SchemaVersion != 70 {
-		t.Fatalf("SchemaVersion = %d, attendu 70 : incrémenter exige une raison écrite ci-dessus "+
+	// - 71 (2026-09-24, lot M4b de la campagne « retours rejeu ») : LE TIR CONTINU. Un calque racine
+	//   NOUVEAU, `bursts` (les rafales lues dans la vue de controle, posees sur l arme de leur
+	//   monture ou sur l arme en main, avec la cadence du tag), et quatre ajouts de couverture :
+	//   `coverage.continuousFire` (la lecture de la vue C et le sort de chaque rafale),
+	//   `coverage.vehicles.shotsByUnit` / `shotsByUnitNoRide` (un tir dont la reference 0 est un
+	//   vehicule se pose sur lui) et `coverage.seats.tirsParPlace` (un tir est rendu a l occupant de
+	//   sa place). ET UN CHANGEMENT DE SENS : l index de tireur est lu sur cinq bits par la
+	//   grammaire du record 36 — un v70 d un BTB confond les places 16 a 31 avec 0 a 15, il doit se
+	//   lire « a re-cuire ». Le garde de forme refuse une forme nouvelle sous le numero de la vague
+	//   D : d ou la montee. Detail : `document_chronicle.go`.
+	if SchemaVersion != 71 {
+		t.Fatalf("SchemaVersion = %d, attendu 71 : incrémenter exige une raison écrite ci-dessus "+
 			"(un champ optionnel de plus n'en est pas une)", SchemaVersion)
 	}
 }

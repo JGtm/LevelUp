@@ -224,14 +224,20 @@ import (
 // MARCHE D IMAGE-CLE (`FilmInputs.KeyframeWalk` : decisions du balayeur et bipedes absents
 // encadres), a la suite des evenements (cf. `filmfacts_naissances.go`). Le document la publie en
 // `coverage.keyframes` ; sans elle un rejeu depuis les faits la perdrait.
-const filmFactsMagic = "REPLAYINPUTS26\n"
+//
+// v27 (2026-09-24, lot M4b de la campagne « retours rejeu ») : les TIRS portent leur indice de
+// tireur sur CINQ bits (-1 sans indice), leur NUMERO DE TIR et leur UNITE tireuse (reference 0) —
+// le record est lu par sa grammaire (`grammar/fire_events.go`) ; et le blob porte LE TIR CONTINU
+// de la vue de controle (rafales, trous, compteurs : `filmfacts_tir_continu.go`), a la suite des
+// etats de mouvement dont il partage la marche.
+const filmFactsMagic = "REPLAYINPUTS27\n"
 
 // ---------------------------------------------------------------------------
 // LES CHAMPS SERIALISES, PAR TYPE — ce sont ceux que l assemblage consomme :
 //
 //	BipedPosition     Slot · TimestampUS · X/Y/Z · HasWorld · HasYaw+YawRaw+PitchRaw ·
 //	                  HasBody+Body.Health · HasShield+Shield.Shield+Shield.Q
-//	FireEvent         TimestampUS · FilmIndex · WeaponID · HasAim+Aim
+//	FireEvent         TimestampUS · FilmIndex (5 bits, -1) · WeaponID · FireNumber · Unit · HasAim+Aim
 //	KeyframeLoadout   TimestampUS · Slot · Families
 //	GrenadeThrow      TimestampUS · FilmIndex · TypeID
 //	ProjectileTrack   Slot · Gen · Pts(TimestampUS · X/Y/Z · AtRest)

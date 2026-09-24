@@ -45,7 +45,7 @@ package replay
 // donc aux deux : le retrait de ces notes-ci a fait disparaitre la seule description de la v51,
 // restauree a la chronique le meme jour. Une entree de chronique se pose DANS LE COMMIT qui
 // monte la version, jamais apres.
-const SchemaVersion = 70
+const SchemaVersion = 71
 
 // ReplayDocument est le rejeu 2D sérialisé d'un match.
 type ReplayDocument struct {
@@ -125,6 +125,11 @@ type ReplayDocument struct {
 	// Absent si le décodage n'a rien pu rattacher. Ce n'est PAS la liste exhaustive des
 	// tirs du match : voir Shot pour ce que le champ garantit et ce qu'il ne garantit pas.
 	Shots []Shot `json:"shots,omitempty"`
+	// Bursts sont les RAFALES DE TIR CONTINU (schema 71, lot M4b, cf. document_fire_bursts.go) :
+	// la gachette tenue lue dans la vue de controle, posee sur l arme qui tire, avec la cadence de
+	// son tag — le client y pose les coups. Absent quand aucune rafale n est publiee ;
+	// `coverage.continuousFire` dit lequel des silences.
+	Bursts []FireBurst `json:"bursts,omitempty"`
 	// Loadouts est l'inventaire d'armes de chaque slot aux instants de keyframe (cf.
 	// loadouts.go). Absent si le film n'a livré aucun loadout.
 	Loadouts []Loadout `json:"loadouts,omitempty"`

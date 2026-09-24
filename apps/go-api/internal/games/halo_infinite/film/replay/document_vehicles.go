@@ -424,6 +424,11 @@ type VehicleCoverage struct {
 	ShotsAmbiguous int `json:"shotsAmbiguous"`
 	ShotsUnplaced  int `json:"shotsUnplaced"`
 	ShotsNoRide    int `json:"shotsNoRide"`
+	// ShotsByUnit : parmi `Shots`, les tirs poses sur le vehicule que leur REFERENCE 0 designe
+	// (lot M4b.4, `vehicle_shots_unit.go`) ; ShotsByUnitNoRide, ceux qu aucun episode du tireur ne
+	// couvrait — l occupant unique de la vie les nomme.
+	ShotsByUnit       int `json:"shotsByUnit"`
+	ShotsByUnitNoRide int `json:"shotsByUnitNoRide"`
 	// ShotsVehicleWeapon compte, PARMI `Shots`, ceux dont l arme n est PAS de la famille
 	// personnelle (cf. `vehicleWeaponLowHalf`) — une arme qu on ne porte pas a pied.
 	//

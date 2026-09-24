@@ -125,7 +125,11 @@ func (a *assemblage) poserTirsProjectilesEtGrenades() {
 	// Chaque calque rend sa COUVERTURE en même temps que son contenu. Le filtrage par
 	// trajectoire publiée qui suit est lui aussi compté, sous une catégorie distincte.
 	var shots []Shot
-	shots, a.shotOrphans, a.shotCov = buildShots(a.sorted, a.fire, a.origin, a.step, a.reg.IndexParSlot())
+	// LE TIREUR EST L OCCUPANT DE SA PLACE (lot M4b.4, tirs_par_place.go) : l index d un tir est
+	// la place, et le remplacant en herite. Les evenements de `a.fire` restent ceux du film.
+	fire, parPlace := nouveauxTireursParPlace(a.doc.Roster).tirsParPlace(a.fire, a.horloge())
+	a.siegeCov.TirsParPlace = parPlace
+	shots, a.shotOrphans, a.shotCov = buildShots(a.sorted, fire, a.origin, a.step, a.reg.IndexParSlot())
 	a.doc.Shots = keepShotsOfPublishedTracks(shots, a.doc.Tracks)
 	a.shotCov.Unpublished = countUnpublished(len(shots), len(a.doc.Shots))
 	a.shotCov.Attached = len(a.doc.Shots)

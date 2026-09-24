@@ -53,7 +53,7 @@ func tcgLireActions(br *Lecteur, e *tcgCtl) {
 	if (e.m2&0b111) != 0 || (e.m5&0b11) != 0 {
 		consumeID2(br)
 	}
-	consume142f26740(br)
+	ancienneQueue142f26740(br) // la queue d AVANT le lot M4b (m4b_grammaire_avant_research_test.go)
 }
 
 // tcgLireControle rejoue `consumeControleVueC` + `consumeEntreeControle` en rendant les valeurs.

@@ -18,17 +18,19 @@ package replay
 //
 // # CE QUE LA LECTURE NE PEUT PAS DIRE
 //
-// L'index de tireur PERSISTE dans les faits est l'index sur 4 bits (`grammar.FireEvent.FilmIndex`) :
-// au-dela de 15 joueurs (BTB) il confond la place P et la place P+16. Sur un tel film la lecture
-// s'ABSTIENT en entier (`tirsIndexTronque`) — le lot M4b lira l'index sur 5 bits. Les bots
-// n'ecrivent aucun tir long (sonde P4) : leur place passe par le chainage.
+// L'index de tireur PERSISTE dans les faits est lu sur CINQ bits depuis le lot M4b
+// (`grammar.FireEvent.FilmIndex`, le champ `d` lu par la grammaire du record 36) : il distingue les
+// trente-deux places qu un film peut porter. Avant, sur quatre bits, un BTB confondait la place P
+// et la place P+16, et la lecture s'ABSTENAIT en entier (`tirsIndexTronque`) ; l abstention
+// reste pour un film qui porterait un index au-dela de la largeur lue. Les bots n'ecrivent aucun
+// tir long (sonde P4) : leur place passe par le chainage.
 
 import "sort"
 
-// placesLisiblesParLesTirs : le nombre de places que l'index de tireur persiste distingue — 1 << 4,
+// placesLisiblesParLesTirs : le nombre de places que l'index de tireur persiste distingue — 1 << 5,
 // la largeur de `grammar.FireEvent.FilmIndex` (cf. l'en-tete). Ce n'est pas un seuil mesure : c'est
-// la largeur du champ, et le jour ou les faits portent l'index sur 5 bits elle devient 1 << 5.
-const placesLisiblesParLesTirs = 1 << 4
+// la largeur du champ.
+const placesLisiblesParLesTirs = 1 << 5
 
 // lireLesPlacesDansLesTirs : la LECTURE `tirs` (cf. l'en-tete). Rend les places lues, les arrivants
 // contestes, et si la lecture s'est abstenue faute d'un index de tireur assez large.

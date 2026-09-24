@@ -51,7 +51,8 @@ type WeaponShot struct {
 	Attacker uint64
 	// WeaponID est l'identifiant global 64 bits de l'arme (cle metadata.weapon_labels).
 	WeaponID uint64
-	// FilmIndex est l'index de tireur INTERNE AU FILM, SUR SA LARGEUR REELLE (5 bits, ShooterIndex5) :
+	// FilmIndex est l'index de tireur INTERNE AU FILM, SUR SA LARGEUR REELLE (5 bits, le champ `d`
+	// lu par la grammaire du record, cf. [FireEvent.FilmIndex]) :
 	// l'identite reste le xuid, resolu par l'appelant (Lot 3) via resolvePlayerIndices, LUI AUSSI
 	// keye sur ce 5 bits. C'est le DENOMINATEUR (shared.match_weapon_shots) qui impose la largeur :
 	// il key sur weaponscan.FireEvent.FilmIndex5 (5 bits). Un 4 bits (ancien decodeFireEvent.FilmIndex) SATURE
@@ -184,11 +185,12 @@ func nearestDamage(slots []dmgSlot, T, W uint64) (WeaponDamage, bool) {
 	return best, ok
 }
 
-// ScanFilmWeaponShots decode les tirs LONGS 0xD2 (type 36) des chunks 1..n : attaquant (ref0
-// dom1) et WeaponID / index tireur (decodeFireEvent, offsets fixes). Un seul decodeur par champ.
-// L'ordre du film est conserve ; les tirs non lisibles sont emis avec HasPair=false (comptes dans
-// le total, ecartes du pairing). Le verrou de process de decode est a l'appelant (cf.
-// ScanFilmFireEvents).
+// ScanFilmWeaponShots decode les tirs (record `action_weapon_fire`, type 36, en tete de liste) des
+// chunks 1..n : attaquant (ref0 dom1, index brut) et WeaponID / index tireur, par LA grammaire du
+// record ([lireEnteteTir36], lot M4b — plus d'offsets fixes). L'ordre du film est conserve ; un tir
+// sans unite ou sans indice de tireur est emis avec HasPair=false (compte dans le total, ecarte du
+// pairing : il ne se rattache a aucun joueur). Le verrou de process de decode est a l'appelant
+// (cf. ScanFilmFireEvents).
 func ScanFilmWeaponShots(dir string, n int) ([]WeaponShot, error) {
 	var out []WeaponShot
 	for c := 1; c <= n; c++ {
@@ -201,23 +203,17 @@ func ScanFilmWeaponShots(dir string, n int) ([]WeaponShot, error) {
 				continue
 			}
 			pay := pk.Payload(data)
-			if pay[0] != 0xD2 { // type 36 variante LONGUE (porte l'arme)
+			h, ok := lireEnteteTir36(pay)
+			if !ok {
 				continue
 			}
 			s := WeaponShot{TimestampUS: pk.TimestampUS}
-			br := LecteurSur(pay)
-			// Préambule de 9 bits (readPacketHead, event_list.go). Continuation non testée :
-			// le filtre sur 0xD2 ci-dessus la pose déjà (bit 1 de l'octet de tête).
-			if readPacketHead(br).Type != 36 {
-				continue
-			}
-			att, okA := lot1RefDom1(br) // ref0 = attaquant (dom1)
-			fe, okF := decodeFireEvent(pay)
-			if okA && okF {
-				// La cle de tireur est le 5 bits (ShooterIndex5), PAS le 4 bits FilmIndex : le pont
-				// FilmIndex->xuid (resolvePlayerIndices) et le denominateur (match_weapon_shots) sont
-				// keyes sur ce 5 bits. Voir WeaponShot.FilmIndex et fire_events.go:fireShooterBit.
-				s.Attacker, s.WeaponID, s.FilmIndex, s.HasPair = att, fe.WeaponID, fe.ShooterIndex5, true
+			if fe, okF := decodeFireEvent(pay); okF && h.unite.Present && fe.HasShooter {
+				// La cle de tireur est l'indice sur CINQ bits : le pont FilmIndex->xuid
+				// (resolvePlayerIndices) et le denominateur (match_weapon_shots) sont keyes sur lui.
+				// L'attaquant est l'index BRUT de la ref0, meme espace que le responsable d'un degat.
+				s.Attacker, s.WeaponID, s.FilmIndex, s.HasPair = uint64(h.unite.Index), fe.WeaponID,
+					fe.FilmIndex, true
 			}
 			out = append(out, s)
 		}

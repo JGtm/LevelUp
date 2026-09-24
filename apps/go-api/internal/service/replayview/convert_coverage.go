@@ -39,6 +39,7 @@ func toCoverage(v replay.Coverage) replaydoc.Coverage {
 		AbilityCharges:    ptrOf(v.AbilityCharges, toAbilityChargeCoverage),
 		GroundWeaponItems: ptrOf(v.GroundWeaponItems, toGroundWeaponItemsCoverage),
 		Vehicles:          ptrOf(v.Vehicles, toVehicleCoverage),
+		ContinuousFire:    ptrOf(v.ContinuousFire, toContinuousFireCoverage),
 		ObjectiveObjects:  ptrOf(v.ObjectiveObjects, toObjectiveObjectsCoverage),
 		Inventory:         ptrOf(v.Inventory, toInventoryCoverage),
 		FilmMajorVersion:  v.FilmMajorVersion,
@@ -77,6 +78,8 @@ func toLayerCoverage(v replay.LayerCoverage) replaydoc.LayerCoverage {
 		OutOfWindow:     v.OutOfWindow,
 		Unpublished:     v.Unpublished,
 		RefusedByRoster: v.RefusedByRoster,
+		ByUnit:          v.ByUnit,
+		UnitOtherIndex:  v.UnitOtherIndex,
 	}
 }
 
@@ -146,6 +149,7 @@ func toSeatCoverage(v replay.SeatCoverage) replaydoc.SeatCoverage {
 		Chevauchements:      v.Chevauchements,
 		TirsContestes:       v.TirsContestes,
 		TirsIndexTronque:    v.TirsIndexTronque,
+		TirsParPlace:        v.TirsParPlace,
 		Presences:           v.Presences,
 		EntitesNonLiees:     v.EntitesNonLiees,
 		EntitesContestees:   v.EntitesContestees,

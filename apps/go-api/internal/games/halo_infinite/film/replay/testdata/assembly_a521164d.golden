@@ -6,7 +6,7 @@
 
 ## AXE DE TEMPS
 3397 frames · intervalle 100 ms · duree 339700 ms
-schema 70 · titre halo_infinite
+schema 71 · titre halo_infinite
 version majeure du film : 33
 origine de la frame 0 sur l horloge du fil : 27811 ms
 coup d envoi date par le film : 45311 ms · 125/128 piste(s) en mouvement · rafale 17 · marge depuis la frame 0 : 17500 ms
@@ -59,11 +59,11 @@ vies : 128/128 portent une equipe du film
 repartition des vies par designateur : 0 x55 · 1 x73
 
 ## TIRS — rattaches sur DISPONIBLES, et la ventilation de tout ce qui est ecarte
-1219 rattache(s) / 1476 disponible(s) = 82.6 %
-rejets : slot introuvable=257 · slot ambigu=0 · hors fenetre=0 · sans trace publiee=0
+1409 rattache(s) / 1476 disponible(s) = 95.5 %
+rejets : slot introuvable=67 · slot ambigu=0 · hors fenetre=0 · sans trace publiee=0
 somme de controle : rattaches + rejets = disponibles -> 1476 = 1476 (equilibre : true)
 verdict : nominal
-1219 tir(s) publie(s) · 853 avec un cap de visee lisible · 1219 avec une arme nommee
+1409 tir(s) publie(s) · 923 avec un cap de visee lisible · 1409 avec une arme nommee
 
 ## GRENADES — le lancer porte son auteur ; ce qui se mesure est OU il est pose
 100 rattache(s) / 105 disponible(s) = 95.2 %
@@ -619,13 +619,13 @@ controle (lecture des chunks) : 23 accord · 0 contradiction · 1 silence — la
 voies des liens d index : PlayerIndexTable=4 · film_table=24
 
 ## SIEGES — la fiche d un occupant, et la part qui vient d un appariement
-entrees 28 · sieges 24 · lus 24 · tirs 0 · apparies 4 · ouvertes 0 · sans place 0 · reprises ecrites 0 · presences film
+entrees 28 · sieges 24 · lus 24 · tirs 1 · apparies 3 · ouvertes 0 · sans place 0 · reprises ecrites 0 · presences film
 arrivants 4 · presences closes 5 · sans presence 1 · occupants au plus 24 · depassements 0 · relais bornes 0 · sans table false
 
 ## REPLIS DECLENCHES — la part de ce document qui ne vient PAS d une lecture du film
 repli_chassis_vehicule_marqueur_neutre           15
 repli_piece_engendree_sans_evenement             2
-repli_place_du_remplacant_par_chainage_d_equipe  4
+repli_place_du_remplacant_par_chainage_d_equipe  3
 repli_position_hors_emprise_ecartee              38
 repli_tourelle_porteur_voisin_de_slot            23
 

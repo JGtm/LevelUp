@@ -59,6 +59,7 @@ type VehicleWeapon struct {
 	Fx       string              `toml:"fx"`
 	Tint     string              `toml:"tint"`
 	Sound    string              `toml:"sound"`
+	Loop     string              `toml:"loop"`
 	Silence  string              `toml:"silence"`
 	Mount    *VehicleWeaponMount `toml:"mount"`
 	Proof    string              `toml:"proof"`
@@ -144,6 +145,8 @@ func validateVehicleWeapon(w VehicleWeapon) error {
 		return fmt.Errorf("exactement un de sound / silence (un silence est DECIDE et motive)")
 	case strings.TrimSpace(w.Proof) == "":
 		return fmt.Errorf("proof vide : une entree sans preuve n entre pas au registre")
+	case w.Loop != "" && (w.Fire != VehicleWeaponFireContinuous || w.Sound == ""):
+		return fmt.Errorf("loop : le son TENU d une rafale n existe que pour une arme continuous qui sonne")
 	}
 	return validateVehicleWeaponMount(w.Mount)
 }

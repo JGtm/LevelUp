@@ -34,6 +34,7 @@ func DecodeFilmFacts(blob []byte, entry profile.MapQuantEntry) (*FilmFacts, erro
 	g.EquipmentChanges, g.EquipmentChangeStats = decodeEquipmentChanges(r)
 	decodeCapacites(r, g)
 	decodeEtatsDeMouvement(r, g)
+	g.ContinuousFire, g.ContinuousFireStats = decodeTirContinu(r)
 	g.ZoomEvents = decodeZoomEvents(r)
 	decodeMonde(r, g)
 	g.Vehicles = decodeVehicleScan(r, lay, world)
@@ -126,7 +127,13 @@ func decodeEvenements(r *greader, g *FilmFacts) {
 		lastTS += r.u()
 		e.TimestampUS = lastTS
 		e.FilmIndex = int(r.i())
+		e.HasShooter = e.FilmIndex >= 0
 		e.WeaponID = r.u()
+		e.FireNumber = uint8(r.u()) //nolint:gosec // ecrit depuis un uint8
+		if e.Unit.Present = r.bool8(); e.Unit.Present {
+			e.Unit.Slot = uint32(r.u()) //nolint:gosec // ecrit depuis un uint32
+			e.Unit.Gen = uint32(r.u())  //nolint:gosec // ecrit depuis un uint32
+		}
 		if e.HasAim = r.bool8(); e.HasAim {
 			for a := 0; a < 3; a++ {
 				e.Aim[a] = r.f32()

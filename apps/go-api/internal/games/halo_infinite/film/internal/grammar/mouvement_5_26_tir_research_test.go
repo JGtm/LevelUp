@@ -48,8 +48,8 @@ import (
 )
 
 // t526TeteTir est le type d evenement de tete du record de tir (numerotation TRAME), le meme que
-// `modalRecordType`.
-const t526TeteTir = modalRecordType
+// [TypeTirArme].
+const t526TeteTir = TypeTirArme
 
 // t526Refs sont les trois references gardees du repartiteur, decodees a leur place.
 type t526Refs struct {
@@ -178,7 +178,7 @@ func t526TableauB(t *testing.T, p *t525Passe, pls map[h526Cle][]byte, cibles []i
 		tr := p.tr[i]
 		pay := pls[h526Cle{tr.chunk, tr.paquet}]
 		fin := t526LireRefs(pay).r2.EndBit
-		if pc, ok := modalPostCountsBit(pay); ok {
+		if pc, ok := m526PostComptes(pay); ok {
 			modaux++
 			fin = pc + modalAimGap + int(FireAimBits)
 		}
@@ -275,4 +275,14 @@ func t526Un(b bool) int {
 		return 1
 	}
 	return 0
+}
+
+// m526PostComptes rend la position post-comptes d un record de tir modal, par la grammaire de
+// production (tete [lireEnteteTir36], lot M4b).
+func m526PostComptes(pay []byte) (int, bool) {
+	h, ok := lireEnteteTir36(pay)
+	if !ok {
+		return 0, false
+	}
+	return modalPostCountsBitFrom(pay, h)
 }

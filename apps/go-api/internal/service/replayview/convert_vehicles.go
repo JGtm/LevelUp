@@ -41,6 +41,7 @@ func toVehicleWeapon(v replay.VehicleWeapon) replaydoc.VehicleWeapon {
 		Fx:      v.Fx,
 		Tint:    v.Tint,
 		Sound:   v.Sound,
+		Loop:    v.Loop,
 		Mount:   ptrOf(v.Mount, toVehicleWeaponMount),
 	}
 }

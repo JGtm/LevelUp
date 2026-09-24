@@ -150,6 +150,45 @@ PacketIndex	int	-
 TimestampUS	uint64	-
 Q	uint16	-
 
+## ContinuousFireBurst (grammar)
+FilmIndex	int	-
+Hand	int	-
+Barrel	bool	-
+Input	int	-
+Weapon	int	-
+StartUS	uint64	-
+EndUS	uint64	-
+StartBound	string	-
+EndBound	string	-
+Entries	int	-
+Holes	[]types.ContinuousFireHole	-
+
+## ContinuousFireHole (grammar)
+StartUS	uint64	-
+EndUS	uint64	-
+
+## ContinuousFireStats (grammar)
+Scanned	bool	-
+Packets	int	-
+Reached	int	-
+Closed	int	-
+Holes	int	-
+HoleRuns	int	-
+Unlocated	int	-
+OpenViewB	int	-
+StopOverflow	int	-
+StopKind	int	-
+StopBlockBC	int	-
+StopCap	int	-
+NotClosing	int	-
+Entries	int	-
+WithAction	int	-
+Firing	int	-
+Bursts	int	-
+BurstsWithHole	int	-
+InnerHoles	int	-
+HeldHoleMS	int64	-
+
 ## DeadState (grammar)
 Mort	bool	-
 EnumA	int32	-

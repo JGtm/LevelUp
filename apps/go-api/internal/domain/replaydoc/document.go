@@ -25,6 +25,7 @@ type ReplayDocument struct {
 	Structure           []Surface                `json:"structure,omitempty"`
 	StructureBounds     *Bounds                  `json:"structureBounds,omitempty"`
 	Shots               []Shot                   `json:"shots,omitempty"`
+	Bursts              []FireBurst              `json:"bursts,omitempty"`
 	Loadouts            []Loadout                `json:"loadouts,omitempty"`
 	Inventory           []Inventory              `json:"inventory,omitempty"`
 	GrenadeLabels       []Label                  `json:"grenadeLabels,omitempty"`

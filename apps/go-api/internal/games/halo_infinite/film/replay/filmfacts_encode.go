@@ -53,6 +53,7 @@ func encodeurDeFaits(g *FilmFacts) *gwriter {
 	encodeEquipmentChanges(w, g.EquipmentChanges, g.EquipmentChangeStats)
 	encodeCapacites(w, g)
 	encodeEtatsDeMouvement(w, g)
+	encodeTirContinu(w, g.ContinuousFire, g.ContinuousFireStats)
 	encodeZoomEvents(w, g.ZoomEvents)
 	encodeMonde(w, g)
 	encodeVehicleScan(w, g.Vehicles)
@@ -92,8 +93,14 @@ func encodeEvenements(w *gwriter, g *FilmFacts) {
 	for _, e := range g.Fire {
 		w.u(e.TimestampUS - lastTS)
 		lastTS = e.TimestampUS
-		w.i(int64(e.FilmIndex))
+		w.i(int64(e.FilmIndex)) // cinq bits, -1 sans indice de tireur (lot M4b)
 		w.u(e.WeaponID)
+		w.u(uint64(e.FireNumber))
+		w.bool8(e.Unit.Present)
+		if e.Unit.Present {
+			w.u(uint64(e.Unit.Slot))
+			w.u(uint64(e.Unit.Gen))
+		}
 		w.bool8(e.HasAim)
 		if e.HasAim {
 			for a := 0; a < 3; a++ {

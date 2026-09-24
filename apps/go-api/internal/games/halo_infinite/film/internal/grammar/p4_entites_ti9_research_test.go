@@ -204,7 +204,7 @@ func p4TirsContreEntites(t *testing.T, tirs []FireEvent, tri []*siegeEntite, ics
 	t.Helper()
 	parTireur := map[int][]int64{}
 	for _, e := range tirs {
-		parTireur[e.ShooterIndex5] = append(parTireur[e.ShooterIndex5], fr(e.TimestampUS))
+		parTireur[e.FilmIndex] = append(parTireur[e.FilmIndex], fr(e.TimestampUS)) // cinq bits (lot M4b)
 	}
 	// ARRIVANT = entite absente de la PREMIERE image-cle porteuse (la toute premiere du film peut
 	// etre vide : b1ad85eb rang 0, f-186, preambule).

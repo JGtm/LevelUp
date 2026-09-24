@@ -132,6 +132,8 @@ type VehicleCoverage struct {
 	ShotsAmbiguous                  int            `json:"shotsAmbiguous"`
 	ShotsUnplaced                   int            `json:"shotsUnplaced"`
 	ShotsNoRide                     int            `json:"shotsNoRide"`
+	ShotsByUnit                     int            `json:"shotsByUnit"`
+	ShotsByUnitNoRide               int            `json:"shotsByUnitNoRide"`
 	ShotsVehicleWeapon              int            `json:"shotsVehicleWeapon"`
 	// Les pieces montees (schema 69, cf. `replay.VehicleCoverage`).
 	Turrets                    int `json:"turrets"`

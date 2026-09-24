@@ -286,7 +286,7 @@ func tirLitRecords(dir string) []tirRecord {
 				continue
 			}
 			pay := p.Payload(chunk)
-			if int(pay[0]>>1) != grammar.FireEventType || int(pay[0])&1 != 0 ||
+			if int(pay[0]>>1) != ancienTypeTeteTir || int(pay[0])&1 != 0 ||
 				len(pay)*8 < tirHeadBits {
 				continue
 			}

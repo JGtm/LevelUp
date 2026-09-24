@@ -237,7 +237,16 @@ const plafondSurfaceFacade = 166 // 2026-09-17 — base a5d15e634
 //	                                           (2026-09-24), sur la vague C (269) : 271 ; a la
 //	                                           fusion de la campagne a jour (M7 compris, lot
 //	                                           D-fix) : 273 + 2 = 275.
-const plafondSurfaceReplay = 275 // 2026-09-24 — vague D sur la campagne a jour : 273 (vague C, M7) + 2 (rr(m3) : KeyframeCoverage, BirthLoadoutCoverage)
+//	278  rr(m4b) (2026-09-24)                  la montee de schema 71 (le tir continu) : le calque
+//	                                           racine `bursts` et sa couverture, cites par le
+//	                                           convertisseur jumeau `service/replayview/
+//	                                           convert_tir_continu.go` — `replay.FireBurst`,
+//	                                           `replay.FireBurstHole`, `replay.ContinuousFireCoverage`.
+//	                                           TROIS symboles neufs ; les champs `ByUnit`,
+//	                                           `UnitOtherIndex`, `ShotsByUnit`, `TirsParPlace` n en
+//	                                           ajoutent aucun. RE-MESURE A L ENTREE du lot : 275 sur
+//	                                           `c9ef97ec6` (feat/rr-vague-d).
+const plafondSurfaceReplay = 278 // 2026-09-24 — rr(m4b) sur c9ef97ec6 : 275 + 3 (FireBurst, FireBurstHole, ContinuousFireCoverage)
 
 // plafondsParFamilleFacade — la surface de la facade VENTILEE PAR PAQUET D ORIGINE.
 //

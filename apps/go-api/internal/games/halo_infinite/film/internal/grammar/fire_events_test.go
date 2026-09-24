@@ -2,83 +2,106 @@ package grammar
 
 import "testing"
 
-// putBits écrit n bits MSB-first à une position ABSOLUE (le record type 105 se décrit par
-// offsets de bits, pas par écriture séquentielle). Complète le bitWriter séquentiel de
-// frame_chain_infer_test.go.
-func (w *bitWriter) putBits(pos int, n int, v uint64) {
-	for i := 0; i < n; i++ {
-		p := pos + i
-		for len(w.buf) <= p/8 {
-			w.buf = append(w.buf, 0)
-		}
-		if (v>>uint(n-1-i))&1 == 1 {
-			w.buf[p/8] |= 1 << uint(7-p%8)
-		}
-	}
-	if pos+n > w.n {
-		w.n = pos + n
-	}
-}
+// fire_events_test.go — LA TÊTE DU RECORD `action_weapon_fire` (type 36), LUE PAR SA GRAMMAIRE
+// (lot M4b). Les records sont écrits par le constructeur à la grammaire de `fire_aim_modal_test.go`
+// ([writeModalHeader]) : chaque champ optionnel présent déplace tout ce qui suit, et c'est ce que
+// les anciens offsets fixes ne savaient pas traverser.
 
-// TestDecodeFireEventLayout ancre les OFFSETS DE BITS du record type 105 (spec Ghidra).
-// Un décalage d'un seul bit sur l'un des champs fait échouer le test — c'est le but : ces
-// offsets sont la seule chose qui sépare une arme réelle d'un mot de bruit.
-func TestDecodeFireEventLayout(t *testing.T) {
-	const (
-		wantPlayer = 5
-		wantWeapon = uint64(0x6ACDC44D42C9679F)
-	)
-	aimCode, ok := EncodeAimVector([3]float32{0.6, 0.8, 0}, FireAimBits)
+// tirSynthetique écrit un record type 36 MODAL (visée comprise) avec l'en-tête `o`.
+func tirSynthetique(t *testing.T, o modalHeaderOpts) []byte {
+	t.Helper()
+	code, ok := EncodeAimVector([3]float32{0.6, 0.8, 0}, FireAimBits)
 	if !ok {
 		t.Fatal("EncodeAimVector a refusé la largeur 30")
 	}
-	w := &bitWriter{}
-	w.putBits(0, 7, uint64(FireEventType))
-	w.putBits(fireVariantBit, 1, 0) // record long
-	w.putBits(fireAttackerBit, fireAttackerW, uint64(wantPlayer)<<1)
-	w.putBits(fireWeaponHiBit, fireWeaponW, wantWeapon>>32)
-	w.putBits(fireWeaponLoBit, fireWeaponW, wantWeapon&0xFFFFFFFF)
-	w.putBits(fireFlagsBit+2, 1, 1) // compteurs nuls -> la visée suit à fireAimBit
-	w.putBits(fireAimBit, int(FireAimBits), uint64(aimCode))
+	pay, _ := buildModalFire(o, code)
+	return pay
+}
 
-	if got := int(w.buf[0] >> 1); got != FireEventType {
-		t.Fatalf("type d'event dans payload[0] = %d, attendu %d", got, FireEventType)
-	}
-	e, ok := decodeFireEvent(w.buf)
+// TestDecodeFireEventGrammaireCanonique : la disposition CANONIQUE (ref0 avec sonde, tireur et
+// arme haute présents) se lit champ par champ — l'indice de tireur sur CINQ bits (19 : un joueur de
+// BTB que l'ancien champ à quatre bits confondait avec le 3), le numéro de tir, l'unité tireuse et
+// l'arme entière.
+func TestDecodeFireEventGrammaireCanonique(t *testing.T) {
+	const arme = uint64(0x6ACDC44D42C9679F)
+	pay := tirSynthetique(t, modalHeaderOpts{ref0: true, ref0Wide: true, ref0Index: 0x0F1,
+		dExtra: true, tireur: 19, fWeapon: true, armeHaute: arme >> 32, armeBasse: arme & 0xFFFFFFFF,
+		numero: 0x61}) // R(7) = 0x30, R(1) = 1 -> numéro 0x30 | 0x80
+	e, ok := decodeFireEvent(pay)
 	if !ok {
-		t.Fatal("record complet refuse par la garde de longueur")
+		t.Fatal("record canonique refusé")
 	}
-	if e.FilmIndex != wantPlayer {
-		t.Errorf("FilmIndex = %d, attendu %d", e.FilmIndex, wantPlayer)
+	if !e.HasShooter || e.FilmIndex != 19 {
+		t.Errorf("tireur = (%v, %d), attendu (true, 19)", e.HasShooter, e.FilmIndex)
 	}
-	if e.WeaponID != wantWeapon {
-		t.Errorf("WeaponID = %#016x, attendu %#016x", e.WeaponID, wantWeapon)
+	if e.WeaponID != arme {
+		t.Errorf("arme = %#016x, attendu %#016x", e.WeaponID, arme)
 	}
-	if !e.HasAim {
-		t.Fatal("visée non décodée alors que les trois drapeaux sont sur le chemin sûr")
+	if e.FireNumber != 0xB0 {
+		t.Errorf("numéro de tir = %#x, attendu 0xb0", e.FireNumber)
 	}
-	if e.Aim[0] < 0.55 || e.Aim[0] > 0.65 || e.Aim[1] < 0.75 || e.Aim[1] > 0.85 {
-		t.Errorf("visée décodée = %v, attendu ~(0.6, 0.8, 0)", e.Aim)
+	if !e.Unit.Present || !e.Unit.Probe || e.Unit.Slot != parentHandleBase+0x0F1 {
+		t.Errorf("unité = %+v, attendu slot %d avec sonde", e.Unit, parentHandleBase+0x0F1)
 	}
-	h, _ := e.AimHeadingDeg()
-	if h < 50 || h > 55 { // atan2(0.8, 0.6) = 53,1 deg
-		t.Errorf("cap = %.1f deg, attendu ~53,1", h)
+	if !e.HasAim || e.Aim[0] < 0.55 || e.Aim[0] > 0.65 || e.Aim[1] < 0.75 || e.Aim[1] > 0.85 {
+		t.Errorf("visée = (%v, %v), attendu ~(0.6, 0.8, 0)", e.HasAim, e.Aim)
 	}
 }
 
-// TestDecodeFireEventAimGatedOff : sur un record réellement NON MODAL, la visée n'est PAS lue.
-//
-// CONTRAT MIS À JOUR (2026-08-31, câblage de la visée modale). Auparavant la visée n'était lisible
-// que sur le sous-ensemble « record vide » (drapeaux 110/111/112), et ce test construisait des
-// paquets à drapeaux hors de ce motif pour vérifier qu'aucune visée n'en sortait. Le décodeur
-// forward (fire_aim_modal.go) pose désormais la visée sur TOUT le record MODAL — 0 cible et
-// 0 composante de dégât — quelle que soit la valeur des drapeaux. La prémisse « visée non lisible
-// hors du chemin sûr » n'est donc plus vraie que pour les records réellement NON MODAUX : ceux
-// qui portent au moins une cible ou une composante, dont les boucles ont une largeur venant d'une
-// table peuplée au runtime, non localisable hors ligne. Les anciens cas synthétiques (surtout des
-// zéros) se décodaient par hasard en record modal et auraient récolté une visée PARASITE ; ils
-// sont remplacés par des records vraiment non modaux, construits à la grammaire Ghidra, que le
-// forward doit refuser (ok=false) — et donc aucune visée ne doit sortir de decodeFireEvent.
+// TestDecodeFireEventTireurAbsent : la garde du tireur FERMÉE retire cinq bits à tout ce qui suit.
+// Les anciens offsets fixes y lisaient une arme DÉCALÉE (1 205 tirs publiés au parc, rapport
+// `RAPPORT_tirs_vehicules.md` §6) ; la grammaire rend l'arme juste et « pas de tireur ».
+func TestDecodeFireEventTireurAbsent(t *testing.T) {
+	const arme = uint64(0x121B400942C9679F)
+	pay := tirSynthetique(t, modalHeaderOpts{ref0: true, ref0Wide: true, fWeapon: true,
+		armeHaute: arme >> 32, armeBasse: arme & 0xFFFFFFFF})
+	e, ok := decodeFireEvent(pay)
+	if !ok {
+		t.Fatal("record sans tireur refusé")
+	}
+	if e.HasShooter || e.FilmIndex != -1 {
+		t.Errorf("tireur = (%v, %d), attendu (false, -1)", e.HasShooter, e.FilmIndex)
+	}
+	if e.WeaponID != arme {
+		t.Errorf("arme = %#016x, attendu %#016x (décalée : l'offset fixe est revenu)", e.WeaponID, arme)
+	}
+}
+
+// TestDecodeFireEventReferencesNonCanoniques : une ref0 SANS sonde (treize bits) et des refs 1 et 2
+// PRÉSENTES déplacent la tête de 4 + 15 + 15 bits ; l'arme et le tireur restent justes.
+func TestDecodeFireEventReferencesNonCanoniques(t *testing.T) {
+	const arme = uint64(0x49E40D1742C9679F)
+	pay := tirSynthetique(t, modalHeaderOpts{ref0: true, ref1: true, ref2: true, ref0Index: 0x333,
+		dExtra: true, tireur: 7, eExtra: true, fWeapon: true, armeHaute: arme >> 32,
+		armeBasse: arme & 0xFFFFFFFF})
+	e, ok := decodeFireEvent(pay)
+	if !ok {
+		t.Fatal("record non canonique refusé")
+	}
+	if e.FilmIndex != 7 || e.WeaponID != arme {
+		t.Errorf("tireur %d arme %#016x, attendu 7 et %#016x", e.FilmIndex, e.WeaponID, arme)
+	}
+	if e.Unit.Probe || e.Unit.Slot != parentHandleBase+0x333 {
+		t.Errorf("unité = %+v, attendu slot %d sans sonde", e.Unit, parentHandleBase+0x333)
+	}
+}
+
+// TestDecodeFireEventEcarteLeType37 : `weapon_overheat` (type 37) partage l'octet de tête 0xD2 du
+// type 36 ; l'ancien filtre sur cet octet le laissait passer. La grammaire lit le type ENTIER.
+func TestDecodeFireEventEcarteLeType37(t *testing.T) {
+	pay := tirSynthetique(t, modalHeaderOpts{ref0: true, ref0Wide: true, dExtra: true, fWeapon: true})
+	if pay[0] != 0xD2 {
+		t.Fatalf("octet de tête du type 36 = %#x, attendu 0xd2", pay[0])
+	}
+	pay[1] |= 0x80 // le bit de poids faible du type (bit 8 du payload) : 36 -> 37
+	if _, ok := decodeFireEvent(pay); ok {
+		t.Error("record de type 37 accepté comme un tir")
+	}
+}
+
+// TestDecodeFireEventAimGatedOff : sur un record réellement NON MODAL (au moins une cible ou une
+// composante de dégât), la visée n'est PAS lue : les boucles ont une largeur venant d'une table
+// peuplée au runtime, non localisable hors ligne. Le tir, lui, est rendu.
 func TestDecodeFireEventAimGatedOff(t *testing.T) {
 	for _, tc := range []struct {
 		name           string
@@ -95,7 +118,11 @@ func TestDecodeFireEventAimGatedOff(t *testing.T) {
 				t.Fatalf("record non modal (%d cible(s), %d composante(s)) accepté comme modal : "+
 					"le forward localiserait une visée parasite", tc.targets, tc.comps)
 			}
-			if e, _ := decodeFireEvent(pay); e.HasAim {
+			e, ok := decodeFireEvent(pay)
+			if !ok {
+				t.Fatal("record non modal refusé : le tir existe, seule sa visée est illisible")
+			}
+			if e.HasAim {
 				t.Errorf("visée décodée sur un record non modal (%d cible(s), %d composante(s))",
 					tc.targets, tc.comps)
 			}
@@ -103,34 +130,26 @@ func TestDecodeFireEventAimGatedOff(t *testing.T) {
 	}
 }
 
-// TestDecodeFireEventRefuseRecordTronque : LA GARDE DE LONGUEUR, ET POURQUOI ELLE EXISTE.
-//
-// Le décodeur lit la tête à des offsets FIXES jusqu'au bit 112, via `readBitsAt` qui indexe le
-// tableau SANS borne (contrairement à `PeekBits`, qui rend 0 au-delà). `ScanFilmFireEvents`
-// n'exige que `p.Size >= 1` : avant la garde, un paquet delta tronqué dont le premier octet
-// vaut 0xD2 — type 105, variante longue — faisait paniquer le décodeur. Un film tronqué par un
-// téléchargement partiel suffit, et en J4 ce décodeur tourne dans un collecteur de fond du
-// process de sync, où une panique coûte le process entier.
-//
-// Le test balaie TOUTES les longueurs sous le seuil, pas seulement zéro : c'est la longueur du
-// dernier champ obligatoire qui fixe le seuil, et une régression le déplacerait d'un octet.
+// TestDecodeFireEventRefuseRecordTronque : LA GARDE DE LONGUEUR. Un film tronqué par un
+// téléchargement partiel porte des paquets coupés, et ce décodeur tourne aussi dans un collecteur
+// de fond du process de sync, où une panique coûte le process entier. Toute longueur SOUS la fin
+// de la tête est refusée sans paniquer ; la tête entière est acceptée.
 func TestDecodeFireEventRefuseRecordTronque(t *testing.T) {
-	full := (FireHeadBits + 7) / 8
-	for n := 0; n < full; n++ {
-		pay := make([]byte, n)
-		if n > 0 {
-			pay[0] = FireEventType << 1 // 0xD2 : type 105, variante longue
-		}
-		e, ok := decodeFireEvent(pay)
+	w := &bitWriter{}
+	writeModalHeader(w, modalHeaderOpts{ref0: true, ref0Wide: true, dExtra: true, fWeapon: true})
+	finTete := w.n
+	complet := append([]byte(nil), w.buf...)
+	for n := 0; n*8 < finTete; n++ {
+		e, ok := decodeFireEvent(complet[:n])
 		if ok {
-			t.Errorf("payload de %d octet(s) accepté alors que la tête en exige %d", n, full)
+			t.Errorf("payload de %d octet(s) accepté alors que la tête finit au bit %d", n, finTete)
 		}
 		if e != (FireEvent{}) {
 			t.Errorf("payload de %d octet(s) : event non nul rendu avec ok=false", n)
 		}
 	}
-	if _, ok := decodeFireEvent(make([]byte, full)); !ok {
-		t.Errorf("payload de %d octets refusé alors qu'il porte la tête entière", full)
+	if _, ok := decodeFireEvent(complet[:(finTete+7)/8]); !ok {
+		t.Errorf("payload portant la tête entière (%d bits) refusé", finTete)
 	}
 }
 

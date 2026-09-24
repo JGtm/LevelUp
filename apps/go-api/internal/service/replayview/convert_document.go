@@ -27,6 +27,7 @@ func toReplayDocument(v replay.ReplayDocument) replaydoc.ReplayDocument {
 		Structure:           sliceOf(v.Structure, toSurface),
 		StructureBounds:     ptrOf(v.StructureBounds, toBounds),
 		Shots:               sliceOf(v.Shots, toShot),
+		Bursts:              sliceOf(v.Bursts, toFireBurst),
 		Loadouts:            sliceOf(v.Loadouts, toLoadout),
 		Inventory:           sliceOf(v.Inventory, toInventory),
 		GrenadeLabels:       sliceOf(v.GrenadeLabels, toLabel),

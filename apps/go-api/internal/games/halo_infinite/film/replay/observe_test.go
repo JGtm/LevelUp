@@ -87,6 +87,21 @@ func declarationsDuBalayage(t *testing.T) map[string]*ast.FuncDecl {
 	return out
 }
 
+// balayagesAPlusieursCanaux : les balayages dont UNE marche rend PLUSIEURS canaux observes, et
+// combien. La marche du frame-processeur (`grammar.ScanMarcheDesTrames`) deroule chaque trame une
+// fois et rend les ETATS DE MOUVEMENT (vue B) et le TIR CONTINU (vue C, lot M4b, 2026-09-24) :
+// deux etapes observees pour un seul balayage. Refaire la marche pour la seconde doublerait le
+// cout du plus cher des balayages ; l egalite `etapes = balayages` reste exacte, ponderee ici.
+var balayagesAPlusieursCanaux = map[string]int{"ScanMarcheDesTrames": 2}
+
+// canauxDuBalayage rend le nombre d etapes observees qu un balayage alimente (1 par defaut).
+func canauxDuBalayage(nom string) int {
+	if n, ok := balayagesAPlusieursCanaux[nom]; ok {
+		return n
+	}
+	return 1
+}
+
 // estBalayage dit si un nom de fonction est un BALAYAGE de film : la forme film (`ScanXxx`), la
 // forme repertoire heritee (`ScanFilmXxx`, enveloppe D2 — aucune n'est appelee ici) ou un
 // decodeur de calque (`decodeFilmXxx`).
@@ -142,7 +157,7 @@ func (m *marcheurDEtapes) descendre(body *ast.BlockStmt) {
 				m.steps = append(m.steps, s)
 			}
 		case estBalayage(nom):
-			m.scans++
+			m.scans += canauxDuBalayage(nom)
 			return false // un balayage est une feuille : on ne descend pas dedans
 		default:
 			fn, connue := m.decls[nom]

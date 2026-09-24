@@ -138,6 +138,8 @@ func toVehicleCoverage(v replay.VehicleCoverage) replaydoc.VehicleCoverage {
 		ShotsAmbiguous:                  v.ShotsAmbiguous,
 		ShotsUnplaced:                   v.ShotsUnplaced,
 		ShotsNoRide:                     v.ShotsNoRide,
+		ShotsByUnit:                     v.ShotsByUnit,
+		ShotsByUnitNoRide:               v.ShotsByUnitNoRide,
 		ShotsVehicleWeapon:              v.ShotsVehicleWeapon,
 		Turrets:                         v.Turrets,
 		TurretsOnCarrier:                v.TurretsOnCarrier,

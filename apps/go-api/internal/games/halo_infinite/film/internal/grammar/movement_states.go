@@ -102,41 +102,85 @@ func ScanFilmMovementStates(dir string) ([]types.MovementStateRead, types.Moveme
 	return ScanMovementStates(contexteDeBobine(film))
 }
 
-// ScanMovementStates decode les etats de mouvement d un film DEJA CHARGE.
+// ScanMovementStates decode les etats de mouvement d un film DEJA CHARGE. C est la PROJECTION de
+// [ScanMarcheDesTrames] sur ses etats de mouvement : la marche est la meme, et le tir continu
+// qu elle lit aussi est simplement laisse de cote (les instruments qui n en ont pas besoin).
 func ScanMovementStates(fc *FilmContext) ([]types.MovementStateRead, types.MovementStateStats,
 	error) {
-	var st types.MovementStateStats
+	m, err := ScanMarcheDesTrames(fc)
+	return m.MovementStates, m.MovementStateStats, err
+}
+
+// MarcheDesTrames est ce que LA marche du frame-processeur rend : les etats de mouvement du
+// Spartan (vue B) et le TIR CONTINU (vue C, lot M4b). UNE marche, deux canaux : lire la vue C
+// dans une seconde marche doublerait le cout du decodage le plus cher du film pour relire des
+// paquets que celle-ci traverse deja.
+type MarcheDesTrames struct {
+	MovementStates      []types.MovementStateRead
+	MovementStateStats  types.MovementStateStats
+	ContinuousFire      []types.ContinuousFireBurst
+	ContinuousFireStats types.ContinuousFireStats
+}
+
+// ScanMarcheDesTrames deroule la marche du frame-processeur sur un film DEJA CHARGE et rend ses
+// deux canaux.
+//
+// UN FILM SANS ETATS DE MOUVEMENT EST MARCHE QUAND MEME depuis le lot M4b : son archetype bipede
+// ne declare aucun des composants d etat (`Absent`), mais sa vue de controle porte le tir continu.
+// Les etats de mouvement y restent EXACTEMENT ce qu ils etaient — aucune lecture, `Absent` et
+// `Scanned` poses, les compteurs de marche remis a zero.
+func ScanMarcheDesTrames(fc *FilmContext) (MarcheDesTrames, error) {
+	var m MarcheDesTrames
+	st := &m.MovementStateStats
 	st.MapWidths = fc.LargeursObjetDuMonde().AxisW
 	chunks := fc.ChunkNumbers()
 	if len(chunks) == 0 {
-		return nil, st, ErrNoFilmChunk
+		return m, ErrNoFilmChunk
 	}
 	reg, err := fc.Registry()
 	if err != nil {
-		return nil, st, err
+		return m, err
 	}
 	arch, err := fc.bipedArchetype()
 	if err != nil {
-		return nil, st, err
+		return m, err
 	}
-	sc := &movementStateScanner{st: &st,
+	sc := &movementStateScanner{st: st,
 		crouch:   componentIndexOfAny(arch, crouchComponentName, crouchComponentNameAlt),
 		slide:    componentIndexOfAny(arch, slideComponentName, slideComponentNameAlt),
 		mobility: componentIndexOfAny(arch, mobilityComponentName, mobilityComponentAlt),
 		ability:  componentIndexOfAny(arch, abilityComponentName, abilityComponentAlt),
 		vues:     map[movementStateKey]types.MovementStateRead{},
 		marche:   fc.MarcheDImageCle(),
+		tir:      nouveauCollecteurTirContinu(&m.ContinuousFireStats),
 	}
-	if sc.crouch < 0 && sc.slide < 0 && sc.mobility < 0 && sc.ability < 0 {
-		// AUCUNE ERREUR, et c est delibere : un film dont l archetype bipede ne declare aucun
-		// des trois ne transmet pas les etats de mouvement. C est un fait MESURE, que `Absent`
-		// publie au lieu de le confondre avec un film ou personne ne s accroupit.
-		st.Absent, st.Scanned = true, true
-		return nil, st, nil
+	// AUCUNE ERREUR quand les trois manquent, et c est delibere : un film dont l archetype
+	// bipede ne declare aucun des trois ne transmet pas les etats de mouvement. C est un fait
+	// MESURE, que `Absent` publie au lieu de le confondre avec un film ou personne ne s accroupit.
+	absent := sc.crouch < 0 && sc.slide < 0 && sc.mobility < 0 && sc.ability < 0
+	sc.marcher(fc, reg, chunks, !absent)
+	m.ContinuousFire = sc.tir.terminer()
+	m.ContinuousFireStats.Scanned = true
+	if absent {
+		*st = types.MovementStateStats{MapWidths: st.MapWidths, Absent: true, Scanned: true}
+		return m, nil
 	}
+	sc.deriverLesSauts()
+	sc.publier()
+	st.Scanned = true
+	m.MovementStates = sc.out
+	return m, nil
+}
+
+// marcher deroule la marche sur tous les chunks. `etats` : la porte des etats de mouvement est
+// branchee (faux pour un film qui ne les transmet pas).
+func (sc *movementStateScanner) marcher(fc *FilmContext, reg *Registry, chunks []int, etats bool) {
 	cfg := fc.CadreDeBalayage()
 	obs := NouvelleObservation()
-	obs.EtatMouvementHook = sc.recevoir
+	if etats {
+		obs.EtatMouvementHook = sc.recevoir
+	}
+	obs.VueControleHook = sc.tir.recevoir
 	cfg.Obs = obs
 	sc.obs = obs
 	sc.monde = NewWorld(reg)
@@ -159,14 +203,10 @@ func ScanMovementStates(fc *FilmContext) ([]types.MovementStateRead, types.Movem
 		}
 	}
 	obs.solderLesNeufsRefuses()
-	st.NeufsContreUnVivant = obs.NeufsContreUnVivant
-	st.NeufsRefusesLecturesFausses = obs.NeufsRefusesLecturesFausses
-	st.NeufsRefusesCreationsPerdues = obs.NeufsRefusesCreationsPerdues
-	st.NeufsRefusesIndecis = obs.NeufsRefusesIndecis
-	sc.deriverLesSauts()
-	sc.publier()
-	st.Scanned = true
-	return sc.out, st, nil
+	sc.st.NeufsContreUnVivant = obs.NeufsContreUnVivant
+	sc.st.NeufsRefusesLecturesFausses = obs.NeufsRefusesLecturesFausses
+	sc.st.NeufsRefusesCreationsPerdues = obs.NeufsRefusesCreationsPerdues
+	sc.st.NeufsRefusesIndecis = obs.NeufsRefusesIndecis
 }
 
 // movementStateKey deduplique une lecture : le chemin d inference de [DecodeFrameViews]
@@ -201,6 +241,9 @@ type movementStateScanner struct {
 	// obs : l observation de la marche des trames, dont les NEW refuses attendent le verdict de
 	// l image-cle suivante (constat DFIX-R6, `keyframe_liaison.go`).
 	obs *Observation
+	// tir : le collecteur du TIR CONTINU (lot M4b) — il recoit le verdict de la vue C de chaque
+	// paquet delta, et c est la MEME marche qui le lui donne.
+	tir *collecteurTirContinu
 }
 
 // lierLeMonde ajoute au monde les liaisons slot -> archetype portees par les images-cles du
@@ -230,10 +273,12 @@ func (sc *movementStateScanner) paquet(chunk int, pk FilmPacket, data []byte, cf
 	}
 	pay := pk.Payload(data)
 	debut := movementStateSkipLeadBits
+	sc.tir.ouvrir(pk.TimestampUS)
 	if _, present := PacketHeadEventType(pay); present {
 		sc.st.EventPackets++
 		if debut = marchLocateStrict(pay, sc.monde, cfg); debut < 0 {
 			sc.st.EventPacketsUnlocated++
+			sc.tir.fermer(true) // liste non localisee : la vue C n est pas lue, c est un TROU
 			return
 		}
 		sc.st.EventPacketsLocated++
@@ -241,6 +286,7 @@ func (sc *movementStateScanner) paquet(chunk int, pk FilmPacket, data []byte, cf
 	sc.st.Packets++
 	sc.chunk, sc.paquetIndex, sc.ts = chunk, pk.Index, pk.TimestampUS
 	recs, _ := DecodeFrameViews(pay, sc.monde, cfg, MovementStateViews, debut)
+	sc.tir.fermer(false) // le verdict de la vue C, publie par la marche
 	for _, r := range recs {
 		if r.TypeIndex != BipedTypeIndex {
 			continue

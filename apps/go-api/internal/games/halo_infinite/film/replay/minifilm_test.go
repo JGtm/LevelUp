@@ -318,7 +318,7 @@ func miniPacketKind(chunk []byte, p grammar.FilmPacket, throwUS uint64) string {
 		return ""
 	}
 	pay := p.Payload(chunk)
-	if int(pay[0]>>1) == grammar.FireEventType && int(pay[0])&1 == 0 {
+	if typ, ok := grammar.PacketHeadEventType(pay); ok && typ == grammar.TypeTirArme {
 		return "fire"
 	}
 	if throwUS > 0 && p.TimestampUS >= throwUS && p.TimestampUS < throwUS+miniFilmWindowUS {
@@ -395,7 +395,7 @@ func TestMiniFilmDecodesTheFireEvents(t *testing.T) {
 		t.Fatalf("ScanFilmFireEvents : %v", err)
 	}
 	if len(ev) != wantShotsAvailable {
-		t.Errorf("%d evenements de tir decodes, attendu %d — le decodeur du record type 105 a bouge",
+		t.Errorf("%d evenements de tir decodes, attendu %d — le decodeur du record type 36 a bouge",
 			len(ev), wantShotsAvailable)
 	}
 	withWeapon, withAim := 0, 0
@@ -408,9 +408,6 @@ func TestMiniFilmDecodesTheFireEvents(t *testing.T) {
 			withAim++
 		}
 		idx[e.FilmIndex]++
-		if e.Variant != 0 {
-			t.Fatalf("un record COURT a ete emis : il ne porte pas d arme, il n a rien a faire ici")
-		}
 	}
 	if withWeapon != len(ev) {
 		t.Errorf("%d evenements sur %d portent une arme : le champ d arme s est deplace",

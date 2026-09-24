@@ -183,7 +183,10 @@ var plafondsParFichier = map[string]int{
 	// changements des entrees figees declares et expliques, le choix du codec des faits (purge) et
 	// les verdicts sur documents des vehicules fusionnes.
 	// Exception ecrite, dans les commits de fusion qui reunissent la montee.
-	"internal/games/halo_infinite/film/replay/document_chronicle.go": 2471,
+	// SCHEMA 70 -> 71 (2026-09-24, lot M4b des retours du rejeu), +32 (2471 -> 2503) : l entree v71
+	// (le calque `bursts`, `coverage.continuousFire`, la pose par la reference 0, le tir rendu
+	// a l occupant de sa place, l index de tireur sur cinq bits, et ce qui monte avec la version).
+	"internal/games/halo_infinite/film/replay/document_chronicle.go": 2503,
 	// --- production, hors perimetre du lot 2.7 (aucune preuve d equivalence ne couvrait
 	// leur scission : elle se decidera au lot qui les rouvrira).
 	// `assist.go` EST SORTI DE CETTE TABLE LE 2026-09-16 (lot 2.6.2) : le type `Assist` a descendu
@@ -256,7 +259,9 @@ var plafondsParFichier = map[string]int{
 	// contre un releve a venir). Exception ecrite, dans les commits de fusion qui reunissent la
 	// montee.
 	// Lot D-fix (meme montee v70, 2026-09-24) : 1328 -> 1333, sa ligne dans la justification v70.
-	"internal/games/halo_infinite/film/replay/structure_test.go":                                  1333,
+	// SCHEMA 70 -> 71 (2026-09-24, lot M4b des retours du rejeu) : 1333 -> 1343, la justification
+	// que `TestStructureIsOptionalInDocument` exige pour la montee (le tir continu).
+	"internal/games/halo_infinite/film/replay/structure_test.go":                                  1343,
 	"internal/games/halo_infinite/film/replay/t0_mouvement_research_test.go":                      872,
 	"internal/games/halo_infinite/film/replay/inventory_position_i22_test.go":                     833,
 	"internal/games/halo_infinite/film/replay/ground_link_research_test.go":                       814,

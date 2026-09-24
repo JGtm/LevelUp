@@ -19,20 +19,44 @@ type modalHeaderOpts struct {
 	ref0Wide         bool // ref0 : largeur 9 (true) au lieu de 13
 	dExtra, eExtra   bool // champs d / e portent leur charge conditionnelle (R(5) / R(2))
 	fWeapon          bool // champ f porte son R(32) (famille d'arme)
+	// Valeurs écrites (lot M4b) : zéro garde celles du gabarit historique.
+	ref0Index   uint64 // index de la ref0 (défaut 0x2AB en largeur 9, 0x1234 en largeur 13)
+	tireur      uint64 // champ d quand dExtra (défaut 0x1F)
+	numero      uint64 // champ c, huit bits bruts R(7)+R(1) (défaut 0x2B)
+	armeHaute   uint64 // champ f quand fWeapon (défaut 0xDEADBEEF)
+	armeBasse   uint64 // champ g (défaut 0x0C0FFEE1)
+	court, bloc bool   // drapeaux a / b
+}
+
+// refBrute rend les bits [index][génération] d'une référence : l'index demandé, génération 0 ;
+// ou, sans index demandé, la valeur brute du gabarit historique.
+func refBrute(index, brute uint64) uint64 {
+	if index == 0 {
+		return brute
+	}
+	return index << 2
+}
+
+// ouDefaut rend v, ou d quand v vaut zéro.
+func ouDefaut(v, d uint64) uint64 {
+	if v == 0 {
+		return d
+	}
+	return v
 }
 
 // writeModalHeader écrit l'en-tête jusqu'à i,j inclus, en miroir EXACT de modalPostCountsBit.
 func writeModalHeader(w *bitWriter, o modalHeaderOpts) {
-	w.bits(0, 2)               // préfixe config / continuation
-	w.bits(modalRecordType, 7) // type 36
-	if o.ref0 {                // ref0 : gate + sélecteur de largeur + corps
+	w.bits(0b11, 2)        // préfixe : configuration et continuation, posés comme dans le film
+	w.bits(TypeTirArme, 7) // type 36
+	if o.ref0 {            // ref0 : gate + sélecteur de largeur + corps
 		w.bit(1)
 		if o.ref0Wide {
 			w.bit(1) // -> largeur 9
-			w.bits(0x2AB, 9+2)
+			w.bits(refBrute(o.ref0Index, 0x2AB), 9+2)
 		} else {
 			w.bit(0) // -> largeur 13
-			w.bits(0x1234, 13+2)
+			w.bits(refBrute(o.ref0Index, 0x1234), 13+2)
 		}
 	} else {
 		w.bit(0)
@@ -45,12 +69,12 @@ func writeModalHeader(w *bitWriter, o modalHeaderOpts) {
 			w.bit(0)
 		}
 	}
-	w.bit(0)        // a : estCourt = 0 (record long)
-	w.bit(0)        // b : estBloc = 0
-	w.bits(0x2B, 8) // c : attaquant R(7)+R(1)
-	if o.dExtra {   // d : polarité Ghidra — gate==0 porte le R(5)
+	w.bit(b2u(o.court))                 // a : estCourt
+	w.bit(b2u(o.bloc))                  // b : estBloc
+	w.bits(ouDefaut(o.numero, 0x2B), 8) // c : numéro de tir R(7)+R(1)
+	if o.dExtra {                       // d : polarité Ghidra — gate==0 porte le R(5)
 		w.bit(0)
-		w.bits(0x1F, 5)
+		w.bits(ouDefaut(o.tireur, 0x1F), 5)
 	} else {
 		w.bit(1)
 	}
@@ -62,12 +86,12 @@ func writeModalHeader(w *bitWriter, o modalHeaderOpts) {
 	}
 	if o.fWeapon { // f : gate==1 porte le R(32)
 		w.bit(1)
-		w.bits(0xDEADBEEF, 32)
+		w.bits(ouDefaut(o.armeHaute, 0xDEADBEEF), 32)
 	} else {
 		w.bit(0)
 	}
-	w.bits(0x0C0FFEE1, 32) // g : arme variante R(32)
-	w.bits(0, 2)           // i, j
+	w.bits(ouDefaut(o.armeBasse, 0x0C0FFEE1), 32) // g : arme variante R(32)
+	w.bits(0, 2)                                  // i, j
 }
 
 // writeModalCounts écrit le bloc des comptes en miroir de modalPostCountsBit : 0 cible ET
@@ -97,12 +121,10 @@ func writeModalCounts(w *bitWriter, targets, comps int) {
 	}
 }
 
-// padModalHead complète le payload jusqu'à porter la tête entière du record (bit 112), pour
-// passer la garde de longueur de decodeFireEvent.
+// padModalHead complète le payload de seize octets nuls : la tête et les comptes y tiennent
+// toujours, et la garde de longueur de decodeFireEvent ne dépend plus d'un offset fixe.
 func padModalHead(w *bitWriter) {
-	for len(w.buf) < (FireHeadBits+7)/8 {
-		w.buf = append(w.buf, 0)
-	}
+	w.buf = append(w.buf, make([]byte, 16)...)
 }
 
 // buildModalFire écrit un record type-36 MODAL avec sa visée à post-comptes+2, et rend le payload
@@ -151,12 +173,6 @@ func TestModalAimBitWalksRealisticHeader(t *testing.T) {
 	if got != aimBit {
 		t.Fatalf("visée localisée au bit %d, attendue à post-comptes+2 = %d", got, aimBit)
 	}
-	// Le gabarit ne doit pas coïncider avec les drapeaux du chemin fixe (bit 110/111/112 =
-	// 1/0/0), sans quoi l'assertion end-to-end ne dirait pas lequel des deux chemins a posé la
-	// visée. On le vérifie pour que ce test prouve bien le CHEMIN MODAL.
-	if readBitsAt(pay, 110, 1) == 1 && readBitsAt(pay, 111, 1) == 0 && readBitsAt(pay, 112, 1) == 0 {
-		t.Fatal("le gabarit modal déclenche le chemin fixe : choisir un autre en-tête")
-	}
 	e, dok := decodeFireEvent(pay)
 	if !dok || !e.HasAim {
 		t.Fatalf("decodeFireEvent : ok=%v HasAim=%v — la visée modale n'est pas posée", dok, e.HasAim)
@@ -166,9 +182,9 @@ func TestModalAimBitWalksRealisticHeader(t *testing.T) {
 	}
 }
 
-// TestModalAimBitOnMinimalRecord : sur l'en-tête MINIMAL (aucune option), la visée tombe bien
-// avant le bit 108 — les drapeaux du chemin fixe sont dans le rembourrage, donc c'est bien le
-// forward qui la pose, de bout en bout par decodeFireEvent.
+// TestModalAimBitOnMinimalRecord : sur l'en-tête MINIMAL (aucune option), la visée tombe à
+// post-comptes + 2, de bout en bout par decodeFireEvent (il n'y a plus de chemin à offsets fixes
+// depuis le lot M4b : la tête est lue par la grammaire).
 func TestModalAimBitOnMinimalRecord(t *testing.T) {
 	aimCode, ok := EncodeAimVector([3]float32{0, 0.8, 0.6}, FireAimBits)
 	if !ok {
@@ -177,9 +193,6 @@ func TestModalAimBitOnMinimalRecord(t *testing.T) {
 	pay, aimBit := buildModalFire(modalHeaderOpts{}, aimCode)
 	if got, ok := modalAimBit(pay); !ok || got != aimBit {
 		t.Fatalf("modalAimBit = (%d, %v), attendu (%d, true)", got, ok, aimBit)
-	}
-	if readBitsAt(pay, 110, 1) == 1 && readBitsAt(pay, 111, 1) == 0 && readBitsAt(pay, 112, 1) == 0 {
-		t.Fatal("l'en-tête minimal ne devrait pas déclencher le chemin fixe")
 	}
 	e, dok := decodeFireEvent(pay)
 	if !dok || !e.HasAim {

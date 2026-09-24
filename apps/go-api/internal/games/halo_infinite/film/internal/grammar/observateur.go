@@ -179,6 +179,12 @@ type Observation struct {
 	// autrement : ces quatre deserialiseurs lisaient deja ces champs et les jetaient.
 	EtatMouvementHook func(comp EtatMouvementComposant, slot uint32, values []uint64)
 
+	// (depuis `frame_vue_controle.go`, lot M4b)
+	// VueControleHook, si non nil, recoit le VERDICT de la vue C de CHAQUE paquet que la marche
+	// du frame-processeur deroule ([LectureVueC]) : atteinte ou non, fermee ou non, la cause d un
+	// arret, et les entrees de controle d une vue fermee. Un paquet, un appel.
+	VueControleHook func(LectureVueC)
+
 	// (depuis `default_state.go`)
 	// MppHook, si non nil, reçoit chaque lecture d'un champ du bloc. `present` est faux quand la
 	// porte s'est fermée sans transmettre de valeur — une porte fermée n'est pas une valeur nulle.
@@ -441,60 +447,4 @@ func (o *Observation) compterLiaisonParAnticipation(ti uint32) {
 		o.LiaisonsParAnticipation = map[uint32]int{}
 	}
 	o.LiaisonsParAnticipation[ti]++
-}
-
-// compterResyncValide compte une reprise par resynchronisation validee (diagnostic).
-func (o *Observation) compterResyncValide() {
-	if o != nil {
-		o.ResyncValides++
-	}
-}
-
-// compterReparation compte un record sauve par l inference de largeur de composant, et range les
-// largeurs de bouchon gagnantes dans l histogramme du composant.
-func (o *Observation) compterReparation(nom string, largeurs []int) {
-	if o == nil {
-		return
-	}
-	o.ChaineReparees++
-	if o.CompWidths == nil {
-		o.CompWidths = map[string]map[int]int{}
-	}
-	if o.CompWidths[nom] == nil {
-		o.CompWidths[nom] = map[int]int{}
-	}
-	for _, w := range largeurs {
-		o.CompWidths[nom][w]++
-	}
-}
-
-// compterIssueDeChaine compte une resolution : immediate (le record suivant confirme) ou
-// PROFONDE (la marche recursive a traverse une suite de transitoires).
-func (o *Observation) compterIssueDeChaine(immediate bool) {
-	switch {
-	case o == nil:
-	case immediate:
-		o.ChaineImmediat++
-	default:
-		o.ChaineProfond++
-	}
-}
-
-// compterEchecDeChaine compte un echec : budget epuise, ou aucun alignement confirme.
-func (o *Observation) compterEchecDeChaine(budgetEpuise bool) {
-	switch {
-	case o == nil:
-	case budgetEpuise:
-		o.ChaineBudget++
-	default:
-		o.ChaineAucun++
-	}
-}
-
-// compterAmbiguiteDeChaine compte un alignement AMBIGU — plusieurs candidats survivent, et on ne
-// choisit pas.
-func (o *Observation) compterAmbiguiteDeChaine() {
-	if o != nil {
-		o.ChaineAmbigu++
-	}
 }
