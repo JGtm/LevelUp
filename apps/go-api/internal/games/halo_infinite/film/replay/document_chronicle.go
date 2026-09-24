@@ -2104,11 +2104,10 @@ package replay
 //	               sans balayage). Avant, un fil illisible ne se lisait que dans les journaux :
 //	               le diagnostic d `ab526724` a exige les journaux ET le code.
 //
-// LA LIMITE ECRITE DU CHAMP : les faits persistes ne portent PAS le verdict. Rejoue depuis ses
-// faits, un fil VIDE OU ILLISIBLE publie la cle ABSENTE (le champ se tait plutot que de choisir) :
-// film et faits DIVERGENT sur ce champ — ecart NEUF, a declarer a replay-equiv et au gate de parc
-// (§8, decouverte 4 : il se ferme avec la revision de faits qui persistera le verdict). Depuis le
-// lot L3, un film sans morceau des temps forts n est plus cuit du tout.
+// LA LIMITE ECRITE DU CHAMP, AU SCHEMA 69 : les faits persistes ne portaient PAS le verdict. Rejoue
+// depuis ses faits, un fil VIDE OU ILLISIBLE publiait la cle ABSENTE : film et faits DIVERGEAIENT
+// sur ce champ (§8, decouverte 4). FERMEE par la partie M8 du v70 : les faits portent le verdict.
+// Depuis le lot L3, un film sans morceau des temps forts n est plus cuit du tout.
 //
 // POURQUOI LA VERSION MONTE : une valeur d enum publie est de la FORME, et la regle de
 // publication du calque de score change ; `deathsFeed` est un champ neuf de la couverture. Republication DEPUIS LES FAITS (aucune revision de
@@ -2469,3 +2468,26 @@ package replay
 //
 //	CE QUI MONTE    rien de plus que la vague : `grammar.Rev`, `facts.Rev` et `SchemaDesFaits`
 //	AVEC ELLE       gardent leur UNIQUE montée de la vague D, empreintes recopiées.
+//
+// v70, PARTIE M8 (2026-09-24, lot M8 des retours du rejeu, repris apres sa revue adverse) : LE
+// VERDICT DU FIL DES MORTS EST UN FAIT DU FILM. Le rejeu depuis les faits publie le meme
+// `coverage.bridge.deathsFeed` que le decodage du meme film.
+//
+//	`coverage.`    AUCUNE FORME NEUVE, c est le CHEMIN DES FAITS qui change : un document rejoue
+//	`bridge.`      depuis les faits d un fil vide ou illisible publiait la cle ABSENTE (limite
+//	`deathsFeed`   ecrite du v69, partie M5) ; il publie `empty` ou `unreadable`, comme le
+//	               decodage. Absent = aucune lecture de film derriere le document.
+//	faits          le verdict ET le texte de l erreur de lecture (`FilmInputs.DeathsFeed`), en
+//	               dernier du complement de la section 1, dans le `SchemaDesFaits` 4 de la vague
+//	               (non publie : pas de seconde montee). Un fichier au schema 4 sans verdict est
+//	               refuse a la section 1 puis redecode (teste). Aucune revision de couche ne monte.
+//	`replaybuild`  la branche des faits reconstruit l erreur du fil (meme texte, sans sentinelle) :
+//	               actions d objectif et frags sous effet actif prennent la branche du decodage.
+//
+// EFFET AU PARC, DECLARE (racines temporaires, voie du film puis voie des faits) : UN document,
+// `db1b00b3` (seul temoin au fil vide), dont `deathsFeed` passe d absent a `empty` sur le chemin
+// des faits ; `000d5950` (fil lu) inchange a l octet. La moitie `replaybuild` ne change AUCUN
+// document au parc : sur `db1b00b3`, `killRefs` sort avant de lire l erreur (kill-feed non decode)
+// et un Slayer n a pas d action d objectif. Elle n est prouvee que sur octets de test (bobine v40,
+// forme du manifeste partiel d `ab526724`). Ecart film / faits restant, anterieur et hors du lot :
+// `coverage.stances.jumpEpisodes` et `.jumpsDerived` (§8).

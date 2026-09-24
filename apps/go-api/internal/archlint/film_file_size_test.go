@@ -183,7 +183,11 @@ var plafondsParFichier = map[string]int{
 	// changements des entrees figees declares et expliques, le choix du codec des faits (purge) et
 	// les verdicts sur documents des vehicules fusionnes.
 	// Exception ecrite, dans les commits de fusion qui reunissent la montee.
-	"internal/games/halo_infinite/film/replay/document_chronicle.go": 2471,
+	// SCHEMA 70, PARTIE M8 (2026-09-24, lot M8 des retours du rejeu, repris apres sa revue adverse,
+	// meme montee 70 non publiee) : 2471 -> 2493, la partie M8 (+23 : le verdict du fil des morts
+	// porte dans les faits, l effet au parc declare) et la limite ecrite du v69 declaree fermee (-1).
+	// Exception ecrite, meme commit que la partie.
+	"internal/games/halo_infinite/film/replay/document_chronicle.go": 2493,
 	// --- production, hors perimetre du lot 2.7 (aucune preuve d equivalence ne couvrait
 	// leur scission : elle se decidera au lot qui les rouvrira).
 	// `assist.go` EST SORTI DE CETTE TABLE LE 2026-09-16 (lot 2.6.2) : le type `Assist` a descendu

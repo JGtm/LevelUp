@@ -18,14 +18,17 @@ package replay
 // comparaison porte sur le DOCUMENT ENTIER serialise, pas sur la seule cle.
 
 import (
+	"bytes"
 	"encoding/json"
-	"errors"
 	"os"
 	"path/filepath"
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
@@ -137,10 +140,10 @@ func TestLeRejeuDepuisLesFaitsRendLeVerdictDuFilDesMorts(t *testing.T) {
 	}
 }
 
-// TestLErreurRelueSeReclasseAuMemeVerdict : l erreur reconstruite depuis les faits porte le TEXTE
-// de celle de [ScanDeaths] et se reclasse au MEME verdict — un fil vide reste une mesure
-// (`ErrFilDesMortsSansMort`), un fil illisible une panne, un fil lu n a pas d erreur.
-func TestLErreurRelueSeReclasseAuMemeVerdict(t *testing.T) {
+// TestLErreurRelueGardeLeTexteDeLaLecture : l erreur reconstruite depuis les faits existe quand la
+// lecture du film en a rendu une, et porte son TEXTE — ce que ses consommateurs lisent (presence,
+// journal). Le verdict, lui, voyage tel quel : c est lui qui distingue le fil vide de l illisible.
+func TestLErreurRelueGardeLeTexteDeLaLecture(t *testing.T) {
 	for _, cas := range casDesTroisIssues(t) {
 		film, err := source.Load(source.MemoryChunks(cas.chunks), cas.meta)
 		if err != nil {
@@ -158,17 +161,63 @@ func TestLErreurRelueSeReclasseAuMemeVerdict(t *testing.T) {
 		if (errRelue == nil) != (errLue == nil) {
 			t.Fatalf("%s : erreur relue %v, erreur lue %v", cas.nom, errRelue, errLue)
 		}
-		if errLue == nil {
-			continue
-		}
-		if errRelue.Error() != errLue.Error() {
+		if errLue != nil && errRelue.Error() != errLue.Error() {
 			t.Errorf("%s : texte relu %q, lu %q", cas.nom, errRelue, errLue)
 		}
-		if got := lectureDuFilDesMorts(nil, errRelue); got != cas.want {
-			t.Errorf("%s : l erreur relue se reclasse %q, attendu %q", cas.nom, got, cas.want)
-		}
-		if errors.Is(errRelue, ErrFilDesMortsSansMort) != errors.Is(errLue, ErrFilDesMortsSansMort) {
-			t.Errorf("%s : « sans mort » ne survit pas a la relecture", cas.nom)
-		}
 	}
+}
+
+// TestFaitsSansVerdictDuFilDesMortsSontRefuses : UN FICHIER AU SCHEMA 4 ECRIT AVANT LE LOT M8 N EST
+// JAMAIS SERVI SANS VERDICT.
+//
+// Le lot M8 a ajoute le verdict au complement de la section 1 SANS monter `SchemaDesFaits` : la
+// montee de la vague D (3 -> 4) n etait pas publiee (arbitrage du plan, §9). Un tel fichier a donc
+// un EN-TETE FRAIS, et son refus ne peut tomber qu au decodage de la section 1 — le chemin
+// « illisible malgre un en-tete frais », sur lequel la cuisson redecode le film. Ce test tient
+// cette promesse du commentaire de [SchemaDesFaits] : un decodeur qui tolererait la fin de section
+// servirait un verdict vide, donc un document qui tait `deathsFeed` la ou le film le publie.
+func TestFaitsSansVerdictDuFilDesMortsSontRefuses(t *testing.T) {
+	entry := goldenEntryPourTest(t)
+	f := fichierTemoin(t)
+	f.Coverage.SourceRev, f.Coverage.ProfileRev = source.Rev, profile.Rev
+	f.Coverage.GrammarRev, f.Coverage.FactsRev = grammar.Rev, facts.Rev
+	f.Facts.DeathsFeed = VerdictDuFilDesMorts{Verdict: DeathsFeedUnreadable, Cause: "pas de temps forts"}
+	blob, err := EncodeFilmFactsFile(f)
+	if err != nil {
+		t.Fatalf("encodage : %v", err)
+	}
+	if relu, err := DecodeFilmFactsFile(blob, entry); err != nil || relu.Facts.DeathsFeed != f.Facts.DeathsFeed {
+		t.Fatalf("controle : le fichier complet ne rend pas son verdict (%v)", err)
+	}
+	avantM8 := sansLeVerdictDuFilDesMorts(t, blob, f.Facts.DeathsFeed)
+	e, err := DecodeFilmFactsEntete(avantM8)
+	if err != nil || e.Utilisable(entry) != nil {
+		t.Fatalf("le fichier d avant M8 doit avoir un en-tete FRAIS (schema %d) : %v", e.Schema, err)
+	}
+	if relu, err := DecodeFilmFactsFile(avantM8, entry); err == nil {
+		t.Fatalf("un fichier au schema %d sans verdict du fil des morts est SERVI (verdict relu %+v) : "+
+			"il doit etre refuse au decodage de la section 1, puis redecode", SchemaDesFaits,
+			relu.Facts.DeathsFeed)
+	}
+}
+
+// sansLeVerdictDuFilDesMorts rend `blob` tel que l ecrivait le codec d avant M8 : la section 1
+// privee des deux chaines du verdict, recadree, le reste du fichier a l octet.
+func sansLeVerdictDuFilDesMorts(t *testing.T, blob []byte, v VerdictDuFilDesMorts) []byte {
+	t.Helper()
+	r := &greader{b: blob, off: len(magieFaitsDeFilm)}
+	r.u()
+	r.u()
+	r.tranche(int(r.u()))
+	debut := r.off
+	id := int(r.u())
+	charge := r.tranche(int(r.u()))
+	suffixe := &gwriter{}
+	encodeVerdictDuFilDesMorts(suffixe, v)
+	if r.err != nil || id != sectionEntrees || !bytes.HasSuffix(charge, suffixe.b) {
+		t.Fatalf("section 1 introuvable ou sans verdict en dernier (id %d, err %v)", id, r.err)
+	}
+	w := &gwriter{b: append([]byte(nil), blob[:debut]...)}
+	ecrireSection(w, id, charge[:len(charge)-len(suffixe.b)])
+	return append(w.b, blob[r.off:]...)
 }

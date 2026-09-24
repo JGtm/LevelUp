@@ -45,27 +45,18 @@ func verdictDeLaLecture(deaths []Death, err error) VerdictDuFilDesMorts {
 }
 
 // Erreur rend l erreur de la lecture, RECONSTRUITE depuis le verdict : nil quand la lecture n en a
-// pas rendu, sinon une erreur dont le texte est la cause et que [lectureDuFilDesMorts] reclasse au
-// MEME verdict (`errors.Is(err, ErrFilDesMortsSansMort)` pour un fil vide).
+// pas rendu, sinon une erreur dont le texte est la cause — ce que ses consommateurs lisent
+// (presence, journal).
+//
+// ELLE N EMBALLE AUCUNE SENTINELLE : `errors.Is(err, ErrFilDesMortsSansMort)` est faux sur une
+// erreur relue. Aucun consommateur ne distingue le fil vide du fil illisible par l erreur ; celui
+// qui voudra le faire lira [VerdictDuFilDesMorts.Verdict], porte a l identique sur les deux
+// chemins — jamais la chaine d erreurs, qui ne franchit pas le fichier.
 func (v VerdictDuFilDesMorts) Erreur() error {
 	if v.Cause == "" {
 		return nil
 	}
-	return &erreurDuFilDesMorts{verdict: v.Verdict, cause: v.Cause}
-}
-
-// erreurDuFilDesMorts : l erreur de lecture relue depuis les faits.
-type erreurDuFilDesMorts struct {
-	verdict string
-	cause   string
-}
-
-func (e *erreurDuFilDesMorts) Error() string { return e.cause }
-
-// Is garde la seule distinction que les lecteurs du verdict font : un fil lu SANS MORT est une
-// mesure, toute autre erreur une panne.
-func (e *erreurDuFilDesMorts) Is(cible error) bool {
-	return e.verdict == DeathsFeedEmpty && errors.Is(cible, ErrFilDesMortsSansMort)
+	return errors.New(v.Cause)
 }
 
 // encodeVerdictDuFilDesMorts / decodeVerdictDuFilDesMorts : le verdict dans le COMPLEMENT de la

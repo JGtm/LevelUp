@@ -40,9 +40,9 @@ type BridgeHealth struct {
 	// DeathsFeed dit CE QUE LA LECTURE DU FIL DES MORTS A RENDU (schema 69, lot M5.2 des retours
 	// rejeu du 2026-09-23) : `read` (au moins une mort lue), `empty` (le morceau des temps forts
 	// a ete lu et ne porte AUCUNE mort) ou `unreadable` (pas de morceau des temps forts, morceau
-	// absent ou illisible — cf. [ScanDeaths]). Absent = non mesure : document assemble sans
-	// balayage de film, ou rejoue depuis des faits dont le fil est vide (les faits persistes ne
-	// portent pas l erreur de lecture — breche d equivalence consignee au plan, §8).
+	// absent ou illisible — cf. [ScanDeaths]). Absent = non mesure : aucune lecture de film
+	// derriere le document (positions fournies par l appelant, fil vide). Le rejeu DEPUIS LES
+	// FAITS publie le meme verdict que le decodage : les faits le portent (lot M8, 2026-09-24).
 	//
 	// POURQUOI IL EXISTE. Un fil illisible fait tomber toute la chaine d identite (calage
 	// d horloge, table d index, pont par morts, actions d objectif sans slot) ; avant ce champ, le
