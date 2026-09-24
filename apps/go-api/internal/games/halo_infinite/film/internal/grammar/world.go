@@ -336,6 +336,19 @@ func (w *World) HardBound(slot uint32) bool {
 // Unbind removes a slot (DEL record).
 func (w *World) Unbind(slot uint32) { delete(w.slots, slot) }
 
+// OublierLesSlotsNonPortes retire les liaisons dont le slot n est pas dans `portes` — ce qu une
+// image-cle ne porte plus n est plus vivant (cf. `keyframe_liaison.go`) — et rend leur nombre.
+func (w *World) OublierLesSlotsNonPortes(portes map[uint32]bool) int {
+	n := 0
+	for s := range w.slots {
+		if !portes[s] {
+			delete(w.slots, s)
+			n++
+		}
+	}
+	return n
+}
+
 // ArchetypeForSlot returns the archetype typeIndex bound to a slot, if any.
 func (w *World) ArchetypeForSlot(slot uint32) (uint32, bool) {
 	s, ok := w.slots[slot]

@@ -187,6 +187,11 @@ type MovementStateStats struct {
 	// records, et cette chaine se coupe. Sans ces deux compteurs, « N liaisons de plus » ne se
 	// juge pas contre la proprete de la table.
 	DatumBindings, DatumAmbiguous int
+	// LiaisonsOubliees compte les liaisons du monde qu une image-cle ne portait plus — ni dans la
+	// chaine de ses records, ni dans sa table de datums, ni parmi les candidats ecartes par sa
+	// marche : la suppression de l entite n avait pas ete lue (lot D-fix, 2026-09-24,
+	// `grammar/keyframe_liaison.go`). Journalise, pas persiste, comme les deux precedents.
+	LiaisonsOubliees int
 	// Duplicates compte les re-publications de la MEME transition (meme slot, meme genre, meme
 	// instant) : le chemin d inference re-parcourt un record quand une chaine de transitoires le
 	// demande. Deduplique, pas compte deux fois.

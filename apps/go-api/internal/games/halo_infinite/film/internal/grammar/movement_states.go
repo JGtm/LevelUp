@@ -197,24 +197,17 @@ type movementStateScanner struct {
 // lierLeMonde ajoute au monde les liaisons slot -> archetype portees par les images-cles du
 // chunk. Sans elles le decodeur de trame ne sait pas quel archetype porte un slot, et chaque
 // record delta est rejete avant toute lecture.
+//
+// Les records de la CHAINE d abord, PUIS LA TABLE DE DATUMS pour les slots que la chaine n a pas
+// atteints (lot 5.16.4 : la branche vive lit l archetype d un delta dans la table de datums du
+// decodeur partage, dont l image-cle est le DUMP, lu a position libre ; une liaison deja posee
+// n est pas ecrasee) — et, avant les deux, l OUBLI de ce que l image-cle ne porte plus (lot
+// D-fix, `keyframe_liaison.go`).
 func (sc *movementStateScanner) lierLeMonde(data []byte, pks []FilmPacket) {
-	for _, pk := range pks {
-		if pk.Type != PacketTypeKeyframe {
-			continue
-		}
-		for _, r := range sc.marche.Records(pk.Payload(data)) {
-			//nolint:gosec // slot, TI et Gen viennent du walker d image-cle, bornes par construction
-			sc.monde.BindImageCle(uint32(r.Gen), uint32(r.Slot), uint32(r.TI))
-		}
-	}
-	// PUIS LA TABLE DE DATUMS, POUR LES SLOTS QUE LA CHAINE N A PAS ATTEINTS (lot 5.16.4).
-	// La branche vive de la boucle de records lit l archetype d un delta dans la table de datums
-	// du decodeur partage, et l image-cle est le DUMP de cette table (`keyframe_datums.go`). La
-	// marche d ancres ci-dessus suit la CHAINE des records et se coupe ; la table, elle, se lit a
-	// position libre. Les liaisons deja posees ne sont pas ecrasees.
-	posees, ambigus := LierTableDeDatums(sc.monde, data, pks)
-	sc.st.DatumBindings += posees
-	sc.st.DatumAmbiguous += ambigus
+	l := lierLeChunkAuMonde(sc.monde, sc.marche, data, pks)
+	sc.st.DatumBindings += l.Datums
+	sc.st.DatumAmbiguous += l.Ambigus
+	sc.st.LiaisonsOubliees += l.Oubliees
 }
 
 // paquet decode UN paquet delta. Les paquets a liste d evenements PLEINE sont localises par la

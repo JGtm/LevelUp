@@ -149,7 +149,11 @@ func newBirthScan(fc *FilmContext, reg *Registry, emp map[int]int, st *types.Bir
 }
 
 // lierLeChunk pose sur le monde ce que les images-clés du chunk déclarent, puis la table de
-// datums — la liaison de la marche de production (`movementStateScanner.lierLeMonde`).
+// datums — la liaison de la marche de production (`movementStateScanner.lierLeMonde`), SANS son
+// oubli des slots que l image-clé ne porte plus (lot D-fix, `keyframe_liaison.go`) : ce balayage
+// ne décode aucun delta sous l archétype du monde (le record NEW porte le sien), il n y lit que la
+// CONFIRMATION d une fermeture, et l oubli y retirait une fermeture sur 104 (`b1f01a33`) sans
+// qu aucune lecture ne change de sens.
 func (s *birthScan) lierLeChunk(num int, data []byte, pks []FilmPacket) {
 	s.chunk = num
 	s.monde.PoserChunkCourant(num)

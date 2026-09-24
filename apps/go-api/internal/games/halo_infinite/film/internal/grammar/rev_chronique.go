@@ -485,3 +485,12 @@ package grammar
 // tardive. La presence (`replay/occupants_presence.go`) ne borne que sur une absence PROUVEE, sinon
 // elle differe la borne a l image-cle prouvee suivante. Compteurs `coverage.seats.imagesClesDouteuses`
 // et `bornesDifferees` (0 et 0 sur les sept bobines apres la regle).
+//
+// ET L IMAGE-CLE DIT QUI N EST PLUS LA (`keyframe_liaison.go`, meme partie). La marche des etats de
+// mouvement ne retirait une liaison que sur un DEL LU ; un DEL manque laissait la liaison du mort,
+// et l occupant suivant du slot se decodait sous son archetype (`a0c36016` : NEW d un `ti 30` au
+// chunk 27, bipede ne au 38 sur le slot 649, cinq vies et 24 intervalles perdus — la marche de M3,
+// qui lie les tables entieres, menait les deltas jusqu au NEW du mort). A chaque image-cle, une
+// liaison que ni la chaine, ni la table de datums, ni un candidat ECARTE ne porte est oubliee.
+// Mesure (cinq temoins) : 0 vie ne perd un intervalle, 15 en gagnent, les 5 de `a0c36016` rendues ;
+// les dotations de naissance gardent leur liaison (l oubli y retirait 1 fermeture sur 104).
