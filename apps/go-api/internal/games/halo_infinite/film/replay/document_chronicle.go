@@ -2425,7 +2425,9 @@ package replay
 // les cinq : au plus 4 fiches par équipe à chaque frame, 4 places par équipe, aucune place à deux
 // fiches, 0 image-clé douteuse, 0 borne différée ; `b1ad85eb` 4 + 4 aux trois instants signalés
 // (Eagle à 3 pendant 332 frames : la place vide d un relais, Q20). GATE DE CORPUS (onze témoins non
-// BTB, base = tête de campagne) : règle des places tenue, 0 image-clé douteuse. ÉTATS DE MOUVEMENT,
+// BTB, base = tête de campagne) : règle des places tenue, 0 image-clé douteuse, 0 preuve
+// contradictoire ; NEW refusés 1 248 = 331 lectures fausses confirmées + 1 création perdue
+// (`fb1a1a72`) + 916 indécis (le slot absent de l image-clé suivante). ÉTATS DE MOUVEMENT,
 // base -> tête, sur les seize films : aucune vie ne perd un intervalle, hors un accroupi d une
 // frame de `c75f33b8` (0,1 s à 0,4 m/s) que l alignement du record NEW de M3.2 efface.
 //
