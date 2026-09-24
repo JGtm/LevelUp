@@ -1,9 +1,9 @@
 # EMPREINTE DE FORME DU DOCUMENT DE REJEU — fige par document_shape_test.go.
 # Ne s'edite JAMAIS a la main : regeneration decrite en tete de ce test.
-schema 69
-empreinte-stockee 7948083c3ece0b7e
-empreinte-servie 7948083c3ece0b7e
-empreinte-cuite d4f0261b525ed90a
+schema 70
+empreinte-stockee f9147d70dab6bf7c
+empreinte-servie f9147d70dab6bf7c
+empreinte-cuite 74bfee7032b0e06a
 empreinte-cuite-regle 2
 
 AbilityCharge
@@ -632,6 +632,7 @@ PickupCoverage
   Refused json:"refused" int
   SpawnPointsState json:"spawnPointsState" string
   SpawnerByPointKind json:"spawnerByPointKind,omitempty" map[string]int
+  UnarmedGrants json:"unarmedGrants" int
   UnknownFamilies json:"unknownFamilies" int
   Weapons json:"weapons" int
 PlayerScore

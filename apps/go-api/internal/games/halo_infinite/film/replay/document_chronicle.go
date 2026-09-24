@@ -2140,3 +2140,21 @@ package replay
 //	AUCUNE REVISION DE DECODAGE ne monte (vies deja assemblees : la republication DEPUIS LES FAITS
 //	suffit). `facts.Rev` INCHANGEE (le registre des replis recoit une entree de DONNEES ; empreinte
 //	seule recopiee). `layers` inchange : les pieces restent dans le calque des vehicules.
+//
+// v70 (2026-09-24, lot M6 des retours du rejeu, plan `.ai/V7.5/PLAN_RETOURS_REJEU_2026-09-23.md`
+// §4.4, decisions de l utilisateur du 2026-09-24) : LA REMISE DES MAINS NUES N EST PAS UN
+// RAMASSAGE. `00007CA9` est l objet « mains nues » du jeu (sonde CA9 : `WeaponTags.unarmed` du
+// Lua global) ; le jeu le REMET a chaque bipede au debut de chaque vie et le film l ecrit comme un
+// ramassage natif de classe ARME (parc du 2026-09-24 : 590 dans 79 documents, tous a un debut de
+// vie — coup d envoi, reapparition, bascule de manche).
+//
+//	`pickups[]`    SENS : la remise n y est plus publiee (regle nommee `filmshell.IsUnarmedFamily`,
+//	               une seule ecriture du litteral, garde-rail archlint).
+//	`coverage.`    UN CHAMP NEUF, `unarmedGrants` : le compte des remises. `unknownFamilies` cesse
+//	`pickups.`     de les compter ; `decoded` = `published` + `beforeOrigin` + `unarmedGrants`.
+//	`loadouts[]`   la meme regle ecarte l objet de toute dotation publiee.
+//
+//	AUCUNE REVISION DE DECODAGE ne monte : republication DEPUIS LES FAITS. Meme lot, SANS effet de
+//	forme : le catalogue d armes du titre nomme trois familles jusqu ici publiees en hexadecimal
+//	(`hinf_unarmed`, et la bobine a fusion UNSC `hinf_coil_kinetic` pour `e9e7ff79` / `1d63a8cd`),
+//	et `weaponLabels` les porte.

@@ -49,7 +49,7 @@ type WeaponLabel struct {
 	En string `json:"en"`
 	Fr string `json:"fr"`
 	// Fx est la famille de RENDU du tir (ballistic, plasma, light, shock, explosive,
-	// melee, needles). Vide = arme non catégorisée : le client dessine le trait neutre,
+	// bomb, melee, needles). Vide = arme non catégorisée : le client dessine le trait neutre,
 	// jamais l'effet d'une arme voisine.
 	Fx string `json:"fx,omitempty"`
 	// Key est le weapon_key du titre (clé canonique du registre d'armes).

@@ -37,6 +37,7 @@ import (
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar/weaponv3"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
+	"levelup/go-api/internal/games/weapons/filmshell"
 )
 
 // loadoutFamilies est le catalogue de familles interrogé par le balayage : la table de
@@ -68,6 +69,11 @@ func buildLoadouts(raw []types.KeyframeLoadout, origin, step uint64) []Loadout {
 		seen := map[string]bool{}
 		var ids []string
 		for _, fam := range l.Families {
+			// LES MAINS NUES NE SONT JAMAIS UNE DOTATION (règle nommée, lot M6.3) — quel que soit
+			// le catalogue de décodage, qui ne les connaît pas aujourd'hui.
+			if filmshell.IsUnarmedFamily(fam) {
+				continue
+			}
 			name := weaponv3.WeaponName(fam)
 			if name == "" || seen[name] {
 				continue

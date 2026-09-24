@@ -33,6 +33,7 @@ import (
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
+	"levelup/go-api/internal/games/weapons/filmshell"
 )
 
 // PickupKind qualifie ce qui a été ramassé.
@@ -210,6 +211,11 @@ func buildPickups(
 			continue
 		}
 		k := pickupKindOfClass(p.Class)
+		// LA REMISE DES MAINS NUES N EST PAS UN RAMASSAGE (lot M6.3, cf. `UnarmedGrants`).
+		if k == PickupWeapon && filmshell.IsUnarmedFamily(p.CatalogID) {
+			cov.UnarmedGrants++
+			continue
+		}
 		e := Pickup{
 			T:      int((p.TimestampUS - clk.origin) / clk.step),
 			Slot:   p.Slot,
@@ -303,10 +309,25 @@ type PickupCoverage struct {
 	// sur les deux films de référence : les NON-ARMES se résolvent toutes (82/82 et 36/36,
 	// 100 %), mais les ARMES non — 11 et 8 ramassages sans famille, soit 79,2 % et 78,4 % de
 	// résolution, pour seulement DEUX identifiants distincts (`00007ca9`, présent dans les deux
-	// films, et `e9e7ff79`). Le total vaut donc 11 et 8, jamais 0. Un lecteur qui attendrait un
+	// films, et `e9e7ff79`). Le total valait donc 11 et 8, jamais 0. Un lecteur qui attendrait un
 	// zéro conclurait à une régression là où le compteur fait exactement son travail : dire que
 	// le catalogue d'ARMES ne couvre pas tout ce que le canal natif voit.
+	//
+	// LES DEUX IDENTIFIANTS SONT RÉSOLUS DEPUIS LE SCHÉMA 70 (retours du rejeu, lots M6.3 et
+	// M6.4, 2026-09-24) : `00007ca9` est l'objet « mains nues » — sa remise sort des ramassages
+	// et se compte dans `unarmedGrants` —, `e9e7ff79` la bobine à fusion UNSC, nommée par le
+	// registre du titre. Un identifiant NEUF reprend le compteur, comme il doit.
 	UnknownFamilies int `json:"unknownFamilies"`
+	// UnarmedGrants compte les REMISES DES MAINS NUES (schéma 70, retours du rejeu lot M6.3,
+	// décision de l'utilisateur du 2026-09-24) : les ramassages natifs de classe ARME qui portent
+	// l'objet « mains nues » (`filmshell.IsUnarmedFamily`). Le jeu REMET cet objet à chaque bipède
+	// au début de chaque vie — coup d'envoi, réapparition, bascule de manche (mesure du parc au
+	// 2026-09-24 : 590 dans 79 documents, aucun hors d'un début de vie) — et le film l'écrit comme
+	// un ramassage. Ce n'est pas une prise : la remise n'est PAS publiée dans `pickups`, elle est
+	// comptée ici, et elle ne compte pas dans `unknownFamilies` (elle en faisait jusqu'ici la
+	// quasi-totalité côté armes). Partition : `decoded` = `published` + `beforeOrigin` +
+	// `unarmedGrants`.
+	UnarmedGrants int `json:"unarmedGrants"`
 	// BeforeOrigin compte les ramassages antérieurs à la première frame — écartés.
 	BeforeOrigin int `json:"beforeOrigin"`
 	// MultiEvent compte les listes d'événements qui portent un AUTRE événement après le

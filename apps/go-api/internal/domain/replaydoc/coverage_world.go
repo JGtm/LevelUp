@@ -69,12 +69,14 @@ type GroundWeaponItemsCoverage struct {
 
 // PickupCoverage dit ce que le canal a vu, ce qu'il a écarté et ce qu'il ne PEUT PAS voir.
 type PickupCoverage struct {
-	Decoded            int            `json:"decoded"`
-	Published          int            `json:"published"`
-	Named              int            `json:"named"`
-	Weapons            int            `json:"weapons"`
-	Items              int            `json:"items"`
-	UnknownFamilies    int            `json:"unknownFamilies"`
+	Decoded         int `json:"decoded"`
+	Published       int `json:"published"`
+	Named           int `json:"named"`
+	Weapons         int `json:"weapons"`
+	Items           int `json:"items"`
+	UnknownFamilies int `json:"unknownFamilies"`
+	// UnarmedGrants (schema 70) : les remises des mains nues, hors des ramassages publies.
+	UnarmedGrants      int            `json:"unarmedGrants"`
 	BeforeOrigin       int            `json:"beforeOrigin"`
 	MultiEvent         int            `json:"multiEvent"`
 	Refused            int            `json:"refused"`

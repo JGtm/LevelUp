@@ -21390,6 +21390,9 @@ components:
             format: int64
             type: integer
           type: object
+        unarmedGrants:
+          format: int64
+          type: integer
         unknownFamilies:
           format: int64
           type: integer
@@ -21403,6 +21406,7 @@ components:
         - weapons
         - items
         - unknownFamilies
+        - unarmedGrants
         - beforeOrigin
         - multiEvent
         - refused
