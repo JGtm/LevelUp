@@ -108,7 +108,7 @@ func TestLAbsenceDUnJoueurPerduParLaMarcheNEstPasProuvee(t *testing.T) {
 		a.noter(rang, 30, 0, 0) // une autre entite, lue : l'image-cle est porteuse
 		a.ouvrirImageCle(200)
 		a.noter(1, enteteSlotJoueur, 1, 0) // D lu a l'image-cle suivante : c'est une entite
-		a.douterDe(rang, lus, slotsDEntetesExacts(c.pay, managedPlayerTypeIndex))
+		a.douterDe(rang, lus, slotsDEntetesExacts(c.pay))
 		s := a.publier()
 		if s.AbsenceProuvee(enteteSlotJoueur, rang) {
 			t.Errorf("%s : l'absence de D a l'image-cle qui le porte passe pour PROUVEE", c.nom)
@@ -129,7 +129,7 @@ func TestLAbsenceSansEnTeteEstProuvee(t *testing.T) {
 	kfEcrireRecord(w, 1, 10, enteteTIObjet, 100)
 	kfEcrireRecord(w, 1, 11, managedPlayerTypeIndex, 100)
 	kfSentinelles(w)
-	got := slotsDEntetesExacts(w.buf, managedPlayerTypeIndex)
+	got := slotsDEntetesExacts(w.buf)
 	if len(got) != 1 || !got[11] {
 		t.Fatalf("en-tetes ti=9 %v, attendu {11}", got)
 	}
@@ -152,7 +152,7 @@ func TestLesRecordsTi9DeLaMarcheOntUnEnTeteExact(t *testing.T) {
 					continue
 				}
 				pay := pk.Payload(raw)
-				entetes := slotsDEntetesExacts(pay, managedPlayerTypeIndex)
+				entetes := slotsDEntetesExacts(pay)
 				for _, r := range m.Records(pay) {
 					if r.TI == managedPlayerTypeIndex && !entetes[r.Slot] {
 						t.Fatalf("%s morceau %d : record ti=9 slot %d sans en-tete exact", b.film, c, r.Slot)

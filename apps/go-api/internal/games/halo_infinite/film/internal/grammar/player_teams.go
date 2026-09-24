@@ -228,7 +228,7 @@ func scanPaquetEquipes(pay []byte, ts uint64, reg *Registry, rep *TeamScanReport
 		}
 	}
 	if rang >= 0 {
-		l.entites.douterDe(rang, lus, slotsDEntetesExacts(pay, managedPlayerTypeIndex))
+		l.entites.douterDe(rang, lus, slotsDEntetesExacts(pay))
 	}
 }
 

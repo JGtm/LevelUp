@@ -30,9 +30,9 @@ package grammar
 // hasard dans le corps d'un autre record : il ne fait jamais conclure un depart, il le DIFFERE, et
 // il se compte (`coverage.seats.imagesClesDouteuses`, `bornesDifferees`).
 
-// slotsDEntetesExacts rend les slots dont l'en-tete EXACT d'un record d'archetype `ti` apparait a
-// au moins une position de bit du payload d'image-cle `pay` (cf. l'en-tete du fichier).
-func slotsDEntetesExacts(pay []byte, ti int) map[int]bool {
+// slotsDEntetesExacts rend les slots dont l'en-tete EXACT d'un record de JOUEUR GERE (`ti=9`)
+// apparait a au moins une position de bit du payload d'image-cle `pay` (cf. l'en-tete du fichier).
+func slotsDEntetesExacts(pay []byte) map[int]bool {
 	out := map[int]bool{}
 	total := len(pay) * 8
 	for q := 0; q+64 <= total; q++ {
@@ -44,7 +44,7 @@ func slotsDEntetesExacts(pay []byte, ti int) map[int]bool {
 		if slot >= kfTableCap {
 			continue
 		}
-		if kfReadBits(pay, q+32, 32) == uint64(ti) { //nolint:gosec // ti est un index d'archetype
+		if kfReadBits(pay, q+32, 32) == managedPlayerTypeIndex {
 			out[slot] = true
 		}
 	}
