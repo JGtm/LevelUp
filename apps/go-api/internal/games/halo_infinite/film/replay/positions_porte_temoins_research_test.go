@@ -69,15 +69,31 @@ func TestPortePositionsTemoins(t *testing.T) {
 // temoin81c02726 : la vie de Madina (slot 523) commence au vrai point d apparition (frame 692),
 // plus au point ecrit 4,65 s avant la creation de son corps ; le Mongoose 770 n a plus
 // l echantillon lointain de la frame 983, et son retour porte la lacune.
+//
+// CE QUE CE TEMOIN EPINGLE, ET CE QU IL N EPINGLE PAS (revue adverse du 2026-09-24). Le point de
+// Madina est a la fois anterieur a la creation (R-B1) et hors de l emprise (F-1) : c est
+// `avantCreation >= 1` qui prouve R-B1 sur faits reels (la porte tourne R-B1 d abord), le debut a
+// 692 prouve seulement que le point ne revient par aucune des deux voies. L echantillon 983 du
+// Mongoose est hors de l emprise : F-1 le retire. F-2 N A PAS DE TEMOIN REEL parmi les trois films
+// du plan (plafond de trois fichiers de faits) : ses deux declenchements au parc (1cd3848a, slot
+// 799 du nuage, publie dans la vie 798/1 par fusion de relais ; 7b0d89c4, slot 768 — un
+// echantillon chacun) sont suivis par l instrument de parc
+// (`replaybuild/m1_parc_depuis_faits_research_test.go`, compteur `echantillonsAuTraversDUnSilence`).
 func temoin81c02726(t *testing.T, d ReplayDocument) {
 	t.Helper()
+	vue := false
 	for _, tr := range d.Tracks {
 		if tr.Slot != 523 || tr.EndFrame < 645 || tr.StartFrame > 741 {
 			continue
 		}
+		vue = true
 		if tr.StartFrame != 692 {
 			t.Errorf("vie de Madina : debut frame %d, attendu 692 (le record de creation)", tr.StartFrame)
 		}
+	}
+	if !vue {
+		t.Fatal("vie de Madina (slot 523, frames 645..741) absente du document : une vie disparue " +
+			"ne prouve pas qu elle commence au record")
 	}
 	temoinSansEchantillonA(t, d, 770, 983)
 	for _, v := range d.Vehicles {

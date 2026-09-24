@@ -59,6 +59,13 @@ import (
 
 // premiereGenerationDuCorps est la generation que porte le record de creation du PREMIER corps d un
 // slot (lot E2 : `gen=1` sur les cinq films mesures ; `gen=2` au premier recyclage, `084a804d`).
+//
+// C EST UNE CONSTANTE MESUREE, ET SA DERIVE EST PUBLIEE : un build qui numeroterait autrement le
+// premier corps desarmerait R-B1 et R-B2 sur tous ses slots, sans rien casser d autre.
+// `coverage.tracks.slotsArmes` / `slotsDesarmes` le montrent au document. CRITERE DE SURVEILLANCE :
+// au parc du 2026-09-24, 1 slot desarme pour 11 407 armes (111 documents, chronique v69) ; un
+// document ou `slotsArmes` tombe a 0 alors que `slotsDesarmes` ne l est pas signe la derive, et
+// la constante se re-mesure (lot E2, `identity_registry_creation.go`).
 const premiereGenerationDuCorps = 1
 
 // couverturePorte est ce que la porte des positions a ecarte, en positions BRUTES du film (avant
@@ -67,8 +74,10 @@ type couverturePorte struct {
 	AvantCreation             int
 	ViesAvantPremiereCreation int
 	HorsEmprise               int
-	// SlotsDesarmes : slots dont le premier record lu n est pas celui du premier corps — la regle
-	// de creation ne s y applique pas. Journalise, pas publie.
+	// SlotsArmes / SlotsDesarmes : slots dont le premier record lu est, ou n est pas, celui du
+	// premier corps — la regle de creation ne s applique qu aux premiers. Publies (cf.
+	// `premiereGenerationDuCorps`).
+	SlotsArmes    int
 	SlotsDesarmes int
 }
 
@@ -87,7 +96,9 @@ func passerLaPorteDesPositions(sorted []grammar.BipedPosition, creations []gramm
 	var cov couverturePorte
 	premieres := premieresCreations(creations)
 	for _, c := range premieres {
-		if c.gen != premiereGenerationDuCorps {
+		if c.gen == premiereGenerationDuCorps {
+			cov.SlotsArmes++
+		} else {
 			cov.SlotsDesarmes++
 		}
 	}
@@ -195,6 +206,7 @@ func axesDesPositions(pos []grammar.BipedPosition) (xs, ys, zs []float32) {
 func (c couverturePorte) poserSur(tc *TrackCoverage, matchID string) {
 	tc.AvantCreation, tc.ViesAvantPremiereCreation, tc.HorsEmprise =
 		c.AvantCreation, c.ViesAvantPremiereCreation, c.HorsEmprise
+	tc.SlotsArmes, tc.SlotsDesarmes = c.SlotsArmes, c.SlotsDesarmes
 	if c.AvantCreation+c.HorsEmprise+c.SlotsDesarmes == 0 {
 		return
 	}
@@ -202,5 +214,5 @@ func (c couverturePorte) poserSur(tc *TrackCoverage, matchID string) {
 	slog.Info("rejeu : porte des positions de bipede",
 		"match_id", matchID, "avantCreation", c.AvantCreation,
 		"viesAvantPremiereCreation", c.ViesAvantPremiereCreation, "horsEmprise", c.HorsEmprise,
-		"slotsDesarmes", c.SlotsDesarmes)
+		"slotsArmes", c.SlotsArmes, "slotsDesarmes", c.SlotsDesarmes)
 }

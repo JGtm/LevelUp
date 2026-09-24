@@ -93,11 +93,12 @@ type VehicleCoverage struct {
 	Published  int  `json:"published"`
 	NoPosition int  `json:"noPosition"`
 	// La PORTE DES POSITIONS (schema 69) : echantillons et naissances hors de l emprise jouee,
-	// echantillons atteints ou quittes a travers un silence avec un deplacement. Cf.
-	// `replay.VehicleCoverage`.
+	// echantillons atteints ou quittes a travers un silence avec un deplacement, silences que F-2
+	// a refuse de trancher. Cf. `replay.VehicleCoverage`.
 	EchantillonsHorsEmprise         int            `json:"echantillonsHorsEmprise"`
 	SpawnsHorsEmprise               int            `json:"spawnsHorsEmprise"`
 	EchantillonsAuTraversDUnSilence int            `json:"echantillonsAuTraversDUnSilence"`
+	SilencesNonTranches             int            `json:"silencesNonTranches"`
 	Merged                          int            `json:"merged"`
 	WithSpawn                       int            `json:"withSpawn"`
 	WithChassis                     int            `json:"withChassis"`

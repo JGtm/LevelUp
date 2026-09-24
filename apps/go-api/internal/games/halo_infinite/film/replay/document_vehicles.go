@@ -284,11 +284,16 @@ type VehicleCoverage struct {
 	//	                                 la vie garde le record suivant s il en existe un
 	//	EchantillonsAuTraversDUnSilence  echantillons atteints ou quittes a travers un silence avec
 	//	                                 un deplacement (repli F-2)
+	//	SilencesNonTranches              silences avec deplacement que F-2 a REFUSE de trancher (rien
+	//	                                 ne departage les deux sejours, ou celui qu il faudrait
+	//	                                 ecarter depasse `vehicleSejourAberrantMax`) : les deux
+	//	                                 restent publies
 	//
 	// Une vie privee ainsi de toute position est comptee dans `NoPosition` et n est pas publiee.
 	EchantillonsHorsEmprise         int `json:"echantillonsHorsEmprise"`
 	SpawnsHorsEmprise               int `json:"spawnsHorsEmprise"`
 	EchantillonsAuTraversDUnSilence int `json:"echantillonsAuTraversDUnSilence"`
+	SilencesNonTranches             int `json:"silencesNonTranches"`
 	// Merged compte les vies FONDUES dans leur precedente (cf. `mergeVehicleRelays`) : le film
 	// RE-CREE un vehicule sous un nouveau slot au lieu de le deplacer, et sans cette fusion
 	// l ancienne vie restait a l ecran comme un DOUBLE, a l ancienne place, pendant l intervalle

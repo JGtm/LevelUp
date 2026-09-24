@@ -48,14 +48,16 @@ var registreReplayPositions = []Repli{
 	{
 		Nom:  "repli_echantillon_vehicule_au_travers_d_un_silence_ecarte",
 		Fait: "quels echantillons de position d un vehicule sont publies",
-		Mecanisme: "dans une vie de vehicule, un sejour de replication atteint ou quitte a travers un silence " +
-			"de plus de `lifeGapUS` AVEC un deplacement est ecarte : le plus court des deux sejours, a egalite " +
-			"celui que son autre voisin ne soutient pas",
+		Mecanisme: "dans une vie de vehicule, de deux sejours de replication qui se contredisent au travers " +
+			"d un silence de plus de `lifeGapUS` (deplacement de plus de 2 m), celui que son AUTRE voisin " +
+			"contredit est ecarte (la naissance de la vie est la voisine gauche du premier sejour), a soutien " +
+			"egal le plus court ; jamais un sejour de plus de `vehicleSejourAberrantMax` (3) echantillons. Sans " +
+			"preuve, rien n est ecarte et le refus se compte (coverage.vehicles.silencesNonTranches)",
 		Condition: CondLectureNonPortee,
 		Ordre:     OrdreApresLecture,
 		Sites: []Site{{
 			Fichier: pkgReplay + "positions_porte_vehicules.go",
-			Ancre:   "fb.DeclencheN(fallback.NomEchantillonVehiculeAuTraversDUnSilenceEcarte, n)",
+			Ancre:   "fb.DeclencheN(fallback.NomEchantillonVehiculeAuTraversDUnSilenceEcarte, b.ecartes)",
 		}},
 		DatePose:     dateM1RetoursRejeu,
 		CibleRetrait: cibleOption2Positions,

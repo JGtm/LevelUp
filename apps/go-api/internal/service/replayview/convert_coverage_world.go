@@ -105,6 +105,7 @@ func toVehicleCoverage(v replay.VehicleCoverage) replaydoc.VehicleCoverage {
 		EchantillonsHorsEmprise:         v.EchantillonsHorsEmprise,
 		SpawnsHorsEmprise:               v.SpawnsHorsEmprise,
 		EchantillonsAuTraversDUnSilence: v.EchantillonsAuTraversDUnSilence,
+		SilencesNonTranches:             v.SilencesNonTranches,
 		Merged:                          v.Merged,
 		WithSpawn:                       v.WithSpawn,
 		WithChassis:                     v.WithChassis,

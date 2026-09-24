@@ -100,6 +100,14 @@ func logVehicleCoverage(c *VehicleCoverage) {
 		"sansPosition", c.NoPosition, "avecNaissance", c.WithSpawn, "avecChassis", c.WithChassis,
 		"famillesResolues", c.FamilyResolved, "famillesInconnues", c.FamilyUnknown,
 		"echantillons", c.Samples, "avecCap", c.WithHeading)
+	// LA PORTE DES POSITIONS (lot M1 des retours du rejeu) : ce qu elle a ecarte, et les silences
+	// avec deplacement qu elle a laisses publies faute de preuve pour trancher.
+	if c.EchantillonsHorsEmprise+c.SpawnsHorsEmprise+c.EchantillonsAuTraversDUnSilence+c.SilencesNonTranches > 0 {
+		slog.Info("rejeu : porte des positions de vehicule",
+			"echantillonsHorsEmprise", c.EchantillonsHorsEmprise, "spawnsHorsEmprise", c.SpawnsHorsEmprise,
+			"echantillonsAuTraversDUnSilence", c.EchantillonsAuTraversDUnSilence,
+			"silencesNonTranches", c.SilencesNonTranches)
+	}
 	slog.Info("rejeu : occupation des vehicules",
 		"episodes", c.Rides, "vehiculesOccupes", c.VehiclesRidden, "occupantsNommes", c.RidesNamed,
 		"lus", c.RidesRead, "parProximite", c.RidesProximity,

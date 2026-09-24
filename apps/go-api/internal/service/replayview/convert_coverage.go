@@ -91,6 +91,8 @@ func toTrackCoverage(v replay.TrackCoverage) replaydoc.TrackCoverage {
 		AvantCreation:             v.AvantCreation,
 		ViesAvantPremiereCreation: v.ViesAvantPremiereCreation,
 		HorsEmprise:               v.HorsEmprise,
+		SlotsArmes:                v.SlotsArmes,
+		SlotsDesarmes:             v.SlotsDesarmes,
 	}
 }
 

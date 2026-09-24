@@ -13393,6 +13393,10 @@ export interface components {
             /** Format: int64 */
             refusedPoints: number;
             /** Format: int64 */
+            slotsArmes: number;
+            /** Format: int64 */
+            slotsDesarmes: number;
+            /** Format: int64 */
             viesAvantPremiereCreation: number;
         };
         Translocation: {
@@ -13543,6 +13547,8 @@ export interface components {
             shotsUnplaced: number;
             /** Format: int64 */
             shotsVehicleWeapon: number;
+            /** Format: int64 */
+            silencesNonTranches: number;
             /** Format: int64 */
             spawnsHorsEmprise: number;
             unknownChassis?: {

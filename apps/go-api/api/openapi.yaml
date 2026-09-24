@@ -29863,6 +29863,12 @@ components:
         refusedPoints:
           format: int64
           type: integer
+        slotsArmes:
+          format: int64
+          type: integer
+        slotsDesarmes:
+          format: int64
+          type: integer
         viesAvantPremiereCreation:
           format: int64
           type: integer
@@ -29877,6 +29883,8 @@ components:
         - avantCreation
         - viesAvantPremiereCreation
         - horsEmprise
+        - slotsArmes
+        - slotsDesarmes
       type: object
     Translocation:
       additionalProperties: false
@@ -30141,6 +30149,9 @@ components:
         shotsVehicleWeapon:
           format: int64
           type: integer
+        silencesNonTranches:
+          format: int64
+          type: integer
         spawnsHorsEmprise:
           format: int64
           type: integer
@@ -30169,6 +30180,7 @@ components:
         - echantillonsHorsEmprise
         - spawnsHorsEmprise
         - echantillonsAuTraversDUnSilence
+        - silencesNonTranches
         - merged
         - withSpawn
         - withChassis

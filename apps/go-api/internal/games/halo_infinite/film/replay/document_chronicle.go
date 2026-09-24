@@ -2030,16 +2030,20 @@ package replay
 //	               continue, reste publiee). La regle de creation se DESARME sur un slot dont
 //	               le premier record lu n est pas `gen=1`.
 //	`vehicles`     meme emprise pour les echantillons et les naissances (une fausse naissance
-//	               anterieure ne l emporte plus sur la vraie) ; un echantillon atteint ou quitte
-//	               a travers un silence de plus de `lifeGapUS` AVEC un deplacement est ecarte
-//	               (repli `repli_echantillon_vehicule_au_travers_d_un_silence_ecarte`) ; une vie
-//	               sans position restante sort en `noPosition`.
+//	               anterieure ne l emporte plus sur la vraie ; un record posterieur a la fin de la
+//	               vie n est pas sa naissance) ; de deux sejours qui se contredisent au travers
+//	               d un silence de plus de `lifeGapUS`, celui que son autre voisin contredit (la
+//	               naissance pour le premier), a soutien egal le plus court, est ecarte s il fait
+//	               au plus 3 echantillons (repli `repli_echantillon_vehicule_au_travers_d_un_
+//	               silence_ecarte`) — sinon rien, et le refus se compte ; une vie sans position
+//	               restante sort en `noPosition`.
 //	`vehicles[]    CHAMP NEUF : `g`, la lacune de replication qui precede l echantillon, en ms
 //	.samples[].g`  — la semantique de `Point.g`. Le client TIENT la derniere position au travers.
 //	`coverage      `avantCreation`, `viesAvantPremiereCreation`, `horsEmprise` (positions
-//	.tracks`       BRUTES du film)
+//	.tracks`       BRUTES du film, avant decimation), `slotsArmes` / `slotsDesarmes` (derive de
+//	               la generation du premier corps ; parc du 2026-09-24 : 11 407 et 1)
 //	`coverage      `echantillonsHorsEmprise`, `spawnsHorsEmprise`, `echantillonsAuTraversDUnSilence`
-//	.vehicles`
+//	.vehicles`     (echantillons BRUTS, fenetres de vie comprises ou non), `silencesNonTranches`
 //
 // POURQUOI « si le film le dit, on publie » (2026-09-14) NE COUVRAIT PAS CES POINTS : le film ne
 // les dit pas, c est le BALAYAGE ANCRE qui les lit. La meme suite de bits revient au meme decalage

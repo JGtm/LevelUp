@@ -317,9 +317,15 @@ type TrackCoverage struct {
 	//	                           sont comptes dans `AvantCreation`
 	//	HorsEmprise                positions hors de l emprise jouee (repli nomme
 	//	                           `repli_position_hors_emprise_ecartee`)
+	//	SlotsArmes / SlotsDesarmes slots dont le PREMIER record de creation lu est, ou n est pas,
+	//	                           celui du premier corps (`premiereGenerationDuCorps`) : la regle
+	//	                           ne s applique qu aux premiers. Un desarmement massif dit que la
+	//	                           numerotation des generations a derive (cf. positions_porte.go)
 	AvantCreation             int `json:"avantCreation"`
 	ViesAvantPremiereCreation int `json:"viesAvantPremiereCreation"`
 	HorsEmprise               int `json:"horsEmprise"`
+	SlotsArmes                int `json:"slotsArmes"`
+	SlotsDesarmes             int `json:"slotsDesarmes"`
 }
 
 // logTrackCoverage journalise ce que la publication des traces a refusé et ce que le film a tu.

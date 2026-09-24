@@ -138,7 +138,7 @@ func v4Decode(t *testing.T, root string, f v0Film) (v4Ctx, bool) {
 	ctx.clock = v4Horloge(bip)
 	ctx.lives, _ = vehicleLives(ctx.scan.Keyframes, ctx.scan.Deaths)
 	ctx.vehBySlot = vehiclePositionsBySlot(ctx.scan.Positions)
-	ctx.spawns = vehicleSpawnsByLife(ctx.scan.Creations)
+	ctx.spawns = vehicleSpawnsByLife(ctx.scan.Creations, ctx.lives)
 	ctx.lifeBySlot = map[uint32][]vehicleLife{}
 	for _, l := range ctx.lives {
 		if _, seen := ctx.lifeBySlot[l.key.Slot]; !seen {

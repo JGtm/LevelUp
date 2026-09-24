@@ -143,8 +143,10 @@ var plafondsParFichier = map[string]int{
 	// chronique v69 — la grammaire de la vie et les deux replis nommes de la publication des
 	// positions, le champ `vehicles[].samples[].g`, les six compteurs de couverture, et pourquoi
 	// « si le film le dit, on publie » ne couvrait pas des points que le BALAYAGE lit. UNE SEULE
-	// MONTEE DE SCHEMA POUR LE LOT, dans le commit qui monte `SchemaVersion`.
-	"internal/games/halo_infinite/film/replay/document_chronicle.go": 2054,
+	// MONTEE DE SCHEMA POUR LE LOT, dans le commit qui monte `SchemaVersion`. 2054 -> 2058
+	// (2026-09-24, reprise apres revue adverse) : le departage de F-2, sa borne, et les trois
+	// compteurs ajoutes a la meme v69 (`slotsArmes`, `slotsDesarmes`, `silencesNonTranches`).
+	"internal/games/halo_infinite/film/replay/document_chronicle.go": 2058,
 	// --- production, hors perimetre du lot 2.7 (aucune preuve d equivalence ne couvrait
 	// leur scission : elle se decidera au lot qui les rouvrira).
 	// `assist.go` EST SORTI DE CETTE TABLE LE 2026-09-16 (lot 2.6.2) : le type `Assist` a descendu

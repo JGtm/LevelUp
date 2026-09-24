@@ -1,9 +1,9 @@
 # EMPREINTE DE FORME DU DOCUMENT DE REJEU — fige par document_shape_test.go.
 # Ne s'edite JAMAIS a la main : regeneration decrite en tete de ce test.
 schema 69
-empreinte-stockee f2f584e77ac1c256
-empreinte-servie f2f584e77ac1c256
-empreinte-cuite 04fa0923bcdae27c
+empreinte-stockee 4c5dbd29cfe3db91
+empreinte-servie 4c5dbd29cfe3db91
+empreinte-cuite 5bd8599b9f2f1176
 empreinte-cuite-regle 2
 
 AbilityCharge
@@ -870,6 +870,8 @@ TrackCoverage
   PublishedPoints json:"publishedPoints" int
   RefusedMinPoints json:"refusedMinPoints" int
   RefusedPoints json:"refusedPoints" int
+  SlotsArmes json:"slotsArmes" int
+  SlotsDesarmes json:"slotsDesarmes" int
   ViesAvantPremiereCreation json:"viesAvantPremiereCreation" int
 Translocation
   FX json:"fx,omitempty" *float32
@@ -932,6 +934,7 @@ VehicleCoverage
   ShotsNoRide json:"shotsNoRide" int
   ShotsUnplaced json:"shotsUnplaced" int
   ShotsVehicleWeapon json:"shotsVehicleWeapon" int
+  SilencesNonTranches json:"silencesNonTranches" int
   SpawnsHorsEmprise json:"spawnsHorsEmprise" int
   UnknownChassis json:"unknownChassis,omitempty" map[string]int
   VehiclesRidden json:"vehiclesRidden" int

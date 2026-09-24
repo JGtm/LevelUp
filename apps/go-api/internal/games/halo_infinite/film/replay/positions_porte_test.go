@@ -129,6 +129,30 @@ func TestPorteDesarmeeQuandLePremierRecordNEstPasLePremierCorps(t *testing.T) {
 			"desarme sur un slot dont le premier record n est pas `gen=1`", n,
 			doc.Coverage.Tracks.AvantCreation)
 	}
+	// LE DESARMEMENT EST PUBLIE, avec son denominateur : une derive de la numerotation des
+	// generations (un build qui numeroterait le premier corps 0) desarmerait la regle sur tous les
+	// slots — la couverture doit le montrer, pas seulement le journal.
+	if c := doc.Coverage.Tracks; c.SlotsArmes != 0 || c.SlotsDesarmes != 1 {
+		t.Errorf("slotsArmes = %d, slotsDesarmes = %d ; attendu 0 et 1", c.SlotsArmes, c.SlotsDesarmes)
+	}
+}
+
+// LE PREMIER RECORD D UN SLOT RECYCLE : `gen=1` en tete de film, `gen=2` apres (`084a804d`). C est
+// le PLUS PRECOCE qui dit si la regle s arme — lu dans le desordre du chunk, le `gen=2` tardif ne
+// doit pas la desarmer.
+func TestPortePremierRecordDUnSlotRecycle(t *testing.T) {
+	in := porteFoule(300, 0)
+	in = append(in, pos(602, 1_000, 50, 50, 1),
+		pos(602, 30_020, 20, 20, 1), pos(602, 30_120, 21, 20, 1), pos(602, 60_020, 30, 30, 1))
+	opt := Options{FrameIntervalMS: 100, BipedCreations: []grammar.BipedCreation{
+		porteCreation(602, 60_000, 2), porteCreation(602, 30_000, 1),
+	}}
+	doc := BuildFromPositions("m", "halo_infinite", in, nil, opt)
+	c := doc.Coverage.Tracks
+	if c.AvantCreation != 1 || c.SlotsArmes != 1 || c.SlotsDesarmes != 0 {
+		t.Errorf("avantCreation = %d, slotsArmes = %d, slotsDesarmes = %d ; attendu 1, 1, 0 : le point "+
+			"anterieur au premier corps est ecarte", c.AvantCreation, c.SlotsArmes, c.SlotsDesarmes)
+	}
 }
 
 // F-1 — un point hors de l emprise jouee (la meme garde que `boundsOf`) n est plus publie ; il se
