@@ -23,31 +23,55 @@ package service
 // sont toujours poses au depart : gares dans l aire de jeu, ils restent affiches meme si personne
 // n y touche.
 //
-// # LA ZONE JOUABLE, ETABLIE SUR PIECES (parc du 2026-09-24, 107 documents au schema 69)
+// # LA ZONE JOUABLE EN PLAN : LA MATIERE DU FOND PUBLIE (parc du 2026-09-24, 107 documents)
 //
-//   - EN PLAN : la MATIERE PRATICABLE de la carte, c est-a-dire le masque du fond de carte publie
-//     (alpha > 0) ferme au rayon canonique du depot (`mapdecoupe.ToleranceParDefaut`, 4 m) — une
-//     reference VERSIONNEE, disponible en production sans le jeu, independante du match. Mesure :
-//     12/12 decors de Starboard hors du masque (ils sont hors du cadre du fond), 260/260 vies de
-//     vehicule en jeu dessus. Les autres references du depot ne conviennent pas : `map_geometry/`
-//     ne porte les props que d une carte, `map_positions_jouees.json` qu une carte (Dredge), les
-//     paves de callout debordent sur le vide et n existent pas pour Goliath. Les bornes jouees du
-//     match non plus : un Mongoose pose de Behemoth y est a 2,4 m du bord (f2966f08).
-//   - EN HAUTEUR : AUCUNE reference ne publie l altitude praticable d une cellule (le sidecar n en
-//     porte qu une par carte, `playLevelZ` ; constat ecrit dans `mapdecoupe/masque.go`). Le Wasp de
-//     Goliath est DANS le masque, 3,03 m sous le sol. Le repli [sceneryReasonBelowPlayedFloor] lit
-//     donc le sol JOUE du match : plus de [sceneryFloorToleranceM] sous la plus basse position de
-//     joueur publiee (`Bounds.MinZ`, garde des aberrations du lot M1 comprise). Critere de retrait :
-//     la zone jouable publiee porte l altitude de sa matiere, et le test de hauteur la lit au lieu
-//     du match.
+// La matiere praticable de la carte est le masque du fond publie (alpha > 0) ferme au rayon
+// canonique du depot (`mapdecoupe.ToleranceParDefaut`, 4 m) — une reference VERSIONNEE, disponible
+// en production sans le jeu, independante du match. Ce que la cuisson y a mis (cmd/mapfond-build) :
+// la geometrie de la tranche jouee, ROGNEE aux zones de callout dilatees (`rogneAuxZones`, marge
+// 1 m, Starboard et Goliath au reglage du 2026-08-30) ou aux volumes de mort, puis le CADRE de
+// l image est la boite de cette matiere elargie de `himap.MargeCadreUtile` (6 m, `himap.CadreUtile`,
+// depuis le 2026-08-26). Un point hors du cadre est donc hors de toute matiere publiee, a plus de
+// 6 m d elle sur un fond rogne : « hors cadre » n est pas un choix de rendu independant, c est le
+// cas limite de « hors matiere », et la fermeture (4 m) ne l atteint jamais.
 //
-// Une carte SANS zone connue (aucun fond publie, fond illisible) ne masque RIEN : repli nomme
-// [sceneryZoneUnknown], compte. Un document sans position de joueur ne sait pas son sol : le test
-// de hauteur ne s applique pas ([sceneryFloorUnknown]).
+// CE QUI DECIDE AUJOURD HUI, DIT SANS DETOUR (revue RR-M7-05) : au parc, les 12 decors de Starboard
+// sont HORS DU CADRE (12 a 16 m au sud du bord de l image) ; aucun decor n est decide par un vide
+// DANS le cadre, et la fermeture n en sauve aucun. Les deux cas sont tenus par des tests sur un fond
+// synthetique (un vide dans le cadre masque, un trou plus etroit que 8 m ne masque pas).
+// Les autres references du depot ne conviennent pas : `map_geometry/` ne porte les props que d une
+// carte, `map_positions_jouees.json` qu une carte (Dredge), les paves de callout debordent sur le
+// vide et n existent pas pour les cartes Forge. Les bornes jouees du match non plus : un Mongoose
+// pose de Behemoth y est a 2,4 m du bord (f2966f08).
+//
+// # EN HAUTEUR : LE SOL FOULE DU MATCH, REPLI NOMME (registre facts/fallback)
+//
+// AUCUNE reference ne publie l altitude praticable d une cellule (le sidecar n en porte qu une par
+// carte, `playLevelZ` ; constat ecrit dans `mapdecoupe/masque.go`). Le Wasp de Goliath est DANS le
+// masque, 3,03 m sous le sol. Le repli `repli_decor_sous_le_sol_foule_du_match` lit donc le sol
+// FOULE du match : la plus basse altitude ou un joueur est RESTE (au moins [sceneryStandMinMs] dans
+// une bande de [sceneryStandMaxDZ]) — jamais la plus basse position publiee, que la moindre chute
+// dans le vide tire vers le bas (revue RR-M7-04 : Streets -33,76 m contre -0,26 m selon le match,
+// Launch Site -14,29 contre -3,92, Starboard 70,42 contre 80,63 ; une chute sur Goliath aurait
+// rendu le Wasp). MESURE sur les 107 documents : le sol foule d une carte varie de 0,34 m au plus
+// d un match a l autre (Cliffhanger), 1,42 m sur deux matchs ecourtes de Lattice (767 et 882
+// points) ; le seuil de duree est au milieu d un plateau (0,7 s a 1,5 s donnent les memes sols).
+// CE QUI RESTE DEPENDANT DU MATCH, ET C EST ECRIT AU REGISTRE : un match ou des joueurs se TIENNENT
+// plus bas que le Wasp de Goliath le rendrait — c est qu il y aurait alors du jeu a sa hauteur. Un
+// seul match de Goliath au parc. Critere de retrait : la zone publiee porte l altitude de sa
+// matiere, et le test de hauteur la lit au lieu du match.
+//
+// Une carte SANS zone connue (aucun fond publie, fond illisible) ne masque RIEN : repli
+// `repli_decor_carte_sans_zone_affiche`, compte dans `zoneUnknown`. Un document ou personne ne s est
+// tenu nulle part ne sait pas son sol : le test de hauteur ne s applique pas ([sceneryFloorUnknown]).
 
-import "levelup/go-api/internal/games/halo_infinite/film/replay"
+import (
+	"math"
 
-// playArea est la zone jouable EN PLAN d une carte (le masque ferme du fond publie).
+	"levelup/go-api/internal/games/halo_infinite/film/replay"
+)
+
+// playArea est la zone jouable EN PLAN d une carte.
 type playArea interface {
 	// Praticable dit si la position monde (x, y) tombe sur de la matiere praticable.
 	Praticable(x, y float64) bool
@@ -64,14 +88,23 @@ const (
 	sceneryReasonBelowPlayedFloor = "below_played_floor"
 )
 
-// sceneryFloorToleranceM : de combien de metres une pose doit passer SOUS le sol joue pour etre
-// « sous le sol ». CONSTANTE MESUREE, donc repli nomme (raison [sceneryReasonBelowPlayedFloor],
-// comptee dans `hidden`). Parc du 2026-09-24 (107 documents, 260 vies de vehicule en jeu ramenees a
-// leur premier echantillon) : la plus basse est 0,10 m SOUS le sol joue (Wasp de 8a485699 sur son
-// socle, Launch Site : le socle est plus bas que tout pas de joueur du match) ; le seul decor sous
-// le sol est 3,03 m dessous (Wasp de Goliath). 1,5 m coupe l ecart en deux. Critere de retrait :
-// celui du repli (la zone publiee porte l altitude de sa matiere).
+// sceneryFloorToleranceM : de combien de metres une pose doit passer SOUS le sol foule pour etre
+// « sous le sol ». CONSTANTE MESUREE du repli `repli_decor_sous_le_sol_foule_du_match` (raison
+// [sceneryReasonBelowPlayedFloor], comptee dans `hidden`). Parc du 2026-09-24 (107 documents, 260
+// vies de vehicule en jeu ramenees a leur premier echantillon) : la plus basse est 0,10 m SOUS le
+// sol foule (Wasp de 8a485699 sur son socle, Launch Site) ; le seul decor sous le sol est 3,03 m
+// dessous (Wasp de Goliath). 1,5 m coupe l ecart en deux. Critere de retrait : celui du repli.
 const sceneryFloorToleranceM float32 = 1.5
+
+// sceneryStandMinMs / sceneryStandMaxDZ : ce qu est « se tenir » pour le sol foule — rester au
+// moins 1 s dans une bande de 0,3 m d altitude. Une chute ne s y tient jamais ; un pas, une course
+// a plat, une attente, si. CONSTANTES MESUREES du meme repli : au parc, 0,7 s a 1,5 s rendent les
+// memes sols (plateau ; 0,5 s laisse passer une chute de Cliffhanger, 5 s perd des sols joues), et
+// la bande est indifferente de 0,1 a 0,5 m.
+const (
+	sceneryStandMinMs float64 = 1000
+	sceneryStandMaxDZ float32 = 0.3
+)
 
 // vehicleIsPosedOnly dit si une vie remplit les CINQ conditions de pose : un seul echantillon, a sa
 // naissance, nee a la frame 0 (le decor existe des le chargement de la carte), vivante jusqu a la
@@ -85,24 +118,26 @@ func vehicleIsPosedOnly(v replay.VehicleTrack) bool {
 		len(v.Rides) == 0
 }
 
-// hasPosedOnlyVehicle dit si le document porte au moins une candidate — la zone jouable n est
-// chargee que dans ce cas.
-func hasPosedOnlyVehicle(doc *replay.ReplayDocument) bool {
+// posedOnlyVehicles rend les candidates du document — la zone jouable n est chargee que s il y en
+// a, et son masque que si l une d elles tombe dans le cadre du fond.
+func posedOnlyVehicles(doc *replay.ReplayDocument) []replay.VehicleTrack {
 	if doc == nil {
-		return false
+		return nil
 	}
+	var out []replay.VehicleTrack
 	for _, v := range doc.Vehicles {
 		if vehicleIsPosedOnly(v) {
-			return true
+			out = append(out, v)
 		}
 	}
-	return false
+	return out
 }
 
 // decideVehicleScenery rend le verdict de decor du document. `zone` nil = carte sans zone connue :
 // rien n est masque. Rend nil quand aucune vie n est candidate.
 func decideVehicleScenery(doc *replay.ReplayDocument, zone playArea) *replay.VehicleScenery {
-	if !hasPosedOnlyVehicle(doc) {
+	candidates := posedOnlyVehicles(doc)
+	if len(candidates) == 0 {
 		return nil
 	}
 	floor, floorKnown := playedFloor(doc)
@@ -113,12 +148,10 @@ func decideVehicleScenery(doc *replay.ReplayDocument, zone playArea) *replay.Veh
 	if !floorKnown {
 		out.Floor = sceneryFloorUnknown
 	}
-	for _, v := range doc.Vehicles {
-		if !vehicleIsPosedOnly(v) {
-			continue
-		}
+	for _, v := range candidates {
 		out.Candidates++
 		if zone == nil {
+			// repli_decor_carte_sans_zone_affiche : aucune zone, rien de masque, compte.
 			out.ZoneUnknown++
 			continue
 		}
@@ -144,13 +177,52 @@ func sceneryReasonOf(s replay.VehicleSample, zone playArea, floor float32, floor
 	return ""
 }
 
-// playedFloor rend le sol JOUE du match : la plus basse position de joueur publiee, telle que les
-// bornes du document la gardent (aberrations ecartees). Faux quand aucune piste n a de point.
+// playedFloor rend le SOL FOULE du match : la plus basse altitude ou une piste de joueur est restee
+// au moins [sceneryStandMinMs] dans une bande de [sceneryStandMaxDZ]. Faux quand personne ne s est
+// tenu nulle part, ou que le document n a pas d echelle de temps.
 func playedFloor(doc *replay.ReplayDocument) (float32, bool) {
+	if doc.FrameIntervalMS <= 0 {
+		return 0, false
+	}
+	minFrames := int(math.Ceil(sceneryStandMinMs / float64(doc.FrameIntervalMS)))
+	var floor float32
+	found := false
 	for _, tr := range doc.Tracks {
-		if len(tr.Points) > 0 {
-			return doc.Bounds.MinZ, true
+		if z, ok := lowestStand(tr.Points, minFrames); ok && (!found || z < floor) {
+			floor, found = z, true
 		}
 	}
-	return 0, false
+	return floor, found
+}
+
+// lowestStand rend la plus basse altitude d une STATION de la piste : une suite de points consecutifs
+// couvrant au moins `minFrames` images, dont l altitude tient dans [sceneryStandMaxDZ]. Fenetre
+// glissante a deux files monotones (minimum et maximum de Z) : lineaire en nombre de points.
+func lowestStand(pts []replay.Point, minFrames int) (float32, bool) {
+	var lo, hi []int
+	var best float32
+	found, i := false, 0
+	for j := range pts {
+		for len(lo) > 0 && pts[lo[len(lo)-1]].Z >= pts[j].Z {
+			lo = lo[:len(lo)-1]
+		}
+		lo = append(lo, j)
+		for len(hi) > 0 && pts[hi[len(hi)-1]].Z <= pts[j].Z {
+			hi = hi[:len(hi)-1]
+		}
+		hi = append(hi, j)
+		for pts[hi[0]].Z-pts[lo[0]].Z > sceneryStandMaxDZ {
+			i++
+			if lo[0] < i {
+				lo = lo[1:]
+			}
+			if hi[0] < i {
+				hi = hi[1:]
+			}
+		}
+		if pts[j].T-pts[i].T >= minFrames && (!found || pts[lo[0]].Z < best) {
+			best, found = pts[lo[0]].Z, true
+		}
+	}
+	return best, found
 }

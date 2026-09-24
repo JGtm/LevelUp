@@ -150,14 +150,19 @@ func (s *replayService) readBackgroundImage(ctx context.Context, key string) ([]
 }
 
 // backgroundImageFile rend le chemin de l'image d'une clé de fond et son type MIME, après avoir
-// exigé son calage et validé le nom de fichier porté par le sidecar (cf. readBackgroundImage).
-// Seul point qui passe d'une clé à un fichier image : l'image SERVIE et le masque de la zone
-// jouable (replay_vehicle_scenery.go) le partagent.
+// exigé son calage (cf. readBackgroundImage).
 func (s *replayService) backgroundImageFile(ctx context.Context, key string) (string, string, error) {
 	bg, err := s.loadMapBackground(ctx, key)
 	if err != nil {
 		return "", "", err
 	}
+	return s.imageFileOf(ctx, key, bg)
+}
+
+// imageFileOf valide le nom de fichier image porté par un sidecar déjà lu et rend son chemin et son
+// type MIME. Seul point qui passe d'un sidecar à un fichier image : l'image SERVIE et le masque de
+// la zone jouable (replay_vehicle_scenery.go, qui garde le calage du même sidecar) le partagent.
+func (s *replayService) imageFileOf(ctx context.Context, key string, bg *replay.MapBackground) (string, string, error) {
 	nom := filepath.Base(bg.Image)
 	mime, connue := mimeParExtensionDeFond[strings.ToLower(filepath.Ext(nom))]
 	if nom != bg.Image || !connue {

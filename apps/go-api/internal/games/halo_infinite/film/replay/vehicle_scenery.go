@@ -15,8 +15,9 @@ type VehicleScenery struct {
 	// Zone : `map` (la zone jouable de la carte a ete lue) ou `unknown` (aucune zone connue — rien
 	// n est masque, repli nomme et compte dans `ZoneUnknown`).
 	Zone string `json:"zone"`
-	// Floor : `played` (le sol joue du match est connu) ou `unknown` (aucune position de joueur —
-	// le test de hauteur ne s applique pas).
+	// Floor : `played` (le sol FOULE du match est connu : la plus basse altitude ou un joueur est
+	// reste au moins 1 s) ou `unknown` (personne ne s est tenu nulle part — le test de hauteur ne
+	// s applique pas).
 	Floor string `json:"floor"`
 	// Candidates : vies qui remplissent les cinq conditions de pose.
 	Candidates int `json:"candidates"`
@@ -33,6 +34,6 @@ type VehicleSceneryLife struct {
 	Slot uint32 `json:"slot"`
 	Gen  uint32 `json:"gen"`
 	// Reason : `off_play_area` (hors de la matiere praticable de la carte) ou `below_played_floor`
-	// (sous le sol joue du match).
+	// (sous le sol foule du match, repli nomme au registre facts/fallback).
 	Reason string `json:"reason"`
 }

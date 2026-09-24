@@ -5,7 +5,7 @@
  * RETOURS DU REJEU (lot L1.3, décision Q13 « masqués », 2026-09-23 ; lot M7, 2026-09-24). Sur
  * Starboard (ab526724, f0220a96), six véhicules garés à 19-24 m au sud de l'arène — 1 Scorpion,
  * 2 Wasp, 3 Warthog — ; sur Goliath (d8b13ec2), un Wasp 3 m sous le sol. DEPUIS M7, LA RÈGLE VIT
- * CÔTÉ GO (`film/replay/vehicle_scenery.go`, prouvée sur les fonds de carte réels par
+ * CÔTÉ GO (`internal/service/replay_vehicle_scenery_rule.go`, prouvée sur les fonds de carte réels par
  * `service/replay_vehicle_scenery_test.go`) : posé par la carte ET hors de la zone jouable. Le
  * client LIT le verdict (`doc.vehicleScenery.hidden`, replié en `track.scenery`) : ces tests
  * prouvent le pli, le dessin et l'embarquement ; aucune condition n'est recalculée ici.

@@ -116,14 +116,15 @@ export function vehicleIsDecor(family: string | undefined): boolean {
  * (`doc.vehicleScenery.hidden`, posé à la requête — lot M7 des retours du rejeu, 2026-09-24 ;
  * replié sur chaque vie en `track.scenery` par `normalizeReplayDocument`).
  *
- * LA RÈGLE VIT CÔTÉ GO (`film/replay/vehicle_scenery.go`), PLUS ICI. Elle a quitté ce fichier par
- * son propre critère de retrait (lot L1.3 : « quand le producteur publie lui-même le décor de
- * carte, ce prédicat lit ce marqueur et ses conditions disparaissent d'ici »), parce que la
- * décision utilisateur du 2026-09-24 lui ajoute une condition que le client ne sait pas lire : la
- * vie doit être POSÉE par la carte (un seul échantillon, à sa naissance à la frame 0, vie jusqu'à
- * la fin du film, aucun occupant) ET HORS DE LA ZONE JOUABLE — la matière praticable du fond de
- * carte publié, en plan, et le sol joué du match, en hauteur. Sur Behemoth, des Mongoose posés
- * dans l'aire de jeu que personne ne touche restent donc dessinés.
+ * LA RÈGLE VIT CÔTÉ GO (`internal/service/replay_vehicle_scenery_rule.go` ; la forme publiée dans
+ * `film/replay/vehicle_scenery.go`), PLUS ICI. Elle a quitté ce fichier par son propre critère de
+ * retrait (lot L1.3 : « quand le producteur publie lui-même le décor de carte, ce prédicat lit ce
+ * marqueur et ses conditions disparaissent d'ici »), parce que la décision utilisateur du
+ * 2026-09-24 lui ajoute une condition que le client ne sait pas lire : la vie doit être POSÉE par
+ * la carte (un seul échantillon, à sa naissance à la frame 0, vie jusqu'à la fin du film, aucun
+ * occupant) ET HORS DE LA ZONE JOUABLE — la matière praticable du fond de carte publié, en plan,
+ * et le sol foulé du match (la plus basse altitude où un joueur est resté), en hauteur. Sur
+ * Behemoth, des Mongoose posés dans l'aire de jeu que personne ne touche restent donc dessinés.
  *
  * Le film réplique la POSE du décor avant l'origine du match (7 à 117 records, sonde C2) ; la
  * publication n'en garde qu'un échantillon, ramené à la naissance : c'est lui que la règle lit.

@@ -3445,8 +3445,3 @@ export type CoordinationAppui = components['schemas']['CoordinationAppui']
 export type CoordinationSessionPoint = components['schemas']['CoordinationSessionPoint']
 export type CoordinationMatchPoint = components['schemas']['CoordinationMatchPoint']
 export type Couverture = components['schemas']['Couverture']
-// Le VERDICT DE DÉCOR DE CARTE (lot M7 des retours du rejeu, 2026-09-24, `doc.vehicleScenery`),
-// posé À LA REQUÊTE par le service : les vies posées par la carte hors de sa zone jouable
-// (`hidden`, avec la raison) et les compteurs du repli « zone inconnue ». Absent quand aucune vie
-// n'est candidate. Replié sur chaque vie en `scenery` par `normalizeReplayDocument`.
-export type ReplayVehicleScenery = components['schemas']['VehicleScenery']

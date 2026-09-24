@@ -10,9 +10,11 @@ package service
 //	M7_DOCS=<dossier *.json> M7_EXPORT=<export.log> \
 //	  go test -tags research -run TestM7DecorParc -v ./internal/service/
 //
-// Sortie : une ligne `M7VIE` par vie de vehicule publiee (L1.3 = les cinq conditions de pose,
-// verdict M7), une ligne `M7DOC` par document portant un verdict, et le bilan `M7PARC` : vies que
-// L1.3 masquait, vies que M7 masque, vies EN JEU (non candidates) masquees — attendu 0.
+// Sortie : une ligne `M7SOL` par document (sol foule et plus basse position publiee : la stabilite
+// du sol d une carte d un match a l autre), une ligne `M7VIE` par vie de vehicule publiee (L1.3 =
+// les cinq conditions de pose, verdict M7), une ligne `M7DOC` par document portant un verdict, et le
+// bilan `M7PARC` : vies que L1.3 masquait, vies que M7 masque, vies EN JEU (non candidates)
+// masquees — attendu 0.
 
 import (
 	"bufio"
@@ -72,6 +74,9 @@ func TestM7DecorParc(t *testing.T) {
 			t.Fatal(err)
 		}
 		nDocs++
+		if sol, ok := playedFloor(&doc); ok {
+			fmt.Printf("M7SOL %s carte=%q sol_foule=%.2f min_publie=%.2f\n", court, cartes[court], sol, doc.Bounds.MinZ)
+		}
 		debut := time.Now()
 		keys := port.MatchMapKeys{Names: []string{cartes[court]}}
 		s.resolveVehicleScenery(context.Background(), &doc, court, keys)
