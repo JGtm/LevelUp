@@ -190,3 +190,20 @@ func TestRegistreArmesVehicule_SonsDesignesALOreille(t *testing.T) {
 		}
 	}
 }
+
+// TestRegistreArmesVehicule_BombeDeLaBanshee — `850902EF`, identifie le 2026-09-24 (lot M6.2,
+// instrument `internal/himodule/m6_bombe_banshee_research_test.go`) : l arme de la configuration
+// MULTIJOUEUR de la Banshee, qui partage le son de tir de la bombe `0000AA69` du lot V3F. Decision
+// de l utilisateur (2026-09-23 nuit) : la bombe est ROUGE et PLUS GROSSE — teinte `plasma_hot`,
+// forme `bomb` (la deflagration a l echelle d une charge larguee).
+func TestRegistreArmesVehicule_BombeDeLaBanshee(t *testing.T) {
+	set := vwRegistre(t)
+	w, ok := set.Weapon("850902EF")
+	if !ok {
+		t.Fatalf("850902EF absent des armes du registre (inconnu : %q)", set.Unknown()["850902EF"])
+	}
+	if w.Vehicle != "banshee" || w.Fire != VehicleWeaponFireSingle || w.Fx != "bomb" ||
+		w.Tint != "plasma_hot" || w.Sound != "vehicle_shot_banshee_m2_1" {
+		t.Errorf("bombe de la Banshee = %+v", w)
+	}
+}

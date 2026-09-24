@@ -10,12 +10,14 @@ describe('familyOf', () => {
   //
   // La COUVERTURE des 22 armes du film de référence, elle, est vérifiée là où elle vit
   // désormais : `replay_labels.toml` + le golden d'assemblage Go (colonne `fx`).
-  it('accepte les sept familles que le rendu sait dessiner', () => {
+  it('accepte les huit familles que le rendu sait dessiner', () => {
     expect(familyOf('ballistic')).toBe('ballistic')
     expect(familyOf('plasma')).toBe('plasma')
     expect(familyOf('light')).toBe('light')
     expect(familyOf('shock')).toBe('shock')
     expect(familyOf('explosive')).toBe('explosive')
+    // La BOMBE (retours du rejeu, lot M6.2, 2026-09-24) : la bombe de la Banshee, « plus grosse ».
+    expect(familyOf('bomb')).toBe('bomb')
     expect(familyOf('melee')).toBe('melee')
     expect(familyOf('needles')).toBe('needles')
   })

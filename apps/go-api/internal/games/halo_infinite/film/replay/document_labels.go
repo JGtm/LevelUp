@@ -123,7 +123,7 @@ type VehicleFamilyInfo struct {
 // PROPRE du jeu (Warthog, Banshee, Mongoose) : il ne se traduit pas, et la CLE de la table EST
 // deja ce nom. Les deux champs ne se remplissent que pour les familles que le TITRE qualifie dans
 // son manifeste, c est-a-dire celles dont le nom est une DESCRIPTION et non un nom propre — la
-// tourelle automatique bannie, aujourd hui la seule. Aucun libelle n est ecrit en Go (regle 1 du
+// tourelle automatique bannie et la tourelle fixe (lot M6.2). Aucun libelle n est ecrit en Go (regle 1 du
 // depot) : ils viennent de `replay_labels.toml`.
 //
 // IL N EST PAS ECRIT DANS L ARTEFACT : il est rempli A LA REQUETE par le service
@@ -140,13 +140,14 @@ type VehicleLabel struct {
 	// les icones de HUD sont des masques — meme contrat de champ que `WeaponLabel.Tinted`, autre
 	// mode de composition (decision de cadrage du plan, cote client).
 	Tinted bool `json:"tinted,omitempty"`
-	// Kind est la NATURE de la famille quand elle n est PAS un vehicule de la partie —
-	// `map_element` pour un objet de la carte. VIDE = un vehicule, le regime de toutes les
-	// familles sauf une.
+	// Kind est la NATURE de la famille quand elle n est pas un vehicule ORDINAIRE —
+	// `map_element` pour un objet de la carte, `fixed_turret` pour une tourelle fixe OCCUPABLE (lot
+	// M6.2, 2026-09-24 : pictogramme de tourelle, occupant embarque). VIDE = un vehicule, le regime
+	// de presque toutes les familles.
 	//
-	// C EST CE CHAMP, ET LUI SEUL, QUI DIT AU CLIENT DE NE PAS LA TRAITER COMME UN VEHICULE :
-	// aucun occupant ne lui est attribue cote serveur (cf. `vehicleFamillesNonPilotables`), et
-	// le calque lui reserve un pictogramme dedie plutot que le marqueur neutre.
+	// C EST CE CHAMP, ET LUI SEUL, QUI DIT AU CLIENT DE NE PAS TRAITER UN ELEMENT DE CARTE COMME UN
+	// VEHICULE : aucun occupant ne lui est attribue cote serveur (cf. `vehicleFamillesNonPilotables`),
+	// et le calque lui reserve un pictogramme dedie plutot que le marqueur neutre.
 	Kind string `json:"kind,omitempty"`
 	// En / Fr : le libelle de la famille, vide pour un nom propre du jeu (cf. l en-tete).
 	En string `json:"en,omitempty"`

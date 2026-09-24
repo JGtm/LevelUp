@@ -64,3 +64,24 @@ func TestVehicleFamilies_RefusDesEntreesIncompletes(t *testing.T) {
 		})
 	}
 }
+
+// TestVehicleFamilies_TourelleFixeOccupable — la NATURE `fixed_turret` (lot M6.2 des retours du
+// rejeu, 2026-09-24) : une tourelle posee par la carte, qu un joueur OCCUPE. Elle se dessine par
+// le pictogramme de tourelle comme un element de carte, mais elle porte un occupant.
+func TestVehicleFamilies_TourelleFixeOccupable(t *testing.T) {
+	raw := enteteVehFam + `
+[[vehicle_families]]
+family = "tourelle_fixe"
+en     = "Fixed turret"
+fr     = "Tourelle fixe"
+kind   = "fixed_turret"
+sprite = false
+`
+	set, err := LoadReplayLabelsFromBytes("t.toml", []byte(raw))
+	if err != nil {
+		t.Fatalf("chargement : %v", err)
+	}
+	if v := set.VehicleFamilies()["tourelle_fixe"]; v.Kind != VehicleFamilyKindFixedTurret || v.Sprite {
+		t.Errorf("tourelle fixe = %+v, attendu fixed_turret sans sprite", v)
+	}
+}

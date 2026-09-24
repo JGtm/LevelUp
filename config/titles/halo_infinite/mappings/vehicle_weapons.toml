@@ -20,7 +20,7 @@
 #   en / fr   le nom de l arme, publie dans le document (jamais ecrit en Go)
 #   fire      single (un evenement par coup) | continuous (tir tenu)
 #   fx        forme de l eclair — liste de [shot_effects] : ballistic | plasma | light | shock |
-#             explosive | melee | needles
+#             explosive | bomb | melee | needles
 #   tint      nature de la decharge — liste de [shot_tints] : kinetic | plasma_cool | plasma_hot |
 #             forerunner | electric | needle | blast
 #   sound     stem de la PREMIERE variante du son de tir (fichier `static/sounds/{slug}/<stem>.wav`,
@@ -115,6 +115,14 @@ mount    = { aim = "fixed", ax = 0.3, ay = -0.05 }
 proof    = "4 tirs publies dont 4 en vehicule, 1 document (8a485699) ; porteur mesure wasp:b65b3b4a (4) ; V3F_TIRS_COVENANT_2026-09-02 §4 : son AU COUP (snd!, 450/min) ; le son vehicle_shot_wasp est celui des missiles (sonde SONS du 2026-09-24 : evenement 3P e22a0d32, 0 % d energie non expliquee)"
 decision = "le coup par coup est le LANCE-MISSILES, l autre mode (d3c407ed, son en boucle 600/min, tir continu) est la LMG (utilisateur, Q11, 2026-09-23 nuit) ; ancre sur l aile ; fichiers vehicle_shot_wasp_1/_2 REMPLACES par le rendu V3E reequilibre (gains de chemin complets +22 / +13 / +8 dB au lieu de l equilibre rev9), designe A L OREILLE (utilisateur, 2026-09-24)"
 
-[[unknown]]
-tag    = "850902EF"
-reason = "25 tirs publies dont 15 en vehicule, un seul document (5676a9ba), porteurs banshee:c6e79dcc 11 / warthog:fe32c0f4 4 : aucune piece ne nomme ce tag (candidat : bombe de la Banshee 0000aa69, jamais vue sous ce tag) — sans style ni son jusqu a son identification"
+[[weapons]]
+tag      = "850902EF"
+vehicle  = "banshee"
+en       = "Fuel Rod Bomb"
+fr       = "Bombe à combustible"
+fire     = "single"
+fx       = "bomb"
+tint     = "plasma_hot"
+sound    = "vehicle_shot_banshee_m2_1"
+proof    = "25 tirs publies dont 15 en vehicule, un seul document (5676a9ba), porteurs mesures banshee:c6e79dcc 11 / warthog:fe32c0f4 4 ; IDENTIFIE le 2026-09-24 (lot M6.2, instrument internal/himodule/m6_bombe_banshee_research_test.go, modules installes en lecture seule) : weap du module common dont 6 des 9 dependances declarees sont celles de la bombe 0000aa69 du lot V3F, dont son SON DE TIR snd! dc3d707b (banque c682f736 sb_010_veh_cv_banshee, meme cadence de tag) — 0 sur 6 avec les canons 0000aa68 (temoin) ; porte par la Banshee : weap <- uwfa 77f3599d <- sofa 949f1997 <- sofd 8b4eb575 <- vcdd 0fc8167e, qui declare le vehi 000026ed de la Banshee et que le script Lua global range dans sa table MPVehicleConfigs (configuration MULTIJOUEUR) ; degats du projectile 83189ef3 : 53b1e6c5 / a21bf18a (labels.tsv : vehi 000026ed, sb_010_veh_cv_banshee) + l explosion generique 31e8d17e ; son vehicle_shot_banshee_m2 = le rendu V3F de snd! dc3d707b ; aucune ancre mesuree (l eclair part du centre du vehicule)"
+decision = "bombe de la Banshee ROUGE et PLUS GROSSE, eclair et explosion (utilisateur, 2026-09-23 nuit) : teinte plasma_hot, forme bomb"

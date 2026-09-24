@@ -52,6 +52,7 @@ const ALL_FAMILIES: ShotFamily[] = [
   'light',
   'shock',
   'explosive',
+  'bomb',
   'melee',
   'needles',
   'plain',
@@ -78,8 +79,8 @@ describe('contexte enregistreur', () => {
   })
 })
 
-describe('les huit formes d’effet de tir', () => {
-  it('produisent huit signatures DISTINCTES', () => {
+describe('les neuf formes d’effet de tir', () => {
+  it('produisent neuf signatures DISTINCTES', () => {
     // C'est LE test que le correctif du champ `w` rend significatif : avant lui, les huit
     // familles étaient inatteignables et se seraient toutes dessinées `plain`.
     //
@@ -104,10 +105,12 @@ describe('les huit formes d’effet de tir', () => {
     expect(signatures.size).toBe(ALL_FAMILIES.length)
   })
 
-  it('n’offre que SEPT géométries pour huit familles — le fait est mesuré, pas supposé', () => {
+  it('n’offre que SEPT géométries pour neuf familles — le fait est mesuré, pas supposé', () => {
     // Découverte consignée (J2, lot 2.4). Ce test FIGE l'état actuel pour qu'il cesse d'être
     // invisible : si un jour `plain` gagne sa propre géométrie, c'est ce test qui le dira, et
-    // le commentaire ci-dessus devra suivre.
+    // le commentaire ci-dessus devra suivre. La BOMBE (lot M6.2, 2026-09-24) partage À DESSEIN
+    // la géométrie de l'explosif : même dessin à une autre échelle (traits et rayons), ce que la
+    // signature ci-dessus distingue par les largeurs.
     const parPrimitives = new Set(ALL_FAMILIES.map((f) => JSON.stringify(trace(f).map((o) => o.op))))
     expect(parPrimitives.size).toBe(7)
   })

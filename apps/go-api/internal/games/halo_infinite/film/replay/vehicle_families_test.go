@@ -123,3 +123,17 @@ func TestVehicleFamillesServiesParLeLotA(t *testing.T) {
 		}
 	}
 }
+
+// TestVehicleFamilyTourelleFixeDeTakamanohara — le chassis `3a8060e2` (lot M6.2, 2026-09-24) :
+// une des deux TOURELLES FIXES (gatling / mortier) de Takamanohara, information de
+// l utilisateur, recoupee par le tag `vehi` (armes `4d39877f` et `3d30b955`, ce dernier nomme
+// `gatling_mortar` par le script Lua global). Une famille NOMMEE, et PILOTABLE : un joueur
+// l occupe, ses episodes lui sont attribues.
+func TestVehicleFamilyTourelleFixeDeTakamanohara(t *testing.T) {
+	if got := vehicleFamilyOf(0x3a8060e2); got != familleTourelleFixe {
+		t.Fatalf("vehicleFamilyOf(0x3a8060e2) = %q, attendu %q", got, familleTourelleFixe)
+	}
+	if !vehicleFamilyIsRideable(familleTourelleFixe) {
+		t.Error("la tourelle fixe doit porter un occupant")
+	}
+}

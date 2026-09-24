@@ -151,6 +151,9 @@ type bilingualEntry struct {
 var shotEffectFamilies = map[string]bool{
 	"ballistic": true, "plasma": true, "light": true, "shock": true,
 	"explosive": true, "melee": true, "needles": true,
+	// LA BOMBE (retours du rejeu, lot M6.2, 2026-09-24) : la deflagration a l echelle d une charge
+	// larguee — la bombe de la Banshee, que l utilisateur veut « plus grosse, eclair et explosion ».
+	"bomb": true,
 }
 
 // shotTintKinds — les NATURES DE DECHARGE admises. Liste fermee pour la meme raison que
@@ -520,7 +523,7 @@ func parseShotEffects(path string, rows map[string]string) (map[string]string, e
 			return nil, fmt.Errorf("%s: weapon_key vide dans [shot_effects]", path)
 		}
 		if !shotEffectFamilies[fam] {
-			return nil, fmt.Errorf("%s: effet %q inconnu pour %q (admis : ballistic, plasma, light, shock, explosive, melee, needles)",
+			return nil, fmt.Errorf("%s: effet %q inconnu pour %q (admis : ballistic, plasma, light, shock, explosive, bomb, melee, needles)",
 				path, fam, key)
 		}
 		out[key] = fam

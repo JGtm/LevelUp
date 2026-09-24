@@ -697,10 +697,11 @@ function sonDuRegistre(tag: string): string | undefined {
  */
 describe('garde-rail : tirs d armes de vehicule (lot du 2026-09-04)', () => {
   it('chaque arme du registre tire dans ses variantes, et la premiere porte le stem du registre', () => {
-    // LE REGISTRE DU TITRE depuis le schema 69 (lot M4a) : les six armes OBSERVEES, six sons depuis
-    // le lot M6.1 (2026-09-24) — le lance-grenades du Falcon n'est plus un silence decide.
+    // LE REGISTRE DU TITRE depuis le schema 69 (lot M4a) : les armes OBSERVEES. Sept sons depuis le
+    // lot M6 (2026-09-24) — le lance-grenades du Falcon n'est plus un silence decide (M6.1) et la
+    // bombe de la Banshee `850902EF` est identifiee (M6.2).
     const stems = stemsDuRegistreDesArmesDeVehicule()
-    expect(stems.length, 'le registre a change de nombre de sons').toBe(6)
+    expect(stems.length, 'le registre a change de nombre de sons').toBe(7)
     for (const stem of stems) {
       const variants = VEHICLE_SHOT_SOUND_VARIANTS[stem]
       expect(variants, stem).toBeTruthy()
