@@ -121,29 +121,35 @@ func (r TeamScanReport) Lu() bool { return !r.ArchetypeAbsent && !r.ComponentMis
 // ScanPlayerTeams lit l'equipe de chaque joueur dans la trame d'etat du film.
 //
 // Rend la table `index de joueur -> DESIGNATEUR` (la valeur du jeu : [TeamNone] pour « aucune
-// equipe », 0..8 sinon) et le rapport de lecture. Un index absent de la table est un SILENCE —
-// le film ne l'a pas dit ici — et jamais un « pas d'equipe » : les deux se distinguent.
+// equipe », 0..8 sinon), le rapport de lecture, et les ENTITES (cf. player_entities.go). Un index
+// absent de la table est un SILENCE — le film ne l'a pas dit ici — et jamais un « pas d'equipe » :
+// les deux se distinguent.
+//
+// UNE SEULE PASSE POUR LES DEUX VUES (lot M2.1, 2026-09-23) : la table par index et les entites
+// sortent des MEMES lectures. La table n'est plus que le CONTROLE — un index repris par deux
+// occupants d'equipes differentes y diverge et ne se publie pas, alors que chaque entite garde
+// le sien (sonde P4, `b1ad85eb` : trois bots d'index 8, deux equipes).
 //
 // HORS LIGNE (parcourt les chunks de donnees du film) ; un appel par cuisson.
-func ScanPlayerTeams(fc *FilmContext) (map[int]int, TeamScanReport) {
+func ScanPlayerTeams(fc *FilmContext) (map[int]int, TeamScanReport, PlayerEntityScan) {
 	var rep TeamScanReport
 	reg, err := fc.Registry()
 	if err != nil {
 		rep.ArchetypeAbsent = true
-		return nil, rep
+		return nil, rep, PlayerEntityScan{}
 	}
 	arch, ok := reg.Archetype(managedPlayerTypeIndex)
 	if !ok || len(arch.Components) == 0 {
 		rep.ArchetypeAbsent = true
-		return nil, rep
+		return nil, rep, PlayerEntityScan{}
 	}
 	rep.Component = arch.Components[0]
 	if rep.Component != teamDesignatorComponent {
 		rep.ComponentMismatch = true
-		return nil, rep
+		return nil, rep, PlayerEntityScan{}
 	}
-	parEntite := map[int]map[int]int{} // slot -> designateur -> compte
-	parIndex := map[int]map[int]int{}  // index de joueur -> designateur -> compte
+	entites := nouvelAccumulateurDEntites()
+	parIndex := map[int]map[int]int{} // index de joueur -> designateur -> compte
 	for _, c := range fc.ChunkNumbers() {
 		raw, paquets, ok := fc.ChunkAt(c)
 		if !ok {
@@ -153,32 +159,41 @@ func ScanPlayerTeams(fc *FilmContext) (map[int]int, TeamScanReport) {
 			if pk.Type != PacketTypeKeyframe {
 				continue
 			}
-			scanPaquetEquipes(pk.Payload(raw), reg, &rep, parEntite, parIndex, fc.ContexteDeLecture())
+			scanPaquetEquipes(pk.Payload(raw), pk.TimestampUS, reg, &rep, lecturesDEquipe{
+				entites: entites, parIndex: parIndex, ctx: fc.ContexteDeLecture()})
 		}
 	}
-	rep.Entities = len(parEntite)
-	for _, vus := range parEntite {
-		if len(vus) > 1 {
-			rep.EntityDivergences++
-		}
-	}
-	return publierEquipes(parIndex, &rep), rep
+	rep.Entities = len(entites.entites)
+	rep.EntityDivergences = entites.divergences()
+	return publierEquipes(parIndex, &rep), rep, entites.publier()
+}
+
+// lecturesDEquipe porte ce que chaque paquet alimente : les entites, la table de controle par
+// index, et le contexte de lecture. Une structure plutot que trois parametres de plus : le depot
+// borne a cinq, et les trois voyagent toujours ensemble.
+type lecturesDEquipe struct {
+	entites  *accumulateurDEntites
+	parIndex map[int]map[int]int
+	ctx      ContexteDeLecture
 }
 
 // scanPaquetEquipes lit les records ti=9 d'UN payload d'image-cle. Chaque refus est compte.
-func scanPaquetEquipes(pay []byte, reg *Registry, rep *TeamScanReport,
-	parEntite, parIndex map[int]map[int]int, ctx ContexteDeLecture) {
-	porteur := false
+//
+// L'IMAGE-CLE N'EST INSCRITE QUE SI ELLE EST PORTEUSE (au moins un record ti=9) : c'est le pas
+// des presences, et une image-cle qui ne porte aucun occupant (le preambule) ne dit l'absence de
+// personne.
+func scanPaquetEquipes(pay []byte, ts uint64, reg *Registry, rep *TeamScanReport, l lecturesDEquipe) {
+	rang := -1
 	for _, b := range keyframeBornesToutes(pay) {
 		if b.TI != managedPlayerTypeIndex {
 			continue
 		}
-		if !porteur {
-			porteur = true
+		if rang < 0 {
+			rang = l.entites.ouvrirImageCle(ts)
 			rep.Packets++
 		}
 		rep.Records++
-		idx, brut, ok := lireEquipeDuRecord(pay, b.Bit, reg, ctx)
+		idx, brut, ok := lireEquipeDuRecord(pay, b.Bit, reg, l.ctx)
 		switch {
 		case !ok:
 			rep.Unreached++
@@ -188,8 +203,8 @@ func scanPaquetEquipes(pay []byte, reg *Registry, rep *TeamScanReport,
 			rep.OutOfDomainValue++
 		default:
 			rep.Read++
-			noter(parEntite, b.Slot, brut-1)
-			noter(parIndex, idx, brut-1)
+			l.entites.noter(rang, b.Slot, idx, brut-1)
+			noter(l.parIndex, idx, brut-1)
 		}
 	}
 }

@@ -276,6 +276,9 @@ func TestGoldenBuildsInputsRoundTrip(t *testing.T) {
 			if got := EncodeFilmFacts(again); !bytes.Equal(blob, got) {
 				t.Fatalf("le codec n est pas un point fixe : %d octets contre %d", len(got), len(blob))
 			}
+			// Les entites voyagent HORS du blob (complement de section 1) : leur aller-retour est
+			// `TestFaitsTransportentLesEntitesDesJoueurs`. Ici elles suivent les entrees relues.
+			again.PlayerEntities = g.PlayerEntities
 			a := renderAssembly(assemblerGoldenBuild(t, b, g, entry))
 			c := renderAssembly(assemblerGoldenBuild(t, b, again, entry))
 			if a != c {
@@ -311,5 +314,7 @@ func chargerGoldenBuild(t *testing.T, b goldenBuild) (*FilmFacts, profile.MapQua
 	if err != nil {
 		t.Fatalf("decodage %s : %v", b.inputsPath(), err)
 	}
+	// LES ENTITES `ti=9` NE SONT PAS DANS LE BLOB : elles ont leur fichier (golden_entites_test.go).
+	g.PlayerEntities = chargerEntitesDuBuild(t, b.Short8)
 	return g, entry
 }

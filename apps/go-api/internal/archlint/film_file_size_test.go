@@ -152,7 +152,14 @@ var plafondsParFichier = map[string]int{
 	// +31) : les PIECES MONTEES (`part`, `carrier`, `rides[].turret`), la variante nommee par la
 	// piece ou par l arme, les compteurs de couverture et la racine `vehicleWeapons` resolue a la
 	// requete. Exception ecrite, dans les commits de fusion qui reunissent la montee.
-	"internal/games/halo_infinite/film/replay/document_chronicle.go": 2142,
+	// SCHEMA 69 -> 70 (2026-09-24, integration de la vague D des retours du rejeu) : 2142 -> 2217,
+	// L ENTREE UNIQUE de chronique v70 qui reunit les lots de la vague sous une seule montee (un
+	// en-tete commun, puis une partie par lot). Partie M2 (2026-09-23, +65 dont +11 a la revue
+	// adverse du 2026-09-24) : la regle des places de l utilisateur, `roster[].presence` qui nait,
+	// la PLACE lue (table, tirs), chainee ou ouverte, l equipe de l entite ti=9, les compteurs de
+	// `coverage.seats`, et les montees qui l accompagnent (`grammar.Rev`, `SchemaDesFaits`).
+	// Exception ecrite, dans les commits de fusion qui reunissent la montee.
+	"internal/games/halo_infinite/film/replay/document_chronicle.go": 2217,
 	// --- production, hors perimetre du lot 2.7 (aucune preuve d equivalence ne couvrait
 	// leur scission : elle se decidera au lot qui les rouvrira).
 	// `assist.go` EST SORTI DE CETTE TABLE LE 2026-09-16 (lot 2.6.2) : le type `Assist` a descendu
@@ -213,7 +220,12 @@ var plafondsParFichier = map[string]int{
 	// du camp d un match a sens unique, champ `coverage.bridge.deathsFeed`) et M4a (pieces
 	// montees posees sur leur porteur, sens neuf de `v` d un tir d artilleur et du `seat`
 	// reporte). Exception ecrite, dans les commits de fusion qui reunissent la montee.
-	"internal/games/halo_infinite/film/replay/structure_test.go":                                  1293,
+	// SCHEMA 69 -> 70 (2026-09-24, integration de la vague D des retours du rejeu) : 1293 -> 1312,
+	// la justification UNIQUE que `TestStructureIsOptionalInDocument` exige pour la montee commune
+	// de la vague : lot M2.3 (la presence et la place lues dans le film, le sens change de `seat`,
+	// `seatSource` et `team`, revue adverse comprise). Exception ecrite, dans les commits de fusion
+	// qui reunissent la montee.
+	"internal/games/halo_infinite/film/replay/structure_test.go":                                  1312,
 	"internal/games/halo_infinite/film/replay/t0_mouvement_research_test.go":                      872,
 	"internal/games/halo_infinite/film/replay/inventory_position_i22_test.go":                     833,
 	"internal/games/halo_infinite/film/replay/ground_link_research_test.go":                       814,

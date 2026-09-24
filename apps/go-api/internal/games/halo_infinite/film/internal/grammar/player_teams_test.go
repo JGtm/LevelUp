@@ -85,7 +85,7 @@ func bobineFilm(t *testing.T, film string) *source.Film {
 // TestScanPlayerTeamsSurLesBobines execute E-LUE, E-DOM et le gel des comptes.
 func TestScanPlayerTeamsSurLesBobines(t *testing.T) {
 	for _, b := range bobinesEquipes() {
-		teams, rep := ScanPlayerTeams(NewFilmContext(bobineFilm(t, b.film)))
+		teams, rep, _ := ScanPlayerTeams(NewFilmContext(bobineFilm(t, b.film)))
 		if !rep.Lu() {
 			t.Fatalf("%s : lecture refusee (archetypeAbsent=%v composant=%q)", b.film,
 				rep.ArchetypeAbsent, rep.Component)
@@ -343,15 +343,20 @@ func premierPaquetTI9(t *testing.T, fc *FilmContext) ([]byte, []int) {
 // TestScanPlayerTeamsRefusSansRegistre execute E-REFUS : un film sans `chunk_00` ne rend pas une
 // table vide, il rend un REFUS nomme.
 func TestScanPlayerTeamsRefusSansRegistre(t *testing.T) {
-	teams, rep := ScanPlayerTeams(NewFilmContext(nil))
+	teams, rep, ents := ScanPlayerTeams(NewFilmContext(nil))
 	if teams != nil || !rep.ArchetypeAbsent || rep.Lu() {
 		t.Fatalf("film nil : table %v, rapport %+v — attendu un refus nomme", teams, rep)
+	}
+	// UN REFUS N'EST PAS UN BALAYAGE VIDE : les entites le disent par `Scanned` (lot M2.1).
+	if ents.Scanned || len(ents.Entities) != 0 {
+		t.Fatalf("film nil : entites %+v — un refus ne doit pas se lire « balaye, personne »", ents)
 	}
 	// La bobine historique n'a PAS de chunk_00 (cf. keyframe_closure_ratchet_test.go) : c'est le
 	// cas reel du meme refus.
 	sansRegistre := bobineFilm(t, "000d5950")
-	teams, rep = ScanPlayerTeams(NewFilmContext(sansRegistre))
-	if teams != nil || !rep.ArchetypeAbsent || rep.Lu() {
-		t.Fatalf("bobine sans registre : table %v, rapport %+v — attendu un refus nomme", teams, rep)
+	teams, rep, ents = ScanPlayerTeams(NewFilmContext(sansRegistre))
+	if teams != nil || !rep.ArchetypeAbsent || rep.Lu() || ents.Scanned {
+		t.Fatalf("bobine sans registre : table %v, rapport %+v, entites balayees %v — attendu un "+
+			"refus nomme", teams, rep, ents.Scanned)
 	}
 }

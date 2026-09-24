@@ -410,8 +410,8 @@ func renderAssembly(doc ReplayDocument) string {
 // combien d occupants le film y met AU PLUS en meme temps.
 //
 // IL APPARTIENT AU GOLDEN POUR LA MEME RAISON QUE LE BLOC DES REPLIS : l ecart entre `entrees`
-// et `occupantsMax` est le defaut que le lot corrige, et le figer par build est ce qui rend une
-// regression de la pose visible sans relancer d instrument.
+// et `occupantsMax` est le defaut que le lot corrige, et le figer par build rend une regression de
+// la pose visible sans instrument (lot M2.3 : `depassements` a 0 attendu sur chaque build).
 func renderSieges(p func(string, ...any), doc ReplayDocument) {
 	p("## SIEGES — la fiche d un occupant, et la part qui vient d un appariement")
 	if doc.Coverage == nil || doc.Coverage.Seats == nil {
@@ -420,10 +420,10 @@ func renderSieges(p func(string, ...any), doc ReplayDocument) {
 		return
 	}
 	s := *doc.Coverage.Seats
-	p("entrees %d · sieges %d · lus %d · apparies %d · reprises ecrites %d",
-		s.Entrees, s.Sieges, s.Lus, s.Apparies, s.ReprisesEcrites)
-	p("arrivants %d · presences closes %d · sans presence %d · occupants au plus %d · sans table %v",
-		s.Arrivants, s.PresencesCloses, s.SansPresence, s.OccupantsMax, s.SansTableDuFilm)
+	p("entrees %d · sieges %d · lus %d · tirs %d · apparies %d · ouvertes %d · sans place %d · reprises ecrites %d · presences %s",
+		s.Entrees, s.Sieges, s.Lus, s.PlacesTirs, s.Apparies, s.PlacesOuvertes, s.SansPlace, s.ReprisesEcrites, s.Presences)
+	p("arrivants %d · presences closes %d · sans presence %d · occupants au plus %d · depassements %d · relais bornes %d · sans table %v",
+		s.Arrivants, s.PresencesCloses, s.SansPresence, s.OccupantsMax, s.Depassements, s.RelaisBornes, s.SansTableDuFilm)
 	p("")
 }
 

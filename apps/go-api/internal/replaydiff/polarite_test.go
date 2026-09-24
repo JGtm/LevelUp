@@ -113,3 +113,31 @@ func TestNoBridgeEstUnCompteurDEchec(t *testing.T) {
 			"sortira en perte alors que plus aucun portage n'est orphelin")
 	}
 }
+
+// TestCompteursDesPlacesSontDesEchecs : les compteurs d'echec de `coverage.seats` (lot M2.3 des
+// retours du rejeu, integration de la vague D, 2026-09-24) se lisent a l'envers — une baisse de
+// `depassements` ou de `placesEnTrop` est le gain que la regle des places cherche. Les compteurs
+// de richesse du meme bloc gardent la lecture generique.
+//
+// MUTATION : retirer `depassements` de `compteursDEchec` -> ROUGE.
+func TestCompteursDesPlacesSontDesEchecs(t *testing.T) {
+	for _, c := range []string{
+		"coverage.seats.sansPlace", "coverage.seats.sansEquipe", "coverage.seats.identitesHorsRoster",
+		"coverage.seats.depassements", "coverage.seats.placesEnTrop", "coverage.seats.chevauchements",
+		"coverage.seats.tirsContestes", "coverage.seats.entitesNonLiees",
+		"coverage.seats.entitesContestees", "coverage.seats.trousDEntite",
+		"coverage.seats.placesOuvertes", "coverage.seats.presencesParLesVies",
+	} {
+		if !estCompteurDEchec(cle("couverture", c)) {
+			t.Errorf("%s n'est pas lu comme un echec : sa baisse sortira en PERTE", c)
+		}
+	}
+	for _, c := range []string{
+		"coverage.seats.lus", "coverage.seats.placesTirs", "coverage.seats.relaisBornes",
+		"coverage.seats.botsSuccesseurs",
+	} {
+		if estCompteurDEchec(cle("couverture", c)) {
+			t.Errorf("%s est lu comme un echec : c'est une richesse", c)
+		}
+	}
+}

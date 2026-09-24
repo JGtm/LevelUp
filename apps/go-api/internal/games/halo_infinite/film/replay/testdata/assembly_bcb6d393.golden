@@ -6,7 +6,7 @@
 
 ## AXE DE TEMPS
 3465 frames · intervalle 100 ms · duree 346500 ms
-schema 69 · titre halo_infinite
+schema 70 · titre halo_infinite
 version majeure du film : 40
 origine de la frame 0 sur l horloge du fil : 12904 ms
 coup d envoi date par le film : 35704 ms · 55/55 piste(s) en mouvement · rafale 5 · marge depuis la frame 0 : 22800 ms
@@ -318,11 +318,11 @@ controle (lecture des chunks) : 8 accord · 0 contradiction · 0 silence — la 
 voies des liens d index : PlayerIndexTable=3 · film_table=8
 
 ## SIEGES — la fiche d un occupant, et la part qui vient d un appariement
-entrees 11 · sieges 9 · lus 9 · apparies 2 · reprises ecrites 0
-arrivants 3 · presences closes 9 · sans presence 0 · occupants au plus 8 · sans table false
+entrees 11 · sieges 8 · lus 8 · tirs 0 · apparies 3 · ouvertes 0 · sans place 0 · reprises ecrites 0 · presences film
+arrivants 3 · presences closes 4 · sans presence 0 · occupants au plus 8 · depassements 0 · relais bornes 0 · sans table false
 
 ## REPLIS DECLENCHES — la part de ce document qui ne vient PAS d une lecture du film
-repli_siege_du_remplacant_par_appariement_ordinal 2
+repli_place_du_remplacant_par_chainage_d_equipe  3
 
 ## LIBELLES D ARMES — le tag brut reste A COTE du libelle, jamais a sa place
 21 identifiant(s) nomme(s) ; un identifiant absent garde son hexadecimal a l ecran et

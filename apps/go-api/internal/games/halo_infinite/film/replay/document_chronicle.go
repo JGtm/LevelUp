@@ -2140,3 +2140,78 @@ package replay
 //	AUCUNE REVISION DE DECODAGE ne monte (vies deja assemblees : la republication DEPUIS LES FAITS
 //	suffit). `facts.Rev` INCHANGEE (le registre des replis recoit une entree de DONNEES ; empreinte
 //	seule recopiee). `layers` inchange : les pieces restent dans le calque des vehicules.
+//
+// v70 (2026-09-24, vague D des retours du rejeu, plan `.ai/V7.5/PLAN_RETOURS_REJEU_2026-09-23.md`
+// §4.5) : UNE SEULE MONTEE POUR LES LOTS DE LA VAGUE — M2 (equipes, presence et place lues dans
+// le film), puis M3 (marche d image-cle, armes de naissance) a sa fusion. Chaque lot, parti de
+// `fe7079f41` AVANT la vague C, avait pose 69 sur sa branche ; l integration les reunit sous ce
+// seul numero, apres le 69 de la vague C (dont l entree ci-dessus n est pas touchee). Les
+// revisions de DECODAGE montent UNE fois pour la vague, a des valeurs datees de l integration :
+// `grammar.Rev` -> `grammar-2026-09-24`, `SchemaDesFaits` 3 -> 4. Republication apres
+// RE-DECODAGE des films (verdict « redecoder »). Les parties suivent.
+//
+// v70, PARTIE M2 (2026-09-23, lot M2.3 de la campagne « retours rejeu », decision Q24 : option
+// A) : LA PLACE ET LA PRESENCE DE CHAQUE OCCUPANT SONT LUES DANS LE FILM — LA REGLE DES PLACES.
+//
+// LA REGLE, ET ELLE EST DE L UTILISATEUR (2026-09-23) : « quand un joueur part, il libere la place
+// de sa fiche de joueur pour son remplacant [...] le nombre de joueur dans un match est fini, il y
+// a un maximum. » Une equipe a un nombre FINI de places ; une fiche = une place ; le remplacant
+// (bot ou humain) prend la place du partant ; jamais plus de fiches que de places ; un parti
+// n est jamais affiche.
+//
+// CE QUI ETAIT FAUX, MESURE (rapport `RAPPORT_equipes_b1ad85eb.md`) : sur `b1ad85eb`, Eagle a 3
+// joueurs au coup d envoi puis 5, Cobra 5 a 6:24. Le siege publie etait l INDEX de participant (un
+// remplacant n en herite presque jamais), l equipe etait agregee PAR INDEX (les trois bots d index
+// 8, de deux equipes, n en avaient aucune), et la presence n etait publiee nulle part : le client
+// gardait un parti affiche faute de successeur sur SON siege. Au parc : 14 documents sur 111
+// depassent la taille d equipe, 22 affichent des joueurs partis.
+//
+//	`roster[]`     `presence` NAIT : une liste d intervalles `{from, to, toMax?}` en frames. `to`
+//	.presence      est la derniere frame CERTAINE (vie, image-cle, paquet BOT_METADATA ; `to <
+//	               from` : aucune, vu avant l origine), `toMax` la derniere ou il PEUT etre la —
+//	               l entite ti=9 ne se lit qu aux images-cles (~20 s), et un depart pendant la
+//	               mort sort a la premiere image-cle qui ne la porte plus (Q22), ou a l arrivee
+//	               du remplacant sur la meme place. Un bot sort a la frame EXACTE de son retrait
+//	               (BOT_METADATA). Un occupant present sans corps y est « pas encore apparu »
+//	               (Q21) ; entre un partant et son remplacant la place est VIDE (Q20).
+//	`roster[]`     devient la PLACE : un siege de la table du debut (`chunk_00`) — l index pour
+//	.seat          les occupants du depart, la place LUE dans les tirs pour un remplacant qui
+//	               tire (l index de tireur EST la place, 3 remplacements sur 3), sinon le CHAINAGE
+//	               par equipe, ou une place OUVERTE sous la capacite estimee de l equipe (deux
+//	               replis nommes, comptes ; `e5adf7b2` : 23 sieges pour 12 contre 12). `seatSource`
+//	               gagne `tirs`, `ouverte` et `index` (aucune place : compte `sansPlace`) ;
+//	               l appariement ordinal du lot 1.9.14 est RETIRE.
+//	`roster[]`     l equipe de l ENTITE ti=9 de l entree (grammaire M2.1), plus celle de son
+//	.team          index : un index repris par deux equipes ne rend plus muet aucun occupant.
+//	`coverage`     onze compteurs : `placesTirs`, `placesOuvertes`, `sansPlace`, `depassements`
+//	.seats         (0 attendu : les couples frame x equipe ou une equipe affiche plus d occupants
+//	               que de places), `relaisBornes`, `chevauchements`, `tirsContestes`,
+//	               `tirsIndexTronque` (index de tireur persiste sur 4 bits : la lecture par les
+//	               tirs s abstient au-dela de 15 places), `presences` (`film` ou `vies` — le repli
+//	               sans entite), et `entitesNonLiees` / `entitesContestees` / `trousDEntite`.
+//
+// LE CORPS D UN INDEX PARTAGE EST NOMME par l entite qui vit a sa creation (lecture, voie
+// `biped_creation`) : les neuf corps de bots de `b1ad85eb` sortent de `index_hors_table`, et leurs
+// pistes prennent le nom du bot. Les relais par la base (`successions.go`) deviennent un repli
+// compte (`repli_vie_de_bot_par_relais_de_la_base`).
+//
+//	AUTRES         `grammar.Rev` -> `grammar-2026-09-24` (les entites ; valeur de la vague, cf.
+//	MONTEES        l en-tete) ; `SchemaDesFaits` 3 -> 4 (les faits portent entites et instants
+//	               BOT_METADATA : verdict « redecoder ») ;
+//	               `facts.Rev` NE MONTE PAS (aucune ligne de kill ne change). `layers` : `roster`
+//	               reste attribue a `facts`, la plus haute des deux couches qui le produisent.
+//
+// POURQUOI LA VERSION MONTE : un champ naît, trois changent de sens, et c est la CLE DE REPRISE du
+// backfill — un v69 affiche encore un joueur parti et doit se lire « a re-cuire ». Le client lit
+// un artefact anterieur sans `presence` par l enveloppe des vies (repli transitoire date, cote web).
+//
+// REVUE ADVERSE DU LOT (2026-09-24), MEME SCHEMA : le BOT QUI SUCCEDE A UN HUMAIN sur son index
+// entre au roster quand ses entites et celles de l humain sont DISJOINTES (`c75f33b8`, `4f77afc1` :
+// ses vies etaient nommees sans entree, et le web lui dessinait une place de plus, vide tout le
+// match) ; `depassements` se mesure contre la CAPACITE estimee et non plus contre les places posees
+// (mesure circulaire) ; une entree d un film balaye qu aucune entite ne porte tient sa place par ses
+// vies jusqu a l image-cle porteuse suivante (repli par entree, nomme et compte) ; l occupant qu un
+// siege de la table nomme par son xuid est la des la frame 0 meme sans entite. `coverage.seats`
+// gagne six compteurs : `capacite`, `placesEnTrop` et `sansEquipe` (ce que la colonne rend au-dela
+// de la capacite, ou hors de toute), `identitesHorsRoster` (0 attendu), `botsSuccesseurs`,
+// `presencesParLesVies`.

@@ -116,19 +116,39 @@ func toTeamCoverage(v replay.TeamCoverage) replaydoc.TeamCoverage {
 	}
 }
 
-// toSeatCoverage : la couverture des sieges (lot 1.9.14).
+// toSeatCoverage : la couverture des places (lot 1.9.14 ; lot M2.3, schema 69).
 func toSeatCoverage(v replay.SeatCoverage) replaydoc.SeatCoverage {
 	return replaydoc.SeatCoverage{
 		Entrees:         v.Entrees,
 		Sieges:          v.Sieges,
 		Lus:             v.Lus,
+		PlacesTirs:      v.PlacesTirs,
 		Apparies:        v.Apparies,
+		PlacesOuvertes:  v.PlacesOuvertes,
+		SansPlace:       v.SansPlace,
 		ReprisesEcrites: v.ReprisesEcrites,
 		Arrivants:       v.Arrivants,
 		PresencesCloses: v.PresencesCloses,
 		SansPresence:    v.SansPresence,
 		OccupantsMax:    v.OccupantsMax,
-		SansTableDuFilm: v.SansTableDuFilm,
+		Capacite:        v.Capacite,
+		Depassements:    v.Depassements,
+		PlacesEnTrop:    v.PlacesEnTrop,
+		SansEquipe:      v.SansEquipe,
+
+		IdentitesHorsRoster: v.IdentitesHorsRoster,
+		BotsSuccesseurs:     v.BotsSuccesseurs,
+		PresencesParLesVies: v.PresencesParLesVies,
+
+		RelaisBornes:      v.RelaisBornes,
+		Chevauchements:    v.Chevauchements,
+		TirsContestes:     v.TirsContestes,
+		TirsIndexTronque:  v.TirsIndexTronque,
+		Presences:         v.Presences,
+		EntitesNonLiees:   v.EntitesNonLiees,
+		EntitesContestees: v.EntitesContestees,
+		TrousDEntite:      v.TrousDEntite,
+		SansTableDuFilm:   v.SansTableDuFilm,
 	}
 }
 

@@ -1286,8 +1286,27 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   `familyUnknown`. CE QUI NE MONTE PAS : aucune révision de décodage (tout se joue sur les
 	//   vies assemblées ; la republication depuis les faits suffit), `layers`. Détail :
 	//   `document_chronicle.go`.
-	if SchemaVersion != 69 {
-		t.Fatalf("SchemaVersion = %d, attendu 69 : incrémenter exige une raison écrite ci-dessus "+
+	// - v70 (vague D des retours du rejeu, 2026-09-24) : UNE montée pour les lots de la vague,
+	//   partis avant la vague C ; `grammar.Rev` et `SchemaDesFaits` montent une fois (re-décodage).
+	//   Lot M2.3 (2026-09-23, règle des places de l'utilisateur) : LA PLACE ET LA PRÉSENCE DE
+	//   CHAQUE OCCUPANT SONT LUES DANS LE FILM.
+	//   `roster[].presence` NAÎT (intervalles `from` / `to` / `toMax`, en frames) : c'est elle, et
+	//   plus l'absence de successeur, qui dit qu'un joueur est parti. `roster[].seat` devient la
+	//   PLACE (un siège de la table du début, ou une place ouverte) et `roster[].seatSource`
+	//   gagne `tirs`, `ouverte` et `index` ; `roster[].team` est l'équipe de l'ENTITÉ ti=9 ;
+	//   `coverage.seats` gagne onze compteurs (`placesTirs`, `placesOuvertes`, `sansPlace`,
+	//   `depassements`, `relaisBornes`, `chevauchements`, `tirsContestes`, `tirsIndexTronque`,
+	//   `presences`, `entitesNonLiees` / `entitesContestees` / `trousDEntite`). Un champ de plus, un sens
+	//   changé sur trois autres, et la clé de reprise du backfill : un v69 affiche encore un
+	//   joueur parti, il doit se lire « à re-cuire ». MONTENT AUSSI : `grammar.Rev` (les
+	//   entités) et `SchemaDesFaits` (4 : les faits portent les entités et les instants
+	//   BOT_METADATA, donc un re-décodage). NE MONTE PAS : `facts.Rev` (aucune ligne de kill ne
+	//   bouge). Revue adverse du lot (2026-09-24), même schéma : `coverage.seats` gagne six
+	//   compteurs (`capacite`, `placesEnTrop`, `sansEquipe`, `identitesHorsRoster`,
+	//   `botsSuccesseurs`, `presencesParLesVies`) et `depassements` se mesure contre la capacité.
+	//   Détail : `document_chronicle.go`.
+	if SchemaVersion != 70 {
+		t.Fatalf("SchemaVersion = %d, attendu 70 : incrémenter exige une raison écrite ci-dessus "+
 			"(un champ optionnel de plus n'en est pas une)", SchemaVersion)
 	}
 }

@@ -336,3 +336,24 @@ package facts
 // Les lignes de kill deja en base deviennent candidates au backlog de redecodage — geste de
 // PRODUCTION, pilote, SUR SIGNAL UTILISATEUR (D6), jamais automatique. `SchemaVersion` ne monte
 // pas : la forme du document ne change pas.
+
+// SUITE DU MEME RANG `killsource-2026-09-22.2` (2026-09-23, lot M2.1 de la campagne « retours
+// rejeu ») : LA REVISION NE MONTE PAS, ET LE CHOIX EST ECRIT.
+//
+// L empreinte bouge pour deux causes : la VALEUR de `grammar.Rev` (`grammar-2026-09-23`, les
+// entites `ti=9` rendues par la meme passe que la table d equipes — `killsource/` ne lit pas
+// `ScanPlayerTeams`) et `killsource/botmeta.go`, qui garde l INSTANT de chaque paquet BOT_METADATA
+// (`BotEntry.Declarations`, `Roster.BotPaquetsIncomplets`). L agregat qui epingle le roster du
+// kill-feed est le meme a l octet (memes bots, meme ordre de decouverte, meme `NBots`) : aucune
+// ligne de `match_kill_events` ne change, donc AUCUN BACKLOG. Les declarations ne nourrissent que
+// la publication du rejeu (lien bot -> entite, presence des bots) ; le fichier de faits les porte
+// en section 5 et `SchemaDesFaits` monte au lot M2.2.
+//
+// SUITE DU MEME RANG `killsource-2026-09-22.2` (2026-09-23, lot M2.3 de la meme campagne) : LA
+// REVISION NE MONTE PAS, ET LE CHOIX EST ECRIT.
+//
+// L empreinte bouge encore pour deux causes : `killsource/botmeta.go` date le paquet BOT_METADATA
+// de TETE de chunk a l image-cle qui le precede (mesure `b1ad85eb` : ecrit 390 us apres elle, il
+// porte l etat A l image-cle — seul `FromUS` d une declaration change) et `fallback/` gagne la
+// tranche `replay/places` (les quatre replis de la publication du roster). L agregat du roster du
+// kill-feed est le meme : aucune ligne de `match_kill_events` ne change, AUCUN BACKLOG.

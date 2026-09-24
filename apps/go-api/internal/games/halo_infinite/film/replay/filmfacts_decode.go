@@ -399,6 +399,26 @@ func decodePlayerTeams(r *greader) (map[int]int, grammar.TeamScanReport) {
 	return teams, rep
 }
 
+// decodeEntitesDesJoueurs relit LES OCCUPANTS DU MATCH (SchemaDesFaits 4, lot M2.2), dans l ordre
+// ou [encodeEntitesDesJoueurs] les ecrit. Les tranches vides relisent NIL, comme a la production.
+func decodeEntitesDesJoueurs(r *greader) grammar.PlayerEntityScan {
+	s := grammar.PlayerEntityScan{Scanned: r.bool8()}
+	n := int(r.u())
+	var last uint64
+	for k := 0; k < n && r.err == nil; k++ {
+		last += r.u()
+		s.KeyframesUS = append(s.KeyframesUS, last)
+	}
+	n = int(r.u())
+	for k := 0; k < n && r.err == nil; k++ {
+		s.Entities = append(s.Entities, grammar.PlayerEntity{
+			Slot: int(r.u()), Index: int(r.i()), Team: int(r.i()), FirstKF: int(r.u()),
+			LastKF: int(r.u()), Seen: int(r.u()), Unstable: r.bool8(),
+		})
+	}
+	return s
+}
+
 // decodeFilmTable relit la TABLE DES JOUEURS DU FILM (v20, lot 1.6).
 func decodeFilmTable(r *greader) FilmPlayerTable {
 	t := FilmPlayerTable{Build: r.str(), Refusal: FilmTableRefusal(r.str())}

@@ -129,7 +129,24 @@ func toRosterEntry(v replay.RosterEntry) replaydoc.RosterEntry {
 		Bid:        v.Bid,
 		Seat:       v.Seat,
 		SeatSource: v.SeatSource,
+		Presence:   presenceServie(v),
 	}
+}
+
+// presenceServie recopie les intervalles de presence d une entree de roster (lot M2.3, schema 69).
+//
+// LA BOUCLE NE NOMME PAS LE TYPE STOCKE, et c est voulu : la surface de `film/replay` citee hors de
+// `film/` est un ratchet date (`archlint/film_facade_surface_test.go`), qu un type de transport
+// recopie champ pour champ n a pas a faire monter. Nil reste nil, comme `sliceOf`.
+func presenceServie(v replay.RosterEntry) []replaydoc.PresenceInterval {
+	if v.Presence == nil {
+		return nil
+	}
+	out := make([]replaydoc.PresenceInterval, 0, len(v.Presence))
+	for _, p := range v.Presence {
+		out = append(out, replaydoc.PresenceInterval{From: p.From, To: p.To, ToMax: p.ToMax})
+	}
+	return out
 }
 
 func toShot(v replay.Shot) replaydoc.Shot {

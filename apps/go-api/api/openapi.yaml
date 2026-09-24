@@ -22220,6 +22220,22 @@ components:
         - enabled
         - delivery
       type: object
+    PresenceInterval:
+      additionalProperties: false
+      properties:
+        from:
+          format: int64
+          type: integer
+        to:
+          format: int64
+          type: integer
+        toMax:
+          format: int64
+          type: integer
+      required:
+        - from
+        - to
+      type: object
     PresenceSnapshot:
       additionalProperties: false
       properties:
@@ -23500,6 +23516,12 @@ components:
           type: integer
         name:
           type: string
+        presence:
+          items:
+            $ref: '#/components/schemas/PresenceInterval'
+          type:
+            - array
+            - "null"
         seat:
           format: int64
           type: integer
@@ -23964,7 +23986,28 @@ components:
         arrivants:
           format: int64
           type: integer
+        botsSuccesseurs:
+          format: int64
+          type: integer
+        capacite:
+          format: int64
+          type: integer
+        chevauchements:
+          format: int64
+          type: integer
+        depassements:
+          format: int64
+          type: integer
+        entitesContestees:
+          format: int64
+          type: integer
+        entitesNonLiees:
+          format: int64
+          type: integer
         entrees:
+          format: int64
+          type: integer
+        identitesHorsRoster:
           format: int64
           type: integer
         lus:
@@ -23973,10 +24016,33 @@ components:
         occupantsMax:
           format: int64
           type: integer
+        placesEnTrop:
+          format: int64
+          type: integer
+        placesOuvertes:
+          format: int64
+          type: integer
+        placesTirs:
+          format: int64
+          type: integer
+        presences:
+          type: string
         presencesCloses:
           format: int64
           type: integer
+        presencesParLesVies:
+          format: int64
+          type: integer
+        relaisBornes:
+          format: int64
+          type: integer
         reprisesEcrites:
+          format: int64
+          type: integer
+        sansEquipe:
+          format: int64
+          type: integer
+        sansPlace:
           format: int64
           type: integer
         sansPresence:
@@ -23987,16 +24053,41 @@ components:
         sieges:
           format: int64
           type: integer
+        tirsContestes:
+          format: int64
+          type: integer
+        tirsIndexTronque:
+          type: boolean
+        trousDEntite:
+          format: int64
+          type: integer
       required:
         - entrees
         - sieges
         - lus
+        - placesTirs
         - apparies
+        - placesOuvertes
+        - sansPlace
         - reprisesEcrites
         - arrivants
         - presencesCloses
         - sansPresence
         - occupantsMax
+        - capacite
+        - depassements
+        - placesEnTrop
+        - sansEquipe
+        - identitesHorsRoster
+        - botsSuccesseurs
+        - presencesParLesVies
+        - relaisBornes
+        - chevauchements
+        - tirsContestes
+        - presences
+        - entitesNonLiees
+        - entitesContestees
+        - trousDEntite
       type: object
     SelectedTeammateData:
       additionalProperties: false
