@@ -36,7 +36,8 @@ const (
 // double de test (le vrai vit dans games/halo_infinite et a ses propres tests).
 const (
 	kscTagRepulsor = uint32(0x07104b31) // hors arsenal : aucun identifiant numerique
-	kscTagCoil     = uint32(0x0d203522) // hors arsenal
+	kscTagCoil     = uint32(0x0d203522) // hors arsenal (bobine a plasma, sans identifiant numerique)
+	kscTagFusion   = uint32(0x0d203523) // bobine a fusion UNSC : identifiants de l objet tenu (2026-09-24)
 	kscTagFall     = uint32(0x00000024) // chute / environnement
 	kscTagRifle    = uint32(0x0badc0de) // arme a feu ORDINAIRE
 	kscTagSidearm  = uint32(0x0badc0df) // seconde arme a feu, autre classe
@@ -52,6 +53,8 @@ func (fakeKillSourceClassifier) KillSourceRegistryKey(tag uint32) (string, bool)
 	case kscTagRepulsor:
 		return "hinf_repulsor", true
 	case kscTagCoil:
+		return "hinf_coil_plasma", true
+	case kscTagFusion:
 		return "hinf_coil_kinetic", true
 	case kscTagFall:
 		return "hinf_environment", true
