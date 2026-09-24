@@ -328,6 +328,8 @@ Desyncs	int	-
 SlotUnbound	int	-
 DatumBindings	int	-
 DatumAmbiguous	int	-
+LiaisonsOubliees	int	-
+NeufsContreUnVivant	int	-
 Duplicates	int	-
 VelocityReads	int	-
 JumpEpisodes	int	-
