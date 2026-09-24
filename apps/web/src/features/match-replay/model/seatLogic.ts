@@ -45,11 +45,12 @@
  * # UN JOUEUR SANS ENTRÉE DE ROSTER (revue M2-R1)
  *
  * Sur un document qui a un roster, un joueur que ses vies nomment sans entrée n'a ni place ni
- * présence publiées : sa place propre (`joueur:<clé>`) ne rend AUCUNE tuile. La règle des places
- * prime : la lui rendre, même pendant ses seules vies, ferait une fiche de plus que de places
+ * présence publiées : il n'a AUCUNE place, donc aucune tuile ni colonne. La règle des places
+ * prime : lui en donner une, même pendant ses seules vies, ferait une fiche de plus que de places
  * (`c75f33b8` : un bot que le kill-feed n'épingle pas, nommé par le relais de la base, montré à
- * côté de la place vide qu'il remplace). La cuisson le compte
- * (`coverage.seats.identitesHorsRoster`, 0 attendu) : c'est un défaut à corriger à la source.
+ * côté de la place vide qu'il remplace — et, sans équipe, dans une troisième colonne). La cuisson
+ * le compte (`coverage.seats.identitesHorsRoster`, 0 attendu) : c'est un défaut à corriger à la
+ * source.
  */
 import type { ReplayDocumentReady, ReplayRosterEntryReady } from '../../../lib/replay/replayNormalize'
 import { rosterEntryKey, type ReplayPlayer } from '../../../lib/replay/rosterLogic'
@@ -93,11 +94,6 @@ export interface ReplaySeat {
   teamKey: string
   occupants: SeatOccupant[]
   /**
-   * Vrai quand la place n'est pas une place du document : un joueur sans entrée de roster sur un
-   * document qui en a un (cf. l'en-tête). Elle ne rend aucune tuile (`seatTileAt`).
-   */
-  horsRoster: boolean
-  /**
    * Vrai quand les présences de la place viennent du DOCUMENT (schéma 69 et suivants). Faux sur
    * la voie de l'enveloppe des vies, où la place ne rend rien avant son premier occupant.
    */
@@ -133,13 +129,11 @@ export function seatOccupantAt(seat: ReplaySeat, frame: number): SeatReading {
 
 /**
  * seatTileAt — LA TUILE QUE LA PLACE REND À CETTE IMAGE, ou `null` quand elle n'en rend aucune :
- * une place hors roster (jamais une fiche de plus que de places), ou une place de la voie des vies
- * avant son premier occupant (cf. l'en-tête). Partout ailleurs, la place est TOUJOURS rendue —
- * tenue, « pas encore apparu », ou vide (Q20) : c'est ce qui fait qu'une équipe a un nombre fini
- * de tuiles.
+ * une place de la voie des vies avant son premier occupant (cf. l'en-tête). Partout ailleurs, la
+ * place est TOUJOURS rendue — tenue, « pas encore apparu », ou vide (Q20) : c'est ce qui fait
+ * qu'une équipe a un nombre fini de tuiles.
  */
 export function seatTileAt(seat: ReplaySeat, frame: number): SeatReading | null {
-  if (seat.horsRoster) return null
   const lu = seatOccupantAt(seat, frame)
   if (lu.kind !== 'vide') return lu
   if (!seat.presenceLue && frame < (seat.occupants[0]?.presence[0]?.from ?? 0)) return null
@@ -163,9 +157,9 @@ function dejaApparu(p: ReplayPlayer, span: PresenceSpan, frame: number): boolean
  *
  * UNE ENTRÉE QUE SA PRÉSENCE NE MONTRE À AUCUNE IMAGE N'ENTRE NULLE PART : un joueur parti avant
  * le coup d'envoi, ou jamais présent, ne tient aucune place. Un joueur que le film nomme par ses
- * seules vies, sans entrée de roster, garde sa place propre (`joueur:<xuid>`), présent sur
- * l'enveloppe de ses vies : on ne le chaîne à personne, et cette place ne se rend pas
- * (`horsRoster`, cf. `seatTileAt`) quand le document a un roster.
+ * seules vies, sans entrée de roster, n'en tient aucune non plus quand le document a un roster
+ * (cf. l'en-tête) ; sur un film sans identification (aucun roster), il garde sa place propre
+ * (`joueur:<xuid>`), présent sur l'enveloppe de ses vies — la voie nominale de ces films.
  *
  * L'ORDRE DES PLACES EST CELUI DU DOCUMENT (numéro de place croissant) : stable d'une image à
  * l'autre et d'une cuisson à l'autre, ce que l'ordre d'apparition des joueurs n'était pas.
@@ -185,14 +179,14 @@ export function buildSeats(players: readonly ReplayPlayer[], doc: ReplayDocument
   const places = new Map<string, ReplaySeat>()
   for (const p of players) {
     const e = parIdentite.get(p.xuid)
+    if (identifie && e === undefined) continue // hors roster : aucune place (cf. l'en-tête)
     const presence = publiees && e ? presenceDeLEntree(e) : enveloppeDesVies(p)
     if (presence.length === 0) continue // aucune présence : aucune place, à aucune image
     const numero = e?.seat ?? e?.filmIndex ?? -1
     const cle = numero >= 0 ? `siege:${numero}` : `joueur:${p.xuid}`
     let s = places.get(cle)
     if (!s) {
-      const horsRoster = identifie && e === undefined
-      s = { key: cle, seat: numero, side: null, teamKey: '', occupants: [], horsRoster, presenceLue: publiees && !horsRoster }
+      s = { key: cle, seat: numero, side: null, teamKey: '', occupants: [], presenceLue: publiees }
       places.set(cle, s)
     }
     s.occupants.push({ player: p, presence, deduite: estDeduite(e) })
@@ -237,8 +231,7 @@ function presenceDeLEntree(e: ReplayRosterEntryReady): PresenceSpan[] {
  * présent sur l'enveloppe de ses vies, et le DERNIER occupant de chaque place la tient jusqu'à la
  * fin — mourir n'est pas partir, et sans présence publiée rien ne dit qui est parti. C'est la
  * règle que la cuisson applique elle-même quand elle n'a lu aucune entité
- * (`repli_presence_par_enveloppe_des_vies`). Une place hors roster n'est pas prolongée : elle ne
- * se rend pas (cf. `seatTileAt`).
+ * (`repli_presence_par_enveloppe_des_vies`).
  *
  * DEUX SORTES DE DOCUMENTS Y PASSENT, ET UNE SEULE EST UN REPLI :
  *   - un film SANS IDENTIFICATION n'a pas de roster (familles `version_31/33_sans_identification`
@@ -257,7 +250,6 @@ function presenceDeLEntree(e: ReplayRosterEntryReady): PresenceSpan[] {
  */
 function presencesParLesVies(places: readonly ReplaySeat[], derniere: number): void {
   for (const s of places) {
-    if (s.horsRoster) continue
     const dernier = s.occupants[s.occupants.length - 1]
     const span = dernier?.presence[dernier.presence.length - 1]
     if (span !== undefined && span.toMax < derniere) span.toMax = derniere

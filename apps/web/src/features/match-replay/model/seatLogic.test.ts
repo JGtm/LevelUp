@@ -369,22 +369,18 @@ describe('un document qui ne publie AUCUNE présence (artefact antérieur au sch
 })
 
 describe('seatTileAt — ce qu’une place ne rend pas (revue M2, 2026-09-24)', () => {
-  it('M2-R1 : un joueur sans entrée de roster ne rend AUCUNE tuile — jamais une fiche de plus que de places', () => {
+  it('M2-R1 : un joueur sans entrée de roster n’a AUCUNE place — ni tuile, ni colonne', () => {
     const seats = buildSeats(
-      [joueur('P', 't0', [vie(0, FIN)]), joueur('bot:Robot', 't0', [vie(300, 400)])],
+      [joueur('P', 't0', [vie(0, FIN)]), joueur('bot:Robot', null, [vie(300, 400)])],
       doc([{ xuid: 'P', filmIndex: 0, seat: 0, seatSource: 'lu', team: 0, presence: [pr(0, FIN)] }]),
     )
-    const hors = seats.find((s) => s.key === 'joueur:bot:Robot')!
-    expect(hors.horsRoster).toBe(true)
-    expect(seatTileAt(hors, 100)).toBeNull()
-    expect(seatTileAt(hors, 350)).toBeNull() // même pendant sa vie : la règle des places prime
-    expect(seatTileAt(hors, 500)).toBeNull()
-    expect(seatTileAt(hors, FIN)).toBeNull()
+    expect(seats.map((s) => s.key)).toEqual(['siege:0'])
+    expect(groupSeatsByTeam(seats)).toHaveLength(1)
   })
 
-  it('un film sans identification (aucun roster) garde sa voie nominale : pas de place hors roster', () => {
+  it('un film sans identification (aucun roster) garde sa voie nominale : une place par joueur', () => {
     const seats = buildSeats([joueur('X', 't0', [vie(100, 200)])], doc([]))
-    expect(seats[0].horsRoster).toBe(false)
+    expect(seats.map((s) => s.key)).toEqual(['joueur:X'])
     expect(seatTileAt(seats[0], FIN)?.player?.xuid).toBe('X') // le dernier tient jusqu'à la fin
   })
 

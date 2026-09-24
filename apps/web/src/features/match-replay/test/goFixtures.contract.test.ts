@@ -256,7 +256,6 @@ const PAS_DE_LA_PROPRIETE = 10
  *	  tuiles (vides comprises) que l'équipe a de places ;
  *	l'UNICITÉ d'un joueur : à une image, un joueur n'est rendu que dans UNE tuile, toutes colonnes
  *	  confondues — un parti ne survit pas sous une autre place ;
- *	un joueur sans entrée de roster ne rend AUCUNE tuile ;
  *	les compteurs de la cuisson, qui mesurent contre la CAPACITÉ (et non contre les places posées) :
  *	  `depassements`, `placesEnTrop` et `identitesHorsRoster` valent 0.
  *
@@ -282,7 +281,6 @@ function verifierLaRegleDesPlaces(doc: ReplayDocumentReady, film: string): void 
         if (lu.player === null) continue
         expect(rendus.has(lu.player.xuid), `${film} : ${lu.player.xuid} rendu deux fois à l’image ${f}`).toBe(false)
         rendus.add(lu.player.xuid)
-        expect(s.horsRoster, `${film} : ${lu.player.xuid} hors roster rendu (${f})`).toBe(false)
       }
       expect(tuiles, `${film} : ${tuiles} tuiles dans un camp à l’image ${f}`).toBeLessThanOrEqual(taille)
     }

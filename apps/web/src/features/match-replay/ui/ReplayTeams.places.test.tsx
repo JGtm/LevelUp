@@ -102,7 +102,7 @@ describe('ReplayTeams — ce qu’une place ne rend PAS (revue M2, 2026-09-24)',
   /**
    * M2-R1 : un bot que ses vies nomment sans entrée de roster (`c75f33b8`, `343 Robot Hoida`,
    * que le kill-feed n'épingle pas) avait une place à lui, VIDE tout le match hors de ses vies —
-   * une tuile de plus que de places. Sa place ne rend RIEN, même pendant sa vie.
+   * une tuile de plus que de places, et sans équipe une colonne de plus. Il n'a AUCUNE place.
    */
   it('un joueur sans entrée de roster ne rend aucune tuile', () => {
     const doc = testReplayDoc({
@@ -117,6 +117,8 @@ describe('ReplayTeams — ce qu’une place ne rend PAS (revue M2, 2026-09-24)',
     })
     for (const frame of [0, 80, 110, 150, 190]) {
       const vue = render(<ReplayTeams doc={doc} scoreboard={[]} frame={frame} locale="fr" />)
+      // Une seule colonne : le bot sans équipe n'en ouvre pas une troisième (c75f33b8).
+      expect(vue.container.querySelectorAll('.overflow-y-auto').length, `image ${frame}`).toBe(1)
       expect(tuilesRendues(vue.container), `image ${frame}`).toBe(2)
       expect(vue.queryByText(REPLAY_TEXT.fr.seatVacant), `image ${frame}`).toBeNull()
       vue.unmount()
