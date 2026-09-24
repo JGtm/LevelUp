@@ -42,7 +42,7 @@ import type { CardFxScene } from '../model/playerCardReadings'
 import { REPLAY_TEXT, type ReplayLocale } from '../i18n/i18n'
 import { frameToMs, msToFrames } from '../../../lib/replay/replayLogic'
 import type { PresenceHeader } from '../model/presenceFeed'
-import { buildSeats, groupSeatsByTeam, seatOccupantAt, type ReplaySeat } from '../model/seatLogic'
+import { buildSeats, groupSeatsByTeam, seatOccupantAt, seatTileAt, type ReplaySeat } from '../model/seatLogic'
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 import {
   buildPlayers,
@@ -208,9 +208,12 @@ export function ReplayTeams({
             {/* UNE TUILE PAR PLACE, À CHAQUE IMAGE (règle des places, 2026-09-23) : son
                 occupant à l'instant lu, « pas encore apparu » s'il n'a pas encore de corps
                 (Q21), ou la place VIDE (Q20) — jamais un joueur parti, et jamais plus de
-                tuiles que de places. */}
+                tuiles que de places. Une place qui ne rend RIEN à cette image (`seatTileAt` :
+                joueur sans entrée de roster hors de ses vies, voie des vies avant le premier
+                occupant) ne produit aucune tuile. */}
             {group.seats.map((seat) => {
-              const lu = seatOccupantAt(seat, frame)
+              const lu = seatTileAt(seat, frame)
+              if (lu === null) return null
               if (lu.kind === 'vide' || lu.player === null) {
                 return <ReplaySeatVacant key={seat.key} locale={locale} />
               }

@@ -67,7 +67,7 @@ import { readHillHold } from '../model/hillHoldLogic'
 import { buildPadControl } from '../model/padControlLogic'
 import { MIN_RENDERABLE_SCHEMA_VERSION } from '../model/replaySchemaStatusLogic'
 import { roundCount } from '../model/roundsLogic'
-import { buildSeats, groupSeatsByTeam, seatOccupantAt } from '../model/seatLogic'
+import { buildSeats, groupSeatsByTeam, seatOccupantAt, seatTileAt } from '../model/seatLogic'
 import { goFixtureEntries, goFixtureManifest, loadGoFixture } from './goFixtures'
 
 const entries = goFixtureEntries()
@@ -248,28 +248,46 @@ const PAS_DE_LA_PROPRIETE = 10
 
 /**
  * verifierLaRegleDesPlaces — LA PROPRIÉTÉ du lot M2.4 sur un document produit par Go (règle des
- * places de l'utilisateur, 2026-09-23) : aucune équipe n'a plus de places que sa taille ; à
- * chaque image, une place montre au plus UN occupant, et un occupant affiché est DANS sa
- * présence publiée (un parti ne l'est jamais) ; entre deux occupants successifs d'une place, la
- * place est VIDE (Q20) ; et le compteur de la cuisson (`coverage.seats.depassements`) vaut 0.
+ * places de l'utilisateur, 2026-09-23), mesurée sur les TUILES QUE LA COLONNE REND (`seatTileAt`,
+ * la fonction même de `ReplayTeams`) et contre des sources que la pose des places ne produit pas
+ * (revue M2-R3, 2026-09-24) :
+ *
+ *	la TAILLE D'ÉQUIPE déclarée ci-dessus : à chaque image, une colonne rend au plus autant de
+ *	  tuiles (vides comprises) que l'équipe a de places ;
+ *	l'UNICITÉ d'un joueur : à une image, un joueur n'est rendu que dans UNE tuile, toutes colonnes
+ *	  confondues — un parti ne survit pas sous une autre place ;
+ *	un joueur sans entrée de roster ne rend AUCUNE tuile ;
+ *	les compteurs de la cuisson, qui mesurent contre la CAPACITÉ (et non contre les places posées) :
+ *	  `depassements`, `placesEnTrop` et `identitesHorsRoster` valent 0.
+ *
+ * Le départ, lui, se prouve contre les ENTITÉS `ti=9` du film, côté Go, sur les huit mêmes builds
+ * (`TestRegleDesPlacesContreLesEntitesDesBuilds`) : le document ne les porte pas.
  */
 function verifierLaRegleDesPlaces(doc: ReplayDocumentReady, film: string): void {
   const taille = TAILLE_D_EQUIPE[film]
   expect(taille, `${film} : taille d’équipe du mode non déclarée dans TAILLE_D_EQUIPE`).toBeDefined()
-  expect(doc.coverage?.seats?.depassements, `${film} : la cuisson compte des dépassements`).toBe(0)
-  const presences = new Map(doc.roster.map((e) => [e.xuid || `bot:${e.name ?? ''}`, e.presence]))
+  const seats = doc.coverage?.seats
+  expect(seats?.depassements, `${film} : dépassements de capacité`).toBe(0)
+  expect(seats?.placesEnTrop, `${film} : places au-delà de la capacité`).toBe(0)
+  expect(seats?.identitesHorsRoster, `${film} : identités hors roster`).toBe(0)
   const groupes = groupSeatsByTeam(buildSeats(buildPlayers(doc, []), doc))
-  for (const g of groupes) {
-    expect(g.seats.length, `${film} : ${g.seats.length} places dans un camp`).toBeLessThanOrEqual(taille)
-    for (let f = 0; f < doc.frameCount; f += PAS_DE_LA_PROPRIETE) {
+  for (let f = 0; f < doc.frameCount; f += PAS_DE_LA_PROPRIETE) {
+    const rendus = new Set<string>()
+    for (const g of groupes) {
+      let tuiles = 0
       for (const s of g.seats) {
-        const lu = seatOccupantAt(s, f)
+        const lu = seatTileAt(s, f)
+        if (lu === null) continue
+        tuiles++
         if (lu.player === null) continue
-        const pr = presences.get(lu.player.xuid) ?? []
-        const couvre = pr.some((p) => f >= p.from && f <= Math.max(p.to, p.toMax ?? p.to))
-        expect(couvre, `${film} : ${lu.player.xuid} affiché hors de sa présence à l’image ${f}`).toBe(true)
+        expect(rendus.has(lu.player.xuid), `${film} : ${lu.player.xuid} rendu deux fois à l’image ${f}`).toBe(false)
+        rendus.add(lu.player.xuid)
+        expect(s.horsRoster, `${film} : ${lu.player.xuid} hors roster rendu (${f})`).toBe(false)
       }
+      expect(tuiles, `${film} : ${tuiles} tuiles dans un camp à l’image ${f}`).toBeLessThanOrEqual(taille)
     }
+  }
+  for (const g of groupes) {
     for (const s of g.seats) {
       for (let k = 0; k + 1 < s.occupants.length; k++) {
         const avant = s.occupants[k].presence.at(-1)!

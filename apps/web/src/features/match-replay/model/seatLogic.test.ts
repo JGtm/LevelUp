@@ -20,7 +20,7 @@ import { describe, expect, it } from 'vitest'
 
 import type { ReplayDocumentReady, ReplayTrackReady } from '../../../lib/replay/replayNormalize'
 import type { ReplayPlayer } from '../../../lib/replay/rosterLogic'
-import { buildSeats, groupSeatsByTeam, seatOccupantAt, type ReplaySeat } from './seatLogic'
+import { buildSeats, groupSeatsByTeam, seatOccupantAt, seatTileAt, type ReplaySeat } from './seatLogic'
 
 /** La dernière image des documents de ces tests. */
 const FIN = 999
@@ -365,5 +365,47 @@ describe('un document qui ne publie AUCUNE présence (artefact antérieur au sch
   it('le DERNIER occupant de chaque place la tient jusqu’à la fin — mourir n’est pas partir', () => {
     expect(montre(seats.find((s) => s.seat === 3)!, FIN)).toBe('A:present')
     expect(montre(seats.find((s) => s.seat === 4)!, FIN)).toBe('Q:present')
+  })
+})
+
+describe('seatTileAt — ce qu’une place ne rend pas (revue M2, 2026-09-24)', () => {
+  it('M2-R1 : un joueur sans entrée de roster ne rend AUCUNE tuile — jamais une fiche de plus que de places', () => {
+    const seats = buildSeats(
+      [joueur('P', 't0', [vie(0, FIN)]), joueur('bot:Robot', 't0', [vie(300, 400)])],
+      doc([{ xuid: 'P', filmIndex: 0, seat: 0, seatSource: 'lu', team: 0, presence: [pr(0, FIN)] }]),
+    )
+    const hors = seats.find((s) => s.key === 'joueur:bot:Robot')!
+    expect(hors.horsRoster).toBe(true)
+    expect(seatTileAt(hors, 100)).toBeNull()
+    expect(seatTileAt(hors, 350)).toBeNull() // même pendant sa vie : la règle des places prime
+    expect(seatTileAt(hors, 500)).toBeNull()
+    expect(seatTileAt(hors, FIN)).toBeNull()
+  })
+
+  it('un film sans identification (aucun roster) garde sa voie nominale : pas de place hors roster', () => {
+    const seats = buildSeats([joueur('X', 't0', [vie(100, 200)])], doc([]))
+    expect(seats[0].horsRoster).toBe(false)
+    expect(seatTileAt(seats[0], FIN)?.player?.xuid).toBe('X') // le dernier tient jusqu'à la fin
+  })
+
+  it('M2-R7 : document sans présence — aucune tuile avant le premier occupant, la place vide ensuite', () => {
+    const seats = buildSeats(
+      [joueur('P', 't0', [vie(30, 400)]), joueur('A', 't0', [vie(600, 800)])],
+      doc([
+        { xuid: 'P', filmIndex: 3, seat: 3, seatSource: 'lu', team: 0 },
+        { xuid: 'A', filmIndex: 9, seat: 3, seatSource: 'apparie', team: 0 },
+      ]),
+    )
+    expect(seatTileAt(seats[0], 10)).toBeNull()
+    expect(seatTileAt(seats[0], 30)?.kind).toBe('present')
+    expect(seatTileAt(seats[0], 500)?.kind).toBe('vide') // Q20 : entre les deux occupants
+  })
+
+  it('document qui publie ses présences : la place attend son premier occupant VIDE (Q20)', () => {
+    const seats = buildSeats(
+      [joueur('L', 't0', [vie(645, FIN)])],
+      doc([{ xuid: 'L', filmIndex: 23, seat: 23, seatSource: 'ouverte', team: 0, presence: [pr(640, FIN)] }]),
+    )
+    expect(seatTileAt(seats[0], 100)?.kind).toBe('vide')
   })
 })

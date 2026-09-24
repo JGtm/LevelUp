@@ -92,3 +92,59 @@ describe('ReplayTeams — la règle des places', () => {
     }
   })
 })
+
+/** Le nombre de tuiles que la colonne rend : les enfants directs des conteneurs de places. */
+function tuilesRendues(container: HTMLElement): number {
+  return [...container.querySelectorAll('.overflow-y-auto')].reduce((n, c) => n + c.children.length, 0)
+}
+
+describe('ReplayTeams — ce qu’une place ne rend PAS (revue M2, 2026-09-24)', () => {
+  /**
+   * M2-R1 : un bot que ses vies nomment sans entrée de roster (`c75f33b8`, `343 Robot Hoida`,
+   * que le kill-feed n'épingle pas) avait une place à lui, VIDE tout le match hors de ses vies —
+   * une tuile de plus que de places. Sa place ne rend RIEN, même pendant sa vie.
+   */
+  it('un joueur sans entrée de roster ne rend aucune tuile', () => {
+    const doc = testReplayDoc({
+      frameCount: 200,
+      frameIntervalMs: 100,
+      originMs: 0,
+      roster: [
+        { xuid: 'P', filmIndex: 0, seat: 0, seatSource: 'lu', name: 'Partant', team: 0, presence: [{ from: 0, to: 199 }] },
+        { xuid: 'T', filmIndex: 1, seat: 1, seatSource: 'lu', name: 'Titulaire', team: 0, presence: [{ from: 0, to: 199 }] },
+      ],
+      tracks: [vie('P', 512, 0, 199), vie('T', 513, 0, 199), { ...vie('', 530, 120, 180), bot: 'Robot' }],
+    })
+    for (const frame of [0, 80, 110, 150, 190]) {
+      const vue = render(<ReplayTeams doc={doc} scoreboard={[]} frame={frame} locale="fr" />)
+      expect(tuilesRendues(vue.container), `image ${frame}`).toBe(2)
+      expect(vue.queryByText(REPLAY_TEXT.fr.seatVacant), `image ${frame}`).toBeNull()
+      vue.unmount()
+    }
+  })
+
+  /**
+   * M2-R7 : sur un document qui ne publie AUCUNE présence (artefact antérieur), la place d'un
+   * joueur s'affichait « libre » pendant tout le préambule, avant sa première vie. Rien n'y dit qui
+   * était là au coup d'envoi : la place ne rend rien avant son premier occupant.
+   */
+  it('document sans présence : aucune place « libre » avant le premier occupant', () => {
+    const doc = testReplayDoc({
+      frameCount: 200,
+      frameIntervalMs: 100,
+      originMs: 0,
+      roster: [
+        { xuid: 'P', filmIndex: 0, seat: 0, seatSource: 'lu', name: 'Partant', team: 0 },
+        { xuid: 'T', filmIndex: 1, seat: 1, seatSource: 'lu', name: 'Titulaire', team: 0 },
+      ],
+      tracks: [vie('P', 512, 30, 199), vie('T', 513, 0, 199)],
+    })
+    const avant = render(<ReplayTeams doc={doc} scoreboard={[]} frame={10} locale="fr" />)
+    expect(avant.queryByText(REPLAY_TEXT.fr.seatVacant)).toBeNull()
+    expect(tuilesRendues(avant.container)).toBe(1)
+    avant.unmount()
+    const apres = render(<ReplayTeams doc={doc} scoreboard={[]} frame={40} locale="fr" />)
+    expect(tuilesRendues(apres.container)).toBe(2)
+    apres.unmount()
+  })
+})
