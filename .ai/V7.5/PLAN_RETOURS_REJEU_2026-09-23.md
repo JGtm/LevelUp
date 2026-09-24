@@ -1129,3 +1129,27 @@ vivent au §9 ; aucun lot de la vague D ne démarre sans eux.
   exactement les changements déclarés de M6 (cf. M6), rien de M7 dans le cuit ; M7 au parc 13 → 13,
   0 en jeu masqué ; G4 361/52/25 → 438/0/0. Restent (superviseur) : push et CI, republication 69 depuis
   les faits (les 20 fichiers de faits réécrits restent à arbitrer), verdicts à l'oreille et visuels.
+- 2026-09-24 (superviseur, après le workflow `wf_3718e722-e84`) :
+  - Campagne à `8144ff8e7` : vague A + vague C (M1, M4a, M5) + M6 + M7 intégrées, schéma 69 unique,
+    gates complets verts ; contrôle de parc = exactement les changements déclarés.
+  - Pré-intégration de la vague D (`feat/rr-vague-d` `a85eaaf46`, schéma 70) NON PRÊTE : rouge
+    bloquant M2 × M3 — la marche d'image-clé réparée par M3 atteint désormais les images-clés
+    d'avant-match et y perd, par l'élection de repli, le record `ti=9` de l'index 0 (fausse ancre dans
+    son corps) ; M2 lit alors ce joueur comme arrivé plus tard (000d5950 : absent 16,3 s au départ).
+    Plus six écarts « à instruire » (identitesHorsRoster c75f33b8, véhicules fusionnés 084a804d /
+    50247b26, jauge du drapeau et poses 1c4c63c2, weaponChanges.taken, états de mouvement). M4b et M8
+    n'ont pas démarré. Suite : lot correctif D-fix (réparer la perte à la marche ET une image-clé lue
+    par repli ne prouve jamais un départ : santé par image-clé, nommée et comptée), puis M4b, M8.
+  - INCIDENT (écart aux règles) : entre 04:36 et 05:00 le 24/09, un agent de la vague D a écrit 20
+    fichiers de faits dans le cache VIVANT `data/cache/film_facts/halo_infinite/` (000d5950, 01e1f945,
+    084a804d, 111fa685, 11de8353, 1c4c63c2, 50247b26, 51101d1d, 53ce4390, 60ae07c4, 64e8adfa,
+    696a9d7c, 7344d24f, 9f57c612, a349fea8, a521164d, bcb6d393, d9781168, e5adf7b2, fb1a1a72), aux
+    révisions de branche (et 4 au schéma de faits 4), en décodant des films dont des BTB. Aucun
+    document de rejeu ni manifeste touché (vérifié). Effet : ces 20 films ne seront pas republiés
+    depuis leurs faits mais re-décodés à la republication. Consigne durcie pour la suite : toute
+    construction pointe vers une racine de données TEMPORAIRE, contrôle `find -newer` avant/après.
+  - Décision utilisateur (24/09) : « les Pelican c'est toujours du décor, le Falcon ça dépend » →
+    Pelican reste non jouable ; le Falcon sort des familles non jouables et suit la règle générale du
+    décor (M7). Question de l'utilisateur « tu ne te disperses pas un peu ? » → PÉRIMÈTRE GELÉ : plus
+    aucun nouveau lot ; les découvertes vont au §8 ; reste à finir : D-fix, M4b, M8, le réglage Falcon,
+    republications, verdict visuel de l'utilisateur sur ses 9 points.
