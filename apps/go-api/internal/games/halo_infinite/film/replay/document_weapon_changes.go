@@ -38,6 +38,7 @@ import (
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
+	"levelup/go-api/internal/games/weapons/filmshell"
 )
 
 // WeaponChangeKind qualifie un changement d'arme en main, tel que le document le publie.
@@ -109,6 +110,12 @@ func buildWeaponChanges(
 			cov.BeforeOrigin++
 			continue
 		}
+		// LA REMISE DES MAINS NUES N EST PAS UNE PRISE (lot M6.3, cf. `UnarmedGrants`) : seule la
+		// PRISE est ecartee ; un echange vers les mains nues reste publie.
+		if c.Kind == types.HeldWeaponTaken && filmshell.IsUnarmedFamily(c.Family) {
+			cov.UnarmedGrants++
+			continue
+		}
 		frame := int((c.TimestampUS - origin) / step)
 		k := c.Emplacement
 		w := WeaponChange{T: frame, Slot: c.Slot, Kind: weaponChangeKindOf(c.Kind), K: &k}
@@ -158,6 +165,12 @@ type WeaponChangeCoverage struct {
 	Restated int `json:"restated"`
 	// BeforeOrigin compte les changements antérieurs à la première frame — écartés.
 	BeforeOrigin int `json:"beforeOrigin"`
+	// UnarmedGrants compte les REMISES DES MAINS NUES (schéma 69, retours du rejeu, lot M6.3 ; revue
+	// adverse, constat R2) : une PRISE (`taken`) de l objet « mains nues » (`filmshell.IsUnarmedFamily`)
+	// est la remise que le jeu fait au premier instant d une vie, pas un ramassage — écartée des
+	// publiés et comptée ici. Partition : `decoded` = `published` + `restated` + `beforeOrigin` +
+	// `unarmedGrants`. Un ÉCHANGE vers les mains nues reste publié (et nommé).
+	UnarmedGrants int `json:"unarmedGrants"`
 	// Taken / Dropped / Swapped ventilent les publiés.
 	Taken   int `json:"taken"`
 	Dropped int `json:"dropped"`

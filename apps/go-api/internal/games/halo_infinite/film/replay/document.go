@@ -278,6 +278,10 @@ type ReplayDocument struct {
 	// vehicle_weapons.go), keyé comme `Shot.Weapon` — REMPLI À LA REQUÊTE, même règle que
 	// `vehicleLabels`. Absent quand aucun tir n'emploie une arme du registre.
 	VehicleWeapons map[string]VehicleWeapon `json:"vehicleWeapons,omitempty"`
+	// VehicleScenery est le VERDICT DE DECOR des vies de vehicule posees par la carte hors de la
+	// zone jouable (lot M7, cf. vehicle_scenery.go) — REMPLI À LA REQUÊTE : la zone est une
+	// reference de carte, que l'artefact ne connait pas. Absent quand aucune vie n'est candidate.
+	VehicleScenery *VehicleScenery `json:"vehicleScenery,omitempty"`
 	// VehicleCycles est LE CYCLE DE REAPPARITION de chaque EMPLACEMENT de naissance de vehicule
 	// (cf. vehicle_cycles.go) : le delai mediane entre la destruction d un vehicule et la
 	// naissance du suivant au meme endroit, avec ses deciles et les deux moities de son

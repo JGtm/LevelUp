@@ -309,13 +309,14 @@ func toScoreCoverage(v replay.ScoreCoverage) replaydoc.ScoreCoverage {
 
 func toWeaponChangeCoverage(v replay.WeaponChangeCoverage) replaydoc.WeaponChangeCoverage {
 	return replaydoc.WeaponChangeCoverage{
-		Decoded:      v.Decoded,
-		Published:    v.Published,
-		Restated:     v.Restated,
-		BeforeOrigin: v.BeforeOrigin,
-		Taken:        v.Taken,
-		Dropped:      v.Dropped,
-		Swapped:      v.Swapped,
+		Decoded:       v.Decoded,
+		Published:     v.Published,
+		Restated:      v.Restated,
+		BeforeOrigin:  v.BeforeOrigin,
+		Taken:         v.Taken,
+		Dropped:       v.Dropped,
+		Swapped:       v.Swapped,
+		UnarmedGrants: v.UnarmedGrants,
 	}
 }
 

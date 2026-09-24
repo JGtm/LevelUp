@@ -171,3 +171,39 @@ proof = "p"
 		t.Errorf("entree valide refusee : %v", err)
 	}
 }
+
+// TestRegistreArmesVehicule_SonsDesignesALOreille — les sons designes A L OREILLE par
+// l utilisateur le 2026-09-24 (retours du rejeu, lot M6.1) : le lance-grenades du Falcon joue les
+// roquettes du Rockethog (le jeu joue le MEME evenement : 18 medias identiques, sonde SONS), les
+// missiles du Wasp gardent leur stem (fichiers remplaces par le rendu V3E reequilibre).
+func TestRegistreArmesVehicule_SonsDesignesALOreille(t *testing.T) {
+	set := vwRegistre(t)
+	attendus := map[string]string{
+		"0BB6976B": "vehicle_shot_warthog_rocket_1", // lance-grenades du Falcon
+		"C7D50912": "vehicle_shot_warthog_rocket_1", // lance-roquettes du Rockethog
+		"11725DC4": "vehicle_shot_wasp_1",           // lance-missiles du Wasp
+	}
+	for tag, son := range attendus {
+		w, ok := set.Weapon(tag)
+		if !ok || w.Sound != son || w.Silence != "" {
+			t.Errorf("%s : son %q (silence %q), attendu %q", tag, w.Sound, w.Silence, son)
+		}
+	}
+}
+
+// TestRegistreArmesVehicule_BombeDeLaBanshee — `850902EF`, identifie le 2026-09-24 (lot M6.2,
+// instrument `internal/himodule/m6_bombe_banshee_research_test.go`) : l arme de la configuration
+// MULTIJOUEUR de la Banshee, qui partage le son de tir de la bombe `0000AA69` du lot V3F. Decision
+// de l utilisateur (2026-09-23 nuit) : la bombe est ROUGE et PLUS GROSSE — teinte `plasma_hot`,
+// forme `bomb` (la deflagration a l echelle d une charge larguee).
+func TestRegistreArmesVehicule_BombeDeLaBanshee(t *testing.T) {
+	set := vwRegistre(t)
+	w, ok := set.Weapon("850902EF")
+	if !ok {
+		t.Fatalf("850902EF absent des armes du registre (inconnu : %q)", set.Unknown()["850902EF"])
+	}
+	if w.Vehicle != "banshee" || w.Fire != VehicleWeaponFireSingle || w.Fx != "bomb" ||
+		w.Tint != "plasma_hot" || w.Sound != "vehicle_shot_banshee_m2_1" {
+		t.Errorf("bombe de la Banshee = %+v", w)
+	}
+}

@@ -16,6 +16,11 @@ package mappings
 // une DESCRIPTION, donc il se traduit ; et sa NATURE doit traverser jusqu au client, qui la
 // dessine par un pictogramme dedie au lieu du marqueur neutre des chassis non resolus.
 //
+// DEPUIS LE 2026-09-24 (retours du rejeu, lot M6.2), UNE SECONDE EXCEPTION : la TOURELLE FIXE
+// (`tourelle_fixe`, chassis `0x3a8060e2`, Takamanohara), un poste de tir pose par la carte et
+// OCCUPE par les joueurs. Son nom est aussi une description, et sa nature (`fixed_turret`) dit au
+// client de la dessiner par le pictogramme de tourelle tout en laissant son occupant embarquer.
+//
 // LES DEUX CHAMPS SONT DONC INDISSOCIABLES : le libelle bilingue (jamais en dur cote Go, regle 1
 // du depot) et le `kind`, qui est ce que le document publie pour que le web sache de quoi il
 // s agit sans connaitre la famille.
@@ -42,7 +47,8 @@ type vehicleFamilyEntry struct {
 	Sprite bool   `toml:"sprite"`
 }
 
-// VehicleFamilyKindMapElement — la seule NATURE declarable a ce jour : un ELEMENT DE CARTE.
+// VehicleFamilyKindMapElement — la NATURE d un ELEMENT DE CARTE : un objet de la carte, pas un
+// vehicule de la partie, qui ne porte JAMAIS d occupant.
 //
 // C EST UNE VALEUR PUBLIEE (elle traverse le document jusqu au client), donc ANGLAISE comme
 // toutes les enumerations du contrat de rejeu (`unknown`, `deployed`, `event`/`mixed`/`gap`) —
@@ -50,11 +56,19 @@ type vehicleFamilyEntry struct {
 // backfill.
 const VehicleFamilyKindMapElement = "map_element"
 
+// VehicleFamilyKindFixedTurret — la NATURE d une TOURELLE FIXE posee par la carte et qu un joueur
+// OCCUPE (retours du rejeu, lot M6.2, 2026-09-24 : les tourelles gatling / mortier de
+// Takamanohara, information de l utilisateur). Elle se dessine comme un element de carte faute
+// d asset (le pictogramme de tourelle), mais c est un poste de tir de la partie : ses occupants
+// sont publies et leur pion embarque, a l inverse de `map_element`.
+const VehicleFamilyKindFixedTurret = "fixed_turret"
+
 // vehicleFamilyKinds — liste FERMEE, meme doctrine que `equipmentKinds` et `shotTintKinds` : une
 // valeur libre ferait tomber le client sur son rendu neutre EN SILENCE, ce qui est
 // indistinguable d une famille volontairement non qualifiee.
 var vehicleFamilyKinds = map[string]bool{
-	VehicleFamilyKindMapElement: true,
+	VehicleFamilyKindMapElement:  true,
+	VehicleFamilyKindFixedTurret: true,
 }
 
 // VehicleFamily — ce que le titre DIT d une famille de chassis : son nom dans les deux langues,

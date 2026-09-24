@@ -12,8 +12,8 @@ import (
 	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
-// Deux armes que le catalogue nomme (MA40 AR, Mk51 Sidekick), et l'objet de départ du coup
-// d'envoi que le catalogue ne nomme pas.
+// Deux armes que le catalogue nomme (MA40 AR, Mk51 Sidekick), et l'objet « mains nues » que le jeu
+// remet au troisième emplacement de chaque bipède (sonde CA9, règle nommée `filmshell.IsUnarmedFamily`).
 const (
 	bdMA40     = 0x48C19D2D
 	bdSidekick = 0xF408190F
@@ -56,8 +56,11 @@ func TestDotationSeposeSurLaVieQueSaCreationOuvre(t *testing.T) {
 	}
 }
 
-// TestDotationPublieLesSeulesArmesDuCatalogue : l'objet de départ `00007CA9` et l'emplacement vide
-// ne sont pas des armes ; les deux armes gardent leur emplacement.
+// TestDotationPublieLesSeulesArmesDuCatalogue : l'objet « mains nues » `00007CA9` et l'emplacement
+// vide ne sont pas des armes ; les deux armes gardent leur emplacement. LES MAINS NUES SE COMPTENT
+// A PART (`unarmedGrants`, règle nommée de M6.3, rebranchée à la fusion de la campagne à jour, lot
+// D-fix) : ROUGE avant la fusion, où la dotation de naissance les comptait en `nonWeapon` faute
+// de la règle.
 func TestDotationPublieLesSeulesArmesDuCatalogue(t *testing.T) {
 	n := bdNaissance(9, 10)
 	in := birthInputs{births: []types.BirthLoadout{n}, stats: types.BirthLoadoutStats{Creations: 1, Read: 1},
@@ -67,8 +70,8 @@ func TestDotationPublieLesSeulesArmesDuCatalogue(t *testing.T) {
 	if len(out) != 1 || !reflect.DeepEqual(out[0], want) {
 		t.Fatalf("relevé %+v, attendu %+v", out, want)
 	}
-	if cov.NonWeapon != 1 {
-		t.Fatalf("couverture %+v : l'objet de départ doit être compté comme non-arme", *cov)
+	if cov.UnarmedGrants != 1 || cov.NonWeapon != 0 {
+		t.Fatalf("couverture %+v : les mains nues se comptent en unarmedGrants, pas en nonWeapon", *cov)
 	}
 }
 
@@ -124,8 +127,9 @@ func TestFermetureSansArmeNEstPasUneLecture(t *testing.T) {
 	if len(out) != 1 {
 		t.Fatalf("relevés %+v : attendu la seule dotation armée du slot 9", out)
 	}
+	// Hors catalogue : la seule famille `0x12345678` ; les trois mains nues sont les remises.
 	want := BirthLoadoutCoverage{Creations: 3, Closed: 3, Read: 2, Published: 1, NoLife: 1,
-		NonWeapon: 4, NoDisplayable: 1}
+		NonWeapon: 1, UnarmedGrants: 3, NoDisplayable: 1}
 	if *cov != want {
 		t.Fatalf("couverture %+v, attendu %+v", *cov, want)
 	}

@@ -37,6 +37,7 @@ func toBirthLoadoutCoverage(v replay.BirthLoadoutCoverage) replaydoc.BirthLoadou
 		NoLife:            v.NoLife,
 		BeforeOrigin:      v.BeforeOrigin,
 		NonWeapon:         v.NonWeapon,
+		UnarmedGrants:     v.UnarmedGrants,
 		NoDisplayable:     v.NoDisplayable,
 	}
 }

@@ -656,31 +656,66 @@ contrat.
 Périmètre : registre des armes de véhicule (M4a), catalogue des armes / objets (libellés FR + EN),
 publication des ramassages (`film/replay/document_pickups.go` et voisins), sons statiques du rejeu.
 
-- [ ] M6.1 Sons validés à l'oreille : lance-grenades du Falcon `0BB6976B` → stems
+- [x] M6.1 Sons validés à l'oreille : lance-grenades du Falcon `0BB6976B` → stems
   `vehicle_shot_warthog_rocket_*` (même événement) ; missiles de la Wasp `11725DC4` → rendu V3E
   rééquilibré (`Downloads/Halo Infinite - Sons v75/rr_2026-09-23/wasp_missiles_controle/`, gain et
   plafond du pipeline des sons) ; stems de la LMG de la Wasp déposés pour M4b ; garde-rail des assets.
-- [ ] M6.2 Si M4a ne l'a pas fait : libellés Wasp (coup = missiles, boucle = LMG), bombe de la Banshee
+  [`11c3377bb`, `b3f1b2029`] Aucun fichier neuf pour le Falcon (même événement `a99352ab`) ; Wasp :
+  `vehicle_shot_wasp_1/_2` remplacés (recette mesurée sur les stems livrés, -16 LUFS / -1 dBTP) ; LMG :
+  deux coups + une boucle de 8 s déclarés `DEPOSES_POUR_M4B` au garde-rail d'assets (échéance : le
+  commit de M4b qui la câble, au plus tard 2026-12-01), empreintes sha256 figées.
+- [x] M6.2 Si M4a ne l'a pas fait : libellés Wasp (coup = missiles, boucle = LMG), bombe de la Banshee
   rouge et plus grosse, obus du Scorpion = explosion de grenade, roquettes du Rockethog = explosion du
   SPNKR ; famille « tourelle fixe » pour `3a8060e2` (Takamanohara, occupable).
-- [ ] M6.3 Mains nues `00007CA9` : exclu de la dotation affichée par une règle nommée, remise du coup
+  [`7abf82d7e`, `55ce5734d`] Vérifié : Rockethog, Scorpion et coup du Wasp `explosive`/`blast`, libellé
+  « Lance-missiles » ; `850902EF` = arme de la configuration MULTIJOUEUR de la Banshee (chaîne vcdd →
+  sofd → sofa → uwfa → weap, instrument research), au registre rouge (`plasma_hot`), forme `bomb`
+  (échelle nommée) ; `3a8060e2` → `tourelle_fixe`, nature `fixed_turret` (aussi sur Empyrean) ;
+  explosion à la mort du Scorpion et du Rockethog (`killEffects`). [~] « boucle = LMG » : le tag
+  `d3c407ed` n'est observé dans aucun film, il n'entre au registre qu'avec M4b (clé observée).
+- [x] M6.3 Mains nues `00007CA9` : exclu de la dotation affichée par une règle nommée, remise du coup
   d'envoi classée « remise mains nues » (compteur, hors `unknownFamilies`), entrée « Mains nues » /
   « Unarmed ».
-- [ ] M6.4 Bobine à fusion `E9E7FF79` (vérifier les variantes déjà au catalogue) ; vérification sur
+  [`b2d1f975e`, `55ce5734d`] `filmshell.IsUnarmedFamily` (une écriture du littéral, garde-rail) : la
+  remise sort de `pickups[]` ET de `weaponChanges[]` (prise), comptée `unarmedGrants` ; passage unique
+  des dotations (`dotationWeaponName`, garde-rail) ; `hinf_unarmed`. La remise a lieu à CHAQUE début
+  de vie : la règle est générale. Montée rabattue de 70 sur 69 (partie M6 de la chronique v69).
+- [x] M6.4 Bobine à fusion `E9E7FF79` (vérifier les variantes déjà au catalogue) ; vérification sur
   pièces des libellés `2AC9C2FF` (hotrod) et `230447B1` (proto_heatwave) contre Calcineur / Crémateur.
+  [`b2d1f975e`, `586e60e02`, `3343fca2a`] `E9E7FF79` et `1D63A8CD` sur `hinf_coil_kinetic` (dégât
+  kineticunsc) ; Heatwave / Cindershot NON inversés (vignette partagée par `5AC6CFB2`, passe humaine du
+  08/09) ; changement déclaré : la ligne de kill de la bobine UNSC porte un WeaponID, donc l'arme
+  favorite se décide par la CLASSE (`domain.IsFavoriteWeaponCandidate`, garde-rail).
 - Gate : tests rouges/verts ; reconstruction depuis les faits base vs branche + `replay-diff` (seuls les
   calques visés bougent).
+- [x] Mesuré à l'intégration de M6 et M7 (2026-09-24, 107 documents reconstruits depuis une copie des
+  faits, base `cd60b6ac5` contre la tête intégrée, `replay-diff`) : SEULS les changements déclarés —
+  `pickups` -562 dans 77 documents = `coverage.pickups.unarmedGrants` +562 ; `unknownFamilies` -845
+  (562 remises + 283 bobines nommées : `hinf_coil_kinetic` +283 dans 33 documents) ; 1 prise de
+  `weaponChanges` → `coverage.weaponChanges.unarmedGrants` (5676a9ba) ; `tourelle_fixe` +8 vies
+  (7fce3219, ac03413d, e1259a69), `familyUnknown` -8, `unknownChassis` -8, `coverage.fallbacks` -3 ;
+  `killEffects` +2 par document (Scorpion, Rockethog). Aucun autre calque. G4 (`TestRRM4AGates`,
+  registre du code) : 438 tirs, 361 complets / 52 silences / 25 inconnus → 438 / 0 / 0.
 
 #### M7 — Décor : « hors de la zone jouable » (après M1)
 
-- [ ] M7.1 La règle du décor (L1.3) exige EN PLUS que la vie soit hors de la zone jouable de la carte,
+- [x] M7.1 La règle du décor (L1.3) exige EN PLUS que la vie soit hors de la zone jouable de la carte,
   lue dans les références de carte du dépôt (`data/titles/halo_infinite/reference/map_geometry/`,
   `map_positions_jouees.json`, calage des fonds — établir laquelle est la zone de JEU, en 3D si
   possible : le Wasp de Goliath est sous le sol) ; carte sans zone connue → la règle ne masque rien
   (repli nommé, compté). Commentaire de L1.3 corrigé (le film réplique la pose avant l'origine).
-- [ ] M7.2 Tests : décors de Starboard et de Goliath toujours masqués ; un véhicule posé dans l'aire de
+  [`e03779c63`, `9b913a787`] Décidé À LA REQUÊTE par le service (calque `vehicleScenery`, hors
+  cuisson, empreinte cuite inchangée) : en plan, la matière praticable du fond de carte publié (masque
+  compact en cache) ; en hauteur, le SOL FOULÉ du match (repli nommé
+  `repli_decor_sous_le_sol_foule_du_match`) ; carte sans fond → rien masqué
+  (`repli_decor_carte_sans_zone_affiche`, compté `zoneUnknown`). Le client lit le verdict. Partie M7
+  de la chronique v69 écrite à l'intégration (forme servie seule).
+- [x] M7.2 Tests : décors de Starboard et de Goliath toujours masqués ; un véhicule posé dans l'aire de
   jeu, jamais touché (fixture construite sur le modèle des Mongoose / Gungoose de Behemoth) reste
   affiché ; parc : 13 → 13 masqués, 0 véhicule en jeu masqué.
+  Mesuré à l'intégration (`TestM7DecorParc`, 107 documents de la tête) : L1.3 13, M7 13 (Starboard
+  6 + 6, Goliath 1), 0 vie en jeu masquée, 0 zone inconnue ; les 8 tourelles fixes de M6 (spawn seul,
+  sans échantillon) ne sont pas candidates, donc jamais masquées.
 
 #### Clôture de la vague C
 
@@ -1079,3 +1114,42 @@ vivent au §9 ; aucun lot de la vague D ne démarre sans eux.
   (`grammar-2026-09-23`, `killsource-2026-09-23` ; 4 au schéma de faits 4, illisibles par le code de la
   vague C : 01e1f945, 64e8adfa, d9781168, fb1a1a72) — vraisemblablement un `replay-equiv` lancé avec
   `LEVELUP_REPO_ROOT` sur le checkout vivant ; à arbitrer AVANT la republication de la vague C.
+- 2026-09-24 (intégration de M6 et M7) : `feat/rr-m6` puis `feat/rr-m7` fusionnées `--no-ff` dans
+  `feat/retours-rejeu` (`c49f07687`, `b08ba6688`) après leur reprise de revue adverse (M6 : R1-R10
+  traités, R3 en instrument ; M7 : RR-M7-01 à 08), worktrees propres. Réconciliation : M6 était déjà
+  rabattu sur 69 (partie M6 de la chronique v69) ; M7 ne touche que la forme SERVIE (calque de requête
+  `vehicleScenery`) : partie M7 ajoutée à la chronique v69 (en-tête, plafond 2174 → 2186 justifié),
+  seul conflit = golden de forme, re-figé par sa porte (empreinte cuite de M6 inchangée), `openapi-gen
+  -check` à jour, `generated.ts` régénéré sans écart. Gates sur la tête : build, vet (+ integration,
+  + research), `go test ./...` 189 paquets 0 FAIL, intégration `-p 1` 17 219 pass / 786 skip / 0 fail,
+  baseline 9 701 présents, golangci 0 issue ; web tsc, eslint 0 erreur (26 avertissements antérieurs),
+  couleurs 0, vitest 792 fichiers / 8 503 tests, knip 0, manifestes i18n sans écart. CONTRÔLE DE PARC
+  (copie des faits de l'intégration C, sorties sous `Downloads/Scripts/rr-integ-m67-parc/`) : 107
+  documents de chaque côté, 4 sautés (faits au schéma 4) ; `replay-diff` base `cd60b6ac5` → tête =
+  exactement les changements déclarés de M6 (cf. M6), rien de M7 dans le cuit ; M7 au parc 13 → 13,
+  0 en jeu masqué ; G4 361/52/25 → 438/0/0. Restent (superviseur) : push et CI, republication 69 depuis
+  les faits (les 20 fichiers de faits réécrits restent à arbitrer), verdicts à l'oreille et visuels.
+- 2026-09-24 (superviseur, après le workflow `wf_3718e722-e84`) :
+  - Campagne à `8144ff8e7` : vague A + vague C (M1, M4a, M5) + M6 + M7 intégrées, schéma 69 unique,
+    gates complets verts ; contrôle de parc = exactement les changements déclarés.
+  - Pré-intégration de la vague D (`feat/rr-vague-d` `a85eaaf46`, schéma 70) NON PRÊTE : rouge
+    bloquant M2 × M3 — la marche d'image-clé réparée par M3 atteint désormais les images-clés
+    d'avant-match et y perd, par l'élection de repli, le record `ti=9` de l'index 0 (fausse ancre dans
+    son corps) ; M2 lit alors ce joueur comme arrivé plus tard (000d5950 : absent 16,3 s au départ).
+    Plus six écarts « à instruire » (identitesHorsRoster c75f33b8, véhicules fusionnés 084a804d /
+    50247b26, jauge du drapeau et poses 1c4c63c2, weaponChanges.taken, états de mouvement). M4b et M8
+    n'ont pas démarré. Suite : lot correctif D-fix (réparer la perte à la marche ET une image-clé lue
+    par repli ne prouve jamais un départ : santé par image-clé, nommée et comptée), puis M4b, M8.
+  - INCIDENT (écart aux règles) : entre 04:36 et 05:00 le 24/09, un agent de la vague D a écrit 20
+    fichiers de faits dans le cache VIVANT `data/cache/film_facts/halo_infinite/` (000d5950, 01e1f945,
+    084a804d, 111fa685, 11de8353, 1c4c63c2, 50247b26, 51101d1d, 53ce4390, 60ae07c4, 64e8adfa,
+    696a9d7c, 7344d24f, 9f57c612, a349fea8, a521164d, bcb6d393, d9781168, e5adf7b2, fb1a1a72), aux
+    révisions de branche (et 4 au schéma de faits 4), en décodant des films dont des BTB. Aucun
+    document de rejeu ni manifeste touché (vérifié). Effet : ces 20 films ne seront pas republiés
+    depuis leurs faits mais re-décodés à la republication. Consigne durcie pour la suite : toute
+    construction pointe vers une racine de données TEMPORAIRE, contrôle `find -newer` avant/après.
+  - Décision utilisateur (24/09) : « les Pelican c'est toujours du décor, le Falcon ça dépend » →
+    Pelican reste non jouable ; le Falcon sort des familles non jouables et suit la règle générale du
+    décor (M7). Question de l'utilisateur « tu ne te disperses pas un peu ? » → PÉRIMÈTRE GELÉ : plus
+    aucun nouveau lot ; les découvertes vont au §8 ; reste à finir : D-fix, M4b, M8, le réglage Falcon,
+    republications, verdict visuel de l'utilisateur sur ses 9 points.

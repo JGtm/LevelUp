@@ -17,9 +17,32 @@
  * (Wraith et Banshee M2 : « vue pilote prise 1 », 2026-09-04 ; Banshee M1 : la reconstruction
  * ORIGINALE de 0,125 s, 2026-09-05 — la piste « cadence du tag » a été abandonnée à la réécoute).
  *
- * DES VARIANTES D'ARMES À TIR CONTINU (Ghost, Banshee M1, Chopper, LMG du Falcon) restent ici
- * alors qu'aucun film ne les publie encore : ce sont des ASSETS livrés, pas des clés de tag — le
- * registre les nommera le jour où le décodeur lira le tir continu (lot M4b).
+ * DES VARIANTES D'ARMES À TIR CONTINU (Ghost, Banshee M1, Chopper, LMG du Falcon, LMG du Wasp)
+ * restent ici alors qu'aucun film ne les publie encore : ce sont des ASSETS livrés, pas des clés de
+ * tag — le registre les nommera le jour où le décodeur lira le tir continu (lot M4b).
+ *
+ * LIVRAISON DU 2026-09-24 (retours du rejeu, lot M6.1 ; sons désignés À L'OREILLE par
+ * l'utilisateur sur la page d'écoute `rr_2026-09-23`, « les premiers candidats sont tous bons »).
+ * Sources : rendus V3E hors dépôt (`Halo Infinite - Sons v75/rr_2026-09-23/`, manifeste
+ * `manifeste_rr_2026-09-23.json` : gains de chemin complets, une normalisation commune par rendu).
+ * Même recette que la livraison du 2026-09-04 (même en-tête RIFF `Lavf`, mesurée sur les stems
+ * livrés) : coupe à 1,2 s avec un fondu de sortie de 50 ms pour un coup plus long, source plus
+ * courte livrée entière ; gain LINÉAIRE = min(-16 LUFS - intégré, -1 dBTP - crête vraie), crête
+ * seule sous 0,4 s (intégré non mesurable) ; 48 kHz / 16 bits / stéréo.
+ *  - MISSILES DU WASP (`vehicle_shot_wasp_*`) : REMPLACÉS par le rendu rééquilibré
+ *    (`wasp_missiles_controle/coup_3p*`, événement e22a0d32, couches à +22 / +13 / +8 dB au lieu
+ *    des +7,8 / +2,8 / +0,8 dB de l'ancien rendu rev9 — mêmes médias, preuve au manifeste).
+ *  - LMG DU WASP (`vehicle_shot_wasp_lmg_*`, événement 5baca8ee, cadence du tag 600/min) : la
+ *    BOUCLE 3P (8 s, `boucle_8s_3p`) tenue pendant le tir et le COUP 3P isolé (0,2 s, deux prises)
+ *    en queue à l'arrêt. La boucle est égalisée par la recette ; la queue reçoit le MÊME gain
+ *    rapporté au rendu (écart de normalisation du manifeste : 1,64 contre 3,97 dB), pour que le
+ *    dernier coup ne sonne pas plus fort que la rafale qu'il termine. Câblage : lot M4b. LA
+ *    BOUCLE N'EST DANS AUCUNE TABLE DE PRODUCTION tant que rien ne la joue (0 code inerte) : elle
+ *    est DÉPOSÉE et déclarée au garde-rail d'assets (`replaySoundAssets.guard.test.ts`,
+ *    `DEPOSES_POUR_M4B`, avec son échéance).
+ *  - LANCE-GRENADES DU FALCON : AUCUN fichier — le registre lui donne les roquettes du
+ *    Rockethog, le jeu joue le MÊME événement (18 médias identiques, sonde SONS du 2026-09-24).
+ *  - Variantes lointaines A-E : NON retenues (décision du 2026-09-24), non livrées.
  *
  * LES TIRS DE VÉHICULE SONT DES BRUITAGES COMME LES AUTRES ARMES : catégorie `weapon` du
  * tiroir, plafond de voix du lecteur, famille `sfx` à l'export — rien à voir avec le bus moteur.
@@ -47,4 +70,7 @@ export const VEHICLE_SHOT_SOUND_VARIANTS: Readonly<Record<string, readonly strin
   vehicle_shot_wasp_1: ['vehicle_shot_wasp_1', 'vehicle_shot_wasp_2'],
   vehicle_shot_gungoose_1: ['vehicle_shot_gungoose_1', 'vehicle_shot_gungoose_2'],
   vehicle_shot_falcon_lmg_1: ['vehicle_shot_falcon_lmg_1', 'vehicle_shot_falcon_lmg_2'],
+  // LMG du Wasp : les deux prises du COUP isolé, la queue d'une rafale (cf. en-tête).
+  vehicle_shot_wasp_lmg_1: ['vehicle_shot_wasp_lmg_1', 'vehicle_shot_wasp_lmg_2'],
 }
+

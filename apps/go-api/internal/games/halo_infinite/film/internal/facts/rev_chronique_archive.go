@@ -271,3 +271,9 @@ package facts
 // RECOPIEE. Les tranches `replay/positions` (M1) et `replay/vehicules` (M4a) sont reunies dans
 // `Tranches()` : l arbre hache est l union des deux lots, chacun deja sans effet sur les lignes de
 // kill. Aucune lecture, aucune largeur, aucun appariement ne change.
+// 2026-09-24, LOT M7, REPRISE APRES REVUE ADVERSE (constat RR-M7-03) — REVISION INCHANGEE, EMPREINTE
+// SEULE RECOPIEE. `fallback/registre_replay_vehicules.go` recoit deux entrees de DONNEES,
+// `repli_decor_sous_le_sol_foule_du_match` et `repli_decor_carte_sans_zone_affiche` : le decor de
+// carte est decide A LA REQUETE par le service de rejeu (`internal/service/`), hors du decodeur et
+// hors de la cuisson. Aucune lecture, aucune largeur, aucun appariement ne change : aucune ligne de
+// kill ne change et aucun match deja decode n est candidat au backlog.

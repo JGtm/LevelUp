@@ -487,7 +487,8 @@ export function useReplayVehicles({
   // « DISPONIBLE » = AU MOINS UN VÉHICULE QUE LE CALQUE DESSINERAIT. Un film qui ne porte que du
   // décor (Falcon & consorts, cf. `FAMILLES_NON_JOUABLES`) n'a pas de calque à commander : la
   // bascule ne s'affiche pas, plutôt que d'allumer un calque resté vide. Le DÉCOR DE CARTE
-  // (véhicule posé, jamais simulé — `vehicleIsScenery`, 2026-09-23) compte de même.
+  // (posé par la carte hors de sa zone jouable, déclaré par le serveur — `vehicleIsScenery`,
+  // lots L1.3 et M7) compte de même.
   const available = useMemo(() => tracks.some((t) => !vehicleIsHidden(t)), [tracks])
 
   // UNE SEULE LIGNE, ET C'EST UN RATCHET : `sceneBinding.guard.test.ts` exige que l'id du calque

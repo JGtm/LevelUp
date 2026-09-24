@@ -47,6 +47,7 @@ func toReplayDocument(v replay.ReplayDocument) replaydoc.ReplayDocument {
 		Vehicles:            sliceOf(v.Vehicles, toVehicleTrack),
 		VehicleLabels:       mapOf(v.VehicleLabels, toVehicleLabel),
 		VehicleWeapons:      mapOf(v.VehicleWeapons, toVehicleWeapon),
+		VehicleScenery:      ptrOf(v.VehicleScenery, toVehicleScenery),
 		VehicleCycles:       sliceOf(v.VehicleCycles, toVehicleCycle),
 		WeaponPads:          sliceOf(v.WeaponPads, toWeaponPad),
 		PadPickups:          sliceOf(v.PadPickups, toPadPickup),

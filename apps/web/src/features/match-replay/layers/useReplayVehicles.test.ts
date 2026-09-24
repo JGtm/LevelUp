@@ -209,9 +209,9 @@ describe('useReplayVehicles — sprite et bordure sont indissociables', () => {
 })
 
 /**
- * « DISPONIBLE » ET LE DÉCOR DE CARTE (retours du rejeu 2026-09-23, lot L1.3 ; revue RR-L1-02).
- * Un document qui ne porte que des véhicules POSÉS par la carte (une seule position, à la
- * naissance au début du film, vie jusqu'à la fin du film, aucun occupant — `vehicleIsScenery`)
+ * « DISPONIBLE » ET LE DÉCOR DE CARTE (retours du rejeu 2026-09-23, lot L1.3 ; revue RR-L1-02 ;
+ * depuis le lot M7 du 2026-09-24, le décor est DÉCLARÉ par le serveur — `vehicleScenery.hidden` —,
+ * posé par la carte hors de sa zone jouable). Un document qui ne porte que du décor de carte
  * n'a rien que le calque dessinerait : la bascule ne doit pas s'afficher. Sans ce cas, remplacer
  * `vehicleIsHidden` par `vehicleIsDecor` dans le hook ne faisait tomber aucun test.
  */
@@ -224,9 +224,13 @@ function decor(slot: number, family: string): ReplayVehicleTrack {
   } as unknown as ReplayVehicleTrack
 }
 
-function disponible(vehicles: ReplayVehicleTrack[]): boolean {
+function disponible(vehicles: ReplayVehicleTrack[], decorSlots: number[] = []): boolean {
   vi.stubGlobal('fetch', vi.fn(() => Promise.resolve({ ok: true, json: () => Promise.resolve([]) })))
-  const doc = testReplayDoc({ vehicles })
+  const hidden = decorSlots.map((slot) => ({ slot, gen: 1, reason: 'off_play_area' }))
+  const vehicleScenery = {
+    zone: 'map', floor: 'played', candidates: hidden.length, inPlayArea: 0, zoneUnknown: 0, hidden,
+  }
+  const doc = testReplayDoc({ vehicles, vehicleScenery })
   const vue = renderHook(() =>
     useReplayVehicles({
       doc, view: VUE, frameRef: { current: 0 }, enabled: true, locale: 'fr', showNames: false, showAim: false,
@@ -242,10 +246,14 @@ function disponible(vehicles: ReplayVehicleTrack[]): boolean {
 
 describe('useReplayVehicles — le décor de carte ne rend pas le calque disponible', () => {
   it('un document qui ne porte que du décor de carte (Starboard) : calque indisponible', () => {
-    expect(disponible([decor(771, 'scorpion'), decor(772, 'wasp'), decor(774, 'warthog')])).toBe(false)
+    expect(disponible([decor(771, 'scorpion'), decor(772, 'wasp'), decor(774, 'warthog')], [771, 772, 774])).toBe(false)
   })
 
   it('témoin : le même décor plus un véhicule simulé — calque disponible', () => {
-    expect(disponible([decor(771, 'scorpion'), piste('warthog')])).toBe(true)
+    expect(disponible([decor(771, 'scorpion'), piste('warthog')], [771])).toBe(true)
+  })
+
+  it('M7 : les mêmes véhicules posés SANS verdict du serveur (hors zone non établi) : calque disponible', () => {
+    expect(disponible([decor(771, 'scorpion'), decor(772, 'wasp')])).toBe(true)
   })
 })

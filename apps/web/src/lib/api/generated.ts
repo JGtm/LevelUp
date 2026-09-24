@@ -4802,6 +4802,8 @@ export interface components {
             /** Format: int64 */
             snapped: number;
             /** Format: int64 */
+            unarmedGrants: number;
+            /** Format: int64 */
             unconfirmed: number;
         };
         BombArming: {
@@ -10092,6 +10094,8 @@ export interface components {
                 [key: string]: number;
             };
             /** Format: int64 */
+            unarmedGrants: number;
+            /** Format: int64 */
             unknownFamilies: number;
             /** Format: int64 */
             weapons: number;
@@ -10820,6 +10824,7 @@ export interface components {
             vehicleLabels?: {
                 [key: string]: components["schemas"]["VehicleLabel"];
             };
+            vehicleScenery?: components["schemas"]["VehicleScenery"];
             vehicleWeapons?: {
                 [key: string]: components["schemas"]["VehicleWeapon"];
             };
@@ -13740,6 +13745,24 @@ export interface components {
             /** Format: float */
             z?: number;
         };
+        VehicleScenery: {
+            /** Format: int64 */
+            candidates: number;
+            floor: string;
+            hidden?: components["schemas"]["VehicleSceneryLife"][] | null;
+            /** Format: int64 */
+            inPlayArea: number;
+            zone: string;
+            /** Format: int64 */
+            zoneUnknown: number;
+        };
+        VehicleSceneryLife: {
+            /** Format: int32 */
+            gen: number;
+            reason: string;
+            /** Format: int32 */
+            slot: number;
+        };
         VehicleSpawn: {
             /** Format: float */
             h?: number;
@@ -13876,6 +13899,8 @@ export interface components {
             swapped: number;
             /** Format: int64 */
             taken: number;
+            /** Format: int64 */
+            unarmedGrants: number;
         };
         WeaponDistanceRecordRow: {
             class?: string;

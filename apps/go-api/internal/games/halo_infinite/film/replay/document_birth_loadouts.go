@@ -23,17 +23,27 @@ package replay
 //
 // # CE QUI N'EST PAS UNE ARME
 //
-// Un emplacement vide n'est pas publié. Une famille hors du catalogue d'armes (`weaponv3`) non
-// plus : c'est le cas de l'objet de départ `00007CA9`, troisième emplacement au coup d'envoi, que
-// le catalogue ne nomme pas — il n'est PAS affiché comme une arme, et il est COMPTÉ (`nonWeapon`)
-// en attendant la décision de l'utilisateur (le masquer ou le nommer).
+// Un emplacement vide n'est pas publié. Chaque famille passe par LE passage unique des dotations,
+// `dotationWeaponName` (`loadouts.go`) — jamais par le catalogue d'armes en direct (garde-rail
+// `archlint/unarmed_dotation_gate_test.go`) :
+//
+//	les MAINS NUES   l'objet `00007CA9` que le jeu remet au troisième emplacement de chaque bipède
+//	                 (sonde CA9) est écarté par la règle NOMMÉE `filmshell.IsUnarmedFamily`
+//	                 (décision de l'utilisateur du 2026-09-24, lot M6.3) et COMPTÉ à part
+//	                 (`unarmedGrants`, le nom des deux compteurs jumeaux de `pickups` et de
+//	                 `weaponChanges`) — rebranché à la fusion de la campagne à jour (lot D-fix,
+//	                 2026-09-24) : la dotation de naissance le comptait jusque-là en `nonWeapon`,
+//	                 faute de la règle ;
+//	hors du CATALOGUE une autre famille que le catalogue d'armes ne nomme pas n'est pas affichée
+//	                 comme une arme et se compte en `nonWeapon` (0 attendu : un film neuf qui porte
+//	                 une famille inconnue le dit ici).
 
 import (
 	"sort"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
-	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar/weaponv3"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
+	"levelup/go-api/internal/games/weapons/filmshell"
 )
 
 // LoadoutSrcBirth est la provenance d'un relevé lu dans le record de création du corps.
@@ -66,8 +76,12 @@ type BirthLoadoutCoverage struct {
 	// première frame du rejeu.
 	NoLife       int `json:"noLife"`
 	BeforeOrigin int `json:"beforeOrigin"`
-	// NonWeapon : emplacements d'une famille hors du catalogue d'armes, non publiés comme armes.
+	// NonWeapon : emplacements d'une famille hors du catalogue d'armes (hors mains nues), non
+	// publiés comme armes.
 	NonWeapon int `json:"nonWeapon"`
+	// UnarmedGrants : emplacements portant l'objet « mains nues », écartés par la règle nommée
+	// `filmshell.IsUnarmedFamily` (remise du jeu à chaque naissance, jamais une arme affichée).
+	UnarmedGrants int `json:"unarmedGrants"`
 	// NoDisplayable : records fermés dont aucun emplacement ne porte d'arme publiable.
 	NoDisplayable int `json:"noDisplayable"`
 }
@@ -104,8 +118,9 @@ func buildBirthLoadouts(in birthInputs, tracks []Track, origin, step uint64) ([]
 	for _, b := range in.births {
 		// L'ARME D'ABORD : une fermeture sans arme du catalogue n'est pas une dotation lue, où
 		// qu'elle tombe sur l'axe du rejeu.
-		w, k, nonArme := armesPubliables(b.Weapons)
-		cov.NonWeapon += nonArme
+		w, k, ecarts := armesPubliables(b.Weapons)
+		cov.NonWeapon += ecarts.horsCatalogue
+		cov.UnarmedGrants += ecarts.mainsNues
 		if len(w) == 0 {
 			cov.NoDisplayable++
 			continue
@@ -197,18 +212,33 @@ func creationLaPlusProche(v fenetre, creees []int) (c, ecart int, ok bool) {
 	return c, ecart, ok
 }
 
+// emplacementsEcartes compte les emplacements NON VIDES d'une dotation que le document ne publie
+// pas, par cause.
+type emplacementsEcartes struct {
+	// mainsNues : l'objet « mains nues » (règle nommée `filmshell.IsUnarmedFamily`).
+	mainsNues int
+	// horsCatalogue : une famille que le catalogue d'armes ne nomme pas.
+	horsCatalogue int
+}
+
 // armesPubliables rend, dans l'ordre des emplacements, les armes d'une dotation que le document
-// publie (familles du catalogue, alias repliés sur leur nom), leur emplacement, et le nombre
-// d'emplacements écartés parce que leur famille n'est pas une arme du catalogue.
-func armesPubliables(weapons []types.BirthWeapon) (w []string, k []int, nonArme int) {
+// publie (familles du catalogue, alias repliés sur leur nom), leur emplacement, et les
+// emplacements écartés par cause. Le nom vient du PASSAGE UNIQUE des dotations
+// ([dotationWeaponName]) : la règle des mains nues s'y applique avant le catalogue.
+func armesPubliables(weapons []types.BirthWeapon) (w []string, k []int, ecarts emplacementsEcartes) {
 	vus := map[string]bool{}
 	for _, a := range weapons {
 		if a.Family == grammar.NoWeaponVariant {
 			continue
 		}
-		nom := weaponv3.WeaponName(a.Family)
-		if nom == "" {
-			nonArme++
+		nom := dotationWeaponName(a.Family)
+		switch {
+		case nom != "":
+		case filmshell.IsUnarmedFamily(a.Family):
+			ecarts.mainsNues++
+			continue
+		default:
+			ecarts.horsCatalogue++
 			continue
 		}
 		if vus[nom] {
@@ -218,7 +248,7 @@ func armesPubliables(weapons []types.BirthWeapon) (w []string, k []int, nonArme 
 		w = append(w, formatWeaponFamily(a.Family))
 		k = append(k, a.Emplacement)
 	}
-	return w, k, nonArme
+	return w, k, ecarts
 }
 
 // mergeLoadouts range dans une seule liste les relevés d'image-clé et les dotations de naissance,

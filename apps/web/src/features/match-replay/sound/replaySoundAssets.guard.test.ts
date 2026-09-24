@@ -28,6 +28,7 @@
  */
 import { describe, expect, it } from 'vitest'
 import { readdirSync, readFileSync } from 'node:fs'
+import { createHash } from 'node:crypto'
 import { resolve } from 'node:path'
 
 import {
@@ -117,6 +118,28 @@ const endMatchStems = [
   ...Object.values(END_FFA_WIN_VOICE_STEMS).flat(),
 ]
 
+/**
+ * DEPOSES_POUR_M4B — LES FICHIERS LIVRÉS AVANT LEUR CÂBLAGE, keyés par le stem de la première
+ * variante du COUP de leur arme (lot M6.1 des retours du rejeu, 2026-09-24 ; revue adverse,
+ * constat R10).
+ *
+ * La boucle de la LMG du Wasp (`vehicle_shot_wasp_lmg_loop`, 8 s, désignée à l'oreille par
+ * l'utilisateur le 2026-09-24) est le CORPS d'une rafale tenue : aucun film ne publie encore
+ * d'intervalle de tir continu, c'est le lot M4b (vue de contrôle) qui le lira et qui la jouera.
+ * Plutôt qu'une table de production que rien ne lit (motif « feature OFF pour plus tard »,
+ * règles 7 et 11 de CLAUDE.md), la boucle est déclarée ICI, pour que le garde-rail « 0 asset
+ * mort » la tolère en connaissance de cause et que ses propriétés (format, durée de boucle,
+ * coup déclaré) se vérifient sur le fichier.
+ *
+ * ÉCHÉANCE ET CRITÈRE DE RETRAIT : l'entrée QUITTE cette table dans le commit du lot M4b qui
+ * câble la boucle (elle entre alors dans une table de production ; le test « déposés, pas encore
+ * joués » ci-dessous devient rouge tant qu'elle est aux deux endroits) — ou le fichier est
+ * SUPPRIMÉ si M4b est abandonné. Date cible : clôture de la vague D, au plus tard le 2026-12-01.
+ */
+const DEPOSES_POUR_M4B: Readonly<Record<string, string>> = {
+  vehicle_shot_wasp_lmg_1: 'vehicle_shot_wasp_lmg_loop',
+}
+
 describe('garde-rail : manifeste sonore = dossier d assets', () => {
   const referenced = new Set([
     ...Object.values(WEAPON_SOUND_STEMS),
@@ -169,6 +192,9 @@ describe('garde-rail : manifeste sonore = dossier d assets', () => {
     // continues (enter/loop/exit + idle du Scorpion), pas des one-shots. Elles ont leur propre
     // garde-rail de durée et de format plus bas ; ici, seulement manifeste <-> dossier.
     ...allEngineStems(),
+    // Les fichiers DÉPOSÉS pour un lot qui les câblera (cf. `DEPOSES_POUR_M4B`) : déclarés ICI,
+    // jamais par une table de production que rien ne lit.
+    ...Object.values(DEPOSES_POUR_M4B),
   ])
 
   it('chaque stem du manifeste a son fichier .wav', () => {
@@ -660,11 +686,23 @@ describe('garde-rail : moteurs de vehicules (categorie boucles, banque du 2026-0
  * — le registre est la jointure `Shot.w -> stem` depuis qu'il a remplace la table client.
  */
 function stemsDuRegistreDesArmesDeVehicule(): string[] {
-  const toml = readFileSync(
+  return [...registreDesArmesDeVehicule().matchAll(/^sound\s*=\s*"([^"]+)"/gm)].map((m) => m[1])
+}
+
+/** Le texte du registre des armes de vehicule du titre. */
+function registreDesArmesDeVehicule(): string {
+  return readFileSync(
     resolve(REPO_ROOT, 'config/titles/halo_infinite/mappings/vehicle_weapons.toml'),
     'utf8',
   )
-  return [...toml.matchAll(/^sound\s*=\s*"([^"]+)"/gm)].map((m) => m[1])
+}
+
+/** Le `sound` de l'entree `[[weapons]]` d'un tag du registre, ou `undefined` (silence, absent). */
+function sonDuRegistre(tag: string): string | undefined {
+  const bloc = registreDesArmesDeVehicule()
+    .split('[[')
+    .find((b) => new RegExp(`^tag\\s*=\\s*"${tag}"`, 'm').test(b))
+  return bloc?.match(/^sound\s*=\s*"([^"]+)"/m)?.[1]
 }
 
 /**
@@ -681,10 +719,11 @@ function stemsDuRegistreDesArmesDeVehicule(): string[] {
  */
 describe('garde-rail : tirs d armes de vehicule (lot du 2026-09-04)', () => {
   it('chaque arme du registre tire dans ses variantes, et la premiere porte le stem du registre', () => {
-    // LE REGISTRE DU TITRE depuis le schema 69 (lot M4a) : les six armes OBSERVEES, dont une en
-    // silence decide (le lance-grenades du Falcon) — cinq sons.
+    // LE REGISTRE DU TITRE depuis le schema 69 (lot M4a) : les armes OBSERVEES. Sept sons depuis le
+    // lot M6 (2026-09-24) — le lance-grenades du Falcon n'est plus un silence decide (M6.1) et la
+    // bombe de la Banshee `850902EF` est identifiee (M6.2).
     const stems = stemsDuRegistreDesArmesDeVehicule()
-    expect(stems.length, 'le registre a change de nombre de sons').toBe(5)
+    expect(stems.length, 'le registre a change de nombre de sons').toBe(7)
     for (const stem of stems) {
       const variants = VEHICLE_SHOT_SOUND_VARIANTS[stem]
       expect(variants, stem).toBeTruthy()
@@ -701,8 +740,78 @@ describe('garde-rail : tirs d armes de vehicule (lot du 2026-09-04)', () => {
     expect(stemsDuRegistreDesArmesDeVehicule()).toContain('vehicle_shot_warthog_rocket_1')
   })
 
+  /**
+   * RETOURS DU 2026-09-24 (lot M6.1, designation a l'oreille) — LE LANCE-GRENADES DU FALCON JOUE
+   * LES ROQUETTES DU ROCKETHOG. Le jeu joue le MEME evenement pour les deux armes (sonde SONS :
+   * 18 medias et trois gains de chemin identiques, `a99352ab` / `a52af042`) : aucun fichier neuf,
+   * le registre nomme le stem deja livre.
+   */
+  it('le lance-grenades du Falcon : le registre lui donne les roquettes du Rockethog', () => {
+    expect(sonDuRegistre('0BB6976B')).toBe('vehicle_shot_warthog_rocket_1')
+    expect(sonDuRegistre('11725DC4')).toBe('vehicle_shot_wasp_1')
+  })
+
+  /**
+   * LA LIVRAISON DU 2026-09-24 EST FIGEE (lot M6.1) : les missiles du Wasp REMPLACES par le rendu
+   * V3E reequilibre, la LMG du Wasp DEPOSEE (coup isole x2 + corps de boucle). La recette est en
+   * tete de `vehicleShotSound.ts`. Une re-livraison qui ecraserait ces fichiers (par l'ancien
+   * rendu rev9, ou retronques) devient rouge ici au lieu de changer le son en silence.
+   */
+  it('livraison du 2026-09-24 : missiles et LMG du Wasp, fichiers figes', () => {
+    const figes: Readonly<Record<string, string>> = {
+      vehicle_shot_wasp_1: '92318e459dee1e98f66660e51697c980f2c56339b989f94cc1c9c42fa323ad11',
+      vehicle_shot_wasp_2: '73d3001a777d1e3a78e55fcdb98d8ae5116a1e5906fbebea7cf862cb8ceb4f43',
+      vehicle_shot_wasp_lmg_1: '3227a9d46c79904c837b6ddcdfb3dd8190fab76642e7d695e66bb7c9db3a2601',
+      vehicle_shot_wasp_lmg_2: 'e8ca76b9cee232aaecd0bbe935d503344a8aa14b4176465eafa82baabdeb8b1a',
+      vehicle_shot_wasp_lmg_loop: '683b2ce57924a47f54c2c1fe2feb41e91dfb67d9fa4c364e0a9703d27dc7b7bb',
+    }
+    for (const [stem, sha] of Object.entries(figes)) {
+      expect(shipped.has(stem), stem).toBe(true)
+      if (!shipped.has(stem)) continue
+      const h = createHash('sha256').update(readFileSync(resolve(SOUNDS_DIR, `${stem}.wav`)))
+      expect(h.digest('hex'), stem).toBe(sha)
+    }
+  })
+
+  /**
+   * DÉPOSÉS, PAS ENCORE JOUÉS (revue adverse du lot M6, constat R10) : une boucle déclarée dans
+   * `DEPOSES_POUR_M4B` ne figure dans AUCUN module de production du rejeu. Le jour où M4b la câble,
+   * ce test devient rouge : l'entrée quitte alors la table des déposés (critère de retrait écrit).
+   */
+  it('deposes pour M4b : aucun module de production ne les nomme encore', () => {
+    const racine = resolve(REPO_ROOT, 'apps', 'web', 'src')
+    const sources = (readdirSync(racine, { recursive: true }) as string[]).filter(
+      (f) => /\.tsx?$/.test(f) && !/\.test\.tsx?$/.test(f),
+    )
+    for (const boucle of Object.values(DEPOSES_POUR_M4B)) {
+      const citee = sources.filter((f) => readFileSync(resolve(racine, f), 'utf8').includes(boucle))
+      expect(citee, `${boucle} : câblée — la retirer de DEPOSES_POUR_M4B`).toEqual([])
+    }
+  })
+
+  /**
+   * LES BOUCLES DE TIR TENU (lot M6.1, cablage au lot M4b) : chaque boucle est rattachee au COUP
+   * d'une arme declaree dans les variantes, elle n'est PAS elle-meme une variante de coup (sinon
+   * le tirage par coup la jouerait a chaque tir), et elle n'est pas retronquee a la coupe des armes.
+   */
+  it('boucles de tir tenu : rattachees a un coup declare, jamais a la coupe des armes', () => {
+    const coups = new Set(Object.values(VEHICLE_SHOT_SOUND_VARIANTS).flat())
+    expect(Object.keys(DEPOSES_POUR_M4B).length).toBeGreaterThan(0)
+    for (const [coup, boucle] of Object.entries(DEPOSES_POUR_M4B)) {
+      expect(VEHICLE_SHOT_SOUND_VARIANTS[coup]?.[0], coup).toBe(coup)
+      expect(coups.has(boucle), `${boucle} : une boucle n est pas une variante de coup`).toBe(false)
+      const s = wavDurationS(resolve(SOUNDS_DIR, `${boucle}.wav`))
+      expect(s, `${boucle} : retronquee a la coupe des armes`).toBeGreaterThan(1.2)
+      expect(s, `${boucle} : au-dela du plafond de surete`).toBeLessThanOrEqual(SOUND_CUT_MAX_S)
+    }
+  })
+
   it('format canonique de la livraison : 48 kHz, 16 bits, stereo', () => {
-    for (const stem of Object.values(VEHICLE_SHOT_SOUND_VARIANTS).flat()) {
+    const livres = [
+      ...Object.values(VEHICLE_SHOT_SOUND_VARIANTS).flat(),
+      ...Object.values(DEPOSES_POUR_M4B),
+    ]
+    for (const stem of livres) {
       const buf = readFileSync(resolve(SOUNDS_DIR, `${stem}.wav`))
       let fmt: { canaux: number; cadence: number; bits: number } | null = null
       for (let at = 12; at + 8 <= buf.length; ) {

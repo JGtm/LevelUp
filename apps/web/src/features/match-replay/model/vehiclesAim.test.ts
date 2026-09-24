@@ -167,10 +167,10 @@ describe('vehicleChassisHeadingAt — la visée du conducteur sur les armes fixe
     expect(vu.ang).toBe(vehicleAimAngle(0))
   })
 
-  it('les neuf familles à arme fixe sont celles de la décision, et elles seules', () => {
+  it('les dix familles à arme fixe sont celles de la décision, et elles seules', () => {
     expect([...FAMILLES_ARME_FIXE].sort()).toEqual([
       'banshee', 'chopper', 'ghost', 'gungoose', 'mongoose',
-      'shade', 'tourelle_montee', 'wasp', 'wraith',
+      'shade', 'tourelle_fixe', 'tourelle_montee', 'wasp', 'wraith',
     ])
     // Les familles à TOURELLE ne sont PAS une seconde table : elles reçoivent le repli.
     for (const tourelle of [

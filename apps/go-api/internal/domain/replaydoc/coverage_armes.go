@@ -33,5 +33,6 @@ type BirthLoadoutCoverage struct {
 	NoLife            int `json:"noLife"`
 	BeforeOrigin      int `json:"beforeOrigin"`
 	NonWeapon         int `json:"nonWeapon"`
+	UnarmedGrants     int `json:"unarmedGrants"`
 	NoDisplayable     int `json:"noDisplayable"`
 }

@@ -226,7 +226,9 @@ families = ["grapple", "thruster"]
 # brise.
 #
 # Valeurs admises (elles nomment une GEOMETRIE de rendu, pas un type de degat) :
-#   ballistic | plasma | light | shock | explosive | melee | needles
+#   ballistic | plasma | light | shock | explosive | bomb | melee | needles
+#   (`bomb` depuis le 2026-09-24, retours du rejeu lot M6.2 : la deflagration a l echelle d une
+#   charge larguee — la bombe de la Banshee, « plus grosse », decision de l utilisateur)
 #
 # UNE ARME ABSENTE DE CETTE TABLE tombe sur le rendu neutre, jamais sur un rendu
 # approchant : un effet emprunte affirmerait une arme qu'on ignore.
@@ -271,6 +273,24 @@ hinf_plasma_grenade = "explosive"
 hinf_dynamo_grenade = "shock"
 hinf_bandit         = "ballistic"
 hinf_ma5k_avenger   = "ballistic"
+# EFFETS DE MORT DES ARMES DE VEHICULE (retours du rejeu, lot M6.2, decisions de l'utilisateur du
+# 2026-09-23 nuit ; revue adverse du lot, constat R5). La mort se dessine par la CLE du kill, que
+# killicon rend par source de degat : une cle de vehicule ne recoit une famille que si TOUTES ses
+# sources sont la meme arme. C'est le cas de deux vehicules :
+#   - `hinf_scorpion` : ses seules sources resolues sont les degats du CANON (`0bece71e`,
+#     `19bd6810`, regle BANQUE veh_un_scorpion ; les tags partages avec le fusil a lumiere sont
+#     ambigus et ne rendent aucune cle) -> explosion COMME LA GRENADE (`explosive`) ;
+#   - `hinf_rockethog` : ses seules sources sont les roquettes (`5a4450e4`, `798a239d`, vehi
+#     bcfb852f) -> explosion COMME LE SPNKR (`explosive`, la famille de `hinf_m41_spnkr`).
+# LA BOMBE DE LA BANSHEE N'A PAS D'ENTREE, ET C'EST VOULU : la regle BANQUE veh_cv_banshee rend
+# `hinf_banshee` pour les degats de la bombe (projectile 83189ef3 : `53b1e6c5`, `a21bf18a`) ET pour
+# ceux de trois autres projectiles de la Banshee (0001535a : `0001535b`, `0001535c` ; 0001535f :
+# `00015360` ; 79665713 : `fa4fad21`) ; une famille par cle poserait l'explosion de la bombe sur une
+# mort aux canons. La bombe est rouge et
+# plus grosse sur son TIR (registre `vehicle_weapons.toml`, forme `bomb`) ; a la MORT, elle attend
+# une cle par source de degat (limite ecrite du lot M6, consignee).
+hinf_scorpion       = "explosive"
+hinf_rockethog      = "explosive"
 
 # TEINTE d'un tir, par weapon_key — LA NATURE DE LA DECHARGE, pas le camp du tireur.
 #
@@ -772,10 +792,15 @@ solo_seconds  = 3.1
 #
 # TABLE PARTIELLE, ET ELLE DOIT LE RESTER. Le nom d'une famille de vehicule est un NOM PROPRE
 # du jeu (Warthog, Banshee, Mongoose) : il ne se traduit pas, et la cle de la table des sprites
-# EST deja ce nom. Dix-huit familles sur dix-neuf n'ont donc aucune ligne ici, et c'est le
-# regime normal — n'y entre QUE ce qui n'est pas un vehicule.
+# EST deja ce nom. Presque toutes les familles n'ont donc aucune ligne ici, et c'est le regime
+# normal — n'y entre QUE ce dont le nom est une DESCRIPTION (il se traduit) et la nature doit
+# traverser jusqu'au client.
 #
-# `kind` (liste fermee) : `map_element` = un objet de la CARTE, pas un vehicule de la partie.
+# `kind` (liste fermee) :
+#   `map_element`  = un objet de la CARTE, pas un vehicule de la partie : il ne porte jamais
+#                    d'occupant ;
+#   `fixed_turret` = une TOURELLE FIXE posee par la carte et OCCUPEE par un joueur (depuis le
+#                    2026-09-24, retours du rejeu lot M6.2) : son occupant embarque.
 # Le document le publie sur la famille, et le client le lit pour dessiner un pictogramme dedie
 # au lieu du marqueur neutre des chassis non resolus.
 #
@@ -808,4 +833,19 @@ family = "tourelle_auto_bannie"
 en     = "Banished auto-turret"
 fr     = "Tourelle automatique bannie"
 kind   = "map_element"
+sprite = false
+
+# LA TOURELLE FIXE — chassis `0x3a8060e2` (retours du rejeu, lot M6.2, 2026-09-24).
+#
+# INFORMATION DE L'UTILISATEUR DU 2026-09-24 : sur Takamanohara, l'objet pose `3a8060e2` est une des
+# deux TOURELLES FIXES (gatling / mortier) symetriques en hauteur — un poste de tir que les joueurs
+# OCCUPENT, pas un element de carte inerte. Recoupe par son tag `vehi` (armes `4d39877f` et
+# `3d30b955`, ce dernier nomme `gatling_mortar` par le script Lua global, sonde CA9) et par la sonde
+# C2 (objet pose par la carte, auquel la publication attribuait deja un occupant). Aucun asset a ce
+# jour (`sprite = false`) : le client dessine le pictogramme de tourelle, occupant compris.
+[[vehicle_families]]
+family = "tourelle_fixe"
+en     = "Fixed turret"
+fr     = "Tourelle fixe"
+kind   = "fixed_turret"
 sprite = false

@@ -73,6 +73,7 @@ export type {
  * qui tranche, et `calquePresent` (features/match-replay/model) porte cette lecture en un point.
  */
 export function normalizeReplayDocument(raw: ReplayDocument): ReplayDocumentReady {
+  const sceneryLives = new Set((raw.vehicleScenery?.hidden ?? []).map((h) => vehicleLifeKey(h.slot, h.gen)))
   return {
     ...raw,
     // Le calque des lectures de CAPACITÉ (schéma 6). Il remplace `Inventory.a`, retiré le
@@ -248,6 +249,10 @@ export function normalizeReplayDocument(raw: ReplayDocument): ReplayDocumentRead
     vehicleCycles: raw.vehicleCycles ?? [],
     vehicles: (raw.vehicles ?? []).map((v) => ({
       ...v,
+      // LE DÉCOR DE CARTE (lot M7, 2026-09-24) : le serveur nomme les vies posées par la carte
+      // hors de sa zone jouable (`vehicleScenery.hidden`) ; la vie le porte, pour que le calque
+      // n'ait qu'un prédicat à lire (`vehicleIsScenery`). Absent = aucun verdict de décor.
+      ...(sceneryLives.has(vehicleLifeKey(v.slot, v.gen)) ? { scenery: true } : {}),
       samples: v.samples ?? [],
       // LA SÉRIE DE VISÉE D'UN OCCUPANT (schéma 31) SE COMBLE AU TROISIÈME NIVEAU : c'est un
       // tableau nullable dans un tableau imbriqué, et la garde de contrat les exige tous comblés
@@ -281,4 +286,9 @@ export function normalizeReplayDocument(raw: ReplayDocument): ReplayDocumentRead
       gaugeRamps: z.gaugeRamps ?? [],
     })),
   }
+}
+
+/** La clé d'une VIE de véhicule : `(slot, gen)`, la seule clé d'une vie (cf. `VehicleTrack`). */
+function vehicleLifeKey(slot: number, gen: number): string {
+  return `${slot}/${gen}`
 }

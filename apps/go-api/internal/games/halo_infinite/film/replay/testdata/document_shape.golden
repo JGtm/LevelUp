@@ -1,9 +1,9 @@
 # EMPREINTE DE FORME DU DOCUMENT DE REJEU — fige par document_shape_test.go.
 # Ne s'edite JAMAIS a la main : regeneration decrite en tete de ce test.
 schema 70
-empreinte-stockee 99c0fcc015771ab4
-empreinte-servie 99c0fcc015771ab4
-empreinte-cuite f2fdac157fe27b5c
+empreinte-stockee 0ee277b235652abe
+empreinte-servie 0ee277b235652abe
+empreinte-cuite 769cfbd43fd8a4ff
 empreinte-cuite-regle 2
 
 AbilityCharge
@@ -73,6 +73,7 @@ BirthLoadoutCoverage
   Published json:"published" int
   Read json:"read" int
   Snapped json:"snapped" int
+  UnarmedGrants json:"unarmedGrants" int
   Unconfirmed json:"unconfirmed" int
 BombArming
   FuseMS json:"fuseMs" int
@@ -660,6 +661,7 @@ PickupCoverage
   Refused json:"refused" int
   SpawnPointsState json:"spawnPointsState" string
   SpawnerByPointKind json:"spawnerByPointKind,omitempty" map[string]int
+  UnarmedGrants json:"unarmedGrants" int
   UnknownFamilies json:"unknownFamilies" int
   Weapons json:"weapons" int
 PlayerScore
@@ -751,6 +753,7 @@ ReplayDocument
   Translocations json:"translocations,omitempty" []Translocation
   VehicleCycles json:"vehicleCycles,omitempty" []VehicleCycle
   VehicleLabels json:"vehicleLabels,omitempty" map[string]VehicleLabel
+  VehicleScenery json:"vehicleScenery,omitempty" *VehicleScenery
   VehicleWeapons json:"vehicleWeapons,omitempty" map[string]VehicleWeapon
   Vehicles json:"vehicles,omitempty" []VehicleTrack
   VipCrown json:"vipCrown,omitempty" []VipPeriod
@@ -1038,6 +1041,17 @@ VehicleSample
   X json:"x" float32
   Y json:"y" float32
   Z json:"z,omitempty" float32
+VehicleScenery
+  Candidates json:"candidates" int
+  Floor json:"floor" string
+  Hidden json:"hidden,omitempty" []VehicleSceneryLife
+  InPlayArea json:"inPlayArea" int
+  Zone json:"zone" string
+  ZoneUnknown json:"zoneUnknown" int
+VehicleSceneryLife
+  Gen json:"gen" uint32
+  Reason json:"reason" string
+  Slot json:"slot" uint32
 VehicleSpawn
   H json:"h,omitempty" *float32
   X json:"x" float32
@@ -1102,6 +1116,7 @@ WeaponChangeCoverage
   Restated json:"restated" int
   Swapped json:"swapped" int
   Taken json:"taken" int
+  UnarmedGrants json:"unarmedGrants" int
 WeaponLabel
   En json:"en" string
   Fr json:"fr" string

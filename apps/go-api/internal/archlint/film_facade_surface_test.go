@@ -213,7 +213,16 @@ const plafondSurfaceFacade = 166 // 2026-09-17 — base a5d15e634
 //	                                           `replayview`) et la reference de vie des pieces
 //	                                           montees (`replay.VehicleLifeRef`, `replayview`).
 //	                                           RE-MESURE A L ENTREE du lot : 265 sur `b74c8f294`.
-//	271  rr(m3)  (2026-09-24)                  la montee de schema de la vague D des « retours
+//	273  retours du rejeu M7 (2026-09-24)        +4 : le verdict de decor de carte pose a la requete
+//	                                           (`replay.VehicleScenery`, `replay.VehicleSceneryLife`,
+//	                                           cites par `service/replay_vehicle_scenery_rule.go`
+//	                                           et `replayview`) et les deux fins de vie que la
+//	                                           regle de pose lit (`replay.VehicleEndFilmEnd`) et que
+//	                                           son test ecarte (`replay.VehicleEndDestroyed`). La
+//	                                           regle elle-meme vit dans le service : ses constantes
+//	                                           et fonctions n entrent pas dans cette surface.
+//	                                           RE-MESURE A L ENTREE du lot : 269 sur `cd60b6ac5`.
+//	275  rr(m3)  (2026-09-24)                  la montee de schema de la vague D des « retours
 //	                                           rejeu » (69 sur la branche, 70 a l integration) :
 //	                                           `replay.KeyframeCoverage` (sante de la
 //	                                           marche d image-cle, lot M3.1) et
@@ -225,8 +234,10 @@ const plafondSurfaceFacade = 166 // 2026-09-17 — base a5d15e634
 //	                                           `WeaponChange.K` n en ajoutent aucun.
 //	                                           RE-MESURE A L ENTREE du lot : 265 sur `fe7079f41`,
 //	                                           267 apres ; a l integration de la vague D
-//	                                           (2026-09-24), sur la vague C (269) : 271.
-const plafondSurfaceReplay = 271 // 2026-09-24 — integration vague D : 269 (vague C, M4a) + 2 (rr(m3) : KeyframeCoverage, BirthLoadoutCoverage)
+//	                                           (2026-09-24), sur la vague C (269) : 271 ; a la
+//	                                           fusion de la campagne a jour (M7 compris, lot
+//	                                           D-fix) : 273 + 2 = 275.
+const plafondSurfaceReplay = 275 // 2026-09-24 — vague D sur la campagne a jour : 273 (vague C, M7) + 2 (rr(m3) : KeyframeCoverage, BirthLoadoutCoverage)
 
 // plafondsParFamilleFacade — la surface de la facade VENTILEE PAR PAQUET D ORIGINE.
 //

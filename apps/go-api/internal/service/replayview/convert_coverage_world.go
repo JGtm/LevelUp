@@ -83,6 +83,7 @@ func toPickupCoverage(v replay.PickupCoverage) replaydoc.PickupCoverage {
 		Weapons:            v.Weapons,
 		Items:              v.Items,
 		UnknownFamilies:    v.UnknownFamilies,
+		UnarmedGrants:      v.UnarmedGrants,
 		BeforeOrigin:       v.BeforeOrigin,
 		MultiEvent:         v.MultiEvent,
 		Refused:            v.Refused,

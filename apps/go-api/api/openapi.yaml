@@ -9052,6 +9052,9 @@ components:
         snapped:
           format: int64
           type: integer
+        unarmedGrants:
+          format: int64
+          type: integer
         unconfirmed:
           format: int64
           type: integer
@@ -9068,6 +9071,7 @@ components:
         - noLife
         - beforeOrigin
         - nonWeapon
+        - unarmedGrants
         - noDisplayable
       type: object
     BombArming:
@@ -21501,6 +21505,9 @@ components:
             format: int64
             type: integer
           type: object
+        unarmedGrants:
+          format: int64
+          type: integer
         unknownFamilies:
           format: int64
           type: integer
@@ -21514,6 +21521,7 @@ components:
         - weapons
         - items
         - unknownFamilies
+        - unarmedGrants
         - beforeOrigin
         - multiEvent
         - refused
@@ -23458,6 +23466,8 @@ components:
           additionalProperties:
             $ref: '#/components/schemas/VehicleLabel'
           type: object
+        vehicleScenery:
+          $ref: '#/components/schemas/VehicleScenery'
         vehicleWeapons:
           additionalProperties:
             $ref: '#/components/schemas/VehicleWeapon'
@@ -30589,6 +30599,53 @@ components:
         - x
         - "y"
       type: object
+    VehicleScenery:
+      additionalProperties: false
+      properties:
+        candidates:
+          format: int64
+          type: integer
+        floor:
+          type: string
+        hidden:
+          items:
+            $ref: '#/components/schemas/VehicleSceneryLife'
+          type:
+            - array
+            - "null"
+        inPlayArea:
+          format: int64
+          type: integer
+        zone:
+          type: string
+        zoneUnknown:
+          format: int64
+          type: integer
+      required:
+        - zone
+        - floor
+        - candidates
+        - inPlayArea
+        - zoneUnknown
+      type: object
+    VehicleSceneryLife:
+      additionalProperties: false
+      properties:
+        gen:
+          format: int32
+          minimum: 0
+          type: integer
+        reason:
+          type: string
+        slot:
+          format: int32
+          minimum: 0
+          type: integer
+      required:
+        - slot
+        - gen
+        - reason
+      type: object
     VehicleSpawn:
       additionalProperties: false
       properties:
@@ -30909,6 +30966,9 @@ components:
         taken:
           format: int64
           type: integer
+        unarmedGrants:
+          format: int64
+          type: integer
       required:
         - decoded
         - published
@@ -30917,6 +30977,7 @@ components:
         - taken
         - dropped
         - swapped
+        - unarmedGrants
       type: object
     WeaponDistanceRecordRow:
       additionalProperties: false

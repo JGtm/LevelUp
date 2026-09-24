@@ -394,6 +394,8 @@ type WeaponChangeCoverage struct {
 	Taken        int `json:"taken"`
 	Dropped      int `json:"dropped"`
 	Swapped      int `json:"swapped"`
+	// UnarmedGrants (schéma 69, lot M6) : les remises des mains nues, hors des changements publiés.
+	UnarmedGrants int `json:"unarmedGrants"`
 }
 
 // TranslocationCoverage dit ce que le calque a vu et ce qu'il a écarté — le patron des

@@ -412,6 +412,9 @@ const NULLABLE_ARRAY_PATHS = [
   // pendant la cuisson. Même régime qu'`identity` — la liste se comble, l'objet `coverage`
   // garde le droit d'être absent.
   'coverage.fallbacks',
+  // LE VERDICT DE DÉCOR DE CARTE (lot M7, 2026-09-24) : servi à la requête, lu une seule fois par
+  // la frontière qui le replie sur chaque vie (`track.scenery`) — cf. PATHS_HORS_FRONTIERE.
+  'vehicleScenery.hidden',
 ] as const
 
 /**
@@ -432,6 +435,9 @@ const PATHS_HORS_FRONTIERE = [
   // marche, publie parce que c'est le pre-requis le plus facile a oublier. Il vit dans
   // `coverage`, donc hors frontiere pour la meme raison que les deux ci-dessus.
   'coverage.stances.mapWidths',
+  // `vehicleScenery.hidden` (lot M7) : la frontière le LIT (`?? []`) pour poser `scenery` sur
+  // chaque vie ; le calque ne relit jamais la liste — la combler ici en ferait une seconde vérité.
+  'vehicleScenery.hidden',
 ] as const
 
 /** (3) La carte couvre EXACTEMENT les tableaux nullables du contrat, à toute profondeur. */

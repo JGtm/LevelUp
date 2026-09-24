@@ -45,6 +45,7 @@ type ReplayDocument struct {
 	Vehicles            []VehicleTrack           `json:"vehicles,omitempty"`
 	VehicleLabels       map[string]VehicleLabel  `json:"vehicleLabels,omitempty"`
 	VehicleWeapons      map[string]VehicleWeapon `json:"vehicleWeapons,omitempty"`
+	VehicleScenery      *VehicleScenery          `json:"vehicleScenery,omitempty"`
 	VehicleCycles       []VehicleCycle           `json:"vehicleCycles,omitempty"`
 	WeaponPads          []WeaponPad              `json:"weaponPads,omitempty"`
 	PadPickups          []PadPickup              `json:"padPickups,omitempty"`
@@ -78,7 +79,8 @@ type ReplayDocument struct {
 	// Objet ABSENT = artefact anterieur au schema 62 ; entree ABSENTE dans un objet PRESENT = ce
 	// calque n a pas ete produit, et c est une reponse, pas un trou ; entree presente = produit
 	// sous la revision nommee. Les calques resolus a la requete (`mapObjectives`, `mapWeaponPads`,
-	// `weaponTiers`, `vehicleLabels`, `vehicleWeapons`) n y figurent jamais : la cuisson ne les ecrit pas.
+	// `weaponTiers`, `vehicleLabels`, `vehicleWeapons`, `vehicleScenery`) n y figurent jamais : la cuisson ne les
+	// ecrit pas.
 	Layers map[string]string `json:"layers,omitempty"`
 }
 
@@ -255,7 +257,8 @@ type WeaponLabel struct {
 // `Kind`, `En` et `Fr` sont OPTIONNELS et presque toujours vides : le nom d une famille de
 // vehicule est un nom propre du jeu, qui ne se traduit pas, et la cle de la table EST ce nom. Ils
 // ne se remplissent que pour les familles que le titre QUALIFIE dans son manifeste — la tourelle
-// automatique bannie (`kind = "map_element"`), aujourd hui la seule.
+// automatique bannie (`kind = "map_element"`) et, depuis le 2026-09-24 (lot M6.2), la tourelle fixe
+// occupable (`kind = "fixed_turret"`).
 type VehicleLabel struct {
 	Img    string `json:"img,omitempty"`
 	Tinted bool   `json:"tinted,omitempty"`

@@ -23,7 +23,7 @@
  * mesure pas la destruction, ce texte ne change RIEN à ce qui s'affiche.
  *
  * SIX RESPONSABILITÉS PURES, TESTABLES SANS CANVAS : le REFUS DU DÉCOR (`vehicleIsDecor`,
- * `vehicleIsScenery` — le véhicule posé par la carte, jamais simulé —, `vehicleIsHidden`,
+ * `vehicleIsScenery` — le décor de carte déclaré par le serveur —, `vehicleIsHidden`,
  * `vehicleCanEmbark`), l'ORIENTATION (`vehicleHeadingAt`, `vehicleScreenAngle`,
  * `vehicleAimAngle`), la TAILLE (`vehicleSpriteScale`, ancrée sur le pion), l'OCCUPATION
  * (`vehicleActiveRides`, `vehicleDriverAt`, `vehicleColorAt`), le PRÉDICAT EMBARQUÉ
@@ -112,56 +112,28 @@ export function vehicleIsDecor(family: string | undefined): boolean {
 }
 
 /**
- * VEHICLE_END_FILM_END — la fin publiée d'une vie qui court jusqu'à la fin du film (côté Go :
- * `VehicleEndFilmEnd`, `film/replay/document_vehicles.go`). Nommée pour la même raison que
- * `VEHICLE_END_DESTROYED`.
- */
-export const VEHICLE_END_FILM_END = 'film_end'
-
-/**
- * VEHICLE_FILM_FIRST_FRAME — la frame 0 du document, calée sur le premier paquet de POSITION du
- * film (côté Go : `OriginMs`, `film/replay/document.go`). Une vie née à cette frame — ou avant,
- * si son record de création précède l'origine — existait avant que la partie ne se joue.
- */
-export const VEHICLE_FILM_FIRST_FRAME = 0
-
-/**
- * vehicleIsScenery — vrai quand la vie est un VÉHICULE DE DÉCOR de la carte : né au début du
- * film, le DOCUMENT ne lui publie qu'UN échantillon, à la naissance (`samples[0].t === t0`), la
- * vie court jusqu'à la fin du film et personne n'y monte jamais. (Précision de la sonde C2 du
- * 2026-09-23, lot M1 : le film réplique la POSE du décor — avant l'origine, sous l'index de
- * placement Forge — puis plus rien ; c'est cette réplication unique que l'échantillon publie.)
+ * vehicleIsScenery — vrai quand le SERVEUR a déclaré la vie VÉHICULE DE DÉCOR de la carte
+ * (`doc.vehicleScenery.hidden`, posé à la requête — lot M7 des retours du rejeu, 2026-09-24 ;
+ * replié sur chaque vie en `track.scenery` par `normalizeReplayDocument`).
  *
- * DÉCISION UTILISATEUR DU 2026-09-23 (Q13, retours du rejeu, lot L1.3) : MASQUÉS, comme les
- * familles non jouables. Constat : sur Starboard, six véhicules posés par la carte Forge
- * (1 Scorpion, 2 Wasp, 3 Warthog) à 19-24 m au sud de l'arène, identiques au centimètre dans les
- * deux matchs du parc ; sur Goliath, un Wasp sous le sol. 13 vies au parc, 0 des 232 vies en
- * jeu (dont 90 garées jamais occupées, mais SIMULÉES : 52 à 76 positions chacune).
+ * LA RÈGLE VIT CÔTÉ GO (`internal/service/replay_vehicle_scenery_rule.go` ; la forme publiée dans
+ * `film/replay/vehicle_scenery.go`), PLUS ICI. Elle a quitté ce fichier par son propre critère de
+ * retrait (lot L1.3 : « quand le producteur publie lui-même le décor de carte, ce prédicat lit ce
+ * marqueur et ses conditions disparaissent d'ici »), parce que la décision utilisateur du
+ * 2026-09-24 lui ajoute une condition que le client ne sait pas lire : la vie doit être POSÉE par
+ * la carte (un seul échantillon, à sa naissance à la frame 0, vie jusqu'à la fin du film, aucun
+ * occupant) ET HORS DE LA ZONE JOUABLE — la matière praticable du fond de carte publié, en plan,
+ * et le sol foulé du match (la plus basse altitude où un joueur est resté), en hauteur. Sur
+ * Behemoth, des Mongoose posés dans l'aire de jeu que personne ne touche restent donc dessinés.
  *
- * CE N'EST PAS UN SEUIL : c'est ce que le film écrit. Un véhicule simulé est répliqué, même
- * immobile ; celui-ci ne l'est jamais. Une vie sans aucun échantillon (tourelle bannie, élément
- * de carte) n'est pas concernée : elle garde sa règle.
+ * Le film réplique la POSE du décor avant l'origine du match (7 à 117 records, sonde C2) ; la
+ * publication n'en garde qu'un échantillon, ramené à la naissance : c'est lui que la règle lit.
  *
- * NÉ AVANT LA PARTIE (revue RR-L1-PARC-02, 2026-09-23) : le décor est posé au chargement de la
- * carte, donc présent dès la frame 0 (`VEHICLE_FILM_FIRST_FRAME`). Sans cette condition, un
- * véhicule JOUABLE apparu dans le dernier intervalle d'échantillonnage (un échantillon à `t0`,
- * fin de film, jamais occupé) serait masqué — et, né sur un emplacement, le tiendrait pour
- * occupé sans qu'aucun sprite ne s'y dessine. Parc du 23/09 : les 13 vies masquées naissent à 0.
- *
- * RÈGLE CLIENTE, SANS COMPTEUR : ce lot est sans schéma, la couverture ne peut pas la compter.
- * Critère de retrait : quand le producteur publie lui-même le décor de carte (lot M4a des
- * retours du rejeu : vie marquée décor et comptée dans `coverage.vehicles`), ce prédicat lit ce
- * marqueur et ses conditions disparaissent d'ici.
+ * Verdict absent (carte sans zone connue, document servi sans ce calque) : rien n'est masqué. Le
+ * serveur compte ce repli (`vehicleScenery.zoneUnknown`) ; le client ne le devine jamais.
  */
 export function vehicleIsScenery(track: ReplayVehicleTrackReady): boolean {
-  const s = track.samples
-  return (
-    s.length === 1 &&
-    track.t0 <= VEHICLE_FILM_FIRST_FRAME &&
-    s[0].t === track.t0 &&
-    track.end === VEHICLE_END_FILM_END &&
-    track.rides.length === 0
-  )
+  return track.scenery === true
 }
 
 /**
@@ -241,7 +213,29 @@ export const VEHICLE_MAP_ELEMENT_RENDER: Readonly<Record<string, VehicleMapEleme
   // d'assets change (`static/vehicles-assets/{slug}/replay/index.json` + `sprite = true` dans
   // `replay_labels.toml`) — pas une ligne d'ici.
   tourelle_auto_bannie: 'turret',
+  // LA TOURELLE FIXE (châssis `0x3a8060e2`, retours du rejeu lot M6.2, 2026-09-24) : les tourelles
+  // gatling / mortier de Takamanohara, que les joueurs OCCUPENT. Même pictogramme faute d'asset ;
+  // sa nature (`fixed_turret`) la laisse embarquer son occupant.
+  tourelle_fixe: 'turret',
 }
+
+/**
+ * VEHICLE_KIND_FIXED_TURRET — la nature publiée d'une TOURELLE FIXE posée par la carte et OCCUPÉE
+ * par un joueur (côté Go : `mappings.VehicleFamilyKindFixedTurret`, lot M6.2 du 2026-09-24). Elle
+ * se DESSINE comme un élément de carte (le pictogramme de sa famille), mais elle EMBARQUE : c'est
+ * le poste de tir d'un joueur, pas un objet inerte.
+ */
+export const VEHICLE_KIND_FIXED_TURRET = 'fixed_turret'
+
+/**
+ * VEHICLE_GLYPH_KINDS — les natures publiées qui se dessinent par le pictogramme de leur famille
+ * (`VEHICLE_MAP_ELEMENT_RENDER`) quand aucun asset n'est servi. L'embarquement, lui, reste décidé
+ * par la seule nature `map_element` (`vehicleCanEmbark`).
+ */
+const VEHICLE_GLYPH_KINDS: ReadonlySet<string> = new Set([
+  VEHICLE_KIND_MAP_ELEMENT,
+  VEHICLE_KIND_FIXED_TURRET,
+])
 
 /**
  * vehicleMapElementGlyph — le pictogramme à dessiner pour cette famille, ou `null`.
@@ -255,7 +249,7 @@ export function vehicleMapElementGlyph(
   family: string | undefined,
   kind: string | undefined,
 ): VehicleMapElementGlyph | null {
-  if (family === undefined || kind !== VEHICLE_KIND_MAP_ELEMENT) return null
+  if (family === undefined || kind === undefined || !VEHICLE_GLYPH_KINDS.has(kind)) return null
   return VEHICLE_MAP_ELEMENT_RENDER[family] ?? null
 }
 
@@ -342,8 +336,8 @@ export const VEHICLE_HUMAN_FAMILIES: ReadonlySet<string> = new Set([
  * visée de son conducteur (`rides[].aim`, schéma 31 — justesse 0,2 à 0,5 degré contre la
  * référence publiée, couverture 35 épisodes attestés sur 35).
  *
- * POURQUOI CES NEUF FAMILLES, ET PAS LES AUTRES. Sur un Ghost, une Banshee, un Wraith, une Wasp,
- * un Chopper, une Shade ou une tourelle montée, l'arme NE TOURNE PAS par rapport au corps :
+ * POURQUOI CES DIX FAMILLES, ET PAS LES AUTRES. Sur un Ghost, une Banshee, un Wraith, une Wasp,
+ * un Chopper, une Shade, une tourelle montée ou fixe, l'arme NE TOURNE PAS par rapport au corps :
  * viser, c'est tourner le véhicule, donc la visée EST l'avant du châssis. Le Mongoose et le
  * Gungoose n'ont pas d'arme de conducteur mais leur avant suit le conducteur de la même façon.
  *
@@ -365,6 +359,8 @@ export const FAMILLES_ARME_FIXE: ReadonlySet<string> = new Set([
   'chopper',
   'shade',
   'tourelle_montee',
+  // La TOURELLE FIXE de Takamanohara (lot M6.2, 2026-09-24) : viser, c'est tourner la tourelle.
+  'tourelle_fixe',
   'mongoose',
   'gungoose',
 ])

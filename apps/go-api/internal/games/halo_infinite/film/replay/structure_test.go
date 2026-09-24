@@ -1263,8 +1263,8 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   CE QUI NE MONTE PAS : `facts.Rev` (`killsource` ne lit aucun état de mouvement) et
 	//   `layers`. `grammar.Rev` a monté, la couche écrivant l'étiquette de genre.
 	//   Détail : `document_chronicle.go`.
-	// - v69 (vague C des retours du rejeu, 2026-09-24) : UNE montée pour trois lots (M1, M5,
-	//   M4a), aucune révision de décodage : republication DEPUIS LES FAITS.
+	// - v69 (vague C des retours du rejeu, 2026-09-24) : UNE montée pour quatre lots (M1, M5,
+	//   M4a, M6), aucune révision de décodage : republication DEPUIS LES FAITS.
 	//   Lot M1 (2026-09-23, décision utilisateur Q15) : la publication
 	//   des positions applique la GRAMMAIRE DE LA VIE (aucune position d'un corps avant sa
 	//   création) et deux REPLIS NOMMÉS (emprise jouée, silence d'un véhicule) ; champ neuf
@@ -1286,6 +1286,9 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   `familyUnknown`. CE QUI NE MONTE PAS : aucune révision de décodage (tout se joue sur les
 	//   vies assemblées ; la republication depuis les faits suffit), `layers`. Détail :
 	//   `document_chronicle.go`.
+	//   Lot M6 (2026-09-24) : LA REMISE DES MAINS NUES N'EST PAS UNE PRISE. `pickups[]` et
+	//   `weaponChanges[]` ne publient plus la remise de l'objet « mains nues » que le jeu fait à
+	//   chaque début de vie ; deux compteurs neufs, `unarmedGrants`. Détail : `document_chronicle.go`.
 	// - v70 (vague D des retours du rejeu, 2026-09-24) : UNE montée pour les lots de la vague,
 	//   partis avant la vague C ; `grammar.Rev`, `SchemaDesFaits` et `facts.Rev` (M3) montent une
 	//   fois (re-décodage).
