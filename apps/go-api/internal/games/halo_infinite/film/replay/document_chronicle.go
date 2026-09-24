@@ -2371,7 +2371,10 @@ package replay
 // mouvement. Règle des places tenue sur les cinq : au plus 4 fiches par équipe à chaque frame, 4
 // places par équipe, aucune place à deux fiches, 0 image-clé douteuse, 0 borne différée ;
 // `b1ad85eb` 4 + 4 aux trois instants signalés (Eagle à 3 pendant 332 frames : la place vide d un
-// relais, Q20). ÉTATS DE MOUVEMENT, base -> tête, sur huit films : 0 vie ne perd un intervalle.
+// relais, Q20). GATE DE CORPUS (les onze témoins non BTB, base `ba475d2e4`) : la règle des places
+// tient sur les onze, 0 image-clé douteuse. ÉTATS DE MOUVEMENT, base -> tête, sur les seize films :
+// aucune vie ne perd un intervalle, hors un accroupi d une frame de `c75f33b8` (0,1 s à 0,4 m/s)
+// que l alignement du record NEW de M3.2 efface.
 //
 // LES SIX ÉCARTS DE LA PRÉ-INTÉGRATION, INSTRUITS SUR PIÈCES :
 //

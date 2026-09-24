@@ -489,4 +489,5 @@ package grammar
 // EN DUR (chaine ou NEW) d un autre archetype est une lecture fausse, que la traversee du NEW de
 // bipede (R(32), M3.2) atteignait (`0797ce72` c12 : « 123 ti 2 » ecrasait le `ti 4` de chaque paquet,
 // onze vies perdues ; `396cfc92` : sept). Il n est plus lie, la marche continue (compteur
-// `NeufsContreUnVivant`). Mesure (huit films, base -> tete) : 0 vie ne perd un intervalle.
+// `NeufsContreUnVivant`). Mesure (seize films non BTB, base -> tete) : aucune vie ne perd un
+// intervalle, hors un accroupi d une frame de `c75f33b8` que l alignement de M3.2 efface.

@@ -172,13 +172,13 @@ var plafondsParFichier = map[string]int{
 	// complete a sa fusion (`facts.Rev`), +59 : la dotation de naissance, `loadouts[].src` et
 	// `.k`, `weaponChanges[].k`, le changement de SENS des premieres emissions,
 	// `coverage.keyframes` et `.birthLoadouts`.
-	// Partie D-fix (2026-09-24, lot correctif de la pre-integration de la vague D), +89 : la marche
+	// Partie D-fix (2026-09-24, lot correctif de la pre-integration de la vague D), +92 : la marche
 	// qui ne perd plus ce qu un record prouve lui interdit de perdre, les images-cles douteuses qui
 	// ne concluent rien, trois compteurs neufs et le compteur des mains nues de la naissance, les
 	// deux regressions residuelles de M3 corrigees dans la marche des etats de mouvement, la mesure
 	// au parc et le verdict ecrit des six ecarts de la pre-integration.
 	// Exception ecrite, dans les commits de fusion qui reunissent la montee.
-	"internal/games/halo_infinite/film/replay/document_chronicle.go": 2409,
+	"internal/games/halo_infinite/film/replay/document_chronicle.go": 2412,
 	// --- production, hors perimetre du lot 2.7 (aucune preuve d equivalence ne couvrait
 	// leur scission : elle se decidera au lot qui les rouvrira).
 	// `assist.go` EST SORTI DE CETTE TABLE LE 2026-09-16 (lot 2.6.2) : le type `Assist` a descendu
