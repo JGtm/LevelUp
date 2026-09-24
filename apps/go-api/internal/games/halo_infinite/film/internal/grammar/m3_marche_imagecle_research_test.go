@@ -26,16 +26,10 @@ import (
 // immediat de generation 1 trouve N IMPORTE OU dans la fenetre gagne (chemin rapide inchange) ;
 // sinon le candidat de generation 1 le PLUS PROCHE ; a defaut, la regle de production.
 func m3ScanV2(buf []byte, from, prevSlot, total, maxWin int) (at int) {
-	return m3ScanRegle(buf, from, prevSlot, total, maxWin, false)
+	return m3ScanRegle(buf, from, prevSlot, total, maxWin)
 }
 
-// m3ScanV2c est V2, mais un voisin immediat de generation >= 2 garde la priorite sur un
-// candidat non consecutif de generation 1 (la priorite « consecutif d abord » de la production).
-func m3ScanV2c(buf []byte, from, prevSlot, total, maxWin int) (at int) {
-	return m3ScanRegle(buf, from, prevSlot, total, maxWin, true)
-}
-
-func m3ScanRegle(buf []byte, from, prevSlot, total, maxWin int, consecutifDAbord bool) (at int) {
+func m3ScanRegle(buf []byte, from, prevSlot, total, maxWin int) (at int) {
 	at = -1
 	best := kfCand{consecutive: -1, gen: 1 << 30, slot: 1 << 30, bit: 1 << 30}
 	proche := -1
@@ -70,9 +64,6 @@ func m3ScanRegle(buf []byte, from, prevSlot, total, maxWin int, consecutifDAbord
 		if at < 0 || cand.betterThan(best) {
 			at, best = q, cand
 		}
-	}
-	if consecutifDAbord && best.consecutive == 1 {
-		return at
 	}
 	if proche >= 0 {
 		return proche
@@ -195,13 +186,6 @@ func m3ScanProdAncien(buf []byte, from, prevSlot, total, maxWin int) (at int) {
 		}
 	}
 	return
-}
-
-// m3ScanProdM31 est la regle de production du lot M3.1 (voisin, recalage, election, fenetre
-// glissante), vue au travers de la signature des variantes.
-func m3ScanProdM31(buf []byte, from, prevSlot, total, maxWin int) int {
-	at, _, _ := kfScanGlissant(buf, from, prevSlot, total, maxWin)
-	return at
 }
 
 // m3Walk est `walkKeyframeWorldFenetre` avec une fonction de balayage injectee.

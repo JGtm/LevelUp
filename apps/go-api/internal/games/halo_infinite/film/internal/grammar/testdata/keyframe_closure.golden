@@ -141,6 +141,16 @@
 #     slot bas que l election retenait) et UNE NAIT (bcb6d393 ti=1, 0/1 : la fausse
 #     ancre 192/ti 1 que l election retient dans l image-cle d avant-match, devant le
 #     record ti=9 slot 1297 — le repli nomme `repli_ancre_d_image_cle_par_election`).
+#     fb1a1a72 ti=1 0/1 -> 0/3 : DEUX records de plus, et c est la MEME fausse ancre
+#     (revue adverse du 2026-09-24, instrument `TestM3RevueMarche` sur la bobine) : le
+#     glissement franchit une fenetre vide du morceau 1 (deux images-cles), et l election
+#     y retient `0x400000C0 00000001` (slot 192, ti 1) a 186 bits DEVANT le vrai record
+#     ti=9 slot 1299 — slot plus bas, donc elu. Comptee dans `coverage.fallbacks`, elle
+#     n a pas de voisin a reparer sans une regle de plus : la marche deterministe
+#     (critere de retrait du repli) la fermera.
+#   2026-09-24 reprise du lot M3.1 : une fin de table a cheval sur deux fenetres arrete
+#     le glissement (`kfScanGlissant` reprend au debut de la trainee de sentinelles).
+#     AUCUNE ligne ne bouge sur les sept bobines.
 a521164d	ti=2	0	11	i11 game-engine-soft-ceilings-component
 a521164d	ti=4	10	10	
 a521164d	ti=5	0	352	i22 player-aim-assist-component

@@ -19,6 +19,7 @@ import (
 	"strconv"
 	"testing"
 
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar/weaponv3"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 )
 
@@ -221,4 +222,49 @@ func m3rvVoisinage(recs []KeyframeRec, bit int) string {
 		return s
 	}
 	return "?"
+}
+
+// TestM3RevueNaissancesDuSlot : les dotations de naissance que la PRODUCTION rend pour UN slot
+// (temoin du plan : 81c02726, slot 534, arme des 1:59.5), avec le bilan des refus du film.
+//
+//	MOUV511_FILM=<dir> MOUV511_BORNES=<catalogue> MOUV511_CARTE=<carte> M3_REVUE_SLOT=<slot> \
+//	  go test -tags=research -count=1 -v -run '^TestM3RevueNaissancesDuSlot$' \
+//	  ./internal/games/halo_infinite/film/internal/grammar/
+func TestM3RevueNaissancesDuSlot(t *testing.T) {
+	slot, err := strconv.Atoi(os.Getenv("M3_REVUE_SLOT"))
+	if err != nil {
+		t.Skip("M3_REVUE_SLOT absent")
+	}
+	tc := t516Cadre(t)
+	cres, _, err := ScanBipedCreations(tc.fc)
+	if err != nil {
+		t.Fatalf("creations : %v", err)
+	}
+	births, st, err := ScanBirthLoadouts(tc.fc, cres)
+	if err != nil {
+		t.Fatalf("naissances : %v", err)
+	}
+	t.Logf("== bilan : %+v", st)
+	var t0 uint64
+	if chs := tc.fc.ChunkNumbers(); len(chs) > 0 {
+		if _, pks, ok := tc.fc.ChunkAt(chs[0]); ok && len(pks) > 0 {
+			t0 = pks[0].TimestampUS
+		}
+	}
+	for _, c := range cres {
+		if int(c.Slot) == slot {
+			t.Logf("   creation slot %d gen %d a %.1f s (film)", c.Slot, c.Generation, float64(c.TimestampUS-t0)/1e6)
+		}
+	}
+	for _, b := range births {
+		if int(b.Slot) != slot {
+			continue
+		}
+		s := ""
+		for _, w := range b.Weapons {
+			s += fmt.Sprintf(" [k%d %08X %s]", w.Emplacement, w.Family, weaponv3.WeaponName(w.Family))
+		}
+		t.Logf("   DOTATION slot %d gen %d a %.1f s (film) :%s", b.Slot, b.Generation,
+			float64(b.TimestampUS-t0)/1e6, s)
+	}
 }
