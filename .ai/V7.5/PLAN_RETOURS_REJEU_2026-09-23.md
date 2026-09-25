@@ -1122,6 +1122,12 @@ vivent au §9 ; aucun lot de la vague D ne démarre sans eux.
 31. (intégration D) La suite Playwright complète (`npx playwright test`) exige le serveur de dev
     (`baseURL` localhost:5173, serveurs gérés par `make dev`) : non jouable sous l'interdit « aucun
     serveur » ; seules les rastérisations (3/3) tournent sans lui.
+32. (CI de l'intégration D, superviseur 25/09) Le paquet `film/internal/grammar` passe de 57 s à 82 s
+    non instrumenté (runs 35990146841 -> 36162837061) : cinq tests rebalayent chacun les sept bobines
+    avec la marche d'image-clé prouvée (70 à 81 s chacun sous couverture). Le job de couverture a
+    dépassé `-timeout 600s` (run 36162837061, aucun test en échec) ; budget porté à 900 s, daté et
+    justifié dans `ci.yml`, avec son critère de retour. Mémoriser la marche par bobine entre ces tests :
+    non traité (périmètre fermé).
 
 ---
 
