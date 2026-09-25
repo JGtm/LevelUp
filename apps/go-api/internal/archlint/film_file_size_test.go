@@ -161,7 +161,35 @@ var plafondsParFichier = map[string]int{
 	// 2186, une ligne d en-tete v69 et la partie M7 — la racine `vehicleScenery` resolue a la
 	// requete (verdict de decor du service, deux replis nommes), sans effet sur l empreinte cuite.
 	// Exception ecrite, dans le commit de fusion qui reunit la partie a la montee.
-	"internal/games/halo_infinite/film/replay/document_chronicle.go": 2186,
+	// SCHEMA 69 -> 70 (2026-09-24, integration de la vague D des retours du rejeu) : +134 (2142 ->
+	// 2276 sur la vague C sans M6 ni M7 ; 2186 -> 2320 a la fusion de la campagne a jour, lot
+	// D-fix), L ENTREE UNIQUE de chronique v70 qui reunit les lots de la vague sous une seule
+	// montee (un en-tete commun, puis une partie par lot), APRES les parties M6 et M7 du 69.
+	// Partie M2 (2026-09-23, +65 dont +11 a la revue adverse du 2026-09-24) : la regle des places
+	// de l utilisateur, `roster[].presence` qui nait, la PLACE lue (table, tirs), chainee ou
+	// ouverte, l equipe de l entite ti=9, les compteurs de `coverage.seats`, et les montees qui
+	// l accompagnent (`grammar.Rev`, `SchemaDesFaits`). Partie M3 (2026-09-23) et en-tete commun
+	// complete a sa fusion (`facts.Rev`), +59 : la dotation de naissance, `loadouts[].src` et
+	// `.k`, `weaponChanges[].k`, le changement de SENS des premieres emissions,
+	// `coverage.keyframes` et `.birthLoadouts`.
+	// Partie D-fix (2026-09-24, lot correctif de la pre-integration de la vague D), +92 : la marche
+	// qui ne perd plus ce qu un record prouve lui interdit de perdre, les images-cles douteuses qui
+	// ne concluent rien, trois compteurs neufs et le compteur des mains nues de la naissance, les
+	// deux regressions residuelles de M3 corrigees dans la marche des etats de mouvement, la mesure
+	// au parc et le verdict ecrit des six ecarts de la pre-integration.
+	// Reprise de la partie D-fix apres sa revue adverse (2026-09-24, meme montee 70, pre-integration
+	// non fusionnee), +59 : la regle des en-tetes exacts, les compteurs neufs (preuves
+	// contradictoires, verdict des NEW refuses), le repli nomme de la borne differee, les
+	// changements des entrees figees declares et expliques, le choix du codec des faits (purge) et
+	// les verdicts sur documents des vehicules fusionnes.
+	// Exception ecrite, dans les commits de fusion qui reunissent la montee.
+	// SCHEMA 70 -> 71 (2026-09-24, lot M4b des retours du rejeu), +51 (2471 -> 2522) : l entree v71
+	// (le calque `bursts`, `coverage.continuousFire`, la pose par la reference 0, le tir rendu
+	// a l occupant de sa place, l index de tireur sur cinq bits, et ce qui monte avec la version).
+	// REPRISE DU LOT M4b (2026-09-25), +20 (2522 -> 2542) : la mesure de l entree v71 reecrite apres la
+	// revue du lot (la lecture de la vue B reprise, le gate de corpus et son oracle physique du
+	// sprint, les gates G1/G2 par famille, la 3e monture OUVERTE).
+	"internal/games/halo_infinite/film/replay/document_chronicle.go": 2542,
 	// --- production, hors perimetre du lot 2.7 (aucune preuve d equivalence ne couvrait
 	// leur scission : elle se decidera au lot qui les rouvrira).
 	// `assist.go` EST SORTI DE CETTE TABLE LE 2026-09-16 (lot 2.6.2) : le type `Assist` a descendu
@@ -225,7 +253,18 @@ var plafondsParFichier = map[string]int{
 	// SCHEMA 69, PARTIE M6 (2026-09-24, lot M6 des retours du rejeu) : 1293 -> 1296, la ligne du
 	// lot dans la justification de la montee 69 (remise des mains nues hors des ramassages et des
 	// changements d arme). Exception ecrite, meme commit que la partie de chronique.
-	"internal/games/halo_infinite/film/replay/structure_test.go":                                  1296,
+	// SCHEMA 69 -> 70 (2026-09-24, integration de la vague D des retours du rejeu) : +32 (1293 ->
+	// 1325 sur la vague C sans M6 ; 1296 -> 1328 a la fusion de la campagne a jour, lot D-fix),
+	// la justification UNIQUE que `TestStructureIsOptionalInDocument` exige pour la montee commune
+	// de la vague : lot M2.3 (la presence et la place lues dans le film, le sens change de `seat`,
+	// `seatSource` et `team`, revue adverse comprise) et lot M3 (quatre ajouts de forme et un
+	// changement de sens : la premiere emission de chaque vie jugee contre sa naissance, jamais
+	// contre un releve a venir). Exception ecrite, dans les commits de fusion qui reunissent la
+	// montee.
+	// Lot D-fix (meme montee v70, 2026-09-24) : 1328 -> 1333, sa ligne dans la justification v70.
+	// SCHEMA 70 -> 71 (2026-09-24, lot M4b des retours du rejeu) : 1333 -> 1343, la justification
+	// que `TestStructureIsOptionalInDocument` exige pour la montee (le tir continu).
+	"internal/games/halo_infinite/film/replay/structure_test.go":                                  1343,
 	"internal/games/halo_infinite/film/replay/t0_mouvement_research_test.go":                      872,
 	"internal/games/halo_infinite/film/replay/inventory_position_i22_test.go":                     833,
 	"internal/games/halo_infinite/film/replay/ground_link_research_test.go":                       814,

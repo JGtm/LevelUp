@@ -177,7 +177,7 @@ func s3LireActions(br *Lecteur, e *s3Entree, corrige bool) bool {
 	if corrige {
 		e.genre = s3LireCible(br)
 	} else {
-		consume142f26740(br)
+		ancienneQueue142f26740(br) // la queue d AVANT le lot M4b
 	}
 	return true
 }

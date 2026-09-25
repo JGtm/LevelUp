@@ -1,9 +1,5 @@
 package replay
 
-import (
-	"log/slog"
-)
-
 // coverage.go — CE QUE CHAQUE CALQUE A RATTACHÉ, SUR CE QUI EXISTAIT.
 //
 // LE DÉFAUT QUE CE FICHIER SUPPRIME. `uniqueSlotFor` rendait `(slot, ok)` et l'appelant
@@ -24,108 +20,6 @@ import (
 // « slot ambigu » que deux vies se recouvrent (chantier de découpage des vies), « hors
 // fenêtre » que la position manque à cet instant (chantier de décodage des positions). Un
 // total unique les mélangerait et n'orienterait rien.
-
-// rejectSampleThreshold : au-delà de cette proportion d'une catégorie de rejet, le calque
-// émet un avertissement. Un log par événement noierait le journal (519 tirs sur un film) ;
-// un seuil global le rend lisible tout en gardant l'alerte.
-const rejectSampleThreshold = 0.10
-
-// LayerCoverage est la couverture d'un calque : combien il a rattaché, sur combien
-// existaient, et pourquoi il a écarté le reste.
-type LayerCoverage struct {
-	// Available est le nombre d'événements DISPONIBLES dans le film pour ce calque —
-	// le dénominateur sans lequel un compte de rattachés ne se juge pas.
-	Available int `json:"available"`
-	// Attached est le nombre d'événements effectivement rattachés à un slot.
-	Attached int `json:"attached"`
-	// NoSlot : aucun slot de ce joueur n'est connu à cet instant (le pont ne le couvre pas).
-	NoSlot int `json:"noSlot"`
-	// Ambiguous : plusieurs slots de ce joueur couvrent l'instant (vies qui se recouvrent).
-	Ambiguous int `json:"ambiguous"`
-	// OutOfWindow : le slot est connu, mais aucune position n'est répliquée assez près de
-	// l'instant pour poser l'événement sur la carte.
-	OutOfWindow int `json:"outOfWindow"`
-	// Unpublished : l'événement était rattaché, mais son slot n'a pas de trajectoire publiée
-	// (track trop courte). Compté à part : ce n'est pas un échec de rattachement.
-	Unpublished int `json:"unpublished"`
-	// RefusedByRoster : événements que le calque REFUSE DE PUBLIER parce que l'effectif du
-	// match dépasse ce que le format peut porter — huit slots d'entité de joueur au statborg
-	// (cf. objectives.RosterFitsStatborg). Le calque se tait ENTIÈREMENT, et ce compteur
-	// dit combien d'actions ce silence coûte : un calque muet dont personne ne sait pourquoi
-	// il est muet est pire que le calque faux qu'il remplace.
-	//
-	// Peuplé par le seul calque des ACTIONS d'objectif ; zéro partout ailleurs.
-	//
-	// `omitempty` PARCE QUE LA FORME DU DOCUMENT NE DOIT PAS BOUGER POUR RIEN (même règle que
-	// `Coverage.Abilities`, lot 5.6) : le compteur vaut zéro sur 65 des 68 artefacts du parc,
-	// et l'écrire quand même y changerait chaque octet — donc obligerait à recuire le parc
-	// entier pour un champ vide. `SchemaVersion` ne monte pas : un champ optionnel ne change
-	// pas la forme (cf. `build_test.go`).
-	RefusedByRoster int `json:"refusedByRoster,omitempty"`
-}
-
-// Balanced vérifie l'invariant : tout ce qui existait est soit rattaché, soit rejeté sous
-// une cause nommée. Une somme fausse signale une fuite — un chemin de rejet non compté.
-func (c LayerCoverage) Balanced() bool {
-	return c.Attached+c.NoSlot+c.Ambiguous+c.OutOfWindow+c.Unpublished+c.RefusedByRoster ==
-		c.Available
-}
-
-// rejectReason nomme la cause d'un rejet, pour le comptage.
-type rejectReason int
-
-const (
-	reasonAttached rejectReason = iota
-	reasonNoSlot
-	reasonAmbiguous
-	reasonOutOfWindow
-)
-
-// count incrémente le compteur de la cause.
-func (c *LayerCoverage) count(r rejectReason) {
-	switch r {
-	case reasonAttached:
-		c.Attached++
-	case reasonNoSlot:
-		c.NoSlot++
-	case reasonAmbiguous:
-		c.Ambiguous++
-	case reasonOutOfWindow:
-		c.OutOfWindow++
-	}
-}
-
-// warnIfLossy émet un avertissement ÉCHANTILLONNÉ — un par calque, pas un par événement —
-// quand une catégorie de rejet dépasse le seuil. Le nom du calque est passé en clair pour
-// que le journal désigne le chantier concerné.
-//
-// LES QUATRE CATÉGORIES DE REJET SONT SURVEILLÉES, `Unpublished` COMPRISE (correctif du
-// 2026-09-06). Elle en était absente, et c'est précisément la seule qui BOUGE sur le parc : sur
-// `3372e7eb`, 46 % des actions d'objectif disparaissaient sans une seule ligne de journal, pour
-// un seuil de 10 %. Une catégorie de rejet sans alarme est un rejet avalé — l'anti-patron que
-// l'en-tête de ce fichier existe pour interdire.
-//
-// `RefusedByRoster` N'EST PAS DANS CETTE LISTE, ET CE N'EST PAS UN OUBLI : elle vaut TOUT ou
-// RIEN (le calque se tait entièrement), et son alarme est émise à la source, là où la décision
-// se prend et où l'effectif est connu — `replaybuild.identifiedEvents`. L'ajouter ici ferait
-// journaliser deux fois le même refus.
-func (c LayerCoverage) warnIfLossy(layer string) {
-	if c.Available == 0 {
-		return
-	}
-	for _, cat := range []struct {
-		name string
-		n    int
-	}{{"slotIntrouvable", c.NoSlot}, {"slotAmbigu", c.Ambiguous}, {"horsFenetre", c.OutOfWindow},
-		{"sansTrajectoirePubliee", c.Unpublished}} {
-		if float64(cat.n)/float64(c.Available) < rejectSampleThreshold {
-			continue
-		}
-		slog.Warn("rejeu : rejets au-dessus du seuil",
-			"calque", layer, "cause", cat.name, "rejetes", cat.n, "disponibles", c.Available,
-			"rattaches", c.Attached)
-	}
-}
 
 // Coverage porte la couverture de chaque calque du document, et le VERDICT qui en découle.
 //
@@ -262,6 +156,14 @@ type Coverage struct {
 	// `placements` et `groundWeapons` : un film sans ramassage et un film qu'on n'a pas su
 	// balayer rendent tous deux zéro changement — seuls ces compteurs les distinguent.
 	WeaponChanges *WeaponChangeCoverage `json:"weaponChanges,omitempty"`
+	// Keyframes est la SANTÉ DE LA MARCHE D'IMAGE-CLÉ (schéma 69, lot M3.1, cf.
+	// coverage_keyframes.go) : comment chaque record a été atteint, et combien de bipèdes la
+	// marche a manqués entre deux images-clés qui les portaient.
+	Keyframes *KeyframeCoverage `json:"keyframes,omitempty"`
+	// BirthLoadouts est la couverture des DOTATIONS DE NAISSANCE (schéma 69, lot M3.2, cf.
+	// document_birth_loadouts.go) : les créations lues, celles dont le record ne se ferme pas
+	// (par cause), et ce que la publication a posé ou écarté.
+	BirthLoadouts *BirthLoadoutCoverage `json:"birthLoadouts,omitempty"`
 	// Pickups est la couverture des RAMASSAGES NATIFS (cf. document_pickups.go). Elle porte,
 	// comme celle de l'équipement, un TÉMOIN DE CE QU'ELLE NE VOIT PAS : `multiEvent` compte
 	// les listes d'événements qui en portent un autre après le ramassage — le balayage ne
@@ -326,6 +228,10 @@ type Coverage struct {
 	// raison que `placements` et `groundWeapons` : un film d'arène sans véhicule et un film qu'on
 	// n'a pas su balayer rendent tous deux zéro véhicule — seul `scanned` les distingue.
 	Vehicles *VehicleCoverage `json:"vehicles,omitempty"`
+	// ContinuousFire est la couverture du TIR CONTINU (schema 71, lot M4b) : la lecture de la vue
+	// de controle (paquets lus, trous par cause) et le sort de chaque rafale lue. Absente quand la
+	// marche des trames n a pas tourne (artefact reconstruit sans elle).
+	ContinuousFire *ContinuousFireCoverage `json:"continuousFire,omitempty"`
 	// ObjectiveObjects est la couverture du calque des objets d'objectif LIBRES : combien le
 	// manifeste en déclare de publiables, combien de vies et de points sortent, et ce qui a été
 	// écarté hors axe (cf. document_objective_objects.go).

@@ -124,7 +124,7 @@ func bitProjMesureFilm(t *testing.T, parc string, cat *profile.MapQuantCatalog, 
 		entry.AxisWidths[0], entry.AxisWidths[1], entry.AxisWidths[2],
 		entry.Region, entry.EffectiveRegionIndexBits(), porteAncienne, porteCat)
 
-	band := worldObjectSlotBand(film, ProjectileTypeIndex)
+	band := worldObjectSlotBand(NewFilmContext(film), ProjectileTypeIndex)
 	if len(band) == 0 {
 		t.Skipf("aucun slot ti=%d dans les images-clés de %s", ProjectileTypeIndex, f.id)
 	}

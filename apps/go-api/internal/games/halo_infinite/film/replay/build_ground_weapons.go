@@ -97,7 +97,7 @@ func decodeFilmPadScan(
 	arch padArchetype,
 ) WorldObjectScan {
 	defer gwInstallMPPWidths(fc, gwWidthsForFilm(fc, mpp))()
-	kf := grammar.ScanWorldObjectKeyframes(fc.Film(), arch.ti)
+	kf := grammar.ScanWorldObjectKeyframes(fc, arch.ti)
 	if len(kf.Band) == 0 {
 		slog.Warn("socles : aucun slot de l archetype aux images-cles — rejeu sans ce calque",
 			"archetype", arch.label, "match_id", matchID, "imagesCles", len(kf.TimesUS))

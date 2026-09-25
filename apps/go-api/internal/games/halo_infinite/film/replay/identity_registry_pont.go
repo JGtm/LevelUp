@@ -45,7 +45,7 @@ func buildOwnersFromTracks(tracks map[uint32]slotTrack,
 	// LE LIEN DIRECT EN PREMIER, ET SANS CONDITION : c'est la doctrine « l'index est l'index ».
 	// Il tourne sur l'echafaudage parce que la decoupe qui suit a besoin de savoir SI le joueur
 	// d'un sejour meurt dans le film.
-	nommerViesParCreations(lives, in.BipedCreations, idx, in.Bots)
+	nommerViesParCreations(lives, in.BipedCreations, idx, in.Bots, in.Entities)
 	// LE PONT PAR MORTS ENSUITE, EN TEMOIN. Son appariement pose la CAUSE de fin — la seule qui
 	// dise « ce joueur est mort » — puis confronte la victime au joueur que le film ecrit.
 	off, matched, second := bestDeathOffset(lives, deaths)
@@ -67,7 +67,7 @@ func buildOwnersFromTracks(tracks map[uint32]slotTrack,
 	// LA vie du corps (et non le premier de ses sejours), et l'appariement des morts se refait sur
 	// les fins de vie publiees. Le CALAGE, lui, ne se remesure pas — il est mesure une seule fois,
 	// sur l'echafaudage, et reste l'octet d'avant.
-	crea := nommerViesParCreations(lives, in.BipedCreations, idx, in.Bots)
+	crea := nommerViesParCreations(lives, in.BipedCreations, idx, in.Bots, in.Entities)
 	paires := apparierMortsEtVies(lives, deaths, off)
 	marquerCauseDeMort(lives, paires)
 	verif := verifierParLesMorts(lives, deaths, paires, in.MatchID)

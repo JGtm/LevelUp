@@ -38,7 +38,7 @@ const vehicleWeaponsFile = "vehicle_weapons.toml"
 // resolveVehicleWeapons pose `doc.VehicleWeapons` : une entree par arme DU REGISTRE qu au moins un
 // tir du document emploie. Absente (pas vide) quand aucune ne l est.
 func (s *replayService) resolveVehicleWeapons(ctx context.Context, doc *replay.ReplayDocument) {
-	if doc == nil || len(doc.Shots) == 0 {
+	if doc == nil || len(doc.Shots)+len(doc.Bursts) == 0 {
 		return
 	}
 	path := filepath.Join(title.NewPathResolver(s.repoRoot).TitleMappingsDir(s.titleSlug), vehicleWeaponsFile)
@@ -53,20 +53,29 @@ func (s *replayService) resolveVehicleWeapons(ctx context.Context, doc *replay.R
 			" vehicule sans style ni son", "err", err, "titleSlug", s.titleSlug)
 		return
 	}
-	out := vehicleWeaponsUsed(doc.Shots, set)
+	out := vehicleWeaponsUsed(doc.Shots, doc.Bursts, set)
 	if len(out) > 0 {
 		doc.VehicleWeapons = out
 	}
 }
 
-// vehicleWeaponsUsed rend l entree du registre de chaque arme employee par les tirs.
-func vehicleWeaponsUsed(shots []replay.Shot, set *mappings.VehicleWeaponSet) map[string]replay.VehicleWeapon {
-	out := map[string]replay.VehicleWeapon{}
+// vehicleWeaponsUsed rend l entree du registre de chaque arme employee par les tirs et par les
+// rafales de tir continu (schema 71).
+func vehicleWeaponsUsed(shots []replay.Shot, bursts []replay.FireBurst,
+	set *mappings.VehicleWeaponSet) map[string]replay.VehicleWeapon {
+	cles := make([]string, 0, len(shots)+len(bursts))
 	for _, sh := range shots {
-		if _, vu := out[sh.Weapon]; vu || sh.Weapon == "" {
+		cles = append(cles, sh.Weapon)
+	}
+	for _, b := range bursts {
+		cles = append(cles, b.Weapon)
+	}
+	out := map[string]replay.VehicleWeapon{}
+	for _, cle := range cles {
+		if _, vu := out[cle]; vu || cle == "" {
 			continue
 		}
-		tag, ok := vehicleWeaponTagOf(sh.Weapon)
+		tag, ok := vehicleWeaponTagOf(cle)
 		if !ok {
 			continue
 		}
@@ -74,7 +83,7 @@ func vehicleWeaponsUsed(shots []replay.Shot, set *mappings.VehicleWeaponSet) map
 		if !ok {
 			continue
 		}
-		out[sh.Weapon] = vehicleWeaponOf(w)
+		out[cle] = vehicleWeaponOf(w)
 	}
 	return out
 }
@@ -101,6 +110,7 @@ func vehicleWeaponTagOf(key string) (string, bool) {
 func vehicleWeaponOf(w mappings.VehicleWeapon) replay.VehicleWeapon {
 	out := replay.VehicleWeapon{
 		Vehicle: w.Vehicle, En: w.En, Fr: w.Fr, Fire: w.Fire, Fx: w.Fx, Tint: w.Tint, Sound: w.Sound,
+		Loop: w.Loop,
 	}
 	if w.Mount != nil {
 		out.Mount = &replay.VehicleWeaponMount{Aim: w.Mount.Aim, AX: w.Mount.AX, AY: w.Mount.AY}

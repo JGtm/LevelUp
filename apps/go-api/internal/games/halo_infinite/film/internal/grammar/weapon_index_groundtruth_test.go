@@ -3,7 +3,8 @@ package grammar
 // weapon_index_groundtruth_test.go — VERITE TERRAIN du correctif d'indice de tireur (Lot 3),
 // confronte aux KILLS (dead-state, scan robuste robustCollectKills).
 //
-// La question : l'indice de tireur CORRIGE (5 bits, ShooterIndex5) resout-il au VRAI tueur ?
+// La question : l'indice de tireur CORRIGE (5 bits, FireEvent.FilmIndex depuis le lot M4b) resout-il
+// au VRAI tueur ?
 // Le dead-state porte le tueur en roster (EnumB) ; les tirs portent l'indice de FILM. La table
 // d'identite roster<->film (geoBuildIdentity, apprise par co-occurrence tir/mort) fait le pont.
 // Un espace d'indice CORRECT rend la table INJECTIVE : chaque joueur du roster <-> un unique
@@ -50,22 +51,16 @@ func precCollectShotsBoth(t *testing.T, dir string, n int) []precGTShot {
 				continue
 			}
 			pay := pk.Payload(data)
-			if pay[0] != 0xD2 {
-				continue
-			}
-			br := LecteurSur(pay)
-			br.Skip(2)
-			if br.ReadBits(7) != 36 {
-				continue
-			}
-			att, okA := lot1RefDom1(br)
+			h, okH := lireEnteteTir36(pay) // la grammaire du record (lot M4b)
 			fe, okF := decodeFireEvent(pay)
-			if !okA || !okF {
+			if !okH || !okF || !h.unite.Present || !fe.HasShooter {
 				continue
 			}
 			name := geoWeaponName(fe.WeaponID)
+			// idx4 est l'ANCIEN champ a quatre bits, par definition la moitie basse du vrai : c est
+			// la troncature que ce test mesure (le decodeur ne le lit plus depuis le lot M4b).
 			out = append(out, precGTShot{
-				ts: pk.TimestampUS, att: att, idx4: fe.FilmIndex, idx5: fe.ShooterIndex5,
+				ts: pk.TimestampUS, att: uint64(h.unite.Index), idx4: fe.FilmIndex & 0x0F, idx5: fe.FilmIndex,
 				wid: fe.WeaponID, name: name, heavy: lot1IsHeavy(name), direct: geoIsDirect(name),
 			})
 		}

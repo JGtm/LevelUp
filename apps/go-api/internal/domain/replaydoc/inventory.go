@@ -62,6 +62,7 @@ type WeaponChange struct {
 	Kind WeaponChangeKind `json:"kind"`
 	W    string           `json:"w,omitempty"`
 	From string           `json:"from,omitempty"`
+	K    *int             `json:"k,omitempty"`
 }
 
 // WeaponChangeKind qualifie un changement d'arme en main, tel que le document le publie.

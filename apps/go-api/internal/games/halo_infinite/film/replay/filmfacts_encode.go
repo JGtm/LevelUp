@@ -44,6 +44,8 @@ func encodeurDeFaits(g *FilmFacts) *gwriter {
 	encodePositionSection(w, g.Positions)
 	encodeBipedCreations(w, g.BipedCreations)
 	encodeEvenements(w, g)
+	encodeMarcheImageCle(w, g.KeyframeWalk)
+	encodeNaissances(w, g.BirthLoadouts, g.BirthLoadoutStats)
 	encodeWeaponChanges(w, g.WeaponChanges)
 	encodePickups(w, g.Pickups, g.PickupStats)
 	encodeInventaire(w, g)
@@ -51,6 +53,7 @@ func encodeurDeFaits(g *FilmFacts) *gwriter {
 	encodeEquipmentChanges(w, g.EquipmentChanges, g.EquipmentChangeStats)
 	encodeCapacites(w, g)
 	encodeEtatsDeMouvement(w, g)
+	encodeTirContinu(w, g.ContinuousFire, g.ContinuousFireStats)
 	encodeZoomEvents(w, g.ZoomEvents)
 	encodeMonde(w, g)
 	encodeVehicleScan(w, g.Vehicles)
@@ -90,8 +93,14 @@ func encodeEvenements(w *gwriter, g *FilmFacts) {
 	for _, e := range g.Fire {
 		w.u(e.TimestampUS - lastTS)
 		lastTS = e.TimestampUS
-		w.i(int64(e.FilmIndex))
+		w.i(int64(e.FilmIndex)) // cinq bits, -1 sans indice de tireur (lot M4b)
 		w.u(e.WeaponID)
+		w.u(uint64(e.FireNumber))
+		w.bool8(e.Unit.Present)
+		if e.Unit.Present {
+			w.u(uint64(e.Unit.Slot))
+			w.u(uint64(e.Unit.Gen))
+		}
 		w.bool8(e.HasAim)
 		if e.HasAim {
 			for a := 0; a < 3; a++ {
@@ -289,6 +298,12 @@ func encodeEtatsDeMouvement(w *gwriter, g *FilmFacts) {
 	w.u(uint64(st.Desyncs))
 	w.u(uint64(st.SlotUnbound))
 	w.u(uint64(st.Duplicates))
+	w.u(uint64(st.EventPacketsNewRecordStart))
+	w.u(uint64(st.VehicleTypePhysicsAssumed))
+	for _, v := range []int{st.LiaisonsOubliees, st.NeufsContreUnVivant, st.NeufsRefusesLecturesFausses,
+		st.NeufsRefusesCreationsPerdues, st.NeufsRefusesIndecis} { // constat DFIX-R6
+		w.u(uint64(v)) //nolint:gosec // compteurs positifs
+	}
 	for _, x := range st.MapWidths {
 		w.u(uint64(x))
 	}
@@ -398,6 +413,42 @@ func encodePlayerTeams(w *gwriter, teams map[int]int, rep grammar.TeamScanReport
 		rep.OutOfDomainIndex, rep.OutOfDomainValue, rep.Entities, rep.EntityDivergences,
 		rep.IndexDivergences, rep.Indices, rep.NoTeam} {
 		w.u(uint64(n))
+	}
+}
+
+// encodeEntitesDesJoueurs ecrit LES OCCUPANTS DU MATCH, un par entite `ti=9` (SchemaDesFaits 4,
+// lot M2.2) : le temoin `Scanned`, les instants des images-cles porteuses (delta-codes), puis les
+// entites. Il voyage dans le COMPLEMENT de la section 1, a la suite de `encodeGardesDeMode`, et pas
+// dans le blob des entrees : le blob est le format des huit fixtures d assemblage, qu aucun film
+// n a a etre redecode pour garder valides (cf. `TestCodecCouvreFilmInputs`, qui nomme les deux
+// places).
+//
+// `Scanned` VOYAGE AVEC LA LISTE, et il le faut : une liste vide et un balayage qui n a pas eu lieu
+// ne disent pas la meme chose — l un publie « personne », l autre retombe sur l enveloppe des vies.
+func encodeEntitesDesJoueurs(w *gwriter, s grammar.PlayerEntityScan) {
+	w.bool8(s.Scanned)
+	w.u(uint64(len(s.KeyframesUS)))
+	var last uint64
+	for _, ts := range s.KeyframesUS {
+		w.u(ts - last) // les images-cles porteuses sont dans l ordre du film
+		last = ts
+	}
+	w.u(uint64(len(s.Entities)))
+	for _, e := range s.Entities {
+		w.u(uint64(e.Slot))
+		w.i(int64(e.Index))
+		w.i(int64(e.Team))
+		w.u(uint64(e.FirstKF))
+		w.u(uint64(e.LastKF))
+		w.u(uint64(e.Seen))
+		w.bool8(e.Unstable)
+	}
+	// LES DOUTES (lot D-fix, 2026-09-24, meme SchemaDesFaits 4 que la vague D) : les absences que la
+	// marche ne prouve pas, tries par (rang, slot).
+	w.u(uint64(len(s.Doutes)))
+	for _, d := range s.Doutes {
+		w.u(uint64(d.Rang))
+		w.u(uint64(d.Slot))
 	}
 }
 

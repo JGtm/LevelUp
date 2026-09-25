@@ -212,6 +212,18 @@ type BotIdentity struct {
 	// sur le NOM NU, et deux bots homonymes fusionnaient. Zéro quand la déclaration ne le
 	// porte pas ; [BotIdentity.Bid] rend alors une chaîne vide plutôt qu'un `bid(0.0)` faux.
 	BotID int
+	// Declarations sont les intervalles pendant lesquels BOT_METADATA DÉCLARE ce bot, en
+	// microsecondes de film (lot M2.1, 2026-09-23) : `[0]` = le premier paquet qui le déclare
+	// (inclus), `[1]` = le premier paquet complet qui ne le déclare plus (exclu), ZÉRO quand il
+	// est encore déclaré au dernier paquet. Le paquet est réécrit en tête de chaque chunk et à
+	// chaque changement : son départ est daté à la frame près, là où l'image-clé ne le date qu'à
+	// ~20 s près (sonde P4). C'est ce qui lie un bot à SON entité `ti=9` quand plusieurs bots
+	// se relaient sur un même index. Vide = déclarations non lues (faits antérieurs).
+	//
+	// UNE PAIRE ET PAS UN TYPE NOMMÉ : la projection (`replayidentity`) vit hors de `film/`, et
+	// la surface `replay.X` citée hors de `film/` est un ratchet daté
+	// (`archlint/film_facade_surface_test.go`) qu'un type de transport n'a pas à faire monter.
+	Declarations [][2]uint64
 }
 
 // Bid rend l'identifiant stable du bot dans la forme de la base, `bid(N.0)`. Chaîne vide quand

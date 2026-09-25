@@ -158,7 +158,7 @@ func consumeObjectDeadStateBipedTI(br *Lecteur, typeIndex uint32) types.DeadStat
 // ds. Bit-consume sequence (each helper re-confirmed by decompile):
 //
 //	FUN_14080d69c   R(1); if 1 -> R(32)        (anim handle, comp+0x00)
-//	FUN_140c1e3f0   R(8)                       (comp+0x?? first byte)
+//	FUN_140c1e3f0   R(8)                       -> comp+0x1c (garde le bloc de vitesse)
 //	FUN_1407f2058   R(1); if 0 -> R(5)         enum A -> comp+0x04 (tag-table resolved)
 //	FUN_1407f2058   R(1); if 0 -> R(5)         enum B -> comp+0x08 (tag-table resolved)
 //	inline R(4)     (width = bitLen(10) = 4)   -> comp+0x0c
@@ -177,8 +177,8 @@ func consumeObjectDeadStateBipedTI(br *Lecteur, typeIndex uint32) types.DeadStat
 //	R(1) gate; if SET -> FUN_14076dc04 (quantized position vec, runtime width;
 //	    constant-dir / not-present path reads 0 further bits) -> comp+0x20..0x28
 //	if (comp+0x1c & 0x10): R(2) + FUN_140c1e9d4 (3-axis quantized dir) -> comp+0x2c
-//	    NB: comp+0x1c is a flag NOT written by this deser in the captured fields;
-//	    in retail dead-state records the orientation block is absent (0 bits).
+//	    comp+0x1c est l OCTET LU PAR FUN_140c1e3f0 en tete : la porte est dans le flux
+//	    (lot M4b, 2026-09-25, cf. [etatMortVitessePresente]).
 //	FUN_1424cd17c   R(5) dequant float ; FUN_1424cd150 R(5) dequant float
 //	    -> comp+0x40 / comp+0x44 (R3 RE 2026-06-07: both call FUN_1406d84b4 with
 //	    width=5 LITERAL and a 5-float DEQUANT bound table — DAT_143cd8454 / DAT_143cd84b8
@@ -187,8 +187,8 @@ func consumeObjectDeadStateBipedTI(br *Lecteur, typeIndex uint32) types.DeadStat
 //	FUN_14080d69c   R(1); if 1 -> R(32)         -> comp+0x4c
 //
 // DATA-DEPENDENT residue: the position vec (FUN_14076dc04) reads a runtime-width
-// field when its gate is set; the orientation block (comp+0x1c&0x10 path) is gated
-// by a runtime flag NOT serialized here (absent in retail). The two FUN_1424cd1xx
+// field when its gate is set; the velocity block (comp+0x1c&0x10 path) is gated by
+// the byte FUN_140c1e3f0 reads at the head of this block. The two FUN_1424cd1xx
 // scalars read 10 bits total. All this is AFTER the captured fields (+4,+8,+0xc,
 // +0xe,+0x10,+0x14,+0x18), which are bit-exact and precede the residue.
 //
@@ -207,7 +207,10 @@ func consumeDeadStateAnimBlock(br *Lecteur, ds *types.DeadState) {
 	if br.ReadBit() { // FUN_14080d69c
 		ds.SrcTag0 = uint32(br.ReadBits(32))
 	}
-	br.ReadBits(8) // FUN_140c1e3f0 (comp+0x?? byte)
+	// FUN_140c1e3f0(lecteur, _, comp+0x1c) : R(8) -> comp+0x1c (`LEA R8,[R14+0x1c]` @140c1dd6c).
+	// CET OCTET GARDE LE BLOC DE VITESSE PLUS BAS (`comp+0x1c & 0x10`) : la porte est LUE DANS LE
+	// FLUX, pas un drapeau RAM (lot M4b, 2026-09-25 — meme lecon qu i54 et i57).
+	etat1c := br.ReadBits(8)
 
 	// enum A / enum B (FUN_1407f2058: R(1); if 0 -> R(5)). The raw R(5) is the
 	// pre-table index; we capture it directly (the tag-table resolve is a lookup,
@@ -231,45 +234,45 @@ func consumeDeadStateAnimBlock(br *Lecteur, ds *types.DeadState) {
 
 	// Tail steps 9-17 (workflow port-biped-components 2026-06-13, direct decompile of
 	// FUN_140c1dd44). The earlier port UNDER-read here: it omitted the two R(5)
-	// FUN_1424cd17c/cd150 scalars (steps 11,15,16), read the selPresentB gate without
+	// FUN_1424cd17c/cd150 scalars (steps 15,16), read the selPresentB gate without
 	// its R(10) position payload (step 13), and skipped the velocity block (step 14).
+	// (Lot M4b, 2026-09-25 : ce port lisait en plus un « step 11 » R(5) que le deserialiseur
+	// n appelle pas, et posait le bloc de vitesse absent — cf. [etatMortVitessePresente].)
 	// That under-read (15..69 bits) desynced the record AFTER i11, so the clean-frame
 	// harness dropped whole death-frames -> remote-player deaths were never captured.
 	// All of this is AFTER the EnumA/EnumB/GID capture, so it does not change those.
-	br.ReadBits(4)     // step 9 : FUN_1407f1f24 (comp+0x3c, v-1)
-	br.ReadBits(4)     // step 10: inline selPosFlags (comp+0x38)
-	br.ReadBits(5)     // step 11: FUN_1424cd17c #1 (comp+0x40)
+	br.ReadBits(4)     // step 9 : inline R(4) (comp+0x38)
+	br.ReadBits(4)     // step 10: FUN_1407f1f24 R(4) (comp+0x3c, v-1)
 	if !br.ReadBit() { // step 12: FUN_1407f1e4c R(1); if 0 -> R(10) (comp+0x1e)
 		br.ReadBits(10)
 	}
 	if br.ReadBit() { // step 13: selPresentB R(1); if set -> R(10) position (FUN_14076dc04)
 		br.ReadBits(10)
 	}
-	if deadStateVelocityPresent { // step 14: RAM-gate (+0x1c & 0x10) — NOT in-stream
-		br.ReadBits(2)  // table index
-		br.ReadBits(14) // velocity axis X (FUN_140c1e9d4 W=14)
+	if etat1c&etatMortVitessePresente != 0 { // step 14: comp+0x1c & 0x10, l octet lu en tete
+		br.ReadBits(2)  // table index -> comp+0x1d
+		br.ReadBits(14) // velocity axis X (FUN_140c1e9d4, `MOV R9D,0xe` @140c1e2a7)
 		br.ReadBits(14) // velocity axis Y
 		br.ReadBits(14) // velocity axis Z
 	}
-	br.ReadBits(5)    // step 15: FUN_1424cd17c #2 (comp+0x40)
+	br.ReadBits(5)    // step 15: FUN_1424cd17c (comp+0x40), SEUL appel (@140c1dfe9)
 	br.ReadBits(5)    // step 16: FUN_1424cd150 (comp+0x44)
 	if br.ReadBit() { // step 17: tail anim handle R(1); if set -> R(32) (comp+0x4c) — srcTag#2 = persisted cause
 		ds.SrcTag4c = uint32(br.ReadBits(32))
 	}
 }
 
-// deadStateVelocityPresent toggles step 14 of the dead-state tail: the velocity
-// block (R(2)+3xR(14)) is gated by a RAM flag (*(state+0x1c) & 0x10), NOT a
-// bitstream bit, so its presence cannot be read offline. Default true (the agent's
-// "moving biped / ragdoll" assumption); a validation harness flips it to test the
-// immobile case. See consumeDeadStateAnimBlock step 14.
+// etatMortVitessePresente est le bit de l octet comp+0x1c (lu par FUN_140c1e3f0 en tete du bloc)
+// qui annonce le bloc de vitesse de l etape 14 (`TEST byte [comp+0x1c],0x10`).
 //
-// Le réglage public `SetDeadStateVelocityPresent` a été supprimé le 2026-09-05 (lot E, item
-// E.2) : aucun appelant. La valeur reste `false`, celle du décodage de production.
-// PROVENANCE : MESURE — le bloc de velocite de l etape 14 est garde par un drapeau RAM
-// (*(state+0x1c) & 0x10), invisible hors ligne ; le decodage de production le modelise ABSENT, et
-// c est ce que valent les goldens. Constante depuis le 2026-09-06 (lot E, item E.8).
-const deadStateVelocityPresent = false
+// CE N ETAIT PAS UN DRAPEAU RAM (lot M4b, 2026-09-25). Le port le modelisait « garde par
+// *(state+0x1c) & 0x10, invisible hors ligne » et le posait ABSENT ; or `FUN_140c1e3f0` ecrit cet
+// octet deux appels plus haut, dans le MEME deserialiseur (`LEA R8,[R14+0x1c]` @140c1dd6c). Le port
+// lisait en outre un R(5) `FUN_1424cd17c` de trop (un seul appel, @140c1dfe9) : la queue du corps
+// de mort etait fausse de 5 bits, et de 39 quand la vitesse est ecrite. Mesure : la vue B de chaque
+// paquet de mort se perdait sur le record qui suit le bipede mort (`81c02726` p980 et p1558,
+// `8a485699` p692).
+const etatMortVitessePresente = 0x10
 
 // readOpt5Signed mirrors FUN_1407f2058: R(1) present bit; if CLEAR -> R(5) payload
 // (returned as a non-negative value); if SET -> -1 sentinel (no payload).

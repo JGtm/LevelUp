@@ -6,7 +6,7 @@
 
 ## AXE DE TEMPS
 3397 frames · intervalle 100 ms · duree 339700 ms
-schema 69 · titre halo_infinite
+schema 71 · titre halo_infinite
 version majeure du film : 33
 origine de la frame 0 sur l horloge du fil : 27811 ms
 coup d envoi date par le film : 45311 ms · 125/128 piste(s) en mouvement · rafale 17 · marge depuis la frame 0 : 17500 ms
@@ -59,11 +59,11 @@ vies : 128/128 portent une equipe du film
 repartition des vies par designateur : 0 x55 · 1 x73
 
 ## TIRS — rattaches sur DISPONIBLES, et la ventilation de tout ce qui est ecarte
-1219 rattache(s) / 1476 disponible(s) = 82.6 %
-rejets : slot introuvable=257 · slot ambigu=0 · hors fenetre=0 · sans trace publiee=0
+1362 rattache(s) / 1476 disponible(s) = 92.3 %
+rejets : slot introuvable=114 · slot ambigu=0 · hors fenetre=0 · sans trace publiee=0
 somme de controle : rattaches + rejets = disponibles -> 1476 = 1476 (equilibre : true)
 verdict : nominal
-1219 tir(s) publie(s) · 853 avec un cap de visee lisible · 1219 avec une arme nommee
+1362 tir(s) publie(s) · 876 avec un cap de visee lisible · 1362 avec une arme nommee
 
 ## GRENADES — le lancer porte son auteur ; ce qui se mesure est OU il est pose
 100 rattache(s) / 105 disponible(s) = 95.2 %
@@ -79,17 +79,17 @@ par type : Dynamo=5 · Frag=76 · Plasma=16 · Spike=3
 couverture : 174 piste(s) decodee(s) · 169 publiee(s) · 8 coupee(s) a un pas impossible
 
 ## INVENTAIRE — lu aux images-cles, jamais interpole entre deux
-372 etat(s) publie(s) · 305 avec grenades lues · 305 avec munitions lues
+395 etat(s) publie(s) · 322 avec grenades lues · 322 avec munitions lues
 27 lecture(s) de munitions a PLUSIEURS candidats : la plus longue a ete retenue et le
 nombre de candidats est publie, pour que le departage reste visible
-67 lecture(s) VIDE(S) : 49 corroboree(s) par le fil des morts (`dead`), 18 inexpliquee(s)
-couverture : 380 lecture(s) decodee(s) -> 0 ecartee(s) avant l origine du rejeu · 8 ecartee(s) faute de piste publiee -> 372 publiee(s)
+73 lecture(s) VIDE(S) : 53 corroboree(s) par le fil des morts (`dead`), 20 inexpliquee(s)
+couverture : 403 lecture(s) decodee(s) -> 0 ecartee(s) avant l origine du rejeu · 8 ecartee(s) faute de piste publiee -> 395 publiee(s)
 rangs de grenade : 0:en="Frag"/fr="Fragmentation", 1:en="Plasma"/fr="Plasma", 2:en="Dynamo"/fr="Dynamo", 3:en="Spike"/fr="Spike"
 
 ## GRENADES PORTEES — un axe, DEUX canaux, chaque lecture disant d ou elle vient
-496 lecture(s) · 305 par image-cle (~20 s) · 191 par delta (transmis AU CHANGEMENT)
+513 lecture(s) · 322 par image-cle (~20 s) · 191 par delta (transmis AU CHANGEMENT)
 75 lecture(s) portent le rang SELECTIONNE — une selection ne se devine pas
-couverture : 305 image-cle · 191 delta · 0 ecartee(s) sans piste · canal munitions refuse : true
+couverture : 322 image-cle · 191 delta · 0 ecartee(s) sans piste · canal munitions refuse : true
 
 ## CAPACITE PORTEE — le RANG de palette, deux canaux pour une seule grandeur
 56 lecture(s) · 56 par i48 (rang complet, paquets delta) · 0 par image-cle (fenetre 16..23)
@@ -601,7 +601,7 @@ POWER-UPS (voie ti=37) — balaye=true · 688 creation(s) acceptee(s) -> 14 rete
 69 occupation(s) achevee(s) publiee(s) · 40 datee(s) a l instant exact par l evenement natif · 40 avec un ramasseur nomme
 
 ## ARMES PORTEES — l inventaire, pas la main : le loadout ne dit pas QUELLE arme est degainee
-311 loadout(s) publie(s) · 17 famille(s) distincte(s)
+328 loadout(s) publie(s) · 17 famille(s) distincte(s)
 
 ## PONT SLOT -> JOUEUR — deux sources nommees : la LECTURE, puis la FERMETURE
 128 entree(s) · 128 issue(s) de la lecture (un ecart NON EXPLIQUE par les fermetures signalerait une TROISIEME SOURCE)
@@ -619,14 +619,15 @@ controle (lecture des chunks) : 23 accord · 0 contradiction · 1 silence — la
 voies des liens d index : PlayerIndexTable=4 · film_table=24
 
 ## SIEGES — la fiche d un occupant, et la part qui vient d un appariement
-entrees 28 · sieges 25 · lus 25 · apparies 3 · reprises ecrites 0
-arrivants 4 · presences closes 22 · sans presence 1 · occupants au plus 24 · sans table false
+entrees 28 · sieges 24 · lus 24 · tirs 0 · apparies 4 · ouvertes 0 · sans place 0 · reprises ecrites 0 · presences film
+arrivants 4 · presences closes 5 · sans presence 1 · occupants au plus 24 · depassements 0 · relais bornes 0 · sans table false
 
 ## REPLIS DECLENCHES — la part de ce document qui ne vient PAS d une lecture du film
 repli_chassis_vehicule_marqueur_neutre           15
+repli_index_de_tireur_hors_place                 896
 repli_piece_engendree_sans_evenement             2
+repli_place_du_remplacant_par_chainage_d_equipe  4
 repli_position_hors_emprise_ecartee              38
-repli_siege_du_remplacant_par_appariement_ordinal 3
 repli_tourelle_porteur_voisin_de_slot            23
 
 ## LIBELLES D ARMES — le tag brut reste A COTE du libelle, jamais a sa place

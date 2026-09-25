@@ -74,14 +74,16 @@ func attachVehicleShots(
 	published := publishedSlots(doc.Tracks)
 	board := vehicleShotBoard{
 		rides: rides, tracks: doc.Vehicles, lives: vehicleLifeIndex(doc.Vehicles), clock: clock,
+		parSlot: vehicleLivesBySlot(doc.Vehicles),
 	}
 	var added []Shot
 	for _, o := range orphans {
-		s, verdict, onCarrier := board.shotOf(o, slotsOf[o.ev.FilmIndex])
+		s, verdict, onCarrier, parUnite := board.shotOf(o, slotsOf[o.ev.FilmIndex])
 		vehicleShotTally(doc.Coverage.Vehicles, verdict)
 		if verdict != vehicleShotPlaced {
 			continue
 		}
+		parUnite.tally(cov.Vehicles)
 		if onCarrier && cov.Vehicles != nil {
 			cov.Vehicles.ShotsOnCarrier++
 		}
@@ -130,10 +132,28 @@ const (
 // vehicleShotBoard est ce que la seconde porte consulte pour poser UN tir : les episodes par
 // occupant, les vies publiees, leur index par `(slot, gen)` et l horloge.
 type vehicleShotBoard struct {
-	rides  map[uint32][]vehicleShotRide
-	tracks []VehicleTrack
-	lives  map[VehicleLifeRef]int
-	clock  replayClock
+	rides   map[uint32][]vehicleShotRide
+	tracks  []VehicleTrack
+	lives   map[VehicleLifeRef]int
+	parSlot map[uint32][]int
+	clock   replayClock
+}
+
+// poseParUnite dit si un tir a ete pose par sa reference 0 (`vehicle_shots_unit.go`), et s il
+// l a ete sans episode de son tireur.
+type poseParUnite struct {
+	unite, sansEpisode bool
+}
+
+// tally verse la pose a la couverture du calque des vehicules.
+func (p poseParUnite) tally(cov *VehicleCoverage) {
+	if cov == nil || !p.unite {
+		return
+	}
+	cov.ShotsByUnit++
+	if p.sansEpisode {
+		cov.ShotsByUnitNoRide++
+	}
 }
 
 // vehicleLifeIndex indexe les vies publiees par leur cle `(slot, gen)`.
@@ -146,19 +166,29 @@ func vehicleLifeIndex(tracks []VehicleTrack) map[VehicleLifeRef]int {
 }
 
 // shotOf décide du sort d'UN orphelin. Le troisième retour dit que le tir a été posé sur le
-// PORTEUR d'une tourelle (schéma 69, cf. `vehicle_turrets.go`).
-func (b vehicleShotBoard) shotOf(o orphanShot, slots []uint32) (Shot, vehicleShotVerdict, bool) {
+// PORTEUR d'une tourelle (schéma 69, cf. `vehicle_turrets.go`) ; le quatrième, qu'il l'a été par
+// sa RÉFÉRENCE 0 (lot M4b.4, `vehicle_shots_unit.go`), qui passe AVANT l'épisode.
+func (b vehicleShotBoard) shotOf(o orphanShot, slots []uint32) (Shot, vehicleShotVerdict, bool, poseParUnite) {
 	fr := b.clock.frame(o.ev.TimestampUS)
 	cand := vehicleShotCandidates(b.rides, slots, fr)
+	if s, v, onCarrier, ok, sansEpisode := b.shotOfUnit(o, cand, fr); ok {
+		return s, v, onCarrier, poseParUnite{unite: v == vehicleShotPlaced, sansEpisode: sansEpisode}
+	}
 	if len(cand) == 0 {
-		return Shot{}, vehicleShotNoRide, false
+		return Shot{}, vehicleShotNoRide, false, poseParUnite{}
 	}
 	pick := cand[0]
 	for _, c := range cand[1:] {
 		if c.track != pick.track {
-			return Shot{}, vehicleShotAmbiguous, false
+			return Shot{}, vehicleShotAmbiguous, false, poseParUnite{}
 		}
 	}
+	s, v, onCarrier := b.poser(o, pick, fr)
+	return s, v, onCarrier, poseParUnite{}
+}
+
+// poser pose l orphelin sur la vie de l episode `pick` (sur son porteur pour une piece montee).
+func (b vehicleShotBoard) poser(o orphanShot, pick vehicleShotRide, fr int) (Shot, vehicleShotVerdict, bool) {
 	at, onCarrier := b.shotHolder(pick)
 	// HORS DE LA FENETRE DU PORTEUR, sa position serait TENUE (premier / dernier echantillon) :
 	// une position perimee, peut-etre a des centaines de metres. Le tir n est pas pose, et il

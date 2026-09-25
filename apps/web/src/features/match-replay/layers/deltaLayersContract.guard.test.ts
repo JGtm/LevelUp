@@ -74,7 +74,7 @@ function goStringConst(file: string, name: string): string {
 // fait échouer la CI si le Go ne la porte pas. Les deux verrous sont nécessaires — le premier
 // interdit d'oublier, le second interdit d'inventer.
 
-const WEAPON_CHANGE_KEYS = ['t', 'slot', 'kind', 'w', 'from'] as const
+const WEAPON_CHANGE_KEYS = ['t', 'slot', 'kind', 'w', 'from', 'k'] as const
 type _ClesWeaponChange = Expect<Equals<(typeof WEAPON_CHANGE_KEYS)[number], keyof ReplayWeaponChange>>
 
 // `recovered` et `gap` entrent au schéma 38 (2026-09-03) : la PROVENANCE de l'émission et le

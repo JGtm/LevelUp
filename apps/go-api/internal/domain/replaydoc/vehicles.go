@@ -41,6 +41,7 @@ type VehicleWeapon struct {
 	Fx      string              `json:"fx"`
 	Tint    string              `json:"tint"`
 	Sound   string              `json:"sound,omitempty"`
+	Loop    string              `json:"loop,omitempty"`
 	Mount   *VehicleWeaponMount `json:"mount,omitempty"`
 }
 

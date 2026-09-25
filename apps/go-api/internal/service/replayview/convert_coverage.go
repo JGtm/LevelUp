@@ -29,6 +29,8 @@ func toCoverage(v replay.Coverage) replaydoc.Coverage {
 		BombCarries:       ptrOf(v.BombCarries, toBombCarriesCoverage),
 		BombArmings:       ptrOf(v.BombArmings, toBombArmingsCoverage),
 		WeaponChanges:     ptrOf(v.WeaponChanges, toWeaponChangeCoverage),
+		Keyframes:         ptrOf(v.Keyframes, toKeyframeCoverage),
+		BirthLoadouts:     ptrOf(v.BirthLoadouts, toBirthLoadoutCoverage),
 		Pickups:           ptrOf(v.Pickups, toPickupCoverage),
 		PadDating:         ptrOf(v.PadDating, toPadDatingStats),
 		EquipmentChanges:  ptrOf(v.EquipmentChanges, toEquipmentChangeCoverage),
@@ -37,6 +39,7 @@ func toCoverage(v replay.Coverage) replaydoc.Coverage {
 		AbilityCharges:    ptrOf(v.AbilityCharges, toAbilityChargeCoverage),
 		GroundWeaponItems: ptrOf(v.GroundWeaponItems, toGroundWeaponItemsCoverage),
 		Vehicles:          ptrOf(v.Vehicles, toVehicleCoverage),
+		ContinuousFire:    ptrOf(v.ContinuousFire, toContinuousFireCoverage),
 		ObjectiveObjects:  ptrOf(v.ObjectiveObjects, toObjectiveObjectsCoverage),
 		Inventory:         ptrOf(v.Inventory, toInventoryCoverage),
 		FilmMajorVersion:  v.FilmMajorVersion,
@@ -75,6 +78,8 @@ func toLayerCoverage(v replay.LayerCoverage) replaydoc.LayerCoverage {
 		OutOfWindow:     v.OutOfWindow,
 		Unpublished:     v.Unpublished,
 		RefusedByRoster: v.RefusedByRoster,
+		ByUnit:          v.ByUnit,
+		UnitOtherIndex:  v.UnitOtherIndex,
 	}
 }
 
@@ -116,19 +121,43 @@ func toTeamCoverage(v replay.TeamCoverage) replaydoc.TeamCoverage {
 	}
 }
 
-// toSeatCoverage : la couverture des sieges (lot 1.9.14).
+// toSeatCoverage : la couverture des places (lot 1.9.14 ; lot M2.3, schema 69).
 func toSeatCoverage(v replay.SeatCoverage) replaydoc.SeatCoverage {
 	return replaydoc.SeatCoverage{
 		Entrees:         v.Entrees,
 		Sieges:          v.Sieges,
 		Lus:             v.Lus,
+		PlacesTirs:      v.PlacesTirs,
 		Apparies:        v.Apparies,
+		PlacesOuvertes:  v.PlacesOuvertes,
+		SansPlace:       v.SansPlace,
 		ReprisesEcrites: v.ReprisesEcrites,
 		Arrivants:       v.Arrivants,
 		PresencesCloses: v.PresencesCloses,
 		SansPresence:    v.SansPresence,
 		OccupantsMax:    v.OccupantsMax,
-		SansTableDuFilm: v.SansTableDuFilm,
+		Capacite:        v.Capacite,
+		Depassements:    v.Depassements,
+		PlacesEnTrop:    v.PlacesEnTrop,
+		SansEquipe:      v.SansEquipe,
+
+		IdentitesHorsRoster: v.IdentitesHorsRoster,
+		BotsSuccesseurs:     v.BotsSuccesseurs,
+		PresencesParLesVies: v.PresencesParLesVies,
+
+		RelaisBornes:        v.RelaisBornes,
+		Chevauchements:      v.Chevauchements,
+		TirsContestes:       v.TirsContestes,
+		TirsIndexTronque:    v.TirsIndexTronque,
+		TirsParPlace:        v.TirsParPlace,
+		TirsIndexNonPlace:   v.TirsIndexNonPlace,
+		Presences:           v.Presences,
+		EntitesNonLiees:     v.EntitesNonLiees,
+		EntitesContestees:   v.EntitesContestees,
+		TrousDEntite:        v.TrousDEntite,
+		ImagesClesDouteuses: v.ImagesClesDouteuses,
+		BornesDifferees:     v.BornesDifferees,
+		SansTableDuFilm:     v.SansTableDuFilm,
 	}
 }
 
@@ -248,6 +277,11 @@ func toStanceCoverage(v replay.StanceCoverage) replaydoc.StanceCoverage {
 		TracksTotal:           v.TracksTotal,
 		Dropped:               v.Dropped,
 		EventPacketsUnlocated: v.EventPacketsUnlocated,
+		ForgottenBindings:     v.ForgottenBindings,
+		RefusedNews:           v.RefusedNews,
+		RefusedNewFalseReads:  v.RefusedNewFalseReads,
+		RefusedNewLostCreates: v.RefusedNewLostCreates,
+		RefusedNewUndecided:   v.RefusedNewUndecided,
 		MapWidths:             v.MapWidths,
 	}
 	if len(v.ByKind) > 0 {

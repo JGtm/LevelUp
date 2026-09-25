@@ -6,7 +6,7 @@
 
 ## AXE DE TEMPS
 4985 frames · intervalle 100 ms · duree 498500 ms
-schema 69 · titre halo_infinite
+schema 71 · titre halo_infinite
 version majeure du film : 41
 origine de la frame 0 sur l horloge du fil : 3604 ms
 coup d envoi date par le film : 26304 ms · 98/99 piste(s) en mouvement · rafale 4 · marge depuis la frame 0 : 22700 ms
@@ -32,7 +32,7 @@ jamais une categorie de donnee (decision produit du 2026-09-07)
   2533274826120416  idx=7  equipe=0  "VitaminA1688"
 
 ### EQUIPES — lues dans le film (ti=9 i0), JAMAIS dans la base (decision utilisateur V4)
-lue=true refus="" · 200 record(s) ti=9, 0 rejete(s), 0 divergence(s)
+lue=true refus="" · 208 record(s) ti=9, 0 rejete(s), 0 divergence(s)
 roster : 8 joueur(s) dont le film donne l equipe (0 sans equipe) · 0 non lu(s)
 controle (feuille de match) : accord=0 contradiction=0 silence=8
 vies : 99/99 portent une equipe du film
@@ -59,24 +59,24 @@ par type : Dynamo=17 · Frag=17 · Plasma=14 · Spike=22
 couverture : 580 piste(s) decodee(s) · 436 publiee(s) · 3 coupee(s) a un pas impossible
 
 ## INVENTAIRE — lu aux images-cles, jamais interpole entre deux
-184 etat(s) publie(s) · 150 avec grenades lues · 150 avec munitions lues
-51 lecture(s) de munitions a PLUSIEURS candidats : la plus longue a ete retenue et le
+192 etat(s) publie(s) · 154 avec grenades lues · 154 avec munitions lues
+52 lecture(s) de munitions a PLUSIEURS candidats : la plus longue a ete retenue et le
 nombre de candidats est publie, pour que le departage reste visible
-34 lecture(s) VIDE(S) : 31 corroboree(s) par le fil des morts (`dead`), 3 inexpliquee(s)
-couverture : 184 lecture(s) decodee(s) -> 0 ecartee(s) avant l origine du rejeu · 0 ecartee(s) faute de piste publiee -> 184 publiee(s)
+38 lecture(s) VIDE(S) : 35 corroboree(s) par le fil des morts (`dead`), 3 inexpliquee(s)
+couverture : 192 lecture(s) decodee(s) -> 0 ecartee(s) avant l origine du rejeu · 0 ecartee(s) faute de piste publiee -> 192 publiee(s)
 rangs de grenade : 0:en="Frag"/fr="Fragmentation", 1:en="Plasma"/fr="Plasma", 2:en="Dynamo"/fr="Dynamo", 3:en="Spike"/fr="Spike"
 
 ## GRENADES PORTEES — un axe, DEUX canaux, chaque lecture disant d ou elle vient
-270 lecture(s) · 150 par image-cle (~20 s) · 120 par delta (transmis AU CHANGEMENT)
-150 lecture(s) portent le rang SELECTIONNE — une selection ne se devine pas
-couverture : 150 image-cle · 120 delta · 0 ecartee(s) sans piste · canal munitions refuse : false
+274 lecture(s) · 154 par image-cle (~20 s) · 120 par delta (transmis AU CHANGEMENT)
+154 lecture(s) portent le rang SELECTIONNE — une selection ne se devine pas
+couverture : 154 image-cle · 120 delta · 0 ecartee(s) sans piste · canal munitions refuse : false
 
 ## CAPACITE PORTEE — le RANG de palette, deux canaux pour une seule grandeur
-214 lecture(s) · 82 par i48 (rang complet, paquets delta) · 132 par image-cle (fenetre 16..23)
-rangs observes : 19:42 20:66 21:70 22:36
-lectures NOMMEES 214/214 — un rang hors table garde son numero, et la table est propre a la palette du film
+218 lecture(s) · 82 par i48 (rang complet, paquets delta) · 136 par image-cle (fenetre 16..23)
+rangs observes : 19:43 20:67 21:71 22:37
+lectures NOMMEES 218/218 — un rang hors table garde son numero, et la table est propre a la palette du film
 capacites nommees : 19=en:"Drop Wall"/fr:"mur de protection"/fam:"wall", 20=en:"Grappleshot"/fr:"grappin"/fam:"grapple", 21=en:"Thruster"/fr:"propulseur"/fam:"thruster", 22=en:"Threat Sensor"/fr:"detecteur de menaces"/fam:"sensor"
-couverture : 214 lecture(s) -> 0 ecartee(s) bruit de balayage · 0 ecartee(s) sans trajectoire publiee -> 214 publiee(s)
+couverture : 218 lecture(s) -> 0 ecartee(s) bruit de balayage · 0 ecartee(s) sans trajectoire publiee -> 218 publiee(s)
 
 ## EQUIPEMENT ACTIF — episodes dates par vie, DEUX familles mesurees et rien d autre
 36 episode(s) publie(s) · par famille : camo=36 · 24 fin(s) MESUREE(s) (le reste ferme a la mort)
@@ -565,7 +565,7 @@ provenance : 46 evenement(s) 103 lu(s) sur 3508 liste(s) d evenements non vides
   grenade_plasma unknown 0xcaaadcb0 t=[4932, 4979] pos=(21.19, 3.77, -2.02) poseur=608 cap=300.4 deg
 
 ## SOCLES D ARME AU SOL — la RECURRENCE fait le socle, et le film dit quand il se vide
-balaye=true · bande 899 slot(s) · 6487 ancre(s) -> 317 acceptee(s) -> 220 retenue(s) par l IDENTITE (97 ecartee(s))
+balaye=true · bande 857 slot(s) · 6266 ancre(s) -> 317 acceptee(s) -> 220 retenue(s) par l IDENTITE (97 ecartee(s))
 181 lachee(s) a une mort · 39 apparue(s) sans mort a proximite, dont 0 AU REPOS (jamais bougee : le seul jeu qui fait des socles)
 0 grappe(s) -> 0 socle(s) publie(s) · 0 occupation(s) : 0 datee(s) · 0 sans passage · 0 jamais videe(s)
 0 cycle(s) ETABLI(s) — un cycle instable publie `null`, jamais un chiffre
@@ -573,7 +573,7 @@ POWER-UPS (voie ti=37) — balaye=true · 401 creation(s) acceptee(s) -> 0 reten
 0 occupation(s) achevee(s) publiee(s) · 0 datee(s) a l instant exact par l evenement natif · 0 avec un ramasseur nomme
 
 ## ARMES PORTEES — l inventaire, pas la main : le loadout ne dit pas QUELLE arme est degainee
-150 loadout(s) publie(s) · 22 famille(s) distincte(s)
+249 loadout(s) publie(s) · 22 famille(s) distincte(s)
 
 ## PONT SLOT -> JOUEUR — deux sources nommees : la LECTURE, puis la FERMETURE
 99 entree(s) · 99 issue(s) de la lecture (un ecart NON EXPLIQUE par les fermetures signalerait une TROISIEME SOURCE)
@@ -591,8 +591,8 @@ controle (lecture des chunks) : 8 accord · 0 contradiction · 0 silence — la 
 voies des liens d index : film_table=8
 
 ## SIEGES — la fiche d un occupant, et la part qui vient d un appariement
-entrees 8 · sieges 8 · lus 8 · apparies 0 · reprises ecrites 0
-arrivants 0 · presences closes 6 · sans presence 0 · occupants au plus 8 · sans table false
+entrees 8 · sieges 8 · lus 8 · tirs 0 · apparies 0 · ouvertes 0 · sans place 0 · reprises ecrites 0 · presences film
+arrivants 0 · presences closes 0 · sans presence 0 · occupants au plus 8 · depassements 0 · relais bornes 0 · sans table false
 
 ## REPLIS DECLENCHES — la part de ce document qui ne vient PAS d une lecture du film
 aucun : chaque fait publie vient d une lecture (ou d un repli dont le compteur n est pas encore cable)

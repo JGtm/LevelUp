@@ -44,10 +44,7 @@ func geoDistinctFilmIndex(dir string, upTo int) int {
 				continue
 			}
 			pay := pk.Payload(data)
-			if int(pay[0]>>1) != FireEventType || int(pay[0])&1 != 0 {
-				continue
-			}
-			if fe, ok := decodeFireEvent(pay); ok {
+			if fe, ok := decodeFireEvent(pay); ok { // la grammaire ecarte tout autre type de tete
 				seen[fe.FilmIndex] = true
 			}
 		}

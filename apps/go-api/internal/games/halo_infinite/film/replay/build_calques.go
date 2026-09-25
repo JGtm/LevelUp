@@ -127,6 +127,14 @@ func (a *assemblage) poserArmesAuSolEtVehicules() {
 	// couverture des tirs deja publiee — cf. vehicle_shots.go.
 	attachVehicleShots(&a.doc, a.shotOrphans, a.reg,
 		replayClock{origin: a.origin, step: a.step, frames: a.doc.FrameCount, fb: a.opt.Fallbacks})
+	// LE TIR CONTINU (schema 71, lot M4b) : les rafales lues dans la vue de controle, posees sur
+	// l arme de leur monture ou sur l arme en main. APRES les vehicules (episodes et porteurs), les
+	// dotations et les prises (arme en main) et la pose des places (le tireur est l occupant de sa
+	// place) — cf. fire_bursts.go.
+	a.doc.Bursts, a.doc.Coverage.ContinuousFire = buildFireBursts(&a.doc, a.opt.ContinuousFire,
+		a.opt.ContinuousFireStats, a.reg.IndexParSlot(),
+		replayClock{origin: a.origin, step: a.step, frames: a.doc.FrameCount, fb: a.opt.Fallbacks})
+	logFireBursts(a.doc.Coverage.ContinuousFire)
 }
 
 // poserObjectifsVivants publie les calques portes par les pistes (drapeau, couronne VIP, crane,

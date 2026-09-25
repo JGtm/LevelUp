@@ -138,6 +138,7 @@ var couchesDesCalques = map[string]string{
 	"originMs":            grammar.Rev, // build_pistes.go `resolveOriginMs` <- FilmInputs.FilmClockOriginUS + fil des morts
 	"t0FilmMs":            grammar.Rev, // build_pistes.go `DetectT0Film` <- pistes publiees
 	"shots":               grammar.Rev, // build_pistes.go + vehicle_shots.go <- FilmInputs.Fire
+	"bursts":              grammar.Rev, // build_calques.go `buildFireBursts` <- FilmInputs.ContinuousFire (vue C)
 	"loadouts":            grammar.Rev, // build_pistes.go <- FilmInputs.Loadouts
 	"projectiles":         grammar.Rev, // build_pistes.go <- FilmInputs.Projectiles
 	"grenades":            grammar.Rev, // build_pistes.go <- FilmInputs.Grenades

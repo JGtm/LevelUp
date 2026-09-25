@@ -318,7 +318,7 @@ func miniPacketKind(chunk []byte, p grammar.FilmPacket, throwUS uint64) string {
 		return ""
 	}
 	pay := p.Payload(chunk)
-	if int(pay[0]>>1) == grammar.FireEventType && int(pay[0])&1 == 0 {
+	if typ, ok := grammar.PacketHeadEventType(pay); ok && typ == grammar.TypeTirArme {
 		return "fire"
 	}
 	if throwUS > 0 && p.TimestampUS >= throwUS && p.TimestampUS < throwUS+miniFilmWindowUS {
@@ -395,7 +395,7 @@ func TestMiniFilmDecodesTheFireEvents(t *testing.T) {
 		t.Fatalf("ScanFilmFireEvents : %v", err)
 	}
 	if len(ev) != wantShotsAvailable {
-		t.Errorf("%d evenements de tir decodes, attendu %d — le decodeur du record type 105 a bouge",
+		t.Errorf("%d evenements de tir decodes, attendu %d — le decodeur du record type 36 a bouge",
 			len(ev), wantShotsAvailable)
 	}
 	withWeapon, withAim := 0, 0
@@ -408,9 +408,6 @@ func TestMiniFilmDecodesTheFireEvents(t *testing.T) {
 			withAim++
 		}
 		idx[e.FilmIndex]++
-		if e.Variant != 0 {
-			t.Fatalf("un record COURT a ete emis : il ne porte pas d arme, il n a rien a faire ici")
-		}
 	}
 	if withWeapon != len(ev) {
 		t.Errorf("%d evenements sur %d portent une arme : le champ d arme s est deplace",
@@ -516,8 +513,8 @@ func TestMiniFilmDecodesTheDeathThread(t *testing.T) {
 
 // TestMiniFilmDecodesTheKeyframes : les images-cles servent les armes portees ET l inventaire.
 //
-// LES DEUX COMPTES SONT CEUX DE L ETAGE 1, ET C EST LE POINT : le fixture d entrees porte 150
-// loadouts et 184 inventaires parce qu on les y a mis ; ici ils sont RELUS du binaire. Si les
+// LES DEUX COMPTES SONT CEUX DE L ETAGE 1, ET C EST LE POINT : le fixture d entrees porte 154
+// loadouts et 192 inventaires parce qu on les y a mis ; ici ils sont RELUS du binaire. Si les
 // deux etages divergeaient, l un des deux serait perime — et on saurait lequel.
 func TestMiniFilmDecodesTheKeyframes(t *testing.T) {
 	lo, err := grammar.ScanFilmKeyframeLoadouts(MiniFilmDir, loadoutFamilies())
@@ -573,9 +570,9 @@ func TestMiniFilmDecodesTheKeyframes(t *testing.T) {
 const wantDeaths = 93
 
 // wantLoadouts / wantInventoryRead : ce que les images-cles rendent AVANT tout filtrage par
-// trace publiee. `wantInventory` (184) est le compte APRES publication ; ici les deux coincident
+// trace publiee. `wantInventory` (192) est le compte APRES publication ; ici les deux coincident
 // parce qu aucun etat n est ecarte sur ce film, mais ils repondent a deux questions distinctes.
-const (
-	wantLoadouts      = 150
-	wantInventoryRead = 184
+const ( // 150 / 184 avant M3.1 (2026-09-23) : la marche reparee rend 4 loadouts et 8 etats de plus.
+	wantLoadouts      = 154
+	wantInventoryRead = 192
 )

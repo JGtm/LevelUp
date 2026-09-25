@@ -118,7 +118,7 @@ func ctfScanShortAuthor(t *testing.T, dir string) []authorCand {
 	// Profil de référence : combien de tirs LONGS par index de joueur.
 	ref := make([]float64, 8)
 	for _, pay := range longs {
-		if pi := grammar.ReadAttackerIndex(pay); pi >= 0 && pi < 8 {
+		if pi := ancienIndexAttaquant(pay); pi >= 0 && pi < 8 {
 			ref[pi]++
 		}
 	}
@@ -182,7 +182,7 @@ func ctfSplitFireRecords(t *testing.T, dir string) (longs, shorts [][]byte) {
 				continue
 			}
 			pay := p.Payload(chunk)
-			if int(pay[0]>>1) != grammar.FireEventType {
+			if int(pay[0]>>1) != ancienTypeTeteTir {
 				continue
 			}
 			cp := append([]byte(nil), pay...)

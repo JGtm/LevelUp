@@ -68,7 +68,7 @@ func TestTourelle55Masque(t *testing.T) {
 	if restore, err := InstallFilmFormatMPP(fc); err == nil {
 		defer restore()
 	}
-	kf := ScanWorldObjectKeyframes(fc.Film(), VehicleTypeIndex)
+	kf := ScanWorldObjectKeyframes(fc, VehicleTypeIndex)
 	if len(kf.Band) == 0 {
 		t.Fatalf("aucune bande ti=40 dans les images-cle")
 	}

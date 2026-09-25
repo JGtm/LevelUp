@@ -57,7 +57,7 @@ import {
   type EndMatchSoundSpec,
 } from './endMatchSound'
 import type { ReplayLocale } from '../i18n/i18n'
-import { ReplayAudioPlayer } from './replayAudio'
+import { ReplayAudioPlayer, soundShapeOf } from './replayAudio'
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 import { distanceChain, drawVariation } from './weaponSoundLogic'
 import { WEAPON_SOUND_VARIATIONS } from './weaponSoundVariations'
@@ -486,8 +486,10 @@ export function useReplaySound(
     else {
       playerRef.current?.setVolume(0)
       // La rampe du maître éteint ce qui est EN VOL ; une boucle moteur, elle, resterait à
-      // tourner en silence et repartirait au prochain réglage de volume — on la coupe.
+      // tourner en silence et repartirait au prochain réglage de volume — on la coupe. Les
+      // rafales tenues aussi.
       engine.stop()
+      playerRef.current?.stopHeld()
     }
     setOn(next)
   }, [openPlayer, hasAnySound, engine.stop])
@@ -516,8 +518,10 @@ export function useReplaySound(
     if (!onRef.current || !player || !soundPlaysAtSpeed(speedRef.current)) {
       cursorRef.current = resyncSoundCursor(tl, ms)
       // Les MOTEURS se taisent avec le reste : au-delà de SOUND_MAX_SPEED, le panneau dit
-      // « son coupé par la vitesse », et un moteur qui continuerait le ferait mentir.
+      // « son coupé par la vitesse », et un moteur qui continuerait le ferait mentir. Les
+      // rafales TENUES aussi (schéma 71).
       engine.stop()
+      player?.stopHeld()
       return
     }
     // Les moteurs suivent l'instant AVANT le tirage des événements : un saut est réconcilié
@@ -526,6 +530,8 @@ export function useReplaySound(
     if (resyncRef.current) {
       resyncRef.current = false
       cursorRef.current = resyncSoundCursor(tl, ms)
+      // UN SAUT éteint la rafale tenue : elle appartenait à l'instant quitté.
+      player.stopHeld()
       return
     }
     const { cursor, fire } = advanceSoundCursor(tl, cursorRef.current, ms)
@@ -538,8 +544,13 @@ export function useReplaySound(
       const url = urlsRef.current.get(stem)
       if (!url) continue
       // Le tirage de variation ne concerne que les ARMES : la table est keyee par stem
-      // d'arme, tout autre stem se joue tel quel (drawVariation rend le neutre exact).
-      player.play(url, drawVariation(WEAPON_SOUND_VARIATIONS[stem], tuning.variationPercentRef.current))
+      // d'arme, tout autre stem se joue tel quel (drawVariation rend le neutre exact). La FORME
+      // (son tenu ou coupé d'une rafale de tir continu, schéma 71) voyage avec l'événement.
+      player.play(
+        url,
+        drawVariation(WEAPON_SOUND_VARIATIONS[stem], tuning.variationPercentRef.current),
+        soundShapeOf(e),
+      )
     }
   }, [tuning, engine.stop, engine.sync])
 
@@ -600,7 +611,10 @@ export function useReplaySound(
   // s'éteindrait jamais. La reprise n'a rien à faire — le prochain `tick` recale tout.
   const setTransportPlaying = useCallback(
     (playing: boolean) => {
-      if (!playing) engine.stop()
+      if (playing) return
+      engine.stop()
+      // La rafale TENUE s'éteint avec : une image arrêtée ne tire plus.
+      playerRef.current?.stopHeld()
     },
     [engine.stop],
   )

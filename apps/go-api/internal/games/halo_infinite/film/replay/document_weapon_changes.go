@@ -34,6 +34,7 @@ package replay
 
 import (
 	"fmt"
+	"sort"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
@@ -77,6 +78,13 @@ type WeaponChange struct {
 	// désormais dans `groundWeapons` (document_ground_weapon_items.go), borné par
 	// l'OBSERVATION — le ramassage daté ou le recensement des images-clés.
 	From string `json:"from,omitempty"`
+	// K est l'EMPLACEMENT d'arme concerné (schéma 69, lot M3.2) : 0 = la première arme, 1 = la
+	// seconde — le rang du composant `weapon-state-type-info` dans l'archétype du film, jamais
+	// un index en dur. C'est la clé qu'une dotation de naissance (`loadouts[].k`) partage avec
+	// le flux : elle situe une prise sur un emplacement VIDE, que `from` ne peut pas nommer.
+	// Un POINTEUR parce que 0 est un emplacement : toujours posé par la cuisson, absent des
+	// seuls artefacts antérieurs au schéma 69.
+	K *int `json:"k,omitempty"`
 }
 
 // buildWeaponChanges projette les changements lus dans le film sur l'axe de frames du document.
@@ -109,7 +117,8 @@ func buildWeaponChanges(
 			continue
 		}
 		frame := int((c.TimestampUS - origin) / step)
-		w := WeaponChange{T: frame, Slot: c.Slot, Kind: weaponChangeKindOf(c.Kind)}
+		k := c.Emplacement
+		w := WeaponChange{T: frame, Slot: c.Slot, Kind: weaponChangeKindOf(c.Kind), K: &k}
 		if c.Family != grammar.NoWeaponVariant {
 			w.W = fmt.Sprintf("%08x", c.Family)
 		}
@@ -168,35 +177,87 @@ type WeaponChangeCoverage struct {
 	Swapped int `json:"swapped"`
 }
 
-// spawnSetFrom construit le prédicat « cette famille était-elle portée au dernier relevé
-// d'image-clé qui précède ? », à partir des loadouts déjà balayés par l'assemblage.
+// spawnSetFrom construit le prédicat « que portait la VIE de ce slot au dernier relevé PASSÉ ? »,
+// à partir des relevés déjà balayés par l'assemblage : les dotations de NAISSANCE (emplacement
+// par emplacement, lot M3.2) et les relevés d'image-clé (un ensemble de familles).
 //
 // IL SERT À DISTINGUER UNE PRISE D'UNE RÉ-ANNONCE, et c'est sa seule raison d'être : la
 // PREMIÈRE émission d'un emplacement n'a pas d'état précédent dans le flux, son état de départ
 // vient du spawn. Sans ce prédicat, chaque première émission serait comptée comme une prise.
-func spawnSetFrom(loadouts []types.KeyframeLoadout) func(uint32, uint64) (map[uint32]bool, bool) {
-	if len(loadouts) == 0 {
+//
+// DEUX BORNES, ET CE SONT ELLES QUI RENDENT LE PRÉDICAT JUSTE (lot M3.2) :
+//
+//   - JAMAIS UN RELEVÉ À VENIR. Jusqu'au schéma 68, un slot sans relevé passé rendait son PREMIER
+//     relevé, fût-il vingt secondes plus tard : une arme ramassée entre-temps y figurait déjà, et
+//     sa prise se classait « ré-annonce » — écartée du document. La dotation de naissance est
+//     désormais le relevé passé du début de vie ; sans elle, rien n'est rendu et la première
+//     émission se lit comme une prise ;
+//   - LA VIE. Un slot se réattribue : un relevé antérieur à la CRÉATION du corps qui occupe le
+//     slot appartient à la vie précédente et n'est jamais candidat. La création voyage dans
+//     `DebutDeVie`, même sans relevé, pour que le flux coupe sa chaîne à chaque nouvelle vie.
+func spawnSetFrom(
+	loadouts []types.KeyframeLoadout, births []types.BirthLoadout, creations []grammar.BipedCreation,
+) grammar.SpawnPredicate {
+	if len(loadouts) == 0 && len(births) == 0 && len(creations) == 0 {
 		return nil
 	}
-	bySlot := map[uint32][]types.KeyframeLoadout{}
-	for _, l := range loadouts {
-		bySlot[l.Slot] = append(bySlot[l.Slot], l)
+	type releve struct {
+		ts uint64
+		st grammar.SpawnState
 	}
-	return func(slot uint32, at uint64) (map[uint32]bool, bool) {
-		list := bySlot[slot]
-		if len(list) == 0 {
-			return nil, false
-		}
-		pick := list[0]
-		for _, l := range list {
-			if l.TimestampUS <= at {
-				pick = l
-			}
-		}
-		set := make(map[uint32]bool, len(pick.Families))
-		for _, f := range pick.Families {
+	bySlot := map[uint32][]releve{}
+	for _, l := range loadouts {
+		set := make(map[uint32]bool, len(l.Families))
+		for _, f := range l.Families {
 			set[f] = true
 		}
-		return set, true
+		bySlot[l.Slot] = append(bySlot[l.Slot], releve{l.TimestampUS, grammar.SpawnState{Families: set}})
+	}
+	// Les naissances APRÈS les images-clés : à instant égal, la dotation (qui situe ses familles)
+	// l'emporte, le tri stable le garantit.
+	for _, b := range births {
+		st := grammar.SpawnState{Families: map[uint32]bool{}, ParEmplacement: map[int]uint32{}}
+		for _, w := range b.Weapons {
+			st.ParEmplacement[w.Emplacement] = w.Family
+			if w.Family != grammar.NoWeaponVariant {
+				st.Families[w.Family] = true
+			}
+		}
+		bySlot[b.Slot] = append(bySlot[b.Slot], releve{b.TimestampUS, st})
+	}
+	for slot := range bySlot {
+		l := bySlot[slot]
+		sort.SliceStable(l, func(i, j int) bool { return l[i].ts < l[j].ts })
+	}
+	nes := map[uint32][]uint64{}
+	for _, c := range creations {
+		nes[c.Slot] = append(nes[c.Slot], c.TimestampUS)
+	}
+	for slot := range nes {
+		sort.Slice(nes[slot], func(i, j int) bool { return nes[slot][i] < nes[slot][j] })
+	}
+	return func(slot uint32, at uint64) (grammar.SpawnState, bool) {
+		var debut uint64
+		for _, ts := range nes[slot] {
+			if ts > at {
+				break
+			}
+			debut = ts
+		}
+		var pick *releve
+		for i, r := range bySlot[slot] {
+			if r.ts > at {
+				break
+			}
+			if r.ts >= debut {
+				pick = &bySlot[slot][i]
+			}
+		}
+		if pick == nil {
+			return grammar.SpawnState{DebutDeVie: debut}, false
+		}
+		st := pick.st
+		st.DebutDeVie = debut
+		return st, true
 	}
 }

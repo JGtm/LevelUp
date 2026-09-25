@@ -57,6 +57,13 @@ type FilmInputs struct {
 	Fire []grammar.FireEvent
 	// Loadouts sont les armes portees relevees aux images-cles.
 	Loadouts []types.KeyframeLoadout
+	// KeyframeWalk est la sante de la marche d image-cle du film (lot M3.1) : ses decisions et
+	// les bipedes qu elle a manques entre deux images-cles qui les portaient.
+	KeyframeWalk grammar.KeyframeWalkCoverage
+	// BirthLoadouts / BirthLoadoutStats sont les DOTATIONS DE NAISSANCE (lot M3.2) : les armes de
+	// chaque corps lues dans son record NEW de creation, et les refus comptes par cause.
+	BirthLoadouts     []types.BirthLoadout
+	BirthLoadoutStats types.BirthLoadoutStats
 	// WeaponChanges sont les prises et lachers d'arme lus dans le flux delta.
 	WeaponChanges []types.HeldWeaponChange
 	// Pickups / PickupStats sont les ramassages NATIFS (evenement `biped_pickup`) et la mesure
@@ -91,6 +98,10 @@ type FilmInputs struct {
 	// c'est-a-dire des TRANSITIONS : c'est l'assemblage qui les replie en intervalles.
 	MovementStates     []types.MovementStateRead
 	MovementStateStats types.MovementStateStats
+	// ContinuousFire / ContinuousFireStats sont le TIR CONTINU (lot M4b), lu par la MEME marche que
+	// les etats de mouvement : les rafales de la vue de controle, et ce que sa lecture n a pas atteint.
+	ContinuousFire      []types.ContinuousFireBurst
+	ContinuousFireStats types.ContinuousFireStats
 	// ZoomEvents sont les bascules de LUNETTE lues dans la liste d'evenements. Elles entrent ici
 	// BRUTES, et non deja reduites en `Options.Scoped` : c'est `applyTo` qui reconstruit le
 	// palier a l'instant (cf. sa note), pour qu'un fixture n'ait qu'une LISTE a serialiser la ou
@@ -156,6 +167,11 @@ type FilmInputs struct {
 	// TeamScan est le rapport de cette lecture. Il voyage avec la table parce qu'une table vide
 	// et une lecture refusee ne disent pas la meme chose.
 	TeamScan grammar.TeamScanReport
+	// PlayerEntities sont les OCCUPANTS du match, un par entite ti=9, lus dans la MEME passe
+	// que `PlayerTeams` (lot M2.1, 2026-09-23) : slot, index, designateur, premiere et derniere
+	// image-cle porteuse. C'est la source de la PRESENCE et de l'EQUIPE PAR ENTREE du roster ;
+	// `PlayerTeams` n'en est plus que le controle par index.
+	PlayerEntities grammar.PlayerEntityScan
 	// FilmClockOriginUS est l'horodatage moteur du PREMIER paquet du film. Zero = origine
 	// incalculable : le document sort sans origine.
 	FilmClockOriginUS uint64
@@ -183,6 +199,8 @@ func (in FilmInputs) applyTo(opt *Options) {
 	opt.Translocations = in.Translocations
 	opt.BipedCreations = in.BipedCreations
 	opt.Loadouts = in.Loadouts
+	opt.KeyframeWalk = in.KeyframeWalk
+	opt.BirthLoadouts, opt.BirthLoadoutStats = in.BirthLoadouts, in.BirthLoadoutStats
 	opt.WeaponChanges = in.WeaponChanges
 	opt.Pickups, opt.PickupStats = in.Pickups, in.PickupStats
 	opt.Inventory = in.Inventory
@@ -195,6 +213,7 @@ func (in FilmInputs) applyTo(opt *Options) {
 	opt.AbilityImpulses, opt.AbilityImpulseStats = in.AbilityImpulses, in.AbilityImpulseStats
 	opt.AbilityCharges, opt.AbilityChargeStats = in.AbilityCharges, in.AbilityChargeStats
 	opt.MovementStates, opt.MovementStateStats = in.MovementStates, in.MovementStateStats
+	opt.ContinuousFire, opt.ContinuousFireStats = in.ContinuousFire, in.ContinuousFireStats
 	opt.Scoped = buildScopedLookup(in.ZoomEvents,
 		buildLifeSpans(indexBySlot(in.Positions)), zoomHoldUS)
 	opt.Placements, opt.PlacementStats = in.Placements, in.PlacementStats
@@ -211,5 +230,6 @@ func (in FilmInputs) applyTo(opt *Options) {
 	opt.PlayerIndices = in.PlayerIndices
 	opt.FilmTable = in.FilmTable
 	opt.PlayerTeams, opt.TeamScan = in.PlayerTeams, in.TeamScan
+	opt.PlayerEntities = in.PlayerEntities
 	opt.FilmClockOriginUS = in.FilmClockOriginUS
 }

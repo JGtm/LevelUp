@@ -178,6 +178,7 @@ import { abilityImpulseSoundEvents } from './abilityImpulseSound'
 import { roundOverSoundEvents } from './roundOverSound'
 import { skullSoundEvents } from './skullSound'
 import { zoneSoundEvents } from './zoneSound'
+import { fireBurstSoundEvents } from './fireBurstSound'
 import { frameToMs } from '../../../lib/replay/replayLogic'
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 import { soundEvent, type ReplaySoundEvent } from './replaySoundVariants'
@@ -614,6 +615,9 @@ export function buildSoundTimeline(
       const stem = shotSoundStem(doc, s)
       if (stem) out.push(soundEvent(frameToMs(s.t, doc), stem))
     }
+    // LE TIR CONTINU (schéma 71, lot M4b) : chaque rafale tient sa boucle, ou rejoue son coup
+    // à la cadence de l'arme, et finit sur le coup de queue. Doctrine : `fireBurstSound.ts`.
+    out.push(...fireBurstSoundEvents(doc, (w) => shotSoundStem(doc, { w })))
     // Les RAMASSAGES ET LÂCHERS D'ARME (schéma 25) : datés par `weaponChanges`, plus rien à
     // déduire — c'est ce canal qui a remplacé la règle « au premier tir » retirée le même
     // jour. Doctrine, sons et choix du `swapped` : `weaponChangeSound.ts`.

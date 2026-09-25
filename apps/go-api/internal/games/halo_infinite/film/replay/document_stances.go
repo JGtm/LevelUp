@@ -93,6 +93,19 @@ type StanceCoverage struct {
 	// localise la trame : leurs records ne sont PAS lus. Sans ce compteur, « N intervalles » ne
 	// dit pas sur quelle part du film ils portent.
 	EventPacketsUnlocated int `json:"eventPacketsUnlocated,omitempty"`
+	// ForgottenBindings : les liaisons du monde qu une image-cle ne portait plus (la suppression de
+	// l entite n avait pas ete lue) — OUBLIEES avant ses propres liaisons (lot D-fix,
+	// `grammar/keyframe_liaison.go`).
+	ForgottenBindings int `json:"forgottenBindings,omitempty"`
+	// RefusedNews : les records NEW refuses parce qu ils contredisaient une entite vivante du monde
+	// (lot D-fix, `grammar/frame_infer.go`), VENTILES par le verdict de l image-cle suivante
+	// (constat DFIX-R6) : lecture fausse confirmee, vraie creation PERDUE (le DEL du vivant n avait
+	// pas ete lu : les deltas du slot se sont lus sous l archetype du mort jusqu a cette image-cle),
+	// indecis. `RefusedNewLostCreates` est le prix de la regle ; sans lui, elle ne se juge pas.
+	RefusedNews           int `json:"refusedNews,omitempty"`
+	RefusedNewFalseReads  int `json:"refusedNewFalseReads,omitempty"`
+	RefusedNewLostCreates int `json:"refusedNewLostCreations,omitempty"`
+	RefusedNewUndecided   int `json:"refusedNewUndecided,omitempty"`
 	// MapWidths est le triplet de largeurs d axe employe par le chemin absolu d `i0`. PUBLIE
 	// parce que c est le pre-requis le plus facile a oublier : un triplet qui n est pas celui de
 	// la carte du match rend la marche muette (cf. `grammar/movement_states.go`).
@@ -115,7 +128,11 @@ func buildStances(in stanceInputs) ([]Stance, StanceCoverage) {
 		Records: in.stats.Records, Desyncs: in.stats.Desyncs, Reads: len(in.reads),
 		TracksTotal: len(in.tracks), Dropped: in.stats.SlotUnbound,
 		EventPacketsUnlocated: in.stats.EventPacketsUnlocated, MapWidths: in.stats.MapWidths,
-		JumpEpisodes: in.stats.JumpEpisodes, JumpsDerived: in.stats.JumpsDerived}
+		ForgottenBindings: in.stats.LiaisonsOubliees, RefusedNews: in.stats.NeufsContreUnVivant,
+		RefusedNewFalseReads:  in.stats.NeufsRefusesLecturesFausses,
+		RefusedNewLostCreates: in.stats.NeufsRefusesCreationsPerdues,
+		RefusedNewUndecided:   in.stats.NeufsRefusesIndecis,
+		JumpEpisodes:          in.stats.JumpEpisodes, JumpsDerived: in.stats.JumpsDerived}
 	if len(in.tracks) == 0 || in.step == 0 || len(in.reads) == 0 {
 		return nil, cov
 	}

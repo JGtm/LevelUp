@@ -133,7 +133,7 @@ func GroundWeaponSlotBand(dir string) map[uint32]bool {
 	if err != nil {
 		return nil
 	}
-	return worldObjectSlotBand(film, GroundWeaponTypeIndex)
+	return worldObjectSlotBand(NewFilmContext(film), GroundWeaponTypeIndex)
 }
 
 // GroundWeaponPositions rend, par slot d'arme au sol, les positions monde décodées des paquets

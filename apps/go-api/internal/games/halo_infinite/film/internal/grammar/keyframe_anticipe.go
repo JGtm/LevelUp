@@ -89,12 +89,23 @@ type TableAnticipee struct {
 	// tetes recense les deux bits de tete rencontres : c est la mesure qui dit si la cle
 	// `(slot, tete)` se distingue de la cle `slot` sur ce film.
 	tetes map[uint8]int
+	// archetypesDuSlot : pour chaque slot, les archetypes qu AU MOINS une image-cle du film lui
+	// donne (toute tete, tout chunk) — la bande d un archetype, pour le debut de liste
+	// (`liste_par_naissance.go`).
+	archetypesDuSlot map[uint32]map[uint32]bool
+	// bandes : la BANDE de chaque archetype deja demandee, par la regle de production
+	// ([slotBandExcluding] : la plage comblee, moins les slots vus porter un autre archetype).
+	bandes map[uint32]map[uint32]bool
+	// marche : la marche d image-cle qui LIT les declarations — celle du film (preuve comprise, lot
+	// D-fix) quand la table est construite depuis son contexte, sans preuve sinon.
+	marche MarcheDImageCle
 }
 
 // NouvelleTableAnticipee rend une table vide.
 func NouvelleTableAnticipee() *TableAnticipee {
 	return &TableAnticipee{entrees: map[cleAnticipee][]declarationAnticipee{},
-		tetes: map[uint8]int{}}
+		tetes: map[uint8]int{}, archetypesDuSlot: map[uint32]map[uint32]bool{},
+		bandes: map[uint32]map[uint32]bool{}}
 }
 
 // ConstruireTableAnticipee lit les images-cles de TOUS les chunks du film et rend la table du
@@ -104,6 +115,7 @@ func ConstruireTableAnticipee(fc *FilmContext) *TableAnticipee {
 	if fc == nil {
 		return t
 	}
+	t.marche = fc.MarcheDImageCle()
 	for _, c := range fc.ChunkNumbers() {
 		data, pks, ok := fc.ChunkAt(c)
 		if !ok {
@@ -118,14 +130,14 @@ func ConstruireTableAnticipee(fc *FilmContext) *TableAnticipee {
 // AjouterChunk verse dans la table ce que les images-cles d un chunk declarent.
 //
 // La lecture est celle que le monde emprunte deja pour ses liaisons d image-cle
-// ([WalkKeyframeWorld]) : elle rend `(Slot, TI, Gen)`, c est-a-dire exactement le mot de 32 bits
+// ([MarcheDImageCle]) : elle rend `(Slot, TI, Gen)`, c est-a-dire exactement le mot de 32 bits
 // que `FUN_1406caad8` compare, decompose. Aucune seconde lecture d image-cle n est ecrite ici.
 func (t *TableAnticipee) AjouterChunk(num int, data []byte, pks []FilmPacket) {
 	for _, pk := range pks {
 		if pk.Type != PacketTypeKeyframe {
 			continue
 		}
-		for _, r := range WalkKeyframeWorld(pk.Payload(data)) {
+		for _, r := range t.marche.Records(pk.Payload(data)) {
 			if r.Slot < 0 || r.TI < 0 {
 				continue
 			}
@@ -135,6 +147,10 @@ func (t *TableAnticipee) AjouterChunk(num int, data []byte, pks []FilmPacket) {
 			t.declarations++
 			//nolint:gosec // TI < kfArchMax par la garde
 			t.entrees[cle] = append(t.entrees[cle], declarationAnticipee{chunk: num, ti: uint32(r.TI)})
+			if t.archetypesDuSlot[cle.slot] == nil {
+				t.archetypesDuSlot[cle.slot] = map[uint32]bool{}
+			}
+			t.archetypesDuSlot[cle.slot][uint32(r.TI)] = true //nolint:gosec // TI borne
 		}
 	}
 }
@@ -171,6 +187,31 @@ func (t *TableAnticipee) ArchetypeApres(id uint32, chunk int) (ti uint32, declar
 		}
 	}
 	return 0, 0, false
+}
+
+// SlotDeLArchetype dit si le slot est dans la BANDE de l archetype, lue dans les images-cles du
+// film par la regle des objets du monde ([worldObjectSlotBand], [slotBandExcluding]) : la plage
+// des slots que l archetype occupe, comblee, moins les slots vus porter un autre archetype.
+func (t *TableAnticipee) SlotDeLArchetype(slot, ti uint32) bool {
+	if t == nil {
+		return false
+	}
+	b, ok := t.bandes[ti]
+	if !ok {
+		vus, autres := map[uint32]bool{}, map[uint32]bool{}
+		for s, tis := range t.archetypesDuSlot {
+			for x := range tis {
+				if x == ti {
+					vus[s] = true
+				} else {
+					autres[s] = true
+				}
+			}
+		}
+		b = slotBandExcluding(vus, autres)
+		t.bandes[ti] = b
+	}
+	return b[slot]
 }
 
 // Entrees rend le nombre de cles `(slot, tete)` distinctes que la table porte.

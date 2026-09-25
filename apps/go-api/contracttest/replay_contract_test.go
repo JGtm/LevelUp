@@ -737,9 +737,15 @@ var replaySchemas = []struct {
 //	                      sol joue du match) et les compteurs du repli « zone inconnue ». Il
 //	                      remplace la regle cliente `vehicleIsScenery` du lot L1.3.
 //
-// Les vingt-six fois, ce test a ATTRAPE l ecart : une branche publiait le champ avant que le
+//	64 (2026-09-24) : `bursts` — LES RAFALES DE TIR CONTINU (retours du rejeu, lot M4b, schema
+//	                      71) : la gachette tenue lue dans la vue de controle, posee sur l arme de sa
+//	                      monture ou sur l arme en main, avec la cadence du tag. `coverage
+//	                      .continuousFire` et les compteurs neufs de `coverage.shots` / `.seats` /
+//	                      `.vehicles` naissent au meme commit SANS faire monter ce compte.
+//
+// Les vingt-sept fois, ce test a ATTRAPE l ecart : une branche publiait le champ avant que le
 // chiffre ne le dise. Contrat regenere (`make openapi-gen`), jamais ecrit a la main.
-const wantReplayDocumentFields = 63
+const wantReplayDocumentFields = 64
 
 // TestReplayContractDescribesEveryPublishedField : AUCUN CHAMP PUBLIE SANS DESCRIPTION, ET
 // AUCUNE DESCRIPTION SANS CHAMP.

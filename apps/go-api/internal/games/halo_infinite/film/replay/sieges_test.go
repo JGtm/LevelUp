@@ -1,17 +1,23 @@
 package replay
 
-// sieges_test.go — CE QUE LA POSE DES SIEGES GARANTIT (lot 1.9.14).
+// sieges_test.go — CE QUE LA POSE DES PLACES GARANTIT (lot 1.9.14 ; refondu au lot M2.3,
+// 2026-09-23, sur la regle des places de l'utilisateur).
 //
-// Chaque test nomme la regle qu'il tient, et une seule :
+// LES TESTS D'AVANT LE LOT M2.3 ONT ETE REECRITS AVEC LA REGLE QU'ILS VERROUILLAIENT : ils
+// fixaient l'appariement ORDINAL des seuls partants de la table ayant une equipe et des vies
+// (`repli_siege_du_remplacant_par_appariement_ordinal`, retire). Chaque test nomme la regle qu'il
+// tient, et une seule :
 //
-//	T-LU        le film REUTILISE l'index : les deux occupants partagent le siege, la source
-//	            reste `lu`, et le repli ordinal ne se declenche PAS ;
-//	T-APPARIE   le film ecrit un index NEUF : le siege vient du repli, compte une fois ;
-//	T-ORDRE     un arrivant ne reprend pas un siege ENCORE OCCUPE a son arrivee ;
-//	T-SANSTABLE un film sans table de depart n'apparie RIEN et le publie ;
-//	T-TRONQUE   plus d'arrivants que de sieges liberes : aucune panique, aucun chainage de trop ;
-//	T-PRESENCE  les intervalles de presence d'un partant et d'un arrivant ne se recouvrent pas,
-//	            et le nombre d'occupants SIMULTANES est celui de l'effectif, pas du roster.
+//	P-LU        le film REUTILISE l'index : les deux occupants tiennent la meme place, par lecture ;
+//	P-CHAINE    un arrivant d'index NEUF prend la place que son equipe libere, par le repli compte ;
+//	P-OCCUPEE   une place encore tenue a son arrivee ne se reprend pas ;
+//	P-CAPACITE  plus d'arrivants que de places : le surplus reste sans place, compte, et c'est le
+//	            seul chemin par lequel une equipe depasse ses places (`depassements`) ;
+//	P-SANSTABLE sans table du debut, aucune place n'est decidable : abstention publiee ;
+//	P-TIRS      un arrivant qui tire lit sa place a l'unanimite de ses tirs ; deux places votees
+//	            = contestee, et le chainage reprend ;
+//	P-BORNE     l'affichage d'un occupant s'arrete la veille de l'arrivee du suivant ;
+//	P-VIES      sans entite, le dernier occupant d'une place reste jusqu'a la fin (repli compte).
 
 import (
 	"testing"
@@ -19,7 +25,7 @@ import (
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
 )
 
-// siegeFrames : la longueur des documents de ces tests. Les bornes t1 et t2 s'y rapportent.
+// siegeFrames : la longueur des documents de ces tests.
 const siegeFrames = 100
 
 // tableDeDebut fabrique la table du film pour les index donnes — le roster du DEBUT.
@@ -31,181 +37,216 @@ func tableDeDebut(index ...int) FilmPlayerTable {
 	return t
 }
 
-// entree fabrique une entree de roster humaine d'index donne, dans le camp donne.
-func entree(idx, camp int, xuid string) RosterEntry {
-	c := camp
-	return RosterEntry{XUID: xuid, FilmIndex: idx, Name: "j" + xuid, Team: &c}
+// entree fabrique une entree de roster humaine d'index donne.
+func entree(idx int, xuid string) RosterEntry {
+	return RosterEntry{XUID: xuid, FilmIndex: idx, Name: "j" + xuid}
 }
 
-// vie fabrique une piste d'un xuid sur l'intervalle de frames donne.
-func vie(xuid string, debut, fin int) Track {
-	return Track{Slot: 1, XUID: xuid, StartFrame: debut, EndFrame: fin,
-		Points: []Point{{T: debut}, {T: fin}}}
+// occupantsFabriques porte les occupants d'un test : une presence LUE (comme si le film l'avait
+// donnee) et une equipe par entree, dans l'ordre du roster.
+func occupantsFabriques(camps []int, presences ...[]intervalleDePresence) occupants {
+	occ := occupants{parEntree: make([]occupantDuRoster, len(presences)), balaye: true}
+	for i, p := range presences {
+		c := camps[i]
+		occ.parEntree[i] = occupantDuRoster{presence: p, equipe: &c, lue: true}
+	}
+	return occ
 }
 
-// TestSiegeRepriseEcriteEstLue (T-LU, T-PRESENCE) : le partant sort a t1, l'arrivant entre a t2
-// SUR LE MEME INDEX. Le document publie le meme siege pour les deux, par LECTURE, et les deux
-// presences sont disjointes.
-func TestSiegeRepriseEcriteEstLue(t *testing.T) {
-	const t1, t2 = 40, 60
-	roster := []RosterEntry{entree(0, 1, "100"), entree(0, 1, "200")}
-	tracks := []Track{vie("100", 0, t1), vie("200", t2, siegeFrames-1)}
+// iv fabrique un intervalle de presence dont l'affichage egale le certain.
+func iv(de, a int) []intervalleDePresence {
+	return []intervalleDePresence{{de: de, a: a, aMax: a}}
+}
+
+func horlogeDeSieges(fb *fallback.Compteur) replayClock {
+	return replayClock{origin: 0, step: 100_000, frames: siegeFrames, fb: fb}
+}
+
+// TestPlaceRepriseEcriteEstLue (P-LU) : le partant sort a 40, l'arrivant entre a 60 SUR LE MEME
+// INDEX. Les deux tiennent la meme place, par LECTURE, et le repli ne se declenche pas.
+func TestPlaceRepriseEcriteEstLue(t *testing.T) {
+	roster := []RosterEntry{entree(0, "100"), entree(0, "200")}
+	occ := occupantsFabriques([]int{1, 1}, iv(0, 40), iv(60, siegeFrames-1))
 	fb := fallback.NouveauCompteur()
-	cov := poserLesSieges(roster, tracks, tableDeDebut(0), siegeFrames, fb)
+	cov := poserLesSieges(roster, occ, entreesDesPlaces{table: tableDeDebut(0), horloge: horlogeDeSieges(fb)})
 
-	if roster[0].Seat != roster[1].Seat {
-		t.Fatalf("sieges %d et %d : le film REUTILISE l'index, les deux occupants le partagent",
+	if roster[0].Seat != 0 || roster[1].Seat != 0 {
+		t.Fatalf("places %d et %d : le film REUTILISE l'index, les deux occupants la partagent",
 			roster[0].Seat, roster[1].Seat)
 	}
 	for i := range roster {
 		if roster[i].SeatSource != SeatSourceLu {
-			t.Errorf("entree %d : source %q, attendu %q — le film a ECRIT la reprise",
-				i, roster[i].SeatSource, SeatSourceLu)
+			t.Errorf("entree %d : source %q, attendu %q", i, roster[i].SeatSource, SeatSourceLu)
 		}
 	}
-	if n := fb.Compte(fallback.NomSiegeDuRemplacantParAppariementOrdinal); n != 0 {
+	if n := fb.Compte(fallback.NomPlaceDuRemplacantParChainageDEquipe); n != 0 {
 		t.Errorf("repli declenche %d fois, attendu 0 : il ne passe JAMAIS devant une lecture", n)
 	}
-	if cov.ReprisesEcrites != 1 || cov.Apparies != 0 || cov.Lus != 2 {
-		t.Errorf("couverture %+v : attendu 1 reprise ecrite, 0 appariee, 2 lues", cov)
-	}
-	if cov.OccupantsMax != 1 {
-		t.Errorf("occupants simultanes %d, attendu 1 : les deux presences sont DISJOINTES",
-			cov.OccupantsMax)
+	if cov.ReprisesEcrites != 1 || cov.Apparies != 0 || cov.Lus != 2 || cov.OccupantsMax != 1 {
+		t.Errorf("couverture %+v : attendu 1 reprise ecrite, 0 appariee, 2 lues, 1 occupant", cov)
 	}
 }
 
-// TestSiegeIndexNeufEstApparie (T-APPARIE) : le film ecrit un index NEUF pour l'arrivant. Le
-// chainage sur le siege du partant est un repli, compte une fois.
-func TestSiegeIndexNeufEstApparie(t *testing.T) {
-	const t1, t2 = 40, 60
-	roster := []RosterEntry{entree(0, 1, "100"), entree(1, 1, "200")}
-	tracks := []Track{vie("100", 0, t1), vie("200", t2, siegeFrames-1)}
+// TestPlaceIndexNeufEstChainee (P-CHAINE) : l'arrivant porte un index NEUF ; il prend la place que
+// son equipe a liberee, par le repli, compte une fois. Son index LU n'est jamais ecrase.
+func TestPlaceIndexNeufEstChainee(t *testing.T) {
+	roster := []RosterEntry{entree(0, "100"), entree(1, "200"), entree(9, "300")}
+	occ := occupantsFabriques([]int{1, 0, 1}, iv(0, 40), iv(0, siegeFrames-1), iv(60, siegeFrames-1))
 	fb := fallback.NouveauCompteur()
-	cov := poserLesSieges(roster, tracks, tableDeDebut(0), siegeFrames, fb)
+	cov := poserLesSieges(roster, occ, entreesDesPlaces{table: tableDeDebut(0, 1), horloge: horlogeDeSieges(fb)})
 
-	if roster[1].Seat != roster[0].Seat {
-		t.Fatalf("siege de l'arrivant %d, attendu %d (celui du partant)",
-			roster[1].Seat, roster[0].Seat)
+	if roster[2].Seat != 0 || roster[2].SeatSource != SeatSourceApparie {
+		t.Fatalf("arrivant : place %d (%s), attendu 0 (apparie) — la place LIBEREE de son equipe",
+			roster[2].Seat, roster[2].SeatSource)
 	}
-	if roster[1].SeatSource != SeatSourceApparie {
-		t.Errorf("source %q, attendu %q — le film n'a pas ecrit cette reprise",
-			roster[1].SeatSource, SeatSourceApparie)
+	if roster[2].FilmIndex != 9 {
+		t.Errorf("FilmIndex %d : l'index LU ne doit jamais etre ecrase par la place", roster[2].FilmIndex)
 	}
-	if roster[1].FilmIndex != 1 {
-		t.Errorf("FilmIndex %d : l'index LU ne doit jamais etre ecrase par le siege",
-			roster[1].FilmIndex)
-	}
-	if n := fb.Compte(fallback.NomSiegeDuRemplacantParAppariementOrdinal); n != 1 {
+	if n := fb.Compte(fallback.NomPlaceDuRemplacantParChainageDEquipe); n != 1 {
 		t.Errorf("repli declenche %d fois, attendu 1", n)
 	}
-	if cov.Apparies != 1 || cov.Arrivants != 1 || cov.PresencesCloses != 1 {
-		t.Errorf("couverture %+v : attendu 1 appariee, 1 arrivant, 1 presence close", cov)
+	if cov.Apparies != 1 || cov.Arrivants != 1 || cov.PresencesCloses != 1 || cov.Depassements != 0 {
+		t.Errorf("couverture %+v : attendu 1 appariee, 1 arrivant, 1 presence close, 0 depassement", cov)
 	}
 }
 
-// TestSiegeOccupeNEstPasRepris (T-ORDRE) : un arrivant ne prend pas le siege d'un joueur qui est
-// encore la quand il arrive — un remplacement remplace quelqu'un.
-func TestSiegeOccupeNEstPasRepris(t *testing.T) {
-	roster := []RosterEntry{entree(0, 1, "100"), entree(1, 1, "200")}
-	// Le titulaire joue jusqu'a la frame 80 ; l'arrivant entre a la frame 60.
-	tracks := []Track{vie("100", 0, 80), vie("200", 60, siegeFrames-1)}
-	fb := fallback.NouveauCompteur()
-	cov := poserLesSieges(roster, tracks, tableDeDebut(0), siegeFrames, fb)
+// TestPlaceOccupeeNEstPasReprise (P-OCCUPEE) : le titulaire joue jusqu'a 80, l'arrivant entre a
+// 60 — la place n'est pas libre ; faute d'autre place de son equipe, il n'en a pas.
+func TestPlaceOccupeeNEstPasReprise(t *testing.T) {
+	roster := []RosterEntry{entree(0, "100"), entree(9, "200")}
+	occ := occupantsFabriques([]int{1, 1}, iv(0, 80), iv(60, siegeFrames-1))
+	cov := poserLesSieges(roster, occ, entreesDesPlaces{table: tableDeDebut(0),
+		horloge: horlogeDeSieges(nil)})
 
-	if roster[1].Seat != 1 || roster[1].SeatSource != SeatSourceLu {
-		t.Fatalf("siege %d (%s) : le siege 0 est ENCORE OCCUPE a la frame 60, il ne se reprend pas",
+	if roster[1].Seat != 9 || roster[1].SeatSource != SeatSourceIndex {
+		t.Fatalf("place %d (%s) : la place 0 est ENCORE TENUE a la frame 60, elle ne se reprend pas",
 			roster[1].Seat, roster[1].SeatSource)
 	}
-	if n := fb.Compte(fallback.NomSiegeDuRemplacantParAppariementOrdinal); n != 0 {
-		t.Errorf("repli declenche %d fois, attendu 0", n)
-	}
-	if cov.OccupantsMax != 2 {
-		t.Errorf("occupants simultanes %d, attendu 2 : les presences SE RECOUVRENT", cov.OccupantsMax)
+	if cov.SansPlace != 1 || cov.Depassements == 0 {
+		t.Errorf("couverture %+v : l'arrivant sans place se COMPTE, et son equipe depasse ses places", cov)
 	}
 }
 
-// TestSiegeSansTableDuFilmNApparieRien (T-SANSTABLE) : sans la table du debut, arrivants et
+// TestPlacesLaCapaciteBorneLesPlacesJamaisTenues (P-CAPACITE) : en 2 contre 2 sur une table de 4
+// sieges, le siege jamais tenu (celui d'un joueur parti avant le coup d'envoi) ne va qu'a
+// l'equipe a qui il manque une place — jamais a une equipe deja pleine.
+func TestPlacesLaCapaciteBorneLesPlacesJamaisTenues(t *testing.T) {
+	roster := []RosterEntry{
+		entree(0, "100"), entree(1, "110"), // equipe 0 : deux places tenues
+		entree(2, "200"), // equipe 1 : une seule — le siege 3 n'a jamais joue
+		{FilmIndex: 3, XUID: "300", Name: "parti avant le coup d'envoi"},
+		entree(9, "900"),  // bot de l'equipe 1, present au depart : il prend le siege 3
+		entree(10, "910"), // arrivant de l'equipe 0 : son equipe est pleine
+		entree(12, "920"), // arrivant que rien ne montre : aucune fiche, aucune place comptee
+	}
+	occ := occupantsFabriques([]int{0, 0, 1, 1, 1, 0, 1}, iv(0, 99), iv(0, 99), iv(0, 99), nil,
+		iv(0, 99), iv(50, 99), nil)
+	cov := poserLesSieges(roster, occ, entreesDesPlaces{table: tableDeDebut(0, 1, 2, 3),
+		horloge: horlogeDeSieges(nil)})
+
+	if roster[4].Seat != 3 || roster[4].SeatSource != SeatSourceApparie {
+		t.Errorf("bot de l'equipe 1 : place %d (%s), attendu 3 (apparie)", roster[4].Seat, roster[4].SeatSource)
+	}
+	if roster[5].SeatSource != SeatSourceIndex {
+		t.Errorf("arrivant de l'equipe 0 : %q — son equipe tient deja ses deux places", roster[5].SeatSource)
+	}
+	if cov.SansPresence != 2 || cov.SansPlace != 1 || cov.Sieges != 5 || roster[6].SeatSource != SeatSourceIndex {
+		t.Errorf("couverture %+v (source %q) : 2 entrees sans presence, 1 sans place, 5 places "+
+			"affichees — l'arrivant jamais present n'en ajoute aucune", cov, roster[6].SeatSource)
+	}
+}
+
+// TestPlaceSansTableDuFilmNeDecideRien (P-SANSTABLE) : sans la table du debut, arrivants et
 // origines ne se distinguent pas. On s'ABSTIENT, et on le publie.
-func TestSiegeSansTableDuFilmNApparieRien(t *testing.T) {
-	roster := []RosterEntry{entree(0, 1, "100"), entree(1, 1, "200")}
-	tracks := []Track{vie("100", 0, 40), vie("200", 60, siegeFrames-1)}
+func TestPlaceSansTableDuFilmNeDecideRien(t *testing.T) {
+	roster := []RosterEntry{entree(0, "100"), entree(1, "200")}
+	occ := occupantsFabriques([]int{1, 1}, iv(0, 40), iv(60, siegeFrames-1))
 	fb := fallback.NouveauCompteur()
-	cov := poserLesSieges(roster, tracks, FilmPlayerTable{}, siegeFrames, fb)
+	cov := poserLesSieges(roster, occ, entreesDesPlaces{horloge: horlogeDeSieges(fb)})
 
 	if !cov.SansTableDuFilm {
 		t.Fatal("la couverture doit DIRE que la table manque : une abstention tue est un silence")
 	}
-	if cov.Apparies != 0 || roster[1].Seat != 1 {
-		t.Errorf("siege %d, apparies %d : sans table, aucun chainage n'est decidable",
-			roster[1].Seat, cov.Apparies)
+	if cov.Apparies != 0 || roster[1].Seat != 1 || roster[1].SeatSource != SeatSourceLu {
+		t.Errorf("place %d (%s), apparies %d : sans table, aucun chainage n'est decidable",
+			roster[1].Seat, roster[1].SeatSource, cov.Apparies)
 	}
-	if n := fb.Compte(fallback.NomSiegeDuRemplacantParAppariementOrdinal); n != 0 {
+	if n := fb.Compte(fallback.NomPlaceDuRemplacantParChainageDEquipe); n != 0 {
 		t.Errorf("repli declenche %d fois : s'abstenir n'est PAS se replier", n)
 	}
 }
 
-// TestSiegePlusDArrivantsQueDeLiberations (T-TRONQUE) : la borne de la boucle d'appariement tient
-// quand les arrivants sont plus nombreux que les sieges liberes.
-func TestSiegePlusDArrivantsQueDeLiberations(t *testing.T) {
-	roster := []RosterEntry{
-		entree(0, 1, "100"), entree(1, 1, "200"), entree(2, 1, "300"), entree(3, 1, "400"),
-	}
-	tracks := []Track{
-		vie("100", 0, 30),             // le SEUL siege libere
-		vie("200", 0, siegeFrames-1),  // titulaire qui reste
-		vie("300", 40, siegeFrames-1), // arrivant 1
-		vie("400", 50, siegeFrames-1), // arrivant 2 : plus rien a reprendre
+// TestPlaceLueDansLesTirs (P-TIRS) : l'arrivant d'index 10 tire sous l'index 5 — la place de la
+// table que personne ne tient — et il la LIT, avant tout chainage.
+func TestPlaceLueDansLesTirs(t *testing.T) {
+	roster := []RosterEntry{entree(0, "100"), {FilmIndex: 5, XUID: "500"}, entree(10, "310")}
+	occ := occupantsFabriques([]int{0, 0, 0}, iv(0, 99), nil, iv(20, 99))
+	tirs := []FireEventRef{
+		{FilmIndex: 5, TimestampUS: 3_000_000}, {FilmIndex: 5, TimestampUS: 5_000_000},
+		{FilmIndex: 0, TimestampUS: 4_000_000}, // le tir du titulaire de la place 0 ne vote pas
 	}
 	fb := fallback.NouveauCompteur()
-	cov := poserLesSieges(roster, tracks, tableDeDebut(0, 1), siegeFrames, fb)
+	cov := poserLesSieges(roster, occ, entreesDesPlaces{table: tableDeDebut(0, 5), fire: tirs,
+		horloge: horlogeDeSieges(fb)})
 
-	if roster[2].Seat != 0 || roster[2].SeatSource != SeatSourceApparie {
-		t.Errorf("arrivant 1 : siege %d (%s), attendu 0 (apparie)",
-			roster[2].Seat, roster[2].SeatSource)
+	if roster[2].Seat != 5 || roster[2].SeatSource != SeatSourceTirs {
+		t.Fatalf("arrivant : place %d (%s), attendu 5 (tirs)", roster[2].Seat, roster[2].SeatSource)
 	}
-	if roster[3].Seat != 3 || roster[3].SeatSource != SeatSourceLu {
-		t.Errorf("arrivant 2 : siege %d (%s), attendu 3 (lu) — il n'y a plus de siege a reprendre",
-			roster[3].Seat, roster[3].SeatSource)
-	}
-	if cov.Apparies != 1 {
-		t.Errorf("apparies %d, attendu 1", cov.Apparies)
+	if cov.PlacesTirs != 1 || cov.Apparies != 0 || fb.Compte(fallback.NomPlaceDuRemplacantParChainageDEquipe) != 0 {
+		t.Errorf("couverture %+v : une place LUE ne passe pas par le repli", cov)
 	}
 }
 
-// TestSiegeSansPresenceNEstPasAppariee (T-PRESENCE) : une entree qu'aucune vie ne couvre n'a de
-// fiche a AUCUN instant. Elle ne libere ni ne prend de siege, et le document la COMPTE.
-func TestSiegeSansPresenceNEstPasAppariee(t *testing.T) {
-	roster := []RosterEntry{entree(0, 1, "100"), entree(1, 1, "200")}
-	tracks := []Track{vie("100", 0, siegeFrames-1)} // "200" n'a aucune vie
-	fb := fallback.NouveauCompteur()
-	cov := poserLesSieges(roster, tracks, tableDeDebut(0), siegeFrames, fb)
+// TestPlaceDesTirsContesteeRetombeSurLeChainage (P-TIRS) : les tirs de l'arrivant designent DEUX
+// places — la lecture se tait, le compte le dit, et le chainage reprend.
+func TestPlaceDesTirsContesteeRetombeSurLeChainage(t *testing.T) {
+	roster := []RosterEntry{entree(0, "100"), {FilmIndex: 4, XUID: "400"}, {FilmIndex: 5, XUID: "500"},
+		entree(10, "310")}
+	occ := occupantsFabriques([]int{0, 0, 0, 0}, iv(0, 99), nil, nil, iv(20, 99))
+	tirs := []FireEventRef{{FilmIndex: 4, TimestampUS: 3_000_000}, {FilmIndex: 5, TimestampUS: 5_000_000}}
+	cov := poserLesSieges(roster, occ, entreesDesPlaces{table: tableDeDebut(0, 4, 5), fire: tirs,
+		horloge: horlogeDeSieges(nil)})
 
-	if cov.SansPresence != 1 {
-		t.Errorf("sansPresence %d, attendu 1", cov.SansPresence)
-	}
-	if roster[1].SeatSource != SeatSourceLu || cov.Apparies != 0 {
-		t.Errorf("une entree sans presence ne s'apparie pas : %q, apparies %d",
-			roster[1].SeatSource, cov.Apparies)
-	}
-	if cov.OccupantsMax != 1 {
-		t.Errorf("occupants simultanes %d, attendu 1", cov.OccupantsMax)
+	if cov.TirsContestes != 1 || roster[3].SeatSource != SeatSourceApparie {
+		t.Errorf("tirs contestes %d, source %q : attendu 1 contestation puis le chainage",
+			cov.TirsContestes, roster[3].SeatSource)
 	}
 }
 
-// TestSiegeDUnBotSeJointParLeNom : un bot n'a pas de xuid (schema 36) ; sa presence se joint par
-// le nom, des deux cotes, sans quoi tous les bots seraient « sans presence ».
-func TestSiegeDUnBotSeJointParLeNom(t *testing.T) {
-	camp := 0
-	roster := []RosterEntry{{FilmIndex: 4, Name: "343 Razzle [bot]", Bot: true, Team: &camp}}
-	tracks := []Track{{Slot: 9, Bot: "343 Razzle [bot]", StartFrame: 10, EndFrame: 90,
-		Points: []Point{{T: 10}, {T: 90}}}}
-	cov := poserLesSieges(roster, tracks, tableDeDebut(4), siegeFrames, nil)
+// TestPlaceBorneeAuSuccesseur (P-BORNE) : le partant peut encore etre la jusqu'a 70 (image-cle
+// suivante), son remplacant arrive a 55 — l'affichage du partant s'arrete a 54.
+func TestPlaceBorneeAuSuccesseur(t *testing.T) {
+	roster := []RosterEntry{entree(0, "100"), entree(9, "900")}
+	occ := occupantsFabriques([]int{1, 1}, []intervalleDePresence{{de: 0, a: 50, aMax: 70}},
+		iv(55, siegeFrames-1))
+	cov := poserLesSieges(roster, occ, entreesDesPlaces{table: tableDeDebut(0), horloge: horlogeDeSieges(nil)})
 
-	if cov.SansPresence != 0 {
-		t.Fatalf("sansPresence %d : la vie d'un bot se joint par son NOM", cov.SansPresence)
+	if roster[1].Seat != 0 {
+		t.Fatalf("remplacant : place %d, attendu 0", roster[1].Seat)
 	}
-	if cov.OccupantsMax != 1 {
-		t.Errorf("occupants simultanes %d, attendu 1", cov.OccupantsMax)
+	p := roster[0].Presence
+	if len(p) != 1 || p[0].To != 50 || p[0].ToMax == nil || *p[0].ToMax != 54 {
+		t.Fatalf("presence du partant %+v : attendu to 50, toMax 54 (veille de l'arrivee)", p)
+	}
+	if cov.RelaisBornes != 1 || cov.OccupantsMax != 1 || cov.Depassements != 0 {
+		t.Errorf("couverture %+v : 1 relais borne, jamais deux occupants sur une place", cov)
+	}
+}
+
+// TestPresenceSansEntiteTientLeDernierJusquALaFin (P-VIES) : sans entite lue, le dernier occupant
+// d'une place reste affiche jusqu'a la fin — mourir n'est pas partir —, et le repli se compte.
+func TestPresenceSansEntiteTientLeDernierJusquALaFin(t *testing.T) {
+	roster := []RosterEntry{entree(0, "100")}
+	occ := occupantsFabriques([]int{1}, iv(0, 40))
+	occ.balaye = false
+	fb := fallback.NouveauCompteur()
+	cov := poserLesSieges(roster, occ, entreesDesPlaces{table: tableDeDebut(0), horloge: horlogeDeSieges(fb)})
+
+	p := roster[0].Presence
+	if len(p) != 1 || p[0].To != 40 || p[0].ToMax == nil || *p[0].ToMax != siegeFrames-1 {
+		t.Fatalf("presence %+v : attendu to 40, affiche jusqu'a %d", p, siegeFrames-1)
+	}
+	if n := fb.Compte(fallback.NomPresenceParEnveloppeDesVies); n != 1 || cov.Presences != PresencesDesVies {
+		t.Errorf("repli %d, presences %q : attendu 1 et %q", n, cov.Presences, PresencesDesVies)
 	}
 }

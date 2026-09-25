@@ -29,6 +29,8 @@ import "levelup/go-api/internal/games/halo_infinite/film/types"
 //	                                         etat de mort), arme, bipede, etat de simulation
 //	consumeManagedAndObjectiveComponent      objet gere (ti=10/13), objectif (ti=11), unite
 //	consumeNavpointComponent                 point de navigation gere (ti=12), EN ENTIER de i0 a i14
+//	consumeComposantsVueBM4b                 les ports du lot M4b (`composants_vue_b_m4b.go`) ; son
+//	                                         `default` rend le `default` d origine
 //
 // # EXEMPTION DE LONGUEUR (seuil de 80 lignes, CLAUDE.md regle 5)
 //

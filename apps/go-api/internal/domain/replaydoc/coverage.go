@@ -25,6 +25,8 @@ type Coverage struct {
 	BombCarries       *BombCarriesCoverage        `json:"bombCarries,omitempty"`
 	BombArmings       *BombArmingsCoverage        `json:"bombArmings,omitempty"`
 	WeaponChanges     *WeaponChangeCoverage       `json:"weaponChanges,omitempty"`
+	Keyframes         *KeyframeCoverage           `json:"keyframes,omitempty"`
+	BirthLoadouts     *BirthLoadoutCoverage       `json:"birthLoadouts,omitempty"`
 	Pickups           *PickupCoverage             `json:"pickups,omitempty"`
 	PadDating         *PadDatingStats             `json:"padDating,omitempty"`
 	EquipmentChanges  *EquipmentChangeCoverage    `json:"equipmentChanges,omitempty"`
@@ -33,6 +35,7 @@ type Coverage struct {
 	AbilityCharges    *AbilityChargeCoverage      `json:"abilityCharges,omitempty"`
 	GroundWeaponItems *GroundWeaponItemsCoverage  `json:"groundWeaponItems,omitempty"`
 	Vehicles          *VehicleCoverage            `json:"vehicles,omitempty"`
+	ContinuousFire    *ContinuousFireCoverage     `json:"continuousFire,omitempty"`
 	ObjectiveObjects  *ObjectiveObjectsCoverage   `json:"objectiveObjects,omitempty"`
 	Inventory         *InventoryCoverage          `json:"inventory,omitempty"`
 	FilmMajorVersion  *int                        `json:"filmMajorVersion,omitempty"`
@@ -82,6 +85,10 @@ type LayerCoverage struct {
 	// (`replayview/parity_test.go`). Côté artefact, l'option évite de changer la forme des
 	// 65 documents où le compteur vaut zéro — donc de recuire le parc pour un champ vide.
 	RefusedByRoster int `json:"refusedByRoster,omitempty"`
+	// ByUnit / UnitOtherIndex : les tirs poses par leur reference 0 (lot M4b.4, cf.
+	// `replay.LayerCoverage`).
+	ByUnit         int `json:"byUnit,omitempty"`
+	UnitOtherIndex int `json:"unitOtherIndex,omitempty"`
 }
 
 // BridgeHealth résume la santé du pont slot -> joueur.
@@ -201,24 +208,6 @@ type TeamCoverage struct {
 	TracksSlotAmbiguous int `json:"tracksSlotAmbiguous,omitempty"`
 }
 
-// SeatCoverage est ce que la pose des SIEGES a lu et ce qu elle a APPARIE (lot 1.9.14).
-//
-// SON COUPLE CENTRAL EST `entrees` / `occupantsMax` : leur ECART est le nombre de fiches qu un
-// client retire de l ecran en n affichant que les occupants PRESENTS a l instant lu. `lus` et
-// `apparies` disent, eux, quelle part des sieges vient du film et quelle part d un repli.
-type SeatCoverage struct {
-	Entrees         int  `json:"entrees"`
-	Sieges          int  `json:"sieges"`
-	Lus             int  `json:"lus"`
-	Apparies        int  `json:"apparies"`
-	ReprisesEcrites int  `json:"reprisesEcrites"`
-	Arrivants       int  `json:"arrivants"`
-	PresencesCloses int  `json:"presencesCloses"`
-	SansPresence    int  `json:"sansPresence"`
-	OccupantsMax    int  `json:"occupantsMax"`
-	SansTableDuFilm bool `json:"sansTableDuFilm,omitempty"`
-}
-
 // TrackCoverage est ce que le SEUIL DE PUBLICATION des traces retient et refuse. Le refus était
 // MUET avant le schéma 55 : un document publiant 90 traces là où le film en porte 95 était
 // indistinguable d'un film à 90 vies. `minPoints` voyage avec ses conséquences — un compte de
@@ -274,30 +263,6 @@ type AbilityCoverage struct {
 	ScanNoise   int `json:"scanNoise"`
 	Unpublished int `json:"unpublished"`
 	Published   int `json:"published"`
-}
-
-// StanceCoverage dit ce que la marche des ETATS DE MOUVEMENT a lu et ce qu'elle a jeté — les
-// dénominateurs sans lesquels « N intervalles » ne se juge pas. Une couverture partielle est un
-// RESULTAT : la plupart des vies ne s'accroupissent ni ne glissent.
-//
-// `JumpEpisodes` / `JumpsDerived` (schéma 66) sont le dénominateur et le numérateur du SAUT,
-// qui est DÉRIVÉ et non lu : montées fermées examinées, puis celles dont la hauteur intégrée
-// tombe dans la fenêtre du saut du Spartan. Le rapport des deux est la sélectivité.
-type StanceCoverage struct {
-	Scanned               bool           `json:"scanned"`
-	Absent                bool           `json:"absent,omitempty"`
-	Records               int            `json:"records"`
-	Desyncs               int            `json:"desyncs"`
-	Reads                 int            `json:"reads"`
-	Intervals             int            `json:"intervals"`
-	JumpEpisodes          int            `json:"jumpEpisodes,omitempty"`
-	JumpsDerived          int            `json:"jumpsDerived,omitempty"`
-	ByKind                map[string]int `json:"byKind,omitempty"`
-	Lives                 int            `json:"lives"`
-	TracksTotal           int            `json:"tracksTotal"`
-	Dropped               int            `json:"dropped,omitempty"`
-	EventPacketsUnlocated int            `json:"eventPacketsUnlocated,omitempty"`
-	MapWidths             [3]uint        `json:"mapWidths,omitempty"`
 }
 
 // EquipmentCoverage dit combien de vies publiées portent au moins un épisode, par

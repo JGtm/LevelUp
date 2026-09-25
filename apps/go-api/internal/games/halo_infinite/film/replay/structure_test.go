@@ -1289,8 +1289,55 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   Lot M6 (2026-09-24) : LA REMISE DES MAINS NUES N'EST PAS UNE PRISE. `pickups[]` et
 	//   `weaponChanges[]` ne publient plus la remise de l'objet « mains nues » que le jeu fait à
 	//   chaque début de vie ; deux compteurs neufs, `unarmedGrants`. Détail : `document_chronicle.go`.
-	if SchemaVersion != 69 {
-		t.Fatalf("SchemaVersion = %d, attendu 69 : incrémenter exige une raison écrite ci-dessus "+
+	// - v70 (vague D des retours du rejeu, 2026-09-24) : UNE montée pour les lots de la vague,
+	//   partis avant la vague C ; `grammar.Rev`, `SchemaDesFaits` et `facts.Rev` (M3) montent une
+	//   fois (re-décodage).
+	//   Lot M2.3 (2026-09-23, règle des places de l'utilisateur) : LA PLACE ET LA PRÉSENCE DE
+	//   CHAQUE OCCUPANT SONT LUES DANS LE FILM.
+	//   `roster[].presence` NAÎT (intervalles `from` / `to` / `toMax`, en frames) : c'est elle, et
+	//   plus l'absence de successeur, qui dit qu'un joueur est parti. `roster[].seat` devient la
+	//   PLACE (un siège de la table du début, ou une place ouverte) et `roster[].seatSource`
+	//   gagne `tirs`, `ouverte` et `index` ; `roster[].team` est l'équipe de l'ENTITÉ ti=9 ;
+	//   `coverage.seats` gagne onze compteurs (`placesTirs`, `placesOuvertes`, `sansPlace`,
+	//   `depassements`, `relaisBornes`, `chevauchements`, `tirsContestes`, `tirsIndexTronque`,
+	//   `presences`, `entitesNonLiees` / `entitesContestees` / `trousDEntite`). Un champ de plus, un sens
+	//   changé sur trois autres, et la clé de reprise du backfill : un v69 affiche encore un
+	//   joueur parti, il doit se lire « à re-cuire ». MONTENT AUSSI : `grammar.Rev` (les
+	//   entités) et `SchemaDesFaits` (4 : les faits portent les entités et les instants
+	//   BOT_METADATA, donc un re-décodage). NE MONTE PAS : `facts.Rev` (aucune ligne de kill ne
+	//   bouge). Revue adverse du lot (2026-09-24), même schéma : `coverage.seats` gagne six
+	//   compteurs (`capacite`, `placesEnTrop`, `sansEquipe`, `identitesHorsRoster`,
+	//   `botsSuccesseurs`, `presencesParLesVies`) et `depassements` se mesure contre la capacité.
+	//   Détail : `document_chronicle.go`.
+	//   Lot M3 (même montée v70, 2026-09-23) : LES ARMES À L'INSTANT. Quatre
+	//   ajouts de FORME : `loadouts[].src` (`birth` : la DOTATION DE NAISSANCE, lue dans le record
+	//   de création du corps) et `loadouts[].k` (l'emplacement de chaque arme), `weaponChanges[].k`
+	//   (l'emplacement d'arme touché — la clé que la naissance partage avec le flux),
+	//   `coverage.keyframes` (la santé de la marche d'image-clé) et `coverage.birthLoadouts`. ET
+	//   UN CHANGEMENT DE SENS : la première émission d'arme de chaque VIE se juge contre sa
+	//   naissance et jamais contre une image-clé À VENIR — des prises que le repli futur
+	//   effaçait sont publiées. Un client qui ignore `k` et `src` lirait une dotation de naissance
+	//   comme un relevé d'image-clé et ne saurait pas situer une prise sur emplacement vide.
+	//   MONTENT AUSSI : `grammar.Rev` et `facts.Rev` (la marche d'image-clé réparée, l'état par
+	//   défaut du bipède qui lit enfin le R(32) de sa dernière feuille) et le codec des faits (v26).
+	//   Détail : `document_chronicle.go`.
+	//   Lot D-fix (même montée v70, 2026-09-24) : UNE IMAGE-CLÉ QUE LA MARCHE NE PROUVE PAS NE
+	//   CONCLUT RIEN. Trois compteurs neufs (`coverage.keyframes.refutations`,
+	//   `coverage.seats.imagesClesDouteuses` / `bornesDifferees`) et `coverage.birthLoadouts
+	//   .unarmedGrants` ; un sens change : `roster[].presence` ne pose une arrivée ou un départ que
+	//   sur une absence PROUVÉE. Détail : `document_chronicle.go`.
+	// - 71 (2026-09-24, lot M4b de la campagne « retours rejeu ») : LE TIR CONTINU. Un calque racine
+	//   NOUVEAU, `bursts` (les rafales lues dans la vue de controle, posees sur l arme de leur
+	//   monture ou sur l arme en main, avec la cadence du tag), et quatre ajouts de couverture :
+	//   `coverage.continuousFire` (la lecture de la vue C et le sort de chaque rafale),
+	//   `coverage.vehicles.shotsByUnit` / `shotsByUnitNoRide` (un tir dont la reference 0 est un
+	//   vehicule se pose sur lui) et `coverage.seats.tirsParPlace` (un tir est rendu a l occupant de
+	//   sa place). ET UN CHANGEMENT DE SENS : l index de tireur est lu sur cinq bits par la
+	//   grammaire du record 36 — un v70 d un BTB confond les places 16 a 31 avec 0 a 15, il doit se
+	//   lire « a re-cuire ». Le garde de forme refuse une forme nouvelle sous le numero de la vague
+	//   D : d ou la montee. Detail : `document_chronicle.go`.
+	if SchemaVersion != 71 {
+		t.Fatalf("SchemaVersion = %d, attendu 71 : incrémenter exige une raison écrite ci-dessus "+
 			"(un champ optionnel de plus n'en est pas une)", SchemaVersion)
 	}
 }

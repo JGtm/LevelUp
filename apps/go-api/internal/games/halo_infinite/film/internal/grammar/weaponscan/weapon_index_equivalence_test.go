@@ -14,7 +14,8 @@ package weaponscan_test
 //
 // Sous 17 joueurs (arene) les deux lectures RENDENT LA MEME VALEUR (le bit 35 est 0). Au-dela
 // (BTB, >16 joueurs), le 4 bits SATURE a 15 et fusionne deux tireurs -> num et denom pointent
-// des joueurs DIFFERENTS. Le correctif expose grammar.ShooterIndex5 (bits 35..39, R(5) sans >>1)
+// des joueurs DIFFERENTS. Le correctif (Lot 3) lisait l indice sur cinq bits (bits 35..39) ; depuis le
+// lot M4b il est lu par LA grammaire du record (grammar.TireurDuTir)
 // et key le numerateur dessus. Ce test MESURE que ShooterIndex5 == FilmIndex5 record par record,
 // sur arene ET BTB 4f77afc1 (le film ou >16 joueurs revele la saturation).
 //
@@ -126,15 +127,14 @@ func measureFilmIndexEquivalence(t *testing.T, dir string) *idxEqStats {
 				continue
 			}
 			pay := pk.Payload(data)
-			if pay[0] != 0xD2 { // type 36 (105) variante LONGUE (porte l'arme)
+			// NUMERATEUR : l indice de tireur lu par LA grammaire du record (lot M4b) ; -1 quand
+			// le paquet ne porte pas un tir en tete ou que la garde du tireur est fermee.
+			idx5 := grammar.TireurDuTir(pay)
+			if idx5 < 0 {
 				continue
 			}
-			idx5 := grammar.ReadShooterIndex5(pay) // NUMERATEUR (5 bits, corrige)
-			idx4 := grammar.ReadAttackerIndex(pay) // ancien numerateur (4 bits, tronque)
-			if idx5 < 0 || idx4 < 0 {
-				continue
-			}
-			accumulateIdxEq(st, pk.Start, idx4, idx5, byByte)
+			// idx4 est l ANCIEN numerateur a quatre bits : par definition la moitie basse du vrai.
+			accumulateIdxEq(st, pk.Start, idx5&0x0F, idx5, byByte)
 		}
 	}
 	return st

@@ -73,7 +73,7 @@ func TestOrigineIdentifiantsMuets(t *testing.T) {
 	if err != nil {
 		t.Fatalf("images-clés illisibles : %v", err)
 	}
-	chg, _, err := grammar.ScanFilmHeldWeaponChanges(dir, spawnSetFrom(kf))
+	chg, _, err := grammar.ScanFilmHeldWeaponChanges(dir, spawnSetFrom(kf, nil, nil))
 	if err != nil {
 		t.Fatalf("changements d'arme illisibles : %v", err)
 	}

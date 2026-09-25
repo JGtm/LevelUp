@@ -32,6 +32,16 @@ export interface ReplaySoundEvent {
   stem: string
   /** Toutes les variantes jouables de ce geste, `stem` compris. Absent = un seul fichier. */
   variants?: readonly string[]
+  /**
+   * LE SON TENU d'une rafale de tir continu (schéma 71) : le fichier se joue EN BOUCLE pendant
+   * `holdMs`, puis s'éteint (`SOUND_HOLD_RELEASE_S`). Absent = un son ponctuel.
+   */
+  holdMs?: number
+  /**
+   * LE COUP COUPÉ À LA CADENCE : un coup d'une rafale sans boucle s'arrête au coup suivant, comme
+   * le conteneur du jeu en mode « cadence de déclenchement » — une voix par rafale, jamais un mur.
+   */
+  cutMs?: number
 }
 
 /**

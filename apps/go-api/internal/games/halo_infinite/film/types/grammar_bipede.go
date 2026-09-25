@@ -138,6 +138,11 @@ type HeldWeaponChange struct {
 	Slot uint32
 	// SlotIndex est l'emplacement d'arme concerné (l'index du composant dans le masque).
 	SlotIndex int
+	// Emplacement est le RANG de cet emplacement parmi les composants `weapon-state-type-info`
+	// de l'archétype du film (0 = le premier, i43 sur les films mesurés) — lot M3.2. C'est la
+	// clé qu'une dotation de naissance partage avec le flux delta ; elle vient des NOMS du
+	// registre, jamais d'un index de composant en dur.
+	Emplacement int
 	// Family est la moitié HAUTE de l'identifiant 64 bits : l'identité de l'arme, celle que
 	// le catalogue nomme. `noVariant` quand l'emplacement devient vide.
 	//
@@ -212,6 +217,53 @@ type KeyframeLoadout struct {
 	// canon. Le repli est une question de NOMMAGE, il appartient à la couche qui possède le
 	// catalogue d'armes (cf. replay/loadouts.go).
 	Families []uint32
+}
+
+// BirthWeapon est UN emplacement d'arme lu dans le record NEW de naissance d'un bipède.
+type BirthWeapon struct {
+	// Emplacement est le rang de l'emplacement parmi les composants `weapon-state-type-info`
+	// de l'archétype (même clé que [HeldWeaponChange.Emplacement]).
+	Emplacement int
+	// Family est la moitié HAUTE de l'identifiant (l'arme) ; la sentinelle d'emplacement vide
+	// quand la porte de présence est fermée.
+	Family uint32
+	// Low est la moitié basse (la variante cosmétique), gardée pour le diagnostic.
+	Low uint32
+}
+
+// BirthLoadout est la DOTATION DE NAISSANCE d'une vie : les emplacements d'arme que le record
+// NEW du bipède transmet à sa création (lot M3.2). Elle ne se lit que quand le record entier se
+// FERME — traversé sans désynchronisation, et suivi d'un record confirmé (cf.
+// `grammar/birth_loadouts.go`) ; sinon rien n'est rendu et le refus est compté.
+type BirthLoadout struct {
+	// TimestampUS est l'horodatage du paquet porteur — MÊME horloge que les autres lectures.
+	TimestampUS uint64
+	// Chunk / PacketIndex localisent le record dans le film.
+	Chunk, PacketIndex int
+	// Slot et Generation désignent LA VIE (même clé que la création de bipède).
+	Slot, Generation uint32
+	// Weapons liste les emplacements annoncés au masque du record, dans l'ordre des composants.
+	Weapons []BirthWeapon
+}
+
+// BirthLoadoutStats compte ce que la lecture des dotations de naissance a vu et refusé.
+type BirthLoadoutStats struct {
+	// Creations est le nombre de créations de bipède soumises à la lecture.
+	Creations int
+	// Read est le nombre de dotations rendues (record fermé).
+	Read int
+	// Desync : la traversée s'est arrêtée sur un composant sans lecteur porté.
+	Desync int
+	// Overflow : la traversée a dépassé la fin du payload.
+	Overflow int
+	// Unconfirmed : le record se traverse, mais ce qui le suit n'est ni un delta propre sur un
+	// slot lié, ni un record NEW dont le monde ou une image-clé ultérieure confirme l'archétype.
+	Unconfirmed int
+	// NoWeaponComponent : record fermé dont le masque n'annonce aucun emplacement d'arme.
+	NoWeaponComponent int
+	// ClosedByDelta / ClosedByBoundNew / ClosedByAnticipatedNew ventilent les fermetures par la
+	// nature du record suivant.
+	ClosedByDelta, ClosedByBoundNew, ClosedByAnticipatedNew int
 }
 
 // PlayerSlot : un slot OCCUPE de la table.

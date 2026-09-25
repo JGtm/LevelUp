@@ -113,6 +113,9 @@ const NULLABLE_ARRAYS = [
   'projectiles',
   'roster',
   'shots',
+  // `bursts` : LES RAFALES DE TIR CONTINU (schéma 71, lot M4b) — comblées à vide, leurs passages
+  // muets aussi (`holes`).
+  'bursts',
   // `stances` : les ETATS DE MOUVEMENT du Spartan (schema 65, 2026-09-21) — un intervalle plat
   // par (vie, genre), aucun tableau imbrique. Trois genres seulement : le sprint est refute
   // comme observable par la vitesse et le saut n'est pas prouve (lot 5.3.5).
@@ -249,7 +252,7 @@ type NullableArrayPaths<T, D extends number = 6> = [D] extends [never]
       }[keyof T & string]
 
 /**
- * NULLABLE_ARRAY_PATHS — la CARTE du contrat : 54 chemins, racine et profondeurs confondues.
+ * NULLABLE_ARRAY_PATHS — la CARTE du contrat : 90 chemins (schéma 71), racine et profondeurs confondues.
  *
  * Elle n'est pas décorative : l'assertion (3) la confronte au contrat généré. Le Go publie un
  * tableau de plus, où que ce soit, et `tsc -b` refuse de compiler en nommant le chemin.
@@ -274,6 +277,8 @@ const NULLABLE_ARRAY_PATHS = [
   'projectiles',
   'roster',
   'shots',
+  'bursts',
+  'bursts[].holes',
   'stances',
   // `coverage.stances.mapWidths` : le triplet de largeurs d'axe de la marche des etats.
   'coverage.stances.mapWidths',
@@ -359,7 +364,13 @@ const NULLABLE_ARRAY_PATHS = [
   'inventory[].am',
   'inventory[].g',
   'loadouts[].w',
+  // `loadouts[].k` (schéma 69) : l'emplacement de chaque arme d'une dotation de naissance.
+  'loadouts[].k',
   'projectiles[].p',
+  // `roster[].presence` (schéma 69, lot M2.3) : les intervalles pendant lesquels un occupant
+  // TIENT sa place. Comblée à VIDE par la frontière, comme `tracks[].points` : l'absence d'un
+  // artefact antérieur se lit au niveau du document (`seatLogic.publieDesPresences`).
+  'roster[].presence',
   'structure[].poly',
   'tracks[].points',
   'weaponPads[].presence',

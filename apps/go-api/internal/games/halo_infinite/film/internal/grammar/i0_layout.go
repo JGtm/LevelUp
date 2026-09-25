@@ -89,7 +89,7 @@ func DetectI0LayoutOf(film *source.Film) (profile.I0Layout, I0LayoutReport, erro
 	if len(scanned) > detectMaxChunks {
 		scanned = scanned[:detectMaxChunks]
 	}
-	slots := bipedSlotBand(film, scanned)
+	slots := bipedSlotBand(NewFilmContext(film), scanned)
 	if slots.Count() == 0 {
 		return profile.I0Layout{}, I0LayoutReport{}, fmt.Errorf("aucun slot biped (ti=%d) dans le film", BipedTypeIndex)
 	}

@@ -9194,6 +9194,67 @@ components:
         - deduit
         - non_resolu
       type: object
+    BirthLoadoutCoverage:
+      additionalProperties: false
+      properties:
+        beforeOrigin:
+          format: int64
+          type: integer
+        closed:
+          format: int64
+          type: integer
+        creations:
+          format: int64
+          type: integer
+        desync:
+          format: int64
+          type: integer
+        noDisplayable:
+          format: int64
+          type: integer
+        noLife:
+          format: int64
+          type: integer
+        noWeaponComponent:
+          format: int64
+          type: integer
+        nonWeapon:
+          format: int64
+          type: integer
+        overflow:
+          format: int64
+          type: integer
+        published:
+          format: int64
+          type: integer
+        read:
+          format: int64
+          type: integer
+        snapped:
+          format: int64
+          type: integer
+        unarmedGrants:
+          format: int64
+          type: integer
+        unconfirmed:
+          format: int64
+          type: integer
+      required:
+        - creations
+        - closed
+        - read
+        - desync
+        - overflow
+        - unconfirmed
+        - noWeaponComponent
+        - published
+        - snapped
+        - noLife
+        - beforeOrigin
+        - nonWeapon
+        - unarmedGrants
+        - noDisplayable
+      type: object
     BombArming:
       additionalProperties: false
       properties:
@@ -11795,6 +11856,143 @@ components:
         - delta
         - signal
       type: object
+    ContinuousFireCoverage:
+      additionalProperties: false
+      properties:
+        ambiguous:
+          format: int64
+          type: integer
+        burstsRead:
+          format: int64
+          type: integer
+        burstsWithHole:
+          format: int64
+          type: integer
+        byPlace:
+          format: int64
+          type: integer
+        clippedToMount:
+          format: int64
+          type: integer
+        closed:
+          format: int64
+          type: integer
+        empty:
+          format: int64
+          type: integer
+        entries:
+          format: int64
+          type: integer
+        firing:
+          format: int64
+          type: integer
+        heldHoleMs:
+          format: int64
+          type: integer
+        holeRuns:
+          format: int64
+          type: integer
+        holes:
+          format: int64
+          type: integer
+        holesBlockBC:
+          format: int64
+          type: integer
+        holesCap:
+          format: int64
+          type: integer
+        holesKind:
+          format: int64
+          type: integer
+        holesNotClosing:
+          format: int64
+          type: integer
+        holesOpenViewB:
+          format: int64
+          type: integer
+        holesOverflow:
+          format: int64
+          type: integer
+        holesUnlocated:
+          format: int64
+          type: integer
+        innerHoles:
+          format: int64
+          type: integer
+        noPlayer:
+          format: int64
+          type: integer
+        noTrack:
+          format: int64
+          type: integer
+        notContinuous:
+          format: int64
+          type: integer
+        onFoot:
+          format: int64
+          type: integer
+        onVehicle:
+          format: int64
+          type: integer
+        otherInput:
+          format: int64
+          type: integer
+        packets:
+          format: int64
+          type: integer
+        published:
+          format: int64
+          type: integer
+        reached:
+          format: int64
+          type: integer
+        shots:
+          format: int64
+          type: integer
+        vehicleNoWeapon:
+          format: int64
+          type: integer
+        weaponUnknown:
+          format: int64
+          type: integer
+        withAction:
+          format: int64
+          type: integer
+      required:
+        - packets
+        - reached
+        - closed
+        - holes
+        - holeRuns
+        - holesUnlocated
+        - holesOpenViewB
+        - holesOverflow
+        - holesKind
+        - holesBlockBC
+        - holesCap
+        - holesNotClosing
+        - entries
+        - withAction
+        - firing
+        - burstsRead
+        - burstsWithHole
+        - innerHoles
+        - heldHoleMs
+        - published
+        - onVehicle
+        - onFoot
+        - otherInput
+        - noPlayer
+        - ambiguous
+        - vehicleNoWeapon
+        - noTrack
+        - weaponUnknown
+        - notContinuous
+        - empty
+        - byPlace
+        - clippedToMount
+        - shots
+      type: object
     ConvergenceTotalsSinceBoot:
       additionalProperties: false
       properties:
@@ -12039,12 +12237,16 @@ components:
           $ref: '#/components/schemas/AbilityChargeCoverage'
         abilityImpulses:
           $ref: '#/components/schemas/AbilityImpulseCoverage'
+        birthLoadouts:
+          $ref: '#/components/schemas/BirthLoadoutCoverage'
         bombArmings:
           $ref: '#/components/schemas/BombArmingsCoverage'
         bombCarries:
           $ref: '#/components/schemas/BombCarriesCoverage'
         bridge:
           $ref: '#/components/schemas/BridgeHealth'
+        continuousFire:
+          $ref: '#/components/schemas/ContinuousFireCoverage'
         deathsPaths:
           $ref: '#/components/schemas/DeathsPathsCoverage'
         decoder:
@@ -12076,6 +12278,8 @@ components:
           $ref: '#/components/schemas/GroundWeaponCoverage'
         inventory:
           $ref: '#/components/schemas/InventoryCoverage'
+        keyframes:
+          $ref: '#/components/schemas/KeyframeCoverage'
         objectiveObjects:
           $ref: '#/components/schemas/ObjectiveObjectsCoverage'
         objectives:
@@ -14638,6 +14842,66 @@ components:
       required:
         - match_ids
       type: object
+    FireBurst:
+      additionalProperties: false
+      properties:
+        b0:
+          type: string
+        b1:
+          type: string
+        holes:
+          items:
+            $ref: '#/components/schemas/FireBurstHole'
+          type:
+            - array
+            - "null"
+        ramp:
+          format: double
+          type: number
+        rate:
+          format: double
+          type: number
+        rate0:
+          format: double
+          type: number
+        slot:
+          format: int32
+          minimum: 0
+          type: integer
+        t0:
+          format: int64
+          type: integer
+        t1:
+          format: int64
+          type: integer
+        v:
+          format: int32
+          minimum: 0
+          type: integer
+        w:
+          type: string
+      required:
+        - t0
+        - t1
+        - slot
+        - w
+        - rate
+        - b0
+        - b1
+      type: object
+    FireBurstHole:
+      additionalProperties: false
+      properties:
+        t0:
+          format: int64
+          type: integer
+        t1:
+          format: int64
+          type: integer
+      required:
+        - t0
+        - t1
+      type: object
     FirstBloodMatchPoint:
       additionalProperties: false
       properties:
@@ -16331,6 +16595,55 @@ components:
         - ties
         - dnf
       type: object
+    KeyframeCoverage:
+      additionalProperties: false
+      properties:
+        bipeds:
+          format: int64
+          type: integer
+        contradictoryProofs:
+          format: int64
+          type: integer
+        elections:
+          format: int64
+          type: integer
+        framedAbsentBipeds:
+          format: int64
+          type: integer
+        jumps:
+          format: int64
+          type: integer
+        keyframes:
+          format: int64
+          type: integer
+        neighbors:
+          format: int64
+          type: integer
+        records:
+          format: int64
+          type: integer
+        refutations:
+          format: int64
+          type: integer
+        resyncs:
+          format: int64
+          type: integer
+        slides:
+          format: int64
+          type: integer
+      required:
+        - keyframes
+        - records
+        - bipeds
+        - neighbors
+        - jumps
+        - resyncs
+        - elections
+        - refutations
+        - contradictoryProofs
+        - slides
+        - framedAbsentBipeds
+      type: object
     LOWESSTrend:
       additionalProperties: false
       properties:
@@ -16641,6 +16954,9 @@ components:
         available:
           format: int64
           type: integer
+        byUnit:
+          format: int64
+          type: integer
         noSlot:
           format: int64
           type: integer
@@ -16648,6 +16964,9 @@ components:
           format: int64
           type: integer
         refusedByRoster:
+          format: int64
+          type: integer
+        unitOtherIndex:
           format: int64
           type: integer
         unpublished:
@@ -16966,10 +17285,19 @@ components:
     Loadout:
       additionalProperties: false
       properties:
+        k:
+          items:
+            format: int64
+            type: integer
+          type:
+            - array
+            - "null"
         slot:
           format: int32
           minimum: 0
           type: integer
+        src:
+          type: string
         t:
           format: int64
           type: integer
@@ -22420,6 +22748,22 @@ components:
         - enabled
         - delivery
       type: object
+    PresenceInterval:
+      additionalProperties: false
+      properties:
+        from:
+          format: int64
+          type: integer
+        to:
+          format: int64
+          type: integer
+        toMax:
+          format: int64
+          type: integer
+      required:
+        - from
+        - to
+      type: object
     PresenceSnapshot:
       additionalProperties: false
       properties:
@@ -23325,6 +23669,12 @@ components:
           $ref: '#/components/schemas/BombMatchStats'
         bounds:
           $ref: '#/components/schemas/Bounds'
+        bursts:
+          items:
+            $ref: '#/components/schemas/FireBurst'
+          type:
+            - array
+            - "null"
         coverage:
           $ref: '#/components/schemas/Coverage'
         durationMs:
@@ -23702,6 +24052,12 @@ components:
           type: integer
         name:
           type: string
+        presence:
+          items:
+            $ref: '#/components/schemas/PresenceInterval'
+          type:
+            - array
+            - "null"
         seat:
           format: int64
           type: integer
@@ -24166,7 +24522,34 @@ components:
         arrivants:
           format: int64
           type: integer
+        bornesDifferees:
+          format: int64
+          type: integer
+        botsSuccesseurs:
+          format: int64
+          type: integer
+        capacite:
+          format: int64
+          type: integer
+        chevauchements:
+          format: int64
+          type: integer
+        depassements:
+          format: int64
+          type: integer
+        entitesContestees:
+          format: int64
+          type: integer
+        entitesNonLiees:
+          format: int64
+          type: integer
         entrees:
+          format: int64
+          type: integer
+        identitesHorsRoster:
+          format: int64
+          type: integer
+        imagesClesDouteuses:
           format: int64
           type: integer
         lus:
@@ -24175,10 +24558,33 @@ components:
         occupantsMax:
           format: int64
           type: integer
+        placesEnTrop:
+          format: int64
+          type: integer
+        placesOuvertes:
+          format: int64
+          type: integer
+        placesTirs:
+          format: int64
+          type: integer
+        presences:
+          type: string
         presencesCloses:
           format: int64
           type: integer
+        presencesParLesVies:
+          format: int64
+          type: integer
+        relaisBornes:
+          format: int64
+          type: integer
         reprisesEcrites:
+          format: int64
+          type: integer
+        sansEquipe:
+          format: int64
+          type: integer
+        sansPlace:
           format: int64
           type: integer
         sansPresence:
@@ -24189,16 +24595,49 @@ components:
         sieges:
           format: int64
           type: integer
+        tirsContestes:
+          format: int64
+          type: integer
+        tirsIndexNonPlace:
+          type: boolean
+        tirsIndexTronque:
+          type: boolean
+        tirsParPlace:
+          format: int64
+          type: integer
+        trousDEntite:
+          format: int64
+          type: integer
       required:
         - entrees
         - sieges
         - lus
+        - placesTirs
         - apparies
+        - placesOuvertes
+        - sansPlace
         - reprisesEcrites
         - arrivants
         - presencesCloses
         - sansPresence
         - occupantsMax
+        - capacite
+        - depassements
+        - placesEnTrop
+        - sansEquipe
+        - identitesHorsRoster
+        - botsSuccesseurs
+        - presencesParLesVies
+        - relaisBornes
+        - chevauchements
+        - tirsContestes
+        - tirsParPlace
+        - presences
+        - entitesNonLiees
+        - entitesContestees
+        - trousDEntite
+        - imagesClesDouteuses
+        - bornesDifferees
       type: object
     SelectedTeammateData:
       additionalProperties: false
@@ -27450,6 +27889,9 @@ components:
         eventPacketsUnlocated:
           format: int64
           type: integer
+        forgottenBindings:
+          format: int64
+          type: integer
         intervals:
           format: int64
           type: integer
@@ -27476,6 +27918,18 @@ components:
           format: int64
           type: integer
         records:
+          format: int64
+          type: integer
+        refusedNewFalseReads:
+          format: int64
+          type: integer
+        refusedNewLostCreations:
+          format: int64
+          type: integer
+        refusedNewUndecided:
+          format: int64
+          type: integer
+        refusedNews:
           format: int64
           type: integer
         scanned:
@@ -30348,6 +30802,12 @@ components:
         shotsAmbiguous:
           format: int64
           type: integer
+        shotsByUnit:
+          format: int64
+          type: integer
+        shotsByUnitNoRide:
+          format: int64
+          type: integer
         shotsNoRide:
           format: int64
           type: integer
@@ -30449,6 +30909,8 @@ components:
         - shotsAmbiguous
         - shotsUnplaced
         - shotsNoRide
+        - shotsByUnit
+        - shotsByUnitNoRide
         - shotsVehicleWeapon
         - turrets
         - turretsOnCarrier
@@ -30723,6 +31185,8 @@ components:
           type: string
         fx:
           type: string
+        loop:
+          type: string
         mount:
           $ref: '#/components/schemas/VehicleWeaponMount'
         sound:
@@ -30913,6 +31377,9 @@ components:
       properties:
         from:
           type: string
+        k:
+          format: int64
+          type: integer
         kind:
           type: string
         slot:

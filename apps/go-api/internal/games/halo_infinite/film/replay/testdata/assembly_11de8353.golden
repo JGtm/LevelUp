@@ -6,7 +6,7 @@
 
 ## AXE DE TEMPS
 5144 frames · intervalle 100 ms · duree 514400 ms
-schema 69 · titre halo_infinite
+schema 71 · titre halo_infinite
 version majeure du film : 38
 origine de la frame 0 sur l horloge du fil : 86805 ms
 coup d envoi date par le film : 108405 ms · 177/181 piste(s) en mouvement · rafale 15 · marge depuis la frame 0 : 21600 ms
@@ -52,18 +52,18 @@ jamais une categorie de donnee (decision produit du 2026-09-07)
   2535451406659668  idx=27  equipe=0  ""
 
 ### EQUIPES — lues dans le film (ti=9 i0), JAMAIS dans la base (decision utilisateur V4)
-lue=true refus="" · 753 record(s) ti=9, 0 rejete(s), 0 divergence(s)
+lue=true refus="" · 754 record(s) ti=9, 0 rejete(s), 0 divergence(s)
 roster : 28 joueur(s) dont le film donne l equipe (0 sans equipe) · 0 non lu(s)
 controle (feuille de match) : accord=0 contradiction=0 silence=28
 vies : 182/182 portent une equipe du film
 repartition des vies par designateur : 0 x108 · 1 x74
 
 ## TIRS — rattaches sur DISPONIBLES, et la ventilation de tout ce qui est ecarte
-1706 rattache(s) / 1968 disponible(s) = 86.7 %
-rejets : slot introuvable=262 · slot ambigu=0 · hors fenetre=0 · sans trace publiee=0
+1946 rattache(s) / 1968 disponible(s) = 98.9 %
+rejets : slot introuvable=22 · slot ambigu=0 · hors fenetre=0 · sans trace publiee=0
 somme de controle : rattaches + rejets = disponibles -> 1968 = 1968 (equilibre : true)
 verdict : nominal
-1706 tir(s) publie(s) · 1349 avec un cap de visee lisible · 1706 avec une arme nommee
+1946 tir(s) publie(s) · 1522 avec un cap de visee lisible · 1946 avec une arme nommee
 
 ## GRENADES — le lancer porte son auteur ; ce qui se mesure est OU il est pose
 139 rattache(s) / 145 disponible(s) = 95.9 %
@@ -79,24 +79,24 @@ par type : Dynamo=49 · Frag=19 · Plasma=36 · Spike=35
 couverture : 477 piste(s) decodee(s) · 464 publiee(s) · 10 coupee(s) a un pas impossible
 
 ## INVENTAIRE — lu aux images-cles, jamais interpole entre deux
-583 etat(s) publie(s) · 501 avec grenades lues · 500 avec munitions lues
-129 lecture(s) de munitions a PLUSIEURS candidats : la plus longue a ete retenue et le
+585 etat(s) publie(s) · 503 avec grenades lues · 502 avec munitions lues
+130 lecture(s) de munitions a PLUSIEURS candidats : la plus longue a ete retenue et le
 nombre de candidats est publie, pour que le departage reste visible
 82 lecture(s) VIDE(S) : 56 corroboree(s) par le fil des morts (`dead`), 26 inexpliquee(s)
-couverture : 583 lecture(s) decodee(s) -> 0 ecartee(s) avant l origine du rejeu · 0 ecartee(s) faute de piste publiee -> 583 publiee(s)
+couverture : 585 lecture(s) decodee(s) -> 0 ecartee(s) avant l origine du rejeu · 0 ecartee(s) faute de piste publiee -> 585 publiee(s)
 rangs de grenade : 0:en="Frag"/fr="Fragmentation", 1:en="Plasma"/fr="Plasma", 2:en="Dynamo"/fr="Dynamo", 3:en="Spike"/fr="Spike"
 
 ## GRENADES PORTEES — un axe, DEUX canaux, chaque lecture disant d ou elle vient
-699 lecture(s) · 501 par image-cle (~20 s) · 198 par delta (transmis AU CHANGEMENT)
+701 lecture(s) · 503 par image-cle (~20 s) · 198 par delta (transmis AU CHANGEMENT)
 76 lecture(s) portent le rang SELECTIONNE — une selection ne se devine pas
-couverture : 501 image-cle · 198 delta · 0 ecartee(s) sans piste · canal munitions refuse : true
+couverture : 503 image-cle · 198 delta · 0 ecartee(s) sans piste · canal munitions refuse : true
 
 ## CAPACITE PORTEE — le RANG de palette, deux canaux pour une seule grandeur
-261 lecture(s) · 191 par i48 (rang complet, paquets delta) · 70 par image-cle (fenetre 16..23)
-rangs observes : 1:28 2:29 4:29 5:26 6:24 10:28 23:97
-lectures NOMMEES 261/261 — un rang hors table garde son numero, et la table est propre a la palette du film
+262 lecture(s) · 191 par i48 (rang complet, paquets delta) · 71 par image-cle (fenetre 16..23)
+rangs observes : 1:28 2:29 4:29 5:26 6:24 10:28 23:98
+lectures NOMMEES 262/262 — un rang hors table garde son numero, et la table est propre a la palette du film
 capacites nommees : 1=en:"Threat Sensor"/fr:"detecteur de menaces"/fam:"sensor", 10=en:"Shroud Screen"/fr:"ecran occultant"/fam:"shroud_screen", 2=en:"Drop Wall"/fr:"mur de protection"/fam:"wall", 23=en:"Repair Field"/fr:"champ de reparation"/fam:"repair_field", 4=en:"Grappleshot"/fr:"grappin"/fam:"grapple", 5=en:"Thruster"/fr:"propulseur"/fam:"thruster", 6=en:"Repulsor"/fr:"repulseur"/fam:"repulsor"
-couverture : 261 lecture(s) -> 0 ecartee(s) bruit de balayage · 0 ecartee(s) sans trajectoire publiee -> 261 publiee(s)
+couverture : 262 lecture(s) -> 0 ecartee(s) bruit de balayage · 0 ecartee(s) sans trajectoire publiee -> 262 publiee(s)
 
 ## EQUIPEMENT ACTIF — episodes dates par vie, DEUX familles mesurees et rien d autre
 0 episode(s) publie(s) · par famille : aucun · 0 fin(s) MESUREE(s) (le reste ferme a la mort)
@@ -716,15 +716,15 @@ provenance : 62 evenement(s) 103 lu(s) sur 7325 liste(s) d evenements non vides
   grenade_dynamo unknown 0xaada07f3 t=[5096, 5114] pos=(-51.17, 89.10, 54.82) poseur=685 cap=281.9 deg
 
 ## SOCLES D ARME AU SOL — la RECURRENCE fait le socle, et le film dit quand il se vide
-balaye=true · bande 1525 slot(s) · 14697 ancre(s) -> 515 acceptee(s) -> 363 retenue(s) par l IDENTITE (152 ecartee(s))
-296 lachee(s) a une mort · 67 apparue(s) sans mort a proximite, dont 0 AU REPOS (jamais bougee : le seul jeu qui fait des socles)
+balaye=true · bande 1526 slot(s) · 21634 ancre(s) -> 556 acceptee(s) -> 364 retenue(s) par l IDENTITE (192 ecartee(s))
+297 lachee(s) a une mort · 67 apparue(s) sans mort a proximite, dont 0 AU REPOS (jamais bougee : le seul jeu qui fait des socles)
 0 grappe(s) -> 0 socle(s) publie(s) · 0 occupation(s) : 0 datee(s) · 0 sans passage · 0 jamais videe(s)
 0 cycle(s) ETABLI(s) — un cycle instable publie `null`, jamais un chiffre
 POWER-UPS (voie ti=37) — balaye=true · 712 creation(s) acceptee(s) -> 0 retenue(s) par l IDENTITE `powerup_*` -> 0 socle(s) publie(s)
 0 occupation(s) achevee(s) publiee(s) · 0 datee(s) a l instant exact par l evenement natif · 0 avec un ramasseur nomme
 
 ## ARMES PORTEES — l inventaire, pas la main : le loadout ne dit pas QUELLE arme est degainee
-508 loadout(s) publie(s) · 24 famille(s) distincte(s)
+510 loadout(s) publie(s) · 24 famille(s) distincte(s)
 
 ## PONT SLOT -> JOUEUR — deux sources nommees : la LECTURE, puis la FERMETURE
 182 entree(s) · 182 issue(s) de la lecture (un ecart NON EXPLIQUE par les fermetures signalerait une TROISIEME SOURCE)
@@ -742,13 +742,13 @@ controle (lecture des chunks) : 23 accord · 0 contradiction · 1 silence — la
 voies des liens d index : PlayerIndexTable=4 · film_table=24
 
 ## SIEGES — la fiche d un occupant, et la part qui vient d un appariement
-entrees 28 · sieges 26 · lus 26 · apparies 2 · reprises ecrites 0
-arrivants 4 · presences closes 18 · sans presence 2 · occupants au plus 24 · sans table false
+entrees 28 · sieges 24 · lus 24 · tirs 2 · apparies 2 · ouvertes 0 · sans place 0 · reprises ecrites 0 · presences film
+arrivants 4 · presences closes 5 · sans presence 1 · occupants au plus 24 · depassements 0 · relais bornes 0 · sans table false
 
 ## REPLIS DECLENCHES — la part de ce document qui ne vient PAS d une lecture du film
 repli_chassis_vehicule_marqueur_neutre           6
+repli_place_du_remplacant_par_chainage_d_equipe  2
 repli_position_hors_emprise_ecartee              3
-repli_siege_du_remplacant_par_appariement_ordinal 2
 repli_tourelle_porteur_voisin_de_slot            14
 
 ## LIBELLES D ARMES — le tag brut reste A COTE du libelle, jamais a sa place

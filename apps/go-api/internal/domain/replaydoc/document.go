@@ -25,6 +25,7 @@ type ReplayDocument struct {
 	Structure           []Surface                `json:"structure,omitempty"`
 	StructureBounds     *Bounds                  `json:"structureBounds,omitempty"`
 	Shots               []Shot                   `json:"shots,omitempty"`
+	Bursts              []FireBurst              `json:"bursts,omitempty"`
 	Loadouts            []Loadout                `json:"loadouts,omitempty"`
 	Inventory           []Inventory              `json:"inventory,omitempty"`
 	GrenadeLabels       []Label                  `json:"grenadeLabels,omitempty"`
@@ -144,17 +145,34 @@ type RosterEntry struct {
 	// (schema 50). Vide pour un humain, et vide pour un bot dont la declaration ne portait pas
 	// d identifiant : un `bid(0.0)` invente joindrait deux bots distincts.
 	Bid string `json:"bid,omitempty"`
-	// Seat est LE SIEGE : la fiche que cette entree occupe a l ecran (lot 1.9.14). Il vaut
-	// `filmIndex` sauf quand l entree CONTINUE le siege d un partant ; `seatSource` dit alors si
-	// le film a ECRIT la reprise (`lu`) ou si un appariement ordinal l a deduite (`apparie`).
-	// Deux entrees de meme `seat` sont deux occupants SUCCESSIFS d une meme fiche, et leurs
-	// presences — les vies de `tracks[]` — ne se recouvrent pas.
+	// Seat est LA PLACE : la fiche que cette entree occupe a l ecran (lot 1.9.14 ; lot M2.3,
+	// schema 69 : un siege de la TABLE du debut du film, ou une place qu un arrivant ouvre quand la
+	// table n en portait pas assez pour son equipe). Il vaut `filmIndex` pour les occupants
+	// du depart, et la place du partant pour son remplacant. Deux entrees de meme `seat` sont
+	// deux occupants SUCCESSIFS d une meme place, et leurs `presence` ne se recouvrent pas.
 	//
 	// TOUJOURS EMIS : le siege 0 est un siege comme un autre, et `omitempty` l effacerait.
 	Seat int `json:"seat"`
-	// SeatSource : `lu` (l index que le film ecrit) ou `apparie` (l appariement ordinal par
-	// camp, un repli nomme et compte). Vide sur un artefact anterieur au lot 1.9.14.
+	// SeatSource : `lu` (l index que le film ecrit), `tirs` (la place lue dans l index de tireur
+	// de ses tirs), `apparie` (chainage par equipe, un repli nomme et compte), `ouverte` (une place
+	// ouverte sous la capacite estimee de son equipe, un repli nomme et compte) ou `index` (aucune
+	// place : le siege est l index, compte). Vide sur un artefact anterieur au lot 1.9.14.
 	SeatSource string `json:"seatSource,omitempty"`
+	// Presence : les intervalles pendant lesquels l entree TIENT sa place (schema 69). C est elle
+	// qui dit qu un joueur est parti : la fiche s affiche de `from` a `toMax` (a defaut `to`), la
+	// place reste VIDE ensuite jusqu au remplacant. Absente : jamais present, ou artefact
+	// anterieur au schema 69 (le client retombe sur l enveloppe des vies).
+	Presence []PresenceInterval `json:"presence,omitempty"`
+}
+
+// PresenceInterval est UN intervalle de presence d une entree de roster, en frames, bornes
+// incluses : `to` est la derniere frame CERTAINE (`to < from` : aucune, l occupant n a ete vu
+// qu avant l origine du document), `toMax` la derniere ou il PEUT encore etre la (l entite ne se
+// lit qu aux images-cles) ; absent quand il vaut `to`.
+type PresenceInterval struct {
+	From  int  `json:"from"`
+	To    int  `json:"to"`
+	ToMax *int `json:"toMax,omitempty"`
 }
 
 // Shot est un tir décodé, placé à la position de son tireur.
@@ -173,6 +191,8 @@ type Loadout struct {
 	T    int      `json:"t"`
 	Slot uint32   `json:"slot"`
 	W    []string `json:"w"`
+	Src  string   `json:"src,omitempty"`
+	K    []int    `json:"k,omitempty"`
 }
 
 // Grenade est un lancer de grenade, situé dans le temps et l'espace.

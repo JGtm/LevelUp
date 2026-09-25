@@ -46,10 +46,7 @@ func rockCountFilm(dir string, upTo int) (rockets, distinct int) {
 				continue
 			}
 			pay := pk.Payload(data)
-			if int(pay[0]>>1) != FireEventType || int(pay[0])&1 != 0 {
-				continue
-			}
-			fe, ok := decodeFireEvent(pay)
+			fe, ok := decodeFireEvent(pay) // la grammaire ecarte tout autre type de tete
 			if !ok {
 				continue
 			}

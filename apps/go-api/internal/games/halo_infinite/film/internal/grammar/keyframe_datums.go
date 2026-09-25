@@ -150,13 +150,21 @@ func LierTableDeDatums(w *World, data []byte, pks []FilmPacket) (posees, ambigus
 		}
 		table, amb := TableDeDatums(pk.Payload(data))
 		ambigus += amb
-		for slot, ti := range table {
-			if _, lie := w.ArchetypeForSlot(slot); lie {
-				continue
-			}
-			w.BindDatum(slot, ti)
-			posees++
-		}
+		posees += lierLesDatums(w, table)
 	}
 	return posees, ambigus
+}
+
+// lierLesDatums pose les liaisons d UNE table de datums, sans ecraser une liaison deja posee, et
+// rend le nombre de liaisons posees.
+func lierLesDatums(w *World, table map[uint32]uint32) int {
+	posees := 0
+	for slot, ti := range table {
+		if _, lie := w.ArchetypeForSlot(slot); lie {
+			continue
+		}
+		w.BindDatum(slot, ti)
+		posees++
+	}
+	return posees
 }

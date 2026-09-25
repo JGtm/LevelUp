@@ -94,7 +94,7 @@ func couchesMesurees(t *testing.T) []coucheMesuree {
 			// alors que l exclusion existe pour les tenir hors de l empreinte.
 			horsCouche: []string{"rev.go", "rev_chronique.go", "rev_chronique_archive.go",
 				"rev_chronique_archive_2.go", "rev_chronique_archive_3.go",
-				"rev_chronique_archive_4.go", "rev_chronique_archive_5.go"},
+				"rev_chronique_archive_4.go", "rev_chronique_archive_5.go", "rev_chronique_archive_6.go"},
 			amonts: []string{profile.Rev, source.Rev},
 			golden: filepath.Join(film, "grammar", "testdata", "grammar_rev.golden"),
 		},

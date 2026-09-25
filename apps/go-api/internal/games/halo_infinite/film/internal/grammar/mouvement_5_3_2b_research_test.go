@@ -380,7 +380,7 @@ func m532bLire(t *testing.T, dir string) ([]m532bRec, map[uint32][]m532bKF, []st
 	if err != nil {
 		t.Fatalf("chunks : %v", err)
 	}
-	band := bipedSlotBand(film, chunks)
+	band := bipedSlotBand(NewFilmContext(film), chunks)
 	lay, err := bipedI0Layout(film, opt)
 	if err != nil {
 		t.Fatalf("layout i0 : %v", err)

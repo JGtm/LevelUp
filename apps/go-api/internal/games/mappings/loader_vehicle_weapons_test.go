@@ -5,7 +5,10 @@ package mappings
 // tables client (`vehicleWeaponTags.guard.test.ts`, supprime avec elles), sur la MEME fixture datee
 // du parc :
 //
-//  1. toute cle du registre est un tag OBSERVE dans un document (fixture datee) ;
+//  1. toute cle du registre est un tag OBSERVE dans un document (fixture datee) — sauf une arme a
+//     TIR CONTINU (lot M4b, 2026-09-24), qu aucun tir n observe par construction (son record 36
+//     n est jamais emis) : sa cle est tenue par la table Go des chassis
+//     (`replay/tir_continu_armes_test.go`) ;
 //  2. tout tag de vehicule observe au moins `seuilObserve` fois a une entree, ou une ligne
 //     `[[unknown]]` motivee ;
 //  3. tout son nomme existe dans les assets servis, tout vehicule nomme a son sprite.
@@ -95,6 +98,13 @@ func TestRegistreArmesVehicule_ToutesLesClesSontObservees(t *testing.T) {
 		observes[tagDeShot(o.Tag)] = true
 	}
 	for _, tag := range set.Tags() {
+		if w, _ := set.Weapon(tag); w.Fire == VehicleWeaponFireContinuous {
+			if observes[tag] {
+				t.Errorf("%s : arme a tir continu OBSERVEE en tir — son record 36 serait emis, la rafale "+
+					"le doublerait", tag)
+			}
+			continue
+		}
 		if !observes[tag] {
 			t.Errorf("%s : au registre sans avoir ete observe dans un document", tag)
 		}
@@ -124,10 +134,13 @@ func TestRegistreArmesVehicule_SonsEtSpritesServis(t *testing.T) {
 	set, root := vwRegistre(t), vwRepoRoot(t)
 	for _, tag := range set.Tags() {
 		w, _ := set.Weapon(tag)
-		if w.Sound != "" {
-			p := filepath.Join(root, "static", "sounds", "halo_infinite", w.Sound+".wav")
+		for _, stem := range []string{w.Sound, w.Loop} {
+			if stem == "" {
+				continue
+			}
+			p := filepath.Join(root, "static", "sounds", "halo_infinite", stem+".wav")
 			if _, err := os.Stat(p); err != nil {
-				t.Errorf("%s : son %q absent des assets servis", tag, w.Sound)
+				t.Errorf("%s : son %q absent des assets servis", tag, stem)
 			}
 		}
 		p := filepath.Join(root, "static", "vehicles-assets", "halo_infinite", "replay", w.Vehicle+".png")
@@ -157,6 +170,7 @@ proof = "p"
 		"sans preuve":        strings.Replace(base, "proof = \"p\"", "proof = \"\"", 1) + "sound = \"s\"\n",
 		"montage hors cadre": base + "sound = \"s\"\nmount = { aim = \"fixed\", ax = 0.7, ay = 0.0 }\n",
 		"visee inconnue":     base + "sound = \"s\"\nmount = { aim = \"free\", ax = 0.0, ay = 0.0 }\n",
+		"boucle d un coup":   base + "sound = \"s\"\nloop = \"l\"\n",
 	}
 	for nom, entree := range cas {
 		if _, err := LoadVehicleWeaponsFromBytes("t.toml", []byte("[[weapons]]\n"+entree)); err == nil {

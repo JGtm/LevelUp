@@ -47,7 +47,12 @@ import (
 // atteignait 504 lignes et `balayerEtatsDeMouvement` en est sortie par DEPLACEMENT PUR. Le garde
 // suit l etage de balayage, pas un nom de fichier — l oublier ici aurait rendu l etape invisible
 // a la liste, c est-a-dire au harnais d equivalence.
-var fichiersDuBalayage = []string{"build_from_film.go", "film_scan.go", "film_scan_mouvement.go"}
+// `film_scan_naissances.go` Y EST ENTRE LE 2026-09-23 (lot M3.2), pour la meme raison : `film_scan.go`
+// frolait le seuil, et le balayage des dotations de naissance y serait devenu invisible.
+// `film_scan_ti13.go` Y EST ENTRE LE 2026-09-24 (integration de la vague D des retours du rejeu) :
+// `film_scan.go` atteignait 512 lignes et `balayerProprietesTi13` en est sortie par DEPLACEMENT PUR.
+var fichiersDuBalayage = []string{"build_from_film.go", "film_scan.go", "film_scan_mouvement.go",
+	"film_scan_naissances.go", "film_scan_ti13.go"}
 
 // racineDuBalayage : la fonction par laquelle l'etage commence.
 const racineDuBalayage = "scanFilmInputs"
@@ -80,6 +85,21 @@ func declarationsDuBalayage(t *testing.T) map[string]*ast.FuncDecl {
 			racineDuBalayage, fichiersDuBalayage)
 	}
 	return out
+}
+
+// balayagesAPlusieursCanaux : les balayages dont UNE marche rend PLUSIEURS canaux observes, et
+// combien. La marche du frame-processeur (`grammar.ScanMarcheDesTrames`) deroule chaque trame une
+// fois et rend les ETATS DE MOUVEMENT (vue B) et le TIR CONTINU (vue C, lot M4b, 2026-09-24) :
+// deux etapes observees pour un seul balayage. Refaire la marche pour la seconde doublerait le
+// cout du plus cher des balayages ; l egalite `etapes = balayages` reste exacte, ponderee ici.
+var balayagesAPlusieursCanaux = map[string]int{"ScanMarcheDesTrames": 2}
+
+// canauxDuBalayage rend le nombre d etapes observees qu un balayage alimente (1 par defaut).
+func canauxDuBalayage(nom string) int {
+	if n, ok := balayagesAPlusieursCanaux[nom]; ok {
+		return n
+	}
+	return 1
 }
 
 // estBalayage dit si un nom de fonction est un BALAYAGE de film : la forme film (`ScanXxx`), la
@@ -137,7 +157,7 @@ func (m *marcheurDEtapes) descendre(body *ast.BlockStmt) {
 				m.steps = append(m.steps, s)
 			}
 		case estBalayage(nom):
-			m.scans++
+			m.scans += canauxDuBalayage(nom)
 			return false // un balayage est une feuille : on ne descend pas dedans
 		default:
 			fn, connue := m.decls[nom]
