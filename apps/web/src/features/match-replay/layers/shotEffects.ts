@@ -22,6 +22,9 @@
  * plus. La feuille de style ne peut rien pour un canvas dessiné en JS : la préférence se lit
  * donc ici.
  */
+// L'échelle de la bombe vit dans le module feuille de l'éclair (voir sa doc) : c'est lui que
+// le garde-rail de rastérisation transpile seul, sans import de valeur.
+import { BOMB_SCALE } from './muzzleFlash'
 
 /** Familles de rendu. `sobre` n'est pas une famille : c'est l'absence de famille connue. */
 export type ShotFamily =
@@ -30,6 +33,7 @@ export type ShotFamily =
   | 'light'
   | 'shock'
   | 'explosive'
+  | 'bomb'
   | 'melee'
   | 'needles'
   | 'plain'
@@ -52,6 +56,7 @@ const DRAWN_FAMILIES: Record<string, ShotFamily> = {
   light: 'light',
   shock: 'shock',
   explosive: 'explosive',
+  bomb: 'bomb',
   melee: 'melee',
   needles: 'needles',
 }
@@ -134,7 +139,10 @@ export function drawShotEffect(
         drawShock(ctx, s)
         break
       case 'explosive':
-        drawExplosive(ctx, s)
+        drawExplosive(ctx, s, 1)
+        break
+      case 'bomb':
+        drawExplosive(ctx, s, BOMB_SCALE)
         break
       case 'melee':
         drawMelee(ctx, s)
@@ -287,14 +295,16 @@ function drawShock(ctx: CanvasRenderingContext2D, s: Oriented): void {
  * drawExplosive — DEUX TEMPS : un départ épais et bref, puis une onde qui s'ouvre.
  * L'onde ne se pose à l'EXTRÉMITÉ que si elle est RÉELLE (`target`, la victime d'une
  * mort) ; sur un tir elle reste centrée sur le tireur — le film ne date aucun impact.
+ * `scale` : 1 pour la déflagration, `BOMB_SCALE` pour la bombe (portée, onde ET traits plus
+ * grands — lot M6.2).
  */
-function drawExplosive(ctx: CanvasRenderingContext2D, s: Oriented): void {
+function drawExplosive(ctx: CanvasRenderingContext2D, s: Oriented, scale: number): void {
   const burst = Math.max(0, (s.fade - 0.7) / 0.3)
   if (burst > 0) {
-    const dl = Math.min(s.length, 22)
+    const dl = Math.min(s.length, 22 * scale)
     const e = { x: s.x + Math.cos(s.angle) * dl, y: s.y + Math.sin(s.angle) * dl }
     ctx.globalAlpha = 0.9 * burst
-    ctx.lineWidth = 3.4
+    ctx.lineWidth = 3.4 * scale
     ctx.beginPath()
     ctx.moveTo(s.x, s.y)
     ctx.lineTo(e.x, e.y)
@@ -303,9 +313,9 @@ function drawExplosive(ctx: CanvasRenderingContext2D, s: Oriented): void {
   const cx = s.target ? s.x + Math.cos(s.angle) * s.length : s.x
   const cy = s.target ? s.y + Math.sin(s.angle) * s.length : s.y
   ctx.globalAlpha = 0.5 * s.fade
-  ctx.lineWidth = 1.4
+  ctx.lineWidth = 1.4 * scale
   ctx.beginPath()
-  ctx.arc(cx, cy, 5 + 24 * s.advance, 0, Math.PI * 2)
+  ctx.arc(cx, cy, (5 + 24 * s.advance) * scale, 0, Math.PI * 2)
   ctx.stroke()
 }
 

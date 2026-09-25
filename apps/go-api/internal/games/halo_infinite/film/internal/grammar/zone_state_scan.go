@@ -162,7 +162,7 @@ func ScanManagedProperties(fc *FilmContext) (ManagedPropertyScan, error) {
 	if len(nums) == 0 {
 		return sc, ErrNoFilmChunk
 	}
-	band := observedSlotBand(fc.Film(), ManagedPropertyTypeIndex)
+	band := observedSlotBand(fc, ManagedPropertyTypeIndex)
 	if len(band) == 0 {
 		return sc, fmt.Errorf("aucun slot d'archetype ti=%d dans les keyframes du film",
 			ManagedPropertyTypeIndex)

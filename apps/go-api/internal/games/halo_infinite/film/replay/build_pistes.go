@@ -9,7 +9,17 @@ package replay
 // ses commentaires de mesure ; seule la designation des variables a change (`doc` -> `a.doc`).
 // Voir `build.go` pour l ordre des passes et ce qu il protege.
 
-import "log/slog"
+import (
+	"log/slog"
+
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
+)
+
+// horloge rend la grille du document et le compteur de replis de la cuisson, sous la forme que
+// les passes du roster partagent.
+func (a *assemblage) horloge() replayClock {
+	return replayClock{origin: a.origin, step: a.step, frames: a.doc.FrameCount, fb: a.opt.Fallbacks}
+}
 
 // poserLesPistes construit le registre d identite, publie les trajectoires et les nomme.
 //
@@ -31,7 +41,7 @@ func (a *assemblage) poserLesPistes() {
 	a.reg = BuildIdentityRegistry(IdentityInput{
 		Positions: a.sorted, BipedCreations: a.opt.BipedCreations,
 		Deaths: a.opt.Deaths, PlayerIndices: a.opt.PlayerIndices, FilmTable: a.opt.FilmTable,
-		Bots: a.opt.Bots, Fire: refs, RosterXUIDs: a.opt.RosterXUIDs,
+		Bots: a.opt.Bots, Entities: a.opt.PlayerEntities, Fire: refs, RosterXUIDs: a.opt.RosterXUIDs,
 		Participants: a.opt.Participants,
 		Statborg: StatborgIdentityInput{
 			Identity: a.opt.StatborgIdentity, Records: scoreRecordsOf(a.opt.Score)},
@@ -48,17 +58,24 @@ func (a *assemblage) poserLesPistes() {
 		origin: a.origin, step: a.step, minPoints: a.opt.minPoints(), scoped: a.opt.Scoped,
 		vies: a.reg.Vies(), fb: a.opt.Fallbacks,
 	})
+	// CE QUE LA PORTE DES POSITIONS A ECARTE se publie avec la couverture des traces : un point
+	// ecarte est un point que le seuil de publication n a jamais vu (cf. positions_porte.go).
+	a.porte.poserSur(&a.trackCov, a.matchID)
 	// L'IDENTITÉ se pose sur les traces dès que le pont existe : sans elle, un client ne peut
 	// ni nommer un joueur, ni regrouper ses vies, ni colorer une équipe. Le nommage se fait
 	// PAR VIE depuis le 2026-09-02 — un slot recyclé porte une identité par occupant.
 	nameTracksByLives(a.doc.Tracks, a.reg.Vies(), a.origin, a.step, a.opt.Fallbacks)
-	// LES BOTS ENTRENT APRÈS LES HUMAINS : une vie nommée par un xuid n'est jamais écrasée,
-	// et seuls les slots que le pont attribue à un index de bot prennent son nom.
+	// LES BOTS ENTRENT APRÈS LES HUMAINS : une vie nommée par un xuid n'est jamais écrasée.
+	// D'abord les vies que le registre a nommées par le `bid` de leur bot — le corps d'un index
+	// partagé, lu par l'entité qui vit à sa création (lot M2.3) —, puis les slots que le pont
+	// attribue à l'index d'un bot unique.
+	nommerLesPistesDeBotParLeurVie(a.doc.Tracks, a.reg.Vies(), a.opt.Bots, a.horloge())
 	nameBotTracks(a.doc.Tracks, a.reg.IndexParSlot(), a.opt.Bots)
 	// LES RELAIS EN DERNIER : le remplaçant hérite des vies restées anonymes après tout ce
-	// que la lecture et les fermetures savaient nommer (cf. successions.go).
-	attributeSuccessions(a.doc.Tracks, a.opt.Successions, a.origin, a.step,
-		a.reg.DeathOffsetMS(), a.reg.DeathOffsetMatches(), refs)
+	// que la lecture et les fermetures savaient nommer (cf. successions.go). C'est un repli.
+	attributeSuccessions(a.doc.Tracks, a.opt.Successions, calageDesRelais{origin: a.origin,
+		step: a.step, deathOffsetMS: a.reg.DeathOffsetMS(), offsetMatches: a.reg.DeathOffsetMatches(),
+		fb: a.opt.Fallbacks}, refs)
 	// LE NOMMAGE FINAL, ET IL EST LA CONSEQUENCE D'UNE DECISION PRODUIT (2026-09-07) : « les vies
 	// anonymes n'existent pas ; une vie est un humain ou un bot, point ». Ce qui reste sans nom
 	// apres les quatre passes ci-dessus est un DEFAUT du pont, pas une categorie de donnee : il
@@ -85,11 +102,35 @@ func (a *assemblage) poserLesEquipesEtLeRoster() {
 	// sur les vies ET sur le roster ; la base n'entre que dans `coverage.teams` comme CONTROLE.
 	// Posee APRES le nommage : le xuid d'une vie est ce qui la relie a son index de joueur.
 	a.equipes = newTeamPublication(a.reg, a.opt.PlayerTeams, a.opt.TeamScan, a.opt.ScoreboardTeams)
+	// LE BOT QUI SUCCEDE A UN HUMAIN SUR SON INDEX Y ENTRE AUSSI (revue M2-R1) : ses vies sont
+	// nommees, il lui faut son entree, donc sa place — celle du partant (roster_bots_successeurs.go).
+	var botsSuccesseurs int
+	a.doc.Roster, botsSuccesseurs = rosterDesOccupants(a.reg.TableDIndex(), nomsDesJoueurs(a.reg, a.opt.Deaths),
+		a.opt.Bots, a.opt.PlayerEntities, a.equipes)
+	// LES OCCUPANTS (lot M2.3) : chaque entree du roster liee a SES entites ti=9 — son equipe, sa
+	// presence. L'equipe par entree remplace celle de l'index sur le roster, les vies et le
+	// drapeau ; sans entite lue, elle vaut celle de l'index et rien ne change.
+	occ := lierLesOccupants(a.doc.Roster, a.doc.Tracks, entreesDesOccupants{
+		scan: a.opt.PlayerEntities, bots: a.opt.Bots, horloge: a.horloge(), parIndex: a.opt.PlayerTeams})
+	a.equipes.poserEquipesParEntree(a.doc.Roster, occ)
 	a.viesTotal, a.viesNommees, a.viesSlotAmbigu = a.equipes.poserSurLesTraces(a.doc.Tracks)
-	a.doc.Roster = buildRoster(a.reg.TableDIndex(), nomsDesJoueurs(a.reg, a.opt.Deaths), a.opt.Bots, a.equipes)
-	// LE SIEGE APRES LE ROSTER ET APRES LES TRACES, parce qu'il a besoin des deux : l'index lu
-	// pour le siege, les vies publiees pour savoir qui libere et qui arrive (cf. sieges.go).
-	a.siegeCov = poserLesSieges(a.doc.Roster, a.doc.Tracks, a.opt.FilmTable, a.doc.FrameCount, a.opt.Fallbacks)
+	// LA PLACE APRES LE ROSTER ET APRES LES TRACES, parce qu'elle a besoin des deux : l'index lu,
+	// la presence de chaque occupant et ses tirs (cf. sieges.go).
+	// L INDEX DE TIREUR N EST LU COMME PLACE QUE S IL L EST SUR CE FILM (lot M4b.4,
+	// tirs_index_fiable.go) : sinon la lecture des places par les tirs s abstient.
+	a.indexTireur = mesurerIndexDeTireur(a.fire, a.reg.IndexParSlot())
+	a.indexTireur.journaliser(a.matchID)
+	if !a.indexTireur.estLaPlace() {
+		a.opt.Fallbacks.DeclencheN(fallback.NomIndexDeTireurHorsPlace, a.indexTireur.total)
+	}
+	var tirsDesPlaces []FireEventRef
+	if a.indexTireur.estLaPlace() {
+		tirsDesPlaces = fireRefs(a.fire)
+	}
+	a.siegeCov = poserLesSieges(a.doc.Roster, occ, entreesDesPlaces{
+		table: a.opt.FilmTable, fire: tirsDesPlaces, horloge: a.horloge()})
+	a.siegeCov.BotsSuccesseurs = botsSuccesseurs
+	a.siegeCov.TirsIndexNonPlace = !a.indexTireur.estLaPlace()
 	// L'ORIGINE se publie APRÈS le pont : son témoin (le calage du fil des morts) en sort.
 	a.doc.OriginMs = resolveOriginMs(a.origin, a.opt.FilmClockOriginUS, a.reg.DeathOffsetMS(), a.reg.DeathOffsetMatches())
 	a.reg.logRegistry(a.matchID)
@@ -100,13 +141,26 @@ func (a *assemblage) poserTirsProjectilesEtGrenades() {
 	// Chaque calque rend sa COUVERTURE en même temps que son contenu. Le filtrage par
 	// trajectoire publiée qui suit est lui aussi compté, sous une catégorie distincte.
 	var shots []Shot
-	shots, a.shotOrphans, a.shotCov = buildShots(a.sorted, a.fire, a.origin, a.step, a.reg.IndexParSlot())
+	// LE TIREUR EST L OCCUPANT DE SA PLACE (lot M4b.4, tirs_par_place.go) : l index d un tir est
+	// la place, et le remplacant en herite. Les evenements de `a.fire` restent ceux du film.
+	// Sur un film ou l index n est pas la place, seule la reference 0 pose un tir.
+	fire := sansIndexDeTireur(a.fire)
+	if a.indexTireur.estLaPlace() {
+		fire, a.siegeCov.TirsParPlace = nouveauxTireursParPlace(a.doc.Roster).tirsParPlace(a.fire, a.horloge())
+	}
+	shots, a.shotOrphans, a.shotCov = buildShots(a.sorted, fire, a.origin, a.step, a.reg.IndexParSlot())
 	a.doc.Shots = keepShotsOfPublishedTracks(shots, a.doc.Tracks)
 	a.shotCov.Unpublished = countUnpublished(len(shots), len(a.doc.Shots))
 	a.shotCov.Attached = len(a.doc.Shots)
 	a.shotCov.warnIfLossy("tirs")
 
-	a.doc.Loadouts = keepLoadoutsOfPublishedTracks(buildLoadouts(a.opt.Loadouts, a.origin, a.step), a.doc.Tracks)
+	// LES DOTATIONS DE NAISSANCE (schéma 69, lot M3.2) rejoignent les relevés d'image-clé : elles
+	// sont le premier relevé PASSÉ de chaque vie, posées sur la vie que leur création ouvre.
+	var naissances []Loadout
+	naissances, a.birthCov = buildBirthLoadouts(birthInputs{births: a.opt.BirthLoadouts,
+		stats: a.opt.BirthLoadoutStats, creations: a.opt.BipedCreations}, a.doc.Tracks, a.origin, a.step)
+	a.doc.Loadouts = keepLoadoutsOfPublishedTracks(
+		mergeLoadouts(buildLoadouts(a.opt.Loadouts, a.origin, a.step), naissances), a.doc.Tracks)
 
 	// Les projectiles se construisent AVANT les lancers : le lancer publie son lien vers le
 	// projectile né de lui (Grenade.Proj), qui pointe un index de la tranche PUBLIÉE.
@@ -197,6 +251,10 @@ func (a *assemblage) poserEpisodesDEquipement() {
 func (a *assemblage) composerLaCouverture() {
 	a.doc.Coverage = buildCoverage(a.shotCov, a.grenCov, a.objCov, a.reg, a.doc.OriginMs != nil, a.scoreCov)
 	a.doc.Coverage.Projectiles = a.projCov
+	// LES ARMES A L INSTANT (schema 69, lot M3) : la sante de la marche d image-cle et les
+	// dotations de naissance, mesurees avant la couverture et posees ici.
+	a.doc.Coverage.Keyframes = buildKeyframeCoverage(a.opt.KeyframeWalk)
+	a.doc.Coverage.BirthLoadouts = a.birthCov
 	// CE QUE LE SEUIL DE PUBLICATION A REFUSE (schema 55) : mesure faite en tete de fonction,
 	// posee ici. Sans elle, un artefact publiant 90 traces la ou le film en porte 95 etait
 	// indistinguable d'un film a 90 vies.
@@ -224,6 +282,9 @@ func (a *assemblage) composerLaCouverture() {
 	a.doc.Coverage.Bridge.NamedBySlotBridge = a.unnamed.byBridge
 	a.doc.Coverage.Bridge.UnnamedLives = a.unnamed.remaining
 	a.doc.Coverage.Bridge.UnnamedLivesContested = a.unnamed.contested
+	// LE VERDICT DU FIL DES MORTS (schema 69, lot M5.2) : vide et illisible ne sont pas la meme
+	// chose, et le document le dit (cf. BridgeHealth.DeathsFeed).
+	a.doc.Coverage.Bridge.DeathsFeed = deathsFeedPublie(a.opt.DeathsFeed, len(a.opt.Deaths))
 	// La couverture des episodes d'equipement se publie AVEC eux : « N episodes » sans
 	// « sur M vies » se lirait comme une exhaustivite.
 	a.doc.Coverage.Equipment = equipmentCoverage(a.doc.EquipmentEpisodes, a.doc.Tracks, a.clotureesParMort)

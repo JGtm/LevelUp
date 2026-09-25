@@ -354,8 +354,14 @@ func assertCompteursJoueurs(t *testing.T, doc replaydoc.ReplayDocument) {
 }
 
 // assertScoreCamp confronte la courbe d'équipe au score final de l'API : sur ce film, un SEUL
-// slot d'équipe est rattaché (`teamIdentity` = `unresolved`, propriété de ce Husky Raid), et sa
-// courbe monte 1, 2, 3 — les trois captures que l'API donne au vainqueur.
+// slot d'équipe porte une série (le camp muet n'a jamais marqué), et sa courbe monte 1, 2, 3 —
+// les trois captures que l'API donne au vainqueur.
+//
+// DEPUIS LE SCHEMA 69 (lot M5 des retours du rejeu, integration de la vague C du 2026-09-24),
+// ce match a sens unique A UN CAMP : le registre dit 3-0 (`oracleScoresCamps`) et la seule série
+// finit EXACTEMENT à 3, donc la preuve (a0) la rattache au camp 0 (`teamIdentity` = `a0`). Avant,
+// l'identité restait `unresolved` et la courbe sans camp ; ce test l'exigeait. La règle et son
+// garde-fou (égalité exacte) sont testés dans `score_team_identity_test.go`.
 func assertScoreCamp(t *testing.T, doc replaydoc.ReplayDocument) {
 	t.Helper()
 	if doc.ScoreTimeline == nil {
@@ -366,9 +372,12 @@ func assertScoreCamp(t *testing.T, doc replaydoc.ReplayDocument) {
 			len(doc.ScoreTimeline.Teams))
 	}
 	camp := doc.ScoreTimeline.Teams[0]
-	if camp.TeamID != nil {
-		t.Errorf("la courbe porte un camp (%d) alors que l'identité est %q : le document ne doit pas deviner",
-			*camp.TeamID, doc.Coverage.Score.TeamIdentity)
+	if doc.Coverage == nil || doc.Coverage.Score == nil || doc.Coverage.Score.TeamIdentity != "a0" {
+		t.Errorf("identité des camps inattendue : attendu %q (registre 3-0, une seule série finissant à 3)", "a0")
+	}
+	if camp.TeamID == nil || *camp.TeamID != 0 {
+		t.Errorf("la courbe du match à sens unique doit porter le camp 0 (vainqueur 3-0 au registre), obtenu %v",
+			camp.TeamID)
 	}
 	if len(camp.Total) != len(valeurCourbeCamp) {
 		t.Fatalf("courbe d'équipe : %d points, attendu %d (%v)", len(camp.Total), len(valeurCourbeCamp), camp.Total)

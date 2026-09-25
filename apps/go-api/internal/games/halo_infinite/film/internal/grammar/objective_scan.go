@@ -182,7 +182,7 @@ func ScanObjectives(fc *FilmContext) (ObjectiveScan, error) {
 	if len(nums) == 0 {
 		return sc, ErrNoFilmChunk
 	}
-	band := observedSlotBand(fc.Film(), ObjectiveTypeIndex)
+	band := observedSlotBand(fc, ObjectiveTypeIndex)
 	if len(band) == 0 {
 		return sc, fmt.Errorf("aucun slot d'archetype ti=%d dans les keyframes du film",
 			ObjectiveTypeIndex)
@@ -192,7 +192,8 @@ func ScanObjectives(fc *FilmContext) (ObjectiveScan, error) {
 	if err != nil {
 		return sc, err
 	}
-	w := objectiveWalk{prof: fc.ProfilDeBalayage(), arch: arch, reg: reg, sc: &sc}
+	w := objectiveWalk{prof: fc.ProfilDeBalayage(), arch: arch, reg: reg, sc: &sc,
+		marche: fc.MarcheDImageCle()}
 	w.obs = w.install()
 	for _, c := range nums {
 		data, pks, ok := fc.ChunkAt(c)
@@ -256,6 +257,8 @@ type objectiveWalk struct {
 	// composants, donc c'est le hook qui range la lecture.
 	fromKeyframe bool
 	sc           *ObjectiveScan
+	// marche : la marche d image-cle DU FILM (preuve comprise, lot D-fix).
+	marche MarcheDImageCle
 }
 
 // contexte rend le profil et l observateur que cette marche pose sur ses lecteurs.
@@ -380,7 +383,7 @@ func (w *objectiveWalk) scanKeyframe(pay []byte, ts uint64, sc *ObjectiveScan) {
 	total := len(pay) * 8
 	w.fromKeyframe = true
 	defer func() { w.fromKeyframe = false }()
-	for _, b := range keyframeBornesToutes(pay) {
+	for _, b := range keyframeBornesDe(w.marche.Records(pay)) {
 		if b.TI != ObjectiveTypeIndex {
 			continue
 		}

@@ -25,6 +25,8 @@ type Coverage struct {
 	BombCarries       *BombCarriesCoverage        `json:"bombCarries,omitempty"`
 	BombArmings       *BombArmingsCoverage        `json:"bombArmings,omitempty"`
 	WeaponChanges     *WeaponChangeCoverage       `json:"weaponChanges,omitempty"`
+	Keyframes         *KeyframeCoverage           `json:"keyframes,omitempty"`
+	BirthLoadouts     *BirthLoadoutCoverage       `json:"birthLoadouts,omitempty"`
 	Pickups           *PickupCoverage             `json:"pickups,omitempty"`
 	PadDating         *PadDatingStats             `json:"padDating,omitempty"`
 	EquipmentChanges  *EquipmentChangeCoverage    `json:"equipmentChanges,omitempty"`
@@ -33,6 +35,7 @@ type Coverage struct {
 	AbilityCharges    *AbilityChargeCoverage      `json:"abilityCharges,omitempty"`
 	GroundWeaponItems *GroundWeaponItemsCoverage  `json:"groundWeaponItems,omitempty"`
 	Vehicles          *VehicleCoverage            `json:"vehicles,omitempty"`
+	ContinuousFire    *ContinuousFireCoverage     `json:"continuousFire,omitempty"`
 	ObjectiveObjects  *ObjectiveObjectsCoverage   `json:"objectiveObjects,omitempty"`
 	Inventory         *InventoryCoverage          `json:"inventory,omitempty"`
 	FilmMajorVersion  *int                        `json:"filmMajorVersion,omitempty"`
@@ -82,17 +85,25 @@ type LayerCoverage struct {
 	// (`replayview/parity_test.go`). Côté artefact, l'option évite de changer la forme des
 	// 65 documents où le compteur vaut zéro — donc de recuire le parc pour un champ vide.
 	RefusedByRoster int `json:"refusedByRoster,omitempty"`
+	// ByUnit / UnitOtherIndex : les tirs poses par leur reference 0 (lot M4b.4, cf.
+	// `replay.LayerCoverage`).
+	ByUnit         int `json:"byUnit,omitempty"`
+	UnitOtherIndex int `json:"unitOtherIndex,omitempty"`
 }
 
 // BridgeHealth résume la santé du pont slot -> joueur.
 type BridgeHealth struct {
-	Slots              int `json:"slots"`
-	FromReading        int `json:"fromReading"`
-	LivesNamed         int `json:"livesNamed"`
-	LivesTotal         int `json:"livesTotal"`
-	IndexReadings      int `json:"indexReadings"`
-	IndexDisagreements int `json:"indexDisagreements"`
-	SlotCollisions     int `json:"slotCollisions"`
+	Slots       int `json:"slots"`
+	FromReading int `json:"fromReading"`
+	LivesNamed  int `json:"livesNamed"`
+	LivesTotal  int `json:"livesTotal"`
+	// DeathsFeed : le VERDICT de la lecture du fil des morts (schéma 69) — `read`, `empty` (le
+	// morceau des temps forts est lu et ne porte aucune mort) ou `unreadable` (panne). Absent =
+	// non mesuré. `omitempty` comme côté stocké (garde-rail de parité).
+	DeathsFeed         string `json:"deathsFeed,omitempty"`
+	IndexReadings      int    `json:"indexReadings"`
+	IndexDisagreements int    `json:"indexDisagreements"`
+	SlotCollisions     int    `json:"slotCollisions"`
 	// Concordant / Discordant : LE PONT PAR MORTS EN TÉMOIN (lot E2, 2026-09-08). Le record de
 	// création du bipède écrit le propriétaire du corps ; le pont ne nomme plus, il confronte.
 	// Parmi les vies qu'une mort termine ET que la lecture directe nomme, `Concordant` compte
@@ -197,24 +208,6 @@ type TeamCoverage struct {
 	TracksSlotAmbiguous int `json:"tracksSlotAmbiguous,omitempty"`
 }
 
-// SeatCoverage est ce que la pose des SIEGES a lu et ce qu elle a APPARIE (lot 1.9.14).
-//
-// SON COUPLE CENTRAL EST `entrees` / `occupantsMax` : leur ECART est le nombre de fiches qu un
-// client retire de l ecran en n affichant que les occupants PRESENTS a l instant lu. `lus` et
-// `apparies` disent, eux, quelle part des sieges vient du film et quelle part d un repli.
-type SeatCoverage struct {
-	Entrees         int  `json:"entrees"`
-	Sieges          int  `json:"sieges"`
-	Lus             int  `json:"lus"`
-	Apparies        int  `json:"apparies"`
-	ReprisesEcrites int  `json:"reprisesEcrites"`
-	Arrivants       int  `json:"arrivants"`
-	PresencesCloses int  `json:"presencesCloses"`
-	SansPresence    int  `json:"sansPresence"`
-	OccupantsMax    int  `json:"occupantsMax"`
-	SansTableDuFilm bool `json:"sansTableDuFilm,omitempty"`
-}
-
 // TrackCoverage est ce que le SEUIL DE PUBLICATION des traces retient et refuse. Le refus était
 // MUET avant le schéma 55 : un document publiant 90 traces là où le film en porte 95 était
 // indistinguable d'un film à 90 vies. `minPoints` voyage avec ses conséquences — un compte de
@@ -230,6 +223,15 @@ type TrackCoverage struct {
 	// film ne ferme pas. Cf. `replay.TrackCoverage` (lot 1.9.13).
 	Gaps  int `json:"gaps"`
 	GapMS int `json:"gapMs"`
+	// Ce que la PORTE DES POSITIONS a ecarte avant toute publication, en positions brutes du
+	// film (schema 69, lot M1 des retours du rejeu) : anterieures a la creation de leur corps,
+	// dont les vies ecartees entieres, et hors de l emprise jouee ; les slots ou la regle de
+	// creation s arme ou se desarme. Cf. `replay.TrackCoverage`.
+	AvantCreation             int `json:"avantCreation"`
+	ViesAvantPremiereCreation int `json:"viesAvantPremiereCreation"`
+	HorsEmprise               int `json:"horsEmprise"`
+	SlotsArmes                int `json:"slotsArmes"`
+	SlotsDesarmes             int `json:"slotsDesarmes"`
 }
 
 // ProjectileCoverage est la couverture des TRAJECTOIRES DE PROJECTILE : pistes décodées,
@@ -261,30 +263,6 @@ type AbilityCoverage struct {
 	ScanNoise   int `json:"scanNoise"`
 	Unpublished int `json:"unpublished"`
 	Published   int `json:"published"`
-}
-
-// StanceCoverage dit ce que la marche des ETATS DE MOUVEMENT a lu et ce qu'elle a jeté — les
-// dénominateurs sans lesquels « N intervalles » ne se juge pas. Une couverture partielle est un
-// RESULTAT : la plupart des vies ne s'accroupissent ni ne glissent.
-//
-// `JumpEpisodes` / `JumpsDerived` (schéma 66) sont le dénominateur et le numérateur du SAUT,
-// qui est DÉRIVÉ et non lu : montées fermées examinées, puis celles dont la hauteur intégrée
-// tombe dans la fenêtre du saut du Spartan. Le rapport des deux est la sélectivité.
-type StanceCoverage struct {
-	Scanned               bool           `json:"scanned"`
-	Absent                bool           `json:"absent,omitempty"`
-	Records               int            `json:"records"`
-	Desyncs               int            `json:"desyncs"`
-	Reads                 int            `json:"reads"`
-	Intervals             int            `json:"intervals"`
-	JumpEpisodes          int            `json:"jumpEpisodes,omitempty"`
-	JumpsDerived          int            `json:"jumpsDerived,omitempty"`
-	ByKind                map[string]int `json:"byKind,omitempty"`
-	Lives                 int            `json:"lives"`
-	TracksTotal           int            `json:"tracksTotal"`
-	Dropped               int            `json:"dropped,omitempty"`
-	EventPacketsUnlocated int            `json:"eventPacketsUnlocated,omitempty"`
-	MapWidths             [3]uint        `json:"mapWidths,omitempty"`
 }
 
 // EquipmentCoverage dit combien de vies publiées portent au moins un épisode, par
@@ -355,6 +333,8 @@ type WeaponChangeCoverage struct {
 	Taken        int `json:"taken"`
 	Dropped      int `json:"dropped"`
 	Swapped      int `json:"swapped"`
+	// UnarmedGrants (schéma 69, lot M6) : les remises des mains nues, hors des changements publiés.
+	UnarmedGrants int `json:"unarmedGrants"`
 }
 
 // TranslocationCoverage dit ce que le calque a vu et ce qu'il a écarté — le patron des

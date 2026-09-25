@@ -72,6 +72,7 @@ func toWeaponChange(v replay.WeaponChange) replaydoc.WeaponChange {
 		Kind: replaydoc.WeaponChangeKind(v.Kind),
 		W:    v.W,
 		From: v.From,
+		K:    v.K,
 	}
 }
 

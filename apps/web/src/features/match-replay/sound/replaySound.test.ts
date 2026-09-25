@@ -606,22 +606,32 @@ describe('buildSoundTimeline — filtre par catégorie (tiroir de réglages, pha
 })
 
 /**
- * LOT 5.8.4 — LE TAG DU WARTHOG SE DÉPARTAGE PAR LA FAMILLE DE SON CHÂSSIS.
+ * LE TAG SEUL DÉCIDE DU SON D'UNE ARME DE VÉHICULE (retours du rejeu 2026-09-23, lot L1.5).
  *
- * Le `weap` unique `c7d50912` couvre LAAG, Gauss et roquettes, et la seule reconstruction validée
- * est celle des roquettes : elle sonnait donc pour les trois. MESURE DU PARC CUIT : les 105 tirs
- * qui portent ce tag viennent TOUS d'un châssis `warthog` (100 avec véhicule publié, 5 sans),
- * zéro `rockethog`, zéro `warthog_gauss` — le seul son de Warthog jamais joué était FAUX dans
- * 100 % des cas mesurés. Le document, lui, publie la famille du porteur : le départage n'attend
- * aucun rapport de RE.
+ * Le lot 5.8.4 départageait `c7d50912` par la famille du châssis tireur, en le croyant partagé par
+ * LAAG, Gauss et roquettes. C'est le LANCE-ROQUETTES du Rockethog (`WARTHOG_FINAL_2026-09-02.md`
+ * §1) ; aucun châssis ne porte la famille `rockethog`, et ses 127 tirs du parc (tourelle enfant
+ * `bcfb852f` de famille vide, ou châssis `warthog`) étaient muets depuis le 21/09.
  */
-describe('shotSoundStem — le départage du Warthog par la famille du châssis', () => {
+describe('shotSoundStem — l arme seule décide (plus de départage par châssis)', () => {
   const HOG = '0xC7D5091200000000'
+  // Le registre des armes de véhicule du document (schéma 69) : c'est lui qui nomme le son.
+  const REGISTRE: NonNullable<ReplayDocument['vehicleWeapons']> = {
+    [HOG]: {
+      vehicle: 'rockethog', en: 'Rocket Launcher', fr: 'Lance-roquettes', fire: 'single',
+      fx: 'explosive', tint: 'blast', sound: 'vehicle_shot_warthog_rocket_1',
+    },
+    '0x0001543500000000': {
+      vehicle: 'ghost', en: 'Plasma Cannons', fr: 'Canons à plasma', fire: 'continuous',
+      fx: 'plasma', tint: 'plasma_hot', sound: 'vehicle_shot_ghost_1',
+    },
+  }
 
   /** Un document portant UN véhicule de la famille donnée au slot 700. */
   function docAvecHog(family: string | undefined) {
     return testReplayDoc({
       frameIntervalMs: 100,
+      vehicleWeapons: REGISTRE,
       vehicles: [
         { slot: 700, gen: 1, t0: 0, t1: 50, t1max: 50, end: 'unknown', family, samples: [], rides: [] },
       ],
@@ -629,33 +639,17 @@ describe('shotSoundStem — le départage du Warthog par la famille du châssis'
     })
   }
 
-  it('rockethog : la roquette sonne — c est la seule reconstruction validée', () => {
-    const doc = docAvecHog('rockethog')
-    expect(shotSoundStem(doc, doc.shots[0])).toBe('vehicle_shot_warthog_rocket_1')
-  })
-
-  it('warthog (LAAG) : SILENCE — aucune reconstruction, et pas le son d une voisine', () => {
-    const doc = docAvecHog('warthog')
-    expect(shotSoundStem(doc, doc.shots[0])).toBeUndefined()
-  })
-
-  it('warthog_gauss : SILENCE, pour la même raison', () => {
-    const doc = docAvecHog('warthog_gauss')
-    expect(shotSoundStem(doc, doc.shots[0])).toBeUndefined()
-  })
-
-  it('véhicule porteur NON publié : silence — la variante ne se devine pas', () => {
-    const doc = testReplayDoc({
-      frameIntervalMs: 100,
-      vehicles: [],
-      shots: [{ slot: 1, t: 0, x: 0, y: 0, w: HOG, v: 700 }],
-    })
-    expect(shotSoundStem(doc, doc.shots[0])).toBeUndefined()
+  it('le Rockethog sonne ses roquettes, quelle que soit la famille publiée du porteur', () => {
+    for (const family of [undefined, 'warthog', 'rockethog']) {
+      const doc = docAvecHog(family)
+      expect(shotSoundStem(doc, doc.shots[0]), String(family)).toBe('vehicle_shot_warthog_rocket_1')
+    }
   })
 
   it('un tag SANS ambiguïté ne dépend d aucune famille : le Ghost sonne même sans porteur lu', () => {
     const doc = testReplayDoc({
       frameIntervalMs: 100,
+      vehicleWeapons: REGISTRE,
       vehicles: [],
       shots: [{ slot: 1, t: 0, x: 0, y: 0, w: '0x0001543500000000', v: 700 }],
     })

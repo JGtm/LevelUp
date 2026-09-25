@@ -32,7 +32,7 @@
  * pareil, et deux occurrences du même geste sonnent quand même différemment.
  */
 import { distanceChain, drawVariation, gainFromDb, type SoundDraw } from './weaponSoundLogic'
-import { SOUND_MAX_VOICES, soundEnvelope } from './replayAudio'
+import { SOUND_MAX_VOICES, soundEnvelopeOf, soundShapeOf, type SoundShape } from './replayAudio'
 import { WEAPON_SOUND_VARIATIONS } from './weaponSoundVariations'
 import { pickVariantStem, type ReplaySoundEvent } from './replaySoundVariants'
 import {
@@ -90,6 +90,8 @@ export interface MixedSound {
   conclusion?: boolean
   /** La famille a laquelle ce son appartient, pour les pistes separees du clip. */
   family: SoundFamily
+  /** La FORME d'un son de rafale (tenu ou coupé), la même qu'en direct (`soundEnvelopeOf`). */
+  shape?: SoundShape
 }
 
 /** La plage exportée, sur l'axe du rejeu. */
@@ -183,7 +185,14 @@ export function planAudioMix(
     // La variation RANGED ne concerne que les ARMES : la table est indexée par stem d'arme, et
     // `drawVariation` rend le neutre exact pour tout autre stem.
     const draw = drawVariation(WEAPON_SOUND_VARIATIONS[stem], options.variationPercent, rnd)
-    out.push({ atMs: e.ms - bounds.startMs, stem, draw, family: familyOf(stem, options.families) })
+    const shape = soundShapeOf(e)
+    out.push({
+      atMs: e.ms - bounds.startMs,
+      stem,
+      draw,
+      family: familyOf(stem, options.families),
+      ...(shape ? { shape } : {}),
+    })
   }
   // LA CONCLUSION SE POSE SUR LA BORNE DE FIN, et l'appelant ne la fournit QUE si la plage
   // atteint vraiment la fin du match (cf. `mixExportAudio`) : un extrait de milieu de match ne
@@ -241,7 +250,7 @@ export function applyVoiceCap(
     }
     busy = busy.filter((endsAt) => endsAt > s.atMs)
     if (busy.length >= SOUND_MAX_VOICES) continue
-    const { stopS } = soundEnvelope(seconds)
+    const { stopS } = soundEnvelopeOf(seconds, s.shape)
     busy.push(s.atMs + stopS * 1000)
     kept.push(s)
   }
@@ -300,7 +309,7 @@ export function scheduleMix(
     const buf = buffers.get(s.stem)
     if (!buf) continue
     const t0 = s.atMs / 1000
-    const { fadeStartS, stopS } = soundEnvelope(buf.duration)
+    const { fadeStartS, stopS, loop } = soundEnvelopeOf(buf.duration, s.shape)
     const tenue = gainFromDb(s.draw.gainDb)
     const gain = ctx.createGain()
     gain.gain.setValueAtTime(tenue, t0)
@@ -308,6 +317,7 @@ export function scheduleMix(
     gain.gain.linearRampToValueAtTime(0, t0 + stopS)
     const src = ctx.createBufferSource()
     src.buffer = buf
+    src.loop = loop
     if (s.draw.playbackRate !== 1) src.playbackRate.value = s.draw.playbackRate
     src.connect(gain)
     gain.connect(destination)
@@ -373,7 +383,7 @@ export function tailSeconds(
   for (const s of sounds) {
     const buf = buffers.get(s.stem)
     if (!buf) continue
-    lastEnd = Math.max(lastEnd, s.atMs / 1000 + soundEnvelope(buf.duration).stopS)
+    lastEnd = Math.max(lastEnd, s.atMs / 1000 + soundEnvelopeOf(buf.duration, s.shape).stopS)
   }
   return Math.max(0, lastEnd - durationMs / 1000)
 }

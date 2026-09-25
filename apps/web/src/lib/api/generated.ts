@@ -4804,6 +4804,36 @@ export interface components {
             non_resolu: number;
             non_resolu_par_cause: components["schemas"]["UnresolvedCauses"];
         };
+        BirthLoadoutCoverage: {
+            /** Format: int64 */
+            beforeOrigin: number;
+            /** Format: int64 */
+            closed: number;
+            /** Format: int64 */
+            creations: number;
+            /** Format: int64 */
+            desync: number;
+            /** Format: int64 */
+            noDisplayable: number;
+            /** Format: int64 */
+            noLife: number;
+            /** Format: int64 */
+            noWeaponComponent: number;
+            /** Format: int64 */
+            nonWeapon: number;
+            /** Format: int64 */
+            overflow: number;
+            /** Format: int64 */
+            published: number;
+            /** Format: int64 */
+            read: number;
+            /** Format: int64 */
+            snapped: number;
+            /** Format: int64 */
+            unarmedGrants: number;
+            /** Format: int64 */
+            unconfirmed: number;
+        };
         BombArming: {
             /** Format: int64 */
             fuseMs: number;
@@ -5009,6 +5039,7 @@ export interface components {
             deathOffsetMs?: number;
             /** Format: int64 */
             deathOffsetRunnerUp: number;
+            deathsFeed?: string;
             /** Format: int64 */
             directByCreation: number;
             /** Format: int64 */
@@ -5832,6 +5863,74 @@ export interface components {
             /** Format: double */
             win_rate: number;
         };
+        ContinuousFireCoverage: {
+            /** Format: int64 */
+            ambiguous: number;
+            /** Format: int64 */
+            burstsRead: number;
+            /** Format: int64 */
+            burstsWithHole: number;
+            /** Format: int64 */
+            byPlace: number;
+            /** Format: int64 */
+            clippedToMount: number;
+            /** Format: int64 */
+            closed: number;
+            /** Format: int64 */
+            empty: number;
+            /** Format: int64 */
+            entries: number;
+            /** Format: int64 */
+            firing: number;
+            /** Format: int64 */
+            heldHoleMs: number;
+            /** Format: int64 */
+            holeRuns: number;
+            /** Format: int64 */
+            holes: number;
+            /** Format: int64 */
+            holesBlockBC: number;
+            /** Format: int64 */
+            holesCap: number;
+            /** Format: int64 */
+            holesKind: number;
+            /** Format: int64 */
+            holesNotClosing: number;
+            /** Format: int64 */
+            holesOpenViewB: number;
+            /** Format: int64 */
+            holesOverflow: number;
+            /** Format: int64 */
+            holesUnlocated: number;
+            /** Format: int64 */
+            innerHoles: number;
+            /** Format: int64 */
+            noPlayer: number;
+            /** Format: int64 */
+            noTrack: number;
+            /** Format: int64 */
+            notContinuous: number;
+            /** Format: int64 */
+            onFoot: number;
+            /** Format: int64 */
+            onVehicle: number;
+            /** Format: int64 */
+            otherInput: number;
+            /** Format: int64 */
+            packets: number;
+            /** Format: int64 */
+            published: number;
+            /** Format: int64 */
+            reached: number;
+            /** Format: int64 */
+            shots: number;
+            /** Format: int64 */
+            vehicleNoWeapon: number;
+            /** Format: int64 */
+            weaponUnknown: number;
+            /** Format: int64 */
+            withAction: number;
+        };
         ConvergenceTotalsSinceBoot: {
             /** Format: int64 */
             aliases_upserted: number;
@@ -5943,9 +6042,11 @@ export interface components {
             abilities?: components["schemas"]["AbilityCoverage"];
             abilityCharges?: components["schemas"]["AbilityChargeCoverage"];
             abilityImpulses?: components["schemas"]["AbilityImpulseCoverage"];
+            birthLoadouts?: components["schemas"]["BirthLoadoutCoverage"];
             bombArmings?: components["schemas"]["BombArmingsCoverage"];
             bombCarries?: components["schemas"]["BombCarriesCoverage"];
             bridge: components["schemas"]["BridgeHealth"];
+            continuousFire?: components["schemas"]["ContinuousFireCoverage"];
             deathsPaths?: components["schemas"]["DeathsPathsCoverage"];
             decoder?: components["schemas"]["DecoderCoverage"];
             equipment?: components["schemas"]["EquipmentCoverage"];
@@ -5960,6 +6061,7 @@ export interface components {
             groundWeaponItems?: components["schemas"]["GroundWeaponItemsCoverage"];
             groundWeapons?: components["schemas"]["GroundWeaponCoverage"];
             inventory?: components["schemas"]["InventoryCoverage"];
+            keyframes?: components["schemas"]["KeyframeCoverage"];
             objectiveObjects?: components["schemas"]["ObjectiveObjectsCoverage"];
             objectives: components["schemas"]["LayerCoverage"];
             originResolved: boolean;
@@ -7082,6 +7184,32 @@ export interface components {
         FilterMatchIDsResponse: {
             match_ids: string[] | null;
         };
+        FireBurst: {
+            b0: string;
+            b1: string;
+            holes?: components["schemas"]["FireBurstHole"][] | null;
+            /** Format: double */
+            ramp?: number;
+            /** Format: double */
+            rate: number;
+            /** Format: double */
+            rate0?: number;
+            /** Format: int32 */
+            slot: number;
+            /** Format: int64 */
+            t0: number;
+            /** Format: int64 */
+            t1: number;
+            /** Format: int32 */
+            v?: number;
+            w: string;
+        };
+        FireBurstHole: {
+            /** Format: int64 */
+            t0: number;
+            /** Format: int64 */
+            t1: number;
+        };
         FirstBloodMatchPoint: {
             /** Format: double */
             first_death_sec: number | null;
@@ -7808,6 +7936,30 @@ export interface components {
             /** Format: int64 */
             wins: number;
         };
+        KeyframeCoverage: {
+            /** Format: int64 */
+            bipeds: number;
+            /** Format: int64 */
+            contradictoryProofs: number;
+            /** Format: int64 */
+            elections: number;
+            /** Format: int64 */
+            framedAbsentBipeds: number;
+            /** Format: int64 */
+            jumps: number;
+            /** Format: int64 */
+            keyframes: number;
+            /** Format: int64 */
+            neighbors: number;
+            /** Format: int64 */
+            records: number;
+            /** Format: int64 */
+            refutations: number;
+            /** Format: int64 */
+            resyncs: number;
+            /** Format: int64 */
+            slides: number;
+        };
         LOWESSTrend: {
             Metric: string;
             /** Format: double */
@@ -7930,11 +8082,15 @@ export interface components {
             /** Format: int64 */
             available: number;
             /** Format: int64 */
+            byUnit?: number;
+            /** Format: int64 */
             noSlot: number;
             /** Format: int64 */
             outOfWindow: number;
             /** Format: int64 */
             refusedByRoster?: number;
+            /** Format: int64 */
+            unitOtherIndex?: number;
             /** Format: int64 */
             unpublished: number;
         };
@@ -8079,8 +8235,10 @@ export interface components {
             next_cursor?: number;
         };
         Loadout: {
+            k?: number[] | null;
             /** Format: int32 */
             slot: number;
+            src?: string;
             /** Format: int64 */
             t: number;
             w: string[] | null;
@@ -10071,6 +10229,8 @@ export interface components {
                 [key: string]: number;
             };
             /** Format: int64 */
+            unarmedGrants: number;
+            /** Format: int64 */
             unknownFamilies: number;
             /** Format: int64 */
             weapons: number;
@@ -10399,6 +10559,14 @@ export interface components {
             category: string;
             delivery: string;
             enabled: boolean;
+        };
+        PresenceInterval: {
+            /** Format: int64 */
+            from: number;
+            /** Format: int64 */
+            to: number;
+            /** Format: int64 */
+            toMax?: number;
         };
         PresenceSnapshot: {
             /**
@@ -10734,6 +10902,7 @@ export interface components {
             bombEvents?: components["schemas"]["BombEvent"][] | null;
             bombStats?: components["schemas"]["BombMatchStats"];
             bounds: components["schemas"]["Bounds"];
+            bursts?: components["schemas"]["FireBurst"][] | null;
             coverage?: components["schemas"]["Coverage"];
             /** Format: int64 */
             durationMs?: number;
@@ -10790,6 +10959,10 @@ export interface components {
             vehicleCycles?: components["schemas"]["VehicleCycle"][] | null;
             vehicleLabels?: {
                 [key: string]: components["schemas"]["VehicleLabel"];
+            };
+            vehicleScenery?: components["schemas"]["VehicleScenery"];
+            vehicleWeapons?: {
+                [key: string]: components["schemas"]["VehicleWeapon"];
             };
             vehicles?: components["schemas"]["VehicleTrack"][] | null;
             vipCrown?: components["schemas"]["VipPeriod"][] | null;
@@ -10851,6 +11024,7 @@ export interface components {
             /** Format: int64 */
             filmIndex: number;
             name?: string;
+            presence?: components["schemas"]["PresenceInterval"][] | null;
             /** Format: int64 */
             seat: number;
             seatSource?: string;
@@ -11043,20 +11217,61 @@ export interface components {
             /** Format: int64 */
             arrivants: number;
             /** Format: int64 */
+            bornesDifferees: number;
+            /** Format: int64 */
+            botsSuccesseurs: number;
+            /** Format: int64 */
+            capacite: number;
+            /** Format: int64 */
+            chevauchements: number;
+            /** Format: int64 */
+            depassements: number;
+            /** Format: int64 */
+            entitesContestees: number;
+            /** Format: int64 */
+            entitesNonLiees: number;
+            /** Format: int64 */
             entrees: number;
+            /** Format: int64 */
+            identitesHorsRoster: number;
+            /** Format: int64 */
+            imagesClesDouteuses: number;
             /** Format: int64 */
             lus: number;
             /** Format: int64 */
             occupantsMax: number;
             /** Format: int64 */
+            placesEnTrop: number;
+            /** Format: int64 */
+            placesOuvertes: number;
+            /** Format: int64 */
+            placesTirs: number;
+            presences: string;
+            /** Format: int64 */
             presencesCloses: number;
             /** Format: int64 */
+            presencesParLesVies: number;
+            /** Format: int64 */
+            relaisBornes: number;
+            /** Format: int64 */
             reprisesEcrites: number;
+            /** Format: int64 */
+            sansEquipe: number;
+            /** Format: int64 */
+            sansPlace: number;
             /** Format: int64 */
             sansPresence: number;
             sansTableDuFilm?: boolean;
             /** Format: int64 */
             sieges: number;
+            /** Format: int64 */
+            tirsContestes: number;
+            tirsIndexNonPlace?: boolean;
+            tirsIndexTronque?: boolean;
+            /** Format: int64 */
+            tirsParPlace: number;
+            /** Format: int64 */
+            trousDEntite: number;
         };
         SelectedTeammateData: {
             gamertag: string;
@@ -12386,6 +12601,8 @@ export interface components {
             /** Format: int64 */
             eventPacketsUnlocated?: number;
             /** Format: int64 */
+            forgottenBindings?: number;
+            /** Format: int64 */
             intervals: number;
             /** Format: int64 */
             jumpEpisodes?: number;
@@ -12398,6 +12615,14 @@ export interface components {
             reads: number;
             /** Format: int64 */
             records: number;
+            /** Format: int64 */
+            refusedNewFalseReads?: number;
+            /** Format: int64 */
+            refusedNewLostCreations?: number;
+            /** Format: int64 */
+            refusedNewUndecided?: number;
+            /** Format: int64 */
+            refusedNews?: number;
             scanned: boolean;
             /** Format: int64 */
             tracksTotal: number;
@@ -13407,9 +13632,13 @@ export interface components {
         };
         TrackCoverage: {
             /** Format: int64 */
+            avantCreation: number;
+            /** Format: int64 */
             gapMs: number;
             /** Format: int64 */
             gaps: number;
+            /** Format: int64 */
+            horsEmprise: number;
             /** Format: int64 */
             minPoints: number;
             /** Format: int64 */
@@ -13420,6 +13649,12 @@ export interface components {
             refusedMinPoints: number;
             /** Format: int64 */
             refusedPoints: number;
+            /** Format: int64 */
+            slotsArmes: number;
+            /** Format: int64 */
+            slotsDesarmes: number;
+            /** Format: int64 */
+            viesAvantPremiereCreation: number;
         };
         Translocation: {
             /** Format: float */
@@ -13521,6 +13756,10 @@ export interface components {
             /** Format: int64 */
             deathsUnmatched: number;
             /** Format: int64 */
+            echantillonsAuTraversDUnSilence: number;
+            /** Format: int64 */
+            echantillonsHorsEmprise: number;
+            /** Format: int64 */
             endDestroyed: number;
             /** Format: int64 */
             endFilmEnd: number;
@@ -13560,14 +13799,42 @@ export interface components {
             /** Format: int64 */
             shotsAmbiguous: number;
             /** Format: int64 */
+            shotsByUnit: number;
+            /** Format: int64 */
+            shotsByUnitNoRide: number;
+            /** Format: int64 */
             shotsNoRide: number;
+            /** Format: int64 */
+            shotsOnCarrier: number;
             /** Format: int64 */
             shotsUnplaced: number;
             /** Format: int64 */
             shotsVehicleWeapon: number;
+            /** Format: int64 */
+            silencesNonTranches: number;
+            /** Format: int64 */
+            spawnsHorsEmprise: number;
+            /** Format: int64 */
+            turretCarrierBirthMismatch: number;
+            /** Format: int64 */
+            turretRides: number;
+            /** Format: int64 */
+            turretRidesAlreadyAboard: number;
+            /** Format: int64 */
+            turretRidesDropped: number;
+            /** Format: int64 */
+            turretRidesNotRideable: number;
+            /** Format: int64 */
+            turretRidesOutOfWindow: number;
+            /** Format: int64 */
+            turrets: number;
+            /** Format: int64 */
+            turretsOnCarrier: number;
             unknownChassis?: {
                 [key: string]: number;
             };
+            /** Format: int64 */
+            variants: number;
             /** Format: int64 */
             vehiclesRidden: number;
             /** Format: int64 */
@@ -13601,6 +13868,12 @@ export interface components {
             kind?: string;
             tinted?: boolean;
         };
+        VehicleLifeRef: {
+            /** Format: int32 */
+            gen: number;
+            /** Format: int32 */
+            slot: number;
+        };
         VehicleRide: {
             aim?: components["schemas"]["VehicleAim"][] | null;
             /** Format: int64 */
@@ -13612,9 +13885,12 @@ export interface components {
             t0: number;
             /** Format: int64 */
             t1: number;
+            turret?: components["schemas"]["VehicleLifeRef"];
             xuid?: string;
         };
         VehicleSample: {
+            /** Format: int64 */
+            g?: number;
             /** Format: float */
             h?: number;
             /** Format: int64 */
@@ -13625,6 +13901,24 @@ export interface components {
             y: number;
             /** Format: float */
             z?: number;
+        };
+        VehicleScenery: {
+            /** Format: int64 */
+            candidates: number;
+            floor: string;
+            hidden?: components["schemas"]["VehicleSceneryLife"][] | null;
+            /** Format: int64 */
+            inPlayArea: number;
+            zone: string;
+            /** Format: int64 */
+            zoneUnknown: number;
+        };
+        VehicleSceneryLife: {
+            /** Format: int32 */
+            gen: number;
+            reason: string;
+            /** Format: int32 */
+            slot: number;
         };
         VehicleSpawn: {
             /** Format: float */
@@ -13637,11 +13931,13 @@ export interface components {
             z?: number;
         };
         VehicleTrack: {
+            carrier?: components["schemas"]["VehicleLifeRef"];
             chassis?: string;
             end: string;
             family?: string;
             /** Format: int32 */
             gen: number;
+            part?: string;
             rides?: components["schemas"]["VehicleRide"][] | null;
             samples?: components["schemas"]["VehicleSample"][] | null;
             /** Format: int32 */
@@ -13655,6 +13951,25 @@ export interface components {
             t1max: number;
             /** Format: int64 */
             tEnd?: number;
+            variant?: string;
+        };
+        VehicleWeapon: {
+            en: string;
+            fire: string;
+            fr: string;
+            fx: string;
+            loop?: string;
+            mount?: components["schemas"]["VehicleWeaponMount"];
+            sound?: string;
+            tint: string;
+            vehicle: string;
+        };
+        VehicleWeaponMount: {
+            aim: string;
+            /** Format: double */
+            ax: number;
+            /** Format: double */
+            ay: number;
         };
         VipCrownCoverage: {
             /** Format: int64 */
@@ -13718,6 +14033,8 @@ export interface components {
         };
         WeaponChange: {
             from?: string;
+            /** Format: int64 */
+            k?: number;
             kind: string;
             /** Format: int32 */
             slot: number;
@@ -13740,6 +14057,8 @@ export interface components {
             swapped: number;
             /** Format: int64 */
             taken: number;
+            /** Format: int64 */
+            unarmedGrants: number;
         };
         WeaponDistanceRecordRow: {
             class?: string;

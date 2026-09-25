@@ -22,7 +22,10 @@ import {
   vehicleDriverAt,
   vehicleExplosionKindOf,
   vehicleIsDecor,
+  vehicleIsHidden,
+  vehicleIsMountedPart,
   vehicleMapElementGlyph,
+  vehicleSpriteFamily,
   vehicleColorAt,
   vehicleHeadingAt,
   vehiclePositionAt,
@@ -34,6 +37,7 @@ import {
   VEHICLE_HUMAN_FAMILIES,
   VEHICLE_KIND_MAP_ELEMENT,
   VEHICLE_MAP_ELEMENT_RENDER,
+  VEHICLE_PART_TURRET,
   VEHICLE_PLASMA_FAMILIES,
 } from './vehiclesLayer'
 import { CORE_RADIUS, PION_VISIBLE_DIAMETER_PX } from '../layers/replayMarkers'
@@ -73,8 +77,8 @@ function ride(over: Partial<ReplayVehicleRideReady> = {}): ReplayVehicleRideRead
 }
 
 describe('vehicleIsDecor / vehicleCanEmbark — le refus des familles non jouables', () => {
-  it('les quatre familles de DÉCOR sont refusées (Falcon, Pelican, Phantom, Skiff)', () => {
-    for (const f of ['falcon', 'pelican', 'phantom', 'skiff']) expect(vehicleIsDecor(f)).toBe(true)
+  it('les trois familles de DÉCOR sont refusées (Pelican, Phantom, Skiff)', () => {
+    for (const f of ['pelican', 'phantom', 'skiff']) expect(vehicleIsDecor(f)).toBe(true)
   })
 
   it('une famille JOUABLE et un CHÂSSIS NON RÉSOLU ne sont pas du décor', () => {
@@ -84,7 +88,7 @@ describe('vehicleIsDecor / vehicleCanEmbark — le refus des familles non jouabl
 
   it('EMBARQUER — donc effacer un pion — n’est permis qu’à une famille jouable ET résolue', () => {
     expect(vehicleCanEmbark(track({ family: 'warthog' }))).toBe(true)
-    expect(vehicleCanEmbark(track({ family: 'falcon' }))).toBe(false)
+    expect(vehicleCanEmbark(track({ family: 'pelican' }))).toBe(false)
     expect(vehicleCanEmbark(track({ family: undefined }))).toBe(false)
     expect(vehicleCanEmbark(track({ family: '' }))).toBe(false)
   })
@@ -194,6 +198,24 @@ describe('vehiclePositionAt / vehicleVisibleAt', () => {
   it('après le dernier échantillon : la dernière position connue est maintenue', () => {
     const t = track({ samples: [sample({ t: 0, x: 1, y: 1 }), sample({ t: 100, x: 9, y: 9 })] })
     expect(vehiclePositionAt(t, 500)).toEqual({ x: 9, y: 9 })
+  })
+
+  // Schéma 69 (lot M1 des retours du rejeu) : `g` sur un échantillon de véhicule a la sémantique de
+  // `Point.g`. Témoin de forme : le Mongoose de 81c02726, immobile, dont un échantillon lointain
+  // arrivait après 70 s de silence — le client l'interpolait, le véhicule « partait seul ».
+  it('au travers d’une LACUNE (`g > 0`) : la dernière position est TENUE, jamais interpolée', () => {
+    const t = track({
+      samples: [
+        sample({ t: 0, x: -42, y: -21 }),
+        sample({ t: 704, x: -201, y: 88, g: 70_400 }),
+        sample({ t: 706, x: -200, y: 88 }),
+      ],
+    })
+    expect(vehiclePositionAt(t, 50)).toEqual({ x: -42, y: -21 })
+    expect(vehiclePositionAt(t, 703)).toEqual({ x: -42, y: -21 })
+    expect(vehiclePositionAt(t, 704)).toEqual({ x: -201, y: 88 })
+    // Sans lacune, l'interpolation reste la règle entre deux échantillons.
+    expect(vehiclePositionAt(t, 705)).toEqual({ x: -200.5, y: 88 })
   })
 
   it('la fenêtre [t0, t1max] est INCLUSIVE aux deux bornes, rien au-delà', () => {
@@ -350,9 +372,9 @@ describe('buildEmbarkedPredicate — pion embarqué, MULTI-PASSAGERS (C7, rappel
   })
 
   it('un FAUX épisode posé sur un prop de DÉCOR n’embarque PERSONNE (bug du 2026-09-02)', () => {
-    // Le liant « trou de position » a prêté trois épisodes à un prop Falcon : le pion des
-    // joueurs passés à côté disparaissait de la carte. Un décor n’embarque plus.
-    const prop = track({ family: 'falcon', rides: [ride({ slot: 10, seat: 0, t0: 0, t1: 100 })] })
+    // Le liant « trou de position » a prêté trois épisodes à un prop alors rangé en Falcon : le pion
+    // des joueurs passés à côté disparaissait de la carte. Un décor n’embarque plus.
+    const prop = track({ family: 'pelican', rides: [ride({ slot: 10, seat: 0, t0: 0, t1: 100 })] })
     expect(buildEmbarkedPredicate([prop])(10, 50)).toBe(false)
   })
 
@@ -618,5 +640,44 @@ describe('éléments de carte (lot 1.9.9, décision utilisateur du 2026-09-14)',
 
   it('un élément de carte N’EST PAS du décor : le décor ne se dessine pas, lui SI', () => {
     expect(vehicleIsDecor('tourelle_auto_bannie')).toBe(false)
+  })
+})
+
+/**
+ * RETOURS DU REJEU 2026-09-23 (lot M4a, décision Q12) — LES PIÈCES MONTÉES NE SE DESSINENT PAS
+ * SEULES. Une tourelle (`part = turret`) n'a aucun échantillon : dessinée, elle restait à sa
+ * naissance pendant que son véhicule roulait. Le serveur a reporté son artilleur sur le porteur ;
+ * côté calque elle est cachée, n'embarque personne et ne rend pas le calque disponible à elle seule.
+ */
+describe('vehicleIsMountedPart — une tourelle se dessine sur son véhicule, jamais seule', () => {
+  const tourelle = track({
+    family: undefined, chassis: 'dd7f9102', part: VEHICLE_PART_TURRET,
+    carrier: { slot: 701, gen: 1 }, rides: [ride({ slot: 20, seat: undefined })],
+  })
+
+  it('une pièce montée est cachée et n embarque personne', () => {
+    expect(vehicleIsMountedPart(tourelle)).toBe(true)
+    expect(vehicleIsHidden(tourelle)).toBe(true)
+    expect(vehicleCanEmbark(tourelle)).toBe(false)
+    expect(buildEmbarkedPredicate([tourelle])(20, 10)).toBe(false)
+  })
+
+  it('un véhicule n est pas une pièce montée', () => {
+    expect(vehicleIsMountedPart(track())).toBe(false)
+    expect(vehicleIsHidden(track())).toBe(false)
+  })
+})
+
+/**
+ * LA VARIANTE NOMME LE SPRITE (schéma 69) : un Rockethog (famille `warthog`, variante `rockethog`)
+ * se dessine en Rockethog ; sans variante, la famille.
+ */
+describe('vehicleSpriteFamily — la variante avant la famille', () => {
+  it('variante publiée : son sprite', () => {
+    expect(vehicleSpriteFamily(track({ variant: 'rockethog' }))).toBe('rockethog')
+  })
+  it('sans variante : la famille ; sans rien : indéfini', () => {
+    expect(vehicleSpriteFamily(track())).toBe('warthog')
+    expect(vehicleSpriteFamily(track({ family: undefined }))).toBeUndefined()
   })
 })

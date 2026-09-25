@@ -207,3 +207,53 @@ describe('useReplayVehicles — sprite et bordure sont indissociables', () => {
     expect(warn).toHaveBeenCalledTimes(1)
   })
 })
+
+/**
+ * « DISPONIBLE » ET LE DÉCOR DE CARTE (retours du rejeu 2026-09-23, lot L1.3 ; revue RR-L1-02 ;
+ * depuis le lot M7 du 2026-09-24, le décor est DÉCLARÉ par le serveur — `vehicleScenery.hidden` —,
+ * posé par la carte hors de sa zone jouable). Un document qui ne porte que du décor de carte
+ * n'a rien que le calque dessinerait : la bascule ne doit pas s'afficher. Sans ce cas, remplacer
+ * `vehicleIsHidden` par `vehicleIsDecor` dans le hook ne faisait tomber aucun test.
+ */
+function decor(slot: number, family: string): ReplayVehicleTrack {
+  return {
+    slot, gen: 1, family, chassis: '0x1', end: 'film_end', t0: 0, t1: 6457, t1max: 6457,
+    spawn: { x: 1, y: -130, z: 81 },
+    samples: [{ t: 0, x: 1, y: -130 }],
+    rides: [],
+  } as unknown as ReplayVehicleTrack
+}
+
+function disponible(vehicles: ReplayVehicleTrack[], decorSlots: number[] = []): boolean {
+  vi.stubGlobal('fetch', vi.fn(() => Promise.resolve({ ok: true, json: () => Promise.resolve([]) })))
+  const hidden = decorSlots.map((slot) => ({ slot, gen: 1, reason: 'off_play_area' }))
+  const vehicleScenery = {
+    zone: 'map', floor: 'played', candidates: hidden.length, inPlayArea: 0, zoneUnknown: 0, hidden,
+  }
+  const doc = testReplayDoc({ vehicles, vehicleScenery })
+  const vue = renderHook(() =>
+    useReplayVehicles({
+      doc, view: VUE, frameRef: { current: 0 }, enabled: true, locale: 'fr', showNames: false, showAim: false,
+      colorOfSlot: () => '#123456', colorOfXuid: () => '#123456',
+      nameOfSlot: () => null, nameOfXuid: () => null,
+      offscreenLabelOf: () => '', offscreenGroupLabelOf: () => '',
+      neutralInk: 'n', labelStroke: 's', markInk: { fill: 'm', outline: 'o' }, explosionInk: ENCRE_FX, reducedMotion: true,
+      redraw: vi.fn(),
+    }),
+  )
+  return vue.result.current.available
+}
+
+describe('useReplayVehicles — le décor de carte ne rend pas le calque disponible', () => {
+  it('un document qui ne porte que du décor de carte (Starboard) : calque indisponible', () => {
+    expect(disponible([decor(771, 'scorpion'), decor(772, 'wasp'), decor(774, 'warthog')], [771, 772, 774])).toBe(false)
+  })
+
+  it('témoin : le même décor plus un véhicule simulé — calque disponible', () => {
+    expect(disponible([decor(771, 'scorpion'), piste('warthog')], [771])).toBe(true)
+  })
+
+  it('M7 : les mêmes véhicules posés SANS verdict du serveur (hors zone non établi) : calque disponible', () => {
+    expect(disponible([decor(771, 'scorpion'), decor(772, 'wasp')])).toBe(true)
+  })
+})

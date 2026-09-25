@@ -21,6 +21,7 @@ import type {
   ReplayInventory,
   ReplayLoadout,
   ReplayProjectile,
+  ReplayRosterEntry,
   ReplaySurface,
   ReplayTrack,
   ReplayVehicleLabel,
@@ -43,11 +44,18 @@ type Filled<T, K extends keyof T> = Omit<T, K> & { [P in K]-?: NonNullable<T[P]>
 export type ReplayTrackReady = Filled<ReplayTrack, 'points'>
 /** La couverture dont la liste des replis déclenchés (schéma 58) est comblée. */
 export type ReplayCoverageReady = Filled<NonNullable<ReplayDocument['coverage']>, 'fallbacks'>
-type ReplayLoadoutReady = Filled<ReplayLoadout, 'w'>
+type ReplayLoadoutReady = Filled<ReplayLoadout, 'w' | 'k'>
 export type ReplayInventoryReady = Filled<ReplayInventory, 'am' | 'g'>
 export type ReplayGrenadeReadReady = Filled<ReplayGrenadeRead, 'g'>
 export type ReplaySurfaceReady = Omit<ReplaySurface, 'poly'> & { poly: ReplayXY[] }
 export type ReplayProjectileReady = Omit<ReplayProjectile, 'p'> & { p: ReplayStep[] }
+/**
+ * ReplayRosterEntryReady — une entrée de roster dont la PRÉSENCE est comblée (schéma 69, lot
+ * M2.4). Vide = l'entrée ne tient sa place à aucune image, OU l'artefact est antérieur au schéma
+ * 69 et n'en publie aucune — `seatLogic` distingue les deux au niveau du document
+ * (`publieDesPresences`), jamais entrée par entrée.
+ */
+export type ReplayRosterEntryReady = Filled<ReplayRosterEntry, 'presence'>
 /**
  * ReplayWeaponPadReady — un socle dont les DEUX tableaux imbriqués sont comblés.
  *
@@ -133,6 +141,9 @@ export type ReplayIdentityReady = Filled<
  */
 export type ReplayVehicleTrackReady = Omit<Filled<ReplayVehicleTrack, 'samples'>, 'rides'> & {
   rides: ReplayVehicleRideReady[]
+  /** Vie déclarée DÉCOR DE CARTE par le serveur (`doc.vehicleScenery.hidden`, lot M7) : jamais
+   *  dessinée. Absent = pas de verdict de décor pour cette vie. */
+  scenery?: boolean
 }
 /**
  * ReplayVehicleRideReady — un épisode d'occupation dont la SÉRIE DE VISÉE est comblée (schéma 39).
@@ -153,6 +164,11 @@ export type ReplayVehicleRideReady = Filled<ReplayVehicleRide, 'aim'>
  */
 export type ReplayBombStatsReady = Filled<NonNullable<ReplayDocument['bombStats']>, 'players'>
 
+/** Une rafale de tir continu, ses passages muets comblés (schéma 71). */
+export type ReplayFireBurstReady = Omit<NonNullable<ReplayDocument['bursts']>[number], 'holes'> & {
+  holes: NonNullable<NonNullable<ReplayDocument['bursts']>[number]['holes']>
+}
+
 /**
  * ReplayDocumentReady — le document tel que le rendu a le droit de le lire : chaque
  * tableau est présent, jamais null, et les coordonnées ont retrouvé leur arité.
@@ -167,6 +183,7 @@ export type ReplayDocumentReady = Omit<
   | 'bombCarries'
   | 'bombEvents'
   | 'bombStats'
+  | 'bursts'
   | 'equipmentChanges'
   | 'equipmentEpisodes'
   | 'equipmentPlacements'
@@ -341,7 +358,7 @@ export type ReplayDocumentReady = Omit<
   objectives: NonNullable<ReplayDocument['objectives']>
   padPickups: NonNullable<ReplayDocument['padPickups']>
   projectiles: ReplayProjectileReady[]
-  roster: NonNullable<ReplayDocument['roster']>
+  roster: ReplayRosterEntryReady[]
   /**
    * LE CALQUE DE SCORE RESTE OPTIONNEL, et c'est la seule façon honnête de l'écrire : un
    * artefact de schéma antérieur à 12 n'en porte AUCUN, et un objet vide se lirait comme
@@ -357,6 +374,15 @@ export type ReplayDocumentReady = Omit<
    */
   identity?: ReplayIdentityReady
   shots: NonNullable<ReplayDocument['shots']>
+  /**
+   * LES RAFALES DE TIR CONTINU (schéma 71, lot M4b) : la gâchette tenue lue dans la vue de
+   * contrôle, posée sur l'arme qui tire (`w`, `v` pour un véhicule) avec la cadence de son tag
+   * (`rate`, et `rate0`/`ramp` pour une arme qui monte en cadence). Le client y pose les
+   * coups (`model/fireBursts.ts`) ; les `holes` — comblés à vide — sont des passages que la
+   * lecture n'a pas atteints : muets. Vide = artefact antérieur au schéma 71, ou film sans tir
+   * continu lu — `coverage.continuousFire` distingue les deux.
+   */
+  bursts: ReplayFireBurstReady[]
   structure: ReplaySurfaceReady[]
   tracks: ReplayTrackReady[]
   /**

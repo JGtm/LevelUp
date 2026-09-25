@@ -64,7 +64,7 @@ func prClassify(s hwSetup, ref hwKFRef, ev []hwEvent) []prEvent {
 		case seen[k]:
 			kind, from = "ECHANGE", hwName(prev[k])
 		default:
-			if r, ok := ref.setAt(e.Slot, e.TimestampUS); ok && r[e.IDHigh] {
+			if r, ok := ref.setAt(e.Slot, e.TimestampUS); ok && r.Families[e.IDHigh] {
 				kind, from = "DEJA PORTEE", "(spawn)"
 			} else {
 				kind, from = "PRISE", "(spawn sans elle)"

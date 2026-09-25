@@ -337,7 +337,7 @@ func canalLitTypes(dir string) ([][2]int64, []tirRecord) {
 			ty := int64(pay[0] >> 1)
 			tMS := int64(p.TimestampUS / 1000)
 			types = append(types, [2]int64{ty, tMS})
-			if ty == int64(grammar.FireEventType) && int(pay[0])&1 == 0 {
+			if ty == int64(ancienTypeTeteTir) && int(pay[0])&1 == 0 {
 				records = append(records, tirRecord{tMS: tMS})
 			}
 		}
@@ -411,7 +411,7 @@ func TestViseeCanal97Enveloppe(t *testing.T) {
 				continue
 			}
 			total++
-			hist[grammar.ReadAttackerIndex(pay)]++
+			hist[ancienIndexAttaquant(pay)]++
 			tailles[len(pay)]++
 		}
 	}

@@ -59,13 +59,14 @@ type RosterEntry struct {
 	// Vide pour un humain, et vide pour un bot dont la déclaration ne portait pas d'identifiant :
 	// un `bid(0.0)` inventé joindrait deux bots distincts.
 	Bid string `json:"bid,omitempty"`
-	// Seat est LE SIÈGE : la fiche que cette entrée occupe à l'écran (lot 1.9.14).
+	// Seat est LA PLACE : la fiche que cette entrée occupe à l'écran (lot 1.9.14 ; lot M2.3,
+	// 2026-09-23 : un siège de la TABLE du début du film, ou une place qu'un arrivant ouvre quand
+	// la table n'en portait pas assez pour son équipe — cf. sieges.go).
 	//
-	// IL VAUT `FilmIndex` DANS L'ÉCRASANTE MAJORITÉ DES CAS, et il en diffère exactement quand
-	// cette entrée CONTINUE le siège d'un partant sans que le film ait réutilisé son index —
-	// le chaînage est alors un repli, et [RosterEntry.SeatSource] le dit. Deux entrées qui
-	// portent le même `Seat` sont deux occupants SUCCESSIFS d'une même fiche ; leurs présences
-	// (les vies de `tracks[]`) ne se recouvrent pas.
+	// IL VAUT `FilmIndex` pour les occupants du départ, et la place du partant pour son
+	// remplaçant — lue dans ses tirs, ou chaînée par équipe (un repli) ; [RosterEntry.SeatSource]
+	// dit laquelle. Deux entrées qui portent le même `Seat` sont deux occupants SUCCESSIFS d'une
+	// même place ; leurs présences ([RosterEntry.Presence]) ne se recouvrent pas.
 	//
 	// POURQUOI UN CHAMP DE PLUS PLUTÔT QUE `FilmIndex` RÉUTILISÉ. L'index est une LECTURE du
 	// film et ne doit jamais être écrasé par une déduction : un événement qui porte un index
@@ -77,8 +78,37 @@ type RosterEntry struct {
 	// antérieurs au lot 1.9.14 : un client qui ne le trouve pas retombe
 	// sur `FilmIndex`, ce qui est le comportement d'un film sans relais.
 	Seat int `json:"seat"`
-	// SeatSource dit D'OÙ VIENT le siège : [SeatSourceLu] (l'index que le film écrit, reprise
-	// écrite comprise) ou [SeatSourceApparie] (l'appariement ordinal par camp, un repli nommé
-	// et compté — cf. sieges.go). Vide sur un artefact antérieur au lot 1.9.14.
+	// SeatSource dit D'OÙ VIENT la place : [SeatSourceLu] (l'index que le film écrit, reprise
+	// écrite comprise), [SeatSourceTirs] (lue dans l'index de tireur de ses tirs),
+	// [SeatSourceApparie] (chaînage par équipe, un repli nommé et compté), [SeatSourceOuverte]
+	// (une place ouverte sous la capacité estimée de son équipe, un repli nommé et compté) ou
+	// [SeatSourceIndex] (aucune place : le siège est l'index, compté). Vide sur un artefact
+	// antérieur au lot 1.9.14.
 	SeatSource string `json:"seatSource,omitempty"`
+	// Presence porte les intervalles pendant lesquels cette entrée TIENT sa place (schéma 69, lot
+	// M2.3, 2026-09-23) — lus dans le film (entité `ti=9`, BOT_METADATA, vies) quand
+	// `coverage.seats.presences` vaut `film`, déduits des seules vies (repli) quand il vaut `vies`.
+	//
+	// C'EST ELLE QUI DIT QU'UN JOUEUR EST PARTI, et plus l'absence de successeur : la fiche d'un
+	// occupant s'affiche de `from` à `toMax` (à défaut `to`), sa place reste VIDE ensuite jusqu'au
+	// remplaçant (Q20), et un joueur présent sans corps y est « pas encore apparu » (Q21). Absente
+	// = l'entrée n'est présente à aucun instant, ou artefact antérieur au schéma 69 (le client
+	// retombe alors sur l'enveloppe des vies).
+	Presence []PresenceInterval `json:"presence,omitempty"`
+}
+
+// PresenceInterval est UN intervalle de présence d'une entrée de roster, en FRAMES du document,
+// bornes incluses.
+type PresenceInterval struct {
+	// From est la première frame où l'occupant tient sa place.
+	From int `json:"from"`
+	// To est la dernière frame où sa présence est CERTAINE (une vie, une image-clé, un paquet
+	// BOT_METADATA l'y voient). `To < From` quand AUCUNE ne l'est : l'occupant n'a été vu qu'avant
+	// l'origine du document, et `ToMax` dit seulement jusqu'où il peut encore être là.
+	To int `json:"to"`
+	// ToMax est la dernière frame où il PEUT encore être là : l'entité ne se lit qu'aux
+	// images-clés, et son départ n'est borné que par la première image-clé qui ne la porte plus
+	// (Q22 : la tuile sort là), ou par l'arrivée de son remplaçant sur la même place. Absent quand
+	// il vaut `to` (départ exact, ou présent jusqu'à la fin).
+	ToMax *int `json:"toMax,omitempty"`
 }

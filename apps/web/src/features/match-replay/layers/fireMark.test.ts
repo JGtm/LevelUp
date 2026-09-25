@@ -29,6 +29,7 @@ const VIEW = {
 function docWith(over: Partial<ReplayDocumentReady>): ReplayDocumentReady {
   return {
     shots: [],
+    bursts: [],
     tracks: [],
     ...over,
   } as ReplayDocumentReady

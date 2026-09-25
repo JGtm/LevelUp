@@ -31,9 +31,14 @@ func tallyVehicleCoverage(tracks []VehicleTrack, cov *VehicleCoverage, fb *fallb
 		}
 		if tr.Chassis != "" {
 			cov.WithChassis++
-			if tr.Family != "" {
+			switch {
+			case tr.Family != "":
 				cov.FamilyResolved++
-			} else {
+			case tr.Part != "":
+				// UNE PIECE MONTEE N EST PAS UN CHASSIS INCONNU (schema 69) : la table des pieces
+				// la nomme (`vehicle_turrets.go`) et `coverage.vehicles.turrets` la compte. La
+				// ranger ici ferait declencher le marqueur neutre sur une vie qui n est pas dessinee.
+			default:
 				cov.FamilyUnknown++
 				cov.UnknownChassis[tr.Chassis]++
 				// D14 (b) : la LECTURE a eu lieu (`tr.Chassis` est le mot d identite lu dans le
@@ -78,7 +83,9 @@ func tallyVehicleRides(rides []VehicleRide, cov *VehicleCoverage) {
 			cov.RidesProximity++
 		}
 		// Les episodes d une vie sont TRIES par T0 : un chevauchement se voit sur le voisin.
-		if i > 0 && r.T0 <= rides[i-1].T1 {
+		// UN ARTILLEUR REPORTE D UNE TOURELLE (`Turret`, schema 69) N EST PAS UNE AMBIGUITE : sa
+		// place a bord est designee par la piece qu il sert, il ne dispute rien au conducteur.
+		if i > 0 && r.T0 <= rides[i-1].T1 && r.Turret == nil && rides[i-1].Turret == nil {
 			cov.Ambiguous++
 		}
 	}
@@ -100,6 +107,14 @@ func logVehicleCoverage(c *VehicleCoverage) {
 		"sansPosition", c.NoPosition, "avecNaissance", c.WithSpawn, "avecChassis", c.WithChassis,
 		"famillesResolues", c.FamilyResolved, "famillesInconnues", c.FamilyUnknown,
 		"echantillons", c.Samples, "avecCap", c.WithHeading)
+	// LA PORTE DES POSITIONS (lot M1 des retours du rejeu) : ce qu elle a ecarte, et les silences
+	// avec deplacement qu elle a laisses publies faute de preuve pour trancher.
+	if c.EchantillonsHorsEmprise+c.SpawnsHorsEmprise+c.EchantillonsAuTraversDUnSilence+c.SilencesNonTranches > 0 {
+		slog.Info("rejeu : porte des positions de vehicule",
+			"echantillonsHorsEmprise", c.EchantillonsHorsEmprise, "spawnsHorsEmprise", c.SpawnsHorsEmprise,
+			"echantillonsAuTraversDUnSilence", c.EchantillonsAuTraversDUnSilence,
+			"silencesNonTranches", c.SilencesNonTranches)
+	}
 	slog.Info("rejeu : occupation des vehicules",
 		"episodes", c.Rides, "vehiculesOccupes", c.VehiclesRidden, "occupantsNommes", c.RidesNamed,
 		"lus", c.RidesRead, "parProximite", c.RidesProximity,

@@ -18,7 +18,7 @@ import (
 // suivent déjà cette règle dans ce paquet.
 //
 // La frontière est tenue par la discipline d'appel : ce fichier ne touche au parser que par sa
-// SURFACE PUBLIQUE (`CountFilmChunks`, `ReadFilmChunk`, `WalkPackets`, `WalkKeyframeWorld`,
+// SURFACE PUBLIQUE (`CountFilmChunks`, `ReadFilmChunk`, `WalkPackets`, `MarcheDImageCle` / `WalkKeyframeWorld`,
 // `PacketTypeKeyframe`). Il n'emprunte aucune primitive interne — d'où `invBitAt` plutôt qu'un
 // helper non exporté du paquet voisin. Si cette liste d'appels devait s'allonger, ce serait le
 // signe qu'il faut un PORT explicite (une interface côté rejeu, implémentée par un adaptateur),
@@ -178,12 +178,15 @@ func ScanFilmKeyframeInventory(
 	if err != nil {
 		return nil, KeyframeInventoryStats{}, err
 	}
-	return ScanKeyframeInventory(film, known, grenMax, fb)
+	return ScanKeyframeInventory(grammar.NewFilmContext(film), known, grenMax, fb)
 }
 
 // ScanKeyframeInventory décode l'inventaire des images-clés d'un film DEJA CHARGE.
+//
+// Les records viennent de la marche d'image-clé DU FILM ([grammar.FilmContext.MarcheDImageCle],
+// lot D-fix) : celle des autres balayages de la cuisson.
 func ScanKeyframeInventory(
-	film *source.Film, known map[uint32]bool, grenMax uint32, fb *fallback.Compteur,
+	fc *grammar.FilmContext, known map[uint32]bool, grenMax uint32, fb *fallback.Compteur,
 ) ([]KeyframeInventory, KeyframeInventoryStats, error) {
 	var st KeyframeInventoryStats
 	if len(known) == 0 {
@@ -195,11 +198,12 @@ func ScanKeyframeInventory(
 		fb.Declenche(fallback.NomPlafondGrenadeParDefaut)
 		grenMax = DefaultGrenadeMax
 	}
-	nums := grammar.FilmChunkNumbers(film)
+	nums := fc.ChunkNumbers()
 	st.Chunks = len(nums)
+	marche := fc.MarcheDImageCle()
 	var out []KeyframeInventory
 	for _, c := range nums {
-		chunk, pks, ok := grammar.FilmChunkAt(film, c)
+		chunk, pks, ok := fc.ChunkAt(c)
 		if !ok {
 			st.ChunksUnread++
 			continue
@@ -209,7 +213,8 @@ func ScanKeyframeInventory(
 				continue
 			}
 			st.Keyframes++
-			invs := keyframeInventories(p.Payload(chunk), known, grenMax)
+			pay := p.Payload(chunk)
+			invs := keyframeInventoriesDe(pay, invRecordSpansDe(pay, marche.Records(pay)), known, grenMax)
 			st.Records += len(invs)
 			for _, inv := range invs {
 				inv.TimestampUS, inv.Chunk, inv.PacketIndex = p.TimestampUS, c, p.Index
@@ -231,9 +236,15 @@ func ScanKeyframeInventory(
 }
 
 // keyframeInventories décode un payload de keyframe, un inventaire par record de biped.
-// PUR (aucune I/O) — c'est le cœur testable.
+// PUR (aucune I/O) — c'est le cœur testable. Sans preuve (marche des instruments) ; la cuisson passe
+// par [keyframeInventoriesDe] sur les records de la marche de son film.
 func keyframeInventories(pay []byte, known map[uint32]bool, grenMax uint32) []KeyframeInventory {
-	spans := invRecordSpans(pay)
+	return keyframeInventoriesDe(pay, invRecordSpans(pay), known, grenMax)
+}
+
+// keyframeInventoriesDe est [keyframeInventories] sur des records DEJA bornes.
+func keyframeInventoriesDe(pay []byte, spans []invRecordSpan, known map[uint32]bool,
+	grenMax uint32) []KeyframeInventory {
 	out := make([]KeyframeInventory, 0, len(spans))
 	for _, sp := range spans {
 		if sp.ti != invBipedTI {
@@ -286,7 +297,11 @@ type invRecordSpan struct {
 // invRecordSpans découpe le payload en records, bornes données par WalkKeyframeWorld — le même
 // walker que keyframe_loadout.go, déjà validé 249/250 entités et 8/8 bipeds.
 func invRecordSpans(pay []byte) []invRecordSpan {
-	recs := grammar.WalkKeyframeWorld(pay)
+	return invRecordSpansDe(pay, grammar.WalkKeyframeWorld(pay))
+}
+
+// invRecordSpansDe borne des records DEJA marches (cf. [invRecordSpans]).
+func invRecordSpansDe(pay []byte, recs []grammar.KeyframeRec) []invRecordSpan {
 	if len(recs) == 0 {
 		return nil
 	}

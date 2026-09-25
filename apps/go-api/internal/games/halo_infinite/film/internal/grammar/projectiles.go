@@ -128,11 +128,10 @@ func ScanFilmWorldObjects(dir string, wr *profile.Vec3Range, typeIndex int) ([]t
 
 // ScanWorldObjects décode les trajectoires d'un archétype d'objet du monde d'un film DEJA CHARGE.
 func ScanWorldObjects(fc *FilmContext, wr *profile.Vec3Range, typeIndex int) ([]types.ProjectileTrack, error) {
-	film := fc.Film()
-	if len(FilmChunkNumbers(film)) == 0 {
+	if len(fc.ChunkNumbers()) == 0 {
 		return nil, ErrNoFilmChunk
 	}
-	band := worldObjectSlotBand(film, typeIndex)
+	band := worldObjectSlotBand(fc, typeIndex)
 	if len(band) == 0 {
 		return nil, fmt.Errorf("aucun slot d'archétype ti=%d dans les keyframes du film", typeIndex)
 	}

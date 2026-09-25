@@ -26,6 +26,7 @@ import { isAliveAt, positionAt } from '../../../lib/replay/replayLogic'
 import type { ReplayDocumentReady, ReplayTrackReady } from '../../../lib/replay/replayNormalize'
 import { type CanvasView, projectTo } from '../model/replayView'
 import { buildLivesBySlot, lifeOfSlotAt } from '../model/livesPosition'
+import { fireBurstShots } from '../model/fireBursts'
 
 /** Un tir prêt à marquer : son instant, et la VIE qui le porte. */
 export interface FireMarkEntry {
@@ -41,10 +42,12 @@ export interface FireMarkEntry {
  * même disambiguïsation que buildShotFx). Un tir sans vie couvrante ne marque personne.
  */
 export function buildFireMarks(doc: ReplayDocumentReady): FireMarkEntry[] {
-  if (doc.shots.length === 0) return []
+  // LES COUPS DU TIR CONTINU (schéma 71) marquent leur tireur comme tout tir (`fireBursts.ts`).
+  const tirs = [...doc.shots, ...fireBurstShots(doc)]
+  if (tirs.length === 0) return []
   const bySlot = buildLivesBySlot(doc.tracks)
   const out: FireMarkEntry[] = []
-  for (const s of doc.shots) {
+  for (const s of tirs) {
     if (familyOf(doc.weaponLabels?.[s.w ?? '']?.fx) === 'melee') continue
     const track = lifeOfSlotAt(bySlot, s.slot, s.t)
     if (track) out.push({ frame: s.t, track })

@@ -50,6 +50,33 @@ var compteursDEchec = map[string]bool{
 	"shotsNoRide":      true,
 	// `bombStats.coverage.periodsNoBridge` (E2-bis) : periodes de portage de bombe sans pont, 2 -> 0.
 	"periodsNoBridge": true,
+	// 2026-09-24 (integration de la vague D des retours du rejeu, lot M2.3) : `coverage.seats`,
+	// les places et les presences du roster. Trois familles d echec, chacune lue a l envers :
+	// ce que la pose des places n a pas su faire (`sansPlace`, `sansEquipe`,
+	// `identitesHorsRoster`), ce qui viole la regle des places de l utilisateur (`depassements`,
+	// `placesEnTrop` : 0 attendu), les contradictions et trous de la liaison aux entites ti=9
+	// (`chevauchements`, `tirsContestes`, `entitesNonLiees`, `entitesContestees`,
+	// `trousDEntite`), et les deux REPLIS NOMMES qu une lecture fait baisser
+	// (`placesOuvertes` = `repli_place_ouverte_sous_la_capacite_estimee`, `presencesParLesVies` =
+	// `repli_presence_d_une_entree_par_ses_vies`). `apparies` (chainage, repli anterieur) et les
+	// compteurs de richesse (`lus`, `placesTirs`, `relaisBornes`, `botsSuccesseurs`) n y sont pas.
+	"sansPlace":           true,
+	"sansEquipe":          true,
+	"identitesHorsRoster": true,
+	"depassements":        true,
+	"placesEnTrop":        true,
+	"chevauchements":      true,
+	"tirsContestes":       true,
+	"entitesNonLiees":     true,
+	"entitesContestees":   true,
+	"trousDEntite":        true,
+	"placesOuvertes":      true,
+	"presencesParLesVies": true,
+	// 2026-09-24 (lot D-fix des retours du rejeu) : les deux compteurs de la SANTE DES IMAGES-CLES
+	// du balayage des entites ti=9 — une absence que la marche ne prouve pas ne conclut rien, et ces
+	// deux comptes (0 attendus) montent quand la marche perd des occupants.
+	"imagesClesDouteuses": true,
+	"bornesDifferees":     true,
 }
 
 // marqueurParXUID / marqueurParSlot : segments des cles ventilees par joueur

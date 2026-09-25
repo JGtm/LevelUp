@@ -17,6 +17,7 @@ package replay
 import (
 	"log/slog"
 
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
@@ -82,13 +83,25 @@ func (s *filmScan) balayerPositions() error {
 	s.opt.observe("fire", s.in.Fire)
 	// Armes portées : lues dans les keyframes du MÊME film, sur la MÊME horloge. Leur
 	// absence n'est pas fatale (un rejeu sans armes reste un rejeu valide).
-	loadouts, err := grammar.ScanKeyframeLoadouts(s.film, loadoutFamilies())
+	//
+	// LA MARCHE D'IMAGE-CLÉ SE COMPTE ICI (lot M3.1) : ce balayage marche chaque payload
+	// d'image-clé du film exactement une fois. L'élection de l'ancre suivante est un REPLI nommé,
+	// et son compte voyage dans `coverage.fallbacks` ; la santé complète de la marche est
+	// portée par les faits (`KeyframeWalk`).
+	loadouts, marche, err := grammar.ScanKeyframeLoadoutsMarche(s.fc, loadoutFamilies())
 	if err != nil {
 		slog.Warn("keyframes illisibles — rejeu sans armes portées", "err", err, "match_id", s.matchID)
 		loadouts = nil
 	}
-	s.in.Loadouts = loadouts
+	s.in.Loadouts, s.in.KeyframeWalk = loadouts, marche
+	s.opt.Fallbacks.DeclencheN(fallback.NomAncreDImageCleParElection, marche.Elections)
+	if marche.BipedesAbsentsEncadres > 0 {
+		slog.Info("image-cle : bipedes manques par la marche entre deux images-cles qui les portent",
+			"match_id", s.matchID, "absentsEncadres", marche.BipedesAbsentsEncadres,
+			"elections", marche.Elections, "recalages", marche.Recalages)
+	}
 	s.opt.observe("loadouts", s.in.Loadouts)
+	s.balayerNaissances()
 	return nil
 }
 
@@ -132,7 +145,8 @@ func (s *filmScan) balayerPortage() {
 	// emission d'un emplacement serait comptee comme une prise alors qu'elle peut n'etre que
 	// la re-annonce d'une arme deja portee. Absence non fatale — le rejeu sort sans
 	// ramassages, jamais avec des ramassages devines.
-	weaponChanges, wStats, err := grammar.ScanHeldWeaponChanges(s.fc, spawnSetFrom(s.in.Loadouts))
+	weaponChanges, wStats, err := grammar.ScanHeldWeaponChanges(s.fc,
+		spawnSetFrom(s.in.Loadouts, s.in.BirthLoadouts, s.in.BipedCreations))
 	if err != nil {
 		slog.Warn("changements d arme illisibles — rejeu sans ramassages", "err", err, "match_id", s.matchID)
 		weaponChanges = nil
@@ -169,7 +183,7 @@ func (s *filmScan) balayerPortage() {
 // delta. MÊMES images-clés, MÊME horloge, même record de biped que les armes portées.
 func (s *filmScan) balayerInventaire() {
 	// Absence non fatale — un rejeu sans grenades reste un rejeu valide.
-	inventory, invStats, err := ScanKeyframeInventory(s.film, loadoutFamilies(), 0, s.opt.Fallbacks)
+	inventory, invStats, err := ScanKeyframeInventory(s.fc, loadoutFamilies(), 0, s.opt.Fallbacks)
 	if err != nil {
 		slog.Warn("inventaire illisible — rejeu sans grenades ni munitions", "err", err, "match_id", s.matchID)
 		inventory = nil
@@ -360,7 +374,7 @@ func (s *filmScan) balayerMonde() {
 func (s *filmScan) balayerCalquesGardes() {
 	// MARQUEUR DE PORTAGE : le controle independant du calque du drapeau, lu aux images-cles du
 	// MEME film — sur les seuls films de CTF (cf. build_objectives_live.go).
-	s.in.FlagMarks = decodeFilmCarrierMarks(s.film, s.matchID, s.opt.Flag)
+	s.in.FlagMarks = decodeFilmCarrierMarks(s.fc, s.matchID, s.opt.Flag)
 	s.opt.observe("carrierMarks", s.in.FlagMarks)
 	// PROPRIETES RESEAU ti=13 : UN SEUL BALAYAGE, DEUX CONSOMMATEURS ET DEUX GARDES. L'etat des
 	// zones (jauge de capture, proprietaire) le veut sur les matchs dont l'appelant a fourni le
@@ -397,15 +411,10 @@ func (s *filmScan) balayerPont() {
 	}
 	s.in.Projectiles = proj
 	s.opt.observe("projectiles", s.in.Projectiles)
-	// Le fil des morts NOMME les vies. Sans lui, le pont est vide et NI les tirs NI les lancers
-	// ne sont publiés : ce n'est pas une dégradation cosmétique, d'où un warn explicite.
-	deaths, err := ScanDeaths(s.film)
-	if err != nil {
-		slog.Warn("fil des morts illisible — aucun tir ni lancer ne sera publie",
-			"err", err, "match_id", s.matchID)
-		deaths = nil
-	}
-	s.in.Deaths = deaths
+	// Le fil des morts NOMME les vies par le pont par morts, cale l'horloge des morts et ouvre la
+	// lecture de la table d'index (cf. [filmScan.lireLeFilDesMorts]).
+	s.lireLeFilDesMorts()
+	deaths := s.in.Deaths
 	s.opt.observe("deaths", s.in.Deaths)
 	// LA TABLE DES JOUEURS QUE LE FILM ÉCRIT (lot 1.6) : `chunk_00` porte les 32 sièges du match
 	// avec leur XUID et leur gamertag. C'est le lien DIRECT, et il se lit AVANT la table des
@@ -416,16 +425,21 @@ func (s *filmScan) balayerPont() {
 	// L'EQUIPE DE CHAQUE JOUEUR (lot 1.7) : le composant i0 de ti=9 de la trame d'etat, a une
 	// position DERIVEE de la grammaire. C'est la SEULE source d'equipe du document (V4) ; la
 	// base ne fait que controler. Un refus est NOMME et publie (`coverage.teams.refusal`).
-	s.in.PlayerTeams, s.in.TeamScan = grammar.ScanPlayerTeams(s.fc)
+	// LES ENTITES SORTENT DE LA MEME PASSE (lot M2.1) : un occupant par entite, sa presence au pas
+	// des images-cles et son equipe. L'etape observee reste la TABLE par index, a l'octet : elle
+	// est le controle, et son empreinte inchangee prouve que la passe unique ne l'a pas touchee.
+	s.in.PlayerTeams, s.in.TeamScan, s.in.PlayerEntities = grammar.ScanPlayerTeams(s.fc)
 	s.opt.observe("playerTeams", s.in.PlayerTeams)
 	// L'index de joueur SE LIT dans le film (cf. player_index.go) : le roster vient du fil des
-	// morts, et les 5 bits qui précèdent chaque xuid donnent son index. Sans cette table, aucun
-	// tir ni lancer n'est publié — comme sans le fil des morts.
+	// morts, et les 5 bits qui précèdent chaque xuid donnent son index. Sans cette table, un tir
+	// ou un lancer reste publie des que le registre d'identite nomme son slot par ses AUTRES
+	// lectures — la table des sieges du film (`FilmTable`) en tete (message corrige a la revue
+	// adverse M5, constat R3, 2026-09-24 : il disait « aucun tir ni lancer n'est publie »).
 	if len(deaths) > 0 {
 		idx, err := ScanPlayerIndices(s.film, rosterOf(deaths, s.opt.RosterXUIDs))
 		if err != nil {
-			slog.Warn("index de joueur illisible — aucun tir ni lancer ne sera publie",
-				"err", err, "match_id", s.matchID)
+			slog.Warn("index de joueur illisible — les tireurs ne seront nommes que par les autres "+
+				"lectures du registre (table des sieges du film)", "err", err, "match_id", s.matchID)
 		}
 		table, collisions := injectiveOrEmpty(idx)
 		if collisions > 0 {
@@ -447,26 +461,30 @@ func (s *filmScan) balayerPont() {
 	s.opt.observe("clockOrigin", s.in.FilmClockOriginUS)
 }
 
-// balayerProprietesTi13 sert les DEUX consommateurs de `ti=13` — l etat des zones et la jauge de
-// retour du drapeau — a partir d UNE SEULE lecture du film.
+// lireLeFilDesMorts lit le fil des morts, pose son VERDICT (`coverage.bridge.deathsFeed`, lot M5.2
+// des retours rejeu) et le fil lui-meme dans les entrees. Un fil VIDE est une mesure, un fil
+// ILLISIBLE une panne, et le document les distingue au lieu de les laisser aux seuls journaux.
+// Le verdict et sa cause sont des ENTREES depuis le lot M8 (2026-09-24) : ils voyagent dans les
+// faits persistes (cf. fil_des_morts_verdict.go).
 //
-// POURQUOI UNE SEULE LECTURE : le balayage est une marche bit a bit de tous les paquets delta —
-// le meme ordre de grandeur que celui des positions. Le payer deux fois sur un match qui
-// declencherait les deux gardes serait doubler la cuisson pour les memes octets. `ti13Partage` le
-// garantit : le premier appelant lit, le second recoit.
+// CE QUE LE FIL ILLISIBLE NE COUPE PLUS (message corrige le 2026-09-23) : les tirs et les
+// lancers. Ils sont nommes par la table des sieges que le film ecrit (`chunk_00`, lot 1.6) —
+// mesure : 2 838 tirs publies sur `ab526724` quand son fil etait illisible.
 //
-// POURQUOI DEUX ETAPES OBSERVEES MALGRE TOUT : ce sont DEUX ENTREES du document, gardees par deux
-// modes differents et consommees par deux calques. `ZoneScanned` et `GaugeScanned` sont publies,
-// et ils disent « ce calque a ete LU », pas « ces octets ont ete lus » — un CTF qui heriterait de
-// `ZoneScanned = true` ferait mentir `coverage.zones`.
-func (s *filmScan) balayerProprietesTi13() {
-	zones := len(s.opt.Zone.Zones) > 0
-	jauge := s.opt.Flag.Scanned && flagFilmSignalsOf(s.opt.Flag).IsFlagFilm()
-	partage := ti13Partage{fc: s.fc, matchID: s.matchID}
-	s.in.ZoneReads = decodeFilmZoneReads(&partage, zones)
-	s.in.ZoneScanned = zones
-	s.opt.observe("zoneReads", s.in.ZoneReads)
-	s.in.FlagGauge = decodeFilmFlagReturnGauge(&partage, jauge)
-	s.in.FlagGaugeScanned = jauge
-	s.opt.observe("flagGauge", s.in.FlagGauge)
+// UNE METHODE A PART (revue adverse M5, constat R1, 2026-09-24) pour que le trajet « octets ->
+// verdict -> document » se teste sur la bobine du depot, que le balayage des positions refuse.
+func (s *filmScan) lireLeFilDesMorts() {
+	deaths, err := ScanDeaths(s.film)
+	s.in.DeathsFeed = verdictDeLaLecture(deaths, err)
+	switch s.in.DeathsFeed.Verdict {
+	case DeathsFeedUnreadable:
+		slog.Warn("fil des morts illisible — ni calage d horloge des morts, ni table d index, ni "+
+			"pont par morts (coverage.bridge.deathsFeed = unreadable)", "err", err, "match_id", s.matchID)
+		deaths = nil
+	case DeathsFeedEmpty:
+		slog.Info("fil des morts lu et VIDE — aucune mort a nommer (coverage.bridge.deathsFeed = empty)",
+			"err", err, "match_id", s.matchID)
+		deaths = nil
+	}
+	s.in.Deaths = deaths
 }

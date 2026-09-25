@@ -1,0 +1,14 @@
+import fs from 'fs';
+const id = process.argv[2];
+const doc = JSON.parse(fs.readFileSync(`C:/Users/Guillaume/Downloads/Scripts/LevelUp-go-migration/data/cache/replays/halo_infinite/${id}.json`, 'utf8'));
+const lo = +process.argv[3], hi = +process.argv[4];
+const inR = (t) => t >= lo && t <= hi;
+console.log('--- loadouts'); for (const e of doc.loadouts) if (inR(e.t)) console.log(JSON.stringify(e));
+console.log('--- inventory'); for (const e of doc.inventory) if (inR(e.t)) console.log(JSON.stringify(e));
+console.log('--- weaponChanges'); for (const e of doc.weaponChanges) console.log(JSON.stringify(e));
+console.log('--- pickups'); for (const e of doc.pickups) if (inR(e.t)) console.log(JSON.stringify(e));
+console.log('--- equipmentChanges'); for (const e of doc.equipmentChanges) console.log(JSON.stringify(e));
+console.log('--- grenadeReads'); for (const e of doc.grenadeReads) if (inR(e.t)) console.log(JSON.stringify(e));
+console.log('--- abilities'); for (const e of doc.abilities) console.log(JSON.stringify(e));
+console.log('--- shots slot534'); for (const e of doc.shots) if (e.slot===534) console.log(JSON.stringify(e));
+console.log('--- weaponLabels'); for (const [k,v] of Object.entries(doc.weaponLabels)) console.log(k, JSON.stringify(v).slice(0,200));

@@ -187,11 +187,20 @@ func consumeBipedDefaultState(br *Lecteur) {
 		br.ReadBit()
 	}
 
-	// if uVar10 >= 12 (i.e. NOT < 0xc): FUN_14080d69c à ce call site lit R(1) du flux film
-	// mais son R(32) (FUN_14080d6f0) opère sur un reader NON-film → 0 bit film. Validé live
-	// (CE) : le rep du jeu = 166 bits = mon 198 − 32 (le R(32) de opt32b en trop). Donc R(1) seul.
+	// if uVar10 >= 12 (i.e. NOT < 0xc): FUN_14080d69c = R(1) ; si 1, R(32) — la grammaire de
+	// l'en-tête [140f44dfb CMP ESI,0xc ; e11], RÉTABLIE au lot M3.2 (campagne « retours rejeu »,
+	// 2026-09-23). Le dépôt ne lisait ici que la porte, sur l'argument « le rep du jeu = 166 bits
+	// = 198 − 32 » ; la même capture CE disait « 166 OU 198 bits selon la donnée » : les 32 bits
+	// d'écart SONT ce R(32), lu quand sa porte vaut 1. DEUX ORACLES INDÉPENDANTS, trois films
+	// (Arena, Super Fiesta, CTF) :
+	//   - le record NEW de naissance : la porte vaut 1, et sans ce R(32) toute la boucle de
+	//     composants part 32 bits trop tôt — i43 (la première arme) tombait sur la famille
+	//     localisée par le catalogue du match dans 0 record sur 293, il y tombe dans 293 / 293 ;
+	//   - l'image-clé (`n2`, taille de tampon lue APRÈS l'état par défaut, constante par
+	//     archétype) : 5088 sur 128 + 197 + 304 records avec ce R(32), contre 2136725276 sans —
+	//     la valeur de CE R(32) lui-même, lue à la place de `n2`.
 	if int32(uVar10) >= 12 {
-		br.ReadBit()
+		consumeOpt32(br)
 	}
 
 	// EXPÉRIMENTAL : le résidu de la default-state = les défauts des composants mouvement.

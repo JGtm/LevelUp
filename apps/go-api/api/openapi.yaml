@@ -9194,6 +9194,67 @@ components:
         - deduit
         - non_resolu
       type: object
+    BirthLoadoutCoverage:
+      additionalProperties: false
+      properties:
+        beforeOrigin:
+          format: int64
+          type: integer
+        closed:
+          format: int64
+          type: integer
+        creations:
+          format: int64
+          type: integer
+        desync:
+          format: int64
+          type: integer
+        noDisplayable:
+          format: int64
+          type: integer
+        noLife:
+          format: int64
+          type: integer
+        noWeaponComponent:
+          format: int64
+          type: integer
+        nonWeapon:
+          format: int64
+          type: integer
+        overflow:
+          format: int64
+          type: integer
+        published:
+          format: int64
+          type: integer
+        read:
+          format: int64
+          type: integer
+        snapped:
+          format: int64
+          type: integer
+        unarmedGrants:
+          format: int64
+          type: integer
+        unconfirmed:
+          format: int64
+          type: integer
+      required:
+        - creations
+        - closed
+        - read
+        - desync
+        - overflow
+        - unconfirmed
+        - noWeaponComponent
+        - published
+        - snapped
+        - noLife
+        - beforeOrigin
+        - nonWeapon
+        - unarmedGrants
+        - noDisplayable
+      type: object
     BombArming:
       additionalProperties: false
       properties:
@@ -9657,6 +9718,8 @@ components:
         deathOffsetRunnerUp:
           format: int64
           type: integer
+        deathsFeed:
+          type: string
         directByCreation:
           format: int64
           type: integer
@@ -11793,6 +11856,143 @@ components:
         - delta
         - signal
       type: object
+    ContinuousFireCoverage:
+      additionalProperties: false
+      properties:
+        ambiguous:
+          format: int64
+          type: integer
+        burstsRead:
+          format: int64
+          type: integer
+        burstsWithHole:
+          format: int64
+          type: integer
+        byPlace:
+          format: int64
+          type: integer
+        clippedToMount:
+          format: int64
+          type: integer
+        closed:
+          format: int64
+          type: integer
+        empty:
+          format: int64
+          type: integer
+        entries:
+          format: int64
+          type: integer
+        firing:
+          format: int64
+          type: integer
+        heldHoleMs:
+          format: int64
+          type: integer
+        holeRuns:
+          format: int64
+          type: integer
+        holes:
+          format: int64
+          type: integer
+        holesBlockBC:
+          format: int64
+          type: integer
+        holesCap:
+          format: int64
+          type: integer
+        holesKind:
+          format: int64
+          type: integer
+        holesNotClosing:
+          format: int64
+          type: integer
+        holesOpenViewB:
+          format: int64
+          type: integer
+        holesOverflow:
+          format: int64
+          type: integer
+        holesUnlocated:
+          format: int64
+          type: integer
+        innerHoles:
+          format: int64
+          type: integer
+        noPlayer:
+          format: int64
+          type: integer
+        noTrack:
+          format: int64
+          type: integer
+        notContinuous:
+          format: int64
+          type: integer
+        onFoot:
+          format: int64
+          type: integer
+        onVehicle:
+          format: int64
+          type: integer
+        otherInput:
+          format: int64
+          type: integer
+        packets:
+          format: int64
+          type: integer
+        published:
+          format: int64
+          type: integer
+        reached:
+          format: int64
+          type: integer
+        shots:
+          format: int64
+          type: integer
+        vehicleNoWeapon:
+          format: int64
+          type: integer
+        weaponUnknown:
+          format: int64
+          type: integer
+        withAction:
+          format: int64
+          type: integer
+      required:
+        - packets
+        - reached
+        - closed
+        - holes
+        - holeRuns
+        - holesUnlocated
+        - holesOpenViewB
+        - holesOverflow
+        - holesKind
+        - holesBlockBC
+        - holesCap
+        - holesNotClosing
+        - entries
+        - withAction
+        - firing
+        - burstsRead
+        - burstsWithHole
+        - innerHoles
+        - heldHoleMs
+        - published
+        - onVehicle
+        - onFoot
+        - otherInput
+        - noPlayer
+        - ambiguous
+        - vehicleNoWeapon
+        - noTrack
+        - weaponUnknown
+        - notContinuous
+        - empty
+        - byPlace
+        - clippedToMount
+        - shots
+      type: object
     ConvergenceTotalsSinceBoot:
       additionalProperties: false
       properties:
@@ -12037,12 +12237,16 @@ components:
           $ref: '#/components/schemas/AbilityChargeCoverage'
         abilityImpulses:
           $ref: '#/components/schemas/AbilityImpulseCoverage'
+        birthLoadouts:
+          $ref: '#/components/schemas/BirthLoadoutCoverage'
         bombArmings:
           $ref: '#/components/schemas/BombArmingsCoverage'
         bombCarries:
           $ref: '#/components/schemas/BombCarriesCoverage'
         bridge:
           $ref: '#/components/schemas/BridgeHealth'
+        continuousFire:
+          $ref: '#/components/schemas/ContinuousFireCoverage'
         deathsPaths:
           $ref: '#/components/schemas/DeathsPathsCoverage'
         decoder:
@@ -12074,6 +12278,8 @@ components:
           $ref: '#/components/schemas/GroundWeaponCoverage'
         inventory:
           $ref: '#/components/schemas/InventoryCoverage'
+        keyframes:
+          $ref: '#/components/schemas/KeyframeCoverage'
         objectiveObjects:
           $ref: '#/components/schemas/ObjectiveObjectsCoverage'
         objectives:
@@ -14636,6 +14842,66 @@ components:
       required:
         - match_ids
       type: object
+    FireBurst:
+      additionalProperties: false
+      properties:
+        b0:
+          type: string
+        b1:
+          type: string
+        holes:
+          items:
+            $ref: '#/components/schemas/FireBurstHole'
+          type:
+            - array
+            - "null"
+        ramp:
+          format: double
+          type: number
+        rate:
+          format: double
+          type: number
+        rate0:
+          format: double
+          type: number
+        slot:
+          format: int32
+          minimum: 0
+          type: integer
+        t0:
+          format: int64
+          type: integer
+        t1:
+          format: int64
+          type: integer
+        v:
+          format: int32
+          minimum: 0
+          type: integer
+        w:
+          type: string
+      required:
+        - t0
+        - t1
+        - slot
+        - w
+        - rate
+        - b0
+        - b1
+      type: object
+    FireBurstHole:
+      additionalProperties: false
+      properties:
+        t0:
+          format: int64
+          type: integer
+        t1:
+          format: int64
+          type: integer
+      required:
+        - t0
+        - t1
+      type: object
     FirstBloodMatchPoint:
       additionalProperties: false
       properties:
@@ -16329,6 +16595,55 @@ components:
         - ties
         - dnf
       type: object
+    KeyframeCoverage:
+      additionalProperties: false
+      properties:
+        bipeds:
+          format: int64
+          type: integer
+        contradictoryProofs:
+          format: int64
+          type: integer
+        elections:
+          format: int64
+          type: integer
+        framedAbsentBipeds:
+          format: int64
+          type: integer
+        jumps:
+          format: int64
+          type: integer
+        keyframes:
+          format: int64
+          type: integer
+        neighbors:
+          format: int64
+          type: integer
+        records:
+          format: int64
+          type: integer
+        refutations:
+          format: int64
+          type: integer
+        resyncs:
+          format: int64
+          type: integer
+        slides:
+          format: int64
+          type: integer
+      required:
+        - keyframes
+        - records
+        - bipeds
+        - neighbors
+        - jumps
+        - resyncs
+        - elections
+        - refutations
+        - contradictoryProofs
+        - slides
+        - framedAbsentBipeds
+      type: object
     LOWESSTrend:
       additionalProperties: false
       properties:
@@ -16639,6 +16954,9 @@ components:
         available:
           format: int64
           type: integer
+        byUnit:
+          format: int64
+          type: integer
         noSlot:
           format: int64
           type: integer
@@ -16646,6 +16964,9 @@ components:
           format: int64
           type: integer
         refusedByRoster:
+          format: int64
+          type: integer
+        unitOtherIndex:
           format: int64
           type: integer
         unpublished:
@@ -16964,10 +17285,19 @@ components:
     Loadout:
       additionalProperties: false
       properties:
+        k:
+          items:
+            format: int64
+            type: integer
+          type:
+            - array
+            - "null"
         slot:
           format: int32
           minimum: 0
           type: integer
+        src:
+          type: string
         t:
           format: int64
           type: integer
@@ -21584,6 +21914,9 @@ components:
             format: int64
             type: integer
           type: object
+        unarmedGrants:
+          format: int64
+          type: integer
         unknownFamilies:
           format: int64
           type: integer
@@ -21597,6 +21930,7 @@ components:
         - weapons
         - items
         - unknownFamilies
+        - unarmedGrants
         - beforeOrigin
         - multiEvent
         - refused
@@ -22413,6 +22747,22 @@ components:
         - category
         - enabled
         - delivery
+      type: object
+    PresenceInterval:
+      additionalProperties: false
+      properties:
+        from:
+          format: int64
+          type: integer
+        to:
+          format: int64
+          type: integer
+        toMax:
+          format: int64
+          type: integer
+      required:
+        - from
+        - to
       type: object
     PresenceSnapshot:
       additionalProperties: false
@@ -23319,6 +23669,12 @@ components:
           $ref: '#/components/schemas/BombMatchStats'
         bounds:
           $ref: '#/components/schemas/Bounds'
+        bursts:
+          items:
+            $ref: '#/components/schemas/FireBurst'
+          type:
+            - array
+            - "null"
         coverage:
           $ref: '#/components/schemas/Coverage'
         durationMs:
@@ -23525,6 +23881,12 @@ components:
           additionalProperties:
             $ref: '#/components/schemas/VehicleLabel'
           type: object
+        vehicleScenery:
+          $ref: '#/components/schemas/VehicleScenery'
+        vehicleWeapons:
+          additionalProperties:
+            $ref: '#/components/schemas/VehicleWeapon'
+          type: object
         vehicles:
           items:
             $ref: '#/components/schemas/VehicleTrack'
@@ -23690,6 +24052,12 @@ components:
           type: integer
         name:
           type: string
+        presence:
+          items:
+            $ref: '#/components/schemas/PresenceInterval'
+          type:
+            - array
+            - "null"
         seat:
           format: int64
           type: integer
@@ -24154,7 +24522,34 @@ components:
         arrivants:
           format: int64
           type: integer
+        bornesDifferees:
+          format: int64
+          type: integer
+        botsSuccesseurs:
+          format: int64
+          type: integer
+        capacite:
+          format: int64
+          type: integer
+        chevauchements:
+          format: int64
+          type: integer
+        depassements:
+          format: int64
+          type: integer
+        entitesContestees:
+          format: int64
+          type: integer
+        entitesNonLiees:
+          format: int64
+          type: integer
         entrees:
+          format: int64
+          type: integer
+        identitesHorsRoster:
+          format: int64
+          type: integer
+        imagesClesDouteuses:
           format: int64
           type: integer
         lus:
@@ -24163,10 +24558,33 @@ components:
         occupantsMax:
           format: int64
           type: integer
+        placesEnTrop:
+          format: int64
+          type: integer
+        placesOuvertes:
+          format: int64
+          type: integer
+        placesTirs:
+          format: int64
+          type: integer
+        presences:
+          type: string
         presencesCloses:
           format: int64
           type: integer
+        presencesParLesVies:
+          format: int64
+          type: integer
+        relaisBornes:
+          format: int64
+          type: integer
         reprisesEcrites:
+          format: int64
+          type: integer
+        sansEquipe:
+          format: int64
+          type: integer
+        sansPlace:
           format: int64
           type: integer
         sansPresence:
@@ -24177,16 +24595,49 @@ components:
         sieges:
           format: int64
           type: integer
+        tirsContestes:
+          format: int64
+          type: integer
+        tirsIndexNonPlace:
+          type: boolean
+        tirsIndexTronque:
+          type: boolean
+        tirsParPlace:
+          format: int64
+          type: integer
+        trousDEntite:
+          format: int64
+          type: integer
       required:
         - entrees
         - sieges
         - lus
+        - placesTirs
         - apparies
+        - placesOuvertes
+        - sansPlace
         - reprisesEcrites
         - arrivants
         - presencesCloses
         - sansPresence
         - occupantsMax
+        - capacite
+        - depassements
+        - placesEnTrop
+        - sansEquipe
+        - identitesHorsRoster
+        - botsSuccesseurs
+        - presencesParLesVies
+        - relaisBornes
+        - chevauchements
+        - tirsContestes
+        - tirsParPlace
+        - presences
+        - entitesNonLiees
+        - entitesContestees
+        - trousDEntite
+        - imagesClesDouteuses
+        - bornesDifferees
       type: object
     SelectedTeammateData:
       additionalProperties: false
@@ -27438,6 +27889,9 @@ components:
         eventPacketsUnlocated:
           format: int64
           type: integer
+        forgottenBindings:
+          format: int64
+          type: integer
         intervals:
           format: int64
           type: integer
@@ -27464,6 +27918,18 @@ components:
           format: int64
           type: integer
         records:
+          format: int64
+          type: integer
+        refusedNewFalseReads:
+          format: int64
+          type: integer
+        refusedNewLostCreations:
+          format: int64
+          type: integer
+        refusedNewUndecided:
+          format: int64
+          type: integer
+        refusedNews:
           format: int64
           type: integer
         scanned:
@@ -30032,10 +30498,16 @@ components:
     TrackCoverage:
       additionalProperties: false
       properties:
+        avantCreation:
+          format: int64
+          type: integer
         gapMs:
           format: int64
           type: integer
         gaps:
+          format: int64
+          type: integer
+        horsEmprise:
           format: int64
           type: integer
         minPoints:
@@ -30053,6 +30525,15 @@ components:
         refusedPoints:
           format: int64
           type: integer
+        slotsArmes:
+          format: int64
+          type: integer
+        slotsDesarmes:
+          format: int64
+          type: integer
+        viesAvantPremiereCreation:
+          format: int64
+          type: integer
       required:
         - published
         - publishedPoints
@@ -30061,6 +30542,11 @@ components:
         - minPoints
         - gaps
         - gapMs
+        - avantCreation
+        - viesAvantPremiereCreation
+        - horsEmprise
+        - slotsArmes
+        - slotsDesarmes
       type: object
     Translocation:
       additionalProperties: false
@@ -30251,6 +30737,12 @@ components:
         deathsUnmatched:
           format: int64
           type: integer
+        echantillonsAuTraversDUnSilence:
+          format: int64
+          type: integer
+        echantillonsHorsEmprise:
+          format: int64
+          type: integer
         endDestroyed:
           format: int64
           type: integer
@@ -30310,7 +30802,16 @@ components:
         shotsAmbiguous:
           format: int64
           type: integer
+        shotsByUnit:
+          format: int64
+          type: integer
+        shotsByUnitNoRide:
+          format: int64
+          type: integer
         shotsNoRide:
+          format: int64
+          type: integer
+        shotsOnCarrier:
           format: int64
           type: integer
         shotsUnplaced:
@@ -30319,11 +30820,44 @@ components:
         shotsVehicleWeapon:
           format: int64
           type: integer
+        silencesNonTranches:
+          format: int64
+          type: integer
+        spawnsHorsEmprise:
+          format: int64
+          type: integer
+        turretCarrierBirthMismatch:
+          format: int64
+          type: integer
+        turretRides:
+          format: int64
+          type: integer
+        turretRidesAlreadyAboard:
+          format: int64
+          type: integer
+        turretRidesDropped:
+          format: int64
+          type: integer
+        turretRidesNotRideable:
+          format: int64
+          type: integer
+        turretRidesOutOfWindow:
+          format: int64
+          type: integer
+        turrets:
+          format: int64
+          type: integer
+        turretsOnCarrier:
+          format: int64
+          type: integer
         unknownChassis:
           additionalProperties:
             format: int64
             type: integer
           type: object
+        variants:
+          format: int64
+          type: integer
         vehiclesRidden:
           format: int64
           type: integer
@@ -30341,6 +30875,10 @@ components:
         - lives
         - published
         - noPosition
+        - echantillonsHorsEmprise
+        - spawnsHorsEmprise
+        - echantillonsAuTraversDUnSilence
+        - silencesNonTranches
         - merged
         - withSpawn
         - withChassis
@@ -30371,7 +30909,19 @@ components:
         - shotsAmbiguous
         - shotsUnplaced
         - shotsNoRide
+        - shotsByUnit
+        - shotsByUnitNoRide
         - shotsVehicleWeapon
+        - turrets
+        - turretsOnCarrier
+        - turretCarrierBirthMismatch
+        - turretRides
+        - turretRidesDropped
+        - turretRidesNotRideable
+        - turretRidesOutOfWindow
+        - turretRidesAlreadyAboard
+        - shotsOnCarrier
+        - variants
         - cycleLocations
         - cycles
         - cycleGaps
@@ -30426,6 +30976,21 @@ components:
         tinted:
           type: boolean
       type: object
+    VehicleLifeRef:
+      additionalProperties: false
+      properties:
+        gen:
+          format: int32
+          minimum: 0
+          type: integer
+        slot:
+          format: int32
+          minimum: 0
+          type: integer
+      required:
+        - slot
+        - gen
+      type: object
     VehicleRide:
       additionalProperties: false
       properties:
@@ -30450,6 +31015,8 @@ components:
         t1:
           format: int64
           type: integer
+        turret:
+          $ref: '#/components/schemas/VehicleLifeRef'
         xuid:
           type: string
       required:
@@ -30461,6 +31028,9 @@ components:
     VehicleSample:
       additionalProperties: false
       properties:
+        g:
+          format: int64
+          type: integer
         h:
           format: float
           type: number
@@ -30480,6 +31050,53 @@ components:
         - t
         - x
         - "y"
+      type: object
+    VehicleScenery:
+      additionalProperties: false
+      properties:
+        candidates:
+          format: int64
+          type: integer
+        floor:
+          type: string
+        hidden:
+          items:
+            $ref: '#/components/schemas/VehicleSceneryLife'
+          type:
+            - array
+            - "null"
+        inPlayArea:
+          format: int64
+          type: integer
+        zone:
+          type: string
+        zoneUnknown:
+          format: int64
+          type: integer
+      required:
+        - zone
+        - floor
+        - candidates
+        - inPlayArea
+        - zoneUnknown
+      type: object
+    VehicleSceneryLife:
+      additionalProperties: false
+      properties:
+        gen:
+          format: int32
+          minimum: 0
+          type: integer
+        reason:
+          type: string
+        slot:
+          format: int32
+          minimum: 0
+          type: integer
+      required:
+        - slot
+        - gen
+        - reason
       type: object
     VehicleSpawn:
       additionalProperties: false
@@ -30503,6 +31120,8 @@ components:
     VehicleTrack:
       additionalProperties: false
       properties:
+        carrier:
+          $ref: '#/components/schemas/VehicleLifeRef'
         chassis:
           type: string
         end:
@@ -30513,6 +31132,8 @@ components:
           format: int32
           minimum: 0
           type: integer
+        part:
+          type: string
         rides:
           items:
             $ref: '#/components/schemas/VehicleRide'
@@ -30543,6 +31164,8 @@ components:
         tEnd:
           format: int64
           type: integer
+        variant:
+          type: string
       required:
         - slot
         - gen
@@ -30550,6 +31173,51 @@ components:
         - t1
         - t1max
         - end
+      type: object
+    VehicleWeapon:
+      additionalProperties: false
+      properties:
+        en:
+          type: string
+        fire:
+          type: string
+        fr:
+          type: string
+        fx:
+          type: string
+        loop:
+          type: string
+        mount:
+          $ref: '#/components/schemas/VehicleWeaponMount'
+        sound:
+          type: string
+        tint:
+          type: string
+        vehicle:
+          type: string
+      required:
+        - vehicle
+        - en
+        - fr
+        - fire
+        - fx
+        - tint
+      type: object
+    VehicleWeaponMount:
+      additionalProperties: false
+      properties:
+        aim:
+          type: string
+        ax:
+          format: double
+          type: number
+        ay:
+          format: double
+          type: number
+      required:
+        - aim
+        - ax
+        - ay
       type: object
     VipCrownCoverage:
       additionalProperties: false
@@ -30709,6 +31377,9 @@ components:
       properties:
         from:
           type: string
+        k:
+          format: int64
+          type: integer
         kind:
           type: string
         slot:
@@ -30749,6 +31420,9 @@ components:
         taken:
           format: int64
           type: integer
+        unarmedGrants:
+          format: int64
+          type: integer
       required:
         - decoded
         - published
@@ -30757,6 +31431,7 @@ components:
         - taken
         - dropped
         - swapped
+        - unarmedGrants
       type: object
     WeaponDistanceRecordRow:
       additionalProperties: false

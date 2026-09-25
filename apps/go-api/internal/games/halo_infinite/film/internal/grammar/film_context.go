@@ -390,7 +390,7 @@ func (c *FilmContext) BipedSlots() SlotBand {
 	}
 	if !c.slotsLus {
 		if nums := c.ChunkNumbers(); len(nums) > 0 {
-			c.slots = bipedSlotBand(c.film, nums)
+			c.slots = bipedSlotBand(c, nums)
 		}
 		c.slotsLus = true
 	}

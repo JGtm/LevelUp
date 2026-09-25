@@ -8,7 +8,10 @@ package replay
 // rattaché, celui-ci ce que le PONT a su nommer. Déplacement PUR : aucune ligne de logique n'est
 // modifiée, seul l'emplacement change.
 
-import "log/slog"
+import (
+	"errors"
+	"log/slog"
+)
 
 // BridgeHealth résume la santé du pont slot -> joueur.
 //
@@ -34,6 +37,19 @@ type BridgeHealth struct {
 	// LivesNamed / LivesTotal : ce que le fil des morts a nommé.
 	LivesNamed int `json:"livesNamed"`
 	LivesTotal int `json:"livesTotal"`
+	// DeathsFeed dit CE QUE LA LECTURE DU FIL DES MORTS A RENDU (schema 69, lot M5.2 des retours
+	// rejeu du 2026-09-23) : `read` (au moins une mort lue), `empty` (le morceau des temps forts
+	// a ete lu et ne porte AUCUNE mort) ou `unreadable` (pas de morceau des temps forts, morceau
+	// absent ou illisible — cf. [ScanDeaths]). Absent = non mesure : aucune lecture de film
+	// derriere le document (positions fournies par l appelant, fil vide). Le rejeu DEPUIS LES
+	// FAITS publie le meme verdict que le decodage : les faits le portent (lot M8, 2026-09-24).
+	//
+	// POURQUOI IL EXISTE. Un fil illisible fait tomber toute la chaine d identite (calage
+	// d horloge, table d index, pont par morts, actions d objectif sans slot) ; avant ce champ, le
+	// document ne le disait nulle part — `ab526724` (film archive avant sa finalisation) ne se
+	// diagnostiquait qu avec les journaux de cuisson et le code. `empty` et `unreadable` ne sont
+	// pas la meme chose : un match sans mort est une mesure, un fil illisible est une panne.
+	DeathsFeed string `json:"deathsFeed,omitempty"`
 	// IndexReadings : combien de chunks de réplication ont livré la MÊME table identité ->
 	// index. Remplace la « marge » de l'ancienne résolution par choix.
 	IndexReadings int `json:"indexReadings"`
@@ -132,6 +148,47 @@ type BridgeHealth struct {
 	// de la décoration : un contrôle qui ne rejette jamais rien ne prouve rien. Mesuré sur
 	// sept films, 33 attributions pour 17 refus.
 	ClosedRefused int `json:"closedRefused"`
+}
+
+// Les trois issues de la lecture du fil des morts, publiees en `coverage.bridge.deathsFeed`.
+const (
+	// DeathsFeedRead : au moins une mort lue dans le morceau des temps forts.
+	DeathsFeedRead = "read"
+	// DeathsFeedEmpty : le morceau a ete lu, il ne porte aucune mort ([ErrFilDesMortsSansMort]).
+	DeathsFeedEmpty = "empty"
+	// DeathsFeedUnreadable : toute autre erreur de [ScanDeaths] — aucun morceau des temps forts
+	// parmi les morceaux types, morceau absent du film, evenements illisibles.
+	DeathsFeedUnreadable = "unreadable"
+)
+
+// lectureDuFilDesMorts classe l issue de [ScanDeaths] : une erreur n est pas un fil vide.
+func lectureDuFilDesMorts(deaths []Death, err error) string {
+	switch {
+	case err == nil && len(deaths) > 0:
+		return DeathsFeedRead
+	case err == nil, errors.Is(err, ErrFilDesMortsSansMort):
+		return DeathsFeedEmpty
+	default:
+		return DeathsFeedUnreadable
+	}
+}
+
+// deathsFeedPublie rend la valeur publiee de `coverage.bridge.deathsFeed`.
+//
+// LE VERDICT DU BALAYAGE PRIME (`Options.DeathsFeed`, pose par `FilmInputs.applyTo` — sur le
+// chemin du film comme sur celui des faits persistes, qui le portent depuis le lot M8). Sans
+// lui — document assemble depuis des positions fournies par l appelant —, un fil NON VIDE ne peut
+// venir que d une lecture reussie et se dit `read` ; un fil vide ne dit rien de sa cause, et le
+// champ se TAIT plutot que de choisir entre `empty` et `unreadable`.
+func deathsFeedPublie(verdict string, deaths int) string {
+	switch {
+	case verdict != "":
+		return verdict
+	case deaths > 0:
+		return DeathsFeedRead
+	default:
+		return ""
+	}
 }
 
 // VerdictNominal est le verdict d'un calque publiable sans réserve. Nommé plutôt que répété :

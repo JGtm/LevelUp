@@ -134,10 +134,17 @@ func (s *replayService) vehicleFamiliesQualifiees(ctx context.Context) map[strin
 
 // vehicleFamiliesUsed releve les familles employees par les vies, TRIEES (l ordre d une map ne
 // se publie pas), et compte les vies restees sans famille.
+//
+// LA VARIANTE COMPTE COMME UNE FAMILLE EMPLOYEE (schema 69) : c est elle qui nomme le sprite d un
+// Rockethog ou d un Gungoose (`VehicleTrack.Variant`), et son URL se compose exactement comme celle
+// d une famille — le lot A sert un sprite par variante.
 func vehicleFamiliesUsed(tracks []replay.VehicleTrack) ([]string, int) {
 	seen := map[string]bool{}
 	unnamed := 0
 	for _, tr := range tracks {
+		if tr.Variant != "" {
+			seen[tr.Variant] = true
+		}
 		if tr.Family == "" {
 			unnamed++
 			continue

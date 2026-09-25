@@ -31,7 +31,10 @@ package replay
 // les refs d armement du `vehi`, pas dans le chassis (V4 § 6, `REWORK_WARTHOG_GUNGOOSE_2026-09-01`
 // § 5). Le lot A sert bien un sprite par variante, mais aucun `MPPWord32` observe n a ete resolu
 // vers l une d elles : les entrees `rockethog` / `razorback` / `warthog_gauss` / `gungoose` de
-// l index de sprites restent donc SANS cle ici, plutot que devinees.
+// l index de sprites restent donc SANS cle ici, plutot que devinees. DEPUIS LE SCHEMA 69 (retours
+// du rejeu 2026-09-23, lot M4a) la variante se LIT AILLEURS que dans le chassis, et elle est
+// publiee a cote de la famille, jamais a sa place (`VehicleTrack.Variant`) : par la TOURELLE que
+// le chassis porte (`vehicle_turrets.go`) ou par l ARME qu il tire (`vehicleVariantByWeapon`).
 //
 // UN MEME VEHICULE PORTE PLUSIEURS `vehi`, ET CE N EST PAS UNE VARIANTE : C EST LE MODULE.
 //
@@ -55,10 +58,13 @@ package replay
 // que le manifeste lui rattache sont en table. Chaque entree ci-dessous cite sa piece.
 //
 // CE QUI N ENTRE PAS ICI : les tags `vehi` ENFANTS (tourelles et canons montes — `0000d4ff`,
-// `0000d500`, `64b925eb`, `bcfb852f`, `dd7f9102`), que le manifeste range sous « Falcon
-// (tourelle LMG) et autres objets-enfants » avec le verdict « PAS DE SON DE DESTRUCTION
-// PROPRE ». Un enfant n est pas un chassis : lui donner une famille ferait dessiner un vehicule
-// la ou il n y a qu une piece d armement. Aucun n a d ailleurs ete observe au parc.
+// `0000d500`, `64b925eb`, `bcfb852f`, `dd7f9102`, les tourelles du Falcon et du Wraith), que le
+// manifeste range sous « Falcon (tourelle LMG) et autres objets-enfants » avec le verdict « PAS DE
+// SON DE DESTRUCTION PROPRE ». Un enfant n est pas un chassis : lui donner une famille ferait
+// dessiner un vehicule la ou il n y a qu une piece d armement. ILS SONT OBSERVES AU PARC — le
+// commentaire d avant ce lot disait le contraire, et c etait faux (mesure du 2026-09-23 : 45 vies
+// de LAAG, 16 de lance-roquettes, 49 de tourelles du Falcon, 31 pieces du Wraith). Ils ont leur
+// PROPRE table, celle des pieces montees (`vehicle_turrets.go`), qui les pose sur leur porteur.
 //
 // VALEUR INCONNUE = FAMILLE VIDE, ET C EST UN REPLI NOMME (D14 du plan decodeur). Le vehicule
 // reste publie (sa trajectoire est vraie), sans sprite : le client dessine un marqueur neutre.
@@ -101,10 +107,19 @@ const (
 	familleSkiff    = "skiff"
 	familleShade    = "shade"
 	familleFalcon   = "falcon"
+	// LES VARIANTES (schema 69) : jamais une famille de chassis, toujours une `VehicleTrack.Variant`
+	// — le nom du sprite de l index du lot A, lu par la tourelle ou par l arme.
+	familleRockethog    = "rockethog"
+	familleWarthogGauss = "warthog_gauss"
+	familleGungoose     = "gungoose"
 	// familleTourelleAutoBannie n est PAS un vehicule : c est un ELEMENT DE CARTE (lot 1.9.9,
 	// decision utilisateur du 2026-09-14). Voir la table ci-dessous pour la preuve, et
 	// `config/titles/{slug}/mappings/replay_labels.toml` pour son libelle et sa nature publies.
 	familleTourelleAutoBannie = "tourelle_auto_bannie"
+	// familleTourelleFixe EST un poste de tir de la partie, pose par la carte et OCCUPABLE (lot
+	// M6.2 des retours du rejeu, 2026-09-24) : pilotable au sens de `vehicleFamilyIsRideable`,
+	// dessinee par le pictogramme de tourelle faute d asset (nature `fixed_turret` du titre).
+	familleTourelleFixe = "tourelle_fixe"
 )
 
 // vehicleFamilyByChassis associe le `MPPWord32` d un record de creation `ti=40` a la FAMILLE de
@@ -263,6 +278,23 @@ var vehicleFamilyByChassis = map[uint32]string{
 	// son film. `8aab20b4`, l autre chassis irresolu du parc, RESTE irresolu : l utilisateur ne
 	// l a pas vu, et on ne devine pas le second parce qu on a nomme le premier.
 	0x10754375: familleWraith,
+
+	// --- TOURELLE FIXE OCCUPABLE (retours du rejeu, lot M6.2, 2026-09-24) ---
+	//
+	// `3a8060e2`, sur Takamanohara : un objet POSE PAR LA CARTE (sonde C2 du 2026-09-23 : il porte
+	// l index de placement du bloc `object-multiplayer-properties`, recree aux slots 770 et 771 de
+	// `7fce3219` sous le MEME index que le slot 768) auquel la publication attribuait deja un
+	// occupant. TROIS PIECES :
+	//   1. l UTILISATEUR (2026-09-24) : c est une des deux tourelles fixes gatling / mortier,
+	//      symetriques en hauteur, de Takamanohara ;
+	//   2. le tag `vehi` (`CONTACT_ARMES_GUNGOOSE_2026-09-02.md` : maillage `turret_g`, mode
+	//      `0x1c645961`) declare les `weap` `4d39877f` et `3d30b955` ;
+	//   3. le script Lua global nomme `3d30b955` `gatling_mortar` (sonde CA9 du 2026-09-23,
+	//      `SONDE_CA9_objet_00007CA9.md`, decouvertes).
+	// UNE FAMILLE NOMMEE ET PILOTABLE : le poste de tir d un joueur, pas un element de carte. Aucun
+	// sprite n existe (`sprite = false`) : le titre la qualifie `fixed_turret` et le client la
+	// dessine par le pictogramme de tourelle, occupant compris.
+	0x3a8060e2: familleTourelleFixe,
 }
 
 // vehicleFamilyOf rend la famille de chassis d un `MPPWord32`, ou la chaine VIDE quand la table

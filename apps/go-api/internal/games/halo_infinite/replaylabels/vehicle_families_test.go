@@ -94,6 +94,23 @@ func TestTourelleAutoBannieQualifieeParLeTitre(t *testing.T) {
 	}
 }
 
+// TestTourelleFixeQualifieeParLeTitre : la famille du lot M6.2 (2026-09-24, tourelles fixes
+// gatling / mortier de Takamanohara) est declaree, bilingue, de nature `fixed_turret` — occupable,
+// dessinee par le pictogramme de tourelle faute d asset.
+func TestTourelleFixeQualifieeParLeTitre(t *testing.T) {
+	cat, err := Load(repoRoot(t), "halo_infinite")
+	if err != nil {
+		t.Fatalf("chargement du catalogue : %v", err)
+	}
+	info, ok := cat.VehicleFamilies["tourelle_fixe"]
+	if !ok {
+		t.Fatal("famille `tourelle_fixe` non qualifiee par replay_labels.toml")
+	}
+	if info.Kind != mappings.VehicleFamilyKindFixedTurret || info.En == "" || info.Fr == "" || info.Sprite {
+		t.Errorf("tourelle fixe = %+v, attendu fixed_turret bilingue sans sprite", info)
+	}
+}
+
 // lireIndexDesSprites rend l index des assets de vehicule du titre, keye par famille.
 func lireIndexDesSprites(t *testing.T, root, slug string) map[string]spriteIndexEntry {
 	t.Helper()

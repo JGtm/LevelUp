@@ -81,7 +81,7 @@ const (
 // chronologique — l archive d abord, la suite vivante ensuite.
 var fichiersDeChroniqueGrammar = []string{"rev_chronique_archive.go", "rev_chronique_archive_2.go",
 	"rev_chronique_archive_3.go", "rev_chronique_archive_4.go", "rev_chronique_archive_5.go",
-	"rev_chronique.go"}
+	"rev_chronique_archive_6.go", "rev_chronique.go"}
 
 // fichiersHorsGrammaire : les fichiers qui PORTENT la revision et sa chronique ne sont pas de la
 // grammaire — ils la DECRIVENT.

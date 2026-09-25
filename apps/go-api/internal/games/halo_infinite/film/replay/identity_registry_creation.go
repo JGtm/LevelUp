@@ -47,6 +47,13 @@ package replay
 // cause `index_hors_table`, JAMAIS rattachee. Quand le film DECLARE un bot a cet index
 // (`BOT_METADATA`), la lecture se compte a part (`IndexBot`) et n'alarme pas — on sait alors qui
 // occupe le corps, on n'a simplement pas de xuid a poser.
+//
+// # L'INDEX QUE PLUSIEURS OCCUPANTS SE RELAIENT (lot M2.3, 2026-09-23)
+//
+// Quand l'index lu est declare par PLUSIEURS occupants (bots de BOT_METADATA, humains de la table),
+// le corps se lit a l'ENTITE `ti=9` de cet index qui vit a sa CREATION, et l'entite a son occupant
+// (cf. identity_registry_entites.go). C'est une lecture du film, comptee `ParEntite` : les neuf
+// corps de bots d'index 8 de `b1ad85eb` y passent de `index_hors_table` a `direct`.
 
 import (
 	"log/slog"
@@ -80,10 +87,13 @@ type creationReport struct {
 	// IndexBot : lectures dont l'index est celui d'un bot DECLARE. Comptees a part, jamais
 	// alarmees (verdict I0) : le corps est identifie, il n'a simplement pas de xuid.
 	IndexBot int
+	// ParEntite : vies d'un index PARTAGE que l'entite `ti=9` vivante a la creation de leur corps
+	// a nommees (lot M2.3). SOUS-COMPTE de `Direct` + `Propagated`.
+	ParEntite int
 	// Recycled : slots qui portent PLUSIEURS records de creation, donc plusieurs corps
 	// successifs. Le temoin du rebouclage du pool de handles — celui que le lot E2 avait
 	// mesure a zero sur cinq films et que `084a804d` porte a 123 sur 256 slots. Il n'alarme
-	// pas : c'est un fait du film, et la regle de partage le lit (cf. indexAuDebutDe).
+	// pas : c'est un fait du film, et la regle de partage le lit (cf. recordAuDebutDe).
 	Recycled int
 	// causes : indice de vie -> cause de non-resolution. Une vie absente de cette table est
 	// nommee ; une vie presente ne l'est pas, et la table DIT pourquoi.
@@ -117,7 +127,7 @@ func (r IdentityRegistry) CauseNonResolue(i int) canonical.LinkMethod {
 // arrivent anonymes. Elle rend le rapport, jamais une decision — le registre en tire la
 // couverture et les alarmes.
 func nommerViesParCreations(lives []lifeSpan, creations []grammar.BipedCreation,
-	idx PlayerIndexTable, bots []BotIdentity) creationReport {
+	idx PlayerIndexTable, bots []BotIdentity, scan grammar.PlayerEntityScan) creationReport {
 	rep := creationReport{Records: len(creations), causes: map[int]canonical.LinkMethod{},
 		indexLu: map[int]uint32{}}
 	if len(lives) == 0 {
@@ -138,7 +148,8 @@ func nommerViesParCreations(lives []lifeSpan, creations []grammar.BipedCreation,
 		}
 		return rep
 	}
-	versXUID, versBot := indexToXUIDOf(idx.ByXUID), indexDesBotsDeclares(bots)
+	res := resolutionDIndex{versXUID: indexToXUIDOf(idx.ByXUID), versBot: indexDesBotsDeclares(bots),
+		parEntite: lireEntitesDesIndexPartages(scan, bots, idx)}
 	for slot, vies := range indicesDeViesParSlot(lives) {
 		c, ok := corps[slot]
 		if !ok {
@@ -147,16 +158,18 @@ func nommerViesParCreations(lives []lifeSpan, creations []grammar.BipedCreation,
 			}
 			continue
 		}
-		rep.appliquerAuCorps(lives, vies, c, resolutionDIndex{versXUID: versXUID, versBot: versBot})
+		rep.appliquerAuCorps(lives, vies, c, res)
 	}
 	return rep
 }
 
-// resolutionDIndex porte les deux resolutions d un index de participant. Une structure plutot que
-// parametres de plus : le depot borne a cinq, et les deux vont toujours ensemble.
+// resolutionDIndex porte les resolutions d un index de participant. Une structure plutot que des
+// parametres de plus : le depot borne a cinq, et elles vont toujours ensemble.
 type resolutionDIndex struct {
 	versXUID map[int]uint64
 	versBot  map[int]bool
+	// parEntite : les index que plusieurs occupants se relaient, lus par entite (lot M2.3).
+	parEntite entitesDesIndexPartages
 }
 
 // indicesDeViesParSlot groupe les INDICES des vies par slot, dans l'ordre chronologique.
@@ -184,18 +197,18 @@ func indicesDeViesParSlot(lives []lifeSpan) map[uint32][]int {
 func (r *creationReport) appliquerAuCorps(lives []lifeSpan, vies []int, c corpsLu, t resolutionDIndex) {
 	ouvertes := c.viesOuvertes(lives, vies)
 	for _, i := range vies {
-		pi, ouverte := ouvertes[i]
+		d, ouverte := ouvertes[i]
 		if !ouverte {
-			occupant, connu := c.indexAuDebutDe(lives[i])
+			occupant, connu := c.recordAuDebutDe(lives[i])
 			if !connu {
 				// AUCUN CORPS ETABLI A CET INSTANT, ET DES LECTURES DIVERGENTES : departager
 				// serait un choix. On se tait.
 				r.causes[i] = canonical.MethodDivergentReadings
 				continue
 			}
-			pi = occupant
+			d = occupant
 		}
-		if !r.poser(lives, i, int(pi), t) {
+		if !r.poser(lives, i, d, t) {
 			continue
 		}
 		if ouverte {
@@ -211,7 +224,14 @@ func (r *creationReport) appliquerAuCorps(lives []lifeSpan, vies []int, c corpsL
 // poser resout l'index en xuid et l'ecrit sur la vie. Rend false — avec sa cause — quand l'index
 // n'est pas dans la table publiee : un participant que l'artefact ne nomme pas ne se rattache
 // JAMAIS au premier venu (verdict I0).
-func (r *creationReport) poser(lives []lifeSpan, i, pi int, t resolutionDIndex) bool {
+func (r *creationReport) poser(lives []lifeSpan, i int, d dateDeCreation, t resolutionDIndex) bool {
+	pi := int(d.index)
+	if o, lu := t.parEntite.occupantA(pi, uint64(d.tUS)); lu {
+		// L'INDEX EST PARTAGE, ET L'ENTITE VIVANTE A LA CREATION DU CORPS DIT QUI (lot M2.3).
+		lives[i].xuid, lives[i].bid = o.xuid, o.bid
+		r.ParEntite++
+		return true
+	}
 	if t.versBot[pi] {
 		// BOT DECLARE : le corps est identifie, il n'y a pas de xuid a poser. La lecture se
 		// compte, la vie garde ses autres voies, et rien n'alarme (verdict I0). L'index est
@@ -238,31 +258,32 @@ func (r *creationReport) refuserFauteDeTable(i, pi int) {
 
 // viesOuvertes apparie chaque record du corps a LA VIE QU'IL OUVRE : la premiere vie du slot que
 // le record ne trouve pas deja terminee, et qu'aucun record anterieur n'a deja ouverte. Rend
-// l'index de participant par indice de vie.
-func (c corpsLu) viesOuvertes(lives []lifeSpan, vies []int) map[int]uint32 {
-	out := map[int]uint32{}
+// le record (index de participant et date) par indice de vie.
+func (c corpsLu) viesOuvertes(lives []lifeSpan, vies []int) map[int]dateDeCreation {
+	out := map[int]dateDeCreation{}
 	for _, d := range c.dates {
 		for _, i := range vies {
 			if _, deja := out[i]; deja || lives[i].to < d.tUS {
 				continue
 			}
-			out[i] = d.index
+			out[i] = d
 			break
 		}
 	}
 	return out
 }
 
-// indexAuDebutDe rend l'index de participant du corps que le slot portait AU DEBUT de cette vie
-// : celui du DERNIER record de creation date au plus tard a cet instant.
+// recordAuDebutDe rend le record de creation du corps que le slot portait AU DEBUT de cette vie :
+// le DERNIER date au plus tard a cet instant — son index de participant et sa DATE, celle a
+// laquelle l'entite d'un index partage se lit (lot M2.3).
 //
 // C'est la lecture du recyclage : un record ouvre un corps, ce corps tient le slot jusqu'au
 // record suivant. Le second retour est faux dans le seul cas ou aucun corps n'est etabli — la
 // vie precede le premier record du slot — ET ou les records de ce slot divergent, donc ou le
 // premier record n'est pas une reponse mais un choix. Sur un slot a lecture unique, la vie
-// anterieure au record garde cet unique index : c'est le MEME corps, la creation precedant
+// anterieure au record garde cet unique record : c'est le MEME corps, la creation precedant
 // toujours la replication (lot E2, cas a2).
-func (c corpsLu) indexAuDebutDe(l lifeSpan) (uint32, bool) {
+func (c corpsLu) recordAuDebutDe(l lifeSpan) (dateDeCreation, bool) {
 	k := -1
 	for j := range c.dates {
 		if c.dates[j].tUS > l.from {
@@ -271,12 +292,12 @@ func (c corpsLu) indexAuDebutDe(l lifeSpan) (uint32, bool) {
 		k = j
 	}
 	if k >= 0 {
-		return c.dates[k].index, true
+		return c.dates[k], true
 	}
-	if len(c.index) == 1 {
-		return c.index[0], true
+	if len(c.index) == 1 && len(c.dates) > 0 {
+		return c.dates[0], true
 	}
-	return 0, false
+	return dateDeCreation{}, false
 }
 
 // corpsLu est ce que les records d'UN slot etablissent : les index lus, et leurs dates.
@@ -387,7 +408,7 @@ func (r creationReport) alarmerSurLesRefus(matchID string, causes canonical.Unre
 	slog.Info("rejeu : lien direct corps -> joueur",
 		"match_id", matchID, "records", r.Records, "corps", r.Slots,
 		"direct", r.Direct, "propage", r.Propagated, "indexBot", r.IndexBot,
-		"slotsRecycles", r.Recycled)
+		"parEntite", r.ParEntite, "slotsRecycles", r.Recycled)
 	if causes.IndexOutOfTable > 0 {
 		slog.Warn("rejeu : index de participant LU mais absent de la table publiee — vies NON "+
 			"rattachees (verdict I0 : participant que PlayerIndexTable ne nomme pas)",

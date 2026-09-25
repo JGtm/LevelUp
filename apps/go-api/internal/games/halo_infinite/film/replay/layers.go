@@ -74,9 +74,11 @@ package replay
 // exactement la distinction que `coverage` tient aujourd hui a coups de blocs `omitempty`, et
 // qu un tableau vide seul ne sait pas dire.
 //
-// # LES QUATRE CALQUES A LA REQUETE N Y ENTRENT JAMAIS
+// # LES SIX CALQUES A LA REQUETE N Y ENTRENT JAMAIS
 //
-// `mapObjectives`, `mapWeaponPads`, `weaponTiers` et `vehicleLabels` sont resolus PAR LE SERVICE,
+// `mapObjectives`, `mapWeaponPads`, `weaponTiers`, `vehicleLabels`, — depuis le schema 69 —
+// `vehicleWeapons` (registre des armes de vehicule) et `vehicleScenery` (decor hors de la zone
+// jouable, lot M7 du 2026-09-24) sont resolus PAR LE SERVICE,
 // a la requete : la cuisson ne les ecrit pas (garde
 // `TestDocumentShapeCalquesALaRequeteRestentHorsCuisson`, `document_shape_test.go`). Ils ne sont
 // ni dans la table, ni dans les exemptions.
@@ -136,6 +138,7 @@ var couchesDesCalques = map[string]string{
 	"originMs":            grammar.Rev, // build_pistes.go `resolveOriginMs` <- FilmInputs.FilmClockOriginUS + fil des morts
 	"t0FilmMs":            grammar.Rev, // build_pistes.go `DetectT0Film` <- pistes publiees
 	"shots":               grammar.Rev, // build_pistes.go + vehicle_shots.go <- FilmInputs.Fire
+	"bursts":              grammar.Rev, // build_calques.go `buildFireBursts` <- FilmInputs.ContinuousFire (vue C)
 	"loadouts":            grammar.Rev, // build_pistes.go <- FilmInputs.Loadouts
 	"projectiles":         grammar.Rev, // build_pistes.go <- FilmInputs.Projectiles
 	"grenades":            grammar.Rev, // build_pistes.go <- FilmInputs.Grenades

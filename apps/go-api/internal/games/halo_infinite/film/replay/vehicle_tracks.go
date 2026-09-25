@@ -116,11 +116,19 @@ func buildVehicleTracks(
 	cov.Lives = len(lives)
 	cov.DeathsRead, cov.DeathsMatched = deathTally.read, deathTally.matched
 	cov.DeathsUnmatched, cov.DeathsTailDesync = deathTally.unmatched, deathTally.tailDesync
-	spawns := vehicleSpawnsByLife(scan.Creations)
+	spawns := vehicleSpawnsByLife(scan.Creations, lives)
 	bySlot := vehiclePositionsBySlot(scan.Positions)
+	// F-2 AVANT TOUT USAGE DU NUAGE (lot M1 des retours du rejeu) : un echantillon atteint ou quitte
+	// a travers un silence avec un deplacement n est pas une position (cf.
+	// positions_porte_vehicules.go) — ni pour les episodes d occupation, ni pour la trajectoire,
+	// ni pour la derniere preuve de presence. La naissance de la vie y departage.
+	var silences bilanSilences
+	bySlot, silences = ecarterLesSejoursAuTraversDUnSilence(bySlot, lives, spawns, clock.fb)
+	cov.EchantillonsAuTraversDUnSilence, cov.SilencesNonTranches = silences.ecartes, silences.nonTranches
+	anchors := vehicleBoardingAnchors{bySlot: vehiclePositionsBySlot(bipeds), clock: clock}
 	rides, st := buildVehicleRides(vehicleRideInputs{
-		vehBySlot: bySlot, bipeds: bipeds, events: scan.Events, reg: reg, lives: lives,
-		occupancy: scan.Occupancy,
+		vehBySlot: bySlot, bipeds: bipeds, bipedsBySlot: anchors.bySlot, events: scan.Events,
+		reg: reg, lives: lives, occupancy: scan.Occupancy,
 		aimBySlot: vehicleAimBySlot(scan.Aims),
 		drawable:  vehicleDrawableLives(lives, spawns, bySlot), clock: clock,
 	})
@@ -137,6 +145,9 @@ func buildVehicleTracks(
 	// LES RELAIS SE FUSIONNENT AVANT LE COMPTAGE : la couverture doit decrire ce qui est PUBLIE,
 	// pas ce qui a ete assemble. `Published` baisse donc exactement de `Merged`.
 	out, cov.Merged = mergeVehicleRelays(out)
+	// LES PIECES MONTEES SE POSENT SUR LEUR PORTEUR AVANT LE COMPTAGE, pour la meme raison que
+	// les relais : les episodes d artilleur changent de vie (cf. vehicle_turrets.go).
+	poseTurretsOnCarriers(out, anchors, clock.fb).applyTo(&cov)
 	tallyVehicleCoverage(out, &cov, clock.fb)
 	tallyVehicleEnds(out, &cov)
 	return out, cov, st
@@ -196,13 +207,26 @@ func assignVehicleWindows(lives []vehicleLife) {
 	}
 }
 
-// vehicleSpawnsByLife retient, par vie, le record de creation le PLUS PRECOCE : c est la
-// naissance. Les records suivants d une meme vie sont des re-annonces, et le mot d identite y est
-// constant (gate 1 de V1.5 : 100 % de constance par vie sur les deux films mesures).
-func vehicleSpawnsByLife(cre []types.EquipmentCreation) map[types.EquipmentLifeKey]types.EquipmentCreation {
+// vehicleSpawnsByLife retient, par vie, le record de creation le PLUS PRECOCE qui ne suit pas sa fin :
+// c est la naissance. Les records suivants d une meme vie sont des re-annonces, et le mot d identite
+// y est constant (gate 1 de V1.5 : 100 % de constance par vie sur les deux films mesures).
+//
+// UN RECORD POSTERIEUR A LA FIN DE LA VIE (`hiUS` : la premiere image-cle qui ne la recense plus, ou
+// le premier recensement de la vie suivante du slot) N EST PAS SA NAISSANCE : la generation ne fait
+// que 2 bits, et ce record est celui d un objet ulterieur du meme (slot, gen). Il ne pesait pas tant
+// que le plus precoce gagnait ; il le peut depuis que F-1 ecarte une fausse naissance anterieure
+// (revue adverse du lot M1, 2026-09-24).
+func vehicleSpawnsByLife(cre []types.EquipmentCreation, lives []vehicleLife) map[types.EquipmentLifeKey]types.EquipmentCreation {
+	fin := make(map[types.EquipmentLifeKey]uint64, len(lives))
+	for _, l := range lives {
+		fin[l.key] = l.hiUS
+	}
 	out := map[types.EquipmentLifeKey]types.EquipmentCreation{}
 	for _, c := range cre {
 		k := types.EquipmentLifeKey{Slot: c.Slot, Gen: c.Gen}
+		if hi, vie := fin[k]; !vie || c.TimestampUS > hi {
+			continue
+		}
 		if prev, ok := out[k]; ok && prev.TimestampUS <= c.TimestampUS {
 			continue
 		}
@@ -257,7 +281,8 @@ func vehicleTrackOf(
 		// le pion d un joueur reel passe a proximite. Vu par l utilisateur en visionnage
 		// (2026-09-02) sur `fccc61cd`, ou un prop de la famille `falcon` — quasi immobile, vivant
 		// tout le match — s etait vu attribuer un trajet. Le calque web filtre deja ces familles
-		// a l affichage ; la garde est ici AUSSI pour que le document ne l affirme pas.
+		// a l affichage ; la garde est ici AUSSI pour que le document ne l affirme pas. Le Falcon
+		// n en fait plus partie depuis le 2026-09-24 (cf. `vehicleFamillesNonPilotables`).
 		tr.Rides = nil
 		return tr, true
 	}
@@ -270,12 +295,21 @@ func vehicleTrackOf(
 // sont pas jouables en multiplayer a ce jour (sauf parties custom locales, mais on ne les gere
 // pas dans l app, par decision) ».
 //
+// LE FALCON EN EST SORTI LE 2026-09-24 (decision utilisateur : « les Pelican c est toujours du
+// decor ; le Falcon ca depend »). Le 2026-09-02 l y avait mis sur la foi des Falcon de DECOR de
+// Behemoth (`0d76e8f1` : 0,3-0,8 m/s sur toute leur vie, vivants du debut a la fin du film) ; mais
+// le Falcon est PILOTABLE en multijoueur, avec ses artilleurs (pieces `1a043c29` / `f4c45d71`,
+// `vehicle_turrets.go`). Ses occupants sont tenus par deux gardes generales, pas par sa famille
+// (`vehicle_turrets_boarding.go`, `vehicle_rides_next_life.go`). SON DECOR N EST DECIDE PAR AUCUNE
+// REGLE a ce jour : celle du decor de carte (lot M7) exige une pose SEULE, qu aucun Falcon ne
+// remplit (ceux de Behemoth planent) — question ouverte a l utilisateur. Le Pelican, le Phantom
+// et le Skiff restent : la famille suffit.
+//
 // ELLES RESTENT PUBLIEES : leur vie est vraie, et le client choisit de ne pas les dessiner. Ce
 // qui est interdit ici, c est de leur attribuer un OCCUPANT — une affirmation, elle, qui serait
 // fausse. La meme liste vit cote web (`vehiclesLayer.FAMILLES_NON_JOUABLES`) ; les deux se
 // justifient : le document refuse de l affirmer, le calque refuse de le dessiner.
 var vehicleFamillesNonPilotables = map[string]bool{
-	familleFalcon:  true,
 	famillePelican: true,
 	famillePhantom: true,
 	familleSkiff:   true,
@@ -403,6 +437,7 @@ func vehicleSamplesOf(
 		lastSeen uint64
 		heading  float32
 		hasHead  bool
+		lacuneMS int // la lacune que le PROCHAIN echantillon publie portera (cf. VehicleSample.G)
 	)
 	for _, p := range pos {
 		if p.TimestampUS < l.loUS || p.TimestampUS > l.hiUS {
@@ -411,13 +446,18 @@ func vehicleSamplesOf(
 		if h, ok := vehicleHeadingOf(p); ok {
 			heading, hasHead = h, true
 		}
+		if lastSeen > 0 && int64(p.TimestampUS)-int64(lastSeen) > lifeGapUS {
+			// LACUNE : meme regle et meme mesure (instants BRUTS) que `Point.G` des traces.
+			lacuneMS = int((int64(p.TimestampUS) - int64(lastSeen)) / 1000)
+		}
 		lastSeen = p.TimestampUS
 		fr := clock.frame(p.TimestampUS)
 		if lastFr >= 0 && fr-lastFr < vehicleSampleStrideFrames {
 			continue
 		}
 		lastFr = fr
-		s := VehicleSample{T: fr, X: round2(p.X), Y: round2(p.Y), Z: round2(p.Z)}
+		s := VehicleSample{T: fr, X: round2(p.X), Y: round2(p.Y), Z: round2(p.Z), G: lacuneMS}
+		lacuneMS = 0
 		if hasHead {
 			s.H = headingForJSON(heading)
 		}

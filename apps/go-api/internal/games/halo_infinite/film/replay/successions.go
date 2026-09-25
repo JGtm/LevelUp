@@ -25,8 +25,19 @@ package replay
 // PLUSIEURS RELAIS DANS UN MATCH (« ça peut arriver des dizaines de fois ») : les
 // successions se traitent par instant d'arrivée croissant, chaque vie réclamée sort du
 // pot commun — deux chaînes ne peuvent pas revendiquer la même vie.
+//
+// C'EST UN REPLI, NOMMÉ ET COMPTÉ DEPUIS LE LOT M2.3 (2026-09-23,
+// `repli_vie_de_bot_par_relais_de_la_base`) : le film nomme désormais le corps d'un bot par
+// l'entité `ti=9` qui vit à sa création (identity_registry_entites.go), et la base est en RETARD
+// d'environ 20 s sur le film (médiane −22,3 s sur 45 relais) — la fenêtre d'arrivée ci-dessous
+// manquait la première vie du remplaçant. Ce qui reste à ce repli, ce sont les vies que la lecture
+// n'a pas su nommer.
 
-import "log/slog"
+import (
+	"log/slog"
+
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
+)
 
 // Succession est un RELAIS lu dans la base : un remplaçant (bot) arrive à cet instant de
 // l'axe du match. L'assembleur (replaybuild) la construit depuis les faits de participation
@@ -51,24 +62,32 @@ const (
 	successionGapMaxUS = 25_000_000 // réapparition mesurée 8-10 s ; 25 s couvre les modes lents
 )
 
+// calageDesRelais porte la grille du document, le calage du fil des morts sur elle et le compteur
+// de replis de la cuisson — une structure plutôt que cinq paramètres : le dépôt borne à cinq.
+type calageDesRelais struct {
+	origin, step uint64
+	// deathOffsetMS est le calage axe-match -> axe-film du pont ; offsetMatches son témoin.
+	deathOffsetMS int64
+	offsetMatches int
+	fb            *fallback.Compteur
+}
+
 // attributeSuccessions pose le nom du remplaçant sur les vies que la chaîne lui rend.
-// `deathOffsetMS` est le calage axe-match -> axe-film du pont ; sans lui (0 apparié), rien
-// n'est attribué — les deux horloges ne se parlent pas. `fire` (les tirs, indexés par
-// joueur de film) sert à LEVER une contestation : quand deux vies candidates naissent dans
-// la même fenêtre (deux remplaçants simultanés), celle qui CONTIENT un tir de l'indice du
-// remplaçant est la sienne — un tir est une lecture, pas une devinette. Deux candidates
-// tirées, ou aucune : la chaîne s'arrête.
-func attributeSuccessions(tracks []Track, successions []Succession,
-	origin, step uint64, deathOffsetMS int64, offsetMatches int, fire []FireEventRef) {
-	if len(successions) == 0 || offsetMatches == 0 {
+// Sans calage (0 apparié), rien n'est attribué — les deux horloges ne se parlent pas. `fire`
+// (les tirs, indexés par joueur de film) sert à LEVER une contestation : quand deux vies
+// candidates naissent dans la même fenêtre (deux remplaçants simultanés), celle qui CONTIENT un
+// tir de l'indice du remplaçant est la sienne — un tir est une lecture, pas une devinette. Deux
+// candidates tirées, ou aucune : la chaîne s'arrête.
+func attributeSuccessions(tracks []Track, successions []Succession, c calageDesRelais, fire []FireEventRef) {
+	if len(successions) == 0 || c.offsetMatches == 0 {
 		return
 	}
 	claimed, halted, liftedByFire := 0, 0, 0
 	for _, s := range successions {
-		switchUS := (s.SwitchMatchMS + deathOffsetMS) * 1000
+		switchUS := (s.SwitchMatchMS + c.deathOffsetMS) * 1000
 		from, to := switchUS-successionLeadUS, switchUS+successionFirstUS
 		for {
-			i, lifted := candidateIn(tracks, origin, step, from, to, s.FilmIndex, fire)
+			i, lifted := candidateIn(tracks, c.origin, c.step, from, to, s.FilmIndex, fire)
 			if i < 0 {
 				halted++
 				break
@@ -78,10 +97,11 @@ func attributeSuccessions(tracks []Track, successions []Succession,
 			}
 			tracks[i].Bot = s.BotName
 			claimed++
-			endUS := int64(origin) + int64(tracks[i].EndFrame)*int64(step)
+			endUS := int64(c.origin) + int64(tracks[i].EndFrame)*int64(c.step)
 			from, to = endUS+successionGapMinUS, endUS+successionGapMaxUS
 		}
 	}
+	c.fb.DeclencheN(fallback.NomVieDeBotParRelaisDeLaBase, claimed)
 	slog.Info("rejeu : fermetures par relais", "successions", len(successions),
 		"viesAttribuees", claimed, "chainesArretees", halted, "contestationsLeveesParTir", liftedByFire)
 }

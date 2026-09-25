@@ -10,66 +10,69 @@ package replaydoc
 
 // ReplayDocument est le rejeu 2D sérialisé d'un match.
 type ReplayDocument struct {
-	SchemaVersion       int                     `json:"schemaVersion"`
-	MatchID             string                  `json:"matchId"`
-	TitleSlug           string                  `json:"titleSlug"`
-	FrameCount          int                     `json:"frameCount"`
-	Bounds              Bounds                  `json:"bounds"`
-	Tracks              []Track                 `json:"tracks"`
-	FrameIntervalMS     int                     `json:"frameIntervalMs,omitempty"`
-	DurationMS          int                     `json:"durationMs,omitempty"`
-	OriginMs            *int64                  `json:"originMs,omitempty"`
-	T0FilmMs            *int64                  `json:"t0FilmMs,omitempty"`
-	Geometry            []MapObject             `json:"geometry,omitempty"`
-	GeometryBounds      *Bounds                 `json:"geometryBounds,omitempty"`
-	Structure           []Surface               `json:"structure,omitempty"`
-	StructureBounds     *Bounds                 `json:"structureBounds,omitempty"`
-	Shots               []Shot                  `json:"shots,omitempty"`
-	Loadouts            []Loadout               `json:"loadouts,omitempty"`
-	Inventory           []Inventory             `json:"inventory,omitempty"`
-	GrenadeLabels       []Label                 `json:"grenadeLabels,omitempty"`
-	Abilities           []AbilityRead           `json:"abilities,omitempty"`
-	GrenadeReads        []GrenadeRead           `json:"grenadeReads,omitempty"`
-	AbilityLabels       map[string]Label        `json:"abilityLabels,omitempty"`
-	EquipmentEpisodes   []EquipmentEpisode      `json:"equipmentEpisodes,omitempty"`
-	Stances             []Stance                `json:"stances,omitempty"`
-	GrappleLines        []GrappleLine           `json:"grappleLines,omitempty"`
-	EquipmentPlacements []EquipmentPlacement    `json:"equipmentPlacements,omitempty"`
-	WeaponChanges       []WeaponChange          `json:"weaponChanges,omitempty"`
-	Pickups             []Pickup                `json:"pickups,omitempty"`
-	EquipmentChanges    []EquipmentChange       `json:"equipmentChanges,omitempty"`
-	Translocations      []Translocation         `json:"translocations,omitempty"`
-	AbilityImpulses     []AbilityImpulse        `json:"abilityImpulses,omitempty"`
-	AbilityCharges      []AbilityCharge         `json:"abilityCharges,omitempty"`
-	GroundWeapons       []GroundWeapon          `json:"groundWeapons,omitempty"`
-	Vehicles            []VehicleTrack          `json:"vehicles,omitempty"`
-	VehicleLabels       map[string]VehicleLabel `json:"vehicleLabels,omitempty"`
-	VehicleCycles       []VehicleCycle          `json:"vehicleCycles,omitempty"`
-	WeaponPads          []WeaponPad             `json:"weaponPads,omitempty"`
-	PadPickups          []PadPickup             `json:"padPickups,omitempty"`
-	Grenades            []Grenade               `json:"grenades,omitempty"`
-	Projectiles         []Projectile            `json:"projectiles,omitempty"`
-	WeaponLabels        map[string]WeaponLabel  `json:"weaponLabels,omitempty"`
-	KillEffects         map[string]string       `json:"killEffects,omitempty"`
-	NeutralDeaths       []NeutralDeath          `json:"neutralDeaths,omitempty"`
-	Roster              []RosterEntry           `json:"roster,omitempty"`
-	MapObjectives       *MapObjectives          `json:"mapObjectives,omitempty"`
-	MapWeaponPads       *MapWeaponPads          `json:"mapWeaponPads,omitempty"`
-	WeaponTiers         *WeaponTiersInfo        `json:"weaponTiers,omitempty"`
-	Objectives          []ObjectiveAction       `json:"objectives,omitempty"`
-	ScoreTimeline       *ScoreTimeline          `json:"scoreTimeline,omitempty"`
-	FlagCarries         []FlagCarry             `json:"flagCarries,omitempty"`
-	FlagReturnZone      *FlagReturnZone         `json:"flagReturnZone,omitempty"`
-	ObjectiveObjects    []ObjectiveObjectLife   `json:"objectiveObjects,omitempty"`
-	ZoneStates          []ZoneState             `json:"zoneStates,omitempty"`
-	VipCrown            []VipPeriod             `json:"vipCrown,omitempty"`
-	BombArmings         []BombArming            `json:"bombArmings,omitempty"`
-	SkullCarries        []SkullCarry            `json:"skullCarries,omitempty"`
-	BombCarries         []BombCarry             `json:"bombCarries,omitempty"`
-	BombStats           *BombMatchStats         `json:"bombStats,omitempty"`
-	BombEvents          []BombEvent             `json:"bombEvents,omitempty"`
-	Coverage            *Coverage               `json:"coverage,omitempty"`
-	Identity            *IdentitySection        `json:"identity,omitempty"`
+	SchemaVersion       int                      `json:"schemaVersion"`
+	MatchID             string                   `json:"matchId"`
+	TitleSlug           string                   `json:"titleSlug"`
+	FrameCount          int                      `json:"frameCount"`
+	Bounds              Bounds                   `json:"bounds"`
+	Tracks              []Track                  `json:"tracks"`
+	FrameIntervalMS     int                      `json:"frameIntervalMs,omitempty"`
+	DurationMS          int                      `json:"durationMs,omitempty"`
+	OriginMs            *int64                   `json:"originMs,omitempty"`
+	T0FilmMs            *int64                   `json:"t0FilmMs,omitempty"`
+	Geometry            []MapObject              `json:"geometry,omitempty"`
+	GeometryBounds      *Bounds                  `json:"geometryBounds,omitempty"`
+	Structure           []Surface                `json:"structure,omitempty"`
+	StructureBounds     *Bounds                  `json:"structureBounds,omitempty"`
+	Shots               []Shot                   `json:"shots,omitempty"`
+	Bursts              []FireBurst              `json:"bursts,omitempty"`
+	Loadouts            []Loadout                `json:"loadouts,omitempty"`
+	Inventory           []Inventory              `json:"inventory,omitempty"`
+	GrenadeLabels       []Label                  `json:"grenadeLabels,omitempty"`
+	Abilities           []AbilityRead            `json:"abilities,omitempty"`
+	GrenadeReads        []GrenadeRead            `json:"grenadeReads,omitempty"`
+	AbilityLabels       map[string]Label         `json:"abilityLabels,omitempty"`
+	EquipmentEpisodes   []EquipmentEpisode       `json:"equipmentEpisodes,omitempty"`
+	Stances             []Stance                 `json:"stances,omitempty"`
+	GrappleLines        []GrappleLine            `json:"grappleLines,omitempty"`
+	EquipmentPlacements []EquipmentPlacement     `json:"equipmentPlacements,omitempty"`
+	WeaponChanges       []WeaponChange           `json:"weaponChanges,omitempty"`
+	Pickups             []Pickup                 `json:"pickups,omitempty"`
+	EquipmentChanges    []EquipmentChange        `json:"equipmentChanges,omitempty"`
+	Translocations      []Translocation          `json:"translocations,omitempty"`
+	AbilityImpulses     []AbilityImpulse         `json:"abilityImpulses,omitempty"`
+	AbilityCharges      []AbilityCharge          `json:"abilityCharges,omitempty"`
+	GroundWeapons       []GroundWeapon           `json:"groundWeapons,omitempty"`
+	Vehicles            []VehicleTrack           `json:"vehicles,omitempty"`
+	VehicleLabels       map[string]VehicleLabel  `json:"vehicleLabels,omitempty"`
+	VehicleWeapons      map[string]VehicleWeapon `json:"vehicleWeapons,omitempty"`
+	VehicleScenery      *VehicleScenery          `json:"vehicleScenery,omitempty"`
+	VehicleCycles       []VehicleCycle           `json:"vehicleCycles,omitempty"`
+	WeaponPads          []WeaponPad              `json:"weaponPads,omitempty"`
+	PadPickups          []PadPickup              `json:"padPickups,omitempty"`
+	Grenades            []Grenade                `json:"grenades,omitempty"`
+	Projectiles         []Projectile             `json:"projectiles,omitempty"`
+	WeaponLabels        map[string]WeaponLabel   `json:"weaponLabels,omitempty"`
+	KillEffects         map[string]string        `json:"killEffects,omitempty"`
+	NeutralDeaths       []NeutralDeath           `json:"neutralDeaths,omitempty"`
+	Roster              []RosterEntry            `json:"roster,omitempty"`
+	MapObjectives       *MapObjectives           `json:"mapObjectives,omitempty"`
+	MapWeaponPads       *MapWeaponPads           `json:"mapWeaponPads,omitempty"`
+	WeaponTiers         *WeaponTiersInfo         `json:"weaponTiers,omitempty"`
+	Objectives          []ObjectiveAction        `json:"objectives,omitempty"`
+	ScoreTimeline       *ScoreTimeline           `json:"scoreTimeline,omitempty"`
+	FlagCarries         []FlagCarry              `json:"flagCarries,omitempty"`
+	FlagReturnZone      *FlagReturnZone          `json:"flagReturnZone,omitempty"`
+	ObjectiveObjects    []ObjectiveObjectLife    `json:"objectiveObjects,omitempty"`
+	ZoneStates          []ZoneState              `json:"zoneStates,omitempty"`
+	VipCrown            []VipPeriod              `json:"vipCrown,omitempty"`
+	BombArmings         []BombArming             `json:"bombArmings,omitempty"`
+	SkullCarries        []SkullCarry             `json:"skullCarries,omitempty"`
+	BombCarries         []BombCarry              `json:"bombCarries,omitempty"`
+	BombStats           *BombMatchStats          `json:"bombStats,omitempty"`
+	BombEvents          []BombEvent              `json:"bombEvents,omitempty"`
+	Coverage            *Coverage                `json:"coverage,omitempty"`
+	Identity            *IdentitySection         `json:"identity,omitempty"`
 	// Layers dit, CALQUE PAR CALQUE, SOUS QUELLE REVISION DE COUCHE il a ete produit (schema 62).
 	// La cle est la balise JSON du calque a cette racine ; la valeur est `source-...`,
 	// `profile-...`, `grammar-...`, `killsource-...` ou `publication-<schemaVersion>`.
@@ -77,7 +80,8 @@ type ReplayDocument struct {
 	// Objet ABSENT = artefact anterieur au schema 62 ; entree ABSENTE dans un objet PRESENT = ce
 	// calque n a pas ete produit, et c est une reponse, pas un trou ; entree presente = produit
 	// sous la revision nommee. Les calques resolus a la requete (`mapObjectives`, `mapWeaponPads`,
-	// `weaponTiers`, `vehicleLabels`) n y figurent jamais : la cuisson ne les ecrit pas.
+	// `weaponTiers`, `vehicleLabels`, `vehicleWeapons`, `vehicleScenery`) n y figurent jamais : la cuisson ne les
+	// ecrit pas.
 	Layers map[string]string `json:"layers,omitempty"`
 }
 
@@ -141,17 +145,34 @@ type RosterEntry struct {
 	// (schema 50). Vide pour un humain, et vide pour un bot dont la declaration ne portait pas
 	// d identifiant : un `bid(0.0)` invente joindrait deux bots distincts.
 	Bid string `json:"bid,omitempty"`
-	// Seat est LE SIEGE : la fiche que cette entree occupe a l ecran (lot 1.9.14). Il vaut
-	// `filmIndex` sauf quand l entree CONTINUE le siege d un partant ; `seatSource` dit alors si
-	// le film a ECRIT la reprise (`lu`) ou si un appariement ordinal l a deduite (`apparie`).
-	// Deux entrees de meme `seat` sont deux occupants SUCCESSIFS d une meme fiche, et leurs
-	// presences — les vies de `tracks[]` — ne se recouvrent pas.
+	// Seat est LA PLACE : la fiche que cette entree occupe a l ecran (lot 1.9.14 ; lot M2.3,
+	// schema 69 : un siege de la TABLE du debut du film, ou une place qu un arrivant ouvre quand la
+	// table n en portait pas assez pour son equipe). Il vaut `filmIndex` pour les occupants
+	// du depart, et la place du partant pour son remplacant. Deux entrees de meme `seat` sont
+	// deux occupants SUCCESSIFS d une meme place, et leurs `presence` ne se recouvrent pas.
 	//
 	// TOUJOURS EMIS : le siege 0 est un siege comme un autre, et `omitempty` l effacerait.
 	Seat int `json:"seat"`
-	// SeatSource : `lu` (l index que le film ecrit) ou `apparie` (l appariement ordinal par
-	// camp, un repli nomme et compte). Vide sur un artefact anterieur au lot 1.9.14.
+	// SeatSource : `lu` (l index que le film ecrit), `tirs` (la place lue dans l index de tireur
+	// de ses tirs), `apparie` (chainage par equipe, un repli nomme et compte), `ouverte` (une place
+	// ouverte sous la capacite estimee de son equipe, un repli nomme et compte) ou `index` (aucune
+	// place : le siege est l index, compte). Vide sur un artefact anterieur au lot 1.9.14.
 	SeatSource string `json:"seatSource,omitempty"`
+	// Presence : les intervalles pendant lesquels l entree TIENT sa place (schema 69). C est elle
+	// qui dit qu un joueur est parti : la fiche s affiche de `from` a `toMax` (a defaut `to`), la
+	// place reste VIDE ensuite jusqu au remplacant. Absente : jamais present, ou artefact
+	// anterieur au schema 69 (le client retombe sur l enveloppe des vies).
+	Presence []PresenceInterval `json:"presence,omitempty"`
+}
+
+// PresenceInterval est UN intervalle de presence d une entree de roster, en frames, bornes
+// incluses : `to` est la derniere frame CERTAINE (`to < from` : aucune, l occupant n a ete vu
+// qu avant l origine du document), `toMax` la derniere ou il PEUT encore etre la (l entite ne se
+// lit qu aux images-cles) ; absent quand il vaut `to`.
+type PresenceInterval struct {
+	From  int  `json:"from"`
+	To    int  `json:"to"`
+	ToMax *int `json:"toMax,omitempty"`
 }
 
 // Shot est un tir décodé, placé à la position de son tireur.
@@ -170,6 +191,8 @@ type Loadout struct {
 	T    int      `json:"t"`
 	Slot uint32   `json:"slot"`
 	W    []string `json:"w"`
+	Src  string   `json:"src,omitempty"`
+	K    []int    `json:"k,omitempty"`
 }
 
 // Grenade est un lancer de grenade, situé dans le temps et l'espace.
@@ -235,7 +258,8 @@ type WeaponLabel struct {
 // `Kind`, `En` et `Fr` sont OPTIONNELS et presque toujours vides : le nom d une famille de
 // vehicule est un nom propre du jeu, qui ne se traduit pas, et la cle de la table EST ce nom. Ils
 // ne se remplissent que pour les familles que le titre QUALIFIE dans son manifeste — la tourelle
-// automatique bannie (`kind = "map_element"`), aujourd hui la seule.
+// automatique bannie (`kind = "map_element"`) et, depuis le 2026-09-24 (lot M6.2), la tourelle fixe
+// occupable (`kind = "fixed_turret"`).
 type VehicleLabel struct {
 	Img    string `json:"img,omitempty"`
 	Tinted bool   `json:"tinted,omitempty"`

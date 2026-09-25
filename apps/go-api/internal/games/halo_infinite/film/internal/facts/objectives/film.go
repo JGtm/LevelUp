@@ -78,7 +78,10 @@ type manifestChunk struct {
 // `FilmSource` et itérait l'index du MANIFESTE : un fichier de chunk présent au cache mais
 // absent du manifeste n'était jamais lu. Le film chargé par `source.LoadDir`, lui, porte
 // TOUS les fichiers présents. Sans ce filtre, ces chunks-là seraient balayés avec un `start_ms`
-// de zéro — donc datés faux. Un film du cache est dans ce cas (`7b0d89c4`, chunks 31 et 32).
+// de zéro — donc datés faux. Un film du cache A ÉTÉ dans ce cas (`7b0d89c4`, chunks 31 et 32 au
+// 2026-09-02 : un film archivé avant sa finalisation, restauré complet le 2026-09-16) ; depuis le
+// lot L3 du 2026-09-23, la cuisson refuse un tel film avant de l'ouvrir, et ce filtre reste la
+// garde de datation des films chargés hors d'elle.
 //
 // Un film sans aucune métadonnée de manifeste rend une liste VIDE : c'est le seul résultat
 // honnête (rien n'est datable), et [chunksDatables] le journalise plutôt que de le taire.

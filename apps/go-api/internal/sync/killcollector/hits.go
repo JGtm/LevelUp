@@ -32,12 +32,13 @@ package killcollector
 // AUTRE champ du record de tir (decodeFireEvent, bits 36-40 >>1 = 4 bits) que l indice que
 // resolvePlayerIndices indexe (5 bits). VERDICT MESURE (TestWeaponIndexNumDenomEquivalence, package
 // analysis) : le 4 bits n etait que la MOITIE BASSE du champ. La cle est desormais
-// decfilm.FireEvent.ShooterIndex5 (bits 35-39, R(5)), ALIGNEE au bit pres sur
+// l indice de tireur sur CINQ bits (bits 35-39 sur la disposition canonique ; lu par la grammaire du
+// record depuis le lot M4b), ALIGNE au bit pres sur
 // weaponscan.FireEvent.FilmIndex5 (le denominateur match_weapon_shots) : mismatch 0 sur 4342 records
 // BTB correles + tous les records arene. Num et denom keyent DESORMAIS IDENTIQUE. Sous 17 joueurs les
 // deux lectures coincidaient deja (arene) ; au-dela (BTB 4f77afc1, lobby 24), le 4 bits saturait a 15
 // et fusionnait 8 paires de joueurs — d ou une precision fausse. Corrige au Lot 3 (ScanFilmWeaponShots
-// key sur ShooterIndex5). Le compteur `killsource_hits_indices_non_resolus` reste le garde-fou en prod.
+// key sur les cinq bits). Le compteur `killsource_hits_indices_non_resolus` reste le garde-fou en prod.
 //
 // BEST-EFFORT ASSUME : tout echec (film absent du disque, scan casse, carte inconnue) se journalise
 // et se compte, jamais il n avale la passe des morts (deja ecrites, justes).

@@ -128,7 +128,12 @@ func (f *fetcherFilms) GetFilmChunks(ctx context.Context, matchID string) ([]hal
 	if err := ctx.Err(); err != nil {
 		return nil, false, err
 	}
-	return []haloclient.FilmChunk{{Index: 0, ChunkType: 2, Data: []byte("x")}}, true, nil
+	// UN FILM FINALISE (lot L3, 2026-09-23) : le writer du cache refuse une liste sans morceau
+	// des temps forts, et ces tests-ci portent sur la cuisson, pas sur cette regle.
+	return []haloclient.FilmChunk{
+		{Index: 0, ChunkType: haloclient.FilmChunkTypeReplicationData, Data: []byte("x")},
+		{Index: 1, ChunkType: haloclient.FilmChunkTypeHighlightEvents, Data: []byte("tf")},
+	}, true, nil
 }
 
 func (f *fetcherFilms) ordre() []string {

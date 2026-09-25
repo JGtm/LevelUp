@@ -26,6 +26,11 @@
  * compté. Le bandeau est alors absent — même doctrine qu'en tête de colonne
  * (`ReplayTeamHeader`).
  *
+ * UNE SÉRIE SANS CAMP LE TAIT AUSSI (retours du rejeu 2026-09-23, lot L1.2). Quand le film n'a
+ * pas su dire quel camp porte une série (`coverage.score.teamIdentity = "unresolved"`), aucun
+ * des deux camps ne la retrouve : le bandeau affichait « 0 — 0 » tout le match (7 documents
+ * du parc, dont fb1a1a72). Dès qu'une série publiée n'a pas de camp, il est absent.
+ *
  * DEUX CAMPS, PAS UN DE PLUS, PAS UN DE MOINS. La forme demandée n'a que deux barres ; elle
  * ne peut donc pas dire un mode à trois camps sans nommer arbitrairement UN adversaire parmi
  * plusieurs, ni un FFA, où chacun joue pour soi. Dans ces cas la lecture est `null` et le
@@ -127,8 +132,14 @@ type AllyIndex = ReadonlyMap<string, { ally: boolean }>
 
 /**
  * readScoreBanner rend la lecture du bandeau, ou `null` quand il ne doit pas se rendre :
- * calque sans aucun camp, mode qui n'oppose pas exactement deux camps, ou côté allié
+ * calque sans aucun camp, série publiée sans camp, mode qui n'oppose pas exactement deux camps, ou côté allié
  * indéterminable (cf. en-tête).
+ *
+ * TROIS LECTEURS, UNE RÈGLE (revue RR-L1-PARC-01, 2026-09-23) : le bandeau
+ * (`ReplayScoreBanner`), le panneau de victoire (`ReplayVictoryOverlay`, ligne de score finale)
+ * et l'export vidéo (`buildOverlayPanelSource`). Ces deux derniers ne lisent le calque qu'à
+ * défaut du score servi par l'API ; sur une série publiée sans camp, ils taisent donc la ligne
+ * de score au lieu d'écrire « 0 — 0 », comme le bandeau (6 documents au parc du 23/09).
  */
 export function readScoreBanner(
   timeline: ReplayScoreTimelineReady | undefined,
@@ -137,6 +148,7 @@ export function readScoreBanner(
   frame: number,
 ): ScoreBannerReading | null {
   if (!timeline || timeline.teams.length === 0) return null
+  if (timeline.teams.some((t) => t.teamId == null)) return null
   const camps = identifiedCamps(scoreboard)
   if (camps.length !== 2) return null
   const allyIdx = allySideIndex(scoreboard, allies, camps)

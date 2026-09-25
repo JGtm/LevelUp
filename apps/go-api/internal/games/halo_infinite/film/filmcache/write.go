@@ -12,16 +12,26 @@ package filmcache
 //
 // CONTRAT D'ECRITURE : les chunks d'abord, le manifeste EN DERNIER (le manifeste est le
 // marqueur de commit : Open ne lit rien sans lui, donc une ecriture interrompue laisse
-// des chunks orphelins invisibles, jamais un film a moitie lisible). Un manifeste DEJA
-// PRESENT n'est jamais reecrit : celui du cache historique porte un blob_prefix CDN que
+// des chunks orphelins invisibles, jamais un film a moitie lisible). Un manifeste FINALISE
+// deja present n'est jamais reecrit : celui du cache historique porte un blob_prefix CDN que
 // le notre n'aurait pas, et l'ecraser perdrait le repli reseau des chunks manquants.
+//
+// SEUL UN FILM FINALISE SE VALIDE (lot L3, 2026-09-23 — cf. finalise.go). Une liste sans
+// morceau de temps forts est refusee AVANT toute ecriture ([ErrFilmNonFinalise]) : ni
+// manifeste, ni morceau orphelin. Et un manifeste deja present SANS temps forts — ecrit avant
+// cette regle, `ab526724` le 2026-09-22 — est la SEULE reecriture permise : il est remplace par
+// la liste finalisee qui le complete, a condition qu'elle en soit un SUR-ENSEMBLE EXACT par
+// index ([ErrManifesteDivergent] sinon, et rien n'est touche).
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"levelup/go-api/internal/platform/atomicfile"
 )
 
 // EnsureDirs cree les deux dossiers du cache et rend la racine prete a l emploi.
@@ -55,12 +65,31 @@ type WriteChunk struct {
 	Data       []byte
 }
 
-// Write persiste un film complet dans le cache : les fichiers de chunks manquants, puis
-// le manifeste s'il n'existe pas encore. Idempotent : un chunk deja present sur disque
-// n'est pas reecrit (le film est immuable cote serveur).
+// ErrManifesteDivergent : un manifeste NON FINALISE deja present ne se complete que par une liste
+// qui en est un SUR-ENSEMBLE EXACT — chaque entree deja validee retrouvee au meme index, avec le
+// meme type, le meme debut et la meme duree. Une divergence dit que les morceaux deja ecrits ne
+// decrivent peut-etre plus le meme film : rien n'est ecrit, et l'appelant le journalise.
+var ErrManifesteDivergent = errors.New("filmcache: la liste ne complete pas exactement le manifeste partiel deja present")
+
+// Write persiste un film FINALISE dans le cache : les fichiers de chunks manquants, puis
+// le manifeste s'il n'existe pas encore (ou s'il faut completer un manifeste partiel).
+// Idempotent : un chunk deja present sur disque n'est pas reecrit (le film est immuable
+// cote serveur).
+//
+// Refus, TOUS AVANT LA MOINDRE ECRITURE : liste vide, film non finalise
+// ([ErrFilmNonFinalise]), manifeste partiel que la liste ne complete pas exactement
+// ([ErrManifesteDivergent]), manifeste present mais illisible.
 func Write(root, shortID string, chunks []WriteChunk) error {
 	if len(chunks) == 0 {
 		return fmt.Errorf("filmcache: aucun chunk a ecrire pour %s", shortID)
+	}
+	if !Finalise(chunks, typeAEcrire) {
+		return fmt.Errorf("filmcache: %s (%d morceaux) : %w", shortID, len(chunks), ErrFilmNonFinalise)
+	}
+	manifestPath := ManifestPath(root, shortID)
+	ecrire, err := manifesteAEcrire(manifestPath, chunks)
+	if err != nil {
+		return fmt.Errorf("filmcache: %s : %w", shortID, err)
 	}
 	dir := ChunkDir(root, shortID)
 	if err := os.MkdirAll(dir, 0o755); err != nil {
@@ -75,11 +104,47 @@ func Write(root, shortID string, chunks []WriteChunk) error {
 			return fmt.Errorf("filmcache: ecriture du chunk %d de %s : %w", c.Index, shortID, err)
 		}
 	}
-
-	manifestPath := ManifestPath(root, shortID)
-	if _, err := os.Stat(manifestPath); err == nil {
-		return nil // manifeste historique conserve (blob_prefix CDN)
+	if !ecrire {
+		return nil // manifeste finalise deja present (historique : blob_prefix CDN)
 	}
+	return ecrireManifeste(manifestPath, shortID, chunks)
+}
+
+// manifesteAEcrire decide du sort du manifeste, SANS rien ecrire : true quand il est absent, ou
+// quand il est PARTIEL et que `chunks` (finalisee) le complete exactement ; false quand un
+// manifeste finalise est deja la.
+func manifesteAEcrire(manifestPath string, chunks []WriteChunk) (bool, error) {
+	raw, err := os.ReadFile(manifestPath) //nolint:gosec // chemin compose par ManifestPath
+	if errors.Is(err, os.ErrNotExist) {
+		return true, nil
+	}
+	if err != nil {
+		return false, fmt.Errorf("lecture du manifeste existant : %w", err)
+	}
+	var existant writeManifestJSON
+	if err := json.Unmarshal(raw, &existant); err != nil {
+		return false, fmt.Errorf("manifeste existant illisible (%s) : %w", manifestPath, err)
+	}
+	if Finalise(existant.Chunks, typeDuManifeste) {
+		return false, nil
+	}
+	parIndex := make(map[int]WriteChunk, len(chunks))
+	for _, c := range chunks {
+		parIndex[c.Index] = c
+	}
+	for _, e := range existant.Chunks {
+		c, ok := parIndex[e.Index]
+		if !ok || c.ChunkType != e.ChunkType || c.StartMS != e.StartMS || c.DurationMS != e.DurationMS {
+			return false, fmt.Errorf("%w (entree %d)", ErrManifesteDivergent, e.Index)
+		}
+	}
+	return true, nil
+}
+
+// ecrireManifeste pose le marqueur de commit, ATOMIQUEMENT : il peut desormais REMPLACER un
+// manifeste partiel, et une ecriture interrompue ne doit laisser ni l'ancien tronque ni un
+// nouveau illisible.
+func ecrireManifeste(manifestPath, shortID string, chunks []WriteChunk) error {
 	if err := os.MkdirAll(filepath.Dir(manifestPath), 0o755); err != nil {
 		return fmt.Errorf("filmcache: creation du dossier de manifestes : %w", err)
 	}
@@ -93,11 +158,15 @@ func Write(root, shortID string, chunks []WriteChunk) error {
 	if err != nil {
 		return fmt.Errorf("filmcache: serialisation du manifeste %s : %w", shortID, err)
 	}
-	if err := os.WriteFile(manifestPath, blob, 0o644); err != nil {
+	if err := atomicfile.WriteFile(manifestPath, blob, 0o644); err != nil {
 		return fmt.Errorf("filmcache: ecriture du manifeste %s : %w", shortID, err)
 	}
 	return nil
 }
+
+// typeAEcrire / typeDuManifeste : les accesseurs de type que [Finalise] recoit.
+func typeAEcrire(c WriteChunk) int             { return c.ChunkType }
+func typeDuManifeste(c writeManifestChunk) int { return c.ChunkType }
 
 // writeManifestJSON reprend la forme du manifeste historique (manifestJSON cote lecture,
 // + duration_ms que le cache Python ecrivait aussi). blob_prefix est volontairement

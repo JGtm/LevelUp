@@ -148,8 +148,7 @@ func collectFuzzSeeds() ([][]byte, error) {
 		switch {
 		case p.Type == PacketTypeKeyframe && keyframe == nil:
 			keyframe = pay
-		case p.Type == PacketTypeDelta && len(pay) > 0 &&
-			int(pay[0]>>1) == FireEventType && int(pay[0])&1 == 0 && fire == nil:
+		case p.Type == PacketTypeDelta && fire == nil && estUnTir(pay):
 			fire = pay
 		case p.Type == PacketTypeDelta && other == nil:
 			other = pay
@@ -185,4 +184,10 @@ func min(a, b int) int {
 		return a
 	}
 	return b
+}
+
+// estUnTir dit si le payload porte un record de tir (type 36) EN TETE, par la grammaire.
+func estUnTir(pay []byte) bool {
+	typ, present := PacketHeadEventType(pay)
+	return present && typ == TypeTirArme
 }

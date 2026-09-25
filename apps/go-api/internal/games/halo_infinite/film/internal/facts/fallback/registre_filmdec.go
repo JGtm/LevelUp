@@ -327,4 +327,61 @@ var registreFilmdec = []Repli{
 		CompteurBranche: false,
 		CibleComptage:   comptageParFilmContext,
 	},
+	{
+		Nom:  "repli_ancre_d_image_cle_par_election",
+		Fait: "le record SUIVANT de la table d image-cle, quand aucun voisin immediat (slot+1, generation 1) ne suit et qu aucun en-tete exact de bipede ne precede le candidat retenu",
+		Mecanisme: "election sur la fenetre de 120 000 bits : consecutif d abord, puis generation basse, puis SLOT BAS, puis bit bas (`kfCand.betterThan`) ; " +
+			"depuis le lot D-fix (2026-09-24), l elu qu un record PROUVE par la grammaire du film contredit (ordre des bits et des slots inverse) est refuse et l election reprend sans lui (`grammar/keyframe_world_preuve.go`, compte `coverage.keyframes.refutations`)",
+		// LECTURE NON PORTEE : le film ECRIT la table comme une chaine (`FUN_142e2bfd0` enchaine
+		// les entrees, une par entite vivante) et la marche deterministe qui la suivrait
+		// (`WalkKeyframeRecords`) ne ferme pas encore tous les archetypes. C est une dette nommee.
+		Condition: CondLectureNonPortee,
+		// APRES LECTURE : le voisin immediat et le recalage sur l en-tete exact d un bipede sont
+		// tentes d abord ; l election n entre que si les deux se taisent.
+		Ordre: OrdreApresLecture,
+		Sites: []Site{{
+			Fichier: pkgFilmdec + "keyframe_world.go",
+			Ancre:   "iss.dec = kfElection // repli nomme `repli_ancre_d_image_cle_par_election`",
+		}, {
+			Fichier: "internal/games/halo_infinite/film/replay/film_scan.go",
+			Ancre:   "s.opt.Fallbacks.DeclencheN(fallback.NomAncreDImageCleParElection, marche.Elections)",
+		}},
+		DatePose: "2026-09-23",
+		// POSE PAR LE LOT M3.1 DE LA CAMPAGNE « RETOURS REJEU » : l election etait la regle
+		// UNIQUE du balayeur, muette ; elle devient le repli d une lecture (voisin, recalage) et se
+		// compte. Son defaut est MESURE (sonde P2, 81c02726 morceau 9 et a0c36016 morceau 2 : une
+		// fausse ancre de slot bas, prise dans le corps du dernier bipede, elue devant les vrais
+		// bipedes) ; le recalage le ferme pour les bipedes, pas pour les autres archetypes
+		// (minibobine bcb6d393, image-cle 0 : le record ti=9 slot 1297 perd contre la fausse
+		// ancre 192/ti 1 de son propre corps). LE LOT D-fix (2026-09-24) FERME CE CAS SANS SEUIL :
+		// la table est a slots croissants, donc un candidat que la grammaire du film PROUVE (sa
+		// marche d etat complet, contenu compris, ferme sur l en-tete valide suivant) interdit
+		// tout elu qui contredit cet ordre avec lui — la fausse ancre 192 (dans le corps du
+		// record 1298) est refusee devant les records 1280..1298 prouves, et l election reprend.
+		// L election reste le repli : elle decide encore la ou aucun record prouve ne la contredit.
+		CibleRetrait:    "la marche deterministe (`WalkKeyframeRecords`, cadre d etat complet de l ecrivain) fermant tous les archetypes des bobines par build",
+		CritereRetrait:  "`KeyframeClosure` a 100 % sur les sept bobines par build ET 0 election comptee sur le corpus du gate de rejeu",
+		CompteurBranche: true,
+	},
+	{
+		Nom:  "repli_physique_de_type_de_vehicule_supposee",
+		Fait: "la porte du corps de ti=40 i34 vehicle-type-physics (l octet +0x818 du vehicule, que le deserialiseur FUN_142f02498 et l ecrivain FUN_142f04e90 testent) est POSEE quand le masque annonce le composant",
+		Mecanisme: "le corps est lu : R(1) mode, puis la paire avant/haut (FUN_140c5f938) et la vitesse angulaire (FUN_14076e1c8) du mode ; " +
+			"prouve par l oracle de cadrage (1cd3848a, fenetre de la LAAG : 0 -> 765 paquets sur 785 dont la vue C ferme au bit pres)",
+		// LECTURE NON PORTEE : l octet +0x818 n est ecrit par aucun record du flux lu (ni i34, ni
+		// i33 qui le teste aussi) ; il est pose quand le jeu construit le vehicule.
+		Condition: CondLectureNonPortee,
+		Ordre:     OrdreSansLecture,
+		Sites: []Site{{
+			Fichier: pkgFilmdec + "composants_vue_b_m4b.go",
+			Ancre:   "func consumeVehicleTypePhysics(br *Lecteur) {",
+		}, {
+			Fichier: "internal/games/halo_infinite/film/replay/film_scan_mouvement.go",
+			Ancre:   "s.opt.Fallbacks.DeclencheN(fallback.NomPhysiqueDeTypeDeVehiculeSupposee, st.VehicleTypePhysicsAssumed)",
+		}},
+		DatePose:        "2026-09-25",
+		CibleRetrait:    "la lecture de l ecrivain de l octet +0x818 du vehicule (Ghidra : construction du vehicule depuis son tag), qui fait de la porte une lecture",
+		CritereRetrait:  "porte lue a l ecrivain ET 0 lecture supposee comptee sur le corpus du gate de rejeu",
+		CompteurBranche: true,
+	},
 }

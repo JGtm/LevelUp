@@ -15,16 +15,18 @@ import type { AssetMeta } from '@/lib/api/types'
  * `AssetDrawer` reste monté en permanence dans `AppShell` (translaté hors écran quand
  * fermé, jamais démonté) : le doublon apparaît donc sur TOUTE page, rejeu compris.
  *
- * ROOT CAUSE, CÔTÉ SERVEUR (Go, hors périmètre — cf. `.ai/thought_log.md` 2026-09-10) :
- * `MetadataRepo.ListMapsByTitle` dédoublonne par `SELECT DISTINCT ON (m.name_canonical)`,
- * PAS par `map_asset_id`. Si le catalogue porte deux libellés distincts pour le MÊME
- * `map_asset_id`, la requête rend deux lignes de même `id` sous deux noms — ce n'est
- * donc PAS une clé composite qui masquerait un doublon de données : c'est un doublon
- * RÉEL du même asset, qu'il faut réellement retirer, pas seulement re-clé.
+ * CÔTÉ SERVEUR, DEPUIS LORS : le dépôt `MetadataRepo.ListMapsByTitle` rend UNE ligne
+ * par asset (`DISTINCT ON (m.map_asset_id)`, décision D15 du 2026-09-13), et le service
+ * `AssetService.ListMaps` rend UNE carte par VISUEL (URL d'image résolue, lot rr/L4 du
+ * 2026-09-23 : plusieurs assets — versions republiées, copies Forge — partagent la même
+ * image et donnaient des cartes identiques, par exemple « Solution » en trois
+ * exemplaires). Le serveur ne rend donc plus deux fois le même `id`. Ce filtre reste
+ * le filet de la clé React : il ne dédoublonne PAS par visuel — cette règle (et le
+ * choix du représentant) vit dans le service, là où l'image est résolue.
  *
  * Garder le PREMIER exemplaire est déterministe : l'ordre reçu est celui du tri serveur
- * (`ORDER BY name_canonical, name_en`), stable d'un appel à l'autre — le résultat ne
- * dépend d'aucun hasard de réseau ou de pagination.
+ * (nom anglais, puis `id`), stable d'un appel à l'autre — le résultat ne dépend
+ * d'aucun hasard de réseau ou de pagination.
  */
 export function dedupeAssetsById(items: readonly AssetMeta[]): AssetMeta[] {
   const seen = new Set<string>()

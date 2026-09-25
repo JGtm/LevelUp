@@ -174,8 +174,8 @@ func topWeaponByXUID(rows []domain.BulkWeaponKillRaw) map[string]int64 {
 	best := map[string]int{}
 	out := map[string]int64{}
 	for _, w := range rows {
-		if w.WeaponID == 0 || w.Kills <= 0 {
-			continue // objet hors arsenal : aucun identifiant a poser dans top_weapon_id
+		if w.Kills <= 0 || !domain.IsFavoriteWeaponCandidate(w.WeaponID, w.Class, w.FromDamageSource) {
+			continue // objet hors arsenal (regle nommee, cf. domain/favorite_weapon.go)
 		}
 		if w.Kills > best[w.XUID] {
 			best[w.XUID] = w.Kills

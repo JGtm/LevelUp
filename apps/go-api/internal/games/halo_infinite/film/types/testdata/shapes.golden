@@ -25,7 +25,7 @@
 #
 #   LEVELUP_UPDATE_TYPES_SHAPES=1 go test ./internal/games/halo_infinite/film/types/ \
 #     -run TestFormesDesTypesEgalentLeGolden -update-types-shapes
-revisions	source=source-2026-09-16.2	grammar=grammar-2026-09-22.12	facts=killsource-2026-09-22.2
+revisions	source=source-2026-09-16.2	grammar=grammar-2026-09-24	facts=killsource-2026-09-24
 
 ## ChunkMeta (source)
 Index	int	-
@@ -119,12 +119,75 @@ RefusedNoCatalog	int	-
 RefusedOffBand	int	-
 UnexpectedWideRef	int	-
 
+## BirthLoadout (grammar)
+TimestampUS	uint64	-
+Chunk	int	-
+PacketIndex	int	-
+Slot	uint32	-
+Generation	uint32	-
+Weapons	[]types.BirthWeapon	-
+
+## BirthLoadoutStats (grammar)
+Creations	int	-
+Read	int	-
+Desync	int	-
+Overflow	int	-
+Unconfirmed	int	-
+NoWeaponComponent	int	-
+ClosedByDelta	int	-
+ClosedByBoundNew	int	-
+ClosedByAnticipatedNew	int	-
+
+## BirthWeapon (grammar)
+Emplacement	int	-
+Family	uint32	-
+Low	uint32	-
+
 ## CamoRead (grammar)
 Slot	uint32	-
 Chunk	int	-
 PacketIndex	int	-
 TimestampUS	uint64	-
 Q	uint16	-
+
+## ContinuousFireBurst (grammar)
+FilmIndex	int	-
+Hand	int	-
+Barrel	bool	-
+Input	int	-
+Weapon	int	-
+StartUS	uint64	-
+EndUS	uint64	-
+StartBound	string	-
+EndBound	string	-
+Entries	int	-
+Holes	[]types.ContinuousFireHole	-
+
+## ContinuousFireHole (grammar)
+StartUS	uint64	-
+EndUS	uint64	-
+
+## ContinuousFireStats (grammar)
+Scanned	bool	-
+Packets	int	-
+Reached	int	-
+Closed	int	-
+Holes	int	-
+HoleRuns	int	-
+Unlocated	int	-
+OpenViewB	int	-
+StopOverflow	int	-
+StopKind	int	-
+StopBlockBC	int	-
+StopCap	int	-
+NotClosing	int	-
+Entries	int	-
+WithAction	int	-
+Firing	int	-
+Bursts	int	-
+BurstsWithHole	int	-
+InnerHoles	int	-
+HeldHoleMS	int64	-
 
 ## DeadState (grammar)
 Mort	bool	-
@@ -252,6 +315,7 @@ TimestampUS	uint64	-
 Chunk	int	-
 Slot	uint32	-
 SlotIndex	int	-
+Emplacement	int	-
 Family	uint32	-
 Low	uint32	-
 Previous	uint32	-
@@ -299,10 +363,17 @@ Packets	int	-
 EventPackets	int	-
 EventPacketsLocated	int	-
 EventPacketsUnlocated	int	-
+EventPacketsNewRecordStart	int	-
+VehicleTypePhysicsAssumed	int	-
 Desyncs	int	-
 SlotUnbound	int	-
 DatumBindings	int	-
 DatumAmbiguous	int	-
+LiaisonsOubliees	int	-
+NeufsContreUnVivant	int	-
+NeufsRefusesLecturesFausses	int	-
+NeufsRefusesCreationsPerdues	int	-
+NeufsRefusesIndecis	int	-
 Duplicates	int	-
 VelocityReads	int	-
 JumpEpisodes	int	-

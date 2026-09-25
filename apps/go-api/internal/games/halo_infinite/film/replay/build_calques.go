@@ -111,8 +111,15 @@ func (a *assemblage) poserArmesAuSolEtVehicules() {
 	// LES VEHICULES, sur le MEME nuage NON decime de bipedes (ce sont ses TROUS qui portent les
 	// episodes d'occupation) et le MEME pont slot -> xuid que les tirs — cf. build_vehicles.go.
 	// Pose APRES la couverture : il publie la sienne.
-	attachVehicles(&a.doc, a.opt.Vehicles, a.sorted, a.reg,
+	// LA PORTE DES POSITIONS S APPLIQUE AUSSI AUX VEHICULES (lot M1 des retours du rejeu) : la
+	// MEME emprise que les joueurs, mesuree une fois par `passerLaPorte` (cf.
+	// positions_porte_vehicules.go).
+	vehicules, horsEmprise, naissancesHorsEmprise := ecarterVehiculesHorsEmprise(a.opt.Vehicles, a.emprise, a.opt.Fallbacks)
+	attachVehicles(&a.doc, vehicules, a.sorted, a.reg,
 		replayClock{origin: a.origin, step: a.step, frames: a.doc.FrameCount, fb: a.opt.Fallbacks})
+	if c := a.doc.Coverage.Vehicles; c != nil {
+		c.EchantillonsHorsEmprise, c.SpawnsHorsEmprise = horsEmprise, naissancesHorsEmprise
+	}
 	// LES TIRS DES JOUEURS EMBARQUES : la SECONDE porte des tirs, celle que la premiere ne
 	// pouvait pas franchir (un occupant attache ne replique plus sa position de bipede, donc
 	// `slotFor` n'a rien a poser sur la carte). Elle exige les episodes d'occupation ET les
@@ -120,6 +127,14 @@ func (a *assemblage) poserArmesAuSolEtVehicules() {
 	// couverture des tirs deja publiee — cf. vehicle_shots.go.
 	attachVehicleShots(&a.doc, a.shotOrphans, a.reg,
 		replayClock{origin: a.origin, step: a.step, frames: a.doc.FrameCount, fb: a.opt.Fallbacks})
+	// LE TIR CONTINU (schema 71, lot M4b) : les rafales lues dans la vue de controle, posees sur
+	// l arme de leur monture ou sur l arme en main. APRES les vehicules (episodes et porteurs), les
+	// dotations et les prises (arme en main) et la pose des places (le tireur est l occupant de sa
+	// place) — cf. fire_bursts.go.
+	a.doc.Bursts, a.doc.Coverage.ContinuousFire = buildFireBursts(&a.doc, a.opt.ContinuousFire,
+		a.opt.ContinuousFireStats, a.reg.IndexParSlot(),
+		replayClock{origin: a.origin, step: a.step, frames: a.doc.FrameCount, fb: a.opt.Fallbacks})
+	logFireBursts(a.doc.Coverage.ContinuousFire)
 }
 
 // poserObjectifsVivants publie les calques portes par les pistes (drapeau, couronne VIP, crane,

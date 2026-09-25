@@ -11,8 +11,6 @@ package grammar
 // bande et compare deja les deux dans son en-tete. Les lire cote a cote est ce qui evite qu'on
 // applique la mauvaise a un archetype (la lecon mesuree du 2026-07-26, rappelee ci-dessous).
 
-import "levelup/go-api/internal/games/halo_infinite/film/internal/source"
-
 // worldObjectSlotBand rend les slots utilisables pour un archétype, lus dans les keyframes.
 //
 // NI L'UN NI L'AUTRE DES DEUX EXTRÊMES N'EST JUSTE — c'est la leçon du 2026-07-26, obtenue en
@@ -31,11 +29,12 @@ import "levelup/go-api/internal/games/halo_infinite/film/internal/source"
 // LA FORME JUSTE est donc : combler la plage de l'archétype, PUIS retirer tout slot vu porter un
 // AUTRE archétype. On récupère la couverture sans la contamination, et le retrait est fondé sur
 // une observation, pas sur une heuristique.
-func worldObjectSlotBand(film *source.Film, typeIndex int) map[uint32]bool {
+func worldObjectSlotBand(fc *FilmContext, typeIndex int) map[uint32]bool {
 	seen := map[uint32]bool{}
 	others := map[uint32]bool{}
-	for _, c := range FilmChunkNumbers(film) {
-		data, pks, ok := FilmChunkAt(film, c)
+	marche := fc.MarcheDImageCle()
+	for _, c := range fc.ChunkNumbers() {
+		data, pks, ok := fc.ChunkAt(c)
 		if !ok {
 			continue
 		}
@@ -43,7 +42,7 @@ func worldObjectSlotBand(film *source.Film, typeIndex int) map[uint32]bool {
 			if pk.Type != PacketTypeKeyframe {
 				continue
 			}
-			for _, r := range WalkKeyframeWorld(pk.Payload(data)) {
+			for _, r := range marche.Records(pk.Payload(data)) {
 				if r.TI == typeIndex {
 					seen[uint32(r.Slot)] = true
 				} else {

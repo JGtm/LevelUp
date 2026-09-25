@@ -15,13 +15,20 @@
  * le lot M1 (Tactique S.1) : `useTacticalCellule` résout les contributions {match_id,
  * instant_ms, xuid} de la cellule sélectionnée, avec le MÊME périmètre que le raster —
  * la requête ne part QUE quand une cellule est sélectionnée (`selected !== null`).
+ *
+ * QUATRE ÉTATS, UN SEUL CORPS (retours rejeu L2, 2026-09-23 ; `tacticalLecture.logic.ts`) :
+ * premier chargement → le cadre et le fond sont posés, l'indicateur par-dessus ; relecture
+ * (changement de question, de qui, de spawn ou de filtre) → rien n'est démonté, la réponse
+ * PRÉCÉDENTE reste affichée, ESTOMPÉE sous « Mise à jour… » (décision Q26) — KPI, calque,
+ * cartes Cellule et Coordination ; échec (de la lecture OU de son périmètre, ou composition
+ * impossible — contrôle L2-PARC-1) → le message, le fond reste. Auparavant `isPending` démontait tout le corps, fond compris, à chaque nouvelle
+ * clé de cache.
  */
 import { useMemo, useState } from 'react'
 
 import { KPIStrip, type KPICardData } from '@/components/layout/KPIStrip'
 import { EmptyStateNotice } from '@/components/ui/empty-state'
-import { Spinner } from '@/components/ui/spinner'
-import type { TacticalRaster } from '@/lib/api/types'
+import type { TacticalCelluleReponse, TacticalRaster } from '@/lib/api/types'
 import { intlLocale } from '@/lib/formatters'
 import { withLowSampleNote } from '@/lib/formatters/lowSampleNote'
 import type { Locale } from '@/lib/i18n/locale'
@@ -30,6 +37,7 @@ import type { TacticalText } from './i18n'
 import { useTacticalCellule, useTacticalRaster } from './queries'
 import { TacticalCellCard } from './TacticalCellCard'
 import { TacticalCoordinationCard } from './TacticalCoordinationCard'
+import { classeRelecture, etatLecture, questionServie } from './tacticalLecture.logic'
 import { TacticalPlanCard } from './TacticalPlanCard'
 import { TacticalToolbar } from './TacticalToolbar'
 import {
@@ -54,6 +62,16 @@ export interface TacticalAnalysisViewProps {
   matchIds: string[] | null
   /** Xuids de la composition choisie — même restriction que la grille. */
   coequipiers: string[]
+  /** Le périmètre affiché est l'ANCIEN (un nouveau filtre est en cours de résolution) :
+   *  la lecture affichée est donc périmée, la vue le dit (« Mise à jour… »). */
+  perimetreEnRelecture?: boolean
+  /** La résolution du périmètre a ÉCHOUÉ : le raster, suspendu, ne répondra pas — l'échec
+   *  prime sur la relecture (revue L2-R1). */
+  perimetreEnEchec?: boolean
+  /** Les coéquipiers INTROUVABLES quand la composition est impossible, `null` sinon : le
+   *  raster, suspendu, ne répondra pas non plus. La vue le dit comme la grille (« Coéquipier
+   *  introuvable »), jamais « Mise à jour… » ni la panne générique (contrôle L2-PARC-1). */
+  coequipiersInconnus?: string[] | null
 }
 
 export function TacticalAnalysisView({
@@ -64,6 +82,9 @@ export function TacticalAnalysisView({
   t,
   matchIds,
   coequipiers,
+  perimetreEnRelecture = false,
+  perimetreEnEchec = false,
+  coequipiersInconnus = null,
 }: TacticalAnalysisViewProps) {
   const [question, setQuestion] = useState<TacticalQuestion>('morts')
   const [qui, setQui] = useState<TacticalQui>('moi')
@@ -85,7 +106,10 @@ export function TacticalAnalysisView({
     }),
     [matchIds, coequipiers, question, effectiveQui, spawn],
   )
-  const raster = useTacticalRaster(playerSlug, mapId, params)
+  const { etat, lecture, questionLue } = useLecturePlan(playerSlug, mapId, params, question, {
+    enRelecture: perimetreEnRelecture,
+    enEchec: perimetreEnEchec || coequipiersInconnus !== null,
+  })
 
   // La cellule affichée n'a plus de sens dès que la lecture change de forme. Ajustée
   // PENDANT LE RENDU (patron React officiel « adjusting state when a prop changes »),
@@ -98,20 +122,14 @@ export function TacticalAnalysisView({
     if (selected !== null) setSelected(null)
   }
 
-  const celluleSelectionnee =
-    selected && raster.data ? trouveCellule(raster.data.cellules ?? [], selected.col, selected.row) : null
-
-  // LE DÉTAIL D'UNE CELLULE (lot M1) : MÊME périmètre + question + qui + spawn que le
-  // raster, plus l'adresse cliquée. `selected` à `null` → la requête n'est pas lancée
-  // (cf. `useTacticalCellule`), ce qui est l'état NORMAL avant tout clic.
-  const cellule = useTacticalCellule(
+  const { celluleSelectionnee, cellule } = useDetailCellule({
     playerSlug,
     mapId,
-    selected && raster.data
-      ? { col: selected.col, lig: selected.row, pas_m: raster.data.pas_m }
-      : null,
+    selected,
+    lecture,
+    pret: etat === 'pret',
     params,
-  )
+  })
 
   return (
     <>
@@ -131,62 +149,188 @@ export function TacticalAnalysisView({
         escouadeDisponible={escouadeDisponible}
         spawn={spawn}
         onSpawnChange={setSpawn}
-        grappes={raster.data?.grappes ?? []}
+        grappes={lecture?.grappes ?? []}
       />
-      {raster.isPending && (
-        <div className="flex justify-center p-8" data-testid="tactical-analysis-pending">
-          <Spinner label={t.loading} />
-        </div>
-      )}
-      {raster.isError && (
-        <div className="p-3">
-          <EmptyStateNotice title={t.analysisErrorTitle} description={t.analysisErrorDescription} />
-        </div>
-      )}
-      {!raster.isPending && !raster.isError && raster.data && (
-        <div className="flex flex-col gap-3 p-3">
-          <KPIStrip cards={buildKpiCards(t, locale, raster.data, question)} />
-          <TacticalPlanCard
+      {etat === 'echec' && <AvisEchec t={t} inconnus={coequipiersInconnus} />}
+      {/* LE CORPS N'EST JAMAIS DÉMONTÉ : la carte « Plan » est toujours rendue (cf. en-tête). */}
+      <div
+        className="flex flex-col gap-3 p-3"
+        aria-busy={etat === 'attente' || etat === 'relecture'}
+        data-testid="tactical-analysis-body"
+      >
+        {lecture && (
+          <KPIStrip
+            cards={buildKpiCards(t, locale, lecture, questionLue)}
+            className={classeRelecture(etat === 'relecture')}
+          />
+        )}
+        <TacticalPlanCard
+          t={t}
+          locale={locale}
+          playerSlug={playerSlug}
+          mapId={mapId}
+          question={questionLue}
+          lecture={lecture}
+          etat={etat}
+          selected={selected}
+          onCellSelect={(col, row) => setSelected({ col, row })}
+        />
+        {lecture && (
+          <CartesDeLecture
             t={t}
             locale={locale}
             playerSlug={playerSlug}
-            mapId={mapId}
-            question={question}
-            cellules={raster.data.cellules ?? []}
-            bornes={raster.data.bornes}
-            echelle={raster.data.echelle}
-            pasM={raster.data.pas_m}
-            matchsFiltres={raster.data.matchs_filtres}
-            matchsRetenus={raster.data.matchs_retenus}
-            matchsEnAttente={raster.data.matchs_en_attente ?? 0}
-            matchsNonCuisables={raster.data.matchs_non_cuisables ?? 0}
-            selected={selected}
-            onCellSelect={(col, row) => setSelected({ col, row })}
+            question={questionLue}
+            lecture={lecture}
+            enRelecture={etat === 'relecture'}
+            celluleSelectionnee={celluleSelectionnee}
+            detail={{ data: cellule.data, isPending: cellule.isPending, attendu: selected !== null }}
           />
-          <TacticalCellCard
+        )}
+      </div>
+    </>
+  )
+}
+
+/**
+ * AvisEchec — pourquoi la lecture ne répond pas. Dans l'ORDRE de la grille : la composition
+ * impossible d'abord (ce n'est pas une panne : « réessaie plus tard » mentirait), puis l'échec.
+ */
+function AvisEchec({ t, inconnus }: { t: TacticalText; inconnus: string[] | null }) {
+  return (
+    <div className="p-3">
+      {inconnus ? (
+        <EmptyStateNotice
+          title={t.unknownTeammateTitle}
+          description={t.unknownTeammateDescription(inconnus.join(', '))}
+        />
+      ) : (
+        <EmptyStateNotice title={t.analysisErrorTitle} description={t.analysisErrorDescription} />
+      )}
+    </div>
+  )
+}
+
+/**
+ * CartesDeLecture — les cartes « Cellule sélectionnée » et « Coordination » sous le plan.
+ * Elles aussi viennent de la réponse AFFICHÉE : pendant une relecture, elles sont estompées
+ * comme le calque et les KPI (revue L2-R6) — des chiffres périmés ne se présentent pas comme
+ * courants.
+ */
+function CartesDeLecture({
+  t,
+  locale,
+  playerSlug,
+  question,
+  lecture,
+  enRelecture,
+  celluleSelectionnee,
+  detail,
+}: {
+  t: TacticalText
+  locale: Locale
+  playerSlug: string
+  question: TacticalQuestion
+  lecture: TacticalRaster
+  enRelecture: boolean
+  celluleSelectionnee: ReturnType<typeof trouveCellule>
+  /** Le détail de la cellule (`useTacticalCellule`) ; `attendu` = une cellule est choisie. */
+  detail: { data?: TacticalCelluleReponse; isPending: boolean; attendu: boolean }
+}) {
+  const classe = classeRelecture(enRelecture)
+  return (
+    <>
+      <div className={classe}>
+        <TacticalCellCard
+          t={t}
+          locale={locale}
+          playerSlug={playerSlug}
+          question={question}
+          cellule={celluleSelectionnee}
+          contributions={detail.data?.contributions ?? null}
+          contributionsLoading={detail.isPending && detail.attendu}
+          matchsNonOuvrables={detail.data?.matchs_non_ouvrables ?? 0}
+        />
+      </div>
+      {lecture.coordination && (
+        <div className={classe}>
+          <TacticalCoordinationCard
             t={t}
             locale={locale}
-            playerSlug={playerSlug}
-            question={question}
-            cellule={celluleSelectionnee}
-            contributions={cellule.data?.contributions ?? null}
-            contributionsLoading={cellule.isPending && selected !== null}
-            matchsNonOuvrables={cellule.data?.matchs_non_ouvrables ?? 0}
+            coordination={lecture.coordination}
+            echange={lecture.echange ?? null}
+            isolement={lecture.isolement ?? null}
+            matchsFiltres={lecture.matchs_filtres}
           />
-          {raster.data.coordination && (
-            <TacticalCoordinationCard
-              t={t}
-              locale={locale}
-              coordination={raster.data.coordination}
-              echange={raster.data.echange ?? null}
-              isolement={raster.data.isolement ?? null}
-              matchsFiltres={raster.data.matchs_filtres}
-            />
-          )}
         </div>
       )}
     </>
   )
+}
+
+type ParamsLecture = Parameters<typeof useTacticalRaster>[2]
+
+/**
+ * useLecturePlan — la lecture du plan, son ÉTAT (`etatLecture`) et la question À LAQUELLE
+ * elle répond.
+ *
+ * LA LECTURE AFFICHÉE est la réponse courante, ou la PRÉCÉDENTE pendant une relecture
+ * (`placeholderData`) ; une lecture en échec — la sienne ou celle de son PÉRIMÈTRE —
+ * n'affiche rien de périmé comme courant. Unité, légende et source se calculent sur
+ * `questionLue` : pendant une relecture, c'est encore l'ancienne question.
+ */
+function useLecturePlan(
+  playerSlug: string,
+  mapId: string,
+  params: ParamsLecture,
+  question: TacticalQuestion,
+  perimetre: { enRelecture: boolean; enEchec: boolean },
+) {
+  const raster = useTacticalRaster(playerSlug, mapId, params)
+  const etat = etatLecture({
+    aDesDonnees: raster.data !== undefined,
+    enEchec: raster.isError || perimetre.enEchec,
+    surPlaceholder: raster.isPlaceholderData,
+    perimetreEnRelecture: perimetre.enRelecture,
+  })
+  const lecture = etat === 'echec' ? undefined : raster.data
+  const questionLue = lecture ? questionServie(lecture.question, question) : question
+  return { etat, lecture, questionLue }
+}
+
+/**
+ * useDetailCellule — la cellule choisie et son DÉTAIL (lot M1) : MÊME périmètre + question +
+ * qui + spawn que le raster, plus l'adresse cliquée. `selected` à `null` → la requête n'est
+ * pas lancée (cf. `useTacticalCellule`), ce qui est l'état NORMAL avant tout clic. Elle
+ * attend aussi la fin d'une relecture (`pret`) : le `pas_m` d'une réponse PRÉCÉDENTE
+ * n'adresse pas forcément la même cellule dans la nouvelle.
+ */
+function useDetailCellule({
+  playerSlug,
+  mapId,
+  selected,
+  lecture,
+  pret,
+  params,
+}: {
+  playerSlug: string
+  mapId: string
+  selected: { col: number; row: number } | null
+  lecture: TacticalRaster | undefined
+  pret: boolean
+  params: ParamsLecture
+}) {
+  const celluleSelectionnee =
+    selected && lecture ? trouveCellule(lecture.cellules ?? [], selected.col, selected.row) : null
+  const cellule = useTacticalCellule(
+    playerSlug,
+    mapId,
+    selected && lecture && pret
+      ? { col: selected.col, lig: selected.row, pas_m: lecture.pas_m }
+      : null,
+    params,
+  )
+  return { celluleSelectionnee, cellule }
 }
 
 /**
@@ -200,6 +344,8 @@ export function TacticalAnalysisView({
  *
  * ÉCHANGE ET ISOLEMENT SONT OMIS QUAND LE CONTRAT NE LES PUBLIE PAS (titre qui ne sait pas
  * lire la source des morts) — une tuile à 0 % mentirait, l'absence de tuile ne ment pas.
+ *
+ * `question` est celle À LAQUELLE `data` RÉPOND (`questionServie`), pas la question demandée.
  */
 function buildKpiCards(
   t: TacticalText,

@@ -723,9 +723,29 @@ var replaySchemas = []struct {
 //	                      TROIS GENRES SEULEMENT, et c est mesure : le sprint est REFUTE comme
 //	                      observable par la vitesse, le saut est LU mais PAS PROUVE (lot 5.3.5).
 //
-// Les vingt-quatre fois, ce test a ATTRAPE l ecart : une branche publiait le champ avant que le
+//	62 (2026-09-23) : `vehicleWeapons` — LE REGISTRE DES ARMES DE VEHICULE du titre (retours du
+//	                      rejeu, lot M4a, schema 68 -> 69), RESOLU A LA REQUETE comme
+//	                      `vehicleLabels` et keye par `Shot.w` : forme, teinte, son (ou silence
+//	                      decide), montage, libelle FR/EN. Il remplace trois tables client clees
+//	                      par des tags jamais vus dans un film. `vehicles[].part` / `carrier` /
+//	                      `variant`, `rides[].turret` et les six compteurs de `coverage.vehicles`
+//	                      naissent au meme commit SANS faire monter ce compte (types imbriques).
+//
+//	63 (2026-09-24) : `vehicleScenery` — LE VERDICT DE DECOR DE CARTE (retours du rejeu, lot M7,
+//	                      sans montee de schema), RESOLU A LA REQUETE comme `vehicleWeapons` : les
+//	                      vies posees par la carte hors de sa zone jouable (masque du fond publie,
+//	                      sol joue du match) et les compteurs du repli « zone inconnue ». Il
+//	                      remplace la regle cliente `vehicleIsScenery` du lot L1.3.
+//
+//	64 (2026-09-24) : `bursts` — LES RAFALES DE TIR CONTINU (retours du rejeu, lot M4b, schema
+//	                      71) : la gachette tenue lue dans la vue de controle, posee sur l arme de sa
+//	                      monture ou sur l arme en main, avec la cadence du tag. `coverage
+//	                      .continuousFire` et les compteurs neufs de `coverage.shots` / `.seats` /
+//	                      `.vehicles` naissent au meme commit SANS faire monter ce compte.
+//
+// Les vingt-sept fois, ce test a ATTRAPE l ecart : une branche publiait le champ avant que le
 // chiffre ne le dise. Contrat regenere (`make openapi-gen`), jamais ecrit a la main.
-const wantReplayDocumentFields = 61
+const wantReplayDocumentFields = 64
 
 // TestReplayContractDescribesEveryPublishedField : AUCUN CHAMP PUBLIE SANS DESCRIPTION, ET
 // AUCUNE DESCRIPTION SANS CHAMP.

@@ -231,14 +231,11 @@ const boundsMinSpread = 0.5
 // ABERRANTS (cf. le bloc ci-dessus). Le second retour est le nombre de points écartés — il est
 // journalisé par l'appelant, jamais avalé.
 func boundsOf(tracks []Track) (Bounds, int) {
-	xs, ys, zs := axisValues(tracks)
-	if len(xs) < boundsMinSamples {
+	garde := empriseDesAxes(axisValues(tracks))
+	if !garde.armee {
 		return rawBounds(tracks, nil), 0
 	}
-	garde := [3]axisGuard{guardOf(xs), guardOf(ys), guardOf(zs)}
-	aberrant := func(p Point) bool {
-		return garde[0].rejects(p.X) || garde[1].rejects(p.Y) || garde[2].rejects(p.Z)
-	}
+	aberrant := func(p Point) bool { return garde.rejette(p.X, p.Y, p.Z) }
 	b := rawBounds(tracks, aberrant)
 	// GARDE DE DERNIER RESSORT : si le filtre a tout ecarte, il s est trompe sur la forme de la
 	// donnee, pas la donnee sur elle-meme. On rend les bornes brutes plutot qu'une etendue vide.

@@ -178,11 +178,12 @@ import { abilityImpulseSoundEvents } from './abilityImpulseSound'
 import { roundOverSoundEvents } from './roundOverSound'
 import { skullSoundEvents } from './skullSound'
 import { zoneSoundEvents } from './zoneSound'
+import { fireBurstSoundEvents } from './fireBurstSound'
 import { frameToMs } from '../../../lib/replay/replayLogic'
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
 import { soundEvent, type ReplaySoundEvent } from './replaySoundVariants'
 import { vehicleDestructionSound } from './vehicleDestructionSound'
-import { vehicleShotSoundStem } from './vehicleShotSound'
+import { vehicleShotSoundStem } from '../model/vehicleWeaponRegistry'
 
 export { pickVariantStem, SOUND_VARIANTS, stemsOf, type ReplaySoundEvent } from './replaySoundVariants'
 export { OBJECTIVE_SOUND_STEMS, objectiveSoundStem, type ObjectiveSide } from './objectiveSound'
@@ -513,24 +514,21 @@ export const SOUND_CATEGORIES_DEFAULT: SoundCategoryFilter = {
  *
  * DEUX JOINTURES DEPUIS LE LOT VÉHICULES (2026-09-04), DANS CET ORDRE : le registre d'armes
  * d'abord (les armes de joueur, tirées à pied OU depuis un siège), puis les armes DE VÉHICULE
- * — leurs identifiants (`0x<weap>00000000`) sont ABSENTS de `weaponLabels`, c'est la table de
- * `vehicleShotSound.ts` qui les nomme. Aucune des deux ne répond = silence propre, inchangé.
+ * — leurs identifiants sont ABSENTS de `weaponLabels`, c'est le REGISTRE DES ARMES DE VÉHICULE
+ * du document qui les nomme (schéma 69, `vehicleWeaponRegistry.ts` ; il remplace la table client
+ * du lot). Aucune des deux ne répond, ou silence décidé par le registre = silence propre.
  *
- * ELLE PREND LE TIR ENTIER DEPUIS LE LOT 5.8.4, et non plus son seul identifiant d'arme : un tag
- * AMBIGU (le Warthog, dont le `weap` unique couvre LAAG / Gauss / roquettes) se départage par la
- * FAMILLE DU CHÂSSIS TIREUR, que le document publie et que seul `Shot.v` permet d'atteindre.
+ * LE PORTEUR N'EST PAS LU (retours du 2026-09-23, lot L1.5) : l'arme seule décide, aucun châssis
+ * n'est cherché.
  */
 export function shotSoundStem(
   doc: ReplayDocumentReady,
-  shot: { w?: string; v?: number },
+  shot: { w?: string },
 ): string | undefined {
   if (!shot.w) return undefined
   const key = doc.weaponLabels?.[shot.w]?.key
   if (key) return WEAPON_SOUND_STEMS[key]
-  // LA FAMILLE N'EST CHERCHÉE QUE POUR UN TIR EN VÉHICULE : un tir à pied n'a pas de porteur, et
-  // balayer les véhicules pour lui serait un travail inutile à chaque tir du match.
-  const porteur = shot.v === undefined ? undefined : doc.vehicles.find((v) => v.slot === shot.v)
-  return vehicleShotSoundStem(shot.w, porteur?.family)
+  return vehicleShotSoundStem(doc, shot.w)
 }
 
 /**
@@ -617,6 +615,9 @@ export function buildSoundTimeline(
       const stem = shotSoundStem(doc, s)
       if (stem) out.push(soundEvent(frameToMs(s.t, doc), stem))
     }
+    // LE TIR CONTINU (schéma 71, lot M4b) : chaque rafale tient sa boucle, ou rejoue son coup
+    // à la cadence de l'arme, et finit sur le coup de queue. Doctrine : `fireBurstSound.ts`.
+    out.push(...fireBurstSoundEvents(doc, (w) => shotSoundStem(doc, { w })))
     // Les RAMASSAGES ET LÂCHERS D'ARME (schéma 25) : datés par `weaponChanges`, plus rien à
     // déduire — c'est ce canal qui a remplacé la règle « au premier tir » retirée le même
     // jour. Doctrine, sons et choix du `swapped` : `weaponChangeSound.ts`.

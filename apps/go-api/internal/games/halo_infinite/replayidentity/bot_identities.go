@@ -63,9 +63,13 @@ func BotIdentities(res *decfilm.Result) []replay.BotIdentity {
 			continue
 		}
 		// `BotID` VOYAGE (lot 4.3) : c'est la cle EXACTE que `BotIdentity.Bid()` publie
-		// (`bid(N.0)`), la meme forme que `RosterEntry.Bid` / `IdentityPlayer.Bid`.
-		out = append(out, replay.BotIdentity{
-			FilmIndex: b.Slot, Name: b.Name + decfilm.BotSuffix, BotID: b.BotID})
+		// (`bid(N.0)`), la meme forme que `RosterEntry.Bid` / `IdentityPlayer.Bid`. Les
+		// DECLARATIONS voyagent aussi (lot M2.1) : elles lient le bot a son entite `ti=9`.
+		id := replay.BotIdentity{FilmIndex: b.Slot, Name: b.Name + decfilm.BotSuffix, BotID: b.BotID}
+		for _, d := range b.Declarations {
+			id.Declarations = append(id.Declarations, [2]uint64{d.FromUS, d.ToUS})
+		}
+		out = append(out, id)
 	}
 	return out
 }

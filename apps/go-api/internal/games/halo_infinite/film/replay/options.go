@@ -56,6 +56,14 @@ type Options struct {
 	// et non de réglage — elle vit ici plutôt qu'en paramètre pour ne pas pousser
 	// BuildFromPositions au-delà de 5 arguments. Absente = rejeu sans armes portées.
 	Loadouts []types.KeyframeLoadout
+	// KeyframeWalk : ce que la marche des images-clés du film a décidé et manqué (lot M3.1),
+	// publié en `coverage.keyframes`. Entrée de DONNÉES lue dans le film.
+	KeyframeWalk grammar.KeyframeWalkCoverage
+	// BirthLoadouts / BirthLoadoutStats : les DOTATIONS DE NAISSANCE lues dans le record NEW de
+	// chaque corps (lot M3.2), publiées en `loadouts` (provenance `birth`) et comptées en
+	// `coverage.birthLoadouts`. Entrées de DONNÉES lues dans le film.
+	BirthLoadouts     []types.BirthLoadout
+	BirthLoadoutStats types.BirthLoadoutStats
 	// Grenades : lancers de grenade décodés des paquets delta (cf. grenades.go). Comme
 	// Loadouts, c'est une entrée de DONNÉES. Absente = rejeu sans lancers. Le rattachement
 	// à un slot passe par le pont du fil des morts : sans morts lisibles, les lancers décodés
@@ -105,6 +113,12 @@ type Options struct {
 	// sans eux serait indistinguable d'un film ou personne ne s'accroupit.
 	MovementStates     []types.MovementStateRead
 	MovementStateStats types.MovementStateStats
+	// ContinuousFire / ContinuousFireStats : le TIR CONTINU lu dans la vue de controle (lot M4b) —
+	// les rafales, bornees et trouees comme le film les ecrit, et les compteurs de la lecture. Entree
+	// de DONNEES ; LES STATISTIQUES VOYAGENT AVEC LA LISTE : une liste vide sans elles ne
+	// distinguerait pas un film sans tir continu d un film dont la vue de controle n est pas lue.
+	ContinuousFire      []types.ContinuousFireBurst
+	ContinuousFireStats types.ContinuousFireStats
 	// AbilityCharges / AbilityChargeStats : les CHARGES RESTANTES lues sur les emplacements
 	// ARMES du composant i56 (cf. filmdec/ability_charges.go). Entree de DONNEES, comme
 	// AbilityImpulses — meme canal d'identite (i48), autre grandeur.
@@ -176,14 +190,22 @@ type Options struct {
 	// Deaths : le fil des morts du film (chunk highlight), qui NOMME les vies et fonde TOUT le
 	// rattachement (cf. lives.go). Entrée de DONNÉES comme les précédentes.
 	//
-	// SANS ELLE, AUCUN TIR NI LANCER N'EST PUBLIÉ — et c'est voulu. Il n'existe plus de repli :
-	// les deux méthodes qui faisaient élire un propriétaire de slot ont été retirées le
-	// 2026-07-28. Un rejeu muet se voit ; un rejeu qui pose des tirs sur le mauvais joueur ne
-	// se voit pas.
+	// SANS ELLE, NI PONT PAR MORTS NI CALAGE D'HORLOGE DES MORTS NI LECTURE DE LA TABLE D'INDEX.
+	// Les tirs et les lancers, eux, restent publies des que le registre d'identite nomme leur
+	// slot par la table des sieges du film (`FilmTable`) — il n'existe toujours AUCUN repli qui
+	// elise un proprietaire de slot (retires le 2026-07-28) : un rejeu muet se voit, un rejeu qui
+	// pose des tirs sur le mauvais joueur ne se voit pas. (Ce paragraphe disait « aucun tir ni
+	// lancer n'est publie » : faux depuis la table des sieges, lot 1.6 — revue adverse M5, R3.)
 	Deaths []Death
+	// DeathsFeed est le VERDICT de la lecture du fil des morts ([DeathsFeedRead],
+	// [DeathsFeedEmpty], [DeathsFeedUnreadable]), pose par `FilmInputs.applyTo` depuis
+	// `FilmInputs.DeathsFeed` et publie en `coverage.bridge.deathsFeed`. Les faits persistes le
+	// portent avec sa cause (lot M8, 2026-09-24) : le rejeu depuis les faits pose le meme. Vide =
+	// aucune lecture de film derriere ces entrees (positions fournies) : cf. [deathsFeedPublie].
+	DeathsFeed string
 	// PlayerIndices est la table identité -> index de joueur, LUE dans le film (cf.
-	// player_index.go). Second maillon du pont, et lui aussi une lecture. Absente, aucun tir
-	// ni lancer n'est publié.
+	// player_index.go). Second maillon du pont, et lui aussi une lecture. Absente, un tir ou un
+	// lancer reste publie si le registre nomme son slot par la table des sieges (`FilmTable`).
 	PlayerIndices PlayerIndexTable
 	// FilmTable est la TABLE DES JOUEURS que le film écrit lui-même (`chunk_00`), lue par
 	// [ScanFilmPlayerTable] : le lien DIRECT `index <-> xuid <-> gamertag`.
@@ -204,6 +226,11 @@ type Options struct {
 	// voyage avec la table parce qu'une table vide et une lecture refusée ne disent pas la même
 	// chose, et que la couverture publie la différence.
 	TeamScan grammar.TeamScanReport
+	// PlayerEntities sont les OCCUPANTS lus dans la même passe que `PlayerTeams`, un par entité
+	// ti=9 (lot M2.1) — la source de la présence, de l'équipe par entrée et de la place du
+	// roster (cf. occupants.go). `Scanned` faux = aucune entité lue : le roster retombe alors sur
+	// l'enveloppe des vies, repli nommé et compté.
+	PlayerEntities grammar.PlayerEntityScan
 	// ScoreboardTeams est la table `xuid -> équipe` de la FEUILLE DE MATCH, et elle n'est qu'un
 	// CONTRÔLE : aucune équipe publiée n'en sort. Elle alimente
 	// `coverage.teams.{accord, contradiction, silence}` — une contradiction se compte, elle ne

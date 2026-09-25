@@ -117,13 +117,13 @@ func scanAllFireRecords(t *testing.T, dir string) []shortRec {
 				continue
 			}
 			pay := p.Payload(chunk)
-			if int(pay[0]>>1) != grammar.FireEventType {
+			if int(pay[0]>>1) != ancienTypeTeteTir {
 				continue
 			}
 			r := shortRec{tUS: p.TimestampUS, long: pay[0]&1 == 0, pi: -1,
 				bits: len(pay) * 8, first: pay[0]}
-			if len(pay)*8 >= grammar.FireHeadBits {
-				r.pi = grammar.ReadAttackerIndex(pay)
+			if len(pay)*8 >= ancienneTeteTirBits {
+				r.pi = ancienIndexAttaquant(pay)
 			}
 			out = append(out, r)
 		}

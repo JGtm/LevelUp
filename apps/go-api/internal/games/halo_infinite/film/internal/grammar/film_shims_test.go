@@ -36,17 +36,17 @@ func filmDeDir(dir string) *source.Film {
 
 // bipedSlotBandDir : [bipedSlotBand] depuis un repertoire.
 func bipedSlotBandDir(dir string, chunks []int) SlotBand {
-	return bipedSlotBand(filmDeDir(dir), chunks)
+	return bipedSlotBand(NewFilmContext(filmDeDir(dir)), chunks)
 }
 
 // worldObjectSlotBandDir : [worldObjectSlotBand] depuis un repertoire (`n` ignore).
 func worldObjectSlotBandDir(dir string, _, typeIndex int) map[uint32]bool {
-	return worldObjectSlotBand(filmDeDir(dir), typeIndex)
+	return worldObjectSlotBand(NewFilmContext(filmDeDir(dir)), typeIndex)
 }
 
 // observedSlotBandDir : [observedSlotBand] depuis un repertoire (`n` ignore).
 func observedSlotBandDir(dir string, _, typeIndex int) map[uint32]bool {
-	return observedSlotBand(filmDeDir(dir), typeIndex)
+	return observedSlotBand(NewFilmContext(filmDeDir(dir)), typeIndex)
 }
 
 // bipedArchetypeDir : [FilmContext.bipedArchetype] depuis un repertoire.

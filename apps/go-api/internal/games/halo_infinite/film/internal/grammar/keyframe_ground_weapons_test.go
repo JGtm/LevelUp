@@ -60,7 +60,7 @@ func TestKeyframeGroundWeapons_AttributionParArchetype(t *testing.T) {
 // témoin de non-régression de la factorisation familiesByRecord).
 func TestKeyframeGroundWeapons_LoadoutInchange(t *testing.T) {
 	pay := twoRecordPayload()
-	got := keyframeLoadouts(pay, knownFamilies())
+	got := keyframeLoadoutsDe(pay, WalkKeyframeWorld(pay), knownFamilies())
 	if len(got) != 1 {
 		t.Fatalf("1 loadout attendu, obtenu %d : %+v", len(got), got)
 	}

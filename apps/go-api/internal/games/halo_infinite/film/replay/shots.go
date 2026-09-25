@@ -83,6 +83,19 @@ func buildShots(pos []grammar.BipedPosition, events []grammar.FireEvent, origin,
 	var out []Shot
 	var orphans []orphanShot
 	for _, e := range events {
+		// LA REFERENCE 0 D ABORD (lot M4b.4) : le record NOMME l unite qui a tire. Quand c est un
+		// bipede qui replique une position a l instant, le tir est le sien — sans passer par
+		// l index de tireur, qui n est pas le tireur sur toutes les builds (HI_1_4_1 : un champ
+		// `d` constant d un tireur a l autre, mesure sur a521164d).
+		if s, ok := tirParLUnite(tracks, e, origin, step); ok {
+			cov.count(reasonAttached)
+			cov.ByUnit++
+			if pi, connu := owner[s.Slot]; connu && e.HasShooter && pi != e.FilmIndex {
+				cov.UnitOtherIndex++
+			}
+			out = append(out, s)
+			continue
+		}
 		slot, reason := slotFor(tracks, owner, e.FilmIndex, e.TimestampUS)
 		if reason != reasonAttached {
 			cov.count(reason)
@@ -98,22 +111,44 @@ func buildShots(pos []grammar.BipedPosition, events []grammar.FireEvent, origin,
 			continue
 		}
 		cov.count(reasonAttached)
-		s := Shot{
-			T:    int((e.TimestampUS - origin) / step),
-			Slot: slot,
-			X:    round2(p.X),
-			Y:    round2(p.Y),
-		}
-		if h, ok := e.AimHeadingDeg(); ok {
-			s.H = headingForJSON(float32(h))
-		}
-		if e.WeaponID != 0 {
-			s.Weapon = formatWeaponID(e.WeaponID)
-		}
-		out = append(out, s)
+		out = append(out, tirPose(e, slot, p, origin, step))
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].T < out[j].T })
 	return out, orphans, cov
+}
+
+// tirParLUnite pose un tir sur le bipede que sa reference 0 designe, quand ce bipede replique une
+// position assez pres de l instant du tir.
+func tirParLUnite(tracks map[uint32]slotTrack, e grammar.FireEvent, origin, step uint64) (Shot, bool) {
+	if !e.Unit.Present {
+		return Shot{}, false
+	}
+	tr, ok := tracks[e.Unit.Slot]
+	if !ok {
+		return Shot{}, false
+	}
+	p, d := tr.at(e.TimestampUS)
+	if d > shotPosToleranceUS || !p.HasWorld {
+		return Shot{}, false
+	}
+	return tirPose(e, e.Unit.Slot, p, origin, step), true
+}
+
+// tirPose construit le tir publie d un evenement, pose sur le slot et la position donnes.
+func tirPose(e grammar.FireEvent, slot uint32, p grammar.BipedPosition, origin, step uint64) Shot {
+	s := Shot{
+		T:    int((e.TimestampUS - origin) / step),
+		Slot: slot,
+		X:    round2(p.X),
+		Y:    round2(p.Y),
+	}
+	if h, ok := e.AimHeadingDeg(); ok {
+		s.H = headingForJSON(float32(h))
+	}
+	if e.WeaponID != 0 {
+		s.Weapon = formatWeaponID(e.WeaponID)
+	}
+	return s
 }
 
 // indexBySlot regroupe les positions par slot, triées par instant.

@@ -37,11 +37,13 @@ export type {
   ReplayBombCarry,
   ReplayBombStatsReady,
   ReplayDocumentReady,
+  ReplayFireBurstReady,
   ReplayFlagCarryReady,
   ReplayGrenadeReadReady,
   ReplayInventoryReady,
   ReplayObjectiveObjectReady,
   ReplayProjectileReady,
+  ReplayRosterEntryReady,
   ReplaySkullCarry,
   ReplaySurfaceReady,
   ReplayTrackReady,
@@ -72,6 +74,7 @@ export type {
  * qui tranche, et `calquePresent` (features/match-replay/model) porte cette lecture en un point.
  */
 export function normalizeReplayDocument(raw: ReplayDocument): ReplayDocumentReady {
+  const sceneryLives = new Set((raw.vehicleScenery?.hidden ?? []).map((h) => vehicleLifeKey(h.slot, h.gen)))
   return {
     ...raw,
     // Le calque des lectures de CAPACITÉ (schéma 6). Il remplace `Inventory.a`, retiré le
@@ -206,7 +209,9 @@ export function normalizeReplayDocument(raw: ReplayDocument): ReplayDocumentRead
     // Une ENTRÉE absente dans un objet présent est une réponse : ce calque n'a pas été produit.
     layers: raw.layers,
     inventory: (raw.inventory ?? []).map((inv) => ({ ...inv, am: inv.am ?? [], g: inv.g ?? [] })),
-    loadouts: (raw.loadouts ?? []).map((lo) => ({ ...lo, w: lo.w ?? [] })),
+    // `k` (schéma 69) : l'emplacement de chaque arme d'une dotation de naissance. Comblé comme
+    // `w` ; un relevé d'image-clé n'en porte aucun (`k` vide = relevé NON situé, cf. loadoutAt).
+    loadouts: (raw.loadouts ?? []).map((lo) => ({ ...lo, w: lo.w ?? [], k: lo.k ?? [] })),
     // Le TYPE des morts que personne ne revendique (chute, hors-limites, sa propre arme) :
     // le fil déduit ces lignes de ses pistes, cette table dit seulement DE QUOI le joueur
     // est mort. Absente = aucune n'est établie, le fil garde son repère neutre.
@@ -225,11 +230,17 @@ export function normalizeReplayDocument(raw: ReplayDocument): ReplayDocumentRead
     // `as` sur l'arité seule : le contenu est celui du contrat, seule la longueur fixe du
     // tuple que JSON Schema ne sait pas dire est réaffirmée (cf. en-tête).
     projectiles: (raw.projectiles ?? []).map((pr) => ({ ...pr, p: (pr.p ?? []) as ReplayStep[] })),
-    roster: raw.roster ?? [],
+    // LA PRÉSENCE DE CHAQUE OCCUPANT (schéma 69) : les intervalles pendant lesquels il TIENT sa
+    // place. Comblée à VIDE quand elle manque — un artefact antérieur au schéma 69 n'en publie
+    // aucune, et `seatLogic.publieDesPresences` le lit au niveau du DOCUMENT pour retomber sur
+    // l'enveloppe des vies (repli daté) ; jamais un intervalle inventé ici.
+    roster: (raw.roster ?? []).map((e) => ({ ...e, presence: e.presence ?? [] })),
     // Le SCORE DANS LE TEMPS (schéma 12) : quatre étages de tableaux nullables comblés d'un
     // coup (cf. normalizeScoreTimeline). L'OBJET, lui, garde le droit d'être absent.
     scoreTimeline: normalizeScoreTimeline(raw.scoreTimeline),
     shots: raw.shots ?? [],
+    // LES RAFALES DE TIR CONTINU (schéma 71) : le tableau ET ses passages muets comblés.
+    bursts: (raw.bursts ?? []).map((b) => ({ ...b, holes: b.holes ?? [] })),
     structure: (raw.structure ?? []).map((s) => ({ ...s, poly: (s.poly ?? []) as ReplayXY[] })),
     tracks: (raw.tracks ?? []).map((t) => ({ ...t, points: t.points ?? [] })),
     // LA VIE DE CHAQUE VÉHICULE (schéma 29). Absent = artefact antérieur, ou film sans véhicule
@@ -241,6 +252,10 @@ export function normalizeReplayDocument(raw: ReplayDocument): ReplayDocumentRead
     vehicleCycles: raw.vehicleCycles ?? [],
     vehicles: (raw.vehicles ?? []).map((v) => ({
       ...v,
+      // LE DÉCOR DE CARTE (lot M7, 2026-09-24) : le serveur nomme les vies posées par la carte
+      // hors de sa zone jouable (`vehicleScenery.hidden`) ; la vie le porte, pour que le calque
+      // n'ait qu'un prédicat à lire (`vehicleIsScenery`). Absent = aucun verdict de décor.
+      ...(sceneryLives.has(vehicleLifeKey(v.slot, v.gen)) ? { scenery: true } : {}),
       samples: v.samples ?? [],
       // LA SÉRIE DE VISÉE D'UN OCCUPANT (schéma 31) SE COMBLE AU TROISIÈME NIVEAU : c'est un
       // tableau nullable dans un tableau imbriqué, et la garde de contrat les exige tous comblés
@@ -274,4 +289,9 @@ export function normalizeReplayDocument(raw: ReplayDocument): ReplayDocumentRead
       gaugeRamps: z.gaugeRamps ?? [],
     })),
   }
+}
+
+/** La clé d'une VIE de véhicule : `(slot, gen)`, la seule clé d'une vie (cf. `VehicleTrack`). */
+function vehicleLifeKey(slot: number, gen: number): string {
+  return `${slot}/${gen}`
 }

@@ -53,11 +53,19 @@ hinf_dynamo_grenade = { en = "Dynamo Grenade", fr = "Grenade dynamo" }
 hinf_repulsor       = { en = "Repulsor", fr = "Répulseur" }
 # Les quatre bobines portent le nom que le kill feed du jeu leur donne (atlas killfeed
 # 42/43/44/45) : c'est le TYPE D'ENERGIE qui les distingue, pas le modele de bidon.
+# DEPUIS LE 2026-09-24 (retours du rejeu, lot M6.4), la bobine a fusion UNSC porte AUSSI les
+# identifiants de film de l'objet que le joueur ramasse et tient (`forge_fusion_coil_mp` et
+# `fusion_coil` du script Lua global) : son kill reste resolu par le pont killicon, sa prise en
+# main par la famille d'arme.
 hinf_coil_kinetic   = { en = "UNSC Fusion Coil", fr = "Bobine à fusion UNSC" }
 hinf_coil_plasma    = { en = "Plasma Coil", fr = "Bobine à plasma" }
 hinf_coil_shock     = { en = "Shock Coil", fr = "Bobine à choc" }
 hinf_coil_hardlight = { en = "Blast Coil", fr = "Bobine à souffle" }
 hinf_environment    = { en = "Environment", fr = "Chute et environnement" }
+# Mains nues (retours du rejeu, lot M6.3, 2026-09-24) : l objet que le jeu remet a chaque bipede
+# (`WeaponTags.unarmed` du script Lua global). Jamais une dotation affichee ni un ramassage ; nomme
+# pour le joueur qui le TIENT en cours de partie.
+hinf_unarmed        = { en = "Unarmed", fr = "Mains nues" }
 
 # Vehicules et tourelles (etape A6, 2026-09-01). Meme voie que les six cles ci-dessus :
 # aucune ne se resout par weapon_id, toutes viennent du pont killicon (regles BANQUE).

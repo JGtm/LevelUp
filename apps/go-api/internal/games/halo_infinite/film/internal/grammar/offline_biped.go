@@ -205,7 +205,7 @@ func ScanBipedPositions(fc *FilmContext, opt ScanFilmOptions) ([]BipedPosition, 
 	if err != nil {
 		return nil, err
 	}
-	band := bipedSlotBand(film, chunks)
+	band := bipedSlotBand(fc, chunks)
 	if band.Count() == 0 {
 		return nil, fmt.Errorf("aucun slot biped (ti=%d) dans les keyframes du film", BipedTypeIndex)
 	}

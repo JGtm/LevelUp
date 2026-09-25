@@ -78,9 +78,11 @@ type packetHead struct {
 //     TÊTE du payload — 0xD2 pour le type 36, 0xC0 pour le type 0 — dont le bit 1 vaut 1 : la
 //     continuation y est donc posée par construction, et ne pas la tester ne leur coûte rien.
 //
-// Faire tester la continuation aux trois derniers serait un CHANGEMENT DE COMPORTEMENT sur une
-// entrée synthétique (le harnais `writeModalHeader` écrit `bits(0, 2)` en préfixe, continuation
-// comprise) : hors du périmètre « comportement strictement identique » du lot E-I.
+// DEPUIS LE LOT M4b (2026-09-24), LE RECORD DE TIR TESTE LA CONTINUATION : sa tête est lue par
+// [lireEnteteTir36], qui exige une liste d'événements (`More`) et le type 36 ENTIER — l'octet 0xD2
+// laissait passer le type 37. Le harnais `writeModalHeader` écrit désormais le préfixe du film
+// (configuration et continuation à 1). Le balayage des dégâts de `weapon_hits.go` garde son filtre
+// sur l'octet de tête.
 func readPacketHead(br *Lecteur) packetHead {
 	var h packetHead
 	h.Config = br.ReadBit()

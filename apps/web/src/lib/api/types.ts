@@ -3052,7 +3052,8 @@ export type ReplayScoreTimeline = components['schemas']['ScoreTimeline']
 // du tout (`non_resolu`, publie et compte, jamais invente).
 export type ReplayIdentitySection = components['schemas']['IdentitySection']
 // La COUVERTURE du calque de score : par quelle voie l'identité des équipes a été résolue
-// (`teamIdentity` : a | b | unresolved), si le mode porte le compteur, si la lecture a été
+// (`teamIdentity` : a | a0 | b | unresolved — `a0` = score final d'un match à sens unique,
+// schéma 69), si le mode porte le compteur, si la lecture a été
 // tronquée, et le nombre de points publiés. `oracle` dit à quelle grandeur le décodage a été
 // confronté (`displayed` = le score affiché en jeu).
 export type ReplayScoreCoverage = components['schemas']['ScoreCoverage']
@@ -3182,6 +3183,10 @@ export type ReplayVehicleLabel = components['schemas']['VehicleLabel'] & {
 // Ce que le calque véhicules a vu, résolu, et refusé de dire — publiée même sans véhicule (même
 // raison que `placements`/`groundWeapons` : distinguer une carte sans véhicule d'un film non lu).
 export type ReplayVehicleCoverage = components['schemas']['VehicleCoverage']
+// Une arme du REGISTRE DES ARMES DE VÉHICULE du titre (schéma 69, `doc.vehicleWeapons`, keyé par
+// `Shot.w`) : forme, teinte, son (absent = silence décidé) et ancre sur le sprite. Lue par le
+// SEUL `model/vehicleWeaponRegistry.ts`.
+export type ReplayVehicleWeapon = components['schemas']['VehicleWeapon']
 
 // ---------------------------------------------------------------------------
 // Schémas 25 à 27 du document de rejeu — ÉCRITS À LA MAIN, et voici pourquoi.
@@ -3225,6 +3230,11 @@ export interface ReplayWeaponChange {
   w?: string
   /** Famille précédente, quand elle est connue. Vide sinon. */
   from?: string
+  /**
+   * EMPLACEMENT d'arme touché (schéma 69) : 0 = la première arme, 1 = la seconde — la même
+   * clé que `ReplayLoadout.k` d'une dotation de naissance. Absent des artefacts antérieurs.
+   */
+  k?: number
 }
 
 /**

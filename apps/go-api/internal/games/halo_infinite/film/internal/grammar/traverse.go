@@ -111,6 +111,10 @@ func TraverseEntity(br *Lecteur, reg *Registry, defaultStateBits int) EntityTrac
 		// LA SURCHARGE DE CALIBRATION `defaultStateBitsByTI` A DISPARU ICI le 2026-09-05
 		// (lot E, item E.2) : la table n'etait peuplee que par `SetDefaultStateBitsForTI`,
 		// un reglage sans appelant. Elle restait vide, la branche etait inatteignable.
+	} else if t.TypeIndex == ProjectileTypeIndex && br.p.Grammaire.DeserEtatParArchetype {
+		// Le projectile : `FUN_1408efb58` depend du cinquieme argument, que le lecteur de record NEW
+		// pose a 1 (default_state_ti41.go) ; la marche d image-cle garde son cadre.
+		consumeDefaultStateTI41(br, true)
 	} else if fn, ok := defaultStateDeserByTI[t.TypeIndex]; ok && br.p.Grammaire.DeserEtatParArchetype {
 		fn(br) // deser vtable[0x60] porté bit-exact (cf. default_state_arch.go)
 	} else {

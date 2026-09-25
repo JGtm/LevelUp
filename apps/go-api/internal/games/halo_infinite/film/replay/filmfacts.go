@@ -219,14 +219,28 @@ import (
 // INCHANGE a l octet, donc les huit fixtures `testdata/inputs_<short8>.bin.gz` restent valides et
 // aucun film n a a etre redecode pour les regenerer. C est [SchemaDesFaits] qui porte le
 // changement (2 -> 3) : lui dit ce que les SECTIONS portent, la magie ce que le BLOB porte.
-const filmFactsMagic = "REPLAYINPUTS25\n"
+//
+// v26 (2026-09-23, lot M3.1 de la campagne « retours rejeu ») : le blob porte LA SANTE DE LA
+// MARCHE D IMAGE-CLE (`FilmInputs.KeyframeWalk` : decisions du balayeur et bipedes absents
+// encadres), a la suite des evenements (cf. `filmfacts_naissances.go`). Le document la publie en
+// `coverage.keyframes` ; sans elle un rejeu depuis les faits la perdrait.
+//
+// v27 (2026-09-24, lot M4b de la campagne « retours rejeu ») : les TIRS portent leur indice de
+// tireur sur CINQ bits (-1 sans indice), leur NUMERO DE TIR et leur UNITE tireuse (reference 0) —
+// le record est lu par sa grammaire (`grammar/fire_events.go`) ; et le blob porte LE TIR CONTINU
+// de la vue de controle (rafales, trous, compteurs : `filmfacts_tir_continu.go`), a la suite des
+// etats de mouvement dont il partage la marche. La reprise du lot (2026-09-25) ajoute, dans la MEME
+// version, deux compteurs a la queue de `MovementStateStats` : les listes qui commencent a un record
+// NEW de tete (`EventPacketsNewRecordStart`) et les lectures de `ti=40 i34` a porte supposee
+// (`VehicleTypePhysicsAssumed`, le repli `repli_physique_de_type_de_vehicule_supposee`).
+const filmFactsMagic = "REPLAYINPUTS27\n"
 
 // ---------------------------------------------------------------------------
 // LES CHAMPS SERIALISES, PAR TYPE — ce sont ceux que l assemblage consomme :
 //
 //	BipedPosition     Slot · TimestampUS · X/Y/Z · HasWorld · HasYaw+YawRaw+PitchRaw ·
 //	                  HasBody+Body.Health · HasShield+Shield.Shield+Shield.Q
-//	FireEvent         TimestampUS · FilmIndex · WeaponID · HasAim+Aim
+//	FireEvent         TimestampUS · FilmIndex (5 bits, -1) · WeaponID · FireNumber · Unit · HasAim+Aim
 //	KeyframeLoadout   TimestampUS · Slot · Families
 //	GrenadeThrow      TimestampUS · FilmIndex · TypeID
 //	ProjectileTrack   Slot · Gen · Pts(TimestampUS · X/Y/Z · AtRest)

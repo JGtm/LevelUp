@@ -85,6 +85,8 @@ func loadGoldenInputs(t *testing.T) *FilmFacts {
 	if err != nil {
 		t.Fatalf("fixture d entrees : %v", err)
 	}
+	// LES ENTITES `ti=9` NE SONT PAS DANS LE BLOB : elles ont leur fichier (golden_entites_test.go).
+	g.PlayerEntities = chargerEntitesDuBuild(t, goldenFilm)
 	return g
 }
 
@@ -102,6 +104,7 @@ func TestGoldenInputsRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("second decodage : %v", err)
 	}
+	again.PlayerEntities = g.PlayerEntities // hors du blob, cf. golden_entites_test.go
 	if got := EncodeFilmFacts(again); !bytes.Equal(blob, got) {
 		t.Fatalf("le codec n est pas un point fixe : %d octets contre %d — un champ se perd "+
 			"ou se reconstruit differemment a chaque tour", len(got), len(blob))

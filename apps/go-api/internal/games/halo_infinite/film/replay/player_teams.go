@@ -34,10 +34,13 @@ package replay
 // film ne nomme pas garde ce meme `-1`, et c'est `coverage.teams.unread` qui dit combien : les
 // deux etats se distinguent par la couverture, pas par une seconde sentinelle.
 //
-// # CE QUI NE CHANGE PAS
+// # L'EQUIPE EST CELLE DE L'OCCUPANT, PAS CELLE DE L'INDEX (lot M2.3, 2026-09-23)
 //
-// Aucune regle d'affichage (§1.2 du plan) : le web colore les joueurs par `team_side` de la
-// feuille de match (`rosterLogic.ts`), pas par l'artefact. Ce lot publie une DONNEE.
+// Le lot 1.7 lisait l'equipe PAR INDEX de joueur. Sonde P4 (`b1ad85eb`) : trois bots de DEUX
+// equipes se relaient sur l'index 8 — l'index diverge, et aucun des trois n'avait d'equipe. Depuis
+// ce lot, chaque entree du roster prend le designateur de SES entites `ti=9` (occupants.go) ; la
+// table par index n'est plus que le CONTROLE, et le repli des entrees qu'aucune entite ne porte.
+// Les vies suivent l'entree qui les porte (xuid, ou nom de bot), avant le pont par index.
 
 import (
 	"log/slog"
@@ -117,6 +120,9 @@ type teamPublication struct {
 	byIndex map[int]int
 	byXUID  map[uint64]int
 	bySlot  map[uint32]int
+	// parIdentite : l'equipe PAR ENTREE du roster (lot M2.3), cle de roster -> designateur. Elle
+	// passe devant le pont par index : un bot d'un index partage y a son equipe.
+	parIdentite map[string]int
 	// slotsAmbigus : les slots que deux joueurs nommes se sont partages. `bySlot` y garde le
 	// PREMIER occupant, donc le pont s'y tait (cf. [TeamCoverage.TracksSlotAmbiguous]).
 	slotsAmbigus map[uint32]bool
@@ -172,16 +178,43 @@ func (p teamPublication) equipeDuSlot(slot uint32) (equipe int, lue, ambigu bool
 	return t, ok, false
 }
 
+// poserEquipesParEntree pose sur le roster l'equipe PAR ENTREE que la liaison aux entites a lue
+// (occupants.go), et la retient pour les vies et le drapeau. Sans entite lue, la liaison rend
+// l'equipe par index : rien ne change.
+func (p *teamPublication) poserEquipesParEntree(roster []RosterEntry, occ occupants) {
+	p.parIdentite = map[string]int{}
+	for i := range roster {
+		roster[i].Team = occ.parEntree[i].equipe
+		t := roster[i].Team
+		if t == nil {
+			continue
+		}
+		if cle := cleDeRoster(roster[i]); cle != "" {
+			p.parIdentite[cle] = *t
+		}
+		if x, err := strconv.ParseUint(roster[i].XUID, 10, 64); err == nil && occ.balaye {
+			if p.byXUID == nil {
+				p.byXUID = map[uint64]int{}
+			}
+			p.byXUID[x] = *t
+		}
+	}
+}
+
 // poserSurLesTraces pose l'equipe du film sur chaque vie publiee et rend les deux comptes.
 //
-// L'ORDRE EST FIXE ET IL N'EST PAS ARBITRAIRE : le xuid d'abord (le lien direct du lot 1.6),
-// le pont slot -> index ensuite (la seule voie d'un bot). Une vie que ni l'un ni l'autre ne
-// nomme garde `-1`, et le compte le dit. Le troisieme retour isole les vies que le pont REFUSE
-// de nommer parce que leur slot a porte deux joueurs (cf. [teamPublication.equipeDuSlot]) : sans
-// lui, une abstention se lirait comme un film muet.
+// L'ORDRE EST FIXE ET IL N'EST PAS ARBITRAIRE : l'equipe de l'ENTREE qui porte la vie d'abord (lot
+// M2.3 — xuid ou nom de bot), le xuid par index ensuite (le lien direct du lot 1.6), le pont
+// slot -> index enfin. Une vie que rien ne nomme garde `-1`, et le compte le dit. Le troisieme
+// retour isole les vies que le pont REFUSE de nommer parce que leur slot a porte deux joueurs
+// (cf. [teamPublication.equipeDuSlot]) : sans lui, une abstention se lirait comme un film muet.
 func (p teamPublication) poserSurLesTraces(tracks []Track) (total, nommees, slotAmbigu int) {
 	for i := range tracks {
 		total++
+		if t, ok := p.parIdentite[cleDePiste(tracks[i])]; ok {
+			tracks[i].Team, nommees = t, nommees+1
+			continue
+		}
 		if x, err := strconv.ParseUint(tracks[i].XUID, 10, 64); err == nil {
 			if t, ok := p.equipeDuXUID(x); ok {
 				tracks[i].Team, nommees = t, nommees+1
@@ -228,17 +261,17 @@ func (p teamPublication) couverture(vies, viesNommees, viesSlotAmbigu int,
 		// le registre, meme quand il ne trouve aucun record.
 		cov.Refusal = teamRefusalNotScanned
 	}
+	// LE DENOMINATEUR EST L'EQUIPE PAR ENTREE (lot M2.3) : celle que le roster publie.
 	for _, e := range entrees {
-		t, lu := p.byIndex[e.FilmIndex]
-		if !lu {
+		if e.Team == nil {
 			cov.Unread++
 			continue
 		}
 		cov.Film++
-		if t == grammar.TeamNone {
+		if *e.Team == grammar.TeamNone {
 			cov.NoTeam++
 		}
-		p.controler(&cov, e, t)
+		p.controler(&cov, e, *e.Team)
 	}
 	cov.Tracks, cov.TracksNamed, cov.TracksSlotAmbiguous = vies, viesNommees, viesSlotAmbigu
 	return cov

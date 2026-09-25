@@ -25,7 +25,7 @@ func TestSieges510FinsDeVie(t *testing.T) {
 	if !ok {
 		return
 	}
-	kf := ScanWorldObjectKeyframes(rec.fc.Film(), VehicleTypeIndex)
+	kf := ScanWorldObjectKeyframes(rec.fc, VehicleTypeIndex)
 	dernier := kf.LastTimeUS()
 	type fin struct {
 		key            types.EquipmentLifeKey

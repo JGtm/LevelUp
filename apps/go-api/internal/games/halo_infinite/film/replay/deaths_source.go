@@ -1,20 +1,24 @@
 package replay
 
 import (
+	"errors"
 	"fmt"
 	"sort"
 
 	"levelup/go-api/internal/domain/highlightevent"
+	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 )
 
 // deaths_source.go — LE FIL DES MORTS, LU DANS LE FILM.
 //
-// OÙ IL VIT. Le dernier chunk du manifest film est le chunk des « highlight events » : un
+// OÙ IL VIT. Le chunk des « highlight events » (type de manifeste 3, les TEMPS FORTS) : un
 // enregistrement par événement de match, dont les morts, chacune portant le XUID de la
 // victime et son instant. Il est DANS LE FILM — aucune base n'intervient, ce qui préserve
-// la propriété que tout le rejeu tient hors ligne.
+// la propriété que tout le rejeu tient hors ligne. Il est choisi PAR SON TYPE quand le
+// manifeste est là (lot L3, 2026-09-23) : « le dernier numéro » désignait un morceau de
+// réplication sur un film archivé avant sa finalisation.
 //
 // POURQUOI CE FICHIER EST SÉPARÉ. C'est le seul point du paquet qui fait des I/O disque et
 // qui dépend du paquet `analysis` (pour son parseur, déjà en production et éprouvé). Le
@@ -24,6 +28,19 @@ import (
 // CE QU'ON NE FAIT PAS ICI, et c'est délibéré : on ne recopie pas le parseur. Il vit dans
 // `grammar.ParseHighlightEvents`, il est testé là-bas, et une seconde implémentation
 // divergerait — la règle du dépôt sur les copies vaut aussi pour les décodeurs.
+
+// ErrFilSansTempsForts : les morceaux du film sont TYPES par son manifeste, et aucun n est celui des
+// temps forts — la signature d un film archive avant sa finalisation (`ab526724`, 2026-09-22 : le
+// dernier numero etait un morceau de replication), ou d un morceau des temps forts absent du
+// cache. DISTINCTE d un morceau illisible ou sans mort, et de la famille
+// [filmcache.ErrFilmNonFinalise] : `errors.Is` repond vrai pour les deux.
+var ErrFilSansTempsForts = fmt.Errorf("fil des morts : aucun morceau des temps forts parmi les "+
+	"morceaux types du film : %w", filmcache.ErrFilmNonFinalise)
+
+// ErrFilDesMortsSansMort : le morceau des temps forts a ete LU et ne porte aucune mort. C est une
+// MESURE, pas une panne — `coverage.bridge.deathsFeed` la publie `empty`, distincte de
+// `unreadable` (lot M5.2 des retours rejeu, 2026-09-23). Le texte du message est celui d avant.
+var ErrFilDesMortsSansMort = errors.New("aucune mort")
 
 // ScanFilmDeaths lit le fil des morts du film de filmDir.
 //
@@ -38,6 +55,38 @@ func ScanFilmDeaths(filmDir string) ([]Death, error) {
 		return nil, err
 	}
 	return ScanDeaths(film)
+}
+
+// numeroDesTempsForts rend le NUMERO du morceau des temps forts.
+//
+// MANIFESTE PRESENT (au moins un morceau type) : le morceau dont le type est celui des temps forts
+// ([filmcache.EstTempsForts]) — le dernier s il y en avait plusieurs, ce que le parc ne montre
+// pas. Aucun : [ErrFilSansTempsForts], le film n est pas finalise.
+//
+// MANIFESTE ABSENT (film charge sans metadonnees — enveloppes D2, instruments, tests —, ou
+// repertoire sans manifeste, 0 au parc du 2026-09-23) : le DERNIER numero, la regle d avant le
+// lot, et c est un REPLI NOMME, `repli_temps_forts_dernier_numero` (registre `facts/fallback`,
+// critere de retrait ecrit la-bas). En cuisson il n est atteint que par un repertoire VRAIMENT
+// sans manifeste, que `replaybuild.jugerFilmSansManifeste` laisse passer en le journalisant ; un
+// manifeste present mais illisible y est refuse (constat L3-R8 de la revue adverse du lot).
+func numeroDesTempsForts(film *source.Film, nums []int) (int, error) {
+	n, type3, typee := -1, false, false
+	for _, m := range film.Meta() {
+		if m.ChunkType != 0 {
+			typee = true
+		}
+		if filmcache.EstTempsForts(m.ChunkType) {
+			n, type3 = m.Index, true
+		}
+	}
+	switch {
+	case type3:
+		return n, nil
+	case typee:
+		return 0, ErrFilSansTempsForts
+	default:
+		return nums[len(nums)-1], nil
+	}
 }
 
 // ScanDeaths lit le fil des morts d'un film DEJA CHARGE.
@@ -59,9 +108,10 @@ func ScanDeaths(film *source.Film) ([]Death, error) {
 	if len(nums) == 0 {
 		return nil, grammar.ErrNoReadableFilmChunk
 	}
-	// Le chunk des highlight events est le DERNIER du manifest : c'est sa définition, pas
-	// une constante à deviner par film.
-	n := nums[len(nums)-1]
+	n, err := numeroDesTempsForts(film, nums)
+	if err != nil {
+		return nil, err
+	}
 	raw, _, ok := grammar.FilmChunkAt(film, n)
 	if !ok {
 		return nil, fmt.Errorf("chunk highlight (%d) : absent du film", n)
@@ -89,7 +139,7 @@ func ScanDeaths(film *source.Film) ([]Death, error) {
 		out = append(out, Death{XUID: e.XUID, Gamertag: e.Gamertag, TimeMS: int64(e.TimeMS)})
 	}
 	if len(out) == 0 {
-		return nil, fmt.Errorf("chunk highlight (%d) : aucune mort", n)
+		return nil, fmt.Errorf("chunk highlight (%d) : %w", n, ErrFilDesMortsSansMort)
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].TimeMS < out[j].TimeMS })
 	return out, nil

@@ -9,7 +9,7 @@
  *
  * # CE QU'IL VALIDE — LA RACINE, ET EXACTEMENT
  *
- * La racine est un objet STRICT : les 57 clés du contrat, ni plus ni moins. Trois manquements
+ * La racine est un objet STRICT : les 58 clés du contrat, ni plus ni moins. Trois manquements
  * en sortent nommés :
  *
  *  - une clé REQUISE absente (`matchId`, `bounds`, `frameCount`, `schemaVersion`, `titleSlug`,
@@ -108,6 +108,7 @@ export const replayDocumentSchema = z.strictObject({
   bombCarries: calque<Elem<'bombCarries'>>(),
   bombEvents: calque<Elem<'bombEvents'>>(),
   bombStats: bloc<NonNullable<ReplayDocument['bombStats']>>(),
+  bursts: calque<Elem<'bursts'>>(),
   bounds: bornes,
   coverage: bloc<NonNullable<ReplayDocument['coverage']>>(),
   durationMs: z.number().optional(),
@@ -161,6 +162,10 @@ export const replayDocumentSchema = z.strictObject({
   translocations: calque<Elem<'translocations'>>(),
   vehicleCycles: calque<Elem<'vehicleCycles'>>(),
   vehicleLabels: table<Valeur<'vehicleLabels'>>(),
+  // Verdict de décor de carte (lot M7), résolu à la requête.
+  vehicleScenery: bloc<NonNullable<ReplayDocument['vehicleScenery']>>(),
+  // Registre des armes de véhicule employées par les tirs (schéma 69), résolu à la requête.
+  vehicleWeapons: table<Valeur<'vehicleWeapons'>>(),
   vehicles: calque<Elem<'vehicles'>>(),
   vipCrown: calque<Elem<'vipCrown'>>(),
   weaponChanges: calque<Elem<'weaponChanges'>>(),

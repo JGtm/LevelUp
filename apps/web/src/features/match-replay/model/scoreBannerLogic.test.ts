@@ -393,6 +393,19 @@ describe('readScoreBanner — ce que le bandeau REFUSE d\'afficher', () => {
     expect(readScoreBanner(vide, SB_2V2, ALLY_T0, 500)).toBeNull()
   })
 
+  it('une série publiée SANS camp : pas de bandeau — « 0 — 0 » tout le match serait inventé', () => {
+    // Retours du rejeu 2026-09-23 (L1.2, Q25) : fb1a1a72 et six autres documents publient une
+    // série dont le camp n'est pas résolu. Aucun camp ne la retrouve : le bandeau affichait
+    // 0 — 0 d'un bout à l'autre du match.
+    const sansCamp = timelineOf({ teams: [{ rounds: null, total: [{ t: 200, v: 1 }] }], players: [] })
+    expect(readScoreBanner(sansCamp, SB_2V2, ALLY_T0, 500)).toBeNull()
+    const mixte = timelineOf({
+      teams: [equipe(0, [[200, 1]]), { rounds: null, total: [{ t: 300, v: 2 }] }],
+      players: [],
+    })
+    expect(readScoreBanner(mixte, SB_2V2, ALLY_T0, 500)).toBeNull()
+  })
+
   it('aucun joueur reconnu : pas de côté, donc pas de bandeau', () => {
     expect(readScoreBanner(SLAYER(), SB_2V2, undefined, 500)).toBeNull()
     expect(readScoreBanner(SLAYER(), SB_2V2, allies([['inconnu', true]]), 500)).toBeNull()

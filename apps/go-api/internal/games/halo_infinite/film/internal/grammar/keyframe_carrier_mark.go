@@ -72,15 +72,17 @@ func ScanFilmCarrierMarks(dir string) (CarrierMarkScan, error) {
 	if err != nil {
 		return CarrierMarkScan{}, err
 	}
-	return ScanCarrierMarks(film)
+	return ScanCarrierMarks(NewFilmContext(film))
 }
 
-// ScanCarrierMarks balaye les images-cles d'un film DEJA CHARGE.
-func ScanCarrierMarks(film *source.Film) (CarrierMarkScan, error) {
+// ScanCarrierMarks balaye les images-cles d'un film DEJA CHARGE, par la marche d'image-cle DU
+// FILM ([FilmContext.MarcheDImageCle], lot D-fix).
+func ScanCarrierMarks(fc *FilmContext) (CarrierMarkScan, error) {
 	var out CarrierMarkScan
 	read := 0
-	for _, c := range FilmChunkNumbers(film) {
-		chunk, pks, ok := FilmChunkAt(film, c)
+	marche := fc.MarcheDImageCle()
+	for _, c := range fc.ChunkNumbers() {
+		chunk, pks, ok := fc.ChunkAt(c)
 		if !ok {
 			continue
 		}
@@ -90,7 +92,7 @@ func ScanCarrierMarks(film *source.Film) (CarrierMarkScan, error) {
 				continue
 			}
 			out.KeyframeUS = append(out.KeyframeUS, p.TimestampUS)
-			out.appendMarksOf(p.Payload(chunk), p.TimestampUS)
+			out.appendMarksOf(p.Payload(chunk), p.TimestampUS, marche)
 		}
 	}
 	if read == 0 {
@@ -103,15 +105,15 @@ func ScanCarrierMarks(film *source.Film) (CarrierMarkScan, error) {
 // (`familiesByRecord`) : meme fenetre glissante de 32 bits, meme attribution au record qui
 // contient le PREMIER bit de la fenetre. Seul le jeu de valeurs cherchees change — c'est
 // pourquoi ce fichier n'a pas son propre lecteur de bits.
-func (s *CarrierMarkScan) appendMarksOf(pay []byte, ts uint64) {
-	recs := WalkKeyframeWorld(pay)
+func (s *CarrierMarkScan) appendMarksOf(pay []byte, ts uint64, marche MarcheDImageCle) {
+	recs := marche.Records(pay)
 	s.Records += len(recs)
 	for _, r := range recs {
 		if r.TI == keyframeBipedTI {
 			s.BipedRecords++
 		}
 	}
-	for _, r := range familiesByRecord(pay, carrierMarkViews, keyframeBipedTI) {
+	for _, r := range familiesByRecordRecs(pay, recs, carrierMarkViews, keyframeBipedTI) {
 		if r.Rec.Slot < 0 {
 			continue
 		}

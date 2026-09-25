@@ -116,7 +116,7 @@ func ScanVehicleCreations(
 	if len(fc.ChunkNumbers()) == 0 {
 		return nil, st, ErrNoFilmChunk
 	}
-	band := worldObjectSlotBand(fc.Film(), VehicleTypeIndex)
+	band := worldObjectSlotBand(fc, VehicleTypeIndex)
 	if len(band) == 0 {
 		return nil, st, fmt.Errorf("aucun slot d'archetype ti=%d dans les keyframes du film",
 			VehicleTypeIndex)

@@ -98,9 +98,9 @@ func TestKillSourceWeaponKills_HorsArsenalSansIdentifiant(t *testing.T) {
 	insertKill(t, pdb, kscDecodeV1, true, kscXUID, kscTagCoil, 1000)
 
 	got := kswByKey(loadKSW(t, pdb))
-	coil, ok := got["hinf_coil_kinetic"]
+	coil, ok := got["hinf_coil_plasma"]
 	if !ok {
-		t.Fatalf("hinf_coil_kinetic absent, got %v", got)
+		t.Fatalf("hinf_coil_plasma absent, got %v", got)
 	}
 	if coil.Class != "environmental" {
 		t.Errorf("Class = %q, want environmental", coil.Class)
@@ -108,6 +108,27 @@ func TestKillSourceWeaponKills_HorsArsenalSansIdentifiant(t *testing.T) {
 	if coil.WeaponID != 0 {
 		t.Errorf("WeaponID = %d, want 0 : une cle hors arsenal n'a aucun identifiant numerique",
 			coil.WeaponID)
+	}
+}
+
+// TestKillSourceWeaponKills_BobineAFusionPorteLIdentifiantDeLObjetTenu : CHANGEMENT DECLARE du
+// 2026-09-24 (retours du rejeu, lot M6.4). La bobine a fusion UNSC recoit au registre les
+// identifiants de film de l objet que le joueur ramasse et tient (`forge_fusion_coil_mp`
+// 0xe9e7ff79..., `fusion_coil` 0x1d63a8cd...) : sa ligne de kill, resolue par la source de degat
+// comme avant et toujours de classe `environmental`, expose desormais l un d eux — la vignette de
+// la bobine (atlas du jeu, index 27) devient servie. Les trois autres bobines restent sans id.
+func TestKillSourceWeaponKills_BobineAFusionPorteLIdentifiantDeLObjetTenu(t *testing.T) {
+	pdb := newKillSourceTestPlayerDB(t)
+	insertKill(t, pdb, kscDecodeV1, true, kscXUID, kscTagFusion, 1000)
+
+	coil, ok := kswByKey(loadKSW(t, pdb))["hinf_coil_kinetic"]
+	if !ok {
+		t.Fatal("hinf_coil_kinetic absent")
+	}
+	tag := uint32(uint64(coil.WeaponID) >> 32) //nolint:gosec // les 32 bits hauts SONT le tag
+	if coil.Class != "environmental" || (tag != 0xe9e7ff79 && tag != 0x1d63a8cd) {
+		t.Errorf("bobine a fusion = classe %q, WeaponID %#x : attendu environmental et un "+
+			"identifiant d objet tenu (e9e7ff79 ou 1d63a8cd)", coil.Class, uint64(coil.WeaponID))
 	}
 }
 

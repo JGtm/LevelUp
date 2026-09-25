@@ -86,10 +86,10 @@ describe('idleSpansOf — le ralenti du Scorpion', () => {
 })
 
 describe('planVehicleEngines — quoi sonne, quoi se tait', () => {
-  it('refuse le décor (falcon), la famille inconnue, et le véhicule jamais occupé', () => {
+  it('refuse le décor (pelican), la famille inconnue, et le véhicule jamais occupé', () => {
     const plans = planVehicleEngines(
       [
-        track('falcon', [{ t0: 0, t1: 100 }]), // décor : jamais de son (cadrage n° 1)
+        track('pelican', [{ t0: 0, t1: 100 }]), // décor : jamais de son (cadrage n° 1)
         track('shade_turret', [{ t0: 0, t1: 100 }]), // sans banque : silence propre (n° 2)
         track('warthog', []), // jamais occupé : pas de moteur
         track('ghost', [{ t0: 10, t1: 50 }]),
@@ -98,6 +98,13 @@ describe('planVehicleEngines — quoi sonne, quoi se tait', () => {
     )
     expect(plans).toEqual([
       { family: 'ghost', episodes: [{ t0Ms: 1_000, t1Ms: 5_000, idle: [] }] },
+    ])
+  })
+
+  it('un Falcon OCCUPÉ sonne : il n’est plus une famille de décor (décision du 2026-09-24)', () => {
+    const plans = planVehicleEngines([track('falcon', [{ t0: 10, t1: 50 }])], FRAME_MS)
+    expect(plans).toEqual([
+      { family: 'falcon', episodes: [{ t0Ms: 1_000, t1Ms: 5_000, idle: [] }] },
     ])
   })
 

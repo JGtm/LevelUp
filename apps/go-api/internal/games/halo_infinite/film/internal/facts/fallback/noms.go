@@ -58,11 +58,45 @@ const (
 	// rend son verdict en donnee pure ([objectives.RoundsDecision]) et l'appelant, qui
 	// porte le compteur de la cuisson, le compte.
 	NomReplayMancheZeroDecretee Nom = "repli_manche_zero_decretee"
-	// NomSiegeDuRemplacantParAppariementOrdinal : `replay/sieges.go`, `poserLesSieges`.
-	NomSiegeDuRemplacantParAppariementOrdinal Nom = "repli_siege_du_remplacant_par_appariement_ordinal"
+	// NomPlaceDuRemplacantParChainageDEquipe : `replay/sieges.go`, `poserLesSieges` (lot M2.3 ;
+	// remplace l'appariement ordinal du lot 1.9.14).
+	NomPlaceDuRemplacantParChainageDEquipe Nom = "repli_place_du_remplacant_par_chainage_d_equipe"
+	// NomPlaceOuverteSousLaCapaciteEstimee : `replay/sieges.go`, `poserLesSieges` (lot M2.3).
+	NomPlaceOuverteSousLaCapaciteEstimee Nom = "repli_place_ouverte_sous_la_capacite_estimee"
+	// NomPresenceParEnveloppeDesVies : `replay/sieges.go`, `poserLesSieges` (lot M2.3).
+	NomPresenceParEnveloppeDesVies Nom = "repli_presence_par_enveloppe_des_vies"
+	// NomPresenceDUneEntreeParSesVies : `replay/sieges.go`, `poserLesSieges` (revue M2-R5,
+	// 2026-09-24).
+	NomPresenceDUneEntreeParSesVies Nom = "repli_presence_d_une_entree_par_ses_vies"
+	// NomBorneDePresenceDiffereeSurDoute : `replay/sieges.go`, `poserLesSieges` (lot D-fix,
+	// constat DFIX-R7 de la revue adverse, 2026-09-24).
+	NomBorneDePresenceDiffereeSurDoute Nom = "repli_borne_de_presence_differee_sur_doute"
+	// NomVieDeBotParRelaisDeLaBase : `replay/successions.go`, `attributeSuccessions` (lot M2.3).
+	NomVieDeBotParRelaisDeLaBase Nom = "repli_vie_de_bot_par_relais_de_la_base"
 	// NomChassisVehiculeMarqueurNeutre : `replay/document_vehicles_coverage.go`, `tallyVehicleCoverage`.
 	NomChassisVehiculeMarqueurNeutre Nom = "repli_chassis_vehicule_marqueur_neutre"
+	// NomTourellePorteurVoisinDeSlot : `replay/vehicle_turrets.go`, `carrierOfTurret`.
+	NomTourellePorteurVoisinDeSlot Nom = "repli_tourelle_porteur_voisin_de_slot"
+	// NomTourelleMonteeLoinDuPorteur : `replay/vehicle_turrets_boarding.go`,
+	// `turretRideBoardsCarrier`.
+	NomTourelleMonteeLoinDuPorteur Nom = "repli_tourelle_montee_loin_du_porteur"
+	// NomEpisodeBorneParLaVieSuivante : `replay/vehicle_rides_next_life.go`, `cutRidesAtNextLife`.
+	NomEpisodeBorneParLaVieSuivante Nom = "repli_episode_borne_par_la_vie_suivante"
 	// NomZoneCampDeCaptureDeduitDeLIssue : `replay/zone_states_capturer.go`,
 	// `zoneRampCapturerDeduit`.
 	NomZoneCampDeCaptureDeduitDeLIssue Nom = "repli_zone_camp_de_capture_deduit_de_l_issue"
+	// NomPositionHorsEmpriseEcartee : `replay/positions_porte.go` (points de trace) et
+	// `replay/positions_porte_vehicules.go` (echantillons et naissances de vehicule).
+	NomPositionHorsEmpriseEcartee Nom = "repli_position_hors_emprise_ecartee"
+	// NomEchantillonVehiculeAuTraversDUnSilenceEcarte : `replay/positions_porte_vehicules.go`.
+	NomEchantillonVehiculeAuTraversDUnSilenceEcarte Nom = "repli_echantillon_vehicule_au_travers_d_un_silence_ecarte"
+	// NomAncreDImageCleParElection : `filmdec/keyframe_world.go`, `kfScanNext` ; compte par
+	// `replay/film_scan.go`, `balayerPositions` (lot M3.1).
+	NomAncreDImageCleParElection Nom = "repli_ancre_d_image_cle_par_election"
+	// NomPhysiqueDeTypeDeVehiculeSupposee : `grammar/composants_vue_b_m4b.go` (ti=40 i34) ; compte
+	// par `replay/film_scan_mouvement.go`, `balayerEtatsDeMouvement` (lot M4b).
+	NomPhysiqueDeTypeDeVehiculeSupposee Nom = "repli_physique_de_type_de_vehicule_supposee"
+	// NomIndexDeTireurHorsPlace : `replay/tirs_index_fiable.go` ; compte par `replay/build_pistes.go`
+	// (lot M4b.4, inscrit a la revue du lot).
+	NomIndexDeTireurHorsPlace Nom = "repli_index_de_tireur_hors_place"
 )

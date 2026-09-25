@@ -28,6 +28,7 @@
  */
 import { describe, expect, it } from 'vitest'
 import { readdirSync, readFileSync } from 'node:fs'
+import { createHash } from 'node:crypto'
 import { resolve } from 'node:path'
 
 import {
@@ -62,11 +63,7 @@ import {
   VEHICLE_BOOM_SOUND_VARIANTS,
 } from './vehicleDestructionSound'
 import { allEngineStems, VEHICLE_ENGINE_STEMS } from './vehicleEngineSound'
-import {
-  VEHICLE_SHOT_SOUND_BY_CHASSIS,
-  VEHICLE_SHOT_SOUND_STEMS,
-  VEHICLE_SHOT_SOUND_VARIANTS,
-} from './vehicleShotSound'
+import { VEHICLE_SHOT_LOOPS, VEHICLE_SHOT_SOUND_VARIANTS } from './vehicleShotSound'
 
 import { racineDuDepot } from '../test/featureFiles'
 
@@ -173,6 +170,9 @@ describe('garde-rail : manifeste sonore = dossier d assets', () => {
     // continues (enter/loop/exit + idle du Scorpion), pas des one-shots. Elles ont leur propre
     // garde-rail de durée et de format plus bas ; ici, seulement manifeste <-> dossier.
     ...allEngineStems(),
+    // Les BOUCLES DE TIR TENU (lot M6.1, câblées au lot M4b, schéma 71) : la table de production
+    // `VEHICLE_SHOT_LOOPS` — le manifeste des boucles que le client sait tenir.
+    ...Object.values(VEHICLE_SHOT_LOOPS),
   ])
 
   it('chaque stem du manifeste a son fichier .wav', () => {
@@ -659,10 +659,35 @@ describe('garde-rail : moteurs de vehicules (categorie boucles, banque du 2026-0
 })
 
 /**
+ * LES SONS QUE LE REGISTRE DES ARMES DE VEHICULE NOMME (schema 69, lot M4a) : les valeurs `sound`
+ * de `config/titles/halo_infinite/mappings/vehicle_weapons.toml`, relues dans le fichier du titre
+ * — le registre est la jointure `Shot.w -> stem` depuis qu'il a remplace la table client.
+ */
+function stemsDuRegistreDesArmesDeVehicule(): string[] {
+  return [...registreDesArmesDeVehicule().matchAll(/^sound\s*=\s*"([^"]+)"/gm)].map((m) => m[1])
+}
+
+/** Le texte du registre des armes de vehicule du titre. */
+function registreDesArmesDeVehicule(): string {
+  return readFileSync(
+    resolve(REPO_ROOT, 'config/titles/halo_infinite/mappings/vehicle_weapons.toml'),
+    'utf8',
+  )
+}
+
+/** Le `sound` de l'entree `[[weapons]]` d'un tag du registre, ou `undefined` (silence, absent). */
+function sonDuRegistre(tag: string): string | undefined {
+  const bloc = registreDesArmesDeVehicule()
+    .split('[[')
+    .find((b) => new RegExp(`^tag\\s*=\\s*"${tag}"`, 'm').test(b))
+  return bloc?.match(/^sound\s*=\s*"([^"]+)"/m)?.[1]
+}
+
+/**
  * SIXIEME GARDE-RAIL : LES TIRS D'ARMES DE VEHICULE (lot du 2026-09-04).
  *
  * Trois proprietes du lot se verifient sur pieces :
- *  - CHAQUE ARME CABLEE A SES VARIANTES : une entree de la jointure `Shot.w -> stem` dont le
+ *  - CHAQUE ARME DU REGISTRE A SES VARIANTES : un son nomme par le registre du titre dont le
  *    stem n'aurait pas d'entree de variantes jouerait un seul fichier nomme `_1` — le signe
  *    d'une table editee a moitie ;
  *  - FORMAT CANONIQUE 48 kHz / 16 bits / STEREO, la meme livraison que les moteurs ;
@@ -671,15 +696,14 @@ describe('garde-rail : moteurs de vehicules (categorie boucles, banque du 2026-0
  *    abandonnee). L'entree du tag 0000AA68 et ses deux prises font partie du manifeste.
  */
 describe('garde-rail : tirs d armes de vehicule (lot du 2026-09-04)', () => {
-  it('chaque arme cablee tire dans ses variantes, et la premiere porte le stem de la table', () => {
-    // DEUX TABLES DEPUIS LE LOT 5.8.4 : les tags sans ambiguite, et ceux qui se departagent par
-    // la famille du chassis (le Warthog). Un stem cable dans la seconde et oublie ici jouerait
-    // un seul fichier nomme `_1` — exactement le defaut que ce cas attrape.
-    const stems = [
-      ...VEHICLE_SHOT_SOUND_STEMS.values(),
-      ...[...VEHICLE_SHOT_SOUND_BY_CHASSIS.values()].flatMap((m) => [...m.values()]),
-    ]
-    expect(stems.length, 'les deux tables ont change de taille').toBe(10)
+  it('chaque arme du registre tire dans ses variantes, et la premiere porte le stem du registre', () => {
+    // LE REGISTRE DU TITRE depuis le schema 69 (lot M4a) : les armes OBSERVEES. Sept sons depuis le
+    // lot M6 (2026-09-24) — le lance-grenades du Falcon n'est plus un silence decide (M6.1) et la
+    // bombe de la Banshee `850902EF` est identifiee (M6.2). Quatorze depuis le lot M4b (schema 71) :
+    // les sept armes a TIR CONTINU qui sonnent (Ghost, canons de la Banshee, Chopper, LMG du Wasp,
+    // LAAG, LMG du Falcon, mitrailleuse du Scorpion) — la tourelle du Wraith est un silence decide.
+    const stems = stemsDuRegistreDesArmesDeVehicule()
+    expect(stems.length, 'le registre a change de nombre de sons').toBe(14)
     for (const stem of stems) {
       const variants = VEHICLE_SHOT_SOUND_VARIANTS[stem]
       expect(variants, stem).toBeTruthy()
@@ -688,23 +712,70 @@ describe('garde-rail : tirs d armes de vehicule (lot du 2026-09-04)', () => {
   })
 
   /**
-   * LOT 5.8.4 — LE WARTHOG SE DEPARTAGE PAR SA FAMILLE DE CHASSIS, ET LES DEUX AUTRES SE TAISENT.
-   * Mesure du parc cuit : les 105 tirs du tag `c7d50912` viennent TOUS d'un chassis `warthog`
-   * (100 avec vehicule publie, 5 sans), zero `rockethog`, zero `warthog_gauss` — le seul son de
-   * Warthog jamais joue etait donc FAUX dans 100 % des cas mesures.
+   * RETOURS DU 2026-09-23 (lot L1.5, decision Q9) — LE ROCKETHOG SONNE PAR SON TAG. Le lot 5.8.4
+   * l'avait rendu muet en le croyant partage par LAAG, Gauss et roquettes ; `c7d50912` est le
+   * lance-roquettes (`WARTHOG_FINAL_2026-09-02.md` §1). Le son valide le 31/08 revient.
    */
-  it('le Warthog : le Rockethog sonne, le LAAG et le Gauss se taisent (aucune reconstruction)', () => {
-    const parChassis = VEHICLE_SHOT_SOUND_BY_CHASSIS.get('0xC7D5091200000000')
-    expect(parChassis, 'le tag ambigu du Warthog a disparu de la table').toBeTruthy()
-    expect(parChassis?.get('rockethog')).toBe('vehicle_shot_warthog_rocket_1')
-    expect(parChassis?.get('warthog')).toBeUndefined()
-    expect(parChassis?.get('warthog_gauss')).toBeUndefined()
-    // Et le tag ambigu n'est PAS dans la table des tags simples : un tag, une seule regle.
-    expect(VEHICLE_SHOT_SOUND_STEMS.get('0xC7D5091200000000')).toBeUndefined()
+  it('le Rockethog : le registre lui donne les roquettes validees le 31/08', () => {
+    expect(stemsDuRegistreDesArmesDeVehicule()).toContain('vehicle_shot_warthog_rocket_1')
+  })
+
+  /**
+   * RETOURS DU 2026-09-24 (lot M6.1, designation a l'oreille) — LE LANCE-GRENADES DU FALCON JOUE
+   * LES ROQUETTES DU ROCKETHOG. Le jeu joue le MEME evenement pour les deux armes (sonde SONS :
+   * 18 medias et trois gains de chemin identiques, `a99352ab` / `a52af042`) : aucun fichier neuf,
+   * le registre nomme le stem deja livre.
+   */
+  it('le lance-grenades du Falcon : le registre lui donne les roquettes du Rockethog', () => {
+    expect(sonDuRegistre('0BB6976B')).toBe('vehicle_shot_warthog_rocket_1')
+    expect(sonDuRegistre('11725DC4')).toBe('vehicle_shot_wasp_1')
+  })
+
+  /**
+   * LA LIVRAISON DU 2026-09-24 EST FIGEE (lot M6.1) : les missiles du Wasp REMPLACES par le rendu
+   * V3E reequilibre, la LMG du Wasp DEPOSEE (coup isole x2 + corps de boucle). La recette est en
+   * tete de `vehicleShotSound.ts`. Une re-livraison qui ecraserait ces fichiers (par l'ancien
+   * rendu rev9, ou retronques) devient rouge ici au lieu de changer le son en silence.
+   */
+  it('livraison du 2026-09-24 : missiles et LMG du Wasp, fichiers figes', () => {
+    const figes: Readonly<Record<string, string>> = {
+      vehicle_shot_wasp_1: '92318e459dee1e98f66660e51697c980f2c56339b989f94cc1c9c42fa323ad11',
+      vehicle_shot_wasp_2: '73d3001a777d1e3a78e55fcdb98d8ae5116a1e5906fbebea7cf862cb8ceb4f43',
+      vehicle_shot_wasp_lmg_1: '3227a9d46c79904c837b6ddcdfb3dd8190fab76642e7d695e66bb7c9db3a2601',
+      vehicle_shot_wasp_lmg_2: 'e8ca76b9cee232aaecd0bbe935d503344a8aa14b4176465eafa82baabdeb8b1a',
+      vehicle_shot_wasp_lmg_loop: '683b2ce57924a47f54c2c1fe2feb41e91dfb67d9fa4c364e0a9703d27dc7b7bb',
+    }
+    for (const [stem, sha] of Object.entries(figes)) {
+      expect(shipped.has(stem), stem).toBe(true)
+      if (!shipped.has(stem)) continue
+      const h = createHash('sha256').update(readFileSync(resolve(SOUNDS_DIR, `${stem}.wav`)))
+      expect(h.digest('hex'), stem).toBe(sha)
+    }
+  })
+
+  /**
+   * LES BOUCLES DE TIR TENU (lot M6.1, câblées au lot M4b) : chaque boucle est rattachee au COUP
+   * d'une arme declaree dans les variantes, elle n'est PAS elle-meme une variante de coup (sinon
+   * le tirage par coup la jouerait a chaque tir), et elle n'est pas retronquee a la coupe des armes.
+   */
+  it('boucles de tir tenu : rattachees a un coup declare, jamais a la coupe des armes', () => {
+    const coups = new Set(Object.values(VEHICLE_SHOT_SOUND_VARIANTS).flat())
+    expect(Object.keys(VEHICLE_SHOT_LOOPS).length).toBeGreaterThan(0)
+    for (const [coup, boucle] of Object.entries(VEHICLE_SHOT_LOOPS)) {
+      expect(VEHICLE_SHOT_SOUND_VARIANTS[coup]?.[0], coup).toBe(coup)
+      expect(coups.has(boucle), `${boucle} : une boucle n est pas une variante de coup`).toBe(false)
+      const s = wavDurationS(resolve(SOUNDS_DIR, `${boucle}.wav`))
+      expect(s, `${boucle} : retronquee a la coupe des armes`).toBeGreaterThan(1.2)
+      expect(s, `${boucle} : au-dela du plafond de surete`).toBeLessThanOrEqual(SOUND_CUT_MAX_S)
+    }
   })
 
   it('format canonique de la livraison : 48 kHz, 16 bits, stereo', () => {
-    for (const stem of Object.values(VEHICLE_SHOT_SOUND_VARIANTS).flat()) {
+    const livres = [
+      ...Object.values(VEHICLE_SHOT_SOUND_VARIANTS).flat(),
+      ...Object.values(VEHICLE_SHOT_LOOPS),
+    ]
+    for (const stem of livres) {
       const buf = readFileSync(resolve(SOUNDS_DIR, `${stem}.wav`))
       let fmt: { canaux: number; cadence: number; bits: number } | null = null
       for (let at = 12; at + 8 <= buf.length; ) {
@@ -724,8 +795,10 @@ describe('garde-rail : tirs d armes de vehicule (lot du 2026-09-04)', () => {
     }
   })
 
-  it('la Banshee mode 1 sonne (reconstruction originale validee par l utilisateur, 2026-09-05)', () => {
-    expect(VEHICLE_SHOT_SOUND_STEMS.get('0x0000AA6800000000')).toBe('vehicle_shot_banshee_m1_1')
+  it('la Banshee mode 1 est livree (reconstruction originale validee par l utilisateur, 2026-09-05)', () => {
+    // Son arme tire en CONTINU, jamais publiee par un film a ce jour : le registre la nommera au
+    // lot M4b ; l'asset et ses variantes restent livres.
+    expect(VEHICLE_SHOT_SOUND_VARIANTS.vehicle_shot_banshee_m1_1?.[0]).toBe('vehicle_shot_banshee_m1_1')
     expect(shipped.has('vehicle_shot_banshee_m1_1')).toBe(true)
     expect(shipped.has('vehicle_shot_banshee_m1_2')).toBe(true)
   })

@@ -72,12 +72,20 @@ func attachVehicleShots(
 	}
 	slotsOf := vehicleSlotsByPlayer(reg.IndexParSlot())
 	published := publishedSlots(doc.Tracks)
+	board := vehicleShotBoard{
+		rides: rides, tracks: doc.Vehicles, lives: vehicleLifeIndex(doc.Vehicles), clock: clock,
+		parSlot: vehicleLivesBySlot(doc.Vehicles),
+	}
 	var added []Shot
 	for _, o := range orphans {
-		s, verdict := vehicleShotOf(o, rides, slotsOf[o.ev.FilmIndex], doc.Vehicles, clock)
+		s, verdict, onCarrier, parUnite := board.shotOf(o, slotsOf[o.ev.FilmIndex])
 		vehicleShotTally(doc.Coverage.Vehicles, verdict)
 		if verdict != vehicleShotPlaced {
 			continue
+		}
+		parUnite.tally(cov.Vehicles)
+		if onCarrier && cov.Vehicles != nil {
+			cov.Vehicles.ShotsOnCarrier++
 		}
 		// MÊME PORTE QUE LES TIRS À PIED : un tir dont le tireur n'a aucune trajectoire publiée
 		// ne rencontrerait jamais de piste à décorer côté client (règle de
@@ -99,6 +107,7 @@ func attachVehicleShots(
 	doc.Shots = append(doc.Shots, added...)
 	sort.SliceStable(doc.Shots, func(i, j int) bool { return doc.Shots[i].T < doc.Shots[j].T })
 	cov.Verdict["shots"] = verdictOf(cov.Shots)
+	nameVariantsByWeapon(doc.Vehicles, added, cov.Vehicles)
 	logVehicleShots(doc.Coverage.Vehicles, len(added))
 }
 
@@ -120,35 +129,155 @@ const (
 	vehicleShotPlaced
 )
 
-// vehicleShotOf décide du sort d'UN orphelin.
-func vehicleShotOf(
-	o orphanShot, rides map[uint32][]vehicleShotRide, slots []uint32,
-	tracks []VehicleTrack, clock replayClock,
-) (Shot, vehicleShotVerdict) {
-	fr := clock.frame(o.ev.TimestampUS)
-	cand := vehicleShotCandidates(rides, slots, fr)
+// vehicleShotBoard est ce que la seconde porte consulte pour poser UN tir : les episodes par
+// occupant, les vies publiees, leur index par `(slot, gen)` et l horloge.
+type vehicleShotBoard struct {
+	rides   map[uint32][]vehicleShotRide
+	tracks  []VehicleTrack
+	lives   map[VehicleLifeRef]int
+	parSlot map[uint32][]int
+	clock   replayClock
+}
+
+// poseParUnite dit si un tir a ete pose par sa reference 0 (`vehicle_shots_unit.go`), et s il
+// l a ete sans episode de son tireur.
+type poseParUnite struct {
+	unite, sansEpisode bool
+}
+
+// tally verse la pose a la couverture du calque des vehicules.
+func (p poseParUnite) tally(cov *VehicleCoverage) {
+	if cov == nil || !p.unite {
+		return
+	}
+	cov.ShotsByUnit++
+	if p.sansEpisode {
+		cov.ShotsByUnitNoRide++
+	}
+}
+
+// vehicleLifeIndex indexe les vies publiees par leur cle `(slot, gen)`.
+func vehicleLifeIndex(tracks []VehicleTrack) map[VehicleLifeRef]int {
+	out := make(map[VehicleLifeRef]int, len(tracks))
+	for i, tr := range tracks {
+		out[VehicleLifeRef{Slot: tr.Slot, Gen: tr.Gen}] = i
+	}
+	return out
+}
+
+// shotOf décide du sort d'UN orphelin. Le troisième retour dit que le tir a été posé sur le
+// PORTEUR d'une tourelle (schéma 69, cf. `vehicle_turrets.go`) ; le quatrième, qu'il l'a été par
+// sa RÉFÉRENCE 0 (lot M4b.4, `vehicle_shots_unit.go`), qui passe AVANT l'épisode.
+func (b vehicleShotBoard) shotOf(o orphanShot, slots []uint32) (Shot, vehicleShotVerdict, bool, poseParUnite) {
+	fr := b.clock.frame(o.ev.TimestampUS)
+	cand := vehicleShotCandidates(b.rides, slots, fr)
+	if s, v, onCarrier, ok, sansEpisode := b.shotOfUnit(o, cand, fr); ok {
+		return s, v, onCarrier, poseParUnite{unite: v == vehicleShotPlaced, sansEpisode: sansEpisode}
+	}
 	if len(cand) == 0 {
-		return Shot{}, vehicleShotNoRide
+		return Shot{}, vehicleShotNoRide, false, poseParUnite{}
 	}
 	pick := cand[0]
-	for _, c := range cand[1:] {
-		if c.track != pick.track {
-			return Shot{}, vehicleShotAmbiguous
-		}
-	}
-	x, y, ok := vehiclePosAt(tracks[pick.track], fr)
+	// SANS REFERENCE 0 QUI TRANCHE, l episode decide, et l AMBIGUITE SE JUGE SUR LE VEHICULE (lot
+	// M7b, `shotVehicle`) : un seul vehicule designe par tous les candidats, jamais deux pieces.
+	// Integration de la vague D (2026-09-25) : les deux portes partagent le MEME poseur
+	// (`poserSur`) — la reference 0 d abord (le film nomme l unite), l episode ensuite.
+	at, onCarrier, ok := b.shotVehicle(cand)
 	if !ok {
-		return Shot{}, vehicleShotUnplaced
+		return Shot{}, vehicleShotAmbiguous, false, poseParUnite{}
 	}
-	v := tracks[pick.track].Slot
-	s := Shot{T: fr, Slot: pick.ride.Slot, X: round2(x), Y: round2(y), Vehicle: &v}
+	s, v, onCarrier := b.poserSur(o, at, onCarrier, pick.ride.Slot, fr)
+	return s, v, onCarrier, poseParUnite{}
+}
+
+// poser pose l orphelin sur la vie de l episode `pick` (sur son porteur pour une piece montee).
+func (b vehicleShotBoard) poser(o orphanShot, pick vehicleShotRide, fr int) (Shot, vehicleShotVerdict, bool) {
+	at, onCarrier := b.shotHolder(pick)
+	return b.poserSur(o, at, onCarrier, pick.ride.Slot, fr)
+}
+
+// poserSur pose l orphelin sur la vie `at` au nom de l occupant `occupant` ; `onCarrier` dit que
+// `at` porte le tir comme PORTEUR d une piece montee.
+func (b vehicleShotBoard) poserSur(
+	o orphanShot, at int, onCarrier bool, occupant uint32, fr int,
+) (Shot, vehicleShotVerdict, bool) {
+	// HORS DE LA FENETRE DU PORTEUR, sa position serait TENUE (premier / dernier echantillon) :
+	// une position perimee, peut-etre a des centaines de metres. Le tir n est pas pose, et il
+	// est compte (`shotsUnplaced`) — revue adverse du lot M4a, F4.
+	if onCarrier && (fr < b.tracks[at].T0 || fr > b.tracks[at].T1Max) {
+		return Shot{}, vehicleShotUnplaced, false
+	}
+	x, y, ok := vehiclePosAt(b.tracks[at], fr)
+	if !ok {
+		return Shot{}, vehicleShotUnplaced, false
+	}
+	v := b.tracks[at].Slot
+	s := Shot{T: fr, Slot: occupant, X: round2(x), Y: round2(y), Vehicle: &v}
 	if h, ok := o.ev.AimHeadingDeg(); ok {
 		s.H = headingForJSON(float32(h))
 	}
 	if o.ev.WeaponID != 0 {
 		s.Weapon = formatWeaponID(o.ev.WeaponID)
 	}
-	return s, vehicleShotPlaced
+	return s, vehicleShotPlaced, onCarrier
+}
+
+// shotVehicle dit si les candidats d un tir designent UN SEUL vehicule, et lequel : la vie qui porte
+// le tir, et si elle le porte comme PORTEUR d une piece montee.
+//
+// L AMBIGUITE SE JUGE SUR LE VEHICULE, pas sur la vie qui porte l episode (2026-09-24, le Falcon
+// devenu pilotable) : une piece montee et son porteur sont le MEME vehicule — un occupant « deja a
+// bord » garde aussi son episode sur la piece (cf. `moveTurretRides`). MAIS DEUX PIECES DISTINCTES
+// du meme porteur (le lance-grenades ET la LMG d un Falcon) tenues au meme instant par le meme
+// tireur restent une ambiguite : c est un artefact du liant, physiquement impossible (revue
+// adverse RR-M7b-03). « Pose sur le porteur » se lit sur TOUS les candidats, pas sur le premier :
+// le premier est le siege le plus bas, souvent l episode propre au chassis.
+func (b vehicleShotBoard) shotVehicle(cand []vehicleShotRide) (at int, onCarrier, ok bool) {
+	at, piece := -1, -1
+	for _, c := range cand {
+		h, on := b.shotHolder(c)
+		if at >= 0 && h != at {
+			return 0, false, false
+		}
+		at, onCarrier = h, onCarrier || on
+		if p, isPiece := b.shotPiece(c); isPiece {
+			if piece >= 0 && p != piece {
+				return 0, false, false
+			}
+			piece = p
+		}
+	}
+	return at, onCarrier, true
+}
+
+// shotPiece rend la PIECE MONTEE par laquelle un candidat tient le vehicule : la vie de l episode
+// quand elle est une piece posee sur un porteur (`Carrier`, le meme critere que `shotHolder`), ou
+// la piece d ou un episode REPORTE vient (`ride.Turret`).
+func (b vehicleShotBoard) shotPiece(c vehicleShotRide) (int, bool) {
+	if b.tracks[c.track].Carrier != nil {
+		return c.track, true
+	}
+	if c.ride.Turret != nil {
+		if p, ok := b.lives[*c.ride.Turret]; ok {
+			return p, true
+		}
+	}
+	return 0, false
+}
+
+// shotHolder rend la vie qui PORTE le tir : celle de l'épisode, sauf quand cette vie est une
+// PIÈCE MONTÉE posée sur un porteur — le tir sort alors du porteur, là où la tourelle est
+// réellement (elle n'a aucun échantillon de position ; sa naissance est à des dizaines de mètres
+// du véhicule qui roule). Un épisode d'artilleur déjà REPORTÉ sur le porteur (`ride.Turret`)
+// désigne le porteur directement : il compte aussi comme posé sur lui.
+func (b vehicleShotBoard) shotHolder(pick vehicleShotRide) (int, bool) {
+	tr := b.tracks[pick.track]
+	if tr.Carrier != nil {
+		if c, ok := b.lives[*tr.Carrier]; ok {
+			return c, true
+		}
+	}
+	return pick.track, pick.ride.Turret != nil
 }
 
 // vehicleShotCandidates rend les épisodes d'un tireur qui couvrent une frame. L'ordre est

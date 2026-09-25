@@ -112926,6 +112926,155 @@ l'ancien libellé. Gates : vitest pageTitle 69 verts, eslint, tsc.
 **Resultats observes.** Escouade a froid : 194 s avant l'etat stable, 7 POST teammates cote serveur (6 ; 44,8 et 41,4 en 502 ; 24,4 ; 53,8 et 54,1 en 502 ; 25,3 s), 4 reponses tronquees par `WriteTimeout` 30 s puis rejouees par le retry front, calcul serveur poursuivi apres la coupure. A chaud : 26,3 s pour une session de 7 matchs ; un clic du rail = 2 requetes (8,2 s a vide + 26,8 s). Le cout ne depend pas du perimetre (0 match 8,2 s, 38 matchs 24,4 s). Chrono SQL (copie, 2 threads/512 Mo) : `v_gamertag_lookup` 3,0 a 3,3 s par evaluation, six evaluations par `GetPage` (Q29, Q32b, 4x Q32) = environ 18 s fixes ; Q29 sans la jointure 32 ms, Q32 sans 8 a 55 ms ; `LoadPlayerMatches` complet environ 100 ms de SQL. Pages solo : Synthese 6,2 s dont 5,6 s dans le bloc records de distance/portee, Sessions 6,1 s dont 3,9 s de bloc coordination (journal des morts sur tout l'historique) + 1,6 s de portee, Series temporelles 9,5 s, Carriere 2,8 + 2,5 s en cascade, Accueil 4,2 + 2,6 s. Socle : `/filters/resolve` x2-3 par page (0,2 a 0,6 s, sans cache), catalogue de saisons en 403 a chaque appel (~100 ms), `field-mappings` 0,4 s meme en 304. Sync : 1 243 bascules RO/RW en 75 s (post-sync LUSR v2) sans ecriture, provider en error state. CPU : 1,3 a 1,9 coeur par requete (DuckDB 2 threads).
 
 **Conclusion / prochaine etape.** Causes classees C1-C9 dans l'etat des lieux ; plan propose : (1) instrumentation des durees (requetes > 1 s en INFO, chrono par section), (2) Escouade backend (retirer les jointures `v_gamertag_lookup`, un seul `LoadImpactEvents`, un `LoadFor` par membre, perimetre pousse au journal des morts, `sessionMatchIDs` depuis `filters.sessions`), (3) `WriteTimeout` + retry + `AbortSignal`, (4) front Escouade (ancrage avant la requete lourde, une seule source de verite de session), (5) pages solo (perimetre des blocs coordination/portee, caches, saisons, ETag), (6) sync sans ecrivain a vide, (7) reglages locaux. Attente du go utilisateur sur l'ordre. Serveurs de dev arretes en fin de session (etat initial), arbre git propre hors ce document et ce journal.
+
+## [2026-09-23] Retours rejeu 2D, Tactique et tiroir des assets : enquête sur pièces et plan — Complété (plan proposé, aucun code modifié)
+
+**Demande.** Neuf retours de l'utilisateur, « investigue sur preuve et planifie des solutions » : Ghost
+sans tir ni son ni éclair (81c02726, signalé de nombreuses fois) ; Mongoose inoccupé qui part seul et
+finit hors zone jouable ; Madina97294 qui réapparaît hors carte et « vole » ; fiche de XxDaemonGamerxX
+sans armes à 2:08 ; b1ad85eb à 3 puis 5 joueurs par équipe ; « Sprint » sur les fiches, jamais demandé ;
+page Tactique qui recharge tout ; ab526724 sans drapeau, score ni frise, avec des véhicules ; doublons
+« Solution » dans le tiroir des assets.
+
+**Décision technique principale.** Six enquêteurs Opus en lecture seule, en parallèle (brief commun :
+aucun serveur, aucun navigateur, aucun décodage de film ; bases lues sur COPIES ; commandes `go`
+sérialisées par un verrou machine dans des worktrees détachés, retirés en fin d'enquête) ; trois sondes
+Go `research` sur faits persistés seulement. Affirmations structurantes revérifiées par le superviseur
+sur le code et les documents avant d'être retenues. Livrable : `.ai/V7.5/PLAN_RETOURS_REJEU_2026-09-23.md`
+(verdicts, causes, 27 décisions utilisateur avec recommandation, quatre vagues de lots, gates sur
+documents réels) et annexes `.ai/V7.5/retours_rejeu_2026-09-23/` (six rapports, instruments).
+
+**Résultats observés (causes prouvées).**
+- Ghost : le décodeur des tirs (`grammar/fire_events.go` `ScanFireEvents`) ne lit que l'événement de tête
+  des paquets `0xD2`, variante longue, à offsets fixes ; aucune arme à tir continu (Ghost, canons de la
+  Banshee, Chopper, LAAG, LMG du Falcon, tourelle du Wraith, Rayon de Sentinelle à pied) n'entre dans un
+  document : 0 tir de Ghost au parc pour 1 522 s de pilotage et 63 frags au Ghost. En aval : 7 des 11
+  tags des tables client jamais vus, 3 tags observés absents, Rockethog muet depuis le lot 5.8.4 (21/09),
+  tirs de tourelle posés à la naissance de la tourelle (44,7 m du porteur en médiane).
+- Positions : faux positifs des balayages ancrés bit à bit (même suite de bits sur des cartes aux
+  quantifications différentes), laissés par les filtres et interpolés sans borne par le client, qui ne
+  lit pas `Point.g` ; 33 documents sur 111. Le premier point de Madina précède de 4,65 s la création de
+  son corps.
+- Fiche : l'image-clé t 1494 a perdu le préfixe de sa table (`WalkKeyframeWorld`) ; 7,4 % des images-clés
+  du parc trouées, 18,9 % des vies sans arme publiée ; les armes de naissance ne sont lues nulle part.
+- Équipes b1ad85eb : l'utilisateur a raison sur les trois instants. Web : un joueur parti reste
+  `present` sans successeur sur son siège ; Go : siège = index, équipe agrégée par index (3 bots sur
+  l'index 8, deux équipes), corps de bots non nommés. L'index de tireur est la PLACE (3 remplacements
+  sur 3).
+- ab526724 : film archivé avant sa finalisation (manifeste 34/37, sans morceau de temps forts ;
+  `filmcache.Write` ne réécrit jamais un manifeste) ; + bandeau 0 — 0 sur série sans camp (7 documents) et
+  piste Score absente sur match à sens unique (13). Ses véhicules sont du décor de la carte Forge
+  Starboard.
+- Tactique : fond de carte rendu sous la condition « données prêtes » et lectures sans `placeholderData`.
+  Tiroir : doublon d'affichage (3 assets de même nom anglais, même image ; 157 cartes pour 93 images).
+- « Sprint » : affichage introduit le 21/09 sur décision du pilote, jamais demandé par l'utilisateur.
+
+**Errata.** (1) L'entrée du 2026-09-08 « Point 8 — CLOS » (« deux Ghost courts », « le facteur
+limitant est le nombre de chevauchées armées ») est fausse : sur 81c02726 les deux épisodes de Ghost
+durent 78 et 80 s et portent 6 frags au Ghost ; aucun lot n'avait vérifié un tir de Ghost dans un
+document réel. (2) La mention « DECISION UTILISATEUR » du commit `b832320d4` (et du plan du décodeur,
+note 5.3) décrit une décision du pilote, non adossée à un message de l'utilisateur.
+
+**Prochaine étape.** Décisions de l'utilisateur sur le §3 du plan (autorisations des sondes de film,
+réparation d'ab526724, deux montées de schéma avec republication, calendrier v7.5, rendus). Rien n'est
+lancé avant son go. Aucun fichier de code touché ; le plan et ses annexes ne sont pas commités (commit
+sur demande).
+
+## [2026-09-23] Retours rejeu, sondes P1-P4 (feat/rr-sondes) — Complété (fusionné dans feat/retours-rejeu, 5e1e97be5)
+
+**Décision technique principale.** Quatre sondes de décodage menées par le superviseur, un film à la
+fois sous verrou, en tests `research` du paquet `grammar` / `replay` (aucun code de production, aucun
+artefact écrit) ; une note par sonde sous `.ai/V7.5/retours_rejeu_2026-09-23/SONDE_P*.md`.
+
+**Résultats observés.** P1 : le tir continu (Ghost) n'est dans aucun canal lisible du film par tir ; ses
+touches et son compteur le sont (S3 Ghidra, branche `feat/rr-ghidra` : il est dans la vue de contrôle).
+P2 : la marche d'image-clé perd les bipèdes par élection d'une fausse ancre de slot bas, et la fenêtre de
+120 000 bits coupe un suffixe. P3 : les armes de naissance sont dans le record NEW du bipède
+(i43/i44/i46), la marche ne l'atteint pas. P4 : sur b1ad85eb, trois entités ti=9 d'index 8, index 1
+absent des f3213, aucune d'index 5 ; BOT_METADATA date les bots ; les tirs donnent la place 5 à Claudors.
+
+**Suite.** M3.1 réécrit, M3.2 et M2 précisés d'après P2-P4 ; M4b après M3 (plan §4.5).
+
+## [2026-09-23] Retours rejeu, L3 : un film n'est archivé, décodé ni cuit que FINALISÉ (feat/rr-l3) — Complété (fusionné, 3748ca8e5)
+
+**Décision technique principale.** Prédicat unique `filmcache.Finalise` (morceau de temps forts,
+`chunk_type 3`, seul littéral du dépôt dans `filmcache/finalise.go`). `filmcache.Write` refuse une liste
+non finalisée et ne remplace un manifeste partiel que par un sur-ensemble exact (sinon
+`ErrManifesteDivergent`). Le client (`fetchFilmChunks`, `GetFilmChunkURLs`, manifeste du cache relu à
+l'API), la cuisson post-sync (report compté, WARN au-delà de `DelaiDeFinalisation` = 15 min), le cache
+killsource (erreur plutôt que « absent » : hors ligne, « absent » poserait le marqueur TERMINAL
+`MBitFilmAbsent`), le chargement de la cuisson (refus typé, compté « écartés ») et `ScanDeaths` (temps
+forts choisis par leur TYPE) appliquent la règle. Ratchet archlint `film_finalise_predicate_test.go`
+(égalités et ordres, compte gelé par fichier, allowlist datée de 3 sites).
+
+**Résultats observés.** Témoin réel ab526724.json.partiel-34 en fixture. Revue adverse L3-R1 à R8
+corrigée (killsource en « sans kill-feed » sans marqueur ni ERROR, monitoring API sans fausse erreur
+réseau, gardes de cuisson testées par mutation, repli « dernier numéro » inscrit au registre
+`facts/fallback`). `facts.Rev` INCHANGÉE (killsource-2026-09-22.2), empreinte seule recopiée ; aucun
+backlog. Parc : type 3 = dernier index sur 1 625 / 1 625, aucune sortie changée.
+
+**Suite.** Découvertes consignées au §8 du plan (20-23) : en-tête des faits sans inventaire des
+morceaux, pas de plafond pour un film jamais finalisé, `archive-films` juge sur l'existence du manifeste,
+trois sites qui comparent encore au type 3.
+
+## [2026-09-23] Retours rejeu, L4 : tiroir des assets, une carte par visuel (feat/rr-l4) — Complété (fusionné, 62ad5ebf7)
+
+**Décision technique principale.** `AssetService.ListMaps` regroupe après résolution de l'image les
+assets de même URL (`asset_map_cards.go`) ; représentant par ordre total (libellé FR traduit, puis
+`NameFR`, puis plus petit ID), tri par nom anglais puis ID ; le dépôt garde son grain. Aucun slug.
+
+**Résultats observés.** Sur une copie de metadata.duckdb : 157 cartes / 93 images → 93 / 93,
+« solution » 4 → 2. Revue R1-R3 fixée par des tests (tri anglais, recherche avant regroupement, entrée
+intacte). Commentaire périmé de `assetDrawerLogic.ts` corrigé.
+
+**Suite.** Contrôle HTTP après redémarrage par le superviseur (`?q=Solution` → 2, catalogue → 93).
+
+## [2026-09-23] Retours rejeu, L2 : Tactique, le fond de carte ne bouge plus (feat/rr-l2) — Complété (fusionné, c51b45489)
+
+**Décision technique principale.** Les lectures filtrées de `features/tactical/queries.ts` gardent leur
+réponse précédente, mais bornée à portée égale (`precedenteDuMemeJoueur` : joueur, titre, carte) après
+la revue ; `key={scope.carte}` sur la vue d'analyse ; fond extrait dans `TacticalPlanFond.tsx` qui ne
+reçoit que la carte et le calage ; quatre états de lecture (`tacticalLecture.logic.ts`) ; relecture
+estompée sous « Mise à jour… » / « Updating… » ; garde-rail `queriesPlaceholder.guard.test.ts`.
+
+**Résultats observés.** Revue adverse : 2 P1 (échec du périmètre, placeholder d'un autre joueur) et 7 P2
+corrigés, mutations jouées. Contrôle de parc : un coéquipier introuvable est nommé au lieu d'une
+relecture sans fin. Mesure rejouable sur 109 cartes et 111 documents : le fond ne se démonte plus.
+
+**Suite.** Verdict visuel de l'utilisateur (changer de question, cocher une session : le fond ne
+clignote pas).
+
+## [2026-09-23] Retours rejeu, L1 : rejeu web sans schéma (feat/rr-l1) — Complété (fusionné, 0a608ae13)
+
+**Décision technique principale.** Fiche sans état de mouvement (Q16 : `stanceLogic.ts` et la clé i18n
+retirés, le document garde `stances[]`) ; bandeau de score muet sur une série sans camp, piste Score
+d'un match à sens unique (camps absents à 0 quand toutes les séries ont un camp) ; véhicules de décor
+masqués (une position unique à la naissance en frame 0, jusqu'à la fin du film, jamais occupés) ;
+lacunes de piste respectées (`Point.g` : position tenue, pion pâli, aucun segment au travers) ; tables
+d'armes de véhicule clées par les tags OBSERVÉS, garde-rail sur une fixture datée produite par un
+instrument versionné.
+
+**Résultats observés.** Mesure de parc avant/après (111 documents, schéma 68) : 0 régression, 5 400 mots
+d'état retirés, bandeau muet sur 6 documents, piste Score apparue sur 8 matchs, 13 vies de décor
+masquées (0 en jeu), 7 686 déplacements au travers de lacunes évités, 189 009 tirs d'arme personnelle
+identiques. Revue et contrôle de parc corrigés (RR-L1-02/03/05/06, PARC-01/02).
+
+**Suite.** Verdict visuel de l'utilisateur (81c02726, bc60b4d9, fb1a1a72, ab526724, un match à
+Rockethog). Wasp (Q11) laissée en l'état, écart signalé.
+
+## [2026-09-23] Retours rejeu : intégration de la vague A — Complété (feat/retours-rejeu, rien de poussé)
+
+**Décision technique principale.** Fusions `--no-ff` dans l'ordre sondes, L3, L4, L2, L1, sans conflit ;
+correction de la casse de la base (`8be964717` : `archlint/no_stale_fallback_target_test.go` lisait le
+plan du décodeur à son chemin d'avant l'archivage `fe2106f4b`).
+
+**Résultats observés.** Tête de campagne : build, vet, `go test ./...` (189 paquets ok), intégration
+`-count=1 -p 1` (17 103 pass, 0 fail), baseline JSONL OK, golangci-lint ratchet 0 issue, web (tsc,
+eslint 0 erreur, lint:colors, vitest 8 510 tests, knip, manifestes i18n) verts.
+
+**Suite.** Verdicts visuels L1/L2, contrôle L4 après redémarrage ; fusion de `feat/rr-ghidra` et
+`feat/rr-c2` à une prochaine intégration ; vague C (M1, M4a, M5).
+
 ## [2026-09-23] Investigation perf : chargements laborieux (Escouade en tete), sur preuves — Complete (etat des lieux ecrit, aucun code modifie)
 
 **Contexte.** Demande utilisateur : page Escouade tres lente (filtre de session long a apparaitre, « bloque sur toutes les sessions »), pages Synthese/Carriere peu reactives ; enquete profonde, sur preuves, logs et mesures en direct autorisees (instance Chrome du MCP, connexion faite par l'utilisateur). Trois agents Opus en lecture seule (cascade front Escouade, modele de cout backend teammates/filters, socle commun + acces DuckDB), serveur de dev lance avec `LEVELUP_LOGS_FILE_LEVEL=debug` (les 2xx ne sont journalises qu'en DEBUG : aucune duree de requete reussie n'existait dans les logs avant), Vite, mesures navigateur + `http.log` + echantillonnage CPU, puis chronometrage SQL sur une COPIE des bases (outil temporaire, supprime ; ecrire un `.go` sous `cmd/` a relance air).
@@ -113086,6 +113235,153 @@ l'ancien libellé. Gates : vitest pageTitle 69 verts, eslint, tsc.
 
 **Prochaine etape** : push de feat/v75, runs `push` ET `pull_request` verts (E2E compris) ; decouverte a consigner pour la campagne perf (§11 du plan) : l'E2E ne tourne pas sur les branches `feat/**`, une campagne web devrait ouvrir une PR de controle ou lancer `npx playwright test` en local avant la fusion.
 
+## [2026-09-24] Retours rejeu, sondes Ghidra P1-S3 et CA9 (feat/rr-ghidra) — Complété (fusionné, 0dd5ad1c7)
+
+**Décision technique principale.** Instruments `research` et notes seulement, aucun code de production :
+le tir continu vit dans la VUE DE CONTRÔLE (bloc d'action de l'entrée du joueur, `m0` = gâchette de
+type 1 tenue), pas dans un record 36 ; `00007CA9` = l'arme « mains nues » (`WeaponTags.unarmed`).
+
+**Résultats observés.** P1-S3 : 6/6 frags au Ghost de 81c02726 précédés du signal, 0 au témoin −60 s.
+Aucune révision de décodage touchée (`grammar.Rev` et `facts.Rev` inchangées à la fusion).
+
+**Suite.** M4b (tir continu générique par type de barillet) et M6.3 (mains nues), selon les décisions
+du 24/09.
+
+## [2026-09-24] Retours rejeu, sonde C2 : décor de véhicule à la naissance (feat/rr-c2) — Complété (fusionné, 0dff5a39c)
+
+**Décision technique principale.** Instrument `research` et note : le bloc MPP porte l'index de
+placement de carte (`FUN_14080d524`) — « posé par la carte », pas « non jouable » ; la règle L1.3
+reste la règle générale.
+
+**Résultats observés.** 13/13 décors et 0/100 véhicules en jeu sur 22 films non-BTB portent l'index ;
+des tourelles actives posées le portent aussi, d'où l'absence de champ « non jouable ».
+
+**Suite.** M7 (« hors de la zone jouable » ajouté à L1.3).
+
+## [2026-09-24] Retours rejeu, M1 : positions — grammaire de la vie, replis nommés (feat/rr-m1) — Complété (fusionné, cf2638fdc)
+
+**Décision technique principale.** Aucune position d'un corps avant sa création (R-B1, R-B2), replis
+nommés et comptés F-1 (position hors de l'emprise jouée ET isolée) et F-2 (échantillon de véhicule au
+travers d'un silence, départagé par la naissance, borné à 3 échantillons), `vehicles[].samples[].g`
+publié et tenu par le client ; schéma 69 (montée commune de la vague C).
+
+**Résultats observés.** À l'intégration, 107 documents reconstruits depuis les faits : T1-T4 hors garde
+0, V1-V3 0, paires de motifs ≥ 24 bits 73 → 0, véhicules déplacés pendant un silence 22 → 0, chute de
+Behemoth conservée, décors 13 → 13 ; pertes collatérales déclarées par le lot retrouvées à l'identique.
+
+**Suite.** Republication de la vague C (superviseur) ; la porte grammaticale au décodage (vague D) est
+le critère de retrait des deux replis.
+
+## [2026-09-24] Retours rejeu, M5 : score à sens unique et fil des morts (feat/rr-m5) — Complété (fusionné, b4783ad2f)
+
+**Décision technique principale.** Preuve (a0) de `coverage.score.teamIdentity` : une seule série, le
+registre dit X-0 et la série finit EXACTEMENT à X → camp X (absent vaut zéro), ordre (a) → (a0) → (b) ;
+`coverage.bridge.deathsFeed` (`read` / `empty` / `unreadable`), message périmé de `film_scan` corrigé.
+
+**Résultats observés.** Histogramme au parc (107 documents) : unresolved 6 → 2 (les deux restants à
+deux séries), a0 12 (4 séries sans camp résolues, 8 b → a0 au camp inchangé). À l'intégration, le
+test `-tags=integration` de l'ouvrier réel (Husky Raid 3-0, une série) exigeait encore une courbe
+sans camp : aligné sur (a0), camp 0 (`7fd5fa82f`).
+
+**Suite.** Verdict du fil des morts porté dans les faits en vague D (lot M8).
+
+## [2026-09-24] Retours rejeu, M4a : véhicules — pièces montées, registre (feat/rr-m4a) — Complété (fusionné, 5df75db45)
+
+**Décision technique principale.** Tourelles posées sur leur porteur (repli nommé « voisin de slot »,
+naissance commune exigée), variante nommée (Rockethog, Gauss, Gungoose), registre
+`vehicle_weapons.toml` résolu à la requête, trois tables client supprimées, garde-rails Go et web.
+Réconciliation : la famille `replay/vehicules` du registre des replis, que le lot n'avait pas inscrite
+au test des familles, y est ajoutée (plancher 8 → 9).
+
+**Résultats observés.** G3-embarquement médiane 1,3 m (cible ≤ 2 m), G3-annexe 39,8 m → 0 m, G4 : 438
+tirs d'arme de véhicule, 0 hors registre. Composition avec M1 mesurée : M1 corrige des naissances, M4a
+pose alors plus de pièces (4f77afc1 48 → 50, a349fea8 43 → 47).
+
+**Suite.** M6 (sons validés, libellés, mains nues, bobine), M4b (tir continu).
+
+## [2026-09-24] Retours rejeu : intégration de la vague C — Complété (feat/retours-rejeu, rien de poussé)
+
+**Décision technique principale.** Une seule montée 68 → 69 : chronique v69 unique (en-tête commun +
+une partie par lot), plafonds archlint justifiés en une entrée datée, artefacts générés régénérés par
+leurs portes (golden de forme depuis celui du schéma 68, fixtures de contrat, goldens d'assemblage,
+`openapi.yaml`, `generated.ts`), empreinte de `facts.Rev` recopiée sans montée.
+
+**Résultats observés.** Gates verts sur la tête (build, vet + research, `go test ./...`, intégration
+`-p 1` 17 173 pass / 0 fail après correction, baseline, golangci 0 issue, web complet). Contrôle de
+parc : tête = union exacte de M1, M4a et M5 (0 orphelin, 0 perdu) sur 107 documents et sur les 19
+témoins du `replay-corpus-gate` joué sur une copie du parc ; décodé ≡ rejoué des faits. Découverte :
+20 fichiers de faits du checkout principal réécrits cette nuit aux révisions de la vague D (4 illisibles
+par le code de la vague C).
+
+**Suite.** Superviseur : arbitrer ces 20 fichiers de faits avant la republication, `replay-equiv` sur
+une copie, push et CI au niveau job, republication depuis les faits (serveur arrêté, utilisateur
+prévenu), verdicts visuels.
+
+## [2026-09-24] Retours rejeu, M6 : registre et catalogue (feat/rr-m6) — Complété (fusionné, c49f07687)
+
+**Décision technique principale.** Sons désignés à l'oreille (lance-grenades du Falcon = événement du
+Rockethog, missiles du Wasp au rendu V3E, LMG du Wasp déposée et déclarée pour M4b avec échéance) ;
+`850902EF` établi bombe de la Banshee (configuration multijoueur) et nommé au registre ; châssis
+`3a8060e2` = tourelle fixe ; `00007CA9` = mains nues : la remise de début de vie sort des ramassages et
+des changements d'arme (compteurs `unarmedGrants`) et des dotations, par une règle nommée ; bobine à
+fusion UNSC au catalogue, d'où l'arme favorite décidée par la classe. Montée rabattue sur 69 par la
+revue (une seule montée par vague).
+
+**Résultats observés.** Parc (107 documents) : seuls les calques visés bougent ; G4 438 tirs tous au
+registre (0 silence, 0 inconnu).
+
+**Suite.** M4b câble la boucle LMG (ou supprime le fichier) ; familles d'arme encore anonymes et tirs
+de `850902EF` posés sur un Warthog consignés en découvertes.
+
+## [2026-09-24] Retours rejeu, M7 : décor hors de la zone jouable (feat/rr-m7) — Complété (fusionné, b08ba6688)
+
+**Décision technique principale.** Le verdict de décor est décidé à la requête par le service (calque
+`vehicleScenery`, hors cuisson) : pose seule ET hors de la matière praticable du fond de carte publié,
+en hauteur sous le sol foulé du match ; carte sans fond = rien masqué ; deux replis nommés au registre ;
+le client ne lit plus que le verdict.
+
+**Résultats observés.** Parc : 13 → 13 masqués, 0 vie en jeu masquée, 0 zone inconnue ; empreinte cuite
+inchangée, rien à re-cuire.
+
+**Suite.** Verdict visuel utilisateur (Starboard, Goliath, Behemoth).
+
+## [2026-09-24] Retours rejeu : intégration de M6 et M7 — Complété (feat/retours-rejeu, rien de poussé)
+
+**Décision technique principale.** Fusions `--no-ff` M6 puis M7 ; une seule chronique v69 : partie M7
+ajoutée (forme servie seule), plafond archlint 2174 → 2186 justifié ; golden de forme re-figé par sa
+porte (seul conflit), contrat et types générés vérifiés par leurs portes.
+
+**Résultats observés.** Gates verts sur la tête (build, vet + integration + research, `go test ./...`,
+intégration `-p 1` 17 219 pass / 0 fail, baseline, golangci 0 issue, web complet). Contrôle de parc
+depuis une copie des faits : base → tête = exactement les changements déclarés de M6, rien de M7 dans
+le cuit ; M7 13 → 13 au parc.
+
+**Suite.** Superviseur : push et CI au niveau job, arbitrage des 20 fichiers de faits réécrits,
+republication 69 depuis les faits (serveur arrêté, utilisateur prévenu), verdicts à l'oreille et visuels.
+
+## [2026-09-24] Retours rejeu : CI rouge de ba475d2e4 (run 35973349701), deux jobs — Complété (feat/retours-rejeu, non poussé)
+
+**Décision technique principale.** (1) Frontend : `muzzleFlash.ts` avait gagné un import de VALEUR
+(`BOMB_SCALE` depuis `shotEffects.ts`, commit M6.2 7abf82d7e), que le garde-rail de rastérisation
+`e2e/replay-muzzle-raster.spec.ts` refuse (il transpile le module SEUL, sans bundler). La constante
+déménage dans le module feuille `muzzleFlash.ts` ; `shotEffects.ts` (qui n'est transpilé seul par
+aucun garde-rail) l'importe de là. Garde-rail intact. (2) Go : `TestFilmPassForMatch_CoutParAppel`
+(12,09 ms pour un budget de 10 ms) n'est PAS une régression : aucune ligne de `internal/persist`,
+`internal/migration`, des migrations du titre ni de `go.mod` n'a bougé depuis b74c8f294 ; sur six runs
+CI antérieurs la même lecture coûtait 6,6 à 8,4 ms (65-84 % du budget), 3,5 à 6 ms en local ; la
+lecture témoin du second test (non bornée) est passée de 2,4-3,0 à 4,48 ms sur le même run, même
+rapport (~2,7) : runner lent. Le budget à l'horloge murale est remplacé par le critère que la durée
+ne faisait que trahir : les lignes qui ENTRENT dans la fenêtre de `match_kill_events_latest`
+(`EXPLAIN (ANALYZE, FORMAT JSON)`), bornées à celles d'un match (90), avec un témoin négatif exécuté
+à chaque fois (filtre bloqué par `LIMIT` : 180 000 lignes, 72 ms/appel en local). Durée gardée en
+mesure.
+
+**Résultats observés.** Playwright local (chromium déjà installé) : rouge reproduit avant, 3/3 vert
+après (la famille `bomb` est désormais rastérisée). Mutation de `filmPassQuery` vers la forme du
+défaut : le garde rougit (180 000 > 90), code restauré. Gates : voir le compte rendu de l'exécutant.
+
+**Suite.** Superviseur : push, CI au niveau job.
+
 ## [2026-09-24] Campagne perf — epilogue : CI de feat/v75 verte sur les deux runs (push et pull request, E2E compris) — Complete
 
 **Contexte** : apres la fusion 4693062d5, trois rouges traites sur feat/v75 (test archlint anterieur 6d8644181, echec TLS du runner relance, regression Navigate du lot L4a 46aec098c). **Decision technique principale** : aucune nouvelle ; plan §11 (epilogue : piege de l'E2E absent des pushes `feat/**`, lecon pour les campagnes web) et §12 (verdicts) mis a jour. **Resultats observes** : sur 46aec098c, run push vert (9 jobs), run pull_request vert avec E2E React (Playwright) `success`, gitleaks / Deploy Pre-Check / gate ADR 0021 verts. **Prochaine etape** : decision utilisateur sur l'ADR « lectures par perimetre » et le perimetre d'un plan structurel (§11 du plan).
@@ -113129,3 +113425,34 @@ l'ancien libellé. Gates : vitest pageTitle 69 verts, eslint, tsc.
 **Resultats observes** : plan a jour (matrice intacte : 64 identifiants du registre), DU-8 et journal §9 ; spec et declencheur corriges. Plan, spec et ces entrees commites sur `feat/v75` a la demande de l'utilisateur, sans push.
 
 **Conclusion / prochaine etape** : GO de J1 toujours attendu (avant la fusion v7.5 -> main) ; decision utilisateur a venir sur les largeurs mesurees (spec §11, 5).
+## [2026-09-24] Retours rejeu : rattrapage de feat/v75 (campagne perf) avant la fusion — Complété (feat/retours-rejeu, rien de poussé)
+
+**Décision technique principale.** `git merge --no-ff origin/feat/v75` (9d335ea43, 103 commits depuis fe2106f4b : campagne perf 12 lots + C4, correctif archlint 6d8644181, PlayerLayout 46aec098c, docs) dans feat/retours-rejeu (e1dc73433) -> ea986960b. Un seul conflit : `internal/archlint/no_stale_fallback_target_test.go` (les deux côtés avaient corrigé le chemin `.ai/V7.5/` du plan du décodeur) — version de feat/v75 gardée, en-tête de fichier remis au bon chemin. Auto-fusionnés : openapi.yaml, generated.ts, types.ts (aucun hunk commun). Seuls ces 5 fichiers étaient touchés des deux côtés ; paquets partagés (service, replaylabels, asset-drawer, sync, wire) relus : fichiers disjoints, le cache `replaylabels.Catalogue` de la perf ne sert que squadagg, le tiroir L4 de la campagne (`assetDrawerLogic`) et le `isOpen` de la perf coexistent. thought_log : 17 + 17 entrées gardées, remises en ordre chronologique (09-23 perf avant les 09-24 de la campagne).
+
+**Résultats observés.** Fichiers générés frais : `openapi-gen -check` à jour, `check-generated-types-fresh` OK, `build_i18n_manifests` 22 manifestes sans écart. Gates : go build / go vet / vet -tags research (film/... + himodule, replaybuild, service, replayartifacts, tools/film_re) verts ; `go test ./...` exit 0 (190 paquets ok, 0 FAIL) ; intégration `-p 1 -json` exit 0, 18 258 tests, baseline OK ; golangci-lint --new-from-merge-base=origin/main 0 issue ; web : tsc, eslint (0 erreur), lint:colors, lint:fields, vitest 8600 verts, knip + ratchet 0/0/0, build Vite, rastérisation Playwright 3/3. Parc : 107 documents reconstruits depuis les faits (base e1dc73433 contre tête ea986960b, mêmes 4 faits au schéma 4 sautés des deux côtés), 107/107 identiques à l'octet, replay-diff 0 écart ; `data/cache` du checkout principal intact (find -newer vide avant/après).
+
+**Conclusion / prochaine étape.** Aucun rouge venu de la fusion, aucun correctif nécessaire. Prête pour push + CI au niveau job puis fusion dans feat/v75 (superviseur).
+
+## [2026-09-25] Retours rejeu : bilan du workflow 5 (D-fix, M8, M7b, M4b) et de sa consommation — En cours (rien d'intégré, rien de poussé)
+
+**Décision technique principale.** Bilan sur pièces (journal du workflow, transcripts, branches), sans agent : le quota hebdomadaire de l'utilisateur est épuisé (reset le 27/09 à 6 h) ; aucun workflow ni sous-agent ne sera relancé sans son accord explicite. Consommation de la campagne (67 agents Opus, 23/09 13 h 33 -> 24/09 20 h 15) : 8,3 M jetons produits, 3,3 Md jetons de contexte relus, 124 M écrits en cache ; le workflow 5 seul : 2,2 M produits, 1,03 Md relus (31 %). Quatre exécutants (m3, m2, dfix, m4b : 600 à 750 tours, contexte jusqu'à 1 M, effort high/max) font 46 % des relectures. La boucle principale : 0,45 M produits, 0,12 Md relus.
+
+**Résultats observés.** D-fix (feat/rr-vague-d, tête c9ef97ec6) : la marche d'image-clé ne perd plus le ti=9 de l'index 0, l'absence non prouvée ne borne plus une présence, deux régressions résiduelles de M3 corrigées, six écarts instruits ; revue non conforme (3 P1, 8 P2), tout corrigé ; gates verts ; 4 films BTB décodés deux fois chacun pour régénérer les entrées figées (règle « jamais un BTB » tordue, question posée après coup). M8 (feat/rr-m8, 5e87b4511) : verdict du fil des morts porté dans les faits ; revue conforme (5 P2 corrigés). M7b (feat/rr-m7b, cc0f03ac2) : Falcon hors des familles non jouables ; revue non conforme (1 P0 : artilleurs reportés sur un Falcon affiché alors que le joueur est ailleurs), corrigé ; question ouverte : les Falcon de Behemoth en Super Fiesta sont désormais affichés. M4b (feat/rr-m4b, f2b52546b, 3 commits, 164 fichiers, +7 075 / -1 523, schéma 71) : l'exécutant est mort sur le quota au moment d'écrire son rapport ; aucune revue ni correction ; sa chronique v71 déclare G1 à 4 frags sur 6 (deux dans un trou de lecture nommé) et, sur 8a485699, 0 rafale sur les épisodes de Ghost et de Banshee (G2 non tenu pour ces familles). `data/cache` vivant intact depuis le 24/09 8 h (find -newermt vide). Worktrees propres ; dossiers temporaires rr-tmp-* laissés (plusieurs Go).
+
+**Conclusion / prochaine étape.** Restent : revue de M4b et fermeture de G2 (Ghost, Banshee), intégration de la vague D (D-fix + M8 + M7b + M4b) dans la campagne, re-décodage unique des 111 matchs, plan §9 et thought_log. Décisions attendues de l'utilisateur : budget et forme de la suite, Falcon de Behemoth, décodages BTB pour les entrées figées, re-figeage des références d'équivalence.
+
+## [2026-09-25] Retours rejeu : intégration de la vague D (M2, M3, D-fix, M8, M4b, M7b) — Complété (feat/retours-rejeu, rien de poussé)
+
+**Décision technique principale.** Trois fusions `--no-ff` dans l'ordre prescrit : `feat/rr-m4b` (porte la vague D pré-intégrée, M2, M3, D-fix, et M4b), `feat/rr-m8`, `feat/rr-m7b`. Un seul schéma final, 71 ; chronique v69 (partie M7b), v70 (M2, M3, D-fix, M8), v71 (M4b). Seul conflit de fond : `vehicle_shots.go` (M4b pose un tir par sa référence 0, M7b juge l'ambiguïté des épisodes sur le véhicule) — UNE règle : la référence 0 d'abord, l'épisode ensuite avec l'ambiguïté de M7b, un poseur commun ; test d'interaction rouge si l'ordre s'inverse. `facts.Rev` inchangée, empreinte recopiée (M7b : deux entrées de données au registre) ; goldens d'assemblage et fixtures de contrat régénérés par leurs portes ; aucune forme ni contrat ne bouge (openapi à jour). Références d'équivalence du 22/09 re-figées au code final (20 films, BTB compris, un à la fois, racine temporaire), commit dédié.
+
+**Résultats observés.** Gates complets une fois : build, vet (défaut / research / integration), `go test ./...` 190 paquets 0 FAIL, intégration `-p 1 -json` 17 637 pass / 787 skip / 0 fail, baseline 9 693 présents, golangci 0 issue, openapi-gen -check à jour ; web tsc, eslint 0 erreur, couleurs, champs, vitest 8 659, knip 0/0/0, i18n sans écart, build Vite, rastérisation 3/3 (suite Playwright complète non jouable sans serveur). `replay-equiv` 20/20 identiques après re-figeage. Gate de corpus (8 témoins non BTB, base `1a8390e9f`) : pertes toutes attribuées aux classes déclarées de M4b et de la vague 70, un cas antérieur non déclaré consigné (§8.27 : prise d'une arme identique à la dotation lue ré-annonce, d9781168) ; tête contre `c9eb3b6bd` : 0 écart. Règle des places tenue sur les huit témoins. G1 81c02726 6/6 au code intégré. Commande de re-décodage testée sur f75e7053 (16,4 s, pic 275 Mio ; killsource crédit 3 min 11). `data/cache` vivant intact (find -newer vide avant/après chaque exécution).
+
+**Conclusion / prochaine étape.** Prête pour le superviseur : push + CI au niveau job, puis re-décodage des 111 films serveur arrêté (commande et ordre au §9 du plan : backfill-replay, usage-summary, pad-tiers --force, killsource --workers 1, tactical-rasters). Questions ouvertes au §9 : 3e montée de G MONEY (`ti=43` i20-i22), cibles M3, décor du Falcon, retrait de `turretRidesNotRideable`, verdicts visuels.
+
+## [2026-09-25] Retours rejeu : republication des 111 matchs au schéma 71 et CI de l'intégration D — Complété (feat/retours-rejeu)
+
+**Décision technique principale.** Reprise de M4b puis intégration de la vague D par deux agents (tête 8487a4f91). Republication faite par le superviseur depuis un binaire bâti une fois sur cette tête, `LEVELUP_REPO_ROOT` = checkout principal, serveur non lancé. Commande de l'intégrateur corrigée : sans `-only-existing`, `backfill-replay` visait les 1 624 films du cache et non les 111 artefacts publiés (relevé au dry-run). CI rouge de 8487a4f91 : job de couverture, paquet `film/internal/grammar` au-delà de `-timeout 600s` (57 -> 82 s non instrumenté, aucun test en échec) ; budget porté à 900 s, daté, avec critère de retour (95308bf3c, plan §8.32).
+
+**Résultats observés.** `backfill-replay -only-existing` 111/111 construits (code 0, 42 min, pic max 929 Mio) ; résumé d'usage, pad-tiers (--force) et rasters tactiques : 111 écrits chacun, 0 échec. Vies publiées sans identité sur 10 matchs (23 vies) : même mesure au code de feat/v75 = 27 vies, défaut antérieur en légère baisse (§8.33). `data/cache` vivant : seules les écritures de la republication.
+
+**Conclusion / prochaine étape.** CI de 95308bf3c au niveau job, puis fusion dans feat/v75 et push (pas main), signal à la session de ménage. En attente de l'utilisateur : backfill killsource (1 624 films, environ 2 h 45 à un ouvrier), 3e montée de G MONEY (`ti=43` i20-i22), cibles M3, décor du Falcon de Behemoth, retrait de `turretRidesNotRideable`, verdicts visuels et sonores.

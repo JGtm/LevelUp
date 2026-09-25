@@ -27,6 +27,7 @@ func toReplayDocument(v replay.ReplayDocument) replaydoc.ReplayDocument {
 		Structure:           sliceOf(v.Structure, toSurface),
 		StructureBounds:     ptrOf(v.StructureBounds, toBounds),
 		Shots:               sliceOf(v.Shots, toShot),
+		Bursts:              sliceOf(v.Bursts, toFireBurst),
 		Loadouts:            sliceOf(v.Loadouts, toLoadout),
 		Inventory:           sliceOf(v.Inventory, toInventory),
 		GrenadeLabels:       sliceOf(v.GrenadeLabels, toLabel),
@@ -46,6 +47,8 @@ func toReplayDocument(v replay.ReplayDocument) replaydoc.ReplayDocument {
 		GroundWeapons:       sliceOf(v.GroundWeapons, toGroundWeapon),
 		Vehicles:            sliceOf(v.Vehicles, toVehicleTrack),
 		VehicleLabels:       mapOf(v.VehicleLabels, toVehicleLabel),
+		VehicleWeapons:      mapOf(v.VehicleWeapons, toVehicleWeapon),
+		VehicleScenery:      ptrOf(v.VehicleScenery, toVehicleScenery),
 		VehicleCycles:       sliceOf(v.VehicleCycles, toVehicleCycle),
 		WeaponPads:          sliceOf(v.WeaponPads, toWeaponPad),
 		PadPickups:          sliceOf(v.PadPickups, toPadPickup),
@@ -128,7 +131,24 @@ func toRosterEntry(v replay.RosterEntry) replaydoc.RosterEntry {
 		Bid:        v.Bid,
 		Seat:       v.Seat,
 		SeatSource: v.SeatSource,
+		Presence:   presenceServie(v),
 	}
+}
+
+// presenceServie recopie les intervalles de presence d une entree de roster (lot M2.3, schema 69).
+//
+// LA BOUCLE NE NOMME PAS LE TYPE STOCKE, et c est voulu : la surface de `film/replay` citee hors de
+// `film/` est un ratchet date (`archlint/film_facade_surface_test.go`), qu un type de transport
+// recopie champ pour champ n a pas a faire monter. Nil reste nil, comme `sliceOf`.
+func presenceServie(v replay.RosterEntry) []replaydoc.PresenceInterval {
+	if v.Presence == nil {
+		return nil
+	}
+	out := make([]replaydoc.PresenceInterval, 0, len(v.Presence))
+	for _, p := range v.Presence {
+		out = append(out, replaydoc.PresenceInterval{From: p.From, To: p.To, ToMax: p.ToMax})
+	}
+	return out
 }
 
 func toShot(v replay.Shot) replaydoc.Shot {
@@ -148,6 +168,8 @@ func toLoadout(v replay.Loadout) replaydoc.Loadout {
 		T:    v.T,
 		Slot: v.Slot,
 		W:    v.W,
+		Src:  v.Src,
+		K:    v.K,
 	}
 }
 

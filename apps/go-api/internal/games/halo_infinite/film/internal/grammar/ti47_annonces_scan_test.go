@@ -61,10 +61,8 @@ const (
 	ti47ChampEnv   = "TI47_CHAMP"   // sous-champ analyse, « debut:fin » en positions de bit
 )
 
-// compPersonalAIData nomme le composant cible. Un NOM, jamais un numero : le lot 0 a mesure deux
-// decoupages de registre differents sur le corpus, un « ti=47 i2 » cable serait faux au prochain
-// patch.
-const compPersonalAIData = "personal-ai-data-component"
+// Le composant cible est nomme par `compPersonalAIData` (personal_ai_data.go, porte au lot M4b) :
+// un NOM, jamais un numero — le lot 0 a mesure deux decoupages de registre differents sur le corpus.
 
 // ti47MaxDecalage borne l'histogramme de chainage, en bits. Les largeurs totales des composants
 // deja portes du corpus tiennent toutes sous 40 bits (table LOTCBIS_PHASE0 §2.3) ; 192 laisse

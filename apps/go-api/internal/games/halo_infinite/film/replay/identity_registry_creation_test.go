@@ -126,7 +126,7 @@ func TestCreationSePropageAuxAutresViesDuMemeCorps(t *testing.T) {
 // 59 vies en bloc (`lectures_divergentes`), et les calques perdaient avec elles la moitie du
 // bornage de leurs episodes.
 //
-// MUTATION : grouper les records par slot SANS leur date (rendre `indexAuDebutDe` le premier
+// MUTATION : grouper les records par slot SANS leur date (rendre `recordAuDebutDe` le premier
 // index) -> la seconde vie du slot 100 porte 111, rouge.
 func TestCreationPartageUnSlotRecycleEntreSesDeuxCorps(t *testing.T) {
 	in := filmDeuxCorps()
@@ -179,7 +179,7 @@ func TestCreationPartageUnSlotRecycleEntreSesDeuxCorps(t *testing.T) {
 // et c'est pour cela qu'il doit etre teste : rien dans le materiau d'aujourd'hui ne le
 // declencherait, donc rien ne dirait qu'il a disparu.
 //
-// MUTATION : faire rendre a `indexAuDebutDe` le premier index quand aucun record ne precede la
+// MUTATION : faire rendre a `recordAuDebutDe` le premier record quand aucun record ne precede la
 // vie -> la premiere vie du slot 100 est nommee, rouge.
 func TestCreationSeTaitSurUneVieAnterieureAuxLecturesDivergentes(t *testing.T) {
 	in := filmDeuxCorps()

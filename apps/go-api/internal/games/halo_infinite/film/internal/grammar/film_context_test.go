@@ -75,7 +75,7 @@ func comparerContexteAuRecalcul(t *testing.T, film *source.Film) {
 	// (2) la bande de slots bipede — l'appel EXACT que faisaient les huit balayages.
 	var bandeDirecte SlotBand
 	if len(attendus) > 0 {
-		bandeDirecte = bipedSlotBand(film, attendus)
+		bandeDirecte = bipedSlotBand(NewFilmContext(film), attendus)
 	}
 	memeBande(t, "bande bipede", fc.BipedSlots(), bandeDirecte)
 

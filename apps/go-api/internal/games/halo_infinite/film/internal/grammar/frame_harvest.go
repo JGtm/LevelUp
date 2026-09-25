@@ -319,6 +319,7 @@ func decodeFrameParRangs(br *Lecteur, buf []byte, w *World, cfg FrameConfig,
 	if skipLeadBits == cfg.PacketPreambleBits && cfg.PacketPreambleBits >= 1 {
 		br.Skip(cfg.PacketPreambleBits - 1) // le bit de configuration du frame-processeur
 		if a := consumeVueA(br, frameLen); !a.Porte {
+			br.publierVueC(LectureVueC{}) // vue C non atteinte : un TROU, que l appelant compte
 			return nil, rangs, br.BitPos()
 		}
 		rangs++
@@ -331,15 +332,24 @@ func decodeFrameParRangs(br *Lecteur, buf []byte, w *World, cfg FrameConfig,
 	w.PoserVueCourante(int(vueDeLImageCle))
 	recs, _, hitEnd := decodeInferLoop(br, buf, w, cfg)
 	if !hitEnd {
+		br.publierVueC(LectureVueC{})
 		return recs, rangs, br.BitPos()
 	}
 	rangs++
 	// RANG 2 — la vue de controle. Elle ne rend AUCUN record d entite : ses records vont dans
 	// le tableau que `FUN_142987460` applique par `vtable[0x48]`, et ce ne sont pas des deltas
 	// d entite. La marche hors ligne n en publie donc aucun — c est ce qui supprime les records
-	// DEL fantomes du pied de trame.
-	if c := consumeVueC(br, frameLen); c.Porte {
+	// DEL fantomes du pied de trame. Ses ENTREES DE CONTROLE (le tir continu, lot M4b) sont
+	// publiees au hook, avec le verdict de l oracle de cadrage : une vue qui ne ferme pas le
+	// paquet ne rend rien.
+	c := consumeVueC(br, frameLen)
+	if c.Porte {
 		rangs++
 	}
+	l := LectureVueC{Atteinte: true, Arret: c.Arret, Fermee: c.Porte && vueCFermee(buf, br.BitPos())}
+	if l.Fermee {
+		l.Entrees = c.Entrees
+	}
+	br.publierVueC(l)
 	return recs, rangs, br.BitPos()
 }

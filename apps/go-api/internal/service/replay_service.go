@@ -106,7 +106,11 @@ const replayArtifactExt = ".json"
 //     banque de sons du client, et la nature de la décharge qui teinte son éclair de
 //     bouche (cf. replay_weapon_labels.go) ;
 //   - le SPRITE de chaque famille de châssis de véhicule (VehicleLabels) : l'artefact publie
-//     la famille, le service compose son URL sous /static (cf. replay_vehicle_labels.go).
+//     la famille, le service compose son URL sous /static (cf. replay_vehicle_labels.go) ;
+//   - le REGISTRE DES ARMES DE VÉHICULE (VehicleWeapons) employées par les tirs : forme, teinte,
+//     son et montage de chacune (cf. replay_vehicle_weapons.go, schéma 69).
+//   - le DÉCOR DE CARTE (VehicleScenery) : les vies posées par la carte hors de sa zone jouable
+//     (cf. replay_vehicle_scenery.go, lot M7).
 //
 // L'absence de l'une ou de l'autre n'est jamais une erreur — le rejeu se sert entier sans.
 //
@@ -143,6 +147,12 @@ func (s *replayService) GetReplay(ctx context.Context, matchID string) (replaydo
 	// statique dépend du titre, et ne se fige donc pas dans l'artefact (cf.
 	// replay_vehicle_labels.go).
 	s.resolveVehicleLabels(ctx, &doc)
+	// LE REGISTRE DES ARMES DE VÉHICULE, même règle et même raison : une résolution du titre qui
+	// s'améliore (cf. replay_vehicle_weapons.go).
+	s.resolveVehicleWeapons(ctx, &doc)
+	// LE DECOR DE CARTE, meme regle et meme raison : la zone jouable est une reference de CARTE,
+	// que l artefact ne connait pas (cf. replay_vehicle_scenery.go, lot M7).
+	s.resolveVehicleScenery(ctx, &doc, matchID, keys)
 	// LE GARDE-RAIL DES NIVEAUX D'ARMES : il a besoin des clés canoniques que les deux
 	// résolutions ci-dessus viennent de poser, donc il passe en dernier (cf.
 	// replay_weapon_tier_check.go). Silencieux quand tout va bien.

@@ -271,16 +271,20 @@ func resolveWeaponKeyLabelsAny(ctx context.Context, meta *DB, titleSlug string, 
 // l'image d'arme (`AssetURLAdapter.WeaponImageURL`) et rien d'autre depuis que les
 // agregats sont keyes par `weapon_key`. Resoudre la cle vers son id canonique
 // (`MIN(id_value)`, deterministe) rend donc l'image SANS demander au lecteur de connaitre
-// le film. Une cle hors arsenal n'a aucun id : `numericID` vaut 0, et c'est exact —
-// elle n'existe pas dans `weapon_ids`, par construction (garde-rail
-// weapons.TestHorsArsenalHINFSansIdNumerique).
+// le film. Une cle SANS entree dans `weapon_ids` a `numericID` = 0 (garde-rail
+// weapons.TestHorsArsenalHINFSansIdNumerique : la liste EXACTE de ces cles).
+//
+// « SANS ID » N EST PLUS « HORS ARSENAL » depuis le 2026-09-24 (retours du rejeu, lot M6.4) : la
+// bobine a fusion UNSC, classe `environmental`, porte les identifiants de l objet que le joueur
+// tient. Un lecteur qui doit ecarter les objets (arme favorite, top armes) le fait par la CLASSE,
+// regle nommee `domain.IsFavoriteWeaponCandidate` — jamais par `numericID == 0`.
 type weaponKeyResolved struct {
 	class     string
 	role      string
 	family    string
 	label     string // FR-first (repli EN)
 	labelEN   string // EN-first (repli FR)
-	numericID int64  // 0 = cle sans identifiant numerique (hors arsenal)
+	numericID int64  // 0 = cle sans identifiant numerique (cf. l en-tete : pas un test d arsenal)
 }
 
 // displayLabel : même contrat que weaponResolved.displayLabel, pour les lecteurs keyés par

@@ -110,8 +110,8 @@ const (
 	// a eux seuls 634 des 947 trajectoires coupees.
 	wantProjectileTracks     = 580
 	wantProjectilesTruncated = 3
-	// wantInventory : 184 etats d inventaire publies.
-	wantInventory = 184
+	// wantInventory : 192 etats publies (184 avant M3.1 : 8 bipedes que la marche perdait).
+	wantInventory = 192
 	// wantIndexReadings : 26 chunks de replication livrent la MEME table identite -> index.
 	wantIndexReadings = 26
 )
@@ -299,7 +299,7 @@ func TestSeventyGrenadeThrowsAreAllPlaced(t *testing.T) {
 
 // TestProjectilesAndInventoryCounts : les deux calques que rien ne verrouillait.
 //
-// 439 trajectoires et 184 etats d inventaire. Ce sont les deux sorties dont les decodeurs
+// 439 trajectoires et 184 etats d inventaire (192 depuis le lot M3.1). Ce sont les deux sorties dont les decodeurs
 // etaient a 0 % de couverture de test avant ce jalon.
 func TestProjectilesAndInventoryCounts(t *testing.T) {
 	doc := buildGolden(t)
@@ -410,8 +410,8 @@ func renderAssembly(doc ReplayDocument) string {
 // combien d occupants le film y met AU PLUS en meme temps.
 //
 // IL APPARTIENT AU GOLDEN POUR LA MEME RAISON QUE LE BLOC DES REPLIS : l ecart entre `entrees`
-// et `occupantsMax` est le defaut que le lot corrige, et le figer par build est ce qui rend une
-// regression de la pose visible sans relancer d instrument.
+// et `occupantsMax` est le defaut que le lot corrige, et le figer par build rend une regression de
+// la pose visible sans instrument (lot M2.3 : `depassements` a 0 attendu sur chaque build).
 func renderSieges(p func(string, ...any), doc ReplayDocument) {
 	p("## SIEGES — la fiche d un occupant, et la part qui vient d un appariement")
 	if doc.Coverage == nil || doc.Coverage.Seats == nil {
@@ -420,10 +420,10 @@ func renderSieges(p func(string, ...any), doc ReplayDocument) {
 		return
 	}
 	s := *doc.Coverage.Seats
-	p("entrees %d · sieges %d · lus %d · apparies %d · reprises ecrites %d",
-		s.Entrees, s.Sieges, s.Lus, s.Apparies, s.ReprisesEcrites)
-	p("arrivants %d · presences closes %d · sans presence %d · occupants au plus %d · sans table %v",
-		s.Arrivants, s.PresencesCloses, s.SansPresence, s.OccupantsMax, s.SansTableDuFilm)
+	p("entrees %d · sieges %d · lus %d · tirs %d · apparies %d · ouvertes %d · sans place %d · reprises ecrites %d · presences %s",
+		s.Entrees, s.Sieges, s.Lus, s.PlacesTirs, s.Apparies, s.PlacesOuvertes, s.SansPlace, s.ReprisesEcrites, s.Presences)
+	p("arrivants %d · presences closes %d · sans presence %d · occupants au plus %d · depassements %d · relais bornes %d · sans table %v",
+		s.Arrivants, s.PresencesCloses, s.SansPresence, s.OccupantsMax, s.Depassements, s.RelaisBornes, s.SansTableDuFilm)
 	p("")
 }
 

@@ -46,7 +46,7 @@ func consumeUnitControl(br *Lecteur) {
 //	   Stack consts at the call site: [rsp+0x30]=0x13 (19), [rsp+0x28]=0xa (10).
 //	FUN_14076dc04 = R(19) unconditional. Width arg R9D=0x13 at 1408f08b1.
 //	R(1) f1; R(1) f2; if f2==0: FUN_1406d84b4 dequant R(9). [rsp+0x20]=0x9 @1408f0911.
-//	FUN_1406d025c (orientation block, see consume1406d025c).
+//	FUN_1406d025c (le bloc d ACTION, lu par [lireBlocDAction], bloc_action.go).
 //	FUN_1408f0ac4(...,1) slot 0 (probe present); if recordStateParam>1: slot 1.
 //
 // recordStateParam (param_4 = R9D) is the actor-tick/weapon-set count supplied by
@@ -73,7 +73,7 @@ func consumeUnitActorControl(br *Lecteur, recordStateParam uint32) {
 	if !br.ReadBit() {   // f2; if 0: dequant
 		br.ReadBits(9) // FUN_1406d84b4 dequant width 9 (stack const)
 	}
-	consume1406d025c(br)         // orientation/matrix block
+	lireBlocDAction(br)          // FUN_1406d025c : le bloc d action (bloc_action.go)
 	consume1408f0ac4Probe(br, 1) // slot 0 : FUN_1408f0ac4(...,1) @1408f0948
 	if recordStateParam > 1 {
 		consume1408f0ac4Probe(br, 1) // slot 1 : @1408f0962
@@ -92,170 +92,6 @@ func consume14076d528(br *Lecteur) {
 	if !br.ReadBit() { // gate==0 -> read
 		br.ReadBits(19) // FUN_1406d8288 packed dir (width [rsp+0x30]=0x13)
 		br.ReadBits(10) // FUN_14076d6dc magnitude (width [rsp+0x28]=0xa)
-	}
-}
-
-// consume1406d025c mirrors FUN_1406d025c (unit orientation / inertia-matrix block).
-// FULLY EXPANDED from the decompile (all R(n) exact); the residual tail
-// FUN_142f26740 (=FUN_140c9e4d8) is now ported in consume142f26740.
-//
-//	R(1) gate; if bit==0 (early) -> return.                       [1406d028e]
-//	R(1) a; if a: 6x R(1)  -> sets a-flag bytes m0(3 bits)+m2(3 bits).
-//	   FUN_1431ab1ec writes m0[bit0,1,2] then m2[bit0,1,2].       [1406d02e0..]
-//	R(1) b; if b: 4x R(1)  -> sets b-flag bytes m4(2 bits)+m5(2 bits).
-//	   FUN_1431ab1cc writes m4[bit0,1] then m5[bit0,1].           [1406d0398..]
-//	R(1) c; if c: R(1); R(1);                                     [1406d041e..]
-//	   FUN_1431a0bbc = R(1)+optR(8)   <-- width 8 (NOT 10) [refill 0x40-x<8, +8]
-//	   FUN_1431a0abc = R(1)+optR(10)  <-- width 10         [refill 0x40-x<10,+10]
-//	   FUN_1431a0cbc (quat: R(2) mode + mode-dependent body).
-//	FUN_1406d0f20 = R(3).                                         [1406d04e3]
-//	if (m0 & 0b111)!=0 || (m4 & 0b11)!=0 : FUN_1406d00ec (R1+optR2). [first gate]
-//	if (m2 & 0b111)!=0 || (m5 & 0b11)!=0 : FUN_1406d00ec (R1+optR2). [second gate]
-//	FUN_142f26740(struct+0x28, br, 0) tail.                       [1406d05f..]
-//
-// The two FUN_1406d00ec are GATED by the a/b flag bytes decoded above (param_1
-// bytes [0]/[2] from FUN_1431ab1ec, [4]/[5] from FUN_1431ab1cc), NOT
-// unconditional. recordStateParam is irrelevant here (the tail's param_3 const
-// is hard-coded 0 at the call site 1406d05f, see consume142f26740).
-func consume1406d025c(br *Lecteur) {
-	if !br.ReadBit() { // gate==0 -> early return (FUN_1406cf008)
-		return
-	}
-
-	// a-block: m0 = bits{0,1,2} of first ushort, m2 = bits{0,1,2} of second ushort.
-	var m0, m2 uint64
-	if br.ReadBit() { // a gate (FUN_1406cf008)
-		m0 = br.ReadBits(3) // FUN_1431ab1ec(p,0,{0,1,2}) -> ushort[0] low 3 bits
-		m2 = br.ReadBits(3) // FUN_1431ab1ec(p,1,{0,1,2}) -> ushort[2] low 3 bits
-	}
-	// b-block: m4 = bits{0,1} of byte[4], m5 = bits{0,1} of byte[5].
-	var m4, m5 uint64
-	if br.ReadBit() { // b gate (FUN_1406cf008)
-		m4 = br.ReadBits(2) // FUN_1431ab1cc(p,0,{0,1}) -> byte[4] low 2 bits
-		m5 = br.ReadBits(2) // FUN_1431ab1cc(p,1,{0,1}) -> byte[5] low 2 bits
-	}
-	// c-block: 2x R(1) then bbc(8)/abc(10)/quat.
-	if br.ReadBit() { // c gate (FUN_1406cf008)
-		br.ReadBits(2)                // 2x R(1) -> [0x10] bit3,bit2
-		consumeOpt1431a0bbc(br)       // FUN_1431a0bbc = R(1)+optR(8)
-		consumeOpt1431a0abc(br)       // FUN_1431a0abc = R(1)+optR(10)
-		consumeQuatBlock1431a0cbc(br) // FUN_1431a0cbc
-	}
-
-	br.ReadBits(3) // FUN_1406d0f20 = R(3) -> param_1[6]
-
-	// First FUN_1406d00ec gate: any a-flag in m0 OR any b-flag in m4.
-	if (m0&0b111) != 0 || (m4&0b11) != 0 {
-		consumeID2(br) // FUN_1406d00ec = R(1); if 0 R(2)
-	}
-	// Second FUN_1406d00ec gate: any a-flag in m2 OR any b-flag in m5.
-	if (m2&0b111) != 0 || (m5&0b11) != 0 {
-		consumeID2(br) // FUN_1406d00ec = R(1); if 0 R(2)
-	}
-
-	consume142f26740(br) // tail FUN_142f26740 -> FUN_140c9e4d8, param_3 const = 0
-}
-
-// consumeOpt1431a0bbc mirrors FUN_1431a0bbc: R(1) gate; if set R(8).
-// CONFIRMED by decompile (refill test "0x40-x < 8", shift 0x38, *(p+0x2c)+=8).
-func consumeOpt1431a0bbc(br *Lecteur) { consumeGateR(br, 8) }
-
-// consumeOpt1431a0abc mirrors FUN_1431a0abc: R(1) gate; if set R(10).
-// CONFIRMED by decompile (refill test "0x40-x < 10", shift 0x36, *(p+0x2c)+=10).
-func consumeOpt1431a0abc(br *Lecteur) { consumeGateR(br, 10) }
-
-// consume142f26740 mirrors the orientation-block tail FUN_142f26740, a one-line
-// thunk that tail-calls FUN_140c9e4d8(struct+0x28, br, /*param_3=*/0). Ported from
-// the FUN_140c9e4d8 decompile:
-//
-//	gate = FUN_1406cf008: R(1); if bit==0 -> return (no body).
-//	if gate:
-//	  FUN_140c9e990(sub)            (R(2) mode + var-width int, see consume140c9e990)
-//	  R(1) f0  -> [0x18] bit0.
-//	  if f0==0:
-//	    2x FUN_1406d84b4 dequant (width 4 here; the +0x1c/+0x20 floats)
-//	    R(1) f1 -> [0x18] bit1.
-//	    if f1==0: return (FUN_140c9e738 NOT called).
-//	  FUN_140c9e738(...)            (compressed dir; param_3==0 -> R(1)+[R(15)+R(7)])
-//
-// FUN_140c9e738 runs iff (f0==1) OR (f0==0 && f1==1). recordState param_3 is the
-// hard-coded 0 from the call site, so FUN_140c9e738 uses the non-"==1" widths
-// (uVar1=0xf=15, uVar2=7), NOT (0x14/0xe).
-func consume142f26740(br *Lecteur) {
-	if !br.ReadBit() { // FUN_1406cf008 gate; bit==0 -> no body
-		return
-	}
-	consume140c9e990(br) // FUN_140c9e990 sub-block
-	f0 := br.ReadBit()   // [0x18] bit0
-	if !f0 {
-		br.ReadBits(dequant140c9e4d8Width) // FUN_1406d84b4 -> +0x1c
-		br.ReadBits(dequant140c9e4d8Width) // FUN_1406d84b4 -> +0x20
-		if !br.ReadBit() {                 // f1 -> [0x18] bit1; if 0 -> return (skip 738)
-			return
-		}
-	}
-	consume140c9e738(br, false) // FUN_140c9e738 (param_3==0 -> R(1)+[R(15)+R(7)])
-}
-
-// dequant140c9e4d8Width: the FUN_1406d84b4 dequant width inside FUN_140c9e4d8.
-// FUN_1406d84b4 takes its width as a stack arg (in_stack_00000028); at this call
-// site it is 4 (CONFIRMED by disasm: "MOV EBX,0x4 ; MOV [RSP+0x20],EBX" before both
-// CALL 1406d84b4 @140c9e5a4 / @140c9e5bf). Modeled as a named constant.
-const dequant140c9e4d8Width = 4
-
-// consume140c9e990 mirrors FUN_140c9e990 (orientation-tail sub-descriptor):
-//
-//	FUN_1407f0278 = R(2) mode selector.
-//	mode==1: FUN_1406d3140 (var-width int, no probe -> R(13)+R(2)=15 bits)
-//	         + R(1) gate; if set R(6).
-//	mode==2: FUN_1406d3140 (15 bits) only.
-//	mode==0 or 3: nothing.
-//
-// FUN_1406d3140 is called with param_3 != 1 here (no probe bit). Its range is the
-// default DAT_144706100 = 0x1FFF -> W = bitLen(0x1FFF) = 13, plus the 2 trailing
-// bits, total 15. (Same primitive as readVarWidthInt(br, 0x1FFF, false).)
-func consume140c9e990(br *Lecteur) {
-	mode := br.ReadBits(2) // FUN_1407f0278 = R(2)
-	switch mode {
-	case 1:
-		readVarWidthInt(br, 0) // FUN_1406d3140 : categorie NON RELUE (R8D variable @140c9e9cd), repli 0
-		if br.ReadBit() {      // FUN_1406cf008 gate
-			br.ReadBits(6) // R(6)
-		}
-	case 2:
-		readVarWidthInt(br, 0) // FUN_1406d3140 : categorie NON RELUE (R8D variable @140c9e9cd), repli 0
-	}
-	// mode 0/3: no further bits.
-}
-
-// consume140c9e738 mirrors FUN_140c9e738 -> FUN_14076d528 (compressed direction):
-//
-//	R(1) gate; if bit==1 -> constant direction (0 further bits).
-//	if bit==0: R(widthDir) packed dir + R(widthMag) magnitude.
-//	  param_3==1 -> widthDir=0x14(20), widthMag=0xe(14).
-//	  else (our case, param_3==0) -> widthDir=0xf(15), widthMag=7.
-func consume140c9e738(br *Lecteur, recordStateIsOne bool) {
-	if br.ReadBit() { // gate==1 -> constant, no read
-		return
-	}
-	widthDir, widthMag := uint(15), uint(7)
-	if recordStateIsOne {
-		widthDir, widthMag = 20, 14
-	}
-	br.ReadBits(widthDir) // FUN_14076dc04/FUN_1406d8288 packed dir
-	br.ReadBits(widthMag) // FUN_14076d6dc magnitude
-}
-
-// consumeQuatBlock1431a0cbc models FUN_1431a0cbc's confirmed core (gate + isExact +
-// index). Delta branch unverified. (Une copie de ce coeur vivait dans `entity.go` sous le
-// nom `decodeQuatBlock` ; ce fichier a ete supprime le 2026-09-05, lot E, item E.2 : il
-// portait deux decodeurs de record sans appelant. Celui-ci est le seul restant.)
-func consumeQuatBlock1431a0cbc(br *Lecteur) {
-	if br.ReadBit() {
-		return
-	}
-	if !br.ReadBit() {
-		br.ReadBits(1) // index width DAT_144632be0 = 1
 	}
 }
 

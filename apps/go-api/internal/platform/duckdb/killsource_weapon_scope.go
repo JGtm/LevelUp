@@ -28,8 +28,9 @@ import (
 
 // weaponScopeRow : une arme et son volume de frags sur le perimetre demande.
 type weaponScopeRow struct {
-	weaponID  int64 // 0 = objet hors arsenal (aucun identifiant numerique au registre)
+	weaponID  int64 // 0 = cle sans identifiant numerique au registre
 	weaponKey string
+	class     string // classe du registre : c est elle qui ecarte un objet hors arsenal
 	label     string // FR-first (repli EN)
 	labelEN   string // EN-first (repli FR) — 2026-09-17 : sert le lecteur EN des trois surfaces
 	kills     int
@@ -73,7 +74,8 @@ func weaponKillsFromSourceForPlayer(
 			continue
 		}
 		out = append(out, weaponScopeRow{
-			weaponID: m.numericID, weaponKey: k, label: m.label, labelEN: m.labelEN, kills: kills,
+			weaponID: m.numericID, weaponKey: k, class: m.class, label: m.label, labelEN: m.labelEN,
+			kills: kills,
 		})
 	}
 	// Tri TOTAL : kills decroissants puis cle — une sortie qui change d'ordre a chaque
@@ -156,9 +158,9 @@ GROUP BY k.source_tag`)
 // par frags decroissants, best-effort (nil sur erreur — le top armes est une information
 // secondaire, jamais fatale a la page).
 //
-// Les objets hors arsenal (repulseur, bobines, environnement) sont ECARTES : cette surface
-// affiche une vignette d'arme, et un objet sans identifiant numerique n'en a pas. Ils
-// restent comptes partout ou le sunburst les sert.
+// Les objets hors arsenal (repulseur, bobines, environnement) sont ECARTES par la regle nommee
+// `domain.IsFavoriteWeaponCandidate` (depuis le 2026-09-24, la bobine a fusion porte un
+// identifiant : l absence d id ne suffit plus). Ils restent comptes partout ou le sunburst les sert.
 func (r *ExplorerRepo) topWeaponsFromSource(
 	ctx context.Context, xuid string, matchIDs []string, limit int,
 ) []domain.WeaponHighlight {
@@ -168,10 +170,7 @@ func (r *ExplorerRepo) topWeaponsFromSource(
 		return nil
 	}
 	out := make([]domain.WeaponHighlight, 0, limit)
-	for _, w := range rows {
-		if w.weaponID == 0 {
-			continue
-		}
+	for _, w := range armesDeLArsenal(rows, limit) {
 		// Avant le 2026-09-17, LabelEN recevait le libelle FR : « Apparition » sous UI EN.
 		label, labelEN := w.label, w.labelEN
 		if label == "" {
@@ -183,14 +182,41 @@ func (r *ExplorerRepo) topWeaponsFromSource(
 		out = append(out, domain.WeaponHighlight{
 			WeaponID: w.weaponID, Kills: w.kills, LabelFR: label, LabelEN: labelEN,
 		})
-		if len(out) >= limit {
-			break
-		}
 	}
 	if len(out) == 0 {
 		return nil
 	}
 	return out
+}
+
+// favoriteCandidate : une ligne de la source de degat (toujours mesuree dans le film) peut-elle
+// etre l arme favorite ? La regle nommee du domaine, jamais `weaponID != 0` recopie.
+func (w weaponScopeRow) favoriteCandidate() bool {
+	return domain.IsFavoriteWeaponCandidate(w.weaponID, w.class, true)
+}
+
+// armesDeLArsenal garde, dans l ordre, les `limit` premieres lignes candidates.
+func armesDeLArsenal(rows []weaponScopeRow, limit int) []weaponScopeRow {
+	out := make([]weaponScopeRow, 0, limit)
+	for _, w := range rows {
+		if len(out) >= limit {
+			break
+		}
+		if w.favoriteCandidate() {
+			out = append(out, w)
+		}
+	}
+	return out
+}
+
+// premiereArmeFavorite rend la premiere ligne candidate (lignes deja triees par frags).
+func premiereArmeFavorite(rows []weaponScopeRow) (weaponScopeRow, bool) {
+	for _, w := range rows {
+		if w.favoriteCandidate() {
+			return w, true
+		}
+	}
+	return weaponScopeRow{}, false
 }
 
 // favoriteWeaponFromSource rend l'arme la plus meurtriere du joueur sur TOUT son
@@ -204,12 +230,7 @@ func favoriteWeaponFromSource(
 		slog.WarnContext(ctx, "arme favorite: lecture de la source de degat echouee", "err", err)
 		return weaponScopeRow{}, false
 	}
-	for _, w := range rows {
-		if w.weaponID != 0 {
-			return w, true
-		}
-	}
-	return weaponScopeRow{}, false
+	return premiereArmeFavorite(rows)
 }
 
 // favoriteWeaponFromDamageSource sert l'encart « arme favorite » de l'Accueil depuis la

@@ -27,6 +27,24 @@
 import type { FxInk, FxTint } from './fxInk'
 import type { ShotFamily } from './shotEffects'
 
+/**
+ * BOMB_SCALE — L'ÉCHELLE DE LA BOMBE face à la déflagration (`explosive`), sur l'éclair de bouche
+ * comme sur l'effet de mort (`shotEffects.ts` l'importe d'ici) : même dessin, halo et onde plus
+ * grands.
+ *
+ * DÉCISION UTILISATEUR DU 2026-09-23 (nuit, retours du rejeu, lot M6.2) : la bombe de la Banshee
+ * « ROUGE et PLUS GROSSE (éclair et explosion) ». La rougeur est la TEINTE (`plasma_hot`, registre
+ * du titre) ; la taille est cette FORME. C'est un réglage de MISE EN SCÈNE, pas une mesure : le
+ * film ne dit rien du rayon d'une explosion, et une charge larguée se lit plus lourde qu'un obus.
+ *
+ * POURQUOI ICI ET PAS DANS `shotEffects.ts` (2026-09-24, CI de feat/retours-rejeu). Ce module
+ * n'a que des imports de TYPE : le garde-rail de rastérisation (`e2e/replay-muzzle-raster.spec.ts`)
+ * le transpile SEUL, sans bundler, et refuse tout import de valeur. Posée d'abord dans
+ * `shotEffects.ts`, la constante y faisait entrer un import de valeur et rougissait ce garde-rail.
+ * La constante vit donc dans le module feuille ; celui qui dépend de l'autre l'importe.
+ */
+export const BOMB_SCALE = 1.6
+
 /** Géométrie d'un éclair, en pixels d'ÉCRAN (le facteur de densité est appliqué par `k`). */
 export interface MuzzleShape {
   x: number
@@ -117,7 +135,11 @@ export function drawMuzzleFlash(
         drawArc(ctx, s)
         break
       case 'explosive':
-        drawBlast(ctx, s)
+        drawBlast(ctx, s, 1)
+        break
+      case 'bomb':
+        // LA BOMBE (lot M6.2) : la déflagration à l'échelle d'une charge larguée.
+        drawBlast(ctx, s, BOMB_SCALE)
         break
       case 'needles':
         drawSpray(ctx, s)
@@ -268,15 +290,16 @@ function drawArc(ctx: CanvasRenderingContext2D, s: Oriented): void {
 /**
  * drawBlast — LA DÉFLAGRATION : une bouffée large au départ, plus une onde qui s'ouvre AU
  * CANON. L'onde ne se pose jamais au bout : le film ne date aucun impact, et l'affirmer
- * inventerait un point de chute.
+ * inventerait un point de chute. `scale` : 1 pour la déflagration, `BOMB_SCALE` pour la bombe
+ * (même dessin, halo et onde plus grands — lot M6.2).
  */
-function drawBlast(ctx: CanvasRenderingContext2D, s: Oriented): void {
+function drawBlast(ctx: CanvasRenderingContext2D, s: Oriented, scale: number): void {
   const m = muzzle(s)
-  glow(ctx, m, s, FLASH_R * 1.25, 1.3, 0.85)
+  glow(ctx, m, s, FLASH_R * 1.25 * scale, 1.3, 0.85)
   ctx.globalAlpha = 0.45 * s.fade
-  ctx.lineWidth = 1.4 * s.k
+  ctx.lineWidth = 1.4 * scale * s.k
   ctx.beginPath()
-  ctx.arc(m.x, m.y, (4 + 16 * s.grow) * s.k, 0, Math.PI * 2)
+  ctx.arc(m.x, m.y, (4 + 16 * s.grow) * scale * s.k, 0, Math.PI * 2)
   ctx.stroke()
 }
 

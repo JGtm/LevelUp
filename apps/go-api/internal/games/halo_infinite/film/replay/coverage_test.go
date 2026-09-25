@@ -114,15 +114,16 @@ func TestBridgeHealthJSONKeysAreDistinct(t *testing.T) {
 	// DeathOffsetMs (lot M1b, 2026-09-08) EST SERVI NON-NIL ICI, et c'est nécessaire : le
 	// pointeur porte `omitempty`, un nil serait donc absent du JSON et ferait chuter `len(m)`
 	// sous `NumField()` sans qu'aucun tag ne se recouvre — un faux positif que ce test
-	// existe justement pour éviter.
+	// existe justement pour éviter. MÊME RAISON pour DeathsFeed (schéma 69, `omitempty`), servi
+	// non vide — d où la relecture dans une table de valeurs quelconques (une chaîne parmi des entiers).
 	offsetMs := int64(7)
 	raw, err := json.Marshal(BridgeHealth{Slots: 1, FromReading: 2,
 		LivesNamed: 4, LivesTotal: 5, IndexReadings: 26, IndexDisagreements: 0, SlotCollisions: 10,
-		DeathOffsetMs: &offsetMs})
+		DeathOffsetMs: &offsetMs, DeathsFeed: DeathsFeedRead})
 	if err != nil {
 		t.Fatalf("serialisation : %v", err)
 	}
-	var m map[string]int
+	var m map[string]any
 	if err := json.Unmarshal(raw, &m); err != nil {
 		t.Fatalf("relecture : %v", err)
 	}
@@ -131,8 +132,8 @@ func TestBridgeHealthJSONKeysAreDistinct(t *testing.T) {
 	}
 	// Les valeurs doivent aussi survivre au tour complet : une cle ecrasee garderait la
 	// derniere valeur ecrite, ce que le seul compte de cles ne verrait pas toujours.
-	if m["slots"] != 1 || m["fromReading"] != 2 || m["indexReadings"] != 26 || m["slotCollisions"] != 10 ||
-		m["deathOffsetMs"] != 7 {
+	if m["slots"] != 1.0 || m["fromReading"] != 2.0 || m["indexReadings"] != 26.0 || m["slotCollisions"] != 10.0 ||
+		m["deathOffsetMs"] != 7.0 || m["deathsFeed"] != DeathsFeedRead {
 		t.Errorf("valeurs alterees par la serialisation : %s", raw)
 	}
 }

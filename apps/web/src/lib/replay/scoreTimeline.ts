@@ -398,20 +398,44 @@ export interface LeadState {
  *
  * Le premier état est celui du PREMIER PALIER publié, quel qu'il soit : avant lui, le calque ne
  * dit rien (0-0 est l'affaire de l'appelant, qui seul sait où commence sa frise).
+ *
+ * LE MATCH À SENS UNIQUE (`campCount`, retours du rejeu 2026-09-23, lot L1.2). Un 3-0 ne publie
+ * qu'une série : le camp muet n'a jamais marqué, et « une équipe sans série vaut zéro » (en-tête
+ * du module). Quand l'appelant donne le nombre de camps du DOCUMENT (`campCountOf`) et que
+ * TOUTES les séries publiées ont un camp, chaque camp absent concourt à 0 : la course se lit
+ * « égalité, puis le marqueur en tête ». Les camps absents sont COMPTÉS, jamais nommés — ils ne
+ * peuvent pas mener, et leur identifiant ne vit pas dans l'espace du calque. Une seule série
+ * sans camp suffit à tout taire : rien ne dit alors qui marque.
  */
-export function leaderStates(timeline: ReplayScoreTimelineReady | undefined): LeadState[] {
+export function leaderStates(
+  timeline: ReplayScoreTimelineReady | undefined,
+  campCount = 0,
+): LeadState[] {
+  const published = timeline?.teams ?? []
   // Une équipe SANS identifiant ne peut être ni meneuse ni menée : la comparer reviendrait
   // à couronner la seule qui en a un (`coverage.score.teamIdentity = "unresolved"`).
-  const teams = (timeline?.teams ?? []).filter((t) => t.teamId != null)
-  if (teams.length < 2) return []
+  const teams = published.filter((t) => t.teamId != null)
+  const absents = teams.length === published.length ? Math.max(0, campCount - teams.length) : 0
+  if (teams.length === 0 || teams.length + absents < 2) return []
   const frames = [...new Set(teams.flatMap((t) => t.total.map((p) => p.t)))].sort((a, b) => a - b)
   const out: LeadState[] = []
   for (const frame of frames) {
-    const leader = leaderAt(teams, frame)
+    const leader = leaderAt(teams, frame, absents > 0)
     if (out.length > 0 && leader === out[out.length - 1].teamId) continue
     out.push({ frame, teamId: leader })
   }
   return out
+}
+
+/**
+ * campCountOf — le nombre de CAMPS que le film écrit au roster (`roster[].team`, schéma 57) :
+ * les désignateurs distincts, sans « aucune équipe » (`-1`) ni silence (champ absent). Il ne
+ * sert qu'à COMPTER les camps muets de `leaderStates` ; 0 = le document ne le dit pas.
+ */
+export function campCountOf(roster: ReadonlyArray<{ team?: number | null }>): number {
+  const camps = new Set<number>()
+  for (const r of roster) if (r.team != null && r.team >= 0) camps.add(r.team)
+  return camps.size
 }
 
 /**
@@ -437,11 +461,15 @@ export function allyOfTeamId(
   return null
 }
 
-/** leaderAt rend l'équipe SEULE en tête au frame donné, ou `null` (égalité, aucun point). */
-function leaderAt(teams: readonly ReplayTeamScoreReady[], frame: number): number | null {
-  let best = -1
+/**
+ * leaderAt rend l'équipe SEULE en tête au frame donné, ou `null` (égalité, aucun point).
+ * `mutes` : au moins un camp sans série concourt à ZÉRO (cf. `leaderStates`) — un camp publié
+ * à 0 est alors à égalité avec lui, et seul un score strictement positif mène.
+ */
+function leaderAt(teams: readonly ReplayTeamScoreReady[], frame: number, mutes = false): number | null {
+  let best = mutes ? 0 : -1
   let bestTeam: number | null = null
-  let tied = false
+  let tied = mutes
   for (const t of teams) {
     if (t.teamId == null) continue
     const v = scoreAtFrame(t.total, frame)

@@ -66,10 +66,36 @@ func ScanKeyframeLoadouts(film *source.Film, known map[uint32]bool) ([]types.Key
 	if len(known) == 0 {
 		return nil, nil
 	}
+	out, _, err := ScanKeyframeLoadoutsMarche(NewFilmContext(film), known)
+	return out, err
+}
+
+// KeyframeWalkCoverage est ce que la marche des images-clés d'un film a DÉCIDÉ et ce qu'elle a
+// MANQUÉ (lot M3.1, 2026-09-23). Le document la publie : une table d'image-clé trouée était
+// INVISIBLE jusque-là (rapport `fiche_armes` §6-3, 213 images-clés touchées sur 2 868 au parc).
+type KeyframeWalkCoverage struct {
+	KeyframeWalkStats
+	// BipedesAbsentsEncadres compte les couples (image-clé, bipède) où un bipède ancré aux deux
+	// images-clés VOISINES (la précédente ET la suivante, même identifiant `génération<<30|slot`)
+	// manque à celle-ci. L'écrivain (`FUN_142e2bfd0`) écrit UNE entrée par entité vivante : un tel
+	// trou est une perte de la marche, pas une absence du joueur.
+	BipedesAbsentsEncadres int
+}
+
+// ScanKeyframeLoadoutsMarche est [ScanKeyframeLoadouts] qui rend AUSSI la couverture de la
+// marche d'image-clé du film. C'est la forme de la cuisson : ce balayage marche chaque payload
+// d'image-clé du film exactement une fois, il est donc le bon endroit pour compter. Il marche par
+// la marche DU FILM ([FilmContext.MarcheDImageCle], lot D-fix) : ses réfutations s'y comptent.
+func ScanKeyframeLoadoutsMarche(fc *FilmContext, known map[uint32]bool) (
+	[]types.KeyframeLoadout, KeyframeWalkCoverage, error,
+) {
+	var cov KeyframeWalkCoverage
 	var out []types.KeyframeLoadout
+	var bipedes []map[uint32]bool // bipèdes ancrés, par image-clé, dans l'ordre du film
 	read := 0
-	for _, c := range FilmChunkNumbers(film) {
-		chunk, pks, ok := FilmChunkAt(film, c)
+	marche := fc.MarcheDImageCle()
+	for _, c := range fc.ChunkNumbers() {
+		chunk, pks, ok := fc.ChunkAt(c)
 		if !ok {
 			continue
 		}
@@ -78,22 +104,52 @@ func ScanKeyframeLoadouts(film *source.Film, known map[uint32]bool) ([]types.Key
 			if p.Type != PacketTypeKeyframe {
 				continue
 			}
-			for _, l := range keyframeLoadouts(p.Payload(chunk), known) {
+			pay := p.Payload(chunk)
+			recs, st := marche.RecordsStats(pay)
+			cov.Ajouter(st)
+			bipedes = append(bipedes, bipedesAncres(recs))
+			for _, l := range keyframeLoadoutsDe(pay, recs, known) {
 				l.TimestampUS, l.Chunk, l.PacketIndex = p.TimestampUS, c, p.Index
 				out = append(out, l)
 			}
 		}
 	}
 	if read == 0 {
-		return nil, ErrNoReadableFilmChunk
+		return nil, cov, ErrNoReadableFilmChunk
 	}
-	return out, nil
+	cov.BipedesAbsentsEncadres = bipedesAbsentsEncadres(bipedes)
+	return out, cov, nil
 }
 
-// keyframeLoadouts balaye un payload de keyframe et rend un loadout par record biped
-// porteur d'au moins une famille connue. PUR (aucune I/O).
-func keyframeLoadouts(pay []byte, known map[uint32]bool) []types.KeyframeLoadout {
-	rf := familiesByRecord(pay, known, keyframeBipedTI)
+// bipedesAncres rend l'ensemble des identifiants (`génération<<30|slot`) des bipèdes ancrés.
+func bipedesAncres(recs []KeyframeRec) map[uint32]bool {
+	out := map[uint32]bool{}
+	for _, r := range recs {
+		if r.TI == keyframeBipedTI {
+			out[uint32(r.Gen<<30|r.Slot)] = true //nolint:gosec // gen<4, slot<8192 : borné par le walker
+		}
+	}
+	return out
+}
+
+// bipedesAbsentsEncadres compte, pour chaque image-clé qui a une voisine de chaque côté, les
+// bipèdes présents aux DEUX voisines et absents d'elle.
+func bipedesAbsentsEncadres(parImageCle []map[uint32]bool) int {
+	n := 0
+	for k := 1; k+1 < len(parImageCle); k++ {
+		for id := range parImageCle[k-1] {
+			if parImageCle[k+1][id] && !parImageCle[k][id] {
+				n++
+			}
+		}
+	}
+	return n
+}
+
+// keyframeLoadoutsDe balaye un payload de keyframe, sur ses records DÉJÀ marchés, et rend un
+// loadout par record biped porteur d'au moins une famille connue. PUR (aucune I/O).
+func keyframeLoadoutsDe(pay []byte, recs []KeyframeRec, known map[uint32]bool) []types.KeyframeLoadout {
+	rf := familiesByRecordRecs(pay, recs, known, keyframeBipedTI)
 	if len(rf) == 0 {
 		return nil
 	}
@@ -121,7 +177,13 @@ type recordFamilies struct {
 // (wantTI = keyframeGroundWeaponTI, cf. keyframe_ground_weapons.go). Le balayage bit à bit
 // est identique — seul l'archétype retenu change.
 func familiesByRecord(pay []byte, known map[uint32]bool, wantTI int) []recordFamilies {
-	recs := WalkKeyframeWorld(pay)
+	return familiesByRecordRecs(pay, WalkKeyframeWorld(pay), known, wantTI)
+}
+
+// familiesByRecordRecs est [familiesByRecord] sur des records DÉJÀ marchés (ils sont triés ici,
+// sur une copie : l'appelant garde l'ordre du walker).
+func familiesByRecordRecs(pay []byte, marches []KeyframeRec, known map[uint32]bool, wantTI int) []recordFamilies {
+	recs := append([]KeyframeRec(nil), marches...)
 	if len(recs) == 0 {
 		return nil
 	}

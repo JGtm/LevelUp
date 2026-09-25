@@ -23,6 +23,7 @@
  * mesure pas la destruction, ce texte ne change RIEN à ce qui s'affiche.
  *
  * SIX RESPONSABILITÉS PURES, TESTABLES SANS CANVAS : le REFUS DU DÉCOR (`vehicleIsDecor`,
+ * `vehicleIsScenery` — le décor de carte déclaré par le serveur —, `vehicleIsHidden`,
  * `vehicleCanEmbark`), l'ORIENTATION (`vehicleHeadingAt`, `vehicleScreenAngle`,
  * `vehicleAimAngle`), la TAILLE (`vehicleSpriteScale`, ancrée sur le pion), l'OCCUPATION
  * (`vehicleActiveRides`, `vehicleDriverAt`, `vehicleColorAt`), le PRÉDICAT EMBARQUÉ
@@ -38,9 +39,9 @@
  * la direction du cône, il n'en est que le REPLI.
  *
  * CE QUE CE CALQUE REFUSE DE DESSINER — LES FAMILLES NON JOUABLES (verdict utilisateur du
- * 2026-09-02, après visionnage réel). Voir `FAMILLES_NON_JOUABLES` : ce sont des entités de
- * DÉCOR, pas des véhicules de la partie, et elles ne doivent NI se dessiner, NI nommer
- * quiconque, NI faire disparaître un pion.
+ * 2026-09-02, après visionnage réel, amendé le 2026-09-24 : le Falcon en est sorti). Voir
+ * `FAMILLES_NON_JOUABLES` : ce sont des entités de DÉCOR, pas des véhicules de la partie, et elles
+ * ne doivent NI se dessiner, NI nommer quiconque, NI faire disparaître un pion.
  *
  * ORIENTATION — LA CONSTANTE D'ÉCART D'ÉCRAN (GATE C6). Les échantillons portent un cap MONDE
  * (`VehicleSample.h`, convention `Point.h` : 0° = +X, 90° = +Y, sens `atan2(y,x)`), mais les
@@ -77,9 +78,24 @@ import { covers } from './replaySpans'
  * des falcon apparaissent alors que la partie n'en avait aucun »), recoupé sur l'artefact
  * `0d76e8f1` — le châssis `0x0000254b` est bien le modèle du Falcon, mais il est porté par des
  * entités de DÉCOR : vitesse moyenne 0,3-0,8 m/s sur toute leur vie (l'une n'a parcouru
- * strictement aucune distance), vivantes du début à la fin du film. Le Falcon, le Pelican, le
- * Phantom et le Skiff ne sont PAS pilotables en multijoueur Halo Infinite : une entité qui porte
- * leur modèle est un élément de mise en scène, jamais un véhicule de la partie.
+ * strictement aucune distance), vivantes du début à la fin du film. Le Pelican, le Phantom et le
+ * Skiff ne sont PAS pilotables en multijoueur Halo Infinite : une entité qui porte leur modèle est
+ * un élément de mise en scène, jamais un véhicule de la partie.
+ *
+ * LE FALCON EN EST SORTI LE 2026-09-24 (décision utilisateur : « les Pelican c'est toujours du
+ * décor ; le Falcon ça dépend »). Il est pilotable en multijoueur, avec ses artilleurs : sa famille
+ * ne refuse plus ses occupants, et il se dessine comme tout véhicule pilotable (même sortie côté
+ * Go, `vehicleFamillesNonPilotables`). Ce qui tient désormais les FAUX épisodes du 2026-09-02,
+ * c'est le serveur, par deux gardes générales : la montée à bord d'un artilleur reporté se voit
+ * près du porteur, et un épisode s'arrête à la naissance de la vie suivante du même joueur
+ * (`film/replay/vehicle_turrets_boarding.go`, `vehicle_rides_next_life.go`).
+ *
+ * LE DÉCOR DU FALCON N'EST DÉCIDÉ PAR AUCUNE RÈGLE À CE JOUR. La règle générale du décor de carte
+ * (`vehicleIsScenery`, lot M7) exige une pose SEULE (un échantillon, né à l'origine, vivant jusqu'à
+ * la fin, jamais occupé, hors de la zone jouable) : aucun Falcon du parc ne la remplit — ceux de
+ * Behemoth PLANENT (0,3-0,7 m/s, mesure du 2026-09-24 sur `1cd3848a`), exactement le profil
+ * ci-dessus. Ils sont donc DESSINÉS, et la question est posée à l'utilisateur (reprise du lot M7b,
+ * revue adverse RR-M7b-02).
  *
  * CE N'EST PAS UNE CORRECTION DU DOCUMENT. Le serveur a raison de publier ces vies : il recense
  * ce que le film contient (archétype ti=40), et le châssis EST celui d'un Falcon. C'est
@@ -91,11 +107,10 @@ import { covers } from './replaySpans'
  *  2. AUCUN NOM — les noms d'occupants ne sont écrits que sur des véhicules réels.
  *  3. AUCUNE PARTICIPATION AU PRÉDICAT EMBARQUÉ — et c'était le dégât le plus grave : le liant
  *     « trou de position » a prêté à un de ces props TROIS épisodes d'occupation (slot 771 de
- *     l'artefact cité), ce qui ESCAMOTAIT le pion des joueurs passés à côté. Un faux embarquement
- *     efface un joueur bien réel de la carte ; le refus doit donc porter d'abord ici.
+ *     l'artefact cité, un Falcon), ce qui ESCAMOTAIT le pion des joueurs passés à côté. Un faux
+ *     embarquement efface un joueur bien réel de la carte ; le refus doit donc porter d'abord ici.
  */
 export const FAMILLES_NON_JOUABLES: ReadonlySet<string> = new Set([
-  'falcon',
   'pelican',
   'phantom',
   'skiff',
@@ -110,6 +125,69 @@ export function vehicleIsDecor(family: string | undefined): boolean {
   return family !== undefined && FAMILLES_NON_JOUABLES.has(family)
 }
 
+/**
+ * vehicleIsScenery — vrai quand le SERVEUR a déclaré la vie VÉHICULE DE DÉCOR de la carte
+ * (`doc.vehicleScenery.hidden`, posé à la requête — lot M7 des retours du rejeu, 2026-09-24 ;
+ * replié sur chaque vie en `track.scenery` par `normalizeReplayDocument`).
+ *
+ * LA RÈGLE VIT CÔTÉ GO (`internal/service/replay_vehicle_scenery_rule.go` ; la forme publiée dans
+ * `film/replay/vehicle_scenery.go`), PLUS ICI. Elle a quitté ce fichier par son propre critère de
+ * retrait (lot L1.3 : « quand le producteur publie lui-même le décor de carte, ce prédicat lit ce
+ * marqueur et ses conditions disparaissent d'ici »), parce que la décision utilisateur du
+ * 2026-09-24 lui ajoute une condition que le client ne sait pas lire : la vie doit être POSÉE par
+ * la carte (un seul échantillon, à sa naissance à la frame 0, vie jusqu'à la fin du film, aucun
+ * occupant) ET HORS DE LA ZONE JOUABLE — la matière praticable du fond de carte publié, en plan,
+ * et le sol foulé du match (la plus basse altitude où un joueur est resté), en hauteur. Sur
+ * Behemoth, des Mongoose posés dans l'aire de jeu que personne ne touche restent donc dessinés.
+ *
+ * Le film réplique la POSE du décor avant l'origine du match (7 à 117 records, sonde C2) ; la
+ * publication n'en garde qu'un échantillon, ramené à la naissance : c'est lui que la règle lit.
+ *
+ * Verdict absent (carte sans zone connue, document servi sans ce calque) : rien n'est masqué. Le
+ * serveur compte ce repli (`vehicleScenery.zoneUnknown`) ; le client ne le devine jamais.
+ */
+export function vehicleIsScenery(track: ReplayVehicleTrackReady): boolean {
+  return track.scenery === true
+}
+
+/**
+ * vehicleIsHidden — la vie ne se montre pas : famille non jouable (`vehicleIsDecor`) OU véhicule
+ * de décor de la carte (`vehicleIsScenery`). Le seul prédicat du DESSIN et de la disponibilité du
+ * calque ; l'embarquement le reprend par `vehicleCanEmbark`.
+ */
+export function vehicleIsHidden(track: ReplayVehicleTrackReady): boolean {
+  return vehicleIsDecor(track.family) || vehicleIsScenery(track) || vehicleIsMountedPart(track)
+}
+
+/**
+ * VEHICLE_PART_TURRET — la seule valeur de `track.part` (schéma 69, côté Go : `VehiclePartTurret`,
+ * `film/replay/vehicle_turrets.go`). Nommée pour la même raison que `VEHICLE_END_DESTROYED`.
+ */
+export const VEHICLE_PART_TURRET = 'turret'
+
+/**
+ * vehicleIsMountedPart — vrai quand la vie est une PIÈCE MONTÉE (tourelle de Warthog, du Falcon,
+ * du Wraith, canon du Scorpion) : un objet que le film crée à part mais qui ne se déplace pas seul
+ * — il n'a aucun échantillon de position, et le dessiner le laisserait à sa NAISSANCE pendant que
+ * son véhicule roule (médiane 44,7 m au parc, retours du 2026-09-23). DÉCISION UTILISATEUR Q12 :
+ * l'artilleur se dessine SUR le véhicule porteur, sans marqueur de tourelle séparé. Le serveur a
+ * déjà reporté ses occupants et posé ses tirs sur le porteur (`carrier`) : la pièce ne se dessine
+ * plus, n'embarque personne, et ne compte pas dans la disponibilité du calque.
+ */
+export function vehicleIsMountedPart(track: ReplayVehicleTrackReady): boolean {
+  return track.part === VEHICLE_PART_TURRET
+}
+
+/**
+ * vehicleSpriteFamily — la famille dont le SPRITE se dessine : la VARIANTE quand le document la
+ * nomme (schéma 69 : `rockethog` par sa tourelle, `gungoose` par son arme), la famille sinon. La
+ * famille, elle, garde tout le reste (moteur, explosion, classe d'arme) — une variante n'est pas un
+ * autre véhicule.
+ */
+export function vehicleSpriteFamily(track: Pick<ReplayVehicleTrackReady, 'family' | 'variant'>): string | undefined {
+  return track.variant || track.family
+}
+
 // --- ÉLÉMENTS DE CARTE (schéma 1.9.9 — EN AVANCE DE PHASE, cf. ReplayVehicleLabel) ------------
 
 /**
@@ -118,7 +196,7 @@ export function vehicleIsDecor(family: string | undefined): boolean {
  * carte**. Nommée plutôt que semée en littéral, même raison que `VEHICLE_END_DESTROYED`.
  *
  * ELLE NE SE CONFOND PAS AVEC `FAMILLES_NON_JOUABLES`, ET LA DIFFÉRENCE EST LE POINT DU LOT.
- * Le décor (Falcon, Pelican…) ne se dessine PAS : c'est la plainte de l'utilisateur du
+ * Le décor (Pelican, Phantom, Skiff) ne se dessine PAS : c'est la plainte de l'utilisateur du
  * 2026-09-02, des transports scriptés qui passaient pour des véhicules de la partie. Un élément
  * de carte, LUI, SE DESSINE — décision utilisateur du 2026-09-14 : « ce sont des éléments de la
  * map ». Ce qu'il ne fait pas, c'est porter un occupant ou passer pour un châssis non résolu.
@@ -149,7 +227,29 @@ export const VEHICLE_MAP_ELEMENT_RENDER: Readonly<Record<string, VehicleMapEleme
   // d'assets change (`static/vehicles-assets/{slug}/replay/index.json` + `sprite = true` dans
   // `replay_labels.toml`) — pas une ligne d'ici.
   tourelle_auto_bannie: 'turret',
+  // LA TOURELLE FIXE (châssis `0x3a8060e2`, retours du rejeu lot M6.2, 2026-09-24) : les tourelles
+  // gatling / mortier de Takamanohara, que les joueurs OCCUPENT. Même pictogramme faute d'asset ;
+  // sa nature (`fixed_turret`) la laisse embarquer son occupant.
+  tourelle_fixe: 'turret',
 }
+
+/**
+ * VEHICLE_KIND_FIXED_TURRET — la nature publiée d'une TOURELLE FIXE posée par la carte et OCCUPÉE
+ * par un joueur (côté Go : `mappings.VehicleFamilyKindFixedTurret`, lot M6.2 du 2026-09-24). Elle
+ * se DESSINE comme un élément de carte (le pictogramme de sa famille), mais elle EMBARQUE : c'est
+ * le poste de tir d'un joueur, pas un objet inerte.
+ */
+export const VEHICLE_KIND_FIXED_TURRET = 'fixed_turret'
+
+/**
+ * VEHICLE_GLYPH_KINDS — les natures publiées qui se dessinent par le pictogramme de leur famille
+ * (`VEHICLE_MAP_ELEMENT_RENDER`) quand aucun asset n'est servi. L'embarquement, lui, reste décidé
+ * par la seule nature `map_element` (`vehicleCanEmbark`).
+ */
+const VEHICLE_GLYPH_KINDS: ReadonlySet<string> = new Set([
+  VEHICLE_KIND_MAP_ELEMENT,
+  VEHICLE_KIND_FIXED_TURRET,
+])
 
 /**
  * vehicleMapElementGlyph — le pictogramme à dessiner pour cette famille, ou `null`.
@@ -163,7 +263,7 @@ export function vehicleMapElementGlyph(
   family: string | undefined,
   kind: string | undefined,
 ): VehicleMapElementGlyph | null {
-  if (family === undefined || kind !== VEHICLE_KIND_MAP_ELEMENT) return null
+  if (family === undefined || kind === undefined || !VEHICLE_GLYPH_KINDS.has(kind)) return null
   return VEHICLE_MAP_ELEMENT_RENDER[family] ?? null
 }
 
@@ -250,8 +350,8 @@ export const VEHICLE_HUMAN_FAMILIES: ReadonlySet<string> = new Set([
  * visée de son conducteur (`rides[].aim`, schéma 31 — justesse 0,2 à 0,5 degré contre la
  * référence publiée, couverture 35 épisodes attestés sur 35).
  *
- * POURQUOI CES NEUF FAMILLES, ET PAS LES AUTRES. Sur un Ghost, une Banshee, un Wraith, une Wasp,
- * un Chopper, une Shade ou une tourelle montée, l'arme NE TOURNE PAS par rapport au corps :
+ * POURQUOI CES DIX FAMILLES, ET PAS LES AUTRES. Sur un Ghost, une Banshee, un Wraith, une Wasp,
+ * un Chopper, une Shade, une tourelle montée ou fixe, l'arme NE TOURNE PAS par rapport au corps :
  * viser, c'est tourner le véhicule, donc la visée EST l'avant du châssis. Le Mongoose et le
  * Gungoose n'ont pas d'arme de conducteur mais leur avant suit le conducteur de la même façon.
  *
@@ -273,6 +373,8 @@ export const FAMILLES_ARME_FIXE: ReadonlySet<string> = new Set([
   'chopper',
   'shade',
   'tourelle_montee',
+  // La TOURELLE FIXE de Takamanohara (lot M6.2, 2026-09-24) : viser, c'est tourner la tourelle.
+  'tourelle_fixe',
   'mongoose',
   'gungoose',
 ])
@@ -297,13 +399,13 @@ export function vehicleExplosionKindOf(family: string | undefined): VehicleExplo
  * pendant qu'il conduit).
  */
 export function vehicleCanEmbark(track: ReplayVehicleTrackReady, kind?: string): boolean {
-  if (track.family === undefined || track.family === '' || vehicleIsDecor(track.family)) return false
+  if (track.family === undefined || track.family === '' || vehicleIsHidden(track)) return false
   // UN TROISIÈME REFUS DEPUIS LE 2026-09-16 (lot 1.9.9), pour la MÊME raison que les deux
   // autres : un ÉLÉMENT DE CARTE ne porte personne. Le serveur ne lui attribue déjà aucun
   // épisode (`vehicleFamillesNonPilotables`, côté Go) ; la garde est ici AUSSI parce que le prix
   // de l'erreur est un joueur réel effacé de la carte — exactement ce qu'ont produit les trois
-  // faux épisodes du prop Falcon de `0d76e8f1`, et on ne laisse pas un seul verrou sur ce
-  // chemin-là.
+  // faux épisodes du prop Falcon de `0d76e8f1` (2026-09-02, quand le Falcon était encore refusé
+  // par sa famille), et on ne laisse pas un seul verrou sur ce chemin-là.
   return kind !== VEHICLE_KIND_MAP_ELEMENT
 }
 
@@ -399,7 +501,10 @@ export function vehicleVisibleAt(track: ReplayVehicleTrackReady, frame: number):
  * `positionAt` (replayLogic.ts) tient déjà l'interpolation entre échantillons et le maintien de
  * la dernière position connue une fois le dernier échantillon dépassé — LA MÊME logique que pour
  * une trajectoire de joueur, réutilisée telle quelle (`VehicleSample` a le même sous-ensemble de
- * champs que `Point`). Elle rend `null` AVANT le premier échantillon : c'est alors le SPAWN qui
+ * champs que `Point`). Y COMPRIS LA LACUNE (schéma 69, lot M1 des retours du rejeu) : un
+ * échantillon qui porte `g > 0` suit un silence de réplication, et le véhicule est TENU à sa
+ * dernière position au travers — il ne se déplace pas pendant un silence (repli F-2 côté Go).
+ * Avant, un Mongoose immobile « partait seul » pendant 70 s vers un échantillon lointain. Elle rend `null` AVANT le premier échantillon : c'est alors le SPAWN qui
  * répond (la naissance, seule chose connue tant que personne n'a conduit le véhicule). Ni l'un
  * ni l'autre : le record de création n'a pas été lu ET aucun échantillon n'existe — rien ne se
  * dessine, plutôt que d'inventer une position.
@@ -557,7 +662,8 @@ export function vehicleColorAt(
  * SEULES LES VIES QUI PASSENT `vehicleCanEmbark` Y ENTRENT (2026-09-02) : ni décor, ni châssis
  * non résolu. Un épisode posé sur l'un ou l'autre effacerait un joueur bien réel de la carte,
  * sans rien montrer à sa place — c'est exactement ce qu'ont produit les trois faux épisodes du
- * prop Falcon de l'artefact `0d76e8f1`.
+ * prop Falcon de l'artefact `0d76e8f1` (2026-09-02 ; le Falcon n'est plus refusé depuis le
+ * 2026-09-24, ce sont les gardes du serveur qui tiennent ces faux épisodes).
  */
 export function buildEmbarkedPredicate(
   tracks: readonly ReplayVehicleTrackReady[],

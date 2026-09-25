@@ -79,8 +79,13 @@ type IdentityInput struct {
 	// (`coverage.identity.filmTable.refus`). Le collecteur de sync ne la fournit pas encore
 	// (lot 1.8) : sa voie est donc le repli, nomme et compte, pas un silence.
 	FilmTable FilmPlayerTable
-	// Bots : les bots declares par BOT_METADATA, avec leur `BotID` (le N de `bid(N.0)`).
+	// Bots : les bots declares par BOT_METADATA, avec leur `BotID` (le N de `bid(N.0)`) et leurs
+	// declarations dans le temps.
 	Bots []BotIdentity
+	// Entities : les OCCUPANTS lus par entite ti=9 (lot M2.1). Ils nomment le corps d'un index que
+	// plusieurs occupants se relaient (identity_registry_entites.go). Non balaye = la lecture se
+	// tait et le registre fait ce qu'il faisait avant le lot M2.3.
+	Entities grammar.PlayerEntityScan
 	// Fire : les evenements de tir, pour la fermeture A (un joueur qui agit a un corps).
 	Fire []FireEventRef
 	// RosterXUIDs : le roster COMPLET du match, tel que la base le connait. Source EXTERNE :

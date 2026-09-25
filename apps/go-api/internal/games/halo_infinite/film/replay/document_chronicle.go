@@ -2016,3 +2016,583 @@ package replay
 //	               valeurs ; aucune revision de DECODAGE ne monte pour ce renommage seul
 //	               (`grammar` a monte au commit precedent du lot, pour le cablage du bloc
 //	               d action de la vue de controle).
+
+// v69 (2026-09-24, vague C des retours du rejeu, plan `.ai/V7.5/PLAN_RETOURS_REJEU_2026-09-23.md`
+// §4.4) : UNE SEULE MONTEE POUR QUATRE LOTS — M1 (positions), M5 (score a sens unique et fil des
+// morts), M4a (vehicules : pieces montees, registre), M6 (registre et catalogue : la remise des
+// mains nues). Chaque lot avait pose 69 sur sa branche (M6 avait d abord pose 70, rabattu sur 69
+// par sa revue adverse, constat R4 : le plan ne fait qu UNE montee par vague tant que la
+// republication 69 n est pas faite, et la vague D pose deja SON 70) ; l integration les reunit
+// sous ce seul numero (un artefact au schema 69 porte les quatre). Aucune revision de DECODAGE ne
+// monte : republication DEPUIS LES FAITS. Les quatre parties suivent, puis celle de M7 (decor de
+// carte), qui ne touche que la forme SERVIE : aucun artefact cuit n en porte la trace, puis celle
+// de M7b (le Falcon pilotable).
+//
+// v69, PARTIE M1 (2026-09-23, decision utilisateur Q15) : LA PUBLICATION DES
+// POSITIONS APPLIQUE LA GRAMMAIRE DE LA VIE, DEUX REPLIS NOMMES, ET DIT SES SILENCES AUX VEHICULES.
+// Republication DEPUIS LES FAITS : aucune revision de decodage ne monte (`grammar.Rev`,
+// `facts.Rev`, `SchemaDesFaits` inchanges), la montee perime les seuls calques de publication.
+//
+//	`tracks`       ne portent plus les positions ANTERIEURES a la creation de leur corps (R-B1 :
+//	               une vie ouverte par son record commence au record ; R-B2 : aucune vie avant
+//	               le premier record d un slot), ni les positions hors de l EMPRISE JOUEE du
+//	               film ET ISOLEES (repli `repli_position_hors_emprise_ecartee`, la garde de
+//	               `boundsOf` desormais ecrite une fois : emprise_jouee.go ; une chute reelle,
+//	               continue, reste publiee). La regle de creation se DESARME sur un slot dont
+//	               le premier record lu n est pas `gen=1`.
+//	`vehicles`     meme emprise pour les echantillons et les naissances (une fausse naissance
+//	               anterieure ne l emporte plus sur la vraie ; un record posterieur a la fin de la
+//	               vie n est pas sa naissance) ; de deux sejours qui se contredisent au travers
+//	               d un silence de plus de `lifeGapUS`, celui que son autre voisin contredit (la
+//	               naissance pour le premier), a soutien egal le plus court, est ecarte s il fait
+//	               au plus 3 echantillons (repli `repli_echantillon_vehicule_au_travers_d_un_
+//	               silence_ecarte`) — sinon rien, et le refus se compte ; une vie sans position
+//	               restante sort en `noPosition`.
+//	`vehicles[]    CHAMP NEUF : `g`, la lacune de replication qui precede l echantillon, en ms
+//	.samples[].g`  — la semantique de `Point.g`. Le client TIENT la derniere position au travers.
+//	`coverage      `avantCreation`, `viesAvantPremiereCreation`, `horsEmprise` (positions
+//	.tracks`       BRUTES du film, avant decimation), `slotsArmes` / `slotsDesarmes` (derive de
+//	               la generation du premier corps ; parc du 2026-09-24 : 11 407 et 1)
+//	`coverage      `echantillonsHorsEmprise`, `spawnsHorsEmprise`, `echantillonsAuTraversDUnSilence`
+//	.vehicles`     (echantillons BRUTS, fenetres de vie comprises ou non), `silencesNonTranches`
+//
+// POURQUOI « si le film le dit, on publie » (2026-09-14) NE COUVRAIT PAS CES POINTS : le film ne
+// les dit pas, c est le BALAYAGE ANCRE qui les lit. La meme suite de bits revient au meme decalage
+// sur des cartes aux quantifications differentes (annexe `RAPPORT_positions_limbe.md` §1.2 :
+// 62 paires de 24 bits communs sur 1 926 chez les aberrants, 1 sur 49 600 chez les normaux), et
+// le moteur ne replique aucune position d un corps avant de le creer. L utilisateur a tranche le
+// 2026-09-23 (Q15) : ces vies ne sont plus publiees, elles sont COMPTEES.
+//
+// CE QUI NE BOUGE PAS : l origine (`originMs`, `frameCount`) reste lue sur TOUS les paquets de
+// position — ecarter un point ne decale aucun calque ; `layers` ; les revisions de decodage. Les
+// deux replis tombent avec la porte grammaticale au decodage (option 2 du rapport), dont ils sont
+// le critere de retrait. Temoins : 81c02726 (Mongoose 770, Madina97294), ab526724, 879a4dba.
+//
+// v69, PARTIE M5 (2026-09-23) :
+// LE MATCH A SENS UNIQUE A UN CAMP — `coverage.score.teamIdentity` GAGNE LA VALEUR `a0`.
+//
+//	`coverage.`    UNE VALEUR D ENUM NEUVE, `a0` : la preuve (a) du score final, appliquee au
+//	`score.`       match ou UN SEUL slot d equipe porte une serie de score. Le camp muet n a
+//	`teamIdentity` jamais quitte zero et le statborg n emet un composant qu a son CHANGEMENT ;
+//	               quand le registre dit X-0 (X > 0) et que la serie finit EXACTEMENT a X, elle
+//	               est le camp X et le slot muet l autre. Un slot seul vu (le camp muet n a rien
+//	               emis, ni score ni frags) suit la meme regle.
+//	`scoreTimeline` CONSEQUENCE, PAS FORME : la serie d un match a sens unique porte desormais
+//	`.teams[]`     son `teamId`. Avant, elle sortait sans camp (`unresolved`) des que le perdant
+//	`.teamId`      n avait jamais marque — la preuve (a) exigeait un score final sur les DEUX
+//	               slots. Mesure du 2026-09-23 : six documents a une seule serie sans camp au
+//	               parc, dont cinq sains (le sixieme, `ab526724`, etait un film tronque, repare
+//	               depuis par O1). Le client affichait 0 — 0 tout le match sur ces documents.
+//
+// POURQUOI UNE VALEUR A PART ET PAS `a`. La preuve ajoute une premisse — « absent vaut zero » —
+// que (a) n a pas. La couverture doit dire laquelle a tranche : un camp resolu par (a0) repose
+// sur la grammaire d emission du statborg, pas sur deux lectures.
+//
+// LE GARDE-FOU EST L EGALITE EXACTE, et il est teste : une serie a 2 contre un registre a 3 (film
+// tronque avant sa derniere capture) reste `unresolved` ; un registre 1-3 avec une seule serie a
+// 3 aussi — le camp muet du FILM aurait marque au REGISTRE, son absence est un trou de lecture,
+// pas un zero. Aucun identifiant de match dans la regle.
+//
+// L ORDRE DES PREUVES : (a), puis (a0), puis (b). (a0) passe avant la somme des frags parce
+// qu elle n emprunte rien au pont d identite des joueurs. Sur les documents a une seule serie que
+// (b) resolvait deja, la valeur publiee passe de `b` a `a0` et le CAMP ne change pas — c est le
+// controle croise de la montee (le desaccord d un seul camp aurait ete un defaut).
+//
+//	`coverage.`    UN CHAMP NEUF (lot M5.2, meme montee) : le VERDICT de la lecture du fil des
+//	`bridge.`      morts — `read`, `empty` (le morceau des temps forts est lu et ne porte aucune
+//	`deathsFeed`   mort : une MESURE) ou `unreadable` (pas de morceau des temps forts, morceau
+//	               absent, evenements illisibles : une PANNE). Absent = non mesure (assemblage
+//	               sans balayage). Avant, un fil illisible ne se lisait que dans les journaux :
+//	               le diagnostic d `ab526724` a exige les journaux ET le code.
+//
+// LA LIMITE ECRITE DU CHAMP, AU SCHEMA 69 : les faits persistes ne portaient PAS le verdict. Rejoue
+// depuis ses faits, un fil VIDE OU ILLISIBLE publiait la cle ABSENTE : film et faits DIVERGEAIENT
+// sur ce champ (§8, decouverte 4). FERMEE par la partie M8 du v70 : les faits portent le verdict.
+// Depuis le lot L3, un film sans morceau des temps forts n est plus cuit du tout.
+//
+// POURQUOI LA VERSION MONTE : une valeur d enum publie est de la FORME, et la regle de
+// publication du calque de score change ; `deathsFeed` est un champ neuf de la couverture. Republication DEPUIS LES FAITS (aucune revision de
+// DECODAGE ne monte : `grammar`, `facts`, `layers` et le blob d entrees sont inchanges).
+//
+// v69, PARTIE M4a (2026-09-23, reprise du 2026-09-24) : LES VEHICULES — PIECES MONTEES POSEES SUR LEUR
+// PORTEUR, VARIANTE NOMMEE, REGISTRE DES ARMES DE VEHICULE PUBLIE.
+//
+//	`vehicles[]`   `part = "turret"` : PIECE MONTEE (LAAG, lance-roquettes, tourelles du Falcon et
+//	               du Wraith, canon du Scorpion), jamais dessinee seule. `carrier {slot, gen}` : le
+//	               chassis qui la porte, par le REPLI NOMME `repli_tourelle_porteur_voisin_de_slot`
+//	               (slot +1 / +2, famille attendue, fenetres qui se recouvrent, NES ENSEMBLE a 1
+//	               frame et 1 m pres ; le lien parent n est pas lu). `variant` : `rockethog` /
+//	               `warthog_gauss` par la piece, `gungoose` par l arme — le sprite ; la famille ne
+//	               change pas (moteur, explosion, classe d arme).
+//	`rides[]`      `turret {slot, gen}` : l episode d artilleur REPORTE sur le porteur, SANS `seat`
+//	               (le siege lu etait celui de la tourelle). Trois refus le gardent sur la piece :
+//	               porteur non pilotable (SANS BRANCHE depuis M7b, cf. sa partie), hors de la
+//	               fenetre du porteur, occupant deja a bord (episodes qui se RECOUVRENT ; un changement de
+//	               siege jointif est reporte).
+//	`shots[]`      un tir d artilleur sort du PORTEUR (`v` = le chassis, `x`/`y` sa position), plus
+//	               de la naissance de la tourelle (mediane 44,7 m au parc avant ce lot) ; hors de la
+//	               fenetre du porteur, il n est pas pose (`shotsUnplaced`).
+//	`coverage.`    DIX COMPTEURS : `turrets`, `turretsOnCarrier`, `turretCarrierBirthMismatch`,
+//	`vehicles`     `turretRides`, `turretRidesDropped` = `turretRidesNotRideable` (0 depuis
+//	               M7b) + `turretRidesOutOfWindow` + `turretRidesAlreadyAboard`, `shotsOnCarrier`,
+//	               `variants`. Une piece ne compte plus dans `familyUnknown` / `unknownChassis` /
+//	               `repli_chassis_vehicule_marqueur_neutre`, un artilleur reporte pas dans `ambiguous`.
+//	`vehicle`      RACINE NEUVE, RESOLUE A LA REQUETE (`calquesALaRequete`, jamais cuite) : le registre
+//	`Weapons`      `config/titles/{slug}/mappings/vehicle_weapons.toml` (forme, teinte, son ou silence
+//	               decide, montage, libelle FR/EN) des armes que les tirs emploient, keye par
+//	               `Shot.w` ; il remplace les trois tables CLIENT clees par des tags jamais filmes.
+//
+//	AUCUNE REVISION DE DECODAGE ne monte (vies deja assemblees : la republication DEPUIS LES FAITS
+//	suffit). `facts.Rev` INCHANGEE (le registre des replis recoit une entree de DONNEES ; empreinte
+//	seule recopiee). `layers` inchange : les pieces restent dans le calque des vehicules.
+//
+// v69, PARTIE M6 (2026-09-24, lot M6 des retours du rejeu, decisions de l utilisateur du
+// 2026-09-24) : LA REMISE DES MAINS NUES N EST PAS UNE PRISE. `00007CA9` est l objet « mains nues »
+// du jeu (sonde CA9 : `WeaponTags.unarmed` du Lua global) ; le jeu le REMET a chaque bipede au
+// debut de chaque vie, et le film l ecrit comme une prise sur DEUX canaux (parc de la tete de la
+// vague C, 107 documents : 562 ramassages natifs de classe ARME dans 77 documents, et 1 `taken`
+// du canal des changements d arme — aucun au milieu d une vie).
+//
+//	`pickups[]`    SENS : la remise n y est plus publiee (regle nommee `filmshell.IsUnarmedFamily`,
+//	               une seule ecriture du litteral, garde-rail archlint).
+//	`coverage.`    UN CHAMP NEUF, `unarmedGrants` : le compte des remises. `unknownFamilies` cesse
+//	`pickups.`     de les compter ; `decoded` = `published` + `beforeOrigin` + `unarmedGrants`.
+//	`weaponChanges[]` SENS : une PRISE (`taken`) de l objet n est plus publiee ; un ECHANGE vers
+//	               lui (le joueur a tout jete) le reste, nomme.
+//	`coverage.`    UN CHAMP NEUF, `unarmedGrants` ; `decoded` = `published` + `restated` +
+//	`weaponChanges.` `beforeOrigin` + `unarmedGrants`.
+//	`loadouts[]`   la meme regle ecarte l objet de toute dotation publiee (passage unique
+//	               `dotationWeaponName`, garde-rail archlint).
+//
+// CONSEQUENCES DECLAREES, HORS DU DOCUMENT : le rejeu ne joue plus le son de ramassage d une
+// remise (elle sonnait `weapon_pickup` a chaque debut de vie), et la mesure des armes de base des
+// paliers de socle (`prisesPour` / `prisesEnVie`, qui lisent ces deux canaux) cesse de tenir une
+// remise pour une prise.
+//
+//	AUCUNE REVISION DE DECODAGE ne monte : republication DEPUIS LES FAITS. Meme lot, SANS effet de
+//	forme : le catalogue d armes du titre nomme trois familles jusqu ici publiees en hexadecimal
+//	(`hinf_unarmed`, et la bobine a fusion UNSC `hinf_coil_kinetic` pour `e9e7ff79` / `1d63a8cd`),
+//	et `weaponLabels` les porte ; `killEffects` gagne l explosion a la mort de `hinf_scorpion` et
+//	`hinf_rockethog`.
+//
+// v69, PARTIE M7 (2026-09-24, lot M7 des retours du rejeu, decision de l utilisateur du
+// 2026-09-24) : LE DECOR DE CARTE EST POSE ET HORS DE LA ZONE JOUABLE, DECIDE PAR LE SERVICE.
+//
+//	`vehicle`      RACINE NEUVE, RESOLUE A LA REQUETE (`calquesALaRequete`, jamais cuite) : les
+//	`Scenery`      cinq conditions de pose de L1.3 ET hors de la zone jouable (matiere praticable
+//	               du fond de carte publie en plan, sol foule du match en hauteur). `zone`, `floor`,
+//	               `candidates`, `inPlayArea`, `zoneUnknown`, `hidden[] {slot, gen, reason}` ; deux
+//	               replis nommes au registre (`repli_decor_sous_le_sol_foule_du_match`,
+//	               `repli_decor_carte_sans_zone_affiche`). Le client ne decide plus : L1.3 lit ce
+//	               verdict. Empreinte CUITE inchangee, `facts.Rev` inchangee : rien a re-cuire.
+//
+// v69, PARTIE M7b (2026-09-24, decision de l utilisateur du 2026-09-24 : « les Pelican c est
+// toujours du decor ; le Falcon ca depend » ; reprise apres revue adverse le meme jour) : LE FALCON
+// EST PILOTABLE, ET DEUX GARDES GENERALES TIENNENT LES FAUX EPISODES QUE SA FAMILLE TENAIT.
+// AUCUNE FORME NE CHANGE.
+//
+//	`vehicles[]`   le Falcon sort des familles non pilotables : ses episodes sont publies, ceux de
+//	`.rides`       ses artilleurs (pieces `1a043c29` / `f4c45d71`) REPORTES sur lui. Un episode de
+//	               REPLI dont l occupant n est pas vu a <= 3 m du porteur, <= 2 s avant, est ECARTE
+//	               (`repli_tourelle_montee_loin_du_porteur`). TOUT episode, toutes familles et
+//	               sources, s arrete avant la naissance d une autre vie publiee du meme joueur
+//	               (`repli_episode_borne_par_la_vie_suivante`). Les deux se comptent dans
+//	               `coverage.fallbacks`. `turretRidesNotRideable` vaut 0 (branche retiree, champ a
+//	               retirer a la prochaine montee). Pelican, Phantom, Skiff restent refuses. Le decor
+//	               du Falcon n est decide par AUCUNE regle (M7 exige une pose seule : aucun Falcon).
+//	`shots[]`      une piece et son porteur sont le MEME vehicule pour l ambiguite, deux pieces
+//	               distinctes non ; « pose sur le porteur » se lit sur tous les candidats.
+//	               Parc (107 documents rejoues des faits, base -> reprise) : 7 documents touches,
+//	               19 Falcon occupes, 64 episodes, 6 ecartes, 16 coupes, +365 tirs.
+//
+// v70 (2026-09-24, vague D des retours du rejeu, plan `.ai/V7.5/PLAN_RETOURS_REJEU_2026-09-23.md`
+// §4.5) : UNE SEULE MONTEE POUR LES LOTS DE LA VAGUE — M2 (equipes, presence et place lues dans
+// le film) et M3 (marche d image-cle, armes de naissance). Chaque lot, parti de
+// `fe7079f41` AVANT la vague C, avait pose 69 sur sa branche ; l integration les reunit sous ce
+// seul numero, apres le 69 de la vague C (dont l entree ci-dessus n est pas touchee). Les
+// revisions de DECODAGE montent UNE fois pour la vague, a des valeurs datees de l integration :
+// `grammar.Rev` -> `grammar-2026-09-24`, `SchemaDesFaits` 3 -> 4, `facts.Rev` ->
+// `killsource-2026-09-24` (par M3 seul : la marche d image-cle que `killsource` traverse ;
+// backlog killsource ouvert, geste de production sur signal). Republication apres
+// RE-DECODAGE des films (verdict « redecoder »). Les parties suivent.
+//
+// v70, PARTIE M2 (2026-09-23, lot M2.3 de la campagne « retours rejeu », decision Q24 : option
+// A) : LA PLACE ET LA PRESENCE DE CHAQUE OCCUPANT SONT LUES DANS LE FILM — LA REGLE DES PLACES.
+//
+// LA REGLE, ET ELLE EST DE L UTILISATEUR (2026-09-23) : « quand un joueur part, il libere la place
+// de sa fiche de joueur pour son remplacant [...] le nombre de joueur dans un match est fini, il y
+// a un maximum. » Une equipe a un nombre FINI de places ; une fiche = une place ; le remplacant
+// (bot ou humain) prend la place du partant ; jamais plus de fiches que de places ; un parti
+// n est jamais affiche.
+//
+// CE QUI ETAIT FAUX, MESURE (rapport `RAPPORT_equipes_b1ad85eb.md`) : sur `b1ad85eb`, Eagle a 3
+// joueurs au coup d envoi puis 5, Cobra 5 a 6:24. Le siege publie etait l INDEX de participant (un
+// remplacant n en herite presque jamais), l equipe etait agregee PAR INDEX (les trois bots d index
+// 8, de deux equipes, n en avaient aucune), et la presence n etait publiee nulle part : le client
+// gardait un parti affiche faute de successeur sur SON siege. Au parc : 14 documents sur 111
+// depassent la taille d equipe, 22 affichent des joueurs partis.
+//
+//	`roster[]`     `presence` NAIT : une liste d intervalles `{from, to, toMax?}` en frames. `to`
+//	.presence      est la derniere frame CERTAINE (vie, image-cle, paquet BOT_METADATA ; `to <
+//	               from` : aucune, vu avant l origine), `toMax` la derniere ou il PEUT etre la —
+//	               l entite ti=9 ne se lit qu aux images-cles (~20 s), et un depart pendant la
+//	               mort sort a la premiere image-cle qui ne la porte plus (Q22), ou a l arrivee
+//	               du remplacant sur la meme place. Un bot sort a la frame EXACTE de son retrait
+//	               (BOT_METADATA). Un occupant present sans corps y est « pas encore apparu »
+//	               (Q21) ; entre un partant et son remplacant la place est VIDE (Q20).
+//	`roster[]`     devient la PLACE : un siege de la table du debut (`chunk_00`) — l index pour
+//	.seat          les occupants du depart, la place LUE dans les tirs pour un remplacant qui
+//	               tire (l index de tireur EST la place, 3 remplacements sur 3), sinon le CHAINAGE
+//	               par equipe, ou une place OUVERTE sous la capacite estimee de l equipe (deux
+//	               replis nommes, comptes ; `e5adf7b2` : 23 sieges pour 12 contre 12). `seatSource`
+//	               gagne `tirs`, `ouverte` et `index` (aucune place : compte `sansPlace`) ;
+//	               l appariement ordinal du lot 1.9.14 est RETIRE.
+//	`roster[]`     l equipe de l ENTITE ti=9 de l entree (grammaire M2.1), plus celle de son
+//	.team          index : un index repris par deux equipes ne rend plus muet aucun occupant.
+//	`coverage`     onze compteurs : `placesTirs`, `placesOuvertes`, `sansPlace`, `depassements`
+//	.seats         (0 attendu : les couples frame x equipe ou une equipe affiche plus d occupants
+//	               que de places), `relaisBornes`, `chevauchements`, `tirsContestes`,
+//	               `tirsIndexTronque` (index de tireur persiste sur 4 bits : la lecture par les
+//	               tirs s abstient au-dela de 15 places), `presences` (`film` ou `vies` — le repli
+//	               sans entite), et `entitesNonLiees` / `entitesContestees` / `trousDEntite`.
+//
+// LE CORPS D UN INDEX PARTAGE EST NOMME par l entite qui vit a sa creation (lecture, voie
+// `biped_creation`) : les neuf corps de bots de `b1ad85eb` sortent de `index_hors_table`, et leurs
+// pistes prennent le nom du bot. Les relais par la base (`successions.go`) deviennent un repli
+// compte (`repli_vie_de_bot_par_relais_de_la_base`).
+//
+//	AUTRES         `grammar.Rev` -> `grammar-2026-09-24` (les entites ; valeur de la vague, cf.
+//	MONTEES        l en-tete) ; `SchemaDesFaits` 3 -> 4 (les faits portent entites et instants
+//	               BOT_METADATA : verdict « redecoder ») ;
+//	               `facts.Rev` NE MONTE PAS (aucune ligne de kill ne change). `layers` : `roster`
+//	               reste attribue a `facts`, la plus haute des deux couches qui le produisent.
+//
+// POURQUOI LA VERSION MONTE : un champ naît, trois changent de sens, et c est la CLE DE REPRISE du
+// backfill — un v69 affiche encore un joueur parti et doit se lire « a re-cuire ». Le client lit
+// un artefact anterieur sans `presence` par l enveloppe des vies (repli transitoire date, cote web).
+//
+// REVUE ADVERSE DU LOT (2026-09-24), MEME SCHEMA : le BOT QUI SUCCEDE A UN HUMAIN sur son index
+// entre au roster quand ses entites et celles de l humain sont DISJOINTES (`c75f33b8`, `4f77afc1` :
+// ses vies etaient nommees sans entree, et le web lui dessinait une place de plus, vide tout le
+// match) ; `depassements` se mesure contre la CAPACITE estimee et non plus contre les places posees
+// (mesure circulaire) ; une entree d un film balaye qu aucune entite ne porte tient sa place par ses
+// vies jusqu a l image-cle porteuse suivante (repli par entree, nomme et compte) ; l occupant qu un
+// siege de la table nomme par son xuid est la des la frame 0 meme sans entite. `coverage.seats`
+// gagne six compteurs : `capacite`, `placesEnTrop` et `sansEquipe` (ce que la colonne rend au-dela
+// de la capacite, ou hors de toute), `identitesHorsRoster` (0 attendu), `botsSuccesseurs`,
+// `presencesParLesVies`.
+//
+// v70, PARTIE M3 (2026-09-23, campagne « retours rejeu », lot M3) : LES ARMES À L INSTANT — la dotation de
+// naissance, l emplacement d arme, et la santé de la marche d image-clé.
+//
+//	`loadouts[]`   `src` NEUF (`birth` = la DOTATION DE NAISSANCE, lue dans le record NEW de
+//	.src / .k      création du corps ; absent = relevé d image-clé) et `k` NEUF (l EMPLACEMENT
+//	               de chaque arme de `w`, porté par les seules dotations de naissance). La
+//	               dotation se pose sur la vie que sa création OUVRE (appariement des vies du
+//	               slot à la création la plus proche de leur début) ; un emplacement vide ou une
+//	               famille hors du catalogue d armes n est pas publié (`nonWeapon`) — et l objet
+//	               « mains nues » `00007CA9` du coup d envoi est écarté par la règle NOMMÉE de M6.3
+//	               (`dotationWeaponName`), compté `unarmedGrants` (cf. la partie D-fix).
+//	`weaponChanges` `k` NEUF, TOUJOURS PRÉSENT : le rang de l emplacement `weapon-state-type-info`
+//	.k             touché (0 = la première arme), lu dans le registre du film — jamais un index
+//	               de composant en dur. C est la clé qu une dotation de naissance partage avec le
+//	               flux : elle situe une prise sur un emplacement VIDE, que `from` ne nomme pas.
+//	SENS           la PREMIÈRE émission d un emplacement se juge, POUR CHAQUE VIE, contre la
+//	               dotation de naissance de cet emplacement (même arme = ré-annonce, écartée ;
+//	               sinon une prise, un échange ou un lâcher dont `from` NOMME l arme de
+//	               naissance), puis contre le dernier relevé d image-clé PASSÉ de la vie —
+//	               JAMAIS un relevé À VENIR. Jusqu au schéma 68, un slot sans relevé passé rendait
+//	               son premier relevé, fût-il vingt secondes plus tard : une arme ramassée
+//	               entre-temps y figurait déjà et sa prise, classée ré-annonce, disparaissait. Et
+//	               la chaîne des émissions d un slot ne se coupait pas à la réapparition : la
+//	               première émission d une vie se lisait contre la dernière arme de la vie
+//	               PRÉCÉDENTE du même slot.
+//	`coverage`     `keyframes` NEUF (lot M3.1) : comment la marche d image-clé a atteint chaque
+//	               record — voisin, saut de largeur, recalage sur l en-tête exact d un bipède,
+//	               élection (le repli nommé `repli_ancre_d_image_cle_par_election`), fenêtres
+//	               traversées sans candidat — et `framedAbsentBipeds`, les bipèdes manqués entre
+//	               deux images-clés qui les portaient. `birthLoadouts` NEUF : les créations lues,
+//	               celles dont le record ne se FERME pas (désynchronisé, débordant, non confirmé
+//	               par le record qui suit — AUCUNE lecture de repli ne les remplace), et ce que la
+//	               publication a posé, ramené dans la fenêtre de sa vie, ou écarté. `closed`
+//	               compte les records FERMÉS, `read` ceux d entre eux qui portent au moins une
+//	               arme du catalogue — une fermeture sans arme n est pas une dotation lue
+//	               (`noDisplayable` ; `closed` = `read` + `noDisplayable`).
+//
+// LES DEUX RÉPARATIONS DE GRAMMAIRE QUI OUVRENT LE CANAL (sonde P3) : l état par défaut du
+// bipède lit enfin le R(32) de sa dernière feuille (`default_state.go` — deux oracles, la famille
+// d i43 au catalogue du match pour 293 naissances sur 293 et `n2` des images-clés, constant et
+// plausible sur trois films) ; et le record NEW de naissance est pris comme ANCRE par la signature
+// que `ScanBipedCreations` reconnaît déjà, faute de pouvoir démarrer la marche à la fin d une
+// liste d événements sans la grammaire de chacun de ses types.
+//
+//	CE QUI MONTE    `grammar.Rev` et `facts.Rev` (la marche d image-clé et l état par défaut du
+//	AVEC ELLE       bipède, que `killsource` traverse aussi) et le codec des faits (v26 : la santé
+//	                de la marche, les dotations de naissance et leurs refus, l emplacement de
+//	                chaque changement d arme). `layers` ne gagne aucun calque : `loadouts` et
+//	                `weaponChanges` restent attribués à `grammar`.
+//	LA MESURE       vingt-deux témoins cuits deux fois (base / lot) : vies sans aucun relevé
+//	                d armes 18,7 % -> 10,2 % (1,3 % sur les builds HI_1_12_0 et HI_1_13_0, où les
+//	                naissances se lisent ; celles des builds antérieurs ne se ferment pas et rien
+//	                n est publié), images-clés trouées 8,6 % -> 1,0 %, prises et échanges publiés
+//	                1 075 -> 1 257. Prix nommé : la marche des états de mouvement, qui traverse
+//	                enfin le record NEW d un bipède, va plus loin dans certains paquets et y lie
+//	                des records NEW mal lus — 327 paquets à liste de plus non localisés au corpus.
+//
+// v70, PARTIE D-fix (2026-09-24, lot correctif de la pré-intégration de la vague D, repris après
+// sa revue adverse) : UNE ABSENCE QUE LE PAYLOAD NE PROUVE PAS NE CONCLUT RIEN, LA MARCHE NE PERD
+// PLUS CE QU UN RECORD PROUVÉ LUI INTERDIT DE PERDRE, ET LE MONDE DES ÉTATS DE MOUVEMENT NE GARDE
+// PLUS UNE LIAISON FAUSSE.
+//
+// CE QUI ÉTAIT FAUX, MESURÉ : la marche glissante de M3 atteint désormais l image-clé d AVANT-MATCH
+// (après un record de 125 270 bits) ; son élection y retenait une fausse ancre (slot 192, `ti 1`,
+// dans le corps du record 1298) et effaçait les dix-neuf vrais records 1280..1298 — dont le joueur
+// géré de l index 0 (slot 1297). Le lot M2 lisait alors cet occupant ARRIVÉ à l image-clé suivante
+// (`000d5950` : absent 16,3 s au départ ; `bcb6d393`, `fb1a1a72` : 7 entités sur 8 au départ).
+//
+//	CAUSE          la table est à slots CROISSANTS : un candidat que la grammaire du film PROUVE
+//	               (sa marche d état complet, contenu compris, ferme sur l en-tête valide suivant)
+//	               interdit tout élu qui contredit cet ordre avec lui ; l élu contredit est refusé
+//	               et l élection reprend (`grammar/keyframe_world_preuve.go`). Aucun seuil. Toute
+//	               marche de CUISSON est celle du film (`FilmContext.MarcheDImageCle`, garde-rail
+//	               `archlint/keyframe_walk_proof_test.go`). UNE EXCEPTION en production, hors de la
+//	               cuisson : la précision par arme (`ScanFilmWeaponDamages`, appelée par
+//	               `sync/killcollector/hits.go`, révision propre `WeaponHitDistanceDecoderRev`)
+//	               marche encore SANS preuve — deux marches d un même payload y divergent sur les
+//	               fausses ancres réfutées ; y brancher la preuve change ses lignes en base, donc
+//	               une décision de backfill soumise à l utilisateur (entrée datée de l allowlist).
+//	PRINCIPE       une absence n est PROUVÉE que si l en-tête EXACT du record `ti=9` de l entité
+//	               (`[gen|slot][ti]`, 64 bits, le filtre fort de toute ancre) n apparaît à AUCUNE
+//	               position de bit du payload de l image-clé (`grammar/player_entities_entetes.go`).
+//	               Recherche exhaustive, indépendante des chemins de la marche : l élection de repli,
+//	               mais aussi le saut de largeur, le faux voisin et le record au-delà de la fenêtre
+//	               perdent des records sans les « écarter » (constat DFIX-R2 de la revue). Un en-tête
+//	               trouvé et non lu fait un DOUTE (`Doutes` des entités, persisté) : ni arrivée
+//	               tardive ni départ, et `roster[].presence` ne borne que sur une absence prouvée —
+//	               sinon l affichage court jusqu à l arrivée d un successeur sur la place (règle des
+//	               places), au plus jusqu au bord du film. REPLI NOMMÉ ET COMPTÉ :
+//	               `repli_borne_de_presence_differee_sur_doute` (registre `replay/places`, compteur
+//	               `bornesDifferees`, retrait avec la marche déterministe).
+//	`coverage.`    `refutations` NEUF : les élus refusés ; `contradictoryProofs` NEUF : les
+//	keyframes      élections dont TOUS les candidats étaient contredits (deux preuves se contredisent,
+//	               l élu d avant la preuve est gardé : un défaut de preuve compté, plus une retombée
+//	               muette). L élection reste le repli nommé `repli_ancre_d_image_cle_par_election`.
+//	`coverage.`    `imagesClesDouteuses` et `bornesDifferees` NEUFS (0 attendus).
+//	seats
+//	`coverage.`    `unarmedGrants` NEUF : la dotation de naissance écarte l objet « mains nues »
+//	birthLoadouts  par la règle nommée de M6.3 (`dotationWeaponName`), compté à part de `nonWeapon`.
+//	`stances[]`    DEUX RÉGRESSIONS RÉSIDUELLES DE M3, instruites par bisection, CORRIGÉES dans la
+//	               marche des états de mouvement : (1) l image-clé dit aussi qui n est plus là — une
+//	               liaison qu aucune de ses lectures ne porte est oubliée (un DEL non lu laissait la
+//	               liaison du mort : `a0c36016`, 5 vies, M3.1 ; `grammar/keyframe_liaison.go`) ;
+//	               (2) un NEW ne remplace pas une entité vivante — un NEW propre qui contredit une
+//	               liaison en dur d un autre archétype n est pas lié (`0797ce72`, 11 vies ;
+//	               `396cfc92`, 7 ; M3.2 ; `grammar/frame_infer.go`).
+//	`coverage.`    `forgottenBindings`, `refusedNews` et son VERDICT NEUFS (constat DFIX-R6) : la
+//	stances        croyance du monde peut être périmée (un DEL non lu), et un vrai NEW d un autre
+//	               archétype est alors refusé à tort. L image-clé suivante tranche : elle redonne au
+//	               slot l archétype du vivant (`refusedNewFalseReads`), celui du NEW
+//	               (`refusedNewLostCreations` : le prix de la règle, rendu visible), ou aucun des
+//	               deux (`refusedNewUndecided`).
+//
+// LA MESURE SUR LES SEPT BOBINES PAR BUILD : quatre images-clés changent (`bcb6d393` morceau 1
+// paquets 0 et 3, `fb1a1a72` morceau 1 paquets 0 et 1), une réfutation chacune ; les records
+// regagnés sont exactement ceux que la fausse ancre effaçait (1280..1298 trois fois ; 1537..1601,
+// vingt-neuf équipements, armes au sol et objets, derrière la fausse ancre 1536 `ti 0`) ; 8 entités
+// sur 8 lues au départ ; 0 doute. La mini-bobine `000d5950` n a pas de registre lisible (pas de
+// `chunk_00`) : sa marche reste SANS preuve, et son paquet c1 p1 n est corrigé que sur le film
+// ENTIER. L exigence de CONTENU de la preuve, re-mesurée (candidats d en-tête valide strictement
+// entre deux records de slots consécutifs, sept bobines) : 39 471 candidats sûrement faux, 55
+// fausses preuves sans l exigence, 0 avec. La recherche d en-têtes exacts : 0 doute avec la
+// preuve, les seuls doutes sans elle sont le slot 1297 de ces deux films ; 3 ms par image-clé.
+//
+// CE QUE LE LOT CHANGE AUX ENTRÉES FIGÉES, DÉCLARÉ ET EXPLIQUÉ (constat DFIX-R3 ; diff des faits
+// figés, aucun décodage de BTB) — une réfutation lit des records de plus, et les règles de BANDE
+// existantes (combler la plage d un archétype, puis retirer tout slot OBSERVÉ sous un autre)
+// s appliquent à ces observations :
+//
+//	`11de8353`     1 réfutation (records 14 902 -> 14 924). La fausse ancre réfutée était la seule
+//	(BTB)          observation du slot 2048 sous un autre archétype : il rentre dans la bande des
+//	               armes au sol (1 525 -> 1 526 slots). Les en-têtes NEW de ce slot sont un motif
+//	               très fréquent des trames : ancres 14 697 -> 21 634, acceptées 515 -> 556, dont
+//	               40 écartées par l IDENTITÉ et 1 retenue (une arme lâchée à une mort). `ti=9`
+//	               753 -> 754 ; douze vies de power-up vues à une image-clé de plus.
+//	`bcb6d393`     2 réfutations (+46 records). L image-clé regagnée (c1 p3, 8 662,1 s) porte les
+//	               armes au sol 1590 et 1591 et les objets `ti=37` 1593, 1599 et 1600 : ils sortent
+//	               de la bande de l AUTRE archétype (poses 593 -> 591 slots, vies d objet de la
+//	               bande 184 -> 182, poses publiées inchangées ; armes au sol 582 -> 579). Les présences
+//	               de power-up des socles 3, 7 et 10 sont prouvées une image-clé de plus (t0 223 :
+//	               jusqu à 470 au lieu de 270), et une occupation de plus est datée (15 -> 16).
+//	`b1f01a33`     (témoin) 2 réfutations (+30 records), même mécanisme : vies d objet 395 -> 390,
+//	               bande des armes au sol 914 -> 907, power-ups acceptés 365 -> 363.
+//	`000d5950`,    +1 et +2 records `ti=9` : les joueurs gérés regagnés.
+//	`fb1a1a72`
+//
+// LE CODEC DES FAITS A CHANGÉ DANS LA VAGUE SANS SECONDE MONTÉE (constat DFIX-R5) : la santé des
+// images-clés (`Doutes`), les réfutations, les preuves contradictoires et les cinq compteurs des
+// états de mouvement s y ajoutent, sous les MÊMES noms de révision que la pré-intégration
+// (`a85eaaf46`). Choix : la vague garde sa montée UNIQUE, et les faits de la pré-intégration sont
+// PURGÉS — aucun n a été écrit dans le cache vivant (contrôlé en lecture : 0 fichier à
+// `grammar-2026-09-24`), et les 67 fichiers de faits des racines temporaires qui les portaient
+// (`rr-tmp-dfix`, racine d intégration du superviseur) ont été supprimés le 2026-09-24 avant toute
+// reconstruction. Un fait de la vague ne peut donc se relire qu au codec de cette tête.
+//
+// LA MESURE AU PARC (racines temporaires, un film à la fois, aucun BTB). Cinq témoins cuits à la
+// base (`ba475d2e4`), avant le lot (`ed0806a20`) et à la tête : le lot ne change que
+// `coverage.keyframes` (records +18 / +18 / +38 / +9 / +30, réfutations 1 / 1 / 3 / 1 / 2), la
+// présence du joueur géré de l index 0 de `000d5950` (dès la frame 0 : 4 contre 4 à chaque frame),
+// les bandes d objets de `b1f01a33` ci-dessus et les états de mouvement. Règle des places tenue sur
+// les cinq : au plus 4 fiches par équipe à chaque frame, 4 places par équipe, aucune place à deux
+// fiches, 0 image-clé douteuse, 0 borne différée ; `b1ad85eb` 4 + 4 aux trois instants signalés
+// (Eagle à 3 pendant 332 frames : la place vide d un relais, Q20). GATE DE CORPUS (onze témoins non
+// BTB, base = tête de campagne) : règle des places tenue, 0 image-clé douteuse, 0 preuve
+// contradictoire ; NEW refusés 1 248 = 331 lectures fausses confirmées + 1 création perdue
+// (`fb1a1a72`) + 916 indécis (le slot absent de l image-clé suivante). ÉTATS DE MOUVEMENT,
+// base -> tête, sur les seize films : aucune vie ne perd un intervalle, hors un accroupi d une
+// frame de `c75f33b8` (0,1 s à 0,4 m/s) que l alignement du record NEW de M3.2 efface.
+//
+// LES SIX ÉCARTS DE LA PRÉ-INTÉGRATION, INSTRUITS SUR PIÈCES :
+//
+//	identitesHors- `c75f33b8` 0 -> 1 : le bot `343 Robot Hoida` (index 8, non épinglé par
+//	Roster,        `killsource` avec dix humains) a une vie nommée sans entrée ; la base lui
+//	tirsContestes  dessinait une place de plus, la tête aucune fiche et le compte le montre — sa
+//	               correction est l épinglage, hors de la vague. `tirsContestes` 0 -> 1 : un
+//	               arrivant dont les tirs désignent une place prise, posé par le chaînage nommé ;
+//	               règle des places tenue (au plus 4 fiches par équipe, aucune place à deux).
+//	entitesNonLiees `a349fea8` 25, `50247b26` 30 : films SANS section d identification (v33, v31),
+//	               AUCUN roster (0 entrée à la base comme à la tête) — chaque entité lue reste sans
+//	               entrée. Mesure d une impossibilité du film, pas une perte.
+//	inventory.     +4 / +1 sur ces deux films : des lectures rattachées à un slot SANS trajectoire
+//	unpublished    publiée (par définition, pas un échec de rattachement), qui suivent la hausse des
+//	               lectures de M3 (969 / 984 et 650 / 668 publiées).
+//	véhicules      PROUVÉ SUR DOCUMENTS (tête de la vague C décodée -> pré-intégration republiée de
+//	fusionnés      ses faits, aucun décodage). `084a804d` : cinq vies fondues — 904, 905, 906 dans
+//	               899, 900, 901 (même châssis, même point au centimètre, l hôte SANS AUCUN
+//	               échantillon : un véhicule posé au pad, relayé 302 frames plus tard) ; 909 et 910
+//	               dans 907 et 908, deux vies désormais lues ~300 frames plus tôt — 117 -> 114.
+//	               `50247b26` : 829, 830, 831, 835, 836 dans 819, 820, 821, 825, 826 (hôtes sans
+//	               échantillon, même châssis, 0,00 m, relais à la frame 4 052) — 64 -> 60. La marche
+//	               de M3 lit l hôte à une image-clé de plus : sa borne d affichage couvre la naissance
+//	               du relais, et la règle existante (`vehicle_relays.go`) s applique.
+//	jauge du       `1c4c63c2` (BTB) : aucun document de base n existe sans décoder ce BTB (ses faits
+//	drapeau,       de base ont été réécrits par l incident du 24/09) ; verdict par analogues — aucun
+//	poses          des cinq CTF non BTB ne diverge sur ces étapes, et au parc les lectures montent
+//	               sans perte (origines inconnues des poses 18 -> 11 sur `81c02726`, marques de
+//	               porteur confirmées 5 -> 14 sur `a0c36016`). Contrôle au re-décodage de clôture.
+//	weaponChanges  les prises « perdues » sont RECLASSÉES (même instant, même slot, même arme :
+//	.taken         `swapped`, `from` = l arme de naissance) ou reconnues ré-annonces de la dotation,
+//	               et un lâcher sans arme de `bfecd02b` que le relevé suivant dément disparaît :
+//	               0 prise perdue sans contrepartie sur les seize films. C est le SENS de M3.
+//	états de       gain net (`a0c36016` 1 432 -> 1 634 intervalles ; glissade de 41 s, escalade de
+//	mouvement      30 s et accroupi de 43 s impossibles retirés) ; les pertes résiduelles de M3 sont
+//	               corrigées ci-dessus.
+//
+//	CE QUI MONTE    rien de plus que la vague : `grammar.Rev`, `facts.Rev` et `SchemaDesFaits`
+//	AVEC ELLE       gardent leur UNIQUE montée de la vague D, empreintes recopiées.
+//
+// v70, PARTIE M8 (2026-09-24, lot M8 des retours du rejeu, repris apres sa revue adverse) : LE
+// VERDICT DU FIL DES MORTS EST UN FAIT DU FILM. Le rejeu depuis les faits publie le meme
+// `coverage.bridge.deathsFeed` que le decodage du meme film.
+//
+//	`coverage.`    AUCUNE FORME NEUVE, c est le CHEMIN DES FAITS qui change : un document rejoue
+//	`bridge.`      depuis les faits d un fil vide ou illisible publiait la cle ABSENTE (limite
+//	`deathsFeed`   ecrite du v69, partie M5) ; il publie `empty` ou `unreadable`, comme le
+//	               decodage. Absent = aucune lecture de film derriere le document.
+//	faits          le verdict ET le texte de l erreur de lecture (`FilmInputs.DeathsFeed`), en
+//	               dernier du complement de la section 1, dans le `SchemaDesFaits` 4 de la vague
+//	               (non publie : pas de seconde montee). Un fichier au schema 4 sans verdict est
+//	               refuse a la section 1 puis redecode (teste). Aucune revision de couche ne monte.
+//	`replaybuild`  la branche des faits reconstruit l erreur du fil (meme texte, sans sentinelle) :
+//	               actions d objectif et frags sous effet actif prennent la branche du decodage.
+//
+// EFFET AU PARC, DECLARE (racines temporaires, voie du film puis voie des faits) : UN document,
+// `db1b00b3` (seul temoin au fil vide), dont `deathsFeed` passe d absent a `empty` sur le chemin
+// des faits ; `000d5950` (fil lu) inchange a l octet. La moitie `replaybuild` ne change AUCUN
+// document au parc : sur `db1b00b3`, `killRefs` sort avant de lire l erreur (kill-feed non decode)
+// et un Slayer n a pas d action d objectif. Elle n est prouvee que sur octets de test (bobine v40,
+// forme du manifeste partiel d `ab526724`). Ecart film / faits restant, anterieur et hors du lot :
+// `coverage.stances.jumpEpisodes` et `.jumpsDerived` (§8).
+//
+// v71 (2026-09-24, lot M4b de la campagne « retours rejeu », plan
+// `.ai/V7.5/PLAN_RETOURS_REJEU_2026-09-23.md` §4.5 « M4b — Tir des vehicules ») : LE TIR CONTINU,
+// LU DANS LA VUE DE CONTROLE ET RENDU COMME THEATER. Une montee de plus que la vague D (70) : la
+// FORME du document change (un calque racine et quatre blocs de couverture), et le garde-rail de
+// forme refuse une forme nouvelle sous le numero de la vague.
+//
+//	`bursts`       NOUVEAU calque racine (document_fire_bursts.go, fire_bursts.go) : une rafale par
+//	               gachette principale TENUE, lue dans l entree de controle du joueur (sonde P1-S3 :
+//	               le jeu n ecrit le tir d une arme a type de prediction 1 et debit nul que par ce
+//	               bit). Bornes au tick, projetees sur les frames ; l arme vient de la MONTURE (le
+//	               chassis ou la piece montee de l episode, `tir_continu_armes.go`) ou de
+//	               l EMPLACEMENT degaine a pied (Rayon de Sentinelle) ; la cadence est celle du TAG
+//	               (Ghost 7,5/s, canons de la Banshee 8/s, Chopper 4/s, LMG du Wasp 10/s, LAAG
+//	               5 -> 18/s, LMG du Falcon et mitrailleuse du Scorpion 13/s, tourelle du Wraith
+//	               6 -> 12/s, Rayon 60/s). Les TROUS de lecture portes par une rafale sont publies,
+//	               muets ; aucun balayage de repli (decision utilisateur du 2026-09-24).
+//	`coverage.     NOUVEAU bloc : paquets lus et trous PAR CAUSE, rafales lues et le sort de
+//	continuous-    chacune (publiee sur un vehicule ou a pied, ecartee par bit, joueur, monture sans
+//	Fire`          arme, piste, arme inconnue ou arme a charge), coups poses (`shots`, le controle).
+//	`coverage.     `shotsByUnit` / `shotsByUnitNoRide` : un tir dont la REFERENCE 0 (l unite
+//	vehicles`      tireuse du record 36, lue par la grammaire) est un vehicule se pose sur LUI ;
+//	               l episode ne sert plus qu a nommer l occupant (vehicle_shots_unit.go). Sans
+//	               reference 0 qui tranche, l episode decide avec l ambiguite de M7b (jugee sur
+//	               le vehicule) ; les deux portes partagent un poseur (integration du 2026-09-25).
+//	`coverage.     `tirsParPlace` : un tir est rendu a l OCCUPANT de sa place (le remplacant), plus
+//	seats`         au partant dont la place porte l index (tirs_par_place.go) ; l index de tireur est
+//	               lu sur CINQ bits (les places 16 a 31 d un BTB ne se confondent plus).
+//
+//	CE QUI MONTE    `grammar.Rev` garde son nom de vague (`grammar-2026-09-24`), empreinte
+//	AVEC ELLE       recopiee (la marche lit l entree de controle complete, le bloc d action corrige,
+//	                le record 36 par sa grammaire) ; `SchemaDesFaits` reste 4, le codec des faits
+//	                monte (`REPLAYINPUTS27` : le canal du tir continu et les champs du record 36) ;
+//	                `facts.Rev` inchangee. Republication apres RE-DECODAGE (verdict « redecoder »).
+//
+//	L INDEX DE      `coverage.seats.tirsIndexNonPlace` : l index de tireur n est lu comme place que
+//	TIREUR JUGE     s il s accorde avec l unite tireuse (88,4 a 100 % sur sept builds, 0 % sur la
+//	                build HI_1_4_1 de `a521164d`, ou le champ est constant) — sinon seule la
+//	                reference 0 pose un tir (tirs_index_fiable.go, repli nomme).
+//
+// LA MESURE (reprise du 2026-09-25 apres la revue du lot ; racines temporaires, un film a la fois,
+// aucun BTB decode en gate). LA LECTURE DE LA VUE B EST REPRISE (chronique de `grammar`, reprise
+// M4b) : records NEW de tete des paquets a evenements, etat par defaut du projectile, queue du corps
+// de mort, positions du corps d `i54`, six composants — vue C fermee `81c02726` 19,5 % -> 76,2 %,
+// `8a485699` 9,0 % -> 63,2 %, `b1ad85eb` 26,5 % -> 89,4 %. Faits d equivalence, base `c9ef97ec6` ->
+// tete, sur `000d5950`, `60ae07c4`, `fb1a1a72`, `d9781168` : bougent `fire` (memes comptes, champs
+// neufs), `continuousFire` (neuve), `movementStates` (+1 a +11 % de lectures), `killsource` et
+// `killRefs` (la marche des morts lit le corps de mort juste), `vehicles` et `birthLoadouts.stats`
+// (`60ae07c4`) et `artifact` ; `positions` ne bouge pas. Gate de corpus (huit temoins non BTB) : les
+// SEULES pertes sont des intervalles d etat et leur couverture — le sprint compte plus d intervalles
+// pour moins de duree, l escalade finit plus tot — et l ORACLE PHYSIQUE du sprint (vitesse
+// constante) s ameliore sur les huit (echantillons de sprint plus lents que la mediane hors sprint /
+// echantillons hors sprint aussi rapides que la mediane de sprint, seuils de la base : `f75e7053`
+// 18,5/16,6 % -> 11,5/16,2 %, `0797ce72` 14,0/14,2 % -> 6,6/12,5 %, `60ae07c4` 16,8/16,0 % ->
+// 14,3/15,3 %, les cinq autres egaux ou meilleurs). Les deux accroupis de `f75e7053` (slot 585,
+// 3655-3727 ; slot 530, 1761-1811) disparaissent : chacun chevauchait des sprints du meme slot —
+// contradiction physique — et commencait pendant une escalade, dont le corps `i54` etait lu aux
+// largeurs du delta. Les autres "pertes" du gate sont des compteurs de defaut qui baissent :
+// `coverage.stances.refusedNews` sur les huit (`f75e7053` 317 -> 0), `eventPacketsUnlocated` sur les
+// huit, `forgottenBindings` (`bf15f7ab` 411 -> 146), et `coverage.deathsPaths.directScan`, que la
+// marche des morts releve. Tirs rattaches des fixtures de build : `111fa685` 88,7 -> 97,6 %,
+// `11de8353` 86,7 -> 98,9 %, `e5adf7b2` 84,3 -> 96,8 %, `bcb6d393` 85,7 -> 97,3 %, `a521164d`
+// 82,6 -> 92,3 % (par l unite ; l ancien rattachement y rendait les tirs au joueur 2, lu dans quatre
+// bits d un champ constant) ; `b1ad85eb` 992 -> 1 061 (les remplacants). Tir continu, documents
+// publies (gates G1 et G2 par famille, frags de vehicule du kill-feed) : `81c02726` une rafale dans
+// les 2 s de chacun des 6 frags de G MONEY (0 au temoin -60 s, 0 hors monture) ; LAAG `1cd3848a` 3/3 ;
+// canons de la Banshee `7b0d89c4` 13/14 et `8a485699` (index 7 : 4,2 s de rafale contre 37 tirs
+// numerotes et dix touches) ; Chopper, LMG du Wasp et Rayon de Sentinelle publies sur `8a485699`,
+// `1cd3848a` et `7b0d89c4` ; aucun document non BTB du parc ne porte de Falcon. Les coups publies
+// restent sous les sauts du numero de tir. OUVERT : la 3e monture de G MONEY (`81c02726`, 2984-3021
+// et 3104-3119) n est pas publiee — ses rafales sont lues, comptees `noTrack` (2) : l embarquement
+// suit la naissance d un dispositif (`ti=43`, 2941) dont le record NEW desynchronise sur un composant
+// non porte (`i21`), et chaque paquet suivant se clot sur son rejet.
+//
+// INTEGRATION DE LA VAGUE D (2026-09-25) : gate de corpus de la tete contre la tete de campagne
+// `1a8390e9f` (huit temoins non BTB, racine temporaire) — aucune classe d ecart hors des parties
+// v70 et v71 : les pertes du v71 ci-dessus, dont deux lectures douteuses retirees (`abilityImpulses`
+// 1 -> 0 sur `bfecd02b`, famille autre ; `grapple.unpairedFires` 1 -> 0 sur `51ebbc0f`) ; dix prises
+// `taken` RECLASSEES `swapped` au meme instant et le lacher dementi de `bfecd02b` (D-fix) ; les
+// bandes d armes au sol reprises par les refutations (D-fix) ; `seats.presencesCloses` 4-7 -> 0
+// (M2 : la presence lue dans le film). UNE prise d une arme IDENTIQUE a la dotation (`d9781168`,
+// slot 538, frame 1378) est lue re-annonce et son arme au sol perd son preneur (plan, §8). Tete
+// contre `c9eb3b6bd` (M4b) : 0 ecart, M8 et M7b ne changent aucun document decode de ces temoins.
+// G1 re-mesure au code integre sur `81c02726` : 6/6, 0 au temoin -60 s, 0 hors monture.

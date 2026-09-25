@@ -47,6 +47,8 @@ export interface EquippedReading {
   holstered: boolean
   /** true = le sélecteur n'a PAS été lu sur ce record — une lacune, pas une mesure. */
   drawnUnread: boolean
+  /** Provenance du relevé d'armes (cf. `LoadoutReading.src`) : `birth` = dotation de naissance. */
+  src?: string
 }
 
 /**
@@ -81,6 +83,7 @@ export function equippedWeapons(
       age: lo.age,
       holstered: d === 2,
       drawnUnread: d === undefined,
+      src: lo.src,
     }
   }
   const rest = lo.weapons.map((_, i) => i).filter((i) => i !== d)
@@ -94,6 +97,7 @@ export function equippedWeapons(
     age: lo.age,
     holstered: false,
     drawnUnread: false,
+    src: lo.src,
   }
 }
 

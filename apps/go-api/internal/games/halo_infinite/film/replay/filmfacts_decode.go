@@ -25,6 +25,8 @@ func DecodeFilmFacts(blob []byte, entry profile.MapQuantEntry) (*FilmFacts, erro
 	g.Positions = decodePositionSection(r, lay, world)
 	g.BipedCreations = decodeBipedCreations(r)
 	decodeEvenements(r, g)
+	g.KeyframeWalk = decodeMarcheImageCle(r)
+	g.BirthLoadouts, g.BirthLoadoutStats = decodeNaissances(r)
 	g.WeaponChanges = decodeWeaponChanges(r)
 	g.Pickups, g.PickupStats = decodePickups(r)
 	decodeInventaire(r, g)
@@ -32,6 +34,7 @@ func DecodeFilmFacts(blob []byte, entry profile.MapQuantEntry) (*FilmFacts, erro
 	g.EquipmentChanges, g.EquipmentChangeStats = decodeEquipmentChanges(r)
 	decodeCapacites(r, g)
 	decodeEtatsDeMouvement(r, g)
+	g.ContinuousFire, g.ContinuousFireStats = decodeTirContinu(r)
 	g.ZoomEvents = decodeZoomEvents(r)
 	decodeMonde(r, g)
 	g.Vehicles = decodeVehicleScan(r, lay, world)
@@ -124,7 +127,13 @@ func decodeEvenements(r *greader, g *FilmFacts) {
 		lastTS += r.u()
 		e.TimestampUS = lastTS
 		e.FilmIndex = int(r.i())
+		e.HasShooter = e.FilmIndex >= 0
 		e.WeaponID = r.u()
+		e.FireNumber = uint8(r.u()) //nolint:gosec // ecrit depuis un uint8
+		if e.Unit.Present = r.bool8(); e.Unit.Present {
+			e.Unit.Slot = uint32(r.u()) //nolint:gosec // ecrit depuis un uint32
+			e.Unit.Gen = uint32(r.u())  //nolint:gosec // ecrit depuis un uint32
+		}
 		if e.HasAim = r.bool8(); e.HasAim {
 			for a := 0; a < 3; a++ {
 				e.Aim[a] = r.f32()
@@ -304,7 +313,11 @@ func decodeEtatsDeMouvement(r *greader, g *FilmFacts) {
 		Records: int(r.u()), Read: int(r.u()), Absent: r.bool8(), Scanned: r.bool8(),
 		Packets: int(r.u()), EventPackets: int(r.u()), EventPacketsLocated: int(r.u()),
 		EventPacketsUnlocated: int(r.u()), Desyncs: int(r.u()), SlotUnbound: int(r.u()),
-		Duplicates: int(r.u()),
+		Duplicates: int(r.u()), EventPacketsNewRecordStart: int(r.u()), VehicleTypePhysicsAssumed: int(r.u()),
+	}
+	for _, p := range []*int{&st.LiaisonsOubliees, &st.NeufsContreUnVivant, &st.NeufsRefusesLecturesFausses,
+		&st.NeufsRefusesCreationsPerdues, &st.NeufsRefusesIndecis} { // constat DFIX-R6
+		*p = int(r.u()) //nolint:gosec // compteurs ecrits positifs
 	}
 	for i := range st.MapWidths {
 		st.MapWidths[i] = uint(r.u())
@@ -397,6 +410,30 @@ func decodePlayerTeams(r *greader) (map[int]int, grammar.TeamScanReport) {
 		*p = int(r.u())
 	}
 	return teams, rep
+}
+
+// decodeEntitesDesJoueurs relit LES OCCUPANTS DU MATCH (SchemaDesFaits 4, lot M2.2), dans l ordre
+// ou [encodeEntitesDesJoueurs] les ecrit. Les tranches vides relisent NIL, comme a la production.
+func decodeEntitesDesJoueurs(r *greader) grammar.PlayerEntityScan {
+	s := grammar.PlayerEntityScan{Scanned: r.bool8()}
+	n := int(r.u())
+	var last uint64
+	for k := 0; k < n && r.err == nil; k++ {
+		last += r.u()
+		s.KeyframesUS = append(s.KeyframesUS, last)
+	}
+	n = int(r.u())
+	for k := 0; k < n && r.err == nil; k++ {
+		s.Entities = append(s.Entities, grammar.PlayerEntity{
+			Slot: int(r.u()), Index: int(r.i()), Team: int(r.i()), FirstKF: int(r.u()),
+			LastKF: int(r.u()), Seen: int(r.u()), Unstable: r.bool8(),
+		})
+	}
+	n = int(r.u())
+	for k := 0; k < n && r.err == nil; k++ {
+		s.Doutes = append(s.Doutes, grammar.DouteDAbsence{Rang: int(r.u()), Slot: int(r.u())})
+	}
+	return s
 }
 
 // decodeFilmTable relit la TABLE DES JOUEURS DU FILM (v20, lot 1.6).

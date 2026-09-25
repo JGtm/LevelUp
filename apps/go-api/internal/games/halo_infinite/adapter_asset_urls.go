@@ -12,6 +12,7 @@ import (
 	"levelup/go-api/internal/games/canonical"
 	"levelup/go-api/internal/games/halo_infinite/film/damagetag"
 	"levelup/go-api/internal/games/halo_infinite/film/killicon"
+	"levelup/go-api/internal/games/weapons/filmshell"
 )
 
 // TitleSlug est le slug canonique d'Halo Infinite côté adapter.
@@ -26,6 +27,10 @@ const weaponIconDir = "jeu/"
 // weaponImageStemGrenade est le stem du seul PNG dessiné à la main encore servi
 // (cf. weaponIconSentinelFiles / weaponIconConceptFiles).
 const weaponImageStemGrenade = "Grenade"
+
+// weaponImageStemMelee est le stem du PNG dessine a la main de la MELEE : la sentinelle 1 et,
+// depuis le 2026-09-24 (retours du rejeu, lot M6.3), l objet « mains nues » du jeu.
+const weaponImageStemMelee = "Melee"
 
 // uuidRe matche un UUID v4 — utilisé pour rejeter les map names qui sont en
 // fait des UUID bruts (non utilisables comme nom de fichier statique).
@@ -47,7 +52,7 @@ var mapVariantSuffixes = []string{" Heavies", " Sentry Defense", " Firefight"}
 // icône fausse. Elle n'en avait pas non plus avant ce chantier.
 var weaponIconSentinelFiles = map[int64]string{
 	0: weaponImageStemGrenade,
-	1: "Melee",
+	1: weaponImageStemMelee,
 }
 
 // weaponIconConceptFiles couvre les grenades RÉELLES du référentiel. Elles ont un
@@ -63,6 +68,11 @@ var weaponIconConceptFiles = map[uint32]string{
 	0x3ad55da4: weaponImageStemGrenade, // Dynamo Grenade
 	0xb6dbead8: weaponImageStemGrenade, // Frag Grenade
 	0xc1e1bab0: weaponImageStemGrenade, // Plasma Grenade
+	// MAINS NUES (retours du rejeu, lot M6.3, 2026-09-24) : un vrai `weap`, mais SANS bloc
+	// d affichage ni bitmap (sonde CA9 : dependances hlmt, mode, jmad, foot, effe — aucun `bitm`) ;
+	// l atlas du jeu ne le porte donc pas. Sans arme, le joueur n a que la melee : il en prend le
+	// dessin.
+	filmshell.UnarmedFamily: weaponImageStemMelee,
 }
 
 // AssetURLAdapter implémente games.TitleAssetURLAdapter pour Halo Infinite.

@@ -447,7 +447,10 @@ func TestGetMatchFilm_BasicPrefix(t *testing.T) {
 		if strings.Contains(r.URL.Path, "/spectate") {
 			_ = json.NewEncoder(w).Encode(filmManifestJSON(
 				"http://blobs.test/base/",
-				[]map[string]any{filmChunkEntry(0, FilmChunkTypeReplicationData, "chunk0.bin")},
+				[]map[string]any{
+					filmChunkEntry(0, FilmChunkTypeReplicationData, "chunk0.bin"),
+					filmChunkEntry(1, FilmChunkTypeHighlightEvents, "hev.bin"),
+				},
 			))
 			return
 		}
@@ -481,6 +484,7 @@ func TestGetMatchFilm_MultiChunk(t *testing.T) {
 					filmChunkEntry(0, FilmChunkTypeHeader, "header.bin"),
 					filmChunkEntry(1, FilmChunkTypeReplicationData, "c1.bin"),
 					filmChunkEntry(2, FilmChunkTypeReplicationData, "c2.bin"),
+					filmChunkEntry(3, FilmChunkTypeHighlightEvents, "hev.bin"),
 				},
 			))
 			return
@@ -530,7 +534,10 @@ func TestGetMatchFilm_DownloadFails(t *testing.T) {
 		if strings.Contains(r.URL.Path, "/spectate") {
 			_ = json.NewEncoder(w).Encode(filmManifestJSON(
 				"http://blobs.test/",
-				[]map[string]any{filmChunkEntry(0, FilmChunkTypeReplicationData, "bad.bin")},
+				[]map[string]any{
+					filmChunkEntry(0, FilmChunkTypeReplicationData, "bad.bin"),
+					filmChunkEntry(1, FilmChunkTypeHighlightEvents, "hev.bin"),
+				},
 			))
 			return
 		}

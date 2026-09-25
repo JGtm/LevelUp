@@ -704,13 +704,17 @@ export interface ReplayText {
   /** Fiches joueur : ce qui est lu, et ce qui ne l'est pas. */
   rosterEmpty: string
   /**
-   * Siège entre deux occupants (lot 1.9.14) : `seatLeft` est ce que la tuile AFFICHE — le
-   * titulaire est sorti —, `seatSubstitute` sa description accessible : la place est tenue pour
-   * le remplaçant qui arrive. Les deux ne se confondent pas : l'une dit un fait passé, l'autre
-   * dit à quoi sert la tuile.
+   * Les deux tuiles d'une place SANS FICHE (règle des places, lot M2.4, 2026-09-23) :
+   * `seatVacant` est ce qu'affiche une place que personne ne tient (Q20 — elle reste visible,
+   * vide, jusqu'à l'arrivée du remplaçant ; aucun nom : un parti n'est jamais affiché) ;
+   * `seatNotSpawned` ce qu'affiche, sous son nom, un occupant qui tient sa place sans être encore
+   * apparu (Q21). Les deux `*Hint` sont leurs descriptions accessibles : ce que la tuile dit, pas
+   * ce qu'elle montre.
    */
-  seatLeft: string
-  seatSubstitute: string
+  seatVacant: string
+  seatVacantHint: string
+  seatNotSpawned: string
+  seatNotSpawnedHint: string
   bridgeDiag: (named: number, total: number, collisions: number) => string
   teamUnknown: string
   /** Libellé d'équipe (cascade `lib/halo/teamLabel.ts`, mêmes textes que la Match View). */
@@ -908,26 +912,16 @@ export interface ReplayText {
    */
   markMe: string
   healthLabel: string
-  /**
-   * L'ÉTAT DE MOUVEMENT COURANT, sur la fiche du joueur (schéma 68, lots 5.3.6, 5.9.4, 5.22.4).
-   * CINQ clés : quatre pour des états LUS dans le film — accroupi, glissade, ESCALADE, SPRINT —
-   * et une pour un état DÉRIVÉ, le saut. Le libellé du dérivé DIT qu'il est dérivé
-   * (« Saut (dérivé) » / « Jump (derived) »), parce qu'il ne vient d'aucun composant mais de
-   * l'intégrale de la vitesse verticale, reconnue à sa hauteur. Le SPRINT est LU : `i57` porte
-   * l'INDEX DE LA FENTE DE CAPACITÉ ACTIVE, et l'image nomme les trois fentes — esquive,
-   * sprint, grappin (lot 5.9.5).
-   *
-   * `clamber` DIT « ESCALADE » DEPUIS LE SCHÉMA 68, ET CE N'EST PAS UN CHOIX À LA PLACE DE LA
-   * MESURE. Ce libellé disait « Action » tant qu'aucune étiquette du binaire ne nommait les
-   * valeurs d'`i54` (note 5.3, § 2.8 et D9). L'oracle est venu de l'écran : NEUF intervalles
-   * de ce genre, pris sur `bfecd02b`, ont été confrontés image par image dans Theater — neuf
-   * escalades de rebord, 9/9, aucun contre-exemple (lot 5.22.4).
-   */
-  stanceKind: Record<'crouch' | 'slide' | 'clamber' | 'sprint' | 'jumpDerived', string>
   shieldLabel: string
   abilityLabel: string
   loadoutUnread: string
   loadoutAge: string
+  /**
+   * PROVENANCE d'un relevé d'armes lu à la CRÉATION du corps (`loadouts[].src === 'birth'`,
+   * schéma 69) : l'infobulle la dit avant l'âge — une dotation de naissance n'est pas une
+   * image-clé, et le lecteur doit savoir d'où vient ce qu'il voit.
+   */
+  loadoutBirth: string
   loadoutAhead: string
   weaponSecondaryHint: string
   /**

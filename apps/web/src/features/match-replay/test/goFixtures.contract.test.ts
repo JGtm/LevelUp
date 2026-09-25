@@ -67,7 +67,7 @@ import { readHillHold } from '../model/hillHoldLogic'
 import { buildPadControl } from '../model/padControlLogic'
 import { MIN_RENDERABLE_SCHEMA_VERSION } from '../model/replaySchemaStatusLogic'
 import { roundCount } from '../model/roundsLogic'
-import { buildSeats } from '../model/seatLogic'
+import { buildSeats, groupSeatsByTeam, seatOccupantAt, seatTileAt } from '../model/seatLogic'
 import { goFixtureEntries, goFixtureManifest, loadGoFixture } from './goFixtures'
 
 const entries = goFixtureEntries()
@@ -202,6 +202,10 @@ describe('chaque document produit par Go traverse la frontière du web', () => {
         expect(buildSeats(players, doc).length).toBeGreaterThan(0)
       })
 
+      it('respecte la RÈGLE DES PLACES : jamais plus de places que la taille d’équipe, jamais un parti', () => {
+        verifierLaRegleDesPlaces(pret(), entry.film)
+      })
+
       it('nourrit les logiques de calque, chacune sans lever', () => {
         const doc = pret()
         expect(typeof hasAbilityChargeLayer(doc)).toBe('boolean')
@@ -220,3 +224,76 @@ describe('chaque document produit par Go traverse la frontière du web', () => {
     })
   }
 })
+
+/**
+ * LA TAILLE D'ÉQUIPE DU MODE de chaque film du jeu de fixtures — une DONNÉE DE TEST, lue sur la
+ * liste de lecture du match (Grande équipe : 12 contre 12 ; les autres : 4 contre 4). Elle n'est
+ * écrite nulle part dans le code de production : la cuisson l'ESTIME (`coverage.seats`,
+ * `repli_place_ouverte_sous_la_capacite_estimee`), et ce test vérifie l'estimation sur les huit
+ * builds. Un film ajouté au jeu sans sa taille fait rougir le test, il ne passe pas en silence.
+ */
+const TAILLE_D_EQUIPE: Readonly<Record<string, number>> = {
+  '000d5950': 4,
+  '60ae07c4': 4,
+  bcb6d393: 4,
+  fb1a1a72: 4,
+  a521164d: 12,
+  '11de8353': 12,
+  '111fa685': 12,
+  e5adf7b2: 12,
+}
+
+/** Le pas d'échantillonnage de la propriété : une image par seconde de film (10 à 100 ms). */
+const PAS_DE_LA_PROPRIETE = 10
+
+/**
+ * verifierLaRegleDesPlaces — LA PROPRIÉTÉ du lot M2.4 sur un document produit par Go (règle des
+ * places de l'utilisateur, 2026-09-23), mesurée sur les TUILES QUE LA COLONNE REND (`seatTileAt`,
+ * la fonction même de `ReplayTeams`) et contre des sources que la pose des places ne produit pas
+ * (revue M2-R3, 2026-09-24) :
+ *
+ *	la TAILLE D'ÉQUIPE déclarée ci-dessus : à chaque image, une colonne rend au plus autant de
+ *	  tuiles (vides comprises) que l'équipe a de places ;
+ *	l'UNICITÉ d'un joueur : à une image, un joueur n'est rendu que dans UNE tuile, toutes colonnes
+ *	  confondues — un parti ne survit pas sous une autre place ;
+ *	les compteurs de la cuisson, qui mesurent contre la CAPACITÉ (et non contre les places posées) :
+ *	  `depassements`, `placesEnTrop` et `identitesHorsRoster` valent 0.
+ *
+ * Le départ, lui, se prouve contre les ENTITÉS `ti=9` du film, côté Go, sur les huit mêmes builds
+ * (`TestRegleDesPlacesContreLesEntitesDesBuilds`) : le document ne les porte pas.
+ */
+function verifierLaRegleDesPlaces(doc: ReplayDocumentReady, film: string): void {
+  const taille = TAILLE_D_EQUIPE[film]
+  expect(taille, `${film} : taille d’équipe du mode non déclarée dans TAILLE_D_EQUIPE`).toBeDefined()
+  const seats = doc.coverage?.seats
+  expect(seats?.depassements, `${film} : dépassements de capacité`).toBe(0)
+  expect(seats?.placesEnTrop, `${film} : places au-delà de la capacité`).toBe(0)
+  expect(seats?.identitesHorsRoster, `${film} : identités hors roster`).toBe(0)
+  const groupes = groupSeatsByTeam(buildSeats(buildPlayers(doc, []), doc))
+  for (let f = 0; f < doc.frameCount; f += PAS_DE_LA_PROPRIETE) {
+    const rendus = new Set<string>()
+    for (const g of groupes) {
+      let tuiles = 0
+      for (const s of g.seats) {
+        const lu = seatTileAt(s, f)
+        if (lu === null) continue
+        tuiles++
+        if (lu.player === null) continue
+        expect(rendus.has(lu.player.xuid), `${film} : ${lu.player.xuid} rendu deux fois à l’image ${f}`).toBe(false)
+        rendus.add(lu.player.xuid)
+      }
+      expect(tuiles, `${film} : ${tuiles} tuiles dans un camp à l’image ${f}`).toBeLessThanOrEqual(taille)
+    }
+  }
+  for (const g of groupes) {
+    for (const s of g.seats) {
+      for (let k = 0; k + 1 < s.occupants.length; k++) {
+        const avant = s.occupants[k].presence.at(-1)!
+        const apres = s.occupants[k + 1].presence[0]
+        if (avant.toMax + 1 < apres.from) {
+          expect(seatOccupantAt(s, avant.toMax + 1).kind, `${film} : relais de la place ${s.seat}`).toBe('vide')
+        }
+      }
+    }
+  }
+}

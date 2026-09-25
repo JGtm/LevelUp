@@ -399,6 +399,16 @@ jobs:
       # couverture (plus lente), un budget plus court fabriquerait des timeouts qui
       # ne sont pas des régressions. Le mode autonome du script garde 300 s.
       #
+      # 600 -> 900 s (2026-09-25, campagne « retours rejeu », intégration de la vague D) :
+      # run 36162837061 sur 8487a4f91, `panic: test timed out after 10m0s` dans le paquet
+      # `film/internal/grammar` (aucun test en échec, somme des tests terminés 577 s). La
+      # marche d'image-clé prouvée de la vague D (M3, D-fix) fait passer ce paquet de 57 s
+      # à 82 s NON instrumenté (jobs « Go Build + Test » ubuntu, runs 35990146841 ->
+      # 36162837061) ; sous `-covermode=atomic -coverpkg=./...` il dépasse 600 s. Cinq tests
+      # rebalayent chacun les sept bobines versionnées (70 à 81 s chacun ici). Critère de
+      # retour à 600 s : ces balayages partagent une marche mémorisée par bobine, ou le
+      # paquet repasse sous 60 s non instrumenté.
+      #
       # `-json` retire toute sortie humaine du log : c'est le step suivant
       # (analyse du JSONL) qui réimprime les lignes utiles en cas d'échec.
       - name: go test avec couverture complète + JSONL (CGO + intégration)
@@ -410,7 +420,7 @@ jobs:
             -covermode=atomic \
             -coverpkg=./... \
             -tags=integration \
-            -timeout 600s \
+            -timeout 900s \
             -count=1 \
             -p 1 \
             ./... > baseline_current.jsonl 2>&1

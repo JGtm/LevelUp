@@ -18,6 +18,38 @@ type VehicleTrack struct {
 	Spawn   *VehicleSpawn   `json:"spawn,omitempty"`
 	Samples []VehicleSample `json:"samples,omitempty"`
 	Rides   []VehicleRide   `json:"rides,omitempty"`
+	// Part / Carrier / Variant : la piece montee, son porteur et la variante du chassis (schema
+	// 69, cf. `replay.VehicleTrack`).
+	Part    string          `json:"part,omitempty"`
+	Carrier *VehicleLifeRef `json:"carrier,omitempty"`
+	Variant string          `json:"variant,omitempty"`
+}
+
+// VehicleLifeRef designe une vie de vehicule par `(slot, gen)` (schema 69).
+type VehicleLifeRef struct {
+	Slot uint32 `json:"slot"`
+	Gen  uint32 `json:"gen"`
+}
+
+// VehicleWeapon est l entree du registre des armes de vehicule (schema 69, cf.
+// `replay.VehicleWeapon`), resolue a la requete.
+type VehicleWeapon struct {
+	Vehicle string              `json:"vehicle"`
+	En      string              `json:"en"`
+	Fr      string              `json:"fr"`
+	Fire    string              `json:"fire"`
+	Fx      string              `json:"fx"`
+	Tint    string              `json:"tint"`
+	Sound   string              `json:"sound,omitempty"`
+	Loop    string              `json:"loop,omitempty"`
+	Mount   *VehicleWeaponMount `json:"mount,omitempty"`
+}
+
+// VehicleWeaponMount est l ancre d une arme sur le sprite de son vehicule (schema 69).
+type VehicleWeaponMount struct {
+	Aim string  `json:"aim"`
+	AX  float64 `json:"ax"`
+	AY  float64 `json:"ay"`
 }
 
 // VehicleSpawn est la naissance d un vehicule : ou, et sous quel cap.
@@ -34,6 +66,9 @@ type VehicleSample struct {
 	X float32 `json:"x"`
 	Y float32 `json:"y"`
 	Z float32 `json:"z,omitempty"`
+	// G : la lacune de replication qui precede cet echantillon, en ms (schema 69) — meme
+	// semantique que `Point.G` : le client TIENT la derniere position au travers.
+	G int     `json:"g,omitempty"`
 	H float32 `json:"h,omitempty"`
 }
 
@@ -46,6 +81,8 @@ type VehicleRide struct {
 	Seat *int         `json:"seat,omitempty"`
 	Src  string       `json:"src"`
 	Aim  []VehicleAim `json:"aim,omitempty"`
+	// Turret : la tourelle d ou l episode a ete reporte (schema 69, cf. `replay.VehicleRide`).
+	Turret *VehicleLifeRef `json:"turret,omitempty"`
 }
 
 // VehicleAim est UNE lecture de visee d occupant, posee sur l axe de frames.
@@ -68,4 +105,22 @@ type VehicleCycle struct {
 	P90S    float32 `json:"p90S"`
 	Gaps    int     `json:"gaps"`
 	Missing int     `json:"missing"`
+}
+
+// VehicleScenery est le verdict de decor des vies de vehicule posees par la carte hors de la
+// zone jouable (lot M7, cf. `replay.VehicleScenery`), resolu a la requete.
+type VehicleScenery struct {
+	Zone        string               `json:"zone"`
+	Floor       string               `json:"floor"`
+	Candidates  int                  `json:"candidates"`
+	InPlayArea  int                  `json:"inPlayArea"`
+	ZoneUnknown int                  `json:"zoneUnknown"`
+	Hidden      []VehicleSceneryLife `json:"hidden,omitempty"`
+}
+
+// VehicleSceneryLife designe une vie de decor et la raison de son masquage.
+type VehicleSceneryLife struct {
+	Slot   uint32 `json:"slot"`
+	Gen    uint32 `json:"gen"`
+	Reason string `json:"reason"`
 }

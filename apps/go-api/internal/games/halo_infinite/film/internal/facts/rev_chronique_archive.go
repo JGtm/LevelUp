@@ -235,3 +235,53 @@ package facts
 // aucune largeur, aucun appariement ne change, les lignes produites sont identiques a l octet et
 // aucun match deja decode n est candidat au backlog. Le critere de retrait ecrit dans les deux
 // fichiers supprimes est tenu, et il etait mesurable au `grep`.
+// 2026-09-23, LOT L3 (PLAN_RETOURS_REJEU_2026-09-23) — REVISION INCHANGEE, EMPREINTE SEULE
+// RECOPIEE, ET LE CHOIX EST ECRIT. `objectives/film.go` ne change QUE DE COMMENTAIRE : la godoc
+// de `manifestChunks` citait `7b0d89c4` au present (« un film du cache est dans ce cas »), faux
+// depuis la restauration du cache du 2026-09-16 (doc inversee, rapport `ctf_ab526724` §5.5) ; elle
+// dit desormais l histoire au passe et renvoie au refus de la cuisson pose par le lot. Aucun octet
+// de code, aucune lecture, aucune largeur ne change : les lignes produites sont identiques a
+// l octet et aucun match deja decode n est candidat au backlog.
+// 2026-09-23, LOT L3 (reprise apres revue adverse, constat L3-R8) — REVISION INCHANGEE, EMPREINTE
+// SEULE RECOPIEE, ET LE CHOIX EST ECRIT. `fallback/registre_objectifs.go` recoit UNE entree de
+// DONNEES, `repli_temps_forts_dernier_numero` : le registre DECLARE et COMPTE, il ne decide rien
+// (cf. l en-tete de `fallback/repli.go`), et son compteur n est pas cable. Aucune lecture, aucune
+// largeur, aucun appariement ne change : les lignes produites sont identiques a l octet et aucun
+// match deja decode n est candidat au backlog.
+// 2026-09-23, LOT M1 DES RETOURS DU REJEU — REVISION INCHANGEE, EMPREINTE SEULE RECOPIEE, ET LE
+// CHOIX EST ECRIT. `fallback/` recoit une HUITIEME tranche de DONNEES (`registre_replay_positions.go`,
+// deux entrees : `repli_position_hors_emprise_ecartee` et
+// `repli_echantillon_vehicule_au_travers_d_un_silence_ecarte`), leurs deux constantes de nom
+// (`noms.go`), la tranche dans `Tranches()` et son plancher de test. Les deux replis sont des gardes
+// de la PUBLICATION (`replay/`), declenchees sur des faits DEJA persistes : aucune lecture, aucune
+// largeur, aucun appariement de `facts` ne change, les lignes produites sont identiques a l octet
+// et aucun match deja decode n est candidat au backlog.
+// 2026-09-23, LOT M4a (PLAN_RETOURS_REJEU_2026-09-23) — REVISION INCHANGEE, EMPREINTE SEULE
+// RECOPIEE, ET LE CHOIX EST ECRIT. `fallback/` recoit une entree de DONNEES,
+// `repli_tourelle_porteur_voisin_de_slot` (fichier neuf `registre_replay_vehicules.go`, une tranche
+// de plus a `Tranches`, une constante a `noms.go`) : le registre DECLARE et COMPTE, il ne decide
+// rien, et le site qui le declenche est dans la couche de PUBLICATION (`replay/vehicle_turrets.go`),
+// qui ne produit aucune ligne de kill. Aucune lecture, aucune largeur, aucun appariement ne change :
+// les lignes produites sont identiques a l octet et aucun match deja decode n est candidat au backlog.
+// 2026-09-24, LOT M4a, REPRISE APRES REVUE ADVERSE — REVISION INCHANGEE, EMPREINTE SEULE RECOPIEE.
+// Le `Mecanisme` de `repli_tourelle_porteur_voisin_de_slot` dit desormais la NAISSANCE COMMUNE que
+// la publication exige du voisin (meme instant, meme point) : une chaine de DONNEES du registre, le
+// site reste dans la couche de publication. Aucune ligne de kill ne change.
+// 2026-09-24, INTEGRATION DE LA VAGUE C DES RETOURS DU REJEU — REVISION INCHANGEE, EMPREINTE SEULE
+// RECOPIEE. Les tranches `replay/positions` (M1) et `replay/vehicules` (M4a) sont reunies dans
+// `Tranches()` : l arbre hache est l union des deux lots, chacun deja sans effet sur les lignes de
+// kill. Aucune lecture, aucune largeur, aucun appariement ne change.
+// 2026-09-24, LOT M7, REPRISE APRES REVUE ADVERSE (constat RR-M7-03) — REVISION INCHANGEE, EMPREINTE
+// SEULE RECOPIEE. `fallback/registre_replay_vehicules.go` recoit deux entrees de DONNEES,
+// `repli_decor_sous_le_sol_foule_du_match` et `repli_decor_carte_sans_zone_affiche` : le decor de
+// carte est decide A LA REQUETE par le service de rejeu (`internal/service/`), hors du decodeur et
+// hors de la cuisson. Aucune lecture, aucune largeur, aucun appariement ne change : aucune ligne de
+// kill ne change et aucun match deja decode n est candidat au backlog.
+// 2026-09-24, LOT M7b, REPRISE APRES REVUE ADVERSE (constat RR-M7b-01) — REVISION INCHANGEE,
+// EMPREINTE SEULE RECOPIEE. `fallback/registre_replay_vehicules.go` recoit deux entrees de
+// DONNEES, `repli_tourelle_montee_loin_du_porteur` et `repli_episode_borne_par_la_vie_suivante`, et
+// `fallback/noms.go` leurs constantes : les gardes qu elles decrivent vivent dans la PUBLICATION
+// (`replay/vehicle_turrets_boarding.go`, `replay/vehicle_rides_next_life.go` : les episodes
+// d occupation du calque des vehicules), hors du decodeur. Aucune lecture, aucune largeur, aucun
+// appariement ne change : aucune ligne de kill ne change et aucun match deja decode n est
+// candidat au backlog.

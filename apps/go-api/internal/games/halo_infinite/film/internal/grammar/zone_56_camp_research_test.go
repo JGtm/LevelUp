@@ -139,7 +139,7 @@ func TestZone56MasqueTi23(t *testing.T) {
 	if restore, err := InstallFilmFormatMPP(fc); err == nil {
 		defer restore()
 	}
-	kf := ScanWorldObjectKeyframes(fc.Film(), ti)
+	kf := ScanWorldObjectKeyframes(fc, ti)
 	t.Logf("%s (carte %s) : bande ti=%d = %d slots, %d vies recensees, %d images-cles",
 		filepath.Base(dir), carte, ti, len(kf.Band), len(kf.SeenUS), len(kf.TimesUS))
 	zone56LogVies(t, kf)
@@ -372,7 +372,7 @@ func zone56RecolterNoms(fc *FilmContext, arch Archetype) (
 		tags[slot][int(values[0])]++
 	}
 	prof := fc.ProfilDeBalayage()
-	band := observedSlotBand(fc.Film(), ManagedPropertyTypeIndex)
+	band := observedSlotBand(fc, ManagedPropertyTypeIndex)
 	for _, c := range fc.ChunkNumbers() {
 		data, pks, ok := fc.ChunkAt(c)
 		if !ok {

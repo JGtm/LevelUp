@@ -1,56 +1,65 @@
 package replay
 
-// sieges.go — LE SIEGE D'UN JOUEUR, ET CE QUI LE DECIDE (lot 1.9.14).
+// sieges.go — LA PLACE D'UN OCCUPANT, SA PRESENCE, ET CE QUI LES DECIDE (lot 1.9.14 ; refondu au
+// lot M2.3 de la campagne « retours rejeu », 2026-09-23).
 //
-// # LE CONSTAT QUI OUVRE CE FICHIER (utilisateur, 2026-09-15)
+// # LA REGLE DES PLACES (utilisateur, 2026-09-23 — elle prime sur toute autre lecture)
 //
-// « Le rejeu affiche tout le roster du match tout le temps ; on n'a pas de raison d'afficher
-// les joueurs qui ne jouent pas a l'instant T. » Mesure a l'appui, sur `bcb6d393` (CTF 4v4) :
-// le document publie ONZE entrees de roster alors que le film ne porte JAMAIS plus de HUIT
-// occupants simultanes. Les trois de trop sont des partants et des remplacants dont les
-// presences ne se recouvrent pas — ils tiennent chacun une fiche a l'ecran du debut a la fin.
+// « quand un joueur part, il libère la place de sa fiche de joueur pour son remplaçant ok ? [...]
+// le nombre de joueur dans un match est fini, il y a un maximum. » Une equipe a un nombre FINI de
+// places ; une fiche = une place ; un partant LIBERE sa place et son remplacant (bot ou humain)
+// prend CETTE place (Q23 : un bot remplace le partant, un humain qui arrive remplace le bot) ;
+// jamais plus de fiches que de places ; un joueur parti ne reste jamais affiche.
 //
-// # CE QUE LE FILM ECRIT, ET CE QU'IL N'ECRIT PAS (mesure du 2026-09-15, 4 temoins)
+// # CE QU'ETAIT LE DEFAUT (rapport `RAPPORT_equipes_b1ad85eb.md`, C1 et C2)
 //
-// IL ECRIT L'INDEX DE CHAQUE ENTITE `ti=9`, remplacants compris : un arrivant en cours de
-// partie porte son index de joueur comme les autres (lot 1.7). L'index EST le siege.
+// Le siege publie etait l'INDEX de participant, et un remplacant n'en herite presque jamais (le
+// film reprend l'index d'un partant 2 fois sur 35 arrivees) ; l'appariement ordinal de repli ne
+// chainait que les partants de la table ayant une equipe et des vies. Sur `b1ad85eb` : Eagle a 5
+// sieges, Cobra a 5, et le client gardait un parti affiche faute de successeur sur SON siege.
 //
-// IL N'ECRIT PAS « ce remplacant prend le siege de ce partant » — sauf quand il REUTILISE
-// l'index du partant, ce qui arrive 2 fois sur 35 arrivees des 18 films du lot 1.7, et 1 fois
-// sur les 11 arrivees couvertes par les bobines des quatre temoins (`11de8353`, index 23 :
-// l'entite de slot 1343 s'arrete au paquet 6, celle de slot 1789 demarre au paquet 7).
-// Les 33 autres arrivees prennent un index NEUF, au-dessus du dernier siege de la table de
-// depart.
+// # CE QUI EST UNE PLACE, ET CE QUI LA DECIDE, DANS L'ORDRE
 //
-// # LES DEUX DECISIONS, DANS L'ORDRE (D13, D14)
+// Les PLACES sont les sieges de la table du DEBUT du film (`chunk_00`, lot 1.5) — WNBA Fan A5,
+// assis au siege 5 de `b1ad85eb` et parti avant le coup d'envoi, y laisse une place que les bots
+// puis Claudors tiennent. L'equipe d'une place est celle de ses occupants.
 //
-//	LECTURE  le siege d'une entree EST son index de film. Deux entrees qui partagent un index
-//	         partagent un siege : le film a ECRIT la reprise, il n'y a rien a deviner.
-//	         [SeatSourceLu].
-//	REPLI    un arrivant dont le film ecrit un index NEUF n'est rattache a AUCUN partant par le
-//	         film. Le chainer sur le siege d'un partant du meme camp est un APPARIEMENT ORDINAL
-//	         — le k-ieme arrivant continue le k-ieme siege libere — c'est-a-dire le modele des
-//	         sieges valide le 2026-09-02, ramene a son rang de repli NOMME et COMPTE
-//	         (`repli_siege_du_remplacant_par_appariement_ordinal`). [SeatSourceApparie].
+//	LECTURE `lu`       une entree dont l'index EST un siege de la table l'occupe : les occupants
+//	                   du depart, et l'arrivant qui REPREND l'index d'un partant ;
+//	LECTURE `tirs`     l'index de tireur d'un tir est la PLACE, et le remplacant en herite (rapport,
+//	                   3 remplacements sur 3 ; sonde P4 : les 84 tirs de la place 5 tombent tous dans
+//	                   les vies de Claudors, index 10) : un arrivant dont les tirs non couverts
+//	                   designent A L'UNANIMITE une place, libre pendant sa presence, la lit ;
+//	REPLI `apparie`    CHAINAGE PAR EQUIPE, a presences disjointes : la place de son equipe liberee
+//	                   le plus tot, puis une place de son equipe sans occupant anterieur, puis une
+//	                   place de la table jamais tenue — tant que l'equipe n'a pas sa capacite. Nomme
+//	                   et compte (`repli_place_du_remplacant_par_chainage_d_equipe`) : les bots
+//	                   n'ecrivent aucun tir long (sonde P4), leur place ne se lit pas encore ;
+//	REPLI `ouverte`    aucune place libre, mais l'equipe n'a pas sa capacite : l'arrivant OUVRE la
+//	                   place que la table du debut ne portait pas (`e5adf7b2` : 23 sieges pour
+//	                   12 contre 12, le douzieme arrive a la 64e seconde). Nomme et compte
+//	                   (`repli_place_ouverte_sous_la_capacite_estimee`) : la capacite est ESTIMEE,
+//	                   la taille d'equipe du mode n'est pas lue dans le film (cf. sieges_places.go) ;
+//	AUCUNE `index`     rien de ce qui precede (equipe inconnue, ou equipe pleine dont aucune place
+//	                   n'est libre pendant sa presence — deux lectures qui se contredisent) : le
+//	                   siege reste l'index, COMPTE (`sansPlace`) — c'est le seul chemin par lequel une
+//	                   equipe depasserait ses places, et `depassements` le mesure.
 //
-// L'ORDRE EST FIXE ET IL COMPTE : on lit d'abord (index, reprise ecrite), on se replie ensuite,
-// et JAMAIS sur une entree dont le film a ecrit la reprise.
+// # LA PRESENCE SE BORNE AU SUCCESSEUR
 //
-// # QUI EST UN ARRIVANT SE LIT, IL NE SE SEUILLE PAS
+// Sur une place, l'affichage d'un occupant s'arrete la veille de l'arrivee du suivant (une
+// entite ne se voit qu'aux images-cles : sans cette borne, un partant et son remplacant
+// tiendraient la meme place vingt secondes). Entre les deux, la place est VIDE (Q20).
 //
-// La table des joueurs de `chunk_00` est le roster du DEBUT du film (D2 du lot 1.6) : une
-// entree dont l'index y a un siege est une ORIGINE, une entree dont l'index n'y est pas est une
-// ARRIVEE. Aucune fenetre de temps, aucune marge — ce que d'autres surfaces du produit ont du
-// seuiller faute de cette table (10 s / 20 s dans `presenceFeed`), la table le donne
-// exactement. UN FILM SANS TABLE ne permet donc pas de distinguer les deux : AUCUN chainage
-// n'est alors decide, et la couverture le dit ([SeatCoverage.SansTableDuFilm]) — s'abstenir
-// n'est pas se replier.
+// SANS ENTITE LUE (cf. occupants.go), la presence est l'enveloppe des vies, et le DERNIER occupant
+// de chaque place reste affiche jusqu'a la fin — la regle d'avant, « mourir n'est pas partir »,
+// que sans entite rien ne permet de trancher. Repli nomme et compte
+// (`repli_presence_par_enveloppe_des_vies`).
 //
 // # CE FICHIER NE DESSINE RIEN
 //
-// Il publie un siege et une provenance. La regle d'affichage — « a l'instant T, les seules
-// fiches des occupants presents » — vit cote web, et elle se sert des INTERVALLES DE PRESENCE
-// que les vies portent deja (lot 1.9.13).
+// Il publie `roster[].seat`, `roster[].seatSource` et `roster[].presence`. La regle d'affichage —
+// une tuile par place, son occupant a l'instant lu, sinon vide — vit cote web (`seatLogic.ts`).
 
 import (
 	"sort"
@@ -58,120 +67,230 @@ import (
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
 )
 
-// SeatSourceLu / SeatSourceApparie : les deux provenances d'un siege publie.
+// SeatSourceLu / SeatSourceTirs / SeatSourceApparie / SeatSourceOuverte / SeatSourceIndex : les
+// cinq provenances d'un siege publie (cf. l'en-tete).
 //
-// ELLES NE SONT PAS DECORATIVES. Un client qui dessine un relais de siege affiche, dans la
-// meme fiche, deux joueurs differents ; savoir si le film l'a ECRIT ou si un appariement l'a
-// DEDUIT est ce qui permet de ne pas presenter une deduction comme une lecture.
+// ELLES NE SONT PAS DECORATIVES. Un client qui dessine une place tenue par deux joueurs
+// successifs doit pouvoir distinguer ce que le film ECRIT (`lu`, `tirs`) de ce que la pose a
+// DEDUIT (`apparie`, `ouverte`) et de ce qui n'a pas trouve de place (`index`).
 const (
-	// SeatSourceLu : le siege est l'index que le film ecrit pour cette entree.
+	// SeatSourceLu : le siege est l'index que le film ecrit pour cette entree — un siege de la
+	// table du debut.
 	SeatSourceLu = "lu"
-	// SeatSourceApparie : le film a ecrit un index NEUF ; le rattachement au siege d'un partant
-	// vient de l'appariement ordinal par camp, un REPLI (cf. l'en-tete).
+	// SeatSourceTirs : la place est lue dans l'index de tireur des tirs de l'arrivant.
+	SeatSourceTirs = "tirs"
+	// SeatSourceApparie : la place vient du chainage par equipe, un REPLI (cf. l'en-tete).
 	SeatSourceApparie = "apparie"
+	// SeatSourceOuverte : l'arrivant a ouvert une place que la table du debut ne portait pas, son
+	// equipe etant sous sa capacite estimee — un REPLI (cf. l'en-tete). Le siege est son index,
+	// ou un numero au-dela des index quand une autre place porte deja le sien.
+	SeatSourceOuverte = "ouverte"
+	// SeatSourceIndex : aucune place : le siege est l'index de l'entree, hors de la table.
+	SeatSourceIndex = "index"
 )
 
-// SeatCoverage est ce que la pose des sieges a lu, appariee, et laisse sans presence.
+// Presences / sources d'une presence publiee (`coverage.seats.presences`).
+const (
+	// PresencesDuFilm : les presences viennent des entites ti=9 et de BOT_METADATA.
+	PresencesDuFilm = "film"
+	// PresencesDesVies : repli — enveloppe des vies, dernier occupant d'une place jusqu'a la fin.
+	PresencesDesVies = "vies"
+)
+
+// SeatCoverage est ce que la pose des places a lu, deduit, borne, et laisse sans place.
 //
-// SON CHIFFRE CENTRAL EST LE COUPLE `Entrees` / `OccupantsMax` : leur ECART est exactement le
-// nombre de fiches que la regle de lecture retire de l'ecran. C'est le constat utilisateur,
-// rendu mesurable artefact par artefact.
+// SES CHIFFRES CENTRAUX SONT `depassements` (0 attendu : une equipe n'affiche jamais plus
+// d'occupants que de places) et le couple `entrees` / `occupantsMax`.
 type SeatCoverage struct {
 	// Entrees est le denominateur : les entrees de roster publiees.
 	Entrees int `json:"entrees"`
-	// Sieges est le nombre de sieges DISTINCTS apres la pose — donc le nombre de fiches qu'un
-	// client dessinerait s'il les affichait toutes.
+	// Sieges est le nombre de places que la colonne AFFICHE : les sieges DISTINCTS des entrees
+	// qu'une presence couvre (les places tenues, plus l'index d'une entree presente restee sans
+	// place). Une entree que rien ne montre n'a de fiche a aucune image, et ne compte pas.
 	Sieges int `json:"sieges"`
-	// Lus : les entrees dont le siege est l'index ecrit par le film.
+	// Lus : les entrees dont le siege est l'index que le film ecrit (siege de la table).
 	Lus int `json:"lus"`
-	// Apparies : les entrees dont le siege vient du repli ordinal.
+	// PlacesTirs : les entrees dont la place est LUE dans leurs tirs.
+	PlacesTirs int `json:"placesTirs"`
+	// Apparies : les entrees dont la place vient du chainage par equipe (REPLI).
 	Apparies int `json:"apparies"`
-	// ReprisesEcrites : les sieges que le film donne a PLUSIEURS entrees — la reprise que le
-	// film ecrit lui-meme. C'est le compteur qui doit MONTER a mesure que la chaine
-	// `index -> xuid` d'un arrivant se ferme, et faire tomber `Apparies`.
+	// PlacesOuvertes : les entrees qui ont ouvert une place hors de la table du debut, leur equipe
+	// etant sous sa capacite estimee (REPLI).
+	PlacesOuvertes int `json:"placesOuvertes"`
+	// SansPlace : les entrees presentes qu'aucune voie n'a placees (siege = leur index).
+	SansPlace int `json:"sansPlace"`
+	// ReprisesEcrites : les sieges que le film donne a PLUSIEURS entrees par leur index.
 	ReprisesEcrites int `json:"reprisesEcrites"`
 	// Arrivants : les entrees dont l'index n'a pas de siege dans la table du DEBUT du film.
 	Arrivants int `json:"arrivants"`
 	// PresencesCloses : les entrees dont la presence publiee s'acheve AVANT la derniere frame.
-	//
-	// CE COMPTEUR NE DIT PAS « PARTI », ET C'EST VOULU : le film ne distingue pas un joueur qui
-	// quitte la partie d'un joueur qui meurt sans reapparaitre avant la fin. Les deux liberent
-	// leur siege au sens de la presence, et c'est cette imprecision — nommee ici plutot que tue —
-	// que l'appariement ordinal porte.
+	// Avec `presences = film` c'est un DEPART lu ; avec `vies`, un depart OU une mort de fin de
+	// partie, que rien ne distingue.
 	PresencesCloses int `json:"presencesCloses"`
-	// SansPresence : les entrees qu'AUCUNE vie publiee ne couvre, a aucun instant. Elles n'ont
-	// de fiche a aucun T — ni maintenant ni jamais — et le dire est la seule facon de ne pas
-	// confondre « le joueur n'a pas joue » avec « la regle de lecture l'a perdu ».
+	// SansPresence : les entrees qu'aucune presence ne couvre, a aucun instant (ni entite, ni
+	// declaration, ni vie) : elles n'ont de fiche a aucun T.
 	SansPresence int `json:"sansPresence"`
-	// OccupantsMax : le plus grand nombre d'entrees dont une vie couvre une meme frame.
+	// OccupantsMax : le plus grand nombre d'entrees affichees a une meme frame.
 	OccupantsMax int `json:"occupantsMax"`
-	// SansTableDuFilm : le film ne porte pas sa table de depart, donc arrivants et origines ne
-	// se distinguent pas et AUCUN chainage n'est decide. Ce n'est pas un repli : c'est une
-	// abstention, et elle se lit ici.
+	// Capacite : la plus grande capacite ESTIMEE d'une equipe (cf. sieges_places.go,
+	// [poseDesPlaces.capaciteDe]) — table du debut et entites lues, jamais les places posees. 0
+	// sans table.
+	Capacite int `json:"capacite"`
+	// Depassements : les couples (frame, equipe) ou une equipe affiche plus d'occupants que sa
+	// CAPACITE (revue M2-R6 : le plafond etait les places que la pose elle-meme avait attribuees,
+	// une mesure circulaire). Les entrees sans place (`index`) y comptent. 0 attendu.
+	Depassements int `json:"depassements"`
+	// PlacesEnTrop : par equipe, les places AFFICHEES au-dela de sa capacite, sommees. Le web rend
+	// une tuile par place a chaque image (vide ou non) : c'est le nombre de tuiles de trop. 0
+	// attendu.
+	PlacesEnTrop int `json:"placesEnTrop"`
+	// SansEquipe : les entrees presentes sans equipe lue. Leur tuile se range par la feuille de
+	// match (cote web), hors de toute capacite : chacune est a lire.
+	SansEquipe int `json:"sansEquipe"`
+	// IdentitesHorsRoster : les identites qui nomment une vie publiee sans entree de roster (revue
+	// M2-R1). Sans place ni presence, le web ne leur rend aucune tuile. 0 attendu.
+	IdentitesHorsRoster int `json:"identitesHorsRoster"`
+	// BotsSuccesseurs : les bots entres au roster sur l'index d'un humain dont ils sont les
+	// successeurs LUS (entites disjointes, cf. roster_bots_successeurs.go).
+	BotsSuccesseurs int `json:"botsSuccesseurs"`
+	// PresencesParLesVies : sur un film balaye, les entrees presentes qu'aucune entite ni
+	// declaration ne porte — leur presence vient de leurs seules vies (REPLI par entree,
+	// `repli_presence_d_une_entree_par_ses_vies`).
+	PresencesParLesVies int `json:"presencesParLesVies"`
+	// RelaisBornes : les presences dont l'affichage a ete borne par l'arrivee du successeur sur
+	// la meme place.
+	RelaisBornes int `json:"relaisBornes"`
+	// Chevauchements : les couples d'occupants d'une meme place dont les presences CERTAINES se
+	// recouvrent — une contradiction des lectures, comptee.
+	Chevauchements int `json:"chevauchements"`
+	// TirsContestes : les arrivants dont les tirs designent plusieurs places, ou une place prise.
+	TirsContestes int `json:"tirsContestes"`
+	// TirsIndexTronque : l'index de tireur persiste ne distingue pas toutes les places du film —
+	// la lecture par les tirs s'est abstenue sur tout le film. Il est lu sur CINQ bits depuis le
+	// lot M4b (quatre avant : les places 16 a 31 d un BTB se confondaient avec 0 a 15).
+	TirsIndexTronque bool `json:"tirsIndexTronque,omitempty"`
+	// TirsParPlace : les tirs rendus a l OCCUPANT de leur place quand il n est pas l index de la
+	// table — le remplacant d un partant (lot M4b.4, `tirs_par_place.go`).
+	TirsParPlace int `json:"tirsParPlace"`
+	// TirsIndexNonPlace : sur ce film, l index de tireur ne s accorde pas avec l unite tireuse (build
+	// HI_1_4_1) — il n est pas la place ; les places ne se lisent pas dans les tirs, et seule la
+	// reference 0 pose un tir (repli nomme, `tirs_index_fiable.go`).
+	TirsIndexNonPlace bool `json:"tirsIndexNonPlace,omitempty"`
+	// Presences dit d'ou viennent les presences publiees : `film` ou `vies` (repli).
+	Presences string `json:"presences"`
+	// EntitesNonLiees / EntitesContestees / TrousDEntite : ce que la liaison aux entites ti=9 n'a
+	// pas pose (cf. occupants.go).
+	EntitesNonLiees   int `json:"entitesNonLiees"`
+	EntitesContestees int `json:"entitesContestees"`
+	TrousDEntite      int `json:"trousDEntite"`
+	// ImagesClesDouteuses : les images-cles porteuses ou l'ABSENCE d'au moins une entite lue N'EST PAS
+	// PROUVEE — la marche de leur table a ecarte par repli un candidat ti=9 de son slot, ou a atteint
+	// son record sans pouvoir le lire (lot D-fix, 2026-09-24). Aucune arrivee tardive ni aucun depart
+	// ne s'y conclut. 0 attendu.
+	ImagesClesDouteuses int `json:"imagesClesDouteuses"`
+	// BornesDifferees : les entites dont une borne de presence (arrivee ou depart) n'est PAS posee
+	// sur l'image-cle voisine de leur fenetre, douteuse, mais recule jusqu'a la premiere absence
+	// prouvee — ou jusqu'au bord du film. 0 attendu.
+	BornesDifferees int `json:"bornesDifferees"`
+	// SansTableDuFilm : le film ne porte pas sa table de depart, donc aucune place n'est
+	// decidable. Ce n'est pas un repli : c'est une abstention, et elle se lit ici.
 	SansTableDuFilm bool `json:"sansTableDuFilm,omitempty"`
 }
 
-// siegeEntree : une entree de roster et ce que ses vies en disent, pendant la pose.
-type siegeEntree struct {
-	i          int
-	debut, fin int
-	vies       int
-	origine    bool
+// entreesDesPlaces porte ce que la pose consomme hors du roster et des occupants.
+type entreesDesPlaces struct {
+	table FilmPlayerTable
+	fire  []FireEventRef
+	// horloge porte la grille du document et le compteur de replis de la cuisson.
+	horloge replayClock
 }
 
-// poserLesSieges ECRIT le siege de chaque entree du roster, EN PLACE, et rend sa couverture.
-//
-// EN PLACE, COMME LES AUTRES POSES DE CE PAQUET (`nameTracksByLives`, `nameBotTracks`) : le
-// roster est une tranche, l'assemblage en tient deja la reference, et la rendre pour se la
-// faire reassigner n'ajouterait qu'une occasion d'oublier l'affectation.
-//
-// PURE AU SENS DU DECODAGE : elle ne lit aucun octet de film et n'ouvre aucune base. Son
-// entree est ce que l'assemblage a deja produit — le roster, les pistes publiees, la table du
-// debut.
-func poserLesSieges(roster []RosterEntry, tracks []Track, table FilmPlayerTable,
-	frames int, fb *fallback.Compteur,
-) SeatCoverage {
-	cov := SeatCoverage{Entrees: len(roster)}
+// poserLesSieges ECRIT la place, la provenance et la presence de chaque entree du roster, EN
+// PLACE, et rend sa couverture. PURE au sens du decodage : ni octet de film, ni base.
+func poserLesSieges(roster []RosterEntry, occ occupants, in entreesDesPlaces) SeatCoverage {
+	cov := SeatCoverage{Entrees: len(roster), Presences: PresencesDesVies,
+		EntitesNonLiees: occ.entitesNonLiees, EntitesContestees: occ.entitesContestees,
+		TrousDEntite: occ.trous, ImagesClesDouteuses: occ.imagesDouteuses,
+		BornesDifferees: occ.bornesDifferees}
+	if occ.balaye {
+		cov.Presences = PresencesDuFilm
+		in.horloge.fb.DeclencheN(fallback.NomBorneDePresenceDiffereeSurDoute, cov.BornesDifferees)
+	}
 	if len(roster) == 0 {
 		return cov
 	}
-	origines := siegesDuDebut(table)
-	cov.SansTableDuFilm = origines == nil
-	presences := presencesParIdentite(tracks)
-	etat := make([]siegeEntree, len(roster))
-	partages := map[int]int{}
+	pp := nouvellePoseDesPlaces(roster, &occ, in)
+	cov.SansTableDuFilm = pp.places == nil
 	for i := range roster {
 		roster[i].Seat, roster[i].SeatSource = roster[i].FilmIndex, SeatSourceLu
-		partages[roster[i].FilmIndex]++
-		etat[i] = etatDeLEntree(i, roster[i], presences, origines)
-		cov.compterUneEntree(etat[i], frames)
 	}
-	for _, n := range partages {
-		if n > 1 {
-			cov.ReprisesEcrites++
-		}
+	if pp.places != nil {
+		pp.poserLesOrigines()
+		pp.ouvrirAuCoupDEnvoi()
+		pp.estimerLaCapacite()
+		cov.PlacesTirs, cov.TirsContestes, cov.TirsIndexTronque = pp.lireLesPlacesDansLesTirs(in.fire)
+		cov.Apparies, cov.PlacesOuvertes, cov.SansPlace = pp.chainerLesArrivants()
+		in.horloge.fb.DeclencheN(fallback.NomPlaceDuRemplacantParChainageDEquipe, cov.Apparies)
+		in.horloge.fb.DeclencheN(fallback.NomPlaceOuverteSousLaCapaciteEstimee, cov.PlacesOuvertes)
+		pp.marquerLesArrivantsSansPresence()
 	}
-	if origines != nil {
-		cov.Apparies = apparierLesArrivants(roster, etat, partages, frames)
-		fb.DeclencheN(fallback.NomSiegeDuRemplacantParAppariementOrdinal, cov.Apparies)
+	cov.RelaisBornes, cov.Chevauchements = pp.bornerAuSuccesseur()
+	pp.retirerLesAffichagesVides()
+	if !occ.balaye {
+		in.horloge.fb.DeclencheN(fallback.NomPresenceParEnveloppeDesVies, pp.tenirLesDerniersJusquALaFin())
+	} else {
+		cov.PresencesParLesVies = occ.presencesParLesVies()
+		in.horloge.fb.DeclencheN(fallback.NomPresenceDUneEntreeParSesVies, cov.PresencesParLesVies)
 	}
-	cov.Lus = cov.Entrees - cov.Apparies
-	cov.Sieges = compterLesSieges(roster)
-	cov.OccupantsMax = occupantsSimultanes(etat)
+	pp.publierLesPresences()
+	cov.IdentitesHorsRoster = occ.horsRoster
+	cov.compterLesEntrees(roster, pp)
 	return cov
 }
 
-// compterUneEntree met a jour les compteurs qu'une seule entree renseigne.
-func (c *SeatCoverage) compterUneEntree(e siegeEntree, frames int) {
-	switch {
-	case e.vies == 0:
-		c.SansPresence++
-	case frames > 0 && e.fin < frames-1:
-		c.PresencesCloses++
+// presencesParLesVies compte les entrees presentes dont la presence ne vient que de leurs vies.
+func (o *occupants) presencesParLesVies() int {
+	n := 0
+	for _, e := range o.parEntree {
+		if !e.lue && len(e.presence) > 0 {
+			n++
+		}
 	}
-	if !e.origine {
-		c.Arrivants++
+	return n
+}
+
+// compterLesEntrees pose les compteurs que le roster publie renseigne.
+func (c *SeatCoverage) compterLesEntrees(roster []RosterEntry, pp *poseDesPlaces) {
+	partages, sieges := map[int]int{}, map[int]bool{}
+	derniere := pp.in.horloge.frames - 1
+	for i, e := range roster {
+		if len(pp.occ.parEntree[i].presence) > 0 {
+			sieges[e.Seat] = true
+		}
+		if e.SeatSource == SeatSourceLu {
+			c.Lus++
+			partages[e.FilmIndex]++
+		}
+		if pp.origines != nil && !pp.origines[e.FilmIndex] {
+			c.Arrivants++
+		}
+		ivs := pp.occ.parEntree[i].presence
+		switch {
+		case len(ivs) == 0:
+			c.SansPresence++
+		case ivs[len(ivs)-1].aMax < derniere:
+			c.PresencesCloses++
+		}
 	}
+	for idx, n := range partages {
+		if n > 1 && pp.estUnePlace(idx) {
+			c.ReprisesEcrites++
+		}
+	}
+	c.Sieges = len(sieges)
+	m := pp.mesurerLAffichage()
+	c.OccupantsMax, c.Depassements, c.Capacite = m.occupantsMax, m.depassements, m.capacite
+	c.PlacesEnTrop, c.SansEquipe = m.placesEnTrop, m.sansEquipe
 }
 
 // siegesDuDebut rend les index que la table de `chunk_00` occupe, ou NIL quand le film ne porte
@@ -184,46 +303,6 @@ func siegesDuDebut(table FilmPlayerTable) map[int]bool {
 	out := make(map[int]bool, len(table.Seats))
 	for _, s := range table.Seats {
 		out[s.FilmIndex] = true
-	}
-	return out
-}
-
-// etatDeLEntree resume ce que les vies disent d'une entree : combien, et de quand a quand.
-func etatDeLEntree(i int, e RosterEntry, presences map[string][2]int,
-	origines map[int]bool,
-) siegeEntree {
-	out := siegeEntree{i: i, origine: origines == nil || origines[e.FilmIndex]}
-	if w, ok := presences[cleDeRoster(e)]; ok {
-		out.debut, out.fin, out.vies = w[0], w[1], 1
-	}
-	return out
-}
-
-// presencesParIdentite rend, par identite, l'ENVELOPPE des vies publiees : premiere frame de la
-// premiere vie, derniere frame de la derniere.
-//
-// LA CLE EST CELLE DU ROSTER — le xuid quand il existe, `bot:<nom>` sinon — parce que c'est
-// celle sur laquelle le client joint ses fiches. Une piste sans identite n'entre nulle part :
-// elle n'appartient a personne, donc elle ne prouve la presence de personne.
-func presencesParIdentite(tracks []Track) map[string][2]int {
-	out := map[string][2]int{}
-	for _, tr := range tracks {
-		cle := cleDePiste(tr)
-		if cle == "" {
-			continue
-		}
-		w, vu := out[cle]
-		if !vu {
-			out[cle] = [2]int{tr.StartFrame, tr.EndFrame}
-			continue
-		}
-		if tr.StartFrame < w[0] {
-			w[0] = tr.StartFrame
-		}
-		if tr.EndFrame > w[1] {
-			w[1] = tr.EndFrame
-		}
-		out[cle] = w
 	}
 	return out
 }
@@ -254,118 +333,18 @@ func cleDePiste(tr Track) string {
 // botIdentityKey est la forme de l'identite d'un bot, la meme que le client emploie.
 func botIdentityKey(nom string) string { return "bot:" + nom }
 
-// apparierLesArrivants chaine, PAR CAMP, le k-ieme arrivant sur le k-ieme siege libere, et rend
-// le nombre de chainages poses.
-//
-// C'EST LE REPLI, ET IL NE S'APPLIQUE QU'A CE QUE LA LECTURE N'A PAS TRANCHE : une entree dont
-// le film a REUTILISE l'index (donc dont le siege est partage) est ecartee — le film a ecrit sa
-// reprise, la deduire par-dessus serait exactement l'ordre que D14 (b) interdit.
-func apparierLesArrivants(roster []RosterEntry, etat []siegeEntree, partages map[int]int,
-	frames int,
-) int {
-	poses := 0
-	for _, camp := range campsDuRoster(roster) {
-		partants, arrivants := partantsEtArrivants(roster, etat, partages, campEtFrames{camp, frames})
-		k := 0
-		for _, a := range arrivants {
-			for k < len(partants) && etat[partants[k]].fin >= etat[a].debut {
-				k++ // un siege encore occupe a l'arrivee ne peut pas etre celui qu'on reprend
-			}
-			if k >= len(partants) {
-				break
-			}
-			roster[a].Seat, roster[a].SeatSource = roster[partants[k]].Seat, SeatSourceApparie
-			k++
-			poses++
+// ordreDesArrivants trie des indices d'entree par arrivee, puis par index et par identite : l'ordre
+// d'iteration d'une map Go est aleatoire, et un artefact qui change d'octets sans changer de
+// contenu est indiffable.
+func ordreDesArrivants(roster []RosterEntry, occ *occupants, ids []int) {
+	sort.SliceStable(ids, func(a, b int) bool {
+		da, db := occ.parEntree[ids[a]].presence[0].de, occ.parEntree[ids[b]].presence[0].de
+		if da != db {
+			return da < db
 		}
-	}
-	return poses
-}
-
-// campEtFrames regroupe les deux bornes du tri — le depot borne a cinq parametres, et la paire
-// voyage toujours ensemble.
-type campEtFrames struct {
-	camp   int
-	frames int
-}
-
-// campsDuRoster rend les designateurs d'equipe presents, TRIES : l'ordre d'iteration d'une map
-// Go est aleatoire, et un artefact qui change d'octets sans changer de contenu est indiffable.
-//
-// UNE ENTREE SANS EQUIPE LUE N'A PAS DE CAMP et n'entre dans aucun appariement : apparier deux
-// joueurs dont on ignore le camp reviendrait a inventer qu'ils sont du meme.
-func campsDuRoster(roster []RosterEntry) []int {
-	vus := map[int]bool{}
-	for _, e := range roster {
-		if e.Team != nil {
-			vus[*e.Team] = true
+		if roster[ids[a]].FilmIndex != roster[ids[b]].FilmIndex {
+			return roster[ids[a]].FilmIndex < roster[ids[b]].FilmIndex
 		}
-	}
-	out := make([]int, 0, len(vus))
-	for c := range vus {
-		out = append(out, c)
-	}
-	sort.Ints(out)
-	return out
-}
-
-// partantsEtArrivants rend, pour un camp, les indices des entrees qui LIBERENT un siege (par
-// fin de presence croissante) et celles qui en CHERCHENT un (par debut de presence croissant).
-func partantsEtArrivants(roster []RosterEntry, etat []siegeEntree, partages map[int]int,
-	cf campEtFrames,
-) (partants, arrivants []int) {
-	for i := range roster {
-		if roster[i].Team == nil || *roster[i].Team != cf.camp || etat[i].vies == 0 {
-			continue
-		}
-		switch {
-		case etat[i].origine && cf.frames > 0 && etat[i].fin < cf.frames-1:
-			partants = append(partants, i)
-		case !etat[i].origine && partages[roster[i].FilmIndex] == 1:
-			arrivants = append(arrivants, i)
-		}
-	}
-	sort.Slice(partants, func(a, b int) bool { return etat[partants[a]].fin < etat[partants[b]].fin })
-	sort.Slice(arrivants, func(a, b int) bool {
-		return etat[arrivants[a]].debut < etat[arrivants[b]].debut
+		return cleDeRoster(roster[ids[a]]) < cleDeRoster(roster[ids[b]])
 	})
-	return partants, arrivants
-}
-
-// compterLesSieges rend le nombre de sieges distincts apres la pose.
-func compterLesSieges(roster []RosterEntry) int {
-	vus := map[int]bool{}
-	for _, e := range roster {
-		vus[e.Seat] = true
-	}
-	return len(vus)
-}
-
-// occupantsSimultanes rend le plus grand nombre d'entrees dont la presence couvre une meme
-// frame, par balayage des bornes — la mesure qui chiffre l'ecart avec `Entrees`.
-func occupantsSimultanes(etat []siegeEntree) int {
-	type borne struct{ f, d int }
-	bornes := make([]borne, 0, 2*len(etat))
-	for _, e := range etat {
-		if e.vies == 0 {
-			continue
-		}
-		bornes = append(bornes, borne{e.debut, +1}, borne{e.fin + 1, -1})
-	}
-	// LES FERMETURES AVANT LES OUVERTURES A EGALITE DE FRAME : deux presences qui se touchent
-	// sans se recouvrir ne doivent pas compter pour deux — c'est exactement le cas d'un relais.
-	sort.Slice(bornes, func(a, b int) bool {
-		if bornes[a].f != bornes[b].f {
-			return bornes[a].f < bornes[b].f
-		}
-		return bornes[a].d < bornes[b].d
-	})
-	n, maxi := 0, 0
-	for _, b := range bornes {
-		n += b.d
-		if n > maxi {
-			maxi = n
-		}
-	}
-	return maxi
 }

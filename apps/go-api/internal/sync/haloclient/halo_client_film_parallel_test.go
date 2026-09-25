@@ -43,14 +43,18 @@ import (
 )
 
 // filmManyChunks renvoie un manifest JSON avec n chunks REPLICATION_DATA
-// indexés 1..n (l'index 0 = header conventionnellement skip dans la prod).
+// indexés 1..n (l'index 0 = header conventionnellement skip dans la prod), puis
+// le morceau des temps forts en n+1 : un film FINALISÉ, le seul que le chemin
+// commun accepte depuis le lot L3 (2026-09-23). GetMatchFilm ne rend et ne
+// télécharge que la réplication : les comptes de ces tests sont inchangés.
 func filmManyChunks(prefix string, n int) map[string]any {
-	chunks := make([]map[string]any, 0, n+1)
+	chunks := make([]map[string]any, 0, n+2)
 	chunks = append(chunks, filmChunkEntry(0, FilmChunkTypeHeader, "header.bin"))
 	for i := 1; i <= n; i++ {
 		chunks = append(chunks, filmChunkEntry(i, FilmChunkTypeReplicationData,
 			fmt.Sprintf("chunk%d.bin", i)))
 	}
+	chunks = append(chunks, filmChunkEntry(n+1, FilmChunkTypeHighlightEvents, "highlight.bin"))
 	return filmManifestJSON(prefix, chunks)
 }
 
