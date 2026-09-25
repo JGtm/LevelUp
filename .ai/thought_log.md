@@ -113457,3 +113457,13 @@ défaut : le garde rougit (180 000 > 90), code restauré. Gates : voir le compte
 **Résultats observés.** `backfill-replay -only-existing` 111/111 construits (code 0, 42 min, pic max 929 Mio) ; résumé d'usage, pad-tiers (--force) et rasters tactiques : 111 écrits chacun, 0 échec. Vies publiées sans identité sur 10 matchs (23 vies) : même mesure au code de feat/v75 = 27 vies, défaut antérieur en légère baisse (§8.33). `data/cache` vivant : seules les écritures de la republication.
 
 **Conclusion / prochaine étape.** CI de 95308bf3c au niveau job, puis fusion dans feat/v75 et push (pas main), signal à la session de ménage. En attente de l'utilisateur : backfill killsource (1 624 films, environ 2 h 45 à un ouvrier), 3e montée de G MONEY (`ti=43` i20-i22), cibles M3, décor du Falcon de Behemoth, retrait de `turretRidesNotRideable`, verdicts visuels et sonores.
+
+## [2026-09-25] Plan de suite de l'audit : decision DU-9 (largeurs presumees par mesure) — En cours (docs seules, rien lance)
+
+**Contexte** : question ouverte dans la spec de la representation intermediaire (§11, 5), reformulee simplement a l'utilisateur : pour sauter un composant il faut sa largeur ; soit on la lit dans le code du jeu (Ghidra), soit on la trouve par essais (la seule valeur avec laquelle les paquets se ferment au bit pres).
+
+**Decision technique principale** : DU-9 validee (« Oui ok avec toi ») — pour un composant de taille FIXE qu'on ne fait que sauter, largeur trouvee par essais admise comme valeur PRESUMEE (verifiee sur tout le corpus de chaque build, provenance ecrite dans `ecs_table.tsv` et au code, liste gelee testee sur le modele de `empreintesPresumeesGelees`) ; Ghidra reste obligatoire pour les valeurs utilisees, les tailles variables et toute largeur presumee qui casse sur un build nouveau. Amende l'ADR 0034 D-3 regle 2 (ecrit en J3.7) ; la regle utilisateur du 2026-09-21 (etats du joueur : Ghidra) reste entiere, elle porte sur des valeurs utilisees.
+
+**Resultats observes** : plan (DU-9, J3.7, J4.0.4, statut, journal) et spec (§11) mis a jour. A la demande de la session de la campagne rr, ces modifications ont ete mises de cote hors du depot (copies verifiees identiques), l'arbre rendu propre pour sa fusion, puis reappliquees apres elle (`569932b42`, `feat/v75` = `3cca6cf47`, pousse ; plan et spec non touches par la fusion, cette entree rajoutee en fin de journal). Controles P-3 sur l'arbre fusionne : les cinq corrections venues de la campagne sont presentes (RB2-1, RB2-4, RA1-6, manifeste atomique, GA2-1) -> P-1 et P-3 coches, lignes `[~]` confirmees. Rien commite a ce stade.
+
+**Conclusion / prochaine etape** : commit de ces mises a jour a demander a l'utilisateur ; plus rien ne bloque les jalons hormis le GO par jalon (J1 d'abord).

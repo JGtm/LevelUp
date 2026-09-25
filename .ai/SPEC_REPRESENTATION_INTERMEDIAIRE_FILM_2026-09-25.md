@@ -198,13 +198,25 @@ Estimation grossière : 8 à 10 agents Opus (étape 1 : 1 ; étape 2 : 4 à 6 ; 
 3. Valeur du seuil du déclencheur (§9) : 95 % des records utiles par build, ou un seuil par
    composant utile ?
 4. Persistance de la structure (§8).
-5. **Largeurs mesurées** : pour un composant de largeur FIXE qu'on ne fait que sauter, une largeur
-   trouvée par la fermeture (essais jusqu'à ce que les paquets se ferment au bit près) et
-   confirmée sur tout le corpus de chaque build est-elle acceptée comme valeur PRÉSUMÉE, inscrite
-   comme telle, sans passer par l'écrivain du jeu dans Ghidra ? L'ADR 0034 (D-3, règle 2) veut la
-   grammaire de l'écrivain, la mesure n'étant qu'un oracle ; la règle utilisateur du 2026-09-21
-   exigeait Ghidra pour les états du joueur. Un composant de largeur VARIABLE (champs dépendant du
-   contenu, portes, comptes) ne se mesure pas ainsi. Décision de l'utilisateur.
+5. ~~Largeurs mesurées~~ — **DÉCIDÉ par l'utilisateur le 2026-09-25** (« Oui ok avec toi »), voir
+   la règle ci-dessous.
+
+**Règle des largeurs présumées (décision utilisateur du 2026-09-25).**
+- Pour un composant de taille FIXE qu'on ne fait que SAUTER (aucun usage produit), une largeur
+  trouvée par essais — la seule valeur avec laquelle les paquets se ferment au bit près — est
+  ACCEPTÉE, à trois conditions : vérifiée sur tout le corpus de chaque build ; inscrite comme
+  PRÉSUMÉE avec sa provenance (mesure par fermeture, films, date) dans `ecs_table.tsv` et au code ;
+  listée par un test gelé, sur le modèle de `empreintesPresumeesGelees`
+  (`profile/classement_registre_test.go`), pour qu'aucune largeur présumée n'entre ou ne sorte
+  sans se voir.
+- Ghidra (l'écrivain du jeu) reste OBLIGATOIRE pour : les composants dont on UTILISE la valeur ;
+  les composants de taille VARIABLE (champs dépendant du contenu, portes, comptes) ; toute largeur
+  présumée qui cesse de fermer sur un build nouveau.
+- Pourquoi c'est sûr : une fausse largeur décale tout ce qui suit, donc les paquets cessent
+  immédiatement de se fermer — l'erreur se voit et se compte, elle ne passe pas en silence.
+- Doctrine : amende l'ADR 0034 D-3, règle 2 (la mesure devient une voie de production pour ce seul
+  cas, marquée « présumée ») ; complète la règle utilisateur du 2026-09-21 (états du joueur :
+  Ghidra), qui porte sur des valeurs UTILISÉES et reste entière.
 6. Coopération avec le port Rust : échange de cartes de fermeture comme oracle croisé (le partage
    de la table ECS ou du code est une décision de l'utilisateur).
 

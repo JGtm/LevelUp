@@ -1,6 +1,6 @@
 # PLAN — Suite de l'audit du décodeur de film et du générateur d'artefacts de rejeu (2026-09-25)
 
-> **Statut : PROPOSÉ ; décisions DU-1 à DU-7 VALIDÉES le 2026-09-25 — rien n'est lancé.**
+> **Statut : PROPOSÉ ; décisions DU-1 à DU-9 VALIDÉES le 2026-09-25 — rien n'est lancé.**
 > « ok pour le plan » n'est pas un GO : chaque jalon
 > démarre sur un GO explicite et daté de l'utilisateur. Contrat d'exécution : skill
 > `plan-execution`, précisé au §4 (en cas de divergence, ce plan fait foi).
@@ -79,13 +79,17 @@ Coût estimé : §4.7 (~20 agents Opus, effort high, jalon par jalon).
 
 ### 1.3 Prérequis
 
-- [ ] **P-1** Campagne des retours rejeu fusionnée dans `feat/v75` (intégration D : M4b, M8, M7b)
+- [x] **P-1** Campagne des retours rejeu fusionnée dans `feat/v75` (intégration D : M4b, M8, M7b)
       et sa republication faite. **Seul J1 peut démarrer avant** (ses fichiers ne sont pas touchés
       par la campagne) ; J2 et la suite exigent P-1, puis `git merge feat/v75` dans la branche.
+      FAIT le 2026-09-25 par la session de la campagne : merge `569932b42`, `feat/v75` =
+      `3cca6cf47`, poussé ; republication des 111 matchs au schéma 71 faite avant la fusion.
 - [x] **P-2** Registre d'audit (`.ai/AUDIT_DECODEUR_FILM_2026-09-24.md`) et ce plan commités sur
       `feat/v75` le 2026-09-25, à la demande de l'utilisateur (« commite juste les plans et autres
       docs en attente »), avec le handoff de la campagne perf ; non poussé.
-- [ ] **P-3** Re-vérification sur l'arbre fusionné des cinq corrections venues de la campagne
+- [x] **P-3** (FAIT le 2026-09-25 sur `3cca6cf47` : 0 / 7 / 3 / 2 / 0 occurrences, et les deux
+      positions de `consumeMobilityActionBody` passent par `consumeSimStateHandleTail` — les cinq
+      lignes `[~]` sont confirmées) Re-vérification sur l'arbre fusionné des cinq corrections venues de la campagne
       (statuts `[~]` du §2) :
       `git grep -n "pick := list\[0\]" -- apps/go-api/internal/games/halo_infinite/film/replay/` → 0 ;
       `git grep -n "repli_place_du_remplacant_par_chainage_d_equipe" -- apps/go-api/internal/` ≥ 1 ;
@@ -95,7 +99,7 @@ Coût estimé : §4.7 (~20 agents Opus, effort high, jalon par jalon).
       et les deux positions de `consumeMobilityActionBody` lues par `consumeSimStateHandleTail`.
       Un résultat contraire requalifie la ligne `[~]` en item du plan (journal §9).
 - [x] **P-4** Décisions DU-1 à DU-7 tranchées le 2026-09-25 par l'utilisateur : « ok avec toi alors
-      tu peux entériner ces décisions avec tes recos » (§3.1).
+      tu peux entériner ces décisions avec tes recos » (§3.1) ; DU-8 et DU-9 le même soir.
 - [ ] **P-5** Quota hebdomadaire : GO donné en connaissance de l'estimation du §4.7 (quota remis à
       zéro le 2026-09-27 à 6 h).
 
@@ -129,12 +133,12 @@ traité (justification au journal §9). Aucune case vide.
 | SRC-2/OPS-4 | P1 | Chunks écrits sans atomicité, « présent » tenu pour « complet » | J2.1-J2.5 (manifeste atomique : `[~]` rr L3, contrôle P-3) | [ ] |
 | FK-1 | P1 | Un remplaçant humain désépingle le bot de relais, sans signal | J7.2 | [ ] |
 | FK-2 | P1 | Nom de remplissage `?N` publié comme assistant nommé | J7.1 | [ ] |
-| GA2-1 | P1 | Portage divergent de `FUN_14076e524` (corps d'i54) | `[~]` reprise M4b de la campagne rr (en cours le 2026-09-25, non commitée) : les deux positions d'i54 lues au niveau 0x10 par `consumeSimStateHandleTail`, `consumeE494Position` supprimé — contrôle P-3 ; les autres sites du même lecteur restent en J6 | [ ] |
+| GA2-1 | P1 | Portage divergent de `FUN_14076e524` (corps d'i54) | Reprise M4b de la campagne rr, fusionnée le 2026-09-25 (`3cca6cf47`) : les deux positions d'i54 lues au niveau 0x10 par `consumeSimStateHandleTail`, `consumeE494Position` supprimé — confirmé par P-3 ; les autres sites du même lecteur restent en J6 | [~] |
 | GA2-2 | P1 | `flock-position` lu au niveau 0 au lieu de l'immédiat 0x10 | J6 | [ ] |
 | GA1-2 | P1 | Repli « liaison par anticipation » hors registre, non compté | J8.1 | [ ] |
 | RA1-1 | P1 | Faits persistés dépendants des gardes de l'appelant, non comparées | J3.4 | [ ] |
-| RB2-1 | P1 | Sièges : un arrivant précoce arrête l'appariement du camp | `[~]` rr vague D (M2 : chaînage nommé `repli_place_du_remplacant_par_chainage_d_equipe`) — contrôle P-3 | [ ] |
-| RB2-4 | P1 | `spawnSetFrom` compare à une image-clé future | `[~]` rr vague D (M3.2 : « jamais un relevé à venir », borne de vie) — contrôle P-3 | [ ] |
+| RB2-1 | P1 | Sièges : un arrivant précoce arrête l'appariement du camp | rr vague D (M2 : chaînage nommé `repli_place_du_remplacant_par_chainage_d_equipe`) — confirmé par P-3 sur `3cca6cf47` | [~] |
+| RB2-4 | P1 | `spawnSetFrom` compare à une image-clé future | rr vague D (M3.2 : « jamais un relevé à venir », borne de vie) — confirmé par P-3 sur `3cca6cf47` | [~] |
 | RB2-5 | P1 | Un ramassage natif date plusieurs occupations de socle | J8.2 | [ ] |
 | RB1-1 | P1 | `flag_carriers_killed` peut fermer le portage d'un porteur vivant | J9.1 | [ ] |
 | FO-1/RA2-4 | P1 | Provenance `residu_de_manche` publiée « déduit » sans voie | J8.4 | [ ] |
@@ -146,7 +150,7 @@ traité (justification au journal §9). Aucune case vide.
 | SRC-1 | J3.2 | [ ] | FK-6 | J7.6 | [ ] |
 | RA1-3 | J4 | [ ] | FK-7 | J7.7 | [ ] |
 | RA1-4 | J3.5 | [ ] | RB2-3 | J5.4 | [ ] |
-| RA1-6 | `[~]` rr M8 (verdict du fil des morts dans les faits) — contrôle P-3 | [ ] | RB2-6 | J10.3 | [ ] |
+| RA1-6 | rr M8 (verdict du fil des morts dans les faits) — confirmé par P-3 | [~] | RB2-6 | J10.3 | [ ] |
 | RA1-5 | J2.7 | [ ] | RB2-7 | J10.4 | [ ] |
 | RA1-2 | J3.6 | [ ] | RB2-8 | J8.3 | [ ] |
 | RA1-7 | J2.10 | [ ] | RB1-2 | J9.4 | [ ] |
@@ -286,6 +290,16 @@ grammaire et l'ordre de portage le plus rentable ; (b) la **représentation inte
 fait l'objet d'une spécification de chantier FUTUR,
 `.ai/SPEC_REPRESENTATION_INTERMEDIAIRE_FILM_2026-09-25.md`, hors de ce plan (§1.4) ; son
 déclencheur est mesuré par la carte.
+
+**DU-9 — Largeurs présumées par mesure (décidée le 2026-09-25).**
+Message de l'utilisateur : « Oui ok avec toi ». Pour un composant de taille FIXE qu'on ne fait que
+sauter, une largeur trouvée par essais (la seule avec laquelle les paquets se ferment au bit près),
+vérifiée sur tout le corpus de chaque build, est admise comme valeur PRÉSUMÉE : provenance écrite
+(mesure, films, date) dans `ecs_table.tsv` et au code, liste gelée testée sur le modèle de
+`empreintesPresumeesGelees`. Ghidra reste obligatoire pour les composants dont la valeur est
+utilisée, ceux de taille variable, et toute largeur présumée qui casse sur un build nouveau.
+Amendement de l'ADR 0034 D-3 écrit en J3.7 ; règle détaillée dans la spec
+(`.ai/SPEC_REPRESENTATION_INTERMEDIAIRE_FILM_2026-09-25.md`, §11).
 
 ### 3.2 Décisions techniques du plan (fermes, sauf objection au GO)
 
@@ -698,6 +712,9 @@ couches, octets bruts commentaires compris, racines déclarées à la main) ; `f
 #### J3.7 ADR 0034 amendé (EN)
 - [ ] D-6 et D-7 : empreinte sans commentaires, périmètre par fermeture figé par golden, révisions
       par consommateur, gardes de l'appelant, clé complète ; constats cités.
+- [ ] D-3, règle 2 : la règle des largeurs présumées (DU-9) — une largeur trouvée par la fermeture
+      est admise pour un composant de taille fixe qu'on ne fait que sauter, marquée « présumée »
+      et listée par un test gelé ; l'écrivain du jeu reste la source pour tout le reste.
 
 **Gate J3.** G-unit (`film/revision`, `film/internal/...`, `film/replay/...`, `replaybuild`,
 `sync/killcollector`) ; G-arch ; G-integ (`sync/killcollector`) ; G-film ; **G-equiv** :
@@ -772,7 +789,8 @@ composant présent sans lecteur) ; `testdata/ecs_table.tsv` (statuts `porte`, `n
       nom, statut et usage produit lus dans `ecs_table.tsv`, paquets bloqués, gain potentiel =
       records utiles qui se fermeraient si ce seul composant était porté — BORNE SUPÉRIEURE, un
       autre composant peut bloquer derrière) : c'est la liste courte de ce qui mérite Ghidra (ou
-      une largeur mesurée, selon la question 5 de la spec). Déclaré aux ratchets de points
+      une largeur mesurée présumée pour un composant de taille fixe qu'on ne fait que sauter,
+      DU-9). Déclaré aux ratchets de points
       d'entrée s'ils couvrent `film/research`.
 - [ ] J4.0.5 Mesure de référence (superviseur, après accord ; témoins de
       `config/replay_corpus.toml`, au moins un film par build, BTB seulement sur accord) →
@@ -1201,4 +1219,14 @@ relancer un agent sans avoir vérifié qu'il est mort. Ne pas re-décider ce qui
   des records qui PORTENT une donnée utile (colonne `product_use`), pas celle de tous les paquets ;
   J4.0.2 et J4.0.4 mesurent cette fermeture et classent les bloquants par records utiles
   débloqués ; la question des largeurs mesurées sans Ghidra est ouverte dans la spec (§11, 5).
-  Plan, spec et thought_log commités sur `feat/v75`, sans push.
+  Plan, spec et thought_log commités sur `feat/v75`, sans push (`873f70663`).
+- 2026-09-25 (soir) : **DU-9 décidée** (« Oui ok avec toi ») : largeurs présumées par mesure
+  admises pour les composants de taille fixe qu'on ne fait que sauter ; Ghidra obligatoire pour
+  les valeurs utilisées, les tailles variables et toute largeur présumée qui casse ; amendement
+  D-3 ajouté à J3.7 ; règle détaillée dans la spec (§11).
+- 2026-09-25 (soir) : à la demande de la session de la campagne rr, modifications DU-9 mises de
+  côté hors du dépôt (copies vérifiées), arbre rendu propre, puis réappliquées après sa fusion
+  (`569932b42`, `feat/v75` = `3cca6cf47`, poussé) — plan et spec inchangés par la fusion, entrée
+  du thought_log rajoutée en fin. **P-1 et P-3 cochés** : les cinq lignes `[~]` sont confirmées
+  sur l'arbre fusionné. Plus rien ne bloque J2 et la suite, hormis le GO par jalon. §8.1 reste
+  valable (le blob des faits est toujours `REPLAYINPUTS27`, avec les deux compteurs ajoutés).
