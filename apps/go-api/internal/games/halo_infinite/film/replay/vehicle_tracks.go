@@ -125,9 +125,10 @@ func buildVehicleTracks(
 	var silences bilanSilences
 	bySlot, silences = ecarterLesSejoursAuTraversDUnSilence(bySlot, lives, spawns, clock.fb)
 	cov.EchantillonsAuTraversDUnSilence, cov.SilencesNonTranches = silences.ecartes, silences.nonTranches
+	anchors := vehicleBoardingAnchors{bySlot: vehiclePositionsBySlot(bipeds), clock: clock}
 	rides, st := buildVehicleRides(vehicleRideInputs{
-		vehBySlot: bySlot, bipeds: bipeds, events: scan.Events, reg: reg, lives: lives,
-		occupancy: scan.Occupancy,
+		vehBySlot: bySlot, bipeds: bipeds, bipedsBySlot: anchors.bySlot, events: scan.Events,
+		reg: reg, lives: lives, occupancy: scan.Occupancy,
 		aimBySlot: vehicleAimBySlot(scan.Aims),
 		drawable:  vehicleDrawableLives(lives, spawns, bySlot), clock: clock,
 	})
@@ -146,7 +147,7 @@ func buildVehicleTracks(
 	out, cov.Merged = mergeVehicleRelays(out)
 	// LES PIECES MONTEES SE POSENT SUR LEUR PORTEUR AVANT LE COMPTAGE, pour la meme raison que
 	// les relais : les episodes d artilleur changent de vie (cf. vehicle_turrets.go).
-	poseTurretsOnCarriers(out, clock.fb).applyTo(&cov)
+	poseTurretsOnCarriers(out, anchors, clock.fb).applyTo(&cov)
 	tallyVehicleCoverage(out, &cov, clock.fb)
 	tallyVehicleEnds(out, &cov)
 	return out, cov, st
@@ -280,7 +281,8 @@ func vehicleTrackOf(
 		// le pion d un joueur reel passe a proximite. Vu par l utilisateur en visionnage
 		// (2026-09-02) sur `fccc61cd`, ou un prop de la famille `falcon` — quasi immobile, vivant
 		// tout le match — s etait vu attribuer un trajet. Le calque web filtre deja ces familles
-		// a l affichage ; la garde est ici AUSSI pour que le document ne l affirme pas.
+		// a l affichage ; la garde est ici AUSSI pour que le document ne l affirme pas. Le Falcon
+		// n en fait plus partie depuis le 2026-09-24 (cf. `vehicleFamillesNonPilotables`).
 		tr.Rides = nil
 		return tr, true
 	}
@@ -293,12 +295,21 @@ func vehicleTrackOf(
 // sont pas jouables en multiplayer a ce jour (sauf parties custom locales, mais on ne les gere
 // pas dans l app, par decision) ».
 //
+// LE FALCON EN EST SORTI LE 2026-09-24 (decision utilisateur : « les Pelican c est toujours du
+// decor ; le Falcon ca depend »). Le 2026-09-02 l y avait mis sur la foi des Falcon de DECOR de
+// Behemoth (`0d76e8f1` : 0,3-0,8 m/s sur toute leur vie, vivants du debut a la fin du film) ; mais
+// le Falcon est PILOTABLE en multijoueur, avec ses artilleurs (pieces `1a043c29` / `f4c45d71`,
+// `vehicle_turrets.go`). Ses occupants sont tenus par deux gardes generales, pas par sa famille
+// (`vehicle_turrets_boarding.go`, `vehicle_rides_next_life.go`). SON DECOR N EST DECIDE PAR AUCUNE
+// REGLE a ce jour : celle du decor de carte (lot M7) exige une pose SEULE, qu aucun Falcon ne
+// remplit (ceux de Behemoth planent) — question ouverte a l utilisateur. Le Pelican, le Phantom
+// et le Skiff restent : la famille suffit.
+//
 // ELLES RESTENT PUBLIEES : leur vie est vraie, et le client choisit de ne pas les dessiner. Ce
 // qui est interdit ici, c est de leur attribuer un OCCUPANT — une affirmation, elle, qui serait
 // fausse. La meme liste vit cote web (`vehiclesLayer.FAMILLES_NON_JOUABLES`) ; les deux se
 // justifient : le document refuse de l affirmer, le calque refuse de le dessiner.
 var vehicleFamillesNonPilotables = map[string]bool{
-	familleFalcon:  true,
 	famillePelican: true,
 	famillePhantom: true,
 	familleSkiff:   true,

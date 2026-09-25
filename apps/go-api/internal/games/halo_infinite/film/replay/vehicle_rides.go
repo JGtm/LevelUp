@@ -122,6 +122,10 @@ type vehicleRideInputs struct {
 	vehBySlot map[uint32][]grammar.BipedPosition
 	// bipeds est le nuage NON decime des BIPEDES, d ou sortent les trous.
 	bipeds []grammar.BipedPosition
+	// bipedsBySlot est CE MEME nuage indexe par slot (`vehiclePositionsBySlot`), quand l appelant
+	// l a deja : la pose des pieces montees le relit (`vehicle_turrets_boarding.go`), et l indexer
+	// deux fois doublerait la memoire d un nuage de Grande bataille. Nil : calcule ici.
+	bipedsBySlot map[uint32][]grammar.BipedPosition
 	// events sont les embarquements et les sorties.
 	events []types.VehicleEvent
 	// aimBySlot porte la VISEE de chaque occupant, indexee par SON slot bipede et triee par

@@ -277,3 +277,11 @@ package facts
 // carte est decide A LA REQUETE par le service de rejeu (`internal/service/`), hors du decodeur et
 // hors de la cuisson. Aucune lecture, aucune largeur, aucun appariement ne change : aucune ligne de
 // kill ne change et aucun match deja decode n est candidat au backlog.
+// 2026-09-24, LOT M7b, REPRISE APRES REVUE ADVERSE (constat RR-M7b-01) — REVISION INCHANGEE,
+// EMPREINTE SEULE RECOPIEE. `fallback/registre_replay_vehicules.go` recoit deux entrees de
+// DONNEES, `repli_tourelle_montee_loin_du_porteur` et `repli_episode_borne_par_la_vie_suivante`, et
+// `fallback/noms.go` leurs constantes : les gardes qu elles decrivent vivent dans la PUBLICATION
+// (`replay/vehicle_turrets_boarding.go`, `replay/vehicle_rides_next_life.go` : les episodes
+// d occupation du calque des vehicules), hors du decodeur. Aucune lecture, aucune largeur, aucun
+// appariement ne change : aucune ligne de kill ne change et aucun match deja decode n est
+// candidat au backlog.

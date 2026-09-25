@@ -179,7 +179,8 @@ describe('vehicleIsScenery — le verdict du serveur, replié sur la vie', () =>
 
   it('vehicleIsHidden réunit les familles non jouables et le décor de carte', () => {
     expect(vehicleIsHidden(STARBOARD[0])).toBe(true)
-    expect(vehicleIsHidden({ ...REFUGE_WARTHOG, family: 'falcon' })).toBe(true)
+    expect(vehicleIsHidden({ ...REFUGE_WARTHOG, family: 'pelican' })).toBe(true)
+    expect(vehicleIsHidden({ ...REFUGE_WARTHOG, family: 'falcon' })).toBe(false)
     expect(vehicleIsHidden(REFUGE_WARTHOG)).toBe(false)
     expect(vehicleIsHidden(TOURELLE)).toBe(false)
   })

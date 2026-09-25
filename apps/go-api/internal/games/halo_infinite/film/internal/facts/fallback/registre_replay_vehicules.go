@@ -13,6 +13,10 @@ const dateRetoursRejeu = "2026-09-23"
 // revue adverse (constat RR-M7-03 : ses deux replis n etaient pas inscrits ici).
 const dateDecorM7 = "2026-09-24"
 
+// dateFalconM7b : le jour du lot M7b (le Falcon pilotable) et de sa reprise apres revue adverse
+// (constat RR-M7b-01 : la garde de la montee a bord d un artilleur reporte).
+const dateFalconM7b = "2026-09-24"
+
 // siteDecorM7 : la regle du decor, service de rejeu (hors du decodeur : le registre accepte les
 // sites hors du paquet film, comme `internal/sync/killcollector/`).
 const siteDecorM7 = "internal/service/replay_vehicle_scenery_rule.go"
@@ -50,6 +54,62 @@ var registreReplayVehicules = []Repli{
 		// independant (revue adverse du lot, meme parc) : 141 pieces posees sur 141 nees au meme
 		// point (0,0 m) et au meme instant (<= 1 frame) que leur porteur.
 		CritereRetrait:  "le porteur de chaque tourelle est LU dans le film sur les 8 builds, et la lecture s accorde au voisin de slot sur le parc (0 desaccord) — alors le voisinage devient un temoin, jamais une decision",
+		CompteurBranche: true,
+	},
+	{
+		Nom:  "repli_tourelle_montee_loin_du_porteur",
+		Fait: "un episode d occupation de REPLI (`src = proximity`) pose sur une piece montee est-il une montee a bord de son porteur ?",
+		Mecanisme: "le dernier point replique par l occupant avant le debut de l episode doit etre frais " +
+			"(au plus `vehicleEventTolMS`, 2 s, avant) et a au plus `vehicleEventAnchorRadiusM` (3 m) en " +
+			"plan du porteur, a la position que le client dessine a cet instant ; sinon l episode est " +
+			"ECARTE (ni reporte sur le porteur, ni garde sur la piece). Un episode LU (`src = film`) " +
+			"n est pas juge",
+		// LE FILM ECRIT LA MONTEE A BORD (`object-parent-state`, i10) — c est ce que lit la voie
+		// `film` des episodes. Les episodes de repli d artilleur sont ceux que cette lecture n a pas
+		// couverts (et le parent d une piece n est pas lu, sonde P1-S2) : dette de lecteur, pas
+		// silence du film.
+		Condition: CondLectureNonPortee,
+		Ordre:     OrdreApresLecture,
+		Sites: []Site{{
+			Fichier: pkgReplay + "vehicle_turrets_boarding.go",
+			Ancre:   "fb.Declenche(fallback.NomTourelleMonteeLoinDuPorteur)",
+		}},
+		DatePose:     dateFalconM7b,
+		CibleRetrait: "lot M4b des retours du rejeu (PLAN_RETOURS_REJEU_2026-09-23) ou tout lot qui lit la montee a bord d un artilleur (i10 sur la tourelle) ou le parent d une piece montee",
+		// MESURE DU 2026-09-24 (107 documents rejoues des faits, reprise du lot M7b) : 18
+		// episodes de repli reportes d une piece sur son porteur ; 12 ont leur dernier point a
+		// 0,9-2,2 m du porteur (age 0 frame), 5 a 21,6-90,9 m (fin d une vie, ou point d une vie
+		// anterieure du slot), 1 sans point (occupant pas encore ne) — les six ecartes, tous sur
+		// des Falcon (4f77afc1, 879a4dba). Le seuil (3 m) est celui de l ancre d evenement.
+		CritereRetrait:  "sur le parc, toute montee d artilleur reportee est LUE dans le film (src = film) et ce repli ne se declenche plus sur aucun document republie — la garde n a plus rien a juger",
+		CompteurBranche: true,
+	},
+	{
+		Nom:  "repli_episode_borne_par_la_vie_suivante",
+		Fait: "la FIN d un episode d occupation que ni une sortie lue ni la reapparition du meme slot n a fermee",
+		Mecanisme: "l episode s arrete a la frame qui precede la naissance d une AUTRE vie publiee du " +
+			"meme joueur (meme xuid, ou meme nom de bot), toutes familles et toutes sources : un " +
+			"joueur n est jamais a deux endroits. La visee de l episode est coupee avec lui ; " +
+			"l episode reste publie",
+		// LE FILM ECRIT LA FIN : la mort de l occupant a bord (fil des morts) et l etat de parent de
+		// son corps. Le calque ne la lit pas pour borner un episode : il ne connait que la sortie
+		// et la reapparition du MEME slot, alors qu un joueur mort a bord reapparait sous un autre
+		// slot de bipede. Dette de lecteur, pas silence du film.
+		Condition: CondLectureNonPortee,
+		Ordre:     OrdreApresLecture,
+		Sites: []Site{{
+			Fichier: pkgReplay + "vehicle_rides_next_life.go",
+			Ancre:   "fb.Declenche(fallback.NomEpisodeBorneParLaVieSuivante)",
+		}},
+		DatePose:     dateFalconM7b,
+		CibleRetrait: "tout lot qui borne un episode d occupation par la mort LUE de son occupant a bord (fil des morts, etat de parent du corps)",
+		// MESURE DU 2026-09-24 (107 documents rejoues des faits, reprise du lot M7b) : 18 episodes
+		// recouvraient une vie suivante de leur occupant ; 2 sont ecartes en amont par
+		// `repli_tourelle_montee_loin_du_porteur`, 16 sont coupes, dans 5 documents (4f77afc1 8,
+		// 5676a9ba 3, 879a4dba 3, a464e20b 1, c259789d 1), toutes familles (Warthog, Wraith,
+		// Mongoose, Ghost, Banshee, Falcon, pieces) et toutes sources — dont un episode LU de Warthog
+		// (c259789d) qui recouvrait trois vies suivantes.
+		CritereRetrait:  "sur le parc, la fin lue de chaque episode tombe au plus tard a la naissance suivante de son occupant et ce repli ne se declenche plus sur aucun document republie",
 		CompteurBranche: true,
 	},
 	{

@@ -106,10 +106,10 @@ export interface EngineStems {
  * `replaySoundAssets.guard.test.ts` : manifeste et dossier sont la même liste). Une famille
  * absente de cette table (tourelles, châssis non résolu) est un SILENCE PROPRE.
  *
- * LE FALCON EST DANS LA TABLE ET NE SONNE JAMAIS AUJOURD'HUI : c'est une famille de DÉCOR
- * (`FAMILLES_NON_JOUABLES`), et le plan refuse le décor AVANT de consulter la table. La banque
- * le livre quand même (il est pilotable dans d'autres contextes) : le référencer ici garde ses
- * fichiers vivants aux yeux du garde-rail sans qu'aucun décor ne sonne.
+ * LE FALCON SONNE DEPUIS LE 2026-09-24 : il est sorti des familles de DÉCOR
+ * (`FAMILLES_NON_JOUABLES`, décision utilisateur « le Falcon ça dépend »), et un Falcon occupé
+ * joue son moteur comme tout véhicule. Un Falcon sans occupant n'a pas de moteur, qu'il soit
+ * garé, de décor de carte (`vehicleIsScenery`, lot M7) ou planant en décor de Behemoth.
  */
 export const VEHICLE_ENGINE_STEMS: Readonly<Record<string, EngineStems>> = {
   warthog: { enter: 'vehicle_warthog_enter', loop: 'vehicle_warthog_loop', exit: 'vehicle_warthog_exit' },

@@ -46,7 +46,10 @@ func buildVehicleRides(
 	}
 	b := &vehicleRideBuild{in: in, out: map[types.EquipmentLifeKey][]VehicleRide{}}
 	b.boards, b.exits = vehicleEventsByOccupant(in.events)
-	b.bySlot = vehiclePositionsBySlot(in.bipeds)
+	b.bySlot = in.bipedsBySlot
+	if b.bySlot == nil {
+		b.bySlot = vehiclePositionsBySlot(in.bipeds)
+	}
 	b.parLaLecture()
 	b.parLesTrous(b.parLesEvenements())
 	// LE SIEGE D UN EPISODE DE REPLI SE POSE ICI, ET EN UN SEUL ENDROIT : les episodes LUS

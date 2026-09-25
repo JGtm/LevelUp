@@ -37,7 +37,7 @@
  * plafond de sûreté du lecteur, 12 s — la troncature au fondu n'a pas eu à servir).
  * Égalisation : -16 LUFS visé, plafond -1 dBTP, gain LINÉAIRE seul (convention du lot R2-S).
  *
- * CE QUI NE SONNE PAS : le DÉCOR (falcon, pelican, phantom, skiff — `vehicleIsDecor`, le même
+ * CE QUI NE SONNE PAS : le DÉCOR (pelican, phantom, skiff — `vehicleIsDecor`, le même
  * refus que le calque et les moteurs : rien ne les détruit dans une partie), une famille NON
  * RÉSOLUE (chaîne vide) ou SANS JEU DE SONS — silence propre, jamais la banque d'une voisine.
  */

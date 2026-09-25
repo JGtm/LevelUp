@@ -272,6 +272,12 @@ func attachVehicles(
 	reg IdentityRegistry, clock replayClock,
 ) {
 	tracks, cov, st := buildVehicleTracks(scan, bipeds, reg, clock)
+	// UN JOUEUR N EST JAMAIS A DEUX ENDROITS : un episode s arrete a la naissance de la vie
+	// suivante du meme joueur, lue sur les pistes PUBLIEES (cf. vehicle_rides_next_life.go, repli
+	// nomme compte au registre). Les compteurs d episodes se recomptent sur ce qui est publie.
+	if cutRidesAtNextLife(tracks, doc.Tracks, clock.fb) > 0 {
+		recountVehicleRides(tracks, &cov)
+	}
 	doc.Vehicles = tracks
 	// LE CYCLE SE CALCULE SUR LES VIES PUBLIEES, ET APRES LA FUSION DES RELAIS : c est le
 	// document qui fait foi, pas le balayage (cf. vehicle_cycles.go).

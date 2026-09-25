@@ -2025,7 +2025,8 @@ package replay
 // republication 69 n est pas faite, et la vague D pose deja SON 70) ; l integration les reunit
 // sous ce seul numero (un artefact au schema 69 porte les quatre). Aucune revision de DECODAGE ne
 // monte : republication DEPUIS LES FAITS. Les quatre parties suivent, puis celle de M7 (decor de
-// carte), qui ne touche que la forme SERVIE : aucun artefact cuit n en porte la trace.
+// carte), qui ne touche que la forme SERVIE : aucun artefact cuit n en porte la trace, puis celle
+// de M7b (le Falcon pilotable).
 //
 // v69, PARTIE M1 (2026-09-23, decision utilisateur Q15) : LA PUBLICATION DES
 // POSITIONS APPLIQUE LA GRAMMAIRE DE LA VIE, DEUX REPLIS NOMMES, ET DIT SES SILENCES AUX VEHICULES.
@@ -2125,14 +2126,15 @@ package replay
 //	               change pas (moteur, explosion, classe d arme).
 //	`rides[]`      `turret {slot, gen}` : l episode d artilleur REPORTE sur le porteur, SANS `seat`
 //	               (le siege lu etait celui de la tourelle). Trois refus le gardent sur la piece :
-//	               porteur non pilotable (Falcon), hors de la fenetre du porteur, occupant deja a
-//	               bord (episodes qui se RECOUVRENT ; un changement de siege jointif est reporte).
+//	               porteur non pilotable (SANS BRANCHE depuis M7b, cf. sa partie), hors de la
+//	               fenetre du porteur, occupant deja a bord (episodes qui se RECOUVRENT ; un changement de
+//	               siege jointif est reporte).
 //	`shots[]`      un tir d artilleur sort du PORTEUR (`v` = le chassis, `x`/`y` sa position), plus
 //	               de la naissance de la tourelle (mediane 44,7 m au parc avant ce lot) ; hors de la
 //	               fenetre du porteur, il n est pas pose (`shotsUnplaced`).
 //	`coverage.`    DIX COMPTEURS : `turrets`, `turretsOnCarrier`, `turretCarrierBirthMismatch`,
-//	`vehicles`     `turretRides`, `turretRidesDropped` = `turretRidesNotRideable` +
-//	               `turretRidesOutOfWindow` + `turretRidesAlreadyAboard`, `shotsOnCarrier`,
+//	`vehicles`     `turretRides`, `turretRidesDropped` = `turretRidesNotRideable` (0 depuis
+//	               M7b) + `turretRidesOutOfWindow` + `turretRidesAlreadyAboard`, `shotsOnCarrier`,
 //	               `variants`. Une piece ne compte plus dans `familyUnknown` / `unknownChassis` /
 //	               `repli_chassis_vehicule_marqueur_neutre`, un artilleur reporte pas dans `ambiguous`.
 //	`vehicle`      RACINE NEUVE, RESOLUE A LA REQUETE (`calquesALaRequete`, jamais cuite) : le registre
@@ -2183,6 +2185,25 @@ package replay
 //	               replis nommes au registre (`repli_decor_sous_le_sol_foule_du_match`,
 //	               `repli_decor_carte_sans_zone_affiche`). Le client ne decide plus : L1.3 lit ce
 //	               verdict. Empreinte CUITE inchangee, `facts.Rev` inchangee : rien a re-cuire.
+//
+// v69, PARTIE M7b (2026-09-24, decision de l utilisateur du 2026-09-24 : « les Pelican c est
+// toujours du decor ; le Falcon ca depend » ; reprise apres revue adverse le meme jour) : LE FALCON
+// EST PILOTABLE, ET DEUX GARDES GENERALES TIENNENT LES FAUX EPISODES QUE SA FAMILLE TENAIT.
+// AUCUNE FORME NE CHANGE.
+//
+//	`vehicles[]`   le Falcon sort des familles non pilotables : ses episodes sont publies, ceux de
+//	`.rides`       ses artilleurs (pieces `1a043c29` / `f4c45d71`) REPORTES sur lui. Un episode de
+//	               REPLI dont l occupant n est pas vu a <= 3 m du porteur, <= 2 s avant, est ECARTE
+//	               (`repli_tourelle_montee_loin_du_porteur`). TOUT episode, toutes familles et
+//	               sources, s arrete avant la naissance d une autre vie publiee du meme joueur
+//	               (`repli_episode_borne_par_la_vie_suivante`). Les deux se comptent dans
+//	               `coverage.fallbacks`. `turretRidesNotRideable` vaut 0 (branche retiree, champ a
+//	               retirer a la prochaine montee). Pelican, Phantom, Skiff restent refuses. Le decor
+//	               du Falcon n est decide par AUCUNE regle (M7 exige une pose seule : aucun Falcon).
+//	`shots[]`      une piece et son porteur sont le MEME vehicule pour l ambiguite, deux pieces
+//	               distinctes non ; « pose sur le porteur » se lit sur tous les candidats.
+//	               Parc (107 documents rejoues des faits, base -> reprise) : 7 documents touches,
+//	               19 Falcon occupes, 64 episodes, 6 ecartes, 16 coupes, +365 tirs.
 //
 // v70 (2026-09-24, vague D des retours du rejeu, plan `.ai/V7.5/PLAN_RETOURS_REJEU_2026-09-23.md`
 // §4.5) : UNE SEULE MONTEE POUR LES LOTS DE LA VAGUE — M2 (equipes, presence et place lues dans
@@ -2513,7 +2534,9 @@ package replay
 //	Fire`          arme, piste, arme inconnue ou arme a charge), coups poses (`shots`, le controle).
 //	`coverage.     `shotsByUnit` / `shotsByUnitNoRide` : un tir dont la REFERENCE 0 (l unite
 //	vehicles`      tireuse du record 36, lue par la grammaire) est un vehicule se pose sur LUI ;
-//	               l episode ne sert plus qu a nommer l occupant (vehicle_shots_unit.go).
+//	               l episode ne sert plus qu a nommer l occupant (vehicle_shots_unit.go). Sans
+//	               reference 0 qui tranche, l episode decide avec l ambiguite de M7b (jugee sur
+//	               le vehicule) ; les deux portes partagent un poseur (integration du 2026-09-25).
 //	`coverage.     `tirsParPlace` : un tir est rendu a l OCCUPANT de sa place (le remplacant), plus
 //	seats`         au partant dont la place porte l index (tirs_par_place.go) ; l index de tireur est
 //	               lu sur CINQ bits (les places 16 a 31 d un BTB ne se confondent plus).

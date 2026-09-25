@@ -404,3 +404,11 @@ package facts
 // mort de plus lue par la MARCHE (8 contre 7, le scan en rend une de moins), memes armes et memes
 // credits, l oracle de calibration seul bouge (decision inchangee). Le backlog reste celui de la
 // vague (Q3 : backfill killsource a la cloture, sur signal utilisateur).
+//
+// PARTIE M7b (2026-09-24, lot M7b des retours du rejeu, parti du rang `killsource-2026-09-22.2`,
+// reuni a CE RANG a l integration de la vague D le 2026-09-25, empreinte recopiee) : AUCUN OCTET
+// DE `facts/killsource/` N EST TOUCHE. `fallback/` gagne deux entrees de DONNEES de la tranche
+// `replay/vehicules` (`repli_tourelle_montee_loin_du_porteur`,
+// `repli_episode_borne_par_la_vie_suivante`) dont les gardes vivent dans la PUBLICATION (episodes
+// d occupation du calque des vehicules). Aucune ligne de kill ne change ; le backlog reste celui
+// de la vague. L entree de la branche, datee a son rang, reste dans `rev_chronique_archive.go`.

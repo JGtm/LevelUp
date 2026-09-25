@@ -42,3 +42,31 @@ func TestLUniteDesigneLeVehiculeQuandLEpisodeHesite(t *testing.T) {
 		t.Errorf("par l unite %d, sans episode %d : attendu 1, 0", c.ShotsByUnit, c.ShotsByUnitNoRide)
 	}
 }
+
+// TestLaReferenceZeroTrancheEntreDeuxPiecesDuMemePorteur — INTEGRATION DE LA VAGUE D (2026-09-25),
+// UNE SEULE REGLE : la reference 0 (M4b.4) passe AVANT l ambiguite des episodes (M7b, jugee sur le
+// vehicule). Le meme tireur tenu par DEUX pieces distinctes du meme porteur est ambigu pour
+// l episode seul (`TestTirDeDeuxPiecesDistinctesDuMemePorteurEstAmbigu`) ; quand le record nomme
+// l unite tireuse (la piece 702), le film tranche : le tir sort du PORTEUR de cette piece.
+func TestLaReferenceZeroTrancheEntreDeuxPiecesDuMemePorteur(t *testing.T) {
+	doc := vsTourelle()
+	seat := 0
+	porteur := &VehicleLifeRef{Slot: 701, Gen: 1}
+	doc.Vehicles[0].Carrier = porteur
+	doc.Vehicles = append(doc.Vehicles, VehicleTrack{
+		Slot: 702, Gen: 1, Chassis: "f4c45d71", T0: 0, T1: 90, T1Max: 90, Carrier: porteur,
+		Spawn: &VehicleSpawn{X: 500, Y: 500},
+		Rides: []VehicleRide{{T0: 10, T1: 40, Slot: 10, Seat: &seat, Src: VehicleRideSrcProximity}},
+	})
+	o := vsOrphan(30, 0x0BB6976B00000000)
+	o.ev.HasShooter, o.ev.Unit = true, grammar.UnitRef{Present: true, Slot: 702}
+	attachVehicleShots(doc, []orphanShot{o}, vsOwn(), vsClock())
+	if len(doc.Shots) != 1 || *doc.Shots[0].Vehicle != 701 || doc.Shots[0].X != 30 {
+		t.Fatalf("tirs = %+v, attendu un tir pose sur le porteur 701 en x = 30", doc.Shots)
+	}
+	c := doc.Coverage.Vehicles
+	if c.ShotsAmbiguous != 0 || c.ShotsByUnit != 1 || c.ShotsOnCarrier != 1 {
+		t.Errorf("ambigus %d, par l unite %d, sur le porteur %d : attendu 0, 1, 1",
+			c.ShotsAmbiguous, c.ShotsByUnit, c.ShotsOnCarrier)
+	}
+}

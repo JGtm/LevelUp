@@ -77,6 +77,11 @@ const (
 	NomChassisVehiculeMarqueurNeutre Nom = "repli_chassis_vehicule_marqueur_neutre"
 	// NomTourellePorteurVoisinDeSlot : `replay/vehicle_turrets.go`, `carrierOfTurret`.
 	NomTourellePorteurVoisinDeSlot Nom = "repli_tourelle_porteur_voisin_de_slot"
+	// NomTourelleMonteeLoinDuPorteur : `replay/vehicle_turrets_boarding.go`,
+	// `turretRideBoardsCarrier`.
+	NomTourelleMonteeLoinDuPorteur Nom = "repli_tourelle_montee_loin_du_porteur"
+	// NomEpisodeBorneParLaVieSuivante : `replay/vehicle_rides_next_life.go`, `cutRidesAtNextLife`.
+	NomEpisodeBorneParLaVieSuivante Nom = "repli_episode_borne_par_la_vie_suivante"
 	// NomZoneCampDeCaptureDeduitDeLIssue : `replay/zone_states_capturer.go`,
 	// `zoneRampCapturerDeduit`.
 	NomZoneCampDeCaptureDeduitDeLIssue Nom = "repli_zone_camp_de_capture_deduit_de_l_issue"

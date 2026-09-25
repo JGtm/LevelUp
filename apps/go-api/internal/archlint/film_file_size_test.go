@@ -161,6 +161,14 @@ var plafondsParFichier = map[string]int{
 	// 2186, une ligne d en-tete v69 et la partie M7 — la racine `vehicleScenery` resolue a la
 	// requete (verdict de decor du service, deux replis nommes), sans effet sur l empreinte cuite.
 	// Exception ecrite, dans le commit de fusion qui reunit la partie a la montee.
+	// SCHEMA 69, PARTIE M7b (2026-09-24, lot M7b des retours du rejeu, decision utilisateur « le
+	// Falcon ca depend ») : 2186 -> 2200, une ligne d en-tete v69, la partie M7b (le Falcon
+	// pilotable : episodes publies, artilleurs reportes, tirs poses, ambiguite jugee sur le
+	// vehicule porteur) et une ligne de la partie M4a reecrite (le refus « porteur non pilotable »
+	// ne vise plus le Falcon — doc inversee evitee). Exception ecrite, meme commit que la partie.
+	// REPRISE DE M7b APRES REVUE ADVERSE (2026-09-24) : 2200 -> 2207, la partie M7b decrit les
+	// deux gardes generales et leurs replis nommes (forme inchangee, `turretRidesNotRideable` a 0)
+	// et une ligne de la partie M4a de plus. Exception ecrite, meme commit que la partie.
 	// SCHEMA 69 -> 70 (2026-09-24, integration de la vague D des retours du rejeu) : +134 (2142 ->
 	// 2276 sur la vague C sans M6 ni M7 ; 2186 -> 2320 a la fusion de la campagne a jour, lot
 	// D-fix), L ENTREE UNIQUE de chronique v70 qui reunit les lots de la vague sous une seule
@@ -192,9 +200,11 @@ var plafondsParFichier = map[string]int{
 	// REPRISE DU LOT M4b (2026-09-25), +20 : la mesure de l entree v71 reecrite apres la revue du
 	// lot (la lecture de la vue B reprise, le gate de corpus et son oracle physique du sprint, les
 	// gates G1/G2 par famille, la 3e monture OUVERTE).
-	// INTEGRATION DE LA VAGUE D (2026-09-25) : 2471 + 22 (M8) + 51 + 20 (M4b) = 2564, mesure de
-	// la tete apres les deux fusions (chaque lot avait releve le plafond sur sa propre base).
-	"internal/games/halo_infinite/film/replay/document_chronicle.go": 2564,
+	// INTEGRATION DE LA VAGUE D (2026-09-25) : 2186 + 21 (M7b, partie du v69) + 285 (v70 : M2,
+	// M3, D-fix) + 22 (M8) + 51 + 20 (M4b) + 2 (la regle unique des tirs de vehicule : la reference 0
+	// de M4b, puis l episode juge sur le vehicule par M7b) = 2587, mesure de la tete apres les trois
+	// fusions (chaque lot avait releve le plafond sur sa propre base).
+	"internal/games/halo_infinite/film/replay/document_chronicle.go": 2587,
 	// --- production, hors perimetre du lot 2.7 (aucune preuve d equivalence ne couvrait
 	// leur scission : elle se decidera au lot qui les rouvrira).
 	// `assist.go` EST SORTI DE CETTE TABLE LE 2026-09-16 (lot 2.6.2) : le type `Assist` a descendu
