@@ -203,8 +203,9 @@ var plafondsParFichier = map[string]int{
 	// INTEGRATION DE LA VAGUE D (2026-09-25) : 2186 + 21 (M7b, partie du v69) + 285 (v70 : M2,
 	// M3, D-fix) + 22 (M8) + 51 + 20 (M4b) + 2 (la regle unique des tirs de vehicule : la reference 0
 	// de M4b, puis l episode juge sur le vehicule par M7b) = 2587, mesure de la tete apres les trois
-	// fusions (chaque lot avait releve le plafond sur sa propre base).
-	"internal/games/halo_infinite/film/replay/document_chronicle.go": 2587,
+	// fusions (chaque lot avait releve le plafond sur sa propre base). Puis +11 : le verdict du gate
+	// de corpus de l integration (tete contre `1a8390e9f` et contre `c9eb3b6bd`) et G1 re-mesure = 2598.
+	"internal/games/halo_infinite/film/replay/document_chronicle.go": 2598,
 	// --- production, hors perimetre du lot 2.7 (aucune preuve d equivalence ne couvrait
 	// leur scission : elle se decidera au lot qui les rouvrira).
 	// `assist.go` EST SORTI DE CETTE TABLE LE 2026-09-16 (lot 2.6.2) : le type `Assist` a descendu

@@ -2585,3 +2585,14 @@ package replay
 // et 3104-3119) n est pas publiee — ses rafales sont lues, comptees `noTrack` (2) : l embarquement
 // suit la naissance d un dispositif (`ti=43`, 2941) dont le record NEW desynchronise sur un composant
 // non porte (`i21`), et chaque paquet suivant se clot sur son rejet.
+//
+// INTEGRATION DE LA VAGUE D (2026-09-25) : gate de corpus de la tete contre la tete de campagne
+// `1a8390e9f` (huit temoins non BTB, racine temporaire) — aucune classe d ecart hors des parties
+// v70 et v71 : les pertes du v71 ci-dessus, dont deux lectures douteuses retirees (`abilityImpulses`
+// 1 -> 0 sur `bfecd02b`, famille autre ; `grapple.unpairedFires` 1 -> 0 sur `51ebbc0f`) ; dix prises
+// `taken` RECLASSEES `swapped` au meme instant et le lacher dementi de `bfecd02b` (D-fix) ; les
+// bandes d armes au sol reprises par les refutations (D-fix) ; `seats.presencesCloses` 4-7 -> 0
+// (M2 : la presence lue dans le film). UNE prise d une arme IDENTIQUE a la dotation (`d9781168`,
+// slot 538, frame 1378) est lue re-annonce et son arme au sol perd son preneur (plan, §8). Tete
+// contre `c9eb3b6bd` (M4b) : 0 ecart, M8 et M7b ne changent aucun document decode de ces temoins.
+// G1 re-mesure au code integre sur `81c02726` : 6/6, 0 au temoin -60 s, 0 hors monture.

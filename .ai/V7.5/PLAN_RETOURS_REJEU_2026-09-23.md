@@ -749,22 +749,30 @@ botmeta.go`, faits (`film_inputs.go`, `filmfacts_encode.go`, `filmfacts_decode.g
   fenêtre d'une entité n'est pas un départ (MONEY à f613 = perte de marche, cf. P2) ; BOT_METADATA doit
   garder l'instant de chaque paquet ; liens bot → entité par intersection avec la fenêtre STRICTE,
   corps → entité par création dans la fenêtre LARGE ; place de Claudors = 5 lue dans ses tirs.
-- [ ] M2.1 Balayage `ti=9` par ENTITÉ (slot, index, désignateur, première/dernière image-clé) ; la
+- [x] M2.1 Balayage `ti=9` par ENTITÉ (slot, index, désignateur, première/dernière image-clé) ; la
   table par index devient un contrôle ; BOT_METADATA garde l'instant de ses paquets pour lier chaque
   bot à SON entité.
-- [ ] M2.2 Faits : `SchemaDesFaits` monte (verdict « redécoder »).
-- [ ] M2.3 Publication : `roster[].presence [{from, to, toMax?}]` ; équipe PAR ENTRÉE via son
+- [x] M2.2 Faits : `SchemaDesFaits` monte (verdict « redécoder »).
+  [M2 `fad037d07`, `a6430f14c`, `965551e0c`, `58161195b`, `eb938e136`, revue `d359ea0c8` ; fusion
+  `3d06a94bb` ; D-fix `47d8c229d`, `662b78330` : une image-clé lue par repli ne prouve ni un départ ni
+  une arrivée tardive] Montée UNIQUE de la vague : `SchemaDesFaits` 3 → 4, `grammar-2026-09-24`.
+- [x] M2.3 Publication : `roster[].presence [{from, to, toMax?}]` ; équipe PAR ENTRÉE via son
   entité ; `seat` = PLACE (siège de la table pour les occupants du départ, place lue dans les tirs pour
   un remplaçant qui tire, sinon chaînage par équipe — repli nommé, compté) ; corps d'index de bot
   partagé nommé par le bot dont l'entité vit à sa création ; `successions.go` reste un repli compté.
-- [ ] M2.4 Web : `seatOccupantAt` lit `presence` ; la règle « présent sans successeur » est
+- [x] M2.4 Web : `seatOccupantAt` lit `presence` ; la règle « présent sans successeur » est
   supprimée ; regroupement par `roster[].team` ; états Q20-Q22 (FR + EN).
-- Tests : témoin au gabarit de b1ad85eb (8 sièges dont un jamais joué, 3 bots index 8 de désignateurs
+- [x] Tests (M2 ; `occupants_temoin_test.go`, `occupants_doutes_test.go`,
+  `identity_registry_entites_test.go`, `seatLogic.test.ts`) : témoin au gabarit de b1ad85eb (8 sièges dont un jamais joué, 3 bots index 8 de désignateurs
   0/0/1, arrivants 9 et 10) → places Eagle 5 : Hundy → Hanover Cat → PardonMy → Claudors, Cobra 1 :
   FairyNectar → Brew Dog, ≤ 4 occupants par équipe à chaque frame (mutation : réagréger par index →
   rouge) ; réécriture de `seatLogic.test.ts:125` (qui fige `[3, 5]`) ; garde-rail de propriété « à
   aucune frame une équipe n'a plus d'occupants que de places » sur toutes les fixtures.
-- Gate parc (`instruments/equipes_b1ad85eb/parc.mjs`) : 0 équipe au-delà de sa capacité (14
+- [!] Gate parc (`instruments/equipes_b1ad85eb/parc.mjs`) — report VALIDE : il se joue sur les 111
+  documents RE-DÉCODÉS (clôture de la vague D, superviseur, serveur arrêté). Mesuré avant : D-fix sur cinq
+  témoins (4 + 4 à chaque frame, `b1ad85eb` 4 + 4 aux trois instants) ; intégration D sur les huit témoins
+  non BTB du gate de corpus : capacité 4, 0 dépassement, 0 place en trop, 0 place à deux fiches, 0
+  identité hors roster. Énoncé d'origine : 0 équipe au-delà de sa capacité (14
   documents aujourd'hui), 0 tuile d'un joueur sorti (22), « moins que l'API » limité aux fenêtres du
   retard API mesuré ; b1ad85eb exactement 4 + 4 aux trois instants signalés.
 
@@ -775,7 +783,7 @@ Périmètre : `film/internal/grammar/keyframe_world.go`, `grammar/birth_loadouts
 `document_weapon_changes.go`, `coverage.go`, `document_chronicle.go`), web `lib/replay/rosterLogic.ts`,
 `changeRefine.ts`, `ui/ReplayWeaponsRow.tsx`, i18n, contrat.
 
-- [ ] M3.1 Marche d'image-clé — RÉÉCRIT d'après P2 (note `retours_rejeu_2026-09-23/SONDE_P2_*.md`,
+- [x] M3.1 Marche d'image-clé — RÉÉCRIT d'après P2 (note `retours_rejeu_2026-09-23/SONDE_P2_*.md`,
   branche `feat/rr-sondes`) : les records perdus SONT dans le film (8 en-têtes exacts à t 1494, dont
   532 absent du rapport initial) ; la cause n'est PAS l'entrée sans archétype (0 mesurée) mais la
   règle d'élection `kfCand.betterThan` (`keyframe_world.go:135`) qui préfère une fausse ancre de
@@ -785,7 +793,7 @@ Périmètre : `film/internal/grammar/keyframe_world.go`, `grammar/birth_loadouts
   des bipèdes absents encadrés. Fenêtre `kfScanFenetreBits` (120 000 bits, coupe un suffixe sur
   a0c36016) : la retirer SEULEMENT si une mesure V2-sans-fenêtre sur un film dense (dad793c7) et sur le
   parc ne déraille pas (la mesure 5.20.1 datait de l'ancienne règle) ; sinon la garder et le dire.
-- [ ] M3.2 Canal « armes de naissance » — CONFIRMÉ par P3 (`SONDE_P3_*.md`) : record NEW `ti=35` de la
+- [x] M3.2 Canal « armes de naissance » — CONFIRMÉ par P3 (`SONDE_P3_*.md`) : record NEW `ti=35` de la
   naissance, emplacements i43 (arme 1), i44 (arme 2), i46 (3e emplacement), famille = moitié haute ;
   45/45, 106/107, 142/142 naissances ; Super Fiesta 98,8 % contre témoin 0 %. DEUX RÉPARATIONS DE
   GRAMMAIRE PRÉALABLES : (a) la vue B d'un paquet à liste démarre à la FIN de la liste d'événements,
@@ -803,11 +811,19 @@ Périmètre : `film/internal/grammar/keyframe_world.go`, `grammar/birth_loadouts
   (décision de l'utilisateur attendue, proposition) : l'exclure de la dotation affichée par une règle
   NOMMÉE (famille « mains nues », constante unique) ; classer ses remises à t=0 en « remise mains
   nues » avec compteur, hors `unknownFamilies` ; entrée de catalogue « Mains nues » / « Unarmed ».
-- [ ] M3.3 Web : `loadoutAt` prend la dotation de naissance comme base ; `refineWeaponsReading`
+- [x] M3.3 Web : `loadoutAt` prend la dotation de naissance comme base ; `refineWeaponsReading`
   applique les prises avec `k` ; provenance en infobulle (FR + EN) ; lecture « à venir » retirée (Q18).
-- Tests : payload synthétique qui fait sauter la marche aujourd'hui ; première émission avant toute
+- [x] Tests (M3 ; golden de fermeture de la marche, dotation de naissance, `equippedLogic.test.ts`,
+  `inventoryReading.test.ts`) : payload synthétique qui fait sauter la marche aujourd'hui ; première émission avant toute
   image-clé classée `restated` à tort ; NEW `ti=35` synthétique portant i43/i44 ; web `loadoutAt`.
-- Gate parc (`instruments/fiche_armes/sweep2.mjs`, `absorb.mjs`, `dist.mjs`) : images-clés touchées
+- [!] Gate parc (`instruments/fiche_armes/sweep2.mjs`, `absorb.mjs`, `dist.mjs`) — report VALIDE (111
+  documents re-décodés, superviseur). [M3 `533fe7d91`, `f8efc5287`, `73dda0fb5`, revue `bea71cba6`,
+  `573d03bfd`, `0855ad84d`, `09fa0bdd1`, fusion `85f22d41b` ; M3.1 : la règle V2 mesurée et ÉCARTÉE,
+  recalage sur l'en-tête exact + fenêtre qui glisse, élection = repli nommé ; M3.2 : ancre de
+  signature du NEW de naissance, mains nues par la règle nommée de M6.3.] Mesure du lot (22 témoins,
+  chronique v70 partie M3) EN DEÇÀ des cibles : vies sans relevé d'armes 18,7 % → 10,2 % (1,3 % sur
+  HI_1_12_0 / HI_1_13_0 ; les naissances des builds antérieurs ne se ferment pas), images-clés trouées
+  8,6 % → 1,0 % — question ouverte au §9. Énoncé d'origine : images-clés touchées
   213/2 868 → 0 ; absorptions 6 → 0 ; vies sans arme 18,9 % → ≤ 1 % hors BTB ; fiche sans arme 6,6 %
   du temps de vie → < 0,5 % ; 81c02726 : slot 534 armé dès 1:59.5, sept bipèdes présents à t 1494.
 
@@ -859,36 +875,108 @@ Périmètre : `film/internal/grammar/fire_events.go`, faits, `film/replay/` (`sh
 `vehicle_shots.go`, `film_inputs.go`, `filmfacts_*`), web (rendu du tir continu), et tout consommateur
 de `FireEvent` recensé à l'item M4b.1.
 
-- [ ] M4b.1 Recenser les consommateurs de `FireEvent` (rejeu, précision par arme / `weaponscan`,
+- [x] M4b.1 Recenser les consommateurs de `FireEvent` (rejeu, précision par arme / `weaponscan`,
   killsource) et les révisions qui montent ; si `facts.Rev` (killsource) est chaîné, prévoir le
   backfill killsource dans la clôture (Q3).
-- [ ] M4b.2 Record 36 lu par la GRAMMAIRE (plus d'offsets fixes) : type 36 seul (le `0xD2` couvre
+- [x] M4b.2 Record 36 lu par la GRAMMAIRE (plus d'offsets fixes) : type 36 seul (le `0xD2` couvre
   aussi le 37 `weapon_overheat`), les références (réf 0 = unité tireuse, bipède OU véhicule), tireur
   sur 5 bits (corrige les 39 joueurs BTB d'index ≥ 16 et les 1 205 identifiants décalés), liste
   complète si P1-S1 l'exige, canal du tir continu selon P1-S2/S3.
-- [ ] M4b.3 Faits : indice 5 bits, slot de la réf 0, canal continu ; `SchemaDesFaits` et
+- [x] M4b.3 Faits : indice 5 bits, slot de la réf 0, canal continu ; `SchemaDesFaits` et
   `grammar.Rev` montent.
-- [ ] M4b.4 Publication : un tir dont la réf 0 est un véhicule se pose sur lui (l'épisode ne sert plus
+- [x] M4b.4 Publication : un tir dont la réf 0 est un véhicule se pose sur lui (l'épisode ne sert plus
   qu'à nommer l'occupant ; couvre les 25 frags au Ghost sans épisode du tueur) ; rattachement des tirs
   à pied par PLACE (M2).
-- [ ] M4b.5 Web : rafale à la cadence de l'arme pendant l'intervalle de tir, son prolongé (Q5).
-- Tests : mini-film extrait de 81c02726 (fenêtre d'un frag au Ghost) → un tir de Ghost décodé et posé
+- [x] M4b.5 Web : rafale à la cadence de l'arme pendant l'intervalle de tir, son prolongé (Q5).
+  [`0c9021c7b`, `22d9259f5`, `f2b52546b`, reprise `c9eb3b6bd`] M4b.1 : consommateurs = rejeu (shots,
+  vehicle_shots, sièges), `weaponscan`, `sync/killcollector/hits.go` ; `facts.Rev` chaînée (la marche des
+  morts lit le corps de mort juste : mini-bobine 8 kills au lieu de 7, mêmes armes et crédits) → backfill
+  killsource dans le re-décodage du parc (Q3). M4b.2 : `lireEnteteTir36` (type 36 seul, réf 0, tireur
+  sur 5 bits, numéro de tir), ratchet `archlint/record36_grammaire_test.go` ; limite nommée : les records
+  36 hors tête de liste ne sont pas lus ; fixtures BTB 40/45 joueurs d'index ≥ 16 avec des tirs (0/39
+  avant). M4b.3 : codec `REPLAYINPUTS27`, `SchemaDesFaits` reste 4 (montée de codec = redécodage).
+  M4b.4 : `vehicle_shots_unit.go`, `tirs_par_place.go`, repli `repli_index_de_tireur_hors_place` inscrit
+  et compté (896 tirs sur a521164d). M4b.5 : vitest vert ; verdict visuel et à l'oreille de l'utilisateur
+  à faire.
+- [~] Tests — couverts par les tests synthétiques (`fire_bursts_test`, `tir_continu_test`,
+  `frame_vue_controle_test`, `debut_de_liste_test`) et par G1 sur le film via
+  `m4b_tir_continu_research_test.go` : l'outil des mini-bobines concatène des paquets hors continuité et
+  ne peut pas porter une rafale ; pas de fixture continue de 81c02726 en CI (décision du superviseur,
+  25/09). Énoncé d'origine : mini-film extrait de 81c02726 (fenêtre d'un frag au Ghost) → un tir de Ghost décodé et posé
   sur le Ghost (rouge aujourd'hui) ; ratchet Go « aucune lecture à offset fixe du record 36 hors
   grammaire ».
-- Gate G2 étendu (décision du 24/09) : par FAMILLE d'arme à tir continu — Ghost, canons de la Banshee,
+- [~] Gate G2 étendu — PARTIEL, statué [~] par le superviseur (25/09) : Ghost `81c02726` 6/6 ; canons de
+  la Banshee `7b0d89c4` 13/14 ; LAAG `1cd3848a` 3/3 ; Chopper, LMG du Wasp, Rayon de Sentinelle publiés
+  et sous les sauts du numéro de tir ; LMG du Falcon : aucun document non BTB du parc n'en porte. Ghost
+  de l'index 4 sur `8a485699` : fenêtre 745-1169 lue à 27 %, records `ti=38` (corps rigides) mal lus sur
+  Launch Site → référence : jalon J6 du plan de suite de l'audit
+  (`.ai/PLAN_SUITE_AUDIT_DECODEUR_FILM_2026-09-25.md`, `baa0e4e14` de feat/v75). Énoncé d'origine : Gate G2 étendu (décision du 24/09) : par FAMILLE d'arme à tir continu — Ghost, canons de la Banshee,
   Chopper, LAAG, LMG du Falcon, LMG de la Wasp, Rayon de Sentinelle — rafales publiées là où le film
   les porte, cadence propre à chaque arme lue dans son tag.
-- Gate parc (`instruments/tirs_vehicules/kills_vs_tirs.mjs`) : G1 81c02726 — un tir de Ghost publié
+- [x] G1 — re-mesuré au code INTÉGRÉ (document publié, racine temporaire, 25/09) : une rafale dans les
+  2 s de chacun des 6 frags de G MONEY (395, 623, 650, 2159, 2228, 2402 : 15/12/11/12/15/6 coups), 0 au
+  témoin −60 s, 0 hors monture ; 15 rafales publiées sur 769 et 771. [!] 3e montée de G MONEY
+  (2984-3021, 3104-3119, `noTrack` 2) NON FAITE : l'embarquement suit un dispositif `ti=43` (2941) dont
+  le NEW désynchronise sur `i21`, composant non porté ; porter `ti=43` i20-i22 sort du périmètre fermé —
+  question à l'utilisateur (§9). G2 parc et G5 : au re-décodage. Énoncé d'origine : Gate parc (`instruments/tirs_vehicules/kills_vs_tirs.mjs`) : G1 81c02726 — un tir de Ghost publié
   dans les 2 s avant chacun des 6 frags de G MONEY (0/6 aujourd'hui), aucun hors de ses épisodes, posé
   à ≤ 3 m du sprite ; G2 — frags de classe véhicule précédés d'un tir de l'arme du tueur ≥ 90 % par
   famille lue (Ghost 1/63, LAAG 0/31, Banshee 3/26 aujourd'hui) ; G5 — joueurs d'index ≥ 16 avec des
   tirs (0/39), identifiants décalés 1 205 → 0 ; Rayon de Sentinelle tiré > 0.
 
+#### M8 — Le verdict du fil des morts est un fait du film (brèche §8.4, arbitrage du 24/09)
+
+Périmètre : `film/replay/` (`film_inputs.go`, `film_scan.go`, `filmfacts_fichier.go`,
+`fil_des_morts_verdict.go`, `build_from_film.go`, `coverage_bridge.go`, `options.go`),
+`replaybuild/filmfacts_cuisson.go`. Branche `feat/rr-m8` (`8e3c12593`, reprise `5e87b4511`), fusionnée
+`5bf83f091`.
+
+- [x] M8.1 Le verdict (`read` / `empty` / `unreadable`) et le texte de l'erreur de lecture voyagent dans
+  les faits (`FilmInputs.DeathsFeed`, en dernier du complément de la section 1), dans le `SchemaDesFaits`
+  4 de la vague (pas de seconde montée) ; un fichier au schéma 4 sans verdict est refusé puis redécodé
+  (testé). Aucune révision de couche ne monte.
+- [x] M8.2 `replaybuild` : la branche des faits reconstruit l'erreur du fil (même texte, sans sentinelle) ;
+  le rejeu depuis les faits rend la même branche et la même couverture que le décodage.
+- [x] M8.3 Chronique v70 partie M8 ; limite écrite du v69 (partie M5) déclarée fermée. Effet au parc :
+  `db1b00b3` seul (`deathsFeed` absent → `empty` sur le chemin des faits). À l'intégration : 0 écart sur
+  les huit témoins du gate de corpus (tête contre `c9eb3b6bd`).
+- Découverte §8.4 : [x] fermée par ce lot.
+
+#### M7b — Le Falcon pilotable (décision utilisateur du 24/09 : « les Pelican c'est toujours du décor, le Falcon ça dépend »)
+
+Périmètre : `film/replay/` (`vehicle_turrets*.go`, `vehicle_rides*.go`, `vehicle_shots.go`,
+`vehicle_tracks.go`, `document_vehicles.go`, `build_vehicles.go`), `facts/fallback/` (deux entrées de
+données), web `vehiclesLayer.ts`, `carrierPosition.ts`, `shotFx.ts`, sons de véhicule. Branche
+`feat/rr-m7b` (`79b4b261c`, reprise après revue adverse `cc0f03ac2`), base `ba475d2e4` (schéma 69),
+fusionnée `63f0c7ed2`.
+
+- [x] M7b.1 Le Falcon sort des familles non pilotables : ses épisodes sont publiés, ceux de ses
+  artilleurs (pièces `1a043c29` / `f4c45d71`) reportés sur lui. Pelican, Phantom, Skiff restent refusés.
+- [x] M7b.2 Garde générale « montée loin du porteur » : un épisode de REPLI dont l'occupant n'est pas vu à
+  ≤ 3 m du porteur ≤ 2 s avant est écarté (`repli_tourelle_montee_loin_du_porteur`, compté).
+- [x] M7b.3 Garde générale « vie suivante » : tout épisode s'arrête avant la naissance d'une autre vie
+  publiée du même joueur (`repli_episode_borne_par_la_vie_suivante`, compté).
+- [x] M7b.4 Ambiguïté d'un tir jugée sur le VÉHICULE : une pièce et son porteur = le même véhicule, deux
+  pièces distinctes = ambigu ; « posé sur le porteur » lu sur tous les candidats.
+- [x] M7b.5 Le refus « porteur non pilotable » inatteignable est retiré (`turretRidesNotRideable` vaut 0).
+- [x] M7b.6 (intégration, 25/09) UNE règle des tirs de véhicule avec M4b.4 : la référence 0 d'abord (le
+  film nomme l'unité tireuse), l'épisode ensuite avec l'ambiguïté de M7b.4 ; un poseur commun
+  (`poserSur`) ; test `TestLaReferenceZeroTrancheEntreDeuxPiecesDuMemePorteur` (rouge si l'ambiguïté
+  passe avant la référence 0, mutation jouée).
+- [!] M7b.7 Décor du Falcon : AUCUNE règle ne le décide (M7 exige une pose seule, aucun Falcon ne la
+  remplit) — question utilisateur (§9).
+- [!] Gate de corpus de M7b : aucun témoin non BTB ne porte de Falcon (0 écart tête contre `c9eb3b6bd`) ;
+  mesure du lot sur 107 documents rejoués des faits (base → reprise) : 7 documents touchés, 19 Falcon
+  occupés, 64 épisodes, 6 écartés, 16 coupés, +365 tirs. Rejeu au re-décodage du parc (superviseur).
+
 #### Clôture de la vague D
 
-- [ ] Fusions M2, M3, M4b ; `replay-equiv` + `replay-corpus-gate` (goldens re-figés sur la liste
-  autorisée seulement) ; CI verte au niveau job.
-- [ ] Re-décodage des 111 films + republication (Q3), un film à la fois, serveur arrêté, prévenu
+- [!] Fusions M2, M3, M4b ; `replay-equiv` + `replay-corpus-gate` (goldens re-figés sur la liste
+  autorisée seulement) ; CI verte au niveau job. — FAIT (intégration D, 2026-09-25, cf. §9) : fusions
+  M4b (M2, M3, D-fix inclus), M8, M7b ; références d'équivalence re-figées puis 20/20 identiques ; gate
+  de corpus sur les huit témoins non BTB, écarts attribués. NON FAIT, au superviseur : push et CI
+  (aucun push par l'intégrateur).
+- [!] (superviseur : serveur arrêté, utilisateur prévenu ; commande exacte et mesures au §9) Re-décodage des 111 films + republication (Q3), un film à la fois, serveur arrêté, prévenu
   avant ; backfill killsource si M4b.1 l'exige ; redémarrage ; tous les gates parc rejoués ; verdict
   visuel utilisateur sur les trois matchs signalés.
 
@@ -1016,6 +1104,24 @@ vivent au §9 ; aucun lot de la vague D ne démarre sans eux.
     chemin (déplacés sous `.ai/V7.5/` par `fe2106f4b`, ou avant) ; seul un chemin LU par un test
     était cassé (corrigé, `8be964717`). Ceux de `film/` entrent dans les empreintes de révision :
     à corriger dans un lot qui assume la recopie d'empreinte.
+27. (intégration D, M3/D-fix) Une prise d'une arme IDENTIQUE à celle de la dotation de naissance, au
+    même emplacement, est lue « ré-annonce » : `d9781168`, slot 538, frame 1378 (MA40 lâché par 527) —
+    la prise `weaponChanges.taken` disparaît et l'arme au sol perd son preneur (`end` pickup → seen),
+    alors que le ramassage natif (`pickups`) la porte au même instant. Les dix autres prises « perdues »
+    du gate sont reclassées `swapped` (déclaré). Non traité.
+28. (intégration D, M7b) `coverage.vehicles.turretRidesNotRideable` vaut 0 depuis M7b, qui annonçait
+    « champ à retirer à la prochaine montée » ; la montée 71 (M4b) est passée sans le retirer (retrait
+    = changement de contrat, hors du périmètre fermé de l'intégration).
+29. (intégration D, M3/M6) `51ebbc0f`, slot 555, frame 2100 : un échange `swapped` dont `from` est
+    `00007ca9` (mains nues) — la règle nommée de M6.3 écarte les mains nues des dotations, mais un échange
+    peut encore les nommer (prise de la bobine à fusion `e9e7ff79`). À instruire.
+30. (intégration D, M7b) Goldens d'assemblage : `repli_episode_borne_par_la_vie_suivante` vaut 0 / 1 / 1
+    (`111fa685`, `a521164d`, `e5adf7b2`) sur les entrées figées de la vague D, contre 1 / 3 / 1 sur
+    celles du 69 où M7b l'avait figé : les vies bougent avec la marche de M3 / D-fix. Non instruit vie par
+    vie.
+31. (intégration D) La suite Playwright complète (`npx playwright test`) exige le serveur de dev
+    (`baseURL` localhost:5173, serveurs gérés par `make dev`) : non jouable sous l'interdit « aucun
+    serveur » ; seules les rastérisations (3/3) tournent sans lui.
 
 ---
 
@@ -1153,3 +1259,80 @@ vivent au §9 ; aucun lot de la vague D ne démarre sans eux.
     décor (M7). Question de l'utilisateur « tu ne te disperses pas un peu ? » → PÉRIMÈTRE GELÉ : plus
     aucun nouveau lot ; les découvertes vont au §8 ; reste à finir : D-fix, M4b, M8, le réglage Falcon,
     republications, verdict visuel de l'utilisateur sur ses 9 points.
+- 2026-09-25 (intégration de la vague D, worktree `LevelUp-wt-rr`, racine temporaire
+  `Downloads/Scripts/rr-tmp-integ-d`) :
+  - Fusions `--no-ff` dans `feat/retours-rejeu` (tête de départ `1a8390e9f`) : `feat/rr-m4b`
+    (`c9eb3b6bd`, porte `feat/rr-vague-d` `c9ef97ec6` : M2, M3, D-fix ; schéma 70 puis 71) →
+    `2f53b8f1c`, sans conflit ; `feat/rr-m8` (`5e87b4511`) → `5bf83f091` (conflits : chronique, dont la
+    partie M8 du v70 placée avant l'entrée v71, commentaire de `SchemaDesFaits`, plafond) ; `feat/rr-m7b`
+    (`cc0f03ac2`, base 69) → `63f0c7ed2` (conflits : `vehicle_shots.go`, chronique, plafond, golden de
+    `facts.Rev`, goldens d'assemblage, fixtures de contrat du 69 supprimées).
+  - Réconciliation : UN schéma final, 71 ; chronique v69 (partie M7b), v70 (M2, M3, D-fix, M8), v71
+    (M4b) ; plafond de la chronique re-mesuré à 2598 (justifié par ajout) ; `facts.Rev` inchangée
+    (`killsource-2026-09-24`), empreinte recopiée par sa porte (M7b ajoute deux entrées de DONNÉES au
+    registre) et partie M7b écrite à son rang ; `grammar.Rev` inchangée par M7b et M8 ; goldens
+    d'assemblage (`-update-golden-builds-assembly`) et fixtures de contrat
+    (`REPLAY_CONTRACT_UPDATE=1 -update`) régénérés par leurs portes : seule la ligne
+    `repli_episode_borne_par_la_vie_suivante` entre (0 / 1 / 1, §8.30) ; forme du document, contrat,
+    `openapi.yaml` et `generated.ts` inchangés (M7b et M8 ne changent aucune forme ; `openapi-gen -check`
+    à jour). Entrées figées : non régénérées — le blob des faits est celui de la tête de M4b, qui les a
+    régénérées ; M8 écrit son verdict dans le complément de la section 1 du FICHIER, hors du blob, et M7b
+    ne touche que la publication (vérifié sur pièces).
+  - UNE règle des tirs de véhicule (M4b × M7b) : la référence 0 de M4b d'abord, puis l'épisode avec
+    l'ambiguïté jugée sur le véhicule (M7b) ; poseur commun `poserSur` ; test
+    `TestLaReferenceZeroTrancheEntreDeuxPiecesDuMemePorteur`, ROUGE si l'ambiguïté passe avant la
+    référence 0 (mutation jouée), vert ensuite.
+  - Gates complets (une fois, sur la tête) : build ; vet (défaut, `research`, `integration`) ;
+    `go test ./...` 190 paquets ok, 0 FAIL ; `-tags=integration -count=1 -p 1 -json ./...` exit 0,
+    17 637 pass / 787 skip / 0 fail, baseline 9 693 présents, 0 échec ; golangci-lint
+    `--new-from-merge-base=origin/main` 0 issue ; `openapi-gen -check` à jour, types générés frais ;
+    web : tsc, eslint 0 erreur (26 avertissements antérieurs), couleurs 0, champs 0, vitest 807 fichiers /
+    8 659 tests, knip + ratchet 0/0/0, ratchet de contrat, manifestes i18n (22) sans écart, build Vite,
+    rastérisation Playwright 3/3. `npx playwright test` complet : NON joué (exige le serveur de dev, §8.31).
+  - PARC, `replay-corpus-gate --reference=base --base=1a8390e9f` sur les huit témoins non BTB (≤ 8
+    participants : fb1a1a72, d9781168, 60ae07c4, bf15f7ab, 51ebbc0f, 0797ce72, bfecd02b, f75e7053) :
+    PERTE sur les huit, TOUTES les classes attribuées — celles du gate de M4b (états de mouvement,
+    `deathsPaths.directScan`, `refusedNews`, `eventPacketsUnlocated`, `stances.dropped`/`desyncs`, et deux
+    lectures douteuses retirées : `abilityImpulses` sur bfecd02b, `grapple.unpairedFires` sur 51ebbc0f),
+    et celles de la vague 70 déclarées par D-fix / M2 / M3 (10 prises `taken` reclassées `swapped` au même
+    instant, le lâcher démenti de bfecd02b, les bandes d'armes au sol reprises par les réfutations,
+    `seats.presencesCloses` 4-7 → 0) ; UN cas non déclaré, antérieur à la fusion : §8.27. Gate tête contre
+    `c9eb3b6bd` (M4b) : 8 témoins `ok`, 0 écart — la fusion de M8 et M7b ne change aucun document décodé de
+    ces témoins (aucun Falcon, aucun fil vide). Règle des places tenue sur chacun des huit : capacité 4,
+    au plus 4 fiches par équipe à chaque frame, 0 place à deux fiches, 0 dépassement, 0 identité hors
+    roster. Déclaré dans la chronique v71 (paragraphe « INTÉGRATION DE LA VAGUE D »).
+  - G1 re-mesuré au code intégré (81c02726, document publié, racine temporaire) : 6/6, 0 au témoin
+    −60 s, 0 hors monture ; cuisson 16,9 s, pic 0,19 Gio.
+  - Références d'équivalence (figées le 22/09) RE-FIGÉES au code final : 20 films dont les BTB, un à la
+    fois, `replay-equiv -films X -update` sous `LEVELUP_REPO_ROOT` temporaire (7 s à 4 min 10, pic max
+    1,27 Gio sur 1c4c63c2), commit `5c2cb89a3` ; puis `replay-equiv` en comparaison sur les 20 contre les
+    références commitées : 20/20 identiques, 0 écart.
+  - `data/cache` du checkout principal : `find -newer <témoin>` VIDE avant et après chaque exécution.
+  - RE-DÉCODAGE DU PARC (superviseur, serveur arrêté, utilisateur prévenu), depuis `apps/go-api` du
+    checkout qui porte le code final, un film à la fois :
+    1. `go run ./cmd/levelup backfill-replay --dry-run` — attendu : les 111 films à construire, 0 à jour ;
+    2. `go run ./cmd/levelup backfill-replay` — un enfant par film, séquentiel, verrou solo, plafond 3 Gio ;
+       les faits périmés (`grammar-2026-09-24`, codec v27) donnent le verdict « redécoder », les 20
+       fichiers de l'incident du 24/09 compris ;
+    3. `go run ./cmd/levelup backfill-usage-summary` ;
+    4. `go run ./cmd/levelup backfill-pad-tiers --force` ;
+    5. `go run ./cmd/levelup backfill-killsource --workers 1` (Q3 : `facts.Rev` chaînée par M4b, films
+       puis crédit) ;
+    6. `go run ./cmd/levelup tactical-rasters --backfill` ;
+    puis redémarrage, gates parc de M1-M5, M2, M3, M4b rejoués. Testé sur UN film non BTB (f75e7053,
+    8 participants, 26 morceaux) dans une racine temporaire au dernier état publié (artefact 69, faits
+    de la base) : (2) re-décodé (`depuis_les_faits=false`), 16,4 s, pic 275 Mio, artefact 71 aux
+    révisions `grammar-2026-09-24` / `killsource-2026-09-24` ; (3) 0,3 s ; (4) 0,3 s ; (5) films 6 s,
+    crédit 3 min 11 sur les 9 170 matchs du registre, pic 749 Mio ; (6) < 1 s.
+  - Questions ouvertes à l'utilisateur :
+    1. 3e montée de G MONEY sur 81c02726 (2984-3021, 3104-3119) : porter les composants de dispositif
+       `ti=43` i20 à i22 (le NEW désynchronise sur `i21`) — hors du périmètre fermé ; ouvrir un lot ?
+    2. G2 Ghost de l'index 4 sur 8a485699 : renvoyé au jalon J6 du plan de suite de l'audit (fait).
+    3. M3 : cibles du gate parc non atteintes à la mesure du lot (vies sans relevé d'armes 10,2 %, 1,3 %
+       sur HI_1_12/13 ; images-clés trouées 1,0 %) — accepter, ou lot dédié aux naissances des builds
+       antérieurs ?
+    4. M7b : décor du Falcon non décidé par une règle (aucun Falcon posé seul) ; Falcon de Behemoth en
+       Super Fiesta désormais affichés — conforme à « le Falcon ça dépend » ?
+    5. `turretRidesNotRideable` (§8.28) : retrait à la prochaine montée ?
+    6. Verdicts visuels / à l'oreille : rafales et son tenu (M4b.5), Falcon (M7b), places (M2), fiche
+       d'armes (M3).
