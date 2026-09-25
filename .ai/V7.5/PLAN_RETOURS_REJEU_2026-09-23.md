@@ -1128,6 +1128,11 @@ vivent au §9 ; aucun lot de la vague D ne démarre sans eux.
     dépassé `-timeout 600s` (run 36162837061, aucun test en échec) ; budget porté à 900 s, daté et
     justifié dans `ci.yml`, avec son critère de retour. Mémoriser la marche par bobine entre ces tests :
     non traité (périmètre fermé).
+33. (republication, superviseur 25/09) Vies publiées sans identité (`logUnnamedLives`, défaut depuis la
+    décision du 07/09) sur 10 des 111 matchs au schéma 71 : 23 vies (4f77afc1 8, b1f01a33 4, 5676a9ba 3,
+    bfcd1175 2, six matchs à 1). Mesure au code de `feat/v75` (schéma 68) sur les mêmes films, racine
+    temporaire : 27 vies (4f77afc1 12, les neuf autres identiques). Défaut ANTÉRIEUR à la campagne, en
+    légère baisse ; non traité.
 
 ---
 
@@ -1342,3 +1347,12 @@ vivent au §9 ; aucun lot de la vague D ne démarre sans eux.
     5. `turretRidesNotRideable` (§8.28) : retrait à la prochaine montée ?
     6. Verdicts visuels / à l'oreille : rafales et son tenu (M4b.5), Falcon (M7b), places (M2), fiche
        d'armes (M3).
+  - Superviseur (25/09) : commande CORRIGÉE — sans `-only-existing`, `backfill-replay` visait les 1 624
+    films du cache (49 252 morceaux) et non les 111 artefacts publiés ; relevé au dry-run avant exécution.
+    Republication faite depuis la tête 8487a4f91 (binaire bâti une fois), `LEVELUP_REPO_ROOT` = checkout
+    principal, serveur non lancé : `backfill-replay -only-existing` 111/111 construits, code 0, 42 min
+    (pic max 929 Mio) ; `backfill-usage-summary` 111 écrits ; `backfill-pad-tiers --force` 111 écrits ;
+    `tactical-rasters --backfill` 111 écrits, 0 échec. `backfill-killsource` (1 624 films, ~2 h 45 à un
+    ouvrier) NON lancé : décision de l'utilisateur (plan : « sur signal utilisateur »). CI de 8487a4f91 :
+    job de couverture rouge sur le budget de 600 s du paquet grammar (§8.32), budget porté à 900 s
+    (95308bf3c). Vies sans identité : §8.33 (antérieur, en baisse).
