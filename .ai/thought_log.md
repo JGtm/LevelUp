@@ -113467,3 +113467,11 @@ défaut : le garde rougit (180 000 > 90), code restauré. Gates : voir le compte
 **Resultats observes** : plan (DU-9, J3.7, J4.0.4, statut, journal) et spec (§11) mis a jour. A la demande de la session de la campagne rr, ces modifications ont ete mises de cote hors du depot (copies verifiees identiques), l'arbre rendu propre pour sa fusion, puis reappliquees apres elle (`569932b42`, `feat/v75` = `3cca6cf47`, pousse ; plan et spec non touches par la fusion, cette entree rajoutee en fin de journal). Controles P-3 sur l'arbre fusionne : les cinq corrections venues de la campagne sont presentes (RB2-1, RB2-4, RA1-6, manifeste atomique, GA2-1) -> P-1 et P-3 coches, lignes `[~]` confirmees. Rien commite a ce stade.
 
 **Conclusion / prochaine etape** : commit de ces mises a jour a demander a l'utilisateur ; plus rien ne bloque les jalons hormis le GO par jalon (J1 d'abord).
+
+## [2026-09-25] Retours rejeu : handoff de fin de session — Complété (feat/v75, commit local)
+
+**Décision technique principale.** À la demande de l'utilisateur (session trop longue, questions restantes peu claires), les points ouverts sont réécrits en clair dans `.ai/HANDOFF_RETOURS_REJEU_2026-09-25.md`. Fait de l'utilisateur du 25/09 : « il n'y a pas de Falcon jouable sur Behemoth » — les deux Falcon de 1cd3848a affichés depuis M7b sont une erreur à corriger par une règle générale.
+
+**Résultats observés.** Campagne fusionnée dans feat/v75 (569932b42, tête 3cca6cf47), CI verte sur tous les jobs (E2E compris), 111 matchs republiés au schéma 71.
+
+**Conclusion / prochaine étape.** Session suivante : lire le handoff ; décisions utilisateur sur la 3e montée de G MONEY, les armes de naissance des anciennes versions, le backfill killsource ; correction du Falcon de Behemoth ; retrait technique de `turretRidesNotRideable` à la prochaine montée de schéma.
