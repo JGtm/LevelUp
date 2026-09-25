@@ -1,6 +1,6 @@
 # Procédure de bascule vers le dossier `LevelUp` (tâche Notion 10, item F.4)
 
-> Écrite le 2026-09-13, à exécuter sur le signal de l'utilisateur, après fermeture des autres
+> **EXÉCUTÉE le 2026-09-25** (voir thought_log du jour). Écrite le 2026-09-13, à exécuter sur le signal de l'utilisateur, après fermeture des autres
 > sessions ouvertes dans `LevelUp-go-migration` (17 sessions au 2026-09-13). Durée estimée : 15 à
 > 30 minutes, dont l'essentiel en déplacement de fichiers sur le même disque (renommage, pas de
 > copie). Retour arrière possible à chaque étape jusqu'à l'étape 7.

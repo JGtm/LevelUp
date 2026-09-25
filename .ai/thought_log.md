@@ -113475,3 +113475,43 @@ défaut : le garde rougit (180 000 > 90), code restauré. Gates : voir le compte
 **Résultats observés.** Campagne fusionnée dans feat/v75 (569932b42, tête 3cca6cf47), CI verte sur tous les jobs (E2E compris), 111 matchs republiés au schéma 71.
 
 **Conclusion / prochaine étape.** Session suivante : lire le handoff ; décisions utilisateur sur la 3e montée de G MONEY, les armes de naissance des anciennes versions, le backfill killsource ; correction du Falcon de Behemoth ; retrait technique de `turretRidesNotRideable` à la prochaine montée de schéma.
+
+## [2026-09-25] Bascule vers le dossier `LevelUp` + menage worktrees/branches (tache Notion 10) ; backfill killsource lance — En cours (bascule complete, backfill en cours)
+
+**Statut** : bascule et menage Complete ; backfill killsource EN COURS (lance a 22:00, fin estimee ~22:40).
+
+**Decision technique principale** : procedure `.ai/V7.5/PROCEDURE_BASCULE_LEVELUP_2026-09-13.md`
+re-verifiee puis jouee sur le signal de l utilisateur apres fin confirmee des 6 sessions. Deplacement
+des fichiers non suivis par RENOMMAGE (Move-Item, meme disque) des 81 entrees ignorees utiles, et non
+`robocopy /MOVE` (copie + suppression de 45 Gio). Dechets de build (`.gocache-*`, `.exe` de diag,
+logs, coverage, `.tanstack/tmp`) laisses dans l ancien dossier.
+
+**Resultats** :
+- Worktrees 11 -> 0 (jonctions node_modules detachees d abord, remove SANS --force) ; `LevelUp` = seul
+  checkout, sur `feat/v75` ; `LevelUp-go-migration` detache (a supprimer une fois les sessions
+  rouvertes dans `LevelUp`).
+- Branches locales 154 -> 4 (feat/v75, main, wt/power-positions GARDEE sur decision user,
+  wt/livefire-killpos en attente de decision) ; origin 24 -> 3 (+ main, feat/v75, wt/power-positions) ;
+  `wt/lusr-h5-cause` supprimee (rapport deja archive a l identique dans `.ai/V7.5/`). Remote `fork`
+  (tiers) non touche.
+- ~23 Gio de dossiers temporaires hors depot supprimes (rr-tmp-*, rr-integ-*-parc, rr-voies,
+  _tmp_livefire_recuisson).
+- Caches de films comptes avant/apres : film_chunks 1625 (40,3 Gio), film_manifests 1626, replays 2,
+  film_facts 1 ; node_modules 377 — identiques.
+- Chemins absolus repointes dans `.env.local` (RESTIC_REPOSITORY), `.claude/settings.json` (hooks),
+  `.claude/settings.local.json`. `go build ./...` OK, `npm run typecheck` OK, `/health` 200 (9170 matchs).
+- Memoire agent fusionnee dans `~/.claude/projects/c--Users-Guillaume-Downloads-Scripts-LevelUp/memory`
+  (369 fichiers ; index de l ancien + 23 entrees propres au dossier LevelUp en fin d index).
+- Archivage `.ai/` : rien a deplacer (plan/etat perf encore vivants et cites par du code).
+
+**Backfill killsource — REPRISE** : `apps/go-api/bin/levelup-killsource.exe backfill-killsource`
+(sans --force, 3 ouvriers), serveur ARRETE, depuis la racine `LevelUp`. Journaux
+`data/logs/backfill_killsource_2026-09-25.{out,err}.log`. Suivi : meme commande avec `--status`
+(n ouvre aucune base). En cas d arret : relancer la MEME commande ; les films deja ecrits sont
+sautes (reprise decidee en base, ligne « deja a jour au demarrage »).
+
+**Decouvertes non traitees** : ~10 outils `apps/go-api/cmd/diag_*` et 2 instruments de recherche sous
+`.ai/V7.5/retours_rejeu_2026-09-23/` codent en dur `LevelUp-go-migration` dans un chemin.
+
+**Prochaine etape** : fin du backfill (verif `--status` : 0 erreur), redemarrage du serveur,
+suppression du dossier `LevelUp-go-migration` apres fermeture des sessions qui y sont ouvertes.
