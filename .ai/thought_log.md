@@ -113476,9 +113476,9 @@ défaut : le garde rougit (180 000 > 90), code restauré. Gates : voir le compte
 
 **Conclusion / prochaine étape.** Session suivante : lire le handoff ; décisions utilisateur sur la 3e montée de G MONEY, les armes de naissance des anciennes versions, le backfill killsource ; correction du Falcon de Behemoth ; retrait technique de `turretRidesNotRideable` à la prochaine montée de schéma.
 
-## [2026-09-25] Bascule vers le dossier `LevelUp` + menage worktrees/branches (tache Notion 10) ; backfill killsource lance — En cours (bascule complete, backfill en cours)
+## [2026-09-25] Bascule vers le dossier `LevelUp` + menage worktrees/branches (tache Notion 10) ; backfill killsource — Complete (bascule faite, backfill termine)
 
-**Statut** : bascule et menage Complete ; backfill killsource EN COURS (lance a 22:00, fin estimee ~22:40).
+**Statut** : Complete. Reste : suppression du dossier `LevelUp-go-migration` apres fermeture des sessions qui y sont ouvertes.
 
 **Decision technique principale** : procedure `.ai/V7.5/PROCEDURE_BASCULE_LEVELUP_2026-09-13.md`
 re-verifiee puis jouee sur le signal de l utilisateur apres fin confirmee des 6 sessions. Deplacement
@@ -113515,3 +113515,11 @@ sautes (reprise decidee en base, ligne « deja a jour au demarrage »).
 
 **Prochaine etape** : fin du backfill (verif `--status` : 0 erreur), redemarrage du serveur,
 suppression du dossier `LevelUp-go-migration` apres fermeture des sessions qui y sont ouvertes.
+
+**Bilan du backfill killsource (22:00 -> 23:05, code de sortie 0)** : 1624/1624 films traites, 1597 ecrits
+(165 717 morts), 26 sans kill-feed, 0 erreur de passe, 0 abandon ; phase credit sur 9170 matchs terminee.
+Serveur redemarre depuis `LevelUp` (`/health` 200). Decouvertes non traitees : (1) film `f80cdf71` —
+chunk 5 absent du cache, positions ignorees ; (2) 1 film ECARTE, cle de profil `build=HI_1_5_1` absente
+(match `58e6f72a`, ajout selon `docs/RUNBOOK_FILM_PROFILES.md`) ; (3) plusieurs films avec build VIDE
+(« profil INCOMPLET », decodes par repli) ; (4) 4 films sur carte absente du catalogue (positions aux
+largeurs par defaut) ; (5) 2 parts de degats au-dela d UTINYINT (le log demande d elargir le type).
