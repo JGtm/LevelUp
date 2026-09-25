@@ -141,7 +141,10 @@ const VersionCodecFaits = 1
 // section 5 les INSTANTS de BOT_METADATA (`BotEntry.Declarations`). Meme raisonnement qu aux
 // schemas 2 et 3 : le refus tombe sur l EN-TETE. Un fichier du schema 3 n a ni les uns ni les
 // autres ; la grammaire monte avec (`grammar.Rev`) : les faits d avant sont PERIMES, il faut
-// redecoder.
+// redecoder. LOT M8 (2026-09-24), MEME SCHEMA 4 (montee de la vague D, pas encore publiee) : le
+// complement de la section 1 porte en dernier le VERDICT DU FIL DES MORTS et sa cause
+// (`FilmInputs.DeathsFeed`). Un fichier au schema 4 ecrit avant ce lot bute sur ce verdict
+// absent : relu « illisible malgre un en-tete frais », il est redecode, jamais servi sans verdict.
 // LE MEME SCHEMA 4 PORTE LE LOT M4b (2026-09-24, meme vague D, jamais publiee) : le blob passe en
 // v27 (tirs lus par la grammaire du record — indice sur cinq bits, numero de tir, unite tireuse — et
 // le TIR CONTINU de la vue de controle). Un fichier ecrit par le code de la vague D d avant M4b porte
@@ -253,6 +256,7 @@ func EncodeFilmFactsFile(f *FilmFactsFile) ([]byte, error) {
 	entrees.b = append(entrees.b, blob...)
 	encodeGardesDeMode(entrees, f.Facts.FilmInputs)
 	encodeEntitesDesJoueurs(entrees, f.Facts.PlayerEntities)
+	encodeVerdictDuFilDesMorts(entrees, f.Facts.DeathsFeed)
 	if entrees.echec != nil {
 		return nil, entrees.echec
 	}
@@ -394,6 +398,7 @@ func (f *FilmFactsFile) lireSection(id int, charge []byte, entry profile.MapQuan
 		f.Facts = *g
 		decodeGardesDeMode(r, &f.Facts.FilmInputs)
 		f.Facts.PlayerEntities = decodeEntitesDesJoueurs(r)
+		f.Facts.DeathsFeed = decodeVerdictDuFilDesMorts(r)
 		if r.err != nil {
 			return fmt.Errorf("faits de film : canaux gardes : %w", r.err)
 		}

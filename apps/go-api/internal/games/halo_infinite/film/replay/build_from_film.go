@@ -104,9 +104,11 @@ func BuildFromFilmAvecFaits(matchID, titleSlug string, film *source.Film, opt Op
 	return s.assembler(titleSlug, opt), faits, nil
 }
 
-// assembler est L ETAGE D ASSEMBLAGE du decodage d un film : les entrees balayees, PLUS ce que le
-// balayage a MESURE sans que ce soit une entree de faits — le verdict du fil des morts
-// (`coverage.bridge.deathsFeed`, lot M5.2 des retours rejeu).
+// assembler est L ETAGE D ASSEMBLAGE du decodage d un film : les entrees balayees, verdict du fil
+// des morts compris (`coverage.bridge.deathsFeed`, lot M5.2 des retours rejeu). Depuis le lot M8
+// (2026-09-24), le verdict est une ENTREE (`FilmInputs.DeathsFeed`) : il voyage dans les faits
+// persistes et [BuildFromFacts] le repose par le meme `applyTo` — les deux branches de la
+// cuisson publient le meme verdict.
 //
 // LE BALAYAGE ENTIER VOYAGE, PAS SES MORCEAUX (revue adverse M5, constat R1, 2026-09-24) : le
 // verdict sortait par un second retour de [scanFilmInputs] puis une affectation dans
@@ -119,7 +121,6 @@ func BuildFromFilmAvecFaits(matchID, titleSlug string, film *source.Film, opt Op
 // balayage y a pose son horloge d etapes, qui ne concerne pas l assemblage.
 func (s *filmScan) assembler(titleSlug string, opt Options) ReplayDocument {
 	s.in.applyTo(&opt)
-	opt.DeathsFeed = s.filDesMorts
 	return BuildFromPositions(s.matchID, titleSlug, s.in.Positions, s.in.Fire, opt)
 }
 
@@ -169,10 +170,6 @@ type filmScan struct {
 	// balayages n'y ECRIVENT jamais — leurs sorties vont dans `in`.
 	opt Options
 	in  FilmInputs
-	// filDesMorts : le VERDICT de la lecture du fil des morts (cf. [lectureDuFilDesMorts]). Hors
-	// de `in` parce qu il n est pas une entree de faits : [filmScan.assembler] le pose en
-	// `Options.DeathsFeed`.
-	filDesMorts string
 }
 
 // decoupageForce rend le decoupage d'i0 que l'APPELANT impose, ou nil.

@@ -109,6 +109,8 @@ func remplirChampTemoin(v reflect.Value) bool {
 	switch v.Kind() {
 	case reflect.Bool:
 		v.SetBool(true)
+	case reflect.String:
+		v.SetString("temoin")
 	case reflect.Int, reflect.Int64:
 		v.SetInt(7)
 	case reflect.Uint32, reflect.Uint64:

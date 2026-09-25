@@ -183,13 +183,18 @@ var plafondsParFichier = map[string]int{
 	// changements des entrees figees declares et expliques, le choix du codec des faits (purge) et
 	// les verdicts sur documents des vehicules fusionnes.
 	// Exception ecrite, dans les commits de fusion qui reunissent la montee.
-	// SCHEMA 70 -> 71 (2026-09-24, lot M4b des retours du rejeu), +51 (2471 -> 2522) : l entree v71
-	// (le calque `bursts`, `coverage.continuousFire`, la pose par la reference 0, le tir rendu
-	// a l occupant de sa place, l index de tireur sur cinq bits, et ce qui monte avec la version).
-	// REPRISE DU LOT M4b (2026-09-25), +20 (2522 -> 2542) : la mesure de l entree v71 reecrite apres la
-	// revue du lot (la lecture de la vue B reprise, le gate de corpus et son oracle physique du
-	// sprint, les gates G1/G2 par famille, la 3e monture OUVERTE).
-	"internal/games/halo_infinite/film/replay/document_chronicle.go": 2542,
+	// SCHEMA 70, PARTIE M8 (2026-09-24, lot M8 des retours du rejeu, repris apres sa revue adverse,
+	// meme montee 70 non publiee) : +22 net, la partie M8 (+23 : le verdict du fil des morts porte
+	// dans les faits, l effet au parc declare) et la limite ecrite du v69 declaree fermee (-1).
+	// SCHEMA 70 -> 71 (2026-09-24, lot M4b des retours du rejeu), +51 : l entree v71 (le calque
+	// `bursts`, `coverage.continuousFire`, la pose par la reference 0, le tir rendu a l occupant de
+	// sa place, l index de tireur sur cinq bits, et ce qui monte avec la version).
+	// REPRISE DU LOT M4b (2026-09-25), +20 : la mesure de l entree v71 reecrite apres la revue du
+	// lot (la lecture de la vue B reprise, le gate de corpus et son oracle physique du sprint, les
+	// gates G1/G2 par famille, la 3e monture OUVERTE).
+	// INTEGRATION DE LA VAGUE D (2026-09-25) : 2471 + 22 (M8) + 51 + 20 (M4b) = 2564, mesure de
+	// la tete apres les deux fusions (chaque lot avait releve le plafond sur sa propre base).
+	"internal/games/halo_infinite/film/replay/document_chronicle.go": 2564,
 	// --- production, hors perimetre du lot 2.7 (aucune preuve d equivalence ne couvrait
 	// leur scission : elle se decidera au lot qui les rouvrira).
 	// `assist.go` EST SORTI DE CETTE TABLE LE 2026-09-16 (lot 2.6.2) : le type `Assist` a descendu
