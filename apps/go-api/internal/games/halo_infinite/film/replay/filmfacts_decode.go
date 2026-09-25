@@ -313,7 +313,7 @@ func decodeEtatsDeMouvement(r *greader, g *FilmFacts) {
 		Records: int(r.u()), Read: int(r.u()), Absent: r.bool8(), Scanned: r.bool8(),
 		Packets: int(r.u()), EventPackets: int(r.u()), EventPacketsLocated: int(r.u()),
 		EventPacketsUnlocated: int(r.u()), Desyncs: int(r.u()), SlotUnbound: int(r.u()),
-		Duplicates: int(r.u()),
+		Duplicates: int(r.u()), EventPacketsNewRecordStart: int(r.u()), VehicleTypePhysicsAssumed: int(r.u()),
 	}
 	for _, p := range []*int{&st.LiaisonsOubliees, &st.NeufsContreUnVivant, &st.NeufsRefusesLecturesFausses,
 		&st.NeufsRefusesCreationsPerdues, &st.NeufsRefusesIndecis} { // constat DFIX-R6

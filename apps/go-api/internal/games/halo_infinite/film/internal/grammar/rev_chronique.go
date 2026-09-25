@@ -207,3 +207,38 @@ package grammar
 // tir, identifiant d arme ; plus aucun offset fixe.
 // Mesure (trois films non BTB, avant -> apres) : vue B inchangee ; vue C fermee 81c02726
 // 19,5 % -> 36,0 %, 8a485699 9,0 % -> 26,9 %, b1ad85eb 26,5 % -> 39,9 %.
+//
+// REPRISE DE LA PARTIE M4b (2026-09-25, revue du lot et gate G2 par famille), MEME RANG, empreinte
+// recopiee : LA VUE B SE FERME LA OU LE TIR SE LIT. Le gate G1 laissait deux frags au Ghost dans un
+// trou de lecture (81c02726, 500-658) et le gate G2 trouvait des pilotes qui tiraient sans rafale
+// (8a485699 : Banshee de l index 7, dix touches et 37 tirs numerotes ; 1cd3848a : la LAAG, trois
+// frags). Chaque trou a ete suivi jusqu a son record, et chaque cause est une LECTURE :
+//
+//	le debut de liste (`debut_de_liste.go`) : les records NEW de tete d un paquet a evenements
+//	    (naissances, armes et equipement laches a la mort, projectiles) etaient sautes par le
+//	    localisateur ; l objet jamais lie clotait ensuite chaque paquet sur son rejet. Candidat =
+//	    en-tete NEW dans la bande de l archetype ; preuve = la chaine de records qui finit au bit
+//	    pres sur le debut localise, ou la fermeture de la vue C quand il n y en a pas.
+//	l etat par defaut du PROJECTILE (`default_state_ti41.go`, `FUN_1408efb58`, record NEW) : il
+//	    sortait du repli « 0 bit ».
+//	la queue du CORPS DE MORT (`components_object.go`) : l octet de tete `comp+0x1c` annonce le
+//	    bloc de vitesse (lu dans le flux, pas un drapeau RAM) et un R(5) etait lu de trop — chaque
+//	    paquet de mort perdait sa liste apres le bipede mort.
+//	les deux positions du corps d `i54` (`components_biped_ability.go`) : niveau 0x10, largeurs
+//	    ABSOLUES de la carte, pas celles du delta du bipede (Launch Site : 31 bits de trop peu).
+//	six composants (`composants_vue_b_m4b.go`) : `ti=47 i2`, `ti=5 i22` et `i24`, `ti=10 i24`,
+//	    `ti=40 i34` (porte runtime supposee : `repli_physique_de_type_de_vehicule_supposee`, compte)
+//	    et `ti=40 i37`.
+//
+// Mesure (vue C fermee, base `c9ef97ec6` -> reprise ; instrument `m4b_tir_continu_research_test.go`) :
+// 81c02726 19,5 % -> 76,2 %, 8a485699 9,0 % -> 63,2 %, b1ad85eb 26,5 % -> 89,4 % ; 1cd3848a 93,1 %
+// et 7b0d89c4 80,5 % a la reprise. Fermeture d image-cle (golden du lot 0.A.3) : `ti=5` de 0 % a
+// 100 % sur les sept bobines, `ti=47` de 0 % a 7-100 %. La position des transformations d un corps
+// rigide (`ti=38 i18`, meme lecteur de niveau 0x10) N EST PAS reprise : lue dans l etat complet
+// d une image-cle (pleine precision, R(96)) elle ferait baisser la fermeture `ti=38` du golden ;
+// decouverte consignee au rapport du lot.
+// Instruments (tag `research`) : `m4b_vueb_rejets_research_test.go` (causes des trous, rejets
+// d en-tete, journal des paquets), `m4b_liste_research_test.go` (chaines de tete, vraie frontiere
+// d un record, depart d un composant : le corps de mort de 8a485699 p692), `m4b_monture_research_test.go`
+// (la 3e monture de 81c02726, OUVERTE : aucun embarquement lu apres la naissance du dispositif
+// 2308, dont le NEW desynchronise sur `ti=43 i21`).

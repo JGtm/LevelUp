@@ -103,6 +103,12 @@ func m4bDans(tr int, fs [][2]int) bool {
 	return false
 }
 
+// m4bDebut rend le debut de liste de PRODUCTION ([debutDeLaListe]).
+func m4bDebut(pay []byte, w *World, cfg FrameConfig) int {
+	d, _ := debutDeLaListe(pay, w, cfg)
+	return d
+}
+
 // m4bMarcher rejoue la marche de production (`ScanMarcheDesTrames`) et rend, par paquet delta,
 // la fin de sa vue B relue.
 func m4bMarcher(t *testing.T, tc t516Temoin, cad s3Cadre) []m4bFin {
@@ -131,7 +137,7 @@ func m4bMarcher(t *testing.T, tc t516Temoin, cad s3Cadre) []m4bFin {
 			f := m4bFin{trame: cad.trame(pk.TimestampUS)}
 			debut := movementStateSkipLeadBits
 			if _, present := PacketHeadEventType(pay); present {
-				if debut = marchLocateStrict(pay, w, cfg); debut < 0 {
+				if debut = m4bDebut(pay, w, cfg); debut < 0 {
 					f.nonLocalis = true
 					out = append(out, f)
 					continue
@@ -256,7 +262,7 @@ func TestM4bRecordsDesSlots(t *testing.T) {
 			pay := pk.Payload(data)
 			debut := movementStateSkipLeadBits
 			if _, present := PacketHeadEventType(pay); present {
-				if debut = marchLocateStrict(pay, w, cfg); debut < 0 {
+				if debut = m4bDebut(pay, w, cfg); debut < 0 {
 					continue
 				}
 			}
@@ -313,7 +319,7 @@ func TestM4bJournalDesPaquets(t *testing.T) {
 			tr := cad.trame(pk.TimestampUS)
 			debut := movementStateSkipLeadBits
 			if _, present := PacketHeadEventType(pay); present {
-				if debut = marchLocateStrict(pay, w, cfg); debut < 0 {
+				if debut = m4bDebut(pay, w, cfg); debut < 0 {
 					if m4bDans(tr, fenetres) {
 						t.Logf("t%d c%d p%d : liste non localisee (%d bits)", tr, c, pk.Index, len(pay)*8)
 					}
@@ -382,7 +388,7 @@ func TestM4bCausesDesTrous(t *testing.T) {
 			pay := pk.Payload(data)
 			debut := movementStateSkipLeadBits
 			if _, present := PacketHeadEventType(pay); present {
-				if debut = marchLocateStrict(pay, w, cfg); debut < 0 {
+				if debut = m4bDebut(pay, w, cfg); debut < 0 {
 					causes["liste non localisee"]++
 					continue
 				}

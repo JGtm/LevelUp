@@ -13,8 +13,9 @@ package replay
 // LA REGLE. Quand l accord tombe sous `seuilAccordIndexUnite`, l index n est pas la place sur ce
 // film : ni la lecture des places par les tirs (`sieges_tirs.go`), ni le rattachement par la
 // place ou par l index (`tirs_par_place.go`, `slotFor`) ne s en servent — seule la reference 0 pose
-// un tir. C est un REPLI NOMME : le drapeau `coverage.seats.tirsIndexNonPlace` le publie, le
-// journal donne l accord mesure. Critere de retrait : une lecture de l index propre aux builds
+// un tir. C est un REPLI NOMME, au registre (`repli_index_de_tireur_hors_place`, compte = les tirs
+// mesures du film ecarte) : le drapeau `coverage.seats.tirsIndexNonPlace` le publie, le journal
+// donne l accord mesure. Critere de retrait : une lecture de l index propre aux builds
 // anciennes (le champ `d` de HI_1_4_1 n est pas encore identifie).
 //
 // PUR : aucune I/O.

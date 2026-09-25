@@ -186,7 +186,10 @@ var plafondsParFichier = map[string]int{
 	// SCHEMA 70 -> 71 (2026-09-24, lot M4b des retours du rejeu), +51 (2471 -> 2522) : l entree v71
 	// (le calque `bursts`, `coverage.continuousFire`, la pose par la reference 0, le tir rendu
 	// a l occupant de sa place, l index de tireur sur cinq bits, et ce qui monte avec la version).
-	"internal/games/halo_infinite/film/replay/document_chronicle.go": 2522,
+	// REPRISE DU LOT M4b (2026-09-25), +20 (2522 -> 2542) : la mesure de l entree v71 reecrite apres la
+	// revue du lot (la lecture de la vue B reprise, le gate de corpus et son oracle physique du
+	// sprint, les gates G1/G2 par famille, la 3e monture OUVERTE).
+	"internal/games/halo_infinite/film/replay/document_chronicle.go": 2542,
 	// --- production, hors perimetre du lot 2.7 (aucune preuve d equivalence ne couvrait
 	// leur scission : elle se decidera au lot qui les rouvrira).
 	// `assist.go` EST SORTI DE CETTE TABLE LE 2026-09-16 (lot 2.6.2) : le type `Assist` a descendu

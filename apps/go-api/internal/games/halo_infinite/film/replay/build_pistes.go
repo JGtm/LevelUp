@@ -9,7 +9,11 @@ package replay
 // ses commentaires de mesure ; seule la designation des variables a change (`doc` -> `a.doc`).
 // Voir `build.go` pour l ordre des passes et ce qu il protege.
 
-import "log/slog"
+import (
+	"log/slog"
+
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
+)
 
 // horloge rend la grille du document et le compteur de replis de la cuisson, sous la forme que
 // les passes du roster partagent.
@@ -116,6 +120,9 @@ func (a *assemblage) poserLesEquipesEtLeRoster() {
 	// tirs_index_fiable.go) : sinon la lecture des places par les tirs s abstient.
 	a.indexTireur = mesurerIndexDeTireur(a.fire, a.reg.IndexParSlot())
 	a.indexTireur.journaliser(a.matchID)
+	if !a.indexTireur.estLaPlace() {
+		a.opt.Fallbacks.DeclencheN(fallback.NomIndexDeTireurHorsPlace, a.indexTireur.total)
+	}
 	var tirsDesPlaces []FireEventRef
 	if a.indexTireur.estLaPlace() {
 		tirsDesPlaces = fireRefs(a.fire)

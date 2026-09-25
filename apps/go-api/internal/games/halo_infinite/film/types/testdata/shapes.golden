@@ -363,6 +363,8 @@ Packets	int	-
 EventPackets	int	-
 EventPacketsLocated	int	-
 EventPacketsUnlocated	int	-
+EventPacketsNewRecordStart	int	-
+VehicleTypePhysicsAssumed	int	-
 Desyncs	int	-
 SlotUnbound	int	-
 DatumBindings	int	-

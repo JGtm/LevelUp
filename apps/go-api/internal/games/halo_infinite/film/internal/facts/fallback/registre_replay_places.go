@@ -186,4 +186,23 @@ var registreReplayPlaces = []Repli{
 			"nommee par son corps (creation dans la fenetre de son entite)",
 		CompteurBranche: true,
 	},
+	{
+		Nom:  "repli_index_de_tireur_hors_place",
+		Fait: "sur quel film l index de tireur du record 36 (champ d, cinq bits) est lu comme la PLACE du tireur : pour la lecture des places par les tirs et pour le rattachement des tirs",
+		Mecanisme: "accord, tir par tir, entre l index de tireur et l index du joueur dont le bipede est l unite tireuse (reference 0) ; " +
+			"sous 50 % (seuilAccordIndexUnite, MESURE du 2026-09-24 sur les huit fixtures de build : 88,4 a 100 % quand l index est la place, 0 % sur HI_1_4_1), " +
+			"l index est ecarte et seule la reference 0 pose les tirs ; compte = les tirs mesures du film ecarte, drapeau coverage.seats.tirsIndexNonPlace",
+		// CONTRADICTION : deux designations du tireur ecrites par le film se contredisent sur ce
+		// film ; la reference 0 est la lecture qui reste.
+		Condition: CondContradiction,
+		Ordre:     OrdreApresLecture,
+		Sites: []Site{
+			{Fichier: pkgReplay + "tirs_index_fiable.go", Ancre: "const seuilAccordIndexUnite = 0.5"},
+			{Fichier: pkgReplay + "build_pistes.go", Ancre: "a.opt.Fallbacks.DeclencheN(fallback.NomIndexDeTireurHorsPlace, a.indexTireur.total)"},
+		},
+		DatePose:        "2026-09-25",
+		CibleRetrait:    "la lecture de l index de tireur des builds anciennes (le champ d de HI_1_4_1 n est pas identifie)",
+		CritereRetrait:  "le champ d lu sur HI_1_4_1 ET 0 declenchement sur le corpus du gate de rejeu (un temoin par build)",
+		CompteurBranche: true,
+	},
 }

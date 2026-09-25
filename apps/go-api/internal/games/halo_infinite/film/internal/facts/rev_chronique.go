@@ -393,3 +393,14 @@ package facts
 // DFIX-R7). La sortie peut changer comme au rang M3 (plus de records atteints) ; la revision reste
 // celle de la vague, empreinte recopiee. EXCEPTION NOMMEE : la precision par arme
 // (`ScanFilmWeaponDamages`) marche encore sans preuve — decision de backfill a l utilisateur.
+//
+// PARTIE M4b (2026-09-25, lot M4b des retours du rejeu, MEME RANG, empreinte recopiee) : AUCUN
+// OCTET DE `facts/killsource/` N EST TOUCHE. L empreinte bouge par la VALEUR reconciliee de
+// `grammar.Rev` (reprise M4b de sa chronique : les records NEW de tete, l etat par defaut du
+// projectile, la queue du corps de mort, six composants) et par `fallback/`, qui gagne
+// `repli_physique_de_type_de_vehicule_supposee` (tranche `filmdec`). La marche des morts de
+// `killsource` traverse ces lectures : la sortie PEUT changer comme aux rangs M3 et D-fix — plus de
+// records atteints (le corps de mort ne perd plus la liste qui le suit). Mini-bobine : une mise a
+// mort de plus lue par la MARCHE (8 contre 7, le scan en rend une de moins), memes armes et memes
+// credits, l oracle de calibration seul bouge (decision inchangee). Le backlog reste celui de la
+// vague (Q3 : backfill killsource a la cloture, sur signal utilisateur).

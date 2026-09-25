@@ -298,6 +298,8 @@ func encodeEtatsDeMouvement(w *gwriter, g *FilmFacts) {
 	w.u(uint64(st.Desyncs))
 	w.u(uint64(st.SlotUnbound))
 	w.u(uint64(st.Duplicates))
+	w.u(uint64(st.EventPacketsNewRecordStart))
+	w.u(uint64(st.VehicleTypePhysicsAssumed))
 	for _, v := range []int{st.LiaisonsOubliees, st.NeufsContreUnVivant, st.NeufsRefusesLecturesFausses,
 		st.NeufsRefusesCreationsPerdues, st.NeufsRefusesIndecis} { // constat DFIX-R6
 		w.u(uint64(v)) //nolint:gosec // compteurs positifs

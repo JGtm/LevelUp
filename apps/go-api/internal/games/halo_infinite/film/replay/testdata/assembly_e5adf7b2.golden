@@ -106,7 +106,7 @@ couverture : 217 vie(s) publiee(s) · camo 0 vie(s) / 0 episode(s) · surbouclie
 0 evenement(s) -> 0 publie(s) (0 avec va-et-vient) · 0 avant l origine · 0 sans piste publiee
 
 ## IMPULSIONS DE CAPACITE — l usage MESURE du propulseur, attribue par le rang de la vie
-24 lecture(s) -> 13 geste(s) -> 3 publiee(s) · 8 sans identite · 2 famille non mesuree · 0 attribution indisponible · 0 avant l origine · 0 sans piste publiee · composant absent=false
+23 lecture(s) -> 12 geste(s) -> 3 publiee(s) · 8 sans identite · 1 famille non mesuree · 0 attribution indisponible · 0 avant l origine · 0 sans piste publiee · composant absent=false
   slot=555 t=1200 thruster
   slot=662 t=3991 thruster
   slot=730 t=5276 thruster

@@ -276,18 +276,24 @@ func (sc *movementStateScanner) paquet(chunk int, pk FilmPacket, data []byte, cf
 	sc.tir.ouvrir(pk.TimestampUS)
 	if _, present := PacketHeadEventType(pay); present {
 		sc.st.EventPackets++
-		if debut = marchLocateStrict(pay, sc.monde, cfg); debut < 0 {
+		var parRecordNeuf bool
+		debut, parRecordNeuf = debutDeLaListe(pay, sc.monde, cfg)
+		if debut < 0 {
 			sc.st.EventPacketsUnlocated++
 			sc.tir.fermer(true) // liste non localisee : la vue C n est pas lue, c est un TROU
 			return
 		}
 		sc.st.EventPacketsLocated++
+		if parRecordNeuf {
+			sc.st.EventPacketsNewRecordStart++
+		}
 	}
 	sc.st.Packets++
 	sc.chunk, sc.paquetIndex, sc.ts = chunk, pk.Index, pk.TimestampUS
 	recs, _ := DecodeFrameViews(pay, sc.monde, cfg, MovementStateViews, debut)
 	sc.tir.fermer(false) // le verdict de la vue C, publie par la marche
 	for _, r := range recs {
+		sc.st.VehicleTypePhysicsAssumed += lecturesDeComposant(r, compVehicleTypePhysics)
 		if r.TypeIndex != BipedTypeIndex {
 			continue
 		}

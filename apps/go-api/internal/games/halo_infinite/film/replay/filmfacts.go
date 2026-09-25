@@ -229,7 +229,10 @@ import (
 // tireur sur CINQ bits (-1 sans indice), leur NUMERO DE TIR et leur UNITE tireuse (reference 0) —
 // le record est lu par sa grammaire (`grammar/fire_events.go`) ; et le blob porte LE TIR CONTINU
 // de la vue de controle (rafales, trous, compteurs : `filmfacts_tir_continu.go`), a la suite des
-// etats de mouvement dont il partage la marche.
+// etats de mouvement dont il partage la marche. La reprise du lot (2026-09-25) ajoute, dans la MEME
+// version, deux compteurs a la queue de `MovementStateStats` : les listes qui commencent a un record
+// NEW de tete (`EventPacketsNewRecordStart`) et les lectures de `ti=40 i34` a porte supposee
+// (`VehicleTypePhysicsAssumed`, le repli `repli_physique_de_type_de_vehicule_supposee`).
 const filmFactsMagic = "REPLAYINPUTS27\n"
 
 // ---------------------------------------------------------------------------

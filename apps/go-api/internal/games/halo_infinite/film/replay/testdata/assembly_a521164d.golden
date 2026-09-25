@@ -624,6 +624,7 @@ arrivants 4 · presences closes 5 · sans presence 1 · occupants au plus 24 · 
 
 ## REPLIS DECLENCHES — la part de ce document qui ne vient PAS d une lecture du film
 repli_chassis_vehicule_marqueur_neutre           15
+repli_index_de_tireur_hors_place                 896
 repli_piece_engendree_sans_evenement             2
 repli_place_du_remplacant_par_chainage_d_equipe  4
 repli_position_hors_emprise_ecartee              38

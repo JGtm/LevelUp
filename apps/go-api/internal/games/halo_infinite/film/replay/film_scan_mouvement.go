@@ -9,6 +9,7 @@ package replay
 import (
 	"log/slog"
 
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
@@ -46,6 +47,7 @@ func (s *filmScan) balayerEtatsDeMouvement() {
 			"rafales", tc.Bursts, "rafalesTouchees", tc.BurstsWithHole, "tirTenuTuMs", tc.HeldHoleMS,
 			"match_id", s.matchID)
 	}
+	s.opt.Fallbacks.DeclencheN(fallback.NomPhysiqueDeTypeDeVehiculeSupposee, st.VehicleTypePhysicsAssumed)
 	s.in.MovementStates, s.in.MovementStateStats = m.MovementStates, st
 	s.in.ContinuousFire, s.in.ContinuousFireStats = m.ContinuousFire, tc
 	s.opt.observe("movementStates", s.in.MovementStates)

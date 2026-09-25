@@ -363,4 +363,25 @@ var registreFilmdec = []Repli{
 		CritereRetrait:  "`KeyframeClosure` a 100 % sur les sept bobines par build ET 0 election comptee sur le corpus du gate de rejeu",
 		CompteurBranche: true,
 	},
+	{
+		Nom:  "repli_physique_de_type_de_vehicule_supposee",
+		Fait: "la porte du corps de ti=40 i34 vehicle-type-physics (l octet +0x818 du vehicule, que le deserialiseur FUN_142f02498 et l ecrivain FUN_142f04e90 testent) est POSEE quand le masque annonce le composant",
+		Mecanisme: "le corps est lu : R(1) mode, puis la paire avant/haut (FUN_140c5f938) et la vitesse angulaire (FUN_14076e1c8) du mode ; " +
+			"prouve par l oracle de cadrage (1cd3848a, fenetre de la LAAG : 0 -> 765 paquets sur 785 dont la vue C ferme au bit pres)",
+		// LECTURE NON PORTEE : l octet +0x818 n est ecrit par aucun record du flux lu (ni i34, ni
+		// i33 qui le teste aussi) ; il est pose quand le jeu construit le vehicule.
+		Condition: CondLectureNonPortee,
+		Ordre:     OrdreSansLecture,
+		Sites: []Site{{
+			Fichier: pkgFilmdec + "composants_vue_b_m4b.go",
+			Ancre:   "func consumeVehicleTypePhysics(br *Lecteur) {",
+		}, {
+			Fichier: "internal/games/halo_infinite/film/replay/film_scan_mouvement.go",
+			Ancre:   "s.opt.Fallbacks.DeclencheN(fallback.NomPhysiqueDeTypeDeVehiculeSupposee, st.VehicleTypePhysicsAssumed)",
+		}},
+		DatePose:        "2026-09-25",
+		CibleRetrait:    "la lecture de l ecrivain de l octet +0x818 du vehicule (Ghidra : construction du vehicule depuis son tag), qui fait de la porte une lecture",
+		CritereRetrait:  "porte lue a l ecrivain ET 0 lecture supposee comptee sur le corpus du gate de rejeu",
+		CompteurBranche: true,
+	},
 }

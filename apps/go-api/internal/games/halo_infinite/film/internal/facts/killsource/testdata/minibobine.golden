@@ -32,7 +32,7 @@
 00:35  LORD PEINX13  eea85c26  "Disruptor"  ARME  credit=IKE ILYA  assistant=AUCUN (mesure)  marche  credit-concordant  divergence=non
 00:43  aldusbroncus  877da252  "Gravity Hammer"  ARME  credit=whiteknight2519  assistant=AUCUN (mesure)  marche  credit-concordant  divergence=non
 00:44  JGtm  130c4b61  "Skewer"  ARME  credit=Akatsuki fire17  assistant=AUCUN (mesure)  marche  credit-concordant  divergence=non
-00:46  JAVIERLOLITO540  acd1cff4  "M41 SPNKr"  ARME  credit=LORD PEINX13  assistant=AUCUN (mesure)  scan  credit-concordant  divergence=non
+00:46  JAVIERLOLITO540  acd1cff4  "M41 SPNKr"  ARME  credit=LORD PEINX13  assistant=AUCUN (mesure)  marche  credit-concordant  divergence=non
 00:52  VitaminA1688  130c4b61  "Skewer"  ARME  credit=Akatsuki fire17  assistant=AUCUN (mesure)  marche  credit-concordant  divergence=non
 00:58  whiteknight2519  acd1cff4  "M41 SPNKr"  ARME  credit=IKE ILYA  assistant=AUCUN (mesure)  marche  credit-concordant  divergence=non
 01:02  JGtm  17d6bd23  "Sentinel Beam"  ARME  credit=aldusbroncus  assistant=AUCUN (mesure)  scan  credit-concordant  divergence=non
@@ -51,17 +51,17 @@
 5484 paquet(s) SANS evenement · 7687528 bits balayes · 0 candidat(s) accepte(s)
 
 ## COUT PAR VOIE DE LECTURE — ventilation, PAS deux precisions comparables
-marche   : 7 propose(s), 7 apparie(s) au couple exact, 7 publiee(s)
-scan     : 2 propose(s), 2 apparie(s) au couple exact, 2 publiee(s)
+marche   : 8 propose(s), 8 apparie(s) au couple exact, 8 publiee(s)
+scan     : 1 propose(s), 1 apparie(s) au couple exact, 1 publiee(s)
 marche, source appartenant a la victime : 1 propose(s), 1 publiee(s)
 scan,   source appartenant a la victime : 1 propose(s), 0 publiee(s)
 morts de BOT : 16 propose(s), 0 publiee(s)
 morts infligees PAR un bot : 0 propose(s), 0 apparie(s), 0 publiee(s)
-8 enregistrement(s) lu(s) par LES DEUX voies · ACCORD 7 · DESACCORD 0
+9 enregistrement(s) lu(s) par LES DEUX voies · ACCORD 8 · DESACCORD 0
 DESACCORD doit valoir 0 : sinon l hybride n est plus une PREFERENCE mais un ARBITRAGE
 0 mort(s) a plusieurs candidats en concurrence · 0 enregistrement(s) sans position
 460 / 473 paquet(s) a evenements localise(s)
-calibration resolue automatiquement : LU axisW=[13 13 14] indexW_plage=1 [DEFAUT (carte absente)] controle_corruption=false [FILM] | ORACLE axisW=6 [PROFIL PLAT (score 1, mediane 1)] desaccords=0 | DECIDE indexW_poignee=1 INVARIANT (non discriminee) [score 1, mediane 1]
+calibration resolue automatiquement : LU axisW=[13 13 14] indexW_plage=1 [DEFAUT (carte absente)] controle_corruption=false [FILM] | ORACLE axisW=23 [score 8, mediane 1] desaccords=1 | DECIDE indexW_poignee=1 INVARIANT (non discriminee) [score 68, mediane 68]
 
 ## SANTE — un verdict porte sur le DOMAINE, pas sur les etiquettes publiees
 verdict : HORS DOMAINE MESURE

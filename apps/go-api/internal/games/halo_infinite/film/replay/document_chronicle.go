@@ -2507,16 +2507,36 @@ package replay
 //	                build HI_1_4_1 de `a521164d`, ou le champ est constant) — sinon seule la
 //	                reference 0 pose un tir (tirs_index_fiable.go, repli nomme).
 //
-// LA MESURE (racines temporaires, un film a la fois, aucun BTB decode en gate). Faits d equivalence,
-// base `c9ef97ec6` -> tete, sur `000d5950`, `60ae07c4`, `fb1a1a72`, `d9781168` : SEULES `fire` (memes
-// comptes, champs neufs), `continuousFire` (neuve) et `artifact` bougent. Gate de corpus (huit temoins
-// non BTB) : 0 perte sur sept ; `f75e7053` perd deux intervalles d etat — un accroupi de 7,2 s du
-// slot 585 qui chevauchait deux sprints et un saut, et l accroupi du slot 530 (1761-1811) relu en
-// glissade — effet du bloc d action lu juste dans `i19` (vue B). Tirs rattaches des fixtures de
-// build : `111fa685` 88,7 -> 97,6 %, `11de8353` 86,7 -> 98,9 %, `e5adf7b2` 84,3 -> 96,8 %,
-// `bcb6d393` 85,7 -> 97,3 %, `a521164d` 82,6 -> 92,3 % (par l unite ; l ancien rattachement y rendait
-// les tirs au joueur 2, lu dans quatre bits d un champ constant) ; `b1ad85eb` 992 -> 1 061 (les
-// remplacants). Tir continu : `81c02726` 10 rafales de G MONEY posees sur les Ghost 769 et 771
-// (224 coups), une rafale dans les 2 s de 4 frags sur 6 (623 et 650 tombent dans un trou de lecture
-// 500-658, nomme et muet), 0 au temoin -60 s, 0 hors monture ; `8a485699` 20 rafales (Chopper 1,
-// LMG du Wasp 2, Rayon de Sentinelle 17) ; les coups publies restent sous les sauts du numero de tir.
+// LA MESURE (reprise du 2026-09-25 apres la revue du lot ; racines temporaires, un film a la fois,
+// aucun BTB decode en gate). LA LECTURE DE LA VUE B EST REPRISE (chronique de `grammar`, reprise
+// M4b) : records NEW de tete des paquets a evenements, etat par defaut du projectile, queue du corps
+// de mort, positions du corps d `i54`, six composants — vue C fermee `81c02726` 19,5 % -> 76,2 %,
+// `8a485699` 9,0 % -> 63,2 %, `b1ad85eb` 26,5 % -> 89,4 %. Faits d equivalence, base `c9ef97ec6` ->
+// tete, sur `000d5950`, `60ae07c4`, `fb1a1a72`, `d9781168` : bougent `fire` (memes comptes, champs
+// neufs), `continuousFire` (neuve), `movementStates` (+1 a +11 % de lectures), `killsource` et
+// `killRefs` (la marche des morts lit le corps de mort juste), `vehicles` et `birthLoadouts.stats`
+// (`60ae07c4`) et `artifact` ; `positions` ne bouge pas. Gate de corpus (huit temoins non BTB) : les
+// SEULES pertes sont des intervalles d etat et leur couverture — le sprint compte plus d intervalles
+// pour moins de duree, l escalade finit plus tot — et l ORACLE PHYSIQUE du sprint (vitesse
+// constante) s ameliore sur les huit (echantillons de sprint plus lents que la mediane hors sprint /
+// echantillons hors sprint aussi rapides que la mediane de sprint, seuils de la base : `f75e7053`
+// 18,5/16,6 % -> 11,5/16,2 %, `0797ce72` 14,0/14,2 % -> 6,6/12,5 %, `60ae07c4` 16,8/16,0 % ->
+// 14,3/15,3 %, les cinq autres egaux ou meilleurs). Les deux accroupis de `f75e7053` (slot 585,
+// 3655-3727 ; slot 530, 1761-1811) disparaissent : chacun chevauchait des sprints du meme slot —
+// contradiction physique — et commencait pendant une escalade, dont le corps `i54` etait lu aux
+// largeurs du delta. Les autres "pertes" du gate sont des compteurs de defaut qui baissent :
+// `coverage.stances.refusedNews` sur les huit (`f75e7053` 317 -> 0), `eventPacketsUnlocated` sur les
+// huit, `forgottenBindings` (`bf15f7ab` 411 -> 146), et `coverage.deathsPaths.directScan`, que la
+// marche des morts releve. Tirs rattaches des fixtures de build : `111fa685` 88,7 -> 97,6 %,
+// `11de8353` 86,7 -> 98,9 %, `e5adf7b2` 84,3 -> 96,8 %, `bcb6d393` 85,7 -> 97,3 %, `a521164d`
+// 82,6 -> 92,3 % (par l unite ; l ancien rattachement y rendait les tirs au joueur 2, lu dans quatre
+// bits d un champ constant) ; `b1ad85eb` 992 -> 1 061 (les remplacants). Tir continu, documents
+// publies (gates G1 et G2 par famille, frags de vehicule du kill-feed) : `81c02726` une rafale dans
+// les 2 s de chacun des 6 frags de G MONEY (0 au temoin -60 s, 0 hors monture) ; LAAG `1cd3848a` 3/3 ;
+// canons de la Banshee `7b0d89c4` 13/14 et `8a485699` (index 7 : 4,2 s de rafale contre 37 tirs
+// numerotes et dix touches) ; Chopper, LMG du Wasp et Rayon de Sentinelle publies sur `8a485699`,
+// `1cd3848a` et `7b0d89c4` ; aucun document non BTB du parc ne porte de Falcon. Les coups publies
+// restent sous les sauts du numero de tir. OUVERT : la 3e monture de G MONEY (`81c02726`, 2984-3021
+// et 3104-3119) n est pas publiee — ses rafales sont lues, comptees `noTrack` (2) : l embarquement
+// suit la naissance d un dispositif (`ti=43`, 2941) dont le record NEW desynchronise sur un composant
+// non porte (`i21`), et chaque paquet suivant se clot sur son rejet.

@@ -173,6 +173,15 @@ type MovementStateStats struct {
 	// chaque type d evenement. Sans ces trois-la, « N lectures » ne dit pas sur quelle part du
 	// film elles portent.
 	EventPackets, EventPacketsLocated, EventPacketsUnlocated int
+	// EventPacketsNewRecordStart : les paquets a liste d evenements dont la liste COMMENCE a un
+	// record NEW de tete que le localisateur sautait (lot M4b, `grammar/debut_de_liste.go`) : prouve
+	// par la chaine de records qui finit sur le debut localise, ou, liste non localisee, par la
+	// fermeture de la vue C. Ils sont aussi comptes dans `EventPacketsLocated`.
+	EventPacketsNewRecordStart int
+	// VehicleTypePhysicsAssumed : les lectures de `ti=40 i34 vehicle-type-physics` dont la porte
+	// RUNTIME (octet +0x818 du vehicule) est supposee posee — le repli nomme
+	// `repli_physique_de_type_de_vehicule_supposee` (lot M4b, `grammar/composants_vue_b_m4b.go`).
+	VehicleTypePhysicsAssumed int
 	// Desyncs est le nombre de records `ti=35` desynchronises pendant la marche. Mesure de
 	// reference (lot 5.3.5) : 3 sur 97 447 sur `bfecd02b`, 51 sur 315 251 sur `4f77afc1`.
 	Desyncs int

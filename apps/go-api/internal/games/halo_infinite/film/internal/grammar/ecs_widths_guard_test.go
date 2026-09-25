@@ -90,8 +90,17 @@ const ecsProbeBytes = 512
 // portees (`components_biped_posture.go`), sa largeur n est plus un entier : sa colonne
 // `bits_typ` porte « variable », qui reste HORS des deux comptes. Le compte des GARDEES ne monte
 // donc pas — `i55` quitte le controle au lieu d y changer de colonne.
+// 2026-09-25 (lot M4b des retours du rejeu) : 120 -> 123 largeurs FIXES, 66 gardees INCHANGEES. TROIS
+// lignes neuves entrant PAR LE HAUT depuis `non_porte` (`composants_vue_b_m4b.go`), aucune ligne
+// existante ne change de categorie :
+//
+//	ti=10 i24 et i25 managed-object-looping-sound-component   R(32)   32
+//	ti=40 i37 vehicle-emp-timer-component                    R(8)     8
+//
+// Les quatre autres ports du lot (`ti=47 i2`, `ti=5 i22` et `i24`, `ti=40 i34`) ont une largeur
+// GARDEE par le flux : leur colonne `bits_typ` n est pas un entier et reste hors des deux comptes.
 const (
-	ecsLargeursFixes   = 120
+	ecsLargeursFixes   = 123
 	ecsLargeursGardees = 66
 )
 

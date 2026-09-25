@@ -88,4 +88,10 @@ const (
 	// NomAncreDImageCleParElection : `filmdec/keyframe_world.go`, `kfScanNext` ; compte par
 	// `replay/film_scan.go`, `balayerPositions` (lot M3.1).
 	NomAncreDImageCleParElection Nom = "repli_ancre_d_image_cle_par_election"
+	// NomPhysiqueDeTypeDeVehiculeSupposee : `grammar/composants_vue_b_m4b.go` (ti=40 i34) ; compte
+	// par `replay/film_scan_mouvement.go`, `balayerEtatsDeMouvement` (lot M4b).
+	NomPhysiqueDeTypeDeVehiculeSupposee Nom = "repli_physique_de_type_de_vehicule_supposee"
+	// NomIndexDeTireurHorsPlace : `replay/tirs_index_fiable.go` ; compte par `replay/build_pistes.go`
+	// (lot M4b.4, inscrit a la revue du lot).
+	NomIndexDeTireurHorsPlace Nom = "repli_index_de_tireur_hors_place"
 )
