@@ -29,7 +29,7 @@ pas du registre.
 | **J1** | Une seule passe killsource post-sync par processus et par titre | OPS-3 | rien (sync) | dès clôture, **avant v7.5 → main** | S |
 | **J2** | Robustesse E/S : cache de films, verrou solo, lecteurs bornés, refus typés | SRC-2/OPS-4, OPS-1, OPS-2, OPS-5, RA1-5, RA1-7, RB1-4, GA1-1/GB-2, CONV-1 | aucune sortie (replay-equiv 0) | dès clôture | M-L |
 | **J3** | Modèle de révision et fraîcheur des faits (amendement ADR 0034 D-6/D-7) | SRC-1, RA1-1, RA1-2, RA1-4 | outillage d'empreinte, codec des faits, `coverage.decoder` | vague J11 | M |
-| **J4** | Étage de balayage unique (S1) ; lecteurs de bits artisanaux (S2, sous benchmark) | RA1-3 + faiblesses 3 et 5 | `IsolationDecoderRev` | vague J11 | M-L |
+| **J4** | Carte de fermeture (J4.0) ; étage de balayage unique (S1) ; lecteurs de bits artisanaux (S2, sous benchmark) | RA1-3 + faiblesses 3 et 5 ; DU-8 | `IsolationDecoderRev` | vague J11 | L |
 | **J5** | Identité (slot, génération) typée + **GB-1 (P0)** | GB-1, RA2-1, RA2-2, RA2-3, RA2-6, RB2-3, GA1-3 | `grammar.Rev`, schéma, isolement | vague J11 | L |
 | **J6** | Un seul portage par fonction du jeu (DU-1) | GA2-2..GA2-5 (GA2-1 : reprise M4b de la campagne rr) | `grammar.Rev` | vague J11 | M |
 | **J7** | killsource | FK-1..FK-7 | `killsource.Rev` (backlog) | vague J11 | M |
@@ -40,7 +40,7 @@ pas du registre.
 | **J12** | Modernisation neutre, documentation, CI | faiblesses 7, 8, 10, 11 ; écarts ADR ; DU-5 | rien (replay-equiv 0) | oui | L |
 
 Décisions : §3.1, validées le 2026-09-25 (les recommandations sont retenues).
-Coût estimé : §4.7 (~19 agents Opus, effort high, jalon par jalon).
+Coût estimé : §4.7 (~20 agents Opus, effort high, jalon par jalon).
 
 ---
 
@@ -105,6 +105,7 @@ Coût estimé : §4.7 (~19 agents Opus, effort high, jalon par jalon).
 |---|---|
 | Faiblesse 6 : décodage multi-passes (~40 traversées, 8 canaux qui refont `walkDeltaBipedRecords`) | Performance, aucune donnée fausse ; l'audit ne recommande pas d'action. Chantier perf séparé si voulu. |
 | Découpe complète de `film/replay` (189 fichiers, `Options` ~70 champs en entrée et en sortie) et de la façade | DU-4 (retenu : hors plan). Seules les parties qui corrigent un constat sont faites (J3.4, J4). |
+| Représentation intermédiaire du film (la grammaire parcourt le film une fois et range tout ce qu'elle a décodé ; la résolution lit cette structure) | DU-8 (b) : chantier futur, spécifié dans `.ai/SPEC_REPRESENTATION_INTERMEDIAIRE_FILM_2026-09-25.md` ; déclencheur = fermeture des records qui portent une donnée utile, mesurée par la carte de fermeture (J4.0, rejouée en J11.3). |
 | 683 `t.Skip`, 3 `t.Parallel` (faiblesse 7, partie) | Aucun constat : les `t.Skip` relevés sont des absences de film local justifiées. |
 | Retrait des replis à compte nul | DU-7 : règle 4 de D-10 (« supprimé au jalon suivant ») ; J11 produit la liste mesurée. |
 | Constats écartés par l'audit (FO-2, OPS-6, RB2-2, RB1-9, partie de FO-4, occurrence citée de RA2-2) | Réfutés en vérification adverse. |
@@ -271,6 +272,21 @@ au moment venu (serveur arrêté, machine libre).
 **Retenu : hors plan.** J11 publie la liste mesurée ; le retrait suit la règle 4 de D-10
 au jalon suivant, sur décision.
 
+**DU-8 — Carte de fermeture et représentation intermédiaire (ajout validé le 2026-09-25).**
+Message de l'utilisateur : « Ok je suis d'accord avec toi. Donc tu mets à jour le plan actuel pour
+la carte de fermeture et tu prépares une spec pour la structure intermédiaire ». Distinction qui
+fonde la décision : TRAVERSER un composant (connaître sa largeur pour atteindre le suivant) n'est
+pas l'INTERPRÉTER (savoir ce que la valeur veut dire). Sur la tête de la campagne rr, la table ECS
+compte 1 067 composants, dont 44 servent au produit ; 544 sont portés, dont 502 sans aucun usage
+produit — portés pour être SAUTÉS. On n'interprétera jamais tout, et il n'en est pas besoin ; la
+traversée, elle, se mesure et progresse.
+**Retenu :** (a) la **carte de fermeture** entre au plan comme lot J4.0 (instrument de mesure,
+aucune sortie de production modifiée) : elle donne la référence de fermeture avant les jalons de
+grammaire et l'ordre de portage le plus rentable ; (b) la **représentation intermédiaire du film**
+fait l'objet d'une spécification de chantier FUTUR,
+`.ai/SPEC_REPRESENTATION_INTERMEDIAIRE_FILM_2026-09-25.md`, hors de ce plan (§1.4) ; son
+déclencheur est mesuré par la carte.
+
 ### 3.2 Décisions techniques du plan (fermes, sauf objection au GO)
 
 | ID | Décision | Pourquoi |
@@ -286,6 +302,7 @@ au jalon suivant, sur décision.
 | DT-9 | Tris : `slices.SortStableFunc`/`SortFunc` à comparateur TOTAL (chaîne `cmp.Or` finissant sur une clé unique) ; ratchet interdisant `sort.Slice*`/`sort.Sort` dans le périmètre. | Faiblesse 9 ; pdqsort n'est stable par accident que sous 13 éléments. |
 | DT-10 | Modernisation : `go fix` Go 1.26 + stdlib, SAUF les quatre pièges de l'audit (tri non total, `slices.Clone` nil/vide en JSON, `omitzero`, `math/rand` → `math/rand/v2`). Un test fige la permutation à graine fixe de `killsource/options.go`. | La permutation fait partie de la sortie de la bijection. |
 | DT-11 | Mesures sur films : instruments en test tagué `research` (ou outil existant), superviseur seul, un film à la fois (§4.3). | Quatre sinistres RAM passés. |
+| DT-12 | Carte de fermeture (J4.0) : `grammar.FrameClosure` prolonge le contrat de `KeyframeClosure` (fermés / total / bloquant le PLUS FRÉQUENT, départage par nom) aux trames delta, par vue et par archétype, en réutilisant les marcheurs existants (`DecodeFrameViewsCurseur`, `LectureVueC` et `ArretVueC`, vue des messages) ; golden `testdata/frame_closure.golden` sur les huit mini-bobines et ratchet « aucune baisse », même porte de régénération que `keyframe_closure_ratchet_test.go` ; outil de corpus `film/research/cmd_fermeture` sur le modèle de `film/research/cmd_grenadeids` (tag `research`, sentinelle `filmproc.Arm`, films un à un, rapport écrit hors de `data/`). | Aucune roue réinventée : même contrat, mêmes marcheurs, même modèle d'instrument ; l'outil vit sous `film/`, donc la façade `decfilm` ne grandit pas. |
 
 ---
 
@@ -330,6 +347,7 @@ au jalon suivant, sur décision.
 7. **Garde-rails** : toute centralisation (règle 6) livre son ratchet dans le même commit, avec sa
    mutation. Ratchets prévus : nom de chunk (J2.3), comptes du codec des faits (J2.7), classement
    par texte (J2.12), décodage dans `internal/api` (J2.13), périmètres de révision (J3.2),
+   fermeture des trames (J4.0),
    `replay.Scan*` hors de `film/` (J4.3), lecteurs de bits hors `source` (J4.6), handle
    (J5.1), nom de remplissage (J7.1), replis comptés (J8.7), tri total (J10.1), chemins `.ai/`,
    `film/filmdec/`, `slog` sans contexte, `slog` dans `grammar`/`facts`, variables exportées
@@ -413,9 +431,10 @@ au jalon suivant, sur décision.
 
 - Superviseur : la session principale (pilotage, vérification sur pièces, gates de film, Ghidra en
   lecture seule par HTTP direct `127.0.0.1:8089`).
-- Exécutants : J1 : 1 · J2 : 2 (J2-a E/S, J2-b lecteurs et enfant) · J3 : 1 · J4 : 1 · J5 : 2
-  (J5.1-J5.3, puis J5.4) · J6 : 1 · J7 : 1 · J8 : 2 (J8.1-J8.6, puis J8.7) · J9 : 1 · J10 : 1 ·
-  J12 : 2 → **15 exécutants**, plus **4 relecteurs** (J1, J3, J5, J7) = **~19 agents Opus**.
+- Exécutants : J1 : 1 · J2 : 2 (J2-a E/S, J2-b lecteurs et enfant) · J3 : 1 · J4 : 2 (J4.0,
+  puis J4.1-J4.6) · J5 : 2 (J5.1-J5.3, puis J5.4) · J6 : 1 · J7 : 1 · J8 : 2 (J8.1-J8.6, puis J8.7)
+  · J9 : 1 · J10 : 1 · J12 : 2 → **16 exécutants**, plus **4 relecteurs** (J1, J3, J5, J7) =
+  **~20 agents Opus** (la carte de fermeture ajoute un exécutant de taille moyenne).
 - Ordre de grandeur : la campagne des retours rejeu (67 agents, effort high/max, chaînes
   impl → revue → correction, gates rejoués par chaque rôle) a consommé un quota hebdomadaire en
   ~30 h. Ce plan, à effort high, un exécutant borné par lot et une revue par jalon à risque :
@@ -709,6 +728,62 @@ parc à re-décoder en J11. **Taille** : M.
   `no_raw_film_bytes_outside_source_test.go` les repère par NOM (`bitAt`, `bitsN`…) : aucun de ces
   sept noms n'y figure.
 
+#### J4.0 — Carte de fermeture (DU-8 a, DT-12) : un instrument, aucune sortie de production ne bouge
+
+**But.** Mesurer, build par build, ce que la grammaire sait TRAVERSER dans les trames delta — pas
+ce qu'elle interprète — et nommer ce qui bloque. Elle donne la référence avant les jalons de
+grammaire (J4.6, J5, J6, J10), l'ordre de portage le plus rentable, et le déclencheur du chantier
+de représentation intermédiaire (§1.4).
+**Pièces (`feat/rr-m4b`).** `grammar/keyframe_closure.go` (`KeyframeClosure`,
+`KeyframeClosureStat{Closed, Total, Blocking}`, bloquant = composant non porté le PLUS FRÉQUENT) avec
+`keyframe_closure_ratchet_test.go` et `testdata/keyframe_closure.golden` (historique des
+régénérations en tête) ; trame delta = préambule R(1) puis trois vues : messages
+(`frame_vue_messages.go`), entités, contrôle (`frame_vue_controle.go` : `LectureVueC`,
+`vueCFermee`, causes `ArretVueC`) ; `DecodeFrameViewsCurseur` et `EntityTrace.DesyncAt` (premier
+composant présent sans lecteur) ; `testdata/ecs_table.tsv` (statuts `porte`, `non_porte`,
+`partiel`, `deser_non_cable`, colonne d'usage produit) ; huit mini-bobines, une par build
+(`film/replay/testdata/minifilm_*`) ; modèle d'outil `film/research/cmd_grenadeids`.
+
+- [ ] J4.0.1 Tests rouges synthétiques (`grammar/frame_closure_test.go`) :
+      `TestFrameClosure_PaquetFermeAuBitPres` (trois vues lues jusqu'à leur terminateur, curseur sur
+      la fin du paquet), `TestFrameClosure_ComposantSansLecteurNommeLeBloquant` (un delta dont le
+      masque annonce un composant non porté : vue des entités non fermée, bloquant
+      `ti=<a> i<idx> <nom>`), `TestFrameClosure_ArretDeLaVueDeControleCompteParCause` (chaque
+      `ArretVueC`), `TestFrameClosure_BloquantLePlusFrequentDepartageParNom` (règle de
+      `KeyframeClosure`).
+- [ ] J4.0.2 `grammar.FrameClosure(fc) (FrameClosureReport, error)` : par vue — paquets atteints,
+      fermés au bit près, causes d'arrêt ; par archétype — records NEW et delta, fermés, bloquant
+      le plus fréquent ; et **la fermeture des records UTILES** — ceux qui portent un composant à
+      usage produit (colonne `product_use` de `ecs_table.tsv`, passée en entrée : `grammar` ne lit
+      pas de fichier) et les entrées de la vue de contrôle que le produit lit : c'est la mesure du
+      déclencheur de la spec (§9). AUCUNE nouvelle lecture de bits : les marcheurs existants sont
+      appelés tels quels ; pure, sans I/O, sans état de paquet (D-5). Ni la cuisson ni le
+      collecteur ne l'appellent. Test rouge ajouté à J4.0.1 :
+      `TestFrameClosure_RecordUtileFermeCompteAParte`.
+- [ ] J4.0.3 Golden `testdata/frame_closure.golden` sur les huit mini-bobines (une ligne par
+      (film, vue) et par (film, archétype)) et ratchet `TestFrameClosureRatchet`, rouge sur une
+      BAISSE de fermés ; même porte de régénération que le ratchet d'image-clé ; en-tête
+      « historique des régénérations » ; mutation : décaler d'un bit un lecteur de composant →
+      rouge.
+- [ ] J4.0.4 Outil `film/research/cmd_fermeture` (tag `research`) : films lus un à un, en place,
+      dans l'ordre donné, sentinelle `filmproc.Arm`, option `-limite` ; sortie = TSV brut +
+      résumé Markdown : par build, part des paquets fermés par vue et **part des records utiles
+      fermés** (le déclencheur de la spec) ; classement des composants bloquants (archétype, index,
+      nom, statut et usage produit lus dans `ecs_table.tsv`, paquets bloqués, gain potentiel =
+      records utiles qui se fermeraient si ce seul composant était porté — BORNE SUPÉRIEURE, un
+      autre composant peut bloquer derrière) : c'est la liste courte de ce qui mérite Ghidra (ou
+      une largeur mesurée, selon la question 5 de la spec). Déclaré aux ratchets de points
+      d'entrée s'ils couvrent `film/research`.
+- [ ] J4.0.5 Mesure de référence (superviseur, après accord ; témoins de
+      `config/replay_corpus.toml`, au moins un film par build, BTB seulement sur accord) →
+      `.ai/V7.5/film_re/CARTE_FERMETURE_<date>.md`. Ces chiffres sont la base des deltas de J4.6,
+      J5, J6, J10 et J11.3.
+- Révisions : aucune montée (aucune sortie ne change) ; empreinte de `grammar` régénérée à
+  révision constante (preuve G-equiv 0).
+
+**Gate J4.0.** G-unit (`grammar`), G-arch, `go vet -tags=research ./internal/games/halo_infinite/film/research/cmd_fermeture/`,
+G-equiv 0, G-CI.
+
 #### S1 — le déplacement qui corrige les défauts (obligatoire)
 - [ ] J4.1 Inventaire écrit (rapport) : chaque balayage et chaque lecture d'octets de film hors
       `source` (fichier, fonction, couche cible selon D-1, consommateurs) ; les chiffres ci-dessus
@@ -762,7 +837,9 @@ seconde est née dans la campagne rr) ; `replay/build_vehicles.go` (seul à dés
 - [ ] Instrument : test `research` (ou outil du rapport `RAPPORT_PONT_APLATI_2026-09-10.md`,
       réutilisé s'il existe encore) : par film, records de création par génération, vies (slot,
       génération) avec et sans positions, `durationMs` publié contre la durée du match, en-têtes
-      valides dont (slot, tag) n'est aucune vie connue (faux positifs potentiels).
+      valides dont (slot, tag) n'est aucune vie connue (faux positifs potentiels). S'il est écrit,
+      il s'ajoute comme mode de `film/research/cmd_fermeture` (J4.0.4) : même boucle de films, même
+      sentinelle — pas un second harnais.
 - [ ] Films : témoins de `config/replay_corpus.toml` + `084a804d`, `1c4c63c2`, `a349fea8` (BTB),
       un à la fois, après accord de l'utilisateur.
 - [ ] Critère de poursuite : `084a804d` reproduit l'ordre de grandeur de l'audit (~122 corps sans
@@ -855,7 +932,9 @@ consigne à son rapport : ce site entre dans J6.
       fermeture d'image-clé `ti=38` du golden comme garde (aucune baisse) ; test en table des sites
       et de leurs immédiats (ratchet).
 - [ ] J6.4 `grammar.Rev` monté ; G-corpus : rejets en baisse (`bfecd02b`), `ti=21` lu en entier
-      sur les cinq bobines, fermeture d'image-clé sans baisse, zéro perte.
+      sur les cinq bobines, fermeture d'image-clé sans baisse, zéro perte ; carte de fermeture
+      (J4.0) rejouée : delta par vue et par archétype contre la référence, golden
+      `frame_closure.golden` régénéré en hausse seulement.
 
 **Gate J6.** G-unit (`grammar`), G-arch, G-film, G-corpus, G-CI. **Taille** : M.
 
@@ -995,7 +1074,8 @@ exclus les portages dont le xuid est celui du tueur ; un tueur non identifié n'
 - [ ] J10.7 `grammar.Rev` et `SchemaVersion` montés.
 
 **Gate J10.** G-unit, G-arch, G-film, G-equiv (x2), G-corpus (changements déclarés : ordres sur
-ex æquo, sièges, armes au sol), G-web, G-CI. **Taille** : M.
+ex æquo, sièges, armes au sol), carte de fermeture rejouée pour J10.5 et J10.6 (aucune baisse),
+G-web, G-CI. **Taille** : M.
 
 ---
 
@@ -1007,7 +1087,9 @@ ex æquo, sièges, armes au sol), G-web, G-CI. **Taille** : M.
       expliquée ; changements = union des déclarations J3-J10 (table au §9) ; rapport JSON archivé.
 - [ ] J11.2 `replay-equiv` : références re-figées à la tête (`-update`), digests commités.
 - [ ] J11.3 Mesures de clôture : GB-1 (vies sans positions par film, avant/après), compte par repli
-      sur le corpus (→ liste de retrait soumise à DU-7), assistants `?N` = 0, bots épinglés.
+      sur le corpus (→ liste de retrait soumise à DU-7), assistants `?N` = 0, bots épinglés ;
+      carte de fermeture rejouée contre la référence de J4.0.5 (→ état du déclencheur de la
+      représentation intermédiaire, rapporté à l'utilisateur).
 - [ ] J11.4 **GO utilisateur**, puis vague locale, serveur arrêté, PRÉVENIR :
       `levelup backfill-replay` (un film à la fois, verrou solo) → `levelup backfill-usage-summary`
       → `levelup backfill-pad-tiers --force` → `levelup backfill-killsource` (3 ouvriers ;
@@ -1109,3 +1191,14 @@ relancer un agent sans avoir vérifié qu'il est mort. Ne pas re-décider ce qui
   la table anticipée gagne un usage de lecture (`SlotDeLArchetype`) → précisé en J8.1. Aucun autre
   item du plan touché ; les autres worktrees sont inactifs depuis le 2026-09-20. Découverte
   consignée au §8.1.
+- 2026-09-25 (soir) : P-2 fait (commit `baa0e4e14`, docs seules, non poussé).
+- 2026-09-25 (soir) : **DU-8 validée** (« Ok je suis d'accord avec toi. Donc tu mets à jour le plan
+  actuel pour la carte de fermeture et tu prépares une spec pour la structure intermédiaire ») :
+  lot J4.0 (carte de fermeture) ajouté, DT-12, renvois en J5.0, J6.4, J10, J11.3 ; J4 passe à deux
+  exécutants (~20 agents au total) ; la représentation intermédiaire est spécifiée à part,
+  `.ai/SPEC_REPRESENTATION_INTERMEDIAIRE_FILM_2026-09-25.md`, hors plan (§1.4).
+- 2026-09-25 (soir) : déclencheur de la spec corrigé avec l'utilisateur (« Oui ok ») — la fermeture
+  des records qui PORTENT une donnée utile (colonne `product_use`), pas celle de tous les paquets ;
+  J4.0.2 et J4.0.4 mesurent cette fermeture et classent les bloquants par records utiles
+  débloqués ; la question des largeurs mesurées sans Ghidra est ouverte dans la spec (§11, 5).
+  Plan, spec et thought_log commités sur `feat/v75`, sans push.
