@@ -690,3 +690,10 @@ machine chargée — dit tel quel dans l'entrée.
   l'expiration d'un délai de grâce). Rejoués seuls : verts (le second trois fois de suite). Le lot
   n'a touché ces paquets que par une ligne de commentaire (en-têtes P1.3 de deux tests
   `sync/skill`). Consigné en découverte (13), non traité.
+- 2026-09-26 (revue fraîche demandée par l'utilisateur) : un relecteur Opus effort élevé, aveugle,
+  sur tout le diff `ea5682373..ecbb918a1`, périmètre fermé : 0 défaut de comportement, 24
+  conditions vérifiées, 3 constats P2 de véracité (exemple périmé du tableau Guardrails de l'ADR,
+  écart (iii) annoncé épinglé sans test, commentaires du domaine décrivant l'ancienne jointure).
+  Corrigés en A.12 (`220e0fbda`, test `TestAnnuairePorteeBase_EcartNomme_NomDeKillFeedVariable`,
+  mutation rouge) ; vérifiés sur pièces par le superviseur (diff relu, tests rejoués : duckdb
+  intégration ciblée et domain verts). Pas de seconde ronde : aucun P0 / P1.
