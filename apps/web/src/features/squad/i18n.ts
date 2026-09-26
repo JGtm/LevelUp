@@ -319,8 +319,6 @@ export interface SquadText {
   /** « Écart cumulé au FDA attendu » (D3/D7 — différentiel FDA réel vs attendu par joueur). */
   fdaGap: {
     title: string
-    /** Caption de la rangée de pastilles KPI (écart moyen par match). */
-    averageCaption: string
   }
   /** « Balance des dégâts cumulée » (P3 — dégâts nets ÷ PV-pour-tuer, cumulé par joueur). */
   netLives: {
@@ -691,7 +689,6 @@ const FR_TEXT: SquadText = {
   },
   fdaGap: {
     title: 'Écart cumulé au FDA attendu',
-    averageCaption: 'Écart moyen par match',
   },
   netLives: {
     title: 'Balance des dégâts cumulée',
@@ -1052,7 +1049,6 @@ const EN_TEXT: SquadText = {
   },
   fdaGap: {
     title: 'Cumulative KDA gap to expected',
-    averageCaption: 'Average gap per match',
   },
   netLives: {
     title: 'Cumulative damage balance',

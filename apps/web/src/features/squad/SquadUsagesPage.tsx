@@ -17,7 +17,6 @@ import { Card, CardContent } from '@/components/ui/card'
 import { SectionTitle } from '@/components/ui/detail-section'
 import { EmptyStateNotice } from '@/components/ui/empty-state'
 import { useAppShellStore } from '@/stores/appShellStore'
-import { useCapability } from '@/lib/capabilities/capabilities'
 import { EquipmentUsageSection } from '@/features/_shared/usage/EquipmentUsageSection'
 import { usageAvailabilityKind } from '@/features/_shared/usage/usageAvailability'
 import { USAGE_TEXT } from '@/features/_shared/usage/usageI18n'
@@ -25,7 +24,6 @@ import { useSquadContext } from './SquadContext'
 import { getSquadText } from './i18n'
 import { FormesRetenuesSection } from './formes/FormesRetenuesSection'
 import { SquadFragSection } from './SquadFragSection'
-import { SquadFdaGapCumulativeCard } from './SquadFdaGapCumulativeCard'
 import { getSquadPlayerColors } from './colors'
 
 export function SquadUsagesPage() {
@@ -33,10 +31,6 @@ export function SquadUsagesPage() {
   const locale = useAppShellStore((s) => s.locale)
   const t = getSquadText(locale)
   const usageText = USAGE_TEXT[locale]
-  // FDA attendu natif (Infinite déclare `expected_stats`, Halo 5 non) → gate PARENT du
-  // card « Écart cumulé au FDA attendu » : pas de colonne vide dans la rangée 1 de
-  // SquadFragSection (le card conserve son self-gate en profondeur).
-  const hasExpectedStats = useCapability('expected_stats')
 
   // Le backend renvoie s.gamertag (casse mixte) tandis que playerSlug est l'URL param
   // (souvent lowercase) : on aligne sur main_player.
@@ -47,7 +41,6 @@ export function SquadUsagesPage() {
   // rendu → les ChartCard rebâtiraient leur option ECharts et rejoueraient leur
   // animation d'entrée sans qu'aucune valeur n'ait bougé.
   const fragClassesByPlayer = useMemo(() => fragClasses ?? {}, [fragClasses])
-  const perfSeriesByPlayer = useMemo(() => performanceSeries ?? {}, [performanceSeries])
   const playerColors = useMemo(
     () => getSquadPlayerColors(mainPlayerKey, confirmedGamertags),
     [mainPlayerKey, confirmedGamertags],
@@ -115,9 +108,10 @@ export function SquadUsagesPage() {
 
   return (
     <div className="space-y-4">
-      {/* FRAGS ET ARMES. Rangée 1 : sur Infinite « Écart cumulé au FDA attendu »
-          (gate `expected_stats`) à GAUCHE de « Répartition des frags » ; sur Halo 5
-          « Répartition » | « Précision par rôle ». Puis « Outils de destruction ».
+      {/* FRAGS ET ARMES. Rangée 1 : « Répartition des frags » (pleine largeur sur
+          Infinite ; à côté de « Précision par rôle » sur Halo 5). Puis « Outils de
+          destruction ». « Écart cumulé au FDA attendu » est partie sur Dynamique (lot L1
+          du plan PLAN_EMPRISE_ET_CARTES_DEPLACEES_2026-09-26).
           Le titre de section coiffe les trois cartes — SquadFragSection n'en porte
           aucun de son côté. */}
       {hasFrags && (
@@ -131,17 +125,6 @@ export function SquadUsagesPage() {
             playerOrder={playerOrder}
             locale={locale}
             t={t}
-            leftOfBreakdown={
-              hasExpectedStats ? (
-                <SquadFdaGapCumulativeCard
-                  rowsByPlayer={perfSeriesByPlayer}
-                  playerOrder={playerOrder}
-                  colorByPlayer={playerColors}
-                  t={t}
-                  emptyMessage={t.empty.noBlockData}
-                />
-              ) : undefined
-            }
           />
         </section>
       )}

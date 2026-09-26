@@ -186,13 +186,15 @@ Périmètre : `SquadFdaGapCumulativeCard.tsx` (+ test), `charts/squadFdaGapChart
 `SquadDynamiquePage.tsx` (+ test), `SquadUsagesPage.tsx` (retrait du montage), `SquadFragSection.tsx`
 (slot `leftOfBreakdown` supprimé), `features/squad/i18n.ts` (`fdaGap.averageCaption` supprimée).
 
-- [ ] L1.1 Monter la carte sur Dynamique, à côté de « Balance des dégâts cumulée » ; `playerOrder` filtré sur `performanceSeries`.
-- [ ] L1.2 Retirer les pastilles « écart moyen par match » et leur clé i18n.
-- [ ] L1.3 Valeur de fin au bout de chaque courbe (précédent `squadRangeRolesChart.ts:199`).
-- [ ] L1.4 Légende en bas centrée, graphe centré (S2).
-- [ ] L1.5 Retirer le montage de l'onglet Usages et le slot devenu mort ; corriger le commentaire périmé (`Synergies`).
-- [ ] L1.6 Test du chemin sans `expected_stats` (carte absente) si inexistant.
+- [x] L1.1 Monter la carte sur Dynamique, à côté de « Balance des dégâts cumulée » ; `playerOrder` filtré sur `performanceSeries` (déjà le cas, vérifié : `SquadDynamiquePage.tsx`, `roster.filter((p) => performanceSeries?.[p])`).
+- [x] L1.2 Retirer les pastilles « écart moyen par match » et leur clé i18n (`fdaGap.averageCaption` FR/EN + type ; `meanFdaGapPerMatch` devenu mort supprimé avec ses tests ; `meanFdaGap` reste vivant, lu par `TimeseriesFdaGapTrend`).
+- [x] L1.3 Valeur de fin au bout de chaque courbe (précédent `squadRangeRolesChart.ts:199`).
+- [x] L1.4 Légende en bas centrée, graphe centré (S2).
+- [x] L1.5 Retirer le montage de l'onglet Usages et le slot devenu mort ; corriger le commentaire périmé (`Synergies`).
+- [x] L1.6 Test du chemin sans `expected_stats` (carte absente) si inexistant (existait au niveau carte ; ajouté au niveau page Dynamique).
 - Gate : tests cités + gate commun.
+
+Journal L1 (2026-09-26, exécuteur Opus, `wt/emprise`) : « Écart cumulé au FDA attendu » quitte Usages (slot `leftOfBreakdown` de `SquadFragSection` supprimé avec sa branche de rangée ; `useCapability` et `perfSeriesByPlayer` retirés d'`SquadUsagesPage`) et rejoint Dynamique sur la rangée de « Balance des dégâts cumulée » : grille `md:grid-cols-2`, balance à gauche, écart à droite, mêmes `perfSeriesByPlayer` / `playerOrder` / couleurs ; la grille étire les deux cartes à la même hauteur, la carte d'écart est `fluid` (le graphe remplit la carte). Si une seule des deux capabilities existe (`damage_taken` / `expected_stats`), la survivante prend la rangée (`md:[&>*:only-child]:col-span-2`), et la rangée vide se retire (`empty:hidden`). Graphe : même abscisse `xAxisLabels(n)` que la balance ; `endLabel` par série (valeur signée, une décimale, locale de l'interface « +3,0 » / « +3.0 », couleur du joueur, zéro arrondi sans signe) posé par ECharts sur le dernier point non nul ; `labelLayout.moveOverlap: 'shiftY'` écarte les étiquettes qui se chevauchent (vérifié par un rendu SVG hors DOM d'ECharts 6.1 : trois fins à 3,0 / 3,1 / 2,9 passent de 80-88 px à 80 / 92 / 104 px) ; marge droite de grille 48 px pour ces valeurs ; légende ECharts en bas (`getLegendBase`) et `left: 'center'` explicite ; infobulle d'axe et graduations suivent le même format. Pastilles et leur texte retirés : plus rien sous le graphe. Infobulle : texte partagé `common.charts.fda_gap_tooltip` conservé (2 phrases, S11 tenu) — voir Découvertes. Gate : typecheck OK, lint 0 erreur (26 avertissements préexistants, aucun sur les fichiers touchés), vitest complet 807 fichiers / 8 663 tests verts (5 fichiers / 23 tests ignorés préexistants), knip-ratchet 0/0/0, lint-no-hardcoded-colors 0 violation, lint-cross-feature-imports 7 ≤ plafond 7. Volet Go du gate commun (`go test`, `go-api-lint`) non joué : aucun fichier Go touché, gate du lot fixé sans Go par le superviseur.
 
 ### L2 — Contributions : frags · moyen
 
@@ -295,5 +297,6 @@ l'entrée la plus récente du journal. Reprendre au premier item non statué du 
   `lint-cross-feature-imports`) — déplacement sous `_shared/` à décider plus tard.
 - (L0) `lib/accessibility/scales/fragClass.ts:76-77` : les commentaires « indigo profond » / « orange brûlé » décrivent les anciennes valeurs de `frag-vehicle` / `frag-turret` (échangées par L0) ; fichier hors périmètre L0 (mapping intouchable), commentaires à corriger par un lot qui y touche.
 - (L0) Palette Okabe-Ito : aucun jeu de 4 teintes de la palette ne passe le validateur dataviz en entier (ressources) ; écart résiduel accepté par l'exécuteur (bande de clarté sombre dépassée de 0,009) — **CONFIRMÉ par le superviseur le 2026-09-26** : écart marginal, chaque ressource a sa pastille et son nom (codage secondaire).
+- (L1) Infobulle de « Écart cumulé au FDA attendu » : la maquette C3EW propose « La FDA de chaque match moins celle que le modèle attendait de ce joueur dans ce match, cumulée depuis le premier match. Au-dessus de zéro : mieux qu'attendu. » ; la carte garde le texte PARTAGÉ `common.charts.fda_gap_tooltip` (`FdaGapTooltipText`, source unique des trois instances Séries temporelles / Sessions / Escouade, 2 phrases). Aligner sur la maquette = modifier `lib/i18n/manifests/common.toml` pour les trois pages (hors périmètre L1) ; noter aussi « le FDA » (manifeste) contre « la FDA » (maquette).
 - Écart feuille / film sur les grenades (Madina97294 : 4 au film, 3 sur la feuille le 22/09) et un
   frag de la feuille sans ligne au film.

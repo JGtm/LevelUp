@@ -113554,3 +113554,11 @@ serveur relance a synchronise depuis). Tache Notion 10 CLOSE.
 **Resultats observes** : tous les jeux passent sauf les ressources Okabe-Ito en sombre (Reddish Purple hors bande de clarté de 0,009) — aucun jeu de 4 teintes Okabe-Ito ne passe en entier, écart documenté dans la palette et au plan. Tol Bright : l'orange des véhicules échoue, `resource-vehicle` = Vibrant Red. Snapshot `coverage` mis à jour (4 palettes) ; typecheck, lint (0 erreur), vitest complet, knip-ratchet, lint-no-hardcoded-colors, lint-cross-feature-imports verts. `globals.css` n'a pas de repli `frag-*` (rien à y échanger).
 
 **Conclusion / prochaine etape** : découvertes consignées au plan §7 (commentaires périmés `fragClass.ts:76-77`, écart Okabe-Ito à confirmer). Lot suivant : L1 (Dynamique, écart cumulé au FDA attendu).
+
+## [2026-09-26] Emprise, lot L1 : « Écart cumulé au FDA attendu » passe sur Dynamique — Complété (`wt/emprise`, commit local)
+
+**Decision technique principale** : la carte quitte Usages (slot `leftOfBreakdown` de `SquadFragSection` supprimé, montage et gate `expected_stats` retirés d'`SquadUsagesPage`) et se monte sur Dynamique, sur la même rangée que « Balance des dégâts cumulée » (grille `md:grid-cols-2`, même abscisse `xAxisLabels(n)`, mêmes séries et couleurs, même hauteur par étirement de grille ; la survivante prend la rangée si une capability manque, la rangée vide se retire). Les pastilles « écart moyen par match » disparaissent (composant, clé `fdaGap.averageCaption`, `meanFdaGapPerMatch` mort et ses tests). La valeur de fin s'écrit au bout de chaque courbe par `endLabel` ECharts (signée, une décimale, locale de l'interface, couleur du joueur), les chevauchements écartés par `labelLayout.moveOverlap: 'shiftY'` ; légende en bas et centrée.
+
+**Resultats observes** : le décalage des étiquettes est vérifié sur un rendu SVG hors DOM d'ECharts 6.1 (fins 3,0 / 3,1 / 2,9 : 80-88 px sans décalage, 80 / 92 / 104 px avec). Gate : typecheck OK, lint 0 erreur, vitest complet 8 663 tests verts, knip-ratchet 0/0/0, couleurs en dur 0, imports croisés 7 ≤ 7. Infobulle : texte partagé conservé (la proposition de la maquette demanderait de modifier `common.toml` pour trois pages, consigné aux Découvertes du plan).
+
+**Conclusion / prochaine etape** : L1 clos, vérification superviseur puis lot L2 (Contributions : frags).

@@ -4,8 +4,8 @@
  * Couvre : les deux états vides hérités de Synergies (no_selection /
  * invalid_selection), l'état vide PROPRE à l'onglet (aucun film décodé : ni frags,
  * ni équipement, ni formes — jamais un onglet vide et muet), le montage des sections
- * déplacées, et le gate `expected_stats` du card « Écart cumulé au FDA attendu » qui a
- * suivi la section frags.
+ * déplacées, et l'absence du card « Écart cumulé au FDA attendu », parti sur Dynamique
+ * (lot L1 du plan PLAN_EMPRISE_ET_CARTES_DEPLACEES_2026-09-26).
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { screen } from '@testing-library/react'
@@ -144,8 +144,8 @@ describe('SquadUsagesPage — sections', () => {
   })
 })
 
-describe('SquadUsagesPage — gate expected_stats du card FDA', () => {
-  it('capability présente → « Écart cumulé au FDA attendu » à gauche de Répartition', () => {
+describe('SquadUsagesPage — « Écart cumulé au FDA attendu » parti sur Dynamique', () => {
+  it('même avec expected_stats, la carte n\'est plus montée sur Usages', () => {
     setTitleCaps(['expected_stats'])
     mockSquadContext({
       selectedRows: [ROW('A'), ROW('B')],
@@ -153,17 +153,7 @@ describe('SquadUsagesPage — gate expected_stats du card FDA', () => {
       pageData: pageWithFrags(),
     })
     renderWithProviders(<SquadUsagesPage />)
-    expect(screen.getByText('Écart cumulé au FDA attendu')).toBeInTheDocument()
-  })
-
-  it('capability absente (Halo 5) → card Écart FDA masqué', () => {
-    setTitleCaps(['ranked'])
-    mockSquadContext({
-      selectedRows: [ROW('A'), ROW('B')],
-      confirmedGamertags: ['A', 'B'],
-      pageData: pageWithFrags(),
-    })
-    renderWithProviders(<SquadUsagesPage />)
+    expect(screen.getByText('Frags et armes')).toBeInTheDocument()
     expect(screen.queryByText('Écart cumulé au FDA attendu')).toBeNull()
   })
 })

@@ -4,7 +4,9 @@
  * Consomme le contexte SquadContext fourni par SquadLayout (même mécanisme de
  * données que Contributions : aucune query key propre). Regroupe les charts
  * d'intensité, de rendement/résistance, le « Premier frag / première mort » et
- * la section engagement — déplacés depuis SquadContributionsPage.
+ * la section engagement — déplacés depuis SquadContributionsPage. « Écart cumulé au
+ * FDA attendu » y rejoint « Balance des dégâts cumulée » sur la même rangée (lot L1
+ * du plan PLAN_EMPRISE_ET_CARTES_DEPLACEES_2026-09-26 ; elle vivait sur Usages).
  *
  * Multi-titres : strings UI via getSquadText ; SquadEngagementSection gardée
  * derrière FeatureGate capability="engagement".
@@ -19,6 +21,7 @@ import { getSquadText } from './i18n'
 import { SquadIntensityProfileChart } from './SquadIntensityProfileChart'
 import { SquadEfficiencyChart } from './SquadEfficiencyChart'
 import { SquadNetLivesChart } from './SquadNetLivesChart'
+import { SquadFdaGapCumulativeCard } from './SquadFdaGapCumulativeCard'
 import { SquadEngagementGapChart } from './SquadEngagementGapChart'
 import { SquadEngagementSection } from '@/features/engagement/SquadEngagementSection'
 import { FeatureGate } from '@/lib/capabilities/FeatureGate'
@@ -120,13 +123,30 @@ export function SquadDynamiquePage() {
         labels={t.efficiencySeries}
       />
 
-      <SquadNetLivesChart
-        rowsByPlayer={perfSeriesByPlayer}
-        playerOrder={playerOrder}
-        colorByPlayer={playerColors}
-        t={t}
-        emptyMessage={t.empty.noBlockData}
-      />
+      {/* Deux cumuls au fil de la soirée, MÊME ABSCISSE (#1..#n, match_order) et même
+          hauteur, côte à côte sur desktop (empilés en mobile). Chaque carte se masque
+          d'elle-même sans sa capability (dégâts subis / FDA attendu) : la survivante
+          prend alors toute la rangée (`only-child`), et la rangée vide disparaît
+          (`empty:hidden`) — jamais une demi-rangée orpheline. */}
+      <div
+        className="grid gap-4 empty:hidden md:grid-cols-2 md:[&>*:only-child]:col-span-2"
+        data-testid="squad-cumulative-row"
+      >
+        <SquadNetLivesChart
+          rowsByPlayer={perfSeriesByPlayer}
+          playerOrder={playerOrder}
+          colorByPlayer={playerColors}
+          t={t}
+          emptyMessage={t.empty.noBlockData}
+        />
+        <SquadFdaGapCumulativeCard
+          rowsByPlayer={perfSeriesByPlayer}
+          playerOrder={playerOrder}
+          colorByPlayer={playerColors}
+          t={t}
+          emptyMessage={t.empty.noBlockData}
+        />
+      </div>
 
       <FeatureGate capability="engagement">
         {/* Engagement + Écart d'engagement cumulé côte à côte sur desktop (empilés

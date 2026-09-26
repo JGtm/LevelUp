@@ -2,8 +2,8 @@
  * SquadFragSection — regroupe les 3 graphes « frags » de l'Escouade.
  *
  * Relocalisé depuis l'onglet Contributions (SquadContributionsPage +
- * SquadPerformanceCharts) vers l'onglet Synergies. Comportement identique,
- * simplement déplacé :
+ * SquadPerformanceCharts) vers Synergies, puis vers l'onglet Usages
+ * (SquadUsagesPage, lot 3 « sections » du 2026-09-22). Les trois graphes :
  *   1. Répartition des frags (barres empilées par classe) — ChartCard +
  *      buildFragBreakdownOption.
  *   2. Outils de destruction (armes gun + détail non-arme depuis frag_classes) —
@@ -11,7 +11,7 @@
  *   3. Précision par rôle (native Halo 5, gaté DATA sur weapon_accuracy) —
  *      SquadWeaponAccuracyBarsChart.
  */
-import { useCallback, useMemo, type ReactNode } from 'react'
+import { useCallback, useMemo } from 'react'
 import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
 import { ChartLegend } from '@/components/charts/ChartLegend'
 import { formatMessage } from '@/lib/i18n/format'
@@ -39,13 +39,6 @@ interface SquadFragSectionProps {
   playerOrder: string[]
   locale: Locale
   t: SquadText
-  /**
-   * Slot optionnel monté À GAUCHE de « Répartition des frags » (rangée 1) —
-   * carte « Écart cumulé au FDA attendu » sur Infinite (gate `expected_stats`
-   * côté parent). Mutuellement exclusif avec `weaponAccuracy` (natif Halo 5) :
-   * les titres se distinguent par capability, jamais les deux à la fois.
-   */
-  leftOfBreakdown?: ReactNode
 }
 
 export function SquadFragSection({
@@ -56,7 +49,6 @@ export function SquadFragSection({
   playerOrder,
   locale,
   t,
-  leftOfBreakdown,
 }: SquadFragSectionProps) {
   // Série sentinelle pour l'empty-state du ChartCard : non vide dès qu'un joueur
   // a au moins une classe de frags (buildFragBreakdownOption filtre lui-même sur
@@ -134,19 +126,10 @@ export function SquadFragSection({
 
   return (
     <section className="space-y-4">
-      {/* Rangée 1 — composition mutuellement exclusive :
-          - leftOfBreakdown (Écart cumulé FDA, Infinite) → [Écart | Répartition] ;
-          - sinon weaponAccuracy (Précision native, Halo 5) → [Répartition | Précision] ;
-          - sinon → Répartition pleine largeur.
-          Les capabilities `expected_stats` (Infinite) et `weapon_accuracy` (H5)
-          sont disjointes : si jamais les deux coexistaient (cas impossible
-          aujourd'hui), la branche leftOfBreakdown l'emporte. */}
-      {leftOfBreakdown ? (
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-          {leftOfBreakdown}
-          {fragBreakdownCard}
-        </div>
-      ) : weaponAccuracy ? (
+      {/* Rangée 1 :
+          - weaponAccuracy (Précision native, Halo 5) → [Répartition | Précision] ;
+          - sinon → Répartition pleine largeur. */}
+      {weaponAccuracy ? (
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
           {fragBreakdownCard}
           <SquadWeaponAccuracyBarsChart
