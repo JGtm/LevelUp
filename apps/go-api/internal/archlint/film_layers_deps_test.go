@@ -204,6 +204,11 @@ var couchesDuDecodeur = map[string]coucheFilm{
 	// sous la sentinelle de `filmproc`, et mesure par `grammar.FrameClosure` — il ne decode rien
 	// pour la production et ne publie rien. Un seul paquet (`main`), sans bibliotheque a cote.
 	"internal/games/halo_infinite/film/research/cmd_fermeture": horsCoucheFilm,
+	// Lot J4.5 (2026-09-26) : l instrument de recherche du SWAP d arme, descendu de
+	// `cmd/rdata_weapon_scan` (tag `research`). Il lit le registre et les trames d UN film du cache
+	// par les couches internes — il etait le seul consommateur hors du decodeur de
+	// `decfilm.LecteurSur` et `decfilm.Paquets`. Il ne decode rien pour la production.
+	"internal/games/halo_infinite/film/research/cmd_rdata_weapon_scan": horsCoucheFilm,
 
 	// --- source : charger, decompresser, decouper, lire l en-tete, tenir le lecteur de bits.
 	// `source` est une FEUILLE sans aucun import du depot (ratchet `filmsource_leaf_test.go`)

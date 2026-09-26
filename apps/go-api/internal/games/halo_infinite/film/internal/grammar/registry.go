@@ -318,7 +318,7 @@ func parseRegistry(data []byte) *Registry {
 //	                                                            et par replaybuild)
 //	internal/sync/killcollector/hits.go:113
 //
-// (`cmd/rdata_weapon_scan/main.go` l'appelle aussi trois fois : outil de recherche, hors
+// (`film/research/cmd_rdata_weapon_scan` l'appelle aussi trois fois : outil de recherche, hors
 // production.) Reproductions et non-regression : registry_tronque_test.go.
 //
 // Un tampon plus court que l'en-tete est entierement de la queue : il ne porte meme pas le

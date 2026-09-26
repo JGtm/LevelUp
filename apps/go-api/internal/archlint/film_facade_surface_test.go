@@ -124,7 +124,14 @@ const exigenceDeJustificationDatee = "UNE HAUSSE EXIGE UNE JUSTIFICATION DATEE D
 // — `ScanPontDIdentite` et ses deux types, `OptionsDuPont` / `LecturesDuPont`, que
 // `sync/killcollector` doit NOMMER pour fournir sa politique (roster de l index) et lire les
 // six lectures. Les quatre renvois de J4.2 restent : des tests et `replaybuild` les citent.
-const plafondSurfaceFacade = 173 // 2026-09-26 — J4.3 sur 4c4452c05 : 170 + 3 (etage du pont d identite)
+// 165 LE 2026-09-26 (lot J4.5, meme base) : HUIT symboles sans consommateur retires. L unique
+// consommateur hors du decodeur de `LecteurSur` et `Paquets` (le lecteur de bits et le marcheur de
+// paquets), l outil de recherche `cmd/rdata_weapon_scan`, est descendu sous
+// `film/research/cmd_rdata_weapon_scan` et lit les couches internes ; avec eux tombent les six
+// symboles qu il etait seul a citer (`DecodeFrameRecords`, `FrameConfig`, `NewWorld`,
+// `ProfilDeBalayageParDefaut`, `Registry`, `World`). `Inflate` reste : il a des consommateurs de
+// production (ADR 0034, amendement du 2026-09-26 bis, D-2).
+const plafondSurfaceFacade = 165 // 2026-09-26 — J4.5 sur 4c4452c05 : 173 - 8 (consommateur de recherche descendu sous film/research)
 
 // plafondSurfaceReplay — identifiants `replay.<Symbole>` DISTINCTS cites hors de `film/`.
 //
@@ -288,13 +295,13 @@ const plafondSurfaceReplay = 276 // 2026-09-26 — audit(J4.2) sur 7e8730281 : 2
 // A quoi elle sert : un total qui ne bouge pas peut cacher un symbole retire d un cote et ajoute
 // de l autre. La ventilation nomme alors la couche qui a grossi.
 var plafondsParFamilleFacade = map[string]int{
-	"grammar":    53, // 2026-09-26 — J4.2 : +4 (ScanClockOrigin, ScanDeaths, ScanFilmDeaths, ScanPlayerIndices) ; J4.3 : +3 (ScanPontDIdentite, OptionsDuPont, LecturesDuPont)
+	"grammar":    46, // 2026-09-26 — J4.2 : +4 (lectures du pont) ; J4.3 : +3 (etage du pont) ; J4.5 : -7 (DecodeFrameRecords, FrameConfig, LecteurSur, NewWorld, ProfilDeBalayageParDefaut, Registry, World)
 	"objectives": 37,
 	"killsource": 36, // 2026-09-26 — lot J3.3 : `decfilm.Rev` renvoie a `killsource.Rev` (la famille `facts` disparait avec son paquet ; total inchange)
 	"fallback":   11,
 	"types":      10,
 	"profile":    8,
-	"source":     7,
+	"source":     6, // 2026-09-26 — J4.5 : -1 (Paquets)
 	"weaponscan": 5,
 	"weaponv3":   4,
 	"positions":  2,
