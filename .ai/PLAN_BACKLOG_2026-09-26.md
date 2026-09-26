@@ -373,6 +373,9 @@ case non statuée du lot courant. Les décisions du §2 ne se re-décident pas.
   constaté le défaut (qu'il nomme).
   - Laissé ouvert par l'exécutant (gate du superviseur). Question à poser avec : à quelle
     VITESSE le défaut a-t-il été constaté (cf. DA-3) ?
+  - Réponse de l'utilisateur (2026-09-26) : il regarde à 1× ou à 2× au plus. L'écoute se fait
+    donc aux DEUX vitesses. Si la fanfare manque encore à 1× après le correctif, c'est une autre
+    cause : elle est rapportée, pas corrigée dans ce lot.
 
 **Gate** : WEB (filtres `src/features/match-replay/sound`), recette A1.5, gate utilisateur A1.6.
 
@@ -1221,3 +1224,20 @@ plus B5.8.
   - Un test de plus que la liste (`TestExecScriptContext_HonoursContext`).
   - Les suites complètes ont dépassé les 10 min de l'outil : lancées au premier plan, basculées
     en tâche de fond par l'outil, attendues par une boucle au premier plan.
+
+**[2026-09-27] Superviseur — vérification de B2.**
+
+- Diff `edd0054d5` relu : `sync.execScript` délègue en une ligne à
+  `migration.ExecScriptContext` ; `splitSQL`, `trimSpace` et `truncate` sont supprimés avec leurs
+  tests ; le garde-rail AST couvre `internal/` et `cmd/`.
+- Gates rejoués avec le cache dédié :
+  - `EXIT_BUILD=0`, `EXIT_VET=0` ;
+  - `EXIT_TEST=0` (migration, sync, sync/skill, archlint, diag_exec) ;
+  - `EXIT_INTEG_SYNC=0` (filtre EnsurePlayerSchema, EnsureSharedSchema, PlayerSchemaAuthority,
+    ExecScript) ;
+  - `EXIT_INTEG_MIG=0` (migration, sync/skill : le test de rafales LUSR, DB-8, est passé cette
+    fois) ;
+  - `EXIT_LINT=0` (`0 issues.`).
+- Les suites complètes restent celles de l'exécutant (échecs sous charge, verts rejoués seuls).
+  La CI de branche sert d'autorité : branche poussée après cette vérification.
+- Réponse de l'utilisateur sur la vitesse (1× ou 2× au plus) versée en A1.6.
