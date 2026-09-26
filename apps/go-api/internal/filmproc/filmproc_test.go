@@ -164,7 +164,7 @@ func TestRelayInterceptLeProtocoleEtRelaieLeReste(t *testing.T) {
 	var out strings.Builder
 	r := &Runner{out: &out}
 	src := strings.NewReader("premiere ligne\n" + peakMarker + "4096\nseconde ligne\n")
-	pic := r.relay(src)
+	pic, _ := r.relay(src)
 	if pic != 4096 {
 		t.Errorf("pic relaye = %d, attendu 4096", pic)
 	}

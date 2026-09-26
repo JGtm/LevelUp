@@ -185,23 +185,42 @@ type guardedRef struct {
 	Index   uint32 // index brut (à additionner à la base du domaine pour obtenir le slot)
 	Gen     uint32 // génération du handle (2 bits)
 	EndBit  int    // bit juste après la référence
+	// Tronquee : la référence déborde du payload (lot J2.9, constats GA1-1/GB-2, 2026-09-26).
+	// Rien n'est lu au-delà du dernier bit, Present reste faux, EndBit pointe APRÈS la fin du
+	// payload — les lectures qui suivent sont donc tronquées à leur tour — et l'événement qui la
+	// porte est refusé par son décodeur.
+	Tronquee bool
 }
 
 // readDom1Ref lit une référence gardée de DOMAINE 1 (bipède/unité) à partir du bit `at` :
 // garde(1) ; si 1 : sonde(1) ; R(sonde?9:13) index ; R(2) génération.
+//
+// BORNÉE (lot J2.9, 2026-09-26) : une référence qui déborde du payload est rendue TRONQUÉE
+// ([refTronquee]) au lieu de faire paniquer `readBitsAt`. Une référence qui tient est lue
+// exactement comme avant.
 func readDom1Ref(pay []byte, at int) guardedRef {
+	fin := len(pay) * 8
+	if at < 0 || at >= fin {
+		return refTronquee(pay)
+	}
 	r := guardedRef{EndBit: at + 1}
 	if readBitsAt(pay, at, 1) == 0 {
 		return r
 	}
-	r.Present = true
 	b := at + 1
-	r.Sonde = int(readBitsAt(pay, b, 1))
+	if b >= fin {
+		return refTronquee(pay)
+	}
+	sonde := int(readBitsAt(pay, b, 1))
 	b++
 	w := 13
-	if r.Sonde == 1 {
+	if sonde == 1 {
 		w = 9
 	}
+	if b+w+2 > fin {
+		return refTronquee(pay)
+	}
+	r.Present, r.Sonde = true, sonde
 	r.Index = readBitsAt(pay, b, w)
 	b += w
 	r.Gen = readBitsAt(pay, b, 2)
@@ -210,19 +229,33 @@ func readDom1Ref(pay []byte, at int) guardedRef {
 }
 
 // readPlainRef lit une référence gardée SANS sonde (domaines 2..8) de largeur w : garde(1) ;
-// si 1 : R(w) index ; R(2) génération.
+// si 1 : R(w) index ; R(2) génération. Bornée comme [readDom1Ref].
 func readPlainRef(pay []byte, at, w int) guardedRef {
+	fin := len(pay) * 8
+	if at < 0 || at >= fin {
+		return refTronquee(pay)
+	}
 	r := guardedRef{EndBit: at + 1}
 	if readBitsAt(pay, at, 1) == 0 {
 		return r
 	}
-	r.Present = true
 	b := at + 1
+	if b+w+2 > fin {
+		return refTronquee(pay)
+	}
+	r.Present = true
 	r.Index = readBitsAt(pay, b, w)
 	b += w
 	r.Gen = readBitsAt(pay, b, 2)
 	r.EndBit = b + 2
 	return r
+}
+
+// refTronquee rend la référence d'un payload trop court : absente, marquée tronquée, et finie
+// APRÈS le dernier bit — la référence suivante, lue à partir de là, l'est donc aussi, et le
+// décodeur de l'événement n'a qu'à regarder la DERNIÈRE pour savoir si une seule a débordé.
+func refTronquee(pay []byte) guardedRef {
+	return guardedRef{Tronquee: true, EndBit: len(pay)*8 + 1}
 }
 
 // --- Événements véhicule (embarquement / sortie) ----------------------------------------------
@@ -248,12 +281,18 @@ func decodeVehicleEvent(pay []byte, base uint32, inBand SlotBand) (types.Vehicle
 		return types.VehicleEvent{}, false
 	}
 	ev := types.VehicleEvent{Kind: typ}
-	var seatBit int
+	var derniere guardedRef
 	if typ == EventUnitExitVehicle {
-		seatBit = decodeExitRefs(pay, base, inBand, &ev)
+		derniere = decodeExitRefs(pay, base, inBand, &ev)
 	} else {
-		seatBit = decodeBoardRefs(pay, base, inBand, &ev)
+		derniere = decodeBoardRefs(pay, base, inBand, &ev)
 	}
+	if derniere.Tronquee {
+		// Une référence a débordé du payload (lot J2.9) : l'événement est REFUSÉ, jamais publié
+		// avec un occupant ou un véhicule absent qui serait un fait plausible et faux.
+		return types.VehicleEvent{}, false
+	}
+	seatBit := derniere.EndBit
 	if seatBit+vehicleSeatBits <= len(pay)*8 {
 		ev.Seat = readBitsAt(pay, seatBit, vehicleSeatBits)
 		ev.SeatValid = true
@@ -261,7 +300,8 @@ func decodeVehicleEvent(pay []byte, base uint32, inBand SlotBand) (types.Vehicle
 	return ev, true
 }
 
-// decodeExitRefs lit les trois références gardées d'une SORTIE et rend le bit du siège.
+// decodeExitRefs lit les trois références gardées d'une SORTIE et rend la DERNIÈRE : le siège
+// se lit à son `EndBit`, et elle est tronquée dès qu'une des trois l'est ([refTronquee]).
 // Domaines lus dans l'exécutable (vtable+0x58 du descripteur `unit_exit_vehicle`, 0x14080a018) :
 // réf 0 -> domaine 1, réf 1 -> domaine 1, réf 2 -> domaine 7. C'est exactement la grammaire
 // validée par la mesure (occupant en bande 95,5 %, siège 0 sur 93,8 %).
@@ -270,7 +310,7 @@ func decodeVehicleEvent(pay []byte, base uint32, inBand SlotBand) (types.Vehicle
 // pas : la réf 0 est l'OCCUPANT (100 % en bande bipède), la réf 1 est le VÉHICULE (105 / 105 en
 // bande `ti=40`, zéro bipède — V7 § 7). La réf 1 était lue et JETÉE jusqu'au lot V8 ; elle est
 // désormais publiée, et c'est elle qui nomme le véhicule d'un épisode d'occupation.
-func decodeExitRefs(pay []byte, base uint32, inBand SlotBand, ev *types.VehicleEvent) int {
+func decodeExitRefs(pay []byte, base uint32, inBand SlotBand, ev *types.VehicleEvent) guardedRef {
 	r0 := readDom1Ref(pay, eventPayloadStartBit)
 	if r0.Present {
 		ev.OccupantPresent = true
@@ -293,7 +333,7 @@ func decodeExitRefs(pay []byte, base uint32, inBand SlotBand, ev *types.VehicleE
 		}
 	}
 	r2 := readPlainRef(pay, r1.EndBit, dom7RefWidth)
-	return r2.EndBit
+	return r2
 }
 
 // boardRefs lit les TROIS références gardées d'un EMBARQUEMENT (`biped_board_vehicle`).
@@ -321,16 +361,17 @@ func boardRefs(pay []byte) (r0, r1, r2 guardedRef) {
 	return r0, r1, r2
 }
 
-// decodeBoardRefs remplit l'occupant d'un EMBARQUEMENT et rend le bit du siège. L'occupant est la
-// réf 0 (domaine 2), rapportée à la base de la bande bipède comme pour la sortie.
-func decodeBoardRefs(pay []byte, base uint32, inBand SlotBand, ev *types.VehicleEvent) int {
+// decodeBoardRefs remplit l'occupant d'un EMBARQUEMENT et rend sa DERNIÈRE référence (cf.
+// [decodeExitRefs]). L'occupant est la réf 0 (domaine 2), rapportée à la base de la bande
+// bipède comme pour la sortie.
+func decodeBoardRefs(pay []byte, base uint32, inBand SlotBand, ev *types.VehicleEvent) guardedRef {
 	r0, _, r2 := boardRefs(pay)
 	if r0.Present {
 		ev.OccupantPresent = true
 		ev.OccupantSlot = base + r0.Index
 		ev.OccupantInBand = inBand.Has(ev.OccupantSlot)
 	}
-	return r2.EndBit
+	return r2
 }
 
 // ScanFilmVehicleEvents est l'ENVELOPPE D2, HORS PRODUCTION : elle charge le film puis appelle

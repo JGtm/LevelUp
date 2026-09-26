@@ -9,8 +9,8 @@ package replayartifacts
 
 import (
 	"context"
+	"errors"
 	"log/slog"
-	"strings"
 	"time"
 
 	"levelup/go-api/internal/ctxkeys"
@@ -315,17 +315,18 @@ func cuireUnMatch(ctx context.Context, d Deps, w buildWork, b *bilanCuisson, res
 		// Carte hors catalogue = échec voulu (Forge) ; le reste = erreur réelle.
 		// Les deux sont best-effort, mais seuls les seconds méritent un WARN.
 		logFn := slog.WarnContext
-		if strings.Contains(berr.Error(), replaybuild.ErrMapNotInCatalog.Error()) {
+		if errors.Is(berr, replaybuild.ErrMapNotInCatalog) {
 			logFn = slog.DebugContext
 		}
 		// CLÉ INCONNUE = ÉCARTÉ, PAS UN ÉCHEC (lot 3.1.1). Le film est là et lisible ; ce qui
 		// manque est une ligne de table côté dépôt. Le compter en échec ferait chercher une
 		// panne, et noierait dans le bruit le seul signal qui compte : le jeu a changé.
 		//
-		// LE TEST PORTE SUR LE TEXTE, comme celui d'`ErrMapNotInCatalog` juste au-dessus, et
-		// pour la même raison : l'erreur traverse une FRONTIÈRE DE PROCESSUS (l'enfant de
-		// cuisson rend un code de sortie et un `stderr`), donc `errors.Is` n'a rien à mordre.
-		if strings.Contains(berr.Error(), replaybuild.ErrUnknownFilmKey.Error()) {
+		// LE CLASSEMENT PORTE SUR LE TYPE, JAMAIS SUR LE TEXTE (lot J2.12, décision DT-5) :
+		// l'erreur traverse une frontière de processus, mais la RAISON du refus la traverse
+		// aussi, en jeton de protocole (`filmproc.EmitRaison`), et `replaychild` rend l'erreur
+		// typée enveloppée — `errors.Is` a donc de quoi mordre.
+		if errors.Is(berr, replaybuild.ErrUnknownFilmKey) {
 			slog.WarnContext(ctx, "post-sync: artefact rejeu ECARTE — clé du film absente de la "+
 				"table de profil (ajouter la ligne : docs/RUNBOOK_FILM_PROFILES.md)",
 				"gamertag", d.Gamertag, "match_id", w.matchID, "err", berr)
@@ -335,8 +336,8 @@ func cuireUnMatch(ctx context.Context, d Deps, w buildWork, b *bilanCuisson, res
 		// FILM NON FINALISÉ = ÉCARTÉ, PAS UN ÉCHEC (lot L3, 2026-09-23). La cuisson refuse un
 		// film dont le manifeste ne porte pas le morceau des temps forts, ou dont des morceaux ne
 		// sont pas décrits par le manifeste : cuire un film TRONQUÉ publierait un document faux
-		// (`ab526724`). Même frontière de processus, donc même test sur le texte.
-		if strings.Contains(berr.Error(), filmcache.ErrFilmNonFinalise.Error()) {
+		// (`ab526724`). Même frontière de processus, donc même classement par le type.
+		if errors.Is(berr, filmcache.ErrFilmNonFinalise) {
 			slog.InfoContext(ctx, "post-sync: artefact rejeu ÉCARTÉ — film non finalisé au cache",
 				"gamertag", d.Gamertag, "match_id", w.matchID, "err", berr)
 			b.ecartes++

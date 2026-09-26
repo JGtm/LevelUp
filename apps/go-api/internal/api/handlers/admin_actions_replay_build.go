@@ -2,8 +2,8 @@
 // d'un match » (job asynchrone via JobStore, patron admin_actions_convergence).
 //
 // POST /admin/actions/replay-build/run {match_id} → 202 + AsyncJobStatus.
-// Le runner appelle la LIBRAIRIE internal/replaybuild (jamais un exec de CLI) ; le
-// décodage est sérialisé par le verrou process filmdec, partagé avec killsource. Le
+// Le runner délègue le décodage à un ENFANT borne qui prend le verrou solo (chemin de l'étape
+// 1.58 du post-sync, cf. wire/registry_replay_build.go) et range lui-même les octets rendus. Le
 // single-flight applicatif vit dans le runner (replayBuildMu) — ici on refuse seulement
 // un second job sur le MÊME match (409 avec le job_id actif, contrat convergence).
 package handlers
