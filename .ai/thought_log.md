@@ -113540,3 +113540,9 @@ serveur relance a synchronise depuis). Tache Notion 10 CLOSE.
 **Addendum 2026-09-26 (revue fraîche)** : un relecteur neuf sur toute la branche, périmètre fermé : 0 défaut de comportement, 3 constats P2 de véracité (ADR, écart de nom annoncé épinglé sans test, commentaires périmés), corrigés en `220e0fbda` et vérifiés par le superviseur. Branche toujours ni poussée ni fusionnée.
 
 **Addendum 2026-09-26 (décision utilisateur sur la suite)** : lot C (compaction des tables append-only) abandonné, jugé superflu ; lot B (pages à historique complet, cache de lecture invalidé au sync) facultatif, rouvert seulement si la mesure prod le justifie. Consigné au §7 du handoff.
+
+## [2026-09-26] Perf : plan de la compaction des passes de décodage (lot C) et du bornage aux matchs du joueur (lot B) — En cours (plan écrit, rien lancé)
+
+**Décision technique principale** : mesure sur copie de la base partagée : environ 90 % des lignes des tables issues du film sont des passes de décodage supersédées (`match_kill_events` 3 953 799 brutes pour 412 216 servies par `_latest`, rapport 7,5 à 12 sur dix tables). La vue ne garde que la dernière passe mais chaque lecture parcourt toutes les autres. L'utilisateur, qui avait écarté le lot C, le retient (aucun usage des anciennes passes) et restreint le lot B au bornage des lectures aux matchs du joueur, sans cache. Ordre : C (reconstruction CTAS transactionnelle sans DELETE, commande CLI d'entretien serveur arrêté, preuve par empreintes des vues) puis B mesuré sur la copie compactée. Plan `.ai/PLAN_PERF_COMPACTION_ET_PERIMETRE_JOUEUR_2026-09-26.md`.
+
+**Prochaine étape** : lancer l'étape C (exécuteur Opus effort élevé) sur go de l'utilisateur.
