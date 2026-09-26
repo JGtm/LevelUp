@@ -24,6 +24,9 @@ package migration
 // cardinalité et sans recoverOrphan (perte de données possible sur crash/erreur
 // mid-swap). Le helper supprime cette asymétrie de sûreté.
 //
+// La mécanique de l'échange (TX, garde, RENAME, recoverOrphan) vit dans table_swap.go depuis
+// le 2026-09-26 : la compaction des passes supersédées (compaction.go) la partage.
+//
 // **Exception documentée** : player_match_enrichment n'utilise PAS ce helper —
 // sa vue _latest est un merge-on-read par colonne propriétaire (`stage`), pas une
 // simple dernière-version ; son swap reste bespoke (steps_player_append_only_match_enrichment.go).
@@ -81,33 +84,15 @@ func (s appendOnlyRebuild) marker() string {
 	return "id"
 }
 
+// appendOnlySuffix : suffixe de la table de construction d'une conversion append-only.
+const appendOnlySuffix = "__appendonly"
+
 // recoverOrphanAppendOnly répare l'état laissé par un crash AU MILIEU d'un swap
 // append-only : table principale absente + `<table>__appendonly` orpheline. On
 // renomme l'orpheline en principale. Idempotent (no-op si la principale existe ou
-// si l'orpheline est absente). Générique — remplace les recoverOrphan* par-table.
+// si l'orpheline est absente). Délègue au cœur commun (table_swap.go).
 func recoverOrphanAppendOnly(ctx context.Context, db *sql.DB, table string) error {
-	hasMain, err := tableExists(db, table)
-	if err != nil {
-		return fmt.Errorf("append-only %s: check main: %w", table, err)
-	}
-	if hasMain {
-		return nil
-	}
-	orphan := table + "__appendonly"
-	hasOrphan, err := tableExists(db, orphan)
-	if err != nil {
-		return fmt.Errorf("append-only %s: check %s: %w", table, orphan, err)
-	}
-	if !hasOrphan {
-		return nil
-	}
-	slog.WarnContext(ctx, "append-only: orphelin __appendonly (crash mid-swap) — récupération",
-		"table", table, "action", "RENAME "+orphan+" -> "+table)
-	if _, err := db.ExecContext(ctx, fmt.Sprintf(
-		`ALTER TABLE %s__appendonly RENAME TO %s`, table, table)); err != nil {
-		return fmt.Errorf("append-only %s: recover orphan: %w", table, err)
-	}
-	return nil
+	return recoverOrphanTable(ctx, db, table, appendOnlySuffix)
 }
 
 // applyAppendOnlyRebuild : point d'entrée idempotent d'une conversion append-only.
@@ -158,9 +143,10 @@ func refreshAppendOnlyView(ctx context.Context, db *sql.DB, spec appendOnlyRebui
 }
 
 // rebuildAppendOnlyTx : swap CTAS transactionnel avec garde anti-perte
-// (rebuilt==before) et rollback intégral. Les rows existantes deviennent la
-// version 0 ; toute écriture future alloue un id (et éventuellement un
-// generation_id) supérieur et les supersède via la vue _latest.
+// (rebuilt==before) et rollback intégral, par le cœur commun swapTableTx
+// (table_swap.go). Les rows existantes deviennent la version 0 ; toute écriture
+// future alloue un id (et éventuellement un generation_id) supérieur et les
+// supersède via la vue _latest.
 func rebuildAppendOnlyTx(ctx context.Context, db *sql.DB, spec appendOnlyRebuild) error {
 	cols, err := loadTableColumns(ctx, db, spec.Table)
 	if err != nil {
@@ -170,72 +156,34 @@ func rebuildAppendOnlyTx(ctx context.Context, db *sql.DB, spec appendOnlyRebuild
 		return nil
 	}
 
-	selectList := buildAppendOnlySelectList(cols, spec)
-
-	var before int
-	if err := db.QueryRowContext(ctx,
-		fmt.Sprintf(`SELECT COUNT(*) FROM %s`, spec.Table)).Scan(&before); err != nil {
-		return fmt.Errorf("append-only %s: count before: %w", spec.Table, err)
-	}
-
-	tx, err := db.BeginTx(ctx, nil)
-	if err != nil {
-		return fmt.Errorf("append-only %s: begin tx: %w", spec.Table, err)
-	}
-	committed := false
-	defer func() {
-		if !committed {
-			_ = tx.Rollback()
-		}
-	}()
-
 	// Séquences (id + extras éventuelles) avant le CTAS qui les référence.
+	build := make([]string, 0, 2+len(spec.ExtraSeqs))
 	for _, seq := range append([]string{spec.IDSeq}, spec.ExtraSeqs...) {
-		if _, err := tx.ExecContext(ctx,
-			fmt.Sprintf(`CREATE SEQUENCE IF NOT EXISTS %s START 1`, seq)); err != nil {
-			return fmt.Errorf("append-only %s: create sequence %s: %w", spec.Table, seq, err)
-		}
+		build = append(build, fmt.Sprintf(`CREATE SEQUENCE IF NOT EXISTS %s START 1`, seq))
 	}
-	if _, err := tx.ExecContext(ctx,
-		fmt.Sprintf(`DROP TABLE IF EXISTS %s__appendonly`, spec.Table)); err != nil {
-		return fmt.Errorf("append-only %s: drop stale __appendonly: %w", spec.Table, err)
-	}
-	if _, err := tx.ExecContext(ctx, fmt.Sprintf(
-		`CREATE TABLE %s__appendonly AS SELECT %s FROM %s`,
-		spec.Table, selectList, spec.Table)); err != nil {
-		return fmt.Errorf("append-only %s: create __appendonly: %w", spec.Table, err)
-	}
+	build = append(build, fmt.Sprintf(`CREATE TABLE %s%s AS SELECT %s FROM %s`,
+		spec.Table, appendOnlySuffix, buildAppendOnlySelectList(cols, spec), spec.Table))
 
-	var rebuilt int
-	if err := tx.QueryRowContext(ctx,
-		fmt.Sprintf(`SELECT COUNT(*) FROM %s__appendonly`, spec.Table)).Scan(&rebuilt); err != nil {
-		return fmt.Errorf("append-only %s: count __appendonly: %w", spec.Table, err)
-	}
-	if rebuilt != before {
-		return fmt.Errorf("append-only %s: swap abandonné, rebuilt=%d != before=%d (rollback, zéro perte)",
-			spec.Table, rebuilt, before)
-	}
-
-	stmts := make([]string, 0, 4+len(spec.PostSwap))
-	stmts = append(stmts,
-		fmt.Sprintf(`DROP TABLE %s`, spec.Table),
-		fmt.Sprintf(`ALTER TABLE %s__appendonly RENAME TO %s`, spec.Table, spec.Table),
+	post := make([]string, 0, 2+len(spec.PostSwap))
+	post = append(post,
 		fmt.Sprintf(`ALTER TABLE %s ADD PRIMARY KEY (id)`, spec.Table),
 		fmt.Sprintf(`ALTER TABLE %s ALTER COLUMN id SET DEFAULT nextval('%s')`, spec.Table, spec.IDSeq),
 	)
-	stmts = append(stmts, spec.PostSwap...)
-	for _, stmt := range stmts {
-		if _, err := tx.ExecContext(ctx, stmt); err != nil {
-			return fmt.Errorf("append-only %s: swap step (%s): %w", spec.Table, firstWords(stmt, 3), err)
-		}
+	post = append(post, spec.PostSwap...)
+
+	n, err := swapTableTx(ctx, db, tableSwap{
+		Table:      spec.Table,
+		Suffix:     appendOnlySuffix,
+		Expected:   fmt.Sprintf(`SELECT COUNT(*) FROM %s`, spec.Table),
+		Build:      build,
+		PostRename: post,
+	})
+	if err != nil {
+		return fmt.Errorf("append-only %s: %w", spec.Table, err)
 	}
-	if err := tx.Commit(); err != nil {
-		return fmt.Errorf("append-only %s: commit swap: %w", spec.Table, err)
-	}
-	committed = true
 
 	slog.InfoContext(ctx, "append-only: migration appliquée (ART éradiqué par construction)",
-		"table", spec.Table, "rows", before, "columns_preserved", len(cols))
+		"table", spec.Table, "rows", n.Rebuilt, "columns_preserved", len(cols))
 	return nil
 }
 

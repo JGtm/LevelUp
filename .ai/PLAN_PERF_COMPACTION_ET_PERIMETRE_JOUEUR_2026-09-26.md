@@ -108,9 +108,12 @@ Items :
 - [x] C.1 inventaire (DC.1) : tables, règle de leur vue, rapport mesuré, lecteurs bruts ; liste
       retenue et exclusions justifiées écrites ici — Journal C, « C.1 » : 13 tables retenues
       (12 à passe + `match_bomb_stats`), toutes les autres vues `_latest` exclues avec leur raison
-- [ ] C.2 cœur de compaction (DC.2, DC.3) + tests d'intégration : passes multiples, match à une
+- [x] C.2 cœur de compaction (DC.2, DC.3) + tests d'intégration : passes multiples, match à une
       seule passe, table vide, crash simulé en cours de swap (`recoverOrphan`), idempotence,
-      séquence qui continue, DDL identique, vue identique avant / après
+      séquence qui continue, DDL identique, vue identique avant / après — `migration/table_swap.go`
+      (cœur extrait d'`append_only_rebuild.go`, qui l'appelle), `compaction_registry.go`,
+      `compaction.go` ; tests `compaction_test.go` (9) et
+      `games/halo_infinite/migrations/compaction_e2e_test.go` (schéma partagé réel) — Journal C
 - [ ] C.3 commande CLI (DC.4) : `--dry-run`, refus si la base est tenue, sauvegarde, journal ;
       tests de la commande
 - [ ] C.4 `--rewrite-file` (DC.5), ou `[!]` prouvé
