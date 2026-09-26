@@ -790,27 +790,36 @@ niveau job, fusion dans `feat/v75`, suppression du worktree et de la branche.
 - Le harnais `psarepro` (1 488 lignes) reste : `challenge_snapshots` et `battlepass_snapshots`
   gardent des index.
 
-- [ ] **B3.1 Mesure versionnée AVANT tout retrait** : `psa_index_repro_msr_planprobe_test.go`
+- [x] **B3.1 Mesure versionnée AVANT tout retrait** : `psa_index_repro_msr_planprobe_test.go`
   (tag `psarepro`), DB FICHIER de 12 000 lignes réalistes. EXPLAIN et temps avec et sans index
   pour les sept formes de lecture listées ci-dessus. Critère D-4. Au-delà : **STOP**, index
   conservés, raison écrite.
-- [ ] **B3.2** Migration `drop_msr_secondary_art_indexes_v1` : cible player, 3
+  → Fait : `migration/psa_index_repro_msr_planprobe_test.go` (`TestMSRIndexRemovalPlanProbe`,
+  critère D-4 asserté) + `psa_index_repro_msr_fixture_test.go` (DDL, remplissage, formes).
+  **VERDICT : CRITÈRE D-4 NON TENU → STOP, index CONSERVÉS.** F1 (`Q24LUSRHistory`),
+  F2 (citations, IN(200)) et F3 (escouade, IN(1000)) dépassent 10 ms SANS index (13,5 / 13,5 /
+  16,7 ms, médiane client, passage final) — mais AUTANT avec index (14,9 / 18,1 / 18,4 ms) :
+  plan séquentiel des deux côtés, 30 fois sur 30. Le dépassement ne vient pas de l'absence
+  d'index. Seule forme qui emprunte un index : F4 (`rating_type = 'CSR'`), ~10× plus LENTE
+  avec (20,3 ms contre 1,9 ms). Tableau complet et raison : journal §7 (B3). Décision de
+  l'amendement de D-4 : superviseur / utilisateur.
+- [!] **B3.2** Migration `drop_msr_secondary_art_indexes_v1` : cible player, 3
   `DROP INDEX IF EXISTS`. `order.go` après `player_msr_view_latest_by_type_v1` ;
   `stepDependencies` vers `lusr_chain_rework_v1` (précédent `drop_career_xuid_art_index_v1`,
   `order.go:126`).
-- [ ] **B3.3** Retrait des `CREATE INDEX idx_msr_*` des autorités non scellées : `schema.go:111-113`,
+- [!] **B3.3** Retrait des `CREATE INDEX idx_msr_*` des autorités non scellées : `schema.go:111-113`,
   `steps_player_match_skill_rank.go:109-111` et `:179-181`. Baseline scellée INTACTE (précédent
   `idx_career_xuid`).
-- [ ] **B3.4** Convergence (D-4) : les `DROP INDEX IF EXISTS` des trois `idx_msr_*` ET des trois
+- [!] **B3.4** Convergence (D-4) : les `DROP INDEX IF EXISTS` des trois `idx_msr_*` ET des trois
   index PSA retirés le 2026-09-20 (noms relus dans la migration PSA) entrent dans l'autorité
   rejouée par `EnsurePlayerSchema`.
-- [ ] **B3.5** Suppressions de la liste ci-dessus, avec imports, types et jauges.
+- [!] **B3.5** Suppressions de la liste ci-dessus, avec imports, types et jauges.
   `no_raw_rating_reads_test.go` n'est PAS modifié (fichier de `feat/perf-perimetre`) : s'il
   mentionne un index retiré, découverte.
-- [ ] **B3.6** Ratchet : `match_skill_rank` entre dans `noSecondaryIndexTables`, avec une
+- [!] **B3.6** Ratchet : `match_skill_rank` entre dans `noSecondaryIndexTables`, avec une
   dispense DATÉE pour `steps_player_baseline.go`. Balayage étendu à `internal/sync/schema.go`.
   Mutation vérifiée.
-- [ ] **B3.7 Tests** (rouges d'abord) :
+- [!] **B3.7 Tests** (rouges d'abord) :
   - `TestPlayerSchemaAuthority_NoMatchSkillRankSecondaryIndex` (`sync/schema_authority_test.go`) ;
   - `steps_player_drop_msr_secondary_indexes_test.go` : retrait, idempotence, lignes et vues
     préservées ;
@@ -818,13 +827,17 @@ niveau job, fusion dans `feat/v75`, suppression du worktree et de la branche.
     → plus aucun.
   - Aucun nouveau fichier dans `internal/sync/` (ratchet de gel) : les tests de `sync` vont dans
     les fichiers existants.
-- [ ] **B3.8** En-tête du harnais `psarepro` réécrit : véhicule de reproduction pour les index
+- [!] **B3.8** En-tête du harnais `psarepro` réécrit : véhicule de reproduction pour les index
   player restants.
-- [ ] **B3.9** Vérification sur COPIE d'une vraie player DB, jamais l'original (copie faite
+- [!] **B3.9** Vérification sur COPIE d'une vraie player DB, jamais l'original (copie faite
   serveur principal arrêté, ce que le superviseur confirme avant). Migration puis `EnsurePlayerSchema` appliqués à la copie, par la CLI existante
   si elle migre une base désignée, sinon par un test d'intégration paramétré par une variable
   d'environnement (pas d'outil jetable). Attendu : `duckdb_indexes()` sans `idx_msr_*` ni index
   PSA, mêmes nombres de lignes, vues intactes.
+
+**B3.2 à B3.9 : `[!]` non traités — STOP D-4 (B3.1).** Le critère décide seul du retrait (§2 D-4 :
+« Sinon, arrêt et rapport ») ; aucun retrait, aucune suppression, aucun ratchet tant que le
+superviseur n'a pas statué. B3.9 n'a donc pas été faite : aucune copie de player DB.
 
 **Gate** : GO-F, plus `go test -tags=psarepro -count=1 ./internal/migration/ -run MSR -v`.
 
@@ -1064,6 +1077,24 @@ plus B5.8.
   dure 872 s seul et `internal/sync` 577 s, contre un délai par défaut de 10 min : la suite
   complète sans `-timeout` les tue sous charge. La recette GO-F du plan (§3.3) ne fixe pas de
   `-timeout`. Non traité.
+- DB-11 (B3.1, 2026-09-27) : `loadExistingCSRMatchIDs` (`sync/csr_writes.go`,
+  `rating_type = 'CSR'`) emprunte `idx_msr_rating_type` à l'exécution (30 fois sur 30) et
+  en est ~10× plus LENT : 20,3 ms avec l'index, 1,9 ms sans. C'est la seule des sept formes
+  qui prend l'index. Tant que l'index reste, cette lecture est aussi exposée à une réponse
+  fausse sur un index désynchronisé (mécanisme du 2026-09-13). Non traité.
+- DB-12 (B3.1) : les témoins C1/C2 (`COUNT(*) WHERE playlist_group = 'h5_arena'`, forme de
+  `cmd/purge_foreign_lusr_chain`) empruntent `idx_msr_playlist` sur une chaîne rare, ce qui
+  confirme la prémisse du lot. F6a/F6b (`loadPreviousLUSRRating`,
+  `loadPreviousDisplayedOrdinal`) restent séquentielles sur les chaînes courantes de la
+  fixture. Non mesuré : une chaîne encore peu peuplée (premiers matchs d'un joueur dans une
+  chaîne) les ferait vraisemblablement passer par l'index, avec un risque de delta ou de
+  palier faux. Non traité.
+- DB-13 (B3.1) : `EXPLAIN` affiche toujours un scan séquentiel en DuckDB 1.5.5. La stratégie
+  se choisit à l'exécution et seul `EXPLAIN ANALYZE` la révèle (déjà écrit dans
+  `RAPPORT_VOLET2_INDEX_PSA_2026-08-28.md` §3.1). Le libellé de B3.1 (« EXPLAIN et temps »)
+  et la pièce « Banc EXPLAIN » (`psa_index_repro_planprobe_test.go`) conduiraient à conclure
+  « index jamais emprunté ». La mesure B3.1 passe par `EXPLAIN ANALYZE`, calibré par un
+  témoin PK. Non traité ailleurs.
 
 ---
 
@@ -1241,3 +1272,76 @@ plus B5.8.
 - Les suites complètes restent celles de l'exécutant (échecs sous charge, verts rejoués seuls).
   La CI de branche sert d'autorité : branche poussée après cette vérification.
 - Réponse de l'utilisateur sur la vitesse (1× ou 2× au plus) versée en A1.6.
+
+**[2026-09-27] B3 — index ART de `match_skill_rank` (item 2) — exécutant opus, worktree du plan. STOP D-4 à B3.1.**
+
+- Mesure : `migration/psa_index_repro_msr_planprobe_test.go` (`TestMSRIndexRemovalPlanProbe`,
+  302 lignes) et `psa_index_repro_msr_fixture_test.go` (245 lignes), tag `psarepro`, inertes
+  hors du tag (`go list` : `IgnoredGoFiles`).
+  - DB fichier de 12 000 lignes, 5 053 matchs : les quatre chaînes de Halo Infinite
+    pondérées, LUSR + LUSR_V2 par match social, CSR sur le classé, versions append-only
+    réécrites, 22 matchs `h5_arena`.
+  - Écriture par lots de 25 matchs en transaction, `CHECKPOINT` toutes les ~2 000 lignes,
+    index posés avant le remplissage.
+  - Copie du fichier, puis `DROP INDEX` des trois et `CHECKPOINT` sur la copie. Les deux
+    bases sont rouvertes à froid.
+  - Plan par `EXPLAIN ANALYZE`, 30 fois : `EXPLAIN` seul ne voit jamais l'index (DB-13).
+  - Temps client : médiane et p90 de 30 exécutions (lignes consommées par `Scan`, sans
+    autre travail), après 3 de chauffe. Temps moteur : médiane du « Total Time ».
+  - Témoin C0 (PK) : Index Scan attendu des deux côtés, sinon `Fatal`.
+  - Même résultat avec et sans index vérifié par une empreinte triée, calculée hors chrono.
+- Défauts de méthode corrigés en cours de mesure :
+  - le passage 1 chronométrait l'empreinte (`fmt.Sprint` et tri de chaque ligne) : écarté ;
+  - le passage 2 détectait le plan par `EXPLAIN`, qui ne montre jamais l'index (le témoin
+    C1 restait séquentiel alors que l'index était pris) : plan écarté, temps valides.
+  - Passages valides pour les temps : 2, 3, 4 et final ; pour les plans : 3, 4 et final.
+  - Logs `B3-1-mesure.log` et `B3-1-mesure-2.log`.
+- Tableau, passage final (log `B3-1-mesure-final.log`, `EXIT_MESURE_FINAL=1` : le critère
+  est asserté).
+  - Colonnes : plan / médiane / p90 / moteur, avec index puis sans index.
+  - Poste chargé à 100 % CPU (deux `replay-equiv-j45` d'une autre session).
+
+  | Forme | Avec index | Sans index |
+  |---|---|---|
+  | F1 `Q24LUSRHistory` (12 000 l.) | SEQ 30/30 · 14,9 · 23,9 · 5,5 ms | SEQ 30/30 · **13,5** · 17,8 · 5,2 ms |
+  | F2 citations `Q26gPlaylistPhaseAMSRTpl` IN(200) | SEQ 30/30 · 18,1 · 25,8 · 17,1 ms | SEQ 30/30 · **13,5** · 16,4 · 14,6 ms |
+  | F3 escouade `QSquadExpectedWinProbTpl` IN(1000) | SEQ 30/30 · 18,4 · 20,2 · 23,6 ms | SEQ 30/30 · **16,7** · 29,0 · 22,6 ms |
+  | F4 `loadExistingCSRMatchIDs` | **IDX 30/30** · 20,3 · 20,8 · 19,4 ms | SEQ 30/30 · 1,9 · 2,5 · 1,5 ms |
+  | F5a `LoadExistingRatingIDs('LUSR')` | SEQ 30/30 · 4,0 · 5,5 · 2,3 ms | SEQ 30/30 · 2,4 · 5,7 · 0,9 ms |
+  | F5b `loadExistingLUSRStates` | SEQ 30/30 · 4,6 · 6,1 · 5,0 ms | SEQ 30/30 · 3,9 · 4,5 · 3,4 ms |
+  | F6a `loadPreviousLUSRRating` (arena_slayer) | SEQ 30/30 · 3,5 · 4,9 · 4,6 ms | SEQ 30/30 · 3,5 · 7,8 · 4,2 ms |
+  | F6b `loadPreviousDisplayedOrdinal` (chaos) | SEQ 30/30 · 3,8 · 5,6 · 4,7 ms | SEQ 30/30 · 3,0 · 4,0 · 3,9 ms |
+  | F7 `RunDualRowSentinel` | SEQ 30/30 · 5,8 · 9,8 · 4,3 ms | SEQ 30/30 · 4,8 · 6,8 · 3,2 ms |
+  | S1-S3 invariants (hors critère) | SEQ · 2,9 à 3,6 ms | SEQ · 3,0 à 3,5 ms |
+  | S4 vue `_latest` IN(200) (hors critère) | SEQ · 11,0 ms | SEQ · 10,0 ms |
+  | C0 PK `id = 5` (témoin) | IDX 30/30 · 0,7 ms | IDX 30/30 · 0,6 ms |
+  | C1/C2 `playlist_group = 'h5_arena'` (témoins) | **IDX 30/30** · 0,6 / 0,7 ms | SEQ 30/30 · 0,6 / 0,6 ms |
+
+- Verdict : **critère D-4 NON TENU** → STOP, index conservés, B3.2 à B3.9 `[!]`.
+  - F1, F2 et F3 dépassent 10 ms sans index dans les quatre passages valides (11,7 à 20,5 /
+    12,1 à 18,5 / 13,9 à 19,1 ms), à la lettre du critère (temps client médian).
+  - Ce dépassement ne vient PAS de l'absence d'index : même plan séquentiel avec et sans
+    (30/30), temps équivalents. Le coût est la lecture de 12 000 lignes par le client Go (F1 :
+    5 ms moteur) et le traitement des listes IN (F2, F3 : 15 à 24 ms moteur), avec ou sans
+    index.
+  - Mesure faite sous charge (100 % CPU). Sur un poste au repos, les valeurs baisseraient,
+    sans garantie de passer sous 10 ms pour F3.
+- Proposition au superviseur (décision hors de mon rôle, §2 « fermes ensuite ») : le critère
+  absolu de 10 ms ne répond pas à la question que D-4 pose (« le retrait ralentit-il une
+  lecture ? »). Critère relatif possible : sans index ≤ avec index + marge, forme par forme,
+  et aucune forme qui passe de l'index au séquentiel avec une perte. Il est TENU sur les
+  quatre passages avec une marge de 2 ms (plus grand écart « sans − avec » relevé : +1,1 ms,
+  F1 au passage 2) ; F4 y gagne ~10×. Si D-4 est amendé, B3.2 reprend là, et l'assertion
+  `CRITERE D-4` de la mesure se réécrit dans le même commit.
+- Gates, sur l'état commité (deux fichiers de test sous tag, plan) :
+  - `EXIT_BUILD=0`, `EXIT_VET=0`, `EXIT_VET_PSAREPRO=0` ;
+  - `EXIT_LINT=0` (`0 issues.`) ;
+  - gate psarepro `-run MSR` : `EXIT_MESURE_FINAL=1`, c'est le verdict D-4 et non une
+    régression.
+  - Suites `go test` complètes et d'intégration NON lancées : aucun code compilé hors du tag
+    ne change, et le lot s'arrête avant tout code de production.
+- Écarts :
+  - fixture sortie dans un second fichier `psa_index_repro_msr_fixture_test.go` pour tenir le
+    plafond de 500 lignes ;
+  - formes supplémentaires (invariants, vue `_latest`) et témoins mesurés en plus des sept ;
+  - F5 et F6 comptent chacune deux requêtes (a/b), toutes deux mesurées.
