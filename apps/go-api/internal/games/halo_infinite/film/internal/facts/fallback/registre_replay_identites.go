@@ -312,6 +312,27 @@ var registreReplayIdentites = []Repli{
 		CibleComptage:   comptageFamille19,
 	},
 	{
+		Nom:  "repli_nombre_drapeaux_hors_catalogue_sans_passage",
+		Fait: "combien de drapeaux sont en jeu sur une carte hors du catalogue d'objectifs — ce qui nomme, par l'equipe, le drapeau d'une prise (passage de main en main) et celui d'un retour credite",
+		// POSE AU LOT J9.2 (2026-09-26, constat RB1-5 de l'audit du 2026-09-24). Le nombre etait
+		// SUPPOSE a un (`flagSingleInPlay` rendait vrai sans socle) : toute prise d'un adversaire
+		// fermait le portage en cours, tout retour credite aussi. C'est la regle sans son filtre
+		// d'equipe, que la mesure du lot 6.11 chiffre a 57 portages et 775,1 s retires a tort.
+		Mecanisme: "le nombre n'est pas suppose : aucun drapeau n'est nomme par l'equipe, aucun passage de main en main ni retour credite ne ferme un portage ; compte = portages non juges",
+		// LA CARTE MANQUE AU CATALOGUE, LE FILM N'EST PAS MUET : les socles viennent du catalogue
+		// versionne d'objectifs, et le verdict de variante lui-meme se fonde sur eux.
+		Condition: CondCarteAbsenteDuCatalogue,
+		Ordre:     OrdreSansLecture,
+		Sites: []Site{{
+			Fichier: pkgReplay + "flag_carries_handoff.go",
+			Ancre:   "fb.DeclencheN(fallback.NomNombreDrapeauxHorsCatalogueSansPassage, carries)",
+		}},
+		DatePose:        "2026-09-26",
+		CibleRetrait:    "une lecture du nombre de drapeaux dans le film (vies libres de l'objet drapeau, non mesuree a ce jour), ou l'ajout de la carte au catalogue d'objectifs",
+		CritereRetrait:  "0 portage non juge faute de socle sur les films CTF du parc (meme population que repli_index_drapeau_zero_pour_tous)",
+		CompteurBranche: true,
+	},
+	{
 		Nom:       "repli_position_lacher_prend_la_prise",
 		Fait:      "ou un drapeau a ete lache",
 		Mecanisme: "aucun point publie a la frame de fin : la position de LACHER prend celle de la PRISE",

@@ -337,6 +337,26 @@ func (ri RoundIdentity) NamedCount() int {
 	return n
 }
 
+// RoundAt rend la MANCHE dans laquelle tombe un instant (horloge des enregistrements / du match) —
+// la meme que celle que [RoundIdentity.At] consulte pour nommer un slot a cet instant.
+//
+// ELLE EXISTE POUR LES CALQUES QUI INDEXENT UN FAIT PAR SLOT (lot J9.3 du
+// PLAN_SUITE_AUDIT_DECODEUR_FILM_2026-09-25, constat RB1-6) : le slot statborg est reattribue d une
+// manche a l autre, donc « le meme slot » ne veut rien dire sans la manche, et la manche d un
+// instant ne se decide qu ICI — une seconde lecture des bornes de manche chez le consommateur
+// divergerait de celle qui nomme ses slots.
+//
+// Mono-manche : l unique manche, sans regarder le temps. Resolveur vide : 0.
+func (ri RoundIdentity) RoundAt(timeMS int) int {
+	if len(ri.byRound) == 0 {
+		return 0
+	}
+	if len(ri.byRound) == 1 || len(ri.starts) == 0 {
+		return ri.Rounds()[0]
+	}
+	return ri.roundOfTime(timeMS)
+}
+
 // roundOfTime rend la manche dont le debut est le plus grand qui ne depasse pas `timeMS`. Un
 // instant anterieur a toute manche connue retombe sur la premiere (les manches se jouent dans
 // l'ordre : rien avant la premiere).

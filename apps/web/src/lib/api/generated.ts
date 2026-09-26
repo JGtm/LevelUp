@@ -4936,6 +4936,8 @@ export interface components {
             armingsNoBridge: number;
             /** Format: int64 */
             armingsNoCarrier: number;
+            /** Format: int64 */
+            armingsNoClock?: number;
             armingsRead: boolean;
             carryRead: boolean;
             /** Format: int64 */
@@ -7308,6 +7310,8 @@ export interface components {
             steals: number;
             /** Format: int64 */
             teamBirths: number;
+            /** Format: int64 */
+            unjudgedCarrierKills?: number;
             /** Format: int64 */
             unresolved: number;
         };

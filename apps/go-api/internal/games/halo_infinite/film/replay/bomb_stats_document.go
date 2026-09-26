@@ -88,6 +88,10 @@ func attachBombStats(doc *ReplayDocument, opt Options, reg IdentityRegistry, car
 		// LE RECALAGE, exactement la dérivation écrite en tête de bomb_arms.go :
 		// horlogeMatch = horlogeFilm + premierPaquetDuFilmUS/1000 − deathOffsetMS.
 		FilmToMatchOffsetMS: int(int64(opt.FilmClockOriginUS)/1000 - reg.DeathOffsetMS()),
+		// ... ET SEULEMENT SI L ORIGINE A ETE LUE (lot J9.6, constat RB1-3) : `FilmClockOriginUS`
+		// nul veut dire « origine incalculable » (options.go), et le recalage ci-dessus vaudrait
+		// alors `−deathOffsetMS`. La jointure ne tourne pas, `bomb_arms` reste absent.
+		ClockRead: opt.FilmClockOriginUS != 0,
 	})
 	doc.BombStats = &stats
 	doc.BombEvents = events
@@ -120,7 +124,7 @@ func logBombStats(matchID string, c BombStatsCoverage, killsEcartes int) {
 		"armements", c.Armings, "attribues", c.ArmingsAttributed,
 		"parLacher", c.ArmingsByDrop, "parRepli", c.ArmingsByActiveCarry,
 		"sansPorteur", c.ArmingsNoCarrier, "sansPont", c.ArmingsNoBridge,
-		"ambigus", c.ArmingsAmbiguous, "periodes", c.Periods,
+		"ambigus", c.ArmingsAmbiguous, "sansHorloge", c.ArmingsNoClock, "periodes", c.Periods,
 		"periodesSansPont", c.PeriodsNoBridge, "periodesOuvertes", c.PeriodsOpen,
 		"kills", c.Kills, "killsEcartes", killsEcartes, "killsSurPorteur", c.KillsOnCarrier,
 		"lu_explosions", c.DetonationsRead, "lu_portage", c.CarryRead,

@@ -22,7 +22,9 @@ package replay
 // D'ou : le passage de main en main n'existe qu'entre COEQUIPIERS. Un adversaire qui touche ce
 // drapeau-la le RENVOIE (`flag_returns`), il ne le prend pas — sauf en variante DRAPEAU NEUTRE,
 // ou il n'y a qu'un seul drapeau et ou tout le monde le prend. Les deux cas sont couverts par
-// [flagOfCarrier] : un seul drapeau en jeu, ou le drapeau de l'equipe adverse.
+// [flagOfCarrier] : un seul drapeau en jeu, ou le drapeau de l'equipe adverse. Une carte HORS
+// CATALOGUE n'est ni l'un ni l'autre : son nombre de drapeaux n'est pas lu, et la regle se tait
+// (lot J9.2, [flagCountUnread]).
 //
 // # CE QUE LA MESURE EN DIT, ET POURQUOI LA REGLE RESTE
 //
@@ -39,19 +41,45 @@ package replay
 // interieur a `]t0, t1[` : tout instant rendu est deja plus petit que la borne en place. Le biais
 // du calque garde donc son sens — trop long, jamais trop court.
 
+import "levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
+
 // flagSingleInPlay dit que le film ne met en jeu qu'UN SEUL drapeau : la variante DRAPEAU NEUTRE
-// (un socle retenu, cf. flag_neutral.go), ou une carte hors du catalogue d'objectifs (aucun
-// socle, tous les portages tombent dans un drapeau unique).
-func flagSingleInPlay(spawns []FlagSpawn) bool { return len(spawns) <= 1 }
+// (un socle retenu, cf. flag_neutral.go).
+//
+// UNE CARTE HORS DU CATALOGUE D'OBJECTIFS N'EN FAIT PLUS PARTIE (constat RB1-5 de l'audit du
+// 2026-09-24, lot J9.2). Sans socle, rien ne dit combien de drapeaux sont en jeu, et le supposer
+// unique etait une premisse fausse : sur un CTF ordinaire, toute prise d'un ADVERSAIRE devenait un
+// passage de main en main, et tout retour credite fermait le portage de n'importe qui — la regle
+// sans son filtre d'equipe, que la mesure du lot 6.11 chiffre a 57 portages et 775,1 s retires a
+// tort sur 11 films. Le nombre n'est donc plus suppose ([flagCountUnread]).
+func flagSingleInPlay(spawns []FlagSpawn) bool { return len(spawns) == 1 }
+
+// flagCountUnread dit que le NOMBRE de drapeaux en jeu n'est pas lu : la carte est hors du
+// catalogue d'objectifs, qui est la seule source des socles. Aucune lecture du film ne le donne a
+// ce jour a cette couche (le verdict de variante lui-meme se fonde sur les socles, cf.
+// flag_neutral.go) : les regles qui nomment un drapeau par l'equipe se taisent alors — aucun
+// passage de main en main, aucun retour credite ne ferme un portage.
+func flagCountUnread(spawns []FlagSpawn) bool { return len(spawns) == 0 }
+
+// countFlagCountUnread declenche le repli NOMME de la carte hors catalogue, une fois par portage
+// que les regles par l'equipe n'ont pas pu juger. Le portage lui-meme reste publie (sur le drapeau
+// unique de l'assemblage, `repli_index_drapeau_zero_pour_tous`) : ce qui est tu est la fermeture.
+func countFlagCountUnread(scan FlagCarryScan, carries int, fb *fallback.Compteur) {
+	if !flagCountUnread(scan.Spawns) || carries == 0 {
+		return
+	}
+	fb.DeclencheN(fallback.NomNombreDrapeauxHorsCatalogueSansPassage, carries)
+}
 
 // flagOfCarrier rend l'index du drapeau qu'un joueur PORTE quand il en prend un, et si ce
 // drapeau est NOMME.
 //
 // Un seul drapeau en jeu : c'est celui-la, quelle que soit l'equipe — personne ne le possede.
 // Sinon, c'est l'unique socle dont l'equipe du joueur n'est PAS proprietaire. Equipe inconnue
-// (table `TeamOf` vide : CLI hors ligne, ouvrier sans faits) ou plusieurs socles adverses
-// (carte a plus de deux drapeaux) : rien n'est nomme, et l'abstention SE COMPTE — sans quoi un
-// film que la regle traverse en silence serait indistinguable d'un film sans passage.
+// (table `TeamOf` vide : CLI hors ligne, ouvrier sans faits), plusieurs socles adverses (carte a
+// plus de deux drapeaux) ou AUCUN socle (carte hors catalogue, lot J9.2) : rien n'est nomme, et
+// l'abstention SE COMPTE — sans quoi un film que la regle traverse en silence serait
+// indistinguable d'un film sans passage.
 func flagOfCarrier(scan FlagCarryScan, xuid string) (int, bool) {
 	if flagSingleInPlay(scan.Spawns) {
 		return 0, true

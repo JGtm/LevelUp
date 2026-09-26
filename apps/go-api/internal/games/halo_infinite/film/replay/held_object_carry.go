@@ -18,7 +18,8 @@ package replay
 //
 // PRISE = transition VERS la famille ; LÂCHER = transition DEPUIS. Une période de portage
 // s'ouvre à la prise du slot s et se ferme au premier des trois : lâcher de s, MORT du
-// porteur, fin du film. La mort ferme SANS émission : le canal ne lâche rien quand la vie du
+// porteur, fin du film — le PREMIER, y compris quand le lâcher est émis après la mort (lot
+// J9.5 : le lâcher fermait seul, même postérieur à la mort). La mort ferme SANS émission : le canal ne lâche rien quand la vie du
 // bipède s'arrête — c'est le fil des morts (via le pont slot->xuid) qui date la fermeture.
 // Une prise par un AUTRE slot pendant une période encore ouverte la borne aussi (lecture
 // prudente : l'objet n'a qu'un exemplaire, un échange main à main n'existe pas).
@@ -138,7 +139,11 @@ func heldObjectPeriods(
 	for _, tr := range trans {
 		if !tr.pickup {
 			if ouverte >= 0 && out[ouverte].Slot == tr.slot {
-				fermer(tr.tMS, false)
+				// LE PREMIER DE (MORT, LACHER) FERME (lot J9.5, constat RB1-7) : le canal peut
+				// emettre le lacher APRES la mort du porteur, et la periode ne court pas au-dela
+				// de sa vie. Le lacher seul la fermait, et creditait au mort le temps qui suit.
+				fin, parMort := premiereMortDans(mortsDe, out[ouverte], tr.tMS)
+				fermer(fin, parMort)
 			}
 			continue
 		}
@@ -163,15 +168,17 @@ func heldObjectPeriods(
 }
 
 // premiereMortDans rend la première mort du porteur de p dans [p.DebutMS, avant], ou
-// (avant, false) si aucune — la borne par défaut est l'instant de la prise suivante.
+// (avant, false) si aucune — la borne par défaut est l'instant de la prise suivante. La plus
+// PRÉCOCE, quel que soit l'ordre de la liste : la règle ne dépend pas du tri de l'appelant.
 func premiereMortDans(mortsDe map[uint64][]int, p HeldObjectPeriod, avant int) (int, bool) {
 	if p.XUID == 0 {
 		return avant, false
 	}
+	premiere, trouvee := avant, false
 	for _, m := range mortsDe[p.XUID] {
-		if m >= p.DebutMS && m <= avant {
-			return m, true
+		if m >= p.DebutMS && m <= premiere {
+			premiere, trouvee = m, true
 		}
 	}
-	return avant, false
+	return premiere, trouvee
 }

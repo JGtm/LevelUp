@@ -27,4 +27,9 @@
 #               internal/domain/objectiveevent) : le perimetre perd internal/domain,
 #               internal/domain/title et internal/games/canonical. Renommage mecanique, aucune
 #               sortie ne change ; serie nee sur cette branche, jamais publiee.
-objectives-2026-09-26	ae15642ba284af8f6c93475de984cd72264f4bf607bc87500899db1375e6da59
+#   2026-09-26  EMPREINTE SEULE, REVISION CONSTANTE (lot J9.3 du meme plan, constat RB1-6). Un
+#               ACCESSEUR est ajoute : `RoundIdentity.RoundAt` rend la manche d un instant, celle
+#               que `At` consultait deja en interne. Aucune fonction de la couche ne l appelle ;
+#               son seul consommateur est la publication (`film/replay`, fermoirs du drapeau
+#               indexes par manche et slot). Aucune sortie des objectifs ne change.
+objectives-2026-09-26	38a28072758e321be82f1b717b561ca7a3c53ef1f78f3e5df6dfd6f7639b9b78

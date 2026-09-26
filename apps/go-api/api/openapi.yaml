@@ -9466,6 +9466,9 @@ components:
         armingsNoCarrier:
           format: int64
           type: integer
+        armingsNoClock:
+          format: int64
+          type: integer
         armingsRead:
           type: boolean
         carryRead:
@@ -15072,6 +15075,9 @@ components:
           format: int64
           type: integer
         teamBirths:
+          format: int64
+          type: integer
+        unjudgedCarrierKills:
           format: int64
           type: integer
         unresolved:
