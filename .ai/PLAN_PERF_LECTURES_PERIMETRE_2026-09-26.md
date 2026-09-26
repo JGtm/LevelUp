@@ -537,6 +537,39 @@ Journal A.12 (2026-09-26, sur 35e9766ff) :
   0 ; golangci `--new-from-rev=ea5682373` 0 issue avec et sans `--build-tags=integration` ; artefacts
   sous `data/` retirés.
 
+- [x] A.13 (2026-09-27) régression de test du lot A hors `platform/duckdb` — trouvée par le gate
+  d'intégration complet de l'étape suivante (superviseur) : `TestRelationsSegmentation_SoloVsSquad_CrossDB`
+  et `TestRelationsSegmentation_PlaylistFilter_CrossDB` (`internal/service`, tag integration) rouges
+  depuis f576df10e (`annuaire (alias, participants): Binder Error: Referenced column "gamertag" not
+  found`). Aucun défaut de production : la fixture maison créait un `match_participants` sans la
+  colonne `gamertag` du schéma réel.
+
+Journal A.13 (2026-09-27) :
+
+- Cause de l'angle mort : les gates P2 / A.10 / A.11 / A.12 ne jouaient l'intégration que sur
+  `platform/duckdb` ; celui de la consigne pour `service` / `api` était sans tag.
+- Correctif (fixture seule, sur le modèle de `relations_repo_test.go`) :
+  `internal/service/relations_segmentation_integration_test.go` — colonne `gamertag` ajoutée à
+  `match_participants`, INSERT à colonnes nommées, vue simplifiée `v_gamertag_lookup` retirée (plus
+  aucun lecteur) ; tous les xuids ont un alias, le repli ne part pas : ni table brute ni
+  `killer_victim_pairs` nécessaires. Assertions inchangées (mêmes noms, mêmes compteurs) ; les deux
+  tests verts.
+- Recherche des autres (grep dans `internal/` et `cmd/` des tests hors `platform/duckdb` qui
+  construisent `NewMatchViewRepo`, `NewGamertagRepo`, `NewCareerRepo` ou un service de vue match /
+  Relations / événements, puis des fixtures maison de `match_participants`) : 14 fichiers de tests
+  touchent ces constructeurs ; 13 passent par des doubles (aucune fixture SQL) ; le seul avec de vrais
+  repos, `internal/sync/engine_provider_live_ops_e2e_test.go`, n'appelle aucune lecture du lot A
+  (`GetMatchMeta`, `GamertagRepo.Search`, `GetLatestRank`) sur un schéma réel issu du sync ; parmi les
+  35 fixtures maison de `match_participants`, seule `internal/ops/snapshot_read_shared_integration_test.go`
+  concerne les lectures de la vue match (contrat du schéma snapshot : `match_kill_events` brute,
+  `killer_victim_pairs`, `xuid_aliases`, `match_participants` y sont — l'annuaire en portée base y
+  trouve ses tables). Joués : `go test -tags=integration -run 'OpenSnapshotShared|ProduceSnapshot'
+  ./internal/ops/` vert (7 tests).
+- Gate : `go test -tags=integration -p 1 ./internal/service/... ./internal/api/...` code de sortie 0
+  (12 paquets ok, dont `internal/service` 32,7 s, `internal/api/handlers`, `internal/api/wire`) ;
+  `gofmt -l` du fichier touché vide ; `go vet -tags=integration ./internal/service/` 0 ; artefacts
+  sous `data/` retirés.
+
 ## 4. P3 — Docs de release 7.5.0 : campagne perf, lot A, ADR 0036 (EN + FR)
 
 Décisions tranchées :
