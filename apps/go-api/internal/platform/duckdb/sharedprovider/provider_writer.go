@@ -54,6 +54,11 @@ func (p *providerImpl) AcquireWriter(ctx context.Context) (*WriterHandle, error)
 		slog.WarnContext(ctx, "provider: drain timeout, rollback vers RO",
 			"path", p.path, "label", label,
 			"drain_ms", time.Since(drainStart).Milliseconds(), "err", err)
+		if ctx.Err() == nil {
+			// La borne PROPRE au drain a expiré, pas le contexte de l'appelant :
+			// erreur transitoire typée (sentinelle + cause), retentable par errors.Is.
+			return nil, fmt.Errorf("sharedprovider: drain inflight readers: %w: %w", ErrDrainTimeout, err)
+		}
 		return nil, fmt.Errorf("sharedprovider: drain inflight readers: %w", err)
 	}
 	drainDur := time.Since(drainStart)

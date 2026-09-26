@@ -635,17 +635,24 @@ niveau job, fusion dans `feat/v75`, suppression du worktree et de la branche.
   supprimé).
 - Le cron fait 467 lignes, pour un plafond de 500.
 
-- [ ] **B1.1** `ErrDrainTimeout` dans `sharedprovider/errors.go`. À `provider_writer.go:57`,
+- [x] **B1.1** `ErrDrainTimeout` dans `sharedprovider/errors.go`. À `provider_writer.go:57`,
   envelopper avec `%w: %w` (sentinelle + cause).
-- [ ] **B1.2** Nouveau fichier `scheduler/world_leaderboard_persist_retry.go` avec
+  → `errors.go:25-34` ; `provider_writer.go:57-62` : sentinelle posée seulement si le ctx de
+  l'appelant est vivant (`ctx.Err() == nil`), sinon `ctx.Err()` enveloppé seul. Doc de
+  l'interface `provider.go:105`.
+- [x] **B1.2** Nouveau fichier `scheduler/world_leaderboard_persist_retry.go` avec
   `acquireWriterRetry(ctx, label)`, selon D-2.
   - Délai nommé `worldLeaderboardPersistRetryDelay = 30 * time.Second`.
   - `sleep` injectable (patron `historyretry.Sleep`), annulable par le contexte.
   - Sert `persist` ET `persistStats`.
   - WARN à chaque nouvelle tentative (`attempt`, `label`, `err`), un seul ERROR d'échec final.
-- [ ] **B1.3** Premier tir différé : `worldLeaderboardBootDelay = 2 * time.Minute`, `select`
+  → `world_leaderboard_persist_retry.go:56` `acquireWriterRetry` (77 lignes, fonction de 22),
+  seam `worldLeaderboardSleep` `:45`, constantes `:33-39`. Branché `world_leaderboard_cron.go:389`
+  (`persistStats`) et `:463` (`persist`). L'ERROR final reste celui de l'appelant (un seul).
+- [x] **B1.3** Premier tir différé : `worldLeaderboardBootDelay = 2 * time.Minute`, `select`
   annulable, option de test à 0.
-- [ ] **B1.4 Tests** (rouges d'abord) :
+  → champ `bootDelay` `world_leaderboard_cron.go:120`, défaut `:154`, `select` `:180-185`.
+- [x] **B1.4 Tests** (rouges d'abord) :
   - `errors.Is(err, ErrDrainTimeout)` sur une vidange expirée (`reader_stall_metrics_test.go`,
     `SetDrainTimeoutForTest`, tag `integration`) ; un contexte parent annulé ne donne PAS
     `ErrDrainTimeout`.
@@ -655,8 +662,15 @@ niveau job, fusion dans `feat/v75`, suppression du worktree et de la branche.
   - 3 échecs → erreur remontée à `ReportCronRun`, aucune ligne.
   - Délai de boot respecté.
   - Les 14 tests `TestWorldLeaderboardCron_*` existants restent verts.
-- [ ] **B1.5** Godoc du cron à jour. `grep -rn world_leaderboard docs/` : tout guide qui décrit le
+  → `reader_stall_metrics_test.go:124,157` ; `world_leaderboard_persist_retry_test.go` (6 tests,
+  dont `RetryWaitIsCancellable` et `RetriesPersistStatsOnDrainTimeout` en plus de la liste).
+  Sorties rouges au journal §7.
+- [x] **B1.5** Godoc du cron à jour. `grep -rn world_leaderboard docs/` : tout guide qui décrit le
   cron est corrigé en EN et en FR.
+  → en-tête du cron `:24-26`, `Run` `:168`, `runOnceForTitle`, `persist`, `persistStats` ;
+  commentaire du câblage `cmd/server/main.go:1388-1390`. `grep` sur `docs/` : 0 occurrence de
+  `world_leaderboard` ; aucun guide ne décrit le cron (seuls CHANGELOG/RELEASE_NOTES le citent,
+  historiques) → rien à corriger en EN/FR.
 
 **Gate** : GO-S sur `./internal/scheduler/ ./internal/platform/duckdb/sharedprovider/ ./internal/archlint/`.
 
@@ -1010,6 +1024,12 @@ plus B5.8.
 - DB-4 (enquête) : `.ai/V7.5/REGISTRE_REPORTS.md:543-544` cite `repair_psa_index` et
   `repair_msr_index` comme détecteurs périodiques. Ligne à réécrire par le superviseur à la
   clôture de B3.
+- DB-5 (B1, 2026-09-26) : le compteur `swapFailuresTotal[drain_timeout]` et le WARN « drain
+  timeout, rollback vers RO » (`provider_writer.go:53-56`) comptent aussi une vidange finie par
+  le contexte de l'APPELANT (annulation, délai), que `ErrDrainTimeout` distingue désormais. La
+  métrique mêle donc encombrement et arrêt demandé. Non traité (hors périmètre).
+- DB-6 (B1) : `scheduler/world_leaderboard_cron_test.go` fait 613 lignes (> 500). Préexistant ;
+  les nouveaux tests vont dans `world_leaderboard_persist_retry_test.go`. Non traité.
 
 ---
 
@@ -1070,4 +1090,42 @@ plus B5.8.
 
 ### Lots B
 
-(vide)
+**[2026-09-26] B1 — classement mondial perdu au boot (item 1) — exécutant opus, worktree du plan.**
+
+- Méthode rouge d'abord : échafaudage minimal sans comportement (sentinelle déclarée non posée,
+  seam `worldLeaderboardSleep`, constantes, champ `bootDelay` non lu), tests lancés, puis
+  implémentation. Cache Go dédié `go-build-backlog`, une commande `go` à la fois.
+- B1.1, sorties rouges (log `B1-1-rouge.log`, `EXIT_ROUGE=1`) :
+  `TestProvider_DrainTimeoutIsTyped_integration` → `errors.Is(err, ErrDrainTimeout) = false,
+  err = sharedprovider: drain inflight readers: context deadline exceeded`.
+  `TestProvider_DrainCallerContextIsNotDrainTimeout_integration` est vert sur le code d'avant
+  par construction (il ne produit jamais la sentinelle) : c'est la garde contre une enveloppe
+  naïve. Preuve qu'il discrimine : mutant temporaire « sentinelle toujours posée » → rouge sur
+  les deux sous-cas (`contexte appelant fini classé ErrDrainTimeout`, log
+  `B1-1-mutant-naif.log`, `EXIT_MUTANT=1`), code remis. Après correctif : `EXIT_VERT=0`.
+- B1.2/B1.3, sorties rouges (log `B1-2-3-rouge.log`, `EXIT_ROUGE=1`, 4 échecs) :
+  - `RetriesPersistOnDrainTimeout` : `snapshots = 0 lignes / 0 lot(s), attendu 2 / 1` ;
+    `AcquireWriter = 1 appels, attendu 3` ; `attentes = [], attendu 2 × 30s` ; `WARN de nouvelle
+    tentative = 0, attendu 2` ; cycle rapporté en échec (`halo_infinite: persist snapshot: …
+    drain timeout …`).
+  - `PersistFailsAfterThreeDrainTimeouts` : `AcquireWriter = 1 appels, attendu 3 (bornage)` ;
+    `attentes = [], attendu 2`.
+  - `RetriesPersistStatsOnDrainTimeout` : `AcquireWriter = 2 appels / 0 attente(s), attendu 3 / 1` ;
+    `stats persistées = 0, attendu 1`.
+  - `RunWaitsBootDelay` : `cycle lancé avant le délai de boot (playlists=1, saison=2)`.
+  - `NoRetryOnNonTransientWriterError` : vert avant (garde, l'ancien code ne retentait rien).
+  - `RetryWaitIsCancellable` : ajouté après l'implémentation (garde de l'annulation ; il
+    passerait aussi sur l'ancien code, qui ne faisait qu'un appel).
+- Après correctif (log `B1-2-3-vert.log`) : 25 `TestWorldLeaderboardCron_*` verts — les 14
+  historiques du cron, les 6 du garde-fou qualité et 5 nouveaux ; le 6e nouveau
+  (`RetryWaitIsCancellable`) passe dans les gates du paquet complet.
+- Fichiers : `world_leaderboard_cron.go` 467 → 482 lignes ; `world_leaderboard_persist_retry.go`
+  77 lignes ; `ctxkeys` sort des imports du cron (l'étiquette est posée par `acquireWriterRetry`).
+- Gates GO-S (logs `$TEMP\backlog-gates\B1-*.log`) : `EXIT_BUILD=0`, `EXIT_VET=0`,
+  `EXIT_TEST=0` (scheduler, sharedprovider, archlint), `EXIT_INTEGRATION=0` (mêmes paquets,
+  `-p 1`), `EXIT_LINT=0` (`0 issues.` ; un premier passage a relevé un gofmt sur le nouveau
+  test, corrigé par `gofmt -w`, puis `EXIT_TEST_SCHEDULER_FINAL=0` sur l'état final). Aucune
+  ligne `^--- FAIL:`.
+- Écarts : deux retouches de doc hors des fichiers cités — interface `Provider.AcquireWriter`
+  (`provider.go:105`) et commentaire de câblage `cmd/server/main.go:1388-1390`, qui décrivait
+  un tir immédiat au boot. Deux tests de plus que la liste (stats enrichies, attente annulable).
