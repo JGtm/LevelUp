@@ -58,8 +58,10 @@ type killFeed struct {
 	events []feedEvent // instants, tries
 	pairs  []feedEvent // couples publies (meme instant + lus au kill-event + recolles)
 	names  []string    // roster HUMAIN, trie
-	// xuidDe : le xuid que le kill-feed porte pour chaque gamertag. Il sert quand un couple LU
-	// au kill-event nomme une victime dont aucun instant voisin ne porte la mort.
+	// xuidDe : le xuid que le kill-feed porte pour chaque gamertag, qu il TUE ou qu il MEURE. Il
+	// sert quand un couple LU au kill-event nomme une victime dont aucun instant voisin ne porte la
+	// mort, et il donne au lien par motif (`index_motif.go`) les xuids a chercher — tueurs compris
+	// depuis le lot J7.3 (FK-3).
 	xuidDe map[string]uint64
 
 	real []feedEvent // couples portant kill ET death au meme instant
@@ -150,6 +152,9 @@ func buildFeed(evs []highlightevent.HighlightEvent) *killFeed {
 		case highlightevent.EventTypeKill:
 			kf.nKills++
 			at(e.TimeMS).killer = name
+			// Le xuid d un TUEUR se retient aussi (lot J7.3, FK-3) : un joueur qui tue sans mourir
+			// — un remplacant, absent de la table ecrite a l ouverture — doit etre cherche au motif.
+			kf.xuidDe[name] = e.XUID
 		case highlightevent.EventTypeDeath:
 			kf.nDeaths++
 			ev := at(e.TimeMS)

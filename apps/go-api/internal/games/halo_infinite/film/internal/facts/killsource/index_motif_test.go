@@ -3,9 +3,11 @@ package killsource
 // index_motif_test.go — LES TEMOINS DU LOT 5.2b.1 : UN REMPLACANT ENTRE AU ROSTER, ET SES MORTS
 // NE FERMENT PLUS LA PUBLICATION DU MATCH.
 //
-// Le cas synthetique reproduit `b1ad85eb` a la structure pres : dix joueurs, NEUF indices connus
-// de la table de `chunk_00` (zero..huit) et UN remplacant arrive en cours, que la table ignore et
-// que le motif du xuid nomme a l indice 10.
+// Le cas synthetique reproduit `b1ad85eb` a la structure pres : huit sieges de depart (0..7) lus
+// dans la table de `chunk_00`, le bot de relais au slot 8 par BOT_METADATA, et UN remplacant
+// arrive en cours, que la table ignore et que le motif du xuid nomme a l indice 10. LE BOT EST AU
+// SLOT 8, DANS la plage des neuf noms du kill-feed : c est le cas « bot dans l espace des humains »
+// du constat FK-1 (lot J7.2), que le temoin contournait en le placant au slot 9.
 
 import (
 	"testing"
@@ -18,7 +20,7 @@ import (
 func rosterAvecRemplacant(t *testing.T) *roster {
 	t.Helper()
 	kf := &killFeed{names: []string{"A", "B", "C", "D", "E", "F", "G", "H", "Remplacant"}}
-	bm := botMeta{NBots: 1, Bots: []bot{{Slot: 9, BotID: 7, Name: "343 Bot"}}}
+	bm := botMeta{NBots: 1, Bots: []bot{{Slot: 8, BotID: 7, Name: "343 Bot"}}}
 	table := FilmTable{Build: "b", Seats: map[int]string{
 		0: "A", 1: "B", 2: "C", 3: "D", 4: "E", 5: "F", 6: "G", 7: "H",
 	}}
@@ -57,7 +59,7 @@ func TestLeMotifEpingleLeRemplacantQueLaTableIgnore(t *testing.T) {
 	if r.isBotIndex(10) {
 		t.Error("l indice pose par le motif est pris pour un bot")
 	}
-	if !r.isBotIndex(9) {
+	if !r.isBotIndex(8) {
 		t.Error("le slot de BOT_METADATA doit rester un bot")
 	}
 }

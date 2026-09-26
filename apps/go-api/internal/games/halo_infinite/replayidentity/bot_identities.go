@@ -36,7 +36,12 @@ package replayidentity
 import (
 	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
+	"levelup/go-api/internal/observability"
 )
+
+// MetricBotsNonEpingles : le compteur expvar des bots NON EPINGLES retires de la projection
+// (lot J7.2, constat FK-1).
+const MetricBotsNonEpingles = "killsource_bots_non_epingles"
 
 // BotIdentities projette le roster de bots declares par BOT_METADATA vers ce que le registre
 // d'identite consomme (`replay.IdentityInput.Bots`). PURE — aucune I/O, aucun re-decodage : elle
@@ -49,6 +54,11 @@ import (
 // (`UnpinnedBots` — son slot contredit l'espace des humains) est une anomalie DECLAREE, pas une
 // identite : le publier ferait porter un identifiant a un corps que le modele ne sait pas
 // placer.
+//
+// CE RETRAIT N EST PLUS SILENCIEUX (lot J7.2, constat FK-1) : chaque bot non epingle retire ici
+// incremente [MetricBotsNonEpingles], chez les deux consommateurs (cuisson et collecteur). Le
+// JOURNAL vit a la source, la ou le contexte existe : `killsource` avertit par film au decodage et
+// publie le compte dans sa couverture (`Coverage.BotsNonEpingles`).
 func BotIdentities(res *decfilm.Result) []replay.BotIdentity {
 	if res == nil || len(res.Roster.Bots) == 0 {
 		return nil
@@ -58,8 +68,13 @@ func BotIdentities(res *decfilm.Result) []replay.BotIdentity {
 		unpinned[b.BotID] = true
 	}
 	out := make([]replay.BotIdentity, 0, len(res.Roster.Bots))
+	retires := 0
 	for _, b := range res.Roster.Bots {
-		if b.Name == "" || unpinned[b.BotID] {
+		if unpinned[b.BotID] {
+			retires++
+			continue
+		}
+		if b.Name == "" {
 			continue
 		}
 		// `BotID` VOYAGE (lot 4.3) : c'est la cle EXACTE que `BotIdentity.Bid()` publie
@@ -70,6 +85,9 @@ func BotIdentities(res *decfilm.Result) []replay.BotIdentity {
 			id.Declarations = append(id.Declarations, [2]uint64{d.FromUS, d.ToUS})
 		}
 		out = append(out, id)
+	}
+	if retires > 0 {
+		observability.AddInt(MetricBotsNonEpingles, int64(retires))
 	}
 	return out
 }

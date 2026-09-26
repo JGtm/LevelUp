@@ -19,7 +19,8 @@ package killsource
 //
 // LA VALEUR EST GARDEE A L IDENTIQUE, et c est la condition du lot : les lignes deja en base
 // portent `killsource-2026-09-24` dans `decoder_rev`, et en changer la valeur les rendrait toutes
-// candidates au backlog pour un changement d OUTILLAGE.
+// candidates au backlog pour un changement d OUTILLAGE. Elle monte au lot J7.8 (2026-09-26), pour
+// un changement de SORTIE — les sept constats FK-1 a FK-7 (cf. la chronique).
 //
 // # CE QUE L EMPREINTE HACHE
 //
@@ -42,7 +43,7 @@ package killsource
 // est reprise sans renumerotation (V15 (16)).
 
 // Rev est la revision de la sortie killsource.
-const Rev = "killsource-2026-09-24"
+const Rev = "killsource-2026-09-26"
 
 // L EMPREINTE DE LA COUCHE VIT DANS UN GOLDEN, A COTE DE CETTE REVISION :
 // `testdata/killsource_rev.golden` porte le couple (revision, empreinte) avec son historique — c est

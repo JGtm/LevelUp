@@ -81,6 +81,15 @@ type pass struct {
 	unexpPair int
 	unexpSelf int
 	unexpBot  int
+	// nomsDeRemplissage : lignes NON publiees parce que le nom pris au roster est un nom de
+	// remplissage ([estNomDeRemplissage], lot J7.1).
+	nomsDeRemplissage int
+	// collisionsBot : morts de bot (temps 4) NON publiees parce que leur instant porte deja une
+	// ligne publiee (lot J7.4, FK-4). Un instant publie ne se reecrit jamais.
+	collisionsBot int
+	// fantomes : les instants de couples RECOLLES ou le temps 4 a PUBLIE la mort de bot — les
+	// seuls couples retires du denominateur (`Coverage.GhostPairs`, lot J7.4).
+	fantomes map[int]bool
 }
 
 // population : les deux voies ramenees a une liste unique, DANS L ORDRE DE PRIORITE.
@@ -181,7 +190,9 @@ func (p *pass) runSelfSource() {
 		return
 	}
 	for _, cd := range p.all {
-		if cd.victim != cd.killer {
+		// UN INDICE DE BOT SE COMPTE AUX TEMPS DE BOT, jamais ici (lot J7.5, FK-5) : comme au temps 1,
+		// sinon le meme candidat sortirait deux fois au numerateur de sante.
+		if cd.victim != cd.killer || p.ctx.isBotSide(cd.candidate) {
 			continue
 		}
 		st := &p.selfWalk
@@ -220,13 +231,24 @@ func (p *pass) runBots() {
 		if p.botUsed[k] {
 			continue
 		}
+		if _, deja := p.byTime[m.event.timeMS]; deja {
+			p.collisionsBot++ // FK-4 (lot J7.4) : un instant publie ne se reecrit jamais
+			continue
+		}
+		victime, publiable := p.nomPubliable(m.cand.victim)
+		if !publiable {
+			continue
+		}
 		p.botUsed[k] = true
+		if m.fab {
+			p.fantomes[m.event.timeMS] = true // le couple recolle etait une mort de bot : fantome
+		}
 		p.botStats.Published++
 		p.noterAppariement(m.parLaFenetre, &p.appar.BotFenetre)
 		// `inFeed = false` : le kill est au feed, la MORT n y est pas. La victime vient du
 		// roster de replication, pas du kill-feed — et le consommateur doit pouvoir le savoir.
 		p.byTime[m.event.timeMS] = p.ctx.buildKill(killDraft{timeMS: m.event.timeMS,
-			victim: p.ctx.roster.nameOf(m.cand.victim), killer: m.event.killer,
+			victim: victime, killer: m.event.killer,
 			origin: OriginBot}, sourcedCandidate{m.cand, PathScan})
 	}
 }
@@ -258,11 +280,15 @@ func (p *pass) runBotKillers() {
 		if _, deja := p.byTime[m.event.timeMS]; deja || p.botUsed[k] {
 			continue
 		}
+		tueur, publiable := p.nomPubliable(m.cand.killer)
+		if !publiable {
+			continue
+		}
 		p.botUsed[k] = true
 		p.botKillerStats.Published++
 		p.noterAppariement(m.parLaFenetre, &p.appar.BotFenetre)
 		p.byTime[m.event.timeMS] = p.ctx.buildKill(killDraft{timeMS: m.event.timeMS,
-			victim: m.event.victim, killer: p.ctx.roster.nameOf(m.cand.killer),
+			victim: m.event.victim, killer: tueur,
 			inFeed: true, origin: OriginBotKiller}, m.cand)
 	}
 }
@@ -361,76 +387,19 @@ func absMS(v int) int {
 // servis. Il se compte APRES les deux, sinon il compterait comme inexplique ce que le temps
 // suivant explique — exactement le genre de compteur qui reste vrai en apparence tout en
 // mesurant autre chose.
+//
+// IL PARCOURT LA POPULATION, PAS LE SCAN ENTIER (lot J7.5, FK-5) : le numerateur de sante se compte
+// sur `Candidates` (`grammar.KillSourceHealth`). Le scan entier portait les redondants — hors de la
+// population, puisque la marche les lit deja — et ignorait les candidats de la marche.
 func (p *pass) countUnexplainedBot() {
-	for _, cd := range p.ctx.scanCands {
-		if !p.ctx.isBotSide(cd) {
+	for _, cd := range p.all {
+		if !p.ctx.isBotSide(cd.candidate) {
 			continue
 		}
 		if !p.botUsed[[3]int{cd.chunk, cd.pidx, cd.bit}] {
 			p.unexpBot++
 		}
 	}
-}
-
-// concordance : les deux voies se contredisent-elles ?
-//
-// PORTEE, et elle est essentielle : la comparaison se fait sur le SCAN ENTIER, redondances
-// COMPRISES — pas sur la population amputee que l hybride consulte. Comparer apres avoir retire
-// les redondants ne mesurerait rien, puisque le redondant est PRECISEMENT l enregistrement que
-// les deux voies partagent.
-//
-// `disagree` doit valoir ZERO. S il bouge, l hybride n est plus une PREFERENCE mais un
-// ARBITRAGE, et il faut le documenter comme tel.
-func (p *pass) concordance(walkCands []candidate) {
-	byT := map[int]*atInstant{}
-	for _, cd := range walkCands {
-		p.noteInstant(byT, cd, PathWalk)
-	}
-	for _, cd := range p.ctx.scanCands {
-		p.noteInstant(byT, cd, PathScan)
-	}
-	for _, b := range byT {
-		if b.n > 2 || (b.n == 2 && (!b.hasWalk || !b.hasScan)) {
-			p.multiCand++ // plusieurs candidats DISTINCTS, pas un simple doublon de voie
-		}
-		if !b.hasWalk || !b.hasScan {
-			continue
-		}
-		if b.walk.tag == b.scan.tag && b.walk.cat == b.scan.cat {
-			p.agree++
-		} else {
-			p.disagree++
-		}
-	}
-}
-
-// atInstant : ce que les deux voies disent d un meme instant.
-type atInstant struct {
-	walk, scan       candidate
-	hasWalk, hasScan bool
-	n                int
-}
-
-// noteInstant : range un candidat apparie sous son instant, avec la voie qui l a produit.
-func (p *pass) noteInstant(byT map[int]*atInstant, cd candidate, path Path) {
-	if cd.victim == cd.killer {
-		return
-	}
-	e, _ := p.ctx.matchExact(cd)
-	if e == nil {
-		return
-	}
-	b := byT[e.timeMS]
-	if b == nil {
-		b = &atInstant{}
-		byT[e.timeMS] = b
-	}
-	b.n++
-	if path == PathWalk {
-		b.walk, b.hasWalk = cd, true
-		return
-	}
-	b.scan, b.hasScan = cd, true
 }
 
 // stats : ce que la passe a mesure, mis en forme pour le consommateur.
@@ -449,6 +418,9 @@ func (p *pass) stats(w *walkResult) Stats {
 		MultiCandidate:    p.multiCand,
 		PacketsWithEvents: w.withEv,
 		PacketsLocated:    w.located,
+
+		NomsDeRemplissageRefuses: p.nomsDeRemplissage,
+		CollisionsDeMortDeBot:    p.collisionsBot,
 	}
 }
 
@@ -466,7 +438,7 @@ func (p *pass) kills() []Kill {
 func (c *decodeCtx) run() *pass {
 	walkCands, noBit := c.walkRes.candidates()
 	sortCandidates(walkCands)
-	p := &pass{ctx: c, byTime: map[int]Kill{}, botUsed: map[[3]int]bool{}}
+	p := &pass{ctx: c, byTime: map[int]Kill{}, botUsed: map[[3]int]bool{}, fantomes: map[int]bool{}}
 	p.population(walkCands, c.scanCands, noBit)
 	p.runStrong()
 	p.runSelfSource()

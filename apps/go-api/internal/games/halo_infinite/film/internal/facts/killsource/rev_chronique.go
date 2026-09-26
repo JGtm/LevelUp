@@ -412,3 +412,36 @@ package killsource
 // `repli_episode_borne_par_la_vie_suivante`) dont les gardes vivent dans la PUBLICATION (episodes
 // d occupation du calque des vehicules). Aucune ligne de kill ne change ; le backlog reste celui
 // de la vague. L entree de la branche, datee a son rang, reste dans `rev_chronique_archive.go`.
+
+// ENTREE `killsource-2026-09-26` (2026-09-26, jalon J7 du PLAN_SUITE_AUDIT_DECODEUR_FILM) : LA
+// REVISION MONTE UNE FOIS POUR LES SEPT CONSTATS FK-1 A FK-7, ET LA SORTIE DU KILL-FEED CHANGE.
+//
+//	FK-2 (J7.1)  un nom de remplissage (`?`, `?N`) n est plus jamais publie : un assistant pose
+//	             par l inference sur un remplissage sort REJETE `hors-roster` (colonne
+//	             `assist_gamertag` NULL, `assist_rejected` = `hors-roster`) ; les temps 4 et 5 ne
+//	             publient pas une ligne dont le nom pris au roster serait un remplissage
+//	             (`Stats.NomsDeRemplissageRefuses`). Predicat unique `estNomDeRemplissage`.
+//	FK-1 (J7.2)  l espace des humains est le NOMBRE DE SIEGES de la table du film, et non plus le
+//	             nombre de noms du kill-feed : un remplacant ne desepingle plus le bot de relais. Sans
+//	             table, aucun bot n est desepingle. Les bots non epingles sont publies
+//	             (`Coverage.BotsNonEpingles`), journalises par film, et comptes par
+//	             `replayidentity` (`killsource_bots_non_epingles`).
+//	FK-3 (J7.3)  le lien par motif du xuid cherche aussi les joueurs qui tuent sans mourir.
+//	FK-4 (J7.4)  le temps 4 ne reecrit plus un instant publie (`Stats.CollisionsDeMortDeBot`) ;
+//	             un couple recolle n est fantome que si sa mort de bot est PUBLIEE, ce qui tient
+//	             `Covered <= RealPairs`.
+//	FK-5 (J7.5)  le numerateur de sante ne compte que des candidats, une fois : le temps 3 laisse
+//	             les indices de bot aux temps de bot, et les inexpliques a indice de bot se
+//	             comptent sur la population (plus sur le scan entier).
+//	FK-6 (J7.6)  un kill-event lu deux fois dans le meme paquet (champs identiques) n est garde
+//	             qu une fois, au bit le plus bas (`AssistStats.Doublons`) : plus de couple fabrique
+//	             pour un kill orphelin voisin, plus de multi-attachement par doublon.
+//	FK-7 (J7.7)  une carte fournie egale a l invariant (Cliffhanger) est une carte APPLIQUEE : plus
+//	             de faux repli `repli_carte_absente_largeurs_par_defaut` ni de faux avertissement.
+//
+// LES LIGNES DE KILL DEJA EN BASE DEVIENNENT CANDIDATES AU BACKLOG DE REDECODAGE
+// (`conditionBacklog`, `sync/killcollector/postsync.go`) : il est traite a la vague unique J11,
+// geste de PRODUCTION pris par le pilote SUR SIGNAL UTILISATEUR (D6), jamais automatique.
+// `SchemaVersion` ne monte pas (la forme du document de rejeu ne change pas) ; le codec des faits
+// ne monte pas : la section 5 gagne des champs JSON, et un fichier ecrit sous la revision
+// anterieure est refuse sur son EN-TETE, qui porte `killsource.Rev`.

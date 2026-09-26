@@ -128,14 +128,17 @@ func ProfilDeDepart() grammar.ProfilDeBalayage {
 // C EST LE MEME GESTE QUE `replay.installWorldObjectPrecision`, PAR LE MEME APPEL
 // (`PoserLargeursObjetDuMondeDepuisDecoupage`) : les deux chemins de decodage du depot posent
 // desormais la carte de la meme facon, et il n y a pas deux regles a maintenir.
+//
+// « APPLIQUEE » VEUT DIRE QUE LE PROFIL PORTE CE QUE L ENTREE IMPOSE, pas que ses largeurs ont
+// CHANGE (lot J7.7, constat FK-7) : sur Cliffhanger, dont l entree EST l invariant, rien ne change et
+// la carte passait pour absente — faux repli, faux avertissement a chaque decodage.
 func ProfilDeDepartPourCarte(carte *profile.MapQuantEntry) (grammar.ProfilDeBalayage, bool) {
 	p := ProfilDeDepart()
 	if carte == nil {
 		return p, false
 	}
-	avant := p.LargeursObjetDuMonde()
 	p.PoserLargeursObjetDuMondeDepuisDecoupage(carte.Layout())
-	return p, p.LargeursObjetDuMonde() != avant
+	return p, p.LargeursObjetDuMonde() == carte.PrecisionAbsolue()
 }
 
 // avertirReplisDeCalibration DIT les replis que la calibration a poses. Deux, et chacun est
@@ -204,6 +207,12 @@ func (c *decodeCtx) prepare(ctx context.Context, src *source.Film) error {
 			"desaccords", motif.desaccords, "absents", motif.absents)
 	}
 	c.roster = buildRoster(c.feed, loadBotMeta(c.film), c.opts.Bots, table, motif)
+	if n := len(c.roster.unpinned); n > 0 {
+		// FK-1 (lot J7.2) : une perte PUBLIEE (`Coverage.BotsNonEpingles`) et DITE, jamais muette.
+		slog.WarnContext(ctx, "killsource: bot(s) NON EPINGLE(S) — leur slot tombe sur un siege "+
+			"humain de la table du film ; leurs morts et celles qu ils infligent ne se publient pas",
+			"film", c.name, "bots", n, "borne_humains", c.roster.borneHumains)
+	}
 	// LE COUPLE (TUEUR, VICTIME) SE LIT AU KILL-EVENT 85 (lot 1.9.3), et il se lit ICI : la
 	// decomposition du kill-feed exige les kill-events et le roster EPINGLE, et la bijection
 	// exige la decomposition. L ordre est donc force, et il est le resultat — resoudre les
@@ -274,16 +283,23 @@ func (c *decodeCtx) finish() *Result {
 // ni l une ni l autre n a JAMAIS pu entrer dans les couples reconstruits (le kill-feed est
 // humain-seul), donc les additionner a `Covered` fabriquerait un taux qui n existe nulle part —
 // et un numerateur qui deborderait son denominateur des le premier film a bot.
+//
+// LES COUPLES FANTOMES — des couples RECOLLES dont le kill est en realite une mort de BOT — SORTENT
+// DU DENOMINATEUR : ce ne sont pas des morts manquees, ce sont des morts qui N EXISTENT PAS (la
+// reconstruction a pris la victime du voisin, verifie en Theater). DEPUIS LE LOT J7.4 (FK-4), un
+// couple n est fantome que si le temps 4 a PUBLIE sa mort de bot ([pass.fantomes]) : c est ce qui
+// tient `Covered <= RealPairs` — une ligne humaine publiee a cet instant resterait sinon au
+// numerateur apres le retrait de son couple, et masquerait une mort manquee ailleurs.
 func (c *decodeCtx) coverage(kills []Kill, p *pass) Coverage {
-	ghost := c.ghostPairs()
 	cov := Coverage{
 		ReconstructedPairs: len(c.feed.pairs),
-		GhostPairs:         len(ghost),
+		GhostPairs:         len(p.fantomes),
 		SameInstantPairs:   len(c.feed.real),
 		FeedKills:          c.feed.nKills,
 		FeedDeaths:         c.feed.nDeaths,
 		BotDeaths:          p.botStats.Published,
 		BotKillerDeaths:    p.botKillerStats.Published,
+		BotsNonEpingles:    len(c.roster.unpinned),
 	}
 	cov.RealPairs = cov.ReconstructedPairs - cov.GhostPairs
 	for _, k := range kills {

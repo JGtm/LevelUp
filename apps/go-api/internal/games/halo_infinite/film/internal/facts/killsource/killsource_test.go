@@ -187,13 +187,18 @@ func TestEtiquetageGardeLaClasseMemeSansNom(t *testing.T) {
 	}
 }
 
+// TestRosterEpingleLesBotsAuDelaDesHumains : l espace des humains est celui des huit PLACES que la
+// table du film donne (lot J7.2, FK-1) — il ne se compte plus sur les noms du kill-feed.
 func TestRosterEpingleLesBotsAuDelaDesHumains(t *testing.T) {
 	kf := &killFeed{names: []string{"A", "B", "C", "D", "E", "F", "G", "H"}}
 	bm := botMeta{NBots: 2, Bots: []bot{
 		{Slot: 8, BotID: 39, Name: "343 Aloysius"}, // au-dela des humains : EPINGLE
 		{Slot: 3, BotID: 7, Name: "343 Contredit"}, // dans l espace des humains : NON epingle
 	}}
-	r := buildRoster(kf, bm, true, FilmTable{}, indexParMotif{})
+	table := FilmTable{Build: "b", Seats: map[int]string{
+		0: "A", 1: "B", 2: "C", 3: "D", 4: "E", 5: "F", 6: "G", 7: "H",
+	}}
+	r := buildRoster(kf, bm, true, table, indexParMotif{})
 	if r.nPlay != 9 {
 		t.Errorf("nPlay = %d, attendu 9 (la borne se DERIVE du slot declare)", r.nPlay)
 	}
