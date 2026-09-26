@@ -275,13 +275,13 @@ func p2aDoc(t *testing.T, dir, short string, quant *profile.MapQuantEntry) Repla
 		t.Fatalf("positions illisibles (%s) : %v", dir, err)
 	}
 	var opt Options
-	deaths, err := ScanFilmDeaths(dir)
+	deaths, err := grammar.ScanFilmDeaths(dir)
 	if err != nil {
 		t.Fatalf("fil des morts illisible (%s) : %v", dir, err)
 	}
 	opt.Deaths = deaths
 	if len(deaths) > 0 {
-		idx, err := ScanFilmPlayerIndices(dir, rosterFromDeaths(deaths))
+		idx, err := grammar.ScanFilmPlayerIndices(dir, rosterFromDeaths(deaths))
 		if err != nil {
 			t.Logf("index de joueur illisible : %v — les vies restent nommees par le fil des morts", err)
 		}
@@ -291,7 +291,7 @@ func p2aDoc(t *testing.T, dir, short string, quant *profile.MapQuantEntry) Repla
 		}
 		opt.PlayerIndices = table
 	}
-	clockUS, err := ScanFilmClockOrigin(dir)
+	clockUS, err := grammar.ScanFilmClockOrigin(dir)
 	if err != nil {
 		t.Logf("origine d'horloge illisible : %v — les instants ne seront pas recales", err)
 		clockUS = 0

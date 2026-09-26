@@ -5,6 +5,7 @@ import (
 
 	"levelup/go-api/internal/games/canonical"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // identity_registry_test.go — LES PROPRIETES DU REGISTRE, pas des valeurs figees.
@@ -14,7 +15,7 @@ import (
 
 // filmDeuxJoueurs fabrique un film synthetique : le slot 100 meurt trois fois (il sera nomme
 // par le fil des morts), le slot 200 ne meurt JAMAIS (c'est le cas de `d9781168`).
-func filmDeuxJoueurs() ([]grammar.BipedPosition, []Death, PlayerIndexTable) {
+func filmDeuxJoueurs() ([]grammar.BipedPosition, []types.Death, types.PlayerIndexTable) {
 	var pos []grammar.BipedPosition
 	// Slot 100 : trois sejours separes par plus de lifeGapUS, chacun clos par une mort.
 	for i, debut := range []uint64{1_000_000, 20_000_000, 40_000_000} {
@@ -27,12 +28,12 @@ func filmDeuxJoueurs() ([]grammar.BipedPosition, []Death, PlayerIndexTable) {
 	for t := uint64(1_000_000); t <= 43_000_000; t += 500_000 {
 		pos = append(pos, posAt(200, t, 2, 2, 2))
 	}
-	deaths := []Death{
+	deaths := []types.Death{
 		{XUID: 111, Gamertag: "MORTEL", TimeMS: 4_000},
 		{XUID: 111, Gamertag: "MORTEL", TimeMS: 23_000},
 		{XUID: 111, Gamertag: "MORTEL", TimeMS: 43_000},
 	}
-	idx := PlayerIndexTable{ByXUID: map[uint64]int{111: 0}, Readings: 26}
+	idx := types.PlayerIndexTable{ByXUID: map[uint64]int{111: 0}, Readings: 26}
 	return pos, deaths, idx
 }
 
@@ -116,8 +117,8 @@ func TestRegistreFilmEntierementNommeInchange(t *testing.T) {
 	}
 	in := IdentityInput{
 		Positions:     pos,
-		Deaths:        []Death{{XUID: 111, TimeMS: 4_000}, {XUID: 111, TimeMS: 23_000}},
-		PlayerIndices: PlayerIndexTable{ByXUID: map[uint64]int{111: 0}, Readings: 26},
+		Deaths:        []types.Death{{XUID: 111, TimeMS: 4_000}, {XUID: 111, TimeMS: 23_000}},
+		PlayerIndices: types.PlayerIndexTable{ByXUID: map[uint64]int{111: 0}, Readings: 26},
 		RosterXUIDs:   []uint64{111},
 		Clock:         IdentityClock{OriginUS: 1_000_000, StepUS: 100_000, FrameCount: 231},
 	}
@@ -186,7 +187,7 @@ func TestRegistreBorneChaqueLienDeSlot(t *testing.T) {
 // sans quoi la jointure web retombe sur le nom nu et deux bots homonymes fusionnent.
 func TestBidDuBotEstPublie(t *testing.T) {
 	bots := []BotIdentity{{FilmIndex: 8, Name: "343 Aloysius [bot]", BotID: 39}}
-	roster := buildRoster(PlayerIndexTable{ByXUID: map[uint64]int{111: 0}},
+	roster := buildRoster(types.PlayerIndexTable{ByXUID: map[uint64]int{111: 0}},
 		map[uint64]string{111: "HUMAIN"}, bots, teamPublication{})
 	var vu bool
 	for _, e := range roster {

@@ -67,7 +67,7 @@ func TestTotalControlDesignateurParManche(t *testing.T) {
 	// fige (p2aCorpus), qui ne connait ni Total Control ni leurs rosters.
 	short := filepath.Base(dir)
 
-	clockUS, err := ScanFilmClockOrigin(dir)
+	clockUS, err := grammar.ScanFilmClockOrigin(dir)
 	if err != nil {
 		t.Fatalf("%s : origine d'horloge illisible : %v", short, err)
 	}

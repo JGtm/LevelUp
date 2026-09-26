@@ -17,7 +17,8 @@ import (
 
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
-	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
+
+	"levelup/go-api/internal/games/halo_infinite/film/finalise"
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/persist"
@@ -322,7 +323,7 @@ func (c *KillSourceCollector) writeShots(ctx context.Context, batch persist.Weap
 // comptait un echec pour chaque match detecte moins d une minute apres sa fin — 23 sur 96 au
 // parc mesure (rapport `ctf_ab526724` §2.3).
 func filmPasEncoreFinalise(ctx context.Context, matchID string, err error) bool {
-	if !errors.Is(err, filmcache.ErrFilmNonFinalise) {
+	if !errors.Is(err, finalise.ErrFilmNonFinalise) {
 		return false
 	}
 	observability.AddInt(metricNonFinalise, 1)

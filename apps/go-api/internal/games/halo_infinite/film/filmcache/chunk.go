@@ -18,6 +18,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"levelup/go-api/internal/games/halo_infinite/film/finalise"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
@@ -93,7 +94,7 @@ func FilmComplet(root, shortID string) (bool, error) {
 	if err != nil || !ok {
 		return false, err
 	}
-	if !Finalise(src.chunks, typeDeMeta) {
+	if !finalise.Finalise(src.chunks, typeDeMeta) {
 		return false, nil
 	}
 	manquant, err := src.controlerFichiers()

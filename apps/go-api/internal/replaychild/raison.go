@@ -6,7 +6,7 @@ package replaychild
 // # LE DEFAUT
 //
 // Le code de sortie ne dit que « ecarte ». L'enfant classait son erreur en cherchant du TEXTE
-// (`strings.Contains(err.Error(), ...)`), ne reconnaissait pas `filmcache.ErrFilmNonFinalise`
+// (`strings.Contains(err.Error(), ...)`), ne reconnaissait pas `finalise.ErrFilmNonFinalise`
 // (compte en ECHEC), et le parent traduisait TOUT refus en `ErrMapNotInCatalog` : une cle de
 // film inconnue se journalisait « carte hors catalogue ».
 //
@@ -21,7 +21,7 @@ import (
 	"errors"
 	"fmt"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
+	"levelup/go-api/internal/games/halo_infinite/film/finalise"
 	"levelup/go-api/internal/replaybuild"
 )
 
@@ -37,7 +37,7 @@ var refusVoulus = []struct {
 	// film est lisible, c'est le depot qui n'a pas encore sa ligne.
 	{"cle_du_film_inconnue", replaybuild.ErrUnknownFilmKey},
 	// Film au cache que la cuisson refuse comme NON FINALISE (lot L3) : il sera complet plus tard.
-	{"film_non_finalise", filmcache.ErrFilmNonFinalise},
+	{"film_non_finalise", finalise.ErrFilmNonFinalise},
 }
 
 // raisonDuRefus rend le jeton de protocole d'un refus VOULU, ou "" quand `err` est un echec.

@@ -220,7 +220,7 @@ func adsBalayeFilm(dir string, f adsMedailleFilm, b *adsSweepBilan) {
 		b.rejetDecodage++
 		return
 	}
-	deaths, err := ScanFilmDeaths(dir)
+	deaths, err := grammar.ScanFilmDeaths(dir)
 	if err != nil || len(deaths) == 0 {
 		b.rejetFilDesMorts++
 		return

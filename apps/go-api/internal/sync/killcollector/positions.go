@@ -267,18 +267,18 @@ func buildPositionRows(
 		return passePositions{}, materiauDIsolement{}, fmt.Errorf("positions bipeds: %w", err)
 	}
 
-	originUS, err := replay.ScanClockOrigin(film)
+	originUS, err := decfilm.ScanClockOrigin(film)
 	if err != nil {
 		observability.AddInt(metricPositionsNoOrigin, 1)
 		return passePositions{}, materiauDIsolement{}, fmt.Errorf("horloge du film: %w", err)
 	}
 
-	deathsFilm, err := replay.ScanDeaths(film)
+	deathsFilm, err := decfilm.ScanDeaths(film)
 	if err != nil {
 		return passePositions{}, materiauDIsolement{}, fmt.Errorf("fil des morts (rejeu): %w", err)
 	}
 
-	idx, err := replay.ScanPlayerIndices(film, rosterUint64(ids.XUIDs))
+	idx, err := decfilm.ScanPlayerIndices(film, rosterUint64(ids.XUIDs))
 	if err != nil {
 		return passePositions{}, materiauDIsolement{}, fmt.Errorf("index de joueur: %w", err)
 	}

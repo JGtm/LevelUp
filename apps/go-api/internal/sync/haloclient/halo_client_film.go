@@ -18,7 +18,7 @@ import (
 
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
-	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
+	"levelup/go-api/internal/games/halo_infinite/film/finalise"
 )
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -35,13 +35,13 @@ const haloUGCHost = "https://discovery-infiniteugc.svc.halowaypoint.com"
 // Une copie locale du littéral 2 serait un magic number de plus, et il dériverait.
 //
 // LE TYPE DES TEMPS FORTS REPREND CELUI DE `filmcache` (lot L3, 2026-09-23) : c'est le type qui
-// dit qu'un film est FINALISÉ ([filmcache.Finalise]), et le prédicat vit là où le writer du cache
-// peut le lire. Un sélecteur qui compare au type 3 passe par [filmcache.EstTempsForts]
+// dit qu'un film est FINALISÉ ([finalise.Finalise]), et le prédicat vit là où le writer du cache
+// peut le lire. Un sélecteur qui compare au type 3 passe par [finalise.EstTempsForts]
 // (garde-rail `archlint/film_finalise_predicate_test.go`).
 const (
 	FilmChunkTypeHeader          = 1
 	FilmChunkTypeReplicationData = 2
-	FilmChunkTypeHighlightEvents = filmcache.ChunkTypeTempsForts
+	FilmChunkTypeHighlightEvents = finalise.ChunkTypeTempsForts
 )
 
 // filmChunkParallelism : nombre max de downloads CDN parallèles dans
@@ -140,7 +140,7 @@ func (c *HaloAPIClient) fetchFilmManifest(ctx context.Context, matchID string) (
 	// depuis, soit jamais consulté. Le manifeste de l'API prend le relais, et le writer du cache
 	// le complète au passage.
 	cm, err := c.localFilmCache.LoadManifest(matchID)
-	if err == nil && cm != nil && len(cm.Chunks) > 0 && !filmcache.Finalise(cm.Chunks, typeDuCache) {
+	if err == nil && cm != nil && len(cm.Chunks) > 0 && !finalise.Finalise(cm.Chunks, typeDuCache) {
 		slog.InfoContext(ctx, "film: manifeste du cache non finalisé (sans temps forts) — relu à l'API",
 			"match_id", matchID, "entrees", len(cm.Chunks))
 		cm = nil
@@ -330,7 +330,7 @@ func (c *HaloAPIClient) fetchFilmChunks(
 	return out, true, nil
 }
 
-// refuserSiNonFinalise rend [filmcache.ErrFilmNonFinalise] quand le manifeste décrit un film en
+// refuserSiNonFinalise rend [finalise.ErrFilmNonFinalise] quand le manifeste décrit un film en
 // cours de publication : des morceaux, mais pas celui des temps forts (lot L3, 2026-09-23).
 //
 // NI 404 NI PANNE. Le film existe et sera complet dans une minute : l'appelant reporte au cycle
@@ -338,14 +338,14 @@ func (c *HaloAPIClient) fetchFilmChunks(
 // d'avant le lot, et `killcollector` en tire son marqueur terminal.
 func refuserSiNonFinalise(manifest *filmManifest, caller, matchID string) error {
 	chunks := manifest.CustomData.Chunks
-	if len(chunks) == 0 || filmcache.Finalise(chunks, typeDuManifesteAPI) {
+	if len(chunks) == 0 || finalise.Finalise(chunks, typeDuManifesteAPI) {
 		return nil
 	}
 	return fmt.Errorf("%s(%s) : %d morceaux au manifeste : %w", caller, matchID, len(chunks),
-		filmcache.ErrFilmNonFinalise)
+		finalise.ErrFilmNonFinalise)
 }
 
-// typeDuManifesteAPI / typeDuCache : les accesseurs de type que [filmcache.Finalise] reçoit.
+// typeDuManifesteAPI / typeDuCache : les accesseurs de type que [finalise.Finalise] reçoit.
 func typeDuManifesteAPI(c filmChunk) int { return c.ChunkType }
 func typeDuCache(c CachedChunk) int      { return c.ChunkType }
 
@@ -411,7 +411,7 @@ func (c *HaloAPIClient) GetHighlightEventsChunk(ctx context.Context, matchID str
 	}
 
 	for _, chunk := range manifest.CustomData.Chunks {
-		if !filmcache.EstTempsForts(chunk.ChunkType) {
+		if !finalise.EstTempsForts(chunk.ChunkType) {
 			continue
 		}
 		// Cache disque d'abord (rarement présent — Python ne cache que

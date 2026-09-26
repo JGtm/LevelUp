@@ -178,12 +178,12 @@ func decodeEvenements(r *greader, g *FilmFacts) {
 // decodeInventaire relit les inventaires d image-cle et leurs deltas.
 func decodeInventaire(r *greader, g *FilmFacts) {
 	var lastTS uint64
-	n := r.compte(8 + 6*invGrenadeSlots)
-	g.Inventory = make([]KeyframeInventory, 0, n)
+	n := r.compte(8 + 6*types.InventorySlotCount)
+	g.Inventory = make([]types.KeyframeInventory, 0, n)
 	for k := 0; k < n && r.err == nil; k++ {
-		inv := KeyframeInventory{TimestampUS: r.u(), Slot: uint32(r.u())}
+		inv := types.KeyframeInventory{TimestampUS: r.u(), Slot: uint32(r.u())}
 		inv.GrenadesRead = r.bool8()
-		for j := 0; j < invGrenadeSlots; j++ {
+		for j := 0; j < types.InventorySlotCount; j++ {
 			inv.Grenades[j] = uint32(r.u())
 		}
 		inv.SelectedGrenadeRank = int(r.i())
@@ -191,7 +191,7 @@ func decodeInventaire(r *greader, g *FilmFacts) {
 		inv.DrawnSlot = int(r.i())
 		inv.AmmoCandidates = int(r.u())
 		inv.AmmoRead = r.bool8()
-		for j := 0; j < invGrenadeSlots; j++ {
+		for j := 0; j < types.InventorySlotCount; j++ {
 			inv.Ammo[j] = decodeAmmo(r)
 		}
 		g.Inventory = append(g.Inventory, inv)
@@ -383,12 +383,12 @@ func decodeSpawnEvents(r *greader, g *FilmFacts) {
 // decodeQueue relit les morts et la table des index de joueur.
 func decodeQueue(r *greader, g *FilmFacts) {
 	n := r.compte(3)
-	g.Deaths = make([]Death, 0, n)
+	g.Deaths = make([]types.Death, 0, n)
 	for k := 0; k < n && r.err == nil; k++ {
-		g.Deaths = append(g.Deaths, Death{XUID: r.u(), Gamertag: r.str(), TimeMS: r.i()})
+		g.Deaths = append(g.Deaths, types.Death{XUID: r.u(), Gamertag: r.str(), TimeMS: r.i()})
 	}
 
-	g.PlayerIndices = PlayerIndexTable{ByXUID: map[uint64]int{}}
+	g.PlayerIndices = types.PlayerIndexTable{ByXUID: map[uint64]int{}}
 	g.PlayerIndices.Readings = int(r.u())
 	g.PlayerIndices.Disagreements = int(r.u())
 	n = r.compte(2)
@@ -447,17 +447,17 @@ func decodeEntitesDesJoueurs(r *greader) grammar.PlayerEntityScan {
 }
 
 // decodeFilmTable relit la TABLE DES JOUEURS DU FILM (v20, lot 1.6).
-func decodeFilmTable(r *greader) FilmPlayerTable {
-	t := FilmPlayerTable{Build: r.str(), Refusal: FilmTableRefusal(r.str())}
+func decodeFilmTable(r *greader) grammar.FilmPlayerTable {
+	t := grammar.FilmPlayerTable{Build: r.str(), Refusal: grammar.FilmTableRefusal(r.str())}
 	t.Occupied, t.Vacant = int(r.u()), int(r.u())
 	t.InterleavedVacant = r.bool8()
 	n := r.compte(3)
 	if n == 0 {
 		return t
 	}
-	t.Seats = make([]FilmPlayerSeat, 0, n)
+	t.Seats = make([]grammar.FilmPlayerSeat, 0, n)
 	for k := 0; k < n && r.err == nil; k++ {
-		t.Seats = append(t.Seats, FilmPlayerSeat{
+		t.Seats = append(t.Seats, grammar.FilmPlayerSeat{
 			FilmIndex: int(r.i()), XUID: r.u(), Gamertag: r.str()})
 	}
 	return t

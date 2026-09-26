@@ -5,6 +5,7 @@ import (
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // TestFlagCarriesVolPuisCapture — un vol ouvre un `carried` du BON joueur, et la capture renvoie
@@ -52,7 +53,7 @@ func TestFlagCarriesMortLachePuisReprise(t *testing.T) {
 		flagTestTrack(10, "aaa", 0, 40, 95, 95), // meurt pres du socle de l'equipe 1
 		flagTestTrack(12, "bbb", 41, 99, 96, 96),
 	}
-	deaths := []Death{{XUID: 1, TimeMS: 4000}}
+	deaths := []types.Death{{XUID: 1, TimeMS: 4000}}
 	scan := FlagCarryScan{
 		Scanned: true, Signals: flagTestSignals(),
 		Events: []objectives.NamedEvent{

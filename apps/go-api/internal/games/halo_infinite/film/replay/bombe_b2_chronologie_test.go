@@ -94,14 +94,14 @@ const (
 
 // b2Timeline charge la chronologie d'une famille sur UN film : événements datés (ms match),
 // pont slot->xuid et fil des morts. Un seul décodage à la fois (verrou pris par l'appelant).
-func b2Timeline(t *testing.T, cache, id string, fam uint32) ([]HeldObjectEvent, map[uint32]uint64, []Death) {
+func b2Timeline(t *testing.T, cache, id string, fam uint32) ([]HeldObjectEvent, map[uint32]uint64, []types.Death) {
 	t.Helper()
 	dir := filepath.Join(cache, "film_chunks", id)
 	changes, _, err := grammar.ScanFilmHeldWeaponChanges(dir, nil)
 	if err != nil {
 		t.Fatalf("%s : canal des armes tenues illisible : %v", id, err)
 	}
-	originUS, err := ScanFilmClockOrigin(dir)
+	originUS, err := grammar.ScanFilmClockOrigin(dir)
 	if err != nil {
 		t.Fatalf("%s : horloge du film illisible : %v", id, err)
 	}
@@ -117,7 +117,7 @@ func b2Timeline(t *testing.T, cache, id string, fam uint32) ([]HeldObjectEvent, 
 	}
 	sort.SliceStable(evs, func(i, j int) bool { return evs[i].TimeMS < evs[j].TimeMS })
 
-	deaths, err := ScanFilmDeaths(dir)
+	deaths, err := grammar.ScanFilmDeaths(dir)
 	if err != nil {
 		t.Fatalf("%s : fil des morts illisible : %v", id, err)
 	}
@@ -137,7 +137,7 @@ func b2Timeline(t *testing.T, cache, id string, fam uint32) ([]HeldObjectEvent, 
 	if err != nil {
 		t.Fatalf("%s : positions bipeds illisibles : %v", id, err)
 	}
-	idx, err := ScanFilmPlayerIndices(dir, xuids)
+	idx, err := grammar.ScanFilmPlayerIndices(dir, xuids)
 	if err != nil {
 		t.Logf("%s : index de joueur illisible (%v) — pont par le seul fil des morts", id, err)
 	}
@@ -150,7 +150,7 @@ func b2Timeline(t *testing.T, cache, id string, fam uint32) ([]HeldObjectEvent, 
 
 // b2Periodes délègue à l'instrument publié (held_object_carry.go) : la logique des périodes
 // n'a qu'UNE implémentation, celle que le produit consommera.
-func b2Periodes(evs []HeldObjectEvent, slotXUID map[uint32]uint64, deaths []Death) []HeldObjectPeriod {
+func b2Periodes(evs []HeldObjectEvent, slotXUID map[uint32]uint64, deaths []types.Death) []HeldObjectPeriod {
 	return BuildHeldObjectCarry(evs, occupantFige(slotXUID), deaths).Periods
 }
 
@@ -181,7 +181,7 @@ func b2Detonateurs(t *testing.T, cache, id string) map[int]string {
 	recs, _ := objectives.StatRecordsCtx(context.Background(), src, id)
 	named := objectives.NamedEventsFrom(recs, objectives.ObjectiveTypeBomb)
 	dir := filepath.Join(cache, "film_chunks", id)
-	deaths, err := ScanFilmDeaths(dir)
+	deaths, err := grammar.ScanFilmDeaths(dir)
 	if err != nil {
 		t.Fatalf("%s : fil des morts illisible : %v", id, err)
 	}

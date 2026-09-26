@@ -455,7 +455,7 @@ func encodeEntitesDesJoueurs(w *gwriter, s grammar.PlayerEntityScan) {
 // encodeFilmTable ecrit la TABLE DES JOUEURS DU FILM (v20, lot 1.6). Elle porte son REFUS comme
 // elle porte ses sieges : une table non lue n'est pas une table vide, et le document publie la
 // difference (`coverage.identity.filmTable.refus`).
-func encodeFilmTable(w *gwriter, t FilmPlayerTable) {
+func encodeFilmTable(w *gwriter, t grammar.FilmPlayerTable) {
 	w.str(t.Build)
 	w.str(string(t.Refusal))
 	w.u(uint64(t.Occupied))

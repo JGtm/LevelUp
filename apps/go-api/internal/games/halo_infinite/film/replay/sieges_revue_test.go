@@ -19,14 +19,15 @@ import (
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // successionDeTest : un 2 contre 2 (index 0..3, xuids 100..130), images-cles porteuses aux frames
 // 10, 30, 50, 70, 90. L'humain d'index 3 part apres f30 ; le bot `343 Robot [bot]` est declare sur
 // l'index 3 de f58 a la fin, son entite lue de f70 a f90. `simultane` fait lire l'humain jusqu'a
 // f70 : les deux occupants de l'index 3 partagent alors une image-cle.
-func successionDeTest(simultane bool) (PlayerIndexTable, []BotIdentity, grammar.PlayerEntityScan, []Track) {
-	idx := PlayerIndexTable{ByXUID: map[uint64]int{100: 0, 110: 1, 120: 2, 130: 3}}
+func successionDeTest(simultane bool) (types.PlayerIndexTable, []BotIdentity, grammar.PlayerEntityScan, []Track) {
+	idx := types.PlayerIndexTable{ByXUID: map[uint64]int{100: 0, 110: 1, 120: 2, 130: 3}}
 	bots := []BotIdentity{{FilmIndex: 3, Name: "343 Robot [bot]", BotID: 7,
 		Declarations: [][2]uint64{{5_800_000, 0}}}}
 	finHumain := 1
@@ -45,7 +46,7 @@ func successionDeTest(simultane bool) (PlayerIndexTable, []BotIdentity, grammar.
 }
 
 // poserLaSuccession deroule la chaine de production : roster, liaison, places.
-func poserLaSuccession(idx PlayerIndexTable, bots []BotIdentity, scan grammar.PlayerEntityScan,
+func poserLaSuccession(idx types.PlayerIndexTable, bots []BotIdentity, scan grammar.PlayerEntityScan,
 	tracks []Track) ([]RosterEntry, SeatCoverage, int) {
 	roster, admis := rosterDesOccupants(idx, nil, bots, scan, teamPublication{})
 	in := entreesDeTest(scan)

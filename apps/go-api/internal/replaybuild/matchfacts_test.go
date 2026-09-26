@@ -6,7 +6,8 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
+
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 	"levelup/go-api/internal/port"
 )
 
@@ -188,7 +189,7 @@ func TestIdentifyRoundEventsMultiManche(t *testing.T) {
 // TestDeathInstantsOfConversion — la traduction du fil des morts (xuid decimal + instant) est la
 // SEULE chose que `deathInstantsOf` fait, et une inversion casserait tout appariement en silence.
 func TestDeathInstantsOfConversion(t *testing.T) {
-	got := deathInstantsOf([]replay.Death{{XUID: 2533274, TimeMS: 4200}})
+	got := deathInstantsOf([]types.Death{{XUID: 2533274, TimeMS: 4200}})
 	if len(got) != 1 {
 		t.Fatalf("%d instant(s), attendu 1", len(got))
 	}

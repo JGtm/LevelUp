@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // at construit un échantillon de position au seul instant qui nous intéresse. Les helpers
@@ -96,8 +97,7 @@ func TestFermetureARefuseUnCorpsQuandLeTireurNEstAncreNullePart(t *testing.T) {
 	}
 }
 
-// TestFermetureASAbstientQuandDeuxCorpsRevendiquentLeMemeTireur — UN JOUEUR N'A QU'UN DERNIER
-// CORPS.
+// TestFermetureASAbstientQuandDeuxCorpsRevendiquentLeMemeTireur — UN JOUEUR N'A QU'UN DERNIER CORPS.
 //
 // C'est le symétrique du refus « deux joueurs revendiquent le même corps », et il devient
 // nécessaire AVEC la corroboration : la première attribution fait du corps déduit un corps connu
@@ -228,7 +228,7 @@ func TestFermetureBAttribueSurUneSeuleMortDansLaFenetre(t *testing.T) {
 		{slot: 1, from: 9_000_000, to: 10_000_000, xuid: 111},
 		{slot: 2, from: 20_000_000, to: 21_000_000},
 	}
-	deaths := []Death{{XUID: 111, TimeMS: 1_000}, {XUID: 222, TimeMS: 12_000}}
+	deaths := []types.Death{{XUID: 111, TimeMS: 1_000}, {XUID: 222, TimeMS: 12_000}}
 	owner := map[uint32]int{1: 0}
 	var rep closureReport
 	closeByRespawn(tracks, owner, lives, deaths, 0, map[uint64]int{111: 0, 222: 1}, &rep)
@@ -248,7 +248,7 @@ func TestFermetureBSAbstientQuandDeuxMortsSontDansLaFenetre(t *testing.T) {
 		{slot: 2, from: 20_000_000, to: 21_000_000},
 	}
 	// Deux morts distinctes tombent dans la même fenêtre de réapparition.
-	deaths := []Death{{XUID: 111, TimeMS: 1_000}, {XUID: 222, TimeMS: 12_000}, {XUID: 333, TimeMS: 12_100}}
+	deaths := []types.Death{{XUID: 111, TimeMS: 1_000}, {XUID: 222, TimeMS: 12_000}, {XUID: 333, TimeMS: 12_100}}
 	owner := map[uint32]int{1: 0}
 	var rep closureReport
 	closeByRespawn(tracks, owner, lives, deaths, 0, map[uint64]int{111: 0, 222: 1, 333: 2}, &rep)
@@ -277,7 +277,7 @@ func TestFermetureBSAbstientQuandDeuxViesRevendiquentLaMemeMort(t *testing.T) {
 		{slot: 2, from: 20_000_000, to: 20_000_000},
 		{slot: 3, from: 20_100_000, to: 20_100_000},
 	}
-	deaths := []Death{{XUID: 111, TimeMS: 1_000}, {XUID: 222, TimeMS: 12_000}}
+	deaths := []types.Death{{XUID: 111, TimeMS: 1_000}, {XUID: 222, TimeMS: 12_000}}
 	owner := map[uint32]int{1: 0}
 	var rep closureReport
 	closeByRespawn(tracks, owner, lives, deaths, 0, map[uint64]int{111: 0, 222: 1}, &rep)
@@ -304,7 +304,7 @@ func TestFermetureBCompteLeRejetDUneIdentiteHorsTable(t *testing.T) {
 		{slot: 1, from: 9_000_000, to: 10_000_000, xuid: 111},
 		{slot: 2, from: 20_000_000, to: 21_000_000},
 	}
-	deaths := []Death{{XUID: 111, TimeMS: 1_000}, {XUID: 222, TimeMS: 12_000}}
+	deaths := []types.Death{{XUID: 111, TimeMS: 1_000}, {XUID: 222, TimeMS: 12_000}}
 	owner := map[uint32]int{1: 0}
 	var rep closureReport
 	closeByRespawn(tracks, owner, lives, deaths, 0, map[uint64]int{111: 0}, &rep)
@@ -353,7 +353,7 @@ func TestFermetureBNommeLaVieDesigneeQuandLeSlotEnPorteDeux(t *testing.T) {
 		{slot: 2, from: 20_000_000, to: 21_000_000},
 		{slot: 2, from: 30_000_000, to: 31_000_000},
 	}
-	deaths := []Death{{XUID: 111, TimeMS: 1_000}, {XUID: 222, TimeMS: 12_000}}
+	deaths := []types.Death{{XUID: 111, TimeMS: 1_000}, {XUID: 222, TimeMS: 12_000}}
 	owner := map[uint32]int{1: 0}
 	var rep closureReport
 	closeByRespawn(tracks, owner, lives, deaths, 0, map[uint64]int{111: 0, 222: 1}, &rep)
@@ -452,7 +452,7 @@ func TestFermetureBNeTranchePasQuandDeuxMortsDesignentLeMemeSlot(t *testing.T) {
 	}
 	// Fenêtre calibrée à 8 000 ms par la vie nommée ; 222 puis 333 meurent 8 s avant chacune
 	// des deux vies libres du slot 2.
-	deaths := []Death{{XUID: 111, TimeMS: 1_000}, {XUID: 222, TimeMS: 12_000}, {XUID: 333, TimeMS: 22_000}}
+	deaths := []types.Death{{XUID: 111, TimeMS: 1_000}, {XUID: 222, TimeMS: 12_000}, {XUID: 333, TimeMS: 22_000}}
 	owner := map[uint32]int{1: 0}
 	var rep closureReport
 	closeByRespawn(tracks, owner, lives, deaths, 0, map[uint64]int{111: 0, 222: 1, 333: 2}, &rep)
@@ -492,7 +492,7 @@ func TestFermetureBTesteLaVieDesigneeEtPasLeSlotEntier(t *testing.T) {
 	}
 	// 111 meurt à 1 s et réapparaît à 9 s : la fenêtre de réapparition vaut 8 000 ms.
 	// 222 meurt à 12 s ; la vie du slot 2 à 20 s tombe donc dans SA fenêtre.
-	deaths := []Death{{XUID: 111, TimeMS: 1_000}, {XUID: 222, TimeMS: 12_000}}
+	deaths := []types.Death{{XUID: 111, TimeMS: 1_000}, {XUID: 222, TimeMS: 12_000}}
 	owner := map[uint32]int{1: 0, 3: 1} // le slot 3 appartient DÉJÀ au joueur 1 (= xuid 222)
 	var rep closureReport
 	closeByRespawn(tracks, owner, lives, deaths, 0, map[uint64]int{111: 0, 222: 1}, &rep)
@@ -519,7 +519,7 @@ func TestFermetureBRefuseToujoursUnVraiRecouvrement(t *testing.T) {
 		{slot: 2, from: 500_000, to: 600_000},
 		{slot: 2, from: 20_000_000, to: 21_000_000},
 	}
-	deaths := []Death{{XUID: 111, TimeMS: 1_000}, {XUID: 222, TimeMS: 12_000}}
+	deaths := []types.Death{{XUID: 111, TimeMS: 1_000}, {XUID: 222, TimeMS: 12_000}}
 	owner := map[uint32]int{1: 0, 3: 1}
 	var rep closureReport
 	closeByRespawn(tracks, owner, lives, deaths, 0, map[uint64]int{111: 0, 222: 1}, &rep)

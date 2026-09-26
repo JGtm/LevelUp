@@ -29,6 +29,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // invRespawnWindowsMS est l'echelle de fenetres balayee. La reapparition mesuree a une mediane
@@ -60,7 +61,7 @@ func (s *invMortStat) taux(w int64) float64 {
 // instant_film = instant_match + offset.
 func invMortMeasure(
 	pos []grammar.BipedPosition, fire []grammar.FireEvent,
-	inv []KeyframeInventory, deaths []Death, idx PlayerIndexTable,
+	inv []types.KeyframeInventory, deaths []types.Death, idx types.PlayerIndexTable,
 ) (vide, plein *invMortStat, own IdentityRegistry) {
 	own = BuildIdentityRegistry(IdentityInput{Positions: pos, Deaths: deaths,
 		PlayerIndices: idx, Fire: fireRefs(fire)})
@@ -236,17 +237,17 @@ func invMortFilm(t *testing.T, dir string) (*invMortStat, *invMortStat, Identity
 			"denominateur du taux affaibli", dir, err)
 		fire = nil
 	}
-	inv, _, err := ScanFilmKeyframeInventory(dir, loadoutFamilies(), 0, nil)
+	inv, _, err := grammar.ScanFilmKeyframeInventory(dir, loadoutFamilies(), 0)
 	if err != nil {
 		t.Logf("%s : inventaire illisible : %v", dir, err)
 		return nil, nil, IdentityRegistry{}
 	}
-	deaths, err := ScanFilmDeaths(dir)
+	deaths, err := grammar.ScanFilmDeaths(dir)
 	if err != nil {
 		t.Logf("%s : fil des morts illisible : %v", dir, err)
 		return nil, nil, IdentityRegistry{}
 	}
-	idx, err := ScanFilmPlayerIndices(dir, rosterFromDeaths(deaths))
+	idx, err := grammar.ScanFilmPlayerIndices(dir, rosterFromDeaths(deaths))
 	if err != nil {
 		t.Logf("%s : index de joueur illisible : %v", dir, err)
 		return nil, nil, IdentityRegistry{}

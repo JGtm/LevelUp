@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // lives_test.go — le repli « nommer la vie par la mort qui la termine ».
@@ -54,7 +55,7 @@ func TestNameLivesByDeathsJoinsOnEnd(t *testing.T) {
 		posAt(513, 20_000_000, 0, 0, 0), posAt(513, 21_000_000, 0, 0, 0),
 	)
 	lives := buildLifeSpans(tr)
-	deaths := []Death{{XUID: 111, TimeMS: 2_000 - 500}, {XUID: 222, TimeMS: 21_000 - 500}}
+	deaths := []types.Death{{XUID: 111, TimeMS: 2_000 - 500}, {XUID: 222, TimeMS: 21_000 - 500}}
 	off, n, _ := bestDeathOffset(lives, deaths)
 	if n != 2 {
 		t.Fatalf("attendu 2 morts appariables, obtenu %d (decalage %d)", n, off)
@@ -81,7 +82,7 @@ func TestNameLivesByDeathsIsDeterministic(t *testing.T) {
 			posAt(513, 1_000_000, 0, 0, 0), posAt(513, 5_000_000, 0, 0, 0),
 		)
 		lives := buildLifeSpans(tr)
-		deaths := []Death{{XUID: 111, TimeMS: 5_000}, {XUID: 222, TimeMS: 5_000}}
+		deaths := []types.Death{{XUID: 111, TimeMS: 5_000}, {XUID: 222, TimeMS: 5_000}}
 		nameLivesByDeaths(lives, deaths, 0)
 		m := map[uint32]uint64{}
 		for _, l := range lives {
@@ -162,7 +163,7 @@ func TestNameTracksByLivesNamesEachOccupantOfARecycledSlot(t *testing.T) {
 func TestBuildRosterIsSortedAndStable(t *testing.T) {
 	// L'ordre d'iteration d'une map Go est aleatoire : sans tri, l'artefact changerait
 	// d'octets a chaque build sans changer de contenu, et deviendrait indiffable.
-	idx := PlayerIndexTable{ByXUID: map[uint64]int{2533274800000003: 2, 2533274800000001: 0,
+	idx := types.PlayerIndexTable{ByXUID: map[uint64]int{2533274800000003: 2, 2533274800000001: 0,
 		2533274800000002: 1}}
 	first := buildRoster(idx, nil, nil, teamPublication{})
 	if len(first) != 3 || first[0].FilmIndex != 0 || first[2].FilmIndex != 2 {
@@ -176,7 +177,7 @@ func TestBuildRosterIsSortedAndStable(t *testing.T) {
 			t.Fatalf("roster non reproductible entre deux appels : %+v puis %+v", first, got)
 		}
 	}
-	if buildRoster(PlayerIndexTable{}, nil, nil, teamPublication{}) != nil {
+	if buildRoster(types.PlayerIndexTable{}, nil, nil, teamPublication{}) != nil {
 		t.Errorf("sans table d'index, pas de roster invente")
 	}
 }
@@ -188,7 +189,7 @@ func TestBuildOwnersPublishesNothingWithoutDeaths(t *testing.T) {
 	// un rejeu qui pose des tirs sur le mauvais joueur ne se voit pas.
 	tr := tracksOf(posAt(512, 1_000_000, 0, 0, 90), posAt(512, 2_000_000, 0, 0, 90),
 		posAt(513, 1_000_000, 5, 5, 270), posAt(513, 2_000_000, 5, 5, 270))
-	rep := buildOwnersDeTest(tr, nil, PlayerIndexTable{ByXUID: map[uint64]int{111: 4}, Readings: 26}, nil)
+	rep := buildOwnersDeTest(tr, nil, types.PlayerIndexTable{ByXUID: map[uint64]int{111: 4}, Readings: 26}, nil)
 	if len(rep.Owner) != 0 {
 		t.Errorf("sans morts, AUCUN slot ne doit etre attribue : %+v", rep.Owner)
 	}
@@ -198,13 +199,13 @@ func TestBuildOwnersPublishesNothingWithoutDeaths(t *testing.T) {
 
 	// SANS TABLE D'INDEX non plus, rien n'est publié : le pont a DEUX maillons lus, et il lui
 	// faut les deux.
-	if rep3 := buildOwnersDeTest(tr, []Death{{XUID: 111, TimeMS: 2_000}}, PlayerIndexTable{}, nil); len(rep3.Owner) != 0 {
+	if rep3 := buildOwnersDeTest(tr, []types.Death{{XUID: 111, TimeMS: 2_000}}, types.PlayerIndexTable{}, nil); len(rep3.Owner) != 0 {
 		t.Errorf("sans table d'index, AUCUN slot ne doit etre attribue : %+v", rep3.Owner)
 	}
 
 	// Avec les deux maillons, la lecture nomme le slot.
-	deaths := []Death{{XUID: 111, TimeMS: 2_000}}
-	rep2 := buildOwnersDeTest(tr, deaths, PlayerIndexTable{ByXUID: map[uint64]int{111: 4}, Readings: 26}, nil)
+	deaths := []types.Death{{XUID: 111, TimeMS: 2_000}}
+	rep2 := buildOwnersDeTest(tr, deaths, types.PlayerIndexTable{ByXUID: map[uint64]int{111: 4}, Readings: 26}, nil)
 	if rep2.DeathsNamed == 0 {
 		t.Fatalf("attendu au moins une vie nommee, obtenu %d", rep2.DeathsNamed)
 	}
@@ -218,7 +219,7 @@ func TestBuildRosterPublishesDeclaredBots(t *testing.T) {
 	// Les bots de BOT_METADATA entrent au roster SANS xuid, avec leur nom suffixé — et un
 	// bot dont l'index est déjà tenu par un humain est refusé : le fil des morts (une
 	// lecture par identité) l'emporte sur un paquet de métadonnées.
-	idx := PlayerIndexTable{ByXUID: map[uint64]int{2533274800000001: 0}}
+	idx := types.PlayerIndexTable{ByXUID: map[uint64]int{2533274800000001: 0}}
 	bots := []BotIdentity{
 		{FilmIndex: 8, Name: "343 Aloysius [bot]"},
 		{FilmIndex: 0, Name: "343 Conflit [bot]"}, // index tenu par l'humain -> refusé

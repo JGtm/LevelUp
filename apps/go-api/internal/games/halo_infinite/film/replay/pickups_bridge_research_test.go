@@ -60,11 +60,11 @@ func TestPickupsBridgeNamesPickers(t *testing.T) {
 	if err != nil {
 		t.Fatalf("positions illisibles : %v", err)
 	}
-	deaths, err := ScanFilmDeaths(dir)
+	deaths, err := grammar.ScanFilmDeaths(dir)
 	if err != nil {
 		t.Fatalf("fil des morts illisible : %v", err)
 	}
-	idx, err := ScanFilmPlayerIndices(dir, rosterFromDeaths(deaths))
+	idx, err := grammar.ScanFilmPlayerIndices(dir, rosterFromDeaths(deaths))
 	if err != nil {
 		t.Fatalf("index de joueur illisible : %v", err)
 	}

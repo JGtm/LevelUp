@@ -206,7 +206,7 @@ func TestFlagRetourRemetLeSolEtEnJeu(t *testing.T) {
 		flagTestPath(12, "1", 0, 99, 20, 2, 2, 96, 96), // vole en (2,2), meurt en (96,96)
 		flagTestTrack(14, "2", 0, 99, 96, 96),          // ramasse A L'ENDROIT DU LACHER
 	}
-	deaths := []Death{{XUID: 1, TimeMS: 2000}}
+	deaths := []types.Death{{XUID: 1, TimeMS: 2000}}
 	scan := FlagCarryScan{
 		Scanned: true, Signals: flagTestSignals(),
 		Events: []objectives.NamedEvent{
@@ -248,7 +248,7 @@ func TestFlagOverlapsComptesParDrapeau(t *testing.T) {
 		flagTestTrack(12, "1", 0, 99, 2, 2),
 		flagTestTrack(14, "2", 0, 99, 4, 4),
 	}
-	deaths := []Death{{XUID: 1, TimeMS: 6000}, {XUID: 2, TimeMS: 7000}}
+	deaths := []types.Death{{XUID: 1, TimeMS: 6000}, {XUID: 2, TimeMS: 7000}}
 	scan := FlagCarryScan{
 		Scanned: true, Signals: flagTestSignals(),
 		Events: []objectives.NamedEvent{

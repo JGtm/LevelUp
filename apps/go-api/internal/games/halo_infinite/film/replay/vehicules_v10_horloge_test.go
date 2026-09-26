@@ -82,7 +82,7 @@ func TestV10Horloge(t *testing.T) {
 			t.Logf("V10 horloge %s : film absent du cache — saute", f.ID)
 			continue
 		}
-		clk, err := ScanFilmClockOrigin(dir)
+		clk, err := grammar.ScanFilmClockOrigin(dir)
 		if err != nil {
 			t.Logf("V10 horloge %s : origine d horloge illisible (%v) — conversion IMPOSSIBLE", f.ID, err)
 			continue
@@ -135,7 +135,7 @@ func v10OriginMs(t *testing.T, root string, f v0Film) (float64, int, bool) {
 	if !ok || len(bip) == 0 {
 		return 0, 0, false
 	}
-	clk, err := ScanFilmClockOrigin(dir)
+	clk, err := grammar.ScanFilmClockOrigin(dir)
 	if err != nil {
 		return 0, 0, false
 	}

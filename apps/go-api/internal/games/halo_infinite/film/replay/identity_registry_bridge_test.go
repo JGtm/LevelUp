@@ -5,6 +5,7 @@ import (
 
 	"levelup/go-api/internal/games/canonical"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // identity_registry_bridge_test.go — LE PONT PAR MORTS EN TEMOIN, ET LA PAIRE ECHANGEE.
@@ -46,12 +47,12 @@ func filmPaireEchangee() IdentityInput {
 	}
 	return IdentityInput{
 		Positions: pos, BipedCreations: creations,
-		Deaths: []Death{
+		Deaths: []types.Death{
 			{XUID: 111, Gamertag: "A", TimeMS: 3_000},
 			{XUID: 222, Gamertag: "B", TimeMS: 5_000},
 			{XUID: 111, Gamertag: "A", TimeMS: 9_000},
 		},
-		PlayerIndices: PlayerIndexTable{ByXUID: map[uint64]int{111: 0, 222: 1}, Readings: 26},
+		PlayerIndices: types.PlayerIndexTable{ByXUID: map[uint64]int{111: 0, 222: 1}, Readings: 26},
 		Clock:         IdentityClock{OriginUS: 1_000_000, StepUS: 100_000, FrameCount: 91},
 		MatchID:       "test",
 	}

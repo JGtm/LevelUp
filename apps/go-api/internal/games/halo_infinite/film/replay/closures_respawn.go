@@ -1,6 +1,10 @@
 package replay
 
-import "sort"
+import (
+	"sort"
+
+	"levelup/go-api/internal/games/halo_infinite/film/types"
+)
 
 // closures_respawn.go — LA FERMETURE B, ET ELLE SEULE.
 //
@@ -46,7 +50,7 @@ const respawnHalfWidthUS = 750_000
 // décidait laquelle des deux gagnait, l'autre héritant du même joueur quelques instants plus tard.
 // Le comptage des revendications est donc symétrique de la map `claims` de la fermeture A.
 func closeByRespawn(tracks map[uint32]slotTrack, owner map[uint32]int, lives []lifeSpan,
-	deaths []Death, off int64, byXUID map[uint64]int, rep *closureReport) {
+	deaths []types.Death, off int64, byXUID map[uint64]int, rep *closureReport) {
 	free := freeLives(owner, lives)
 	if len(free) == 0 || len(deaths) == 0 {
 		return
@@ -95,7 +99,7 @@ func closeByRespawn(tracks map[uint32]slotTrack, owner map[uint32]int, lives []l
 // respawnWindow calibre la fenêtre de réapparition SUR LE FILM TRAITÉ : la médiane de l'écart
 // entre le début d'une vie nommée et la mort précédente de son propre joueur, plus ou moins
 // respawnHalfWidthUS. Une constante importée d'un autre film serait une supposition.
-func respawnWindow(lives []lifeSpan, deaths []Death, off int64) (int64, int64) {
+func respawnWindow(lives []lifeSpan, deaths []types.Death, off int64) (int64, int64) {
 	var d []int64
 	for _, l := range lives {
 		if l.xuid == 0 {
@@ -124,7 +128,7 @@ func respawnWindow(lives []lifeSpan, deaths []Death, off int64) (int64, int64) {
 
 // victimsInWindow rend les xuids DISTINCTS des morts dont la réapparition tomberait dans la
 // fenêtre du début de vie fromUS.
-func victimsInWindow(deaths []Death, off int64, fromUS, lo, hi int64) []uint64 {
+func victimsInWindow(deaths []types.Death, off int64, fromUS, lo, hi int64) []uint64 {
 	var out []uint64
 	for _, d := range deaths {
 		delta := fromUS - (d.TimeMS+off)*1000

@@ -22,7 +22,8 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
-	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
+
+	"levelup/go-api/internal/games/halo_infinite/film/finalise"
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
 )
 
@@ -63,7 +64,7 @@ func filmDuRepertoire(t *testing.T, morceaux map[int][]byte, meta []decfilm.Chun
 func TestLaBrancheDesFaitsRendLaMemeLectureDuFilDesMorts(t *testing.T) {
 	o := bobineV40(t)
 	typeTempsForts := []decfilm.ChunkMeta{
-		{Index: 0, ChunkType: 1}, {Index: 1, ChunkType: 2}, {Index: 2, ChunkType: filmcache.ChunkTypeTempsForts},
+		{Index: 0, ChunkType: 1}, {Index: 1, ChunkType: 2}, {Index: 2, ChunkType: finalise.ChunkTypeTempsForts},
 	}
 	partiel := map[int][]byte{}
 	var metaPartiel []decfilm.ChunkMeta

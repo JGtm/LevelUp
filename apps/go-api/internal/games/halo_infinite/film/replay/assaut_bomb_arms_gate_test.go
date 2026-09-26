@@ -51,6 +51,7 @@ package replay
 //	go test ./internal/games/halo_infinite/film/replay/ -run AssautBombArmsGate -v -timeout 60m
 
 import (
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"os"
 	"path/filepath"
 	"sort"
@@ -147,7 +148,7 @@ func baMesurer(t *testing.T, cache, id string) baFilm {
 	t.Helper()
 	periodes, _, _, own := bpExtraire(t, cache, id)
 	armings, armCov, _ := agExtraire(t, cache, id)
-	filmClockUS, err := ScanFilmClockOrigin(filepath.Join(cache, "film_chunks", id))
+	filmClockUS, err := grammar.ScanFilmClockOrigin(filepath.Join(cache, "film_chunks", id))
 	if err != nil {
 		t.Fatalf("%s : horloge du film illisible : %v", id, err)
 	}

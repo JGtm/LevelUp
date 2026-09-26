@@ -42,6 +42,7 @@ import (
 
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
+	"levelup/go-api/internal/games/halo_infinite/film/finalise"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/sync/haloclient"
 )
@@ -90,7 +91,7 @@ func (r *RemoteFilms) GetFilmChunks(
 	if chunks, found, err := r.local.GetFilmChunks(ctx, matchID); err == nil && found {
 		observability.IncCounter(CompteurFilmsDepuisCache)
 		return chunks, true, nil
-	} else if errors.Is(err, filmcache.ErrFilmNonFinalise) {
+	} else if errors.Is(err, finalise.ErrFilmNonFinalise) {
 		// UN MANIFESTE LOCAL NON FINALISE N EST PAS UN CACHE CASSE (lot L3, constat L3-R2) : il a
 		// ete valide avant que le serveur publie les temps forts. Le reseau le complete, et
 		// l archivage ci-dessous remplace le manifeste partiel (`filmcache.Write`). Un etat a

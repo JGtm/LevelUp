@@ -56,10 +56,11 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // eqkLabels rend les etiquettes que le passage d'un releve a l'autre fait APPARAITRE.
-func eqkLabels(avant, apres KeyframeInventory) []string {
+func eqkLabels(avant, apres types.KeyframeInventory) []string {
 	var out []string
 	if avant.AbilityRank != apres.AbilityRank && apres.AbilityRank >= 0 {
 		out = append(out, fmt.Sprintf("rang %d", apres.AbilityRank))
@@ -75,8 +76,8 @@ func eqkLabels(avant, apres KeyframeInventory) []string {
 }
 
 // eqkAround rend le dernier releve avant `at` et le premier apres, pour un slot.
-func eqkAround(list []KeyframeInventory, at uint64, decalUS int64) (KeyframeInventory, KeyframeInventory, bool) {
-	var avant, apres KeyframeInventory
+func eqkAround(list []types.KeyframeInventory, at uint64, decalUS int64) (types.KeyframeInventory, types.KeyframeInventory, bool) {
+	var avant, apres types.KeyframeInventory
 	okA, okB := false, false
 	for _, r := range list {
 		ts := int64(r.TimestampUS) + decalUS
@@ -103,11 +104,11 @@ func TestEquipmentPickupKeyframeNaming(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ramassages natifs illisibles : %v", err)
 	}
-	inv, st, err := ScanFilmKeyframeInventory(dir, loadoutFamilies(), 0, nil)
+	inv, st, err := grammar.ScanFilmKeyframeInventory(dir, loadoutFamilies(), 0)
 	if err != nil {
 		t.Fatalf("inventaire d images-cles illisible : %v", err)
 	}
-	bySlot := map[uint32][]KeyframeInventory{}
+	bySlot := map[uint32][]types.KeyframeInventory{}
 	rangsLus, grenadesLues := 0, 0
 	for _, r := range inv {
 		bySlot[r.Slot] = append(bySlot[r.Slot], r)

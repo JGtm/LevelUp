@@ -10,6 +10,8 @@ package replay
 
 import (
 	"errors"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 	"log/slog"
 )
 
@@ -162,11 +164,11 @@ const (
 )
 
 // lectureDuFilDesMorts classe l issue de [ScanDeaths] : une erreur n est pas un fil vide.
-func lectureDuFilDesMorts(deaths []Death, err error) string {
+func lectureDuFilDesMorts(deaths []types.Death, err error) string {
 	switch {
 	case err == nil && len(deaths) > 0:
 		return DeathsFeedRead
-	case err == nil, errors.Is(err, ErrFilDesMortsSansMort):
+	case err == nil, errors.Is(err, grammar.ErrFilDesMortsSansMort):
 		return DeathsFeedEmpty
 	default:
 		return DeathsFeedUnreadable

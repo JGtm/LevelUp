@@ -1,4 +1,4 @@
-package replay
+package grammar
 
 // deaths_source_tempsforts_test.go — LE MORCEAU DES TEMPS FORTS SE CHOISIT PAR SON TYPE (lot L3,
 // 2026-09-23).
@@ -19,7 +19,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
+	"levelup/go-api/internal/games/halo_infinite/film/finalise"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
@@ -45,7 +45,7 @@ func TestScanDeaths_TempsFortsChoisiParSonType(t *testing.T) {
 	o := octetsBobineV40(t)
 	film, err := source.Load(source.MemoryChunks{o[0], o[2], o[1]}, []types.ChunkMeta{
 		{Index: 0, ChunkType: 1},
-		{Index: 1, ChunkType: filmcache.ChunkTypeTempsForts},
+		{Index: 1, ChunkType: finalise.ChunkTypeTempsForts},
 		{Index: 2, ChunkType: 2},
 	})
 	if err != nil {
@@ -77,7 +77,7 @@ func TestScanDeaths_DernierMorceauDeReplication_ErreurTypee(t *testing.T) {
 	if !errors.Is(err, ErrFilSansTempsForts) {
 		t.Fatalf("err = %v, attendu ErrFilSansTempsForts", err)
 	}
-	if !errors.Is(err, filmcache.ErrFilmNonFinalise) {
-		t.Errorf("err = %v : hors de la famille filmcache.ErrFilmNonFinalise", err)
+	if !errors.Is(err, finalise.ErrFilmNonFinalise) {
+		t.Errorf("err = %v : hors de la famille finalise.ErrFilmNonFinalise", err)
 	}
 }

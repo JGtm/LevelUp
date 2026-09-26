@@ -23,6 +23,8 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/filmproc"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 const (
@@ -65,7 +67,7 @@ func TestOddballTraverseeD9(t *testing.T) {
 		return
 	}
 	dir := objChunkDir(root, id)
-	deaths, err := ScanFilmDeaths(dir)
+	deaths, err := grammar.ScanFilmDeaths(dir)
 	if err != nil {
 		t.Fatalf("%s : fil des morts illisible : %v", id, err)
 	}
@@ -107,7 +109,7 @@ type d9Stats struct {
 }
 
 // d9Reconstruit attribue chaque trou au PREMIER joueur qui traverse le lieu de repos.
-func d9Reconstruit(e d8Etat, deaths []Death, opt d9Options) (map[string]float64, d9Stats) {
+func d9Reconstruit(e d8Etat, deaths []types.Death, opt d9Options) (map[string]float64, d9Stats) {
 	out, st := map[string]float64{}, d9Stats{}
 	for i := 0; i+1 < len(e.vies); i++ {
 		fin := e.vies[i+1].T0US
@@ -172,7 +174,7 @@ func d9PremierTraversant(e d8Etat, debutUS, finUS uint64, x, y float32, fenetreM
 
 // d9FinPortage borne le portage : la fin du trou, ou la MORT du porteur si elle tombe avant.
 // Regle fondee par la mesure D6 : 22 morts de porteur sur 24 sont suivies d'un lacher.
-func d9FinPortage(xuid, debutUS, finUS uint64, deaths []Death, pont objBridge) uint64 {
+func d9FinPortage(xuid, debutUS, finUS uint64, deaths []types.Death, pont objBridge) uint64 {
 	fin := finUS
 	for _, d := range deaths {
 		if d.XUID != xuid {

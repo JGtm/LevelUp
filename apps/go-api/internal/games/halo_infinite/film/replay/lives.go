@@ -41,22 +41,8 @@ const deathMatchWindowMS = 150
 // mesuré (médiane 8,0 s).
 const lifeGapUS = 5_000_000
 
-// Death est une mort du fil, telle que le film la porte : une identité et un instant.
-// L'identité est le XUID — jamais un index (cf. la règle « un ordre n'est pas une
-// identité », qui a déjà produit une fausse découverte dans ce chantier).
-type Death struct {
-	// XUID identifie la victime. Stable, global, indépendant de tout tri.
-	XUID uint64
-	// Gamertag est le nom porté PAR LE FILM lui-même, dans le même enregistrement que le xuid
-	// (32 octets UTF-16LE). Il n'est pas obligatoire au rattachement — celui-ci ne travaille
-	// que sur le xuid — mais il rend le rejeu lisible SANS base de données, ce qui est la
-	// propriété que tout ce pipeline cherche à préserver. Vide si l'enregistrement ne le porte
-	// pas ; l'identité reste alors le xuid.
-	Gamertag string
-	// TimeMS est l'instant de la mort sur l'horloge du MATCH (origine = début du match),
-	// qui n'est pas celle du film. Le décalage entre les deux est résolu par mesure.
-	TimeMS int64
-}
+// `Death` (une mort du fil, telle que le film la porte) vit en `types.Death` depuis le lot J4.2
+// (2026-09-26) : elle est produite par la lecture du fil des morts, descendue en `grammar`.
 
 // lifeSpan est une vie de biped : les positions d'un même slot sans trou majeur.
 type lifeSpan struct {

@@ -38,6 +38,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // Les quatre classes d'une coupure, et rien d'autre.
@@ -179,7 +180,7 @@ func classerLesCoupures(reg IdentityRegistry, opt Options) bilanCoupures {
 // coupureEntrees porte ce que le film ECRIT autour d'une coupure. Une structure plutot que six
 // parametres : le depot en borne cinq.
 type coupureEntrees struct {
-	deaths    []Death
+	deaths    []types.Death
 	creations []grammar.BipedCreation
 	offUS     int64
 	manches   []int64
@@ -219,7 +220,7 @@ func classeDeLaCoupure(cur, next lifeSpan, in coupureEntrees) string {
 
 // mortsDuJoueur compte les morts ECRITES d'un joueur sur tout le film — le chiffre qui dit si la
 // coupure est convertible (le joueur meurt, donc ses vies se bornent) ou si elle releve du repli.
-func mortsDuJoueur(deaths []Death, xuid uint64) int {
+func mortsDuJoueur(deaths []types.Death, xuid uint64) int {
 	if xuid == 0 {
 		return -1
 	}

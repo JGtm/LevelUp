@@ -26,6 +26,7 @@ import (
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // objRecord est un record de bipede d'image-cle, reduit a ce que la mesure consomme :
@@ -138,7 +139,7 @@ type objWindow struct {
 // LE LACHER VOLONTAIRE N'EST PAS OBSERVABLE et n'est donc PAS borne : une fenetre qui le
 // contient est trop longue, ce qui ABAISSE le taux mesure. Le biais joue contre le signal,
 // jamais en sa faveur — c'est le sens dans lequel on veut se tromper.
-func objPortageWindows(evs []objectives.IdentifiedEvent, deaths []Death, finMS int64) ([]objWindow, int) {
+func objPortageWindows(evs []objectives.IdentifiedEvent, deaths []types.Death, finMS int64) ([]objWindow, int) {
 	prises := map[uint64][]objWindow{}
 	captures, morts := map[uint64][]int64{}, map[uint64][]int64{}
 	for _, e := range evs {
@@ -316,7 +317,7 @@ func objCandidats(t objTable) []objCandidat {
 }
 
 // objFinMatch borne la derniere fenetre : le dernier fait date du match.
-func objFinMatch(evs []objectives.IdentifiedEvent, deaths []Death) int64 {
+func objFinMatch(evs []objectives.IdentifiedEvent, deaths []types.Death) int64 {
 	var fin int64
 	for _, e := range evs {
 		if int64(e.TimeMS) > fin {

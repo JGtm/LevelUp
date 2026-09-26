@@ -46,13 +46,14 @@ import (
 	"time"
 
 	"levelup/go-api/internal/ctxkeys"
-	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
+
+	"levelup/go-api/internal/games/halo_infinite/film/finalise"
 	"levelup/go-api/internal/observability"
 )
 
 // CompteurFilmsNonFinalises : films dont l'archivage et la cuisson sont REPORTÉS au cycle suivant
 // parce que le serveur ne les a pas encore FINALISÉS — leur manifeste ne porte pas le morceau des
-// temps forts (cf. `filmcache/finalise.go`). Compté PAR TITRE, à CHAQUE refus, comme le reste du
+// temps forts (cf. `film/finalise/finalise.go`). Compté PAR TITRE, à CHAQUE refus, comme le reste du
 // paquet.
 //
 // CE N'EST PAS UN ÉCHEC : un compteur qui monte au rythme des matchs frais est NOMINAL. Ce qui ne
@@ -144,7 +145,7 @@ func cleDAttente(ctx context.Context, matchID string) string {
 // reporterNonFinalise compte et journalise le report d'un film non finalisé. Rend vrai quand
 // `err` en est un — l'appelant s'arrête alors là : le film n'est ni archivé ni disponible.
 func reporterNonFinalise(ctx context.Context, d Deps, matchID string, err error) bool {
-	if !errors.Is(err, filmcache.ErrFilmNonFinalise) {
+	if !errors.Is(err, finalise.ErrFilmNonFinalise) {
 		return false
 	}
 	titre := ctxkeys.TitleSlug(ctx)

@@ -6,6 +6,7 @@ import (
 
 	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // kills_test.go — la résolution d'identité hors ligne (gamertag/xuid: -> xuid), sur données
@@ -45,7 +46,7 @@ func TestResolveKillIdentity_ReplixuidNonDecimalRefuse(t *testing.T) {
 }
 
 func TestGamertagXUIDIndex_PremierGagneEnCasDeDoublon(t *testing.T) {
-	deaths := []replay.Death{
+	deaths := []types.Death{
 		{XUID: 111, Gamertag: "Joueur"},
 		{XUID: 222, Gamertag: "Joueur"}, // même nom, second xuid : ne doit rien écraser
 		{XUID: 333, Gamertag: ""},       // sans gamertag : absent de l'index
@@ -153,7 +154,7 @@ func TestResolveKills_ComptesConserves(t *testing.T) {
 // zéro se lirait comme « personne n'a tué de porteur », ce qui est une affirmation.
 func TestKillRefs_PortesFermees(t *testing.T) {
 	b := &Builder{}
-	deaths := filmDeaths{list: []replay.Death{{XUID: 22, Gamertag: "Victime"}}}
+	deaths := filmDeaths{list: []types.Death{{XUID: 22, Gamertag: "Victime"}}}
 	// `BijectionMargin > 0` et aucune alerte de santé : la porte ligne-par-ligne est OUVERTE,
 	// ce qui isole chacun des deux autres refus.
 	ouvert := &decfilm.Result{BijectionMargin: 1, Kills: []decfilm.Kill{killDe("Tueur", "Victime", 10)}}

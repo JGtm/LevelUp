@@ -269,11 +269,11 @@ func adsBalayage(t *testing.T, dir string) ([]grammar.BipedPosition, map[uint32]
 	}
 	t.Logf("COUT — ScanFilmBipedPositions : %d positions en %s", len(pos), time.Since(debut).Round(time.Millisecond))
 
-	deaths, err := ScanFilmDeaths(dir)
+	deaths, err := grammar.ScanFilmDeaths(dir)
 	if err != nil {
 		t.Fatalf("fil des morts : %v", err)
 	}
-	idx, err := ScanFilmPlayerIndices(dir, rosterFromDeaths(deaths))
+	idx, err := grammar.ScanFilmPlayerIndices(dir, rosterFromDeaths(deaths))
 	if err != nil {
 		t.Fatalf("index de joueur : %v", err)
 	}

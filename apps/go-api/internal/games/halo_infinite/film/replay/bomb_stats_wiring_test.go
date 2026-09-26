@@ -105,12 +105,12 @@ func bwPositions() []grammar.BipedPosition {
 // bwDeaths / bwIndices : les DEUX pièces du pont slot -> xuid. Retirer l'une des deux suffit à
 // vider le pont du registre (`PontEtabli` faux), et c'est exactement ce que fait le cas
 // « sans pont ».
-func bwDeaths() []Death {
-	return []Death{{XUID: bwXUID, Gamertag: "Temoin", TimeMS: bwMortMS}}
+func bwDeaths() []types.Death {
+	return []types.Death{{XUID: bwXUID, Gamertag: "Temoin", TimeMS: bwMortMS}}
 }
 
-func bwIndices() PlayerIndexTable {
-	return PlayerIndexTable{ByXUID: map[uint64]int{bwXUID: 0}, Readings: 1}
+func bwIndices() types.PlayerIndexTable {
+	return types.PlayerIndexTable{ByXUID: map[uint64]int{bwXUID: 0}, Readings: 1}
 }
 
 // bwPortage rend les DEUX transitions du canal des armes tenues qui font UNE période fermée par

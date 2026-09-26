@@ -210,12 +210,12 @@ func gwPickup25Ratio(a gwPickup25Tally) string {
 // pont vide qui en resulte se lit alors dans « SANS PONT ».
 func gwPickupOwners(t *testing.T, dir string, f *gwPickupFilm) map[uint32]uint64 {
 	t.Helper()
-	deaths, err := ScanFilmDeaths(dir)
+	deaths, err := grammar.ScanFilmDeaths(dir)
 	if err != nil {
 		t.Logf("2.5 PONT — fil des morts illisible (%v) : pont VIDE, tout sera « sans pont »", err)
 		return map[uint32]uint64{}
 	}
-	idx, err := ScanFilmPlayerIndices(dir, rosterFromDeaths(deaths))
+	idx, err := grammar.ScanFilmPlayerIndices(dir, rosterFromDeaths(deaths))
 	if err != nil {
 		t.Logf("2.5 PONT — index de joueur illisible (%v) : pont VIDE", err)
 		return map[uint32]uint64{}

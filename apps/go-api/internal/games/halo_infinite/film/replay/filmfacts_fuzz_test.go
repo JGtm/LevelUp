@@ -134,13 +134,13 @@ func faitsDeLaMiniBobine(t *testing.T, entry profile.MapQuantEntry) *FilmFacts {
 	if g.Loadouts, err = grammar.ScanFilmKeyframeLoadouts(MiniFilmDir, loadoutFamilies()); err != nil {
 		t.Fatalf("armes portees : %v", err)
 	}
-	if g.Inventory, _, err = ScanFilmKeyframeInventory(MiniFilmDir, loadoutFamilies(), 0, nil); err != nil {
+	if g.Inventory, _, err = grammar.ScanFilmKeyframeInventory(MiniFilmDir, loadoutFamilies(), 0); err != nil {
 		t.Fatalf("inventaire d image-cle : %v", err)
 	}
-	if g.Deaths, err = ScanFilmDeaths(MiniFilmDir); err != nil {
+	if g.Deaths, err = grammar.ScanFilmDeaths(MiniFilmDir); err != nil {
 		t.Fatalf("morts : %v", err)
 	}
-	if g.PlayerIndices, err = ScanFilmPlayerIndices(MiniFilmDir, rosterFromDeaths(g.Deaths)); err != nil {
+	if g.PlayerIndices, err = grammar.ScanFilmPlayerIndices(MiniFilmDir, rosterFromDeaths(g.Deaths)); err != nil {
 		t.Fatalf("indices joueur : %v", err)
 	}
 	if g.Projectiles, err = grammar.ScanFilmProjectiles(MiniFilmDir, &wr); err != nil {

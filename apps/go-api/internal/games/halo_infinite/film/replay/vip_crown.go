@@ -61,7 +61,7 @@ type VipCrownScan struct {
 	// l'instant de la selection. Sur un film mono-manche c'est le pont plat, a l'octet pres.
 	Identity objectives.RoundIdentity
 	// Deaths est le fil des morts du film (horloge du MATCH, comme les evenements nommes).
-	Deaths []Death
+	Deaths []types.Death
 }
 
 // L'AXE DE TEMPS est le `matchClock` partage (match_clock.go) : la conversion match <-> frames
@@ -80,7 +80,7 @@ type vipRawPeriod struct {
 // suivante du meme slot, la fin (`endMS`). C'est le coeur PUR, partage par la mesure
 // (`TestVIPPeriodes`) et par le build — une seule regle, une seule source.
 func vipReconstructPeriods(events []objectives.NamedEvent, identity objectives.RoundIdentity,
-	deaths []Death, endMS int64) []vipRawPeriod {
+	deaths []types.Death, endMS int64) []vipRawPeriod {
 	sels := vipSelectionOpenings(events, identity)
 	byXUID := deathTimesByXUID(deaths)
 	next := vipNextSelectionOfSlot(sels)
@@ -132,7 +132,7 @@ func vipNextSelectionOfSlot(sels []vipRawPeriod) map[int]int64 {
 }
 
 // vipMatchEndMS rend une borne STRICTEMENT posterieure a tout fait date (selection ou mort).
-func vipMatchEndMS(events []objectives.NamedEvent, deaths []Death) int64 {
+func vipMatchEndMS(events []objectives.NamedEvent, deaths []types.Death) int64 {
 	var end int64
 	for _, e := range events {
 		if int64(e.TimeMS) > end {

@@ -35,6 +35,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // classeDeVie : les trois verdicts de l'oracle, et rien d'autre.
@@ -210,7 +211,7 @@ func causeEtFinDeLaVie(reg IdentityRegistry, clk IdentityClock, tr Track) (strin
 
 // ecartALaMortLaPlusProche rend, en millisecondes, l'ecart entre la fin de la vie et la mort du
 // MEME joueur la plus proche — le chiffre qui dit si l'oracle tient de peu ou pas du tout.
-func ecartALaMortLaPlusProche(deaths []Death, offsetMS int64, xuid string, finVieUS int64) int64 {
+func ecartALaMortLaPlusProche(deaths []types.Death, offsetMS int64, xuid string, finVieUS int64) int64 {
 	meilleur := int64(-1)
 	for _, d := range deaths {
 		if xuid != "" && fmt.Sprint(d.XUID) != xuid {

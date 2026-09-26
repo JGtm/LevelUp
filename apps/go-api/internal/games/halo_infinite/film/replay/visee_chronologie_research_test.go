@@ -87,7 +87,7 @@ func TestViseeChronologie(t *testing.T) {
 	if err != nil {
 		t.Fatalf("balayage des positions : %v", err)
 	}
-	deaths, err := ScanFilmDeaths(dir)
+	deaths, err := grammar.ScanFilmDeaths(dir)
 	if err != nil {
 		t.Fatalf("fil des morts : %v", err)
 	}

@@ -176,12 +176,12 @@ func v4Pont(
 	t *testing.T, dir string, bip []grammar.BipedPosition, fire []grammar.FireEvent,
 ) IdentityRegistry {
 	t.Helper()
-	deaths, err := ScanFilmDeaths(dir)
+	deaths, err := grammar.ScanFilmDeaths(dir)
 	if err != nil {
 		t.Logf("V4 : fil des morts illisible (%v) — pont vide", err)
 		return IdentityRegistry{}
 	}
-	idx, err := ScanFilmPlayerIndices(dir, rosterFromDeaths(deaths))
+	idx, err := grammar.ScanFilmPlayerIndices(dir, rosterFromDeaths(deaths))
 	if err != nil {
 		t.Logf("V4 : index joueur illisible (%v) — pont sans identite", err)
 	}

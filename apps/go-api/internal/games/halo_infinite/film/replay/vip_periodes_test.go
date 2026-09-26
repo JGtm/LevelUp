@@ -38,6 +38,7 @@ import (
 
 	"levelup/go-api/internal/filmproc"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
 const (
@@ -88,7 +89,7 @@ func TestVIPPeriodes(t *testing.T) {
 	if truncated {
 		t.Logf("%s : enregistrements TRONQUES — periodes partielles, et cela se dit", id)
 	}
-	deaths, err := ScanFilmDeaths(objChunkDir(root, id))
+	deaths, err := grammar.ScanFilmDeaths(objChunkDir(root, id))
 	if err != nil {
 		t.Fatalf("%s : fil des morts illisible : %v", id, err)
 	}

@@ -24,6 +24,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // Les deux slots du cas : 900 partage par deux joueurs d'equipes OPPOSEES, 901 tenu par un seul
@@ -110,7 +111,7 @@ func TestVieDuSecondOccupantNeRecoitPasLEquipeDuPremier(t *testing.T) {
 // equipe sous pretexte que son slot a ete recycle.
 func TestLeXUIDPRIMESURLeSlotAmbigu(t *testing.T) {
 	reg := registreDeuxEquipesSurUnSlot()
-	reg.filmTable.table = PlayerIndexTable{ByXUID: map[uint64]int{111: 0, 222: 1, 333: 2}}
+	reg.filmTable.table = types.PlayerIndexTable{ByXUID: map[uint64]int{111: 0, 222: 1, 333: 2}}
 	p := newTeamPublication(reg, equipesDeReference(),
 		grammar.TeamScanReport{Component: "team_designator", Records: 3}, nil)
 

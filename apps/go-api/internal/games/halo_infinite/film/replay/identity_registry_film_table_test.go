@@ -16,27 +16,29 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // tableDuFilm fabrique une table LUE portant les sieges donnes.
-func tableDuFilm(sieges ...FilmPlayerSeat) FilmPlayerTable {
-	return FilmPlayerTable{Seats: sieges, Build: "HI_1_13_0",
+func tableDuFilm(sieges ...grammar.FilmPlayerSeat) grammar.FilmPlayerTable {
+	return grammar.FilmPlayerTable{Seats: sieges, Build: "HI_1_13_0",
 		Occupied: len(sieges), Vacant: 32 - len(sieges)}
 }
 
 // entreeIdentite fabrique l entree minimale d une composition.
-func entreeIdentite(t FilmPlayerTable, controle map[uint64]int) IdentityInput {
+func entreeIdentite(t grammar.FilmPlayerTable, controle map[uint64]int) IdentityInput {
 	return IdentityInput{
 		FilmTable:     t,
-		PlayerIndices: PlayerIndexTable{ByXUID: controle, Readings: 26},
+		PlayerIndices: types.PlayerIndexTable{ByXUID: controle, Readings: 26},
 	}
 }
 
 func TestCompositionLaTableDuFilmPrimeSurLeControle(t *testing.T) {
 	in := entreeIdentite(
 		tableDuFilm(
-			FilmPlayerSeat{FilmIndex: 0, XUID: 11, Gamertag: "Alpha"},
-			FilmPlayerSeat{FilmIndex: 3, XUID: 22, Gamertag: "Bravo"},
+			grammar.FilmPlayerSeat{FilmIndex: 0, XUID: 11, Gamertag: "Alpha"},
+			grammar.FilmPlayerSeat{FilmIndex: 3, XUID: 22, Gamertag: "Bravo"},
 		),
 		map[uint64]int{11: 0, 22: 9, 33: 7},
 	)
@@ -76,7 +78,7 @@ func TestCompositionLaTableDuFilmPrimeSurLeControle(t *testing.T) {
 
 func TestCompositionCompteLeSilenceDuControle(t *testing.T) {
 	in := entreeIdentite(
-		tableDuFilm(FilmPlayerSeat{FilmIndex: 5, XUID: 44, Gamertag: "Charlie"}),
+		tableDuFilm(grammar.FilmPlayerSeat{FilmIndex: 5, XUID: 44, Gamertag: "Charlie"}),
 		map[uint64]int{},
 	)
 	got := composerTableDIndex(in)
@@ -95,12 +97,12 @@ func TestCompositionCompteLeSilenceDuControle(t *testing.T) {
 // produirait une (la table du film est celle du DEBUT du film).
 func TestCompositionNEstJamaisPlusPauvreQueLeControle(t *testing.T) {
 	controle := map[uint64]int{1: 0, 2: 1, 3: 2, 4: 3}
-	cas := map[string]FilmPlayerTable{
-		"table lue partielle": tableDuFilm(FilmPlayerSeat{FilmIndex: 0, XUID: 1}),
-		"table refusee":       {Refusal: FilmTableNoSection},
+	cas := map[string]grammar.FilmPlayerTable{
+		"table lue partielle": tableDuFilm(grammar.FilmPlayerSeat{FilmIndex: 0, XUID: 1}),
+		"table refusee":       {Refusal: grammar.FilmTableNoSection},
 		"table vide":          {},
-		"vacant intercale": func() FilmPlayerTable {
-			t := tableDuFilm(FilmPlayerSeat{FilmIndex: 0, XUID: 1})
+		"vacant intercale": func() grammar.FilmPlayerTable {
+			t := tableDuFilm(grammar.FilmPlayerSeat{FilmIndex: 0, XUID: 1})
 			t.InterleavedVacant = true
 			return t
 		}(),
@@ -125,7 +127,7 @@ func TestCompositionNEstJamaisPlusPauvreQueLeControle(t *testing.T) {
 // TestCompositionRefuseUnVacantIntercale (T-ABSTENTION) : le rang absolu et l index parmi les
 // occupes divergent, aucun oracle ne les departage (decouverte D3 (1.5)) — on se tait.
 func TestCompositionRefuseUnVacantIntercale(t *testing.T) {
-	film := tableDuFilm(FilmPlayerSeat{FilmIndex: 4, XUID: 77, Gamertag: "Delta"})
+	film := tableDuFilm(grammar.FilmPlayerSeat{FilmIndex: 4, XUID: 77, Gamertag: "Delta"})
 	film.InterleavedVacant = true
 	got := composerTableDIndex(entreeIdentite(film, map[uint64]int{77: 2}))
 	if got.couverture.Read {
@@ -147,13 +149,13 @@ func TestCompositionRefuseUnVacantIntercale(t *testing.T) {
 // TestCompositionPublieLaCauseDuRefus (T-REFUS) : les cinq causes de `grammar` traversent jusqu a
 // la couverture, parce qu un artefact doit dire POURQUOI il a ete cuit sans la table du film.
 func TestCompositionPublieLaCauseDuRefus(t *testing.T) {
-	for _, cause := range []FilmTableRefusal{
-		FilmTableNoRegistry, FilmTableNoSection, FilmTableUnknownBuild,
-		FilmTableTruncated, FilmTableNotFound,
+	for _, cause := range []grammar.FilmTableRefusal{
+		grammar.FilmTableNoRegistry, grammar.FilmTableNoSection, grammar.FilmTableUnknownBuild,
+		grammar.FilmTableTruncated, grammar.FilmTableNotFound,
 	} {
 		t.Run(string(cause), func(t *testing.T) {
 			got := composerTableDIndex(entreeIdentite(
-				FilmPlayerTable{Refusal: cause}, map[uint64]int{9: 1}))
+				grammar.FilmPlayerTable{Refusal: cause}, map[uint64]int{9: 1}))
 			if got.couverture.Read {
 				t.Fatal("une table refusee ne doit pas etre lue")
 			}
@@ -177,11 +179,11 @@ func TestRosterPrendLesSiegesEtLesNomsDuFilm(t *testing.T) {
 		quiRejoint = uint64(2533274800000003)
 	)
 	film := tableDuFilm(
-		FilmPlayerSeat{FilmIndex: 0, XUID: quiMeurt, Gamertag: "Alpha"},
-		FilmPlayerSeat{FilmIndex: 1, XUID: quiNeMeurt, Gamertag: "Bravo"},
+		grammar.FilmPlayerSeat{FilmIndex: 0, XUID: quiMeurt, Gamertag: "Alpha"},
+		grammar.FilmPlayerSeat{FilmIndex: 1, XUID: quiNeMeurt, Gamertag: "Bravo"},
 	)
 	in := entreeIdentite(film, map[uint64]int{quiMeurt: 0, quiRejoint: 5})
-	in.Deaths = []Death{{XUID: quiMeurt, Gamertag: "Alpha", TimeMS: 1000}}
+	in.Deaths = []types.Death{{XUID: quiMeurt, Gamertag: "Alpha", TimeMS: 1000}}
 	reg := BuildIdentityRegistry(in)
 
 	roster := buildRoster(reg.TableDIndex(), nomsDesJoueurs(reg, in.Deaths), nil, teamPublication{})
@@ -234,8 +236,8 @@ func TestCompositionRetireUnIndexQueDeuxXUIDSeDisputent(t *testing.T) {
 	// remplacant y est lu au MEME index 7. Le troisieme joueur est le temoin : il doit survivre.
 	in := entreeIdentite(
 		tableDuFilm(
-			FilmPlayerSeat{FilmIndex: 7, XUID: partant, Gamertag: "Partant"},
-			FilmPlayerSeat{FilmIndex: 2, XUID: indifferent, Gamertag: "Temoin"},
+			grammar.FilmPlayerSeat{FilmIndex: 7, XUID: partant, Gamertag: "Partant"},
+			grammar.FilmPlayerSeat{FilmIndex: 2, XUID: indifferent, Gamertag: "Temoin"},
 		),
 		map[uint64]int{remplacant: 7, indifferent: 2},
 	)
@@ -282,7 +284,7 @@ func TestCompositionRetireUnIndexQueDeuxXUIDSeDisputent(t *testing.T) {
 // n en sont pas une, et rien ne doit partir.
 func TestCompositionSansCollisionNeRetireRien(t *testing.T) {
 	in := entreeIdentite(
-		tableDuFilm(FilmPlayerSeat{FilmIndex: 0, XUID: 11, Gamertag: "Alpha"}),
+		tableDuFilm(grammar.FilmPlayerSeat{FilmIndex: 0, XUID: 11, Gamertag: "Alpha"}),
 		map[uint64]int{22: 1},
 	)
 	got := composerTableDIndex(in)

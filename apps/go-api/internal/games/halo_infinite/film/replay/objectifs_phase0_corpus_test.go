@@ -49,6 +49,7 @@ import (
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // objFilmEnv — la garde d'environnement de toute la phase 0.
@@ -175,7 +176,7 @@ func objRequireRoot(t *testing.T) string {
 type objBridge struct {
 	SlotXUID   map[uint32]uint64
 	OffsetMS   int64
-	Deaths     []Death
+	Deaths     []types.Death
 	LivesTotal int
 	// DeathsNamed / OffsetMatches sont les denominateurs du pont : un pont publie sans eux
 	// ne se juge pas.
@@ -197,11 +198,11 @@ func objBuildBridge(dir string) (objBridge, error) {
 	if err != nil {
 		return objBridge{}, fmt.Errorf("positions : %w", err)
 	}
-	deaths, err := ScanFilmDeaths(dir)
+	deaths, err := grammar.ScanFilmDeaths(dir)
 	if err != nil {
 		return objBridge{}, fmt.Errorf("fil des morts : %w", err)
 	}
-	idx, err := ScanFilmPlayerIndices(dir, rosterFromDeaths(deaths))
+	idx, err := grammar.ScanFilmPlayerIndices(dir, rosterFromDeaths(deaths))
 	if err != nil {
 		return objBridge{}, fmt.Errorf("index de joueur : %w", err)
 	}

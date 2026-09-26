@@ -1,4 +1,4 @@
-package replay
+package grammar
 
 import (
 	"errors"
@@ -6,9 +6,10 @@ import (
 	"sort"
 
 	"levelup/go-api/internal/domain/highlightevent"
-	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
-	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+
+	"levelup/go-api/internal/games/halo_infinite/film/finalise"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // deaths_source.go — LE FIL DES MORTS, LU DANS LE FILM.
@@ -20,22 +21,25 @@ import (
 // manifeste est là (lot L3, 2026-09-23) : « le dernier numéro » désignait un morceau de
 // réplication sur un film archivé avant sa finalisation.
 //
-// POURQUOI CE FICHIER EST SÉPARÉ. C'est le seul point du paquet qui fait des I/O disque et
-// qui dépend du paquet `analysis` (pour son parseur, déjà en production et éprouvé). Le
-// reste de `replay` reste pur et testable sans fichier : `BuildFromPositions` reçoit les
-// morts par `Options.Deaths`, comme il reçoit déjà les loadouts et les grenades.
+// DESCENDU DE `film/replay` AU LOT J4.2 (2026-09-26, PLAN_SUITE_AUDIT_DECODEUR_FILM, DU-3 = S1) :
+// c est une LECTURE du film, et l ADR 0034 D-1 dit que la couche de publication ne decode rien.
+// Deplacement pur ; `Death` vit en `types.Death`. `replay` recoit les morts par
+// `Options.Deaths`, comme il recoit deja les loadouts et les grenades. Ce fichier fait entrer
+// `film/filmcache` (le predicat unique du type des temps forts, `finalise.EstTempsForts`) dans
+// le perimetre de la couche : c est la seule facon de choisir le morceau PAR SON TYPE sans
+// recopier le predicat (ratchet `archlint/film_finalise_predicate_test.go`).
 //
 // CE QU'ON NE FAIT PAS ICI, et c'est délibéré : on ne recopie pas le parseur. Il vit dans
-// `grammar.ParseHighlightEvents`, il est testé là-bas, et une seconde implémentation
+// `ParseHighlightEvents`, il est testé là-bas, et une seconde implémentation
 // divergerait — la règle du dépôt sur les copies vaut aussi pour les décodeurs.
 
 // ErrFilSansTempsForts : les morceaux du film sont TYPES par son manifeste, et aucun n est celui des
 // temps forts — la signature d un film archive avant sa finalisation (`ab526724`, 2026-09-22 : le
 // dernier numero etait un morceau de replication), ou d un morceau des temps forts absent du
 // cache. DISTINCTE d un morceau illisible ou sans mort, et de la famille
-// [filmcache.ErrFilmNonFinalise] : `errors.Is` repond vrai pour les deux.
+// [finalise.ErrFilmNonFinalise] : `errors.Is` repond vrai pour les deux.
 var ErrFilSansTempsForts = fmt.Errorf("fil des morts : aucun morceau des temps forts parmi les "+
-	"morceaux types du film : %w", filmcache.ErrFilmNonFinalise)
+	"morceaux types du film : %w", finalise.ErrFilmNonFinalise)
 
 // ErrFilDesMortsSansMort : le morceau des temps forts a ete LU et ne porte aucune mort. C est une
 // MESURE, pas une panne — `coverage.bridge.deathsFeed` la publie `empty`, distincte de
@@ -49,7 +53,7 @@ var ErrFilDesMortsSansMort = errors.New("aucune mort")
 //
 // ENVELOPPE D2, HORS PRODUCTION (lot 1, 2026-09-02) : la cuisson appelle [ScanDeaths] sur un
 // film déjà chargé.
-func ScanFilmDeaths(filmDir string) ([]Death, error) {
+func ScanFilmDeaths(filmDir string) ([]types.Death, error) {
 	film, err := source.LoadDir(filmDir, nil)
 	if err != nil {
 		return nil, err
@@ -60,7 +64,7 @@ func ScanFilmDeaths(filmDir string) ([]Death, error) {
 // numeroDesTempsForts rend le NUMERO du morceau des temps forts.
 //
 // MANIFESTE PRESENT (au moins un morceau type) : le morceau dont le type est celui des temps forts
-// ([filmcache.EstTempsForts]) — le dernier s il y en avait plusieurs, ce que le parc ne montre
+// ([finalise.EstTempsForts]) — le dernier s il y en avait plusieurs, ce que le parc ne montre
 // pas. Aucun : [ErrFilSansTempsForts], le film n est pas finalise.
 //
 // MANIFESTE ABSENT (film charge sans metadonnees — enveloppes D2, instruments, tests —, ou
@@ -75,7 +79,7 @@ func numeroDesTempsForts(film *source.Film, nums []int) (int, error) {
 		if m.ChunkType != 0 {
 			typee = true
 		}
-		if filmcache.EstTempsForts(m.ChunkType) {
+		if finalise.EstTempsForts(m.ChunkType) {
 			n, type3 = m.Index, true
 		}
 	}
@@ -91,7 +95,7 @@ func numeroDesTempsForts(film *source.Film, nums []int) (int, error) {
 
 // ScanDeaths lit le fil des morts d'un film DEJA CHARGE.
 //
-// LES OCTETS SONT DEJA DECOMPRESSES, et `grammar.ParseHighlightEvents` l'accepte : il tente un
+// LES OCTETS SONT DEJA DECOMPRESSES, et `ParseHighlightEvents` l'accepte : il tente un
 // `zlib.NewReader` et, s'il echoue, traite l'entree comme du clair — c'est la double tolerance
 // qu'il porte depuis l'incident du 2026-05-22 (le cache historique stockait les chunks
 // compresses, les telechargements recents ne le font plus). Lui donner le chunk deja inflate
@@ -103,16 +107,16 @@ func numeroDesTempsForts(film *source.Film, nums []int) (int, error) {
 // 39-40 (mars a novembre 2025). Les `Death.Gamertag` publies dans l artefact de rejeu en
 // dependent — cf. .ai/RAPPORT_BTB_2025_ABSTENTION_2026-09-12.md. Film sans registre : version 0,
 // decoupage historique, et c est L APPELANT qui consigne la degradation (voir le corps).
-func ScanDeaths(film *source.Film) ([]Death, error) {
-	nums := grammar.FilmChunkNumbers(film)
+func ScanDeaths(film *source.Film) ([]types.Death, error) {
+	nums := FilmChunkNumbers(film)
 	if len(nums) == 0 {
-		return nil, grammar.ErrNoReadableFilmChunk
+		return nil, ErrNoReadableFilmChunk
 	}
 	n, err := numeroDesTempsForts(film, nums)
 	if err != nil {
 		return nil, err
 	}
-	raw, _, ok := grammar.FilmChunkAt(film, n)
+	raw, _, ok := FilmChunkAt(film, n)
 	if !ok {
 		return nil, fmt.Errorf("chunk highlight (%d) : absent du film", n)
 	}
@@ -127,16 +131,16 @@ func ScanDeaths(film *source.Film) ([]Death, error) {
 	// plutot que `ResolveProfile` : cette fonction est appelee deux fois par cuisson et n a pas
 	// de carte — lui faire resoudre le profil entier couterait une analyse de registre par appel
 	// pour une valeur qui tient dans les quatre premiers octets.
-	evs, err := grammar.ParseHighlightEvents(raw, grammar.HighlightProfileOfFilm(film).MajorVersion)
+	evs, err := ParseHighlightEvents(raw, HighlightProfileOfFilm(film).MajorVersion)
 	if err != nil {
 		return nil, fmt.Errorf("chunk highlight (%d) : %w", n, err)
 	}
-	out := make([]Death, 0, len(evs))
+	out := make([]types.Death, 0, len(evs))
 	for _, e := range evs {
 		if e.EventType != highlightevent.EventTypeDeath {
 			continue
 		}
-		out = append(out, Death{XUID: e.XUID, Gamertag: e.Gamertag, TimeMS: int64(e.TimeMS)})
+		out = append(out, types.Death{XUID: e.XUID, Gamertag: e.Gamertag, TimeMS: int64(e.TimeMS)})
 	}
 	if len(out) == 0 {
 		return nil, fmt.Errorf("chunk highlight (%d) : %w", n, ErrFilDesMortsSansMort)

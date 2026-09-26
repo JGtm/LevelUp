@@ -197,7 +197,7 @@ func zoomDecalage(t *testing.T, dir string) int64 {
 	if err != nil {
 		t.Fatalf("balayage des positions : %v", err)
 	}
-	deaths, err := ScanFilmDeaths(dir)
+	deaths, err := grammar.ScanFilmDeaths(dir)
 	if err != nil {
 		t.Fatalf("fil des morts : %v", err)
 	}

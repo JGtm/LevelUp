@@ -68,17 +68,17 @@ type IdentityInput struct {
 	// declaree d'un producteur qui ne porte pas encore ce canal.
 	BipedCreations []grammar.BipedCreation
 	// Deaths : le fil des morts du film — il nomme chaque vie par sa victime.
-	Deaths []Death
+	Deaths []types.Death
 	// PlayerIndices : le lien DIRECT identite -> index de joueur, lu dans les chunks de
 	// replication (cf. player_index.go).
-	PlayerIndices PlayerIndexTable
+	PlayerIndices types.PlayerIndexTable
 	// FilmTable : LA TABLE DES JOUEURS QUE LE FILM ECRIT (`chunk_00`, lot 1.5) — le lien DIRECT
 	// `index <-> xuid <-> gamertag`, et la source PREMIERE du registre depuis le lot 1.6.
 	//
 	// VIDE = le registre retombe entierement sur `PlayerIndices`, et il le PUBLIE
 	// (`coverage.identity.filmTable.refus`). Le collecteur de sync ne la fournit pas encore
 	// (lot 1.8) : sa voie est donc le repli, nomme et compte, pas un silence.
-	FilmTable FilmPlayerTable
+	FilmTable grammar.FilmPlayerTable
 	// Bots : les bots declares par BOT_METADATA, avec leur `BotID` (le N de `bid(N.0)`) et leurs
 	// declarations dans le temps.
 	Bots []BotIdentity

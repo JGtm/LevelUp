@@ -40,7 +40,7 @@ func TestBombHeldEventsFilterAndClock(t *testing.T) {
 }
 
 // bombTestCarry reconstruit une chronologie depuis des evenements ms match.
-func bombTestCarry(evs []HeldObjectEvent, slotXUID map[uint32]uint64, deaths []Death) HeldObjectCarry {
+func bombTestCarry(evs []HeldObjectEvent, slotXUID map[uint32]uint64, deaths []types.Death) HeldObjectCarry {
 	return BuildHeldObjectCarry(evs, occupantFige(slotXUID), deaths)
 }
 
@@ -52,7 +52,7 @@ func TestBombCarriesDeathClosesWithoutEmission(t *testing.T) {
 		{TimeMS: 1_000, Slot: 3, Pickup: true}, // porteur 111 : prise...
 		{TimeMS: 5_000, Slot: 7, Pickup: true}, // ...222 prend (111 est mort a 4 s, sans emission)
 	}
-	deaths := []Death{{XUID: 111, TimeMS: 4_000}}
+	deaths := []types.Death{{XUID: 111, TimeMS: 4_000}}
 	// step = 1000 µs/frame => 1 frame par ms.
 	carries, cov := buildBombCarries(bombTestCarry(evs, slotXUID, deaths),
 		matchClock{origin: 0, step: 1000, frames: 20_000}, carrierPresence{})

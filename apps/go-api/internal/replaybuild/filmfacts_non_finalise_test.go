@@ -29,6 +29,7 @@ import (
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
+	"levelup/go-api/internal/games/halo_infinite/film/finalise"
 )
 
 // temoinPartiel rend les entrees du manifeste partiel d'`ab526724`.
@@ -68,7 +69,7 @@ func repertoireDuTemoin(t *testing.T, entrees []filmcache.WriteChunk) (string, *
 	complet := append(append([]filmcache.WriteChunk(nil), partiel...),
 		filmcache.WriteChunk{Index: 34, ChunkType: 2, StartMS: 660116, DurationMS: 20000, Data: []byte("c34")},
 		filmcache.WriteChunk{Index: 35, ChunkType: 2, StartMS: 680117, DurationMS: 1791, Data: []byte("c35")},
-		filmcache.WriteChunk{Index: 36, ChunkType: filmcache.ChunkTypeTempsForts, StartMS: 681909,
+		filmcache.WriteChunk{Index: 36, ChunkType: finalise.ChunkTypeTempsForts, StartMS: 681909,
 			DurationMS: 3, Data: []byte("c36")},
 	)
 	if err := filmcache.Write(t.Context(), racine, "ab526724", complet); err != nil {
@@ -104,10 +105,10 @@ func repertoireDuTemoin(t *testing.T, entrees []filmcache.WriteChunk) (string, *
 // verifierRefusEcarte : l erreur est la sentinelle, et son TEXTE la porte (frontiere de processus).
 func verifierRefusEcarte(t *testing.T, err error) {
 	t.Helper()
-	if !errors.Is(err, filmcache.ErrFilmNonFinalise) {
-		t.Fatalf("err = %v, attendu filmcache.ErrFilmNonFinalise", err)
+	if !errors.Is(err, finalise.ErrFilmNonFinalise) {
+		t.Fatalf("err = %v, attendu finalise.ErrFilmNonFinalise", err)
 	}
-	if !strings.Contains(err.Error(), filmcache.ErrFilmNonFinalise.Error()) {
+	if !strings.Contains(err.Error(), finalise.ErrFilmNonFinalise.Error()) {
 		t.Errorf("le texte ne porte pas la sentinelle : le parent classerait en ECHEC : %q", err)
 	}
 }
@@ -123,7 +124,7 @@ func TestCuisson_RefuseLeTemoinPartiel(t *testing.T) {
 // morceaux du repertoire n y sont pas decrits — le manifeste ne dit pas le film entier.
 func TestCuisson_RefuseDesMorceauxHorsManifeste(t *testing.T) {
 	entrees := append(temoinPartiel(t), filmcache.WriteChunk{Index: 36,
-		ChunkType: filmcache.ChunkTypeTempsForts, StartMS: 681909, DurationMS: 3})
+		ChunkType: finalise.ChunkTypeTempsForts, StartMS: 681909, DurationMS: 3})
 	dir, src := repertoireDuTemoin(t, entrees)
 	if err := refuserManifesteNonFinalise(context.Background(), "ab526724", dir, src); err != nil {
 		t.Fatalf("manifeste finalise refuse : %v", err)
@@ -145,7 +146,7 @@ func TestCuisson_AccepteLeFilmFinalise(t *testing.T) {
 	entrees := append(temoinPartiel(t),
 		filmcache.WriteChunk{Index: 34, ChunkType: 2, StartMS: 660116, DurationMS: 20000},
 		filmcache.WriteChunk{Index: 35, ChunkType: 2, StartMS: 680117, DurationMS: 1791},
-		filmcache.WriteChunk{Index: 36, ChunkType: filmcache.ChunkTypeTempsForts, StartMS: 681909, DurationMS: 3})
+		filmcache.WriteChunk{Index: 36, ChunkType: finalise.ChunkTypeTempsForts, StartMS: 681909, DurationMS: 3})
 	dir, src := repertoireDuTemoin(t, entrees)
 	ctx := context.Background()
 	if err := refuserManifesteNonFinalise(ctx, "ab526724", dir, src); err != nil {
@@ -196,7 +197,7 @@ func TestEntreesDeLaCuisson_RefuseLeTemoinPartiel(t *testing.T) {
 // chargement. Manifeste finalise, mais deux morceaux du repertoire n y sont pas decrits.
 func TestEntreesDeLaCuisson_RefuseDesMorceauxHorsManifeste(t *testing.T) {
 	entrees := append(temoinPartiel(t), filmcache.WriteChunk{Index: 36,
-		ChunkType: filmcache.ChunkTypeTempsForts, StartMS: 681909, DurationMS: 3})
+		ChunkType: finalise.ChunkTypeTempsForts, StartMS: 681909, DurationMS: 3})
 	dir, _ := repertoireDuTemoin(t, entrees)
 	e, err := constructeurSansFaits(t).entreesDeLaCuisson(context.Background(), "ab526724", nil,
 		dir, decfilm.MapQuantEntry{})

@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
+	"levelup/go-api/internal/games/halo_infinite/film/finalise"
 	"levelup/go-api/internal/observability"
 )
 
@@ -24,7 +24,7 @@ func TestObserveHaloCall_FilmNonFinalise_PasUneErreurReseau(t *testing.T) {
 	}
 	errAppel0, reseau0 := lire()
 	observeHaloCall(titre, appel, "", time.Now(),
-		fmt.Errorf("GetFilmChunks(m) : %w", filmcache.ErrFilmNonFinalise))
+		fmt.Errorf("GetFilmChunks(m) : %w", finalise.ErrFilmNonFinalise))
 	errAppel1, reseau1 := lire()
 	if errAppel1 != errAppel0 || reseau1 != reseau0 {
 		t.Errorf("film non finalise compte en erreur : appel +%d, reseau +%d, attendu 0 et 0",

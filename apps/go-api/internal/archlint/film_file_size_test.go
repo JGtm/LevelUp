@@ -285,9 +285,11 @@ var plafondsParFichier = map[string]int{
 	// que `TestStructureIsOptionalInDocument` exige pour la montee (le tir continu).
 	// SCHEMA 71 -> 72 (2026-09-26, lot J3.3 du PLAN_SUITE_AUDIT_DECODEUR_FILM) : 1343 -> 1348, la
 	// justification de la montee (une revision par consommateur de faits).
-	"internal/games/halo_infinite/film/replay/structure_test.go":                                  1348,
-	"internal/games/halo_infinite/film/replay/t0_mouvement_research_test.go":                      872,
-	"internal/games/halo_infinite/film/replay/inventory_position_i22_test.go":                     833,
+	"internal/games/halo_infinite/film/replay/structure_test.go":             1348,
+	"internal/games/halo_infinite/film/replay/t0_mouvement_research_test.go": 872,
+	// DEPLACE PAR LE LOT J4.2 (2026-09-26) de `replay` vers `grammar` avec la lecture d inventaire ;
+	// plafond inchange (827 -> 829 lignes : le predicat de lecture vide ecrit en clair, cf. le fichier).
+	"internal/games/halo_infinite/film/internal/grammar/inventory_position_i22_test.go":           833,
 	"internal/games/halo_infinite/film/replay/ground_link_research_test.go":                       814,
 	"internal/games/halo_infinite/film/replay/ctf_retour_zone_research_test.go":                   812,
 	"internal/games/halo_infinite/film/replay/assaut_manches_research_test.go":                    656,

@@ -14,6 +14,7 @@ import (
 	"testing"
 	"time"
 
+	"levelup/go-api/internal/games/halo_infinite/film/finalise"
 	"levelup/go-api/internal/observability"
 )
 
@@ -167,7 +168,7 @@ func TestWrite_ManifesteIllisibleEtListeNonFinaliseeRefuse(t *testing.T) {
 	illisible := []byte(`{"chunks":[{"index":0,`)
 	poserManifeste(t, root, "0bad0006", illisible)
 	partiel := filmFinalise("killfeed")[:2]
-	if err := Write(t.Context(), root, "0bad0006", partiel); !errors.Is(err, ErrFilmNonFinalise) {
+	if err := Write(t.Context(), root, "0bad0006", partiel); !errors.Is(err, finalise.ErrFilmNonFinalise) {
 		t.Fatalf("Write = %v, attendu ErrFilmNonFinalise", err)
 	}
 	got, err := os.ReadFile(ManifestPath(root, "0bad0006"))

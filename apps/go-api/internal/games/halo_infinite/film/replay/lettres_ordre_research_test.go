@@ -266,17 +266,17 @@ func lettresDoc(t *testing.T, dir string, film lettresFilm,
 func lettresOptions(t *testing.T, dir string, film lettresFilm) Options {
 	t.Helper()
 	var opt Options
-	deaths, err := ScanFilmDeaths(dir)
+	deaths, err := grammar.ScanFilmDeaths(dir)
 	if err != nil {
 		t.Fatalf("film %s : fil des morts illisible : %v", film.short, err)
 	}
 	opt.Deaths = deaths
 	if len(deaths) > 0 {
-		if idx, err := ScanFilmPlayerIndices(dir, rosterFromDeaths(deaths)); err == nil {
+		if idx, err := grammar.ScanFilmPlayerIndices(dir, rosterFromDeaths(deaths)); err == nil {
 			opt.PlayerIndices, _ = injectiveOrEmpty(idx)
 		}
 	}
-	clockUS, err := ScanFilmClockOrigin(dir)
+	clockUS, err := grammar.ScanFilmClockOrigin(dir)
 	if err != nil {
 		t.Skipf("film %s : origine d'horloge illisible (%v) — les captures ne sont pas posables",
 			film.short, err)

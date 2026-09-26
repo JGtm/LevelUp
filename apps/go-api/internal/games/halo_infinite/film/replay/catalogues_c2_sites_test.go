@@ -113,7 +113,7 @@ func TestCataloguesC2SitesControle(t *testing.T) {
 		t.Logf("%s : AUCUNE explosion datee — ce film ne controle rien, et cela se dit", id)
 		return
 	}
-	clockUS, err := ScanFilmClockOrigin(objChunkDir(root, id))
+	clockUS, err := grammar.ScanFilmClockOrigin(objChunkDir(root, id))
 	if err != nil {
 		t.Fatalf("%s : origine d'horloge illisible : %v", id, err)
 	}

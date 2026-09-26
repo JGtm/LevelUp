@@ -25,6 +25,8 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/filmproc"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 const (
@@ -78,7 +80,7 @@ func TestOddballSondeDiagnostique(t *testing.T) {
 		t.Fatalf("%s : positions de bipede illisibles : %v", id, err)
 	}
 	tracks := indexBySlot(pos)
-	deaths, err := ScanFilmDeaths(dir)
+	deaths, err := grammar.ScanFilmDeaths(dir)
 	if err != nil {
 		t.Fatalf("%s : fil des morts illisible : %v", id, err)
 	}
@@ -192,7 +194,7 @@ func d7Vitesses(t *testing.T, id string, vies []flagFreeLife) {
 
 // d7SignatureS2 — DEUX PORTAGES FUSIONNES EN UN ?
 func d7SignatureS2(t *testing.T, id string, vies []flagFreeLife, socles []PointObjective,
-	tracks map[uint32]slotTrack, pont objBridge, deaths []Death, maxAPI float64,
+	tracks map[uint32]slotTrack, pont objBridge, deaths []types.Death, maxAPI float64,
 ) {
 	t.Helper()
 	depassent, portes := 0, 0

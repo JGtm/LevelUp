@@ -187,7 +187,7 @@ func selectMiniFilmPackets(dir string) (miniSelection, error) {
 	if err != nil {
 		return sel, err
 	}
-	deaths, err := ScanFilmDeaths(dir)
+	deaths, err := grammar.ScanFilmDeaths(dir)
 	if err != nil {
 		return sel, err
 	}
@@ -481,7 +481,7 @@ func TestMiniFilmDecodesProjectileFlights(t *testing.T) {
 
 // TestMiniFilmDecodesTheDeathThread : le fil des morts, du chunk highlight tel quel.
 func TestMiniFilmDecodesTheDeathThread(t *testing.T) {
-	deaths, err := ScanFilmDeaths(MiniFilmDir)
+	deaths, err := grammar.ScanFilmDeaths(MiniFilmDir)
 	if err != nil {
 		t.Fatalf("ScanFilmDeaths : %v", err)
 	}
@@ -524,7 +524,7 @@ func TestMiniFilmDecodesTheKeyframes(t *testing.T) {
 	if len(lo) != wantLoadouts {
 		t.Errorf("%d loadouts decodes des images-cles, attendu %d", len(lo), wantLoadouts)
 	}
-	inv, invStats, err := ScanFilmKeyframeInventory(MiniFilmDir, loadoutFamilies(), 0, nil)
+	inv, invStats, err := grammar.ScanFilmKeyframeInventory(MiniFilmDir, loadoutFamilies(), 0)
 	if err != nil {
 		t.Fatalf("ScanFilmKeyframeInventory : %v", err)
 	}

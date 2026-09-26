@@ -178,15 +178,15 @@ func TestZeroDisqueBalayagesSupportes(t *testing.T) {
 	if err != nil {
 		t.Fatalf("armes portees : %v", err)
 	}
-	inventory, _, err := ScanKeyframeInventory(grammar.NewFilmContext(film), loadoutFamilies(), 0, nil)
+	inventory, _, err := grammar.ScanKeyframeInventory(grammar.NewFilmContext(film), loadoutFamilies(), 0)
 	if err != nil {
 		t.Fatalf("inventaire d'image-cle : %v", err)
 	}
-	deaths, err := ScanDeaths(film)
+	deaths, err := grammar.ScanDeaths(film)
 	if err != nil {
 		t.Fatalf("morts : %v", err)
 	}
-	indices, err := ScanPlayerIndices(film, rosterFromDeaths(deaths))
+	indices, err := grammar.ScanPlayerIndices(film, rosterFromDeaths(deaths))
 	if err != nil {
 		t.Fatalf("indices joueur : %v", err)
 	}

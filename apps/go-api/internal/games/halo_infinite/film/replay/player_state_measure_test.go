@@ -36,6 +36,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 const playerFilmEnv = "PLAYER_FILM"
@@ -56,7 +57,7 @@ type psInputs struct {
 	dir, short string
 	pos        []grammar.BipedPosition
 	shots      []grammar.FireEvent
-	deaths     []Death
+	deaths     []types.Death
 	lives      []lifeSpan
 	// own porte le pont slot de bipede -> joueur, construit par le chemin de PRODUCTION.
 	own IdentityRegistry
@@ -82,7 +83,7 @@ func psLoad(t *testing.T, dir string) psInputs {
 	if in.shots, err = grammar.ScanFilmFireEvents(dir); err != nil {
 		t.Logf("tirs illisibles : %v", err)
 	}
-	if in.deaths, err = ScanFilmDeaths(dir); err != nil {
+	if in.deaths, err = grammar.ScanFilmDeaths(dir); err != nil {
 		t.Logf("fil des morts illisible : %v", err)
 	}
 	sorted := append([]grammar.BipedPosition(nil), pos...)
@@ -90,9 +91,9 @@ func psLoad(t *testing.T, dir string) psInputs {
 	in.pos = sorted
 	tracks := indexBySlot(sorted)
 	in.lives = buildLifeSpans(tracks)
-	var idx PlayerIndexTable
+	var idx types.PlayerIndexTable
 	if len(in.deaths) > 0 {
-		if raw, err := ScanFilmPlayerIndices(dir, rosterFromDeaths(in.deaths)); err == nil {
+		if raw, err := grammar.ScanFilmPlayerIndices(dir, rosterFromDeaths(in.deaths)); err == nil {
 			idx, _ = injectiveOrEmpty(raw)
 		}
 	}

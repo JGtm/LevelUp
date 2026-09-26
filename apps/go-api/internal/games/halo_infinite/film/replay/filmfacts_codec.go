@@ -404,7 +404,7 @@ func decodeKeyframes(r *greader) grammar.WorldObjectKeyframes {
 
 // encodeAmmo serialise un emplacement de munitions. LES TROIS CAS SONT DISTINCTS (chargeur,
 // jauge, rien) : un drapeau par pointeur, jamais un zero qui vaudrait absence.
-func encodeAmmo(w *gwriter, a SlotAmmo) {
+func encodeAmmo(w *gwriter, a types.SlotAmmo) {
 	w.bool8(a.Mag != nil)
 	if a.Mag != nil {
 		w.u(uint64(*a.Mag))
@@ -421,8 +421,8 @@ func encodeAmmo(w *gwriter, a SlotAmmo) {
 	w.u(uint64(a.Flags))
 }
 
-func decodeAmmo(r *greader) SlotAmmo {
-	var a SlotAmmo
+func decodeAmmo(r *greader) types.SlotAmmo {
+	var a types.SlotAmmo
 	if r.bool8() {
 		v := uint32(r.u())
 		a.Mag = &v

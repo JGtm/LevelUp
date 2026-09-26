@@ -1,6 +1,10 @@
 package replay
 
-import "sort"
+import (
+	"sort"
+
+	"levelup/go-api/internal/games/halo_infinite/film/types"
+)
 
 // closures.go — REFERMER LE PONT SANS JAMAIS DEVINER.
 //
@@ -116,7 +120,7 @@ func (r *closureReport) noteLife(slot uint32, life int) {
 // closeBridge applique les deux fermetures, dans l'ordre mesuré (A puis B), et rend le pont
 // augmenté avec son compte rendu. Le pont d'entrée n'est jamais modifié.
 func closeBridge(tracks map[uint32]slotTrack, owner map[uint32]int, lives []lifeSpan,
-	deaths []Death, off int64, byXUID map[uint64]int, fire []FireEventRef) (map[uint32]int, closureReport) {
+	deaths []types.Death, off int64, byXUID map[uint64]int, fire []FireEventRef) (map[uint32]int, closureReport) {
 	var rep closureReport
 	out := copyOwners(owner)
 	closeByAvailableBody(tracks, out, lives, fire, &rep)

@@ -172,7 +172,7 @@ func objDocumentDe(t *testing.T, root, id string, b objBridge, src *objDiskFilm)
 	if len(pos) == 0 {
 		t.Fatalf("%s : aucune position", id)
 	}
-	idx, err := ScanFilmPlayerIndices(objChunkDir(root, id), rosterFromDeaths(b.Deaths))
+	idx, err := grammar.ScanFilmPlayerIndices(objChunkDir(root, id), rosterFromDeaths(b.Deaths))
 	if err != nil {
 		t.Fatalf("%s : index de joueur : %v", id, err)
 	}

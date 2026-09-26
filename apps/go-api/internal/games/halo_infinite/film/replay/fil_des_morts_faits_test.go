@@ -25,6 +25,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
+	"levelup/go-api/internal/games/halo_infinite/film/finalise"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/killsource"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
@@ -68,7 +69,7 @@ func casDesTroisIssues(t *testing.T) []casDuFilDesMorts {
 	t.Helper()
 	o := octetsBobineV40(t)
 	typeTempsForts := []types.ChunkMeta{
-		{Index: 0, ChunkType: 1}, {Index: 1, ChunkType: 2}, {Index: 2, ChunkType: filmcache.ChunkTypeTempsForts},
+		{Index: 0, ChunkType: 1}, {Index: 1, ChunkType: 2}, {Index: 2, ChunkType: finalise.ChunkTypeTempsForts},
 	}
 	partiel := temoinManifestePartiel(t)
 	morceaux := make([][]byte, len(partiel))
@@ -151,7 +152,7 @@ func TestLErreurRelueGardeLeTexteDeLaLecture(t *testing.T) {
 		if err != nil {
 			t.Fatalf("%s : chargement : %v", cas.nom, err)
 		}
-		deaths, errLue := ScanDeaths(film)
+		deaths, errLue := grammar.ScanDeaths(film)
 		v := verdictDeLaLecture(deaths, errLue)
 		w := &gwriter{}
 		encodeVerdictDuFilDesMorts(w, v)

@@ -19,7 +19,11 @@ package replay
 // 4 — la montee de la vague D, sans montee supplementaire), et la branche des faits reconstruit
 // l erreur que la branche du film lit ([VerdictDuFilDesMorts.Erreur]).
 
-import "errors"
+import (
+	"errors"
+
+	"levelup/go-api/internal/games/halo_infinite/film/types"
+)
 
 // VerdictDuFilDesMorts est ce que la lecture du fil des morts a rendu : son verdict publie et,
 // quand elle a echoue, le TEXTE de l erreur.
@@ -36,7 +40,7 @@ type VerdictDuFilDesMorts struct {
 }
 
 // verdictDeLaLecture classe l issue de [ScanDeaths] et garde le texte de son erreur.
-func verdictDeLaLecture(deaths []Death, err error) VerdictDuFilDesMorts {
+func verdictDeLaLecture(deaths []types.Death, err error) VerdictDuFilDesMorts {
 	v := VerdictDuFilDesMorts{Verdict: lectureDuFilDesMorts(deaths, err)}
 	if err != nil {
 		v.Cause = err.Error()

@@ -46,7 +46,8 @@ import (
 	_ "github.com/duckdb/duckdb-go/v2"
 
 	"levelup/go-api/internal/games"
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
+
+	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 	halomigrations "levelup/go-api/internal/games/halo_infinite/migrations"
 	"levelup/go-api/internal/migration"
 	"levelup/go-api/internal/sync/haloclient"
@@ -109,7 +110,7 @@ func inscrireAuRegistreDeTest(t *testing.T, db *sql.DB, cache *haloclient.LocalF
 	if err != nil {
 		t.Skipf("film %s illisible: %v", film, err)
 	}
-	deaths, err := replay.ScanDeaths(decode)
+	deaths, err := decfilm.ScanDeaths(decode)
 	if err != nil {
 		return
 	}

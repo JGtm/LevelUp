@@ -46,13 +46,15 @@ import (
 	"log/slog"
 
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // filmTableLinks est la table d'index EFFECTIVE et la provenance de chacun de ses liens.
 type filmTableLinks struct {
 	// table est ce que le registre emploie partout : la composition « film d'abord, chunks en
 	// complement ». Elle n'est JAMAIS plus pauvre que la lecture des chunks seule.
-	table PlayerIndexTable
+	table types.PlayerIndexTable
 	// voie dit, par xuid, laquelle des deux lectures a pose le lien.
 	voie map[uint64]canonical.LinkMethod
 	// noms porte le gamertag que LE FILM ecrit, par xuid. Vide pour un xuid sans siege.
@@ -65,7 +67,7 @@ type filmTableLinks struct {
 // effective, la voie de chaque lien et la couverture.
 func composerTableDIndex(in IdentityInput) filmTableLinks {
 	out := filmTableLinks{
-		table: PlayerIndexTable{
+		table: types.PlayerIndexTable{
 			ByXUID:        make(map[uint64]int, len(in.PlayerIndices.ByXUID)),
 			Readings:      in.PlayerIndices.Readings,
 			Disagreements: in.PlayerIndices.Disagreements,
@@ -77,7 +79,7 @@ func composerTableDIndex(in IdentityInput) filmTableLinks {
 			Seats: in.FilmTable.Occupied,
 		},
 	}
-	if in.FilmTable.InterleavedVacant && in.FilmTable.Refusal == FilmTableRead {
+	if in.FilmTable.InterleavedVacant && in.FilmTable.Refusal == grammar.FilmTableRead {
 		// Une table LUE dont le rang est ambigu : le refus n'est pas une erreur de lecture, il
 		// est une abstention, et il se nomme comme tel.
 		out.couverture.Refusal = string(canonical.FilmTableInterleavedVacant)
@@ -199,7 +201,7 @@ func (l filmTableLinks) alarmerSurLaTableDuFilm(matchID string) {
 
 // TableDIndex rend la table d'index EFFECTIVE du registre — celle que tout lecteur doit employer.
 // Le producteur du document en tire son roster ; deux tables du meme film divergeraient.
-func (r IdentityRegistry) TableDIndex() PlayerIndexTable { return r.filmTable.table }
+func (r IdentityRegistry) TableDIndex() types.PlayerIndexTable { return r.filmTable.table }
 
 // NomsDuFilm rend le gamertag que LA TABLE DU FILM ecrit, par xuid. Vide quand la table n'a pas
 // ete employee.

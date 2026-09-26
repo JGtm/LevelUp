@@ -33,6 +33,8 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/filmproc"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // d10Trou est UN trou rejoue par la chaine D9 figee, avec le detail que D9 ne publiait pas.
@@ -84,7 +86,7 @@ func TestOddballFragmentationD10(t *testing.T) {
 	if !ok {
 		return
 	}
-	deaths, err := ScanFilmDeaths(objChunkDir(root, id))
+	deaths, err := grammar.ScanFilmDeaths(objChunkDir(root, id))
 	if err != nil {
 		t.Fatalf("%s : fil des morts illisible : %v", id, err)
 	}
@@ -100,7 +102,7 @@ func TestOddballFragmentationD10(t *testing.T) {
 // d10Rejoue reproduit la boucle de `d9Reconstruit` — memes primitives, memes constantes —
 // en conservant le detail par trou. Toute divergence avec l'original est un defaut de CE
 // fichier, et l'auto-controle la fait rougir.
-func d10Rejoue(e d8Etat, deaths []Death) []d10Trou {
+func d10Rejoue(e d8Etat, deaths []types.Death) []d10Trou {
 	var out []d10Trou
 	for i := 0; i+1 < len(e.vies); i++ {
 		fin := e.vies[i+1].T0US

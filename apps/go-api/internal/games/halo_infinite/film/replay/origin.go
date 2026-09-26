@@ -2,14 +2,14 @@ package replay
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
-
-	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
-	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 )
 
 // origin.go — L'ORIGINE DE LA FRAME 0, PUBLIEE SUR L'HORLOGE DU FIL.
+//
+// LA LECTURE DE L HORLOGE DU FILM (`grammar.ScanClockOrigin`, deux en-tetes de paquet) EST
+// DESCENDUE EN `grammar` AU LOT J4.2 (2026-09-26, DU-3 = S1) : ce fichier garde ce que la
+// publication en fait.
 //
 // # LE DEFAUT QUE CE FICHIER FERME
 //
@@ -72,31 +72,6 @@ const originControlToleranceMS = 1000
 // pauvre — il ne dit rien de la lecture, et faire taire l'origine sur cette base perdrait
 // l'information sur les films les plus fragiles.
 const originControlMinMatches = 5
-
-// ScanFilmClockOrigin rend l'horodatage moteur du PREMIER PAQUET du film, c'est-a-dire le
-// zero de l'horloge sur laquelle les highlight events sont dates.
-//
-// HORS LIGNE (I/O disque) — jamais depuis un chemin de requete.
-// ENVELOPPE D2, HORS PRODUCTION ; la cuisson appelle [ScanClockOrigin].
-func ScanFilmClockOrigin(filmDir string) (uint64, error) {
-	film, err := source.LoadDir(filmDir, nil)
-	if err != nil {
-		return 0, err
-	}
-	return ScanClockOrigin(film)
-}
-
-// ScanClockOrigin rend l'horodatage moteur du PREMIER PAQUET d'un film DEJA CHARGE.
-func ScanClockOrigin(film *source.Film) (uint64, error) {
-	_, packets, ok := grammar.FilmChunkAt(film, 1)
-	if !ok {
-		return 0, fmt.Errorf("chunk 1 (origine d'horloge) : absent du film")
-	}
-	if len(packets) == 0 {
-		return 0, fmt.Errorf("chunk 1 (origine d'horloge) : aucun paquet lisible")
-	}
-	return packets[0].TimestampUS, nil
-}
 
 // resolveOriginMs rend l'origine de la frame 0 sur l'horloge du fil, ou nil quand elle
 // n'est pas etablie.

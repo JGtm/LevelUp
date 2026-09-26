@@ -1,4 +1,4 @@
-package replay
+package grammar
 
 // inventory_grenades_rules.go — LES DEUX VOIES DE LECTURE DES COMPTEURS DE GRENADE (i22) d'un
 // record d'image-clé. Elles vivent ici, et non dans inventory_decode.go, pour la seule raison

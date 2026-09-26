@@ -15,6 +15,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // flagHomeScan monte un portage de « 1 » a 1 000 ms, ferme par sa mort a 6 000 ms (frame 60), et
@@ -36,7 +37,7 @@ func flagHomeScan(teams map[string]int, free []flagFreeLife) FlagCarryScan {
 // flagHomeCtx : la piste du porteur, loin des deux socles, et sa mort a 6 000 ms.
 func flagHomeCtx() flagCarryCtx {
 	tracks := []Track{flagTestTrack(12, "1", 0, 99, 50, 50)}
-	return flagTestCtx(tracks, []Death{{XUID: 1, TimeMS: 6000}}, 100)
+	return flagTestCtx(tracks, []types.Death{{XUID: 1, TimeMS: 6000}}, 100)
 }
 
 // TestUnRetourCrediteFermeLePortageDeSonDrapeau — LE POINT DE L'ITEM, chaine creditee. « 1 » est
@@ -120,7 +121,7 @@ func TestUneRentreeAmbigueNeFermeRien(t *testing.T) {
 		flagTestTrack(12, "1", 0, 99, 50, 50),
 		flagTestTrack(14, "2", 0, 99, 0, 0),
 	}
-	ctx := flagTestCtx(tracks, []Death{{XUID: 1, TimeMS: 6000}, {XUID: 2, TimeMS: 2000}}, 100)
+	ctx := flagTestCtx(tracks, []types.Death{{XUID: 1, TimeMS: 6000}, {XUID: 2, TimeMS: 2000}}, 100)
 
 	_, cov := buildFlagCarries(scan, ctx)
 	if cov.ClosedByHome != 0 {

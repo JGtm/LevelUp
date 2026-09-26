@@ -11,26 +11,49 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
+	"levelup/go-api/internal/games/halo_infinite/film/finalise"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
+// miniBobineV40 : la bobine de version 40 (`killsource/testdata/minibobine_e5adf7b2`), relative a
+// CE paquet. Elle etait declaree par `deaths_source_version_test.go`, descendu en `grammar` avec
+// la lecture du fil des morts au lot J4.2 (2026-09-26) ; ses deux lecteurs de `replay` restent.
+const miniBobineV40 = "../internal/facts/killsource/testdata/minibobine_e5adf7b2"
+
+// octetsBobineV40 rend les trois morceaux BRUTS de la bobine v40, dans l ordre des numeros. Meme
+// helper que `grammar/deaths_source_tempsforts_test.go` (lot J4.2) : deux lecteurs de chaque cote.
+func octetsBobineV40(t *testing.T) [][]byte {
+	t.Helper()
+	out := make([][]byte, 0, 3)
+	for _, nom := range []string{"chunk_00.bin", "chunk_01.bin", "chunk_02.bin"} {
+		b, err := os.ReadFile(filepath.Join(miniBobineV40, nom))
+		if err != nil {
+			t.Fatalf("bobine v40 : %v", err)
+		}
+		out = append(out, b)
+	}
+	return out
+}
+
 // TestLectureDuFilDesMorts_TroisIssues : lu, vide, illisible — et un fil vide n est pas une panne.
 func TestLectureDuFilDesMorts_TroisIssues(t *testing.T) {
-	une := []Death{{XUID: 1, TimeMS: 1}}
+	une := []types.Death{{XUID: 1, TimeMS: 1}}
 	for _, cas := range []struct {
 		nom    string
-		deaths []Death
+		deaths []types.Death
 		err    error
 		want   string
 	}{
 		{"au moins une mort", une, nil, DeathsFeedRead},
-		{"morceau lu sans mort", nil, fmt.Errorf("chunk highlight (36) : %w", ErrFilDesMortsSansMort), DeathsFeedEmpty},
-		{"aucun morceau des temps forts", nil, ErrFilSansTempsForts, DeathsFeedUnreadable},
+		{"morceau lu sans mort", nil, fmt.Errorf("chunk highlight (36) : %w", grammar.ErrFilDesMortsSansMort), DeathsFeedEmpty},
+		{"aucun morceau des temps forts", nil, grammar.ErrFilSansTempsForts, DeathsFeedUnreadable},
 		{"evenements illisibles", nil, errors.New("chunk highlight (33) : en-tete inconnu"), DeathsFeedUnreadable},
 	} {
 		if got := lectureDuFilDesMorts(cas.deaths, cas.err); got != cas.want {
@@ -49,7 +72,7 @@ func TestLectureDuFilDesMorts_SurLaBobine(t *testing.T) {
 		want string
 	}{
 		{"temps forts presents", []types.ChunkMeta{
-			{Index: 0, ChunkType: 1}, {Index: 1, ChunkType: 2}, {Index: 2, ChunkType: filmcache.ChunkTypeTempsForts},
+			{Index: 0, ChunkType: 1}, {Index: 1, ChunkType: 2}, {Index: 2, ChunkType: finalise.ChunkTypeTempsForts},
 		}, DeathsFeedRead},
 		{"film non finalise", []types.ChunkMeta{
 			{Index: 0, ChunkType: 1}, {Index: 1, ChunkType: 2}, {Index: 2, ChunkType: 2},
@@ -59,7 +82,7 @@ func TestLectureDuFilDesMorts_SurLaBobine(t *testing.T) {
 		if err != nil {
 			t.Fatalf("%s : chargement : %v", cas.nom, err)
 		}
-		deaths, err := ScanDeaths(film)
+		deaths, err := grammar.ScanDeaths(film)
 		if got := lectureDuFilDesMorts(deaths, err); got != cas.want {
 			t.Errorf("%s : %q (err %v), attendu %q", cas.nom, got, err, cas.want)
 		}
@@ -77,7 +100,7 @@ func TestDocumentPublieLeVerdictDuFilDesMorts(t *testing.T) {
 	}{
 		{"balaye, illisible", Options{DeathsFeed: DeathsFeedUnreadable}, DeathsFeedUnreadable},
 		{"balaye, vide", Options{DeathsFeed: DeathsFeedEmpty}, DeathsFeedEmpty},
-		{"sans balayage, fil non vide", Options{Deaths: []Death{{XUID: 1, TimeMS: 1}}}, DeathsFeedRead},
+		{"sans balayage, fil non vide", Options{Deaths: []types.Death{{XUID: 1, TimeMS: 1}}}, DeathsFeedRead},
 		{"sans balayage, fil vide", Options{}, ""},
 	} {
 		cas.opt.FilmClockOriginUS = 1_000_000
@@ -114,7 +137,7 @@ func TestLeBalayagePublieLeVerdictDuFilDesMorts(t *testing.T) {
 	o := octetsBobineV40(t)
 	sansEvenement := make([]byte, 64)
 	typeTempsForts := []types.ChunkMeta{
-		{Index: 0, ChunkType: 1}, {Index: 1, ChunkType: 2}, {Index: 2, ChunkType: filmcache.ChunkTypeTempsForts},
+		{Index: 0, ChunkType: 1}, {Index: 1, ChunkType: 2}, {Index: 2, ChunkType: finalise.ChunkTypeTempsForts},
 	}
 	for _, cas := range []struct {
 		nom    string

@@ -267,10 +267,13 @@ var registreReplayEquipement = []Repli{
 		Mecanisme: "appelant sans plafond : DefaultGrenadeMax (2) s'applique, quel que soit le mode et la carte",
 		Condition: CondInconditionnel,
 		Ordre:     OrdreSansLecture,
-		Sites: []Site{{
-			Fichier: pkgReplay + "inventory_decode.go",
-			Ancre:   "grenMax = DefaultGrenadeMax",
-		}},
+		// DEUX SITES DEPUIS LE LOT J4.2 (2026-09-26) : la lecture d inventaire est descendue en
+		// `grammar`, qui APPLIQUE le defaut et ne compte pas (ADR 0034 D-4) ; l appelant de
+		// production, `replay`, le COMPTE sur la meme condition (plafond non fourni).
+		Sites: []Site{
+			{Fichier: pkgFilmdec + "inventory_decode.go", Ancre: "grenMax = DefaultGrenadeMax"},
+			{Fichier: pkgReplay + "film_scan.go", Ancre: "s.opt.Fallbacks.Declenche(fallback.NomPlafondGrenadeParDefaut)"},
+		},
 		DatePose:        dateAudit0E,
 		CibleRetrait:    "lot 3.x (profil par build et par carte) : un plafond est une donnee de mode, pas une constante",
 		CritereRetrait:  "le plafond vient du manifeste de mode ; 0 recours au defaut sur les 8 builds",

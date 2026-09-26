@@ -218,7 +218,14 @@ import (
 // qu aucun decodage ne lit). C est ce que le ratchet mesure desormais, et c est le critere que
 // `profil_herite.go` et `observateur.go` avaient ecrit : « `filmdecVarsGeles` tombe a 0 variable
 // mutable ».
-const filmdecVarsGeles = 21
+//
+// PORTE A 22 LE 2026-09-26 (lot J4.2 du PLAN_SUITE_AUDIT_DECODEUR_FILM_2026-09-25, base
+// `7e8730281` re-mesuree : 20 avant le lot, 22 apres) : DEUX ERREURS SENTINELLES DEPLACEES, pas
+// un etat neuf. La lecture du fil des morts est descendue de `film/replay` en `grammar`
+// (`deaths_source.go`) avec ses deux sentinelles, `ErrFilSansTempsForts` et
+// `ErrFilDesMortsSansMort` — Go n a pas de `const` d erreur, et personne ne les ecrit. Le compte
+// reel d avant etait 20 (une place libre depuis le 2026-09-17) ; le gel suit desormais la mesure.
+const filmdecVarsGeles = 22
 
 // TestFilmdecPackageVarsNeCroitPas — LE RATCHET.
 func TestFilmdecPackageVarsNeCroitPas(t *testing.T) {

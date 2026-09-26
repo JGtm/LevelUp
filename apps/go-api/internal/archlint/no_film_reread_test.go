@@ -202,7 +202,8 @@ func TestFilmdecNeLitPasLeDisqueHorsAllowlist(t *testing.T) {
 // production ne doit jamais appeler (regle D2 du plan). Chacune charge un film ENTIER pour un
 // seul balayage ; les appeler depuis la cuisson annulerait le lot.
 //
-// La liste couvre les enveloppes exportees de `grammar` et de `replay`. Les formes film
+// La liste couvre les enveloppes exportees de `grammar` (celles de `replay` y sont descendues au
+// lot J4.2, 2026-09-26). Les formes film
 // (`ScanXxx(film, ...)`) ne sont PAS ici : ce sont elles que la production appelle.
 //
 // ELLE NE PORTE QUE DES NOMS SANS HOMONYME, ET C'EST UNE CONDITION DE VALIDITE (lot 6, constat 4).
@@ -270,7 +271,7 @@ var enveloppesInterditesEnProduction = []string{
 	"DetectI0Layout", "EquipmentArchetypeDir", "CalibrateMPPWidths",
 	"GroundWeaponSlotBand", "GroundWeaponPositions", "WorldObjectPositionsForBand",
 	"ReadFilmChunk", "CountFilmChunks",
-	// replay
+	// ex-`replay` : descendues en `grammar` avec leurs lectures au lot J4.2 (2026-09-26)
 	"ScanFilmDeaths", "ScanFilmClockOrigin", "ScanFilmPlayerIndices", "ScanFilmKeyframeInventory",
 }
 

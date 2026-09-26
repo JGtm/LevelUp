@@ -28,6 +28,7 @@ import (
 
 	"levelup/go-api/internal/games/canonical"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // IdentitySection est la section `identity` du document de rejeu.
@@ -211,7 +212,7 @@ func identityPlayers(r IdentityRegistry, in IdentityInput) []IdentityPlayer {
 // joueurs qui MEURENT (`gamertagsOf`), donc un joueur a zero mort n'avait pas de nom dans
 // l'artefact — alors que le film ECRIT le sien dans son enregistrement de slot. Les deux sources
 // sont le meme film ; la table est simplement la seule des deux qui parle de tout le monde.
-func nomsDesJoueurs(r IdentityRegistry, deaths []Death) map[uint64]string {
+func nomsDesJoueurs(r IdentityRegistry, deaths []types.Death) map[uint64]string {
 	noms := gamertagsOf(deaths)
 	for x, n := range r.NomsDuFilm() {
 		if n != "" {

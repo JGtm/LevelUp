@@ -1,4 +1,4 @@
-package replay
+package grammar
 
 // inventory_trous_mesure_test.go — MESURER LES TROUS DE LA FICHE D'INVENTAIRE (aucune
 // correction, aucune publication).
@@ -50,7 +50,6 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
@@ -178,7 +177,7 @@ func invTrousEnvInt(key string, def int) int {
 func invTrousFilm(t *testing.T, dir string, dig int) *invTrousCompte {
 	t.Helper()
 	c := invTrousNewCompte(filepath.Base(dir))
-	known := loadoutFamilies()
+	known := hwCatalogue()
 	diags, slotSets := invTrousWalk(t, dir, known, c)
 	if len(diags) == 0 {
 		return c
@@ -198,11 +197,11 @@ func invTrousWalk(
 	t *testing.T, dir string, known map[uint32]bool, c *invTrousCompte,
 ) ([]invTrousDiag, []map[uint32]bool) {
 	t.Helper()
-	n := grammar.CountFilmChunks(dir)
+	n := CountFilmChunks(dir)
 	var diags []invTrousDiag
 	var slotSets []map[uint32]bool
 	for ch := 1; ch <= n; ch++ {
-		chunk, err := grammar.ReadFilmChunk(dir, ch)
+		chunk, err := ReadFilmChunk(dir, ch)
 		if err != nil {
 			// UN CHUNK ILLISIBLE N'EST PAS UNE MESURE : il est compte, et le film qui en
 			// porte est ecarte de l'agregat par l'appelant. Sans ce compteur, une lecture
@@ -210,8 +209,8 @@ func invTrousWalk(
 			c.chunksIllisibles++
 			continue
 		}
-		for _, p := range grammar.WalkPackets(chunk) {
-			if p.Type != grammar.PacketTypeKeyframe {
+		for _, p := range WalkPackets(chunk) {
+			if p.Type != PacketTypeKeyframe {
 				continue
 			}
 			c.keyframes++
@@ -273,7 +272,7 @@ func invTrousDiagnose(pay []byte, sp invRecordSpan, known map[uint32]bool) invTr
 	}
 	if first, ok := invFirstFamily(pay, sp.from, sp.to, known); ok {
 		d.fam = true
-		var inv KeyframeInventory
+		var inv types.KeyframeInventory
 		inv.DrawnSlot = -1
 		readAmmo(pay, &inv, sp.from, first)
 		d.ammoSols, d.drawn = inv.AmmoCandidates, inv.DrawnSlot
@@ -458,7 +457,7 @@ func invTrousJoinI48(t *testing.T, dir string, diags []invTrousDiag) {
 	if invTrousEnvInt(invTrousI48Env, 1) == 0 {
 		return
 	}
-	ranks, st, err := grammar.ScanFilmAbilityRanks(dir)
+	ranks, st, err := ScanFilmAbilityRanks(dir)
 	if err != nil {
 		t.Logf("    i48 illisible (%v) — controle croise saute", err)
 		return

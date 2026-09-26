@@ -34,7 +34,11 @@ package replay
 // HORS LIGNE par construction (les entrées viennent des scans disque) — jamais depuis un
 // chemin de requête.
 
-import "sort"
+import (
+	"sort"
+
+	"levelup/go-api/internal/games/halo_infinite/film/types"
+)
 
 // HeldObjectEvent est une prise ou un lâcher de l'objet, daté sur l'horloge du match.
 type HeldObjectEvent struct {
@@ -90,7 +94,7 @@ type heldObjectTransition struct {
 //     établi, la période reste non pontée et la couverture le dit ;
 //   - deaths : le fil des morts (ScanFilmDeaths), qui ferme les périodes des porteurs morts.
 func BuildHeldObjectCarry(events []HeldObjectEvent, occupant func(slot uint32, matchMS int) uint64,
-	deaths []Death) HeldObjectCarry {
+	deaths []types.Death) HeldObjectCarry {
 	trans := make([]heldObjectTransition, 0, len(events))
 	for _, e := range events {
 		trans = append(trans, heldObjectTransition{tMS: e.TimeMS, slot: e.Slot, pickup: e.Pickup})

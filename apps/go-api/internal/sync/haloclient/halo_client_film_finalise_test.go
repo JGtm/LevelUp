@@ -6,7 +6,7 @@ package haloclient
 // Le serveur Halo publie le morceau des temps forts (type 3) environ une minute apres la fin du
 // match. Un manifeste servi AVANT decrit un film en cours de publication : le telecharger et le
 // rendre comme un film complet a fait cuire `ab526724` sur 34 morceaux sur 37. Le chemin commun
-// de telechargement rend desormais [filmcache.ErrFilmNonFinalise], sans rien telecharger.
+// de telechargement rend desormais [finalise.ErrFilmNonFinalise], sans rien telecharger.
 
 import (
 	"context"
@@ -21,6 +21,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
+	"levelup/go-api/internal/games/halo_infinite/film/finalise"
 )
 
 // serveurDeFilm sert un manifeste donne et compte les blobs demandes.
@@ -60,8 +61,8 @@ func TestGetFilmChunks_ManifesteAPINonFinalise_ErreurTypee(t *testing.T) {
 	c := newFilmTestClient(srv)
 
 	chunks, found, err := c.GetFilmChunks(context.Background(), testFilmMatchUUID)
-	if !errors.Is(err, filmcache.ErrFilmNonFinalise) {
-		t.Fatalf("err = %v, attendu filmcache.ErrFilmNonFinalise", err)
+	if !errors.Is(err, finalise.ErrFilmNonFinalise) {
+		t.Fatalf("err = %v, attendu finalise.ErrFilmNonFinalise", err)
 	}
 	if found || chunks != nil {
 		t.Errorf("film non finalise rendu comme present : found=%v, %d morceaux", found, len(chunks))
@@ -79,7 +80,7 @@ func TestGetFilmChunks_ManifesteAPINonFinalise_ErreurTypee(t *testing.T) {
 func TestGetMatchFilm_ManifesteAPINonFinalise_ErreurTypee(t *testing.T) {
 	srv, _ := serveurDeFilm(t, entreesEnCours())
 	_, found, err := newFilmTestClient(srv).GetMatchFilm(context.Background(), testFilmMatchUUID)
-	if !errors.Is(err, filmcache.ErrFilmNonFinalise) || found {
+	if !errors.Is(err, finalise.ErrFilmNonFinalise) || found {
 		t.Fatalf("GetMatchFilm : found=%v err=%v, attendu ErrFilmNonFinalise", found, err)
 	}
 }
@@ -108,7 +109,7 @@ func TestGetFilmChunks_ManifesteFinalise_RendLeFilm(t *testing.T) {
 func TestGetFilmChunkURLs_ManifesteNonFinalise_ErreurTypee(t *testing.T) {
 	srv, _ := serveurDeFilm(t, entreesEnCours())
 	refs, found, err := newFilmTestClient(srv).GetFilmChunkURLs(context.Background(), testFilmMatchUUID)
-	if !errors.Is(err, filmcache.ErrFilmNonFinalise) || found || refs != nil {
+	if !errors.Is(err, finalise.ErrFilmNonFinalise) || found || refs != nil {
 		t.Fatalf("GetFilmChunkURLs : (%d, %v, %v), attendu ErrFilmNonFinalise", len(refs), found, err)
 	}
 }
@@ -149,7 +150,7 @@ func TestGetFilmChunks_ManifesteLocalPartiel_RepliSurLAPI(t *testing.T) {
 	if err != nil || !found || len(chunks) != 4 {
 		t.Fatalf("repli API : (%d, %v, %v), attendu (4, true, nil)", len(chunks), found, err)
 	}
-	if !filmcache.Finalise(chunks, func(c FilmChunk) int { return c.ChunkType }) {
+	if !finalise.Finalise(chunks, func(c FilmChunk) int { return c.ChunkType }) {
 		t.Error("le film rendu ne porte pas ses temps forts")
 	}
 	if n := blobs.Load(); n != 1 {

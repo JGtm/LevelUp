@@ -111,7 +111,7 @@ func TestTotalControlInstantCardinal(t *testing.T) {
 // match.
 func d3iSerieDe(t *testing.T, dir, short string) (d3iSerie, bool) {
 	t.Helper()
-	clockUS, err := ScanFilmClockOrigin(dir)
+	clockUS, err := grammar.ScanFilmClockOrigin(dir)
 	if err != nil {
 		t.Fatalf("%s : origine d'horloge illisible : %v", short, err)
 	}

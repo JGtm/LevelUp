@@ -1,4 +1,4 @@
-package replay
+package grammar
 
 // inventory_position_i22_test.go — MESURER LA POSITION DU MOTIF i22 (grenades) RELATIVEMENT A
 // DES REPERES INDEPENDANTS DE L'ANCRE DE CAPACITE.
@@ -39,7 +39,7 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // invPosCand est un candidat i22 : un motif R(3)=4 suivi de quatre R(8) tous bornes.
@@ -177,16 +177,16 @@ func TestPositionI22(t *testing.T) {
 // controlee nulle part).
 func invPosFilm(t *testing.T, dir string) (entr, cible, ancreZero []invPosObs) {
 	t.Helper()
-	known := loadoutFamilies()
+	known := hwCatalogue()
 	nom := invPosBase(dir)
-	n := grammar.CountFilmChunks(dir)
+	n := CountFilmChunks(dir)
 	for ch := 1; ch <= n; ch++ {
-		chunk, err := grammar.ReadFilmChunk(dir, ch)
+		chunk, err := ReadFilmChunk(dir, ch)
 		if err != nil {
 			continue
 		}
-		for _, p := range grammar.WalkPackets(chunk) {
-			if p.Type != grammar.PacketTypeKeyframe {
+		for _, p := range WalkPackets(chunk) {
+			if p.Type != PacketTypeKeyframe {
 				continue
 			}
 			pay := p.Payload(chunk)
@@ -692,16 +692,16 @@ func (b *invPosBilan) log(t *testing.T) {
 }
 
 func invPosBilanFilm(dir string) invPosBilan {
-	known := loadoutFamilies()
+	known := hwCatalogue()
 	var b invPosBilan
-	n := grammar.CountFilmChunks(dir)
+	n := CountFilmChunks(dir)
 	for ch := 1; ch <= n; ch++ {
-		chunk, err := grammar.ReadFilmChunk(dir, ch)
+		chunk, err := ReadFilmChunk(dir, ch)
 		if err != nil {
 			continue
 		}
-		for _, p := range grammar.WalkPackets(chunk) {
-			if p.Type != grammar.PacketTypeKeyframe {
+		for _, p := range WalkPackets(chunk) {
+			if p.Type != PacketTypeKeyframe {
 				continue
 			}
 			for _, inv := range keyframeInventories(p.Payload(chunk), known, DefaultGrenadeMax) {
@@ -712,7 +712,7 @@ func invPosBilanFilm(dir string) invPosBilan {
 	return b
 }
 
-func (b *invPosBilan) compter(inv KeyframeInventory) {
+func (b *invPosBilan) compter(inv types.KeyframeInventory) {
 	b.records++
 	if inv.AmmoRead {
 		b.armes++
@@ -731,7 +731,9 @@ func (b *invPosBilan) compter(inv KeyframeInventory) {
 	if inv.GrenadesRead && inv.Grenades == [invGrenadeSlots]uint32{} {
 		b.grenNulles++
 	}
-	if invReadingIsEmpty(inv) {
+	// Lecture VIDE : la condition de `replay.invReadingIsEmpty` (aucune grenade ni munition lue),
+	// ecrite ici parce que cet instrument est descendu en `grammar` au lot J4.2 (2026-09-26).
+	if !inv.GrenadesRead && !inv.AmmoRead {
 		b.vides++
 	}
 }
@@ -739,7 +741,7 @@ func (b *invPosBilan) compter(inv KeyframeInventory) {
 // TestOracleTypesPortesEtLances — L'ORACLE INDEPENDANT DE R2b.
 //
 // LE PRINCIPE. Les compteurs i22 sont lus aux IMAGES-CLES ; les lancers de grenade sont decodes
-// dans les PAQUETS DELTA, par un tout autre chemin (grammar.ScanFilmGrenadeThrows), et ils
+// dans les PAQUETS DELTA, par un tout autre chemin (ScanFilmGrenadeThrows), et ils
 // portent le TYPE lance. Les deux canaux ne partagent aucun bit. Si R2b lisait du bruit, la
 // repartition des types PORTES n'aurait aucune raison de suivre celle des types LANCES.
 //
@@ -791,15 +793,15 @@ func TestOracleTypesPortesEtLances(t *testing.T) {
 // invPosTypes rend, pour un film, les rangs de grenade PORTES (compteur i22 non nul, decodeur de
 // production) et les rangs LANCES (canal delta, totalement disjoint).
 func invPosTypes(dir string) (porte, lance [invGrenadeSlots]bool, err error) {
-	known := loadoutFamilies()
-	n := grammar.CountFilmChunks(dir)
+	known := hwCatalogue()
+	n := CountFilmChunks(dir)
 	for ch := 1; ch <= n; ch++ {
-		chunk, e := grammar.ReadFilmChunk(dir, ch)
+		chunk, e := ReadFilmChunk(dir, ch)
 		if e != nil {
 			continue
 		}
-		for _, p := range grammar.WalkPackets(chunk) {
-			if p.Type != grammar.PacketTypeKeyframe {
+		for _, p := range WalkPackets(chunk) {
+			if p.Type != PacketTypeKeyframe {
 				continue
 			}
 			for _, inv := range keyframeInventories(p.Payload(chunk), known, DefaultGrenadeMax) {
@@ -814,7 +816,7 @@ func invPosTypes(dir string) (porte, lance [invGrenadeSlots]bool, err error) {
 			}
 		}
 	}
-	throws, err := grammar.ScanFilmGrenadeThrows(dir)
+	throws, err := ScanFilmGrenadeThrows(dir)
 	if err != nil {
 		return porte, lance, err
 	}

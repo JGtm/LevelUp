@@ -161,7 +161,7 @@ func TestInventaireMortSuitLOccupantDuSiege(t *testing.T) {
 		{T: 25, Slot: 900, Empty: InventoryEmptyUnknown},
 		{T: 15, Slot: 900, Empty: InventoryEmptyUnknown},
 	}
-	deaths := []Death{{XUID: 222, TimeMS: 2_000}, {XUID: 111, TimeMS: 1_400}}
+	deaths := []types.Death{{XUID: 222, TimeMS: 2_000}, {XUID: 111, TimeMS: 1_400}}
 	n := markInventoryDeadReadings(inv, deaths, reg, horlogeDesTests())
 	if n != 1 {
 		t.Fatalf("lectures requalifiees = %d, attendu 1", n)

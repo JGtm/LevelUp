@@ -1,4 +1,4 @@
-package replay
+package grammar
 
 // inventory_grenade_selection.go — LA RÈGLE R5 : la grenade SÉLECTIONNÉE (composant i47)
 // dans le record de biped des images-clés. Extraite d'inventory_decode.go (seuil de taille

@@ -13,6 +13,7 @@ package replay
 
 import (
 	"bytes"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 	"log/slog"
 	"strings"
 	"testing"
@@ -114,9 +115,9 @@ func TestLAlarmeDeMargeEtroiteSeDeclencheEtSeTait(t *testing.T) {
 // vote, lui, dépose ses voix dans deux paniers distants de 220 ms — plus d'une largeur de
 // panier (150 ms), donc deux candidats distincts, chacun à moins de deux largeurs (300 ms) du
 // plateau commun, que l'affinage retrouve donc DEUX FOIS.
-func pontFixturePlateauADeuxPaniers() ([]lifeSpan, []Death) {
+func pontFixturePlateauADeuxPaniers() ([]lifeSpan, []types.Death) {
 	var lives []lifeSpan
-	var deaths []Death
+	var deaths []types.Death
 	const origine, residuTardif = 2_000_000, 220
 	tMatch := int64(40_000)
 	for i := 0; i < 40; i++ {
@@ -125,7 +126,7 @@ func pontFixturePlateauADeuxPaniers() ([]lifeSpan, []Death) {
 			residu = residuTardif
 		}
 		lives = append(lives, pontVie(uint32(500+i), origine+tMatch+residu))
-		deaths = append(deaths, Death{XUID: uint64(1000 + i), TimeMS: tMatch})
+		deaths = append(deaths, types.Death{XUID: uint64(1000 + i), TimeMS: tMatch})
 		tMatch += 3_000 + int64(i*2_777)%9_000
 	}
 	return lives, deaths
@@ -165,18 +166,18 @@ func TestDeuxPaniersDuMemePlateauNeComptentQuUneFois(t *testing.T) {
 // L'amas ne triche pas seulement par son propre panier (20 morts pour 5 fins) : chacune de ses
 // vingt morts vise AUSSI chaque fin de vie isolée du vrai calage, et y dépose vingt voix pour
 // une seule paire réalisable. Ce sont ces « paniers fantômes » qui remplissaient le budget.
-func pontFixtureAmasPlusGrosQueLeVrai() ([]lifeSpan, []Death) {
+func pontFixtureAmasPlusGrosQueLeVrai() ([]lifeSpan, []types.Death) {
 	var lives []lifeSpan
-	var deaths []Death
+	var deaths []types.Death
 	const origine, amas, decalageAmas = 200_000, 400_000, 50_000
 	tMatch := int64(10_000)
 	for i := 0; i < 15; i++ {
 		lives = append(lives, pontVie(uint32(500+i), origine+tMatch))
-		deaths = append(deaths, Death{XUID: uint64(1000 + i), TimeMS: tMatch})
+		deaths = append(deaths, types.Death{XUID: uint64(1000 + i), TimeMS: tMatch})
 		tMatch += 11_000 + int64(i*i*7_919)%37_000
 	}
 	for j := 0; j < 20; j++ {
-		deaths = append(deaths, Death{XUID: uint64(9000 + j), TimeMS: amas + int64(j)*3})
+		deaths = append(deaths, types.Death{XUID: uint64(9000 + j), TimeMS: amas + int64(j)*3})
 	}
 	for j := 0; j < 5; j++ {
 		lives = append(lives, pontVie(uint32(800+j), origine+decalageAmas+amas+int64(j)*3))

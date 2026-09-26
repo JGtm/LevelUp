@@ -170,7 +170,7 @@ func scoreRoundsOf(byRound map[int][]types.ScorePoint, c scoreClock) []ScoreRoun
 // Rend (nil, nil) quand l'appelant n'a rien fourni : un artefact construit sans acces aux
 // enregistrements du film ne porte AUCUNE couverture de score, ce qui le distingue d'un film
 // dont la lecture n'a rien donne (couverture presente, courbes vides).
-func buildScoreTimeline(in *ScoreInput, deaths []Death, c scoreClock,
+func buildScoreTimeline(in *ScoreInput, deaths []types.Death, c scoreClock,
 	fb *fallback.Compteur) (*ScoreTimeline, *ScoreCoverage) {
 	if in == nil {
 		return nil, nil

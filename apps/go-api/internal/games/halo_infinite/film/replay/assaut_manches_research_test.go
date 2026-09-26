@@ -45,6 +45,7 @@ import (
 	"levelup/go-api/internal/filmproc"
 	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
@@ -268,11 +269,10 @@ func amTriRetenues(m map[int]bool) []int {
 // d'un ordre de grandeur : ancrage fortuit <= 1,0 %, manche reelle >= 21 % (`df8fcbef`
 // manche 1 : 45 enregistrements contre 212 a la manche 3).
 //
-// C'est la forme retenue : une manche est MATERIELLE si elle porte au moins
-// `statMinRoundRecordShare` % des enregistrements de joueur de la manche la plus fournie du
-// film. Le denominateur est toujours une manche reelle (c'est la plus fournie), donc la
-// mesure ne depend d'aucune constante de duree, de cadence ni de nombre de joueurs — un FFA
-// a 6 joueurs (`610363ee`) passe comme un 4v4.
+// C'est la forme retenue : une manche est MATERIELLE si elle porte au moins `statMinRoundRecordShare`
+// % des enregistrements de joueur de la manche la plus fournie du film. Le denominateur est
+// toujours une manche reelle (c'est la plus fournie), donc la mesure ne depend d'aucune constante
+// de duree, de cadence ni de nombre de joueurs — un FFA a 6 joueurs (`610363ee`) passe comme un 4v4.
 //
 // # LE CRITERE DE PASSAGE, ecrit avant la mesure
 //
@@ -593,7 +593,7 @@ func TestAssautPontIdentite(t *testing.T) {
 			continue
 		}
 		recs, _ := objectives.StatRecordsCtx(context.Background(), src, f.id)
-		deaths, err := ScanFilmDeaths(filepath.Join(cache, "film_chunks", f.id))
+		deaths, err := grammar.ScanFilmDeaths(filepath.Join(cache, "film_chunks", f.id))
 		if err != nil {
 			t.Logf("%s : fil des morts illisible (%v)", f.id, err)
 			continue

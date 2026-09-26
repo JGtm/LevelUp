@@ -23,6 +23,7 @@ import (
 
 	"levelup/go-api/internal/filmproc"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
@@ -74,7 +75,7 @@ func TestSkullCarrierWitness(t *testing.T) {
 		t.Fatalf("%s : film absent du cache", id)
 	}
 	recs := objectives.StatRecords(src)
-	deaths, err := ScanFilmDeaths(objChunkDir(root, id))
+	deaths, err := grammar.ScanFilmDeaths(objChunkDir(root, id))
 	if err != nil {
 		t.Fatalf("%s : fil des morts illisible : %v", id, err)
 	}
@@ -133,7 +134,7 @@ func loadSkullOracle(t *testing.T, id string) map[string]skullOracleStat {
 }
 
 // skullGamertags rend le gamertag lu DANS le film pour chaque xuid (le fil des morts le nomme).
-func skullGamertags(deaths []Death) map[string]string {
+func skullGamertags(deaths []types.Death) map[string]string {
 	out := map[string]string{}
 	for _, d := range deaths {
 		if d.Gamertag != "" {

@@ -33,7 +33,7 @@ import (
 
 	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // ouvrirManifeste ouvre le manifeste du film et JOURNALISE ce qu'il en est.
@@ -98,13 +98,13 @@ func metaDuManifeste(src *filmcache.Source) []decfilm.ChunkMeta {
 // perd les actions d'objectif, l'autre les frags sous effet actif. Rendre une liste vide sans
 // l'erreur aurait fusionne « fil illisible » et « film sans mort », qui ne sont pas le meme fait.
 type filmDeaths struct {
-	list []replay.Death
+	list []types.Death
 	err  error
 }
 
 // lireMorts lit le fil des morts du film charge. Le chunk highlight est deja decompresse : ce
 // qui reste est le parse, fait une fois pour les deux consommateurs.
 func lireMorts(film *decfilm.Film) filmDeaths {
-	list, err := replay.ScanDeaths(film)
+	list, err := decfilm.ScanDeaths(film)
 	return filmDeaths{list: list, err: err}
 }

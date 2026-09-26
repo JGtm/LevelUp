@@ -74,7 +74,7 @@ type Options struct {
 	Projectiles []types.ProjectileTrack
 	// Inventory : inventaire complet lu aux memes images-cles que les armes portees
 	// (cf. inventory.go). Entree de DONNEES. Absente = rejeu sans grenades ni munitions.
-	Inventory []KeyframeInventory
+	Inventory []types.KeyframeInventory
 	// InventoryDeltas sont les lectures d'inventaire des paquets DELTA (grenades). Absentes =
 	// le film n'en transmet pas, ou le balayage a echoue : l'axe des grenades retombe alors sur
 	// les seules images-cles.
@@ -196,7 +196,7 @@ type Options struct {
 	// elise un proprietaire de slot (retires le 2026-07-28) : un rejeu muet se voit, un rejeu qui
 	// pose des tirs sur le mauvais joueur ne se voit pas. (Ce paragraphe disait « aucun tir ni
 	// lancer n'est publie » : faux depuis la table des sieges, lot 1.6 — revue adverse M5, R3.)
-	Deaths []Death
+	Deaths []types.Death
 	// DeathsFeed est le VERDICT de la lecture du fil des morts ([DeathsFeedRead],
 	// [DeathsFeedEmpty], [DeathsFeedUnreadable]), pose par `FilmInputs.applyTo` depuis
 	// `FilmInputs.DeathsFeed` et publie en `coverage.bridge.deathsFeed`. Les faits persistes le
@@ -206,14 +206,14 @@ type Options struct {
 	// PlayerIndices est la table identité -> index de joueur, LUE dans le film (cf.
 	// player_index.go). Second maillon du pont, et lui aussi une lecture. Absente, un tir ou un
 	// lancer reste publie si le registre nomme son slot par la table des sieges (`FilmTable`).
-	PlayerIndices PlayerIndexTable
+	PlayerIndices types.PlayerIndexTable
 	// FilmTable est la TABLE DES JOUEURS que le film écrit lui-même (`chunk_00`), lue par
-	// [ScanFilmPlayerTable] : le lien DIRECT `index <-> xuid <-> gamertag`.
+	// [grammar.ScanFilmPlayerTable] : le lien DIRECT `index <-> xuid <-> gamertag`.
 	//
 	// ELLE PRÉCÈDE `PlayerIndices`, ELLE NE LA REMPLACE PAS (cf. film_player_table.go) : la
 	// table du film est celle du DÉBUT du film. Vide = le registre retombe entièrement sur
 	// `PlayerIndices`, et le publie (`coverage.identity.filmTable.refus`).
-	FilmTable FilmPlayerTable
+	FilmTable grammar.FilmPlayerTable
 	// PlayerTeams est l'ÉQUIPE DE CHAQUE JOUEUR telle que le film l'écrit : `index de joueur ->
 	// désignateur` (`-1` = aucune équipe), lue par [grammar.ScanPlayerTeams] dans le composant
 	// i0 de ti=9.

@@ -22,6 +22,7 @@ import (
 	"strings"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // nameTracksByLives pose le xuid du porteur sur chaque trace PAR VIE : une trace est nommée
@@ -72,7 +73,7 @@ func nameTracksByLives(tracks []Track, lives []lifeSpan, origin, step uint64, fb
 // d'un enregistrement d'événement portent le même champ de 32 octets pour un même xuid. Si
 // deux lectures divergeaient, ce serait une lecture fausse, pas un désaccord ; le nom n'entre
 // dans aucun rattachement, la conséquence resterait cosmétique.
-func gamertagsOf(deaths []Death) map[uint64]string {
+func gamertagsOf(deaths []types.Death) map[uint64]string {
 	out := map[uint64]string{}
 	for _, d := range deaths {
 		if d.Gamertag == "" {
@@ -250,7 +251,7 @@ func (b BotIdentity) Bid() string {
 // L'ÉQUIPE VIENT DU FILM (lot 1.7) et se lit PAR INDEX — la même clé que le siège, donc la
 // même pour un humain et pour un bot. Un index que le film ne nomme pas garde `-1` ; combien
 // ils sont se lit dans `coverage.teams.unread`.
-func buildRoster(idx PlayerIndexTable, names map[uint64]string, bots []BotIdentity,
+func buildRoster(idx types.PlayerIndexTable, names map[uint64]string, bots []BotIdentity,
 	equipes teamPublication) []RosterEntry {
 	if len(idx.ByXUID) == 0 && len(bots) == 0 {
 		return nil

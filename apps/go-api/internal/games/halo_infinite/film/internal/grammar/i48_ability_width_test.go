@@ -1,4 +1,4 @@
-package replay
+package grammar
 
 // i48_ability_width_test.go — INSTRUMENT DE MESURE de l'ÉTAPE 1 du plan
 // .ai/V7.5/replay2d/PLAN_CAPACITES_ACTIVES.md : « relire l'index de capacité sur 6 BITS,
@@ -45,8 +45,6 @@ import (
 	"strconv"
 	"strings"
 	"testing"
-
-	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
 const (
@@ -113,19 +111,19 @@ func TestAbilityIndexWidth(t *testing.T) {
 	)
 	for _, f := range films {
 		dir := filepath.Join(root, f)
-		n := grammar.CountFilmChunks(dir)
+		n := CountFilmChunks(dir)
 		if n == 0 {
 			t.Logf("  %s : aucun chunk, ignoré", f)
 			continue
 		}
 		perFilmIdx[f] = map[uint32]int{}
 		for c := 1; c <= n; c++ {
-			chunk, err := grammar.ReadFilmChunk(dir, c)
+			chunk, err := ReadFilmChunk(dir, c)
 			if err != nil {
 				continue
 			}
-			for _, p := range grammar.WalkPackets(chunk) {
-				if p.Type != grammar.PacketTypeKeyframe {
+			for _, p := range WalkPackets(chunk) {
+				if p.Type != PacketTypeKeyframe {
 					continue
 				}
 				pay := p.Payload(chunk)

@@ -29,6 +29,7 @@ import (
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 const ctfClosureFilmsEnv = "CTF_CLOSURE_FILMS"
@@ -90,7 +91,7 @@ func ctfClosureReport(t *testing.T, cat *profile.MapQuantCatalog, dir, short, ma
 // ctfDecodeFilm est le préambule commun des instruments : décoder un film et lire son pont.
 // Factorisé au TROISIÈME exemplaire, comme l'exige la règle du dépôt.
 func ctfDecodeFilm(t *testing.T, cat *profile.MapQuantCatalog, dir, mapName string) (
-	[]grammar.BipedPosition, []grammar.FireEvent, []Death, PlayerIndexTable) {
+	[]grammar.BipedPosition, []grammar.FireEvent, []types.Death, types.PlayerIndexTable) {
 	t.Helper()
 	entry, err := cat.Lookup(mapName)
 	if err != nil {
@@ -107,11 +108,11 @@ func ctfDecodeFilm(t *testing.T, cat *profile.MapQuantCatalog, dir, mapName stri
 	if err != nil {
 		t.Fatalf("tirs : %v", err)
 	}
-	deaths, err := ScanFilmDeaths(dir)
+	deaths, err := grammar.ScanFilmDeaths(dir)
 	if err != nil {
 		t.Fatalf("morts : %v", err)
 	}
-	idx, err := ScanFilmPlayerIndices(dir, rosterFromDeaths(deaths))
+	idx, err := grammar.ScanFilmPlayerIndices(dir, rosterFromDeaths(deaths))
 	if err != nil {
 		t.Fatalf("index : %v", err)
 	}

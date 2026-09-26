@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // identity_registry_composition_test.go — LE REGISTRE COMPOSE DES LECTURES, ET RIEN D'AUTRE.
@@ -23,8 +24,8 @@ func TestRegistreComposeLaLectureSeule(t *testing.T) {
 		posAt(512, 1_000_000, 0, 0, 0), posAt(512, 2_000_000, 0, 0, 0),
 		posAt(513, 20_000_000, 0, 0, 0), posAt(513, 21_000_000, 0, 0, 0),
 	}
-	deaths := []Death{{XUID: 111, TimeMS: 2_000 - 500}, {XUID: 222, TimeMS: 21_000 - 500}}
-	idx := PlayerIndexTable{ByXUID: map[uint64]int{111: 0, 222: 1}, Readings: 5}
+	deaths := []types.Death{{XUID: 111, TimeMS: 2_000 - 500}, {XUID: 222, TimeMS: 21_000 - 500}}
+	idx := types.PlayerIndexTable{ByXUID: map[uint64]int{111: 0, 222: 1}, Readings: 5}
 
 	reg := BuildIdentityRegistry(IdentityInput{Positions: pos, Deaths: deaths, PlayerIndices: idx})
 	pont := reg.PontEpure()
@@ -42,7 +43,7 @@ func TestRegistreComposeLaLectureSeule(t *testing.T) {
 // jamais devine.
 func TestRegistreSansMortsRendUnPontVide(t *testing.T) {
 	pos := []grammar.BipedPosition{posAt(512, 1_000_000, 0, 0, 0)}
-	idx := PlayerIndexTable{ByXUID: map[uint64]int{111: 0}}
+	idx := types.PlayerIndexTable{ByXUID: map[uint64]int{111: 0}}
 
 	reg := BuildIdentityRegistry(IdentityInput{Positions: pos, PlayerIndices: idx})
 
@@ -57,7 +58,7 @@ func TestRegistreSansMortsRendUnPontVide(t *testing.T) {
 // TestRegistreSansIndexDeJoueurRendUnPontVide — meme regle, second maillon absent.
 func TestRegistreSansIndexDeJoueurRendUnPontVide(t *testing.T) {
 	pos := []grammar.BipedPosition{posAt(512, 1_000_000, 0, 0, 0), posAt(512, 2_000_000, 0, 0, 0)}
-	deaths := []Death{{XUID: 111, TimeMS: 1_500}}
+	deaths := []types.Death{{XUID: 111, TimeMS: 1_500}}
 
 	reg := BuildIdentityRegistry(IdentityInput{Positions: pos, Deaths: deaths})
 

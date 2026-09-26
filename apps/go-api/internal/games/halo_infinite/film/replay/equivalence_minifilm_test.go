@@ -147,15 +147,15 @@ func digestsMiniBobine() ([]string, error) {
 	if err != nil {
 		return nil, fmt.Errorf("armes portees : %w", err)
 	}
-	inventory, _, err := ScanFilmKeyframeInventory(dir, loadoutFamilies(), 0, nil)
+	inventory, _, err := grammar.ScanFilmKeyframeInventory(dir, loadoutFamilies(), 0)
 	if err != nil {
 		return nil, fmt.Errorf("inventaire d'image-cle : %w", err)
 	}
-	deaths, err := ScanFilmDeaths(dir)
+	deaths, err := grammar.ScanFilmDeaths(dir)
 	if err != nil {
 		return nil, fmt.Errorf("morts : %w", err)
 	}
-	indices, err := ScanFilmPlayerIndices(dir, rosterFromDeaths(deaths))
+	indices, err := grammar.ScanFilmPlayerIndices(dir, rosterFromDeaths(deaths))
 	if err != nil {
 		return nil, fmt.Errorf("indices joueur : %w", err)
 	}

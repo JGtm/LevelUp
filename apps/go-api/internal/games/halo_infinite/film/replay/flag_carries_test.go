@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // flag_carries_test.go — LES REGLES DU DRAPEAU, sans film.
@@ -15,7 +16,7 @@ import (
 
 // flagTestCtx fabrique un contexte a l'echelle 100 ms/frame, sans decalage d'horloge : la frame
 // d'un instant du match est donc `ms / 100`, ce qui rend les attentes lisibles.
-func flagTestCtx(tracks []Track, deaths []Death, frames int) flagCarryCtx {
+func flagTestCtx(tracks []Track, deaths []types.Death, frames int) flagCarryCtx {
 	return flagCarryCtx{matchClock: matchClock{origin: 0, step: 100_000, frames: frames}, tracks: tracks, deaths: deaths}
 }
 

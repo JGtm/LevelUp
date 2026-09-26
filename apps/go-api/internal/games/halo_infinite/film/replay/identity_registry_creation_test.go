@@ -8,6 +8,7 @@ import (
 
 	"levelup/go-api/internal/games/canonical"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // identity_registry_creation_test.go — LES PROPRIETES DU LIEN DIRECT CORPS -> JOUEUR.
@@ -46,7 +47,7 @@ func filmDeuxCorps() IdentityInput {
 			creationDe(100, 1_000_000, 0),
 			creationDe(200, 1_000_000, 1),
 		},
-		PlayerIndices: PlayerIndexTable{ByXUID: map[uint64]int{111: 0, 222: 1}, Readings: 26},
+		PlayerIndices: types.PlayerIndexTable{ByXUID: map[uint64]int{111: 0, 222: 1}, Readings: 26},
 		Clock:         IdentityClock{OriginUS: 1_000_000, StepUS: 100_000, FrameCount: 171},
 		MatchID:       "test",
 	}

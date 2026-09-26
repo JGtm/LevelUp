@@ -1,7 +1,9 @@
-package replay
+package grammar
 
 import (
 	"fmt"
+
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 	"os"
 	"path/filepath"
 	"testing"
@@ -46,7 +48,7 @@ func filmDirWithBadChunk(t *testing.T, goodChunks int) string {
 	return dir
 }
 
-// chunkFileName reproduit le nommage de grammar.ReadFilmChunk (`chunk_%02d.bin`) — non
+// chunkFileName reproduit le nommage de ReadFilmChunk (`chunk_%02d.bin`) — non
 // exporté du paquet voisin, donc redéclaré ici plutôt qu'emprunté (même règle de frontière
 // que inventory_decode.go, cf. son en-tête).
 func chunkFileName(n int) string {
@@ -63,14 +65,14 @@ func chunkFileName(n int) string {
 func TestScanFilmKeyframeInventoryRefuseUnChunkIllisible(t *testing.T) {
 	dir := filmDirWithBadChunk(t, 2)
 	known := map[uint32]bool{1: true}
-	inv, st, err := ScanFilmKeyframeInventory(dir, known, 0, nil)
+	inv, st, err := ScanFilmKeyframeInventory(dir, known, 0)
 	if err == nil {
 		t.Fatal("chunk illisible : une erreur était attendue — un film amputé n'est pas un film")
 	}
 	if inv != nil {
 		t.Errorf("inventaire non nil malgré l'échec de chargement : %+v", inv)
 	}
-	if st != (KeyframeInventoryStats{}) {
+	if st != (types.KeyframeInventoryStats{}) {
 		t.Errorf("Stats = %+v, attendu la valeur zéro : aucun chunk n'a été balayé", st)
 	}
 }
@@ -81,7 +83,7 @@ func TestScanFilmKeyframeInventoryRefuseUnChunkIllisible(t *testing.T) {
 func TestScanFilmKeyframeInventoryAllChunksUnreadable(t *testing.T) {
 	dir := filmDirWithBadChunk(t, 0)
 	known := map[uint32]bool{1: true}
-	inv, _, err := ScanFilmKeyframeInventory(dir, known, 0, nil)
+	inv, _, err := ScanFilmKeyframeInventory(dir, known, 0)
 	if err == nil {
 		t.Fatal("aucun chunk lisible : une erreur était attendue")
 	}
@@ -100,7 +102,7 @@ func TestScanKeyframeInventoryCompteLesChunks(t *testing.T) {
 			t.Fatalf("écriture du chunk %d : %v", i, err)
 		}
 	}
-	inv, st, err := ScanFilmKeyframeInventory(dir, map[uint32]bool{1: true}, 0, nil)
+	inv, st, err := ScanFilmKeyframeInventory(dir, map[uint32]bool{1: true}, 0)
 	if err != nil {
 		t.Fatalf("ScanFilmKeyframeInventory : %v", err)
 	}

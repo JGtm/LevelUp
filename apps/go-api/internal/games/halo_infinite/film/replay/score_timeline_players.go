@@ -44,7 +44,7 @@ import (
 // deux lecteurs du meme pont doivent dire la meme chose du meme match. `lines` vide rend
 // l'identite inchangee.
 func buildPlayerScores(recs []types.StatRecord, flat map[int]string,
-	lines []types.PlayerLine, deaths []Death, c scoreClock) []PlayerScore {
+	lines []types.PlayerLine, deaths []types.Death, c scoreClock) []PlayerScore {
 	if len(objectives.RealRounds(recs)) > 1 {
 		round := objectives.ResolveRoundIdentity(recs, deathInstantsOf(deaths)).
 			CompletedByElimination(recs, lines).

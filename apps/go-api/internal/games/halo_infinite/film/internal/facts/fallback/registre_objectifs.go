@@ -409,17 +409,17 @@ var registreObjectifsEtConstruction = []Repli{
 		// nomme, date, et porte son critere de retrait.
 		Nom:       "repli_temps_forts_dernier_numero",
 		Fait:      "quel morceau du film porte les temps forts (fil des morts, kill-feed) quand aucun morceau n'est type par un manifeste",
-		Mecanisme: "le morceau de plus grand numero present dans le repertoire est lu comme celui des temps forts ; un seul morceau type par le manifeste court-circuite ce repli (selection par le type, filmcache.EstTempsForts)",
+		Mecanisme: "le morceau de plus grand numero present dans le repertoire est lu comme celui des temps forts ; un seul morceau type par le manifeste court-circuite ce repli (selection par le type, finalise.EstTempsForts)",
 		Condition: CondSectionAbsente,
 		Ordre:     OrdreApresLecture,
 		Sites: []Site{
-			{Fichier: pkgReplay + "deaths_source.go", Ancre: "return nums[len(nums)-1], nil"},
+			{Fichier: pkgFilmdec + "deaths_source.go", Ancre: "return nums[len(nums)-1], nil"},
 			{Fichier: pkgReplaybuild + "filmfacts_cuisson.go", Ancre: "func jugerFilmSansManifeste("},
 		},
 		DatePose:        "2026-09-23",
-		CibleRetrait:    "le refus des films sans manifeste par la cuisson (replaybuild.jugerFilmSansManifeste), le jour ou replay-build et les instruments qui chargent un repertoire nu (replay.ScanFilmDeaths) lisent aussi son manifeste",
+		CibleRetrait:    "le refus des films sans manifeste par la cuisson (replaybuild.jugerFilmSansManifeste), le jour ou replay-build et les instruments qui chargent un repertoire nu (grammar.ScanFilmDeaths, descendue de replay au lot J4.2) lisent aussi son manifeste",
 		CritereRetrait:  "0 repertoire de morceaux sans manifeste au cache (1 625 sur 1 625 en portent un le 2026-09-23) et 0 WARN (film SANS manifeste) de la cuisson sur une republication complete du parc",
 		CompteurBranche: false,
-		CibleComptage:   "le lot qui passera le compteur de la cuisson a replay.ScanDeaths (appele deux fois par cuisson, sans match_id) ; d ici la, chaque declenchement en cuisson est journalise en WARN par replaybuild.jugerFilmSansManifeste",
+		CibleComptage:   "le lot qui passera le compteur de la cuisson a grammar.ScanDeaths (descendue de replay au lot J4.2 ; appelee deux fois par cuisson, sans match_id) ; d ici la, chaque declenchement en cuisson est journalise en WARN par replaybuild.jugerFilmSansManifeste",
 	},
 }

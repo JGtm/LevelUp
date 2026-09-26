@@ -15,6 +15,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"levelup/go-api/internal/games/halo_infinite/film/finalise"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
@@ -29,9 +30,9 @@ func manifestePartielTemoin(t *testing.T) ([]byte, []writeManifestChunk) {
 	if err := json.Unmarshal(blob, &mf); err != nil {
 		t.Fatalf("temoin illisible : %v", err)
 	}
-	if len(mf.Chunks) != 34 || Finalise(mf.Chunks, typeDuManifeste) {
+	if len(mf.Chunks) != 34 || finalise.Finalise(mf.Chunks, typeDuManifeste) {
 		t.Fatalf("temoin inattendu : %d entrees, finalise=%v", len(mf.Chunks),
-			Finalise(mf.Chunks, typeDuManifeste))
+			finalise.Finalise(mf.Chunks, typeDuManifeste))
 	}
 	return blob, mf.Chunks
 }
@@ -59,7 +60,7 @@ func completerLeTemoin(entrees []writeManifestChunk) []WriteChunk {
 	return append(out,
 		WriteChunk{Index: 34, ChunkType: 2, StartMS: 660116, DurationMS: 20000, Data: []byte("c34")},
 		WriteChunk{Index: 35, ChunkType: 2, StartMS: 680117, DurationMS: 1791, Data: []byte("c35")},
-		WriteChunk{Index: 36, ChunkType: ChunkTypeTempsForts, StartMS: 681909, DurationMS: 3,
+		WriteChunk{Index: 36, ChunkType: finalise.ChunkTypeTempsForts, StartMS: 681909, DurationMS: 3,
 			Data: []byte("c36")},
 	)
 }
@@ -72,7 +73,7 @@ func TestWrite_RefuseUnFilmNonFinalise(t *testing.T) {
 	liste := completerLeTemoin(entrees)[:34]
 
 	err := Write(t.Context(), root, "ab526724", liste)
-	if !errors.Is(err, ErrFilmNonFinalise) {
+	if !errors.Is(err, finalise.ErrFilmNonFinalise) {
 		t.Fatalf("Write d'un film sans temps forts : err = %v, attendu ErrFilmNonFinalise", err)
 	}
 	if _, found, oErr := Open(root, "ab526724"); found || oErr != nil {
@@ -111,7 +112,7 @@ func TestWrite_CompleteUnManifestePartiel(t *testing.T) {
 	if got := len(src.Meta()); got != 37 {
 		t.Fatalf("manifeste complete : %d entrees, attendu 37", got)
 	}
-	if !Finalise(src.Meta(), func(m types.ChunkMeta) int { return m.ChunkType }) {
+	if !finalise.Finalise(src.Meta(), func(m types.ChunkMeta) int { return m.ChunkType }) {
 		t.Error("le manifeste complete ne porte pas le morceau des temps forts")
 	}
 	if got, _ := os.ReadFile(dejaLa); string(got) != "anc" {
@@ -150,7 +151,7 @@ func TestWrite_RefuseDeCompleterUnManifesteDivergent(t *testing.T) {
 			blob, entrees := manifestePartielTemoin(t)
 			poserManifeste(t, root, "ab526724", blob)
 			liste := c.deformer(completerLeTemoin(entrees))
-			if !Finalise(liste, typeAEcrire) {
+			if !finalise.Finalise(liste, typeAEcrire) {
 				t.Fatalf("la liste deformee n'est plus finalisee : le cas ne teste pas la divergence")
 			}
 
@@ -176,7 +177,7 @@ func TestWrite_UnManifestePartielNeSeCompletePasDUneListePartielle(t *testing.T)
 	poserManifeste(t, root, "ab526724", blob)
 
 	err := Write(t.Context(), root, "ab526724", completerLeTemoin(entrees)[:36])
-	if !errors.Is(err, ErrFilmNonFinalise) {
+	if !errors.Is(err, finalise.ErrFilmNonFinalise) {
 		t.Fatalf("err = %v, attendu ErrFilmNonFinalise", err)
 	}
 	if got, _ := os.ReadFile(ManifestPath(root, "ab526724")); string(got) != string(blob) {

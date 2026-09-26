@@ -6,11 +6,11 @@ import (
 	"fmt"
 	"os"
 
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
+	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 )
 
 func main() {
-	deaths, err := replay.ScanFilmDeaths(os.Args[1])
+	deaths, err := decfilm.ScanFilmDeaths(os.Args[1])
 	if err != nil {
 		fmt.Println("erreur:", err)
 		os.Exit(1)

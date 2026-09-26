@@ -23,16 +23,17 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
 // siegeFrames : la longueur des documents de ces tests.
 const siegeFrames = 100
 
 // tableDeDebut fabrique la table du film pour les index donnes — le roster du DEBUT.
-func tableDeDebut(index ...int) FilmPlayerTable {
-	t := FilmPlayerTable{Occupied: len(index), Vacant: 32 - len(index)}
+func tableDeDebut(index ...int) grammar.FilmPlayerTable {
+	t := grammar.FilmPlayerTable{Occupied: len(index), Vacant: 32 - len(index)}
 	for _, i := range index {
-		t.Seats = append(t.Seats, FilmPlayerSeat{FilmIndex: i, XUID: uint64(1000 + i), Gamertag: "j"})
+		t.Seats = append(t.Seats, grammar.FilmPlayerSeat{FilmIndex: i, XUID: uint64(1000 + i), Gamertag: "j"})
 	}
 	return t
 }

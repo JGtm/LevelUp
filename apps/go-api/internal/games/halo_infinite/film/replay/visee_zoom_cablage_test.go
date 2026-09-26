@@ -15,6 +15,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // TestViseeZoomBoutEnBout verifie que le palier de lunette arrive jusqu'au document — au bon
@@ -126,9 +127,9 @@ func zoomRappel(scopedS []float64, eps [][2]float64, shift float64) int {
 
 // ScanFilmDeaths2 est un adaptateur de test : ScanFilmDeaths rend une erreur, et l'ignorer
 // silencieusement dans le corps du gate masquerait un film illisible.
-func ScanFilmDeaths2(t *testing.T, dir string) []Death {
+func ScanFilmDeaths2(t *testing.T, dir string) []types.Death {
 	t.Helper()
-	d, err := ScanFilmDeaths(dir)
+	d, err := grammar.ScanFilmDeaths(dir)
 	if err != nil {
 		t.Fatalf("fil des morts : %v", err)
 	}

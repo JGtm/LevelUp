@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // flag_neutral_test.go — LA VARIANTE « DRAPEAU NEUTRE » SE RECONNAIT, sans film.
@@ -93,7 +94,7 @@ func TestFlagVarianteNeutreExigeUnSignalFranc(t *testing.T) {
 // mort, et le drapeau NEUTRE qui rentre chez lui.
 func TestFlagVarianteNeutrePublieUnSeulDrapeau(t *testing.T) {
 	tracks := []Track{flagTestTrack(10, "1", 0, 99, 50, 50)}
-	deaths := []Death{{XUID: 1, TimeMS: 4000}}
+	deaths := []types.Death{{XUID: 1, TimeMS: 4000}}
 	scan := flagNeutralScan(4, 0)
 	scan.Events = []objectives.NamedEvent{
 		{TimeMS: 1000, Slot: 12, Stat: objectives.StatFlagSteals},

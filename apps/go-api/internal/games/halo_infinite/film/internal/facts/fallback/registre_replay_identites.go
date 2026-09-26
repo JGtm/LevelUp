@@ -251,9 +251,11 @@ var registreReplayIdentites = []Repli{
 		Mecanisme: "un chunk illisible ou dont la resolution est vide est SAUTE, sans distinguer les deux cas",
 		Condition: CondSectionAbsente,
 		Ordre:     OrdreApresLecture,
+		// LA LECTURE EST DESCENDUE DE `replay` EN `grammar` AU LOT J4.2 (2026-09-26) : meme ancre,
+		// sans le qualificatif de paquet.
 		Sites: []Site{{
-			Fichier: pkgReplay + "player_index.go",
-			Ancre:   "raw, _, ok := grammar.FilmChunkAt(film, c)",
+			Fichier: pkgFilmdec + "player_index.go",
+			Ancre:   "raw, _, ok := FilmChunkAt(film, c)",
 		}},
 		DatePose:        dateAudit0E,
 		CibleRetrait:    "lot 1.6 (la table du film remplace cette voie) : le repli tombe quand la table de chunk_00 est le lien direct partout",

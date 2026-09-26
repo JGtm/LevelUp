@@ -7,6 +7,7 @@ import (
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // flag_carries.go — LA REGLE : de quoi est faite la vie d'un drapeau, et ou elle s'arrete.
@@ -162,7 +163,7 @@ type flagCarryCtx struct {
 	// tracks sont les trajectoires PUBLIEES : c'est sur elles que le client dessinera, donc
 	// c'est en elles qu'il faut trouver la position du drapeau.
 	tracks []Track
-	deaths []Death
+	deaths []types.Death
 	// slotXUID nomme le slot de BIPEDE des marques de portage (espace de slots different de
 	// celui du statborg). C'est le pont EPURE (`OwnerReport.NamingBridge()`) : les slots que
 	// deux vies nommees se partagent en sont retires, pour qu'aucun lecteur ne puisse servir le
@@ -445,7 +446,7 @@ func timesBySlot(evs []objectives.NamedEvent, stat string) map[int][]int64 {
 }
 
 // deathTimesByXUID rend, par joueur, les instants tries de ses morts.
-func deathTimesByXUID(deaths []Death) map[string][]int64 {
+func deathTimesByXUID(deaths []types.Death) map[string][]int64 {
 	out := map[string][]int64{}
 	for _, d := range deaths {
 		x := strconv.FormatUint(d.XUID, 10)

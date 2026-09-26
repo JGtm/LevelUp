@@ -36,6 +36,7 @@ import (
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 const (
@@ -107,8 +108,8 @@ func TestCTFLostShotsResearch(t *testing.T) {
 // du fil des morts. Il existe parce que `buildOwners` ferme désormais le pont en production
 // (closures.go) — mesurer le « avant » exige donc de reconstruire explicitement l'état antérieur,
 // et non de dupliquer la fermeture, qui vit dans le code de production et nulle part ailleurs.
-func ctfReadingOnlyOwners(tracks map[uint32]slotTrack, deaths []Death,
-	idx PlayerIndexTable) (map[uint32]int, []lifeSpan, int64) {
+func ctfReadingOnlyOwners(tracks map[uint32]slotTrack, deaths []types.Death,
+	idx types.PlayerIndexTable) (map[uint32]int, []lifeSpan, int64) {
 	lives := buildLifeSpans(tracks)
 	off, _, _ := bestDeathOffset(lives, deaths)
 	nameLivesByDeaths(lives, deaths, off)
@@ -148,11 +149,11 @@ func analyzeCTFFilm(t *testing.T, cat *profile.MapQuantCatalog, dir, short, mapN
 	if err != nil {
 		t.Fatalf("tirs %s : %v", short, err)
 	}
-	deaths, err := ScanFilmDeaths(dir)
+	deaths, err := grammar.ScanFilmDeaths(dir)
 	if err != nil {
 		t.Fatalf("fil des morts %s : %v", short, err)
 	}
-	idx, err := ScanFilmPlayerIndices(dir, rosterFromDeaths(deaths))
+	idx, err := grammar.ScanFilmPlayerIndices(dir, rosterFromDeaths(deaths))
 	if err != nil {
 		t.Fatalf("index de joueur %s : %v", short, err)
 	}
