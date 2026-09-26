@@ -87,6 +87,9 @@ type pass struct {
 	// collisionsBot : morts de bot (temps 4) NON publiees parce que leur instant porte deja une
 	// ligne publiee (lot J7.4, FK-4). Un instant publie ne se reecrit jamais.
 	collisionsBot int
+	// autoSurFabriqueRemplacees : lignes du temps 3 posees sur un couple FABRIQUE et remplacees par
+	// la mort de bot que le temps 4 verifie au meme instant (revue du lot J7, FK-4).
+	autoSurFabriqueRemplacees int
 	// fantomes : les instants de couples RECOLLES ou le temps 4 a PUBLIE la mort de bot — les
 	// seuls couples retires du denominateur (`Coverage.GhostPairs`, lot J7.4).
 	fantomes map[int]bool
@@ -231,13 +234,20 @@ func (p *pass) runBots() {
 		if p.botUsed[k] {
 			continue
 		}
-		if _, deja := p.byTime[m.event.timeMS]; deja {
-			p.collisionsBot++ // FK-4 (lot J7.4) : un instant publie ne se reecrit jamais
-			continue
+		remplace := false
+		if prev, deja := p.byTime[m.event.timeMS]; deja {
+			if !autoSurCoupleFabrique(m, prev) {
+				p.collisionsBot++ // FK-4 (lot J7.4) : un instant publie ne se reecrit jamais
+				continue
+			}
+			remplace = true
 		}
 		victime, publiable := p.nomPubliable(m.cand.victim)
 		if !publiable {
 			continue
+		}
+		if remplace {
+			p.autoSurFabriqueRemplacees++
 		}
 		p.botUsed[k] = true
 		if m.fab {
@@ -421,6 +431,8 @@ func (p *pass) stats(w *walkResult) Stats {
 
 		NomsDeRemplissageRefuses: p.nomsDeRemplissage,
 		CollisionsDeMortDeBot:    p.collisionsBot,
+
+		AutoInfligeesSurCoupleFabriqueRemplacees: p.autoSurFabriqueRemplacees,
 	}
 }
 

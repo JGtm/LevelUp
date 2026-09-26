@@ -55,6 +55,10 @@ type FilmTablePinning struct {
 	// chunks de replication qui ont livre au moins un index ; `Disagreements` = xuids lus a deux
 	// index differents (non publies) ; `Absent` = xuids dont le motif ne figure dans aucun chunk.
 	MotifReadings, MotifDisagreements, MotifAbsent int
+	// MotifTueursEcartes : TUEURS SANS MORT (cherches depuis le lot J7.3) dont la lecture se contredit
+	// ou tombe sur un indice deja retenu : ecartes SEULS, jamais comptes en `MotifDisagreements` —
+	// ils ne font pas tomber l epinglage par motif du film (revue du lot J7, `index_motif_tueurs.go`).
+	MotifTueursEcartes int
 	// Agree / Contradict / Silent : le CONTROLE des indices epingles par les votes du kill-feed.
 	// `Agree` = les votes designent le meme joueur ; `Contradict` = ils en designent un autre,
 	// strictement plus vote ; `Silent` = aucun vote sur cet indice (le joueur n a ni tue ni est

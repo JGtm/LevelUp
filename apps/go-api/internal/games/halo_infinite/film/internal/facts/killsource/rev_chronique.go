@@ -422,14 +422,21 @@ package killsource
 //	             publient pas une ligne dont le nom pris au roster serait un remplissage
 //	             (`Stats.NomsDeRemplissageRefuses`). Predicat unique `estNomDeRemplissage`.
 //	FK-1 (J7.2)  l espace des humains est le NOMBRE DE SIEGES de la table du film, et non plus le
-//	             nombre de noms du kill-feed : un remplacant ne desepingle plus le bot de relais. Sans
+//	             nombre de noms du kill-feed : un remplacant ne desepingle plus le bot de relais. Un
+//	             bot n est desepingle que si son slot tombe sous cette borne ET sur un siege que la
+//	             table NOMME (revue adverse : un siege VACANT intercale ne desepingle rien). Sans
 //	             table, aucun bot n est desepingle. Les bots non epingles sont publies
 //	             (`Coverage.BotsNonEpingles`), journalises par film, et comptes par
 //	             `replayidentity` (`killsource_bots_non_epingles`).
-//	FK-3 (J7.3)  le lien par motif du xuid cherche aussi les joueurs qui tuent sans mourir.
-//	FK-4 (J7.4)  le temps 4 ne reecrit plus un instant publie (`Stats.CollisionsDeMortDeBot`) ;
-//	             un couple recolle n est fantome que si sa mort de bot est PUBLIEE, ce qui tient
-//	             `Covered <= RealPairs`.
+//	FK-3 (J7.3)  le lien par motif du xuid cherche aussi les joueurs qui tuent sans mourir. Ces
+//	             candidats ne font que COMPLETER (revue adverse) : une lecture qui se contredit ou
+//	             tombe sur un indice deja retenu les ecarte SEULS (`MotifTueursEcartes`), sans faire
+//	             tomber l epinglage par motif du film.
+//	FK-4 (J7.4)  le temps 4 ne reecrit plus un instant publie (`Stats.CollisionsDeMortDeBot`),
+//	             SAUF une ligne du temps 3 posee sur un couple RECOLLE : elle ne confirme pas le
+//	             tueur du couple, et cede a la mort de bot verifiee au meme instant (revue adverse,
+//	             `Stats.AutoInfligeesSurCoupleFabriqueRemplacees`). Un couple recolle n est fantome
+//	             que si sa mort de bot est PUBLIEE, ce qui tient `Covered <= RealPairs`.
 //	FK-5 (J7.5)  le numerateur de sante ne compte que des candidats, une fois : le temps 3 laisse
 //	             les indices de bot aux temps de bot, et les inexpliques a indice de bot se
 //	             comptent sur la population (plus sur le scan entier).

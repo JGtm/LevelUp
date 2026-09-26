@@ -264,8 +264,9 @@ type Coverage struct {
 	// produit aucun couple. NE PAS L ADDITIONNER A `Covered` : le seul denominateur qui
 	// l accueille est celui des morts de l API, la seule reference complete.
 	BotKillerDeaths int
-	// BotsNonEpingles : bots declares par BOT_METADATA dont le slot tombe sur un SIEGE HUMAIN de la
-	// table du film ([Roster.UnpinnedBots], lot J7.2, constat FK-1). Leurs morts et celles qu ils
+	// BotsNonEpingles : bots declares par BOT_METADATA dont le slot tombe sur un siege que la table du
+	// film NOMME (tenu par un humain), sous le nombre de sieges ([Roster.UnpinnedBots], lot J7.2,
+	// constat FK-1 ; un siege VACANT ne desepingle rien). Leurs morts et celles qu ils
 	// infligent ne se publient pas, et le registre d identite du rejeu ne les recoit pas : non nul =
 	// une perte a regarder, journalisee par film.
 	BotsNonEpingles int
@@ -462,6 +463,11 @@ type Stats struct {
 	// une ligne publiee par un temps prioritaire (lot J7.4, constat FK-4). Un instant publie ne se
 	// reecrit jamais ; l ecart se compte ici.
 	CollisionsDeMortDeBot int
+	// AutoInfligeesSurCoupleFabriqueRemplacees : lignes du temps 3 posees sur un couple RECOLLE,
+	// remplacees par la mort de bot que le temps 4 verifie au meme instant (revue du lot J7, cf.
+	// `autoSurCoupleFabrique`). `SelfWalk` / `SelfScan.Published` les comptent encore : c est ce
+	// que le temps 3 a publie, pas ce qui reste.
+	AutoInfligeesSurCoupleFabriqueRemplacees int
 }
 
 // PathStats : le gate (b) d une voie. `Population` est ce qu elle a propose, `Matched` ce dont

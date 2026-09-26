@@ -82,11 +82,14 @@ type roster struct {
 	nPlay   int // borne du gate des indices, derivee du film
 	nHumans int // noms du kill-feed : leur position dans `names`, JAMAIS une borne d indice
 	// borneHumains : l ESPACE DES HUMAINS, lu dans la table du film ([borneDesHumainsDuFilm],
-	// lot J7.2). Un bot dont le slot y tombe contredit la table et n est pas epingle.
+	// lot J7.2). Un bot n est desepingle que si son slot y tombe ET que la table y NOMME un humain
+	// ([roster.contreditLaTable]).
 	borneHumains int
-	bots         botMeta
-	unpinned     []bot
-	perm         []int
+	// siegesHumains : les sieges que la table NOMME (occupes par un humain a l ouverture).
+	siegesHumains map[int]bool
+	bots          botMeta
+	unpinned      []bot
+	perm          []int
 	// seatPin : les indices epingles par la TABLE DU FILM (sous-ensemble de `pin` ; le reste de
 	// `pin` vient de BOT_METADATA). Sert a nommer la provenance de chaque indice.
 	seatPin map[int]bool
@@ -133,7 +136,7 @@ func buildRoster(kf *killFeed, bm botMeta, useBots bool, t FilmTable, m indexPar
 		seatPin:  map[int]bool{},
 		motifPin: map[int]bool{},
 		// L ESPACE DES HUMAINS VIENT DE LA TABLE DU FILM, JAMAIS DU NOMBRE DE NOMS DU FEED (FK-1).
-		borneHumains: borneDesHumainsDuFilm(t),
+		borneHumains: borneDesHumainsDuFilm(t), siegesHumains: siegesNommes(t),
 	}
 	if useBots {
 		r.pinBots(bm)
@@ -179,7 +182,7 @@ func estNomDeRemplissage(nom string) bool { return strings.HasPrefix(nom, "?") }
 // un second. Un slot, un indice, un nom — et zero nom libre fabrique.
 func (r *roster) pinBots(bm botMeta) {
 	for _, b := range bm.Bots {
-		if b.Slot < r.borneHumains || b.Slot >= 32 {
+		if r.contreditLaTable(b.Slot) || b.Slot >= 32 {
 			r.unpinned = append(r.unpinned, b)
 			continue
 		}
@@ -268,7 +271,7 @@ func (r *roster) pinUnSiege(idx int, nom string, posDuNom map[string]int, prises
 // lecture la plus eprouvee), doublon (le nom est deja epingle a un autre indice), epinglage.
 func (r *roster) pinMotifSeats(m indexParMotif) {
 	r.table.MotifReadings, r.table.MotifDisagreements = m.lectures, m.desaccords
-	r.table.MotifAbsent = m.absents
+	r.table.MotifAbsent, r.table.MotifTueursEcartes = m.absents, m.tueursEcartes
 	if len(m.nomParIndex) == 0 {
 		return
 	}

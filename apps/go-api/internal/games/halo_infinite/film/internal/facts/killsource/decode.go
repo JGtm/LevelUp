@@ -201,16 +201,17 @@ func (c *decodeCtx) prepare(ctx context.Context, src *source.Film) error {
 	// publie sous le nom `PlayerIndexTable`, et c est la MEME table d identite : une seule, pas
 	// une deuxieme liste.
 	motif := lireIndexParMotif(c.film, table.slots, c.feed)
-	if motif.desaccords > 0 || motif.absents > 0 {
+	if motif.desaccords > 0 || motif.absents > 0 || motif.tueursEcartes > 0 {
 		slog.DebugContext(ctx, "killsource: lien par motif de xuid",
 			"film", c.name, "lectures", motif.lectures, "epingles", len(motif.nomParIndex),
-			"desaccords", motif.desaccords, "absents", motif.absents)
+			"desaccords", motif.desaccords, "absents", motif.absents, "tueurs_ecartes", motif.tueursEcartes)
 	}
 	c.roster = buildRoster(c.feed, loadBotMeta(c.film), c.opts.Bots, table, motif)
 	if n := len(c.roster.unpinned); n > 0 {
 		// FK-1 (lot J7.2) : une perte PUBLIEE (`Coverage.BotsNonEpingles`) et DITE, jamais muette.
-		slog.WarnContext(ctx, "killsource: bot(s) NON EPINGLE(S) — leur slot tombe sur un siege "+
-			"humain de la table du film ; leurs morts et celles qu ils infligent ne se publient pas",
+		slog.WarnContext(ctx, "killsource: bot(s) NON EPINGLE(S) — leur slot tombe sur un siege que "+
+			"la table du film NOMME (un humain le tient), ou hors des 32 indices ; leurs morts et "+
+			"celles qu ils infligent ne se publient pas",
 			"film", c.name, "bots", n, "borne_humains", c.roster.borneHumains)
 	}
 	// LE COUPLE (TUEUR, VICTIME) SE LIT AU KILL-EVENT 85 (lot 1.9.3), et il se lit ICI : la

@@ -92,3 +92,28 @@ func TestRoster_SansTableAucunBotNEstDesepingle(t *testing.T) {
 			r.unpinned, r.isBotIndex(2))
 	}
 }
+
+// TestRoster_BotSurSiegeVacantIntercaleResteEpingle — REVUE ADVERSE DU LOT J7 (constat 3).
+//
+// La table a un siege VACANT intercale (etat mesure sur 13 films du cache, dont `111fa685`,
+// `a521164d`, `11de8353`) : le siege 3 est libre, et BOT_METADATA y declare un bot. Le slot tombe
+// sous le nombre de sieges, mais aucun HUMAIN ne tient ce siege : rien ne contredit le bot.
+//
+// MUTATION QUI DOIT LE FAIRE ROUGIR : retirer la condition « siege nomme » de [roster.pinBots].
+func TestRoster_BotSurSiegeVacantIntercaleResteEpingle(t *testing.T) {
+	kf := &killFeed{names: []string{"A", "B", "C", "E", "F", "G", "H", "I"}}
+	table := FilmTable{Build: "b", InterleavedVacant: true, Seats: map[int]string{
+		0: "A", 1: "B", 2: "C", 4: "E", 5: "F", 6: "G", 7: "H", 8: "I"}}
+	bm := botMeta{NBots: 1, Bots: []bot{{Slot: 3, BotID: 7, Name: "343 Relais"}}}
+	r := buildRoster(kf, bm, true, table, indexParMotif{})
+	if _, nomme := table.Seats[3]; nomme || r.borneHumains <= 3 {
+		t.Fatalf("temoin sans valeur : siege 3 nomme=%v, borne %d", nomme, r.borneHumains)
+	}
+	if len(r.unpinned) != 0 || !r.isBotIndex(3) {
+		t.Errorf("bot du siege vacant 3 : non epingles %+v, indice 3 bot=%v — attendu epingle : aucun "+
+			"humain ne tient ce siege", r.unpinned, r.isBotIndex(3))
+	}
+	if r.table.BotConflict != 0 {
+		t.Errorf("BotConflict = %d, attendu 0 : le siege est vacant", r.table.BotConflict)
+	}
+}
