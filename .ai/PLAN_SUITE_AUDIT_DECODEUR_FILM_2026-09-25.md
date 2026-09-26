@@ -1,8 +1,8 @@
 # PLAN — Suite de l'audit du décodeur de film et du générateur d'artefacts de rejeu (2026-09-25)
 
-> **Statut : EN COURS — J1 CLOS et fusionné dans `feat/v75` le 2026-09-26 (`9cee40fac`) ; J2 en
-> cours (J2-a et J2-b en parallèle, décision utilisateur) ; décisions DU-1 à DU-9 VALIDÉES le
-> 2026-09-25.**
+> **Statut : EN COURS — J1 et J2 CLOS et fusionnés dans `feat/v75` le 2026-09-26 (`9cee40fac`,
+> `d61443ef5`) ; J3 et J4.0 faits sur la branche (vague J11) ; J4 S1 en cours ; décisions DU-1 à
+> DU-9 VALIDÉES le 2026-09-25.**
 > « ok pour le plan » n'est pas un GO : chaque jalon
 > démarre sur un GO explicite et daté de l'utilisateur. Contrat d'exécution : skill
 > `plan-execution`, précisé au §4 (en cas de divergence, ce plan fait foi).
@@ -341,6 +341,11 @@ Amendement de l'ADR 0034 D-3 écrit en J3.7 ; règle détaillée dans la spec
    identité, données persistées) : un relecteur, un worktree temporaire en lecture seule ; ses
    constats sont corrigés dans le jalon ou consignés au §8. Pas de chaîne impl → revue →
    correction systématique.
+5 bis. **Revue adversariale FINALE de tout le plan** (demande de l'utilisateur, 2026-09-26) : à la
+   fin du plan (après J12), un relecteur frais relit l'ensemble du travail livré (diff
+   `ea5682373..` tête finale). Périmètre FERMÉ : seuls les constats qui portent sur ce que le plan
+   a changé et qui l'invalident sont corrigés ; tout problème détecté hors périmètre est consigné
+   au §8, jamais traité (pas de divergence créée par la revue elle-même).
 6. **Découvertes** : §8, non traitées, sauf si elles bloquent le gate courant.
 7. **Explosion de périmètre** (> 2x l'estimation) ou hypothèse invalidée (ex. : J5.0 ne reproduit
    pas GB-1) : arrêt propre et message immédiat à l'utilisateur.
@@ -797,7 +802,7 @@ composant présent sans lecteur) ; `testdata/ecs_table.tsv` (statuts `porte`, `n
       une largeur mesurée présumée pour un composant de taille fixe qu'on ne fait que sauter,
       DU-9). Déclaré aux ratchets de points
       d'entrée s'ils couvrent `film/research`.
-- [ ] J4.0.5 Mesure de référence (superviseur, après accord ; témoins de
+- [x] J4.0.5 Mesure de référence (superviseur, après accord ; témoins de
       `config/replay_corpus.toml`, au moins un film par build, BTB seulement sur accord) →
       `.ai/V7.5/film_re/CARTE_FERMETURE_<date>.md`. Ces chiffres sont la base des deltas de J4.6,
       J5, J6, J10 et J11.3.
@@ -1386,3 +1391,39 @@ relancer un agent sans avoir vérifié qu'il est mort. Ne pas re-décider ce qui
   déclarées : `schemaVersion` 72, `coverage.decoder` par consommateur, `layers` des calques
   d'objectifs → `objectives-2026-09-26`, `layers` de publication → `publication-72` ; aucune étape
   de balayage ne doit bouger). Découvertes §8.14-8.16.
+- 2026-09-26 : **J2 CLOS.** Accord de l'utilisateur (« ok tu as mon go pour fusionner les
+  jalons », valable pour les fusions prévues par le plan : fin J2, fin J11, fin J12 — J3 à J10
+  restent sur la branche jusqu'à la vague J11, DU-6). CI de `8b34babd0` verte au niveau job (CI
+  36250814597 ; le rouge de la CI de `b6e95181b` était un test de durée LUSR instable,
+  `sync/skill`, 2,04 s contre 2 s sous couverture, hors périmètre, repassé vert au run suivant).
+  Fusion `--no-ff` de `8b34babd0` dans `feat/v75` depuis un worktree détaché temporaire :
+  `d61443ef5`, arbre identique à `8b34babd0`, poussé (`9cee40fac..d61443ef5`) ; G-push non rejoué
+  (même raison que J1 : arbre validé tel quel par la CI). `feat/v75` re-fusionné dans la branche
+  du plan (`9e8e55a71`, arbre inchangé). Même demande : **revue adversariale finale** de tout le
+  travail à la fin du plan, périmètre fermé (règle 5 bis du §4.1).
+- 2026-09-26 : **G-equiv J3 + J4.0 conforme** (binaire bâti sur `097a22612`) : pour les 20 films,
+  60 étapes de balayage sur 61 identiques, seule l'étape `artifact` diverge ; vérification champ à
+  champ sur 51101d1d (`replay-build` avant `08293ae55` / après `097a22612`) : 13 différences,
+  exactement la liste déclarée (schéma 72, `coverage.decoder` par consommateur, calques
+  d'objectifs → `objectives-2026-09-26`, calques de publication → `publication-72`). Références
+  d'équivalence re-figées à cet état en recopiant les TSV des enfants (`629acd441`) : J4 et la
+  suite se mesurent contre le schéma 72. CI de `feat/v75` après la fusion J2 : verte au niveau job
+  (CI 36258763360, Deploy Pre-Check 36258763285). Faits écrits par la mesure : dans le worktree
+  seulement.
+- 2026-09-26 : **J4.0.5 fait** — carte de fermeture de référence sur 18 témoins (BTB compris,
+  décision superviseur : ils sont les seuls témoins de plusieurs builds et venaient d'être décodés
+  à 1,2 Gio au plus ; pics de l'instrument 55 à 215 Mio), rapport
+  `.ai/V7.5/film_re/CARTE_FERMETURE_2026-09-26.md` + TSV bruts. Aucun build n'atteint le
+  déclencheur (meilleur : HI_1_13_0, 79,8 % des records utiles) ; les versions 31/33/1_4_1 ne
+  ferment presque rien ; la première cause d'arrêt est « vue C : terminateur hors cadre »
+  (214 536 paquets, gain borné à 2,17 M records utiles), loin devant tout composant. Aucun
+  traitement ici (à statuer à l'entrée de J6/J10 ou du chantier de représentation intermédiaire).
+- 2026-09-26 : **J4 S1 bloqué puis relancé** : l'exécutant s'est arrêté à J4.2 (hypothèse du plan
+  fausse : `deaths_source.go` n'est pas de la lecture pure, il utilise le prédicat de
+  finalisation de `filmcache`, qui tirerait `observability` → `ctxkeys` → `internal/domain` dans
+  le périmètre de `grammar`, +7 paquets, ~142 fichiers). **Décision superviseur** (option 1,
+  précédent J3.3b) : le prédicat sort dans une feuille `film/finalise`, sans alias. J4.2 sera
+  commité seul et vérifié par G-equiv avant J4.3 ; pour J4.3, l'étage unique porte les LECTURES,
+  les politiques divergentes (roster de l'index, `CaptureDirs`, `injectiveOrEmpty`, fatalité des
+  erreurs) restent chez chaque appelant. Baseline `.ai/baselines/tests_pre_migration.jsonl` à
+  mettre à jour par le superviseur (tests déplacés de `replay` vers `grammar`).
