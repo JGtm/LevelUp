@@ -1129,3 +1129,12 @@ plus B5.8.
 - Écarts : deux retouches de doc hors des fichiers cités — interface `Provider.AcquireWriter`
   (`provider.go:105`) et commentaire de câblage `cmd/server/main.go:1388-1390`, qui décrivait
   un tir immédiat au boot. Deux tests de plus que la liste (stats enrichies, attente annulable).
+
+**[2026-09-26] Superviseur — vérification de B1.**
+
+- Diff `cd47936fc` relu : sentinelle posée seulement si le contexte de l'appelant est vivant ;
+  nouvelle tentative bornée dans un fichier dédié ; délai de boot annulable.
+- Gates rejoués avec le cache dédié : `EXIT_BUILD=0`, `EXIT_VET=0`, `EXIT_TEST=0` (scheduler,
+  sharedprovider, archlint), `EXIT_INTEG=0` (scheduler, sharedprovider, `-p 1`), `EXIT_LINT=0`
+  (`0 issues.`).
+- À 21 h 46, l'autre session fait toujours tourner `replay-equiv` : A2 attend encore, B2 suit.
