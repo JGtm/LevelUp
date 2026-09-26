@@ -1,5 +1,5 @@
 // Package objectives — extract.go : orchestration de l'extraction des
-// events objectif d'un match vers []domain.ObjectiveEvent.
+// events objectif d'un match vers []objectiveevent.Event.
 //
 // Frontière PURE/IO : Extract() prend un `*source.Film` DÉJÀ CHARGÉ (chunks décompressés,
 // paquets découpés, métadonnées du manifeste portées par le film) et un Roster (xuid->team_id,
@@ -13,11 +13,11 @@ import (
 	"sort"
 	"strings"
 
-	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/domain/objectiveevent"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 )
 
-// Valeurs de domain.ObjectiveEvent.ObjectiveType (parent mode-agnostique).
+// Valeurs de objectiveevent.Event.ObjectiveType (parent mode-agnostique).
 const (
 	ObjectiveTypeFlag  = "flag"  // CTF
 	ObjectiveTypeZone  = "zone"  // Strongholds / Land Grab / Total Control
@@ -27,7 +27,7 @@ const (
 	ObjectiveTypeBomb  = "bomb"  // Assaut (One Bomb / Neutral Bomb) — statborg-only
 )
 
-// Valeurs de domain.ObjectiveEvent.EventType (action).
+// Valeurs de objectiveevent.Event.EventType (action).
 const (
 	EventTypeCapture     = "capture"      // CTF : drapeau capturé (burst tiers==6)
 	EventTypeZoneCapture = "zone_capture" // Strongholds : interaction de zone
@@ -35,19 +35,19 @@ const (
 	EventTypeSkullCarry  = "skull_carry"  // Oddball : heartbeat de possession
 )
 
-// Valeurs de domain.ObjectiveEvent.Source (provenance du décodage).
+// Valeurs de objectiveevent.Event.Source (provenance du décodage).
 const (
 	SourceBurst = "burst" // CTF : FRAME re-transmettant la table 6-tiers
 	SourceTh10  = "th10"  // event footer type_hint==10
 )
 
-// Valeurs de domain.ObjectiveEvent.Confidence (précision temporelle).
+// Valeurs de objectiveevent.Event.Confidence (précision temporelle).
 const (
 	ConfidenceExact  = "exact"  // ms-précis (CTF burst)
 	ConfidenceApprox = "approx" // ~5-20s (heartbeat / inflexion th10)
 )
 
-// Rôles de domain.ObjectiveEventPlayer.Role.
+// Rôles de objectiveevent.Player.Role.
 const (
 	RoleScorer      = "scorer"      // l'acteur de la capture (max-t du cluster)
 	RoleContributor = "contributor" // co-participant à l'interaction objectif
@@ -122,7 +122,7 @@ func (c *TeamControl) note(roster Roster, xuid string, lue int) {
 //
 // Renvoie les events ordonnés par time_ms avec un Seq dense 0..N-1.
 func Extract(matchID, gameVariantName string, film *source.Film,
-	roster Roster) ([]domain.ObjectiveEvent, TeamControl) {
+	roster Roster) ([]objectiveevent.Event, TeamControl) {
 	var ctl TeamControl
 	switch classifyObjectiveMode(gameVariantName) {
 	case ObjectiveTypeFlag:
@@ -202,14 +202,14 @@ func footerData(film *source.Film) ([]byte, bool) {
 // footer, et son ÉQUIPE est celle que ce même événement porte à l'octet 37.
 // players=[{scorer xuid}].
 func extractCTF(matchID string, film *source.Film, roster Roster,
-	ctl *TeamControl) []domain.ObjectiveEvent {
+	ctl *TeamControl) []objectiveevent.Event {
 	bursts := collectCaptureBursts(film)
 	th10 := FooterEvents(film)
 	// Capacité EXACTE : un événement par burst, sans continue dans la boucle. Le nil
 	// éventuel n'est pas perdu — finalize() ramène une tranche vide à nil.
-	out := make([]domain.ObjectiveEvent, 0, len(bursts))
+	out := make([]objectiveevent.Event, 0, len(bursts))
 	for _, b := range bursts {
-		ev := domain.ObjectiveEvent{
+		ev := objectiveevent.Event{
 			MatchID:       matchID,
 			TimeMS:        intPtr(b.matchMS),
 			ObjectiveType: ObjectiveTypeFlag,
@@ -221,7 +221,7 @@ func extractCTF(matchID string, film *source.Film, roster Roster,
 		}
 		if scorer, ok := captureScorer(th10, b.matchMS); ok {
 			xuid := formatXUID(scorer.XUID)
-			ev.Players = []domain.ObjectiveEventPlayer{{XUID: xuid, Role: RoleScorer}}
+			ev.Players = []objectiveevent.Player{{XUID: xuid, Role: RoleScorer}}
 			ev.TeamID = intPtr(scorer.Team)
 			ctl.note(roster, xuid, scorer.Team)
 		}
@@ -270,11 +270,11 @@ func captureScorer(th10 []FooterEvent, burstMS int) (FooterEvent, bool) {
 // Footer absent -> nil.
 func extractFromTh10(
 	matchID string, film *source.Film, roster Roster, ctl *TeamControl, objType, evType string,
-) []domain.ObjectiveEvent {
-	var out []domain.ObjectiveEvent //nolint:prealloc // nil contractuel, cf. ci-dessus
+) []objectiveevent.Event {
+	var out []objectiveevent.Event //nolint:prealloc // nil contractuel, cf. ci-dessus
 	for _, e := range FooterEvents(film) {
 		xuid := formatXUID(e.XUID)
-		ev := domain.ObjectiveEvent{
+		ev := objectiveevent.Event{
 			MatchID:       matchID,
 			TimeMS:        intPtr(e.TimeMS),
 			ObjectiveType: objType,
@@ -282,7 +282,7 @@ func extractFromTh10(
 			Source:        SourceTh10,
 			Confidence:    ConfidenceApprox,
 			Details:       "{}",
-			Players:       []domain.ObjectiveEventPlayer{{XUID: xuid, Role: RoleScorer}},
+			Players:       []objectiveevent.Player{{XUID: xuid, Role: RoleScorer}},
 			TeamID:        intPtr(e.Team),
 		}
 		ctl.note(roster, xuid, e.Team)
@@ -293,7 +293,7 @@ func extractFromTh10(
 
 // finalize ordonne les events par time_ms (nil en tête) et assigne un Seq dense
 // 0..N-1. Renvoie nil pour une liste vide (no-op côté repo WriteMatch).
-func finalize(matchID string, events []domain.ObjectiveEvent) []domain.ObjectiveEvent {
+func finalize(matchID string, events []objectiveevent.Event) []objectiveevent.Event {
 	if len(events) == 0 {
 		return nil
 	}

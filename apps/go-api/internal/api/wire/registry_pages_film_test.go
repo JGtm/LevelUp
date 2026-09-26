@@ -24,7 +24,7 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"levelup/go-api/internal/api/handlers"
-	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/domain/objectiveevent"
 	"levelup/go-api/internal/domain/playerposition"
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/port"
@@ -48,7 +48,7 @@ func racineDepotDeCeTest(t *testing.T) string {
 // muet.
 type loaderTemoin struct{ appele *bool }
 
-func (l loaderTemoin) LoadMatch(context.Context, string) ([]domain.ObjectiveEvent, error) {
+func (l loaderTemoin) LoadMatch(context.Context, string) ([]objectiveevent.Event, error) {
 	*l.appele = true
 	return nil, nil
 }

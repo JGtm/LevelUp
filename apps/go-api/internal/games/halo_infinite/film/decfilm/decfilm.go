@@ -64,8 +64,8 @@ import (
 	"context"
 	"time"
 
-	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/domain/highlightevent"
+	"levelup/go-api/internal/domain/objectiveevent"
 	"levelup/go-api/internal/domain/playerposition"
 	"levelup/go-api/internal/games/halo_infinite/film/damagetag"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
@@ -289,7 +289,7 @@ type DeathInstant = types.DeathInstant
 
 const EventTypeCapture = objectives.EventTypeCapture
 
-func Extract(matchID, gameVariantName string, film *source.Film, roster objectives.Roster) ([]domain.ObjectiveEvent, objectives.TeamControl) {
+func Extract(matchID, gameVariantName string, film *source.Film, roster objectives.Roster) ([]objectiveevent.Event, objectives.TeamControl) {
 	return objectives.Extract(matchID, gameVariantName, film, roster)
 }
 func FlagFilmSignalsFrom(bursts []int, evs []objectives.NamedEvent) objectives.FlagFilmSignals {

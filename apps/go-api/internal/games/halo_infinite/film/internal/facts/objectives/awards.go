@@ -69,7 +69,7 @@ type Award struct {
 
 // LabelledEvent est un evenement de score du film, date et nomme.
 type LabelledEvent struct {
-	// TimeMS est l'instant sur l'horloge du film, meme base que les ObjectiveEvent.
+	// TimeMS est l'instant sur l'horloge du film, meme base que les objectiveevent.Event.
 	TimeMS int
 	// Slot identifie l'entite (cf. IsTeamSlot).
 	Slot int

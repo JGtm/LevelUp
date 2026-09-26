@@ -113,7 +113,7 @@ func TestCalquesNePortentQueLesRevisionsConnues(t *testing.T) {
 		source.Rev:              "source",
 		profile.Rev:             "profile",
 		grammar.Rev:             "grammar",
-		killsource.Rev:          "kill-feed",
+		killsource.Rev:          "killsource",
 		objectives.Rev:          "objectifs",
 		revisionDeLaPublication: "publication",
 	}

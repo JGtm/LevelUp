@@ -4,7 +4,7 @@ import (
 	"os"
 	"testing"
 
-	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/domain/objectiveevent"
 	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 )
@@ -71,7 +71,7 @@ func rosterFor(id string) MapRoster {
 }
 
 // captureSplit compte les events capture par team_id.
-func captureSplit(events []domain.ObjectiveEvent) (team0, team1, unknown int) {
+func captureSplit(events []objectiveevent.Event) (team0, team1, unknown int) {
 	for _, e := range events {
 		if e.ObjectiveType != ObjectiveTypeFlag || e.EventType != EventTypeCapture {
 			continue

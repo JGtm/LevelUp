@@ -15,9 +15,7 @@
 #   LEVELUP_UPDATE_PERIMETRES=1 go test ./internal/games/halo_infinite/film/revision/ \
 #     -run TestPerimetreDeChaqueCoucheEgaleSonGolden -update-perimetres
 
-paquet	internal/domain
-paquet	internal/domain/title
-paquet	internal/games/canonical
+paquet	internal/domain/objectiveevent
 paquet	internal/games/halo_infinite/film/internal/facts/objectives
 paquet	internal/games/halo_infinite/film/types
 amont	source

@@ -44,8 +44,8 @@ func TestUtilisable_CompareChaqueRevisionDeConsommateur(t *testing.T) {
 		t.Fatalf("des faits frais sont refuses : %v", err)
 	}
 	for nom, muter := range map[string]func(*DecoderCoverage){
-		"kill-feed": func(c *DecoderCoverage) { c.KillsourceRev += "-bis" },
-		"objectifs": func(c *DecoderCoverage) { c.ObjectivesRev += "-bis" },
+		"killsource": func(c *DecoderCoverage) { c.KillsourceRev += "-bis" },
+		"objectifs":  func(c *DecoderCoverage) { c.ObjectivesRev += "-bis" },
 	} {
 		autre := e
 		muter(&autre.Coverage)

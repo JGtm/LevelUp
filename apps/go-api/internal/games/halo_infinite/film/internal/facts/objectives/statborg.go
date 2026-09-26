@@ -71,7 +71,7 @@ import (
 //
 // L'horodatage vient du `us` du paquet, recale par chunk sur le `start_ms` du manifeste.
 // Les deux concordent a moins de 4 ms sur 573 s de film, et le footer (donc les
-// ObjectiveEvent) est sur la meme base : tout est superposable sans recalage. Prendre pour
+// objectiveevent.Event) est sur la meme base : tout est superposable sans recalage. Prendre pour
 // origine le premier paquet OU L'ON TROUVE QUELQUE CHOSE au lieu du manifeste decale toute
 // la courbe (140 s mesures sur un CTF).
 

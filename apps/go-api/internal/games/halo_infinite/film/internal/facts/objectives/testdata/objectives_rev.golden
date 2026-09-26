@@ -21,4 +21,10 @@
 #   2026-09-26  NAISSANCE (lot J3.3 du PLAN_SUITE_AUDIT_DECODEUR_FILM_2026-09-25, DU-2 (c)). La
 #               revision unique de l arbre des faits est remplacee par une revision par
 #               consommateur ; aucune sortie ne change a ce rang.
-objectives-2026-09-26	542d13730ab183c5d80e7179d7c647dbf4c2dac061b404a77489bf8b95348100
+#   2026-09-26  EMPREINTE SEULE, REVISION CONSTANTE (correctif J3 du meme plan). Les types
+#               `domain.ObjectiveEvent` / `domain.ObjectiveEventPlayer` deviennent
+#               `objectiveevent.Event` / `objectiveevent.Player` (paquet feuille
+#               internal/domain/objectiveevent) : le perimetre perd internal/domain,
+#               internal/domain/title et internal/games/canonical. Renommage mecanique, aucune
+#               sortie ne change ; serie nee sur cette branche, jamais publiee.
+objectives-2026-09-26	8a1d3bed1bb1cde095849ca9751e7aadac5e79f7e6107519884745c73df098ed

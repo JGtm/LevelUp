@@ -27,6 +27,7 @@ import (
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/domain/objectiveevent"
 	"levelup/go-api/internal/domain/playerposition"
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/observability"
@@ -473,7 +474,7 @@ func (s *MatchViewService) GetMatchNeighborsFiltered(
 // non injecté en test), retourne games.ErrCapabilityNotSupported. Sinon délègue
 // à LoadMatch et propage l'erreur telle quelle (y compris
 // ErrCapabilityNotSupported remontée par le repo si les tables sont absentes).
-func (s *MatchViewService) GetObjectiveEvents(ctx context.Context, matchID string) ([]domain.ObjectiveEvent, error) {
+func (s *MatchViewService) GetObjectiveEvents(ctx context.Context, matchID string) ([]objectiveevent.Event, error) {
 	if s.objectiveEventsRepo == nil {
 		return nil, games.ErrCapabilityNotSupported
 	}

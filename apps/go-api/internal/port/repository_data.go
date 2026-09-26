@@ -10,6 +10,7 @@ import (
 	"context"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/domain/objectiveevent"
 	"levelup/go-api/internal/domain/playerposition"
 	"levelup/go-api/internal/games/canonical"
 )
@@ -152,7 +153,7 @@ type CitationsRepository interface {
 type ObjectiveEventsRepository interface {
 	// LoadMatch relit tous les events objectif d'un match, ordonnés par seq,
 	// avec leurs joueurs associés.
-	LoadMatch(ctx context.Context, matchID string) ([]domain.ObjectiveEvent, error)
+	LoadMatch(ctx context.Context, matchID string) ([]objectiveevent.Event, error)
 }
 
 // PlayerPositionsRepository relit les positions joueurs keyframe v3 (match-level,
