@@ -1,7 +1,8 @@
 # PLAN — Suite de l'audit du décodeur de film et du générateur d'artefacts de rejeu (2026-09-25)
 
-> **Statut : EN COURS — J1 lancé le 2026-09-26 (GO utilisateur), code et revue faits, fusion
-> dans `feat/v75` en attente d'accord ; décisions DU-1 à DU-9 VALIDÉES le 2026-09-25.**
+> **Statut : EN COURS — J1 CLOS et fusionné dans `feat/v75` le 2026-09-26 (`9cee40fac`) ; J2 en
+> cours (J2-a et J2-b en parallèle, décision utilisateur) ; décisions DU-1 à DU-9 VALIDÉES le
+> 2026-09-25.**
 > « ok pour le plan » n'est pas un GO : chaque jalon
 > démarre sur un GO explicite et daté de l'utilisateur. Contrat d'exécution : skill
 > `plan-execution`, précisé au §4 (en cas de divergence, ce plan fait foi).
@@ -202,7 +203,7 @@ traité (justification au journal §9). Aucune case vide.
 
 | # | Escalade | Traitement | Statut |
 |---|---|---|---|
-| 1 | OPS-3 avant la fusion v7.5 → main | J1 | [ ] |
+| 1 | OPS-3 avant la fusion v7.5 → main | J1, fusionné dans `feat/v75` (`9cee40fac`, 2026-09-26) | [x] |
 | 2 | GB-1 : mesurer le parc puis lot de comportement | J5 | [ ] |
 | 3 | Modèle de révision / fraîcheur | J3 (DU-2) | [ ] |
 | 4 | Identité (slot, génération) de première classe | J5 | [ ] |
@@ -1262,3 +1263,22 @@ relancer un agent sans avoir vérifié qu'il est mort. Ne pas re-décider ce qui
   serait passée inaperçue. Corrigé dans le lot (second appel = autre joueur) ; mutation « clé =
   gamertag » → `--- FAIL: TestRunPostSync_UnePasseParTitreALaFois` ; restauré, unitaires et
   `-race` (x3) verts. Découvertes de l'exécutant consignées §8.2 et §8.3.
+- 2026-09-26 : **J1 CLOS.** Accord de fusion de l'utilisateur (« ok tu as mon go »). CI de
+  `85822591a` verte au niveau job (CI 36242396570 : Go Build + Test ubuntu et windows, lint,
+  OpenAPI, contrat, dblease, frontend, couverture + baseline ; E2E sauté par le workflow ; Deploy
+  Pre-Check et gitleaks verts). Fusion `--no-ff` dans un worktree détaché temporaire (le checkout
+  principal porte des modifications d'une autre session) : `9cee40fac`, arbre IDENTIQUE à celui de
+  `85822591a` (`bc9737697`, la branche partait de la tête de `feat/v75`), poussé
+  (`378509f5e..9cee40fac`, emporte aussi `ea5682373`, commit local d'une autre session déjà sur
+  `feat/v75`). **G-push non rejoué** : il aurait vérifié un arbre identique à celui que la CI venait
+  de valider sur tous ses jobs (lint ratchet, typecheck/lint web, baseline) — écart écrit ici. Le
+  checkout principal (`feat/v75` local = `ea5682373`, modifications non commitées d'une autre
+  session) n'a pas été touché : il se mettra à jour par `git merge --ff-only origin/feat/v75`
+  quand sa session aura commité.
+- 2026-09-26 : **J2 lancé en parallèle de la CI de J1, puis en deux moitiés simultanées**, à la
+  demande de l'utilisateur (« ce serait bien de pouvoir continuer en parallèle en attente de retour
+  de la CI », puis 3 agents au maximum) — écart assumé à la règle « un lot après l'autre » du §4.1 :
+  J2-a (J2.1-J2.6) dans ce worktree, J2-b (J2.7-J2.13) dans `LevelUp-wt-suite-audit-b`, branche
+  locale `feat/suite-audit-decodeur-j2b` (non poussée), fichiers disjoints (J2-b ne touche dans
+  `filmproc` que le protocole de l'enfant, jamais `solo*.go`). Rapatriement par fusion dans la
+  branche du plan à la fin de J2-b ; G-equiv et G-film de J2 par le superviseur sur l'ensemble.

@@ -113529,10 +113529,12 @@ largeurs par defaut) ; (5) 2 parts de degats au-dela d UTINYINT (le log demande 
 supprimes a la main) puis `prune`. `LevelUp` = seul checkout. Caches intacts (film_chunks 1631 : le
 serveur relance a synchronise depuis). Tache Notion 10 CLOSE.
 
-## [2026-09-26] Suite de l'audit du decodeur, J1 : une seule passe killsource post-sync par processus et par titre (OPS-3) — En cours (code, revue et plan faits sur `feat/suite-audit-decodeur` ; fusion dans `feat/v75` en attente d'accord)
+## [2026-09-26] Suite de l'audit du decodeur, J1 : une seule passe killsource post-sync par processus et par titre (OPS-3) — Complété (fusionné dans `feat/v75`, `9cee40fac`)
 
 **Decision technique principale** : exclusivite (processus, titre) dans `sync/killcollector` (`postsync_exclusivite.go`, registre non exporte de la forme de `dblease.leaseMutex`) ; `TryLock` apres les gardes de `RunPostSync` et avant le segment de lecture de l'arriere global, rendu par `defer` ; le perdant rend 0, incremente `killsource_postsync_passe_deja_en_cours`, journalise en DEBUG. Ni `singleflight`, ni etape deplacee au niveau du cycle, aucune constante changee (DT-1). Consignes de cout de l'utilisateur au GO : pas au-dessus d'Opus, effort ajuste au lot, 2 agents en parallele au maximum ; types d'agents a effort fixe crees dans `~/.claude/agents/` (`opus-high`, `opus-medium`, `sonnet-medium`), charges seulement au demarrage d'une session.
 
 **Resultats observes** : rouge observe sur le code d'avant, mutation « retrait du verrou » rouge ; gates unitaires, `-race`, integration `-p 1`, vet, archlint, golangci verts (executant), unitaires et `-race` x3 rejoues par le superviseur. Revue adversariale : 18 conditions tiennent, 0 P0/P1, 1 P2 (test aveugle a une cle de verrou par joueur) corrige dans le lot avec sa mutation. Deux decouvertes hors perimetre consignees au plan §8.2-8.3 (memoisation de `PostSyncHook` limitee a un appel, recit perime de `TestOrdonnancer_InseresPuisPlusVieux`). Commits `d518000b3` puis correctif de revue et plan.
 
 **Conclusion / prochaine etape** : CI de la branche verte au niveau job, `make gate-push`, puis fusion `--no-ff` dans `feat/v75` sur accord de l'utilisateur (prealable a la fusion v7.5 -> main) ; ensuite GO de J2.
+
+**Addendum cloture J1 (2026-09-26)** : CI de `85822591a` verte au niveau job ; fusion `--no-ff` dans `feat/v75` depuis un worktree detache temporaire (`9cee40fac`, arbre identique a celui valide par la CI, `make gate-push` non rejoue pour cette raison, ecart ecrit au plan §9), poussee. Checkout principal non touche (modifications d'une autre session). J2 lance en parallele, en deux moities simultanees (J2-a ici, J2-b dans `LevelUp-wt-suite-audit-b`), a la demande de l'utilisateur ; plafond porte a 3 agents.
