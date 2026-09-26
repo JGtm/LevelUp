@@ -113523,3 +113523,8 @@ chunk 5 absent du cache, positions ignorees ; (2) 1 film ECARTE, cle de profil `
 (match `58e6f72a`, ajout selon `docs/RUNBOOK_FILM_PROFILES.md`) ; (3) plusieurs films avec build VIDE
 (« profil INCOMPLET », decodes par repli) ; (4) 4 films sur carte absente du catalogue (positions aux
 largeurs par defaut) ; (5) 2 parts de degats au-dela d UTINYINT (le log demande d elargir le type).
+
+**Addendum 2026-09-26** : sessions fermees par l utilisateur ; worktree `LevelUp-go-migration` retire
+(`git worktree remove` sans --force, 0 lien verifie avant, reste de dechets de build et fichier `nul`
+supprimes a la main) puis `prune`. `LevelUp` = seul checkout. Caches intacts (film_chunks 1631 : le
+serveur relance a synchronise depuis). Tache Notion 10 CLOSE.
