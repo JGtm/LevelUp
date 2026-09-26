@@ -120,7 +120,11 @@ const exigenceDeJustificationDatee = "UNE HAUSSE EXIGE UNE JUSTIFICATION DATEE D
 // pont d identite que `sync/killcollector`, `replaybuild` et quatre outils `cmd/` appelaient dans la
 // couche de publication, descendues en `grammar` (DU-3 = S1, « replay ne decode rien »). Le
 // compagnon baisse d autant (281 -> 276, ci-dessous).
-const plafondSurfaceFacade = 170 // 2026-09-26 — J4.2 sur 7e8730281 : 166 + 4 (lectures du pont descendues en grammar)
+// 173 LE 2026-09-26 (lot J4.3, base `4c4452c05` re-mesuree : 170) : L ETAGE UNIQUE du pont d identite
+// — `ScanPontDIdentite` et ses deux types, `OptionsDuPont` / `LecturesDuPont`, que
+// `sync/killcollector` doit NOMMER pour fournir sa politique (roster de l index) et lire les
+// six lectures. Les quatre renvois de J4.2 restent : des tests et `replaybuild` les citent.
+const plafondSurfaceFacade = 173 // 2026-09-26 — J4.3 sur 4c4452c05 : 170 + 3 (etage du pont d identite)
 
 // plafondSurfaceReplay — identifiants `replay.<Symbole>` DISTINCTS cites hors de `film/`.
 //
@@ -284,7 +288,7 @@ const plafondSurfaceReplay = 276 // 2026-09-26 — audit(J4.2) sur 7e8730281 : 2
 // A quoi elle sert : un total qui ne bouge pas peut cacher un symbole retire d un cote et ajoute
 // de l autre. La ventilation nomme alors la couche qui a grossi.
 var plafondsParFamilleFacade = map[string]int{
-	"grammar":    50, // 2026-09-26 — lot J4.2 : +4 (ScanClockOrigin, ScanDeaths, ScanFilmDeaths, ScanPlayerIndices)
+	"grammar":    53, // 2026-09-26 — J4.2 : +4 (ScanClockOrigin, ScanDeaths, ScanFilmDeaths, ScanPlayerIndices) ; J4.3 : +3 (ScanPontDIdentite, OptionsDuPont, LecturesDuPont)
 	"objectives": 37,
 	"killsource": 36, // 2026-09-26 — lot J3.3 : `decfilm.Rev` renvoie a `killsource.Rev` (la famille `facts` disparait avec son paquet ; total inchange)
 	"fallback":   11,

@@ -184,6 +184,13 @@ func ScanBipedCreations(fc *grammar.FilmContext) ([]grammar.BipedCreation, types
 func ScanBipedPositions(fc *grammar.FilmContext, opt grammar.ScanFilmOptions) ([]grammar.BipedPosition, error) {
 	return grammar.ScanBipedPositions(fc, opt)
 }
+
+type LecturesDuPont = grammar.LecturesDuPont
+type OptionsDuPont = grammar.OptionsDuPont
+
+func ScanPontDIdentite(fc *grammar.FilmContext, opt grammar.OptionsDuPont) grammar.LecturesDuPont {
+	return grammar.ScanPontDIdentite(fc, opt)
+}
 func ScanClockOrigin(film *source.Film) (uint64, error)    { return grammar.ScanClockOrigin(film) }
 func ScanDeaths(film *source.Film) ([]types.Death, error)  { return grammar.ScanDeaths(film) }
 func ScanFilmDeaths(filmDir string) ([]types.Death, error) { return grammar.ScanFilmDeaths(filmDir) }

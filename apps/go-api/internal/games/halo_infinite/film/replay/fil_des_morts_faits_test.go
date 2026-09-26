@@ -95,7 +95,9 @@ func documentsDuFilmEtDesFaits(t *testing.T, cas casDuFilDesMorts) (ReplayDocume
 		t.Fatalf("%s : chargement : %v", cas.nom, err)
 	}
 	s := &filmScan{matchID: goldenFilm, film: film, in: g.FilmInputs}
-	s.lireLeFilDesMorts()
+	pont := grammar.ScanPontDIdentite(grammar.NewFilmContext(film),
+		grammar.OptionsDuPont{Balayage: grammar.DefaultScanFilmOptions()})
+	s.poserLeFilDesMorts(pont.Morts, pont.ErrMorts)
 	depuisLeFilm := s.assembler("halo_infinite",
 		Options{MapQuant: &entry, Fallbacks: fallback.NouveauCompteur()})
 

@@ -125,7 +125,7 @@ func TestDocumentPublieLeVerdictDuFilDesMorts(t *testing.T) {
 // adverse M5, constat R1, 2026-09-24). Les tests ci-dessus posaient `Options.DeathsFeed` a la
 // main : retirer le cablage du verdict dans l etage d assemblage les laissait verts, et le
 // document n aurait plus jamais dit `empty` ni `unreadable`. Ici, la bobine v40 passe par
-// [filmScan.lireLeFilDesMorts] (donc par [ScanDeaths] sur de vrais octets) puis par
+// l etage du pont puis [filmScan.poserLeFilDesMorts] (donc par `grammar.ScanDeaths` sur de vrais octets) puis par
 // [filmScan.assembler], les deux etages de [BuildFromFilmAvecFaits] ; seul le balayage des
 // positions est remplace, parce que la bobine n a aucune image-cle de bipede
 // (`TestZeroDisqueBuildFromFilm`).
@@ -156,7 +156,9 @@ func TestLeBalayagePublieLeVerdictDuFilDesMorts(t *testing.T) {
 			t.Fatalf("%s : chargement : %v", cas.nom, err)
 		}
 		s := &filmScan{matchID: "m", film: film}
-		s.lireLeFilDesMorts()
+		pont := grammar.ScanPontDIdentite(grammar.NewFilmContext(film),
+			grammar.OptionsDuPont{Balayage: grammar.DefaultScanFilmOptions()})
+		s.poserLeFilDesMorts(pont.Morts, pont.ErrMorts)
 		if (len(s.in.Deaths) > 0) != (cas.want == DeathsFeedRead) {
 			t.Errorf("%s : %d mort(s) dans les entrees pour un verdict %q", cas.nom, len(s.in.Deaths), cas.want)
 		}
