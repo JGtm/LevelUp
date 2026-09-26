@@ -134,7 +134,7 @@ traité (justification au journal §9). Aucune case vide.
 |---|---|---|---|---|
 | GB-1 | P0 | Positions et canaux delta bipède limités à la génération 1 du handle | J5.0, J5.2, J5.5 | [ ] |
 | OPS-3 | P1 | Étape 1.57 lancée une fois par joueur, en parallèle, sur le même arriéré | J1 (`d518000b3` + correctif de revue) | [x] |
-| SRC-2/OPS-4 | P1 | Chunks écrits sans atomicité, « présent » tenu pour « complet » | J2.1-J2.5 (manifeste atomique : `[~]` rr L3, contrôle P-3) | [ ] |
+| SRC-2/OPS-4 | P1 | Chunks écrits sans atomicité, « présent » tenu pour « complet » | J2.1-J2.5 (manifeste atomique : `[~]` rr L3, contrôle P-3) | [x] |
 | FK-1 | P1 | Un remplaçant humain désépingle le bot de relais, sans signal | J7.2 | [ ] |
 | FK-2 | P1 | Nom de remplissage `?N` publié comme assistant nommé | J7.1 | [ ] |
 | GA2-1 | P1 | Portage divergent de `FUN_14076e524` (corps d'i54) | Reprise M4b de la campagne rr, fusionnée le 2026-09-25 (`3cca6cf47`) : les deux positions d'i54 lues au niveau 0x10 par `consumeSimStateHandleTail`, `consumeE494Position` supprimé — confirmé par P-3 ; les autres sites du même lecteur restent en J6 | [~] |
@@ -155,16 +155,16 @@ traité (justification au journal §9). Aucune case vide.
 | RA1-3 | J4 | [ ] | FK-7 | J7.7 | [ ] |
 | RA1-4 | J3.5 | [ ] | RB2-3 | J5.4 | [ ] |
 | RA1-6 | rr M8 (verdict du fil des morts dans les faits) — confirmé par P-3 | [~] | RB2-6 | J10.3 | [ ] |
-| RA1-5 | J2.7 | [ ] | RB2-7 | J10.4 | [ ] |
+| RA1-5 | J2.7 | [x] | RB2-7 | J10.4 | [ ] |
 | RA1-2 | J3.6 | [ ] | RB2-8 | J8.3 | [ ] |
-| RA1-7 | J2.10 | [ ] | RB1-2 | J9.4 | [ ] |
-| OPS-1 | J2.6 | [ ] | RB1-3 | J9.6 | [ ] |
-| OPS-2 | J2.13 | [ ] | RB1-4 | J2.8 | [ ] |
-| OPS-5 | J2.12 | [ ] | RB1-5 | J9.2 | [ ] |
+| RA1-7 | J2.10 | [x] | RB1-2 | J9.4 | [ ] |
+| OPS-1 | J2.6 | [x] | RB1-3 | J9.6 | [ ] |
+| OPS-2 | J2.13 | [x] | RB1-4 | J2.8 | [x] |
+| OPS-5 | J2.12 | [x] | RB1-5 | J9.2 | [ ] |
 | FO-3 | J8.5 | [ ] | RB1-6 | J9.3 | [ ] |
 | FO-4 | J8.6 | [ ] | RB1-7 | J9.5 | [ ] |
 | GA2-3, GA2-4, GA2-5 | J6 | [ ] | RB1-8 | J9.7 | [ ] |
-| GA1-1/GB-2 | J2.9 | [ ] | CONV-1 | J2.11 | [ ] |
+| GA1-1/GB-2 | J2.9 | [x] | CONV-1 | J2.11 | [x] |
 | GA1-3 | J5.4 | [ ] | RA2-1 | J5.4 | [ ] |
 | GA1-4 | J10.5 | [ ] | RA2-2 | J5.4 | [ ] |
 | GA1-5 | J10.6 | [ ] | RA2-3 | J5.4 | [ ] |
@@ -196,7 +196,7 @@ traité (justification au journal §9). Aucune case vide.
 | « seule porte aux octets » (lectures artisanales, façade qui ré-expose `LecteurSur`/`Paquets`/`Inflate`) | J4.5 (façade), J4.6 (lecteurs, S2 ; sinon ADR D-2 corrigé) | [ ] |
 | « D-5 prouvé sous -race » | J12.6 | [ ] |
 | « un seul étage de balayage » | J4.3 | [ ] |
-| « verrou pris par les SIX points d'entrée » (un septième ne le prend pas) | J2.13 (identifier le septième au J2.13, avant de coder) | [ ] |
+| « verrou pris par les SIX points d'entrée » (un septième ne le prend pas) | J2.13 (identifier le septième au J2.13, avant de coder) | [x] |
 | « D-10 Reached as written » | J8 puis J12.5 | [ ] |
 
 ### 2.5 Escalades (§Suite du registre)
@@ -593,52 +593,52 @@ J2.9 (preuve G-equiv 0).
       verts.
 
 #### J2.7 Fichier de faits : décodeur borné (RA1-5)
-- [ ] Test rouge `TestDecodeFilmFactsFile_CompteImpossibleRendUneErreur` (compte 2^40 : erreur,
+- [x] Test rouge `TestDecodeFilmFactsFile_CompteImpossibleRendUneErreur` (compte 2^40 : erreur,
       pas de panique) ; cible `FuzzDecodeFilmFactsFile` (graines : fichiers de faits des
       mini-bobines, sous `testdata/fuzz/FuzzDecodeFilmFactsFile/`).
-- [ ] Les lectures `int(r.u())` qui dimensionnent une allocation (34 sur `feat/rr-m8`, 11 passent
+- [x] Les lectures `int(r.u())` qui dimensionnent une allocation (34 sur `feat/rr-m8`, 11 passent
       déjà par `compte`) passent toutes par `greader.compte(coutMinimal)`.
-- [ ] Ratchet : aucune `make(` dimensionnée par `int(r.u())` dans `replay/filmfacts*.go` ; mutation.
-- [ ] Équivalence S8 (tests existants des faits) verte.
+- [x] Ratchet : aucune `make(` dimensionnée par `int(r.u())` dans `replay/filmfacts*.go` ; mutation.
+- [x] Équivalence S8 (tests existants des faits) verte.
 
 #### J2.8 Lecteur Bond `.mvar` borné (RB1-4)
-- [ ] Test rouge `TestParse_CompteDeConteneurImpossibleRendUneErreur` ; cible `FuzzMapvarParse`
+- [x] Test rouge `TestParse_CompteDeConteneurImpossibleRendUneErreur` ; cible `FuzzMapvarParse`
       (graines : `.mvar` versionnés du dépôt).
-- [ ] Comptes de conteneur, de tableau et de chaîne bornés par les octets restants
+- [x] Comptes de conteneur, de tableau et de chaîne bornés par les octets restants
       (`replay/mapvar/cb2.go`, `readContainerHeader` et ses appelants) ; erreur typée.
 
 #### J2.9 Lecteurs de références d'événement bornés (GA1-1/GB-2)
-- [ ] Graines ajoutées au harnais `FuzzFilmRecordReaders` pour `grammar/event_list.go` et
+- [x] Graines ajoutées au harnais `FuzzFilmRecordReaders` pour `grammar/event_list.go` et
       `grammar/equipment_spawn_events.go` ; test rouge sur payload tronqué.
-- [ ] Bornes explicites ; empreinte `grammar` régénérée à révision constante (G-equiv 0 cité).
+- [x] Bornes explicites ; empreinte `grammar` régénérée à révision constante (G-equiv 0 cité).
 
 #### J2.10 `LoadGeometry` (RA1-7)
-- [ ] Test rouge `TestLoadGeometry_LigneCSVInvalideRendUneErreurNommee`.
-- [ ] Erreur typée (ligne, colonne) remontée ; l'appelant journalise (WARN) AVANT de dégrader.
+- [x] Test rouge `TestLoadGeometry_LigneCSVInvalideRendUneErreurNommee`.
+- [x] Erreur typée (ligne, colonne) remontée ; l'appelant journalise (WARN) AVANT de dégrader.
 
 #### J2.11 `replaybuild/zones.go` (CONV-1)
-- [ ] Test rouge : table absente enveloppée par `%w` → branche « table absente » (DEBUG), pas WARN.
-- [ ] `errors.Is(err, fs.ErrNotExist)`.
+- [x] Test rouge : table absente enveloppée par `%w` → branche « table absente » (DEBUG), pas WARN.
+- [x] `errors.Is(err, fs.ErrNotExist)`.
 
 #### J2.12 Raison d'un refus de l'enfant de cuisson (OPS-5) — DT-5
-- [ ] Tests rouges : `TestEnfant_RaisonParRefusType` (table : `replaybuild.ErrMapNotInCatalog`,
+- [x] Tests rouges : `TestEnfant_RaisonParRefusType` (table : `replaybuild.ErrMapNotInCatalog`,
       `replaybuild.ErrUnknownFilmKey`, `filmcache.ErrFilmNonFinalise`, enveloppées → jeton),
       `TestSpawn_JetonVersErreurTypee`, `TestReplayArtifacts_FilmNonFinaliseReporteSansEchec`.
-- [ ] `filmproc.EmitRaison` / `parseRaison` (même protocole que `EmitPeak`), `Result.Raison` ;
+- [x] `filmproc.EmitRaison` / `parseRaison` (même protocole que `EmitPeak`), `Result.Raison` ;
       l'enfant classe par `errors.Is` ; `replaychild` mappe le jeton vers l'erreur typée
       enveloppée ; `sync/replayartifacts` classe par `errors.Is`.
-- [ ] Suppression de tout classement par `strings.Contains(err.Error(), …)` dans `replaychild` et
+- [x] Suppression de tout classement par `strings.Contains(err.Error(), …)` dans `replaychild` et
       `sync/replayartifacts` + ratchet (grep) ; mutation.
 
 #### J2.13 Action admin « construire le rejeu » (OPS-2)
-- [ ] Identifier sur pièces le « septième point d'entrée » de l'écart ADR (§2.4) ; s'il n'est pas
+- [x] Identifier sur pièces le « septième point d'entrée » de l'écart ADR (§2.4) ; s'il n'est pas
       cette action, l'ajouter à ce lot et le signaler.
-- [ ] Test rouge `TestRunReplayBuild_PasseParLaStrategieEnfant` (stratégie injectée : l'action
+- [x] Test rouge `TestRunReplayBuild_PasseParLaStrategieEnfant` (stratégie injectée : l'action
       n'appelle jamais `replaybuild.NewBuilder` dans le processus serveur).
-- [ ] L'action réutilise le chemin de l'étape 1.58 (`replayartifacts` : `SpawnBuildOne` puis
+- [x] L'action réutilise le chemin de l'étape 1.58 (`replayartifacts` : `SpawnBuildOne` puis
       `replaybuild.StoreArtifact`, exposés par UNE fonction exportée du paquet — pas de copie) ;
       `replayBuildMu` conservé ; les commentaires qui invoquent un verrou supprimé sont corrigés.
-- [ ] Ratchet : aucun appel à `replaybuild.NewBuilder` / `BuildMatch` / `BuildBytes` sous
+- [x] Ratchet : aucun appel à `replaybuild.NewBuilder` / `BuildMatch` / `BuildBytes` sous
       `internal/api/` ; mutation.
 
 **Gate J2.** G-unit (`platform/atomicfile`, `platform/filelock`, `filmproc`, `film/filmcache`,
@@ -1217,6 +1217,22 @@ relancer un agent sans avoir vérifié qu'il est mort. Ne pas re-décider ce qui
    local non rebâti) peut juger ce fichier « mort » et chercher à le reprendre. Sans effet une fois
    tous les binaires rebâtis (prod : serveur et CLI déployés ensemble) ; à rappeler dans la note
    de déploiement de J11.
+9. (2026-09-26, exécutant J2-b) Les commandes en en-tête de `grammar/fuzz_records_test.go`
+   visent `film/filmdec/`, qui n'existe plus (J12.5).
+10. (2026-09-26, exécutant J2-b) Le WARN de `replaybuild.geometryFor` dit « catalogue des emprises
+    illisible » même quand c'est une ligne du CSV de carte qui est en cause ; `slog.Warn` sans
+    contexte (J12.4).
+11. (2026-09-26, exécutant J2-b) Par `replaychild.Spawn`, l'action admin « construire le rejeu »
+    tient le verrou solo sous le nom `post-sync` : un opérateur refusé lirait un détenteur faux.
+12. (2026-09-26, exécutant J4.0) Les huit mini-bobines par build ne portent aucune trame delta
+    (chunk_00, images-clés, pied) : les jalons qui mesurent la fermeture par build (J4.6, J5, J6,
+    J10) devront régénérer ces bobines avec une fenêtre de trames delta contiguës, ou s'en tenir
+    aux deux bobines killsource retenues par J4.0.3.
+13. (2026-09-26, exécutant J4.0) `ecs_table.tsv` compte 36 composants à usage produit (la spec en
+    annonce 44) ; le commentaire de `ecsRow` (« les colonnes de prose ne servent à aucun
+    contrôle ») est inexact pour `product_use` ; `golangci-lint` ne voit pas les fichiers tagués
+    `research` (seul `go vet -tags=research` les couvre) ; records NEW d'archétype 50-61 « hors
+    registre » dans ks_000d5950 (lectures à une mauvaise position).
 
 ---
 
@@ -1309,3 +1325,26 @@ relancer un agent sans avoir vérifié qu'il est mort. Ne pas re-décider ce qui
   ferait bouger leur empreinte ; J2 ne monte aucune révision) ; allowlist GOOS + 1 entrée datée
   (`filelock_windows.go`) ; `slog` sans contexte conservé dans `filmproc` (`AcquireSolo` n'a pas de
   ctx — relève de J12.4). Pas de mutation pour J2.5 (non P1). Découvertes §8.4-8.8.
+- 2026-09-26 : **J2-b fait** (exécutant `opus-high`, worktree `-b`) : J2.7-J2.13 cochés ; rouges
+  observés (deux de J2.12 obtenus sur des fonctions d'abord déclarées vides, le rouge sur code réel
+  est `TestReplayArtifacts_FilmNonFinaliseReporteSansEchec`) ; 35 comptes bornés + trois paniques
+  trouvées par balayage ; cibles fuzz `FuzzDecodeFilmFactsFile`, `FuzzMapvarParse`, graines de
+  `FuzzFilmRecordReaders` ; septième point d'entrée = l'action admin elle-même
+  (`api/wire/registry_replay_build.go`), qui passe désormais par l'enfant de cuisson
+  (`replayartifacts.ConstruireEtRanger`) ; clé `module` du résultat de l'action remplacée par
+  `schema_version` ; empreinte `grammar` régénérée à révision constante. Commit `62c1698f1`,
+  fusionné dans la branche du plan (`08293ae55`, sans conflit). Superviseur : vet + 33 paquets de
+  tests (dont G-film) verts sur l'ensemble J2-a + J2-b.
+- 2026-09-26 : **G-equiv J2 : 20 identiques, 0 différent, 0 écarté, 0 échec** (binaire bâti sur
+  `08293ae55`, `-repo-root` = worktree, jonctions `film_chunks`/`film_manifests` vers le principal,
+  films un à un, pics 0,11 à 1,19 Gio, BTB compris) ; aucun WARN de géométrie (risque J2.10
+  levé sur les cartes du corpus) ; `data/cache/film_facts` du principal intact (find -newer
+  marqueur = 0). Découvertes J2-b §8.9-8.11.
+- 2026-09-26 : **J3 et J4.0 lancés en parallèle** (plafond porté à 5 agents par l'utilisateur),
+  chacun dans son worktree (`-j3`, `-j40`) depuis `08293ae55`. J4.0 fait (`c465f93ec`, branche
+  locale `feat/suite-audit-decodeur-j40`) : `grammar.FrameClosure`, golden + ratchet, outil
+  `cmd_fermeture` ; **écart J4.0.3 accepté** : les huit mini-bobines n'ont aucune trame delta,
+  le golden ajoute les deux bobines killsource à trames delta contiguës (sinon le ratchet ne mord
+  pas ; mutation Block64 sur 17 bits → rouge). G-equiv de J4.0 (instrument non appelé par la
+  production, empreinte régénérée à révision constante) joué avec celui de J3 sur l'arbre
+  réuni, les divergences déclarées de J3 à part. Découvertes §8.12-8.13.
