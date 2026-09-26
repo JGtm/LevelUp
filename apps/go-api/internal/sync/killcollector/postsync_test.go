@@ -6,9 +6,11 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 
 	"levelup/go-api/internal/games"
+	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/persist"
 )
 
@@ -130,6 +132,119 @@ func TestRunPostSync_CapabilitesIllisibles_EtapeVide(t *testing.T) {
 	}, []string{"m1"})
 	if lu {
 		t.Error("la base a ete lue alors que les capabilities sont illisibles")
+	}
+}
+
+// TestRunPostSync_UnePasseParTitreALaFois : OPS-3 — UNE SEULE PASSE PAR (PROCESSUS, TITRE).
+//
+// Le cycle v2 lance le post-sync de chaque joueur dans sa propre goroutine
+// (`PostSyncParallelism = 0`) et l arriere de l etape est GLOBAL : sans exclusivite, N joueurs
+// synchronises ensemble decodaient N fois les memes films, et la borne par cycle valait
+// N x DefaultPostSyncPerCycle. Le premier appel tient la passe (son segment de lecture reste
+// bloque) ; le second doit se retirer SANS ouvrir de segment, et le compter ; une fois la passe
+// rendue, un troisieme appel doit pouvoir ouvrir le sien.
+//
+// Aucune attente par horloge : le premier appel signale son entree dans le segment par un
+// canal, et c est un autre canal qui le libere.
+func TestRunPostSync_UnePasseParTitreALaFois(t *testing.T) {
+	ctx := context.Background()
+	racine := racineDepot(t) // hors goroutine : racineDepot peut appeler t.Fatalf.
+	entre, libere := make(chan struct{}), make(chan struct{})
+	liberer := sync.OnceFunc(func() { close(libere) })
+	defer liberer()
+	fini := make(chan int, 1)
+	go func() {
+		fini <- RunPostSync(ctx, NewPostSyncHook(racine, 0), depsPostSync(
+			func(context.Context, string, func(*sql.DB)) { close(entre); <-libere },
+		), []string{"m1"})
+	}()
+	select {
+	case <-entre:
+	case n := <-fini:
+		t.Fatalf("le premier appel est sorti (%d) sans ouvrir son segment — la capability "+
+			"film.kill_source n a pas ete lue, le test ne mesure plus rien", n)
+	}
+
+	avant := observability.LoadCounter(CompteurPostSyncPasseDejaEnCours)
+	secondLu := false
+	n2 := RunPostSync(ctx, NewPostSyncHook(racine, 0), depsPostSync(
+		func(context.Context, string, func(*sql.DB)) { secondLu = true },
+	), []string{"m1"})
+	if secondLu {
+		t.Error("le second appel a ouvert un segment de lecture alors qu une passe du meme titre " +
+			"tournait : N joueurs decodent N fois le meme arriere (OPS-3)")
+	}
+	if n2 != 0 {
+		t.Errorf("second appel : ecrits = %d, attendu 0", n2)
+	}
+	if got := observability.LoadCounter(CompteurPostSyncPasseDejaEnCours) - avant; got != 1 {
+		t.Errorf("%s : +%d, attendu +1", CompteurPostSyncPasseDejaEnCours, got)
+	}
+
+	liberer()
+	if n := <-fini; n != 0 {
+		t.Errorf("premier appel : ecrits = %d, attendu 0 (arriere vide)", n)
+	}
+	troisiemeLu := false
+	RunPostSync(ctx, NewPostSyncHook(racine, 0), depsPostSync(
+		func(context.Context, string, func(*sql.DB)) { troisiemeLu = true },
+	), nil)
+	if !troisiemeLu {
+		t.Error("la passe n a pas ete rendue : le troisieme appel n a pas ouvert son segment")
+	}
+}
+
+// TestRunPostSync_VerrouRenduEntreDeuxPasses : l exclusivite ne doit pas devenir un arret.
+// Deux appels SUCCESSIFS du meme titre ouvrent chacun leur segment : une passe qui oublierait
+// de rendre le verrou figerait l etape pour la vie du process, sans un log au-dela du DEBUG.
+func TestRunPostSync_VerrouRenduEntreDeuxPasses(t *testing.T) {
+	ctx := context.Background()
+	racine := racineDepot(t)
+	avant := observability.LoadCounter(CompteurPostSyncPasseDejaEnCours)
+	for i := range 2 {
+		lu := false
+		RunPostSync(ctx, NewPostSyncHook(racine, 0), depsPostSync(
+			func(context.Context, string, func(*sql.DB)) { lu = true },
+		), []string{"m1"})
+		if !lu {
+			t.Errorf("appel %d : aucun segment ouvert — la passe precedente n a pas rendu le verrou", i+1)
+		}
+	}
+	if got := observability.LoadCounter(CompteurPostSyncPasseDejaEnCours) - avant; got != 0 {
+		t.Errorf("%s : +%d, attendu +0 — deux appels successifs ne se chevauchent pas",
+			CompteurPostSyncPasseDejaEnCours, got)
+	}
+}
+
+// TestPassesEnCours_TitresIndependants : l exclusivite est PAR TITRE. Deux moteurs de titres
+// differents (processus multi-titre) ont deux arrieres distincts, dans deux bases distinctes :
+// que l un attende l autre serait une regression, pas une protection. Les cles sont propres au
+// test pour ne jamais croiser le verrou d un titre reel.
+func TestPassesEnCours_TitresIndependants(t *testing.T) {
+	a, b := verrouDePasse(t.Name()+"/a"), verrouDePasse(t.Name()+"/b")
+	if !a.TryLock() {
+		t.Fatal("verrou neuf deja tenu")
+	}
+	defer a.Unlock()
+	if !b.TryLock() {
+		t.Fatal("le titre b est bloque par une passe du titre a")
+	}
+	b.Unlock()
+	if verrouDePasse(t.Name()+"/a") != a {
+		t.Error("meme titre, deux verrous : l exclusivite ne tient plus")
+	}
+}
+
+// depsPostSync : des dependances completes pour halo_infinite (le seul titre du depot qui
+// declare `film.kill_source`), sans base ni reseau. `withRead` decide de tout : ne pas appeler
+// `fn` laisse l arriere vide, donc l etape sort apres son segment de lecture.
+func depsPostSync(withRead func(context.Context, string, func(*sql.DB))) PostSyncDeps {
+	return PostSyncDeps{
+		Fetcher:       &filmsEnMemoire{},
+		WithRead:      withRead,
+		AcquireWriter: func(context.Context) (*sql.DB, func(), error) { return nil, func() {}, nil },
+		TitleSlug:     "halo_infinite",
+		Gamertag:      "joueur_de_test",
 	}
 }
 

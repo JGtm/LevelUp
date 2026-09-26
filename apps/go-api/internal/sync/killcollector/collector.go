@@ -40,7 +40,12 @@ package killcollector
 //     et compare les cinq vues ligne a ligne. Le backfill decode donc N films en parallele
 //     ([KillSourceCollector.CollectMatchesOuvriers]) ; la BASE, elle, reste touchee par un seul
 //     goroutine a la fois (`porte_de_la_base.go`, ADR 0013). Tous les autres appelants — post-sync
-//     du serveur, `--online`, tests — gardent la boucle en serie.
+//     du serveur, `--online`, tests — gardent la boucle en serie ;
+//   - POUR LE POST-SYNC DU SERVEUR, CETTE SERIE NE TENAIT QU A L INTERIEUR D UN APPEL. Le cycle v2
+//     lance un appel par joueur, en parallele, sur le MEME arriere global : N joueurs decodaient
+//     N fois les memes films (OPS-3, audit du 2026-09-25). Elle est tenue PAR CONSTRUCTION depuis
+//     le 2026-09-26 par l exclusivite (processus, titre) de `postsync_exclusivite.go` : une seule
+//     passe par titre a la fois, les appels concurrents se retirent et se comptent.
 //
 // # TITLE-AGNOSTIC
 //
