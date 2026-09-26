@@ -6,7 +6,10 @@ package replay
 
 import (
 	"errors"
+	"reflect"
 	"testing"
+
+	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 )
 
 // TestFaitsDuCodec1SontRefusesSurLePrefixe : un fichier ecrit par le codec d AVANT le jalon J3 est
@@ -177,5 +180,49 @@ func TestRejeuDepuisLesFaitsRestreintAuxGardesDemandees(t *testing.T) {
 	if !garde.ZoneScanned || len(garde.ZoneReads) != len(complet.ZoneReads) ||
 		len(garde.BombReads) != len(complet.BombReads) {
 		t.Error("des canaux DEMANDES ont ete retires")
+	}
+}
+
+// TestCleDeCuisson_ChaqueChampDeLEntreeGouverne : RA1-4. La cle de cuisson ne comparait que le
+// module et les largeurs d axe ; une entree de catalogue corrigee sur ses BORNES, sa REGION ou la
+// largeur de son index de region laissait des faits « frais » dont les quanta se redequantifient
+// de travers. Chaque champ de [profile.MapQuantEntry] gouverne le decodage : le changer rend
+// [ErrFilmFactsCarte].
+func TestCleDeCuisson_ChaqueChampDeLEntreeGouverne(t *testing.T) {
+	entry := goldenEntryPourTest(t)
+	e := enteteFrais(t, fichierTemoin(t))
+	if err := e.Frais(entry); err != nil {
+		t.Fatalf("faits frais refuses : %v", err)
+	}
+	mutations := map[string]func(*profile.MapQuantEntry){
+		"Module":          func(m *profile.MapQuantEntry) { m.Module += "_bis" },
+		"Min":             func(m *profile.MapQuantEntry) { m.Min[0] -= 0.5 },
+		"Max":             func(m *profile.MapQuantEntry) { m.Max[2] += 0.5 },
+		"AxisWidths":      func(m *profile.MapQuantEntry) { m.AxisWidths[1]++ },
+		"Region":          func(m *profile.MapQuantEntry) { m.Region++ },
+		"RegionIndexBits": func(m *profile.MapQuantEntry) { m.RegionIndexBits = m.EffectiveRegionIndexBits() + 1 },
+	}
+	for _, champ := range reflect.VisibleFields(reflect.TypeOf(profile.MapQuantEntry{})) {
+		if _, ok := mutations[champ.Name]; !ok {
+			t.Errorf("le champ %s de MapQuantEntry n a pas de mutation dans ce test : un champ neuf "+
+				"de l entree gouverne-t-il le decodage ? l ajouter ici ET a `empreinteDeCle`", champ.Name)
+		}
+	}
+	for champ, muter := range mutations {
+		autre := entry
+		muter(&autre)
+		if err := e.Frais(autre); !errors.Is(err, ErrFilmFactsCarte) {
+			t.Errorf("entree de catalogue changee sur %s : err = %v, attendu ErrFilmFactsCarte", champ, err)
+		}
+	}
+	// LA FORME CANONIQUE : 0 et 1 disent la meme largeur d index de region (defaut historique).
+	canonique := entry
+	if canonique.RegionIndexBits == 0 {
+		canonique.RegionIndexBits = 1
+	} else if canonique.RegionIndexBits == 1 {
+		canonique.RegionIndexBits = 0
+	}
+	if err := e.Frais(canonique); err != nil {
+		t.Errorf("RegionIndexBits 0 et 1 sont la MEME largeur (defaut historique) : err = %v", err)
 	}
 }

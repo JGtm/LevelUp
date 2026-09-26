@@ -37,7 +37,7 @@ func TestFaitsTransportentLesEntitesDesJoueurs(t *testing.T) {
 	for nom, scan := range cas {
 		t.Run(nom, func(t *testing.T) {
 			f := &FilmFactsFile{Facts: FilmFacts{Film: goldenFilm, MapModule: entry.Module,
-				AxisW: entry.AxisWidths}}
+				AxisW: entry.AxisWidths}, EmpreinteDeCle: EmpreinteDeCle(entry)}
 			f.Facts.PlayerEntities = scan
 			blob, err := EncodeFilmFactsFile(f)
 			if err != nil {
@@ -68,7 +68,8 @@ func TestFaitsTransportentLesDeclarationsDesBots(t *testing.T) {
 			{FromUS: 1_576_990_905}}},
 	}
 	f := &FilmFactsFile{Facts: FilmFacts{Film: goldenFilm, MapModule: entry.Module, AxisW: entry.AxisWidths},
-		Kills: &killsource.Result{Roster: killsource.Roster{Bots: bots, BotPaquetsIncomplets: 2}}}
+		EmpreinteDeCle: EmpreinteDeCle(entry),
+		Kills:          &killsource.Result{Roster: killsource.Roster{Bots: bots, BotPaquetsIncomplets: 2}}}
 	blob, err := EncodeFilmFactsFile(f)
 	if err != nil {
 		t.Fatalf("encodage : %v", err)

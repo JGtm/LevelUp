@@ -71,7 +71,7 @@ func TestCodecCouvreFilmInputs(t *testing.T) {
 			if !remplirChampTemoin(v) {
 				t.Skipf("aucun temoin fabricable pour %s (%s)", f.Name, f.Type)
 			}
-			blob, err := EncodeFilmFactsFile(&FilmFactsFile{Facts: *g})
+			blob, err := EncodeFilmFactsFile(&FilmFactsFile{Facts: *g, EmpreinteDeCle: EmpreinteDeCle(entry)})
 			if err != nil {
 				t.Fatalf("encodage du fichier de faits sur %s : %v", f.Name, err)
 			}

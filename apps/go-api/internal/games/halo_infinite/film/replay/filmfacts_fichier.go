@@ -98,6 +98,7 @@ package replay
 // dire est exactement ce que ce lot doit interdire.
 
 import (
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -204,6 +205,9 @@ type FilmFactsFile struct {
 	// Gardes : les gardes de l appelant sous lesquelles ces faits ont ete cuits — l en-tete, depuis
 	// le codec 2 (lot J3.4, RA1-1). Cf. `gardes_de_cuisson.go`.
 	Gardes GardesDeCuisson
+	// EmpreinteDeCle : l empreinte de TOUTE l entree de catalogue sous laquelle ces faits ont ete
+	// cuits ([EmpreinteDeCle]) — l en-tete, depuis le codec 2 (lot J3.5, RA1-4).
+	EmpreinteDeCle [sha256.Size]byte
 	// Facts : section 1 — les entrees de l assemblage et la cle de cuisson.
 	Facts FilmFacts
 	// Identity : section 2 — la section 2 de `chunk_00`, sans laquelle le build sort vide.
@@ -285,10 +289,12 @@ func DecodeFilmFactsFile(blob []byte, entry profile.MapQuantEntry) (*FilmFactsFi
 	if err != nil {
 		return nil, err
 	}
-	if err := verifierCleDeCuisson(entete.MapModule, entete.AxisW, entete.LayoutDetected, entry); err != nil {
+	if err := verifierCleDeCuisson(entete.MapModule, entete.AxisW, entete.LayoutDetected, entry,
+		entete.EmpreinteDeCle[:]); err != nil {
 		return nil, err
 	}
-	out := &FilmFactsFile{Coverage: entete.Coverage, Gardes: entete.Gardes}
+	out := &FilmFactsFile{Coverage: entete.Coverage, Gardes: entete.Gardes,
+		EmpreinteDeCle: entete.EmpreinteDeCle}
 	r := &greader{b: blob, off: entete.corps}
 	for r.off < len(r.b) && r.err == nil {
 		id := int(r.u())

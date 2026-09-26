@@ -82,8 +82,9 @@ func faitsFraisSousGardes(t *testing.T, entry decfilm.MapQuantEntry, opts replay
 	f := &replay.FilmFactsFile{
 		Coverage: replay.DecoderCoverage{SourceRev: rev["source"], ProfileRev: rev["profile"],
 			GrammarRev: rev["grammar"], KillsourceRev: rev["killsource"], ObjectivesRev: rev["objectives"]},
-		Facts:  replay.FilmFacts{Film: "ab526724", MapModule: entry.Module, LayoutDetected: true},
-		Gardes: replay.GardesDe(opts),
+		Facts:          replay.FilmFacts{Film: "ab526724", MapModule: entry.Module, LayoutDetected: true},
+		Gardes:         replay.GardesDe(opts),
+		EmpreinteDeCle: replay.EmpreinteDeCle(entry),
 	}
 	blob, err := replay.EncodeFilmFactsFile(f)
 	if err != nil {

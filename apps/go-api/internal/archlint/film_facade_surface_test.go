@@ -252,7 +252,11 @@ const plafondSurfaceFacade = 166 // 2026-09-17 — base a5d15e634
 //	                                           entrees de cuisson) et derive les gardes des options
 //	                                           (`replay.GardesDe`). DEUX symboles neufs, re-mesure
 //	                                           sur la base `08293ae55` : 278.
-const plafondSurfaceReplay = 280 // 2026-09-26 — audit(J3.4) sur 08293ae55 : 278 + 2 (FilmFactsEntete, GardesDe)
+//	281  audit(J3.5) (2026-09-26)              la cle de cuisson COMPLETE (constat RA1-4) : le test
+//	                                           de la bascule de `replaybuild` fabrique des faits
+//	                                           frais pour une entree de catalogue, donc nomme
+//	                                           `replay.EmpreinteDeCle`. UN symbole neuf.
+const plafondSurfaceReplay = 281 // 2026-09-26 — audit(J3.4, J3.5) sur 08293ae55 : 278 + 3 (FilmFactsEntete, GardesDe, EmpreinteDeCle)
 
 // plafondsParFamilleFacade — la surface de la facade VENTILEE PAR PAQUET D ORIGINE.
 //

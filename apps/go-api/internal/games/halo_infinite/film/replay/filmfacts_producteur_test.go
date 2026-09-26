@@ -57,9 +57,10 @@ func TestEnteteDesFaitsEgaleLaCouvertureDuDocument(t *testing.T) {
 				"cote gauche")
 		}
 		blob, err := EncodeFilmFactsFile(&FilmFactsFile{
-			Coverage: *couvertureDuDecodeur(id),
-			Facts:    FilmFacts{Film: goldenFilm, MapModule: entry.Module, AxisW: entry.AxisWidths},
-			Identity: identiteDeFaits(id),
+			Coverage:       *couvertureDuDecodeur(id),
+			Facts:          FilmFacts{Film: goldenFilm, MapModule: entry.Module, AxisW: entry.AxisWidths},
+			Identity:       identiteDeFaits(id),
+			EmpreinteDeCle: EmpreinteDeCle(entry),
 		})
 		if err != nil {
 			t.Fatalf("encodage : %v", err)
@@ -105,10 +106,11 @@ func TestBuildFromFactsEgaleLAssemblageDirect(t *testing.T) {
 
 	// A DROITE : le MEME etat, passe par le fichier de faits.
 	blob, err := EncodeFilmFactsFile(&FilmFactsFile{
-		Coverage:  *couvertureDuDecodeur(id),
-		Facts:     *g,
-		Identity:  identiteDeFaits(id),
-		Fallbacks: repliDuBalayage,
+		Coverage:       *couvertureDuDecodeur(id),
+		Facts:          *g,
+		Identity:       identiteDeFaits(id),
+		Fallbacks:      repliDuBalayage,
+		EmpreinteDeCle: EmpreinteDeCle(entry),
 	})
 	if err != nil {
 		t.Fatalf("encodage : %v", err)

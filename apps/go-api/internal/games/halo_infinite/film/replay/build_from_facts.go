@@ -33,6 +33,8 @@ package replay
 // film, donc elles ne sont pas dans les faits. C est la frontiere ecrite en tete d `options.go`.
 
 import (
+	"crypto/sha256"
+
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
@@ -105,6 +107,8 @@ func faitsDuBalayage(matchID string, fc *grammar.FilmContext, opt Options,
 		// LES GARDES DE L APPELANT SOUS LESQUELLES LE BALAYAGE A LU (lot J3.4) : les memes
 		// predicats que ceux du balayage, derives des memes options.
 		Gardes: GardesDe(opt),
+		// L EMPREINTE DE TOUTE L ENTREE DE CATALOGUE (lot J3.5) : la relecture la compare.
+		EmpreinteDeCle: empreinteDeLaCarte(opt.MapQuant),
 	}
 }
 
@@ -119,4 +123,14 @@ func identiteDeFaits(id *profile.FilmIdentity) *profile.FilmIdentity {
 	}
 	copie := *id
 	return &copie
+}
+
+// empreinteDeLaCarte rend [EmpreinteDeCle] de l entree de la cuisson, ou celle de l entree VIDE
+// quand la cuisson n en a pas — la cle ecrite reste alors celle d un module vide, que toute
+// relecture sur une vraie carte refuse.
+func empreinteDeLaCarte(entry *profile.MapQuantEntry) [sha256.Size]byte {
+	if entry == nil {
+		return EmpreinteDeCle(profile.MapQuantEntry{})
+	}
+	return EmpreinteDeCle(*entry)
 }

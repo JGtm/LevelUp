@@ -102,6 +102,7 @@ func documentsDuFilmEtDesFaits(t *testing.T, cas casDuFilDesMorts) (ReplayDocume
 		Coverage: *couvertureDuDecodeur(nil),
 		Facts: FilmFacts{Film: g.Film, MapModule: g.MapModule, AxisW: g.AxisW,
 			LayoutDetected: g.LayoutDetected, FilmInputs: s.in},
+		EmpreinteDeCle: EmpreinteDeCle(entry),
 	})
 	if err != nil {
 		t.Fatalf("%s : encodage des faits : %v", cas.nom, err)

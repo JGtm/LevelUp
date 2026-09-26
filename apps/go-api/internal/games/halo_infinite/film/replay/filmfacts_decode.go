@@ -7,6 +7,7 @@ package replay
 // logique changee, seuls les noms d API et les messages ont suivi (cf. filmfacts.go).
 
 import (
+	"bytes"
 	"fmt"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
@@ -68,7 +69,7 @@ func decodeEntete(blob []byte, entry profile.MapQuantEntry) (
 		v := int(r.i())
 		g.FilmMajorVersion = &v
 	}
-	if err := verifierCleDeCuisson(g.MapModule, g.AxisW, g.LayoutDetected, entry); err != nil {
+	if err := verifierCleDeCuisson(g.MapModule, g.AxisW, g.LayoutDetected, entry, nil); err != nil {
 		return nil, nil, profile.I0Layout{}, profile.Vec3Range{}, err
 	}
 	// LE DECOUPAGE VIENT DU BLOB, LES BORNES DU CATALOGUE : le premier dit comment le film a
@@ -93,15 +94,24 @@ func decodeEntete(blob []byte, entry profile.MapQuantEntry) (
 // venir d une carte dont l entree est INVALIDE — sinon il a ete cuit hors de la regle. Sur
 // `60ae07c4` la detection rendait `13/12/11` la ou le catalogue rend `12/12/11`.
 //
+// L EMPREINTE DE TOUTE L ENTREE (lot J3.5, RA1-4) : `empreinte` est celle que l en-tete du FICHIER
+// porte ([EmpreinteDeCle] a la cuisson) ; une entree corrigee sur ses bornes, sa region ou son
+// index de region la contredit, et c est [ErrFilmFactsCarte]. Le BLOB des entrees ne la porte pas :
+// son appelant passe nil, et seules les trois grandeurs ci-dessus y sont comparees.
+//
 // UNE SEULE COPIE (CLAUDE.md regle 6) : l en-tete du blob des entrees ET l en-tete du FICHIER de
 // faits ([FilmFactsEntete.Utilisable]) appellent cette fonction. Deux copies de cette regle
 // auraient divergé au premier ajustement de catalogue.
 func verifierCleDeCuisson(mapModule string, axisW [3]uint, layoutDetected bool,
-	entry profile.MapQuantEntry,
+	entry profile.MapQuantEntry, empreinte []byte,
 ) error {
 	if mapModule != entry.Module {
 		return fmt.Errorf("%w : faits cuits pour %q, entree de catalogue fournie %q",
 			ErrFilmFactsCarte, mapModule, entry.Module)
+	}
+	if attendue := EmpreinteDeCle(entry); empreinte != nil && !bytes.Equal(empreinte, attendue[:]) {
+		return fmt.Errorf("%w : faits cuits sous une AUTRE entree de catalogue pour %q (bornes, "+
+			"largeurs, region ou index de region corriges depuis)", ErrFilmFactsCarte, entry.Module)
 	}
 	impose := grammar.NewFilmContextForMap(nil, &entry, nil).ImposedLayout()
 	switch {

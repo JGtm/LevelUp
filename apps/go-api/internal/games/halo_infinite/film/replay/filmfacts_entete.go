@@ -9,7 +9,9 @@ package replay
 // meme lot est ecrit a sa place (les revisions par consommateur de faits, le codec 2).
 
 import (
+	"crypto/sha256"
 	"fmt"
+	"math"
 	"strings"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
@@ -29,12 +31,15 @@ type FilmFactsEntete struct {
 	LayoutDetected bool
 	// Gardes : les gardes de l appelant sous lesquelles ces faits ont ete cuits (lot J3.4).
 	Gardes GardesDeCuisson
+	// EmpreinteDeCle : l empreinte de l entree de catalogue de la cuisson (lot J3.5).
+	EmpreinteDeCle [sha256.Size]byte
 	// corps est l offset du premier octet de section.
 	corps int
 }
 
 // encodeEnteteDuFichier ecrit l en-tete du FICHIER de faits : [DecoderCoverage] VERBATIM, puis la
-// CLE DE CUISSON, puis les GARDES DE L APPELANT (codec 2). (`encodeEntete`, dans `filmfacts_encode.go`, est celui du BLOB des entrees.)
+// CLE DE CUISSON — dont l empreinte de l entree de catalogue —, puis les GARDES DE L APPELANT
+// (codec 2). (`encodeEntete`, dans `filmfacts_encode.go`, est celui du BLOB des entrees.)
 func encodeEnteteDuFichier(f *FilmFactsFile) *gwriter {
 	entete := &gwriter{}
 	encodeCouvertureDuDecodeur(entete, f.Coverage)
@@ -43,6 +48,7 @@ func encodeEnteteDuFichier(f *FilmFactsFile) *gwriter {
 		entete.u(uint64(f.Facts.AxisW[a]))
 	}
 	entete.bool8(f.Facts.LayoutDetected)
+	entete.b = append(entete.b, f.EmpreinteDeCle[:]...)
 	encodeGardesDeCuisson(entete, f.Gardes)
 	return entete
 }
@@ -77,6 +83,7 @@ func DecodeFilmFactsEntete(blob []byte) (FilmFactsEntete, error) {
 		e.AxisW[a] = uint(r.u())
 	}
 	e.LayoutDetected = r.bool8()
+	copy(e.EmpreinteDeCle[:], r.tranche(sha256.Size))
 	e.Gardes = decodeGardesDeCuisson(r)
 	if r.err != nil {
 		return e, fmt.Errorf("%w : en-tete illisible (%v)", ErrFilmFactsVersion, r.err)
@@ -126,7 +133,7 @@ func (e FilmFactsEntete) Frais(entry profile.MapQuantEntry) error {
 		return fmt.Errorf("%w : faits %s contre binaire %s", ErrFilmFactsRevisions,
 			listeDesRevisions(e.Coverage), listeDesRevisions(*courantes))
 	}
-	return verifierCleDeCuisson(e.MapModule, e.AxisW, e.LayoutDetected, entry)
+	return verifierCleDeCuisson(e.MapModule, e.AxisW, e.LayoutDetected, entry, e.EmpreinteDeCle[:])
 }
 
 // encodeCouvertureDuDecodeur / decodeCouvertureDuDecodeur : [DecoderCoverage] VERBATIM.
@@ -187,4 +194,24 @@ func memesRevisionsDeCouche(a, b DecoderCoverage) bool {
 func listeDesRevisions(c DecoderCoverage) string {
 	return "{" + strings.Join([]string{c.SourceRev, c.ProfileRev, c.GrammarRev, c.KillsourceRev,
 		c.ObjectivesRev}, " ") + "}"
+}
+
+// EmpreinteDeCle rend l empreinte CANONIQUE de toute l entree de catalogue : module, bornes,
+// largeurs d axe, region et largeur d index de region — tout ce qui gouverne la redequantification
+// des positions (lot J3.5 du PLAN_SUITE_AUDIT_DECODEUR_FILM, decision DU-2 (e), constat RA1-4).
+//
+// CANONIQUE : les bornes par leurs bits exacts (`math.Float32bits`), la largeur d index de region
+// par sa valeur EFFECTIVE (0 et 1 disent le meme defaut historique). Un champ ajoute a l entree
+// fait rougir `TestCleDeCuisson_ChaqueChampDeLEntreeGouverne` tant qu il n entre pas ici.
+func EmpreinteDeCle(entry profile.MapQuantEntry) [sha256.Size]byte {
+	h := sha256.New()
+	_, _ = fmt.Fprintf(h, "module:%d:%s\n", len(entry.Module), entry.Module)
+	for a := 0; a < 3; a++ {
+		_, _ = fmt.Fprintf(h, "axe:%d:%08x:%08x:%d\n", a, math.Float32bits(entry.Min[a]),
+			math.Float32bits(entry.Max[a]), entry.AxisWidths[a])
+	}
+	_, _ = fmt.Fprintf(h, "region:%d:%d\n", entry.Region, entry.EffectiveRegionIndexBits())
+	var out [sha256.Size]byte
+	copy(out[:], h.Sum(nil))
+	return out
 }
