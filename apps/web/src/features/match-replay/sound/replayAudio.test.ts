@@ -166,6 +166,26 @@ describe('ReplayAudioPlayer — voix et volume', () => {
     expect(ctx.sources).toHaveLength(SOUND_MAX_VOICES + 1)
   })
 
+  it('la CONCLUSION passe hors plafond, avec l’enveloppe normale, sans occuper de voix', async () => {
+    const p = new ReplayAudioPlayer(1)
+    p.preload(['/a.wav', '/voix.wav', '/fanfare.wav'])
+    await flush()
+    for (let i = 0; i < SOUND_MAX_VOICES; i++) p.play('/a.wav')
+    p.playConclusion('/voix.wav')
+    p.playConclusion('/fanfare.wav')
+    expect(ctx.sources).toHaveLength(SOUND_MAX_VOICES + 2)
+    // Enveloppe normale : jusqu'au bout du fichier (3 s ici), fondu compris.
+    expect(ctx.sources[SOUND_MAX_VOICES].stopped).toBeCloseTo(ctx.currentTime + 3)
+    // Un son ordinaire reste refusé : le plafond n'a pas bougé.
+    p.play('/a.wav')
+    expect(ctx.sources).toHaveLength(SOUND_MAX_VOICES + 2)
+    // La fin des conclusions ne rend aucune voix qu'elles n'avaient pas prise.
+    ctx.sources[SOUND_MAX_VOICES].end()
+    ctx.sources[SOUND_MAX_VOICES + 1].end()
+    p.play('/a.wav')
+    expect(ctx.sources).toHaveLength(SOUND_MAX_VOICES + 2)
+  })
+
   it('le volume initial est posé à la construction (pas de premier son à plein régime)', () => {
     new ReplayAudioPlayer(0.4)
     expect(ctx.gains[0].gain.value).toBe(0.4)

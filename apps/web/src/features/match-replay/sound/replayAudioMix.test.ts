@@ -10,7 +10,7 @@
  * doivent sonner pareil, sans quoi on ne peut ni comparer deux versions d'un clip, ni le
  * re-livrer à l'identique.
  */
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import {
   applyVoiceCap,
@@ -20,7 +20,8 @@ import {
   tailSeconds,
   type MixedSound,
 } from './replayAudioMix'
-import { SOUND_MAX_VOICES } from './replayAudio'
+import { ReplayAudioPlayer, SOUND_MAX_VOICES } from './replayAudio'
+import { flushAudio, installFakeAudio } from '../test/fakeAudio'
 import type { ReplaySoundEvent } from './replaySoundVariants'
 
 const BOUNDS = { startMs: 1000, endMs: 5000 }
@@ -148,6 +149,39 @@ describe('applyVoiceCap — la même comptabilité que le lecteur temps réel', 
     const sons = [...simultanes(2, 0), { atMs: 0, stem: 'absent', draw: { gainDb: 0, playbackRate: 1 }, family: 'sfx' as const }]
     const out = applyVoiceCap(sons, (stem) => (stem === 'absent' ? null : 1))
     expect(out.map((s) => s.stem)).toEqual(['s0', 's1'])
+  })
+})
+
+/**
+ * GARDE-RAIL DE PARITÉ (item 11, 2026-09-26) : la conclusion échappait au plafond à l'export
+ * depuis le 29/08, mais pas à la page — la fanfare d'une fin dense s'entendait dans le clip et
+ * pas dans le rejeu. La même situation saturée passe ici par les DEUX chemins.
+ */
+describe('la conclusion — même règle à la page et à l’export', () => {
+  afterEach(() => vi.unstubAllGlobals())
+
+  it('plafond plein : les deux chemins gardent la conclusion et refusent le son ordinaire de trop', async () => {
+    const conclusion = (stem: string): MixedSound => ({
+      atMs: 0, stem, draw: { gainDb: 0, playbackRate: 1 }, family: 'music', conclusion: true,
+    })
+    const sons = [...simultanes(SOUND_MAX_VOICES + 1), conclusion('voix'), conclusion('fanfare')]
+    const exportes = applyVoiceCap(sons, () => 1).map((s) => s.stem)
+
+    const { ctx } = installFakeAudio(1)
+    const p = new ReplayAudioPlayer(1)
+    p.preload(sons.map((s) => `/${s.stem}.wav`))
+    await flushAudio()
+    const joues: string[] = []
+    for (const s of sons) {
+      const avant = ctx.sources.length
+      if (s.conclusion) p.playConclusion(`/${s.stem}.wav`)
+      else p.play(`/${s.stem}.wav`)
+      if (ctx.sources.length > avant) joues.push(s.stem)
+    }
+
+    expect(exportes).toHaveLength(SOUND_MAX_VOICES + 2)
+    expect(exportes).toContain('fanfare')
+    expect(joues).toEqual(exportes)
   })
 })
 

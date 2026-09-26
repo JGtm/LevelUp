@@ -32,7 +32,13 @@
  * pareil, et deux occurrences du même geste sonnent quand même différemment.
  */
 import { distanceChain, drawVariation, gainFromDb, type SoundDraw } from './weaponSoundLogic'
-import { SOUND_MAX_VOICES, soundEnvelopeOf, soundShapeOf, type SoundShape } from './replayAudio'
+import {
+  SOUND_MAX_VOICES,
+  soundEnvelopeOf,
+  soundOccupiesVoice,
+  soundShapeOf,
+  type SoundShape,
+} from './replayAudio'
 import { WEAPON_SOUND_VARIATIONS } from './weaponSoundVariations'
 import { pickVariantStem, type ReplaySoundEvent } from './replaySoundVariants'
 import {
@@ -79,13 +85,9 @@ export interface MixedSound {
   stem: string
   draw: SoundDraw
   /**
-   * `true` = LA CONCLUSION (voix d'annonceur, fanfare). Elle ECHAPPE au plafond de voix.
-   *
-   * POURQUOI CETTE EXCEPTION. Le plafond existe pour qu'un echange nourri ne devienne pas un
-   * mur de bruit : il arbitre entre des sons DE MELEE, tous equivalents. La conclusion n'est
-   * pas de la melee — c'est ce que le clip raconte en dernier. Vecu en recette le 2026-08-28 :
-   * sur une fin de match disputee, les huit voix etaient prises par les derniers tirs et la
-   * fanfare tombait, si bien que le clip se terminait sans un mot.
+   * `true` = LA CONCLUSION (voix d'annonceur, fanfare). Elle ECHAPPE au plafond de voix, ici
+   * comme dans le lecteur de la page — regle et raison en un seul endroit : `soundOccupiesVoice`
+   * (`replayAudio.ts`).
    */
   conclusion?: boolean
   /** La famille a laquelle ce son appartient, pour les pistes separees du clip. */
@@ -229,6 +231,11 @@ function familyOf(stem: string, familles: MixOptions['families']): SoundFamily {
  * et plus confus que la page — mesuré sur le corpus local : 28,7 % des sources sont refusées
  * en direct sur un échange nourri.
  *
+ * LA CONCLUSION suit la même exception des deux côtés : hors plafond, sans voix occupée
+ * (`soundOccupiesVoice`). Jusqu'au 2026-09-26, seul l'export l'appliquait — la page refusait
+ * la fanfare d'une fin dense, et « la même comptabilité » était fausse sur ce point (item 11).
+ * Garde-rail de parité : `replayAudioMix.test.ts`.
+ *
  * `durationOf` rend la durée du fichier en secondes, ou `null` s'il est absent — un asset
  * manquant est un silence, exactement comme en direct, et il n'occupe alors aucune voix.
  */
@@ -242,9 +249,9 @@ export function applyVoiceCap(
   for (const s of sounds) {
     const seconds = durationOf(s.stem)
     if (seconds === null) continue
-    // LA CONCLUSION PASSE TOUJOURS, et n'occupe aucune voix (cf. `MixedSound.conclusion`) :
+    // LA CONCLUSION PASSE TOUJOURS, et n'occupe aucune voix (`soundOccupiesVoice`) :
     // elle ne dispute rien a personne, elle conclut.
-    if (s.conclusion) {
+    if (!soundOccupiesVoice(s)) {
       kept.push(s)
       continue
     }

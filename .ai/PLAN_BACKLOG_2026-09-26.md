@@ -313,7 +313,7 @@ case non statuée du lot courant. Les décisions du §2 ne se re-décident pas.
 - Fichiers : `useReplaySound.ts` fait 675 lignes (au-dessus du seuil, gelé par la baseline) :
   **il ne doit pas grossir**. `replayAudio.ts` fait 362 lignes.
 
-- [ ] **A1.0 Confirmation déterministe AVANT tout code, sur la fixture réelle versionnée**
+- [x] **A1.0 Confirmation déterministe AVANT tout code, sur la fixture réelle versionnée**
   `test/fixtures/go/replay_schema_71_000d5950.json.gz` (match `000d5950`, Slayer, JGtm
   équipe 0).
   - La fixture est chargée par le chargeur de fixtures existant, jamais par un nom de fichier en
@@ -333,13 +333,16 @@ case non statuée du lot courant. Les décisions du §2 ne se re-décident pas.
   - Le navigateur n'est pas nécessaire ici. Au GO, une autre session faisait tourner
     `replay-equiv` et des builds Go : le serveur API n'est démarré que lorsque plus aucun
     processus ne tient les bases (§1.3).
-- [ ] **A1.1** `replayAudio.ts` : méthode `playConclusion(url)`. Elle joue hors plafond, avec
+  - **Statut (2026-09-26)** : H1 CONFIRMÉE à `SOUND_MAX_SPEED` (2×), RÉFUTÉE à 1× sur ce témoin
+    — chiffres et portée au journal (§7, lots A) et en DA-3. Version « préférée » réalisée :
+    `sound/endMatchVoiceCap.witness.test.tsx`.
+- [x] **A1.1** `replayAudio.ts` : méthode `playConclusion(url)`. Elle joue hors plafond, avec
   l'enveloppe normale, sans compter de voix. La règle est nommée une seule fois, partagée avec
   `replayAudioMix.ts` (constante ou doc commune).
-- [ ] **A1.2** `useReplaySound.ts:586` : `player.play(url)` devient `player.playConclusion(url)`,
+- [x] **A1.2** `useReplaySound.ts:586` : `player.play(url)` devient `player.playConclusion(url)`,
   sans ligne nette ajoutée.
-- [ ] **A1.3** Commentaire de `applyVoiceCap` (`replayAudioMix.ts:222-233`) rendu exact.
-- [ ] **A1.4 Tests** (rouges d'abord) :
+- [x] **A1.3** Commentaire de `applyVoiceCap` (`replayAudioMix.ts:222-233`) rendu exact.
+- [x] **A1.4 Tests** (rouges d'abord) :
   - (a) `useReplaySound.test.tsx`, bloc « la fin de partie » : 8 sons en cours puis `endMatch()`
     donnent 10 sources, dont `end_victory_music_01.wav`. Aujourd'hui : 8.
   - (b) `replayAudio.test.ts` : 8 `play` puis 2 `playConclusion` donnent 10 sons ; un `play`
@@ -347,9 +350,15 @@ case non statuée du lot courant. Les décisions du §2 ne se re-décident pas.
   - (c) Garde-rail de parité : la même situation saturée passée par `applyVoiceCap` (export) et
     par le lecteur (page) garde la conclusion des deux côtés.
   - (d) Le test de A1.0 sur la fixture réelle : musique refusée avant, jouée après.
-- [ ] **A1.5 Recette navigateur**, seulement si `http://127.0.0.1:8000/health` répond (le
+  - **Statut** : (a) `useReplaySound.test.tsx:418`, (b) `replayAudio.test.ts:169`,
+    (c) `replayAudioMix.test.ts:160`, (d) `endMatchVoiceCap.witness.test.tsx:195` (+ témoin 1×
+    `:203`, vert avant et après). Sorties rouges au journal.
+- [!] **A1.5 Recette navigateur**, seulement si `http://127.0.0.1:8000/health` répond (le
   superviseur démarre le serveur, jamais l'exécutant). Sinon, l'item reste ouvert au rapport et le
   superviseur le fait avant la fusion 1.
+  - **Statut (2026-09-26)** : NON FAITE par l'exécutant — `/health` a rendu `000` (serveur
+    arrêté). Reste au superviseur avant la fusion 1. ATTENTION (A1.0) : à 1× le témoin dense
+    jouait déjà la fanfare ; la recette ne discrimine le correctif qu'à 2× (`SOUND_MAX_SPEED`).
   - Script Playwright ad hoc `apps/web/.tmp.recette-fin.mjs` (supprimé après) : Chromium,
     `--autoplay-policy=no-user-gesture-required` (pour isoler l'item 11 ; la recette de A2 garde
     la politique par défaut), Vite du worktree avec proxy vers `:8000`.
@@ -362,6 +371,8 @@ case non statuée du lot courant. Les décisions du §2 ne se re-décident pas.
     au journal.
 - [ ] **A1.6 Gate utilisateur (écoute)** : le témoin dense, et le match sur lequel l'utilisateur a
   constaté le défaut (qu'il nomme).
+  - Laissé ouvert par l'exécutant (gate du superviseur). Question à poser avec : à quelle
+    VITESSE le défaut a-t-il été constaté (cf. DA-3) ?
 
 **Gate** : WEB (filtres `src/features/match-replay/sound`), recette A1.5, gate utilisateur A1.6.
 
@@ -974,6 +985,18 @@ plus B5.8.
 - DA-2 (enquête) : les couleurs hex de `lib/halo/teamNames.ts` ne correspondent pas aux 8
   couleurs de l'annonceur. Ce sont des couleurs d'affichage ; A5.0 établit la table de
   l'annonceur à part. `teamNames.ts` n'est pas modifié sans preuve.
+- DA-3 (A1.0, 2026-09-26) : H1 DÉPEND DE LA VITESSE sur le témoin `000d5950`. Simulation
+  déterministe (piste réelle, durées réelles des WAV, horloge qui avance, 10 graines) : à 1×,
+  3 à 4 voix occupées à la borne, voix ET fanfare jouées 10 fois sur 10 ; à 1,5×, 2 voix,
+  tout passe ; à 2× (`SOUND_MAX_SPEED`), 6 à 7 voix, fanfare refusée 7 fois sur 10. Deux
+  limites : la fixture ne porte pas les kills (vue match), dont les sons s'ajouteraient — les
+  chiffres sont des minimums ; et rien ne dit à quelle vitesse l'utilisateur a constaté le
+  défaut. S'il l'a constaté à 1× sur une fin comparable, une autre cause reste possible et
+  A1.6 le dira. Non traité ici (hors périmètre de A1).
+- DA-4 (A1.0) : la piste sonore du témoin au schéma 71 compte 334 événements (504 `shots` +
+  rafales), là où les commentaires de `SOUND_MAX_VOICES` (`replayAudio.ts`) et de
+  `replaySound.ts` citent « 483 tirs sonores » et « 46 sources refusées » : relevés datés du
+  2026-08-15, antérieurs au modèle des rafales (M4b). Chiffres historiques, non corrigés.
 
 ### Lots B
 
@@ -994,7 +1017,44 @@ plus B5.8.
 
 ### Lots A
 
-(vide)
+**[2026-09-26] A1 — musique de fin du rejeu 2D (item 11) — exécutant opus, worktree du plan.**
+
+- A1.0 : simulation `sound/endMatchVoiceCap.witness.test.tsx`. Fixture chargée par
+  `goFixtureEntries()` + `loadGoFixture()`, normalisée par `testReplayDoc` (seule porte admise par
+  `testDoc.guard.test.ts`). Borne = `replayWindow` avec l'en-tête mesuré (t0 18 465 ms, 478 s),
+  soit l'image 4 929. `fetch` rend les octets des WAV de `static/sounds/halo_infinite/`. Le
+  décodage lit la durée RIFF. L'horloge avance à 60 i/s murales et `ended` tombe à l'heure
+  d'arrêt programmée. Hasard semé, kills vides (absents de la fixture).
+  - Graine 20260926, 1× : 4/8 voix occupées à la borne, 333 sources tirées, conclusion jouée
+    `[end_victory_voice_fr_02.wav, end_victory_music_01.wav]`. H1 NON reproduite à 1×.
+  - Sonde temporaire (10 graines × 1× / 1,5× / 2×, supprimée) : voir DA-3. À 2×, graine 7919 :
+    7/8 occupées, 328 sources, conclusion `[end_victory_voice_fr_02.wav]` — la voix prend la
+    8e place, la fanfare est refusée. Critère « H1 confirmée » du plan rempli à 2× : le lot
+    continue, avec l'écart signalé (DA-3).
+- A1.1 : `replayAudio.ts:97` `soundOccupiesVoice` (règle unique + doctrine, consommée aussi par
+  `applyVoiceCap`) ; `:339` `playConclusion` ; `:344` `start` privé commun à `play` et
+  `playConclusion` (le compteur `voices` n'est touché que si la source occupe une voix).
+- A1.2 : `useReplaySound.ts:586` → `player.playConclusion(url)`. 675 lignes avant, 675 après.
+- A1.3 : `replayAudioMix.ts:226-238`. Le commentaire dit l'exception commune et son historique.
+  `MixedSound.conclusion` renvoie à `soundOccupiesVoice` au lieu de répéter la doctrine.
+- A1.4, sorties rouges (code de production inchangé, log `A1-4-rouge.log`), `EXIT_ROUGE=1`,
+  4 échecs sur 71 :
+  - (a) `expected [ FakeSource{ …(6) }, …(7) ] to have a length of 10 but got 8` ;
+  - (b) et (c) `TypeError: p.playConclusion is not a function` ;
+  - (d) `vitesse 2x — voix occupées à la borne : 7/8, sources tirées : 328, conclusion jouée :
+    [end_victory_voice_fr_02.wav]: expected [...] to include 'end_victory_music_01.wav'`.
+  - (d) a été re-vérifié rouge après le passage à `testReplayDoc`, en remettant un instant
+    `player.play(url)` (log `A1-4d-rouge-testReplayDoc.log`).
+  - Après correctif : `EXIT_VERT=0`, 71/71.
+- Gates WEB (logs `$TEMP\backlog-gates\A1-*.log`) :
+  - `EXIT_TYPECHECK=0` (après purge de `node_modules/.tmp`) ;
+  - `EXIT_LINT=0` (26 avertissements, tous préexistants ; aucun sur une ligne touchée) ;
+  - `EXIT_VITEST_SOUND=0` : 19 fichiers réussis et 1 sauté, 335 tests réussis et 1 sauté ;
+  - `EXIT_VITEST_MATCH_REPLAY=0` : 216 fichiers réussis et 4 sautés, 3 179 tests réussis et 7 sautés.
+  - Un premier lancement a buté sur « Timeout waiting for worker » (démarrage du worker, pas un
+    test). Relancé tel quel : vert.
+- A1.5 : `/health` → `000`. Non faite, reste au superviseur, à 2× (cf. statut de l'item).
+- A1.6 : ouvert (superviseur).
 
 ### Lots B
 

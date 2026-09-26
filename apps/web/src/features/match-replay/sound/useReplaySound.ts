@@ -583,7 +583,7 @@ export function useReplaySound(
     if (!spec || !onRef.current || !player || !soundPlaysAtSpeed(speedRef.current)) return
     for (const stem of endMatchSounds(spec.outcome, spec.ffa, spec.locale)) {
       const url = urlsRef.current.get(stem)
-      if (url) player.play(url)
+      if (url) player.playConclusion(url) // hors plafond de voix (item 11, `soundOccupiesVoice`)
     }
   }, [])
 
