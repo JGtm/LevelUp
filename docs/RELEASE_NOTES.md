@@ -57,6 +57,7 @@ The biggest release so far. Halo records a film of every match; until now the ap
 - **Squad intensity against your real team and the lobby**, and a filter bar that no longer replays every chart's animation on each click
 - **Explorer and Head-to-head** — the briefing shows the favourite weapon of the selection and the kill range of the player you scout; the Head-to-head gets a weapon profile: kill share by weapon class, range by role, top 3 weapons
 - **The home match tile** shows how many of your kills a teammate assisted
+- **Much shorter loading times** — the first opening of the Squad page drops from 194 seconds to 2.6; the Synthesis, Sessions, Timeseries, Career and Home pages load faster too, and a long request is no longer cut off and replayed
 
 **Match view**
 - **One card template for the whole page** — the three tables that were hard to compare became charts

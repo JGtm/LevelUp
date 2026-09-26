@@ -57,6 +57,7 @@ La plus grosse version à ce jour. Halo enregistre un film de chaque match ; jus
 - **L'intensité de l'Escouade face à ta vraie équipe et au lobby**, et une barre de filtres qui ne rejoue plus l'animation de chaque graphe à chaque clic
 - **Explorateur et Face-à-face** — le briefing montre l'arme favorite de la sélection et la portée de frag du joueur que tu repères ; le Face-à-face gagne un profil d'armes : part des frags par classe d'arme, portée par rôle, trois armes de tête
 - **La tuile de match de l'accueil** montre combien de tes frags un coéquipier a assistés
+- **Des chargements bien plus courts** — la première ouverture de l'Escouade passe de 194 secondes à 2,6 ; la Synthèse, les Sessions, les Séries temporelles, la Carrière et l'Accueil se chargent eux aussi plus vite, et une requête longue n'est plus coupée puis rejouée
 
 **Fiche du match**
 - **Un seul gabarit de carte pour toute la page** — les trois tableaux difficiles à comparer sont devenus des graphes
