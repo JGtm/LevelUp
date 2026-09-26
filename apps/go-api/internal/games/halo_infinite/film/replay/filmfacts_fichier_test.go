@@ -12,9 +12,9 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/internal/facts"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/killsource"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
@@ -39,7 +39,7 @@ func fichierTemoin(t *testing.T) *FilmFactsFile {
 	return &FilmFactsFile{
 		Coverage: DecoderCoverage{
 			SourceRev: "source-x", ProfileRev: "profile-x", GrammarRev: "grammar-x",
-			FactsRev: "facts-x", Build: "HI_1_13_0",
+			KillsourceRev: "killsource-x", ObjectivesRev: "objectives-x", Build: "HI_1_13_0",
 			Registry: &RegistryCoverage{Fingerprint: "0x0123456789abcdef",
 				Status: RegistryStatutConnue, Blocks: 9, NamedSlots: 31},
 		},
@@ -251,12 +251,12 @@ func TestFilmFactsEnteteSeLitSurLesPremiersOctets(t *testing.T) {
 // `coverage.decoder` de l artefact produit) est verifie cote `replaybuild` au lot 4.1.2.
 func TestFilmFactsEnteteEstLeMemeTypeQueCoverageDecoder(t *testing.T) {
 	for _, cov := range []DecoderCoverage{
-		{SourceRev: "s", ProfileRev: "p", GrammarRev: "g", FactsRev: "f", Build: "HI_1_13_0",
+		{SourceRev: "s", ProfileRev: "p", GrammarRev: "g", KillsourceRev: "k", ObjectivesRev: "o", Build: "HI_1_13_0",
 			Registry: &RegistryCoverage{Fingerprint: "0xdead", Status: RegistryStatutConnue,
 				Blocks: 3, NamedSlots: 4}},
 		// BUILD VIDE ET BLOC PRESENT sur un build inconnu (V15 (15)) : le cas qui doit survivre
 		// a l aller-retour, sans quoi l ambiguite que D-7 interdit revient par le fichier.
-		{SourceRev: "s", ProfileRev: "p", GrammarRev: "g", FactsRev: "f"},
+		{SourceRev: "s", ProfileRev: "p", GrammarRev: "g", KillsourceRev: "k", ObjectivesRev: "o"},
 	} {
 		f := fichierTemoin(t)
 		f.Coverage = cov
@@ -284,7 +284,7 @@ func TestFilmFactsUtilisableRefuseLesQuatreCauses(t *testing.T) {
 	f.Coverage.SourceRev = source.Rev
 	f.Coverage.ProfileRev = profile.Rev
 	f.Coverage.GrammarRev = grammar.Rev
-	f.Coverage.FactsRev = facts.Rev
+	f.Coverage.KillsourceRev, f.Coverage.ObjectivesRev = killsource.Rev, objectives.Rev
 	blob, err := EncodeFilmFactsFile(f)
 	if err != nil {
 		t.Fatalf("encodage : %v", err)

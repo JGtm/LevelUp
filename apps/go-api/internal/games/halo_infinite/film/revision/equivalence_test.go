@@ -41,7 +41,8 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/internal/facts"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/killsource"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
@@ -71,7 +72,8 @@ func couchesDeLOracle() []revision.Couche {
 		{Nom: "source", Racine: film + "source"},
 		{Nom: "profile", Racine: film + "profile"},
 		{Nom: "grammar", Racine: film + "grammar"},
-		{Nom: "facts", Racine: film + "facts"},
+		{Nom: "killsource", Racine: film + "facts/killsource"},
+		{Nom: "objectives", Racine: film + "facts/objectives"},
 	}
 }
 
@@ -79,7 +81,7 @@ func couchesDeLOracle() []revision.Couche {
 //
 // LE SENS UNIQUE SE LIT DANS LA COLONNE DES VALEURS : `source` et `profile` n en ont aucune (la
 // fermeture de leurs imports ne rencontre aucune couche), `grammar` rencontre `profile` et
-// `source`, `facts` rencontre `source`, `profile` et `grammar`. Chaque couche hache SES jetons,
+// `source`, `killsource` rencontre `source`, `profile` et `grammar`, `objectives` rencontre `source` seule (lot J3.3 : une revision par consommateur de faits). Chaque couche hache SES jetons,
 // ceux des paquets qu elle importe hors couche, et les VALEURS des couches qu elle importe —
 // jamais leurs octets (ADR 0034 D-1, decision V15 (12), lot J3.2).
 func couchesMesurees(t *testing.T) []coucheMesuree {
@@ -108,10 +110,16 @@ func couchesMesurees(t *testing.T) []coucheMesuree {
 			golden:  filepath.Join(film, "grammar", "testdata", "grammar_rev.golden"),
 		},
 		{
-			nom: "facts", revisionDuCode: facts.Rev,
-			horsCouche: []string{"rev.go"},
+			nom: "killsource", revisionDuCode: killsource.Rev,
+			horsCouche: []string{"rev.go", "rev_chronique.go", "rev_chronique_archive.go"},
 			valeurs:    map[string]string{"source": source.Rev, "profile": profile.Rev, "grammar": grammar.Rev},
-			golden:     filepath.Join(film, "facts", "testdata", "facts_rev.golden"),
+			golden:     filepath.Join(film, "facts", "killsource", "testdata", "killsource_rev.golden"),
+		},
+		{
+			nom: "objectives", revisionDuCode: objectives.Rev,
+			horsCouche: []string{"rev.go"},
+			valeurs:    map[string]string{"source": source.Rev},
+			golden:     filepath.Join(film, "facts", "objectives", "testdata", "objectives_rev.golden"),
 		},
 	}
 }
@@ -187,9 +195,9 @@ func TestUneMutationRougitSaCoucheEtCellesQuiEnDependent(t *testing.T) {
 	// la fermeture des imports la RENCONTRE (lot J3.2). `profile` n importe pas `source`, donc
 	// n en depend plus.
 	dependants := map[string][]string{
-		"source":  {"grammar", "facts"},
-		"profile": {"grammar", "facts"},
-		"grammar": {"facts"},
+		"source":  {"grammar", "killsource", "objectives"},
+		"profile": {"grammar", "killsource"},
+		"grammar": {"killsource"},
 	}
 	for mute, attendus := range dependants {
 		for _, aval := range attendus {

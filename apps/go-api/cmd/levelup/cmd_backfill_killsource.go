@@ -33,7 +33,7 @@ package main
 // re-decoder ce qui est deja fait. `--force` redecode tout — c est ce qu il faut le jour ou une
 // revision change.
 //
-// DEUX REVISIONS, DEUX UNITES DE FRAICHEUR (lot 7C) : `facts.Rev` pour le journal des
+// DEUX REVISIONS, DEUX UNITES DE FRAICHEUR (lot 7C) : `killsource.Rev` (`decfilm.Rev`) pour le journal des
 // morts, `IsolationDecoderRev` pour les faits d isolement (`match_lives`,
 // `match_death_context`). Elles evoluent separement — un changement de la regle de visibilite
 // doit refaire les faits d isolement SANS refaire le journal, qui n a pas bouge. La commande

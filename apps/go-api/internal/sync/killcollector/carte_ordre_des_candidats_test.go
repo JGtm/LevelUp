@@ -12,7 +12,8 @@ package killcollector
 // restait vert : `killcollector`, `film/...` et `archlint` compris. Deux raisons, et il faut les
 // dire ensemble : aucun temoin de `hits_carte_par_nom_test.go` ne donne DEUX noms qui resolvent
 // (le seul a deux candidats commence par une carte absente du catalogue), et l'empreinte de
-// `TestFactsRevSuitLesFaits` hache TOUT l arbre `film/facts`, jamais `killcollector`.
+// `TestKillsourceRevSuitLaSortie` hache le perimetre de `film/internal/facts/killsource`,
+// jamais `killcollector`.
 //
 // Le mecanisme d'un repli non teste est un repli dont personne ne verra changer la reponse.
 //

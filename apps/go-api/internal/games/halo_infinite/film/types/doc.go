@@ -75,7 +75,8 @@
 // # LA FORME EST FIGEE, ET UNE MUTATION SANS MONTEE DE REVISION ROUGIT
 //
 // `testdata/shapes.golden` porte, pour chaque type, ses champs, leurs types Go et leurs tags
-// JSON, a cote des revisions des couches qui les produisent (`source.Rev`, `facts.Rev`). Voir
+// JSON, a cote des revisions des couches qui les produisent (`source.Rev`, `killsource.Rev`,
+// `objectives.Rev`). Voir
 // `shapes_test.go` : un golden par type ferait autant de fichiers que de questions ; le document
 // de rejeu, lui, en a UN seul pour tout un arbre.
 package types

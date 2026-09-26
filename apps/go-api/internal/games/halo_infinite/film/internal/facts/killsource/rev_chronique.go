@@ -1,4 +1,4 @@
-package facts
+package killsource
 
 // rev_chronique.go — LA CHRONIQUE DE LA REVISION DES FAITS, ET RIEN D AUTRE.
 //

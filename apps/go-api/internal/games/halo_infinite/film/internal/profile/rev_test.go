@@ -62,7 +62,7 @@ func messagesProfileRev() revision.Messages {
 		Question: "LA TABLE DU DECODEUR A CHANGE : une largeur, une borne, une provenance. La " +
 			"couche `profile` ne lit aucun octet (ADR 0034 D-1) mais elle dit COMMENT les lire — " +
 			"une ligne changee fait lire d autres bits aux memes offsets. `grammar.Rev` hache la " +
-			"VALEUR de cette revision et `facts.Rev` celle de `grammar.Rev` : la monter fait " +
+			"VALEUR de cette revision, `killsource.Rev` aussi (et celle de `grammar.Rev`) : la monter fait " +
 			"monter les deux mecaniquement, et le backlog killsource avec elles (D6).",
 	}
 }

@@ -397,17 +397,19 @@ type EquipmentChangeCoverage struct {
 
 // DecoderCoverage dit SOUS QUELLES RÉVISIONS cet artefact a été cuit (schéma 61).
 //
-// Télémétrie pure : aucun rendu n'en dépend. Les quatre révisions sont celles des calques du
-// décodeur, dans l'ordre du sens unique ; `build` est la clé du profil, lue en clair dans la
-// section 2 de `chunk_00`, et elle est VIDE — le bloc restant présent — quand le film n'écrit
-// pas de build ou quand le profil ne le connaît pas.
+// Télémétrie pure : aucun rendu n'en dépend. Les révisions sont celles des couches révisées du
+// décodeur, dans l'ordre du sens unique — cinq depuis le schéma 72, où `factsRev` s'est scindée
+// en `killsourceRev` et `objectivesRev` (une révision par consommateur de faits) ; `build` est
+// la clé du profil, lue en clair dans la section 2 de `chunk_00`, et elle est VIDE — le bloc
+// restant présent — quand le film n'écrit pas de build ou quand le profil ne le connaît pas.
 type DecoderCoverage struct {
-	SourceRev  string            `json:"sourceRev"`
-	ProfileRev string            `json:"profileRev"`
-	GrammarRev string            `json:"grammarRev"`
-	FactsRev   string            `json:"factsRev"`
-	Build      string            `json:"build"`
-	Registry   *RegistryCoverage `json:"registry,omitempty"`
+	SourceRev     string            `json:"sourceRev"`
+	ProfileRev    string            `json:"profileRev"`
+	GrammarRev    string            `json:"grammarRev"`
+	KillsourceRev string            `json:"killsourceRev"`
+	ObjectivesRev string            `json:"objectivesRev"`
+	Build         string            `json:"build"`
+	Registry      *RegistryCoverage `json:"registry,omitempty"`
 }
 
 // RegistryCoverage CLASSE l'empreinte du registre ECS du film — la grammaire de ses composants.

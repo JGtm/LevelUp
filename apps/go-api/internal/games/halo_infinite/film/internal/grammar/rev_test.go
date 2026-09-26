@@ -118,7 +118,7 @@ func messagesGrammarRev() revision.Messages {
 		Commande:  commandeRegenerationGrammarRev,
 		Question: "LA GRAMMAIRE DE LECTURE A CHANGE : une largeur, un cadre, un ordre de " +
 			"composants, un lecteur neuf. Se demander AUSSI : la SORTIE des faits peut-elle " +
-			"changer ? `facts.Rev` hache la VALEUR de cette revision, donc elle montera " +
+			"changer ? `killsource.Rev` hache la VALEUR de cette revision, donc elle montera " +
 			"mecaniquement — et les lignes de kill deja en base deviennent candidates au backlog " +
 			"de redecodage (D6, signal utilisateur). Le CONTENU CUIT change-t-il ? alors " +
 			"`replay.SchemaVersion` monte a son tour, et `backfill-replay` re-cuit.",

@@ -260,7 +260,7 @@ const plafondSurfaceReplay = 278 // 2026-09-24 — rr(m4b) sur c9ef97ec6 : 275 +
 var plafondsParFamilleFacade = map[string]int{
 	"grammar":    46, // 2026-09-17 — base a5d15e634
 	"objectives": 37,
-	"killsource": 35,
+	"killsource": 36, // 2026-09-26 — lot J3.3 : `decfilm.Rev` renvoie a `killsource.Rev` (la famille `facts` disparait avec son paquet ; total inchange)
 	"fallback":   11,
 	"types":      10,
 	"profile":    8,
@@ -268,7 +268,6 @@ var plafondsParFamilleFacade = map[string]int{
 	"weaponscan": 5,
 	"weaponv3":   4,
 	"positions":  2,
-	"facts":      1,
 }
 
 // TestSurfaceDeLaFacadeDuDecodeur : (a) — le compte par AST, et sa ventilation par famille.

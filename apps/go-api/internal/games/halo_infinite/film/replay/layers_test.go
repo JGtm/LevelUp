@@ -11,7 +11,7 @@ package replay
 //
 //	(1) un champ racine CUIT sans entree ni justification datee  -> la table a un trou
 //	(2) une entree qui nomme un champ racine disparu             -> la table a un perime
-//	(3) une valeur qui n est pas l une des CINQ revisions        -> `layers` deviendrait du texte
+//	(3) une valeur qui n est pas l une des SIX revisions         -> `layers` deviendrait du texte
 //
 // Le quatrieme refus est comportemental : `calquesProduits` doit suivre ses gardes DANS LES DEUX
 // SENS (garde fermee = pas d entree, garde ouverte = entree), sans quoi l absence d une entree ne
@@ -27,7 +27,8 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/internal/facts"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/killsource"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
@@ -104,37 +105,39 @@ func TestCalquesNeNommentQueDesChampsRacineExistants(t *testing.T) {
 	}
 }
 
-// TestCalquesNePortentQueLesCinqRevisionsConnues : LA FERMETURE DES VALEURS. Une chaine libre
+// TestCalquesNePortentQueLesRevisionsConnues : LA FERMETURE DES VALEURS (six depuis le lot J3.3,
+// ou `facts.Rev` s est scindee en `killsource.Rev` et `objectives.Rev`). Une chaine libre
 // dans `layers` ferait de la revision d un calque du texte, que nul verdict ne saurait comparer.
-func TestCalquesNePortentQueLesCinqRevisionsConnues(t *testing.T) {
+func TestCalquesNePortentQueLesRevisionsConnues(t *testing.T) {
 	connues := map[string]string{
 		source.Rev:              "source",
 		profile.Rev:             "profile",
 		grammar.Rev:             "grammar",
-		facts.Rev:               "facts",
+		killsource.Rev:          "kill-feed",
+		objectives.Rev:          "objectifs",
 		revisionDeLaPublication: "publication",
 	}
-	if len(connues) != 5 {
-		t.Fatalf("deux des cinq revisions portent la MEME valeur (%d valeurs distinctes) : "+
+	if len(connues) != 6 {
+		t.Fatalf("deux des six revisions portent la MEME valeur (%d valeurs distinctes) : "+
 			"le verdict par couche ne saurait plus les distinguer", len(connues))
 	}
 	for balise, rev := range couchesDesCalques {
 		if _, ok := connues[rev]; !ok {
-			t.Errorf("le calque %q porte %q, qui n est aucune des cinq revisions connues "+
-				"(source, profile, grammar, facts, publication) — jamais de chaine libre", balise, rev)
+			t.Errorf("le calque %q porte %q, qui n est aucune des six revisions connues "+
+				"(source, profile, grammar, killsource, objectives, publication) — jamais de chaine libre", balise, rev)
 		}
 	}
 }
 
 // TestCalquesRevisionsGardentLeurPrefixe : les valeurs se lisent dans l artefact, et leur prefixe
-// est ce qui dit la couche a un humain comme au badge. `facts.Rev` s orthographie
-// `killsource-...` — l ecart nom de couche / nom de revision est VOULU et doit rester visible.
+// est ce qui dit la couche a un humain comme au badge.
 func TestCalquesRevisionsGardentLeurPrefixe(t *testing.T) {
 	for _, cas := range []struct{ rev, prefixe string }{
 		{source.Rev, "source-"},
 		{profile.Rev, "profile-"},
 		{grammar.Rev, "grammar-"},
-		{facts.Rev, "killsource-"},
+		{killsource.Rev, "killsource-"},
+		{objectives.Rev, "objectives-"},
 		{revisionDeLaPublication, "publication-"},
 	} {
 		if !strings.HasPrefix(cas.rev, cas.prefixe) {
@@ -371,6 +374,28 @@ func TestLayersEstPoseParLaCuisson(t *testing.T) {
 	} {
 		if _, ok := doc.Layers[requete]; ok {
 			t.Errorf("le calque a la requete %q est declare produit par la cuisson", requete)
+		}
+	}
+}
+
+// TestChaqueConsommateurDeFaitsDateUnCalqueNonGarde : LE VERDICT DE RECUISSON RESTE SUR APRES LA
+// SCISSION DES FAITS (lot J3.3).
+//
+// Un calque ne porte qu UNE revision, et quelques-uns lisent les deux consommateurs de faits (les
+// portages et les statistiques de la bombe). Le verdict (`replaybuild.Digest.decodageIntact`)
+// reste sur tant que CHAQUE famille est declaree par au moins un calque que sa passe produit
+// toujours : une montee de l une ou de l autre se voit alors sur tout document assemble.
+func TestChaqueConsommateurDeFaitsDateUnCalqueNonGarde(t *testing.T) {
+	for _, rev := range []string{killsource.Rev, objectives.Rev} {
+		var nonGardes []string
+		for balise, r := range couchesDesCalques {
+			if _, garde := gardesDeProduction[balise]; r == rev && !garde {
+				nonGardes = append(nonGardes, balise)
+			}
+		}
+		if len(nonGardes) == 0 {
+			t.Errorf("aucun calque NON GARDE ne porte %q : une montee de cette revision passerait "+
+				"inapercue sur un document ou ses calques gardes n ont pas tourne", rev)
 		}
 	}
 }

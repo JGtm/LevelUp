@@ -1,4 +1,4 @@
-package facts
+package killsource
 
 // rev_chronique_archive.go — LES RANGS ANCIENS DE LA CHRONIQUE DES FAITS.
 //

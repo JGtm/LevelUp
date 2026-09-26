@@ -1,0 +1,24 @@
+# GOLDEN — LE COUPLE (REVISION DE LA SORTIE DES OBJECTIFS, EMPREINTE DE SON PERIMETRE). Ne PAS
+# editer a la main.
+#
+# Une ligne de donnees par rang : la revision, une TABULATION, l empreinte SHA-256 du perimetre de
+# la couche (la fermeture des imports de production de internal/games/halo_infinite/film/internal/facts/objectives/,
+# flux de jetons, `rev.go` exclu — il DECRIT la couche) et de la valeur de `source.Rev`. Les
+# lignes vides et celles qui commencent par # sont de la prose. LA DERNIERE LIGNE DE DONNEES EST
+# LA COURANTE.
+#
+#   empreinte differente            la couche a change  -> DECIDER, monter la revision si la
+#                                   sortie des objectifs change, puis regenerer.
+#   empreinte egale, revision non   la revision a bouge sans la couche.
+#
+# REGENERATION (les deux valeurs a la fois, jamais l une sans l autre) :
+#
+#   LEVELUP_UPDATE_OBJECTIVES_REV=1 go test ./internal/games/halo_infinite/film/internal/facts/objectives/ \
+#     -run TestObjectivesRevSuitLaSortie -update-objectives-rev
+#
+# HISTORIQUE DES MOUVEMENTS DE CE COUPLE
+#
+#   2026-09-26  NAISSANCE (lot J3.3 du PLAN_SUITE_AUDIT_DECODEUR_FILM_2026-09-25, DU-2 (c)). La
+#               revision unique de l arbre des faits est remplacee par une revision par
+#               consommateur ; aucune sortie ne change a ce rang.
+objectives-2026-09-26	542d13730ab183c5d80e7179d7c647dbf4c2dac061b404a77489bf8b95348100

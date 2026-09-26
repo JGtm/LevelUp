@@ -17,7 +17,8 @@
 #                                   golden non regenere apres une montee legitime.
 #
 # CE QU UNE MONTEE VEUT DIRE ICI, ET C EST LE PLUS LARGE DU CHANTIER : la couche `source` est LA
-# PORTE AUX OCTETS (ADR 0034 D-2). Tout re-decode. `facts.Rev` hache la VALEUR de cette revision,
+# PORTE AUX OCTETS (ADR 0034 D-2). Tout re-decode. Les couches qui l importent (`grammar`,
+# `killsource`, `objectives`) hachent la VALEUR de cette revision,
 # donc une montee fait monter les faits mecaniquement — et le backlog killsource part sur SIGNAL
 # UTILISATEUR (D6), jamais automatiquement.
 #

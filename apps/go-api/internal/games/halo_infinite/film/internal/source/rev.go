@@ -11,8 +11,9 @@ package source
 // document cuit, pas de ligne de kill dont on puisse dire qu il n est pas concerne.
 //
 // C est aussi la raison pour laquelle elle est la PREMIERE des quatre (decision V15 (11) du
-// PLAN_DECODEUR_FILM_2026-09-13) : `facts.Rev` hache sa VALEUR (V15 (12)), donc un changement
-// de lecture d octets fait monter les faits MECANIQUEMENT, sans que personne ait a y penser.
+// PLAN_DECODEUR_FILM_2026-09-13) : les couches qui l importent hachent sa VALEUR (V15 (12)), donc
+// un changement de lecture d octets fait monter les faits MECANIQUEMENT, sans que personne ait a
+// y penser.
 //
 // # CE QUI EST HACHE, ET CE QUI NE L EST PAS
 //

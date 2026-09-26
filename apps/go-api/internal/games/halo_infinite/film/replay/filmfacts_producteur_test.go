@@ -19,8 +19,9 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/internal/facts"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/killsource"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
@@ -217,7 +218,8 @@ func TestFaitsDUnSchemaAnterieurSontRefusesSurLEnTete(t *testing.T) {
 	entry := goldenEntryPourTest(t)
 	f := fichierTemoin(t)
 	f.Coverage.SourceRev, f.Coverage.ProfileRev = source.Rev, profile.Rev
-	f.Coverage.GrammarRev, f.Coverage.FactsRev = grammar.Rev, facts.Rev
+	f.Coverage.GrammarRev, f.Coverage.KillsourceRev = grammar.Rev, killsource.Rev
+	f.Coverage.ObjectivesRev = objectives.Rev
 	blob, err := EncodeFilmFactsFile(f)
 	if err != nil {
 		t.Fatalf("encodage : %v", err)

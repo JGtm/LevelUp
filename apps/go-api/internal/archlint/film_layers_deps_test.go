@@ -235,10 +235,9 @@ var couchesDuDecodeur = map[string]coucheFilm{
 
 	// --- facts : de la chronologie brute aux faits du match (vies, identite, tirs, morts,
 	// objectifs, equipement, vehicules), chacun avec ses compteurs de couverture.
-	// La RACINE de l arbre des faits ne porte qu une chose : `facts.Rev`, la revision de la
-	// couche (lot 2.6.1, descendue de `sync/killcollector`). Elle se classe `facts` — c est la
-	// couche qu elle date — et n importe rien : une constante n a pas de dependance.
-	"internal/games/halo_infinite/film/internal/facts":            coucheFacts,
+	// La RACINE de l arbre des faits n est plus un paquet depuis le lot J3.3 (2026-09-26) : elle ne
+	// portait que `facts.Rev`, remplacee par une revision par consommateur (`killsource.Rev`,
+	// `objectives.Rev`), chacune dans son paquet.
 	"internal/games/halo_infinite/film/internal/facts/killsource": coucheFacts,
 	// `fallback` (le REGISTRE des replis, D10 bis) etait une feuille de `replay` ; il descend en
 	// `facts/fallback` au lot 2.5.d.1 (2026-09-16) et se classe DESORMAIS `facts`, avec son

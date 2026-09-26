@@ -24,7 +24,8 @@ func CouchesRevisees() []Couche {
 		{Nom: "source", Racine: racineDesCouches + "source"},
 		{Nom: "profile", Racine: racineDesCouches + "profile"},
 		{Nom: "grammar", Racine: racineDesCouches + "grammar"},
-		{Nom: "facts", Racine: racineDesCouches + "facts"},
+		{Nom: "killsource", Racine: racineDesCouches + "facts/killsource"},
+		{Nom: "objectives", Racine: racineDesCouches + "facts/objectives"},
 	}
 }
 

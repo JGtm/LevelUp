@@ -2596,3 +2596,32 @@ package replay
 // slot 538, frame 1378) est lue re-annonce et son arme au sol perd son preneur (plan, §8). Tete
 // contre `c9eb3b6bd` (M4b) : 0 ecart, M8 et M7b ne changent aucun document decode de ces temoins.
 // G1 re-mesure au code integre sur `81c02726` : 6/6, 0 au temoin -60 s, 0 hors monture.
+
+// v72 (2026-09-26, jalon J3 du PLAN_SUITE_AUDIT_DECODEUR_FILM_2026-09-25, lot J3.3, decision
+// DU-2 (c)) : UNE REVISION PAR CONSOMMATEUR DE FAITS. La revision unique de l arbre des faits
+// (`facts.Rev`, orthographiee `killsource-...`) datait a la fois la sortie du kill-feed et celle
+// des objectifs : une correction d objectifs rouvrait le backlog killsource pour des lignes de kill
+// que rien n avait changees. Elle est remplacee par `killsource.Rev` (MEME VALEUR,
+// `killsource-2026-09-24` : aucun backlog rouvert) et `objectives.Rev` (NEE a ce lot,
+// `objectives-2026-09-26`).
+//
+//	`coverage.     `factsRev` DISPARAIT ; `killsourceRev` et `objectivesRev` le remplacent, dans
+//	decoder`       l ordre du sens unique (apres `grammarRev`). C est la FORME du bloc qui change,
+//	               d ou la montee.
+//	`layers`       les calques jusqu ici dates `killsource-...` portent la revision PRECISE de
+//	               leur consommateur : `roster`, `neutralDeaths`, `equipmentEpisodes` gardent
+//	               `killsource-2026-09-24` ; `identity`, `objectives`, `scoreTimeline`,
+//	               `flagCarries`, `flagReturnZone`, `vipCrown`, `skullCarries` et les quatre
+//	               calques de la bombe passent a `objectives-2026-09-26` (table `couchesDesCalques`).
+//
+//	CE QUI MONTE    `SchemaVersion` 71 -> 72 ; le codec des faits (`VersionCodecFaits` 1 -> 2 :
+//	AVEC ELLE       l en-tete porte les revisions par consommateur). AUCUNE revision de decodage
+//	                ne monte : `source`, `profile`, `grammar` et `killsource` gardent leur valeur,
+//	                leurs empreintes sont recopiees a revision constante (outillage des lots J3.1
+//	                et J3.2).
+//
+//	LE PARC         un artefact 71 se lit « decodage intact » (ses familles `grammar` et
+//	                `killsource` portent les valeurs courantes ; `objectives` n y figure pas) et
+//	                « schema perime » : verdict `republier`. Mais ses faits persistes sont du codec
+//	                1, refuses sur leur prefixe : la cuisson les ecarte, REDECODE le film et ecrit
+//	                des faits du codec 2. La vague unique du jalon J11 le fait pour tout le parc.

@@ -60,7 +60,8 @@ func messagesSourceRev() revision.Messages {
 		Commande:  commandeRegenerationSourceRev,
 		Question: "LA LECTURE DES OCTETS A CHANGE : TOUT RE-DECODE. La couche `source` est la " +
 			"porte aux octets (ADR 0034 D-2) — aucun fait, aucun document cuit, aucune ligne de " +
-			"kill n est hors de portee. `facts.Rev` hache la VALEUR de cette revision : la " +
+			"kill n est hors de portee. `grammar.Rev`, `killsource.Rev` et `objectives.Rev` " +
+			"hachent la VALEUR de cette revision : la " +
 			"monter fait monter les faits mecaniquement, et le backlog killsource avec eux (D6).",
 	}
 }

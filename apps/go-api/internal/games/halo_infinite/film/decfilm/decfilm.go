@@ -68,7 +68,6 @@ import (
 	"levelup/go-api/internal/domain/highlightevent"
 	"levelup/go-api/internal/domain/playerposition"
 	"levelup/go-api/internal/games/halo_infinite/film/damagetag"
-	"levelup/go-api/internal/games/halo_infinite/film/internal/facts"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/killsource"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
@@ -82,7 +81,10 @@ import (
 )
 
 // ---- facts ----
-const Rev = facts.Rev
+// Rev est la revision de la SORTIE KILLSOURCE (`killsource.Rev`), celle que `sync/killcollector`
+// ecrit dans `decoder_rev` et que le backlog compare. Elle s appelait `facts.Rev` jusqu au lot J3.3
+// (2026-09-26, une revision par consommateur de faits) ; la valeur n a pas change.
+const Rev = killsource.Rev
 
 // ---- fallback ----
 type Compteur = fallback.Compteur

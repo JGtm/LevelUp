@@ -63,7 +63,7 @@ import (
 
 // CreditDecoderRev — la version du producteur credit-seul.
 //
-// Elle est du meme espace que [facts.Rev] (la colonne `decoder_rev` est commune) mais
+// Elle est du meme espace que `killsource.Rev` (`decfilm.Rev` ; la colonne `decoder_rev` est commune) mais
 // designe un AUTRE producteur : c est elle qui permettra de rejouer les matchs credit-seul sans
 // toucher aux matchs decodes depuis un film.
 const CreditDecoderRev = "highlight-credit-2026-08-01"

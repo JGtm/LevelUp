@@ -117,7 +117,7 @@ func (c *KillSourceCollector) writeIsolationFacts(ctx context.Context, matchID s
 // IsolationDecoderRev — la version du producteur des faits d'isolement, ecrite sur CHAQUE ligne
 // des deux tables.
 //
-// ELLE EST DISTINCTE DE [facts.Rev] parce que les deux passes evoluent separement :
+// ELLE EST DISTINCTE DE `killsource.Rev` (`decfilm.Rev`) parce que les deux passes evoluent separement :
 // un changement de la regle de visibilite ou de l'ordre des etats doit faire redecoder les faits
 // d'isolement SANS forcer un redecodage du journal des morts, qui n'a pas bouge. Meme espace de
 // valeurs, meme colonne `decoder_rev`, unites de fraicheur differentes.
@@ -136,7 +136,7 @@ func (c *KillSourceCollector) writeIsolationFacts(ctx context.Context, matchID s
 // `match_lives_latest` porte la revision COURANTE ; tous les matchs qui ont des positions ET des
 // equipes sortent de cette selection, sont re-decodes, et ecrivent une NOUVELLE PASSE dans les
 // deux tables (append-only, ADR 0026 — les vues `_latest` basculent d'un bloc). Le journal des
-// morts, lui, n'est PAS reecrit : [facts.Rev] ne bouge pas, et c'est tout l'objet des
+// morts, lui, n'est PAS reecrit : `killsource.Rev` ne bouge pas, et c'est tout l'objet des
 // deux revisions separees. Commande : `levelup backfill-killsource`.
 //
 // # POURQUOI ELLE BOUGE UNE SECONDE FOIS LE 2026-09-08 (lot E2, lien direct corps -> joueur)

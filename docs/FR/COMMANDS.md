@@ -929,7 +929,7 @@ main sur les artefacts conservés pour les nommer — pendant qu'un témoin en E
 
 **La télémétrie et les compteurs de rejet ne sont pas des pertes (2026-09-17, lot 3.3.3)** : le
 verdict comptait deux familles qu'il n'avait pas à compter. **La télémétrie** —
-`coverage.decoder.{sourceRev, profileRev, grammarRev, factsRev}`, `coverage.decoder.build`,
+`coverage.decoder.{sourceRev, profileRev, grammarRev, killsourceRev, objectivesRev}` (`factsRev` jusqu'au schéma 71), `coverage.decoder.build`,
 `coverage.decoder.registry.fingerprint` — dit quelle VERSION du décodeur a cuit l'artefact, pas ce
 que le match contient. Ces feuilles étaient NEUVES au lot 2.6, donc comptées en gains ; depuis le
 schéma 61 elles sont partagées, si bien que tout lot qui fait monter une révision les faisait
