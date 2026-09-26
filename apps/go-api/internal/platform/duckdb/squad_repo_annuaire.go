@@ -47,6 +47,26 @@
 // 7 190 matchs (ses participants n'ont pas de gamertag), aucun dans une ligne servie. Les 269
 // rivaux sans alias ni nom de participant (JGtm, Madina97294, Chocoboflor) y ont le nom de la vue.
 // Comparer : zero ecart sur les 53 061 xuids de la base (la lecture couvre tout leur historique).
+//
+// # LA PORTEE BASE (lot A du plan perf « lectures par perimetre », 2026-09-26, ADR 0036 I1)
+//
+// Lecteurs : vue match Q12 GetMatchScoreboard, Q21 GetMatchEvents, Q23 GetMatchEncounters
+// (match_view_repo_scoreboard.go, match_view_repo_noms.go ; Q23b n'a plus de nom du tout),
+// GamertagRepo.ResolveGamertags (evenements de match), Relations Q28 GetRelations et heatmap Q29
+// GetRelationsHeatmap. Restreint aux matchs de la lecture, l'annuaire perdait des noms que la vue
+// trouve AILLEURS (11 couples (match, joueur) de la vue match, 2 lignes de Relations). En portee
+// base (nommerLignesPorteeBase), alias et participants se lisent sur toute la base (le MAX de la
+// vue, predicats sur des TABLES), le kill-feed d'abord sur les matchs de la lecture, puis sur toute
+// la base pour les seuls xuids encore sans nom (lireKillFeedBase).
+//
+// Mesure sur la copie de production du 2026-09-23 (2 threads, 512 Mo) : zero ecart de nom sur les
+// 93 000 lignes de Q12 et les 1 311 594 events de Q21 (tous les matchs), les 2 625 lignes de Q23 /
+// Q23b et les 1 853 xuids de ResolveGamertags (279 couples match / joueur), les 12 289 lignes de
+// Relations et les 1 265 de la heatmap (cinq joueurs suivis, periode entiere et 30 matchs). Sans le
+// dernier repli : exactement les 11 + 2 noms perdus. Cout : l'annuaire d'un match coute moins de
+// 10 ms ; le repli toute la base evalue la fenetre `_latest` du journal canonique entiere (3 a 7 s,
+// davantage sous charge) — il part pour 23 des 1 160 matchs de JGtm, 4 688 des 7 190 de Nuzzles et
+// les Relations de Nuzzles (journal P2 du plan).
 package duckdb
 
 import (
@@ -72,10 +92,22 @@ type accesLigne[T any] struct {
 // charge l'annuaire UNE fois sur les matchs de la lecture, applique la cascade. C'est le seul
 // chemin par lequel les lectures de l'en-tete nomment leurs lignes.
 func nommerLignes[T any](ctx context.Context, db *sql.DB, matchIDs []string, lignes []T, acces accesLigne[T]) error {
+	return nommerLignesSelon(ctx, db, lectureANommer{matchIDs: matchIDs}, lignes, acces)
+}
+
+// nommerLignesPorteeBase : nommerLignes en « portée base » (lot A, DA.3 — vue match, Relations) :
+// même collecte, même cascade, l'annuaire lu comme la vue (cf. lectureANommer.porteeBase).
+func nommerLignesPorteeBase[T any](ctx context.Context, db *sql.DB, matchIDs []string, lignes []T, acces accesLigne[T]) error {
+	return nommerLignesSelon(ctx, db, lectureANommer{matchIDs: matchIDs, porteeBase: true}, lignes, acces)
+}
+
+// nommerLignesSelon : le chemin commun des deux portées. `lecture` porte les matchs lus et la
+// portée ; les xuids (et leur match) sont collectés ici, sur les lignes.
+func nommerLignesSelon[T any](ctx context.Context, db *sql.DB, lecture lectureANommer, lignes []T, acces accesLigne[T]) error {
 	if len(lignes) == 0 {
 		return nil
 	}
-	lecture := lectureANommer{matchIDs: matchIDs, xuids: make([]string, len(lignes))}
+	lecture.xuids = make([]string, len(lignes))
 	if acces.match != nil {
 		lecture.matchs = make([]string, len(lignes))
 	}
@@ -101,6 +133,11 @@ type lectureANommer struct {
 	xuids    []string
 	matchs   []string // matchs[i] = match de xuids[i] ; nil = inconnu (lecture agregee)
 	matchIDs []string
+	// porteeBase : l'annuaire lit les alias et les participants sur TOUTE la base (le MAX de la
+	// vue), puis le kill-feed des matchs de la lecture, puis celui de toute la base pour les
+	// seuls xuids encore sans nom — la semantique de la vue, ecarts (i) a (iii) de DA.3 / DA.4
+	// mis a part. Faux : portee de la lecture (lots L2, L7), inchangee.
+	porteeBase bool
 }
 
 // matchsKillFeed rend les matchs ou la jambe kill-feed cherche les xuids restants : ceux ou la
@@ -162,8 +199,9 @@ func (l lectureANommer) matchsDesLignes(restants []string) []string {
 // annuaireDeLecture charge l'annuaire des xuids d'une lecture, restreint a ses matchs.
 //
 // `db` est la connexion shared DEJA acquise par la lecture (aucun second Get sous timeout).
-// Sans xuid a nommer ou sans match : annuaire vide (Resolve rend alors le nom des bots et le
-// libelle masque, rien d'autre — un appelant qui lit des lignes a toujours des matchs).
+// Sans xuid a nommer, ou sans match en portee de la lecture : annuaire vide (Resolve rend alors
+// le nom des bots et le libelle masque, rien d'autre — un appelant qui lit des lignes a toujours
+// des matchs). En portee base, sans match : alias, participants et kill-feed de toute la base.
 func annuaireDeLecture(ctx context.Context, db *sql.DB, lecture lectureANommer) (analysis.AnnuaireGamertags, error) {
 	a := analysis.AnnuaireGamertags{
 		Alias:        map[string]string{},
@@ -171,22 +209,22 @@ func annuaireDeLecture(ctx context.Context, db *sql.DB, lecture lectureANommer) 
 		KillFeed:     map[string]string{},
 	}
 	cherches := xuidsANommer(lecture.xuids)
-	if len(cherches) == 0 || len(lecture.matchIDs) == 0 {
+	if len(cherches) == 0 || (len(lecture.matchIDs) == 0 && !lecture.porteeBase) {
 		return a, nil
 	}
 	debut := time.Now()
-	if err := lireAliasEtParticipants(ctx, db, cherches, lecture.matchIDs, &a); err != nil {
+	if err := lireAliasEtParticipants(ctx, db, cherches, lecture, &a); err != nil {
 		return a, err
 	}
-	restants := xuidsSansAliasNiParticipant(cherches, a)
-	var matchsKF []string
-	if len(restants) > 0 {
-		var err error
-		if matchsKF, err = lecture.matchsKillFeed(ctx, db, restants); err != nil {
-			return a, err
-		}
-		if len(matchsKF) > 0 {
-			if err := lireKillFeed(ctx, db, restants, matchsKF, &a); err != nil {
+	restants := xuidsSansNom(cherches, a)
+	matchsKF, err := lireKillFeedDeLaLecture(ctx, db, lecture, restants, &a)
+	if err != nil {
+		return a, err
+	}
+	var horsLecture []string
+	if lecture.porteeBase {
+		if horsLecture = xuidsSansNom(restants, a); len(horsLecture) > 0 {
+			if err := lireKillFeedBase(ctx, db, horsLecture, &a); err != nil {
 				return a, err
 			}
 		}
@@ -194,8 +232,24 @@ func annuaireDeLecture(ctx context.Context, db *sql.DB, lecture lectureANommer) 
 	slog.DebugContext(ctx, "squad_annuaire",
 		"xuids", len(cherches), "sans_alias_ni_participant", len(restants),
 		"nommes_par_kill_feed", len(a.KillFeed), "matchs", len(lecture.matchIDs),
-		"matchs_kill_feed", len(matchsKF), "duration_ms", time.Since(debut).Milliseconds())
+		"matchs_kill_feed", len(matchsKF), "portee_base", lecture.porteeBase,
+		"kill_feed_toute_la_base", len(horsLecture), "duration_ms", time.Since(debut).Milliseconds())
 	return a, nil
+}
+
+// lireKillFeedDeLaLecture lit le niveau 4 sur les matchs de la lecture pour les xuids restants
+// (ceux ou la lecture les a rencontres, cf. matchsKillFeed) ; rend ces matchs.
+func lireKillFeedDeLaLecture(
+	ctx context.Context, db *sql.DB, lecture lectureANommer, restants []string, a *analysis.AnnuaireGamertags,
+) ([]string, error) {
+	if len(restants) == 0 || len(lecture.matchIDs) == 0 {
+		return nil, nil
+	}
+	matchsKF, err := lecture.matchsKillFeed(ctx, db, restants)
+	if err != nil || len(matchsKF) == 0 {
+		return matchsKF, err
+	}
+	return matchsKF, lireKillFeed(ctx, db, restants, matchsKF, a)
 }
 
 // xuidsANommer rend les xuids distincts a chercher en base. Les bots en sont exclus : leur nom
@@ -216,26 +270,31 @@ func xuidsANommer(xuids []string) []string {
 	return out
 }
 
-// xuidsSansAliasNiParticipant : les xuids que seul le kill-feed pourrait encore nommer.
-func xuidsSansAliasNiParticipant(xuids []string, a analysis.AnnuaireGamertags) []string {
+// xuidsSansNom : les xuids qu'aucun niveau lu jusqu'ici ne nomme (les bots n'y sont jamais :
+// xuidsANommer les a ecartes).
+func xuidsSansNom(xuids []string, a analysis.AnnuaireGamertags) []string {
 	var out []string
 	for _, x := range xuids {
-		if a.Alias[x] == "" && a.Participants[x] == "" {
+		if !a.Nomme(x) {
 			out = append(out, x)
 		}
 	}
 	return out
 }
 
-// lireAliasEtParticipants lit les niveaux 2 et 3 (une requete).
+// lireAliasEtParticipants lit les niveaux 2 et 3 (une requete) : participants des matchs de la
+// lecture, ou de toute la base en portee base.
 func lireAliasEtParticipants(
-	ctx context.Context, db *sql.DB, xuids, matchIDs []string, a *analysis.AnnuaireGamertags,
+	ctx context.Context, db *sql.DB, xuids []string, lecture lectureANommer, a *analysis.AnnuaireGamertags,
 ) error {
-	q := analysis.AnnuaireNomsSQL(Placeholders(len(xuids)), Placeholders(len(matchIDs)))
-	args := make([]any, 0, 2*len(xuids)+len(matchIDs))
+	q := analysis.AnnuaireNomsBaseSQL(Placeholders(len(xuids)))
+	args := make([]any, 0, 2*len(xuids)+len(lecture.matchIDs))
 	args = append(args, ToAnySlice(xuids)...)
 	args = append(args, ToAnySlice(xuids)...)
-	args = append(args, ToAnySlice(matchIDs)...)
+	if !lecture.porteeBase {
+		q = analysis.AnnuaireNomsSQL(Placeholders(len(xuids)), Placeholders(len(lecture.matchIDs)))
+		args = append(args, ToAnySlice(lecture.matchIDs)...)
+	}
 	rows, err := db.QueryContext(ctx, q, args...)
 	if err != nil {
 		return fmt.Errorf("annuaire (alias, participants): %w", err)
@@ -275,6 +334,25 @@ func lireKillFeed(
 		var xuid, gamertag string
 		if err := rows.Scan(&xuid, &gamertag); err != nil {
 			return fmt.Errorf("annuaire (kill-feed) scan: %w", err)
+		}
+		a.KillFeed[xuid] = gamertag
+	}
+	return rows.Err()
+}
+
+// lireKillFeedBase lit le niveau 4 sur TOUTE la base pour les xuids que rien d'autre ne nomme
+// (portee base, DA.3) : la jambe de la vue sans restriction de match — la fenetre `_latest` du
+// journal canonique y est evaluee en entier (cout mesure au journal P2 du plan).
+func lireKillFeedBase(ctx context.Context, db *sql.DB, xuids []string, a *analysis.AnnuaireGamertags) error {
+	rows, err := db.QueryContext(ctx, analysis.AnnuaireKillFeedBaseSQL(Placeholders(len(xuids))), ToAnySlice(xuids)...)
+	if err != nil {
+		return fmt.Errorf("annuaire (kill-feed, toute la base): %w", err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var xuid, gamertag string
+		if err := rows.Scan(&xuid, &gamertag); err != nil {
+			return fmt.Errorf("annuaire (kill-feed, toute la base) scan: %w", err)
 		}
 		a.KillFeed[xuid] = gamertag
 	}

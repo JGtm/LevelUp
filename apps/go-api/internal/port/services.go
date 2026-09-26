@@ -298,12 +298,14 @@ type MatchEventsService interface {
 	GetMatchEvents(ctx context.Context, matchID string, opts canonical.MatchEventOptions) (*canonical.MatchEventTimeline, error)
 }
 
-// GamertagResolver résout un set BORNÉ de xuid → gamertag via le chokepoint
-// canonique (v_gamertag_lookup). Les xuid non résolus (orphelins hors sources)
-// sont ABSENTS de la map — le caller laisse l'identité sans gamertag et le rendu
-// applique le masquage (front displayPlayerName). Implémenté par duckdb.GamertagRepo.
+// GamertagResolver résout un set BORNÉ de xuid → gamertag, les xuids d'un MATCH (matchID) : la
+// cascade de la vue canonique des noms, lue par l'annuaire du match en portée base (lot A du plan
+// perf « lectures par périmètre », ADR 0036 I1). Seuls les xuids que la cascade NOMME (bot,
+// alias, participant, kill-feed) sont dans la map ; les autres en sont ABSENTS — le caller laisse
+// l'identité sans gamertag et le rendu applique le masquage (front displayPlayerName, même
+// libellé qu'analysis.MaskedXuidLabel). Implémenté par duckdb.GamertagRepo.
 type GamertagResolver interface {
-	ResolveGamertags(ctx context.Context, xuids []string) (map[string]string, error)
+	ResolveGamertags(ctx context.Context, matchID string, xuids []string) (map[string]string, error)
 }
 
 // MatchExclusionService gère le marquage et la liste des matchs non pertinents.

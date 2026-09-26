@@ -6,7 +6,8 @@ package duckdb
 // La vue canonique des noms n'accepte aucun filtre poussé (agrégats en FULL OUTER JOIN) : chaque
 // lecture la matérialise EN ENTIER, 1,7 à 3 s sur la base de production. Les lectures Escouade
 // (L2), Carrière (L7) et les amis des rencontres (L9-go) nomment leurs lignes sans elle
-// (squad_repo_annuaire.go, career_repo_friends.go). Ce test fige, fichier par fichier, les
+// (squad_repo_annuaire.go, career_repo_friends.go), la vue match et Relations aussi (lot A,
+// 2026-09-26). Ce test fige, fichier par fichier, les
 // occurrences de l'IDENTIFIANT NU `v_gamertag_lookup` dans les littéraux de chaîne de TOUS les
 // paquets de internal/ (hors tests) : en ajouter une — lecture, gabarit construit par
 // concaténation, constante nommant la vue — le fait échouer ; en retirer une aussi, pour que la
@@ -35,7 +36,7 @@ import (
 var identifiantDeLaVueDesNoms = regexp.MustCompile(`\bv_gamertag_lookup\b`)
 
 // occurrencesDeLaVueRestantes : fichier (relatif à internal/) -> occurrences permises, et
-// pourquoi elles restent. Datée du 2026-09-23 (lots L7 et L9-go).
+// pourquoi elles restent. Datée du 2026-09-23 (lots L7 et L9-go), descendue le 2026-09-26 (lot A).
 var occurrencesDeLaVueRestantes = map[string]int{
 	// ── DDL et migrations : la vue se crée, se répare et se vérifie quelque part.
 	"analysis/identity.go":                                1, // CREATE OR REPLACE VIEW : la SOURCE UNIQUE du DDL
@@ -47,14 +48,12 @@ var occurrencesDeLaVueRestantes = map[string]int{
 	"validation/gate.go":                                  2, // le gate vérifie que la vue existe (libellé + nom)
 	// ── Lectures consignées (lot L7, plan perf §9 ter, journal (a) à (f)) : coût mesuré, non
 	// mécaniques ou hors pages, chacune à retirer avec sa lecture.
-	"platform/duckdb/explorer_repo.go":             1, // Explorer : ResolveXUIDByGamertag, un joueur cherché par NOM — plus lue par la Carrière (amis : career_repo_friends.go, lot L9-go)
-	"platform/duckdb/gamertag_repo.go":             1, // ResolveGamertags : des xuids sans matchs
-	"platform/duckdb/leaderboard_world_repo.go":    1, // classement mondial
-	"platform/duckdb/media_repo_filters.go":        1, // Médias : lobbies des matchs
-	"platform/duckdb/queries_career_encounters.go": 2, // Relations : Q28 et Q28 scopé
-	"platform/duckdb/queries_match.go":             3, // vue match : Q12 tableau de score (lecture + commentaire SQL), Q21 événements
-	"platform/duckdb/queries_match_detail.go":      2, // vue match : Q23 et Q23b
-	"platform/duckdb/queries_relations_moments.go": 1, // Relations : heatmap Q29
+	"platform/duckdb/explorer_repo.go":          1, // Explorer : ResolveXUIDByGamertag, un joueur cherché par NOM — plus lue par la Carrière (amis : career_repo_friends.go, lot L9-go)
+	"platform/duckdb/leaderboard_world_repo.go": 1, // classement mondial
+	"platform/duckdb/media_repo_filters.go":     1, // Médias : lobbies des matchs
+	// Lot A du plan perf « lectures par périmètre » (2026-09-26, ADR 0036) : vue match (Q12,
+	// Q21, Q23, Q23b), ResolveGamertags, Relations (Q28, Q28 scopé, heatmap Q29) sont sorties de
+	// la table — nommées par l'annuaire en portée base (squad_repo_annuaire.go).
 	// ── Lectures du sync, hors pages : consignées le 2026-09-23 (lot L9-go) — le ratchet de L7
 	// ne les voyait pas (autre paquet).
 	"sync/killcollector/credit_annuaire.go": 1, // annuaire d'une passe de crédit, chargé une fois par passe

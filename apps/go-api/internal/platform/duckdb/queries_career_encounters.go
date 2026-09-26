@@ -139,10 +139,11 @@ LIMIT 10`
 //	?6 kv_stats WHERE killer_xuid = ?
 //	?7 kv_stats WHERE OR victim_xuid = ?
 //
-// Colonnes SELECT (15, scannées dans cet ordre) : xuid, gamertag,
-// count_together, ally_count, enemy_count, wins_as_ally, losses_as_ally,
-// wins_vs_enemy, losses_vs_enemy, kills_dealt, deaths_suffered, avg_kda_with,
-// avg_kda_against, first_seen_at, last_seen_at.
+// Colonnes SELECT (14, scannées dans cet ordre) : xuid, count_together, ally_count,
+// enemy_count, wins_as_ally, losses_as_ally, wins_vs_enemy, losses_vs_enemy, kills_dealt,
+// deaths_suffered, avg_kda_with, avg_kda_against, first_seen_at, last_seen_at. AUCUN GAMERTAG
+// (lot A, 2026-09-26, ADR 0036 I1 ; ici et dans la variante scopée) : GetRelations nomme les
+// lignes par l'annuaire en portée base, sur l'historique du joueur ou sur le périmètre scopé.
 var Q28RelationsTpl = `
 WITH my_history AS (
     SELECT match_id, team_id, outcome
@@ -200,7 +201,6 @@ kv_stats AS (
 )
 SELECT
     es.xuid,
-    COALESCE(vg.gamertag, ('Joueur ' || RIGHT(es.xuid, 4))) AS gamertag,
     es.count_together,
     es.ally_count,
     es.enemy_count,
@@ -215,7 +215,6 @@ SELECT
     es.first_seen_at,
     es.last_seen_at
 FROM encounter_stats es
-LEFT JOIN v_gamertag_lookup vg ON vg.xuid = es.xuid
 LEFT JOIN kv_stats kv ON kv.xuid = es.xuid
 ORDER BY es.count_together DESC, es.xuid ASC`
 
@@ -303,7 +302,6 @@ kv_stats AS (
 )
 SELECT
     es.xuid,
-    COALESCE(vg.gamertag, ('Joueur ' || RIGHT(es.xuid, 4))) AS gamertag,
     es.count_together,
     es.ally_count,
     es.enemy_count,
@@ -318,7 +316,6 @@ SELECT
     es.first_seen_at,
     es.last_seen_at
 FROM encounter_stats es
-LEFT JOIN v_gamertag_lookup vg ON vg.xuid = es.xuid
 LEFT JOIN kv_stats kv ON kv.xuid = es.xuid
 ORDER BY es.count_together DESC, es.xuid ASC`
 

@@ -8,7 +8,7 @@ import (
 )
 
 // TestGamertagRepo_ResolveGamertags valide la résolution batch xuid → gamertag
-// via le chokepoint v_gamertag_lookup (sur SharedReader, vue bare), utilisée par
+// par l'annuaire du match en portée base (lot A, sur SharedReader), utilisée par
 // l'enrichissement des identités de la timeline d'events (MatchEventsService).
 func TestGamertagRepo_ResolveGamertags(t *testing.T) {
 	pdb := newTestPlayerDB(t)
@@ -22,7 +22,7 @@ func TestGamertagRepo_ResolveGamertags(t *testing.T) {
 	repo := NewGamertagRepo(pdb.SharedReadDB())
 
 	// Dédup (x1 deux fois) + vide ignoré ; xMissing absent du référentiel → exclu.
-	got, err := repo.ResolveGamertags(ctx, []string{"x1", "x2", "x1", "", "xMissing"})
+	got, err := repo.ResolveGamertags(ctx, "m1", []string{"x1", "x2", "x1", "", "xMissing"})
 	if err != nil {
 		t.Fatalf("ResolveGamertags: %v", err)
 	}
@@ -33,7 +33,7 @@ func TestGamertagRepo_ResolveGamertags(t *testing.T) {
 		t.Errorf("xuid orphelin ne doit PAS apparaître (masqué au rendu front): %+v", got)
 	}
 
-	empty, err := repo.ResolveGamertags(ctx, nil)
+	empty, err := repo.ResolveGamertags(ctx, "m1", nil)
 	if err != nil || len(empty) != 0 {
 		t.Errorf("xuids vide → map vide sans erreur, got %v err=%v", empty, err)
 	}

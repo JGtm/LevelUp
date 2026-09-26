@@ -27,6 +27,15 @@
 // Un xuid qu'aucune source ne nomme rend le libellé masqué — exactement ce que rendait le
 // `COALESCE(vg.gamertag, 'Joueur ' || RIGHT(xuid, 4))` des lecteurs quand la jointure ne
 // trouvait rien.
+//
+// # DEUX PORTÉES, UNE CASCADE (lot A du plan perf « lectures par périmètre », 2026-09-26)
+//
+// Portée LECTURE (Escouade, Carrière, Comparer) : participants et kill-feed sur les matchs de la
+// lecture (AnnuaireNomsSQL, AnnuaireKillFeedSQL). Portée BASE (vue match, événements de match,
+// Relations) : alias et participants sur toute la base (AnnuaireNomsBaseSQL, la sémantique MAX de
+// la vue), kill-feed d'abord sur les matchs de la lecture puis, pour les seuls xuids encore sans
+// nom, sur toute la base (AnnuaireKillFeedBaseSQL). Les deux portées alimentent la même
+// AnnuaireGamertags et la même Resolve.
 package analysis
 
 // AnnuaireGamertags porte, par xuid, le nom que chaque niveau NOMMÉ de la vue canonique
@@ -80,6 +89,17 @@ const (
 	AnnuaireNiveauParticipant = "participant"
 )
 
+// Nomme dit si un NIVEAU NOMMÉ de la cascade donne un nom au xuid : un bot (niveau 1, son nom
+// officiel ou son xuid tel quel, comme la branche ELSE de BotSQLCase), un alias, un participant
+// ou le kill-feed. Faux quand Resolve rendrait le libellé masqué : c'est la frontière du port
+// GamertagResolver, dont la carte ne porte que les xuids nommés.
+func (a AnnuaireGamertags) Nomme(xuid string) bool {
+	if IsBot(xuid) {
+		return true
+	}
+	return a.Alias[xuid] != "" || a.Participants[xuid] != "" || a.KillFeed[xuid] != ""
+}
+
 // AnnuaireNomsSQL rend la lecture des niveaux 2 et 3 de la vue pour les xuids d'une lecture :
 // l'alias, puis le MAX(match_participants.gamertag) SUR LES MATCHS DE LA LECTURE (décision D2.1
 // du plan perf : « les mêmes matchs »). Colonnes : (niveau, xuid, gamertag), niveau valant
@@ -89,13 +109,27 @@ const (
 // `xuids` et `matchs` sont des listes de paramètres liés (« ?, ?, ? »). Paramètres, dans
 // l'ordre : les xuids, les xuids, les match_id.
 func AnnuaireNomsSQL(xuids, matchs string) string {
+	return annuaireNomsSQL(xuids, " AND match_id IN ("+matchs+")")
+}
+
+// AnnuaireNomsBaseSQL rend les niveaux 2 et 3 de la vue en « portée base » (lot A du plan perf
+// « lectures par périmètre », décision DA.3, 2026-09-26) : le MAX(match_participants.gamertag)
+// sur TOUTE la base, comme la vue, filtré par les seuls xuids de la lecture — un prédicat sur une
+// TABLE, qui se pousse. Mêmes colonnes qu'AnnuaireNomsSQL. Paramètres : les xuids, les xuids.
+func AnnuaireNomsBaseSQL(xuids string) string {
+	return annuaireNomsSQL(xuids, "")
+}
+
+// annuaireNomsSQL : le texte commun des deux portées ; `matchs` restreint les participants
+// (vide : toute la base).
+func annuaireNomsSQL(xuids, matchs string) string {
 	return "SELECT '" + AnnuaireNiveauAlias + "' AS niveau, xuid, gamertag\n" +
 		"FROM xuid_aliases\n" +
 		"WHERE xuid IN (" + xuids + ") AND gamertag IS NOT NULL AND gamertag != ''\n" +
 		"UNION ALL\n" +
 		"SELECT '" + AnnuaireNiveauParticipant + "' AS niveau, xuid, MAX(gamertag) AS gamertag\n" +
 		"FROM match_participants\n" +
-		"WHERE xuid IN (" + xuids + ") AND match_id IN (" + matchs + ")\n" +
+		"WHERE xuid IN (" + xuids + ")" + matchs + "\n" +
 		"  AND gamertag IS NOT NULL AND gamertag != ''\n" +
 		"GROUP BY xuid"
 }
@@ -108,7 +142,19 @@ func AnnuaireNomsSQL(xuids, matchs string) string {
 // Paramètres, dans l'ordre : les match_id une fois PAR JAMBE (AnnuaireKillFeedJambes fois),
 // puis les xuids.
 func AnnuaireKillFeedSQL(xuids, matchs string) string {
-	return "SELECT xuid, gamertag FROM (\n" +
-		gamertagKillFeedSQL("\n\t\t  AND match_id IN ("+matchs+")") +
-		"\n) kf\nWHERE xuid IN (" + xuids + ")"
+	return annuaireKillFeedSQL(xuids, "\n\t\t  AND match_id IN ("+matchs+")")
+}
+
+// AnnuaireKillFeedBaseSQL rend le niveau 4 de la vue sur TOUTE la base (la sous-requête de la vue
+// sans restriction, gamertagKillFeedSQL("")) pour les xuids demandés — le repli « portée base »
+// des xuids que ni les alias, ni les participants de la base, ni le kill-feed des matchs de la
+// lecture ne nomment (DA.3). Aucun `match_id` ne borne les fenêtres `_latest` : ce repli paie la
+// fenêtre du journal canonique entière, d'où sa place en DERNIER, pour les seuls restants.
+// Paramètres : les xuids.
+func AnnuaireKillFeedBaseSQL(xuids string) string {
+	return annuaireKillFeedSQL(xuids, "")
+}
+
+func annuaireKillFeedSQL(xuids, scope string) string {
+	return "SELECT xuid, gamertag FROM (\n" + gamertagKillFeedSQL(scope) + "\n) kf\nWHERE xuid IN (" + xuids + ")"
 }

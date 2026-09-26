@@ -9,14 +9,14 @@ import (
 
 // seedRelations crée le schéma minimal pour Q28RelationsTpl : match_participants
 // (avec team_id/outcome/kda), match_registry (start_time_utc + start_time),
-// killer_victim_pairs et la vue v_gamertag_lookup (root-level, contrat
-// SharedReader sans préfixe shared.).
+// le kill-feed canonique et xuid_aliases (root-level, contrat
+// SharedReader sans préfixe shared.) — les noms viennent de l'annuaire en portée base (lot A).
 func seedRelations(t *testing.T, db *DB) {
 	t.Helper()
 	ctx := context.Background()
 	for _, ddl := range []string{
 		`CREATE TABLE match_participants (
-			match_id VARCHAR, xuid VARCHAR, team_id INTEGER, outcome INTEGER, kda DOUBLE)`,
+			match_id VARCHAR, xuid VARCHAR, team_id INTEGER, outcome INTEGER, kda DOUBLE, gamertag VARCHAR)`,
 		`CREATE TABLE match_registry (
 			match_id VARCHAR, start_time_utc TIMESTAMPTZ, start_time TIMESTAMP, pair_name VARCHAR, map_name VARCHAR, map_name_fr VARCHAR)`,
 		// BASCULE DU 2026-08-03 : Q28 lit la canonique, un JOURNAL (1 ligne = 1 mort).
@@ -24,7 +24,6 @@ func seedRelations(t *testing.T, db *DB) {
 		`CREATE TABLE match_kill_events_latest (
 			match_id VARCHAR, feed_killer_xuid VARCHAR, victim_xuid VARCHAR, time_ms INTEGER)`,
 		`CREATE TABLE xuid_aliases (xuid VARCHAR, gamertag VARCHAR)`,
-		`CREATE VIEW v_gamertag_lookup AS SELECT xuid, gamertag FROM xuid_aliases`,
 	} {
 		if _, err := db.Exec(ctx, ddl); err != nil {
 			t.Fatalf("seedRelations DDL: %v\nSQL: %s", err, ddl)
@@ -38,7 +37,7 @@ func seedRelations(t *testing.T, db *DB) {
 	// m4 : me (team 0) vs Foe (team 1, my outcome LOSS=3)
 	// Once : me + Once (un seul match commun → exclu par HAVING >= 2)
 	for _, ins := range []string{
-		`INSERT INTO match_participants VALUES
+		`INSERT INTO match_participants (match_id, xuid, team_id, outcome, kda) VALUES
 			('m1','xuidMe',0,2,1.5), ('m1','xuidAlly',0,2,2.0),
 			('m2','xuidMe',0,2,1.5), ('m2','xuidAlly',0,2,3.0),
 			('m3','xuidMe',0,3,0.8), ('m3','xuidFoe',1,2,2.5),

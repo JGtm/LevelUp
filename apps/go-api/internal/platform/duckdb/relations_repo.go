@@ -1,6 +1,12 @@
 // Package duckdb — relations_repo.go : agrégats du hub Communauté > Relations.
 // Lecture seule sur le catalogue shared (match_participants + match_registry +
-// killer_victim_pairs + v_gamertag_lookup) via SharedReader. Aucune écriture.
+// kill-feed canonique) via SharedReader. Aucune écriture.
+//
+// NOMS (lot A du plan perf « lectures par périmètre », 2026-09-26, ADR 0036 I1) : Q28 et Q28
+// scopé ne joignent plus la vue canonique des noms (3,4-4,0 s par lecture, 2,4-2,7 s scopée à
+// 30 matchs) ; GetRelations nomme ses lignes par l'annuaire en portée base
+// (squad_repo_annuaire.go, nommerLignesPorteeBase) sur les matchs de la lecture : l'historique du
+// joueur (QMatchsDuJoueurTpl), ou le périmètre scopé.
 package duckdb
 
 import (
@@ -10,6 +16,7 @@ import (
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/observability/timing"
 )
 
 // GetRelations retourne TOUS les joueurs récurrents (>= 2 matchs communs) avec
@@ -41,6 +48,22 @@ func (r *CareerRepo) GetRelations(ctx context.Context, scope []string) ([]domain
 	}
 	defer release()
 
+	stop := timing.FromContext(ctx).Section("relations")
+	out, err := lireRelations(ctx, db, sqlText, args)
+	stop()
+	if err != nil {
+		return nil, err
+	}
+	stop = timing.FromContext(ctx).Section("relations_annuaire")
+	defer stop()
+	if err := r.nommerRelations(ctx, db, scope, out); err != nil {
+		return nil, fmt.Errorf("CareerRepo.GetRelations: %w", err)
+	}
+	return out, nil
+}
+
+// lireRelations exécute Q28 (ou sa variante scopée) : lignes sans nom.
+func lireRelations(ctx context.Context, db *sql.DB, sqlText string, args []any) ([]domain.RelationRawRow, error) {
 	rows, err := db.QueryContext(ctx, sqlText, args...)
 	if err != nil {
 		return nil, fmt.Errorf("CareerRepo.GetRelations: %w", err)
@@ -56,6 +79,30 @@ func (r *CareerRepo) GetRelations(ctx context.Context, scope []string) ([]domain
 		out = append(out, row)
 	}
 	return out, rows.Err()
+}
+
+// nommerRelations nomme les lignes par l'annuaire en portée base, sur les matchs de la lecture.
+func (r *CareerRepo) nommerRelations(ctx context.Context, db *sql.DB, scope []string, lignes []domain.RelationRawRow) error {
+	if len(lignes) == 0 {
+		return nil
+	}
+	matchs, err := r.matchsDuPerimetre(ctx, db, scope)
+	if err != nil {
+		return err
+	}
+	return nommerLignesPorteeBase(ctx, db, matchs, lignes, accesLigne[domain.RelationRawRow]{
+		xuid:   func(l domain.RelationRawRow) string { return l.XUID },
+		nommer: func(l *domain.RelationRawRow, gt string) { l.Gamertag = gt },
+	})
+}
+
+// matchsDuPerimetre : les matchs d'une lecture Relations (Q28, heatmap Q29) — le périmètre
+// scopé, sinon l'historique du joueur (QMatchsDuJoueurTpl, exclusion Campagne comprise).
+func (r *CareerRepo) matchsDuPerimetre(ctx context.Context, db *sql.DB, scope []string) ([]string, error) {
+	if scope != nil {
+		return scope, nil
+	}
+	return matchsDeLHistorique(ctx, db, r.historique())
 }
 
 // buildRelationsQuery assemble le SQL + les args positionnels selon le scope.
@@ -99,7 +146,7 @@ func scanRelationRow(rows *sql.Rows) (domain.RelationRawRow, error) {
 		firstSeen, lastSeen       sql.NullTime
 	)
 	if err := rows.Scan(
-		&row.XUID, &row.Gamertag, &row.TotalMatches,
+		&row.XUID, &row.TotalMatches,
 		&row.TeammateCount, &row.EnemyCount,
 		&row.TeammateWins, &row.TeammateLosses,
 		&row.EnemyWins, &row.EnemyLosses,

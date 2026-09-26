@@ -43,6 +43,14 @@ LIMIT 50`
 // Match (incident prod 25/07). Elles sont désormais chargées séparément et
 // best-effort par Q12bObjectiveStats (cf. match_view_repo_scoreboard.go) : la
 // section objectifs dégrade seule, le scoreboard reste servi.
+//
+// AUCUN GAMERTAG EN SQL (lot A du plan perf « lectures par périmètre », 2026-09-26, ADR 0036
+// I1) : la jointure sur la vue canonique des noms la matérialisait EN ENTIER à chaque ouverture
+// (1,7-2,2 s ; 3-6 ms sans elle). GetMatchScoreboard nomme les lignes par l'annuaire du match en
+// portée base (squad_repo_annuaire.go, nommerLignesPorteeBase) : même cascade, bots compris, et
+// le libellé masqué « Joueur #### » pour un xuid qu'aucune source ne nomme. ORDRE TOTAL (même
+// lot) : sans la jointure, l'ordre des ex aequo (équipe, rang) variait d'une lecture à l'autre
+// (689 matchs sur 9 170 entre deux passes de la copie) ; p.xuid les départage.
 var Q12MatchScoreboard = `
 WITH me_perfect AS (
     SELECT xuid, COALESCE(SUM(count), 0) AS perfect_kills
@@ -52,11 +60,6 @@ WITH me_perfect AS (
 )
 SELECT
     p.xuid,
-    -- Résolveur canonique : v_gamertag_lookup gère bots ('bid(N.0)' → '343 Bot N')
-    -- + cascade xuid_aliases / match_participants. Fallback masqué "Joueur ####"
-    -- (jamais de xuid brut, miroir analysis.MaskedXuidLabelSQL) pour les orphelins
-    -- + garantit gamertag NON NULL pour le scan. Plus de CASE WHEN bot ad-hoc ici.
-    COALESCE(vg.gamertag, ('Joueur ' || RIGHT(p.xuid, 4))) AS gamertag,
     (` + analysis.SQLIsBotCol("p.xuid") + `) AS is_bot,
     p.team_id,
     p.rank              AS rank_in_team,
@@ -97,7 +100,6 @@ SELECT
     p.first_joined_time,
     p.last_leave_time
 FROM match_participants p
-LEFT JOIN v_gamertag_lookup vg ON vg.xuid = p.xuid
 LEFT JOIN me_perfect m ON p.xuid = m.xuid
 WHERE p.match_id = ?
   AND NOT (
@@ -108,7 +110,7 @@ WHERE p.match_id = ?
     AND (p.kills IS NOT NULL OR p.deaths IS NOT NULL
          OR p.assists IS NOT NULL OR p.personal_score IS NOT NULL)
   )
-ORDER BY p.team_id ASC NULLS LAST, p.rank ASC NULLS LAST`
+ORDER BY p.team_id ASC NULLS LAST, p.rank ASC NULLS LAST, p.xuid ASC`
 
 // Q13 : Match view — métadonnées du match.
 // Paramètre : ? = match_id.
@@ -432,13 +434,13 @@ FROM ` + KillEventsCanonicalTable + ` kvf
 WHERE kvf.match_id = ?
 ORDER BY kvf.time_ms ASC`
 
-// Q21 : Événements highlight avec xuid + gamertag résolu pour un match complet.
+// Q21 : Événements highlight d'un match complet (xuid ; le nom est posé en Go).
 // Paramètre : ? = match_id.
 //
-// JOIN sur shared.v_gamertag_lookup : la vue gère bots (`bid(N.0)` → "343 Bot N")
-// + fallback xuid raw, donc gamertag retourné est toujours non vide quand le
-// xuid est présent en DB. Pour un xuid orphelin (jamais vu en match_participants
-// ni xuid_aliases), vg.gamertag est NULL → caller fallback sur xuid brut.
+// AUCUN GAMERTAG EN SQL (lot A, 2026-09-26, ADR 0036 I1) : GetMatchEvents nomme les events
+// portant un xuid par l'annuaire du match en portée base. Écart nommé (DA.4 (i)) : un xuid
+// qu'aucune source ne connaît reçoit « Joueur #### » là où la jointure rendait NULL (et l'écran
+// le xuid brut). Un event sans xuid garde un nom NULL.
 //
 // medal_raw : le raw_json des SEULS events `medal` — il porte le nom anglais de la
 // médaille (medal_name), parsé côté Go (medalNameFromRawJSON), jamais par une
@@ -449,10 +451,8 @@ SELECT
     he.event_type,
     he.time_ms,
     he.xuid,
-    vg.gamertag AS gamertag,
     CASE WHEN he.event_type = 'medal' THEN he.raw_json END AS medal_raw
 FROM highlight_events he
-LEFT JOIN v_gamertag_lookup vg ON vg.xuid = he.xuid
 WHERE he.match_id = ?
 ORDER BY he.time_ms ASC NULLS LAST`
 
