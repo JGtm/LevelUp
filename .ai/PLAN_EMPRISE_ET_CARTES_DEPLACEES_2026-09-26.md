@@ -197,6 +197,7 @@ Périmètre : `SquadFdaGapCumulativeCard.tsx` (+ test), `charts/squadFdaGapChart
 ### L2 — Contributions : frags · moyen
 
 Périmètre web : `SquadFragSection.tsx`, `charts/squadFragBreakdownChart.ts`, `charts/squadFragTools.ts`,
+`lib/accessibility/scales/fragClass.ts` (COMMENTAIRES des lignes 76-77 seulement, périmés depuis L0),
 `charts/squadWeaponKillsChart.ts` (+ tests), `features/squad/i18n.ts`. Périmètre Go : nouveau
 builder Escouade à côté de `buildSquadWeaponKills` (`teammates_squad_charts_weapons_perf.go`),
 `domain/teammates.go` (champ), tests associés, contrat.
@@ -204,6 +205,7 @@ builder Escouade à côté de `buildSquadWeaponKills` (`teammates_squad_charts_w
 - [ ] L2.1 Répartition des frags : comptes dans les segments avec repli S3, total au bout, légende en bas centrée.
 - [ ] L2.2 Outils de destruction, Go : lignes D8 (film, grenades par type, mêlée feuille, bidon, chute, reliquat), sans toucher `fragdist.Build` ; `fragdist_halo5_golden_test.go` inchangé.
 - [ ] L2.3 Outils de destruction, web : plus de plafond `SQUAD_TOOLS_TOP_GUNS/DETAILS` ni de libellé « Autres armes » ; légende des joueurs ; compte au bout ; pastille de classe ; % en infobulle.
+- [ ] L2.5 Corriger les commentaires couleur de `fragClass.ts:76-77` (découverte L0 ; mapping inchangé).
 - [ ] L2.4 Chiffres témoins (22/09, maquette C3EW) retrouvés par test : BR75 22/22/35, Mutilateur 1 et VK78 Commando 1 (JGtm) nommés, grenade à fragmentation 2/1/4.
 - Gate : `squadFragBreakdownChart.test.ts`, `squadFragTools.test.ts`, `fragdist_test.go`, tests du nouveau builder + gate commun + contrat.
 
@@ -292,6 +294,6 @@ l'entrée la plus récente du journal. Reprendre au premier item non statué du 
 - `formes/` deviendra solo seul mais reste sous `features/squad/` (import croisé compté par
   `lint-cross-feature-imports`) — déplacement sous `_shared/` à décider plus tard.
 - (L0) `lib/accessibility/scales/fragClass.ts:76-77` : les commentaires « indigo profond » / « orange brûlé » décrivent les anciennes valeurs de `frag-vehicle` / `frag-turret` (échangées par L0) ; fichier hors périmètre L0 (mapping intouchable), commentaires à corriger par un lot qui y touche.
-- (L0) Palette Okabe-Ito : aucun jeu de 4 teintes de la palette ne passe le validateur dataviz en entier (ressources) ; écart résiduel accepté par l'exécuteur (bande de clarté sombre dépassée de 0,009), à confirmer par le superviseur.
+- (L0) Palette Okabe-Ito : aucun jeu de 4 teintes de la palette ne passe le validateur dataviz en entier (ressources) ; écart résiduel accepté par l'exécuteur (bande de clarté sombre dépassée de 0,009) — **CONFIRMÉ par le superviseur le 2026-09-26** : écart marginal, chaque ressource a sa pastille et son nom (codage secondaire).
 - Écart feuille / film sur les grenades (Madina97294 : 4 au film, 3 sur la feuille le 22/09) et un
   frag de la feuille sans ligne au film.
