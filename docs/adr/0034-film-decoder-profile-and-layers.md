@@ -1,7 +1,8 @@
 # ADR 0034 — Film decoder: an immutable profile per build, five layers, one gate to the bytes
 
 **Status**: Accepted (2026-09-13), amended at the M2 closure (2026-09-17), at the M3 closure
-(2026-09-17) and at the **M4 closure (2026-09-18)** with the state reached, decision by decision.
+(2026-09-17), at the **M4 closure (2026-09-18)** with the state reached, decision by decision, and on
+**2026-09-26** by the audit follow-up (revision model and facts freshness: D-3 rule 2, D-6, D-7).
 M4 is the last milestone of `.ai/PLAN_DECODEUR_FILM_2026-09-13.md`: the publication path is built,
 and what the effort leaves open is named in the M4 section rather than promised to a next one.
 
@@ -942,6 +943,107 @@ itself is a pilot gesture**, played on signal after the merge; its result is rec
   `vehicles/par-end/destroyed`, on two witnesses.
 - **The killsource backlog** opened by M3's `facts.Rev` rise is untouched: V24 defers it to an
   explicit user signal, at the earliest after M4, grouped with any later rise.
+
+## Amendment of 2026-09-26 — the revision model and the freshness of facts (audit follow-up, J3)
+
+Source: `.ai/AUDIT_DECODEUR_FILM_2026-09-24.md` (findings SRC-1, RA1-1, RA1-2, RA1-4 and
+architecture weakness 1), decisions DU-2 and DU-9 of
+`.ai/PLAN_SUITE_AUDIT_DECODEUR_FILM_2026-09-25.md`, milestone J3. No decode revision rose:
+`source.Rev`, `profile.Rev`, `grammar.Rev` keep their values and their fingerprints were re-frozen
+at constant revision (tooling); `SchemaVersion` went **71 -> 72** and the facts codec
+(`VersionCodecFaits`) **1 -> 2**, so every persisted facts file is refused on its prefix and
+re-decoded once.
+
+### D-6 — One revision per thing that can change. **Amended: what a fingerprint hashes, and how many revisions the facts carry.**
+
+1. **The fingerprint hashes tokens, not bytes** (DU-2 (a)). `film/revision` feeds each source
+   through `go/scanner`: ordinary comments and layout are dropped, every language token counts
+   (a string literal containing `//` or `/*` stays a literal), and `//go:` directives are kept
+   because they change what the compiler does. The frame is unchanged — path relative to the
+   root, content length. The audit measured 46 % of the layers' lines as comments: a reworded
+   comment no longer reddens a gate, and no longer invites a "regenerate at constant revision"
+   that silences it.
+2. **A layer's perimeter is the closure of its imports, frozen by a golden** (DU-2 (b), fixes
+   SRC-1 by construction). Starting from every package of the layer's tree, the production imports
+   are followed inside the module; another revised layer stops the walk and enters by its
+   **value**, any other package enters by its tokens and its own imports are followed. Files a
+   package embeds (`//go:embed`) enter too — the tables of `film/damagetag` are data that decide
+   the killsource output. The upstream values are no longer declared: they are what the closure
+   meets, and a value supplied for a layer the closure does not meet (or the reverse) is an error.
+   Each layer's perimeter is listed in `testdata/<layer>_perimetre.golden`
+   (`revision.TestPerimetreDeChaqueCoucheEgaleSonGolden`), so an added import reddens a golden and
+   the question "does this package decide the layer's output?" is asked at review. Measured
+   closures: `source` = itself + `film/types`; `profile` = itself, no upstream (it does not import
+   `source`, so `source.Rev` left its fingerprint); `grammar` = its tree + `film/types`,
+   `domain/highlightevent`, `domain/playerposition`, `games/weapons/filmshell`, upstream `source`,
+   `profile`; `killsource` = itself + `film/types`, `film/damagetag`, `domain/highlightevent`,
+   upstream `source`, `profile`, `grammar`; `objectives` = itself + `film/types`, `domain`,
+   `domain/title`, `games/canonical`, upstream `source`.
+3. **One revision per consumer of facts** (DU-2 (c)). `facts.Rev`, which dated the whole `facts/`
+   tree, is replaced by `killsource.Rev` — **same value**, `killsource-2026-09-24`, same series
+   and history, so no killsource backlog is reopened — and `objectives.Rev`, born at
+   `objectives-2026-09-26`. A correction to objectives no longer makes every kill row in the
+   database a backlog candidate. `decfilm.Rev` now points at `killsource.Rev`; `sync/killcollector`
+   writes and compares it in `decoder_rev` as before. `coverage.decoder` publishes
+   `killsourceRev` and `objectivesRev` instead of `factsRev` (schema 72), and `layers` attributes
+   each facts layer to its consumer: `roster`, `neutralDeaths`, `equipmentEpisodes` to killsource;
+   `identity`, `objectives`, `scoreTimeline`, the flag, crown, skull and the four bomb layers to
+   objectives. A layer that reads both carries the one that decodes its substance; the re-cook
+   verdict stays sound because `identity` and `roster`, never guarded, declare both families on
+   every assembled document (`TestChaqueConsommateurDeFaitsDateUnCalqueNonGarde`).
+   `facts/fallback` is imported by neither consumer and is hashed by no layer: its changes are
+   publication changes.
+
+### D-7 — Facts and publication are separate. **Amended: the facts carry what the caller commanded, and the whole catalog entry.**
+
+1. **The caller's guards are written in the facts and compared** (DU-2 (d), RA1-1, P1). Three scan
+   channels are read only when the caller commands them — the flag markers and return gauge (CTF),
+   the zone states (a zone catalog), the arming ring (bomb family with a manifest clock) — and the
+   player-index table is read against the caller's roster. `replay.GardesDe(Options)` derives these
+   guards in one place, the scan uses the same predicates to decide what it reads, and the facts
+   header stores them (flag, zones, bomb, and a fingerprint of the roster's xuid set).
+   `FilmFactsEntete.Utilisable(entry, guards)` refuses facts baked without a guard the current
+   cooking asks for, or under another roster (`ErrFilmFactsGardes`); a superset serves, and
+   `BuildFromFacts` first removes from the inputs what the current cooking does not ask for, so
+   the replayed document is the one a decode under those guards would give. Freshness is judged
+   in two halves: `Frais(entry)` (codec, schema, layer revisions, cooking key) at the switch, before
+   any film is opened; the guards once the options exist, in `replaybuild.documentDeLaCuisson`,
+   which loads the film when they do not cover. **No facts are written for a refused artifact**:
+   `BuildBytes` stores the facts of a decoding cook after serialization, and only if the artifact
+   sink would store the artifact (`refusParLePuits`: the same validation and anti-downgrade guard
+   as `writeArtifactBytes`) — an impoverished cook no longer leaves poor facts behind for the next
+   repair to replay.
+2. **The cooking key is the fingerprint of the whole catalog entry** (DU-2 (e), RA1-4). The header
+   carries `EmpreinteDeCle(entry)` — module, bounds by their exact bits, axis widths, region and
+   effective region-index width — and the key check compares it (`ErrFilmFactsCarte`). A catalog
+   entry corrected on its bounds, region or region-index width used to leave "fresh" facts whose
+   quanta re-dequantize wrongly. A field added to `MapQuantEntry` reddens
+   `TestCleDeCuisson_ChaqueChampDeLEntreeGouverne` until it enters the fingerprint.
+3. **A nil inventory stays nil** (RA1-2). The inputs blob reads every list back as an empty slice,
+   but `Options.Inventory == nil` means "unreadable" and guards the `inventory` layer and its
+   coverage. Section 1 now carries a presence witness, and a film with an unreadable inventory
+   replays from its facts to the same layer set and coverage as from its film.
+4. **Every codec change raises its version, with a refusal test** (the rule the RA1 family asked
+   for, and finding 8.1 of the plan). The header changes above are one rise, codec 2, refused on
+   the prefix for codec 1 (`TestFaitsDuCodec1SontRefusesSurLePrefixe`). The header grew by the
+   second consumer revision, 32 bytes of catalog fingerprint and 35 bytes of guards; the decision
+   "decode or re-read" is still taken on the header alone.
+
+### D-3, rule 2 — The grammar comes from the game. **Amended by DU-9: presumed widths by measurement.**
+
+Rule 2 stays the default: where the writer is readable in the executable, the value is taken from
+the writer. One case is admitted as a production path by measurement, and only this one: **a
+fixed-size component that the decoder only skips** (its value is used by nothing). For it, a
+width found by closure — the only width with which the packets close to the bit — is accepted on
+three conditions: it is verified on the whole corpus of every build; it is recorded as
+**presumed**, with its provenance (closure measurement, films, date) in `ecs_table.tsv` and in the
+code; and it is listed by a frozen test on the model of `empreintesPresumeesGelees`, so that no
+presumed width enters or leaves unseen. The writer (Ghidra) remains mandatory for components
+whose value is used, for variable-size components (content-dependent fields, gates, counts), and
+for any presumed width that stops closing on a new build. The rule is safe because a wrong width
+shifts everything after it: packets stop closing at once, and the error is seen and counted, never
+silent. It complements, and does not relax, the user's rule of 2026-09-21 on player states (Ghidra
+for used values).
 
 ## Corrections to statements made elsewhere
 
