@@ -87,7 +87,7 @@ func MountAdminMonitoringRoutes(
 	drainH.Mount(r, apiOpt) // POST /actions/catalog/ugc-drain
 
 	// Construction du rejeu 2D d'un match (job asynchrone — décodage hors ligne du film
-	// en cache via la librairie replaybuild, sérialisé par le verrou process filmdec).
+	// en cache dans un ENFANT borne, sous le verrou solo, cf. registry_replay_build.go).
 	replayBuildH := handlers.NewAdminReplayBuildActionHandler(reg.RunReplayBuild, jobStore, serverCtx).
 		WithEnqueuer(reg.EnqueueReplayBuild).
 		WithPlacement(reg.ReplayPlacement)

@@ -69,8 +69,6 @@ var filmBuildAllowedCallers = map[string]string{
 		"ce processus » ne disait rien des AUTRES processus de la machine (serveur post-sync, " +
 		"passe backfill, second ouvrier) — il prend donc le VERROU SOLO EN ATTENTE BORNEE " +
 		"(10 min) autour du seul decodage, rendu avant l'envoi",
-	"internal/api/wire/registry_replay_build.go": "2026-08-26 — action admin sur UN match, " +
-		"declenchee a la main. Aucune boucle",
 	"cmd/zone-attribution/measure.go": "2026-08-26 — ENFANT de la passe bornee (passe.go) : " +
 		"un film par processus, plafond de MESURE (2 Gio) et priorite basse via internal/filmproc",
 	"internal/games/halo_infinite/film/replay/build_from_film.go": "2026-08-26 — la DEFINITION de " +
