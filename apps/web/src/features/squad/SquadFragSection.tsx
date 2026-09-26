@@ -1,9 +1,10 @@
 /**
  * SquadFragSection — regroupe les 3 graphes « frags » de l'Escouade.
  *
- * Relocalisé depuis l'onglet Contributions (SquadContributionsPage +
- * SquadPerformanceCharts) vers Synergies, puis vers l'onglet Usages
- * (SquadUsagesPage, lot 3 « sections » du 2026-09-22). Les trois graphes :
+ * Parti de Contributions vers Synergies, puis vers l'onglet Usages (lot 3 « sections » du
+ * 2026-09-22), il REVIENT sur Contributions (SquadContributionsPage, lot L2 du plan
+ * PLAN_EMPRISE_ET_CARTES_DEPLACEES_2026-09-26), entre la rangée Stats par minute / Radar
+ * synergie et la section Performance. Les trois graphes :
  *   1. Répartition des frags (barres empilées par classe, rendu DOM) —
  *      SquadFragBreakdownCard : comptes dans les segments, repli au-dessus de la barre,
  *      total au bout (lot L2 du plan PLAN_EMPRISE_ET_CARTES_DEPLACEES_2026-09-26).
@@ -61,6 +62,7 @@ export function SquadFragSection({
     const role = (r: string) => formatMessage(fragsManifest, `frags.role.${r}` as never, locale)
     const labels: SquadToolKindLabels = {
       melee: classLabel('melee'),
+      grenade: classLabel('grenade'),
       assassination: role('assassination'),
       ground_pound: role('ground_pound'),
       shoulder_bash: role('shoulder_bash'),

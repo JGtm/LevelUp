@@ -2,7 +2,9 @@
  * SquadContributionsPage — onglet Contributions de l'Escouade.
  *
  * Consomme le contexte SquadContext fourni par SquadLayout. Affiche les
- * charts de contribution par joueur : K/D/A par minute, synergies radar,
+ * charts de contribution par joueur : K/D/A par minute, synergies radar, frags et armes
+ * (Répartition des frags, Outils de destruction — arrivés d'Usages au lot L2 du plan
+ * PLAN_EMPRISE_ET_CARTES_DEPLACEES_2026-09-26),
  * performance, impact des coéquipiers, médailles, mécaniques de frag. Le
  * « Premier frag / première mort » a rejoint l'onglet Dynamique (chart lanes) ;
  * l'impact et les médailles sont arrivés de Synergies (lot 3, 2026-09-22).
@@ -20,6 +22,7 @@ import { SquadPerMinuteChart } from './SquadPerMinuteChart'
 import { SquadSynergyRadarChart } from './SquadSynergyRadarChart'
 import { SquadPerformanceCharts } from './SquadPerformanceCharts'
 import { SquadKillMechanicsChart } from './SquadKillMechanicsChart'
+import { SquadFragSection } from './SquadFragSection'
 import { SquadImpactScoreboard } from './SquadImpactScoreboard'
 import { MedalDigest } from './MedalDigest'
 import { FeatureGate } from '@/lib/capabilities/FeatureGate'
@@ -50,6 +53,14 @@ export function SquadContributionsPage() {
   const playerOrder = useMemo(
     () => [mainPlayerKey, ...confirmedGamertags].filter((p) => performanceSeries?.[p]),
     [mainPlayerKey, confirmedGamertags, performanceSeries],
+  )
+  // Frags et armes : joueurs ayant des classes de frags OU une série de performance
+  // (même prédicat que l'onglet Usages qui les montait jusqu'au lot L2).
+  const fragClasses = pageData?.frag_classes
+  const fragClassesByPlayer = useMemo(() => fragClasses ?? {}, [fragClasses])
+  const fragPlayerOrder = useMemo(
+    () => [mainPlayerKey, ...confirmedGamertags].filter((p) => fragClasses?.[p] || performanceSeries?.[p]),
+    [mainPlayerKey, confirmedGamertags, fragClasses, performanceSeries],
   )
   const synergyAxisLabels = useMemo<Record<string, string>>(
     () => ({
@@ -109,6 +120,24 @@ export function SquadContributionsPage() {
           rawLabel={t.synergyRadar.rawLabel}
         />
       </div>
+
+      {/* FRAGS ET ARMES — arrivés d'Usages (lot L2 du plan
+          PLAN_EMPRISE_ET_CARTES_DEPLACEES_2026-09-26) : qui apporte quoi à l'escouade.
+          « Répartition des frags » pleine largeur (à côté de « Précision par rôle » sur
+          Halo 5), « Outils de destruction » juste en dessous, pleine largeur. Toujours
+          montés, comme les autres graphes de la page : chaque carte gère son état vide. */}
+      <section className="space-y-3">
+        <SectionTitle>{t.sections.fragsArmes}</SectionTitle>
+        <SquadFragSection
+          fragClassesByPlayer={fragClassesByPlayer}
+          weaponTools={pageData?.weapon_tools}
+          weaponAccuracy={pageData?.weapon_accuracy}
+          playerColors={playerColors}
+          playerOrder={fragPlayerOrder}
+          locale={locale}
+          t={t}
+        />
+      </section>
 
       <section className="space-y-3">
         <SectionTitle>{t.performanceCharts.title}</SectionTitle>

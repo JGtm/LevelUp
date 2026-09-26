@@ -13,6 +13,10 @@ const (
 	// SquadToolKindMelee : la mêlée, lue sur la feuille de match (le film n'a pas de clé
 	// de mêlée). Sur un titre aux mécaniques natives, hors assassinats.
 	SquadToolKindMelee = "melee"
+	// SquadToolKindGrenade : les grenades de la feuille de match, en une ligne, pour un
+	// joueur dont le film ne donne AUCUN détail typé (titre sans film, film sans grenade).
+	// Quand le film les type, les lignes par type la remplacent.
+	SquadToolKindGrenade = "grenade"
 	// SquadToolKindAssassination / GroundPound / ShoulderBash : mécaniques natives de la
 	// feuille de match, servies seulement si le titre les déclare (capability).
 	SquadToolKindAssassination = "assassination"

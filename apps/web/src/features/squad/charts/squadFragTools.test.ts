@@ -9,6 +9,7 @@ import type { SquadWeaponToolLine, SquadWeaponTools } from '@/lib/api/types'
 
 const LABELS: SquadToolKindLabels = {
   melee: 'Mêlée',
+  grenade: 'Grenade',
   assassination: 'Assassinat',
   ground_pound: 'Coup au sol',
   shoulder_bash: 'Charge spartane',
@@ -86,5 +87,11 @@ describe('toolLineLabel', () => {
     expect(toolLineLabel(kind('melee', 'melee', {}), 'fr', LABELS)).toBe('Mêlée')
     expect(toolLineLabel(kind('environment', 'environmental', {}), 'fr', LABELS)).toBe('Chute, environnement')
     expect(toolLineLabel(kind('nouvelle_nature', '', {}), 'fr', LABELS)).toBe('nouvelle_nature')
+  })
+})
+
+describe('ligne « Grenade » (titre sans film)', () => {
+  it('nommée par le web, jamais vide', () => {
+    expect(toolLineLabel(kind('grenade', 'grenade', { J: 14 }), 'fr', LABELS)).toBe('Grenade')
   })
 })

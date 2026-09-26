@@ -113591,3 +113591,22 @@ Gate :
 - effets sur Halo 5.
 
 Vérification superviseur, puis L3.
+
+## [2026-09-27] Emprise, lot L2 (compléments) : cartes frags montées sur Contributions, grenades sans film — Complété (`wt/emprise`, commit local)
+
+**Decision technique principale** : le superviseur accepte le périmètre étendu du lot et trois écarts à la maquette :
+- libellé « Grenade frag » du registre ;
+- mêlée lue sur la feuille, avec l'écart d'un frag chez Chocoboflor ;
+- ligne bidon à la couleur « Non attribué ».
+
+Il ajoute L2.6 : `SquadFragSection` quitte Usages pour Contributions, section « Frags et armes » placée entre la rangée Stats par minute / Radar synergie et « Performance ». « Répartition des frags » est pleine largeur, « Outils de destruction » juste en dessous. Le code devenu mort sur Usages est retiré.
+
+Sans film, le détail des grenades par type ne vient plus de la table native : un joueur sans grenade typée AU FILM a une ligne « Grenade » (nature `grenade`) au total de sa feuille. Ses grenades ne tombent plus en « Non attribué ».
+
+**Resultats observes** :
+- Tests Halo 5 et par joueur des grenades verts ; tests de page mis à jour : Contributions monte les deux cartes avant Performance, Usages ne les monte plus.
+- Go : vert sauf un test LUSR à seuil de 2 s (dépassé de 17 ms sous charge), vert rejoué isolé ; lint 0 issue.
+- Contrat inchangé.
+- Web : vitest complet 8 668 tests verts, lint 0 erreur, ratchets verts.
+
+**Conclusion / prochaine etape** : L2 clos. Vérification superviseur, puis L3.

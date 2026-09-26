@@ -2,10 +2,11 @@
  * SquadUsagesPage.test.tsx — l'onglet Usages (lot 3 « sections », 2026-09-22).
  *
  * Couvre : les deux états vides hérités de Synergies (no_selection /
- * invalid_selection), l'état vide PROPRE à l'onglet (aucun film décodé : ni frags,
- * ni équipement, ni formes — jamais un onglet vide et muet), le montage des sections
- * déplacées, et l'absence du card « Écart cumulé au FDA attendu », parti sur Dynamique
- * (lot L1 du plan PLAN_EMPRISE_ET_CARTES_DEPLACEES_2026-09-26).
+ * invalid_selection), l'état vide PROPRE à l'onglet (aucun film décodé : ni
+ * équipement, ni formes — jamais un onglet vide et muet), le montage des sections
+ * restantes, l'absence des frags et armes (partis sur Contributions, lot L2) et celle du
+ * card « Écart cumulé au FDA attendu », parti sur Dynamique (lot L1 du plan
+ * PLAN_EMPRISE_ET_CARTES_DEPLACEES_2026-09-26).
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { screen } from '@testing-library/react'
@@ -105,14 +106,18 @@ describe('SquadUsagesPage — états vides', () => {
 })
 
 describe('SquadUsagesPage — sections', () => {
-  it('« Frags et armes » coiffe la section frags quand les classes sont mesurées', () => {
+  it('les frags et armes ne sont plus montés ici (partis sur Contributions, lot L2)', () => {
     mockSquadContext({
       selectedRows: [ROW('A'), ROW('B')],
       confirmedGamertags: ['A', 'B'],
       pageData: pageWithFrags(),
     })
     renderWithProviders(<SquadUsagesPage />)
-    expect(screen.getByText('Frags et armes')).toBeInTheDocument()
+    expect(screen.queryByText('Frags et armes')).toBeNull()
+    expect(screen.queryByText('Répartition des frags')).toBeNull()
+    expect(screen.queryByText('Outils de destruction')).toBeNull()
+    // Des frags seuls ne font plus un bloc d'Usages : l'onglet le dit.
+    expect(screen.getByText('Aucun film décodé pour cette sélection.')).toBeInTheDocument()
   })
 
   it('l\'équipement est monté ici (une ligne par coéquipier suivi, jamais par famille)', () => {
@@ -153,7 +158,6 @@ describe('SquadUsagesPage — « Écart cumulé au FDA attendu » parti sur Dyna
       pageData: pageWithFrags(),
     })
     renderWithProviders(<SquadUsagesPage />)
-    expect(screen.getByText('Frags et armes')).toBeInTheDocument()
     expect(screen.queryByText('Écart cumulé au FDA attendu')).toBeNull()
   })
 })

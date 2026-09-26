@@ -91,4 +91,42 @@ describe('SquadContributionsPage', () => {
     renderWithProviders(<SquadContributionsPage />)
     expect(screen.getByTestId('synergy-radar-chart')).toBeInTheDocument()
   })
+
+  // LOT L2 du plan PLAN_EMPRISE_ET_CARTES_DEPLACEES_2026-09-26 : « Répartition des frags »
+  // puis « Outils de destruction » arrivent d'Usages, entre la rangée Stats par minute /
+  // Radar synergie et la section Performance.
+  it('monte « Répartition des frags » puis « Outils de destruction », avant « Performance »', () => {
+    mockSquadContext({
+      confirmedGamertags: ['FriendA'],
+      pageData: {
+        main_player: 'test',
+        frag_classes: { test: [{ class: 'shoulder', kills: 12, authoritative: false }] },
+        weapon_tools: {
+          players: ['test'],
+          lines: [
+            { kind: 'weapon', weapon_key: 'hinf_br75', label: 'BR75', label_en: 'BR75', class: 'shoulder', kills_by_player: { test: 12 }, total_squad: 12 },
+          ],
+        },
+      } as unknown as TeammatesPageResponse,
+    })
+    const { container } = renderWithProviders(<SquadContributionsPage />)
+    const text = container.textContent ?? ''
+    const section = text.indexOf('Frags et armes')
+    const breakdown = text.indexOf('Répartition des frags')
+    const tools = text.indexOf('Outils de destruction')
+    const perf = text.indexOf('Performance')
+    expect(breakdown).toBeGreaterThan(-1)
+    expect(tools).toBeGreaterThan(-1)
+    expect(section).toBeLessThan(breakdown)
+    expect(breakdown).toBeLessThan(tools)
+    expect(tools).toBeLessThan(perf)
+    expect(screen.getByTestId('squad-frag-breakdown')).toBeInTheDocument()
+  })
+
+  it('monte les deux cartes frags même sans données (état vide de chaque carte)', () => {
+    mockSquadContext({})
+    renderWithProviders(<SquadContributionsPage />)
+    expect(screen.getByText('Répartition des frags')).toBeInTheDocument()
+    expect(screen.getByText('Outils de destruction')).toBeInTheDocument()
+  })
 })

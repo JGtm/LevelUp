@@ -11,8 +11,9 @@
 // par outil — et ne doivent RIEN changer aux six autres. D'où ce builder propre, à côté de
 // buildSquadWeaponKills, qui lit les mêmes lignes :
 //
-//   - une ligne par clé d'arme (film pour un titre qui le décode, table native sinon),
-//     grenades comprises, chacune par son type, sans repli « Grenade » ;
+//   - une ligne par clé d'arme (film pour un titre qui le décode, table native sinon) ;
+//     les grenades par type quand le FILM les type, sinon une ligne « Grenade » au total
+//     de la feuille de match (titre sans film : jamais dans le reliquat) ;
 //   - la mêlée depuis la feuille de match (le film n'a pas de clé de mêlée) — et, sur un
 //     titre aux mécaniques natives (capability), assassinats et capacités spartanes ;
 //   - « objet explosif » et « chute, environnement » depuis la CATÉGORIE de la source du
@@ -89,8 +90,8 @@ func buildSquadWeaponTools(in squadToolInputs) *domain.SquadWeaponTools {
 	}
 	lines := toolLines{}
 	claimed := addCategoryLines(lines, in)
-	addWeaponLines(lines, in, claimed)
-	addSheetLines(lines, in)
+	filmGrenades := addWeaponLines(lines, in, claimed)
+	addSheetLines(lines, in, filmGrenades)
 	addUnattributedLine(lines, in)
 	if len(lines) == 0 {
 		return nil
@@ -134,7 +135,13 @@ func addCategoryLines(lines toolLines, in squadToolInputs) map[string]int {
 // addWeaponLines pose une ligne par clé d'arme. Les mécaniques natives attribuées à l'arme
 // tenue (MechanicKills) en sont retirées : la feuille de match les sert. Une ligne sans nom
 // n'est pas posée — ses frags rejoignent le reliquat « Non attribué ».
-func addWeaponLines(lines toolLines, in squadToolInputs, claimed map[string]int) {
+//
+// GRENADES : le détail par type ne vient QUE du film (FromDamageSource). Une ligne de
+// grenade d'une autre provenance (table native d'un titre sans film) n'est pas posée : les
+// grenades de ce joueur passent par la ligne « Grenade » de la feuille (addSheetLines),
+// jamais par le reliquat. Rend, par gamertag, les frags de grenade typés par le film.
+func addWeaponLines(lines toolLines, in squadToolInputs, claimed map[string]int) map[string]int {
+	filmGrenades := map[string]int{}
 	for _, r := range in.rows {
 		if r.IsGrenadeMelee {
 			continue
@@ -142,6 +149,12 @@ func addWeaponLines(lines toolLines, in squadToolInputs, claimed map[string]int)
 		gt, ok := in.gtByXUID[r.XUID]
 		if !ok || r.Label == "" {
 			continue
+		}
+		if r.Class == domain.FragClassGrenade {
+			if !r.FromDamageSource {
+				continue
+			}
+			filmGrenades[gt] += max(r.Kills, 0)
 		}
 		kills := r.Kills - r.MechanicKills
 		if r.WeaponKey != "" {
@@ -155,15 +168,21 @@ func addWeaponLines(lines toolLines, in squadToolInputs, claimed map[string]int)
 			Label: r.Label, LabelEN: r.LabelEN, Class: r.Class,
 		}, gt, kills)
 	}
+	return filmGrenades
 }
 
-// addSheetLines pose la mêlée (et, capability native, assassinats et capacités
-// spartanes) depuis la feuille de match.
-func addSheetLines(lines toolLines, in squadToolInputs) {
+// addSheetLines pose la mêlée, la ligne « Grenade » d'un joueur sans détail typé du film
+// (total de la feuille) et, capability native, assassinats et capacités spartanes — tout
+// depuis la feuille de match.
+func addSheetLines(lines toolLines, in squadToolInputs, filmGrenades map[string]int) {
 	for _, gt := range in.playersOrdered {
 		c := in.sheet[gt]
 		lines.add("kind:"+domain.SquadToolKindMelee,
 			domain.SquadWeaponToolLine{Kind: domain.SquadToolKindMelee, Class: domain.FragClassMelee}, gt, c.Melee)
+		if filmGrenades[gt] == 0 {
+			lines.add("kind:"+domain.SquadToolKindGrenade,
+				domain.SquadWeaponToolLine{Kind: domain.SquadToolKindGrenade, Class: domain.FragClassGrenade}, gt, c.Grenade)
+		}
 		if !in.hasMechanics {
 			continue
 		}

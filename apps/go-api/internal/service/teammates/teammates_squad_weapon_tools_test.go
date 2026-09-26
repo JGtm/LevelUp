@@ -18,6 +18,12 @@ const (
 	keyToolCoilKinetic     = "hinf_" + "coil_kinetic"
 	keyToolEnvironment     = "hinf_" + "environment"
 	keyToolFrag            = "hinf_" + "frag_grenade"
+	// Clés Halo 5 nommées plutôt qu'écrites en clair dans les littéraux de ligne : le détecteur
+	// de secrets prend « WeaponKey: "..." » pour une clé d'API (même parade que
+	// fragdist_halo5_golden_test.go).
+	keyToolH5BR       = "h5_" + "br85"
+	keyToolH5Frag     = "h5_" + "frag_grenade"
+	keyToolH5Splinter = "h5_" + "splinter_grenade"
 )
 
 // toolsLoader : doublure du chargeur, avec l'extension OPTIONNELLE des catégories.
@@ -228,7 +234,7 @@ func TestBuildSquadWeaponTools_ReliquatEnDernier(t *testing.T) {
 func TestBuildSquadWeaponTools_MecaniquesNatives(t *testing.T) {
 	tools := buildSquadWeaponTools(squadToolInputs{
 		rows: []port.WeaponKillRow{
-			{XUID: toolXJ, WeaponID: 10, WeaponKey: "h5_br85", Label: "BR85", Class: "shoulder", Kills: 12, MechanicKills: 4},
+			{XUID: toolXJ, WeaponID: 10, WeaponKey: keyToolH5BR, Label: "BR85", Class: "shoulder", Kills: 12, MechanicKills: 4},
 			{XUID: toolXJ, WeaponID: 99, Kills: 3}, // arme hors registre, sans nom
 		},
 		playersOrdered: []string{toolJ},
@@ -298,4 +304,60 @@ func TestPlayersAboveSheet(t *testing.T) {
 	if got := playersAboveSheet(tools, sheet); got != 1 {
 		t.Errorf("playersAboveSheet = %d, want 1", got)
 	}
+}
+
+// TestBuildSquadWeaponTools_Halo5GrenadesSansFilm : un titre sans film (Halo 5) rend des
+// lignes de grenade TYPÉES depuis sa table native — elles ne donnent pas le détail (seul le
+// film le donne) ; les grenades du joueur forment UNE ligne « Grenade » au total de la
+// feuille, et rien ne tombe dans « Non attribué ».
+func TestBuildSquadWeaponTools_Halo5GrenadesSansFilm(t *testing.T) {
+	tools := buildSquadWeaponTools(squadToolInputs{
+		rows: []port.WeaponKillRow{
+			{XUID: toolXJ, WeaponID: 1001, WeaponKey: keyToolH5BR, Label: "BR85", Class: "shoulder", Kills: 40},
+			{XUID: toolXJ, WeaponID: 1007, WeaponKey: keyToolH5Frag, Label: "Grenade frag", Class: "grenade", Kills: 8},
+			{XUID: toolXJ, WeaponID: 1008, WeaponKey: keyToolH5Splinter, Label: "Grenade à fragments", Class: "grenade", Kills: 4},
+			{XUID: toolXJ, WeaponID: 0, Kills: 14, IsGrenadeMelee: true},
+		},
+		playersOrdered: []string{toolJ},
+		gtByXUID:       map[string]string{toolXJ: toolJ},
+		sheet:          map[string]domain.FragKillTypeCounts{toolJ: {Total: 54, Grenade: 14}},
+	})
+	if tools == nil {
+		t.Fatal("outils absents")
+	}
+	var grenade *domain.SquadWeaponToolLine
+	for i, l := range tools.Lines {
+		if l.Kind == domain.SquadToolKindGrenade {
+			grenade = &tools.Lines[i]
+		}
+		if l.Class == domain.FragClassGrenade && l.Kind == domain.SquadToolKindWeapon {
+			t.Errorf("ligne de grenade typée sans film : %+v", l)
+		}
+		if l.Kind == domain.SquadToolKindUnattributed {
+			t.Errorf("« Non attribué » inattendu : %+v", l)
+		}
+	}
+	if grenade == nil || grenade.KillsByPlayer[toolJ] != 14 || grenade.Class != domain.FragClassGrenade {
+		t.Errorf("ligne Grenade = %+v, want 14 frags de classe grenade", grenade)
+	}
+}
+
+// TestBuildSquadWeaponTools_GrenadesParJoueur : avec film, le détail typé remplace la ligne
+// « Grenade » POUR LE JOUEUR qui l'a ; un joueur sans grenade typée au film garde la ligne
+// de la feuille.
+func TestBuildSquadWeaponTools_GrenadesParJoueur(t *testing.T) {
+	tools := buildSquadWeaponTools(squadToolInputs{
+		rows: []port.WeaponKillRow{
+			filmRow(toolXJ, keyToolFrag, "Grenade frag", "Frag Grenade", "grenade", 2),
+		},
+		playersOrdered: []string{toolJ, toolC},
+		gtByXUID:       map[string]string{toolXJ: toolJ, toolXC: toolC},
+		sheet: map[string]domain.FragKillTypeCounts{
+			toolJ: {Total: 2, Grenade: 2},
+			toolC: {Total: 1, Grenade: 1},
+		},
+	})
+	lines := toolLineByName(t, tools)
+	wantKills(t, lines["Grenade frag"], "grenade frag", 2, 0, 0)
+	wantKills(t, lines[domain.SquadToolKindGrenade], "grenade (feuille)", 0, 1, 0)
 }

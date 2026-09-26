@@ -3,7 +3,8 @@
  * serveur (décision D8 du plan PLAN_EMPRISE_ET_CARTES_DEPLACEES_2026-09-26), nommées dans la
  * langue de l'interface et mises à la forme du graphe à barres groupées.
  *
- * Le serveur a déjà tout décidé : une ligne par clé d'arme du film (grenades par type), la
+ * Le serveur a déjà tout décidé : une ligne par clé d'arme (grenades par type quand le film
+ * les type, sinon une ligne « Grenade » au total de la feuille), la
  * mêlée de la feuille de match, les objets explosifs et la chute d'après la catégorie de
  * source du film, le reliquat « Non attribué » en dernier. Ce module NE regroupe RIEN et ne
  * plafonne RIEN (plus de « Autres armes ») : il nomme.
@@ -20,6 +21,8 @@ import type { SquadBarRow, SquadBarRows } from './squadWeaponKillsChart'
 /** Libellés des natures sans nom de registre (i18n de l'appelant). */
 export interface SquadToolKindLabels {
   melee: string
+  /** Grenades de la feuille, en une ligne, quand le film ne les type pas (titre sans film). */
+  grenade: string
   assassination: string
   ground_pound: string
   shoulder_bash: string

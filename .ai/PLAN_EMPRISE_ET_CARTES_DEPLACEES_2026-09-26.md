@@ -211,6 +211,7 @@ builder Escouade à côté de `buildSquadWeaponKills` (`teammates_squad_charts_w
 - [x] L2.3 Outils de destruction, web : plus de plafond `SQUAD_TOOLS_TOP_GUNS/DETAILS` ni de libellé « Autres armes » ; légende des joueurs ; compte au bout ; pastille de classe ; % en infobulle.
 - [x] L2.5 Corriger les commentaires couleur de `fragClass.ts:76-77` (découverte L0 ; mapping inchangé).
 - [x] L2.4 Chiffres témoins (22/09, maquette C3EW) retrouvés par test : BR75 22/22/35, Mutilateur 1 et VK78 Commando 1 (JGtm) nommés, grenade à fragmentation 2/1/4 (`TestSquadWeaponTools_Soiree2209`, via `buildSquadWeaponKills`).
+- [x] L2.6 (ajouté par le superviseur le 2026-09-27) Monter « Répartition des frags » puis « Outils de destruction » sur Contributions, entre la rangée « Stats par minute » / « Radar synergie » et la section « Performance » ; retirer le montage d'Usages et ce qui y devient mort ; tests des deux pages. Complément du même jour : sans film, les grenades forment une ligne « Grenade » (total de la feuille) au lieu de tomber en « Non attribué ».
 - Gate : `squadFragBreakdownChart.test.ts`, `squadFragTools.test.ts`, `fragdist_test.go`, tests du nouveau builder + gate commun + contrat.
 
 Journal L2 (2026-09-26/27, exécuteur Opus, `wt/emprise`) :
@@ -242,6 +243,20 @@ Journal L2 (2026-09-26/27, exécuteur Opus, `wt/emprise`) :
   - Go : `go test ./...` vert sauf `internal/config` (`TestLoadPlayers_RacyWindowSnapshotNeverStored`, fenêtre de 1 s, échec sous charge pendant que vitest tournait en parallèle), vert rejoué isolé ; `go test -tags=integration` des lecteurs de source vert ; `make go-api-lint` 0 issue ;
   - contrat : `make openapi-gen && make generate-types && make openapi-check` OK ;
   - web : typecheck OK ; lint 0 erreur (26 avertissements préexistants, aucun sur les fichiers touchés) ; knip-ratchet 0/0/0 ; couleurs en dur 0 ; imports croisés 7 ≤ 7 ; vitest complet 810 fichiers / 8 665 tests verts (5 fichiers / 23 tests ignorés préexistants). La garde `contract-surface.guard.test.ts` rougissait sur le retrait ASSUMÉ de `SquadWeaponBar` / `SquadWeaponKills` (remplacés par `SquadWeaponToolLine` / `SquadWeaponTools`). Snapshot régénéré par la procédure documentée (`UPDATE_CONTRACT_SURFACE=1`). Ce sont ses deux seules disparitions ; le reste du diff du snapshot n'est que des ajouts d'autres chantiers qu'il n'avait pas encore enregistrés, et les ajouts sont tolérés par la garde.
+
+Décisions du superviseur sur le rapport L2 (2026-09-27) :
+- périmètre étendu (port `KillSourceCategorizer`, lecture par catégorie, chargeur) : ACCEPTÉ ;
+- libellé « Grenade frag » du registre : ACCEPTÉ (le registre fait foi) ;
+- mêlée lue sur la feuille (D8) et écart d'un frag chez Chocoboflor : ACCEPTÉS, tracés en debug ;
+- ligne bidon à la couleur « Non attribué » : ACCEPTÉ (cohérent avec la Répartition).
+
+Compléments L2 (2026-09-27, exécuteur Opus, `wt/emprise`) :
+- **L2.6** : `SquadFragSection` est montée par `SquadContributionsPage`, section « Frags et armes » (`t.sections.fragsArmes`), entre la rangée Stats par minute / Radar synergie et « Performance ». « Répartition des frags » est pleine largeur, « Outils de destruction » juste en dessous, pleine largeur. Sur Halo 5, « Précision par rôle » reste à côté de la Répartition comme avant ; la maquette la dit « carte à part, inchangée ». Les cartes sont toujours montées, comme les autres graphes de la page : chaque carte gère son état vide. L'ordre des joueurs reprend le prédicat d'Usages (classes de frags OU série de performance). « Mécaniques de frag » (Halo 5) n'a pas bougé. Sur `SquadUsagesPage`, le montage est retiré avec `hasFrags`, `fragClassesByPlayer`, `playerColors`, `playerOrder` et les imports devenus morts : l'onglet ne compte plus que l'équipement et les formes pour son état vide. Tests : Contributions monte les deux cartes dans l'ordre et avant Performance, y compris sans données ; Usages ne les monte plus.
+- **Grenades sans film** : le détail par type ne vient que des lignes MESURÉES au film (`FromDamageSource`). Une ligne de grenade typée d'une autre provenance (table native de Halo 5) n'est pas posée. Un joueur sans grenade typée au film reçoit une ligne `grenade` (nouvelle nature `domain.SquadToolKindGrenade`, classe grenade, nommée côté web par `frags.class.grenade`) au total de la feuille. Avec film, le détail remplace la ligne, joueur par joueur. Tests : `TestBuildSquadWeaponTools_Halo5GrenadesSansFilm` (typées natives 8 + 4, feuille 14 → une ligne « Grenade » 14, aucun « Non attribué ») et `TestBuildSquadWeaponTools_GrenadesParJoueur`. La découverte L2 « Halo 5, grenades non typées en Non attribué » est donc close ; « Environmental Explosives » nommé sur Halo 5 reste vrai.
+- Gate des compléments :
+  - `go test ./...` vert sauf `internal/sync/skill` (`TestLUSRV2Shadow_RafalesBornees_300Candidats`, seuil de 2 s dépassé de 5 à 17 ms sous charge), vert rejoué isolé ; `make go-api-lint` 0 issue ;
+  - contrat : `openapi-gen`, `generate-types` et `openapi-check` OK, aucun fichier modifié (`kind` est une chaîne) ;
+  - web : typecheck OK ; lint 0 erreur (26 avertissements préexistants) ; knip 0/0/0 ; couleurs 0 ; imports croisés 7 ≤ 7 ; vitest complet 810 fichiers / 8 668 tests verts (5 / 23 ignorés préexistants).
 
 ### L3 — Contributions : objectif · moyen
 
@@ -332,10 +347,8 @@ l'entrée la plus récente du journal. Reprendre au premier item non statué du 
 - (L1) Infobulle de « Écart cumulé au FDA attendu » : la maquette C3EW propose « La FDA de chaque match moins celle que le modèle attendait de ce joueur dans ce match, cumulée depuis le premier match. Au-dessus de zéro : mieux qu'attendu. » ; la carte garde le texte PARTAGÉ `common.charts.fda_gap_tooltip` (`FdaGapTooltipText`, source unique des trois instances Séries temporelles / Sessions / Escouade, 2 phrases). Aligner sur la maquette = modifier `lib/i18n/manifests/common.toml` pour les trois pages (hors périmètre L1) ; noter aussi « le FDA » (manifeste) contre « la FDA » (maquette).
 - Écart feuille / film sur les grenades (Madina97294 : 4 au film, 3 sur la feuille le 22/09) et un
   frag de la feuille sans ligne au film.
-- (L2) **Aucun lot ne monte les cartes frags sur Contributions** : `SquadFragSection` (Répartition,
-  Outils de destruction, Précision par rôle) reste montée par `SquadUsagesPage`, que L5.4 supprime.
-  Le §3 les place sur Contributions, mais ni L2 (périmètre sans `SquadContributionsPage`) ni L3/L5
-  ne portent ce déplacement. À affecter explicitement (L3 ou L5) avant la suppression de L5.4.
+- (L2) ~~Aucun lot ne monte les cartes frags sur Contributions~~ — traité par L2.6 (superviseur,
+  2026-09-27).
 - (L2) Libellé FR du registre `hinf_frag_grenade` = « Grenade frag » (`weapon_names.toml`), la
   maquette écrit « Grenade à fragmentation » ; aligner = modifier le manifeste du titre (hors lot).
 - (L2) Maquette C3EW : la mêlée y est lue au film (6 / 12 / 15), D8 la veut sur la feuille
@@ -344,8 +357,9 @@ l'entrée la plus récente du journal. Reprendre au premier item non statué du 
   disparaît ce soir-là) ; l'écart est tracé (`players_above_sheet`), pas corrigé.
 - (L2) « Objet explosif (bidon) » prend la couleur « Non attribué » (maquette), alors que les
   bobines AVEC clé sont de classe `environmental` dans la Répartition des frags : la pastille ne
-  reflète que les bidons sans clé. À trancher au gate visuel.
+  reflète que les bidons sans clé. ACCEPTÉ par le superviseur le 2026-09-27.
 - (L2) Halo 5 : « Outils de destruction » passe par le même builder, sur ses lignes natives
   (`weapon_kills`). Changements : une ligne par clé, dont « Environmental Explosives »
-  (`h5_environmental`) qui y apparaît désormais nommée, et un reliquat de grenades non typées
-  en « Non attribué » au lieu d'une ligne « Grenade ». La Répartition H5 (golden) est inchangée.
+  (`h5_environmental`) qui y apparaît désormais nommée. (Grenades : corrigé par le complément
+  L2 du 2026-09-27, une ligne « Grenade » au total de la feuille.) La Répartition H5 (golden)
+  est inchangée.
