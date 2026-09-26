@@ -37,8 +37,13 @@ import (
 // prefixeDirective : ce qui distingue une directive du compilateur d un commentaire ordinaire.
 const prefixeDirective = "//go:"
 
+// directiveEmbed : la directive dont les motifs designent des fichiers qui entrent dans le binaire,
+// donc dans l empreinte (cf. [embarquer]).
+const directiveEmbed = "//go:embed "
+
 // jetonsDe rend le flux de jetons d une source Go, commentaires ordinaires retires, directives
-// `//go:` conservees — une ligne par jeton, `<nom du jeton> <longueur> <litteral>`.
+// `//go:` conservees — une ligne par jeton, `<nom du jeton> <longueur> <litteral>` — ET les motifs
+// de ses directives `//go:embed`, que [sourcesDe] resout en fichiers.
 //
 // LA LONGUEUR ENCADRE LE LITTERAL, pour la meme raison qu elle encadre chaque fichier : sans elle,
 // un litteral qui contiendrait un saut de ligne se confondrait avec deux jetons. Le NOM du jeton
@@ -47,7 +52,7 @@ const prefixeDirective = "//go:"
 //
 // Une source que le lexeur refuse rend une ERREUR, jamais une empreinte : hacher un fichier qui
 // ne se compile pas rendrait un gate vert sur une couche cassee.
-func jetonsDe(rel, texte string) (string, error) {
+func jetonsDe(rel, texte string) (string, []string, error) {
 	src := []byte(texte)
 	fichier := token.NewFileSet().AddFile(rel, -1, len(src))
 	var premiere error
@@ -58,6 +63,7 @@ func jetonsDe(rel, texte string) (string, error) {
 		}
 	}, scanner.ScanComments)
 	var b strings.Builder
+	var motifs []string
 	for {
 		_, tok, lit := s.Scan()
 		if tok == token.EOF {
@@ -66,6 +72,9 @@ func jetonsDe(rel, texte string) (string, error) {
 		if tok == token.COMMENT && !strings.HasPrefix(lit, prefixeDirective) {
 			continue
 		}
+		if reste, ok := strings.CutPrefix(lit, directiveEmbed); ok {
+			motifs = append(motifs, strings.Fields(reste)...)
+		}
 		if tok == token.SEMICOLON {
 			// `;` ecrit et `\n` insere sont le MEME jeton pour le compilateur.
 			lit = ";"
@@ -73,7 +82,7 @@ func jetonsDe(rel, texte string) (string, error) {
 		_, _ = fmt.Fprintf(&b, "%s %d %s\n", tok, len(lit), lit)
 	}
 	if premiere != nil {
-		return "", premiere
+		return "", nil, premiere
 	}
-	return b.String(), nil
+	return b.String(), motifs, nil
 }

@@ -11,8 +11,9 @@ package facts_test
 //
 // # CE QU IL TIENT, ET LES DEUX GESTES QU IL EXIGE
 //
-// Il hache TOUT l arbre `film/facts/` (killsource, objectives, fallback) plus les VALEURS de
-// `source.Rev` et de `grammar.Rev`, et compare au golden, qui porte le couple
+// Il hache TOUT l arbre `film/facts/` (killsource, objectives, fallback), les paquets qu il
+// importe hors couche, et les VALEURS de `source.Rev`, `profile.Rev` et `grammar.Rev` — la
+// fermeture de ses imports (lot J3.2) —, et compare au golden, qui porte le couple
 // (revision, empreinte) avec son historique. Toucher la couche — ou une couche du dessous — le
 // fait rougir ; le remettre au vert demande de rouvrir la ligne de la revision, donc de DECIDER
 // si les lignes en base doivent etre redecodees.
@@ -39,6 +40,7 @@ import (
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 	"levelup/go-api/internal/games/halo_infinite/film/revision"
 )
@@ -99,14 +101,16 @@ func racineDeLaCoucheFacts(t *testing.T) string {
 	return filepath.Dir(ici)
 }
 
-// empreinteDeLaCoucheFacts rend l empreinte et le nombre de fichiers haches. L ORDRE des valeurs
-// amont fait partie du contrat : les inverser changerait l empreinte sans qu une source bouge.
+// empreinteDeLaCoucheFacts rend l empreinte et le nombre de fichiers haches.
+//
+// LE PERIMETRE EST LA FERMETURE DES IMPORTS de l arbre (lot J3.2, DU-2 (b)) : elle rencontre
+// `source`, `profile` et `grammar`, dont les VALEURS entrent en tete dans l ordre du sens unique,
+// et les paquets importes hors couche par leurs octets — `testdata/facts_perimetre.golden`.
 func empreinteDeLaCoucheFacts(t *testing.T) (string, int) {
 	t.Helper()
-	res, err := revision.Calculer(
-		[]string{racineDeLaCoucheFacts(t)},
+	res, err := revision.EmpreinteDeCouche(racineDeLaCoucheFacts(t), "facts",
 		func(rel string) bool { return rel == fichierPorteurDeRevisionFacts },
-		source.Rev, grammar.Rev)
+		map[string]string{"source": source.Rev, "profile": profile.Rev, "grammar": grammar.Rev})
 	if err != nil {
 		t.Fatalf("empreinte de la couche facts : %v", err)
 	}

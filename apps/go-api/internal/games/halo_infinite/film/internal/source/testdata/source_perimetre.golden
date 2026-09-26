@@ -1,0 +1,18 @@
+# GOLDEN — LE PERIMETRE DE LA COUCHE SOURCE : les paquets haches par leurs octets et les couches
+# amont qui entrent par leur valeur. Ne PAS editer a la main.
+#
+# Le perimetre est la FERMETURE DES IMPORTS de production de l arbre de la couche, bornee au
+# module et arretee aux couches revisees (lot J3.2 du PLAN_SUITE_AUDIT_DECODEUR_FILM_2026-09-25,
+# decision DU-2 (b), constat SRC-1). Un paquet liste ici DECIDE la sortie de la couche : sa
+# modification fait rougir le gate de revision de la couche (`testdata/source_rev.golden`).
+#
+#   paquet<TAB><dossier relatif a apps/go-api>   hache par ses octets (jetons, fichiers embarques)
+#   amont<TAB><couche>                             hache par sa VALEUR (sa revision)
+#
+# REGENERATION (apres avoir verifie que le paquet entre, ou sort, a raison) :
+#
+#   LEVELUP_UPDATE_PERIMETRES=1 go test ./internal/games/halo_infinite/film/revision/ \
+#     -run TestPerimetreDeChaqueCoucheEgaleSonGolden -update-perimetres
+
+paquet	internal/games/halo_infinite/film/internal/source
+paquet	internal/games/halo_infinite/film/types

@@ -4,7 +4,8 @@ package source_test
 //
 // # CE QU IL TIENT, ET LES DEUX GESTES QU IL EXIGE
 //
-// Il hache les sources non-test de la couche `source` et compare AU GOLDEN, qui porte le couple
+// Il hache les sources non-test de la couche `source` sous son perimetre — la fermeture de ses
+// imports (lot J3.2), c est-a-dire aussi `film/types` — et compare AU GOLDEN, qui porte le couple
 // (revision, empreinte). Toucher la couche le fait rougir ; le remettre au vert demande de
 // rouvrir la ligne de la revision — donc de DECIDER si la facon d atteindre les octets a change.
 // Les deux derives sont distinguees, comme cote `killsource` : « les sources ont change » et
@@ -79,9 +80,8 @@ func racineDeLaCoucheSource(t *testing.T) string {
 // empreinteDeLaCoucheSource rend l empreinte et le nombre de fichiers haches.
 func empreinteDeLaCoucheSource(t *testing.T) (string, int) {
 	t.Helper()
-	res, err := revision.Calculer(
-		[]string{racineDeLaCoucheSource(t)},
-		func(rel string) bool { return rel == fichierPorteurDeRevisionSource })
+	res, err := revision.EmpreinteDeCouche(racineDeLaCoucheSource(t), "source",
+		func(rel string) bool { return rel == fichierPorteurDeRevisionSource }, nil)
 	if err != nil {
 		t.Fatalf("empreinte de la couche source : %v", err)
 	}

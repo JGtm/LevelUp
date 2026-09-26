@@ -4,8 +4,10 @@ package profile_test
 //
 // # CE QU IL TIENT, ET LES DEUX GESTES QU IL EXIGE
 //
-// Il hache les sources non-test de la couche `profile` AVEC la valeur de `source.Rev`, et compare
-// au golden, qui porte le couple (revision, empreinte). Toucher la couche le fait rougir ; le
+// Il hache les sources non-test de la couche `profile` sous son perimetre — la fermeture de ses
+// imports (lot J3.2, DU-2 (b)), qui ne rencontre AUCUNE autre couche : `profile` n importe pas
+// `source`, donc la valeur de `source.Rev` n entre plus dans son empreinte —, et compare au
+// golden, qui porte le couple (revision, empreinte). Toucher la couche le fait rougir ; le
 // remettre au vert demande de rouvrir la ligne de la revision — donc de DECIDER si le decodage
 // change. Les trois derives sont distinguees, comme pour les trois autres couches : « les sources
 // ont change », « la revision a change sans la couche », « le golden est perime ».
@@ -25,7 +27,6 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
-	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 	"levelup/go-api/internal/games/halo_infinite/film/revision"
 )
 
@@ -80,14 +81,13 @@ func racineDeLaCoucheProfil(t *testing.T) string {
 
 // empreinteDeLaCoucheProfil rend l empreinte et le nombre de fichiers haches.
 //
-// LA VALEUR AMONT EST `source.Rev`, et elle est hachee EN TETE (V15 (12)) : une montee de la
-// porte aux octets fait monter le profil sans que personne ait a y penser.
+// AUCUNE VALEUR AMONT depuis le lot J3.2 : la fermeture des imports de `profile` ne rencontre
+// aucune couche revisee. Une montee de `source` fait monter les couches qui LISENT des octets —
+// `grammar`, `killsource`, `objectives` importent `source` —, pas la table du decodeur.
 func empreinteDeLaCoucheProfil(t *testing.T) (string, int) {
 	t.Helper()
-	res, err := revision.Calculer(
-		[]string{racineDeLaCoucheProfil(t)},
-		func(rel string) bool { return rel == fichierPorteurDeRevisionProfile },
-		source.Rev)
+	res, err := revision.EmpreinteDeCouche(racineDeLaCoucheProfil(t), "profile",
+		func(rel string) bool { return rel == fichierPorteurDeRevisionProfile }, nil)
 	if err != nil {
 		t.Fatalf("empreinte de la couche profil : %v", err)
 	}

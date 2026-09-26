@@ -12,10 +12,14 @@ package profile
 // de DECODAGE, exactement comme une largeur corrigee dans `grammar`.
 //
 // Elle est donc la SECONDE des quatre (decision V15 (11) du PLAN_DECODEUR_FILM_2026-09-13),
-// entre `source` — la porte aux octets, dont elle hache la VALEUR (V15 (12)) — et `grammar`, qui
-// hache la sienne. Le sens unique est ainsi tenu par le mecanisme et non par la vigilance :
-// une montee de `source.Rev` fait monter `profile.Rev`, qui fait monter `grammar.Rev`, qui fait
-// monter `facts.Rev` — et le backlog killsource avec elle (D6, signal utilisateur).
+// entre `source` — la porte aux octets — et `grammar`, qui hache sa VALEUR (V15 (12)). Le sens
+// unique est tenu par le mecanisme et non par la vigilance : une montee de `profile.Rev` fait
+// monter `grammar.Rev`, et les revisions des faits avec elle (D6, signal utilisateur).
+//
+// ELLE NE HACHE PLUS LA VALEUR DE `source.Rev` DEPUIS LE LOT J3.2 (2026-09-26, DU-2 (b)) : le
+// perimetre d une couche est la fermeture de ses imports, et `profile` n importe pas `source` —
+// la table du decodeur ne depend pas de la facon dont les octets sont atteints. Les couches qui
+// lisent des octets (`grammar`, `facts/...`) importent `source` et hachent sa valeur.
 //
 // # POURQUOI ELLE NAIT MAINTENANT, ET PAS AU LOT 2.5.b QUI A CREE LA COUCHE
 //
@@ -41,7 +45,8 @@ package profile
 // Ce que l empreinte garde est le CODE qui les lit et les compose ; ce que le catalogue change,
 // le corpus gate le voit.
 //
-// VALEUR AMONT : `source.Rev`, et elle seule.
+// VALEUR AMONT : AUCUNE depuis le lot J3.2 (cf. plus haut) — `testdata/profile_perimetre.golden`
+// fige ce que la fermeture rencontre.
 //
 // # LA FORME, ET POURQUOI LE PREMIER RANG DU JOUR N A PAS DE SUFFIXE
 //

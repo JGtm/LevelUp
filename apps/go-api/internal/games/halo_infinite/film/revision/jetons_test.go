@@ -14,10 +14,11 @@ import (
 	"testing"
 )
 
-// empreinteDUnFichier rend l empreinte d une couche d un seul fichier `p.go`.
+// empreinteDUnFichier rend l empreinte d une couche d un seul fichier `p.go` — accompagne de
+// `x.txt`, que le cas `//go:embed` designe (un motif sans fichier est une erreur depuis J3.2).
 func empreinteDUnFichier(t *testing.T, texte string) string {
 	t.Helper()
-	return empreinteDe(t, couche(t, map[string]string{"p.go": texte}))
+	return empreinteDe(t, couche(t, map[string]string{"p.go": texte, "x.txt": "x\n"}))
 }
 
 func TestCalculer_CommentaireSansEffet(t *testing.T) {

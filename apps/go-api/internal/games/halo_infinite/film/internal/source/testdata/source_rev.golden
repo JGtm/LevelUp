@@ -57,6 +57,15 @@
 #               `//go:` gardees — et non plus ses octets. Le cadre (chemin relatif a la racine,
 #               longueur du contenu) ne change pas, et AUCUNE source de la couche ne change dans
 #               ce lot : la sortie est identique a l octet, rien n est candidat a un redecodage.
-
+#
+#   2026-09-26  REVISION INCHANGEE, EMPREINTE SEULE RECOPIEE (lot J3.2 du
+#               PLAN_SUITE_AUDIT_DECODEUR_FILM_2026-09-25, decision DU-2 (b), constat SRC-1).
+#               OUTILLAGE : le perimetre de la couche est desormais la FERMETURE DE SES IMPORTS
+#               (bornee au module, arretee aux couches revisees, qui entrent par leur VALEUR),
+#               figee par `testdata/<couche>_perimetre.golden` ; les paquets importes hors couche
+#               (`film/types`, `film/damagetag` et ses fichiers embarques, `games/weapons/filmshell`,
+#               ...) entrent par leurs jetons, et les valeurs amont sont celles que la fermeture
+#               rencontre. AUCUNE source ne change dans ce lot : la sortie est identique a l octet,
+#               rien n est candidat a un redecodage.
 source-2026-09-16	4d8427e406555c7cca2bbe0e94c3658a639cb394c4be305a08d7e413ab998913
-source-2026-09-16.2	f913b5616dd17a2f4933ed7cddb2590368933309e7cdf9d25f0d3c3153a644d2
+source-2026-09-16.2	54ac6359bef2b673de8bede08700916c3ec2101555d7e5d4d1e34389b7aabf0c
