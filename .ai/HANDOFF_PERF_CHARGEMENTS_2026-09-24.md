@@ -94,6 +94,14 @@ Quatrième leçon, vue à la première CI de la branche : un test Go renommé ou
 
 ## 7. Décisions utilisateur en attente
 
+> **Mise à jour du 2026-09-26** (plan `.ai/PLAN_PERF_LECTURES_PERIMETRE_2026-09-26.md`, branche
+> `feat/perf-perimetre`, worktree `LevelUp-wt-perf-perimetre`) : ADR 0036 écrit
+> (`docs/adr/0036-page-reads-are-scoped.md`) ; lot A fait (vue match et Relations sans la vue des
+> noms, parité exacte, revue adversariale passée) ; changelog et notes de version 7.5.0 complétés.
+> La branche `feat/perf-chargements` n'existait déjà plus (ménage du 2026-09-25). Restent à
+> l'utilisateur : push et fusion de `feat/perf-perimetre` dans `feat/v75` (« je dirais quand je
+> serais prêt »), mesure prod puis lots B et C, SSO de Chocoboflor, triage du §11.
+
 - Go pour l'ADR (rédaction immédiate) et pour le lot A avant ou après la mesure prod.
 - Périmètre du plan structurel (lots B et C), après la mesure prod.
 - Reconnexion SSO de Chocoboflor.

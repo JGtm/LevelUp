@@ -524,25 +524,57 @@ Décisions tranchées :
 Périmètre : les quatre fichiers ci-dessus.
 
 Items :
-- [ ] P3.1 changelog EN + FR (D3.1)
-- [ ] P3.2 notes de version EN + FR (D3.2)
+- [x] P3.1 changelog EN + FR (D3.1) — `6606fd3c9` (entrée « Loading performance » /
+      « Performance des chargements » en Changed, « Five ADRs » avec 0036, trois lignes Ops de
+      réglage : `LEVELUP_SLOW_REQUEST_MS` 1000, `LEVELUP_DUCKDB_THREADS` 2,
+      `LEVELUP_DUCKDB_MEMORY_LIMIT` 512MB) ; phrase du lot A complétée par le superviseur à la
+      clôture avec les chiffres du journal P2 / A.10
+- [x] P3.2 notes de version EN + FR (D3.2) — `6606fd3c9`, une puce « chargements » dans la
+      section Escouade, sessions et progression ; bloc v7.5 68 -> 69 puces EN et FR
 
 Gate P3 : parité des puces EN / FR du bloc v7.5 (compte au parseur ou au test vitest du parseur
 s'il existe) ; chaque chiffre cité retrouvé dans le handoff ou le journal P2 ; `git diff --stat`
 = périmètre.
 
-Journal P3 : (vide)
+Journal P3 (2026-09-26, exécuteur Opus effort moyen, lancé EN PARALLÈLE de P2 sur décision du
+superviseur — écart à l'ordre strict du §1 : fichiers disjoints, aucune commande go, aucun
+chiffre du lot A écrit avant sa clôture, marqueur `<!-- lot-A -->` remplacé ensuite) : puces
+comptées selon la règle de `apps/web/src/features/help/parseReleaseNotes.ts` (ligne commençant
+par `- ` entre deux lignes de version ; une ligne de suite est ignorée, d'où une puce sur une
+ligne) : 68 -> 69 EN et FR. Chaque chiffre de l'entrée vient du §2 / §3 du handoff ; défauts Ops
+lus dans `internal/api/middleware/slog_logger.go` et `internal/platform/duckdb/db.go:42-43`.
+Chiffres du lot A (superviseur) : lectures de la vue match 3,3-3,6 s -> 5-89 ms en médiane
+(journal P2, JGtm), heatmap Relations 5,0-20,4 s -> 78-94 ms (P2 et A.10), liste Relations
+8,2-14,1 s -> environ 2 s (A.6 : 1,97-2,32 s au total ; A.10 : annuaire 275-277 ms), sur copie,
+machine chargée — dit tel quel dans l'entrée.
 
 ## 5. Clôture (superviseur)
 
-- [ ] C.1 gates rejoués par le superviseur sur la tête de la branche (P2 complet + P1 / P3)
-- [ ] C.2 revue adversariale du diff `feat/v75..feat/perf-perimetre` (lentilles : parité des noms
-      et contrat du port ; SQL / périmètre sous les fenêtres) — skill `adversarial-review`
-- [ ] C.3 push de `feat/perf-perimetre`, CI verte au niveau job
-- [ ] C.4 mesure en réel après fusion : l'utilisateur ouvre une vue match et la page Relations ;
+- [x] C.1 gates rejoués par le superviseur sur la tête de la branche (P2 complet + P1 / P3) — sur
+      `5ab3c13c7` (PowerShell, GOCACHE privé, une commande à la fois) : gofmt vide, build 0, vet 0,
+      tests service / duckdb / analysis / api / archlint / port 0, intégration `-p 1`
+      platform/duckdb 0, garde-rails sync `NoART|Legacy|Sentinel` 0 (40 paquets ok) ; sur
+      `35e9766ff` (après A.11) : `go test ./...` complet, 188 paquets ok, 2 rouges de seuil de temps hors du lot, verts rejoués seuls (journal, découverte (13))
+- [x] C.2 revue adversariale du diff `feat/v75..feat/perf-perimetre` (lentilles : parité des noms
+      et contrat du port ; SQL / périmètre sous les fenêtres) — skill `adversarial-review` — une
+      ronde, deux relecteurs Opus effort élevé aveugles : relecteur A (parité des noms, contrat du
+      port, anti-ART et lecture de localisation) 0 constat, 15 conditions vérifiées ; relecteur B
+      (SQL et périmètre, couverture des tests) 0 défaut de comportement, 16 conditions vérifiées,
+      1 constat P2 de couverture (branches « victime » de la localisation sans test) retenu et
+      corrigé en A.11 (`TestAnnuairePorteeBase_RepliNommeLesVictimes`, 4 mutations rouges). Pas de
+      ronde 2 : aucun P0 / P1.
+- [!] C.3 push de `feat/perf-perimetre`, CI verte au niveau job — en attente de l'utilisateur
+      (consigne du 2026-09-26 : rien vers `feat/v75` tant qu'il ne l'a pas dit ; le push de la
+      branche lui est demandé)
+- [!] C.4 mesure en réel après fusion : l'utilisateur ouvre une vue match et la page Relations ;
       durées lues dans `logs/http.log` et `http_timings` (le superviseur n'ouvre pas de navigateur)
-- [ ] C.5 go utilisateur, fusion `--no-ff` dans `feat/v75`, push, retrait du worktree
-- [ ] C.6 handoff mis à jour (§7 décisions : ADR et lot A faits) ; entrée thought_log
+      — dépend de C.5
+- [!] C.5 go utilisateur, fusion `--no-ff` dans `feat/v75`, push, retrait du worktree — consigne
+      utilisateur du 2026-09-26 : « on va pas fusionner sur feat/v75, je dirais quand je serais
+      prêt ». Préalable signalé par la session du plan de suite de l'audit du décodeur : son lot
+      J1 (`feat/suite-audit-decodeur`) doit être fusionné dans `feat/v75` AVANT la fusion v7.5 ->
+      main.
+- [x] C.6 handoff mis à jour (§7 décisions : ADR et lot A faits) ; entrée thought_log
 
 ## 6. Découvertes (à consigner, pas à traiter)
 
@@ -594,9 +626,35 @@ Journal P3 : (vide)
   `match_kill_events` : toute lecture en portée base d'un test qui l'utilise et déclenche le repli
   échoue sans `simulerJournalBrut` (`match_view_repo_annuaire_test.go`, appelée par
   `seedPorteeBase` et `TestGamertagRepo_ResolveGamertags`).
+- (clôture, superviseur, 2026-09-26) (13) Deux tests à seuil de temps rougissent quand la machine
+  est chargée (suite complète `go test ./...` pendant que d'autres sessions compilent) : `sync/skill`
+  `TestLUSRV2Shadow_RafalesBornees_300Candidats` (seuil strict de 2 s dépassé de 5 à 86 ms) et
+  `watcher` `TestPlayerWatcher_PostExitGrace_IdempotentInactive`. Verts rejoués seuls ; risque de
+  faux rouge sur un runner CI chargé.
 
 ## 7. Journal (superviseur)
 
 - 2026-09-26 : plan écrit ; worktree `LevelUp-wt-perf-perimetre` et branche `feat/perf-perimetre`
   créés depuis `feat/v75` `ea5682373` (local en avance d'un commit sur `origin/feat/v75`
   `378509f5e` : suppression de `INVOUT.csv`, non poussée).
+- 2026-09-26 : P1 close (`948523a36`, exécuteur Opus). Consigne utilisateur en cours de route :
+  un agent à la fois pour l'implémentation, Opus au plus, effort ajusté (types d'agents à effort
+  fixé chargés après un rechargement de l'éditeur), puis jusqu'à 2, puis 4 agents en parallèle.
+  Premier exécuteur P2 interrompu par le rechargement (rien commité) ; relancé en effort élevé,
+  reprise de ses restes (copie de base, arbre de base). P3 lancé en parallèle (effort moyen,
+  `6606fd3c9`).
+- 2026-09-26 : P2 (`f576df10e`, `80184e83d`) : parité exacte, mais le repli kill-feed « toute la
+  base » coûtait 3 à 7 s quand il partait (2 % des matchs de JGtm, 65 % de ceux de Nuzzles, Relations
+  de Nuzzles). Décision DA.10 du superviseur : localiser les matchs candidats dans la table brute
+  (lecture de localisation seule, allowlistée et datée), lire les valeurs par `_latest` bornée —
+  `5ab3c13c7` : repli 150-360 ms, parité exacte, 0 nom perdu. Revue adversariale (C.2) puis A.11
+  (`35e9766ff`). Changelog complété par le superviseur. Branche ni poussée ni fusionnée : attente
+  de l'utilisateur (C.3 à C.5).
+- 2026-09-26 (C.1, suite complète) : `go test ./...` sur `35e9766ff` : 188 paquets ok, 2 rouges
+  hors du lot, tous deux sur des seuils de TEMPS pendant que d'autres sessions chargeaient la
+  machine — `sync/skill` `TestLUSRV2Shadow_RafalesBornees_300Candidats` (3 rafales tenues
+  2,006 / 2,032 / 2,086 s pour un seuil strict de 2 s) et `watcher`
+  `TestPlayerWatcher_PostExitGrace_IdempotentInactive` (état `Watching` au lieu de `Idle` après
+  l'expiration d'un délai de grâce). Rejoués seuls : verts (le second trois fois de suite). Le lot
+  n'a touché ces paquets que par une ligne de commentaire (en-têtes P1.3 de deux tests
+  `sync/skill`). Consigné en découverte (13), non traité.
