@@ -1,6 +1,7 @@
 # PLAN — Suite de l'audit du décodeur de film et du générateur d'artefacts de rejeu (2026-09-25)
 
-> **Statut : PROPOSÉ ; décisions DU-1 à DU-9 VALIDÉES le 2026-09-25 — rien n'est lancé.**
+> **Statut : EN COURS — J1 lancé le 2026-09-26 (GO utilisateur), code et revue faits, fusion
+> dans `feat/v75` en attente d'accord ; décisions DU-1 à DU-9 VALIDÉES le 2026-09-25.**
 > « ok pour le plan » n'est pas un GO : chaque jalon
 > démarre sur un GO explicite et daté de l'utilisateur. Contrat d'exécution : skill
 > `plan-execution`, précisé au §4 (en cas de divergence, ce plan fait foi).
@@ -68,9 +69,10 @@ Coût estimé : §4.7 (~20 agents Opus, effort high, jalon par jalon).
 - Branche : **`feat/suite-audit-decodeur`** (`feat/**` déclenche la CI au push ; jamais `wt/**`).
 - Worktree dédié : **`LevelUp-wt-suite-audit`**, à côté du checkout principal, créé depuis
   `feat/v75` : `git worktree add ../LevelUp-wt-suite-audit -b feat/suite-audit-decodeur feat/v75`.
-  Le chemin suit le checkout principal : une autre session prévoit (2026-09-25) de basculer le
-  dossier de travail vers `C:/Users/Guillaume/Downloads/Scripts/LevelUp` et de faire le ménage
-  des worktrees après la fusion de la campagne rr — vérifier `git worktree list` avant de créer.
+  Créé le 2026-09-26 : `C:/Users/Guillaume/Projects/LevelUp-wt-suite-audit` (le checkout
+  principal est `C:/Users/Guillaume/Projects/LevelUp` depuis la bascule du 2026-09-25). Jonction
+  `apps/web/node_modules` vers le principal (le hook de push `knip-ratchet` l'exige) : à retirer
+  par `(Get-Item <jonction>).Delete()` AVANT `git worktree remove`.
 - Une seule branche pour tout le plan (CLAUDE.md : 1 tâche = 1 branche, N commits), fusionnée dans
   `feat/v75` à quatre points : fin J1, fin J2, fin J11, fin J12. Après chaque fusion, `feat/v75`
   est re-fusionné dans la branche (en cas de conflit, `feat/v75` a raison).
@@ -100,7 +102,8 @@ Coût estimé : §4.7 (~20 agents Opus, effort high, jalon par jalon).
       Un résultat contraire requalifie la ligne `[~]` en item du plan (journal §9).
 - [x] **P-4** Décisions DU-1 à DU-7 tranchées le 2026-09-25 par l'utilisateur : « ok avec toi alors
       tu peux entériner ces décisions avec tes recos » (§3.1) ; DU-8 et DU-9 le même soir.
-- [ ] **P-5** Quota hebdomadaire : GO donné en connaissance de l'estimation du §4.7 (quota remis à
+- [x] **P-5** (FAIT le 2026-09-26 : « Ok go, pour le quota on devrait être bon » ; consignes : pas
+      au-dessus d'Opus, effort ajusté au lot, 2 agents en parallèle au maximum) Quota hebdomadaire : GO donné en connaissance de l'estimation du §4.7 (quota remis à
       zéro le 2026-09-27 à 6 h).
 
 ### 1.4 Hors périmètre (explicite)
@@ -129,7 +132,7 @@ traité (justification au journal §9). Aucune case vide.
 | ID | Grav. | Constat (résumé) | Traitement | Statut |
 |---|---|---|---|---|
 | GB-1 | P0 | Positions et canaux delta bipède limités à la génération 1 du handle | J5.0, J5.2, J5.5 | [ ] |
-| OPS-3 | P1 | Étape 1.57 lancée une fois par joueur, en parallèle, sur le même arriéré | J1 | [ ] |
+| OPS-3 | P1 | Étape 1.57 lancée une fois par joueur, en parallèle, sur le même arriéré | J1 (`d518000b3` + correctif de revue) | [x] |
 | SRC-2/OPS-4 | P1 | Chunks écrits sans atomicité, « présent » tenu pour « complet » | J2.1-J2.5 (manifeste atomique : `[~]` rr L3, contrôle P-3) | [ ] |
 | FK-1 | P1 | Un remplaçant humain désépingle le bot de relais, sans signal | J7.2 | [ ] |
 | FK-2 | P1 | Nom de remplissage `?N` publié comme assistant nommé | J7.1 | [ ] |
@@ -490,18 +493,19 @@ joueurs synchronisés en parallèle. La doctrine « le post-sync du serveur gard
 - Aucune constante ne change (`DefaultPostSyncPerCycle`, `PostSyncBudget`, `PostSyncMatchTimeout`).
 
 **Items.**
-- [ ] J1.1 Test rouge `TestRunPostSync_UnePasseParTitreALaFois` (`postsync_test.go`, sans DuckDB) :
+- [x] J1.1 Test rouge `TestRunPostSync_UnePasseParTitreALaFois` (`postsync_test.go`, sans DuckDB) :
       deux appels concurrents, capability réelle (`racineDepot`), le `WithRead` du premier bloque
       sur un canal ; le second rend 0 SANS appeler `WithRead`, compteur +1 ; après libération, un
       troisième appel ouvre son segment.
-- [ ] J1.2 Tests `TestRunPostSync_VerrouRenduEntreDeuxPasses` (deux appels successifs passent) et
+- [x] J1.2 Tests `TestRunPostSync_VerrouRenduEntreDeuxPasses` (deux appels successifs passent) et
       `TestPassesEnCours_TitresIndependants` (deux clés ne se bloquent pas).
-- [ ] J1.3 Implémentation (registre, `TryLock`, compteur, journal).
-- [ ] J1.4 Mutation : retirer le `TryLock` → J1.1 rouge.
-- [ ] J1.5 Documentation : en-têtes de `collector.go` et `postsync.go` (le mécanisme qui tient la
+- [x] J1.3 Implémentation (registre, `TryLock`, compteur, journal).
+- [x] J1.4 Mutation : retirer le `TryLock` → J1.1 rouge.
+- [x] J1.5 Documentation : en-têtes de `collector.go` et `postsync.go` (le mécanisme qui tient la
       série), commentaire de `DefaultPostSyncPerCycle`, liste des compteurs expvar si elle existe
       (ADR 0009).
-- [ ] J1.6 Revue adversariale.
+- [x] J1.6 Revue adversariale (un relecteur, 18 conditions vérifiées, 0 P0/P1, 1 P2 corrigé dans
+      le lot : journal §9, 2026-09-26).
 
 **Gate.** G-unit (`./internal/sync/killcollector/ ./internal/sync/v2/...`) ;
 `go test -race -gcflags=all=-d=checkptr=0 -run "TestRunPostSync_UnePasse|TestPassesEnCours" ./internal/sync/killcollector/ -count=1` (CGO) ;
@@ -1186,6 +1190,16 @@ relancer un agent sans avoir vérifié qu'il est mort. Ne pas re-décider ce qui
    faits v27 d'avant la reprise n'est conservé (aucun dans le cache vivant, qui porte des faits
    antérieurs) ; à signaler au superviseur de la campagne. C'est la famille RA1 : J3 pose la règle
    « toute modification du codec monte sa version, avec un test de refus de l'ancienne ».
+2. (2026-09-26, exécutant J1) En v2, `buildSyncEngineFactoryParityComplete`
+   (`cmd/server/sync_v2_wiring.go`) construit un moteur neuf par joueur et par appel, donc un
+   `PostSyncHook` neuf : la mémoïsation de `capabilities()` et `racineDuCache()` ne vaut qu'à
+   l'intérieur d'un appel, et `capabilities.toml` est relu par joueur et par cycle — contrairement
+   à la doc de `PostSyncHook` (« résolues à la première passe puis conservées »). Sans course ni
+   donnée fausse ; doc inversée (anti-pattern 9).
+3. (2026-09-26, exécutant J1) Le nom et le récit de `TestOrdonnancer_InseresPuisPlusVieux`
+   (`sync/killcollector/postsync_test.go`) décrivent un arriéré trié du plus vieux au plus récent ;
+   l'ordre de `requeteBacklog` est inversé depuis le 2026-08-29. Le test reste vrai sur la fonction
+   pure `ordonnancer`, son récit est périmé.
 
 ---
 
@@ -1230,3 +1244,21 @@ relancer un agent sans avoir vérifié qu'il est mort. Ne pas re-décider ce qui
   du thought_log rajoutée en fin. **P-1 et P-3 cochés** : les cinq lignes `[~]` sont confirmées
   sur l'arbre fusionné. Plus rien ne bloque J2 et la suite, hormis le GO par jalon. §8.1 reste
   valable (le blob des faits est toujours `REPLAYINPUTS27`, avec les deux compteurs ajoutés).
+- 2026-09-26 : **GO J1** (« Ok go ») ; P-5 coché avec trois consignes de coût (pas au-dessus
+  d'Opus, effort ajusté au lot, 2 agents en parallèle au maximum). Worktree et branche créés depuis
+  `feat/v75` = `ea5682373`. Un exécutant Opus : J1.1-J1.5 faits, rouge observé
+  (`--- FAIL: TestRunPostSync_UnePasseParTitreALaFois`, second appel qui ouvre un segment,
+  compteur +0), mutation « retrait du verrou » rouge, gates 1-6 verts (unitaires, `-race`,
+  intégration `-p 1`, vet, archlint, golangci). Registre dans `postsync_exclusivite.go` (fichier
+  neuf : `postsync.go` était à 456 lignes). Une phrase ajoutée à `SYNC_GUIDE` EN + FR (seule doc
+  opérateur des expvar de l'étape, qui affirmait « 8 films par cycle »). Superviseur : diff relu,
+  unitaires et `-race` (x3) rejoués, commit `d518000b3`, poussé (premier push refusé par le hook
+  `knip-ratchet` faute de `node_modules` dans le worktree : jonction posée).
+- 2026-09-26 : **revue adversariale J1** (un relecteur, worktree détaché retiré après) : 18
+  conditions vérifiées qui tiennent (verrou rendu sur tous les chemins, gardes intactes, phase 5
+  terminée pour tous les joueurs avant la phase 6 donc l'arriéré du gagnant voit les insertions
+  des perdants, `RunPostSync` a un seul appelant, `TitleSlug` jamais vide), 0 P0/P1, 1 P2 : les
+  deux appels concurrents du test portaient le même gamertag, donc une clé de verrou par joueur
+  serait passée inaperçue. Corrigé dans le lot (second appel = autre joueur) ; mutation « clé =
+  gamertag » → `--- FAIL: TestRunPostSync_UnePasseParTitreALaFois` ; restauré, unitaires et
+  `-race` (x3) verts. Découvertes de l'exécutant consignées §8.2 et §8.3.

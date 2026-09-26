@@ -166,10 +166,13 @@ func TestRunPostSync_UnePasseParTitreALaFois(t *testing.T) {
 	}
 
 	avant := observability.LoadCounter(CompteurPostSyncPasseDejaEnCours)
+	// Un AUTRE joueur du meme titre : c est le cas d OPS-3 (un appel par joueur), et une cle de
+	// verrou qui dependrait du joueur laisserait ce test vert si les deux appels partageaient
+	// le meme gamertag.
 	secondLu := false
-	n2 := RunPostSync(ctx, NewPostSyncHook(racine, 0), depsPostSync(
-		func(context.Context, string, func(*sql.DB)) { secondLu = true },
-	), []string{"m1"})
+	depsSecond := depsPostSync(func(context.Context, string, func(*sql.DB)) { secondLu = true })
+	depsSecond.Gamertag = "autre_joueur_de_test"
+	n2 := RunPostSync(ctx, NewPostSyncHook(racine, 0), depsSecond, []string{"m1"})
 	if secondLu {
 		t.Error("le second appel a ouvert un segment de lecture alors qu une passe du meme titre " +
 			"tournait : N joueurs decodent N fois le meme arriere (OPS-3)")
