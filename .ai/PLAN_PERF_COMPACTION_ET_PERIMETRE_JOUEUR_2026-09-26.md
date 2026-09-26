@@ -120,16 +120,21 @@ Items :
 - [x] C.4 `--rewrite-file` (DC.5), ou `[!]` prouvé — livré : DuckDB 1.5.5 embarqué préserve tables,
       vues, index, macros et la PROCHAINE valeur des séquences (`compaction_rewrite_test.go`) ;
       `cmd_compact_passes_rewrite.go`, échange seulement si l'inventaire relu SEUL est identique
-- [ ] C.5 preuve sur copie : seconde copie de la base compactée par la commande ; empreintes des
+- [x] C.5 preuve sur copie : seconde copie de la base compactée par la commande ; empreintes des
       vues avant / après identiques pour CHAQUE table retenue ; taille du fichier avant / après ;
       chrono avant / après sur copie (2 threads / 512 Mo) : rencontres et rivaux de la Carrière,
       liste Relations, rencontres de la vue match (Q23b), repli de localisation du lot A, un bloc
-      de l'onglet Tactique ; cinq joueurs suivis
-- [ ] C.6 docs : `docs/COMMANDS.md` + `docs/FR/COMMANDS.md` (commande, quand la jouer, serveur
+      de l'onglet Tactique ; cinq joueurs suivis — 13 / 13 vues identiques (SHA-256 d'une lecture
+      ordonnée complète), catalogue identique, 11,27 M -> 1,12 M lignes, 1 264 -> 1 215 Mio puis
+      351 Mio par `--rewrite-file` ; chronos : Journal C
+- [x] C.6 docs : `docs/COMMANDS.md` + `docs/FR/COMMANDS.md` (commande, quand la jouer, serveur
       arrêté, sauvegarde) ; ligne Ops du changelog 7.5.0 EN + FR (après les recuissons et le
       backfill killsource, serveur arrêté) ; ADR 0036 (section Exceptions : le coût des fenêtres
       suit le nombre de passes, la compaction est l'entretien qui le borne) et renvoi dans l'ADR
-      0026 si une règle y change (sinon rien)
+      0026 si une règle y change (sinon rien) — sous-section « Compacting superseded decode passes »
+      EN + FR, Ops (5) EN + FR, paragraphe sous la table I2 de l'ADR 0036 ; ADR 0026 : aucune règle
+      ne change (sa section Conséquences annonçait déjà « un compactage périodique pourra être
+      ajouté »), rien
 - [ ] C.7 mutations jouées : garde de cardinalité retirée, `DELETE` réintroduit (garde-rail
       anti-ART rouge), passe gardée = la première au lieu de la dernière, séquence remise à zéro ;
       chacune rouge puis restaurée
@@ -217,6 +222,86 @@ Journal C (2026-09-26, exécuteur Opus, worktree `LevelUp-wt-perf-perimetre`, ba
     utilisateur, pas des passes de décodage — la confirmation de l'utilisateur (« aucune ancienne
     passe n'a d'usage ») ne les couvre pas, et leur rapport (≤ 1,9 hors tables à lecteur brut) ne
     rend aucun gain de lecture mesurable.
+- **C.2 — mécanisme** (`d20d2d5d4`). Cœur commun extrait d'`append_only_rebuild.go` vers
+  `migration/table_swap.go` (`swapTableTx` : cardinalité attendue lue DANS la transaction, DROP
+  d'une table de construction périmée, Build, garde `rebuilt == attendu` AVANT le DROP, DROP,
+  RENAME, PostRename, `Verify` optionnel avant COMMIT, rollback intégral ; `recoverOrphanTable`
+  générique) ; `rebuildAppendOnlyTx` et `recoverOrphanAppendOnly` l'appellent (règle des deux
+  copies : aucune copie). Compaction (`compaction.go`) par table : `recoverOrphan` (suffixe
+  `__compact`), table et vue présentes (sinon `absente`), SIGNATURE de la règle retrouvée dans le
+  SQL de la vue en base (sinon REFUS de la table), comptes brut / gardé, empreinte de la vue
+  (`count` + somme des `hash` de ligne), `gardées == brutes` -> `deja-compacte` (idempotence),
+  sinon échange : table neuve au DDL EXACT (`duckdb_tables().sql`, seul le nom change), `INSERT …
+  SELECT * … <règle>`, DROP, RENAME, index recréés depuis `duckdb_indexes().sql` (DuckDB refuse de
+  renommer une table qui porte un index : mesuré), puis vérification avant COMMIT : DDL identique,
+  index identiques, empreinte de la vue identique. Séquences jamais touchées (les `id` gardés sont
+  recopiés, aucun `nextval`). `CHECKPOINT` final. Tests (`cgo`) : `compaction_test.go` — table
+  réelle `match_bomb_stats` compactée 6 -> 3 à vue identique et 12 tables absentes sautées, dry-run
+  sans écriture, vue dont la règle a changé refusée, garde de cardinalité (rollback), panne APRÈS le
+  DROP et le RENAME (rollback, DDL et index intacts), orphelin `__compact` récupéré puis compaction
+  terminée, `ddlDeConstruction`, signatures sur le SQL tel que DuckDB le rend (et une règle
+  modifiée qui ne passe plus), garde-rail source `TestCompaction_AucuneMutationDeLigne` ;
+  `games/halo_infinite/migrations/compaction_e2e_test.go` — schéma partagé RÉEL (chaîne de migration
+  complète) : les 13 tables semées (passes multiples, match à une passe, passe la plus récente au
+  nom qui trie avant, doublon dans la passe retenue de `kill_positions`, films à une ligne par passe,
+  table vide), dry-run, compaction, sortie de chaque vue identique (lecture ordonnée), tables /
+  index / vues / contraintes / séquences identiques, id suivant = max + 1, seconde passe
+  `deja-compacte`.
+- **C.3 — commande** `levelup compact-passes` (`a74c20a34`) : nom sur le modèle de `rebuild-pme-art`
+  (entretien serveur arrêté, verbe + objet ; l'objet est la PASSE). Titres : `--title` (vérifié au
+  registre chargé de la config) ou chaque titre du registre dont la base partagée existe ; chemin
+  par `PathResolver`. Réel : bail `dblease` (ADR 0013) puis ouverture RW (refus si un autre processus
+  tient le fichier), `RunForTitleDB(slug, shared)`, `CHECKPOINT`, fermeture, SAUVEGARDE octet pour
+  octet (`<nom>.avant-compaction-<UTC>.duckdb`, refus si WAL non vide), réouverture RW (refus si prise
+  entre-temps), compaction, rapport par table + taille du fichier. Écart assumé : la sauvegarde se
+  fait fichier FERMÉ — sous Windows un fichier tenu en écriture par DuckDB ne s'ouvre pas en lecture
+  (mesuré : « utilisé par un autre processus ») ; l'outillage existant (`backup`, pkg/duckdbbackup)
+  exporte en Parquet et perd séquences / vues / index : non réutilisable ici. Dry-run : ouverture en
+  LECTURE SEULE, ni migration ni sauvegarde. Tests `cmd_compact_passes_test.go` : dry-run puis
+  sauvegarde (qui porte la base d'avant) et compaction, idempotence, refus sur bail tenu, refus quand
+  un AUTRE PROCESSUS tient la base (processus auxiliaire `TestAideTenirLaBase`, dry-run et réel),
+  `--rewrite-file`, options incompatibles, WAL non vide.
+- **C.4 — `--rewrite-file`** livré (`a74c20a34`) : `migration.CopierBaseVers` (ATTACH + `COPY FROM
+  DATABASE` + DETACH), `LireInventaire` / `Ecarts` (catalogue : tables, vues, index, séquences par
+  leur `sql` qui porte `START <prochaine valeur>`, macros, types ; compte de chaque table ; empreinte
+  des vues du registre), relus sur CHAQUE fichier ouvert SEUL ; échange seulement sans écart, ancien
+  fichier gardé (`<nom>.avant-reecriture-<UTC>.duckdb`), WAL vides retirés avant l'échange, retour
+  de l'ancien si la mise en place échoue. Mesuré sur DuckDB 1.5.5 embarqué
+  (`compaction_rewrite_test.go`) : séquence tirée, jamais tirée, `START 10` -> prochaines valeurs
+  identiques ; vue sur vue, index, macro préservés. Seul écart constaté, sans lecteur :
+  `duckdb_sequences().last_value` affiche la prochaine valeur dans le fichier neuf (aucun code ne
+  lit `last_value` ni `currval`, grep).
+- **C.5 — preuve sur copie** : seconde copie de la copie du 2026-09-26 14:07 dans
+  `scratchpad/compactC/c5root/data/titles/halo_infinite/warehouse/`, commande jouée par
+  `LEVELUP_REPO_ROOT` (binaire du worktree). `--dry-run` 10,8 s ; compaction 26,0 s (dont
+  `match_kill_events` 12,1 s), migrations 0 appliquée ; seconde passe avec `--rewrite-file` :
+  13 / 13 `deja-compacte` (idempotence) puis réécriture en ~10 s. Lignes brutes avant -> après :
+  `match_kill_events` 3 953 799 -> 412 216, `match_lives` 1 725 664 -> 163 092,
+  `match_death_context` 1 516 693 -> 146 654, `kill_openings` 1 495 845 -> 147 225,
+  `kill_positions` 1 495 728 -> 147 360, `match_weapon_shots` 896 590 -> 74 882,
+  `match_player_positions` 167 189 -> 22 198, `match_usage_films` 1 262 -> 152,
+  `match_usage_players` 11 465 -> 1 420, `match_pad_pickups_by_tier` 5 590 -> 1 502,
+  `match_flag_grabs_net` 353 -> 147, `match_weapon_hit_distance` et `match_bomb_stats` 0 ; total
+  11 270 178 -> 1 116 848. Empreintes (SHA-256 d'une lecture ordonnée complète `SELECT * FROM
+  <vue> ORDER BY id`, sonde temporaire supprimée) : 13 / 13 IDENTIQUES avant, après compaction et
+  après réécriture (ex. `match_kill_events_latest` 412 216 lignes `95b4279b…5fd8dd`,
+  `kill_positions_latest` 147 360 `9012c713…735f33`). Catalogue (tables, index, vues, séquences,
+  contraintes : 356 lignes) identique avant / après / réécrit ; séquence `match_kill_events_id_seq`
+  intouchée (dernier tiré 3 953 800, `max(id)` 3 953 799). Fichier : 1 264,3 Mio -> 1 215,0 Mio
+  (compaction seule) -> 350,8 Mio (`--rewrite-file`). Chronos (2 threads / 512 Mo, machine
+  partagée, deux tours, avant -> après compaction ; le fichier réécrit donne les mêmes ordres) :
+  Carrière rencontres Q26 JGtm 1 829-1 870 -> 267-275 ms, Madina97294 1 622-1 909 -> 364-422,
+  Chocoboflor 2 171-2 449 -> 238-263, XxDaemonGamerxX 1 829-2 131 -> 277-293, Nuzzles 2 192-2 349
+  -> 609-761 ; rivaux Q27 JGtm 3 066-3 806 -> 343-425, Madina 3 727-3 906 -> 381-486, Chocoboflor
+  3 513-4 277 -> 411-418, Xx 3 391-3 685 -> 282-439, Nuzzles 3 306-3 935 -> 604-642 ; Relations
+  Q28 JGtm 1 916-2 428 -> 374-462, Madina 2 463-2 894 -> 479-505, Chocoboflor 1 846-2 077 ->
+  372-383, Xx 1 770-1 942 -> 164-277, Nuzzles 3 309-3 688 -> 1 597-1 688 ; vue match Q23b (médiane
+  de 11 matchs) JGtm 1 909-2 466 -> 236-296, Nuzzles 1 922-2 159 -> 230-242 ; Tactique
+  `MortsParCarte` JGtm 2 696-2 933 -> 397-499, Madina 3 506-3 569 -> 355-493, Chocoboflor 3 025-3 252
+  -> 601-641, Xx 2 899-3 017 -> 346-492, Nuzzles 3 715-4 972 -> 451-517 ; repli de localisation du
+  lot A (pas 1 seul, 2 973 xuids de Nuzzles) 192-252 -> 61-90 ms, mêmes 2 matchs candidats ; Q12
+  des 23 matchs à repli de JGtm, en alternance avant / après (trois tours chacun) : médiane
+  13-24 -> 13-15 ms, max 133-292 -> 39-78 ms.
 
 ## 3. Étape B — Lectures bornées aux matchs du joueur (Go)
 

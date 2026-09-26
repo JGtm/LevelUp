@@ -322,6 +322,22 @@ gamertag or kill feed of the read's matches names: 23 of `JGtm`'s 1,160 matches,
 view read (`platform/duckdb/squad_repo_annuaire.go`, `localiserKillFeed`). A single pass (killer OR
 victim) is the lead; not measured. Not assigned.
 
+**The cost of these windows follows the number of passes, and compaction is the maintenance that
+bounds it** (step C of `.ai/PLAN_PERF_COMPACTION_ET_PERIMETRE_JOUEUR_2026-09-26.md`, 2026-09-26).
+Every re-decode of a film appends a full pass to the film tables (INSERT-only, ADR 0026); a
+`_latest` view serves only the last one, but its window partitions every pass. On the local
+database of 2026-09-26, 90 % of the film-table rows were superseded passes (11.27 M raw rows for
+1.12 M served). `levelup compact-passes` rebuilds those tables with the rows their views serve (no
+`DELETE`, view output, DDL, indexes and sequences checked before each COMMIT) and is run, server
+stopped, after each re-decode campaign — never at boot nor after a sync. Measured on a copy
+(2 threads / 512 MB, loaded machine, two runs, before -> after): Career encounters Q26 1.6-2.4 s ->
+0.24-0.76 s, rivals Q27 3.1-4.3 s -> 0.28-0.64 s, Relations Q28 1.8-2.9 s -> 0.16-0.51 s (`Nuzzles`
+3.3-3.7 s -> 1.6-1.7 s), match view Q23b median 1.9-2.5 s -> 0.23-0.30 s, `MortsParCarte`
+2.7-5.0 s -> 0.35-0.64 s, the directory's locating read (`Nuzzles`, 2,973 xuids) 0.19-0.25 s -> 0.06-0.09 s (the raw
+journal now holds only the served pass: same candidates). Compaction does not retire these
+exceptions — the windows still span the whole history — it keeps their cost proportional to the
+history instead of to the number of decodes; lot B binds them to the player's matches.
+
 ### Complete-history pages without a cache (I3)
 
 | Read | Measured cost | Retired by |

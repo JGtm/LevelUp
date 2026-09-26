@@ -598,6 +598,44 @@ go run ./cmd/levelup reset-bitmasks                         # reset des bits de 
 go run ./cmd/levelup engagement-coefs [--with-scores]      # recompute des coefficients d'engagement
 ```
 
+#### Compaction des passes de décodage supersédées (`compact-passes`)
+
+Chaque redécodage d'un film AJOUTE une passe entière aux tables du film de la base partagée des
+matchs (`match_kill_events`, `match_lives`, `match_death_context`, `kill_openings`,
+`kill_positions`, `match_weapon_shots`, `match_player_positions`, le résumé d'usage, les niveaux
+de socle, les prises de drapeau, les statistiques d'Assaut — INSERT-only, ADR 0019 / 0026). Les
+vues `_latest` ne servent que la dernière passe, mais toute lecture qui les évalue parcourt
+toutes les passes : sur la base locale du 2026-09-26, 90 % de ces lignes étaient des passes
+mortes. `compact-passes` reconstruit chaque table avec les seules lignes que sa vue retient —
+jamais de `DELETE` (bug DuckDB ART #23645) : un échange transactionnel qui vérifie, avant le
+COMMIT, le nombre de lignes, le DDL et les index de la table, et que la vue rend exactement le
+même résultat. Les séquences ne sont pas touchées (aucun `id` n'est réutilisé). Idempotente : une
+seconde passe rend `deja-compacte`.
+
+Quand : après une campagne de redécodage (recuisson, `backfill-killsource`), jamais au boot ni
+après un sync. **Serveur arrêté** : la commande refuse une base qu'un autre processus tient.
+
+```bash
+go run ./cmd/levelup compact-passes --dry-run                # lecture seule : brutes / _latest / gain par table
+go run ./cmd/levelup compact-passes                          # sauvegarde, puis compaction, tous les titres
+go run ./cmd/levelup compact-passes --title halo_5           # un seul titre
+go run ./cmd/levelup compact-passes --rewrite-file           # + réécriture du fichier pour rendre la place au disque
+go run ./cmd/levelup compact-passes --backup-dir D:\sauvegardes  # dossier des sauvegardes (défaut : celui de la base)
+```
+
+- **Sauvegarde (obligatoire)** : copie octet pour octet du fichier de la base, prise après un
+  `CHECKPOINT`, fichier fermé, affichée `sauvegarde : <chemin>`
+  (`<nom>.avant-compaction-<UTC>.duckdb`). Restaurer = remettre ce fichier en place, serveur
+  arrêté. L'outillage de sauvegarde Parquet (`backup`) n'est pas utilisé : il perd séquences,
+  vues et index.
+- **`--rewrite-file`** : DuckDB réutilise les blocs libérés mais ne rétrécit jamais un fichier.
+  L'option recopie la base dans un fichier neuf (`COPY FROM DATABASE`), relit les DEUX fichiers
+  seuls et ne les échange que si le catalogue (tables, vues, index, séquences avec leur prochaine
+  valeur, macros, types), le compte de chaque table et l'empreinte de chaque vue compactée sont
+  identiques ; l'ancien fichier est gardé sous `<nom>.avant-reecriture-<UTC>.duckdb`. Mesuré sur
+  une copie : 1 264 Mio -> 351 Mio.
+- Supprimer les sauvegardes à la main une fois l'application vérifiée.
+
 ### Migration des chemins média (one-shot, binaire autonome)
 
 Convertit les chemins média **absolus** (legacy) en chemins relatifs portables

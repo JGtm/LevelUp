@@ -575,6 +575,40 @@ go run ./cmd/levelup reset-bitmasks                         # reset skill/partic
 go run ./cmd/levelup engagement-coefs [--with-scores]      # recompute engagement coefficients
 ```
 
+#### Compacting superseded decode passes (`compact-passes`)
+
+Every re-decode of a film APPENDS a full pass to the film tables of the shared match DB
+(`match_kill_events`, `match_lives`, `match_death_context`, `kill_openings`, `kill_positions`,
+`match_weapon_shots`, `match_player_positions`, the usage summary, pad tiers, flag grabs,
+Assault stats — INSERT-only, ADR 0019 / 0026). The `_latest` views serve only the last pass, but
+every read that evaluates them walks all passes: on the local DB of 2026-09-26, 90 % of those
+rows were dead passes. `compact-passes` rebuilds each table with only the rows its view keeps —
+never a `DELETE` (DuckDB ART #23645): a transactional swap that checks, before COMMIT, the row
+count, the table DDL and indexes, and that the view returns exactly the same result. Sequences
+are untouched (no `id` is ever reused). Idempotent: a second run reports `deja-compacte`.
+
+When: after a re-decode campaign (re-bake, `backfill-killsource`), never at boot nor after a
+sync. **Server stopped**: the command refuses a DB another process holds.
+
+```bash
+go run ./cmd/levelup compact-passes --dry-run                # read-only: raw / _latest / gain per table
+go run ./cmd/levelup compact-passes                          # backup, then compaction, every title
+go run ./cmd/levelup compact-passes --title halo_5           # one title
+go run ./cmd/levelup compact-passes --rewrite-file           # + rewrite the file to give the space back
+go run ./cmd/levelup compact-passes --backup-dir D:\backups  # where the backups go (default: next to the DB)
+```
+
+- **Backup (mandatory)**: a byte-for-byte copy of the DB file, taken after a `CHECKPOINT` with
+  the file closed, printed as `sauvegarde : <path>` (`<name>.avant-compaction-<UTC>.duckdb`).
+  Restore = put that file back in place, server stopped. The Parquet backup tooling (`backup`)
+  is not used: it drops sequences, views and indexes.
+- **`--rewrite-file`**: DuckDB reuses freed blocks but never shrinks a file. The option copies
+  the DB into a new file (`COPY FROM DATABASE`), re-reads BOTH files alone and swaps them only if
+  the catalog (tables, views, indexes, sequences with their next value, macros, types), every
+  table's row count and every compacted view's fingerprint are identical; the old file is kept
+  as `<name>.avant-reecriture-<UTC>.duckdb`. Measured on a copy: 1 264 MiB -> 351 MiB.
+- Delete the backups by hand once the app has been checked.
+
 ### Media paths migration (one-shot, standalone binary)
 
 Converts legacy **absolute** media paths to portable relative `{owner_slug}/{rel}` paths in
