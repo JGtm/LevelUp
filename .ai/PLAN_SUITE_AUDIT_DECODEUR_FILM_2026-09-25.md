@@ -1401,3 +1401,12 @@ relancer un agent sans avoir vérifié qu'il est mort. Ne pas re-décider ce qui
   (même raison que J1 : arbre validé tel quel par la CI). `feat/v75` re-fusionné dans la branche
   du plan (`9e8e55a71`, arbre inchangé). Même demande : **revue adversariale finale** de tout le
   travail à la fin du plan, périmètre fermé (règle 5 bis du §4.1).
+- 2026-09-26 : **G-equiv J3 + J4.0 conforme** (binaire bâti sur `097a22612`) : pour les 20 films,
+  60 étapes de balayage sur 61 identiques, seule l'étape `artifact` diverge ; vérification champ à
+  champ sur 51101d1d (`replay-build` avant `08293ae55` / après `097a22612`) : 13 différences,
+  exactement la liste déclarée (schéma 72, `coverage.decoder` par consommateur, calques
+  d'objectifs → `objectives-2026-09-26`, calques de publication → `publication-72`). Références
+  d'équivalence re-figées à cet état en recopiant les TSV des enfants (`629acd441`) : J4 et la
+  suite se mesurent contre le schéma 72. CI de `feat/v75` après la fusion J2 : verte au niveau job
+  (CI 36258763360, Deploy Pre-Check 36258763285). Faits écrits par la mesure : dans le worktree
+  seulement.

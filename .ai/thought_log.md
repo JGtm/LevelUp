@@ -113548,3 +113548,11 @@ serveur relance a synchronise depuis). Tache Notion 10 CLOSE.
 **Conclusion / prochaine etape** : push, CI de la branche au niveau job, puis fusion de J2 dans `feat/v75` sur accord de l'utilisateur ; J3 en cours ; G-equiv de J3 + J4.0 sur l'arbre reuni.
 
 **Addendum cloture J2 (2026-09-26)** : CI de `8b34babd0` verte au niveau job ; fusion `--no-ff` dans `feat/v75` (`d61443ef5`, arbre identique a celui valide par la CI), poussee ; `feat/v75` re-fusionne dans la branche du plan. J3 (modele de revision, schema 72, codec des faits 2, revue adversariale 0 P0/P1) et J4.0 (carte de fermeture) faits et reunis sur la branche, en attente de la vague J11 ; G-equiv J3+J4.0 en cours ; J4 S1 lance. Demande utilisateur consignee au plan (§4.1 regle 5 bis) : revue adversariale finale de tout le travail, perimetre ferme.
+
+## [2026-09-26] Suite de l'audit du decodeur, J3 (modele de revision) et J4.0 (carte de fermeture) — Complété sur la branche du plan (vague J11 : pas de fusion dans `feat/v75` avant J11)
+
+**Decision technique principale** : DU-2 applique en sept commits (empreinte par jetons, perimetre = fermeture des imports figee par golden, `killsource.Rev` a valeur conservee + `objectives.Rev` neuve, gardes de l'appelant et cle de cuisson complete dans les faits, inventaire nil/vide, ADR 0034 amende) ; J3.3b (decision superviseur) : `ObjectiveEvent` deplace dans la feuille `domain/objectiveevent` pour que le perimetre d'`objectives` ne contienne pas `internal/domain`. J4.0 : `grammar.FrameClosure` + golden + ratchet + outil `cmd_fermeture` (instrument).
+
+**Resultats observes** : revue adversariale J3 : 22 conditions tiennent, 0 P0/P1, 2 P2 (docs corrigees ; catalogue de cartes lu a l'execution non couvert par killsource pour les lignes, anterieur, plan §8.14). G-equiv : 60/61 etapes identiques sur 20 films, seul l'artefact diverge, 13 differences toutes declarees (verif champ a champ sur 51101d1d) ; references re-figees au schema 72. Faits du principal intacts.
+
+**Conclusion / prochaine etape** : CI de la branche ; J4 S1 (etage de balayage unique) en cours ; mesure de reference J4.0.5 sur films reels a faire par le superviseur.
