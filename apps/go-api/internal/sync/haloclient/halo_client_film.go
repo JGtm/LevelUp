@@ -282,7 +282,7 @@ func (c *HaloAPIClient) fetchFilmChunks(
 		// SYSTÉMATIQUEMENT que les REPLICATION_DATA ; l'en-tête et le kill-feed
 		// n'y sont que sur les films téléchargés à la main (ex. J0.1). On tente
 		// donc pour tous les types : un miss retombe sur le CDN.
-		if cached, cErr := c.localFilmCache.LoadChunk(matchID, chunk.Index); cErr == nil && cached != nil {
+		if cached := c.chunkDuCache(ctx, matchID, chunk.Index); cached != nil {
 			out = append(out, FilmChunk{
 				Index:      chunk.Index,
 				ChunkType:  chunk.ChunkType,
@@ -303,7 +303,7 @@ func (c *HaloAPIClient) fetchFilmChunks(
 			i, ch := i, ch
 			eg.Go(func() error {
 				chunkURL := buildChunkURL(manifest.BlobStoragePathPrefix, ch.FileRelativePath)
-				data, dErr := c.downloadBlob(egCtx, chunkURL)
+				data, dErr := c.downloadBlob(egCtx, chunkURL, ch.ChunkSize)
 				if dErr != nil {
 					return fmt.Errorf("%s chunk %d(%s): %w", caller, ch.Index, matchID, dErr)
 				}
@@ -416,11 +416,11 @@ func (c *HaloAPIClient) GetHighlightEventsChunk(ctx context.Context, matchID str
 		}
 		// Cache disque d'abord (rarement présent — Python ne cache que
 		// REPLICATION_DATA — mais on tente).
-		if cached, cErr := c.localFilmCache.LoadChunk(matchID, chunk.Index); cErr == nil && cached != nil {
+		if cached := c.chunkDuCache(ctx, matchID, chunk.Index); cached != nil {
 			return cached, manifest.CustomData.FilmMajorVersion, true, nil
 		}
 		chunkURL := buildChunkURL(manifest.BlobStoragePathPrefix, chunk.FileRelativePath)
-		data, err := c.downloadBlob(ctx, chunkURL)
+		data, err := c.downloadBlob(ctx, chunkURL, chunk.ChunkSize)
 		if err != nil {
 			// Fallback gracieux : si le manifest vient du cache local et que
 			// le blob CDN a expiré, on retourne (nil, 0, false, nil) au lieu

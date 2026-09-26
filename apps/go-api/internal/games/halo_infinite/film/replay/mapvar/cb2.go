@@ -14,9 +14,15 @@ package mapvar
 
 import (
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"math"
 )
+
+// ErrCompteHorsBornes : un compte de conteneur, de map ou de chaine annonce plus d elements que
+// les octets restants ne peuvent en porter (lot J2.8, constat RB1-4, 2026-09-26). Le flux est
+// tronque ou corrompu : aucune allocation n est tentee.
+var ErrCompteHorsBornes = errors.New("cb2: compte hors bornes")
 
 // Types Bond (BondDataType).
 const (
@@ -149,13 +155,44 @@ func (d *decoder) readContainerHeader() (elemType byte, count int, err error) {
 	}
 	elemType = b & 0x1F
 	if n := b >> 5; n != 0 {
-		return elemType, int(n) - 1, nil
+		count, err = d.borneCompte(uint64(n)-1, coutMinimalDe(elemType))
+		return elemType, count, err
 	}
 	c, err := d.readVarint()
 	if err != nil {
 		return 0, 0, err
 	}
-	return elemType, int(c), nil
+	count, err = d.borneCompte(c, coutMinimalDe(elemType))
+	return elemType, count, err
+}
+
+// borneCompte refuse un compte de `c` elements quand les octets restants ne peuvent pas les
+// porter, chacun en consommant au moins `coutMinimal` : le compte est alors faux par
+// construction, et l allouer ferait tomber le processus.
+func (d *decoder) borneCompte(c uint64, coutMinimal int) (int, error) {
+	reste := len(d.buf) - d.pos
+	if c > uint64(reste/coutMinimal) {
+		return 0, fmt.Errorf("%w : %d element(s) d au moins %d octet(s) a %d, %d octet(s) restant(s)",
+			ErrCompteHorsBornes, c, coutMinimal, d.pos, reste)
+	}
+	return int(c), nil
+}
+
+// coutMinimalDe rend le nombre d octets qu une valeur du type `typ` consomme AU MINIMUM : un
+// octet pour les entiers (varint ou octet), les chaines et les conteneurs (leur compte ou leur
+// longueur), quatre ou huit pour les flottants, trois pour une map (deux types puis un compte).
+// Un type inconnu vaut un octet : `readValue` le refusera de toute facon.
+func coutMinimalDe(typ byte) int {
+	switch typ {
+	case btFloat:
+		return 4
+	case btDouble:
+		return 8
+	case btMap:
+		return 3
+	default:
+		return 1
+	}
 }
 
 // readValue décode une valeur du type donné à la position courante.
@@ -207,14 +244,18 @@ func (d *decoder) readStr(typ byte) (Value, error) {
 	if typ == btWString {
 		width = 2
 	}
-	raw, err := d.readBytes(int(n) * width)
+	count, err := d.borneCompte(n, width)
+	if err != nil {
+		return Value{}, err
+	}
+	raw, err := d.readBytes(count * width)
 	if err != nil {
 		return Value{}, err
 	}
 	if typ == btString {
 		return Value{Type: typ, Str: string(raw)}, nil
 	}
-	runes := make([]rune, 0, n)
+	runes := make([]rune, 0, count)
 	for i := 0; i+1 < len(raw); i += 2 {
 		runes = append(runes, rune(binary.LittleEndian.Uint16(raw[i:i+2])))
 	}
@@ -246,12 +287,16 @@ func (d *decoder) readMap() (Value, error) {
 	if err != nil {
 		return Value{}, err
 	}
-	count, err := d.readVarint()
+	brut, err := d.readVarint()
+	if err != nil {
+		return Value{}, err
+	}
+	count, err := d.borneCompte(brut, coutMinimalDe(keyType&0x1F)+coutMinimalDe(valType&0x1F))
 	if err != nil {
 		return Value{}, err
 	}
 	out := Value{Type: btMap, Pairs: make([]KeyValue, 0, count)}
-	for i := uint64(0); i < count; i++ {
+	for i := 0; i < count; i++ {
 		k, err := d.readValue(keyType & 0x1F)
 		if err != nil {
 			return Value{}, err
@@ -272,10 +317,12 @@ func (d *decoder) readStruct() (Value, error) {
 	if err != nil {
 		return Value{}, err
 	}
-	end := d.pos + int(length)
-	if end > len(d.buf) {
-		return Value{}, fmt.Errorf("cb2: struct de %d octets déborde à %d", length, d.pos)
+	// Comparee AVANT la conversion : `int(length)` d un varint >= 2^63 serait negatif et la
+	// fin calculee passerait sous la position courante.
+	if length > uint64(len(d.buf)-d.pos) {
+		return Value{}, fmt.Errorf("%w : struct de %d octets déborde à %d", ErrCompteHorsBornes, length, d.pos)
 	}
+	end := d.pos + int(length)
 	out := Value{Type: btStruct, Fields: make(map[uint16]Value)}
 	for d.pos < end {
 		typ, id, err := d.readTag()

@@ -71,7 +71,7 @@ func TestWrite_RefuseUnFilmNonFinalise(t *testing.T) {
 	_, entrees := manifestePartielTemoin(t)
 	liste := completerLeTemoin(entrees)[:34]
 
-	err := Write(root, "ab526724", liste)
+	err := Write(t.Context(), root, "ab526724", liste)
 	if !errors.Is(err, ErrFilmNonFinalise) {
 		t.Fatalf("Write d'un film sans temps forts : err = %v, attendu ErrFilmNonFinalise", err)
 	}
@@ -85,7 +85,8 @@ func TestWrite_RefuseUnFilmNonFinalise(t *testing.T) {
 
 // TestWrite_CompleteUnManifestePartiel : LE CAS DU TEMOIN. Un manifeste deja present SANS temps
 // forts est REMPLACE par la liste finalisee qui le complete — la seule reecriture permise. Les
-// morceaux deja sur disque ne sont pas reecrits.
+// morceaux deja sur disque A LA BONNE TAILLE ne sont pas reecrits (un morceau de taille fausse
+// est remplace depuis J2.2 : cf. write_robustesse_test.go).
 func TestWrite_CompleteUnManifestePartiel(t *testing.T) {
 	root := t.TempDir()
 	blob, entrees := manifestePartielTemoin(t)
@@ -95,11 +96,12 @@ func TestWrite_CompleteUnManifestePartiel(t *testing.T) {
 		t.Fatal(err)
 	}
 	dejaLa := filepath.Join(dir, "chunk_33.bin")
-	if err := os.WriteFile(dejaLa, []byte("ancien"), 0o644); err != nil {
+	// Meme taille que "c33" (la liste) : un morceau ENTIER deja present est adopte tel quel.
+	if err := os.WriteFile(dejaLa, []byte("anc"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
-	if err := Write(root, "ab526724", completerLeTemoin(entrees)); err != nil {
+	if err := Write(t.Context(), root, "ab526724", completerLeTemoin(entrees)); err != nil {
 		t.Fatalf("Write de la liste finalisee : %v", err)
 	}
 	src, found, err := Open(root, "ab526724")
@@ -112,7 +114,7 @@ func TestWrite_CompleteUnManifestePartiel(t *testing.T) {
 	if !Finalise(src.Meta(), func(m types.ChunkMeta) int { return m.ChunkType }) {
 		t.Error("le manifeste complete ne porte pas le morceau des temps forts")
 	}
-	if got, _ := os.ReadFile(dejaLa); string(got) != "ancien" {
+	if got, _ := os.ReadFile(dejaLa); string(got) != "anc" {
 		t.Errorf("morceau deja present reecrit : %q", got)
 	}
 	if _, err := os.Stat(filepath.Join(dir, "chunk_36.bin")); err != nil {
@@ -152,7 +154,7 @@ func TestWrite_RefuseDeCompleterUnManifesteDivergent(t *testing.T) {
 				t.Fatalf("la liste deformee n'est plus finalisee : le cas ne teste pas la divergence")
 			}
 
-			err := Write(root, "ab526724", liste)
+			err := Write(t.Context(), root, "ab526724", liste)
 			if !errors.Is(err, ErrManifesteDivergent) {
 				t.Fatalf("err = %v, attendu ErrManifesteDivergent", err)
 			}
@@ -173,7 +175,7 @@ func TestWrite_UnManifestePartielNeSeCompletePasDUneListePartielle(t *testing.T)
 	blob, entrees := manifestePartielTemoin(t)
 	poserManifeste(t, root, "ab526724", blob)
 
-	err := Write(root, "ab526724", completerLeTemoin(entrees)[:36])
+	err := Write(t.Context(), root, "ab526724", completerLeTemoin(entrees)[:36])
 	if !errors.Is(err, ErrFilmNonFinalise) {
 		t.Fatalf("err = %v, attendu ErrFilmNonFinalise", err)
 	}

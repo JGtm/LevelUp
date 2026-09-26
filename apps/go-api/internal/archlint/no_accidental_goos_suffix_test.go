@@ -53,6 +53,8 @@ var goosSuffixAllowed = map[string]string{
 	"internal/filmproc/selfpriority_windows.go":      "priorite du processus courant : Win32",
 	"internal/himodule/projection_windows.go":        "projection memoire d'un module : CreateFileMapping (Win32)",
 	"internal/platform/diskfree/diskfree_windows.go": "espace disque : GetDiskFreeSpaceEx (Win32)",
+	"internal/platform/filelock/filelock_windows.go": "verrou de fichier entre processus : " +
+		"LockFileEx (Win32), ajoute le 2026-09-26 (J2.6, DT-2)",
 	"internal/platform/session/store_purge_windows_test.go": "purge de sessions : comportement " +
 		"de suppression propre a Windows",
 }
