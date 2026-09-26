@@ -135,9 +135,10 @@ Items :
       EN + FR, Ops (5) EN + FR, paragraphe sous la table I2 de l'ADR 0036 ; ADR 0026 : aucune règle
       ne change (sa section Conséquences annonçait déjà « un compactage périodique pourra être
       ajouté »), rien
-- [ ] C.7 mutations jouées : garde de cardinalité retirée, `DELETE` réintroduit (garde-rail
+- [x] C.7 mutations jouées : garde de cardinalité retirée, `DELETE` réintroduit (garde-rail
       anti-ART rouge), passe gardée = la première au lieu de la dernière, séquence remise à zéro ;
-      chacune rouge puis restaurée
+      chacune rouge puis restaurée — quatre mutations (six variantes), toutes rouges, `cmp` à
+      l'appui — Journal C
 
 Gate C (depuis `apps/go-api`) : `gofmt -l ./internal ./cmd` vide ; `go build ./...` ; `go vet
 ./...` ; `go test ./...` ; `go test -tags=integration -p 1 ./...` (code de sortie 0 vérifié, pas
@@ -302,6 +303,42 @@ Journal C (2026-09-26, exécuteur Opus, worktree `LevelUp-wt-perf-perimetre`, ba
   lot A (pas 1 seul, 2 973 xuids de Nuzzles) 192-252 -> 61-90 ms, mêmes 2 matchs candidats ; Q12
   des 23 matchs à repli de JGtm, en alternance avant / après (trois tours chacun) : médiane
   13-24 -> 13-15 ms, max 133-292 -> 39-78 ms.
+- **C.7 — mutations** (chacune appliquée, test rouge, fichier restauré, `cmp` identique) :
+  (1) garde de cardinalité retirée de `swapTableTx` -> `TestSwapTableTx_GardeDeCardinalite_Rollback`
+  rouge (« attendu l'abandon de la garde, got <nil> ») ; (2) `DELETE FROM <table>__compact WHERE id
+  NOT IN (…)` réintroduit dans l'échange -> `TestCompaction_AucuneMutationDeLigne` rouge (le
+  résultat serait le même : seul le garde-rail le voit, et c'est son rôle — les scans de
+  `internal/sync` excluent `internal/migration`) ; (3) passe gardée = la PREMIÈRE (`keep` en `ASC`,
+  signature inchangée) -> `TestCompaction_SchemaReel_BoutABout` rouge (dry-run : `kill_positions`
+  garderait 7 lignes et non 8), et avec la vérification avant COMMIT neutralisée, rouge de même ;
+  variante sur la dernière ligne par clé (`match_bomb_stats`) -> la vérification avant COMMIT
+  refuse (« la vue match_bomb_stats_latest ne rend plus le même résultat », rollback), et
+  vérification neutralisée -> `TestCompaction_BombStats_VueIdentiqueEtTablesAbsentes` rouge
+  (« vue changée ») ; (4) séquence remise à zéro (séquence neuve `START 1` posée en défaut de
+  `id` après le RENAME) -> la vérification avant COMMIT refuse (« DDL de match_kill_events
+  changé », rollback) et, vérification neutralisée, `TestCompaction_SchemaReel_BoutABout` rouge
+  (« schéma changé »).
+- **Gate C** (code `a74c20a34`, depuis `apps/go-api`, `CGO_ENABLED=1`, GOCACHE privé) :
+  `gofmt -l ./internal ./cmd` vide ; `go build ./...` 0 ; `go vet ./...` 0 ; `go test ./...` en
+  quatre tranches de `go list ./...` (343 paquets ; la limite de 10 min par commande interdit un
+  seul appel) : 4 codes de sortie 0, 190 `ok`, 153 sans test, 0 `FAIL` ; `go test -tags=integration
+  -p 1` sur les 344 paquets de `go list -tags=integration ./...`, en tranches (codes de sortie lus
+  un par un, pas une sortie filtrée) : toutes à 0 SAUF une, `internal/service` rouge sur
+  `TestRelationsSegmentation_SoloVsSquad_CrossDB` et `_PlaylistFilter_CrossDB` — PRÉEXISTANT,
+  rouge à l'identique sur l'arbre exporté de `34edf29af`, hors du diff de C (découverte (9)) ;
+  seconde passe complète `-json -count=1` pour la baseline : mêmes deux rouges, plus
+  `TestLUSRV2Shadow_RafalesBornees_300Candidats` (seuil de 2 s dépassé de 2 à 62 ms, machine
+  chargée) — rejoué seul : vert ; garde-rails `internal/sync` (`NoART|NoRaw|Allowlist|Bulk|
+  Interpolated|Legacy|Sentinel`) verts (dont `TestNoARTPatternsOnProtectedTables`,
+  `TestNoRawDeleteOnAppendOnlyTables`, `TestNoInterpolatedWriteOnProtectedTables`),
+  `TestNoRawAppendOnlyReads` vert, sentinelle `platform/auth` verte ; golangci-lint
+  `--new-from-rev=f04b9fb78 ./...` 0 issue, idem `--build-tags=integration` ; baseline
+  (`scripts/check_test_baseline.sh tests --from-jsonl` sur le JSONL complet) : « Tous les tests
+  baseline présents » (9 693 / 18 454), verdict d'échec = les trois tests ci-dessus seulement ;
+  aucun test renommé ni supprimé (baseline JSONL inchangée) ; sonde `cmd/compaction_probe_tmp`
+  absente ; artefacts de test sous `data/` (rasters, `halo_5/warehouse/metadata.duckdb`) retirés.
+- **Revue C** (deux relecteurs aveugles) : NON FAITE par l'exécuteur — sous-agents interdits par
+  le brief ; au superviseur.
 
 ## 3. Étape B — Lectures bornées aux matchs du joueur (Go)
 
@@ -366,7 +403,43 @@ case non statuée de l'étape courante (C, puis B, puis F).
 
 ## 6. Découvertes (à consigner, pas à traiter)
 
-(vide)
+- (C, 2026-09-26) (1) Au moins quinze swaps « table neuve + RENAME » écrits à la main hors du cœur
+  commun (`grep "RENAME TO"` : `games/halo_infinite/migrations/steps*.go` x8,
+  `migration/steps_metadata_*`, `steps_player_append_only_match_enrichment.go`,
+  `steps_shared_rebuild_match_participants.go`, `steps_shared_social_media_files_*`,
+  `ops/records_purge.go`, `cmd/purge_foreign_lusr_chain`) : dette antérieure, le cœur
+  `migration/table_swap.go` existe désormais pour eux ; non migrés (hors périmètre), aucun
+  garde-rail n'interdit une nouvelle copie. (2) `migrerSchemaPartage` (`cmd/levelup/
+  cmd_backfill_killsource.go`, appelé aussi par `backfill-flag-grabs-net`, `-pad-tiers`, …) reçoit
+  le slug mais appelle `migration.RunForDB`, qui force `DefaultSlug` : sur `--title halo_5`, ce
+  serait le jeu de migrations de Halo Infinite (le commentaire d'`applySharedMigrationsForTitle`
+  dit exactement ce piège) ; `compact-passes` appelle `RunForTitleDB`. Non vérifié en exécution.
+  (3) Dans UN MÊME processus, une seconde instance DuckDB (`sql.Open` hors du cache du paquet
+  `duckdb`) ouvre en écriture un fichier qu'une autre instance tient déjà en écriture, sans refus
+  (mesuré par le premier jet du test de refus) : seul le verrou INTER-processus protège, le bail
+  `dblease` étant le seul garde intra-processus. (4) Sous Windows, un fichier que DuckDB tient en
+  écriture ne s'ouvre pas en lecture par un autre handle (« utilisé par un autre processus ») :
+  toute copie de sauvegarde « à chaud » d'une base tenue échoue sur le poste local (la
+  sauvegarde de `compact-passes` se fait donc fichier fermé). (5) Les scans anti-ART de
+  `internal/sync` (`dansLePerimetreART`) excluent `internal/migration` : du code de maintenance
+  qui y vit et tourne hors du boot (la compaction) n'est gardé que par son propre test
+  (`TestCompaction_AucuneMutationDeLigne`). (6) Halo 5 : `kill_positions` porte une passe
+  synthétique `legacy-<match>` par match, et sa vue écarte 2 606 doublons (297 963 brutes /
+  295 357 servies) À L'INTÉRIEUR de ces passes — la compaction les garde (DC.2), rien à gagner
+  sur cette table. (7) Après compaction, la liste Relations de Nuzzles reste à 1,4-1,7 s (les
+  autres joueurs 0,16-0,62 s) : le coût restant n'est pas celui des passes — à mesurer en B.0.
+  (8) Après `COPY FROM DATABASE`, `duckdb_sequences().last_value` affiche la PROCHAINE valeur
+  (et non la dernière tirée) dans le fichier neuf ; `nextval` continue juste, aucun code ne lit
+  `last_value` ni `currval`.
+  (9) Gate C, `go test -tags=integration -p 1` : `internal/service`
+  `TestRelationsSegmentation_SoloVsSquad_CrossDB` et `_PlaylistFilter_CrossDB` ROUGES, de façon
+  déterministe (rejoués seuls), avec « Binder Error: Referenced column "gamertag" not found » dans
+  l'annuaire de `CareerRepo.GetRelations` : leur fixture crée `match_participants` sans la colonne
+  `gamertag` que l'annuaire du lot A (`f576df10e`, `5ab3c13c7`) lit. PRÉEXISTANT : rouge à
+  l'identique sur l'arbre exporté de `34edf29af` (avant tout code de l'étape C) ; le diff de C ne
+  touche ni `internal/service`, ni `internal/platform`, ni `internal/analysis`. Le gate du lot A ne
+  jouait l'intégration que sur `./internal/platform/duckdb/...`. Non traité (hors périmètre de C :
+  fixture d'un test du lot A).
 
 ## 7. Journal (superviseur)
 
