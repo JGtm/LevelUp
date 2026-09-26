@@ -87,6 +87,12 @@ Décisions :
   la copier (extraire le cœur commun si nécessaire, règle des 2 copies). Schéma, PK technique
   `id`, séquences (la valeur courante CONTINUE : aucun `id` réutilisé), index, contraintes et vues
   `_latest` identiques après le swap — vérifié par test sur le DDL.
+  **Amendé le 2026-09-26 (C.9, revue L6)** : pour la compaction, `recoverOrphan` devient un REFUS
+  (`refuserOrphelin`, en dry-run comme pour de bon) — la table de construction ne porte jamais les
+  index secondaires (posés après le RENAME) et leur seule source a disparu avec la table ; les
+  reposer exigerait de dupliquer le DDL d'index des migrations ou de le faire voyager dans un
+  commentaire de catalogue, pour un état que l'échange transactionnel ne produit pas. L'exploitant
+  remet la sauvegarde `*.avant-compaction-*`. La conversion append-only garde `recoverOrphan`.
 - DC.4 **Exécution** : commande CLI `levelup` (placement cohérent avec les commandes existantes de
   `cmd/levelup/`, nom à justifier au rapport), par titre via `PathResolver` et le registre des
   titres (aucun `slug == ...`), écrivain exclusif par le bail (ADR 0013), REFUS si le serveur ou un
@@ -154,6 +160,8 @@ Items :
 - [x] C.8 (revue L1, 2026-09-26) échange de fichiers de `--rewrite-file` : jamais de fenêtre sans
       base au chemin, source revérifiée (inchangée, libre) avant le rename unique, fichier neuf
       retiré sur toute erreur ; tests des trois cas rouges sur l'ancien code puis verts — Journal C
+- [x] C.9 (revue L6, 2026-09-26) `verifierApresEchange` verrouillée par des tests qui produisent
+      les écarts ; orphelin de compaction REFUSÉ (les index secondaires seraient perdus) — Journal C
 
 Gate C (depuis `apps/go-api`) : `gofmt -l ./internal ./cmd` vide ; `go build ./...` ; `go vet
 ./...` ; `go test ./...` ; `go test -tags=integration -p 1 ./...` (code de sortie 0 vérifié, pas
@@ -391,6 +399,31 @@ Journal C (2026-09-26, exécuteur Opus, worktree `LevelUp-wt-perf-perimetre`, ba
   ./cmd/levelup/ ./internal/migration/...` 0 (2 ok) ; `go test -tags=integration -p 1 -count=1
   ./cmd/levelup/ ./internal/migration/... ./internal/games/halo_infinite/migrations/...` 0 (3 ok) ;
   golangci-lint `--new-from-rev=34edf29af ./...` 0 issue, idem `--build-tags=integration`.
+- **C.9 — couverture de la vérification et orphelin** (revue L6, deux constats P2 retenus).
+  (1) `verifierApresEchange` n'était verrouillée par rien (corps remplacé par `return nil` : suite
+  verte). Tests ajoutés (`internal/migration/compaction_test.go`) :
+  `TestCompaction_VueQuiRetientPlusQueLaRegle_RollbackIntegral` — vue réelle qui porte la
+  signature mais retient plus que la règle (`… = 1 OR bomb_arms = 1` garde une version ancienne) :
+  la compaction retirerait une ligne servie, la vérification refuse (« ne rend plus le même
+  résultat »), rollback intégral (6 lignes, DDL, index, sortie de la vue identiques, aucune
+  `__compact`) ; `TestVerifierApresEchange_EcartsDeDDLEtDIndex` — la vérification lit le vrai
+  catalogue dans une transaction et refuse un DDL qui n'est plus celui d'avant (un `NOT NULL` en
+  moins) et une liste d'index qui a perdu un index, accepte le schéma identique (un écart de DDL
+  ou d'index « réel » exigerait une construction défectueuse : pas de moyen propre de le produire
+  sans point d'injection). Rouges : corps `return nil` -> les deux rouges (« got <nil> ») ;
+  comparaison d'index seule neutralisée -> cas « index » rouge. (2) Orphelin : la table de
+  construction ne porte pas les index secondaires, la récupération les perdait pour de bon.
+  CHOIX = refus (`refuserOrphelin`, DC.3 amendé, justification ci-dessus) plutôt que reposer les
+  index. `TestCompaction_RecupereUnOrphelin` (test de ce lot, absent de la baseline) devient
+  `TestCompaction_OrphelinRefuse` : refus en dry-run et pour de bon, orpheline et absence de la
+  table laissées telles quelles, et — si une version récupère quand même — comparaison de
+  `duckdb_indexes()` avant / après. Rouge sur l'ancien code (récupération par
+  `recoverOrphanTable`) : « orpheline récupérée SANS ses index : avant [CREATE INDEX
+  idx_match_bomb_stats_match …], après [] ».
+  Gate C.9 : `gofmt` vide ; `go vet` 0 ; `go test ./cmd/levelup/ ./internal/migration/...` 0 ;
+  `go test -tags=integration -p 1 -count=1 ./cmd/levelup/ ./internal/migration/...
+  ./internal/games/halo_infinite/migrations/...` 0 (3 ok) ; golangci-lint `--new-from-rev=34edf29af`
+  0 issue, idem `--build-tags=integration`.
 
 ## 3. Étape B — Lectures bornées aux matchs du joueur (Go)
 
@@ -483,6 +516,10 @@ case non statuée de l'étape courante (C, puis B, puis F).
   (8) Après `COPY FROM DATABASE`, `duckdb_sequences().last_value` affiche la PROCHAINE valeur
   (et non la dernière tirée) dans le fichier neuf ; `nextval` continue juste, aucun code ne lit
   `last_value` ni `currval`.
+  (10) (C.9) La conversion append-only garde `recoverOrphanAppendOnly` : après la récupération
+  d'un orphelin `__appendonly`, le marqueur étant présent, ni la clé primaire, ni le défaut
+  `nextval`, ni les index de `PostSwap` ne sont reposés — même perte latente que celle corrigée
+  pour la compaction. Non traité (conversions one-shot déjà appliquées ; hors périmètre).
   (9) Gate C, `go test -tags=integration -p 1` : `internal/service`
   `TestRelationsSegmentation_SoloVsSquad_CrossDB` et `_PlaylistFilter_CrossDB` ROUGES, de façon
   déterministe (rejoués seuls), avec « Binder Error: Referenced column "gamertag" not found » dans

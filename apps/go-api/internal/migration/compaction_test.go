@@ -197,14 +197,19 @@ func TestSwapTableTx_EchecApresLeDrop_Rollback(t *testing.T) {
 	}
 }
 
-// TestCompaction_RecupereUnOrphelin : l'état qu'un swap non transactionnel laisserait (table
-// principale absente, `__compact` présente) est réparé par recoverOrphan, puis la compaction
-// termine son travail ; la vue rend ce qu'elle rendait.
-func TestCompaction_RecupereUnOrphelin(t *testing.T) {
+// TestCompaction_OrphelinRefuse : l'état qu'un swap non transactionnel laisserait (table absente,
+// `__compact` présente, SANS les index secondaires que seul le PostRename pose) n'est pas
+// « réparé » : renommer l'orpheline perdrait `idx_match_bomb_stats_match` pour de bon. Refus, état
+// laissé tel quel pour que l'exploitant remette la sauvegarde. Si une version de la commande
+// récupère quand même, elle doit rendre les index d'origine (garde de l'ancienne récupération).
+func TestCompaction_OrphelinRefuse(t *testing.T) {
 	db := openTmpDB(t)
 	seedBombStats(t, db)
 	ctx := context.Background()
-	avant := lireVueOrdonnee(t, db, "match_bomb_stats_latest")
+	indexAvant, _ := ddlDesIndex(ctx, db, "match_bomb_stats")
+	if len(indexAvant) == 0 {
+		t.Fatal("fixture : match_bomb_stats doit porter un index secondaire")
+	}
 	ddl, _ := ddlDeTable(ctx, db, "match_bomb_stats")
 	creer, err := ddlDeConstruction(ddl, "match_bomb_stats")
 	if err != nil {
@@ -214,21 +219,101 @@ func TestCompaction_RecupereUnOrphelin(t *testing.T) {
 	mustExec(t, db, `INSERT INTO match_bomb_stats__compact SELECT * FROM match_bomb_stats`)
 	mustExec(t, db, `DROP TABLE match_bomb_stats`)
 
-	rs, err := CompactSupersededPasses(ctx, db, false)
-	if err != nil {
-		t.Fatalf("compaction après orphelin: %v", err)
+	for _, dryRun := range []bool{true, false} {
+		_, err := CompactSupersededPasses(ctx, db, dryRun)
+		if err == nil {
+			if index, _ := ddlDesIndex(ctx, db, "match_bomb_stats"); strings.Join(index, ";") != strings.Join(indexAvant, ";") {
+				t.Fatalf("orpheline récupérée SANS ses index : avant %v, après %v", indexAvant, index)
+			}
+		}
+		if err == nil || !strings.Contains(err.Error(), "orpheline") {
+			t.Fatalf("dry-run=%v : attendu un refus de l'orpheline, got %v", dryRun, err)
+		}
+	}
+	if has, _ := tableExists(db, "match_bomb_stats__compact"); !has {
+		t.Fatal("l'orpheline a été touchée malgré le refus")
+	}
+	if has, _ := tableExists(db, "match_bomb_stats"); has {
+		t.Fatal("une table match_bomb_stats est apparue malgré le refus")
+	}
+}
+
+// TestCompaction_VueQuiRetientPlusQueLaRegle_RollbackIntegral : une vue qui porte la signature du
+// registre mais retient PLUS de lignes que la règle (`… = 1 OR bomb_arms = 1` garde une version
+// ancienne) — la compaction lui retirerait une ligne servie. La vérification avant COMMIT doit le
+// voir et tout annuler : lignes, DDL et index intacts, aucune table de construction.
+func TestCompaction_VueQuiRetientPlusQueLaRegle_RollbackIntegral(t *testing.T) {
+	db := openTmpDB(t)
+	seedBombStats(t, db)
+	ctx := context.Background()
+	mustExec(t, db, `CREATE OR REPLACE VIEW match_bomb_stats_latest AS SELECT * FROM match_bomb_stats
+		QUALIFY row_number() OVER (PARTITION BY match_id, xuid ORDER BY written_at DESC, id DESC) = 1
+		OR bomb_arms = 1`)
+	vueAvant := lireVueOrdonnee(t, db, "match_bomb_stats_latest")
+	ddlAvant, _ := ddlDeTable(ctx, db, "match_bomb_stats")
+	indexAvant, _ := ddlDesIndex(ctx, db, "match_bomb_stats")
+
+	_, err := CompactSupersededPasses(ctx, db, false)
+	if err == nil || !strings.Contains(err.Error(), "ne rend plus le même résultat") {
+		t.Fatalf("attendu le refus de la vérification avant COMMIT, got %v", err)
+	}
+	if got := countRows(t, db, "match_bomb_stats"); got != 6 {
+		t.Fatalf("lignes après rollback = %d, attendu 6", got)
+	}
+	ddl, _ := ddlDeTable(ctx, db, "match_bomb_stats")
+	index, _ := ddlDesIndex(ctx, db, "match_bomb_stats")
+	if ddl != ddlAvant || strings.Join(index, ";") != strings.Join(indexAvant, ";") {
+		t.Fatalf("schéma changé malgré le rollback :\n%s %v\n%s %v", ddlAvant, indexAvant, ddl, index)
+	}
+	if vue := lireVueOrdonnee(t, db, "match_bomb_stats_latest"); strings.Join(vue, "\n") != strings.Join(vueAvant, "\n") {
+		t.Fatalf("vue changée malgré le rollback")
 	}
 	if has, _ := tableExists(db, "match_bomb_stats__compact"); has {
-		t.Fatal("orpheline toujours présente")
+		t.Fatal("table de construction committée malgré le rollback")
 	}
-	if r := rapportDe(t, rs, "match_bomb_stats"); r.Status != CompactionCompactee || r.After != 3 {
-		t.Fatalf("rapport = %+v", r)
+}
+
+// TestVerifierApresEchange_EcartsDeDDLEtDIndex : la vérification lit le VRAI catalogue et refuse
+// un DDL ou une liste d'index qui ne sont plus ceux d'avant (ce que rendrait une construction qui
+// perd un défaut ou un index) ; elle accepte le schéma identique.
+func TestVerifierApresEchange_EcartsDeDDLEtDIndex(t *testing.T) {
+	db := openTmpDB(t)
+	seedBombStats(t, db)
+	ctx := context.Background()
+	var c compactable
+	for _, x := range tablesCompactables {
+		if x.Table == "match_bomb_stats" {
+			c = x
+		}
 	}
-	if apres := lireVueOrdonnee(t, db, "match_bomb_stats_latest"); strings.Join(apres, "\n") != strings.Join(avant, "\n") {
-		t.Fatalf("vue changée après récupération :\navant %v\naprès %v", avant, apres)
+	ddl, _ := ddlDeTable(ctx, db, c.Table)
+	index, _ := ddlDesIndex(ctx, db, c.Table)
+	vue, err := empreinteDeVue(ctx, db, c.View)
+	if err != nil {
+		t.Fatal(err)
 	}
-	if ddlApres, _ := ddlDeTable(ctx, db, "match_bomb_stats"); ddlApres != ddl {
-		t.Fatalf("DDL changé :\n%s\n%s", ddl, ddlApres)
+	cas := []struct {
+		nom, attendu string
+		avant        schemaAvant
+	}{
+		{"identique", "", schemaAvant{ddl: ddl, index: index, vue: vue}},
+		{"DDL", "DDL de", schemaAvant{ddl: strings.Replace(ddl, "NOT NULL", "", 1), index: index, vue: vue}},
+		{"index", "index de", schemaAvant{ddl: ddl, index: append(append([]string{}, index...),
+			"CREATE INDEX idx_disparu ON match_bomb_stats(xuid);"), vue: vue}},
+	}
+	for _, k := range cas {
+		tx, err := db.BeginTx(ctx, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		err = verifierApresEchange(ctx, tx, c, k.avant)
+		_ = tx.Rollback() // lecture seule
+		if k.attendu == "" && err != nil {
+			t.Fatalf("%s : refus inattendu : %v", k.nom, err)
+		}
+		if k.attendu != "" && (err == nil || !strings.Contains(err.Error(), k.attendu)) {
+			t.Fatalf("%s : attendu un refus %q, got %v", k.nom, k.attendu, err)
+		}
 	}
 }
 

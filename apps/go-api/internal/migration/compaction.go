@@ -83,15 +83,13 @@ func CompactSupersededPasses(ctx context.Context, db *sql.DB, dryRun bool) ([]Co
 	return out, nil
 }
 
-// compacterTable traite une table : réparation d'un orphelin, contrôle de la règle de sa vue,
+// compacterTable traite une table : refus d'un orphelin, contrôle de la règle de sa vue,
 // mesures, puis échange (sauf dry-run ou table déjà compacte).
 func compacterTable(ctx context.Context, db *sql.DB, c compactable, dryRun bool) (CompactionTable, error) {
 	debut := time.Now()
 	r := CompactionTable{Table: c.Table}
-	if !dryRun {
-		if err := recoverOrphanTable(ctx, db, c.Table, compactSuffix); err != nil {
-			return r, err
-		}
+	if err := refuserOrphelin(ctx, db, c.Table); err != nil {
+		return r, err
 	}
 	sqlVue, present, err := lireTableEtVue(ctx, db, c)
 	if err != nil {
@@ -308,4 +306,33 @@ func ddlDesIndex(ctx context.Context, q lecteurSQL, table string) ([]string, err
 		return nil, fmt.Errorf("compaction %s: index: %w", table, err)
 	}
 	return out, nil
+}
+
+// refuserOrphelin : la table absente et sa table de construction `__compact` présente, c'est un
+// échange interrompu HORS de cette commande — le sien ne peut pas le laisser : DROP, RENAME et
+// CREATE INDEX sont dans UNE transaction DuckDB, commitée entière ou pas du tout.
+//
+// POURQUOI REFUSER PLUTÔT QUE RÉPARER (revue L6 du 2026-09-26, C.9) : la table de construction ne
+// porte jamais les index secondaires (DuckDB refuse de renommer une table indexée, ils se posent
+// après le RENAME) et leur seule source, `duckdb_indexes()` de la table d'origine, a disparu avec
+// elle. Les reposer exigerait de recopier le DDL d'index des migrations dans le registre, ou de le
+// faire voyager dans un commentaire de catalogue — deux surfaces nouvelles pour un état que cette
+// commande ne produit pas. Renommer sans eux perdrait les index pour de bon (`CREATE INDEX IF NOT
+// EXISTS` d'une migration déjà appliquée ne rejoue jamais). La commande a pris une sauvegarde
+// octet pour octet avant de compacter : c'est elle qu'on remet en place.
+func refuserOrphelin(ctx context.Context, db *sql.DB, table string) error {
+	hasMain, err := tableExists(db, table)
+	if err != nil || hasMain {
+		return wrapCompaction(table, "table", err)
+	}
+	orphelin := table + compactSuffix
+	hasOrphan, err := tableExists(db, orphelin)
+	if err != nil || !hasOrphan {
+		return wrapCompaction(table, "table de construction", err)
+	}
+	slog.ErrorContext(ctx, "compaction: table absente et table de construction orpheline — refus",
+		"table", table, "orpheline", orphelin)
+	return fmt.Errorf("compaction %s: table absente et %s orpheline (échange interrompu hors de "+
+		"cette commande) : récupération REFUSÉE, elle perdrait les index secondaires — remettre en "+
+		"place la sauvegarde `*.avant-compaction-*.duckdb`, serveur arrêté", table, orphelin)
 }

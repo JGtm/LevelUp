@@ -16,6 +16,8 @@ package migration
 //   - `recoverOrphanTable` répare l'état « principale absente + `<table><suffixe>` présente »
 //     qu'un swap non transactionnel aurait pu laisser (défense en profondeur : le swap ci-dessous
 //     ne peut pas le produire, une transaction DuckDB non committée ne laisse rien).
+//     La conversion append-only l'appelle ; la compaction, elle, REFUSE cet état (compaction.go,
+//     refuserOrphelin) : sa table de construction n'a pas les index secondaires.
 //
 // Ordre imposé par DuckDB, mesuré : une table qui porte un index ne se RENOMME pas (« Cannot
 // alter entry … because there are entries that depend on it »). Les index se posent donc APRÈS le
