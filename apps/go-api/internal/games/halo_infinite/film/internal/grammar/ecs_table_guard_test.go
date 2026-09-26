@@ -43,6 +43,8 @@ type ecsRow struct {
 	BitsTyp    int
 	CodeSource string
 	DocField   string
+	// ProductUse est la colonne `product_use` : ce que le produit lit du composant, ou « aucun ».
+	ProductUse string
 	Notes      string
 	LineNo     int
 }
@@ -89,7 +91,7 @@ func loadECSTable(t *testing.T) []ecsRow {
 			bits = n
 		}
 		out = append(out, ecsRow{TI: ti, I: i, Component: c[3], Level: uint32(lv), Status: c[5], BitsTyp: bits,
-			CodeSource: c[9], DocField: c[10], Notes: c[15], LineNo: n + 2})
+			CodeSource: c[9], DocField: c[10], ProductUse: c[11], Notes: c[15], LineNo: n + 2})
 	}
 	for k := 1; k < len(out); k++ {
 		if out[k-1].TI > out[k].TI || (out[k-1].TI == out[k].TI && out[k-1].I > out[k].I) {

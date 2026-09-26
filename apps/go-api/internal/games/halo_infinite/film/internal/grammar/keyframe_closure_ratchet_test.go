@@ -103,20 +103,22 @@ func TestKeyframeClosureRatchet(t *testing.T) {
 		t.Fatalf("golden absent (%s) : %v — regenerer avec -update-keyframe-closure",
 			closureGoldenPath, err)
 	}
-	comparerFermeture(t, string(brut), got)
+	comparerFermeture(t, string(brut), got, "-update-keyframe-closure")
 }
 
 // comparerFermeture confronte le golden a la mesure, ligne a ligne.
 //
 // Une BAISSE est une erreur ; une HAUSSE est un gain a figer ; une ligne qui DISPARAIT est une
-// erreur (un archetype cesse d'etre mesure), une ligne NEUVE est un gain.
-func comparerFermeture(t *testing.T, want, got string) {
+// erreur (un archetype ou une vue cesse d'etre mesure), une ligne NEUVE est un gain. `porte` est le
+// drapeau de regeneration du golden confronte : le meme comparateur sert la carte des trames
+// delta (`frame_closure_ratchet_test.go`, lot J4.0).
+func comparerFermeture(t *testing.T, want, got, porte string) {
 	t.Helper()
 	fige, obtenu := lignesFermeture(want), lignesFermeture(got)
 	for cle, ref := range fige {
 		cur, ok := obtenu[cle]
 		if !ok {
-			t.Errorf("%s : l'archetype a DISPARU de la mesure (fige : %d/%d fermes)",
+			t.Errorf("%s : la ligne a DISPARU de la mesure (fige : %d/%d fermes)",
 				cle, ref.closed, ref.total)
 			continue
 		}
@@ -127,14 +129,14 @@ func comparerFermeture(t *testing.T, want, got string) {
 				cle, ref.closed, ref.total, cur.closed, cur.total, cur.blocking)
 		}
 		if cur.closed > ref.closed {
-			t.Logf("%s : fermeture en HAUSSE, %d/%d -> %d/%d — figer par -update-keyframe-closure",
-				cle, ref.closed, ref.total, cur.closed, cur.total)
+			t.Logf("%s : fermeture en HAUSSE, %d/%d -> %d/%d — figer par %s",
+				cle, ref.closed, ref.total, cur.closed, cur.total, porte)
 		}
 	}
 	for cle, cur := range obtenu {
 		if _, ok := fige[cle]; !ok {
-			t.Logf("%s : archetype NEUF dans la mesure (%d/%d) — figer par -update-keyframe-closure",
-				cle, cur.closed, cur.total)
+			t.Logf("%s : ligne NEUVE dans la mesure (%d/%d) — figer par %s",
+				cle, cur.closed, cur.total, porte)
 		}
 	}
 }

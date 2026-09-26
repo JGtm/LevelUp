@@ -199,6 +199,11 @@ var couchesDuDecodeur = map[string]coucheFilm{
 	// lit `HaloInfinite.exe`, jamais un film, et n importe aucune couche du decodeur.
 	"internal/games/halo_infinite/film/research/mouvement":     horsCoucheFilm,
 	"internal/games/halo_infinite/film/research/cmd_mouvement": horsCoucheFilm,
+	// Lot J4.0 (2026-09-26, plan de suite de l audit du decodeur) : la carte de fermeture des
+	// trames delta. Meme nature que `cmd_grenadeids` : il LIT des films en place, un a la fois,
+	// sous la sentinelle de `filmproc`, et mesure par `grammar.FrameClosure` — il ne decode rien
+	// pour la production et ne publie rien. Un seul paquet (`main`), sans bibliotheque a cote.
+	"internal/games/halo_infinite/film/research/cmd_fermeture": horsCoucheFilm,
 
 	// --- source : charger, decompresser, decouper, lire l en-tete, tenir le lecteur de bits.
 	// `source` est une FEUILLE sans aucun import du depot (ratchet `filmsource_leaf_test.go`)
