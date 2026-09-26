@@ -203,7 +203,35 @@ func (c *KillSourceCollector) writeIsolationFacts(ctx context.Context, matchID s
 // backlog de redécodage complet pour rien, et `decoder_rev_fingerprint_test.go` rougirait à juste
 // titre (« la revision a change sans le decodeur »). `kill_positions` ne porte pas de
 // `decoder_rev` : cette révision-ci est la seule que `matchsAJour` consulte pour ces tables.
-const IsolationDecoderRev = "isolement-2026-09-15-decoupage-du-catalogue"
+//
+// # POURQUOI ELLE BOUGE LE 2026-09-26 (lots J4.3 / J4.4 du PLAN_SUITE_AUDIT_DECODEUR_FILM, RA1-3)
+//
+// Le collecteur ne recopie plus la sequence des lectures du pont d identite : il appelle
+// `decfilm.ScanPontDIdentite`, le MEME etage que la cuisson (decision DU-3 = S1). La recopie avait
+// diverge sur UN point, et c est le seul changement de ses entrees : le balayage des positions
+// bipedes recoit desormais les EXEMPTIONS DE TRANSLOCATION (decision D2 du
+// PLAN_LECTURE_FIABLE_EQUIPEMENT) — a ±200 ms d un evenement 117 du meme slot, le filtre de vitesse
+// est leve, et l arrivee d une teleportation n est plus rejetee comme un saut impossible.
+//
+// CE QUI CHANGE, et seulement sur les films qui portent des evenements 117 (translocateur) :
+// `positions` gagne les echantillons re-acceptes autour des teleportations ; en aval, les vies
+// decoupees de ces slots, donc `match_lives` (bornes et nommage des vies), `match_death_context`
+// (lieu et contexte de mort), et `kill_positions` / `kill_openings` (position du tueur ou de la
+// victime a l instant du coup) peuvent changer autour de ces instants.
+//
+// CE QUI NE CHANGE PAS : le journal des morts (`killsource.Rev` ne bouge pas), les quatre autres
+// lectures (creations, fil des morts, table d index, origine d horloge), et les POLITIQUES du
+// collecteur (roster de la feuille, aucune capture de direction, erreurs fatales dans le meme
+// ordre). Sur un film SANS evenement 117, les lectures sont identiques a l octet a l ancienne
+// sequence : `TestPontDuCollecteur_SeuleLExemptionChange` (positions_pont_test.go) le fige sur la
+// bobine du depot ; le « celui-la » est tenu au plus pres de l etage
+// (`grammar.TestPontDIdentite_ExemptionsDeTranslocationAppliquees`).
+//
+// CE QUE LE BUMP DECLENCHE : comme aux lots precedents, `matchsAJour` rend eligible au redecodage
+// tout match qui a des positions ; il ne declenche rien par lui-meme — seule la commande
+// `levelup backfill-killsource` re-decode, et les films sans translocateur y reecriront une passe
+// au contenu inchange.
+const IsolationDecoderRev = "isolement-2026-09-26-pont-unique-exemptions"
 
 // materiauDIsolement : ce que la passe de positions a lu et que la projection reutilise.
 //
