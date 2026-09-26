@@ -156,6 +156,62 @@ en = "Users"
 fr = "Titres"
 en = "Titles"
 
+[admin.management.section_invites]
+fr = "Inviter un joueur"
+en = "Invite a player"
+
+[admin.invites.intro]
+fr = "Un lien d'invitation crée un compte même quand l'instance est fermée, et autorise l'invité à créer SON profil joueur — une seule fois. Il ne rejoint aucun groupe et ne voit que lui-même."
+en = "An invite link creates an account even while the instance is closed, and lets the guest create THEIR OWN player profile — once. They join no group and see only themselves."
+
+[admin.invites.generate]
+fr = "Générer un lien"
+en = "Generate a link"
+
+[admin.invites.copy]
+fr = "Copier"
+en = "Copy"
+
+[admin.invites.copied]
+fr = "Lien copié"
+en = "Link copied"
+
+[admin.invites.generate_error]
+fr = "Impossible de générer l'invitation."
+en = "Unable to generate the invitation."
+
+[admin.invites.revoke]
+fr = "Révoquer"
+en = "Revoke"
+
+[admin.invites.revoke_error]
+fr = "Impossible de révoquer l'invitation."
+en = "Unable to revoke the invitation."
+
+[admin.invites.list_title]
+fr = "Invitations en cours"
+en = "Active invitations"
+
+[admin.invites.empty]
+fr = "Aucune invitation."
+en = "No invitations."
+
+[admin.invites.loading]
+fr = "Chargement des invitations…"
+en = "Loading invitations…"
+
+[admin.invites.expires_at]
+fr = "Expire le"
+en = "Expires on"
+
+[admin.invites.used_by]
+fr = "Utilisée par"
+en = "Used by"
+
+[admin.invites.expired]
+fr = "Expirée"
+en = "Expired"
+
 # ─── Section logs de l'onglet Système (A3) ──────────────────────────────────
 
 [admin.system.section_logs]
@@ -283,6 +339,14 @@ en = "Uptime:"
 [admin.resources.restarts]
 fr = "Redémarrages :"
 en = "Restarts:"
+
+[admin.resources.film_facts]
+fr = "Faits de film :"
+en = "Film facts:"
+
+[admin.resources.film_facts_help]
+fr = "Faits decodes persistes par film (data/cache/film_facts) : ils permettent de republier un artefact sans relire le film."
+en = "Decoded facts persisted per film (data/cache/film_facts): they allow republishing an artifact without re-reading the film."
 
 [admin.resources.col_db]
 fr = "Base"
@@ -1393,10 +1457,6 @@ en = "PSA not attempted"
 fr = "Events incomplets"
 en = "Incomplete events"
 
-[admin.convergence.kpi_weapons]
-fr = "Frags d'arme incomplets"
-en = "Incomplete weapon kills"
-
 [admin.convergence.unavailable]
 fr = "Backlog de convergence indisponible."
 en = "Convergence backlog unavailable."
@@ -1426,10 +1486,6 @@ en = "Rank snapshots (PSA) not yet attempted for these matches."
 [admin.convergence.kpi_events_tooltip]
 fr = "Matchs dont la chronologie d'événements est incomplète."
 en = "Matches whose event timeline is incomplete."
-
-[admin.convergence.kpi_weapons_tooltip]
-fr = "Matchs dont l'attribution des frags par arme est incomplète."
-en = "Matches whose per-weapon kill attribution is incomplete."
 
 [admin.convergence.col_total_tooltip]
 fr = "Total de matchs incomplets pour ce joueur, toutes catégories confondues."
@@ -1470,14 +1526,6 @@ en = "LUSR"
 [admin.convergence.ps_sessions]
 fr = "Sessions"
 en = "Sessions"
-
-[admin.convergence.ps_weapons]
-fr = "Armes"
-en = "Weapons"
-
-[admin.convergence.ps_no_film]
-fr = "Sans film"
-en = "No film"
 
 [admin.convergence.ps_citations]
 fr = "Citations"
@@ -1813,10 +1861,6 @@ en = "since boot"
 fr = "Events"
 en = "Events"
 
-[admin.convergence.caught_weapons]
-fr = "Frags par arme"
-en = "Weapon kills"
-
 [admin.convergence.caught_psa]
 fr = "PSA"
 en = "PSA"
@@ -2127,3 +2171,255 @@ en = "Failed"
 [admin.appearance.fetch_status.none]
 fr = "Jamais tenté"
 en = "Never attempted"
+
+# ─── File de construction des rejeux + ouvriers (piste F) ───────────────────
+
+[admin.buildqueue.section]
+fr = "File de construction des rejeux"
+en = "Replay build queue"
+
+[admin.buildqueue.workers_section]
+fr = "Ouvriers"
+en = "Workers"
+
+[admin.buildqueue.unavailable]
+fr = "File de construction indisponible."
+en = "Build queue unavailable."
+
+[admin.buildqueue.disabled_notice]
+fr = "Aucun jeton d'ouvrier configuré : la file peut se remplir, mais personne ne viendra la vider."
+en = "No worker token configured: the queue can fill up, but nobody will drain it."
+
+[admin.buildqueue.empty_title]
+fr = "File vide"
+en = "Empty queue"
+
+[admin.buildqueue.empty_desc]
+fr = "Les constructions de rejeu mises en file apparaîtront ici, avec l'ouvrier qui les traite."
+en = "Queued replay builds will show up here, along with the worker handling them."
+
+[admin.buildqueue.workers_empty_title]
+fr = "Aucun ouvrier connu"
+en = "No known worker"
+
+[admin.buildqueue.workers_empty_desc]
+fr = "Un ouvrier apparaît dès son premier appel : il tire le travail, rien ne l'appelle."
+en = "A worker shows up on its first call: it pulls work, nothing calls it."
+
+[admin.buildqueue.counts_queued]
+fr = "En attente"
+en = "Queued"
+
+[admin.buildqueue.counts_running]
+fr = "En cours"
+en = "Running"
+
+[admin.buildqueue.counts_succeeded]
+fr = "Faits"
+en = "Done"
+
+[admin.buildqueue.counts_failed]
+fr = "Échoués"
+en = "Failed"
+
+[admin.buildqueue.col_match]
+fr = "Match"
+en = "Match"
+
+[admin.buildqueue.col_status]
+fr = "Statut"
+en = "Status"
+
+[admin.buildqueue.col_worker]
+fr = "Ouvrier"
+en = "Worker"
+
+[admin.buildqueue.col_attempt]
+fr = "Tentative"
+en = "Attempt"
+
+[admin.buildqueue.col_updated]
+fr = "Mis à jour"
+en = "Updated"
+
+[admin.buildqueue.col_hostname]
+fr = "Machine"
+en = "Machine"
+
+[admin.buildqueue.col_current_job]
+fr = "Travail en cours"
+en = "Current job"
+
+[admin.buildqueue.col_done]
+fr = "Faits"
+en = "Done"
+
+[admin.buildqueue.col_last_beat]
+fr = "Dernier signe de vie"
+en = "Last heartbeat"
+
+[admin.buildqueue.worker_online]
+fr = "En ligne"
+en = "Online"
+
+[admin.buildqueue.worker_offline]
+fr = "Hors ligne"
+en = "Offline"
+
+[admin.buildqueue.idle]
+fr = "Au repos"
+en = "Idle"
+
+# ─── Identités (annuaire des joueurs, ADR 0035) ────────────────────────────────
+#
+# Une ligne par identité (xuid), avec ce que chacun des quatre registres en sait.
+# Les codes d'anomalie viennent du serveur en MACHINE (account_without_profile…) :
+# leur libellé vit ici, et nulle part ailleurs.
+
+[admin.identities.section]
+fr = "Identités"
+en = "Identities"
+
+[admin.identities.subtitle]
+fr = "Une ligne par joueur : compte, profils de suivi, identifiants et suivi live, réunis par xuid."
+en = "One row per player: account, tracking profiles, credentials and live tracking, joined by xuid."
+
+[admin.identities.loading]
+fr = "Chargement…"
+en = "Loading…"
+
+[admin.identities.unavailable]
+fr = "Annuaire indisponible."
+en = "Directory unavailable."
+
+[admin.identities.empty]
+fr = "Aucune identité."
+en = "No identities."
+
+[admin.identities.refresh]
+fr = "Rafraîchir"
+en = "Refresh"
+
+[admin.identities.count_identities]
+fr = "identités"
+en = "identities"
+
+[admin.identities.count_warnings]
+fr = "à regarder"
+en = "to review"
+
+[admin.identities.count_infos]
+fr = "pour information"
+en = "for information"
+
+[admin.identities.col_gamertag]
+fr = "Joueur"
+en = "Player"
+
+[admin.identities.col_xuid]
+fr = "XUID"
+en = "XUID"
+
+[admin.identities.col_account]
+fr = "Compte"
+en = "Account"
+
+[admin.identities.col_profiles]
+fr = "Profils"
+en = "Profiles"
+
+[admin.identities.col_token]
+fr = "Identifiants"
+en = "Credentials"
+
+[admin.identities.col_watched]
+fr = "Suivi live"
+en = "Live tracking"
+
+[admin.identities.col_anomalies]
+fr = "Anomalies"
+en = "Anomalies"
+
+[admin.identities.copy_xuid]
+fr = "Copier le xuid"
+en = "Copy the xuid"
+
+[admin.identities.copy_done]
+fr = "Copié"
+en = "Copied"
+
+[admin.identities.profile_paused]
+fr = "en pause"
+en = "paused"
+
+[admin.identities.profile_auth_only]
+fr = "auth seule"
+en = "auth only"
+
+[admin.identities.profile_no_dir]
+fr = "sans dossier"
+en = "no folder"
+
+[admin.identities.token_present]
+fr = "Jeton actif"
+en = "Active token"
+
+[admin.identities.token_reauth]
+fr = "Reconnexion requise"
+en = "Sign-in required"
+
+[admin.identities.token_error]
+fr = "Erreur d'authentification"
+en = "Authentication error"
+
+[admin.identities.token_absent]
+fr = "Aucun jeton"
+en = "No token"
+
+[admin.identities.anomaly_account_without_profile]
+fr = "Compte sans profil"
+en = "Account without a profile"
+
+[admin.identities.anomaly_token_orphan]
+fr = "Identifiants orphelins"
+en = "Orphan credentials"
+
+[admin.identities.anomaly_player_dir_orphan]
+fr = "Dossier joueur orphelin"
+en = "Orphan player folder"
+
+[admin.identities.anomaly_watched_without_profile]
+fr = "Suivi live sans profil"
+en = "Live tracking without a profile"
+
+[admin.identities.anomaly_profile_without_account]
+fr = "Profil sans compte"
+en = "Profile without an account"
+
+[admin.identities.anomaly_profile_without_token]
+fr = "Profil sans identifiants"
+en = "Profile without credentials"
+
+[admin.identities.anomaly_account_duplicate]
+fr = "Plusieurs comptes pour ce joueur"
+en = "Several accounts for this player"
+
+[admin.identities.lock_label]
+fr = "Instance fermée"
+en = "Closed instance"
+
+[admin.identities.lock_help]
+fr = "Un compte Xbox inconnu ne peut plus créer de compte ni de profil ; les comptes existants ne sont pas affectés."
+en = "An unknown Xbox account can no longer create an account or a profile; existing accounts are unaffected."
+
+[admin.identities.lock_saving]
+fr = "Enregistrement…"
+en = "Saving…"
+
+[admin.identities.lock_failed]
+fr = "Le verrou n'a pas pu être modifié."
+en = "The lock could not be changed."
+
+[admin.identities.lock_forced]
+fr = "Le verrou est forcé par l'environnement du serveur (LEVELUP_INSTANCE_LOCKED) : il ne peut pas être levé depuis cette page."
+en = "The lock is forced by the server environment (LEVELUP_INSTANCE_LOCKED): it cannot be lifted from this page."

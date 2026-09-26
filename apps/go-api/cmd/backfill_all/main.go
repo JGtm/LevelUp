@@ -1,18 +1,21 @@
-// cmd/backfill_all — backfill rétroactif weapons + PSA pour tous les players.
+// cmd/backfill_all — backfill rétroactif PSA pour tous les players.
 //
 // Pour chaque player dans data/titles/<title>/players/, charge ses tokens Halo
-// (msal_token_cache ou oauth_refresh_token), liste les match_ids manquants
-// (weapon_kills < 28j, PSA tous matchs), et lance les pipelines en série.
+// depuis le MultiUserTokenStore (ADR 0023), liste les match_ids sans
+// personal_score_awards, et lance le pipeline en série.
 //
 // Lance ce CLI quand l'audit (cmd/audit_coverage) montre des trous, et que tu
 // veux rattraper sans passer par /api/v1/backfill/start (pas besoin de session).
+//
+// LA MOITIÉ « WEAPONS » A ÉTÉ RETIRÉE le 2026-09-01 : son exécuteur (étape 1.55,
+// corrélation tirs ↔ instant du kill) est supprimé. Le rattrapage du détail par arme
+// passe désormais par `levelup backfill-killsource --online`, qui décode la source
+// du dégât du même film.
 //
 // Usage :
 //
 //	go run ./cmd/backfill_all/                         # tous les players
 //	go run ./cmd/backfill_all/ -player JGtm            # un seul
-//	go run ./cmd/backfill_all/ -only weapons           # weapons uniquement
-//	go run ./cmd/backfill_all/ -only psa               # psa uniquement
 package main
 
 import (
@@ -24,32 +27,29 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 
 	_ "github.com/duckdb/duckdb-go/v2"
 
-	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/games/titleseams"
 	"levelup/go-api/internal/platform/auth"
 	gosync "levelup/go-api/internal/sync"
-)
-
-const (
-	filmExpiryDays        = 28.0
-	mBitWeaponKillsNoFilm = 1 << 22
 )
 
 var (
 	dataRoot     = flag.String("data", "data", "Racine du dossier data/")
 	titleSlug    = flag.String("title", "halo_infinite", "Title slug")
 	envFile      = flag.String("env-file", ".env.local", "Chemin .env.local")
-	authFile     = flag.String("auth-file", "data/auth/watcher_tokens.json", "Chemin tokens.json")
 	playerFilter = flag.String("player", "", "Limiter à un player (vide = tous)")
-	onlyType     = flag.String("only", "", "weapons | psa | both (par défaut)")
-	forceWeapons = flag.Bool("force-weapons", false, "Effacer et re-backfiller weapon_kills même si déjà présents")
 )
 
 func main() {
+	// Seams title-owned (classifiers LUSR et famille objectif, provider des
+	// etapes de migration, traductions de rangs) : sans eux, tout appel au
+	// post-sync panique (fail-loud MT-15). Racine des jalons Halo 5 vide : cet
+	// outil ne seed pas de catalogue, le step h5_seed_milestone_catalog est
+	// alors un no-op gracieux documente. Cf. internal/games/titleseams.
+	titleseams.RegisterAll("")
 	flag.Parse()
 
 	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelInfo}))
@@ -98,7 +98,7 @@ func processPlayer(ctx context.Context, gamertag string) {
 	}
 
 	// Tokens
-	tokens, err := loadTokens(ctx, playerDBPath)
+	tokens, err := loadTokens(ctx, gamertag, xuid)
 	if err != nil {
 		slog.Warn("tokens introuvables, skip", "player", gamertag, "err", err)
 		return
@@ -106,32 +106,17 @@ func processPlayer(ctx context.Context, gamertag string) {
 
 	fmt.Printf("\n=== %s (xuid=%s) ===\n", gamertag, xuid)
 
-	// Match list pour weapons : <28j sans wk et sans noFilm bit.
-	// En mode -force-weapons : efface d'abord les rows existantes puis recharge.
-	weaponMatches, err := loadMissingWeaponMatches(sharedDBPath, xuid, *forceWeapons)
-	if err != nil {
-		slog.Error("loadMissingWeaponMatches", "player", gamertag, "err", err)
-	}
 	// Match list pour PSA : tous les matchs participés sans entry dans personal_score_awards
 	psaMatches, err := loadMissingPSAMatches(playerDBPath, sharedDBPath, xuid)
 	if err != nil {
 		slog.Error("loadMissingPSAMatches", "player", gamertag, "err", err)
 	}
 
-	fmt.Printf("  weapons à backfill : %d match(s) <28j\n", len(weaponMatches))
 	fmt.Printf("  psa à backfill     : %d match(s)\n", len(psaMatches))
 
 	engine := gosync.NewSyncEngine(repoRootForCWD(), gamertag, xuid, tokens, nil)
 
-	if *onlyType != "psa" && len(weaponMatches) > 0 {
-		fmt.Printf("  ▶ BackfillWeaponKillsForMatches (%d)...\n", len(weaponMatches))
-		done, noFilm, err := engine.BackfillWeaponKillsForMatches(ctx, weaponMatches)
-		if err != nil {
-			slog.Error("BackfillWeaponKillsForMatches", "player", gamertag, "err", err)
-		}
-		fmt.Printf("    → %d done, %d film expiré\n", done, noFilm)
-	}
-	if *onlyType != "weapons" && len(psaMatches) > 0 {
+	if len(psaMatches) > 0 {
 		fmt.Printf("  ▶ BackfillPersonalScoreAwardsForMatches (%d)...\n", len(psaMatches))
 		matches, rows, err := engine.BackfillPersonalScoreAwardsForMatches(ctx, psaMatches)
 		if err != nil {
@@ -139,87 +124,6 @@ func processPlayer(ctx context.Context, gamertag string) {
 		}
 		fmt.Printf("    → %d match(s), %d rows insérés\n", matches, rows)
 	}
-}
-
-func loadMissingWeaponMatches(sharedDBPath, xuid string, force bool) ([]string, error) {
-	accessMode := "?access_mode=read_only"
-	if force {
-		accessMode = ""
-	}
-	db, err := sql.Open("duckdb", sharedDBPath+accessMode)
-	if err != nil {
-		return nil, err
-	}
-	defer db.Close()
-
-	cutoff := time.Now().Add(-time.Duration(filmExpiryDays*24) * time.Hour)
-
-	if force {
-		// Supprimer les weapon_kills existants pour ce joueur dans la fenêtre 28j
-		// afin de permettre une re-attribution correcte (player_index).
-		_, err := db.Exec(`
-			DELETE FROM weapon_kills
-			WHERE match_id IN (
-				SELECT DISTINCT mp.match_id
-				FROM match_participants mp
-				JOIN match_registry mr ON mr.match_id = mp.match_id
-				WHERE mp.xuid = ?
-				  AND COALESCE(mr.is_firefight, FALSE) = FALSE
-				  AND `+analysis.SQLStartTimeCanonical("mr")+` >= ?
-				  AND (COALESCE(mr.backfill_completed, 0) & ?) = 0
-			)
-			AND xuid = ?`,
-			xuid, cutoff, mBitWeaponKillsNoFilm, xuid)
-		if err != nil {
-			return nil, fmt.Errorf("force-weapons delete: %w", err)
-		}
-		// Effacer aussi le bit MBitWeaponKills (bit 21) pour que le pipeline weapons
-		// (sélection convergente + BackfillWeaponKillsForMatchAll) ne skipe pas les
-		// matchs déjà marqués done.
-		const mBitWeaponKills = 1 << 21
-		_, err = db.Exec(`
-			UPDATE match_registry
-			SET backfill_completed = backfill_completed & ~?
-			WHERE match_id IN (
-				SELECT DISTINCT mp.match_id
-				FROM match_participants mp
-				JOIN match_registry mr ON mr.match_id = mp.match_id
-				WHERE mp.xuid = ?
-				  AND COALESCE(mr.is_firefight, FALSE) = FALSE
-				  AND `+analysis.SQLStartTimeCanonical("mr")+` >= ?
-				  AND (COALESCE(mr.backfill_completed, 0) & ?) = 0
-			)`,
-			mBitWeaponKills, xuid, cutoff, mBitWeaponKillsNoFilm)
-		if err != nil {
-			return nil, fmt.Errorf("force-weapons clear bit: %w", err)
-		}
-	}
-
-	rows, err := db.Query(`
-		SELECT DISTINCT mp.match_id
-		FROM match_participants mp
-		JOIN match_registry mr ON mr.match_id = mp.match_id
-		LEFT JOIN weapon_kills wk ON wk.match_id = mp.match_id AND wk.xuid = mp.xuid
-		WHERE mp.xuid = ?
-		  AND wk.match_id IS NULL
-		  AND COALESCE(mr.is_firefight, FALSE) = FALSE
-		  AND `+analysis.SQLStartTimeCanonical("mr")+` >= ?
-		  AND (COALESCE(mr.backfill_completed, 0) & ?) = 0
-		ORDER BY mr.start_time DESC`,
-		xuid, cutoff, mBitWeaponKillsNoFilm)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var out []string
-	for rows.Next() {
-		var id string
-		if err := rows.Scan(&id); err != nil {
-			return nil, err
-		}
-		out = append(out, id)
-	}
-	return out, rows.Err()
 }
 
 func loadMissingPSAMatches(playerDBPath, sharedDBPath, xuid string) ([]string, error) {
@@ -280,89 +184,20 @@ func readPlayerXUID(dbPath string) (string, error) {
 	return xuid, nil
 }
 
-func loadTokens(ctx context.Context, playerDBPath string) (*domain.HaloTokens, error) {
-	const margin = 5 * time.Minute
-	store := auth.NewTokenStore(*authFile)
-	stored, err := store.Load()
-	if err != nil {
-		slog.Warn("watcher_tokens load failed", "path", *authFile, "err", err)
-	}
-	if stored != nil {
-		slog.Info("watcher_tokens loaded",
-			"xsts_valid", stored.IsXSTSValid(margin),
-			"oauth_valid", stored.IsOAuthValid(margin),
-			"has_refresh", stored.HasRefreshToken(),
-		)
-		if stored.IsXSTSValid(margin) {
-			tokens, err := auth.ExchangeXSTSForHaloTokens(ctx, stored.XSTSToken)
-			if err == nil {
-				return tokens, nil
-			}
-			slog.Warn("ExchangeXSTSForHaloTokens failed", "err", err)
-		}
-		if stored.IsOAuthValid(margin) {
-			result, err := auth.ExchangeAccessToken(ctx, stored.AccessToken)
-			if err == nil {
-				return result.Tokens, nil
-			}
-			slog.Warn("ExchangeAccessToken (watcher) failed", "err", err)
-		}
-	}
-	return loadTokensFromPlayerDB(ctx, playerDBPath)
-}
-
-func loadTokensFromPlayerDB(ctx context.Context, dbPath string) (*domain.HaloTokens, error) {
-	db, err := sql.Open("duckdb", dbPath+"?access_mode=read_only")
+// loadTokens résout les tokens Halo du joueur via le MultiUserTokenStore
+// (source unique ADR 0023) — plus aucun fallback sync_meta / env var / store
+// mono-user depuis la Phase 5 (2026-08-25).
+func loadTokens(ctx context.Context, gamertag, xuid string) (*domain.HaloTokens, error) {
+	store := auth.NewMultiUserTokenStore(filepath.Join(*dataRoot, "auth", "watcher_tokens"))
+	result, err := auth.RefreshHaloTokensViaStoreFirst(ctx, store, auth.NewSISUProvider(), xuid, gamertag)
 	if err != nil {
 		return nil, err
 	}
-	defer db.Close()
-	db.SetMaxOpenConns(1)
-
-	var cacheJSON, refreshToken string
-	_ = db.QueryRowContext(ctx, `SELECT value FROM sync_meta WHERE key = 'msal_token_cache'`).Scan(&cacheJSON)
-	_ = db.QueryRowContext(ctx, `SELECT value FROM sync_meta WHERE key = 'oauth_refresh_token'`).Scan(&refreshToken)
-
-	provider := auth.NewSISUProvider()
-	gamertag := extractGamertag(dbPath)
-
-	var accessToken string
-	if cacheJSON != "" {
-		if tok, err := provider.TrySilentRefresh(ctx, cacheJSON); err == nil && tok != "" {
-			accessToken = tok
-		}
+	tokens := auth.HaloTokensFromExchange(result)
+	if tokens == nil {
+		return nil, fmt.Errorf("aucun token Halo pour %s (xuid=%s) — store watcher_tokens vide", gamertag, xuid)
 	}
-	if accessToken == "" && refreshToken != "" {
-		if tok, err := provider.TryOAuthRefresh(ctx, refreshToken); err == nil && tok != "" {
-			accessToken = tok
-		}
-	}
-	if accessToken == "" && gamertag != "" {
-		envKey := "SPNKR_OAUTH_REFRESH_TOKEN_" + strings.ToUpper(gamertag)
-		if envRT := os.Getenv(envKey); envRT != "" {
-			if tok, err := provider.TryOAuthRefresh(ctx, envRT); err == nil && tok != "" {
-				accessToken = tok
-			}
-		}
-	}
-	if accessToken == "" {
-		return nil, fmt.Errorf("aucun access token (msal_cache=%v oauth_rt=%v)", cacheJSON != "", refreshToken != "")
-	}
-	result, err := auth.ExchangeAccessToken(ctx, accessToken)
-	if err != nil {
-		return nil, err
-	}
-	return result.Tokens, nil
-}
-
-func extractGamertag(dbPath string) string {
-	parts := strings.Split(strings.ReplaceAll(dbPath, "\\", "/"), "/")
-	for i, part := range parts {
-		if part == "players" && i+1 < len(parts) {
-			return parts[i+1]
-		}
-	}
-	return ""
+	return tokens, nil
 }
 
 func loadEnvLocal(path string) {

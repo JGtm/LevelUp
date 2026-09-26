@@ -21,10 +21,13 @@ import (
 // (§4 du plan). Toute sortie de Build suit cet ordre.
 // Véhicule et tourelle se placent APRÈS les classes API et AVANT le résidu : ce sont
 // des outils de destruction secondaires, et « Non attribué » reste en dernier.
+// Équipement et environnement se placent APRÈS les engins et AVANT le résidu : ce sont
+// les outils de destruction les plus périphériques, et « Non attribué » reste dernier.
 var canonicalFragClassOrder = []string{
 	domain.FragClassShoulder, domain.FragClassSidearm, domain.FragClassHeavy,
 	domain.FragClassMelee, domain.FragClassGrenade, domain.FragClassSpartanAbility,
 	domain.FragClassVehicle, domain.FragClassTurret,
+	domain.FragClassEquipment, domain.FragClassEnvironmental,
 	domain.FragClassUnattributed,
 }
 
@@ -39,11 +42,36 @@ var gunFragClasses = map[string]bool{
 	domain.FragClassHeavy:    true,
 }
 
-// isRegistryFragClass : classe dont les KILLS proviennent des rows du registre (par
-// opposition aux compteurs API). Recouvre les deux familles de niveau 2 — par rôle
-// (gun) et par engin (véhicule/tourelle).
-func isRegistryFragClass(class string) bool {
-	return gunFragClasses[class] || domain.IsPerWeaponFragClass(class)
+// engineFragClasses = classes d'ENGIN, servies par le registre quelle que soit la
+// provenance de la ligne : véhicule et tourelle existent dans `weapon_kills` (Halo 5) ET
+// dans la source de dégât (Halo Infinite).
+var engineFragClasses = map[string]bool{
+	domain.FragClassVehicle: true,
+	domain.FragClassTurret:  true,
+}
+
+// offArsenalFragClasses = classes d'OBJET hors arsenal (équipement, environnement). Elles
+// ne sont servies que si la ligne a été MESURÉE dans la source de dégât du film.
+//
+// POURQUOI CETTE CONDITION, ET PAS UN SIMPLE ÉLARGISSEMENT. `isRegistryFragClass` est du
+// code partagé par les deux titres. Servir `environmental` sans regarder la provenance
+// ferait aussi remonter le bucket `h5_environmental` de Halo 5, qui porte un identifiant
+// numérique et vient de `weapon_kills` : le sunburst du second titre changerait, hors du
+// périmètre de la bascule du 2026-09-01. Le verrou : fragdist_halo5_golden_test.go.
+var offArsenalFragClasses = map[string]bool{
+	domain.FragClassEquipment:     true,
+	domain.FragClassEnvironmental: true,
+}
+
+// isRegistryFragClass : la ligne alimente-t-elle une classe servie par le registre (par
+// opposition aux compteurs API) ? Recouvre les trois familles de niveau 2 — par rôle
+// (gun), par engin (véhicule/tourelle), et par objet hors arsenal quand la source de
+// dégât l'a mesurée.
+func isRegistryFragClass(r port.WeaponKillRow) bool {
+	if gunFragClasses[r.Class] || engineFragClasses[r.Class] {
+		return true
+	}
+	return r.FromDamageSource && offArsenalFragClasses[r.Class]
 }
 
 // Build assemble la répartition hiérarchique des frags (sunburst v2).
@@ -107,10 +135,11 @@ func Build(
 // niveau 2 keyée (rôle de combat, ou weapon_key d'engin), les libellés d'engin, et le
 // volume NON keyable (qui interdit une ventilation partielle trompeuse).
 type registryAcc struct {
-	kills   int
-	byKey   map[string]int
-	labels  map[string]string // key → libellé registre (classes par engin uniquement)
-	unkeyed int
+	kills    int
+	byKey    map[string]int
+	labels   map[string]string // key → libellé registre FR-first (classes par engin uniquement)
+	labelsEN map[string]string // key → libellé registre EN-first (idem, V2.1 2026-08-29)
+	unkeyed  int
 }
 
 // buildRegistryFragClasses agrège les classes servies par le REGISTRE (rows) : les
@@ -130,7 +159,7 @@ type registryAcc struct {
 func buildRegistryFragClasses(rows []port.WeaponKillRow) []domain.FragClassEntry {
 	agg := make(map[string]*registryAcc, len(gunFragClasses)+2)
 	for _, r := range rows {
-		if r.IsGrenadeMelee || r.Class == "" || !isRegistryFragClass(r.Class) {
+		if r.IsGrenadeMelee || r.Class == "" || !isRegistryFragClass(r) {
 			continue
 		}
 		perWeapon := domain.IsPerWeaponFragClass(r.Class)
@@ -144,7 +173,7 @@ func buildRegistryFragClasses(rows []port.WeaponKillRow) []domain.FragClassEntry
 		}
 		a := agg[r.Class]
 		if a == nil {
-			a = &registryAcc{byKey: make(map[string]int), labels: make(map[string]string)}
+			a = &registryAcc{byKey: make(map[string]int), labels: make(map[string]string), labelsEN: make(map[string]string)}
 			agg[r.Class] = a
 		}
 		a.kills += weaponKills
@@ -161,6 +190,9 @@ func buildRegistryFragClasses(rows []port.WeaponKillRow) []domain.FragClassEntry
 		a.byKey[key] += weaponKills
 		if perWeapon && r.Label != "" {
 			a.labels[key] = r.Label
+		}
+		if perWeapon && r.LabelEN != "" {
+			a.labelsEN[key] = r.LabelEN
 		}
 	}
 	out := make([]domain.FragClassEntry, 0, len(agg))
@@ -185,21 +217,23 @@ func registryRoles(class string, a *registryAcc) []domain.FragRoleEntry {
 		if a.unkeyed > 0 {
 			return nil
 		}
-		return perWeaponRoles(a.byKey, a.labels)
+		return perWeaponRoles(a.byKey, a.labels, a.labelsEN)
 	}
 	return rolesFromMap(a.byKey, class)
 }
 
 // perWeaponRoles trie les engins (kills desc, tie-break sur la clé → ordre stable) et
-// porte leur libellé registre. Aucun repli en feuille à un seul engin : « Warthog » est
-// une information, « véhicule » n'en est pas une (exigence V73-3.2).
-func perWeaponRoles(byKey map[string]int, labels map[string]string) []domain.FragRoleEntry {
+// porte leur libellé registre, FR (labels) ET EN (labelsEN, V2.1 2026-08-29) — le web
+// choisit entre les deux selon la locale (cf. fragRoleLabel.ts). Aucun repli en feuille à
+// un seul engin : « Warthog » est une information, « véhicule » n'en est pas une
+// (exigence V73-3.2).
+func perWeaponRoles(byKey map[string]int, labels map[string]string, labelsEN map[string]string) []domain.FragRoleEntry {
 	roles := make([]domain.FragRoleEntry, 0, len(byKey))
 	for key, kills := range byKey {
 		if kills <= 0 {
 			continue
 		}
-		roles = append(roles, domain.FragRoleEntry{Role: key, Kills: kills, Label: labels[key]})
+		roles = append(roles, domain.FragRoleEntry{Role: key, Kills: kills, Label: labels[key], LabelEN: labelsEN[key]})
 	}
 	sort.Slice(roles, func(i, j int) bool {
 		if roles[i].Kills != roles[j].Kills {

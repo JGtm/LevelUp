@@ -92,7 +92,7 @@ func openEventsBackfillDBsWithRegistry(t *testing.T, registryDDL string) (player
 	`); err != nil {
 		t.Fatal(err)
 	}
-	// Append-only #23046 : convertit player_match_enrichment (id+stage) + vue _latest
+	// Append-only #23645 : convertit player_match_enrichment (id+stage) + vue _latest
 	// (backfillDominanceFlagsBatch INSÈRE stage='dominance' ; les readers lisent _latest).
 	if err := migration.EnsurePlayerMatchEnrichmentAppendOnly(pdb); err != nil {
 		t.Fatal(err)
@@ -124,7 +124,8 @@ func openEventsBackfillDBsWithRegistry(t *testing.T, registryDDL string) (player
 			event_type VARCHAR,
 			time_ms    INTEGER,
 			xuid       VARCHAR,
-			type_hint  INTEGER
+			type_hint  INTEGER,
+			raw_json   VARCHAR
 		);
 		CREATE TABLE killer_victim_pairs (
 			match_id        VARCHAR,
@@ -310,7 +311,7 @@ func TestEventsConvergence_MarkEventsEmptyFailure_Counted(t *testing.T) {
 // film (fixture v41), les events sont écrits, events_loaded passe TRUE, et la
 // passe suivante ne détecte plus rien (idempotence/convergence).
 func TestEventsConvergence_HappyPath_WritesEventsAndConverges(t *testing.T) {
-	data, err := os.ReadFile(filepath.Join("..", "analysis", "testdata", "v41_chunk_he.bin"))
+	data, err := os.ReadFile(filepath.Join("..", "games", "halo_infinite", "film", "internal", "grammar", "testdata", "v41_chunk_he.bin"))
 	if err != nil {
 		t.Skipf("fixture film absente: %v", err)
 	}

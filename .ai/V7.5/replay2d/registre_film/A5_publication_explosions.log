@@ -1,0 +1,72 @@
+=== RUN   TestAssautA5Explosions
+assaut_a5_explosions_test.go:122: 1c01e34f : 4/4 explosions attribuees a un joueur
+assaut_a5_explosions_test.go:122: 34bb3bc8 : 1/1 explosions attribuees a un joueur
+assaut_a5_explosions_test.go:122: 35b75a31 : 3/3 explosions attribuees a un joueur
+assaut_a5_explosions_test.go:122: 3d58eb37 : 3/3 explosions attribuees a un joueur
+assaut_a5_explosions_test.go:122: 69b16f5d : 3/3 explosions attribuees a un joueur
+assaut_a5_explosions_test.go:122: 9f57c612 : 4/4 explosions attribuees a un joueur
+assaut_a5_explosions_test.go:122: c75f33b8 : 2/3 explosions attribuees a un joueur
+assaut_a5_explosions_test.go:122: ce083875 : 3/3 explosions attribuees a un joueur
+assaut_a5_explosions_test.go:122: df8fcbef : 3/4 explosions attribuees a un joueur
+assaut_a5_explosions_test.go:129: BILAN : 28 explosions datees au releve, 26 attribuees a un joueur (92.9 %), 0 publiees hors releve
+--- PASS: TestAssautA5Explosions (5.42s)
+=== RUN   TestAssautManchesRecherche
+assaut_manches_research_test.go:102: FILM df8fcbef — Assaut One Bomb (4 explosions, manches 0..3) : 996 enregistrements, tronque=false, manches retenues actuellement=[0 1 2 3]
+assaut_manches_research_test.go:102: FILM c75f33b8 — Assaut One Bomb (3 explosions, manches 0..2) : 513 enregistrements, tronque=false, manches retenues actuellement=[0 1 2]
+assaut_manches_research_test.go:102: FILM 9f57c612 — Assaut One Bomb (4 explosions, manches 0..3) : 619 enregistrements, tronque=false, manches retenues actuellement=[0 1 2 3]
+assaut_manches_research_test.go:102: FILM 35b75a31 — Assaut Neutral Bomb (1 manche) : 1021 enregistrements, tronque=false, manches retenues actuellement=[0]
+assaut_manches_research_test.go:102: FILM 69b16f5d — Assaut Neutral Bomb (1 manche) : 306 enregistrements, tronque=false, manches retenues actuellement=[0]
+assaut_manches_research_test.go:102: FILM 3d58eb37 — Assaut Neutral Bomb (1 manche) : 434 enregistrements, tronque=false, manches retenues actuellement=[0]
+assaut_manches_research_test.go:102: FILM 34bb3bc8 — Assaut Neutral Bomb Squad (1 manche) : 1182 enregistrements, tronque=false, manches retenues actuellement=[0]
+assaut_manches_research_test.go:102: FILM 1c01e34f — Husky Raid Assaut (1 manche) : 684 enregistrements, tronque=false, manches retenues actuellement=[0]
+assaut_manches_research_test.go:102: FILM ce083875 — Assaut Neutral Bomb (1 manche, film exclu du lot A) : 1149 enregistrements, tronque=false, manches retenues actuellement=[0]
+assaut_manches_research_test.go:102: FILM 53ce4390 — CTF — contre-exemple manche fantome (score 1 -> 2104) : 890 enregistrements, tronque=false, manches retenues actuellement=[0]
+assaut_manches_research_test.go:102: FILM 1bc77d2e — CTF — contre-exemple (flag_capture_assists 1 -> 1569) : 963 enregistrements, tronque=false, manches retenues actuellement=[0]
+assaut_manches_research_test.go:102: FILM c88ec007 — Oddball — manches reelles courtes : 8183 enregistrements, tronque=false, manches retenues actuellement=[0 1 2]
+assaut_manches_research_test.go:109: film	manche	reelle	enr	slots	slots_j	tmin_ms	tmax_ms	etendue_ms	suite_score	suite_frags	suite_morts	suite_assists	suite_scoreperso	retenue_actuelle
+assaut_manches_research_test.go:109: df8fcbef	0	OUI	310	10	8	180	1458	785601	784143	1	8	7	4	16	true
+assaut_manches_research_test.go:109: df8fcbef	1	OUI	64	10	8	45	263822	309284	45462	2	3	2	3	4	true
+assaut_manches_research_test.go:109: df8fcbef	2	OUI	249	10	8	145	317367	485860	168493	2	9	6	7	12	true
+assaut_manches_research_test.go:109: df8fcbef	3	OUI	372	10	8	212	493948	778033	284085	1	9	10	7	21	true
+assaut_manches_research_test.go:109: df8fcbef	6	non	1	1	1	1	234029	234029	0	0	0	0	0	0	false
+assaut_manches_research_test.go:109: c75f33b8	0	OUI	87	10	8	61	25436	450852	425416	1	3	2	2	3	true
+assaut_manches_research_test.go:109: c75f33b8	1	OUI	353	10	8	204	121969	395724	273755	1	13	10	6	23	true
+assaut_manches_research_test.go:109: c75f33b8	2	OUI	70	10	8	48	177137	450833	273696	2	5	3	1	5	true
+assaut_manches_research_test.go:109: c75f33b8	4	non	2	2	2	2	180522	318530	138008	0	0	0	0	0	false
+assaut_manches_research_test.go:109: c75f33b8	6	non	1	1	1	1	281557	281557	0	0	0	0	0	0	false
+assaut_manches_research_test.go:109: 9f57c612	0	OUI	81	10	8	56	3198	469075	465877	1	2	2	3	4	true
+assaut_manches_research_test.go:109: 9f57c612	1	OUI	266	10	8	155	91528	407453	315925	2	7	7	7	11	true
+assaut_manches_research_test.go:109: 9f57c612	2	OUI	79	10	8	51	306679	353160	46481	2	4	3	1	6	true
+assaut_manches_research_test.go:109: 9f57c612	3	OUI	192	10	8	117	361352	469057	107705	2	6	5	5	12	true
+assaut_manches_research_test.go:109: 9f57c612	4	non	1	1	1	1	211350	211350	0	0	0	0	0	0	false
+assaut_manches_research_test.go:109: 35b75a31	0	OUI	1018	10	8	561	4075	787051	782976	2	36	23	15	50	true
+assaut_manches_research_test.go:109: 35b75a31	2	non	2	1	1	2	136178	622636	486458	0	0	0	0	1	false
+assaut_manches_research_test.go:109: 35b75a31	3	non	1	1	1	1	714511	714511	0	0	0	0	0	0	false
+assaut_manches_research_test.go:109: 69b16f5d	0	OUI	303	10	8	168	2727	310215	307488	2	8	8	4	10	true
+assaut_manches_research_test.go:109: 69b16f5d	2	non	3	3	1	1	170839	319323	148484	0	0	0	0	0	false
+assaut_manches_research_test.go:109: 3d58eb37	0	OUI	429	10	8	231	3666	386280	382614	1	14	11	8	20	true
+assaut_manches_research_test.go:109: 3d58eb37	3	non	2	2	2	2	162918	370311	207393	0	0	0	0	0	false
+assaut_manches_research_test.go:109: 3d58eb37	4	non	3	1	0	0	327594	359725	32131	0	0	0	0	0	false
+assaut_manches_research_test.go:109: 34bb3bc8	0	OUI	1176	10	8	469	3411	778530	775119	1	27	23	11	35	true
+assaut_manches_research_test.go:109: 34bb3bc8	2	non	2	2	1	1	100209	220841	120632	0	0	0	0	0	false
+assaut_manches_research_test.go:109: 34bb3bc8	3	non	2	2	1	1	170191	220826	50635	0	0	0	0	0	false
+assaut_manches_research_test.go:109: 34bb3bc8	4	non	1	1	1	1	171993	171993	0	0	0	0	0	0	false
+assaut_manches_research_test.go:109: 34bb3bc8	6	non	1	1	1	1	772822	772822	0	0	0	0	0	0	false
+assaut_manches_research_test.go:109: 1c01e34f	0	OUI	680	10	8	375	2586	400853	398267	2	24	16	8	31	true
+assaut_manches_research_test.go:109: 1c01e34f	1	non	3	2	2	3	331249	369071	37822	0	0	0	0	0	false
+assaut_manches_research_test.go:109: 1c01e34f	7	non	1	1	0	0	398786	398786	0	0	0	0	0	0	false
+assaut_manches_research_test.go:109: ce083875	0	OUI	1145	10	8	625	54033	947537	893504	2	29	27	14	42	true
+assaut_manches_research_test.go:109: ce083875	2	non	2	2	1	1	201956	583946	381990	0	0	0	0	0	false
+assaut_manches_research_test.go:109: ce083875	5	non	1	1	1	1	904540	904540	0	0	0	0	0	0	false
+assaut_manches_research_test.go:109: ce083875	7	non	1	1	1	1	752200	752200	0	0	0	0	0	0	false
+assaut_manches_research_test.go:109: 53ce4390	0	OUI	886	10	8	471	6805	746495	739690	2	25	19	8	35	true
+assaut_manches_research_test.go:109: 53ce4390	1	non	2	2	1	1	182090	598976	416886	0	0	0	0	0	false
+assaut_manches_research_test.go:109: 53ce4390	2	non	2	1	0	0	145704	145721	17	0	0	0	0	0	false
+assaut_manches_research_test.go:109: 1bc77d2e	0	OUI	962	10	8	517	3389	599816	596427	1	24	18	13	34	true
+assaut_manches_research_test.go:109: 1bc77d2e	2	non	1	1	1	1	559257	559257	0	0	0	0	0	0	false
+assaut_manches_research_test.go:109: c88ec007	0	?	2650	10	8	1348	2609	664481	661872	44	9	7	4	18	true
+assaut_manches_research_test.go:109: c88ec007	1	?	2701	10	8	1381	237822	450302	212480	73	14	8	10	25	true
+assaut_manches_research_test.go:109: c88ec007	2	?	2832	10	8	1441	56526	664463	607937	41	8	8	5	20	true
+--- PASS: TestAssautManchesRecherche (7.18s)
+PASS
+ok  	levelup/go-api/internal/analysis/replay	(cached)

@@ -1,6 +1,6 @@
 // Package service - match_history_service_enrich.go : toFilterMatchRow +
 // computeMapWinRates + enrichRows/enrichRow + sortItems/compareRows +
-// paginate + helpers de format (outcomeLabel, formatDateFR,
+// paginate + helpers de format (formatDateFR,
 // formatLifeSeconds, buildPeriodLabel, ptr/cmp helpers).
 // Decoupe de match_history_service.go (god-file split, refactor 2026-05-27).
 package service
@@ -14,6 +14,7 @@ import (
 
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/port"
 )
 
 func toFilterMatchRow(r domain.MatchHistoryRawRow) domain.FilterMatchRow {
@@ -67,20 +68,28 @@ func computeMapWinRates(rows []domain.MatchHistoryRawRow) map[string][2]int {
 // ---------------------------------------------------------------------------
 
 // rowFormatters regroupe les résolveurs title-agnostic injectés dans l'enrichissement
-// d'une ligne : URL de page publique du match (F3) et libellé d'outcome via le titre
-// (F4). Champs nil → dégradation gracieuse (URL vide ; outcome via le fallback FR dur).
+// d'une ligne : URL de page publique du match (F3) et clé canonique d'outcome via le titre
+// (F4, D5 2026-09-07 : clé, jamais un texte). Champs nil → dégradation gracieuse (URL vide ;
+// clé via le repli Halo-only documenté sur outcomeKeyFromHaloCode).
 type rowFormatters struct {
 	matchURL      func(matchID string) string
-	outcomeLabel  func(code int) string
+	outcomeKey    func(code int) string
 	playlistLabel func(rawFR string) string
 	// regulation : table `game_variant_name → temps réglementaire (s)` du titre
 	// courant (regulation.toml). Nil/vide → aucun flag « Prolongation », jamais
 	// d'erreur. Injectée par MatchHistoryService.WithRegulation.
 	regulation map[string]int
+	// roundsDecide : table `game_variant_name → le résultat se lit en MANCHES`
+	// (regulation.toml). Nil/vide → lecture en points. Injectée par WithRoundsDecide.
+	roundsDecide map[string]bool
 	// skillBadgeURL : résolveur d'URL d'image de badge de palier du TITRE courant
 	// (même contrat que la home : (tier capitalisé, sous-palier 0=Onyx/1..6) → URL).
 	// Nil → aucune image, le front retombe sur le libellé texte du palier.
 	skillBadgeURL func(tierEN string, subTier int) string
+	// replays : ensemble des matchs ayant un artefact de rejeu 2D, construit UNE FOIS
+	// par requête (un listing de dossier) et consulté en O(1) par ligne. Vide → aucune
+	// ligne ne porte de rejeu, ce qui est l'état d'un titre sans film cuit.
+	replays port.ReplayAvailability
 }
 
 // skillRankImageURLFor résout l'image du badge de palier d'une ligne brute via le
@@ -112,11 +121,21 @@ func (f rowFormatters) playlistLabelFor(rawFR string) string {
 	return f.playlistLabel(rawFR)
 }
 
-func (f rowFormatters) outcomeLabelFor(code int) string {
-	if f.outcomeLabel == nil {
-		return outcomeLabel(code) // failsafe : libellés FR canoniques Halo
+// hasReplayFor dit si le match a un artefact de rejeu 2D. Lookup O(1) dans l'ensemble
+// construit une fois par requête : aucun accès disque ici.
+func (f rowFormatters) hasReplayFor(matchID string) bool {
+	return f.replays.Has(matchID)
+}
+
+// outcomeKeyFor rend la CLÉ CANONIQUE d'issue de la ligne (win|loss|tie|dnf). Le résolveur
+// est TOUJOURS injecté par MatchHistoryService.rowFormatters ; le nil ne survient que sur un
+// rowFormatters zéro-valeur — un test qui n'enrichit pas les clés. Repli Halo-only alors (pas
+// d'adapter à portée dans ce cas, cf. outcomeKeyFromHaloCode).
+func (f rowFormatters) outcomeKeyFor(code int) string {
+	if f.outcomeKey == nil {
+		return outcomeKeyFromHaloCode(code)
 	}
-	return f.outcomeLabel(code)
+	return f.outcomeKey(code)
 }
 
 func enrichRows(rows []domain.MatchHistoryRawRow, mapWR map[string][2]int, fmts rowFormatters) []domain.MatchHistoryRow {
@@ -180,9 +199,18 @@ func enrichRow(r domain.MatchHistoryRawRow, mapWR map[string][2]int, fmts rowFor
 		kda = r.KDA
 	}
 
-	scoreLabel := "-"
-	if r.MyTeamScore != nil && r.EnemyTeamScore != nil {
-		scoreLabel = fmt.Sprintf("%d - %d", *r.MyTeamScore, *r.EnemyTeamScore)
+	// Score de la ligne : points ou MANCHES, tranché par la source unique
+	// (analysis.ReadTeamScore). Variante non déclarée ou manches inconnues → points,
+	// c'est-à-dire le comportement d'avant le 2026-08-29.
+	scoreLabel, scoreKind := "-", ""
+	if d, ok := analysis.ReadTeamScore(analysis.TeamScoreInput{
+		MyPoints: r.MyTeamScore, EnemyPoints: r.EnemyTeamScore,
+		MyRoundsWon: r.MyRoundsWon, EnemyRoundsWon: r.EnemyRoundsWon,
+		RoundsTotal:  r.RoundsTotal,
+		RoundsDecide: fmts.roundsDecide[strings.TrimSpace(derefStr(r.GameVariantName))],
+	}); ok {
+		scoreLabel = analysis.FormatTeamScoreLabel(d)
+		scoreKind = string(d.Kind)
 	}
 
 	isOvertime, overtimeSeconds := fmts.overtimeFor(r)
@@ -192,8 +220,9 @@ func enrichRow(r domain.MatchHistoryRawRow, mapWR map[string][2]int, fmts rowFor
 		StartTime:                startTime,
 		StartTimeLabel:           label,
 		OutcomeCode:              r.Outcome,
-		OutcomeLabel:             fmts.outcomeLabelFor(r.Outcome),
+		Outcome:                  fmts.outcomeKeyFor(r.Outcome),
 		ScoreLabel:               scoreLabel,
+		ScoreKind:                scoreKind,
 		MapUI:                    ptrStr(mapU),
 		ModeUI:                   modeUI,
 		PlaylistLabel:            ptrStr(playlist),
@@ -222,6 +251,7 @@ func enrichRow(r domain.MatchHistoryRawRow, mapWR map[string][2]int, fmts rowFor
 		IsOvertime:               isOvertime,
 		OvertimeSeconds:          overtimeSeconds,
 		MatchURL:                 matchURL,
+		HasReplay:                fmts.hasReplayFor(r.MatchID),
 		IsExcluded:               r.IsExcluded,
 		IsWithFriends:            r.IsWithFriends,
 		ExperienceTypeLabel:      explorerExperienceType(r),
@@ -314,12 +344,8 @@ func paginate(items []domain.MatchHistoryRow, req domain.PaginationRequest) (dom
 // Helpers
 // ---------------------------------------------------------------------------
 
-func outcomeLabel(code int) string {
-	if lbl, ok := outcomeLabels[code]; ok {
-		return lbl
-	}
-	return "-"
-}
+// outcomeKey / outcomeKeyFromHaloCode vivent dans outcome_label.go : la CLÉ canonique
+// d'issue vient du titre (outcomes.toml), jamais un texte ni une map FR en dur (D5, 2026-09-07).
 
 func formatDateFR(t time.Time) string {
 	if t.IsZero() {

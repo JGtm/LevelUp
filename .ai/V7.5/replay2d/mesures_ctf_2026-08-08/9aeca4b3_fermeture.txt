@@ -1,0 +1,24 @@
+film	9aeca4b3
+carte	Catalyst
+slots_pont_avant	82
+slots_pont_apres	84
+vies_non_nommees_candidates	19
+designees_par_un_tir	6
+attribuees	2	contestees	1	rejetees_recouvrement	3
+tirs_orphelins	303	dont_instant_a_une_seule_vie	56
+
+# couverture des tirs
+avant	rattaches	2457	sur	2760	taux	0.8902	sans_slot	303	ambigus	0
+apres	rattaches	2475	sur	2760	taux	0.8967	sans_slot	285	ambigus	0
+gain_points_A	0.65
+
+# fermeture B — par la reapparition
+calibration_vies	74	p05_ms	8149	mediane_ms	8166	p95_ms	10188
+vies_restantes	17	designees	10	attribuees	6	contestees	0	rejetees_recouvrement	4
+apresB	rattaches	2622	sur	2760	taux	0.9500	sans_slot	138	ambigus	0
+gain_points_total_fenetre_large	5.98
+
+# fermeture B — fenetre SERREE (mediane +/- 750 ms)
+vies_restantes	17	designees	9	attribuees	6	contestees	0	rejetees_recouvrement	3
+apresT	rattaches	2622	sur	2760	taux	0.9500	sans_slot	138	ambigus	0
+gain_points_total_fenetre_serree	5.98

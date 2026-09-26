@@ -1,0 +1,39 @@
+===== FILM 24dbb67d =====
+=== RUN   TestOddballSondeDiagnostique
+2026/08/27 13:20:08 INFO plafond memoire arme pour ce decodage outil=d7-sonde souple_gib=2 dur_octets=2684354560
+2026/08/27 13:20:12 WARN empreinte du registre ECS du film INCONNUE — grammaire des composants suspecte (mise a jour du jeu ?) ; le film reste decode empreinte=7307582345129211936 empreinte_connue=7053924395561516366 blocs=118 slots_non_vides=1068
+    oddball_sonde_d7_test.go:66: 24dbb67d : 7051 ancres, 269 creations acceptees, 248 pistes delta ; 23 vie(s) du mot elu
+    oddball_sonde_d7_test.go:85: 24dbb67d : 23 vie(s) libre(s), 87 slot(s) nomme(s), plus long portage API 80 s
+    oddball_sonde_d7_test.go:88: S1 24dbb67d :   W =  0 image(s) -> 10/22 trou(s) avec un joueur sous 1.5 m (45.5 %)
+    oddball_sonde_d7_test.go:88: S1 24dbb67d :   W =  1 image(s) -> 10/22 trou(s) avec un joueur sous 1.5 m (45.5 %)
+    oddball_sonde_d7_test.go:88: S1 24dbb67d :   W =  2 image(s) -> 11/22 trou(s) avec un joueur sous 1.5 m (50.0 %)
+    oddball_sonde_d7_test.go:88: S1 24dbb67d :   W =  5 image(s) -> 11/22 trou(s) avec un joueur sous 1.5 m (50.0 %)
+    oddball_sonde_d7_test.go:88: S1 24dbb67d :   W = 10 image(s) -> 11/22 trou(s) avec un joueur sous 1.5 m (50.0 %)
+    oddball_sonde_d7_test.go:88: S1 24dbb67d : gain W=0 -> W=5 : +4.5 point(s) (confirme >= 15, ecarte < 5) — ECARTEE
+    oddball_sonde_d7_test.go:88: S1 24dbb67d : vitesse de l objet sur ses 3 dernieres images — mediane 0.00 m/s, q75 0.21, q90 1.04, max 1.21 (21 vies)
+    oddball_sonde_d7_test.go:89: S2 24dbb67d : 7 portage(s) reconstruit(s), le plus long 72 s contre un maximum API de 80 s ; 0 le depasse(nt). Vies libres reduites a un instant : 2/23 = 8.7 %
+    oddball_sonde_d7_test.go:89: S2 24dbb67d : (confirme si un portage depasse le max API, ou si les vies d un instant pesent >= 20 %) — ECARTEE
+    oddball_sonde_d7_test.go:90: S3 24dbb67d : naissances — 3 au socle, 17 aux pieds d un joueur, 1 au lieu du silence precedent, 2 INEXPLIQUEES sur 23 (8.7 %) — ECARTEE
+    oddball_sonde_d7_test.go:63: 24dbb67d : pic memoire observe 0.10 Gio
+--- PASS: TestOddballSondeDiagnostique (51.40s)
+PASS
+EXIT_24dbb67d=0
+===== FILM d9781168 =====
+=== RUN   TestOddballSondeDiagnostique
+2026/08/27 13:21:00 INFO plafond memoire arme pour ce decodage outil=d7-sonde souple_gib=2 dur_octets=2684354560
+    oddball_sonde_d7_test.go:66: d9781168 : 15016 ancres, 665 creations acceptees, 945 pistes delta ; 47 vie(s) du mot elu
+    oddball_sonde_d7_test.go:85: d9781168 : 47 vie(s) libre(s), 140 slot(s) nomme(s), plus long portage API 116 s
+    oddball_sonde_d7_test.go:88: S1 d9781168 :   W =  0 image(s) -> 22/46 trou(s) avec un joueur sous 1.5 m (47.8 %)
+    oddball_sonde_d7_test.go:88: S1 d9781168 :   W =  1 image(s) -> 22/46 trou(s) avec un joueur sous 1.5 m (47.8 %)
+    oddball_sonde_d7_test.go:88: S1 d9781168 :   W =  2 image(s) -> 22/46 trou(s) avec un joueur sous 1.5 m (47.8 %)
+    oddball_sonde_d7_test.go:88: S1 d9781168 :   W =  5 image(s) -> 23/46 trou(s) avec un joueur sous 1.5 m (50.0 %)
+    oddball_sonde_d7_test.go:88: S1 d9781168 :   W = 10 image(s) -> 26/46 trou(s) avec un joueur sous 1.5 m (56.5 %)
+    oddball_sonde_d7_test.go:88: S1 d9781168 : gain W=0 -> W=5 : +2.2 point(s) (confirme >= 15, ecarte < 5) — ECARTEE
+    oddball_sonde_d7_test.go:88: S1 d9781168 : vitesse de l objet sur ses 3 dernieres images — mediane 0.28 m/s, q75 1.13, q90 2.26, max 4.80 (33 vies)
+    oddball_sonde_d7_test.go:89: S2 d9781168 : 18 portage(s) reconstruit(s), le plus long 55 s contre un maximum API de 116 s ; 0 le depasse(nt). Vies libres reduites a un instant : 14/47 = 29.8 %
+    oddball_sonde_d7_test.go:89: S2 d9781168 : (confirme si un portage depasse le max API, ou si les vies d un instant pesent >= 20 %) — CONFIRMEE
+    oddball_sonde_d7_test.go:90: S3 d9781168 : naissances — 13 au socle, 29 aux pieds d un joueur, 0 au lieu du silence precedent, 5 INEXPLIQUEES sur 47 (10.6 %) — INDECISE
+    oddball_sonde_d7_test.go:63: d9781168 : pic memoire observe 0.14 Gio
+--- PASS: TestOddballSondeDiagnostique (82.52s)
+PASS
+EXIT_d9781168=0

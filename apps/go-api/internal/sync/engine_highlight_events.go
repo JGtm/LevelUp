@@ -31,6 +31,8 @@ import (
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/domain/highlightevent"
+	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/persist"
 )
@@ -170,7 +172,7 @@ type collectedHighlightEvents struct {
 	filmVersion int
 	dataLen     int
 	filmFound   bool // réponse brute de l'API (found), avant test de vacuité
-	events      []analysis.HighlightEvent
+	events      []highlightevent.HighlightEvent
 }
 
 // chunkUsable : le chunk est exploitable (film présent ET données non vides).
@@ -200,7 +202,7 @@ func collectHighlightEvents(
 	if !out.chunkUsable() {
 		return out, nil // film absent / chunk vide → décision de marquage au FLUSH
 	}
-	events, err := analysis.ParseHighlightEvents(data, filmMajorVersion)
+	events, err := decfilm.ParseHighlightEvents(data, filmMajorVersion)
 	if err != nil {
 		observability.IncCounterT(ctxkeys.TitleSlug(ctx), "highlight_events_parse_total_invalid_data")
 		return out, fmt.Errorf("ParseHighlightEvents: %w", err)
@@ -336,22 +338,41 @@ func ProcessHighlightEvents(
 // transaction atomique via persist.EventsCompletionPersister (writer RW shared).
 // Retourne le nombre d'events insérés. Centralise la construction du mapping pour
 // ProcessHighlightEvents (unique caller).
-func persistCombatCompletion(ctx context.Context, sharedDB *sql.DB, matchID string, events []analysis.HighlightEvent) (int, error) {
+func persistCombatCompletion(ctx context.Context, sharedDB *sql.DB, matchID string, events []highlightevent.HighlightEvent) (int, error) {
+	// L'IDENTITÉ DES MÉDAILLES PART AUSSI PAR ICI. Cette voie est le SECOND
+	// écrivain vivant de highlight_events (film non publié au sync primaire et
+	// repris un cycle plus tard par la convergence ; match déjà en registry via un
+	// coéquipier). Sans `raw_json`, chaque passage rouvrait le trou que le flux
+	// primaire ferme. La résolution réutilise `rawJSONMedaille` (collect.go, même
+	// paquet) — une seconde copie de la règle re-divergerait.
 	hlRows := make([]persist.HLEventCompletion, 0, len(events))
+	medaillesSansNom := 0
 	for _, ev := range events {
-		hlRows = append(hlRows, persist.HLEventCompletion{
+		row := persist.HLEventCompletion{
 			XUID:      strconv.FormatUint(ev.XUID, 10),
 			EventType: ev.EventType,
 			TimeMS:    ev.TimeMS,
 			TypeHint:  ev.TypeHint,
-		})
+		}
+		if ev.EventType == highlightevent.EventTypeMedal {
+			if raw, ok := rawJSONMedaille(ctx, ev); ok {
+				row.RawJSON = &raw
+			} else {
+				medaillesSansNom++
+			}
+		}
+		hlRows = append(hlRows, row)
+	}
+	if medaillesSansNom > 0 {
+		slog.InfoContext(ctx, "completion: medailles du film sans identite (couple inconnu de la table)",
+			"match_id", matchID, "events_medal_sans_nom", medaillesSansNom)
 	}
 
 	// Paires killer→victim (forme par-kill, gamertags + time_ms) — même calcul
 	// que la fonction legacy InsertKillerVictimPairsFromEvents (tolérance 5 ms).
 	raw := make([]analysis.RawEvent, 0, len(events))
 	for _, ev := range events {
-		if ev.EventType != analysis.EventTypeKill && ev.EventType != analysis.EventTypeDeath {
+		if ev.EventType != highlightevent.EventTypeKill && ev.EventType != highlightevent.EventTypeDeath {
 			continue
 		}
 		raw = append(raw, analysis.RawEvent{

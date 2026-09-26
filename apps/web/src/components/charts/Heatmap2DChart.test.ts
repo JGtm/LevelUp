@@ -74,6 +74,13 @@ describe('buildHeatmap2DOption', () => {
     ])
   })
 
+  // RÉGRESSION MUETTE CORRIGÉE LE 2026-09-13 : sans `dimension: 2`, ECharts classe la case
+  // sur sa DERNIÈRE dimension — `detail`, un objet — et aucune case ne reçoit sa couleur.
+  it('classe les cases sur la VALEUR (dimension 2), pas sur leur detail', () => {
+    const opt = buildHeatmap2DOption(series) as { visualMap: { dimension: number } }
+    expect(opt.visualMap.dimension).toBe(2)
+  })
+
   it('valueRange override min/max', () => {
     const opt = buildHeatmap2DOption(series, { valueRange: [0, 100] }) as {
       visualMap: { min: number; max: number }
@@ -84,5 +91,274 @@ describe('buildHeatmap2DOption', () => {
 
   it('series vide retourne option minimal', () => {
     expect(buildHeatmap2DOption([])).toEqual({ backgroundColor: 'transparent' })
+  })
+})
+
+// ─── LES AXES DÉRIVÉS (correction W1, revue ronde 1 du 2026-09-06) ────────────
+//
+// Les catégories d'axe viennent de l'ORDRE D'APPARITION des points. Une matrice
+// carrée dont l'appelant sauterait la diagonale sortirait donc avec un axe X décalé
+// d'un cran par rapport à l'axe Y — la matrice se lirait de travers sans que rien ne
+// le signale. Ces tests figent le contrat : émettez toutes les cases dans l'ordre,
+// et les deux axes coïncident.
+
+function matriceCarree(noms: string[]): ChartSeries<ChartPointHeatmap>[] {
+  const datapoints: ChartPointHeatmap[] = []
+  for (const y of noms) {
+    for (const x of noms) {
+      datapoints.push({ x, y, value: x === y ? null : 1 })
+    }
+  }
+  return [{ key: 'matrice', datapoints }]
+}
+
+// Une case peut désormais être un tuple `[x, y, value, detail?]` (case mesurée)
+// OU un objet `{ value: [...], itemStyle }` (case vide, décision D3 — cf.
+// Heatmap2DChart.tsx `HeatCellDatum`). Ce helper lit le tuple quelle que soit la
+// forme, pour que les tests n'aient pas à connaître laquelle une case donnée prend.
+type RawCell =
+  | [number, number, number | string, Record<string, unknown>?]
+  | { value: [number, number, number | string, Record<string, unknown>?]; itemStyle?: Record<string, unknown> }
+
+function tupleOf(d: RawCell): [number, number, number | string, Record<string, unknown>?] {
+  return Array.isArray(d) ? d : d.value
+}
+
+describe('buildHeatmap2DOption — axes d’une matrice carrée', () => {
+  it('rend xs == ys == roster pour quatre joueurs', () => {
+    const roster = ['A', 'B', 'C', 'D']
+    const opt = buildHeatmap2DOption(matriceCarree(roster)) as {
+      xAxis: { data: string[] }
+      yAxis: { data: string[] }
+    }
+    expect(opt.xAxis.data).toEqual(roster)
+    expect(opt.yAxis.data).toEqual(roster)
+  })
+
+  it('rend xs == ys sur un duo (le cas où l’inversion était totale)', () => {
+    const opt = buildHeatmap2DOption(matriceCarree(['A', 'B'])) as {
+      xAxis: { data: string[] }
+      yAxis: { data: string[] }
+    }
+    expect(opt.xAxis.data).toEqual(['A', 'B'])
+    expect(opt.yAxis.data).toEqual(opt.xAxis.data)
+  })
+
+  it('place les cases vides SUR la diagonale', () => {
+    const opt = buildHeatmap2DOption(matriceCarree(['A', 'B', 'C'])) as {
+      series: { data: RawCell[] }[]
+    }
+    const vides = opt.series[0].data.filter((d) => typeof tupleOf(d)[2] !== 'number')
+    expect(vides.map((d) => `${tupleOf(d)[0]}-${tupleOf(d)[1]}`)).toEqual(['0-0', '1-1', '2-2'])
+  })
+
+  it('exclut les cases vides de l’échelle (une case absente n’est pas un zéro)', () => {
+    const series: ChartSeries<ChartPointHeatmap>[] = [
+      {
+        key: 'm',
+        datapoints: [
+          { x: 'A', y: 'A', value: null },
+          { x: 'B', y: 'A', value: 4 },
+          { x: 'A', y: 'B', value: 7 },
+          { x: 'B', y: 'B', value: null },
+        ],
+      },
+    ]
+    const opt = buildHeatmap2DOption(series) as { visualMap: { min: number; max: number } }
+    expect(opt.visualMap.min).toBe(4)
+    expect(opt.visualMap.max).toBe(7)
+  })
+})
+
+// ─── LE TOOLTIP AU CHOIX DE L'APPELANT (correction W5) ────────────────────────
+
+describe('buildHeatmap2DOption — formatTooltip', () => {
+  const cellule: ChartSeries<ChartPointHeatmap>[] = [
+    { key: 'm', datapoints: [{ x: 'Bob', y: 'Alice', value: 4, detail: { count: 4 } }] },
+  ]
+  type Fmt = { tooltip: { formatter: (p: { data: unknown[] }) => string } }
+
+  it('emploie le formateur de l’appelant quand il en passe un', () => {
+    const opt = buildHeatmap2DOption(cellule, {
+      formatTooltip: (p) => `${p.y} a vengé ${p.x} ${p.value} fois`,
+    }) as unknown as Fmt
+    expect(opt.tooltip.formatter({ data: [0, 0, 4, { count: 4 }] })).toBe(
+      'Alice a vengé Bob 4 fois',
+    )
+  })
+
+  it('retombe sur le libellé historique quand il n’en passe pas', () => {
+    // INVERSION JOUÉE : sans la branche `if (formatTooltip)`, la matrice d'échange
+    // annoncerait « Win Rate: 400.0 % » pour 4 vengeances.
+    const opt = buildHeatmap2DOption(cellule) as unknown as Fmt
+    const rendu = opt.tooltip.formatter({ data: [0, 0, 4, { count: 4 }] })
+    expect(rendu).toContain('Win Rate')
+    expect(rendu).toContain('400.0%')
+  })
+
+  it('ne dit RIEN sur une case vide, pas même « 0 »', () => {
+    const opt = buildHeatmap2DOption(matriceCarree(['A', 'B'])) as unknown as Fmt
+    expect(opt.tooltip.formatter({ data: [0, 0, '-', undefined] })).toBe('')
+  })
+
+  it('ne dit RIEN non plus sur la VRAIE case vide produite (objet itemStyle, pas un tuple à la main)', () => {
+    const opt = buildHeatmap2DOption(matriceCarree(['A', 'B'])) as unknown as {
+      series: { data: RawCell[] }[]
+      tooltip: { formatter: (p: { data: RawCell }) => string }
+    }
+    const caseVide = opt.series[0].data[0] // A-A, sur la diagonale
+    expect(opt.tooltip.formatter({ data: caseVide })).toBe('')
+  })
+})
+
+// ─── C1 — PADDING DES CASES ET ABSENCE VISIBLE (plan vague C formes, D2/D3) ────
+
+describe('buildHeatmap2DOption — padding des cases (D2)', () => {
+  const series: ChartSeries<ChartPointHeatmap>[] = [
+    { key: 'm', datapoints: [{ x: 'A', y: 'A', value: 1 }, { x: 'B', y: 'A', value: 2 }] },
+  ]
+
+  it('deux cases voisines ne se touchent pas : borderWidth > 0 dans l’option', () => {
+    const opt = buildHeatmap2DOption(series) as {
+      series: { itemStyle: { borderWidth: number; borderColor: string; borderRadius: number } }[]
+    }
+    const { itemStyle } = opt.series[0]
+    expect(itemStyle.borderWidth).toBeGreaterThan(0)
+    expect(itemStyle.borderColor).toBeTruthy()
+    expect(itemStyle.borderRadius).toBeGreaterThanOrEqual(0)
+  })
+})
+
+describe('buildHeatmap2DOption — absence visible (D3)', () => {
+  it('une case null reçoit un itemStyle à decal (hachure), les cases mesurées n’en ont pas', () => {
+    const opt = buildHeatmap2DOption(matriceCarree(['A', 'B'])) as {
+      series: { data: RawCell[] }[]
+    }
+    const [caseVide, caseMesuree] = opt.series[0].data
+    expect(Array.isArray(caseVide)).toBe(false)
+    if (Array.isArray(caseVide)) throw new Error('unreachable')
+    expect(caseVide.itemStyle?.decal).toBeTruthy()
+    // Case mesurée (hors diagonale) : tuple brut, aucun itemStyle propre.
+    expect(Array.isArray(caseMesuree)).toBe(true)
+  })
+
+  it('une case null reçoit un tiret en étiquette, jamais une chaîne vide', () => {
+    const opt = buildHeatmap2DOption(matriceCarree(['A', 'B'])) as {
+      series: { data: RawCell[]; label: { formatter: (p: { data: RawCell }) => string } }[]
+    }
+    const caseVide = opt.series[0].data[0]
+    expect(opt.series[0].label.formatter({ data: caseVide })).toBe('—')
+  })
+
+  it('une case mesurée garde son étiquette (le compte), inchangée', () => {
+    const series: ChartSeries<ChartPointHeatmap>[] = [
+      { key: 'm', datapoints: [{ x: 'A', y: 'A', value: 4, detail: { count: 4 } }] },
+    ]
+    const opt = buildHeatmap2DOption(series) as {
+      series: { data: RawCell[]; label: { formatter: (p: { data: RawCell }) => string } }[]
+    }
+    expect(opt.series[0].label.formatter({ data: opt.series[0].data[0] })).toBe('4')
+  })
+
+  it('active aria.decal (requis par ECharts pour peindre les itemStyle.decal manuels)', () => {
+    const opt = buildHeatmap2DOption(matriceCarree(['A', 'B'])) as { aria: { decal: { show: boolean } } }
+    expect(opt.aria.decal.show).toBe(true)
+  })
+})
+
+// ─── C1 — PLAFOND DE SATURATION OPTIONNEL (sans régression par défaut) ────────
+
+describe('buildHeatmap2DOption — saturationCap (optionnel)', () => {
+  const series: ChartSeries<ChartPointHeatmap>[] = [
+    { key: 'm', datapoints: [{ x: 'A', y: 'y', value: 10 }, { x: 'B', y: 'y', value: 80 }] },
+  ]
+
+  it('sans la prop, le max reste la valeur réelle la plus haute (non-régression)', () => {
+    const opt = buildHeatmap2DOption(series) as { visualMap: { max: number } }
+    expect(opt.visualMap.max).toBe(80)
+  })
+
+  it('avec la prop, le max est le plafond même si la donnée le dépasse', () => {
+    const opt = buildHeatmap2DOption(series, { saturationCap: 30 }) as { visualMap: { max: number } }
+    expect(opt.visualMap.max).toBe(30)
+  })
+
+  it('valueRange garde priorité sur saturationCap (valueRange fixe déjà min ET max)', () => {
+    const opt = buildHeatmap2DOption(series, {
+      valueRange: [0, 100],
+      saturationCap: 30,
+    }) as { visualMap: { min: number; max: number } }
+    expect(opt.visualMap.max).toBe(100)
+  })
+})
+
+// ─── CASES SANS MESURE : LA FORME PAR DÉFAUT, ET L'OPT-OUT ────────────────────
+//
+// Le défaut reste la décision D3 (case peinte, hachurée, tiret). `emptyCells: 'hidden'` est
+// une dérogation OPT-IN pour les grilles où les cases vides sont majoritaires et régulières
+// (calendrier jour × heure) : la case reste ÉMISE — sans quoi les axes, déduits de l'ordre
+// d'apparition, se décaleraient — mais ne porte plus ni style propre ni étiquette.
+describe('buildHeatmap2DOption — cases sans mesure', () => {
+  const avecVide: ChartSeries<ChartPointHeatmap>[] = [
+    {
+      key: 'm',
+      datapoints: [
+        { x: 'A', y: 'A', value: null },
+        { x: 'B', y: 'A', value: 4 },
+      ],
+    },
+  ]
+
+  type Rendu = {
+    series: { data: RawCell[]; label: { formatter: (p: { data: RawCell }) => string } }[]
+    xAxis: { data: string[] }
+  }
+
+  it('par défaut, la case vide porte son style propre (hachure D3) et un tiret', () => {
+    const opt = buildHeatmap2DOption(avecVide) as Rendu
+    const vide = opt.series[0].data.find((d) => typeof tupleOf(d)[2] !== 'number')!
+    expect(Array.isArray(vide)).toBe(false)
+    expect((vide as { itemStyle?: unknown }).itemStyle).toBeDefined()
+    expect(opt.series[0].label.formatter({ data: vide })).toBe('—')
+  })
+
+  it('en mode hidden, la case vide n’a plus ni style propre ni étiquette', () => {
+    const opt = buildHeatmap2DOption(avecVide, { emptyCells: 'hidden' }) as Rendu
+    const vide = opt.series[0].data.find((d) => typeof tupleOf(d)[2] !== 'number')!
+    expect(Array.isArray(vide)).toBe(true)
+    expect(opt.series[0].label.formatter({ data: vide })).toBe('')
+  })
+
+  it('en mode hidden, la case vide reste ÉMISE : les axes ne se décalent pas', () => {
+    const opt = buildHeatmap2DOption(avecVide, { emptyCells: 'hidden' }) as Rendu
+    expect(opt.series[0].data).toHaveLength(2)
+    expect(opt.xAxis.data).toEqual(['A', 'B'])
+  })
+
+  // LE DAMIER, c'est le `splitArea` des DEUX axes, pas les cases : leurs bandes alternées se
+  // croisent et composent un échiquier, seul visible là où aucune case n'est peinte. Le
+  // laisser allumé en mode hidden ferait de l'absence la chose la plus voyante du graphe.
+  it('en mode hidden, les bandeaux d’axes s’éteignent aussi (plus de damier)', () => {
+    const opt = buildHeatmap2DOption(avecVide, { emptyCells: 'hidden' }) as unknown as {
+      xAxis: { splitArea: { show: boolean } }
+      yAxis: { splitArea: { show: boolean } }
+    }
+    expect(opt.xAxis.splitArea.show).toBe(false)
+    expect(opt.yAxis.splitArea.show).toBe(false)
+  })
+
+  it('par défaut, les bandeaux d’axes restent allumés (rendu historique des autres consommateurs)', () => {
+    const opt = buildHeatmap2DOption(avecVide) as unknown as {
+      xAxis: { splitArea: { show: boolean } }
+      yAxis: { splitArea: { show: boolean } }
+    }
+    expect(opt.xAxis.splitArea.show).toBe(true)
+    expect(opt.yAxis.splitArea.show).toBe(true)
+  })
+
+  it('en mode hidden, une case MESURÉE garde son étiquette de compte', () => {
+    const opt = buildHeatmap2DOption(avecVide, { emptyCells: 'hidden' }) as Rendu
+    const mesuree = opt.series[0].data.find((d) => typeof tupleOf(d)[2] === 'number')!
+    expect(opt.series[0].label.formatter({ data: mesuree })).toBe('0')
   })
 })

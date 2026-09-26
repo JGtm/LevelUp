@@ -50,6 +50,9 @@ export const okabePalette: Palette = {
   'divergent-neutral': '#888888', // Gris (pas de connotation directionnelle)
   'divergent-neg':     '#D55E00', // Vermillion
 
+  // ── Objectif sans camp ─────────────────────────────────────────────────────
+  'zone-neutral': '#888888', // Même gris : « aucun camp » n'a pas de direction non plus
+
   // ── Statuts UI ─────────────────────────────────────────────────────────────
   'success':     '#009E73', // Bluish Green (statut UI conventionnel — non binaire)
   'warning':     '#E69F00', // Orange
@@ -90,9 +93,27 @@ export const okabePalette: Palette = {
   'chart-series-7': '#CC79A7', // Reddish Purple
   'chart-series-8': '#BBBBBB', // Gris clair (substitut de Black)
 
-  // ── Bonus (assistances) — Reddish Purple : distinct du perf-tier-3 jaune et
+  // ── Bonus (cœur de la faille du rejeu ; ex-assistances, cf. stat-assists) — Reddish Purple : distinct du perf-tier-3 jaune et
   //     des joueurs squad (bleu/vert). Pas de collision en Okabe-Ito.
   'bonus': '#CC79A7', // Reddish Purple
+  // Stats de combat (2026-09-17) — ΔE ≥ 15 et daltonisme ≥ 8 ; contraste exigé sur UNE
+  // surface (bleu ciel et orange ne tiennent pas 3:1 sur fond clair sans collision).
+  'stat-kills': '#008E68',      // Bluish Green assombri (× 0.90)
+  'stat-deaths': '#D55E00',     // Vermillion
+  'stat-assists': '#56B4E9',    // Sky Blue
+  'assist-received': '#E69F00', // Orange
+  'assist-given': '#CC79A7',    // Reddish Purple
+
+  // ── Rareté — accent légendaire (encadré surbouclier du rejeu 2D, etc.) ──────
+  // Yellow : le plus "or" du set CVD-safe, et DISTINCT de `warning` (Orange) —
+  // contrairement au défaut (où warning et perf-tier-3 partagent déjà l'ambre),
+  // Okabe-Ito n'a que 8 teintes fixes : on évite ici une collision évitable.
+  'legendary': '#F0E442', // Yellow
+
+  // ── Extrême rare — Reddish Purple, la 8e couleur d'Okabe-Ito ──────────────
+  // Elle ne collapse sur aucun des deux axes de confusion (protan/deutan) avec le
+  // Blue et le Vermillion qui la précèdent sur la rampe d'intensité.
+  'extreme': '#CC79A7', // Reddish Purple
 
   // ── Badges narratifs ────────────────────────────────────────────────────────
   // Texte calculé pour contraste WCAG AA sur le fond correspondant
@@ -112,11 +133,40 @@ export const okabePalette: Palette = {
   'narrative-debacle-text':          '#FFFFFF', // blanc sur vermillion sombre (6.2) — noir tombe à 3.40
   'narrative-contre-remontada':      '#E69F00', // Orange (remplace cyan #33D6FF trop proche)
   'narrative-contre-remontada-text': '#000000', // noir sur orange
+  // Blue BRUT est outcome-win : un badge de défaite ne peut pas porter la couleur de
+  // la victoire. Les 8 teintes étant affectées, même technique que narrative-debacle :
+  // teinte gardée, luminosité baissée. Reddish Purple × 0.60 — assez sombre pour ne
+  // pas se confondre avec narrative-humiliation (Reddish Purple brut).
+  'narrative-sabordage':             '#7A4964', // Reddish Purple assombri (× 0.60)
+  'narrative-sabordage-text':        '#FFFFFF',
+  // Yellow BRUT est outcome-draw : couleur propre par la même technique (× 0.75).
+  'narrative-abnegation':            '#B4AB32', // Yellow assombri (× 0.75)
+  'narrative-abnegation-text':       '#000000',
 
   // ── Badges encounter — axe blue/vermillion daltonisme-safe ────────────────
   // (set sombre distinct AA-blanc, palette-invariant — cf. _encounterColors.ts ;
   //  les teintes Okabe claires échouaient le texte blanc ; labels disambiguent)
   ...ENCOUNTER_BADGE_COLORS,
+
+  // ── Classes de frags — famille dédiée (2026-08-29) ─────────────────────────
+  // AVANT cette famille, les tokens empruntés collapsaient : lourde ≡ grenade ≡
+  // équipement (#CC79A7) et épaule ≡ environnement (#56B4E9) — 5 classes du
+  // sunburst sur 2 teintes pour les daltoniens. 11 classes > 8 teintes Okabe :
+  // on garde les 8 teintes et on AJOUTE des dérivés de luminosité (technique déjà
+  // employée : squad-player-2/3, narrative-debacle) — la clarté survit aux
+  // simulations protan/deutan, et le double encodage (labels, anneaux, légende)
+  // porte le sens (P1.2).
+  'frag-shoulder':        '#56B4E9', // Sky Blue
+  'frag-sidearm':         '#F0E442', // Yellow
+  'frag-heavy':           '#CC79A7', // Reddish Purple
+  'frag-melee':           '#BBBBBB', // gris clair
+  'frag-grenade':         '#E69F00', // Orange (l'ambre du défaut)
+  'frag-spartan-ability': '#0072B2', // Blue
+  'frag-vehicle':         '#009E73', // Bluish Green
+  'frag-turret':          '#A04700', // Vermillion assombri (× 0.75)
+  'frag-equipment':       '#8E5374', // Reddish Purple assombri (dérivé squad-player-3)
+  'frag-environmental':   '#013A63', // Blue assombri (dérivé heatmap-freq-low)
+  'frag-unattributed':    '#888888', // gris neutre (résidu)
 
   // ── Heatmaps — axe blue/vermillion ────────────────────────────────────────
   'heatmap-cold':           '#D55E00', // Vermillion — mauvais

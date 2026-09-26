@@ -50,8 +50,10 @@ func NewInMemoryShared(t *testing.T) *sql.DB {
 			duration_seconds INTEGER,
 			playable_duration_seconds INTEGER,
 			real_start_time TIMESTAMP,
-			team_0_score SMALLINT,
-			team_1_score SMALLINT,
+			-- INTEGER : meme type que la DDL de production (cf. schema.go). Une fixture
+			-- qui garde SMALLINT rend la derive de schema indetectable par les tests.
+			team_0_score INTEGER,
+			team_1_score INTEGER,
 			team_0_ps_score INTEGER,
 			team_1_ps_score INTEGER,
 			first_sync_by VARCHAR,
@@ -122,8 +124,15 @@ func NewInMemoryShared(t *testing.T) *sql.DB {
 			source VARCHAR DEFAULT 'sync',
 			updated_at TIMESTAMP
 		)`,
+		// ⚠ CE BLOC MONTE LE SCHÉMA DE HALO 5, PAS CELUI DE HALO INFINITE. Depuis le
+		// 2026-09-01 (shared_drop_weapon_kills_v1), `weapon_kills`, ses vues et sa séquence
+		// sont SUPPRIMÉES du fichier Halo Infinite : l'arme d'un kill y vient de la source
+		// de dégât (`match_kill_events_latest`), jamais d'une table. Elles restent ici parce
+		// que la fixture sert AUSSI les tests du producteur natif de Halo 5
+		// (InsertWeaponKills, persist.SharedPersister), qui les exige. Aucun test de lecture
+		// Halo Infinite ne doit s'y adosser.
 		`CREATE SEQUENCE IF NOT EXISTS weapon_kills_generation_seq START 1`,
-		// Append-only #23046 (Phase 2) : PAS de PK composite (comme prod) — sinon
+		// Append-only #23645 (Phase 2) : PAS de PK composite (comme prod) — sinon
 		// re-insérer le même weapon_id dans une nouvelle génération conflitrait.
 		`CREATE TABLE weapon_kills (
 			match_id VARCHAR,
@@ -175,7 +184,7 @@ func NewInMemoryPlayer(t *testing.T) *sql.DB {
 	t.Cleanup(func() { _ = db.Close() })
 
 	// DDL legacy de bootstrap (PK match_id) ; la migration ci-dessous la convertit
-	// en append-only (#23046 : id PK + stage + written_at + vue player_match_enrichment_latest).
+	// en append-only (#23645 : id PK + stage + written_at + vue player_match_enrichment_latest).
 	stmts := []string{
 		`CREATE TABLE player_match_enrichment (
 			match_id VARCHAR PRIMARY KEY,

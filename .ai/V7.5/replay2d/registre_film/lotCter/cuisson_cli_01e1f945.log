@@ -1,0 +1,24 @@
+﻿# cuisson par le CLI cmd/replay-build --facts (schema 18, HEAD b13e0721d : renumerotation apres fusion des socles v17), un processus, LEVELUP_REPO_ROOT = worktree, film = main tree data/cache/film_chunks/01e1f945, carte catalyst
+2026/08/19 20:35:38 INFO faits du match charges path=C:\Users\Guillaume\Projects\LevelUp-wt-jauge-live\.ai\V7.5\replay2d\registre_film\lotCbis\faits_01e1f945.json match=01e1f945 joueurs=8 variante=KOTH:Arena
+2026/08/19 20:35:39 INFO replaybuild: actions d'objectif identifiees match_id=01e1f945 famille=hill nommees=0 identifiees=0 slotsApparies=8
+2026/08/19 20:37:03 INFO capacites : lectures d i48 recordsDelta=173040 masqueAvecI48=34 lues=34 illisibles=0 sansIdentite=5
+2026/08/19 20:37:19 INFO camouflage : lectures d i28 queue[1] recordsDelta=173040 masqueAvecI28=1565 lues=1565 illisibles=0 sansVoie=712
+2026/08/19 20:37:33 INFO grappin : lectures d i59 tag==3 recordsDelta=173040 masqueAvecI59=1424 lues=1418 illisibles=6 tag3=12 corpsCasses=1
+2026/08/19 20:37:59 INFO poses d'equipement : records de creation ti=37 decoupage=9/5 accords=13 ancres=5492 acceptes=283 confirmes=151 poses=151
+2026/08/19 20:38:15 INFO socles : balayage d archetype archetype="armes au sol (ti=42)" slots=911 ancres=7953 acceptees=405 imagesCles=28 viesRecensees=227 pistesDelta=646
+2026/08/19 20:38:29 INFO socles : balayage d archetype archetype="power-ups de socle (ti=37)" slots=912 ancres=5492 acceptees=283 imagesCles=28 viesRecensees=225 pistesDelta=374
+2026/08/19 20:38:41 INFO rejeu : proprietes ti=13 balayees match_id=01e1f945 slots=52 records=10575 marches=6867 cassees=3708 chainees=4193 lectures=10239
+2026/08/19 20:40:15 INFO pont slot->joueur slots=100 viesNommees=97 viesTotal=113 lecturesIndex=28 desaccordsIndex=0 collisionsSlot=0
+2026/08/19 20:40:15 WARN rejeu : rejets au-dessus du seuil calque=tirs cause=slotIntrouvable rejetes=222 disponibles=2154 rattaches=1921
+2026/08/19 20:40:15 INFO rejeu : courbe de score match_id=01e1f945 identiteEquipes=a manches=1 modePorte=true equipes=2 joueurs=8 points=964
+2026/08/19 20:40:15 INFO rejeu : tractions de grappin tirs=6 accroches=5 tractions=5 vies=5 rates=1 corpsCasses=0
+2026/08/19 20:40:15 INFO rejeu : poses d'equipement balaye=true calibre=true decoupage=9/5 poses=151 nommees=147 autres=4 avecPoseur=151 avecCap=130 deployees=7 lachees=144 origineInconnue=0
+2026/08/19 20:40:15 INFO rejeu : socles d'arme au sol balaye=true ancres=7953 acceptees=405 retenues=291 ecartees=114 objetsDObjectif=0 lachees=203 apparues=88 auRepos=40 grappes=10 socles=10 occupations=49 datees=38 sansPassage=8 jamaisVidees=3 cyclesEtablis=5
+2026/08/19 20:40:15 INFO rejeu : socles de power-up balaye=true acceptees=283 retenues=10 socles=1
+2026/08/19 20:40:15 WARN rejeu : appariements ECARTES — zones absentes de l'etat publie match_id=01e1f945 methode=positions+geometry nonApparies=8 apparies=6 captures=0 attribuees=0
+2026/08/19 20:40:15 INFO rejeu : etat des zones match_id=01e1f945 methode=positions+geometry catalogue=8 slots=28 apparies=6 nonApparies=8 sansProprietaire=0 intervalles=20 periodesColline=20 proprietaireVerifie=0 proprietaireConcordant=0
+2026/08/19 20:40:15 INFO rejeu : episodes d'equipement actif viesPubliees=113 viesCamo=0 episodesCamo=0 viesSurbouclier=5 episodesSurbouclier=5
+2026/08/19 20:40:15 INFO rejeu : palette de capacites palette=famille_a lectures=29 rangsNommes=3
+2026/08/19 20:40:15 INFO rejeu : couverture par calque tirsRattaches=1921 tirsDisponibles=2154 tirsSansSlot=222 tirsAmbigus=11 tirsHorsFenetre=0 tirsNonPublies=0 grenadesRattachees=130 grenadesDisponibles=132 verdictTirs=nominal verdictGrenades=nominal verdictPont=nominal
+2026/08/19 20:40:15 INFO artefact rejeu écrit path=C:\Users\Guillaume\Projects\LevelUp-wt-jauge-live\data\cache\replays\halo_infinite\01e1f945.json tracks=113 module=catalyst bytes=1818031 match=01e1f945 title=halo_infinite
+# watchdog : peakRAM_MB=120 duree_s=278 exit= (plafond 3072 Mo / 900 s)

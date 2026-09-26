@@ -1,0 +1,376 @@
+# FERMETURE DES RECORDS D'IMAGE-CLE PAR ARCHETYPE — golden du lot 0.A.3.
+# Une colonne par mesure : film, archetype, fermes, total, bloquant le plus frequent.
+# Le ratchet rougit sur une BAISSE de `fermes`. Regeneration :
+#   go test ./internal/games/halo_infinite/film/internal/grammar/ -run KeyframeClosureRatchet -update-keyframe-closure
+#
+# HISTORIQUE DES REGENERATIONS — une ligne par lot, avec CE QUI MONTE ET POURQUOI.
+# Un golden de couverture qu'on refige sans dire ce qu'il gagne ne garde plus rien.
+#
+#   2026-09-13 lot 0.A.3 : creation, 7 bobines par build, 217 lignes de mesure.
+#   2026-09-14 lot 1.3   : les CINQ etats par defaut manquants relus chez l'ecrivain
+#     (ti14 `V ; R(5)` FUN_140FED6F4 · ti17 `V ; R(7)` FUN_14101A0A4 · ti21 `R(18)`
+#     FUN_141133C24 · ti29 `V` seul FUN_14116F514 · ti47 `V ; R(5)` FUN_1410F44F8).
+#     21 lignes MONTENT, 0 descend, aucune ne disparait, aucun total ne bouge :
+#       ti=14    0/3520 -> 3520/3520 (100 %, les 7 bobines)
+#       ti=17    0/3729 -> 3729/3729 (100 %, les 7 bobines)
+#       ti=29    0/110  ->  102/110  (100 % sur 6 bobines, 22/30 sur 60ae07c4)
+#     ti=21 (0/357) et ti=47 (0/1716) ne bougent PAS, et c'etait prevu : leur largeur
+#     est prouvee par deux chaines, mais un composant reste faux — ti=47 bute sur
+#     `i2 personal-ai-data-component`, ti=21 sous-lit. Une largeur juste ne remplace
+#     pas un deserialiseur manquant (lot 3.6).
+#     Meme geste sur les 6 films de recherche : 8 796/62 686 (14,0 %) -> 19 337/62 686
+#     (30,8 %), delta = 5 024 + 5 379 + 138, et le plancher de hasard DESCEND de
+#     529 a 391. Mesure rejouable : `TestImageCleFermetureParArchetype` sous CHUNK00_FILMS.
+#
+#   2026-09-15  lot 1.9.1 bis, pas 2 bis + 2 quater : LES DEUX MOTS DE TAILLE SONT DES GARDES,
+#     ET LA TABLE DE PLAGES DE FUN_1406d3140 A NEUF CATEGORIES.
+#     NET : 26 lignes MONTENT (+89 records), 2 DESCENDENT (-21), soit +68 records.
+#     Les cinq archetypes objet passent de 184/21 698 (0,85 %) a 246/21 698 (1,13 %) ;
+#     ti=41 passe de 0/110 a 34/110 (30,9 %), ti=42 de 1/2 087 a 10, ti=37 de 3/3 331 a 15.
+#     Des archetypes HORS prefixe objet montent aussi : ti=35 (bipede) 0 -> 6, ti=10 0 -> 3,
+#     ti=12 0 -> 1.
+#     CE QUI A CHANGE, RELU CHEZ L ECRIVAIN :
+#       (a) FUN_142e2bfd0 porte DEUX fois `if (0 < (int)uVar7)` : le premier garde
+#           `vtable[0x60]` (l etat par defaut), le second `vtable[0x88]` PUIS la boucle de
+#           composants. `n1 == 0` -> aucun etat par defaut ; `n2 == 0` -> aucun composant.
+#           Comparaison SIGNEE. Le depot lisait les deux inconditionnellement.
+#       (b) FUN_140d10bb0 remplit neuf entrees de plages (constantes du binaire) et
+#           FUN_1406d3140 y indexe par `param_3` : W vaut 13 pour 0/1/7/8, 8 pour 2/3/5,
+#           9 pour 4/6, et la categorie 1 bascule sur l entree 4 quand sa sonde rend 1.
+#           Quatre sites de ti=37 corriges (i10, i21, i22, i28).
+#     LES DEUX DESCENTES, DOCUMENTEES RECORD PAR RECORD (condition posee par le pilote) :
+#       `a521164d` ti=13 8 -> 0. MESURE : `n1` vaut 136 sur les 454 records mesures — une
+#         taille de tampon CONSTANTE, donc l en-tete de 108 bits est juste — tandis que `n2`,
+#         lu juste apres l etat par defaut, prend -1 (48 fois), 2147483392 (24), 32768 (20),
+#         98304 (20), 0 (20), 68, 422710486, 2073479726, 1239369857, 4, 3, 2... C est du BRUIT :
+#         la marche est deja desalignee AVANT le mot de taille, donc dans l etat par defaut de
+#         ti=13. Les huit fermetures perdues etaient des fermetures obtenues APRES desalignement ;
+#         la garde ne les casse pas, elle les revele.
+#       `60ae07c4` ti=38 43 -> 30. Meme nature, et la meme mesure le montre : `n1` vaut 100 sur
+#         les 2 098 records, `n2` rend 0, 110, 14112, 14113, 14114, 3528, 3612672, 451709...
+#     L ORACLE QUE CETTE MESURE OUVRE, ET QUI VAUT POUR LA SUITE : sur les archetypes qui
+#     FERMENT, `n1` ET `n2` sont constants et plausibles (ti=14 4/28, ti=17 4/432, ti=22 12/12,
+#     ti=29 1/256, ti=6 4/7896) ; sur ceux qui echouent, `n1` est constant et `n2` est du bruit.
+#     `n2` est donc un oracle GRATUIT de justesse de l ETAT PAR DEFAUT, et il designe la cause :
+#     le premier bit faux de ti=13, 37 et 38 est DANS LEUR ETAT PAR DEFAUT, avant tout composant.
+#   2026-09-17 lot 3.6.a : le JOUEUR GERE (ti=9) n a plus aucun composant sans lecteur.
+#     `i4 managed-player-forge-weather-effect-overrides-component` (FUN_142ed5bc8,
+#     R(32) + R(32), 64 bits inconditionnels) etait le BLOQUANT NOMME des sept bobines ;
+#     `i9 managed-player-custom-input-prompt-widget` (FUN_141fcf160) passe de `partiel`
+#     a `porte` (boucle a etiquette du sac texte FUN_14080b034). Grammaires relevees chez
+#     l ecrivain, aucune entree de profil.
+#     7 lignes MONTENT, 0 descend, aucune ne disparait, aucun total ne bouge :
+#       ti=9     0/1717 -> 1716/1717 (99,94 %), et plus AUCUN bloquant nomme
+#         a521164d 0/262 -> 262/262 · 60ae07c4 0/240 -> 240/240 · 11de8353 0/393 -> 393/393
+#         111fa685 0/337 -> 336/337 · e5adf7b2 0/261 -> 261/261 · bcb6d393 0/144 -> 144/144
+#         fb1a1a72  0/80 ->   80/80
+#     LE 1 717e N EST PAS UN RECORD : sur `111fa685`, chunk 1, bit 9145, la marche va au
+#     bout de ses composants (DesyncAt = -1) et finit 3 415 bits AVANT la frontiere ; son
+#     `n1` vaut 2 154 823 696 quand les 1 716 autres valent 12. C est une ANCRE FORTUITE,
+#     la population que `default_state_n2_constant_test.go` ecarte deja par ce critere —
+#     aucune largeur de ti=9 ne peut la fermer. La cible du lot est donc 1 716, pas 1 717.
+#     `i9` ne fait monter AUCUN compte ici : il n existe au registre que sur `bcb6d393` et
+#     `fb1a1a72` (9 composants sur les cinq autres bobines), et aucun record n y atteignait
+#     la branche refusee. Sa grammaire est tenue par un test de largeur sur tampon
+#     synthetique (`TestTI9InputPromptLargeursDuSacTexte`, 11 chemins).
+#     Les 6 films de recherche NE SONT PAS mesures a ce lot : la voie libre du pilote
+#     (un seul decodage a la fois sur la machine) n avait pas ete donnee. Ligne `[!]` du
+#     plan, a jouer avec les deux gates de decodage.
+#   2026-09-18 lot 5.1.1 : LE POINT DE NAVIGATION (ti=12) EST PORTE DE `i1` AU MINUTEUR.
+#     Douze composants portes d un bloc (`i1` a `i12`), grammaires relevees chez le
+#     deserialiseur `+0x40` de chaque descripteur et recoupees par son serialiseur `+0x28`
+#     (NOTE_3_6_TI12_GRAMMAIRES_A_2026-09-17, § 5 a § 16). Cible : `i11`/`i12`, la duree
+#     INITIALE et la duree COURANTE du minuteur manuel — le compte a rebours de retour
+#     d un objectif, `R(17)` au pas de 50 ms, sans indirection.
+#     CE QUE LA MESURE DIT, ET C EST EXACTEMENT CE QUE LE LOT VISAIT : le bloquant de
+#     ti=12 avance de `i1 managed-navpoint-flags-component` a
+#     `i13 managed-navpoint-top-progress` sur les SEPT bobines. 0 ligne monte, 0 descend,
+#     aucun total ne bouge : la FERMETURE de ti=12 demande encore `i13` a `i27` (quinze
+#     composants, dont les huit `visual-state-groups`), donc elle n etait pas atteignable
+#     a ce lot et ne l est pas. Le bloquant qui avance de douze rangs EST la mesure.
+#     Les 6 films de recherche ne sont pas mesures ici non plus (meme raison qu au 3.6.a :
+#     un backfill tenait la machine). Les largeurs sont tenues par un test sur tampon
+#     synthetique (`components_navpoint_test.go`, 6 largeurs plates + 9 formes du bloc de
+#     filtres + le tag invalide + la dequantification).
+#   2026-09-18 lot 5.1.7-a : `param_4` EST LE `level` DU REGISTRE DU FILM, ET IL SE LIT.
+#     `param_4` — la propriete que le descripteur rend au deserialiseur, et dont huit
+#     lecteurs font une LARGEUR — venait d une table par nom plus, hors table, du BALAYAGE
+#     de `killsource.calibrateRSP` (0 a 5, la valeur qui maximisait la croissance des slots
+#     sur les records de BIPEDE). Il EST le `level` que le registre du film porte par
+#     composant (`entree + 0x100`, ce que `FUN_142e2c690` passe au deserialiseur), que le
+#     traverseur descendait deja jusqu a `consumeByName` sans que personne s en serve.
+#     TROIS lecteurs n avaient AUCUNE entree et prenaient donc la valeur balayee :
+#     `i10 object-parent-state` (vrai niveau 3), `i19 unit-actor-control` (2) et
+#     `i20 unit-actor-state` (4). `i10` est sur le chemin de TOUS les archetypes objet.
+#     NET SUR LES SEPT BOBINES : 14 lignes MONTENT (+627 records), 2 DESCENDENT (-2).
+#       ti=38 (arme au sol) : +575 — `fb1a1a72` 10/2147 -> 261/2147, `bcb6d393` 24 -> 129,
+#         `11de8353` 48 -> 99, `a521164d` 33 -> 122, `e5adf7b2` 12 -> 49, `111fa685` 30 -> 72
+#       ti=42 (objet pose)  : +51 sur les sept bobines
+#       ti=37 (equipement)  : `e5adf7b2` 0/489 -> 1/489
+#     LES DEUX BAISSES SONT D UN RECORD CHACUNE, ET ELLES SONT NOMMEES : `fb1a1a72` ti=37
+#     1/220 -> 0/220 et `a521164d` ti=37 4/762 -> 3/762. Meme archetype, meme lot, et
+#     `e5adf7b2` ti=37 MONTE de 1 dans le meme geste : a l echelle du record unique, une
+#     fermeture est une coincidence de frontiere, pas une largeur. Le bloquant de ti=37 ne
+#     bouge pas, et aucune ligne ne perd plus d un record contre +627 gagnes.
+#     Les 6 films de recherche ne sont pas mesures ici (un seul decodage a la fois).
+#   2026-09-18 lot 5.1.7-b : L ETAT PAR DEFAUT DE ti=40 EST LU, SA BOUCLE TOURNE.
+#     ti=40 n etait pas dans `defaultStateDeserByTI` : le jeu ecrivait 79 bits au
+#     minimum (FUN_1410A5A74), le lecteur en consommait ZERO, et le R(32) n2 se lisait
+#     79 bits trop tot -> consumeFullStateDefaultBlock faux -> LA BOUCLE DE COMPOSANTS
+#     N ETAIT JAMAIS LANCEE. C est ce que ce golden disait sans qu on le lise : 0 ferme
+#     sur 777 avec une colonne `bloquant` VIDE sur 48 composants dont 16 non portes.
+#     La feuille 4 (quaternion FUN_14076e494 + FUN_140c1e79c) portait la mention
+#     « largeur config-dependante » : PERIMEE. Ses deux globaux entrent par le catalogue
+#     de la carte depuis 3.4.1, ses deux fonctions sont portees depuis R7-b.
+#     MESURE ET TEMOIN NEGATIF (4f77afc1, 1 140 records ti=40 d image-cle) : la porte
+#     bVar14 vaut 1 sur 470 records (41,2 %). Feuille LUE : bVar14=0 661/661 a i30,
+#     bVar14=1 470/470 a i30 — meme rang, sans exception. Feuille modelisee ABSENTE :
+#     les 470 rendent DesyncAt == -1, la boucle ne tourne pas. Oracle binaire.
+#     CE QUI CHANGE ICI : le bloquant de ti=40 passe de VIDE a
+#     `i30 vehicle-auto-turret-triggers-component`. La fermeture NE MONTE PAS et ne le
+#     peut pas tant que les seize vehicle-* ne sont pas portes ; 0 ligne descend.
+#     Le document publie ne bouge d AUCUN octet (4f77afc1 : 256 recensees, 97 publiees,
+#     3 fins datees, avant comme apres) : le calque des vehicules passe par des
+#     balayages ANCRES, pas par la marche d etat complet.
+#   2026-09-23 lot M3.1 (campagne retours rejeu) : LA MARCHE D ANCRES NE COUPE PLUS LA TABLE.
+#     Une fenetre de 120 000 bits SANS candidat arretait le balayeur ; elle glisse
+#     desormais, et un en-tete EXACT de bipede recale l election. Les totaux MONTENT
+#     (records atteints : bcb6d393 ti=9 144 -> 151, ti=38 1841 -> 1878, ti=43 594 -> 624 ;
+#     fb1a1a72 ti=9 80 -> 94, ti=10 433 -> 461 ; a521164d ti=35 205 -> 209) et 0 ligne
+#     `fermes` ne descend. UNE ligne DISPARAIT (a521164d ti=0, 0/1 : une fausse ancre de
+#     slot bas que l election retenait) et UNE NAIT (bcb6d393 ti=1, 0/1 : la fausse
+#     ancre 192/ti 1 que l election retient dans l image-cle d avant-match, devant le
+#     record ti=9 slot 1297 — le repli nomme `repli_ancre_d_image_cle_par_election`).
+#     fb1a1a72 ti=1 0/1 -> 0/3 : DEUX records de plus, et c est la MEME fausse ancre
+#     (revue adverse du 2026-09-24, instrument `TestM3RevueMarche` sur la bobine) : le
+#     glissement franchit une fenetre vide du morceau 1 (deux images-cles), et l election
+#     y retient `0x400000C0 00000001` (slot 192, ti 1) a 186 bits DEVANT le vrai record
+#     ti=9 slot 1299 — slot plus bas, donc elu. Comptee dans `coverage.fallbacks`, elle
+#     n a pas de voisin a reparer sans une regle de plus : la marche deterministe
+#     (critere de retrait du repli) la fermera.
+#   2026-09-24 reprise du lot M3.1 : une fin de table a cheval sur deux fenetres arrete
+#     le glissement (`kfScanGlissant` reprend au debut de la trainee de sentinelles).
+#     AUCUNE ligne ne bouge sur les sept bobines.
+#   2026-09-24 lot D-fix (retours rejeu) : L ELECTION NE CONTREDIT PLUS UN RECORD PROUVE.
+#     La mesure porte sur la marche DU FILM (`FilmContext.MarcheDImageCle`), celle des
+#     balayages : l elu qu un record prouve par la grammaire contredit est refuse. Les deux
+#     lignes bcb6d393 `ti=1` et `ti=0` (0/1 chacune : les fausses ancres 192 et 1536)
+#     DISPARAISSENT, fb1a1a72 `ti=1` 0/3 -> 0/1 (la valeur d avant le lot M3.1 : les deux
+#     lectures de la fausse ancre 192 s en vont), et les records qu elles effacaient
+#     reviennent (bcb6d393 ti=9 151 -> 152, ti=38 1878 -> 1894 ; fb1a1a72 ti=9 94 -> 96,
+#     ti=38 2550 -> 2584 ; ti=37, 42, 43, 47, 10 aussi). 0 ligne `fermes` ne descend.
+a521164d	ti=2	0	11	i11 game-engine-soft-ceilings-component
+a521164d	ti=4	10	10	
+a521164d	ti=5	352	352	
+a521164d	ti=6	0	528	
+a521164d	ti=9	262	262	
+a521164d	ti=10	0	573	i2 managed-object-navpoint-component
+a521164d	ti=11	0	18	i4 managed-objective-interaction-filter-component
+a521164d	ti=12	0	298	i13 managed-navpoint-top-progress
+a521164d	ti=13	0	220	
+a521164d	ti=14	352	352	
+a521164d	ti=15	11	11	
+a521164d	ti=17	363	363	
+a521164d	ti=18	11	11	
+a521164d	ti=19	0	11	i0 sound-placement-state-data-component
+a521164d	ti=21	0	50	
+a521164d	ti=22	11	11	
+a521164d	ti=25	0	11	i0 powerframe-player-selection-data-component
+a521164d	ti=26	0	11	i0 supply-lines-blocked-status-component
+a521164d	ti=27	0	11	i0 supply-lines-item-unlocked-component
+a521164d	ti=29	11	11	
+a521164d	ti=34	0	11	i10 tacmap-mapdismissallock
+a521164d	ti=35	0	209	i60 simulation-state-component
+a521164d	ti=37	3	762	
+a521164d	ti=38	122	1303	
+a521164d	ti=40	0	335	i30 vehicle-auto-turret-triggers-component
+a521164d	ti=41	23	35	
+a521164d	ti=42	24	698	
+a521164d	ti=43	0	1559	i19 device-position-animation-name-component
+a521164d	ti=45	0	11	i0 matchflow-sequence-data-component
+a521164d	ti=47	249	262	
+60ae07c4	ti=1	0	1	i11 game-engine-soft-ceilings-component
+60ae07c4	ti=2	0	30	i11 game-engine-soft-ceilings-component
+60ae07c4	ti=4	21	29	
+60ae07c4	ti=5	960	960	
+60ae07c4	ti=6	1438	1439	
+60ae07c4	ti=9	240	240	
+60ae07c4	ti=10	1	376	i2 managed-object-navpoint-component
+60ae07c4	ti=11	0	135	i4 managed-objective-interaction-filter-component
+60ae07c4	ti=12	0	204	i13 managed-navpoint-top-progress
+60ae07c4	ti=13	0	454	
+60ae07c4	ti=14	960	960	
+60ae07c4	ti=15	30	30	
+60ae07c4	ti=17	990	990	
+60ae07c4	ti=18	30	30	
+60ae07c4	ti=19	0	30	i0 sound-placement-state-data-component
+60ae07c4	ti=20	0	2	
+60ae07c4	ti=21	0	87	
+60ae07c4	ti=22	30	30	
+60ae07c4	ti=25	0	30	i0 powerframe-player-selection-data-component
+60ae07c4	ti=26	0	30	i0 supply-lines-blocked-status-component
+60ae07c4	ti=27	0	30	i0 supply-lines-item-unlocked-component
+60ae07c4	ti=29	22	30	
+60ae07c4	ti=34	0	30	i10 tacmap-mapdismissallock
+60ae07c4	ti=35	1	236	i60 simulation-state-component
+60ae07c4	ti=37	3	425	
+60ae07c4	ti=38	30	2099	
+60ae07c4	ti=40	0	32	i30 vehicle-auto-turret-triggers-component
+60ae07c4	ti=41	0	19	
+60ae07c4	ti=42	5	253	
+60ae07c4	ti=43	0	569	i19 device-position-animation-name-component
+60ae07c4	ti=45	0	30	i0 matchflow-sequence-data-component
+60ae07c4	ti=47	16	240	
+11de8353	ti=2	0	16	i11 game-engine-soft-ceilings-component
+11de8353	ti=4	13	14	
+11de8353	ti=5	512	512	
+11de8353	ti=6	764	766	
+11de8353	ti=8	0	2	
+11de8353	ti=9	393	393	
+11de8353	ti=10	0	95	i2 managed-object-navpoint-component
+11de8353	ti=11	0	14	i4 managed-objective-interaction-filter-component
+11de8353	ti=12	0	31	i13 managed-navpoint-top-progress
+11de8353	ti=13	0	112	
+11de8353	ti=14	512	512	
+11de8353	ti=15	16	16	
+11de8353	ti=17	528	528	
+11de8353	ti=18	16	16	
+11de8353	ti=19	0	16	i0 sound-placement-state-data-component
+11de8353	ti=20	0	1	
+11de8353	ti=21	0	26	
+11de8353	ti=22	16	16	
+11de8353	ti=25	0	16	i0 powerframe-player-selection-data-component
+11de8353	ti=26	0	16	i0 supply-lines-blocked-status-component
+11de8353	ti=27	0	16	i0 supply-lines-item-unlocked-component
+11de8353	ti=29	16	16	
+11de8353	ti=34	0	16	i10 tacmap-mapdismissallock
+11de8353	ti=35	1	255	i60 simulation-state-component
+11de8353	ti=37	1	514	
+11de8353	ti=38	99	2262	
+11de8353	ti=40	0	220	i30 vehicle-auto-turret-triggers-component
+11de8353	ti=41	5	19	
+11de8353	ti=42	3	155	
+11de8353	ti=43	0	380	i19 device-position-animation-name-component
+11de8353	ti=45	0	16	i0 matchflow-sequence-data-component
+11de8353	ti=47	379	393	
+111fa685	ti=2	0	14	i11 game-engine-soft-ceilings-component
+111fa685	ti=4	0	13	
+111fa685	ti=5	448	448	
+111fa685	ti=6	670	671	
+111fa685	ti=9	336	337	
+111fa685	ti=10	0	103	i2 managed-object-navpoint-component
+111fa685	ti=11	0	13	i4 managed-objective-interaction-filter-component
+111fa685	ti=12	1	15	i13 managed-navpoint-top-progress
+111fa685	ti=13	0	104	
+111fa685	ti=14	448	448	
+111fa685	ti=15	14	14	
+111fa685	ti=17	462	462	
+111fa685	ti=18	14	14	
+111fa685	ti=19	0	14	i0 sound-placement-state-data-component
+111fa685	ti=20	0	13	i2 spawn-filter-filters-component
+111fa685	ti=22	14	14	
+111fa685	ti=25	0	14	i0 powerframe-player-selection-data-component
+111fa685	ti=26	0	14	i0 supply-lines-blocked-status-component
+111fa685	ti=27	0	14	i0 supply-lines-item-unlocked-component
+111fa685	ti=29	14	14	
+111fa685	ti=34	0	14	i10 tacmap-mapdismissallock
+111fa685	ti=35	1	214	i60 simulation-state-component
+111fa685	ti=37	1	569	
+111fa685	ti=38	72	1366	
+111fa685	ti=40	0	58	i30 vehicle-auto-turret-triggers-component
+111fa685	ti=41	4	20	
+111fa685	ti=42	2	141	
+111fa685	ti=43	0	260	i19 device-position-animation-name-component
+111fa685	ti=45	0	14	i0 matchflow-sequence-data-component
+111fa685	ti=47	335	336	
+e5adf7b2	ti=2	0	11	i11 game-engine-soft-ceilings-component
+e5adf7b2	ti=4	10	10	
+e5adf7b2	ti=5	352	352	
+e5adf7b2	ti=6	528	528	
+e5adf7b2	ti=9	261	261	
+e5adf7b2	ti=10	0	262	i2 managed-object-navpoint-component
+e5adf7b2	ti=11	0	10	i4 managed-objective-interaction-filter-component
+e5adf7b2	ti=12	0	60	i13 managed-navpoint-top-progress
+e5adf7b2	ti=13	0	80	
+e5adf7b2	ti=14	352	352	
+e5adf7b2	ti=15	11	11	
+e5adf7b2	ti=17	363	363	
+e5adf7b2	ti=18	11	11	
+e5adf7b2	ti=19	0	11	i0 sound-placement-state-data-component
+e5adf7b2	ti=20	0	12	i2 spawn-filter-filters-component
+e5adf7b2	ti=21	0	50	
+e5adf7b2	ti=22	11	11	
+e5adf7b2	ti=25	0	11	i0 powerframe-player-selection-data-component
+e5adf7b2	ti=26	0	11	i0 supply-lines-blocked-status-component
+e5adf7b2	ti=27	0	11	i0 supply-lines-item-unlocked-component
+e5adf7b2	ti=29	11	11	
+e5adf7b2	ti=34	0	11	i10 tacmap-mapdismissallock
+e5adf7b2	ti=35	0	237	i60 simulation-state-component
+e5adf7b2	ti=37	1	489	
+e5adf7b2	ti=38	49	1046	
+e5adf7b2	ti=40	0	132	i30 vehicle-auto-turret-triggers-component
+e5adf7b2	ti=41	1	6	
+e5adf7b2	ti=42	13	187	
+e5adf7b2	ti=43	0	414	i19 device-position-animation-name-component
+e5adf7b2	ti=45	0	11	i0 matchflow-sequence-data-component
+e5adf7b2	ti=47	246	261	
+bcb6d393	ti=2	0	19	i11 game-engine-soft-ceilings-component
+bcb6d393	ti=3	0	1	i0 low-frequency
+bcb6d393	ti=4	18	18	
+bcb6d393	ti=5	608	608	
+bcb6d393	ti=6	910	911	
+bcb6d393	ti=9	152	152	
+bcb6d393	ti=10	2	428	i2 managed-object-navpoint-component
+bcb6d393	ti=11	0	85	i4 managed-objective-interaction-filter-component
+bcb6d393	ti=12	4	160	i13 managed-navpoint-top-progress
+bcb6d393	ti=13	0	331	
+bcb6d393	ti=14	608	608	
+bcb6d393	ti=15	19	19	
+bcb6d393	ti=17	627	627	
+bcb6d393	ti=18	19	19	
+bcb6d393	ti=19	0	19	i0 sound-placement-state-data-component
+bcb6d393	ti=21	0	144	
+bcb6d393	ti=22	19	19	
+bcb6d393	ti=25	0	19	i0 powerframe-player-selection-data-component
+bcb6d393	ti=26	0	19	i0 supply-lines-blocked-status-component
+bcb6d393	ti=27	0	19	i0 supply-lines-item-unlocked-component
+bcb6d393	ti=29	19	19	
+bcb6d393	ti=34	0	19	i10 tacmap-mapdismissallock
+bcb6d393	ti=35	3	137	i60 simulation-state-component
+bcb6d393	ti=37	5	367	
+bcb6d393	ti=38	134	1894	
+bcb6d393	ti=41	0	5	
+bcb6d393	ti=42	5	445	
+bcb6d393	ti=43	0	626	i19 device-position-animation-name-component
+bcb6d393	ti=45	0	19	i0 matchflow-sequence-data-component
+bcb6d393	ti=47	129	152	
+fb1a1a72	ti=1	0	1	i11 game-engine-soft-ceilings-component
+fb1a1a72	ti=2	0	12	i11 game-engine-soft-ceilings-component
+fb1a1a72	ti=3	0	26	i0 low-frequency
+fb1a1a72	ti=4	0	11	
+fb1a1a72	ti=5	384	384	
+fb1a1a72	ti=6	574	575	
+fb1a1a72	ti=9	96	96	
+fb1a1a72	ti=10	0	461	i2 managed-object-navpoint-component
+fb1a1a72	ti=11	0	55	i4 managed-objective-interaction-filter-component
+fb1a1a72	ti=12	0	122	i13 managed-navpoint-top-progress
+fb1a1a72	ti=13	0	209	
+fb1a1a72	ti=14	384	384	
+fb1a1a72	ti=15	12	12	
+fb1a1a72	ti=17	396	396	
+fb1a1a72	ti=18	12	12	
+fb1a1a72	ti=19	0	12	i0 sound-placement-state-data-component
+fb1a1a72	ti=22	12	12	
+fb1a1a72	ti=25	0	12	i0 powerframe-player-selection-data-component
+fb1a1a72	ti=26	0	12	i0 supply-lines-blocked-status-component
+fb1a1a72	ti=27	0	12	i0 supply-lines-item-unlocked-component
+fb1a1a72	ti=29	12	12	
+fb1a1a72	ti=34	0	12	i10 tacmap-mapdismissallock
+fb1a1a72	ti=35	0	80	i60 simulation-state-component
+fb1a1a72	ti=37	0	220	
+fb1a1a72	ti=38	317	2584	
+fb1a1a72	ti=41	1	6	
+fb1a1a72	ti=42	9	226	
+fb1a1a72	ti=43	0	396	i19 device-position-animation-name-component
+fb1a1a72	ti=45	0	12	i0 matchflow-sequence-data-component
+fb1a1a72	ti=47	96	96	

@@ -1,0 +1,261 @@
+# GOLDEN — LE COUPLE (REVISION DE LA COUCHE DES FAITS, EMPREINTE DE SES SOURCES). Ne PAS editer a
+# la main.
+#
+# Une ligne de donnees par rang : la revision, une TABULATION, l empreinte SHA-256. Les lignes
+# vides et celles qui commencent par # sont de la prose. LA DERNIERE LIGNE DE DONNEES EST LA
+# COURANTE.
+#
+# CE QUE L EMPREINTE HACHE (depuis le lot 2.6.1, 2026-09-16) : les sources NON-TEST de TOUT
+# l arbre internal/games/halo_infinite/film/internal/facts/ (killsource, objectives, fallback ; `rev.go`
+# exclu — il DECRIT la couche), fins de ligne normalisees en LF, chemin relatif A LA RACINE hache
+# a cote du contenu, PLUS les VALEURS amont de `source.Rev` et de `grammar.Rev` (V15 (12)).
+# Avant ce lot elle ne hachait que `killsource/`, et le defaut etait ecrit : une correction de
+# grammaire qui change la sortie des faits sans toucher un octet de `killsource/` ne faisait
+# sonner personne.
+#
+# CE QUE CE FICHIER GARDE, ET POURQUOI IL PORTE LES DEUX VALEURS. Le gate d avant ne comparait que
+# l empreinte a une constante de collector.go : remettre la revision a sa valeur d avant en
+# gardant la nouvelle empreinte restait VERT (revue adversariale du 2026-09-12, constat P1-4).
+# Les deux valeurs figees ensemble rendent les deux derives visibles :
+#
+#   empreinte differente            la couche a change  -> DECIDER si les lignes en base doivent
+#                                   etre redecodees, monter la revision si oui, puis regenerer.
+#   empreinte egale, revision non   la revision a bouge sans la couche -> geste sans effet, ou
+#                                   golden non regenere apres une montee legitime.
+#
+# CE QU UNE MONTEE COMMANDE : les lignes de `match_kill_events` portant une revision anterieure
+# redeviennent candidates au redecodage (`conditionBacklog`, sync/killcollector/postsync.go). Le
+# redecodage du parc part sur SIGNAL UTILISATEUR (D6), jamais automatiquement.
+#
+# REGENERATION (les deux valeurs a la fois, jamais l une sans l autre) :
+#
+#   LEVELUP_UPDATE_FACTS_REV=1 go test ./internal/games/halo_infinite/film/internal/facts/ \
+#     -run TestFactsRevSuitLesFaits -update-facts-rev
+#
+#
+# HISTORIQUE DES MOUVEMENTS DE CE COUPLE
+#
+#   2026-09-05  killsource-2026-07-31 -> killsource-2026-09-05. 14 commits sur le decodeur depuis
+#               v7.3.0 sans un seul bump : les lignes en base portaient la revision courante et
+#               etaient exclues A VIE du backlog (postsync.go, conditionBacklog).
+#   2026-09-10  botSuffix -> BotSuffix (export pur, roster.go). AUCUNE ligne produite ne bouge :
+#               revision INCHANGEE, empreinte seule recopiee — decision explicite.
+#   2026-09-12  killsource-2026-09-05 -> killsource-2026-09-12. loadFilm pose la version LUE du
+#               film, loadKillFeed la passe au parseur, prepare consigne le registre absent. Les
+#               lignes produites bougent sur les films de version 39-40.
+#   2026-09-12  passage de la constante killSourceDecoderFingerprint a ce golden (constat P1-4).
+#               Ni le decodeur ni la revision ne bougent : meme empreinte, meme revision.
+#   2026-09-12  lot E.2 : deplacement pur de filmdec et replay d internal/analysis/ vers
+#               internal/games/halo_infinite/film/ (ADR 0012). Seules les LIGNES D IMPORT des
+#               sources de killsource changent (analysis/filmdec -> games/halo_infinite/film/
+#               filmdec) ; le decodage est identique au bit pres. Revision INCHANGEE — la bumper
+#               reinscrirait tout le parc au backlog pour un renommage de repertoire — empreinte
+#               seule recopiee (fusion avec feat/v75 lot G).
+#   2026-09-12  fusion feat/v75 (lot G) dans wt/decodeur-sous-titre : gofmt sur chunks.go apres
+#               reecriture des imports d aterrissage de G (analyse -> games/halo_infinite/film)
+#               change la mise en forme du fichier, pas le decodage. Revision INCHANGEE, empreinte
+#               seule recopiee.
+#   2026-09-14  killsource-2026-09-12 -> killsource-2026-09-14. Lot 1.8 : LA TABLE DES JOUEURS DU
+#               FILM devient la source du lien `indice -> joueur` (film_table.go), l inference par
+#               les votes du kill-feed devient le repli, compte. Les lignes produites bougent par
+#               deux canaux : l identite des indices (mesure du 2026-09-14 sur 30 films et 8
+#               builds : 314 accords sur 322 sieges ; SIX des huit ecarts sont des joueurs que le
+#               kill-feed ne nomme pas, l inference leur donnait le nom d un autre) et la porte de
+#               publication ligne par ligne (un film entierement lu n a plus rien
+#               d interchangeable : la marge est SANS OBJET, pas nulle). Backlog de redecodage du
+#               parc : geste de PRODUCTION, reserve au pilote sur signal (D6 du plan).
+#
+#   2026-09-15  killsource-2026-09-14 -> killsource-2026-09-15. Lot 1.9.3 : LE COUPLE (TUEUR,
+#               VICTIME) D UN KILL SANS MORT EN FACE EST LU AU KILL-EVENT 85 (feed_couples.go),
+#               plus recolle sur la mort d un instant voisin. `readKillEvent` etait DEJA porte —
+#               il n etait lu que pour l ASSISTANT. Mesure du 2026-09-15 sur 21 films entiers
+#               (8 builds, 14 temoins du corpus gate) : 281 kills sans mort en face, 198 decides
+#               par la lecture, 198 accords avec le recollage, 0 contradiction, 1 victime BOT
+#               nommee, 1 ambigu, 81 muets. Les lignes bougent par deux canaux : (1) la victime
+#               NOMMEE A LA SOURCE — quand le film nomme un bot, aucun couple n est plus FABRIQUE
+#               sur la mort d un humain voisin, et cette mort retourne aux morts que personne ne
+#               revendique (1 cas sur 21 films, `4f77afc1`) ; (2) la POPULATION DES MORTS DE BOT —
+#               un couple que la lecture decide n en est plus un candidat (mini-bobine : 17 -> 16
+#               proposes). Backlog de redecodage du parc : geste de PRODUCTION, reserve au pilote
+#               sur signal (D6 du plan).
+#
+#   2026-09-16  killsource-2026-09-15 -> killsource-2026-09-16. Revue de jalon M1, lentille L4 :
+#               la porte de publication ligne par ligne ne comptait QU UN COTE du probleme
+#               d affectation. `BijectionDetermined` valait `Inferred <= 1` ; depuis le lot 1.8 il
+#               peut rester PLUS de noms libres que d indices libres (la table du film ajoute au
+#               roster les joueurs que le kill-feed ne nomme pas — `111fa685`, 25 joueurs pour
+#               24 indices), donc un indice pour deux noms, tranche par des votes tous nuls, et
+#               la source du degat / le credit / l assistant / les parts de degats publies sur un
+#               occupant TIRE AU SORT. Critere corrige : `FilmTablePinning.AffectationUnique`
+#               (indices libres ET noms libres). La porte ne fait que se FERMER : aucun film ne
+#               gagne la publication, certains la perdent. Population NON mesurable a l oracle
+#               pre-chaine-2026-09-09 (aucune colonne ne porte `Inferred`/`AddedNames`, et sa
+#               revision la plus recente, killsource-2026-09-05, precede l apparition du champ) :
+#               elle se mesurera a la recuisson par killsource_bijection_noms_libres_en_trop.
+#
+#   2026-09-16  killsource-2026-09-16 -> killsource-2026-09-16.2 (fusion du lot 1.9.7, second mouvement
+#               du jour) : l appariement dead-state <-> kill-feed par l IDENTITE DE PAQUET (chunk, pidx),
+#               plus par la fenetre de 2,5 s (2 899 appariements sur 21 films : 2 205 egaux, 2 differents,
+#               692 sans identite -> repli nomme et compte). Zero desaccord avec la fenetre, mais les
+#               lignes peuvent bouger la ou les deux divergent : lignes en base candidates au backlog.
+#
+#   2026-09-17  REVISION INCHANGEE, EMPREINTE SEULE RECOPIEE (lots 2.2.a puis 2.3). `killsource/`
+#               change de FORME, pas de contenu : la calibration ne pose plus les largeurs dans des
+#               variables de paquet de `filmdec` mais les RESSORT (`calibration.Profil`,
+#               `Result.ProfilCalibre`, `ProfilDeDepart`), et `filmdec.LockProcessDecode` — un verrou,
+#               qui ne lit aucun bit — est retire de tous ses sites d appel. Les lignes produites sont
+#               identiques a l octet : meme espace balaye, meme critere, meme vainqueur. Aucun match
+#               deja decode n est candidat au backlog.
+
+#   2026-09-18  REVISION INCHANGEE, EMPREINTE SEULE RECOPIEE (lot 2.4.1). `killsource/` change de
+#               LECTEUR, pas de contenu : `evReader`, `bitsWide`, `bitAt`, `bits32` et `bitsN` sont
+#               SUPPRIMES au profit du lecteur canonique de la couche source (filmsource.Bits /
+#               BitsAt / BitAt). Le refus de lire au-dela du paquet passe du lecteur au MARCHEUR
+#               (curseurEv, qui teste Remaining() avant chaque lecture) : meme condition, memes
+#               valeurs. Prouve appel par appel sur 109 168 positions reelles des dix bobines, et de
+#               bout en bout par un golden de triplets produit PAR LE CODE DE LA BASE avant
+#               l absorption. Aucun match deja decode n est candidat au backlog.
+
+#   2026-09-18  REVISION INCHANGEE, EMPREINTE SEULE RECOPIEE (lot 2.4.2). `killsource/` ne garde plus
+#               de COPIE des chunks : le type `film` porte le *filmsource.Film et lit par src.Chunk(i)
+#               — meme tranche d octets, sans copie. `walk.go` construit son lecteur par
+#               filmdec.LecteurSur (l ancien NewBitReader, renomme : le type decore, il ne lit plus).
+#               Aucune largeur ni borne ne change ; lignes identiques a l octet, aucun backlog.
+
+#   2026-09-16  killsource-2026-09-16.2  lot 2.5.b : REVISION INCHANGEE, GOLDEN REGENERE. La
+#               couche `film/profile` nait par extraction ; `calibrate.go` et `film_table.go`
+#               qualifient desormais `profile.PrecisionDescriptor` et `profile.MPPWidths` au lieu
+#               de `grammar.*`, et gagnent une ligne d import. AUCUNE largeur, aucune borne,
+#               aucun ordre de lecture ne change : les lignes de kill sont identiques a l octet,
+#               donc AUCUN backlog de redecodage. Le gate hache les OCTETS de source du
+#               decodeur, pas sa sortie : c est exactement le cas que sa doctrine nomme
+#               (« si le changement ne touche PAS les lignes produites, laisser la revision et
+#               l ecrire dans le commit »).
+
+
+#   2026-09-16  REVISION INCHANGEE, PERIMETRE ET LIEU CHANGES (lot 2.6.1) : la constante DESCEND
+#               dans la couche (`film/facts/rev.go`, `facts.Rev`) et quitte `sync/killcollector`,
+#               qui la LIT ; l empreinte couvre desormais TOUT l arbre des faits plus les VALEURS
+#               de `source.Rev` et de `GrammarRev`, et le gate passe sur le mecanisme central
+#               `film/revision`. La serie `killsource-...` est reprise SANS renumerotation (V15
+#               (16)) : les lignes en base portent ces valeurs dans `decoder_rev`, et renommer la
+#               serie les rendrait toutes candidates pour un changement de vocabulaire. Aucun
+#               octet n est lu autrement, aucun backlog ne s ouvre.
+
+#   2026-09-16  REVISION INCHANGEE, EMPREINTE SEULE RECOPIEE (lot 2.6.2). Les types de DONNEES
+#               purs qui traversent une frontiere de couche ont DESCENDU dans `film/types`
+#               (feuille sans import du depot) ; la couche n en garde que des ALIAS DATES, et un
+#               alias de type est LE MEME type pour le compilateur. Aucune lecture, aucune
+#               largeur, aucune borne ne change : la sortie est identique a l octet et aucun
+#               match deja decode n est candidat au backlog. La FORME de ces types est desormais
+#               figee par `film/types/testdata/shapes.golden`, a cote de cette revision.
+
+#   2026-09-16  REVISION INCHANGEE, EMPREINTE SEULE RECOPIEE (fusion du lot 2.5.b dans le volet
+#               facts + source du lot 2.6). DEUX causes, toutes deux de FORME : trois fichiers de
+#               production des faits (`killsource/calibrate.go`, `killsource/film_table.go`,
+#               `fallback/registre_filmdec.go`) qualifient `profile.*` la ou ils qualifiaient
+#               `grammar.*` ; et la VALEUR amont de `GrammarRev`, que cette empreinte hache depuis
+#               le lot 2.6.1, passe a `grammar-2026-09-15.35`. La seconde cause est le mecanisme
+#               VOULU — une couche du dessous qui bouge fait bouger les faits — et ici elle ne
+#               commande rien : la sortie est identique a l octet des DEUX cotes, aucun match deja
+#               decode n est candidat au backlog.
+#   2026-09-17  `killsource-2026-09-16.5` -> `.6` (lot 2.6.1, volet grammaire). L AMONT CHANGE DE
+#               NOM ET DE PERIMETRE, LA SORTIE NE BOUGE PAS. `GrammarRev` devient `grammar.Rev`
+#               et son empreinte cesse de hacher les octets de `source/`, `profile/` et `facts/`
+#               au profit des seuls siens plus les VALEURS de `profile.Rev` et `source.Rev` : sa
+#               valeur passe a `grammar-2026-09-15.39`, et cette empreinte la hache. Rien de
+#               `killsource/`, `objectives/` ni `fallback/` ne change — AUCUN BACKLOG.
+#
+#   2026-09-17  REVISION INCHANGEE, EMPREINTE SEULE RECOPIEE (lot 2.6.2, volet grammaire /
+#               rejeu), ET LE CHOIX EST EXPLICITE. Les DEUX alias dates de l arbre des faits
+#               (`killsource/types_alias.go`, `objectives/types_alias.go`) sont SUPPRIMES : les
+#               onze types de contrat se nomment `types.X` partout, y compris dans la couche qui
+#               les produit. Un alias de type est LE MEME type pour le compilateur ; aucune
+#               lecture, aucune largeur, aucun appariement ne change, la sortie est identique a
+#               l octet et AUCUN match deja decode n est candidat au backlog. Le critere de
+#               retrait ecrit dans les deux fichiers supprimes est tenu : plus aucun
+#               `killsource.{ApparStats,Assist,CoupleStats}` ni `objectives.{...}` dans le depot.
+#
+#   2026-09-23  REVISION INCHANGEE, EMPREINTE SEULE RECOPIEE (lot L3 des retours rejeu), ET LE
+#               CHOIX EST EXPLICITE. Un commentaire de `objectives/film.go` (doc inversee sur
+#               `7b0d89c4`) et la note correspondante de `rev_chronique_archive.go` : aucun octet
+#               de code, sortie identique a l octet, AUCUN match candidat au backlog.
+#
+#   2026-09-23  REVISION INCHANGEE, EMPREINTE SEULE RECOPIEE (reprise du lot L3 apres sa revue
+#               adverse, constat L3-R8). Une entree de DONNEES au registre des replis
+#               (`repli_temps_forts_dernier_numero`, compteur non cable) et sa note dans
+#               `rev_chronique_archive.go` : aucune decision de decodage, sortie identique a l octet,
+#               AUCUN match candidat au backlog.
+#
+#   2026-09-23  REVISION INCHANGEE, EMPREINTE SEULE RECOPIEE (lot M1 des retours du rejeu). Une
+#               tranche de DONNEES au registre des replis (`registre_replay_positions.go`, deux
+#               entrees de la publication des positions, compteurs cables cote `replay/`) et sa
+#               note dans `rev_chronique_archive.go` : aucune decision de decodage, sortie
+#               identique a l octet, AUCUN match candidat au backlog.
+#
+#   2026-09-23  REVISION INCHANGEE, EMPREINTE SEULE RECOPIEE (lot M2 de la campagne « retours
+#               rejeu »), ET LE CHOIX EST EXPLICITE. Deux causes font bouger l empreinte : la
+#               VALEUR de `grammar.Rev` (`grammar-2026-09-23`, entites `ti=9` rendues par la
+#               meme passe que la table d equipes, que `killsource/` ne lit pas) et
+#               `killsource/botmeta.go`, qui garde desormais l INSTANT de chaque paquet
+#               BOT_METADATA (`BotEntry.Declarations`, `Roster.BotPaquetsIncomplets`). L AGREGAT
+#               qui epingle le roster du kill-feed est INCHANGE (memes bots, meme ordre, meme
+#               `NBots`) : aucune ligne de `match_kill_events` ne bouge, AUCUN BACKLOG. Les
+#               declarations ne nourrissent que la publication du rejeu (presence et equipe des
+#               bots).
+#   2026-09-23  REVISION INCHANGEE, EMPREINTE SEULE RECOPIEE (lot M2.3, meme campagne), ET LE
+#               CHOIX EST EXPLICITE. Deux sources bougent : `killsource/botmeta.go` date le paquet
+#               BOT_METADATA de TETE de chunk a l image-cle qui le precede (mesure `b1ad85eb` :
+#               ecrit 390 us apres elle, il porte l etat A l image-cle) — seul `FromUS` d une
+#               declaration change, l agregat reste le meme ; et `fallback/` gagne la tranche
+#               `replay/places` (quatre replis de la publication du roster). Aucune ligne de
+#               `match_kill_events` ne bouge, AUCUN BACKLOG.
+#   2026-09-24  REVISION INCHANGEE, EMPREINTE SEULE RECOPIEE (revue adverse du lot M2), ET LE
+#               CHOIX EST EXPLICITE. Seul `fallback/` bouge : un cinquieme repli de la tranche
+#               `replay/places` (`repli_presence_d_une_entree_par_ses_vies`, publication du
+#               roster) et le mecanisme ecrit de `repli_place_ouverte_sous_la_capacite_estimee`
+#               (entites durables). `killsource/` n est pas touche : AUCUNE ligne de
+#               `match_kill_events` ne bouge, AUCUN BACKLOG.
+#   2026-09-24  REVISION INCHANGEE, EMPREINTE SEULE RECOPIEE (integration de la vague D des
+#               retours du rejeu, fusion du lot M2 apres la vague C). Deux causes : la VALEUR de
+#               `grammar.Rev`, reconciliee a `grammar-2026-09-24` (une seule montee pour la vague,
+#               datee de l integration), et la reunion au registre des replis des tranches
+#               `replay/positions`, `replay/vehicules` (vague C) et `replay/places` (M2). Aucune
+#               decision de decodage de `killsource/` ne change : AUCUN BACKLOG.
+#   2026-09-24  REVISION INCHANGEE, EMPREINTE SEULE RECOPIEE (lot D-fix des retours du rejeu :
+#               fusion de la campagne a jour — M6, M7 — dans la vague D). `killsource-2026-09-22.2`
+#               garde la valeur que la campagne lui avait recopiee (lot M7, deux entrees de
+#               DONNEES au registre des replis, `repli_decor_sous_le_sol_foule_du_match` et
+#               `repli_decor_carte_sans_zone_affiche`, decidees a la requete par le service) ;
+#               `killsource-2026-09-24`, la montee UNIQUE de la vague D, recopie son empreinte sur
+#               l arbre reuni. Aucune decision de decodage de `killsource/` ne change a cette
+#               fusion : pas de backlog au-dela de celui que la montee de la vague D ouvre deja.
+#   2026-09-24  REVISION INCHANGEE, EMPREINTE SEULE RECOPIEE (lot D-fix, correctif de la marche
+#               d image-cle). `killsource/world.go` lie les records de la marche DU FILM
+#               (`FilmContext.MarcheDImageCle` : l elu qu un record prouve contredit est refuse,
+#               cf. `grammar-2026-09-24`, partie D-fix) et `fallback/` ecrit le nouveau mecanisme
+#               de `repli_ancre_d_image_cle_par_election`. Les liaisons du monde peuvent changer
+#               (fausses ancres 192 / 1536 retirees, 1280..1298 et 1537..1601 rendus) : c est la
+#               montee UNIQUE de la vague D, `killsource-2026-09-24`, qui en porte le backlog.
+killsource-2026-09-16.2	d09f5d19636bbb5eff1c4d38b54489868bafa127c01ce91b6cb028e9dd7bc131
+killsource-2026-09-16.3	8c87a14f4d72f8f2b05350a39c9a93b80479a372d61f3a9416628689e2b8e67e
+killsource-2026-09-16.4	a3fcc9fed6be58eeab197aaa212dd2e0e386750671ff6a67858454d76935eac8
+killsource-2026-09-16.5	2fa87d8ed6f9c0455e62163b4a5ab1876fda69aa54f6810708ae6ada385e7ee1
+killsource-2026-09-16.6	53750b4b23ee50362c2d5fb9a016331efade8a35333bd717641d13f173c7c2d7
+killsource-2026-09-16.7	0ee6b1a32f129af25f8158a457702a77f1e08f0a67febdcedfd7e1c2180302e6
+killsource-2026-09-17	7b417ffd95206fdfc51fdd0fcdd19e8711766d3a9da9a56fa1ea18420c60ad1d
+killsource-2026-09-17.2	0e37e7201c6911b22ed642ffb83a5269184ac886ecb710610a26c4f65c610595
+killsource-2026-09-18	10fc51cc8786afe36c37a6c68094bb9d5d7d539a274662c44a89392afbf6ed61
+killsource-2026-09-20	00074ff883deb8bac31be66e27310649d69772c001103ca2cda87cfccd4853f4
+killsource-2026-09-21	4d89224c282453238c51a2c00b0f2b7f1f8adac2b2908b32c35e28479ddb9527
+killsource-2026-09-21.2	0175c559e27eba1409157665a088029703e5c0f53d474bdb26f8a8c2a9b0cb35
+killsource-2026-09-21.3	5b98d3d0d88c08276317013850fc66c9a96d330970980c91fd37e24493a7f6bc
+killsource-2026-09-21.4	552c855e7cb2d25924f8a0b8fa3879ef4b010066169258dcb0187fda8ac37adf
+killsource-2026-09-21.5	56980e9aec5c74db51fb902469df3d35ea97542275a491eb3da8ef907632494b
+killsource-2026-09-21.6	5fb91930f28fa5b2591184d4eeede4eee1ad7d726763e4f51165bbe15bf05f0b
+killsource-2026-09-21.7	f450440225a280104489d2f9e79d2c85b2a40072b8d583df87c005c857ad197f
+killsource-2026-09-21.8	31745c89f06053b37e79b79810c5d1f8e1ba4e762fbf85cfa0fb21af9eb19855
+killsource-2026-09-21.9	9e7a8df4984025506ce1e0b7474c5e2e10516e2b3d93b7c48561485100ca5726
+killsource-2026-09-22	eb0c32d7d98f49b8f90979270d6925327033adcf6cede45b6c945883f5f39460
+killsource-2026-09-22.2	7043543f50cecfdb485f382e9738d5d67b45776a44a4cb763af472497852b875
+killsource-2026-09-24	156d3d27a0a5c5039a509e60b65add6fbc011fe31903d64718deb408e2ecd917

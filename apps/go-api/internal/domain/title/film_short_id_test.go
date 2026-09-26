@@ -80,3 +80,33 @@ func TestUneSeuleTroncatureDeMatchID(t *testing.T) {
 			"appeler title.FilmShortMatchID", proprietaire, offenders)
 	}
 }
+
+// TestTacticalRasterPath — le sidecar de raster suit l'artefact : MEME cle courte (les
+// deux formes du match_id donnent un seul chemin) et SOUS-DOSSIER du dossier
+// d'artefacts.
+//
+// LE SOUS-DOSSIER EST LA CONDITION DE COHABITATION, pas une preference de rangement :
+// les deux parcours du dossier d'artefacts (AvailableSet, purge recurrente) ne comptent
+// que les `.json` de PREMIER NIVEAU. A plat, un sidecar aurait ete lu comme l'artefact
+// d'un match inexistant par l'un, et supprime comme un artefact indatable par l'autre.
+func TestTacticalRasterPath(t *testing.T) {
+	p := NewPathResolver("/depot")
+	court := p.TacticalRasterPath(DefaultSlug, "000d5950")
+	complet := p.TacticalRasterPath(DefaultSlug, "000d5950-1234-4abc-9def-0123456789ab")
+	if court != complet {
+		t.Errorf("les deux formes du match_id donnent deux chemins :\n  court   %s\n  complet %s", court, complet)
+	}
+	if !strings.HasSuffix(filepath.ToSlash(court), "data/cache/replays/halo_infinite/rasters/000d5950.json") {
+		t.Errorf("chemin inattendu : %s", court)
+	}
+	// Le sidecar est SOUS le dossier des artefacts, et n'est PAS un fichier de son
+	// premier niveau : c'est exactement ce que les deux parcours exigent.
+	dirArtefacts := filepath.ToSlash(p.ReplayArtifactsDir(DefaultSlug))
+	if !strings.HasPrefix(filepath.ToSlash(court), dirArtefacts+"/") {
+		t.Errorf("le sidecar n'est pas sous le dossier des artefacts : %s", court)
+	}
+	if filepath.Dir(court) == p.ReplayArtifactsDir(DefaultSlug) {
+		t.Errorf("le sidecar est POSE A PLAT dans le dossier des artefacts (%s) : "+
+			"AvailableSet le compterait comme un match, la purge le supprimerait", court)
+	}
+}

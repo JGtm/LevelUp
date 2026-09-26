@@ -255,14 +255,7 @@ func (p *SISUProvider) completeSISUExchange(ctx context.Context, flowCtx *sisuFl
 	}, nil
 }
 
-// TrySilentRefresh délègue à TryOAuthRefresh (pas de cache MSAL pour SISU).
-func (p *SISUProvider) TrySilentRefresh(ctx context.Context, _ string) (string, error) {
-	slog.DebugContext(ctx, "sisu_provider: TrySilentRefresh ignoré (pas de cache MSAL)")
-	return "", nil
-}
-
 // TryOAuthRefresh tente d'obtenir un access_token via OAuth v2 refresh_token.
-// Identique à MSALProvider — même endpoint login.live.com.
 //
 // DEPRECATED : préférer TryOAuthRefreshWithRotation.
 func (p *SISUProvider) TryOAuthRefresh(ctx context.Context, refreshToken string) (string, error) {

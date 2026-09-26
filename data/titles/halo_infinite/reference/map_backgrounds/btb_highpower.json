@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "module": "btb_highpower",
+  "mapNames": [
+    "Highpower Sentry Defense",
+    "highpower",
+    "Highpower Heavies",
+    "highpower_sentry_defense_map",
+    "highpower_map",
+    "highpower_heavies_map"
+  ],
+  "image": "btb_highpower.webp",
+  "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
+  "generatedAt": "2026-08-30T21:21:31.8047608Z",
+  "style": "encre",
+  "calibration": {
+    "metersPerPixel": 0.06298965406417846,
+    "originX": -178.75742001819611,
+    "originY": 23.67781647491453,
+    "widthPx": 1877,
+    "heightPx": 2074,
+    "convention": "xMonde = originX + (px + 0.5) * metersPerPixel ; yMonde = originY - (py + 0.5) * metersPerPixel"
+  },
+  "stats": {
+    "anchors": 61,
+    "anchorsInFrame": 61,
+    "anchorsWithGround": 46,
+    "anchorMedianGapM": -0.291748068874341,
+    "instancesDrawn": 7475,
+    "instancesScenery": 785,
+    "playLevelZ": 44.2025537109375,
+    "boundaryApplied": true,
+    "boundaryPlanes": 76,
+    "boundaryCellsCleared": 5404138,
+    "waterVolumes": 2,
+    "waterCells": 28799,
+    "coveredShare": 0.2231625753974723,
+    "covered": false,
+    "cellsAssumedFloor": 567959
+  }
+}

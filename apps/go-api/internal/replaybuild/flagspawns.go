@@ -1,0 +1,123 @@
+package replaybuild
+
+// flagspawns.go — LES SOCLES DE DRAPEAU DE LA CARTE, pour le calque du drapeau vivant.
+//
+// # Ce que ce fichier apporte, et pourquoi le calque ne peut pas s'en passer
+//
+// Le rejeu sait QUI porte le drapeau et QUAND (evenements nommes du film + fil des morts) ; il
+// ne sait pas DE QUEL drapeau il s'agit. L'equipe du PORTEUR est dans le film depuis le lot 1.7,
+// mais celle de l'OBJET ne l'est pas : elle se deduit du SOCLE le plus proche du point de prise,
+// et les socles vivent dans le catalogue versionne d'objectifs de carte
+// (`data/titles/{slug}/reference/map_objectives.json`).
+//
+// # La jointure se fait par map_id, JAMAIS par le module ni par le nom public
+//
+// Mesure du 2026-08-18 (plan objectifs vivants, decouvertes de la phase 1) : `public_name` est
+// VIDE sur la quasi-totalite des entrees du catalogue (il est produit depuis les variantes UGC,
+// qui ne le portent pas), et le MODULE n'y porte pas le meme nom que dans le catalogue de bornes
+// (`ridgeline` contre `cliffhanger_ridgeline`, `va_behemoth` contre `behemoth_va_behemoth`).
+// Joindre sur l'un ou l'autre ne trouve rien, et ne dit rien. C'est deja par `map_id` que le
+// service sert le calque STATIQUE des objectifs (`service/replay_map_objectives.go`).
+//
+// # Les socles NEUTRES voyagent, et c'est le CALQUE qui tranche (correction du 2026-08-31)
+//
+// Chaque carte de CTF declare TROIS `flag_spawn` : un par equipe, plus un NEUTRE au centre, qui
+// n'appartient a aucun camp et ne sert qu'aux variantes « drapeau neutre ».
+//
+// CE FICHIER LES ECARTAIT, et la raison etait bonne : sur une partie ordinaire, retenir le neutre
+// ferait un troisieme drapeau immobile pour l'eternite. Mais la consequence l'etait moins — une
+// partie A DRAPEAU NEUTRE publiait DEUX drapeaux qui n'existaient pas, et repartissait entre eux
+// les portages d'un objet unique. Le tri se fait donc desormais LA OU L'ON PEUT LE FAIRE : dans
+// le calque, qui voit ou l'OBJET drapeau renait et en deduit la variante (`flag_neutral.go`).
+// Ici on fournit ce que la carte declare, sans decider du mode.
+//
+// # Toute absence est une DEGRADATION JOURNALISEE, jamais une erreur
+//
+// Catalogue illisible, carte hors catalogue (72 couvertes sur la centaine jouee), match sans
+// map_id : le calque du drapeau reste publie, mais tous les portages tombent dans UN drapeau
+// d'equipe -1 et sans etat `home`. `coverage.flagCarries.spawns` publie le compte, donc le fait.
+
+import (
+	"log/slog"
+
+	"levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/games/halo_infinite/film/replay"
+	"levelup/go-api/internal/games/halo_infinite/film/replay/mapvar"
+)
+
+// flagSpawns rend TOUS les socles de drapeau de la carte du match, en coordonnees monde — les
+// deux socles d'equipe ET le socle neutre du centre. Le calque retient ceux qui correspondent a
+// la variante qu'il reconnait.
+func (b *Builder) flagSpawns(matchID, mapID string) []replay.FlagSpawn {
+	if mapID == "" {
+		slog.Debug("replaybuild: match sans map_id — drapeaux sans equipe proprietaire",
+			"match_id", matchID, "titleSlug", b.titleSlug)
+		return nil
+	}
+	cat := b.objectivesCatalog()
+	if cat == nil {
+		return nil
+	}
+	entry, err := cat.Lookup(mapID)
+	if err != nil {
+		slog.Debug("replaybuild: carte hors catalogue d'objectifs — drapeaux sans equipe proprietaire",
+			"map_id", mapID, "match_id", matchID, "titleSlug", b.titleSlug)
+		return nil
+	}
+	out := make([]replay.FlagSpawn, 0, 3)
+	for _, p := range entry.PointsOfRole(mapvar.RoleFlagSpawn) {
+		out = append(out, replay.FlagSpawn{
+			Team: flagSpawnTeam(p), Neutral: p.Neutral,
+			X: float32(p.Center.X), Y: float32(p.Center.Y),
+		})
+	}
+	return out
+}
+
+// flagSpawnTeam rend l'equipe proprietaire d'un socle de drapeau : celle du fichier de
+// carte, SAUF si le socle porte le label de la variante « drapeau neutre » — auquel cas il
+// est neutre, quoi que dise son `team_index`.
+//
+// LE LABEL PRIME SUR LE `team_index`, ET CE N'EST PAS UNE PRECAUTION THEORIQUE. Le socle
+// central d'Illusion (`9e821f5e`, object_index 201, au point (0, 0)) porte
+// `ctf_neutral_include` ET `team_index = 0` : lu par son team_index, il devenait un
+// TROISIEME drapeau d'equipe 0 fige au milieu de la carte, et il creait la plus grande zone
+// aveugle du parc. Corrige le 2026-09-13 (rapport 6.11, decouverte D1). Le recensement du
+// catalogue est dans le godoc de [mapvar.Objective.IsCTFNeutral] : sur 63 socles neutres,
+// le label est juste 63 fois, le team_index 62.
+//
+// CE QUE CETTE FONCTION NE DIT PAS, ET CE QUI LE DIT (2026-09-13, decouverte D-B2). Elle
+// rend une EQUIPE, pas une variante : `TeamNeutral` y signifie tantot « socle neutre »,
+// tantot « equipe inconnue » — huit socles du catalogue portent `team_index = -1` sans
+// etre neutres. La neutralite voyage donc dans son propre champ,
+// [replay.FlagSpawn.Neutral], pose depuis le meme label, et c'est LUI que le tri du calque
+// lit (`flag_neutral.go`).
+func flagSpawnTeam(p replay.PointObjective) int {
+	if p.Neutral {
+		return replay.TeamNeutral
+	}
+	return p.TeamIndex
+}
+
+// objectivesCatalog charge (une fois par Builder) le catalogue versionne d'objectifs de carte.
+//
+// LE CHARGEMENT NE SE RETENTE PAS : une passe de masse construit des centaines d'artefacts, et
+// un catalogue absent le resterait a chaque appel — autant d'ouvertures de fichier et de lignes
+// de journal pour la meme absence. `objectivesTried` fige la tentative.
+func (b *Builder) objectivesCatalog() *replay.MapObjectivesCatalog {
+	if b.objectivesTried {
+		return b.objectives
+	}
+	b.objectivesTried = true
+	path := title.NewPathResolver(b.repoRoot).MapObjectivesPath(b.titleSlug)
+	cat, err := replay.LoadMapObjectives(path)
+	if err != nil {
+		// Le catalogue est VERSIONNE : son absence n'est pas le cas nominal d'une carte sans
+		// objectifs, c'est une installation incomplete. On le dit, puis on degrade.
+		slog.Warn("replaybuild: catalogue d'objectifs illisible — drapeaux sans equipe proprietaire",
+			"err", err, "path", path, "titleSlug", b.titleSlug)
+		return nil
+	}
+	b.objectives = cat
+	return cat
+}

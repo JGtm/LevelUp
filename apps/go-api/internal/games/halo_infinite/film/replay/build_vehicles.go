@@ -1,0 +1,314 @@
+package replay
+
+// build_vehicles.go — LE CABLAGE du calque des VEHICULES : ce que BuildFromFilm DECODE du film
+// (`ti=40`), et ce que BuildFromPositions en ASSEMBLE.
+//
+// MEME FORME QUE `build_ground_weapons.go`, et pour la meme raison : `build.go` est deja
+// au-dessus du seuil de 500 lignes gele par la baseline. Le decodage, le journal et les refus du
+// calque vivent donc ici, ensemble ; `build.go` ne porte qu un appel par cote.
+//
+// TROIS LECTURES FONDATRICES, dont aucune n est facultative :
+//
+//	1. le RECENSEMENT des images-cles (`ScanWorldObjectKeyframes(film, 40)`) — il rend d un
+//	   seul parcours la BANDE de slots `ti=40` et les VIES `(slot, gen)` avec leurs instants de
+//	   recensement. Il BORNE la vie ; il ne la DATE pas (images-cles espacees de ~20 s) ;
+//	2. les CREATIONS (`ScanVehicleCreationsForBand`) — la position de NAISSANCE et le mot
+//	   d identite du chassis (`MPPWord32`) ;
+//	3. les TRAJECTOIRES (`ScanBipedPositionsForBand` sur la bande `ti=40`) — le nuage des
+//	   positions du vehicule, avec la VELOCITE `i1` d ou sort le cap.
+//
+// Trois lectures ADDITIVES ET NON FATALES s y ajoutent : les EVENEMENTS d embarquement / sortie
+// (`ScanVehicleEvents`), qui datent a la milliseconde les episodes d occupation ; les VISEES
+// d occupant (`ScanBipedAimOnly`) ; et les MORTS ECRITES (`ScanObjectDeaths`, lot 1.9.10), qui
+// DATENT la fin de vie la ou le recensement ne fait que la borner. L absence de l une degrade le
+// calque sans le taire.
+//
+// LES LARGEURS DU BLOC MPP SONT CELLES DE CE FILM, exactement comme pour les socles : le mot
+// d identite de 32 bits se lit derriere deux champs de largeur VARIABLE, mesures par la
+// calibration des poses `ti=37` sur le MEME film. Sans les reinstaller, le balayage lirait
+// l identite aux largeurs PAR DEFAUT et AUCUNE famille de chassis ne se resoudrait — en silence.
+//
+// LA DESTRUCTION SE LIT, ELLE NE S INFERE PAS (lot 1.9.10). Ce qui reste REFUTE est de la dater
+// par la MORT DU CONDUCTEUR : le rapport `.ai/V7.5/film_re/V3_DESTRUCTION_DATEE_2026-09-02.md` a
+// mesure 460 vies sur 12 films — ZERO occupant encore a bord a la fin serree du flux, mort a
+// bord ANTI-correlee (3,8 % contre 21,3 % au temoin), un vehicule qui replique encore 13 a 36 s
+// (mediane par lot) APRES avoir ete quitte. Ce qui est desormais LU est le composant
+// `object-dead-state` de l entite elle-meme ; le detail vit dans `vehicle_end.go`.
+//
+// HORS LIGNE : `decodeFilmVehicleScan` consomme le film DEJA CHARGE et n est appelee que
+// par `BuildFromFilm`. `attachVehicles` est PUR.
+
+import (
+	"log/slog"
+
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
+)
+
+// VehicleScan porte ce qu une lecture du film rend sur les VEHICULES (`ti=40`).
+//
+// UNE ENTREE DE DONNEES, comme `PadScans` : `Scanned` faux veut dire « pas lu », ce qui n est pas
+// « aucun vehicule ». La couverture publie la distinction (cf. VehicleCoverage.Scanned).
+type VehicleScan struct {
+	// Scanned dit que le film a ete BALAYE jusqu au bout. Faux : archetype absent des
+	// images-cles, creations illisibles, ou pas de film du tout (assemblage sur positions figees).
+	Scanned bool
+	// Keyframes porte la BANDE de slots `ti=40` et le RECENSEMENT qui borne les fins de vie.
+	Keyframes grammar.WorldObjectKeyframes
+	// Creations sont les records de creation acceptes : position de naissance + bloc MPP.
+	Creations []types.EquipmentCreation
+	Stats     types.EquipmentCreationStats
+	// Positions est le nuage NON decime des positions de vehicule, lu a la grammaire bipede
+	// (porte 5 bits) sur la bande `ti=40` — la seule qui rende 99,4 a 100 % de pas sous 35 m/s
+	// (cadrage vehicules du 2026-08-31).
+	Positions []grammar.BipedPosition
+	// Events sont les embarquements et les sorties de la liste d evenements des paquets delta.
+	// Absents = episodes d occupation bornes par le seul trou de position (repli mesure).
+	Events []types.VehicleEvent
+	// Aims sont les lectures de VISEE des bipedes qui ne repliquent PLUS leur position — celles
+	// des occupants, donc. Bande `ti=35` (les joueurs), PAS `ti=40` : la visee publiee sur un
+	// episode est celle de l HOMME a bord, jamais du chassis. Absentes = episodes sans serie de
+	// visee, le client retombe sur le cap du chassis (cf. vehicle_rides_aim.go).
+	Aims []grammar.BipedAim
+	// Deaths sont les MORTS ECRITES des entites `ti=40` : le composant `object-dead-state` lu
+	// par la MARCHE (`grammar.ScanObjectDeaths`), seule voie qui l atteigne — les balayages
+	// ancres de ce paquet n acceptent qu un masque ouvrant sur `i0` et n arrivent jamais a
+	// `i11`. C est ce qui DATE la fin de vie d un vehicule (lot 1.9.10) ; sans elles, la fin
+	// n est plus qu une borne de recensement.
+	Deaths []types.ObjectDeath
+	// Occupancy sont les lectures d `object-parent-state` de la bande BIPEDE : les montees a bord
+	// que le film ECRIT, avec leur SIEGE (lot 5.10). Elles sortent de la MEME marche que les
+	// morts — aucune lecture de film supplementaire. Absentes : les episodes sortent sans siege,
+	// jamais avec un siege suppose.
+	Occupancy []types.VehicleOccupancy
+	// DeathStats porte les denominateurs de cette lecture (cadre retenu, paquets localises,
+	// records par archetype, controle de masque). ILS VOYAGENT AVEC LA LISTE : une liste vide
+	// sans eux serait indistinguable d un film ou aucun vehicule ne meurt.
+	DeathStats grammar.ObjectDeathStats
+}
+
+// decodeFilmVehicleScan decode les CINQ lectures du calque des vehicules sur le meme film et
+// aux memes largeurs de bloc MPP que la chaine des socles.
+//
+// TROIS PANNES, TROIS PHRASES, et la distinction est le point — meme doctrine que
+// `decodeFilmPadScan`. Un film sans `ti=40` aux images-cles (aucune bande) n est pas un film dont
+// les creations sont illisibles, et ni l un ni l autre n est un film dont le nuage de positions
+// manque. Le calque se tait entierement plutot que de publier des vehicules sans trajectoire.
+//
+// HORS LIGNE — appelee par BuildFromFilm. Elle ne TOUCHE PAS le disque :
+// le film est deja charge et le contexte deja ouvert (lots 1 et 2 de PLAN_CUISSON_PERF), et
+// c'est lui qui porte la bande bipede, le decoupage d'i0 et le registre que les cinq lectures
+// ci-dessous partagent.
+func decodeFilmVehicleScan(
+	fc *grammar.FilmContext, matchID string, wr *profile.Vec3Range, mpp profile.MPPWidths,
+) VehicleScan {
+	defer gwInstallMPPWidths(fc, gwWidthsForFilm(fc, mpp))()
+	kf := grammar.ScanWorldObjectKeyframes(fc, grammar.VehicleTypeIndex)
+	if len(kf.Band) == 0 {
+		slog.Info("vehicules : aucun slot ti=40 aux images-cles — rejeu sans ce calque",
+			"match_id", matchID, "imagesCles", len(kf.TimesUS))
+		return VehicleScan{}
+	}
+	cre, st, err := grammar.ScanVehicleCreationsForBand(fc, wr, kf.Band)
+	if err != nil {
+		slog.Warn("vehicules : records de creation illisibles — rejeu sans ce calque",
+			"err", err, "match_id", matchID)
+		return VehicleScan{}
+	}
+	pos, err := grammar.ScanBipedPositionsForBand(
+		fc, grammar.NewSlotBand(kf.Band), vehicleScanOptions(fc, wr))
+	if err != nil {
+		slog.Warn("vehicules : nuage de positions illisible — AUCUN vehicule publie (sans lui, une"+
+			" vie recensee n aurait ni trajectoire ni cap)", "err", err, "match_id", matchID)
+		return VehicleScan{}
+	}
+	out := VehicleScan{Scanned: true, Keyframes: kf, Creations: cre, Stats: st, Positions: pos}
+	out.Events = decodeFilmVehicleEvents(fc, matchID)
+	out.Aims = decodeFilmOccupantAims(fc, matchID)
+	out.Deaths, out.Occupancy, out.DeathStats = decodeFilmVehicleDeaths(fc, matchID)
+	slog.Info("vehicules : balayage ti=40",
+		"slots", st.Slots, "ancres", st.Anchors, "creationsAcceptees", st.Accepted,
+		"imagesCles", len(kf.TimesUS), "viesRecensees", len(kf.SeenUS),
+		"echantillons", len(pos), "evenements", len(out.Events), "viseesSansPosition", len(out.Aims),
+		"mortsEcrites", len(out.Deaths), "lecturesDOccupation", len(out.Occupancy))
+	return out
+}
+
+// decodeFilmVehicleDeaths lit les MORTS ECRITES des vehicules — la SIXIEME lecture du calque,
+// et la seule qui passe par la MARCHE plutot que par une ancre. ELLE REND AUSSI LES LECTURES
+// D OCCUPATION (lot 5.10) : le film les ecrit sur les MEMES records, la marche les traverse de
+// toute facon, et les lire ailleurs couterait une seconde marche du film entier.
+//
+// ADDITIVE ET NON FATALE, meme doctrine que les evenements et les visees : son absence rend les
+// fins de vie a la seule borne de recensement (`end = "unknown"`), jamais une destruction
+// devinee. Elle n est appelee qu APRES la garde de bande : un film sans `ti=40` aux images-cles
+// ne paie pas la marche.
+//
+// ELLE FILTRE SUR L ARCHETYPE, PAS SUR LA BANDE. La marche range par `TypeIndex` ; un slot lie a
+// `ti=40` par un record NEW en cours de flux est donc garde, alors que la bande des images-cles
+// l aurait perdu (2 a 5 morts par film chez le bipede, mesure V13 gate G1a).
+func decodeFilmVehicleDeaths(
+	fc *grammar.FilmContext, matchID string,
+) ([]types.ObjectDeath, []types.VehicleOccupancy, grammar.ObjectDeathStats) {
+	facts, err := grammar.ScanMarchFacts(fc)
+	if err != nil {
+		slog.Warn("vehicules : morts ecrites illisibles — fins de vie bornees par le seul"+
+			" recensement", "err", err, "match_id", matchID)
+		return nil, nil, facts.Stats
+	}
+	out := make([]types.ObjectDeath, 0, len(facts.Deaths))
+	for _, d := range facts.Deaths {
+		if d.TypeIndex == uint32(grammar.VehicleTypeIndex) {
+			out = append(out, d)
+		}
+	}
+	logVehicleDeathReads(matchID, len(facts.Deaths), len(out), facts.Stats)
+	if len(out) == 0 {
+		return nil, facts.Occupancy, facts.Stats
+	}
+	return out, facts.Occupancy, facts.Stats
+}
+
+// logVehicleDeathReads dit CE QUE LA MARCHE A VU, et c est le denominateur sans lequel « 20 morts
+// lues » ne se lit pas.
+//
+// LE CONTROLE DE MASQUE EST LA SEULE CHOSE QUI TRANCHE entre « ce film n ecrit que vingt morts de
+// vehicule » et « il en ecrit davantage, et la marche en jette ». Il se lit AVANT toute
+// consommation de corps : `MaskDeclared` compte les records dont le masque ANNONCE le dead-state,
+// `MaskDeclaredDesync` ceux d entre eux que la marche a perdus. Un ecart entre les deux est une
+// PERTE DE LECTURE ; leur egalite dit que le film n en ecrit pas plus.
+func logVehicleDeathReads(matchID string, tous, vehicules int, st grammar.ObjectDeathStats) {
+	ti := uint32(grammar.VehicleTypeIndex)
+	declares, perdus := st.MaskDeclared[ti], st.MaskDeclaredDesync[ti]
+	niveau := slog.Info
+	if perdus > 0 {
+		niveau = slog.Warn
+	}
+	niveau("vehicules : lecture des morts ecrites",
+		"match_id", matchID, "mortsToutesEntites", tous, "mortsVehicules", vehicules,
+		"masqueDeclareLeDeadState", declares, "dontDesynchronises", perdus,
+		"recordsAtteints", st.Records[ti], "recordsEntierementPortes", st.CleanRecords[ti],
+		"paquetsAEvenements", st.EventPackets, "paquetsLocalises", st.LocatedPackets,
+		"cadreParDefaut", st.CadreParDefaut)
+}
+
+// decodeFilmOccupantAims lit la VISEE des bipedes dans les records qui ne portent AUCUNE
+// position — la CINQUIEME lecture du calque, et celle qui vaut pour les occupants.
+//
+// ADDITIVE ET NON FATALE, meme doctrine que les evenements : son absence rend les episodes SANS
+// serie de visee, et le client retombe sur le cap du chassis.
+//
+// POURQUOI UNE LECTURE DE PLUS, ET PAS UN CHAMP DE `ScanBipedPositions` : les deux balayages
+// n acceptent pas les memes records. Le nuage de positions exige un `i0` ABSOLU et un masque
+// commencant par 0 ; ce balayage-ci accepte precisement ceux que cette exigence ecarte (lot V11 :
+// 22 963 lectures sur `0d76e8f1`, invisibles au premier). Les fusionner reviendrait a relacher la
+// porte du nuage de positions, qui est celle sous laquelle TOUT le calque a ete mesure. La BANDE,
+// elle, est partagee : c'est celle du contexte, relevee une seule fois.
+func decodeFilmOccupantAims(fc *grammar.FilmContext, matchID string) []grammar.BipedAim {
+	aims, err := grammar.ScanBipedAimOnly(fc)
+	if err != nil {
+		slog.Warn("vehicules : visees sans position illisibles — episodes d occupation sans serie"+
+			" de visee, le cone retombe sur le cap du chassis", "err", err, "match_id", matchID)
+		return nil
+	}
+	return aims
+}
+
+// decodeFilmVehicleEvents lit les embarquements et les sorties. ADDITIF ET NON FATAL : leur
+// absence rend les episodes d occupation au seul trou de position, qui est la primitive de repli
+// MESUREE (86,3 % des trous portent leur sortie, et 100 % de ces sorties ferment le trou a
+// +/-2 s — rapport V3_DESTRUCTION_DATEE_2026-09-02, gate 6).
+func decodeFilmVehicleEvents(fc *grammar.FilmContext, matchID string) []types.VehicleEvent {
+	ev, err := grammar.ScanVehicleEvents(fc)
+	if err != nil {
+		slog.Warn("vehicules : liste d evenements illisible — episodes d occupation bornes par le"+
+			" seul trou de position", "err", err, "match_id", matchID)
+		return nil
+	}
+	return ev
+}
+
+// vehicleScanOptions rend les reglages du nuage `ti=40`. QUATRE ecarts au bipede, tous documentes
+// par `ScanBipedPositionsForBand` et tous necessaires :
+//
+//   - `RequireTag1` DESARME : le tag de 2 bits est la generation du handle, et les objets du
+//     monde en emploient les quatre valeurs. Arme, la bande ne rendrait qu un quart du nuage ;
+//   - `CaptureDirs` ARME : c est lui qui livre la VELOCITE `i1`, seule orientation validee d un
+//     vehicule en mouvement (V1a.3 : ecart median 1,7 a 2,1 deg au deplacement sur 4 films,
+//     temoin par melange 51 a 88 deg) ;
+//   - les filtres de post-traitement (`MaxSpeedMPS`, `IsolationGapMS`) gardent leur valeur de
+//     production : ce sont ceux sous lesquels le nuage vehicule a ete mesure (V1a) ;
+//   - `DynPrecOrientation` ARME (2026-09-03, lot V9) : `ti=40` porte les variantes
+//     `-dynamic-precision-` d'i2 et i3, dont les deserialiseurs (FUN_140c5f7ec /
+//     FUN_140d87740) ne sont PAS ceux du bipede. Le nuage de POSITIONS et la VELOCITE i1
+//     sont inchanges — ils se lisent AVANT i2 — mais tout ce qui suit i2 (i3, i4 vitalite,
+//     i5, i21) etait jusqu'ici lu a curseur decale.
+//   - le DECOUPAGE d'i0 vient du CONTEXTE (`ImposedLayout`) et non de l'auto-detection : c'est
+//     la regle du catalogue du lot 3, et le nuage `ti=40` doit lire ses axes AU MEME DECOUPAGE
+//     que les positions bipedes du meme film — sur une carte a plus de deux regions,
+//     l'auto-detection lit l'index de region comme un bit d'axe. Nil (catalogue sans largeurs) :
+//     l'auto-detection reprend, comme pour le bipede.
+func vehicleScanOptions(fc *grammar.FilmContext, wr *profile.Vec3Range) grammar.ScanFilmOptions {
+	opt := grammar.DefaultScanFilmOptions()
+	opt.RequireTag1 = false
+	opt.CaptureDirs = true
+	opt.DynPrecOrientation = true
+	opt.WorldRange = wr
+	opt.Layout = fc.ImposedLayout()
+	return opt
+}
+
+// attachVehicles pose le calque des VEHICULES sur le document : une vie par vehicule recense, sa
+// trajectoire sur l axe de frames, ses episodes d occupation, sa couverture, et le journal qui
+// porte les memes denominateurs que l artefact.
+//
+// `bipeds` est le nuage NON decime des BIPEDES (celui des joueurs), trie par instant : c est lui
+// qui porte les TROUS de position d ou sortent les episodes d occupation. `reg` donne le pont
+// slot -> xuid, sans lequel un episode reste anonyme (il est publie quand meme : le vehicule est
+// occupe, seul son occupant est inconnu).
+func attachVehicles(
+	doc *ReplayDocument, scan VehicleScan, bipeds []grammar.BipedPosition,
+	reg IdentityRegistry, clock replayClock,
+) {
+	tracks, cov, st := buildVehicleTracks(scan, bipeds, reg, clock)
+	// UN JOUEUR N EST JAMAIS A DEUX ENDROITS : un episode s arrete a la naissance de la vie
+	// suivante du meme joueur, lue sur les pistes PUBLIEES (cf. vehicle_rides_next_life.go, repli
+	// nomme compte au registre). Les compteurs d episodes se recomptent sur ce qui est publie.
+	if cutRidesAtNextLife(tracks, doc.Tracks, clock.fb) > 0 {
+		recountVehicleRides(tracks, &cov)
+	}
+	doc.Vehicles = tracks
+	// LE CYCLE SE CALCULE SUR LES VIES PUBLIEES, ET APRES LA FUSION DES RELAIS : c est le
+	// document qui fait foi, pas le balayage (cf. vehicle_cycles.go).
+	doc.VehicleCycles = buildVehicleCycles(tracks, clock.step, &cov)
+	doc.Coverage.Vehicles = &cov
+	logVehicleCoverage(&cov)
+	logVehicleHeadingSource(scan.Positions)
+	logVehicleRideResolution(st)
+}
+
+// logVehicleRideResolution journalise PAR QUELLE VOIE les episodes d occupation ont trouve leur
+// vehicule. Il n est pas dans `logVehicleCoverage` parce qu il ne decrit PAS le document : ces
+// compteurs ne sont pas publies (le contrat ne bouge pas au lot V8), ils disent comment il a ete
+// obtenu.
+//
+// LE SILENCE QU IL FAUT ROMPRE : si la reference de vehicule de la sortie cessait d etre lue (une
+// largeur de champ qui bouge, un domaine mal attribue), le calque continuerait de publier des
+// episodes — rattaches par la geometrie, en silence, avec l ambiguite d avant. `nommes` a zero
+// alors que des episodes existent est exactement ce signal.
+func logVehicleRideResolution(st vehicleRideStats) {
+	if st.episodes == 0 && st.repli == 0 {
+		return
+	}
+	slog.Info("rejeu : rattachement des episodes d occupation",
+		"episodesEvenement", st.episodes, "nommesParLEvenement", st.nommes,
+		"resolusParEvenement", st.parEvenement, "resolusParVieLaPlusProche", st.parEvenementProche,
+		"resolusParGeometrie", st.parGeometrie, "nonRattaches", st.perdus,
+		"episodesDeRepli", st.repli, "siegesLusDansLeFilm", st.sieges)
+	if st.episodes > 0 && st.nommes == 0 {
+		slog.Warn("rejeu : AUCUN episode d occupation nomme par son evenement de sortie — la"+
+			" reference de vehicule (domaine 1, ref 1) n est plus lue, le calque retombe sur la"+
+			" seule geometrie", "episodes", st.episodes)
+	}
+}

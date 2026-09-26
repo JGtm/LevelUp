@@ -87,6 +87,12 @@ type SharedBatch struct {
 
 	// KillPositions : positions monde tueur/victime par kill (Halo 5 natif,
 	// Infinite plus tard). Jointes au kill par (match_id, killer_xuid, time_ms).
+	//
+	// Table cible `kill_positions` : append-only, UNE PASSE par match — la vue
+	// `kill_positions_latest` (lecture obligatoire, ADR 0026) ne rend que la
+	// DERNIÈRE PASSE ENTIÈRE. Le `decode_pass` n'est pas porté par le batch : il
+	// est tiré à l'écriture (persist.persistKillPositionsPass), comme pour
+	// `kill_openings` et `match_kill_events`.
 	KillPositions []KillPositionInsert `json:"kill_positions,omitempty"`
 
 	// XUIDAliases : nouveaux mappings xuid→gamertag observés dans le match.
@@ -129,6 +135,41 @@ type SharedBatch struct {
 	// quoi ce kill a-t-il été fait »). Ici la question est « combien de tirs,
 	// avec quelle arme » — aucun kill n'y entre.
 	WeaponShots *WeaponShotsBatch `json:"weapon_shots,omitempty"`
+
+	// BombStats : LES STATISTIQUES D'ASSAUT d'une passe de décodage du film — les cinq
+	// mesures par joueur, plus les faits datés (armements, explosions). nil = aucun film
+	// décodé pour ce match, ou match hors Assaut.
+	//
+	// Tables cibles : `match_bomb_stats` (append-only, lecture par la vue
+	// `match_bomb_stats_latest` UNIQUEMENT — ADR 0026) et `match_objective_events` /
+	// `match_objective_event_players` pour les faits datés.
+	//
+	// ⚠ L'API 343 ne publie AUCUNE statistique d'objectif pour l'Assaut : cette charge n'a
+	// pas d'équivalent dans `ObjectiveStats` ci-dessus, et les deux ne se recouvrent jamais.
+	BombStats *BombStatsBatch `json:"bomb_stats,omitempty"`
+
+	// FlagGrabsNet : LES PRISES DE DRAPEAU BRUTES ET NETTES d'une passe de lecture
+	// d'artefact — deux comptes par joueur, plus la fenêtre de jonglage sous laquelle ils
+	// ont été calculés. nil = aucun artefact lisible pour ce match, match hors CTF, ou
+	// titre qui ne déclare pas la fenêtre.
+	//
+	// Table cible `match_flag_grabs_net` : append-only, lecture par la vue
+	// `match_flag_grabs_net_latest` UNIQUEMENT (ADR 0026).
+	//
+	// ⚠ NE PAS confondre avec `ObjectiveStats.flag_grabs` ci-dessus, qui vient de l'API et
+	// compte CHAQUE ramassage, jonglage compris. Les deux coexistent sans se recouvrir :
+	// l'API garde son compteur, le film porte la grandeur nette.
+	FlagGrabsNet *FlagGrabsNetBatch `json:"flag_grabs_net,omitempty"`
+
+	// PadTiers : LES PRISES DE SOCLE VENTILEES PAR NIVEAU D'ARME (base / terrain /
+	// puissance / non classe / bonus), lues de l'artefact range et croisees a la reference
+	// des emplacements de la carte. Meme regime que FlagGrabsNet : produite par l'etape
+	// post-sync (`sync/replayartifacts/padtiers.go`), jamais au sync primaire — le film
+	// arrive un cycle plus tard.
+	//
+	// Table cible `match_pad_pickups_by_tier` : append-only, lecture par la vue
+	// `match_pad_pickups_by_tier_latest` UNIQUEMENT (ADR 0026).
+	PadTiers *PadTiersBatch `json:"pad_tiers,omitempty"`
 }
 
 // PlayerBatch contient les écritures pour stats.duckdb (du joueur Player).

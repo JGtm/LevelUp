@@ -1,0 +1,33 @@
+=== RUN   TestBombeB3Desaccords
+2026/09/01 15:59:13 INFO plafond memoire arme pour ce decodage outil=TestBombeB3Desaccords souple_gib=2 dur_octets=2684354560
+    bombe_b3_desaccords_test.go:160: 1c01e34f : 37 transitions bombe/crane, pont slot->xuid : 102 slots nommés (vies=112)
+    bombe_b3_desaccords_test.go:186: 1c01e34f ACCORD 150546 : slot 545, amplitude d'armement 397 quanta — SITE pris au lâcher 145559
+    bombe_b3_desaccords_test.go:186: 1c01e34f ACCORD 273787 : slot 576, amplitude d'armement 436 quanta — SITE pris au lâcher 268983
+    bombe_b3_desaccords_test.go:186: 1c01e34f ACCORD 335637 : slot 600, amplitude d'armement 400 quanta — SITE pris au lâcher 330851
+    bombe_b3_desaccords_test.go:192: 1c01e34f : distance entre sites 150546 et 273787 : 33 quanta
+    bombe_b3_desaccords_test.go:192: 1c01e34f : distance entre sites 150546 et 335637 : 1753 quanta
+    bombe_b3_desaccords_test.go:192: 1c01e34f : distance entre sites 273787 et 335637 : 1777 quanta
+    bombe_b3_desaccords_test.go:205: 1c01e34f DÉSACCORD 400853 (pose ~395753) : canal slot 611 (xuid 2535406537212173) contre statborg xuid 2533274823110022
+    bombe_b3_desaccords_test.go:208:     canal    : slot 611 amplitude 383 quanta, site 150546 : 95 quanta, site 273787 : 115 quanta, site 335637 : 1776 quanta
+    bombe_b3_desaccords_test.go:227:     statborg : vie slot 610 amplitude 174 quanta, site 150546 : 236 quanta, site 273787 : 243 quanta, site 335637 : 1579 quanta
+    bombe_b3_desaccords_test.go:160: 3d58eb37 : 28 transitions bombe/crane, pont slot->xuid : 62 slots nommés (vies=82)
+    bombe_b3_desaccords_test.go:186: 3d58eb37 ACCORD 342196 : slot 555, amplitude d'armement 258 quanta — SITE pris au lâcher 337458
+    bombe_b3_desaccords_test.go:186: 3d58eb37 ACCORD 386280 : slot 569, amplitude d'armement 208 quanta — SITE pris au lâcher 381432
+    bombe_b3_desaccords_test.go:192: 3d58eb37 : distance entre sites 342196 et 386280 : 53 quanta
+    bombe_b3_desaccords_test.go:205: 3d58eb37 DÉSACCORD 203065 (pose ~198135) : canal slot 538 (xuid 2535452615389938) contre statborg xuid 2533274882553342
+    bombe_b3_desaccords_test.go:208:     canal    : slot 538 amplitude 348 quanta, site 342196 : 321 quanta, site 386280 : 374 quanta
+    bombe_b3_desaccords_test.go:227:     statborg : vie slot 537 amplitude 400 quanta, site 342196 : 285 quanta, site 386280 : 267 quanta
+    bombe_b3_desaccords_test.go:160: 69b16f5d : 45 transitions bombe/crane, pont slot->xuid : 42 slots nommés (vies=58)
+    bombe_b3_desaccords_test.go:186: 69b16f5d ACCORD 154305 : slot 525, amplitude d'armement 268 quanta — SITE pris au lâcher 149673
+    bombe_b3_desaccords_test.go:205: 69b16f5d DÉSACCORD 278617 (pose ~273687) : canal slot 549 (xuid 2812739231567214) contre statborg xuid 2533274896131112
+    bombe_b3_desaccords_test.go:208:     canal    : slot 549 amplitude 276 quanta, site 154305 : 285 quanta
+    bombe_b3_desaccords_test.go:227:     statborg : vie slot 551 amplitude 546 quanta, site 154305 : 682 quanta
+    bombe_b3_desaccords_test.go:205: 69b16f5d DÉSACCORD 310215 (pose ~305285) : canal slot 549 (xuid 2812739231567214) contre statborg xuid 2533274896131112
+    bombe_b3_desaccords_test.go:208:     canal    : slot 549 amplitude 161 quanta, site 154305 : 166 quanta
+    bombe_b3_desaccords_test.go:227:     statborg : vie slot 551 amplitude 315 quanta, site 154305 : 407 quanta
+    assaut_manches_research_test.go:652: pic memoire observe : 0.09 Gio (plafond souple 2 Gio)
+--- PASS: TestBombeB3Desaccords (194.89s)
+PASS
+ok  	levelup/go-api/internal/analysis/replay	195.907s
+
+[exited with code 0]

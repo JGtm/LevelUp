@@ -34,8 +34,8 @@ type mockSquadRepo struct {
 	synthErr            error
 	allyRows            []domain.AllyParticipant
 	allyErr             error
-	// LookupXUIDByGamertag : lookup attendu (gamertag normalisÃ© en lowercase â†’ xuid).
-	// Si vide, retourne ("", false, nil) â€” comportement par dÃ©faut.
+	// LookupXUIDByGamertag : lookup attendu (gamertag normalisé en lowercase → xuid).
+	// Si vide, retourne ("", false, nil) — comportement par défaut.
 	lookupAliases map[string]string
 	lookupErr     error
 	// assetFR : traductions FR par type d'asset ("map"|"playlist"|"pair") →
@@ -74,6 +74,12 @@ func (m *mockSquadRepo) LoadImpactEvents(_ context.Context, _ []string) ([]domai
 }
 func (m *mockSquadRepo) LoadKVPairs(_ context.Context, _ []string) ([]domain.KVPairRaw, error) {
 	return m.kvPairs, m.kvErr
+}
+func (m *mockSquadRepo) LoadSquadAssistPairs(_ context.Context, _, _ []string) ([]domain.SquadAssistPairRaw, int, error) {
+	return nil, 0, nil
+}
+func (m *mockSquadRepo) LoadSquadKillLog(_ context.Context, _, _ []string) ([]domain.SquadKillLogRow, error) {
+	return nil, nil
 }
 func (m *mockSquadRepo) LoadMainTeamParticipants(_ context.Context, _ string, _ []string) ([]domain.AllyParticipant, error) {
 	return m.allyRows, m.allyErr

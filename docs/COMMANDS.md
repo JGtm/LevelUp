@@ -20,6 +20,12 @@ make restart      # stop + dev
 
 Open http://localhost:5173 once `make dev` is running.
 
+Slow requests: an API request taking at least `LEVELUP_SLOW_REQUEST_MS` milliseconds (default `1000`,
+read once at server start) is logged in `logs/http.log` with `slow: true`, at least at INFO. If it timed
+sections (Squad, Synthesis, Sessions and Timeseries pages, filters), an `http_timings` line follows,
+showing where the time went (`total_ms`, `sections` = up to 15 `name=ms`, slowest first, `calls`); with
+DEBUG enabled (`LEVELUP_LOGS_FILE_LEVEL=debug`), every request that timed sections gets one.
+
 ---
 
 ## Build
@@ -60,6 +66,35 @@ go run ./cmd/levelup sync-full --gamertag YourGamertag --max-matches 500
 go run ./cmd/levelup sync-achievements --all [--dry-run]
 ```
 
+**No player needs their own token.** Every sync path — `--gamertag` as well as `--all` — goes
+through the token pool: match history, match stats, films and CSR are PUBLIC endpoints that any
+token in the fleet can serve (`PolicyAnyPublic`). A followed profile that never signed in via
+Xbox SSO is synced like any other. The pool must simply hold at least one healthy token.
+
+The career rank is NOT part of the sync at all: it is served by the separate live career flow
+(`service.CareerLiveService`), and `career_synced` is always `false` in the sync summary, token
+or no token. `/careerranks` itself is PUBLIC: measured on 2026-09-16 with three different lender
+tokens on a third-party xuid, it returns the same rank and XP as the owner own call, so the
+pooled client acquires it in `PolicyAnyPublic` like everything else (D4, sync robustness plan).
+The Spartan customization cron is the one caller that needs the player s own token (403 for a
+third party, measured), and keeps its `HasPlayer` guard for that reason.
+
+The `backfill --csr` / `--shared-csr` passes and the film commands (`archive-films`,
+`backfill-killsource --online`, `replay-events`) follow the same doctrine: `--gamertag` names the
+player being processed, not a token lender.
+
+**Operational note.** A sync CLI pass holds the shared database in WRITE mode and applies the
+shared migrations of the title before its first insert: run it with the **server stopped**
+(single writer, ADR 0013). It also refreshes the refresh tokens of the WHOLE fleet through the
+pool — never rotate the fleet tokens while a server is running, or that server keeps the old
+tokens in memory and ends up in `reauth_required` on N accounts.
+
+`--token-pool-size N` caps the number of HEALTHY slots, not the number of sources tried: the
+scan is walked in full, in alphabetical gamertag order, and a source whose refresh token fails
+to resolve does not consume the quota. `0` takes every healthy token of the fleet. Before
+2026-09-16 the cap truncated the scan BEFORE resolving, so `--token-pool-size 1` could pick a
+single revoked account and fail with "aucun slot cree".
+
 ### Backfill (mostly local, Go-only; CSR/weapons need Halo tokens)
 
 ```bash
@@ -73,6 +108,134 @@ go run ./cmd/levelup backfill --all          --weapons        [--force]   # film
 go run ./cmd/levelup backfill --gamertag X --citations-recompute-all
 ```
 
+Rounds of round-decided modes (ADR 0032) — a column only the API can fill, so a re-sync
+never repairs it. **Server stopped** for `--apply` (single writer, ADR 0013):
+
+```bash
+# dry run: no write, no write lock taken
+go run ./cmd/backfill-team-rounds --gamertag X
+
+# apply — restricted BY DEFAULT to the variants declared in regulation.toml
+# [rounds_decide] (26 matches, ~7 s). --all covers the whole corpus (~1 900 API calls).
+go run ./cmd/backfill-team-rounds --gamertag X --apply [--all] [--limit N] [--match ID]
+```
+
+#### Filling `match_kill_events` / `match_weapon_shots` from films — `backfill-killsource`
+
+**100 % offline** (films from the local cache: no network, no tokens, no CDN), **server
+stopped** (it holds the shared database in write mode — single writer, ADR 0013). It runs two
+passes in this order: FILMS (decoding), then CREDIT (a SQL → SQL transform, a few minutes).
+
+```bash
+go run ./cmd/levelup backfill-killsource --dry-run      # summary: total, already fresh, chunks, ETA
+go run ./cmd/levelup backfill-killsource                # everything: films then credit, 3 workers
+go run ./cmd/levelup backfill-killsource --workers 1    # the serial loop from before lot 5.24
+go run ./cmd/levelup backfill-killsource --limit 20     # the 20 cheapest films
+go run ./cmd/levelup backfill-killsource --credit-only  # the SQL → SQL pass alone
+go run ./cmd/levelup backfill-killsource --force        # re-decode even what is already fresh
+go run ./cmd/levelup backfill-killsource --status       # IN ANOTHER TERMINAL: where it stands
+```
+
+**`--workers` (default 3) — N films decoded in parallel, only ONE touching the database.** The
+cost breakdown (lot 5.24.1) measures **93 to 99 % of a film's time as CPU outside the
+database**: that is the only reason parallelism helps here. Writes and both per-match reads go
+through a single token (`PorteDeLaBase`), so at any instant at most one goroutine talks to the
+database. The ceiling is a MEASUREMENT, not a knob: the worst film of the corpus peaks at
+**422 MiB**, the pass caps itself at 4 GiB, hence **9 workers at most** — beyond that the
+command refuses at startup, quoting the figure. Measured gain with 3 workers over 9 films:
+**9.7 s → 3.5 s (×2.7)**, with identical rows written
+(`TestOuvriers_MemesLignesQuUnSeulOuvrier`).
+
+**`--status` — "where does it stand?", from another terminal.** It READS the state file and
+prints it once, **without opening any database** (the only way to query a process that holds the
+shared database in write mode). The file is rewritten **after every film**, at
+`data/global/admin_state/backfill_killsource_{slug}.json`:
+
+```
+backfill-killsource [halo_infinite] — phase films, PID 11480
+  demarree     2026-09-22T13:19:13+02:00 (il y a 0s)
+  mise a jour  2026-09-22T13:19:14+02:00 (il y a 0s)
+  revisions    morts killsource-2026-09-22.2 | isolement isolement-2026-09-15-decoupage-du-catalogue
+  films        1 / 3 traites — 5 chunks / 100
+               1 ecrits (42 morts), 0 sans film, 0 sans kill-feed, 0 cle inconnue, 0 abandons sur delai, 0 erreurs
+               1500 deja a jour au demarrage (sautes : c est la REPRISE, et elle se decide en base)
+               3 ouvrier(s), 0.00 films/min, 0.400 s/chunk mesure — reste ~13s
+               fin estimee vers 2026-09-22T13:19:26+02:00
+  dernier fini petit (5 chunks) en 2.00 s — ecrit
+  EN COURS     gros (65 chunks) depuis 12.0 s
+```
+
+The **ETA counts CHUNKS, not films**, and is divided by the worker count: the big films run
+last, so a remainder counted in films would announce a near finish right before the most
+expensive tail. The per-chunk cost is the one **measured since the pass started**, not a
+constant. A state not updated for more than 10 minutes is flagged as such. The pass's own
+terminal gets a progress line **every 25 films OR every 60 s**, carrying the same figures.
+
+**Resume — the key is `decoder_rev`, IN THE DATABASE.** A match whose current passes (the
+`_latest` views) all carry the current decoder revision is skipped: interrupting and re-running
+**the same command** picks up where it left off. The state file is **not** a source of truth for
+resume: deleting it only loses a display. `Ctrl-C` (or `SIGTERM`) stops DISPATCHING films; the
+ones in flight run to completion and are written, the state is closed with its cause, and the
+command exits with code **130** (distinct from 0 for a finished pass and 1 for a failure). A
+**second** `Ctrl-C` kills the process immediately.
+
+#### Projecting replay artifacts into the database — RELEASE ORDER MATTERS
+
+Two passes read the already-cooked replay artifacts (`data/cache/replays/{slug}/{short8}.json`)
+and project them into shared tables. **Neither decodes a film.** Both are RELEASE tasks, and
+both need the **server stopped**: they take `OpenReadWrite` on the shared DB and run the shared
+migrations themselves — including under `--dry-run`.
+
+```bash
+# 1. RE-COOK the artifacts first — schema 39 makes every earlier artifact stale, and this is
+#    the pass that makes `bombStats` exist in them at all.
+go run ./cmd/levelup backfill-replay [--dry-run] [--force] [--limit N] [--only-existing]
+
+# 2. Equipment and pad usage -> match_usage_players + match_usage_films.
+go run ./cmd/levelup backfill-usage-summary [--dry-run] [--force] [--match ID] [--limit N] [--title S]
+
+# 3. Assault statistics -> match_bomb_stats (append-only) + dated facts in
+#    match_objective_events. Dry run FIRST: it prints per-match counters and writes nothing.
+go run ./cmd/levelup backfill-bomb-stats --dry-run
+go run ./cmd/levelup backfill-bomb-stats [--force] [--match ID] [--limit N] [--title S]
+
+# 4. Net flag grabs -> match_flag_grabs_net (append-only). It reads the artifacts AS THEY
+#    ARE: no decoding, NO RE-COOK — every artifact from schema 14 onwards already carries
+#    the flag carry timeline. Independent of pass (1), and it may run before it.
+#    The juggling window comes from regulation.toml; CHANGING IT REQUIRES --force, since
+#    rows already written carry the previous window and resume would never revisit them.
+go run ./cmd/levelup backfill-flag-grabs-net --dry-run
+go run ./cmd/levelup backfill-flag-grabs-net [--force] [--match ID] [--limit N] [--title S]
+
+# 4 bis. Weapon TIERS of pad pickups -> match_pad_pickups_by_tier (append-only). Same motif
+#    as (4): it reads the artifacts AS THEY ARE, no decoding, NO RE-COOK. The tier comes
+#    from the MAP (the Forge spot confirming the match pad, reference map_weapon_pads.json)
+#    and from the film spawn loadouts; never from the weapon name. ADDING A MAP TO THE
+#    REFERENCE REQUIRES --force: rows already written carry the previous join (pickups left
+#    as `non_classe` that would become `terrain` or `puissance`), and resume would never
+#    revisit them.
+go run ./cmd/levelup backfill-pad-tiers --dry-run
+go run ./cmd/levelup backfill-pad-tiers [--force] [--match ID] [--limit N] [--title S]
+
+# 5. Tactical occupation rasters -> sidecar JSON files under
+#    data/cache/replays/{slug}/rasters/. NO database is opened, not even read-only: the
+#    sidecar is per-match and anonymous, so nothing has to be asked of DuckDB.
+go run ./cmd/levelup tactical-rasters --backfill [--dry-run] [--limit N] [--title S]
+```
+
+Pass (5) is idempotent: a sidecar is only rewritten when it is missing, when its own
+`schema_version` is no longer current, or when its `artifact_schema_version` no longer
+matches the artifact it was projected from (so, after a re-bake). A second immediate pass
+writes zero files. **Sidecar schema 3** adds deaths (with the distance to every other named
+player alive at that instant), spawn-exit routes and the starting-spawn flag: every v2
+sidecar is stale and this pass rewrites it.
+
+Running (3) before (1) is a **silent no-op**: artifacts older than schema 39 carry no
+`bombStats`, so nothing is written and every match lands in the `sans calque` counter. Both
+passes are resumable — a match already present in the `_latest` view is skipped unless
+`--force`. `backfill-usage-summary` additionally re-summarises when the projection revision or
+the artifact schema has moved.
+
 ### Backup / restore
 
 ```bash
@@ -80,6 +243,36 @@ go run ./cmd/levelup backup  --gamertag X [--output-dir D] [--compression-level 
 go run ./cmd/levelup restore --gamertag X --backup-dir D [--replace] [--dry-run] [--tables T1,T2]
 go run ./cmd/levelup restore-csr --gamertag X --backup PATH [--dry-run] [--mode preserve|overwrite]
 ```
+
+### Player identities (directory and purge — ADR 0035)
+
+Four registries describe a player: the account (`data/auth/users.json`), the credentials
+(`data/auth/watcher_tokens/{xuid}.json`), the tracking profile (`db_profiles.json`) and the
+watcher daemon's live tracking. The only key that joins them is the **xuid**. `identity list`
+reads them together and flags what does not line up; `identity purge` removes an identity from
+all of them.
+
+```bash
+go run ./cmd/levelup identity list                          # directory, anomalies included
+go run ./cmd/levelup identity purge <xuid>                  # DRY RUN: prints the report, deletes nothing
+go run ./cmd/levelup identity purge <xuid> --yes            # executes
+```
+
+- **The shared match warehouse is never touched.** Matches already persisted in
+  `shared_matches_v2.duckdb` also carry the data of the purged player's opponents and
+  teammates, and the warehouse is append-only by design (ADR 0026). The purge never even
+  opens it.
+- **Dry run is the default.** Without `--yes`, the command prints the complete report of what
+  it would do and exits 0.
+- **Order** (ADR 0035 D6): live tracking, then profile entries and their player directories,
+  orphan directories, credentials, group memberships, and finally the account. A failing step
+  never stops the following ones — the report is always complete and names each failure.
+- **An administrator account is refused.** Removing the last admin would lock administration
+  out of the instance; do it deliberately, by hand.
+- **Precondition: the server must not be holding the player DB.** The purge deletes the
+  player's directory along with its DuckDB file. It evicts the cached handles of the *current
+  process* only: if the server holds the file, the deletion fails (Windows lock) and the step
+  is reported as failed. Stop the server, or purge a player who is not being tracked.
 
 ### Metadata / seed / migration
 
@@ -89,6 +282,250 @@ go run ./cmd/levelup seed-demo            # generate anonymized demo data (data/
 go run ./cmd/levelup migrate              # migrate data into the multi-title namespace
 go run ./cmd/levelup add-title --name "Halo MCC" [--slug s] [--capabilities matchmaking,media] [--xbox-id X] [--steam-id S]
 ```
+
+#### Medal icon reference (`static/medals/{slug}/{medal_id}.png`)
+
+The medals page serves one PNG per medal id. `refresh-metadata medal-images` compares the
+official GameCMS catalogue (`hi/Waypoint/file/medals/metadata.json`) with the versioned
+icons and cuts the missing ones out of the official sprite sheet
+(`hi/Waypoint/file/medals/images/medal_sheet_xl.png`, 4096×4096, 256 px tiles, 16 columns).
+Tokens come from the watcher store (ADR 0023 — never re-capture one); **no DuckDB file is
+opened**, so it is safe to run while the server holds the databases.
+
+```bash
+cd apps/go-api
+# report only (default): counts and both gap lists
+go run ./cmd/refresh-metadata medal-images --player JGtm
+# cut every catalogued medal whose icon is missing
+go run ./cmd/refresh-metadata medal-images --player JGtm --download
+# the sheet runs AHEAD of the catalogue: audit it tile by tile, then pin an id by hand
+go run ./cmd/refresh-metadata medal-images --player JGtm --audit-sheet
+go run ./cmd/refresh-metadata medal-images --player JGtm --extract-tiles 55,56 --extract-dir /tmp/tiles
+go run ./cmd/refresh-metadata medal-images --player JGtm --pin 1053114074:55
+# flags: --title-id  --out-dir  --dump-raw FILE  --metadata-path  --sprite-sheet-path  --tile PX
+```
+
+Reference for the endpoints and the sprite-index layout: den.dev, *Halo Infinite Medal API:
+Infection, VIP, Extraction* (2023-10-11) — <https://den.dev/blog/halo-infinite-medals-api/>.
+The sheet holds tiles that the JSON does not list: the JSON is the reference, `--pin` is the
+escape hatch, and the guard-rail
+`internal/games/halo_infinite/medal_icons_test.go` fails when a medal of the taxonomy has no
+icon.
+
+### Asset production chains (versioned outputs)
+
+Eleven offline chains, all under `apps/go-api/cmd/`, produce files committed to the repo
+(`data/titles/{slug}/reference/`, `static/`, or a generated Go file). None is wired into
+`cmd/server` — game decoding and GPLv3 code (`internal/himap`, `internal/ooz`, Kraken/Oodle)
+stay isolated to these binaries. Run from `apps/go-api` unless noted. `--title`/`-title`
+defaults to `halo_infinite` throughout.
+
+#### weapon-icons (build + table)
+
+```bash
+go run ./cmd/weapon-icons-build                      # game root auto-detected
+go run ./cmd/weapon-icons-build -deploy "D:/SteamLibrary/.../Halo Infinite/deploy"
+# flags: -out DIR  -max N (images per atlas)  -probe N (descriptor→resource re-sync depth)
+go run ./cmd/weapon-icons-table                      # derives the Go table from index.json
+```
+
+- Output: `static/weapons-assets/halo_infinite/jeu/` — 168 PNG (weapon icons in outline and
+  silhouette, plus the kill-feed atlas) + `index.json` (build) ;
+  `internal/games/halo_infinite/weapon_icons_table.go`, generated — DO NOT EDIT (table).
+- Prereq: game installed + cgo (Kraken) for `weapon-icons-build`. `weapon-icons-table` needs
+  neither — it only reads the versioned `index.json`, so it runs anywhere, including CI.
+- Replay when: a game content update grows the icon set (build) ; after every
+  `weapon-icons-build` run, so the table stays in sync (table).
+- Full chain, correspondence tables and refuted leads:
+  `.ai/V7.5/icones/ETAT_DE_L_ART_ICONES.md`.
+
+#### mapquant-build
+
+```bash
+CGO_ENABLED=1 go run ./cmd/mapquant-build [--levels DIR] [--title slug] [--out FILE]
+```
+
+- Output: `data/titles/{slug}/reference/map_quant_bounds.json` — per-map world-bounds used to
+  turn the film's quantized coordinates into world coordinates.
+- Prereq: game installed (unless `--levels` points elsewhere) + cgo. The display-name → module
+  link is a hardcoded table in the tool: a map missing from it is absent from the catalog by
+  design (refuses to publish a guessed coordinate).
+- Replay when: a new map's module link is established, or the game changes its modules/BSP.
+
+#### film-profiles-build
+
+```bash
+go run ./cmd/film-profiles-build [--title slug] [--check] [--out FILE] [--bounds FILE]
+```
+
+- Output: `data/titles/{slug}/reference/film_profiles.json` — the film profiles catalogue
+  (what the repository knows about a film's grammar, indexed by the three keys the film
+  *writes*). The tool produces the `derived` block **only** — the fingerprint of
+  `map_quant_bounds.json`, so the profile says which game-file derivation it is tied to. The
+  entered blocks — `entries` and `registryFingerprints` (one ECS registry fingerprint per
+  written key: the build, or the major version for films with no identification section) — are
+  written by hand, with provenance, and are copied through untouched.
+- Prereq: no game install, no network, no cgo. `--check` writes nothing and exits 1 if the
+  committed file is not the one the tool would produce. From a worktree, export
+  `LEVELUP_REPO_ROOT=<the worktree>` or pass `--out`/`--bounds` (`db_profiles.json` is
+  gitignored and only exists in the main checkout).
+- Replay when: after `mapquant-build` (a game update, a new map), or after adding a profile
+  entry. Procedure for adding a build: `docs/RUNBOOK_FILM_PROFILES.md`.
+- Gate with the game installed:
+  `CGO_ENABLED=1 go test -tags=gamefiles ./cmd/film-profiles-build/ -count=1` — replays the
+  whole chain (bounds regenerated from the `.module` files, then committed catalogue byte-for-byte
+  equal to what the chain produces). Skips where Halo Infinite is not installed.
+
+#### mapcallouts-build
+
+```bash
+CGO_ENABLED=1 go run ./cmd/mapcallouts-build                          # native pass only
+CGO_ENABLED=1 go run ./cmd/mapcallouts-build --forge-only --forge-fetch  # Forge pass only
+CGO_ENABLED=1 go run ./cmd/mapcallouts-build --lexique --forge-only      # + string lexicon
+```
+
+- Output: `data/titles/{slug}/reference/map_callouts.json` (native + Forge callout zones) ;
+  `--lexique` also writes `callouts_lexique.csv` next to it. Reads the versioned
+  `callouts_i18n.csv` (816 labels) as an input.
+- Prereq: game installed for the native pass and for `--lexique` ; cgo always (to build) ;
+  network only with `--forge-fetch` (anonymous UGC blob fetch, no token). A loss guard blocks
+  writing a map that would lose vertices vs. the committed file (`--accepte-perte` overrides).
+- Replay when: game update (native pass, or `--lexique`, which "only replays on a game
+  update" per its own header) ; a new Forge map needs its callouts (`--forge-fetch`).
+
+#### mapfond-build
+
+```bash
+CGO_ENABLED=1 go run ./cmd/mapfond-build [--maps "Cliffhanger,Catalyst"] [--title slug] \
+  [--out-dir DIR] [--style jeu] [--natives=false] [--forge=false] [--rapport FILE]
+```
+
+- Output: `data/titles/{slug}/reference/map_backgrounds/{key}.png` + `{key}.json` sidecar per
+  map (218 files today) — the top-down background image and its calibration.
+- Prereq: game installed — **always**, no flag bypasses it, even a Forge-only run ; cgo/GPLv3
+  chain (`internal/himap` → `internal/himodule` → `internal/ooz`, never linked into
+  `cmd/server`) ; requires `map_objectives.json` already built (hard dependency, fails
+  without it) ; uses `map_quant_bounds.json` / `map_callouts.json` / `map_positions_jouees.json`
+  / `map_fond_reglages.json` when present, degrades with a warning otherwise.
+- Replay when: not documented in the tool itself ; in practice, a new native or Forge map
+  needs its background cooked.
+
+#### mapobj-build
+
+```bash
+go run ./cmd/mapobj-build --player <Gamertag> --map-id <uuid> [--map-id <uuid>...]
+go run ./cmd/mapobj-build --player <Gamertag> --all                    # whole match_registry
+go run ./cmd/mapobj-build --from-file <path.mvar> --map-id <uuid>      # offline
+go run ./cmd/mapobj-build --refresh-from <dir of .mvar>                # offline, whole catalog
+```
+
+- Output: `data/titles/{slug}/reference/map_objectives.json`, written atomically
+  (temp file + rename). `map_objects.csv` and `forge_object_types.csv`
+  (`data/titles/{slug}/reference/map_geometry/`) are **not** produced by this or any other
+  tool — verified zero producer in `cmd/`; they were imported manually and have no replay
+  command.
+- Prereq: game install **not** required ; network required unless `--from-file`/
+  `--refresh-from` (Xbox Live/Halo auth per ADR 0023 — never re-capture a token) ; `--all`
+  additionally opens `shared_matches_v2.duckdb` read-only ; cgo needed to build (DuckDB driver).
+- Replay when: a new map is played in matchmaking (one `--map-id`) ; `--all` to resync the
+  whole registry ; `--refresh-from` after a local `.mvar` dump, fully offline.
+
+#### mapopads-build
+
+```bash
+go run ./cmd/mapopads-build --from <dir of .mvar> [--title slug] [--dry-run]
+go run ./cmd/mapopads-build --from <dir> --refresh-drifted   # re-validate against fresh .mvar
+```
+
+- Output: `data/titles/{slug}/reference/map_weapon_pads.json` (weapon/power-up spawn pads),
+  written atomically via the same `mapcatalog.WriteAtomic` helper used by the sync runtime's
+  own Forge catch-up path into this file (`.ai/V7.5/v2/PLAN_V2_REJEU_FILM_2026-09-05.md` item A.3 —
+  tracked separately, not part of this chain).
+- Prereq: no game install, no network, no cgo ; requires `map_objectives.json` (map_id →
+  filename link) and a local dump of `.mvar` files (`--from`).
+- Replay when: `--refresh-drifted` — a UGC map's `.mvar` no longer matches the committed
+  catalog (measured drift; this is the normal re-validation path since the 2026-09-01 decision).
+
+#### mapstruct-build
+
+```bash
+CGO_ENABLED=1 go run ./cmd/mapstruct-build [--levels DIR] [--maps "Cliffhanger,Streets"] \
+  [--title slug] [--out-dir DIR]
+```
+
+- Output: `data/titles/{slug}/reference/map_structure/{module}.json` (2 files today — the
+  default `--maps` list covers only the two maps with 100% measured coverage, not "all").
+- Prereq: game installed (deploy variant `pc`, not `ds`) unless `--levels` ; cgo ; requires
+  `map_quant_bounds.json` (module ↔ display-name link).
+- Replay when: another map's mesh-instance decoding reaches full coverage. **Caveat**: the
+  artifact's `structure` field is under a deferred-removal decision
+  (`.ai/V7.5/REGISTRE_REPORTS.md`) — still read by two web files — check that entry before
+  assuming this tool is safe to drop.
+
+#### mappos-build
+
+```bash
+go run ./cmd/mappos-build --cle <mapId> [--carte NAME] [--title slug] [--pas M] \
+  [--min-matchs N] [--min-occurrences N] <replay.json>...
+```
+
+- Output: `data/titles/{slug}/reference/map_positions_jouees.json` (merges into the existing
+  catalog, one map key at a time).
+- Prereq: no game install, no cgo — pure post-processing over already-decoded replay
+  artifacts (`data/cache/replays/{title}/{matchId}.json`), passed as positional arguments.
+- Replay when: more or newer matches should refine a map's played-positions mask.
+
+#### mapnav-fetch
+
+```bash
+go run ./cmd/mapnav-fetch -toutes [-out-dir DIR] [-rate-ms N] [-refaire]
+go run ./cmd/mapnav-fetch -map-id <uuid> [-map-id <uuid>...] [-dry-run]
+```
+
+- Output: `<out-dir, default .ai/re_dump/navmesh>/<mapID>.blob` — **not itself a versioned
+  asset**: `.ai/re_dump/` is gitignored. It's the local working cache that `mapfond-build`'s
+  Forge pass reads (`cuisson.go`) ; listed here because it feeds a versioned chain.
+- Prereq: **not** the game install — an anonymous HTTP fetch from halowaypoint.com's public
+  UGC pages (two requests, no auth) ; resumable (skips existing blobs) and rate-limited.
+- Replay when: a new Forge map needs its navmesh before `mapfond-build` can cook its
+  background ; `-refaire` forces a re-fetch.
+
+#### vehicle-sprite
+
+Multi-subcommand CLI (`inventaire`/`render`/`variantes`/`diag`/`assemble`/`compose2d`), not a
+single fixed invocation. Verified fragment of the recipe behind the current set (covers 13 of
+the 18 vehicles ; later passes added the rest — check `.ai/V7.5/film_re/*.md` for the current
+state before re-running):
+
+```bash
+go build -o v4tool.exe ./cmd/vehicle-sprite
+v4tool.exe render -variant=any -cote=256 -out=<dir> \
+  -modules="pc:globals-rtx-new.module,globals-rtx-new.module,common-rtx-new.module,multiplayer-rtx-new.module" \
+  -curate="0x00002705:warthog,0x000025aa:mongoose,0x0000d3db:scorpion,0xb65b3b4a:wasp"
+```
+
+- Output: `static/vehicles-assets/halo_infinite/replay/` — 38 files (18 sprites + 18 `*_outline.png` + `index.json` +
+  `files_list.txt`), consumed by `useReplayVehicles.ts`. None of it goes through
+  `PathResolver` — paths are plain `-out`/`-curate` flags.
+- Prereq: game installed, cgo/GPLv3 (never linked into `cmd/server`) ; no network.
+- Replay when: a new pilotable vehicle ships. Full recipe: `.ai/V7.5/film_re/V4_RAPPORT_SPRITES_2026-08-31.md`
+  §9 and later notes in the same directory.
+
+#### weapon-sounds (mode `livrer`, final step of a larger recipe)
+
+```bash
+go run ./cmd/weapon-sounds -mode livrer -donnees <chantier>/_donnees [-sons <chantier>] [-depot <repo>]
+```
+
+- Output: `static/sounds/halo_infinite/hinf_*.wav` (26 files) +
+  `apps/web/src/features/match-replay/weaponSoundVariations.ts`.
+- Prereq: the recipe's earlier, still-external steps (extraction, banks analysis, human vote)
+  must already have produced `_donnees/*.json` and the per-weapon source/rendered `.wav`
+  tree. No game install is needed for this final step (the mode opens no game module), but
+  cgo IS required to BUILD the binary: `cmd/weapon-sounds` imports `internal/himap` ->
+  `internal/himodule` -> `internal/ooz` (Kraken decompression) for its other modes.
+- Replay when: a weapon vote is finalized, or the full recipe is redone (game update, new
+  weapon). Full recipe: `.ai/V7.5/RECETTE_SONS_ARMES.md`.
 
 ### Media
 
@@ -132,7 +569,7 @@ metric absent from the grammar is flagged as an orphan (naming drift / legacy ch
 ```bash
 go run ./cmd/levelup rebuild-pme-art --all | --gamertag X   # rebuild player_match_enrichment ART index
 go run ./cmd/levelup consolidate-aliases                    # merge xbox_aliases into shared.xuid_aliases
-go run ./cmd/levelup recompute-friends [--dry-run]          # recompute is_with_friends across player DBs
+go run ./cmd/levelup recompute-friends [--dry-run]          # recompute is_with_friends, each player with THEIR own friends list
 go run ./cmd/levelup replay-events --gamertag X             # re-parse highlight events
 go run ./cmd/levelup reset-bitmasks                         # reset skill/participants/PVE backfill bits
 go run ./cmd/levelup engagement-coefs [--with-scores]      # recompute engagement coefficients
@@ -153,6 +590,129 @@ go run ./cmd/migrate-media-paths --db data/titles/{slug}/warehouse/shared_social
 # --captures-base defaults to app_settings.json media_captures_base_dir
 ```
 
+### 2D replay — where an artifact gets built (`replay_build_location`)
+
+Setting in `app_settings.json`, re-read on **every** sync cycle (a `PATCH /api/v1/settings`
+takes effect without a restart). It arbitrates the *service* paths — the post-sync step and
+the admin action — never the operator CLI below.
+
+| Value | What the server does | When it applies |
+|---|---|---|
+| `local` | This process decodes the film itself, in a **bounded child process** (hard memory cap, low CPU priority). | Default in development. **Refused in production**: a film decode takes ~50 s and peaks at hundreds of times the film's own size; the web VPS never decodes. A `PATCH` asking for it in production is rejected with `400 invalid_replay_build_location`. |
+| `worker` | This process **queues** the match and never decodes. A remote `cmd/replay-worker` pulls the job, downloads the chunks from pre-signed URLs, decodes, and pushes the artifact back. | Default in production. Requires `LEVELUP_BUILD_WORKER_TOKEN` on the web instance; **without it the placement degrades to `off`** (queueing when nobody empties the queue would resolve one Halo manifest per match, every cycle, for nothing). |
+| `off` | Nothing is built. The replay page falls back to whatever artifacts already exist. | Explicit opt-out. It is the only *silent* placement — the two degradations above each log a `WARN`. |
+
+Empty value = the instance default (`worker` in production, `local` in development). The
+decision has a single home: `replaybuild.DecidePlacement`.
+
+The post-sync step (1.58) takes the cycle's **inserted** matches first, then catches up on the
+most recent matches of the retention window that have no artifact yet — a Theater film is
+published *after* the match, so a single attempt at insertion time would never catch a
+late-arriving film. Caps: the catch-up tier never adds more than 5 matches per cycle, a local
+build never exceeds 5 matches, and either path stops between two matches once the cycle has
+spent 5 minutes. The remaining backlog is published as `postsync_replay_backlog_restant` on
+`/debug/vars`, together with `postsync_replay_cycles_total` (zero here while syncs run = the
+step is off or unwired).
+
+`replay_retention_months` bounds the same window: the step never builds — and the recurring
+purge deletes — artifacts older than it. `0` = unlimited.
+
+The operator CLI ignores this setting on purpose (see `cmd/levelup backfill-replay`): whoever
+types it has already decided where they build, on their own machine, with their own cached
+films.
+
+### 2D replay — build tooling (facts, equivalence, profiling)
+
+Operator tools of the artifact build chain ("cuisson" in `.ai/V7.5/PLAN_CUISSON_PERF.md`). They read
+the local film cache; the two offline ones need no DB and decode one film per bounded child process
+(hard memory cap, low CPU priority, solo lock).
+
+```bash
+cd apps/go-api
+go run ./cmd/levelup replay-facts-export --out internal/games/halo_infinite/film/replay/testdata/equivalence \
+  [--title slug] <short8|match_id>...
+```
+
+Writes one `<short8>.facts.json` per match — match rows, both team scores, variant, candidate map
+names — in the shape `replay-build --facts` already reads. Without those facts, zones, objective
+actions, VIP/skull/bomb, pads and spawn points are short-circuited and an equivalence run would be
+vacuous. Read-only (`OpenReadForQuery`); it fails outright rather than writing empty facts, so stop
+a server that holds the shared DB in write.
+
+```bash
+go run ./cmd/replay-equiv                            # whole corpus (CORPUS.txt), compare only
+go run ./cmd/replay-equiv -films 000d5950 -update    # (re-)freeze the references of one film
+# flags: -corpus F  -films a,b (replaces the corpus)  -update  -mem-gib N (default 3, 0 = off)
+#        -title slug  -out-dir D (keep the child TSVs instead of a wiped temp dir)
+```
+
+The equivalence harness of the build chain: it hashes the output of **every** scan, not just the
+final artifact, so a divergence is located down to the scan. **Since 2026-09-17 it names EVERY
+divergent scan of a film, not just the first** (D2), with the expected and obtained count and sha
+per scan and a header line `ECART sur N etape(s) sur M`: three divergent scans used to mean three
+full film decodes (one to three minutes each) to discover them one at a time, and a single
+divergence could not be told apart from a general one. `-out-dir D` keeps the child TSVs instead
+of wiping a temp dir, so the obtained digests can be diffed against the references without
+re-decoding. `-update` and the TSV reference format are unchanged. Parent and child share one binary —
+the parent plans and decodes nothing, each film is born in a bounded child (solo lock with bounded
+wait, sentinel) and dies with its RAM. References live in
+`internal/games/halo_infinite/film/replay/testdata/equivalence/<short8>.tsv`, each opening with its
+`# digest-grammar: N` marker: a reference frozen under another grammar is an infrastructure failure
+("re-freeze with `-update`"), never a decoding difference. `-update` rewrites those references
+instead of comparing them — for a declared correction only. The `-walkers` mode (divergence of the
+packet-splitting grammars over the whole film cache) was **removed** in 2026-09: it carried a copy
+of three historical packet walkers whose originals no longer exist, so it only compared against
+itself. Its measurement stays frozen in `.ai/V7.5/MESURES_CUISSON_PERF.md` §2 and is replayed in CI
+by the mini-reel test of `internal/analysis/filmsource`.
+
+```bash
+LEVELUP_LOG_LEVEL=debug go run ./cmd/replay-build --map "<map name>" --facts <f>.facts.json \
+  --cpuprofile tmp/<f>.cpu.prof --memprofile tmp/<f>.heap.prof <short8> [filmDir]
+```
+
+Measurement of a single build (protocol §6 of the plan): `LEVELUP_LOG_LEVEL=debug` brings out the
+per-scan durations (the binary installs an slog handler), `--cpuprofile` and `--memprofile` write
+pprof files (`go tool pprof`), the heap one after the build. All three are inert by default, and
+the options must precede `<matchId>` — the flag package stops at the first positional argument.
+
+
+#### Decoder time budget — benchmarks and `benchstat` (lot 0.A.5)
+
+`replay-equiv` already prints a duration **per film** (its own column), which is the end-to-end
+budget. It does not say **where** the time went. Three benchmarks isolate the layers that the
+structural revision (M2) is going to move, so a slowdown is located instead of merely noticed:
+`BenchmarkBitReaderReadBits` (the primitive, no grammar), `BenchmarkTraverseEntity` (the component
+loop over real keyframe records) and `BenchmarkKeyframeClosure` (the hot sweep over a whole reel).
+
+They run on the per-build mini-reel `minifilm_bcb6d393`, never on `data/`: a benchmark that needed
+the film cache would not run in CI. (`ScanBipedPositions`, which the plan named, cannot run on a
+mini-reel — it derives its biped slot band from keyframes and refuses a reel whose keyframes are
+concatenated out of continuity.)
+
+```bash
+cd apps/go-api
+# the committed baseline (regenerate only on a declared change)
+go test -bench . -run '^$' -count 10 ./internal/games/halo_infinite/film/internal/grammar/ \
+  > internal/games/halo_infinite/film/internal/grammar/testdata/bench_baseline.txt
+
+# compare after a change, on the MEDIAN (what benchstat reports)
+go test -bench . -run '^$' -count 10 ./internal/games/halo_infinite/film/internal/grammar/ > /tmp/apres.txt
+benchstat internal/games/halo_infinite/film/internal/grammar/testdata/bench_baseline.txt /tmp/apres.txt
+# benchstat is not vendored: go install golang.org/x/perf/cmd/benchstat@latest
+```
+
+**The +10 % budget applies to `BitReaderReadBits` and `TraverseEntity` ONLY.** Those two are
+tight: median within 0.5 % of the minimum for the first (an isolated outlier can push its max to
++56 %, which is why the median is the reading), +7 % spread for the second.
+
+`BenchmarkKeyframeClosure` is **informative, not a gate**. Measured on unchanged code: 71 % spread
+within a single pass, and a +21 % median shift from one pass to the next on the same commit; two
+passes here gave +62 % and +5 % spread. The variation tracks machine load, not the decoder.
+Ruling a +10 % budget on it would redden innocent lots and let real slowdowns through — it is there
+to show an order of magnitude moving (a factor of 2), nothing finer.
+
+`-count 10` gives `benchstat` a distribution rather than a single point; `-run '^$'` keeps the
+tests out of the timing.
 ### Notifications
 
 ```bash
@@ -180,6 +740,208 @@ cd apps/go-api && CGO_ENABLED=1 LEVELUP_DEMO_MODE=true go test ./... -timeout 5m
 make go-api-coverage   # coverage report
 make go-api-lint       # go vet
 ```
+
+#### `gamefiles` build-tag corpus (map reverse engineering **and** committed catalogues)
+
+Two families of tests read the **installed game**, and both sit behind `//go:build gamefiles`:
+
+- the 59 `*_gamefiles_test.go` files in `internal/himap/` decode the game's modules and sweep
+  the 26 catalogue maps. They are long by nature — measured 2026-09-05, `TestBalayageCoquille`
+  alone takes **203 s** for 26 maps (1 246 s before the module reader switched to memory
+  mapping the same day). The tag keeps a plain `go test ./internal/himap/` usable (2.8 s);
+- three `cmd/` catalogue builders re-derive their **committed** catalogue from the installed
+  game and compare it byte for byte: `cmd/film-profiles-build/`, `cmd/mapfond-build/`,
+  `cmd/mapstruct-build/` (9.0 s for the three, measured 2026-09-17).
+
+`make go-api-test-gamefiles` runs **all four packages**. Until 2026-09-17 it only ran
+`./internal/himap/`, so the three `cmd/` tests were run by no command in the repository
+(discovery D1 (3.1.2), the oldest of them tagged since 2026-09-05). The package list is
+explicit rather than `./cmd/...`: under the tag, a package with no `gamefiles` file only adds
+compile time. `archlint.TestCibleMakefileGamefilesCouvreLeCorpus` fails if a package joins the
+corpus without joining the target.
+
+```bash
+make go-api-test-gamefiles                       # whole corpus (~6 min, needs the game)
+cd apps/go-api && CGO_ENABLED=1 go test -tags=gamefiles -count=1 -timeout 3600s \
+  ./internal/himap/ \
+  ./cmd/film-profiles-build/ ./cmd/mapfond-build/ ./cmd/mapstruct-build/ -v
+
+# Committed catalogues only (seconds, not minutes):
+cd apps/go-api && CGO_ENABLED=1 go test -tags=gamefiles -count=1 \
+  ./cmd/film-profiles-build/ ./cmd/mapfond-build/ ./cmd/mapstruct-build/ -v
+
+# One map only (much faster):
+BALAYAGE_CARTES=aquarius_map go test -tags=gamefiles -timeout 300s \
+  ./internal/himap/ -run TestBalayageCoquille -v
+
+# Game installed somewhere else:
+LEVELUP_HALO_DEPLOY=/path/to/Halo Infinite/deploy go test -tags=gamefiles ./internal/himap/
+```
+
+Without the game installed every test takes its `t.Skip` and the corpus is empty in a
+second — which is exactly what happens in CI. CI therefore only **compiles** it
+(`go vet -tags=gamefiles ./internal/himap/`, job `go-test`); it never runs it. The tag
+itself is enforced module-wide by `internal/archlint/gamefiles_tag_test.go`, which runs in the
+default build.
+
+**Known red test**: `TestBancCliffhanger` fails (accord 64.4 % against a 64.7 % re-based
+reference). It is *pre-existing*, not a regression — verified 2026-09-05 by replaying it on
+the previous commit, which yields bit-identical numbers. Nobody could see it before: the
+corpus never ran to completion, and CI does not execute it. Tracked in
+`.ai/V7.5/REGISTRE_REPORTS.md`.
+
+#### Replay non-regression gate on a witness corpus (`cmd/replay-corpus-gate`)
+
+Three data regressions (2026-08-28, 08-30, 09-02 — identity bridge per round, unattributed
+flag actions, "one track = one life") sailed through green SYNTHETIC goldens for nineteen
+schema bumps, because nothing diffed real films. `cmd/replay-diff` (used for the one-off
+parc sweep, `.ai/V7.5/v2/BALAYAGE_PARC_2026-09-06.md`) turns that manual method into a repeatable
+gate: `config/replay_corpus.toml` freezes one witness match per mode family (CTF single- and
+multi-round, Oddball, Assault, Slayer, a two-round match, a vehicle-heavy match), each chosen
+because it already carries a measured layer or defect (skull carries, the multi-round identity
+bridge, dense vehicle occupancy...). Every axis `cmd/replay-diff` knows is compared (including
+the "summed duration per layer" axis, which catches a trimmed interval that a plain element
+count misses).
+
+**Two reference modes** (decided 2026-09-06, after a first version that compared HEAD to the
+dev parc rendered LOSS on all 7 witnesses at the best known state — a gate that always fails
+gates nothing):
+
+- `--reference=base` (**default**): bakes each witness TWICE — once with HEAD's code, once
+  with a **base revision**'s code (default: `origin/feat/v75` if HEAD differs from it,
+  otherwise `HEAD^` — a detached temporary worktree is created for the base revision and
+  removed afterwards, even on failure) — then diffs the two fresh artifacts. Any loss exits 1.
+  This is the gate to run before merging: the signal is binary, a loss can only come from the
+  diff under review, never from the parc's age.
+- `--reference=parc`: diffs HEAD against the artifact already baked in the local parc (the
+  original, historical method — a release-time sweep). **Informative by default** (prints the
+  table, exits 0) — pass `--strict` to make it exit 1 on loss or change too.
+
+In both modes the working root is disposable (copied inputs only, config/catalogs from the
+checked-out branch or the base worktree, film chunks from the dev parc — **never writes into
+the parc**), and the gate never bumps a schema — it only compares.
+
+```bash
+make replay-corpus-gate                                      # default: base mode, whole manifest
+cd apps/go-api && go run ./cmd/replay-corpus-gate             # same, with all flags available
+cd apps/go-api && go run ./cmd/replay-corpus-gate \
+  --reference=parc                                            # informative sweep against the parc
+cd apps/go-api && go run ./cmd/replay-corpus-gate \
+  --base=HEAD~3                                               # explicit base revision
+```
+
+**Coverage floor (2026-09-07, CORPUS-R1 C3)**: by default, **every** witness in the manifest
+must be baked and compared — a purged or partial film cache used to leave every witness
+ABSENT, and the gate silently exited 0 having compared nothing (`codeSortie` skips ABSENT
+lines). One or more ABSENT witnesses now exit 4 when nothing else is wrong, naming which ones
+and why (see the priority rule below); pass
+`--allow-missing` to restore the old behavior (a `slog` warning only, never a failure) for a
+deliberate partial run.
+
+**Per-witness status, and its priority rule (2026-09-17)**: each witness carries exactly one
+status, in the rightmost table column and in the JSON `statut` field. The first rule that
+applies wins:
+
+| Status | Meaning |
+|---|---|
+| `ABSENT` / `ERREUR` | nothing was measured: film, facts or reference artifact missing (`ABSENT`, with its cause), or the bake/diff failed (`ERREUR`, with its cause). Mutually exclusive by construction. |
+| `PERTE` | at least one measure went down or vanished. **Wins over `CHANGEMENT`**: a witness carrying both is a witness in loss, and the loss is what gets investigated. |
+| `CHANGEMENT` | no loss, but at least one published value MOVED (a re-attribution, a naming path yielding to another — `replaydiff/polarite.go`). A status of its own since 2026-09-17: until then a change printed `PERTE`, which sent people hunting a regression where a value had only changed hands. Still **blocking** — a change is either justified (proven divergence) or fixed, never silent. |
+| `ok` | neither loss nor change. GAINS may be present: a gain is never a failure. |
+
+**Exit codes (named constants, 2026-09-17)**: each says exactly one thing. Before that date
+`2` meant both "invalid manifest" and "a witness is missing", so a caller could not tell "this
+gate never started" from "this gate started but did not compare everything"; and a bake error
+was indistinguishable from a loss under `1`.
+
+| Code | Constant | Meaning |
+|---|---|---|
+| 0 | `codeOK` | the whole manifest was compared, no blocking witness |
+| 1 | `codePerte` | at least one compared witness carries a blocking `PERTE` or `CHANGEMENT` — the gate's verdict |
+| 2 | `codeUsage` | the gate never started (invalid flag, unreadable manifest, missing root or capability, base worktree impossible); nothing was measured of the diff under review |
+| 3 | `codeErreurCuisson` | the gate started, but a BAKED witness failed to bake or to diff — distinct from 1: the question could not be put, the answer is not "it lost" |
+| 4 | `codeCouvertureIncomplete` | at least one ABSENT witness without `--allow-missing` (CORPUS-R1 C3), **and nothing else to report** — distinct from both 1 and 2: the manifest is valid, every witness that WAS compared is at zero, some are missing |
+
+**The verdict of the present witnesses wins over coverage (2026-09-16)**: coverage used to be
+checked BEFORE the verdict, so a single ABSENT witness — the facts-export race below, a partial
+film cache — made the gate exit 4 and MASKED a loss, a change or a bake error on all the
+others. The gate now settles the witnesses it did compare first: a loss or a change exits 1 and
+is printed in the table and the JSON, with the coverage warning logged on top; a bake error
+exits 3 the same way. Code 4 is left for the one case where "some are missing" is all there is
+to say. The JSON report carries both facts — `couverture_incomplete` at the root, next to the
+per-witness counters under `temoins` — so an automatic reader never mistakes "everything is at
+zero" for "everything that was compared is at zero". `--allow-missing` is unchanged: it turns
+the coverage check off, never the verdict.
+
+**Robust facts export (2026-09-17, D2)**: `levelup replay-facts-export` opens the shared DB
+read-only, and fails when the local server happens to hold it for writing at that exact second
+("`… serveur en ecriture ? reessayer`"). On the lot 2.1 gate that cost two witnesses out of
+fourteen — `2/14 absent(s)` for a few seconds of bad luck, with the run replayed by hand from a
+manifest cut down to those two. The gate now **retries a held-DB failure 3 times, 2 s apart**,
+and never retries a permanent failure (id unknown to the registry, empty facts): re-asking a
+question whose answer cannot change only lengthens a 25-minute gate. A witness still missing
+afterwards is `ABSENT` and exits 4 when the compared witnesses are clean, distinct from a
+loss; `--temoins a,b` replays just those.
+
+**Named changes in the JSON report (2026-09-17, D5)**: the JSON now carries
+`changementsDetail` (axis, metric, old, new) symmetric to `pertesDetail`, plus a `statut` and
+an `absentCause` on every line, and the printed table gains a `DETAIL DES CHANGEMENTS` section
+next to `DETAIL DES PERTES`. Until then the report said "2 changes" without ever saying WHICH,
+and the M1 closure had to re-run `replay-diff` by hand on the kept artifacts to name them —
+while a witness in ERROR was written as `{"gains":0,"pertes":0,"changements":0}`, i.e. read
+from the JSON alone, as a clean witness.
+
+**Telemetry and rejection counters are not losses (2026-09-17, lot 3.3.3)**: the verdict used to
+count two families it should not. **Telemetry** — `coverage.decoder.{sourceRev, profileRev,
+grammarRev, factsRev}`, `coverage.decoder.build`, `coverage.decoder.registry.fingerprint` — says
+which VERSION of the decoder baked the artifact, not what the match contains. Those leaves were
+NEW at lot 2.6, hence counted as gains; since schema 61 they are shared, so any lot that raises a
+revision made them "move" on every witness and the gate exited 1 with nothing else wrong (lot
+3.3.2: 51 of 59 changes were those three strings). They are now printed in their own `TELEMETRIE`
+section and counted nowhere. **Rejection counters** — `noSlot`, `unread`, `truncated`,
+`unnamedLives`… — are already read backwards by `replaydiff/polarite.go` (down is a gain); what
+that layer cannot see is their DENOMINATOR. A rise is a `PERTE` only when the RATIO to its
+denominator degrades, with a non-zero denominator on both sides; a counter rising from zero
+because the denominator went from 0 to N is a `CHANGEMENT` — printed, investigated by the pilot,
+still blocking. The table of counters and their denominators is
+`cmd/replay-corpus-gate/verdict_metriques.go`, one line per coverage block, each citing where the
+denominator was read. Everything else is unchanged: a real loss and a non-telemetry change both
+exit 1.
+
+**All flags** (`cd apps/go-api && go run ./cmd/replay-corpus-gate -h` for the live list):
+
+| Flag | Default | Meaning |
+|---|---|---|
+| `--reference` | `base` | `base` (fresh bake vs. a base revision) or `parc` (vs. the already-baked parc artifact) |
+| `--base` | auto (see above) | explicit base revision in `--reference=base` mode |
+| `--strict` | `false` | in `--reference=parc` mode, a loss or a change also exits 1 (no effect in base mode, already blocking) |
+| `--allow-missing` | `false` | tolerate an ABSENT witness (warning only) instead of exiting 4 |
+| `--manifest` | `<source-root>/config/replay_corpus.toml` | manifest path |
+| `--temoins` | (none) | replay ONLY the named witnesses (comma-separated ids) — the versioned manifest stays the corpus, no reduced manifest to write. An unknown id is an error (exit 2), never a silently truncated run. |
+| `--mem-gib` | `4` | soft memory ceiling (GiB) armed on EVERY child bake, HEAD and base alike (`0` disarms). The gate default sits ABOVE production's `filmproc.DefaultLimitGiB` = 3 on purpose (D6): two BTB witnesses were measured at 3.779 and 3.807 GiB on the base side, i.e. just over the 3.75 GiB hard limit, and were failing at random from one run to the next. |
+| `--source-root` | `git rev-parse --show-toplevel` | repo whose HEAD code/config is under test — **not** `db_profiles.json`-based: works from any worktree, including one without a local copy of that file |
+| `--parc-root` | `source-root` if it already carries the title's shared DB, else auto-detected via the common `.git` | the dev parc (film chunks, `--reference=parc` artifacts) |
+| `--lock-root` | `CacheRootDir()` of the parc | where the shared decode lock lives |
+| `--work-root` | a disposable temp dir | working root for the fresh bake(s) |
+| `--keep-work` | `false` | keep the working root after the run (debugging) |
+| `--json` | (none) | path to also write the full report as JSON |
+
+**Run it before merging anything that touches** `games/halo_infinite/film/replay`, `replaybuild`, `film/internal/grammar`, or
+that bumps `SchemaVersion`. **Requires**: the local dev parc (film chunks; + already-baked
+artifacts under `data/cache/replays` in `--reference=parc` mode) and read access to the title's
+shared DB (for match facts, via `levelup replay-facts-export` run as a subprocess, per witness —
+the only step that needs CGO/gcc; one witness unknown to the registry only skips that witness,
+never the whole batch). **Does NOT require the installed game**: baking itself (a
+`cmd/replay-build` binary, compiled on the fly for HEAD and, in base mode, for the base
+revision) only reads versioned catalogs (`data/titles/{slug}/reference`), unlike the
+`gamefiles` corpus above — the gate only shares its *spirit* (a large local resource, absent in
+CI, degrades cleanly instead of failing). Measured 2026-09-06/07 on the 7-witness manifest,
+both modes: **cf. `.ai/V7.5/v2/CORPUS_TEMOIN_2026-09-06.md`** for the exact runs and durations.
+
+If the local parc is older than HEAD, `--reference=parc` diffs are expected to show GAINS (new
+layers, documented fixes); any LOSS is a fact to report, never to hide by narrowing the
+manifest or filtering the report.
+
 
 ### Frontend (`apps/web`)
 

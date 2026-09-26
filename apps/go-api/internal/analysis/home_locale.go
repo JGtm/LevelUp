@@ -1,13 +1,12 @@
-// Package analysis â€” home_locale.go : constantes outcome/color/tone, helpers
+// Package analysis — home_locale.go : constantes outcome/color/tone, helpers
 // locale (FR/EN), labels d'outcome, normalisation des modes, badges narratifs,
 // score label, regex UUID.
 //
-// Ces helpers sont partagÃ©s entre la projection legacy (home.go, home_*.go)
+// Ces helpers sont partagés entre la projection legacy (home.go, home_*.go)
 // et la projection canonique (home_canonical_*.go).
 package analysis
 
 import (
-	"fmt"
 	"regexp"
 	"strings"
 
@@ -15,7 +14,7 @@ import (
 )
 
 // ---------------------------------------------------------------------------
-// Constantes outcome (codes numÃ©riques Halo Infinite)
+// Constantes outcome (codes numériques Halo Infinite)
 // ---------------------------------------------------------------------------
 
 const (
@@ -28,22 +27,20 @@ const (
 	homeDominanceRemontada        = 3
 	homeDominanceDebacle          = 4
 	homeDominanceCounterRemontada = 5
+	homeDominanceSabordage        = 6
+	homeDominanceAbnegation       = 7
 )
 
-// Codes couleur sÃ©mantiques utilisÃ©s dans les blocs JSON du Home (highlights).
+// Codes couleur sémantiques utilisés dans les blocs JSON du Home (highlights).
 const (
 	homeColorPositive = "positive"
 	homeColorNeutral  = "neutral"
 	homeColorNegative = "negative"
 )
 
-// homeOutcomeLabelFallback est le label retourné quand l'outcome code n'est pas
-// reconnu (defaut FR/EN identique : "Match").
-const homeOutcomeLabelFallback = "Match"
-
-// Tones d'outcome partagÃ©s entre la projection JSON (home) et les filtres
-// (match_filter). DÃ©clarÃ©s ici car le package n'a pas de fichier de constantes
-// partagÃ©es et home_locale.go est le point d'entrÃ©e des codes outcome.
+// Tones d'outcome partagés entre la projection JSON (home) et les filtres
+// (match_filter). Déclarés ici car le package n'a pas de fichier de constantes
+// partagées et home_locale.go est le point d'entrée des codes outcome.
 const (
 	OutcomeToneWin  = "win"
 	OutcomeToneLoss = "loss"
@@ -51,20 +48,6 @@ const (
 	OutcomeToneTie  = "tie"
 	OutcomeToneDNF  = "dnf"
 )
-
-var homeOutcomeLabels = map[int]string{
-	homeOutcomeWin:  "Victoire",
-	homeOutcomeLoss: "DÃ©faite",
-	homeOutcomeTie:  "Ã‰galitÃ©",
-	homeOutcomeDNF:  "Abandon",
-}
-
-var homeOutcomeLabelsEN = map[int]string{
-	homeOutcomeWin:  "Victory",
-	homeOutcomeLoss: "Defeat",
-	homeOutcomeTie:  "Tie",
-	homeOutcomeDNF:  "DNF",
-}
 
 var homeOutcomeTones = map[int]string{
 	homeOutcomeWin:  OutcomeToneWin,
@@ -108,26 +91,6 @@ func labelForLocale(locale, fr, en string) string {
 	return labelFR(fr, en)
 }
 
-func outcomeLabelForLocale(outcome int, locale string) string {
-	if normalizeHomeLocale(locale) == "en" {
-		if label, ok := homeOutcomeLabelsEN[outcome]; ok {
-			return label
-		}
-		return homeOutcomeLabelFallback
-	}
-	if label, ok := homeOutcomeLabels[outcome]; ok {
-		return label
-	}
-	return homeOutcomeLabelFallback
-}
-
-func outcomeLabel(code int) string {
-	if l, ok := homeOutcomeLabels[code]; ok {
-		return l
-	}
-	return "DNF"
-}
-
 func outcomeTone(code int) string {
 	if t, ok := homeOutcomeTones[code]; ok {
 		return t
@@ -135,19 +98,19 @@ func outcomeTone(code int) string {
 	return OutcomeToneDNF
 }
 
+// buildHomeScoreLabel — chemin LEGACY de l'accueil. Ne fabrique plus le libellé lui-même :
+// il délègue à TeamScoreLabel, source unique depuis le 2026-08-29 (cf.
+// team_score_display.go). Les manches ne sont pas encore portées par HomeMatchRow — nil
+// donc, et la lecture reste celle des points, à l'identique.
 func buildHomeScoreLabel(match legacymatch.HomeMatchRow) *string {
-	if match.Team0Score < 0 || match.Team1Score < 0 {
+	left, right := match.Team0Score, match.Team1Score
+	if match.TeamID == 1 {
+		left, right = match.Team1Score, match.Team0Score
+	}
+	label := TeamScoreLabel(TeamScoreInput{MyPoints: &left, EnemyPoints: &right})
+	if label == "" {
 		return nil
 	}
-
-	leftScore := match.Team0Score
-	rightScore := match.Team1Score
-	if match.TeamID == 1 {
-		leftScore = match.Team1Score
-		rightScore = match.Team0Score
-	}
-
-	label := fmt.Sprintf("%d-%d", leftScore, rightScore)
 	return &label
 }
 
@@ -163,13 +126,17 @@ func buildHomeNarrativeBadges(dominanceFlag int) []string {
 		return []string{"debacle"}
 	case homeDominanceCounterRemontada:
 		return []string{"contre_remontada"}
+	case homeDominanceSabordage:
+		return []string{"sabordage"}
+	case homeDominanceAbnegation:
+		return []string{"abnegation"}
 	default:
 		return nil
 	}
 }
 
 // normalizeHomeModeLabel est un alias interne vers NormalizeModeLabel.
-// ConservÃ© pour ne pas casser les appelants internes au package.
+// Conservé pour ne pas casser les appelants internes au package.
 func normalizeHomeModeLabel(raw string, mapLabels ...string) string {
 	return NormalizeModeLabel(raw, mapLabels...)
 }

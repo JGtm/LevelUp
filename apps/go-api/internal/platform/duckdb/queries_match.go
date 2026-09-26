@@ -6,16 +6,16 @@ import "levelup/go-api/internal/analysis"
 // Q10 : Career — encounters (adversaires et coéquipiers fréquents).
 // Paramètre : ? = xuid du joueur.
 //
-// Résolveur canonique : v_gamertag_lookup gère bots + cascade
-// xuid_aliases / match_participants. Fallback masqué "Joueur ####" (jamais de
-// xuid brut, miroir de analysis.MaskedXuidLabelSQL) pour les xuids orphelins
-// (absents de la vue) — garantit aussi gamertag NON NULL pour le scan Go.
+// AUCUN GAMERTAG EN SQL (lot perf L7, 2026-09-23) : la jointure sur v_gamertag_lookup
+// matérialisait la vue entière à chaque lecture. GetEncounters nomme les lignes par l'annuaire
+// de la lecture (squad_repo_annuaire.go) sur l'historique du joueur : même cascade, bots compris.
+// ORDRE TOTAL (lot perf L9-go, revue D) : match_count DESC puis p2.xuid ASC — sans départage, les
+// ex aequo et la coupe du LIMIT 50 parmi eux variaient d'une lecture à l'autre (L7, découverte 5).
 //
 // Exécutée sur SharedReader (ADR 0016) — pas de préfixe `shared.`.
 const Q10Encounters = `
 SELECT
     p2.xuid,
-    COALESCE(vg.gamertag, ('Joueur ' || RIGHT(p2.xuid, 4))) AS gamertag,
     COUNT(*) AS match_count,
     SUM(CASE WHEN p2.team_id = p1.team_id THEN 1 ELSE 0 END) AS as_teammate,
     SUM(CASE WHEN p2.team_id != p1.team_id THEN 1 ELSE 0 END) AS as_enemy,
@@ -23,11 +23,10 @@ SELECT
 FROM match_participants p1
 JOIN match_participants p2
     ON p1.match_id = p2.match_id AND p2.xuid != p1.xuid
-LEFT JOIN v_gamertag_lookup vg ON vg.xuid = p2.xuid
 WHERE p1.xuid = ?` + campaignExclusionToken + `
-GROUP BY p2.xuid, vg.gamertag
+GROUP BY p2.xuid
 HAVING COUNT(*) >= 2
-ORDER BY match_count DESC
+ORDER BY match_count DESC, p2.xuid ASC
 LIMIT 50`
 
 // Q12 : Match view — scoreboard complet d'un match.
@@ -50,16 +49,6 @@ WITH me_perfect AS (
     FROM medals_earned
     WHERE match_id = ? AND /*__PERFECT_KILL_IN__*/
     GROUP BY xuid
-),
-top_weapons AS (
-    SELECT xuid, wid AS top_weapon_id
-    FROM (
-        SELECT xuid, effective_weapon_id AS wid, COUNT(*) AS wk,
-               ROW_NUMBER() OVER (PARTITION BY xuid ORDER BY COUNT(*) DESC) AS rn
-        FROM v_weapon_kills
-        WHERE match_id = ? AND effective_weapon_id NOT IN (0, 1, 2)
-        GROUP BY xuid, effective_weapon_id
-    ) t WHERE rn = 1
 )
 SELECT
     p.xuid,
@@ -95,15 +84,21 @@ SELECT
     p.ground_pound_kills,
     p.shoulder_bash_kills,
     COALESCE(m.perfect_kills, 0)   AS perfect_kills,
-    w.top_weapon_id,
+    NULL::UBIGINT AS top_weapon_id, -- renseigne en Go, cf. attachTopWeapons
     p.kills_expected,
     p.deaths_expected,
     p.kills_stddev,
-    p.deaths_stddev
+    p.deaths_stddev,
+    -- Participation (API PlayerParticipationInfo) : QUI a rejoint/quitté en cours de
+    -- partie, et QUAND — la source PRÉCISE des lignes d'entrée/sortie du rejeu
+    -- (2026-09-02). NULL sur les matchs d'avant la colonne : le lecteur dégrade.
+    p.joined_in_progress,
+    p.left_in_progress,
+    p.first_joined_time,
+    p.last_leave_time
 FROM match_participants p
 LEFT JOIN v_gamertag_lookup vg ON vg.xuid = p.xuid
 LEFT JOIN me_perfect m ON p.xuid = m.xuid
-LEFT JOIN top_weapons w ON p.xuid = w.xuid
 WHERE p.match_id = ?
   AND NOT (
     COALESCE(p.kills, 0) = 0
@@ -140,6 +135,9 @@ SELECT
     r.playlist_id,
     r.team_0_score,
     r.team_1_score,
+    r.team_0_rounds_won,
+    r.team_1_rounds_won,
+    r.rounds_total,
     COALESCE(r.pair_name_fr, r.pair_name) AS pair_name_fr,
     r.pair_id,
     r.game_variant_id,
@@ -177,22 +175,6 @@ SELECT
 FROM shared.highlight_events he
 WHERE he.match_id = ?
 ORDER BY he.time_ms ASC`
-
-// Q16 : Weapon kills d'un joueur pour un match.
-// Paramètres : ?1 = xuid, ?2 = match_id.
-// Les labels sont résolus ensuite via pdb.Metadata.
-// Utilise v_weapon_kills (effective_weapon_id = COALESCE(reconciled_as, weapon_id))
-// pour appliquer la fusion d'armes (M392→Bandit Evo, Fuel Rod→M41 SPNKr, etc.).
-// Exécutée sur SharedReader (ADR 0016) — pas de préfixe `shared.`.
-const Q16WeaponKills = `
-SELECT
-    wk.effective_weapon_id AS weapon_id,
-    COUNT(*) AS kills
-FROM v_weapon_kills wk
-WHERE wk.xuid = ? AND wk.match_id = ?
-  AND wk.effective_weapon_id NOT IN (0, 1, 2)
-GROUP BY wk.effective_weapon_id
-ORDER BY kills DESC`
 
 // Q17 : Stats d'un joueur pour un match spécifique (match_participants).
 // Paramètres : ?1 = match_id, ?2 = xuid.
@@ -457,16 +439,117 @@ ORDER BY kvf.time_ms ASC`
 // + fallback xuid raw, donc gamertag retourné est toujours non vide quand le
 // xuid est présent en DB. Pour un xuid orphelin (jamais vu en match_participants
 // ni xuid_aliases), vg.gamertag est NULL → caller fallback sur xuid brut.
+//
+// medal_raw : le raw_json des SEULS events `medal` — il porte le nom anglais de la
+// médaille (medal_name), parsé côté Go (medalNameFromRawJSON), jamais par une
+// extension JSON DuckDB. La colonne raw_json est garantie par la chaîne de
+// migration (ApplyHighlightEventsAutoincrement la crée avec la table).
 const Q21MatchEventsWithXUID = `
 SELECT
     he.event_type,
     he.time_ms,
     he.xuid,
-    vg.gamertag AS gamertag
+    vg.gamertag AS gamertag,
+    CASE WHEN he.event_type = 'medal' THEN he.raw_json END AS medal_raw
 FROM highlight_events he
 LEFT JOIN v_gamertag_lookup vg ON vg.xuid = he.xuid
 WHERE he.match_id = ?
 ORDER BY he.time_ms ASC NULLS LAST`
+
+// Q21b : la SOURCE DE DÉGÂT de chaque mort du match, pour l'arme affichée au kill feed.
+//
+// Requête SÉPARÉE de Q21, et c'est une précaution, pas une commodité : la table
+// `match_kill_events` peut être absente d'une base non migrée, ou vide sur un match jamais
+// passé au décodeur de film. La greffer en jointure dans Q21 ferait tomber la requête —
+// donc DISPARAÎTRE tout le kill feed — là où une requête à part se contente de ne rien
+// rendre. La carte Dominance survit sans arme ; elle ne survit pas sans events.
+//
+// TROIS FILTRES, TROIS RAISONS MESURÉES :
+//   - `publishable` : la passe de décodage autorisait-elle la publication LIGNE PAR LIGNE ?
+//     C'est LA colonne dont le DDL dit qu'elle « se lira le jour où une surface affichera
+//     l'ARME d'une mort ». Ce jour est arrivé. Sans elle, 366 matchs (BTB, marge de
+//     bijection nulle) serviraient des armes justes en agrégat et fausses individuellement.
+//   - `source_tag IS NOT NULL` : NULL veut dire « source non mesurée », pas « aucune arme ».
+//   - `HAVING count(DISTINCT source_tag) = 1` : deux morts au même millisecond pour le même
+//     tueur (double kill) donnent deux lignes. Si elles ne s'accordent pas sur l'arme, on
+//     n'en publie AUCUNE. Mesure sur la base de production : 0 désaccord sur 152 009 kills
+//     — la garde ne coûte donc rien aujourd'hui, et évite l'arme fausse le jour où elle en
+//     coûterait.
+//
+// Pas de filtre sur les bots : `feed_killer_xuid` NULL les porte, et un xuid NULL ne peut
+// pas s'apparier avec un event. Ne JAMAIS le normaliser en chaîne vide (piège documenté
+// dans kill_events_source.go).
+//
+// Paramètre : ?1 = match_id. Retourne 3 colonnes : feed_killer_xuid, time_ms, source_tag.
+// Q21b lit AUSSI `source_category` (G.1, 2026-08-30) — le modificateur de dégât fatal
+// (« tir à la tête » quand il vaut `killscope.CategoryHeadshot`, cf. ce paquet). MÊME garde
+// d'unanimité que l'arme, appliquée INDÉPENDAMMENT : un double kill au même (tueur, instant)
+// peut porter la MÊME arme mais des CATÉGORIES différentes (un tir perçant qui touche une tête
+// et un torse dans le même instant) — la HAVING sur `source_tag` seule ne le protégerait pas.
+// Publier une catégorie ambiguë serait le même mensonge qu'une arme fausse : indétectable à
+// l'écran. `source_category` est NULL ssi `source_tag` l'est (DDL, tenu par le persister), donc
+// aucun filtre NULL supplémentaire n'est nécessaire ici.
+const Q21bKillSources = `
+SELECT
+    feed_killer_xuid,
+    time_ms,
+    min(source_tag) AS source_tag,
+    min(source_category) AS source_category
+FROM ` + KillEventsCanonicalTable + `
+WHERE match_id = ?
+  AND publishable
+  AND source_tag IS NOT NULL
+  AND feed_killer_xuid IS NOT NULL
+GROUP BY feed_killer_xuid, time_ms
+HAVING count(DISTINCT source_tag) = 1
+   AND count(DISTINCT source_category) = 1`
+
+// Q21c : l'ASSISTANT de chaque mort du match et les deux parts de dégâts, pour le kill feed.
+//
+// Requête SŒUR de Q21b, séparée pour la même raison ET une de plus : l'assistance est lue
+// même quand la source de dégât ne l'est pas (les deux viennent de structures différentes du
+// paquet — kill-event contre dead-state). La conditionner à `source_tag IS NOT NULL`
+// perdrait des assistants mesurés.
+//
+// LES TROIS ÉTATS DE L'ASSISTANCE, ET LA REQUÊTE N'EN REND QUE DEUX :
+//   - `assist_known = FALSE` (ON NE SAIT PAS) n'est PAS remonté : l'absence de ligne
+//     appariée EST l'état « inconnu » côté feed — écrire « pas d'assistant » à sa place
+//     serait le mensonge que tout le schéma évite ;
+//   - une ligne avec `assist_gamertag` NULL = MESURÉ, pas d'assistant ;
+//   - une ligne nommée porte l'assistant et les parts (killer_damage_pct dès l'attachement,
+//     assist_damage_pct seulement si le champ assistant était présent — DDL de la table).
+//
+// UNANIMITÉ par (tueur, instant), même garde que Q21b mais sur le TUPLE COMPLET : deux morts
+// au même millisecond du même tueur qui ne s'accordent pas sur l'assistance ne publient
+// RIEN — accrocher l'assistant du kill A au kill B serait indétectable à l'écran. Les
+// sentinelles du COALESCE n'existent pas en données réelles (gamertag vide, part négative).
+//
+// Paramètre : ?1 = match_id. Retourne 6 colonnes : feed_killer_xuid, time_ms,
+// assist_gamertag, assist_xuid, killer_damage_pct, assist_damage_pct.
+const Q21cKillAssists = `
+SELECT
+    feed_killer_xuid,
+    time_ms,
+    min(assist_gamertag)   AS assist_gamertag,
+    min(assist_xuid)       AS assist_xuid,
+    min(killer_damage_pct) AS killer_damage_pct,
+    min(assist_damage_pct) AS assist_damage_pct
+FROM ` + KillEventsCanonicalTable + `
+WHERE match_id = ?
+  AND publishable
+  AND assist_known
+  AND feed_killer_xuid IS NOT NULL
+GROUP BY feed_killer_xuid, time_ms
+HAVING count(DISTINCT (
+    COALESCE(assist_gamertag, ''),
+    COALESCE(assist_xuid, ''),
+    COALESCE(killer_damage_pct, -1),
+    COALESCE(assist_damage_pct, -1)
+)) = 1`
+
+// Q21d vit dans match_view_repo_assist_pairs.go, à côté de son unique lecteur : ce
+// fichier est au-delà du seuil des 500 lignes (dette gelée). Elle agrège la MÊME table
+// par (assistant, tueur assisté) sur tout le match — un agrégat, pas une ligne par mort.
 
 // Q25 : Navigation prev/next entre matchs adjacents d'un joueur (chronologie globale).
 // Paramètres : ?1 = xuid, ?2 = match_id, ?3 = xuid (réutilisé pour la CTE).

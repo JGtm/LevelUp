@@ -31,10 +31,12 @@ import (
 	"levelup/go-api/internal/observability/logging"
 	auth_platform "levelup/go-api/internal/platform/auth"
 	"levelup/go-api/internal/platform/dblease"
+	"levelup/go-api/internal/platform/friendstore"
 	"levelup/go-api/internal/platform/jobs"
 	settings_platform "levelup/go-api/internal/platform/settings"
 	"levelup/go-api/internal/service"
 	go_sync "levelup/go-api/internal/sync"
+	"levelup/go-api/internal/sync/replayartifacts"
 )
 
 // syncJobTimeout borne la durée d'un job de sync HTTP (D3-04, revue 2026-06-01).
@@ -68,10 +70,13 @@ type PostSyncDeltaHook func(ctx context.Context, slug string) (after func(ctx co
 type SyncHandler struct {
 	cfg           *config.AppConfig
 	settingsStore *settings_platform.Store
-	jobStore      *jobs.Store
-	provider      auth_platform.TokenProvider
-	notifierFor   NotificationsEmitterFactory // optionnel
-	postSync      PostSyncDeltaHook           // optionnel : season_pass_level / objective_completed / challenge_completed
+	// friendStore : amis PAR JOUEUR pour le hook post-sync is_with_friends.
+	// nil → pas de FriendsLoader sur les moteurs construits ici.
+	friendStore *friendstore.FriendStore
+	jobStore    *jobs.Store
+	provider    auth_platform.TokenProvider
+	notifierFor NotificationsEmitterFactory // optionnel
+	postSync    PostSyncDeltaHook           // optionnel : season_pass_level / objective_completed / challenge_completed
 	// prestigeHook (optionnel) ré-évalue les défis Prestige actifs après ingestion.
 	// Injecté par server.go = PrestigeBundle.RunPostSync (no-op si flag off ou bundle
 	// nil). Câblé sur le SyncEngine construit par le handler (newEngineFor) via
@@ -102,6 +107,9 @@ type SyncHandler struct {
 	cooldown     time.Duration
 	cooldownMu   gosync.Mutex
 	lastManualAt map[string]time.Time
+	// replayEnqueue met la construction d'un rejeu dans la file durable (chemin
+	// « ouvrier »). Injecté par server_apiv1.go depuis le ServiceRegistry.
+	replayEnqueue replayartifacts.EnqueueFunc
 }
 
 // NewSyncHandler crée un SyncHandler.
@@ -121,6 +129,22 @@ func NewSyncHandler(
 		cooldown:      defaultManualSyncCooldown,
 		lastManualAt:  make(map[string]time.Time),
 	}
+}
+
+// WithFriendStore branche le store des amis par joueur (data/global/player_friends.json)
+// sur les moteurs construits par ce handler. Sans lui, les matchs synchronisés depuis
+// un sync HTTP restent is_with_friends=FALSE jusqu'au prochain recompute.
+func (h *SyncHandler) WithFriendStore(store *friendstore.FriendStore) *SyncHandler {
+	h.friendStore = store
+	return h
+}
+
+// WithReplayEnqueuer branche la mise en file des rejeux (= ServiceRegistry.
+// EnqueueReplayBuild) sur le moteur LEGACY construit par ce handler. Nil → le
+// placement « worker » dégrade en « aucune construction », journalisé.
+func (h *SyncHandler) WithReplayEnqueuer(enqueue replayartifacts.EnqueueFunc) *SyncHandler {
+	h.replayEnqueue = enqueue
+	return h
 }
 
 // WithSyncGate branche le gate de déduplication cross-source (le Coordinator
@@ -166,16 +190,16 @@ func (h *SyncHandler) WithPostSyncDeltaHook(hook PostSyncDeltaHook) *SyncHandler
 // les joueurs réels PlayerSlug == Gamertag (config_players.go).
 type PrestigeHook func(ctx context.Context, playerSlug, titleSlug string)
 
-// newEngineFor instancie un SyncEngine pré-câblé avec le loader friends
-// (settings.FriendGamertags), pour que le hook auto-recompute is_with_friends
-// post-sync delta soit toujours actif sur les syncs déclenchés par cet handler.
+// newEngineFor instancie un SyncEngine pré-câblé avec le loader des amis DU
+// JOUEUR synchronisé (data/global/player_friends.json), pour que le hook
+// auto-recompute is_with_friends post-sync delta soit toujours actif sur les
+// syncs déclenchés par cet handler.
 func (h *SyncHandler) newEngineFor(titleSlug, gamertag, xuid string, tokens *domain.HaloTokens) *go_sync.SyncEngine {
-	loader := func() ([]string, error) {
-		s, err := h.settingsStore.Load()
-		if err != nil {
-			return nil, err
+	var loader go_sync.FriendsLoader
+	if h.friendStore != nil && xuid != "" {
+		loader = func() ([]string, error) {
+			return h.friendStore.Get(xuid)
 		}
-		return s.FriendGamertags, nil
 	}
 	// Title-aware (MT-11 / PMT-3) : le moteur écrit dans data/titles/{titleSlug}/...
 	// au lieu de halo_infinite systématique (corrige le sync initial multi-titre).
@@ -189,6 +213,13 @@ func (h *SyncHandler) newEngineFor(titleSlug, gamertag, xuid string, tokens *dom
 	// readers HTTP pendant cette fenêtre. Wire identique à scheduler/auto_sync.go.
 	if h.cfg.SharedProvider != nil {
 		engine = engine.WithSharedProvider(h.cfg.SharedProvider)
+	}
+	// Fil de l'eau des artefacts de rejeu 2D (lot 6 v7.5). Le hook s'installe toujours ;
+	// c'est lui qui décide (replay_build_location, relu à chaque cycle). Parité
+	// scheduler/BuildEngine — chemin LEGACY, emprunté seulement quand engineBuilder
+	// n'est pas câblé.
+	if h.settingsStore != nil {
+		engine = engine.WithReplayArtifacts(replayartifacts.NewHook(h.cfg, h.settingsStore, h.replayEnqueue))
 	}
 	// Media scan post-sync : cohérent avec AutoSyncScheduler.defaultRunnerFactory.
 	// timezone REQUISE pour parseCaptureTimeFromFilename (cf. media_index_service).

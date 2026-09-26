@@ -1,0 +1,402 @@
+<!doctype html>
+<html lang="fr">
+<meta charset="utf-8">
+<title>Records de distance de frag — cinq rendus</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  /* Jetons de l'app (apps/web/src/styles/globals.css + lib/accessibility/palettes/default.ts),
+     repris à l'identique, jamais inventés. */
+  :root {
+    --background: oklch(0.985 0.004 255); --foreground: oklch(0.255 0.02 255);
+    --card: oklch(0.995 0.002 255); --border: oklch(0.9 0.01 255); --muted: oklch(0.96 0.008 255);
+    --muted-foreground: oklch(0.52 0.015 255); --popover: oklch(0.995 0.002 255); --info: oklch(0.62 0.12 220);
+    --chart-series-1: #93C5FD; --chart-series-3: #4F46E5; --perf-tier-2: #06B6D4; --legendary: #FBBF24;
+    --frag-shoulder: #06B6D4; --frag-sidearm: #10B981; --frag-heavy: #7C3AED; --frag-grenade: #F59E0B;
+    --radius: 0.5rem;
+  }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+    --background: oklch(0.145 0 0); --foreground: oklch(0.985 0 0); --card: oklch(0.205 0 0); --border: oklch(0.275 0 0);
+    --muted: oklch(0.269 0 0); --muted-foreground: oklch(0.708 0 0); --popover: oklch(0.269 0 0); --info: oklch(0.70 0.12 220);
+  } }
+  :root[data-theme="dark"] {
+    --background: oklch(0.145 0 0); --foreground: oklch(0.985 0 0); --card: oklch(0.205 0 0); --border: oklch(0.275 0 0);
+    --muted: oklch(0.269 0 0); --muted-foreground: oklch(0.708 0 0); --popover: oklch(0.269 0 0); --info: oklch(0.70 0.12 220);
+  }
+  body { margin: 0; background: var(--background); color: var(--foreground); font-family: 'Roboto', system-ui, sans-serif; font-size: 14px; line-height: 1.45; -webkit-font-smoothing: antialiased; }
+  .page { max-width: 1180px; margin: 0 auto; padding: 24px 20px 64px; }
+  .crumb { font-size: 12px; color: var(--muted-foreground); display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .crumb .sep { opacity: .5; }
+  .chip { display: inline-flex; align-items: center; gap: 6px; border: 1px dashed var(--border); border-radius: 999px; padding: 2px 10px; font-size: 11px; color: var(--muted-foreground); letter-spacing: .02em; text-transform: uppercase; }
+  .toolbar { display: flex; gap: 8px; margin-left: auto; }
+  button { font: inherit; font-size: 12px; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--border); background: var(--card); color: var(--foreground); cursor: pointer; }
+  h1 { font-size: 20px; margin: 16px 0 4px; }
+  p.lede { margin: 0; font-size: 13px; color: var(--muted-foreground); max-width: 80ch; }
+  section.block { display: flex; flex-direction: column; gap: 10px; margin-top: 28px; }
+  section.block > header h2 { margin: 0; font-size: 16px; font-weight: 600; }
+  section.block > header p { margin: 2px 0 0; font-size: 12px; color: var(--muted-foreground); max-width: 90ch; }
+  .verdict { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; font-size: 12px; color: var(--muted-foreground); margin: 0; padding: 0; list-style: none; }
+  .verdict li { border-left: 2px solid var(--border); padding-left: 10px; }
+  .verdict b { color: var(--foreground); font-weight: 500; }
+
+  .kpis { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; padding: 12px 12px 0; }
+  .accent-card { border-radius: var(--radius); overflow: hidden; border: 1px solid var(--border); background: var(--card); cursor: pointer; }
+  .accent-card:hover { border-color: var(--info); }
+  .accent-card .bar { height: 3px; }
+  .accent-card .body { padding: 12px; display: flex; flex-direction: column; gap: 2px; }
+  .accent-card .label { font-size: 12px; color: var(--muted-foreground); }
+  .accent-card .value { font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .accent-card .sub { font-size: 11px; color: var(--muted-foreground); font-variant-numeric: tabular-nums; }
+
+  .section-card { position: relative; display: flex; flex-direction: column; border-radius: var(--radius); border: 1px solid var(--border); background: var(--card); min-width: 0; }
+  .section-card > h3 { margin: 0; border-bottom: 1px solid var(--border); padding: 8px 12px; font-size: 14px; font-weight: 500; display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+  .section-card > h3 .count { font-size: 11px; font-weight: 400; color: var(--muted-foreground); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .sub-row { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 10px 12px 0; flex-wrap: wrap; }
+  .sub-title { font-size: 12px; font-weight: 600; margin: 0; }
+  .sub-title span { font-weight: 400; color: var(--muted-foreground); }
+  .legend { display: flex; gap: 14px; font-size: 11px; color: var(--muted-foreground); margin: 0; padding: 0; list-style: none; flex-wrap: wrap; }
+  .legend li { display: inline-flex; align-items: center; gap: 6px; }
+  .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; }
+  .legend i.dia { transform: rotate(45deg); width: 8px; height: 8px; }
+  .legend i.ring { border-radius: 50%; border: 2px solid var(--muted-foreground); background: transparent; box-sizing: border-box; }
+  .chart { width: 100%; padding: 6px 12px 4px; box-sizing: border-box; }
+  .chart svg { display: block; width: 100%; height: auto; overflow: visible; font-family: inherit; }
+  .note { padding: 4px 12px 10px; font-size: 11px; color: var(--muted-foreground); margin: 0; }
+  .note b { font-weight: 500; color: var(--foreground); }
+  svg text { fill: var(--foreground); font-size: 11px; }
+  svg text.muted { fill: var(--muted-foreground); font-size: 10px; }
+  svg text.num { font-variant-numeric: tabular-nums; }
+  svg .grid { stroke: var(--border); stroke-width: 1; }
+  svg .axis { stroke: var(--muted-foreground); stroke-width: 1.5; }
+  svg .leader { stroke: var(--border); stroke-width: 1; }
+  svg .hit { cursor: pointer; }
+  svg .hit:hover .mark { stroke: var(--foreground); stroke-width: 2; }
+  svg .stem { stroke: var(--muted-foreground); stroke-width: 1.5; opacity: .55; }
+  svg .dot { opacity: .38; }
+  #tip { position: fixed; z-index: 10; pointer-events: none; display: none; background: var(--popover); border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; font-size: 11px; box-shadow: 0 4px 12px rgba(0,0,0,.35); max-width: 280px; line-height: 1.4; }
+  #tip b { font-weight: 600; }
+  #tip .m { color: var(--muted-foreground); }
+  table.cmp { border-collapse: collapse; font-size: 12px; width: 100%; margin-top: 8px; }
+  table.cmp th, table.cmp td { text-align: left; padding: 6px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  table.cmp th { font-weight: 500; color: var(--muted-foreground); }
+  @media (max-width: 860px) { .kpis, .verdict { grid-template-columns: 1fr; } }
+</style>
+
+<div class="page">
+  <div class="crumb">
+    <span>Synthèse</span><span class="sep">/</span><span>Frags</span><span class="sep">/</span><span>Records de distance</span>
+    <span class="chip">Maquette · données d'illustration</span>
+    <div class="toolbar"><button id="theme">Basculer clair / sombre</button></div>
+  </div>
+  <h1>Vos frags les plus lointains, par arme</h1>
+  <p class="lede">Cinq rendus d'une même donnée : pour chaque arme, le frag mesuré le plus lointain, avec la médiane comme repère d'habitude et le match d'où il vient. Tous les frags mesurés comptent, quel que soit l'effectif de l'arme. Le corps à corps est écarté et nommé en pied. Chaque marqueur est cliquable vers la vue de match (le saut à l'horodatage dans le rejeu n'existe pas encore sur la route, c'est une extension à prévoir). Aucun libellé ne dit « portée de l'arme » : c'est votre usage mesuré.</p>
+
+  <!-- ───────── Rendu A ───────── -->
+  <section class="block" id="a">
+    <header><h2>Rendu A — La règle</h2><p>Une seule ligne graduée, du contact à la longue portée. Un losange par arme à son record, couleur par classe d'arme (la même que le sunburst voisin), libellés étagés au-dessus pour ne jamais se chevaucher. Tient en une bande sous la rangée frags.</p></header>
+    <section class="section-card">
+      <h3>Records de distance par arme <span class="count">18 armes · 1 214 frags mesurés sur 1 602</span></h3>
+      <div class="sub-row"><p class="sub-title">Frag le plus lointain <span>— un losange par arme, survolez pour le match</span></p><ul class="legend" id="legend-a"></ul></div>
+      <div class="chart" id="chart-a"></div>
+      <p class="note"><b>Écartés</b> : Mêlée (133), Épée à énergie (41), Marteau antigravité (2), Chute et environnement (11) — une distance n'y a pas de sens. Ne compte que les frags dont la position du tueur et de la victime est mesurée.</p>
+    </section>
+    <ul class="verdict">
+      <li><b>Pour</b> — le plus compact des cinq, lecture en une seconde, forme absente de Séries temporelles, les classes se voient d'un coup.</li>
+      <li><b>Contre</b> — les armes de contact s'entassent à gauche, la médiane n'est pas visible (infobulle seulement), 18 libellés étagés demandent quatre rangs.</li>
+    </ul>
+  </section>
+
+  <!-- ───────── Rendu B ───────── -->
+  <section class="block" id="b">
+    <header><h2>Rendu B — Les haltères</h2><p>Une ligne par arme, triée par record décroissant. Un anneau sur la médiane, un losange sur le record, un trait entre les deux : la longueur du trait dit de combien le record dépasse l'habitude. Le match source se lit à droite de chaque ligne.</p></header>
+    <section class="section-card">
+      <h3>Records de distance par arme <span class="count">18 armes · 1 214 frags mesurés sur 1 602</span></h3>
+      <div class="sub-row"><p class="sub-title">Médiane et record <span>— le trait mesure l'écart entre les deux</span></p><ul class="legend"><li><i class="ring"></i>Médiane de l'arme</li><li><i class="dia" style="background: var(--legendary)"></i>Record</li></ul></div>
+      <div class="chart" id="chart-b"></div>
+      <p class="note"><b>Écartés</b> : Mêlée (133), Épée à énergie (41), Marteau antigravité (2), Chute et environnement (11).</p>
+    </section>
+    <ul class="verdict">
+      <li><b>Pour</b> — le record se lit contre l'habitude, le match source est visible sans survol, aucune collision de libellés possible.</li>
+      <li><b>Contre</b> — 18 lignes, c'est haut ; la forme ressemble au bâton de Séries temporelles (même axe, mêmes lignes) même si le contenu diffère.</li>
+    </ul>
+  </section>
+
+  <!-- ───────── Rendu C ───────── -->
+  <section class="block" id="c">
+    <header><h2>Rendu C — La règle en miroir</h2><p>La règle du rendu A, avec vos frags au-dessus de l'axe et vos morts en dessous (l'arme est celle du tueur). Le record de mort la plus lointaine est aussi une histoire : « on m'a snipé à 118 m ».</p></header>
+    <section class="section-card">
+      <h3>Records de distance par arme <span class="count">18 armes · 1 214 frags et 1 087 morts mesurés</span></h3>
+      <div class="sub-row"><p class="sub-title">Frag le plus lointain, mort la plus lointaine <span>— au-dessus, en dessous</span></p><ul class="legend"><li><i class="dia" style="background: var(--chart-series-1)"></i>Mes frags (au-dessus)</li><li><i class="dia" style="background: var(--chart-series-3)"></i>Mes morts (en dessous)</li></ul></div>
+      <div class="chart" id="chart-c"></div>
+      <p class="note"><b>Écartés</b> : Mêlée, Épée à énergie, Marteau antigravité, Chute et environnement, des deux côtés.</p>
+    </section>
+    <ul class="verdict">
+      <li><b>Pour</b> — deux histoires pour le prix d'une, symétrie immédiate avec le bâton frags / morts que le joueur connaît déjà.</li>
+      <li><b>Contre</b> — la couleur ne porte plus la classe, deux fois plus de libellés à étager, la bande devient haute.</li>
+    </ul>
+  </section>
+
+  <!-- ───────── Rendu D ───────── -->
+  <section class="block" id="d">
+    <header><h2>Rendu D — L'essaim</h2><p>Une ligne par arme, chaque frag mesuré est un point, le record est le dernier point, mis en avant. On voit si le record est le prolongement d'une habitude ou un coup isolé. Limité aux dix armes les plus utilisées pour rester lisible.</p></header>
+    <section class="section-card">
+      <h3>Distance de chaque frag, par arme <span class="count">10 armes · 1 118 frags mesurés</span></h3>
+      <div class="sub-row"><p class="sub-title">Tous les frags mesurés <span>— un point par frag, le record en losange</span></p><ul class="legend"><li><i style="background: var(--chart-series-1); border-radius: 50%"></i>Un frag</li><li><i class="ring"></i>Médiane</li><li><i class="dia" style="background: var(--legendary)"></i>Record</li></ul></div>
+      <div class="chart" id="chart-d"></div>
+      <p class="note">Les huit autres armes (Hydra, Disrupteur, Pistolet à plasma, Fusil traqueur, Fusil électrique, Empaleur, Needler, M41 SPNKr) sont dans le tableau dépliable, pas dans le graphe.</p>
+    </section>
+    <ul class="verdict">
+      <li><b>Pour</b> — le plus honnête : un record isolé se voit comme tel, la distribution complète est là sans percentile.</li>
+      <li><b>Contre</b> — lourd (1 000 points), redondant avec le bâton p10 à p90, impose une coupe à dix armes. Plutôt un encart de vue de match qu'un bloc de Synthèse.</li>
+    </ul>
+  </section>
+
+  <!-- ───────── Rendu E ───────── -->
+  <section class="block" id="e">
+    <header><h2>Rendu E — Trois tuiles et la règle</h2><p>Le rendu A précédé de trois cartes « Meilleures stats » : le frag le plus lointain toutes armes, la mort la plus lointaine, le frag explosif le plus lointain. Les cartes donnent le chiffre à retenir, la règle donne le détail par arme.</p></header>
+    <section class="section-card">
+      <h3>Records de distance <span class="count">1 214 frags et 1 087 morts mesurés</span></h3>
+      <div class="kpis" role="list">
+        <div class="accent-card" role="listitem" title="Ouvrir le match"><div class="bar" style="background: var(--frag-heavy)"></div><div class="body"><span class="label">Frag le plus lointain</span><span class="value">96,4 m</span><span class="sub">S7 Sniper · Behemoth · 14 août 2026</span></div></div>
+        <div class="accent-card" role="listitem" title="Ouvrir le match"><div class="bar" style="background: var(--chart-series-3)"></div><div class="body"><span class="label">Mort la plus lointaine</span><span class="value">118,3 m</span><span class="sub">S7 Sniper adverse · Oasis · 2 juillet 2026</span></div></div>
+        <div class="accent-card" role="listitem" title="Ouvrir le match"><div class="bar" style="background: var(--frag-grenade)"></div><div class="body"><span class="label">Frag explosif le plus lointain</span><span class="value">38,2 m</span><span class="sub">M41 SPNKr · Highpower · 21 juin 2026</span></div></div>
+      </div>
+      <div class="sub-row"><p class="sub-title">Par arme <span>— un losange par arme, couleur par classe</span></p><ul class="legend" id="legend-e"></ul></div>
+      <div class="chart" id="chart-e"></div>
+      <p class="note"><b>Écartés</b> : Mêlée (133), Épée à énergie (41), Marteau antigravité (2), Chute et environnement (11).</p>
+    </section>
+    <ul class="verdict">
+      <li><b>Pour</b> — le chiffre à raconter est servi d'abord, la règle reste compacte, les tuiles reprennent un composant existant de la page.</li>
+      <li><b>Contre</b> — trois chiffres de plus dans une page qui en a déjà beaucoup ; la mort la plus lointaine mêle un deuxième axe (le tueur) au bloc.</li>
+    </ul>
+  </section>
+
+  <section class="block">
+    <header><h2>En un tableau</h2></header>
+    <table class="cmp">
+      <thead><tr><th>Rendu</th><th>Hauteur pour 18 armes</th><th>Ce qu'il montre en plus du record</th><th>Coût côté Go</th></tr></thead>
+      <tbody>
+        <tr><td>A — Règle</td><td>~ 200 px (cinq rangs de libellés)</td><td>La classe d'arme</td><td>Une lecture : top 1 par arme, avec match et horodatage</td></tr>
+        <tr><td>B — Haltères</td><td>~ 520 px</td><td>La médiane et l'écart au record, le match source sans survol</td><td>Idem A, plus la médiane (déjà calculée pour Séries temporelles)</td></tr>
+        <tr><td>C — Miroir</td><td>~ 330 px</td><td>Le record de mort subie</td><td>Idem A, deux côtés</td></tr>
+        <tr><td>D — Essaim</td><td>~ 320 px (10 armes)</td><td>Toute la distribution</td><td>Toutes les mesures transitent vers le web (1 000 points)</td></tr>
+        <tr><td>E — Tuiles + règle</td><td>~ 310 px</td><td>Trois records globaux</td><td>Idem C</td></tr>
+      </tbody>
+    </table>
+  </section>
+</div>
+<div id="tip" role="tooltip"></div>
+
+<script>
+(function () {
+  'use strict';
+  // Données d'illustration : un joueur d'arène et de BTB, période « 3 derniers mois ». Ordres de
+  // grandeur cohérents avec la sonde du 2026-09-06 (médianes) ; les records sont plausibles pour
+  // Halo Infinite (un S7 à 96 m sur Behemoth, un BR à 52 m sur Fragmentation).
+  const W = [
+    { k: 'hinf_s7_sniper',     l: 'S7 Sniper',            c: 'heavy',    n: 43,  med: 28.3, rec: 96.4, drec: 118.3, map: 'Behemoth',      mode: 'BTB Slayer',        d: '14 août 2026',  v: 'Stryker_Volt' },
+    { k: 'hinf_shock_rifle',   l: 'Fusil électrique',     c: 'heavy',    n: 21,  med: 24.1, rec: 71.2, drec: 84.0,  map: 'Deadlock',      mode: 'BTB CTF',           d: '3 sept. 2026',  v: 'Kaelith' },
+    { k: 'hinf_skewer',        l: 'Empaleur',             c: 'heavy',    n: 17,  med: 12.6, rec: 58.9, drec: 63.1,  map: 'Fragmentation', mode: 'BTB Total Control', d: '9 juil. 2026',  v: 'NovaRex' },
+    { k: 'hinf_br75',          l: 'BR75',                 c: 'shoulder', n: 281, med: 13.6, rec: 52.7, drec: 49.2,  map: 'Fragmentation', mode: 'BTB Slayer',        d: '28 août 2026',  v: 'Draxon_7' },
+    { k: 'hinf_bandit',        l: 'Bandit EVO',           c: 'shoulder', n: 96,  med: 12.1, rec: 47.3, drec: 45.0,  map: 'Recharge',      mode: 'Ranked Arena',      d: '11 sept. 2026', v: 'Vexmire' },
+    { k: 'hinf_stalker_rifle', l: 'Fusil traqueur',       c: 'shoulder', n: 12,  med: 15.8, rec: 44.6, drec: 51.3,  map: 'Oasis',         mode: 'BTB Slayer',        d: '2 juil. 2026',  v: 'Orbit_Kane' },
+    { k: 'hinf_vk78_commando', l: 'VK78 Commando',        c: 'shoulder', n: 64,  med: 11.9, rec: 41.0, drec: 36.4,  map: 'Streets',       mode: 'Quick Play',        d: '6 août 2026',   v: 'Lumen_Sky' },
+    { k: 'hinf_m41_spnkr',     l: 'M41 SPNKr',            c: 'heavy',    n: 29,  med: 9.8,  rec: 38.2, drec: 44.7,  map: 'Highpower',     mode: 'BTB CTF',           d: '21 juin 2026',  v: 'Tarvik' },
+    { k: 'hinf_sidekick',      l: 'MK50 Sidekick',        c: 'sidearm',  n: 212, med: 7.0,  rec: 33.8, drec: 30.1,  map: 'Aquarius',      mode: 'Ranked Arena',      d: '30 août 2026',  v: 'Ashen_Iris' },
+    { k: 'hinf_hydra',         l: 'Hydra',                c: 'heavy',    n: 6,   med: 14.2, rec: 31.7, drec: 35.2,  map: 'Breaker',       mode: 'BTB Slayer',        d: '17 juil. 2026', v: 'Quillon' },
+    { k: 'hinf_ma40_ar',       l: 'MA40 AR',              c: 'shoulder', n: 296, med: 6.1,  rec: 27.5, drec: 24.8,  map: 'Live Fire',     mode: 'Quick Play',        d: '19 sept. 2026', v: 'Sable_Wren' },
+    { k: 'hinf_mangler',       l: 'Déchiqueteur',         c: 'sidearm',  n: 47,  med: 8.2,  rec: 26.1, drec: 22.7,  map: 'Bazaar',        mode: 'Ranked Arena',      d: '25 août 2026',  v: 'Ferrox' },
+    { k: 'hinf_frag_grenade',  l: 'Grenade frag',         c: 'grenade',  n: 88,  med: 5.4,  rec: 22.9, drec: 25.6,  map: 'Catalyst',      mode: 'Quick Play',        d: '4 sept. 2026',  v: 'Ilyra' },
+    { k: 'hinf_needler',       l: 'Needler',              c: 'shoulder', n: 33,  med: 7.9,  rec: 19.4, drec: 17.9,  map: 'Empyrean',      mode: 'Quick Play',        d: '12 juil. 2026', v: 'Bramwell' },
+    { k: 'hinf_plasma_grenade', l: 'Grenade plasma',      c: 'grenade',  n: 39,  med: 4.7,  rec: 18.3, drec: 20.1,  map: 'Forbidden',     mode: 'Ranked Arena',      d: '8 sept. 2026',  v: 'Cinder_Mox' },
+    { k: 'hinf_disruptor',     l: 'Disrupteur',           c: 'sidearm',  n: 4,   med: 8.9,  rec: 15.2, drec: 13.0,  map: 'Streets',       mode: 'Quick Play',        d: '1 août 2026',   v: 'Halcyon_V' },
+    { k: 'hinf_plasma_pistol', l: 'Pistolet à plasma',    c: 'sidearm',  n: 9,   med: 5.5,  rec: 12.4, drec: 9.7,   map: 'Recharge',      mode: 'Quick Play',        d: '22 juil. 2026', v: 'Mirelle' },
+    { k: 'hinf_cqs48_bulldog', l: 'CQS48 Bulldog',        c: 'shoulder', n: 58,  med: 4.3,  rec: 9.8,  drec: 8.6,   map: 'Solitude',      mode: 'Ranked Arena',      d: '15 sept. 2026', v: 'Grimsby' },
+  ];
+  const CLASSES = [['shoulder', 'Arme d\'épaule'], ['sidearm', 'Arme de poing'], ['heavy', 'Arme lourde'], ['grenade', 'Grenade']];
+  const fmt = new Intl.NumberFormat('fr-FR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+  const fmtM = (m) => fmt.format(m) + ' m';
+  const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const NS = 'http://www.w3.org/2000/svg';
+  const el = (tag, attrs, text) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); if (text != null) e.textContent = text; return e; };
+  const tok = (name) => `var(--${name})`;
+  const classColor = (c) => tok('frag-' + c);
+  const XMAX = 100;
+  const textW = (s, size) => s.length * (size || 11) * 0.62 + 12;
+  const diamond = (cx, cy, r, fill) => el('polygon', { points: `${cx},${cy - r} ${cx + r},${cy} ${cx},${cy + r} ${cx - r},${cy}`, fill, stroke: tok('card'), 'stroke-width': 1, class: 'mark' });
+
+  // Infobulle partagée : arme, record, contexte, match. C'est l'infobulle qui porte le lien.
+  const tip = document.getElementById('tip');
+  const tipHTML = (w, side) => {
+    const isDeath = side === 'death';
+    return `<b>${esc(w.l)}</b> — ${isDeath ? 'mort la plus lointaine' : 'frag le plus lointain'}<br>` +
+      `<span class="num"><b>${esc(fmtM(isDeath ? w.drec : w.rec))}</b></span> <span class="m">· médiane ${esc(fmtM(w.med))} · ${w.n} frags mesurés</span><br>` +
+      `<span class="m">${esc(w.map)} · ${esc(w.mode)} · ${esc(w.d)} · ${isDeath ? 'tué par' : 'sur'} ${esc(w.v)}</span><br>` +
+      `<span class="m">Cliquer : ouvrir le match</span>`;
+  };
+  function bindTip(node, w, side) {
+    node.classList.add('hit');
+    node.addEventListener('mouseenter', () => { tip.innerHTML = tipHTML(w, side); tip.style.display = 'block'; });
+    node.addEventListener('mousemove', (e) => { tip.style.left = (e.clientX + 14) + 'px'; tip.style.top = (e.clientY + 14) + 'px'; });
+    node.addEventListener('mouseleave', () => { tip.style.display = 'none'; });
+    node.addEventListener('click', () => { window.alert(`Maquette : ouvrirait /t/halo_infinite/players/<moi>/matches/<id> (${w.map}, ${w.d}), onglet rejeu, à l'instant du frag.`); });
+  }
+
+  // Étagement glouton des libellés : rang = le premier où le libellé précédent ne déborde pas.
+  function stagger(items, minGap) {
+    const rows = [];
+    return items.map((it) => {
+      let r = 0;
+      while (rows[r] != null && rows[r] + minGap > it.x0) r += 1;
+      rows[r] = it.x1;
+      return r;
+    });
+  }
+  const axisTicks = (svg, x, y, w, labelBelow) => {
+    svg.appendChild(el('line', { x1: x(0), x2: x(XMAX), y1: y, y2: y, class: 'axis' }));
+    for (let m = 0; m <= XMAX; m += 10) {
+      svg.appendChild(el('line', { x1: x(m), x2: x(m), y1: y - 4, y2: y + 4, class: 'axis' }));
+      svg.appendChild(el('text', { x: x(m), y: labelBelow ? y + 16 : y - 8, 'text-anchor': 'middle', class: 'muted num' }, m + ' m'));
+    }
+  };
+
+  // Rendu A / E : la règle. Une ligne, losanges au record, libellés étagés au-dessus.
+  function ruler(host, opts) {
+    const width = host.clientWidth - 24;
+    const rows = [...W].sort((a, b) => a.rec - b.rec);
+    const items = rows.map((w) => { const tw = textW(w.l); const cx = 16 + (w.rec / XMAX) * (width - 32); return { w, cx, x0: Math.max(0, cx - tw / 2), x1: Math.min(width, cx + tw / 2) }; });
+    // Un libellé recentré si sa boîte sort de la zone : la position du losange, elle, ne bouge pas.
+    items.forEach((it) => { const tw = it.x1 - it.x0; if (it.x0 <= 0) { it.x0 = 0; it.x1 = tw; } if (it.x1 >= width) { it.x1 = width; it.x0 = width - tw; } });
+    const rank = stagger(items, 14);
+    // Deux lignes de texte par libellé (nom + record) : le rang fait 28 px, pas 18.
+    const ROWH = 28, nRows = Math.max(...rank) + 1;
+    const top = 8, axisY = top + nRows * ROWH + 14, H = axisY + 26;
+    const svg = el('svg', { viewBox: `0 0 ${width} ${H}`, width, height: H });
+    const x = (m) => 16 + (m / XMAX) * (width - 32);
+    for (let m = 0; m <= XMAX; m += 10) svg.appendChild(el('line', { x1: x(m), x2: x(m), y1: top, y2: axisY, class: 'grid', 'stroke-dasharray': '2 4' }));
+    axisTicks(svg, x, axisY, width, true);
+    items.forEach((it, i) => {
+      const ly = axisY - 10 - (nRows - 1 - rank[i]) * ROWH;
+      const g = el('g', {});
+      g.appendChild(el('line', { x1: it.cx, x2: it.cx, y1: ly + 4, y2: axisY - 7, class: 'leader' }));
+      g.appendChild(el('text', { x: (it.x0 + it.x1) / 2, y: ly, 'text-anchor': 'middle' }, it.w.l));
+      g.appendChild(el('text', { x: (it.x0 + it.x1) / 2, y: ly + 12, 'text-anchor': 'middle', class: 'muted num' }, fmtM(it.w.rec)));
+      g.appendChild(diamond(it.cx, axisY, 6, classColor(it.w.c)));
+      bindTip(g, it.w, 'kill');
+      svg.appendChild(g);
+    });
+    host.replaceChildren(svg);
+    if (opts && opts.legend) document.getElementById(opts.legend).innerHTML = CLASSES.map(([c, n]) => `<li><i class="dia" style="background:${classColor(c)}"></i>${esc(n)}</li>`).join('');
+  }
+
+  // Rendu B : haltères médiane -> record, une ligne par arme, contexte à droite.
+  function dumbbell(host) {
+    const width = host.clientWidth - 24;
+    const rows = [...W].sort((a, b) => b.rec - a.rec);
+    const L = 150, R = 250, ROWH = 26, top = 22;
+    const H = top + rows.length * ROWH + 8;
+    const svg = el('svg', { viewBox: `0 0 ${width} ${H}`, width, height: H });
+    const x = (m) => L + (m / XMAX) * (width - L - R);
+    for (let m = 0; m <= XMAX; m += 20) { svg.appendChild(el('line', { x1: x(m), x2: x(m), y1: top - 6, y2: H - 8, class: 'grid' })); svg.appendChild(el('text', { x: x(m), y: top - 10, 'text-anchor': 'middle', class: 'muted num' }, m + ' m')); }
+    rows.forEach((w, i) => {
+      const cy = top + i * ROWH + ROWH / 2;
+      const g = el('g', {});
+      g.appendChild(el('text', { x: L - 10, y: cy + 4, 'text-anchor': 'end' }, w.l));
+      g.appendChild(el('text', { x: 0, y: cy + 4, class: 'muted num' }, '×' + w.n));
+      g.appendChild(el('line', { x1: x(w.med), x2: x(w.rec), y1: cy, y2: cy, class: 'stem' }));
+      g.appendChild(el('circle', { cx: x(w.med), cy, r: 4, fill: tok('card'), stroke: tok('muted-foreground'), 'stroke-width': 2 }));
+      g.appendChild(diamond(x(w.rec), cy, 6, tok('legendary')));
+      g.appendChild(el('text', { x: x(w.rec) + 10, y: cy + 4, class: 'num' }, fmtM(w.rec)));
+      g.appendChild(el('text', { x: width, y: cy + 4, 'text-anchor': 'end', class: 'muted' }, `${w.map} · ${w.d}`));
+      bindTip(g, w, 'kill');
+      svg.appendChild(g);
+    });
+    host.replaceChildren(svg);
+  }
+
+  // Rendu C : règle en miroir, frags au-dessus, morts en dessous, libellés étagés des deux côtés.
+  function mirror(host) {
+    const width = host.clientWidth - 24;
+    const x = (m) => 16 + (m / 120) * (width - 32);
+    const side = (key, sortKey) => {
+      const rows = [...W].sort((a, b) => a[sortKey] - b[sortKey]);
+      const items = rows.map((w) => { const tw = textW(`${w.l} ${fmtM(w[sortKey])}`); const cx = x(w[sortKey]); return { w, cx, x0: Math.max(0, cx - tw / 2), x1: Math.min(width, cx + tw / 2) }; });
+      items.forEach((it) => { const tw = it.x1 - it.x0; if (it.x0 <= 0) { it.x0 = 0; it.x1 = tw; } if (it.x1 >= width) { it.x1 = width; it.x0 = width - tw; } });
+      return { items, rank: stagger(items, 14) };
+    };
+    const up = side('kill', 'rec'), down = side('death', 'drec');
+    const ROWH = 18, nUp = Math.max(...up.rank) + 1, nDown = Math.max(...down.rank) + 1;
+    const axisY = 8 + nUp * ROWH + 14, H = axisY + 14 + nDown * ROWH + 16;
+    const svg = el('svg', { viewBox: `0 0 ${width} ${H}`, width, height: H });
+    svg.appendChild(el('line', { x1: x(0), x2: x(120), y1: axisY, y2: axisY, class: 'axis' }));
+    for (let m = 0; m <= 120; m += 10) { svg.appendChild(el('line', { x1: x(m), x2: x(m), y1: 8, y2: H - 8, class: 'grid', 'stroke-dasharray': '2 4' })); svg.appendChild(el('text', { x: x(m), y: axisY + 4, 'text-anchor': 'middle', class: 'muted num', style: 'paint-order: stroke; stroke: var(--card); stroke-width: 4px' }, m + ' m')); }
+    up.items.forEach((it, i) => {
+      const ly = axisY - 14 - (nUp - 1 - up.rank[i]) * ROWH;
+      const g = el('g', {});
+      g.appendChild(el('line', { x1: it.cx, x2: it.cx, y1: ly + 4, y2: axisY - 12, class: 'leader' }));
+      g.appendChild(el('text', { x: (it.x0 + it.x1) / 2, y: ly, 'text-anchor': 'middle' }, `${it.w.l} ${fmtM(it.w.rec)}`));
+      g.appendChild(diamond(it.cx, axisY - 8, 5, tok('chart-series-1')));
+      bindTip(g, it.w, 'kill'); svg.appendChild(g);
+    });
+    down.items.forEach((it, i) => {
+      const ly = axisY + 22 + down.rank[i] * ROWH;
+      const g = el('g', {});
+      g.appendChild(el('line', { x1: it.cx, x2: it.cx, y1: axisY + 12, y2: ly - 10, class: 'leader' }));
+      g.appendChild(el('text', { x: (it.x0 + it.x1) / 2, y: ly, 'text-anchor': 'middle' }, `${it.w.l} ${fmtM(it.w.drec)}`));
+      g.appendChild(diamond(it.cx, axisY + 8, 5, tok('chart-series-3')));
+      bindTip(g, it.w, 'death'); svg.appendChild(g);
+    });
+    host.replaceChildren(svg);
+  }
+
+  // Rendu D : essaim, un point par frag (pseudo-aléatoire déterministe, log-normale autour de la
+  // médiane, plafonnée au record), record en losange.
+  function swarm(host) {
+    const width = host.clientWidth - 24;
+    const rows = [...W].sort((a, b) => b.n - a.n).slice(0, 10).sort((a, b) => b.rec - a.rec);
+    const L = 150, R = 24, ROWH = 30, top = 22;
+    const H = top + rows.length * ROWH + 8;
+    const svg = el('svg', { viewBox: `0 0 ${width} ${H}`, width, height: H });
+    const x = (m) => L + (m / XMAX) * (width - L - R);
+    let seed = 7; const rnd = () => { seed = (seed * 48271) % 2147483647; return seed / 2147483647; };
+    const gauss = () => { const u = rnd() || 1e-9, v = rnd(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); };
+    for (let m = 0; m <= XMAX; m += 20) { svg.appendChild(el('line', { x1: x(m), x2: x(m), y1: top - 6, y2: H - 8, class: 'grid' })); svg.appendChild(el('text', { x: x(m), y: top - 10, 'text-anchor': 'middle', class: 'muted num' }, m + ' m')); }
+    rows.forEach((w, i) => {
+      const cy = top + i * ROWH + ROWH / 2;
+      const g = el('g', {});
+      g.appendChild(el('text', { x: L - 10, y: cy + 4, 'text-anchor': 'end' }, w.l));
+      g.appendChild(el('text', { x: 0, y: cy + 4, class: 'muted num' }, '×' + w.n));
+      for (let j = 0; j < w.n - 1; j += 1) {
+        // Tirage par rejet : un point au-delà du record est retiré, jamais plaqué sur le plafond
+        // (un plafonnement dessinait un faux amas juste sous le losange).
+        let d = Infinity, guard = 0;
+        while (d > w.rec * 0.95 && guard < 20) { d = Math.exp(Math.log(w.med) + 0.5 * gauss()); guard += 1; }
+        if (d > w.rec * 0.95) d = w.med;
+        g.appendChild(el('circle', { cx: x(d), cy: cy + (rnd() - 0.5) * 16, r: 2.2, fill: tok('chart-series-1'), class: 'dot' }));
+      }
+      g.appendChild(el('line', { x1: x(w.med), x2: x(w.med), y1: cy - 10, y2: cy + 10, stroke: tok('foreground'), 'stroke-width': 1.5 }));
+      g.appendChild(diamond(x(w.rec), cy, 6, tok('legendary')));
+      g.appendChild(el('text', { x: x(w.rec) + 10, y: cy + 4, class: 'num' }, fmtM(w.rec)));
+      bindTip(g, w, 'kill');
+      svg.appendChild(g);
+    });
+    host.replaceChildren(svg);
+  }
+
+  function renderAll() {
+    ruler(document.getElementById('chart-a'), { legend: 'legend-a' });
+    dumbbell(document.getElementById('chart-b'));
+    mirror(document.getElementById('chart-c'));
+    swarm(document.getElementById('chart-d'));
+    ruler(document.getElementById('chart-e'), { legend: 'legend-e' });
+  }
+  renderAll();
+  let t; window.addEventListener('resize', () => { clearTimeout(t); t = setTimeout(renderAll, 120); });
+  document.getElementById('theme').addEventListener('click', () => {
+    const r = document.documentElement; const dark = r.getAttribute('data-theme') === 'dark' || (!r.getAttribute('data-theme') && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    r.setAttribute('data-theme', dark ? 'light' : 'dark');
+  });
+  document.querySelectorAll('.accent-card').forEach((c) => c.addEventListener('click', () => window.alert('Maquette : ouvrirait la vue de match de ce record.')));
+})();
+</script>
+</html>

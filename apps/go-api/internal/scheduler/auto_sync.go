@@ -5,12 +5,13 @@
 //   - adapter l'intervalle si spnkr_auto_sync_interval_(minutes|hours) a changé
 //
 // Pour chaque joueur configuré dans db_profiles.json, le cycle :
-//  1. Vérifie que le joueur est présent dans le pool de tokens (Pool.HasPlayer).
-//  2. Crée un PooledHaloClient pinné sur ce joueur.
+//  1. Vérifie que le pool de tokens existe (aucun token propre exigé : D1, plan 2026-09-16 —
+//     les endpoints du sync sont publics, servis par n importe quel token du parc).
+//  2. Crée un PooledHaloClient pinné sur ce joueur (le pin ne sert qu aux endpoints privés).
 //  3. Lance SyncEngine.RunDelta avec ce client (fetches parallèles internes).
 //
 // L'auth est entièrement déléguée au Pool/Resolver, qui :
-//   - tente MSAL silent refresh puis OAuth v2 refresh sur le RT découvert par Discovery
+//   - tente un OAuth v2 refresh sur le RT découvert par Discovery (MultiUserTokenStore)
 //   - cache les tokens Halo pour ~3h30 (Spartan token lifetime)
 //   - persiste les RT rotatés par Microsoft via le callback OnTokenRotated injecté
 //     à NewResolver
@@ -32,9 +33,11 @@ import (
 	"levelup/go-api/internal/platform/adminstate"
 	"levelup/go-api/internal/platform/auth"
 	"levelup/go-api/internal/platform/auth/pool"
+	"levelup/go-api/internal/platform/friendstore"
 	settings_platform "levelup/go-api/internal/platform/settings"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/sync"
+	"levelup/go-api/internal/sync/replayartifacts"
 	syncv2 "levelup/go-api/internal/sync/v2"
 )
 
@@ -152,6 +155,11 @@ type AutoSyncScheduler struct {
 	cfg      *config.AppConfig
 	settings *settings_platform.Store
 
+	// friends résout la liste d'amis DU JOUEUR synchronisé (par xuid), pour le
+	// hook post-sync is_with_friends. Injecté par main.go via WithFriendStore ;
+	// nil → pas de FriendsLoader sur les moteurs construits ici.
+	friends *friendstore.FriendStore
+
 	// provider est utilisé par SyncEngine.runAchievementsSync (refresh XSTS Xbox).
 	// Le sync Halo lui-même passe par le pool, pas par le provider direct.
 	provider auth.TokenProvider
@@ -241,6 +249,10 @@ type AutoSyncScheduler struct {
 	// actionJournal enregistre la dernière exécution du cycle de sync (C2 —
 	// action « sync_cycle », déclencheur tick/manual). Nil → non journalisé.
 	actionJournal *adminstate.ActionJournal
+	// replayEnqueue met la construction d'un rejeu dans la file durable (chemin
+	// « ouvrier »). Injecté par main.go après le ServiceRegistry ; nil → le
+	// placement « worker » dégrade en « aucune construction ».
+	replayEnqueue replayartifacts.EnqueueFunc
 }
 
 // New crée un AutoSyncScheduler. tokenPool peut être nil (cas où Discovery
@@ -265,6 +277,14 @@ func New(
 	}
 	s.RunnerFactory = s.defaultRunnerFactory
 	s.liveRunner = s.acquireLiveTitleRunner
+	return s
+}
+
+// WithFriendStore attache le store des amis par joueur (data/global/player_friends.json).
+// Sans lui, les moteurs construits par BuildEngine n'ont pas de FriendsLoader et les
+// nouveaux matchs restent is_with_friends=FALSE jusqu'au prochain recompute.
+func (s *AutoSyncScheduler) WithFriendStore(store *friendstore.FriendStore) *AutoSyncScheduler {
+	s.friends = store
 	return s
 }
 

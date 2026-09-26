@@ -1,0 +1,154 @@
+package main
+
+// cmd_backfill_replay_child.go — L'ENFANT de `backfill-replay` : UN film, puis il meurt.
+//
+// Ce processus est lance par le parent (cf. backfill_child.go) et n'est pas destine a la
+// main de l'operateur : il ne planifie rien, ne saute rien, ne compte rien. Il cuit LE film
+// qu'on lui nomme et rend un CODE DE SORTIE que le parent traduit en categorie de recap.
+//
+// # POURQUOI L'ENFANT RELIT SES PROPRES FAITS DE MATCH
+//
+// Le parent les chargeait autrefois TOUS, d'un coup, dans une map indexee par match — et la
+// gardait vivante pendant toute la passe. C'etait la seule structure du processus qui
+// croissait avec le CORPUS et non avec le film : exactement ce qu'un blindage memoire doit
+// supprimer. Chaque enfant ouvre donc la base en LECTURE, prend SES faits, et RELACHE le
+// handle AVANT de decoder. Les enfants sont sequentiels : il n'y a jamais deux lecteurs.
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"log/slog"
+	"os"
+	"time"
+
+	"levelup/go-api/internal/config"
+	titlePkg "levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/filmproc"
+	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
+	"levelup/go-api/internal/platform/duckdb"
+	"levelup/go-api/internal/port"
+	"levelup/go-api/internal/replaybuild"
+)
+
+// outilBackfillReplay : le nom sous lequel l'enfant de la passe tient le verrou de decodage.
+// C'est ce mot que lira l'operateur a qui le verrou est refuse (cf. internal/filmproc/solo.go).
+const outilBackfillReplay = "backfill-replay"
+
+// attenteVerrouPasse : combien de temps l'enfant d'une PASSE attend son tour avant de renoncer.
+//
+// DIX MINUTES PARCE QUE C'EST PLUS LONG QUE TOUTE CUISSON CONNUE (le film le plus cher du corpus
+// se cuit en moins de deux minutes) : une attente qui expire signale donc une machine vraiment
+// occupee, pas un chevauchement ordinaire. Le refus reste possible — c'est ce qui distingue une
+// attente bornee d'un blocage.
+const attenteVerrouPasse = 10 * time.Minute
+
+// runBackfillReplayUn cuit UN film et rend le code de sortie du protocole parent/enfant.
+//
+// IL NE REND JAMAIS D'ERREUR A `main` : le code de sortie EST le canal de retour. Une erreur
+// rendue a main sortirait en 1, que le protocole reserve aux morts hors categorie.
+func runBackfillReplayUn(cfg *config.AppConfig, o replayBackfillOptions, cacheRoot string) int {
+	// SENTINELLE CANONIQUE (internal/filmproc.Arm) : memes deux plafonds qu'avant (souple +
+	// 25 % dur, echantillonnage 250 ms) — le calcul vit desormais dans un seul endroit
+	// (memguard.go). onExceeded applique LA DOCTRINE DE CET ENFANT : emettre le pic sur le
+	// protocole stdout puis mourir avec le code memoire, comme avant la centralisation.
+	//
+	// LES DEUX LIGNES DE JOURNAL SONT CELLES D'AVANT, MOT POUR MOT (constat C5 de la revue
+	// R1) : le texte d'armement est impose a la sentinelle canonique, et la ligne fatale
+	// porte de nouveau le PLAFOND FRANCHI a cote de l'empreinte atteinte — sans lui, le
+	// journal disait jusqu'ou on etait monte mais plus ce qu'on avait depasse.
+	plafondDur := filmproc.HardLimitFor(o.memLimitGiB)
+	g := filmproc.Arm(outilBackfillReplay, o.memLimitGiB, func(peak uint64) {
+		slog.Error("backfill-replay (enfant): PLAFOND MEMOIRE DEPASSE — arret du processus",
+			"empreinte_octets", peak, "plafond_dur_octets", plafondDur, "match_id", o.one)
+		filmproc.EmitPeak(peak)
+		os.Exit(filmproc.CodeMemory)
+	}, filmproc.WithArmMessage("plafond memoire arme"))
+	// Le pic part sur TOUTES les sorties ordinaires. La sortie par la sentinelle, elle,
+	// l'emet elle-meme : `os.Exit` ne joue pas les differes.
+	defer func() {
+		g.Disarm()
+		filmproc.EmitPeak(g.Peak())
+	}()
+
+	ctx := context.Background()
+	// LE VERROU SOLO, EN ATTENTE BORNEE (PLAN_CUISSON_PERF §3 D7). Une PASSE n'a pas de cycle
+	// suivant : lui refuser le verrou sur un simple chevauchement (un post-sync qui cuit au meme
+	// moment) transformerait un partage de machine en echec de film, et le recap accuserait le
+	// decodage. Elle attend donc son tour jusqu'a [attenteVerrouPasse], puis renonce
+	// proprement — detenteur nomme, code de PREPARATION, la passe continue avec le film suivant.
+	lock, verr := filmproc.AcquireSoloWait(ctx, cacheRoot, outilBackfillReplay, o.one, attenteVerrouPasse)
+	if verr != nil {
+		slog.ErrorContext(ctx, "backfill-replay (enfant): decodage refuse — un autre decodage tient la machine",
+			"err", verr, "match_id", o.one, "attente_max", attenteVerrouPasse)
+		return filmproc.CodePreparation
+	}
+	defer lock.Release()
+
+	builder, err := replaybuild.NewBuilder(cfg.RepoRoot, o.titleSlug)
+	if err != nil {
+		slog.ErrorContext(ctx, "backfill-replay (enfant): builder indisponible",
+			"err", err, "match_id", o.one, "title", o.titleSlug)
+		return filmproc.CodePreparation
+	}
+
+	pr := titlePkg.NewPathResolver(cfg.RepoRoot)
+	faits := chargerFaitsUnMatch(ctx, pr, o.titleSlug, o.one)
+	filmDir := filmcache.ChunkDir(cacheRoot, titlePkg.FilmShortMatchID(o.one))
+
+	// Le PARENT passe les identites de carte via `--map-name` ; elles gagnent toujours. Sans
+	// elles (forme `--one` TAPEE A LA MAIN), l'enfant les resout lui-meme depuis le registre
+	// plutot que d'echouer « carte hors catalogue ([]) » sur une carte pourtant au catalogue.
+	mapNames := o.mapNames
+	if len(mapNames) == 0 {
+		mapNames = mapNamesForOne(ctx, pr, o.titleSlug, o.one)
+	}
+
+	out, berr := builder.BuildMatch(o.one, mapNames, filmDir, faits)
+	switch {
+	case berr == nil:
+		fmt.Printf("  %s : %d tracks, %d octets (%s)\n", o.one, out.Tracks, out.Bytes, out.Module)
+		return filmproc.CodeOK
+	case errors.Is(berr, replaybuild.ErrMapNotInCatalog):
+		fmt.Printf("  %s : carte hors catalogue (%v) — echec voulu\n", o.one, mapNames)
+		return filmproc.CodeSkipped
+	case errors.Is(berr, replaybuild.ErrUnknownFilmKey):
+		// FILM MIS DE COTE (lot 3.1.1) : la cle ecrite est absente de la table de profil. Refus
+		// VOULU — ajouter la ligne (docs/RUNBOOK_FILM_PROFILES.md), pas diagnostiquer une panne.
+		fmt.Printf("  %s : cle du film absente de la table de profil — film ecarte (%v)\n", o.one, berr)
+		return filmproc.CodeSkipped
+	default:
+		slog.ErrorContext(ctx, "backfill-replay (enfant): decodage en echec",
+			"err", berr, "match_id", o.one)
+		fmt.Printf("  %s : ERREUR %v\n", o.one, berr)
+		return filmproc.CodeFailed
+	}
+}
+
+// chargerFaitsUnMatch lit, en UNE ouverture RO RELACHEE AVANT LE DECODAGE, ce que la base
+// sait de CE match : lignes de match (pont d'identite des joueurs), scores des deux camps
+// (identite des camps) et nom de variante (famille d'objectif).
+//
+// Une base indisponible (serveur en ecriture) DEGRADE l'artefact — il sort sans compteurs de
+// joueur ni actions d'objectif — plutot que de faire echouer le film.
+func chargerFaitsUnMatch(
+	ctx context.Context, pr *titlePkg.PathResolver, titleSlug, matchID string,
+) port.MatchFacts {
+	sharedPath := pr.SharedDBPath(titleSlug)
+	db, release, err := duckdb.OpenReadForQuery(sharedPath)
+	if err != nil {
+		slog.WarnContext(ctx, "backfill-replay (enfant): base indisponible — artefact sans "+
+			"compteurs de joueur ni actions d'objectif", "err", err, "match_id", matchID)
+		return port.MatchFacts{}
+	}
+	defer release()
+
+	var repo port.ReplayFactsRepo = duckdb.NewReplayFactsRepo(db)
+	facts, ferr := repo.FactsForMatch(ctx, matchID)
+	if ferr != nil {
+		slog.WarnContext(ctx, "backfill-replay (enfant): faits de match illisibles",
+			"err", ferr, "match_id", matchID)
+		return port.MatchFacts{}
+	}
+	return facts
+}

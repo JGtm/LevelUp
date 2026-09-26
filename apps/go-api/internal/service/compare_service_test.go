@@ -231,13 +231,13 @@ func TestBuildMetrics_AvailabilityRemoteB(t *testing.T) {
 // dès value>0, y compris pour un non-local (rang récupéré en live), tandis que les
 // autres métriques ATH restent local-only.
 func TestMetricAvailability_CareerRankLiveNonLocal(t *testing.T) {
-	if !metricAvailability(compareMetricCareerRank, 152, false, false) {
+	if !metricAvailability(compareMetricCareerRank, 152, false) {
 		t.Error("career_rank value>0 doit être disponible même pour un non-local (live)")
 	}
-	if metricAvailability(compareMetricCareerRank, 0, true, false) {
+	if metricAvailability(compareMetricCareerRank, 0, true) {
 		t.Error("career_rank value 0 ne doit pas être disponible (ATH non calculé)")
 	}
-	if metricAvailability(compareMetricPerfATH, 98, false, false) {
+	if metricAvailability(compareMetricPerfATH, 98, false) {
 		t.Error("perf_ath non-local ne doit pas être disponible (local-only)")
 	}
 }
@@ -311,12 +311,12 @@ func TestCompareService_FetchCSRSummary(t *testing.T) {
 	if sum.allTimeValue != 1700 || sum.allTimeLabel != "Onyx" {
 		t.Errorf("all-time = (%v, %q), want (1700, Onyx)", sum.allTimeValue, sum.allTimeLabel)
 	}
-	// Récupéré mais AUCUN classement (slice vide) → "Non classé" (≠ non récupéré).
+	// Récupéré mais AUCUN classement (slice vide) → clé "unranked" (≠ non récupéré).
 	empty := CSRProviderFunc(func(_ context.Context, _, _ string) ([]domain.CareerPlaylistCSR, error) {
 		return nil, nil
 	})
 	if got := (&CompareService{}).WithCSR(empty, "S13").fetchCSRSummary(context.Background(), "xuid"); got.currentLabel != csrUnrankedLabel || got.currentValue != 0 {
-		t.Errorf("récupéré sans classement → 'Non classé', got (%v, %q)", got.currentValue, got.currentLabel)
+		t.Errorf("récupéré sans classement → 'unranked', got (%v, %q)", got.currentValue, got.currentLabel)
 	}
 	// Non récupéré (pas de saison / pas de provider) → label VIDE (= N/A côté front).
 	if got := (&CompareService{}).WithCSR(csr, "").fetchCSRSummary(context.Background(), "xuid"); got.currentLabel != "" {
@@ -346,7 +346,7 @@ func TestCSRRankLabel(t *testing.T) {
 }
 
 // TestBuildMetrics_CSRRow : tri-état CSR porté par le libellé — classé (tier),
-// "Non classé" (récupéré, value 0) et N/A (label vide = non récupéré).
+// "unranked" (récupéré, value 0) et N/A (label vide = non récupéré).
 func TestBuildMetrics_CSRRow(t *testing.T) {
 	byKey := func(rows []domain.CompareMetricRow) map[string]domain.CompareMetricRow {
 		m := make(map[string]domain.CompareMetricRow, len(rows))
@@ -373,11 +373,11 @@ func TestBuildMetrics_CSRRow(t *testing.T) {
 		t.Errorf("csr winner = %q, want a (1600>1450)", csr.Winner)
 	}
 
-	// B "Non classé" (récupéré, value 0, label set) → disponible et affiché (pas N/A).
+	// B "unranked" (récupéré, value 0, label set) → disponible et affiché (pas N/A).
 	bUnranked := domain.NormalizedPlayerStats{IsLocal: false, Matches: 50, HighestCSR: 0, HighestCSRLabel: csrUnrankedLabel}
 	r := byKey(buildMetrics(a, bUnranked, 225))[compareMetricCSR]
 	if !r.ValueBAvailable || r.DisplayB != csrUnrankedLabel {
-		t.Errorf("csr B 'Non classé' doit être disponible et affiché, got avail=%v disp=%q", r.ValueBAvailable, r.DisplayB)
+		t.Errorf("csr B 'unranked' doit être disponible et affiché, got avail=%v disp=%q", r.ValueBAvailable, r.DisplayB)
 	}
 
 	// B non récupéré (label vide) → N/A (indisponible).
@@ -475,57 +475,6 @@ func TestBuildMetrics_AvailabilityATHZero(t *testing.T) {
 	}
 }
 
-// TestBuildMetrics_IsLocalSample vérifie que les métriques locale-only
-// deviennent disponibles côté B quand B est remote mais enrichi par un
-// échantillon de matchs croisés (IsLocalSample=true).
-func TestBuildMetrics_IsLocalSample(t *testing.T) {
-	a := domain.NormalizedPlayerStats{
-		IsLocal: true, Matches: 100, WinRate: 0.6, KDA: 1.4, KDR: 1.25,
-		KillsPerGame: 10, DeathsPerGame: 8, Accuracy: 0.45, DamagePerGame: 2500,
-		MaxKillingSpree: 12, AvgLifeSecs: 30, PerfectKillsPerGame: 0.2, HeadshotKillsPerGame: 3.0,
-		PerfATH: 98, LusrATH: 1600, CareerRank: 150,
-	}
-	// B remote (IsLocal=false) mais enrichi par échantillon croisé.
-	b := domain.NormalizedPlayerStats{
-		IsLocal: false, IsLocalSample: true,
-		Matches: 5, WinRate: 0.5, KDA: 1.0, KDR: 1.0,
-		KillsPerGame: 9, DeathsPerGame: 9, Accuracy: 0.4, DamagePerGame: 2200,
-		MaxKillingSpree: 8, AvgLifeSecs: 25, PerfectKillsPerGame: 0.1, HeadshotKillsPerGame: 2.5,
-	}
-
-	rows := buildMetrics(a, b, 225)
-	byKey := make(map[string]domain.CompareMetricRow, len(rows))
-	for _, r := range rows {
-		byKey[r.Metric] = r
-	}
-
-	// Les 4 métriques locale-only doivent être marquées disponibles côté B.
-	for _, metric := range []string{"max_killing_spree", "avg_life_secs", "perfect_kills_per_game", "headshot_kills_per_game"} {
-		row, ok := byKey[metric]
-		if !ok {
-			t.Errorf("metric %q absente", metric)
-			continue
-		}
-		if !row.ValueBAvailable {
-			t.Errorf("metric %q : ValueBAvailable=false, attendu true (IsLocalSample)", metric)
-		}
-		if row.Winner == "" {
-			t.Errorf("metric %q : Winner vide, attendu calculé (les deux côtés dispo)", metric)
-		}
-	}
-
-	// L'ATH reste indisponible côté B même avec IsLocalSample.
-	for _, metric := range []string{"perf_ath", "lusr_ath", "career_rank"} {
-		row, ok := byKey[metric]
-		if !ok {
-			continue
-		}
-		if row.ValueBAvailable {
-			t.Errorf("metric %q : ValueBAvailable=true, attendu false (ATH non dérivable d'un échantillon)", metric)
-		}
-	}
-}
-
 // mockCompareRepoAB — retourne stats différentes selon le xuid demandé.
 type mockCompareRepoAB struct {
 	a       *domain.NormalizedPlayerStats
@@ -572,7 +521,14 @@ func (m *mockCompareRepoAB) GetEncounterStats(_ context.Context, _, _ string) (*
 	return nil, nil
 }
 
-func (m *mockCompareRepoAB) GetCrossMatchSample(_ context.Context, _, _ string) (*domain.CrossMatchSample, error) {
+// GetWeaponScope — le scope du profil d'armes (plan
+// .ai/PLAN_COMPARE_PROFIL_ARMES_2026-09-17.md, lot 2).
+//
+// NIL PAR DÉFAUT, ET C'EST LE BON DÉFAUT POUR CE MOCK : les tests de ce fichier verrouillent
+// les MÉTRIQUES de la comparaison, pas le profil d'armes. Un scope nil laisse `Weapons`
+// absent de la réponse, ce qui est exactement le contrat quand aucun scope n'est lisible —
+// ces tests continuent donc de mesurer ce qu'ils mesuraient.
+func (m *mockCompareRepoAB) GetWeaponScope(_ context.Context, _, _ string) (*domain.CompareWeaponScope, error) {
 	return nil, nil
 }
 

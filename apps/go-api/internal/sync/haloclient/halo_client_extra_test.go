@@ -433,11 +433,14 @@ func filmManifestJSON(prefix string, chunks []map[string]any) map[string]any {
 	}
 }
 
+// filmChunkEntry : une entree de manifeste SANS `ChunkSize` (taille non annoncee, aucun controle).
+// La valeur arbitraire d'avant (4) ne correspondait a aucun blob servi ; depuis J2.4 le client
+// compare la taille annoncee au blob recu (cf. halo_client_film_taille_test.go, qui l'annonce).
 func filmChunkEntry(index, chunkType int, path string) map[string]any {
 	return map[string]any{
 		"Index": index, "ChunkType": chunkType,
-		"ChunkSize": 4, "ChunkStartTimeOffsetMilliseconds": index * 500,
-		"DurationMilliseconds": 500, "FileRelativePath": path,
+		"ChunkStartTimeOffsetMilliseconds": index * 500,
+		"DurationMilliseconds":             500, "FileRelativePath": path,
 	}
 }
 
@@ -447,7 +450,10 @@ func TestGetMatchFilm_BasicPrefix(t *testing.T) {
 		if strings.Contains(r.URL.Path, "/spectate") {
 			_ = json.NewEncoder(w).Encode(filmManifestJSON(
 				"http://blobs.test/base/",
-				[]map[string]any{filmChunkEntry(0, FilmChunkTypeReplicationData, "chunk0.bin")},
+				[]map[string]any{
+					filmChunkEntry(0, FilmChunkTypeReplicationData, "chunk0.bin"),
+					filmChunkEntry(1, FilmChunkTypeHighlightEvents, "hev.bin"),
+				},
 			))
 			return
 		}
@@ -481,6 +487,7 @@ func TestGetMatchFilm_MultiChunk(t *testing.T) {
 					filmChunkEntry(0, FilmChunkTypeHeader, "header.bin"),
 					filmChunkEntry(1, FilmChunkTypeReplicationData, "c1.bin"),
 					filmChunkEntry(2, FilmChunkTypeReplicationData, "c2.bin"),
+					filmChunkEntry(3, FilmChunkTypeHighlightEvents, "hev.bin"),
 				},
 			))
 			return
@@ -523,11 +530,17 @@ func TestGetMatchFilm_FilmAbsent(t *testing.T) {
 }
 
 func TestGetMatchFilm_DownloadFails(t *testing.T) {
+	// Le 500 du blob est désormais RETENTÉ (volet C) : backoff raccourci, sinon
+	// ce cas coûte ~5,6 s de sommeil pour un verdict connu d'avance.
+	avecRetryBaseDelayCourt(t)
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if strings.Contains(r.URL.Path, "/spectate") {
 			_ = json.NewEncoder(w).Encode(filmManifestJSON(
 				"http://blobs.test/",
-				[]map[string]any{filmChunkEntry(0, FilmChunkTypeReplicationData, "bad.bin")},
+				[]map[string]any{
+					filmChunkEntry(0, FilmChunkTypeReplicationData, "bad.bin"),
+					filmChunkEntry(1, FilmChunkTypeHighlightEvents, "hev.bin"),
+				},
 			))
 			return
 		}

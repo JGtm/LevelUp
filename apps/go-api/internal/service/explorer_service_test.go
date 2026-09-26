@@ -242,6 +242,8 @@ type mockExplorerRepo struct {
 	recentErr       error
 	topWeapons      []domain.WeaponHighlight
 	topWeaponsErr   error
+	topMedals       []domain.RemoteMedalCount
+	topMedalsErr    error
 }
 
 func (m *mockExplorerRepo) ResolveXUIDByGamertag(_ context.Context, _ string) (string, error) {
@@ -270,9 +272,12 @@ func (m *mockExplorerRepo) TranslateModeUIsFR(_ context.Context, _ []domain.Expl
 func (m *mockExplorerRepo) GetTopWeaponsForMatches(_ context.Context, _ string, _ []string, _ int) ([]domain.WeaponHighlight, error) {
 	return m.topWeapons, m.topWeaponsErr
 }
+func (m *mockExplorerRepo) GetTopMedalsForMatches(_ context.Context, _ string, _ []string, _ int) ([]domain.RemoteMedalCount, error) {
+	return m.topMedals, m.topMedalsErr
+}
 
 // fakeExplorerWeaponKillsRepo simule port.WeaponKillsRepository + la capability
-// OPTIONNELLE LoadKillMechanicsAggregated (explorerKillMechanicsLoader) pour la
+// OPTIONNELLE LoadKillMechanicsAggregated (killMechanicsLoader) pour la
 // « Répartition des frags » v2 de l'encart cible.
 type fakeExplorerWeaponKillsRepo struct {
 	rows    []port.WeaponKillRow
@@ -464,8 +469,8 @@ func TestExplorerService_GetCommonMatches_WithStats(t *testing.T) {
 	if m.PlayerOutcome != 2 {
 		t.Errorf("PlayerOutcome = %d, want 2 (WIN)", m.PlayerOutcome)
 	}
-	if m.OutcomeLabel == "" {
-		t.Error("OutcomeLabel vide — doit être résolu via outcomeLabel()")
+	if m.Outcome != "win" {
+		t.Errorf("Outcome = %q, attendu %q (clé canonique, cf. outcomeKeyFromHaloCode)", m.Outcome, "win")
 	}
 }
 

@@ -14,7 +14,7 @@ import (
 	"fmt"
 
 	"levelup/go-api/internal/games/halo_infinite/film/damagetag"
-	"levelup/go-api/internal/games/halo_infinite/film/killsource"
+	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 )
 
 // natureFR : la nature de la source, en clair.
@@ -62,19 +62,19 @@ func statutFR(s damagetag.Status) string {
 // moteur entre parentheses, parce qu aucune verite terrain ne les a confirmes. Rappel mesure :
 // la categorie ne discrimine PAS grenade et melee ordinaire — les deux sortent `None`, c est le
 // TAG qui les porte (RE_LOG 7ter.37).
-func categorieFR(c killsource.Category) string {
+func categorieFR(c decfilm.Category) string {
 	switch c {
-	case killsource.CategoryNone:
+	case decfilm.CategoryNone:
 		return ""
-	case killsource.CategoryHeadshot:
+	case decfilm.CategoryHeadshot:
 		return "tir a la tete"
-	case killsource.CategoryHeadshotMultiplier:
+	case decfilm.CategoryHeadshotMultiplier:
 		return "tir a la tete (multiplicateur)"
-	case killsource.CategorySilentMelee:
+	case decfilm.CategorySilentMelee:
 		return "assassinat"
-	case killsource.CategoryAttachedDamage:
+	case decfilm.CategoryAttachedDamage:
 		return "projectile fixe sur la cible"
-	case killsource.CategoryCollisionDamage:
+	case decfilm.CategoryCollisionDamage:
 		return "collision"
 	default:
 		return fmt.Sprintf("(%s)", c.Name())
@@ -83,11 +83,11 @@ func categorieFR(c killsource.Category) string {
 
 // voieFR : par quelle voie la ligne a ete lue. A PONDERER, pas a interpreter : les deux lisent le
 // MEME champ, au MEME bit quand elles repondent toutes les deux (346/346, desaccord 0).
-func voieFR(p killsource.Path) string {
+func voieFR(p decfilm.Path) string {
 	switch p {
-	case killsource.PathWalk:
+	case decfilm.PathWalk:
 		return "sequentielle"
-	case killsource.PathScan:
+	case decfilm.PathScan:
 		return "balayage"
 	default:
 		return string(p)
@@ -95,15 +95,15 @@ func voieFR(p killsource.Path) string {
 }
 
 // origineFR : comment la ligne a ete appariee au kill-feed.
-func origineFR(o killsource.Origin) string {
+func origineFR(o decfilm.Origin) string {
 	switch o {
-	case killsource.OriginCredit:
+	case decfilm.OriginCredit:
 		return "les deux verites concordent"
-	case killsource.OriginSelfSource:
+	case decfilm.OriginSelfSource:
 		return "source appartenant a la victime"
-	case killsource.OriginBot:
+	case decfilm.OriginBot:
 		return "mort de bot (absente du kill-feed)"
-	case killsource.OriginBotKiller:
+	case decfilm.OriginBotKiller:
 		return "mort infligee par un bot (kill absent du kill-feed)"
 	default:
 		return string(o)

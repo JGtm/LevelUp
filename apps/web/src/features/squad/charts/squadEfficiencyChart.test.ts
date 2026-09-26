@@ -157,11 +157,15 @@ describe('cadre de lecture FIXE', () => {
 })
 
 describe('buildSquadEfficiencyOption', () => {
+  // Rendement du 2e point de "Me" (55 %) volontairement DANS la fenêtre
+  // 50…200 % : ce fixture est réutilisé par le test "zones" (VERT/ROUGE), qui
+  // vérifie les bornes de la fenêtre de BASE — une valeur hors fenêtre est
+  // couverte séparément par le describe "échelle élargie" ci-dessous (DEC-5).
   const rows = {
     Me: [
       pt(0, { rendement_offensif: 1.08, damage_dealt: 1800, kills: 8, assists: 3 }),
       pt(1, {
-        rendement_offensif: 0.45,
+        rendement_offensif: 0.55,
         damage_dealt: 1000,
         kills: 2,
         assists: 3,
@@ -190,15 +194,17 @@ describe('buildSquadEfficiencyOption', () => {
     expect(series[1].lineStyle?.color).toBe('#bbb')
   })
 
-  it('fenêtre FIXE : deux sessions d\'amplitudes OPPOSÉES donnent les mêmes bornes', () => {
-    // Ce cas échoue dès qu'une borne est recalculée depuis les données.
+  it('cadre de BASE 50…200 % : deux sessions d\'amplitudes opposées mais DANS la fenêtre donnent les mêmes bornes', () => {
+    // Ce cas échoue dès qu'une borne est recalculée depuis les données pour un
+    // point qui n'en sort pourtant pas (nominal — cf. describe "échelle élargie"
+    // ci-dessous pour le cas où un point DÉPASSE la fenêtre, DEC-5).
     const tight = buildSquadEfficiencyOption(
       { Me: [pt(0, { rendement_offensif: 1.01 }), pt(1, { rendement_offensif: 1.02 })] },
       ['Me'],
       opts('offensive'),
     )
     const wide = buildSquadEfficiencyOption(
-      { Me: [pt(0, { rendement_offensif: 0.05 }), pt(1, { rendement_offensif: 4.2 })] },
+      { Me: [pt(0, { rendement_offensif: 0.55 }), pt(1, { rendement_offensif: 1.95 })] },
       ['Me'],
       opts('offensive'),
     )
@@ -264,12 +270,21 @@ describe('buildSquadEfficiencyOption', () => {
     expect((opt.series as unknown as PlayerSeries[])[1].markArea).toBeUndefined()
   })
 
-  it('étiquette de FIN de courbe = gamertag à la couleur du joueur (remplace la légende)', () => {
+  it('légende en pied de graphe : un joueur, sa couleur — plus d’étiquette de fin', () => {
+    // 2026-09-09 : l'identité passait par une étiquette au bout de la courbe, un canal que
+    // ces deux cartes étaient seules à employer. La légende la remplace — même socle que
+    // partout ailleurs, et chaque joueur y devient masquable d'un clic.
     const opt = buildSquadEfficiencyOption(rows, PLAYERS, opts('offensive'))
     const series = opt.series as unknown as PlayerSeries[]
-    expect(opt.legend).toBeUndefined()
-    expect(series[0].endLabel).toMatchObject({ show: true, formatter: 'Me', color: '#aaa' })
-    expect(series[1].endLabel).toMatchObject({ show: true, formatter: 'F1', color: '#bbb' })
+    expect(series[0].endLabel).toBeUndefined()
+    expect(series[1].endLabel).toBeUndefined()
+    const legend = opt.legend as unknown as {
+      data: Array<{ name: string; itemStyle: { color: string } }>
+    }
+    expect(legend.data.map((e) => [e.name, e.itemStyle.color])).toEqual([
+      ['Me', '#aaa'],
+      ['F1', '#bbb'],
+    ])
   })
 
   it('libellés de match sur l\'axe X (numéro + carte quand elle est connue)', () => {
@@ -341,5 +356,56 @@ describe('buildSquadEfficiencyOption', () => {
     )
     const series = opt.series as unknown as PlayerSeries[]
     expect(series[0].lineStyle?.color).toBe('#9ca3af') // fallback --muted-foreground (jsdom)
+  })
+})
+
+describe('échelle élargie sans jamais rétrécir (DEC-5, retours utilisateur 2026-08-29 pt.4)', () => {
+  it('un point > 200 % → le plafond s\'élargit (dizaine supérieure), le plancher ne bouge pas — plus d\'écrêtage', () => {
+    const opt = buildSquadEfficiencyOption(
+      { Me: [pt(0, { rendement_offensif: 2.37 })] }, // 237 %
+      ['Me'],
+      opts('offensive'),
+    )
+    const y = opt.yAxis as unknown as AxisOpt
+    expect(y.min).toBe(RATE_AXIS_MIN_PCT) // plancher inchangé
+    expect(y.max).toBe(240) // 237 arrondi à la dizaine supérieure
+    expect(y.max).toBeGreaterThan(RATE_AXIS_MAX_PCT)
+  })
+
+  it('un point < 50 % → le plancher s\'élargit (dizaine inférieure), le plafond ne bouge pas', () => {
+    const opt = buildSquadEfficiencyOption(
+      { Me: [pt(0, { rendement_offensif: 0.42 })] }, // 42 %
+      ['Me'],
+      opts('offensive'),
+    )
+    const y = opt.yAxis as unknown as AxisOpt
+    expect(y.min).toBe(40) // 42 arrondi à la dizaine inférieure
+    expect(y.max).toBe(RATE_AXIS_MAX_PCT) // plafond inchangé
+    expect(y.min).toBeLessThan(RATE_AXIS_MIN_PCT)
+  })
+
+  it('le dépassement d\'UN SEUL joueur élargit l\'axe de TOUTE la carte (extent sur l\'ensemble des joueurs affichés)', () => {
+    const opt = buildSquadEfficiencyOption(
+      {
+        Me: [pt(0, { rendement_offensif: 1.08 })], // 108 %, dans la fenêtre
+        F1: [pt(0, { rendement_offensif: 2.4 })], // 240 %, hors fenêtre
+      },
+      ['Me', 'F1'],
+      opts('offensive'),
+    )
+    const y = opt.yAxis as unknown as AxisOpt
+    expect(y.max).toBe(240)
+  })
+
+  it('les zones de lecture (markArea) suivent la borne élargie — jamais de bande orpheline avant le bord de l\'axe', () => {
+    const opt = buildSquadEfficiencyOption(
+      { Me: [pt(0, { rendement_offensif: 2.37 })] },
+      ['Me'],
+      opts('offensive'),
+    )
+    const y = opt.yAxis as unknown as AxisOpt
+    const zones = (opt.series as unknown as PlayerSeries[])[0].markArea?.data
+    expect(zones![0][1].yAxis).toBe(y.max)
+    expect(zones![1][0].yAxis).toBe(y.min)
   })
 })

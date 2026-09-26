@@ -11,7 +11,7 @@
 #   3. la sémantique d'opération non portable en tag struct : description
 #      d'opération, descriptions de réponse, réponses d'erreur (4xx/5xx),
 #      descriptions et enum/default de paramètres ;
-#   4. les 5 exemples d'erreur au niveau réponse (components.responses) ;
+#   4. les exemples d'erreur au niveau réponse (components.responses) ;
 #   5. les descriptions de schéma RACINE (Huma n'a aucun tag type-level) ;
 #   6. les schémas SANS type Go généré par Huma (entrées décodées à la main,
 #      routes chi-brut, legacy) ;
@@ -200,6 +200,10 @@ paths:
           $ref: '#/components/responses/NotFound'
         '500':
           $ref: '#/components/responses/InternalError'
+        '499':
+          $ref: '#/components/responses/ClientClosed'
+        '503':
+          $ref: '#/components/responses/DbBusy'
   /players/{player_slug}/filters/match-ids:
     post:
       parameters:
@@ -219,6 +223,10 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '404':
           $ref: '#/components/responses/NotFound'
+        '499':
+          $ref: '#/components/responses/ClientClosed'
+        '503':
+          $ref: '#/components/responses/DbBusy'
   /players/{player_slug}/pages/career:
     get:
       description: |
@@ -240,6 +248,10 @@ paths:
           $ref: '#/components/responses/NotFound'
         '500':
           $ref: '#/components/responses/InternalError'
+        '499':
+          $ref: '#/components/responses/ClientClosed'
+        '503':
+          $ref: '#/components/responses/DbBusy'
   /players/{player_slug}/pages/career/top-matches:
     get:
       description: Retourne les meilleurs et pires matchs du joueur (tous critères confondus).
@@ -254,6 +266,10 @@ paths:
           $ref: '#/components/responses/NotFound'
         '500':
           $ref: '#/components/responses/InternalError'
+        '499':
+          $ref: '#/components/responses/ClientClosed'
+        '503':
+          $ref: '#/components/responses/DbBusy'
   /players/{player_slug}/pages/career/encounters:
     get:
       description: Retourne les adversaires et coéquipiers fréquents.
@@ -268,6 +284,10 @@ paths:
           $ref: '#/components/responses/NotFound'
         '500':
           $ref: '#/components/responses/InternalError'
+        '499':
+          $ref: '#/components/responses/ClientClosed'
+        '503':
+          $ref: '#/components/responses/DbBusy'
   /players/{player_slug}/pages/career/highlight-matches:
     get:
       description: |
@@ -307,8 +327,22 @@ paths:
           $ref: '#/components/responses/NotFound'
         '500':
           $ref: '#/components/responses/InternalError'
+        '499':
+          $ref: '#/components/responses/ClientClosed'
         '503':
-          description: MatchHistoryService factory indisponible (cas test)
+          description: |
+            Base momentanément occupée (`db_busy`, réessayer après `Retry-After`), ou
+            MatchHistoryService non câblé (`match_history_unavailable`, cas test, sans
+            `Retry-After`).
+          headers:
+            Retry-After:
+              description: Délai conseillé avant un nouvel essai, en secondes
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /players/{player_slug}/pages/career/top-encounters:
     get:
       description: |
@@ -328,6 +362,10 @@ paths:
           $ref: '#/components/responses/NotFound'
         '500':
           $ref: '#/components/responses/InternalError'
+        '499':
+          $ref: '#/components/responses/ClientClosed'
+        '503':
+          $ref: '#/components/responses/DbBusy'
   /players/{player_slug}/pages/career/rivals:
     get:
       description: |
@@ -348,6 +386,10 @@ paths:
           $ref: '#/components/responses/NotFound'
         '500':
           $ref: '#/components/responses/InternalError'
+        '499':
+          $ref: '#/components/responses/ClientClosed'
+        '503':
+          $ref: '#/components/responses/DbBusy'
   /players/{player_slug}/pages/career/csrs:
     get:
       description: |
@@ -375,6 +417,10 @@ paths:
           $ref: '#/components/responses/NotFound'
         '500':
           $ref: '#/components/responses/InternalError'
+        '499':
+          $ref: '#/components/responses/ClientClosed'
+        '503':
+          $ref: '#/components/responses/DbBusy'
   /players/{player_slug}/patterns:
     get:
       description: |
@@ -534,6 +580,10 @@ paths:
           $ref: '#/components/responses/NotFound'
         '500':
           $ref: '#/components/responses/InternalError'
+        '499':
+          $ref: '#/components/responses/ClientClosed'
+        '503':
+          $ref: '#/components/responses/DbBusy'
   /players/{player_slug}/pages/explorer/player-query:
     post:
       description: Retourne le profil d'encounter et les matchs communs avec un joueur cible.
@@ -556,6 +606,10 @@ paths:
           $ref: '#/components/responses/NotFound'
         '500':
           $ref: '#/components/responses/InternalError'
+        '499':
+          $ref: '#/components/responses/ClientClosed'
+        '503':
+          $ref: '#/components/responses/DbBusy'
   /players/{player_slug}/matches/{match_id}:
     get:
       description: |
@@ -648,7 +702,7 @@ paths:
   /auth/device-flow/start:
     post:
       description: |
-        Lance un Device Code Flow pour l'authentification Halo (MSAL).
+        Lance un Device Code Flow pour l'authentification Halo (SISU).
         Non disponible en DEMO_MODE.
       responses:
         '200':
@@ -805,6 +859,23 @@ paths:
           $ref: '#/components/responses/NotFound'
         '500':
           $ref: '#/components/responses/InternalError'
+        '499':
+          $ref: '#/components/responses/ClientClosed'
+        '503':
+          description: |
+            Page momentanément indisponible, réessayer après `Retry-After` :
+            `home_page_db_busy` (bascule RO/RW d'une synchronisation),
+            `home_page_db_recovering` (connexion en cours de récupération) ou
+            `db_busy` (verrou d'écriture).
+          headers:
+            Retry-After:
+              description: Délai conseillé avant un nouvel essai, en secondes
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
   /players/{player_slug}/pages/sessions:
     get:
       parameters:
@@ -816,6 +887,10 @@ paths:
           description: Liste des sessions avec stats agrégées
         '404':
           $ref: '#/components/responses/NotFound'
+        '499':
+          $ref: '#/components/responses/ClientClosed'
+        '503':
+          $ref: '#/components/responses/DbBusy'
   /players/{player_slug}/pages/sessions/detail:
     post:
       parameters:
@@ -836,6 +911,10 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '404':
           $ref: '#/components/responses/NotFound'
+        '499':
+          $ref: '#/components/responses/ClientClosed'
+        '503':
+          $ref: '#/components/responses/DbBusy'
   /players/{player_slug}/pages/stats/query:
     post:
       parameters:
@@ -858,6 +937,10 @@ paths:
           description: Données séries temporelles
         '400':
           $ref: '#/components/responses/BadRequest'
+        '499':
+          $ref: '#/components/responses/ClientClosed'
+        '503':
+          $ref: '#/components/responses/DbBusy'
   /players/{player_slug}/pages/squad:
     get:
       parameters:
@@ -886,6 +969,35 @@ paths:
           description: Analyse coéquipiers avec statistiques
         '404':
           $ref: '#/components/responses/NotFound'
+        '499':
+          $ref: '#/components/responses/ClientClosed'
+        '503':
+          $ref: '#/components/responses/DbBusy'
+  /players/{player_slug}/pages/teammates/sessions:
+    get:
+      description: |
+        Lecture LÉGÈRE des sessions de la composition (lot perf L4b, 2026-09-23) : les
+        champs `composition_sessions` et `latest_composition_session` de
+        `POST /pages/teammates`, mêmes valeurs pour la même composition et la même option
+        composition exacte, sans calculer la page. La page Escouade s'y ancre sur la
+        dernière session de la composition AVANT d'envoyer la requête lourde.
+
+        Sans coéquipier : les sessions escouade du joueur principal, dernière session vide.
+        Les deux champs sont toujours présents (liste vide, chaîne vide). Un titre sans la
+        capability requise répond 503 `capability_not_supported`.
+      parameters:
+        - name: player_slug
+          in: path
+          description: Slug du joueur (dérivé du gamertag, ex. "Chocoboflor")
+      responses:
+        '200':
+          description: Sessions de la composition, de la plus récente à la plus ancienne
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '499':
+          $ref: '#/components/responses/ClientClosed'
+        '503':
+          $ref: '#/components/responses/DbBusy'
   /players/{player_slug}/pages/synthesis:
     post:
       parameters:
@@ -897,6 +1009,10 @@ paths:
           description: Synthèse globale (heatmap, top semaines, comparaison KPIs)
         '404':
           $ref: '#/components/responses/NotFound'
+        '499':
+          $ref: '#/components/responses/ClientClosed'
+        '503':
+          $ref: '#/components/responses/DbBusy'
   /players/{player_slug}/pages/citations:
     post:
       parameters:
@@ -1516,11 +1632,6 @@ paths:
       responses:
         '200':
           description: Agrégats count/sum/avg/max par appel/phase/étape
-  /admin/monitoring/errors:
-    get:
-      responses:
-        '200':
-          description: Buckets d'erreurs triés par occurrences décroissantes
   /admin/monitoring/detections:
     get:
       parameters:
@@ -1810,6 +1921,69 @@ paths:
       responses:
         '200':
           description: Statut mis à jour
+  # Route chi BRUTE (charge utile binaire) : Huma décrit du JSON typé, et forcer
+  # 700 Kio de PNG dans ce moule ne produirait qu'un schéma qui ment. Elle est donc
+  # documentée ici, comme l'export CSV et les images d'assets. Le CALAGE de ce même
+  # fond, lui, est une route Huma (`/replay/background`) et se dérive tout seul.
+  /players/{player_slug}/matches/{match_id}/replay/background.png:
+    get:
+      tags:
+        - match-view
+      operationId: getMatchReplayBackgroundImage
+      parameters:
+        - name: player_slug
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: match_id
+          in: path
+          required: true
+          schema:
+            type: string
+      summary: Sert l'image du fond de carte du rejeu 2D
+      description: |
+        Image vue du dessus de la carte du match (PNG), cuite hors ligne par
+        `cmd/mapfond-build`. Elle ne se lit qu'avec son CALAGE, servi par
+        `GET .../replay/background` : une image dont on ignore où elle se pose ne se
+        superpose à rien. Servie uniquement en local, comme le reste du rejeu 2D
+        (cf. `handlers/replay_local_gate.go`).
+      responses:
+        '200':
+          description: Image PNG du fond de carte
+        '404':
+          description: Aucun fond de carte figé pour la carte de ce match
+  # Même route, keyée par CARTE : la grille de l'onglet Tactique liste des cartes et n'a
+  # aucun match sous la main. Même charge utile binaire, donc même traitement manuel.
+  /players/{player_slug}/tactical/{map_id}/background.png:
+    get:
+      tags:
+        - tactical
+      operationId: getTacticalMapBackgroundImage
+      parameters:
+        - name: player_slug
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: map_id
+          in: path
+          required: true
+          schema:
+            type: string
+      summary: Sert l'image du fond d'une carte de l'onglet Tactique
+      description: |
+        Image vue du dessus d'une carte (PNG), cuite hors ligne par `cmd/mapfond-build`.
+        C'est la MÊME donnée que le fond du rejeu 2D, résolue par la même cascade, mais
+        adressée par `map_id` : la grille des cartes ne connaît pas de match. Son CALAGE
+        est servi par `GET .../tactical/{map_id}/background`. Contrairement au rejeu,
+        cette route n'est PAS restreinte à la boucle locale : une image de carte est une
+        donnée de référence versionnée, pas une trajectoire décodée d'un film.
+      responses:
+        '200':
+          description: Image PNG du fond de carte
+        '404':
+          description: Aucun fond de carte figé pour cette carte
   /players/{player_slug}/pages/squad/v2:
     get:
       responses:
@@ -2259,6 +2433,36 @@ components:
             code: last_active_title
             message: Au moins un titre doit rester actif pour ce joueur.
             retryable: false
+    DbBusy:
+      description: |
+        Base momentanément occupée (verrou d'écriture, ou bascule RO/RW du provider
+        partagé pendant une synchronisation) : transitoire, réessayer après `Retry-After`.
+      headers:
+        Retry-After:
+          description: Délai conseillé avant un nouvel essai, en secondes
+          schema:
+            type: integer
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+          example:
+            code: db_busy
+            message: database is currently busy, please retry
+            retryable: true
+    ClientClosed:
+      description: |
+        Requête abandonnée par le client avant la réponse (contexte annulé : onglet fermé,
+        requête remplacée). Convention nginx 499 : aucun client ne lit cette réponse, le
+        statut sert au journal d'accès et aux compteurs (classe 4xx, jamais 5xx).
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+          example:
+            code: client_closed
+            message: client closed request
+            retryable: false
   schemas:
     # Nullabilité d'un POINTEUR VERS STRUCT : Huma émet un `$ref` nu (il ne sait pas
     # rendre un $ref nullable en 3.1), or ces trois champs valent `null` à l'exécution
@@ -2623,9 +2827,10 @@ components:
           type: integer
           format: int64
           nullable: true
-        outcome_label:
+        outcome:
           type: string
           nullable: true
+          enum: [win, loss, tie, dnf]
         kills:
           type: integer
           nullable: true
@@ -2872,39 +3077,9 @@ components:
           allOf:
             - $ref: '#/components/schemas/FilterContextInput'
     MatchScoreboardObjective:
-      description: Stats objectifs par joueur (CTF/Zones/Oddball/Stockpile/Extraction/VIP) — blocs mutuellement exclusifs par mode, seuls les champs du mode joué sont renseignés.
+      description: Stats objectifs par joueur (CTF/Zones/Oddball/Stockpile/Extraction/VIP/Assaut) — blocs mutuellement exclusifs par mode, seuls les champs du mode joué sont renseignés.
     ObjectiveAggregate:
       description: Cumul (SUM) des stats objectifs (CTF/Zones/Oddball) d'un joueur sur un ensemble de matchs. Champs zéro omis.
-    AssociatedMediaItem:
-      type: object
-      required:
-        - file_id
-        - file_name
-        - file_path
-        - kind
-      properties:
-        file_id:
-          type: string
-        file_name:
-          type: string
-        file_path:
-          type: string
-        kind:
-          type: string
-        thumbnail_url:
-          type: string
-          nullable: true
-        duration_seconds:
-          type: number
-          format: float
-          nullable: true
-        capture_time:
-          type: string
-          format: date-time
-          nullable: true
-        liked:
-          type: boolean
-          default: false
     TeammatesQueryRequest:
       type: object
       description: >-
@@ -3169,12 +3344,6 @@ components:
           type: boolean
         spnkr_refresh_backfill_events:
           type: boolean
-        spnkr_refresh_backfill_weapons:
-          type: boolean
-        friend_gamertags:
-          type: array
-          items:
-            type: string
         show_progression:
           type: boolean
           description: Affichage du système Objectifs/Prestige (section Accueil + nav L1).

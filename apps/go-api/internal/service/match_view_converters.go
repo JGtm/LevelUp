@@ -171,6 +171,17 @@ func buildScoreboardObjective(o domain.ObjectiveRaw) *domain.MatchScoreboardObje
 		out.TimeAsVipSeconds = o.TimeAsVipSeconds
 		out.LongestTimeAsVipSeconds = o.LongestTimeAsVipSeconds
 	}
+	// ASSAUT : le seul bloc qui ne vient pas de `match_objective_stats_latest` mais du FILM
+	// (l'API 343 n'en publie aucune pour ce mode). Il est chargé par une seconde requête,
+	// gatée par la capability `film.bomb_stats` : absente, aucun de ces champs n'est renseigné
+	// et `HasBomb()` est faux — pas de bloc, pas de section côté web.
+	if o.HasBomb() {
+		out.BombDetonations = o.BombDetonations
+		out.BombArms = o.BombArms
+		out.BombGrabs = o.BombGrabs
+		out.TimeAsBombCarrierSeconds = o.TimeAsBombCarrierSeconds
+		out.BombCarriersKilled = o.BombCarriersKilled
+	}
 	return out
 }
 
@@ -211,7 +222,8 @@ func indexBulkMedalsByXUID(
 }
 
 // indexBulkWeaponsByXUID indexe les armes bulk par XUID pour O(1) lookup.
-// ImageURL résolu via TitleAssetURLAdapter (weapons = name_en → fichier slug).
+// ImageURL résolu via TitleAssetURLAdapter, keyé par weapon_id (l'identifiant
+// natif du titre, pas le libellé — cf. games.TitleAssetURLAdapter).
 func indexBulkWeaponsByXUID(
 	bulkWeapons []domain.BulkWeaponKillRaw,
 	assetURL games.TitleAssetURLAdapter,
@@ -220,14 +232,17 @@ func indexBulkWeaponsByXUID(
 	out := make(map[string][]domain.PlayerWeaponKillRow, hint)
 	for _, w := range bulkWeapons {
 		var imgURL string
+		var tinted bool
 		if assetURL != nil {
-			imgURL = assetURL.WeaponImageURL(w.NameEN)
+			imgURL = assetURL.WeaponImageURL(w.WeaponID)
+			tinted = imgURL != "" && assetURL.WeaponImageIsTinted(w.WeaponID)
 		}
 		out[w.XUID] = append(out[w.XUID], domain.PlayerWeaponKillRow{
-			WeaponID: w.WeaponID,
-			Kills:    w.Kills,
-			Label:    w.WeaponLabel,
-			ImageURL: imgURL,
+			WeaponID:    w.WeaponID,
+			Kills:       w.Kills,
+			Label:       w.WeaponLabel,
+			ImageURL:    imgURL,
+			ImageTinted: tinted,
 		})
 	}
 	return out

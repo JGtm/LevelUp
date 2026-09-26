@@ -35,7 +35,7 @@ import (
 
 	_ "github.com/duckdb/duckdb-go/v2"
 
-	"levelup/go-api/internal/games/halo_infinite/skillchain"
+	"levelup/go-api/internal/games/titleseams"
 	lusync "levelup/go-api/internal/sync"
 )
 
@@ -50,9 +50,15 @@ func playerDBPath(root, gamertag string) string {
 }
 
 func main() {
+	// Seams title-owned (classifiers LUSR et famille objectif, provider des
+	// etapes de migration, traductions de rangs) : sans eux, tout appel au
+	// post-sync panique (fail-loud MT-15). Racine des jalons Halo 5 vide : cet
+	// outil ne seed pas de catalogue, le step h5_seed_milestone_catalog est
+	// alors un no-op gracieux documente. Cf. internal/games/titleseams.
+	titleseams.RegisterAll("")
 	// MT-15 : câble le classifier LUSR (fail-loud). CRITIQUE — ce binaire ÉCRIT
 	// match_skill_rank.playlist_group via GetLUSRChain.
-	lusync.SetLUSRChainClassifier(skillchain.ClassifyLUSRChain)
+	// Famille de la chaîne de perf classée (ranked_slayer / ranked_objectif).
 
 	commit := flag.Bool("commit", false, "écrit match_skill_rank (canonical). Défaut: dry-run shadow-only (compte).")
 	dataRoot := flag.String("data-root", ".", "racine du repo (depuis apps/go-api : ../..)")

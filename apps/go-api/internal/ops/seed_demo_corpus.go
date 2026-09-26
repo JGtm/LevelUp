@@ -309,26 +309,47 @@ func demoXUIDForIndex(i int) string {
 }
 
 // applyUniversalAnonymization remappe TOUS les xuid + gamertag du shared démo via
-// le roster, dans une table temporaire _xuid_map jointe à chaque table cible.
+// le roster, une entrée de roster à la fois, sur chaque table cible.
 // Couvre : match_participants(xuid,gamertag), medals_earned(xuid),
 // weapon_kills(xuid), highlight_events(xuid), killer_victim_pairs(killer/victim
 // xuid+gamertag), xuid_aliases(xuid,gamertag).
+//
+// ─── POURQUOI UN UPDATE PAR ENTRÉE DE ROSTER, ET PAS UNE JOINTURE (2026-09-13) ───────────
+//
+// Jusqu'ici cette fonction montait une table temporaire `_xuid_map` et émettait UN
+// `UPDATE <table> SET … FROM _xuid_map m WHERE <table>.<col> = m.old_xuid` par colonne
+// d'identité. C'est un UPDATE SET-BASED NU — aucune valeur liée, un seul statement qui
+// touche N lignes — c'est-à-dire la forme exacte que l'ADR 0019/0026 interdit sur les
+// tables indexées, et le déclencheur direct du bug DuckDB ART #23645 (« Failed to delete
+// all rows from index »).
+//
+// IL ÉCHAPPAIT AUX DEUX GARDE-RAILS, et pas par tolérance : le nom de table était
+// interpolé (`fmt.Sprintf("UPDATE %s …")`), si bien qu'aucun littéral `UPDATE weapon_kills`
+// ou `UPDATE kill_positions` n'existait dans la source. Or `internal/sync/no_art_patterns_test.go`
+// scanne des LITTÉRAUX : ni `TestNoBulkMultiRowUpdateOnCriticalTables` (qui couvre pourtant
+// `weapon_kills`, `medals_earned`, `killer_victim_pairs` et `match_participants`, tous dans
+// cette boucle) ni le scan principal ne pouvaient le voir. Un garde-rail qu'une interpolation
+// suffit à contourner ne protège que les écritures déjà écrites en clair.
+//
+// LE REMÈDE EST CELUI QUE LE PROJET PRESCRIT DÉJÀ pour cette forme : N UPDATE row-by-row à
+// valeurs LIÉES (le message d'erreur du ratchet le nomme mot pour mot, cf. aussi
+// `PostSyncEnrichmentPersister`). Le roster compte une poignée d'entrées et les tables démo
+// sont petites : le coût est nul, et chaque statement ne touche plus que les lignes d'UN
+// xuid, avec son prédicat lié.
+//
+// CE N'EST PAS UNE CONVERSION EN INSERT-ONLY, ET CE SERAIT UN CONTRESENS ICI. Ajouter une
+// ligne anonymisée laisserait la ligne D'ORIGINE — donc le xuid RÉEL du joueur source —
+// physiquement présente dans une base publiée publiquement. Une vue `_latest` la masquerait
+// à la lecture sans la retirer du fichier. Sur ce chemin-ci, la seule écriture correcte est
+// celle qui REMPLACE : l'anonymisation doit faire disparaître la valeur, pas la superposer.
+//
+// PRÉCONDITION DE LA FORME SÉQUENTIELLE : aucun `DemoXUID` ne doit être égal au `SourceXUID`
+// d'une autre entrée, sinon la passe d'une entrée re-remapperait les lignes déjà réécrites
+// par une précédente (la jointure, elle, lisait l'état d'origine en un seul statement).
+// Elle tient PAR CONSTRUCTION : `demoXUIDForIndex` produit des compteurs remplis de zéros
+// ("0000000000000000", "0000000000000001", …) et un xuid Xbox réel ne prend jamais cette
+// forme. Un futur générateur d'identités démo devra préserver cette disjonction.
 func applyUniversalAnonymization(ctx context.Context, dst *sql.DB, roster []demoRosterEntry) error {
-	if _, err := dst.ExecContext(ctx, `DROP TABLE IF EXISTS _xuid_map`); err != nil {
-		return fmt.Errorf("drop map: %w", err)
-	}
-	if _, err := dst.ExecContext(ctx,
-		`CREATE TABLE _xuid_map (old_xuid VARCHAR, new_xuid VARCHAR, new_gamertag VARCHAR)`); err != nil {
-		return fmt.Errorf("create map: %w", err)
-	}
-	for _, e := range roster {
-		if _, err := dst.ExecContext(ctx,
-			`INSERT INTO _xuid_map VALUES (?, ?, ?)`,
-			e.SourceXUID, e.DemoXUID, e.DemoGamertag); err != nil {
-			return fmt.Errorf("insert map %s: %w", e.SourceXUID, err)
-		}
-	}
-
 	// (table, [(xuidCol, gamertagCol)]) — gamertagCol vide = pas de colonne nom.
 	type remap struct {
 		table string
@@ -365,23 +386,41 @@ func applyUniversalAnonymization(ctx context.Context, dst *sql.DB, roster []demo
 	for _, t := range targets {
 		for _, p := range t.pairs {
 			xuidCol, gtCol := p[0], p[1]
-			set := fmt.Sprintf("%s = m.new_xuid", xuidCol)
+			// Les identifiants de table et de colonne viennent de `targets`, une table
+			// littérale de CE fichier — jamais d'une entrée externe. Seules les VALEURS
+			// (xuid et gamertag du roster) sont liées, et c'est ce qui rend chaque
+			// statement row-by-row plutôt que set-based.
+			set := xuidCol + " = ?"
 			if gtCol != "" {
-				set += fmt.Sprintf(", %s = m.new_gamertag", gtCol)
+				set += ", " + gtCol + " = ?"
 			}
-			stmt := fmt.Sprintf(
-				`UPDATE %s SET %s FROM _xuid_map m WHERE %s.%s = m.old_xuid`,
-				t.table, set, t.table, xuidCol)
-			if _, err := dst.ExecContext(ctx, stmt); err != nil {
-				if errIsMissingTable(err) {
-					// Table H5-spécifique absente de cette démo (titre Infinite) → skip.
-					continue
+			stmt := fmt.Sprintf(`UPDATE %s SET %s WHERE %s = ?`, t.table, set, xuidCol)
+
+			manquante := false
+			for _, e := range roster {
+				args := make([]any, 0, 3)
+				args = append(args, e.DemoXUID)
+				if gtCol != "" {
+					args = append(args, e.DemoGamertag)
 				}
-				return fmt.Errorf("anonymize %s.%s: %w", t.table, xuidCol, err)
+				args = append(args, e.SourceXUID)
+
+				if _, err := dst.ExecContext(ctx, stmt, args...); err != nil {
+					if errIsMissingTable(err) {
+						// Table H5-spécifique absente de cette démo (titre Infinite) → on
+						// abandonne CETTE table, pas les entrées de roster suivantes, qui
+						// échoueraient toutes de la même façon.
+						manquante = true
+						break
+					}
+					return fmt.Errorf("anonymize %s.%s (xuid %s): %w", t.table, xuidCol, e.SourceXUID, err)
+				}
+			}
+			if manquante {
+				break
 			}
 		}
 	}
-	_, _ = dst.ExecContext(ctx, `DROP TABLE IF EXISTS _xuid_map`)
 	return nil
 }
 

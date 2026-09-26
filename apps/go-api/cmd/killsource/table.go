@@ -17,7 +17,7 @@ import (
 	"strconv"
 	"text/tabwriter"
 
-	"levelup/go-api/internal/games/halo_infinite/film/killsource"
+	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 )
 
 // marqueurDivergence : le signe qui dit que les deux verites ne designent pas le meme responsable.
@@ -36,11 +36,11 @@ func afficherTable(r *rapport, o options) error {
 // toujours la sortie : une table de tags se perime en silence, et une sortie sans date ne se
 // verifie pas.
 func enteteFilm(r *rapport) {
-	p := killsource.CatalogueProvenance()
+	p := decfilm.CatalogueProvenance()
 	fmt.Printf("FILM %s — %d mort(s) publiee(s) en %s\n",
 		r.film, len(r.result.Kills), r.duree.Round(1e8))
 	fmt.Printf("catalogue embarque : %d identifiants de source (genere le %s), etiquettes du %s\n",
-		killsource.CatalogueSize(), p.IDsDate, p.LabelsDate)
+		decfilm.CatalogueSize(), p.IDsDate, p.LabelsDate)
 	fmt.Printf("calibration retenue automatiquement : %s\n\n", r.result.Calibration)
 }
 
@@ -77,18 +77,18 @@ func corpsTable(r *rapport, o options) int {
 	}
 	// LE COMPTE DES DIVERGENCES PORTE SUR LE FILM ENTIER, jamais sur l affichage : une legende qui
 	// compterait les lignes visibles dirait quelque chose de faux des qu on tronque.
-	return compte(r.result.Kills, func(k killsource.Kill) bool { return k.Diverges })
+	return compte(r.result.Kills, func(k decfilm.Kill) bool { return k.Diverges })
 }
 
 // ligneTable : une mort. La source et le credit sont deux colonnes, jamais une seule.
-func ligneTable(w *tabwriter.Writer, k killsource.Kill, o options) {
+func ligneTable(w *tabwriter.Writer, k decfilm.Kill, o options) {
 	credit := k.Feed.Killer
 	if !k.Feed.Present {
 		credit = k.Feed.Killer + "  (mort absente du kill-feed)"
 	}
 	// LE SYMETRIQUE, ET IL FAUT LE DIRE AUSSI : ici c est la mort qui est au feed et le KILL qui
 	// n y est pas. Le nom du tueur vient du roster de replication.
-	if k.Read.Origin == killsource.OriginBotKiller {
+	if k.Read.Origin == decfilm.OriginBotKiller {
 		credit = k.Feed.Killer + "  (kill absent du kill-feed)"
 	}
 	if k.Diverges {
@@ -116,7 +116,7 @@ func ligneTable(w *tabwriter.Writer, k killsource.Kill, o options) {
 //
 // La distinction entre `?` et `—` est la raison d etre du champ : les confondre publierait un fait
 // jamais observe. La legende sous la table les rappelle.
-func assistantCourt(a killsource.Assist) string {
+func assistantCourt(a decfilm.Assist) string {
 	switch {
 	case !a.Known:
 		return "?"
@@ -135,8 +135,8 @@ func assistantCourt(a killsource.Assist) string {
 //
 // Aucun plafond n est applique : une valeur au-dessus de 100 est une donnee (degat excedentaire),
 // pas une lecture ratee, et l ecraser reviendrait a cacher ce qu on ne comprend pas encore.
-func partsCourtes(k killsource.Kill) string {
-	part := func(d killsource.DamageShare) string {
+func partsCourtes(k decfilm.Kill) string {
+	part := func(d decfilm.DamageShare) string {
 		if !d.Known {
 			return "?"
 		}
@@ -155,7 +155,7 @@ func partsCourtes(k killsource.Kill) string {
 // ELLES SORTENT DU TABLEAU, ET C EST UN CHOIX DE LISIBILITE, PAS UN ESCAMOTAGE : le texte d une
 // reserve fait deux lignes et il est le MEME sur des dizaines de morts. Le mettre en cellule
 // ecrase toutes les autres colonnes ; le mettre en legende le rend lisible et le garde entier.
-func reserves(ks []killsource.Kill) []string {
+func reserves(ks []decfilm.Kill) []string {
 	vu := map[string]bool{}
 	var out []string
 	for _, k := range ks {
@@ -178,7 +178,7 @@ func legende(r *rapport, nDiv int, o options) {
 		fmt.Println("    un autre joueur. LES DEUX SONT VRAIES : le credit est ce que le jeu affiche, la")
 		fmt.Println("    source est d ou vient le degat. Confirme 8/8 en mode Theater.")
 	}
-	if n := compte(r.result.Kills, func(k killsource.Kill) bool { return !k.Source.Named }); n > 0 {
+	if n := compte(r.result.Kills, func(k decfilm.Kill) bool { return !k.Source.Named }); n > 0 {
 		fmt.Printf("\n<< Autres >> sur %d ligne(s) : aucun nom propre publiable pour cette source. La NATURE\n", n)
 		fmt.Println("    reste juste et reste affichee ; c est le nom qui manque, pas la lecture.")
 	}
@@ -202,7 +202,7 @@ func legende(r *rapport, nDiv int, o options) {
 // blocCouverture : LES DENOMINATEURS, NOMMES. Trois se calculent hors ligne ; le quatrieme (les
 // morts de l API) exige une source externe et n est donc PAS affiche ici — l annoncer sans
 // pouvoir le calculer serait exactement l ambiguite que la doctrine interdit.
-func blocCouverture(c killsource.Coverage) {
+func blocCouverture(c decfilm.Coverage) {
 	fmt.Println("\nCOUVERTURE — chaque taux porte le nom de son denominateur")
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
 	fmt.Fprintf(w, "  %d / %d\tcouples REELS (couples reconstruits moins les couples fabriques)\t%s\t\n",
@@ -230,26 +230,42 @@ func blocCouverture(c killsource.Coverage) {
 }
 
 // blocPublication : ce que le consommateur a le droit de faire de cette sortie.
-func blocPublication(res *killsource.Result) {
+func blocPublication(res *decfilm.Result) {
 	fmt.Println("\nCE QUE CETTE SORTIE AUTORISE")
+	t := res.Roster.FilmTable
+	fmt.Printf("  lien indice -> joueur : %d LU(S) dans la table du film, %d infere(s)"+
+		" pour %d nom(s) libre(s)\n", t.Pinned, t.Inferred, t.FreeNames)
+	fmt.Printf("     controle par le kill-feed : accord %d, contradiction %d, silence %d\n",
+		t.Agree, t.Contradict, t.Silent)
+	if t.Refusal != decfilm.FilmTableRead {
+		fmt.Printf("     table du film NON LUE (%s) : tout vient de l inference\n", t.Refusal)
+	}
 	if res.LineByLinePublishable() {
-		fmt.Printf("  publication LIGNE PAR LIGNE : autorisee (marge de bijection %d, sante %s)\n",
-			res.BijectionMargin, res.Health.Verdict())
+		fmt.Printf("  publication LIGNE PAR LIGNE : autorisee (%s, sante %s)\n",
+			motifDeBijection(res), res.Health.Verdict())
 		return
 	}
-	fmt.Printf("  publication LIGNE PAR LIGNE : REFUSEE — agregat seulement (marge de bijection %d, sante %s)\n",
-		res.BijectionMargin, res.Health.Verdict())
-	if res.BijectionMargin <= 0 {
+	fmt.Printf("  publication LIGNE PAR LIGNE : REFUSEE — agregat seulement (%s, sante %s)\n",
+		motifDeBijection(res), res.Health.Verdict())
+	if res.BijectionMargin <= 0 && !res.BijectionDetermined {
 		fmt.Println("     marge nulle : au moins deux joueurs sont interchangeables, donc les attributions")
 		fmt.Println("     individuelles sont fausses meme si l agregat est juste. C est le cas du BTB.")
+		if t.Inferred == 1 && t.FreeNames > 1 {
+			fmt.Printf("     un seul indice a inferer, mais %d noms libres : l affectation est"+
+				" un CHOIX,\n", t.FreeNames)
+			fmt.Println("     pas une deduction — la porte reste fermee (revue de jalon M1, lentille L4).")
+		}
 	}
 	for _, a := range res.Health.Alerts() {
 		fmt.Printf("     ALERTE : %s\n", a)
 	}
+	for _, d := range res.Health.Degradations() {
+		fmt.Printf("     DEGRADATION : %s\n", d)
+	}
 }
 
 // compte : combien de morts verifient un predicat.
-func compte(ks []killsource.Kill, ok func(killsource.Kill) bool) int {
+func compte(ks []decfilm.Kill, ok func(decfilm.Kill) bool) int {
 	n := 0
 	for _, k := range ks {
 		if ok(k) {
@@ -257,4 +273,16 @@ func compte(ks []killsource.Kill, ok func(killsource.Kill) bool) int {
 		}
 	}
 	return n
+}
+
+// motifDeBijection : pourquoi la bijection est (ou n est pas) ambigue.
+//
+// La marge n a de sens que sur la part INFEREE. Un film dont la table du film a tout lu n a rien
+// d interchangeable : sa marge vaut zero parce qu il n y a pas de seconde solution a mesurer, et
+// l afficher seule ferait lire « ambigu » la ou il n y a aucune ambiguite (lot 1.8).
+func motifDeBijection(res *decfilm.Result) string {
+	if res.BijectionDetermined {
+		return "bijection DETERMINEE : une seule affectation possible"
+	}
+	return fmt.Sprintf("marge de bijection %d", res.BijectionMargin)
 }

@@ -22,12 +22,14 @@ package sync
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"sync"
 	"testing"
 	"time"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/games/halo_infinite/skillchain"
 	"levelup/go-api/internal/sync/invariants"
 )
 
@@ -176,6 +178,7 @@ func TestGate_DeltaSkip_EnrichmentConverges_integration(t *testing.T) {
 					i, u.gamertag, v.Count)
 			}
 		}
+		assertNoForeignLUSRChain(ctx, t, playerSQL, i, u.gamertag)
 	}
 
 	// Invariants GLOBAUX (une fois, pas par joueur) : zéro FAIL non plus.
@@ -321,5 +324,31 @@ func TestGate_ConcurrentSquadSync_Converges_integration(t *testing.T) {
 			t.Errorf("user%d (%s) : %d violation(s) FAIL après course concurrente : %v",
 				i, u.gamertag, len(fails), fails)
 		}
+	}
+}
+
+// infiniteLUSRChains — les chaînes LUSR du titre halo_infinite, DÉRIVÉES du package
+// de titre (skillchain.Chains), plus recopiées (G.5b, constat R7 de la revue du
+// 2026-09-13). La liste était auparavant réécrite ici avec un commentaire promettant
+// qu'« une chaîne ajoutée au titre sans l'être ici rend le gate rouge » : c'était
+// faux — TestSkillChainLiterals_NoDrift ne vérifie que cinq pair_names et les quatre
+// chaînes existantes. Une 5e chaîne ajoutée à ClassifyLUSRChain n'aurait rien fait
+// rougir et l'invariant I14 aurait classé des lignes LÉGITIMES comme étrangères.
+// L'exhaustivité de skillchain.Chains est, elle, tenue par skillchain.TestChainsEstExhaustive
+// (corpus couvrant chaque branche du classifier, dans les deux sens).
+var infiniteLUSRChains = skillchain.Chains()
+
+// assertNoForeignLUSRChain branche l'invariant I14 sur le gate : aucune ligne
+// match_skill_rank d'une player DB Infinite ne porte la chaîne LUSR d'un autre titre.
+// Filet de données du correctif structurel C.1/C.2 (incident 2026-06-26 : 2 479 lignes
+// h5_arena écrites dans 4 player DB halo_infinite).
+func assertNoForeignLUSRChain(ctx context.Context, t *testing.T, playerDB *sql.DB, idx int, gamertag string) {
+	t.Helper()
+	rep, err := invariants.CheckPlayerLUSRChains(ctx, playerDB, infiniteLUSRChains)
+	if err != nil {
+		t.Fatalf("CheckPlayerLUSRChains user%d (%s): %v", idx, gamertag, err)
+	}
+	if fails := rep.Failures(); len(fails) > 0 {
+		t.Errorf("user%d (%s) : chaîne(s) LUSR étrangère(s) au titre de la base : %v", idx, gamertag, fails)
 	}
 }

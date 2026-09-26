@@ -16,6 +16,8 @@
  */
 import type { UiTheme } from '@/stores/settingsDraftStore'
 
+import { themedIconSrc } from '@/lib/themedIcon'
+
 /** Segment de chemin Waypoint par titre. Fallback = segment Infinite (un titre
  *  futur sans page Waypoint ne déclare simplement pas la capability). */
 function waypointTitleSegment(titleSlug: string): string {
@@ -29,8 +31,8 @@ export function buildWaypointMatchUrl(playerSlug: string, matchId: string, title
   return `https://www.halowaypoint.com/${seg}/players/${encodeURIComponent(playerSlug)}/matches/${bucket}${matchId}`
 }
 
-/** Chemin du logo Halo Waypoint selon le thème local — même convention que
- *  MatchNemesisCards (thème clair -> logo noir, sombre -> logo blanc). */
+/** Chemin du logo Halo Waypoint selon le thème local (convention centralisée dans
+ *  `lib/themedIcon.ts` : thème clair -> logo noir, sombre -> logo blanc). */
 export function waypointLogoSrc(theme: UiTheme): string {
-  return `/icons/halowaypoint-${theme === 'light' ? 'black' : 'white'}.png`
+  return themedIconSrc('halowaypoint', theme)
 }

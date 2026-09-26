@@ -64,7 +64,7 @@ func buildExplorerFragGapSeries(raw []domain.RelationDuelRawRow) []domain.Explor
 }
 
 // convertCommonMatches convertit les lignes brutes en CommonMatchRow avec
-// were_teammates et outcome_label résolus.
+// were_teammates et la clé canonique d'issue résolus.
 func convertCommonMatches(raw []domain.CommonMatchRaw) []domain.CommonMatchRow {
 	if len(raw) == 0 {
 		return []domain.CommonMatchRow{}
@@ -82,7 +82,7 @@ func convertCommonMatches(raw []domain.CommonMatchRaw) []domain.CommonMatchRow {
 			ModeUI:        r.ModeUI,
 			WereTeammates: wereTeammates,
 			PlayerOutcome: r.Player1Outcome,
-			OutcomeLabel:  outcomeLabel(r.Player1Outcome),
+			Outcome:       outcomeKeyFromHaloCode(r.Player1Outcome),
 			Kills:         r.Player1Kills,
 			Deaths:        r.Player1Deaths,
 			KDA:           r.Player1KDA,

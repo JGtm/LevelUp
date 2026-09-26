@@ -1,0 +1,311 @@
+package replay
+
+// vehicle_shots_test.go — LA SECONDE PORTE DES TIRS, testee SANS film : c'est de la logique
+// pure (`vehicle_shots.go`), et elle doit se verifier sans les trois minutes de decodage que
+// coute un instrument. Les chiffres de terrain, eux, vivent dans `vehicules_v4_tirs_test.go`.
+
+import (
+	"testing"
+
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+)
+
+// vsClock est l'horloge des cas : origine 0, pas 100 ms, 1 000 frames.
+func vsClock() replayClock {
+	return replayClock{origin: 0, step: 100_000, frames: 1000}
+}
+
+// vsDoc monte un document minimal : une vie de vehicule occupee par le slot 10, une trajectoire
+// publiee pour ce slot, et une couverture de tirs equilibree.
+func vsDoc(rides []VehicleRide, samples []VehicleSample) *ReplayDocument {
+	seat := 0
+	if len(rides) == 0 {
+		rides = []VehicleRide{{T0: 10, T1: 40, Slot: 10, Seat: &seat, Src: VehicleRideSrcProximity}}
+	}
+	return &ReplayDocument{
+		Tracks:   []Track{{Slot: 10}},
+		Vehicles: []VehicleTrack{{Slot: 700, Gen: 1, T0: 0, T1: 90, T1Max: 90, Samples: samples, Rides: rides}},
+		Coverage: &Coverage{
+			Shots:    LayerCoverage{Available: 3, Attached: 1, NoSlot: 2},
+			Vehicles: &VehicleCoverage{UnknownChassis: map[string]int{}},
+			Verdict:  map[string]string{"shots": "partiel : moins des deux tiers rattachés"},
+		},
+	}
+}
+
+// vsOrphan fabrique un orphelin « sans slot » du joueur 3, a la frame demandee.
+func vsOrphan(frame int, weapon uint64) orphanShot {
+	return orphanShot{
+		ev: grammar.FireEvent{
+			TimestampUS: uint64(frame) * 100_000, FilmIndex: 3, WeaponID: weapon,
+		},
+		reason: reasonNoSlot,
+	}
+}
+
+func vsOwn() IdentityRegistry { return regDe(OwnerReport{Owner: map[uint32]int{10: 3}}) }
+
+// TestTirEnVehiculePosePendantUnEpisode — LE CAS NOMINAL : le tir tombe dans l'episode, il sort
+// a la position INTERPOLEE du vehicule et porte le slot de celui-ci.
+func TestTirEnVehiculePosePendantUnEpisode(t *testing.T) {
+	doc := vsDoc(nil, []VehicleSample{{T: 10, X: 0, Y: 0}, {T: 30, X: 20, Y: 40}})
+	attachVehicleShots(doc, []orphanShot{vsOrphan(20, 0x11725DC400000000)}, vsOwn(), vsClock())
+	if len(doc.Shots) != 1 {
+		t.Fatalf("tirs publies = %d, attendu 1", len(doc.Shots))
+	}
+	s := doc.Shots[0]
+	if s.Vehicle == nil || *s.Vehicle != 700 {
+		t.Errorf("marqueur vehicule = %v, attendu 700", s.Vehicle)
+	}
+	// A mi-chemin des deux echantillons : l'interpolation, pas le plus proche.
+	if s.X != 10 || s.Y != 20 {
+		t.Errorf("position = (%v, %v), attendu (10, 20) — interpolation entre les echantillons", s.X, s.Y)
+	}
+	if s.Slot != 10 || s.Weapon != "0x11725DC400000000" {
+		t.Errorf("tireur/arme = %d/%q, attendu 10/0x11725DC400000000", s.Slot, s.Weapon)
+	}
+	c := doc.Coverage.Shots
+	if c.Attached != 2 || c.NoSlot != 1 {
+		t.Errorf("couverture = attached %d / noSlot %d, attendu 2 / 1", c.Attached, c.NoSlot)
+	}
+	if !c.Balanced() {
+		t.Errorf("l'invariant de couverture est rompu : %+v", c)
+	}
+	if doc.Coverage.Verdict["shots"] != VerdictNominal {
+		t.Errorf("verdict = %q, attendu recalcule apres la seconde porte", doc.Coverage.Verdict["shots"])
+	}
+	if doc.Coverage.Vehicles.Shots != 1 {
+		t.Errorf("coverage.vehicles.shots = %d, attendu 1", doc.Coverage.Vehicles.Shots)
+	}
+}
+
+// TestTirHorsEpisodeResteOrphelin — un orphelin qu'aucun episode ne couvre ne bouge PAS : ni
+// publie, ni sorti de son compteur de rejet. C'est le cas nominal d'un tir a pied que le pont
+// n'a pas su placer.
+func TestTirHorsEpisodeResteOrphelin(t *testing.T) {
+	doc := vsDoc(nil, []VehicleSample{{T: 10, X: 0, Y: 0}, {T: 30, X: 20, Y: 40}})
+	attachVehicleShots(doc, []orphanShot{vsOrphan(80, 0)}, vsOwn(), vsClock())
+	if len(doc.Shots) != 0 {
+		t.Fatalf("tirs publies = %d, attendu 0", len(doc.Shots))
+	}
+	if c := doc.Coverage.Shots; c.Attached != 1 || c.NoSlot != 2 || !c.Balanced() {
+		t.Errorf("couverture modifiee alors que rien n'a ete rattache : %+v", c)
+	}
+	if doc.Coverage.Vehicles.ShotsNoRide != 1 {
+		t.Errorf("shotsNoRide = %d, attendu 1", doc.Coverage.Vehicles.ShotsNoRide)
+	}
+}
+
+// TestTirAmbiguDeuxVehicules — DEUX vehicules distincts portent un episode du meme tireur au
+// meme instant : on ne tranche pas, on compte. Publier l'un des deux affirmerait ce que la
+// mesure ne dit pas.
+func TestTirAmbiguDeuxVehicules(t *testing.T) {
+	seat := 0
+	doc := vsDoc(nil, []VehicleSample{{T: 10, X: 0, Y: 0}})
+	doc.Vehicles = append(doc.Vehicles, VehicleTrack{
+		Slot: 800, Gen: 1, T1Max: 90,
+		Samples: []VehicleSample{{T: 10, X: 50, Y: 50}},
+		Rides:   []VehicleRide{{T0: 10, T1: 40, Slot: 10, Seat: &seat, Src: VehicleRideSrcProximity}},
+	})
+	attachVehicleShots(doc, []orphanShot{vsOrphan(20, 0)}, vsOwn(), vsClock())
+	if len(doc.Shots) != 0 {
+		t.Fatalf("tirs publies = %d, attendu 0 (ambigu)", len(doc.Shots))
+	}
+	if doc.Coverage.Vehicles.ShotsAmbiguous != 1 {
+		t.Errorf("shotsAmbiguous = %d, attendu 1", doc.Coverage.Vehicles.ShotsAmbiguous)
+	}
+	if c := doc.Coverage.Shots; !c.Balanced() {
+		t.Errorf("l'invariant de couverture est rompu : %+v", c)
+	}
+}
+
+// TestTirEnVehiculeSansTrajectoirePubliee — MEME PORTE QUE LES TIRS A PIED : sans trajectoire
+// publiee pour le tireur, le tir change de compteur (Unpublished) au lieu d'etre publie.
+func TestTirEnVehiculeSansTrajectoirePubliee(t *testing.T) {
+	doc := vsDoc(nil, []VehicleSample{{T: 10, X: 0, Y: 0}})
+	doc.Tracks = nil
+	attachVehicleShots(doc, []orphanShot{vsOrphan(20, 0)}, vsOwn(), vsClock())
+	if len(doc.Shots) != 0 {
+		t.Fatalf("tirs publies = %d, attendu 0", len(doc.Shots))
+	}
+	c := doc.Coverage.Shots
+	if c.Attached != 1 || c.NoSlot != 1 || c.Unpublished != 1 || !c.Balanced() {
+		t.Errorf("couverture = %+v, attendu noSlot -> unpublished sans rompre l'invariant", c)
+	}
+}
+
+// TestVehiclePosAtBornes — la position TENUE hors de la plage des echantillons, et la NAISSANCE
+// quand le vehicule n'a jamais bouge. Extrapoler ferait sortir le tir de la carte.
+func TestVehiclePosAtBornes(t *testing.T) {
+	tr := VehicleTrack{Samples: []VehicleSample{{T: 10, X: 1, Y: 2}, {T: 20, X: 3, Y: 4}}}
+	for _, tc := range []struct {
+		frame int
+		x, y  float32
+	}{
+		{0, 1, 2}, {10, 1, 2}, {15, 2, 3}, {20, 3, 4}, {99, 3, 4},
+	} {
+		x, y, ok := vehiclePosAt(tr, tc.frame)
+		if !ok || x != tc.x || y != tc.y {
+			t.Errorf("frame %d -> (%v, %v, %v), attendu (%v, %v, true)", tc.frame, x, y, ok, tc.x, tc.y)
+		}
+	}
+	spawn := VehicleTrack{Spawn: &VehicleSpawn{X: 7, Y: 8}}
+	if x, y, ok := vehiclePosAt(spawn, 50); !ok || x != 7 || y != 8 {
+		t.Errorf("sans echantillon : (%v, %v, %v), attendu la naissance (7, 8, true)", x, y, ok)
+	}
+	if _, _, ok := vehiclePosAt(VehicleTrack{}, 50); ok {
+		t.Errorf("ni echantillon ni naissance : la position ne doit PAS etre inventee")
+	}
+}
+
+// TestTirEnVehiculeSansEpisodeNeTouchePasLeDocument — garde de non-regression : un document sans
+// vehicule (film d'arene) sort strictement inchange.
+func TestTirEnVehiculeSansEpisodeNeTouchePasLeDocument(t *testing.T) {
+	doc := vsDoc(nil, nil)
+	doc.Vehicles = nil
+	avant := doc.Coverage.Shots
+	attachVehicleShots(doc, []orphanShot{vsOrphan(20, 0)}, vsOwn(), vsClock())
+	if doc.Coverage.Shots != avant || len(doc.Shots) != 0 {
+		t.Errorf("document modifie sans aucun vehicule : %+v", doc.Coverage.Shots)
+	}
+}
+
+// vsTourelle monte un Warthog (slot 701, roule de (0,0) a (90,0)) et sa LAAG (slot 700, nee a
+// (500, 500)), l artilleur (slot 10) lu a bord de la LAAG — le gabarit mesure au parc.
+func vsTourelle() *ReplayDocument {
+	doc := vsDoc(nil, nil)
+	seat := 0
+	doc.Vehicles = []VehicleTrack{
+		{Slot: 700, Gen: 1, Chassis: "dd7f9102", T0: 0, T1: 90, T1Max: 90, Spawn: &VehicleSpawn{X: 500, Y: 500},
+			Rides: []VehicleRide{{T0: 10, T1: 40, Slot: 10, Seat: &seat, Src: VehicleRideSrcFilm}}},
+		{Slot: 701, Gen: 1, Family: familleWarthog, T0: 0, T1: 90, T1Max: 90,
+			Samples: []VehicleSample{{T: 0, X: 0, Y: 0}, {T: 90, X: 90, Y: 0}}},
+	}
+	return doc
+}
+
+// TestTirDArtilleurPoseSurLePorteur — RETOURS DU REJEU 2026-09-23 (M4a.1) : le tir d un artilleur
+// sort du VEHICULE qui porte la tourelle, pas de la naissance de la tourelle (mediane 44,7 m au
+// parc avant ce lot). Episode reporte sur le porteur par `poseTurretsOnCarriers`.
+func TestTirDArtilleurPoseSurLePorteur(t *testing.T) {
+	doc := vsTourelle()
+	poseTurretsOnCarriers(doc.Vehicles, vehicleBoardingAnchors{}, nil)
+	attachVehicleShots(doc, []orphanShot{vsOrphan(20, 0xC7D5091200000000)}, vsOwn(), vsClock())
+	if len(doc.Shots) != 1 {
+		t.Fatalf("tirs publies = %d, attendu 1", len(doc.Shots))
+	}
+	s := doc.Shots[0]
+	if s.Vehicle == nil || *s.Vehicle != 701 || s.X != 20 || s.Y != 0 {
+		t.Errorf("tir = v %v (%v, %v), attendu v 701 en (20, 0)", s.Vehicle, s.X, s.Y)
+	}
+	if doc.Coverage.Vehicles.ShotsOnCarrier != 1 {
+		t.Errorf("shotsOnCarrier = %d, attendu 1", doc.Coverage.Vehicles.ShotsOnCarrier)
+	}
+}
+
+// TestTirDArtilleurDUnePieceNonReporteeSurLePorteur — l episode est reste sur la piece (porteur
+// non pilotable, ou occupant deja a bord) : le tir sort QUAND MEME du porteur designe.
+func TestTirDArtilleurDUnePieceNonReporteeSurLePorteur(t *testing.T) {
+	doc := vsTourelle()
+	doc.Vehicles[0].Carrier = &VehicleLifeRef{Slot: 701, Gen: 1}
+	attachVehicleShots(doc, []orphanShot{vsOrphan(30, 0x0BB6976B00000000)}, vsOwn(), vsClock())
+	if len(doc.Shots) != 1 || *doc.Shots[0].Vehicle != 701 || doc.Shots[0].X != 30 {
+		t.Fatalf("tirs = %+v, attendu un tir pose sur 701 en x = 30", doc.Shots)
+	}
+}
+
+// TestLArmeNommeLaVarianteGungoose — M4a.2 : le Gungoose partage le chassis du Mongoose ; son
+// ARME (`0042678E`) le designe. Une arme du Gungoose lue sur une autre famille ne nomme rien.
+func TestLArmeNommeLaVarianteGungoose(t *testing.T) {
+	doc := vsDoc(nil, []VehicleSample{{T: 10, X: 0, Y: 0}, {T: 30, X: 20, Y: 40}})
+	doc.Vehicles[0].Family = familleMongoose
+	attachVehicleShots(doc, []orphanShot{vsOrphan(20, 0x0042678E00000000)}, vsOwn(), vsClock())
+	if doc.Vehicles[0].Variant != familleGungoose || doc.Coverage.Vehicles.Variants != 1 {
+		t.Errorf("variante = %q (%d), attendu gungoose (1)", doc.Vehicles[0].Variant,
+			doc.Coverage.Vehicles.Variants)
+	}
+	doc = vsDoc(nil, []VehicleSample{{T: 10, X: 0, Y: 0}, {T: 30, X: 20, Y: 40}})
+	doc.Vehicles[0].Family = familleWarthog
+	attachVehicleShots(doc, []orphanShot{vsOrphan(20, 0x0042678E00000000)}, vsOwn(), vsClock())
+	if doc.Vehicles[0].Variant != "" {
+		t.Errorf("variante = %q sur un Warthog, attendu aucune", doc.Vehicles[0].Variant)
+	}
+}
+
+// TestTirDArtilleurHorsDeLaFenetreDuPorteurNonPose — revue adverse du lot M4a (F4). L episode est
+// reste sur la piece parce que la vie publiee du porteur s arrete AVANT lui : un tir dans ce trou
+// n est PAS pose a la derniere position tenue du porteur (perimee) — il est compte `shotsUnplaced`.
+func TestTirDArtilleurHorsDeLaFenetreDuPorteurNonPose(t *testing.T) {
+	doc := vsTourelle()
+	doc.Vehicles[0].Carrier = &VehicleLifeRef{Slot: 701, Gen: 1}
+	doc.Vehicles[1].T1, doc.Vehicles[1].T1Max = 25, 25
+	attachVehicleShots(doc, []orphanShot{vsOrphan(30, 0x0BB6976B00000000)}, vsOwn(), vsClock())
+	if len(doc.Shots) != 0 {
+		t.Fatalf("tirs = %+v, attendu aucun (le porteur n est plus publie a la frame 30)", doc.Shots)
+	}
+	if doc.Coverage.Vehicles.ShotsUnplaced != 1 || doc.Coverage.Vehicles.ShotsOnCarrier != 0 {
+		t.Errorf("shotsUnplaced = %d, shotsOnCarrier = %d : attendu 1 et 0",
+			doc.Coverage.Vehicles.ShotsUnplaced, doc.Coverage.Vehicles.ShotsOnCarrier)
+	}
+}
+
+// TestTirDUnOccupantALaFoisSurLaPieceEtSurSonPorteurNEstPasAmbigu — 2026-09-24 (le Falcon devient
+// pilotable). Un occupant deja a bord du porteur garde AUSSI l episode que le trou de position lui
+// a prete sur la piece montee (refus « deja a bord » de `moveTurretRides`) : ses deux episodes
+// designent la piece ET son porteur, c est-a-dire LE MEME vehicule. Ce n est pas l ambiguite de
+// deux vehicules distincts : le tir sort du porteur. Mesure au parc : 7 tirs de `4f77afc1` (occupant
+// du Falcon 787 et de sa tourelle LMG 786) passaient de « pose sur le porteur » a « ambigu ».
+func TestTirDUnOccupantALaFoisSurLaPieceEtSurSonPorteurNEstPasAmbigu(t *testing.T) {
+	doc := vsTourelle()
+	seat := 1
+	doc.Vehicles[0].Carrier = &VehicleLifeRef{Slot: 701, Gen: 1}
+	doc.Vehicles[1].Rides = []VehicleRide{{T0: 5, T1: 60, Slot: 10, Seat: &seat, Src: VehicleRideSrcFilm}}
+	attachVehicleShots(doc, []orphanShot{vsOrphan(30, 0x0BB6976B00000000)}, vsOwn(), vsClock())
+	if len(doc.Shots) != 1 || *doc.Shots[0].Vehicle != 701 || doc.Shots[0].X != 30 {
+		t.Fatalf("tirs = %+v, attendu un tir pose sur le porteur 701 en x = 30", doc.Shots)
+	}
+	if doc.Coverage.Vehicles.ShotsAmbiguous != 0 {
+		t.Errorf("shotsAmbiguous = %d, attendu 0 : la piece est SUR son porteur", doc.Coverage.Vehicles.ShotsAmbiguous)
+	}
+}
+
+// TestTirDeDeuxPiecesDistinctesDuMemePorteurEstAmbigu — REVUE ADVERSE DU LOT M7b (RR-M7b-03). Le
+// meme tireur tenu au meme instant par DEUX pieces distinctes du meme porteur (le lance-grenades
+// et la LMG d un Falcon) : physiquement impossible, c est un artefact du liant. Le porteur commun
+// ne suffit pas a trancher — le tir reste AMBIGU, compte, non pose.
+func TestTirDeDeuxPiecesDistinctesDuMemePorteurEstAmbigu(t *testing.T) {
+	doc := vsTourelle()
+	seat := 0
+	porteur := &VehicleLifeRef{Slot: 701, Gen: 1}
+	doc.Vehicles[0].Carrier = porteur
+	doc.Vehicles = append(doc.Vehicles, VehicleTrack{
+		Slot: 702, Gen: 1, Chassis: "f4c45d71", T0: 0, T1: 90, T1Max: 90, Carrier: porteur,
+		Spawn: &VehicleSpawn{X: 500, Y: 500},
+		Rides: []VehicleRide{{T0: 10, T1: 40, Slot: 10, Seat: &seat, Src: VehicleRideSrcProximity}},
+	})
+	attachVehicleShots(doc, []orphanShot{vsOrphan(30, 0x0BB6976B00000000)}, vsOwn(), vsClock())
+	if len(doc.Shots) != 0 || doc.Coverage.Vehicles.ShotsAmbiguous != 1 {
+		t.Errorf("tirs = %+v, shotsAmbiguous = %d : attendu aucun tir pose, 1 ambigu",
+			doc.Shots, doc.Coverage.Vehicles.ShotsAmbiguous)
+	}
+}
+
+// TestTirPoseSurLePorteurSeLitSurTousLesCandidats — REVUE ADVERSE DU LOT M7b (RR-M7b-03). Le
+// premier candidat (siege le plus bas) est l episode propre au chassis ; le second tient le meme
+// vehicule par sa piece. Le tir est pose sur le porteur, et « pose sur le porteur » se lit sur
+// l ENSEMBLE des candidats : il est compte `shotsOnCarrier`, quel que soit l ordre des sieges.
+func TestTirPoseSurLePorteurSeLitSurTousLesCandidats(t *testing.T) {
+	doc := vsTourelle()
+	seat := 0
+	doc.Vehicles[0].Carrier = &VehicleLifeRef{Slot: 701, Gen: 1}
+	doc.Vehicles[0].Rides[0].Seat = nil
+	doc.Vehicles[1].Rides = []VehicleRide{{T0: 5, T1: 60, Slot: 10, Seat: &seat, Src: VehicleRideSrcFilm}}
+	attachVehicleShots(doc, []orphanShot{vsOrphan(30, 0x0BB6976B00000000)}, vsOwn(), vsClock())
+	if len(doc.Shots) != 1 || *doc.Shots[0].Vehicle != 701 {
+		t.Fatalf("tirs = %+v, attendu un tir pose sur le porteur 701", doc.Shots)
+	}
+	if doc.Coverage.Vehicles.ShotsOnCarrier != 1 {
+		t.Errorf("shotsOnCarrier = %d, attendu 1 : un candidat tient le porteur par sa piece",
+			doc.Coverage.Vehicles.ShotsOnCarrier)
+	}
+}

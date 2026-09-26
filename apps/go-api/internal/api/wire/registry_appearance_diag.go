@@ -50,7 +50,7 @@ func (r *ServiceRegistry) newAppearanceDiagService() *service.AppearanceDiagServ
 			return duckdb.NewCareerLiveRepo(pdb), nil
 		},
 		FetchTokens: func(ctx context.Context, xuid, gamertag string) (string, string, error) {
-			res, err := auth.RefreshHaloTokensViaStoreFirst(ctx, store, r.provider, xuid, gamertag, auth.LegacyAuthInputs{})
+			res, err := auth.RefreshHaloTokensViaStoreFirst(ctx, store, r.provider, xuid, gamertag)
 			if err != nil {
 				return "", "", err
 			}

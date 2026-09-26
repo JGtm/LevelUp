@@ -15,6 +15,7 @@ package main
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"log/slog"
 	"os"
 	"strconv"
@@ -27,10 +28,12 @@ import (
 	"levelup/go-api/internal/platform/auth"
 	"levelup/go-api/internal/platform/auth/pool"
 	duckdbpkg "levelup/go-api/internal/platform/duckdb"
+	"levelup/go-api/internal/platform/friendstore"
 	settingsplatform "levelup/go-api/internal/platform/settings"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/service"
 	syncpkg "levelup/go-api/internal/sync"
+	"levelup/go-api/internal/sync/replayartifacts"
 	"levelup/go-api/internal/sync/snapshot"
 	syncv2 "levelup/go-api/internal/sync/v2"
 )
@@ -50,11 +53,16 @@ type SyncV2WiringDeps struct {
 	MetaDB         *sql.DB
 	SharedDB       *sql.DB
 	TokenProvider  auth.TokenProvider
-	Settings       *settingsplatform.Store // pour FriendsLoader + MediaScanHook
-	PostSyncRunner port.PostSyncRunner     // pour WithPostSyncRunner (progression V2)
+	Settings       *settingsplatform.Store  // pour MediaScanHook + rejeux
+	Friends        *friendstore.FriendStore // amis PAR JOUEUR (FriendsLoader du cycle)
+	PostSyncRunner port.PostSyncRunner      // pour WithPostSyncRunner (progression V2)
 	// PrestigeHook (optionnel) ré-évalue les défis Prestige actifs après le post-sync
 	// de chaque joueur (Phase 6). = PrestigeBundle.RunPostSync. Nil → no-op.
 	PrestigeHook func(ctx context.Context, playerSlug, titleSlug string)
+	// ReplayEnqueue (optionnel) met la construction d'un rejeu dans la file durable
+	// (= ServiceRegistry.EnqueueReplayBuild). Nil → le placement « worker » dégrade
+	// en « aucune construction », journalisé.
+	ReplayEnqueue replayartifacts.EnqueueFunc
 }
 
 // buildSyncV2Orchestrator construit l'orchestrator V2 avec ses 6
@@ -124,7 +132,7 @@ func buildSyncV2Orchestrator(deps SyncV2WiringDeps) syncv2.CycleOrchestrator {
 
 	// HaloClient factory : pinned client par joueur via pool.
 	clientFactory := func(gamertag, xuid string) syncv2.HaloClient {
-		c := syncpkg.NewPooledHaloClient(deps.TokenPool, gamertag, xuid, 0)
+		c := syncpkg.NewPooledHaloClient(deps.TokenPool, 0)
 		return c
 	}
 	matchListProvider := syncv2.NewMatchListProvider(clientFactory, "matchmaking", 25, 20)
@@ -272,30 +280,61 @@ func (r *dryRunPostSyncRunner) RunPostSync(ctx context.Context, p syncv2.PlayerP
 // CRITIQUE : toute modification de defaultRunnerFactory doit être
 // répliquée ICI sous peine de divergence runtime V1↔V2.
 func buildSyncEngineFactoryParityComplete(deps SyncV2WiringDeps) syncv2.SyncEngineFactory {
-	return func(_ context.Context, p syncv2.PlayerProfile) (*syncpkg.SyncEngine, error) {
-		// MT-11 / PMT-3 : le profil porte le titre → écrit dans les DB du bon
-		// titre (parité avec le path V1 BuildEngine). Slug vide → DefaultSlug.
-		engine := syncpkg.NewSyncEngineForTitle(deps.Cfg.RepoRoot, p.TitleSlug, p.Gamertag, p.XUID, &domain.HaloTokens{}, deps.TokenProvider)
+	return func(ctx context.Context, p syncv2.PlayerProfile) (*syncpkg.SyncEngine, error) {
+		// FAIL-LOUD — UNE SEULE SOURCE DE TITRE (C.2, 2026-09-13).
+		//
+		// Le cycle ouvre TOUS ses handles sur deps.TitleSlug (shared, player x2,
+		// persister batch) ; construire le moteur sur le titre du PROFIL
+		// donnait au moteur les bases d'un titre et la sémantique d'un autre. C'est
+		// la chaîne causale exacte de la corruption LUSR h5_arena du 2026-06-26
+		// (4 joueurs déclarés sous deux titres → passe « profil halo_5 » sur les
+		// bases halo_infinite ; rapport .ai/V7.5/RAPPORT_VOLET1_LUSR_H5_2026-08-28.md
+		// §3). La partition livesync.HandlesTitle (b30eb9fe5) ferme le CHEMIN de juin,
+		// pas la CLASSE : un titre piloté par le SyncEngine la traverserait.
+		//
+		// Refus bruyant et non destructeur : le profil remonte `failed` dans le
+		// CycleResult. Slug vide = défaut historique accepté (NewSyncEngineForTitle
+		// retombe sur DefaultSlug) ; deps.TitleSlug est toujours résolu (main.go:376).
+		if p.TitleSlug != "" && p.TitleSlug != deps.TitleSlug {
+			err := fmt.Errorf("sync.v2: profil %q du titre %q soumis au cycle du titre %q — "+
+				"les handles DB sont ceux du cycle, refus (corruption LUSR h5_arena 2026-06-26)",
+				p.Gamertag, p.TitleSlug, deps.TitleSlug)
+			slog.ErrorContext(ctx, "sync.v2: profil d'un titre étranger refusé au câblage",
+				"event", "sync.v2.foreign_title_profile",
+				"gamertag", p.Gamertag, "profile_title", p.TitleSlug, "cycle_title", deps.TitleSlug,
+				"err", err)
+			return nil, err
+		}
+		// Le moteur est construit sur le titre du CYCLE — la même source que les
+		// handles ci-dessus. Le titre du profil n'est plus qu'un garde (ci-dessus) :
+		// ratchet TestSyncV2WiringHasSingleTitleSource.
+		engine := syncpkg.NewSyncEngineForTitle(deps.Cfg.RepoRoot, deps.TitleSlug, p.Gamertag, p.XUID, &domain.HaloTokens{}, deps.TokenProvider)
 
 		// 1. SharedProvider (B-swap si LEVELUP_USE_SHARED_PROVIDER=1)
 		if deps.Cfg.SharedProvider != nil {
 			engine.WithSharedProvider(deps.Cfg.SharedProvider)
 		}
 
-		// 2. FriendsLoader (sessions auto-recompute is_with_friends)
-		if deps.Settings != nil {
+		// 2. FriendsLoader (sessions auto-recompute is_with_friends) — amis DU
+		// JOUEUR du profil câblé, pas de l'instance.
+		if deps.Friends != nil && p.XUID != "" {
+			xuid := p.XUID
 			engine.WithFriendsLoader(func() ([]string, error) {
-				cfg, lerr := deps.Settings.Load()
-				if lerr != nil {
-					return nil, lerr
-				}
-				return cfg.FriendGamertags, nil
+				return deps.Friends.Get(xuid)
 			})
+		}
+
+		// 2b. Fil de l'eau des artefacts de rejeu 2D (lot 6 v7.5). Le hook s'installe
+		// toujours ; c'est LUI qui décide (construire ici / mettre en file / rien),
+		// d'après replay_build_location relu à chaque cycle. Parité avec
+		// scheduler.BuildEngine.
+		if deps.Settings != nil {
+			engine.WithReplayArtifacts(replayartifacts.NewHook(deps.Cfg, deps.Settings, deps.ReplayEnqueue))
 		}
 
 		// 3. Custom client pinned via pool
 		if deps.TokenPool != nil {
-			pooledClient := syncpkg.NewPooledHaloClient(deps.TokenPool, p.Gamertag, p.XUID, 0)
+			pooledClient := syncpkg.NewPooledHaloClient(deps.TokenPool, 0)
 			engine.SetCustomClient(pooledClient)
 		}
 

@@ -92,7 +92,6 @@ export function toExplorerRow(m: SessionDetailMatchRow, withFriends: boolean): E
     map_ui: m.map_name ?? '',
     mode_ui: m.mode_ui || m.pair_name || '',
     playlist_label: m.playlist_name ?? '',
-    outcome_label: '',
     outcome_code: m.outcome ?? 4,
     // Score d'ÉQUIPE : absent du contrat session → vide (colonne masquée, cf.
     // SESSION_HIDDEN_COLUMNS). Le score personnel a sa propre colonne ci-dessous.

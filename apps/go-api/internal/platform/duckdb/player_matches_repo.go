@@ -311,6 +311,10 @@ SELECT
     p.enemy_mmr,
     COALESCE(r.team_0_score, -1)                      AS team_0_score,
     COALESCE(r.team_1_score, -1)                      AS team_1_score,
+    -- Manches (ADR 0032). -1 = inconnu, même convention que les scores ci-dessus.
+    COALESCE(r.team_0_rounds_won, -1)                 AS team_0_rounds_won,
+    COALESCE(r.team_1_rounds_won, -1)                 AS team_1_rounds_won,
+    COALESCE(r.rounds_total, -1)                      AS rounds_total,
     p.max_killing_spree,
     p.personal_score,
     p.rank                                               AS rank_in_match,

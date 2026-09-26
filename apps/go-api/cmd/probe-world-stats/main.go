@@ -44,11 +44,18 @@ import (
 	_ "github.com/duckdb/duckdb-go/v2"
 
 	"levelup/go-api/internal/games/halo_infinite/rankedplaylists"
+	"levelup/go-api/internal/games/titleseams"
 	"levelup/go-api/internal/platform/auth"
 	syncpkg "levelup/go-api/internal/sync"
 )
 
 func main() {
+	// Seams title-owned (classifiers LUSR et famille objectif, provider des
+	// etapes de migration, traductions de rangs) : sans eux, tout appel au
+	// post-sync panique (fail-loud MT-15). Racine des jalons Halo 5 vide : cet
+	// outil ne seed pas de catalogue, le step h5_seed_milestone_catalog est
+	// alors un no-op gracieux documente. Cf. internal/games/titleseams.
+	titleseams.RegisterAll("")
 	sharedDB := flag.String("shared-db", "", "chemin shared_matches_v2.duckdb (RO ; world_csr_leaderboard_latest) — requis")
 	tokensDir := flag.String("tokens-dir", "data/auth/watcher_tokens", "répertoire MultiUserTokenStore")
 	envFile := flag.String("env-file", ".env.local", "chemin .env.local (SPNKR_AZURE_CLIENT_ID requis par MSAL)")
@@ -572,7 +579,7 @@ func iso8601Seconds(s string) float64 {
 // plName mappe un Playlist.AssetId vers son nom catalogue (sinon id court).
 func plName(assetID string) string {
 	if pl, ok := rankedplaylists.Lookup(assetID); ok {
-		return pl.NameEN
+		return pl.NameEN()
 	}
 	if assetID == "" {
 		return "(inconnu)"

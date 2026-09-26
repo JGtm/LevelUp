@@ -9,7 +9,8 @@ package killcollector
 import (
 	"strings"
 
-	"levelup/go-api/internal/games/halo_infinite/film/killsource"
+	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
+	"levelup/go-api/internal/games/halo_infinite/film/replay"
 )
 
 // MatchIdentities : ce que la passe demande a la base sur les participants d un match.
@@ -29,6 +30,26 @@ type MatchIdentities struct {
 	// ShotsFired : la reference de l API, par xuid. Une entree absente veut dire « aucune
 	// reference » — la porte de publication REFUSE alors, elle ne suppose pas.
 	ShotsFired map[string]int
+	// Equipes : `xuid -> numero d equipe` (`match_participants.team_id`).
+	//
+	// ELLE VIENT DE LA BASE, et cette passe-ci n a pas d autre source A SA DISPOSITION : elle
+	// travaille sur la sortie de `killsource`, qui ne lit pas la trame d etat. Sans elle, la
+	// lecture d isolement compterait un adversaire proche comme un accompagnement. Une entree
+	// ABSENTE veut dire « equipe non renseignee » — le joueur n entre alors dans aucun camp,
+	// jamais dans un camp par defaut.
+	//
+	// ⚠ LA JUSTIFICATION D ORIGINE — « le film ne porte AUCUN camp (`Track.Team` vaut -1
+	// partout) » — EST FAUSSE DEPUIS LE LOT 1.7 (2026-09-14) : le designateur d equipe est ecrit
+	// dans l etat par defaut de ti=9 et `grammar.ScanPlayerTeams` le lit ; `Track.Team` et
+	// `roster[].team` de l artefact en viennent (ADR 0034, D-9). Ce qui reste vrai est la portee
+	// de CETTE passe, pas une propriete du film.
+	Equipes map[string]int
+	// Participants : le TABLEAU DE L API — les participants du match (bots COMPRIS, sous
+	// `bid(N.0)`) et leurs bornes de participation. C est la meme projection que la cuisson
+	// (`replaybuild.participantsDuTableau`) : sans elle, le registre d identite ne peut pas
+	// departager un siege d index PARTAGE entre un bot et un humain arrive en cours (lot 5.1,
+	// revue de vague 4, constat P2 — cf. identity_registry_scoreboard.go pour la regle).
+	Participants []replay.Participant
 }
 
 // Resoudre : LE nom que le film donne devient un xuid et un gamertag. UNE SEULE COPIE DE CETTE
@@ -39,7 +60,7 @@ type MatchIdentities struct {
 //	"Chocoboflor"           un GAMERTAG, tel que le kill-feed du film le porte. Il se resout
 //	                        contre le roster du match, et un nom inconnu reste sans xuid.
 //	"xuid:2535469190789936" LE XUID LUI-MEME, ecrit par le decodeur quand le film ne porte
-//	                        aucun gamertag pour ce joueur (cf. killsource.XUIDNamePrefix).
+//	                        aucun gamertag pour ce joueur (cf. decfilm.XUIDNamePrefix).
 //	                        C est l identite la PLUS FORTE, et la chercher dans une table de
 //	                        gamertags ne rend evidemment rien.
 //
@@ -48,7 +69,7 @@ type MatchIdentities struct {
 // vue canonique — sinon la table stockerait `xuid:2535...` comme pseudo, exactement l « xuid brut
 // a l affichage » que `v_gamertag_lookup` existe pour empecher.
 func (m MatchIdentities) Resoudre(nom string) (xuid, gamertag string) {
-	if reste, ok := strings.CutPrefix(nom, killsource.XUIDNamePrefix); ok {
+	if reste, ok := strings.CutPrefix(nom, decfilm.XUIDNamePrefix); ok {
 		if estDecimal(reste) {
 			if gt := m.ParXUID[reste]; gt != "" {
 				return reste, gt

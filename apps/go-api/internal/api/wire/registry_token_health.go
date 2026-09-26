@@ -16,7 +16,7 @@ import (
 // tokenHealthMargin : fenêtre « expire bientôt » pour les statuts token.
 const tokenHealthMargin = 5 * time.Minute
 
-// TokenHealth retourne la santé des tokens auth (MSAL / XSTS / Refresh) par
+// TokenHealth retourne la santé des tokens auth (Accès / XSTS / Refresh) par
 // joueur suivi. Lecture seule de l'état persisté, sans refresh réseau.
 func (r *ServiceRegistry) TokenHealth(_ context.Context, titleSlug string) (domain.TokenHealthResponse, error) {
 	resp := domain.TokenHealthResponse{
@@ -38,7 +38,7 @@ func (r *ServiceRegistry) TokenHealth(_ context.Context, titleSlug string) (doma
 			Gamertag:         p.Gamertag,
 			XUID:             p.XUID,
 			Refresh:          auth.TokenAbsent,
-			MSAL:             auth.TokenAbsent,
+			Access:           auth.TokenAbsent,
 			XSTS:             auth.TokenAbsent,
 			CredentialSource: credentialSourceFor(titleSlug, p.Gamertag),
 		}
@@ -50,7 +50,7 @@ func (r *ServiceRegistry) TokenHealth(_ context.Context, titleSlug string) (doma
 			continue
 		}
 		h := u.Health(now, tokenHealthMargin)
-		ph.Refresh, ph.MSAL, ph.XSTS = h.Refresh, h.MSAL, h.XSTS
+		ph.Refresh, ph.Access, ph.XSTS = h.Refresh, h.Access, h.XSTS
 		if !u.XSTSExpiresAt.IsZero() {
 			ph.XSTSExpiresAt = u.XSTSExpiresAt.UTC().Format(time.RFC3339)
 		}

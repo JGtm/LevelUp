@@ -140,6 +140,17 @@ data/titles/*/warehouse/*.wal.orphan-*
 data/titles/*/warehouse/shared_social_export_*/
 data/backups/
 
+# Constat A0 (2026-09-05) — SORTIES DE RUNTIME des catalogues de référence.
+# `reference/` porte des données VERSIONNÉES, produites à la main par les chaînes de
+# fabrication (cmd/mapopads-build, cmd/mapobj-build...) et relues en revue. Ce que le
+# RUNTIME rattrape tout seul (rattrapage `.mvar` au fetch de film) va dans
+# `reference/generated/` et n'est JAMAIS versionné : un déploiement fait
+# `git reset --hard origin/main` (scripts/deploy.sh) et effacerait ces fichiers, et un
+# commit local les avalerait sans relecture (+332 lignes entrées ainsi par accident).
+# La fusion des deux se fait à la LECTURE (replay.LoadMapWeaponPadsMerged), le versionné
+# primant sur le rattrapé.
+data/titles/*/reference/generated/
+
 # Tokens OAuth Halo per-joueur (SPNKR refresh tokens — SECRET, ne JAMAIS commiter)
 apps/go-api/token_*.txt
 **/token_*.txt
@@ -185,6 +196,9 @@ tests/fixtures/ref_player/*.duckdb
 # `bash scripts/demo-visual-harness.sh` (ou `levelup seed-demo --synthetic --out …`).
 # Déterministe à graine fixe, donc reproductible à l'identique par tout le monde.
 tests/fixtures/demo-root/
+# Captures candidates pour le README (e2e/visual/readme-shots.visual.spec.ts, README_SHOTS=1).
+# Ce sont des PROPOSITIONS : les retenues sont copiees a la main sous docs/screenshots/.
+tests/readme-shots/
 # Logs des serveurs du harnais démo (hors outputDir Playwright, qui est vidé à chaud)
 tests/demo-harness-logs/
 data/warehouse/match_facts/
@@ -275,6 +289,13 @@ data/warehouse/archive/shared_matches.duckdb
 data/ui_prefs.json
 
 # Build artifacts Go
+# GOCACHE isoles poses a la main (merges, gates paralleles, executeurs en worktree) :
+# convention recurrente du depot (ex. .gocache-merge, .gocache-merge-31). Caches de build
+# purement jetables, plusieurs Go par dossier — jamais versionnes. Le cache de golangci-lint
+# suit la meme regle et pour la meme raison : il est GLOBAL par defaut, donc isole par
+# worktree des que deux gates tournent en parallele (lot F, 2026-09-13).
+.gocache*/
+.golangci-cache*/
 apps/go-api/bin/
 apps/go-api/*.exe
 data/auth/
@@ -327,3 +348,12 @@ tools/ce/*.csv
 # blobs-infiniteugc.svc.halowaypoint.com via la page publique Waypoint. Le résultat extrait
 # est versionné dans data/titles/{slug}/reference/map_objectives.json — c'est lui qui fait foi.
 .ai/V7.5/dumps/mapvar/
+
+# Caches Go de build des agents (scratch, jamais versionnes)
+.gocache-*/
+
+# Artefacts ecrits par le corpus gamefiles de internal/himap (gate visuel, planches de
+# revue). Ils sont REGENERES a chaque run et ne doivent pas entrer dans le depot ; le seul
+# PNG versionne de ce dossier est `coupe.png`, qui est une reference, pas une sortie.
+apps/go-api/internal/himap/gate.png
+data/global/player_friends.json

@@ -1,0 +1,22 @@
+2026/08/19 22:18:27 INFO faits du match charges path=C:\Users\Guillaume\Projects\LevelUp-wt-cter-fusion\.ai\V7.5\replay2d\registre_film\lotCter\faits_606d9844.json match=606d9844 joueurs=9 variante=KOTH:Arena
+2026/08/19 22:18:28 INFO replaybuild: actions d'objectif identifiees match_id=606d9844 famille=hill nommees=0 identifiees=0 slotsApparies=8
+2026/08/19 22:18:35 INFO replaybuild: morts sans revendication typées match_id=606d9844 publiees=2 orphelines=2
+2026/08/19 22:18:58 INFO capacites : lectures d i48 recordsDelta=63903 masqueAvecI48=6 lues=6 illisibles=0 sansIdentite=3
+2026/08/19 22:19:05 INFO camouflage : lectures d i28 queue[1] recordsDelta=63903 masqueAvecI28=357 lues=357 illisibles=0 sansVoie=166
+2026/08/19 22:19:12 INFO grappin : lectures d i59 tag==3 recordsDelta=63903 masqueAvecI59=336 lues=331 illisibles=5 tag3=9 corpsCasses=1
+2026/08/19 22:19:22 INFO poses d'equipement : records de creation ti=37 decoupage=9/5 accords=17 ancres=693 acceptes=116 confirmes=67 poses=67
+2026/08/19 22:19:28 INFO socles : balayage d archetype archetype="armes au sol (ti=42)" slots=366 ancres=999 acceptees=138 imagesCles=13 viesRecensees=99 pistesDelta=180
+2026/08/19 22:19:33 INFO socles : balayage d archetype archetype="power-ups de socle (ti=37)" slots=364 ancres=693 acceptees=116 imagesCles=13 viesRecensees=96 pistesDelta=133
+2026/08/19 22:19:38 INFO rejeu : proprietes ti=13 balayees match_id=606d9844 slots=52 records=2485 marches=1574 cassees=911 chainees=602 lectures=3059
+2026/08/19 22:20:29 INFO pont slot->joueur slots=38 viesNommees=35 viesTotal=56 lecturesIndex=13 desaccordsIndex=0 collisionsSlot=0
+2026/08/19 22:20:29 WARN rejeu : rejets au-dessus du seuil calque=tirs cause=slotIntrouvable rejetes=103 disponibles=642 rattaches=539
+2026/08/19 22:20:29 INFO rejeu : courbe de score match_id=606d9844 identiteEquipes=b manches=1 modePorte=true equipes=1 joueurs=8 points=354
+2026/08/19 22:20:29 INFO rejeu : tractions de grappin tirs=5 accroches=3 tractions=3 vies=2 rates=2 corpsCasses=0
+2026/08/19 22:20:29 INFO rejeu : poses d'equipement balaye=true calibre=true decoupage=9/5 poses=67 nommees=67 autres=0 avecPoseur=65 avecCap=51 deployees=3 lachees=62 origineInconnue=2
+2026/08/19 22:20:29 INFO rejeu : socles d'arme au sol balaye=true ancres=999 acceptees=138 retenues=123 ecartees=15 objetsDObjectif=0 lachees=76 apparues=47 auRepos=27 grappes=13 socles=7 occupations=25 datees=15 sansPassage=2 jamaisVidees=8 cyclesEtablis=4
+2026/08/19 22:20:29 INFO rejeu : socles de power-up balaye=true acceptees=116 retenues=4 socles=1
+2026/08/19 22:20:29 INFO rejeu : etat des zones match_id=606d9844 methode=designator+geometry catalogue=5 slots=21 apparies=3 nonApparies=0 sansProprietaire=0 intervalles=3 periodesColline=3 proprietaireVerifie=0 proprietaireConcordant=0
+2026/08/19 22:20:29 INFO rejeu : episodes d'equipement actif viesPubliees=42 viesCamo=2 episodesCamo=2 viesSurbouclier=0 episodesSurbouclier=0
+2026/08/19 22:20:29 INFO rejeu : palette de capacites palette="non classee" lectures=3 rangsNommes=0
+2026/08/19 22:20:29 INFO rejeu : couverture par calque tirsRattaches=539 tirsDisponibles=642 tirsSansSlot=103 tirsAmbigus=0 tirsHorsFenetre=0 tirsNonPublies=0 grenadesRattachees=47 grenadesDisponibles=48 verdictTirs=nominal verdictGrenades=nominal verdictPont=nominal
+2026/08/19 22:20:29 INFO artefact rejeu écrit path=C:\Users\Guillaume\Projects\LevelUp-wt-cter-fusion\data\cache\replays\halo_infinite\606d9844.json tracks=42 module=chasm bytes=718133 match=606d9844 title=halo_infinite

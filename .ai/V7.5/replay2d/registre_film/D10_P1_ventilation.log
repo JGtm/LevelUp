@@ -1,0 +1,207 @@
+===== FILM 24dbb67d =====
+=== RUN   TestOddballFragmentationD10
+2026/08/27 14:48:29 INFO plafond memoire arme pour ce decodage outil=d10-fragmentation souple_gib=2 dur_octets=2684354560
+2026/08/27 14:48:32 WARN empreinte du registre ECS du film INCONNUE — grammaire des composants suspecte (mise a jour du jeu ?) ; le film reste decode empreinte=7307582345129211936 empreinte_connue=7053924395561516366 blocs=118 slots_non_vides=1068
+    oddball_fragmentation_d10_test.go:83: 24dbb67d : 7051 ancres, 269 creations acceptees, 248 pistes delta ; 23 vie(s) du mot elu
+    oddball_fragmentation_d10_test.go:83: 24dbb67d : 23 vie(s) libre(s), 1 socle(s), pont 87/97 slot(s) nomme(s) = 89.7 % (plancher 50 %)
+    oddball_fragmentation_d10_test.go:94: AUTO-CONTROLE 24dbb67d : OK — totaux par joueur identiques a d9Reconstruit (8 joueur(s))
+    oddball_fragmentation_d10_test.go:95: VIE  0 24dbb67d : duree   0.00 s · naissance (14.9, -10.0) · porteur precedent aucun · ramasseur aucun · dist prec->re-prise - · meme-joueur NON
+    oddball_fragmentation_d10_test.go:95: VIE  1 24dbb67d : duree   3.40 s · naissance (20.1, -9.5) · porteur precedent aucun · ramasseur 2034 · dist prec->re-prise - · meme-joueur NON
+    oddball_fragmentation_d10_test.go:95: VIE  2 24dbb67d : duree   2.25 s · naissance (18.8, -8.7) · porteur precedent 2034 · ramasseur 8549 · dist prec->re-prise 4.31 m · meme-joueur NON [INTERIEURE]
+    oddball_fragmentation_d10_test.go:95: VIE  3 24dbb67d : duree   1.45 s · naissance (18.5, -12.3) · porteur precedent 8549 · ramasseur aucun · dist prec->re-prise - · meme-joueur NON
+    oddball_fragmentation_d10_test.go:95: VIE  4 24dbb67d : duree   5.00 s · naissance (22.2, -14.3) · porteur precedent aucun · ramasseur 4517 · dist prec->re-prise - · meme-joueur NON
+    oddball_fragmentation_d10_test.go:95: VIE  5 24dbb67d : duree   2.12 s · naissance (22.8, -8.8) · porteur precedent 4517 · ramasseur aucun · dist prec->re-prise - · meme-joueur NON
+    oddball_fragmentation_d10_test.go:95: VIE  6 24dbb67d : duree   3.88 s · naissance (25.6, -6.0) · porteur precedent aucun · ramasseur 0022 · dist prec->re-prise - · meme-joueur NON
+    oddball_fragmentation_d10_test.go:95: VIE  7 24dbb67d : duree   2.80 s · naissance (25.8, -5.1) · porteur precedent 0022 · ramasseur 3686 · dist prec->re-prise - · meme-joueur NON [INTERIEURE]
+    oddball_fragmentation_d10_test.go:95: VIE  8 24dbb67d : duree   3.33 s · naissance (10.1, -14.2) · porteur precedent 3686 · ramasseur 9321 · dist prec->re-prise - · meme-joueur NON [INTERIEURE]
+    oddball_fragmentation_d10_test.go:95: VIE  9 24dbb67d : duree   1.55 s · naissance (10.6, -14.6) · porteur precedent 9321 · ramasseur 9321 · dist prec->re-prise 0.52 m · meme-joueur OUI [INTERIEURE]
+    oddball_fragmentation_d10_test.go:95: VIE 10 24dbb67d : duree   8.29 s · naissance (11.0, -13.9) · porteur precedent 9321 · ramasseur aucun · dist prec->re-prise - · meme-joueur NON
+    oddball_fragmentation_d10_test.go:95: VIE 11 24dbb67d : duree   3.29 s · naissance (12.7, -14.0) · porteur precedent aucun · ramasseur 8549 · dist prec->re-prise - · meme-joueur NON
+    oddball_fragmentation_d10_test.go:95: VIE 12 24dbb67d : duree   2.55 s · naissance (21.5, -14.0) · porteur precedent 8549 · ramasseur aucun · dist prec->re-prise - · meme-joueur NON
+    oddball_fragmentation_d10_test.go:95: VIE 13 24dbb67d : duree   0.00 s · naissance (14.9, -10.0) · porteur precedent aucun · ramasseur aucun · dist prec->re-prise - · meme-joueur NON
+    oddball_fragmentation_d10_test.go:95: VIE 14 24dbb67d : duree   5.98 s · naissance (23.1, -1.3) · porteur precedent aucun · ramasseur 4517 · dist prec->re-prise - · meme-joueur NON
+    oddball_fragmentation_d10_test.go:95: VIE 15 24dbb67d : duree   4.32 s · naissance (24.2, 1.8) · porteur precedent 4517 · ramasseur 2034 · dist prec->re-prise 23.55 m · meme-joueur NON [INTERIEURE]
+    oddball_fragmentation_d10_test.go:95: VIE 16 24dbb67d : duree   2.07 s · naissance (26.9, -1.4) · porteur precedent 2034 · ramasseur aucun · dist prec->re-prise - · meme-joueur NON
+    oddball_fragmentation_d10_test.go:95: VIE 17 24dbb67d : duree   2.28 s · naissance (27.5, -9.1) · porteur precedent aucun · ramasseur 2034 · dist prec->re-prise - · meme-joueur NON
+    oddball_fragmentation_d10_test.go:95: VIE 18 24dbb67d : duree   2.65 s · naissance (24.0, -3.1) · porteur precedent 2034 · ramasseur 2034 · dist prec->re-prise 0.36 m · meme-joueur OUI [INTERIEURE]
+    oddball_fragmentation_d10_test.go:95: VIE 19 24dbb67d : duree   2.05 s · naissance (28.3, -3.6) · porteur precedent 2034 · ramasseur 9936 · dist prec->re-prise - · meme-joueur NON [INTERIEURE]
+    oddball_fragmentation_d10_test.go:95: VIE 20 24dbb67d : duree   6.50 s · naissance (20.0, -11.3) · porteur precedent 9936 · ramasseur 1079 · dist prec->re-prise - · meme-joueur NON [INTERIEURE]
+    oddball_fragmentation_d10_test.go:95: VIE 21 24dbb67d : duree   4.43 s · naissance (16.3, -12.1) · porteur precedent 1079 · ramasseur 9321 · dist prec->re-prise - · meme-joueur NON
+    oddball_fragmentation_d10_test.go:95: VIE 22 24dbb67d : duree   0.73 s · naissance (21.9, -13.5) · porteur precedent 9321 · ramasseur aucun · dist prec->re-prise - · meme-joueur NON
+    oddball_fragmentation_d10_test.go:96: VENTILATION 24dbb67d : plus gros porteur API 8549 — API 79.5 s, reconstruit 53.5 s, MANQUANT 26.0 s
+    oddball_fragmentation_d10_test.go:96: VENTILATION 24dbb67d :   (a) vol par un tiers a <= 1.5 m : 0.0 s (0.0 %)
+    oddball_fragmentation_d10_test.go:96: VENTILATION 24dbb67d :   (b) meme joueur re-compte      : 0.0 s (0.0 %)
+    oddball_fragmentation_d10_test.go:96: VENTILATION 24dbb67d :   (c) trou sans traversee        : 4.1 s (15.7 %)
+    oddball_fragmentation_d10_test.go:96: VENTILATION 24dbb67d :   (d) autre / hors intervalle    : 21.9 s (84.3 %)
+    oddball_fragmentation_d10_test.go:96: CONSTAT 24dbb67d : (a)+(b) = 0.0 % des secondes manquantes — seuil d'ouverture de O2 (>= 50 %) NON sur ce film
+    oddball_fragmentation_d10_test.go:97:   24dbb67d : duree des vies libres INTERIEURES (s) — n=8, min 1.55, q25 2.05, MEDIANE 2.65, q75 3.33, q90 4.32, max 6.50
+    oddball_fragmentation_d10_test.go:97: D10_INTERIEURES 24dbb67d : 1.55 2.05 2.25 2.65 2.80 3.33 4.32 6.50
+    oddball_fragmentation_d10_test.go:80: 24dbb67d : pic memoire observe 0.16 Gio
+--- PASS: TestOddballFragmentationD10 (46.95s)
+PASS
+ok  	levelup/go-api/internal/analysis/replay	47.365s
+EXIT_24dbb67d=0
+===== FILM 43716616 =====
+=== RUN   TestOddballFragmentationD10
+2026/08/27 14:49:17 INFO plafond memoire arme pour ce decodage outil=d10-fragmentation souple_gib=2 dur_octets=2684354560
+    oddball_fragmentation_d10_test.go:83: 43716616 : 6943 ancres, 332 creations acceptees, 376 pistes delta ; 16 vie(s) du mot elu
+    oddball_fragmentation_d10_test.go:83: 43716616 : 16 vie(s) libre(s), 1 socle(s), pont 62/72 slot(s) nomme(s) = 86.1 % (plancher 50 %)
+    oddball_fragmentation_d10_test.go:94: AUTO-CONTROLE 43716616 : OK — totaux par joueur identiques a d9Reconstruit (6 joueur(s))
+    oddball_fragmentation_d10_test.go:95: VIE  0 43716616 : duree   0.00 s · naissance (78.1, 52.6) · porteur precedent aucun · ramasseur 9469 · dist prec->re-prise - · meme-joueur NON
+    oddball_fragmentation_d10_test.go:95: VIE  1 43716616 : duree   2.83 s · naissance (87.1, 49.6) · porteur precedent 9469 · ramasseur 2136 · dist prec->re-prise - · meme-joueur NON [INTERIEURE]
+    oddball_fragmentation_d10_test.go:95: VIE  2 43716616 : duree   2.80 s · naissance (83.2, 54.5) · porteur precedent 2136 · ramasseur 5114 · dist prec->re-prise - · meme-joueur NON [INTERIEURE]
+    oddball_fragmentation_d10_test.go:95: VIE  3 43716616 : duree   2.03 s · naissance (75.6, 51.0) · porteur precedent 5114 · ramasseur 5944 · dist prec->re-prise - · meme-joueur NON
+    oddball_fragmentation_d10_test.go:95: VIE  4 43716616 : duree   1.73 s · naissance (72.1, 50.0) · porteur precedent 5944 · ramasseur aucun · dist prec->re-prise - · meme-joueur NON
+    oddball_fragmentation_d10_test.go:95: VIE  5 43716616 : duree   4.22 s · naissance (60.5, 53.9) · porteur precedent aucun · ramasseur aucun · dist prec->re-prise - · meme-joueur NON
+    oddball_fragmentation_d10_test.go:95: VIE  6 43716616 : duree   0.00 s · naissance (78.1, 52.6) · porteur precedent aucun · ramasseur aucun · dist prec->re-prise - · meme-joueur NON
+    oddball_fragmentation_d10_test.go:95: VIE  7 43716616 : duree   6.07 s · naissance (71.3, 55.4) · porteur precedent aucun · ramasseur 2349 · dist prec->re-prise - · meme-joueur NON
+    oddball_fragmentation_d10_test.go:95: VIE  8 43716616 : duree   3.95 s · naissance (62.4, 53.5) · porteur precedent 2349 · ramasseur 9469 · dist prec->re-prise - · meme-joueur NON [INTERIEURE]
+    oddball_fragmentation_d10_test.go:95: VIE  9 43716616 : duree   4.48 s · naissance (70.7, 53.5) · porteur precedent 9469 · ramasseur 2349 · dist prec->re-prise - · meme-joueur NON [INTERIEURE]
+    oddball_fragmentation_d10_test.go:95: VIE 10 43716616 : duree   1.83 s · naissance (71.4, 55.0) · porteur precedent 2349 · ramasseur 5944 · dist prec->re-prise - · meme-joueur NON [INTERIEURE]
+    oddball_fragmentation_d10_test.go:95: VIE 11 43716616 : duree   1.25 s · naissance (69.6, 60.3) · porteur precedent 5944 · ramasseur 0421 · dist prec->re-prise - · meme-joueur NON [INTERIEURE]
+    oddball_fragmentation_d10_test.go:95: VIE 12 43716616 : duree   1.25 s · naissance (70.3, 60.9) · porteur precedent 0421 · ramasseur aucun · dist prec->re-prise - · meme-joueur NON
+    oddball_fragmentation_d10_test.go:95: VIE 13 43716616 : duree   1.22 s · naissance (68.7, 59.3) · porteur precedent aucun · ramasseur 9469 · dist prec->re-prise - · meme-joueur NON
+    oddball_fragmentation_d10_test.go:95: VIE 14 43716616 : duree   5.38 s · naissance (80.3, 54.4) · porteur precedent 9469 · ramasseur 0421 · dist prec->re-prise 18.51 m · meme-joueur NON
+    oddball_fragmentation_d10_test.go:95: VIE 15 43716616 : duree   6.74 s · naissance (95.4, 57.1) · porteur precedent 0421 · ramasseur aucun · dist prec->re-prise - · meme-joueur NON
+    oddball_fragmentation_d10_test.go:96: VENTILATION 43716616 : plus gros porteur API 2349 — API 94.1 s, reconstruit 41.0 s, MANQUANT 53.1 s
+    oddball_fragmentation_d10_test.go:96: VENTILATION 43716616 :   (a) vol par un tiers a <= 1.5 m : 0.0 s (0.0 %)
+    oddball_fragmentation_d10_test.go:96: VENTILATION 43716616 :   (b) meme joueur re-compte      : 0.0 s (0.0 %)
+    oddball_fragmentation_d10_test.go:96: VENTILATION 43716616 :   (c) trou sans traversee        : 0.0 s (0.0 %)
+    oddball_fragmentation_d10_test.go:96: VENTILATION 43716616 :   (d) autre / hors intervalle    : 53.1 s (100.0 %)
+    oddball_fragmentation_d10_test.go:96: CONSTAT 43716616 : (a)+(b) = 0.0 % des secondes manquantes — seuil d'ouverture de O2 (>= 50 %) NON sur ce film
+    oddball_fragmentation_d10_test.go:97:   43716616 : duree des vies libres INTERIEURES (s) — n=6, min 1.25, q25 1.83, MEDIANE 2.80, q75 2.83, q90 3.95, max 4.48
+    oddball_fragmentation_d10_test.go:97: D10_INTERIEURES 43716616 : 1.25 1.83 2.80 2.83 3.95 4.48
+    oddball_fragmentation_d10_test.go:80: 43716616 : pic memoire observe 0.08 Gio
+--- PASS: TestOddballFragmentationD10 (39.20s)
+PASS
+ok  	levelup/go-api/internal/analysis/replay	39.611s
+EXIT_43716616=0
+===== FILM 92f18088 =====
+=== RUN   TestOddballFragmentationD10
+2026/08/27 14:49:57 INFO plafond memoire arme pour ce decodage outil=d10-fragmentation souple_gib=2 dur_octets=2684354560
+2026/08/27 14:50:02 WARN empreinte du registre ECS du film INCONNUE — grammaire des composants suspecte (mise a jour du jeu ?) ; le film reste decode empreinte=11979330793883025789 empreinte_connue=7053924395561516366 blocs=118 slots_non_vides=1067
+    oddball_fragmentation_d10_test.go:83: 92f18088 : 5342 ancres, 265 creations acceptees, 369 pistes delta ; 35 vie(s) du mot elu
+    oddball_fragmentation_d10_test.go:83: 92f18088 : carte 1a6cfc2e-ec86-48e1-9464-1ce1bff6ed48 absente du catalogue d'objectifs (replay: carte absente du catalogue d'objectifs : "1a6cfc2e-ec86-48e1-9464-1ce1bff6ed48")
+    oddball_fragmentation_d10_test.go:83: 92f18088 : 35 vie(s) libre(s), 0 socle(s), pont 106/117 slot(s) nomme(s) = 90.6 % (plancher 50 %)
+    oddball_fragmentation_d10_test.go:94: AUTO-CONTROLE 92f18088 : OK — totaux par joueur identiques a d9Reconstruit (7 joueur(s))
+    oddball_fragmentation_d10_test.go:95: VIE  0 92f18088 : duree   0.00 s · naissance (-59.7, -34.4) · porteur precedent aucun · ramasseur aucun · dist prec->re-prise - · meme-joueur NON
+    oddball_fragmentation_d10_test.go:95: VIE  1 92f18088 : duree   4.10 s · naissance (-50.9, -36.2) · porteur precedent aucun · ramasseur aucun · dist prec->re-prise - · meme-joueur NON
+    oddball_fragmentation_d10_test.go:95: VIE  2 92f18088 : duree   5.52 s · naissance (-41.7, -26.1) · porteur precedent aucun · ramasseur aucun · dist prec->re-prise - · meme-joueur NON
+    oddball_fragmentation_d10_test.go:95: VIE  3 92f18088 : duree   6.66 s · naissance (-45.7, -31.4) · porteur precedent aucun · ramasseur 3686 · dist prec->re-prise - · meme-joueur NON
+    oddball_fragmentation_d10_test.go:95: VIE  4 92f18088 : duree   1.43 s · naissance (-54.4, -22.9) · porteur precedent 3686 · ramasseur 3686 · dist prec->re-prise 0.54 m · meme-joueur OUI [INTERIEURE]
+    oddball_fragmentation_d10_test.go:95: VIE  5 92f18088 : duree   3.88 s · naissance (-57.1, -24.2) · porteur precedent 3686 · ramasseur 2034 · dist prec->re-prise - · meme-joueur NON [INTERIEURE]
+    oddball_fragmentation_d10_test.go:95: VIE  6 92f18088 : duree   5.42 s · naissance (-54.1, -23.8) · porteur precedent 2034 · ramasseur aucun · dist prec->re-prise - · meme-joueur NON
+    oddball_fragmentation_d10_test.go:95: VIE  7 92f18088 : duree   3.79 s · naissance (-50.1, -25.7) · porteur precedent aucun · ramasseur 2034 · dist prec->re-prise - · meme-joueur NON
+    oddball_fragmentation_d10_test.go:95: VIE  8 92f18088 : duree   1.65 s · naissance (-48.8, -25.6) · porteur precedent 2034 · ramasseur 2034 · dist prec->re-prise 0.58 m · meme-joueur OUI [INTERIEURE]
+    oddball_fragmentation_d10_test.go:95: VIE  9 92f18088 : duree   3.18 s · naissance (-48.4, -21.9) · porteur precedent 2034 · ramasseur 9936 · dist prec->re-prise - · meme-joueur NON [INTERIEURE]
+    oddball_fragmentation_d10_test.go:95: VIE 10 92f18088 : duree   2.31 s · naissance (-46.0, -25.8) · porteur precedent 9936 · ramasseur 9662 · dist prec->re-prise 21.39 m · meme-joueur NON [INTERIEURE]
+    oddball_fragmentation_d10_test.go:95: VIE 11 92f18088 : duree   1.63 s · naissance (-48.3, -24.7) · porteur precedent 9662 · ramasseur 9662 · dist prec->re-prise 0.61 m · meme-joueur OUI [INTERIEURE]
+    oddball_fragmentation_d10_test.go:95: VIE 12 92f18088 : duree   4.30 s · naissance (-54.4, -22.4) · porteur precedent 9662 · ramasseur aucun · dist prec->re-prise - · meme-joueur NON
+    oddball_fragmentation_d10_test.go:95: VIE 13 92f18088 : duree   2.18 s · naissance (-54.0, -46.4) · porteur precedent aucun · ramasseur 1924 · dist prec->re-prise - · meme-joueur NON
+    oddball_fragmentation_d10_test.go:95: VIE 14 92f18088 : duree   1.08 s · naissance (-53.0, -45.4) · porteur precedent 1924 · ramasseur 1924 · dist prec->re-prise 0.50 m · meme-joueur OUI [INTERIEURE]
+    oddball_fragmentation_d10_test.go:95: VIE 15 92f18088 : duree   4.20 s · naissance (-50.0, -41.4) · porteur precedent 1924 · ramasseur 3686 · dist prec->re-prise 6.81 m · meme-joueur NON [INTERIEURE]
+    oddball_fragmentation_d10_test.go:95: VIE 16 92f18088 : duree   2.52 s · naissance (-64.3, -44.6) · porteur precedent 3686 · ramasseur 3686 · dist prec->re-prise 0.23 m · meme-joueur OUI [INTERIEURE]
+    oddball_fragmentation_d10_test.go:95: VIE 17 92f18088 : duree   4.72 s · naissance (-69.2, -44.7) · porteur precedent 3686 · ramasseur 4714 · dist prec->re-prise - · meme-joueur NON [INTERIEURE]
+    oddball_fragmentation_d10_test.go:95: VIE 18 92f18088 : duree   3.41 s · naissance (-74.5, -39.9) · porteur precedent 4714 · ramasseur 1924 · dist prec->re-prise - · meme-joueur NON [INTERIEURE]
+    oddball_fragmentation_d10_test.go:95: VIE 19 92f18088 : duree   0.00 s · naissance (-59.7, -34.4) · porteur precedent 1924 · ramasseur 1924 · dist prec->re-prise 1.30 m · meme-joueur OUI [INTERIEURE]
+    oddball_fragmentation_d10_test.go:95: VIE 20 92f18088 : duree   4.17 s · naissance (-53.9, -37.4) · porteur precedent 1924 · ramasseur aucun · dist prec->re-prise - · meme-joueur NON
+    oddball_fragmentation_d10_test.go:95: VIE 21 92f18088 : duree   2.30 s · naissance (-41.9, -31.4) · porteur precedent aucun · ramasseur 2034 · dist prec->re-prise - · meme-joueur NON
+    oddball_fragmentation_d10_test.go:95: VIE 22 92f18088 : duree   5.00 s · naissance (-46.1, -23.6) · porteur precedent 2034 · ramasseur 0022 · dist prec->re-prise - · meme-joueur NON [INTERIEURE]
+    oddball_fragmentation_d10_test.go:95: VIE 23 92f18088 : duree   2.92 s · naissance (-41.4, -31.8) · porteur precedent 0022 · ramasseur 0022 · dist prec->re-prise 1.00 m · meme-joueur OUI [INTERIEURE]
+    oddball_fragmentation_d10_test.go:95: VIE 24 92f18088 : duree   5.34 s · naissance (-42.0, -31.4) · porteur precedent 0022 · ramasseur 0022 · dist prec->re-prise 1.35 m · meme-joueur OUI [INTERIEURE]
+    oddball_fragmentation_d10_test.go:95: VIE 25 92f18088 : duree   1.85 s · naissance (-43.6, -29.6) · porteur precedent 0022 · ramasseur 2034 · dist prec->re-prise - · meme-joueur NON [INTERIEURE]
+    oddball_fragmentation_d10_test.go:95: VIE 26 92f18088 : duree   2.30 s · naissance (-44.0, -24.6) · porteur precedent 2034 · ramasseur 2034 · dist prec->re-prise 0.81 m · meme-joueur OUI [INTERIEURE]
+    oddball_fragmentation_d10_test.go:95: VIE 27 92f18088 : duree   5.47 s · naissance (-52.0, -23.3) · porteur precedent 2034 · ramasseur 4714 · dist prec->re-prise 5.90 m · meme-joueur NON [INTERIEURE]
+    oddball_fragmentation_d10_test.go:95: VIE 28 92f18088 : duree   1.33 s · naissance (-59.0, -30.5) · porteur precedent 4714 · ramasseur aucun · dist prec->re-prise - · meme-joueur NON
+    oddball_fragmentation_d10_test.go:95: VIE 29 92f18088 : duree   3.37 s · naissance (-76.9, -31.0) · porteur precedent aucun · ramasseur aucun · dist prec->re-prise - · meme-joueur NON
+    oddball_fragmentation_d10_test.go:95: VIE 30 92f18088 : duree   1.05 s · naissance (-77.0, -29.8) · porteur precedent aucun · ramasseur aucun · dist prec->re-prise - · meme-joueur NON
+    oddball_fragmentation_d10_test.go:95: VIE 31 92f18088 : duree   0.92 s · naissance (-76.7, -31.4) · porteur precedent aucun · ramasseur aucun · dist prec->re-prise - · meme-joueur NON
+    oddball_fragmentation_d10_test.go:95: VIE 32 92f18088 : duree   4.09 s · naissance (-76.5, -30.8) · porteur precedent aucun · ramasseur 0022 · dist prec->re-prise - · meme-joueur NON
+    oddball_fragmentation_d10_test.go:95: VIE 33 92f18088 : duree   3.27 s · naissance (-76.7, -28.4) · porteur precedent 0022 · ramasseur aucun · dist prec->re-prise - · meme-joueur NON
+    oddball_fragmentation_d10_test.go:95: VIE 34 92f18088 : duree   2.68 s · naissance (-72.6, -27.9) · porteur precedent aucun · ramasseur aucun · dist prec->re-prise - · meme-joueur NON
+    oddball_fragmentation_d10_test.go:96: VENTILATION 92f18088 : plus gros porteur API 3686 — API 148.3 s, reconstruit 36.9 s, MANQUANT 111.4 s
+    oddball_fragmentation_d10_test.go:96: VENTILATION 92f18088 :   (a) vol par un tiers a <= 1.5 m : 0.0 s (0.0 %)
+    oddball_fragmentation_d10_test.go:96: VENTILATION 92f18088 :   (b) meme joueur re-compte      : 4.0 s (3.5 %)
+    oddball_fragmentation_d10_test.go:96: VENTILATION 92f18088 :   (c) trou sans traversee        : 0.0 s (0.0 %)
+    oddball_fragmentation_d10_test.go:96: VENTILATION 92f18088 :   (d) autre / hors intervalle    : 107.4 s (96.5 %)
+    oddball_fragmentation_d10_test.go:96: CONSTAT 92f18088 : (a)+(b) = 3.5 % des secondes manquantes — seuil d'ouverture de O2 (>= 50 %) NON sur ce film
+    oddball_fragmentation_d10_test.go:97:   92f18088 : duree des vies libres INTERIEURES (s) — n=18, min 0.00, q25 1.65, MEDIANE 2.52, q75 3.88, q90 5.00, max 5.47
+    oddball_fragmentation_d10_test.go:97: D10_INTERIEURES 92f18088 : 0.00 1.08 1.43 1.63 1.65 1.85 2.30 2.31 2.52 2.92 3.18 3.41 3.88 4.20 4.72 5.00 5.34 5.47
+    oddball_fragmentation_d10_test.go:80: 92f18088 : pic memoire observe 0.19 Gio
+--- PASS: TestOddballFragmentationD10 (57.34s)
+PASS
+ok  	levelup/go-api/internal/analysis/replay	57.764s
+EXIT_92f18088=0
+===== FILM d9781168 =====
+=== RUN   TestOddballFragmentationD10
+2026/08/27 14:50:56 INFO plafond memoire arme pour ce decodage outil=d10-fragmentation souple_gib=2 dur_octets=2684354560
+    oddball_fragmentation_d10_test.go:83: d9781168 : 15016 ancres, 665 creations acceptees, 945 pistes delta ; 47 vie(s) du mot elu
+    oddball_fragmentation_d10_test.go:83: d9781168 : 47 vie(s) libre(s), 1 socle(s), pont 140/160 slot(s) nomme(s) = 87.5 % (plancher 50 %)
+    oddball_fragmentation_d10_test.go:94: AUTO-CONTROLE d9781168 : OK — totaux par joueur identiques a d9Reconstruit (7 joueur(s))
+    oddball_fragmentation_d10_test.go:95: VIE  0 d9781168 : duree   0.00 s · naissance (3.6, 1.0) · porteur precedent aucun · ramasseur 0162 · dist prec->re-prise - · meme-joueur NON
+    oddball_fragmentation_d10_test.go:95: VIE  1 d9781168 : duree   5.05 s · naissance (-16.5, 0.5) · porteur precedent 0162 · ramasseur 1007 · dist prec->re-prise 2.96 m · meme-joueur NON [INTERIEURE]
+    oddball_fragmentation_d10_test.go:95: VIE  2 d9781168 : duree   0.00 s · naissance (-22.8, 9.6) · porteur precedent 1007 · ramasseur 1007 · dist prec->re-prise 0.13 m · meme-joueur OUI [INTERIEURE]
+    oddball_fragmentation_d10_test.go:95: VIE  3 d9781168 : duree   0.00 s · naissance (3.6, 1.0) · porteur precedent 1007 · ramasseur 6950 · dist prec->re-prise - · meme-joueur NON
+    oddball_fragmentation_d10_test.go:95: VIE  4 d9781168 : duree   3.57 s · naissance (6.8, -1.6) · porteur precedent 6950 · ramasseur 3276 · dist prec->re-prise - · meme-joueur NON [INTERIEURE]
+    oddball_fragmentation_d10_test.go:95: VIE  5 d9781168 : duree   2.28 s · naissance (6.5, -6.2) · porteur precedent 3276 · ramasseur aucun · dist prec->re-prise - · meme-joueur NON
+    oddball_fragmentation_d10_test.go:95: VIE  6 d9781168 : duree   1.51 s · naissance (7.2, -8.2) · porteur precedent aucun · ramasseur aucun · dist prec->re-prise - · meme-joueur NON
+    oddball_fragmentation_d10_test.go:95: VIE  7 d9781168 : duree   2.83 s · naissance (-3.7, -17.5) · porteur precedent aucun · ramasseur aucun · dist prec->re-prise - · meme-joueur NON
+    oddball_fragmentation_d10_test.go:95: VIE  8 d9781168 : duree   0.00 s · naissance (3.6, 1.0) · porteur precedent aucun · ramasseur 3276 · dist prec->re-prise - · meme-joueur NON
+    oddball_fragmentation_d10_test.go:95: VIE  9 d9781168 : duree   7.05 s · naissance (1.5, 0.1) · porteur precedent 3276 · ramasseur 0162 · dist prec->re-prise - · meme-joueur NON
+    oddball_fragmentation_d10_test.go:95: VIE 10 d9781168 : duree   3.17 s · naissance (-5.5, -3.7) · porteur precedent 0162 · ramasseur aucun · dist prec->re-prise - · meme-joueur NON
+    oddball_fragmentation_d10_test.go:95: VIE 11 d9781168 : duree   4.17 s · naissance (-18.9, 0.8) · porteur precedent aucun · ramasseur aucun · dist prec->re-prise - · meme-joueur NON
+    oddball_fragmentation_d10_test.go:95: VIE 12 d9781168 : duree   0.00 s · naissance (3.6, 1.0) · porteur precedent aucun · ramasseur aucun · dist prec->re-prise - · meme-joueur NON
+    oddball_fragmentation_d10_test.go:95: VIE 13 d9781168 : duree   2.03 s · naissance (-17.8, 2.9) · porteur precedent aucun · ramasseur aucun · dist prec->re-prise - · meme-joueur NON
+    oddball_fragmentation_d10_test.go:95: VIE 14 d9781168 : duree   2.25 s · naissance (-13.7, 0.1) · porteur precedent aucun · ramasseur 1007 · dist prec->re-prise - · meme-joueur NON
+    oddball_fragmentation_d10_test.go:95: VIE 15 d9781168 : duree   3.63 s · naissance (-13.6, -2.0) · porteur precedent 1007 · ramasseur 3823 · dist prec->re-prise - · meme-joueur NON [INTERIEURE]
+    oddball_fragmentation_d10_test.go:95: VIE 16 d9781168 : duree   2.92 s · naissance (-11.6, -7.5) · porteur precedent 3823 · ramasseur 6950 · dist prec->re-prise - · meme-joueur NON [INTERIEURE]
+    oddball_fragmentation_d10_test.go:95: VIE 17 d9781168 : duree   6.42 s · naissance (-7.6, 0.3) · porteur precedent 6950 · ramasseur 3276 · dist prec->re-prise - · meme-joueur NON [INTERIEURE]
+    oddball_fragmentation_d10_test.go:95: VIE 18 d9781168 : duree   3.77 s · naissance (-17.6, -2.2) · porteur precedent 3276 · ramasseur aucun · dist prec->re-prise - · meme-joueur NON
+    oddball_fragmentation_d10_test.go:95: VIE 19 d9781168 : duree   0.00 s · naissance (3.6, 1.0) · porteur precedent aucun · ramasseur 3823 · dist prec->re-prise - · meme-joueur NON
+    oddball_fragmentation_d10_test.go:95: VIE 20 d9781168 : duree   2.85 s · naissance (3.5, 6.8) · porteur precedent 3823 · ramasseur 9376 · dist prec->re-prise - · meme-joueur NON [INTERIEURE]
+    oddball_fragmentation_d10_test.go:95: VIE 21 d9781168 : duree   2.83 s · naissance (4.5, 6.7) · porteur precedent 9376 · ramasseur 0022 · dist prec->re-prise - · meme-joueur NON [INTERIEURE]
+    oddball_fragmentation_d10_test.go:95: VIE 22 d9781168 : duree   5.10 s · naissance (-8.8, 10.3) · porteur precedent 0022 · ramasseur 0022 · dist prec->re-prise 0.36 m · meme-joueur OUI [INTERIEURE]
+    oddball_fragmentation_d10_test.go:95: VIE 23 d9781168 : duree   3.69 s · naissance (-10.4, 8.5) · porteur precedent 0022 · ramasseur 0022 · dist prec->re-prise 0.25 m · meme-joueur OUI [INTERIEURE]
+    oddball_fragmentation_d10_test.go:95: VIE 24 d9781168 : duree   1.97 s · naissance (-9.7, 10.1) · porteur precedent 0022 · ramasseur 0022 · dist prec->re-prise 0.61 m · meme-joueur OUI [INTERIEURE]
+    oddball_fragmentation_d10_test.go:95: VIE 25 d9781168 : duree   3.35 s · naissance (-8.1, 5.8) · porteur precedent 0022 · ramasseur 1007 · dist prec->re-prise - · meme-joueur NON [INTERIEURE]
+    oddball_fragmentation_d10_test.go:95: VIE 26 d9781168 : duree   2.65 s · naissance (0.2, 1.9) · porteur precedent 1007 · ramasseur 0022 · dist prec->re-prise - · meme-joueur NON [INTERIEURE]
+    oddball_fragmentation_d10_test.go:95: VIE 27 d9781168 : duree   2.36 s · naissance (-5.3, 1.3) · porteur precedent 0022 · ramasseur aucun · dist prec->re-prise - · meme-joueur NON
+    oddball_fragmentation_d10_test.go:95: VIE 28 d9781168 : duree   1.60 s · naissance (-21.9, -8.7) · porteur precedent aucun · ramasseur aucun · dist prec->re-prise - · meme-joueur NON
+    oddball_fragmentation_d10_test.go:95: VIE 29 d9781168 : duree   0.00 s · naissance (3.6, 1.0) · porteur precedent aucun · ramasseur 9376 · dist prec->re-prise - · meme-joueur NON
+    oddball_fragmentation_d10_test.go:95: VIE 30 d9781168 : duree   0.85 s · naissance (-18.1, 1.2) · porteur precedent 9376 · ramasseur aucun · dist prec->re-prise - · meme-joueur NON
+    oddball_fragmentation_d10_test.go:95: VIE 31 d9781168 : duree   0.00 s · naissance (-24.2, 8.7) · porteur precedent aucun · ramasseur 3276 · dist prec->re-prise - · meme-joueur NON
+    oddball_fragmentation_d10_test.go:95: VIE 32 d9781168 : duree   0.00 s · naissance (3.6, 1.0) · porteur precedent 3276 · ramasseur 0022 · dist prec->re-prise - · meme-joueur NON
+    oddball_fragmentation_d10_test.go:95: VIE 33 d9781168 : duree   3.47 s · naissance (-6.5, -0.3) · porteur precedent 0022 · ramasseur 3823 · dist prec->re-prise - · meme-joueur NON [INTERIEURE]
+    oddball_fragmentation_d10_test.go:95: VIE 34 d9781168 : duree   4.15 s · naissance (-18.7, 0.8) · porteur precedent 3823 · ramasseur 0022 · dist prec->re-prise - · meme-joueur NON [INTERIEURE]
+    oddball_fragmentation_d10_test.go:95: VIE 35 d9781168 : duree   5.50 s · naissance (-17.5, 3.8) · porteur precedent 0022 · ramasseur aucun · dist prec->re-prise - · meme-joueur NON
+    oddball_fragmentation_d10_test.go:95: VIE 36 d9781168 : duree   0.00 s · naissance (3.6, 1.0) · porteur precedent aucun · ramasseur 0022 · dist prec->re-prise - · meme-joueur NON
+    oddball_fragmentation_d10_test.go:95: VIE 37 d9781168 : duree   4.47 s · naissance (2.3, 0.4) · porteur precedent 0022 · ramasseur 3276 · dist prec->re-prise - · meme-joueur NON
+    oddball_fragmentation_d10_test.go:95: VIE 38 d9781168 : duree   0.00 s · naissance (-21.7, 9.6) · porteur precedent 3276 · ramasseur 3276 · dist prec->re-prise 0.15 m · meme-joueur OUI [INTERIEURE]
+    oddball_fragmentation_d10_test.go:95: VIE 39 d9781168 : duree   0.00 s · naissance (3.6, 1.0) · porteur precedent 3276 · ramasseur aucun · dist prec->re-prise - · meme-joueur NON
+    oddball_fragmentation_d10_test.go:95: VIE 40 d9781168 : duree   3.48 s · naissance (3.3, 3.3) · porteur precedent aucun · ramasseur 3276 · dist prec->re-prise - · meme-joueur NON
+    oddball_fragmentation_d10_test.go:95: VIE 41 d9781168 : duree   2.43 s · naissance (0.1, 9.6) · porteur precedent 3276 · ramasseur 3823 · dist prec->re-prise - · meme-joueur NON [INTERIEURE]
+    oddball_fragmentation_d10_test.go:95: VIE 42 d9781168 : duree   3.55 s · naissance (-0.2, 8.2) · porteur precedent 3823 · ramasseur 6950 · dist prec->re-prise - · meme-joueur NON [INTERIEURE]
+    oddball_fragmentation_d10_test.go:95: VIE 43 d9781168 : duree   1.63 s · naissance (3.5, 10.1) · porteur precedent 6950 · ramasseur aucun · dist prec->re-prise - · meme-joueur NON
+    oddball_fragmentation_d10_test.go:95: VIE 44 d9781168 : duree   0.00 s · naissance (1.0, 23.4) · porteur precedent aucun · ramasseur 3276 · dist prec->re-prise - · meme-joueur NON
+    oddball_fragmentation_d10_test.go:95: VIE 45 d9781168 : duree   0.00 s · naissance (3.6, 1.0) · porteur precedent 3276 · ramasseur 1007 · dist prec->re-prise - · meme-joueur NON
+    oddball_fragmentation_d10_test.go:95: VIE 46 d9781168 : duree   4.22 s · naissance (-0.2, 8.1) · porteur precedent 1007 · ramasseur aucun · dist prec->re-prise - · meme-joueur NON
+    oddball_fragmentation_d10_test.go:96: VENTILATION d9781168 : plus gros porteur API 1007 — API 116.1 s, reconstruit 66.2 s, MANQUANT 49.9 s
+    oddball_fragmentation_d10_test.go:96: VENTILATION d9781168 :   (a) vol par un tiers a <= 1.5 m : 0.0 s (0.0 %)
+    oddball_fragmentation_d10_test.go:96: VENTILATION d9781168 :   (b) meme joueur re-compte      : 0.0 s (0.0 %)
+    oddball_fragmentation_d10_test.go:96: VENTILATION d9781168 :   (c) trou sans traversee        : 0.0 s (0.0 %)
+    oddball_fragmentation_d10_test.go:96: VENTILATION d9781168 :   (d) autre / hors intervalle    : 49.9 s (100.0 %)
+    oddball_fragmentation_d10_test.go:96: CONSTAT d9781168 : (a)+(b) = 0.0 % des secondes manquantes — seuil d'ouverture de O2 (>= 50 %) NON sur ce film
+    oddball_fragmentation_d10_test.go:97:   d9781168 : duree des vies libres INTERIEURES (s) — n=18, min 0.00, q25 2.65, MEDIANE 3.35, q75 3.63, q90 5.05, max 6.42
+    oddball_fragmentation_d10_test.go:97: D10_INTERIEURES d9781168 : 0.00 0.00 1.97 2.43 2.65 2.83 2.85 2.92 3.35 3.47 3.55 3.57 3.63 3.69 4.15 5.05 5.10 6.42
+    oddball_fragmentation_d10_test.go:80: d9781168 : pic memoire observe 0.21 Gio
+--- PASS: TestOddballFragmentationD10 (68.48s)
+PASS
+ok  	levelup/go-api/internal/analysis/replay	68.896s
+EXIT_d9781168=0
+===== AGREGATION CORPUS (calculee hors processus sur les lignes D10_INTERIEURES, convention d8Quantiles : index int((n-1)*p)) =====
+Durees des vies libres INTERIEURES, corpus admis (4 films) : n=50, q50=2.85 s, q75=3.88 s, q90=5.05 s, max=6.50 s
+REGLE DU PLAN O1.3 (ecrite avant mesure) : N de chainage d'une eventuelle O2 = q90 arrondi a la seconde superieure = 6 s — PUBLIE, PAS UTILISE (O2 non ouverte, cf. constat).
+CONSTAT DU SEUIL D'OUVERTURE DE O2 (protocole §5, recopie du plan) : exige (a)+(b) >= 50 % des secondes manquantes sur >= 2/4 films admis.
+Obtenu : 24dbb67d 0.0 % · 43716616 0.0 % · 92f18088 3.5 % · d9781168 0.0 % — 0/4 films. P1 INFIRMEE.
+Le lot s'arrete en O3/O4 (pas de O2), conformement au plan §O1.
+Lecture complementaire (denominateurs) : meme-joueur OUI sur 16/50 vies INTERIEURES (32 %) et 16/121 vies au total ; la distance porteur-precedent -> re-prise est presque toujours INDISPONIBLE (aucun echantillon de piste a +/- 250 ms) : le porteur precedent est le plus souvent MORT a l'instant de la traversee — coherent avec l'acquis « mourir = lacher » (91,7 %). Le manquant du plus gros porteur vit en cause (d) : HORS des trous dont le porteur precedent reconstruit est P.

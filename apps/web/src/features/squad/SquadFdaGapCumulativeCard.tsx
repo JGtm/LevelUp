@@ -10,7 +10,7 @@
  * d'attendu → carte masquée sans trou de mise en page. Même pattern que les charts
  * du Lot B (SessionFdaGapCumulative / TimeseriesFdaGapTrend).
  */
-import { useMemo } from 'react'
+import { useCallback, useMemo } from 'react'
 
 import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
 import { FdaGapTooltipText } from '@/components/charts/FdaGapTooltipText'
@@ -67,6 +67,15 @@ export function SquadFdaGapCumulativeCard({
     [players, rowsByPlayer, colorByPlayer],
   )
 
+  // `buildOption` fait partie des dépendances du useMemo de ChartCard : une
+  // lambda écrite dans le JSX est neuve à chaque rendu, donc l'option ECharts
+  // est rebâtie et l'animation d'entrée REJOUÉE même à donnée inchangée.
+  // Déclaré avant le retour anticipé (règle des hooks).
+  const buildOption = useCallback(
+    () => buildFdaGapCumulativeOption(rowsByPlayer, { colorByPlayer, playerOrder: players }),
+    [rowsByPlayer, colorByPlayer, players],
+  )
+
   // Titre sans attendu (ex. Halo 5) → masquage silencieux (pas de carte vide).
   if (!hasExpectedStats) return null
 
@@ -92,12 +101,7 @@ export function SquadFdaGapCumulativeCard({
       // fluid : la carte s'étire à la hauteur de la rangée (grid align-items:stretch)
       // → alignée avec « Répartition des frags » (280, fluid) dans SquadFragSection.
       fluid
-      buildOption={() =>
-        buildFdaGapCumulativeOption(rowsByPlayer, {
-          colorByPlayer,
-          playerOrder: players,
-        })
-      }
+      buildOption={buildOption}
     >
       {kpis.length > 0 && (
         <div className="flex flex-col gap-1.5 border-t border-border px-3 py-2" data-testid="fda-gap-kpis">

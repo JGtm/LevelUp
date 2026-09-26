@@ -34,10 +34,12 @@ type CommonMatchRow struct {
 	ModeUI        string    `json:"mode_ui"`
 	WereTeammates bool      `json:"were_teammates"`
 	PlayerOutcome int       `json:"player_outcome"`
-	OutcomeLabel  string    `json:"outcome_label"`
-	Kills         int       `json:"kills"`
-	Deaths        int       `json:"deaths"`
-	KDA           float64   `json:"kda"`
+	// Outcome : clé canonique d'issue (win|loss|tie|dnf, MT-06) ; vide si non mappée. Le
+	// web localise via useOutcomeLabel — jamais de texte servi ici.
+	Outcome string  `json:"outcome,omitempty" enum:"win,loss,tie,dnf"`
+	Kills   int     `json:"kills"`
+	Deaths  int     `json:"deaths"`
+	KDA     float64 `json:"kda"`
 }
 
 // ExplorerEncounterStats : stats agrégées du couple (player_courant, target),
@@ -69,6 +71,33 @@ type ExplorerEncounterStats struct {
 	// par duel contre la cible, ancien→récent — même métrique que les cartes revanche
 	// du hub Relations (CumulativeFragGapChart). Vide si jamais affrontés en ennemi.
 	FragGapSeries []ExplorerFragGapPoint `json:"frag_gap_series,omitempty"`
+	// Assists = assistances ÉCHANGÉES avec la cible sur les matchs joués dans la même
+	// équipe dont le film a été décodé (relation_assists.go). Nil = aucun match mesuré
+	// ensemble : l'écran affiche « — », JAMAIS « 0 assistance ». Même agrégat que la
+	// carte Binôme du hub Relations.
+	Assists *RelationAssists `json:"assists,omitempty"`
+	// FragRangeTarget = la PORTÉE DES FRAGS de la CIBLE par rôle d'arme, sur les matchs joués
+	// ensemble. Même agrégat et même grain que le bloc « Où ils fraguent » du Face-à-face
+	// (service/weapon_range_by_role.go) — une ligne par rôle, bâton du 10e au 90e centile,
+	// losange sur la médiane.
+	//
+	// LA CIBLE SEULE (décision 7 du plan d'ajustements pré-v7.5, 2026-09-19). Le côté du
+	// joueur courant était publié et superposé sur la même bande ; l'écran ne montre plus
+	// que l'adversaire, et un champ que personne ne lit ne se sert pas « au cas où ».
+	//
+	// Nil = titre sans positions par kill, aucun film décodé sur les matchs communs, ou
+	// lecture en échec — le front rend alors un état vide titré, jamais une portée fabriquée.
+	//
+	// `weapon_key` porte une clé de RÔLE (`precision`, `automatic`, ...) et non une clé
+	// d'arme ; `label`/`label_en` restent vides, le front résolvant le libellé depuis son
+	// manifeste (aucun libellé FR/EN écrit en Go).
+	FragRangeTarget *SynthesisWeaponRange `json:"frag_range_target,omitempty"`
+	// AssistVolumeMax = plus gros volume d'un sens (reçues ou données) parmi TOUTES les
+	// relations mesurées du joueur : borne de l'échelle logarithmique des barres papillon.
+	// Servie par le backend parce que l'Explorer n'affiche qu'une paire — se borner à
+	// cette paire remplirait toujours la demi-barre (échec documenté côté web dans
+	// assistExchange.ts). 0 si aucune relation mesurée.
+	AssistVolumeMax int `json:"assist_volume_max,omitempty"`
 }
 
 // ExplorerFragGapPoint = un point de la courbe « écart de frags cumulé » de
@@ -171,6 +200,12 @@ type ExplorerTargetProfile struct {
 	// décroissant, cap 20) issues du service record Waypoint + métadonnées
 	// locales (label/description/image). Le front affiche un top 5 + expander.
 	TopMedals []MedalDigestItem `json:"top_medals,omitempty"`
+	// TopMedalsLocal : MÊME forme que TopMedals, mais agrégé localement
+	// (shared.medals_earned) sur EXACTEMENT les matchs de CombatProfileLocal.
+	// Alimente le bloc « Top médailles » quand le toggle du profil de combat est
+	// sur « Local » — les deux listes ne sont donc pas comparables (lifetime vs
+	// échantillon local). Vide si CombatProfileLocal est vide.
+	TopMedalsLocal []MedalDigestItem `json:"top_medals_local,omitempty"`
 	// SeasonCSRs : classements CSR par playlist ranked de la saison courante du
 	// joueur cible (live, endpoint skill public — fonctionne pour tout xuid).
 	SeasonCSRs []CareerPlaylistCSR `json:"season_csrs,omitempty"`
@@ -410,7 +445,10 @@ type ExplorerMatchesQueryRequest struct {
 	MapNames        []string   `json:"map_names,omitempty"`
 	ModeNames       []string   `json:"mode_names,omitempty"`
 	SquadScope      string     `json:"squad_scope,omitempty"`
-	MatchIDSearch   string     `json:"match_id_search,omitempty"`
+	// ReplayScope : présence d'un rejeu 2D — "" (tous) | "with" | "without".
+	// Miroir de MatchHistoryQueryRequest.ReplayScope (même filtre, appliqué côté Go).
+	ReplayScope   string `json:"replay_scope,omitempty"`
+	MatchIDSearch string `json:"match_id_search,omitempty"`
 	// MatchIDs : whitelist exacte de match_id à conserver (Explorer mode Joueur).
 	MatchIDs []string `json:"match_ids,omitempty"`
 	// IncludeBriefing : opt-in du bandeau de briefing (mode Matchs). Propagé au
@@ -421,18 +459,27 @@ type ExplorerMatchesQueryRequest struct {
 
 // ExplorerMatchesRow : une ligne dans la liste des matchs filtrés (Explorer).
 type ExplorerMatchesRow struct {
-	MatchID             string    `json:"match_id"`
-	StartTime           time.Time `json:"start_time"`
-	StartTimeLabel      string    `json:"start_time_label"`
-	MapUI               *string   `json:"map_ui"`
-	ModeUI              *string   `json:"mode_ui"`
-	PlaylistLabel       *string   `json:"playlist_label"`
-	OutcomeCode         int       `json:"outcome_code"`
-	OutcomeLabel        string    `json:"outcome_label"`
-	ScoreLabel          string    `json:"score_label"`
-	IsWithFriends       bool      `json:"is_with_friends"`
-	ExperienceTypeLabel string    `json:"experience_type_label" default:"Non classé"`
-	MatchURL            string    `json:"match_url"`
+	MatchID        string    `json:"match_id"`
+	StartTime      time.Time `json:"start_time"`
+	StartTimeLabel string    `json:"start_time_label"`
+	MapUI          *string   `json:"map_ui"`
+	ModeUI         *string   `json:"mode_ui"`
+	PlaylistLabel  *string   `json:"playlist_label"`
+	OutcomeCode    int       `json:"outcome_code"`
+	// Outcome : clé canonique d'issue (win|loss|tie|dnf, MT-06) ; vide si non mappée. Le
+	// web localise via useOutcomeLabel — jamais de texte servi ici.
+	Outcome    string `json:"outcome,omitempty" enum:"win,loss,tie,dnf"`
+	ScoreLabel string `json:"score_label"`
+	// ScoreKind dit CE QUE porte ScoreLabel : "points" (score du mode rendu par l'API) ou
+	// "rounds" (manches gagnées). L'en-tête de colonne porte une infobulle qui l'explique ;
+	// le client localise la mention, le serveur ne met aucun mot de langue dans le libellé.
+	ScoreKind           string `json:"score_kind,omitempty"`
+	IsWithFriends       bool   `json:"is_with_friends"`
+	ExperienceTypeLabel string `json:"experience_type_label" default:"Non classé"`
+	MatchURL            string `json:"match_url"`
+	// HasReplay : un artefact de rejeu 2D existe pour ce match → la ligne porte un
+	// lien vers la page de rejeu. Faux/absent = rien n'est rendu (pas de lien mort).
+	HasReplay bool `json:"has_replay,omitempty"`
 	// Combat stats
 	Kills   int `json:"kills,omitempty"`
 	Deaths  int `json:"deaths,omitempty"`

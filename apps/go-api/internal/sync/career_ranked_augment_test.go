@@ -61,8 +61,8 @@ func TestAugmentWithActiveRankedCSRs(t *testing.T) {
 	if !ok {
 		t.Fatal("2e active non ajoutée")
 	}
-	if got2.PlaylistName != active[1].NameEN {
-		t.Errorf("nom = %q, attendu référence %q", got2.PlaylistName, active[1].NameEN)
+	if got2.PlaylistName != active[1].NameEN() {
+		t.Errorf("nom = %q, attendu référence %q", got2.PlaylistName, active[1].NameEN())
 	}
 	if got2.Current.Tier != "Gold" {
 		t.Errorf("tier perdu après augment: %q", got2.Current.Tier)
@@ -75,13 +75,18 @@ func TestAugmentWithActiveRankedCSRs(t *testing.T) {
 
 // TestAugmentWithActiveRankedCSRs_UsesProvidedList vérifie que l'augment interroge la
 // LISTE FOURNIE (playlists actives découvertes dynamiquement, A3) et non la référence
-// statique — une playlist active hors référence est bien couverte.
+// statique — une playlist active hors référence est bien couverte. NameEN()/NameFR()
+// sont des méthodes résolues par asset_id (ranked_playlists_labels.toml, lot M5 L3) :
+// une playlist absente de la référence n'a PAS de nom construit ad hoc, elle résout ""
+// — comportement déjà documenté en production (engine_postsync_csr.go::
+// activeRankedPlaylists : "nom vide, la lecture catalogue-first complètera le
+// libellé"), ici vérifié pour l'augment lui-même.
 func TestAugmentWithActiveRankedCSRs_UsesProvidedList(t *testing.T) {
-	const dynID = "dyn-active-playlist-0001" // absente de rankedplaylists.Active()
+	const dynID = "dyn-active-playlist-0001" // absente de rankedplaylists.Active() ET de All()
 	stub := &augmentStubClient{resp: map[string]*PlayerPlaylistCSR{
 		dynID: {PlaylistID: dynID, Current: CSRRankSnapshot{Tier: "Onyx", Value: 1500}},
 	}}
-	provided := []rankedplaylists.Playlist{{AssetID: dynID, NameEN: "Dynamic"}}
+	provided := []rankedplaylists.Playlist{{AssetID: dynID}}
 
 	out := AugmentWithActiveRankedCSRs(context.Background(), stub, "123", "CsrSeason13-1", nil, "en", provided)
 
@@ -91,7 +96,7 @@ func TestAugmentWithActiveRankedCSRs_UsesProvidedList(t *testing.T) {
 	if len(out) != 1 || out[0].PlaylistID != dynID {
 		t.Fatalf("sortie = %+v, attendu 1 entrée pour %q", out, dynID)
 	}
-	if out[0].PlaylistName != "Dynamic" {
-		t.Errorf("nom = %q, attendu 'Dynamic' (de la liste fournie)", out[0].PlaylistName)
+	if out[0].PlaylistName != "" {
+		t.Errorf("nom = %q, attendu vide (asset_id hors référence, catalogue-first complète ailleurs)", out[0].PlaylistName)
 	}
 }

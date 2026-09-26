@@ -135,7 +135,6 @@ export function BackfillCard({ t }: BackfillCardProps) {
               ['lusr', t.backfillLUSR],
               ['csr', t.backfillCSR],
               ['events', t.backfillEvents],
-              ['weapons', t.backfillWeapons],
               ['engagement_scores', t.backfillEngagementScores],
               ['engagement_coefficients', t.backfillEngagementCoefficients],
             ] as const

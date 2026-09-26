@@ -75,3 +75,71 @@ func ValidateLUSRChainClassifierWired() error {
 	}
 	return nil
 }
+
+// ── Seam famille objectif (chaîne de performance classée) ───────────────────
+//
+// MIROIR du seam LUSR ci-dessus, pour un besoin distinct : savoir si le sous-mode
+// d'un match CLASSÉ relève de la famille objectif (→ PerfChainRankedObjectif) ou
+// de la famille slayer (→ PerfChainRankedSlayer). Le classifier LUSR ne peut pas
+// répondre : sur un pair_name Ranked il retourne "" (exclu, le classé va au CSR).
+// La logique de liste est Halo-spécifique et vit dans le package de titre
+// (skillchain.IsObjectiveSubMode) — sync/skill ne peut pas l'importer (cycle).
+//
+// PAS DE FAIL-LOUD ici, contrairement au seam LUSR — différence ASSUMÉE :
+//   - la sortie ne partitionne pas un état TrueSkill cumulatif, elle nomme la
+//     population de référence d'une note recalculable ;
+//   - un binaire non câblé produit ranked_slayer (fallback), et le mécanisme de
+//     skip par chaîne stockée (sync/performance.go — recompute dès que la chaîne
+//     recalculée diffère de la chaîne stockée) rattrape la classification au
+//     premier batch d'un binaire câblé. Un panic coûterait plus (refus de scorer)
+//     qu'il ne protège.
+//
+// Câblage : partout où SetLUSRChainClassifier est posé (cmd/server, cmd LUSR/h5,
+// TestMain des packages dont les tests atteignent GetPerformanceChain).
+
+// objectiveFamilyClassifier est le classifier de famille PAR DÉFAUT (Halo Infinite
+// et titres sans classifier dédié). nil tant qu'il n'est pas câblé → famille
+// slayer (fallback documenté ci-dessus).
+var objectiveFamilyClassifier func(pairName string) bool
+
+// objectiveFamilyClassifiersByTitle : classifiers de famille SPÉCIFIQUES par titre
+// (key = title slug), pour les titres dont la famille ne se lit pas dans un
+// pair_name au format Infinite. Vide → classifier par défaut.
+var objectiveFamilyClassifiersByTitle = map[string]func(pairName string) bool{}
+
+// SetObjectiveFamilyClassifier enregistre le classifier de famille PAR DÉFAUT
+// (title-owned). À appeler au boot, avant tout scoring de performance.
+// Idempotent (dernier gagne).
+func SetObjectiveFamilyClassifier(f func(pairName string) bool) { objectiveFamilyClassifier = f }
+
+// SetObjectiveFamilyClassifierForTitle enregistre un classifier de famille
+// SPÉCIFIQUE à un titre, consommé par IsObjectiveFamilyForTitle. Idempotent.
+// N'affecte pas le classifier par défaut.
+func SetObjectiveFamilyClassifierForTitle(titleSlug string, f func(pairName string) bool) {
+	objectiveFamilyClassifiersByTitle[titleSlug] = f
+}
+
+// IsObjectiveFamilyForTitle indique, de façon TITLE-AWARE, si le sous-mode du
+// pair_name relève de la famille objectif. Classifier dédié du titre s'il existe,
+// sinon classifier par défaut. Aucun classifier → false (famille slayer).
+func IsObjectiveFamilyForTitle(titleSlug, pairName string) bool {
+	if f, ok := objectiveFamilyClassifiersByTitle[titleSlug]; ok {
+		return f(pairName)
+	}
+	if objectiveFamilyClassifier == nil {
+		return false
+	}
+	return objectiveFamilyClassifier(pairName)
+}
+
+// ValidateObjectiveFamilyClassifierWired vérifie au BOOT que le classifier de
+// famille par défaut a été posé. Miroir de ValidateLUSRChainClassifierWired : le
+// boot refuse de démarrer plutôt que de scorer tous les classés en ranked_slayer
+// silencieusement (le fallback existe pour les binaires hors chemin de scoring,
+// pas pour le serveur).
+func ValidateObjectiveFamilyClassifierWired() error {
+	if objectiveFamilyClassifier == nil {
+		return errors.New("sync: classifier de famille objectif non câblé — appeler SetObjectiveFamilyClassifier(skillchain.IsObjectiveSubMode) au boot")
+	}
+	return nil
+}

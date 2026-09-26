@@ -1,0 +1,421 @@
+package replay
+
+// vehicle_rides.go — L EPISODE D OCCUPATION : qui est a bord de quel vehicule, de quand a quand.
+//
+// C EST L OBJET QUE LA MESURE A VALIDE, ET CE N EST PAS CELUI QU ON CHERCHAIT. Le lot V3 visait
+// la DESTRUCTION datee par la mort du conducteur : REFUTEE sur 460 vies et 12 films (rapport
+// `V3_DESTRUCTION_DATEE_2026-09-02.md`). Ce qui a passe ses gates est l EPISODE D OCCUPATION, et
+// le rapport le nomme explicitement comme le livrable a produire (§ 6).
+//
+// TROIS SIGNAUX, UNE SEULE GRANDEUR — et chacun a ses chiffres :
+//
+//	LE TROU DE POSITION (le liant, primitive V1a.4 productionisee au lot V1). Un occupant
+//	attache cesse de repliquer sa position monde : l embarquement se voit comme le DERNIER point
+//	d un flux bipede, a moins de 1,5 m d un vehicule, suivi d un silence. Signal a x20,3 et x30,5
+//	le hasard sur les deux films du gate V1, TEMOIN FANTOME NUL (0 contre 12 et 14).
+//
+//	L EVENEMENT DE SORTIE (`unit_exit_vehicle`, type 22). Sa grammaire est portee et validee :
+//	l occupant tombe dans la bande bipede 75/75 = 100 %, et la sortie FERME le trou a +/-2 s dans
+//	69/69 = 100 % des cas (V3 gate 6, 12 films). C est la borne de fin la plus sure du calque.
+//
+//	L EVENEMENT D EMBARQUEMENT (`biped_board_vehicle`, type 8). Domaines lus dans l executable
+//	le 2026-09-02 (2/3/7, cf. `filmdec/event_list.go`) : l occupant tombe dans la bande 22/22 =
+//	100 % et OUVRE un trou a l instant exact dans 77,3 % des cas (temoin decale 0,0 %), contre
+//	90,7 % pour la REFERENCE qu est la sortie. Le gate absolu de 90 % a echoue et c est ecrit ;
+//	ce qui manque tient a la primitive du trou (un trajet de moins de 3 s n en ouvre aucun), pas
+//	au decodage.
+//
+// LA SORTIE NOMME LE VEHICULE, DEPUIS LE LOT V8 (corrige le 2026-09-10, lot hygiene 5.3,
+// inventaire P1 — cet en-tete affirmait encore le contraire). Sa reference 1 (domaine 1, la
+// SECONDE unite de la scene, gardee-jetee jusqu au lot V8) est desormais publiee et nomme le
+// vehicule dans 105/105 cas mesures, bande `ti=40`, zero bipede (`filmdec/event_list.go:317-320`,
+// `vehicle_rides_events.go` `vehicleLifeFromEvent`). La reference 2 (domaine 7, objets du monde)
+// de l EMBARQUEMENT, elle, reste gardee-absente dans la quasi-totalite des cas mesures (rapport
+// V3 embarquement § 4.2) : SEULE la sortie nomme, jamais l embarquement. La GEOMETRIE — le
+// vehicule le plus proche a l ouverture du trou — n est plus que le REPLI quand aucun evenement
+// exploitable n a ferme l episode (`vehicleLifeFromGeometry`, tente seulement si
+// `vehicleLifeFromEvent` echoue).
+//
+// PUR : aucune I/O, aucune lecture de film. Les entrees sont deja decodees.
+
+import (
+	"sort"
+
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
+)
+
+// CES SEUILS ONT ETE REMIS EN CAUSE LE 2026-09-02, ET LA MESURE LES A CONFIRMES. Le calque
+// publiait 12 episodes sur 45 vies (`0d76e8f1`) et 2 sur 21 (`fccc61cd`) ; l hypothese etait que
+// les portes de cette page etaient trop serrees. L instrument `vehicules_v4_couverture_test.go`
+// a mesure chaque porte contre un ORACLE — un trou CONFIRME par un evenement d embarquement ou
+// de sortie de la liste (grammaire portee et validee, V3). VERDICT, sur les deux films :
+//
+//	LE RAYON N EST PAS LA PORTE. Les 10 trous confirmes de `0d76e8f1` et les 2 de `fccc61cd`
+//	sont TOUS sous 1,5 m — d25 0,6 m, d50 0,9 m, d90 1,2 m. Elargir a 3, 5, 8 ou 12 m n ajoute
+//	AUCUN trou confirme et fait passer les trous NON confirmes de 2 a 4, 5, 8 puis 8 (a 3 s),
+//	pendant que le temoin decale de 60 s en ramasse 1, 2, 4 puis 6 : ce qu on gagnerait est du
+//	hasard, et il est deja compte.
+//
+//	LE SEUIL DE TROU NON PLUS. A 3 s, 1,5 s et 0,8 s le nombre de trous CONFIRMES vaut 10, 10
+//	et 10 (`0d76e8f1`) — exactement le meme. Seuls les non confirmes montent (16, 24, 45).
+//
+//	LA FRAICHEUR NON PLUS. 9 des 10 trous confirmes avaient un echantillon de vehicule de moins
+//	d une seconde, et aucun n a eu besoin de la position de naissance.
+//
+//	ET L OCCUPANT NE REPLIQUE VRAIMENT PLUS. L hypothese inverse — des trajets invisibles parce
+//	que le bipede continue d emettre — a ete testee par la CO-MOBILITE
+//	(`vehicules_v4_comobilite_test.go`) : sur 1 347 instants de vehicule EN MOUVEMENT, AUCUN
+//	couple (vehicule, bipede) ne reste sous 3 m plus de 1,6 s. Il n y a pas de population cachee.
+//
+// CE QUI RESTE, MESURE ET NON CORRIGE : le SILENCE TERMINAL. Un occupant qui ne re-emet JAMAIS
+// (mort a bord, encore a bord a la fin) n ouvre aucun trou — la primitive exige un point APRES le
+// silence. L oracle des ARMES DE VEHICULE (cf. `vehicle_shots.go`) le chiffre : 6 tirs sur 23 a
+// `0d76e8f1`, 8 sur 16 a `fccc61cd`. Aucun seuil n est justifiable aujourd hui pour les recuperer
+// — le vehicule le plus proche du dernier point replique est a 2,6 m sur un film et a 29,3 m sur
+// l autre. Ouvrir la porte sur cette base echangerait de la precision contre du rappel sans
+// preuve ; la decouverte est ecrite, elle n est pas traitee.
+//
+// Seuils de l episode d occupation. Aucun n est neuf : ce sont ceux sous lesquels le signal a ete
+// mesure, et les changer rendrait les chiffres publies incomparables aux rapports.
+const (
+	// vehicleGapMinMS : duree minimale d une interruption du flux de position d un bipede pour
+	// compter comme un embarquement (oracle geometrique du 2026-08-18, repris par V1a.4 et V1c).
+	vehicleGapMinMS = 3000
+	// vehicleBoardRadiusM : distance EN PLAN sous laquelle un bipede et un vehicule sont « au
+	// meme endroit ». EN PLAN, et c est delibere : la hauteur d un occupant et celle du repere du
+	// vehicule ne se referent pas au meme point, une distance 3D ecarterait des embarquements
+	// reels. Meme choix, meme raison qu aux socles.
+	vehicleBoardRadiusM = 1.5
+	// vehicleEventTolMS : tolerance d appariement entre un evenement et le bord du trou qu il
+	// doit expliquer. Deux paquets delta valent ~1 s (ecart median mesure 0,5 s) ; on prend
+	// large, le biais joue CONTRE le signal quand il manque, jamais en sa faveur.
+	vehicleEventTolMS = 2000
+	// vehicleNearestSampleUS borne l ecart temporel accepte entre l echantillon du bipede et
+	// celui du vehicule qu on lui compare. Au-dela, on ne compare pas deux positions simultanees
+	// mais deux positions distantes dans le temps.
+	vehicleNearestSampleUS = uint64(1_000_000)
+)
+
+// Provenance d un episode. Identifiants STABLES du document.
+//
+// DEUX VALEURS DEPUIS LE SCHEMA 67, ET ELLES DISENT LA SOURCE, PLUS LA PRECISION DES BORNES
+// (arbitrage du pilote, 2026-09-21). Les trois valeurs precedentes — `event`, `mixed`, `gap` —
+// ventilaient les bornes d un episode HEURISTIQUE ; cette ventilation vit desormais au journal
+// de cuisson (`vehicleRideStats`), parce que la question que le client se pose a change : ce
+// n est plus « a quelle milliseconde pres ? » mais « le film l a-t-il ECRIT, ou l a-t-on
+// DEDUIT ? ».
+const (
+	// VehicleRideSrcFilm : le film ECRIT cette montee a bord (`object-parent-state`, i10). Le
+	// siege vient de la meme lecture.
+	VehicleRideSrcFilm = "film"
+	// VehicleRideSrcProximity : REPLI NOMME — l episode vient du trou de position de l occupant
+	// (et, quand ils existent, des evenements d embarquement / de sortie qui en datent les
+	// bornes). Il n est publie que si AUCUNE lecture de la meme vie ne le contredit.
+	VehicleRideSrcProximity = "proximity"
+)
+
+// vehicleRideInputs porte ce que l assemblage des episodes consomme. Une structure plutot que
+// six parametres — regle des 5 parametres du depot, et ces six-la voyagent toujours ensemble.
+type vehicleRideInputs struct {
+	// vehBySlot est le nuage des positions de VEHICULE, indexe par slot et trie par instant.
+	vehBySlot map[uint32][]grammar.BipedPosition
+	// bipeds est le nuage NON decime des BIPEDES, d ou sortent les trous.
+	bipeds []grammar.BipedPosition
+	// bipedsBySlot est CE MEME nuage indexe par slot (`vehiclePositionsBySlot`), quand l appelant
+	// l a deja : la pose des pieces montees le relit (`vehicle_turrets_boarding.go`), et l indexer
+	// deux fois doublerait la memoire d un nuage de Grande bataille. Nil : calcule ici.
+	bipedsBySlot map[uint32][]grammar.BipedPosition
+	// events sont les embarquements et les sorties.
+	events []types.VehicleEvent
+	// aimBySlot porte la VISEE de chaque occupant, indexee par SON slot bipede et triee par
+	// instant (cf. vehicle_rides_aim.go). Vide : les episodes sortent sans serie de visee.
+	aimBySlot map[uint32][]grammar.BipedAim
+	// reg est le REGISTRE D IDENTITE : il donne l occupant d un slot A UN INSTANT. Vide : les
+	// episodes sortent anonymes, pas supprimes.
+	reg IdentityRegistry
+	// occupancy porte les montees a bord ECRITES par le film (`i10`), d ou sort le SIEGE d un
+	// episode (lot 5.10, cf. vehicle_rides_seat.go). Vides : les episodes sortent sans siege.
+	occupancy []types.VehicleOccupancy
+	// lives sont les vies de vehicule, avec leur fenetre — c est elle qui rattache un episode a
+	// une GENERATION, que le nuage de positions ne porte pas.
+	lives []vehicleLife
+	// drawable dit, par vie, si le calque saura la DESSINER : elle a une naissance lue, ou au
+	// moins un echantillon dans sa fenetre. C est le MEME predicat que `vehicleTrackOf`, et il
+	// est ici parce que le nom porte par un evenement peut designer une vie que le calque ne
+	// publie pas — la TOURELLE d un Warthog, entite `ti=40` attachee qui ne replique jamais sa
+	// position (cf. `vehicleLifeFromEvent`).
+	drawable map[types.EquipmentLifeKey]bool
+	clock    replayClock
+}
+
+// vehicleDrawableLives rend les vies que le calque saura DESSINER : celles qui ont une naissance
+// lue, ou au moins un echantillon de position DANS leur fenetre. C est le predicat de publication
+// de `vehicleTrackOf`, calcule ici parce que le rattachement d un episode en a besoin AVANT
+// l assemblage — un nom d evenement qui designe une vie non dessinable ferait disparaitre
+// l occupant (cf. `vehicleLifeFromEvent`, et la tourelle du Warthog qui l a revele).
+func vehicleDrawableLives(
+	lives []vehicleLife, spawns map[types.EquipmentLifeKey]types.EquipmentCreation,
+	bySlot map[uint32][]grammar.BipedPosition,
+) map[types.EquipmentLifeKey]bool {
+	out := make(map[types.EquipmentLifeKey]bool, len(lives))
+	for _, l := range lives {
+		if sp, ok := spawns[l.key]; ok && sp.TimestampUS > 0 {
+			out[l.key] = true
+			continue
+		}
+		pts := bySlot[l.key.Slot]
+		i := sort.Search(len(pts), func(k int) bool { return pts[k].TimestampUS >= l.loUS })
+		out[l.key] = i < len(pts) && pts[i].TimestampUS <= l.hiUS
+	}
+	return out
+}
+
+// vehicleGap est une interruption du flux de position d un bipede.
+type vehicleGap struct {
+	slot           uint32
+	startUS, endUS uint64
+	// last est le DERNIER echantillon avant l interruption : c est la position d embarquement.
+	last grammar.BipedPosition
+}
+
+// vehicleRideStats compte PAR QUELLE VOIE chaque episode a trouve son vehicule. Il n est PAS
+// publie dans le document (le contrat ne bouge pas) : il est journalise, et les instruments le
+// lisent. Sans lui, « N episodes » ne dirait pas si c est le nom porte par l evenement ou une
+// distance de 3 m qui les a rattaches — c est-a-dire la seule chose que le lot V8 a changee.
+type vehicleRideStats struct {
+	// episodes est le nombre d episodes d EVENEMENT construits par la machine d etats (avant
+	// rattachement) ; nommes ceux dont la sortie porte une reference de vehicule.
+	episodes, nommes int
+	// parEvenement / parEvenementProche / parGeometrie / perdus ventilent le rattachement.
+	parEvenement, parEvenementProche, parGeometrie, perdus int
+	// repli est le nombre d episodes venus du TROU de position (seconde source).
+	repli int
+	// sieges est le nombre d episodes dont le SIEGE a ete lu dans le film (lot 5.10). Il se
+	// journalise a cote des autres : un calque qui publierait des episodes sans jamais lire un
+	// siege dirait que le canal `i10` n est plus traverse.
+	sieges int
+	// LA LECTURE, ET CE QU ELLE ECARTE (lot 5.10, schema 67). `film` porte le bilan des episodes
+	// LUS ; `ecartes` compte les episodes d heuristique qu une lecture CONTREDIT, et il est le
+	// prix de la primaute : sans lui, la disparition d un episode faux et celle d un episode vrai
+	// se confondraient dans le meme silence.
+	film                      vehicleFilmTally
+	ecartes                   int
+	bornes2, bornes1, bornes0 int
+}
+
+// vehicleRideOf assemble UN episode : les bornes du trou, affinees par les evenements quand ils
+// tombent dessus, et l identite de l occupant quand le pont la donne.
+func vehicleRideOf(
+	g vehicleGap, boards, exits []types.VehicleEvent, in vehicleRideInputs,
+) VehicleRide {
+	r := VehicleRide{Slot: g.slot, Src: VehicleRideSrcProximity}
+	startUS, endUS := g.startUS, g.endUS
+	// LES EVENEMENTS AFFINENT LES BORNES, ILS NE CHANGENT PLUS LA PROVENANCE (schema 67) : un
+	// episode de cette voie est un REPLI, qu une sortie le date a la milliseconde ou non. Le
+	// COMPTE de ses bornes datees vit au journal (`vehicleRideBorders`).
+	if ev, ok := vehicleEventNear(boards, g.startUS); ok {
+		startUS = ev.TimestampUS
+	}
+	if ev, ok := vehicleEventNear(exits, g.endUS); ok {
+		endUS = ev.TimestampUS
+	}
+	r.T0 = in.clock.frame(startUS)
+	r.T1 = in.clock.frame(endUS)
+	if r.T1 < r.T0 {
+		r.T1 = r.T0
+	}
+	// LA VISEE SE LIT SUR LES BORNES AFFINEES, pas sur celles du trou : quand un evenement a
+	// resserre une borne, la serie doit suivre le meme intervalle que `T0`/`T1`.
+	r.Aim = vehicleRideAimOf(in.aimBySlot[g.slot], startUS, endUS, in.clock)
+	// L OCCUPANT EST CELUI DE L INSTANT, PAS LE PREMIER DU SLOT (correctif du 2026-09-06,
+	// constat P1-7). `SlotXUID` est une identite UNIQUE par slot pour tout le match : sur un
+	// slot de biped recycle entre deux joueurs, l episode sortait avec le xuid du PREMIER quel
+	// que soit l instant. Or `VehicleRide.XUID` est ce qui donne sa COULEUR au vehicule (le
+	// client joint xuid -> equipe -> couleur) : le sprite prenait l equipe du mauvais joueur et
+	// la fiche creditait le mauvais conducteur. `xuidAt` lit la vie qui couvre l instant, et ne
+	// retombe sur le pont par slot qu a defaut — vide quand ni l une ni l autre ne nomme, ce
+	// que le contrat prevoit explicitement (l episode reste publie, son occupant est inconnu).
+	r.XUID = in.reg.XUIDAt(g.slot, startUS)
+	return r
+}
+
+// vehicleTallyBorders range un episode de repli par PRECISION de ses bornes. Cette ventilation
+// ne se publie plus (le champ `src` dit desormais la SOURCE) : elle vit au journal, ou elle garde
+// son role de temoin — si `bornes2` tombait a zero, c est que la liste d evenements n est plus
+// lue.
+func vehicleTallyBorders(st *vehicleRideStats, borders int) {
+	switch borders {
+	case 2:
+		st.bornes2++
+	case 1:
+		st.bornes1++
+	default:
+		st.bornes0++
+	}
+}
+
+// vehicleRideBorders compte les bornes qu un evenement date sur un episode de TROU.
+func vehicleRideBorders(g vehicleGap, boards, exits []types.VehicleEvent) int {
+	var n int
+	if _, ok := vehicleEventNear(boards, g.startUS); ok {
+		n++
+	}
+	if _, ok := vehicleEventNear(exits, g.endUS); ok {
+		n++
+	}
+	return n
+}
+
+// vehicleGaps releve les interruptions >= vehicleGapMinMS du flux de position de chaque bipede.
+// L ordre de sortie est deterministe (slots tries, echantillons tries par instant).
+func vehicleGaps(bipeds []grammar.BipedPosition) []vehicleGap {
+	bySlot := map[uint32][]grammar.BipedPosition{}
+	for _, b := range bipeds {
+		if b.HasWorld {
+			bySlot[b.Slot] = append(bySlot[b.Slot], b)
+		}
+	}
+	slots := make([]uint32, 0, len(bySlot))
+	for s := range bySlot {
+		slots = append(slots, s)
+	}
+	sort.Slice(slots, func(i, j int) bool { return slots[i] < slots[j] })
+	var out []vehicleGap
+	for _, s := range slots {
+		ech := bySlot[s]
+		sort.SliceStable(ech, func(i, j int) bool { return ech[i].TimestampUS < ech[j].TimestampUS })
+		for i := 1; i < len(ech); i++ {
+			if (ech[i].TimestampUS-ech[i-1].TimestampUS)/1000 < vehicleGapMinMS {
+				continue
+			}
+			out = append(out, vehicleGap{
+				slot: s, startUS: ech[i-1].TimestampUS, endUS: ech[i].TimestampUS, last: ech[i-1],
+			})
+		}
+	}
+	return out
+}
+
+// vehicleNearestTo rend le slot du vehicule sous le rayon a cet instant, s il y en a un. Predicat
+// EN PLAN, tolerance temporelle bornee : c est exactement l oracle geometrique du 2026-08-18,
+// celui sous lequel le signal a ete mesure.
+func vehicleNearestTo(
+	e grammar.BipedPosition, vehBySlot map[uint32][]grammar.BipedPosition,
+) (uint32, bool) {
+	return vehicleNearestWithin(e, vehBySlot, vehicleBoardRadiusM)
+}
+
+// vehicleNearestWithin est la MEME recherche, sous un rayon donne. Une seule implementation :
+// le rayon du TROU (`vehicleBoardRadiusM`) et celui de l ANCRE D EVENEMENT
+// (`vehicleEventAnchorRadiusM`) ne sont pas le meme chiffre, mais ils lisent le meme nuage avec
+// la meme regle de fraicheur.
+func vehicleNearestWithin(
+	e grammar.BipedPosition, vehBySlot map[uint32][]grammar.BipedPosition, radiusM float64,
+) (uint32, bool) {
+	slots := make([]uint32, 0, len(vehBySlot))
+	for s := range vehBySlot {
+		slots = append(slots, s)
+	}
+	sort.Slice(slots, func(i, j int) bool { return slots[i] < slots[j] })
+	best, found, bestD := uint32(0), false, 0.0
+	for _, s := range slots {
+		p, gap, ok := vehicleSampleNear(vehBySlot[s], e.TimestampUS)
+		if !ok || gap > vehicleNearestSampleUS {
+			continue
+		}
+		d := planDist(e.X, e.Y, p.X, p.Y)
+		if d <= radiusM && (!found || d < bestD) {
+			best, bestD, found = s, d, true
+		}
+	}
+	return best, found
+}
+
+// vehicleSampleNear rend l echantillon le plus proche d un instant dans une liste TRIEE, et
+// l ecart.
+func vehicleSampleNear(
+	pts []grammar.BipedPosition, atUS uint64,
+) (grammar.BipedPosition, uint64, bool) {
+	if len(pts) == 0 {
+		return grammar.BipedPosition{}, 0, false
+	}
+	i := sort.Search(len(pts), func(k int) bool { return pts[k].TimestampUS >= atUS })
+	best := i
+	switch {
+	case i >= len(pts):
+		best = len(pts) - 1
+	case i > 0 && gapUS(pts[i-1].TimestampUS, atUS) < gapUS(pts[i].TimestampUS, atUS):
+		best = i - 1
+	}
+	return pts[best], gapUS(pts[best].TimestampUS, atUS), true
+}
+
+// vehicleLifeAt rattache un slot de vehicule et un instant a UNE vie : celle dont la fenetre le
+// contient. Les fenetres d un meme slot ne se recouvrent pas (cf. assignVehicleWindows), la
+// reponse est donc unique.
+func vehicleLifeAt(
+	lives []vehicleLife, slot uint32, atUS uint64,
+) (types.EquipmentLifeKey, bool) {
+	for _, l := range lives {
+		if l.key.Slot == slot && atUS >= l.loUS && atUS <= l.hiUS {
+			return l.key, true
+		}
+	}
+	return types.EquipmentLifeKey{}, false
+}
+
+// vehicleEventsByOccupant range les evenements par slot d occupant, embarquements d un cote et
+// sorties de l autre, chacun TRIE par instant.
+//
+// LES OCCUPANTS HORS BANDE SONT ECARTES : un slot qui ne tombe pas dans la bande bipede du film
+// n est pas un joueur, c est une lecture qui a rate. La mesure les compte a zero sur le corpus
+// (68/68 en bande apres le portage du 2026-09-02) ; le filtre est la pour que ca reste vrai.
+func vehicleEventsByOccupant(
+	events []types.VehicleEvent,
+) (boards, exits map[uint32][]types.VehicleEvent) {
+	boards, exits = map[uint32][]types.VehicleEvent{}, map[uint32][]types.VehicleEvent{}
+	for _, ev := range events {
+		if !ev.OccupantPresent || !ev.OccupantInBand {
+			continue
+		}
+		switch ev.Kind {
+		case grammar.EventBipedBoardVehicle:
+			boards[ev.OccupantSlot] = append(boards[ev.OccupantSlot], ev)
+		case grammar.EventUnitExitVehicle:
+			exits[ev.OccupantSlot] = append(exits[ev.OccupantSlot], ev)
+		}
+	}
+	for _, m := range []map[uint32][]types.VehicleEvent{boards, exits} {
+		for s := range m {
+			v := m[s]
+			sort.SliceStable(v, func(i, j int) bool { return v[i].TimestampUS < v[j].TimestampUS })
+		}
+	}
+	return boards, exits
+}
+
+// vehicleEventNear rend l evenement le plus proche d un instant dans la tolerance, s il y en a un.
+func vehicleEventNear(
+	evs []types.VehicleEvent, atUS uint64,
+) (types.VehicleEvent, bool) {
+	best, found, bestGap := types.VehicleEvent{}, false, uint64(0)
+	for _, ev := range evs {
+		g := gapUS(ev.TimestampUS, atUS)
+		if g/1000 > vehicleEventTolMS {
+			continue
+		}
+		if !found || g < bestGap {
+			best, bestGap, found = ev, g, true
+		}
+	}
+	return best, found
+}
+
+// gapUS rend l ecart absolu entre deux instants microseconde.
+func gapUS(a, b uint64) uint64 {
+	if a > b {
+		return a - b
+	}
+	return b - a
+}

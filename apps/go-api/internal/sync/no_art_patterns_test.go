@@ -103,7 +103,7 @@ var tablesProtegees = []string{
 	// metadata.duckdb → cascade (modes/playlists/maps/citations/succès Xbox en échec
 	// sur toute l'app — incident sonde live 2026-06-19).
 	"catalog_fetch_queue",
-	// player_match_enrichment (append-only #23046, 2026-06-21) : la table la PLUS
+	// player_match_enrichment (append-only #23645, 2026-06-21) : la table la PLUS
 	// écrite, migrée append-only (id PK + stage + vue _latest). Tous les writers
 	// sont des INSERT purs taggés ; zéro ON CONFLICT/DELETE/UPDATE. Le durcissement
 	// complémentaire (interdire UPDATE + FROM brut) vit dans append_only_state_guard_test.go.
@@ -129,6 +129,76 @@ var tablesProtegees = []string{
 	// d'allowlist à prévoir. Même mécanique de passe et même couverture DELETE que
 	// match_kill_events ci-dessus.
 	"match_weapon_shots",
+	// match_usage_players / match_usage_films (session-usage, 2026-09-04) : tables
+	// append-only NET-NEUVES (résumé d'usage équipement/socles dérivé de l'artefact de
+	// rejeu, une passe = un artefact projeté). Leur persister
+	// (internal/persist/usage_summary_persister.go) n'émet que des INSERT dans une
+	// transaction unique — aucune entrée d'allowlist à prévoir. Même mécanique de passe
+	// (vues _latest) et même couverture DELETE que match_kill_events ci-dessus.
+	"match_usage_players",
+	"match_usage_films",
+	// match_bomb_stats (E3 Assaut, 2026-09-04) : table append-only NET-NEUVE (5 statistiques
+	// d'objectif du mode Assaut par joueur/match, reconstruites du film — l'API 343 n'en
+	// publie aucune). Son persister (internal/persist/bomb_stats_persister.go) n'émet que des
+	// INSERT — aucune entrée d'allowlist à prévoir, ni ici ni dans allowlistRawDelete.
+	// Remplacer une passe = en écrire une nouvelle ; la vue match_bomb_stats_latest ne rend
+	// que la dernière ligne par (match_id, xuid).
+	"match_bomb_stats",
+	// match_flag_grabs_net (prises nettes de drapeau, 2026-09-13) : table append-only
+	// NET-NEUVE (prises brutes et nettes par joueur/match, lues du calque de drapeau de
+	// l'artefact, plus la fenêtre de jonglage appliquée). Son persister
+	// (internal/persist/flag_grabs_net_persister.go) n'émet que des INSERT dans une
+	// transaction unique — aucune entrée d'allowlist à prévoir, ni ici ni dans
+	// allowlistRawDelete. Remplacer une passe = en écrire une nouvelle ; la vue
+	// match_flag_grabs_net_latest ne rend que la dernière ligne par (match_id, xuid).
+	"match_flag_grabs_net",
+	// match_pad_pickups_by_tier (niveaux d'armes, 2026-09-14) : table append-only NET-NEUVE
+	// (prises de socle par joueur/niveau/arme, lues de l'artefact rangé et croisées à la
+	// référence des emplacements de la carte). Son persister
+	// (internal/persist/pad_tiers_persister.go) n'émet que des INSERT dans une transaction
+	// unique — aucune entrée d'allowlist à prévoir. Remplacer une passe = en écrire une
+	// nouvelle ; la vue match_pad_pickups_by_tier_latest ne rend que la dernière PASSE
+	// ENTIÈRE par match.
+	"match_pad_pickups_by_tier",
+	// kill_positions / match_weapon_hit_distance (G4 du registre v2, enrôlement 2026-09-05) :
+	// les deux dernières tables du film restées HORS des deux listes anti-ART alors qu'elles
+	// sont append-only avec vue _latest depuis leur migration. Vérifié sur pièces avant
+	// enrôlement :
+	//   - kill_positions : rebuild append-only G.2 (2026-08-30) par
+	//     games/halo_infinite/migrations/steps_appendonly_misc.go (id PK kill_positions_seq +
+	//     written_at), puis bascule sur un arbitrage PAR PASSE au lot 1.7 (2026-09-09,
+	//     steps_shared_kill_positions_pass.go : + decode_pass NOT NULL, vue
+	//     kill_positions_latest = DERNIÈRE PASSE ENTIÈRE par match) ; deux écrivains, tous deux
+	//     en INSERT pur : persist/kill_position_persister.go (passe film Infinite) et
+	//     persist/shared_persister.go persistKillPositionsPass (chemin builder Halo 5).
+	//     Pas de decoder_rev sur cette table, et c'est voulu (decode_pass discrimine déjà).
+	//   - match_weapon_hit_distance : CRÉÉE append-only (migration/steps_shared_weapon_hit_distance.go,
+	//     id PK seq + decode_pass + decoder_rev + written_at + vue _latest par PASSE) ; écrivain
+	//     unique persist/weapon_hit_distance_persister.go, un seul statement INSERT.
+	// Enrôlement GRATUIT : aucune violation existante, aucune entrée d'allowlist créée. Le `\b`
+	// final ne déborde pas sur les vues `_latest` (`_` est un caractère de mot).
+	"kill_positions",
+	"match_weapon_hit_distance",
+	// match_player_positions (décision utilisateur 1 du plan v2, 2026-09-06) : la table de la
+	// CARTE DE CHALEUR devient une PROJECTION DE L'ARTEFACT de rejeu, écrite dans le cycle de
+	// sync. Elle était jusque-là remplie par un outil de diagnostic en DELETE-then-INSERT sur
+	// le handle de LECTURE du pool — hors pression concurrente, donc tolérable ; sous le
+	// nouveau régime, ce DELETE indexé serait le déclencheur ART direct. Elle est convertie
+	// append-only (migration/steps_shared_player_positions_appendonly.go : id PK +
+	// positions_pass + vue match_player_positions_latest PAR PASSE) et son unique écrivain,
+	// persist/player_positions_persister.go, n'émet que des INSERT — aucune entrée d'allowlist.
+	// `PlayerPositionsRepo.WriteMatch` a été SUPPRIMÉE avec ses tests.
+	"match_player_positions",
+	// match_lives / match_death_context (7C isolement au sync, 2026-09-07) : tables
+	// append-only NET-NEUVES (vies nommées du film ; voisinage à l'instant de chaque mort du
+	// journal). Leur persister (internal/persist/lives_persister.go) n'émet que des INSERT
+	// dans une transaction unique — aucune entrée d'allowlist à prévoir, ni ici ni dans
+	// allowlistRawDelete. Même mécanique de passe que match_kill_events : remplacer une passe
+	// consiste à en écrire une nouvelle sous un `decode_pass` neuf, et les vues _latest ne
+	// rendent que la DERNIÈRE PASSE PAR MATCH — jamais la dernière ligne par clé, sans quoi
+	// une passe plus courte laisserait survivre les lignes de la précédente.
+	"match_lives",
+	"match_death_context",
 	// NB (2026-08-03) : `media_likes_history` et `media_match_associations_history` sont
 	// append-only elles aussi mais N'ONT PAS leur place ICI — même raison que
 	// `player_records_history` ci-dessus : elles co-résident dans
@@ -169,7 +239,7 @@ var allowlistArtPatterns = map[string]string{
 var allowlistRawDelete = map[string]string{
 	// (Entrée `internal/sync/skill_rating_postsync_persist.go` retirée en
 	// V4c/2026-07-07 : la fonction compactMatchSkillRankSuperseded (DELETE de
-	// compaction) a été SUPPRIMÉE — elle déclenchait le bug ART #23046 malgré
+	// compaction) a été SUPPRIMÉE — elle déclenchait le bug ART #23645 malgré
 	// mono-writer + PK BIGINT (crash JGtm 2026-06-20). La table match_skill_rank
 	// reste append-only pur, la vue _latest reste correcte. Le fichier a par
 	// ailleurs migré vers internal/sync/skill/ et ne contient plus aucun DELETE.
@@ -212,15 +282,7 @@ func TestNoARTPatternsOnProtectedTables(t *testing.T) {
 			// mono-processus), et le présent guard-rail. NB (E3, 2026-07-03) : ops/
 			// N'EST PLUS exclu — sa plomberie (catalog_refresh, lying_bits_reset,
 			// data_quality) tourne IN-PROCESS, donc soumise au tripwire.
-			if strings.HasSuffix(path, "_test.go") ||
-				strings.Contains(path, "/migration/") ||
-				strings.Contains(path, "\\migration\\") ||
-				strings.Contains(path, "/migrations/") ||
-				strings.Contains(path, "\\migrations\\") ||
-				strings.Contains(path, "/cmd/") ||
-				strings.Contains(path, "\\cmd\\") ||
-				strings.Contains(path, "/scripts/") ||
-				strings.Contains(path, "\\scripts\\") {
+			if !dansLePerimetreART(path) {
 				return nil
 			}
 
@@ -290,11 +352,7 @@ func TestNoRawDeleteOnAppendOnlyTables(t *testing.T) {
 			if !strings.HasSuffix(path, ".go") {
 				return nil
 			}
-			if strings.HasSuffix(path, "_test.go") ||
-				strings.Contains(path, "/migration/") || strings.Contains(path, "\\migration\\") ||
-				strings.Contains(path, "/migrations/") || strings.Contains(path, "\\migrations\\") ||
-				strings.Contains(path, "/cmd/") || strings.Contains(path, "\\cmd\\") ||
-				strings.Contains(path, "/scripts/") || strings.Contains(path, "\\scripts\\") {
+			if !dansLePerimetreART(path) {
 				return nil
 			}
 			content, readErr := os.ReadFile(path)
@@ -446,11 +504,7 @@ func TestNoBulkMultiRowUpdateOnCriticalTables(t *testing.T) {
 			if !strings.HasSuffix(path, ".go") {
 				return nil
 			}
-			if strings.HasSuffix(path, "_test.go") ||
-				strings.Contains(path, "/migration/") || strings.Contains(path, "\\migration\\") ||
-				strings.Contains(path, "/migrations/") || strings.Contains(path, "\\migrations\\") ||
-				strings.Contains(path, "/cmd/") || strings.Contains(path, "\\cmd\\") ||
-				strings.Contains(path, "/scripts/") || strings.Contains(path, "\\scripts\\") {
+			if !dansLePerimetreART(path) {
 				return nil
 			}
 			content, readErr := os.ReadFile(path)
@@ -539,4 +593,231 @@ func findRepoRoot(t *testing.T) string {
 	}
 	t.Fatalf("module root (go.mod) non trouvé depuis %s", wd)
 	return ""
+}
+
+// ─── D-B1 : les écritures à NOM DE TABLE INTERPOLÉ (G.2, 2026-09-13) ────────────────
+//
+// TROU COMBLÉ ICI. Les trois scans ci-dessus cherchent tous un nom de table
+// LITTÉRAL dans la source. `internal/ops/seed_demo_corpus.go` construisait ses
+// écritures par `fmt.Sprintf("UPDATE %s …", t.table)` : aucun littéral
+// `UPDATE weapon_kills` n'existait dans le fichier, si bien que ni le scan
+// principal ni le tripwire bulk ne pouvaient voir un UPDATE set-based nu sur
+// quatre tables qu'ils couvrent pourtant (weapon_kills, medals_earned,
+// killer_victim_pairs, match_participants). Le cas précis a été corrigé au lot
+// B.3.6 ; le GARDE-RAIL, lui, restait aveugle à la forme (Découverte D-B1).
+//
+// CE QUE CE SCAN DÉCIDE. Une écriture à nom de table interpolé est SUSPECTE
+// quand elle n'est pas ligne à ligne À VALEURS LIÉES — c'est-à-dire quand le
+// littéral ne porte AUCUN placeholder `?`. Sans valeur liée, un `UPDATE %s SET …
+// WHERE <prédicat>` est set-based : un seul statement qui touche N entrées
+// d'index, exactement le déclencheur ART. Avec `?`, la boucle est un UPDATE par
+// ligne (forme que le projet prescrit) — c'est la forme livrée par
+// `seed_demo_corpus.go` et elle doit rester VERTE. Un `ON CONFLICT … DO UPDATE`
+// dans un littéral interpolé est refusé même avec des valeurs liées : l'UPSERT
+// est un déclencheur en soi.
+//
+// PÉRIMÈTRE. Le nom de table étant inconnu à la lecture, la corrélation est
+// FILE-level, comme TestNoARTPatternsOnProtectedTables : seuls les fichiers qui
+// nomment par ailleurs au moins une table protégée ou critique sont jugés. Un
+// outil générique qui ne nomme aucune de ces tables (ex. `internal/ops/restore.go`,
+// qui vide une table par `DELETE FROM %q` avec un nom venu du jeu de parquets)
+// n'est donc PAS jugé ici — limite ASSUMÉE et consignée, pas un oubli.
+
+// reInterpolatedUpdate / reInterpolatedDelete / reInterpolatedInsert — formes
+// d'écriture dont le NOM DE TABLE est un verbe d'interpolation. `UPDATE` exige un
+// `SET` dans la fenêtre : sans lui, le `"… UPDATE %q: %w"` d'un fmt.Errorf
+// matcherait (faux positif mesuré sur mode_playlist_fr.go).
+var (
+	reInterpolatedUpdate = regexp.MustCompile(`(?is)\bUPDATE\s+%[sqv]\b.{0,400}?\bSET\b`)
+	reInterpolatedDelete = regexp.MustCompile(`(?is)\bDELETE\s+FROM\s+%[sqv]`)
+	reInterpolatedInsert = regexp.MustCompile(`(?is)\bINSERT\s+INTO\s+%[sqv]`)
+	// Concaténation : le verbe est la FIN du littéral, immédiatement suivi de `+`.
+	reConcatWrite = regexp.MustCompile("(?is)\\b(?:UPDATE|DELETE\\s+FROM|INSERT\\s+INTO)\\s*[\"`]\\s*\\+")
+	// ON CONFLICT … DO UPDATE, fenêtre bornée au statement courant.
+	reUpsertInWindow = regexp.MustCompile(`(?is)\bON\s+CONFLICT\b.{0,200}?\bDO\s+UPDATE\b`)
+	// Littéraux Go : raw string entre backticks, ou string interprétée.
+	reGoStringLiteral = regexp.MustCompile("(?s)`[^`]*`|\"(?:[^\"\\\\\n]|\\\\.)*\"")
+)
+
+// interpolatedWriteViolations rend les motifs suspects d'UN contenu source déjà
+// déscommenté. Fonction pure : c'est elle que le témoin rouge exerce.
+func interpolatedWriteViolations(text string) []string {
+	var out []string
+	for _, lit := range reGoStringLiteral.FindAllString(text, -1) {
+		var forme string
+		switch {
+		case reInterpolatedUpdate.MatchString(lit):
+			forme = "UPDATE <table interpolee>"
+		case reInterpolatedDelete.MatchString(lit):
+			forme = "DELETE FROM <table interpolee>"
+		case reInterpolatedInsert.MatchString(lit):
+			forme = "INSERT INTO <table interpolee>"
+		default:
+			continue
+		}
+		if reUpsertInWindow.MatchString(lit) {
+			out = append(out, forme+" + ON CONFLICT DO UPDATE")
+			continue
+		}
+		if !strings.Contains(lit, "?") {
+			out = append(out, forme+" sans valeur liee (set-based)")
+		}
+	}
+	for _, idx := range reConcatWrite.FindAllStringIndex(text, -1) {
+		fin := idx[0] + 400
+		if fin > len(text) {
+			fin = len(text)
+		}
+		fenetre := text[idx[0]:fin]
+		if reUpsertInWindow.MatchString(fenetre) {
+			out = append(out, "ecriture concatenee + ON CONFLICT DO UPDATE")
+			continue
+		}
+		if !strings.Contains(fenetre, "?") {
+			out = append(out, "ecriture concatenee sans valeur liee (set-based)")
+		}
+	}
+	return out
+}
+
+// dansLePerimetreART — périmètre commun des scans anti-ART : code de production
+// uniquement (hors tests, migrations one-shot, CLI et scripts mono-processus).
+// ops/ EST inclus (plomberie in-process, cf. E3 2026-07-03).
+func dansLePerimetreART(path string) bool {
+	if strings.HasSuffix(path, "_test.go") {
+		return false
+	}
+	for _, seg := range []string{"migration", "migrations", "cmd", "scripts"} {
+		if strings.Contains(path, "/"+seg+"/") || strings.Contains(path, "\\"+seg+"\\") {
+			return false
+		}
+	}
+	return true
+}
+
+// TestNoInterpolatedWriteOnProtectedTables — le scan de production de D-B1.
+func TestNoInterpolatedWriteOnProtectedTables(t *testing.T) {
+	repoRoot := findRepoRoot(t)
+
+	tablesSurveillees := append(append([]string{}, tablesProtegees...), criticalMatchTables...)
+	regexTables := make([]*regexp.Regexp, 0, len(tablesSurveillees))
+	for _, table := range tablesSurveillees {
+		regexTables = append(regexTables, regexp.MustCompile(`(?i)\b`+regexp.QuoteMeta(table)+`\b`))
+	}
+
+	var violations []string
+	err := filepath.Walk(repoRoot, func(path string, info os.FileInfo, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+		if info.IsDir() {
+			name := info.Name()
+			if name == "vendor" || name == ".git" || name == "node_modules" ||
+				name == "data" || name == "logs" || name == "dist" {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		if !strings.HasSuffix(path, ".go") || !dansLePerimetreART(path) {
+			return nil
+		}
+		content, readErr := os.ReadFile(path)
+		if readErr != nil {
+			return nil
+		}
+		text := stripGoComments(string(content))
+		nommeUneTable := false
+		for _, re := range regexTables {
+			if re.MatchString(text) {
+				nommeUneTable = true
+				break
+			}
+		}
+		if !nommeUneTable {
+			return nil
+		}
+		rel, _ := filepath.Rel(repoRoot, path)
+		for _, v := range interpolatedWriteViolations(text) {
+			violations = append(violations, v+" file="+filepath.ToSlash(rel))
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("walk: %v", err)
+	}
+
+	if len(violations) > 0 {
+		t.Errorf("ecriture a NOM DE TABLE INTERPOLE sans valeur liee (declencheur ART, "+
+			"invisible aux scans a nom litteral — cf. D-B1) : %d :\n  - %s\n"+
+			"Remede : N statements ligne a ligne `WHERE <cle> = ?` (modele "+
+			"internal/ops/seed_demo_corpus.go) ou INSERT-only via internal/persist.",
+			len(violations), strings.Join(violations, "\n  - "))
+	}
+}
+
+// TestInterpolatedWriteDetection_Sanity — LE TÉMOIN. Sans lui, un scan qui ne
+// détecte plus rien passerait pour vert. Les chaînes ci-dessous vivent dans CE
+// fichier de test : aucun fichier de production n'est fabriqué pour l'occasion.
+func TestInterpolatedWriteDetection_Sanity(t *testing.T) {
+	cas := []struct {
+		nom    string
+		source string
+		rouge  bool
+	}{
+		{
+			// VERBATIM : la forme que portait seed_demo_corpus.go avant B.3.6
+			// (`git show 044751026^:apps/go-api/internal/ops/seed_demo_corpus.go`,
+			// lignes 372-374). C'est elle que les trois autres scans ne voyaient pas.
+			nom:    "UPDATE interpole set-based (la forme reelle de D-B1)",
+			source: "stmt := fmt.Sprintf(`UPDATE %s SET %s FROM _xuid_map m WHERE %s.%s = m.old_xuid`, t.table, set, t.table, xuidCol)",
+			rouge:  true,
+		},
+		{
+			nom:    "UPDATE interpole ligne a ligne a valeurs liees (seed_demo_corpus)",
+			source: "stmt := fmt.Sprintf(`UPDATE %s SET %s WHERE %s = ?`, t.table, set, xuidCol)",
+			rouge:  false,
+		},
+		{
+			nom:    "DELETE FROM interpole",
+			source: "q := fmt.Sprintf(`DELETE FROM %s WHERE match_id IN (SELECT match_id FROM tmp)`, table)",
+			rouge:  true,
+		},
+		{
+			nom:    "INSERT INTO interpole avec UPSERT malgre les valeurs liees",
+			source: "q := fmt.Sprintf(`INSERT INTO %s (match_id, v) VALUES (?, ?) ON CONFLICT (match_id) DO UPDATE SET v = excluded.v`, table)",
+			rouge:  true,
+		},
+		{
+			// NB : pas de `written_at = now()` dans ce temoin — le ratchet
+			// TestWrittenAtEcrituresEnUTC (internal/migration) scanne TOUT le module et
+			// prendrait la chaine de test pour une horloge nue dans un ordre SQL reel.
+			nom:    "concatenation set-based",
+			source: `q := "UPDATE " + table + " SET playlist_group = 'h5_arena' WHERE playlist_group IS NULL"`,
+			rouge:  true,
+		},
+		{
+			nom:    "concatenation ligne a ligne a valeurs liees",
+			source: `q := "UPDATE " + table + " SET v = ? WHERE match_id = ?"`,
+			rouge:  false,
+		},
+		{
+			nom:    "message d erreur portant UPDATE %q (faux positif a ne pas rendre)",
+			source: "return fmt.Errorf(\"applyPlaylistFRSeeds UPDATE %q: %w\", seed.en, err)",
+			rouge:  false,
+		},
+		{
+			nom:    "INSERT INTO litteral (deja couvert par les autres scans)",
+			source: "q := `INSERT INTO match_skill_rank (match_id) VALUES (?)`",
+			rouge:  false,
+		},
+	}
+	for _, c := range cas {
+		got := interpolatedWriteViolations(c.source)
+		if c.rouge && len(got) == 0 {
+			t.Errorf("%s : le garde-rail NE MORD PAS (aucune violation rendue)", c.nom)
+		}
+		if !c.rouge && len(got) > 0 {
+			t.Errorf("%s : faux positif — violations rendues : %v", c.nom, got)
+		}
+	}
 }

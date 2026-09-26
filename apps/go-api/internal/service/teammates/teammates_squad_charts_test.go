@@ -5,9 +5,9 @@ import (
 	"testing"
 	"time"
 
-	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/analysis/narrative"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/domain/highlightevent"
 	"levelup/go-api/internal/games/canonical"
 )
 
@@ -446,7 +446,7 @@ func TestBuildSquadIntensityProfile_NoSquadLoader_NoPanic(t *testing.T) {
 		{MatchID: "m3", StartTime: t0.Add(2 * time.Hour)},
 	}
 	// Pas de panic attendu — retourne nil car pas d'events.
-	got := svc.buildSquadIntensityProfile(context.Background(), allSquadRows, "main", []string{"friend1"}, "all")
+	got := svc.buildSquadIntensityProfile(context.Background(), allSquadRows, "main", "", []string{"friend1"}, nil, nil)
 	if got != nil {
 		t.Errorf("sans events : want nil, got profile avec %d options", len(got.Options))
 	}
@@ -478,7 +478,7 @@ func TestBuildSquadFirstBlood_AppliesT0Shift(t *testing.T) {
 	mainXUID := "x_main"
 	repo := &mockSquadRepo{
 		impactRows: []domain.ImpactEventRow{
-			{MatchID: "m1", XUID: mainXUID, EventType: analysis.EventTypeKill, TimeMS: 50000},
+			{MatchID: "m1", XUID: mainXUID, EventType: highlightevent.EventTypeKill, TimeMS: 50000},
 		},
 	}
 	svc := &TeammatesService{titleSlug: "halo_infinite", gamertag: "main", repo: repo}
@@ -511,8 +511,8 @@ func TestBuildSquadFirstBlood_SkipsPreGameplayEvents(t *testing.T) {
 	mainXUID := "x_main"
 	repo := &mockSquadRepo{
 		impactRows: []domain.ImpactEventRow{
-			{MatchID: "m1", XUID: mainXUID, EventType: analysis.EventTypeKill, TimeMS: 10000}, // countdown → -18s
-			{MatchID: "m1", XUID: mainXUID, EventType: analysis.EventTypeKill, TimeMS: 40000}, // gameplay → 12s
+			{MatchID: "m1", XUID: mainXUID, EventType: highlightevent.EventTypeKill, TimeMS: 10000}, // countdown → -18s
+			{MatchID: "m1", XUID: mainXUID, EventType: highlightevent.EventTypeKill, TimeMS: 40000}, // gameplay → 12s
 		},
 	}
 	svc := &TeammatesService{titleSlug: "halo_infinite", gamertag: "main", repo: repo}
@@ -529,6 +529,40 @@ func TestBuildSquadFirstBlood_SkipsPreGameplayEvents(t *testing.T) {
 	}
 }
 
+// TestBuildSquadFirstBlood_PopulatesMatchMeta : DEC-4 (retours utilisateur
+// 2026-08-29) — chaque point porte carte/mode/date résolus depuis
+// SquadMatchRow (MapUI déjà résolu en amont par enrichSquadMatchAssets ; mode
+// via squadModeUI, même résolveur canonique que SquadMatchHistoryRow), pour
+// que le tooltip du chart ne montre plus jamais l'uuid du match.
+func TestBuildSquadFirstBlood_PopulatesMatchMeta(t *testing.T) {
+	start := time.Date(2026, 4, 6, 18, 0, 0, 0, time.UTC)
+	mainXUID := "x_main"
+	repo := &mockSquadRepo{
+		impactRows: []domain.ImpactEventRow{
+			{MatchID: "m1", XUID: mainXUID, EventType: highlightevent.EventTypeKill, TimeMS: 5000},
+		},
+	}
+	svc := &TeammatesService{titleSlug: "halo_infinite", gamertag: "main", repo: repo}
+	rows := []domain.SquadMatchRow{
+		{MatchID: "m1", StartTime: start, DurationSeconds: 600, MapUI: "Aquarius", PairNameFR: "Assassin"},
+	}
+
+	got := svc.buildSquadFirstBlood(context.Background(), rows, "main", mainXUID, nil)
+	if len(got) != 1 || len(got[0].Matches) != 1 {
+		t.Fatalf("want 1 série avec 1 point, got %#v", got)
+	}
+	pt := got[0].Matches[0]
+	if pt.MapUI != "Aquarius" {
+		t.Errorf("carte want %q, got %q", "Aquarius", pt.MapUI)
+	}
+	if pt.ModeUI != "Assassin" {
+		t.Errorf("mode want %q, got %q", "Assassin", pt.ModeUI)
+	}
+	if !pt.StartTime.Equal(start) {
+		t.Errorf("start_time want %v, got %v", start, pt.StartTime)
+	}
+}
+
 // TestBuildSquadIntensityProfile_AppliesT0AndSkipsCountdown (extension §4.A-bis,
 // teammates.13) : le profil d'intensité doit retrancher le T0 et EXCLURE les
 // events du countdown (TimeMS<0 après correction). Un kill countdown + un kill
@@ -538,8 +572,8 @@ func TestBuildSquadIntensityProfile_AppliesT0AndSkipsCountdown(t *testing.T) {
 	mainXUID := "x_main"
 	repo := &mockSquadRepo{
 		impactRows: []domain.ImpactEventRow{
-			{MatchID: "m1", XUID: mainXUID, EventType: analysis.EventTypeKill, TimeMS: 10000},  // countdown → -18s → exclu
-			{MatchID: "m1", XUID: mainXUID, EventType: analysis.EventTypeKill, TimeMS: 300000}, // gameplay → 272s
+			{MatchID: "m1", XUID: mainXUID, EventType: highlightevent.EventTypeKill, TimeMS: 10000},  // countdown → -18s → exclu
+			{MatchID: "m1", XUID: mainXUID, EventType: highlightevent.EventTypeKill, TimeMS: 300000}, // gameplay → 272s
 		},
 	}
 	svc := &TeammatesService{titleSlug: "halo_infinite", gamertag: "main", repo: repo}
@@ -550,11 +584,11 @@ func TestBuildSquadIntensityProfile_AppliesT0AndSkipsCountdown(t *testing.T) {
 		{MatchID: "m2", StartTime: base.Add(time.Hour), DurationSeconds: 600, T0Ms: &t0ms},
 		{MatchID: "m3", StartTime: base.Add(2 * time.Hour), DurationSeconds: 600, T0Ms: &t0ms},
 	}
-	got := svc.buildSquadIntensityProfile(context.Background(), rows, "main", nil, "Tous")
+	got := svc.buildSquadIntensityProfile(context.Background(), rows, "main", "", nil, nil, nil)
 	if got == nil {
 		t.Fatal("profil non nil attendu (kill gameplay présent sur m1)")
 	}
-	allRows := got.Rows["all"]
+	allRows := got.Rows[domain.SquadIntensityKeyLobby]
 	var m1 *domain.SquadIntensityMatchRow
 	for i := range allRows {
 		if allRows[i].MatchID == "m1" {
@@ -562,7 +596,7 @@ func TestBuildSquadIntensityProfile_AppliesT0AndSkipsCountdown(t *testing.T) {
 		}
 	}
 	if m1 == nil {
-		t.Fatal("ligne m1 introuvable dans le toggle \"all\"")
+		t.Fatal("ligne m1 introuvable dans la ligne lobby")
 	}
 	nonZero := 0
 	for _, p := range m1.Phases {
@@ -593,6 +627,7 @@ func TestImpactScoreWeights_Coverage(t *testing.T) {
 		"last_group_kill":   -1.0,
 		"first_group_death": -1.0,
 		"kamikaze":          -1.0,
+		"thief":             -1.0,
 		"top_killer":        1.0,
 	}
 	for k, v := range expected {
@@ -720,7 +755,7 @@ func TestBuildSquadImpactMatrix_TeamWideAllyDropped(t *testing.T) {
 	allSquadRows := []domain.SquadMatchRow{
 		{MatchID: matchID, StartTime: startTime, Outcome: domain.OutcomeWin},
 	}
-	matrix := svc.buildSquadImpactMatrix(context.Background(), allSquadRows, mainXUID, "main", []string{"A"})
+	matrix := svc.buildSquadImpactMatrix(context.Background(), allSquadRows, mainXUID, []string{"A"}, coequipierA(), repo.allyRows)
 	if matrix == nil {
 		t.Fatal("matrix should be non-nil")
 	}
@@ -785,7 +820,7 @@ func TestBuildSquadImpactMatrix_TeamWideNoFallback(t *testing.T) {
 	allSquadRows := []domain.SquadMatchRow{
 		{MatchID: matchID, StartTime: startTime, Outcome: domain.OutcomeLoss},
 	}
-	matrix := svc.buildSquadImpactMatrix(context.Background(), allSquadRows, mainXUID, "main", []string{"A"})
+	matrix := svc.buildSquadImpactMatrix(context.Background(), allSquadRows, mainXUID, []string{"A"}, coequipierA(), repo.allyRows)
 
 	// false_brother doit aller à NS (max deaths=9, min assists=0). Donc :
 	// - A ne doit PAS recevoir false_brother malgré ses 5 deaths (squad-only,
@@ -1204,5 +1239,50 @@ func TestCollectSharedMatchIDsForDigest_DedupedInput(t *testing.T) {
 	got := collectSharedMatchIDsForDigest(rows)
 	if len(got) != 2 {
 		t.Fatalf("want 2 match_ids distincts, got %d (%v)", len(got), got)
+	}
+}
+
+// TestBuildSquadImpactMatrix_ThiefBadge : le badge « Voleur » arrive dans la matrice
+// depuis le journal des morts (tueur ET assistant membres de l'escouade), compte dans
+// les agrégats et pèse sur le score.
+func TestBuildSquadImpactMatrix_ThiefBadge(t *testing.T) {
+	mainXUID := "x_main"
+	matchID := "m_thief"
+	pct := 4
+	repo := &mockSquadRepo{
+		allyRows: []domain.AllyParticipant{
+			{MatchID: matchID, XUID: mainXUID, Gamertag: "main", Kills: 5, Deaths: 2, Assists: 3, Outcome: domain.OutcomeWin},
+			{MatchID: matchID, XUID: "x_a", Gamertag: "A", Kills: 4, Deaths: 2, Assists: 3, Outcome: domain.OutcomeWin},
+		},
+		killLog: []domain.SquadKillLogRow{
+			{MatchID: matchID, TimeMS: 5000, KillerXUID: "x_a", VictimXUID: "x_enemy", AssistXUID: mainXUID, KillerDamagePct: &pct},
+		},
+	}
+	svc := &TeammatesService{repo: repo, titleSlug: "halo_infinite", gamertag: "main"}
+	rows := []domain.SquadMatchRow{{MatchID: matchID, StartTime: time.Now(), Outcome: domain.OutcomeWin}}
+	matrix := svc.buildSquadImpactMatrix(context.Background(), rows, mainXUID, []string{"A"}, coequipierA(), repo.allyRows)
+	if matrix == nil {
+		t.Fatal("matrix should be non-nil")
+	}
+	found := false
+	for _, c := range matrix.Cells {
+		for _, k := range c.BadgeKeys {
+			if k == "thief" {
+				if c.Player != "A" {
+					t.Errorf("thief attendu sur A, trouvé sur %s", c.Player)
+				}
+				found = true
+			}
+		}
+	}
+	if !found {
+		t.Fatal("badge thief absent de la matrice")
+	}
+	for _, p := range matrix.Players {
+		for _, b := range p.Counts {
+			if b.BadgeKey == "thief" && p.Player == "A" && b.Count != 1 {
+				t.Errorf("A : thief count=%d, want 1", b.Count)
+			}
+		}
 	}
 }

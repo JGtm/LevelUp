@@ -1,0 +1,78 @@
+﻿=== WAL forensic comparison — ADR 0021 Gap 2 ===
+tempdir: C:\Users\GUILLA~1\AppData\Local\Temp\wal_forensic_3794048824
+
+[gen] ATTACH (sub-process)...
+[gen] CREATE_TABLE (sub-process)...
+[gen] ALTER_TABLE (sub-process)...
+[gen] INSERT_BULK (sub-process)...
+[real] C:\Users\Guillaume\Downloads\Scripts\LevelUp-go-migration\apps\go-api\internal\platform\duckdb\testdata\wal_orphan_fixture\shared_social.duckdb.wal
+
+=== Signatures comparison ===
+
+--- ATTACH ---
+  size: 143 bytes
+  head: 64 00 62 65 00 02 FF FF 1A 00 00 00 00 00 00 00 23 34 F8 A1 D5 0E 42 72 64 00 19 65 00 04 6D 61 69 6E 66 00 0B 6D 65 64 69 61 5F 66 69 6C 65 73 
+  strings (>=5 chars, first 12):
+    "mainf"
+    "media_files"
+
+--- CREATE_TABLE ---
+  size: 202 bytes
+  head: 64 00 62 65 00 02 FF FF 9D 00 00 00 00 00 00 00 13 8F 14 30 49 6D A3 96 64 00 01 65 00 01 64 00 01 65 00 0C 43 52 45 41 54 45 5F 54 41 42 4C 45 
+  strings (>=5 chars, first 12):
+    "CREATE_TABLEf"
+    "maini"
+    "media_files"
+    "file_pathe"
+    "indexed_ate"
+    "likede"
+
+--- ALTER_TABLE ---
+  size: 251 bytes
+  head: 64 00 62 65 00 02 FF FF 57 00 00 00 00 00 00 00 80 8A B2 04 48 CB D1 AE 64 00 14 65 00 01 64 00 00 C8 00 01 C9 00 0B 41 4C 54 45 52 5F 54 41 42 
+  strings (>=5 chars, first 12):
+    "ALTER_TABLE"
+    "media_files"
+    "indexed_ate"
+    "yCnrmd"
+    "likede"
+
+--- INSERT_BULK ---
+  size: 18598 bytes
+  head: 64 00 62 65 00 02 FF FF 1A 00 00 00 00 00 00 00 23 34 F8 A1 D5 0E 42 72 64 00 19 65 00 04 6D 61 69 6E 66 00 0B 6D 65 64 69 61 5F 66 69 6C 65 73 
+  strings (>=5 chars, first 12):
+    "mainf"
+    "media_files"
+    "/m/0.mp4"
+    "/m/1.mp4"
+    "/m/2.mp4"
+    "/m/3.mp4"
+    "/m/4.mp4"
+    "/m/5.mp4"
+    "/m/6.mp4"
+    "/m/7.mp4"
+    "/m/8.mp4"
+    "/m/9.mp4"
+
+--- REAL_PROD ---
+  size: 2509 bytes
+  head: 64 00 62 65 00 02 FF FF 1A 00 00 00 00 00 00 00 23 34 F8 A1 D5 0E 42 72 64 00 19 65 00 04 6D 61 69 6E 66 00 0B 6D 65 64 69 61 5F 66 69 6C 65 73 
+  strings (>=5 chars, first 12):
+    "mainf"
+    "media_files"
+    "shared_social"
+    "indexed_at"
+    "liked"
+    "discord_notified"
+
+=== Matching analysis (REAL_PROD vs témoins) ===
+  ATTACH          size_delta=-2366 common_strings=2/6  head_match=true
+  CREATE_TABLE    size_delta=-2307 common_strings=1/6  head_match=true
+  ALTER_TABLE     size_delta=-2258 common_strings=1/6  head_match=true
+  INSERT_BULK     size_delta=+16089 common_strings=2/6  head_match=true
+
+CONCLUSION : le pattern avec le plus de common_strings + size_delta minimal
+est le candidat le plus probable pour le type d'opération coupable du
+WAL orphelin réel capturé en prod.
+
+(tempdir conservé pour inspection : C:\Users\GUILLA~1\AppData\Local\Temp\wal_forensic_3794048824)

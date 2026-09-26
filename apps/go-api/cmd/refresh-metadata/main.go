@@ -18,7 +18,6 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"strings"
 	"time"
 
 	"levelup/go-api/internal/config"
@@ -54,6 +53,8 @@ func main() {
 		err = runCSRSeasons(cfg, args, false)
 	case "medals":
 		err = runMedals(cfg, args)
+	case "medal-images":
+		err = runMedalImages(cfg, args)
 	case "assets":
 		err = runAssets(cfg, args)
 	case "staging":
@@ -381,36 +382,17 @@ func resolveTokens(ctx context.Context, cfg *config.AppConfig, playerSlug string
 		return nil, fmt.Errorf("résoudre player %q: %w", playerSlug, err)
 	}
 
-	// ADR 0023 — pipeline canonique via MultiUserTokenStore puis legacy.
+	// ADR 0023 — pipeline canonique via MultiUserTokenStore (source unique).
 	store := authpkg.NewMultiUserTokenStore(titlePkg.NewPathResolver(cfg.RepoRoot).WatcherTokensDir())
-	legacy := authpkg.LegacyAuthInputs{Source: "duckdb_or_env"}
-	legacy.MSALCache, _ = duckdb.ReadMSALCacheJSON(ctx, pdb.Player)
-	legacy.OAuthRT, _ = duckdb.ReadOAuthRefreshToken(ctx, pdb.Player)
-	if legacy.OAuthRT == "" {
-		legacy.OAuthRT = oauthRefreshEnvForPlayer(playerSlug)
-	}
 
-	result, err := authpkg.RefreshHaloTokensViaStoreFirst(ctx, store, provider, pdb.XUID, pdb.Gamertag, legacy)
+	result, err := authpkg.RefreshHaloTokensViaStoreFirst(ctx, store, provider, pdb.XUID, pdb.Gamertag)
 	if err != nil {
 		return nil, err
 	}
 	if tokens := authpkg.HaloTokensFromExchange(result); tokens != nil {
 		return tokens, nil
 	}
-	return nil, fmt.Errorf("aucun token disponible pour player %q", playerSlug)
-}
-
-// oauthRefreshEnvForPlayer construit la clé env SPNKR_OAUTH_REFRESH_TOKEN_<GT_NORM>
-// (gamertag en majuscules, espaces/tirets/points remplacés par _).
-func oauthRefreshEnvForPlayer(gamertag string) string {
-	key := strings.ToUpper(gamertag)
-	key = strings.Map(func(r rune) rune {
-		if r == ' ' || r == '-' || r == '.' {
-			return '_'
-		}
-		return r
-	}, key)
-	return os.Getenv("SPNKR_OAUTH_REFRESH_TOKEN_" + key)
+	return nil, fmt.Errorf("aucun token disponible pour player %q (aucun refresh token dans le store watcher_tokens)", playerSlug)
 }
 
 func notifyHashChange(cfg *config.AppConfig, resource, hash string) {
@@ -433,6 +415,9 @@ Sous-commandes :
   seasons     [--title-id halo_infinite] [--force]   Saisons standards
   csr-seasons [--title-id halo_infinite] [--force]   Saisons CSR
   medals      [--title-id halo_infinite] [--force]   Médailles (staging + garde-fous)
+  medal-images [--title-id halo_infinite] [--player GT] [--download]
+              Audit du référentiel d'icônes static/medals/{slug}/ (rapport seul
+              sans --download ; aucune écriture DuckDB)
   assets      [--title-id halo_infinite] [--write]   Assets diff (rapport sans écriture par défaut)
   staging     Crée les tables staging medals/assets (schéma seulement)
   all         [--title-id halo_infinite] [--force]   Toutes les opérations ci-dessus

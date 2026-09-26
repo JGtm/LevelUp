@@ -1,7 +1,10 @@
 // Package domain — user.go : types pour l'authentification locale (username/password).
 package domain
 
-import "time"
+import (
+	"net/url"
+	"time"
+)
 
 // UserRole représente le rôle d'un utilisateur.
 type UserRole string
@@ -20,6 +23,15 @@ type User struct {
 	XUID         string   `json:"xuid,omitempty"`
 	CreatedAt    string   `json:"created_at"`
 	LastLoginAt  string   `json:"last_login_at,omitempty"`
+	// ProvisionGrant : code de l'invitation qui a CRÉÉ ce compte, tant qu'il n'a
+	// pas servi. Il porte un droit à USAGE UNIQUE de créer SON profil joueur,
+	// même sur instance verrouillée (D3) — sans quoi un invité atterrit sur le
+	// Setup et prend un 403 instance_locked, donc reste coincé.
+	//
+	// Le droit est porté par le COMPTE, pas par la session : il survit à une
+	// déconnexion entre le login SSO et le Setup. Vidé après la création du
+	// profil (SetProvisionGrant(username, "")).
+	ProvisionGrant string `json:"provision_grant,omitempty"`
 }
 
 // LoginRequest est le body de POST /auth/login.
@@ -62,9 +74,20 @@ type InviteCode struct {
 	UsedBy    *string `json:"used_by"`
 	UsedAt    *string `json:"used_at"`
 	ExpiresAt string  `json:"expires_at"`
-	// GroupID : groupe que l'invité rejoint après login Xbox SSO (flow "rejoindre
-	// un groupe"). Vide = invitation d'inscription legacy (mode password, sans groupe).
+	// GroupID : groupe que l'invité rejoint après login Xbox SSO. Vide =
+	// invitation SANS groupe : elle crée le compte et donne le droit de créer son
+	// profil joueur (D3), sans rattacher l'invité à qui que ce soit.
 	GroupID string `json:"group_id,omitempty"`
+	// JoinURL : lien relatif à présenter à l'invité (`/join?invite=CODE`). Rendu
+	// par le serveur pour que le front n'ait pas à réassembler le chemin — il n'y
+	// préfixe que son origine.
+	JoinURL string `json:"join_url,omitempty"`
+}
+
+// InviteJoinURL rend le lien relatif d'acceptation d'une invitation. Source
+// unique du chemin `/join?invite=` côté serveur.
+func InviteJoinURL(code string) string {
+	return "/join?invite=" + url.QueryEscape(code)
 }
 
 // IsExpired retourne true si le code a dépassé sa date d'expiration.
@@ -88,11 +111,16 @@ func (ic *InviteCode) IsValid() bool {
 
 // AdminUserSummary est le résumé d'un utilisateur pour le panel admin.
 type AdminUserSummary struct {
-	Username    string   `json:"username"`
-	Role        UserRole `json:"role"`
-	Gamertag    string   `json:"gamertag,omitempty"`
-	CreatedAt   string   `json:"created_at"`
-	LastLoginAt string   `json:"last_login_at,omitempty"`
+	Username string   `json:"username"`
+	Role     UserRole `json:"role"`
+	Gamertag string   `json:"gamertag,omitempty"`
+	// XUID : identité Xbox liée au compte, vide tant qu'aucun SSO ni
+	// LinkIdentity ne l'a posée. C'est la SEULE clé qui relie ce compte aux
+	// autres registres (profil, credentials, suivi live) — ADR 0035 D1 ; sans
+	// elle, l'annuaire ne peut pas rattacher un compte à son profil.
+	XUID        string `json:"xuid,omitempty"`
+	CreatedAt   string `json:"created_at"`
+	LastLoginAt string `json:"last_login_at,omitempty"`
 }
 
 // AdminInviteSummary est le résumé d'une invitation pour le panel admin.

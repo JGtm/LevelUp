@@ -1,0 +1,24 @@
+film	829abef9
+carte	Behemoth
+slots_pont_avant	85
+slots_pont_apres	87
+vies_non_nommees_candidates	9
+designees_par_un_tir	3
+attribuees	2	contestees	1	rejetees_recouvrement	0
+tirs_orphelins	530	dont_instant_a_une_seule_vie	96
+
+# couverture des tirs
+avant	rattaches	2084	sur	2614	taux	0.7972	sans_slot	431	ambigus	99
+apres	rattaches	2174	sur	2614	taux	0.8317	sans_slot	341	ambigus	99
+gain_points_A	3.44
+
+# fermeture B — par la reapparition
+calibration_vies	77	p05_ms	10112	mediane_ms	10118	p95_ms	67688
+vies_restantes	7	designees	7	attribuees	0	contestees	7	rejetees_recouvrement	0
+apresB	rattaches	2174	sur	2614	taux	0.8317	sans_slot	341	ambigus	99
+gain_points_total_fenetre_large	3.44
+
+# fermeture B — fenetre SERREE (mediane +/- 750 ms)
+vies_restantes	7	designees	6	attribuees	6	contestees	0	rejetees_recouvrement	0
+apresT	rattaches	2318	sur	2614	taux	0.8868	sans_slot	197	ambigus	99
+gain_points_total_fenetre_serree	8.95

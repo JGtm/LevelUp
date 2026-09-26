@@ -1,0 +1,281 @@
+# config/replay_corpus.toml
+#
+# Manifeste du CORPUS TEMOIN de non-regression des artefacts de rejeu (cmd/replay-corpus-gate).
+#
+# POURQUOI CE FICHIER EXISTE. Trois regressions de donnees (28/08, 30/08, 02/09 — pont
+# d'identite par manche, drapeaux non attribues, "une piste = une vie") ont traverse des
+# goldens SYNTHETIQUES verts pendant dix-neuf schemas de suite, faute d'un differentiel sur
+# des FILMS REELS. Le balayage retroactif du parc (.ai/V7.5/v2/BALAYAGE_PARC_2026-09-06.md,
+# 119 matchs, 161 artefacts, 19 schemas) a fini par les trouver — mais APRES coup. Ce manifeste
+# fige un SOUS-ENSEMBLE restreint et durable du meme parc, pour que le meme differentiel tourne
+# desormais AVANT tout merge qui touche au decodeur ou au constructeur de rejeu (cf.
+# docs/COMMANDS.md, section replay-corpus-gate).
+#
+# UN TEMOIN PAR FAMILLE DE MODE, PAS UN ECHANTILLON ALEATOIRE : chaque entree ci-dessous a ete
+# choisie parce qu'elle porte un calque ou un defaut deja mesure une fois (portage de crane,
+# pont d'identite multi-manche, fusion de vehicules...) — perdre cette matiere-la est le
+# signal le plus probable d'une regression future. Les id sont la forme COURTE du match
+# (title.FilmShortMatchID, 8 caracteres hex) : la cle du cache film ET du parc d'artefacts
+# (data/cache/replays/{slug}/{id}.json, data/cache/film_chunks/{id}/).
+#
+# CE MANIFESTE EST TITLE-AGNOSTIC PAR CONSTRUCTION : il nomme le titre en donnee (`title_slug`
+# ci-dessous), jamais en dur dans le code — cmd/replay-corpus-gate lit ce champ et branche sur
+# la capability `film.replay_artifact` du titre concerne, jamais sur une comparaison de slug
+# (CLAUDE.md, regle transverse multi-titre ; ratchet no_slug_comparison_test.go). Un second
+# titre qui gagnerait un decodeur de film ajouterait ses propres entrees ici, avec son propre
+# `title_slug` — le format n'a rien a changer.
+#
+# Toute modification breaking (renommage de champ, changement de sens) incremente
+# schema_version.
+
+[meta]
+title_slug     = "halo_infinite"
+schema_version = 1
+
+# --- CTF mono-manche -----------------------------------------------------------------------
+# Le calque `objectifs` (kills/assists/flag_grabs/flag_captures/flag_steals...) est le seul qui
+# dise ce qu'un joueur a FAIT, et c'est celui que la regression du 28/08 a vide sur 14 CTF du
+# parc (pont d'identite par manche, corrige au schema 40). bcb6d393 est un CTF:Arena canonique
+# (1 manche), deja mesure au 2e balayage : un residu connu (2 actions "kills" re-attribuees
+# a l'interieur d'un gain net) sert de temoin — toute REGRESSION future dessus doit se
+# distinguer de ce residu deja explique.
+[[temoin]]
+id      = "bcb6d393"
+famille = "ctf_mono_manche"
+mode    = "CTF:Arena"
+carte   = "Cliffhanger"
+raison  = "porte le calque objectifs (captures/vols/prises de drapeau) sur un CTF a 1 manche ; residu connu (re-attribution kills dans un gain, cf. BALAYAGE_PARC section C candidate 1) sert de reference de bruit attendu"
+
+# --- CTF multi-manche -----------------------------------------------------------------------
+# Ouvert au registre (.ai/V7.5/REGISTRE_REPORTS.md) : le pont d'identite par manche ne tient
+# PAS sur ce film (contrairement aux CTF mono-manche corriges par le correctif du 06/09). Tant
+# que ce defaut n'est pas ferme, ce temoin doit rester SURVEILLE explicitement — un differentiel
+# qui ne le nommerait pas laisserait une regression multi-manche invisible, exactement le
+# scenario du 28/08.
+[[temoin]]
+id      = "fb1a1a72"
+famille = "ctf_multi_manche"
+mode    = "CTF:Arena"
+carte   = "Banished Narrows"
+raison  = "CTF multi-manche ; le pont d'identite par manche ne tient pas encore dessus (defaut ouvert au registre) — a surveiller explicitement tant qu'il n'est pas ferme"
+
+# --- Oddball --------------------------------------------------------------------------------
+# LE RESIDU QUI MOTIVAIT CETTE ENTREE EST FERME (lot 6.2, 2026-09-10) : les 6 portages de crane
+# "perdus" (36 -> 30) ont ete REFUTES au HEAD — les 36 portages sont identiques du schema 48 au
+# HEAD, et ce qui manquait etait les VIES (19 publiees sans xuid au 48, 0 au HEAD, bissection
+# jusqu'a b6b0ee4c5). Le temoin reste au corpus pour ce qu'il EXERCE, pas pour ce qu'il a
+# revele : c'est le seul film du parc qui porte le calque skullCarries (porteur du crane par
+# canal de score, schema 23) ET son pont d'identite complete (SkullInput.Identity). Aucun autre
+# temoin ne couvre cette chaine.
+[[temoin]]
+id      = "d9781168"
+famille = "oddball"
+mode    = "Oddball:Arena"
+carte   = "Dredge"
+raison  = "seul film du parc a porter le calque skullCarries (porteur du crane par canal de score, schema 23) et son pont d'identite complete ; couverture de reference 82,2 % de l'oracle API, 0 portage fantome — toute perte sur ce temoin est une regression de cette chaine-la"
+
+# --- Assaut / bombe -------------------------------------------------------------------------
+# Seul match Assaut du parc local (facts_census du 2026-09-06 sur les 106 artefacts
+# disponibles). Porte bombCarries (ports de bombe) ET, au HEAD, les cinq statistiques d'Assaut
+# dependantes de l'artefact (capability film.bomb_stats) — aucun artefact du parc n'etant assez
+# recent pour les avoir portees a la premiere cuisson, toute perte apparaitrait ici en premier.
+[[temoin]]
+id      = "c75f33b8"
+famille = "assaut_bombe"
+mode    = "Assault:One Bomb"
+carte   = "Curfew"
+raison  = "seul match Assaut du parc local ; porte bombCarries et les statistiques d'Assaut derivees de l'artefact (film.bomb_stats)"
+
+# --- Slayer -----------------------------------------------------------------------------------
+# Temoin de la famille SANS objectif (aucun calque de portage, aucune zone) : garantit que le
+# gate ne mesure pas QUE les modes a objectif — pistes, armes, grenades, equipement doivent
+# rester couverts sur un mode qui n'a qu'eux. Deja mesure au 2e balayage (weaponLabels 17 -> 16,
+# sans consequence sur les tirs publies).
+[[temoin]]
+id      = "bf15f7ab"
+famille = "slayer"
+mode    = "Slayer:Arena"
+carte   = "Perilous"
+raison  = "mode sans objectif (aucun portage, aucune zone) ; couvre pistes/armes/grenades/equipement seuls ; residu connu (weaponLabels 17 -> 16, sans consequence)"
+
+# --- Film a 2 manches -------------------------------------------------------------------------
+# Distinct du temoin CTF multi-manche : meme carte que fb1a1a72 (Banished Narrows) mais mode
+# Oddball, et le nombre de manches (2) est celui qui exerce la jointure score/manche
+# independamment du mode. Couvre score.equipe.*.manches sur un mode a plusieurs rounds.
+[[temoin]]
+id      = "51ebbc0f"
+famille = "deux_manches"
+mode    = "Oddball:Arena"
+carte   = "Banished Narrows"
+raison  = "film a 2 manches (rounds) ; exerce la jointure score/manche independamment du mode CTF deja couvert par ctf_multi_manche"
+
+# --- Vehicules ----------------------------------------------------------------------------
+# "Heavies" porte le catalogue de vehicules le plus dense du parc (57 chunks, le film le plus
+# long a cuire du balayage, 128 s au schema 41). Couvre le calque vehicles (vies + occupations
+# de sieges), dont la fusion des vies en relais (fantomes, commit 89a67a48f) et la visee des
+# occupants (aimReads) sont des ajouts recents qui n'ont ete verifies que sur ce type de match.
+[[temoin]]
+id      = "084a804d"
+famille = "vehicules"
+mode    = "BTB Heavies:CTF"
+carte   = "Fortitude Heavies"
+raison  = "densite maximale de vehicules du parc (57 chunks) ; couvre vies de vehicule + occupations de sieges (fusion des vies en relais, visee des occupants)"
+
+# --- Region d'index a 2 bits (Live Fire) --------------------------------------------------
+# Live Fire (sgh_interlock) est la SEULE carte du catalogue de bornes dont l'index de region
+# tient sur 2 bits (arene en region 1). Jusqu'au schema 52 la porte de position des objets du
+# monde lisait un litteral de 3 bits : tous les projectiles y etaient lus un bit trop tot
+# (50 % de pas impossibles, 239 vols tronques sur 305), et le gate est reste VERT sur le
+# correctif du 2026-09-12 (schema 53) parce qu'aucun temoin ne jouait sur cette carte. Ce
+# temoin garde la seule carte a largeur d'index non triviale ; en perdre les projectiles ou
+# les lancers de grenade par projectile (83 a 0,44 m du lanceur) signalerait une regression
+# de la porte.
+[[temoin]]
+id      = "0797ce72"
+famille = "region_index_2_bits"
+mode    = "Slayer:Arena Super Fiesta"
+carte   = "Live Fire"
+raison  = "seule carte du catalogue a index de region sur 2 bits ; porte de position des objets du monde par largeur d'index (schema 53) — projectiles et lancers par projectile invisibles a tout autre temoin"
+
+# --- Versions anciennes du format de film (lot H, 2026-09-13) -------------------------------
+# POURQUOI CETTE FAMILLE EXISTE. Jusqu'au lot G, la version majeure du film (u32 LE en tete de
+# chunk_00) n'etait lue par personne : le kill feed de 211 films de 2025 (versions 39-40) sortait
+# vide, et le gate est reste VERT pendant tout ce temps parce que les huit temoins etaient TOUS
+# des films de version 41 sauf deux (084a804d en 39, bcb6d393 en 40) — donc un corpus qui ne
+# regardait pratiquement qu'une seule grammaire. La mesure du lot H
+# (.ai/RAPPORT_LOT_H_VERSIONS_2026-09-13.md) a montre que la version majeure n'est meme pas la
+# bonne cle : le calque des lancers de grenade s'eteint au BUILD, a l'interieur de la version 40
+# (HI_1_11_0 : 0 lancer sur 12 films ; HI_1_12_0 : 49 a 215 sur 8 films), et l'identite entiere
+# s'eteint sur les cinq films dont chunk_00 ne porte pas de section d'identification.
+# Les sept temoins ci-dessous ferment ce trou : un par grammaire distincte mesuree.
+#
+# SEPT DEPUIS LE LOT 3.2.3 (2026-09-16), ET LA REGLE EST DESORMAIS ECRITE : UN TEMOIN PAR CLEF
+# DE REGISTRE. La table des empreintes de registre ECS du catalogue des profils
+# (data/titles/halo_infinite/reference/film_profiles.json, section `registryFingerprints`,
+# lot 3.2.1) porte neuf clefs : les sept builds que le cache connait, et les deux familles de
+# films dont chunk_00 ne porte AUCUNE section d'identification (majeures 31 et 33). Trois de
+# ces clefs n'avaient aucun temoin ici — HI_1_4_1, HI_1_9_0 et la majeure 31 — et le corpus
+# passe donc de 14 a 17 entrees. Sans temoin, le gain attendu des lots 3.3 (grenades par build)
+# et 3.4 (marche des morts calibree) n'est mesurable nulle part : une grammaire sans temoin ne
+# se defend contre aucune regression.
+#
+# CE QU'ILS GARDENT EN L'ETAT. Sur ces films, plusieurs calques sont DEJA vides au HEAD (lancers
+# de grenade sur les quatre, identite et tirs publies sur a349fea8). Le gate compare deux
+# cuissons : leur role n'est pas de prouver que ces calques marchent, c'est d'interdire qu'un
+# correctif de profil en casse d'AUTRES en passant — et, le jour ou le profil par build sera
+# branche, de mesurer le gain la ou il doit apparaitre.
+
+[[temoin]]
+id      = "111fa685"
+famille = "version_39"
+mode    = "BTB (2025-03)"
+carte   = "Command"
+raison  = "version 39 / build HI_1_10_0 (26 films au cache) ; meme carte que le temoin version_40_build_1_12 potentiel b81f6415, ce qui isole la version des bornes ; lancers de grenade a zero (liste blanche de tags proj datee d'un seul build), identite et kill feed nominaux depuis le lot G"
+
+[[temoin]]
+id      = "e5adf7b2"
+famille = "version_40_build_1_11"
+mode    = "BTB (2025-07)"
+carte   = "Fragmentation"
+raison  = "version 40 mais build HI_1_11_0 : la SEULE grammaire ou la version majeure ment (bcb6d393, version 40 aussi, est en HI_1_12_0 et publie ses lancers de grenade ; celui-ci en publie zero sur 1 082 marqueurs). Temoin de la regle profil = (version, build), pas version seule"
+
+[[temoin]]
+id      = "60ae07c4"
+famille = "version_37"
+mode    = "Ranked:Oddball"
+carte   = "Live Fire - Ranked"
+raison  = "version 37 / build HI_1_8_0 (10 films), et carte a index de region sur 2 bits comme 0797ce72 : le seul temoin qui croise une vieille grammaire ET la porte de position a largeur d'index non triviale ; porte aussi le calque crane (48 portages) sur une version ancienne"
+
+[[temoin]]
+id      = "a349fea8"
+famille = "version_33_sans_identification"
+mode    = "BTB Heavies:Total Control"
+carte   = "Fragmentation Heavies"
+raison  = "un des cinq films du cache dont chunk_00 ne porte AUCUNE section d'identification (3 en version 31, 2 en version 33) : sur eux le XUID de 64 bits est introuvable dans les chunks de replication (2 sur 25 contre 25 sur 25 partout ailleurs), donc zero identite, zero piste nommee et zero tir publie. Temoin de la degradation la plus lourde connue — et de sa reparation future"
+
+# --- Les trois clefs de registre sans temoin (lot 3.2.3, 2026-09-16) -------------------------
+# Chacune de ces trois entrees couvre une clef de la table des empreintes de registre qui
+# n'etait gardee par AUCUN temoin. Les trois films sont deja au corpus d'EQUIVALENCE
+# (film/replay/testdata/equivalence/CORPUS.txt) et dans l'echantillon court des gates de
+# decodage : leur `.facts.json` est commis, leur cuisson est connue, et leur ajout ici n'est
+# qu'une entree de manifeste. Verifie avant l'ajout (2026-09-16) : chunks au cache, manifeste
+# de chunks present, et faits exportables par `levelup replay-facts-export` — les trois
+# conditions que le gate exige d'un temoin.
+
+[[temoin]]
+id      = "a521164d"
+famille = "version_33_build_1_4_1"
+mode    = "BTB Heavies:Total Control"
+carte   = "Fragmentation Heavies"
+raison  = "seul film HI_1_4_1 du cache (1 sur 1 351) et seul porteur du registre a 1 033 slots nommes (empreinte 0x40531a0d86ce90ce, 49 blocs) : la grammaire de composants la plus eloignee de la reference, et celle des deux films de majeure 33 sans section d'identification. Porte aussi la fermeture d'image-cle la plus basse mesuree (1,0 % contre 9,7 a 15,7 % ailleurs, D11 du lot 0.A.2) et le `+200 o` de HI_1_4_1 ouvert au registre des reports — un correctif de profil par build se voit ici avant partout ailleurs"
+
+[[temoin]]
+id      = "11de8353"
+famille = "version_38_build_1_9_0"
+mode    = "BTB:Fiesta Slayer"
+carte   = "Thunderhead"
+raison  = "seul film HI_1_9_0 du cache (1 sur 1 351), et le seul temoin de version majeure 38 : la version que la table des implantations de gamertag borne par `majeure<=38` (frontiere basse de la regle, le voisin immediat 39 bascule sur l'implantation decalee). Son registre (0x33c7e724716d8cc5, 49 blocs, 1 031 slots) est celui de HI_1_8_0 : la frontiere du registre n'est PAS celle des builds, et ce temoin est la preuve vivante du couple qui la porte"
+
+[[temoin]]
+id      = "50247b26"
+famille = "version_31_sans_identification"
+mode    = "BTB:Slayer"
+carte   = "Oasis"
+raison  = "la PLUS ANCIENNE grammaire du cache (majeure 31, format 20, 3 films) et la seule clef de registre dont l'empreinte n'avait jamais ete mesuree avant le lot 3.2.1 : 0xba34fa35f781d1a7, 49 blocs, 1 029 slots — le plus petit registre connu. chunk_00 sans section d'identification, donc aucun build ecrit : c'est le seul temoin ou le profil doit se decider sur la version majeure seule. Deja mesure a l'equivalence : le registre ne rend AUCUNE vie (`viesTotal=0`) et c'est le seul film ou le repli `repli_vie_coupee_au_trou_de_replication` se declenche — toute reparation future de cette famille se lit ici en premier"
+
+[[temoin]]
+id      = "bfecd02b"
+famille = "vehicules_v41_utilisateur"
+mode    = "Team Slayer:Arena"
+carte   = "Snowbound"
+raison  = "temoin NOMME PAR L'UTILISATEUR le 2026-09-13 (« les images des vehicules peuvent disparaitre sur le schema 54 »). Il porte ONZE vies de vehicule dont NEUF de chassis 0x038df01a, absent de la table statique des familles (vehicle_families.go) : elles sont publiees sans famille, donc dessinees en marqueur neutre — c'est la disparition d'image constatee. Les neuf sont immobiles (aucun echantillon, fenetre = le match entier), signature d'une tourelle fixe, et labels.tsv les nomme `sb_003_lvl_moments_ge_shared_autoturret_banished`. Seul temoin du corpus dont la MAJORITE du calque vehicules est sans sprite : toute resolution future de ce chassis, et toute regression de la table des familles, se voit ici en premier"
+
+# --- Origine d'une pose d'equipement (lot 1.9.1, 2026-09-15) --------------------------------
+# POURQUOI CE TEMOIN ENTRE ICI. Le lot 1.9.1 fait decider l'origine d'une pose par ce que le
+# film ECRIT — l'evenement de liste type 103 `EquipmentSpawnedObject`, la mort ECRITE du poseur,
+# sa prise ECRITE — au lieu d'une fenetre temporelle de 200 ms. Le corpus ne portait AUCUN film
+# BTB moderne dense en equipement : `4f77afc1` (Flood Gulch, BTB:CTF, 36 joueurs) est le plus
+# fourni du cache sur ce calque — 658 poses, 30 evenements 103, 13 panneaux de mur designes,
+# 192 morts appariees et 98 prises `taken` — soit les trois signaux du lot a la fois et en
+# nombre. `0797ce72` (deja au manifeste, famille region_index_2_bits) en est le pendant en
+# arene : 227 poses, 51 evenements, 19 panneaux designes.
+# Une regression de l'une des trois lectures (le decodage du 103, le pont morts -> siege, le
+# canal `equipmentChanges`) se voit d'abord ici, sur `coverage.placements.byCause`.
+[[temoin]]
+id      = "4f77afc1"
+famille = "equipement_origine_utilisateur"
+mode    = "BTB:CTF"
+carte   = "Flood Gulch"
+raison  = "le film le plus dense du cache sur le calque des poses d'equipement (658 poses, 30 evenements 103, 13 panneaux de mur designes, 192 morts appariees, 98 prises) : seul temoin ou les TROIS signaux ecrits de l'origine d'une pose (evenement 103, mort du poseur, prise du poseur) sont simultanement en nombre. Ajoute au lot 1.9.1 avec la conversion de `equipmentOrigin`"
+
+# --- LES ZONES, LES DEUX FAMILLES (lot 5.2-A, 2026-09-20) -----------------------------------
+# POURQUOI CES DEUX TEMOINS ENTRENT, ET C'EST UNE LACUNE MESUREE, PAS UNE PRECAUTION. Au gate
+# du lot 5.2-A (17 temoins, base efca5ec31), `zoneStates` valait **0 sur les DIX-SEPT** artefacts
+# de tete : le corpus ne portait ni Bastion ni Roi de la colline. Un lot qui touche les zones y
+# sortait donc « 0 perte / 0 changement » SANS AVOIR EXERCE UNE SEULE RAMPE — le gate ne gardait
+# pas ce qu'il ne pouvait pas voir. Il a fallu cuire un Bastion a la main pour verifier
+# `gaugeRamps[].capturingTeam` (schema 64), ce qu'un temoin rend desormais automatique.
+#
+# DEUX TEMOINS ET PAS UN, parce que le calque des zones a DEUX regimes disjoints que le Go
+# traite par deux chemins separes (`zone_states_owner.go` / `zone_states_hill.go`) :
+#
+#   ZONES SIMULTANEES  la jauge de capture (tag 3) est la vraie rampe, `gauge` et `gaugeRamps`
+#   (Bastion)          sont publiees, `capturingTeam` a un sens. AUCUN intervalle `active`.
+#   COLLINE UNIQUE     le meme canal est un compteur de transfert d'environ une seconde : la
+#   (Roi de la         jauge n'est JAMAIS publiee (`coverage.zones.gaugePoints` vaut 0) et tout
+#   colline)           se joue sur les intervalles `active` et leur decoupage par proprietaire.
+#
+# Un seul des deux laisserait l'autre moitie du calque sans garde.
+[[temoin]]
+id      = "396cfc92"
+famille = "strongholds_zones"
+mode    = "Strongholds:Arena"
+carte   = "Illusion"
+raison  = "seul temoin a ZONES SIMULTANEES : 3 zones appariees, 39 rampes de jauge (30 abouties, 9 avortees) et 29 bascules de proprietaire lues — la matiere exacte de `gauge`, `gaugeRamps` et `capturingTeam` (schema 64). Cuit et verifie a la main au lot 5.2-A (29 rampes abouties conformes au proprietaire suivant, 0 desaccord ; 0 rampe avortee ne nomme un camp) parce que le corpus ne pouvait pas le faire ; ajoute ici pour que la verification cesse d'etre manuelle. ~25 s de gate"
+
+[[temoin]]
+id      = "f75e7053"
+famille = "koth_collines"
+mode    = "Ranked:King of the Hill"
+carte   = "Solitude - Ranked"
+raison  = "seul temoin a COLLINE UNIQUE : 3 zones, 72 intervalles `active` et zero point de jauge — le regime ou `buildHillStates` decoupe une periode par changement de proprietaire (`hillSpansOf`), et ou la jauge est ABSENTE par construction. C'est la moitie du calque des zones que le Bastion ne couvre pas, et celle dont depend le son de deplacement de colline (`newZone`, lot 5.2a.1). Choisi parmi les sept KOTH du cache pour sa densite d'intervalles et parce qu'il n'est PAS dans le corpus d'equivalence des 20 films (01e1f945 y est deja) : il ajoute de la matiere au lieu d'en doubler. ~30 s de gate"

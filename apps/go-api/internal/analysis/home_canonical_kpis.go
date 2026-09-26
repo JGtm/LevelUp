@@ -1,4 +1,4 @@
-// Package analysis â€” home_canonical_kpis.go : KPIs / tendances / hero card
+// Package analysis — home_canonical_kpis.go : KPIs / tendances / hero card
 // (P4.3 finale). Variantes canonical-aware de ComputeKPIs / ComputeTrend /
 // BuildHeroCard.
 package analysis
@@ -219,7 +219,7 @@ func winRateCanonical(rows []canonical.PlayerMatchRow) float64 {
 	return float64(wins) / float64(total)
 }
 
-// BuildHeroCardFromCanonical : entiÃ¨rement canonical (P4.3 finale).
+// BuildHeroCardFromCanonical : entièrement canonical (P4.3 finale).
 func BuildHeroCardFromCanonical(rows []canonical.PlayerMatchRow, gamertag string, totalMatches int, locale string, effectiveHpToKill float64) domain.HomeHeroCard {
 	kpis := ComputeKPIsFromCanonical(rows, totalMatches, locale, effectiveHpToKill)
 	trend := ComputeTrendFromCanonical(rows, 5)

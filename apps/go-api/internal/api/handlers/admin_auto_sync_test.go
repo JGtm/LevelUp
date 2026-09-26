@@ -30,9 +30,6 @@ type noopProvider struct{}
 func (noopProvider) InitDeviceFlow(_ context.Context) (auth_platform.DeviceFlow, error) {
 	return nil, nil
 }
-func (noopProvider) TrySilentRefresh(_ context.Context, _ string) (string, error) {
-	return "", nil
-}
 func (noopProvider) TryOAuthRefresh(_ context.Context, _ string) (string, error) {
 	return "", nil
 }
@@ -121,8 +118,8 @@ func TestProbeTokens_NotDiscovered_DiscoveredFalse(t *testing.T) {
 	if res.DiscoveredInPool {
 		t.Error("DiscoveredInPool = true alors qu'aucun joueur n'est configuré")
 	}
-	if res.HasMSALCache || res.HasRefreshToken {
-		t.Errorf("HasMSALCache=%v HasRefreshToken=%v, want false/false", res.HasMSALCache, res.HasRefreshToken)
+	if res.HasRefreshToken {
+		t.Errorf("HasRefreshToken=%v, want false", res.HasRefreshToken)
 	}
 	if res.ResolveOK {
 		t.Error("ResolveOK = true alors qu'aucun resolve n'a été tenté")

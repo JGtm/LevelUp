@@ -1,0 +1,9 @@
+match_id	seq	time_ms	objective_type	event_type	team_id	value	source	confidence
+53ce4390-efa0-455d-acbc-2208865a68b6	0	341304	flag	capture	0	1	burst	exact
+53ce4390-efa0-455d-acbc-2208865a68b6	1	555551	flag	capture	1	1	burst	exact
+53ce4390-efa0-455d-acbc-2208865a68b6	2	656554	flag	capture	1	1	burst	exact
+64e8adfa-e3e3-4c26-9f10-7d6a4dc36706	0	159001	flag	capture	0	1	burst	exact
+64e8adfa-e3e3-4c26-9f10-7d6a4dc36706	1	472578	flag	capture	0	1	burst	exact
+64e8adfa-e3e3-4c26-9f10-7d6a4dc36706	2	529075	flag	capture	1	1	burst	exact
+64e8adfa-e3e3-4c26-9f10-7d6a4dc36706	3	710957	flag	capture	1	1	burst	exact
+64e8adfa-e3e3-4c26-9f10-7d6a4dc36706	4	837364	flag	capture	1	1	burst	exact

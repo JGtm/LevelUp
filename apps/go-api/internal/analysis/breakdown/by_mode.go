@@ -7,7 +7,8 @@ import "sort"
 //
 // `PerfByChain` n'est peuple que pour `ByModeCategory` (categorie parente
 // type "Assassin", qui agrege plusieurs chaines comme arena_slayer +
-// arena_objectif + ranked). Pour `ByMode` (sous-mode "Slayer"/"CTF"/...),
+// arena_objectif + ranked_slayer + ranked_objectif). Pour `ByMode`
+// (sous-mode "Slayer"/"CTF"/...),
 // chaque sous-mode appartient en pratique a une seule chaine donc la
 // granularite est deja correcte via `AvgPerformanceScore`.
 type ModeAggregate struct {

@@ -1,0 +1,476 @@
+// Commande sonde_e2c — SONDE JETABLE du sondage E2 : mesure de couverture (2026-09-08).
+//
+// Deux passes, et c'est la premiere qui autorise la seconde.
+//
+// PASSE B (certitude, faible rendement) : World amorce par les images-cles du chunk puis
+// `DecodeFrameRecords` en sequence (recette de `filmdec/game_entities_chain_test.go`). Un
+// record atteint par la chaine est CADRE par les largeurs qui le precedent. Elle sert a
+// ETABLIR LA SIGNATURE du record de creation d'un bipede : `ver == 13`, porte
+// `player-representation-name` OUVERTE, et un mot de 32 bits CONSTANT sur tout le film.
+//
+// PASSE A (rendement, ancrage bit a bit) : le meme balayage d'en-tete NEW que
+// `filmdec/equipment_creation.go`, mais avec la SIGNATURE en guise de gate de selectivite au
+// lieu du composant i0 — i0 est inatteignable derriere le default-state du bipede, porte a
+// 120 bits sur ~380 (`filmdec/default_state.go`). Le mot de 32 bits fixe le taux de faux
+// positifs a un niveau negligeable la ou le gate i0 laissait passer 90 % de bruit.
+//
+// Le champ mesure est la TROISIEME feuille du default-state : ECS_ReadEntityRefIndex5
+// (FUN_1407f2058, `R(1)` porte inversee puis `R(5)`), la meme primitive que les deux champs
+// du dead-state que la production lit deja comme des index de participant absolus.
+//
+// La sortie est confrontee a la VERITE TERRAIN de l'artefact cuit (schema 50, section
+// `identity.bipedSlots`), vie par vie.
+//
+// Usage :
+//
+//	go run ./cmd/sonde_e2c -film <dir chunks> -artefact <json> -out <tsv>
+package main
+
+import (
+	"encoding/json"
+	"flag"
+	"fmt"
+	"os"
+	"sort"
+	"strconv"
+	"strings"
+
+	"levelup/go-api/internal/analysis/filmdec"
+	"levelup/go-api/internal/analysis/filmsource"
+)
+
+const (
+	recNew      = 1
+	newTypeBits = 3
+	newGenBits  = 2
+	newTIBits   = 6
+)
+
+// ---------- verite terrain (artefact cuit, schema 50) ----------
+
+type artefact struct {
+	FrameIntervalMS int `json:"frameIntervalMs"`
+	Identity        struct {
+		Players []struct {
+			FilmIndex int    `json:"filmIndex"`
+			XUID      string `json:"xuid"`
+			Name      string `json:"name"`
+		} `json:"players"`
+		BipedSlots []struct {
+			Slot uint32 `json:"slot"`
+			XUID string `json:"xuid"`
+			Link struct {
+				Source string `json:"source"`
+				Method string `json:"method"`
+				From   int    `json:"from"`
+				To     int    `json:"to"`
+			} `json:"link"`
+		} `json:"bipedSlots"`
+	} `json:"identity"`
+}
+
+// ---------- lectures ----------
+
+type read struct {
+	voie        string // "B" (chaine) ou "A" (ancre)
+	chunk, pidx int
+	tsUS        uint64
+	frame       int
+	slot, gen   uint32
+	ver         uint32
+	rep32       uint32
+	hasRef      bool
+	ref5        uint32
+	// verdict de la confrontation
+	verdict string
+	vie     string
+	gtXuid  string
+	gtMeth  string
+	gtSrc   string
+	myXuid  string
+}
+
+func main() {
+	film := flag.String("film", "", "repertoire des chunks du film")
+	art := flag.String("artefact", "", "artefact cuit (json) servant de verite terrain")
+	out := flag.String("out", "", "fichier TSV de sortie")
+	idLow := flag.Int("idlow", 13, "largeur du champ slot")
+	flag.Parse()
+	if *film == "" || *out == "" {
+		fmt.Fprintln(os.Stderr, "usage: sonde_e2c -film <dir> -artefact <json> -out <tsv>")
+		os.Exit(2)
+	}
+	if err := run(*film, *art, *out, *idLow); err != nil {
+		fmt.Fprintln(os.Stderr, "erreur:", err)
+		os.Exit(1)
+	}
+}
+
+func run(dir, artPath, outPath string, idLow int) error {
+	f, err := filmsource.LoadDir(dir, nil)
+	if err != nil {
+		return err
+	}
+	origin, band, err := originAndBand(f)
+	if err != nil {
+		return err
+	}
+	reg, err := registryOf(dir)
+	if err != nil {
+		return err
+	}
+	cfg := filmdec.DefaultFrameConfig()
+	cfg.IDLowBits = idLow
+
+	bRecs := passeB(f, reg, cfg, band, idLow)
+	sig, sigN, sigTot := signature(bRecs)
+	aRecs := passeA(f, band, sig, idLow)
+	// TEMOIN FANTOME : la MEME passe, sur une bande de MEME cardinalite faite de slots
+	// qu'aucun bipede n'occupe. C'est le plancher de faux positifs du gate, mesure par le
+	// meme code que la mesure (regle etablie par `WorldObjectPositionsForBand`).
+	fantome := len(passeA(f, bandeFantome(band), sig, idLow))
+
+	var a artefact
+	if artPath != "" {
+		raw, err := os.ReadFile(artPath)
+		if err != nil {
+			return err
+		}
+		if err := json.Unmarshal(raw, &a); err != nil {
+			return err
+		}
+	}
+	all := append(append([]read{}, bRecs...), aRecs...)
+	for i := range all {
+		all[i].frame = frameOf(all[i].tsUS, origin, a.FrameIntervalMS)
+	}
+	rap := confronter(all, &a)
+	rap.fantome = fantome
+	return write(outPath, all, rap, dir, sig, sigN, sigTot, len(band))
+}
+
+// originAndBand rend l'origine de la frise (premier paquet de position, comme
+// `replay/build.go:49`) et la bande des slots de bipede observes.
+func originAndBand(f *filmsource.Film) (uint64, map[uint32]bool, error) {
+	opt := filmdec.DefaultScanFilmOptions()
+	opt.QuantaOnly = true
+	pos, err := filmdec.ScanBipedPositions(f, opt)
+	if err != nil {
+		return 0, nil, err
+	}
+	if len(pos) == 0 {
+		return 0, nil, fmt.Errorf("aucune position de bipede")
+	}
+	origin := pos[0].TimestampUS
+	band := map[uint32]bool{}
+	for _, p := range pos {
+		if p.TimestampUS < origin {
+			origin = p.TimestampUS
+		}
+		band[p.Slot] = true
+	}
+	return origin, band, nil
+}
+
+func registryOf(dir string) (*filmdec.Registry, error) {
+	data, err := filmdec.ReadFilmChunk(dir, 0)
+	if err != nil {
+		return nil, fmt.Errorf("chunk 0 illisible : %w", err)
+	}
+	return filmdec.ParseRegistryChunk(data)
+}
+
+func frameOf(ts, origin uint64, intervalMS int) int {
+	if intervalMS <= 0 {
+		intervalMS = 100
+	}
+	if ts < origin {
+		return -1
+	}
+	return int((ts - origin) / (uint64(intervalMS) * 1000))
+}
+
+// ---------- passe B : la chaine sequentielle ----------
+
+func passeB(f *filmsource.Film, reg *filmdec.Registry, cfg filmdec.FrameConfig,
+	band map[uint32]bool, idLow int) []read {
+	var out []read
+	for _, ch := range filmdec.FilmChunkNumbers(f) {
+		data, pks, ok := filmdec.FilmChunkAt(f, ch)
+		if !ok {
+			continue
+		}
+		w := filmdec.NewWorld(reg)
+		for _, pk := range pks {
+			if pk.Type != filmdec.PacketTypeKeyframe {
+				continue
+			}
+			for _, r := range filmdec.WalkKeyframeWorld(pk.Payload(data)) {
+				w.BindFull(uint32((r.Gen<<30)|r.Slot), uint32(r.TI))
+			}
+		}
+		for _, pk := range pks {
+			if pk.Type != filmdec.PacketTypeDelta {
+				continue
+			}
+			pay := pk.Payload(data)
+			recs, _ := filmdec.DecodeFrameRecords(filmdec.NewBitReader(pay), w, cfg)
+			for _, rec := range recs {
+				if rec.Type != recNew || rec.TypeIndex != filmdec.BipedTypeIndex {
+					continue
+				}
+				if !band[rec.Slot] {
+					continue
+				}
+				r := read{voie: "B", chunk: ch, pidx: pk.Index, tsUS: pk.TimestampUS,
+					slot: rec.Slot, gen: rec.ID >> 30}
+				readPrologue(pay, rec.HeaderBit+newTypeBits+idLow+newGenBits+newTIBits, &r)
+				out = append(out, r)
+			}
+		}
+	}
+	return out
+}
+
+// signature rend le mot `player-representation-name` MODAL des records certains, le nombre de
+// records qui le portent, et le nombre total de records certains. Une signature qui ne serait
+// pas quasi unanime ne serait pas une constante de film, et la passe A ne vaudrait rien.
+func signature(recs []read) (uint32, int, int) {
+	h := map[uint32]int{}
+	for _, r := range recs {
+		if r.rep32 != 0 {
+			h[r.rep32]++
+		}
+	}
+	var best uint32
+	bestN := 0
+	for k, n := range h {
+		if n > bestN {
+			best, bestN = k, n
+		}
+	}
+	return best, bestN, len(recs)
+}
+
+// ---------- passe A : ancrage bit a bit, gate = la signature ----------
+
+func passeA(f *filmsource.Film, band map[uint32]bool, sig uint32, idLow int) []read {
+	if sig == 0 {
+		return nil
+	}
+	header := newTypeBits + idLow + newGenBits + newTIBits
+	var out []read
+	for _, ch := range filmdec.FilmChunkNumbers(f) {
+		data, pks, ok := filmdec.FilmChunkAt(f, ch)
+		if !ok {
+			continue
+		}
+		for _, pk := range pks {
+			if pk.Type != filmdec.PacketTypeDelta {
+				continue
+			}
+			pay := pk.Payload(data)
+			total := len(pay) * 8
+			for p := 0; p+header+40 <= total; p++ {
+				if filmdec.PeekBits(pay, p, newTypeBits) != 1 {
+					continue
+				}
+				slot := uint32(filmdec.PeekBits(pay, p+newTypeBits, idLow))
+				if !band[slot] {
+					continue
+				}
+				if uint32(filmdec.PeekBits(pay, p+newTypeBits+idLow+newGenBits, newTIBits)) !=
+					filmdec.BipedTypeIndex {
+					continue
+				}
+				st := p + header
+				r := read{voie: "A", chunk: ch, pidx: pk.Index, tsUS: pk.TimestampUS,
+					slot: slot,
+					gen:  uint32(filmdec.PeekBits(pay, p+newTypeBits+idLow, newGenBits))}
+				readPrologue(pay, st, &r)
+				// LA SIGNATURE EST LE GATE : le mot `player-representation-name` du film,
+				// constant sur les records certains de la passe B. 32 bits fixes rendent le
+				// faux positif negligeable la ou le gate i0 laissait passer 90 % de bruit.
+				if r.rep32 != sig {
+					continue
+				}
+				out = append(out, r)
+				p = st + 39
+			}
+		}
+	}
+	return out
+}
+
+// readPrologue rejoue les trois premieres feuilles de `consumeBipedDefaultState`.
+func readPrologue(pay []byte, stateBit int, r *read) {
+	if stateBit < 0 || stateBit+48 > len(pay)*8 {
+		return
+	}
+	br := filmdec.NewBitReader(pay)
+	br.SetBitPos(stateBit)
+	r.ver = 13
+	if br.ReadBit() {
+		r.ver = uint32(br.ReadBits(8))
+	}
+	if br.ReadBit() {
+		r.rep32 = uint32(br.ReadBits(32))
+	}
+	if int32(r.ver) > 10 {
+		if !br.ReadBit() { // porte INVERSEE
+			r.hasRef = true
+			r.ref5 = uint32(br.ReadBits(5))
+		}
+	}
+}
+
+// ---------- confrontation a la verite terrain ----------
+
+type rapport struct {
+	lectures                             int
+	avecRef                              int
+	refHorsRoster                        int
+	viesTotal, viesNommees               int
+	concordants, discordants, nouveautes int
+	horsVie                              int
+	parSlotIncoherent                    int
+	fantome                              int
+}
+
+// bandeFantome rend une bande de MEME cardinalite, faite de slots qu'aucun bipede n'occupe :
+// le decalage de 4096 sort du domaine des slots de bipede observes sans sortir des 13 bits.
+func bandeFantome(band map[uint32]bool) map[uint32]bool {
+	out := map[uint32]bool{}
+	for s := range band {
+		f := (s + 4096) & 0x1fff
+		if !band[f] {
+			out[f] = true
+		}
+	}
+	return out
+}
+
+func confronter(recs []read, a *artefact) rapport {
+	var rap rapport
+	rap.lectures = len(recs)
+	byIdx := map[int]string{}
+	for _, p := range a.Identity.Players {
+		byIdx[p.FilmIndex] = p.XUID
+	}
+	rap.viesTotal = len(a.Identity.BipedSlots)
+	nommee := map[int]bool{}
+	for i := range recs {
+		r := &recs[i]
+		if !r.hasRef {
+			r.verdict = "sans_ref"
+			continue
+		}
+		rap.avecRef++
+		xuid, ok := byIdx[int(r.ref5)]
+		if !ok {
+			rap.refHorsRoster++
+			r.verdict = "index_hors_roster"
+			continue
+		}
+		li := vieDe(a, r.slot, r.frame)
+		if li < 0 {
+			rap.horsVie++
+			r.verdict = "hors_vie"
+			continue
+		}
+		v := a.Identity.BipedSlots[li]
+		r.vie = fmt.Sprintf("%d[%d..%d]", v.Slot, v.Link.From, v.Link.To)
+		r.gtXuid, r.gtMeth, r.gtSrc, r.myXuid = v.XUID, v.Link.Method, v.Link.Source, xuid
+		switch {
+		case v.XUID == "":
+			rap.nouveautes++
+			r.verdict = "nouveau"
+		case v.XUID == xuid:
+			rap.concordants++
+			r.verdict = "concordant"
+		default:
+			rap.discordants++
+			r.verdict = "discordant"
+		}
+		if !nommee[li] {
+			nommee[li] = true
+			rap.viesNommees++
+		}
+	}
+	return rap
+}
+
+// vieDe rend l'index de la vie de `slot` qui contient `frame`, ou celle qui COMMENCE le plus
+// tot apres lui (une creation precede sa premiere position repliquee). -1 si aucune.
+func vieDe(a *artefact, slot uint32, frame int) int {
+	best, bestD := -1, 1<<30
+	for i, v := range a.Identity.BipedSlots {
+		if v.Slot != slot {
+			continue
+		}
+		if frame >= v.Link.From && frame <= v.Link.To {
+			return i
+		}
+		if d := v.Link.From - frame; d >= 0 && d < bestD && d <= 100 { // 10 s de tolerance
+			best, bestD = i, d
+		}
+	}
+	return best
+}
+
+// ---------- sortie ----------
+
+func write(path string, recs []read, rap rapport, dir string,
+	sig uint32, sigN, sigTot, bandN int) error {
+	sort.Slice(recs, func(i, j int) bool {
+		if recs[i].tsUS != recs[j].tsUS {
+			return recs[i].tsUS < recs[j].tsUS
+		}
+		return recs[i].slot < recs[j].slot
+	})
+	var b strings.Builder
+	fmt.Fprintf(&b, "# film=%s slots_bipede=%d\n", dir, bandN)
+	fmt.Fprintf(&b, "# passe B : records certains=%d, signature rep32=%d portee par %d\n",
+		sigTot, sig, sigN)
+	fmt.Fprintf(&b, "# lectures=%d avec_ref=%d index_hors_roster=%d hors_vie=%d temoin_fantome=%d\n",
+		rap.lectures, rap.avecRef, rap.refHorsRoster, rap.horsVie, rap.fantome)
+	fmt.Fprintf(&b, "# vies totales=%d vies nommees directement=%d (%.1f %%)\n",
+		rap.viesTotal, rap.viesNommees, pct(rap.viesNommees, rap.viesTotal))
+	fmt.Fprintf(&b, "# concordants=%d discordants=%d nouveaux=%d\n",
+		rap.concordants, rap.discordants, rap.nouveautes)
+	h := map[uint32]int{}
+	for _, r := range recs {
+		if r.hasRef {
+			h[r.ref5]++
+		}
+	}
+	fmt.Fprintf(&b, "# ref5=%s\n", hist(h))
+	fmt.Fprintln(&b, "voie\tchunk\tpidx\ttsUS\tframe\tslot\tgen\tver\trep32\thasRef\tref5\tverdict\tvie\tgtSrc\tgtMeth\tgtXuid\tmyXuid")
+	for _, r := range recs {
+		fmt.Fprintf(&b, "%s\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%t\t%d\t%s\t%s\t%s\t%s\t%s\t%s\n",
+			r.voie, r.chunk, r.pidx, r.tsUS, r.frame, r.slot, r.gen, r.ver, r.rep32,
+			r.hasRef, r.ref5, r.verdict, r.vie, r.gtSrc, r.gtMeth, r.gtXuid, r.myXuid)
+	}
+	fmt.Print(strings.SplitN(b.String(), "voie\t", 2)[0])
+	return os.WriteFile(path, []byte(b.String()), 0o644)
+}
+
+func pct(n, d int) float64 {
+	if d == 0 {
+		return 0
+	}
+	return 100 * float64(n) / float64(d)
+}
+
+func hist(m map[uint32]int) string {
+	keys := make([]uint32, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	sort.Slice(keys, func(i, j int) bool { return keys[i] < keys[j] })
+	var parts []string
+	for _, k := range keys {
+		parts = append(parts, strconv.Itoa(int(k))+":"+strconv.Itoa(m[k]))
+	}
+	return strings.Join(parts, " ")
+}

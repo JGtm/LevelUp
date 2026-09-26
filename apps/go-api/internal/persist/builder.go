@@ -88,6 +88,10 @@ func (b *BatchBuilder) AddKillerVictim(rows []KillerVictimInsert) *BatchBuilder 
 }
 
 // AddKillPositions ajoute les rows kill_positions (positions monde par kill).
+//
+// Le sous-batch d'un match forme UNE PASSE : toutes ses lignes recevront le même
+// `decode_pass` à l'écriture, et la vue `kill_positions_latest` ne rend que la
+// dernière passe entière du match.
 func (b *BatchBuilder) AddKillPositions(rows []KillPositionInsert) *BatchBuilder {
 	b.batch.Shared.KillPositions = append(b.batch.Shared.KillPositions, rows...)
 	return b
@@ -113,6 +117,41 @@ func (b *BatchBuilder) SetKillSource(pass *KillSourceBatch) *BatchBuilder {
 // jamais existé — et, ici, un doublon (indice, arme) que le persister refuse.
 func (b *BatchBuilder) SetWeaponShots(pass *WeaponShotsBatch) *BatchBuilder {
 	b.batch.Shared.WeaponShots = pass
+	return b
+}
+
+// SetBombStats fixe les statistiques d'Assaut d'une passe de décodage du film
+// (les cinq mesures par joueur + les faits datés) pour ce match.
+//
+// Set… et non Add… pour la même raison que SetKillSource et SetWeaponShots :
+// l'unité de production est le FILM ENTIER. Concaténer deux passes produirait un
+// jeu de statistiques qui n'a jamais existé — et, ici, un doublon de xuid que le
+// persister refuse.
+func (b *BatchBuilder) SetBombStats(pass *BombStatsBatch) *BatchBuilder {
+	b.batch.Shared.BombStats = pass
+	return b
+}
+
+// SetFlagGrabsNet fixe les prises de drapeau (brutes et nettes) d'une passe de
+// lecture d'artefact pour ce match.
+//
+// Set… et non Add… pour la même raison que ses sœurs : l'unité de production est
+// l'ARTEFACT ENTIER. Concaténer deux passes produirait un doublon de xuid que le
+// persister refuse — et, pire, mêlerait deux fenêtres de jonglage.
+func (b *BatchBuilder) SetFlagGrabsNet(pass *FlagGrabsNetBatch) *BatchBuilder {
+	b.batch.Shared.FlagGrabsNet = pass
+	return b
+}
+
+// SetPadTiers fixe LES PRISES DE SOCLE VENTILEES PAR NIVEAU D ARME d une passe de lecture
+// d artefact pour ce match.
+//
+// Set… et non Add… pour la meme raison que ses soeurs : l unite de production est l ARTEFACT
+// ENTIER. Concatener deux passes produirait un doublon de (xuid, niveau, arme) que le persister
+// refuse — et, pire, melerait deux croisements de reference de cartes, donc deux verites du
+// meme socle.
+func (b *BatchBuilder) SetPadTiers(pass *PadTiersBatch) *BatchBuilder {
+	b.batch.Shared.PadTiers = pass
 	return b
 }
 

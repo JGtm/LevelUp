@@ -1,3 +1,4 @@
+/* eslint-disable max-lines -- 2026-09-06 (lot v2 D.11, decision utilisateur 4) : table de donnees (une entree par cle, aucun embranchement) : la decouper repartirait la meme table sur plusieurs fichiers a tenir en phase, sans retirer une seule decision au lecteur. */
 /**
  * i18n.ts — Dictionnaire FR/EN des strings UI de la feature Escouade.
  *
@@ -22,6 +23,16 @@ export interface SquadText {
     synergies: string
     contributions: string
     dynamique: string
+    usages: string
+  }
+  /**
+   * Titres de section transverses (lot 3 « sections », 2026-09-22) — un titre coiffe
+   * au moins deux blocs, jamais un bloc seul.
+   */
+  sections: {
+    historique: string
+    fragsArmes: string
+    equipement: string
   }
   selection: {
     placeholder: (count: number) => string
@@ -33,7 +44,7 @@ export interface SquadText {
     allExperiences: string
     allPlaylists: string
     analyse: string
-    /** Option « composition exacte » (désactivée par défaut) + son explication. */
+    /** Option « composition exacte » (activée par défaut) + son explication. */
     exactComposition: string
     exactCompositionTitle: string
   }
@@ -53,6 +64,14 @@ export interface SquadText {
     next: string
     all: string
     reset: string
+  }
+  /** Info-bulle qui explique l'ecart "composition exacte" publie sur la L2
+   *  (ADR 0033, D1) : matchs ecartes de la session, coequipier responsable
+   *  nomme. Reutilise le patron d'aide d'en-tete existant (V73-L2 2.4c). */
+  compositionGap: {
+    heading: (excludedCount: number) => string
+    excludedLine: (dateLabel: string, mapLabel: string, culpritsLabel: string, culpritCount: number) => string
+    culpritUnknown: string
   }
   table: {
     gamertag: string
@@ -76,6 +95,9 @@ export interface SquadText {
     noDataDescription: string
     /** Message court pour un bloc non-graphe vide (tape, table, scoreboard). */
     noBlockData: string
+    /** Onglet Usages sans aucun bloc à montrer (aucun film décodé sur la sélection). */
+    noDecodedFilmTitle: string
+    noDecodedFilmDescription: string
   }
   synergies: {
     description: string
@@ -132,14 +154,51 @@ export interface SquadText {
     totalRows: (n: number) => string
     /** aria-label/tooltip du lien « Ouvrir sur Halo Waypoint » (I19). */
     waypointAriaLabel: string
+    /**
+     * En-tête de la colonne Halo Waypoint (retour utilisateur 2026-09-09), abrégé en
+     * « HW » : la colonne ne fait qu'une icône de large. Nom propre, donc identique
+     * FR/EN — mais declaré dans les deux locales, la parité est un invariant de typage.
+     */
+    waypointHeader: string
+    /** aria-label/tooltip du lien interne vers le rejeu 2D du match. */
+    replayAriaLabel: string
+    /** En-tête de la colonne « Rejeu » (retour utilisateur 2026-09-09). */
+    replayHeader: string
     /** aria-label du bouton de tri d'un en-tête « Trier par {col} » (I16). */
     sortByAriaLabel: (col: string) => string
     /** Tooltips d'en-tête de colonne (V72-04, icône ⓘ). */
+    /**
+     * Aide de l'en-tete de la colonne Score : sur les modes qui se jouent en manches,
+     * ce sont les MANCHES qui sont affichees, pas les points de l'API (ADR 0032).
+     */
+    scoreTooltip: string
     winRateHistTooltip: string
     winProbTooltip: string
     teamMmrTooltip: string
     enemyMmrTooltip: string
     deltaMmrTooltip: string
+  }
+  /** Graphe « Appui » (larbin -> patron), page Synergies. */
+  assists: {
+    title: string
+    description: string
+    /** Rôle de la BARRE : celui qui a assisté (le larbin). Titre d'axe et infobulle. */
+    roleAssistant: string
+    /** Rôle du SEGMENT : celui qui a eu le frag crédité (le patron). Infobulle. */
+    roleBeneficiary: string
+    /** Titre de l'axe des valeurs : ce que la hauteur des segments compte. */
+    valueAxis: string
+    /** Mesuré, mais aucune assistance interne à l'escouade. */
+    noPairs: string
+    /** Infobulle d'un segment : la PART de la paire dans les assistances mesurées. */
+    tooltipShare: (share: string) => string
+    /** Infobulle d'un segment : les assistances de la paire où le larbin a fait plus de
+     *  dégâts que le patron (champ `stolen_count` de l'API, requête Q32d côté Go :
+     *  `assist_damage_pct > killer_damage_pct`), quand il y en a.
+     *  À NE PAS confondre avec le badge « Voleur » de la matrice, dont le critère est
+     *  autre (le tueur a fait 10 % des dégâts ou moins) : deux mesures distinctes, d'où
+     *  l'absence du mot « volé » ici. */
+    tooltipAssistantOutdamaged: (n: number) => string
   }
   timeline: {
     title: string
@@ -151,6 +210,9 @@ export interface SquadText {
   }
   heatmap: {
     title: string
+    /** Nom de l'axe X de la heatmap joueur x carte. */
+    /** Nom de l'axe Y de la heatmap joueur x carte. */
+    yAxis: string
     pieceTier1: string
     pieceTier2: string
     pieceTier3: string
@@ -195,24 +257,26 @@ export interface SquadText {
     title: string
     /** Sous-titre de la carte Intensité (profil médian + enveloppe). */
     subtitle: string
-    /** Tooltip d'aide : courbe / zone d'irrégularité / repère / courbe d'équipe. */
-    tooltip: string
     /** Libellé tooltip du trait médian. */
     medianLabel: string
     /** Libellé tooltip de la fourchette interquartile. */
     envelopeLabel: string
     /** Libellé du repère 10 % (activité uniforme). */
     refLabel: string
-    /** Libellé de la courbe agrégée d'équipe (superposée à partir de 3 joueurs). */
+    /** Libellé de la courbe de référence ÉQUIPE (alliés du joueur principal, à partir de 3 joueurs). */
     teamLabel: string
+    /** Libellé de la courbe de référence LOBBY (tout le match, dès 1 joueur). */
+    lobbyLabel: string
   }
   efficiencySeries: {
     /** Titre COURT de la carte Rendement (la définition vit dans l'aide ⓘ). */
     rendementCardTitle: string
     /** Titre COURT de la carte Résistance (la définition vit dans l'aide ⓘ). */
     resistanceCardTitle: string
-    /** Aide ⓘ des deux cartes : formule des indicateurs + pivot « une vie ». */
-    help: string
+    /** Aide ⓘ de la carte Rendement : ce que vaut une vie de dégâts infligés. */
+    rendementHelp: string
+    /** Aide ⓘ de la carte Résistance : ce qui est encaissé avant chaque mort. */
+    resistanceHelp: string
     /** Nom de l'indicateur offensif au survol (« Rendement »). */
     offensiveMetric: string
     /** Nom de l'indicateur défensif au survol (« Résistance »). */
@@ -275,6 +339,8 @@ export interface SquadText {
     description: string
     /** Ligne agrégée des armes gun au-delà du top-N dans « Outils de destruction ». */
     otherWeapons: string
+    /** Ligne agrégée des frags NON-arme (mêlée, grenade, engins) au-delà du top-N. */
+    otherKills: string
   }
   /** Comparatif « Précision par rôle » multi-joueurs (Halo 5) : barres groupées horizontales (1 barre/joueur/rôle, longueur = précision %). */
   weaponAccuracy: {
@@ -337,6 +403,12 @@ const FR_TEXT: SquadText = {
     synergies: 'Synergies',
     contributions: 'Contributions',
     dynamique: 'Dynamique',
+    usages: 'Usages',
+  },
+  sections: {
+    historique: 'Historique',
+    fragsArmes: 'Frags et armes',
+    equipement: 'Équipement et armes de socle',
   },
   selection: {
     placeholder: (count) => `Rechercher parmi ${count} coéquipiers…`,
@@ -350,7 +422,7 @@ const FR_TEXT: SquadText = {
     analyse: 'Analyser',
     exactComposition: 'Composition stricte',
     exactCompositionTitle:
-      'Par défaut, tous les matchs commencés ensemble sont comptés, même si un autre joueur connu vous accompagnait. Cochez pour ne garder que les matchs joués avec exactement cette composition.',
+      'Cochée par défaut : seuls les matchs joués avec exactement cette composition sont comptés. Décochez pour inclure tous les matchs commencés ensemble, même si un autre joueur connu vous accompagnait.',
   },
   dataIssues: {
     title: 'Données partielles : certains chiffres sont incomplets.',
@@ -368,6 +440,13 @@ const FR_TEXT: SquadText = {
     next: 'Session suivante',
     all: '(toutes)',
     reset: '✕ Réinitialiser',
+  },
+  compositionGap: {
+    heading: (excludedCount) =>
+      `${excludedCount} match${excludedCount > 1 ? 's' : ''} écarté${excludedCount > 1 ? 's' : ''} de cette session par la composition exacte :`,
+    excludedLine: (dateLabel, mapLabel, culpritsLabel, culpritCount) =>
+      `${dateLabel} — ${mapLabel} : écarté, ${culpritsLabel} ${culpritCount > 1 ? 'étaient' : 'était'} dans ton équipe`,
+    culpritUnknown: 'un coéquipier non identifié',
   },
   table: {
     gamertag: 'Gamertag',
@@ -392,6 +471,8 @@ const FR_TEXT: SquadText = {
     noDataDescription:
       'Aucune réponse exploitable n\'a été renvoyée pour cette page. Vérifie les filtres ou la disponibilité des matchs partagés.',
     noBlockData: 'Aucune donnée pour cette sélection.',
+    noDecodedFilmTitle: 'Aucun film décodé',
+    noDecodedFilmDescription: 'Aucun film décodé pour cette sélection.',
   },
   synergies: {
     description: 'Comparaison des statistiques du joueur avec chaque coéquipier sur les matchs joués ensemble.',
@@ -450,12 +531,28 @@ const FR_TEXT: SquadText = {
     pageOf: (cur, total) => `Page ${cur} / ${total}`,
     totalRows: (n) => `${n} match${n > 1 ? 's' : ''}`,
     waypointAriaLabel: 'Ouvrir sur Halo Waypoint',
+    waypointHeader: 'HW',
+    replayAriaLabel: 'Ouvrir le rejeu 2D du match',
+    replayHeader: 'Rejeu',
     sortByAriaLabel: (col) => `Trier par ${col}`,
+    scoreTooltip:
+      "Score final de la partie : l'équipe puis l'équipe adverse. Sur les modes qui se jouent en manches, ce sont les MANCHES gagnées et perdues qui sont affichées — le score en points de l'API peut y donner l'avantage au camp qui a perdu.",
     winRateHistTooltip: 'Taux de victoire de cette escouade sur tous ses matchs communs.',
     winProbTooltip: 'Probabilité de victoire estimée avant le match, d\'après les MMR des deux équipes.',
     teamMmrTooltip: 'Niveau de compétence moyen estimé (MMR) de l\'équipe.',
     enemyMmrTooltip: 'Niveau de compétence moyen estimé (MMR) de l\'équipe adverse.',
     deltaMmrTooltip: 'Écart de MMR entre l\'équipe et l\'équipe adverse.',
+  },
+  assists: {
+    title: 'Appui',
+    description:
+      'Une barre par larbin (celui qui prépare le frag), un segment par patron (celui qui l\'encaisse), sur les matchs de la sélection.',
+    roleAssistant: 'Larbin',
+    roleBeneficiary: 'Patron',
+    valueAxis: 'Assistances par patron',
+    noPairs: 'Aucune assistance entre membres de l\'escouade sur les matchs mesurés.',
+    tooltipShare: (share) => `part ${share}`,
+    tooltipAssistantOutdamaged: (n) => `dont ${n} où le larbin a fait plus de dégâts que le patron`,
   },
   timeline: {
     title: 'Performance d\'escouade par session',
@@ -467,6 +564,7 @@ const FR_TEXT: SquadText = {
   },
   heatmap: {
     title: 'Performance par joueur × carte',
+    yAxis: 'Joueur',
     pieceTier1: 'Excellente',
     pieceTier2: 'Bonne',
     pieceTier3: 'Moyenne',
@@ -498,6 +596,7 @@ const FR_TEXT: SquadText = {
       top_killer: 'Bourreau (top frags)',
       top_gun: 'Top Gun',
       kamikaze: 'Kamikaze',
+      thief: 'Voleur',
     },
     badgeDescriptions: {
       first_blood: 'Premier frag du match, toutes équipes confondues',
@@ -510,6 +609,7 @@ const FR_TEXT: SquadText = {
       top_killer: 'Joueur avec le plus grand nombre de frags du match',
       top_gun: 'Premier membre de l\'équipe à atteindre 10 frags',
       kamikaze: 'Joueur le plus tué dans les 1,5 s qui suivent ses frags',
+      thief: 'Joueur avec le plus de frags volés à un ami : assisté par cet ami, 10 % des dégâts ou moins, ami vivant juste avant et juste après le frag',
     },
   },
   perMinute: {
@@ -545,16 +645,19 @@ const FR_TEXT: SquadText = {
   intensity: {
     title: 'Intensité',
     subtitle: 'Répartition des frags par phase de match',
-    tooltip: 'Chaque match est découpé en 10 tranches de durée égale. Le trait plein montre à quel moment les frags du joueur tombent : à gauche le début du match, à droite la fin. La zone colorée autour dit à quel point ça change d\'un match à l\'autre — large, le joueur joue très différemment selon les parties ; étroite, il fait toujours à peu près pareil. Le pointillé horizontal est le niveau d\'un match où les frags seraient répartis également du début à la fin. À partir de 3 joueurs, la courbe pointillée « Équipe » superposée montre le même profil pour l\'escouade entière : au-dessus, le joueur est plus actif que le groupe sur cette tranche.',
     medianLabel: 'Médiane',
     envelopeLabel: 'Enveloppe P25–P75',
     refLabel: '10 %',
     teamLabel: 'Équipe',
+    lobbyLabel: 'Lobby',
   },
   efficiencySeries: {
     rendementCardTitle: 'Rendement',
     resistanceCardTitle: 'Résistance',
-    help: 'Une courbe par joueur, match par match, sur une échelle où 100 % vaut exactement une vie de Spartan. Rendement = ce qu\'une vie de dégâts infligés rapporte en frags effectifs (frags + assistances / 3) : 100 % = un frag effectif par vie dépensée, 130 % = un tiers de mieux. Résistance = ce qui est encaissé avant chaque mort, rapporté à une vie : 100 % = une vie exactement, 150 % = la moitié en plus. Au-dessus du repère « 1 vie » (fond vert) la performance est meilleure, en dessous (fond rouge) moins bonne, dans les deux cartes. L\'échelle 50–200 % est la même à chaque session : deux sessions se comparent directement. Survoler un match affiche les valeurs brutes.',
+    rendementHelp:
+      'Ce qu\'une vie de dégâts infligés vous rapporte en frags effectifs (frags + assistances / 3). 100 % = un frag par vie dépensée. Au-dessus du repère (fond vert), vos dégâts portent ; en dessous (fond rouge), ils se dispersent.',
+    resistanceHelp:
+      'Les dégâts encaissés avant chaque mort, rapportés à une vie de Spartan. 100 % = une vie exactement. Au-dessus du repère (fond vert), vous survivez à plus que votre barre de vie ; en dessous (fond rouge), vous tombez plus tôt.',
     offensiveMetric: 'Rendement',
     defensiveMetric: 'Résistance',
     oneLife: '1 vie',
@@ -572,7 +675,7 @@ const FR_TEXT: SquadText = {
     deathsLabel: 'Morts',
     bonusLabel: 'Bonus',
     bonusInfo:
-      'Bonus = assistances ÷ 3 : dans le FDA, 3 assistances valent 1 frag (FDA = (frags + assistances/3) − morts). La série empile ce bonus au-dessus des frags du match ; elle est masquée par défaut, clique « Bonus » pour l\'afficher.',
+      'Bonus = assistances ÷ 3 : dans le FDA, 3 assistances valent 1 frag (FDA = (frags + assistances/3) − morts). La série empile ce bonus au-dessus des frags du match ; elle est masquée par défaut.',
     assistsTitle: 'Assistances',
     kdaTitle: 'FDA',
     accuracyTitle: 'Précision',
@@ -602,6 +705,7 @@ const FR_TEXT: SquadText = {
     title: 'Outils de destruction',
     description: 'Frags cumulés par arme sur les matchs partagés. Tri ASC : armes peu utilisées en haut, principales en bas.',
     otherWeapons: 'Autres armes',
+    otherKills: 'Autres frags',
   },
   weaponAccuracy: {
     title: 'Précision par rôle',
@@ -661,6 +765,12 @@ const EN_TEXT: SquadText = {
     synergies: 'Synergies',
     contributions: 'Contributions',
     dynamique: 'Dynamics',
+    usages: 'Usage',
+  },
+  sections: {
+    historique: 'History',
+    fragsArmes: 'Kills and weapons',
+    equipement: 'Equipment and pad weapons',
   },
   selection: {
     placeholder: (count) => `Search among ${count} teammates…`,
@@ -674,7 +784,7 @@ const EN_TEXT: SquadText = {
     analyse: 'Analyse',
     exactComposition: 'Strict line-up',
     exactCompositionTitle:
-      'By default every match started together is counted, even if another known player was with you. Tick to keep only matches played with exactly this line-up.',
+      'Ticked by default: only matches played with exactly this line-up are counted. Untick to include every match started together, even if another known player was with you.',
   },
   dataIssues: {
     title: 'Partial data: some numbers are incomplete.',
@@ -691,6 +801,13 @@ const EN_TEXT: SquadText = {
     next: 'Next session',
     all: '(all)',
     reset: '✕ Reset',
+  },
+  compositionGap: {
+    heading: (excludedCount) =>
+      `${excludedCount} match${excludedCount > 1 ? 'es' : ''} excluded from this session by the exact composition filter:`,
+    excludedLine: (dateLabel, mapLabel, culpritsLabel, culpritCount) =>
+      `${dateLabel} — ${mapLabel}: excluded, ${culpritsLabel} ${culpritCount > 1 ? 'were' : 'was'} in your team`,
+    culpritUnknown: 'an unidentified teammate',
   },
   table: {
     gamertag: 'Gamertag',
@@ -715,6 +832,8 @@ const EN_TEXT: SquadText = {
     noDataDescription:
       'No usable response was returned for this page. Check filters or shared matches availability.',
     noBlockData: 'No data for this selection.',
+    noDecodedFilmTitle: 'No decoded film',
+    noDecodedFilmDescription: 'No decoded film for this selection.',
   },
   synergies: {
     description: 'Comparison of the player\'s stats with each teammate on shared matches.',
@@ -773,12 +892,28 @@ const EN_TEXT: SquadText = {
     pageOf: (cur, total) => `Page ${cur} / ${total}`,
     totalRows: (n) => `${n} match${n > 1 ? 'es' : ''}`,
     waypointAriaLabel: 'Open on Halo Waypoint',
+    waypointHeader: 'HW',
+    replayAriaLabel: 'Open the 2D replay of the match',
+    replayHeader: 'Replay',
     sortByAriaLabel: (col) => `Sort by ${col}`,
+    scoreTooltip:
+      'Final match score: the team, then the opposing team. In modes played in rounds, the ROUNDS won and lost are shown instead — the API point score can favour the losing side there.',
     winRateHistTooltip: 'Win rate for this squad across all their shared matches.',
     winProbTooltip: 'Win probability estimated before the match, from both teams\' MMR.',
     teamMmrTooltip: 'Average estimated skill level (MMR) of the team.',
     enemyMmrTooltip: 'Average estimated skill level (MMR) of the enemy team.',
     deltaMmrTooltip: 'MMR gap between the team and the enemy team.',
+  },
+  assists: {
+    title: 'Support',
+    description:
+      'One bar per minion (who sets up the kill), one segment per boss (who gets the credit), across the selected matches.',
+    roleAssistant: 'Minion',
+    roleBeneficiary: 'Boss',
+    valueAxis: 'Assists per boss',
+    noPairs: 'No assists between squad members across the measured matches.',
+    tooltipShare: (share) => `share ${share}`,
+    tooltipAssistantOutdamaged: (n) => `${n} where the minion dealt more damage than the boss`,
   },
   timeline: {
     title: 'Squad performance by session',
@@ -790,6 +925,7 @@ const EN_TEXT: SquadText = {
   },
   heatmap: {
     title: 'Performance per player × map',
+    yAxis: 'Player',
     pieceTier1: 'Excellent',
     pieceTier2: 'Good',
     pieceTier3: 'Average',
@@ -821,6 +957,7 @@ const EN_TEXT: SquadText = {
       top_killer: 'Top killer',
       top_gun: 'Top Gun',
       kamikaze: 'Kamikaze',
+      thief: 'Thief',
     },
     badgeDescriptions: {
       first_blood: 'First kill of the match, across all teams',
@@ -833,6 +970,7 @@ const EN_TEXT: SquadText = {
       top_killer: 'Player with the highest kill count in the match',
       top_gun: 'First squad member to reach 10 kills',
       kamikaze: 'Player killed within 1.5 s after one of their own frags (most frequent in the match)',
+      thief: 'Player with the most kills stolen from a friend: assisted by that friend, 10% of the damage or less, friend alive just before and just after the kill',
     },
   },
   perMinute: {
@@ -868,16 +1006,19 @@ const EN_TEXT: SquadText = {
   intensity: {
     title: 'Intensity',
     subtitle: 'Frag distribution across match phases',
-    tooltip: 'Each match is split into 10 equal slices. The solid line shows when the player\'s kills happen: start of the match on the left, end on the right. The shaded band around it shows how much this changes from match to match — wide means the player plays very differently depending on the game, narrow means they play much the same way every time. The horizontal dashed line is the level of a match where kills would be spread evenly from start to finish. From 3 players on, the overlaid "Team" dashed curve shows the same profile for the whole squad: above it, the player is more active than the group on that slice.',
     medianLabel: 'Median',
     envelopeLabel: 'P25–P75 envelope',
     refLabel: '10%',
     teamLabel: 'Team',
+    lobbyLabel: 'Lobby',
   },
   efficiencySeries: {
     rendementCardTitle: 'Efficiency',
     resistanceCardTitle: 'Resistance',
-    help: 'One curve per player, match by match, on a scale where 100% is exactly one Spartan life. Efficiency = what one life worth of damage dealt buys in effective kills (kills + assists / 3): 100% means one effective kill per life spent, 130% means a third better. Resistance = what is absorbed before each death, measured against one life: 100% is exactly one life, 150% is half again as much. Above the "1 life" marker (green background) performance is better, below it (red background) it falls short — in both cards. The 50–200% scale never changes, so two sessions compare directly. Hovering a match shows the raw values.',
+    rendementHelp:
+      'What one life worth of damage dealt earns you in effective kills (kills + assists / 3). 100% = one kill per life spent. Above the marker (green band), your damage lands; below it (red band), it scatters.',
+    resistanceHelp:
+      'The damage absorbed before each death, measured against one Spartan life. 100% = exactly one life. Above the marker (green band), you outlast your own health bar; below it (red band), you go down sooner.',
     offensiveMetric: 'Efficiency',
     defensiveMetric: 'Resistance',
     oneLife: '1 life',
@@ -895,7 +1036,7 @@ const EN_TEXT: SquadText = {
     deathsLabel: 'Deaths',
     bonusLabel: 'Bonus',
     bonusInfo:
-      'Bonus = assists ÷ 3: in KDA, 3 assists count as 1 kill (KDA = (kills + assists/3) − deaths). The series stacks that bonus on top of the match kills; it is hidden by default, click "Bonus" to show it.',
+      'Bonus = assists ÷ 3: in KDA, 3 assists count as 1 kill (KDA = (kills + assists/3) − deaths). The series stacks that bonus on top of the match kills; it is hidden by default.',
     assistsTitle: 'Assists',
     kdaTitle: 'KDA',
     accuracyTitle: 'Accuracy',
@@ -925,6 +1066,7 @@ const EN_TEXT: SquadText = {
     title: 'Tools of destruction',
     description: 'Cumulative kills per weapon over shared matches. Sorted ASC: rare weapons on top, primaries at the bottom.',
     otherWeapons: 'Other weapons',
+    otherKills: 'Other kills',
   },
   weaponAccuracy: {
     title: 'Accuracy by role',

@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "module": "cfd90b63-62fd-441a-8015-8d7804b9c3c3",
+  "mapNames": [
+    "Dynasty",
+    "dynasty_map"
+  ],
+  "image": "cfd90b63-62fd-441a-8015-8d7804b9c3c3.webp",
+  "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
+  "generatedAt": "2026-08-27T23:11:42.0882334Z",
+  "style": "encre",
+  "calibration": {
+    "metersPerPixel": 0.04288330078125,
+    "originX": -20.584410095214842,
+    "originY": 162.6026336669922,
+    "widthPx": 1191,
+    "heightPx": 1567,
+    "convention": "xMonde = originX + (px + 0.5) * metersPerPixel ; yMonde = originY - (py + 0.5) * metersPerPixel"
+  },
+  "stats": {
+    "anchors": 13,
+    "anchorsInFrame": 13,
+    "anchorsWithGround": 13,
+    "anchorMedianGapM": -0.24238453792058579,
+    "instancesDrawn": 0,
+    "instancesScenery": 0,
+    "playLevelZ": 77.04200073242187,
+    "boundaryApplied": false,
+    "boundaryPlanes": 0,
+    "boundaryCellsCleared": 0,
+    "waterVolumes": 0,
+    "waterCells": 0,
+    "coveredShare": 1,
+    "covered": true,
+    "cellsSubstituted": 483293,
+    "forgeObjects": 5540,
+    "forgeObjectsDrawn": 5506,
+    "forgeObjectsWithoutModel": 19,
+    "forgeDeathVolumes": 15
+  }
+}

@@ -46,7 +46,9 @@ pre-commit:
       glob: "apps/go-api/**/*.go"
       run: bash scripts/git-hooks/lefthook/gofmt.sh {staged_files}
 
-    # go vet — informatif, non bloquant (|| true dans le script)
+    # go vet — informatif, non bloquant (|| true dans le script). Aveugle aux
+    # fichiers tagges //go:build cgo (CGO=0) : cette classe est gatee par le hook
+    # pre-push go-vet-cgo (bloquant) puis par la CI (job go-coverage).
     go-vet:
       glob: "apps/go-api/**/*.go"
       run: bash scripts/git-hooks/lefthook/go-vet.sh
@@ -106,6 +108,18 @@ pre-push:
     #   `make go-api-lint` ou `make gate-push`.
     # go-test-short: retiré du pre-push (trop lent, couvert par CI).
     # Les scripts correspondants ont été supprimés le 2026-07-26 (code mort).
+
+    # go vet CGO + integration — BLOQUANT, module entier, _test.go compris
+    # (garde-rail 2026-08-25). Ferme la classe « casse dans un fichier tagge
+    # cgo/integration » que le pre-commit ne peut structurellement pas voir :
+    # cas vecu build_queue_e2e_cgo_test.go (11 args, auto-merge b687c2c39),
+    # repare en de615564f. ~54 s a cache chaud, froid = minutes (DuckDB) —
+    # assume en pre-push. Place AVANT govulncheck : echec de compilation rendu
+    # avant le scan de vulns (pre-push sequentiel). Comme tout hook a glob, ne
+    # tourne que si le push contient du Go — l'autorite sans condition reste la CI.
+    go-vet-cgo:
+      glob: "apps/go-api/**/*.go"
+      run: bash scripts/git-hooks/lefthook/go-vet-cgo.sh
 
     govulncheck:
       glob: "apps/go-api/**/*.go"

@@ -5,8 +5,9 @@
  *
  * Une seule grille par carte, les courbes joueurs SUPERPOSÉES, fenêtre fixe
  * 50…200 % et repère « 1 vie » à 100 % : les deux cartes se lisent avec le même
- * cadre, et deux sessions se comparent entre elles. La définition complète
- * (formule, pivot une vie) vit dans l'aide ⓘ portée par les DEUX titres de carte.
+ * cadre, et deux sessions se comparent entre elles. Chaque carte porte SA PROPRE aide ⓘ
+ * (2026-09-09) : les deux partageaient un texte unique de 120 mots qui définissait les
+ * deux indicateurs à la fois — on lisait la définition de l'autre carte avant la sienne.
  *
  * Titres sans résistance (Halo 5 : pas de damage_taken, donc pas de DR) : seule
  * la carte Rendement est rendue.
@@ -24,8 +25,10 @@ import {
 interface EfficiencyLabels extends EfficiencyChartLabels {
   rendementCardTitle: string
   resistanceCardTitle: string
-  /** Aide ⓘ : définition des deux indicateurs et du pivot « une vie ». */
-  help: string
+  /** Aide ⓘ de la carte Rendement. */
+  rendementHelp: string
+  /** Aide ⓘ de la carte Résistance. */
+  resistanceHelp: string
   noData: string
 }
 
@@ -85,10 +88,10 @@ export function SquadEfficiencyChart({
     [rowsByPlayer, players, colorByPlayer, labels],
   )
 
-  const cardTitle = (text: string) => (
+  const cardTitle = (text: string, help: string) => (
     <span className="flex items-center gap-1.5">
       {text}
-      <InfoTooltip content={labels.help} />
+      <InfoTooltip content={help} />
     </span>
   )
 
@@ -98,7 +101,7 @@ export function SquadEfficiencyChart({
     // pleine largeur (pas de grille → bloc simple).
     <div className={hasResistance ? 'grid gap-4 md:grid-cols-2' : ''}>
       <ChartCard
-        title={cardTitle(labels.rendementCardTitle)}
+        title={cardTitle(labels.rendementCardTitle, labels.rendementHelp)}
         series={series}
         buildOption={buildRendement}
         height={EFFICIENCY_CHART_HEIGHT}
@@ -106,7 +109,7 @@ export function SquadEfficiencyChart({
       />
       {hasResistance && (
         <ChartCard
-          title={cardTitle(labels.resistanceCardTitle)}
+          title={cardTitle(labels.resistanceCardTitle, labels.resistanceHelp)}
           series={series}
           buildOption={buildResistance}
           height={EFFICIENCY_CHART_HEIGHT}

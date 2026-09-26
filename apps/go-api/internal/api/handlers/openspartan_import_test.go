@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	_ "github.com/duckdb/duckdb-go/v2"
 	_ "modernc.org/sqlite"
@@ -229,10 +230,22 @@ func TestStartImport_HappyPathReturns202WithJobID(t *testing.T) {
 	if err := json.Unmarshal(rr.Body.Bytes(), &resp); err != nil {
 		t.Fatalf("decode response: %v", err)
 	}
-	if id, ok := resp["job_id"].(string); !ok || id == "" {
+	id, ok := resp["job_id"].(string)
+	if !ok || id == "" {
 		t.Errorf("response should carry a non-empty job_id, got %v", resp)
 	}
 	if status, _ := resp["status"].(string); status != string(domain.JobStatusQueued) && status != string(domain.JobStatusRunning) {
 		t.Errorf("status should be queued|running, got %v", resp["status"])
+	}
+
+	// StartImport lance l'import (goroutine `go h.runImport(...)`) qui écrit
+	// dans h.jobStore (fichier JSON) et sous h.stashDir/tmpPath — tous sous
+	// t.TempDir(). Sans attendre sa fin, la goroutine survit au retour du test :
+	// le cleanup de t.TempDir() (RemoveAll) court-circuite une écriture encore
+	// en vol, ce qui échoue sur Windows sous charge parallèle ("Le répertoire
+	// n'est pas vide"). On attend l'état terminal du job avant de rendre la main
+	// (cf. TestStartImport_HappyPathReturns202WithJobID / registre R8).
+	if ok && id != "" {
+		pollJobUntilDone(t, h.jobStore, id, 30*time.Second)
 	}
 }

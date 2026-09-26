@@ -1,10 +1,14 @@
+/* eslint-disable max-lines -- 2026-09-06 (lot v2 D.11, decision utilisateur 4) : suite de cas d'un meme module, qui partagent leur montage : la decouper separerait des cas que le lecteur lit ensemble. */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import type { ReactNode } from 'react'
 
+import { fieldMappingsQueryKey } from '@/lib/i18n/fieldMappings'
 import { MatchHeaderCard, MatchNavigationBar } from './MatchHeader'
 import type { MatchViewHeader, MatchViewRank } from '@/lib/api/types'
+import { useSettingsDraftStore } from '@/stores/settingsDraftStore'
+import { useAppShellStore } from '@/stores/appShellStore'
 
 // Mocks shared
 vi.mock('@/lib/accessibility', () => ({
@@ -17,7 +21,13 @@ vi.mock('@/lib/accessibility/scales', () => ({
 }))
 
 vi.mock('@tanstack/react-router', () => ({
-  Link: ({ children }: { children: ReactNode }) => <a>{children}</a>,
+  // Le mock relaie les props : depuis que le lien de rejeu est icône seule, son nom
+  // accessible vit dans `aria-label` — et un <a> sans `href` n'a pas le rôle "link".
+  Link: ({ children, ...props }: { children: ReactNode; [key: string]: unknown }) => (
+    <a href="#" aria-label={props['aria-label'] as string | undefined} title={props.title as string | undefined}>
+      {children}
+    </a>
+  ),
   useNavigate: () => vi.fn(),
   useRouter: () => ({ history: { length: 1, back: vi.fn() }, navigate: vi.fn() }),
   useRouterState: () => undefined,
@@ -70,7 +80,7 @@ const baseHeader: MatchViewHeader = {
   start_time: undefined,
   start_time_label: 'Dim. 4 mai 2026 · 19h35',
   outcome_code: 2,
-  outcome_label: 'Victoire',
+  outcome: 'win',
   outcome_color: '#22c55e',
   outcome_color_token: 'outcome-win',
   score_label: '87 - 62',
@@ -100,8 +110,24 @@ const baseRank: MatchViewRank = {
   icon_url: '/static/ranks/halo_infinite/120px-HINF-CSR_Diamond1.png',
 }
 
+// LES MAPPINGS DU TITRE, POSÉS DANS LE CACHE (2026-09-07) : l'en-tête prend désormais son
+// mot d'issue via useOutcomeLabel (clé canonique servie par le backend, cf. header.outcome),
+// pas un texte reçu de l'API. useFieldMappings jette hors QueryClientProvider ; on sème donc
+// la réponse directement dans le cache sous la clé par défaut du store (halo_infinite/fr) —
+// la requête reste désactivée en test (isBootstrapped faux), et lit quand même la donnée.
 function renderWithQueryClient(node: ReactNode) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  qc.setQueryData(fieldMappingsQueryKey('halo_infinite', 'fr'), {
+    title_slug: 'halo_infinite',
+    schema_version: 1,
+    locale: 'fr',
+    fields: {},
+    outcomes: {
+      win: { label: 'Victoire', color_token: 'outcome.positive' },
+      loss: { label: 'Défaite', color_token: 'outcome.negative' },
+      tie: { label: 'Égalité', color_token: 'outcome.neutral' },
+    },
+  })
   return render(<QueryClientProvider client={qc}>{node}</QueryClientProvider>)
 }
 
@@ -129,9 +155,9 @@ describe('MatchHeaderCard', () => {
     expect(screen.getByText('▲ +34')).toBeInTheDocument()
     expect(screen.getByText('Performance')).toBeInTheDocument()
     expect(screen.getByText('Rang')).toBeInTheDocument()
-    // Action labels FR (boutons courts)
-    expect(screen.getByText('Copier ID')).toBeInTheDocument()
-    expect(screen.getByText('Exclure')).toBeInTheDocument()
+    // Actions FR : boutons icône seule, le libellé ne vit plus que dans l'aria-label.
+    expect(screen.getByRole('button', { name: 'Copier ID' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Exclure' })).toBeInTheDocument()
   })
 
   it('affiche les libellés EN quand locale=en', () => {
@@ -147,8 +173,8 @@ describe('MatchHeaderCard', () => {
     )
     expect(screen.getByText('Performance')).toBeInTheDocument()
     expect(screen.getByText('Rank')).toBeInTheDocument()
-    expect(screen.getByText('Copy ID')).toBeInTheDocument()
-    expect(screen.getByText('Exclude')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Copy ID' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Exclude' })).toBeInTheDocument()
   })
 
   it('affiche le fallback texte si map_image_url est null', () => {
@@ -235,7 +261,7 @@ describe('MatchHeaderCard', () => {
         locale="fr"
       />,
     )
-    expect(screen.getByText('Réactiver')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Réactiver' })).toBeInTheDocument()
   })
 
   it('rating_type=none : ne rend pas la section rang', () => {
@@ -358,6 +384,54 @@ describe('MatchHeaderCard', () => {
   })
 })
 
+describe('MatchHeaderCard — lien Halo Waypoint', () => {
+  function renderHeader(locale: 'fr' | 'en' = 'fr') {
+    return renderWithQueryClient(
+      <MatchHeaderCard
+        header={baseHeader}
+        rank={baseRank}
+        matchId="m1"
+        playerSlug="MonGT"
+        matchTitle="Slayer sur Aquarius"
+        locale={locale}
+      />,
+    )
+  }
+
+  it('pointe vers la page du match sur Waypoint, dans un nouvel onglet', () => {
+    renderHeader()
+    const link = screen.getByRole('link', { name: 'Voir sur Halo Waypoint' })
+    expect(link).toHaveAttribute(
+      'href',
+      'https://www.halowaypoint.com/halo-infinite/players/MonGT/matches/m1',
+    )
+    expect(link).toHaveAttribute('target', '_blank')
+    expect(link).toHaveAttribute('rel', 'noopener noreferrer')
+  })
+
+  it('libellé EN quand locale=en', () => {
+    renderHeader('en')
+    expect(screen.getByRole('link', { name: 'View on Halo Waypoint' })).toBeInTheDocument()
+  })
+
+  it('masqué quand le titre courant ne déclare pas waypoint_match_url', () => {
+    useAppShellStore.setState({
+      currentTitleSlug: 'test_title',
+      availableTitles: [
+        {
+          slug: 'test_title',
+          name: 'Test',
+          status: 'active',
+          capabilities: [],
+        } as never,
+      ],
+    })
+    renderHeader()
+    expect(screen.queryByRole('link', { name: /Halo Waypoint/i })).not.toBeInTheDocument()
+    useAppShellStore.setState({ currentTitleSlug: 'halo_infinite', availableTitles: [] })
+  })
+})
+
 // LOT 1.2/1.3 — PAS DE LIEN VERS UNE PAGE VIDE. La route de rejeu répond 404 quand
 // aucun artefact n'a été construit ; le lien n'apparaît donc QUE sur `replay_available`.
 describe('MatchHeaderCard — lien vers le rejeu 2D', () => {
@@ -376,23 +450,49 @@ describe('MatchHeaderCard — lien vers le rejeu 2D', () => {
 
   it("n'affiche AUCUN lien quand le match n'a pas d'artefact", () => {
     renderHeader({ ...baseHeader, replay_available: false }, 'fr')
-    expect(screen.queryByText('Rejeu 2D')).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: /rejeu 2D/i })).not.toBeInTheDocument()
   })
 
   it("n'affiche aucun lien quand le champ est absent (titre sans rejeu)", () => {
     renderHeader(baseHeader, 'fr')
-    expect(screen.queryByText('Rejeu 2D')).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: /rejeu 2D/i })).not.toBeInTheDocument()
   })
 
   it('affiche le lien FR quand l’artefact existe', () => {
     renderHeader({ ...baseHeader, replay_available: true }, 'fr')
-    expect(screen.getByText('Rejeu 2D')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /rejeu 2D/i })).toBeInTheDocument()
   })
 
   it('affiche le lien EN quand l’artefact existe', () => {
     renderHeader({ ...baseHeader, replay_available: true }, 'en')
-    expect(screen.getByText('2D replay')).toBeInTheDocument()
-    expect(screen.queryByText('Rejeu 2D')).not.toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /2D replay/i })).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: /rejeu 2D/i })).not.toBeInTheDocument()
+  })
+
+  // LE LOGO EST UN RASTER À DEUX VARIANTES (plan d'habillage 4.2) : un PNG ne se teinte pas
+  // en `currentColor` comme le SVG qu'il remplace, c'est donc le thème qui choisit le fichier.
+  function replayLogoSrc(container: HTMLElement): string | undefined {
+    const logo = Array.from(container.querySelectorAll('img')).find((img) =>
+      img.getAttribute('src')?.includes('/icons/replay-'),
+    )
+    return logo?.getAttribute('src') ?? undefined
+  }
+
+  it('porte le logo BLANC en thème sombre', () => {
+    useSettingsDraftStore.getState().setTheme('dark')
+    const { container } = renderHeader({ ...baseHeader, replay_available: true }, 'fr')
+    expect(replayLogoSrc(container)).toBe('/icons/replay-white.png')
+  })
+
+  it('porte le logo NOIR en thème clair', () => {
+    useSettingsDraftStore.getState().setTheme('light')
+    const { container } = renderHeader({ ...baseHeader, replay_available: true }, 'fr')
+    expect(replayLogoSrc(container)).toBe('/icons/replay-black.png')
+  })
+
+  it('ne porte aucun logo quand le match n’a pas d’artefact', () => {
+    const { container } = renderHeader({ ...baseHeader, replay_available: false }, 'fr')
+    expect(replayLogoSrc(container)).toBeUndefined()
   })
 })
 
@@ -609,5 +709,66 @@ describe('MatchNavigationBar', () => {
       <MatchNavigationBar playerSlug="MonGT" matchId="m1" locale="en" />,
     )
     expect(screen.getByText('Recent matches 1/5')).toBeInTheDocument()
+  })
+})
+
+// ─── Score en MANCHES ───────────────────────────────────────────────────────
+//
+// Sur un mode qui se décide aux manches, le score de l'API est un cumul de points qui peut
+// donner l'avantage au camp qui a PERDU (4 matchs Oddball du corpus mesuré le 2026-08-29).
+// L'en-tête affiche donc les manches, et relègue les points en second plan.
+describe('MatchHeaderCard — score en manches', () => {
+  function renderHeader(header: MatchViewHeader, locale: 'fr' | 'en' = 'fr') {
+    return renderWithQueryClient(
+      <MatchHeaderCard
+        header={header}
+        rank={baseRank}
+        matchId="m1"
+        playerSlug="MonGT"
+        matchTitle="Oddball sur Recharge"
+        locale={locale}
+      />,
+    )
+  }
+
+  const roundsHeader: MatchViewHeader = {
+    ...baseHeader,
+    // Témoin 293a763e : victoire 2 manches à 1 alors que les points disent 181-186.
+    score_label: '2 - 1',
+    score_kind: 'rounds',
+    score_points_label: '181 - 186',
+  }
+
+  it('affiche les manches en principal et les points de l’API en second plan', () => {
+    renderHeader(roundsHeader)
+    expect(screen.getByText('2 - 1')).toBeInTheDocument()
+    expect(screen.getByText('181 - 186 points')).toBeInTheDocument()
+  })
+
+  it('porte une aide qui explique la lecture en manches', () => {
+    renderHeader(roundsHeader)
+    expect(screen.getByRole('button', { name: /aide|info/i })).toBeInTheDocument()
+  })
+
+  it("n'ajoute NI aide NI second plan sur un mode en points", () => {
+    // Le libellé principal EST déjà le score de l'API : l'écrire deux fois n'apprend rien.
+    // L'AIDE est assérée absente elle aussi : sans cette ligne, retirer la garde
+    // `score_kind !== 'rounds'` afficherait l'infobulle « ce score compte des manches » sur
+    // TOUS les en-têtes, Slayer et CTF compris (constat de revue adversariale).
+    renderHeader({ ...baseHeader, score_kind: 'points' })
+    expect(screen.getByText('87 - 62')).toBeInTheDocument()
+    expect(screen.queryByText(/points$/)).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /aide|info/i })).not.toBeInTheDocument()
+  })
+
+  it('reste en points quand le serveur ne dit rien (ligne antérieure au backfill)', () => {
+    renderHeader(baseHeader)
+    expect(screen.getByText('87 - 62')).toBeInTheDocument()
+    expect(screen.queryByText(/points$/)).not.toBeInTheDocument()
+  })
+
+  it('traduit le second plan en anglais', () => {
+    renderHeader(roundsHeader, 'en')
+    expect(screen.getByText('181 - 186 points')).toBeInTheDocument()
   })
 })

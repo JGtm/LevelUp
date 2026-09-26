@@ -19,10 +19,14 @@
  * Reutilise pour Match View intra-match (1 point = 10s, smooth=true) et pour
  * Session/Periode (1 point = 1 match, smooth=false avec markers visibles).
  */
-import { useCallback } from 'react'
+import { useCallback, useMemo } from 'react'
 import type { EChartsCoreOption } from 'echarts/core'
 
 import { resolveToken } from '@/lib/accessibility'
+import { formatMessage } from '@/lib/i18n/format'
+import { commonManifest } from '@/lib/i18n/generated/common'
+import type { Locale } from '@/lib/i18n/locale'
+import { useAppShellStore } from '@/stores/appShellStore'
 
 import { ChartCard, type ChartSeries } from './ChartCard'
 import { CHART_BG, escapeHtml, getAxisBase, getEChartsThemeColors, getLegendBase, getTooltipBase } from './_utils'
@@ -69,7 +73,7 @@ export interface EngagementCurveProps {
   hideAttendu?: boolean
   /**
    * Libellés localisés des courbes. Fournis par le parent (qui a la locale)
-   * via le manifest engagement.trace.*. Défaut FR si absent.
+   * via le manifest engagement.trace.*. Défaut bilingue (manifest common.charts.engagement_trace_*) si absent.
    *   - team     : « Équipe réelle » (moyenne par joueur, joueur INCLUS)
    *   - expected : « Joueur attendu » (coef × pace lobby — réponse habituelle)
    *   - player   : « Joueur réel » (rythme observé du joueur)
@@ -80,7 +84,7 @@ export interface EngagementCurveProps {
   /**
    * Message affiché quand state === 'error'. On ne montre JAMAIS d'erreur brute
    * (« Error ») : un échec de chargement engagement est rendu comme un état vide
-   * neutre, conforme aux autres blocs Timeseries. Défaut FR si absent ; le parent
+   * neutre, conforme aux autres blocs Timeseries. Défaut bilingue (common.charts.engagement_error) si absent ; le parent
    * (qui a la locale) fournit la version localisée via le manifest.
    */
   errorMessage?: string
@@ -94,11 +98,19 @@ export interface EngagementSeriesLabels {
   lobby: string
 }
 
-const DEFAULT_SERIES_LABELS: EngagementSeriesLabels = {
-  team: 'Équipe réelle',
-  expected: 'Joueur attendu',
-  player: 'Joueur réel',
-  lobby: 'Partie',
+/**
+ * Libelles de repli des courbes, dans la locale du shell. Le parent localise passe
+ * normalement les siens (manifest `engagement.trace.*`) ; ces defauts existent pour les
+ * montages qui ne le font pas, et ils sont BILINGUES — un defaut FR en dur ici serait une
+ * string UI sans parite EN (CLAUDE.md n°1).
+ */
+function defaultSeriesLabels(locale: Locale): EngagementSeriesLabels {
+  return {
+    team: formatMessage(commonManifest, 'common.charts.engagement_trace_team', locale),
+    expected: formatMessage(commonManifest, 'common.charts.engagement_trace_expected', locale),
+    player: formatMessage(commonManifest, 'common.charts.engagement_trace_player', locale),
+    lobby: formatMessage(commonManifest, 'common.charts.engagement_trace_lobby', locale),
+  }
 }
 
 /**
@@ -115,9 +127,15 @@ export function EngagementCurve(props: EngagementCurveProps) {
     state = 'ready',
     height = 280,
     hideAttendu = false,
-    seriesLabels = DEFAULT_SERIES_LABELS,
+    seriesLabels: seriesLabelsProp,
     errorMessage,
   } = props
+
+  const locale = useAppShellStore((s) => s.locale)
+  const seriesLabels = useMemo(
+    () => seriesLabelsProp ?? defaultSeriesLabels(locale),
+    [seriesLabelsProp, locale],
+  )
 
   const buildOption = useCallback(
     (series: ChartSeries<EngagementPoint>[]): EChartsCoreOption => {
@@ -140,8 +158,8 @@ export function EngagementCurve(props: EngagementCurveProps) {
   // conforme aux autres blocs Timeseries. On ne passe PAS `error` à ChartCard
   // (qui rendrait son habillage d'erreur) — on dégrade en empty.
   const emptyMessage = isError
-    ? (errorMessage ?? 'Engagement momentanément indisponible')
-    : (subtitle ?? "Aucune donnée d'engagement pour ce match")
+    ? (errorMessage ?? formatMessage(commonManifest, 'common.charts.engagement_error', locale))
+    : (subtitle ?? formatMessage(commonManifest, 'common.charts.engagement_empty', locale))
 
   return (
     <ChartCard
@@ -162,9 +180,13 @@ export function EngagementCurve(props: EngagementCurveProps) {
 function buildEngagementOption(
   points: EngagementPoint[],
   granularity: 'intra' | 'session',
-  xFormatter?: (x: number) => string,
+  // `| undefined` plutot que `?` : un parametre REQUIS (`labels`) ne peut pas suivre un
+  // parametre optionnel — alors qu'il peut suivre un parametre a valeur par defaut.
+  xFormatter: ((x: number) => string) | undefined,
   hideAttendu = false,
-  labels: EngagementSeriesLabels = DEFAULT_SERIES_LABELS,
+  // Libelles TOUJOURS fournis par l'appelant (seul appelant : le composant ci-dessus, qui
+  // les resout dans la locale du shell). Pas de defaut ici : ce serait un litteral FR.
+  labels: EngagementSeriesLabels,
 ): EChartsCoreOption {
   if (points.length === 0) {
     return {} as EChartsCoreOption

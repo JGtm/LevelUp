@@ -217,9 +217,41 @@ type AdminResourcesResponse struct {
 	// (environnemental) d'un « aucune base » — sans lui, une racine erronée
 	// produit silencieusement une table de tailles nulles trompeuse.
 	DBInventoryStatus string `json:"db_inventory_status" enum:"ok,unavailable" doc:"ok = racine data lisible ; unavailable = racine data introuvable/illisible (RepoRoot mal résolu ou volume non monté)."`
+	// FilmFacts : ce que les FAITS PERSISTES PAR FILM occupent sur le disque, par titre
+	// (M4-D1, décision V17 du PLAN_DECODEUR_FILM). Vide tant qu'aucune cuisson n'en a écrit.
+	//
+	// POURQUOI CETTE LIGNE EXISTE. V17 tranche « on conserve TOUT » : aucun plafond, aucune
+	// purge par âge, et le cron de purge des artefacts ne touche ni les films ni les faits.
+	// Le contrepoids de cette décision est la PUBLICATION de la taille occupée — sans elle,
+	// un dossier qui grossit sans borne ne se découvre qu'au disque plein (incident VPS du
+	// 2026-07-13, cf. les seuils de `ops.DiskUsedWarnPercent`).
+	FilmFacts []ResourceFilmFacts `json:"film_facts,omitempty"`
+	// FilmFactsTotalBytes : le total des lignes ci-dessus, tous titres confondus.
+	FilmFactsTotalBytes int64 `json:"film_facts_total_bytes,omitempty"`
 	// Budgets / PoolStats : relecture des snapshots expvar existants (J1/J8).
 	Budgets   map[string]interface{} `json:"budgets,omitempty"`
 	PoolStats map[string]interface{} `json:"pool_stats,omitempty"`
+}
+
+// ResourceFilmFacts — l'inventaire des faits persistés d'un titre (M4-D1).
+//
+// LES DEUX HORODATAGES SONT LA MESURE UTILE, pas la décoration : « 1 200 fichiers, le plus
+// vieux d'il y a trois mois » et « 1 200 fichiers, tous d'hier » décrivent deux situations
+// opposées (un parc stable contre une recuisson en cours), et le nombre seul ne les distingue
+// pas.
+type ResourceFilmFacts struct {
+	// TitleSlug : le titre dont ce dossier porte les faits.
+	TitleSlug string `json:"title_slug"`
+	// Path : le dossier mesuré (`data/cache/film_facts/{slug}/`).
+	Path string `json:"path"`
+	// Files : nombre de fichiers de faits (extension `.filmfacts.bin` SEULE — un temporaire
+	// abandonné n'est pas un fait).
+	Files int `json:"files"`
+	// SizeBytes : leur taille totale.
+	SizeBytes int64 `json:"size_bytes"`
+	// OldestAt / NewestAt : RFC3339 UTC, vides quand le dossier est vide ou absent.
+	OldestAt string `json:"oldest_at,omitempty"`
+	NewestAt string `json:"newest_at,omitempty"`
 }
 
 // MonitoringServerInfo : identité du process serveur (overview).
@@ -369,11 +401,14 @@ type MonitoringInvariantsSummary struct {
 
 // ConvergenceTotalsSinceBoot : cumuls process-wide du travail RATTRAPÉ par la
 // convergence (compteurs expvar — perdus au restart, comme l'historique).
+//
+// WeaponsProcessed RETIRÉ le 2026-09-01 : son compteur expvar était posé par l'étape 1.55,
+// supprimée avec son producteur (lot arme-source-unique). Le travail de film se compte
+// désormais sur l'étape 1.57 (`killsource_matchs_collectes`).
 type ConvergenceTotalsSinceBoot struct {
-	EventsProcessed  int64 `json:"events_processed"`
-	WeaponsProcessed int64 `json:"weapons_processed"`
-	PSAProcessed     int64 `json:"psa_processed"`
-	AliasesUpserted  int64 `json:"aliases_upserted"`
+	EventsProcessed int64 `json:"events_processed"`
+	PSAProcessed    int64 `json:"psa_processed"`
+	AliasesUpserted int64 `json:"aliases_upserted"`
 }
 
 // AdminConvergenceReport est la réponse de GET /admin/monitoring/convergence :
@@ -382,7 +417,7 @@ type ConvergenceTotalsSinceBoot struct {
 type AdminConvergenceReport struct {
 	TitleSlug   string `json:"title_slug"`
 	GeneratedAt string `json:"generated_at"` // RFC3339
-	// Horizon : borne de sélection par cycle — missing_psa/events/weapons sont
+	// Horizon : borne de sélection par cycle — missing_psa/events sont
 	// PLAFONNÉS à cette valeur (afficher « N+ » quand count == horizon).
 	Horizon         int                        `json:"horizon"`
 	Players         []PlayerConvergenceReport  `json:"players"`
@@ -449,32 +484,13 @@ type PlayerConvergenceReport struct {
 	Gamertag   string `json:"gamertag"`
 	XUID       string `json:"xuid"`
 	// MissingEnrichment : matchs en shared sans row player_match_enrichment
-	// (non plafonné). Les 3 suivants sont plafonnés à Horizon.
+	// (non plafonné). Les 2 suivants sont plafonnés à Horizon.
+	//
+	// MissingWeapons RETIRÉ le 2026-09-01 : il comptait le retard de l'étape 1.55,
+	// supprimée. Le retard de film est global (étape 1.57), pas par joueur.
 	MissingEnrichment int `json:"missing_enrichment"`
 	MissingPSA        int `json:"missing_psa"`
 	MissingEvents     int `json:"missing_events"`
-	MissingWeapons    int `json:"missing_weapons"`
 	// CheckError non vide = DBs irrésolvables pour ce joueur (compteurs à 0).
 	CheckError string `json:"check_error,omitempty"`
-}
-
-// AdminErrorStats — agrégat des logs WARN/ERROR depuis le boot (collecteur
-// mémoire observability, panneau « erreurs récurrentes »). Zéro I/O, perdu au
-// reboot (comme l'historique des cycles).
-type AdminErrorStats struct {
-	GeneratedAt string             `json:"generated_at"`
-	Buckets     []AdminErrorBucket `json:"buckets"`
-}
-
-// AdminErrorBucket — une erreur agrégée par (niveau, message). Count = nombre
-// d'occurrences ; LastDetail = dernier échantillon de l'attribut « err ».
-type AdminErrorBucket struct {
-	Title      string `json:"title,omitempty"` // MT-05 : "" pour Halo (byte-identique)
-	Level      string `json:"level"`
-	Module     string `json:"module,omitempty"`
-	Message    string `json:"message"`
-	Count      int64  `json:"count"`
-	FirstSeen  string `json:"first_seen"`
-	LastSeen   string `json:"last_seen"`
-	LastDetail string `json:"last_detail,omitempty"`
 }

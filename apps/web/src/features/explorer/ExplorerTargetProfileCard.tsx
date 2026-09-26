@@ -9,6 +9,18 @@
  *  - ExplorerTargetCareerStats (si career_stats dispo)
  *  - ExplorerTargetSampleStats (si sample_stats dispo et sample_size > 0)
  *
+ * « Top médailles » ne vit PAS ici : depuis le 2026-09-21 le bloc est rendu dans
+ * « Profil de combat » (ExplorerCombatProfile), où il suit le switch En direct / Local.
+ *
+ * Section « Sur N matchs joués ensemble » : rangée de KPI puis TROIS rangées de 3
+ * colonnes (2026-09-17) —
+ *   1. Répartition des frags (2/3) | Cadence (1/3)
+ *   2. Donuts de taux de victoire (1/3) | Écart de frags cumulé (2/3)
+ *   3. Répartition des résultats | Part des assistances | Portée des frags (trois colonnes
+ *      de même hauteur)
+ * Dans les rangées 1 et 2, la colonne gauche impose la hauteur et le bloc de droite
+ * s'étire ; la rangée 3 a trois colonnes égales qui s'étirent toutes.
+ *
  * Cas no-tokens (auth_available=false) :
  *  - Identity locale toujours résolue (indépendante des tokens)
  *  - CareerStats masquée + hint "Connexion Halo requise"
@@ -18,13 +30,14 @@ import { useAppShellStore } from '@/stores/appShellStore'
 import { useCapability } from '@/lib/capabilities/capabilities'
 import { formatMessage } from '@/lib/i18n/format'
 import { explorerManifest, type ExplorerManifestKey } from '@/lib/i18n/generated/explorer'
-import type { ExplorerEncounterStats, ExplorerTargetProfile } from '@/lib/api/types'
+import type { ExplorerCommonMatchRow, ExplorerEncounterStats, ExplorerTargetProfile } from '@/lib/api/types'
 import { ExplorerTargetIdentityBanner } from './ExplorerTargetIdentityBanner'
 import { ExplorerTargetCareerStats } from './ExplorerTargetCareerStats'
 import { ExplorerTargetSampleStats, ExplorerTargetSampleKpis, ExplorerTargetOutcome } from './ExplorerTargetSampleStats'
 import { ExplorerTargetCadence } from './ExplorerTargetCadence'
 import { ExplorerTargetVersusDonuts } from './ExplorerTargetVersusDonuts'
-import { ExplorerTargetMedals } from './ExplorerTargetMedals'
+import { ExplorerTargetAssists } from './ExplorerTargetAssists'
+import { ExplorerTargetFragRange } from './ExplorerTargetFragRange'
 import { ExplorerTargetSeasonCSR } from './ExplorerTargetSeasonCSR'
 import { ExplorerTargetSeasonMatches } from './ExplorerTargetSeasonMatches'
 import { ExplorerLiveStatusBadge } from './ExplorerLiveStatusBadge'
@@ -36,9 +49,12 @@ interface ExplorerTargetProfileCardProps {
    *  alimente les donuts + la courbe rendus en fin de section « matchs joués
    *  ensemble ». Optionnel : sans lui, cette dernière rangée n'est pas rendue. */
   encounterStats?: ExplorerEncounterStats | null
+  /** Matchs communs (récent→ancien) : l'ORDRE des résultats de la bande de « Répartition
+   *  des résultats ». Absent → la carte rend la barre et le taux sans la bande. */
+  commonMatches?: ExplorerCommonMatchRow[] | null
 }
 
-export function ExplorerTargetProfileCard({ profile, gamertag, encounterStats }: ExplorerTargetProfileCardProps) {
+export function ExplorerTargetProfileCard({ profile, gamertag, encounterStats, commonMatches }: ExplorerTargetProfileCardProps) {
   const appLocale = useAppShellStore((s) => s.locale)
   // Classements CSR = surface "ranked" : masquée pour un titre sans rang
   // (fail-open mono-titre, NO-OP halo_infinite qui déclare 'ranked').
@@ -49,14 +65,10 @@ export function ExplorerTargetProfileCard({ profile, gamertag, encounterStats }:
   const identity = profile.identity ?? null
   const careerStats = profile.career_stats ?? null
   const sampleStats = profile.sample_stats ?? null
-  const topMedals = profile.top_medals ?? []
   const seasonCSRs = profile.season_csrs ?? []
   const matchesPerSeason = profile.matches_per_season ?? []
   const showNoAuthHint = !profile.auth_available && careerStats == null
   const showSample = sampleStats != null && sampleStats.sample_size > 0
-  // Top médailles rendu à côté du donut "Répartition des modes" (ExplorerCombatProfile)
-  // quand un profil de combat existe ; sinon repli ici pour ne jamais les perdre.
-  const hasCombatProfile = (profile.combat_profile?.length ?? 0) > 0
   // Statuts par section live (Lot A3 — fin de la dégradation muette). Champ
   // optionnel côté type (fixtures/tests antérieurs) : undefined → aucun badge
   // (ExplorerLiveStatusBadge est nil-safe).
@@ -126,11 +138,6 @@ export function ExplorerTargetProfileCard({ profile, gamertag, encounterStats }:
         </div>
       </div>
 
-      {/* Top médailles : repli ici uniquement si pas de profil de combat (sinon
-          rendu à côté du donut Répartition des modes, cf. ExplorerCombatProfile).
-          Vide sans raison distincte à afficher : le badge de la section Carrière
-          ci-dessus couvre déjà ce cas (même fetch, cf. commentaire showCareerSection). */}
-      {topMedals.length > 0 && !hasCombatProfile && <ExplorerTargetMedals medals={topMedals} />}
 
       {showNoAuthHint && (
         <div
@@ -155,7 +162,9 @@ export function ExplorerTargetProfileCard({ profile, gamertag, encounterStats }:
       )}
 
       {/* "Sur N matchs joués ensemble" : titre en en-tête de section hors bloc
-          (style "Profil de combat"), puis stats (2/3) + Cadence (1/3) à droite. */}
+          (style "Profil de combat"), rangée de KPI, puis TROIS rangées en grille de 3
+          colonnes — frags + cadence, donuts + écart de frags cumulé, résultats +
+          assistances + portée. */}
       {showSample && sampleStats && (
         <section className="space-y-3">
           <header>
@@ -165,21 +174,34 @@ export function ExplorerTargetProfileCard({ profile, gamertag, encounterStats }:
           </header>
           {/* Rangée de KPI cards sous le titre (parité "Carrière complète"). */}
           <ExplorerTargetSampleKpis sampleStats={sampleStats} />
+
+          {/* Rangée 1 : « Répartition des frags » (2/3, seule dans sa colonne) +
+              Cadence (1/3). La colonne gauche impose la hauteur, la cadence s'y adapte. */}
           <div className="grid gap-4 lg:grid-cols-3">
-            {/* Colonne gauche (2/3) : donut "Répartition des frags" + bilan V/N/D empilés. */}
-            <div className="flex flex-col gap-4 lg:col-span-2">
+            <div className="lg:col-span-2">
               <ExplorerTargetSampleStats sampleStats={sampleStats} />
-              <ExplorerTargetOutcome sampleStats={sampleStats} />
             </div>
             <div className="lg:col-span-1">
               <ExplorerTargetCadence sampleStats={sampleStats} />
             </div>
           </div>
 
-          {/* En DERNIER : donuts « taux de victoires ensemble / face à lui »
-              (repère = moyenne perso historique) + écart de frags cumulé. Briques
-              réutilisées du hub Relations. Rendu seulement si encounter_stats fourni. */}
+          {/* Rangée 2 : donuts « taux de victoires ensemble / face à lui » (repère =
+              moyenne perso historique, 1/3) + écart de frags cumulé (2/3). Briques
+              réutilisées du hub Relations. Rendue seulement si encounter_stats fourni. */}
           {encounterStats && <ExplorerTargetVersusDonuts encounterStats={encounterStats} />}
+
+          {/* Rangée 3 : « Répartition des résultats », « Part des assistances » et
+              « Portée des frags », TROIS COLONNES DE MÊME HAUTEUR (retour utilisateur du
+              2026-09-19). Les deux premières étaient empilées dans une colonne de 55 % et
+              la portée s'étirait seule à côté : la rangée montrait trois blocs de trois
+              hauteurs différentes. `items-stretch` égalise les colonnes, et chaque carte
+              porte `h-full` pour remplir la sienne. */}
+          <div className="grid items-stretch gap-4 lg:grid-cols-3">
+            <ExplorerTargetOutcome sampleStats={sampleStats} commonMatches={commonMatches} />
+            <ExplorerTargetAssists encounterStats={encounterStats} />
+            <ExplorerTargetFragRange encounterStats={encounterStats} gamertag={gamertag} />
+          </div>
         </section>
       )}
     </div>

@@ -26,6 +26,7 @@ import { TokenHealthSection } from '../sections/TokenHealthSection'
 import { SyncPlayersTable } from './SyncPlayersTable'
 import { SyncCycleHistory } from './SyncCycleHistory'
 import { AdminJobsTable } from './AdminJobsTable'
+import { BuildQueueSection } from './BuildQueueSection'
 import { WatcherSection } from './WatcherSection'
 import { ApiHaloSection } from './ApiHaloSection'
 import { AdminSyncSettingsSection } from './AdminSyncSettingsSection'
@@ -107,6 +108,11 @@ export function AdminSyncPage() {
         <SectionHeader title={tA('admin.jobs.section')} />
         <AdminJobsTable jobs={jobsQuery.data?.jobs ?? []} />
       </section>
+
+      {/* Le travail DÉLÉGUÉ, juste sous le travail que ce serveur fait lui-même :
+          file persistante, reprise après redémarrage, ouvriers éventuellement
+          distants. Deux natures, deux tableaux (cf. BuildQueueSection). */}
+      <BuildQueueSection />
     </div>
   )
 }

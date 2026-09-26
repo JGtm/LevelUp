@@ -57,12 +57,31 @@ type EnrichmentRow struct {
 }
 
 // HighlightEventInsert — row pour shared.highlight_events.
+//
+// DEUX COLONNES, TROIS CHAMPS — la table porte `type_hint INTEGER` et
+// `raw_json VARCHAR`, et le croisement historique des deux vaut d'être écrit :
+//
+//   - TypeHint : le canal NUMÉRIQUE canonique. Halo Infinite y met l'octet
+//     `type_hint` du bloc event du film (highlightevent.HighlightEvent.TypeHint), qui
+//     dit la nature de l'event (50 kill, 20 mort, 10 mode, poids de médaille).
+//   - DetailsJSON : le canal numérique HÉRITÉ, au nom trompeur. Halo 5 y met
+//     l'identifiant de médaille sous forme de chaîne, et le persister le verse
+//     dans `type_hint` — pas dans `raw_json` (games/halo_5/ingest/medals.go).
+//     Le nom du champ est une séquelle ; sa cible, elle, est bien `type_hint`.
+//   - RawJSON : le document `raw_json` lui-même. Sur un event `medal` Halo
+//     Infinite il porte `{"medal_name":"..."}` — l'identité que le fil des
+//     éliminations lit (platform/duckdb.medalNameFromRawJSON).
+//
+// Un row ne renseigne JAMAIS TypeHint ET DetailsJSON : ils visent la même
+// colonne. En cas de conflit TypeHint l'emporte (persist.valeurTypeHint).
 type HighlightEventInsert struct {
 	MatchID     string  `json:"match_id"`
 	XUID        *string `json:"xuid,omitempty"`
 	EventType   string  `json:"event_type"`
 	TimeMS      int     `json:"time_ms"`
+	TypeHint    *int    `json:"type_hint,omitempty"`
 	DetailsJSON *string `json:"details_json,omitempty"`
+	RawJSON     *string `json:"raw_json,omitempty"`
 }
 
 // WeaponKillInsert — row pour shared.weapon_kills.
@@ -97,6 +116,27 @@ type WeaponAccuracyInsert struct {
 	ShotsFired  int    `json:"shots_fired"`
 	ShotsLanded int    `json:"shots_landed"`
 	Drops       int    `json:"drops"` // nb de WeaponDrop avec tirs agrégés (usage de l'arme)
+}
+
+// WeaponHitDistanceRow — UNE arme d un joueur, et l histogramme des distances tireur<->victime
+// de ses touches (numerateur film Infinite, Lot 3). Grain `match x xuid x weapon_id`, pendant
+// distance de weapon_accuracy. dist_bucket_json = les comptes par tranche (bornes
+// grammar.WeaponHitDistanceEdges) serialises ; dist_n = effectif (touches dont LES DEUX positions
+// se sont resolues). Le lecteur tranche la publiabilite sur dist_n (>= WeaponHitsMinShots).
+type WeaponHitDistanceRow struct {
+	XUID           string `json:"xuid"`
+	WeaponID       uint64 `json:"weapon_id"`
+	DistBucketJSON string `json:"dist_bucket_json"`
+	DistN          int    `json:"dist_n"`
+}
+
+// WeaponHitDistanceBatch — LE RESULTAT D UNE PASSE DE DECODAGE d un film, cote distance des
+// touches. Unite de production = le MATCH ENTIER (comme WeaponShotsBatch) : la vue
+// `match_weapon_hit_distance_latest` retient une generation entiere par `decode_pass`.
+type WeaponHitDistanceBatch struct {
+	MatchID    string                 `json:"match_id"`
+	DecoderRev string                 `json:"decoder_rev"`
+	Rows       []WeaponHitDistanceRow `json:"rows,omitempty"`
 }
 
 // KillerVictimInsert — row pour shared.killer_victim_pairs (forme **par-kill**,
@@ -134,6 +174,32 @@ type KillPositionInsert struct {
 	VictimZ    *float64 `json:"victim_z,omitempty"`
 }
 
+// KillOpeningInsert — row pour shared.kill_openings : les positions monde des deux
+// joueurs UN TEMPS-POUR-TUER AVANT le coup fatal (proxy d'entame, D5 du plan
+// .ai/PLAN_DUELS_PORTEE_2026-09-06.md, validé le 2026-09-06 à 1,24 m d'écart médian).
+//
+// MÊME FORME QUE KillPositionInsert, ET POURTANT UN TYPE DISTINCT : les deux rows
+// ne visent pas la même table et ne portent PAS la même mesure. Un type partagé
+// laisserait passer, sans que rien ne rougisse, une passe d'entames écrite dans
+// kill_positions — c'est-à-dire des positions fausses de 1,5 s présentées comme
+// celles du coup fatal.
+//
+// TimeMS EST L'INSTANT DU KILL, pas l'instant mesuré : c'est la clé du frag, celle
+// par laquelle match_kill_events se joint. Les six coordonnées, elles, sont prises
+// à `TimeMS - replay.OpeningLeadMS`. Coordonnées nullables, même raison que sa
+// sœur : un seul des deux joueurs peut être localisable à cet instant.
+type KillOpeningInsert struct {
+	MatchID    string   `json:"match_id"`
+	KillerXUID string   `json:"killer_xuid"`
+	TimeMS     int      `json:"time_ms"`
+	KillerX    *float64 `json:"killer_x,omitempty"`
+	KillerY    *float64 `json:"killer_y,omitempty"`
+	KillerZ    *float64 `json:"killer_z,omitempty"`
+	VictimX    *float64 `json:"victim_x,omitempty"`
+	VictimY    *float64 `json:"victim_y,omitempty"`
+	VictimZ    *float64 `json:"victim_z,omitempty"`
+}
+
 // XUIDAliasInsert — row pour shared.xuid_aliases.
 type XUIDAliasInsert struct {
 	XUID     string    `json:"xuid"`
@@ -147,7 +213,7 @@ type XUIDAliasInsert struct {
 //
 // ART-SAFETY : INSERT OR IGNORE sur la clé naturelle non-mutée
 // (match_id, xuid, commendation_id) — jamais d'UPDATE sur Count, aucun index
-// secondaire sur une colonne mutée (cf. campagne ART #23046). CommendationID est
+// secondaire sur une colonne mutée (cf. campagne ART #23645). CommendationID est
 // l'UUID natif de commendation (clé naturelle, jamais résolu en numérique côté h5).
 type CommendationInsert struct {
 	MatchID        string `json:"match_id"`

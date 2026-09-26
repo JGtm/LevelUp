@@ -109,7 +109,7 @@ const (
 	// DU DÉGÂT FATAL (lue dans le dead-state de la victime). Gouverne le
 	// collecteur `internal/sync` qui remplit `shared.match_kill_events`.
 	//
-	// Halo Infinite : supported (décodeur `games/halo_infinite/film/killsource`).
+	// Halo Infinite : supported (décodeur `games/halo_infinite/film/internal/facts/killsource`).
 	// Halo 5 : ABSENTE — son format de film est différent ET ses mécaniques de
 	// kill sont natives dans le carnage (CapNativeKillMechanics), donc il n'a
 	// aucun besoin d'un décodeur de film pour la même information.
@@ -141,6 +141,150 @@ const (
 	// documentation : il inverse l'ordre MA40/Sidekick). Un titre peut donc avoir
 	// celle-ci sans celle-là — c'est exactement pourquoi ce sont deux clés.
 	CapFilmWeaponShots CapabilityKey = "film.weapon_shots"
+
+	// CapFilmKillPositions — les COORDONNÉES MONDE tueur/victime par kill, décodées du
+	// MÊME film que le kill enrichi (`shared.kill_positions`, grain kill, jointes par
+	// (match_id, killer_xuid, time_ms)). Troisième famille de données du film, distincte
+	// du kill enrichi ET des tirs par arme : elle sort de la MÊME passe de décodage
+	// (`sync/killcollector`, G.2bis) mais répond à une troisième question (OÙ, pas QUI
+	// ni QUOI), et elle a ses propres réserves — plancher de couverture mesuré 75,8 %
+	// (36 artefacts, 1 994 couples), tolérance 120 ms, positions absentes JAMAIS
+	// approchées (règle de prudence, cf. games/halo_infinite/film/replay/killpos.go).
+	//
+	// Halo Infinite : supported (décodeur du film + catalogue de bornes de
+	// déquantification par carte, 79 cartes). Halo 5 : ABSENTE — ses positions sont
+	// NATIVES dans le carnage (KillerWorldLocation/VictimWorldLocation, cf.
+	// `match.events.spatial` = supported, `games/halo_5/ingest/positions.go`) : il n'a
+	// aucun besoin d'un décodeur de film pour la même donnée.
+	//
+	// ⚠ Clé FINE, même doctrine que `film.kill_source`/`film.weapon_shots` : ne pas
+	// l'élargir pour couvrir un autre axe du film. ⚠ CETTE CLÉ GOUVERNE LA CAPTURE
+	// (l'écriture), PAS LA LECTURE : la lecture canonique (`match.events.spatial`) reste
+	// `not_exposed` pour Infinite tant qu'aucun consommateur ne lit `kill_positions`
+	// pour ce titre (G.3, hors périmètre G.2bis) — les deux clés répondent à des
+	// questions différentes, comme `film.weapon_shots` (stockage) et
+	// `match.weapon.accuracy` (publication) le font déjà.
+	CapFilmKillPositions CapabilityKey = "film.kill_positions"
+
+	// CapFilmUsageSummary — le titre produit, PAR MATCH et PAR JOUEUR, le RÉSUMÉ D'USAGE
+	// dérivé de l'artefact de rejeu (tractions de grappin, épisodes de camouflage et de
+	// surbouclier, poses d'équipement, objets lâchés, prises de socle d'arme et de bonus),
+	// persisté EN BASE au sync (décision utilisateur du 2026-09-04, voie sidecar abandonnée)
+	// pour qu'une page d'agrégat (Sessions) le lise sans ouvrir les artefacts (1,8 Mo pièce).
+	//
+	// Halo Infinite : supported (dérivé de l'artefact qui vient d'être écrit, même étape
+	// post-sync que replaybuild — jamais de second décodage de film). Halo 5 : ABSENTE —
+	// pas de décodeur de film, donc aucun artefact, donc rien à résumer. Un titre qui ne
+	// la déclare pas ne produit AUCUNE ligne, et c'est un silence propre, pas une
+	// dégradation.
+	//
+	// ⚠ Clé FINE, même doctrine que les trois `film.*` ci-dessus : elle gouverne la
+	// PRODUCTION du résumé, pas ce qu'une page en affiche. Ne pas l'élargir pour couvrir
+	// un autre dérivé du film.
+	CapFilmUsageSummary CapabilityKey = "film.usage_summary"
+
+	// CapFilmBombStats — le titre produit, PAR MATCH et PAR JOUEUR, LES CINQ STATISTIQUES
+	// D'OBJECTIF DE L'ASSAUT reconstruites du film (`bomb_detonations`, `bomb_arms`,
+	// `bomb_grabs`, `time_as_bomb_carrier_seconds`, `bomb_carriers_killed`), persistées dans
+	// `shared.match_bomb_stats` (append-only + vue `_latest`).
+	//
+	// POURQUOI UNE CLÉ NEUVE PLUTÔT QUE `match.objective.stats`. Cette dernière gouverne le
+	// JOIN sur `match_objective_stats`, table alimentée par le SYNC API — et l'API 343 ne
+	// publie AUCUNE statistique d'objectif pour l'Assaut (la famille `BombStats` du moteur est
+	// de la télémétrie Bond, jamais répliquée : mesure du 2026-09-04, cause unique du silence
+	// des deux côtés). Ces chiffres-là viennent du DÉCODEUR DE FILM, et la convention du dépôt
+	// préfixe `film.*` tout ce qui en vient.
+	//
+	// Halo Infinite : supported (dérivé de l'artefact qui vient d'être cuit, même étape
+	// post-sync que `film.usage_summary` — jamais de second décodage). Halo 5 : ABSENTE — pas
+	// de décodeur de film, donc aucun artefact, donc rien à reconstruire. Un titre qui ne la
+	// déclare pas ne produit AUCUNE ligne et n'expose AUCUNE colonne : silence propre.
+	//
+	// ⚠ Clé FINE, même doctrine que les quatre `film.*` ci-dessus : elle gouverne la PRODUCTION
+	// et l'EXPOSITION de ces cinq statistiques, rien d'autre du mode Assaut. Ne pas l'élargir.
+	CapFilmBombStats CapabilityKey = "film.bomb_stats"
+
+	// CapFilmFlagGrabsNet — le titre produit, PAR MATCH et PAR JOUEUR, LES PRISES DE DRAPEAU
+	// BRUTES ET NETTES lues du calque de drapeau de l'artefact, persistées dans
+	// `shared.match_flag_grabs_net` (append-only + vue `_latest`).
+	//
+	// CE QUE « NETTE » VEUT DIRE : le compteur officiel `flag_grabs` compte chaque ramassage,
+	// donc aussi le JONGLAGE — un porteur qui lance le drapeau devant lui pour courir plus
+	// vite et le reprend une seconde plus tard gagne une prise à chaque aller-retour. Les
+	// prises nettes replient ces allers-retours (`objectives.NetFlagGrabs`) ; la mesure
+	// du 2026-09-13 chiffre l'écart à 40 % du compteur officiel.
+	//
+	// POURQUOI UNE CLÉ NEUVE PLUTÔT QUE `match.objective.stats`. Même raison que
+	// `film.bomb_stats` ci-dessus : cette dernière gouverne le JOIN sur
+	// `match_objective_stats`, table alimentée par le SYNC API. La grandeur nette, elle, ne
+	// peut PAS venir de l'API — celle-ci ne publie qu'un total, sans la chronologie de
+	// portage qui seule permet de reconnaître un jonglage. Elle vient du film, et la
+	// convention du dépôt préfixe `film.*` tout ce qui en vient.
+	//
+	// ⚠ LA CAPABILITY NE SUFFIT PAS : le titre doit AUSSI déclarer sa fenêtre de jonglage
+	// (`regulation.toml`, `[flag_grabs_net] flag_juggle_window_s`). Les deux disent deux
+	// choses différentes — « je sais lire ce calque » et « voici ma règle » —, et l'absence
+	// de l'une ou l'autre donne le même silence propre : aucune ligne, grandeur non mesurée.
+	//
+	// Halo Infinite : supported. Halo 5 : ABSENTE — pas de décodeur de film, donc aucun
+	// artefact, donc aucun calque de drapeau à lire.
+	//
+	// ⚠ Clé FINE, même doctrine que les cinq `film.*` ci-dessus : elle gouverne la PRODUCTION
+	// et l'EXPOSITION de cette grandeur, rien d'autre du mode CTF. Ne pas l'élargir.
+	CapFilmFlagGrabsNet CapabilityKey = "film.flag_grabs_net"
+
+	// CapFilmWeaponTiers — le titre produit, PAR MATCH et PAR JOUEUR, LES PRISES DE SOCLE
+	// VENTILEES PAR NIVEAU D'ARME (base / terrain / puissance / non classé / bonus), lues de
+	// l'artefact rangé et persistées dans `shared.match_pad_pickups_by_tier` (append-only +
+	// vue `_latest`).
+	//
+	// CE QUE « NIVEAU » VEUT DIRE, et d'où il vient : la nature de l'EMPLACEMENT que le
+	// fichier de carte pose (râtelier ou socle de puissance, référence `map_weapon_pads.json`
+	// croisée au socle du match à moins d'un mètre), plus l'équipement de DÉPART du film pour
+	// le niveau « base ». JAMAIS le nom ni le rôle de l'arme : mesure du 2026-09-14 — 70
+	// socles sur 669 portent une arme de rôle « lourd » sur un râtelier, toutes nominales.
+	//
+	// POURQUOI UNE CLÉ NEUVE PLUTÔT QUE `film.usage_summary`. Cette dernière gouverne le
+	// résumé d'usage, qui compte les prises PAR ARME et a donc perdu l'identité du socle. Le
+	// niveau ne s'en déduit pas : il lui faut la position du socle et la référence de la
+	// carte. La grandeur est produite par une passe DISTINCTE, sur le même artefact, et
+	// s'arme donc séparément.
+	//
+	// ⚠ LA CAPABILITY NE SUFFIT PAS : le titre doit AUSSI déclarer les modes à départs
+	// aléatoires (`regulation.toml`, `[weapon_tiers] random_start_mode_tokens`). Les deux
+	// disent deux choses différentes — « je sais lire ces socles » et « voici mes modes sans
+	// arme de base » —, mais ici l'absence de la seconde n'éteint RIEN : elle fait seulement
+	// que plus aucun mode n'est tenu pour aléatoire. C'est la différence avec
+	// `film.flag_grabs_net`, dont la fenêtre est indispensable au calcul.
+	//
+	// Halo Infinite : supported. Halo 5 : ABSENTE — pas de décodeur de film, donc aucun
+	// artefact, donc aucun socle à croiser.
+	//
+	// ⚠ Clé FINE, même doctrine que les six `film.*` ci-dessus : elle gouverne la PRODUCTION
+	// et l'EXPOSITION de cette ventilation, rien d'autre des socles. Ne pas l'élargir.
+	CapFilmWeaponTiers CapabilityKey = "film.weapon_tiers"
+
+	// CapFilmReplayArtifact — le titre produit L'ARTEFACT DE REJEU 2D lui-même
+	// (`data/cache/replays/{slug}/{match}.json`) : trame de positions, kill-feed recalé,
+	// score, roster, calques d'objectif. C'est la SOURCE dont les quatre dérivés du film
+	// (`film.usage_summary`, `film.bomb_stats`, la timeline d'objectif et les positions
+	// keyframe servies à la Match View) sont les projections.
+	//
+	// Halo Infinite : supported (décodeur `games/halo_infinite/film/internal/grammar` + `replaybuild`). Halo 5 :
+	// not_exposed — autre format de film, aucun décodeur, donc aucun artefact possible.
+	//
+	// ⚠ ELLE GOUVERNE LA PRODUCTION, ET L'AFFICHAGE SUIT (décision utilisateur du
+	// 2026-09-05, registre `.ai/AUDIT_V75_DEPUIS_V7.3.0_2026-09-05.md` D1/D2/D3) : sans la
+	// clé, l'étape post-sync `sync/replayartifacts` ne met RIEN en file et ne cuit RIEN, et
+	// les deux loaders du film de la Match View (`/objective-events`, `/positions`) ne sont
+	// pas câblés — les routes rendent alors un 503 `capability_not_supported` au lieu d'un
+	// 200 `[]` qui laissait croire à un match sans données. La PORTE D'AFFICHAGE de la page
+	// de rejeu, elle, est la capability title-level `replay` (domain/title/registry.go) :
+	// même règle que `match.objective.stats` (données) / `objective_stats` (UI).
+	//
+	// ⚠ Clé FINE, même doctrine que les cinq `film.*` ci-dessus : elle gouverne l'ARTEFACT,
+	// pas ce que tel ou tel dérivé en tire — chacun garde la sienne. Ne pas l'élargir.
+	CapFilmReplayArtifact CapabilityKey = "film.replay_artifact"
 )
 
 // CapabilityMap décrit l'état des capabilities produit d'un adapter à un instant T.
@@ -261,9 +405,40 @@ type TitleAssetURLAdapter interface {
 	// CSRRankImageURLOnyx retourne l'URL du badge Onyx (sans sub-tier).
 	CSRRankImageURLOnyx() string
 
-	// WeaponImageURL retourne l'URL de l'image d'une arme à partir de son
-	// nom EN officiel (ex. "BR75", "Energy Sword"). Retourne "" si non reconnu.
-	WeaponImageURL(nameEN string) string
+	// WeaponImageURL retourne l'URL de l'icône d'une arme à partir de son
+	// identifiant natif (weapon_id du titre). Retourne "" si l'arme n'a pas
+	// d'icône : le produit doit alors se replier sur le libellé, jamais sur
+	// l'icône d'une autre arme.
+	//
+	// L'identifiant, et pas le nom : un nom d'arme est un LIBELLÉ, il diverge
+	// entre les tables qui le portent (« Mk51 Sidekick » vs « Mk50 Sidekick »)
+	// et une résolution keyée dessus casse en silence à la première correction
+	// de traduction. Chaque titre décide de la sous-clé pertinente pour lui.
+	WeaponImageURL(weaponID int64) string
+
+	// WeaponImageIsTinted dit si l'icône de cette arme est un MASQUE — un dessin
+	// porté par l'alpha, sans couleur propre — que le produit doit teinter, ou
+	// une image finie à afficher telle quelle.
+	//
+	// Le produit ne peut pas le deviner : afficher un masque tel quel le rend
+	// invisible sur fond clair, et teinter une image finie l'aplatit en
+	// silhouette. Seul l'adapter du titre sait ce qu'il sert.
+	WeaponImageIsTinted(weaponID int64) bool
+
+	// KillSourceIcon retourne l'icône de la SOURCE DE DÉGÂT d'une mort, à partir de
+	// l'identifiant d'effet que le décodeur de film du titre publie
+	// (`match_kill_events.source_tag`). Second retour faux = ce titre n'a pas d'image
+	// pour cette source : le kill feed affiche alors le libellé seul.
+	//
+	// Pourquoi une méthode distincte de WeaponImageURL : une mort ne porte PAS de
+	// `weapon_id`. Elle porte un identifiant d'effet, dont la traduction en arme est une
+	// table propre au titre (Halo Infinite : `film/killicon`, adossée à `damagetag`).
+	// Faire passer l'un pour l'autre poserait l'icône d'un homonyme d'identifiant.
+	//
+	// Contrat NON NÉGOCIABLE de cette méthode : elle ne rend une image que si la source
+	// est identifiée SANS AMBIGUÏTÉ. Une source qui désigne plusieurs armes possibles
+	// rend faux. Une icône fausse sur un kill est indétectable à l'œil.
+	KillSourceIcon(sourceTag uint32) (canonical.KillSourceIcon, bool)
 
 	// MatchWebURL retourne l'URL de la page publique d'un match sur le portail
 	// officiel du titre (ex: Waypoint pour Halo Infinite). "" si le titre n'a pas

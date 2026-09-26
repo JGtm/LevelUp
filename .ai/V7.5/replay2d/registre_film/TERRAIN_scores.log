@@ -1,0 +1,65 @@
+=== IDENTIFICATION DES EMPLACEMENTS ODDBALL (par l'oracle, films confondus) ===
+skull_grabs           -> comp 21 cote B
+    comp 21 B : accords non-nuls=21, accords totaux=56, films non-nuls=7
+    comp 21 A : accords non-nuls=9, accords totaux=19, films non-nuls=5
+    comp  8 B : accords non-nuls=6, accords totaux=21, films non-nuls=4
+    comp 20 B : accords non-nuls=2, accords totaux=31, films non-nuls=2
+    comp  9 A : accords non-nuls=2, accords totaux=25, films non-nuls=2
+skull_scoring_ticks   -> comp 0 cote A
+    comp  0 A : accords non-nuls=47, accords totaux=53, films non-nuls=7
+    comp 23 A : accords non-nuls=46, accords totaux=52, films non-nuls=7
+    comp  5 B : accords non-nuls=3, accords totaux=4, films non-nuls=3
+    comp  6 A : accords non-nuls=2, accords totaux=3, films non-nuls=1
+    comp 21 A : accords non-nuls=1, accords totaux=4, films non-nuls=1
+
+DIAGNOSTIC identite manche 0 (coincidences de mort par slot ; deux meilleurs) :
+  slot 10 : SHROOM GOD3261=4  (2e DinoR00=1)
+  slot 12 : JGtm=4  (2e 0=0)
+  slot 14 : L0UDEN13=5  (2e 0=0)
+  slot 16 : DinoR00=5  (2e SHROOM GOD3261=1)
+  slot 18 : OFB4203689=6  (2e 0=0)
+  slot 20 : LadyJezz=5  (2e EvilestSmile946=1)
+  slot 22 : scuderiasven=4  (2e 0=0)
+  slot 24 : EvilestSmile946=6  (2e LadyJezz=1)
+
+=== TERRAIN_scores : signal brut de d9781168 (manche 1 = round 0) ===
+manches reelles : [0 1 2] ; enregistrements=9111 ; tronque=false
+
+ROSTER manche 1 (slot -> xuid -> gamertag) + oracle MATCH (temps portage s / grabs / tics) :
+  slot 10  2535435655459376    SHROOM GOD3261    oracle: 49.1s / 3grabs / 47tics
+  slot 12  2533274823110022    JGtm              oracle: 37.1s / 2grabs / 34tics
+  slot 14  2535455182553276    L0UDEN13          oracle: 105.0s / 2grabs / 102tics
+  slot 16  2533274977810162    DinoR00           oracle: 51.1s / 0grabs / 50tics
+  slot 18  2535432478853823    OFB4203689        oracle: 9.7s / 1grabs / 8tics
+  slot 20  2535446563676950    LadyJezz          oracle: 25.5s / 1grabs / 23tics
+  slot 22  2533274974091007    scuderiasven      oracle: 116.1s / 1grabs / 113tics
+  slot 24  2535463284150067    EvilestSmile946   oracle: 10.1s / 0grabs / 10tics
+
+PERIODES DE PORTAGE reconstruites (manche 1, par train de tics) :
+  [ 50318- 60327 ms] SHROOM GOD3261    11 tics
+  [ 66917-119972 ms] scuderiasven      54 tics
+  [126177-127178 ms] LadyJezz          2 tics
+  [132667-153689 ms] L0UDEN13          22 tics
+  [157459-158460 ms] scuderiasven      2 tics
+  [161696-167702 ms] LadyJezz          7 tics
+  [181783-181783 ms] L0UDEN13          1 tics
+  [191193-216218 ms] DinoR00           26 tics
+  [220823-223826 ms] SHROOM GOD3261    4 tics
+
+PRISES decodees (emplacement skull_grabs), manche 1 :
+  SHROOM GOD3261   : [49301]
+  JGtm             : []
+  L0UDEN13         : [180767]
+  DinoR00          : []
+  LadyJezz         : [125160]
+  EvilestSmile946  : []
+
+SCORE PERSONNEL (comp 1 B), sauts de la manche 1 :
+  SHROOM GOD3261   : 49301:+10 54322:+50 59327:+50 76830:+100 94400:+100 104457:+100 116039:+100 147502:+100 154144:+125 173410:+100 217022:+50 219806:+10
+  JGtm             : 53874:+100 56477:+100 96167:+100 120925:+125 127915:+125 130184:+50 150689:+50 172443:+100 175147:+100 187994:+100
+  L0UDEN13         : 56477:+50 104392:+100 127915:+50 130184:+100 131650:+10 136670:+50 141677:+50 146683:+50 150689:+100 151687:+50 174913:+100 180767:+10
+  DinoR00          : 116039:+100 139494:+50 159148:+125 168140:+50 190176:+10 195198:+50 200202:+50 205207:+50 210213:+50 215218:+50
+  OFB4203689       : 53574:+50 76830:+50 86458:+50 101639:+50 139026:+50 151206:+50 173410:+50 190512:+100 209614:+50
+  LadyJezz         : 53574:+100 75646:+100 86458:+100 101639:+100 104457:+50 125160:+10 147502:+50 151206:+100 154144:+50 160679:+10 165700:+50 181887:+125 190512:+50 209614:+100 217022:+50
+  scuderiasven     : 61698:+100 63950:+100 65900:+10 70922:+50 75927:+50 80931:+50 85937:+50 90942:+50 95947:+50 100952:+50 105957:+50 110963:+50 115968:+50 139026:+100 156442:+10 208714:+100 217022:+100
+  EvilestSmile946  : 53874:+50 56477:+50 104392:+50 123477:+100 139494:+100 168140:+125 172443:+50 193265:+100 196669:+100

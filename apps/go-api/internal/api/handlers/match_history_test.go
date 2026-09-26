@@ -19,10 +19,11 @@ import (
 
 // mockMatchHistoryService implémente port.MatchHistoryService.
 type mockMatchHistoryService struct {
-	page    domain.MatchHistoryPageResponse
-	pageErr error
-	csvRows []domain.MatchHistoryRow
-	csvErr  error
+	page        domain.MatchHistoryPageResponse
+	pageErr     error
+	csvRows     []domain.MatchHistoryRow
+	csvErr      error
+	outcomeText string
 }
 
 func (m *mockMatchHistoryService) GetPage(_ context.Context, _ domain.MatchHistoryQueryRequest) (domain.MatchHistoryPageResponse, error) {
@@ -31,6 +32,10 @@ func (m *mockMatchHistoryService) GetPage(_ context.Context, _ domain.MatchHisto
 
 func (m *mockMatchHistoryService) ExportCSV(_ context.Context, _ domain.MatchHistoryQueryRequest) ([]domain.MatchHistoryRow, error) {
 	return m.csvRows, m.csvErr
+}
+
+func (m *mockMatchHistoryService) OutcomeText(_ context.Context, _ int) string {
+	return m.outcomeText
 }
 
 func newMatchHistoryRouter(factory handlers.ContextFactory[port.MatchHistoryService]) *chi.Mux {

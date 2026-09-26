@@ -1,0 +1,7 @@
+# Gates lot C-bis fix FilmIndex — 2026-08-18 21:13 — worktree C:\Users\Guillaume\Projects\LevelUp-wt-fix-filmindex, branche wt/fix-filmindex-zones
+gofmt -l ./internal/analysis/ ./internal/archlint/ -> [] EXIT_GOFMT=0 (fichiers listes : 0)
+go vet (CGO_ENABLED=0) ./internal/analysis/filmdec/ ./internal/analysis/replay/ -> EXIT_VET=0
+go test -count=1 ./internal/archlint/ (CGO_ENABLED=0) -> EXIT_ARCHLINT=0
+go test -count=1 ./internal/analysis/filmdec/ ./internal/analysis/replay/ (CGO_ENABLED=0) -> EXIT_TEST_FILMDEC_REPLAY=0
+go build ./... (CGO_ENABLED=1, CC=C:\Users\Guillaume\mingw-winlibs\mingw64\bin\gcc.exe) -> EXIT_BUILD=0
+go test -count=1 ./internal/replaybuild/ (CGO_ENABLED=1) -> EXIT_TEST_REPLAYBUILD=0

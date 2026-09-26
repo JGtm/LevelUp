@@ -28,6 +28,10 @@ var stepDependencies = map[string]string{
 	// déjà sans name_fr) ; le garde-fou documente néanmoins l'intention et protège
 	// une future DB legacy où l'inversion romprait la garde tableExists attendue.
 	"purge_weapons_name_fr_column": "add_weapon_registry",
+	// purge_weapon_families_labels_columns (plan libellés en dur, lot M5 L4) rebuild la
+	// table `weapon_families` créée par add_weapon_registry — le créateur DOIT précéder,
+	// même raisonnement que purge_weapons_name_fr_column ci-dessus.
+	"purge_weapon_families_labels_columns": "add_weapon_registry",
 	// drop_arc_titles (V721-09, 2026-07-25) ne crée pas arc_titles : il la SUPPRIME.
 	// Sur une base joueur VIERGE, si le dropper passait avant create_arc_titles_join,
 	// le DROP IF EXISTS serait un no-op et la table survivrait au provisioning —
@@ -38,6 +42,12 @@ var stepDependencies = map[string]string{
 	// no-ope (garde tableExists) et les colonnes survivraient au provisioning, ce que
 	// le passage du like au par-viewer interdit.
 	"drop_media_files_liked_columns_v1": "create_base_shared_social_schema",
+	// drop_psa_secondary_art_indexes_v1 (2026-09-20) ne crée pas personal_score_awards :
+	// il retire ses 3 derniers index. Le créateur DOIT précéder — même raisonnement que
+	// drop_arc_titles : un DROP INDEX IF EXISTS joué avant la création de la table serait
+	// un no-op, et une DB provisionnée dans cet ordre garderait les index si une autorité
+	// venait à les reposer.
+	"drop_psa_secondary_art_indexes_v1": "create_personal_score_awards_player_v1",
 }
 
 // knownPreExistingInversions : inversions DÉJÀ présentes dans canonicalOrder à la

@@ -10,6 +10,13 @@
 // préserve byte-pour-byte le corps d'origine (json.Marshal HTML-escapé, sans
 // trailing newline) sur lequel l'ETag est calculé, ainsi que les chemins 304
 // (If-None-Match), Cache-Control et ETag.
+//
+// CACHE DU DTO (plan perf 2026-09-23, lot L5b, décision D5b.2) : le corps construit
+// est gardé par (titre, locale) avec une CLÉ DE VERSION = empreinte du contenu des
+// TOML du titre + empreinte du catalogue de saisons. Tant que la version ne change
+// pas, l'ETag est comparé AVANT toute construction (un 304 coûtait 0,35 à 0,41 s :
+// tout le DTO était reconstruit pour être haché). L'ETag reste le hash du corps :
+// il change dès qu'un TOML du titre ou le catalogue de saisons change.
 package handlers
 
 import (
@@ -28,6 +35,7 @@ import (
 
 	"levelup/go-api/internal/api/humacore"
 	"levelup/go-api/internal/games/mappings"
+	"levelup/go-api/internal/observability/timing"
 )
 
 // FieldMappingsRegistry expose les FieldMappingSet/AssetMappingSet/
@@ -74,8 +82,9 @@ type FieldMappingsHandler struct {
 	seasons  SeasonsCatalogResolver // optionnel : nil → kind season exposé tel quel depuis TOML
 	logger   *slog.Logger
 
-	mu        sync.RWMutex
-	etagByKey map[string]string
+	mu         sync.RWMutex
+	dtoByKey   map[string]fieldMappingsCacheEntry // "titre|locale" → corps construit + ETag + version
+	tomlPrints map[titleMappingSets]string        // empreinte de contenu, calculée une fois par jeu de sets chargés
 }
 
 // NewFieldMappingsHandler crée un handler en injectant le registry.
@@ -84,9 +93,10 @@ func NewFieldMappingsHandler(reg FieldMappingsRegistry, logger *slog.Logger) *Fi
 		logger = slog.Default()
 	}
 	return &FieldMappingsHandler{
-		registry:  reg,
-		logger:    logger,
-		etagByKey: make(map[string]string),
+		registry:   reg,
+		logger:     logger,
+		dtoByKey:   make(map[string]fieldMappingsCacheEntry),
+		tomlPrints: make(map[titleMappingSets]string),
 	}
 }
 
@@ -165,8 +175,9 @@ type fieldMappingsOutput struct {
 	Body         []byte
 }
 
-// handleGet gère la requête (logique métier inchangée : marshal maison, ETag,
-// 304 conditionnel).
+// handleGet gère la requête : version courante du titre (TOML + saisons), DTO
+// caché s'il est à cette version (marqueur timing `field_mappings_cache_hit`),
+// sinon construit et caché (`field_mappings_cache_miss`) ; puis 304 conditionnel.
 func (h *FieldMappingsHandler) handleGet(ctx context.Context, in *fieldMappingsInput) (*fieldMappingsOutput, error) {
 	slug := in.Slug
 	if slug == "" {
@@ -186,38 +197,95 @@ func (h *FieldMappingsHandler) handleGet(ctx context.Context, in *fieldMappingsI
 		return nil, humacore.NewError(http.StatusNotFound, "title_not_found",
 			fmt.Sprintf("title %q n'a pas de field mappings chargés", slug))
 	}
+	sets := h.titleSets(slug, set)
+	catalog := h.loadSeasonCatalog(ctx, slug)
+	version := h.tomlFingerprint(ctx, sets) + "|" + seasonsCatalogVersion(catalog)
 
-	resp := fieldMappingsResponse{
-		TitleSlug:     set.TitleSlug(),
-		SchemaVersion: set.SchemaVersion(),
-		Locale:        locale,
-		Fields:        h.buildFieldsDTO(set, locale),
-		Assets:        h.buildAssetsDTO(ctx, slug, locale),
-		Outcomes:      h.buildOutcomesDTO(slug, locale),
+	// Seules les locales servies (fr, en) sont cachées : la locale est un paramètre
+	// libre recopié dans le corps, un cache par valeur arbitraire serait sans borne.
+	cacheKey := slug + "|" + locale
+	cacheable := locale == mappings.LocaleFR || locale == mappings.LocaleEN
+	entry, hit := fieldMappingsCacheEntry{}, false
+	if cacheable {
+		entry, hit = h.cachedDTO(cacheKey, version)
+	}
+	if hit {
+		timing.FromContext(ctx).Section("field_mappings_cache_hit")()
+	} else {
+		timing.FromContext(ctx).Section("field_mappings_cache_miss")()
+		built, err := h.buildDTO(sets, locale, catalog, version)
+		if err != nil {
+			h.logger.ErrorContext(ctx, "field_mappings: marshal du DTO", "title_slug", slug, "err", err)
+			return nil, humacore.NewError(http.StatusInternalServerError, "marshal_failed", err.Error())
+		}
+		entry = built
+		if cacheable {
+			h.storeDTO(cacheKey, entry)
+		}
 	}
 
-	body, err := json.Marshal(resp)
-	if err != nil {
-		return nil, humacore.NewError(http.StatusInternalServerError, "marshal_failed", err.Error())
-	}
-
-	etag := h.etagFor(slug, locale, set.SchemaVersion(), body)
-	if in.IfNoneMatch != "" && in.IfNoneMatch == etag {
+	if in.IfNoneMatch != "" && in.IfNoneMatch == entry.etag {
 		return &fieldMappingsOutput{Status: http.StatusNotModified}, nil
 	}
 
 	h.logger.Debug("field_mappings_served",
 		"title_slug", slug,
 		"locale", locale,
-		"fields_count", len(resp.Fields),
+		"fields_count", entry.fieldsCount,
+		"cache_hit", hit,
 	)
 
 	return &fieldMappingsOutput{
 		Status:       http.StatusOK,
 		ContentType:  "application/json",
 		CacheControl: "public, max-age=300",
-		ETag:         etag,
-		Body:         body,
+		ETag:         entry.etag,
+		Body:         entry.body,
+	}, nil
+}
+
+// titleSets lit les trois jeux TOML du titre (assets et outcomes optionnels).
+func (h *FieldMappingsHandler) titleSets(slug string, fields *mappings.FieldMappingSet) titleMappingSets {
+	sets := titleMappingSets{fields: fields}
+	if assets, ok := h.registry.GetAssets(slug); ok {
+		sets.assets = assets
+	}
+	if outcomes, ok := h.registry.GetOutcomes(slug); ok {
+		sets.outcomes = outcomes
+	}
+	return sets
+}
+
+// loadSeasonCatalog rend le catalogue unifié des saisons, ou nil si le résolveur
+// n'est pas câblé. Le catalogue est lui-même caché côté service (D5b.1).
+func (h *FieldMappingsHandler) loadSeasonCatalog(ctx context.Context, slug string) []SeasonCatalogEntry {
+	if h.seasons == nil {
+		return nil
+	}
+	return h.seasons.Load(ctx, slug)
+}
+
+// buildDTO construit et sérialise le DTO du titre dans la locale, et calcule son
+// ETag (hash du corps).
+func (h *FieldMappingsHandler) buildDTO(sets titleMappingSets, locale string, catalog []SeasonCatalogEntry, version string) (fieldMappingsCacheEntry, error) {
+	resp := fieldMappingsResponse{
+		TitleSlug:     sets.fields.TitleSlug(),
+		SchemaVersion: sets.fields.SchemaVersion(),
+		Locale:        locale,
+		Fields:        h.buildFieldsDTO(sets.fields, locale),
+		Assets:        buildAssetsDTO(sets.assets, locale, catalog),
+		Outcomes:      buildOutcomesDTO(sets.outcomes, locale),
+	}
+	body, err := json.Marshal(resp)
+	if err != nil {
+		return fieldMappingsCacheEntry{}, err
+	}
+	sum := sha256.Sum256(body)
+	return fieldMappingsCacheEntry{
+		version:     version,
+		body:        body,
+		etag:        `"` + hex.EncodeToString(sum[:8]) + `"`, // 8 bytes suffisent pour invalidation
+		fieldsCount: len(resp.Fields),
 	}, nil
 }
 
@@ -252,16 +320,16 @@ func (h *FieldMappingsHandler) buildFieldsDTO(set *mappings.FieldMappingSet, loc
 
 // buildAssetsDTO construit le bucket assets du DTO.
 //
-// Trois sources potentielles fusionnées :
+// Deux sources potentielles fusionnées :
 //   - registry TOML (toujours, si chargé) → tous les kinds (mode, map, season…)
-//   - SeasonsCatalogResolver (V2 saisons, optionnel) → remplace le bucket
+//   - catalogue unifié des saisons (V2 saisons, optionnel) → remplace le bucket
 //     "season" par l'union TOML+DB+lazy-fetch live
 //
 // Retourne nil si aucune source ne fournit d'assets (omitempty côté JSON).
-func (h *FieldMappingsHandler) buildAssetsDTO(ctx context.Context, slug, locale string) map[string]map[string]assetMappingDTO {
+func buildAssetsDTO(assets *mappings.AssetMappingSet, locale string, catalog []SeasonCatalogEntry) map[string]map[string]assetMappingDTO {
 	var out map[string]map[string]assetMappingDTO
 
-	if assets, ok := h.registry.GetAssets(slug); ok && assets != nil {
+	if assets != nil {
 		out = make(map[string]map[string]assetMappingDTO, len(assets.Kinds()))
 		for _, kind := range assets.Kinds() {
 			byID := make(map[string]assetMappingDTO)
@@ -281,21 +349,17 @@ func (h *FieldMappingsHandler) buildAssetsDTO(ctx context.Context, slug, locale 
 		}
 	}
 
-	// V2 saisons : si le SeasonsCatalogResolver est câblé, on remplace
-	// purement le bucket "season" du DTO par le résultat du resolver — qui
-	// fait l'union TOML + DB + éventuel lazy fetch live (avec persistance).
-	// Cela permet à une nouvelle Operation Halo découverte en DB d'apparaître
-	// automatiquement dans la SaisonPill côté frontend, sans intervention
-	// manuelle sur le TOML. Les saisons DB-only (pas encore de FR) sont
-	// affichées avec leur libellé Waypoint brut.
-	if h.seasons != nil {
-		catalog := h.seasons.Load(ctx, slug)
-		if len(catalog) > 0 {
-			if out == nil {
-				out = make(map[string]map[string]assetMappingDTO, 1)
-			}
-			out["season"] = projectCatalogToBucket(catalog, locale)
+	// V2 saisons : si le catalogue unifié est câblé et non vide, on remplace
+	// purement le bucket "season" du DTO — union TOML + DB + éventuel lazy fetch
+	// live (avec persistance). Une nouvelle Operation Halo découverte en DB
+	// apparaît ainsi automatiquement dans la SaisonPill côté frontend, sans
+	// intervention manuelle sur le TOML. Les saisons DB-only (pas encore de FR)
+	// sont affichées avec leur libellé Waypoint brut.
+	if len(catalog) > 0 {
+		if out == nil {
+			out = make(map[string]map[string]assetMappingDTO, 1)
 		}
+		out["season"] = projectCatalogToBucket(catalog, locale)
 	}
 
 	return out
@@ -326,9 +390,8 @@ func projectCatalogToBucket(catalog []SeasonCatalogEntry, locale string) map[str
 
 // buildOutcomesDTO projette les OutcomeMapping en DTO localisés.
 // Retourne nil si le set d'outcomes n'est pas chargé pour ce titre.
-func (h *FieldMappingsHandler) buildOutcomesDTO(slug, locale string) map[string]outcomeMappingDTO {
-	outcomes, ok := h.registry.GetOutcomes(slug)
-	if !ok || outcomes == nil {
+func buildOutcomesDTO(outcomes *mappings.OutcomeMappingSet, locale string) map[string]outcomeMappingDTO {
+	if outcomes == nil {
 		return nil
 	}
 	out := make(map[string]outcomeMappingDTO, len(outcomes.All()))
@@ -340,23 +403,4 @@ func (h *FieldMappingsHandler) buildOutcomesDTO(slug, locale string) map[string]
 		}
 	}
 	return out
-}
-
-func (h *FieldMappingsHandler) etagFor(slug, locale string, schemaVersion int, body []byte) string {
-	cacheKey := fmt.Sprintf("%s|%s|%d", slug, locale, schemaVersion)
-
-	h.mu.RLock()
-	if v, ok := h.etagByKey[cacheKey]; ok {
-		h.mu.RUnlock()
-		return v
-	}
-	h.mu.RUnlock()
-
-	sum := sha256.Sum256(body)
-	etag := `"` + hex.EncodeToString(sum[:8]) + `"` // 8 bytes suffisent pour invalidation
-
-	h.mu.Lock()
-	h.etagByKey[cacheKey] = etag
-	h.mu.Unlock()
-	return etag
 }

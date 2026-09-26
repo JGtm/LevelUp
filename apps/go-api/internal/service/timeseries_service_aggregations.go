@@ -313,53 +313,63 @@ func rollupSessionPoints(points []domain.SoloSessionPerfPoint, mode string) []do
 // Top weapons (chart .04)
 // ---------------------------------------------------------------------------
 
-// buildTopWeapons trie par kills desc et retourne le top N.
+// buildTopWeapons agrège les lignes d'arme puis rend le top N.
+//
+// Le CLASSEMENT n'est pas réécrit ici : il délègue à topWeaponKillRows
+// (synthesis_service_builders.go), doctrine UNIQUE du « top armes » du dépôt — frags
+// décroissants, DÉPARTAGE SUR LE LIBELLÉ, lignes sans libellé écartées, cap top N.
+// Cette page départageait sur l'identifiant d'arme : à frags égaux, deux armes
+// pouvaient s'afficher dans un ordre différent d'une page à l'autre (Séries
+// temporelles vs Synthèse / Face-à-face). Garde-rail : compare_weapons_guard_test.go.
+//
+// Seule l'AGRÉGATION reste locale : elle est propre à cette page (une ligne par
+// arme sur tout le scope, là où la Synthèse agrège déjà côté repo).
 func buildTopWeapons(rows []port.WeaponKillRow, topN int) []domain.TimeseriesWeaponKill {
 	if len(rows) == 0 {
 		return []domain.TimeseriesWeaponKill{}
 	}
-	type agg struct {
-		label string
-		class string
-		kills int
-	}
-	byID := make(map[int64]*agg, len(rows))
+	// Cle d agregation : le COUPLE (identifiant, cle de registre) — cf.
+	// port.WeaponKillRow.AggregateKey. Keyer sur le seul identifiant fusionnerait les
+	// objets hors arsenal, qui n en ont aucun. L'ordre d'apparition est conservé
+	// (`ordre`) : une marche de map rendrait l'entrée du tri non déterministe.
+	byID := make(map[string]*port.WeaponKillRow, len(rows))
+	ordre := make([]string, 0, len(rows))
 	for _, r := range rows {
 		if r.IsGrenadeMelee {
 			continue
 		}
-		a, ok := byID[r.WeaponID]
+		k := r.AggregateKey()
+		a, ok := byID[k]
 		if !ok {
-			a = &agg{label: r.Label, class: r.Class}
-			byID[r.WeaponID] = a
+			vide := r
+			vide.Kills = 0
+			byID[k] = &vide
+			ordre = append(ordre, k)
+			a = &vide
 		}
-		if a.label == "" && r.Label != "" {
-			a.label = r.Label
+		if a.Label == "" && r.Label != "" {
+			a.Label = r.Label
 		}
 		// Class porté depuis le registre (ResolveRoles) pour recolorer le bar chart
 		// par classe (cohérence sunburst v2). Une arme = une classe → 1re valeur non vide.
-		if a.class == "" && r.Class != "" {
-			a.class = r.Class
+		if a.Class == "" && r.Class != "" {
+			a.Class = r.Class
 		}
-		a.kills += r.Kills
+		a.Kills += r.Kills
 	}
-	out := make([]domain.TimeseriesWeaponKill, 0, len(byID))
-	for id, a := range byID {
-		out = append(out, domain.TimeseriesWeaponKill{
-			WeaponID: id,
-			Label:    a.label,
-			Kills:    a.kills,
-			Class:    a.class,
-		})
+	agregees := make([]port.WeaponKillRow, 0, len(ordre))
+	for _, k := range ordre {
+		agregees = append(agregees, *byID[k])
 	}
-	sort.SliceStable(out, func(i, j int) bool {
-		if out[i].Kills != out[j].Kills {
-			return out[i].Kills > out[j].Kills
+	top := topWeaponKillRows(agregees, topN)
+	out := make([]domain.TimeseriesWeaponKill, len(top))
+	for i, r := range top {
+		out[i] = domain.TimeseriesWeaponKill{
+			WeaponID: r.WeaponID,
+			Label:    r.Label,
+			Kills:    r.Kills,
+			Class:    r.Class,
 		}
-		return out[i].WeaponID < out[j].WeaponID
-	})
-	if len(out) > topN {
-		out = out[:topN]
 	}
 	return out
 }

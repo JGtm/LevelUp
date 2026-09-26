@@ -13,6 +13,7 @@ import (
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/observability/timing"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/service/fragdist"
 )
@@ -84,6 +85,7 @@ func (s *TeammatesService) buildSquadWeaponKills(
 	teammates []domain.TeammateRow,
 	perf map[string][]domain.SquadPerformanceSeriesPoint,
 ) (*domain.SquadWeaponKills, map[string][]domain.FragClassEntry) {
+	defer timing.FromContext(ctx).Section("weapon_kills")()
 	if s.squadLoader == nil || len(allSquadRows) == 0 || len(teammates) == 0 {
 		slog.DebugContext(ctx, "teammates_weapon_kills_skipped",
 			"squad_loader_nil", s.squadLoader == nil,
@@ -140,7 +142,14 @@ func (s *TeammatesService) buildSquadWeaponKills(
 	// Infinite (cap off) : mechByGT nil → comportement inchangé.
 	hasMechanics := titleHasNativeKillMechanics(s.titleSlug)
 	mechByGT := s.loadSquadMechanicsByGT(ctx, sharedMatches, xuids, gtByXUID, hasMechanics)
-	fragClasses := squadFragClassesByPlayer(rows, playersOrdered, xuidByPlayer, perf, mechByGT, hasMechanics)
+	fragClasses := squadFragClassesByPlayer(squadFragInputs{
+		rows:           rows,
+		playersOrdered: playersOrdered,
+		xuidByPlayer:   xuidByPlayer,
+		perf:           perf,
+		mechByGT:       mechByGT,
+		hasMechanics:   hasMechanics,
+	})
 	// Traçabilité de l'agrégation frags par joueur (parité logFragDistribution du package
 	// service, inaccessible ici — teammates ne peut pas importer son parent). Message local
 	// distinct des marqueurs du helper (garde-rail TestFragDistributionLoggingCentralized).
@@ -161,13 +170,16 @@ func aggregateSquadWeaponBars(rows []port.WeaponKillRow, gtByXUID map[string]str
 		kills          map[string]int
 		total          int
 	}
-	bars := make(map[int64]*barAgg)
+	// Cle d arme : le COUPLE (identifiant, cle de registre) — cf.
+	// port.WeaponKillRow.AggregateKey.
+	bars := make(map[string]*barAgg)
 	for _, r := range rows {
 		gt, ok := gtByXUID[r.XUID]
 		if !ok {
 			continue
 		}
-		b, exists := bars[r.WeaponID]
+		cleArme := r.AggregateKey()
+		b, exists := bars[cleArme]
 		if !exists {
 			b = &barAgg{
 				weaponID:       r.WeaponID,
@@ -176,7 +188,7 @@ func aggregateSquadWeaponBars(rows []port.WeaponKillRow, gtByXUID map[string]str
 				isGrenadeMelee: r.IsGrenadeMelee,
 				kills:          make(map[string]int),
 			}
-			bars[r.WeaponID] = b
+			bars[cleArme] = b
 		}
 		b.kills[gt] += r.Kills
 		b.total += r.Kills
@@ -285,36 +297,42 @@ func aggregateFragCounts(pts []domain.SquadPerformanceSeriesPoint) domain.FragKi
 // kill-type de la série de performance du joueur ; assassinats + capacités spartanes =
 // mechByGT (mécaniques natives H5 par gamertag). hasMechanics (capability) gate la classe
 // spartan_ability et le split Mêlée (D-P6-2 résolu). nil si aucune classe produite.
-func squadFragClassesByPlayer(
-	rows []port.WeaponKillRow,
-	playersOrdered []string,
-	xuidByPlayer map[string]string,
-	perf map[string][]domain.SquadPerformanceSeriesPoint,
-	mechByGT map[string]port.KillMechanicsRow,
-	hasMechanics bool,
-) map[string][]domain.FragClassEntry {
-	if len(rows) == 0 || len(playersOrdered) == 0 {
+// squadFragInputs regroupe les entrées par joueur de la ventilation par classe. Un
+// struct, PAS des paramètres : la signature en portait déjà 6, et la 3ᵉ provenance
+// (sources de dégât du film, lot 2026-08-29) en avait ajouté un 7ᵉ — au-delà de la règle
+// des 5 du dépôt. Même motif que killFeedInputs côté service.
+type squadFragInputs struct {
+	rows           []port.WeaponKillRow
+	playersOrdered []string
+	xuidByPlayer   map[string]string
+	perf           map[string][]domain.SquadPerformanceSeriesPoint
+	mechByGT       map[string]port.KillMechanicsRow
+	hasMechanics   bool
+}
+
+func squadFragClassesByPlayer(in squadFragInputs) map[string][]domain.FragClassEntry {
+	if len(in.rows) == 0 || len(in.playersOrdered) == 0 {
 		return nil
 	}
-	gtByXUID := make(map[string]string, len(xuidByPlayer))
-	for gt, x := range xuidByPlayer {
+	gtByXUID := make(map[string]string, len(in.xuidByPlayer))
+	for gt, x := range in.xuidByPlayer {
 		gtByXUID[x] = gt
 	}
-	rowsByGT := make(map[string][]port.WeaponKillRow, len(playersOrdered))
-	for _, r := range rows {
+	rowsByGT := make(map[string][]port.WeaponKillRow, len(in.playersOrdered))
+	for _, r := range in.rows {
 		if gt := gtByXUID[r.XUID]; gt != "" {
 			rowsByGT[gt] = append(rowsByGT[gt], r)
 		}
 	}
-	out := make(map[string][]domain.FragClassEntry, len(playersOrdered))
-	for _, gt := range playersOrdered {
-		counts := aggregateFragCounts(perf[gt])
-		if m, ok := mechByGT[gt]; ok {
+	out := make(map[string][]domain.FragClassEntry, len(in.playersOrdered))
+	for _, gt := range in.playersOrdered {
+		counts := aggregateFragCounts(in.perf[gt])
+		if m, ok := in.mechByGT[gt]; ok {
 			counts.Assassination = m.Assassinations
 			counts.GroundPound = m.GroundPound
 			counts.ShoulderBash = m.ShoulderBash
 		}
-		fd := fragdist.Build(rowsByGT[gt], counts, hasMechanics)
+		fd := fragdist.Build(rowsByGT[gt], counts, in.hasMechanics)
 		if len(fd.Classes) > 0 {
 			out[gt] = fd.Classes
 		}
@@ -336,6 +354,7 @@ func (s *TeammatesService) buildSquadKillMechanics(
 	mainGamertag, mainXUID string,
 	teammates []domain.TeammateRow,
 ) *domain.SquadKillMechanics {
+	defer timing.FromContext(ctx).Section("kill_mechanics")()
 	if s.squadLoader == nil || len(allSquadRows) == 0 || len(teammates) == 0 {
 		return nil
 	}
@@ -425,6 +444,7 @@ func (s *TeammatesService) buildSquadPerformanceSeries(
 	selectedGamertags []string,
 	teammates []domain.TeammateRow,
 ) map[string][]domain.SquadPerformanceSeriesPoint {
+	defer timing.FromContext(ctx).Section("performance_series")()
 	if len(allSquadRows) == 0 || len(selectedGamertags) == 0 {
 		return nil
 	}

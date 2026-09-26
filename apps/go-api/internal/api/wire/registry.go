@@ -28,6 +28,7 @@ package wire
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"strings"
 	"sync"
 	"time"
@@ -43,6 +44,7 @@ import (
 	"levelup/go-api/internal/platform/adminstate"
 	"levelup/go-api/internal/platform/auth"
 	"levelup/go-api/internal/platform/duckdb"
+	"levelup/go-api/internal/platform/friendstore"
 	"levelup/go-api/internal/platform/halo"
 	jobs_platform "levelup/go-api/internal/platform/jobs"
 	settings_platform "levelup/go-api/internal/platform/settings"
@@ -50,6 +52,7 @@ import (
 	"levelup/go-api/internal/scheduler"
 	"levelup/go-api/internal/service"
 	sync_pkg "levelup/go-api/internal/sync"
+	"levelup/go-api/internal/sync/replayartifacts"
 	"levelup/go-api/pkg/duckdbbackup"
 )
 
@@ -80,6 +83,24 @@ type ServiceRegistry struct {
 	// flag « Prolongation » (Match View + Explorateur). Titre sans fichier →
 	// absent de la map → aucun flag pour ce titre (dégradation sûre).
 	regulationSeconds map[string]map[string]int
+	// roundsDecide : PAR TITRE (slug → game_variant_name → le résultat se lit en
+	// MANCHES), chargé depuis la même regulation.toml au boot. Commande l'affichage
+	// « 2 - 1 manches » plutôt que le cumul de points. Titre sans fichier → absent de la
+	// map → tout reste en points (dégradation sûre).
+	roundsDecide map[string]map[string]bool
+	// radarRange : PAR TITRE (slug → game_variant_name → portee du radar en metres), chargee
+	// depuis la meme regulation.toml au boot. Elle borne la lecture « ou je meurs isole » de
+	// l'onglet Tactique (lot 7C). Titre ou variante absents → PAS DE LECTURE pour ces matchs,
+	// qui se comptent a part : jamais un rayon de repli, qui rendrait une mesure d'apparence
+	// normale sur une regle de jeu qu'on n'a pas etablie.
+	radarRange map[string]map[string]int
+	// scoreTimelineKind : PAR TITRE (slug → règle « libellé de mode normalisé →
+	// lecture du bloc Score dans le temps »), chargée depuis regulation.toml
+	// [score_timeline] au boot. Une FONCTION par titre et non une table : l'appariement
+	// se fait par jeton de mode (mot entier), pas par clé exacte — la règle voyage
+	// entière plutôt que d'être réimplémentée côté service. Titre sans table → absent
+	// de la map → l'en-tête laisse le champ vide et le client garde la courbe.
+	scoreTimelineKind map[string]func(string) string
 	// MT-09 (PMT-12) : factory player-scoped PAR TITRE. Le slug est une CLÉ de
 	// map (lookup title-agnostic), jamais une comparaison littérale — un 2e titre
 	// enregistre son builder au boot, sans toucher aux factories. Remplace les
@@ -90,13 +111,14 @@ type ServiceRegistry struct {
 	remoteStats          *service.CachedStatsProvider         // cache TTL process-level stats carrière remote (5 min), partagé Explorer/Compare
 	recentMatches        *service.CachedRecentMatchesProvider // cache TTL process-level 20 derniers matchs live (20 min), partagé Explorer/Compare (cibles non-locales)
 	liveGamertagResolver service.GamertagXUIDResolver         // nil (démo/offline) → pas de fallback live ; résout gamertag→xuid pour un joueur jamais croisé (partagé Explorer/Compare + recherche)
-	settingsStore        *settings_platform.Store             // nil → services qui dépendent des settings (TeammatesService friend filter) tournent en mode legacy
+	settingsStore        *settings_platform.Store             // nil → services qui dépendent des settings tournent en mode legacy
+	friendStore          *friendstore.FriendStore             // amis PAR JOUEUR (data/global/player_friends.json) ; nil → friendGamertagsResolver rend nil et le filtre amis est désactivé
 	seasonsCatalog       *service.SeasonsCatalog              // nil → FiltersService.Resolve ne renvoie pas SeasonCounts (dégradation gracieuse)
 	rankCatalog          *mappings.RankCatalog                // nil → CareerService.next_rank_name reste vide
 	rankImageURLsByTitle map[string]map[int]*string           // PAR TITRE (slug → rank_id → imageURL) ; map manquante/nil → CareerService.rank_image_url et next_rank_image_url absents pour ce titre. Title-agnostic : les images HINF (keyées 1..272) ne fuient plus sur un SR Halo 5 (D.2)
 	prestigeBundle       *PrestigeBundle                      // nil si feature désactivée ; possède 2 *DB (sharedSocial + metadata) à fermer au shutdown
 	advisorBundle        *CoachAdvisorBundle                  // nil → coach_advisor désactivé (ADR 0020 Phase 8)
-	authStore            auth.UserTokenStore                  // ADR 0023 : source unique tokens auth (nil → fallback legacy DuckDB+env)
+	authStore            auth.UserTokenStore                  // ADR 0023 : SEULE source des tokens auth (nil → aucun refresh possible, refreshTokensFromDB rend nil)
 	publicReadTokenSrc   pooledTokenSource                    // A1 : source de token SAIN du pool pour les LECTURES PUBLIQUES de tiers (Explorer) ; nil → pas de fallback pool (comportement historique)
 	jobStore             *jobs_platform.Store                 // nil → transcoding HLS désactivé (médias servis via remux WebM live)
 	autoSyncScheduler    *scheduler.AutoSyncScheduler         // dashboard monitoring : snapshot scheduler agrégé dans l'overview (nil → section indisponible)
@@ -107,6 +129,21 @@ type ServiceRegistry struct {
 	startedAt            time.Time                            // boot du process (uptime overview — posé par NewServiceRegistry)
 	metaHandles          []*duckdb.DB                         // handles RW "annexes" sur metadata.duckdb (seasons/playlists catalog, ouverts hors pool joueur dans NewRouter) fermés au shutdown via Close() — sinon fuite de refCount sur le cache duckdb.openDBs (cf. INCIDENT_2026-05-21)
 	snapReaders          sync.Map                             // titleSlug → *sync.SnapshotPreferredSharedReader (pilote lecture snapshot SCOPED MatchView) — singleton par titre, cache de queriers :memory: partagé entre requêtes, fermé au shutdown
+
+	// Seams de test de la mise en file de rejeu 2D (EnqueueReplayBuild) — nil = chemin
+	// RÉEL de production, aucun code de prod ne les renseigne. Même parti pris que
+	// sync.engine.customClient : une injection optionnelle rend la frontière Halo et la
+	// lecture des faits exerçables sans réseau ni DuckDB (cf. registry_build_queue_test.go,
+	// durcissement ouvrier volet A).
+	replayFilmResolver filmChunkResolver                                                                               // nil → *sync.HaloAPIClient construit depuis les tokens (resolveFilmChunkURLs)
+	replayJobFactsFn   func(ctx context.Context, titleSlug, matchID string) (string, []string, port.MatchFacts, error) // nil → lecture DuckDB (readReplayJobInputs)
+
+	// replayDerivationsFn : seam des DÉRIVATIONS déclenchées par le dépôt d'un artefact
+	// d'ouvrier (constat A1). nil = chemin RÉEL (replayartifacts.Deriver + writer shared du
+	// titre). Il existe pour une raison précise : prouver, SANS base partagée ni lease, que
+	// `StoreBuildArtifact` déclenche bien les dérivations — c'est exactement le maillon qui
+	// manquait et que le test doit tenir.
+	replayDerivationsFn func(ctx context.Context, titleSlug string, ranges []replayartifacts.ArtefactRange)
 }
 
 // WithJobStore attache le JobStore au registry — porte le cycle de vie des jobs
@@ -117,10 +154,14 @@ func (r *ServiceRegistry) WithJobStore(store *jobs_platform.Store) *ServiceRegis
 	return r
 }
 
-// WithAuthStore attache le MultiUserTokenStore au registry — source unique des
-// tokens auth (RT + MSAL cache) post-ADR 0023. `refreshTokensFromDB` lit le store
-// AVANT de tomber sur les fallbacks legacy (sync_meta DuckDB, env var). Nil
-// possible pour les tests qui veulent l'ancien comportement legacy-only.
+// WithAuthStore attache le MultiUserTokenStore au registry — SEULE source des
+// tokens auth (refresh token) depuis ADR 0023 Phase 5 (2026-08-25). Il n'existe
+// plus de fallback : ni sync_meta DuckDB, ni env var, ni store mono-user.
+//
+// Nil laisse le registry SANS aucune source : `refreshTokensFromDB` rend nil
+// immédiatement (avec un WARN explicite). C'est la dégradation attendue d'un
+// câblage partiel ou d'un test qui n'exerce pas l'auth — jamais un mode
+// « legacy-only », lequel n'existe plus.
 func (r *ServiceRegistry) WithAuthStore(store auth.UserTokenStore) *ServiceRegistry {
 	r.authStore = store
 	return r
@@ -314,11 +355,60 @@ func (r *ServiceRegistry) RegisterPlayerDataBuilder(slug string, build func(*duc
 	return r
 }
 
+// WithRadarRange injecte la table PAR TITRE des portees de radar (slug → game_variant_name →
+// metres), chargée depuis regulation.toml au boot. Retourne le registry pour chaînage.
+func (r *ServiceRegistry) WithRadarRange(byTitle map[string]map[string]int) *ServiceRegistry {
+	r.radarRange = byTitle
+	return r
+}
+
+// radarRangeFor retourne la table des portées de radar du titre du joueur, ou nil si le titre
+// n'en déclare pas (→ la lecture « isolé » écarte tous ses matchs et le dit). Lookup par CLÉ de
+// map, jamais de comparaison de slug.
+func (r *ServiceRegistry) radarRangeFor(pdb *duckdb.PlayerDB) map[string]int {
+	if r.radarRange == nil || pdb == nil {
+		return nil
+	}
+	return r.radarRange[pdb.TitleSlug]
+}
+
+// retentionMoisRejeu rend la fenetre de retention des artefacts de rejeu, en mois.
+//
+// MEME SOURCE ET MEME LECTURE QUE LA PURGE (`app_settings.json`, relu a chaque appel) : la
+// page Tactique annonce « la cuisson reprendra ce match » exactement pour les matchs que la
+// file reprendra. Sans store, 0 = fenetre illimitee, donc AUCUN match declare hors
+// retention — l'ignorance ne se dit pas « jamais cuit ».
+func (r *ServiceRegistry) retentionMoisRejeu() int {
+	if r == nil || r.settingsStore == nil {
+		return 0
+	}
+	s, err := r.settingsStore.Load()
+	if err != nil {
+		// LOGUE AVANT DE DEGRADER (regle n 3) : sans cette ligne, un app_settings.json
+		// illisible faisait silencieusement passer la page en fenetre illimitee — donc
+		// « tout est en attente » —, et rien n'aurait relie l'anomalie a sa cause.
+		slog.Warn("tactique: fenetre de retention illisible, repli sur illimitee", "err", err)
+		return 0
+	}
+	if s == nil {
+		return 0
+	}
+	return s.ReplayRetentionMonths
+}
+
 // WithSettingsStore attache un settings.Store au registry. Les services qui
 // dépendent de app_settings.json (TeammatesService.friendGamertags pour le
 // filtre amis-only du dropdown) le récupèrent via r.settingsStore.
 func (r *ServiceRegistry) WithSettingsStore(store *settings_platform.Store) *ServiceRegistry {
 	r.settingsStore = store
+	return r
+}
+
+// WithFriendStore attache le store des amis PAR JOUEUR. Les services qui
+// filtrent sur les amis (TeammatesService, SessionUsage, Career encounters) le
+// récupèrent via r.friendGamertagsResolver(xuid).
+func (r *ServiceRegistry) WithFriendStore(store *friendstore.FriendStore) *ServiceRegistry {
+	r.friendStore = store
 	return r
 }
 
@@ -459,7 +549,14 @@ func (r *ServiceRegistry) newMatchViewRepo(pdb *duckdb.PlayerDB) *duckdb.MatchVi
 		WithSharedReader(r.matchViewSharedReader(pdb)).
 		WithModeTaxonomy(haloInfiniteModeTaxonomy()).
 		WithPlaylistCategoryStrip(cfg.StripCategory).
-		WithPlaylistLabelOverrides(cfg.Overrides)
+		WithPlaylistLabelOverrides(cfg.Overrides).
+		// Armes du match : source de degat pour les titres qui savent la traduire, sinon
+		// v_weapon_kills. nil = titre sans decodeur de film (bascule du 2026-09-01).
+		WithKillSourceClassifier(r.killSourceClassifierFor(pdb)).
+		// Statistiques d Assaut reconstruites du film (match_bomb_stats_latest) : gatees par
+		// la capability film.bomb_stats — absente pour Halo 5, qui n a pas de decodeur de
+		// film. Jamais slug==.
+		WithBombStats(r.capabilitiesForPDB(pdb).Has(games.CapFilmBombStats))
 }
 
 // playlistLabelConfigFor construit la config d'affichage title-aware du libellé
@@ -492,6 +589,42 @@ func (r *ServiceRegistry) WithPlaylistLabelOverrides(byTitle map[string]map[stri
 func (r *ServiceRegistry) WithRegulationSeconds(byTitle map[string]map[string]int) *ServiceRegistry {
 	r.regulationSeconds = byTitle
 	return r
+}
+
+// WithRoundsDecide injecte la table PAR TITRE des variantes dont le résultat se lit en
+// manches (slug → game_variant_name → true), chargée depuis regulation.toml au boot.
+// Retourne le registry pour chaînage.
+func (r *ServiceRegistry) WithRoundsDecide(byTitle map[string]map[string]bool) *ServiceRegistry {
+	r.roundsDecide = byTitle
+	return r
+}
+
+// WithScoreTimelineKind injecte la règle PAR TITRE de lecture du bloc « Score dans le
+// temps » (slug → libellé de mode normalisé → `hidden`/`events`/`curve`), chargée depuis
+// regulation.toml au boot. Retourne le registry pour chaînage.
+func (r *ServiceRegistry) WithScoreTimelineKind(byTitle map[string]func(string) string) *ServiceRegistry {
+	r.scoreTimelineKind = byTitle
+	return r
+}
+
+// scoreTimelineKindFor retourne la règle de lecture du bloc « Score dans le temps » du
+// titre du joueur, ou nil si le titre n'en déclare pas (→ le client garde la courbe).
+// Lookup par CLÉ de map, jamais de comparaison de slug.
+func (r *ServiceRegistry) scoreTimelineKindFor(pdb *duckdb.PlayerDB) func(string) string {
+	if r.scoreTimelineKind == nil || pdb == nil {
+		return nil
+	}
+	return r.scoreTimelineKind[pdb.TitleSlug]
+}
+
+// roundsDecideFor retourne la table « se lit en manches » du titre du joueur, ou nil si le
+// titre n'en déclare pas (→ tout reste en points). Lookup par CLÉ de map, jamais de
+// comparaison de slug.
+func (r *ServiceRegistry) roundsDecideFor(pdb *duckdb.PlayerDB) map[string]bool {
+	if r.roundsDecide == nil || pdb == nil {
+		return nil
+	}
+	return r.roundsDecide[pdb.TitleSlug]
 }
 
 // regulationFor retourne la table réglementaire du titre du joueur, ou nil si le

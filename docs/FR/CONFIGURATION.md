@@ -253,10 +253,11 @@ ou auto-détection) avant toute lecture `os.Getenv`.
 | `RESTIC_REPOSITORY` / `RESTIC_PASSWORD` / `RESTIC_PASSWORD_FILE` | Cible/credentials des backups Restic. |
 | `LEVELUP_BACKUP_DIR` | Répertoire de backup local. |
 
-> Les variables legacy `SPNKR_OAUTH_REFRESH_TOKEN_<GAMERTAG>` ne sont lues qu'en
-> fallback transitoire (warn-loggé, migré dans le store de tokens au boot). Ne
-> pas s'appuyer dessus pour un nouveau setup — utiliser `token-capture` /
-> `token-import`.
+> Les variables legacy `SPNKR_OAUTH_REFRESH_TOKEN_<GAMERTAG>` ne sont PLUS lues à
+> l'exécution (ADR 0023 Phase 5, 2026-08-25). Seule la migration one-shot du boot
+> les consulte encore, pour recopier une valeur résiduelle dans le store de
+> tokens — retrait prévu le 2026-10-01. Pour semer un refresh token : SSO Xbox
+> web, `token-capture` ou `token-import`.
 
 ---
 
@@ -296,6 +297,7 @@ Clés lues par le backend Go depuis `app_settings.json` (certaines absentes du t
 | `discord_notify_coach` | bool | `false` | Relaie les proposals coach les plus fortes (signaux de progression) vers le webhook Discord. **OFF par défaut — opt-in** : requiert `discord_notifications_enabled` + un webhook. Émettre vers un service externe est une décision vie privée volontaire, jamais activée par défaut. Catégories relayées = catégories coach uniquement. |
 | `discord_notify_new_media` | bool | `true` | Notifie sur nouveau média. |
 | `discord_notify_disk` | bool | `true` | Alertes disque (warn > 80 % utilisés ou < 2 Go libres, critical > 90 % ou < 500 Mo) sur le volume data, envoyées au changement de statut + rappel quotidien + rétablissement. |
+| `discord_notify_replay` | bool | `true` | Notification groupée « rejeux 2D prêts ». Un message par fenêtre de 10 minutes et par titre, jamais un par artefact : le premier artefact rangé arme la fenêtre, le message énumère les matchs à l'échéance. Couvre tous les chemins d'écriture du serveur — construction locale post-sync, livraison d'un ouvrier distant et action admin. Le backfill CLI tourne dans un autre process et ne notifie jamais. |
 | `discord_webhook_url` | string | `""` | URL webhook Discord (les vars d'env priment). |
 | `tailscale_enabled` | bool | `false` | Active l'accès distant Tailscale Funnel. |
 | `user_timezone` | string | `"Europe/Paris"` | Timezone IANA pour l'affichage. |
@@ -309,6 +311,8 @@ Clés lues par le backend Go depuis `app_settings.json` (certaines absentes du t
 | `backup_keep_monthly` | int | `12` | Backups mensuels conservés. |
 | `prestige_enabled` | bool | `true` | Active le module Prestige (surchargeable via `PRESTIGE_ENABLED`). |
 | `instance_locked` | bool | `false` | Verrouille l'instance aux utilisateurs existants (aussi via `LEVELUP_INSTANCE_LOCKED`). |
+| `replay_sound_variation_percent` | int | `100` | Sons d'armes du rejeu 2D : variation du volume et de la hauteur à chaque tir, dans les fourchettes déclarées par le jeu. `100` = fourchettes du jeu telles quelles, `0` = toujours le même fichier. Réglage d'instance, modifié depuis Admin · Système. |
+| `replay_sound_distance_percent` | int | `0` | Sons d'armes du rejeu 2D : effet de distance (atténuation + passe-bas). `0` = son pur, aucun nœud dans le chemin du signal. Réglage d'instance, modifié depuis Admin · Système. |
 
 ---
 

@@ -28,9 +28,16 @@ func (r *ServiceRegistry) HomeCtx(ctx context.Context, slug string) (port.HomeSe
 		WithDataAdapter(r.dataAdapterForPDB(pdb)).
 		WithMatchesCache(r.homeMatchesCache, pdb.XUID).
 		WithPlayerMatchesRepo(r.playerMatchesAdapterFor(pdb), pdb.TitleSlug, pdb.Gamertag).
-		WithSquadSessionTeammates(duckdb.NewSquadRepo(pdb), r.friendGamertagsResolver()).
+		WithSquadSessionTeammates(duckdb.NewSquadRepo(pdb), r.friendGamertagsResolver(pdb.XUID)).
 		WithCareerLive(r.newCareerLiveService(pdb, homeRepo)).
 		WithSkillBadgeResolver(skillBadgeResolverFor(pdb.TitleSlug)).
+		// Score en MANCHES des tuiles d'accueil : MÊME table que la vue match, l'historique
+		// et l'escouade — les quatre surfaces doivent dire le même nombre.
+		WithRoundsDecide(r.roundsDecideFor(pdb)).
+		// Rejeu 2D des tuiles de match (lien à côté de la playlist) : MÊME service que
+		// l'endpoint /replay et l'Explorer — une seule résolution de chemin dans le
+		// dépôt. Seul AvailableSet est appelé : un listing de dossier par requête.
+		WithReplay(r.replayServiceFor(pdb)).
 		WithDemoMode(r.cfg.DemoMode)
 	return svc, pdb.XUID, pdb.Gamertag, nil
 }
@@ -43,6 +50,7 @@ func (r *ServiceRegistry) HomeCtx(ctx context.Context, slug string) (port.HomeSe
 // ne fait que le lookup registry.
 func (r *ServiceRegistry) newHomeRepo(pdb *duckdb.PlayerDB) *duckdb.HomeRepo {
 	repo := duckdb.NewHomeRepo(pdb).
+		WithKillSourceClassifier(r.killSourceClassifierFor(pdb)).
 		WithPlaylistDisplay(r.playlistLabelConfigFor(pdb))
 	// Phase 6 du plan CSR : injection du repo thresholds + saison courante.
 	// Sans cette injection, le seuil par défaut (5) est utilisé partout, ce qui
@@ -77,9 +85,16 @@ func (r *ServiceRegistry) MatchHistoryCtx(ctx context.Context, slug string) (por
 		// Flag « Prolongation » des lignes Explorer/historique : table
 		// réglementaire du titre (regulation.toml). Titre sans table → nil.
 		WithRegulation(r.regulationFor(pdb)).
+		// Score en MANCHES sur les lignes Explorer/historique : même fichier de config,
+		// autre table. Titre qui n'en déclare aucune → nil → tout reste en points.
+		WithRoundsDecide(r.roundsDecideFor(pdb)).
 		// Image du badge de palier des lignes Explorer/historique : MÊME résolveur
 		// title-aware que la home (skill_rank_image_url de RecentMatchItem).
-		WithSkillBadgeResolver(skillBadgeResolverFor(pdb.TitleSlug))
+		WithSkillBadgeResolver(skillBadgeResolverFor(pdb.TitleSlug)).
+		// Rejeu 2D des lignes (colonne « Rejeu » + filtre replay_scope) : MÊME service
+		// que l'endpoint /replay et la Match View — une seule résolution de chemin dans
+		// le dépôt. Seul AvailableSet est appelé : un listing de dossier par requête.
+		WithReplay(r.replayServiceFor(pdb))
 	if a := r.dataAdapterForPDB(pdb); a != nil {
 		svc = svc.WithDataAdapter(a)
 	}
@@ -102,6 +117,12 @@ func (r *ServiceRegistry) MatchHistoryCtx(ctx context.Context, slug string) (por
 	// match.skill.snapshot, jamais le slug. Inoffensif pour la page Historique
 	// (elle ne pose pas include_briefing → briefing étendu non construit).
 	svc = svc.WithRankedCapable(r.titleSupportsLiveCSR(pdb))
+	// Module « arme favorite » du briefing Explorer : MÊME factory que la Synthèse,
+	// l'Explorer-cible et les Sessions (weaponKillsRepoFor — source de dégât du film
+	// quand le titre la déclare, arme native du kill sinon). Pas de second chemin de
+	// lecture. Le xuid accompagne le repo : le filtre du port se pose sur la colonne
+	// xuid, jamais sur le gamertag.
+	svc = svc.WithWeaponKillsRepo(r.weaponKillsRepoFor(pdb), pdb.XUID)
 	return svc, pdb.XUID, pdb.Gamertag, nil
 }
 
@@ -126,6 +147,7 @@ func (r *ServiceRegistry) SquadV2Ctx(ctx context.Context, slug string) (port.Squ
 		return nil, "", "", err
 	}
 	loader := duckdb.NewSquadV2LoaderAdapter(r.resolveByGT)
+	loader.SetWeaponKillsRepoFactory(r.weaponKillsRepoFor)
 	// Le loader resout les DBs `shared` (events / weapons / medals) via le main
 	// player ; on lui propage le gamertag de la session courante (chunk S11).
 	loader.SetDefaultGamertag(pdb.Gamertag)
@@ -173,7 +195,7 @@ func (r *ServiceRegistry) MatchExclusion(ctx context.Context, slug string) (port
 
 // TeammatesCtx retourne un TeammatesService + identifiants joueur.
 //
-// Le resolver friend_gamertags est branché sur r.settingsStore quand le
+// Le resolver des amis est branché sur r.friendStore quand le
 // store est attaché (cf. WithSettingsStore). Sans store → comportement
 // legacy : top dropdown brut sans filtre amis.
 func (r *ServiceRegistry) TeammatesCtx(ctx context.Context, slug string) (port.TeammatesService, string, string, error) {
@@ -185,38 +207,78 @@ func (r *ServiceRegistry) TeammatesCtx(ctx context.Context, slug string) (port.T
 	// playerMatchesAdapterFor est bound au main, ne sait pas charger les
 	// canonical rows d'un coequipier different). On reutilise le SquadV2Loader.
 	briefingLoader := duckdb.NewSquadV2LoaderAdapter(r.resolveByGT)
+	briefingLoader.SetWeaponKillsRepoFactory(r.weaponKillsRepoFor)
 	briefingLoader.SetDefaultGamertag(pdb.Gamertag)
-	svc := teammates.NewTeammatesService(duckdb.NewSquadRepo(pdb), r.friendGamertagsResolver()).
+	svc := teammates.NewTeammatesService(duckdb.NewSquadRepo(pdb), r.friendGamertagsResolver(pdb.XUID)).
 		WithPlayerMatchesRepo(r.playerMatchesAdapterFor(pdb), pdb.TitleSlug, pdb.Gamertag).
 		WithSquadLoader(briefingLoader).
 		WithMedalDefs(duckdb.NewMedalDefinitionsRepo(pdb)).
 		// Précision native par arme (Halo 5) : table weapon_accuracy SHARED par titre →
 		// le repo lié au PlayerDB du main charge la précision de tous les xuids de
 		// l'escouade. Miroir du câblage Synthesis/Sessions ; nil-safe hors h5.
-		WithWeaponAccuracyRepo(duckdb.NewWeaponAccuracyRepo(pdb))
+		WithWeaponAccuracyRepo(duckdb.NewWeaponAccuracyRepo(pdb)).
+		// Rejeu 2D du tableau historique de l'escouade : MÊME service que l'endpoint
+		// /replay et la Match View (une seule résolution de chemin dans le dépôt).
+		// Seul AvailableSet est appelé : un listing de dossier par requête.
+		WithReplay(r.replayServiceFor(pdb)).
+		// Score en MANCHES du tableau historique de l'escouade : MÊME table que la vue
+		// match et l'Explorateur, pour que les trois surfaces s'accordent.
+		WithRoundsDecide(r.roundsDecideFor(pdb)).
+		// Section « échange » (matrice, délais, KPI) : le MÊME lecteur du journal des
+		// morts que l'onglet Tactique, et les capabilities du titre du joueur pour sa
+		// seule porte data-level. Titre qui ne nomme pas le tueur de chaque mort →
+		// section absente du contrat (jamais des zéros). Jamais une comparaison de slug.
+		WithEchange(duckdb.NewTacticalRepo(pdb), r.capabilitiesForPDB(pdb)).
+		// Nuage « isolement x couverture » de la section Echange (item 7.7) : MÊME
+		// table de portée de radar que l'onglet Tactique (radarRangeFor).
+		WithRadarRange(r.radarRangeFor(pdb)).
+		// « Rôles de portée » (D22-5) : MÊME repo et MÊME classificateur que la Synthèse
+		// et la page Sessions. Câblage INCONDITIONNEL — le repo rend
+		// games.ErrCapabilityNotSupported pour un titre sans positions par kill et le
+		// service omet le bloc. Jamais une comparaison de slug.
+		WithMatchRange(duckdb.NewWeaponRangeRepo(pdb, r.killSourceClassifierFor(pdb)))
 	// Axe « Objectifs » par opportunité du radar synergie : gated par la capability
 	// match.objective.stats (Infinite ; absente pour Halo 5 → axe retiré de toutes
 	// les séries). Source SHARED → couvre aussi les coéquipiers non suivis.
 	if r.capabilitiesForPDB(pdb).Has(games.CapMatchObjectiveStats) {
 		svc = svc.WithObjectiveIndexRepo(duckdb.NewObjectiveStatsRepo(pdb))
 	}
+	// Bloc « servi ou gâché » de l'équipement (étape E6.1bis) : MÊME repo que les
+	// pages Sessions, Synthèse et Squad V2, sur le scope FILTRÉ de cette page
+	// (filteredMatches — cf. teammates_service_usage.go). Gated par
+	// film.usage_summary (Infinite ; absente pour Halo 5 → bloc Available=false
+	// avec raison machine). Jamais slug==.
+	if r.capabilitiesForPDB(pdb).Has(games.CapFilmUsageSummary) {
+		svc = svc.WithEquipmentUsage(duckdb.NewSessionUsageRepo(pdb))
+		// Bloc « formes retenues » (lot D2, 2026-09-13) : MÊME repo d'usage, plus les
+		// colonnes d'objectif quand le titre les publie — deux gates indépendantes, la
+		// seconde ne retirant que les cartes d'objectif. Le catalogue d'armes du titre
+		// se lit à la requête depuis la racine du dépôt (noms des socles).
+		var objectives port.SquadFormesObjectiveRepository
+		if r.capabilitiesForPDB(pdb).Has(games.CapMatchObjectiveStats) {
+			objectives = duckdb.NewObjectiveStatsRepo(pdb)
+		}
+		svc = svc.WithSquadFormes(duckdb.NewSessionUsageRepo(pdb), objectives, r.cfg.RepoRoot)
+	}
 	return svc, pdb.XUID, pdb.Gamertag, nil
 }
 
-// friendGamertagsResolver construit un resolver lisant app_settings.friend_gamertags
-// à chaque appel. Retourne nil si aucun settings store n'est attaché — le
-// service tourne alors en mode legacy.
-func (r *ServiceRegistry) friendGamertagsResolver() teammates.FriendGamertagsResolver {
-	if r.settingsStore == nil {
+// friendGamertagsResolver construit un resolver lisant, à chaque appel, la liste
+// d'amis DU JOUEUR consulté (data/global/player_friends.json). Le xuid est celui
+// du profil résolu (`pdb.XUID`) : deux joueurs de la même instance n'ont plus la
+// même liste. Retourne nil si aucun store d'amis n'est attaché ou si le profil
+// n'a pas de xuid — le service tourne alors sans filtre amis.
+func (r *ServiceRegistry) friendGamertagsResolver(xuid string) teammates.FriendGamertagsResolver {
+	if r.friendStore == nil || xuid == "" {
 		return nil
 	}
 	return func(ctx context.Context) []string {
-		s, err := r.settingsStore.Load()
+		friends, err := r.friendStore.Get(xuid)
 		if err != nil {
-			slog.WarnContext(ctx, "friend_gamertags_load_failed", "err", err)
+			slog.WarnContext(ctx, "player_friends_load_failed", "err", err, "xuid", xuid)
 			return nil
 		}
-		return s.FriendGamertags
+		return friends
 	}
 }
 
@@ -240,7 +302,18 @@ func (r *ServiceRegistry) Compare(ctx context.Context, slug string) (port.Compar
 		pdb.XUID,
 		pdb.TitleSlug,
 	).WithLiveIdentity(r.newCareerLiveService(pdb, r.newHomeRepo(pdb))).
-		WithLiveGamertagResolver(r.liveGamertagResolver) // nil-safe (no-op en démo)
+		WithLiveGamertagResolver(r.liveGamertagResolver). // nil-safe (no-op en démo)
+		// Profil d'armes : câblage INCONDITIONNEL, MÊMES repos que la Synthèse et les
+		// Séries temporelles. Ce sont EUX qui savent si ce titre a un registre d'armes
+		// et des positions par kill — ils rendent games.ErrCapabilityNotSupported et le
+		// service omet le bloc concerné. Un `if capability` ici prendrait la même
+		// décision à deux endroits qui divergeraient (même motif que Timeseries,
+		// registry_pages.go).
+		WithWeaponProfile(
+			r.weaponKillsRepoFor(pdb),
+			duckdb.NewWeaponRangeRepo(pdb, r.killSourceClassifierFor(pdb)),
+			r.weaponImageURLFor(pdb),
+		)
 	csrSeasonID := ""
 	if r.cfg != nil {
 		csrSeasonID = r.cfg.CSRSeasonIDForTitle(ctx, pdb.TitleSlug, nil)
@@ -280,8 +353,13 @@ func (r *ServiceRegistry) SynthesisCtx(ctx context.Context, slug string) (port.S
 	svc := service.NewSynthesisService(duckdb.NewSynthesisRepo(pdb)).
 		WithPlayerMatchesRepo(r.playerMatchesAdapterFor(pdb), pdb.TitleSlug, pdb.Gamertag).
 		WithPersonalScoreAwardsRepo(duckdb.NewPersonalScoreAwardsRepo(pdb), pdb.XUID).
-		WithWeaponKillsRepo(duckdb.NewWeaponKillsRepo(pdb)).
-		WithWeaponAccuracyRepo(duckdb.NewWeaponAccuracyRepo(pdb))
+		WithWeaponKillsRepo(r.weaponKillsRepoFor(pdb)).
+		WithWeaponAccuracyRepo(duckdb.NewWeaponAccuracyRepo(pdb)).
+		// Records de distance par arme : câblage INCONDITIONNEL, comme la portée des Séries
+		// temporelles (registry_pages.go) — le repo seul décide qu'un titre n'a pas de
+		// positions par kill (games.ErrCapabilityNotSupported), un `if capability` ici
+		// prendrait la même décision à deux endroits.
+		WithWeaponRangeRepo(duckdb.NewWeaponRangeRepo(pdb, r.killSourceClassifierFor(pdb)))
 	if a := r.dataAdapterForPDB(pdb); a != nil {
 		svc = svc.WithDataAdapter(a)
 	}

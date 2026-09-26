@@ -1,11 +1,14 @@
 // Package duckdb — MatchViewRepo : données pour la vue détail d'un match.
 //
 // Le code est découpé en fichiers thématiques pour respecter la limite des
-// 500 lignes par fichier (CLAUDE.md). Ce fichier contient le type repo, le
-// constructeur, les helpers de résolution d'assets et les 2 lectures de base
-// (meta, player stats, enrichment) + le sanitize_f64 partagé. Les autres
-// responsabilités vivent dans :
+// 500 lignes par fichier (CLAUDE.md). Ce fichier contient le type repo, les
+// helpers de résolution d'assets et les 2 lectures de base (meta, player stats,
+// enrichment) + le sanitize_f64 partagé. Les autres responsabilités vivent
+// dans :
 //
+//   - match_view_repo_options.go         — constructeur, options With*, viewer,
+//     sharedRead (déplacé le 2026-09-05, sans changement de logique : l'arrivée
+//     de WithBombStats faisait franchir les 500 lignes à ce fichier)
 //   - match_view_repo_scoreboard.go      — scoreboard + objective score
 //   - match_view_repo_medals.go          — médailles (single + bulk + lookup)
 //   - match_view_repo_weapons.go         — armes (single + bulk + lookup helpers)
@@ -27,6 +30,7 @@ import (
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/observability"
+	"levelup/go-api/internal/port"
 )
 
 // MatchViewRepo implémente port.MatchViewRepository.
@@ -54,12 +58,23 @@ type MatchViewRepo struct {
 	// jamais partagé entre requêtes, et il est armé (écrit) dans GetMatchMeta AVANT le
 	// fan-out parallèle des autres lectures (loadMatchViewDataParallel) — pas de course.
 	forceLive bool
+	// killSourceClassifier : le traducteur « source de degat du film -> cle du registre
+	// d armes » du titre, injecte au cablage (nil pour un titre qui n en fournit pas).
+	// Non nil = les armes du match se lisent dans `match_kill_events_latest` plutot que
+	// dans `v_weapon_kills` (bascule du 2026-09-01). Aucun `slug ==` : c est la presence
+	// du traducteur qui decide, et elle vient d une capability.
+	killSourceClassifier port.KillSourceClassifier
 	// stripPlaylistCategory : le titre déclare-t-il CapPlaylistCategoryStrip
 	// (libellés de playlist préfixés d'une catégorie matchmaking à retirer pour
 	// l'affichage) ? Câblé au wiring depuis la CapabilityMap du titre — jamais de
 	// slug ==. Zéro-value false = pas de strip (un titre dont les noms officiels
 	// n'ont pas de préfixe, ex. Halo 5, garde "Super Fiesta Fête" entier).
 	stripPlaylistCategory bool
+	// bombStats : le titre déclare-t-il `film.bomb_stats` ? Câblé au wiring depuis la
+	// CapabilityMap du titre (jamais un slug). Faux = la SECONDE requête du scoreboard
+	// (Q12cBombStats) n'est même pas payée, et aucune colonne d'Assaut n'est exposée — Halo 5
+	// n'a pas de décodeur de film, donc rien à lire.
+	bombStats bool
 	// playlistLabelOverrides : table data-driven nom brut -> libelle court, chargee
 	// depuis config/titles/{slug}/mappings/playlist_labels.toml (ex. Halo 5
 	// "Super Fiesta Fete" -> "Super Fiesta"). nil/vide = no-op. Appliquee APRES le
@@ -70,74 +85,6 @@ type MatchViewRepo struct {
 	// `liked` = « liké PAR CE VIEWER ». Distinct du joueur dont on consulte la
 	// page. Vide → repli sur ce dernier, cf. viewer().
 	viewerSlug string
-}
-
-// viewer retourne le liker dont l'état de like doit être servi dans l'onglet
-// Médias. Même repli — et mêmes raisons — que MediaRepo.viewer : sans joueur
-// courant en session (instance mono-utilisateur), la page consultée est celle du
-// joueur local, qui est donc le viewer.
-func (r *MatchViewRepo) viewer() string {
-	if r.viewerSlug != "" {
-		return r.viewerSlug
-	}
-	if r.pdb == nil {
-		return ""
-	}
-	return r.pdb.Gamertag
-}
-
-// NewMatchViewRepo crée un MatchViewRepo.
-func NewMatchViewRepo(pdb *PlayerDB, xuid string) *MatchViewRepo {
-	return &MatchViewRepo{pdb: pdb, xuid: xuid}
-}
-
-// WithViewer injecte le slug du joueur qui consulte la page (session HTTP), qui
-// détermine l'état `liked` des médias associés au match. Vide ou non appelé :
-// repli documenté dans viewer().
-func (r *MatchViewRepo) WithViewer(slug string) *MatchViewRepo {
-	r.viewerSlug = slug
-	return r
-}
-
-// WithPlaylistCategoryStrip active/désactive le retrait du préfixe de catégorie
-// matchmaking du libellé de playlist (CapPlaylistCategoryStrip). Câblé au wiring
-// depuis la CapabilityMap du titre. Retourne le repo pour chaînage.
-func (r *MatchViewRepo) WithPlaylistCategoryStrip(enabled bool) *MatchViewRepo {
-	r.stripPlaylistCategory = enabled
-	return r
-}
-
-// WithPlaylistLabelOverrides injecte la table data-driven des overrides de
-// libellé de playlist (nom brut -> libellé court, playlist_labels.toml). nil = no-op.
-// Retourne le repo pour chaînage.
-func (r *MatchViewRepo) WithPlaylistLabelOverrides(overrides map[string]string) *MatchViewRepo {
-	r.playlistLabelOverrides = overrides
-	return r
-}
-
-// WithSharedReader injecte un SharedReader override pour les lectures shared (pilote
-// snapshot scoped). Retourne le repo pour chaînage. nil = no-op (reste sur pdb.SharedReadDB()).
-func (r *MatchViewRepo) WithSharedReader(sr SharedReader) *MatchViewRepo {
-	r.sharedReader = sr
-	return r
-}
-
-// WithModeTaxonomy injecte la classification des modes du titre (préfixes pair_name
-// par catégorie) pour le filtrage neighbors. Sans injection, la clause ModeCategory
-// est omise (dégradation gracieuse). Câblé au wiring depuis games/halo_infinite (F15-2).
-func (r *MatchViewRepo) WithModeTaxonomy(t analysis.ModeTaxonomy) *MatchViewRepo {
-	r.modeTax = t
-	return r
-}
-
-// sharedRead retourne le SharedReader effectif : l'override snapshot s'il est câblé
-// (et que la requête n'a pas basculé sur le live), sinon le reader live du pool
-// (pdb.SharedReadDB()). forceLive prime : voir le champ (fallback snapshot-miss).
-func (r *MatchViewRepo) sharedRead() SharedReader {
-	if r.sharedReader != nil && !r.forceLive {
-		return r.sharedReader
-	}
-	return r.pdb.SharedReadDB()
 }
 
 // GetMatchMeta retourne les métadonnées du match (Q13).
@@ -156,10 +103,25 @@ func (r *MatchViewRepo) GetMatchMeta(ctx context.Context, matchID string) (*doma
 	defer cancel()
 
 	row, err := r.scanMatchMeta(ctx, r.sharedRead(), matchID)
-	if errors.Is(err, sql.ErrNoRows) && r.sharedReader != nil && !r.forceLive {
-		slog.WarnContext(ctx, "match_view: match absent du snapshot immuable → bascule lecture live",
-			"match_id", matchID, "title", r.pdb.TitleSlug)
-		observability.IncCounterT(r.pdb.TitleSlug, "match_view_snapshot_miss_live_fallback_total")
+	if err != nil && r.sharedReader != nil && !r.forceLive {
+		// LA BASCULE COUVRE TOUTE ERREUR DU SNAPSHOT, pas seulement la ligne absente.
+		// Un snapshot est un artefact FIGE d'un schema passe : toute colonne ajoutee a
+		// Q13 apres son cut le fait echouer en Binder Error jusqu'au cut suivant — vecu
+		// le 2026-08-29 (colonnes de manches team_*_rounds_won ajoutees a Q13 le jour
+		// meme, snapshot du 27/08 sans elles : 404 « match introuvable » sur TOUS les
+		// matchs, l'erreur etant avalee en amont par le mapping not_found du service).
+		// Le live, lui, porte toujours le schema courant : c'est la degradation juste.
+		if errors.Is(err, sql.ErrNoRows) {
+			slog.WarnContext(ctx, "match_view: match absent du snapshot immuable → bascule lecture live",
+				"match_id", matchID, "title", r.pdb.TitleSlug)
+			observability.IncCounterT(r.pdb.TitleSlug, "match_view_snapshot_miss_live_fallback_total")
+		} else {
+			// ERREUR et pas Warn : chaque requete de vue de match paiera ce detour
+			// jusqu'au prochain cut de snapshot — c'est un signal d'exploitation.
+			slog.ErrorContext(ctx, "match_view: requete snapshot en echec (schema en retard ?) → bascule lecture live",
+				"match_id", matchID, "title", r.pdb.TitleSlug, "err", err)
+			observability.IncCounterT(r.pdb.TitleSlug, "match_view_snapshot_stale_schema_live_fallback_total")
+		}
 		r.forceLive = true
 		row, err = r.scanMatchMeta(ctx, r.pdb.SharedReadDB(), matchID)
 	}
@@ -276,7 +238,7 @@ func (r *MatchViewRepo) attachElapsedSeconds(ctx context.Context, row *domain.Ma
 	}
 }
 
-// scanMatchMeta exécute Q13 sur le reader fourni et scanne les 19 colonnes brutes.
+// scanMatchMeta exécute Q13 sur le reader fourni et scanne les 22 colonnes brutes.
 // Isolé pour permettre le fallback snapshot→live de GetMatchMeta (on ré-exécute la
 // même query sur le live quand le snapshot immuable ne contient pas le match). Renvoie
 // l'erreur de Scan telle quelle (sql.ErrNoRows non enveloppé) pour que l'appelant
@@ -306,6 +268,9 @@ func (r *MatchViewRepo) scanMatchMeta(ctx context.Context, reader SharedReader, 
 		&row.PlaylistAssetID,
 		&row.Team0Score,
 		&row.Team1Score,
+		&row.Team0RoundsWon,
+		&row.Team1RoundsWon,
+		&row.RoundsTotal,
 		&row.PairNameFR,
 		&row.PairAssetID,
 		&row.GameVariantAssetID,

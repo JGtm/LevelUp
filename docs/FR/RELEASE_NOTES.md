@@ -1,5 +1,97 @@
 ## Dernières nouveautés
 
+**v7.5 — Le rejeu 2D, le film Theater décodé & un onglet Tactique**
+
+La plus grosse version à ce jour. Halo enregistre un film de chaque match ; jusqu'ici l'application ne l'avait jamais ouvert. C'est fait — et un match se revoit désormais vu du dessus, seconde par seconde, avec tout ce que le film sait écrit autour : qui a tué qui et avec quoi, à quelle distance, qui portait le drapeau, qui a raflé l'arme de puissance, qui est mort avec un équipement qu'il n'a jamais utilisé.
+
+**Revoir son match en 2D**
+- **Une page de rejeu par match** — tous les joueurs se déplacent sur le vrai fond de la carte, sous leur nom, du coup d'envoi à la fin ; lecture, pause, reculer ou avancer de 10 secondes, et une vitesse au choix
+- **Une barre de lecture à pistes** — Toi, Alliés, Dominance et Médias sur une même frise, avec les pastilles de manche et le score de la manche en cours au-dessus du terrain
+- **Le fil des éliminations suit le curseur** — tueur, arme, victime, médaille, et l'assistance avec sa part de dégâts quand le film la mesure ; une mort sans tueur crédité le dit, au lieu d'inventer un coupable
+- **Une fiche par joueur** — armes portées, grenades, bouclier, camouflage et surbouclier en cours, grappin, temps passé mort, et un filigrane tant que le joueur porte un objectif
+- **Des calques à cocher** — visée, traînée, effets de tirs et de mort, carte de chaleur (temps passé ou éliminations), emplacements d'armes, armes laissées au sol, équipements posés, objets lâchés, véhicules, zones nommées, et les objectifs vivants : drapeau, crâne, colline, bastions A/B/C, bombe, couronne du VIP
+- **Le son du jeu** — 177 sons tirés du jeu, coupés par défaut, filtrables par catégorie
+- **Zoom et cadrage** — molette, clavier ou croix directionnelle ; la toile prend tout le bloc et le zoom ne recadre jamais la carte
+- **Capture et enregistrement** — une image PNG en un clic, ou une vidéo du rejeu avec sa bande-son, encodée hors du temps réel pour que le fichier soit net quoi que fasse la machine
+- **On y entre de partout** — la fiche du match, les tuiles de l'accueil, l'Explorateur et l'onglet Tactique
+- **Les gestes du Spartan, à l'instant** — la fiche du joueur dit quand un Spartan est accroupi, glisse, escalade ou sprinte, lu dans le film lui-même ; le saut, que le film n'écrit pas, s'affiche comme dérivé et le dit
+- **Les véhicules, siège par siège** — qui est assis où se lit dans le film, un véhicule pointe là où il va vraiment, un tir de tourelle part là où vise son tireur, et la carte montre quand un véhicule réapparaît à son emplacement
+- **Les captures de la bonne couleur** — une zone se remplit de la couleur du camp qui pousse vraiment, bases neutres comprises, et un drapeau au sol montre sa jauge de retour (« Retour N % »)
+- **Les matchs chargés lus plus complètement** — sur les matchs les plus denses, le rejeu suit désormais bien plus du film, et des mouvements qui se perdaient apparaissent
+- **Un terrain plus lisible** — les objectifs du mode se posent sur leur étage comme les joueurs, avec une bascule « Objectifs du mode » et son aide ; les véhicules sont plus grands, avec des silhouettes redessinées et leurs propres éclairs de tir ; les marqueurs gardent une taille lisible à tous les zooms ; les sons des bases suivent l'action, et le tic de score bat au rythme de l'horloge du jeu
+- **L'export vidéo aux formats standard** — 1080p ou 720p, avec le cadrage de ton choix quand la carte est zoomée
+
+**Ce que le film sait, et que l'API n'a jamais dit**
+- **L'arme de chaque élimination** — lue dans la source de dégât du film au lieu d'être devinée sur le tableau des scores, y compris pour les morts sans arme à feu : répulseur, chute, environnement
+- **Où l'on meurt** — les positions des frags et des morts sur la carte, et le bloc « Où ça se joue » sur la fiche du match
+- **La portée des engagements** — portée basse (p10), médiane et haute (p90) par arme, plus le dénivelé signé : l'arme avec laquelle on gagne au contact n'est pas celle avec laquelle on gagne à distance
+- **Le niveau des armes** — les prises de socle ventilées en armes de base, armes de terrain, armes de puissance et socles de bonus. Ce que vaut un emplacement vient de la carte, jamais du nom de l'arme : la même Hydra est une arme de terrain sur une carte et une arme de puissance sur une autre
+- **Les prises nettes de drapeau** — le jonglage replié sur une fenêtre de 1,5 seconde : reprendre son propre drapeau deux fois en une seconde compte pour une prise
+- **Assaut** — poses et désamorçages de la bombe, porteurs tués, et le reste des statistiques du mode
+- **Les manches comptent comme des manches** — sur les modes qui se jouent en manches, le score affiché est le nombre de manches gagnées et perdues ; le score en points de l'API est conservé à côté, parce que sur ces modes il peut donner l'avantage au camp qui a perdu
+- **La riposte et l'appui** — quand un coéquipier meurt, ton camp abat-il son tueur dans les 5 secondes ? Une seule règle partout — Escouade, Sessions, Séries temporelles et fiche du match — et l'appui compte les assistances entre coéquipiers
+- **La portée et la hauteur face à ton lobby** — ta portée de frag et la hauteur d'où tu te bats, lues face à tout le lobby de chaque match plutôt que face à la playlist : rôles de portée, rôles de hauteur, et la hauteur d'engagement de chaque frag sur la fiche du match
+- **Les records de distance par arme** — ton frag mesuré le plus lointain avec chaque arme, sur la Synthèse
+- **Les armes de départ lues juste** — une arme ramassée dans les premières secondes d'une vie ne compte plus comme une arme de départ
+
+**L'équipement : utilisé, gardé ou gâché**
+- **Les trois issues de chaque équipement** — utilisé, gardé sans l'utiliser, ou lâché en mourant, famille par famille
+- **Sur trois pages** — la Synthèse, l'Escouade et les Sessions, avec ta part d'équipe, le trait de parité et une bande de régularité match par match
+- **Les charges sont visibles** — un déployable montre ce qu'il lui reste avant la première utilisation
+
+**Un onglet Tactique**
+- **Les cartes que tu joues** — une vignette par carte, son bilan, et un plancher en dessous duquel une carte n'est pas montrée plutôt que montrée de travers
+- **Une vue d'analyse sur le plan de la carte** — où tu passes ton temps, où tu meurs, où tu tues, où tu meurs isolé, où les victoires et les défaites se séparent, et les routes que tu empruntes
+- **Une cellule ouvre le rejeu à l'instant exact** — un clic sur une case et tu tombes sur la seconde où ça s'est joué
+- **La coordination d'équipe** — l'écartement réel de ton escouade, lu par match dans le référentiel des variantes et non fixé à un seuil arbitraire
+
+**Escouade, sessions et progression**
+- **Les formes retenues** — six lectures d'une escouade réparties sur dix-neuf cartes : équipement, armes spéciales et objectifs, en solo comme en escouade, ta part face à la parité de ton équipe
+- **La cadence par match** — chaque valeur d'usage est désormais un nombre par match mesuré, plus un nombre par minute
+- **L'échange en six cartes** — assistances en barres empilées, joueur par carte avec une légende unique, médailles en dernier
+- **Premier frag / première mort, portées et usages** sur les Séries temporelles, et des objectifs ramenés à ce que le mode offrait vraiment
+- **De nouveaux badges** — « Voleur » (le plus de frags volés à un ami) dans la matrice d'impact de l'Escouade, « Sabordage » et « Abnégation » sur les modes à objectif quand le score et les frags racontent deux histoires opposées, et les rôles « Larbin / Patron » sur les graphes d'assistances
+- **Les assistances échangées avec chaque relation** — une colonne dans Relations, une carte « Binôme » et une carte « Noyau dur »
+- **Un onglet « Usages » sur les Séries temporelles et l'Escouade** — portée, équipement et « les formes retenues » au même endroit, et la balance des dégâts cumulée dans le Résumé des Séries temporelles
+- **Les Sessions en quatre sections**, et une comparaison côte à côte en rangées partagées qui reste lisible quand le tiroir s'ouvre
+- **L'intensité de l'Escouade face à ta vraie équipe et au lobby**, et une barre de filtres qui ne rejoue plus l'animation de chaque graphe à chaque clic
+- **Explorateur et Face-à-face** — le briefing montre l'arme favorite de la sélection et la portée de frag du joueur que tu repères ; le Face-à-face gagne un profil d'armes : part des frags par classe d'arme, portée par rôle, trois armes de tête
+- **La tuile de match de l'accueil** montre combien de tes frags un coéquipier a assistés
+
+**Fiche du match**
+- **Un seul gabarit de carte pour toute la page** — les trois tableaux difficiles à comparer sont devenus des graphes
+- **Le score dans le temps, selon le mode** — un mode à manches ne trace plus une courbe de points qui contredit son propre résultat
+- **La distance par arme**, la répartition des frags en deux niveaux, et le contrôle des armes spéciales ventilé par niveau d'arme
+- **Les tournants d'abord** — les équipements et les armes qui n'ont rien changé se replient
+- **Un onglet « Armes et terrain »** — frags et armes, distance, hauteur d'engagement, usages d'équipement, contrôle des socles et positions du film au même endroit ; le contrôle des armes spéciales en colonnes par socle, la part de chaque équipe en pistes horizontales, et une occupation du terrain plus grande et zoomable
+- **La riposte par joueur**, un graphe par camp
+
+**Cartes, médailles et médias**
+- **109 fonds de carte**, convertis sans perte et lus quel que soit leur format, avec les zones Forge nommées à 100 %
+- **Les zones nommées** — les repères officiels de la carte sous le rejeu
+- **La médaille VIP « Clash of Kings » retrouve son nom et son image**, et les images de médailles se rafraîchissent depuis le catalogue du jeu
+- **Les mentions J'aime sont par spectateur** — ton J'aime est le tien, pas celui du compte
+- **Les médias dans le rejeu** — tes captures et tes clips occupent leur propre piste, à la seconde où ils ont été pris
+- **Les noms de mode lus juste** — les playlists dont le nom interne s'écrit à l'envers affichent enfin leur vrai mode
+- **Les clips s'enchaînent** — ouvrir le clip suivant dans la visionneuse ne casse plus ses voisins
+
+**Réparations**
+- **La page Classement mondial refonctionne** (livrée en v7.3.1) — les pages qu'elle lit avaient déménagé, et la page servait un classement périmé au lieu de le dire ; elle ne peut plus se dégrader en silence, et un classement vide ne s'affiche plus comme une récupération en échec
+- **LUSR** — une note d'arène Halo 5 corrompue est réparée à la source, le lecteur corrigé, et un outil de purge ajouté
+- **La fiche du match ne meurt plus pour tout le monde** quand un instantané prend du retard sur la requête
+- **Un rejeu illisible le dit** — un film expiré du côté de Microsoft est classé absent au lieu d'être réessayé sans fin
+
+**Le projet**
+- **Un pied de page** — la source, la licence, les retours et un bouton de soutien, avec la mention de non-affiliation
+- **Une page de confidentialité bilingue**
+- **La démo publique n'embarque plus aucun identifiant** — le seed est passé d'une liste d'exclusion des secrets connus à la publication d'une liste explicite de champs inoffensifs
+- **Les amis appartiennent à un joueur**, les invitations fonctionnent sans groupe, et un administrateur peut fermer l'instance et voir toutes les identités au même endroit
+- **Le code de connexion Xbox se copie en un clic**
+- **Un bloc vide dit pourquoi** — chaque carte de graphe et chaque bloc d'usage nomme la raison quand il n'a rien à montrer
+- **Les sauvegardes incluent les listes d'amis et les alias Xbox**
+
+**Halo 5** — tout ce qui se lit dans un film est réservé à Halo Infinite : Halo 5 garde ses propres pages et n'emprunte jamais les données d'un autre titre. Là où une fonctionnalité ne peut pas exister, l'application le dit au lieu d'afficher un onglet vide.
+
 **v7.3 — Prolongation, premier frag / première mort & la page Réalisations réparée**
 
 **La prolongation sur vos matchs**
@@ -46,8 +138,8 @@
 - **VIP** — VIP adverses abattus, nombre de fois désigné VIP, frags réalisés en étant le VIP, temps cumulé et plus longue survie en VIP
 - **Où les lire** — dans la section « Objectifs » de la vue de match, exactement comme la Capture de drapeau, les Bases, le Roi de la colline et Oddball : une colonne par statistique du mode joué, avec une ligne « Total équipe »
 
-**Dix nouvelles citations d'objectif**
-- **Autour du drapeau** — Capture du drapeau, Sécurisation du drapeau, Vol du drapeau, Chasse au rapatrieur, Porteur imparable et Rapatriement agressif
+**Huit nouvelles citations d'objectif**
+- **Autour du drapeau** — Capture du drapeau, Sécurisation du drapeau, Porteur imparable et Rapatriement agressif
 - **Zones et Oddball** — Défense de zone, Crâne intouchable, Chasse au porteur et Prise du crâne
 - **Des paliers réglés sur le jeu réel** — chaque palier est calibré sur vos vraies données de match plutôt que sur une échelle générique, pour que les exploits rares (réaliser des frags en portant le drapeau ou le crâne) restent atteignables
 

@@ -42,6 +42,7 @@ import (
 
 	auth_platform "levelup/go-api/internal/platform/auth"
 	platform_duckdb "levelup/go-api/internal/platform/duckdb"
+	"levelup/go-api/internal/platform/friendstore"
 	"levelup/go-api/internal/platform/groupstore"
 	jobs_platform "levelup/go-api/internal/platform/jobs"
 	session_platform "levelup/go-api/internal/platform/session"
@@ -66,6 +67,25 @@ func playerOwnershipXUIDResolver(cfg *config.AppConfig) middleware.PlayerXUIDRes
 		for i := range players {
 			if players[i].PlayerSlug == slug {
 				return players[i].XUID, true
+			}
+		}
+		return "", false
+	}
+}
+
+// playerGamertagResolver mappe un slug joueur vers le gamertag de son profil
+// pour le titre courant, via db_profiles.json sans ouvrir de DuckDB. Jumeau de
+// playerOwnershipXUIDResolver : le handler des amis a besoin du gamertag du
+// profil pour l'exclure de sa propre liste.
+func playerGamertagResolver(cfg *config.AppConfig) func(ctx context.Context, slug string) (string, bool) {
+	return func(ctx context.Context, slug string) (string, bool) {
+		players, err := cfg.LoadPlayers(ctxkeys.TitleSlug(ctx))
+		if err != nil {
+			return "", false
+		}
+		for i := range players {
+			if players[i].PlayerSlug == slug {
+				return players[i].Gamertag, true
 			}
 		}
 		return "", false
@@ -284,8 +304,18 @@ func buildAssetMetadataHandler(cfg *config.AppConfig, hiAssetURL *halo_games.Ass
 				WithMapImageURL(func(_ string, nameEN string) string {
 					return hiAssetURL.MapImageURL(nameEN)
 				}).
-				WithWeaponImageURL(func(_ string, nameEN string) string {
-					return hiAssetURL.WeaponImageURL(nameEN)
+				WithWeaponImageURL(func(titleID string, weaponID int64) (string, bool) {
+					// Cet adapter ne connaît QUE son titre : appelé pour un autre, il
+					// rendrait l'icône d'un homonyme d'identifiant. Pas d'icône vaut
+					// mieux que l'icône d'un autre jeu. Comparaison entre deux valeurs
+					// d'exécution — aucun slug littéral (ratchet title-agnostic).
+					if titleID != "" && titleID != hiAssetURL.TitleSlug() {
+						return "", false
+					}
+					// La résolution URL + masque vit en UN SEUL endroit du dépôt
+					// (D11) : la recopier ici la ferait diverger de celle que sert
+					// le profil d'armes du Face-à-face.
+					return wire.WeaponImageURLFromAdapter(hiAssetURL)(weaponID)
 				}),
 			func(slug string, cap titlePkg.Capability) bool {
 				d := titleRegistry.Get(slug)
@@ -598,7 +628,14 @@ func applyTransverseMiddlewares(
 	r.Use(middleware.SecurityHeaders(cfg.TrustProxyHeaders))
 	r.Use(middleware.RequestID)
 	r.Use(middleware.CORS(cfg.CORSOrigins))
-	r.Use(middleware.CSRF(cfg.CORSOrigins))
+	// CSRF : contrôle d'origine sur les requêtes mutatrices, SAUF sous le préfixe du
+	// protocole ouvrier. Mesuré le 2026-08-25 (dry run superviseur depuis le VPS de
+	// calcul) : sans cette exemption, `replay-worker --once` reçoit 403 csrf_rejected
+	// avant tout contrôle de jeton — un client net/http n'envoie pas d'Origin. Ces
+	// routes n'acceptent AUCUN cookie (seule auth : Bearer RequireWorkerToken), donc
+	// aucune autorité ambiante n'y est exposée : cf. l'en-tête de middleware/csrf.go.
+	// Les autres middlewares transverses restent appliqués au protocole ouvrier.
+	r.Use(middleware.CSRF(cfg.CORSOrigins, apiV1InternalBasePath))
 	r.Use(middleware.RateLimit(cfg.DemoMode, cfg.RateLimitRPM))
 	r.Use(middleware.SlogLogger)
 	r.Use(chimiddleware.Compress(5))
@@ -640,12 +677,21 @@ func NewRouter(
 	attemptStore := auth_platform.NewAttemptStore()
 
 	// Sprint 16 : settings store + Sprint 17 : job store
-	settingsStore := settings_platform.NewStore(cfg.AppSettingsPath)
+	// WithEnforcedDefaults (ADR 0035 D5) : sur une instance qui applique la
+	// propriété des joueurs, les DEUX clés de sécurité absentes du fichier
+	// prennent leur valeur sûre (verrouillé / sans auto-provisioning).
+	settingsStore := settings_platform.NewStore(cfg.AppSettingsPath).
+		WithEnforcedDefaults(authz.Enforced(cfg.DemoMode, cfg.AuthMode))
 	jobsPath := titlePkg.NewPathResolver(cfg.RepoRoot).JobsCachePath()
 	jobStore := jobs_platform.NewStore(jobsPath)
+	// Amis PAR JOUEUR (data/global/player_friends.json) : remplace l'ancien réglage
+	// global des amis dans app_settings. Même pattern que settingsStore ci-dessus
+	// (le boot en construit une seconde instance pour sa migration : fichier commun,
+	// écritures sérialisées par le rename atomique du store).
+	friendStore := friendstore.NewFriendStore(titlePkg.NewPathResolver(cfg.RepoRoot).PlayerFriendsPath())
 
 	// Auth locale : user store + invite store (mode password).
-	usersPath := filepath.Join(cfg.AuthDir, "users.json")
+	usersPath := cfg.UsersFilePath()
 	invitesPath := filepath.Join(cfg.AuthDir, "invites.json")
 	users := userstore.NewStore(usersPath)
 	invites := userstore.NewInviteStore(invitesPath)
@@ -669,7 +715,8 @@ func NewRouter(
 		serverCtx: serverCtx, cfg: cfg, bootRepo: bootRepo, bootSvc: bootSvc, daemon: daemon,
 		tokenProvider: tokenProvider, autoSyncScheduler: autoSyncScheduler, backupScheduler: backupScheduler,
 		groupStore: groupStore, sessionStore: sessionStore, attemptStore: attemptStore,
-		settingsStore: settingsStore, jobStore: jobStore, users: users, invites: invites,
+		friendStore: friendStore, settingsStore: settingsStore, jobStore: jobStore,
+		users: users, invites: invites,
 		titleRegistry: titleRegistry, humaSharedConfig: humaSharedConfig,
 	})
 	reg := deps.reg

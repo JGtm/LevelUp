@@ -34,8 +34,10 @@ const __dirname = dirname(fileURLToPath(import.meta.url))
 const REPO_ROOT = resolve(__dirname, '..')
 const WEB_SRC = join(REPO_ROOT, 'apps/web/src')
 
-// Pattern : extrait `featureName` de `@/features/featureName/...`.
-const FEATURE_IMPORT_RE = /@\/features\/([a-z0-9-]+)/g
+// Pattern : extrait `featureName` de `@/features/featureName/...`, et le CHEMIN du module
+// importé (2e groupe) — une exception peut ainsi porter sur un module nommé plutôt que sur
+// une feature entière (cf. ALLOWED_CROSS_IMPORTS ci-dessous).
+const FEATURE_IMPORT_RE = /@\/features\/([a-z0-9-]+)((?:\/[A-Za-z0-9._-]+)*)/g
 
 // Exceptions cross-feature documentées.
 //
@@ -54,6 +56,10 @@ const ALLOWED_CROSS_IMPORTS = new Set([
   // Le dashboard monitoring (WatcherSection) réutilise le hook useWatcherStatus
   // de settings/watcher-queries plutôt que de le dupliquer — dépendance durable.
   'admin=>settings',
+  // Le rejeu 2D lit les réglages d'instance des sons d'armes (variation, distance)
+  // via useSettings — même source que la section d'admin qui les édite, zéro
+  // duplication de query. Dépendance durable (2026-08-16, chantier sons-rejeu).
+  'match-replay=>settings',
   // L'onglet Admin « Lab » (AdminLabPage + WaypointExplorerPanel) et la section
   // Diagnostics de « Qualité données » réutilisent les panneaux / queries / i18n
   // de la feature lab (ResourcesPanel, DiagnosticsPanel, useLab*) — réutilisation
@@ -72,8 +78,63 @@ const ALLOWED_CROSS_IMPORTS = new Set([
   'career=>achievements',
   // Career réutilise ExplorerMatchesTable pour les "Matchs marquants"
   'career=>explorer',
+  // Amis par profil joueur (plan 2026-09-15, D1/D2) : la page « Amis et groupes »
+  // (features/groups) embarque la section d'amis, et la vue match colore les amis
+  // depuis usePlayerFriends — la liste a quitté GET /settings (admin-only) pour
+  // /players/{slug}/friends. Dépendances durables (2026-09-16).
+  'groups=>friends',
+  'match-view=>friends',
   // Career réutilise MatchEncountersTable pour les "Joueurs les plus croisés"
   'career=>match-view',
+  // Le rejeu 2D pose les kills de la Match View sur sa propre horloge : il réutilise la
+  // COLLECTE des kills (`_momentum.collectKillEvents`), les deux cascades de couleur d'équipe
+  // (`teamColor` pour les surfaces, `teamSeriesColor` pour les séries) et l'index des joueurs
+  // (`xuidMeta`) plutôt que d'en écrire une seconde version. Dépendance durable et voulue — la
+  // dupliquer donnerait deux définitions de « ce qui est un kill » et deux couleurs pour la
+  // même équipe. QUATRE MODULES NOMMÉS depuis le 2026-09-06 (v2 D.13) : la paire entière
+  // autorisait 60 fichiers de la Match View, et le commentaire n'en citait déjà que trois sur
+  // les quatre réellement importés.
+  'match-replay=>match-view/_momentum',
+  'match-replay=>match-view/teamColor',
+  'match-replay=>match-view/teamSeriesColor',
+  'match-replay=>match-view/xuidMeta',
+  // Reciproque. Le CHARGEMENT de l'artefact n'y figure plus : `queries.ts` est descendu dans
+  // `lib/replay/` le 2026-09-06 (v2 D.13) avec le document lui-meme (`replayNormalize`,
+  // `replayReadyTypes`), sa logique de lecture (`replayLogic`), le roster (`rosterLogic`) et
+  // ses deux dependances pures — la fermeture a ete verifiee : aucun de ces sept modules
+  // n'importe quoi que ce soit de `features/`. L'ancienne justification disait que le hook
+  // « ne peut pas descendre sans emmener replayNormalize » : c'est exactement ce qui a ete
+  // fait, et les cinq imports de query ont disparu.
+  //
+  // CE QUI RESTE, ET POURQUOI, module par module :
+  //  - les deux SECTIONS de l'onglet Chronologie sont des vues du document de rejeu montees
+  //    par la Match View ; leur contenu (dictionnaire, calques, hook de socles) vit dans la
+  //    feature du rejeu — les descendre dans `lib/` y emmenerait un calque et l'i18n, c'est-a
+  //    -dire deplacerait la feature au lieu de partager de la logique ;
+  //  - `i18n/i18n` : la barre de faits marquants nomme les usages d'equipement avec le
+  //    vocabulaire du rejeu (`REPLAY_TEXT[locale].equipmentUsage`) — un second dictionnaire
+  //    donnerait deux libelles pour la meme chose ;
+  //  - `model/equipmentUsageLogic` : `equipmentKillBadges` y lit `EPISODE_FAMILIES`, les deux
+  //    familles dont l'usage forme un episode. Le module ne peut pas descendre dans `lib/`
+  //    (il depend d'un calque), la constante ne peut pas se recopier (regle n° 6).
+  'match-view=>match-replay/MatchEquipmentUsageSection',
+  'match-view=>match-replay/MatchPadControlSection',
+  'match-view=>match-replay/i18n/i18n',
+  'match-view=>match-replay/model/equipmentUsageLogic',
+  //  - hooks de zoom / deplacement et leur controle (2026-09-21, ajustements pre-v7.5) :
+  //    « Occupation du terrain » se zoome et se deplace avec EXACTEMENT les hooks du rejeu
+  //    2D (contrat : une ReplayBounds, un CanvasView, une toile). Les recopier serait la
+  //    troisieme copie du geste de zoom ; les descendre dans `lib/` emmenerait le modele
+  //    de scene du rejeu. Dependance durable, meme raison que les sections ci-dessus.
+  'match-view=>match-replay/hooks/useReplayZoom',
+  'match-view=>match-replay/hooks/useReplayDrag',
+  'match-view=>match-replay/hooks/useReplayWheelZoom',
+  'match-view=>match-replay/ui/ReplayZoomControl',
+  //  - `model/padControlLogic` : depuis le 2026-09-22 (onglet « Armes et terrain »), la Match
+  //    View decide si la section « Equipement et terrain » a quelque chose a coiffer en relisant
+  //    `hasPadControl` / `buildPadControl` — le MEME predicat que la section elle-meme, sinon un
+  //    titre pourrait se poser au-dessus de rien (regle n° 6 : une condition, une ecriture).
+  'match-view=>match-replay/model/padControlLogic',
   // Engagement orchestre des sous-vues squad
   'engagement=>squad',
   // Home orchestre prestige + palmares + media + match-history
@@ -117,10 +178,6 @@ const ALLOWED_CROSS_IMPORTS = new Set([
   'timeseries=>engagement',
   'timeseries=>squad',
   'timeseries=>explorer',
-  // TimeseriesPage.summary réutilise SynthesisWeaponAccuracyChart (graphe « Précision
-  // par arme », Halo 5) sous le sunburst frags — dépendance durable, analogue à
-  // session-detail=>synthesis.
-  'timeseries=>synthesis',
   // Explorer mode "Joueur" réutilise des composants Squad (synergy table,
   // visualisations partagées) — feature durable.
   'explorer=>squad',
@@ -170,10 +227,6 @@ const ALLOWED_CROSS_IMPORTS = new Set([
   // SessionMatchesTable réutilise ExplorerMatchesTable pour l'historique de session
   // — durable, strictement analogue à career=>explorer.
   'session-detail=>explorer',
-  // SessionFragCard réutilise SynthesisWeaponAccuracyChart (graphe « Précision par
-  // arme », Halo 5) au lieu de « Détails des frags » — dépendance durable, analogue à
-  // session-detail=>explorer.
-  'session-detail=>synthesis',
   // MatchEncountersTable réutilise RelationBadgeLegend (légende des badges de
   // relation) de palmarès — dépendance durable.
   'match-view=>palmares',
@@ -193,7 +246,7 @@ const ALLOWED_CROSS_IMPORTS = new Set([
   'media=>squad',
   // SessionIntensityProfile réutilise le constructeur d'option ECharts
   // `squad/charts/squadIntensityProfileChart` (courbe d'intensité) plutôt que de le
-  // recopier — durable, analogue à session-detail=>synthesis.
+  // recopier — durable, analogue à session-detail=>explorer.
   'session-detail=>squad',
 ])
 
@@ -248,9 +301,15 @@ try {
     while ((m = FEATURE_IMPORT_RE.exec(text)) !== null) {
       const importedFeature = m[1]
       if (importedFeature === consumerFeature) continue
-      const key = `${consumerFeature}=>${importedFeature}`
-      if (ALLOWED_CROSS_IMPORTS.has(key)) continue
-      crossViolations.push({ file: relPath, key, importedFeature })
+      const importedModule = `${importedFeature}${m[2] ?? ''}`
+      // Deux formes d'exception, et la seconde est la seule qui dise la vérité quand une
+      // feature n'emprunte que trois modules à sa voisine : la PAIRE (`a=>b`, toute la
+      // feature) et le MODULE NOMMÉ (`a=>b/dossier/module`). Un module autorisé n'ouvre pas
+      // sa feature ; ajouter un import ailleurs dans la même voisine fait rougir le lint.
+      const paire = `${consumerFeature}=>${importedFeature}`
+      const module = `${consumerFeature}=>${importedModule}`
+      if (ALLOWED_CROSS_IMPORTS.has(paire) || ALLOWED_CROSS_IMPORTS.has(module)) continue
+      crossViolations.push({ file: relPath, key: module, importedFeature: importedModule })
     }
   }
 } catch (err) {

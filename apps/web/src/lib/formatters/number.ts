@@ -66,7 +66,7 @@ export function formatNumberFixed(
  *
  * Source UNIQUE des deltas signés à décimales fixes (delta de rang CSR/LUSR, deltas
  * de briefing) — garde-rail `signed-format.guard.test.ts`. NE PAS confondre avec
- * `formatSignedPoints` (points entiers '±0 pts', ExplorerBriefing.logic) ni avec le
+ * `formatSignedPoints` (points entiers '±0 pts', @/lib/baseline) ni avec le
  * `formatDelta` de delta-card (précision dynamique selon magnitude + objet couleur).
  *
  * @example

@@ -1,0 +1,15 @@
+2026/08/18 02:59:58 INFO faits du match charges path=C:\Users\Guillaume\Projects\LevelUp-wt-score-film\.ai\V7.5\replay2d\registre_film\lotA_faits\000d5950.json match=000d5950-83d9-423f-ab55-d068a7237b9f joueurs=8 variante="Slayer:Arena Super Fiesta"
+2026/08/18 03:00:26 INFO capacites : lectures d i48 recordsDelta=171851 masqueAvecI48=92 lues=92 illisibles=0 sansIdentite=10
+2026/08/18 03:00:32 INFO camouflage : lectures d i28 queue[1] recordsDelta=171851 masqueAvecI28=1280 lues=1280 illisibles=0 sansVoie=582
+2026/08/18 03:00:38 INFO grappin : lectures d i59 tag==3 recordsDelta=171851 masqueAvecI59=1342 lues=1309 illisibles=33 tag3=57 corpsCasses=0
+2026/08/18 03:00:48 INFO poses d'equipement : records de creation ti=37 decoupage=9/5 accords=21 ancres=6651 acceptes=401 confirmes=295 poses=295
+2026/08/18 03:00:54 INFO armes au sol : balayage ti=42 slots=899 ancres=6487 acceptees=317 imagesCles=26 viesRecensees=178 pistesDelta=549
+2026/08/18 03:01:51 INFO pont slot->joueur slots=93 viesNommees=90 viesTotal=105 lecturesIndex=26 desaccordsIndex=0 collisionsSlot=0
+2026/08/18 03:01:51 INFO rejeu : courbe de score match_id=000d5950-83d9-423f-ab55-d068a7237b9f identiteEquipes=a manches=1 modePorte=true equipes=2 joueurs=6 points=708
+2026/08/18 03:01:51 INFO rejeu : tractions de grappin tirs=32 accroches=25 tractions=25 vies=15 rates=7 corpsCasses=0
+2026/08/18 03:01:51 INFO rejeu : poses d'equipement balaye=true calibre=true decoupage=9/5 poses=295 nommees=295 autres=0 avecPoseur=289 avecCap=254 deployees=39 lachees=250 origineInconnue=6
+2026/08/18 03:01:51 INFO rejeu : socles d'arme au sol balaye=true ancres=6487 acceptees=317 retenues=220 ecartees=97 lachees=181 apparues=39 auRepos=0 grappes=0 socles=0 occupations=0 datees=0 sansPassage=0 jamaisVidees=0 cyclesEtablis=0
+2026/08/18 03:01:51 INFO rejeu : episodes d'equipement actif viesPubliees=99 viesCamo=22 episodesCamo=36 viesSurbouclier=0 episodesSurbouclier=0
+2026/08/18 03:01:51 INFO rejeu : palette de capacites palette=famille_b lectures=214 rangsNommes=2
+2026/08/18 03:01:51 INFO rejeu : couverture par calque tirsRattaches=483 tirsDisponibles=519 tirsSansSlot=36 tirsAmbigus=0 tirsHorsFenetre=0 tirsNonPublies=0 grenadesRattachees=70 grenadesDisponibles=70 verdictTirs=nominal verdictGrenades=nominal verdictPont=nominal
+2026/08/18 03:01:51 INFO artefact rejeu écrit path=C:\Users\Guillaume\Projects\LevelUp-wt-score-film\data\cache\replays\halo_infinite\000d5950.json tracks=99 module=ridgeline bytes=2266456 match=000d5950-83d9-423f-ab55-d068a7237b9f title=halo_infinite

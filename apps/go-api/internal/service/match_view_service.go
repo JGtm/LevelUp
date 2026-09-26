@@ -19,12 +19,15 @@ package service
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 	"fmt"
 	"log/slog"
 	"time"
 
-	"levelup/go-api/internal/analysis/positions"
+	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/domain/playerposition"
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/port"
@@ -49,7 +52,7 @@ const (
 // encore migré vers tokenCssVar(). Utiliser outcomeColorToken pour les
 // nouveaux champs (Phase 1 méta-plan § 6.1.3 — chunk MV3 cleanup).
 //
-// (outcomeLabels est défini dans match_history_service.go)
+// (outcomeLabels — le repli FR des LIBELLÉS — est défini dans outcome_label.go)
 var outcomeColors = map[int]string{
 	1: mvHexOutcomeNeutral, // Égalité
 	2: mvHexOutcomeWin,     // Victoire
@@ -132,6 +135,11 @@ type MatchViewService struct {
 	// Injecté via WithAssetURL au boot. Si nil, MapImageURL et IconURL restent
 	// vides — le front affiche les fallbacks texte (dégradation gracieuse).
 	assetURL games.TitleAssetURLAdapter
+	// modeTaxonomy (optionnel) : résout pair_name → catégorie custom de mode pour
+	// MatchViewHeader.ModeCategory. Injecté via WithModeTaxonomy avec la MÊME
+	// taxonomie que MediaRepo (wire.haloInfiniteModeTaxonomy — une seule résolution
+	// par titre). Zéro-value → ModeCategory reste vide (dégradation gracieuse).
+	modeTaxonomy analysis.ModeTaxonomy
 	// socialRepo (optionnel) : repo des données sociales (favoris). Injecté
 	// via WithSocial. Si nil ou shared_social indisponible, IsFavorite reste
 	// false — le bouton favori côté front reste fonctionnel mais idempotent.
@@ -162,16 +170,45 @@ type MatchViewService struct {
 	// (titre sans mesure, ex. Halo 5). Jamais de comparaison de slug ici : la
 	// table injectée EST le titre.
 	regulationSeconds map[string]int
+	// roundsDecide (optionnel) : game_variant_name → le RÉSULTAT du match se lit en
+	// MANCHES et non en points (regulation.toml [rounds_decide]). Nil/absent → l'en-tête
+	// affiche le score de l'API, comportement d'avant le 2026-08-29.
+	roundsDecide map[string]bool
+	// scoreTimelineKind (optionnel) : la RÈGLE du titre courant — un libellé de mode
+	// normalisé → comment le bloc « Score dans le temps » se montre (`hidden` / `events` /
+	// `curve`, regulation.toml [score_timeline]). Une FONCTION et non une table, parce que
+	// l'appariement se fait par jeton de mode (mot entier) et non par clé exacte : la règle
+	// voyage entière, elle ne se réimplémente pas ici. Nil (titre sans table) → le header
+	// laisse le champ vide et le client retombe sur la courbe.
+	scoreTimelineKind func(modeLabel string) string
+	// killDistanceRepo (optionnel) : loader « distance par arme, par joueur »
+	// (POC LOT G.3, plan retours-utilisateur §3bis DEC-8). Nil, ou titre sans
+	// capability film.kill_source => pas de bloc, jamais d'erreur. Dégradation
+	// gracieuse posée au câblage (même gate, cf. wire.killDistanceRepoFor).
+	killDistanceRepo port.KillDistanceRepository
 	// replaySvc (optionnel) : service du rejeu 2D, interrogé UNIQUEMENT pour la
 	// présence de l'artefact (IsAvailable = un os.Stat). Nil → ReplayAvailable
 	// reste faux et le front ne pose aucun lien : un titre qui ne produit pas de
 	// rejeu n'a rien à afficher, pas une erreur à remonter.
 	replaySvc port.ReplayService
+	// semantic (optionnel) : adapter sémantique du titre — SEUL usage ici, le mot de
+	// l'issue du match (outcomes.toml, localisé) posé sur l'en-tête. Injecté via
+	// WithSemantic. Nil → repli FR documenté (outcome_label.go), le comportement
+	// d'avant le 2026-09-07.
+	semantic games.TitleSemanticAdapter
 }
 
 // NewMatchViewService crée un MatchViewService.
 func NewMatchViewService(repo port.MatchViewRepository, xuid string) *MatchViewService {
 	return &MatchViewService{repo: repo, xuid: xuid}
+}
+
+// WithSemantic injecte l'adapter sémantique du titre : l'en-tête y prend le LIBELLÉ D'ISSUE
+// du match (outcomes.toml), dans la locale de la requête. Sans injection, repli sur la map FR
+// — l'en-tête annonçait « Victoire » sous UI anglaise avant le 2026-09-07.
+func (s *MatchViewService) WithSemantic(a games.TitleSemanticAdapter) *MatchViewService {
+	s.semantic = a
+	return s
 }
 
 // WithCitationsRepo injecte le CitationsRepository pour peupler l'onglet Citations.
@@ -234,6 +271,16 @@ func (s *MatchViewService) WithReplay(svc port.ReplayService) *MatchViewService 
 	return s
 }
 
+// WithKillDistanceRepo injecte le loader « distance par arme, par joueur »
+// (POC LOT G.3, plan retours-utilisateur §3bis DEC-8).
+//
+// Dégradation gracieuse si nil ou si le titre n'a pas la capability : le bloc
+// combat_tab.kill_distance_by_weapon reste absent, exactement comme avant ce lot.
+func (s *MatchViewService) WithKillDistanceRepo(r port.KillDistanceRepository) *MatchViewService {
+	s.killDistanceRepo = r
+	return s
+}
+
 // WithPlayerPositionsRepo injecte le loader des positions joueurs keyframe v3
 // (match-level, §N) consommé par GetMatchPositions. Dégradation gracieuse si
 // nil : GetMatchPositions retourne games.ErrCapabilityNotSupported.
@@ -254,6 +301,23 @@ func (s *MatchViewService) WithAwardsRepo(r port.PersonalScoreAwardsRepository) 
 // restent vides côté response et le front affiche les fallbacks texte.
 func (s *MatchViewService) WithAssetURL(a games.TitleAssetURLAdapter) *MatchViewService {
 	s.assetURL = a
+	return s
+}
+
+// WithRoundsDecide injecte la table `game_variant_name → le résultat se lit en MANCHES`
+// (regulation.toml [rounds_decide]). Sans injection, l'en-tête affiche le score de l'API —
+// le comportement d'avant le 2026-08-29, jamais une régression.
+func (s *MatchViewService) WithRoundsDecide(roundsDecide map[string]bool) *MatchViewService {
+	s.roundsDecide = roundsDecide
+	return s
+}
+
+// WithScoreTimelineKind injecte la règle `libellé de mode → lecture du bloc « Score dans le
+// temps »` du titre courant (regulation.toml [score_timeline]). Sans injection, l'en-tête
+// laisse le champ vide et le client garde la courbe — le comportement d'avant le
+// 2026-09-03, jamais un bloc qui disparaît par accident.
+func (s *MatchViewService) WithScoreTimelineKind(resolve func(modeLabel string) string) *MatchViewService {
+	s.scoreTimelineKind = resolve
 	return s
 }
 
@@ -286,16 +350,27 @@ func (s *MatchViewService) GetMatchView(ctx context.Context, matchID string) (do
 	// --- Appels séquentiels bloquants (meta est nécessaire pour la suite) ---
 	meta, err := s.repo.GetMatchMeta(ctx, matchID)
 	if err != nil {
-		// Match absent du substrat local (jamais synchronisé, ou pas encore) : 404
-		// propre et typé, title-agnostic (aucune comparaison de slug — HINF et Halo 5
-		// suivent EXACTEMENT le même chemin). AUCUN fetch live vers l'API du titre
-		// depuis cette page : décision user 2026-07-19 (BACKLOG "Retirer le fallback
-		// LIVE du Match view") — latence, dépendance token et échec réseau à
-		// l'affichage n'étaient pas acceptables. Le front affiche un état dédié
-		// « pas encore synchronisé » sur ce code (match_not_found).
-		slog.InfoContext(ctx, "match_view: match absent du substrat local (pas encore synchronisé)",
+		// L'ABSENCE ET LA PANNE NE SONT PAS LE MÊME 404 (correctif 2026-08-29).
+		//
+		// Absence (sql.ErrNoRows, préservé par le wrapping %w du repo) : match jamais
+		// synchronisé — 404 propre et typé, title-agnostic. AUCUN fetch live vers l'API
+		// du titre depuis cette page : décision user 2026-07-19 (BACKLOG "Retirer le
+		// fallback LIVE du Match view") — cette décision porte sur le refus du fetch,
+		// PAS sur le mapping des erreurs. Le front affiche « pas encore synchronisé »
+		// sur ce code (match_not_found).
+		if errors.Is(err, sql.ErrNoRows) {
+			slog.InfoContext(ctx, "match_view: match absent du substrat local (pas encore synchronisé)",
+				"match_id", matchID, "err", err)
+			return domain.MatchViewResponse{}, domain.ErrNotFound("match", matchID)
+		}
+		// Panne technique (schéma en retard, timeout, verrou, I/O) : la déguiser en
+		// « pas encore synchronisé » a masqué pendant des heures une panne TOTALE de la
+		// page (2026-08-29 : Binder Error sur snapshot au schéma en retard → 404 sur
+		// TOUS les matchs, log en Info que personne ne lit). Une panne se dit : 500,
+		// log ERROR, et l'état d'erreur générique du front.
+		slog.ErrorContext(ctx, "match_view: lecture des métadonnées en échec (pas une absence)",
 			"match_id", matchID, "err", err)
-		return domain.MatchViewResponse{}, domain.ErrNotFound("match", matchID)
+		return domain.MatchViewResponse{}, fmt.Errorf("match_view: métadonnées illisibles pour %s: %w", matchID, err)
 	}
 
 	// Couche B (ADR 0029) : fail-fast si le joueur courant n'a pas participé à ce
@@ -410,7 +485,7 @@ func (s *MatchViewService) GetObjectiveEvents(ctx context.Context, matchID strin
 // non injecté en test), retourne games.ErrCapabilityNotSupported. Sinon délègue
 // à LoadMatch et propage l'erreur telle quelle (y compris
 // ErrCapabilityNotSupported remontée par le repo si la table est absente).
-func (s *MatchViewService) GetMatchPositions(ctx context.Context, matchID string) ([]positions.PlayerPosition, error) {
+func (s *MatchViewService) GetMatchPositions(ctx context.Context, matchID string) ([]playerposition.PlayerPosition, error) {
 	if s.playerPositionsRepo == nil {
 		return nil, games.ErrCapabilityNotSupported
 	}
@@ -420,8 +495,8 @@ func (s *MatchViewService) GetMatchPositions(ctx context.Context, matchID string
 // ---------------------------------------------------------------------------
 // Helpers transverses
 // ---------------------------------------------------------------------------
-// outcomeLabel et formatLifeSeconds sont définis dans match_history_service.go
-// (même package).
+// outcomeKey / outcomeText sont définis dans outcome_label.go et
+// formatLifeSeconds dans match_history_service_enrich.go (même package).
 
 // Phase 1 méta-plan § 6.1.3 — chunk MV3 cleanup hex codes.
 // Les helpers outcomeColor et perfColor restent pour rétrocompat front V0 ;

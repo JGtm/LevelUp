@@ -13,9 +13,6 @@ func TestSyncScope_NewScopeAll(t *testing.T) {
 	if !s.Events {
 		t.Error("Events should be true after NewScopeAll")
 	}
-	if !s.Weapons {
-		t.Error("Weapons should be true after NewScopeAll")
-	}
 	if s.MaxMatches != 500 {
 		t.Errorf("MaxMatches = %d, want 500", s.MaxMatches)
 	}
@@ -64,14 +61,6 @@ func TestSyncScope_NeedsAPI_True(t *testing.T) {
 
 // ── Sprint 47 : tests des groupes manquants ─────────────────────────
 
-func TestSyncScope_Resolve_WeaponsGroup(t *testing.T) {
-	s := &SyncScope{Weapons: true}
-	s.Resolve()
-	if !s.Weapons {
-		t.Error("Weapons should remain true after Resolve")
-	}
-}
-
 func TestSyncScope_Resolve_PVEStats(t *testing.T) {
 	s := &SyncScope{PVEStats: true}
 	s.Resolve()
@@ -118,14 +107,6 @@ func TestSyncScope_Resolve_SkillActivatesEnemyMMR(t *testing.T) {
 	s.Resolve()
 	if !s.EnemyMMR {
 		t.Error("Skill should set EnemyMMR (fetch skill ⇒ fetch enemy MMR)")
-	}
-}
-
-func TestSyncScope_Resolve_ForceWeapons(t *testing.T) {
-	s := &SyncScope{ForceWeapons: true}
-	s.Resolve()
-	if !s.Weapons {
-		t.Error("ForceWeapons should imply Weapons=true")
 	}
 }
 
@@ -196,7 +177,7 @@ func TestSyncScope_NeedsAPI_False_LocalOnly(t *testing.T) {
 func TestSyncScope_AllData_SetsEverything(t *testing.T) {
 	s := &SyncScope{AllData: true}
 	s.Resolve()
-	if !s.Medals || !s.Events || !s.Weapons || !s.PVEStats || !s.LUSR || !s.CSR {
+	if !s.Medals || !s.Events || !s.PVEStats || !s.LUSR || !s.CSR {
 		t.Error("AllData should set all major flags")
 	}
 	if !s.ComebackBadges || !s.PlayableDuration {

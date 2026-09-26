@@ -6,6 +6,7 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"flag"
 	"fmt"
@@ -21,8 +22,9 @@ import (
 )
 
 const (
-	MBitWeaponKills       uint64 = 1 << 21
-	MBitWeaponKillsNoFilm uint64 = 1 << 22
+	MBitWeaponKills uint64 = 1 << 21
+	// MBitFilmAbsent : renomme le 2026-09-01 (ex-MBitWeaponKillsNoFilm), valeur inchangee.
+	MBitFilmAbsent uint64 = 1 << 22
 )
 
 var (
@@ -82,14 +84,26 @@ func main() {
 	}
 }
 
+// loadMatches lit la couverture par match.
+//
+// LA PREUVE DU DÉTAIL DES ARMES CHANGE DE TABLE SELON LE TITRE, et on sonde celle que la
+// base CONTIENT, jamais un slug : `weapon_kills` là où l'arme est native de l'API
+// (Halo 5), `match_kill_events_latest` là où elle vient du film (Halo Infinite, depuis la
+// suppression de la table le 2026-09-01). Même recette que
+// `scheduler/data_health_check.go`. Sans cela, cet outil rendrait une Catalog Error sur
+// Halo Infinite et ne dirait plus rien de rien.
 func loadMatches(db *sql.DB) ([]matchRow, error) {
+	preuve := analysis.WeaponEvidenceTable(context.Background(), db)
+	if preuve == "" {
+		preuve = "match_kill_events_latest" // base neuve : la sous-requête rendra 0.
+	}
 	q := `
 		SELECT r.match_id,
 		       ` + analysis.SQLStartTimeCanonical("r") + ` AS start_time,
 		       COALESCE(r.is_firefight, FALSE) AS is_firefight,
 		       COALESCE(r.backfill_completed, 0) AS bitmask,
 		       (SELECT COUNT(*) FROM match_participants p WHERE p.match_id = r.match_id) AS participants,
-		       (SELECT COUNT(*) FROM weapon_kills wk WHERE wk.match_id = r.match_id) AS wk,
+		       (SELECT COUNT(*) FROM ` + preuve + ` wk WHERE wk.match_id = r.match_id) AS wk,
 		       (SELECT COUNT(*) FROM highlight_events hv WHERE hv.match_id = r.match_id) AS hev,
 		       (SELECT COUNT(*) FROM medals_earned m WHERE m.match_id = r.match_id) AS medals,
 		       (SELECT COUNT(*) FROM killer_victim_pairs kvp WHERE kvp.match_id = r.match_id) AS kvp
@@ -136,7 +150,7 @@ func printGlobalSynthesis(matches []matchRow) {
 		if m.weaponKills > 0 {
 			wkOK++
 		}
-		if m.bitmask&MBitWeaponKillsNoFilm != 0 {
+		if m.bitmask&MBitFilmAbsent != 0 {
 			wkNoFilm++
 		}
 		if m.highlightEvents > 0 {
@@ -176,7 +190,7 @@ func printRecentDetails(matches []matchRow, n int) {
 			date = m.startTime.Format("2006-01-02")
 		}
 		wkNoFilm := "no"
-		if m.bitmask&MBitWeaponKillsNoFilm != 0 {
+		if m.bitmask&MBitFilmAbsent != 0 {
 			wkNoFilm = "YES"
 		}
 		fmt.Printf("%-10s  %-37s  %-3v  %-4d  %-3d  %-6s  %-4d  %-4d  %-4d\n",
@@ -197,7 +211,7 @@ func printActionable(matches []matchRow) {
 		if m.medals == 0 {
 			actionableMedals = append(actionableMedals, m.matchID)
 		}
-		if m.weaponKills == 0 && m.bitmask&MBitWeaponKillsNoFilm == 0 && isFresh {
+		if m.weaponKills == 0 && m.bitmask&MBitFilmAbsent == 0 && isFresh {
 			actionableWK = append(actionableWK, m.matchID)
 		}
 		if m.highlightEvents == 0 && isFresh {

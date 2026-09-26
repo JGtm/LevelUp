@@ -2,6 +2,7 @@ package duckdb
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"strings"
 	"time"
@@ -34,9 +35,27 @@ func (r *SquadRepo) LoadMainTeamParticipants(ctx context.Context, mainXUID strin
 	}
 	defer release()
 
-	rows, err := db.QueryContext(ctx, query, args...)
+	result, err := scanMainTeamParticipants(ctx, db, query, args)
 	if err != nil {
 		return nil, fmt.Errorf("LoadMainTeamParticipants: %w", err)
+	}
+	// Noms : l'annuaire de la lecture (squad_repo_annuaire.go), sur les mêmes matchs. Ils
+	// servent l'Escouade (matrice d'impact) ET l'accueil (coéquipiers d'une session).
+	if err := nommerLignes(ctx, db, matchIDs, result, accesLigne[domain.AllyParticipant]{
+		xuid:   func(r domain.AllyParticipant) string { return r.XUID },
+		match:  func(r domain.AllyParticipant) string { return r.MatchID },
+		nommer: func(r *domain.AllyParticipant, gt string) { r.Gamertag = gt },
+	}); err != nil {
+		return nil, fmt.Errorf("LoadMainTeamParticipants: %w", err)
+	}
+	return result, nil
+}
+
+// scanMainTeamParticipants exécute Q32b et rend ses lignes, SANS nom (cf. nommerLignes).
+func scanMainTeamParticipants(ctx context.Context, db *sql.DB, query string, args []any) ([]domain.AllyParticipant, error) {
+	rows, err := db.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, err
 	}
 	defer rows.Close()
 
@@ -46,20 +65,19 @@ func (r *SquadRepo) LoadMainTeamParticipants(ctx context.Context, mainXUID strin
 		if err := rows.Scan(
 			&row.MatchID,
 			&row.XUID,
-			&row.Gamertag,
 			&row.Kills,
 			&row.Deaths,
 			&row.Assists,
 			&row.Outcome,
 		); err != nil {
-			return nil, fmt.Errorf("LoadMainTeamParticipants scan: %w", err)
+			return nil, fmt.Errorf("scan: %w", err)
 		}
 		result = append(result, row)
 	}
 	return result, rows.Err()
 }
 
-// LoadSynthesisHeatmap charge les donnÃ©es heatmap mapÃ—mode (Q33).
+// LoadSynthesisHeatmap charge les données heatmap map×mode (Q33).
 func (r *SquadRepo) LoadSynthesisHeatmap(ctx context.Context, xuid string) ([]domain.SynthesisHeatmapRow, error) {
 	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()

@@ -90,7 +90,6 @@ func TestTokenStore_LoadSave_Roundtrip(t *testing.T) {
 
 	// Save
 	tokens.AccessToken = "at-123"
-	tokens.RefreshToken = "rt-456"
 	tokens.XSTSToken = "xsts-789"
 	tokens.XSTSUserHash = "hash-abc"
 	tokens.XSTSGamertag = "TestGT"
@@ -108,9 +107,6 @@ func TestTokenStore_LoadSave_Roundtrip(t *testing.T) {
 	}
 	if loaded.AccessToken != "at-123" {
 		t.Errorf("AccessToken = %q, want %q", loaded.AccessToken, "at-123")
-	}
-	if loaded.RefreshToken != "rt-456" {
-		t.Errorf("RefreshToken = %q, want %q", loaded.RefreshToken, "rt-456")
 	}
 	if loaded.XSTSToken != "xsts-789" {
 		t.Errorf("XSTSToken = %q, want %q", loaded.XSTSToken, "xsts-789")
@@ -171,7 +167,7 @@ func TestTokenStore_UpdateXSTS(t *testing.T) {
 	store := NewTokenStore(dir + "/tokens.json")
 
 	// Save initial
-	if err := store.Save(&StoredTokens{RefreshToken: "keep-this"}); err != nil {
+	if err := store.Save(&StoredTokens{AccessToken: "keep-this"}); err != nil {
 		t.Fatal(err)
 	}
 
@@ -187,8 +183,8 @@ func TestTokenStore_UpdateXSTS(t *testing.T) {
 	}
 
 	loaded, _ := store.Load()
-	if loaded.RefreshToken != "keep-this" {
-		t.Errorf("RefreshToken lost: %q", loaded.RefreshToken)
+	if loaded.AccessToken != "keep-this" {
+		t.Errorf("AccessToken lost: %q", loaded.AccessToken)
 	}
 	if loaded.XSTSToken != "new-xsts" {
 		t.Errorf("XSTSToken = %q, want %q", loaded.XSTSToken, "new-xsts")
@@ -228,7 +224,7 @@ func TestTokenStore_UpdateOAuth(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := store.UpdateOAuth("new-at", "new-rt", 60*time.Minute); err != nil {
+	if err := store.UpdateOAuth("new-at", 60*time.Minute); err != nil {
 		t.Fatalf("UpdateOAuth() error = %v", err)
 	}
 
@@ -238,9 +234,6 @@ func TestTokenStore_UpdateOAuth(t *testing.T) {
 	}
 	if loaded.AccessToken != "new-at" {
 		t.Errorf("AccessToken = %q, want %q", loaded.AccessToken, "new-at")
-	}
-	if loaded.RefreshToken != "new-rt" {
-		t.Errorf("RefreshToken = %q, want %q", loaded.RefreshToken, "new-rt")
 	}
 	if !loaded.IsOAuthValid(0) {
 		t.Error("OAuth should be valid after UpdateOAuth")
@@ -303,27 +296,31 @@ func TestRefreshLoop_New(t *testing.T) {
 
 // --- RefreshLoop.check logic tests ---
 
-// refreshLoopWithMock crée un RefreshLoop avec une fonction XSTS mockée.
-func refreshLoopWithMock(t *testing.T, mockFn XSTSAcquireFn, callback RefreshCallback) (*RefreshLoop, *TokenStore) {
+// refreshLoopWithMock crée un RefreshLoop avec une fonction XSTS mockée et un
+// MultiUserTokenStore attaché (source unique du refresh_token, ADR 0023 Phase 5).
+func refreshLoopWithMock(t *testing.T, mockFn XSTSAcquireFn, callback RefreshCallback) (*RefreshLoop, *TokenStore, *MultiUserTokenStore) {
 	t.Helper()
-	store := NewTokenStore(t.TempDir() + "/tokens.json")
-	rl := NewRefreshLoop(store, callback)
+	dir := t.TempDir()
+	store := NewTokenStore(dir + "/tokens.json")
+	multi := NewMultiUserTokenStore(dir + "/watcher_tokens")
+	rl := NewRefreshLoop(store, callback).WithMultiUserMirror(multi)
 	rl.acquireXSTSFn = mockFn
-	return rl, store
+	return rl, store, multi
 }
 
 func TestRefreshLoop_Check_SkipsWhenNoRefreshToken(t *testing.T) {
 	called := false
-	rl, store := refreshLoopWithMock(t,
+	rl, store, _ := refreshLoopWithMock(t,
 		func(_ context.Context, _ string) (*XSTSResult, error) {
 			called = true
 			return &XSTSResult{Token: "new"}, nil
 		},
 		nil,
 	)
-	// Store vide → pas de refresh_token
+	// MultiUserTokenStore vide → pas de refresh_token pour le tracker.
 	_ = store.Save(&StoredTokens{
 		AccessToken:   "at",
+		XSTSXUID:      "1234",
 		XSTSToken:     "old",
 		XSTSExpiresAt: time.Now().Add(5 * time.Minute), // < margin → devrait refresh, mais pas de RT
 	})
@@ -335,16 +332,17 @@ func TestRefreshLoop_Check_SkipsWhenNoRefreshToken(t *testing.T) {
 
 func TestRefreshLoop_Check_SkipsWhenXSTSValid(t *testing.T) {
 	called := false
-	rl, store := refreshLoopWithMock(t,
+	rl, store, multi := refreshLoopWithMock(t,
 		func(_ context.Context, _ string) (*XSTSResult, error) {
 			called = true
 			return &XSTSResult{Token: "new"}, nil
 		},
 		nil,
 	)
+	_ = multi.UpdateOAuthRefreshToken("1234", "rt")
 	_ = store.Save(&StoredTokens{
 		AccessToken:    "at",
-		RefreshToken:   "rt",
+		XSTSXUID:       "1234",
 		OAuthExpiresAt: time.Now().Add(time.Hour),
 		XSTSToken:      "old",
 		XSTSExpiresAt:  time.Now().Add(30 * time.Minute), // > 20min margin → pas de refresh
@@ -357,7 +355,7 @@ func TestRefreshLoop_Check_SkipsWhenXSTSValid(t *testing.T) {
 
 func TestRefreshLoop_Check_RefreshesWhenXSTSNearExpiry(t *testing.T) {
 	var callbackResult *XSTSResult
-	rl, store := refreshLoopWithMock(t,
+	rl, store, multi := refreshLoopWithMock(t,
 		func(_ context.Context, _ string) (*XSTSResult, error) {
 			return &XSTSResult{
 				Token:    "new-xsts",
@@ -367,9 +365,10 @@ func TestRefreshLoop_Check_RefreshesWhenXSTSNearExpiry(t *testing.T) {
 		},
 		func(r *XSTSResult) { callbackResult = r },
 	)
+	_ = multi.UpdateOAuthRefreshToken("1234", "rt")
 	_ = store.Save(&StoredTokens{
 		AccessToken:    "at",
-		RefreshToken:   "rt",
+		XSTSXUID:       "1234",
 		OAuthExpiresAt: time.Now().Add(time.Hour),
 		XSTSToken:      "old",
 		XSTSExpiresAt:  time.Now().Add(15 * time.Minute), // 15min < 20min margin → refresh
@@ -393,15 +392,16 @@ func TestRefreshLoop_Check_RefreshesWhenXSTSNearExpiry(t *testing.T) {
 }
 
 func TestRefreshLoop_Check_NoCallbackWhenNil(t *testing.T) {
-	rl, store := refreshLoopWithMock(t,
+	rl, store, multi := refreshLoopWithMock(t,
 		func(_ context.Context, _ string) (*XSTSResult, error) {
 			return &XSTSResult{Token: "new"}, nil
 		},
 		nil, // callback nil → ne doit pas paniquer
 	)
+	_ = multi.UpdateOAuthRefreshToken("1234", "rt")
 	_ = store.Save(&StoredTokens{
 		AccessToken:    "at",
-		RefreshToken:   "rt",
+		XSTSXUID:       "1234",
 		OAuthExpiresAt: time.Now().Add(time.Hour),
 		XSTSToken:      "old",
 		XSTSExpiresAt:  time.Now().Add(5 * time.Minute),

@@ -1,0 +1,32 @@
+film	9aeca4b3
+records_105	3226
+longs	2760	courts	466	part_courts	0.1445
+
+# index d'attaquant lu au MEME offset — courts contre longs
+index	0	courts	322	longs	312
+index	1	courts	0	longs	335
+index	2	courts	3	longs	465
+index	3	courts	0	longs	426
+index	4	courts	18	longs	207
+index	5	courts	1	longs	321
+index	6	courts	102	longs	476
+index	7	courts	2	longs	218
+index	8	courts	1	longs	0
+index	9	courts	7	longs	0
+index	14	courts	7	longs	0
+index	15	courts	3	longs	0
+index_distincts_courts	10	index_distincts_longs	8
+
+# taille du payload des COURTS (bits) — top 8
+bits	1656	n	10
+bits	1632	n	8
+bits	1608	n	8
+bits	1552	n	8
+bits	1792	n	7
+bits	1704	n	7
+bits	1640	n	7
+bits	1496	n	7
+
+# ecart court -> long precedent du MEME index (ms)
+n	441	orphelins	25	p10	433	p25	2368	mediane	8676	p75	38351	p90	181330
+part_sous_50ms	0.0249

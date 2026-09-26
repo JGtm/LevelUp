@@ -22,6 +22,7 @@ import (
 
 	"levelup/go-api/internal/analysis"
 	titlepkg "levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/port"
 )
 
 // HomeRepo fournit les données de la page d'accueil depuis DuckDB.
@@ -43,6 +44,17 @@ type HomeRepo struct {
 	// Zéro-valeur = no-op (libellé brut). Appliquée aux tuiles de match, sessions
 	// et playlists récentes — même chokepoint que la Match View.
 	playlistDisplay analysis.PlaylistLabelConfig
+	// killSourceClassifier : le traducteur « source de degat -> cle du registre » du titre,
+	// injecte au cablage (nil pour un titre qui n en fournit pas). Non nil = l arme favorite
+	// se lit dans la source de degat du film. Aucun `slug ==`.
+	killSourceClassifier port.KillSourceClassifier
+}
+
+// WithKillSourceClassifier injecte le traducteur de source de degat du titre. nil (ou non
+// appele) : l arme favorite reste lue dans `v_weapon_kills`.
+func (r *HomeRepo) WithKillSourceClassifier(c port.KillSourceClassifier) *HomeRepo {
+	r.killSourceClassifier = c
+	return r
 }
 
 // homeAssetURLAdapter expose l'unique méthode dont HomeRepo a besoin de

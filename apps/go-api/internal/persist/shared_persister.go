@@ -116,7 +116,7 @@ func (p *SharedPersister) Persist(ctx context.Context, batch *MatchBatch) error 
 	if err := persistKillerVictim(ctx, tx, s.KillerVictim); err != nil {
 		return err
 	}
-	if err := persistKillPositions(ctx, tx, s.KillPositions); err != nil {
+	if err := persistKillPositionsPass(ctx, tx, s.KillPositions); err != nil {
 		return err
 	}
 	if err := persistHighlightEvents(ctx, tx, s.HighlightEvents); err != nil {
@@ -162,6 +162,7 @@ func persistMatchRegistry(ctx context.Context, tx *sql.Tx, row *domain.MatchRegi
 			duration_seconds, playable_duration_seconds,
 			real_start_time, team_0_score, team_1_score,
 			team_0_ps_score, team_1_ps_score,
+			team_0_rounds_won, team_1_rounds_won, rounds_total,
 			match_intensity, backfill_completed, events_loaded,
 			first_sync_by, first_sync_at, last_updated_at,
 			player_count,
@@ -178,6 +179,7 @@ func persistMatchRegistry(ctx context.Context, tx *sql.Tx, row *domain.MatchRegi
 			?, ?,
 			?, ?, ?,
 			?, ?, ?,
+			?, ?, ?,
 			?,
 			?, ?
 		)`,
@@ -190,6 +192,7 @@ func persistMatchRegistry(ctx context.Context, tx *sql.Tx, row *domain.MatchRegi
 		row.DurationSeconds, row.PlayableDurationSeconds,
 		row.RealStartTime, row.Team0Score, row.Team1Score,
 		row.Team0PSScore, row.Team1PSScore,
+		row.Team0RoundsWon, row.Team1RoundsWon, row.RoundsTotal,
 		row.MatchIntensity, row.BackfillCompleted, eventsLoaded,
 		row.FirstSyncBy, now, now,
 		row.PlayerCount,
@@ -275,7 +278,7 @@ func persistWeaponKills(ctx context.Context, tx *sql.Tx, rows []WeaponKillInsert
 	if len(rows) == 0 {
 		return nil
 	}
-	// Append-only #23046 (Phase 2) : alloue UNE génération partagée par le batch
+	// Append-only #23645 (Phase 2) : alloue UNE génération partagée par le batch
 	// (weapon_kills_generation_seq) ; la vue v_weapon_kills ne lit que la génération
 	// MAX par (match_id,xuid). Plus de DELETE préalable (vecteur ART sur idx_wk).
 	var gen int64
@@ -404,7 +407,11 @@ func persistKillerVictim(ctx context.Context, tx *sql.Tx, rows []KillerVictimIns
 	return nil
 }
 
-func persistKillPositions(ctx context.Context, tx *sql.Tx, rows []KillPositionInsert) error {
+// persistKillPositions écrit UNE PASSE de positions — INSERT purs, toutes les lignes sous le
+// MÊME `pass`. C'est `pass` que la vue `kill_positions_latest` retient, ENTIER, pour un match
+// (lot 1.7, 2026-09-09) : deux valeurs dans une même passe feraient rendre à la vue une
+// FRACTION de passe, ce qui est pire qu'une passe entière périmée.
+func persistKillPositions(ctx context.Context, tx *sql.Tx, pass string, rows []KillPositionInsert) error {
 	if len(rows) == 0 {
 		return nil
 	}
@@ -412,10 +419,10 @@ func persistKillPositions(ctx context.Context, tx *sql.Tx, rows []KillPositionIn
 		// INSERT pur — table append-only (positions par kill, jamais ré-écrites).
 		_, err := tx.ExecContext(ctx, `
 			INSERT INTO kill_positions (
-				match_id, killer_xuid, time_ms,
+				match_id, decode_pass, killer_xuid, time_ms,
 				killer_x, killer_y, killer_z, victim_x, victim_y, victim_z
-			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-			r.MatchID, r.KillerXUID, r.TimeMS,
+			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			r.MatchID, pass, r.KillerXUID, r.TimeMS,
 			r.KillerX, r.KillerY, r.KillerZ, r.VictimX, r.VictimY, r.VictimZ,
 		)
 		if err != nil {
@@ -426,15 +433,38 @@ func persistKillPositions(ctx context.Context, tx *sql.Tx, rows []KillPositionIn
 	return nil
 }
 
+// valeurTypeHint choisit ce qui part dans la colonne `type_hint`, que DEUX champs
+// visent (cf. doc de HighlightEventInsert) : le canal numérique canonique TypeHint,
+// sinon le canal hérité DetailsJSON (Halo 5, identifiant de médaille en chaîne),
+// sinon NULL. L'ordre est un arbitrage, pas une fusion : un row ne renseigne jamais
+// les deux.
+func valeurTypeHint(e HighlightEventInsert) any {
+	if e.TypeHint != nil {
+		return *e.TypeHint
+	}
+	if e.DetailsJSON != nil {
+		return *e.DetailsJSON
+	}
+	return nil
+}
+
+// persistHighlightEvents écrit la timeline des events de highlight.
+//
+// COLONNES SÉPARÉES : `type_hint` reçoit un NOMBRE (nature de l'event), `raw_json`
+// reçoit un DOCUMENT (l'identité de la médaille pour Halo Infinite). Avant le
+// 2026-09-02 la seule colonne écrite était `type_hint`, et elle recevait
+// `DetailsJSON` — d'où 415 matchs dont les events medal n'avaient AUCUNE identité
+// (le fil des éliminations lit `raw_json.medal_name`). Le rattrapage de ces matchs
+// est une passe hors ligne (ops.BackfillIdentiteMedailles).
 func persistHighlightEvents(ctx context.Context, tx *sql.Tx, rows []HighlightEventInsert) error {
 	if len(rows) == 0 {
 		return nil
 	}
 	for _, e := range rows {
 		_, err := tx.ExecContext(ctx, `
-			INSERT INTO highlight_events (match_id, event_type, time_ms, xuid, type_hint)
-			VALUES (?, ?, ?, ?, ?)`,
-			e.MatchID, e.EventType, e.TimeMS, e.XUID, e.DetailsJSON,
+			INSERT INTO highlight_events (match_id, event_type, time_ms, xuid, type_hint, raw_json)
+			VALUES (?, ?, ?, ?, ?, ?)`,
+			e.MatchID, e.EventType, e.TimeMS, e.XUID, valeurTypeHint(e), e.RawJSON,
 		)
 		if err != nil {
 			return fmt.Errorf("persist: INSERT highlight_events %s/%s/%d: %w",
@@ -516,7 +546,7 @@ func persistCommendations(ctx context.Context, tx *sql.Tx, rows []CommendationIn
 // persistObjectiveStats insère les stats objectifs par joueur (match_objective_stats).
 // INSERT pur — table append-only créée directement (id PK seq + written_at + vue
 // _latest). Colonnes du mode absent = NULL (pointeurs nil). Aucun UPDATE / ON CONFLICT
-// (ART-safe #23046) ; la relecture passe par match_objective_stats_latest.
+// (ART-safe #23645) ; la relecture passe par match_objective_stats_latest.
 func persistObjectiveStats(ctx context.Context, tx *sql.Tx, rows []ObjectiveStatsInsert) error {
 	if len(rows) == 0 {
 		return nil
@@ -583,7 +613,7 @@ func persistObjectiveStats(ctx context.Context, tx *sql.Tx, rows []ObjectiveStat
 // InsertObjectiveStats est le point d'entrée EXPORTÉ (backfill CLI) pour écrire
 // des rows match_objective_stats hors du chemin SharedBatch : ouvre une
 // transaction sur db et réutilise persistObjectiveStats (INSERT-only ART-safe,
-// #23046). DRY — une seule copie du SQL d'INSERT (persistObjectiveStats).
+// #23645). DRY — une seule copie du SQL d'INSERT (persistObjectiveStats).
 // Pré-requis : db en accès RW exclusif (serveur arrêté, un seul writer par DB).
 func InsertObjectiveStats(ctx context.Context, db txBeginner, rows []ObjectiveStatsInsert) error {
 	if len(rows) == 0 {

@@ -1,0 +1,110 @@
+=== FILM 35b75a31 ===
+=== RUN   TestAssautA3Ti13
+2026/08/27 16:06:49 INFO plafond memoire arme pour ce decodage outil=a3-assaut souple_gib=2 dur_octets=2684354560
+2026/08/27 16:06:49 WARN empreinte du registre ECS du film INCONNUE — grammaire des composants suspecte (mise a jour du jeu ?) ; le film reste decode empreinte=1872162450444512260 empreinte_connue=7053924395561516366 blocs=118 slots_non_vides=1068
+    assaut_a3_ti13_test.go:66: 35b75a31 : bande ti=13 — 8 slot(s) · 942 records ancres, 461 rejoues, 14 CHAINES (3.0 %) · scalaires 4/31 = 12.9 % · par joueur 10/430 = 2.3 % · temoin decale de 3 bits 14/461 = 3.0 % · film 800647 ms
+    assaut_a3_ti13_test.go:74: 35b75a31 : slot 1520 — 5 emission(s) i1 : tag0=2 tag1=1 tag2=1 tag8=1
+    assaut_a3_ti13_test.go:74: 35b75a31 : slot 1546 — 7 emission(s) i1 : tag1=1 tag3=1 tag5=1 tag8=1 tag13=2 tag15=1
+    assaut_a3_ti13_test.go:74: 35b75a31 : slot 1547 — 7 emission(s) i1 : tag2=1 tag5=1 tag6=1 tag9=1 tag11=1 tag12=1 tag14=1
+    assaut_a3_ti13_test.go:74: 35b75a31 : slot 1548 — 9 emission(s) i1 : tag0=3 tag1=1 tag2=1 tag3=1 tag9=1 tag10=1 tag11=1
+    assaut_a3_ti13_test.go:74: 35b75a31 : inventaire i1 — 4 slot(s) au-dessus de 5 emissions (sur 7 emetteurs), 2 slot(s) a jauge (tag 3)
+    assaut_a3_ti13_test.go:75: 35b75a31 : 0 rampe(s) de jauge au total
+    assaut_a3_ti13_test.go:77: 35b75a31 : 3 debut(s) de manche brute, 3 explosion(s) datee(s)
+    assaut_a3_ti13_test.go:79: 35b75a31 : AUCUNE rampe de jauge — le canal ti=13 ne porte pas de structure d'armement lisible sur ce film (0 confrontation)
+    assaut_a3_ti13_test.go:55: 35b75a31 : pic memoire observe 0.01 Gio (plafond souple 2 Gio)
+--- PASS: TestAssautA3Ti13 (7.80s)
+PASS
+EXIT_35b75a31=0
+=== FILM 69b16f5d ===
+=== RUN   TestAssautA3Ti13
+2026/08/27 16:06:57 INFO plafond memoire arme pour ce decodage outil=a3-assaut souple_gib=2 dur_octets=2684354560
+    assaut_a3_ti13_test.go:66: 69b16f5d : bande ti=13 — 8 slot(s) · 522 records ancres, 244 rejoues, 40 CHAINES (16.4 %) · scalaires 2/13 = 15.4 % · par joueur 38/231 = 16.5 % · temoin decale de 3 bits 7/244 = 2.9 % · film 323811 ms
+    assaut_a3_ti13_test.go:74: 69b16f5d : inventaire i1 — 0 slot(s) au-dessus de 5 emissions (sur 6 emetteurs), 0 slot(s) a jauge (tag 3)
+    assaut_a3_ti13_test.go:75: 69b16f5d : 0 rampe(s) de jauge au total
+    assaut_a3_ti13_test.go:77: 69b16f5d : 2 debut(s) de manche brute, 3 explosion(s) datee(s)
+    assaut_a3_ti13_test.go:79: 69b16f5d : AUCUNE rampe de jauge — le canal ti=13 ne porte pas de structure d'armement lisible sur ce film (0 confrontation)
+    assaut_a3_ti13_test.go:55: 69b16f5d : pic memoire observe 0.01 Gio (plafond souple 2 Gio)
+--- PASS: TestAssautA3Ti13 (2.57s)
+PASS
+EXIT_69b16f5d=0
+=== FILM 3d58eb37 ===
+=== RUN   TestAssautA3Ti13
+2026/08/27 16:07:00 INFO plafond memoire arme pour ce decodage outil=a3-assaut souple_gib=2 dur_octets=2684354560
+    assaut_a3_ti13_test.go:66: 3d58eb37 : bande ti=13 — 8 slot(s) · 478 records ancres, 231 rejoues, 19 CHAINES (8.2 %) · scalaires 3/18 = 16.7 % · par joueur 16/213 = 7.5 % · temoin decale de 3 bits 19/231 = 8.2 % · film 399876 ms
+    assaut_a3_ti13_test.go:74: 3d58eb37 : slot 1534 — 16 emission(s) i1 : tag2=15 tag15=1
+    assaut_a3_ti13_test.go:74: 3d58eb37 : inventaire i1 — 1 slot(s) au-dessus de 5 emissions (sur 6 emetteurs), 0 slot(s) a jauge (tag 3)
+    assaut_a3_ti13_test.go:75: 3d58eb37 : 0 rampe(s) de jauge au total
+    assaut_a3_ti13_test.go:77: 3d58eb37 : 3 debut(s) de manche brute, 3 explosion(s) datee(s)
+    assaut_a3_ti13_test.go:79: 3d58eb37 : AUCUNE rampe de jauge — le canal ti=13 ne porte pas de structure d'armement lisible sur ce film (0 confrontation)
+    assaut_a3_ti13_test.go:55: 3d58eb37 : pic memoire observe 0.01 Gio (plafond souple 2 Gio)
+--- PASS: TestAssautA3Ti13 (4.97s)
+PASS
+EXIT_3d58eb37=0
+=== FILM 34bb3bc8 ===
+=== RUN   TestAssautA3Ti13
+2026/08/27 16:07:05 INFO plafond memoire arme pour ce decodage outil=a3-assaut souple_gib=2 dur_octets=2684354560
+2026/08/27 16:07:05 WARN empreinte du registre ECS du film INCONNUE — grammaire des composants suspecte (mise a jour du jeu ?) ; le film reste decode empreinte=11463600112565967046 empreinte_connue=7053924395561516366 blocs=116 slots_non_vides=1031
+    assaut_a3_ti13_test.go:66: 34bb3bc8 : bande ti=13 — 8 slot(s) · 2596 records ancres, 1093 rejoues, 47 CHAINES (4.3 %) · scalaires 5/166 = 3.0 % · par joueur 42/927 = 4.5 % · temoin decale de 3 bits 65/1093 = 5.9 % · film 784544 ms
+    assaut_a3_ti13_test.go:74: 34bb3bc8 : slot 1448 — 123 emission(s) i1 : tag0=1 tag1=1 tag7=1 tag8=1 tag10=106 tag11=13
+    assaut_a3_ti13_test.go:74: 34bb3bc8 : slot 1450 — 10 emission(s) i1 : tag0=10
+    assaut_a3_ti13_test.go:74: 34bb3bc8 : slot 1476 — 9 emission(s) i1 : tag0=2 tag2=1 tag5=1 tag8=1 tag9=1 tag13=2 tag15=1
+    assaut_a3_ti13_test.go:74: 34bb3bc8 : slot 1477 — 10 emission(s) i1 : tag0=3 tag1=1 tag3=1 tag5=1 tag8=1 tag11=1 tag14=1 tag15=1
+    assaut_a3_ti13_test.go:74: 34bb3bc8 : inventaire i1 — 4 slot(s) au-dessus de 5 emissions (sur 8 emetteurs), 2 slot(s) a jauge (tag 3)
+    assaut_a3_ti13_test.go:75: 34bb3bc8 : 0 rampe(s) de jauge au total
+    assaut_a3_ti13_test.go:77: 34bb3bc8 : 5 debut(s) de manche brute, 1 explosion(s) datee(s)
+    assaut_a3_ti13_test.go:79: 34bb3bc8 : AUCUNE rampe de jauge — le canal ti=13 ne porte pas de structure d'armement lisible sur ce film (0 confrontation)
+    assaut_a3_ti13_test.go:55: 34bb3bc8 : pic memoire observe 0.01 Gio (plafond souple 2 Gio)
+--- PASS: TestAssautA3Ti13 (19.15s)
+PASS
+EXIT_34bb3bc8=0
+=== FILM df8fcbef ===
+=== RUN   TestAssautA3Ti13
+2026/08/27 16:07:24 INFO plafond memoire arme pour ce decodage outil=a3-assaut souple_gib=2 dur_octets=2684354560
+    assaut_a3_ti13_test.go:66: df8fcbef : bande ti=13 — 8 slot(s) · 550 records ancres, 222 rejoues, 7 CHAINES (3.2 %) · scalaires 2/21 = 9.5 % · par joueur 5/201 = 2.5 % · temoin decale de 3 bits 10/222 = 4.5 % · film 791627 ms
+    assaut_a3_ti13_test.go:74: df8fcbef : slot 1458 — 5 emission(s) i1 : tag3=1 tag6=1 tag8=1 tag9=2
+    assaut_a3_ti13_test.go:74: df8fcbef : slot 1484 — 6 emission(s) i1 : tag5=1 tag6=1 tag8=2 tag9=1 tag14=1
+    assaut_a3_ti13_test.go:74: df8fcbef : inventaire i1 — 2 slot(s) au-dessus de 5 emissions (sur 6 emetteurs), 1 slot(s) a jauge (tag 3)
+    assaut_a3_ti13_test.go:75: df8fcbef : 0 rampe(s) de jauge au total
+    assaut_a3_ti13_test.go:77: df8fcbef : 5 debut(s) de manche brute, 4 explosion(s) datee(s)
+    assaut_a3_ti13_test.go:79: df8fcbef : AUCUNE rampe de jauge — le canal ti=13 ne porte pas de structure d'armement lisible sur ce film (0 confrontation)
+    assaut_a3_ti13_test.go:55: df8fcbef : pic memoire observe 0.01 Gio (plafond souple 2 Gio)
+--- PASS: TestAssautA3Ti13 (5.70s)
+PASS
+EXIT_df8fcbef=0
+=== FILM c75f33b8 ===
+=== RUN   TestAssautA3Ti13
+2026/08/27 16:07:30 INFO plafond memoire arme pour ce decodage outil=a3-assaut souple_gib=2 dur_octets=2684354560
+    assaut_a3_ti13_test.go:66: c75f33b8 : bande ti=13 — 8 slot(s) · 279 records ancres, 108 rejoues, 2 CHAINES (1.9 %) · scalaires 2/8 = 25.0 % · par joueur 0/100 = 0.0 % · temoin decale de 3 bits 3/108 = 2.8 % · film 464429 ms
+    assaut_a3_ti13_test.go:74: c75f33b8 : inventaire i1 — 0 slot(s) au-dessus de 5 emissions (sur 7 emetteurs), 1 slot(s) a jauge (tag 3)
+    assaut_a3_ti13_test.go:75: c75f33b8 : 0 rampe(s) de jauge au total
+    assaut_a3_ti13_test.go:77: c75f33b8 : 5 debut(s) de manche brute, 3 explosion(s) datee(s)
+    assaut_a3_ti13_test.go:79: c75f33b8 : AUCUNE rampe de jauge — le canal ti=13 ne porte pas de structure d'armement lisible sur ce film (0 confrontation)
+    assaut_a3_ti13_test.go:55: c75f33b8 : pic memoire observe 0.01 Gio (plafond souple 2 Gio)
+--- PASS: TestAssautA3Ti13 (4.52s)
+PASS
+EXIT_c75f33b8=0
+=== FILM 9f57c612 ===
+=== RUN   TestAssautA3Ti13
+2026/08/27 16:07:34 INFO plafond memoire arme pour ce decodage outil=a3-assaut souple_gib=2 dur_octets=2684354560
+    assaut_a3_ti13_test.go:66: 9f57c612 : bande ti=13 — 8 slot(s) · 331 records ancres, 127 rejoues, 3 CHAINES (2.4 %) · scalaires 2/8 = 25.0 % · par joueur 1/119 = 0.8 % · temoin decale de 3 bits 9/127 = 7.1 % · film 482657 ms
+    assaut_a3_ti13_test.go:74: 9f57c612 : inventaire i1 — 0 slot(s) au-dessus de 5 emissions (sur 7 emetteurs), 0 slot(s) a jauge (tag 3)
+    assaut_a3_ti13_test.go:75: 9f57c612 : 0 rampe(s) de jauge au total
+    assaut_a3_ti13_test.go:77: 9f57c612 : 5 debut(s) de manche brute, 4 explosion(s) datee(s)
+    assaut_a3_ti13_test.go:79: 9f57c612 : AUCUNE rampe de jauge — le canal ti=13 ne porte pas de structure d'armement lisible sur ce film (0 confrontation)
+    assaut_a3_ti13_test.go:55: 9f57c612 : pic memoire observe 0.01 Gio (plafond souple 2 Gio)
+--- PASS: TestAssautA3Ti13 (4.64s)
+PASS
+EXIT_9f57c612=0
+=== FILM 1c01e34f ===
+=== RUN   TestAssautA3Ti13
+2026/08/27 16:07:39 INFO plafond memoire arme pour ce decodage outil=a3-assaut souple_gib=2 dur_octets=2684354560
+    assaut_a3_ti13_test.go:66: 1c01e34f : bande ti=13 — 8 slot(s) · 909 records ancres, 211 rejoues, 10 CHAINES (4.7 %) · scalaires 2/24 = 8.3 % · par joueur 8/187 = 4.3 % · temoin decale de 3 bits 6/211 = 2.8 % · film 414448 ms
+    assaut_a3_ti13_test.go:74: 1c01e34f : slot 1408 — 6 emission(s) i1 : tag1=1 tag4=2 tag8=3
+    assaut_a3_ti13_test.go:74: 1c01e34f : inventaire i1 — 1 slot(s) au-dessus de 5 emissions (sur 5 emetteurs), 0 slot(s) a jauge (tag 3)
+    assaut_a3_ti13_test.go:75: 1c01e34f : 0 rampe(s) de jauge au total
+    assaut_a3_ti13_test.go:77: 1c01e34f : 3 debut(s) de manche brute, 4 explosion(s) datee(s)
+    assaut_a3_ti13_test.go:79: 1c01e34f : AUCUNE rampe de jauge — le canal ti=13 ne porte pas de structure d'armement lisible sur ce film (0 confrontation)
+    assaut_a3_ti13_test.go:55: 1c01e34f : pic memoire observe 0.01 Gio (plafond souple 2 Gio)
+--- PASS: TestAssautA3Ti13 (4.41s)
+PASS
+EXIT_1c01e34f=0

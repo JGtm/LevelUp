@@ -45,3 +45,49 @@ hinf_vestige_carbine = { en = "Vestige Carbine", fr = "Carabine Vestige" }
 hinf_frag_grenade   = { en = "Frag Grenade", fr = "Grenade frag" }
 hinf_plasma_grenade = { en = "Plasma Grenade", fr = "Grenade plasma" }
 hinf_dynamo_grenade = { en = "Dynamo Grenade", fr = "Grenade dynamo" }
+
+# Hors arsenal (lot « kills hors arme a feu », 2026-08-29). Ces cles ne se resolvent
+# PAS par weapon_id : elles viennent du pont killicon (source de degat jpt! -> weapon_key).
+# Le nom EN du repulseur DOIT rester « Repulsor » : c'est la cle de la regle NOM de
+# rules.tsv, et TestChaqueRegleEstCorroboreeParLeRegistre compare les deux.
+hinf_repulsor       = { en = "Repulsor", fr = "Répulseur" }
+# Les quatre bobines portent le nom que le kill feed du jeu leur donne (atlas killfeed
+# 42/43/44/45) : c'est le TYPE D'ENERGIE qui les distingue, pas le modele de bidon.
+# DEPUIS LE 2026-09-24 (retours du rejeu, lot M6.4), la bobine a fusion UNSC porte AUSSI les
+# identifiants de film de l'objet que le joueur ramasse et tient (`forge_fusion_coil_mp` et
+# `fusion_coil` du script Lua global) : son kill reste resolu par le pont killicon, sa prise en
+# main par la famille d'arme.
+hinf_coil_kinetic   = { en = "UNSC Fusion Coil", fr = "Bobine à fusion UNSC" }
+hinf_coil_plasma    = { en = "Plasma Coil", fr = "Bobine à plasma" }
+hinf_coil_shock     = { en = "Shock Coil", fr = "Bobine à choc" }
+hinf_coil_hardlight = { en = "Blast Coil", fr = "Bobine à souffle" }
+hinf_environment    = { en = "Environment", fr = "Chute et environnement" }
+# Mains nues (retours du rejeu, lot M6.3, 2026-09-24) : l objet que le jeu remet a chaque bipede
+# (`WeaponTags.unarmed` du script Lua global). Jamais une dotation affichee ni un ramassage ; nomme
+# pour le joueur qui le TIENT en cours de partie.
+hinf_unarmed        = { en = "Unarmed", fr = "Mains nues" }
+
+# Vehicules et tourelles (etape A6, 2026-09-01). Meme voie que les six cles ci-dessus :
+# aucune ne se resout par weapon_id, toutes viennent du pont killicon (regles BANQUE).
+#
+# LIBELLES ARRETES PAR L'UTILISATEUR le 2026-09-01 (decision D14 du plan) : les noms de
+# vehicules GARDENT L'ANGLAIS, a trois exceptions — Apparition, Warthog lance-roquettes,
+# Pelican. Les tourelles, elles, sont des DESCRIPTIONS et non des noms propres : elles se
+# traduisent. Ne pas reinterpreter, ne pas « corriger ».
+hinf_ghost              = { en = "Ghost", fr = "Ghost" }
+hinf_banshee            = { en = "Banshee", fr = "Banshee" }
+hinf_wraith             = { en = "Wraith", fr = "Apparition" }
+hinf_phantom            = { en = "Phantom", fr = "Phantom" }
+hinf_chopper            = { en = "Chopper", fr = "Chopper" }
+hinf_wasp               = { en = "Wasp", fr = "Wasp" }
+hinf_scorpion           = { en = "Scorpion", fr = "Scorpion" }
+hinf_rockethog          = { en = "Rockethog", fr = "Warthog lance-roquettes" }
+hinf_mutilator          = { en = "Mutilator", fr = "Mutilateur" }
+hinf_warthog            = { en = "Warthog", fr = "Warthog" }
+hinf_gungoose           = { en = "Gungoose", fr = "Gungoose" }
+hinf_pelican            = { en = "Pelican", fr = "Pélican" }
+hinf_falcon_lmg         = { en = "Falcon LMG turret", fr = "Tourelle LMG du Falcon" }
+hinf_falcon_gl          = { en = "Falcon grenade launcher", fr = "Lance-grenades du Falcon" }
+hinf_turret_machinegun  = { en = "Machine gun turret", fr = "Tourelle mitrailleuse" }
+hinf_turret_plasma      = { en = "Plasma cannon", fr = "Canon à plasma" }
+hinf_turret_shade       = { en = "Shade turret", fr = "Tourelle Shade" }

@@ -10,6 +10,28 @@ l'arme par kill. Tout le pipeline est implémenté en Go sous `apps/go-api`.
 > réconcilie avec les totaux de l'API. Lire [Niveaux de confiance](#niveaux-de-confiance)
 > et [Limites connues](#limites-connues) avant de s'y fier.
 
+> **Mise à jour Halo Infinite (2026-09-01, doc corrigé le 2026-09-10 — lot
+> hygiène 5.3, `.ai/V7.5/REGISTRE_REPORTS.md`).** Les sections 2 à 10 ci-dessous
+> décrivent le pipeline D'ORIGINE : `weapon_kills` (corrélation par fire-event /
+> snapshot, stockée par kill) + la vue de lecture `v_weapon_kills`. Pour Halo
+> Infinite, tout ce pipeline a été **retiré** par la migration
+> `shared_drop_weapon_kills_v1`
+> (`internal/games/halo_infinite/migrations/steps_shared_drop_weapon_kills.go`) :
+> la table, les deux vues `v_weapon_kills`, `weapon_kills_v3` et la séquence de
+> génération sont toutes supprimées, sans sauvegarde (112 000 lignes jetées — la
+> corrélation par fire-event mal-attribuait les armes sans tir comme l'épée ou
+> le marteau sur l'arme à feu tenue par le joueur). Le chemin de lecture actuel
+> pour Halo Infinite est la **source de dégât** du kill, lue en direct depuis
+> `match_kill_events_latest.source_tag` et traduite en `weapon_key` côté Go
+> (`port.KillSourceClassifier`, jamais en SQL — la table change à chaque
+> saison) — voir [Lecture](#lecture--v_weapon_kills-et-labels) pour le mécanisme
+> actuel, centralisé dans
+> `internal/platform/duckdb/killsource_weapon_scope.go`. **Halo 5 écrit et lit
+> toujours `weapon_kills`** (avec `confidence = 'native'`, issue de sa propre
+> timeline API — un pipeline autoritatif sans rapport, explicitement épargné
+> par la migration de retrait) : les sections 2 à 10 restent exactes pour ce
+> titre.
+
 ---
 
 ## Table des matières
@@ -49,15 +71,17 @@ match et le KPI « arme favorite » de l'accueil.
 |-------|-------------|
 | Orchestration pipeline (par match / tous participants / batch) | `internal/sync/backfill_weapons.go` |
 | Écriture DB (INSERT append-only) | `internal/sync/writes.go` — `InsertWeaponKills`, `MarkWeaponKillsDone` |
-| Scan des chunks (fire events, timeline arme tenue) | `internal/analysis/weapon_scanner.go`, `internal/analysis/weapon_parser.go` |
-| Map des Weapon IDs, timings, fusions, sentinels | `internal/analysis/weapon_data.go` |
+| Scan des chunks (fire events, timeline arme tenue) | `internal/games/halo_infinite/film/internal/grammar/weaponscan/scanner.go`, `internal/analysis/weapon_parser.go` |
+| Map des Weapon IDs, timings, fusions, sentinels | `internal/games/weapons/filmshell/catalogue.go` |
 | Corrélation kill -> arme | `internal/analysis/weapon_correlation.go` |
 | Réconciliation API | `internal/analysis/weapon_reconciliation.go` |
 | Struct résultat d'attribution | `internal/analysis/kill_attribution.go` |
 | Repository de lecture agrégée | `internal/platform/duckdb/weapon_kills_repo.go` |
 | Résolution label / rôle (metadata) | `internal/platform/duckdb/weapon_resolver.go` |
-| Schéma (table + vue) | `internal/games/halo_infinite/migrations/steps_shared_core.go` (`add_weapon_kills`, `add_weapon_kills_reconciled_as`) |
+| Schéma (table + vue) | `internal/games/halo_infinite/migrations/steps_shared_core.go` (`add_weapon_kills`, `add_weapon_kills_reconciled_as`) — **Halo 5 seulement depuis le 2026-09-01**, voir plus bas |
 | Conversion append-only | `internal/migration/steps_shared_append_only_weapon_kills.go` |
+| Retrait (Halo Infinite, 2026-09-01) | `internal/games/halo_infinite/migrations/steps_shared_drop_weapon_kills.go` (`shared_drop_weapon_kills_v1`) |
+| **Chemin de lecture HINF actuel (source de dégât, non stockée par kill)** | `internal/platform/duckdb/killsource_weapon_scope.go`, `internal/port/kill_source.go` (`KillSourceClassifier`) |
 | Backfill CLI | `apps/go-api/cmd/levelup` — `backfill --weapons` |
 | Seeding des labels | `apps/go-api/cmd/seed-weapon-labels` |
 
@@ -125,7 +149,7 @@ de `match_participants` (cf. [Lecture](#lecture--v_weapon_kills-et-labels)).
 
 Constantes dans `internal/analysis/weapon_correlation.go`
 (`confidenceHigh/Medium/Low/None`). `ComputeConfidence(weaponID, deltaMS)`
-utilise la fenêtre de timing de l'arme (`GetTiming`, depuis `weapon_data.go`) :
+utilise la fenêtre de timing de l'arme (`GetTiming`, depuis `filmshell/catalogue.go`) :
 
 | Valeur | Signification |
 |--------|---------------|
@@ -144,7 +168,7 @@ autoritatifs de l'API.
 ## Structure d'un Weapon ID (WID)
 
 Un WID, ce sont les 8 octets d'arme filmshell lus comme un **`uint64`
-big-endian** (`hexToUint64` dans `internal/analysis/weapon_data.go`). DuckDB le
+big-endian** (`hexToUint64` dans `internal/games/weapons/filmshell/catalogue.go`). DuckDB le
 stocke en `UBIGINT` — certains WID réels (ex. `f408190f42c9679f`) ont le bit 63
 activé et dépassent `2^63`, raison pour laquelle l'écriture caste une chaîne
 décimale en `UBIGINT` plutôt que de binder un `uint64` Go (le driver duckdb-go
@@ -155,7 +179,7 @@ Structure des 8 octets :
 - **Octets 1-4 (32 bits de poids fort) : l'identité de l'arme** — unique par
   type/variante.
 - **Octets 5-8 (32 bits de poids faible) : un suffixe famille/variante.** Le
-  suffixe commun `42c9679f` (`CommonWeaponSuffix` dans `weapon_data.go`) couvre
+  suffixe commun `42c9679f` (`CommonWeaponSuffix` dans `filmshell/catalogue.go`) couvre
   la plupart des armes standard ; les familles spéciales partagent leurs octets
   de poids fort mais diffèrent par le suffixe :
 
@@ -169,12 +193,17 @@ Les variantes cosmétiques sont repliées sur leur arme canonique via
 `1` (melee), `2` (véhicule) sont réservés et exclus de l'agrégation des armes.
 
 La liste autoritative des WID (hex confirmé -> nom) vit dans `weaponEntries` au
-sein de `weapon_data.go`, et est dupliquée en notes de recherche dans
+sein de `filmshell/catalogue.go`, et est dupliquée en notes de recherche dans
 `.ai/REFERENCE_WEAPON_IDS.md`.
 
 ---
 
 ## Stockage — `weapon_kills` (append-only)
+
+> **Halo Infinite : supprimée le 2026-09-01** (`shared_drop_weapon_kills_v1`) —
+> cette section décrit `weapon_kills` de Halo 5 (native, depuis sa propre
+> timeline API) et le pipeline historique de Halo Infinite. Voir l'encart en
+> tête de ce document.
 
 La table `weapon_kills` vit dans la DB partagée
 (`data/warehouse/shared_matches_v2.duckdb`). Colonnes de base
@@ -195,7 +224,7 @@ La table `weapon_kills` vit dans la DB partagée
 | `delayed_damage` | BOOLEAN | Le vol du projectile a pu gonfler le delta |
 | `player_index` | INTEGER | Index de joueur film résolu |
 
-**Append-only (durcissement #23046).** La table a été convertie en append-only
+**Append-only (durcissement #23645).** La table a été convertie en append-only
 (`internal/migration/steps_shared_append_only_weapon_kills.go`) : deux colonnes
 ajoutées — `generation_id BIGINT` et `written_at TIMESTAMP`. Chaque appel à
 `InsertWeaponKills` alloue une génération depuis `weapon_kills_generation_seq`
@@ -211,6 +240,35 @@ lecture, pas de contraintes au niveau ligne.
 ---
 
 ## Lecture — `v_weapon_kills` et labels
+
+> **Halo Infinite : cette section décrit le chemin RETIRÉ** (conservé pour
+> Halo 5 et pour la référence historique — voir l'encart en tête de ce
+> document). Pour Halo Infinite, remplacer toute mention de `weapon_kills` /
+> `v_weapon_kills` ci-dessous par le foyer actuel,
+> `internal/platform/duckdb/killsource_weapon_scope.go` :
+>
+> - `weaponKillsFromSourceForPlayer` agrège les kills crédités d'un joueur par
+>   **source de dégât** plutôt que par `weapon_id` stocké : il lit
+>   `match_kill_events_latest.source_tag` pour ce xuid (borné à une liste de
+>   matchs en option ; liste vide = tout l'historique du joueur, utilisé par le
+>   KPI « arme favorite » de l'Accueil), puis traduit chaque `source_tag`
+>   numérique en `weapon_key` du registre via
+>   `port.KillSourceClassifier.KillSourceRegistryKey` — une table de
+>   correspondance côté Go (jamais en SQL : elle change à chaque saison),
+>   implémentée par titre.
+> - Un `source_tag` que le classifieur ne reconnaît pas n'est **pas** remonté
+>   (reste dans « Non attribué » — décision D7 du plan du 2026-09-01) : jamais
+>   deviné ni proratisé.
+> - Consommateurs : `ExplorerRepo.topWeaponsFromSource` (top armes sur une
+>   liste de matchs, objets hors arsenal comme le répulseur écartés — la
+>   surface affiche une vignette d'arme) et
+>   `HomeRepo.favoriteWeaponFromDamageSource` (arme favorite sur tout
+>   l'historique du joueur).
+> - La résolution du libellé ne change pas dans son principe (voir le
+>   paragraphe ci-dessous) : une fois un `weapon_key` connu,
+>   `resolveWeaponKeyDimensions` joint les mêmes tables metadata `weapons` +
+>   `weapon_name_labels` — seul ce qu'on cherche a changé (un `weapon_key` du
+>   classifieur, pas un `weapon_key` dérivé d'un `weapon_id` stocké).
 
 Les lecteurs ne lisent jamais `weapon_kills` directement. La surface de lecture
 canonique est la vue **`v_weapon_kills`**, qui :
@@ -273,7 +331,7 @@ Quand une nouvelle arme arrive, ou qu'un WID non résolu est positivement
 identifié :
 
 1. Ajouter l'entrée dans `weaponEntries` dans
-   `apps/go-api/internal/analysis/weapon_data.go` (hex -> nom). La placer dans
+   `apps/go-api/internal/games/weapons/filmshell/catalogue.go` (hex -> nom). La placer dans
    le bon groupe (standard / famille Energy Sword / famille Gravity Hammer /
    grenade). Si la classe d'arme est nouvelle, ajouter une entrée
    `WeaponTimingByName`.

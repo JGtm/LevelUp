@@ -10,6 +10,146 @@
 
 ---
 
+### [scheduler/leaderboard] Le cron du classement mondial tire à boot+30 s et perd son snapshot sur expiration du B-swap
+
+Noté le 2026-09-20 (diagnostic des anomalies de boot). `world_leaderboard_cron` démarre 30 s
+après le boot ; sa persistance demande le basculement RO→RW de `shared_matches_v2.duckdb`
+(`sharedprovider`, drain des lecteurs borné à 5 s) au moment où le boot tient encore des
+lecteurs (sync, killsource, data_health). Constaté deux fois le 2026-09-20 dans `logs/` :
+`provider: drain timeout, rollback vers RO` (label `world_leaderboard_snapshot`) puis
+`world_leaderboard_cron: persistance échouée — sharedprovider: drain inflight readers: context
+deadline exceeded`. Le crash qui suivait ce timeout (WaitGroup réutilisée, deux fois le 16/09)
+est corrigé (`reader_drain.go`, lot du 2026-09-20) ; le timeout lui-même et la perte du
+snapshot du jour ne le sont pas. Le cron ne réessaie qu'au cycle suivant (24 h).
+
+**Impact utilisateur : un jour de classement mondial manqué** à chaque boot qui tombe ainsi.
+**Correctif** : différer le premier tir du cron (après le boot chaud, ou sur signal de fin de
+sync initiale) ET/OU réessayer la persistance sur `ErrDrainTimeout` avec un délai borné
+(2-3 tentatives), en gardant le scrape déjà fait en mémoire pour ne pas re-solliciter Waypoint.
+**Effort : S.**
+
+---
+
+### [data/ART] `match_skill_rank` garde ses index secondaires ART — même défaut que `personal_score_awards`
+
+Noté le 2026-09-20 (lot « retrait des index ART de personal_score_awards »). Le bug DuckDB
+#23645 désynchronise les index ART des player DB sur les insertions COURANTES : sur
+`personal_score_awards`, les clés en écart du 20/09 étaient des match_id de septembre, et les
+trois index ont été retirés (`drop_psa_secondary_art_indexes_v1`) après preuve que les six
+lecteurs passent par la vue `_latest`, dont la fonction de fenêtre impose un scan séquentiel
+(0,800 ms avec index / 0,841 ms sans, même plan). `match_skill_rank` porte encore les siens
+(`idx_msr_playlist` mesuré désynchronisé le 2026-09-13 sur JGtm), avec sa sonde
+`data_health_msr_index.go`, `cmd/repair_msr_index` et le paquet `platform/duckdb/indexcheck`
+conservés pour lui seul.
+
+**Impact utilisateur** : lookups indexés amputés en silence sur cette table tant que la sonde
+n'a pas alerté, réparation manuelle serveur arrêté. **Correctif** : reproduire l'instruction
+faite pour PSA — inventaire des lecteurs (passent-ils tous par `match_skill_rank_latest` ?),
+`EXPLAIN` avec et sans index, mesure sur DB fichier ; si le plan est un scan dans les deux cas,
+retirer les index par migration idempotente, supprimer sonde + outil + `indexcheck` (plus aucun
+consommateur) et étendre le ratchet `noSecondaryIndexTables` ; sinon consigner pourquoi ils
+restent. **Effort : S-M** (la recette existe, commits `ceea58b39`).
+
+---
+
+### [migration/sync] Deux découpeurs SQL divergents — `sync.splitSQL` n'est pas `migration.splitSQL`
+
+Noté le 2026-09-20 (rouge CI attrapé sur le lot PSA). `migration.splitSQL` ignore un fragment
+purement commentaire après le dernier `;` d'un script ; `sync.splitSQL`
+(`internal/sync/schema.go`, ~L532) le passe tel quel à DuckDB → `execScript: empty query`.
+Or `sync.EnsurePlayerSchema` rejoue le DDL d'autorité à CHAQUE `OpenPlayerDB` : un commentaire
+mal placé dans `PlayerPersonalScoreAwardsDDL` cassait l'ouverture des player DB en prod, pas
+seulement un test (corrigé en déplaçant le commentaire, commit `84f2c8620`). `sync` importe
+déjà `migration`.
+
+**Correctif** : faire consommer `migration.ExecScript` (ou son découpeur exporté) par `sync`
+et supprimer `sync.splitSQL` avec ses tests (0 copie), plus un test qui prouve qu'un
+commentaire de fin de script passe sur le chemin `EnsurePlayerSchema`. **Effort : XS-S.**
+
+---
+
+### [garde-rail/campagne] `TestCampaignExclusionStructuralCoverage` ne voit pas le SQL local
+
+Noté le 2026-09-19 (lot d'hygiène compare/armes, découverte non traitée). Le balayage AST de
+`apps/go-api/internal/platform/duckdb/campaign_exclusion_guard_test.go` ne scanne que les
+constantes/vars de paquet nommées `Q<...>` ; toute requête construite dans un `q :=` local à
+la fonction lui échappe, sans signalement ni dispense. `GetLocalStats` ET l'ancien
+`GetCrossMatchSample` (`compare_repo.go`) étaient dans ce cas : c'est ce qui a laissé vivre une
+lecture de `match_participants` SANS exclusion campagne (le repli « échantillon croisé »,
+supprimé le 2026-09-19 après preuve qu'il servait des stats de campagne coop Halo 5 comme
+échantillon matchmade). Le commentaire du test annonce « TOUTES les constantes de requête » :
+il n'est pas exhaustif.
+
+**Impact utilisateur : aucun aujourd'hui** (plus de lecteur fautif connu). **Intérêt : c'est le
+garde-rail qui aurait dû attraper la fuite.** **Correctif** : étendre le balayage aux
+littéraux SQL locaux des méthodes de repo qui lisent `match_participants` / `mv_player_matches`
+avec un filtre `xuid`, puis statuer chaque nouvel entrant (exclusion ou allowlist justifiée).
+**Effort : S-M** (la partie coûteuse est le triage des entrants, pas le scan).
+
+---
+
+### [web/lint] Deux inexactitudes mineures relevées au lot d'hygiène du 2026-09-19
+
+- `personal-stats=>synthesis` dans `ALLOWED_CROSS_IMPORTS` (`tools/lint-cross-feature-imports.mjs`)
+  est une dérogation morte : aucun fichier de `features/personal-stats/` n'importe
+  `@/features/synthesis`. À retirer à la prochaine retouche du script.
+- `apps/web/src/components/charts/README.md` : la note « Wrappers 10–11 are kept in
+  `features/timeseries/` » est fausse pour `FirstBloodLanes` (#11), qui vit dans
+  `components/charts/`.
+
+**Effort : XS** chacune, à grouper avec la prochaine retouche de ces fichiers.
+
+---
+
+### [replay/sons] Fins de partie multi-équipes par couleur — écran + annonceur
+
+Noté le 2026-08-27 (chantier rejeu 2D, plan `.ai/V7.5/PLAN_REPLAY_CADRAGE_VICTOIRE.md`,
+branche `wt/replay-cadrage-victoire`). L'écran de victoire et les sons de fin (lots B/C)
+couvrent les matchs à 2 équipes + le FFA gagné ; les modes MULTI-ÉQUIPES (3+) n'ont ni
+écran (décision D-B1) ni son. Or le jeu porte une famille complète d'annonces dédiées,
+identifiée par transcription locale des packs annonceur :
+
+- **8 répliques FR** « Partie terminée, l'équipe X est déclarée vainqueur » — bleue
+  `1070034924`, rouge `808622693`, cyan `83592248`, mauve `186794961`, verte `265309140`,
+  citron `784566745`, jaune `868146650`, orange `399957729` (ids `.wem` du pack
+  `French(France)/sb_001_vo_ai_mp_announcer.pck`) ;
+- **8 jumelles EN** « Game over — <color> team wins » — red `1005389916`, blue `101785491`,
+  green `1010879786`, purple `100056384`, yellow `927455187`, orange `564119611`,
+  lime `92374`, cyan `256805823` (pack `English(US)/…`).
+
+**Cible** : sur un match 3+ équipes, écran de fin aux couleurs de l'équipe gagnante et
+réplique de SA couleur. La correspondance `team_id` → couleur officielle existe déjà
+(`apps/web/src/lib/halo/teamNames.ts`, TEAM_COLORS/TEAM_NAMES 0-8) — il reste à VÉRIFIER
+sur pièces le mapping team_id ↔ couleur annoncée (au moins un match multi-équipes réel).
+Extraction/normalisation : rejouer la recette du lot C (transcriptions et outillage
+conservés sous `Desktop/Halo Infinite - Sons armes/_fin_partie/`). **Effort : S-M**
+(gros du travail = l'écran multi-équipes, les sons suivent). Dépendance : aucune —
+s'appuie sur l'overlay et le canal son de fin livrés en v7.5.
+
+---
+
+### [replay/sons] Musique d'intro au lancement du rejeu — queue du build-up, sans attente
+
+Noté le 2026-08-27 (chantier rejeu 2D, suite du lot C sons de fin). La piste `402178411`
+(16,00 s, pack `SFX/sb_130_mus_multiplayer_global.pck`, extraite et convertie sous
+`Desktop/Halo Infinite - Sons armes/_fin_partie/mus_mp_global_wav/`) est très
+probablement la musique d'INTRO de match (le build-up du countdown, écrit pour se
+résoudre au coup d'envoi). Le cadrage v7.5 démarre la lecture pile au coup d'envoi :
+il n'y a plus de place pour la jouer entière, et retarder le départ de 3-4 s a été
+REFUSÉ (décision utilisateur 2026-08-27 — pas d'attente imposée, syndrome de l'intro
+non skippable).
+
+**Cible si repris** : ne garder que la QUEUE du build-up (les 2-3 dernières secondes,
+celles qui se résolvent au coup d'envoi) et la jouer PAR-DESSUS les premières secondes
+de lecture, à volume musique (−18 LUFS, comme les fanfares de fin) — zéro attente,
+l'anticipation en plus. Coupe d'asset (recette du lot C : fondu, normalisation,
+manifeste + garde-rail) + un déclenchement au départ de la lecture, symétrique du
+déclenchement de fin du lot C. **Effort : S** (~20 min une fois le lot C en place).
+À faire seulement si l'envie revient à l'usage — le statu quo (départ silencieux,
+sons diégétiques seuls) est le choix par défaut assumé.
+
+---
+
 ### [ops/demo] Hermétisme FICHIERS du mode démo — racine démo autonome
 
 Noté le 2026-08-05 (vague 2, chantier fixture démo). Le mode démo est hermétique côté
@@ -78,27 +218,16 @@ resolver) — elle ne suit pas le sort du maillon de nom. **Effort : S** (le rel
 
 ---
 
-### [ops/deps] Bump `echarts` 5.6.0 → 6.1.0 (alerte Dependabot moderate, CVE-2026-45249, XSS) — REPORTÉ
-
-Noté le 2026-07-25. Dependabot signale une alerte moderate (CVE-2026-45249, XSS) sur `echarts`
-5.6.0 (`apps/web/package.json`), corrigée en 6.1.0. **Non traité en v7.2.1** : bump MAJEUR du
-moteur de tous les graphes de l'app (11 wrappers `apps/web/src/components/charts/` + pages
-timeseries) — l'utilisateur a explicitement refusé le risque d'instabilité à ce stade.
-
-**Reporté (décision utilisateur 26/07) — à re-planifier** (n'a PAS été pris dans le lot v7.3).
-**Critère de go mesurable** : `make test-web` vert (suite charts/timeseries) +
-`make check-types` vert + tournée visuelle des pages les plus denses en graphes (Timeseries,
-Compare, Synthesis, Match view). **Effort : S-M** (bump + vérif, selon l'ampleur des breaking
-changes 6.x).
-
----
-
 ### [POST-V7] Housekeeping post-cutover (optionnel, non bloquant)
 
 > Le cutover Go (la branche Go est devenue `main`) est **terminé** — cf. archive « Récemment complété ».
-> Reste 2 micro-tâches optionnelles, non bloquantes :
-- [ ] Documenter le default async ON dans le README utilisateur
-- [ ] Tuning du janitor (24h → 12h ?) si la latence WAL le justifie en prod
+> Reste 1 micro-tâche optionnelle, non bloquante :
+- [x] Documenter le default async ON — fait : `LEVELUP_PERSIST_BATCH_ASYNC` (défaut on,
+      kill-switch `0`, retrait cible >= 2026-Q4) est documenté dans `docs/CONFIGURATION.md`
+      et `docs/FR/CONFIGURATION.md` (constaté le 2026-09-19).
+- [ ] Tuning du janitor (24h → 12h ?) si la latence WAL le justifie en prod — le janitor
+      tourne toujours 1×/24h (`cmd/server/main.go`, section « Phase 4.7 closure ») ; aucun
+      signal prod ne l'a justifié à ce jour.
 
 ---
 
@@ -138,30 +267,6 @@ changes 6.x).
 
 ---
 
-### Kills environnementaux — catégorie dédiée (v8++)
-
-> ⚠️ **Spec à re-écrire pour Go (2026-06-09)** : les étapes ci-dessous référencent le code Python supprimé au cutover (`constants.py`, `_weapon_kills_repo.py`, `ParticipantBits`, `GRENADE_MEDALS`). L'idée reste valable mais doit être re-spécifiée côté Go (`apps/go-api`) avant toute implémentation. Priorité très basse (barrel kills extrêmement rares).
-
-**Contexte** : La médaille **Kong** (kill via baril projeté) est actuellement comptée dans `GRENADE_MEDALS` faute d'une meilleure catégorie. Ce classement est approximatif — il est impossible de savoir avec certitude si l'API inclut ces kills dans `GrenadeKills` ou non.
-
-**Idée** : Créer une catégorie `environmental_kills` (ou `environmental`) pour regrouper les kills causés par l'environnement sans arme tenue :
-- Baril projeté (médaille **Kong**)
-- Potentiellement : chutes provoquées, explosions de véhicules, etc.
-
-**Ce que ça impliquerait** :
-1. Nouvelle colonne `environmental_kills` dans `match_participants` (migration DuckDB)
-2. Nouveau bit `ParticipantBits.ENVIRONMENTAL_KILLS` dans `constants.py`
-3. Retirer `Kong` de `GRENADE_MEDALS` → nouvel ensemble `ENVIRONMENTAL_MEDALS`
-4. Logique de réconciliation filmshell dédiée dans `_weapon_kills_repo.py`
-5. Backfill pour l'historique existant
-6. Affichage UI éventuel
-
-**Complexité estimée** : Moyenne (surtout le backfill + validation que l'API expose bien des compteurs séparés)
-
-**Priorité** : Basse — les barrel kills sont extrêmement rares, l'impact sur les stats est négligeable. À faire uniquement si on veut une exhaustivité totale des catégories de kills.
-
----
-
 ## 🎮 Backlog — Coach proactif × Prestige (post-V2)
 
 Référence : ADR 0020 — Coach proactif : pont vers Prestige. ADR 0021 — Synthèse dynamique de Template et Arc ad-hoc.
@@ -185,6 +290,8 @@ forwardées via settings.
 
 | Date | Item |
 |------|------|
+| 2026-09-19 | **[hygiène] Lot compare / armes / frontières** (branche `feat/hygiene-compare-armes`, 4 commits `e4238dea6`→`aa1a8dc2c`, exécuté par Opus sous pilotage) — **A** champ `filters` de `CompareRequest` retiré (Go + `types.ts` ; le fragment OpenAPI manuel ne le déclarait déjà pas, `FilterContextInput` conservé : 7 autres consommateurs). **B** repli « échantillon croisé » SUPPRIMÉ — mais la prémisse du backlog était fausse : la branche n'était pas morte, elle était FAUTIVE. `GetCrossMatchSample` n'excluait pas la campagne alors que `GetLocalStats` le fait ; mesuré sur copie du shared Halo 5 : pour un B présent uniquement en coop campagne, `GetLocalStats` rend 0 ligne et l'échantillon croisé rend 1 match (stats de campagne servies sous un service record matchmade). Exclusion alignée ⇒ branche morte par construction ⇒ retrait complet (service, repo, port + noop, `domain.CrossMatchSample`, `IsLocalSample`/`is_local_sample` régénéré par Huma, 2 tests, 8 lignes de baseline). **C** `buildTopWeapons` des séries temporelles délègue à `topWeaponKillRows` (départage sur le libellé) ; garde-rail étendu au motif `WeaponID <` sans propriétaire ; changement assumé : une arme sans libellé résolu n'est plus publiée (barre anonyme avant). **D** `SynthesisCards` → `components/ui/section-primitives.tsx`, `SynthesisWeaponAccuracyChart` → `components/charts/WeaponAccuracyChart.tsx` ; DEUX dérogations retirées (`timeseries=>synthesis` et `session-detail=>synthesis`) ; le ratchet du script compte les violations non déclarées (7/7, inchangé), pas les dérogations. Gates : Go build/vet/test 22 paquets, openapi-gen -check, types frais, tsc -b (cache purgé), eslint 0 erreur, lint inter-features, vitest 7984 tests — tous verts, rejoués par le pilote. Découvertes → 2 items backlog ci-dessus. |
+| 2026-08-03 | **[ops/deps] Bump `echarts` 5.6.0 → 6.1.0** (CVE-2026-45249, XSS) — livré par `545b870de` (lot B4 echarts6, diff visuel joint). L'entrée « REPORTÉ » du backlog était restée après la livraison ; retirée le 2026-09-19. |
 | 2026-07-26 | **[ops/prod] Écritures `app_settings.json` dans le conteneur (bind-mount fichier → rename EBUSY)** (v7.3, `branche feat/v7.3-notion-batch, lot backlog du 26/07`) — point d'écriture unique `internal/platform/atomicfile.WriteFile` : atomique (temp + rename) d'abord, repli **in-place** (truncate + un seul Write + fsync) quand le rename répond EBUSY ou que le répertoire parent refuse le temporaire. Toute AUTRE erreur de rename reste remontée (le repli couvre une contrainte d'environnement connue, pas un diagnostic manquant). Audit des écritures runtime de settings : **3 call sites**, tous migrés — `settings.Store.Save` (chemin de TOUS les toggles admin `PATCH /settings`, qui faisait un `os.WriteFile` nu, donc jamais atomique), `settings.Store.SaveTitleOverlay`, `notify.writeLastNotifiedVersion` (le bug d'origine : notif Discord « nouvelle version » rejouée à chaque redémarrage). Limite ASSUMÉE et documentée : le repli n'est pas atomique — risque borné (contenu déjà sérialisé en mémoire, un seul Write, fsync, fichiers reconstructibles). Garde-rail `archlint/no_bare_settings_write_test.go` (interdit `os.WriteFile`/`os.Rename` nus dans les packages writers de settings). Tests : rename EBUSY → repli, rename ENOSPC → erreur non masquée, temporaire impossible → repli, troncature, création. |
 | 2026-07-26 | **[ops/notifs] Bruit WARN `app_release: emit` pour les comptes auth_only** (v7.3, `branche feat/v7.3-notion-batch, lot backlog du 26/07`) — filtre pur `appReleaseTargets` dans `internal/api/wire/notifications_boot.go` : les profils `auth_only` de `db_profiles.json` (5 en prod, `db_path` vide — ils n'existent que pour le pool de tokens) sont écartés AVANT toute résolution, avec une trace `DebugContext` groupée au lieu de 5 WARN par redémarrage. Découverte au passage, corrigée dans le même filtre : `LoadPlayers()` sans filtre de titre renvoie une entrée par (titre, joueur) alors que la notification est per-JOUEUR → un joueur déclaré sur 2 titres était traité deux fois ; déduplication par slug + ordre d'émission stable. 5 tests unitaires. |
 | 2026-07-26 | **[archi/contrat] Reliquats V72-01 — clos** (v7.3, `branche feat/v7.3-notion-batch, lot backlog du 26/07`) — (a) **`securitySchemes`** : le contrat ne déclarait AUCUN mécanisme d'auth ; `sessionCookie` (apiKey/cookie) est désormais posé côté Go (`internal/api/openapi_security.go`) en lisant le nom du cookie à sa source unique `session.CookieName` — aucune exigence `security` par opération n'est ajoutée (une part de la surface est publique par conception ; l'inventaire route→garde reste le ratchet `bare_routes`, qui est exécutable). (b) **UI `/docs`** : `internal/api/openapi_docs.go`, montée sur le routeur RACINE (le `DocsPath` de Huma aurait enregistré la route une fois par sous-routeur, sous son préfixe) et gatée sur `IsProduction() **OU** DemoMode` — la démo est publique et ne pose pas `LEVELUP_ENV`, la gater sur la seule production l'aurait exposée. Sert le document VIVANT (`/docs/openapi.{json,yaml}`), CSP dédiée. (c) **`ApiError.details`** : `huma.SchemaTransformer` sur `humacore.apiError` restaure `oneOf: [object(additionalProperties true), array]`, perdu par le type Go `any` — corps runtime inchangé. **Statués `[!]`, non traités et pourquoi** : validation automatique des inputs + résolveurs cross-champs = CLOS par décision produit (contrat `RawBody`/400 CONSERVÉ, pas de bascule 422) ; les **7 descriptions de schéma racine** restent au fragment manuel — les rapatrier exigerait un `SchemaTransformer` sur 7 types de `internal/domain`, donc d'y importer `huma` alors que ce package n'a **aucune** dépendance externe aujourd'hui : coût architectural disproportionné pour 7 chaînes déjà présentes au contrat publié. |

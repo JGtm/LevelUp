@@ -34,6 +34,9 @@ import (
 	duckdbpkg "levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/platform/duckdb/sharedprovider"
 	"levelup/go-api/internal/port"
+	"levelup/go-api/internal/sync/historyretry"
+	"levelup/go-api/internal/sync/killcollector"
+	"levelup/go-api/internal/sync/replayartifacts"
 
 	"golang.org/x/sync/errgroup"
 )
@@ -63,8 +66,8 @@ const (
 )
 
 // SyncEngine orchestre la synchronisation des données Halo d'un joueur.
-// FriendsLoader retourne la liste courante des amis configurés (typiquement
-// settings.FriendGamertags). Nil → feature désactivée (legacy / pas de wiring).
+// FriendsLoader retourne la liste courante des amis DU JOUEUR synchronisé
+// (data/global/player_friends.json). Nil → feature désactivée (pas de wiring).
 type FriendsLoader func() ([]string, error)
 
 type SyncEngine struct {
@@ -100,11 +103,20 @@ type SyncEngine struct {
 	// Reçoit (ctx, gamertag, titleSlug) — le hook se charge lui-même de
 	// la résolution Prestige et du feature flag.
 	prestigeHook func(ctx context.Context, gamertag, titleSlug string)
-	// friendsLoader résout settings.FriendGamertags à la demande pour le
+	// friendsLoader résout les amis du joueur à la demande pour le
 	// hook auto-recompute is_with_friends post-sync delta. Nil → feature off
 	// (les nouveaux matchs resteront is_with_friends=FALSE jusqu'au prochain
-	// recompute manuel via PATCH /settings ou CLI levelup recompute-friends).
+	// recompute manuel via PUT des amis du joueur ou CLI levelup recompute-friends).
 	friendsLoader FriendsLoader
+	// replayArtifacts (lot 6 v7.5) — fil de l'eau des artefacts de rejeu 2D : après
+	// l étape 1.57, les matchs insérés (fenêtre replay_retention_months) voient leur
+	// film persisté au cache disque (filmcache.Write) puis leur artefact construit
+	// (replaybuild). Nil = étape absente — le wiring ne l'installe qu'en LOCAL : « le
+	// VPS web ne décode JAMAIS » (cf. WithReplayArtifacts).
+	replayArtifacts *replayartifacts.Hook
+	// killSource (2026-08-29) — fil de l'eau de la source du kill (étape 1.57). Installé
+	// PAR DÉFAUT dans le constructeur, pas au wiring : cf. killcollector/postsync.go.
+	killSource *killcollector.PostSyncHook
 	// metaDB (optionnel) — connexion ouverte par run() au démarrage de la sync
 	// pour permettre l'enrichissement post-Extract des MatchRegistryRow via
 	// asset_translations (cf. EnrichRegistryFromMetadata, anti-régression UUIDs
@@ -169,8 +181,9 @@ type SyncEngine struct {
 // déplacés vers engine_options.go (refactor 2026-05-21).
 //
 // AcquireSharedWriterStandalone, AcquireMetadataWriterStandalone,
-// AcquirePlayerWriterStandalone, e.acquireSharedWriter :
-// déplacés vers engine_acquire.go (refactor 2026-05-21).
+// e.acquireSharedWriter : déplacés vers engine_acquire.go (refactor 2026-05-21).
+// AcquirePlayerWriterStandalone : supprimé (ADR 0023 Phase 5 — son unique appelant,
+// le double-write DuckDB de la rotation du refresh token, a disparu).
 
 // RunDelta synchronise uniquement les matchs nouveaux depuis la dernière sync.
 // S'arrête dès qu'un match connu est rencontré dans l'historique paginé.
@@ -223,18 +236,17 @@ func (e *SyncEngine) paginateAndPersistHistory(ctx context.Context, in historyPa
 		}
 
 		slog.DebugContext(ctx, "sync: requête historique API",
-			"gamertag", e.gamertag, "xuid", e.xuid, "start", start, "page_size", historyPageSize,
-		)
-		// L'endpoint /hi/players/{player}/matches exige strictement le format
-		// xuid(NNN) (voir Grunt StatsModule.GetMatchHistory + SPNKr). Passer le
-		// gamertag directement renvoie une réponse stale figée — symptôme du
-		// "no inserts since 6 mai" diagnostiqué le 2026-05-20.
-		entries, err := in.client.GetMatchHistory(ctx, fmt.Sprintf("xuid(%s)", e.xuid), in.opts.MatchType, start, historyPageSize)
+			"gamertag", e.gamertag, "xuid", e.xuid, "start", start, "page_size", historyPageSize)
+		// Rejeu borné du 429 / du parc en cooldown : sync/historyretry. Format xuid(NNN) exigé
+		// Une page perdue arrête la pagination : AddError (et non AddWarning) pour que Status()
+		// rende partial_success/failure (D1, robustesse 2026-09-16).
+		entries, err := historyretry.Page(ctx, e.gamertag, start, func() ([]MatchHistoryEntry, error) {
+			return in.client.GetMatchHistory(ctx, fmt.Sprintf("xuid(%s)", e.xuid), in.opts.MatchType, start, historyPageSize)
+		})
 		if err != nil {
-			slog.WarnContext(ctx, "sync: GetMatchHistory échoué",
-				"gamertag", e.gamertag, "start", start, "err", err,
-			)
-			result.AddWarning(fmt.Sprintf("GetMatchHistory(start=%d): %v", start, err))
+			slog.ErrorContext(ctx, "sync: historique interrompu",
+				"gamertag", e.gamertag, "start", start, "err", err)
+			result.AddError(fmt.Sprintf("historique interrompu à start=%d: %v", start, err))
 			break
 		}
 		if len(entries) == 0 {
@@ -366,7 +378,7 @@ func (e *SyncEngine) paginateAndPersistHistory(ctx context.Context, in historyPa
 	}
 }
 
-// run est le cÅ“ur du moteur de sync. isDelta=true → stop dès un match connu.
+// run est le cœur du moteur de sync. isDelta=true → stop dès un match connu.
 func (e *SyncEngine) run(ctx context.Context, opts domain.SyncOptions, isDelta bool) (domain.SyncResult, error) {
 	result := domain.SyncResult{StartedAt: time.Now()}
 	// mode + sa forme titre-case pour le nom d'event (remplace strings.Title,
@@ -468,25 +480,25 @@ func (e *SyncEngine) run(ctx context.Context, opts domain.SyncOptions, isDelta b
 	// les UUIDs bruts en noms canoniques EN avant l'INSERT match_registry.
 	// Échec d'ouverture → enrichissement désactivé pour ce run, sync continue.
 	if e.metadataDBPath != "" {
-		// OpenReadForQuery RÉUTILISE le handle metadata déjà en cache (RW tenu par
-		// main.go via OpenReadWriteShared, sinon RO) au lieu d'ouvrir un 2e handle.
-		// Forcer OpenReadOnly ("ro:"+path) ici ouvrait une SECONDE instance DuckDB
-		// alors que le serveur tient déjà metadata en RW ("rw:"+path) → échec
-		// "Can't open ... with a different configuration" → e.metaDB nil →
-		// EnrichRegistryFromMetadata ET la résolution des noms d'assets désactivés
-		// silencieusement (cf. ADR 0016, thought_log "different configuration").
-		// Le handle ainsi obtenu est RW en prod : il sert la LECTURE (enrich) ET
-		// l'écriture basse-fréquence (asset_translations via ops.UpsertAssetTranslation,
-		// SELECT-then-write ART-safe). En CLI/test sans handle partagé, retombe sur un
-		// OpenReadOnly propre (lecture OK ; l'écriture résolution reste best-effort).
-		metaSQL, releaseMeta, metaErr := duckdbpkg.OpenReadForQuery(e.metadataDBPath)
+		// UNE SEULE clé de cache pour tout le run : "rw:"+path (OpenReadWriteShared).
+		// Dans le serveur, c'est le handle que main.go tient déjà ; en CLI, c'est une
+		// instance unique que le post-sync réutilise. L'ancienne ouverture « pour requete » prenait
+		// la clé "ro:" quand personne ne tenait la base (cas CLI), et le post-sync
+		// rouvrait ensuite en "rw:" → « Can't open ... with a different configuration »,
+		// donc « catalog seed désactivé (metadata inaccessible) » en CLI (C-E, 2026-09-16).
+		// Le handle sert la LECTURE (enrich registry, noms d'assets, citations, convergence)
+		// ET l'écriture basse-fréquence (asset_translations, SELECT-then-write ART-safe) :
+		// aucun de ses lecteurs n'exige la lecture seule. Close() est refcompté.
+		metaHandle, metaErr := duckdbpkg.OpenReadWriteShared(e.metadataDBPath)
 		if metaErr != nil {
 			slog.WarnContext(ctx, "sync: ouverture metadata DB échouée — enrich registry désactivé",
 				"db", e.metadataDBPath, "err", metaErr)
 		} else {
-			e.metaDB = metaSQL
+			e.metaDB = metaHandle.SQLDb()
 			defer func() {
-				releaseMeta()
+				if cerr := metaHandle.Close(); cerr != nil {
+					slog.WarnContext(ctx, "sync: fermeture metadata DB échouée", "err", cerr)
+				}
 				e.metaDB = nil
 			}()
 		}

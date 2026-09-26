@@ -1,0 +1,1313 @@
+########## FILM 7344d24f ##########
+=== RUN   TestTI47Annonces
+    ti47_annonces_test.go:45: FILM 7344d24f · registre : 118 archetypes · empreinte 61e492dd4de7fd4e
+    ti47_annonces_test.go:51: COUT — recensement des images-cle : 7.453s · 1163 slots vus tous archetypes confondus
+    ti47_annonces_test.go:58: ARCHETYPE ti=47 · 3 composants · i2 = personal-ai-data-component
+    ti47_annonces_test.go:58:    + i0  managed-object-networked-splash-message-static-component
+    ti47_annonces_test.go:58:    + i1  managed-object-networked-splash-message-dynamic-component
+    ti47_annonces_test.go:58:    * i2  personal-ai-data-component
+    ti47_annonces_test.go:58: BANDE : 8 slots vus en image-cle pour ti=47 · fantome 8 slots (jamais vus le porter)
+    ti47_annonces_test.go:65: COUT — passe delta : 1.757s · 32 chunks · 36350 paquets delta
+    ti47_annonces_test.go:68: RECORDS DELTA (denominateur : 36350 paquets) : reel 17817 · fantome 840 · rapport 21.21x
+    ti47_annonces_test.go:68:    hors grammaire : reel 893 (5.01 %) · fantome 800 (95.24 %)
+    ti47_annonces_test.go:68:    i2 annonce dans 14459 records (81.15 %) · fantome 15 (1.79 %)
+    ti47_annonces_test.go:68:    indices les plus annonces (reel) : i2=14459 (personal-ai-data-component) · i1=2500 (managed-object-networked-splash-message-dynamic-component) · i8=125 (HORS GRAMMAIRE) · i0=85 (managed-object-networked-splash-message-static-component) · i6=76 (HORS GRAMMAIRE) · i22=69 (HORS GRAMMAIRE)
+    ti47_annonces_test.go:68:    masques SINGLETON (reel) : i2=14405 (personal-ai-data-component) · i1=2430 (managed-object-networked-splash-message-dynamic-component) · i0=34 (managed-object-networked-splash-message-static-component)
+    ti47_annonces_test.go:68:    vies : 32 paires (slot,gen) vues · 32 CONFIRMEES (>= 3 records) · fantome 32/32
+    ti47_annonces_test.go:68:    slots reels les plus actifs : 1308:3492 · 1304:3452 · 1300:3050 · 1306:3031 · 1302:1602 · 1298:1511
+    ti47_annonces_test.go:69: CHAINAGE — un record correctement dimensionne finit la ou le suivant commence.
+    ti47_annonces_test.go:69:   i2 personal-ai · cible TOUS slots         14405 records · plancher median 0.31 % · sommets : d=45 : 84.4 % (270.3x) · d=1 : 70.7 % (226.3x) · d=117 : 28.3 % (90.7x) · d=73 : 25.5 % (81.6x) · d=126 : 24.7 % (79.1x)
+    ti47_annonces_test.go:69:   i2 personal-ai · cible BANDE ti=47        14405 records · plancher median 0.00 % · sommets : d=45 : 32.9 % (0.0x) · d=117 : 5.6 % (0.0x) · d=32 : 0.2 % (0.0x) · d=104 : 0.0 % (0.0x) · d=153 : 0.0 % (0.0x)
+    ti47_annonces_test.go:69:   i2 personal-ai · FANTOME                     13 records · plancher median 0.00 % · sommets : d=83 : 46.2 % (0.0x) · d=54 : 23.1 % (0.0x) · d=141 : 20.0 % (0.0x) · d=21 : 7.7 % (0.0x) · d=113 : 7.7 % (0.0x)
+    ti47_annonces_test.go:69:   i1 dynamic R(24) · cible TOUS              2430 records · plancher median 0.04 % · sommets : d=24 : 90.5 % (2194.4x) · d=75 : 77.3 % (1875.9x) · d=126 : 64.7 % (1570.4x) · d=177 : 52.0 % (1262.4x) · d=35 : 14.1 % (342.4x)
+    ti47_annonces_test.go:69:   i1 dynamic R(24) · cible BANDE             2430 records · plancher median 0.00 % · sommets : d=24 : 87.1 % (0.0x) · d=75 : 73.5 % (0.0x) · d=126 : 61.2 % (0.0x) · d=177 : 49.0 % (0.0x) · d=1 : 0.0 % (0.0x)
+    ti47_annonces_test.go:69:   i0 static · cible TOUS                       33 records · plancher median 0.00 % · sommets : d=164 : 12.5 % (0.0x) · d=37 : 12.1 % (0.0x) · d=145 : 10.7 % (0.0x) · d=120 : 9.4 % (0.0x) · d=3 : 9.1 % (0.0x)
+    ti47_annonces_test.go:70: DISTANCES entre debuts de records consecutifs de la bande (en-tete+index = 27 bits ; largeur = distance − 27) :
+    ti47_annonces_test.go:70:   apres un singleton {i0 managed-object-networked-splash-message-static-component} : 1 distances (+5 hors plafond) · 354 bits (W=327) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=1 (personal-ai-data-component)
+    ti47_annonces_test.go:70:   apres un singleton {i1 managed-object-networked-splash-message-dynamic-component} : 2117 distances (+0 hors plafond) · 51 bits (W=24) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i1=2094 (managed-object-networked-splash-message-dynamic-component) · masque multiple=23
+    ti47_annonces_test.go:70:   apres un singleton {i2 personal-ai-data-component} : 4795 distances (+36 hors plafond) · 72 bits (W=45) : 98.7 % · 59 bits (W=32) : 0.5 % · 180 bits (W=153) : 0.0 % · 407 bits (W=380) : 0.0 % · 360 bits (W=333) : 0.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=4758 (personal-ai-data-component) · masque multiple=16 · i59=10 (HORS GRAMMAIRE) · i0=2 (managed-object-networked-splash-message-static-component)
+    ti47_annonces_test.go:70:   apres un singleton {i4 } : 3 distances (+3 hors plafond) · 251 bits (W=224) : 33.3 % · 266 bits (W=239) : 33.3 % · 416 bits (W=389) : 33.3 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=3 (personal-ai-data-component)
+    ti47_annonces_test.go:70:   apres un singleton {i6 } : 14 distances (+4 hors plafond) · 139 bits (W=112) : 21.4 % · 303 bits (W=276) : 21.4 % · 154 bits (W=127) : 7.1 % · 236 bits (W=209) : 7.1 % · 302 bits (W=275) : 7.1 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=14 (personal-ai-data-component)
+    ti47_annonces_test.go:70:   apres un singleton {i8 } : 16 distances (+12 hors plafond) · 170 bits (W=143) : 25.0 % · 335 bits (W=308) : 12.5 % · 339 bits (W=312) : 12.5 % · 370 bits (W=343) : 12.5 % · 319 bits (W=292) : 6.2 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=16 (personal-ai-data-component)
+    ti47_annonces_test.go:70:   apres un singleton {i9 } : 1 distances (+0 hors plafond) · 40 bits (W=13) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i22=1 (HORS GRAMMAIRE)
+    ti47_annonces_test.go:70:   apres un singleton {i10 } : 2 distances (+8 hors plafond) · 215 bits (W=188) : 50.0 % · 421 bits (W=394) : 50.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=1 (personal-ai-data-component) · i21=1 (HORS GRAMMAIRE)
+    ti47_annonces_test.go:70:   apres un singleton {i12 } : 1 distances (+0 hors plafond) · 386 bits (W=359) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=1 (personal-ai-data-component)
+    ti47_annonces_test.go:70:   apres un singleton {i18 } : 1 distances (+0 hors plafond) · 441 bits (W=414) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=1 (personal-ai-data-component)
+    ti47_annonces_test.go:70:   apres un singleton {i21 } : 5 distances (+3 hors plafond) · 451 bits (W=424) : 60.0 % · 302 bits (W=275) : 20.0 % · 466 bits (W=439) : 20.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=5 (personal-ai-data-component)
+    ti47_annonces_test.go:70:   apres un singleton {i22 } : 10 distances (+12 hors plafond) · 271 bits (W=244) : 80.0 % · 122 bits (W=95) : 10.0 % · 511 bits (W=484) : 10.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=10 (personal-ai-data-component)
+    ti47_annonces_test.go:70:   apres un singleton {i27 } : 1 distances (+1 hors plafond) · 176 bits (W=149) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i1=1 (managed-object-networked-splash-message-dynamic-component)
+    ti47_annonces_test.go:70:   apres un singleton {i30 } : 2 distances (+1 hors plafond) · 317 bits (W=290) : 50.0 % · 376 bits (W=349) : 50.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=2 (personal-ai-data-component)
+    ti47_annonces_test.go:70:   apres un singleton {i32 } : 2 distances (+1 hors plafond) · 43 bits (W=16) : 50.0 % · 409 bits (W=382) : 50.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=2 (personal-ai-data-component)
+    ti47_annonces_test.go:70:   apres un singleton {i33 } : 1 distances (+1 hors plafond) · 201 bits (W=174) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=1 (personal-ai-data-component)
+    ti47_annonces_test.go:70:   apres un singleton {i34 } : 1 distances (+0 hors plafond) · 273 bits (W=246) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=1 (personal-ai-data-component)
+    ti47_annonces_test.go:70:   apres un singleton {i35 } : 1 distances (+0 hors plafond) · 272 bits (W=245) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=1 (personal-ai-data-component)
+    ti47_annonces_test.go:70:   apres un singleton {i36 } : 1 distances (+0 hors plafond) · 115 bits (W=88) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=1 (personal-ai-data-component)
+    ti47_annonces_test.go:70:   apres un singleton {i38 } : 1 distances (+1 hors plafond) · 274 bits (W=247) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=1 (personal-ai-data-component)
+    ti47_annonces_test.go:70:   apres un singleton {i39 } : 1 distances (+1 hors plafond) · 38 bits (W=11) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=1 (personal-ai-data-component)
+    ti47_annonces_test.go:70:   apres un singleton {i40 } : 1 distances (+1 hors plafond) · 406 bits (W=379) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=1 (personal-ai-data-component)
+    ti47_annonces_test.go:70:   apres un singleton {i44 } : 1 distances (+0 hors plafond) · 343 bits (W=316) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=1 (personal-ai-data-component)
+    ti47_annonces_test.go:70:   apres un singleton {i47 } : 1 distances (+2 hors plafond) · 419 bits (W=392) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=1 (personal-ai-data-component)
+    ti47_annonces_test.go:70:   apres un singleton {i50 } : 1 distances (+2 hors plafond) · 63 bits (W=36) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=1 (personal-ai-data-component)
+    ti47_annonces_test.go:70:   apres un singleton {i51 } : 1 distances (+0 hors plafond) · 311 bits (W=284) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=1 (personal-ai-data-component)
+    ti47_annonces_test.go:70:   apres un singleton {i54 } : 1 distances (+0 hors plafond) · 372 bits (W=345) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=1 (personal-ai-data-component)
+    ti47_annonces_test.go:70:   apres un singleton {i56 } : 1 distances (+0 hors plafond) · 63 bits (W=36) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=1 (personal-ai-data-component)
+    ti47_annonces_test.go:70:   apres un singleton {i58 } : 1 distances (+1 hors plafond) · 440 bits (W=413) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=1 (personal-ai-data-component)
+    ti47_annonces_test.go:70:   apres un singleton {i59 } : 1 distances (+0 hors plafond) · 46 bits (W=19) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=1 (personal-ai-data-component)
+    ti47_annonces_test.go:72:   TSV : C:\Users\Guillaume\Downloads\Scripts\LevelUp-wt-ti47\.ai\V7.5\replay2d\registre_film\lotF2\7344d24f_ti47_chainage.tsv
+    ti47_annonces_test.go:78: VALEURS (largeur 45 bits · champ analyse [20:45[, soit 25 bits) : 14451 records annoncent i2 · 0 refuses (payload trop court) · 14451 emissions retenues · 12760 valeurs distinctes
+    ti47_annonces_test.go:78:    33551146          32   0.22 %
+    ti47_annonces_test.go:78:    18715318          17   0.12 %
+    ti47_annonces_test.go:78:    23369868          15   0.10 %
+    ti47_annonces_test.go:78:    18903763          14   0.10 %
+    ti47_annonces_test.go:78:    22780859          14   0.10 %
+    ti47_annonces_test.go:78:    17093343          12   0.08 %
+    ti47_annonces_test.go:78:    18903762          12   0.08 %
+    ti47_annonces_test.go:78:    16219286          11   0.08 %
+    ti47_annonces_test.go:78:    23369869          11   0.08 %
+    ti47_annonces_test.go:78:    13767727          10   0.07 %
+    ti47_annonces_test.go:78:    16219287          10   0.07 %
+    ti47_annonces_test.go:78:    18682587          10   0.07 %
+    ti47_annonces_test.go:78:    22338934          10   0.07 %
+    ti47_annonces_test.go:78:    13505470           9   0.06 %
+    ti47_annonces_test.go:78:    14826847           9   0.06 %
+    ti47_annonces_test.go:78:    18715312           9   0.06 %
+    ti47_annonces_test.go:78:    les 16 premieres valeurs couvrent 1.42 % des emissions
+    ti47_annonces_test.go:78:    profil des bits (position 0 = premier bit apres le masque ; '.' = toujours 0, '#' = toujours 1, chiffre = dizaine de la part a 1) :
+    ti47_annonces_test.go:78:       090000000000000000006365554445559455454555554
+    ti47_annonces_test.go:78:       constants : ---------------------------------------------  (0 bits sur 45 ne varient JAMAIS)
+    ti47_annonces_test.go:78:    echelle (valeur / 2^25) : [0.0-0.1[ 0.0 % · [0.2-0.3[ 0.0 % · [0.3-0.4[ 1.9 % · [0.4-0.5[ 36.2 % · [0.5-0.6[ 22.6 % · [0.6-0.7[ 27.1 % · [0.7-0.8[ 11.1 % · [0.8-0.9[ 0.0 % · [0.9-1.0[ 1.1 % · au plafond (>= 0,999) : 1.1 %
+    ti47_annonces_test.go:78:    structure : 48.9 % de transitions croissantes · correlation valeur/instant r = 0.913 · 12760 valeurs distinctes pour 14451 emissions
+    ti47_annonces_test.go:78:    -> la valeur SUIT LE TEMPS : horloge ou compteur, pas un identifiant.
+    ti47_annonces_test.go:78: PAR SLOT (rythme et variation ; un slot = une entite de l'archetype) :
+    ti47_annonces_test.go:78:    slot 1308    3103 emissions ·  2893 valeurs distinctes · ecart median   50 ms (p90    51) · |variation| mediane 19 (p99 14196689) · plage [13439045..33551830] · derive 20109640
+    ti47_annonces_test.go:78:    slot 1304    3035 emissions ·  2505 valeurs distinctes · ecart median   50 ms (p90    51) · |variation| mediane 8 (p99 14251477) · plage [13652409..33551711] · derive 19897170
+    ti47_annonces_test.go:78:    slot 1306    2687 emissions ·  2443 valeurs distinctes · ecart median   50 ms (p90    51) · |variation| mediane 12 (p99 14366584) · plage [13342710..33551832] · derive 20208835
+    ti47_annonces_test.go:78:    slot 1300    2662 emissions ·  2324 valeurs distinctes · ecart median   50 ms (p90    51) · |variation| mediane 13 (p99 13203182) · plage [13373494..33551681] · derive 20177060
+    ti47_annonces_test.go:78:    slot 1302    1165 emissions ·   961 valeurs distinctes · ecart median   50 ms (p90    51) · |variation| mediane 10 (p99 17781733) · plage [16908..33551779] · derive 19120744
+    ti47_annonces_test.go:78:    slot 1298     985 emissions ·   921 valeurs distinctes · ecart median   50 ms (p90    51) · |variation| mediane 17 (p99 17537911) · plage [7406667..33551147] · derive 20221342
+    ti47_annonces_test.go:78:    slot 1310     518 emissions ·   476 valeurs distinctes · ecart median   50 ms (p90    51) · |variation| mediane 16 (p99 16441461) · plage [14341432..33551501] · derive 19208066
+    ti47_annonces_test.go:78:    slot 1312     296 emissions ·   273 valeurs distinctes · ecart median   50 ms (p90    51) · |variation| mediane 15 (p99 19626834) · plage [2100430..33551533] · derive 22651970
+    ti47_annonces_test.go:79: ORACLE : artefact schema 18 · 5689 frames de 100 ms · originMs 33274 · 3 zones
+    ti47_annonces_test.go:79: ORACLES derives de zoneStates : 247 evenements · jauge_debut=104 · jauge_fin=104 · prise=39
+    ti47_annonces_test.go:79: SAUTS : 148 variations hors norme (percentile 99 par slot) sur 14451 emissions · seuil median 16441461 (min 13203182, max 19626834) sur 8 slots
+    ti47_annonces_test.go:79:    amplitude des sauts : mediane 17932619 · max 33534356
+    ti47_annonces_test.go:79: ALIGNEMENT (item 1.2) — chaque suite contre son temoin « meme loi, decalee » :
+    ti47_annonces_test.go:79:   sauts vs TOUS oracles           148 instants · distance mediane   1388 ms (p90    9399) · dans +/-2 s : 58.8 %
+    ti47_annonces_test.go:79:                                TEMOIN decale             mediane   1567 ms (p90    8694) · dans la fenetre : 57.4 %  ->  exces 1.02x
+    ti47_annonces_test.go:79:   emissions vs TOUS oracles     14451 instants · distance mediane   1419 ms (p90    6686) · dans +/-2 s : 61.7 %
+    ti47_annonces_test.go:79:                                TEMOIN decale             mediane   1660 ms (p90    7515) · dans la fenetre : 55.8 %  ->  exces 1.11x
+    ti47_annonces_test.go:79:   sauts vs jauge_debut            148 instants · distance mediane   1790 ms (p90    9399) · dans +/-2 s : 56.8 %
+    ti47_annonces_test.go:79:                                TEMOIN decale             mediane   1696 ms (p90    8694) · dans la fenetre : 55.4 %  ->  exces 1.02x
+    ti47_annonces_test.go:79:   sauts vs jauge_fin              148 instants · distance mediane   2556 ms (p90   11829) · dans +/-2 s : 44.6 %
+    ti47_annonces_test.go:79:                                TEMOIN decale             mediane   3100 ms (p90   12261) · dans la fenetre : 41.2 %  ->  exces 1.08x
+    ti47_annonces_test.go:79:   sauts vs prise                  148 instants · distance mediane   4507 ms (p90   15145) · dans +/-2 s : 25.0 %
+    ti47_annonces_test.go:79:                                TEMOIN decale             mediane   4747 ms (p90   12994) · dans la fenetre : 25.7 %  ->  exces 0.97x
+    ti47_annonces_test.go:79: MATRICE classe de saut x type d'oracle (item 1.3) — part des sauts de la classe a moins de 2 s d'un evenement du type :
+    ti47_annonces_test.go:79:    amplitude 10^7 (  148 sauts) : jauge_debut 57 % · jauge_fin 45 % · prise 25 % · SANS oracle : 41 % (item 1.4)
+--- PASS: TestTI47Annonces (9.24s)
+PASS
+ok  	levelup/go-api/internal/analysis/filmdec	9.623s
+EXIT_7344d24f=0
+########## FILM 696a9d7c ##########
+=== RUN   TestTI47Annonces
+    ti47_annonces_test.go:45: FILM 696a9d7c · registre : 118 archetypes · empreinte 61e492dd4de7fd4e
+    ti47_annonces_test.go:51: COUT — recensement des images-cle : 5.749s · 1128 slots vus tous archetypes confondus
+    ti47_annonces_test.go:58: ARCHETYPE ti=47 · 3 composants · i2 = personal-ai-data-component
+    ti47_annonces_test.go:58:    + i0  managed-object-networked-splash-message-static-component
+    ti47_annonces_test.go:58:    + i1  managed-object-networked-splash-message-dynamic-component
+    ti47_annonces_test.go:58:    * i2  personal-ai-data-component
+    ti47_annonces_test.go:58: BANDE : 8 slots vus en image-cle pour ti=47 · fantome 8 slots (jamais vus le porter)
+    ti47_annonces_test.go:65: COUT — passe delta : 1.286s · 30 chunks · 34276 paquets delta
+    ti47_annonces_test.go:68: RECORDS DELTA (denominateur : 34276 paquets) : reel 16124 · fantome 774 · rapport 20.83x
+    ti47_annonces_test.go:68:    hors grammaire : reel 1335 (8.28 %) · fantome 744 (96.12 %)
+    ti47_annonces_test.go:68:    i2 annonce dans 12301 records (76.29 %) · fantome 10 (1.29 %)
+    ti47_annonces_test.go:68:    indices les plus annonces (reel) : i2=12301 (personal-ai-data-component) · i1=2503 (managed-object-networked-splash-message-dynamic-component) · i22=206 (HORS GRAMMAIRE) · i21=187 (HORS GRAMMAIRE) · i8=166 (HORS GRAMMAIRE) · i6=113 (HORS GRAMMAIRE)
+    ti47_annonces_test.go:68:    masques SINGLETON (reel) : i2=12263 (personal-ai-data-component) · i1=2453 (managed-object-networked-splash-message-dynamic-component) · i0=40 (managed-object-networked-splash-message-static-component)
+    ti47_annonces_test.go:68:    vies : 32 paires (slot,gen) vues · 32 CONFIRMEES (>= 3 records) · fantome 32/32
+    ti47_annonces_test.go:68:    slots reels les plus actifs : 1298:2856 · 1312:2570 · 1308:2532 · 1310:2069 · 1304:1952 · 1302:1651
+    ti47_annonces_test.go:69: CHAINAGE — un record correctement dimensionne finit la ou le suivant commence.
+    ti47_annonces_test.go:69:   i2 personal-ai · cible TOUS slots         12263 records · plancher median 0.27 % · sommets : d=45 : 86.5 % (321.5x) · d=1 : 67.4 % (250.4x) · d=117 : 26.5 % (98.6x) · d=126 : 23.2 % (86.4x) · d=73 : 22.1 % (82.2x)
+    ti47_annonces_test.go:69:   i2 personal-ai · cible BANDE ti=47        12263 records · plancher median 0.00 % · sommets : d=45 : 30.3 % (0.0x) · d=117 : 2.0 % (0.0x) · d=32 : 0.2 % (0.0x) · d=20 : 0.0 % (0.0x) · d=192 : 0.0 % (0.0x)
+    ti47_annonces_test.go:69:   i2 personal-ai · FANTOME                      7 records · plancher median 0.00 % · sommets : d=28 : 14.3 % (0.0x) · d=171 : 14.3 % (0.0x) · d=162 : 14.3 % (0.0x) · d=131 : 14.3 % (0.0x) · d=115 : 14.3 % (0.0x)
+    ti47_annonces_test.go:69:   i1 dynamic R(24) · cible TOUS              2453 records · plancher median 0.04 % · sommets : d=24 : 89.9 % (2202.3x) · d=75 : 76.3 % (1869.7x) · d=126 : 63.7 % (1561.1x) · d=177 : 52.2 % (1278.0x) · d=35 : 14.5 % (355.6x)
+    ti47_annonces_test.go:69:   i1 dynamic R(24) · cible BANDE             2453 records · plancher median 0.00 % · sommets : d=24 : 87.2 % (0.0x) · d=75 : 73.6 % (0.0x) · d=126 : 61.0 % (0.0x) · d=177 : 49.4 % (0.0x) · d=162 : 0.0 % (0.0x)
+    ti47_annonces_test.go:69:   i0 static · cible TOUS                       39 records · plancher median 0.00 % · sommets : d=40 : 20.5 % (0.0x) · d=23 : 12.8 % (0.0x) · d=190 : 12.5 % (0.0x) · d=70 : 10.5 % (0.0x) · d=130 : 10.0 % (0.0x)
+    ti47_annonces_test.go:70: DISTANCES entre debuts de records consecutifs de la bande (en-tete+index = 27 bits ; largeur = distance − 27) :
+    ti47_annonces_test.go:70:   apres un singleton {i1 managed-object-networked-splash-message-dynamic-component} : 2140 distances (+0 hors plafond) · 51 bits (W=24) : 100.0 % · 36 bits (W=9) : 0.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i1=2115 (managed-object-networked-splash-message-dynamic-component) · masque multiple=25
+    ti47_annonces_test.go:70:   apres un singleton {i2 personal-ai-data-component} : 3771 distances (+21 hors plafond) · 72 bits (W=45) : 98.4 % · 59 bits (W=32) : 0.5 % · 374 bits (W=347) : 0.1 % · 439 bits (W=412) : 0.1 % · 432 bits (W=405) : 0.1 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=3733 (personal-ai-data-component) · masque multiple=11 · i59=9 (HORS GRAMMAIRE) · i58=8 (HORS GRAMMAIRE)
+    ti47_annonces_test.go:70:   apres un singleton {i4 } : 7 distances (+1 hors plafond) · 102 bits (W=75) : 28.6 % · 158 bits (W=131) : 14.3 % · 207 bits (W=180) : 14.3 % · 222 bits (W=195) : 14.3 % · 267 bits (W=240) : 14.3 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=7 (personal-ai-data-component)
+    ti47_annonces_test.go:70:   apres un singleton {i6 } : 17 distances (+5 hors plafond) · 303 bits (W=276) : 17.6 % · 447 bits (W=420) : 11.8 % · 149 bits (W=122) : 5.9 % · 110 bits (W=83) : 5.9 % · 236 bits (W=209) : 5.9 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=16 (personal-ai-data-component) · i22=1 (HORS GRAMMAIRE)
+    ti47_annonces_test.go:70:   apres un singleton {i8 } : 27 distances (+12 hors plafond) · 170 bits (W=143) : 33.3 % · 304 bits (W=277) : 11.1 % · 319 bits (W=292) : 11.1 % · 335 bits (W=308) : 11.1 % · 484 bits (W=457) : 11.1 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=26 (personal-ai-data-component) · i51=1 (HORS GRAMMAIRE)
+    ti47_annonces_test.go:70:   apres un singleton {i10 } : 12 distances (+13 hors plafond) · 205 bits (W=178) : 33.3 % · 215 bits (W=188) : 16.7 % · 168 bits (W=141) : 8.3 % · 257 bits (W=230) : 8.3 % · 335 bits (W=308) : 8.3 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=9 (personal-ai-data-component) · i21=2 (HORS GRAMMAIRE) · i22=1 (HORS GRAMMAIRE)
+    ti47_annonces_test.go:70:   apres un singleton {i12 } : 1 distances (+2 hors plafond) · 353 bits (W=326) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=1 (personal-ai-data-component)
+    ti47_annonces_test.go:70:   apres un singleton {i15 } : 1 distances (+0 hors plafond) · 446 bits (W=419) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=1 (personal-ai-data-component)
+    ti47_annonces_test.go:70:   apres un singleton {i16 } : 1 distances (+0 hors plafond) · 164 bits (W=137) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=1 (personal-ai-data-component)
+    ti47_annonces_test.go:70:   apres un singleton {i17 } : 2 distances (+0 hors plafond) · 352 bits (W=325) : 50.0 % · 474 bits (W=447) : 50.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=2 (personal-ai-data-component)
+    ti47_annonces_test.go:70:   apres un singleton {i19 } : 1 distances (+0 hors plafond) · 45 bits (W=18) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=1 (personal-ai-data-component)
+    ti47_annonces_test.go:70:   apres un singleton {i20 } : 1 distances (+1 hors plafond) · 360 bits (W=333) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=1 (personal-ai-data-component)
+    ti47_annonces_test.go:70:   apres un singleton {i21 } : 28 distances (+40 hors plafond) · 318 bits (W=291) : 32.1 % · 452 bits (W=425) : 14.3 % · 483 bits (W=456) : 10.7 % · 138 bits (W=111) : 7.1 % · 302 bits (W=275) : 7.1 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=25 (personal-ai-data-component) · masque multiple=2 · i25=1 (HORS GRAMMAIRE)
+    ti47_annonces_test.go:70:   apres un singleton {i22 } : 43 distances (+18 hors plafond) · 271 bits (W=244) : 14.0 % · 287 bits (W=260) : 11.6 % · 368 bits (W=341) : 9.3 % · 305 bits (W=278) : 9.3 % · 439 bits (W=412) : 7.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=43 (personal-ai-data-component)
+    ti47_annonces_test.go:70:   apres un singleton {i25 } : 1 distances (+0 hors plafond) · 223 bits (W=196) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=1 (personal-ai-data-component)
+    ti47_annonces_test.go:70:   apres un singleton {i33 } : 1 distances (+1 hors plafond) · 400 bits (W=373) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=1 (personal-ai-data-component)
+    ti47_annonces_test.go:70:   apres un singleton {i34 } : 1 distances (+0 hors plafond) · 228 bits (W=201) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i1=1 (managed-object-networked-splash-message-dynamic-component)
+    ti47_annonces_test.go:70:   apres un singleton {i35 } : 1 distances (+0 hors plafond) · 38 bits (W=11) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=1 (personal-ai-data-component)
+    ti47_annonces_test.go:70:   apres un singleton {i36 } : 1 distances (+0 hors plafond) · 146 bits (W=119) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i39=1 (HORS GRAMMAIRE)
+    ti47_annonces_test.go:70:   apres un singleton {i37 } : 2 distances (+0 hors plafond) · 38 bits (W=11) : 50.0 % · 93 bits (W=66) : 50.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=2 (personal-ai-data-component)
+    ti47_annonces_test.go:70:   apres un singleton {i38 } : 1 distances (+2 hors plafond) · 423 bits (W=396) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=1 (personal-ai-data-component)
+    ti47_annonces_test.go:70:   apres un singleton {i39 } : 1 distances (+0 hors plafond) · 362 bits (W=335) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=1 (personal-ai-data-component)
+    ti47_annonces_test.go:70:   apres un singleton {i42 } : 1 distances (+13 hors plafond) · 182 bits (W=155) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=1 (personal-ai-data-component)
+    ti47_annonces_test.go:70:   apres un singleton {i44 } : 2 distances (+0 hors plafond) · 92 bits (W=65) : 50.0 % · 451 bits (W=424) : 50.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=2 (personal-ai-data-component)
+    ti47_annonces_test.go:70:   apres un singleton {i45 } : 1 distances (+0 hors plafond) · 111 bits (W=84) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=1 (personal-ai-data-component)
+    ti47_annonces_test.go:70:   apres un singleton {i47 } : 1 distances (+0 hors plafond) · 120 bits (W=93) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i22=1 (HORS GRAMMAIRE)
+    ti47_annonces_test.go:70:   apres un singleton {i49 } : 2 distances (+1 hors plafond) · 63 bits (W=36) : 50.0 % · 276 bits (W=249) : 50.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=2 (personal-ai-data-component)
+    ti47_annonces_test.go:70:   apres un singleton {i50 } : 1 distances (+0 hors plafond) · 332 bits (W=305) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=1 (personal-ai-data-component)
+    ti47_annonces_test.go:70:   apres un singleton {i52 } : 2 distances (+0 hors plafond) · 88 bits (W=61) : 50.0 % · 493 bits (W=466) : 50.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=2 (personal-ai-data-component)
+    ti47_annonces_test.go:70:   apres un singleton {i53 } : 6 distances (+0 hors plafond) · 63 bits (W=36) : 33.3 % · 38 bits (W=11) : 16.7 % · 45 bits (W=18) : 16.7 % · 92 bits (W=65) : 16.7 % · 102 bits (W=75) : 16.7 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=5 (personal-ai-data-component) · i21=1 (HORS GRAMMAIRE)
+    ti47_annonces_test.go:70:   apres un singleton {i57 } : 1 distances (+2 hors plafond) · 49 bits (W=22) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=1 (personal-ai-data-component)
+    ti47_annonces_test.go:70:   apres un singleton {i58 } : 1 distances (+1 hors plafond) · 164 bits (W=137) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=1 (personal-ai-data-component)
+    ti47_annonces_test.go:70:   apres un singleton {i59 } : 1 distances (+1 hors plafond) · 145 bits (W=118) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : masque multiple=1
+    ti47_annonces_test.go:70:   apres un singleton {i62 } : 1 distances (+1 hors plafond) · 393 bits (W=366) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=1 (personal-ai-data-component)
+    ti47_annonces_test.go:70:   apres un singleton {i63 } : 1 distances (+0 hors plafond) · 44 bits (W=17) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=1 (personal-ai-data-component)
+    ti47_annonces_test.go:72:   TSV : C:\Users\Guillaume\Downloads\Scripts\LevelUp-wt-ti47\.ai\V7.5\replay2d\registre_film\lotF2\696a9d7c_ti47_chainage.tsv
+    ti47_annonces_test.go:78: VALEURS (largeur 45 bits · champ analyse [20:45[, soit 25 bits) : 12287 records annoncent i2 · 0 refuses (payload trop court) · 12287 emissions retenues · 10928 valeurs distinctes
+    ti47_annonces_test.go:78:    33551146          21   0.17 %
+    ti47_annonces_test.go:78:    19920111          11   0.09 %
+    ti47_annonces_test.go:78:    23960467          11   0.09 %
+    ti47_annonces_test.go:78:    15980726          10   0.08 %
+    ti47_annonces_test.go:78:    14130042           9   0.07 %
+    ti47_annonces_test.go:78:    15241902           9   0.07 %
+    ti47_annonces_test.go:78:    17527475           9   0.07 %
+    ti47_annonces_test.go:78:    18455875           9   0.07 %
+    ti47_annonces_test.go:78:    19166418           9   0.07 %
+    ti47_annonces_test.go:78:    20749339           9   0.07 %
+    ti47_annonces_test.go:78:    21478792           9   0.07 %
+    ti47_annonces_test.go:78:    13390443           8   0.07 %
+    ti47_annonces_test.go:78:    15241923           8   0.07 %
+    ti47_annonces_test.go:78:    22369502           8   0.07 %
+    ti47_annonces_test.go:78:    23302855           8   0.07 %
+    ti47_annonces_test.go:78:    23960432           8   0.07 %
+    ti47_annonces_test.go:78:    les 16 premieres valeurs couvrent 1.27 % des emissions
+    ti47_annonces_test.go:78:    profil des bits (position 0 = premier bit apres le masque ; '.' = toujours 0, '#' = toujours 1, chiffre = dizaine de la part a 1) :
+    ti47_annonces_test.go:78:       090000000000000000007265555455549554455554454
+    ti47_annonces_test.go:78:       constants : ---------------------------------------------  (0 bits sur 45 ne varient JAMAIS)
+    ti47_annonces_test.go:78:    echelle (valeur / 2^25) : [0.0-0.1[ 0.0 % · [0.3-0.4[ 2.2 % · [0.4-0.5[ 25.9 % · [0.5-0.6[ 28.5 % · [0.6-0.7[ 30.2 % · [0.7-0.8[ 12.0 % · [0.9-1.0[ 1.1 % · au plafond (>= 0,999) : 1.1 %
+    ti47_annonces_test.go:78:    structure : 50.1 % de transitions croissantes · correlation valeur/instant r = 0.900 · 10928 valeurs distinctes pour 12287 emissions
+    ti47_annonces_test.go:78:    -> ni enumeration courte ni horloge : continuum ou treillis (comme i1).
+    ti47_annonces_test.go:78: PAR SLOT (rythme et variation ; un slot = une entite de l'archetype) :
+    ti47_annonces_test.go:78:    slot 1298    2185 emissions ·  1883 valeurs distinctes · ecart median   50 ms (p90    51) · |variation| mediane 9 (p99 15260803) · plage [2359296..33551728] · derive 20158158
+    ti47_annonces_test.go:78:    slot 1308    2146 emissions ·  1885 valeurs distinctes · ecart median   50 ms (p90    51) · |variation| mediane 11 (p99 15376621) · plage [13351923..33551738] · derive 20196717
+    ti47_annonces_test.go:78:    slot 1312    1914 emissions ·  1703 valeurs distinctes · ecart median   50 ms (p90    51) · |variation| mediane 12 (p99 14875768) · plage [13908622..33551703] · derive 14134997
+    ti47_annonces_test.go:78:    slot 1310    1700 emissions ·  1592 valeurs distinctes · ecart median   50 ms (p90    51) · |variation| mediane 19 (p99 12682071) · plage [12271764..33551654] · derive 18893967
+    ti47_annonces_test.go:78:    slot 1304    1396 emissions ·  1281 valeurs distinctes · ecart median   50 ms (p90    51) · |variation| mediane 9 (p99 16540247) · plage [13653167..33551682] · derive 19897823
+    ti47_annonces_test.go:78:    slot 1302    1226 emissions ·  1084 valeurs distinctes · ecart median   50 ms (p90    51) · |variation| mediane 13 (p99 16126887) · plage [13324493..33551789] · derive 20225556
+    ti47_annonces_test.go:78:    slot 1306    1118 emissions ·   968 valeurs distinctes · ecart median   50 ms (p90    51) · |variation| mediane 11 (p99 15898177) · plage [14202880..33551492] · derive 19348266
+    ti47_annonces_test.go:78:    slot 1300     602 emissions ·   570 valeurs distinctes · ecart median   50 ms (p90    51) · |variation| mediane 15 (p99 16449947) · plage [14323968..33551686] · derive 19226780
+    ti47_annonces_test.go:79: ORACLE : artefact schema 18 · 5337 frames de 100 ms · originMs 33562 · 3 zones
+    ti47_annonces_test.go:79: ORACLES derives de zoneStates : 237 evenements · jauge_debut=100 · jauge_fin=100 · prise=37
+    ti47_annonces_test.go:79: SAUTS : 127 variations hors norme (percentile 99 par slot) sur 12287 emissions · seuil median 15898177 (min 12682071, max 16540247) sur 8 slots
+    ti47_annonces_test.go:79:    amplitude des sauts : mediane 17520552 · max 31191693
+    ti47_annonces_test.go:79: ALIGNEMENT (item 1.2) — chaque suite contre son temoin « meme loi, decalee » :
+    ti47_annonces_test.go:79:   sauts vs TOUS oracles           127 instants · distance mediane   1288 ms (p90    5857) · dans +/-2 s : 64.6 %
+    ti47_annonces_test.go:79:                                TEMOIN decale             mediane   1856 ms (p90    9883) · dans la fenetre : 55.1 %  ->  exces 1.17x
+    ti47_annonces_test.go:79:   emissions vs TOUS oracles     12287 instants · distance mediane   1359 ms (p90    4871) · dans +/-2 s : 65.0 %
+    ti47_annonces_test.go:79:                                TEMOIN decale             mediane   1421 ms (p90    5260) · dans la fenetre : 62.8 %  ->  exces 1.04x
+    ti47_annonces_test.go:79:   sauts vs jauge_debut            127 instants · distance mediane   1625 ms (p90    5857) · dans +/-2 s : 62.2 %
+    ti47_annonces_test.go:79:                                TEMOIN decale             mediane   1874 ms (p90    9883) · dans la fenetre : 52.0 %  ->  exces 1.20x
+    ti47_annonces_test.go:79:   sauts vs jauge_fin              127 instants · distance mediane   2700 ms (p90    6906) · dans +/-2 s : 41.7 %
+    ti47_annonces_test.go:79:                                TEMOIN decale             mediane   3333 ms (p90   12831) · dans la fenetre : 37.0 %  ->  exces 1.13x
+    ti47_annonces_test.go:79:   sauts vs prise                  127 instants · distance mediane   4589 ms (p90   15505) · dans +/-2 s : 21.3 %
+    ti47_annonces_test.go:79:                                TEMOIN decale             mediane   6328 ms (p90   22425) · dans la fenetre : 23.6 %  ->  exces 0.90x
+    ti47_annonces_test.go:79: MATRICE classe de saut x type d'oracle (item 1.3) — part des sauts de la classe a moins de 2 s d'un evenement du type :
+    ti47_annonces_test.go:79:    amplitude 10^7 (  127 sauts) : jauge_debut 62 % · jauge_fin 42 % · prise 21 % · SANS oracle : 35 % (item 1.4)
+--- PASS: TestTI47Annonces (7.05s)
+PASS
+ok  	levelup/go-api/internal/analysis/filmdec	7.436s
+EXIT_696a9d7c=0
+########## FILM 01e1f945 ##########
+=== RUN   TestTI47Annonces
+    ti47_annonces_test.go:45: FILM 01e1f945 · registre : 118 archetypes · empreinte 61e492dd4de7fd4e
+    ti47_annonces_test.go:51: COUT — recensement des images-cle : 5.167s · 930 slots vus tous archetypes confondus
+    ti47_annonces_test.go:58: ARCHETYPE ti=47 · 3 composants · i2 = personal-ai-data-component
+    ti47_annonces_test.go:58:    + i0  managed-object-networked-splash-message-static-component
+    ti47_annonces_test.go:58:    + i1  managed-object-networked-splash-message-dynamic-component
+    ti47_annonces_test.go:58:    * i2  personal-ai-data-component
+    ti47_annonces_test.go:58: BANDE : 9 slots vus en image-cle pour ti=47 · fantome 9 slots (jamais vus le porter)
+    ti47_annonces_test.go:65: COUT — passe delta : 1.199s · 29 chunks · 33102 paquets delta
+    ti47_annonces_test.go:68: RECORDS DELTA (denominateur : 33102 paquets) : reel 8669 · fantome 1569 · rapport 5.53x
+    ti47_annonces_test.go:68:    hors grammaire : reel 1791 (20.66 %) · fantome 1538 (98.02 %)
+    ti47_annonces_test.go:68:    i2 annonce dans 6496 records (74.93 %) · fantome 13 (0.83 %)
+    ti47_annonces_test.go:68:    indices les plus annonces (reel) : i2=6496 (personal-ai-data-component) · i1=392 (managed-object-networked-splash-message-dynamic-component) · i8=334 (HORS GRAMMAIRE) · i6=265 (HORS GRAMMAIRE) · i10=175 (HORS GRAMMAIRE) · i47=128 (HORS GRAMMAIRE)
+    ti47_annonces_test.go:68:    masques SINGLETON (reel) : i2=6463 (personal-ai-data-component) · i1=346 (managed-object-networked-splash-message-dynamic-component) · i0=56 (managed-object-networked-splash-message-static-component)
+    ti47_annonces_test.go:68:    vies : 36 paires (slot,gen) vues · 36 CONFIRMEES (>= 3 records) · fantome 35/36
+    ti47_annonces_test.go:68:    slots reels les plus actifs : 1298:1543 · 1288:1443 · 1296:1159 · 1286:1038 · 1290:976 · 1292:848
+    ti47_annonces_test.go:69: CHAINAGE — un record correctement dimensionne finit la ou le suivant commence.
+    ti47_annonces_test.go:69:   i2 personal-ai · cible TOUS slots          6463 records · plancher median 0.36 % · sommets : d=1 : 84.6 % (236.0x) · d=45 : 65.2 % (182.0x) · d=126 : 20.9 % (58.4x) · d=63 : 16.5 % (46.1x) · d=58 : 14.9 % (41.7x)
+    ti47_annonces_test.go:69:   i2 personal-ai · cible BANDE ti=47         6463 records · plancher median 0.00 % · sommets : d=32 : 0.1 % (0.0x) · d=67 : 0.1 % (0.0x) · d=153 : 0.0 % (0.0x) · d=45 : 0.0 % (0.0x) · d=38 : 0.0 % (0.0x)
+    ti47_annonces_test.go:69:   i2 personal-ai · FANTOME                      4 records · plancher median 0.00 % · sommets : d=181 : 33.3 % (0.0x) · d=20 : 25.0 % (0.0x) · d=25 : 25.0 % (0.0x) · d=30 : 25.0 % (0.0x) · d=35 : 25.0 % (0.0x)
+    ti47_annonces_test.go:69:   i1 dynamic R(24) · cible TOUS               346 records · plancher median 0.00 % · sommets : d=24 : 86.9 % (0.0x) · d=75 : 71.2 % (0.0x) · d=126 : 64.1 % (0.0x) · d=177 : 53.7 % (0.0x) · d=164 : 6.4 % (0.0x)
+    ti47_annonces_test.go:69:   i1 dynamic R(24) · cible BANDE              346 records · plancher median 0.00 % · sommets : d=24 : 74.1 % (0.0x) · d=75 : 60.3 % (0.0x) · d=126 : 53.0 % (0.0x) · d=177 : 42.1 % (0.0x) · d=156 : 1.5 % (0.0x)
+    ti47_annonces_test.go:69:   i0 static · cible TOUS                       56 records · plancher median 0.00 % · sommets : d=28 : 71.4 % (0.0x) · d=13 : 39.3 % (0.0x) · d=191 : 18.0 % (0.0x) · d=160 : 13.7 % (0.0x) · d=23 : 5.4 % (0.0x)
+    ti47_annonces_test.go:70: DISTANCES entre debuts de records consecutifs de la bande (en-tete+index = 27 bits ; largeur = distance − 27) :
+    ti47_annonces_test.go:70:   apres un singleton {i0 managed-object-networked-splash-message-static-component} : 2 distances (+11 hors plafond) · 223 bits (W=196) : 50.0 % · 240 bits (W=213) : 50.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=1 (personal-ai-data-component) · i10=1 (HORS GRAMMAIRE)
+    ti47_annonces_test.go:70:   apres un singleton {i1 managed-object-networked-splash-message-dynamic-component} : 270 distances (+2 hors plafond) · 51 bits (W=24) : 94.4 % · 331 bits (W=304) : 2.6 % · 132 bits (W=105) : 1.9 % · 43 bits (W=16) : 0.4 % · 223 bits (W=196) : 0.4 %
+    ti47_annonces_test.go:70:       masque du record suivant : i1=256 (managed-object-networked-splash-message-dynamic-component) · masque multiple=12 · i2=1 (personal-ai-data-component) · i47=1 (HORS GRAMMAIRE)
+    ti47_annonces_test.go:70:   apres un singleton {i2 personal-ai-data-component} : 63 distances (+40 hors plafond) · 59 bits (W=32) : 7.9 % · 94 bits (W=67) : 6.3 % · 180 bits (W=153) : 4.8 % · 65 bits (W=38) : 4.8 % · 72 bits (W=45) : 4.8 %
+    ti47_annonces_test.go:70:       masque du record suivant : masque multiple=28 · i2=8 (personal-ai-data-component) · i47=5 (HORS GRAMMAIRE) · i56=3 (HORS GRAMMAIRE)
+    ti47_annonces_test.go:70:   apres un singleton {i3 } : 2 distances (+0 hors plafond) · 125 bits (W=98) : 50.0 % · 214 bits (W=187) : 50.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=2 (personal-ai-data-component)
+    ti47_annonces_test.go:70:   apres un singleton {i4 } : 7 distances (+13 hors plafond) · 195 bits (W=168) : 14.3 % · 232 bits (W=205) : 14.3 % · 247 bits (W=220) : 14.3 % · 263 bits (W=236) : 14.3 % · 299 bits (W=272) : 14.3 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=7 (personal-ai-data-component)
+    ti47_annonces_test.go:70:   apres un singleton {i6 } : 22 distances (+37 hors plafond) · 269 bits (W=242) : 18.2 % · 137 bits (W=110) : 13.6 % · 410 bits (W=383) : 4.5 % · 284 bits (W=257) : 4.5 % · 300 bits (W=273) : 4.5 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=20 (personal-ai-data-component) · i47=1 (HORS GRAMMAIRE) · masque multiple=1
+    ti47_annonces_test.go:70:   apres un singleton {i7 } : 1 distances (+0 hors plafond) · 140 bits (W=113) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=1 (personal-ai-data-component)
+    ti47_annonces_test.go:70:   apres un singleton {i8 } : 16 distances (+56 hors plafond) · 498 bits (W=471) : 18.8 % · 447 bits (W=420) : 6.2 % · 331 bits (W=304) : 6.2 % · 358 bits (W=331) : 6.2 % · 373 bits (W=346) : 6.2 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=15 (personal-ai-data-component) · i32=1 (HORS GRAMMAIRE)
+    ti47_annonces_test.go:70:   apres un singleton {i10 } : 8 distances (+38 hors plafond) · 125 bits (W=98) : 12.5 % · 163 bits (W=136) : 12.5 % · 167 bits (W=140) : 12.5 % · 198 bits (W=171) : 12.5 % · 219 bits (W=192) : 12.5 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=3 (personal-ai-data-component) · i18=2 (HORS GRAMMAIRE) · i26=2 (HORS GRAMMAIRE) · i32=1 (HORS GRAMMAIRE)
+    ti47_annonces_test.go:70:   apres un singleton {i11 } : 1 distances (+0 hors plafond) · 242 bits (W=215) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : masque multiple=1
+    ti47_annonces_test.go:70:   apres un singleton {i12 } : 1 distances (+7 hors plafond) · 369 bits (W=342) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=1 (personal-ai-data-component)
+    ti47_annonces_test.go:70:   apres un singleton {i13 } : 3 distances (+0 hors plafond) · 61 bits (W=34) : 33.3 % · 89 bits (W=62) : 33.3 % · 378 bits (W=351) : 33.3 %
+    ti47_annonces_test.go:70:       masque du record suivant : masque multiple=2 · i2=1 (personal-ai-data-component)
+    ti47_annonces_test.go:70:   apres un singleton {i14 } : 1 distances (+2 hors plafond) · 312 bits (W=285) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=1 (personal-ai-data-component)
+    ti47_annonces_test.go:70:   apres un singleton {i17 } : 1 distances (+9 hors plafond) · 74 bits (W=47) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=1 (personal-ai-data-component)
+    ti47_annonces_test.go:70:   apres un singleton {i18 } : 3 distances (+0 hors plafond) · 132 bits (W=105) : 66.7 % · 163 bits (W=136) : 33.3 %
+    ti47_annonces_test.go:70:       masque du record suivant : i26=3 (HORS GRAMMAIRE)
+    ti47_annonces_test.go:70:   apres un singleton {i19 } : 1 distances (+0 hors plafond) · 30 bits (W=3) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=1 (personal-ai-data-component)
+    ti47_annonces_test.go:70:   apres un singleton {i20 } : 1 distances (+0 hors plafond) · 490 bits (W=463) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=1 (personal-ai-data-component)
+    ti47_annonces_test.go:70:   apres un singleton {i21 } : 1 distances (+0 hors plafond) · 353 bits (W=326) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i1=1 (managed-object-networked-splash-message-dynamic-component)
+    ti47_annonces_test.go:70:   apres un singleton {i26 } : 12 distances (+0 hors plafond) · 163 bits (W=136) : 41.7 % · 132 bits (W=105) : 33.3 % · 167 bits (W=140) : 8.3 % · 219 bits (W=192) : 8.3 % · 472 bits (W=445) : 8.3 %
+    ti47_annonces_test.go:70:       masque du record suivant : i42=6 (HORS GRAMMAIRE) · i34=4 (HORS GRAMMAIRE) · i2=1 (personal-ai-data-component) · i50=1 (HORS GRAMMAIRE)
+    ti47_annonces_test.go:70:   apres un singleton {i27 } : 4 distances (+1 hors plafond) · 38 bits (W=11) : 25.0 % · 358 bits (W=331) : 25.0 % · 436 bits (W=409) : 25.0 % · 458 bits (W=431) : 25.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=4 (personal-ai-data-component)
+    ti47_annonces_test.go:70:   apres un singleton {i28 } : 2 distances (+0 hors plafond) · 236 bits (W=209) : 50.0 % · 306 bits (W=279) : 50.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=2 (personal-ai-data-component)
+    ti47_annonces_test.go:70:   apres un singleton {i29 } : 4 distances (+0 hors plafond) · 327 bits (W=300) : 50.0 % · 290 bits (W=263) : 25.0 % · 321 bits (W=294) : 25.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=4 (personal-ai-data-component)
+    ti47_annonces_test.go:70:   apres un singleton {i30 } : 2 distances (+0 hors plafond) · 47 bits (W=20) : 50.0 % · 327 bits (W=300) : 50.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=2 (personal-ai-data-component)
+    ti47_annonces_test.go:70:   apres un singleton {i32 } : 1 distances (+0 hors plafond) · 502 bits (W=475) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : masque multiple=1
+    ti47_annonces_test.go:70:   apres un singleton {i34 } : 2 distances (+1 hors plafond) · 163 bits (W=136) : 50.0 % · 189 bits (W=162) : 50.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=1 (personal-ai-data-component) · i42=1 (HORS GRAMMAIRE)
+    ti47_annonces_test.go:70:   apres un singleton {i35 } : 1 distances (+0 hors plafond) · 39 bits (W=12) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=1 (personal-ai-data-component)
+    ti47_annonces_test.go:70:   apres un singleton {i36 } : 1 distances (+1 hors plafond) · 76 bits (W=49) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i8=1 (HORS GRAMMAIRE)
+    ti47_annonces_test.go:70:   apres un singleton {i42 } : 11 distances (+1 hors plafond) · 198 bits (W=171) : 27.3 % · 132 bits (W=105) : 18.2 % · 163 bits (W=136) : 18.2 % · 167 bits (W=140) : 9.1 % · 184 bits (W=157) : 9.1 %
+    ti47_annonces_test.go:70:       masque du record suivant : i50=9 (HORS GRAMMAIRE) · i58=1 (HORS GRAMMAIRE) · i2=1 (personal-ai-data-component)
+    ti47_annonces_test.go:70:   apres un singleton {i46 } : 1 distances (+0 hors plafond) · 312 bits (W=285) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=1 (personal-ai-data-component)
+    ti47_annonces_test.go:70:   apres un singleton {i47 } : 2 distances (+0 hors plafond) · 30 bits (W=3) : 50.0 % · 366 bits (W=339) : 50.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : masque multiple=1 · i2=1 (personal-ai-data-component)
+    ti47_annonces_test.go:70:   apres un singleton {i50 } : 10 distances (+0 hors plafond) · 132 bits (W=105) : 50.0 % · 130 bits (W=103) : 10.0 % · 167 bits (W=140) : 10.0 % · 198 bits (W=171) : 10.0 % · 340 bits (W=313) : 10.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : masque multiple=8 · i58=2 (HORS GRAMMAIRE)
+    ti47_annonces_test.go:70:   apres un singleton {i51 } : 2 distances (+1 hors plafond) · 376 bits (W=349) : 50.0 % · 436 bits (W=409) : 50.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=2 (personal-ai-data-component)
+    ti47_annonces_test.go:70:   apres un singleton {i52 } : 1 distances (+0 hors plafond) · 66 bits (W=39) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=1 (personal-ai-data-component)
+    ti47_annonces_test.go:70:   apres un singleton {i53 } : 1 distances (+0 hors plafond) · 57 bits (W=30) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=1 (personal-ai-data-component)
+    ti47_annonces_test.go:70:   apres un singleton {i55 } : 1 distances (+0 hors plafond) · 314 bits (W=287) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i6=1 (HORS GRAMMAIRE)
+    ti47_annonces_test.go:70:   apres un singleton {i56 } : 1 distances (+0 hors plafond) · 39 bits (W=12) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i13=1 (HORS GRAMMAIRE)
+    ti47_annonces_test.go:70:   apres un singleton {i58 } : 2 distances (+1 hors plafond) · 95 bits (W=68) : 50.0 % · 132 bits (W=105) : 50.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : masque multiple=2
+    ti47_annonces_test.go:70:   apres un singleton {i59 } : 1 distances (+0 hors plafond) · 125 bits (W=98) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=1 (personal-ai-data-component)
+    ti47_annonces_test.go:72:   TSV : C:\Users\Guillaume\Downloads\Scripts\LevelUp-wt-ti47\.ai\V7.5\replay2d\registre_film\lotF2\01e1f945_ti47_chainage.tsv
+    ti47_annonces_test.go:78: VALEURS (largeur 45 bits · champ analyse [20:45[, soit 25 bits) : 6475 records annoncent i2 · 0 refuses (payload trop court) · 6475 emissions retenues · 5115 valeurs distinctes
+    ti47_annonces_test.go:78:    33551073          20   0.31 %
+    ti47_annonces_test.go:78:    19012627          16   0.25 %
+    ti47_annonces_test.go:78:    18863086          13   0.20 %
+    ti47_annonces_test.go:78:    19012609          13   0.20 %
+    ti47_annonces_test.go:78:    12908996          11   0.17 %
+    ti47_annonces_test.go:78:    12908998          11   0.17 %
+    ti47_annonces_test.go:78:    19012607          11   0.17 %
+    ti47_annonces_test.go:78:    19012610          11   0.17 %
+    ti47_annonces_test.go:78:    19012631          11   0.17 %
+    ti47_annonces_test.go:78:    19012620          10   0.15 %
+    ti47_annonces_test.go:78:    19012634          10   0.15 %
+    ti47_annonces_test.go:78:    19012606           9   0.14 %
+    ti47_annonces_test.go:78:    19012628           9   0.14 %
+    ti47_annonces_test.go:78:    18863064           8   0.12 %
+    ti47_annonces_test.go:78:    18863070           8   0.12 %
+    ti47_annonces_test.go:78:    19012636           8   0.12 %
+    ti47_annonces_test.go:78:    les 16 premieres valeurs couvrent 2.76 % des emissions
+    ti47_annonces_test.go:78:    profil des bits (position 0 = premier bit apres le masque ; '.' = toujours 0, '#' = toujours 1, chiffre = dizaine de la part a 1) :
+    ti47_annonces_test.go:78:       090000000000000000005444445666559545455444545
+    ti47_annonces_test.go:78:       constants : ---------------------------------------------  (0 bits sur 45 ne varient JAMAIS)
+    ti47_annonces_test.go:78:    echelle (valeur / 2^25) : [0.0-0.1[ 0.1 % · [0.1-0.2[ 0.0 % · [0.2-0.3[ 0.0 % · [0.3-0.4[ 15.4 % · [0.4-0.5[ 28.3 % · [0.5-0.6[ 36.1 % · [0.6-0.7[ 19.1 % · [0.9-1.0[ 0.9 % · au plafond (>= 0,999) : 0.9 %
+    ti47_annonces_test.go:78:    structure : 43.1 % de transitions croissantes · correlation valeur/instant r = 0.851 · 5115 valeurs distinctes pour 6475 emissions
+    ti47_annonces_test.go:78:    -> ni enumeration courte ni horloge : continuum ou treillis (comme i1).
+    ti47_annonces_test.go:78: PAR SLOT (rythme et variation ; un slot = une entite de l'archetype) :
+    ti47_annonces_test.go:78:    slot 1288    1168 emissions ·   989 valeurs distinctes · ecart median   50 ms (p90    51) · |variation| mediane 12 (p99 13181905) · plage [8222..33551644] · derive 19371504
+    ti47_annonces_test.go:78:    slot 1298     914 emissions ·   453 valeurs distinctes · ecart median   50 ms (p90    51) · |variation| mediane 2 (p99 17414052) · plage [25675..33551535] · derive -7186683
+    ti47_annonces_test.go:78:    slot 1286     892 emissions ·   660 valeurs distinctes · ecart median   50 ms (p90    51) · |variation| mediane 6 (p99 17652859) · plage [2359296..33551494] · derive 21036966
+    ti47_annonces_test.go:78:    slot 1290     855 emissions ·   739 valeurs distinctes · ecart median   50 ms (p90    51) · |variation| mediane 8 (p99 12891139) · plage [14571282..33551535] · derive 18979602
+    ti47_annonces_test.go:78:    slot 1296     798 emissions ·   703 valeurs distinctes · ecart median   50 ms (p90    51) · |variation| mediane 11 (p99 18315160) · plage [6587459..33551248] · derive 21183043
+    ti47_annonces_test.go:78:    slot 1292     732 emissions ·   638 valeurs distinctes · ecart median   50 ms (p90    51) · |variation| mediane 13 (p99 14031859) · plage [12384288..33551510] · derive 21166785
+    ti47_annonces_test.go:78:    slot 1294     595 emissions ·   481 valeurs distinctes · ecart median   50 ms (p90    51) · |variation| mediane 16 (p99 18536552) · plage [12170322..33551371] · derive 21380776
+    ti47_annonces_test.go:78:    slot 1284     443 emissions ·   408 valeurs distinctes · ecart median   50 ms (p90    51) · |variation| mediane 15 (p99 17390576) · plage [10074706..33551544] · derive 19601253
+    ti47_annonces_test.go:78:    slot 2413      78 emissions ·    55 valeurs distinctes · ecart median   50 ms (p90    51) · |variation| mediane 4 (p99 13251941) · plage [20258435..33551547] · derive 13293102
+    ti47_annonces_test.go:79: ORACLE : artefact schema 18 · 5343 frames de 100 ms · originMs 12588 · 4 zones
+    ti47_annonces_test.go:79: ORACLES derives de zoneStates : 10 evenements · colline_debut=5 · colline_fin=5
+    ti47_annonces_test.go:79: SAUTS : 68 variations hors norme (percentile 99 par slot) sur 6475 emissions · seuil median 17390576 (min 12891139, max 18536552) sur 9 slots
+    ti47_annonces_test.go:79:    amplitude des sauts : mediane 18872016 · max 33543359
+    ti47_annonces_test.go:79: ALIGNEMENT (item 1.2) — chaque suite contre son temoin « meme loi, decalee » :
+    ti47_annonces_test.go:79:   sauts vs TOUS oracles            68 instants · distance mediane  24563 ms (p90   50139) · dans +/-2 s : 1.5 %
+    ti47_annonces_test.go:79:                                TEMOIN decale             mediane  23050 ms (p90   50170) · dans la fenetre : 4.4 %  ->  exces 0.33x
+    ti47_annonces_test.go:79:   emissions vs TOUS oracles      6475 instants · distance mediane  26003 ms (p90   48945) · dans +/-2 s : 5.0 %
+    ti47_annonces_test.go:79:                                TEMOIN decale             mediane  26017 ms (p90   48296) · dans la fenetre : 2.7 %  ->  exces 1.90x
+    ti47_annonces_test.go:79:   sauts vs colline_debut           68 instants · distance mediane  24680 ms (p90   55106) · dans +/-2 s : 1.5 %
+    ti47_annonces_test.go:79:                                TEMOIN decale             mediane  24739 ms (p90   54284) · dans la fenetre : 4.4 %  ->  exces 0.33x
+    ti47_annonces_test.go:79:   sauts vs colline_fin             68 instants · distance mediane  27757 ms (p90   52041) · dans +/-2 s : 1.5 %
+    ti47_annonces_test.go:79:                                TEMOIN decale             mediane  24639 ms (p90   50170) · dans la fenetre : 4.4 %  ->  exces 0.33x
+    ti47_annonces_test.go:79: MATRICE classe de saut x type d'oracle (item 1.3) — part des sauts de la classe a moins de 2 s d'un evenement du type :
+    ti47_annonces_test.go:79:    amplitude 10^7 (   68 sauts) : colline_debut 1 % · colline_fin 1 % · SANS oracle : 99 % (item 1.4)
+--- PASS: TestTI47Annonces (6.38s)
+PASS
+ok  	levelup/go-api/internal/analysis/filmdec	6.780s
+EXIT_01e1f945=0
+########## FILM 0a247154 ##########
+=== RUN   TestTI47Annonces
+2026/08/24 21:54:21 WARN empreinte du registre ECS du film INCONNUE — grammaire des composants suspecte (mise a jour du jeu ?) ; le film reste decode empreinte=2988684478930051889 empreinte_connue=7053924395561516366 blocs=116 slots_non_vides=1031
+    ti47_annonces_test.go:45: FILM 0a247154 · registre : 116 archetypes · empreinte 2979f0b2e8596331
+    ti47_annonces_test.go:51: COUT — recensement des images-cle : 6.163s · 1205 slots vus tous archetypes confondus
+    ti47_annonces_test.go:58: ARCHETYPE ti=47 · 3 composants · i2 = personal-ai-data-component
+    ti47_annonces_test.go:58:    + i0  managed-object-networked-splash-message-static-component
+    ti47_annonces_test.go:58:    + i1  managed-object-networked-splash-message-dynamic-component
+    ti47_annonces_test.go:58:    * i2  personal-ai-data-component
+    ti47_annonces_test.go:58: BANDE : 8 slots vus en image-cle pour ti=47 · fantome 8 slots (jamais vus le porter)
+    ti47_annonces_test.go:65: COUT — passe delta : 1.715s · 41 chunks · 47854 paquets delta
+    ti47_annonces_test.go:68: RECORDS DELTA (denominateur : 47854 paquets) : reel 12432 · fantome 873 · rapport 14.24x
+    ti47_annonces_test.go:68:    hors grammaire : reel 2276 (18.31 %) · fantome 654 (74.91 %)
+    ti47_annonces_test.go:68:    i2 annonce dans 9808 records (78.89 %) · fantome 35 (4.01 %)
+    ti47_annonces_test.go:68:    indices les plus annonces (reel) : i2=9808 (personal-ai-data-component) · i8=422 (HORS GRAMMAIRE) · i1=343 (managed-object-networked-splash-message-dynamic-component) · i10=291 (HORS GRAMMAIRE) · i6=244 (HORS GRAMMAIRE) · i21=236 (HORS GRAMMAIRE)
+    ti47_annonces_test.go:68:    masques SINGLETON (reel) : i2=9794 (personal-ai-data-component) · i1=317 (managed-object-networked-splash-message-dynamic-component) · i0=40 (managed-object-networked-splash-message-static-component)
+    ti47_annonces_test.go:68:    vies : 32 paires (slot,gen) vues · 32 CONFIRMEES (>= 3 records) · fantome 32/32
+    ti47_annonces_test.go:68:    slots reels les plus actifs : 1312:2683 · 1300:2243 · 1306:1565 · 1310:1423 · 1304:1261 · 1298:1232
+    ti47_annonces_test.go:69: CHAINAGE — un record correctement dimensionne finit la ou le suivant commence.
+    ti47_annonces_test.go:69:   i2 personal-ai · cible TOUS slots          9794 records · plancher median 0.36 % · sommets : d=1 : 71.6 % (199.9x) · d=45 : 54.7 % (152.6x) · d=58 : 10.9 % (30.4x) · d=126 : 7.4 % (20.5x) · d=164 : 4.9 % (13.7x)
+    ti47_annonces_test.go:69:   i2 personal-ai · cible BANDE ti=47         9794 records · plancher median 0.00 % · sommets : d=115 : 0.1 % (0.0x) · d=22 : 0.1 % (0.0x) · d=45 : 0.0 % (0.0x) · d=178 : 0.0 % (0.0x) · d=163 : 0.0 % (0.0x)
+    ti47_annonces_test.go:69:   i2 personal-ai · FANTOME                     15 records · plancher median 0.00 % · sommets : d=183 : 28.6 % (0.0x) · d=148 : 28.6 % (0.0x) · d=161 : 21.4 % (0.0x) · d=160 : 7.1 % (0.0x) · d=170 : 7.1 % (0.0x)
+    ti47_annonces_test.go:69:   i1 dynamic R(24) · cible TOUS               317 records · plancher median 0.00 % · sommets : d=24 : 98.4 % (0.0x) · d=75 : 88.3 % (0.0x) · d=126 : 78.1 % (0.0x) · d=177 : 66.5 % (0.0x) · d=121 : 2.7 % (0.0x)
+    ti47_annonces_test.go:69:   i1 dynamic R(24) · cible BANDE              317 records · plancher median 0.00 % · sommets : d=24 : 88.3 % (0.0x) · d=75 : 78.0 % (0.0x) · d=126 : 66.8 % (0.0x) · d=177 : 54.9 % (0.0x) · d=1 : 0.0 % (0.0x)
+    ti47_annonces_test.go:69:   i0 static · cible TOUS                       40 records · plancher median 0.00 % · sommets : d=54 : 37.5 % (0.0x) · d=188 : 9.4 % (0.0x) · d=151 : 8.8 % (0.0x) · d=60 : 7.7 % (0.0x) · d=184 : 6.2 % (0.0x)
+    ti47_annonces_test.go:70: DISTANCES entre debuts de records consecutifs de la bande (en-tete+index = 27 bits ; largeur = distance − 27) :
+    ti47_annonces_test.go:70:   apres un singleton {i0 managed-object-networked-splash-message-static-component} : 3 distances (+4 hors plafond) · 64 bits (W=37) : 33.3 % · 229 bits (W=202) : 33.3 % · 390 bits (W=363) : 33.3 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=3 (personal-ai-data-component)
+    ti47_annonces_test.go:70:   apres un singleton {i1 managed-object-networked-splash-message-dynamic-component} : 274 distances (+0 hors plafond) · 51 bits (W=24) : 99.6 % · 445 bits (W=418) : 0.4 %
+    ti47_annonces_test.go:70:       masque du record suivant : i1=273 (managed-object-networked-splash-message-dynamic-component) · i2=1 (personal-ai-data-component)
+    ti47_annonces_test.go:70:   apres un singleton {i2 personal-ai-data-component} : 64 distances (+7 hors plafond) · 142 bits (W=115) : 17.2 % · 49 bits (W=22) : 14.1 % · 72 bits (W=45) : 6.2 % · 190 bits (W=163) : 4.7 % · 59 bits (W=32) : 4.7 %
+    ti47_annonces_test.go:70:       masque du record suivant : masque multiple=19 · i58=13 (HORS GRAMMAIRE) · i2=9 (personal-ai-data-component) · i23=3 (HORS GRAMMAIRE)
+    ti47_annonces_test.go:70:   apres un singleton {i4 } : 5 distances (+9 hors plafond) · 102 bits (W=75) : 80.0 % · 251 bits (W=224) : 20.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=5 (personal-ai-data-component)
+    ti47_annonces_test.go:70:   apres un singleton {i5 } : 1 distances (+1 hors plafond) · 32 bits (W=5) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=1 (personal-ai-data-component)
+    ti47_annonces_test.go:70:   apres un singleton {i6 } : 37 distances (+12 hors plafond) · 288 bits (W=261) : 24.3 % · 139 bits (W=112) : 18.9 % · 469 bits (W=442) : 8.1 % · 267 bits (W=240) : 5.4 % · 304 bits (W=277) : 5.4 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=35 (personal-ai-data-component) · masque multiple=2
+    ti47_annonces_test.go:70:   apres un singleton {i8 } : 48 distances (+53 hors plafond) · 319 bits (W=292) : 16.7 % · 170 bits (W=143) : 14.6 % · 335 bits (W=308) : 10.4 % · 469 bits (W=442) : 6.2 % · 304 bits (W=277) : 4.2 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=43 (personal-ai-data-component) · i10=1 (HORS GRAMMAIRE) · i38=1 (HORS GRAMMAIRE) · i54=1 (HORS GRAMMAIRE)
+    ti47_annonces_test.go:70:   apres un singleton {i9 } : 1 distances (+1 hors plafond) · 403 bits (W=376) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=1 (personal-ai-data-component)
+    ti47_annonces_test.go:70:   apres un singleton {i10 } : 12 distances (+43 hors plafond) · 190 bits (W=163) : 16.7 % · 205 bits (W=178) : 16.7 % · 96 bits (W=69) : 8.3 % · 120 bits (W=93) : 8.3 % · 370 bits (W=343) : 8.3 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=7 (personal-ai-data-component) · masque multiple=3 · i12=1 (HORS GRAMMAIRE) · i38=1 (HORS GRAMMAIRE)
+    ti47_annonces_test.go:70:   apres un singleton {i11 } : 1 distances (+0 hors plafond) · 363 bits (W=336) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=1 (personal-ai-data-component)
+    ti47_annonces_test.go:70:   apres un singleton {i12 } : 1 distances (+5 hors plafond) · 72 bits (W=45) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=1 (personal-ai-data-component)
+    ti47_annonces_test.go:70:   apres un singleton {i13 } : 1 distances (+1 hors plafond) · 225 bits (W=198) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : masque multiple=1
+    ti47_annonces_test.go:70:   apres un singleton {i14 } : 1 distances (+1 hors plafond) · 189 bits (W=162) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : masque multiple=1
+    ti47_annonces_test.go:70:   apres un singleton {i17 } : 2 distances (+0 hors plafond) · 35 bits (W=8) : 50.0 % · 45 bits (W=18) : 50.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=2 (personal-ai-data-component)
+    ti47_annonces_test.go:70:   apres un singleton {i19 } : 1 distances (+0 hors plafond) · 198 bits (W=171) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=1 (personal-ai-data-component)
+    ti47_annonces_test.go:70:   apres un singleton {i20 } : 1 distances (+0 hors plafond) · 308 bits (W=281) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=1 (personal-ai-data-component)
+    ti47_annonces_test.go:70:   apres un singleton {i21 } : 3 distances (+50 hors plafond) · 153 bits (W=126) : 33.3 % · 163 bits (W=136) : 33.3 % · 302 bits (W=275) : 33.3 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=3 (personal-ai-data-component)
+    ti47_annonces_test.go:70:   apres un singleton {i22 } : 8 distances (+26 hors plafond) · 122 bits (W=95) : 25.0 % · 271 bits (W=244) : 25.0 % · 286 bits (W=259) : 12.5 % · 420 bits (W=393) : 12.5 % · 477 bits (W=450) : 12.5 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=8 (personal-ai-data-component)
+    ti47_annonces_test.go:70:   apres un singleton {i26 } : 1 distances (+1 hors plafond) · 63 bits (W=36) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=1 (personal-ai-data-component)
+    ti47_annonces_test.go:70:   apres un singleton {i29 } : 1 distances (+1 hors plafond) · 228 bits (W=201) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=1 (personal-ai-data-component)
+    ti47_annonces_test.go:70:   apres un singleton {i32 } : 1 distances (+0 hors plafond) · 56 bits (W=29) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=1 (personal-ai-data-component)
+    ti47_annonces_test.go:70:   apres un singleton {i34 } : 1 distances (+0 hors plafond) · 46 bits (W=19) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=1 (personal-ai-data-component)
+    ti47_annonces_test.go:70:   apres un singleton {i35 } : 1 distances (+0 hors plafond) · 419 bits (W=392) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=1 (personal-ai-data-component)
+    ti47_annonces_test.go:70:   apres un singleton {i36 } : 1 distances (+1 hors plafond) · 48 bits (W=21) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : masque multiple=1
+    ti47_annonces_test.go:70:   apres un singleton {i37 } : 1 distances (+1 hors plafond) · 267 bits (W=240) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=1 (personal-ai-data-component)
+    ti47_annonces_test.go:70:   apres un singleton {i38 } : 3 distances (+1 hors plafond) · 189 bits (W=162) : 33.3 % · 224 bits (W=197) : 33.3 % · 497 bits (W=470) : 33.3 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=2 (personal-ai-data-component) · i22=1 (HORS GRAMMAIRE)
+    ti47_annonces_test.go:70:   apres un singleton {i40 } : 1 distances (+1 hors plafond) · 456 bits (W=429) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=1 (personal-ai-data-component)
+    ti47_annonces_test.go:70:   apres un singleton {i43 } : 2 distances (+3 hors plafond) · 332 bits (W=305) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=2 (personal-ai-data-component)
+    ti47_annonces_test.go:70:   apres un singleton {i44 } : 1 distances (+1 hors plafond) · 212 bits (W=185) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=1 (personal-ai-data-component)
+    ti47_annonces_test.go:70:   apres un singleton {i45 } : 2 distances (+0 hors plafond) · 98 bits (W=71) : 50.0 % · 118 bits (W=91) : 50.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=2 (personal-ai-data-component)
+    ti47_annonces_test.go:70:   apres un singleton {i46 } : 1 distances (+4 hors plafond) · 503 bits (W=476) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=1 (personal-ai-data-component)
+    ti47_annonces_test.go:70:   apres un singleton {i48 } : 1 distances (+0 hors plafond) · 31 bits (W=4) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=1 (personal-ai-data-component)
+    ti47_annonces_test.go:70:   apres un singleton {i52 } : 1 distances (+2 hors plafond) · 243 bits (W=216) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=1 (personal-ai-data-component)
+    ti47_annonces_test.go:70:   apres un singleton {i53 } : 1 distances (+2 hors plafond) · 63 bits (W=36) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=1 (personal-ai-data-component)
+    ti47_annonces_test.go:70:   apres un singleton {i54 } : 1 distances (+0 hors plafond) · 63 bits (W=36) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=1 (personal-ai-data-component)
+    ti47_annonces_test.go:70:   apres un singleton {i55 } : 1 distances (+0 hors plafond) · 432 bits (W=405) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : masque multiple=1
+    ti47_annonces_test.go:70:   apres un singleton {i56 } : 2 distances (+1 hors plafond) · 55 bits (W=28) : 50.0 % · 328 bits (W=301) : 50.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i21=1 (HORS GRAMMAIRE) · i2=1 (personal-ai-data-component)
+    ti47_annonces_test.go:72:   TSV : C:\Users\Guillaume\Downloads\Scripts\LevelUp-wt-ti47\.ai\V7.5\replay2d\registre_film\lotF2\0a247154_ti47_chainage.tsv
+    ti47_annonces_test.go:78: VALEURS (largeur 45 bits · champ analyse [20:45[, soit 25 bits) : 9795 records annoncent i2 · 0 refuses (payload trop court) · 9795 emissions retenues · 8936 valeurs distinctes
+    ti47_annonces_test.go:78:    33551699          19   0.19 %
+    ti47_annonces_test.go:78:    15135675          10   0.10 %
+    ti47_annonces_test.go:78:    20985167           9   0.09 %
+    ti47_annonces_test.go:78:    16686543           8   0.08 %
+    ti47_annonces_test.go:78:    18944420           8   0.08 %
+    ti47_annonces_test.go:78:    14589063           7   0.07 %
+    ti47_annonces_test.go:78:    18455818           7   0.07 %
+    ti47_annonces_test.go:78:    18455819           7   0.07 %
+    ti47_annonces_test.go:78:    16686542           6   0.06 %
+    ti47_annonces_test.go:78:    21566530           6   0.06 %
+    ti47_annonces_test.go:78:    14589062           5   0.05 %
+    ti47_annonces_test.go:78:    15135676           5   0.05 %
+    ti47_annonces_test.go:78:    16683095           5   0.05 %
+    ti47_annonces_test.go:78:    18382081           5   0.05 %
+    ti47_annonces_test.go:78:    18455816           5   0.05 %
+    ti47_annonces_test.go:78:    20443318           5   0.05 %
+    ti47_annonces_test.go:78:    les 16 premieres valeurs couvrent 1.19 % des emissions
+    ti47_annonces_test.go:78:    profil des bits (position 0 = premier bit apres le masque ; '.' = toujours 0, '#' = toujours 1, chiffre = dizaine de la part a 1) :
+    ti47_annonces_test.go:78:       090000000000000000007265455455459554454445454
+    ti47_annonces_test.go:78:       constants : ---------------------------------------------  (0 bits sur 45 ne varient JAMAIS)
+    ti47_annonces_test.go:78:    echelle (valeur / 2^25) : [0.0-0.1[ 0.0 % · [0.2-0.3[ 0.0 % · [0.4-0.5[ 28.9 % · [0.5-0.6[ 32.6 % · [0.6-0.7[ 26.6 % · [0.7-0.8[ 10.9 % · [0.9-1.0[ 1.1 % · au plafond (>= 0,999) : 1.1 %
+    ti47_annonces_test.go:78:    structure : 52.1 % de transitions croissantes · correlation valeur/instant r = 0.885 · 8936 valeurs distinctes pour 9795 emissions
+    ti47_annonces_test.go:78:    -> ni enumeration courte ni horloge : continuum ou treillis (comme i1).
+    ti47_annonces_test.go:78: PAR SLOT (rythme et variation ; un slot = une entite de l'archetype) :
+    ti47_annonces_test.go:78:    slot 1312    2186 emissions ·  1984 valeurs distinctes · ecart median   50 ms (p90    51) · |variation| mediane 14 (p99 16676162) · plage [1415782..33551699] · derive 19939417
+    ti47_annonces_test.go:78:    slot 1300    1666 emissions ·  1576 valeurs distinctes · ecart median   50 ms (p90    51) · |variation| mediane 19 (p99 15544068) · plage [2393168..33551699] · derive 19751592
+    ti47_annonces_test.go:78:    slot 1306    1442 emissions ·  1290 valeurs distinctes · ecart median   50 ms (p90    51) · |variation| mediane 14 (p99 15092757) · plage [13897746..33551699] · derive 19652834
+    ti47_annonces_test.go:78:    slot 1310    1284 emissions ·  1135 valeurs distinctes · ecart median   50 ms (p90    51) · |variation| mediane 10 (p99 17167916) · plage [591295..33551699] · derive 32960404
+    ti47_annonces_test.go:78:    slot 1302    1029 emissions ·   936 valeurs distinctes · ecart median   50 ms (p90    51) · |variation| mediane 16 (p99 11983350) · plage [13475343..33551699] · derive 20076356
+    ti47_annonces_test.go:78:    slot 1304     925 emissions ·   859 valeurs distinctes · ecart median   50 ms (p90    51) · |variation| mediane 17 (p99 10698156) · plage [14884271..33551699] · derive 18667202
+    ti47_annonces_test.go:78:    slot 1298     660 emissions ·   615 valeurs distinctes · ecart median   50 ms (p90    51) · |variation| mediane 23 (p99 12148250) · plage [19902465..33551699] · derive 13647681
+    ti47_annonces_test.go:78:    slot 1308     603 emissions ·   557 valeurs distinctes · ecart median   50 ms (p90    51) · |variation| mediane 16 (p99 16249967) · plage [1350134..33551699] · derive 17064839
+    ti47_annonces_test.go:79: ORACLE : artefact schema 18 · 7838 frames de 100 ms · originMs 9204 · 5 zones
+    ti47_annonces_test.go:79: ORACLES derives de zoneStates : 12 evenements · colline_debut=6 · colline_fin=6
+    ti47_annonces_test.go:79: SAUTS : 102 variations hors norme (percentile 99 par slot) sur 9795 emissions · seuil median 15544068 (min 10698156, max 17167916) sur 8 slots
+    ti47_annonces_test.go:79:    amplitude des sauts : mediane 17861209 · max 32198421
+    ti47_annonces_test.go:79: ALIGNEMENT (item 1.2) — chaque suite contre son temoin « meme loi, decalee » :
+    ti47_annonces_test.go:79:   sauts vs TOUS oracles           102 instants · distance mediane  38019 ms (p90   68996) · dans +/-2 s : 3.9 %
+    ti47_annonces_test.go:79:                                TEMOIN decale             mediane  39066 ms (p90   64362) · dans la fenetre : 1.0 %  ->  exces 4.00x
+    ti47_annonces_test.go:79:   emissions vs TOUS oracles      9795 instants · distance mediane  33182 ms (p90   62856) · dans +/-2 s : 3.4 %
+    ti47_annonces_test.go:79:                                TEMOIN decale             mediane  29205 ms (p90   63201) · dans la fenetre : 3.8 %  ->  exces 0.91x
+    ti47_annonces_test.go:79:   sauts vs colline_debut          102 instants · distance mediane  38119 ms (p90   70764) · dans +/-2 s : 3.9 %
+    ti47_annonces_test.go:79:                                TEMOIN decale             mediane  39066 ms (p90   65447) · dans la fenetre : 1.0 %  ->  exces 4.00x
+    ti47_annonces_test.go:79:   sauts vs colline_fin            102 instants · distance mediane  45260 ms (p90  117765) · dans +/-2 s : 2.9 %
+    ti47_annonces_test.go:79:                                TEMOIN decale             mediane  39312 ms (p90   66044) · dans la fenetre : 1.0 %  ->  exces 3.00x
+    ti47_annonces_test.go:79: MATRICE classe de saut x type d'oracle (item 1.3) — part des sauts de la classe a moins de 2 s d'un evenement du type :
+    ti47_annonces_test.go:79:    amplitude 10^7 (  102 sauts) : colline_debut 4 % · colline_fin 3 % · SANS oracle : 96 % (item 1.4)
+--- PASS: TestTI47Annonces (7.92s)
+PASS
+ok  	levelup/go-api/internal/analysis/filmdec	8.292s
+EXIT_0a247154=0
+########## FILM 606d9844 ##########
+=== RUN   TestTI47Annonces
+    ti47_annonces_test.go:45: FILM 606d9844 · registre : 118 archetypes · empreinte 61e492dd4de7fd4e
+    ti47_annonces_test.go:51: COUT — recensement des images-cle : 1.883s · 575 slots vus tous archetypes confondus
+    ti47_annonces_test.go:58: ARCHETYPE ti=47 · 3 composants · i2 = personal-ai-data-component
+    ti47_annonces_test.go:58:    + i0  managed-object-networked-splash-message-static-component
+    ti47_annonces_test.go:58:    + i1  managed-object-networked-splash-message-dynamic-component
+    ti47_annonces_test.go:58:    * i2  personal-ai-data-component
+    ti47_annonces_test.go:58: BANDE : 9 slots vus en image-cle pour ti=47 · fantome 9 slots (jamais vus le porter)
+    ti47_annonces_test.go:65: COUT — passe delta : 521ms · 14 chunks · 14791 paquets delta
+    ti47_annonces_test.go:68: RECORDS DELTA (denominateur : 14791 paquets) : reel 3299 · fantome 277 · rapport 11.91x
+    ti47_annonces_test.go:68:    hors grammaire : reel 282 (8.55 %) · fantome 233 (84.12 %)
+    ti47_annonces_test.go:68:    i2 annonce dans 2676 records (81.12 %) · fantome 7 (2.53 %)
+    ti47_annonces_test.go:68:    indices les plus annonces (reel) : i2=2676 (personal-ai-data-component) · i1=353 (managed-object-networked-splash-message-dynamic-component) · i8=29 (HORS GRAMMAIRE) · i20=22 (HORS GRAMMAIRE) · i0=22 (managed-object-networked-splash-message-static-component) · i4=19 (HORS GRAMMAIRE)
+    ti47_annonces_test.go:68:    masques SINGLETON (reel) : i2=2661 (personal-ai-data-component) · i1=335 (managed-object-networked-splash-message-dynamic-component) · i0=10 (managed-object-networked-splash-message-static-component)
+    ti47_annonces_test.go:68:    vies : 36 paires (slot,gen) vues · 33 CONFIRMEES (>= 3 records) · fantome 24/34
+    ti47_annonces_test.go:68:    slots reels les plus actifs : 1313:1319 · 1317:1007 · 1305:323 · 1311:155 · 1303:154 · 1309:125
+    ti47_annonces_test.go:69: CHAINAGE — un record correctement dimensionne finit la ou le suivant commence.
+    ti47_annonces_test.go:69:   i2 personal-ai · cible TOUS slots          2661 records · plancher median 0.08 % · sommets : d=1 : 99.5 % (1324.5x) · d=45 : 84.3 % (1122.0x) · d=107 : 13.3 % (176.5x) · d=126 : 12.1 % (161.0x) · d=114 : 5.4 % (72.5x)
+    ti47_annonces_test.go:69:   i2 personal-ai · cible BANDE ti=47         2661 records · plancher median 0.00 % · sommets : d=180 : 0.0 % (0.0x) · d=34 : 0.0 % (0.0x) · d=1 : 0.0 % (0.0x) · d=2 : 0.0 % (0.0x) · d=3 : 0.0 % (0.0x)
+    ti47_annonces_test.go:69:   i2 personal-ai · FANTOME                 AUCUN record singleton
+    ti47_annonces_test.go:69:   i1 dynamic R(24) · cible TOUS               335 records · plancher median 0.00 % · sommets : d=24 : 90.1 % (0.0x) · d=75 : 74.9 % (0.0x) · d=126 : 66.5 % (0.0x) · d=177 : 56.9 % (0.0x) · d=43 : 3.9 % (0.0x)
+    ti47_annonces_test.go:69:   i1 dynamic R(24) · cible BANDE              335 records · plancher median 0.00 % · sommets : d=24 : 78.1 % (0.0x) · d=75 : 66.5 % (0.0x) · d=126 : 56.9 % (0.0x) · d=177 : 45.2 % (0.0x) · d=105 : 0.3 % (0.0x)
+    ti47_annonces_test.go:69:   i0 static · cible TOUS                       10 records · plancher median 0.00 % · sommets : d=21 : 20.0 % (0.0x) · d=54 : 20.0 % (0.0x) · d=185 : 12.5 % (0.0x) · d=165 : 12.5 % (0.0x) · d=157 : 12.5 % (0.0x)
+    ti47_annonces_test.go:70: DISTANCES entre debuts de records consecutifs de la bande (en-tete+index = 27 bits ; largeur = distance − 27) :
+    ti47_annonces_test.go:70:   apres un singleton {i0 managed-object-networked-splash-message-static-component} : 2 distances (+1 hors plafond) · 184 bits (W=157) : 50.0 % · 325 bits (W=298) : 50.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=2 (personal-ai-data-component)
+    ti47_annonces_test.go:70:   apres un singleton {i1 managed-object-networked-splash-message-dynamic-component} : 262 distances (+0 hors plafond) · 51 bits (W=24) : 99.6 % · 132 bits (W=105) : 0.4 %
+    ti47_annonces_test.go:70:       masque du record suivant : i1=251 (managed-object-networked-splash-message-dynamic-component) · masque multiple=11
+    ti47_annonces_test.go:70:   apres un singleton {i2 personal-ai-data-component} : 10 distances (+8 hors plafond) · 61 bits (W=34) : 10.0 % · 207 bits (W=180) : 10.0 % · 221 bits (W=194) : 10.0 % · 340 bits (W=313) : 10.0 % · 346 bits (W=319) : 10.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : masque multiple=6 · i20=1 (HORS GRAMMAIRE) · i26=1 (HORS GRAMMAIRE) · i33=1 (HORS GRAMMAIRE)
+    ti47_annonces_test.go:70:   apres un singleton {i4 } : 1 distances (+1 hors plafond) · 73 bits (W=46) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=1 (personal-ai-data-component)
+    ti47_annonces_test.go:70:   apres un singleton {i6 } : 2 distances (+0 hors plafond) · 31 bits (W=4) : 50.0 % · 160 bits (W=133) : 50.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i25=1 (HORS GRAMMAIRE) · i2=1 (personal-ai-data-component)
+    ti47_annonces_test.go:70:   apres un singleton {i8 } : 3 distances (+2 hors plafond) · 91 bits (W=64) : 33.3 % · 121 bits (W=94) : 33.3 % · 194 bits (W=167) : 33.3 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=2 (personal-ai-data-component) · i4=1 (HORS GRAMMAIRE)
+    ti47_annonces_test.go:70:   apres un singleton {i16 } : 1 distances (+0 hors plafond) · 55 bits (W=28) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=1 (personal-ai-data-component)
+    ti47_annonces_test.go:70:   apres un singleton {i24 } : 2 distances (+0 hors plafond) · 328 bits (W=301) : 50.0 % · 418 bits (W=391) : 50.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=2 (personal-ai-data-component)
+    ti47_annonces_test.go:70:   apres un singleton {i27 } : 1 distances (+0 hors plafond) · 422 bits (W=395) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=1 (personal-ai-data-component)
+    ti47_annonces_test.go:70:   apres un singleton {i37 } : 2 distances (+0 hors plafond) · 172 bits (W=145) : 50.0 % · 442 bits (W=415) : 50.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=1 (personal-ai-data-component) · i41=1 (HORS GRAMMAIRE)
+    ti47_annonces_test.go:70:   apres un singleton {i39 } : 1 distances (+0 hors plafond) · 325 bits (W=298) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=1 (personal-ai-data-component)
+    ti47_annonces_test.go:70:   apres un singleton {i40 } : 1 distances (+0 hors plafond) · 507 bits (W=480) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=1 (personal-ai-data-component)
+    ti47_annonces_test.go:70:   apres un singleton {i44 } : 4 distances (+1 hors plafond) · 219 bits (W=192) : 25.0 % · 359 bits (W=332) : 25.0 % · 401 bits (W=374) : 25.0 % · 445 bits (W=418) : 25.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=4 (personal-ai-data-component)
+    ti47_annonces_test.go:70:   apres un singleton {i46 } : 1 distances (+0 hors plafond) · 291 bits (W=264) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=1 (personal-ai-data-component)
+    ti47_annonces_test.go:70:   apres un singleton {i56 } : 1 distances (+0 hors plafond) · 418 bits (W=391) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=1 (personal-ai-data-component)
+    ti47_annonces_test.go:72:   TSV : C:\Users\Guillaume\Downloads\Scripts\LevelUp-wt-ti47\.ai\V7.5\replay2d\registre_film\lotF2\606d9844_ti47_chainage.tsv
+    ti47_annonces_test.go:78: VALEURS (largeur 45 bits · champ analyse [20:45[, soit 25 bits) : 2672 records annoncent i2 · 0 refuses (payload trop court) · 2672 emissions retenues · 2106 valeurs distinctes
+    ti47_annonces_test.go:78:    14038320           8   0.30 %
+    ti47_annonces_test.go:78:    14349596           8   0.30 %
+    ti47_annonces_test.go:78:    12752311           6   0.22 %
+    ti47_annonces_test.go:78:    14349595           6   0.22 %
+    ti47_annonces_test.go:78:    15407673           6   0.22 %
+    ti47_annonces_test.go:78:    12751907           5   0.19 %
+    ti47_annonces_test.go:78:    12751912           5   0.19 %
+    ti47_annonces_test.go:78:    12752297           5   0.19 %
+    ti47_annonces_test.go:78:    12752298           5   0.19 %
+    ti47_annonces_test.go:78:    14040097           5   0.19 %
+    ti47_annonces_test.go:78:    12751753           4   0.15 %
+    ti47_annonces_test.go:78:    12751823           4   0.15 %
+    ti47_annonces_test.go:78:    12751826           4   0.15 %
+    ti47_annonces_test.go:78:    12751856           4   0.15 %
+    ti47_annonces_test.go:78:    12751862           4   0.15 %
+    ti47_annonces_test.go:78:    12751872           4   0.15 %
+    ti47_annonces_test.go:78:    les 16 premieres valeurs couvrent 3.11 % des emissions
+    ti47_annonces_test.go:78:    profil des bits (position 0 = premier bit apres le masque ; '.' = toujours 0, '#' = toujours 1, chiffre = dizaine de la part a 1) :
+    ti47_annonces_test.go:78:       090000000000000000000993351835239454444554445
+    ti47_annonces_test.go:78:       constants : ---------------------------------------------  (0 bits sur 45 ne varient JAMAIS)
+    ti47_annonces_test.go:78:    echelle (valeur / 2^25) : [0.0-0.1[ 0.0 % · [0.2-0.3[ 0.0 % · [0.3-0.4[ 32.4 % · [0.4-0.5[ 67.1 % · [0.9-1.0[ 0.4 % · au plafond (>= 0,999) : 0.4 %
+    ti47_annonces_test.go:78:    structure : 44.4 % de transitions croissantes · correlation valeur/instant r = 0.646 · 2106 valeurs distinctes pour 2672 emissions
+    ti47_annonces_test.go:78:    -> ni enumeration courte ni horloge : continuum ou treillis (comme i1).
+    ti47_annonces_test.go:78: PAR SLOT (rythme et variation ; un slot = une entite de l'archetype) :
+    ti47_annonces_test.go:78:    slot 1313    1224 emissions ·   909 valeurs distinctes · ecart median   50 ms (p90    51) · |variation| mediane 7 (p99 149) · plage [1188..33551229] · derive 20800031
+    ti47_annonces_test.go:78:    slot 1317     941 emissions ·   761 valeurs distinctes · ecart median   50 ms (p90    51) · |variation| mediane 22 (p99 243) · plage [13644468..33551294] · derive 19906161
+    ti47_annonces_test.go:78:    slot 1305     260 emissions ·   204 valeurs distinctes · ecart median   50 ms (p90    51) · |variation| mediane 4 (p99 181) · plage [14037946..33551098] · derive 19510982
+    ti47_annonces_test.go:78:    slot 1303     119 emissions ·   114 valeurs distinctes · ecart median   50 ms (p90    51) · |variation| mediane 13 (p99 20061965) · plage [12587698..33551096] · derive 20963194
+    ti47_annonces_test.go:78:    slot 1311      85 emissions ·    75 valeurs distinctes · ecart median   50 ms (p90    51) · |variation| mediane 7 (p99 21126148) · plage [12424637..33551092] · derive 21126326
+    ti47_annonces_test.go:78:    slot 1309      43 emissions ·    43 valeurs distinctes · ecart median   50 ms (p90    51) · |variation| mediane 40 (p99 18602498) · plage [14948748..33551246] · derive 18600971
+    ti47_annonces_test.go:79: ORACLE : artefact schema 18 · 2342 frames de 100 ms · originMs 6890 · 3 zones
+    ti47_annonces_test.go:79: ORACLES derives de zoneStates : 6 evenements · colline_debut=3 · colline_fin=3
+    ti47_annonces_test.go:79: SAUTS : 30 variations hors norme (percentile 99 par slot) sur 2672 emissions · seuil median 18602498 (min 149, max 21126148) sur 6 slots
+    ti47_annonces_test.go:79:    amplitude des sauts : mediane 12751187 · max 21126148
+    ti47_annonces_test.go:79: ALIGNEMENT (item 1.2) — chaque suite contre son temoin « meme loi, decalee » :
+    ti47_annonces_test.go:79:   sauts vs TOUS oracles            30 instants · distance mediane  15247 ms (p90   40909) · dans +/-2 s : 16.7 %
+    ti47_annonces_test.go:79:                                TEMOIN decale             mediane  22286 ms (p90   37550) · dans la fenetre : 6.7 %  ->  exces 2.50x
+    ti47_annonces_test.go:79:   emissions vs TOUS oracles      2672 instants · distance mediane  17553 ms (p90   30828) · dans +/-2 s : 5.8 %
+    ti47_annonces_test.go:79:                                TEMOIN decale             mediane  19351 ms (p90   34813) · dans la fenetre : 6.4 %  ->  exces 0.91x
+    ti47_annonces_test.go:79:   sauts vs colline_debut           30 instants · distance mediane  15533 ms (p90   55174) · dans +/-2 s : 16.7 %
+    ti47_annonces_test.go:79:                                TEMOIN decale             mediane  27730 ms (p90   63015) · dans la fenetre : 6.7 %  ->  exces 2.50x
+    ti47_annonces_test.go:79:   sauts vs colline_fin             30 instants · distance mediane  15633 ms (p90   41055) · dans +/-2 s : 16.7 %
+    ti47_annonces_test.go:79:                                TEMOIN decale             mediane  25537 ms (p90   37773) · dans la fenetre : 6.7 %  ->  exces 2.50x
+    ti47_annonces_test.go:79: MATRICE classe de saut x type d'oracle (item 1.3) — part des sauts de la classe a moins de 2 s d'un evenement du type :
+    ti47_annonces_test.go:79:    amplitude 10^2 (    7 sauts) : colline_debut 57 % · colline_fin 57 % · SANS oracle : 43 % (item 1.4)
+    ti47_annonces_test.go:79:    amplitude 10^3 (    6 sauts) : colline_debut 0 % · colline_fin 0 % · SANS oracle : 100 % (item 1.4)
+    ti47_annonces_test.go:79:    amplitude 10^6 (    2 sauts) : colline_debut 0 % · colline_fin 0 % · SANS oracle : 100 % (item 1.4)
+    ti47_annonces_test.go:79:    amplitude 10^7 (   15 sauts) : colline_debut 7 % · colline_fin 7 % · SANS oracle : 93 % (item 1.4)
+--- PASS: TestTI47Annonces (2.42s)
+PASS
+ok  	levelup/go-api/internal/analysis/filmdec	2.819s
+EXIT_606d9844=0
+########## FILM 8076f97f ##########
+=== RUN   TestTI47Annonces
+2026/08/24 21:54:34 WARN empreinte du registre ECS du film INCONNUE — grammaire des composants suspecte (mise a jour du jeu ?) ; le film reste decode empreinte=11979330793883025789 empreinte_connue=7053924395561516366 blocs=118 slots_non_vides=1067
+    ti47_annonces_test.go:45: FILM 8076f97f · registre : 118 archetypes · empreinte a63f21e3484bc17d
+    ti47_annonces_test.go:51: COUT — recensement des images-cle : 3.349s · 819 slots vus tous archetypes confondus
+    ti47_annonces_test.go:58: ARCHETYPE ti=47 · 3 composants · i2 = personal-ai-data-component
+    ti47_annonces_test.go:58:    + i0  managed-object-networked-splash-message-static-component
+    ti47_annonces_test.go:58:    + i1  managed-object-networked-splash-message-dynamic-component
+    ti47_annonces_test.go:58:    * i2  personal-ai-data-component
+    ti47_annonces_test.go:58: BANDE : 10 slots vus en image-cle pour ti=47 · fantome 10 slots (jamais vus le porter)
+    ti47_annonces_test.go:65: COUT — passe delta : 772ms · 20 chunks · 21495 paquets delta
+    ti47_annonces_test.go:68: RECORDS DELTA (denominateur : 21495 paquets) : reel 5788 · fantome 928 · rapport 6.24x
+    ti47_annonces_test.go:68:    hors grammaire : reel 919 (15.88 %) · fantome 895 (96.44 %)
+    ti47_annonces_test.go:68:    i2 annonce dans 4497 records (77.70 %) · fantome 19 (2.05 %)
+    ti47_annonces_test.go:68:    indices les plus annonces (reel) : i2=4497 (personal-ai-data-component) · i1=382 (managed-object-networked-splash-message-dynamic-component) · i22=100 (HORS GRAMMAIRE) · i8=82 (HORS GRAMMAIRE) · i21=75 (HORS GRAMMAIRE) · i20=52 (HORS GRAMMAIRE)
+    ti47_annonces_test.go:68:    masques SINGLETON (reel) : i2=4477 (personal-ai-data-component) · i1=365 (managed-object-networked-splash-message-dynamic-component) · i0=18 (managed-object-networked-splash-message-static-component)
+    ti47_annonces_test.go:68:    vies : 40 paires (slot,gen) vues · 40 CONFIRMEES (>= 3 records) · fantome 37/40
+    ti47_annonces_test.go:68:    slots reels les plus actifs : 1306:966 · 1310:932 · 1308:770 · 1302:719 · 1304:713 · 1300:637
+    ti47_annonces_test.go:69: CHAINAGE — un record correctement dimensionne finit la ou le suivant commence.
+    ti47_annonces_test.go:69:   i2 personal-ai · cible TOUS slots          4477 records · plancher median 0.31 % · sommets : d=1 : 95.3 % (304.6x) · d=45 : 65.8 % (210.3x) · d=58 : 18.0 % (57.5x) · d=126 : 8.9 % (28.6x) · d=100 : 5.0 % (16.1x)
+    ti47_annonces_test.go:69:   i2 personal-ai · cible BANDE ti=47         4477 records · plancher median 0.00 % · sommets : d=32 : 0.1 % (0.0x) · d=45 : 0.1 % (0.0x) · d=156 : 0.0 % (0.0x) · d=178 : 0.0 % (0.0x) · d=159 : 0.0 % (0.0x)
+    ti47_annonces_test.go:69:   i2 personal-ai · FANTOME                      8 records · plancher median 0.00 % · sommets : d=45 : 75.0 % (0.0x) · d=6 : 25.0 % (0.0x) · d=56 : 12.5 % (0.0x) · d=3 : 12.5 % (0.0x) · d=8 : 12.5 % (0.0x)
+    ti47_annonces_test.go:69:   i1 dynamic R(24) · cible TOUS               365 records · plancher median 0.00 % · sommets : d=24 : 74.2 % (0.0x) · d=75 : 64.8 % (0.0x) · d=126 : 54.5 % (0.0x) · d=177 : 44.1 % (0.0x) · d=164 : 10.8 % (0.0x)
+    ti47_annonces_test.go:69:   i1 dynamic R(24) · cible BANDE              365 records · plancher median 0.00 % · sommets : d=24 : 71.7 % (0.0x) · d=75 : 62.2 % (0.0x) · d=126 : 52.2 % (0.0x) · d=177 : 41.7 % (0.0x) · d=156 : 0.9 % (0.0x)
+    ti47_annonces_test.go:69:   i0 static · cible TOUS                       18 records · plancher median 0.00 % · sommets : d=187 : 9.1 % (0.0x) · d=177 : 9.1 % (0.0x) · d=126 : 6.2 % (0.0x) · d=114 : 5.9 % (0.0x) · d=119 : 5.9 % (0.0x)
+    ti47_annonces_test.go:70: DISTANCES entre debuts de records consecutifs de la bande (en-tete+index = 27 bits ; largeur = distance − 27) :
+    ti47_annonces_test.go:70:   apres un singleton {i0 managed-object-networked-splash-message-static-component} : 1 distances (+3 hors plafond) · 492 bits (W=465) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : masque multiple=1
+    ti47_annonces_test.go:70:   apres un singleton {i1 managed-object-networked-splash-message-dynamic-component} : 264 distances (+2 hors plafond) · 51 bits (W=24) : 97.0 % · 132 bits (W=105) : 1.1 % · 79 bits (W=52) : 0.4 % · 108 bits (W=81) : 0.4 % · 188 bits (W=161) : 0.4 %
+    ti47_annonces_test.go:70:       masque du record suivant : i1=262 (managed-object-networked-splash-message-dynamic-component) · i2=1 (personal-ai-data-component) · masque multiple=1
+    ti47_annonces_test.go:70:   apres un singleton {i2 personal-ai-data-component} : 21 distances (+19 hors plafond) · 59 bits (W=32) : 14.3 % · 72 bits (W=45) : 14.3 % · 183 bits (W=156) : 9.5 % · 186 bits (W=159) : 4.8 % · 205 bits (W=178) : 4.8 %
+    ti47_annonces_test.go:70:       masque du record suivant : masque multiple=7 · i2=6 (personal-ai-data-component) · i9=1 (HORS GRAMMAIRE) · i56=1 (HORS GRAMMAIRE)
+    ti47_annonces_test.go:70:   apres un singleton {i4 } : 5 distances (+5 hors plafond) · 199 bits (W=172) : 20.0 % · 236 bits (W=209) : 20.0 % · 267 bits (W=240) : 20.0 % · 387 bits (W=360) : 20.0 % · 420 bits (W=393) : 20.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=5 (personal-ai-data-component)
+    ti47_annonces_test.go:70:   apres un singleton {i6 } : 5 distances (+4 hors plafond) · 139 bits (W=112) : 20.0 % · 288 bits (W=261) : 20.0 % · 304 bits (W=277) : 20.0 % · 360 bits (W=333) : 20.0 % · 463 bits (W=436) : 20.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=5 (personal-ai-data-component)
+    ti47_annonces_test.go:70:   apres un singleton {i7 } : 1 distances (+1 hors plafond) · 411 bits (W=384) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=1 (personal-ai-data-component)
+    ti47_annonces_test.go:70:   apres un singleton {i8 } : 9 distances (+6 hors plafond) · 304 bits (W=277) : 33.3 % · 319 bits (W=292) : 11.1 % · 370 bits (W=343) : 11.1 % · 453 bits (W=426) : 11.1 % · 466 bits (W=439) : 11.1 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=9 (personal-ai-data-component)
+    ti47_annonces_test.go:70:   apres un singleton {i9 } : 1 distances (+1 hors plafond) · 457 bits (W=430) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=1 (personal-ai-data-component)
+    ti47_annonces_test.go:70:   apres un singleton {i10 } : 1 distances (+5 hors plafond) · 250 bits (W=223) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=1 (personal-ai-data-component)
+    ti47_annonces_test.go:70:   apres un singleton {i16 } : 1 distances (+1 hors plafond) · 126 bits (W=99) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=1 (personal-ai-data-component)
+    ti47_annonces_test.go:70:   apres un singleton {i20 } : 2 distances (+0 hors plafond) · 467 bits (W=440) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=2 (personal-ai-data-component)
+    ti47_annonces_test.go:70:   apres un singleton {i21 } : 6 distances (+18 hors plafond) · 50 bits (W=23) : 33.3 % · 452 bits (W=425) : 16.7 % · 467 bits (W=440) : 16.7 % · 482 bits (W=455) : 16.7 % · 487 bits (W=460) : 16.7 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=4 (personal-ai-data-component) · i44=2 (HORS GRAMMAIRE)
+    ti47_annonces_test.go:70:   apres un singleton {i22 } : 15 distances (+16 hors plafond) · 436 bits (W=409) : 26.7 % · 405 bits (W=378) : 13.3 % · 421 bits (W=394) : 13.3 % · 287 bits (W=260) : 6.7 % · 347 bits (W=320) : 6.7 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=15 (personal-ai-data-component)
+    ti47_annonces_test.go:70:   apres un singleton {i24 } : 2 distances (+1 hors plafond) · 63 bits (W=36) : 50.0 % · 214 bits (W=187) : 50.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=2 (personal-ai-data-component)
+    ti47_annonces_test.go:70:   apres un singleton {i25 } : 1 distances (+1 hors plafond) · 183 bits (W=156) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=1 (personal-ai-data-component)
+    ti47_annonces_test.go:70:   apres un singleton {i33 } : 1 distances (+0 hors plafond) · 403 bits (W=376) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=1 (personal-ai-data-component)
+    ti47_annonces_test.go:70:   apres un singleton {i34 } : 2 distances (+3 hors plafond) · 189 bits (W=162) : 50.0 % · 292 bits (W=265) : 50.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=2 (personal-ai-data-component)
+    ti47_annonces_test.go:70:   apres un singleton {i36 } : 1 distances (+0 hors plafond) · 92 bits (W=65) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=1 (personal-ai-data-component)
+    ti47_annonces_test.go:70:   apres un singleton {i39 } : 1 distances (+0 hors plafond) · 176 bits (W=149) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=1 (personal-ai-data-component)
+    ti47_annonces_test.go:70:   apres un singleton {i43 } : 1 distances (+0 hors plafond) · 160 bits (W=133) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=1 (personal-ai-data-component)
+    ti47_annonces_test.go:70:   apres un singleton {i44 } : 5 distances (+1 hors plafond) · 115 bits (W=88) : 40.0 % · 261 bits (W=234) : 20.0 % · 419 bits (W=392) : 20.0 % · 448 bits (W=421) : 20.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=3 (personal-ai-data-component) · i26=1 (HORS GRAMMAIRE) · i25=1 (HORS GRAMMAIRE)
+    ti47_annonces_test.go:70:   apres un singleton {i45 } : 4 distances (+1 hors plafond) · 115 bits (W=88) : 25.0 % · 166 bits (W=139) : 25.0 % · 246 bits (W=219) : 25.0 % · 347 bits (W=320) : 25.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i26=2 (HORS GRAMMAIRE) · i2=1 (personal-ai-data-component) · i27=1 (HORS GRAMMAIRE)
+    ti47_annonces_test.go:70:   apres un singleton {i46 } : 2 distances (+0 hors plafond) · 277 bits (W=250) : 50.0 % · 413 bits (W=386) : 50.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=2 (personal-ai-data-component)
+    ti47_annonces_test.go:70:   apres un singleton {i52 } : 1 distances (+1 hors plafond) · 249 bits (W=222) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=1 (personal-ai-data-component)
+    ti47_annonces_test.go:70:   apres un singleton {i55 } : 1 distances (+1 hors plafond) · 63 bits (W=36) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=1 (personal-ai-data-component)
+    ti47_annonces_test.go:70:   apres un singleton {i59 } : 1 distances (+1 hors plafond) · 343 bits (W=316) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=1 (personal-ai-data-component)
+    ti47_annonces_test.go:72:   TSV : C:\Users\Guillaume\Downloads\Scripts\LevelUp-wt-ti47\.ai\V7.5\replay2d\registre_film\lotF2\8076f97f_ti47_chainage.tsv
+    ti47_annonces_test.go:78: VALEURS (largeur 45 bits · champ analyse [20:45[, soit 25 bits) : 4486 records annoncent i2 · 0 refuses (payload trop court) · 4486 emissions retenues · 4027 valeurs distinctes
+    ti47_annonces_test.go:78:    17489493           9   0.20 %
+    ti47_annonces_test.go:78:    17235561           8   0.18 %
+    ti47_annonces_test.go:78:    17489475           8   0.18 %
+    ti47_annonces_test.go:78:    13499998           7   0.16 %
+    ti47_annonces_test.go:78:    17235563           7   0.16 %
+    ti47_annonces_test.go:78:    17489476           7   0.16 %
+    ti47_annonces_test.go:78:    18169242           7   0.16 %
+    ti47_annonces_test.go:78:    17235562           6   0.13 %
+    ti47_annonces_test.go:78:    17489436           6   0.13 %
+    ti47_annonces_test.go:78:    18169241           6   0.13 %
+    ti47_annonces_test.go:78:    18594003           6   0.13 %
+    ti47_annonces_test.go:78:    15160584           5   0.11 %
+    ti47_annonces_test.go:78:    15161847           5   0.11 %
+    ti47_annonces_test.go:78:    17489430           5   0.11 %
+    ti47_annonces_test.go:78:    17489460           5   0.11 %
+    ti47_annonces_test.go:78:    17489463           5   0.11 %
+    ti47_annonces_test.go:78:    les 16 premieres valeurs couvrent 2.27 % des emissions
+    ti47_annonces_test.go:78:    profil des bits (position 0 = premier bit apres le masque ; '.' = toujours 0, '#' = toujours 1, chiffre = dizaine de la part a 1) :
+    ti47_annonces_test.go:78:       090000000000000000003664445564659554445454545
+    ti47_annonces_test.go:78:       constants : ---------------------------------------------  (0 bits sur 45 ne varient JAMAIS)
+    ti47_annonces_test.go:78:    echelle (valeur / 2^25) : [0.0-0.1[ 0.1 % · [0.3-0.4[ 8.3 % · [0.4-0.5[ 58.3 % · [0.5-0.6[ 32.7 % · [0.7-0.8[ 0.0 % · [0.8-0.9[ 0.0 % · [0.9-1.0[ 0.6 % · au plafond (>= 0,999) : 0.6 %
+    ti47_annonces_test.go:78:    structure : 43.8 % de transitions croissantes · correlation valeur/instant r = 0.740 · 4027 valeurs distinctes pour 4486 emissions
+    ti47_annonces_test.go:78:    -> ni enumeration courte ni horloge : continuum ou treillis (comme i1).
+    ti47_annonces_test.go:78: PAR SLOT (rythme et variation ; un slot = une entite de l'archetype) :
+    ti47_annonces_test.go:78:    slot 1306     885 emissions ·   690 valeurs distinctes · ecart median   50 ms (p90    51) · |variation| mediane 10 (p99 4095) · plage [13221524..33551382] · derive 20329858
+    ti47_annonces_test.go:78:    slot 1310     843 emissions ·   765 valeurs distinctes · ecart median   50 ms (p90    51) · |variation| mediane 21 (p99 5099308) · plage [10481831..33551455] · derive 19207512
+    ti47_annonces_test.go:78:    slot 1308     686 emissions ·   646 valeurs distinctes · ecart median   50 ms (p90    51) · |variation| mediane 33 (p99 17293565) · plage [13971467..33551359] · derive 19576172
+    ti47_annonces_test.go:78:    slot 1302     587 emissions ·   537 valeurs distinctes · ecart median   50 ms (p90    51) · |variation| mediane 18 (p99 4064) · plage [13496342..33551309] · derive 20054949
+    ti47_annonces_test.go:78:    slot 1300     542 emissions ·   509 valeurs distinctes · ecart median   50 ms (p90    51) · |variation| mediane 23 (p99 4014) · plage [12866670..33551073] · derive 20684401
+    ti47_annonces_test.go:78:    slot 1304     532 emissions ·   501 valeurs distinctes · ecart median   50 ms (p90    51) · |variation| mediane 18 (p99 16946106) · plage [13834657..33551235] · derive 19716332
+    ti47_annonces_test.go:78:    slot 1298     408 emissions ·   381 valeurs distinctes · ecart median   50 ms (p90    51) · |variation| mediane 35 (p99 17650562) · plage [228864..33551478] · derive 20100403
+    ti47_annonces_test.go:78:    slot 1312       1 emissions ·     1 valeurs distinctes · ecart median   -1 ms (p90    -1) · |variation| mediane 0 (p99 0) · plage [26710276..26710276] · derive 0
+    ti47_annonces_test.go:78:    slot 1559       1 emissions ·     1 valeurs distinctes · ecart median   -1 ms (p90    -1) · |variation| mediane 0 (p99 0) · plage [29426399..29426399] · derive 0
+    ti47_annonces_test.go:78:    slot 1555       1 emissions ·     1 valeurs distinctes · ecart median   -1 ms (p90    -1) · |variation| mediane 0 (p99 0) · plage [17200309..17200309] · derive 0
+    ti47_annonces_test.go:79: ORACLE : artefact schema 18 · 3398 frames de 100 ms · originMs 15045 · 3 zones
+    ti47_annonces_test.go:79: ORACLES derives de zoneStates : 6 evenements · colline_debut=3 · colline_fin=3
+    ti47_annonces_test.go:79: SAUTS : 48 variations hors norme (percentile 99 par slot) sur 4486 emissions · seuil median 5099308 (min 4014, max 17650562) sur 7 slots
+    ti47_annonces_test.go:79:    amplitude des sauts : mediane 17650562 · max 33319525
+    ti47_annonces_test.go:79: ALIGNEMENT (item 1.2) — chaque suite contre son temoin « meme loi, decalee » :
+    ti47_annonces_test.go:79:   sauts vs TOUS oracles            48 instants · distance mediane  30045 ms (p90   50988) · dans +/-2 s : 0.0 %
+    ti47_annonces_test.go:79:                                TEMOIN decale             mediane  25475 ms (p90   49349) · dans la fenetre : 0.0 %  ->  exces 0/0
+    ti47_annonces_test.go:79:   emissions vs TOUS oracles      4486 instants · distance mediane  23827 ms (p90   45427) · dans +/-2 s : 4.6 %
+    ti47_annonces_test.go:79:                                TEMOIN decale             mediane  24573 ms (p90   46629) · dans la fenetre : 4.3 %  ->  exces 1.06x
+    ti47_annonces_test.go:79:   sauts vs colline_debut           48 instants · distance mediane  36223 ms (p90   61698) · dans +/-2 s : 0.0 %
+    ti47_annonces_test.go:79:                                TEMOIN decale             mediane  34420 ms (p90   58489) · dans la fenetre : 0.0 %  ->  exces 0/0
+    ti47_annonces_test.go:79:   sauts vs colline_fin             48 instants · distance mediane  36323 ms (p90   92141) · dans +/-2 s : 0.0 %
+    ti47_annonces_test.go:79:                                TEMOIN decale             mediane  31245 ms (p90   80051) · dans la fenetre : 0.0 %  ->  exces 0/0
+    ti47_annonces_test.go:79: MATRICE classe de saut x type d'oracle (item 1.3) — part des sauts de la classe a moins de 2 s d'un evenement du type :
+    ti47_annonces_test.go:79:    amplitude 10^3 (    3 sauts) : colline_debut 0 % · colline_fin 0 % · SANS oracle : 100 % (item 1.4)
+    ti47_annonces_test.go:79:    amplitude 10^5 (    1 sauts) : colline_debut 0 % · colline_fin 0 % · SANS oracle : 100 % (item 1.4)
+    ti47_annonces_test.go:79:    amplitude 10^6 (    2 sauts) : colline_debut 0 % · colline_fin 0 % · SANS oracle : 100 % (item 1.4)
+    ti47_annonces_test.go:79:    amplitude 10^7 (   42 sauts) : colline_debut 0 % · colline_fin 0 % · SANS oracle : 100 % (item 1.4)
+--- PASS: TestTI47Annonces (4.15s)
+PASS
+ok  	levelup/go-api/internal/analysis/filmdec	4.539s
+EXIT_8076f97f=0
+########## FILM 24dbb67d ##########
+=== RUN   TestTI47Annonces
+2026/08/24 21:54:39 WARN empreinte du registre ECS du film INCONNUE — grammaire des composants suspecte (mise a jour du jeu ?) ; le film reste decode empreinte=7307582345129211936 empreinte_connue=7053924395561516366 blocs=118 slots_non_vides=1068
+    ti47_annonces_test.go:45: FILM 24dbb67d · registre : 118 archetypes · empreinte 6569bf6cf857b820
+    ti47_annonces_test.go:51: COUT — recensement des images-cle : 3.728s · 841 slots vus tous archetypes confondus
+    ti47_annonces_test.go:58: ARCHETYPE ti=47 · 3 composants · i2 = personal-ai-data-component
+    ti47_annonces_test.go:58:    + i0  managed-object-networked-splash-message-static-component
+    ti47_annonces_test.go:58:    + i1  managed-object-networked-splash-message-dynamic-component
+    ti47_annonces_test.go:58:    * i2  personal-ai-data-component
+    ti47_annonces_test.go:58: BANDE : 8 slots vus en image-cle pour ti=47 · fantome 8 slots (jamais vus le porter)
+    ti47_annonces_test.go:65: COUT — passe delta : 1.18s · 28 chunks · 31834 paquets delta
+    ti47_annonces_test.go:68: RECORDS DELTA (denominateur : 31834 paquets) : reel 6174 · fantome 645 · rapport 9.57x
+    ti47_annonces_test.go:68:    hors grammaire : reel 586 (9.49 %) · fantome 583 (90.39 %)
+    ti47_annonces_test.go:68:    i2 annonce dans 675 records (10.93 %) · fantome 9 (1.40 %)
+    ti47_annonces_test.go:68:    indices les plus annonces (reel) : i1=4909 (managed-object-networked-splash-message-dynamic-component) · i2=675 (personal-ai-data-component) · i0=104 (managed-object-networked-splash-message-static-component) · i10=74 (HORS GRAMMAIRE) · i20=65 (HORS GRAMMAIRE) · i52=55 (HORS GRAMMAIRE)
+    ti47_annonces_test.go:68:    masques SINGLETON (reel) : i1=4867 (managed-object-networked-splash-message-dynamic-component) · i2=670 (personal-ai-data-component) · i0=26 (managed-object-networked-splash-message-static-component)
+    ti47_annonces_test.go:68:    vies : 32 paires (slot,gen) vues · 31 CONFIRMEES (>= 3 records) · fantome 32/32
+    ti47_annonces_test.go:68:    slots reels les plus actifs : 1338:1311 · 1336:732 · 1328:711 · 1340:706 · 1334:692 · 1330:677
+    ti47_annonces_test.go:69: CHAINAGE — un record correctement dimensionne finit la ou le suivant commence.
+    ti47_annonces_test.go:69:   i2 personal-ai · cible TOUS slots           670 records · plancher median 0.45 % · sommets : d=20 : 65.9 % (147.0x) · d=62 : 28.9 % (64.4x) · d=104 : 6.5 % (14.4x) · d=33 : 5.8 % (13.0x) · d=13 : 4.6 % (10.3x)
+    ti47_annonces_test.go:69:   i2 personal-ai · cible BANDE ti=47          670 records · plancher median 0.00 % · sommets : d=84 : 0.3 % (0.0x) · d=45 : 0.2 % (0.0x) · d=1 : 0.0 % (0.0x) · d=2 : 0.0 % (0.0x) · d=3 : 0.0 % (0.0x)
+    ti47_annonces_test.go:69:   i2 personal-ai · FANTOME                      2 records · plancher median 0.00 % · sommets : d=189 : 100.0 % (0.0x) · d=1 : 50.0 % (0.0x) · d=26 : 50.0 % (0.0x) · d=88 : 50.0 % (0.0x) · d=107 : 50.0 % (0.0x)
+    ti47_annonces_test.go:69:   i1 dynamic R(24) · cible TOUS              4867 records · plancher median 0.06 % · sommets : d=24 : 94.5 % (1532.7x) · d=75 : 82.0 % (1330.0x) · d=126 : 69.5 % (1127.3x) · d=177 : 57.3 % (929.2x) · d=137 : 14.7 % (239.0x)
+    ti47_annonces_test.go:69:   i1 dynamic R(24) · cible BANDE             4867 records · plancher median 0.00 % · sommets : d=24 : 87.4 % (0.0x) · d=75 : 74.9 % (0.0x) · d=126 : 62.4 % (0.0x) · d=177 : 50.2 % (0.0x) · d=172 : 0.2 % (0.0x)
+    ti47_annonces_test.go:69:   i0 static · cible TOUS                       26 records · plancher median 0.00 % · sommets : d=35 : 15.4 % (0.0x) · d=189 : 13.3 % (0.0x) · d=70 : 11.5 % (0.0x) · d=10 : 7.7 % (0.0x) · d=5 : 7.7 % (0.0x)
+    ti47_annonces_test.go:70: DISTANCES entre debuts de records consecutifs de la bande (en-tete+index = 27 bits ; largeur = distance − 27) :
+    ti47_annonces_test.go:70:   apres un singleton {i1 managed-object-networked-splash-message-dynamic-component} : 4263 distances (+1 hors plafond) · 51 bits (W=24) : 99.7 % · 46 bits (W=19) : 0.2 % · 31 bits (W=4) : 0.0 % · 34 bits (W=7) : 0.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i1=4252 (managed-object-networked-splash-message-dynamic-component) · i2=8 (personal-ai-data-component) · i10=2 (HORS GRAMMAIRE) · i0=1 (managed-object-networked-splash-message-static-component)
+    ti47_annonces_test.go:70:   apres un singleton {i2 personal-ai-data-component} : 3 distances (+0 hors plafond) · 111 bits (W=84) : 66.7 % · 72 bits (W=45) : 33.3 %
+    ti47_annonces_test.go:70:       masque du record suivant : i17=1 (HORS GRAMMAIRE) · i14=1 (HORS GRAMMAIRE) · i0=1 (managed-object-networked-splash-message-static-component)
+    ti47_annonces_test.go:70:   apres un singleton {i10 } : 15 distances (+0 hors plafond) · 51 bits (W=24) : 93.3 % · 450 bits (W=423) : 6.7 %
+    ti47_annonces_test.go:70:       masque du record suivant : i10=12 (HORS GRAMMAIRE) · i11=1 (HORS GRAMMAIRE) · i59=1 (HORS GRAMMAIRE) · i14=1 (HORS GRAMMAIRE)
+    ti47_annonces_test.go:70:   apres un singleton {i19 } : 1 distances (+0 hors plafond) · 369 bits (W=342) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i1=1 (managed-object-networked-splash-message-dynamic-component)
+    ti47_annonces_test.go:70:   apres un singleton {i26 } : 1 distances (+0 hors plafond) · 323 bits (W=296) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i22=1 (HORS GRAMMAIRE)
+    ti47_annonces_test.go:70:   apres un singleton {i38 } : 1 distances (+0 hors plafond) · 32 bits (W=5) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i2=1 (personal-ai-data-component)
+    ti47_annonces_test.go:72:   TSV : C:\Users\Guillaume\Downloads\Scripts\LevelUp-wt-ti47\.ai\V7.5\replay2d\registre_film\lotF2\24dbb67d_ti47_chainage.tsv
+    ti47_annonces_test.go:78: VALEURS (largeur 45 bits · champ analyse [20:45[, soit 25 bits) : 670 records annoncent i2 · 1 refuses (payload trop court) · 669 emissions retenues · 165 valeurs distinctes
+    ti47_annonces_test.go:78:    20580884         249  37.22 %
+    ti47_annonces_test.go:78:    20582932          36   5.38 %
+    ti47_annonces_test.go:78:    21315712          22   3.29 %
+    ti47_annonces_test.go:78:    2104307           18   2.69 %
+    ti47_annonces_test.go:78:    20892224          11   1.64 %
+    ti47_annonces_test.go:78:    20584980          10   1.49 %
+    ti47_annonces_test.go:78:    21111360           9   1.35 %
+    ti47_annonces_test.go:78:    21307968           9   1.35 %
+    ti47_annonces_test.go:78:    20589076           7   1.05 %
+    ti47_annonces_test.go:78:    20902416           7   1.05 %
+    ti47_annonces_test.go:78:    21307920           7   1.05 %
+    ti47_annonces_test.go:78:    21353024           7   1.05 %
+    ti47_annonces_test.go:78:    20738582           6   0.90 %
+    ti47_annonces_test.go:78:    20922896           6   0.90 %
+    ti47_annonces_test.go:78:    20937280           6   0.90 %
+    ti47_annonces_test.go:78:    20978240           6   0.90 %
+    ti47_annonces_test.go:78:    les 16 premieres valeurs couvrent 62.18 % des emissions
+    ti47_annonces_test.go:78:    profil des bits (position 0 = premier bit apres le masque ; '.' = toujours 0, '#' = toujours 1, chiffre = dizaine de la part a 1) :
+    ti47_annonces_test.go:78:       900904444445454444508027662621223709112270511
+    ti47_annonces_test.go:78:       constants : ---------------------------------------------  (0 bits sur 45 ne varient JAMAIS)
+    ti47_annonces_test.go:78:    echelle (valeur / 2^25) : [0.0-0.1[ 15.5 % · [0.1-0.2[ 0.4 % · [0.2-0.3[ 0.6 % · [0.3-0.4[ 0.4 % · [0.4-0.5[ 0.1 % · [0.5-0.6[ 0.3 % · [0.6-0.7[ 81.0 % · [0.7-0.8[ 0.3 % · [0.8-0.9[ 0.6 % · [0.9-1.0[ 0.6 % · au plafond (>= 0,999) : 0.1 %
+    ti47_annonces_test.go:78:    structure : 20.5 % de transitions croissantes · correlation valeur/instant r = 0.073 · 165 valeurs distinctes pour 669 emissions
+    ti47_annonces_test.go:78:    -> ni enumeration courte ni horloge : continuum ou treillis (comme i1).
+    ti47_annonces_test.go:78: PAR SLOT (rythme et variation ; un slot = une entite de l'archetype) :
+    ti47_annonces_test.go:78:    slot 1338     621 emissions ·   140 valeurs distinctes · ecart median  267 ms (p90   584) · |variation| mediane 0 (p99 19203623) · plage [2103810..21379648] · derive -90140
+    ti47_annonces_test.go:78:    slot 1340      16 emissions ·    16 valeurs distinctes · ecart median 10712 ms (p90 42026) · |variation| mediane 6713344 (p99 29989951) · plage [2685412..33552868] · derive 20538271
+    ti47_annonces_test.go:78:    slot 1328      15 emissions ·     1 valeurs distinctes · ecart median 2503 ms (p90 16417) · |variation| mediane 0 (p99 0) · plage [21315712..21315712] · derive 0
+    ti47_annonces_test.go:78:    slot 1326       8 emissions ·     2 valeurs distinctes · ecart median 2503 ms (p90 28028) · |variation| mediane 0 (p99 3208832) · plage [18106880..21315712] · derive -3208832
+    ti47_annonces_test.go:78:    slot 1330       3 emissions ·     3 valeurs distinctes · ecart median 52737 ms (p90 52737) · |variation| mediane 8492515 (p99 8492515) · plage [519779..9012294] · derive -8029782
+    ti47_annonces_test.go:78:    slot 1336       3 emissions ·     2 valeurs distinctes · ecart median 119933 ms (p90 119933) · |variation| mediane 2697238 (p99 2697238) · plage [9437250..12134488] · derive -2697238
+    ti47_annonces_test.go:78:    slot 1332       2 emissions ·     2 valeurs distinctes · ecart median 85002 ms (p90 85002) · |variation| mediane 23720529 (p99 23720529) · plage [3562916..27283445] · derive -23720529
+    ti47_annonces_test.go:78:    slot 1334       1 emissions ·     1 valeurs distinctes · ecart median   -1 ms (p90    -1) · |variation| mediane 0 (p99 0) · plage [29360438..29360438] · derive 0
+    ti47_annonces_test.go:79: ORACLE : artefact schema 18 · 5137 frames de 100 ms · originMs 11940 · 0 zones
+    ti47_annonces_test.go:79: ORACLES derives de zoneStates : 0 evenements · 
+    ti47_annonces_test.go:79:   -> aucun evenement de zone sur ce film : rien a confronter.
+--- PASS: TestTI47Annonces (4.94s)
+PASS
+ok  	levelup/go-api/internal/analysis/filmdec	5.334s
+EXIT_24dbb67d=0
+########## FILM 530820e5 ##########
+=== RUN   TestTI47Annonces
+    ti47_annonces_test.go:45: FILM 530820e5 · registre : 118 archetypes · empreinte 61e492dd4de7fd4e
+    ti47_annonces_test.go:51: COUT — recensement des images-cle : 4.249s · 866 slots vus tous archetypes confondus
+    ti47_annonces_test.go:58: ARCHETYPE ti=47 · 3 composants · i2 = personal-ai-data-component
+    ti47_annonces_test.go:58:    + i0  managed-object-networked-splash-message-static-component
+    ti47_annonces_test.go:58:    + i1  managed-object-networked-splash-message-dynamic-component
+    ti47_annonces_test.go:58:    * i2  personal-ai-data-component
+    ti47_annonces_test.go:58: BANDE : 8 slots vus en image-cle pour ti=47 · fantome 8 slots (jamais vus le porter)
+    ti47_annonces_test.go:65: COUT — passe delta : 990ms · 26 chunks · 29148 paquets delta
+    ti47_annonces_test.go:68: RECORDS DELTA (denominateur : 29148 paquets) : reel 7261 · fantome 848 · rapport 8.56x
+    ti47_annonces_test.go:68:    hors grammaire : reel 1599 (22.02 %) · fantome 777 (91.63 %)
+    ti47_annonces_test.go:68:    i2 annonce dans 39 records (0.54 %) · fantome 62 (7.31 %)
+    ti47_annonces_test.go:68:    indices les plus annonces (reel) : i1=5635 (managed-object-networked-splash-message-dynamic-component) · i8=304 (HORS GRAMMAIRE) · i6=264 (HORS GRAMMAIRE) · i4=165 (HORS GRAMMAIRE) · i10=88 (HORS GRAMMAIRE) · i47=88 (HORS GRAMMAIRE)
+    ti47_annonces_test.go:68:    masques SINGLETON (reel) : i1=5591 (managed-object-networked-splash-message-dynamic-component) · i0=41 (managed-object-networked-splash-message-static-component) · i2=14 (personal-ai-data-component)
+    ti47_annonces_test.go:68:    vies : 32 paires (slot,gen) vues · 32 CONFIRMEES (>= 3 records) · fantome 32/32
+    ti47_annonces_test.go:68:    slots reels les plus actifs : 1298:1136 · 1296:1126 · 1288:951 · 1284:900 · 1286:822 · 1290:791
+    ti47_annonces_test.go:69: CHAINAGE — un record correctement dimensionne finit la ou le suivant commence.
+    ti47_annonces_test.go:69:   i2 personal-ai · cible TOUS slots            14 records · plancher median 0.00 % · sommets : d=115 : 42.9 % (0.0x) · d=105 : 35.7 % (0.0x) · d=15 : 28.6 % (0.0x) · d=57 : 14.3 % (0.0x) · d=3 : 14.3 % (0.0x)
+    ti47_annonces_test.go:69:   i2 personal-ai · cible BANDE ti=47           14 records · plancher median 0.00 % · sommets : d=105 : 28.6 % (0.0x) · d=1 : 0.0 % (0.0x) · d=2 : 0.0 % (0.0x) · d=3 : 0.0 % (0.0x) · d=4 : 0.0 % (0.0x)
+    ti47_annonces_test.go:69:   i2 personal-ai · FANTOME                     53 records · plancher median 0.00 % · sommets : d=130 : 30.2 % (0.0x) · d=101 : 20.8 % (0.0x) · d=132 : 20.8 % (0.0x) · d=112 : 11.3 % (0.0x) · d=31 : 3.8 % (0.0x)
+    ti47_annonces_test.go:69:   i1 dynamic R(24) · cible TOUS              5591 records · plancher median 0.07 % · sommets : d=24 : 94.2 % (1312.2x) · d=75 : 81.8 % (1139.0x) · d=126 : 69.4 % (966.7x) · d=177 : 56.9 % (793.2x) · d=188 : 7.1 % (98.8x)
+    ti47_annonces_test.go:69:   i1 dynamic R(24) · cible BANDE             5591 records · plancher median 0.00 % · sommets : d=24 : 87.4 % (0.0x) · d=75 : 74.9 % (0.0x) · d=126 : 62.5 % (0.0x) · d=177 : 50.0 % (0.0x) · d=165 : 0.0 % (0.0x)
+    ti47_annonces_test.go:69:   i0 static · cible TOUS                       41 records · plancher median 0.00 % · sommets : d=28 : 63.4 % (0.0x) · d=13 : 63.4 % (0.0x) · d=40 : 14.6 % (0.0x) · d=191 : 13.2 % (0.0x) · d=58 : 7.3 % (0.0x)
+    ti47_annonces_test.go:70: DISTANCES entre debuts de records consecutifs de la bande (en-tete+index = 27 bits ; largeur = distance − 27) :
+    ti47_annonces_test.go:70:   apres un singleton {i1 managed-object-networked-splash-message-dynamic-component} : 4892 distances (+3 hors plafond) · 51 bits (W=24) : 99.8 % · 102 bits (W=75) : 0.0 % · 36 bits (W=9) : 0.0 % · 43 bits (W=16) : 0.0 % · 125 bits (W=98) : 0.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i1=4883 (managed-object-networked-splash-message-dynamic-component) · masque multiple=5 · i53=1 (HORS GRAMMAIRE) · i57=1 (HORS GRAMMAIRE)
+    ti47_annonces_test.go:70:   apres un singleton {i2 personal-ai-data-component} : 4 distances (+0 hors plafond) · 132 bits (W=105) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i10=4 (HORS GRAMMAIRE)
+    ti47_annonces_test.go:70:   apres un singleton {i4 } : 5 distances (+3 hors plafond) · 60 bits (W=33) : 40.0 % · 283 bits (W=256) : 20.0 % · 334 bits (W=307) : 20.0 % · 494 bits (W=467) : 20.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i1=2 (managed-object-networked-splash-message-dynamic-component) · i4=2 (HORS GRAMMAIRE) · masque multiple=1
+    ti47_annonces_test.go:70:   apres un singleton {i6 } : 9 distances (+21 hors plafond) · 247 bits (W=220) : 11.1 % · 401 bits (W=374) : 11.1 % · 413 bits (W=386) : 11.1 % · 421 bits (W=394) : 11.1 % · 443 bits (W=416) : 11.1 %
+    ti47_annonces_test.go:70:       masque du record suivant : i10=3 (HORS GRAMMAIRE) · i3=1 (HORS GRAMMAIRE) · i44=1 (HORS GRAMMAIRE) · i8=1 (HORS GRAMMAIRE)
+    ti47_annonces_test.go:70:   apres un singleton {i8 } : 2 distances (+9 hors plafond) · 136 bits (W=109) : 50.0 % · 489 bits (W=462) : 50.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : masque multiple=1 · i10=1 (HORS GRAMMAIRE)
+    ti47_annonces_test.go:70:   apres un singleton {i10 } : 7 distances (+1 hors plafond) · 167 bits (W=140) : 28.6 % · 425 bits (W=398) : 28.6 % · 132 bits (W=105) : 14.3 % · 161 bits (W=134) : 14.3 % · 419 bits (W=392) : 14.3 %
+    ti47_annonces_test.go:70:       masque du record suivant : i18=4 (HORS GRAMMAIRE) · i8=2 (HORS GRAMMAIRE) · i6=1 (HORS GRAMMAIRE)
+    ti47_annonces_test.go:70:   apres un singleton {i12 } : 1 distances (+0 hors plafond) · 478 bits (W=451) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i8=1 (HORS GRAMMAIRE)
+    ti47_annonces_test.go:70:   apres un singleton {i18 } : 3 distances (+0 hors plafond) · 132 bits (W=105) : 33.3 % · 167 bits (W=140) : 33.3 % · 169 bits (W=142) : 33.3 %
+    ti47_annonces_test.go:70:       masque du record suivant : i26=2 (HORS GRAMMAIRE) · i1=1 (managed-object-networked-splash-message-dynamic-component)
+    ti47_annonces_test.go:70:   apres un singleton {i23 } : 2 distances (+0 hors plafond) · 125 bits (W=98) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i1=2 (managed-object-networked-splash-message-dynamic-component)
+    ti47_annonces_test.go:70:   apres un singleton {i24 } : 1 distances (+0 hors plafond) · 212 bits (W=185) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i1=1 (managed-object-networked-splash-message-dynamic-component)
+    ti47_annonces_test.go:70:   apres un singleton {i26 } : 13 distances (+0 hors plafond) · 163 bits (W=136) : 38.5 % · 132 bits (W=105) : 30.8 % · 45 bits (W=18) : 7.7 % · 68 bits (W=41) : 7.7 % · 167 bits (W=140) : 7.7 %
+    ti47_annonces_test.go:70:       masque du record suivant : i34=13 (HORS GRAMMAIRE)
+    ti47_annonces_test.go:70:   apres un singleton {i27 } : 1 distances (+0 hors plafond) · 125 bits (W=98) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i1=1 (managed-object-networked-splash-message-dynamic-component)
+    ti47_annonces_test.go:70:   apres un singleton {i34 } : 12 distances (+1 hors plafond) · 95 bits (W=68) : 33.3 % · 132 bits (W=105) : 33.3 % · 163 bits (W=136) : 16.7 % · 198 bits (W=171) : 16.7 %
+    ti47_annonces_test.go:70:       masque du record suivant : i58=10 (HORS GRAMMAIRE) · i42=1 (HORS GRAMMAIRE) · masque multiple=1
+    ti47_annonces_test.go:70:   apres un singleton {i40 } : 1 distances (+0 hors plafond) · 32 bits (W=5) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i1=1 (managed-object-networked-splash-message-dynamic-component)
+    ti47_annonces_test.go:70:   apres un singleton {i42 } : 1 distances (+0 hors plafond) · 132 bits (W=105) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i50=1 (HORS GRAMMAIRE)
+    ti47_annonces_test.go:70:   apres un singleton {i49 } : 1 distances (+0 hors plafond) · 437 bits (W=410) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i1=1 (managed-object-networked-splash-message-dynamic-component)
+    ti47_annonces_test.go:70:   apres un singleton {i58 } : 8 distances (+0 hors plafond) · 132 bits (W=105) : 62.5 % · 95 bits (W=68) : 12.5 % · 130 bits (W=103) : 12.5 % · 163 bits (W=136) : 12.5 %
+    ti47_annonces_test.go:70:       masque du record suivant : masque multiple=8
+    ti47_annonces_test.go:70:   apres un singleton {i61 } : 1 distances (+0 hors plafond) · 125 bits (W=98) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i1=1 (managed-object-networked-splash-message-dynamic-component)
+    ti47_annonces_test.go:70:   apres un singleton {i62 } : 1 distances (+0 hors plafond) · 47 bits (W=20) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i1=1 (managed-object-networked-splash-message-dynamic-component)
+    ti47_annonces_test.go:70:   apres un singleton {i63 } : 1 distances (+0 hors plafond) · 392 bits (W=365) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i8=1 (HORS GRAMMAIRE)
+    ti47_annonces_test.go:72:   TSV : C:\Users\Guillaume\Downloads\Scripts\LevelUp-wt-ti47\.ai\V7.5\replay2d\registre_film\lotF2\530820e5_ti47_chainage.tsv
+    ti47_annonces_test.go:78: VALEURS (largeur 45 bits · champ analyse [20:45[, soit 25 bits) : 14 records annoncent i2 · 0 refuses (payload trop court) · 14 emissions retenues · 13 valeurs distinctes
+    ti47_annonces_test.go:78:    5392896            2  14.29 %
+    ti47_annonces_test.go:78:    3084648            1   7.14 %
+    ti47_annonces_test.go:78:    5391872            1   7.14 %
+    ti47_annonces_test.go:78:    5392384            1   7.14 %
+    ti47_annonces_test.go:78:    5918601            1   7.14 %
+    ti47_annonces_test.go:78:    8611197            1   7.14 %
+    ti47_annonces_test.go:78:    8616997            1   7.14 %
+    ti47_annonces_test.go:78:    8618540            1   7.14 %
+    ti47_annonces_test.go:78:    8620828            1   7.14 %
+    ti47_annonces_test.go:78:    8621676            1   7.14 %
+    ti47_annonces_test.go:78:    8622708            1   7.14 %
+    ti47_annonces_test.go:78:    8624876            1   7.14 %
+    ti47_annonces_test.go:78:    11669057           1   7.14 %
+    ti47_annonces_test.go:78:    les 16 premieres valeurs couvrent 100.00 % des emissions
+    ti47_annonces_test.go:78:    profil des bits (position 0 = premier bit apres le masque ; '.' = toujours 0, '#' = toujours 1, chiffre = dizaine de la part a 1) :
+    ti47_annonces_test.go:78:       23553223123.0209.653.531410#535126472145255.2
+    ti47_annonces_test.go:78:       constants : -----------0----0---0------1---------------0-  (5 bits sur 45 ne varient JAMAIS)
+    ti47_annonces_test.go:78:    echelle (valeur / 2^25) : [0.0-0.1[ 7.1 % · [0.1-0.2[ 35.7 % · [0.2-0.3[ 50.0 % · [0.3-0.4[ 7.1 % · au plafond (>= 0,999) : 0.0 %
+    ti47_annonces_test.go:78:    structure : 30.8 % de transitions croissantes · correlation valeur/instant r = -0.688 · 13 valeurs distinctes pour 14 emissions
+    ti47_annonces_test.go:78:    -> ENUMERATION : moins de 64 valeurs distinctes.
+    ti47_annonces_test.go:78: PAR SLOT (rythme et variation ; un slot = une entite de l'archetype) :
+    ti47_annonces_test.go:78:    slot 1288       8 emissions ·     8 valeurs distinctes · ecart median 4270 ms (p90  4272) · |variation| mediane 5711 (p99 3048229) · plage [8611197..11669057] · derive -13679
+    ti47_annonces_test.go:78:    slot 1298       4 emissions ·     3 valeurs distinctes · ecart median  534 ms (p90  4805) · |variation| mediane 512 (p99 1024) · plage [5391872..5392896] · derive 512
+    ti47_annonces_test.go:78:    slot 1296       1 emissions ·     1 valeurs distinctes · ecart median   -1 ms (p90    -1) · |variation| mediane 0 (p99 0) · plage [3084648..3084648] · derive 0
+    ti47_annonces_test.go:78:    slot 1284       1 emissions ·     1 valeurs distinctes · ecart median   -1 ms (p90    -1) · |variation| mediane 0 (p99 0) · plage [5918601..5918601] · derive 0
+    ti47_annonces_test.go:79: ORACLE : artefact schema 18 · 4751 frames de 100 ms · originMs 5350 · 0 zones
+    ti47_annonces_test.go:79: ORACLES derives de zoneStates : 0 evenements · 
+    ti47_annonces_test.go:79:   -> aucun evenement de zone sur ce film : rien a confronter.
+--- PASS: TestTI47Annonces (5.25s)
+PASS
+ok  	levelup/go-api/internal/analysis/filmdec	5.648s
+EXIT_530820e5=0
+########## FILM 53ce4390 ##########
+=== RUN   TestTI47Annonces
+    ti47_annonces_test.go:45: FILM 53ce4390 · registre : 118 archetypes · empreinte 61e492dd4de7fd4e
+    ti47_annonces_test.go:51: COUT — recensement des images-cle : 9.969s · 1239 slots vus tous archetypes confondus
+    ti47_annonces_test.go:58: ARCHETYPE ti=47 · 3 composants · i2 = personal-ai-data-component
+    ti47_annonces_test.go:58:    + i0  managed-object-networked-splash-message-static-component
+    ti47_annonces_test.go:58:    + i1  managed-object-networked-splash-message-dynamic-component
+    ti47_annonces_test.go:58:    * i2  personal-ai-data-component
+    ti47_annonces_test.go:58: BANDE : 8 slots vus en image-cle pour ti=47 · fantome 8 slots (jamais vus le porter)
+    ti47_annonces_test.go:65: COUT — passe delta : 1.801s · 40 chunks · 45856 paquets delta
+    ti47_annonces_test.go:68: RECORDS DELTA (denominateur : 45856 paquets) : reel 11069 · fantome 2060 · rapport 5.37x
+    ti47_annonces_test.go:68:    hors grammaire : reel 2606 (23.54 %) · fantome 2043 (99.17 %)
+    ti47_annonces_test.go:68:    i2 annonce dans 189 records (1.71 %) · fantome 31 (1.50 %)
+    ti47_annonces_test.go:68:    indices les plus annonces (reel) : i1=8314 (managed-object-networked-splash-message-dynamic-component) · i8=377 (HORS GRAMMAIRE) · i6=315 (HORS GRAMMAIRE) · i4=247 (HORS GRAMMAIRE) · i0=199 (managed-object-networked-splash-message-static-component) · i2=189 (personal-ai-data-component)
+    ti47_annonces_test.go:68:    masques SINGLETON (reel) : i1=8248 (managed-object-networked-splash-message-dynamic-component) · i2=157 (personal-ai-data-component) · i0=34 (managed-object-networked-splash-message-static-component)
+    ti47_annonces_test.go:68:    vies : 32 paires (slot,gen) vues · 32 CONFIRMEES (>= 3 records) · fantome 32/32
+    ti47_annonces_test.go:68:    slots reels les plus actifs : 1297:1918 · 1299:1686 · 1291:1350 · 1293:1245 · 1301:1234 · 1305:1226
+    ti47_annonces_test.go:69: CHAINAGE — un record correctement dimensionne finit la ou le suivant commence.
+    ti47_annonces_test.go:69:   i2 personal-ai · cible TOUS slots           157 records · plancher median 0.00 % · sommets : d=10 : 19.7 % (0.0x) · d=145 : 17.2 % (0.0x) · d=36 : 13.4 % (0.0x) · d=143 : 12.7 % (0.0x) · d=172 : 9.6 % (0.0x)
+    ti47_annonces_test.go:69:   i2 personal-ai · cible BANDE ti=47          157 records · plancher median 0.00 % · sommets : d=1 : 0.0 % (0.0x) · d=2 : 0.0 % (0.0x) · d=3 : 0.0 % (0.0x) · d=4 : 0.0 % (0.0x) · d=5 : 0.0 % (0.0x)
+    ti47_annonces_test.go:69:   i2 personal-ai · FANTOME                      1 records · plancher median 0.00 % · sommets : d=83 : 100.0 % (0.0x) · d=1 : 0.0 % (0.0x) · d=2 : 0.0 % (0.0x) · d=3 : 0.0 % (0.0x) · d=4 : 0.0 % (0.0x)
+    ti47_annonces_test.go:69:   i1 dynamic R(24) · cible TOUS              8248 records · plancher median 0.12 % · sommets : d=24 : 94.7 % (779.0x) · d=75 : 82.3 % (676.9x) · d=126 : 69.9 % (575.1x) · d=177 : 57.5 % (473.0x) · d=35 : 13.6 % (111.6x)
+    ti47_annonces_test.go:69:   i1 dynamic R(24) · cible BANDE             8248 records · plancher median 0.00 % · sommets : d=24 : 87.4 % (0.0x) · d=75 : 75.0 % (0.0x) · d=126 : 62.5 % (0.0x) · d=177 : 50.1 % (0.0x) · d=161 : 0.0 % (0.0x)
+    ti47_annonces_test.go:69:   i0 static · cible TOUS                       34 records · plancher median 0.00 % · sommets : d=28 : 11.8 % (0.0x) · d=13 : 11.8 % (0.0x) · d=186 : 9.4 % (0.0x) · d=151 : 9.1 % (0.0x) · d=162 : 9.1 % (0.0x)
+    ti47_annonces_test.go:70: DISTANCES entre debuts de records consecutifs de la bande (en-tete+index = 27 bits ; largeur = distance − 27) :
+    ti47_annonces_test.go:70:   apres un singleton {i0 managed-object-networked-splash-message-static-component} : 1 distances (+0 hors plafond) · 340 bits (W=313) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : masque multiple=1
+    ti47_annonces_test.go:70:   apres un singleton {i1 managed-object-networked-splash-message-dynamic-component} : 7207 distances (+3 hors plafond) · 51 bits (W=24) : 99.9 % · 153 bits (W=126) : 0.0 % · 35 bits (W=8) : 0.0 % · 223 bits (W=196) : 0.0 % · 501 bits (W=474) : 0.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i1=7203 (managed-object-networked-splash-message-dynamic-component) · masque multiple=2 · i0=1 (managed-object-networked-splash-message-static-component) · i20=1 (HORS GRAMMAIRE)
+    ti47_annonces_test.go:70:   apres un singleton {i4 } : 14 distances (+5 hors plafond) · 202 bits (W=175) : 21.4 % · 136 bits (W=109) : 14.3 % · 53 bits (W=26) : 7.1 % · 99 bits (W=72) : 7.1 % · 166 bits (W=139) : 7.1 %
+    ti47_annonces_test.go:70:       masque du record suivant : i20=7 (HORS GRAMMAIRE) · masque multiple=3 · i1=2 (managed-object-networked-splash-message-dynamic-component) · i36=1 (HORS GRAMMAIRE)
+    ti47_annonces_test.go:70:   apres un singleton {i6 } : 18 distances (+6 hors plafond) · 308 bits (W=281) : 33.3 % · 277 bits (W=250) : 16.7 % · 444 bits (W=417) : 11.1 % · 69 bits (W=42) : 5.6 % · 271 bits (W=244) : 5.6 %
+    ti47_annonces_test.go:70:       masque du record suivant : i1=16 (managed-object-networked-splash-message-dynamic-component) · masque multiple=1 · i21=1 (HORS GRAMMAIRE)
+    ti47_annonces_test.go:70:   apres un singleton {i8 } : 5 distances (+4 hors plafond) · 438 bits (W=411) : 40.0 % · 240 bits (W=213) : 20.0 % · 293 bits (W=266) : 20.0 % · 341 bits (W=314) : 20.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i1=2 (managed-object-networked-splash-message-dynamic-component) · masque multiple=1 · i55=1 (HORS GRAMMAIRE) · i53=1 (HORS GRAMMAIRE)
+    ti47_annonces_test.go:70:   apres un singleton {i12 } : 1 distances (+0 hors plafond) · 97 bits (W=70) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : masque multiple=1
+    ti47_annonces_test.go:70:   apres un singleton {i15 } : 1 distances (+0 hors plafond) · 246 bits (W=219) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i1=1 (managed-object-networked-splash-message-dynamic-component)
+    ti47_annonces_test.go:70:   apres un singleton {i20 } : 8 distances (+0 hors plafond) · 136 bits (W=109) : 50.0 % · 99 bits (W=72) : 12.5 % · 130 bits (W=103) : 12.5 % · 171 bits (W=144) : 12.5 % · 241 bits (W=214) : 12.5 %
+    ti47_annonces_test.go:70:       masque du record suivant : i36=4 (HORS GRAMMAIRE) · i52=4 (HORS GRAMMAIRE)
+    ti47_annonces_test.go:70:   apres un singleton {i28 } : 1 distances (+1 hors plafond) · 502 bits (W=475) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i1=1 (managed-object-networked-splash-message-dynamic-component)
+    ti47_annonces_test.go:70:   apres un singleton {i36 } : 4 distances (+0 hors plafond) · 99 bits (W=72) : 50.0 % · 167 bits (W=140) : 25.0 % · 202 bits (W=175) : 25.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i52=4 (HORS GRAMMAIRE)
+    ti47_annonces_test.go:70:   apres un singleton {i43 } : 6 distances (+26 hors plafond) · 241 bits (W=214) : 50.0 % · 482 bits (W=455) : 50.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i43=6 (HORS GRAMMAIRE)
+    ti47_annonces_test.go:70:   apres un singleton {i48 } : 2 distances (+1 hors plafond) · 172 bits (W=145) : 50.0 % · 349 bits (W=322) : 50.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i13=1 (HORS GRAMMAIRE) · i48=1 (HORS GRAMMAIRE)
+    ti47_annonces_test.go:70:   apres un singleton {i52 } : 7 distances (+0 hors plafond) · 167 bits (W=140) : 85.7 % · 136 bits (W=109) : 14.3 %
+    ti47_annonces_test.go:70:       masque du record suivant : masque multiple=4 · i36=3 (HORS GRAMMAIRE)
+    ti47_annonces_test.go:70:   apres un singleton {i53 } : 4 distances (+0 hors plafond) · 36 bits (W=9) : 25.0 % · 67 bits (W=40) : 25.0 % · 234 bits (W=207) : 25.0 % · 395 bits (W=368) : 25.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i6=2 (HORS GRAMMAIRE) · i8=1 (HORS GRAMMAIRE) · i10=1 (HORS GRAMMAIRE)
+    ti47_annonces_test.go:70:   apres un singleton {i54 } : 1 distances (+1 hors plafond) · 346 bits (W=319) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : masque multiple=1
+    ti47_annonces_test.go:70:   apres un singleton {i55 } : 1 distances (+0 hors plafond) · 234 bits (W=207) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i4=1 (HORS GRAMMAIRE)
+    ti47_annonces_test.go:70:   apres un singleton {i59 } : 1 distances (+1 hors plafond) · 385 bits (W=358) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : masque multiple=1
+    ti47_annonces_test.go:70:   apres un singleton {i63 } : 2 distances (+0 hors plafond) · 449 bits (W=422) : 50.0 % · 481 bits (W=454) : 50.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : masque multiple=1 · i53=1 (HORS GRAMMAIRE)
+    ti47_annonces_test.go:72:   TSV : C:\Users\Guillaume\Downloads\Scripts\LevelUp-wt-ti47\.ai\V7.5\replay2d\registre_film\lotF2\53ce4390_ti47_chainage.tsv
+    ti47_annonces_test.go:78: VALEURS (largeur 45 bits · champ analyse [20:45[, soit 25 bits) : 157 records annoncent i2 · 0 refuses (payload trop court) · 157 emissions retenues · 36 valeurs distinctes
+    ti47_annonces_test.go:78:    26244425          24  15.29 %
+    ti47_annonces_test.go:78:    6585888           19  12.10 %
+    ti47_annonces_test.go:78:    16284192          16  10.19 %
+    ti47_annonces_test.go:78:    30179156          13   8.28 %
+    ti47_annonces_test.go:78:    2650441           10   6.37 %
+    ti47_annonces_test.go:78:    16546336          10   6.37 %
+    ti47_annonces_test.go:78:    6584864            9   5.73 %
+    ti47_annonces_test.go:78:    6586196            8   5.10 %
+    ti47_annonces_test.go:78:    16283977           8   5.10 %
+    ti47_annonces_test.go:78:    2651465            4   2.55 %
+    ti47_annonces_test.go:78:    16284297           4   2.55 %
+    ti47_annonces_test.go:78:    6585993            3   1.91 %
+    ti47_annonces_test.go:78:    16283976           3   1.91 %
+    ti47_annonces_test.go:78:    12610890           2   1.27 %
+    ti47_annonces_test.go:78:    12611913           2   1.27 %
+    ti47_annonces_test.go:78:    26245449           2   1.27 %
+    ti47_annonces_test.go:78:    les 16 premieres valeurs couvrent 87.26 % des emissions
+    ti47_annonces_test.go:78:    profil des bits (position 0 = premier bit apres le masque ; '.' = toujours 0, '#' = toujours 1, chiffre = dizaine de la part a 1) :
+    ti47_annonces_test.go:78:       000098809.90008534572566444000898655405314214
+    ti47_annonces_test.go:78:       constants : ---------0-----------------------------------  (1 bits sur 45 ne varient JAMAIS)
+    ti47_annonces_test.go:78:    echelle (valeur / 2^25) : [0.0-0.1[ 10.8 % · [0.1-0.2[ 29.3 % · [0.2-0.3[ 3.2 % · [0.3-0.4[ 2.5 % · [0.4-0.5[ 26.1 % · [0.6-0.7[ 0.6 % · [0.7-0.8[ 17.8 % · [0.8-0.9[ 8.9 % · [0.9-1.0[ 0.6 % · au plafond (>= 0,999) : 0.0 %
+    ti47_annonces_test.go:78:    structure : 19.2 % de transitions croissantes · correlation valeur/instant r = 0.314 · 36 valeurs distinctes pour 157 emissions
+    ti47_annonces_test.go:78:    -> ENUMERATION : moins de 64 valeurs distinctes.
+    ti47_annonces_test.go:78: PAR SLOT (rythme et variation ; un slot = une entite de l'archetype) :
+    ti47_annonces_test.go:78:    slot 1297     153 emissions ·    32 valeurs distinctes · ecart median   33 ms (p90    83) · |variation| mediane 0 (p99 23592960) · plage [2524231..33030144] · derive 24181689
+    ti47_annonces_test.go:78:    slot 1303       1 emissions ·     1 valeurs distinctes · ecart median   -1 ms (p90    -1) · |variation| mediane 0 (p99 0) · plage [4548800..4548800] · derive 0
+    ti47_annonces_test.go:78:    slot 1291       1 emissions ·     1 valeurs distinctes · ecart median   -1 ms (p90    -1) · |variation| mediane 0 (p99 0) · plage [4227..4227] · derive 0
+    ti47_annonces_test.go:78:    slot 1301       1 emissions ·     1 valeurs distinctes · ecart median   -1 ms (p90    -1) · |variation| mediane 0 (p99 0) · plage [22946368..22946368] · derive 0
+    ti47_annonces_test.go:78:    slot 1295       1 emissions ·     1 valeurs distinctes · ecart median   -1 ms (p90    -1) · |variation| mediane 0 (p99 0) · plage [29426135..29426135] · derive 0
+    ti47_annonces_test.go:79: ORACLE : artefact schema 18 · 7507 frames de 100 ms · originMs 8857 · 0 zones
+    ti47_annonces_test.go:79: ORACLES derives de zoneStates : 0 evenements · 
+    ti47_annonces_test.go:79:   -> aucun evenement de zone sur ce film : rien a confronter.
+--- PASS: TestTI47Annonces (11.80s)
+PASS
+ok  	levelup/go-api/internal/analysis/filmdec	12.186s
+EXIT_53ce4390=0
+########## FILM 64e8adfa ##########
+=== RUN   TestTI47Annonces
+    ti47_annonces_test.go:45: FILM 64e8adfa · registre : 118 archetypes · empreinte 61e492dd4de7fd4e
+    ti47_annonces_test.go:51: COUT — recensement des images-cle : 7.764s · 1306 slots vus tous archetypes confondus
+    ti47_annonces_test.go:58: ARCHETYPE ti=47 · 3 composants · i2 = personal-ai-data-component
+    ti47_annonces_test.go:58:    + i0  managed-object-networked-splash-message-static-component
+    ti47_annonces_test.go:58:    + i1  managed-object-networked-splash-message-dynamic-component
+    ti47_annonces_test.go:58:    * i2  personal-ai-data-component
+    ti47_annonces_test.go:58: BANDE : 8 slots vus en image-cle pour ti=47 · fantome 8 slots (jamais vus le porter)
+    ti47_annonces_test.go:65: COUT — passe delta : 1.695s · 44 chunks · 50956 paquets delta
+    ti47_annonces_test.go:68: RECORDS DELTA (denominateur : 50956 paquets) : reel 15939 · fantome 1303 · rapport 12.23x
+    ti47_annonces_test.go:68:    hors grammaire : reel 2525 (15.84 %) · fantome 1139 (87.41 %)
+    ti47_annonces_test.go:68:    i2 annonce dans 80 records (0.50 %) · fantome 160 (12.28 %)
+    ti47_annonces_test.go:68:    indices les plus annonces (reel) : i1=13326 (managed-object-networked-splash-message-dynamic-component) · i8=474 (HORS GRAMMAIRE) · i6=323 (HORS GRAMMAIRE) · i10=196 (HORS GRAMMAIRE) · i4=189 (HORS GRAMMAIRE) · i47=150 (HORS GRAMMAIRE)
+    ti47_annonces_test.go:68:    masques SINGLETON (reel) : i1=13269 (managed-object-networked-splash-message-dynamic-component) · i0=70 (managed-object-networked-splash-message-static-component) · i2=51 (personal-ai-data-component)
+    ti47_annonces_test.go:68:    vies : 32 paires (slot,gen) vues · 32 CONFIRMEES (>= 3 records) · fantome 32/32
+    ti47_annonces_test.go:68:    slots reels les plus actifs : 1296:2560 · 1288:2172 · 1284:2062 · 1298:2033 · 1286:1854 · 1292:1769
+    ti47_annonces_test.go:69: CHAINAGE — un record correctement dimensionne finit la ou le suivant commence.
+    ti47_annonces_test.go:69:   i2 personal-ai · cible TOUS slots            51 records · plancher median 0.00 % · sommets : d=34 : 33.3 % (0.0x) · d=150 : 17.6 % (0.0x) · d=166 : 13.7 % (0.0x) · d=140 : 13.7 % (0.0x) · d=2 : 11.8 % (0.0x)
+    ti47_annonces_test.go:69:   i2 personal-ai · cible BANDE ti=47           51 records · plancher median 0.00 % · sommets : d=140 : 13.7 % (0.0x) · d=171 : 7.8 % (0.0x) · d=105 : 5.9 % (0.0x) · d=136 : 3.9 % (0.0x) · d=24 : 2.0 % (0.0x)
+    ti47_annonces_test.go:69:   i2 personal-ai · FANTOME                    137 records · plancher median 0.00 % · sommets : d=168 : 80.0 % (0.0x) · d=130 : 27.2 % (0.0x) · d=132 : 16.2 % (0.0x) · d=55 : 1.5 % (0.0x) · d=3 : 1.5 % (0.0x)
+    ti47_annonces_test.go:69:   i1 dynamic R(24) · cible TOUS             13269 records · plancher median 0.16 % · sommets : d=24 : 93.8 % (592.4x) · d=75 : 81.4 % (514.0x) · d=126 : 68.9 % (435.4x) · d=177 : 56.5 % (356.5x) · d=188 : 7.9 % (50.0x)
+    ti47_annonces_test.go:69:   i1 dynamic R(24) · cible BANDE            13269 records · plancher median 0.00 % · sommets : d=24 : 87.4 % (0.0x) · d=75 : 74.9 % (0.0x) · d=126 : 62.4 % (0.0x) · d=177 : 49.9 % (0.0x) · d=169 : 0.0 % (0.0x)
+    ti47_annonces_test.go:69:   i0 static · cible TOUS                       70 records · plancher median 0.00 % · sommets : d=28 : 64.3 % (0.0x) · d=13 : 55.7 % (0.0x) · d=64 : 14.3 % (0.0x) · d=191 : 12.1 % (0.0x) · d=160 : 12.1 % (0.0x)
+    ti47_annonces_test.go:70: DISTANCES entre debuts de records consecutifs de la bande (en-tete+index = 27 bits ; largeur = distance − 27) :
+    ti47_annonces_test.go:70:   apres un singleton {i0 managed-object-networked-splash-message-static-component} : 2 distances (+6 hors plafond) · 182 bits (W=155) : 50.0 % · 213 bits (W=186) : 50.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i10=1 (HORS GRAMMAIRE) · i8=1 (HORS GRAMMAIRE)
+    ti47_annonces_test.go:70:   apres un singleton {i1 managed-object-networked-splash-message-dynamic-component} : 11609 distances (+4 hors plafond) · 51 bits (W=24) : 99.8 % · 102 bits (W=75) : 0.0 % · 43 bits (W=16) : 0.0 % · 190 bits (W=163) : 0.0 % · 138 bits (W=111) : 0.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i1=11596 (managed-object-networked-splash-message-dynamic-component) · i43=5 (HORS GRAMMAIRE) · masque multiple=3 · i47=2 (HORS GRAMMAIRE)
+    ti47_annonces_test.go:70:   apres un singleton {i2 personal-ai-data-component} : 36 distances (+0 hors plafond) · 167 bits (W=140) : 19.4 % · 351 bits (W=324) : 13.9 % · 198 bits (W=171) : 11.1 % · 132 bits (W=105) : 8.3 % · 163 bits (W=136) : 5.6 %
+    ti47_annonces_test.go:70:       masque du record suivant : i8=8 (HORS GRAMMAIRE) · i50=8 (HORS GRAMMAIRE) · i26=7 (HORS GRAMMAIRE) · i10=4 (HORS GRAMMAIRE)
+    ti47_annonces_test.go:70:   apres un singleton {i3 } : 1 distances (+0 hors plafond) · 173 bits (W=146) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : masque multiple=1
+    ti47_annonces_test.go:70:   apres un singleton {i4 } : 11 distances (+7 hors plafond) · 60 bits (W=33) : 36.4 % · 359 bits (W=332) : 18.2 % · 373 bits (W=346) : 18.2 % · 137 bits (W=110) : 9.1 % · 269 bits (W=242) : 9.1 %
+    ti47_annonces_test.go:70:       masque du record suivant : i1=6 (managed-object-networked-splash-message-dynamic-component) · masque multiple=2 · i6=2 (HORS GRAMMAIRE) · i4=1 (HORS GRAMMAIRE)
+    ti47_annonces_test.go:70:   apres un singleton {i6 } : 31 distances (+19 hors plafond) · 147 bits (W=120) : 9.7 % · 458 bits (W=431) : 9.7 % · 359 bits (W=332) : 6.5 % · 427 bits (W=400) : 6.5 % · 396 bits (W=369) : 6.5 %
+    ti47_annonces_test.go:70:       masque du record suivant : i6=8 (HORS GRAMMAIRE) · i4=8 (HORS GRAMMAIRE) · i8=6 (HORS GRAMMAIRE) · masque multiple=2
+    ti47_annonces_test.go:70:   apres un singleton {i8 } : 72 distances (+29 hors plafond) · 462 bits (W=435) : 18.1 % · 493 bits (W=466) : 12.5 % · 425 bits (W=398) : 11.1 % · 431 bits (W=404) : 6.9 % · 394 bits (W=367) : 6.9 %
+    ti47_annonces_test.go:70:       masque du record suivant : i6=26 (HORS GRAMMAIRE) · i8=25 (HORS GRAMMAIRE) · i4=15 (HORS GRAMMAIRE) · masque multiple=1
+    ti47_annonces_test.go:70:   apres un singleton {i10 } : 36 distances (+20 hors plafond) · 493 bits (W=466) : 25.0 % · 361 bits (W=334) : 8.3 % · 425 bits (W=398) : 5.6 % · 509 bits (W=482) : 5.6 % · 491 bits (W=464) : 5.6 %
+    ti47_annonces_test.go:70:       masque du record suivant : i8=13 (HORS GRAMMAIRE) · i6=11 (HORS GRAMMAIRE) · i4=7 (HORS GRAMMAIRE) · i18=2 (HORS GRAMMAIRE)
+    ti47_annonces_test.go:70:   apres un singleton {i12 } : 1 distances (+5 hors plafond) · 509 bits (W=482) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i8=1 (HORS GRAMMAIRE)
+    ti47_annonces_test.go:70:   apres un singleton {i13 } : 1 distances (+0 hors plafond) · 162 bits (W=135) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i37=1 (HORS GRAMMAIRE)
+    ti47_annonces_test.go:70:   apres un singleton {i14 } : 1 distances (+0 hors plafond) · 512 bits (W=485) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i6=1 (HORS GRAMMAIRE)
+    ti47_annonces_test.go:70:   apres un singleton {i19 } : 1 distances (+0 hors plafond) · 447 bits (W=420) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i3=1 (HORS GRAMMAIRE)
+    ti47_annonces_test.go:70:   apres un singleton {i26 } : 6 distances (+0 hors plafond) · 95 bits (W=68) : 16.7 % · 130 bits (W=103) : 16.7 % · 132 bits (W=105) : 16.7 % · 163 bits (W=136) : 16.7 % · 198 bits (W=171) : 16.7 %
+    ti47_annonces_test.go:70:       masque du record suivant : i42=3 (HORS GRAMMAIRE) · i34=2 (HORS GRAMMAIRE) · i50=1 (HORS GRAMMAIRE)
+    ti47_annonces_test.go:70:   apres un singleton {i31 } : 1 distances (+0 hors plafond) · 167 bits (W=140) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i1=1 (managed-object-networked-splash-message-dynamic-component)
+    ti47_annonces_test.go:70:   apres un singleton {i34 } : 1 distances (+0 hors plafond) · 163 bits (W=136) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i42=1 (HORS GRAMMAIRE)
+    ti47_annonces_test.go:70:   apres un singleton {i35 } : 2 distances (+0 hors plafond) · 162 bits (W=135) : 50.0 % · 334 bits (W=307) : 50.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i1=1 (managed-object-networked-splash-message-dynamic-component) · masque multiple=1
+    ti47_annonces_test.go:70:   apres un singleton {i39 } : 1 distances (+0 hors plafond) · 167 bits (W=140) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i1=1 (managed-object-networked-splash-message-dynamic-component)
+    ti47_annonces_test.go:70:   apres un singleton {i42 } : 4 distances (+0 hors plafond) · 132 bits (W=105) : 50.0 % · 163 bits (W=136) : 25.0 % · 167 bits (W=140) : 25.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i50=4 (HORS GRAMMAIRE)
+    ti47_annonces_test.go:70:   apres un singleton {i43 } : 1 distances (+0 hors plafond) · 355 bits (W=328) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : masque multiple=1
+    ti47_annonces_test.go:70:   apres un singleton {i44 } : 2 distances (+0 hors plafond) · 241 bits (W=214) : 50.0 % · 333 bits (W=306) : 50.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i47=1 (HORS GRAMMAIRE) · i1=1 (managed-object-networked-splash-message-dynamic-component)
+    ti47_annonces_test.go:70:   apres un singleton {i48 } : 1 distances (+0 hors plafond) · 482 bits (W=455) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i1=1 (managed-object-networked-splash-message-dynamic-component)
+    ti47_annonces_test.go:70:   apres un singleton {i50 } : 12 distances (+0 hors plafond) · 132 bits (W=105) : 50.0 % · 163 bits (W=136) : 25.0 % · 95 bits (W=68) : 8.3 % · 167 bits (W=140) : 8.3 % · 205 bits (W=178) : 8.3 %
+    ti47_annonces_test.go:70:       masque du record suivant : i58=9 (HORS GRAMMAIRE) · masque multiple=2 · i8=1 (HORS GRAMMAIRE)
+    ti47_annonces_test.go:70:   apres un singleton {i58 } : 10 distances (+0 hors plafond) · 132 bits (W=105) : 70.0 % · 95 bits (W=68) : 30.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : masque multiple=10
+    ti47_annonces_test.go:70:   apres un singleton {i63 } : 1 distances (+0 hors plafond) · 167 bits (W=140) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i1=1 (managed-object-networked-splash-message-dynamic-component)
+    ti47_annonces_test.go:72:   TSV : C:\Users\Guillaume\Downloads\Scripts\LevelUp-wt-ti47\.ai\V7.5\replay2d\registre_film\lotF2\64e8adfa_ti47_chainage.tsv
+    ti47_annonces_test.go:78: VALEURS (largeur 45 bits · champ analyse [20:45[, soit 25 bits) : 51 records annoncent i2 · 0 refuses (payload trop court) · 51 emissions retenues · 50 valeurs distinctes
+    ti47_annonces_test.go:78:    11192371           2   3.92 %
+    ti47_annonces_test.go:78:    75278              1   1.96 %
+    ti47_annonces_test.go:78:    193570             1   1.96 %
+    ti47_annonces_test.go:78:    706614             1   1.96 %
+    ti47_annonces_test.go:78:    1737793            1   1.96 %
+    ti47_annonces_test.go:78:    2786369            1   1.96 %
+    ti47_annonces_test.go:78:    3015745            1   1.96 %
+    ti47_annonces_test.go:78:    3310657            1   1.96 %
+    ti47_annonces_test.go:78:    3540033            1   1.96 %
+    ti47_annonces_test.go:78:    3834945            1   1.96 %
+    ti47_annonces_test.go:78:    3867723            1   1.96 %
+    ti47_annonces_test.go:78:    4064321            1   1.96 %
+    ti47_annonces_test.go:78:    4588609            1   1.96 %
+    ti47_annonces_test.go:78:    4883521            1   1.96 %
+    ti47_annonces_test.go:78:    5178433            1   1.96 %
+    ti47_annonces_test.go:78:    5637185            1   1.96 %
+    ti47_annonces_test.go:78:    les 16 premieres valeurs couvrent 33.33 % des emissions
+    ti47_annonces_test.go:78:    profil des bits (position 0 = premier bit apres le masque ; '.' = toujours 0, '#' = toujours 1, chiffre = dizaine de la part a 1) :
+    ti47_annonces_test.go:78:       045330000313210502140616532932211472226342325
+    ti47_annonces_test.go:78:       constants : ---------------------------------------------  (0 bits sur 45 ne varient JAMAIS)
+    ti47_annonces_test.go:78:    echelle (valeur / 2^25) : [0.0-0.1[ 13.7 % · [0.1-0.2[ 19.6 % · [0.2-0.3[ 23.5 % · [0.3-0.4[ 41.2 % · [0.9-1.0[ 2.0 % · au plafond (>= 0,999) : 0.0 %
+    ti47_annonces_test.go:78:    structure : 42.0 % de transitions croissantes · correlation valeur/instant r = 0.274 · 50 valeurs distinctes pour 51 emissions
+    ti47_annonces_test.go:78:    -> ENUMERATION : moins de 64 valeurs distinctes.
+    ti47_annonces_test.go:78: PAR SLOT (rythme et variation ; un slot = une entite de l'archetype) :
+    ti47_annonces_test.go:78:    slot 1288      29 emissions ·    28 valeurs distinctes · ecart median 4271 ms (p90  4272) · |variation| mediane 3046357 (p99 11506014) · plage [193570..11784032] · derive -476700
+    ti47_annonces_test.go:78:    slot 1296      15 emissions ·    15 valeurs distinctes · ecart median  268 ms (p90  5606) · |variation| mediane 524288 (p99 3964928) · plage [1737793..7734337] · derive -2555904
+    ti47_annonces_test.go:78:    slot 1292       3 emissions ·     3 valeurs distinctes · ecart median 396952 ms (p90 396952) · |variation| mediane 22536514 (p99 22536514) · plage [75278..33379497] · derive 33304219
+    ti47_annonces_test.go:78:    slot 1294       2 emissions ·     2 valeurs distinctes · ecart median 84711 ms (p90 84711) · |variation| mediane 3920901 (p99 3920901) · plage [7483393..11404294] · derive -3920901
+    ti47_annonces_test.go:78:    slot 1290       1 emissions ·     1 valeurs distinctes · ecart median   -1 ms (p90    -1) · |variation| mediane 0 (p99 0) · plage [9779294..9779294] · derive 0
+    ti47_annonces_test.go:78:    slot 1298       1 emissions ·     1 valeurs distinctes · ecart median   -1 ms (p90    -1) · |variation| mediane 0 (p99 0) · plage [3867723..3867723] · derive 0
+    ti47_annonces_test.go:79: ORACLE : artefact schema 18 · 8337 frames de 100 ms · originMs 10516 · 0 zones
+    ti47_annonces_test.go:79: ORACLES derives de zoneStates : 0 evenements · 
+    ti47_annonces_test.go:79:   -> aucun evenement de zone sur ce film : rien a confronter.
+--- PASS: TestTI47Annonces (9.48s)
+PASS
+ok  	levelup/go-api/internal/analysis/filmdec	9.883s
+EXIT_64e8adfa=0
+########## FILM 000d5950 ##########
+=== RUN   TestTI47Annonces
+    ti47_annonces_test.go:45: FILM 000d5950 · registre : 118 archetypes · empreinte 61e492dd4de7fd4e
+    ti47_annonces_test.go:51: COUT — recensement des images-cle : 3.212s · 900 slots vus tous archetypes confondus
+    ti47_annonces_test.go:58: ARCHETYPE ti=47 · 3 composants · i2 = personal-ai-data-component
+    ti47_annonces_test.go:58:    + i0  managed-object-networked-splash-message-static-component
+    ti47_annonces_test.go:58:    + i1  managed-object-networked-splash-message-dynamic-component
+    ti47_annonces_test.go:58:    * i2  personal-ai-data-component
+    ti47_annonces_test.go:58: BANDE : 8 slots vus en image-cle pour ti=47 · fantome 8 slots (jamais vus le porter)
+    ti47_annonces_test.go:65: COUT — passe delta : 1.028s · 27 chunks · 30418 paquets delta
+    ti47_annonces_test.go:68: RECORDS DELTA (denominateur : 30418 paquets) : reel 2420 · fantome 670 · rapport 3.61x
+    ti47_annonces_test.go:68:    hors grammaire : reel 2063 (85.25 %) · fantome 654 (97.61 %)
+    ti47_annonces_test.go:68:    i2 annonce dans 28 records (1.16 %) · fantome 14 (2.09 %)
+    ti47_annonces_test.go:68:    indices les plus annonces (reel) : i1=455 (managed-object-networked-splash-message-dynamic-component) · i8=247 (HORS GRAMMAIRE) · i63=240 (HORS GRAMMAIRE) · i22=198 (HORS GRAMMAIRE) · i6=187 (HORS GRAMMAIRE) · i20=129 (HORS GRAMMAIRE)
+    ti47_annonces_test.go:68:    masques SINGLETON (reel) : i1=325 (managed-object-networked-splash-message-dynamic-component) · i0=23 (managed-object-networked-splash-message-static-component) · i2=9 (personal-ai-data-component)
+    ti47_annonces_test.go:68:    vies : 32 paires (slot,gen) vues · 32 CONFIRMEES (>= 3 records) · fantome 32/32
+    ti47_annonces_test.go:68:    slots reels les plus actifs : 1298:594 · 1304:488 · 1308:336 · 1306:264 · 1310:257 · 1312:221
+    ti47_annonces_test.go:69: CHAINAGE — un record correctement dimensionne finit la ou le suivant commence.
+    ti47_annonces_test.go:69:   i2 personal-ai · cible TOUS slots             9 records · plancher median 0.00 % · sommets : d=161 : 50.0 % (0.0x) · d=173 : 25.0 % (0.0x) · d=192 : 25.0 % (0.0x) · d=104 : 22.2 % (0.0x) · d=110 : 22.2 % (0.0x)
+    ti47_annonces_test.go:69:   i2 personal-ai · cible BANDE ti=47            9 records · plancher median 0.00 % · sommets : d=1 : 0.0 % (0.0x) · d=2 : 0.0 % (0.0x) · d=3 : 0.0 % (0.0x) · d=4 : 0.0 % (0.0x) · d=5 : 0.0 % (0.0x)
+    ti47_annonces_test.go:69:   i2 personal-ai · FANTOME                      4 records · plancher median 0.00 % · sommets : d=180 : 33.3 % (0.0x) · d=192 : 33.3 % (0.0x) · d=22 : 25.0 % (0.0x) · d=33 : 25.0 % (0.0x) · d=34 : 25.0 % (0.0x)
+    ti47_annonces_test.go:69:   i1 dynamic R(24) · cible TOUS               325 records · plancher median 0.31 % · sommets : d=24 : 92.9 % (302.0x) · d=75 : 80.9 % (263.0x) · d=126 : 68.9 % (224.0x) · d=177 : 57.5 % (187.0x) · d=44 : 6.5 % (21.0x)
+    ti47_annonces_test.go:69:   i1 dynamic R(24) · cible BANDE              325 records · plancher median 0.00 % · sommets : d=24 : 84.0 % (0.0x) · d=75 : 72.0 % (0.0x) · d=126 : 60.0 % (0.0x) · d=177 : 48.0 % (0.0x) · d=1 : 0.0 % (0.0x)
+    ti47_annonces_test.go:69:   i0 static · cible TOUS                       23 records · plancher median 0.00 % · sommets : d=40 : 21.7 % (0.0x) · d=11 : 17.4 % (0.0x) · d=70 : 8.7 % (0.0x) · d=38 : 8.7 % (0.0x) · d=3 : 8.7 % (0.0x)
+    ti47_annonces_test.go:70: DISTANCES entre debuts de records consecutifs de la bande (en-tete+index = 27 bits ; largeur = distance − 27) :
+    ti47_annonces_test.go:70:   apres un singleton {i1 managed-object-networked-splash-message-dynamic-component} : 273 distances (+1 hors plafond) · 51 bits (W=24) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i1=273 (managed-object-networked-splash-message-dynamic-component)
+    ti47_annonces_test.go:70:   apres un singleton {i4 } : 3 distances (+1 hors plafond) · 162 bits (W=135) : 33.3 % · 275 bits (W=248) : 33.3 % · 344 bits (W=317) : 33.3 %
+    ti47_annonces_test.go:70:       masque du record suivant : i53=2 (HORS GRAMMAIRE) · i8=1 (HORS GRAMMAIRE)
+    ti47_annonces_test.go:70:   apres un singleton {i6 } : 13 distances (+5 hors plafond) · 381 bits (W=354) : 15.4 % · 94 bits (W=67) : 7.7 % · 290 bits (W=263) : 7.7 % · 312 bits (W=285) : 7.7 % · 353 bits (W=326) : 7.7 %
+    ti47_annonces_test.go:70:       masque du record suivant : i8=5 (HORS GRAMMAIRE) · i53=4 (HORS GRAMMAIRE) · i6=1 (HORS GRAMMAIRE) · masque multiple=1
+    ti47_annonces_test.go:70:   apres un singleton {i8 } : 14 distances (+17 hors plafond) · 474 bits (W=447) : 28.6 % · 375 bits (W=348) : 21.4 % · 406 bits (W=379) : 21.4 % · 443 bits (W=416) : 14.3 % · 338 bits (W=311) : 7.1 %
+    ti47_annonces_test.go:70:       masque du record suivant : i8=5 (HORS GRAMMAIRE) · i6=5 (HORS GRAMMAIRE) · i10=2 (HORS GRAMMAIRE) · i4=2 (HORS GRAMMAIRE)
+    ti47_annonces_test.go:70:   apres un singleton {i10 } : 1 distances (+1 hors plafond) · 400 bits (W=373) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i8=1 (HORS GRAMMAIRE)
+    ti47_annonces_test.go:70:   apres un singleton {i11 } : 1 distances (+0 hors plafond) · 216 bits (W=189) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i8=1 (HORS GRAMMAIRE)
+    ti47_annonces_test.go:70:   apres un singleton {i17 } : 1 distances (+0 hors plafond) · 314 bits (W=287) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i5=1 (HORS GRAMMAIRE)
+    ti47_annonces_test.go:70:   apres un singleton {i21 } : 1 distances (+1 hors plafond) · 299 bits (W=272) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i6=1 (HORS GRAMMAIRE)
+    ti47_annonces_test.go:70:   apres un singleton {i32 } : 5 distances (+0 hors plafond) · 415 bits (W=388) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : masque multiple=5
+    ti47_annonces_test.go:70:   apres un singleton {i49 } : 3 distances (+0 hors plafond) · 83 bits (W=56) : 33.3 % · 214 bits (W=187) : 33.3 % · 265 bits (W=238) : 33.3 %
+    ti47_annonces_test.go:70:       masque du record suivant : i20=2 (HORS GRAMMAIRE) · i1=1 (managed-object-networked-splash-message-dynamic-component)
+    ti47_annonces_test.go:70:   apres un singleton {i52 } : 3 distances (+0 hors plafond) · 31 bits (W=4) : 66.7 % · 214 bits (W=187) : 33.3 %
+    ti47_annonces_test.go:70:       masque du record suivant : masque multiple=1 · i57=1 (HORS GRAMMAIRE) · i49=1 (HORS GRAMMAIRE)
+    ti47_annonces_test.go:70:   apres un singleton {i53 } : 1 distances (+2 hors plafond) · 60 bits (W=33) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : i45=1 (HORS GRAMMAIRE)
+    ti47_annonces_test.go:70:   apres un singleton {i57 } : 1 distances (+1 hors plafond) · 151 bits (W=124) : 100.0 %
+    ti47_annonces_test.go:70:       masque du record suivant : masque multiple=1
+    ti47_annonces_test.go:72:   TSV : C:\Users\Guillaume\Downloads\Scripts\LevelUp-wt-ti47\.ai\V7.5\replay2d\registre_film\lotF2\000d5950_ti47_chainage.tsv
+    ti47_annonces_test.go:78: VALEURS (largeur 45 bits · champ analyse [20:45[, soit 25 bits) : 9 records annoncent i2 · 0 refuses (payload trop court) · 9 emissions retenues · 9 valeurs distinctes
+    ti47_annonces_test.go:78:    790573             1  11.11 %
+    ti47_annonces_test.go:78:    2752068            1  11.11 %
+    ti47_annonces_test.go:78:    9012297            1  11.11 %
+    ti47_annonces_test.go:78:    9143369            1  11.11 %
+    ti47_annonces_test.go:78:    9178185            1  11.11 %
+    ti47_annonces_test.go:78:    9536585            1  11.11 %
+    ti47_annonces_test.go:78:    9667657            1  11.11 %
+    ti47_annonces_test.go:78:    9702473            1  11.11 %
+    ti47_annonces_test.go:78:    30982373           1  11.11 %
+    ti47_annonces_test.go:78:    les 16 premieres valeurs couvrent 100.00 % des emissions
+    ti47_annonces_test.go:78:    profil des bits (position 0 = premier bit apres le masque ; '.' = toujours 0, '#' = toujours 1, chiffre = dizaine de la part a 1) :
+    ti47_annonces_test.go:78:       .1716.2223.66.2222111711463256212371.182.73.8
+    ti47_annonces_test.go:78:       constants : 0----0----0--0----------------------0---0--0-  (7 bits sur 45 ne varient JAMAIS)
+    ti47_annonces_test.go:78:    echelle (valeur / 2^25) : [0.0-0.1[ 22.2 % · [0.2-0.3[ 66.7 % · [0.9-1.0[ 11.1 % · au plafond (>= 0,999) : 0.0 %
+    ti47_annonces_test.go:78:    structure : 37.5 % de transitions croissantes · correlation valeur/instant r = -0.598 · 9 valeurs distinctes pour 9 emissions
+    ti47_annonces_test.go:78:    -> ENUMERATION : moins de 64 valeurs distinctes.
+    ti47_annonces_test.go:78: PAR SLOT (rythme et variation ; un slot = une entite de l'archetype) :
+    ti47_annonces_test.go:78:    slot 1298       6 emissions ·     6 valeurs distinctes · ecart median  267 ms (p90   268) · |variation| mediane 524288 (p99 655360) · plage [9012297..9702473] · derive -358400
+    ti47_annonces_test.go:78:    slot 1302       1 emissions ·     1 valeurs distinctes · ecart median   -1 ms (p90    -1) · |variation| mediane 0 (p99 0) · plage [790573..790573] · derive 0
+    ti47_annonces_test.go:78:    slot 1304       1 emissions ·     1 valeurs distinctes · ecart median   -1 ms (p90    -1) · |variation| mediane 0 (p99 0) · plage [30982373..30982373] · derive 0
+    ti47_annonces_test.go:78:    slot 1312       1 emissions ·     1 valeurs distinctes · ecart median   -1 ms (p90    -1) · |variation| mediane 0 (p99 0) · plage [2752068..2752068] · derive 0
+    ti47_annonces_test.go:79: ORACLE : artefact schema 18 · 4985 frames de 100 ms · originMs 3604 · 0 zones
+    ti47_annonces_test.go:79: ORACLES derives de zoneStates : 0 evenements · 
+    ti47_annonces_test.go:79:   -> aucun evenement de zone sur ce film : rien a confronter.
+--- PASS: TestTI47Annonces (4.26s)
+PASS
+ok  	levelup/go-api/internal/analysis/filmdec	4.655s
+EXIT_000d5950=0

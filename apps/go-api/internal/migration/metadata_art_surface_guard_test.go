@@ -44,6 +44,17 @@ var noSecondaryIndexTables = []string{
 	"battlepass_track_definitions",
 	"battlepass_item_definitions",
 	"engagement_coefficients", // PK (xuid,mode_category) ; idx_xuid redondant retiré (surface ART)
+	// personal_score_awards (2026-09-20) — SEUL membre de la liste qui n'est PAS muté
+	// (append-only INSERT-only, ADR 0026) : il y entre pour une raison MESURÉE, pas
+	// doctrinale. La sonde data-health trouvait ses index DÉSYNCHRONISÉS à chaque boot et
+	// la réparation manuelle du 2026-09-20 (3 joueurs) a montré que les clés en écart
+	// étaient des match_id du mois courant : le défaut #23645 se reforme sur les
+	// insertions COURANTES, un INSERT pur suffit. Aucun lecteur n'y perd — tous passent
+	// par personal_score_awards_latest, dont la fonction de fenêtre impose un Sequential
+	// Scan (mesuré sur 5 000 lignes : 0,800 ms avec index, 0,841 ms sans, même plan).
+	// Cinq index retirés en tout : idx_psa_xuid et idx_psa_match_xuid (2026-08-05),
+	// idx_psa_match, idx_psa_category et idx_psa_gen (2026-09-20).
+	"personal_score_awards",
 }
 
 // Règle 2 — colonnes mutées par un UPDATE qui ne doivent jamais être indexées.
@@ -58,7 +69,7 @@ var forbiddenIndexedColumns = map[string][]string{
 	"preset_arc":           {"title_slug"},                           // PrestigePresetArcRepo.Replace
 	"citation_mappings":    {"medal_id", "mapping_type"},             // SeedCitationMappings UPDATE
 	"media_files":          {"kind", "file_path"},                    // insertMediaFile mute kind + file_path (conversion/HLS/reconcile)
-	// player_match_enrichment (append-only #23046) : les 3 ex-index ART sur colonnes
+	// player_match_enrichment (append-only #23645) : les 3 ex-index ART sur colonnes
 	// taggées par stage ne doivent JAMAIS revenir. Seul idx_pme_match_lookup(match_id,
 	// written_at) est toléré (d'où PAS de noSecondaryIndexTables ici).
 	"player_match_enrichment": {"session_id", "mode_category", "engagement_score_brut"},
@@ -110,7 +121,7 @@ func TestNoARTSurfaceIndexInMigrations(t *testing.T) {
 	// (internal/games/{slug}/migrations) : depuis la relocation voie B (ADR 0025), les
 	// créateurs de tables metadata/shared vivent côté titre. Sans cette extension, un
 	// CREATE INDEX ART réintroduit dans games/.../steps.go échapperait au garde (le bug
-	// de classe #23046 reviendrait sans rien déclencher).
+	// de classe #23645 reviendrait sans rien déclencher).
 	roots := []string{dir, filepath.Join(internalDir, "games")}
 
 	var violations []string
@@ -168,7 +179,7 @@ func TestNoARTSurfaceIndexInMigrations(t *testing.T) {
 // reMediaFilesUnique détecte une contrainte UNIQUE sur media_files.file_path, sous ses
 // deux formes : colonne inline (`file_path VARCHAR ... UNIQUE`) et contrainte de table
 // (`UNIQUE(file_path)`). file_path est MUTÉE par 3 UPDATE (conversion/HLS/reconcile) →
-// un index ART UNIQUE dessus = bug #23046 (FATAL, blast MAX shared_social). La dédup
+// un index ART UNIQUE dessus = bug #23645 (FATAL, blast MAX shared_social). La dédup
 // passe en applicatif (insertMediaFile SELECT-then-INSERT).
 var (
 	reMediaFilesUniqueInline = regexp.MustCompile(`(?is)\bfile_path\b[^,\n;]*\bVARCHAR\b[^,\n;]*\bUNIQUE\b`)
@@ -213,7 +224,7 @@ func TestNoMediaFilesFilePathUnique(t *testing.T) {
 	}
 	if len(violations) > 0 {
 		t.Errorf("RÉGRESSION ART : UNIQUE(file_path) réintroduit sur media_files (colonne mutée → "+
-			"bug DuckDB #23046, FATAL invalidated, blast MAX). Retirer la contrainte ; la dédup file_path "+
+			"bug DuckDB #23645, FATAL invalidated, blast MAX). Retirer la contrainte ; la dédup file_path "+
 			"est applicative (insertMediaFile/persistMediaFiles SELECT-then-INSERT) :\n  - %s",
 			strings.Join(violations, "\n  - "))
 	}

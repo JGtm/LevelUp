@@ -1,0 +1,439 @@
+# Plan — Restes du chantier v2 rejeu/film (après gel du 2026-09-07)
+
+> Périmètre : les faits laissés au registre à la clôture du chantier v2 (`.ai/V7.5/v2/PLAN_V2_REJEU_FILM_2026-09-05.md`,
+> handoffs `.ai/V7.5/v2/HANDOFF_V2_REJEU_FILM_2026-09-06.md` et `_2026-09-07.md`). Ce plan s'exécute sous le contrat du
+> skill `plan-execution` (ordre strict, aucun report d'une action exécutable, chaque item statué `[x]`/`[~]`/`[!]`,
+> zéro fix hors périmètre : toute découverte va en « Découvertes », pas dans le diff).
+> Base de départ : `feat/v75` une fois `feat/v2-integ` intégré (schéma 48). Vérifier avec `git log --oneline -3`
+> que la chronique de `internal/analysis/replay/document.go` porte bien 44/45/46/47/48 avant de commencer.
+> Branche : `feat/v2-restes` (préfixe `feat/` obligatoire : la CI ne se déclenche pas sur `wt/`). Worktree dédié
+> `LevelUp-wt-v2-restes` (le principal est partagé : jamais `git add -A`, jamais `git stash`).
+
+## 0. Doctrine (décisions user, fermes, non rediscutables)
+
+1. Une vie est un humain ou un bot. Une piste sans xuid est un DÉFAUT DE NOMMAGE à réparer à la source
+   (`analysis/replay` lives/identity/replaybuild), jamais un état « inconnu » affiché ni dessiné.
+2. Une lecture vraie du film n'est JAMAIS jetée ni rognée parce qu'un nom manque ; une identité déduite AJOUTE une
+   présence, jamais n'en retire une, et n'est jamais lue comme une mort. Rien n'est inventé : ce qui ne se résout
+   pas est publié « non résolu » et COMPTÉ dans la couverture (compteur servi jusqu'au contrat), avec `slog.Warn`.
+3. CTF à deux drapeaux : un joueur ne porte jamais son propre drapeau ; captures = score ; une capture est un fait
+   daté qui tranche sur tout recouvrement. CTF neutre : un seul drapeau, l'étiquette d'équipe n'est pas un propriétaire.
+4. Fin de manche = replacement de tous les joueurs au point de départ SANS mort (vies terminées sans mort sur tous
+   les slots). Hypothèse user à vérifier en R3 : les objets d'objectif (drapeaux, crânes, bombes) sont eux aussi
+   replacés à la frontière de manche sans événement de lâcher/retour daté.
+5. Tout changement du contenu cuit bumpe `SchemaVersion` (un seul bump par branche : 49 pour ce plan).
+6. Le décodeur (`filmdec`, `himap`) ne bouge pas avant v7.5.0 : un défaut du décodeur = diagnostic + registre.
+7. L'INDEX EST L'INDEX (user, 07/09) : partout où le film porte un identifiant direct (index de joueur du pied de film
+   et de `PlayerIndexTable` ↔ xuid, `bid(N.0)` pour les bots, et tout lien direct index ↔ slot de statborg ou de
+   bipède que le film contient), il est utilisé à 100 %, jamais remplacé par une déduction. Le pont par morts n'est
+   qu'un REPLI pour les liens que le film ne donne pas directement (aujourd'hui : slot de bipède ↔ index, faute de
+   champ d'identité dans `BipedPosition`), et une VÉRIFICATION des liens directs. UNE table d'identité par film,
+   **calculée par une FONCTION PURE de `internal/analysis/replay`**, appelée **par `replaybuild` ET par le
+   collecteur de sync** — parce que les données d'un match sont complètes au sync, seul le rejeu attend la
+   cuisson —, publiée dans l'artefact (section `identity` : index ↔ xuid, slot de statborg ↔ index, slot de
+   bipède ↔ index dans le temps, avec la source et la couverture de chaque lien) ; tous les calques et tous les
+   lecteurs hors rejeu la consomment ; aucun calque ni aucun collecteur ne reconstruit son propre pont
+   (garde-rail : allowlist datée des seuls producteurs).
+   *(Amendement porté le 2026-09-08 au premier commit de P2, décision D11 du plan d'orchestration §5, rédigé mot
+   pour mot au §2 (j) de `.ai/V7.5/v2/RESTES_P1_INVENTAIRE_2026-09-07.md`.)*
+
+## 1. Méthode commune à tous les lots
+
+- Rouvrir chaque `fichier:ligne` cité AVANT de coder (le code a bougé) ; skill `go-features` avant tout algo neuf.
+- Cuisson : `cmd/replay-build` (exécuteur borné 3 Gio), UN film à la fois, racine de travail dans le scratchpad à
+  JONCTIONS vers `data/cache/film_chunks` et `data/titles` du principal, créées par
+  `cmd //c mklink //J "$(cygpath -w LIEN)" "$(cygpath -w CIBLE)"` — JAMAIS `ln -s` (copie 29 Go sous MSYS) ;
+  retirer les jonctions par `cmd //c rmdir` avant tout `rm -rf`. Faits `facts/<short8>.facts.json` transmis
+  (technique : `.ai/V7.5/v2/BALAYAGE_PARC_2026-09-06.md`). Jamais d'écriture sous le `data/` du principal.
+- Comparaison : `cmd/replay-diff` (axe des durées inclus) élément par élément ; toute ligne « perte » est instruite
+  une par une (compteur d'échec qui baisse = gain ; durée qui baisse = à expliquer par une prise datée ou une borne
+  vraie, sinon P0). Gate de non-régression : `make replay-corpus-gate` (mode base par défaut : compare la cuisson
+  du HEAD à celle de la révision de base ; exit 1 à la première perte ; `--reference=parc` = balayage informatif).
+- Oracles indépendants, dans l'ordre : feuille de match (`facts` : morts/frags/assistances/score par joueur, score
+  d'équipe = temps de portage en Oddball), calque des actions aux mêmes instants (`flag_grabs`, `flag_captures`),
+  positions des pistes (le drapeau suit le porteur pendant le span).
+- Tests : chaque règle ajoutée a un test qui rougit si on la retire (mutation jouée, sortie collée au journal) ; une
+  défense en profondeur masque la mutation du composant qu'elle protège → tester le composant seul. Ne jamais
+  renommer un test gelé dans `.ai/baselines/tests_pre_migration.jsonl`. `t.Skip` interdit.
+- Gates de clôture d'un lot (tous verts, en série, préfixe `CGO_ENABLED=1`, GOCACHE dédié au worktree) :
+  `go test -count=1 ./...` · `go test -tags=integration -p 1 -count=1 ./internal/api/wire/...` · `go build ./...` ·
+  `CGO_ENABLED=0 go vet ./internal/domain/... ./internal/analysis/...` ·
+  `golangci-lint run --new-from-merge-base=origin/main ./...` (0 issues) · cliquet de parité
+  `internal/service/replayview/parity_test.go` · `make generate-types` +
+  `git diff --exit-code apps/web/src/lib/api/generated.ts` · goldens (`-run GoldenAssembly -update`, écart = version
+  + champs annoncés) · `make replay-corpus-gate` (0 perte). Flakes connus (registre) :
+  `TestStartImport_HappyPathReturns202WithJobID` (handlers, Windows, isolé PASS ; suite `-p 1` verte) et
+  `TestWorker_Run_PersistsAndACKs` (persist, runner chargé).
+- Revue adversariale (skill `adversarial-review`) en fin de CHAQUE lot : contrat en 6 lignes, lentilles L4 (faux,
+  perdu OU INVENTÉ servi = P0) + L6 + L3, un relecteur par worktree, 2 rondes max, corrections par l'exécuteur,
+  ronde 2 sur les corrections seules ; le nombre de P0+P1 doit décroître.
+- Journal : `.ai/V7.5/v2/RESTES_<lot>_<date>.md` par lot (diagnostic chiffré, cause, correctif, mutations, témoins
+  avant/après, découvertes NON traitées) + entrée `.ai/thought_log.md` + registre `.ai/V7.5/REGISTRE_REPORTS.md`
+  mis à jour (fermer l'entrée traitée, ouvrir les découvertes avec condition de reprise). Commit par lot, préfixe
+  `fix(restes/<lot>):`, push, CI de branche par `gh run view` (jamais `gh run watch` long : sature le disque temporaire).
+- Seuils : fichier ≤ 500 L, fonction ≤ 80 L, ≤ 5 paramètres ; `slog` structuré, aucune erreur avalée ; title-agnostic
+  (capabilities `film.replay_artifact`, jamais de slug) ; FR sans anglicisme côté UI, parité FR/EN par typage.
+
+## 2. Lots, dans l'ordre (chaque lot clos — gate + revue + journal — avant le suivant)
+
+### R0 — Dette mécanique (aucun changement de sortie ; 0 bump) — [x] CLOS 2026-09-07 (lot Q6, worktree `LevelUp-wt-q6-r0`, branche `feat/v2-restes-r0`)
+- [x] `internal/analysis/replay/document.go` (1 510 L sur pièces, pas 1 417 — le code a bougé depuis la rédaction du
+      plan) : chronique des schémas (v2..v48) extraite dans `document_chronicle.go` (déplacement pur, `sort | diff`
+      vide) ; `document.go` 553 L, `document_chronicle.go` 959 L. `usage_summary.go` (525 L) : chronique `us2`/`us3`
+      extraite dans `usage_summary_chronicle.go` (déplacement pur, `sort | diff` vide) ; `usage_summary.go` 513 L,
+      `usage_summary_chronicle.go` 14 L. `internal/replaybuild/replaybuild.go` (572 L, 573 L sur pièces) :
+      construction de `replay.Options` extraite dans `options.go` via `buildReplayOptions` (glue de fonction Go
+      incompressible — signature/return/site d'appel — mais chaque ligne de champ bit-à-bit inchangée) ;
+      `replaybuild.go` 545 L, `options.go` 45 L. Effet de bord nécessaire (pas hors périmètre) :
+      `film_stats_cables_guard_test.go` relisait le littéral dans `replaybuild.go` par regex — adapté pour lire
+      `options.go`. `document.go`/`usage_summary.go`/`replaybuild.go` restent > 500 L après cette extraction unique
+      — **statué `[!]`** : le plan ne prescrit qu'une extraction et interdit d'en faire davantage ; consigné au
+      registre (`.ai/V7.5/REGISTRE_REPORTS.md`) pour un lot dédié.
+- [x] `flag_carries_test.go` (575 L) scindé par responsabilité, aucun test renommé : `flag_carries_test.go` (aides
+      partagées, 75 L), `flag_carries_guards_test.go` (5 tests de garde, 117 L), `flag_carries_assignment_test.go`
+      (6 tests de machine à états, 197 L), `flag_carries_anon_lives_test.go` (5 tests vies anonymes/slot partagé,
+      207 L — nommé ainsi et non `flag_carries_identity_test.go` : ce nom existait DÉJÀ au HEAD pour un fichier sans
+      rapport, écrasé par erreur puis restauré depuis `git show HEAD:...` avant tout commit, intercepté par
+      `git status` affichant `M` au lieu de `??`). Déplacement pur reconfirmé après renommage (`sort | diff` vide).
+      `equipment_episodes_test.go:371-372` : bornes réelles vérifiées sur pièces (`StartFrame: 40`/`EndFrame: 60`,
+      union mesurée `[40..260]`) — commentaire faux corrigé `[45..60]`/`[45..250]` → `[40..60]`/`[40..260]`.
+- [x] Gate : goldens INCHANGÉS (`git diff --exit-code` sur `testdata/` des 3 paquets, EXIT=0), `SchemaVersion` = 48
+      inchangé, `gofmt -l` vide, `go build ./...` (module entier) EXIT=0, `go vet` EXIT=0, `go test -count=1` vert
+      sur `internal/analysis/replay/...`, `internal/replaybuild/...`, `internal/service/replayview/...` (parité
+      incluse), `golangci-lint run --new-from-merge-base=origin/main` → 0 issues. Preuve de « déplacement pur » :
+      concaténation triée des lignes avant/après identique — vide pour 1/2/4 ; pour 3, vide hors la glue de
+      fonction Go incompressible (détail : `.ai/thought_log.md` 2026-09-07 « lot Q6 = R0 »).
+
+### P — Changement de paradigme : registre d'identité des entités du film (bump 49 ; englobe R1, R2, R3)
+Décision user (07/09) : le principe « l'index c'est l'index » vaut pour TOUTES les entités du film, pas seulement les
+joueurs : objets d'objectif (drapeaux, crânes, bombes, zones), véhicules, et tous les assets de partie ou de mode
+(armes au sol, équipements, socles). Chaque calque doit consommer un registre unique d'entités identifiées par
+leurs identifiants du film, au lieu de reconstruire des liens par heuristique (socle le plus proche, premier
+occupant d'un slot, recouvrement maximal, seuil de morts). Gros lot, mené en phases closes, chacune avec sa revue.
+Impact décodeur, borné en deux temps : P2 à P5 se font UNIQUEMENT avec ce que le décodeur expose déjà (identifiants
+d'objets, index de joueur, pied de film, `bid`, morts, positions) — aucun changement de `filmdec`/`himap` ; les liens
+qui restent déduits sont publiés comme tels (provenance). Les flux non décodés (`ti=5`, `ManagedPropertyFilmIndex`,
+états de mode, roster, horloge) font l'objet d'un plan DÉCODEUR séparé après v7.5.0 et le déplacement sous
+`games/halo_infinite/film/` : un item par flux, additif (nouveau type d'enregistrement lu, jamais une réécriture),
+mesuré par la part de liens directs dans la provenance, sous les garde-rails existants (corpus `gamefiles`, goldens).
+- [x] P1 — Inventaire (journal, avant tout code) — **RENDU le 2026-09-07 :
+      `.ai/V7.5/v2/RESTES_P1_INVENTAIRE_2026-09-07.md`** (branche `feat/p1-inventaire`, aucun code touché).
+      Neuf entités inventoriées, axes (a) à (j) statués, séquençage P2-P5 posé, questions ouvertes assorties de
+      leur témoin. **VERDICT ROSTER (axe d) : NON — le film ne porte pas les entrées/sorties de joueurs
+      (ti=5 i18/i19 décodés mais sans flux : 163 et 105 lectures sur 22 films) ; S.3 se fera par calage
+      `real_start_time` / `t0_quality`, APRÈS P2.** L'amendement du §0.7 exigé par la décision D11
+      (`.ai/PLAN_ORCHESTRATION_2026-09-07.md` §1.2 condition 2) est rédigé mot pour mot au §2 (j) de
+      l'inventaire : **il se porte ici au premier commit de P2**, pas avant. Énoncé d'origine, conservé :
+      pour chaque entité que le décodeur expose déjà (index de joueur,
+      slot de bipède, objet d'objectif, véhicule, arme au sol, équipement, socle/zone) : son identifiant dans le film,
+      sa durée de vie (création/replacement/destruction, frontières de manche), les liens DIRECTS que le film donne
+      (porteur ↔ objet, occupant ↔ véhicule, objet ↔ équipe propriétaire, objet ↔ socle) et les liens que seul un
+      repli reconstruit aujourd'hui, avec le calque et la ligne de code qui porte chaque repli. Deux colonnes de
+      faisabilité : « disponible dans le décodeur actuel » / « exige du travail décodeur » (après v7.5.0, §0.6).
+      Axes à couvrir explicitement par l'inventaire, au-delà des joueurs et des objets (liens aujourd'hui DÉDUITS
+      alors qu'une source directe peut exister) : (a) le TEMPS — origine de la frise et grille de frames (aujourd'hui
+      dérivées du calage du fil des morts : `resolveOriginMs`, `originResolved`, grille plus courte que les
+      enregistrements) : quelle horloge directe le film porte (états de partie, tampons des enregistrements) ;
+      (b) les MANCHES — bornes aujourd'hui calculées par consensus sur les trains de score (`RoundBounds`) : quel flux
+      d'état de mode donne les frontières directement ; (c) les ÉQUIPES — équipe par index de joueur telle que le film
+      la porte (joueurs entrés en cours, changements d'équipe), la feuille en vérification ; (d) le ROSTER — entrées et
+      sorties de joueurs (index, instant) comme source directe de l'occupation des slots, au lieu des trous de pistes ;
+      (e) les BOTS — identifiant stable `bid(N.0)` porté par le registre et par le document servi, la jointure web se
+      faisant sur l'identifiant et non sur le nom nu (égalité de chaîne) ; (f) les CATALOGUES DE CARTE — socles,
+      spawns, zones référencés par identifiant d'asset (`himap`, Forge) et non par géométrie ; (g) la PROVENANCE —
+      chaque lien du registre porte sa source (`direct` / `catalogue` / `déduit` / `non résolu`) publiée dans
+      l'artefact, pour que l'UI puisse l'afficher et que le gate corpus refuse toute régression d'un lien direct vers
+      un lien déduit ; (h) le MULTI-TITRE — types d'entités canoniques (`internal/games/canonical`) pour qu'un autre
+      titre puisse alimenter le même registre par son adapter.
+- [x] P2 — Registre des joueurs (= R1 + R2) — **CLOS le 2026-09-08** : `.ai/V7.5/v2/RESTES_P2_2026-09-08.md`
+      (branche `feat/v2-p2-registre-joueurs`, worktree `LevelUp-wt-p2`, commits `333c7f3e9` `d9548a5dc`
+      `58da800a1` `871cfaa51`). `BuildIdentityRegistry` : fonction PURE de `internal/analysis/replay`, appelée
+      par `replaybuild` ET par `sync/killcollector` (amendement §0.7 / D11 porté au premier commit). Section
+      `identity` publiée (players / bipedSlots bornés en frames / statborgSlots par manche + couverture par
+      provenance), types canoniques dans `internal/games/canonical/film_identity.go` (enums fermées, aucun slug).
+      Liens DIRECTS à 100 % (`PlayerIndexTable`, `bid(N.0)`), pont par morts en repli ET vérification,
+      élimination sur le roster, rien de jeté. 18 lecteurs migrés + les 2 hors rejeu ; `killpos_bridge.go`
+      supprimé ; garde-rail `archlint/no_identity_bridge_outside_registry_test.go` (allowlist datée, UNE entrée),
+      mutation jouée. Bump 49 → 50 + chronique + cliquet 56 → 57 + goldens (un seul écart : le numéro de schéma).
+      `IsolationDecoderRev` bumpée → `levelup backfill-killsource`. **Témoins chiffrés et gate corpus `[!]` : à
+      jouer par le superviseur** (aucun film dans le worktree) — commandes et chiffres attendus au §7 du journal.
+- [ ] P3 — Registre des objets d'objectif (= R3) : chaque drapeau/crâne/bombe/zone identifié par son objet du film,
+      avec équipe propriétaire et socle tels que le film ou le catalogue les donnent (jamais « le socle le plus
+      proche » quand l'objet est connu), cycle de vie par manche (§0.4 : replacement sans événement daté → fermeture
+      `roundEnd`), une seule machine à états partagée par les trois calques ; les liens porteur ↔ objet viennent des
+      enregistrements d'attachement du film quand ils existent, la géométrie n'étant qu'une vérification.
+- [ ] P4 — Registre des véhicules et assets : véhicule identifié par son objet (pas par le premier occupant d'un slot),
+      occupant ↔ véhicule dans le temps, armes au sol et équipements par objet ; migration des calques `vehicle_rides`,
+      ramassages, épisodes d'équipement ; `slotCollisions` cesse d'être un motif d'ambiguïté quand l'objet est connu.
+- [ ] P5 — Clôture du paradigme : `make replay-corpus-gate` (0 perte), balayage informatif du parc, oracle feuille de
+      match sur tous les témoins, chronique 49, garde-rail « aucun calque ne construit de lien d'identité hors du
+      registre » (allowlist datée), doc `docs/` (FR et EN) de la section `identity` de l'artefact.
+Les lots R1, R2, R3 ci-dessous restent la description détaillée des faits que P2 et P3 doivent fermer ; ils ne
+s'exécutent pas séparément si P est retenu. S'il est différé, R1 → R3 s'exécutent tels quels.
+
+### R1 — Actions d'objectif écartées par le pont statborg — [x] CLOS 2026-09-08 DANS P2 (bump 50, le 49 était pris par M1b)
+Fait : `3372e7eb`, 35 actions d'objectif sur 76 restent `unpublished` ; elles appartiennent aux 2 joueurs à 0 mort
+(roster désormais 8/8 grâce à `Options.RosterXUIDs`, mais le pont des actions exige `deathInstantMin = 3`).
+Principe (user) : UNE ACTION EST UNE ACTION, que son auteur meure ou non. Le seuil de morts n'est pas une propriété
+des actions : c'est un artefact de la façon dont le pont d'identité a été construit (les instants de mort sont le
+seul point commun exploité entre la feuille, qui nomme les joueurs, et le film, qui ne connaît que des index de
+joueur). Un joueur avec trop peu de morts ne peut pas être apparié par cette voie, il n'est donc pas nommé, et
+l'action, qui exige un nom pour être publiée, est jetée. Le défaut est dans l'identité, jamais dans l'action :
+l'action doit toujours être publiée (sous l'identité résolue, sinon « non résolue » et comptée), et l'identité
+doit venir d'autres voies quand les morts manquent (élimination sur le roster, table d'index joueur du film).
+C'est la même racine que le premier lot du chantier (ports de drapeau des porteurs à moins de trois morts) : R1 est
+le dernier lecteur encore cadencé sur le pont par morts pour son identité.
+- [~] Mesure : sur les 7 témoins du manifeste `config/replay_corpus.toml` + `3372e7eb` + `c0a82e88`, relever
+      `coverage.objectives.{available,attached,unpublished,noSlot}` ; identifier la fonction qui pose le seuil (grep
+      `deathInstantMin`) et son appelant dans `replaybuild` (`identifiedEvents`, `pontParManche`).
+- [~] Inventaire des identifiants (avant toute conception, journal) : pour chaque flux du film consommé par le rejeu
+      (actions d'objectif/statborg, positions de bipède, morts, ramassages, véhicules, équipement), QUELLE clé il
+      porte (index de joueur, slot de statborg, slot de bipède, xuid) et QUELS liens directs le film fournit entre
+      ces clés (pied de film, `PlayerIndexTable`, `bid(N.0)`, `ManagedPropertyFilmIndex`, `ti=5`, en-têtes de roster :
+      `.ai/V7.5/README.md` et notes de rétro-ingénierie). Tableau clé → source directe → lien manquant.
+- [x] Conception (doctrine §0.7) : une table d'identité unique par film dans `replaybuild`, publiée dans l'artefact
+      (section `identity`, servie jusqu'au contrat, avec source et couverture par lien) ; les actions sont
+      nommées par le lien DIRECT index ↔ xuid à 100 % ; le pont par morts (`deathInstantMin`) ne sert plus qu'aux
+      liens sans source directe, et vérifie les liens directs (désaccord → `slog.Warn` + compteur, jamais un nom
+      inventé) ; un index sans lien direct ni repli se résout par élimination sur le roster (`resolvedByElimination`)
+      ou reste « non résolu » ET PUBLIÉ (l'action n'est jamais jetée). Garde-rail : test qui interdit à un calque de
+      reconstruire un pont (allowlist datée des seuls producteurs de la table).
+- [x] Tests par mutation : élimination retirée → rouge ; deux candidats pour un index → reste non publié (rouge si on
+      en choisit un) ; film mono-manche entièrement nommé → identique hors numéro.
+- [!] Témoins : `3372e7eb` unpublished 35 → 0 (ou résidu expliqué joueur par joueur), actions par joueur = feuille
+      (`flag_captures`, `flag_steals`, zones) ; `c0a82e88` `noSlot` 69 → ? (chaque baisse = une action nommée, vérifiée
+      par la feuille) ; `fb1a1a72` (3 manches) sans perte ; `bf15f7ab` (Slayer) identique hors numéro.
+- [x] Bump 49 + chronique + ratchet + golden ; gates ; revue ; journal ; registre (entrée `3372e7eb` fermée).
+
+### R2 — Vies sur un slot que nulle mort ne termine — [x] CLOS 2026-09-08 DANS P2 puis P2-bis (bump 50), RÉSIDU ÉCRIT
+Fait (énoncé d'origine, **RÉFUTÉ sur pièces le 2026-09-08 par P2-bis**) : `d9781168` (Oddball, à manches) : 19 vies
+sans nom, toutes sur UN slot sans aucune vie nommée = un joueur qui ne meurt jamais de tout le match (doctrine §0.4 :
+les vies se terminent aux frontières de manche sans mort).
+**CE QUE LA MESURE DIT** (`.ai/V7.5/v2/RESTES_P2_2026-09-08.md` §B) : aucun joueur de `d9781168` n'a zéro mort (13 au
+minimum à la feuille), les 19 vies sont sur **18 slots distincts** et **18 slots muets** subsistent — l'unicité manque
+des DEUX côtés, d'où `parElimination = 0`. Le cas « joueur à zéro mort » existe bien, mais PAR MANCHE, et c'est le
+pont statborg qui le ferme (`d9781168` manche 1, slot 12 → `elimination_roster`).
+- [~] Vérification (1 h, avant tout code) : croiser le slot sans nom avec la feuille : le joueur à 0 mort est-il
+      unique ? Ses frags/assistances de la feuille se retrouvent-ils sur les kills attribués à ce slot (calque des
+      fermetures) ? Résultat au journal.
+- [x] Sources d'identité sans mort, par ordre de coût : (a) élimination sur le roster (un seul xuid sans slot, un seul
+      slot sans nom) ; (b) `PlayerIndexTable` / `ManagedPropertyFilmIndex` / `ti=5` (jamais branchés : voir
+      `.ai/V7.5/README.md` et les notes de rétro-ingénierie ; diagnostic seul si cela exige de toucher `filmdec`).
+- [x] Implémentation dans la passe de nommage (`unnamed_lives.go`) : nouvelle cause `byElimination` comptée et
+      journalisée ; jamais si deux candidats ; les vies ainsi nommées portent `deduced = true` (pas une mort).
+- [x] **Source d'identité sans mort n°3, ajoutée par P2-bis** : l'ÉLIMINATION PAR EXCLUSION TEMPORELLE — un joueur
+      n'occupe qu'un slot de bipède à la fois, donc les candidats d'une vie sans nom sont les xuids du roster
+      qu'aucune vie NOMMÉE ne place ailleurs sur son intervalle ; un seul → c'est lui, deux → silence, zéro → la
+      lecture se contredit (silence + alarme). Itérée jusqu'au point fixe, abstention sur les conflits. Trois
+      garde-fous : roster de la feuille obligatoire, aucun bot déclaré, occupation simultanée ≤ roster. Voie
+      canonique `exclusion_temporelle`, vies marquées DÉDUITES, `cause` de fin jamais touchée.
+- [x] Tests par mutation : **10 mutations jouées, toutes rouges** (sorties collées au journal §B.6).
+- [x] Témoins (re-cuisson locale des 10, journal §B.7) : `d9781168` `unnamedLives` **19 → 15** et
+      `bipedSlot.non_resolu` **34 → 24** — RÉSIDU DE 13 PISTES EXPLIQUÉ VIE PAR VIE (§B.2, §B.5) ; temps de portage
+      du crâne par équipe **inchangé, 172,5 / 158,8 s** (feuille 191 / 196) ; `51ebbc0f` **8 → 3**,
+      `64e8adfa` **11 → 7**, `fb1a1a72` **3 → 2**, `bf15f7ab` **1 → 0**, `c0a82e88` `non_resolu` **1 → 0** ;
+      `3372e7eb`, `084a804d`, `bcb6d393`, `c75f33b8` **inchangés**. Gains de calque : tirs rattachés
+      +187 / +149 / +147 / +28 / +12, ramassages sans auteur 47 → 24 et 26 → 1. `scoreTimeline` et
+      `identity.statborgSlots` identiques : les écarts K/D/A fermés par P2 ne bougent pas.
+- [!] **Résidu** : 13 pistes de `d9781168` restent sans nom — grappes de frontière de manche (10), vies courtes en
+      pleine manche (2), une contradiction à zéro candidat (1, slot 641). Condition de reprise inscrite au registre :
+      le lien DIRECT slot de bipède ↔ index de joueur (inventaire P1, E2 ; `ti=5`, `ManagedPropertyFilmIndex`), plan
+      décodeur d'après v7.5.0.
+- [x] Gates ; revue ; journal ; registre.
+
+**Précisions de statut (lot P2, 2026-09-08 — `.ai/V7.5/v2/RESTES_P2_2026-09-08.md`)** :
+`[~]` = couvert ailleurs — la MESURE de R1 et l'INVENTAIRE des identifiants ont été rendus par le
+lot P1 (`.ai/V7.5/v2/RESTES_P1_INVENTAIRE_2026-09-07.md`, table des 9 entités et décompte des
+liens) ; la VÉRIFICATION de R2 (le joueur à 0 mort est-il unique ?) est rendue par le diagnostic
+R4 (`RESTES_R4_R5_2026-09-08.md` §2, 8 couples perdus sur 3 films, 0 ou 1 mort dans les 8 cas).
+`[!]` = non traité ici — les TÉMOINS CHIFFRÉS exigent des films, et le worktree `LevelUp-wt-p2`
+n'en a aucun : ils sont à jouer par le superviseur, commandes exactes et chiffres attendus au §7
+du journal de P2. C'est une dépendance externe, pas un report de commodité.
+
+### R3 — Reset des objets aux frontières de manche (même bump 49 ; ⊂ P3)
+Fait : `64e8adfa` (CTF 2 manches) : `closedOverlaps = 10`, états `enJeu`/`sol` périmés (un `flag_returns` invisible
+d'`assignFlags`), 7 fautes d'attribution avant l'invariant, machine à états des drapeaux dupliquée
+(`assembleFlagLives` vs `flag_assign.go`).
+- [ ] Vérification de l'hypothèse §0.4 sur pièces : positions des objets drapeau/crâne/bombe à la première frame de
+      chaque manche (retour au socle/spawn sans événement daté) sur `64e8adfa`, `fb1a1a72`, `51ebbc0f`, `d9781168`.
+- [ ] Conception : à chaque borne de manche (`objectiveevents.RoundBounds`, source unique) : fermer les portages
+      ouverts avec une raison DATÉE `roundEnd` (nouvelle raison servie, jamais `dropped`), remettre `enJeu`/`sol`
+      de chaque objet à son état de spawn, recommencer la machine à états. UNE machine à états partagée par les
+      trois calques (drapeau, crâne, bombe) : extraire, migrer les copies, poser un garde-rail (test grep) contre
+      une seconde copie (règle « ≤ 2 copies d'un même pattern »).
+- [ ] Tests par mutation (reset retiré → recouvrement ; raison `roundEnd` publiée `dropped` → rouge).
+- [ ] Témoins : `64e8adfa` closedOverlaps 10 → 0, `unresolved` 0, 0 portage sur son propre drapeau, captures = score,
+      aucune durée par joueur en baisse hors fermeture datée à la borne de manche ; `fb1a1a72` (3 manches) ;
+      `bcb6d393` (mono-manche) identique hors numéro ; `d9781168` (crâne) temps de portage ne baisse pas.
+- [ ] Gates ; revue ; journal ; registre (entrées `64e8adfa`, machine à états, `enJeu` fermées).
+
+### R4 — Écart résiduel aux compteurs de la feuille sur `51ebbc0f` (diagnostic ; bump seulement si correctif) — [x] DIAGNOSTIC RENDU 2026-09-08 (lot M4, worktree `LevelUp-wt-m4-diag`, branche `feat/v2-restes-r4r5-diag`)
+Fait : après le lot pont (schéma 48), écart cumulé K/D/A 69 (avant 94), les 8 joueurs sous la feuille.
+- [x] Par joueur et par manche : frags/morts/assistances du document contre la feuille ; localiser les événements
+      manquants (après la dernière frame de la grille ? hors fenêtre de manche ? morts non appariées : lire
+      `coverage.bridge.deathOffsetMatched` et le nombre de morts du fil).
+      **L'écart vaut 9, pas 69** (le 69 n'est plus reproductible : les films témoins ont été re-téléchargés le
+      2026-09-08 — attribution faite par une cuisson à `ee4084c14`, identique à l'octet à celle du HEAD). **7 joueurs
+      sur 8 sont EXACTS** ; tout l'écart tombe sur `2535469889270266`, dont la **manche 0 n'est publiée nulle part**
+      (K −8, A −1, D 0). Les trois hypothèses du plan sont ÉCARTÉES sur pièces : dernière émission de chaque joueur
+      entre les frames 2706 et 4369 pour 4514 frames, `truncated=false`, `originResolved=true`,
+      `deathOffsetMatched/RunnerUp` 71:10 (marge ×7,1). Détail : `.ai/V7.5/v2/RESTES_R4_R5_2026-09-08.md` §2.
+- [x] Verdict : source (film incomplet : registre + `slog`) ou lecteur (correctif, tests, témoins, bump 49).
+      **VERDICT : LECTEUR — défaut de NOMMAGE.** `objectiveevents.bestDeathClaim`
+      (`slotidentity_deaths.go:229`, seuil `deathInstantMin = 3` ligne 50) ne peut pas nommer un couple
+      (slot, manche) quand le joueur y meurt moins de trois fois — le joueur fautif meurt **0 fois** en manche 0 ;
+      `RoundIdentity.CompletedByLines` (`slotidentity_rounds.go:239`), le rattrapage écrit exactement pour ce trou,
+      est **gardé MONO-MANCHE** ; `buildPlayerScores` (`score_timeline.go:298`) ne passe de toute façon jamais
+      `ScoreInput.Lines` au chemin multi-manche. Généralité mesurée : 8 couples (xuid, manche) perdus sur 3 films,
+      et dans les 8 cas le joueur meurt 0 ou 1 fois dans la manche perdue — aucun contre-exemple.
+- [x] **Correctif : LIVRÉ PAR P2 le 2026-09-08** (l'énoncé ci-dessous est celui du report, tenu mot pour mot :
+      `CompletedByElimination` par manche contrôlée par le résidu de la feuille, `in.Lines` passé à
+      `buildPlayerScores`, même complétion chaînée dans `pontParManche.identite()` ; les cinq tests par mutation
+      écrits, trois mutations jouées ROUGE. Bump 50, le 49 étant pris par M1b. Détail :
+      `.ai/V7.5/v2/RESTES_P2_2026-09-08.md`). Énoncé d'origine :
+- [~] **Correctif : REPORTÉ AU LOT SUIVANT** — lot de diagnostic (aucun fichier de code modifié), et le bump 49 est
+      tenu par un lot en vol. La forme est écrite et chiffrée (journal §4) : `RoundIdentity.CompletedByElimination`
+      (par manche, exactement un slot émetteur non nommé et exactement un xuid libre → appariement forcé, contrôlé
+      par le résidu de la feuille), `in.Lines` passé à `buildPlayerScores`, même complétion chaînée dans
+      `pontParManche.identite()` (`matchfacts.go:337`). Cinq tests par mutation listés. Portée mesurée : ferme
+      `51ebbc0f` (9 → 0) et `d9781168` (10 → 0), NE ferme PAS `64e8adfa` (5 couples, pas d'unicité — cas général du
+      chantier P). Bump de schéma requis.
+
+### R5 — Re-vérification au schéma 48/49 : CTF multi-manche, calques VIP et crâne — [x] DIAGNOSTIC RENDU 2026-09-08 (lot M4)
+- [x] `make replay-corpus-gate --reference=parc` (informatif) + contrôle par la feuille sur `fb1a1a72` (3 manches),
+      `51ebbc0f`, `64e8adfa` : captures/vols par joueur = feuille ; VIP (`vip_crown.go`) et crâne (`skull_carries.go`)
+      sur un film de chaque variante : 0 portage perdu, durées ≥ parc, aucune identité inventée.
+      **`--reference=parc` est DÉGÉNÉRÉ : les 7 témoins sont ABSENTS du parc** (aucun artefact de référence ;
+      la clé PNY ne porte que les schémas 2 et 20, antérieurs aux calques). Le mode d'autorité a donc été joué :
+      `--reference=base --base feat/v2-restes-r6` sort en **0, 0 perte sur 7/7**, 1 gain (`bf15f7ab`,
+      `deathOffsetRunnerUp` 12 → 13, le seul effet du correctif R7 sur tout le corpus — l'item resté « à jouer par
+      le superviseur » de R7 est ainsi CLOS). Captures = score : `bcb6d393` **3/0 exact**, `64e8adfa` 2/2 contre
+      2/3 (une capture manquante, MÊME cause qu'en R4), `fb1a1a72` 0/0 contre 0/1. Crâne : `d9781168` **36
+      portages** (le résidu de 30 n'existe plus), `51ebbc0f` **19**, 0 anonyme, base == HEAD à l'octet — mais
+      **6 portages sur 36 tombent hors de toute vie bipède du porteur** (portages fantômes, toujours ouverts).
+      Aucune identité inventée sur les 5 films contrôlés. Détail : `.ai/V7.5/v2/RESTES_R4_R5_2026-09-08.md` §5.
+- [~] VIP : **aucun film VIP au parc** — recensement de la variante des 466 films du cache, aucune variante VIP,
+      aucun artefact portant `vipCrown`. L'item est requalifié « sans témoin », pas « vérifié » : entrée de registre
+      dédiée, avec sa condition de reprise (un film VIP au cache).
+- [x] Fermer ou rouvrir (avec chiffres) les entrées « CTF multi-manche » et « calques VIP/crâne » du registre.
+      Fermées : volet « origine du fil » de l'entrée `51ebbc0f` (`originResolved` vrai sur 8 témoins sur 8) ;
+      item superviseur de R7. Rouvertes avec chiffres : « CTF multi-manche » (hypothèse (a) RÉFUTÉE sur `fb1a1a72` :
+      le pont des compteurs y est parfait, écart 0, et pourtant `objectives` 3/637 ; les deux CTF multi-manche ne
+      relèvent pas du même chantier), « portages fantômes du crâne » (6/36 et 1/19). Quatre entrées nouvelles.
+
+### R6 — Constats P2 de l'audit et web — CLOS le 2026-09-07 (lot `feat/v2-restes-r6`, M2 du plan d'orchestration)
+- [x] Les 5 P2 de `.ai/AUDIT_LECTEURS_VIES_ANONYMES_2026-09-06.md` (section « Constats retenus », gravité P2) :
+      traiter un par un (correctif + mutation) ou fermer avec preuve de non-lieu ; colonne « Décision/état ».
+      P2-1/P2-2 : confirmés sur pièces, racine dans `filmdec` (décodeur gelé §0.6) — correctif hors périmètre,
+      diagnostic + registre (`.ai/V7.5/REGISTRE_REPORTS.md`). P2-3 : non-lieu, déjà corrigé par `f1b4f4ee5`
+      (`fix(manches/MANCHES-R1)`, 2026-09-07 00:05, déjà sur `feat/v75`). P2-4, P2-5 : corrigés, mutations jouées.
+      Détail : `.ai/V7.5/v2/RESTES_R6_2026-09-07.md`.
+- [x] Web : `apps/web/src/features/match-replay/model/equippedLogic.ts` `drawnSwapAt` (lecture non bornée à la
+      vie en cours, le code a bougé depuis la rédaction du plan — la fonction est côté `match-replay`, pas
+      `lib/replay`) : bornée via `currentLifeOf` + `trackWindow` (même patron que `loadoutAt`/`abilityAt`,
+      correctif P0-2) ; tests vitest par mutation (`equippedLogic.test.ts`) ; gates `tsc -b`, eslint,
+      `vitest run --pool=forks` : 0 erreur, 653 fichiers / 6972 tests verts.
+
+### R7 — Calage du fil des morts : budget de candidats (registre D3 du lot pont) — [x] CLOS 2026-09-07 (lot M3, worktree `LevelUp-wt-m3-calage`, branche `feat/v2-restes-r7`)
+Fait figé par `TestUnAmasPlusGrosQueLeVraiCalageALARMEAuLieuDeSeTaire` (`pont_marge_test.go`) : un amas de morts
+distinctes plus nombreux que le vrai calage remplit le budget de 3 candidats ; l'alarme se déclenche, le calage rendu
+est faux.
+- [x] Correctif : budget adaptatif (candidats jusqu'à ce que le meilleur compte réel dépasse le meilleur vote) ou
+      dédoublonnage par fin de vie en plus de par mort ; le test de documentation doit être RETOURNÉ (il rougit
+      quand le correctif fait mieux : le mettre à jour pour exiger le vrai calage).
+      **DÉDOUBLONNAGE PAR FIN DE VIE retenu** : le diagnostic (journal `.ai/V7.5/v2/RESTES_R7_2026-09-07.md` §1)
+      montre que le vote comptait les MORTS appariables quand l'affinage apparie 1:1 (chaque fin de vie servie une
+      seule fois, `countDeathMatches`) — un amas de 20 morts distinctes déposait donc 20 voix sur CHAQUE fin de vie
+      isolée du vrai calage pour UNE seule paire réalisable, et ces paniers fantômes remplissaient le budget. La voix
+      d'un panier devient `min(morts distinctes, fins distinctes)` (borne de Hall/König, majorant EXACT de
+      l'appariement que l'affinage mesure) via le nouvel helper `paniersParPivot` de `lives.go`, appelé une fois par
+      côté. **Aucun seuil nouveau** : `deathOffsetCandidats` reste 3, `deathOffsetMargeMin` 2, `deathMatchWindowMS`
+      150. Le budget adaptatif est ÉCARTÉ : il aurait laissé le classement faux et exigé d'affiner les 15 paniers
+      fantômes avant d'atteindre le vrai calage. Fixture adversariale : `[216300 233625 -190050]` / `off=216350 n=2`
+      → `[199950 216300 233625]` / `off=200000 n=15 second=2`. Test RETOURNÉ et renommé
+      `TestUnAmasPlusGrosQueLeVraiCalageNEmportePasLeBudget` (exige le vrai calage, teste `voteDeathOffsets` SEUL,
+      vérifie que l'alarme se TAIT) ; mutation jouée, sortie au journal §3. **Baseline INCHANGÉE** : vérifié sur
+      pièces, le test renommé n'est pas dans `.ai/baselines/tests_pre_migration.jsonl` (datée 2026-06-26, le test
+      date du 2026-09-07). Effet du ratchet lint corrigé à la source : `unparam` a sorti « `k` always receives
+      `deathOffsetCandidats` » sur `voteDeathOffsets` — attribution VÉRIFIÉE (le même lint sur un worktree détaché
+      à la base rend 0 issues), le paramètre de budget est donc retiré (4 appelants, tous sur la même constante).
+- [x] Neutralité : `d9781168` et `51ebbc0f` identiques hors numéro (marges inchangées) ; bump 49.
+      **AUCUN GOLDEN NE BOUGE, DONC PAS DE BUMP** : `go test ./internal/analysis/replay/ -run Golden -update` puis
+      `git diff --exit-code -- internal/analysis/replay/testdata/` → EXIT=0 ; `SchemaVersion` reste **48** et aucune
+      entrée n'est ajoutée à `document_chronicle.go`. C'est le résultat attendu : là où le vote localisait déjà le
+      vrai calage, `min(morts, fins)` vaut le compte des morts. Le 49 reste donc disponible pour le premier lot qui
+      changera réellement le contenu cuit (P2). **`make replay-corpus-gate` et les deux témoins sont à jouer par le
+      SUPERVISEUR** (ce worktree n'a aucun film) — commandes exactes au §6 du journal.
+
+### R8 — Flakes CI hors rejeu (doctrine : tout rouge se répare, même préexistant)
+- [x] `internal/api/handlers` `TestStartImport_HappyPathReturns202WithJobID` : le job d'import asynchrone survit au
+      retour HTTP (`jobs.Store` écrit après la fin du test → `TempDir RemoveAll`) : attendre la fin du job dans le
+      test (ou fermer le store) ; preuve : `-count=20` vert sous charge (`-p 8`). **CLOS 2026-09-07** — le test attend
+      désormais l'état terminal du job (`pollJobUntilDone`, helper déjà existant dans
+      `openspartan_import_e2e_test.go`, même package) avant de rendre la main. Preuve :
+      `go test -count=20 -p 8 -run TestStartImport_HappyPathReturns202WithJobID ./internal/api/handlers/` vert deux
+      fois de suite (3.8s puis 3.7s) ; `go test -count=1 ./internal/api/handlers/` vert. Taux d'échec observé avant
+      correctif : 0/20 en local (le flake est spécifique à la charge CI réelle, non reproduit hors CI — corrigé sur
+      analyse de la cause, pas sur observation locale d'un rouge).
+- [x] `internal/persist` `TestWorker_Run_PersistsAndACKs` : assertion de système de fichiers sur runner chargé
+      (51,9 s en CI contre 0,08 s en local) : identifier l'attente implicite, la remplacer par une synchronisation.
+      **CLOS 2026-09-07** — l'attente implicite était `persister.count()==3` (incrémenté dans `Persist`, AVANT l'ACK)
+      utilisée comme proxy pour "les 3 WAL sont supprimés" (qui n'a lieu qu'après, dans `Worker.handle`) : sous charge,
+      la fenêtre entre les deux se creuse. Remplacé par une synchronisation explicite sur le hook `OnPersistOK` déjà
+      exposé par `Worker` (se déclenche après l'ACK) — aucun changement du code de prod, le hook existait déjà et
+      n'était simplement pas branché par ce test. Preuve : `-count=20 -p 8` vert deux fois de suite (0.16s les deux
+      fois) ; `go test -count=1 ./internal/persist/` vert ; `go test -tags=integration -p 1 -count=1 ./internal/persist/`
+      vert (50.4s, exit 0). Taux d'échec observé avant correctif : 0/20 en local (idem ci-dessus, flake propre à la
+      charge CI).
+
+### R9 — Release (séquence Notion « Backlog LevelUp », dans l'ordre ; prévenir le user avant tout push sur `main`)
+- [ ] Re-cuisson du parc au dernier schéma (`backfill-replay`, un film à la fois, verrou `filmproc`), puis recompter
+      la jointure des bots film ↔ tableau (nom nu, égalité de chaîne : `scratchpad/review/BOT_SANS_EQUIPE.md`).
+- [ ] `backfill-medailles-feed` ; puis déplacement du décodeur sous `games/halo_infinite/film/` APRÈS v7.5.0.
+
+## 3. Découvertes (à consigner ici, ne pas traiter dans le lot courant)
+
+- **[R7, 2026-09-07] `lives.go` était DÉJÀ à 509 L (au-dessus du seuil de 500) et passe à 543 L**
+  avec le helper `paniersParPivot`. Dette accrue de 34 L, non créée ; aucune scission n'est
+  prescrite par R7 et la règle 7 du contrat interdit le fix hors périmètre. Rattaché à l'entrée
+  de registre ouverte par R0 sur les fichiers > 500 L du paquet, qui liste désormais `lives.go`.
+- **[R7, 2026-09-07] Le coût du vote du calage double** (deux passes `|morts| × |fins|` au lieu
+  d'une). Ordre de grandeur négligeable devant l'affinage, mais **non mesuré sur un film réel** :
+  aucun film dans le worktree M3. À relever au prochain lot qui cuit un film BTB (P2) si la
+  durée de cuisson bouge.
+- **[R4/R5, 2026-09-08] Le parc d'artefacts ne porte plus aucun des 7 témoins du corpus** :
+  `--reference=parc` ne compare rien (7/7 ABSENT, code 2 sans `--allow-missing`). La re-cuisson
+  est déjà prévue par R9 ; d'ici là, aucun balayage « parc » ne prouve une non-régression.
+- **[R4/R5, 2026-09-08] `fb1a1a72` : le pont statborg est muet à 99,5 %** (`objectives` 3/637
+  nommées, `flagCarries` absent, `teamIdentity` `unresolved`) alors que le pont des COMPTEURS y
+  est parfait (écart K/D/A = 0). La cause n'est pas celle que le registre supposait — c'est le
+  chantier P (registre d'identité des entités). NON TRAITÉ.
+- **[R4/R5, 2026-09-08] Modification locale non commise dans le checkout principal** :
+  `data/titles/halo_infinite/reference/map_weapon_pads.json` (mtime 2026-09-07 21:07), antérieure
+  à ce lot. Sans effet ici (les catalogues sont copiés depuis `--source-root`, propre), mais elle
+  rendrait un balayage futur imputable à tort à un diff de révision.
+- **[R4/R5, 2026-09-08] `c75f33b8` (Assaut, 3 manches) : 2 actions d'objectif disponibles, 0
+  attachée** (`noSlot 2`) et 14 vies anonymes ; **`084a804d` : 80 vies anonymes sur 353** (le plus
+  mauvais taux du corpus) et 23 actions hors fenêtre. Non instruits, hors périmètre.
+- **[R7, 2026-09-07] Chemin périmé au registre** : l'entrée D3 citait le test dans
+  `pont_muet_test.go` alors que PONT-R2 l'avait déplacé dans `pont_marge_test.go`. Corrigé en
+  fermant l'entrée ; aucune autre occurrence.
+
+- **[P2, 2026-09-08] La jointure web des bots reste par NOM NU.** `roster[].bid` est publié (Go +
+  contrat + `generated.ts`), mais `apps/web/src/lib/replay/rosterLogic.ts:100,122-128` joint
+  toujours sur `botKey(entry.name)`. Le brief de P2 fige le web. NON TRAITÉ — lot web dédié, après
+  la re-cuisson du parc au schéma 50 (R9).
+- **[P2, 2026-09-08] Les vies nommées par FERMETURE ne sont pas marquées « déduites ».**
+  `unnamed.deduced` ne reçoit que le nommage final et, depuis P2, l'élimination — une fermeture est
+  pourtant une déduction du même ordre, et les lecteurs qui prouvent une ABSENCE ne s'en abstiennent
+  pas. Préexistant, non aggravé. NON TRAITÉ — reprise en P5.
+- **[P2, 2026-09-08] `identity_registry.go` est à 471 L** (seuil 500). Une sixième famille de liens
+  (P3, P4) le fera franchir le seuil. NON TRAITÉ — à découper en P3.
+- **[P2, 2026-09-08] `coverage.objectives.unpublished` devient structurellement nul** : plus rien
+  n'est rejeté par ce calque. Le champ reste au contrat pour les tirs et les grenades. NON TRAITÉ —
+  revue du contrat de couverture en P5.
+
+## 4. Reprise de session
+
+Relire ce plan et `plan-execution` ; `git log --oneline -5` sur `feat/v2-restes` ; reprendre à la première case non
+statuée du lot courant ; ne jamais commencer R(n+1) avant la clôture de R(n) (gate + revue + journal + registre).

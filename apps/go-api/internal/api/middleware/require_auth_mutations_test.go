@@ -90,6 +90,11 @@ var readPlayerRoutes = []routeCase{
 	{http.MethodPost, "/filters/resolve"},
 	{http.MethodPost, "/filters/match-ids"},
 	{http.MethodPost, "/engagement/timeseries"},
+	// Onglet Tactique (2026-09-06) : deux lectures passées en POST parce que leur
+	// périmètre est une LISTE de match_id. Un visiteur anonyme doit continuer de les
+	// obtenir — l'ownership, lui, filtre toujours les profils.
+	{http.MethodPost, "/tactical/maps"},
+	{http.MethodPost, "/tactical/streets/raster"},
 }
 
 const testPlayerSlug = "JGtm"
@@ -214,6 +219,8 @@ func TestIsMutatingRequest_ClassifiesPostQueriesAsReads(t *testing.T) {
 		{routeCase{http.MethodOptions, "/media"}, false},
 		{routeCase{http.MethodPost, "/pages/media"}, false},
 		{routeCase{http.MethodPost, "/filters/resolve"}, false},
+		{routeCase{http.MethodPost, "/tactical/maps"}, false},
+		{routeCase{http.MethodPost, "/tactical/streets/raster"}, false},
 		{routeCase{http.MethodPost, "/engagement/timeseries"}, false},
 		{routeCase{http.MethodPost, "/engagement/recompute_coefficients"}, true},
 		{routeCase{http.MethodPost, "/sync"}, true},

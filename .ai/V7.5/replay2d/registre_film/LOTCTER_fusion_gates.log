@@ -1,0 +1,340 @@
+# Lot C-ter — fusion (wt/cter-fusion) — gates
+# 2026-08-19T19:31:08Z
+
+## gofmt
+
+EXIT_GOFMT=0 (fichiers non formates: 0)
+## go vet ./... (CGO=1)
+EXIT_VET=0
+## go test -count=1 ./internal/analysis/... (CGO=0)
+ok  	levelup/go-api/internal/analysis	5.793s
+ok  	levelup/go-api/internal/analysis/breakdown	2.004s
+ok  	levelup/go-api/internal/analysis/filmdec	3.304s
+ok  	levelup/go-api/internal/analysis/narrative	1.354s
+ok  	levelup/go-api/internal/analysis/objectiveevents	1.843s
+ok  	levelup/go-api/internal/analysis/patterns	1.417s
+ok  	levelup/go-api/internal/analysis/positions	1.523s
+ok  	levelup/go-api/internal/analysis/prestigetuning	1.422s
+ok  	levelup/go-api/internal/analysis/relations	1.270s
+ok  	levelup/go-api/internal/analysis/replay	32.225s
+ok  	levelup/go-api/internal/analysis/replay/mapvar	1.591s
+ok  	levelup/go-api/internal/analysis/skill_v2	1.439s
+ok  	levelup/go-api/internal/analysis/skill_v2/ep	1.345s
+ok  	levelup/go-api/internal/analysis/temporal	0.880s
+ok  	levelup/go-api/internal/analysis/timeline	0.848s
+ok  	levelup/go-api/internal/analysis/weaponv3	0.815s
+EXIT_TEST_ANALYSIS_NOCGO=0
+## go test -count=1 ./internal/replaybuild/ ./internal/service/ ./contracttest/ ./cmd/mapobj-build/ (CGO=1, sans LEVELUP_REPO_ROOT)
+ok  	levelup/go-api/internal/replaybuild	1.490s
+ok  	levelup/go-api/internal/service	14.532s
+ok  	levelup/go-api/contracttest	0.821s
+ok  	levelup/go-api/cmd/mapobj-build	0.434s
+EXIT_TEST_REPLAYBUILD_SERVICE_CONTRACT_MAPOBJ=0
+## go test -count=1 ./internal/archlint/
+=== RUN   TestCIPathsIgnoreSubsetOfDeployPathsIgnore
+--- PASS: TestCIPathsIgnoreSubsetOfDeployPathsIgnore (0.00s)
+=== RUN   TestDeployBranchesCoveredByCIBranches
+--- PASS: TestDeployBranchesCoveredByCIBranches (0.00s)
+=== RUN   TestNoNewBareResolveModeUI
+--- PASS: TestNoNewBareResolveModeUI (0.18s)
+=== RUN   TestNoBareSettingsWrite
+--- PASS: TestNoBareSettingsWrite (0.00s)
+=== RUN   TestNoNewDataPathJoin
+--- PASS: TestNoNewDataPathJoin (0.18s)
+=== RUN   TestNoDuplicateStaticAssetExtList
+--- PASS: TestNoDuplicateStaticAssetExtList (0.29s)
+=== RUN   TestStaticExtDetector_FlagsCatalogue
+--- PASS: TestStaticExtDetector_FlagsCatalogue (0.00s)
+=== RUN   TestNoNewHalowaypointLiteral
+    no_halowaypoint_literal_test.go:146: littéral 'halowaypoint' en dur interdit hors des fichiers frontière (F/VF-7) — une URL Halo en dur doit vivre dans un fichier frontière (haloclient/platform/auth/adapters) déjà allowlisté, ou l'ajouter à halowaypointAllowlist avec justification datée :
+          cmd/variant-probe/fetch.go:27  discoveryHost   = "https://discovery-infiniteugc.svc.halowaypoint.com"
+          cmd/variant-probe/fetch.go:86  req.Header.Set("Origin", "https://www.halowaypoint.com")
+--- FAIL: TestNoNewHalowaypointLiteral (0.23s)
+=== RUN   TestHalowaypointAllowlistEntriesPointToExistingFiles
+--- PASS: TestHalowaypointAllowlistEntriesPointToExistingFiles (0.00s)
+=== RUN   TestNoInlineExpectedFDA
+--- PASS: TestNoInlineExpectedFDA (0.37s)
+=== RUN   TestInlineExpectedFDARE_Discriminates
+--- PASS: TestInlineExpectedFDARE_Discriminates (0.00s)
+=== RUN   TestNoInlineObjectiveLatestViewDDL
+--- PASS: TestNoInlineObjectiveLatestViewDDL (0.57s)
+=== RUN   TestObjectiveLatestViewRE_Vectors
+--- PASS: TestObjectiveLatestViewRE_Vectors (0.00s)
+=== RUN   TestNoLocalLongestRun
+--- PASS: TestNoLocalLongestRun (0.16s)
+=== RUN   TestNoLocalPtrHelper
+--- PASS: TestNoLocalPtrHelper (0.64s)
+=== RUN   TestNoLocalStrCoalesce
+--- PASS: TestNoLocalStrCoalesce (0.04s)
+=== RUN   TestNoLocalGenericUpsertHelper
+--- PASS: TestNoLocalGenericUpsertHelper (0.54s)
+=== RUN   TestNoPlayerIndexInFilmScope
+--- PASS: TestNoPlayerIndexInFilmScope (0.34s)
+=== RUN   TestNoManualPlayersRootJoin
+--- PASS: TestNoManualPlayersRootJoin (0.43s)
+=== RUN   TestNoRawCombatDRThresholdLiteral
+--- PASS: TestNoRawCombatDRThresholdLiteral (0.74s)
+=== RUN   TestNoRawCombatOCThresholdLiteral
+--- PASS: TestNoRawCombatOCThresholdLiteral (0.63s)
+=== RUN   TestNoNewRawIsBotLiteral
+--- PASS: TestNoNewRawIsBotLiteral (0.49s)
+=== RUN   TestNoRawKillScopeLiteral
+    no_raw_kill_scope_literal_test.go:122: littéral brut de portée `match_kill_events` interdit (J4R-3) — utiliser `killscope.ReadPathLiveFeed` / `killscope.ReadPathCreditBackfill` / `killscope.OriginCreditOnly` (paquet `internal/domain/killscope`, feuille sans import : importable depuis persist, migration, killcollector et ops sans cycle). Une copie qui dérive d'un caractère rend la préséance film aveugle, SANS erreur ni compteur :
+          cmd/variant-probe/main.go:60  scanDir   = flag.String("scan", "", "mode HORS LIGNE : analyser les payloads deja deposes dans ce dossier (aucune requete)")
+--- FAIL: TestNoRawKillScopeLiteral (0.86s)
+=== RUN   TestNoNewRawOutcomeLiteral
+--- PASS: TestNoNewRawOutcomeLiteral (0.34s)
+=== RUN   TestNoNewRawStartTimeLiteral
+--- PASS: TestNoNewRawStartTimeLiteral (0.45s)
+=== RUN   TestStartTimeGuardsAreDiscriminant
+--- PASS: TestStartTimeGuardsAreDiscriminant (0.00s)
+=== RUN   TestNoDuplicateRepoRootWalk
+--- PASS: TestNoDuplicateRepoRootWalk (0.24s)
+=== RUN   TestNoAdHocRepoRootLadderInTests
+--- PASS: TestNoAdHocRepoRootLadderInTests (0.23s)
+=== RUN   TestNoProdRepoRootHelperInTests
+--- PASS: TestNoProdRepoRootHelperInTests (0.25s)
+=== RUN   TestNoNewSlugComparison
+--- PASS: TestNoNewSlugComparison (0.42s)
+=== RUN   TestSlugCompareRE_CatchesBroadenedForms
+--- PASS: TestSlugCompareRE_CatchesBroadenedForms (0.00s)
+=== RUN   TestTemporalImportsNoTitlePackage
+--- PASS: TestTemporalImportsNoTitlePackage (0.00s)
+=== RUN   TestSyncRootPackageFrozen
+--- PASS: TestSyncRootPackageFrozen (0.00s)
+=== RUN   TestNoExpiredTODO
+--- PASS: TestNoExpiredTODO (0.39s)
+FAIL
+FAIL	levelup/go-api/internal/archlint	9.640s
+FAIL
+EXIT_TEST_ARCHLINT=1
+# NOTE EXIT_TEST_ARCHLINT=1 : 2 echecs, TOUS DEUX PRE-EXISTANTS et HORS PERIMETRE des 3 volets.
+# Preuve : `cmd/variant-probe/{fetch,main}.go` (ajoute par la fusion obligatoire de l'etape 1,
+# origin/feat/v75 = 84c2a2159) et les fichiers de regle archlint concernes
+# (no_halowaypoint_literal_test.go, no_raw_kill_scope_literal_test.go) sont BYTE-IDENTIQUES entre
+# fa6195299 (juste apres l'etape 1) et HEAD (`git diff --stat fa6195299 HEAD -- <fichiers>` = vide)
+# ; aucun des volets 1/2/3 ne les touche. Deux causes distinctes, ni l'une ni l'autre du fait des
+# volets :
+#  - TestNoNewHalowaypointLiteral : violation REELLE, deux URLs halowaypoint.com en dur dans
+#    cmd/variant-probe/fetch.go (outil de sonde reseau ecrit hors des fichiers frontiere
+#    haloclient/platform/auth) — a router vers la session qui a livre variant-probe (deja
+#    fusionnee dans feat/v75 par le superviseur), pas vers ce lot.
+#  - TestNoRawKillScopeLiteral : FAUX POSITIF documente — le flag CLI `"scan"` de
+#    cmd/variant-probe/main.go collide textuellement avec le mot reserve `scan` du ratchet
+#    killscope (qui protege une valeur read_path homonyme, sans rapport semantique).
+# Non corrige ici (regle CLAUDE.md n.7 anti-scope-creep / plan-execution regle 7) : le perimetre
+# de ce lot est strictement les 3 volets C-ter ; cmd/variant-probe appartient a une autre session
+# deja close. Statut : [!] a router vers cette session ou vers le superviseur.
+## go build ./... (CGO=1)
+EXIT_BUILD=0
+## golangci-lint run --new-from-merge-base=origin/main ./...
+level=warning msg="[runner/nolint_filter] Found unknown linters in //nolint directives: gosec — limit/placeholders maîtrisés, plr0913 — coordinator function"
+0 issues.
+EXIT_LINT=0
+## web: purge node_modules/.tmp puis npx tsc -b --force
+EXIT_TSC=0
+## web: npx vitest run src/features/match-replay src/lib
+## web: npx vitest run src/features/match-replay src/lib
+# NOTE : 3 premieres tentatives FLAKY (2 timeouts a 5000ms sous charge machine, hors perimetre :
+# src/lib/title-routing/langSegmentInheritance.test.ts, src/lib/i18n/no-field-label-dictionary.test.ts
+# — AUCUN des deux fichiers n'est touche par les 3 volets, `git diff --stat 80f6eb033 HEAD --
+# apps/web/src/lib/title-routing/` est vide). Diagnostic : rejoue avec --testTimeout=20000 ->
+# 150/150 fichiers, 1849/1849 tests verts (confirme un pur probleme de delai sous charge, pas une
+# regression). 4e tentative, commande EXACTE prescrite (sans override), retenue ci-dessous :
+Test Files  150 passed (150)
+     Tests  1849 passed (1849)
+EXIT_VITEST=0
+## web: npm run lint (plafond 20)
+
+C:\Users\Guillaume\Projects\LevelUp-wt-cter-fusion\apps\web\src\features\match-view\MatchEncountersTable.tsx
+  458:17  warning  Compilation Skipped: Use of incompatible library
+
+This API returns functions which cannot be memoized without leading to stale UI. To prevent this, by default React Compiler will skip memoizing this component/hook. However, you may see issues if values from this API are passed to other components/hooks that are memoized.
+
+C:\Users\Guillaume\Projects\LevelUp-wt-cter-fusion\apps\web\src\features\match-view\MatchEncountersTable.tsx:458:17
+  456 |   const [sorting, setSorting] = useState<SortingState>([])
+  457 |
+> 458 |   const table = useReactTable<MatchEncounterRow>({
+      |                 ^^^^^^^^^^^^^ TanStack Table's `useReactTable()` API returns functions that cannot be memoized safely
+  459 |     data: rows,
+  460 |     columns,
+  461 |     state: { sorting },  react-hooks/incompatible-library
+
+C:\Users\Guillaume\Projects\LevelUp-wt-cter-fusion\apps\web\src\features\match-view\MatchKDCumulChart.tsx
+  356:5  warning  React Hook useCallback has a missing dependency: 't'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\Guillaume\Projects\LevelUp-wt-cter-fusion\apps\web\src\features\match-view\MatchPositionsHeatmap.tsx
+   68:17  warning  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components                                                          react-refresh/only-export-components
+  127:9   warning  The 'all' logical expression could make the dependencies of useMemo Hook (at line 128) change on every render. To fix this, wrap the initialization of 'all' in its own useMemo() Hook  react-hooks/exhaustive-deps
+  127:9   warning  The 'all' logical expression could make the dependencies of useMemo Hook (at line 133) change on every render. To fix this, wrap the initialization of 'all' in its own useMemo() Hook  react-hooks/exhaustive-deps
+
+C:\Users\Guillaume\Projects\LevelUp-wt-cter-fusion\apps\web\src\features\match-view\MatchScoreboard.tsx
+  503:17  warning  Compilation Skipped: Use of incompatible library
+
+This API returns functions which cannot be memoized without leading to stale UI. To prevent this, by default React Compiler will skip memoizing this component/hook. However, you may see issues if values from this API are passed to other components/hooks that are memoized.
+
+C:\Users\Guillaume\Projects\LevelUp-wt-cter-fusion\apps\web\src\features\match-view\MatchScoreboard.tsx:503:17
+  501 |   const [sorting, setSorting] = useState<SortingState>([])
+  502 |
+> 503 |   const table = useReactTable<ScoreboardRowVM>({
+      |                 ^^^^^^^^^^^^^ TanStack Table's `useReactTable()` API returns functions that cannot be memoized safely
+  504 |     data,
+  505 |     columns,
+  506 |     state: { sorting },  react-hooks/incompatible-library
+
+C:\Users\Guillaume\Projects\LevelUp-wt-cter-fusion\apps\web\src\features\media\MediaAudioConfigButton.tsx
+  71:5  warning  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\Guillaume\Projects\LevelUp-wt-cter-fusion\apps\web\src\features\media\MediaAudioConfigButton.tsx:71:5
+  69 |   useEffect(() => {
+  70 |     if (!data) return
+> 71 |     setMode(data.mode ?? 'auto')
+     |     ^^^^^^^ Avoid calling setState() directly within an effect
+  72 |     setRoles(data.track_roles && data.track_roles.length > 0 ? data.track_roles : EMPTY_ROLES)
+  73 |   }, [data])
+  74 |  react-hooks/set-state-in-effect
+
+C:\Users\Guillaume\Projects\LevelUp-wt-cter-fusion\apps\web\src\features\palmares\RelationsTable.tsx
+  344:17  warning  Compilation Skipped: Use of incompatible library
+
+This API returns functions which cannot be memoized without leading to stale UI. To prevent this, by default React Compiler will skip memoizing this component/hook. However, you may see issues if values from this API are passed to other components/hooks that are memoized.
+
+C:\Users\Guillaume\Projects\LevelUp-wt-cter-fusion\apps\web\src\features\palmares\RelationsTable.tsx:344:17
+  342 |     pageSize: RELATIONS_PAGE_SIZE,
+  343 |   })
+> 344 |   const table = useReactTable<RelationInsight>({
+      |                 ^^^^^^^^^^^^^ TanStack Table's `useReactTable()` API returns functions that cannot be memoized safely
+  345 |     data: rows,
+  346 |     columns,
+  347 |     state: { sorting, pagination },  react-hooks/incompatible-library
+
+C:\Users\Guillaume\Projects\LevelUp-wt-cter-fusion\apps\web\src\features\squad\SquadImpactScoreboard.tsx
+  301:17  warning  Compilation Skipped: Use of incompatible library
+
+This API returns functions which cannot be memoized without leading to stale UI. To prevent this, by default React Compiler will skip memoizing this component/hook. However, you may see issues if values from this API are passed to other components/hooks that are memoized.
+
+C:\Users\Guillaume\Projects\LevelUp-wt-cter-fusion\apps\web\src\features\squad\SquadImpactScoreboard.tsx:301:17
+  299 |   }, [matrixMatches, matrixBadgeOrd, extremes, scoreExt, i18n])
+  300 |
+> 301 |   const table = useReactTable<ImpactRow>({
+      |                 ^^^^^^^^^^^^^ TanStack Table's `useReactTable()` API returns functions that cannot be memoized safely
+  302 |     data: rows,
+  303 |     columns,
+  304 |     getCoreRowModel: getCoreRowModel(),  react-hooks/incompatible-library
+
+C:\Users\Guillaume\Projects\LevelUp-wt-cter-fusion\apps\web\src\features\squad\SquadSynergyHistoryTable.tsx
+  350:17  warning  Compilation Skipped: Use of incompatible library
+
+This API returns functions which cannot be memoized without leading to stale UI. To prevent this, by default React Compiler will skip memoizing this component/hook. However, you may see issues if values from this API are passed to other components/hooks that are memoized.
+
+C:\Users\Guillaume\Projects\LevelUp-wt-cter-fusion\apps\web\src\features\squad\SquadSynergyHistoryTable.tsx:350:17
+  348 |   const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: PAGE_SIZE })
+  349 |
+> 350 |   const table = useReactTable<SquadMatchHistoryRow>({
+      |                 ^^^^^^^^^^^^^ TanStack Table's `useReactTable()` API returns functions that cannot be memoized safely
+  351 |     data: sortedRows,
+  352 |     columns,
+  353 |     state: { sorting, pagination },  react-hooks/incompatible-library
+
+✖ 20 problems (0 errors, 20 warnings)
+  0 errors and 2 warnings potentially fixable with the `--fix` option.
+
+EXIT_ESLINT=0 (20/20 attendu, ceiling volet3 tenu)
+## node tools/lint-cross-feature-imports.mjs (racine, plafond 7)
+
+# Cross-feature imports (7) :
+  apps/web/src/features/ascension/PatternContextGrid.tsx
+    → @/features/filters/...
+  apps/web/src/features/ascension/RecordsTimeline.tsx
+    → @/features/filters/...
+  apps/web/src/features/explorer/ExplorerTargetVersusDonuts.tsx
+    → @/features/palmares/...
+  apps/web/src/features/match-view/MatchEncountersTable.tsx
+    → @/features/explorer/...
+  apps/web/src/features/match-view/MatchScoreboard.tsx
+    → @/features/explorer/...
+  apps/web/src/features/squad/SquadSynergyHistoryTable.tsx
+    → @/features/explorer/...
+
+Utilisez `// cross-feature-allow: <raison>` en tête de fichier pour marquer une exception ponctuelle, ou ajoutez la paire dans ALLOWED_CROSS_IMPORTS si la dépendance est durable.
+
+Info : 7 <= plafond P8.5 (7). Pas d'échec — ratchet en place pour bloquer toute régression.
+EXIT_CROSS_FEATURE_IMPORTS=0
+
+########################################################################
+## APRES RE-FUSION D'ORIGIN (2026-08-20) — merge c154f5136 -> 2711d26f9,
+## reparation CI 784868147
+########################################################################
+
+# Contexte : origin/feat/v75 avait avance de 12 commits depuis la fusion de l'etape 1
+# (lots « catalogue des socles » d8d45d9b0 et « laches hors Fiesta » e5c1f4914).
+# Deux conflits git, tous deux resolus en GARDANT LES DEUX COTES :
+#  - .ai/thought_log.md : deux blocs d'entrees en tete, aucun ne remplace l'autre.
+#  - contracttest/replay_contract_test.go : la chronique du contrat. Notre entree
+#    « 36 -> 36 » (la jauge, aucun champ RACINE) et la leur « 36 -> 37 »
+#    (`mapWeaponPads`, un champ racine) coexistent ; le compte passe a 37 (leur champ),
+#    « Les douze fois » (leur increment — une entree sans champ n'incremente pas), et
+#    notre entree gagne une PRECISION datee pour ne pas contredire sa voisine.
+
+## go test -count=1 ./internal/archlint/ (CGO=1) — VERT DESORMAIS
+ok  	levelup/go-api/internal/archlint	24.164s
+EXIT_TEST_ARCHLINT=0
+# Les DEUX echecs pre-existants de la section precedente sont traites par 784868147
+# (allowlists datees 2026-08-20 pour cmd/variant-probe, condition de reprise ecrite,
+# a router vers la session variant-probe). Controle negatif joue : entrees retirees ->
+# TestNoNewHalowaypointLiteral rougit sur cmd/variant-probe/fetch.go:27 et :86,
+# TestNoRawKillScopeLiteral sur cmd/variant-probe/main.go:60, et sur rien d'autre.
+#
+# UN TROISIEME ROUGE est apparu, NE DE LA RE-FUSION et d'aucun lot : le test neuf
+# map_weapon_pads_catalog_test.go (cote origin) ecrit l'echelle « ../../../.. » a la
+# main, que le cliquet neuf no_repo_root_walk_test.go (notre cote, volet 2) interdit.
+# Ni l'un ni l'autre n'etait rouge seul — c'est la collision des deux nouveautes.
+# Migre comme le cliquet le PRESCRIT : testutil.RepoRoot(), et le t.Skip tombe puisque
+# data/titles/halo_infinite/reference/map_weapon_pads.json EST versionne (git ls-files
+# le confirme) — le skip muet est exactement le defaut R1-1 que la garde tue.
+
+## go test -count=1 ./internal/analysis/replay/ (CGO=0)
+ok  	levelup/go-api/internal/analysis/replay	76.764s
+EXIT_TEST_REPLAY_NOCGO=0
+
+## go test -count=1 ./contracttest/ ./internal/replaybuild/ ./internal/service/ (CGO=1)
+ok  	levelup/go-api/contracttest	2.857s
+ok  	levelup/go-api/internal/replaybuild	4.191s
+ok  	levelup/go-api/internal/service	13.911s
+EXIT_TEST_CONTRACT_REPLAYBUILD_SERVICE=0
+
+## go build ./... (CGO=1)
+EXIT_BUILD=0
+
+## golangci-lint run --new-from-merge-base=origin/main ./...
+level=warning msg="[runner/nolint_filter] Found unknown linters in //nolint directives: gosec, plr0913"
+0 issues.
+EXIT_LINT=0
+# NOTE : premiere tentative refusee par « parallel golangci-lint is running » (verrou
+# d'une AUTRE session, PID 29708). Rejoue apres liberation du verrou — pas un echec.
+
+## web: purge node_modules/.tmp puis npx tsc -b --force
+EXIT_TSC=0
+
+## web: npx vitest run src/features/match-replay src/lib
+Test Files  154 passed (154)
+     Tests  1901 passed (1901)
+EXIT_VITEST=0
+# +4 fichiers / +52 tests par rapport a la section precedente (150/1849) : ce sont les
+# tests des deux lots d'origin. Aucune flakiness cette fois, commande EXACTE prescrite.
+# Cliquet ReplayCanvas.tsx : 808 lignes, PILE au plafond pose par leur lot
+# (placementFamily.guard.test.ts:172). Notre volet 3 ne touche pas ce fichier.
+
+## web: npm run lint (plafond 20)
+20 problems (0 errors, 20 warnings)
+EXIT_ESLINT=0
+
+## node tools/lint-cross-feature-imports.mjs (racine, plafond 7)
+Info : 7 <= plafond P8.5 (7).
+EXIT_CROSS_FEATURE_IMPORTS=0

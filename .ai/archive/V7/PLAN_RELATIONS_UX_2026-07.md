@@ -1,0 +1,573 @@
+# PLAN — Améliorations UX page Relations (Communauté) — 2026-07
+
+> Plan d'exécution pour agent (Opus). Contrat : skill `plan-execution` (ordre strict,
+> une étape à la fois, gate par lot, statuts [x]/[~]/[!], zéro fix hors périmètre).
+> Rédigé le 2026-07-07 après revue UX de la page avec l'utilisateur — toutes les
+> décisions produit ci-dessous sont TRANCHÉES, ne pas les rouvrir.
+
+## Contexte et objectif
+
+La page Communauté > Relations (`apps/web/src/features/palmares/PalmaresRelationsPage.tsx`,
+route canonique `/players/$playerSlug/community/relations`) est bien exécutée mais
+descriptive : elle redonne la même donnée plusieurs fois et n'offre ni classement, ni
+navigation vers les matchs, ni raison d'y revenir. Diagnostic validé avec l'utilisateur.
+
+**Objectif** : transformer la page d'« almanach consulté deux fois » en page utile et
+vivante : tableau ordonnançable, duels cliquables vers la match view, volet « Quoi de
+neuf », notification « rival croisé » post-sync, suppression de la triple redondance
+noyau dur.
+
+**Critère de succès global** : les 7 lots obligatoires (A, B, C, H, F, D, E) livrés et
+verts (le lot G est conditionnel), suites Go + web vertes, aucune régression sur les
+consommateurs partagés (`OutcomeSequenceTape` est utilisé par 5 autres pages).
+
+**Décisions produit actées (ne pas rediscuter)** :
+- Pas de champ de recherche dans le tableau (redondant avec l'Explorer mode joueur,
+  accessible en 1 clic depuis chaque gamertag). Le TRI, lui, est retenu.
+- La heatmap « Rythme des rencontres » est conservée telle quelle (choix utilisateur).
+- Le toggle « amis » est conservé mais relibellé selon sa vraie sémantique
+  (« jamais affrontés ») et son défaut passe à MASQUÉ.
+- La section détaillée CoreCards (bas de page) est SUPPRIMÉE (triple redondance).
+- CSR du rival = lot G optionnel/conditionnel uniquement (données classées seulement).
+- Multi-jeux = un CHIP de plus dans le segmented control (tranche de population, comme
+  tous/noyau/alliés/rivaux/récents), PAS un toggle : le toggle est réservé aux
+  préférences d'affichage orthogonales. Filtre 100 % client sur le badge cross-jeu
+  déjà servi (Phase 3b) — aucun changement backend.
+
+## Références de code (vérifier sur pièces avant chaque lot — le code a pu bouger)
+
+| Élément | Emplacement |
+|---|---|
+| Page | `apps/web/src/features/palmares/PalmaresRelationsPage.tsx` |
+| Tableau | `apps/web/src/features/palmares/RelationsTable.tsx` |
+| Cartes rivaux | `apps/web/src/features/palmares/RelationsRivalryCards.tsx` |
+| Section moments | `apps/web/src/features/palmares/RelationsMomentsSection.tsx` |
+| Filtre client + prefs | `apps/web/src/features/palmares/relationsFilter.ts`, `apps/web/src/stores/relationsPrefsStore.ts` |
+| Frise partagée | `apps/web/src/components/charts/OutcomeSequenceTape.tsx` (5 autres consommateurs : Home, session-detail, lab, timeseries, squad) |
+| i18n page | `apps/web/src/lib/i18n/manifests/palmares.toml` → regen `node apps/web/scripts/build_i18n_manifests.mjs` → `lib/i18n/generated/palmares.ts` (adapter `features/palmares/i18n.ts`) |
+| Algos purs | `apps/go-api/internal/analysis/relations/{relations,overview}.go` |
+| Service | `apps/go-api/internal/service/relations_service.go`, `relations_moments_service.go` |
+| Repo SQL | `apps/go-api/internal/platform/duckdb/relations_repo.go`, templates `Q28RelationsTpl` / `Q28RelationsScopedTpl` dans `queries_career_encounters.go` |
+| DTO | `apps/go-api/internal/domain/relations.go` (`RelationInsight`) + `apps/go-api/api/openapi.yaml` (manuel — migration Huma terminée) → `make generate-types` |
+| Notifications | `apps/go-api/internal/notifications/types.go` (catégories), `internal/api/wire/post_sync_deltas.go` (hook post-sync), `internal/migration/steps_player_notifications.go` (seed prefs), front `apps/web/src/features/notifications/{i18n,navigation,format}.ts` |
+| Route match view | `/players/$playerSlug/matches/$matchId` |
+
+## Branche et livraison
+
+- Branche : **`feat/relations-ux-2026-07`**, créée depuis `main` À JOUR au moment de
+  l'exécution. Attention : le chantier audits (`refactor/audits-2026-07`) est en attente
+  de merge — si son merge dans `main` n'est pas encore fait, le signaler à l'utilisateur
+  AVANT de commencer (risque de conflit sur les fichiers relations) et attendre sa
+  décision. Ne JAMAIS travailler sur `main` (push main = deploy prod auto).
+- 1 branche, N commits : un commit par lot (`feat(relations-A): ...` etc.), au fil de
+  l'eau sans redemander (autonomie accordée sur ce chantier). Pas de `git stash`.
+- Entrée `.ai/thought_log.md` à la clôture de chaque lot.
+- Pas d'emojis dans les fichiers. Strings UI en FR **et** EN (parité typée). FR sans
+  anglicismes. Aucune couleur hex/classe Tailwind couleur dans features/ (tokens only).
+
+## Gates communs (à exécuter tels quels)
+
+```
+# GATE-GO (lots D, E) — depuis apps/go-api/
+go test ./...          # code de sortie 0 exigé (filtrer avec '^--- FAIL:' seulement)
+go vet ./...
+# Lot E uniquement (touche internal/migration/) :
+go test -tags=integration -p 1 ./...   # -p 1 NON NÉGOCIABLE (DuckDB mono-process)
+
+# GATE-WEB (tous les lots) — depuis apps/web/
+Remove-Item -Recurse -Force node_modules\.tmp   # purge tsBuildInfo (anti faux vert)
+npm run typecheck
+npm run lint
+npx vitest run src/features/palmares src/features/notifications src/stores  # hors sandbox (dangerouslyDisableSandbox)
+
+# GATE-I18N (lots C, D, E, F) — après édition de palmares.toml
+node apps/web/scripts/build_i18n_manifests.mjs   # puis vérifier le diff de generated/palmares.ts
+
+# GATE-TYPES (lot D) — après édition de openapi.yaml
+make generate-types    # régénère apps/web/src/lib/api/generated.ts
+```
+
+« Lot clos » = tous ses items statués + son gate passé (code de sortie vérifié) +
+commit + entrée thought_log. Ne pas commencer le lot suivant avant.
+
+---
+
+## Lot A — Tri des colonnes du tableau (front pur, effort : rapide)
+
+Le tableau (`RelationsTable.tsx`) n'a ni `getSortedRowModel` ni accesseurs : ordre serveur
+figé (matchs communs DESC). Objectif : en-têtes cliquables, tri client.
+
+- [x] A1. Ajouter un `accessorFn` à chaque colonne triable + `getSortedRowModel()` :
+      - `player` → `gamertag` (alpha, insensible à la casse)
+      - `encounters` → `total_matches`
+      - `wr_ally` → `teammate_win_rate` ; `wr_enemy` → `enemy_win_rate`
+      - `frags_deaths` → net `kills_dealt - deaths_suffered`
+      - `ratio` → `duel_ratio`
+      - `last_seen` → timestamp epoch de `last_seen_at`
+      - `link` (catégorie) → NON triable (`enableSorting: false`)
+      FAIT : accessorFn + `sortDescFirst: true` sur les colonnes numériques/date
+      (1er clic = décroissant, attendu par A5a) ; `player` alpha asc-first.
+- [x] A2. Valeurs nulles toujours en fin de liste quel que soit le sens : accessor
+      retourne `undefined` pour null/NaN + `sortUndefined: 'last'` sur ces colonnes.
+      FAIT via helpers `numOrUndef` / `lastSeenEpoch`.
+- [x] A3. En-têtes : bouton cliquable (cycle asc→desc→none), indicateur de sens en
+      caractère texte (pas d'icône emoji), `aria-sort` sur le `<th>` actif. Pas d'état
+      de tri initial (ordre serveur conservé tant qu'on ne clique pas).
+      FAIT : helper `SortLabel` (bouton + indicateur `↑`/`↓`) ; pour « Ratio » le
+      Tooltip enveloppe le bouton (`div > button` valide). `aria-sort` sur le `<th>`.
+- [x] A4. Vérifier que le changement de tri réinitialise la pagination page 1
+      (comportement TanStack `autoResetPageIndex` par défaut — tester, ne pas supposer).
+      VÉRIFIÉ : `autoResetPageIndex` ne réinitialise PAS de façon fiable (ni sync ni
+      async) dans notre harnais → reset explicite piloté via état contrôlé
+      (`onSortingChange` remet `pageIndex: 0`). Test dédié (30 lignes, page 2 → tri →
+      page 1). Découverte consignée en bas de plan.
+- [x] A5. Tests vitest (nouveau `RelationsTable.test.tsx`) :
+      (a) clic sur « Ratio » → ordre décroissant attendu sur un jeu de 4 lignes dont une
+      à ratio null (null en dernier) ; (b) second clic → ordre inversé, null toujours
+      en dernier ; (c) `aria-sort` présent. FAIT (+ tri alpha casse-insensible + « Lien »
+      non triable).
+
+**Gate A** : GATE-WEB.
+
+## Lot B — Duels cliquables vers la match view (front, effort : moyen)
+
+`OutcomeSequenceTape` (ECharts custom series, runs RLE) porte déjà `matchId` par point
+mais n'a aucun clic. Les cartes rivaux deviennent le seul endroit cliquable (la
+mini-frise `OutcomeSparkline` du hero bête noire reste décorative `aria-hidden`).
+
+- [x] B1. `OutcomeSequenceTape.tsx` : prop optionnelle `onMatchClick?: (matchId: string) => void`.
+      Sans la prop, comportement STRICTEMENT identique (5 autres consommateurs — zéro
+      régression : ne rien changer d'autre à l'option ECharts par défaut).
+      FAIT : `onEvents`/`onChartReady` passés SEULEMENT si la prop est fournie
+      (`interactiveProps` conditionnel) ; option ECharts inchangée hors curseur (B3).
+- [x] B2. Résolution du match cliqué : extraire un helper pur exporté
+      `matchIndexAtX(runs, xValue)` (xValue continu 0..xMax → index global borné →
+      match). Câblage : `onEvents={{ click }}` + instance chart (`onChartReady`) +
+      `convertFromPixel` pour retrouver xValue depuis `event.event.offsetX/offsetY`.
+      Cas dégradé : si la conversion échoue, retomber sur le premier match du run
+      cliqué (`params.dataIndex`). FAIT : helper (+ `toRuns`/`startOf`/types) déplacé
+      dans `outcomeSequence.ts` (module pur — évite un export de valeur depuis un
+      fichier composant, react-refresh) ; le tape ré-exporte les TYPES pour les 5
+      consommateurs.
+- [x] B3. Quand `onMatchClick` est fourni : `cursor: 'pointer'` sur les rects du
+      renderItem (propriété zrender par élément), pas de changement visuel autre.
+      FAIT : `rect.cursor` posé uniquement si `interactive` (sinon clé absente).
+- [x] B4. `RelationsRivalryCards.tsx` : accepter `onMatchClick` et le passer au tape ;
+      `RelationsMomentsSection.tsx` : construire la navigation
+      `navigate({ to: '/players/$playerSlug/matches/$matchId', params })` (playerSlug
+      déjà en props) et la passer aux cartes. FAIT.
+- [x] B5. Tests : (a) test unitaire pur de `matchIndexAtX` (bornes : x négatif, x ≥ xMax,
+      runs vides, run unique) ; (b) test vitest de non-régression : tape SANS prop rend
+      comme avant (mocker `echarts-for-react`). FAIT : `OutcomeSequenceTape.test.tsx`
+      (a : 4 tests helper ; b : sans prop → aucun `onEvents`/`onChartReady`, avec prop →
+      câblés).
+
+**Gate B** : GATE-WEB + vérification manuelle rapide de 2 consommateurs non modifiés
+(Home, squad synergies) en typecheck (aucune prop requise ajoutée = aucun changement).
+
+## Lot C — Toggle « jamais affrontés » : libellé honnête + défaut masqué (rapide)
+
+Le toggle actuel dit « amis » mais masque en réalité les relations jamais affrontées
+(`enemy_matches === 0`). Décisions : renommer selon la sémantique réelle, défaut = masqué.
+
+- [x] C1. `relationsPrefsStore.ts` : renommer `includeFriends` → `includeNeverFaced`,
+      défaut `false`. Bump `version: 2` + `migrate` v1→v2 : réinitialiser la valeur à
+      `false` (changement de sémantique assumé, une seule fois), conserver `filter` et
+      `heatmapMode`. Commenter la raison + date dans le migrate.
+      FAIT : migrate extrait en fonction pure exportée `migrateRelationsPrefs`
+      (testable) ; supprime l'ancienne clé `includeFriends`, cumule v0→v1 (daypart→hour).
+- [x] C2. `PalmaresRelationsPage.tsx` : renommer les usages (setter, filtre
+      `visibleRows`). La logique ne change pas : OFF → masquer `enemy_matches === 0`.
+      FAIT (+ commentaires/docstring d'en-tête mis à jour).
+- [x] C3. i18n `palmares.toml` : remplacer les clés du toggle par la nouvelle sémantique.
+      Libellés actés — état ON : FR « Jamais affrontés inclus » / EN « Never-faced
+      included » ; état OFF : FR « Inclure les jamais affrontés » / EN « Include
+      never-faced players ». Supprimer les anciennes clés (0 code mort). Regen manifest.
+      FAIT : clés `include_never_faced` / `never_faced_included` ; adaptateur `i18n.ts`
+      (`includeNeverFaced`/`neverFacedIncluded`) ; `generated/palmares.ts` régénéré.
+- [x] C4. Mettre à jour les tests existants qui référencent l'ancien libellé/état par
+      défaut (`PalmaresRelationsPage.test.tsx` et tout test du store).
+      FAIT : `afterEach` reset → `includeNeverFaced: false` ; nouveau test de page
+      (défaut masqué + bascule du libellé). Aucun test ne référençait l'ancien libellé.
+- [x] C5. Ajouter un test du migrate v1→v2 (persisted v1 avec `includeFriends: true` →
+      state v2 `includeNeverFaced: false`, `filter`/`heatmapMode` préservés).
+      FAIT : `relationsPrefsStore.test.ts` (v1→v2, v0→v2 cumulé, state vide).
+
+**Gate C** : GATE-WEB + GATE-I18N.
+
+## Lot H — Chip « Multi-jeux » dans le segmented control (front pur, rapide)
+
+Voir les joueurs croisés sur plusieurs jeux. Le backend sert déjà l'information
+(Phase 3b) : badge `label_key = "narrative.encounter.cross_game"` dans
+`relations[].badges`, avec `detail.game` et `detail.matches_together` (seuil serveur
+`CrossGameMinMatchesTogether = 3`, best-effort — si l'enrichissement cross-titre échoue,
+le badge est simplement absent). Aucun changement Go.
+
+- [~] H1. Étendre l'union `RelationFilter` avec `'cross'` dans `relationsFilter.ts` ET
+      dans son miroir `relationsPrefsStore.ts` (les deux unions doivent rester
+      identiques — commentaire de miroir déjà en place). Pas de migration du store :
+      valeur additive, les états persistés existants restent valides.
+      LIVRÉ par le train corrections v7 (avant ce chantier). Vérifié sur pièces :
+      union `'cross'` présente dans `relationsFilter.ts:14` ET `relationsPrefsStore.ts:16`
+      (commentaire de miroir en place).
+- [~] H2. Prédicat `isCrossGame(r)` : au moins un badge dont `label_key` est le littéral
+      cross-jeu. Le littéral `"narrative.encounter.cross_game"` doit exister en UNE
+      constante exportée côté front (vérifier si `RelationBadges.tsx` ou un module badges
+      le porte déjà ; sinon la définir dans `relationsFilter.ts` et l'importer partout —
+      règle des ≤ 2 copies).
+      LIVRÉ v7. Vérifié : `CROSS_GAME_BADGE_KEY = 'narrative.encounter.cross_game'`
+      constante exportée (`relationsFilter.ts:24`) + `isCrossGame` (`relationsFilter.ts:31`).
+- [~] H3. Chip « Multi-jeux » ajouté au segmented control (`FILTER_CHIPS` +
+      `SegmentedFilter`), clés i18n FR « Multi-jeux » / EN « Multi-game » dans
+      `palmares.toml` (section chips) + regen manifest.
+      LIVRÉ v7. Vérifié : `[palmares.relations.chip.cross]` FR « Multi-jeux » /
+      EN « Multi-game » (`palmares.toml:137-139`) ; chip ajouté à `SegmentedFilter`
+      (`PalmaresRelationsPage.tsx:435`).
+- [~] H4. Affichage conditionnel : le chip n'est RENDU que si au moins une relation
+      porte le badge (pas de segment mort pour les profils mono-titre). Garde-fou : si
+      le filtre persisté vaut `'cross'` alors que le chip est masqué (données devenues
+      vides), traiter comme `'all'` sans écrire dans le store.
+      LIVRÉ v7. Vérifié : `showCross = hasCrossGameRelations(relations)`
+      (`PalmaresRelationsPage.tsx:513`) ; garde-fou `effectiveFilter` neutralise un
+      `'cross'` persisté sans écrire le store (`PalmaresRelationsPage.tsx:516`).
+- [~] H5. Le chip compose normalement avec le toggle « jamais affrontés » (même
+      pipeline `visibleRows`) — aucun cas spécial.
+      LIVRÉ v7. Vérifié : `visibleRows` chaîne `effectiveFilter` puis
+      `includeNeverFaced` sans cas spécial (`PalmaresRelationsPage.tsx:520-523`).
+- [~] H6. Tests vitest : (a) `filterRelations('cross')` ne garde que les relations au
+      badge cross-jeu ; (b) chip absent quand aucune relation multi-jeux ; (c) chip
+      présent + clic → tableau réduit aux bonnes lignes ; (d) filtre persisté `'cross'`
+      sans donnée → rendu identique à « tous ».
+      LIVRÉ v7. Vérifié : `relationsFilter.test.ts:41-60` (a/b) +
+      `PalmaresRelationsPage.test.tsx:91-158` (c chip présent+filtre ; d chip masqué +
+      filtre `'cross'` persisté neutralisé).
+
+**Gate H** : GATE-WEB + GATE-I18N.
+
+## Lot F — Dé-redondance noyau dur + pont vers Escouade (rapide)
+
+Frontière actée : Escouade = « nous » (groupe déclaré), Relations = « le monde croisé ».
+Le noyau dur apparaît 3 fois sur la page ; la section détaillée n'ajoute rien au tableau.
+
+> Note d'ordre : F est exécuté AVANT D pour stabiliser la structure de page avant d'y
+> ajouter le volet « Quoi de neuf ».
+
+- [x] F1. Supprimer la section « Noyau dur » détaillée : composant `CoreCards` + son
+      rendu dans `RelationsContent` + le bloc titre/description de section. Supprimer
+      les clés i18n devenues orphelines (`core.sectionTitle`, `core.sectionDescription`,
+      `core.together`, `core.empty` — VÉRIFIER par grep qu'elles ne sont pas utilisées
+      ailleurs avant suppression ; celles partagées avec la carte hero restent).
+      FAIT : composant + section + les 4 clés orphelines supprimés (grep préalable :
+      les 4 n'étaient utilisées que par la section supprimée ; `core.*` partagées avec
+      la carte résumé conservées). i18n.ts (type + getters) + palmares.toml + manifest
+      régénéré. Docstring d'en-tête de page mise à jour.
+- [x] F2. La carte hero « Noyau dur » et le chip « noyau » du tableau restent inchangés.
+      Ajouter dans le pied de la carte hero noyau un lien discret vers la page Escouade :
+      FR « Voir l'escouade » / EN « View squad » → route `/players/$playerSlug/squad`
+      (nouvelles clés i18n FR+EN).
+      FAIT : clé `core.view_squad` ; `CoreSummaryCard` prend `onViewSquad` (threadé
+      via `RelationsContent` depuis `goToSquad` de la page, même pattern que
+      `goToExplorer`) ; bouton discret en pied de carte (tokens sémantiques only).
+- [x] F3. Purger les tests/snapshots qui référencent CoreCards ; ajouter l'assertion
+      inverse (la section n'est plus rendue) dans le test de page.
+      FAIT : aucun test/snapshot ne référençait le composant (grep préalable = 0) ;
+      2 tests ajoutés à `PalmaresRelationsPage.test.tsx` (section absente + pont
+      « Voir l'escouade » présent).
+
+**Gate F** : GATE-WEB + GATE-I18N + grep `CoreCards` = 0 occurrence hors historique git.
+
+## Lot D — Volet « Quoi de neuf » (full-stack, effort : moyen-lourd)
+
+Donner une raison de revenir : nouvelles têtes et retrouvailles. Bande compacte rendue
+entre les cartes hero et les chips de filtre, UNIQUEMENT si non vide.
+
+**Définitions actées** (constantes nommées dans `analysis/relations`, pas de magic number) :
+- Nouvelle tête : `first_seen_at` dans les 30 derniers jours (`NewFaceWindowDays = 30`).
+  Calculable CÔTÉ CLIENT (`first_seen_at` déjà dans le DTO) — pas de SQL.
+- Retrouvailles : au moins 1 rencontre dans les 30 derniers jours ET la dernière
+  rencontre AVANT cette fenêtre remonte à ≥ 90 jours (`RevivedWindowDays = 30`,
+  `RevivedMinGapDays = 90`). Nécessite 2 agrégats SQL nouveaux.
+
+- [x] D1. SQL — étendre `Q28RelationsTpl` ET `Q28RelationsScopedTpl`
+      (`queries_career_encounters.go`) avec 2 colonnes :
+      `encounters_30d` = COUNT(*) FILTER (rencontres ≥ now − 30 j) et
+      `prev_seen_before_window` = MAX(ts) FILTER (rencontres < now − 30 j).
+      OBLIGATOIRE : réutiliser le fragment timezone canonique déjà employé dans ces
+      templates (`COALESCE(start_time_utc, start_time AT TIME ZONE 'UTC')`) — jamais
+      `start_time` brut. Étendre `scanRelationRow` + `domain.RelationRawRow`.
+      FAIT : `COUNT(DISTINCT e.match_id) FILTER (WHERE e.start_time >= ?)` +
+      `MAX(e.start_time) FILTER (WHERE e.start_time < ?)` sur les 2 templates —
+      `e.start_time` EST déjà le fragment canonique (alias de la CTE encounters,
+      jamais `start_time` brut). Cutoff = `time.Now().UTC() − RevivedWindowDays`
+      passé en paramètre lié (même pattern que `periodSince`), sans changer la
+      signature `GetRelations` (accounting placeholders ajusté dans
+      `buildRelationsQuery` : +2 cutoff après encounters, avant kv_stats).
+      `domain.RelationRawRow` += `Encounters30d` + `PrevSeenBeforeWindow *time.Time` ;
+      `scanRelationRow` scanne 17 colonnes.
+- [x] D2. `analysis/relations` : constantes + fonction pure
+      `IsRevived(encounters30d int, prevSeen *time.Time, now time.Time) bool`.
+      Tests unitaires purs (cas : jamais vu avant, gap 89 j, gap 90 j, 0 rencontre
+      récente, prevSeen nil).
+      FAIT : constantes `NewFaceWindowDays`/`RevivedWindowDays`/`RevivedMinGapDays` ;
+      `IsRevived` pur ; `revived_test.go` (6 cas dont gap 89/90 j, prevSeen nil,
+      0 rencontre récente, relation continue).
+- [x] D3. Service : mapper vers le DTO — `RelationInsight` += `is_revived bool`
+      (source unique côté serveur, même modèle que `is_core`). `openapi.yaml` mis à
+      jour (schéma RelationInsight) + GATE-TYPES.
+      FAIT : `IsRevived bool json:"is_revived"` ; mappé dans `buildRelationInsight`
+      via `now` déjà injecté ; openapi (propriété + required) + `generate-types`
+      (generated.ts += `is_revived: boolean`).
+- [x] D4. Repo test (`relations_repo_test.go`, DuckDB en mémoire) : fixture avec une
+      relation « ravivée » (rencontres à now−200 j et now−5 j) et une non ravivée
+      (rencontres régulières) → colonnes SQL correctes sur les DEUX templates
+      (scopé et non scopé).
+      FAIT : `relations_repo_whatsnew_test.go` (build integration) — Revy
+      (now−200 j/now−5 j → encounters_30d=1, prev_seen≈now−200 j) et Reg
+      (now−10 j/now−20 j → encounters_30d=2, prev_seen=nil) vérifiés sur scope nil ET
+      scope explicite. Vert (`go test -tags=integration`).
+- [x] D5. Front — composant `RelationsWhatsNewStrip` (nouveau fichier dans
+      `features/palmares/`) : deux groupes rendus seulement si non vides,
+      « Nouvelles têtes (30 j) » (client : `first_seen_at` ≤ 30 j) et
+      « Retrouvailles » (`is_revived`), max 5 gamertags par groupe (+ compteur « +N »),
+      gamertags cliquables → Explorer (réutiliser `goToExplorer`). Aucun appel réseau
+      nouveau : tout vient de `data.relations`. Clés i18n FR/EN :
+      FR « Quoi de neuf » / « Nouvelles têtes » / « Retrouvailles » (+ tooltip
+      expliquant les fenêtres 30 j / 90 j) ; EN « What's new » / « New faces » /
+      « Reunions ». La logique de sélection (fenêtres, tri, plafond 5) dans un
+      `whatsNew.ts` pur à côté de `relationsFilter.ts`, testé en vitest.
+      FAIT : `whatsNew.ts` pur (`computeWhatsNew`/`isNewFace`/`isReunion`/`hasWhatsNew`,
+      plafond 5 + overflow, tri récent→ancien, `now` injectable) ;
+      `RelationsWhatsNewStrip.tsx` rendu conditionnel entre hero et chips, gamertags
+      → `goToExplorer` (prop `onPlayerClick`), tooltips via `Tooltip` (tokens only) ;
+      i18n `whats_new.*` + adaptateur + manifest.
+- [x] D6. Tests front : strip absent quand aucune donnée ne matche ; présent avec les
+      bons gamertags sinon ; `whatsNew.ts` testé unitairement (bornes de fenêtre).
+      FAIT : `whatsNew.test.ts` (bornes fenêtre, tri, plafond/overflow, hasWhatsNew) +
+      `RelationsWhatsNewStrip.test.tsx` (absent sans donnée ; présent avec bons
+      gamertags + clic → onPlayerClick).
+
+**Gate D** : GATE-GO + GATE-WEB + GATE-I18N + GATE-TYPES.
+
+## Lot E — Notification « rival croisé » post-sync (full-stack, effort : lourd)
+
+Le moment « revanche » se joue juste après le match : émettre une notification in-app
+quand une sync ramène un nouveau duel contre un des top rivaux.
+
+**Design acté** :
+- Détection par WATERMARK, pas par re-scan : `PlayerSnapshot` (post_sync_deltas.go)
+  += `LastMatchStartTime` (MAX du start canonique des matchs du joueur dans le shared —
+  une requête légère, timezone canonique). Capturée avant ET après la sync.
+  Si `after <= before` (aucun nouveau match) → détection SKIPPÉE (coût nul sur les
+  syncs à vide, qui sont la majorité).
+- Sinon : réutiliser le chemin existant top rivaux (`GetRelations` + logique
+  `selectTopRivals`, seuils existants) + `GetRivalTimeline` (limite existante) ; un
+  duel est « nouveau » si `started_at > before.LastMatchStartTime`. Le watermark rend
+  l'émission idempotente (une re-sync des mêmes matchs ne ré-émet pas).
+- Garde-fous nommés : `rivalNotifMaxPerSync = 3` (anti-spam après longue absence) et
+  `rivalNotifMaxAgeDays = 7` (pas de notification pour un duel plus vieux — cas
+  backfill/import).
+- Catégorie : `rival_encounter`. Severity : `SeveritySuccess` si duel gagné,
+  `SeverityInfo` sinon. `TargetRoute` : la match view du duel
+  (`/players/{slug}/matches/{match_id}`). `Source` : `post_sync`.
+  Params : `gamertag`, `outcome` (win|loss|other), `kills`, `deaths`, `match_id`.
+
+- [x] E1. `notifications/types.go` : + `CategoryRivalEncounter Category = "rival_encounter"`.
+      Synchroniser les 2 dépendants documentés dans l'en-tête du fichier :
+      `migration/steps_player_notifications.go` (seed préférence, activée par défaut)
+      et le front (E5). Étendre le test du seed.
+      FAIT : `CategoryRivalEncounter` + ajout à `AllCategories()`. DÉCOUVERTE
+      (vérifiée sur pièces) : il n'existe PAS de seed explicite par catégorie —
+      `steps_player_notifications.go` est un stub doc, et une catégorie sans ligne
+      de préférence est ACTIVE par défaut (`isCategoryEnabledOn` : `sql.ErrNoRows →
+      true`). Aucune migration de seed requise. « Test du seed » satisfait par un
+      garde-rail d'énumération : `TestAllCategories_IncludesRivalEncounter`
+      (service_test.go). Front E5 synchronisé (types.ts + ALL_CATEGORIES).
+- [x] E2. Détection : méthode de service dédiée
+      (`RelationsService.DetectRivalEncounters(ctx, since time.Time) ([]RivalEncounter, error)`)
+      — orchestration dans `internal/service`, AUCUN SQL nouveau (réutilise
+      `port.RelationsRepository`). Type de retour dans `internal/domain`.
+      FAIT : `relations_rival_notif_service.go` — réutilise `selectTopRivals`
+      (top par matchs en ennemi, seuil `momentsRivalMinEnemyMatches`) +
+      `GetRivalTimeline` (limite `momentsTimelineLimit`), EXACTEMENT le chemin des
+      cartes revanche. Garde-fous nommés `rivalNotifMaxPerSync=3` /
+      `rivalNotifMaxAgeDays=7`. `since` zéro → nil sans requête (anti-burst).
+      `domain.RivalEncounter` (type interne, sans tag JSON). Tests
+      `relations_rival_notif_service_test.go` (mock repo réutilisé) : duel récent →
+      détecté ; duel <= watermark → non ; maxAgeDays filtre le backfill ancien ;
+      plafond maxPerSync garde les 3 plus récents ; watermark zéro court-circuite.
+- [x] E3. `post_sync_deltas.go` : + `LastMatchStartTime` dans `PlayerSnapshot` ;
+      câbler la détection + l'émission dans la closure post-sync, best-effort.
+      FAIT : `LastMatchStartTime` ajouté à `PlayerSnapshot` ; requête watermark
+      inline dans `SnapshotPlayerState` (bloc SharedReadDB déjà ouvert — réutilise
+      la connexion partagée, pattern des lectures kd/winrate existantes ;
+      `MAX(StartTimeCanonicalSQL("r"))` sur `match_participants ⨝ match_registry`,
+      fragment timezone canonique, jamais `start_time` brut). Émission dans un
+      fichier sœur `post_sync_rival_encounters.go` : détecteur bare
+      `service.NewRelationsService(NewCareerRepo(pdb2))` (pattern
+      `newCitationsServiceForPDB` du même fichier — pas de filtres/cross-game
+      inutiles), câblé après `EmitPostSyncDeltas`. Watermark : `after <= before` →
+      SKIP. Best-effort strict (WarnContext, jamais bloquant).
+- [x] E4. Test wire : sync avec nouveau duel rival → 1 notification `rival_encounter`
+      émise avec les bons params ; sync sans nouveau match → 0 émission (détection
+      non appelée).
+      FAIT : `post_sync_rival_encounters_test.go` (détecteur factice +
+      `recordingEmitter`) : nouveau duel → 1 notif (params gamertag/outcome/kills/
+      deaths/match_id, severity success sur win, target_route match view, source
+      post_sync) ; duel perdu → severity info ; watermark inchangé → détecteur JAMAIS
+      appelé + 0 émission ; détecteur nil → no-op.
+- [x] E5. Front notifications : `features/notifications/i18n.ts` +
+      `notif.rival_encounter.title` / `.body` FR+EN ; `navigation.ts` TargetRoute
+      match view ; `navigation.test.ts`.
+      FAIT : `types.ts` (union + ALL_CATEGORIES), `i18n.ts` (categoryLabel +
+      categoryDescription + templates title/body FR+EN — libellés actés),
+      `icons.tsx` (`rival_encounter: IconUser`, complétude du `Record`),
+      `navigation.ts` : la match view est déjà gérée par la PRIORITÉ `target_route`
+      (le backend l'envoie toujours) ; ajout d'un fallback défensif sur
+      `params.match_id`. `navigation.test.ts` : 3 tests dédiés + le validateur de
+      routes accepte les routes dynamiques `/matches/$id` (1er segment). Vitest vert.
+- [x] E6. Logging : émissions et skips significatifs en `slog.InfoContext/DebugContext`
+      avec clés structurées (`"rival"`, `"match_id"`, `"duels_new"`).
+      FAIT : émission → `InfoContext` (`rival`, `match_id`, `outcome`) ; skip
+      watermark + total détecté → `DebugContext` (`duels_new`) ; erreurs →
+      `WarnContext`. Zéro erreur avalée.
+
+**Gate E** : GATE-GO **avec** `go test -tags=integration -p 1 ./...` (le lot touche
+`internal/migration/`) + GATE-WEB.
+
+## Lot G (LIVRÉ) — Contexte CSR sur la bête noire (dégradation gracieuse)
+
+DÉCISION PRODUIT (2026-07-17) : lot G construit MALGRÉ une couverture nulle sur la base
+de dev. La feature s'auto-adapte à la population (un joueur compétitif verra le CSR de sa
+bête noire, un joueur social ne verra rien) — coût d'avoir tort = nul grâce à la
+dégradation gracieuse. La porte d'entrée « ≥ 30 % de couverture » (G0) est ABANDONNÉE
+comme critère : elle mesurait la base de dev, pas la valeur cible.
+
+- [~] G0. Gate de couverture ABANDONNÉ comme critère (décision produit 2026-07-17,
+      dégradation gracieuse). Mesure historique (sonde Go jetable, 2026-07-17) : 0 % de
+      couverture CSR des rivaux sur la base de dev (union 0/22) — reflète que la base est
+      100 % social, PAS la valeur de la feature pour un joueur compétitif. Le CSR n'existe
+      que pour le classé ; le pipeline ne dense pas encore le CSR des adversaires long-tail
+      (dette DONNÉE consignée en Découvertes, pas un bloqueur de G). La feature est livrée
+      best-effort : nil → rien affiché.
+- [x] G1. Backend — CSR courant de la bête noire exposé, best-effort. DTO :
+      `domain.RelationCSR{Tier, SubTier, RatingValue}` (pointeurs, nil = absent) + champ
+      optionnel `RelationRef.CSR *RelationCSR json:"csr,omitempty"` (peuplé UNIQUEMENT
+      pour `top_nemesis`). Repo : `port.RelationsRepository.GetLatestCSR(ctx, xuid)` +
+      impl `CareerRepo.GetLatestCSR` (`relations_csr_repo.go`, Q31) — lit le snapshot le
+      PLUS RÉCENT depuis `match_csrs_latest` (vue `_latest`, règle ART n°2) jointe à
+      `match_registry`, ORDER BY fragment timezone canonique DESC LIMIT 1 ; best-effort
+      strict (nil,nil si xuid vide / table absente / aucune ligne / palier absent ou
+      « Placement »). Service : `appendNemesisCSR` (modèle `appendCoreEngagement`) après
+      `buildOverview` — recompose `SelectTopNemesis` pour récupérer le XUID (dropé par
+      `topRefToRef`), lit le CSR, WarnContext + réponse SANS CSR si erreur (jamais
+      d'échec de /relations). `openapi.yaml` (schéma `RelationCSR` + `RelationRef.csr`,
+      forme byte-identique à l'auto-dérivation Huma → schema-drift test vert) +
+      `make generate-types`.
+- [x] G2. Front — chip « Rang actuel » sur la carte hero bête noire
+      (`HeroRelationCard`, `PalmaresRelationsPage.tsx`), rendu UNIQUEMENT si
+      `top_nemesis.csr` présent (dégradation silencieuse, pas de « N/A »). Libellé composé
+      via l'utilitaire CSR existant `composeTierLabel` (centralisé dans `skillTiers.ts`
+      — voir note ≤ 2 copies) ; Onyx suffixé de la valeur CSR (« Onyx 1523 »). Couleur :
+      badge `NarrativeBadge` solid avec le token sémantique EXISTANT
+      `narrative-encounter-tough-enemy` (aucun nouveau token — doctrine « pas de couleur
+      par rang » respectée ; voir Découvertes). i18n `palmares.relations.hero.current_rank`
+      FR « Rang actuel » / EN « Current rank » + manifest régénéré.
+- [x] G3. Tests. Go service (`relations_service_test.go`) : bête noire AVEC ligne CSR →
+      `top_nemesis.csr` peuplé (+ lu par le XUID de la bête noire, allié jamais enrichi) ;
+      SANS → nil ; lecture CSR en échec → overview renvoyé sans CSR, pas d'erreur propagée ;
+      aucune bête noire → GetLatestCSR jamais appelé. Go repo intégration
+      (`relations_csr_repo_test.go`, build integration) : snapshot le plus récent
+      l'emporte (Onyx > Diamant ancien), social → nil, placement → nil, xuid vide → nil.
+      Web (`PalmaresRelationsPage.test.tsx`) : carte AVEC csr → « Rang actuel » + « Onyx
+      1523 » + badge rendu ; SANS csr → aucun chip. Unité `composeTierLabel`
+      (`skillTiers.test.ts`) + garde-rail compose (`skillTiers.guard.test.ts`).
+
+**Gate G** : GATE-GO + GATE-WEB + GATE-TYPES — tous verts (2026-07-17, cette session).
+
+---
+
+## Hors périmètre (NE PAS FAIRE, même si tentant)
+
+- Recherche/filtre texte dans le tableau (décision : redondant avec l'Explorer).
+- Toucher à la heatmap (conservée telle quelle).
+- Refonte de la page Escouade ou déplacement de contenus entre pages (seul le lien F2
+  est au périmètre).
+- Notifications push/Discord pour le rival (in-app seulement).
+- Tendances par relation (WR glissant par binôme etc.) — non retenu à ce stade.
+- Tout fix opportuniste hors des fichiers listés → section Découvertes.
+
+## Découvertes en cours de route
+
+(Consigner ici tout bug/dette rencontré hors périmètre, avec fichier:ligne — ne pas traiter.)
+
+- Lot A / A4 — `autoResetPageIndex` (défaut TanStack Table v8) NE réinitialise PAS
+  la pagination en page 1 au changement de tri dans notre harnais vitest+jsdom (test
+  échoue même avec attente async `findByText`). Contournement adopté (dans le
+  périmètre A4, comportement voulu) : état tri+pagination contrôlé,
+  `onSortingChange` remet `pageIndex: 0`. `RelationsTable.tsx`. Pas d'action
+  supplémentaire requise.
+- Lot E / E1 — Le seed « par catégorie » des préférences de notification annoncé par
+  l'en-tête de `notifications/types.go` n'existe PLUS : `steps_player_notifications.go`
+  est un stub doc, et une catégorie sans ligne dans `notification_preferences_latest`
+  est ACTIVE par défaut (`isCategoryEnabledOn` : `sql.ErrNoRows → true`,
+  `platform/duckdb/notifications_repo.go`). Aucun code touché — l'en-tête de types.go
+  reste légèrement trompeur (mentionne « seed des préférences »). Hors périmètre :
+  à corriger si un lot notifications repasse dessus. Non traité.
+- Lot G / G0 — Le CLI `duckdb` n'est pas installé dans cet environnement (ni PATH ni
+  emplacement connu). Mesure faite via sonde Go jetable (driver `duckdb-go/v2`) sur une
+  copie read-only. Impact : les gates de type « mesure DuckDB ad hoc » du CLAUDE.md
+  supposent `duckdb` disponible — le noter pour les prochains gates de mesure. Non traité.
+- Lot G / G0 — Couverture CSR des adversaires quasi nulle dans le shared : `match_csrs`
+  ne contient que 64 lignes (37 xuids, surtout les joueurs syncés). Le pipeline ne
+  capture pas systématiquement le CSR des adversaires long-tail → la feature « contexte
+  CSR bête noire » (lot G) est le plus souvent vide sur la base de dev. Dette DONNÉE (pas
+  code) : pour densifier, il faut étendre `UpsertSharedCSRs` côté sync (capturer le CSR de
+  TOUS les participants classés, pas d'un sous-ensemble). Non traité — la feature dégrade
+  gracieusement en attendant.
+- Lot G / G2 — Le « fait établi » de la mission (« utilitaires de couleur de tier »
+  existants côté web) est INEXACT : vérifié sur pièces, il n'existe AUCUN mapping
+  tier-CSR → token couleur. Le repo a même une doctrine explicite « Pas de couleur par
+  rang (zéro token de plus) » (`lib/accessibility/skillTierBands.ts`), et les seuls tokens
+  de tier (`perf-tier-1..5`) sont des quintiles de PERFORMANCE (qualité de match),
+  sémantiquement distincts d'un rang de skill. Décision (documentée) : ne PAS introduire
+  de palette par rang (respect doctrine + `color-tokens` + « n'en crée pas de nouveaux »).
+  Le chip « Rang actuel » utilise un token EXISTANT unique (`narrative-encounter-tough-enemy`,
+  déjà dans le vocabulaire adversaire du hub) — « couleur » présente, mais non variable par
+  tier. Si le produit veut une couleur par tier un jour : ajouter un set `csr-tier-*` dans
+  `semantic-tokens.ts` (les 2 palettes) — hors périmètre ici.
+- Lot G / G2 — Le pattern « composeTierLabel » (localizeTierName + subTierRoman avec garde
+  Onyx) existait en 2 copies inline (`ExplorerTargetSeasonCSR.tierLabel`,
+  `CareerRankingBlock.csrTierLabel`). La 3e (carte bête noire) a déclenché la règle ≤ 2 :
+  centralisé en `skillTiers.composeTierLabel`, les 2 copies migrées (sortie identique),
+  garde-rail ajouté (`skillTiers.guard.test.ts` : interdit la co-occurrence inline des
+  deux atomes sous `features/`). Migration IN-scope (causée par l'ajout G, pas un fix
+  opportuniste).
+
+## Protocole de reprise de session
+
+1. `git branch --show-current` (attendu : `feat/relations-ux-2026-07`) + `git log --oneline -10`.
+2. Relire ce fichier : les cases cochées font foi de l'avancement ; le premier lot avec
+   une case vide est le lot courant.
+3. Relire les dernières entrées `.ai/thought_log.md` du chantier.
+4. Re-vérifier sur pièces les fichiers du lot courant avant de coder (le code a pu bouger).
+
+## Clôture du chantier
+
+- [x] Tous les lots statués (A, B, C, H, F, D, E obligatoires ; G LIVRÉ `[x]` en
+      dégradation gracieuse — décision produit 2026-07-17, G0 requalifié `[~]` critère
+      abandonné). A/B/C/F/D livrés par le train antérieur (commits 91649c01d…e493118cc) ;
+      H régularisé `[~]` (ff94bb85b) ; E livré `[x]` (9f1d7c5e4) ; G livré `[x]`
+      (train backlog 2026-07, cette session).
+- [x] Gate global final LOCAL vert (exécuté cette session sur l'arbre clôturé) :
+        - Go : `go test ./...` exit 0 ; `go vet ./...` exit 0 ; intégration
+          `go test -tags=integration -p 1 ./...` exit 0 (112 packages ok, 0 FAIL —
+          run du lot E sur cet arbre exact, aucun code modifié depuis).
+        - Web : purge `node_modules/.tmp` + `npm run typecheck` OK ; `npm run lint`
+          0 erreur (68 warnings baseline, hors fichiers du chantier) ; `npx vitest run`
+          COMPLET = 260 fichiers, **2253 passed / 14 skipped**.
+- [!] CI de branche verte (`gh run list`) : branche `chore/backlog-train-2026-07` NON
+      POUSSÉE par décision utilisateur — CI vérifiée au push par le superviseur (baseline
+      Go Linux + build Vite). Gate local couvert ci-dessus.
+- [x] Entrée thought_log de clôture (bilan, décisions, restes) — ajoutée le 2026-07-17.
+- [!] Revue visuelle utilisateur au merge : à faire par l'utilisateur au merge (ne pas
+      merger soi-même — push `main` = déploiement prod auto). Non exécutable par l'agent.

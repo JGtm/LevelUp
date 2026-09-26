@@ -33,7 +33,7 @@ const U = '__USER__'
  */
 const titleScopedInvocations: Record<string, () => readonly unknown[]> = {
   // Filtres (déjà title-scopés avant V72-29 — verrouillés ici).
-  filtersResolve: () => queryKeys.filtersResolve(P, T, 'h'),
+  filtersResolve: () => queryKeys.filtersResolve(P, T, 'h', 'squad'),
   filtersPreview: () => queryKeys.filtersPreview(P, T, 'h'),
   // `player` retiré le 2026-07-25 : fabrique sans AUCUN call-site (enrichie du
   // titre « par cohérence » en V72-29, jamais consommée) — code mort supprimé,
@@ -58,6 +58,9 @@ const titleScopedInvocations: Record<string, () => readonly unknown[]> = {
   matchObjectiveEvents: () => queryKeys.matchObjectiveEvents(P, T, 'm'),
   matchPositions: () => queryKeys.matchPositions(P, T, 'm'),
   matchReplay: () => queryKeys.matchReplay(P, T, 'm'),
+  matchReplayBackground: () => queryKeys.matchReplayBackground(P, T, 'm'),
+  matchReplayBackgroundImage: () => queryKeys.matchReplayBackgroundImage(P, T, 'm'),
+  matchReplayCallouts: () => queryKeys.matchReplayCallouts(P, T, 'm'),
   // Engagement.
   engagementMatch: () => queryKeys.engagementMatch(P, T, 'm'),
   engagementProfile: () => queryKeys.engagementProfile(P, T),
@@ -67,8 +70,23 @@ const titleScopedInvocations: Record<string, () => readonly unknown[]> = {
   home: () => queryKeys.home(P, T, 'fr'),
   seasonPass: () => queryKeys.seasonPass(P, T, 'fr'),
   palmaresRelations: () => queryKeys.palmaresRelations(P, T),
+  // Onglet Tactique : une carte n'existe que dans son titre, et la grille compte les
+  // matchs du titre courant.
+  tacticalMaps: () => queryKeys.tacticalMaps(P, T, 'h'),
+  tacticalMatchIDs: () => queryKeys.tacticalMatchIDs(P, T, 'h'),
+  // Le fond d'une carte est title-scopé par le 1er argument (comme `assetMaps` ou
+  // `presence`) : c'est une donnée de référence du titre, la même pour tous les joueurs.
+  tacticalMapBackground: () => queryKeys.tacticalMapBackground(T, 'map-1'),
+  tacticalMapBackgroundFrame: () => queryKeys.tacticalMapBackgroundFrame(T, 'map-1'),
+  // Le raster de placement (vue d'analyse, phase 5) compte les matchs du titre courant,
+  // même raison que `tacticalMaps`.
+  tacticalRaster: () => queryKeys.tacticalRaster(P, T, 'map-1', 'h'),
+  // Le détail d'une cellule (lien « voir dans le rejeu », lot M1) : même raison que
+  // `tacticalRaster`.
+  tacticalCellule: () => queryKeys.tacticalCellule(P, T, 'map-1', 'h'),
   // Escouade / synthèse / sessions / compare.
   teammates: () => queryKeys.teammates(P, T, 'h', []),
+  compositionSessions: () => queryKeys.compositionSessions(P, T, [], true),
   synthesis: () => queryKeys.synthesis(P, T, 'h'),
   sessionDetail: () => queryKeys.sessionDetail(P, T, 'h', 's', 'c', false, 'fr'),
   comparePlayer: () => queryKeys.comparePlayer(P, T, 'gt'),
@@ -90,6 +108,8 @@ const titleScopedInvocations: Record<string, () => readonly unknown[]> = {
   notifications: () => queryKeys.notifications(P, T, {}),
   notificationsUnreadCount: () => queryKeys.notificationsUnreadCount(P, T),
   notificationsPreferences: () => queryKeys.notificationsPreferences(P, T),
+  // Capabilities data-level du titre (title-scopé par le 1er argument).
+  titleDataCapabilities: () => queryKeys.titleDataCapabilities(T),
   // Asset drawer (title-scopé par le 1er argument).
   assetMaps: () => queryKeys.assetMaps(T, 'q'),
   assetWeapons: () => queryKeys.assetWeapons(T, 'q'),
@@ -103,6 +123,9 @@ const titleScopedInvocations: Record<string, () => readonly unknown[]> = {
   progressionActivity: () => queryKeys.progressionActivity(P, T),
   // Coach.
   coachProposals: () => queryKeys.coachProposals(P, T),
+  // Présence en jeu du shell : pas par joueur, mais bien par titre (la réponse
+  // ne liste que les joueurs du titre courant).
+  presence: () => queryKeys.presence(T),
   // Namespaces imbriqués title-scopés.
   'prestige.me': () => queryKeys.prestige.me(U, T),
   'prestige.templates': () => queryKeys.prestige.templates(U, T),
@@ -138,6 +161,10 @@ const agnosticKeys = new Set<string>([
   'job',
   'settings',
   'groups',
+  // Amis d'un profil : un ami est une PERSONNE, transverse aux titres — la même
+  // liste vaut pour Halo Infinite et Halo 5 (décision PMT-4 : le cercle de
+  // confiance ne varie pas par jeu). Clé scopée par JOUEUR, pas par titre.
+  'playerFriends',
   'changelog',
   'releaseNotes',
   'feedbackSimilarIssues',
@@ -146,6 +173,8 @@ const agnosticKeys = new Set<string>([
   'gamertagSearch', // recherche Xbox globale
   // Préfixes larges (invalidation « tout le joueur »).
   'matchHistoryAll',
+  'careerAll',
+  'homeAll',
   'mediaBase',
   'feedVersion',
   'notificationsAll',
@@ -157,16 +186,25 @@ const agnosticKeys = new Set<string>([
   'adminInvariants',
   'adminDbContention',
   'adminTokenHealth',
+  // Annuaire des joueurs (ADR 0035) : CROSS-TITRE PAR NATURE — une identité
+  // porte ses profils de TOUS les titres, et c'est précisément la question
+  // posée (« ce xuid est-il suivi, et où ? »). La scoper par titre masquerait
+  // le profil d'un autre jeu, donc l'anomalie qu'on cherche.
+  'adminIdentities',
   'adminMonitoringOverview',
   'adminMonitoringScheduler',
   'adminMonitoringJobs',
   'adminMonitoringConvergence',
   'adminMonitoringPerf',
-  'adminMonitoringErrors',
   'adminMonitoringDetections',
   'adminMonitoringFreshness',
   'adminMonitoringResources',
   'adminMonitoringCrons',
+  // File de construction des rejeux (piste F, 2026-08-14) : la console admin la lit
+  // ENTIERE, tous titres confondus — un job y porte son propre titre en donnée, ce
+  // n'est pas une vue de joueur qui pourrait fuir d'un titre à l'autre. Même famille
+  // que les autres clés adminMonitoring* ci-dessus.
+  'adminMonitoringBuildQueue',
   'adminActionJournal',
   'adminWeaponCoverage',
   'adminLusrGaps',
@@ -178,6 +216,8 @@ const agnosticKeys = new Set<string>([
   'adminTitleDetail',
   'adminTitleDiagnostic',
   'adminUsers',
+  'adminInvites', // invitations d'instance : un compte, pas un titre
+
   'adminAppearanceDiagMutation',
   // Namespaces imbriqués agnostiques.
   'prestige.meAll', // préfixe large (userId)

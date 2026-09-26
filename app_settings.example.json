@@ -18,6 +18,7 @@
   "discord_notifications_enabled": false,
   "discord_notify_coach": false,
   "discord_notify_new_media": true,
+  "discord_notify_replay": true,
   "tailscale_enabled": false,
   "user_timezone": "Europe/Paris",
   "watcher_presence_enabled": true,
@@ -27,5 +28,7 @@
   "backup_interval": "6h",
   "backup_keep_daily": 7,
   "backup_keep_weekly": 4,
-  "backup_keep_monthly": 12
+  "backup_keep_monthly": 12,
+  "replay_sound_variation_percent": 100,
+  "replay_sound_distance_percent": 0
 }

@@ -14,7 +14,6 @@
 //   - GET /monitoring/convergence : backlog d'enrichissement par joueur (lectures seules)
 //   - GET /monitoring/jobs        : jobs asynchrones récents (JobStore)
 //   - GET /monitoring/perf        : agrégats de performance depuis le boot
-//   - GET /monitoring/errors      : logs WARN/ERROR agrégés depuis le boot
 package handlers
 
 import (
@@ -46,10 +45,6 @@ type ConvergenceReportRunner func(ctx context.Context, titleSlug string) (domain
 // par titre (MT-05 ; implémenté par ServiceRegistry.PerfStats — expvar pur).
 type PerfStatsRunner func(ctx context.Context, titleSlug string) (domain.AdminPerfStats, error)
 
-// ErrorStatsRunner retourne les logs WARN/ERROR agrégés depuis le boot, filtrés
-// par titre (MT-05 ; implémenté par ServiceRegistry.ErrorStats — collecteur mémoire).
-type ErrorStatsRunner func(ctx context.Context, titleSlug string) (domain.AdminErrorStats, error)
-
 // DetectionsRunner liste les détections PERSISTÉES avec cycle de vie (vue
 // detections_latest, survit au restart), filtrées. Implémenté par
 // ServiceRegistry.DetectionsReport (flush de l'ErrorCollector puis lecture).
@@ -71,19 +66,33 @@ type ResourcesRunner func(ctx context.Context) (domain.AdminResourcesResponse, e
 // par ServiceRegistry.CronsReport — registre mémoire + cron_runs_latest).
 type CronsRunner func(ctx context.Context) (domain.AdminCronsResponse, error)
 
+// BuildQueueRunner agrège la file durable de construction ET l'état des ouvriers
+// (implémenté par ServiceRegistry.BuildQueueReport). L'état vit côté web : cette
+// vue est complète même quand l'ouvrier tourne sur une autre machine, et elle ne
+// l'interroge jamais.
+type BuildQueueRunner func(ctx context.Context, limit int) (domain.AdminBuildQueueResponse, error)
+
 // AdminMonitoringHandler sert les endpoints lecture du dashboard monitoring.
 type AdminMonitoringHandler struct {
 	overview     MonitoringOverviewRunner
 	convergence  ConvergenceReportRunner
 	perf         PerfStatsRunner
-	errors       ErrorStatsRunner
 	detections   DetectionsRunner             // nil → section détections vide
 	setDetection DetectionStatusRunner        // nil → PATCH 503
 	freshness    FreshnessRunner              // nil → réponse vide
 	resources    ResourcesRunner              // nil → réponse vide
 	crons        CronsRunner                  // nil → réponse vide
+	buildQueue   BuildQueueRunner             // nil → file vide
 	sched        *scheduler.AutoSyncScheduler // nil → scheduler indisponible
 	jobs         *jobs.Store                  // nil → liste jobs vide
+}
+
+// WithBuildQueue branche la vue de la file de construction + ouvriers. Séparé du
+// constructeur (déjà à 11 paramètres, plafond du dépôt à 5 largement dépassé) :
+// une 12e position aggraverait la dette au lieu de la contenir.
+func (h *AdminMonitoringHandler) WithBuildQueue(run BuildQueueRunner) *AdminMonitoringHandler {
+	h.buildQueue = run
+	return h
 }
 
 // NewAdminMonitoringHandler construit le handler. sched et jobs peuvent être
@@ -93,7 +102,6 @@ func NewAdminMonitoringHandler(
 	overview MonitoringOverviewRunner,
 	convergence ConvergenceReportRunner,
 	perf PerfStatsRunner,
-	errors ErrorStatsRunner,
 	detections DetectionsRunner,
 	setDetection DetectionStatusRunner,
 	freshness FreshnessRunner,
@@ -103,7 +111,7 @@ func NewAdminMonitoringHandler(
 	jobStore *jobs.Store,
 ) *AdminMonitoringHandler {
 	return &AdminMonitoringHandler{
-		overview: overview, convergence: convergence, perf: perf, errors: errors,
+		overview: overview, convergence: convergence, perf: perf,
 		detections: detections, setDetection: setDetection, freshness: freshness,
 		resources: resources, crons: crons, sched: sched, jobs: jobStore,
 	}
@@ -131,11 +139,6 @@ func (h *AdminMonitoringHandler) Mount(r chi.Router, opts ...humacore.MountOptio
 		"Dashboard monitoring — agrégats de performance depuis le boot : latences API Halo par appel + buckets d'erreurs, phases d'écriture persist par "+
 			"DB, étapes post-sync, fenêtre d'indisponibilité des lectures shared (expvar pur, zéro I/O) (auth admin requis)",
 		"admin"))
-	huma.Get(api, "/monitoring/errors", h.handleGetErrors, humacore.Op(
-		"getAdminMonitoringErrors",
-		"Dashboard monitoring — logs WARN/ERROR agrégés par (niveau, message) depuis le boot avec compteur d'occurrences et dernier échantillon "+
-			"(collecteur mémoire, zéro I/O) (auth admin requis)",
-		"admin"))
 	huma.Get(api, "/monitoring/detections", h.handleGetDetections, humacore.Op(
 		"getAdminMonitoringDetections",
 		"Dashboard monitoring — détections persistées avec cycle de vie (open/acked/muted/resolved), survivent au restart, filtrables (auth admin requis)",
@@ -153,6 +156,11 @@ func (h *AdminMonitoringHandler) Mount(r chi.Router, opts ...humacore.MountOptio
 		"getAdminMonitoringResources",
 		"Dashboard monitoring — ressources machine & process : runtime Go, tailles des bases DuckDB + WAL, disque libre du volume data, budgets/pool DuckDB, "+
 			"uptime + compteur de restarts (auth admin requis)",
+		"admin"))
+	huma.Get(api, "/monitoring/build-queue", h.handleGetBuildQueue, humacore.Op(
+		"getAdminMonitoringBuildQueue",
+		"Dashboard monitoring — file durable de construction des rejeux (en attente / en cours / faits / échoués, avec l'ouvrier qui traite) et état des "+
+			"ouvriers (dernier battement, en ligne, travail fait) (auth admin requis)",
 		"admin"))
 	huma.Get(api, "/monitoring/crons", h.handleGetCrons, humacore.Op(
 		"getAdminMonitoringCrons",
@@ -182,7 +190,6 @@ type adminConvergenceOutput struct {
 	Body domain.AdminConvergenceReport
 }
 type adminPerfOutput struct{ Body domain.AdminPerfStats }
-type adminErrorsOutput struct{ Body domain.AdminErrorStats }
 type adminSchedulerOutput struct {
 	Body AdminSchedulerStatusResponse
 }
@@ -244,6 +251,10 @@ type adminFreshnessOutput struct{ Body domain.AdminFreshnessResponse }
 type adminResourcesOutput struct{ Body domain.AdminResourcesResponse }
 
 type adminCronsOutput struct{ Body domain.AdminCronsResponse }
+
+type adminBuildQueueOutput struct {
+	Body domain.AdminBuildQueueResponse
+}
 
 // titleOrDefaultSlug lit ?title= avec fallback sur le titre par défaut.
 func titleOrDefaultSlug(title string) string {
@@ -332,18 +343,6 @@ func (h *AdminMonitoringHandler) handleGetPerf(ctx context.Context, in *titleInp
 	return &adminPerfOutput{Body: resp}, nil
 }
 
-// handleGetErrors retourne les logs WARN/ERROR agrégés depuis le boot.
-// GET /admin/monitoring/errors.
-func (h *AdminMonitoringHandler) handleGetErrors(ctx context.Context, in *titleInput) (*adminErrorsOutput, error) {
-	resp, err := h.errors(ctx, titleOrDefaultSlug(in.Title))
-	if err != nil {
-		slog.ErrorContext(ctx, "admin_monitoring: errors failed", "err", err)
-		return nil, humacore.NewError(http.StatusInternalServerError, "monitoring_errors_error",
-			"Impossible d'agréger les erreurs récentes.")
-	}
-	return &adminErrorsOutput{Body: resp}, nil
-}
-
 // handleGetDetections retourne les détections persistées avec leur cycle de vie.
 // GET /admin/monitoring/detections?status=&level=&module=&title=&limit=.
 func (h *AdminMonitoringHandler) handleGetDetections(ctx context.Context, in *detectionsInput) (*adminDetectionsOutput, error) {
@@ -428,6 +427,31 @@ func (h *AdminMonitoringHandler) handleGetResources(ctx context.Context, _ *stru
 			"Impossible d'agréger l'état des ressources.")
 	}
 	return &adminResourcesOutput{Body: resp}, nil
+}
+
+// handleGetBuildQueue retourne la file de construction et l'état des ouvriers.
+// GET /admin/monitoring/build-queue?limit=50 (max 200, contrat souple comme jobs).
+func (h *AdminMonitoringHandler) handleGetBuildQueue(ctx context.Context, in *jobsInput) (*adminBuildQueueOutput, error) {
+	if h.buildQueue == nil {
+		return &adminBuildQueueOutput{Body: domain.AdminBuildQueueResponse{
+			GeneratedAt: time.Now().UTC().Format(time.RFC3339),
+			Jobs:        []domain.BuildQueueJob{},
+			Workers:     []domain.BuildQueueWorker{},
+		}}, nil
+	}
+	limit := 0
+	if in.Limit != "" {
+		if n, err := strconv.Atoi(in.Limit); err == nil && n > 0 {
+			limit = n
+		}
+	}
+	resp, err := h.buildQueue(ctx, limit)
+	if err != nil {
+		slog.ErrorContext(ctx, "admin_monitoring: build-queue failed", "err", err)
+		return nil, humacore.NewError(http.StatusInternalServerError, "monitoring_build_queue_error",
+			"Impossible de lire la file de construction.")
+	}
+	return &adminBuildQueueOutput{Body: resp}, nil
 }
 
 // handleGetCrons retourne le statut des crons + heartbeats de features (A6).

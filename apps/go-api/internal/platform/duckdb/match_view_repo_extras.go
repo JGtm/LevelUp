@@ -7,14 +7,38 @@ package duckdb
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"log/slog"
+	"math"
 	"strings"
 	"time"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/domain/killscope"
 	"levelup/go-api/internal/games/canonical"
 )
+
+// medalNameFromRawJSON extrait le nom anglais de la médaille du raw_json d'un
+// event `medal` de highlight_events ({"medal_name": "Odin's Raven", ...}).
+// Nil si le JSON est vide, illisible ou sans champ medal_name non vide — l'event
+// reste servi, simplement anonyme (le service ne résout alors rien).
+func medalNameFromRawJSON(raw string) *string {
+	if strings.TrimSpace(raw) == "" {
+		return nil
+	}
+	var payload struct {
+		MedalName string `json:"medal_name"`
+	}
+	if err := json.Unmarshal([]byte(raw), &payload); err != nil {
+		return nil
+	}
+	name := strings.TrimSpace(payload.MedalName)
+	if name == "" {
+		return nil
+	}
+	return &name
+}
 
 // GetMatchEvents retourne les events highlight du match (Q21).
 // Exécutée sur SharedReader (ADR 0016, shared-only).
@@ -37,10 +61,119 @@ func (r *MatchViewRepo) GetMatchEvents(ctx context.Context, matchID string) ([]d
 	var results []domain.EventRaw
 	for rows.Next() {
 		var e domain.EventRaw
-		if err := rows.Scan(&e.EventType, &e.TimeMS, &e.XUID, &e.Gamertag); err != nil {
+		var medalRaw sql.NullString
+		if err := rows.Scan(&e.EventType, &e.TimeMS, &e.XUID, &e.Gamertag, &medalRaw); err != nil {
 			return nil, fmt.Errorf("MatchViewRepo.GetMatchEvents scan: %w", err)
 		}
+		if medalRaw.Valid {
+			e.MedalName = medalNameFromRawJSON(medalRaw.String)
+		}
 		results = append(results, e)
+	}
+	return results, rows.Err()
+}
+
+// GetMatchKillSources retourne la source de dégât de chaque mort du match (Q21b).
+// Exécutée sur SharedReader (ADR 0016, shared-only).
+//
+// Dégradation gracieuse assumée à DEUX endroits : reader indisponible, ou table absente
+// d'une base non migrée. Dans les deux cas on rend une tranche vide, jamais une erreur —
+// le kill feed s'affiche alors sans arme, ce qui est son état d'avant ce lot. L'échec est
+// loggé pour qu'il ne soit pas SILENCIEUX (règle : jamais d'erreur avalée).
+func (r *MatchViewRepo) GetMatchKillSources(ctx context.Context, matchID string) ([]domain.KillSourceRaw, error) {
+	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
+	defer cancel()
+
+	sharedDB, release, err := r.sharedRead().Get(ctx)
+	if err != nil {
+		slog.WarnContext(ctx, "match_view: kill sources indisponibles (shared reader)",
+			"match_id", matchID, "err", err)
+		return nil, nil
+	}
+	defer release()
+	rows, err := sharedDB.QueryContext(ctx, Q21bKillSources, matchID)
+	if err != nil {
+		slog.WarnContext(ctx, "match_view: kill sources indisponibles (Q21b)",
+			"match_id", matchID, "err", err)
+		return nil, nil
+	}
+	defer rows.Close()
+
+	var results []domain.KillSourceRaw
+	for rows.Next() {
+		var (
+			ks       domain.KillSourceRaw
+			tag      uint32
+			category sql.NullString
+		)
+		if err := rows.Scan(&ks.XUID, &ks.TimeMS, &tag, &category); err != nil {
+			return nil, fmt.Errorf("MatchViewRepo.GetMatchKillSources scan: %w", err)
+		}
+		ks.SourceTag = tag
+		// category.Valid : toujours vrai en pratique (source_category voyage AVEC source_tag,
+		// que la requête filtre déjà NOT NULL) — la garde reste pour ne jamais faire dire à un
+		// NULL "pas un headshot", cf. doctrine domain.KillSourceRaw.Headshot.
+		if category.Valid {
+			ks.Headshot = killscope.IsHeadshotCategory(category.String)
+		}
+		results = append(results, ks)
+	}
+	return results, rows.Err()
+}
+
+// GetMatchKillAssists retourne l'assistance de chaque mort du match (Q21c).
+// Exécutée sur SharedReader (ADR 0016, shared-only).
+//
+// Même dégradation gracieuse que Q21b : reader indisponible ou table absente rendent une
+// tranche vide, loggée — le feed affiche alors ses kills avec l'assistance « inconnue »,
+// ce qui est son état d'avant ce lot.
+func (r *MatchViewRepo) GetMatchKillAssists(ctx context.Context, matchID string) ([]domain.KillAssistRaw, error) {
+	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
+	defer cancel()
+
+	sharedDB, release, err := r.sharedRead().Get(ctx)
+	if err != nil {
+		slog.WarnContext(ctx, "match_view: kill assists indisponibles (shared reader)",
+			"match_id", matchID, "err", err)
+		return nil, nil
+	}
+	defer release()
+	rows, err := sharedDB.QueryContext(ctx, Q21cKillAssists, matchID)
+	if err != nil {
+		slog.WarnContext(ctx, "match_view: kill assists indisponibles (Q21c)",
+			"match_id", matchID, "err", err)
+		return nil, nil
+	}
+	defer rows.Close()
+
+	var results []domain.KillAssistRaw
+	for rows.Next() {
+		var (
+			ka     domain.KillAssistRaw
+			gt, ax sql.NullString
+			kPct   sql.NullInt64
+			aPct   sql.NullInt64
+		)
+		if err := rows.Scan(&ka.XUID, &ka.TimeMS, &gt, &ax, &kPct, &aPct); err != nil {
+			return nil, fmt.Errorf("MatchViewRepo.GetMatchKillAssists scan: %w", err)
+		}
+		if gt.Valid {
+			s := gt.String
+			ka.AssistGamertag = &s
+		}
+		if ax.Valid {
+			s := ax.String
+			ka.AssistXUID = &s
+		}
+		if kPct.Valid {
+			v := int(kPct.Int64)
+			ka.KillerDamagePct = &v
+		}
+		if aPct.Valid {
+			v := int(aPct.Int64)
+			ka.AssistDamagePct = &v
+		}
+		results = append(results, ka)
 	}
 	return results, rows.Err()
 }
@@ -53,14 +186,20 @@ func (r *MatchViewRepo) GetMatchKVPairs(ctx context.Context, matchID string) ([]
 
 	sharedDB, release, err := r.sharedRead().Get(ctx)
 	if err != nil {
+		// Dégradation best-effort assumée (duels vides), mais JAMAIS muette : sans cette
+		// trace, un lecteur cassé est indistinguable d'un match sans donnée (régression
+		// du 2026-08-03, restée invisible un mois faute de log).
+		slog.WarnContext(ctx, "match_view: kv_pairs shared reader indisponible",
+			"match_id", matchID, "err", err)
 		return nil, nil
 	}
 	defer release()
 	rows, err := sharedDB.QueryContext(ctx, Q20KVPairs, matchID)
 	if err != nil {
-		// Q20 lit la TABLE `killer_victim_pairs` directement depuis le 2026-08-02 (la vue
-		// v_killer_victim_full a été supprimée avec la bascule J4 ; elle ne fait plus partie du
-		// schéma). La table peut manquer sur une DB non migrée → duels vides, jamais d'erreur.
+		// La table canonique peut manquer sur une DB non migrée → duels vides, jamais
+		// d'erreur — mais toujours une trace (même raison que ci-dessus).
+		slog.WarnContext(ctx, "match_view: kv_pairs requete Q20 en echec",
+			"match_id", matchID, "err", err)
 		return nil, nil
 	}
 	defer rows.Close()
@@ -68,16 +207,31 @@ func (r *MatchViewRepo) GetMatchKVPairs(ctx context.Context, matchID string) ([]
 	var results []domain.KVPairRaw
 	for rows.Next() {
 		var kv domain.KVPairRaw
+		// killer_xuid / victim_xuid sont NULL sur les lignes de BOT (doctrine Q20 : le NULL
+		// est servi tel quel par le SQL, jamais COALESCE — garde-rail
+		// TestPasDeXuidNormaliseEnChaineVide). Côté Go, NULL devient "" dans KVPairRaw ;
+		// tout consommateur qui AGRÈGE par xuid doit écarter "" (bots jamais fusionnés en un
+		// acteur fantôme) — cf. la doctrine du struct domain.KVPairRaw. Avant ce scan
+		// (2026-09-02), une seule ligne de bot faisait échouer TOUT le chargement : la
+		// section Duels était vide sur 245 matchs Infinite qui avaient la donnée.
+		//
+		// TROIS colonnes en NullString, pas deux : `feed_killer_gamertag` est NULLABLE au DDL
+		// (steps_shared_kill_events.go — seuls `victim_gamertag` et `time_ms` sont NOT NULL),
+		// donc un tueur inconnu la vide et casserait le scan exactement comme les xuid.
+		var killerXUID, killerGT, victimXUID sql.NullString
 		if err := rows.Scan(
-			&kv.KillerXUID,
-			&kv.KillerGT,
-			&kv.VictimXUID,
+			&killerXUID,
+			&killerGT,
+			&victimXUID,
 			&kv.VictimGT,
 			&kv.KillCount,
 			&kv.TimeMS,
 		); err != nil {
 			return nil, fmt.Errorf("MatchViewRepo.GetMatchKVPairs scan: %w", err)
 		}
+		kv.KillerXUID = killerXUID.String
+		kv.KillerGT = killerGT.String
+		kv.VictimXUID = victimXUID.String
 		results = append(results, kv)
 	}
 	return results, rows.Err()
@@ -217,25 +371,43 @@ func (r *MatchViewRepo) GetMatchMedia(ctx context.Context, matchID string) ([]do
 	var results []domain.MediaAssocRaw
 	for rows.Next() {
 		var m domain.MediaAssocRaw
-		var captureTime *time.Time
+		var captureStart, captureTime *time.Time
+		var durationSeconds sql.NullFloat64
 		if err := rows.Scan(
 			&m.FileID,
 			&m.FileName,
 			&m.FilePath,
 			&m.Kind,
 			&m.ThumbnailPath,
+			&captureStart,
 			&captureTime,
+			&durationSeconds,
 			&m.Liked,
 		); err != nil {
 			return nil, fmt.Errorf("MatchViewRepo.GetMatchMedia scan: %w", err)
 		}
-		if captureTime != nil {
-			s := captureTime.Format(time.RFC3339)
-			m.CaptureTime = &s
+		m.CaptureStartTime = rfc3339OrNil(captureStart)
+		m.CaptureTime = rfc3339OrNil(captureTime)
+		if durationSeconds.Valid {
+			// La base stocke un DOUBLE ; le DTO expose des secondes entières —
+			// l'arrondi coûte au pire une demi-seconde de placement sur la frise,
+			// négligeable devant l'approximation du recalage lui-même.
+			d := int(math.Round(durationSeconds.Float64))
+			m.DurationSeconds = &d
 		}
 		results = append(results, m)
 	}
 	return results, rows.Err()
+}
+
+// rfc3339OrNil sérialise un horodatage optionnel au format attendu par les DTO
+// médias. Nil en entrée = nil en sortie (colonne NULL en base).
+func rfc3339OrNil(t *time.Time) *string {
+	if t == nil {
+		return nil
+	}
+	s := t.Format(time.RFC3339)
+	return &s
 }
 
 // GetMatchExpectedStats retourne les stats attendues pour ce match (Q26).

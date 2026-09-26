@@ -14,11 +14,12 @@ ADR : `docs/adr/0001-charts-stack-echarts.md`. Live sandbox : `/lab/charts`.
 | 4 | `<HistogramChart>` | Distribution buckets | TimeseriesPage K/D, kills, accuracy, score/min, rolling WR |
 | 5 | `<ScatterChart>` | Multi-series correlation scatter | TimeseriesPage correlations (5 pairs) |
 | 6 | `<DonutChart>` | Pie/donut with semantic slice colors | SessionCompare outcomes |
-| 7 | `<Heatmap2DChart>` | 2D heatmap (sequential or divergent palette) | TimeseriesPage intensity day×hour, Synthesis activity, Squad V2 player×map |
+| 7 | `<Heatmap2DChart>` | Canonical categorical grid (sequential, divergent or frequency ramp; discrete tiers) | Synthesis activity day×hour (reference rendering), Timeseries intensity, Relations encounter rhythm, Explorer shared-activity grid, Squad player×map and exchange matrix |
 | 8 | `<RadarChart>` | N-series 6-axis radar | MatchView participation, Squad V2 radar |
 | 9 | `<OutcomeSequenceTape>` | RLE narrative band of recent outcomes | HomePage, MatchHistoryPage, SquadV2Page |
 | 10 | `<TimeseriesKdaBars>` (page-specific) | Bars K + bars D + line K/D ratio (dual yAxis) | TimeseriesPage summary |
 | 11 | `<FirstBloodLanes>` | One lane per player: first-kill / first-death timing clouds + median advance window | Squad "Dynamique" tab, Timeseries "Progression" tab, Session chart stack |
+| 12 | `<WeaponAccuracyChart>` | Per-weapon accuracy bars, coloured by weapon class, hover linked to the frag sunburst | Synthesis, Timeseries "Résumé" tab, SessionFragCard |
 
 > Wrappers 10–11 are kept in `features/timeseries/` (not in this folder) because they compose `<ChartCard>` directly with custom `buildOption` and aren't reusable elsewhere.
 
@@ -67,6 +68,9 @@ type ChartPointStacked = {
 ```
 
 `componentColors` maps sub-key → SemanticToken. `componentOrder` controls bar stack/group order.
+`tooltipHideZero` drops zero-valued sub-keys from the tooltip; `tooltipComponentNote(category,
+component)` appends a localized note next to a segment value (used by the match assists chart
+for "of which stolen: N"). Either one switches the tooltip to the custom formatter.
 
 ### `<HistogramChart>`
 
@@ -92,7 +96,11 @@ Single-series pie/donut from `ChartSeries<ChartPointDonut>[]` (`{ name, value }`
 
 ### `<Heatmap2DChart>`
 
-Single-series 2D heatmap from `ChartSeries<ChartPointHeatmap>[]` (`{ x, y, value, detail? }`). Props : `paletteMode: 'sequential' | 'divergent'`, `valueRange?: [min, max]`.
+Single-series 2D grid from `ChartSeries<ChartPointHeatmap>[]` (`{ x, y, value, detail? }`). THE single implementation of a categorical heatmap in this app — guarded by `heatmapSingleImpl.guard.test.ts`, which fails on any `type: 'heatmap'` ECharts series written outside this wrapper and its dated allowlist.
+
+The option builder lives next door in `heatmap2DOption.ts` (the component file was over the 500-line threshold); `Heatmap2DChart.tsx` re-exports `buildHeatmap2DOption` and the types, so importers are unchanged.
+
+Props : `paletteMode: 'sequential' | 'divergent' | 'frequency'`, `valueRange?: [min, max]`, `saturationCap?`, `formatTooltip?`, `cellLabelColor?`, `showCellLabel?`, `showVisualMap?`, `visualMapPieces?` (discrete tiers instead of a continuous ramp), `visualMapOrient/Formatter/Text?`, `yAxisInverse?`, `axisNames?`, `axisTuning?` (x-label rotation/interval/margin, y-name at axis head), `gridOverride?`, `emptyCells?: 'hatched' | 'hidden' | 'blank'`, `legend?` (DOM legend replacing the empty-cell one).
 
 ### `<RadarChart>`
 
@@ -185,6 +193,20 @@ Test counts (commit `b655d0f2` and after) : 8 Histogram + 9 Scatter + 9 Donut + 
 5. Add 5+ unit tests in `MyChart.test.ts` covering empty series, basic rendering, axes, color tokens.
 6. Add a `<ShowcaseSection>` to `apps/web/src/features/lab/ChartsShowcasePage.tsx`.
 7. Update this README's Catalog table.
+
+## Empty state (2026-09-22)
+
+`ChartCard` renders its empty state with the app-wide canonical notice
+(`components/ui/empty-state.tsx` → `EmptyStateNotice`): a bold title over a grey description,
+inside the dashed frame, centred in the chart's reserved height (the layout never jumps).
+
+- `emptyTitle` — the bold line. Omitted: `common.charts.empty_title` ("Aucune donnée" / "No data").
+- `emptyMessage` — the DESCRIPTION, i.e. the sentence that names the cause. Omitted:
+  `common.charts.empty_description`. Callers already passing a full sentence need no change.
+
+Both defaults are resolved in the shell locale: never hardcode a French string in this folder —
+`chartEmptyStateCanonical.guard.test.ts` fails on a home-made empty frame and on any hardcoded
+FR literal here.
 
 ## Live sandbox
 

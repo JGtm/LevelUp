@@ -1,0 +1,75 @@
+BLOC DE PIED DE FILM — un evenement th=10 reel, pose le 2026-09-14 (lot 1.1.3 du
+.ai/PLAN_DECODEUR_FILM_2026-09-13.md), RE-CHOISI le meme jour a la revue R1 (constat R1-1).
+
+CE FICHIER DIT D OU VIENT CHAQUE OCTET. Une fixture binaire sans provenance ecrite est un fait
+sans source ; celle-ci se REGENERE, elle ne s edite pas :
+
+    PIED_FILM_DIR=<cache>/film_chunks/53ce4390 PIED_BLOC_UPDATE=1 \
+      go test ./internal/analysis/objectiveevents/ -run PiedBlocProvenance
+
+Sans `PIED_BLOC_UPDATE`, la meme commande RECOUPE la tranche sur le film et la compare octet
+pour octet. Sans `PIED_FILM_DIR`, elle est sautee : le cache de films ne vit pas dans le depot.
+La porte LIT LE MANIFESTE (`film_manifests/53ce4390.json`) et exige `chunk_type == 3` pour le
+chunk nomme ci-dessous. RAISON (correctif R1-4, motif REECRIT a la ronde 2, constat C1) : le
+type du chunk est ce que le MANIFESTE ECRIT, et une grammaire se lit la ou elle est ecrite
+(ADR 0034, D10) ; « le pied est le dernier chunk » serait un REPLI POSITIONNEL, c est-a-dire
+une regle deduite de la disposition au lieu d etre lue.
+Ce n est PAS un contre-exemple qui l impose : mesure du 2026-09-14 sur les 1 351 manifestes et
+repertoires de `data/cache/film_chunks`, SUR ZERO FILM le pied manque, SUR ZERO FILM un chunk
+suit le pied, et sur les 1 351 le dernier `chunk_NN.bin` du repertoire EST le chunk de pied.
+La regle positionnelle donnerait donc aujourd hui le meme resultat partout — et c est
+exactement pourquoi elle etait dangereuse : rien ne l aurait fait rougir le jour ou elle
+cesserait d etre vraie.
+
+D OU
+  film        53ce4390 (Behemoth, CTF:Arena, version 41 / HI_1_13_0) — l ancre historique des
+              bursts de capture CTF du corpus d equivalence
+  chunk       chunk_40.bin, chunk_type 3 au manifeste : le PIED
+  tranche     octets [165000, 166930) du pied DECOMPRESSE, soit 1930 octets — recopies sans
+              transformation. La tranche commence au premier octet du XUID de l acteur (qui
+              tombe sur une frontiere d octet pour ce bloc) et finit au dernier octet du
+              marqueur de fin [00 00 2e e0].
+
+CE QU ELLE PORTE — UN SEUL evenement th=10, et il SEPARE LES CHAMPS
+  t             133033 ms (horloge du match, octets 48 a 51 du bloc, gros-boutiste)
+  xuid          2535430195856593
+  octet 36      2   le « slot » : 0..3, stable par xuid, PAS le player_index
+  octet 37      1   L EQUIPE — ce que la production lit depuis 25f327d52 (2026-09-14)
+  octet 38      1   doublon EXACT de l octet 37, NON LU
+  octet 55      0   ce que la production lisait AVANT, sous le nom `teamRaw`
+
+EQUIPE PROUVEE : 1, etablie AILLEURS QUE DANS CE BLOC — par la trame d etat du film (rang de la
+table des slots de chunk_00 -> xuid, i-eme entite ti=9 -> designateur d equipe). Publie par
+l oracle corpus `filmdec.TestResidusPiedOctetEquipe`, rejoue le 2026-09-14 sur trois films
+(53ce4390, 64e8adfa, 7344d24f) : 173 evenements sur 173 pour l octet 37, 84 sur 173 pour l
+octet 55, quatre lectures en accord parfait sur cent quatre-vingts essayees. Mesure d origine
+du 2026-09-13 : 665/665 sur quatorze films
+(.ai/V7.5/film_re/NOTE_RESIDUS_CHUNK00_2026-09-13.md §6).
+
+POURQUOI CE BLOC-LA, ET PAS LE PREMIER VENU. La premiere version de cette fixture (bloc
+t=61155, xuid 2533274823110022) portait 1 aux octets 36, 37 ET 38 : elle ne discriminait que
+contre l octet 55, et la revue R1 a montre que `footerByteTeam = 36` — le SLOT, declare la
+ligne au-dessus dans le meme bloc de constantes — laissait les tests VERTS. Le bloc actuel a
+slot 2 et equipe 1 : les substitutions plausibles se comportent ainsi, et la mutation a ete
+JOUEE sur chacune. Comptes RE-MESURES a la ronde 2 (constat C2 : la table annoncait 2 rouges
+pour le slot et 1 pour l instant, faux tous les deux) :
+
+  footerByteTeam = 36 -> 2              ROUGE, 3 tests : Octet37, SepareLesChamps, SurUnFilm
+  footerByteTeam = 55 -> 0              ROUGE, 3 tests : Octet37, SepareLesChamps, SurUnFilm
+  footerByteSlot = 37 -> 1              ROUGE, 3 tests : Octet37, SepareLesChamps, SurUnFilm
+  footerByteTime = 47 -> 167772679      ROUGE, 2 tests : Octet37, SurUnFilm
+  footerByteTeam = 38 -> 1              VERT, 0 test — et aucun bloc reel ne peut faire mieux
+
+(`Octet37` = TestPiedEquipeOctet37, `SepareLesChamps` = TestPiedBlocSepareLesChamps,
+`SurUnFilm` = TestFooterEventsSurUnFilm. `TestPiedBlocSepareLesChamps` ne lit pas l instant,
+d ou les 2 rouges de la quatrieme ligne et non 3.)
+
+L octet 38 est un DOUBLON EXACT de l octet 37 : mesure du 2026-09-14 sur TOUS les blocs de
+quatre films et deux builds (bcb6d393, 53ce4390, 7344d24f, 64e8adfa), 190 blocs sur 190 avec
+b37 == b38. Aucune fixture ne peut les separer. C est precisement ce qui fonde la regle du lot :
+on lit UN des deux (l octet 37, celui que .ai/archive/V7/RESEARCH_THEATER_RE.md:534 identifie)
+et on ne lit JAMAIS l autre, parce que deux lectures d un meme fait divergent un jour sans que
+rien ne le dise.
+
+CE QUE CETTE FIXTURE N EST PAS : un pied de film valide. C est une tranche, prise hors de sa
+continuite. Rien d autre que ce bloc ne s y decode.

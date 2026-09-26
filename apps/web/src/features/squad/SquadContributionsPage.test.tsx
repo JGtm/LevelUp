@@ -70,6 +70,17 @@ describe('SquadContributionsPage', () => {
     expect(screen.getByTestId('per-minute-chart')).toBeInTheDocument()
   })
 
+  // LOT 3 « sections » (2026-09-22) : l'impact des coéquipiers et les médailles ont
+  // quitté Synergies pour Contributions — une contribution par joueur, pas une
+  // production de la composition. Sections non-graphes TOUJOURS montées (titre + état
+  // vide géré par le composant), donc elles répondent présentes même sans données.
+  it('monte « Impact des coéquipiers » et « Médailles » (arrivés de Synergies)', () => {
+    mockSquadContext({})
+    renderWithProviders(<SquadContributionsPage />)
+    expect(screen.getByText('Impact des coéquipiers')).toBeInTheDocument()
+    expect(screen.getByText(/^Médailles/)).toBeInTheDocument()
+  })
+
   it('affiche le synergy radar quand synergy_radar est renseigné', () => {
     mockSquadContext({
       confirmedGamertags: ['FriendA'],

@@ -1,4 +1,4 @@
-// Package service â€” synthesis_service_test.go : tests pour SynthesisService.
+// Package service — synthesis_service_test.go : tests pour SynthesisService.
 // Sprint 55 D9.
 package service
 
@@ -41,7 +41,7 @@ func (m *mockSynthesisRepo) EnrichCanonicalAssetTranslations(_ context.Context, 
 // --- mock PlayerMatchesRepository pour tests P4.3 finale ---
 //
 // Convertit []SynthesisMatchRow en []canonical.PlayerMatchRow pour exercer
-// le path canonical (le seul path en service aprÃ¨s P4.3 finale).
+// le path canonical (le seul path en service après P4.3 finale).
 type mockSynthesisPlayerMatches struct {
 	rows []legacymatch.SynthesisMatchRow
 	err  error
@@ -90,7 +90,7 @@ func (m *mockSynthesisPlayerMatches) LoadPlayerMatches(_ context.Context, _ stri
 func (m *mockSynthesisPlayerMatches) InvalidatePlayer(_, _ string) {}
 
 // withSynthMock attache le mock canonical au service pour exercer le path
-// canonical (seul path actif aprÃ¨s P4.3 finale).
+// canonical (seul path actif après P4.3 finale).
 func withSynthMock(svc *SynthesisService, rows []legacymatch.SynthesisMatchRow, err error) *SynthesisService {
 	pm := &mockSynthesisPlayerMatches{rows: rows, err: err}
 	return svc.WithPlayerMatchesRepo(pm, "halo_infinite", "TestPlayer")
@@ -296,10 +296,10 @@ func TestGetSynthesisPage_RepoError(t *testing.T) {
 	}
 }
 
-// --- D9 : scope rÃ©ellement appliquÃ© ---
+// --- D9 : scope réellement appliqué ---
 
-// TestGetSynthesisPage_ScopeApplied_Period vÃ©rifie que GetSynthesisPage filtre
-// les matchs selon la pÃ©riode demandÃ©e et que scope.MatchCount le reflÃ¨te.
+// TestGetSynthesisPage_ScopeApplied_Period vérifie que GetSynthesisPage filtre
+// les matchs selon la période demandée et que scope.MatchCount le reflète.
 func TestGetSynthesisPage_ScopeApplied_Period(t *testing.T) {
 	repo := &mockSynthesisRepo{
 		synthRows: []legacymatch.SynthesisMatchRow{
@@ -324,8 +324,8 @@ func TestGetSynthesisPage_ScopeApplied_Period(t *testing.T) {
 	}
 }
 
-// TestGetSynthesisPage_Overview_MatchesScope vÃ©rifie que overview.TotalMatches
-// correspond exactement au nombre de matchs dans le scope (aprÃ¨s filtrage).
+// TestGetSynthesisPage_Overview_MatchesScope vérifie que overview.TotalMatches
+// correspond exactement au nombre de matchs dans le scope (après filtrage).
 func TestGetSynthesisPage_Overview_MatchesScope(t *testing.T) {
 	kda := 1.5
 	repo := &mockSynthesisRepo{
@@ -388,8 +388,8 @@ func TestGetSynthesisPage_Overview_Streaks(t *testing.T) {
 	}
 }
 
-// TestGetSynthesisPage_Highlights_WithinScope vÃ©rifie que les MatchIDs dans
-// highlights.TopByKills appartiennent aux matchs du scope filtrÃ©.
+// TestGetSynthesisPage_Highlights_WithinScope vérifie que les MatchIDs dans
+// highlights.TopByKills appartiennent aux matchs du scope filtré.
 func TestGetSynthesisPage_Highlights_WithinScope(t *testing.T) {
 	kda := 2.0
 	repo := &mockSynthesisRepo{

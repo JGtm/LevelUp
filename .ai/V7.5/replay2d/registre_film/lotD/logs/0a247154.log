@@ -1,0 +1,49 @@
+=== RUN   TestEquipmentUsesPhase0
+    equipment_uses_research_test.go:99: signature [15 15 17] : 59 cartes candidates [944396dd-5661-4a16-b1d8-a6053f762c55 absolution banished narrows cliffside cole protocol command corpo credence critical dewpoint curfew dawnbreaker disciple domicile dredge dynasty ecotone elevation empyrean flood gulch fortitude fortress goliath high ground houseki insolence isolation kaiketsu kiken'na lattice merchant's square nadair nemesis obituary opulence origin outlook perilous pharaoh rat's nest refuge ronin salvation scarlett's landing shiro shogun smallhalla snowbound solitude solution starboard sylvanus takamanohara the pit threshold thunderhead urban raid vagabond vallaheim firefight warehouse] — bornes normalisees, poseur non mesurable (renseigner EQ_MAP pour trancher)
+    equipment_uses_research_test.go:102: FILM 0a247154 · largeurs d'axe [15 15 17] · bornes NORMALISEES [0,1]
+    equipment_uses_research_test.go:109: == D.0.1 VOLUMES == records delta ti=37 67479 · slots 1165 · masque∋(un des 6) 2983 · marche ABOUTIE 2973 · CASSEE 10
+    equipment_uses_research_test.go:109:   equipment-deployed-component                   masque    152 · LU    151 · porte fermee     0
+    equipment_uses_research_test.go:109:   equipment-activated-component                  masque     99 · LU     98 · porte fermee    42
+    equipment_uses_research_test.go:109:   equipment-creator-component                    masque    161 · LU    161 · porte fermee    77
+    equipment_uses_research_test.go:109:   equipment-energy-component                     masque     93 · LU     91 · porte fermee     0
+    equipment_uses_research_test.go:109:   equipment-energy-delay-ticks-left-component    masque   1065 · LU   1064 · porte fermee     0
+    equipment_uses_research_test.go:109:   equipment-charges-remaining-component          masque   1433 · LU   1426 · porte fermee     0
+    equipment_uses_research_test.go:109:   recensement brut au masque i26 : 1065
+    equipment_uses_research_test.go:109:   recensement brut au masque i27 : 1433
+    equipment_uses_research_test.go:109:   D.0.3 (alternative) i19 `item-ignore-player` annonce 172 fois — sa grammaire est R(1)[+R(5)] (components_world.go:124), soit 5 bits : la MEME forme que i23 `equipment-creator`, deja REFUTEE comme slot de bipede (0 valeur sur 1 328 dans la bande) ET comme index de joueur (28 valeurs distinctes sur un film a 8 joueurs). Sa VALEUR n'est pas lisible en phase 0 : le deser la jette, et poser un hook est de la plomberie (interdite ici, lecture seule)
+    equipment_uses_research_test.go:110: == D.0.1 TRANSITIONS BRUTES (groupees par (slot, generation) SEULE — le comptage du lot 0, sur 1518 cles) ==
+    equipment_uses_research_test.go:110:   equipment-energy-delay-ticks-left-component    199 transitions sur 293 paires consecutives · dont 93 en BAISSE
+    equipment_uses_research_test.go:110:   equipment-charges-remaining-component          349 transitions sur 529 paires consecutives · dont 183 en BAISSE
+    equipment_uses_research_test.go:117: == TEMOIN (c) PLANCHER DE BRUIT DE L'ANCRAGE == calibration 8/3 (18 accords contre 3 à 5/6 ; 39 ancres, 285 vies, 4 chunks) · vies 285 · ancres 8553 · acceptes 354 · CONFIRMES par l'oracle de position 144 (40.68 % des acceptes) · poses 144
+    equipment_uses_research_test.go:117:   purete etablie de l'ancrage ti=37 en DELTA (hors de ce lot, ecrite au registre ECS) : 97,2 % de 628 368 echantillons i0 dans l'emprise des bipedes du meme film, 12 films sur 12 ; temoin d'ancrage a 1 slot (ti=4) : 98,7-99,8 % (lot C phase 1a). `ScanFilmEquipmentState` ne prend pas de bande en parametre : un tirage FANTOME du balayage d'etat exigerait de modifier du code de production, hors phase 0.
+    equipment_uses_research_test.go:120: == D.0.1 DISTRIBUTION DES VALEURS TRANSMISES — REEL (lecture rattachee a une vie CONFIRMEE par l'oracle de position) contre FANTOME (aucune vie confirmee) ==
+    equipment_uses_research_test.go:120:   REEL    equipment-charges-remaining-component     17 valeurs ·  13 distinctes · max  251 · 24:1 56:1 159:1 160:2 176:1 217:1 218:1 222:1 223:1 242:3 243:1 245:1 251:2
+    equipment_uses_research_test.go:120:   FANTOME equipment-charges-remaining-component   1409 valeurs · 204 distinctes · max  255 · 0:19 1:15 2:9 3:41 4:15 5:12 6:8 7:8 8:8 9:1 10:5 11:3 12:6 13:7 14:4 15:11 … 204 classes au total
+    equipment_uses_research_test.go:120:   REEL    equipment-energy-delay-ticks-left-component   162 valeurs ·  19 distinctes · max 1009 · 0:127 1:4 47:2 208:1 311:1 362:1 366:1 506:1 640:1 694:1 863:11 894:1 926:2 942:1 948:1 971:1 … 19 classes au total
+    equipment_uses_research_test.go:120:   FANTOME equipment-energy-delay-ticks-left-component   902 valeurs · 295 distinctes · max 1023 · 0:9 1:1 2:2 3:2 4:4 8:2 9:1 11:12 12:2 13:1 14:2 15:11 16:4 17:3 18:1 20:4 … 295 classes au total
+    equipment_uses_research_test.go:121: == JOINTURE == 144 vies d'objet IDENTIFIEES · 182 lectures rattachees
+    equipment_uses_research_test.go:121:   grenade_frag            98 vies ·   7 portent i27 (10 lectures) ·  98 portent i26
+    equipment_uses_research_test.go:121:   grenade_plasma          26 vies ·   3 portent i27 (3 lectures) ·  25 portent i26
+    equipment_uses_research_test.go:121:   powerup_camo             2 vies ·   1 portent i27 (1 lectures) ·   0 portent i26
+    equipment_uses_research_test.go:121:   repulsor                14 vies ·   3 portent i27 (3 lectures) ·   1 portent i26
+    equipment_uses_research_test.go:121:   thruster                 4 vies ·   0 portent i27 (0 lectures) ·   4 portent i26
+    equipment_uses_research_test.go:131: == D.0.2 ORACLE GRAPPIN == i59 : 261299 records biped · masque∋i59 2186 · lus 2186 · tag==3 3 · corps casses 3 · EVENEMENTS 0 · USAGES (paires tir/accroche) 0
+    equipment_uses_research_test.go:131:   IDENTITE : AUCUN objet ti=37 de famille `grapple` sur ce film — l'equipement porte n'a pas d'entite du monde ici. D.0.2 non calculable sur i27 ; seul le repli i26 reste jouable, et il l'est sur les vies des autres familles seulement.
+    equipment_uses_research_test.go:132: == D.0.4 GENERALISATION == decroissances de charge par vie d'objet et par famille
+    equipment_uses_research_test.go:132:   grenade_frag            98 vies ·   1 avec >= 1 decroissance ·    1 decroissances · max/vie 1
+    equipment_uses_research_test.go:132:   grenade_plasma          26 vies ·   0 avec >= 1 decroissance ·    0 decroissances · max/vie 0
+    equipment_uses_research_test.go:132:   powerup_camo             2 vies ·   0 avec >= 1 decroissance ·    0 decroissances · max/vie 0
+    equipment_uses_research_test.go:132:   repulsor                14 vies ·   0 avec >= 1 decroissance ·    0 decroissances · max/vie 0
+    equipment_uses_research_test.go:132:   thruster                 4 vies ·   0 avec >= 1 decroissance ·    0 decroissances · max/vie 0
+    equipment_uses_research_test.go:132:   CONTROLE CROISE pose <-> decroissance de la meme famille (fenetre ± 500 ms, seuil 80 %) :
+    equipment_uses_research_test.go:132:     grenade_frag           1/98 (1.0 %) -> SEUIL NON TENU · temoin +7 s 0/98 (0.0 %)
+    equipment_uses_research_test.go:132:     grenade_plasma          26 poses · AUCUNE decroissance dans cette famille : non calculable
+    equipment_uses_research_test.go:132:     powerup_camo             2 poses · AUCUNE decroissance dans cette famille : non calculable
+    equipment_uses_research_test.go:132:     repulsor                14 poses · AUCUNE decroissance dans cette famille : non calculable
+    equipment_uses_research_test.go:132:     thruster                 4 poses · AUCUNE decroissance dans cette famille : non calculable
+    equipment_uses_research_test.go:133: == D.0.4 RELATION i26 <-> DECROISSANCE DE CHARGE == 0/1 (0.0 %) des decroissances sont accompagnees d'une HAUSSE d'i26 sur la MEME vie dans la fenetre ± 500 ms · 13 hausses d'i26 au total · 127 vies portent i26 sans aucune decroissance de charge
+    equipment_uses_research_test.go:134: == D.0.4 POSES PAR POSEUR == NON CALCULABLE : le poseur (`equipmentOwner`, seuil de proximite en METRES) exige les bornes de la carte. Renseigner EQ_BOUNDS (et EQ_MAP si la signature de largeurs est ambigue).
+    equipment_uses_research_test.go:135:   piece ecrite : C:\Users\Guillaume\Projects\LevelUp-wt-usages-film\.ai\V7.5\replay2d\registre_film\lotD\0a247154_vies.tsv
+    equipment_uses_research_test.go:135:   piece ecrite : C:\Users\Guillaume\Projects\LevelUp-wt-usages-film\.ai\V7.5\replay2d\registre_film\lotD\0a247154_decroissances.tsv
+--- PASS: TestEquipmentUsesPhase0 (53.57s)
+PASS

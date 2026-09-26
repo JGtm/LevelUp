@@ -225,6 +225,9 @@ func TestCompareRepo_GetPlayerATH(t *testing.T) {
 		// match_skill_rank_latest, jamais la table brute. Sur ce fixture
 		// mono-version, un simple passthrough suffit.
 		`CREATE VIEW match_skill_rank_latest AS SELECT * FROM match_skill_rank`,
+		// Vue PAR TYPE (miroir de player_msr_view_latest_by_type_v1, 2026-09-13) :
+		// Q8LUSRHistoryPlayer la lit — un checkpoint par (match_id, rating_type).
+		`CREATE VIEW match_skill_rank_latest_by_type AS SELECT * FROM match_skill_rank`,
 		`CREATE TABLE career_progression (
 			rank INTEGER, current_xp INTEGER, recorded_at TIMESTAMPTZ,
 			rank_name VARCHAR, rank_tier VARCHAR, xp_for_next_rank INTEGER,
@@ -235,7 +238,7 @@ func TestCompareRepo_GetPlayerATH(t *testing.T) {
 			t.Fatalf("DDL: %v\nSQL: %s", err, q)
 		}
 	}
-	// Append-only #23046 : convertit player_match_enrichment (id PK + stage +
+	// Append-only #23645 : convertit player_match_enrichment (id PK + stage +
 	// written_at) et crée la vue player_match_enrichment_latest (lue par le repo).
 	if err := migration.EnsurePlayerMatchEnrichmentAppendOnly(db.SQLDb()); err != nil {
 		t.Fatalf("EnsurePlayerMatchEnrichmentAppendOnly: %v", err)
@@ -363,71 +366,6 @@ func TestCompareRepo_GetEncounterStats_NoCommonMatches(t *testing.T) {
 	}
 	if enc != nil {
 		t.Errorf("expected nil for no common matches, got %+v", enc)
-	}
-}
-
-// TestCompareRepo_GetCrossMatchSample_WithData : agrégats limités aux matchs
-// communs xuidA + xuidB.
-func TestCompareRepo_GetCrossMatchSample_WithData(t *testing.T) {
-	db := openMemDB(t)
-	ctx := context.Background()
-	for _, ddl := range []string{
-		`CREATE TABLE match_participants (
-			match_id VARCHAR, xuid VARCHAR, team_id INTEGER, max_killing_spree INTEGER,
-			avg_life_seconds DOUBLE, headshot_kills INTEGER)`,
-		`CREATE TABLE medals_earned (
-			match_id VARCHAR, xuid VARCHAR, medal_name_id BIGINT, count INTEGER)`,
-	} {
-		if _, err := db.Exec(ctx, ddl); err != nil {
-			t.Fatalf("DDL: %v", err)
-		}
-	}
-	// m1 + m2 : both xuidA + xuidB. m3 : xuidA seul (exclu).
-	for _, ins := range []string{
-		`INSERT INTO match_participants VALUES
-			('m1', 'xuidA', 0, 5, 30.0, 3),
-			('m1', 'xuidB', 0, 8, 45.0, 5),
-			('m2', 'xuidA', 0, 4, 25.0, 2),
-			('m2', 'xuidB', 0, 6, 50.0, 4),
-			('m3', 'xuidA', 0, 3, 20.0, 1)`,
-		`INSERT INTO medals_earned VALUES
-			('m1', 'xuidB', 1512363953, 2),
-			('m2', 'xuidB', 1512363953, 4)`,
-	} {
-		if _, err := db.Exec(ctx, ins); err != nil {
-			t.Fatalf("INSERT: %v", err)
-		}
-	}
-
-	pdb := &PlayerDB{Player: db, Shared: db, XUID: "xuidA"}
-	repo := NewCompareRepo(pdb)
-
-	sample, err := repo.GetCrossMatchSample(ctx, "xuidA", "xuidB")
-	if err != nil {
-		t.Fatalf("GetCrossMatchSample: %v", err)
-	}
-	if sample == nil {
-		t.Fatal("expected non-nil sample")
-	}
-	// 2 matchs communs (m1, m2 — m3 exclu car xuidB absent)
-	if sample.MatchesCount != 2 {
-		t.Errorf("MatchesCount: got %d, want 2", sample.MatchesCount)
-	}
-	// MAX(xuidB.max_killing_spree) = MAX(8, 6) = 8
-	if sample.MaxKillingSpree != 8 {
-		t.Errorf("MaxKillingSpree: got %d, want 8", sample.MaxKillingSpree)
-	}
-	// AVG(xuidB.avg_life_seconds) = (45+50)/2 = 47.5
-	if sample.AvgLifeSecs < 47.4 || sample.AvgLifeSecs > 47.6 {
-		t.Errorf("AvgLifeSecs: got %f, want ~47.5", sample.AvgLifeSecs)
-	}
-	// AVG(xuidB.headshot_kills) = (5+4)/2 = 4.5
-	if sample.HeadshotKillsPerGame < 4.4 || sample.HeadshotKillsPerGame > 4.6 {
-		t.Errorf("HeadshotKillsPerGame: got %f, want ~4.5", sample.HeadshotKillsPerGame)
-	}
-	// AVG(perfect_count) = (2+4)/2 = 3.0
-	if sample.PerfectKillsPerGame < 2.9 || sample.PerfectKillsPerGame > 3.1 {
-		t.Errorf("PerfectKillsPerGame: got %f, want ~3.0", sample.PerfectKillsPerGame)
 	}
 }
 

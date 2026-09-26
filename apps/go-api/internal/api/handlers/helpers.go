@@ -3,15 +3,15 @@ package handlers
 
 import (
 	"context"
-	"crypto/sha256"
 	"encoding/json"
-	"fmt"
+	"errors"
 	"log/slog"
 	"net/http"
 
 	"github.com/danielgtaylor/huma/v2"
 
 	"levelup/go-api/internal/api/humacore"
+	"levelup/go-api/internal/platform/dblease"
 )
 
 // Clés JSON partagées entre handlers (params actor logs, response error envelopes).
@@ -26,8 +26,8 @@ const (
 	// Valeurs courantes
 	jsonBoolTrueStr = "true"
 
-	// Codes d'erreur partagés (MSAL device-code flow).
-	errCodeMSALAcquire = "msal_acquire_error"
+	// Codes d'erreur partagés (device-code flow SISU).
+	errCodeDeviceFlowAcquire = "device_flow_acquire_error"
 
 	// Modes auth.
 	authModeXbox = "xbox"
@@ -65,6 +65,57 @@ func errDBBusy() error {
 	)
 }
 
+// Réponse « client parti » des handlers de pages (plan perf du 2026-09-23, D3.2).
+const (
+	// statusClientClosed : 499, convention nginx « Client Closed Request », que Huma
+	// emploie lui-même quand l'écriture d'une réponse échoue sur un client déconnecté.
+	// Personne ne lit cette réponse : le statut sert au journal d'accès et aux compteurs
+	// du middleware, où il compte en 4xx — jamais en 5xx, ce n'est pas une panne serveur.
+	statusClientClosed = 499
+	codeClientClosed   = "client_closed"
+)
+
+// mapServiceError traduit l'erreur d'un service de page en réponse HTTP (plan perf du
+// 2026-09-23, D3.2). Trois issues, testées dans cet ordre :
+//
+//  1. le client est parti (contexte de la requête annulé : onglet fermé, requête
+//     remplacée — le front transmet l'AbortSignal de TanStack Query à fetch) : 499
+//     `client_closed`, journalisé en DEBUG. Testé EN PREMIER : une attente de verrou
+//     interrompue par l'annulation remonte en dblease.ErrDBLocked, et un 503 à un
+//     client disparu ne servirait qu'à gonfler les compteurs 5xx ;
+//  2. base momentanément indisponible (isDBBusy) : errDBBusy(), 503 + Retry-After,
+//     journalisé en WARN — transitoire, le front rejoue ;
+//  3. sinon : 500 avec le code propre à la page, journalisé en ERROR (le client ne
+//     reçoit que le message générique, cf. humacore.NewError).
+func mapServiceError(ctx context.Context, err error, code string) error {
+	switch {
+	case isClientClosed(ctx):
+		slog.DebugContext(ctx, "page: requête abandonnée par le client", jsonKeyCode, code, "err", err)
+		return humacore.NewError(statusClientClosed, codeClientClosed, "client closed request")
+	case isDBBusy(err):
+		slog.WarnContext(ctx, "page: base occupée", jsonKeyCode, code, "err", err)
+		return errDBBusy()
+	default:
+		slog.ErrorContext(ctx, "page: erreur service", jsonKeyCode, code, "err", err)
+		return humacore.NewError(http.StatusInternalServerError, code, err.Error())
+	}
+}
+
+// isClientClosed : la requête a été annulée par le client. Seul le contexte DE LA
+// REQUÊTE fait foi : un context.Canceled né d'une annulation interne (un errgroup qui
+// arrête ses goroutines sœurs après une erreur) alors que le client attend toujours
+// reste une erreur serveur, pas un départ du client.
+func isClientClosed(ctx context.Context) bool {
+	return errors.Is(ctx.Err(), context.Canceled)
+}
+
+// isDBBusy : l'erreur signale une base momentanément indisponible — verrou d'écriture
+// non obtenu (dblease.ErrDBLocked) ou bascule RO/RW du provider partagé pendant une
+// synchronisation (isSharedSwapContention, home.go : un seul prédicat pour le paquet).
+func isDBBusy(err error) bool {
+	return errors.Is(err, dblease.ErrDBLocked) || isSharedSwapContention(err)
+}
+
 // writeJSON sérialise v en JSON et l'écrit dans w avec le code HTTP donné.
 // Utilise json.Marshal (buffer complet) avant d'écrire les headers : si la
 // sérialisation échoue (ex. float64 NaN/Inf), renvoie 500 avec un corps JSON
@@ -92,7 +143,11 @@ func writeJSON(w http.ResponseWriter, status int, v interface{}) {
 	_, _ = w.Write([]byte("\n"))
 }
 
-// writeJSONCached sérialise v, pose un ETag SHA-256 et retourne 304 si le client est à jour.
+// writeJSONCached sérialise v et délègue à servirBlobAvecETag (cache_http.go) la
+// pose de l'ETag fort et la négociation 304 — seul appelant JSON du helper : les
+// endpoints Huma (capabilities, feature_matrix, field_mappings, home) posent leur
+// ETag via un champ de sortie déclaratif et ne peuvent pas appeler un writer
+// direct, donc n'utilisent pas cette fonction (cf. § Découvertes du plan).
 // À utiliser sur les endpoints GET dont les données changent peu entre deux syncs.
 //
 // tous les callers passent 200/OK mais la signature reste configurable.
@@ -108,16 +163,7 @@ func writeJSONCached(w http.ResponseWriter, r *http.Request, status int, v inter
 		writeError(r.Context(), w, http.StatusInternalServerError, "encode_error", "erreur de sérialisation")
 		return
 	}
-	sum := sha256.Sum256(body)
-	etag := fmt.Sprintf(`"%x"`, sum[:8])
-	w.Header().Set("ETag", etag)
-	if r.Header.Get("If-None-Match") == etag {
-		w.WriteHeader(http.StatusNotModified)
-		return
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	_, _ = w.Write(body)
+	servirBlobAvecETag(w, r, body, "application/json", "")
 }
 
 // writeError écrit une réponse d'erreur JSON standardisée et **logge l'erreur

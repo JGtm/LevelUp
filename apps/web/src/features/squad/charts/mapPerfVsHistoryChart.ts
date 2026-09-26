@@ -26,6 +26,7 @@ import {
   getEChartsThemeColors,
   getLegendBase,
   getTooltipBase,
+  legendEntries,
 } from '@/components/charts/_utils'
 import type { ChartSeries } from '@/components/charts/ChartCard'
 import type { MapBreakdownRow } from '@/lib/api/types'
@@ -102,7 +103,18 @@ export function buildMapPerfVsHistoryOption(
       axisPointer: { type: 'shadow' },
       valueFormatter: (v: unknown) => (typeof v === 'number' ? v.toFixed(1) : '-'),
     },
-    legend: { ...getLegendBase(tc), data: [historyLabel, sessionLabel] },
+    // Couleurs portées par les ENTRÉES de légende : la barre de session est colorée au
+    // POINT (un palier de performance par carte) et ne donne donc aucune couleur de série
+    // à ECharts, qui retombait sur sa palette par défaut.
+    legend: {
+      ...getLegendBase(tc),
+      data: legendEntries([
+        { name: historyLabel, color: PERF_HISTORY_COLOR },
+        // La session est peinte par PALIER de performance (perf-tier-1..5) : la pastille
+        // porte le palier MÉDIAN, celui d'une performance dans la moyenne.
+        { name: sessionLabel, color: resolveToken('perf-tier-3') },
+      ]),
+    },
     xAxis: {
       ...axis,
       type: 'value',

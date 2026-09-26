@@ -24,7 +24,16 @@ import (
 )
 
 // increment `x++` puis peu après `if y > z {` — signature du balayage best/cur.
-var longestRunIdiomRE = regexp.MustCompile(`\+\+[ \t]*\n[ \t]*if\s+\w+\s*>\s*\w+\s*\{`)
+//
+// LES DEUX OPÉRANDES SONT DES IDENTIFIANTS, jamais un nombre (précision apportée le
+// 2026-08-30). Le motif traqué compare un courant à un maximum — `if cur > best {` —, deux
+// variables par construction. `\w+` acceptait aussi un littéral, ce qui faisait tomber dans
+// le ratchet la forme la plus banale de Go : compter puis tester un seuil
+// (`n++` sur la ligne d'avant, `if want > 0 {` sur la suivante — cas réel de
+// `cmd/oddball-terrain/confront.go`, qui n'a aucune notion de série). Ce n'est PAS un
+// assouplissement : aucun balayage best/cur ne compare son maximum à une constante, donc
+// aucune violation réelle ne sort du filet — seule une classe de faux positifs disparaît.
+var longestRunIdiomRE = regexp.MustCompile(`\+\+[ \t]*\n[ \t]*if\s+[A-Za-z_]\w*\s*>\s*[A-Za-z_]\w*\s*\{`)
 
 var longestRunAllowed = map[string]bool{
 	"longest_run.go":       true,
@@ -42,18 +51,19 @@ var longestRunAllowed = map[string]bool{
 // items de domaine. `analysis.LongestRun[T]` prend une slice et un prédicat : il ne
 // modélise pas un curseur de bits. La forme se ressemble, l'objet non.
 //
-// Le paquet `filmdec` est de surcroît importé tel quel des deux lignées de recherche
+// Le paquet `grammar` est de surcroît importé tel quel des deux lignées de recherche
 // (il n'existait ni dans la base commune ni sur main) : deux de ses fichiers
 // déclenchaient déjà ce ratchet sur `feat/killsource-prod` AVANT toute réconciliation.
 // L'exemption règle donc une dette antérieure, elle n'en crée pas.
 //
-// RETRAIT : quand `filmdec` aura sa propre primitive de plage de bits. Le volet
+// RETRAIT : quand `grammar` aura sa propre primitive de plage de bits. Le volet
 // `cmd/tmp_*` / `cmd/wf_*` de cette exemption est RETIRÉ le 2026-08-01 (lot A du
 // plan de dette avant merge) : l'outillage de recherche est supprimé, l'exemption
-// par préfixe n'a plus de cible.
+// par préfixe n'a plus de cible. Le volet `frame_debug.go` est RETIRÉ le 2026-09-05
+// (lot E, item E.2) : le fichier est supprimé (deux fonctions de debug sans aucun
+// appelant, tests compris), l'exemption n'a plus de cible non plus.
 var longestRunAllowedPrefixes = []string{
-	"internal/analysis/filmdec/frame_debug.go",
-	"internal/analysis/filmdec/frame_records.go",
+	"internal/games/halo_infinite/film/internal/grammar/frame_records.go",
 }
 
 // longestRunExempt dit si le chemin relatif est couvert par une exemption datée.

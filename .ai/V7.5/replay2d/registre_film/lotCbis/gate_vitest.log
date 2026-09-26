@@ -1,0 +1,12 @@
+[33m(!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
+  - `__dirname` (vite.config.ts:28:25). Use `import.meta.dirname` instead
+Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.[39m
+
+ RUN  v4.1.10 C:/Users/Guillaume/Projects/LevelUp-wt-zones-ti13-p2b/apps/web
+
+
+ Test Files  141 passed (141)
+      Tests  1727 passed (1727)
+   Start at  17:12:44
+   Duration  95.12s (transform 31.30s, setup 191.67s, import 59.30s, tests 56.04s, environment 267.40s)
+

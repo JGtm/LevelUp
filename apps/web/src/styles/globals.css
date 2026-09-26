@@ -210,6 +210,8 @@
   --ac-divergent-pos:     #22C55E;
   --ac-divergent-neutral: #60A5FA;
   --ac-divergent-neg:     #EF4444;
+  /* Objectif sans camp — gris, jamais bleu : sur une carte, « allié » est déjà bleu. */
+  --ac-zone-neutral:      #9CA3AF;
   /* Statuts UI */
   --ac-success:     #10B981;
   --ac-warning:     #F59E0B;
@@ -229,6 +231,14 @@
   --ac-chart-series-8: #EC4899;
   /* Bonus (assistances) — violet, distinct des couleurs joueurs squad */
   --ac-bonus: #A855F7;
+  /* Stats de combat (2026-09-17) */
+  --ac-stat-kills: #059669;
+  --ac-stat-deaths: #F43F5E;
+  --ac-stat-assists: #0284C7;
+  --ac-assist-received: #A16207;
+  --ac-assist-given: #7C3AED;
+  /* Rareté — accent légendaire (encadré surbouclier du rejeu 2D, etc.) */
+  --ac-legendary: #FBBF24;
   /* Badges narratifs */
   --ac-narrative-dominant:               #00DC82;
   --ac-narrative-dominant-text:          #052E16;
@@ -240,6 +250,10 @@
   --ac-narrative-debacle-text:           #FFF7ED;
   --ac-narrative-contre-remontada:       #33D6FF;
   --ac-narrative-contre-remontada-text:  #082F49;
+  --ac-narrative-sabordage:              #BE185D;
+  --ac-narrative-sabordage-text:         #FFFFFF;
+  --ac-narrative-abnegation:             #A3E635;
+  --ac-narrative-abnegation-text:        #1A2E05;
   /* Badges encounter */
   --ac-narrative-encounter-ally-plus:    #10B981;
   --ac-narrative-encounter-tough-enemy:  #EF4444;
@@ -259,6 +273,78 @@
   --ac-heatmap-freq-high:      #60A5FA;
 }
 
+/* ─── Teintes d'EFFET DE TIR du rejeu 2D (--replay-fx-*) ────────────────────── */
+/*
+   POURQUOI CES TOKENS EXISTENT, ET POURQUOI CE NE SONT PAS DES `--ac-*`.
+   Décision utilisateur du 2026-08-15 : l'éclair de bouche dit la NATURE de la décharge
+   (poudre, plasma froid ou chaud, énergie Forerunner, arc, cristal, déflagration) — et
+   « les couleurs des effets de tirs [...] prennent seulement l'ARME en compte ». C'est une
+   couleur DIÉGÉTIQUE : elle nomme ce que le jeu montre, pas un rôle de donnée. Les tokens
+   `--ac-*` sont, eux, remappés par les palettes d'accessibilité (Okabe-Ito) : y ranger ces
+   teintes ferait qu'un plasma bleu deviendrait orange au changement de palette, ce qui
+   détruirait précisément l'information qu'elles portent.
+
+   CE QU'ELLES NE PORTENT PAS : aucune identité de joueur ni d'équipe. La distinction des
+   joueurs reste au marqueur et au cône de visée, qui gardent leurs couleurs de série.
+
+   La règle du dépôt est ÉTENDUE, pas contournée : aucune valeur n'est écrite dans
+   `features/` — le composant lit ces variables du thème (cf. fxInk.ts, patron canvasInk.ts).
+*/
+:root,
+:root[data-theme='dark'] {
+  --replay-fx-core:        oklch(0.98 0.03 90);
+  --replay-fx-kinetic:     oklch(0.85 0.16 75);
+  --replay-fx-plasma-cool: oklch(0.75 0.15 245);
+  --replay-fx-plasma-hot:  oklch(0.70 0.20 30);
+  --replay-fx-forerunner:  oklch(0.72 0.20 300);
+  --replay-fx-electric:    oklch(0.88 0.16 200);
+  --replay-fx-needle:      oklch(0.75 0.22 330);
+  --replay-fx-blast:       oklch(0.80 0.18 55);
+  --replay-fx-neutral:     oklch(0.80 0.02 255);
+}
+
+:root[data-theme='light'] {
+  /* Mêmes teintes, assombries : un éclair clair sur un fond clair ne se voit pas. */
+  --replay-fx-core:        oklch(0.78 0.11 85);
+  --replay-fx-kinetic:     oklch(0.66 0.17 62);
+  --replay-fx-plasma-cool: oklch(0.56 0.16 245);
+  --replay-fx-plasma-hot:  oklch(0.56 0.20 28);
+  --replay-fx-forerunner:  oklch(0.53 0.20 300);
+  --replay-fx-electric:    oklch(0.62 0.14 200);
+  --replay-fx-needle:      oklch(0.58 0.22 330);
+  --replay-fx-blast:       oklch(0.62 0.18 55);
+  --replay-fx-neutral:     oklch(0.50 0.02 255);
+}
+
+/* ─── Contour des NOMS sur la carte du rejeu 2D (--replay-label-stroke) ──────── */
+/*
+   Le nom du joueur s'écrit SOUS son marqueur, à la couleur du marqueur, sur un fond de
+   carte qui va du gris clair (aire jouable) au presque noir (pourtour). Un contour
+   SOMBRE dans les deux thèmes le rend lisible partout : c'est la technique du POC,
+   validée à l'usage — un contour qui suivrait le thème (blanc en clair) ne détourerait
+   plus rien sur l'aire claire de la carte, qui ne change pas avec le thème.
+   Encre de mise en page, pas un rôle de donnée : lue par canvasInk.ts, jamais écrite
+   dans `features/`.
+*/
+:root,
+:root[data-theme='dark'],
+:root[data-theme='light'] {
+  --replay-label-stroke: rgb(8 12 18 / 0.92);
+}
+
+/* ─── Fond de la VIDÉO EXPORTÉE du rejeu 2D (--replay-export-backdrop) ────────── */
+/*
+   Décision utilisateur du 2026-09-16 (plan « formats vidéo », D8) : autour d'une carte qui
+   n'est pas en 16:9, le clip est NOIR PUR, quel que soit le thème de qui exporte — un fichier
+   ne doit pas changer d'apparence selon une préférence d'interface. Même valeur dans les deux
+   thèmes. Encre de mise en page, lue par canvasInk.ts, jamais écrite dans `features/`.
+*/
+:root,
+:root[data-theme='dark'],
+:root[data-theme='light'] {
+  --replay-export-backdrop: rgb(0 0 0);
+}
+
 /* ─── Base styles ───────────────────────────────────────────────────────────── */
 @layer base {
   * {
@@ -276,6 +362,27 @@
 @layer components {
   .app-shell-width {
     max-width: 1320px;
+  }
+
+  /* Rangée de blocs de catalogue (Médailles / Citations) : les largeurs viennent du
+     COMPTAGE des vignettes, calculé en TS (lib/layout/blockRowPacking) et passé en
+     `--block-row-cols`. Une variable CSS plutôt qu'un style inline seul : c'est le seul
+     moyen d'annuler la grille sous 768 px, où une seule colonne tient. */
+  /* `stretch` (et non `start`) : les cartes d'une même rangée descendent toutes
+     jusqu'au bas de la plus haute, sinon leurs bordures s'arrêtent à des hauteurs
+     différentes et la rangée se lit comme un escalier (retour utilisateur
+     2026-09-13). Les cartes portent `h-full flex flex-col` pour que le fond suive. */
+  .block-row {
+    display: grid;
+    gap: 1.5rem;
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
+  @media (min-width: 768px) {
+    .block-row {
+      grid-template-columns: var(--block-row-cols, 1fr);
+    }
   }
 
   /* Text-shadow adaptatif : noir en dark, blanc en light — pour textes sur images de bannière. */
@@ -333,4 +440,177 @@
 @keyframes session-slide-up {
   from { opacity: 0; transform: translateY(10px); }
   to   { opacity: 1; transform: translateY(0);    }
+}
+
+/* Rejeu 2D, fiches joueur — les DEUX éclats d'événement (coup fatal, réapparition) et la
+   permutation d'armes. Les trois reçoivent un animation-delay NÉGATIF égal à l'avancement
+   réel de l'événement : l'animation reprend où elle en était, donc reste juste après un
+   saut dans le temps de lecture. Les éclats sont courts parce que ce sont des repères
+   d'événement ; l'état de mort, lui, est porté en continu par le fond de la fiche. */
+@keyframes replay-death-flash {
+  0%, 49%   { background-color: color-mix(in srgb, var(--ac-destructive) 42%, transparent); }
+  50%, 100% { background-color: color-mix(in srgb, var(--ac-destructive) 10%, transparent); }
+}
+@keyframes replay-respawn-flash {
+  from { background-color: color-mix(in srgb, var(--ac-success) 52%, transparent); }
+  to   { background-color: transparent; }
+}
+/* La permutation translate chaque vignette de la place de l'AUTRE (--replay-dx, 46 px par
+   défaut : la distance entre les DEUX cellules d'arme de la fiche normale) : c'est la seule
+   distance qui fasse réellement se croiser les deux. Sans mouvement, un échange est
+   indiscernable d'un changement d'arme. Sur la tuile compacte (une seule cellule, plan fiches
+   compactes 2026-09-06, I6), la vignette ENTRANTE pose elle-même --replay-dx à la largeur de
+   sa cellule (48 px, `ReplayWeaponsRow`) et elle seule s'anime (replay-wswap-l) : l'échange
+   reste visible, il ne croise plus rien. */
+@keyframes replay-wswap-left {
+  from { transform: translateX(var(--replay-dx, 46px)); opacity: 0.25; }
+  to   { transform: none; opacity: 1; }
+}
+@keyframes replay-wswap-right {
+  from { transform: translateX(calc(-1 * var(--replay-dx, 46px))); opacity: 0.25; }
+  to   { transform: none; opacity: 1; }
+}
+/* Le POP du badge de lancer (le `.gic` du POC) : une apparition, pas un mouvement — le
+   badge naît sur place quand la grenade part, et l'identité du nœud (clé = frame du
+   lancer) fait que l'animation ne repart pas à chaque image publiée. */
+@keyframes replay-gpop {
+  from { transform: scale(0.55); opacity: 0; }
+  to   { transform: none; opacity: 1; }
+}
+.replay-flash-death   { animation: replay-death-flash 0.62s steps(1) 3; }
+/* 1,2 s depuis le 2026-08-17 (planche du 16/08 : « plus lent l'éclat ») — miroir de
+   RESPAWN_FLASH_S dans playerCardFx.ts, qui en dérive le délai négatif de reprise. */
+.replay-flash-respawn { animation: replay-respawn-flash 1.2s ease-out 1; }
+.replay-wswap-l { animation: replay-wswap-left 0.34s cubic-bezier(0.22, 0.61, 0.36, 1) both; }
+.replay-wswap-r { animation: replay-wswap-right 0.34s cubic-bezier(0.22, 0.61, 0.36, 1) both; }
+.replay-gpop { animation: replay-gpop 0.18s ease-out 1; }
+
+/* Le FOURREAU de TRANSLOCATION : rien que la BORDURE, avec une lumière qui la parcourt
+   (verdict utilisateur du 2026-08-27 : « que la bordure, comme si ça tournait sur la
+   bordure »). Un arc violet -> jaune-orangé — les encres de la faille (`bonus`) et le
+   jaune-orangé demandé (`warning`) — court sur un anneau découpé au masque (deux calques,
+   composition exclude : il ne reste que l'épaisseur de la bordure). L'angle est une
+   propriété ENREGISTRÉE (@property) pour s'interpoler ; sans ce support l'arc saute de
+   position mais l'opacité, elle, s'éteint quand même. Même contrat de délai négatif que
+   les éclats (TRANSLOCATION_FLASH_S, miroir dans playerCardFx.ts). */
+@property --replay-beam-angle {
+  syntax: '<angle>';
+  inherits: false;
+  initial-value: 0deg;
+}
+/* DEUX ANIMATIONS, ET C'EST LE POINT (retour utilisateur du 2026-08-27 : « ne le fais pas
+   s'interrompre ») : la ROTATION est une boucle SANS COUTURE (0 -> 360°, infinie) — la
+   lumière ne ralentit ni ne repart jamais — et l'EXTINCTION est un fondu séparé, joué une
+   fois sur la fenêtre de l'éclat : le fourreau disparaît EN TOURNANT, il ne s'arrête pas.
+   Le délai négatif unique de la fiche s'applique aux deux (reprise à l'avancement réel ;
+   sur la boucle infinie il ne déphase que la rotation, ce qui est sans conséquence). */
+@keyframes replay-translocation-spin {
+  to { --replay-beam-angle: 360deg; }
+}
+@keyframes replay-translocation-fade {
+  0%, 75% { opacity: 1; }
+  100%    { opacity: 0; }
+}
+.replay-flash-translocation {
+  border: 2px solid transparent;
+  background: conic-gradient(from var(--replay-beam-angle),
+      transparent 0% 8%,
+      var(--ac-bonus) 20%,
+      var(--ac-warning) 30%,
+      transparent 42% 100%) border-box;
+  -webkit-mask: linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  animation:
+    replay-translocation-spin 0.9s linear infinite,
+    replay-translocation-fade 1.2s linear 1 both;
+}
+
+/* Le contour « DÉTECTÉ » d'une fiche dans la zone d'un capteur adverse : il claque au ping
+   puis retombe, à la cadence OFFICIELLE du capteur — période 1,8 s, révélation 0,75 s, soit
+   41,7 % du cycle (chiffres sourcés dans threatSensor.ts, dont la fiche reçoit la phase par
+   délai négatif : le contour bat avec l'onde de la carte). Hors animation (mouvement
+   réduit), l'opacité de base garde l'état lisible sans le faire palpiter. */
+@keyframes replay-zone-sensor-ping {
+  0%          { opacity: 0.95; }
+  41.7%, 100% { opacity: 0.35; }
+}
+.replay-zone-sensor { opacity: 0.55; animation: replay-zone-sensor-ping 1.8s linear infinite; }
+
+/* Le NUAGE NOIR de l'écran occultant : une nappe de fumée sombre PAR-DESSUS les infos
+   (verdict utilisateur du 2026-08-27, « un genre de nuage noir plutôt que des rayures » —
+   les rayures se confondaient avec les reflets du verre du camouflage). Quatre volutes en
+   dégradés radiaux de l'encre sombre-des-deux-thèmes, aux positions en pourcentages : la
+   nappe suit la taille de la fiche. LES CŒURS SONT DENSES À DESSEIN (85-92 %, opacité
+   0,72) : un noir timide sur la carte du thème sombre était invisible (retour utilisateur,
+   même jour) — c'est le CREUX entre les volutes, où la fiche réapparaît, qui garde
+   l'ensemble « léger » et lisible, pas la pâleur du noir. Aucune animation : rien dans le
+   film ne bat au rythme de cet objet (même règle que sa bulle sur la carte). */
+.replay-zone-cloud {
+  background-image:
+    radial-gradient(58% 120% at 14% 30%,
+      color-mix(in srgb, var(--replay-label-stroke) 92%, transparent) 0%,
+      color-mix(in srgb, var(--replay-label-stroke) 68%, transparent) 45%, transparent 74%),
+    radial-gradient(46% 95% at 50% 80%,
+      color-mix(in srgb, var(--replay-label-stroke) 85%, transparent) 0%, transparent 70%),
+    radial-gradient(60% 130% at 88% 22%,
+      color-mix(in srgb, var(--replay-label-stroke) 92%, transparent) 0%, transparent 72%),
+    radial-gradient(36% 80% at 34% 52%,
+      color-mix(in srgb, var(--replay-label-stroke) 60%, transparent) 0%, transparent 78%);
+  opacity: 0.72;
+}
+
+/* Les MINI CROIX du champ de réparation montent le long de la fiche et s'effacent — un signe
+   d'activité qui ne chiffre RIEN : le film ne publie aucune cadence de soin (même réserve
+   que la croix qui respire sur le calque, cf. placementShapes.ts). Sous mouvement réduit
+   elles restent posées, visibles : l'état ne disparaît pas avec le mouvement. */
+@keyframes replay-zone-cross-rise {
+  0%   { transform: translateY(20px); opacity: 0; }
+  18%  { opacity: 0.9; }
+  78%  { opacity: 0.9; }
+  100% { transform: translateY(-22px); opacity: 0; }
+}
+.replay-zone-cross { opacity: 0.7; animation: replay-zone-cross-rise 2.4s linear infinite; }
+
+/* Les ÉCLAIRS de l'écran occultant (option 2a du handoff 2026-08-27) : trois décharges
+   traversent la fiche de haut en bas et SCINTILLENT — un double battement bref dans un
+   cycle de 2,6 s, décalé par éclair (délais négatifs posés par la fiche, calés sur
+   l'horloge de la POSE de l'écran : ReplayTeams.ZoneFxOverlay). La forme est un polygone
+   d'éclair découpé au clip-path ; l'encre va d'`info` au bleu profond de l'échelle de
+   fréquence (`heatmap-freq-low`) — l'électricité bleue de l'objet du jeu, en tokens.
+   Sous mouvement réduit ils restent éteints (opacité 0 de base) : le nuage, le voile et
+   l'infobulle disent déjà l'état sans clignoter. */
+@keyframes replay-zone-bolt {
+  0%, 6%, 100% { opacity: 0; }
+  8%  { opacity: 0.95; }
+  11% { opacity: 0.15; }
+  14% { opacity: 0.8; }
+  22% { opacity: 0; }
+}
+.replay-zone-bolt {
+  clip-path: polygon(45% 0%, 20% 55%, 42% 55%, 25% 100%, 70% 40%, 46% 40%, 62% 0%);
+  background: linear-gradient(180deg, var(--ac-info), var(--ac-heatmap-freq-low));
+  filter: drop-shadow(0 0 6px var(--ac-info));
+  opacity: 0;
+  animation: replay-zone-bolt 2.6s linear infinite;
+}
+
+/* La ligne du fil des éliminations (option 2a) : un filet séparateur ENTRE `background`
+   et `border` — assez présent pour structurer la liste, jamais autant qu'une bordure de
+   carte. Classe et non style inline : la couleur composée vit à UN endroit. */
+.replay-feed-row {
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 55%, var(--background));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .replay-flash-death,
+  .replay-flash-respawn,
+  .replay-flash-translocation,
+  .replay-zone-sensor,
+  .replay-zone-cross,
+  .replay-zone-bolt,
+  .replay-wswap-l,
+  .replay-wswap-r,
+  .replay-gpop { animation: none; }
 }

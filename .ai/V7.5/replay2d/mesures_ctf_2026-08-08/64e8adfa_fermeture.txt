@@ -1,0 +1,24 @@
+film	64e8adfa
+carte	Catalyst
+slots_pont_avant	122
+slots_pont_apres	125
+vies_non_nommees_candidates	16
+designees_par_un_tir	3
+attribuees	3	contestees	0	rejetees_recouvrement	0
+tirs_orphelins	567	dont_instant_a_une_seule_vie	35
+
+# couverture des tirs
+avant	rattaches	2312	sur	2879	taux	0.8031	sans_slot	564	ambigus	3
+apres	rattaches	2556	sur	2879	taux	0.8878	sans_slot	320	ambigus	3
+gain_points_A	8.48
+
+# fermeture B — par la reapparition
+calibration_vies	114	p05_ms	10089	mediane_ms	10188	p95_ms	51717
+vies_restantes	13	designees	13	attribuees	0	contestees	13	rejetees_recouvrement	0
+apresB	rattaches	2556	sur	2879	taux	0.8878	sans_slot	320	ambigus	3
+gain_points_total_fenetre_large	8.48
+
+# fermeture B — fenetre SERREE (mediane +/- 750 ms)
+vies_restantes	13	designees	11	attribuees	8	contestees	3	rejetees_recouvrement	0
+apresT	rattaches	2665	sur	2879	taux	0.9257	sans_slot	211	ambigus	3
+gain_points_total_fenetre_serree	12.26

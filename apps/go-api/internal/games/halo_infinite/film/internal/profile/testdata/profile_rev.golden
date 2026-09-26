@@ -1,0 +1,86 @@
+# GOLDEN — LE COUPLE (REVISION DE LA COUCHE PROFIL, EMPREINTE DE SES SOURCES). Ne PAS editer a la main.
+#
+# Une ligne de donnees par rang : la revision, une TABULATION, l empreinte SHA-256 des sources
+# NON-TEST de internal/games/halo_infinite/film/internal/profile/ (fins de ligne normalisees en
+# LF, chemin relatif A LA RACINE hache a cote du contenu, `rev.go` exclu — il DECRIT la couche),
+# precedees de la VALEUR de `source.Rev` (V15 (12)). Les lignes vides et celles qui commencent
+# par # sont de la prose. LA DERNIERE LIGNE DE DONNEES EST LA COURANTE.
+#
+# CE QUE CE FICHIER GARDE, ET POURQUOI IL PORTE LES DEUX VALEURS. Un gate qui ne compare que
+# l empreinte laisse remettre la revision a sa valeur d avant en restant vert (revue adversariale
+# du 2026-09-12, constat P1-4, cote killsource). Les deux valeurs figees ensemble rendent les deux
+# derives visibles :
+#
+#   empreinte differente            la couche a change  -> DECIDER, monter la revision si le
+#                                   decodage change, puis regenerer.
+#   empreinte egale, revision non   la revision a bouge sans la couche -> geste sans effet, ou
+#                                   golden non regenere apres une montee legitime.
+#
+# CE QU UNE MONTEE VEUT DIRE ICI : la couche `profile` ne lit aucun octet, elle dit COMMENT les
+# lire (ADR 0034 D-1 et D-3). Une largeur, une borne ou une provenance qui change fait lire
+# d autres bits aux memes offsets. `grammar.Rev` hache la VALEUR de cette revision et `facts.Rev`
+# celle de `grammar.Rev` : une montee remonte mecaniquement jusqu au backlog killsource, qui part
+# sur SIGNAL UTILISATEUR (D6), jamais automatiquement.
+#
+# CE QUI N EST PAS HACHE, ET C EST ASSUME : le catalogue des cartes, charge depuis
+# `data/titles/halo_infinite/reference/`. Hacher un repertoire de donnees de production ferait
+# dependre un gate de source de l etat du poste ; ce que le catalogue change, le corpus gate le
+# voit.
+#
+# REGENERATION (les deux valeurs a la fois, jamais l une sans l autre) :
+#
+#   LEVELUP_UPDATE_PROFILE_REV=1 go test ./internal/games/halo_infinite/film/internal/profile/ \
+#     -run TestProfileRevSuitLaCoucheProfil -update-profile-rev
+#
+# HISTORIQUE DES MOUVEMENTS DE CE COUPLE
+#
+#   2026-09-17  NAISSANCE (lot 2.6.1). La couche existait depuis le lot 2.5.b et n etait hachee
+#               que dans l empreinte de la GRAMMAIRE : le gate mordait, mais il rendait le meme
+#               diagnostic pour une borne de carte et pour un ordre de composants. Aucune ligne
+#               de la table ne change a ce rang.
+#
+#   2026-09-17  REVISION INCHANGEE, EMPREINTE SEULE RECOPIEE (lot 2.6.3), ET LE CHOIX EST
+#               EXPLICITE. `FilmIdentity` gagne DEUX CHAMPS LUS : `RegistryFingerprint` et
+#               `RegistryNamedSlots`. Ils etaient CALCULES PUIS JETES par
+#               `grammar.ReadFilmIdentity` (decouverte D4 (3.2)) — le parse du registre les
+#               produit pendant sa passe, et les rendre ne coute pas un cycle. La table du
+#               profil, elle, ne bouge pas d une ligne : aucune largeur, aucune borne, aucune
+#               provenance ne change, et le decodage est identique a l octet. Ce que ces deux
+#               champs servent est l ARTEFACT : `coverage.decoder.registry` classe desormais
+#               l empreinte du registre ECS (schema 61).
+#
+#   2026-09-17  REVISION INCHANGEE, EMPREINTE SEULE RECOPIEE (lot 3.1.1), ET LE CHOIX EST
+#               EXPLICITE. La couche gagne `cle_du_film.go` : [CleConnue] dit si la table
+#               connait la clef ECRITE par un film, et [ErreurCleInconnue] compose l erreur
+#               typee que les orchestrateurs lisent pour METTRE LE FILM DE COTE (D-4).
+#               AUCUNE LIGNE DE TABLE NE CHANGE : pas une largeur, pas une borne, pas une
+#               provenance, pas une plage. Ce fichier ne fait que LIRE les tables existantes
+#               (`PersonnalisationOctets`, `MPPPourFormat`, les deux majeures sans section) —
+#               un film qui se decode aujourd hui se decode demain aux MEMES bits, et un film
+#               ecarte ne se decode plus du tout, ce qui est une decision d ORCHESTRATION
+#               (`sync/killcollector`, `replaybuild`), hors de cette couche. La monter aurait
+#               ouvert un backlog killsource pour une sortie identique a l octet.
+#
+#   2026-09-17  REVISION INCHANGEE, EMPREINTE SEULE RECOPIEE (lot 3.1.1-b), ET LE CHOIX EST
+#               EXPLICITE. La couche gagne la TABLE DES EMPREINTES DE REGISTRE
+#               (`registre_empreintes.go`, 9 clefs recopiees du catalogue versionne) et sa
+#               CLASSIFICATION (`classement_registre.go` : connue / presumee / inconnue).
+#               AUCUN BIT LU NE CHANGE : une empreinte de registre ne commande aucune largeur,
+#               aucune borne, aucune plage — D2 (3.2) l a mesure, trois paires de clefs
+#               PARTAGENT leur empreinte alors que leurs tailles de structures different, donc
+#               l empreinte ne peut pas servir de clef de decodage et ne sert qu a CLASSER.
+#               Ce qui change est la TELEMETRIE de l artefact (`coverage.decoder.registry.status`
+#               passe `inconnue` -> `connue` sur cinq clefs), publiee par la couche `replay`, qui
+#               ne porte aucune revision. Monter celle-ci aurait fait monter `grammar.Rev` puis
+#               `facts.Rev`, donc OUVERT UN BACKLOG KILLSOURCE pour une sortie de faits
+#               identique a l octet.
+#
+#   2026-09-17  FUSION DU LOT 3.4 DANS 3.1.1 : EMPREINTE DU RANG .3 RE-FIGEE, REVISION
+#               INCHANGEE. Le rang .3 est celui de 3.4 (loi des largeurs d axe) ; les trois
+#               fichiers que 3.1.1 ajoute a la couche (`cle_du_film.go`,
+#               `registre_empreintes.go`, `classement_registre.go`) entrent dans SON empreinte
+#               au lieu d en ouvrir un quatrieme. Aucun des deux lots ne change ce que l autre
+#               fait lire : 3.4 pose une largeur, 3.1.1 lit des clefs et classe des empreintes.
+profile-2026-09-17	923c8ad7d9495662e97c1240b1c3e77abcffd04d9b3ae38e5748b859e8623e63
+profile-2026-09-17.2	cf0e50d2ca6d3dde6e8c954425da64b4433e282943f9d8999039c4b1e1f3b135
+profile-2026-09-17.3	e48d405ce99ba4bc1c433e7a4c889b13847c239d81054329c29e34ea91baf67a

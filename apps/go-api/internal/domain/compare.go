@@ -12,11 +12,7 @@ type NormalizedPlayerStats struct {
 	XUID      string `json:"xuid"`
 	Gamertag  string `json:"gamertag"`
 	// IsLocal : le joueur a sa propre stats.duckdb (toutes les métriques sont fiables).
-	IsLocal bool `json:"is_local"`
-	// IsLocalSample : le joueur est *remote* (pas de stats.duckdb), mais les
-	// métriques locale-only (spree, life, perfect, headshots) ont été calculées
-	// sur l'échantillon des matchs croisés avec le joueur A.
-	IsLocalSample  bool    `json:"is_local_sample,omitempty"`
+	IsLocal        bool    `json:"is_local"`
 	Matches        int     `json:"matches"`
 	WinRate        float64 `json:"win_rate"`
 	KDA            float64 `json:"kda"`
@@ -103,8 +99,7 @@ type PlayerATH struct {
 
 // CompareRequest est le body de POST .../pages/compare.
 type CompareRequest struct {
-	TargetGamertag string             `json:"target_gamertag"`
-	Filters        FilterContextInput `json:"filters,omitempty"`
+	TargetGamertag string `json:"target_gamertag"`
 }
 
 // Validate valide les champs de CompareRequest.
@@ -112,7 +107,7 @@ func (r CompareRequest) Validate() error {
 	if r.TargetGamertag == "" {
 		return fmt.Errorf("CompareRequest: target_gamertag requis")
 	}
-	return r.Filters.Validate()
+	return nil
 }
 
 // CompareMetricRow est une ligne de la table de comparaison.
@@ -145,17 +140,6 @@ type CompareMetricRow struct {
 	DisplayB string `json:"display_b,omitempty"`
 }
 
-// CrossMatchSample regroupe les métriques locale-only calculées pour un joueur
-// remote (B) sur les matchs croisés avec A (présents dans shared.match_participants
-// pour les deux xuids). MatchesCount = 0 signifie aucun croisement exploitable.
-type CrossMatchSample struct {
-	MatchesCount         int
-	MaxKillingSpree      int
-	AvgLifeSecs          float64
-	PerfectKillsPerGame  float64
-	HeadshotKillsPerGame float64
-}
-
 // CompareEncounterStats : stats de rencontres historiques entre joueur A et joueur B.
 // Alimenté depuis shared.match_participants + shared.killer_victim_pairs — best-effort.
 type CompareEncounterStats struct {
@@ -175,4 +159,9 @@ type CompareResponse struct {
 	Metrics         []CompareMetricRow    `json:"metrics"`
 	TitleSlug       string                `json:"title_slug"`
 	EncounterBadges []MatchEncounterBadge `json:"encounter_badges,omitempty"`
+	// Weapons : le profil d'armes des deux joueurs (plan
+	// .ai/PLAN_COMPARE_PROFIL_ARMES_2026-09-17.md). ADDITIF et OMIS quand il n'est pas
+	// lisible — un titre sans registre d'armes, un joueur B jamais croisé, un câblage
+	// absent : la page affiche alors ses métriques comme avant, sans section vide.
+	Weapons *CompareWeaponProfile `json:"weapons,omitempty"`
 }

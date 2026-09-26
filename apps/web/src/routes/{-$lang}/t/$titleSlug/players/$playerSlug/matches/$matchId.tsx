@@ -12,12 +12,16 @@
  */
 import { createFileRoute, Outlet } from '@tanstack/react-router'
 import { z } from 'zod'
+import { matchViewTabSchema, resolveMatchViewTab } from '@/features/match-view/tabs'
 
 export const Route = createFileRoute(
   '/{-$lang}/t/$titleSlug/players/$playerSlug/matches/$matchId',
 )({
   validateSearch: z.object({
-    tab: z.enum(['summary', 'details']).optional().catch('summary'),
+    // `tab` absent = onglet par défaut côté page (aucun `?tab=` ajouté aux liens).
+    // Une valeur inconnue tombe sur `summary` ; l'ancien `details` (onglet scindé
+    // le 2026-08-24) est résolu vers `chronology` par alias — pas de redirection.
+    tab: matchViewTabSchema.optional().catch((ctx) => resolveMatchViewTab(ctx.value)),
   }),
   component: MatchLayout,
 })

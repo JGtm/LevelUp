@@ -46,7 +46,17 @@ function centerTierInRail(container: HTMLDivElement | null, item: HTMLDivElement
 // RewardCard, TierGroup et buildTierGroups sont extraits dans ./battlePassTierGroups
 // (react-refresh : le module de composant n'exporte que des composants).
 
-function BattlePassRewardCard({ card, onOpen, freeLabel }: { card: RewardCard; onOpen: (card: RewardCard) => void; freeLabel: string }) {
+function BattlePassRewardCard({
+  card,
+  onOpen,
+  freeLabel,
+  viewDetailAriaLabel,
+}: {
+  card: RewardCard
+  onOpen: (card: RewardCard) => void
+  freeLabel: string
+  viewDetailAriaLabel: (title: string) => string
+}) {
   const rarityTier = normalizeRarity(card.quality)
   const rarityStyles = rarityStyle(rarityTier)
   const imageBackground = rarityStyles ? `${rarityStyles.bg} ${rarityStyles.glow}` : 'bg-transparent'
@@ -55,7 +65,7 @@ function BattlePassRewardCard({ card, onOpen, freeLabel }: { card: RewardCard; o
     <button
       type="button"
       onClick={() => onOpen(card)}
-      aria-label={`Voir le détail de ${card.title}`}
+      aria-label={viewDetailAriaLabel(card.title)}
       data-rarity={rarityTier ?? 'none'}
       className="group block w-14 sm:w-16 xl:w-[4.5rem] space-y-1 text-left transition-transform duration-150 hover:scale-105 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:rounded-lg"
     >
@@ -88,11 +98,13 @@ function BattlePassTierGroupView({
   anchorRef,
   onOpenCard,
   freeLabel,
+  viewDetailAriaLabel,
 }: {
   group: TierGroup
   anchorRef?: (node: HTMLDivElement | null) => void
   onOpenCard: (card: RewardCard) => void
   freeLabel: string
+  viewDetailAriaLabel: (title: string) => string
 }) {
   const borderClasses = [
     'flex gap-1.5 rounded-xl border p-1.5',
@@ -114,7 +126,13 @@ function BattlePassTierGroupView({
       <p className="px-0.5 text-[8px] font-semibold text-muted-foreground">#{group.rank}</p>
       <div className={borderClasses}>
         {group.cards.map((card) => (
-          <BattlePassRewardCard key={card.key} card={card} onOpen={onOpenCard} freeLabel={freeLabel} />
+          <BattlePassRewardCard
+            key={card.key}
+            card={card}
+            onOpen={onOpenCard}
+            freeLabel={freeLabel}
+            viewDetailAriaLabel={viewDetailAriaLabel}
+          />
         ))}
       </div>
     </div>
@@ -125,16 +143,18 @@ export function BattlePassRewardCarousel({
   tiers,
   activeTierRank,
   onOpenCard,
-  freeLabel = 'gratuit',
-  prevAriaLabel = 'Paliers précédents',
-  nextAriaLabel = 'Paliers suivants',
+  freeLabel,
+  prevAriaLabel,
+  nextAriaLabel,
+  viewDetailAriaLabel,
 }: {
   tiers: SeasonPassTierSummary[]
   activeTierRank?: number | null
   onOpenCard: (card: RewardCard) => void
-  freeLabel?: string
-  prevAriaLabel?: string
-  nextAriaLabel?: string
+  freeLabel: string
+  prevAriaLabel: string
+  nextAriaLabel: string
+  viewDetailAriaLabel: (title: string) => string
 }) {
   const tiersRailRef = useRef<HTMLDivElement | null>(null)
   const activeTierRef = useRef<HTMLDivElement | null>(null)
@@ -199,6 +219,7 @@ export function BattlePassRewardCarousel({
             anchorRef={group.is_current ? (node) => { activeTierRef.current = node } : undefined}
             onOpenCard={onOpenCard}
             freeLabel={freeLabel}
+            viewDetailAriaLabel={viewDetailAriaLabel}
           />
         ))}
       </div>

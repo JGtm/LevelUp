@@ -25,5 +25,6 @@ import (
 func TestMain(m *testing.M) {
 	migration.SetTitleStepsProvider(halomigrations.StepsFor)
 	sync.SetLUSRChainClassifier(skillchain.ClassifyLUSRChain)
+	sync.SetObjectiveFamilyClassifier(skillchain.IsObjectiveSubMode)
 	os.Exit(m.Run())
 }

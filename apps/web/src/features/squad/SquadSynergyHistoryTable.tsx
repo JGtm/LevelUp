@@ -2,7 +2,7 @@
  * SquadSynergyHistoryTable — historique des matchs partagés pour la page Synergies.
  *
  * Colonnes contextuelles (pas de stats personnelles) :
- *   Ouvrir | Waypoint | Date | Carte | Playlist | Mode |
+ *   Ouvrir | Waypoint | Rejeu | Date | Carte | Playlist | Mode |
  *   Résultat | Taux hist. | Score | Durée | MMR équipe | MMR adv. | Écart MMR
  *
  * Colonne « Waypoint » (I19) : lien externe vers la page de détail du match sur
@@ -15,9 +15,14 @@
  * Labels carte/playlist via useFieldMappings (assets titre).
  *
  * Tri CLIENT par clic sur les en-têtes (I16) : toutes les colonnes de données sont
- * triables (helpers partagés `explorerMatchesClientSort.ts`), sauf Ouvrir/Waypoint.
+ * triables (helpers partagés `explorerMatchesClientSort.ts`), sauf Ouvrir/Waypoint/Rejeu.
  * Aucun tri actif par défaut (ordre serveur = chronologique ASC, cf. `sortedRows`) ;
  * le tri réinitialise la pagination en page 1 (pattern RelationsTable).
+ *
+ * Colonne « Rejeu » : lien INTERNE vers la page de rejeu 2D (composant partagé
+ * `lib/match-nav/MatchReplayLink`), rendu uniquement quand `has_replay` est vrai
+ * (présence d'artefact résolue côté API en un listing de dossier par requête). La
+ * donnée EST la gate : pas de capability à brancher.
  */
 import { useCallback, useMemo, useState, type ReactNode } from 'react'
 import {
@@ -41,6 +46,7 @@ import { HeaderLabelTooltip } from '@/lib/table/columnMeta'
 import { getSquadText } from './i18n'
 import { useNavigateToMatch } from '@/lib/match-nav/useNavigateToMatch'
 import { buildWaypointMatchUrl, waypointLogoSrc } from '@/lib/match-nav/waypointUrl'
+import { MatchReplayLink } from '@/lib/match-nav/MatchReplayLink'
 import {
   NUMERIC_SORT,
   dateTimeSortingFn,
@@ -107,6 +113,10 @@ export function SquadSynergyHistoryTable({ rows, playerSlug }: SquadSynergyHisto
   // les DEUX titres depuis le 2026-07-24) ET par préférence LOCALE (Apparence →
   // « Colonne Halo Waypoint sur les listes de matchs », défaut ON).
   const waypointCapability = useCapability('waypoint_match_url')
+  // Colonne « Rejeu » : porte de TITRE. La porte de LIGNE (`has_replay`) vit dans
+  // MatchReplayLink.
+  const replayCapability = useCapability('replay')
+  const hasExpectedWinProb = useCapability('expected_win_prob')
   const showWaypointColumnPref = useSettingsDraftStore((s) => s.localUiPrefs.showWaypointColumn)
   const showWaypoint = waypointCapability && showWaypointColumnPref
   const theme = useSettingsDraftStore((s) => s.localUiPrefs.theme)
@@ -153,7 +163,10 @@ export function SquadSynergyHistoryTable({ rows, playerSlug }: SquadSynergyHisto
         ? [
             {
               id: 'waypoint',
-              header: '',
+              // En-tête « HW » (retour utilisateur 2026-09-09) : abrégé de Halo Waypoint,
+              // la colonne ne fait qu'une icône de large. Même traitement que sa voisine
+              // « Rejeu » — une colonne d'icône se nomme quand même.
+              header: labels.waypointHeader,
               // Lien externe : jamais triable (I16, comme ExplorerMatchesTable).
               enableSorting: false,
               cell: (ctx) => (
@@ -181,6 +194,31 @@ export function SquadSynergyHistoryTable({ rows, playerSlug }: SquadSynergyHisto
                     className="h-full w-full shrink-0 object-contain opacity-60 group-hover:opacity-100 transition-opacity"
                   />
                 </a>
+              ),
+            } as ColumnDef<SquadMatchHistoryRow>,
+          ]
+        : []),
+      // Colonne « Rejeu » : présente SEULEMENT si le titre déclare `replay` (2026-09-05,
+      // registre L5) — même forme conditionnelle que sa voisine Waypoint. Un titre sans
+      // décodeur de film n'aura jamais d'artefact : la colonne serait vide à perpétuité.
+      ...(replayCapability
+        ? [
+            {
+              id: 'replay',
+              // En-tête « Rejeu » / « Replay » (retour utilisateur 2026-09-09) : la
+              // colonne était servie anonyme — l'icône seule ne se nomme pas.
+              header: labels.replayHeader,
+              // Lien INTERNE vers la page de rejeu 2D — jamais triable (I16). Composant
+              // partagé avec le tableau Explorer (lib/match-nav/MatchReplayLink), qui
+              // porte la règle par LIGNE : rien n'est rendu sans artefact.
+              enableSorting: false,
+              cell: (ctx) => (
+                <MatchReplayLink
+                  available={!!ctx.row.original.has_replay}
+                  matchId={ctx.row.original.match_id}
+                  playerSlug={playerSlug}
+                  label={labels.replayAriaLabel}
+                />
               ),
             } as ColumnDef<SquadMatchHistoryRow>,
           ]
@@ -262,7 +300,7 @@ export function SquadSynergyHistoryTable({ rows, playerSlug }: SquadSynergyHisto
           )
         },
       },
-      {
+      ...(hasExpectedWinProb ? [{
         accessorKey: 'expected_win_prob',
         header: labels.winProb,
         meta: { headerTooltip: labels.winProbTooltip },
@@ -278,10 +316,13 @@ export function SquadSynergyHistoryTable({ rows, playerSlug }: SquadSynergyHisto
             </span>
           )
         },
-      },
+      } as ColumnDef<SquadMatchHistoryRow>] : []),
       {
         accessorKey: 'score_label',
         header: labels.score,
+        // Même aide que la colonne Score de l'Explorateur : la colonne montre les MANCHES
+        // sur les modes qui s'y jouent (ADR 0032). Les deux tableaux disent la même chose.
+        meta: { headerTooltip: labels.scoreTooltip },
         // Score « 50-30 » : tri alphanumérique naturel (comme ExplorerMatchesTable).
         sortingFn: 'alphanumeric',
         cell: (ctx) => (
@@ -338,7 +379,7 @@ export function SquadSynergyHistoryTable({ rows, playerSlug }: SquadSynergyHisto
           ]
         : []),
     ],
-    [labels, intlLocale, playerSlug, goToSynergyMatch, providesTeamMmr, showWaypoint, theme, currentTitleSlug],
+    [labels, intlLocale, playerSlug, goToSynergyMatch, providesTeamMmr, showWaypoint, replayCapability, hasExpectedWinProb, theme, currentTitleSlug],
   )
 
   // I16 : tri CLIENT par clic sur les en-têtes. Pas d'état de tri initial : l'ordre

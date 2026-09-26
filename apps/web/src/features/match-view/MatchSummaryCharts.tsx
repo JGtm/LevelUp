@@ -57,7 +57,7 @@ const DECAL_HATCH: DecalConfig = {
   dashArrayX: [1, 0],
   dashArrayY: [4, 4],
   rotation: -Math.PI / 4,
-  color: 'rgba(255,255,255,0.35)',
+  color: 'rgba(255,255,255,0.35)', // color-allow: 2026-09-06 (revue R1, C5) — voile NEUTRE d ombre/fond d infobulle ECharts, pas une couleur de charte ; dette PREEXISTANTE au lot v2 D, a porter sur un token le jour ou un token de voile existera
 }
 
 // Décal cercles (série "Hist. Moy.")
@@ -66,7 +66,7 @@ const DECAL_DOTS: DecalConfig = {
   symbolSize: 1,
   dashArrayX: [4, 8],
   dashArrayY: [4, 8],
-  color: 'rgba(255,255,255,0.45)',
+  color: 'rgba(255,255,255,0.45)', // color-allow: 2026-09-06 (revue R1, C5) — voile NEUTRE d ombre/fond d infobulle ECharts, pas une couleur de charte ; dette PREEXISTANTE au lot v2 D, a porter sur un token le jour ou un token de voile existera
 }
 
 // option aria pour activer les décals par item
@@ -131,13 +131,8 @@ export function MatchKdaExpectedChart({ kpis, expectedStats, t }: MatchKdaExpect
     (): EChartsCoreOption => {
       const tc = getEChartsThemeColors()
       const cats = [t.labelKills, t.labelDeaths, t.labelAssists]
-      // color-allow: hex en commentaires de documentation token→couleur
-      // K=#00DC82  D=#FF4B4B  A=#33D6FF — tokens qui correspondent exactement
-      const tokens: SemanticToken[] = [
-        'narrative-dominant', // color-allow: doc token (vert vif #00DC82)
-        'heatmap-divergent-low', // color-allow: doc token (rouge vif #FF4B4B)
-        'narrative-contre-remontada', // color-allow: doc token (cyan #33D6FF)
-      ]
+      // Famille dédiée des stats de combat (2026-09-17) — mêmes couleurs que partout.
+      const tokens: SemanticToken[] = ['stat-kills', 'stat-deaths', 'stat-assists']
 
       const seriesList: BarSeries[] = [
         {

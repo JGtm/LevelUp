@@ -81,6 +81,18 @@ func (s *OpenSpartanPostImportService) Run(
 		return PostImportResult{}, errors.New("post-import: xuid and gamertag are required")
 	}
 	opts = applyPostImportDefaults(opts)
+	// LE TITRE DES BASES, STAMPÉ UNE FOIS, POUR TOUTES LES ÉTAPES. Toutes les bases
+	// ouvertes ci-dessous sont celles de opts.TitleSlug ; le ctx entrant, lui, porte
+	// le titre de la REQUÊTE (en-tête X-LevelUp-Title, session ouverte sur un autre
+	// onglet). Les étapes qui lisent ctxkeys.TitleSlug — le replay LUSR
+	// (GetLUSRChainForTitle) comme le recalcul des notes de performance
+	// (GetPerformanceChain, title-aware depuis 5be99a2c3) — écriraient sinon dans la
+	// base d'un titre la classification d'un AUTRE : c'est la corruption du
+	// 2026-06-26 (.ai/V7.5/RAPPORT_VOLET1_LUSR_H5_2026-08-28.md §5.1 T3), dont C.1
+	// n'avait fermé que le volet LUSR. Le stamp est ici, À L'ENTRÉE, pour qu'une
+	// étape AJOUTÉE plus bas en hérite sans que personne ait à y penser
+	// (garde-rail : TestRunStampeLeTitreAvantLaPremiereEtape).
+	ctx = postImportCtx(ctx, opts.TitleSlug)
 
 	pr := titlePkg.NewPathResolver(s.cfg.RepoRoot)
 	playerDBPath := config.PlayerDBPath(s.cfg, opts.TitleSlug, gamertag)
@@ -109,6 +121,13 @@ func (s *OpenSpartanPostImportService) Run(
 		matchIDs:       matchIDs,
 	}, playerDB, &result)
 	return result, nil
+}
+
+// postImportCtx stampe sur le ctx le titre des BASES du post-import — jamais celui
+// du ctx entrant. Fonction nommée, et pas un appel en ligne, pour que l'invariant
+// « le titre stampé est celui de la base » soit testable seul.
+func postImportCtx(ctx context.Context, titleSlug string) context.Context {
+	return ctxkeys.WithTitleSlug(ctx, titleSlug)
 }
 
 // recomputeCSR projette le CSR par-match du joueur depuis shared.match_csrs
@@ -166,7 +185,7 @@ const stagePrimeEnrichment = "prime_enrichment"
 // (stage='live') per imported match_id. Required because the recompute stages
 // (sessions, performance_score) source their work-list from PME rows.
 //
-// Append-only #23046 : pure INSERT (no ON CONFLICT — match_id n'est plus une PK).
+// Append-only #23645 : pure INSERT (no ON CONFLICT — match_id n'est plus une PK).
 // Idempotence via pré-filtre delta : seuls les matchs sans aucune row PME reçoivent
 // la baseline (évite les doublons stage='live' sur ré-import).
 func (s *OpenSpartanPostImportService) ensureEnrichmentRows(
@@ -295,9 +314,9 @@ func (s *OpenSpartanPostImportService) recomputeCitations(
 		return
 	}
 	defer releaseShared()
-	pveDB, releasePve := sync.OpenPveReadForCitations(ctx, in.pveDBPath)
-	defer releasePve()
-	if err := sync.BackfillMatchCitations(ctx, metaSQL, sharedDB, playerDB, pveDB, in.xuid, in.matchIDs); err != nil {
+	pve := sync.OpenPveReadForCitations(ctx, in.pveDBPath)
+	defer pve.Close()
+	if err := sync.BackfillMatchCitations(ctx, metaSQL, sharedDB, playerDB, pve, in.xuid, in.matchIDs); err != nil {
 		result.Errors = append(result.Errors, PostImportError{Stage: "citations", Err: err.Error()})
 		s.log.Warn("post_import_citations_failed", "xuid", in.xuid, "err", err)
 		return

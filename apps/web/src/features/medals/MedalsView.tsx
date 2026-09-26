@@ -8,8 +8,11 @@
  * maîtrise (CitationProgressRing, doré si complète) + libellé + total, puis
  * grille de MedalCard.
  */
+import type { CSSProperties } from 'react'
+
 import { CitationProgressRing } from '@/components/ui/citation-progress-ring'
 import { EmptyStateCard } from '@/components/ui/empty-state'
+import { packBlockRows, rowGridTemplate } from '@/lib/layout/blockRowPacking'
 import { MedalCard } from './MedalCard'
 import type { ManifestLocale } from '@/lib/i18n/format'
 import type { MedalSummaryItem } from '@/lib/api/types'
@@ -61,9 +64,21 @@ export function MedalsView({ vm, locale, emptyTitle, emptyDescription }: MedalsV
           <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             {section.label}
           </h3>
+          {/* Largeur de chaque catégorie proportionnelle à SON contenu : une catégorie
+              de 2 médailles ne prend plus la même bande qu'une de 25 (retour
+              utilisateur 2026-09-09). L'ordre de tri de la barre d'outils est
+              préservé — cf. lib/layout/blockRowPacking. */}
           <div className="flex flex-col gap-6">
-            {section.categories.map((category) => (
-              <MedalCategoryCard key={category.key} category={category} locale={locale} />
+            {packBlockRows(section.categories, (c) => c.items.length).map((row) => (
+              <div
+                key={row.blocks[0].key}
+                className="block-row"
+                style={{ '--block-row-cols': rowGridTemplate(row) } as CSSProperties}
+              >
+                {row.blocks.map((category) => (
+                  <MedalCategoryCard key={category.key} category={category} locale={locale} />
+                ))}
+              </div>
             ))}
           </div>
         </section>
@@ -74,7 +89,7 @@ export function MedalsView({ vm, locale, emptyTitle, emptyDescription }: MedalsV
 
 function MedalCategoryCard({ category, locale }: { category: MedalCategoryView; locale: ManifestLocale }) {
   return (
-    <div className="rounded-lg border border-border bg-card">
+    <div className="flex h-full flex-col rounded-lg border border-border bg-card">
       <div className="flex items-center gap-3 border-b border-border px-3 py-2">
         {/* title/aria-label explicites : lève l'ambiguïté « symbole identique partout »
             (l'anneau seul ne porte pas de libellé — CitationProgressRing est décoratif). */}
@@ -91,7 +106,7 @@ function MedalCategoryCard({ category, locale }: { category: MedalCategoryView; 
         </div>
         <div className="shrink-0 text-xs text-muted-foreground">{category.totalAwardedLabel}</div>
       </div>
-      <div className="p-3">
+      <div className="flex-1 p-3">
         <div className="flex flex-wrap justify-center gap-x-5 gap-y-4">
           {category.items.map((item) => (
             <MedalCard key={item.medal_id} item={item} locale={locale} />

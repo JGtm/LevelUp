@@ -1,0 +1,28 @@
+# lot C-bis phase 2a — film 606d9844 (KOTH / chasm)
+# ancrage	606d9844	records	1335	rejoues	969	chaines	589	slots_bande	20
+# chainage	606d9844	scal	349	371	joueur	240	598	decale	6	969
+structure	606d9844	1413	0x002742DA x1	15	1	1
+structure	606d9844	1415	(jamais emis)	8	1	1
+structure	606d9844	1416	(jamais emis)	12	1	2
+structure	606d9844	1417	0xFBE080EF x1	10	1	3
+structure	606d9844	1419	0x1853EAC2 x1	15	1	1
+structure	606d9844	1420	0xA1FE6A9E x1	1	1	1
+structure	606d9844	1423	0xE407C9E1 x1	6	2	3
+structure	606d9844	1424	0x00000660 x3	6	2	2
+structure	606d9844	1425	0x37D3C101 x1	6	1	2
+structure	606d9844	1426	0x8002AB20 x1	5	1	1
+structure	606d9844	1427	0x37EDC101 x1	10	2	3
+structure	606d9844	1497	0x8002AB20 x1	12	1	1
+structure	606d9844	1498	0x62AAC800 x1	5	2	4
+structure	606d9844	1499	0x8002AB20 x1	4	13	14
+structure	606d9844	1500	0x00000406 x1	4	14	16
+structure	606d9844	1501	0x8002AB20 x1	3	316	317
+# a1 606d9844 : sans objet (aucun oracle nomme)
+# a2 606d9844 : sans objet (aucune carte slot -> zone)
+a3_periode	606d9844	1501	44794	51834	4	0	27	9	54	true
+a3_periode	606d9844	1501	51834	99035	0	0	61	55	263	true
+a3_periode	606d9844	1501	99035	119071	4	0	272	192	968	true
+a3_periode	606d9844	1501	119071	173743	5	0	951	571	2893	true
+a3_periode	606d9844	1501	173743	247114	3	0	293	244	1374	true
+a3_nettete	606d9844	0	5	0	202320
+a3_verdict	606d9844	5	202320	202320	247114	0.8187	1604	5552	1106	TENU

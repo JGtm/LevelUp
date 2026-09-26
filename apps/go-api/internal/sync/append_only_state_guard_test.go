@@ -45,9 +45,16 @@ var appendOnlyStateTables = []string{
 	// lusr_component_history_latest. Writers (loaders + persister) = INSERT pur.
 	"lusr_component_history",
 	// player_match_enrichment : la table la PLUS écrite, migrée append-only
-	// (#23046, 2026-06-21) — id PK + colonne stage + written_at, lecture via
+	// (#23645, 2026-06-21) — id PK + colonne stage + written_at, lecture via
 	// player_match_enrichment_latest (merge-on-read par-groupe). INSERT pur taggé.
 	"player_match_enrichment",
+	// match_lives / match_death_context (7C isolement au sync, 2026-09-07) : tables
+	// append-only NET-NEUVES, vues _latest PAR PASSE. Etape 5 de la recette ADR 0026 —
+	// c'est CE garde-la qui interdit `INSERT OR IGNORE`, que le scan file-level de
+	// no_art_patterns_test ne voit pas. Writer unique : persist/lives_persister.go, INSERT
+	// purs dans une transaction unique.
+	"match_lives",
+	"match_death_context",
 	// pve_match_stats : append-only in-place (id PK + vue pve_match_stats_latest).
 	// L'écriture passe par un guard SELECT-then-INSERT idempotent (pve_persister.go) ;
 	// l'ancien INSERT OR IGNORE est interdit (audit adversarial 2026-06-21).
@@ -87,6 +94,89 @@ var appendOnlyStateTables = []string{
 	// une lecture brute servirait les lignes des passes précédentes.
 	"match_kill_events",
 	"match_weapon_shots",
+	// match_usage_players / match_usage_films (session-usage, 2026-09-04) : créées
+	// directement append-only (id PK seq + summary_pass + summary_rev + written_at +
+	// vues _latest). L'unité de génération est LA PROJECTION D'UN ARTEFACT ENTIER, pas
+	// la ligne : la vue films_latest retient la dernière PASSE par match, et
+	// players_latest se JOINT à elle (un joueur d'une passe précédente disparaît avec
+	// elle). Écriture = INSERT pur (persist/usage_summary_persister.go, deux statements
+	// dans une transaction unique) ; aucun DELETE / ON CONFLICT / INSERT OR
+	// REPLACE|IGNORE toléré. Lecture via _latest UNIQUEMENT.
+	// Recette ADR 0026 étape 5 — l'inscription manquait à l'arrivée de la branche.
+	"match_usage_players",
+	"match_usage_films",
+	// match_bomb_stats (E3 Assaut, 2026-09-04) : créée directement append-only (id PK seq +
+	// written_at + vue match_bomb_stats_latest). Unité de génération = la PASSE DE DÉCODAGE,
+	// arbitrée par written_at puis id. Écriture = INSERT pur (bomb_stats_persister.go) ;
+	// aucun DELETE / ON CONFLICT / INSERT OR REPLACE|IGNORE toléré. Lecture via _latest
+	// UNIQUEMENT — une lecture brute servirait les lignes des passes précédentes.
+	"match_bomb_stats",
+	// kill_positions / match_weapon_hit_distance (G4 du registre v2, enrôlement 2026-09-05) :
+	// les deux dernières tables du film qui n'étaient enrôlées dans AUCUNE des deux listes
+	// anti-ART, alors que les deux sont append-only avec vue _latest depuis leur migration.
+	//   - kill_positions : rebuild append-only G.2 (2026-08-30,
+	//     games/halo_infinite/migrations/steps_appendonly_misc.go) — id PK + written_at —, puis
+	//     bascule sur un arbitrage PAR PASSE au lot 1.7 (2026-09-09,
+	//     games/halo_infinite/migrations/steps_shared_kill_positions_pass.go : + decode_pass,
+	//     vue kill_positions_latest = DERNIÈRE PASSE ENTIÈRE par match). L'unité de génération
+	//     est donc LA PASSE, comme pour sa sœur kill_openings : une position qu'un re-décodage
+	//     ne retrouve plus est RÉTRACTÉE, là où l'arbitrage par clé la servait à jamais.
+	//     Écrivains INSERT purs : persist/kill_position_persister.go (film Infinite),
+	//     persist/shared_persister.go persistKillPositionsPass (builder Halo 5).
+	//   - match_weapon_hit_distance : créée append-only
+	//     (migration/steps_shared_weapon_hit_distance.go) — id PK seq + decode_pass +
+	//     decoder_rev + written_at + vue _latest qui retient LA DERNIÈRE PASSE PAR MATCH
+	//     (l'unité de production est le film entier). Écrivain unique INSERT pur :
+	//     persist/weapon_hit_distance_persister.go.
+	// Aucun DELETE / ON CONFLICT / INSERT OR REPLACE|IGNORE sur l'une ou l'autre aujourd'hui :
+	// l'enrôlement ne crée aucune entrée d'allowlist.
+	"kill_positions",
+	"match_weapon_hit_distance",
+	// match_player_positions (décision utilisateur 1 du plan v2, 2026-09-06) : convertie
+	// append-only (id PK + positions_pass + written_at + vue _latest PAR PASSE) le jour où elle
+	// est devenue une projection de l'artefact de rejeu, écrite dans le cycle de sync.
+	// L'unité de génération est LA PROJECTION D'UN MATCH ENTIER : toutes les lignes d'une passe
+	// partagent positions_pass et written_at, et la vue retient la dernière passe par match.
+	// Écriture = INSERT pur (persist/player_positions_persister.go) ; lecture via _latest
+	// UNIQUEMENT — une lecture brute empilerait toutes les projections d'un match.
+	"match_player_positions",
+	// kill_openings (duels/portée D5, 2026-09-06) : créée directement append-only (id PK seq
+	// + decode_pass + written_at + vue kill_openings_latest). L'unité de génération est la
+	// PASSE DE DÉCODAGE, pas la ligne : la vue retient la DERNIÈRE PASSE ENTIÈRE par match
+	// (`decode_pass`, modèle de match_kill_events_latest), et c'est vital ICI — une entame
+	// n'existe pas toujours (le filtre « même vie » de replay.BuildKillOpenings en écarte),
+	// donc un arbitrage par CLÉ servirait à jamais la ligne d'une passe précédente pour un
+	// frag que le re-décodage ne résout plus. Écriture = INSERT pur
+	// (kill_opening_persister.go, un seul statement) ; aucun DELETE / ON CONFLICT / INSERT OR
+	// REPLACE|IGNORE toléré. Lecture via _latest UNIQUEMENT — une lecture brute servirait les
+	// positions d'une passe de décodage précédente. Recette ADR 0026 étape 5.
+	"kill_openings",
+	// match_flag_grabs_net (prises nettes de drapeau, 2026-09-13) : créée directement
+	// append-only (id PK seq + decode_pass + written_at + vue match_flag_grabs_net_latest).
+	// L'unité de génération est LA PASSE DE LECTURE D'UN ARTEFACT, pas la ligne : la vue
+	// retient la DERNIÈRE PASSE ENTIÈRE par match (`decode_pass`, modèle de kill_openings),
+	// et c'est vital ICI pour deux raisons. (1) Chaque ligne porte la FENÊTRE de jonglage
+	// sous laquelle elle a été calculée : un arbitrage par clé, après une re-projection à
+	// une autre fenêtre qui ne retrouve plus un joueur, servirait la ligne de ce joueur à
+	// l'ANCIENNE fenêtre à côté des nouvelles — un scope à deux fenêtres, donc un scope qui
+	// n'annonce plus aucune règle. (2) Un joueur que le pont ne nomme plus doit être
+	// RÉTRACTÉ, pas servi à jamais. Écriture = INSERT pur
+	// (persist/flag_grabs_net_persister.go, un seul statement) ; aucun DELETE / ON CONFLICT /
+	// INSERT OR REPLACE|IGNORE toléré. Lecture via _latest UNIQUEMENT. Recette ADR 0026
+	// étape 5.
+	"match_flag_grabs_net",
+	// match_pad_pickups_by_tier (niveaux d'armes, 2026-09-14) : créée directement append-only
+	// (id PK seq + decode_pass + written_at + vue match_pad_pickups_by_tier_latest). L'unité
+	// de génération est LA PASSE DE LECTURE D'UN ARTEFACT, et la vue retient la DERNIÈRE
+	// PASSE ENTIÈRE par match — vital pour la même raison qu'ici au-dessus : le niveau d'un
+	// socle dépend de la RÉFÉRENCE DES CARTES au moment de la projection. Une carte ajoutée à
+	// la référence fait basculer des prises de « non classé » vers « terrain » ou
+	// « puissance » ; un arbitrage par clé laisserait les anciennes lignes « non classé »
+	// survivre à côté des nouvelles, et le total du niveau compterait deux fois la même prise.
+	// Écriture = INSERT pur (persist/pad_tiers_persister.go, un seul statement) ; aucun DELETE
+	// / ON CONFLICT / INSERT OR REPLACE|IGNORE toléré. Lecture via _latest UNIQUEMENT.
+	// Recette ADR 0026 étape 5.
+	"match_pad_pickups_by_tier",
 }
 
 // rawPMEReadAllowlist : accès BRUTS intentionnels à player_match_enrichment (hors
@@ -254,7 +344,7 @@ var mediaAppendOnlyTables = []string{
 
 // allowlistMediaMutation : sites de prod où un DELETE/UPDATE sur une table média
 // append-only serait toléré. Format : "fichier — raison (date)". Toute entrée doit
-// prouver l'absence de déclencheur ART (le bug DuckDB #23046 FATAL-invalide le handle
+// prouver l'absence de déclencheur ART (le bug DuckDB #23645 FATAL-invalide le handle
 // partagé pour tout le process — cf. incident catalog_fetch_queue 2026-06-19).
 //
 // Vide au 2026-08-03 : aucune mutation tolérée. Les seuls DELETE existants vivent
@@ -343,7 +433,7 @@ func TestNoMutationOnMediaAppendOnlyTables(t *testing.T) {
 	if len(violations) > 0 {
 		t.Errorf("RÉGRESSION append-only MÉDIA : %d mutation(s) interdite(s) "+
 			"(append-only = INSERT pur + vue _latest ; un DELETE/UPDATE indexé déclenche "+
-			"le bug ART DuckDB #23046 qui FATAL-invalide le handle shared_social) :\n  - %s",
+			"le bug ART DuckDB #23645 qui FATAL-invalide le handle shared_social) :\n  - %s",
 			len(violations), strings.Join(violations, "\n  - "))
 	}
 }

@@ -66,10 +66,13 @@ type SyncScope struct {
 	PVEStats      bool
 	ForcePVEStats bool
 
-	// ── Weapon kills — v5.5 / v5.6 ─────────────────────────────────────
-	Weapons      bool
-	ForceWeapons bool
-	ForceNoFilm  bool
+	// ── Weapon kills — RETIRÉ le 2026-09-01 ────────────────────────────
+	// Les axes Weapons / ForceWeapons / ForceNoFilm sélectionnaient des matchs pour
+	// l'étape 1.55 (corrélation tirs ↔ instant du kill), supprimée avec son producteur
+	// (lot arme-source-unique, ADR à venir). Sur Halo Infinite le détail par arme vient
+	// désormais de la source de dégât, produite par l'étape 1.57 qui porte SA PROPRE
+	// sélection de retard. Un axe de scope sans exécuteur est un interrupteur menteur :
+	// il est retiré plutôt que laissé branché sur rien.
 
 	// ── LUSR / CSR / Skill Rank — v5.3 ─────────────────────────────────
 	LUSR           bool
@@ -145,7 +148,6 @@ var allDataFields = []func(*SyncScope){
 	func(s *SyncScope) { s.ParticipantsEnrich = true },
 	func(s *SyncScope) { s.TeammatesSig = true },
 	func(s *SyncScope) { s.PVEStats = true },
-	func(s *SyncScope) { s.Weapons = true },
 	func(s *SyncScope) { s.LUSR = true },
 	func(s *SyncScope) { s.CSR = true },
 	func(s *SyncScope) { s.SkillRank = true },
@@ -212,7 +214,6 @@ func (s *SyncScope) applyForceImplications() {
 	imply(&s.ForceParticipantsEnrich, &s.ParticipantsEnrich)
 	imply(&s.ForceTeammatesSig, &s.TeammatesSig)
 	imply(&s.ForcePVEStats, &s.PVEStats)
-	imply(&s.ForceWeapons, &s.Weapons)
 	imply(&s.ForceLUSR, &s.LUSR)
 	imply(&s.ForceCSR, &s.CSR)
 	imply(&s.ForceSkillRank, &s.SkillRank)
@@ -237,7 +238,7 @@ func (s *SyncScope) HasAnyOption() bool {
 		s.ParticipantsScores, s.ParticipantsKDA, s.ParticipantsShots,
 		s.ParticipantsDamage, s.ParticipantsAvgLife, s.KillerVictim,
 		s.EndTime, s.Sessions, s.Shots, s.Citations, s.ParticipantsEnrich,
-		s.TeammatesSig, s.PVEStats, s.Weapons, s.LUSR, s.CSR, s.SkillRank,
+		s.TeammatesSig, s.PVEStats, s.LUSR, s.CSR, s.SkillRank,
 		s.ComebackBadges, s.PlayableDuration, s.EngagementScores, s.AssistsModel,
 	}
 	for _, f := range flags {
@@ -290,7 +291,6 @@ var requestedTypeMap = map[string]string{
 	"ParticipantsDamage":  "participants_damage",
 	"ParticipantsAvgLife": "participants_avg_life",
 	"PVEStats":            "pve_stats",
-	"Weapons":             "weapons",
 	"LUSR":                "lusr",
 	"CSR":                 "csr",
 	"EngagementScores":    "engagement_scores",
@@ -317,7 +317,6 @@ func (s *SyncScope) RequestedTypes() []string {
 		"ParticipantsDamage":  s.ParticipantsDamage,
 		"ParticipantsAvgLife": s.ParticipantsAvgLife,
 		"PVEStats":            s.PVEStats,
-		"Weapons":             s.Weapons,
 		"LUSR":                s.LUSR,
 		"CSR":                 s.CSR,
 		"EngagementScores":    s.EngagementScores,

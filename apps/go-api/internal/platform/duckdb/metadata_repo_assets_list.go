@@ -18,31 +18,51 @@ var _ port.AssetMetaRepository = (*MetadataRepo)(nil)
 // Si asset_translations est vide, name_canonical de maps_catalog est utilisé comme
 // name_en — le drawer affiche les noms même sans populate-assets.
 // search filtre par nom EN ou FR (case-insensitive, LIKE %search%). Vide = tout.
+//
+// LA DÉDUPLICATION SE FAIT PAR `map_asset_id`, PAS PAR NOM (corrigé le 2026-09-13, D15).
+// Le `DISTINCT ON (m.name_canonical)` d'origine ne gardait qu'UNE ligne par nom canonique :
+// deux cartes homonymes mais d'asset_id distincts (une variante Forge republiée, une carte
+// et son portage classé) s'effondraient en une seule, et c'est l'asset_id — la clé sur
+// laquelle le web identifie une carte — qui était choisi arbitrairement par l'ordre de tri.
+// Le grain de sortie voulu est UNE LIGNE PAR ASSET : c'est donc sur `map_asset_id` que le
+// DISTINCT ON doit porter. Sur les schémas courants il n'y déduplique rien — `maps_catalog`
+// a pour PK (title_slug, map_asset_id) et `asset_translations` (asset_id, asset_type, lang),
+// donc les deux LEFT JOIN sont 1:1 — et c'est bien ainsi : il exprime le grain au lieu de
+// le laisser dépendre de contraintes qu'une base legacy peut ne pas porter.
+//
+// Le tri d'affichage reste celui d'avant (nom canonique, puis nom EN) : DuckDB impose que
+// l'ORDER BY d'un DISTINCT ON commence par ses propres expressions, d'où la requête
+// enveloppante qui rétablit l'ordre du drawer.
 func (r *MetadataRepo) ListMapsByTitle(
 	ctx context.Context,
 	titleID string,
 	search string,
 ) ([]canonical.AssetMeta, error) {
 	query := `
-		SELECT DISTINCT ON (m.name_canonical)
-		       m.map_asset_id                                     AS asset_id,
-		       COALESCE(at_en.name, m.name_canonical, '')         AS name_en,
-		       COALESCE(at_fr.name, '')                           AS name_fr
-		FROM maps_catalog m
-		LEFT JOIN asset_translations at_en
-		    ON at_en.asset_id   = m.map_asset_id
-		   AND at_en.asset_type = 'map'
-		   AND at_en.lang       = 'en-US'
-		LEFT JOIN asset_translations at_fr
-		    ON at_fr.asset_id   = m.map_asset_id
-		   AND at_fr.asset_type = 'map'
-		   AND at_fr.lang       = 'fr-FR'
-		WHERE m.title_slug = ?
-		  AND COALESCE(m.name_canonical, '') NOT LIKE '% - %'
-		  AND (? = ''
-		       OR lower(COALESCE(at_en.name, m.name_canonical, '')) LIKE lower('%' || ? || '%')
-		       OR lower(COALESCE(at_fr.name, ''))                    LIKE lower('%' || ? || '%'))
-		ORDER BY m.name_canonical, at_en.name
+		SELECT asset_id, name_en, name_fr
+		FROM (
+			SELECT DISTINCT ON (m.map_asset_id)
+			       m.map_asset_id                                     AS asset_id,
+			       COALESCE(at_en.name, m.name_canonical, '')         AS name_en,
+			       COALESCE(at_fr.name, '')                           AS name_fr,
+			       COALESCE(m.name_canonical, '')                     AS name_canonical
+			FROM maps_catalog m
+			LEFT JOIN asset_translations at_en
+			    ON at_en.asset_id   = m.map_asset_id
+			   AND at_en.asset_type = 'map'
+			   AND at_en.lang       = 'en-US'
+			LEFT JOIN asset_translations at_fr
+			    ON at_fr.asset_id   = m.map_asset_id
+			   AND at_fr.asset_type = 'map'
+			   AND at_fr.lang       = 'fr-FR'
+			WHERE m.title_slug = ?
+			  AND COALESCE(m.name_canonical, '') NOT LIKE '% - %'
+			  AND (? = ''
+			       OR lower(COALESCE(at_en.name, m.name_canonical, '')) LIKE lower('%' || ? || '%')
+			       OR lower(COALESCE(at_fr.name, ''))                    LIKE lower('%' || ? || '%'))
+			ORDER BY m.map_asset_id, at_en.name
+		)
+		ORDER BY name_canonical, name_en
 	`
 
 	rows, err := r.meta.Query(ctx, query, titleID, search, search, search)

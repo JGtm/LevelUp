@@ -28,8 +28,10 @@ import { FragWeaponBreakdown } from '@/components/charts/FragWeaponBreakdown'
 import { buildFragDetailBreakdown } from '@/components/charts/fragDetailBreakdown'
 import { formatMessage } from '@/lib/i18n/format'
 import { fragsManifest } from '@/lib/i18n/generated/frags'
-import type { FragDistribution, MatchWeaponKill, SynthesisWeaponKillEntry } from '@/lib/api/types'
+import type { FragDistribution, MatchWeaponKill } from '@/lib/api/types'
 import { useAppShellStore } from '@/stores/appShellStore'
+
+import { hasFragSunburst, hasMatchFragData, normalizeFragWeapons } from './blockPredicates'
 
 interface Props {
   distribution?: FragDistribution | null
@@ -48,18 +50,16 @@ export function MatchFragCard({ distribution, weapons }: Props) {
   // « Détails des frags » = armes (per-arme du viewer) + détail mêlée/grenade/capacités depuis
   // la distribution (source unique buildFragDetailBreakdown). On normalise d'abord la liste
   // per-arme du viewer (MatchWeaponKill) vers la forme {label, kills, class}.
-  const weaponsNorm: SynthesisWeaponKillEntry[] = (weapons ?? []).map((w) => ({
-    label: w.weapon_label,
-    kills: w.kill_count,
-    class: w.class,
-  }))
-  const breakdown = buildFragDetailBreakdown(distribution, weaponsNorm, { roleLabel, classLabel })
+  const breakdown = buildFragDetailBreakdown(
+    distribution,
+    normalizeFragWeapons(weapons),
+    { roleLabel, classLabel, locale: appLocale },
+  )
 
-  // Miroir EXACT du prédicat de rendu de FragSunburst (total > 0 ET classes non
-  // vides) : si le sunburst rendrait null, on ne réserve pas sa colonne.
-  const hasSunburst =
-    (distribution?.total_kills ?? 0) > 0 && (distribution?.classes?.length ?? 0) > 0
-  if (!hasSunburst && breakdown.length === 0) return null
+  // Le sunburst rendrait null : on ne réserve pas sa colonne.
+  const hasSunburst = hasFragSunburst(distribution)
+  // MÊME prédicat que celui lu par le parent pour poser (ou non) son titre de section.
+  if (!hasMatchFragData(distribution, weapons)) return null
 
   return (
     <div className={hasSunburst ? 'grid grid-cols-1 gap-4 lg:grid-cols-3' : ''}>

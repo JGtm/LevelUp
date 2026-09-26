@@ -16,11 +16,11 @@ import { useRunPlayerConvergence } from '../data-quality/mutations'
 import { AdminActionButton } from '../components/AdminActionButton'
 import { useAdminT } from '../useAdminText'
 
-type ConvergenceSortKey = 'gamertag' | 'missing_enrichment' | 'missing_psa' | 'missing_events' | 'missing_weapons' | 'total'
+type ConvergenceSortKey = 'gamertag' | 'missing_enrichment' | 'missing_psa' | 'missing_events' | 'total'
 
 function convergenceRawValue(p: PlayerConvergenceReport, key: ConvergenceSortKey): string | number {
   if (key === 'gamertag') return p.gamertag
-  if (key === 'total') return p.missing_enrichment + p.missing_psa + p.missing_events + p.missing_weapons
+  if (key === 'total') return p.missing_enrichment + p.missing_psa + p.missing_events
   return p[key]
 }
 
@@ -87,14 +87,13 @@ export function ConvergencePlayersTable({ report }: { report: AdminConvergenceRe
             <SortableTh label={tA('admin.convergence.kpi_enrichment')} active={sortKey === 'missing_enrichment'} dir={sortDir} onClick={() => toggleSort('missing_enrichment')} className="px-3 py-2 font-medium text-right" tooltip={tA('admin.convergence.kpi_enrichment_tooltip')} />
             <SortableTh label={tA('admin.convergence.kpi_psa')} active={sortKey === 'missing_psa'} dir={sortDir} onClick={() => toggleSort('missing_psa')} className="px-3 py-2 font-medium text-right" tooltip={tA('admin.convergence.kpi_psa_tooltip')} />
             <SortableTh label={tA('admin.convergence.kpi_events')} active={sortKey === 'missing_events'} dir={sortDir} onClick={() => toggleSort('missing_events')} className="px-3 py-2 font-medium text-right" tooltip={tA('admin.convergence.kpi_events_tooltip')} />
-            <SortableTh label={tA('admin.convergence.kpi_weapons')} active={sortKey === 'missing_weapons'} dir={sortDir} onClick={() => toggleSort('missing_weapons')} className="px-3 py-2 font-medium text-right" tooltip={tA('admin.convergence.kpi_weapons_tooltip')} />
             <SortableTh label={tA('admin.convergence.col_total')} active={sortKey === 'total'} dir={sortDir} onClick={() => toggleSort('total')} className="px-3 py-2 font-medium text-right" tooltip={tA('admin.convergence.col_total_tooltip')} />
             <th className="px-3 py-2" />
           </tr>
         </thead>
         <tbody>
           {sortedPlayers.map((p) => {
-            const total = p.missing_enrichment + p.missing_psa + p.missing_events + p.missing_weapons
+            const total = p.missing_enrichment + p.missing_psa + p.missing_events
             return (
               <tr key={p.xuid || p.gamertag} className="border-b align-top last:border-b-0 hover:bg-muted/30">
                 <td className="px-3 py-2 font-medium text-foreground">
@@ -108,7 +107,6 @@ export function ConvergencePlayersTable({ report }: { report: AdminConvergenceRe
                 <BacklogCell value={p.missing_enrichment} display={String(p.missing_enrichment)} />
                 <BacklogCell value={p.missing_psa} display={cap(p.missing_psa)} />
                 <BacklogCell value={p.missing_events} display={cap(p.missing_events)} />
-                <BacklogCell value={p.missing_weapons} display={cap(p.missing_weapons)} />
                 <td className="px-3 py-2 text-right font-mono text-sm font-semibold tabular-nums text-foreground">
                   {total}
                 </td>

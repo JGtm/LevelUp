@@ -12,6 +12,7 @@ import (
 
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/observability/timing"
 )
 
 // CompareRepo implémente port.CompareRepository.
@@ -30,6 +31,60 @@ func (r *CompareRepo) GetLocalStats(ctx context.Context, xuid, titleSlug string)
 	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
 
+	db, release, err := r.pdb.SharedReadDB().Get(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("CompareRepo.GetLocalStats: shared reader: %w", err)
+	}
+	defer release()
+
+	stop := timing.FromContext(ctx).Section("compare_local_stats")
+	row := db.QueryRowContext(ctx, localStatsQuery(titleSlug), xuid)
+	var s domain.NormalizedPlayerStats
+	var kda, kdr sql.NullFloat64
+	err = row.Scan(
+		&s.XUID, &s.Matches,
+		&s.WinRate,
+		&kda, &kdr,
+		&s.KillsPerGame, &s.DeathsPerGame, &s.AssistsPerGame,
+		&s.Accuracy, &s.DamagePerGame,
+		&s.DamageTakenPerGame,
+		&s.MaxKillingSpree,
+		&s.AvgLifeSecs,
+		&s.HeadshotKillsPerGame,
+		&s.PerfectKillsPerGame,
+	)
+	stop()
+	if err == sql.ErrNoRows {
+		return nil, fmt.Errorf("CompareRepo.GetLocalStats: joueur %s non trouvé", xuid)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("CompareRepo.GetLocalStats: %w", err)
+	}
+	if kda.Valid {
+		s.KDA = kda.Float64
+	}
+	if kdr.Valid {
+		s.KDR = kdr.Float64
+	}
+	// Nom : l'annuaire de la lecture (lot perf L7, plus de jointure v_gamertag_lookup), sur
+	// l'historique du joueur — tous ses matchs hors Campagne, ceux que la lecture agrège.
+	stop = timing.FromContext(ctx).Section("compare_local_stats_annuaire")
+	err = nommerSurLHistorique(ctx, db, historique{xuid: xuid, titre: titleSlug}, []*domain.NormalizedPlayerStats{&s},
+		accesLigne[*domain.NormalizedPlayerStats]{
+			xuid:   func(p *domain.NormalizedPlayerStats) string { return p.XUID },
+			nommer: func(p **domain.NormalizedPlayerStats, gt string) { (*p).Gamertag = gt },
+		})
+	stop()
+	if err != nil {
+		return nil, fmt.Errorf("CompareRepo.GetLocalStats: %w", err)
+	}
+	s.TitleSlug = titleSlug
+	return &s, nil
+}
+
+// localStatsQuery assemble la lecture de GetLocalStats. AUCUN GAMERTAG EN SQL (lot perf L7) :
+// GetLocalStats le pose par l'annuaire de la lecture.
+func localStatsQuery(titleSlug string) string {
 	// shared-only via SharedReader (root-level naming). PMT-5 : win_rate title-aware
 	// (fallback "mp.outcome = 2" byte-identique Halo).
 	winExpr := outcomeSQLEqSlug(titleSlug, "mp.outcome", canonical.OutcomeWin, "mp.outcome = 2")
@@ -40,10 +95,9 @@ func (r *CompareRepo) GetLocalStats(ctx context.Context, xuid, titleSlug string)
 	// ((Σk + Σa/3) − Σd)/N : c'est l'agrégat NET carrière correct, identique pour
 	// tous les titres. AUCUNE division par les morts (le quotient serait un BUG).
 	kdaExpr := "AVG(mp.kda)"
-	q := `
+	return `
 		SELECT
 			mp.xuid,
-			COALESCE(vg.gamertag, xa.gamertag, '') AS gamertag,
 			COUNT(*)                               AS matches,
 			AVG(CASE WHEN ` + winExpr + ` THEN 1.0 ELSE 0.0 END) AS win_rate,
 			` + kdaExpr + `            AS kda,
@@ -60,8 +114,6 @@ func (r *CompareRepo) GetLocalStats(ctx context.Context, xuid, titleSlug string)
 			AVG(COALESCE(mp.headshot_kills, 0))                  AS headshot_kills_per_game,
 			AVG(COALESCE(me.perfect_count, 0.0))                 AS perfect_kills_per_game
 		FROM match_participants mp
-		LEFT JOIN v_gamertag_lookup vg ON vg.xuid = mp.xuid
-		LEFT JOIN xuid_aliases xa ON xa.xuid = mp.xuid
 		LEFT JOIN (
 			SELECT match_id, xuid, SUM(count) AS perfect_count
 			FROM medals_earned
@@ -69,44 +121,7 @@ func (r *CompareRepo) GetLocalStats(ctx context.Context, xuid, titleSlug string)
 			GROUP BY match_id, xuid
 		) me ON me.match_id = mp.match_id AND me.xuid = mp.xuid
 		WHERE mp.xuid = ?` + excludeCampaignByMatchID(titleSlug, "mp.match_id") + `
-		GROUP BY mp.xuid, COALESCE(vg.gamertag, xa.gamertag, '')`
-
-	db, release, err := r.pdb.SharedReadDB().Get(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("CompareRepo.GetLocalStats: shared reader: %w", err)
-	}
-	defer release()
-
-	row := db.QueryRowContext(ctx, q, xuid)
-
-	var s domain.NormalizedPlayerStats
-	var kda, kdr sql.NullFloat64
-	err = row.Scan(
-		&s.XUID, &s.Gamertag, &s.Matches,
-		&s.WinRate,
-		&kda, &kdr,
-		&s.KillsPerGame, &s.DeathsPerGame, &s.AssistsPerGame,
-		&s.Accuracy, &s.DamagePerGame,
-		&s.DamageTakenPerGame,
-		&s.MaxKillingSpree,
-		&s.AvgLifeSecs,
-		&s.HeadshotKillsPerGame,
-		&s.PerfectKillsPerGame,
-	)
-	if err == sql.ErrNoRows {
-		return nil, fmt.Errorf("CompareRepo.GetLocalStats: joueur %s non trouvé", xuid)
-	}
-	if err != nil {
-		return nil, fmt.Errorf("CompareRepo.GetLocalStats: %w", err)
-	}
-	if kda.Valid {
-		s.KDA = kda.Float64
-	}
-	if kdr.Valid {
-		s.KDR = kdr.Float64
-	}
-	s.TitleSlug = titleSlug
-	return &s, nil
+		GROUP BY mp.xuid`
 }
 
 // GetPlayerATH retourne les métriques all-time depuis pdb.Player (stats.duckdb).
@@ -252,64 +267,6 @@ func (r *CompareRepo) GetEncounterStats(ctx context.Context, xuidA, xuidB string
 		enc.WinrateVsEnemy = &winrateVsEnemy.Float64
 	}
 	return enc, nil
-}
-
-// GetCrossMatchSample agrège les métriques locale-only du joueur xuidB calculées
-// uniquement sur les matchs où xuidA et xuidB ont joué ensemble.
-//
-// Réutilise le pattern d'auto-jointure de GetEncounterStats et les agrégats de
-// GetLocalStats : la jointure restreint l'échantillon, mais les formules
-// (MAX max_killing_spree, AVG avg_life_seconds, AVG headshot_kills, AVG perfect_count)
-// sont strictement identiques à celles utilisées pour un joueur local.
-//
-// Best-effort : retourne (nil, nil) si aucun match croisé n'existe.
-func (r *CompareRepo) GetCrossMatchSample(ctx context.Context, xuidA, xuidB string) (*domain.CrossMatchSample, error) {
-	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
-	defer cancel()
-
-	// shared-only via SharedReader. Set perfect-kill title-aware via le titre du
-	// joueur courant (pdb.TitleSlug ; HINF byte-identique = {1512363953}).
-	q := `
-		SELECT
-			COUNT(*)                                        AS matches_count,
-			COALESCE(MAX(b.max_killing_spree), 0)           AS max_killing_spree,
-			COALESCE(AVG(b.avg_life_seconds), 0.0)          AS avg_life_secs,
-			COALESCE(AVG(b.headshot_kills), 0.0)            AS headshot_kills_per_game,
-			COALESCE(AVG(COALESCE(me.perfect_count, 0)), 0.0) AS perfect_kills_per_game
-		FROM match_participants a
-		JOIN match_participants b ON b.match_id = a.match_id AND b.xuid = ?
-		LEFT JOIN (
-			SELECT match_id, xuid, SUM(count) AS perfect_count
-			FROM medals_earned
-			WHERE ` + perfectKillMedalInClause("medal_name_id", pdbTitleSlug(r.pdb)) + `
-			GROUP BY match_id, xuid
-		) me ON me.match_id = b.match_id AND me.xuid = b.xuid
-		WHERE a.xuid = ?`
-
-	db, release, err := r.pdb.SharedReadDB().Get(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("CompareRepo.GetCrossMatchSample: shared reader: %w", err)
-	}
-	defer release()
-
-	var sample domain.CrossMatchSample
-	err = db.QueryRowContext(ctx, q, xuidB, xuidA).Scan(
-		&sample.MatchesCount,
-		&sample.MaxKillingSpree,
-		&sample.AvgLifeSecs,
-		&sample.HeadshotKillsPerGame,
-		&sample.PerfectKillsPerGame,
-	)
-	if err == sql.ErrNoRows {
-		return nil, nil
-	}
-	if err != nil {
-		return nil, fmt.Errorf("CompareRepo.GetCrossMatchSample: %w", err)
-	}
-	if sample.MatchesCount == 0 {
-		return nil, nil
-	}
-	return &sample, nil
 }
 
 // ResolveXUID retourne le XUID correspondant à un gamertag dans le registre partagé.

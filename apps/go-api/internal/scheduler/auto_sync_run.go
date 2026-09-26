@@ -412,20 +412,19 @@ func (s *AutoSyncScheduler) syncPlayer(ctx context.Context, p domain.PlayerSumma
 	return outcome
 }
 
-// checkSyncPreconditions vérifie les 4 préconditions de sync (pool initialisé,
-// joueur dans pool, watcher inactif, DB présente). Retourne (raison_skip, false)
-// si une précondition échoue, sinon ("", true).
+// checkSyncPreconditions vérifie les préconditions de sync (pool initialisé, watcher
+// inactif, DB présente). Retourne (raison_skip, false) si une précondition échoue,
+// sinon ("", true).
+//
+// PAS de précondition « le joueur a son propre token » (D1, plan 2026-09-16) : le cycle
+// sync par le POOL, et l'historique / les stats / les films / les CSR sont des endpoints
+// publics que n'importe quel token du parc sert. Un profil suivi sans refresh token propre
+// était auparavant sauté À VIE par le cycle alors que seul son rang de carrière lui est
+// inaccessible — celui-ci se dégrade seul, par endpoint.
 func (s *AutoSyncScheduler) checkSyncPreconditions(ctx context.Context, p domain.PlayerSummary) (string, bool) {
 	if s.pool == nil {
 		slog.InfoContext(ctx, "auto_sync: pool nil, joueur ignoré", "gamertag", p.Gamertag)
 		return "pool de tokens non initialisé (aucun credential découvert au boot)", false
-	}
-	if !s.pool.HasPlayer(p.Gamertag) {
-		slog.InfoContext(ctx, "auto_sync: joueur absent du pool, ignoré",
-			"gamertag", p.Gamertag,
-			"hint", "définir SPNKR_OAUTH_REFRESH_TOKEN_<GAMERTAG> dans .env.local ou faire une sync initiale",
-		)
-		return "joueur absent du pool (pas de token discoverable via Discovery — vérifier .env.local et sync_meta)", false
 	}
 	if s.ActivityChecker != nil && s.ActivityChecker.IsPlayerActive(p.Gamertag) {
 		slog.InfoContext(ctx, "auto_sync: watcher actif sur ce joueur — tick cédé",

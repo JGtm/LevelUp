@@ -30,10 +30,10 @@ func (r *MatchViewRepo) GetMatchScoreboard(ctx context.Context, matchID string) 
 	}
 	defer release()
 
-	// Q12 utilise 3 fois match_id : medals CTE, weapons CTE, WHERE. Set
-	// perfect-kill résolu pour le titre du joueur (HINF byte-identique).
+	// Q12 utilise 2 fois match_id : CTE des medailles, puis WHERE. Set perfect-kill
+	// resolu pour le titre du joueur (HINF byte-identique).
 	q := resolvePerfectKillClause(Q12MatchScoreboard, "medal_name_id", pdbTitleSlug(r.pdb))
-	rows, err := sharedDB.QueryContext(ctx, q, matchID, matchID, matchID)
+	rows, err := sharedDB.QueryContext(ctx, q, matchID, matchID)
 	if err != nil {
 		return nil, fmt.Errorf("MatchViewRepo.GetMatchScoreboard: %w", err)
 	}
@@ -58,7 +58,21 @@ func (r *MatchViewRepo) GetMatchScoreboard(ctx context.Context, matchID string) 
 			results[i].Obj = obj
 		}
 	}
+	// Statistiques d'ASSAUT : SECONDE source, dégradable à part elle aussi, et gatée par la
+	// capability `film.bomb_stats` (câblée au wiring — jamais un slug). Un titre qui ne la
+	// déclare pas ne paie même pas la requête. Elles s'AJOUTENT au bloc d'objectif du joueur :
+	// les deux jeux de colonnes sont disjoints, et un match d'Assaut n'a de toute façon aucun
+	// bloc API à écraser.
+	if r.bombStats {
+		bombByXUID := loadMatchBombStats(ctx, sharedDB, matchID)
+		for i := range results {
+			if b, ok := bombByXUID[results[i].XUID]; ok {
+				fusionnerStatsBombe(&results[i].Obj, b)
+			}
+		}
+	}
 
+	r.attachTopWeapons(ctx, matchID, results)
 	r.attachTopWeaponLabels(ctx, results)
 	return results, nil
 }
@@ -70,6 +84,10 @@ func scanScoreboardRow(rows *sql.Rows) (domain.ScoreboardRaw, error) {
 	// top_weapon_id est UBIGINT côté DuckDB → scanner en *uint64 pour
 	// éviter l'overflow int64 sur les hash de filmshell (bit63=1).
 	var topWeaponU *uint64
+	// Participation : nullable au DDL (matchs d'avant les colonnes) — sql.Null*, jamais
+	// des types nus (la leçon Q20 du 2026-09-02 : une seule ligne NULL casse tout le scan).
+	var joined, left sql.NullBool
+	var firstJoined, lastLeave sql.NullTime
 	if err := rows.Scan(
 		&s.XUID,
 		&s.Gamertag,
@@ -105,9 +123,14 @@ func scanScoreboardRow(rows *sql.Rows) (domain.ScoreboardRaw, error) {
 		&s.DeathsExpected,
 		&s.KillsStdDev,
 		&s.DeathsStdDev,
+		&joined,
+		&left,
+		&firstJoined,
+		&lastLeave,
 	); err != nil {
 		return domain.ScoreboardRaw{}, err
 	}
+	applyParticipation(&s, joined, left, firstJoined, lastLeave)
 	if topWeaponU != nil {
 		v := int64(*topWeaponU) //nolint:gosec
 		s.TopWeaponID = &v
@@ -128,6 +151,27 @@ func scanScoreboardRow(rows *sql.Rows) (domain.ScoreboardRaw, error) {
 	s.KillsStdDev = sanitizeF64(s.KillsStdDev)
 	s.DeathsStdDev = sanitizeF64(s.DeathsStdDev)
 	return s, nil
+}
+
+// applyParticipation pose les champs de participation (nullable) sur la ligne scannée.
+// Les instants sortent en UTC — la base est saine depuis la correction TZ du 2026-05-29,
+// et normaliser ici garantit qu'un RFC3339 servi au client ne portera jamais un fuseau.
+func applyParticipation(s *domain.ScoreboardRaw, joined, left sql.NullBool,
+	firstJoined, lastLeave sql.NullTime) {
+	if joined.Valid {
+		s.JoinedInProgress = &joined.Bool
+	}
+	if left.Valid {
+		s.LeftInProgress = &left.Bool
+	}
+	if firstJoined.Valid {
+		t := firstJoined.Time.UTC()
+		s.FirstJoinedTime = &t
+	}
+	if lastLeave.Valid {
+		t := lastLeave.Time.UTC()
+		s.LastLeaveTime = &t
+	}
 }
 
 // attachTopWeaponLabels résout les libellés d'armes top-weapon du scoreboard.
@@ -275,4 +319,53 @@ func (r *MatchViewRepo) GetMatchObjectiveScore(ctx context.Context, xuid, matchI
 		return 0, nil
 	}
 	return total, nil
+}
+
+// loadMatchBombStats charge les STATISTIQUES D'ASSAUT d'un match par xuid, en BEST-EFFORT.
+//
+// SECONDE REQUÊTE, SECONDE TABLE, ET C'EST UNE DÉCISION DE SCHÉMA. Elles ne vivent pas dans
+// `match_objective_stats` mais dans `match_bomb_stats` (décision 1 du plan d'Assaut) : la vue
+// `match_objective_stats_latest` ne garde qu'UNE ligne par (match_id, xuid), et deux
+// producteurs — le sync API et le film — s'y écraseraient l'un l'autre. Un re-sync API
+// effacerait les stats de bombe de la vue.
+//
+// MÊME DÉGRADATION QUE `loadMatchObjectiveStats` : vue absente (DB non migrée → Catalog Error)
+// ou requête en échec → WARN structuré et map VIDE. Le scoreboard reste servi entier ; seules
+// les colonnes d'Assaut manquent. Jamais d'erreur avalée en silence.
+func loadMatchBombStats(ctx context.Context, db *sql.DB, matchID string) map[string]domain.ObjectiveRaw {
+	out := map[string]domain.ObjectiveRaw{}
+	rows, err := db.QueryContext(ctx, Q12cBombStats, matchID)
+	if err != nil {
+		slog.WarnContext(ctx, "match scoreboard: stats d'Assaut indisponibles, colonnes absentes",
+			"match_id", matchID, "query", "Q12cBombStats", "err", err)
+		return out
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var xuid string
+		var o domain.ObjectiveRaw
+		if err := rows.Scan(&xuid, &o.BombDetonations, &o.BombArms, &o.BombGrabs,
+			&o.TimeAsBombCarrierSeconds, &o.BombCarriersKilled); err != nil {
+			slog.WarnContext(ctx, "match scoreboard: scan stats d'Assaut échoué, ligne ignorée",
+				"match_id", matchID, "err", err)
+			continue
+		}
+		out[xuid] = o
+	}
+	if err := rows.Err(); err != nil {
+		slog.WarnContext(ctx, "match scoreboard: itération stats d'Assaut interrompue, colonnes absentes",
+			"match_id", matchID, "err", err)
+	}
+	return out
+}
+
+// fusionnerStatsBombe recopie les cinq mesures d'Assaut sur la ligne d'objectif du joueur. Elles
+// s'AJOUTENT au bloc lu dans `match_objective_stats_latest` sans jamais l'écraser : les deux
+// jeux de colonnes sont disjoints, et un match d'Assaut n'a de toute façon aucun bloc API.
+func fusionnerStatsBombe(dst *domain.ObjectiveRaw, src domain.ObjectiveRaw) {
+	dst.BombDetonations = src.BombDetonations
+	dst.BombArms = src.BombArms
+	dst.BombGrabs = src.BombGrabs
+	dst.TimeAsBombCarrierSeconds = src.TimeAsBombCarrierSeconds
+	dst.BombCarriersKilled = src.BombCarriersKilled
 }

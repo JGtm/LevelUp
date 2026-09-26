@@ -1,0 +1,85 @@
+===== FILM 24dbb67d =====
+=== RUN   TestOddballPortageProximite
+2026/08/27 13:06:08 INFO plafond memoire arme pour ce decodage outil=d6-portage souple_gib=2 dur_octets=2684354560
+2026/08/27 13:06:11 WARN empreinte du registre ECS du film INCONNUE — grammaire des composants suspecte (mise a jour du jeu ?) ; le film reste decode empreinte=7307582345129211936 empreinte_connue=7053924395561516366 blocs=118 slots_non_vides=1068
+    oddball_portage_d6_test.go:111: 24dbb67d : 7051 ancres, 269 creations acceptees, 248 pistes delta ; 23 vie(s) du mot elu
+    oddball_portage_d6_test.go:130: 24dbb67d : 23 vie(s) libre(s), 1 socle(s), 97 slot(s) de bipede, 87 slot(s) nomme(s), 88 mort(s), oracle sur 8 joueur(s)
+    oddball_portage_d6_test.go:140: 24dbb67d : 22 trou(s) — 7 PORTE, 3 ambigu, 2 retour, 10 inexplique ; 190 s de portage attribuees
+    oddball_portage_d6_test.go:141: DISTANCES 24dbb67d : 21 mesurees — min 0.20 m, q25 0.39, MEDIANE 2.00, q75 5.50, q90 8.00, max 12.5 ; 10 sous le seuil de 1.5 m (47.6 %)
+    oddball_portage_d6_test.go:142: MORT 24dbb67d : 5 portage(s) ferme(s) par la mort du porteur ; 5/5 = 100.0 % suivis d'une naissance de vie libre a <= 3 m du lieu de la mort dans les 3000 ms
+    oddball_portage_d6_test.go:147:   9321 : API 29 s · reconstruit 1 s · temoin 10 s
+    oddball_portage_d6_test.go:147:   8549 : API 80 s · reconstruit 51 s · temoin 9 s
+    oddball_portage_d6_test.go:147:   0022 : API 75 s · reconstruit 72 s · temoin 2 s
+    oddball_portage_d6_test.go:147:   3686 : API 10 s · reconstruit 28 s · temoin 41 s
+    oddball_portage_d6_test.go:147:   1079 : API 54 s · reconstruit 0 s · temoin 0 s
+    oddball_portage_d6_test.go:147:   2034 : API 44 s · reconstruit 11 s · temoin 0 s
+    oddball_portage_d6_test.go:147:   4517 : API 7 s · reconstruit 0 s · temoin 23 s
+    oddball_portage_d6_test.go:147:   9936 : API 34 s · reconstruit 26 s · temoin 0 s
+    oddball_portage_d6_test.go:147: SIGNAL 24dbb67d : recouvrement 51.7 % (seuil 80 %) ; temoin 11.3 % (seuil <= 50 %) ; porteur principal MANQUE
+    oddball_portage_d6_test.go:147: VERDICT 24dbb67d : le recouvrement est SOUS le seuil.
+    oddball_portage_d6_test.go:108: 24dbb67d : pic memoire observe 0.10 Gio
+--- PASS: TestOddballPortageProximite (53.90s)
+PASS
+EXIT_24dbb67d=0
+===== FILM 43716616 =====
+=== RUN   TestOddballPortageProximite
+2026/08/27 13:07:02 INFO plafond memoire arme pour ce decodage outil=d6-portage souple_gib=2 dur_octets=2684354560
+    oddball_portage_d6_test.go:111: 43716616 : 6943 ancres, 332 creations acceptees, 376 pistes delta ; 16 vie(s) du mot elu
+    oddball_portage_d6_test.go:130: 43716616 : 16 vie(s) libre(s), 1 socle(s), 72 slot(s) de bipede, 62 slot(s) nomme(s), 62 mort(s), oracle sur 6 joueur(s)
+    oddball_portage_d6_test.go:140: 43716616 : 15 trou(s) — 7 PORTE, 1 ambigu, 1 retour, 6 inexplique ; 56 s de portage attribuees
+    oddball_portage_d6_test.go:141: DISTANCES 43716616 : 14 mesurees — min 0.26 m, q25 0.43, MEDIANE 0.93, q75 7.61, q90 10.65, max 11.9 ; 8 sous le seuil de 1.5 m (57.1 %)
+    oddball_portage_d6_test.go:142: MORT 43716616 : 7 portage(s) ferme(s) par la mort du porteur ; 7/7 = 100.0 % suivis d'une naissance de vie libre a <= 3 m du lieu de la mort dans les 3000 ms
+    oddball_portage_d6_test.go:147:   2136 : API 62 s · reconstruit 0 s · temoin 3 s
+    oddball_portage_d6_test.go:147:   0421 : API 20 s · reconstruit 20 s · temoin 3 s
+    oddball_portage_d6_test.go:147:   5944 : API 6 s · reconstruit 6 s · temoin 4 s
+    oddball_portage_d6_test.go:147:   9469 : API 27 s · reconstruit 23 s · temoin 19 s
+    oddball_portage_d6_test.go:147:   2349 : API 94 s · reconstruit 3 s · temoin 0 s
+    oddball_portage_d6_test.go:147:   5114 : API 8 s · reconstruit 4 s · temoin 17 s
+    oddball_portage_d6_test.go:147: SIGNAL 43716616 : recouvrement 25.9 % (seuil 80 %) ; temoin 17.1 % (seuil <= 50 %) ; porteur principal MANQUE
+    oddball_portage_d6_test.go:147: VERDICT 43716616 : le recouvrement est SOUS le seuil.
+    oddball_portage_d6_test.go:108: 43716616 : pic memoire observe 0.06 Gio
+--- PASS: TestOddballPortageProximite (46.30s)
+PASS
+EXIT_43716616=0
+===== FILM 51ebbc0f =====
+=== RUN   TestOddballPortageProximite
+2026/08/27 13:07:48 INFO plafond memoire arme pour ce decodage outil=d6-portage souple_gib=2 dur_octets=2684354560
+    oddball_portage_d6_test.go:111: 51ebbc0f : 6582 ancres, 350 creations acceptees, 617 pistes delta ; 21 vie(s) du mot elu
+    oddball_portage_d6_test.go:130: 51ebbc0f : 21 vie(s) libre(s), 1 socle(s), 84 slot(s) de bipede, 9 slot(s) nomme(s), 71 mort(s), oracle sur 6 joueur(s)
+    oddball_portage_d6_test.go:140: 51ebbc0f : 20 trou(s) — 3 PORTE, 0 ambigu, 2 retour, 15 inexplique ; 7 s de portage attribuees
+    oddball_portage_d6_test.go:141: DISTANCES 51ebbc0f : 12 mesurees — min 0.16 m, q25 0.20, MEDIANE 4.27, q75 7.88, q90 15.87, max 21.5 ; 3 sous le seuil de 1.5 m (25.0 %)
+    oddball_portage_d6_test.go:142: MORT 51ebbc0f : 2 portage(s) ferme(s) par la mort du porteur ; 1/2 = 50.0 % suivis d'une naissance de vie libre a <= 3 m du lieu de la mort dans les 3000 ms
+    oddball_portage_d6_test.go:147:   3076 : API 44 s · reconstruit 0 s · temoin 0 s
+    oddball_portage_d6_test.go:147:   0601 : API 51 s · reconstruit 0 s · temoin 7 s
+    oddball_portage_d6_test.go:147:   6981 : API 76 s · reconstruit 0 s · temoin 0 s
+    oddball_portage_d6_test.go:147:   9936 : API 54 s · reconstruit 5 s · temoin 0 s
+    oddball_portage_d6_test.go:147:   3037 : API 4 s · reconstruit 2 s · temoin 4 s
+    oddball_portage_d6_test.go:147:   0266 : API 37 s · reconstruit 0 s · temoin 0 s
+    oddball_portage_d6_test.go:147: SIGNAL 51ebbc0f : recouvrement 2.6 % (seuil 80 %) ; temoin 4.1 % (seuil <= 50 %) ; porteur principal MANQUE
+    oddball_portage_d6_test.go:147: VERDICT 51ebbc0f : le recouvrement est SOUS le seuil.
+    oddball_portage_d6_test.go:108: 51ebbc0f : pic memoire observe 0.11 Gio
+--- PASS: TestOddballPortageProximite (70.58s)
+PASS
+EXIT_51ebbc0f=0
+===== FILM d9781168 =====
+=== RUN   TestOddballPortageProximite
+2026/08/27 13:08:58 INFO plafond memoire arme pour ce decodage outil=d6-portage souple_gib=2 dur_octets=2684354560
+    oddball_portage_d6_test.go:111: d9781168 : 15016 ancres, 665 creations acceptees, 945 pistes delta ; 47 vie(s) du mot elu
+    oddball_portage_d6_test.go:130: d9781168 : 47 vie(s) libre(s), 1 socle(s), 160 slot(s) de bipede, 140 slot(s) nomme(s), 144 mort(s), oracle sur 8 joueur(s)
+    oddball_portage_d6_test.go:140: d9781168 : 46 trou(s) — 18 PORTE, 4 ambigu, 8 retour, 16 inexplique ; 206 s de portage attribuees
+    oddball_portage_d6_test.go:141: DISTANCES d9781168 : 42 mesurees — min 0.12 m, q25 0.34, MEDIANE 0.77, q75 5.68, q90 9.85, max 13.6 ; 22 sous le seuil de 1.5 m (52.4 %)
+    oddball_portage_d6_test.go:142: MORT d9781168 : 10 portage(s) ferme(s) par la mort du porteur ; 10/10 = 100.0 % suivis d'une naissance de vie libre a <= 3 m du lieu de la mort dans les 3000 ms
+    oddball_portage_d6_test.go:147:   0022 : API 37 s · reconstruit 31 s · temoin 17 s
+    oddball_portage_d6_test.go:147:   1007 : API 116 s · reconstruit 60 s · temoin 0 s
+    oddball_portage_d6_test.go:147:   0162 : API 51 s · reconstruit 28 s · temoin 26 s
+    oddball_portage_d6_test.go:147:   3823 : API 10 s · reconstruit 18 s · temoin 35 s
+    oddball_portage_d6_test.go:147:   9376 : API 49 s · reconstruit 0 s · temoin 19 s
+    oddball_portage_d6_test.go:147:   6950 : API 26 s · reconstruit 12 s · temoin 23 s
+    oddball_portage_d6_test.go:147:   3276 : API 105 s · reconstruit 57 s · temoin 7 s
+    oddball_portage_d6_test.go:147:   0067 : API 10 s · reconstruit 0 s · temoin 20 s
+    oddball_portage_d6_test.go:147: SIGNAL d9781168 : recouvrement 48.9 % (seuil 80 %) ; temoin 27.8 % (seuil <= 50 %) ; porteur principal IDENTIFIE
+    oddball_portage_d6_test.go:147: VERDICT d9781168 : le recouvrement est SOUS le seuil.
+    oddball_portage_d6_test.go:108: d9781168 : pic memoire observe 0.13 Gio
+--- PASS: TestOddballPortageProximite (83.72s)
+PASS
+EXIT_d9781168=0

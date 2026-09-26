@@ -1,3 +1,4 @@
+/* eslint-disable max-lines -- 2026-09-06 (lot v2 D.11, decision utilisateur 4) : hors perimetre du lot D (modele web du rejeu) : l'exemption DATE la dette, elle ne l'absout pas — le decoupage revient au lot qui touchera ce fichier. */
 /**
  * CoverFlowModal — modale plein écran avec carrousel coverflow pour les médias.
  *
@@ -9,8 +10,8 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import Hls from 'hls.js'
 import type { MediaItemRow } from '@/lib/api/types'
+import { useHlsVideo, type HlsAudioTrack } from '@/lib/media/useHlsVideo'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { intlLocale } from '@/lib/formatters'
 import { playerScopedHref, useTitleSlug } from '@/lib/title-routing'
@@ -91,6 +92,8 @@ function formatHeading(item: MediaItemRow, index: number, total: number, locale:
 
 interface ClipPlayerProps {
   filePath: string
+  /** Vignette du clip : sert de poster au <video> (voisins HLS sans segment chargé). */
+  thumbnailPath: string | null
   basename: string | null
   isCenter: boolean
   relPos: number
@@ -100,24 +103,32 @@ interface ClipPlayerProps {
   audioLabels: { game: string; voice: string; group: string }
 }
 
-/** Une source est HLS si son chemin (hors query string) se termine par .m3u8. */
-function isHlsSource(path: string): boolean {
-  return path.split('?')[0].toLowerCase().endsWith('.m3u8')
-}
-
 /**
  * Wrapper <video> qui lit :
  *   - les flux HLS (.m3u8) via hls.js (ou le lecteur natif Safari/iOS), avec
  *     sélecteur de piste audio quand le master expose plusieurs pistes ;
  *   - les fichiers web-natifs (mp4/webm/mov) en lecture directe.
  * Affiche un message clair en cas d'erreur plutôt qu'un cadre noir vide.
+ *
+ * L'ATTACHE hls.js VIT DANS `@/lib/media/useHlsVideo` depuis le 2026-08-28 : la
+ * lightbox du rejeu 2D avait le même besoin, et deux copies auraient divergé sur
+ * le premier quirk de navigateur corrigé d'un seul côté. Ce qui reste ici est ce
+ * qui est PROPRE au coverflow : le pilotage du chargement par le centrage, et les
+ * interrupteurs Jeu/Voix des renditions pré-mixées.
  */
-function ClipPlayer({ filePath, basename, isCenter, relPos, videoRef, onEnded, audioLabels }: ClipPlayerProps) {
+function ClipPlayer({ filePath, thumbnailPath, basename, isCenter, relPos, videoRef, onEnded, audioLabels }: ClipPlayerProps) {
   const [error, setError] = useState<string | null>(null)
   const [lastFilePath, setLastFilePath] = useState(filePath)
   const videoElRef = useRef<HTMLVideoElement | null>(null)
-  const hlsRef = useRef<Hls | null>(null)
-  const [audioTracks, setAudioTracks] = useState<{ id: number; name: string }[]>([])
+  // Vrai dès que startLoad() a été appelé sur l'instance hls.js courante. stopLoad()
+  // n'est légitime que sur une instance démarrée (cf. effet de centrage ci-dessous).
+  // Une instance par montage de ClipPlayer : la key du slot est `item.file_path`
+  // (côté parent), donc un changement de source démonte ce composant et ce ref
+  // repart à false avec lui. ANGLE MORT ASSUMÉ : si cette key devenait stable
+  // entre deux sources, `useHlsVideo` recréerait l'instance sans que ce ref soit
+  // remis à zéro — il faudrait alors le réinitialiser sur `filePath`.
+  const startedRef = useRef(false)
+  const [audioTracks, setAudioTracks] = useState<HlsAudioTrack[]>([])
   const [activeAudio, setActiveAudio] = useState(-1)
   // Deux interrupteurs indépendants Jeu/Voix (les deux ON par défaut). N'ont de
   // sens que sur le layout multipiste game/voices/full. ATTENTION : la key est
@@ -134,8 +145,6 @@ function ClipPlayer({ filePath, basename, isCenter, relPos, videoRef, onEnded, a
     setError(null)
   }
 
-  const isHls = isHlsSource(filePath)
-
   // Callback ref : alimente la ref locale (pour attacher hls.js) ET le callback
   // parent (qui pilote play/pause/mute via sa Map de refs).
   const setRefs = useCallback(
@@ -146,74 +155,67 @@ function ClipPlayer({ filePath, basename, isCenter, relPos, videoRef, onEnded, a
     [videoRef],
   )
 
-  // Attache hls.js pour les sources .m3u8 (sauf Safari/iOS qui lisent HLS nativement).
-  useEffect(() => {
-    if (!isHls) return
-    const video = videoElRef.current
-    if (!video) return
-
-    // Préférer hls.js dès que MSE est disponible (Chrome/Firefox/Edge) : c'est le
-    // SEUL chemin qui peuple le sélecteur de pistes audio (via AUDIO_TRACKS_UPDATED).
-    // Le natif ne sert que de repli (Safari/iOS sans MSE). PIÈGE (incident 2026-06-14) :
-    // Chrome renvoie "maybe" à canPlayType('application/vnd.apple.mpegurl') — truthy —
-    // MAIS n'expose pas video.audioTracks. Prendre le natif en premier lisait la vidéo
-    // sans jamais afficher le sélecteur de pistes (game/voix ou Track1..N).
-    if (!Hls.isSupported()) {
-      if (video.canPlayType('application/vnd.apple.mpegurl')) {
-        video.src = filePath
+  // autoStartLoad:false → loadSource lance IMMÉDIATEMENT la requête du manifest
+  // (master.m3u8), qui est lu et conservé, mais NE télécharge AUCUN segment tant
+  // que startLoad() n'est pas appelé. Ce seul réglage suffit donc à ce qu'un
+  // voisin ne précharge rien : sans lui, les jusqu'à 5 slots HLS rendus (±2)
+  // chargeraient ~30 s de segments en parallèle (l'attribut preload du <video>
+  // est sans effet en MSE). Les pistes audio n'arrivent PAS avec le manifest :
+  // hls.js n'émet AUDIO_TRACKS_UPDATED que depuis AudioTrackController.switchLevel(),
+  // appelé sur LEVEL_LOADING / LEVEL_SWITCHING, donc seulement après le premier
+  // startLoad() — c'est-à-dire au centrage, ce qui suffit puisque le sélecteur
+  // n'est affiché que pour le clip centré. Corollaire (2026-09-17) : il ne faut
+  // JAMAIS appeler stopLoad() sur une instance qui n'a pas été démarrée, sous
+  // peine d'avorter ce manifest en vol — détail dans l'effet de centrage ci-dessous.
+  const { isHls, hlsRef } = useHlsVideo({
+    videoRef: videoElRef,
+    src: filePath,
+    autoStartLoad: false,
+    onAudioTracks: (tracks, active) => {
+      setAudioTracks(tracks)
+      setActiveAudio(active)
+      if (tracks.length > 0) {
+        log.debug('pistes audio reçues', { count: tracks.length, names: tracks.map((t) => t.name) })
+      }
+    },
+    onFailure: (kind, detail) => {
+      if (kind === 'unsupported') {
+        log.warn('hls:unsupported', 'Lecture HLS non supportée par ce navigateur', { filePath })
+        setError('Lecture HLS non supportée par ce navigateur')
         return
       }
-      log.warn('hls:unsupported', 'Lecture HLS non supportée par ce navigateur', { filePath })
-      setError('Lecture HLS non supportée par ce navigateur')
-      return
-    }
-
-    // autoStartLoad:false → loadSource charge le manifest (ce qui peuple le
-    // sélecteur de pistes via AUDIO_TRACKS_UPDATED, y compris pour les voisins)
-    // mais NE télécharge AUCUN segment tant que startLoad() n'est pas appelé.
-    // Le chargement des segments est réservé au clip centré (effet dédié
-    // ci-dessous) : sinon les jusqu'à 5 slots HLS rendus (±2) préchargeraient
-    // ~30 s de segments en parallèle (l'attribut preload du <video> est sans
-    // effet en MSE).
-    const hls = new Hls({ enableWorker: true, autoStartLoad: false })
-    hlsRef.current = hls
-    hls.loadSource(filePath)
-    hls.attachMedia(video)
-    // Les pistes audio alternées sont peuplées via AUDIO_TRACKS_UPDATED (à
-    // MANIFEST_PARSED, hls.audioTracks est encore vide — confirmé en navigateur).
-    hls.on(Hls.Events.AUDIO_TRACKS_UPDATED, (_evt, data) => {
-      const tracks = data.audioTracks.map((t, i) => ({ id: i, name: t.name || t.lang || `Audio ${i + 1}` }))
-      setAudioTracks(tracks)
-      setActiveAudio(hls.audioTrack)
-      log.debug('pistes audio reçues', { count: tracks.length, names: tracks.map((t) => t.name) })
-    })
-    hls.on(Hls.Events.ERROR, (_evt, data) => {
-      if (data.fatal) {
-        log.error('hls:fatal', 'Erreur fatale du flux HLS', {
-          filePath, type: data.type, details: data.details,
-        })
-        setError('Erreur de lecture du flux HLS')
-      }
-    })
-    return () => {
-      hls.destroy()
-      hlsRef.current = null
-      setAudioTracks([])
-      setActiveAudio(-1)
-    }
-  }, [filePath, isHls])
+      log.error('hls:fatal', 'Erreur fatale du flux HLS', {
+        filePath, type: detail?.type, details: detail?.details,
+      })
+      setError('Erreur de lecture du flux HLS')
+    },
+  })
 
   // Chargement des segments réservé au clip centré : startLoad() au centrage,
-  // stopLoad() au décentrage. Les instances hls.js sont créées autoStartLoad:false
-  // (cf. effet d'attache, déclaré AVANT celui-ci → hlsRef.current est déjà posé
-  // quand cet effet s'exécute au montage). Sans ce pilotage, tous les slots HLS
-  // rendus (±2) chargeraient leurs segments en parallèle.
+  // stopLoad() au décentrage — mais UNIQUEMENT sur une instance déjà démarrée.
+  // L'instance est créée autoStartLoad:false par `useHlsVideo`, dont l'effet est
+  // déclaré AVANT celui-ci → `hlsRef.current` est déjà posé quand cet effet
+  // s'exécute au montage, dans le MÊME commit React.
+  // PIÈGE CORRIGÉ LE 2026-09-17 : dans hls.js, stopLoad() parcourt
+  // networkControllers, dont le PlaylistLoader est le PREMIER, et détruit ses
+  // loaders internes — la requête du manifest lancée par loadSource, encore en
+  // vol, est donc AVORTÉE (NS_BINDING_ABORTED côté navigateur). Un voisin perdait
+  // ainsi son master.m3u8 dès le montage ; au recentrage, startLoad() trouvait
+  // « levels » vide, posait _forceStartLoad et restait STOPPED, et plus rien ne
+  // relançait MANIFEST_LOADING : le clip ne lisait JAMAIS. Le garde startedRef
+  // réserve stopLoad aux clips qui QUITTENT le centre (arrêt de leurs segments),
+  // seul cas où il est utile.
+  // `hlsRef` est une ref STABLE : la déclarer en dépendance ne relance rien.
   useEffect(() => {
     const hls = hlsRef.current
     if (!hls) return
-    if (isCenter) hls.startLoad()
-    else hls.stopLoad()
-  }, [isHls, isCenter])
+    if (isCenter) {
+      hls.startLoad()
+      startedRef.current = true
+    } else if (startedRef.current) {
+      hls.stopLoad()
+    }
+  }, [hlsRef, isHls, isCenter])
 
   function selectAudioTrack(id: number) {
     if (hlsRef.current) {
@@ -257,7 +259,7 @@ function ClipPlayer({ filePath, basename, isCenter, relPos, videoRef, onEnded, a
       hlsRef.current.audioTrack = idx
       setActiveAudio(idx)
     }
-  }, [isToggleLayout, gameOn, voiceOn, bySlug, isCenter])
+  }, [hlsRef, isToggleLayout, gameOn, voiceOn, bySlug, isCenter])
 
   if (error) {
     return (
@@ -278,6 +280,9 @@ function ClipPlayer({ filePath, basename, isCenter, relPos, videoRef, onEnded, a
       <video
         ref={setRefs}
         src={isHls ? undefined : filePath}
+        // La vignette évite le cadre noir : les voisins HLS ne chargent aucun
+        // segment, et le clip centré n'a pas encore décodé sa première image.
+        poster={thumbnailPath ?? undefined}
         controls={isCenter}
         // On retire le bouton plein écran NATIF du <video> : le plein écran
         // passe par notre bouton (sur le conteneur stage). Sinon le natif
@@ -673,6 +678,8 @@ export function CoverFlowModal({
                 likeCount={currentItem.like_count}
                 onToggle={() => onToggleLike(currentItem)}
                 disabled={likeDisabled}
+                likers={currentItem.likers}
+                totalLikers={currentItem.total_likers}
               />
             </div>
             {/* Suppression définitive (item 3.1) — même règle de visibilité que
@@ -833,6 +840,7 @@ export function CoverFlowModal({
                   {item.kind === 'clip' ? (
                     <ClipPlayer
                       filePath={item.file_path}
+                      thumbnailPath={item.thumbnail_path}
                       basename={item.basename}
                       isCenter={isCenter}
                       relPos={relPos}

@@ -187,8 +187,16 @@ func fallbackCapabilities() games.CapabilityMap {
 		games.CapMatchEventsTimeline:  games.CapDegraded,
 		games.CapMatchKillfeedPerKill: games.CapDegraded,
 		games.CapMatchEventsSpatial:   games.CapNotExposed,
-		// Précision par arme : pas d'events weapon_drop dans la timeline
-		// reconstruite → table weapon_accuracy non peuplée (cf. capabilities.toml).
+		// Précision par arme : REMISÉE le 2026-09-01 (not_exposed). Le numérateur film
+		// (touches, reconstruit par l'appariement tir↔dégât — passe killcollector/hits.go)
+		// s'est révélé NON FIABLE au recalage : le pairing rate ~40 %+ des touches et les
+		// armes automatiques ressortent à 0,9-3,3 % vs ~40 % côté API
+		// (RECALAGE_WEAPON_ACCURACY_FILM_2026-09-01, commit 945c9fdb7). On REMISE : le code
+		// backend (décodeur, mapper, persister, table match_weapon_hit_distance) est
+		// conservé, seule l'exposition est retirée. Cette clé data-level gate le numérateur
+		// film (collectHits) : not_exposed ⇒ la passe film ne s'exécute pas pour Infinite.
+		// La précision GLOBALE reste servie par l'API. Reprise : piste compteur ECS
+		// (cf. .ai/V7.5/REGISTRE_REPORTS.md). Cf. capabilities.toml.
 		games.CapWeaponAccuracy: games.CapNotExposed,
 		// Libellés de playlist préfixés d'une catégorie matchmaking à retirer pour
 		// l'affichage (analysis.NormalizePlaylistLabel) — trait Halo Infinite,
@@ -210,6 +218,39 @@ func fallbackCapabilities() games.CapabilityMap {
 		// comptes sans publier de taux : le taux, lui, est match.weapon.accuracy et
 		// il reste not_exposed pour ce titre.
 		games.CapFilmWeaponShots: games.CapSupported,
+		// Positions monde tueur/victime PAR KILL, MÊME passe de décodage que les
+		// morts → shared.kill_positions (G.2bis). Clé séparée : gouverne la CAPTURE,
+		// pas la lecture canonique (match.events.spatial reste not_exposed tant
+		// qu'aucun consommateur ne lit kill_positions pour ce titre — cf.
+		// capabilities.toml).
+		games.CapFilmKillPositions: games.CapSupported,
+		// Résumé d'usage par (match, joueur) dérivé de l'ARTEFACT de rejeu (pas de la
+		// passe de décodage) → shared.match_usage_players + match_usage_films. Gouverne
+		// la production post-sync (replayartifacts) et le backfill CLI ; un titre sans
+		// la clé ne produit AUCUNE ligne, silence propre (cf. capabilities.toml).
+		games.CapFilmUsageSummary: games.CapSupported,
+		// Les CINQ statistiques d objectif de l ASSAUT reconstruites du film (l API 343
+		// n en publie aucune) -> shared.match_bomb_stats. Gouverne la production
+		// post-sync (replayartifacts), le backfill CLI et l exposition sur la fiche de
+		// match ; un titre sans la cle ne produit AUCUNE ligne et n expose AUCUNE
+		// colonne (cf. capabilities.toml).
+		games.CapFilmBombStats: games.CapSupported,
+		// Les PRISES DE DRAPEAU BRUTES ET NETTES lues du calque de drapeau de l artefact
+		// -> shared.match_flag_grabs_net. Le compteur officiel `flag_grabs` compte chaque
+		// ramassage, donc aussi le JONGLAGE ; la grandeur nette le replie. Gouverne la
+		// production post-sync (replayartifacts), le backfill CLI et l exposition sur les
+		// cartes d objectif. ⚠ LA CLE NE SUFFIT PAS : le titre doit AUSSI declarer sa
+		// fenetre de jonglage dans regulation.toml (cf. capabilities.toml).
+		games.CapFilmFlagGrabsNet: games.CapSupported,
+		games.CapFilmWeaponTiers:  games.CapSupported,
+		// L ARTEFACT DE REJEU 2D lui-meme (data/cache/replays/{slug}/{match}.json) : la
+		// SOURCE dont les quatre cles film.* ci-dessus sont des projections. Gouverne la
+		// PRODUCTION (etape post-sync replayartifacts : sans la cle, rien n est mis en
+		// file ni cuit) et, par voie de consequence, les deux loaders du film de la Match
+		// View (/objective-events, /positions), qui rendent alors un 503 propre au lieu
+		// d un 200 [] trompeur. La porte d AFFICHAGE de la page de rejeu est la
+		// capability title-level `replay` (cf. capabilities.toml).
+		games.CapFilmReplayArtifact: games.CapSupported,
 	}
 }
 

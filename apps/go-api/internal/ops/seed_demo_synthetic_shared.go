@@ -12,12 +12,13 @@ import (
 	"os"
 	"path/filepath"
 
+	_ "github.com/duckdb/duckdb-go/v2"
+
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/domain/killscope"
 	titlePkg "levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 	"levelup/go-api/internal/migration"
-
-	_ "github.com/duckdb/duckdb-go/v2"
 )
 
 // synthDemoSeason : season_id fixe du corpus synthétique.
@@ -89,11 +90,13 @@ func insertSharedMatch(ctx context.Context, db *sql.DB, m synthMatch, aliases ma
 			return err
 		}
 	}
-	// Médailles + armes + CSR + kill-feed pour le joueur principal.
+	// Médailles + CSR + kill-feed pour le joueur principal.
+	//
+	// L'ARME FAVORITE NE PASSE PLUS PAR UNE TABLE D'ARMES (2026-09-01) : `weapon_kills` a
+	// été supprimée du fichier Halo Infinite avec la bascule vers la source de dégât. Elle
+	// est portée par le `source_tag` des morts écrites par insertMatchEvents — un seul
+	// écrivain, la voie de lecture courante.
 	if err := insertMatchMedals(ctx, db, m); err != nil {
-		return err
-	}
-	if err := insertMatchWeaponKills(ctx, db, m); err != nil {
 		return err
 	}
 	if m.pl.ranked {
@@ -198,22 +201,6 @@ func insertMatchMedals(ctx context.Context, db *sql.DB, m synthMatch) error {
 	return nil
 }
 
-// insertMatchWeaponKills écrit weapon_kills (arme favorite) pour le joueur principal.
-// Lecture home via v_weapon_kills → weapon_labels (seed migration).
-func insertMatchWeaponKills(ctx context.Context, db *sql.DB, m synthMatch) error {
-	for i := 0; i < m.favWeaponKills; i++ {
-		// written_at ancré sur synthAnchor : weapon_kills est append-only (DEFAULT UTC
-		// posé par la migration) ; sans valeur explicite chaque run diverge.
-		if _, err := db.ExecContext(ctx, `
-			INSERT INTO weapon_kills (match_id, xuid, time_ms, weapon_id, confidence, attribution_path, written_at)
-			VALUES (?, ?, ?, ?, 'high', 'demo', ?)`,
-			m.matchID, demoXUIDForIndex(0), (i+1)*20000, int64(m.favWeaponID), synthAnchor); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 // insertMatchCSR écrit match_csrs (append-only : written_at posé, lecture _latest).
 func insertMatchCSR(ctx context.Context, db *sql.DB, m synthMatch) error {
 	label := fmt.Sprintf("%s %d", m.csrTierFR, m.csrSubTier)
@@ -275,25 +262,58 @@ func insertMatchEvents(ctx context.Context, db *sql.DB, m synthMatch, parts []sy
 				m.matchID, demoXUIDForIndex(0), DefaultDemoMainGamertag, opp.xuid, opp.gamertag, t); err != nil {
 				return err
 			}
-			// written_at ancré sur synthAnchor, comme weapon_kills et match_csrs : c'était
-			// le SEUL écrivain qui laissait jouer le DEFAULT de la colonne. Une horloge qui
-			// fuit ici fait diverger deux générations de la démo, et `written_at` est la
-			// colonne de TRI de match_kill_events_latest — la préséance d'une passe de
-			// décodage ne doit pas dépendre de l'instant du seed.
-			if _, err := db.ExecContext(ctx, `
-				INSERT INTO match_kill_events
-					(match_id, decode_pass, decoder_rev, publishable, time_ms,
-					 victim_gamertag, victim_xuid, feed_killer_gamertag, feed_killer_xuid,
-					 feed_present, assist_known, read_path, read_origin, written_at)
-				VALUES (?, ?, 'demo-seed', TRUE, ?, ?, ?, ?, ?, TRUE, FALSE, ?, ?, ?)`,
-				m.matchID, "demo-"+m.matchID, t,
-				opp.gamertag, opp.xuid, DefaultDemoMainGamertag, demoXUIDForIndex(0),
-				killscope.ReadPathLiveFeed, killscope.OriginCreditOnly, synthAnchor); err != nil {
+			if err := insertKillEvent(ctx, db, m, synthKill{victim: *opp, timeMS: t, idx: i}); err != nil {
 				return err
 			}
 		}
 	}
 	return nil
+}
+
+// synthKill : une mort du kill-feed de démo — la victime, l'instant, et le rang de la mort
+// dans le match (c'est lui qui décide de la source de dégât, cf. demoSourceTagPour).
+type synthKill struct {
+	victim synthParticipant
+	timeMS int
+	idx    int
+}
+
+// insertKillEvent écrit UNE mort du kill-feed de démo, source de dégât comprise.
+//
+// UNE SEULE PASSE PAR MATCH, MAIS UNE PORTÉE PAR LIGNE — et c'est la forme exacte que
+// `persist.MergeCreditAndFilm` produit en production, pas une invention de la démo : la
+// fusion pose l'enrichissement MORT PAR MORT sur une base crédit. Les morts qu'une passe de
+// film éclaire portent donc `marche` / `credit-concordant` AVEC leur source ; les autres
+// gardent `kill-feed` / `credit-seul`, source NULL. `source_tag`, `source_category` et
+// `diverges` voyagent ENSEMBLE (invariant du schéma) : les trois renseignés, ou les trois
+// NULL — sans source mesurée, la divergence est indéfinissable.
+//
+// written_at ancré sur synthAnchor, comme match_csrs : c'était le SEUL écrivain qui
+// laissait jouer le DEFAULT de la colonne. Une horloge qui fuit ici fait diverger deux
+// générations de la démo, et `written_at` est la colonne de TRI de
+// match_kill_events_latest — la préséance d'une passe de décodage ne doit pas dépendre de
+// l'instant du seed.
+func insertKillEvent(ctx context.Context, db *sql.DB, m synthMatch, k synthKill) error {
+	var (
+		tag, categorie, diverge any // NULL = source non mesurée (les trois ensemble)
+		voie                    = killscope.ReadPathLiveFeed
+		origine                 = killscope.OriginCreditOnly
+	)
+	if src, mesuree := demoSourceTagPour(m.idx, k.idx); mesuree {
+		tag, categorie, diverge = src, decfilm.CategoryNone.Name(), false
+		voie, origine = killscope.ReadPathFilmWalk, string(decfilm.OriginCredit)
+	}
+	_, err := db.ExecContext(ctx, `
+		INSERT INTO match_kill_events
+			(match_id, decode_pass, decoder_rev, publishable, time_ms,
+			 victim_gamertag, victim_xuid, feed_killer_gamertag, feed_killer_xuid,
+			 feed_present, assist_known, source_tag, source_category, diverges,
+			 read_path, read_origin, written_at)
+		VALUES (?, ?, 'demo-seed', TRUE, ?, ?, ?, ?, ?, TRUE, FALSE, ?, ?, ?, ?, ?, ?)`,
+		m.matchID, "demo-"+m.matchID, k.timeMS,
+		k.victim.gamertag, k.victim.xuid, DefaultDemoMainGamertag, demoXUIDForIndex(0),
+		tag, categorie, diverge, voie, origine, synthAnchor)
+	return err
 }
 
 // writeSyntheticSharedSocial crée shared_social.duckdb migré (vide). Suffit pour que

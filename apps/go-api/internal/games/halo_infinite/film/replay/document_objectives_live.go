@@ -1,0 +1,409 @@
+package replay
+
+// document_objectives_live.go — L'OBJECTIF VIVANT : la forme que le DRAPEAU de CTF prend dans
+// l'artefact, et ce que la mesure a refuse d'y mettre.
+//
+// CHRONIQUE — v15 (2026-08-18, plan `.ai/V7.5/replay2d/PLAN_DRAPEAU_OBJET.md`, phase 2). AUCUNE
+// CLE NE BOUGE, ET POURTANT LA VERSION MONTE : c'est le CONTENU de `flagCarries` qui change.
+// L'OBJET drapeau — le meme archetype `ti=42` que les armes au sol, identifie par le manifeste du
+// titre (`[[objective_objects]]`, famille `flag`) — replique sa position quand PERSONNE ne le
+// porte. Cette lecture repare deux defauts que le schema 14 declarait explicitement irreparables :
+//
+//	le LACHER VOLONTAIRE ETAIT NON DATABLE. Un portage que rien ne fermait courait jusqu'a la
+//	  fin de l'axe, publie [FlagStateCarriedOpen] — une BORNE HAUTE, pas une mesure. Quand
+//	  l'objet REAPPARAIT pendant ce portage AUX PIEDS de son porteur, c'est qu'il ne le porte
+//	  plus : le portage se ferme la et devient [FlagStateCarried]. Mesure : 2 portages sur les
+//	  trois films du corpus (les deux que `530820e5` portait ouverts).
+//	le LACHER ETAIT AU MAUVAIS ENDROIT. [FlagStateDropped] valait la derniere position du
+//	  PORTEUR, faute de mieux ; il vaut desormais le dernier point de la piste LIBRE — la ou
+//	  l'objet repose apres sa chute. Mesure : 31 / 17 / 4 lachers deplaces.
+//
+// UN ARTEFACT 14 ET UN 15 DU MEME MATCH PUBLIENT DONC LES MEMES CHAMPS AVEC DES VALEURS ET DES
+// INTERVALLES DIFFERENTS — exactement le cas qu'un client ne peut pas distinguer sans la version,
+// et la reprise du backfill se fait par `SchemaVersion`.
+//
+// CE QUI N'EST PAS PUBLIE, ET C'EST LA MOITIE DU RESULTAT : LA PISTE ELLE-MEME. Le controle 3 du
+// plan, ecrit AVANT la mesure, exigeait que >= 90 % des vies libres naissent a moins de 1,5 m
+// d'un `flag_spawn` ou du porteur qui vient de finir ; la mesure rend 149/197 = 75,6 %. Le temoin
+// tient largement (armes ordinaires soumises a la MEME regle : 12,8 %, seuil <= 20 %), donc la
+// piste discrimine — d'un facteur six — mais un quart des vies reste inexplique. `flagObjects`
+// n'est donc pas publie. LES DEUX CORRECTIONS CI-DESSUS, ELLES, NE TOUCHENT QUE LES VIES NEES AUX
+// PIEDS D'UN PORTEUR : la sous-population que ce meme controle VALIDE. Une vie nee a un socle est
+// explicitement ecartee, une vie nee ailleurs ne passe pas la distance au porteur.
+//
+// CE QUE LA MESURE N'A PAS TRANCHE : la cause des 48 vies inexpliquees. Le diagnostic ecarte la
+// re-creation sur place (3 cas sur 48) ; le registre des reports porte la condition de reprise.
+//
+// CHRONIQUE — v14 (2026-08-18, plan `.ai/V7.5/replay2d/PLAN_OBJECTIFS_VIVANTS_2E_LECTURE.md`,
+// phase 1 item 1.3). Le document publie `flagCarries` — LA VIE DE CHAQUE DRAPEAU sur toute la
+// partie, en intervalles d'etat — et `coverage.flagCarries`, ses denominateurs. Le champ est
+// optionnel, mais la version monte : le drapeau vivant cote client N'EXISTE que si l'artefact le
+// porte, et la reprise du backfill se fait par SchemaVersion — un artefact v13 doit se voir
+// comme « a re-cuire », pas comme a jour.
+//
+// LE NUMERO SAUTE DE 11 A 14 POUR CE CALQUE, ET C'EST UNE TRACE DE COORDINATION : la mesure
+// (items 1.1 et 1.2) etait prete au schema 12, et la publication a ete REPORTEE parce qu'une
+// autre session faisait entrer 12 (`scoreTimeline`) et 13 (`Point.p`) dans la meme branche. Deux
+// montees de version concurrentes se seraient marchees dessus.
+//
+// D'OU VIENT CE QUI EST PUBLIE, ET DE QUOI C'EST FAIT :
+//
+//	les BORNES        des evenements de statistique NOMMES du statborg, dates a la milliseconde
+//	                  (`flag_grabs`, `flag_steals`, `flag_captures`, `flag_returns`) plus le fil
+//	                  des morts du film. Aucune estimation, aucune fenetre de tolerance.
+//	le PORTEUR        le slot statborg resolu en xuid par le pont par INSTANTS DE MORT
+//	                  (`objectives.SlotIdentityResolved`) — le film seul, aucune base.
+//	la POSITION       la piste PUBLIEE du porteur a l'instant considere : le drapeau porte EST
+//	                  a la position de son porteur. Rien de l'objet n'est decode.
+//	le MODE           trois signaux du film qui s'accordent (`objectives.FlagFilmSignals`).
+//	le DRAPEAU        le socle `flag_spawn` de la carte, du catalogue versionne d'objectifs,
+//	                  joint par `map_id` — jamais par le module ni par le nom public (les deux
+//	                  mentent, cf. les decouvertes du plan).
+//
+// CE QUE LA MESURE A REFUSE DE PUBLIER, ET C'EST LA MOITIE DU RESULTAT :
+//
+//	Le CRANE d'Oddball. Le marqueur de portage du drapeau est TOTALEMENT ABSENT du film Oddball
+//	mesure (0 porteur sur 26 images-cles), le statborg ne replique aucun compteur de crane, et la
+//	signature structurelle seule laisse 195 motifs candidats. Il n'y a donc ni canal ni oracle :
+//	rien n'est publie, et rien n'est devine.
+//
+//	L'OBJET LUI-MEME. Le marqueur `0x00010005` DIT qu'un joueur porte quelque chose ; il ne le
+//	NOMME pas (0 suffixe d'identifiant `weap` sur 83 occurrences). Il sert donc de CONTROLE de ce
+//	que les evenements nommes affirment — jamais de source. Le compte des portages qu'il confirme
+//	est publie dans la couverture, avec son denominateur.
+//
+//	LE CANAL DES ARMES TENUES des paquets delta, mesure et REFUTE (0 occurrence du marqueur sur
+//	68 284 lectures) : le cache qui le portait a ete retire du decodeur.
+//
+//	LE RETOUR AUTOMATIQUE d'un drapeau reste au sol. Cherche sur les trois films par l'ecart
+//	entre une fin de portage sans reprise et la prise suivante : de 1,3 s a 35,8 s entre p10 et
+//	p90 SUR LE MEME FILM, maximum a 111,6 s. Aucune minuterie ne se deduit de cette dispersion,
+//	et une minuterie posee la-dessus renverrait a leur base des drapeaux qui sont encore au sol.
+//
+// Ils vivent dans leur propre fichier pour la meme raison que `document_ground_weapons.go` : la
+// FORME publiee ici, la REGLE qui la remplit dans `flag_carries.go`, le CABLAGE dans
+// `build_objectives_live.go`.
+
+// FlagCarry est LA VIE D'UN DRAPEAU sur toute la partie : une suite d'intervalles d'etat.
+//
+// UN DRAPEAU, PAS UN PORTAGE. Le regroupement est par OBJET : en CTF il y a deux drapeaux, donc
+// au plus deux entrees. Publier une entree par portage aurait oblige le client a reconstituer
+// lui-meme la continuite entre « lache ici » et « repris la ».
+type FlagCarry struct {
+	// Team est l'equipe PROPRIETAIRE du drapeau, telle que le fichier de carte la donne sur le
+	// socle `flag_spawn` ([TeamNeutral] = inconnue : carte absente du catalogue d'objectifs —
+	// 72 cartes couvertes sur la centaine jouee).
+	Team int `json:"team"`
+	// Spans est la vie du drapeau, en intervalles tries par T0, CONTIGUS des lors que le socle de
+	// la carte est connu. Carte hors du catalogue d objectifs : les etats `home` sont omis (leur
+	// position serait inventee) et la suite peut donc porter des trous.
+	Spans []FlagSpan `json:"spans"`
+}
+
+// Les QUATRE etats d'un drapeau. Trois disent OU il est ; le quatrieme dit ce qu'on ne sait pas.
+const (
+	// FlagStateCarried : un joueur le porte, et un FAIT DATE a mis fin a ce portage (capture,
+	// mort du porteur, nouvelle prise, `flag_carriers_killed` sans ambiguite). XUID est
+	// renseigne.
+	FlagStateCarried = "carried"
+	// FlagStateCarriedOpen : un joueur l'a pris, et RIEN dans le film ne dit qu'il l'a lache.
+	// L'intervalle court alors jusqu'a la fin de l'axe de temps, et c'est une BORNE HAUTE, pas
+	// une mesure.
+	//
+	// POURQUOI CET ETAT EXISTE, ET POURQUOI IL NE S'APPELLE PAS `carried`. Le LACHER VOLONTAIRE
+	// n'est date par aucune chaine (cf. flag_carries.go) : un portage qui en contient un est
+	// trop long, et rien dans sa propre chaine ne le dirait. La mesure le CHIFFRE — le controle
+	// du marqueur confirme 37/37 des portages FERMES et 0/5 des portages ouverts, sur les trois
+	// films CTF du corpus. Les confondre publierait le doute sous le meme nom que la certitude ;
+	// le client peut les dessiner differemment, ou taire les seconds.
+	FlagStateCarriedOpen = "carried_open"
+	// FlagStateDropped : il est au sol, a l'endroit ou son dernier porteur l'a laisse. L'etat
+	// court jusqu'a sa reprise, un `flag_returns` ou la fin du match — jamais une minuterie de
+	// retour automatique, qui ne se deduit d'aucune mesure (cf. l'en-tete de ce fichier).
+	FlagStateDropped = "dropped"
+	// FlagStateHome : il est a sa base, le socle `flag_spawn` du catalogue de carte.
+	FlagStateHome = "home"
+)
+
+// FlagReturnZone est LA REGLE DE RETOUR du drapeau, telle que le manifeste du titre la donne
+// (schema 35). Elle ne decrit PAS ce match-ci : elle decrit le MODE, et c'est pour cela qu'elle
+// est publiee une fois et non par lacher.
+//
+// LE MODELE, ET D'OU IL VIENT. Le jeu remplit une jauge de retour au taux `1/reset + H(n)/solo`,
+// ou `n` est le nombre de defenseurs dans la zone et `H` la SERIE HARMONIQUE — son propre script
+// nomme la fonction `CalculateReturnRateHarmonic`. Deux defenseurs valent donc 1 + 1/2, trois
+// 1 + 1/2 + 1/3 : le rendement decroit, il n'est jamais lineaire.
+//
+// CE QUE LE CLIENT EN FAIT, ET POURQUOI CE N'EST PAS CALCULE ICI. Le modele donne la FORME de la
+// jauge ; ses BORNES viennent de l'observation (le lacher, puis le retour date). Mais compter les
+// defenseurs exige de savoir a quelle equipe appartient chaque joueur — et l'equipe N'EST PAS
+// DANS LE FILM (cf. Track.Team). Le constructeur du rejeu est hors ligne et n'ouvre aucune base ;
+// le client, lui, a deja joint le tableau de bord pour colorer les camps. C'est donc lui qui
+// compte, et cette table est ce qu'il lui faut pour le faire.
+// LA CONTESTATION N'EN FAIT PAS PARTIE, ET C'EST UNE DECISION MESUREE. Le jeu decrit un etat
+// `Contested` — un ENNEMI du proprietaire dans la zone bloque le retour — puis un
+// `ContestedRefilling` ou la jauge repart en arriere. Trois faits l'ont ecarte : l'utilisateur ne
+// l'a jamais observe en jeu ; ni le reglage qui l'active ni son taux ne sont lisibles dans le
+// script (constantes dedupliquees) ; et la mesure explique le silence — sur 72 lachers ou un
+// ennemi entre dans la zone, 56 finissent par une REPRISE, sejour moyen 1,65 s. A 1,3 m d'un
+// drapeau tombe, un ennemi ne conteste pas : il RAMASSE. La seule interruption visible est la
+// reprise, et le calque la rend deja — un nouveau lacher ouvre une jauge NEUVE.
+type FlagReturnZone struct {
+	// RadiusM est le rayon de la zone de RETOUR, dans les MEMES coordonnees que `FlagSpan.X/Y`.
+	RadiusM float32 `json:"radiusM"`
+	// ResetSeconds est la duree qu'un drapeau au sol met a rentrer TOUT SEUL.
+	ResetSeconds float32 `json:"resetSeconds"`
+	// SoloSeconds est la duree qu'il met avec UN defenseur dans la zone.
+	SoloSeconds float32 `json:"soloSeconds"`
+}
+
+// FlagSpan est UN intervalle d'etat du drapeau.
+type FlagSpan struct {
+	// State vaut [FlagStateCarried], [FlagStateCarriedOpen], [FlagStateDropped] ou
+	// [FlagStateHome].
+	State string `json:"state"`
+	// T0 / T1 bornent l'intervalle en frames (meme axe que Point.T). T1 est INCLUS.
+	T0 int `json:"t0"`
+	T1 int `json:"t1"`
+	// XUID est le PORTEUR, en decimal — renseigne pour les deux etats portes, `null` pour les
+	// deux autres. POINTEUR ET SANS `omitempty` : le champ doit se VOIR a `null`, sinon « pas de
+	// porteur » et « artefact plus ancien » se confondent (meme regle que `PadPickup.XUID`).
+	XUID *string `json:"xuid"`
+	// X / Y : la position du drapeau en coordonnees monde (memes axes que Point.X/Y).
+	//
+	// POUR UN ETAT PORTE, C'EST LE POINT DE PRISE, ET LA SUITE SE LIT SUR LA PISTE DU PORTEUR.
+	// Republier la trajectoire du drapeau serait republier celle de son porteur : le client
+	// joint par XUID et suit la piste deja publiee. Pour `dropped`, c'est le dernier point connu
+	// du porteur ; pour `home`, le socle `flag_spawn`.
+	X float32 `json:"x"`
+	Y float32 `json:"y"`
+	// ReturnProgress est LA JAUGE DE RETOUR pendant cet intervalle : l'escalier de remplissage
+	// que le film ECRIT (`ti=13 i1` tag 3), sur l'echelle du jeu 0 = vide, 1 = pleine — la MEME
+	// que `ZoneSpan.Gauge`, et le meme type publie.
+	//
+	// SEUL UN [FlagStateDropped] PEUT EN PORTER : la jauge ne se remplit que pour un drapeau AU
+	// SOL. Cle ABSENTE quand le film n'emet rien sur cet intervalle — un tableau vide se lirait
+	// « la jauge est restee a zero », ce qui est une affirmation, pas un silence.
+	//
+	// CE N'EST PAS UN COMPTE A REBOURS, ET LE CLIENT NE DOIT PAS EN FAIRE UN : le taux n'est pas
+	// constant (serie harmonique du nombre de defenseurs) et la jauge SE VIDE quand plus personne
+	// n'est dans la zone. L'escalier TIENT la derniere valeur jusqu'au point suivant, comme celui
+	// des zones. Preuve, appariement et pieges : flag_return_gauge.go.
+	ReturnProgress []GaugePoint `json:"returnProgress,omitempty"`
+}
+
+// FlagCarriesCoverage porte les denominateurs du calque. Sans eux, « 12 portages » se lirait
+// comme une exhaustivite, et un film CTF sans aucun portage publie serait indistinguable d'un
+// film qui n'est pas du CTF.
+//
+// ELLE EST PUBLIEE MEME QUAND AUCUN DRAPEAU NE L'EST, pour la meme raison que `placements` et
+// `groundWeapons` : un film d'un autre mode, un film CTF ou personne ne capture et un film dont
+// le pont n'a nomme personne rendent tous trois zero portage — seuls ces compteurs les
+// distinguent. Son ABSENCE dit encore autre chose : l'appelant n'a rien fourni a lire.
+type FlagCarriesCoverage struct {
+	// FlagFilm dit si le film a ete RECONNU comme une partie de CTF par l'accord des trois
+	// signaux (cf. `objectives.FlagFilmSignals`). Faux : tout le reste vaut zero, et c'est
+	// le cas nominal de tous les autres modes.
+	FlagFilm bool `json:"flagFilm"`
+	// Bursts / Captures / Steals : les trois signaux qui ont fonde ce verdict, publies pour
+	// qu'il se verifie.
+	Bursts   int `json:"bursts"`
+	Captures int `json:"captures"`
+	Steals   int `json:"steals"`
+	// Openings est le nombre de PRISES de l'oracle (`flag_grabs` + `flag_steals`) une fois les
+	// emissions jumelles fusionnees : le denominateur de tout ce qui suit.
+	Openings int `json:"openings"`
+	// Carries est le nombre de portages effectivement publies.
+	Carries int `json:"carries"`
+	// Closed / Open partagent ces portages en deux populations qui ne valent PAS la meme chose :
+	// ceux qu'un fait date a fermes, et ceux que rien ne ferme — publies en
+	// [FlagStateCarriedOpen], borne haute a la fin de l'axe.
+	Closed int `json:"closed"`
+	Open   int `json:"open"`
+	// NoBridge : prises dont le slot statborg n'a pas ete resolu en xuid. Le pont se tait
+	// plutot que d'attribuer le drapeau au mauvais joueur.
+	NoBridge int `json:"noBridge"`
+	// NoTrack : le porteur est nomme, mais aucune trajectoire publiee ne couvre l'instant de la
+	// prise — le drapeau n'aurait pas de position a dessiner.
+	NoTrack int `json:"noTrack"`
+	// OutOfWindow : la prise tombe hors de l'axe de temps publie (fins de partie que le film
+	// prolonge au-dela de la derniere position rendue).
+	OutOfWindow int `json:"outOfWindow"`
+	// AmbiguousSlot : nombre de SLOTS dont les vies ANONYMES ont ete refusees au repli par le
+	// pont, parce que leurs vies nommees ne s'accordent pas avec lui (deux occupants nommes, ou
+	// un occupant nomme qui n'est pas celui que le pont designe) — cf. flag_carrier_tracks.go.
+	//
+	// CE N'EST PAS UNE PARTITION DES PRISES, et il n'entre donc pas dans `Balanced()` : il compte
+	// de la MATIERE QUE LE CALQUE RENONCE A LIRE, en amont de toute prise. Un slot compte ici
+	// meme si aucune prise ne tombe dans sa fenetre anonyme — c'est le denominateur du risque,
+	// pas son realise. Publie parce que sans lui, un portage manquant faute d'identite
+	// disponible serait indistinguable d'un portage qui n'a jamais eu lieu.
+	AmbiguousSlot int `json:"ambiguousSlot"`
+	// MarkerObserved / MarkerConfirmed : le CONTROLE INDEPENDANT, SUR LES SEULS PORTAGES FERMES.
+	// MarkerObserved compte ceux qui contiennent au moins une image-cle (le denominateur : sans
+	// image-cle, le marqueur ne peut rien confirmer) ; MarkerConfirmed ceux dont au moins une
+	// image-cle porte le marqueur sur le slot du porteur.
+	//
+	// POURQUOI LES FERMES SEULS. Un portage ouvert est trop long PAR CONSTRUCTION (le lacher
+	// volontaire n'est date par rien) : ses images-cles tardives tombent apres que le drapeau a
+	// ete lache, et aucune ne porte le marqueur. Les melanger ferait baisser un taux qui mesure
+	// la justesse des bornes — la mesure du 2026-08-18 le chiffre exactement : 37/37 sur les
+	// fermes, 37/42 en melangeant.
+	//
+	// LES DEUX CHAINES SONT DISJOINTES : les bornes viennent des compteurs de statistique du
+	// statborg, le marqueur d'une suite de bits du record de bipede des images-cles. Leur accord
+	// est donc une preuve, pas une tautologie.
+	MarkerObserved  int `json:"markerObserved"`
+	MarkerConfirmed int `json:"markerConfirmed"`
+	// OpenObserved / OpenConfirmed : les MEMES deux comptes sur les portages OUVERTS. Ils sont
+	// publies pour que rien ne soit tu : le taux « tous portages confondus » reste calculable,
+	// et l'ecart entre les deux populations se voit.
+	OpenObserved  int `json:"openObserved"`
+	OpenConfirmed int `json:"openConfirmed"`
+	// Overlaps compte les prises pour lesquelles UN MEME DRAPEAU est tenu par plus d'un portage
+	// a la fois. Un drapeau n'a qu'un porteur : le recouvrement est une INCOHERENCE, et elle est
+	// publiee plutot que tue. Le seuil portait sur « plus de deux portages, tous drapeaux
+	// confondus » jusqu'au 2026-09-07 — il ratait le cas nominal (revue DRAPEAUX-R1, C3).
+	Overlaps int `json:"overlaps"`
+	// ClosedOverlaps compte les memes depassements EN NE REGARDANT QUE LES PORTAGES FERMES.
+	//
+	// C'EST LUI QUI JUGE, ET LA DISTINCTION EST LE RESULTAT D'UNE MESURE. Le plan attendait que
+	// le pont par instants de mort leve les depassements de `64e8adfa` ; il ne les a pas leves
+	// (12 avec la regle de production, sur un film ou plus AUCUNE prise n'est sans pont). La
+	// cause n'etait donc pas l'identite mais la DUREE des portages que rien ne ferme. Un
+	// `Overlaps` non nul avec `ClosedOverlaps` a zero est donc explique — c'est l'incertitude
+	// deja publiee comme telle ; un `ClosedOverlaps` non nul serait une contradiction entre
+	// faits dates, et il se lit ici.
+	ClosedOverlaps int `json:"closedOverlaps"`
+	// AmbiguousCarrierKills : evenements `flag_carriers_killed` qu'aucun portage ouvert UNIQUE
+	// ne permet de rattacher a une victime. Ils ne ferment alors aucun portage.
+	AmbiguousCarrierKills int `json:"ambiguousCarrierKills"`
+	// AmbiguousReturns : evenements `flag_returns` survenus alors que zero ou plusieurs drapeaux
+	// etaient au sol. Ils ne renvoient alors aucun drapeau a sa base.
+	AmbiguousReturns int `json:"ambiguousReturns"`
+	// HomeByObject compte les drapeaux ramenes chez eux par la RENTREE DE L'OBJET — une vie libre
+	// nee a leur socle alors qu'ils etaient au sol (cf. `flagObjectHomecomings`).
+	//
+	// C'EST LE COMPTE DES RETOURS AUTOMATIQUES, ceux que personne ne provoque et qu'aucun
+	// compteur du statborg ne credite. Avant le schema 35 ils n'existaient pas et les laches
+	// couraient jusqu'a la reprise ou la fin de l'axe — des etats `dropped` de plus de deux
+	// minutes, qui n'ont jamais existe a l'ecran. Un retour DEJA credite ne s'y compte pas : la
+	// rentree ne fait alors rien.
+	HomeByObject int `json:"homeByObject"`
+	// AmbiguousHomecomings : rentrees ecartees parce qu'un AUTRE drapeau gisait au point de
+	// naissance — rien ne dit lequel des deux vient d'etre recree.
+	AmbiguousHomecomings int `json:"ambiguousHomecomings"`
+	// NeutralFlag dit que la partie a ete reconnue « DRAPEAU NEUTRE » : un seul drapeau, au socle
+	// du centre, que les deux camps se disputent. Le mode n'est PAS dans le film — c'est l'OBJET
+	// qui tranche, par le socle ou il renait (cf. flag_neutral.go).
+	NeutralFlag bool `json:"neutralFlag"`
+	// NeutralBirths / TeamBirths sont les deux comptes qui FONDENT ce verdict : les naissances de
+	// l'objet au socle neutre, et celles aux socles d'equipe. Publies pour que le verdict se
+	// verifie au lieu de se croire.
+	NeutralBirths int `json:"neutralBirths"`
+	TeamBirths    int `json:"teamBirths"`
+	// Spawns est le nombre de socles `flag_spawn` connus de la carte. Zero : la carte est hors
+	// du catalogue d'objectifs, tous les portages tombent dans UN drapeau d'equipe -1.
+	Spawns int `json:"spawns"`
+	// ObjectLives est le nombre de VIES LIBRES de l'objet drapeau LUES sur ce film (schema 15).
+	// C'est le DENOMINATEUR des deux compteurs suivants : sans lui, « 2 portages fermes » ne se
+	// juge pas. La PISTE elle-meme n'est pas publiee — son controle de provenance l'a refusee
+	// (149/197 = 75,6 % contre 90 % exiges) ; seules les vies nees AUX PIEDS D'UN PORTEUR, la
+	// sous-population que ce controle valide, servent aux corrections ci-dessous.
+	ObjectLives int `json:"objectLives"`
+	// ClosedByObject compte les portages que RIEN NE FERMAIT et qu'une vie libre a fermes — le
+	// LACHER VOLONTAIRE, enfin date.
+	//
+	// C'EST LA MESURE DU LOT, ET ELLE SE LIT CONTRE `Open` : ces portages-la etaient publies
+	// [FlagStateCarriedOpen], c'est-a-dire trop longs par construction. Chacun qui bascule est un
+	// drapeau qu'on cesse de dessiner dans une main qui ne le tient plus.
+	ClosedByObject int `json:"closedByObject"`
+	// ClosedByHandoff compte les portages qu'une prise d'un AUTRE joueur du MEME drapeau a
+	// fermes — le PASSAGE DE MAIN EN MAIN, que rien ne datait avant le lot 6.11.
+	//
+	// LE DRAPEAU EST NOMME PAR L'EQUIPE, PAS PAR LA GEOMETRIE (cf. flag_carries_handoff.go) : en
+	// CTF on ne porte jamais son propre drapeau, donc deux coequipiers portent le meme.
+	//
+	// `omitempty` : le compteur vaut zero sur tous les films qui ne sont pas du CTF, et sur les
+	// films de CTF ou le lacher est deja date par la vie libre de l'objet. L'ecrire sans lui
+	// changerait chaque octet de chaque artefact du parc pour un champ vide.
+	ClosedByHandoff int `json:"closedByHandoff,omitempty"`
+	// CarrierTeamUnknown compte les portages dont l'EQUIPE du porteur ne nomme aucun drapeau :
+	// table `TeamOf` vide (CLI hors ligne, ouvrier sans faits) ou carte a plus de deux socles.
+	// Les regles qui passent par l'equipe se taisent sur eux, et ce compteur est leur
+	// denominateur — sans lui, un calque qu'elles traversent en silence serait indistinguable
+	// d'un calque sans passage.
+	CarrierTeamUnknown int `json:"carrierTeamUnknown,omitempty"`
+	// ClosedByReturn / ClosedByHome comptent les portages fermes parce que LEUR DRAPEAU EST
+	// RENTRE CHEZ LUI pendant qu'on le croyait porte — par le RETOUR CREDITE (`flag_returns`,
+	// nomme par l'equipe de qui le rend) et par la RENTREE DE L'OBJET (re-creation au socle).
+	//
+	// LES DEUX CHAINES SONT COMPTEES SEPAREMENT parce qu'elles n'ont pas la meme force : l'une
+	// est un fait credite a un joueur, l'autre une lecture de l'objet, assortie d'un refus
+	// d'ambiguite (cf. flag_carries_home.go). `omitempty` pour la meme raison que leurs freres.
+	ClosedByReturn int `json:"closedByReturn,omitempty"`
+	ClosedByHome   int `json:"closedByHome,omitempty"`
+	// DropsRepositioned compte les etats [FlagStateDropped] dont la position vient desormais de
+	// la piste LIBRE et non plus de la derniere position du porteur. L'ecart n'est pas
+	// cosmetique : un drapeau tombe rebondit, et le porteur meurt rarement la ou l'objet se pose.
+	DropsRepositioned int `json:"dropsRepositioned"`
+	// AssignedByPlay : prises qu AUCUN drapeau au sol ne rattachait et qui sont allees au SEUL
+	// drapeau en jeu (flag_assign.go, troisieme regle). C est une attribution PAR ELIMINATION,
+	// et elle se publie pour se verifier : sans elle, ces prises retombaient sur le socle le
+	// plus proche — celui du porteur quand l objet est tombe pres de la base adverse.
+	AssignedByPlay int `json:"assignedByPlay"`
+	// DropsWithheld : fins de portage dont l'etat [FlagStateDropped] N'A PAS ete publie, parce
+	// qu'a cet instant un AUTRE portage du meme drapeau etait encore ouvert — le drapeau passe
+	// d'une main a l'autre, il ne touche pas le sol (cf. `flagTenuParUnAutre`).
+	//
+	// C'EST LA MESURE DE L'INVARIANT DE COHERENCE, et elle vaut d'etre lue : avant lui, un
+	// portage repris se reduisait a UNE frame et le drapeau se dessinait AU SOL pendant qu'un
+	// joueur courait avec. `bcb6d393` : 11 fins retenues sur 16 portages, et la duree publiee
+	// de deux porteurs remontait de 441 a 666 et de 96 a 346 frames.
+	DropsWithheld int `json:"dropsWithheld"`
+	// OwnFlagRefused : attributions REFUSEES parce qu'elles aboutissaient au drapeau de
+	// l'equipe du porteur. En CTF on renvoie son drapeau, on ne le porte pas : l'invariant
+	// prime sur la geometrie, et son compteur dit combien de fois le repli s'est trompe.
+	OwnFlagRefused int `json:"ownFlagRefused"`
+	// Unresolved : portages qu'AUCUN drapeau ne peut recevoir une fois l'invariant applique —
+	// publies sur aucun drapeau, plutot que sur un drapeau INVENTE. Ils restent comptes dans
+	// `carries` : le joueur a bel et bien porte quelque chose, c'est LEQUEL qui n'est pas su.
+	Unresolved int `json:"unresolved"`
+	// LES CINQ DENOMINATEURS DE LA JAUGE DE RETOUR (schema 63, cf. flag_return_gauge.go). Ils
+	// separent les QUATRE silences que `returnProgress` absent ne distingue pas : le canal n'a
+	// pas ete lu, il a ete lu et ne porte aucun slot de jauge, il en porte mais aucun ne
+	// correle a un drapeau, ou il correle et l'intervalle n'a simplement rien recu.
+	//
+	// GaugeScanned dit que `ti=13` A ETE BALAYE pour ce film. Faux : les quatre suivants valent
+	// zero, et cela ne dit RIEN du film (c'est le cas nominal hors CTF).
+	GaugeScanned bool `json:"gaugeScanned"`
+	// GaugeSlots / GaugeReads : les slots candidats retenus (variant scalaire au tag 3) et le
+	// nombre total d'echantillons qu'ils portent.
+	GaugeSlots int `json:"gaugeSlots"`
+	GaugeReads int `json:"gaugeReads"`
+	// GaugePaired est le nombre de DRAPEAUX auxquels un slot a ete apparie. Zero avec des slots
+	// non nuls est le cas qu'il faut voir arriver : le canal parle, et aucune de ses series ne
+	// suit les lachers publies.
+	GaugePaired int `json:"gaugePaired"`
+	// GaugeSpans / GaugePoints : les intervalles `dropped` qui portent une serie, et le nombre
+	// de points publies apres allegement.
+	GaugeSpans  int `json:"gaugeSpans"`
+	GaugePoints int `json:"gaugePoints"`
+}
+
+// Balanced verifie les TROIS invariants du calque : toute prise de l'oracle est soit publiee, soit
+// rejetee sous une cause NOMMEE ; tout portage publie est soit ferme, soit ouvert ; et un portage
+// ferme ne se compte que dans UN fermoir. Une somme fausse signale une fuite — un chemin de rejet
+// non compte, une population qui echappe au partage, ou un portage compte deux fois.
+//
+// LE TROISIEME INVARIANT EST CELUI DE LA REVUE 6.R (constat C1) : les quatre chaines de fermeture
+// s'appliquent en suite, et la plus precoce reprend le portage a la precedente. Tant que chacune
+// incrementait son propre compteur, un portage ferme par la rentree PUIS par un lacher plus
+// precoce peuplait `closedByHome` ET `closedByObject`. L'inegalite est LARGE, et non une egalite :
+// un portage ferme par la capture, la mort, la reprise du meme slot ou la chute creditee ne
+// peuple aucun de ces quatre compteurs.
+func (c FlagCarriesCoverage) Balanced() bool {
+	return c.Carries+c.NoBridge+c.NoTrack+c.OutOfWindow == c.Openings &&
+		c.Closed+c.Open == c.Carries &&
+		c.ClosedByHandoff+c.ClosedByReturn+c.ClosedByHome+c.ClosedByObject <= c.Closed
+}

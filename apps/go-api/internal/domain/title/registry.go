@@ -132,6 +132,58 @@ const (
 	// (games/adapter.go) qui gouverne le chemin de données ; celle-ci gouverne
 	// l'AFFICHAGE (useCapability). Cf. PLAN_V72_OBJECTIVE_STATS.md.
 	CapObjectiveStats Capability = "objective_stats"
+
+	// CapReplay — le titre expose le REJEU 2D d'un match (vue du dessus : trame de
+	// positions, kill-feed recalé, calques d'objectif), servi depuis un artefact
+	// pré-construit. Halo Infinite : oui (décodeur de film + `replaybuild`). Halo 5 :
+	// NON déclarée (autre format de film, aucun décodeur, donc aucun artefact).
+	//
+	// Elle gouverne l'AFFICHAGE et l'accès : les quatre routes `/replay*` sont montées
+	// sous `middleware.RequireCapability` (503 `capability_unavailable` sans elle), la
+	// page de rejeu, le filtre « Avec rejeu / Sans rejeu » de l'Explorer et les colonnes
+	// « Rejeu » des tableaux de matchs sont masqués — plus de lien mort ni de colonne
+	// toujours vide. Pendant title-level de la capability data-level
+	// `film.replay_artifact` (games/adapter.go) qui gouverne, elle, la PRODUCTION de
+	// l'artefact — même partage des rôles que `match.objective.stats` (données) et
+	// `objective_stats` (UI). Décision utilisateur du 2026-09-05, registre
+	// `.ai/AUDIT_V75_DEPUIS_V7.3.0_2026-09-05.md` (D1, L2, L5).
+	CapReplay Capability = "replay"
+	// CapWeaponRange — le titre expose la PORTÉE ET LE DÉNIVELÉ MESURÉS des engagements,
+	// par arme et des deux côtés (« où je frague », « où je meurs »). Absente ⇒ le front
+	// masque la section « Portée par arme » de la Synthèse (useCapability), et le bloc
+	// `weapon_range` de la réponse est de toute façon omis.
+	//
+	// HALO INFINITE : OUI. La mesure exige DEUX données du film décodé, et il les a toutes
+	// les deux — les positions monde par kill (`film.kill_positions`) ET la source du dégât
+	// traduisible en arme (`film.kill_source` + son classificateur).
+	//
+	// HALO 5 : NON, ET LA RAISON N'EST PAS CELLE QU'ON CROIT. Halo 5 peuple bien
+	// `kill_positions`, nativement, depuis les events de sa timeline
+	// (games/halo_5/ingest/positions.go, `MapKillPositions`) : la moitié spatiale existe.
+	// Ce qui manque est l'ARME : ses lignes `match_kill_events` n'ont pas de `source_tag`
+	// (le producteur live ne l'écrit pas — cf. persist/kill_events_credit.go), et il ne
+	// déclare pas `film.kill_source`, donc aucun classificateur ne lui est câblé. La
+	// jointure mesurée exige `source_tag IS NOT NULL` : elle rendrait zéro ligne. Déclarer
+	// la capability y ouvrirait une section vide, ce qui est pire que pas de section.
+	// Rouvrir SI la voie « arme du kill » de Halo 5 (weapon_kills natif) est un jour reliée
+	// à ses positions — c'est un autre chemin de données, pas un simple câblage.
+	//
+	// Pendant PRODUIT des capabilities DONNÉE `film.kill_positions` + `film.kill_source`
+	// (games/adapter.go) : celles-là gouvernent la production, celle-ci l'affichage.
+	CapWeaponRange Capability = "weapon_range"
+
+	// CapExpectedWinProb — le titre expose la PROBABILITÉ DE VICTOIRE ATTENDUE
+	// pré-match (prédiction TrueSkill 2, champ expected_win_prob). Absente ⇒ le
+	// front masque la carte « Prob. victoire » du détail de match, la colonne
+	// « Prob. vic. » des tableaux (Progression, Synergies), et le champ reste nil
+	// dans les réponses API (dégradation par construction).
+	//
+	// REMISÉE le 2026-09-07 — NON déclarée par aucun titre. La prédiction est
+	// jugée pas assez fiable pour être exposée en production (écart modèle sur
+	// certaines compositions / modes). Les données restent calculées et stockées
+	// (match_skill_rank.expected_win_prob) pour analyse interne. Reprise : accorder
+	// la capability au titre concerné quand le modèle est recalibré.
+	CapExpectedWinProb Capability = "expected_win_prob"
 )
 
 // TitleDescriptor décrit un titre supporté avec ses métadonnées.
@@ -311,6 +363,22 @@ func NewRegistry() *Registry {
 			// Stats objectifs par match (CTF/Zones/Oddball) — section scoreboard +
 			// KPI Synthèse/Escouade (PLAN_V72_OBJECTIVE_STATS).
 			CapObjectiveStats,
+			// Rejeu 2D : routes /replay*, page de rejeu, filtre et colonnes « Rejeu »
+			// des tableaux de matchs. Pendant title-level de `film.replay_artifact`
+			// (production de l'artefact). Halo 5 ne la déclare pas — cf. son title.toml.
+			CapReplay,
+			// Portée et dénivelé mesurés des engagements, par arme et des deux côtés —
+			// section « Portée par arme » de la Synthèse (PLAN_DUELS_PORTEE_2026-09-06).
+			CapWeaponRange,
+			// Précision par arme (CapWeaponAccuracy) : REMISÉE le 2026-09-01 — NON déclarée
+			// par Infinite. Elle avait été ajoutée au Lot 3 pour allumer les charts a/c depuis
+			// un numérateur reconstruit du film, mais ce numérateur s'est révélé NON FIABLE au
+			// recalage (armes automatiques à 0,9-3,3 % vs ~40 % API ;
+			// RECALAGE_WEAPON_ACCURACY_FILM_2026-09-01, commit 945c9fdb7). Retirée ⇒ le front
+			// useCapability('weapon_accuracy') repasse à false et masque les graphes pour
+			// Infinite. La capability reste accordée par Halo 5 (natif, title.toml) ; la
+			// précision GLOBALE d'Infinite reste servie par l'API. Reprise : piste compteur
+			// ECS (cf. .ai/V7.5/REGISTRE_REPORTS.md).
 		},
 		IsDefault:        true,
 		XboxTitleID:      "2043073184",
@@ -524,6 +592,16 @@ func (p *PathResolver) GlobalXuidAliasesDBPath() string {
 	return filepath.Join(p.repoRoot, "data", "global", "xbox_aliases.duckdb")
 }
 
+// PlayerFriendsPath retourne le chemin du fichier des listes d'amis par profil
+// joueur (clé : xuid). Global et NON per-titre, comme les aliases xbox : un ami
+// est une personne, pas une entrée de jeu — la même liste vaut pour tous les
+// titres du joueur.
+//
+// Ex: data/global/player_friends.json
+func (p *PathResolver) PlayerFriendsPath() string {
+	return filepath.Join(p.repoRoot, "data", "global", "player_friends.json")
+}
+
 // GlobalMonitoringDB retourne le chemin de la base monitoring globale
 // (persistance du dashboard admin : détections avec cycle de vie, historique
 // des crons, runs data-health). Globale et NON per-titre : l'observabilité du
@@ -576,6 +654,26 @@ func (p *PathResolver) ActionJournalPath() string {
 // Ex: data/global/admin_state/disk_watch_state.json
 func (p *PathResolver) DiskWatchStatePath() string {
 	return filepath.Join(p.AdminStateDir(), "disk_watch_state.json")
+}
+
+// BackfillKillSourceStatePath retourne le chemin du FICHIER D ETAT de la passe
+// `levelup backfill-killsource` (lot 5.24.3) — le fichier que `--status` lit dans
+// un second terminal pendant que la passe tourne.
+//
+// IL EST ICI ET PAS DANS UNE BASE, et c'est le point : la passe TIENT le shared en
+// ecriture pendant des heures (un seul writer, ADR 0013), donc un etat ecrit en
+// base ne serait lisible par personne d'autre. Un JSON reecrit apres chaque film
+// se lit par n'importe qui, sans ouvrir quoi que ce soit.
+//
+// IL N'EST PAS UNE SOURCE DE VERITE POUR LA REPRISE : c'est `decoder_rev` en base
+// qui decide ce qui reste a faire. Le supprimer ne perd qu'un affichage.
+//
+// Per-titre : deux titres se backfillent separement et n'ont aucune raison
+// d'ecraser l'etat l'un de l'autre.
+//
+// Ex: data/global/admin_state/backfill_killsource_halo_infinite.json
+func (p *PathResolver) BackfillKillSourceStatePath(titleSlug string) string {
+	return filepath.Join(p.AdminStateDir(), "backfill_killsource_"+titleSlug+".json")
 }
 
 // MetadataDBPath retourne le chemin de la base metadata d'un titre.
@@ -721,17 +819,54 @@ func (p *PathResolver) JobsCachePath() string {
 // sa forme courte donne donc le MÊME chemin — c'est ce qui rend l'artefact atteignable
 // depuis une route de l'application.
 func (p *PathResolver) ReplayArtifactPath(titleSlug, matchID string) string {
-	return filepath.Join(p.repoRoot, "data", "cache", "replays", titleSlug,
-		FilmShortMatchID(matchID)+".json")
+	return filepath.Join(p.ReplayArtifactsDir(titleSlug), FilmShortMatchID(matchID)+".json")
+}
+
+// ReplayArtifactsDir retourne le dossier des artefacts de rejeu 2D d'un titre (un
+// fichier {short8}.json par match). Sert la purge récurrente (replay_purge_cron) — qui
+// supprime des ARTEFACTS, jamais des films.
+func (p *PathResolver) ReplayArtifactsDir(titleSlug string) string {
+	return filepath.Join(p.repoRoot, "data", "cache", "replays", titleSlug)
 }
 
 // MapQuantBoundsPath retourne le chemin du catalogue des bornes de quantification par
-// carte (AABB des BSP extraites des modules du jeu, cf. filmdec.MapQuantCatalog). Donnée
+// carte (AABB des BSP extraites des modules du jeu, cf. profile.MapQuantCatalog). Donnée
 // de RÉFÉRENCE versionnée — pas un cache : elle ne se régénère qu'avec les fichiers du
 // jeu installé (cmd/mapquant-build).
 // Ex: data/titles/halo_infinite/reference/map_quant_bounds.json
 func (p *PathResolver) MapQuantBoundsPath(titleSlug string) string {
 	return filepath.Join(p.TitleDataDir(titleSlug), "reference", "map_quant_bounds.json")
+}
+
+// FilmProfilesPath retourne le chemin du CATALOGUE DES PROFILS DE FILM d'un titre : ce que
+// le dépôt sait de la grammaire d'un film, indexé par les TROIS clés que le film ÉCRIT
+// (version de format `chunk_00+4`, build de la section 2, version majeure `chunk_00+0`).
+//
+// Donnée de RÉFÉRENCE versionnée, jamais écrite à l'exécution (D12 du plan décodeur,
+// ratchet archlint TestRuntimeNEcritPasLeCatalogueVersionne) : le décodeur la LIT, la
+// chaîne de fabrication (`cmd/film-profiles-build` pour la part dérivée, la main pour les
+// valeurs relues dans l'exécutable) l'ÉCRIT hors serveur, et la revue la relit.
+//
+// Elle ne duplique PAS les bornes de carte : celles-ci restent dans leur propre catalogue
+// (MapQuantBoundsPath) et le profil n'en porte que l'empreinte, pour dire de quelle
+// dérivation il est solidaire.
+// Ex: data/titles/halo_infinite/reference/film_profiles.json
+func (p *PathResolver) FilmProfilesPath(titleSlug string) string {
+	return filepath.Join(p.TitleDataDir(titleSlug), "reference", "film_profiles.json")
+}
+
+// MapFondReglagesPath retourne le chemin des RÉGLAGES DE CUISSON PAR CARTE des fonds de
+// rejeu 2D (habillage, échelle).
+//
+// POURQUOI CE FICHIER EXISTE. La chaîne de cuisson (`internal/himap`) ne porte aucune branche
+// par carte, et c'est ce qui la rend transférable. Mais le gate utilisateur du 2026-08-26 a
+// établi, images à l'appui, que le meilleur rendu n'est pas le même d'une carte à l'autre.
+// Le choix vit donc ICI, en DONNÉE, avec sa raison écrite et la date de son gate — jamais
+// dans le code. Entrée de cuisson uniquement : l'application lit le PNG figé, jamais ce
+// fichier.
+// Ex: data/titles/halo_infinite/reference/map_fond_reglages.json
+func (p *PathResolver) MapFondReglagesPath(titleSlug string) string {
+	return filepath.Join(p.TitleDataDir(titleSlug), "reference", "map_fond_reglages.json")
 }
 
 // MapObjectivesPath retourne le chemin du catalogue des objets d'objectif par carte
@@ -744,14 +879,94 @@ func (p *PathResolver) MapObjectivesPath(titleSlug string) string {
 	return filepath.Join(p.TitleDataDir(titleSlug), "reference", "map_objectives.json")
 }
 
-// MapGeometryDir retourne le répertoire des PROPS de carte (géométrie Forge : socles,
-// caisses, rampes posées dans la variante), lus par cmd/replay-build pour poser des
-// repères contextuels sur le rejeu 2D — à distinguer de la STRUCTURE, qui est le sol.
-// Donnée de RÉFÉRENCE versionnée (produite par le RE de la variante .mvar), au même
-// titre que map_structure/ et map_quant_bounds.json : ce n'est pas un cache.
-// Ex: data/titles/halo_infinite/reference/map_geometry/
-func (p *PathResolver) MapGeometryDir(titleSlug string) string {
-	return filepath.Join(p.TitleDataDir(titleSlug), "reference", "map_geometry")
+// MapPlayedPositionsPath retourne le chemin du catalogue des POSITIONS REELLEMENT JOUEES par
+// carte, decimees depuis les artefacts de rejeu par cmd/mappos-build. Donnee de REFERENCE
+// versionnee : elle fige l observation d un corpus de matchs pour que la cuisson des fonds de
+// carte reste hors ligne.
+//
+// Elle sert d ORACLE au rognage `himap.RogneAuxPositionsJouees` : une position courue prouve
+// qu il y avait du sol sous les pieds du joueur, la ou tous les autres leviers doivent le
+// deduire de la geometrie.
+// Ex: data/titles/halo_infinite/reference/map_positions_jouees.json
+func (p *PathResolver) MapPlayedPositionsPath(titleSlug string) string {
+	return filepath.Join(p.TitleDataDir(titleSlug), "reference", "map_positions_jouees.json")
+}
+
+// MapWeaponPadsPath retourne le chemin du catalogue des EMPLACEMENTS DE SOCLE par carte
+// (socles d'arme et de power-up), extrait des mêmes variantes de carte UGC (.mvar) par
+// cmd/mapopads-build. Donnée de RÉFÉRENCE versionnée — pas un cache.
+//
+// IL NE SE SERT JAMAIS SEUL : le fichier de carte POSE les socles, le mode les ALLUME
+// (Cliffhanger : 17 posés, 10 en CTF, 0 en Super Fiesta). Le calque servi au rejeu ne
+// publie donc que les emplacements qu'un socle du MATCH confirme (replay/map_weapon_pads.go).
+// Ex: data/titles/halo_infinite/reference/map_weapon_pads.json
+func (p *PathResolver) MapWeaponPadsPath(titleSlug string) string {
+	return filepath.Join(p.TitleDataDir(titleSlug), "reference", "map_weapon_pads.json")
+}
+
+// MapWeaponPadsOverlayPath retourne le chemin de l'OVERLAY NON VERSIONNÉ du catalogue des
+// emplacements de socle : les cartes que le RUNTIME a rattrapées au fetch d'un film
+// (`sync/replayartifacts/mvar_rattrapage.go`).
+//
+// POURQUOI IL EXISTE, ET POURQUOI IL N'EST PAS LE FICHIER VERSIONNÉ. Le rattrapage écrivait
+// jusqu'au 2026-09-05 dans `map_weapon_pads.json`, un fichier SUIVI PAR GIT. Deux dégâts, un
+// par environnement : en local, un commit avalait +332 lignes de données de référence sans
+// relecture ; en production, `scripts/deploy.sh` fait `git reset --hard origin/main` — chaque
+// déploiement aurait effacé tout ce que le runtime avait rattrapé, silencieusement.
+//
+// LA RÈGLE QUI EN DÉCOULE : le fichier versionné est une ENTRÉE, produite à la main par
+// `cmd/mapopads-build` et relue en revue ; l'overlay est une SORTIE de runtime, jetable et
+// reconstructible. Les deux se fusionnent À LA LECTURE (`replay.LoadMapWeaponPadsMerged`), et
+// c'est l'entrée VERSIONNÉE qui prime en cas de doublon — une carte relue en revue ne peut pas
+// être remplacée par une carte rattrapée automatiquement.
+//
+// `reference/generated/` est ignoré par git (.gitignore) : c'est ce qui rend la règle vraie et
+// pas seulement écrite.
+// Ex: data/titles/halo_infinite/reference/generated/map_weapon_pads.json
+func (p *PathResolver) MapWeaponPadsOverlayPath(titleSlug string) string {
+	return filepath.Join(p.TitleDataDir(titleSlug), "reference", "generated", "map_weapon_pads.json")
+}
+
+// MapCalloutsPath retourne le chemin du catalogue des CALLOUTS (zones nommées
+// officielles) par carte : polygones monde, tranche verticale et libellés FR/EN, extraits
+// du tag levl des modules du jeu par cmd/mapcallouts-build. Donnée de RÉFÉRENCE
+// versionnée — pas un cache : elle ne se régénère qu'avec les fichiers du jeu installé.
+// La clé d'entrée est le nom de MODULE, celui de map_quant_bounds.json.
+// Ex: data/titles/halo_infinite/reference/map_callouts.json
+func (p *PathResolver) MapCalloutsPath(titleSlug string) string {
+	return filepath.Join(p.TitleDataDir(titleSlug), "reference", "map_callouts.json")
+}
+
+// MapGeometryDir retourne le répertoire des PROPS d'UNE carte (géométrie Forge : socles,
+// caisses, rampes posées dans la variante), lus pour poser des repères contextuels sur le
+// rejeu 2D — à distinguer de la STRUCTURE, qui est le sol. Donnée de RÉFÉRENCE versionnée
+// (produite par le RE de la variante .mvar), au même titre que map_structure/ et
+// map_quant_bounds.json : ce n'est pas un cache.
+//
+// LA CLÉ EST LE MODULE, ET CE PARAMÈTRE EST UN CORRECTIF (2026-09-11). Cette fonction ne
+// prenait que le titre et rendait UN répertoire pour toutes les cartes : le CSV qui s'y
+// trouvait était donc servi à chaque match, quelle que soit la carte jouée. Mesuré sur les
+// 76 artefacts du parc : 382 props IDENTIQUES partout, cartes confondues, y compris sur des
+// cartes dont aucun fichier de structure n'existe. Le CSV lui-même ne porte aucune colonne de
+// carte — rien, dans la donnée, ne dit à quelle carte il appartient (l'attribution du seul
+// fichier que nous ayons est argumentée dans son README).
+//
+// Tant que le sol reconstruit était un amas de rectangles, ces props étaient les SEULS repères
+// lisibles et les servir partout se défendait. Avec un fond de carte correct, un décor
+// appartenant à une AUTRE carte n'est plus un pis-aller : c'est une donnée fausse posée sur un
+// outil où l'on mesure des positions. Un répertoire par module, absent = pas de props.
+//
+// MODULE VIDE = LE RÉPERTOIRE DU TITRE, celui du CATALOGUE DES TYPES (`forge_object_types.csv`,
+// quel identifiant a quelle emprise). Il vaut pour toutes les cartes ; le recopier sous chacune
+// en ferait diverger les copies, ce que la règle des deux copies interdit déjà.
+//
+// Ex: data/titles/halo_infinite/reference/map_geometry/ridgeline/
+func (p *PathResolver) MapGeometryDir(titleSlug, module string) string {
+	base := filepath.Join(p.TitleDataDir(titleSlug), "reference", "map_geometry")
+	if module == "" {
+		return base
+	}
+	return filepath.Join(base, module)
 }
 
 // MapStructurePath retourne le chemin du fichier de STRUCTURE d'une carte : les emprises
@@ -764,6 +979,47 @@ func (p *PathResolver) MapGeometryDir(titleSlug string) string {
 // Ex: data/titles/halo_infinite/reference/map_structure/ridgeline.json
 func (p *PathResolver) MapStructurePath(titleSlug, module string) string {
 	return filepath.Join(p.TitleDataDir(titleSlug), "reference", "map_structure", module+".json")
+}
+
+// MapBackgroundDir retourne le répertoire des FONDS DE CARTE : l'image vue du dessus de
+// chaque carte, reconstruite depuis les triangles du maillage de rendu de son .module.
+// À distinguer de map_structure/, qui ne publie que des boîtes englobantes (AABB) et ne
+// dessine aucune forme. Donnée de RÉFÉRENCE versionnée (cmd/mapfond-build, exige les
+// fichiers du jeu). Ex: data/titles/halo_infinite/reference/map_backgrounds/
+func (p *PathResolver) MapBackgroundDir(titleSlug string) string {
+	return filepath.Join(p.TitleDataDir(titleSlug), "reference", "map_backgrounds")
+}
+
+// MapBackgroundPath retourne le chemin de l'IMAGE du fond de carte d'un module (PNG RGBA,
+// fond transparent). La clé est le nom de MODULE, celui déjà porté par map_quant_bounds.json
+// et map_structure/ — le lien nom affiché -> module reste déclaré à un seul endroit.
+// Ex: data/titles/halo_infinite/reference/map_backgrounds/ridgeline.png
+//
+// UTILISÉ EN ÉCRITURE UNIQUEMENT (cuisson, cmd/mapfond-build) : c'est elle qui produit
+// encore un PNG. En LECTURE, préférer MapBackgroundImageFilePath (le nom de fichier réel,
+// PNG ou WebP, vient du sidecar — plan fonds WebP, étape 2, D3).
+func (p *PathResolver) MapBackgroundPath(titleSlug, module string) string {
+	return filepath.Join(p.MapBackgroundDir(titleSlug), module+".png")
+}
+
+// MapBackgroundImageFilePath retourne le chemin de l'image de fond dont le NOM DE FICHIER
+// est `nomFichier` — celui que le sidecar (`MapBackground.Image`) porte à côté de lui-même.
+// Le format (PNG ou WebP) est une propriété de la DONNÉE, pas du code : cette fonction ne
+// suppose aucune extension, contrairement à MapBackgroundPath. L'appelant reste responsable
+// de valider `nomFichier` (nom de fichier simple, extension en liste blanche) avant d'appeler
+// cette fonction — elle ne fait qu'un `filepath.Join`, jamais de garde.
+func (p *PathResolver) MapBackgroundImageFilePath(titleSlug, nomFichier string) string {
+	return filepath.Join(p.MapBackgroundDir(titleSlug), nomFichier)
+}
+
+// MapBackgroundMetaPath retourne le chemin du SIDECAR de calage du fond de carte
+// (replay.MapBackground) : mètres par pixel, origine monde, convention monde->pixel, stats
+// de cuisson. Un sidecar PAR CARTE et non un manifeste unique : une re-cuisson partielle ne
+// peut alors jamais abîmer l'entrée d'une autre carte, et chaque PNG porte sa propre vérité
+// — le défaut exact de carte_validee_v1.png, dont le calage a dû être retrouvé à la main.
+// Ex: data/titles/halo_infinite/reference/map_backgrounds/ridgeline.json
+func (p *PathResolver) MapBackgroundMetaPath(titleSlug, module string) string {
+	return filepath.Join(p.MapBackgroundDir(titleSlug), module+".json")
 }
 
 // SyncCacheDir retourne le répertoire racine du cache fetch intermédiaire

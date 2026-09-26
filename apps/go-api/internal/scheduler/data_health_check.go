@@ -64,7 +64,20 @@ type DataHealthCheckResult struct {
 	// sain »). Distinct de ProbeErrors : une player DB tenue RW est transitoire/normale,
 	// elle ne fait pas échouer le cron mais gèle la jauge le temps du sync.
 	LUSRPlayersUnmeasured int
-	Duration              time.Duration
+	// La garde jumelle sur personal_score_awards (volet 2, 2026-08-28) a été RETIRÉE
+	// le 2026-09-20 : ses index secondaires n'existent plus (step
+	// drop_psa_secondary_art_indexes_v1) — plus d'index, plus rien à surveiller.
+	// MSRIndex* (G.3 des finitions v7.5, 2026-09-13) : meme garde, meme doctrine,
+	// sur `match_skill_rank` — ou la desynchronisation a ete MESUREE le 2026-09-13
+	// (idx_msr_playlist : 22 lignes servies pour 1 826 reelles, player DB JGtm).
+	// DETECTION SEULE (cf. data_health_msr_index.go). MSRIndexDesyncKeys entre dans
+	// WarningsTotal ; MSRIndexPlayersUnmeasured gele la jauge expvar.
+	MSRIndexPlayersScanned    int
+	MSRIndexPlayersUnmeasured int
+	MSRIndexDesyncPlayers     int
+	MSRIndexDesyncKeys        int
+	MSRIndexRowsMissing       int
+	Duration                  time.Duration
 }
 
 // HealthScheduler orchestre l'audit santé DB périodique. N'émet pas de
@@ -193,13 +206,15 @@ func (s *HealthScheduler) runCycle(ctx context.Context) *DataHealthCheckResult {
 		return res
 	}
 
-	res.WarningsTotal = res.UUIDsRawCount + res.LyingBitsEvents + res.LyingBitsWeaponKills + res.GarbageBannerURLs
+	res.WarningsTotal = res.UUIDsRawCount + res.LyingBitsEvents + res.LyingBitsWeaponKills +
+		res.GarbageBannerURLs + res.MSRIndexDesyncKeys
 	res.Duration = time.Since(start)
 
 	// Publie la jauge expvar des trous LUSR (dernier scan complet uniquement). Les
 	// trous LUSR ne rentrent PAS dans WarningsTotal (signal distinct : panneau
 	// monitoring + auto-heal), mais sont toujours loggés.
 	publishLUSRGaugeIfComplete(ctx, res)
+	publishMSRIndexGaugeIfComplete(ctx, res)
 
 	// Auto-heal (remédiation bornée) : 1 joueur/cycle max, le plus impacté, seulement
 	// si le kill-switch est ON (défaut OFF → alerte seule).
@@ -214,11 +229,12 @@ func (s *HealthScheduler) runCycle(ctx context.Context) *DataHealthCheckResult {
 	// loggué en WARN — il n'a pas pu tout mesurer et ne doit pas passer pour « sain ».
 	// Idem si des joueurs LUSR n'ont pas pu être mesurés (scan partiel, jauge gelée) :
 	// « unmeasured ≠ sain ».
+	unmeasured := res.LUSRPlayersUnmeasured + res.MSRIndexPlayersUnmeasured
 	logHealth := slog.InfoContext
-	if res.ProbeErrors > 0 || res.LUSRPlayersUnmeasured > 0 {
+	if res.ProbeErrors > 0 || unmeasured > 0 {
 		logHealth = slog.WarnContext
 	}
-	if res.WarningsTotal == 0 && res.ProbeErrors == 0 && res.LUSRPlayersUnmeasured == 0 {
+	if res.WarningsTotal == 0 && res.ProbeErrors == 0 && unmeasured == 0 {
 		slog.InfoContext(ctx, "data_health: cycle terminé",
 			"warnings_total", 0,
 			"probe_errors", 0,
@@ -227,6 +243,8 @@ func (s *HealthScheduler) runCycle(ctx context.Context) *DataHealthCheckResult {
 			"lusr_pending_recent", res.LUSRPendingRecent,
 			"lusr_players_scanned", res.LUSRPlayersScanned,
 			"lusr_players_unmeasured", 0,
+			"msr_index_players_scanned", res.MSRIndexPlayersScanned,
+			"msr_index_desync_keys", 0,
 			"duration", res.Duration.Round(time.Millisecond),
 		)
 	} else {
@@ -242,6 +260,11 @@ func (s *HealthScheduler) runCycle(ctx context.Context) *DataHealthCheckResult {
 			"lusr_pending_recent", res.LUSRPendingRecent,
 			"lusr_players_scanned", res.LUSRPlayersScanned,
 			"lusr_players_unmeasured", res.LUSRPlayersUnmeasured,
+			"msr_index_players_scanned", res.MSRIndexPlayersScanned,
+			"msr_index_players_unmeasured", res.MSRIndexPlayersUnmeasured,
+			"msr_index_desync_players", res.MSRIndexDesyncPlayers,
+			"msr_index_desync_keys", res.MSRIndexDesyncKeys,
+			"msr_index_rows_missing", res.MSRIndexRowsMissing,
 			"duration", res.Duration.Round(time.Millisecond),
 		)
 	}
@@ -292,11 +315,16 @@ func (s *HealthScheduler) auditTitle(ctx context.Context, pr *titlePkg.PathResol
 		WHERE (COALESCE(r.backfill_completed, 0) & %d) != 0
 		  AND NOT EXISTS (SELECT 1 FROM highlight_events h WHERE h.match_id = r.match_id)
 	`, mbitEvents), &res.ProbeErrors)
-	res.LyingBitsWeaponKills += scanCount(ctx, db, slug, "lying_bits_weapons", fmt.Sprintf(`
+	// La PREUVE du detail des armes change de table selon le titre : `weapon_kills` la
+	// porte encore la ou l arme est native de l API, `match_kill_events_latest` la porte
+	// la ou elle vient du film. On sonde celle que la base CONTIENT, jamais un slug.
+	if evidence := analysis.WeaponEvidenceTable(ctx, db.SQLDb()); evidence != "" {
+		res.LyingBitsWeaponKills += scanCount(ctx, db, slug, "lying_bits_weapons", fmt.Sprintf(`
 		SELECT COUNT(*) FROM match_registry r
 		WHERE (COALESCE(r.backfill_completed, 0) & %d) != 0
-		  AND NOT EXISTS (SELECT 1 FROM weapon_kills w WHERE w.match_id = r.match_id)
-	`, mbitWeaponKills), &res.ProbeErrors)
+		  AND NOT EXISTS (SELECT 1 FROM %s w WHERE w.match_id = r.match_id)
+	`, mbitWeaponKills, evidence), &res.ProbeErrors)
+	}
 
 	// 3. xuids orphelins (alias absent shared)
 	res.OrphanXUIDs += scanCount(ctx, db, slug, "orphan_xuids", `
@@ -313,6 +341,12 @@ func (s *HealthScheduler) auditTitle(ctx context.Context, pr *titlePkg.PathResol
 	// 5. Trous d'intérieur LUSR (garde-fou notes LUSR — read-only, best-effort ;
 	// implémentation dans data_health_lusr.go).
 	s.auditTitleLUSRGaps(ctx, pr, slug, db, res, healCand)
+
+	// 6. Index ART de match_skill_rank desynchronise (read-only, borne, DETECTION
+	// SEULE — implementation dans data_health_msr_index.go). La garde jumelle sur
+	// personal_score_awards a ete retiree le 2026-09-20 avec les index qu elle
+	// surveillait (step drop_psa_secondary_art_indexes_v1).
+	s.auditTitleMSRIndex(ctx, pr, slug, res)
 
 	return true
 }

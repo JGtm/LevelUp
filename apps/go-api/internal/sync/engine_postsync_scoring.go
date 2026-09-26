@@ -59,7 +59,7 @@ func (e *SyncEngine) runScoringStepsWithDB(ctx context.Context, playerDB, shared
 
 	// 0. Session assignments — auto-recalc session_id pour les nouveaux matchs.
 	// Best-effort : un échec ne bloque pas le pipeline. Les amis sont
-	// résolus depuis le friendsLoader (settings.FriendGamertags). Sans loader
+	// résolus depuis le friendsLoader (amis du joueur). Sans loader
 	// (legacy), on retombe en TeamChangeMode=teammates.
 	{
 		var friends []string

@@ -164,7 +164,7 @@ func (r *ServiceRegistry) haloTokensForDrain(ctx context.Context, titleSlug stri
 		if p.XUID == "" {
 			continue
 		}
-		result, refreshErr := auth.RefreshHaloTokensViaStoreFirst(ctx, store, provider, p.XUID, p.Gamertag, auth.LegacyAuthInputs{})
+		result, refreshErr := auth.RefreshHaloTokensViaStoreFirst(ctx, store, provider, p.XUID, p.Gamertag)
 		if refreshErr == nil && result != nil && result.Tokens != nil {
 			return result.Tokens, nil
 		}

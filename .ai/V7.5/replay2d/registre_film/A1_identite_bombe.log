@@ -1,0 +1,153 @@
+=== FILM 35b75a31 ===
+=== RUN   TestAssautA1Identite
+2026/08/27 16:02:39 INFO plafond memoire arme pour ce decodage outil=a1-assaut souple_gib=2 dur_octets=2684354560
+2026/08/27 16:02:45 WARN empreinte du registre ECS du film INCONNUE — grammaire des composants suspecte (mise a jour du jeu ?) ; le film reste decode empreinte=1872162450444512260 empreinte_connue=7053924395561516366 blocs=118 slots_non_vides=1068
+    assaut_a1_identite_test.go:87: 35b75a31 : denominateurs du balayage — 20399 ancres, 775 acceptees, 425 RESOLUES au catalogue d'armes, 350 ecartees, 272 mots distincts parmi les ecartees ; 0 site(s) `assault_bomb`
+    assaut_a1_identite_test.go:102: 35b75a31 : 3 debut(s) de manche brute, 3 explosion(s) datee(s), origine d'horloge 8892226764 us
+    assaut_a1_identite_test.go:106: 35b75a31 : mot 0x3FEE4FCF — 62 creation(s), 0 au site, 0 coincidente(s), 0 les deux ; dMin -, ecart classe min 4074 ms
+    assaut_a1_identite_test.go:106: 35b75a31 : mot 0x9000420C — 4 creation(s), 0 au site, 0 coincidente(s), 0 les deux ; dMin -, ecart classe min 14503 ms
+    assaut_a1_identite_test.go:106: 35b75a31 : mot 0x00C28000 — 3 creation(s), 0 au site, 0 coincidente(s), 0 les deux ; dMin -, ecart classe min 13798 ms
+    assaut_a1_identite_test.go:106: 35b75a31 : mot 0x4000F5E8 — 3 creation(s), 0 au site, 0 coincidente(s), 0 les deux ; dMin -, ecart classe min 30136 ms
+    assaut_a1_identite_test.go:106: 35b75a31 : mot 0x5DD7BF80 — 3 creation(s), 0 au site, 0 coincidente(s), 0 les deux ; dMin -, ecart classe min 74109 ms
+    assaut_a1_identite_test.go:106: 35b75a31 : mot 0xC0B15FD4 — 3 creation(s), 0 au site, 0 coincidente(s), 0 les deux ; dMin -, ecart classe min 4542 ms
+    assaut_a1_identite_test.go:106: 35b75a31 : mot 0x00420C42 — 2 creation(s), 0 au site, 0 coincidente(s), 0 les deux ; dMin -, ecart classe min 107514 ms
+    assaut_a1_identite_test.go:106: 35b75a31 : mot 0x0139E220 — 2 creation(s), 0 au site, 0 coincidente(s), 0 les deux ; dMin -, ecart classe min 35217 ms
+    assaut_a1_identite_test.go:106: 35b75a31 : mot 0x02800032 — 2 creation(s), 0 au site, 0 coincidente(s), 0 les deux ; dMin -, ecart classe min 35424 ms
+    assaut_a1_identite_test.go:106: 35b75a31 : mot 0x1A151502 — 2 creation(s), 0 au site, 0 coincidente(s), 0 les deux ; dMin -, ecart classe min 9397 ms
+    assaut_a1_identite_test.go:106: GATE A1.3 35b75a31 : 0 candidat(s) (site ET coincidence). Rappel du protocole §1 : 0 site `assault_bomb` au catalogue pour cette carte — un zero ici chiffre l'ancrage manquant, il ne refute pas l'objet.
+    assaut_a1_identite_test.go:73: 35b75a31 : pic memoire observe 0.01 Gio (plafond souple 2 Gio)
+--- PASS: TestAssautA1Identite (7.23s)
+PASS
+EXIT_35b75a31=0
+=== FILM 69b16f5d ===
+=== RUN   TestAssautA1Identite
+2026/08/27 16:02:46 INFO plafond memoire arme pour ce decodage outil=a1-assaut souple_gib=2 dur_octets=2684354560
+    assaut_a1_identite_test.go:87: 69b16f5d : denominateurs du balayage — 2638 ancres, 181 acceptees, 124 RESOLUES au catalogue d'armes, 57 ecartees, 32 mots distincts parmi les ecartees ; 0 site(s) `assault_bomb`
+    assaut_a1_identite_test.go:102: 69b16f5d : 2 debut(s) de manche brute, 3 explosion(s) datee(s), origine d'horloge 2866820927 us
+    assaut_a1_identite_test.go:106: 69b16f5d : mot 0x3FEE4FCF — 25 creation(s), 0 au site, 4 coincidente(s), 0 les deux ; dMin -, ecart classe min 0 ms
+    assaut_a1_identite_test.go:106: 69b16f5d : mot 0xA839DB21 — 2 creation(s), 0 au site, 2 coincidente(s), 0 les deux ; dMin -, ecart classe min 0 ms
+    assaut_a1_identite_test.go:106: 69b16f5d : mot 0x00559781 — 1 creation(s), 0 au site, 0 coincidente(s), 0 les deux ; dMin -, ecart classe min 10039 ms
+    assaut_a1_identite_test.go:106: 69b16f5d : mot 0x05240015 — 1 creation(s), 0 au site, 0 coincidente(s), 0 les deux ; dMin -, ecart classe min 61708 ms
+    assaut_a1_identite_test.go:106: 69b16f5d : mot 0x06B79E3D — 1 creation(s), 0 au site, 0 coincidente(s), 0 les deux ; dMin -, ecart classe min 17915 ms
+    assaut_a1_identite_test.go:106: 69b16f5d : mot 0x07B83D7B — 1 creation(s), 0 au site, 1 coincidente(s), 0 les deux ; dMin -, ecart classe min 0 ms
+    assaut_a1_identite_test.go:106: 69b16f5d : mot 0x07C71B20 — 1 creation(s), 0 au site, 0 coincidente(s), 0 les deux ; dMin -, ecart classe min 24821 ms
+    assaut_a1_identite_test.go:106: 69b16f5d : mot 0x07D8FB22 — 1 creation(s), 0 au site, 0 coincidente(s), 0 les deux ; dMin -, ecart classe min 13397 ms
+    assaut_a1_identite_test.go:106: 69b16f5d : mot 0x07DABB20 — 1 creation(s), 0 au site, 0 coincidente(s), 0 les deux ; dMin -, ecart classe min 62142 ms
+    assaut_a1_identite_test.go:106: 69b16f5d : mot 0x0A8873BB — 1 creation(s), 0 au site, 0 coincidente(s), 0 les deux ; dMin -, ecart classe min 19583 ms
+    assaut_a1_identite_test.go:106: GATE A1.3 69b16f5d : 0 candidat(s) (site ET coincidence). Rappel du protocole §1 : 0 site `assault_bomb` au catalogue pour cette carte — un zero ici chiffre l'ancrage manquant, il ne refute pas l'objet.
+    assaut_a1_identite_test.go:73: 69b16f5d : pic memoire observe 0.01 Gio (plafond souple 2 Gio)
+--- PASS: TestAssautA1Identite (2.40s)
+PASS
+EXIT_69b16f5d=0
+=== FILM 3d58eb37 ===
+=== RUN   TestAssautA1Identite
+2026/08/27 16:02:49 INFO plafond memoire arme pour ce decodage outil=a1-assaut souple_gib=2 dur_octets=2684354560
+    assaut_a1_identite_test.go:87: 3d58eb37 : denominateurs du balayage — 5062 ancres, 263 acceptees, 190 RESOLUES au catalogue d'armes, 73 ecartees, 46 mots distincts parmi les ecartees ; 0 site(s) `assault_bomb`
+    assaut_a1_identite_test.go:102: 3d58eb37 : 3 debut(s) de manche brute, 3 explosion(s) datee(s), origine d'horloge 1097728014 us
+    assaut_a1_identite_test.go:106: 3d58eb37 : mot 0x3FEE4FCF — 16 creation(s), 0 au site, 1 coincidente(s), 0 les deux ; dMin -, ecart classe min 0 ms
+    assaut_a1_identite_test.go:106: 3d58eb37 : mot 0xE9E7FF79 — 13 creation(s), 0 au site, 2 coincidente(s), 0 les deux ; dMin -, ecart classe min 0 ms
+    assaut_a1_identite_test.go:106: 3d58eb37 : mot 0x00045640 — 1 creation(s), 0 au site, 1 coincidente(s), 0 les deux ; dMin -, ecart classe min 0 ms
+    assaut_a1_identite_test.go:106: 3d58eb37 : mot 0x0036174D — 1 creation(s), 0 au site, 0 coincidente(s), 0 les deux ; dMin -, ecart classe min 54592 ms
+    assaut_a1_identite_test.go:106: 3d58eb37 : mot 0x052757C4 — 1 creation(s), 0 au site, 0 coincidente(s), 0 les deux ; dMin -, ecart classe min 8138 ms
+    assaut_a1_identite_test.go:106: 3d58eb37 : mot 0x0841D0FC — 1 creation(s), 0 au site, 0 coincidente(s), 0 les deux ; dMin -, ecart classe min 21184 ms
+    assaut_a1_identite_test.go:106: 3d58eb37 : mot 0x107226A9 — 1 creation(s), 0 au site, 1 coincidente(s), 0 les deux ; dMin -, ecart classe min 0 ms
+    assaut_a1_identite_test.go:106: 3d58eb37 : mot 0x1083981C — 1 creation(s), 0 au site, 0 coincidente(s), 0 les deux ; dMin -, ecart classe min 9579 ms
+    assaut_a1_identite_test.go:106: 3d58eb37 : mot 0x10FF2929 — 1 creation(s), 0 au site, 1 coincidente(s), 0 les deux ; dMin -, ecart classe min 0 ms
+    assaut_a1_identite_test.go:106: 3d58eb37 : mot 0x1792CD08 — 1 creation(s), 0 au site, 0 coincidente(s), 0 les deux ; dMin -, ecart classe min 67992 ms
+    assaut_a1_identite_test.go:106: GATE A1.3 3d58eb37 : 0 candidat(s) (site ET coincidence). Rappel du protocole §1 : 0 site `assault_bomb` au catalogue pour cette carte — un zero ici chiffre l'ancrage manquant, il ne refute pas l'objet.
+    assaut_a1_identite_test.go:73: 3d58eb37 : pic memoire observe 0.01 Gio (plafond souple 2 Gio)
+--- PASS: TestAssautA1Identite (4.65s)
+PASS
+EXIT_3d58eb37=0
+=== FILM 34bb3bc8 ===
+=== RUN   TestAssautA1Identite
+2026/08/27 16:02:53 INFO plafond memoire arme pour ce decodage outil=a1-assaut souple_gib=2 dur_octets=2684354560
+2026/08/27 16:03:09 WARN empreinte du registre ECS du film INCONNUE — grammaire des composants suspecte (mise a jour du jeu ?) ; le film reste decode empreinte=11463600112565967046 empreinte_connue=7053924395561516366 blocs=116 slots_non_vides=1031
+    assaut_a1_identite_test.go:82: 34bb3bc8 : carte 133c0185-24ed-4bc2-b834-62db5c936257 absente du catalogue d'objectifs (replay: carte absente du catalogue d'objectifs : "133c0185-24ed-4bc2-b834-62db5c936257")
+    assaut_a1_identite_test.go:87: 34bb3bc8 : denominateurs du balayage — 60272 ancres, 617 acceptees, 0 RESOLUES au catalogue d'armes, 617 ecartees, 573 mots distincts parmi les ecartees ; 0 site(s) `assault_bomb`
+    assaut_a1_identite_test.go:92: NON EXPLOITABLE 34bb3bc8 : ZERO creation resolue au catalogue d'armes — bloc MPP lu aux mauvaises largeurs, « aucun candidat » serait une panne de lecture. NI POUR NI CONTRE.
+    assaut_a1_identite_test.go:73: 34bb3bc8 : pic memoire observe 0.01 Gio (plafond souple 2 Gio)
+--- PASS: TestAssautA1Identite (16.30s)
+PASS
+EXIT_34bb3bc8=0
+=== FILM df8fcbef ===
+=== RUN   TestAssautA1Identite
+2026/08/27 16:03:10 INFO plafond memoire arme pour ce decodage outil=a1-assaut souple_gib=2 dur_octets=2684354560
+    assaut_a1_identite_test.go:87: df8fcbef : denominateurs du balayage — 5964 ancres, 343 acceptees, 235 RESOLUES au catalogue d'armes, 108 ecartees, 76 mots distincts parmi les ecartees ; 0 site(s) `assault_bomb`
+    assaut_a1_identite_test.go:102: df8fcbef : 5 debut(s) de manche brute, 4 explosion(s) datee(s), origine d'horloge 387103374 us
+    assaut_a1_identite_test.go:106: df8fcbef : mot 0xE9E7FF79 — 18 creation(s), 0 au site, 4 coincidente(s), 0 les deux ; dMin -, ecart classe min 0 ms
+    assaut_a1_identite_test.go:106: df8fcbef : mot 0x3FEE4FCF — 14 creation(s), 0 au site, 2 coincidente(s), 0 les deux ; dMin -, ecart classe min 0 ms
+    assaut_a1_identite_test.go:106: df8fcbef : mot 0x0420C362 — 2 creation(s), 0 au site, 0 coincidente(s), 0 les deux ; dMin -, ecart classe min 17302 ms
+    assaut_a1_identite_test.go:106: df8fcbef : mot 0x40010830 — 2 creation(s), 0 au site, 0 coincidente(s), 0 les deux ; dMin -, ecart classe min 82299 ms
+    assaut_a1_identite_test.go:106: df8fcbef : mot 0x00000C32 — 1 creation(s), 0 au site, 0 coincidente(s), 0 les deux ; dMin -, ecart classe min 28476 ms
+    assaut_a1_identite_test.go:106: df8fcbef : mot 0x00BC1A60 — 1 creation(s), 0 au site, 0 coincidente(s), 0 les deux ; dMin -, ecart classe min 4973 ms
+    assaut_a1_identite_test.go:106: df8fcbef : mot 0x01C6944F — 1 creation(s), 0 au site, 0 coincidente(s), 0 les deux ; dMin -, ecart classe min 50945 ms
+    assaut_a1_identite_test.go:106: df8fcbef : mot 0x055640EA — 1 creation(s), 0 au site, 0 coincidente(s), 0 les deux ; dMin -, ecart classe min 76439 ms
+    assaut_a1_identite_test.go:106: df8fcbef : mot 0x0830DCB6 — 1 creation(s), 0 au site, 1 coincidente(s), 0 les deux ; dMin -, ecart classe min 0 ms
+    assaut_a1_identite_test.go:106: df8fcbef : mot 0x0841B654 — 1 creation(s), 0 au site, 0 coincidente(s), 0 les deux ; dMin -, ecart classe min 55883 ms
+    assaut_a1_identite_test.go:106: GATE A1.3 df8fcbef : 0 candidat(s) (site ET coincidence). Rappel du protocole §1 : 0 site `assault_bomb` au catalogue pour cette carte — un zero ici chiffre l'ancrage manquant, il ne refute pas l'objet.
+    assaut_a1_identite_test.go:73: df8fcbef : pic memoire observe 0.01 Gio (plafond souple 2 Gio)
+--- PASS: TestAssautA1Identite (5.10s)
+PASS
+EXIT_df8fcbef=0
+=== FILM c75f33b8 ===
+=== RUN   TestAssautA1Identite
+2026/08/27 16:03:15 INFO plafond memoire arme pour ce decodage outil=a1-assaut souple_gib=2 dur_octets=2684354560
+    assaut_a1_identite_test.go:87: c75f33b8 : denominateurs du balayage — 4475 ancres, 312 acceptees, 230 RESOLUES au catalogue d'armes, 82 ecartees, 52 mots distincts parmi les ecartees ; 0 site(s) `assault_bomb`
+    assaut_a1_identite_test.go:102: c75f33b8 : 5 debut(s) de manche brute, 3 explosion(s) datee(s), origine d'horloge 9724713078 us
+    assaut_a1_identite_test.go:106: c75f33b8 : mot 0xE9E7FF79 — 19 creation(s), 0 au site, 4 coincidente(s), 0 les deux ; dMin -, ecart classe min 0 ms
+    assaut_a1_identite_test.go:106: c75f33b8 : mot 0x3FEE4FCF — 13 creation(s), 0 au site, 3 coincidente(s), 0 les deux ; dMin -, ecart classe min 0 ms
+    assaut_a1_identite_test.go:106: c75f33b8 : mot 0x0021061C — 1 creation(s), 0 au site, 1 coincidente(s), 0 les deux ; dMin -, ecart classe min 0 ms
+    assaut_a1_identite_test.go:106: c75f33b8 : mot 0x010EB921 — 1 creation(s), 0 au site, 0 coincidente(s), 0 les deux ; dMin -, ecart classe min 10667 ms
+    assaut_a1_identite_test.go:106: c75f33b8 : mot 0x0830E662 — 1 creation(s), 0 au site, 1 coincidente(s), 0 les deux ; dMin -, ecart classe min 0 ms
+    assaut_a1_identite_test.go:106: c75f33b8 : mot 0x0839388A — 1 creation(s), 0 au site, 1 coincidente(s), 0 les deux ; dMin -, ecart classe min 0 ms
+    assaut_a1_identite_test.go:106: c75f33b8 : mot 0x08CABC53 — 1 creation(s), 0 au site, 0 coincidente(s), 0 les deux ; dMin -, ecart classe min 3416 ms
+    assaut_a1_identite_test.go:106: c75f33b8 : mot 0x0B206E1B — 1 creation(s), 0 au site, 0 coincidente(s), 0 les deux ; dMin -, ecart classe min 14194 ms
+    assaut_a1_identite_test.go:106: c75f33b8 : mot 0x0B206E27 — 1 creation(s), 0 au site, 0 coincidente(s), 0 les deux ; dMin -, ecart classe min 9923 ms
+    assaut_a1_identite_test.go:106: c75f33b8 : mot 0x0DEA4674 — 1 creation(s), 0 au site, 0 coincidente(s), 0 les deux ; dMin -, ecart classe min 12975 ms
+    assaut_a1_identite_test.go:106: GATE A1.3 c75f33b8 : 0 candidat(s) (site ET coincidence). Rappel du protocole §1 : 0 site `assault_bomb` au catalogue pour cette carte — un zero ici chiffre l'ancrage manquant, il ne refute pas l'objet.
+    assaut_a1_identite_test.go:73: c75f33b8 : pic memoire observe 0.01 Gio (plafond souple 2 Gio)
+--- PASS: TestAssautA1Identite (4.20s)
+PASS
+EXIT_c75f33b8=0
+=== FILM 9f57c612 ===
+=== RUN   TestAssautA1Identite
+2026/08/27 16:03:19 INFO plafond memoire arme pour ce decodage outil=a1-assaut souple_gib=2 dur_octets=2684354560
+    assaut_a1_identite_test.go:87: 9f57c612 : denominateurs du balayage — 6087 ancres, 363 acceptees, 261 RESOLUES au catalogue d'armes, 102 ecartees, 64 mots distincts parmi les ecartees ; 0 site(s) `assault_bomb`
+    assaut_a1_identite_test.go:102: 9f57c612 : 5 debut(s) de manche brute, 4 explosion(s) datee(s), origine d'horloge 6779532310 us
+    assaut_a1_identite_test.go:106: 9f57c612 : mot 0xE9E7FF79 — 23 creation(s), 0 au site, 8 coincidente(s), 0 les deux ; dMin -, ecart classe min 0 ms
+    assaut_a1_identite_test.go:106: 9f57c612 : mot 0x3FEE4FCF — 16 creation(s), 0 au site, 3 coincidente(s), 0 les deux ; dMin -, ecart classe min 0 ms
+    assaut_a1_identite_test.go:106: 9f57c612 : mot 0x20100000 — 2 creation(s), 0 au site, 0 coincidente(s), 0 les deux ; dMin -, ecart classe min 9123 ms
+    assaut_a1_identite_test.go:106: 9f57c612 : mot 0x0010FC1E — 1 creation(s), 0 au site, 0 coincidente(s), 0 les deux ; dMin -, ecart classe min 26512 ms
+    assaut_a1_identite_test.go:106: 9f57c612 : mot 0x00420D96 — 1 creation(s), 0 au site, 0 coincidente(s), 0 les deux ; dMin -, ecart classe min 28759 ms
+    assaut_a1_identite_test.go:106: 9f57c612 : mot 0x00420D9D — 1 creation(s), 0 au site, 0 coincidente(s), 0 les deux ; dMin -, ecart classe min 18 ms
+    assaut_a1_identite_test.go:106: 9f57c612 : mot 0x03854F3A — 1 creation(s), 0 au site, 0 coincidente(s), 0 les deux ; dMin -, ecart classe min 13732 ms
+    assaut_a1_identite_test.go:106: 9f57c612 : mot 0x0420C3D2 — 1 creation(s), 0 au site, 1 coincidente(s), 0 les deux ; dMin -, ecart classe min 0 ms
+    assaut_a1_identite_test.go:106: 9f57c612 : mot 0x045640F6 — 1 creation(s), 0 au site, 0 coincidente(s), 0 les deux ; dMin -, ecart classe min 41590 ms
+    assaut_a1_identite_test.go:106: 9f57c612 : mot 0x0830EC7E — 1 creation(s), 0 au site, 0 coincidente(s), 0 les deux ; dMin -, ecart classe min 40572 ms
+    assaut_a1_identite_test.go:106: GATE A1.3 9f57c612 : 0 candidat(s) (site ET coincidence). Rappel du protocole §1 : 0 site `assault_bomb` au catalogue pour cette carte — un zero ici chiffre l'ancrage manquant, il ne refute pas l'objet.
+    assaut_a1_identite_test.go:73: 9f57c612 : pic memoire observe 0.01 Gio (plafond souple 2 Gio)
+--- PASS: TestAssautA1Identite (4.26s)
+PASS
+EXIT_9f57c612=0
+=== FILM 1c01e34f ===
+=== RUN   TestAssautA1Identite
+2026/08/27 16:03:23 INFO plafond memoire arme pour ce decodage outil=a1-assaut souple_gib=2 dur_octets=2684354560
+    assaut_a1_identite_test.go:82: 1c01e34f : carte be848f91-3d87-4b80-8eb9-df3b52cb8d10 absente du catalogue d'objectifs (replay: carte absente du catalogue d'objectifs : "be848f91-3d87-4b80-8eb9-df3b52cb8d10")
+    assaut_a1_identite_test.go:87: 1c01e34f : denominateurs du balayage — 5258 ancres, 352 acceptees, 226 RESOLUES au catalogue d'armes, 126 ecartees, 86 mots distincts parmi les ecartees ; 0 site(s) `assault_bomb`
+    assaut_a1_identite_test.go:102: 1c01e34f : 3 debut(s) de manche brute, 4 explosion(s) datee(s), origine d'horloge 7206691690 us
+    assaut_a1_identite_test.go:106: 1c01e34f : mot 0x3FEE4FCF — 32 creation(s), 0 au site, 4 coincidente(s), 0 les deux ; dMin -, ecart classe min 0 ms
+    assaut_a1_identite_test.go:106: 1c01e34f : mot 0x066FE480 — 5 creation(s), 0 au site, 0 coincidente(s), 0 les deux ; dMin -, ecart classe min 33885 ms
+    assaut_a1_identite_test.go:106: 1c01e34f : mot 0x066FE440 — 4 creation(s), 0 au site, 0 coincidente(s), 0 les deux ; dMin -, ecart classe min 33468 ms
+    assaut_a1_identite_test.go:106: 1c01e34f : mot 0x30010841 — 2 creation(s), 0 au site, 2 coincidente(s), 0 les deux ; dMin -, ecart classe min 0 ms
+    assaut_a1_identite_test.go:106: 1c01e34f : mot 0xAC820C03 — 2 creation(s), 0 au site, 0 coincidente(s), 0 les deux ; dMin -, ecart classe min 15800 ms
+    assaut_a1_identite_test.go:106: 1c01e34f : mot 0x00108419 — 1 creation(s), 0 au site, 1 coincidente(s), 0 les deux ; dMin -, ecart classe min 0 ms
+    assaut_a1_identite_test.go:106: 1c01e34f : mot 0x0010841D — 1 creation(s), 0 au site, 1 coincidente(s), 0 les deux ; dMin -, ecart classe min 0 ms
+    assaut_a1_identite_test.go:106: 1c01e34f : mot 0x00210620 — 1 creation(s), 0 au site, 1 coincidente(s), 0 les deux ; dMin -, ecart classe min 0 ms
+    assaut_a1_identite_test.go:106: 1c01e34f : mot 0x00420C40 — 1 creation(s), 0 au site, 0 coincidente(s), 0 les deux ; dMin -, ecart classe min 11628 ms
+    assaut_a1_identite_test.go:106: 1c01e34f : mot 0x00441837 — 1 creation(s), 0 au site, 0 coincidente(s), 0 les deux ; dMin -, ecart classe min 13582 ms
+    assaut_a1_identite_test.go:106: GATE A1.3 1c01e34f : 0 candidat(s) (site ET coincidence). Rappel du protocole §1 : 0 site `assault_bomb` au catalogue pour cette carte — un zero ici chiffre l'ancrage manquant, il ne refute pas l'objet.
+    assaut_a1_identite_test.go:73: 1c01e34f : pic memoire observe 0.01 Gio (plafond souple 2 Gio)
+--- PASS: TestAssautA1Identite (4.02s)
+PASS
+EXIT_1c01e34f=0

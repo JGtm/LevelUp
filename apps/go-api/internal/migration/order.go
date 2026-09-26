@@ -36,6 +36,8 @@ var canonicalOrder = []string{
 	"enrich_medal_definitions_v2",                           // metadata
 	"medal_definitions_add_personal_score",                  // metadata
 	"seed_custom_vengeur_medal",                             // metadata
+	"seed_clash_of_kings_medal",                             // metadata
+	"fix_clash_of_kings_placeholder",                        // metadata
 	"fix_meganaut_fr_description",                           // metadata
 	"fix_super_fiesta_fr_label",                             // metadata
 	"seed_playlist_fr_translations",                         // metadata
@@ -55,11 +57,19 @@ var canonicalOrder = []string{
 	"drop_playlists_catalog_secondary_indexes",              // metadata
 	"create_milestone_catalog_metadata",                     // metadata
 	"create_prestige_metadata_schema",                       // metadata
-	"purge_weapons_name_fr_column",                          // metadata (V721-05.1 : rebuild CTAS-swap, doit suivre add_weapon_registry — cf. order_dependency_test.go)
-	"rebuild_catalog_fetch_queue_drop_art_indexes",          // metadata
-	"seed_ranked_playlists_catalog",                         // metadata
-	"challenge_template_add_source_column",                  // metadata
-	"add_template_tagging_columns",                          // metadata
+	// purge_weapon_families_labels_columns (plan libellés en dur, lot M5 L4, 2026-09-08) :
+	// rebuild CTAS-swap, doit suivre add_weapon_registry (créateur de weapon_families) —
+	// cf. order_dependency_test.go. Placée ici (juste avant sa cousine name_fr) pour
+	// reproduire l'ordre d'enregistrement naturel (tri par nom de fichier :
+	// steps_metadata_purge_weapon_families_labels.go précède
+	// steps_metadata_purge_weapons_name_fr.go) — TestSortByCanonicalIsNoOpOnCurrentRegistry
+	// l'exige.
+	"purge_weapon_families_labels_columns",         // metadata
+	"purge_weapons_name_fr_column",                 // metadata (V721-05.1 : rebuild CTAS-swap, doit suivre add_weapon_registry — cf. order_dependency_test.go)
+	"rebuild_catalog_fetch_queue_drop_art_indexes", // metadata
+	"seed_ranked_playlists_catalog",                // metadata
+	"challenge_template_add_source_column",         // metadata
+	"add_template_tagging_columns",                 // metadata
 	// Baseline squashée v1 (chantier N4, plan PLAN_MIGRATION_SQUASH_BASELINE_2026-07) :
 	// remplace les 33 steps title-owned contigus create_base_player_schema..
 	// player_append_only_csr_snapshots_v1 (bornes M3a). Cf. steps_player_baseline.go.
@@ -86,6 +96,7 @@ var canonicalOrder = []string{
 	"player_append_only_lusr_component_history_v1",   // player
 	"player_msr_view_lusr_over_v2_v1",                // player
 	"player_msr_view_priority_csr_v1",                // player
+	"player_msr_view_latest_by_type_v1",              // player (2026-09-13 : vue par (match_id, rating_type))
 	"create_notifications_in_shared_social",          // shared_social
 	"drop_notifications_from_player_db",              // player
 	"drop_idx_pn_xuid_unread",                        // shared_social
@@ -109,11 +120,13 @@ var canonicalOrder = []string{
 	"rebuild_career_progression_defeat_art_corruption", // player
 	"repair_player_match_enrichment_primary_key",       // player
 	"repair_match_citations_primary_key",               // player
+	"player_dominance_flag_reset_none_v1",              // player (2026-09-16 : recalcul des flags 0 pour SABORDAGE/ABNÉGATION)
 	"create_personal_score_awards_player_v1",           // player (autorité de schéma unique 2026-08-05 : table ex-Ensure-only)
 	"create_player_csr_snapshots_player_v1",            // player (idem — cf. steps_player_schema_authority.go)
 	"drop_career_xuid_art_index_v1",                    // player (DERNIER du bloc : doit suivre tout créateur de l'index, dont la baseline)
 	"drop_psa_xuid_art_index_v1",                       // player (idem — miroir d'idx_career_xuid ; suit create_personal_score_awards_player_v1)
 	"drop_psa_match_xuid_art_index_v1",                 // player (idem — préfixe redondant d'idx_psa_gen, posé par le seul PostSwap legacy)
+	"drop_psa_secondary_art_indexes_v1",                // player (2026-09-20 : les 3 derniers index de personal_score_awards — récidive #23645 sur les insertions courantes, aucun lecteur ne les emprunte)
 	"create_base_shared_schema",                        // shared
 	"add_film_match_start",                             // shared
 	"add_highlight_events_autoincrement",               // shared
@@ -140,6 +153,18 @@ var canonicalOrder = []string{
 	// (donc la création/ALTER de weapon_kills) — sinon sur DB FRAÎCHE le rebuild
 	// no-ope (table absente). Name-keyed → no-op sur DB déjà migrées.
 	"shared_append_only_weapon_kills_v1", // shared
+	// Statistiques d'Assaut reconstruites du film (append-only + vue _latest). Table
+	// NET-NEUVE, sans dépendance : sa place relative n'a aucun enjeu fonctionnel. Elle est
+	// dictée par l'ordre d'init() (fichiers steps_*.go, alphabétique) — steps_shared_bomb_
+	// stats.go tombe entre steps_shared_append_only_weapon_kills.go et steps_shared_h5_*.go.
+	// Exigence de TestSortByCanonicalIsNoOpOnCurrentRegistry.
+	"shared_create_bomb_stats", // shared
+	// Prises de drapeau brutes et nettes lues du film (append-only + vue _latest). Table
+	// NET-NEUVE, sans dépendance ; même raisonnement que sa sœur ci-dessus. Le fichier
+	// steps_shared_flag_grabs_net.go tombe, à l'ordre d'init() alphabétique, juste après
+	// steps_shared_bomb_stats.go et avant steps_shared_h5_*.go.
+	"shared_create_flag_grabs_net", // shared
+
 	// Capture de la mecanique de kill Halo 5 (kill_kind) : ALTER weapon_kills +
 	// recreation v_weapon_kills. DOIT suivre shared_append_only_weapon_kills_v1
 	// (vue generationnelle + generation_id deja crees). Phase 1 (capture seule) ;
@@ -182,11 +207,18 @@ var canonicalOrder = []string{
 	// Placée AVANT from_pairs parce que l'ordre d'init() suit le nom de fichier — from_pairs
 	// ne trouve alors plus rien à reprendre, et c'est correct : la reprise credit-base couvre
 	// tout ce qu'elle couvrait, dédupliqué sur l'identité (cf. §10-2 de la conception).
-	"shared_kill_events_credit_base_v1",                // shared
-	"shared_kill_events_from_pairs_v1",                 // shared (J4 : reprise dédupliquée de killer_victim_pairs -> match_kill_events + drop v_killer_victim_full ; la table source RESTE)
-	"shared_objective_events_v1",                       // shared
-	"shared_objective_score_v1_drop",                   // shared (v7.5 lot 3 : DROP match_objective_score_timeline ; remplace shared_objective_score_v1, dont le créateur est supprimé)
-	"shared_match_player_positions_v1",                 // shared
+	"shared_kill_events_credit_base_v1", // shared
+	"shared_kill_events_from_pairs_v1",  // shared (J4 : reprise dédupliquée de killer_victim_pairs -> match_kill_events + drop v_killer_victim_full ; la table source RESTE)
+	// steps_shared_match_lives.go : init() suit le nom de fichier, donc APRES les trois
+	// steps_shared_kill_events*.go — exigence de TestSortByCanonicalIsNoOpOnCurrentRegistry.
+	"shared_match_lives_v1",             // shared (vies nommées du film + contexte de voisinage d une mort, append-only + vues _latest par passe)
+	"shared_objective_events_v1",        // shared
+	"shared_objective_score_v1_drop",    // shared (v7.5 lot 3 : DROP match_objective_score_timeline ; remplace shared_objective_score_v1, dont le créateur est supprimé)
+	"shared_create_pad_pickups_by_tier", // shared
+	"shared_match_player_positions_v1",  // shared
+	// Conversion append-only de la table ci-dessus (decision 1 du plan v2, 2026-09-06) :
+	// APRES son createur, evidemment — le rebuild CTAS lit la table qu'il convertit.
+	"shared_match_player_positions_appendonly_v1",      // shared
 	"shared_pve_append_only_v1",                        // shared_pve
 	"rebuild_match_participants_defeat_art_corruption", // shared
 	// Phase 1.5 b27 (reorder escaladé) : skill_v2 (créateur de lusr_hyperparams_v2)
@@ -233,17 +265,51 @@ var canonicalOrder = []string{
 	"add_title_slug_to_world_csr_leaderboard",                  // shared (PMT-7)
 	"add_xuid_to_world_csr_leaderboard",                        // shared (B1)
 	"shared_create_kill_positions",                             // shared (positions monde par kill, ref inter-titres)
-	"shared_create_match_commendations",                        // shared (commendations natives par match, ref inter-titres, AXE B)
-	"shared_match_commendations_add_progress",                  // shared (total à vie absolu au match — totaux commendations)
-	"add_player_count_to_match_registry",                       // shared (roster API attendu — oracle d'intégrité, fix #10)
-	"add_weapon_accuracy",                                      // shared (précision par arme/joueur/match, dérivée des events WeaponDrop H5)
-	"add_events_empty_to_match_registry",                       // shared (statut distinct « chunk récupéré, 0 event légitime » — fin boucle parse_anomaly)
-	"create_season_catalog",                                    // shared (C2 : noms+traductions des saisons CSR Waypoint, source scrape)
-	"create_world_player_no_data",                              // shared (marqueur privés/sans-données classement mondial)
-	"shared_create_objective_stats",                            // shared (V72-03 : stats objectifs CTF/Zones/Oddball par joueur/match, append-only)
-	"shared_objective_stats_add_stockpile_extraction",          // shared (V721-02 : +18 colonnes Stockpile/Extraction/VIP + vue _latest recréée)
-	"shared_weapon_kills_v3",                                   // shared (attribution d'arme par kill, voie v3 pur-film)
-	"shared_match_weapon_shots_v1",                             // shared (J4 : ventilation des tirs par arme, append-only + vue _latest)
+	"shared_append_only_kill_positions_v1",                     // shared (G.2 : id PK + written_at + vue kill_positions_latest, éradique ART sur re-décodage)
+	// Lot 1.7 (2026-09-09) : DOIT suivre la conversion G.2 ci-dessus (elle ajoute `id` et
+	// `written_at`, que ce rebuild-ci préserve en ajoutant `decode_pass`). La vue
+	// kill_positions_latest passe d'un arbitrage par CLÉ à un arbitrage par DERNIÈRE PASSE
+	// ENTIÈRE par match — sans quoi une position rétractée par un re-décodage survivait à
+	// jamais. Title-owned Halo Infinite (steps_shared_kill_positions_pass.go).
+	"shared_kill_positions_decode_pass_v1", // shared
+	// Table SOEUR de kill_positions (proxy d'entame D5, 2026-09-06) : mêmes clés, mêmes
+	// colonnes, positions prises un temps-pour-tuer AVANT le coup fatal. Créée DIRECTEMENT
+	// append-only (id PK + written_at + vue _latest), donc aucun step de conversion à sa
+	// suite. Title-owned Halo Infinite (steps_shared_kill_openings.go) : seul son NOM
+	// figure ici, comme pour tout step title-owned (order_audit_test.go l'exige des deux côtés).
+	"shared_create_kill_openings",             // shared
+	"shared_create_match_commendations",       // shared (commendations natives par match, ref inter-titres, AXE B)
+	"shared_match_commendations_add_progress", // shared (total à vie absolu au match — totaux commendations)
+	"add_player_count_to_match_registry",      // shared (roster API attendu — oracle d'intégrité, fix #10)
+	// Répare une DÉRIVE DE SCHÉMA, pas une évolution : la DDL disait INTEGER, les bases
+	// réelles portaient SMALLINT, et tout match à plus de 32 767 points d'équipe (Baptême
+	// du feu) était rejeté à l'INSERT — perdu pour TOUS les joueurs. Position : après tout
+	// ce qui touche match_registry en amont, avant les tables qui la lisent. Title-owned
+	// Halo Infinite (2026-09-16), seul son NOM figure ici.
+	"widen_match_registry_team_scores",                // shared (SMALLINT -> INTEGER sur team_{0,1}_score)
+	"add_weapon_accuracy",                             // shared (précision par arme/joueur/match, dérivée des events WeaponDrop H5)
+	"add_events_empty_to_match_registry",              // shared (statut distinct « chunk récupéré, 0 event légitime » — fin boucle parse_anomaly)
+	"create_season_catalog",                           // shared (C2 : noms+traductions des saisons CSR Waypoint, source scrape)
+	"create_world_player_no_data",                     // shared (marqueur privés/sans-données classement mondial)
+	"shared_create_objective_stats",                   // shared (V72-03 : stats objectifs CTF/Zones/Oddball par joueur/match, append-only)
+	"shared_objective_stats_add_stockpile_extraction", // shared (V721-02 : +18 colonnes Stockpile/Extraction/VIP + vue _latest recréée)
+	// Résumé d'usage équipement/socles dérivé de l'artefact de rejeu (session-usage,
+	// 2026-09-04). Position dictée par l'ordre d'init (alphabétique par nom de fichier :
+	// steps_shared_usage_summary.go précède steps_shared_weapon_*.go) — exigence de
+	// TestSortByCanonicalIsNoOpOnCurrentRegistry.
+	"shared_match_usage_summary_v1", // shared (match_usage_players + match_usage_films, append-only + vues _latest par passe)
+	// Doit SUIVRE le créateur des tables : il en altère une et recrée sa vue (étape E3
+	// du plan équipement, 2026-09-09). Enregistrée juste après lui, dans le même fichier.
+	"shared_match_usage_players_outcomes_v1", // shared (les trois issues d'un objet pris, par famille)
+	// Table SOEUR de match_weapon_shots (distances tireur<->victime des touches, acquis du
+	// chantier precision remis le 2026-09-01). Position dictee par l'ordre d'init
+	// (alphabetique par nom de fichier) — exigence de TestSortByCanonicalIsNoOpOnCurrentRegistry.
+	// (shared_weapon_kills_v3, present sur la branche precision, n'est PAS repris : la voie v3
+	// est morte sur feat/v75 — 9b8c52622, l'arme du kill vient de la source de degat.)
+	"shared_match_weapon_hit_distance_v1", // shared (distances des touches par arme, append-only + vue _latest)
+	"shared_match_weapon_shots_v1",        // shared (J4 : ventilation des tirs par arme, append-only + vue _latest)
+	"add_team_rounds_to_match_registry",   // shared (manches gagnées par camp — le score en points ne dit pas le résultat sur un mode à manches)
+	"refresh_views_after_team_rounds",     // shared (v_match_full fige son SELECT * à sa création : la recréer pour qu'elle expose les manches)
 	// S2 — DERNIERS de l'ordre A DESSEIN : ils réparent le DEFAULT de `written_at` sur
 	// les tables déjà créées, donc ils doivent suivre TOUTE création de table.
 	"written_at_default_utc_shared",        // shared
@@ -264,6 +330,19 @@ var canonicalOrder = []string{
 	"arbitration_clocks_default_utc_shared_pve",    // shared_pve
 	"arbitration_clocks_default_utc_shared_social", // shared_social
 	"arbitration_clocks_default_utc_metadata",      // metadata
+	// DERNIER DE TOUT L'ORDRE, et ce n'est pas un hasard : un DROP doit suivre le dernier
+	// créateur ou ALTER de sa cible. `weapon_kills` est créée par le registre PARTAGÉ
+	// (`add_weapon_kills`), altérée par `shared_append_only_weapon_kills_v1` puis par
+	// `shared_h5_weapon_kill_kind_v1` — les trois restent, Halo 5 en dépend. Le step est
+	// TITLE-OWNED (fourni par internal/games/halo_infinite/migrations) : seul le fichier
+	// `halo_infinite` le voit ; seul son NOM figure ici, comme pour tout step title-owned
+	// (order_audit_test.go l'exige des DEUX côtés).
+	"shared_drop_weapon_kills_v1", // shared — title-owned Halo Infinite (2026-09-01)
+	// Reclassement de deux clés du registre d'armes (épée, marteau) : APRÈS
+	// add_weapon_registry, qui les sème. Le seed de boot est INSERT-only, donc un
+	// changement de CLASSE sur une clé déjà semée n'atteint jamais une base de production
+	// sans ce step. Title-owned Halo Infinite (2026-09-01).
+	"metadata_reclass_sword_hammer_heavy_v1", // metadata
 }
 
 var canonicalIndex = func() map[string]int {

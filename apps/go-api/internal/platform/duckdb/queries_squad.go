@@ -21,6 +21,16 @@ GROUP BY match_id`
 //
 // IN-list dynamique : %s remplacé par Placeholders(len(matchIDs)).
 //
+// AUCUN GAMERTAG EN SQL (lot perf L2, 2026-09-23) : la jointure sur v_gamertag_lookup
+// matérialisait la vue entière (3 s) ; le nom vient de l'annuaire de la lecture
+// (squad_repo_annuaire.go), même cascade, sur les xuids du top et les mêmes matchs.
+//
+// ORDRE TOTAL (lot perf L8, 2026-09-23) : games_together DESC, puis wins_together DESC, puis
+// p2.xuid ASC. Sans départage, la coupe du LIMIT 50 parmi les ex aequo changeait d'une lecture
+// à l'autre, donc la liste des coéquipiers connus que la composition exacte exclut aussi : ses
+// sessions et leurs comptes (page Escouade comme lecture légère) n'étaient pas reproductibles
+// (données réelles, lot L4b : cinq pages de suite, quatre différentes de la première).
+//
 // Paramètres positionnels :
 //
 //	?  = xuid (p2.xuid != ? — exclure le joueur principal de p2)
@@ -29,7 +39,6 @@ GROUP BY match_id`
 const Q29TopTeammatesSharedTpl = `
 SELECT
     p2.xuid,
-    COALESCE(vg.gamertag, ('Joueur ' || RIGHT(p2.xuid, 4))) AS gamertag,
     COUNT(DISTINCT p1.match_id)                  AS games_together,
     SUM(CASE WHEN %s THEN 1 ELSE 0 END) AS wins_together,
     ROUND(
@@ -44,12 +53,11 @@ JOIN match_participants p2
     ON p2.match_id = p1.match_id
     AND p2.team_id  = p1.team_id
     AND p2.xuid    != ?
-LEFT JOIN v_gamertag_lookup vg ON vg.xuid = p2.xuid
 WHERE p1.match_id IN (%s)
   AND p1.xuid = ?` + campaignExclusionToken + `
   AND p2.xuid NOT LIKE 'bid(%%'
-GROUP BY p2.xuid, vg.gamertag
-ORDER BY games_together DESC
+GROUP BY p2.xuid
+ORDER BY games_together DESC, wins_together DESC, p2.xuid ASC
 LIMIT 50`
 
 // (Q30SquadMatches supprimée le 2026-07-18 — code mort : aucun call site actif,
@@ -109,6 +117,14 @@ SELECT
     p1.enemy_mmr,
     CASE WHEN p1.team_id = 0 THEN r.team_0_score ELSE r.team_1_score END AS my_team_score,
     CASE WHEN p1.team_id = 0 THEN r.team_1_score ELSE r.team_0_score END AS enemy_team_score,
+    -- Manches (ADR 0032) : sur un mode qui s'y décide, le score ci-dessus est un cumul de
+    -- points qui peut donner la victoire au camp qui en a le moins. Permutées par le MÊME
+    -- CASE que les points — les dissocier afficherait les manches d'un camp à côté des
+    -- points de l'autre. game_variant_name est la clé de la table [rounds_decide].
+    CASE WHEN p1.team_id = 0 THEN r.team_0_rounds_won ELSE r.team_1_rounds_won END AS my_rounds_won,
+    CASE WHEN p1.team_id = 0 THEN r.team_1_rounds_won ELSE r.team_0_rounds_won END AS enemy_rounds_won,
+    r.rounds_total                                                       AS rounds_total,
+    COALESCE(r.game_variant_name, '')                                    AS game_variant_name,
     COALESCE(r.map_id, '')                                               AS map_id,
     COALESCE(r.playlist_id, '')                                          AS playlist_id,
     -- pair_name_fr brut + pair_id : alimentent la cascade canonique de
@@ -164,19 +180,26 @@ ORDER BY ` + StartTimeCanonicalSQL("r") + ` DESC`
 // Q32SquadImpactEventsTemplate : template SQL pour charger les events d'impact escouade.
 // Les '?' positionnels sont insérés dynamiquement (fmt.Sprintf(Q32SquadImpactEventsTemplate, placeholders)).
 // Ne PAS utiliser directement — passer par squad_repo.LoadImpactEvents().
+//
+// Aucun gamertag en SQL (lot perf L2, 2026-09-23) : il vient de l'annuaire de la lecture
+// (squad_repo_annuaire.go) — même cascade que v_gamertag_lookup, jusqu'au libellé masqué
+// « Joueur #### » d'un xuid qu'aucune source ne nomme — sans matérialiser la vue.
+//
+// ORDRE TOTAL (lot perf L9-go, 2026-09-23, revue adversariale D) : match_id, time_ms, puis
+// xuid, puis event_type. À temps égal, Premier sang et Première victime (firstByTime),
+// Finisseur et Boulet (lastByTimeFiltered), Top Gun (tri stable puis premier au seuil)
+// retiennent le premier événement dans l'ordre des lignes, que choisissait le plan de DuckDB
+// (découverte (2) du lot L8). Règle en vigueur : à égalité de temps, le plus petit xuid, puis
+// le plus petit type ; deux lignes égales sur les quatre clés sont indiscernables.
 const Q32SquadImpactEventsTemplate = `
 SELECT
     he.match_id,
     he.xuid,
-    -- he.xuid (highlight_events) peut être orphelin de la vue → fallback masqué
-    -- "Joueur ####" (jamais de xuid brut, miroir de analysis.MaskedXuidLabelSQL).
-    COALESCE(vg.gamertag, ('Joueur ' || RIGHT(he.xuid, 4)))   AS gamertag,
     he.event_type,
     COALESCE(he.time_ms, 0)           AS time_ms
 FROM highlight_events he
-LEFT JOIN v_gamertag_lookup vg ON vg.xuid = he.xuid
 WHERE he.match_id IN (%s)
-ORDER BY he.match_id, he.time_ms`
+ORDER BY he.match_id, he.time_ms, he.xuid, he.event_type`
 
 // Q32cSquadKVPairsTemplate : lecture batch des paires killer→victim horodatées
 // (killer_victim_pairs) pour une liste de match_ids. Source du fallback
@@ -201,6 +224,11 @@ ORDER BY he.match_id, he.time_ms`
 // `COALESCE(xuid, ”)` fusionnerait tous les bots en UN acteur de chaîne vide ; la seule
 // question qu'un event d'impact escouade sait poser porte sur des JOUEURS, donc on écarte au
 // plus près de la source, où l'intention est lisible.
+//
+// ORDRE TOTAL (lot perf L9-go, 2026-09-23, revue adversariale D) : match_id, time_ms, puis
+// tueur, puis victime — les events synthétisés de ces paires alimentent les mêmes badges « au
+// premier / au dernier » que Q32 (ci-dessus). Deux paires égales sur les quatre clés portent
+// les mêmes colonnes (kill_count = 1) : indiscernables.
 const Q32cSquadKVPairsTemplate = `
 SELECT
     kv.match_id,
@@ -212,7 +240,68 @@ FROM ` + KillEventsCanonicalTable + ` kv
 WHERE kv.match_id IN (%s)
   AND kv.feed_killer_xuid IS NOT NULL
   AND kv.victim_xuid      IS NOT NULL
-ORDER BY kv.match_id, kv.time_ms`
+ORDER BY kv.match_id, kv.time_ms, kv.feed_killer_xuid, kv.victim_xuid`
+
+// Q32dSquadAssistPairsTemplate : les paires (ASSISTANT -> TUEUR ASSISTÉ) INTERNES à
+// l'escouade sur une sélection de matchs, et la COUVERTURE de la mesure.
+//
+// Sœur multi-matchs de Q21d (match_view_repo_assist_pairs.go). Deux différences, toutes
+// deux voulues :
+//
+//  1. les DEUX joueurs sont contraints à l'escouade. La page Synergies pose une question
+//     sur l'escouade : un membre qui assiste un adversaire ou un allié de passage n'y
+//     répond pas, et gonflerait le dénominateur de la colonne « part » ;
+//  2. AUCUN gamertag ne sort. Les deux xuids sont des membres du roster de la page, dont
+//     les noms sont déjà résolus (alias compris) — reprendre le nom écrit dans le film
+//     ferait apparaître un même joueur sous deux orthographes dans un seul tableau.
+//
+// COUVERTURE : `matches_measured` compte les matchs de la sélection portant au moins une
+// ligne `publishable AND assist_known`. Le total, lui, est connu de l'appelant (la taille
+// de sa sélection) et n'est pas redemandé à la base. La portée `publishable` est celle des
+// paires : un tableau qui NOMME deux joueurs est une lecture ligne à ligne.
+//
+// La jointure `LEFT JOIN … ON TRUE` a la même raison d'être que dans Q21d : la couverture
+// doit sortir MÊME quand aucune paire ne sort, sinon « mesuré, aucune assistance interne »
+// et « rien mesuré » rendraient tous deux zéro ligne.
+//
+// Les parts de dégâts ne sont NI plafonnées NI complétées : `assist_damage_pct >
+// killer_damage_pct` compare deux quantités mesurées ; un NULL rend NULL, donc faux au
+// FILTER — la mort reste comptée dans `assist_count`, jamais dans `stolen_count`.
+//
+// Les '%s' positionnels sont, DANS CET ORDRE : match_ids (portée), match_ids (paires),
+// xuids de l'escouade (assistant), xuids de l'escouade (tueur). Ne PAS utiliser
+// directement — passer par squad_repo.LoadSquadAssistPairs().
+const Q32dSquadAssistPairsTemplate = `
+WITH scope AS (
+    SELECT COUNT(DISTINCT match_id) FILTER (
+        WHERE publishable AND assist_known
+    ) AS matches_measured
+    FROM ` + KillEventsCanonicalTable + `
+    WHERE match_id IN (%s)
+),
+pairs AS (
+    SELECT
+        assist_xuid,
+        feed_killer_xuid,
+        COUNT(*)                                                       AS assist_count,
+        COUNT(*) FILTER (WHERE assist_damage_pct > killer_damage_pct)  AS stolen_count
+    FROM ` + KillEventsCanonicalTable + `
+    WHERE match_id IN (%s)
+      AND publishable
+      AND assist_known
+      AND assist_xuid      IN (%s)
+      AND feed_killer_xuid IN (%s)
+    GROUP BY assist_xuid, feed_killer_xuid
+)
+SELECT
+    s.matches_measured,
+    p.assist_xuid,
+    p.feed_killer_xuid,
+    p.assist_count,
+    p.stolen_count
+FROM scope s
+LEFT JOIN pairs p ON TRUE
+ORDER BY p.assist_count DESC, p.assist_xuid, p.feed_killer_xuid`
 
 // Q32bMainTeamParticipantsTemplate : pour chaque match dans la liste, retourne
 // tous les participants de la même team_id que le joueur principal (le main
@@ -222,11 +311,22 @@ ORDER BY kv.match_id, kv.time_ms`
 //
 // Le 1er '?' est l'XUID du main player, suivi de N '?' pour les match_ids.
 // Ne PAS utiliser directement — passer par squad_repo.LoadMainTeamParticipants().
+//
+// Aucun gamertag en SQL (lot perf L2, 2026-09-23) : il vient de l'annuaire de la lecture
+// (squad_repo_annuaire.go), même cascade que v_gamertag_lookup, sans matérialiser la vue.
+//
+// L'ORDRE DES LIGNES EST LA RÈGLE DES EX AEQUO (lot perf L8, 2026-09-23) : ORDER BY
+// p.match_id, p.xuid. Les badges Bourreau, Faux-frère et Héros silencieux
+// (analysis/match_impact.go : topKiller, falseBrother, silentHero) vont au PREMIER participant
+// à égalité dans l'ordre des lignes de cette lecture. Sans ORDER BY, cet ordre était celui du
+// plan d'exécution de DuckDB : le porteur d'un badge ex aequo changeait avec lui (lot L2,
+// écart 3). Règle en vigueur : le plus petit xuid parmi les ex aequo (ordre binaire de la
+// chaîne), le même à chaque lecture. Une autre règle se poserait en départage explicite dans
+// analysis ; ce tri garderait alors stables les égalités qu'elle laisse.
 const Q32bMainTeamParticipantsTemplate = `
 SELECT
     p.match_id,
     p.xuid,
-    COALESCE(vg.gamertag, ('Joueur ' || RIGHT(p.xuid, 4))) AS gamertag,
     COALESCE(p.kills, 0)                 AS kills,
     COALESCE(p.deaths, 0)                AS deaths,
     COALESCE(p.assists, 0)               AS assists,
@@ -236,8 +336,8 @@ JOIN match_participants main
     ON main.match_id = p.match_id
     AND main.xuid    = ?
     AND p.team_id    = main.team_id
-LEFT JOIN v_gamertag_lookup vg ON vg.xuid = p.xuid
-WHERE p.match_id IN (%s)`
+WHERE p.match_id IN (%s)
+ORDER BY p.match_id, p.xuid`
 
 // Q33 : Synthèse — heatmap win rate par combinaison carte × mode.
 // Paramètre : ?1 = xuid du joueur.

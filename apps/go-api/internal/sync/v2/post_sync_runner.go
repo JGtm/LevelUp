@@ -173,7 +173,7 @@ func mapV1PostSyncResult(slug string, v1 any) PlayerPostSyncResult {
 	// on tape directement quand l'import est dispo.
 	// Cf. internal/domain/sync.go.
 	// Champs mappés : CitationsComputed, DominanceFlagsComputed,
-	// AchievementsSynced, WeaponKillsProcessed, FatalErrors.
+	// AchievementsSynced, FatalErrors.
 	type v1Result interface {
 		// Phantom marker : on consomme un alias structuré dans le main.go
 		// wiring qui adapte le type concret.

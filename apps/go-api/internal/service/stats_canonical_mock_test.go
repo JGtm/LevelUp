@@ -1,9 +1,9 @@
-// Package service â€” stats_canonical_mock_test.go : mock partagÃ©
+// Package service — stats_canonical_mock_test.go : mock partagé
 // PlayerMatchesRepository pour tests Stats / Timeseries / SessionCompare /
 // SessionPage. P4.3 finale.
 //
 // Convertit []legacymatch.StatsMatchRow vers []canonical.PlayerMatchRow pour
-// exercer le path canonical (le seul actif aprÃ¨s suppression du legacy
+// exercer le path canonical (le seul actif après suppression du legacy
 // fallback).
 package service
 
@@ -91,8 +91,8 @@ func (m *mockStatsPlayerMatches) LoadPlayerMatches(_ context.Context, _ string, 
 
 func (m *mockStatsPlayerMatches) InvalidatePlayer(_, _ string) {}
 
-// newStatsMockFromRows construit un mock PlayerMatchesRepository Ã  partir
-// de rows StatsMatchRow legacy. Helper partagÃ© entre les 4 services.
+// newStatsMockFromRows construit un mock PlayerMatchesRepository à partir
+// de rows StatsMatchRow legacy. Helper partagé entre les 4 services.
 func newStatsMockFromRows(rows []legacymatch.StatsMatchRow, err error) *mockStatsPlayerMatches {
 	return &mockStatsPlayerMatches{rows: rows, err: err}
 }

@@ -4,7 +4,7 @@
  * Quatre rôles distincts (l'équipe alliée vs ennemie reste TOUJOURS lisible) :
  *  - Joueur principal (is_me) → `SQUAD_MAIN_PLAYER_TOKEN` (cohérent avec la
  *    pill de la page Squad — source unique, jamais de token en dur ici).
- *  - Amis (page Escouade — `settings.friend_gamertags`) côté allié → tokens
+ *  - Amis (page Escouade — liste d'amis du joueur) côté allié → tokens
  *    `SQUAD_TEAMMATE_COLOR_TOKENS` (`squad-player-2` / `-3` / `-4`).
  *    Garantit la cohérence visuelle avec la page Squad.
  *  - Autres coéquipiers (même `team_side` que le main, non amis) → palette
@@ -26,6 +26,7 @@ import type {
   MatchScoreboardRow,
 } from '@/lib/api/types'
 import { SQUAD_MAIN_PLAYER_TOKEN, SQUAD_TEAMMATE_COLOR_TOKENS } from '@/features/squad/colors'
+import { normalizeGamertagKey } from '@/lib/players/displayName'
 
 const MAIN_TOKEN: SemanticToken = SQUAD_MAIN_PLAYER_TOKEN
 
@@ -73,14 +74,10 @@ export interface MatchPlayerColors {
   hexByGamertag: Map<string, string>
 }
 
-function normalizeGamertag(gt: string | null | undefined): string {
-  return (gt ?? '').toLowerCase().trim()
-}
-
 /**
  * Construit la palette joueurs pour un match.
  *
- * `friendGamertags` (typiquement `settings.friend_gamertags`) permet de
+ * `friendGamertags` (la liste d'amis du joueur consulté) permet de
  * réutiliser le color scheme de la page Squad pour les amis ALLIÉS. Les amis
  * adverses tombent dans la palette ennemie pour préserver la lecture
  * équipe vs équipe.
@@ -131,7 +128,7 @@ export function buildMatchPlayerColors(
 
   const friendSet = new Set<string>()
   for (const gt of friendGamertags ?? []) {
-    const norm = normalizeGamertag(gt)
+    const norm = normalizeGamertagKey(gt)
     if (norm) friendSet.add(norm)
   }
 
@@ -157,7 +154,7 @@ export function buildMatchPlayerColors(
     const teamSide = teamSideByXUID.get(xuid) ?? null
     const isAlly = !isMain && allyTeam != null && teamSide === allyTeam
     const gt = gamertagByXUID.get(xuid)
-    const isFriend = !isMain && gt != null && friendSet.has(normalizeGamertag(gt))
+    const isFriend = !isMain && gt != null && friendSet.has(normalizeGamertagKey(gt))
 
     if (isMain) {
       token = MAIN_TOKEN

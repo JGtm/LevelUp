@@ -27,12 +27,20 @@ export const defaultPalette: Palette = {
 
   // ── Divergent (source : match-card.tsx, delta-card.tsx) ────────────────────
   'divergent-pos':     '#22C55E', // green-500
-  // Gris légèrement bleuté : la zone « non significative » ne doit porter aucune
-  // direction. L'ancien bleu #60A5FA se lisait comme une valeur positive et
-  // entrait en concurrence avec les couleurs joueurs. Les 3 autres palettes ont
-  // déjà un gris à ce poste.
-  'divergent-neutral': '#8A9099',
+  // Bleu (blue-400) — décision produit 2026-08-27 : retour au bleu historique pour
+  // la Résistance défensive, jugé plus lisible que le gris #8A9099 essayé le
+  // 2026-08-04 (le gris se confondait avec les libellés muted voisins). Les 3
+  // palettes daltoniennes gardent leur gris à ce poste (neutre sans direction).
+  'divergent-neutral': '#60A5FA',
   'divergent-neg':     '#EF4444', // red-500
+
+  // ── Objectif sans camp ─────────────────────────────────────────────────────
+  // Gris (gray-400). C'EST LE SEUL POSTE OÙ CETTE PALETTE NE SUIT PAS `divergent-neutral`, et
+  // c'est délibéré : le bleu ci-dessus est bon pour une jauge signée, il est mauvais sur une
+  // CARTE où « allié » se dit déjà en bleu (retour utilisateur du 2026-09-08). Les trois
+  // palettes daltoniennes rendaient déjà `divergent-neutral` gris — elles n'avaient donc pas le
+  // défaut, et donnent ici la même valeur qu'elles utilisent déjà pour « pas de direction ».
+  'zone-neutral': '#9CA3AF',
 
   // ── Statuts UI ─────────────────────────────────────────────────────────────
   'success':     '#10B981',
@@ -66,9 +74,28 @@ export const defaultPalette: Palette = {
   'chart-series-7': '#F59E0B', // amber   — 7e série
   'chart-series-8': '#EC4899', // pink    — 8e série
 
-  // ── Bonus (assistances) — violet, distinct des 8 couleurs squad verrouillées ─
+  // ── Bonus — violet (cœur de la faille du rejeu ; ex-assistances, cf. stat-assists) ─
   // (joueurs + opposés). N'utilise PAS chart-series-7 (== perf-tier-3 ambre = joueur 3).
   'bonus': '#A855F7', // violet-500 (teinte 271°)
+  // Stats de combat (2026-09-17) — contraste 3:1 sur les deux surfaces, ΔE ≥ 15, daltonisme ≥ 8.
+  'stat-kills': '#059669',      // emerald-600
+  'stat-deaths': '#F43F5E',     // rose-500
+  'stat-assists': '#0284C7',    // sky-600
+  'assist-received': '#A16207', // yellow-700 — « il te sert »
+  'assist-given': '#7C3AED',    // violet-600 — « tu le sers »
+
+  // ── Rareté — accent légendaire (encadré surbouclier du rejeu 2D, etc.) ──────
+  // Aligné sur le "Légendaire" du Battlepass (rarity.ts : bg/glow amber-400,
+  // rgba(251,191,36)) pour que "légendaire" désigne la MÊME teinte partout dans
+  // l'app. Distinct de `warning` (#F59E0B, amber-500) : un ton plus clair/doré,
+  // moins orangé — les deux ne se confondent pas côte à côte.
+  'legendary': '#FBBF24', // amber-400
+
+  // ── Extrême rare — l'accent violet du sommet d'une rampe d'intensité ──────
+  // Fuchsia plutôt que purple : le violet prolonge le ROUGE vers le magenta, ce qui
+  // se lit comme « au-delà du chaud » sur la rampe d'intensité. Et il ne double pas
+  // la valeur de `bonus` (#A855F7), le cœur de la faille du rejeu.
+  'extreme': '#C026D3', // fuchsia-600
 
   // ── Badges narratifs (source : match-card-presentation.ts) ─────────────────
   // Couleurs ajustées pour atteindre WCAG AA (≥ 4.5:1) — cf. wcagContrast.test.ts
@@ -82,10 +109,35 @@ export const defaultPalette: Palette = {
   'narrative-debacle-text':         '#000000', // noir sur orange (5.4) — crème ne passait pas AA (3.64)
   'narrative-contre-remontada':     '#33D6FF',
   'narrative-contre-remontada-text':'#082F49',
+  'narrative-sabordage':            '#BE185D', // rose-700 — défaite au score, domination aux frags
+  'narrative-sabordage-text':       '#FFFFFF',
+  'narrative-abnegation':           '#A3E635', // lime-400 — victoire au score, écrasés aux frags (couleur propre)
+  'narrative-abnegation-text':      '#1A2E05',
 
   // ── Badges encounter (source : narrative/encounter.go ColorToken) ──────────
   // (set sombre distinct AA-blanc, palette-invariant — cf. _encounterColors.ts)
   ...ENCOUNTER_BADGE_COLORS,
+
+  // ── Classes de frags — famille dédiée (2026-08-29) ─────────────────────────
+  // Valeurs = EXACTEMENT celles que résolvaient les anciens tokens empruntés
+  // (perf-tier-2, chart-series-6/8/7/5, narrative-humiliation/-debacle/-remontada,
+  // compare-a, extreme, divergent-neutral) : zéro changement à l'écran sur la
+  // palette défaut — SAUF frag-spartan-ability, seul écart volontaire : l'ancien
+  // compare-a (#818CF8, indigo-400) valait ΔE 6,89 (< seuil 8) contre
+  // frag-unattributed (#60A5FA) — la paire « héritée » exemptée au guard du
+  // 2026-08-29 matin. La famille dédiée la RÉSOUT (indigo-500, plus saturé et
+  // plus sombre) au lieu de l'exempter.
+  'frag-shoulder':        '#06B6D4', // cyan-500
+  'frag-sidearm':         '#10B981', // émeraude
+  'frag-heavy':           '#7C3AED', // violet-600
+  'frag-melee':           '#EC4899', // rose
+  'frag-grenade':         '#F59E0B', // ambre
+  'frag-spartan-ability': '#6366F1', // indigo-500 (cf. note ci-dessus)
+  'frag-vehicle':         '#3730A3', // indigo-800
+  'frag-turret':          '#D55E00', // orange brûlé
+  'frag-equipment':       '#C026D3', // fuchsia-600
+  'frag-environmental':   '#0072B2', // bleu profond
+  'frag-unattributed':    '#60A5FA', // bleu-400 neutre (résidu)
 
   // ── Heatmaps (source : timeseries-heatmap.tsx, heatmapChart.ts) ────────────
   'heatmap-cold':           '#EF4444', // mauvais — rouge

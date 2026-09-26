@@ -19,6 +19,9 @@ import {
 import { useMemo, useState, type ReactNode } from 'react'
 
 import { Tooltip } from '@/components/ui/tooltip'
+import { AssistExchangeCell } from '@/features/_shared/assists/AssistExchangeCell'
+import { assistSortValue } from '@/features/_shared/assists/assistExchange'
+import { ASSISTS_TEXT } from '@/features/_shared/assists/assistsI18n'
 import { HeaderLabelTooltip } from '@/lib/table/columnMeta'
 import { tokenCssVar } from '@/lib/accessibility'
 import { formatPercent } from '@/lib/formatters'
@@ -144,6 +147,7 @@ function buildColumns(
   labels: RelationsLabels,
   locale: Locale,
   onPlayerClick: (gamertag: string) => void,
+  assistsLabel: string,
 ): ColumnDef<RelationInsight>[] {
   return [
     {
@@ -270,13 +274,32 @@ function buildColumns(
           <SplitBar
             leftCount={r.kills_dealt}
             rightCount={r.deaths_suffered}
-            leftColor={tokenCssVar('outcome-win')}
-            rightColor={tokenCssVar('outcome-loss')}
+            leftColor={tokenCssVar('stat-kills')}
+            rightColor={tokenCssVar('stat-deaths')}
             leftTooltip={labels.tooltip.fragsDealt(String(r.kills_dealt))}
             rightTooltip={labels.tooltip.deathsSuffered(String(r.deaths_suffered))}
           />
         )
       },
+    },
+    {
+      id: 'assists',
+      // Tri sur les assistances échangées (données + reçues) ; non mesuré → en bas.
+      accessorFn: (r) => assistSortValue(r.assists),
+      sortUndefined: 'last',
+      sortDescFirst: true,
+      header: (ctx) => (
+        <HeaderLabelTooltip text={ASSISTS_TEXT[locale].columnTooltip}>
+          <SortLabel column={ctx.column}>{assistsLabel}</SortLabel>
+        </HeaderLabelTooltip>
+      ),
+      cell: (ctx) => (
+        <AssistExchangeCell
+          assists={ctx.row.original.assists}
+          teammateMatches={ctx.row.original.teammate_matches}
+          locale={locale}
+        />
+      ),
     },
     {
       id: 'ratio',
@@ -323,16 +346,20 @@ export function RelationsTable({
   locale,
   onPlayerClick,
   emptyMessage,
+  assistsLabel,
 }: {
   rows: RelationInsight[]
   labels: RelationsLabels
   locale: Locale
   onPlayerClick: (gamertag: string) => void
   emptyMessage: string
+  /** Libellé de la colonne « Assistances », title-aware (champ `assists` des mappings,
+   *  résolu par la page via useFieldLabel). */
+  assistsLabel: string
 }) {
   const columns = useMemo(
-    () => buildColumns(labels, locale, onPlayerClick),
-    [labels, locale, onPlayerClick],
+    () => buildColumns(labels, locale, onPlayerClick, assistsLabel),
+    [labels, locale, onPlayerClick, assistsLabel],
   )
   // Pas d'état de tri initial : l'ordre serveur (matchs communs DESC) est
   // conservé tant qu'aucun en-tête n'est cliqué (A3).

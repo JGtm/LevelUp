@@ -8,10 +8,10 @@ import (
 	"context"
 	"errors"
 
-	"levelup/go-api/internal/analysis/positions"
-	"levelup/go-api/internal/analysis/replay"
 	"levelup/go-api/internal/analysis/temporal"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/domain/playerposition"
+	"levelup/go-api/internal/domain/replaydoc"
 	"levelup/go-api/internal/games/canonical"
 )
 
@@ -30,7 +30,7 @@ type CareerService interface {
 	// handler via MatchHistoryService.
 	GetHighlightMatchIDs(ctx context.Context, input domain.HighlightFilterInput) (domain.HighlightMatchesData, error)
 	// GetTopEncounters : 10 joueurs les plus croisés au niveau carrière,
-	// hors amis configurés (FriendGamertags), avec badges narratifs.
+	// hors amis configurés du joueur, avec badges narratifs.
 	GetTopEncounters(ctx context.Context) (domain.CareerTopEncountersResponse, error)
 	// GetRivals : top 10 némésis + top 10 souffre-douleur via killer_victim_pairs.
 	GetRivals(ctx context.Context) (domain.CareerRivalsResponse, error)
@@ -133,6 +133,10 @@ type SessionNotifier interface {
 type MatchHistoryService interface {
 	GetPage(ctx context.Context, req domain.MatchHistoryQueryRequest) (domain.MatchHistoryPageResponse, error)
 	ExportCSV(ctx context.Context, req domain.MatchHistoryQueryRequest) ([]domain.MatchHistoryRow, error)
+	// OutcomeText résout le TEXTE de l'issue depuis le titre, dans la locale de ctx — réservé
+	// à l'export CSV (fichier rendu serveur, sans JS pour localiser une clé). Le JSON de
+	// l'API sert la clé (MatchHistoryRow.Outcome) ; le web localise partout ailleurs.
+	OutcomeText(ctx context.Context, code int) string
 }
 
 // MatchViewService construit la vue détaillée d'un match.
@@ -149,7 +153,7 @@ type MatchViewService interface {
 	// GetMatchPositions retourne les positions joueurs keyframe v3 (match-level,
 	// §N) d'un match. Retourne games.ErrCapabilityNotSupported si le titre n'a pas
 	// la capability (repo non câblé ou table absente).
-	GetMatchPositions(ctx context.Context, matchID string) ([]positions.PlayerPosition, error)
+	GetMatchPositions(ctx context.Context, matchID string) ([]playerposition.PlayerPosition, error)
 }
 
 // ErrReplayNotAvailable est renvoyé quand aucun artefact de rejeu 2D n'existe pour le
@@ -160,13 +164,130 @@ var ErrReplayNotAvailable = errors.New("replay: aucun artefact disponible pour c
 // ReplayService sert l'artefact de rejeu 2D pré-construit d'un match (trajectoires
 // joueurs vue du dessus, produit hors ligne par cmd/replay-build).
 type ReplayService interface {
-	GetReplay(ctx context.Context, matchID string) (replay.ReplayDocument, error)
+	GetReplay(ctx context.Context, matchID string) (replaydoc.ReplayDocument, error)
 	// IsAvailable dit si l'artefact du match existe, SANS le lire. La Match View
 	// s'en sert pour ne poser un lien « Rejeu 2D » que là où il mène quelque part :
 	// un lien vers une page vide serait pire que pas de lien.
 	// Contrat : aucune erreur remontée — un artefact illisible, un titre sans rejeu
 	// ou un chemin absent valent tous « pas de rejeu » (dégradation gracieuse).
 	IsAvailable(ctx context.Context, matchID string) bool
+	// AvailableSet liste EN UN SEUL PASSAGE tous les matchs du titre qui ont un
+	// artefact. C'est la forme à utiliser dès qu'on interroge la présence de rejeu
+	// pour une LISTE de matchs (tableaux Explorer/escouade, des centaines de lignes) :
+	// un IsAvailable par ligne serait un os.Stat par ligne.
+	// Erreur : l'appelant dégrade sur un ensemble vide (aucune colonne rejeu), jamais
+	// un 500 — l'absence de rejeu n'est pas une panne de page.
+	AvailableSet(ctx context.Context) (ReplayAvailability, error)
+	// MapBackground retourne le CALAGE du fond de carte du match : où l'image se pose
+	// dans le repère monde, celui-là même où vivent les trajectoires. Retourne
+	// ErrMapBackgroundNotAvailable quand la carte du match n'a pas d'image figée —
+	// 21 cartes en ont, pas toutes : le rejeu retombe alors sur son sol structurel.
+	MapBackground(ctx context.Context, matchID string) (*replaydoc.MapBackground, error)
+	// MapBackgroundImage retourne les octets du fond et son type MIME ("image/png" ou
+	// "image/webp", déduit de l'extension réelle du fichier — champ Image du sidecar, D3
+	// du plan fonds WebP), même sentinelle d'absence.
+	MapBackgroundImage(ctx context.Context, matchID string) ([]byte, string, error)
+	// MapBackgroundForMap et MapBackgroundImageForMap servent le MÊME fond, keyé par
+	// CARTE (map_id) au lieu du match. La grille de l'onglet Tactique n'a pas de match
+	// sous la main : elle liste des cartes. La résolution est la même — et elle n'est
+	// écrite qu'une fois (resolveBackgroundKeyDepuis dans le service) : seule change la
+	// façon d'obtenir les identités de carte (ReplayMapNameRepo.MapKeysForMap).
+	// Mêmes sentinelles d'absence que leurs jumelles par match.
+	MapBackgroundForMap(ctx context.Context, mapID string) (*replaydoc.MapBackground, error)
+	MapBackgroundImageForMap(ctx context.Context, mapID string) ([]byte, string, error)
+	// MapCallouts retourne les ZONES NOMMÉES officielles de la carte du match
+	// (polygones monde + libellés FR/EN, catalogue de référence versionné). Retourne
+	// ErrMapCalloutsNotAvailable quand la carte n'en a pas — cas nominal des cartes
+	// Forge : leur canevas ne porte aucune zone nommée, par construction.
+	MapCallouts(ctx context.Context, matchID string) (*replaydoc.MapCalloutsEntry, error)
+}
+
+// ErrMapBackgroundNotAvailable est renvoyé quand aucun fond de carte figé n'existe pour la
+// carte du match. C'est une ABSENCE NORMALE, pas une panne : toutes les cartes n'ont pas
+// d'image (production hors ligne, jeu installé requis), et le client dégrade sur le sol
+// reconstruit. Distinct de ErrReplayNotAvailable : un rejeu peut exister sans fond.
+var ErrMapBackgroundNotAvailable = errors.New("replay: aucun fond de carte pour ce match")
+
+// ErrMapCalloutsNotAvailable est renvoyé quand la carte du match n'a pas de zones
+// nommées au catalogue. ABSENCE NORMALE : les 22 cartes intégrées en ont, les cartes
+// Forge n'en auront jamais (leur canevas n'en porte aucune — mesuré). Le client dégrade
+// en n'affichant pas le calque zones.
+var ErrMapCalloutsNotAvailable = errors.New("replay: aucune zone nommée pour ce match")
+
+// MatchMapKeys sont les identités de carte d'un match. Le map_id (asset UGC) est la clé du
+// fond d'une carte FORGE — un canevas partagé par des dizaines de cartes ne peut pas keyer
+// un fond ; les noms affichés mènent au module installé des cartes NATIVES (catalogue de
+// bornes).
+type MatchMapKeys struct {
+	// MapID est l'asset UGC du match (match_registry.map_id) ; vide quand la base ne le
+	// porte pas.
+	MapID string
+	// Names sont les noms de carte candidats, du plus fiable au moins fiable.
+	Names []string
+	// PairName est le pair_name BRUT du match (match_registry.pair_name) : la clé du
+	// choix des rôles d'objectif servis avec le rejeu (lot 4 — le service le normalise
+	// via analysis.NormalizeModeLabel). Vide quand la base ne le porte pas ; il peut
+	// aussi être un UUID brut — l'appelant dégrade alors par absence, il ne devine pas.
+	PairName string
+}
+
+// ReplayMapNameRepo résout la carte d'un match. Le document de rejeu ne porte aucune
+// identité de carte (il est décodé des seuls chunks du film) : c'est la base qui la nomme.
+type ReplayMapNameRepo interface {
+	// MapKeysForMatch retourne les identités de carte du match (map_id + noms candidats).
+	// Erreur = carte inconnue, l'appelant dégrade sans fond.
+	MapKeysForMatch(ctx context.Context, matchID string) (MatchMapKeys, error)
+	// MapKeysForMap retourne les mêmes identités à partir du SEUL map_id, pour les
+	// surfaces qui raisonnent par CARTE et non par match (grille de l'onglet Tactique).
+	// Le map_id est alors déjà connu ; ne manquent que les NOMS candidats, qui restent
+	// nécessaires — le fond d'une carte native est keyé par son module installé, pas par
+	// son asset. `PairName` est toujours vide : il n'existe qu'au niveau d'un match.
+	// Erreur = carte inconnue, même dégradation que ci-dessus.
+	MapKeysForMap(ctx context.Context, mapID string) (MatchMapKeys, error)
+}
+
+// MatchPlayerFact et MatchFacts sont des ALIAS de leurs types de domaine
+// (`internal/domain/match_facts.go`), où ils ont été déplacés le 2026-08-24.
+//
+// POURQUOI ILS ONT DÉMÉNAGÉ, ET POURQUOI L'ALIAS RESTE. Ces faits traversent désormais une
+// SECONDE porte que `port` ne peut pas servir : `domain.BuildQueuePayload` les transporte
+// jusqu'à l'ouvrier distant, qui n'a aucune base pour les résoudre. Or `domain` n'importe
+// jamais `port` — les laisser ici rendrait la file de construction impossible à typer sans
+// cycle d'import.
+//
+// L'alias (et non une redéclaration) est ce qui rend le déplacement INVISIBLE : `port.MatchFacts`
+// et `domain.MatchFacts` sont le MÊME type pour le compilateur, si bien qu'aucun des appelants
+// existants n'a eu à changer. Ne pas le transformer en type distinct : ce serait deux types à
+// tenir synchronisés, et le défaut « copy-paste config » du dépôt.
+type MatchPlayerFact = domain.MatchPlayerFact
+
+// MatchFacts est CE QUE LA BASE SAIT DU MATCH ET QUE LE FILM NE DIT PAS. Défini et documenté
+// dans `internal/domain/match_facts.go` (dont la mesure de ce que coûte son absence).
+type MatchFacts = domain.MatchFacts
+
+// ReplayFactsRepo lit les faits d'un match pour le constructeur d'artefact de rejeu.
+type ReplayFactsRepo interface {
+	// FactsForMatch retourne les faits du match. Un match absent du registre rend des faits
+	// VIDES sans erreur : l'appelant dégrade (artefact sans compteurs de joueur), il n'échoue pas.
+	FactsForMatch(ctx context.Context, matchID string) (MatchFacts, error)
+}
+
+// ReplayLinkTarget est la cible de lien d'un match. Défini et documenté dans
+// `internal/domain/replay_link.go`.
+type ReplayLinkTarget = domain.ReplayLinkTarget
+
+// ReplayLinkRepo résout, pour un LOT de matchs, de quoi construire un lien vers leur page
+// de rejeu : un joueur connu qui y a participé, et le nom de carte.
+//
+// Port SÉPARÉ de ReplayFactsRepo bien que le même type concret l'implémente : les faits
+// servent à CONSTRUIRE un artefact, ces cibles à ANNONCER un artefact déjà construit. Deux
+// besoins, deux contrats — un appelant qui n'a besoin que du second ne doit pas dépendre
+// du premier.
+type ReplayLinkRepo interface {
+	// LinkTargetsForMatches rend une entrée PAR MATCH TROUVÉ au registre, indexée par
+	// match_id. knownXUIDs borne la recherche de participant aux joueurs de l'instance ;
+	// vide = aucun lien résolu (les entrées sortent avec le nom de carte seul).
+	LinkTargetsForMatches(ctx context.Context, matchIDs, knownXUIDs []string) (map[string]ReplayLinkTarget, error)
 }
 
 // MatchEventsService construit la timeline canonique d'events d'un match
@@ -273,6 +394,13 @@ type StatsService interface {
 // TeammatesService construit la page Coéquipiers.
 type TeammatesService interface {
 	GetPage(ctx context.Context, playerXUID string, req domain.TeammatesQueryRequest) (domain.TeammatesPageResponse, error)
+	// CompositionSessions rend les sessions de la composition (joueur principal +
+	// coéquipiers désignés) et la plus récente : les MÊMES valeurs que
+	// composition_sessions et latest_composition_session de GetPage pour la même
+	// composition et la même option composition exacte, sans calculer la page (lot
+	// perf L4b, 2026-09-23). Sans coéquipier : les sessions escouade du joueur
+	// principal, et une dernière session vide — comme GetPage.
+	CompositionSessions(ctx context.Context, playerXUID string, teammates []string, exact bool) ([]domain.CompositionSessionEntry, string, error)
 }
 
 // TimeseriesService construit la page Séries temporelles.
@@ -293,21 +421,6 @@ type BootstrapService interface {
 // GamertagSearchService cherche des gamertags dans la base partagée.
 type GamertagSearchService interface {
 	Search(ctx context.Context, query string) ([]domain.GamertagSearchResult, error)
-}
-
-// ProfileService gère la création de profils joueur (extrait de setup.go).
-type ProfileService interface {
-	CreatePlayer(req domain.CreatePlayerProfileRequest) (playerKey string, warnings []string, err error)
-}
-
-// FriendsOrchestrator déclenche le recompute is_with_friends sur toutes les
-// player DBs configurées (multi-titres). §4 du plan Squad/Sessions overhaul.
-//
-// Implémenté par *service.FriendsOrchestratorService. Le résultat n'est pas
-// typé ici pour éviter une fuite de service vers port — les handlers le
-// consomment via le type concret quand ils ont besoin du détail.
-type FriendsOrchestrator interface {
-	OnFriendsChanged(ctx context.Context) error
 }
 
 // ─── Asset Drawer ────────────────────────────────────────────────────────────

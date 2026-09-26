@@ -31,8 +31,15 @@ export interface BarGroupedChartProps {
   error?: Error | null
   emptyMessage?: string
   height?: number
+  /** Propage a ChartCard : le graphe est rendu nu, sans bordure ni fond (voir ChartCard.frameless). */
+  frameless?: boolean
   componentColors?: Record<string, SemanticToken>
   componentOrder?: string[]
+  /**
+   * Valeur ecrite AU-DESSUS de chaque barre (maquette 4c520da6). Absent = aucune
+   * etiquette : le comportement de tous les appelants anterieurs.
+   */
+  showValues?: boolean
 }
 
 export function BarGroupedChart({
@@ -42,13 +49,15 @@ export function BarGroupedChart({
   error,
   emptyMessage,
   height,
+  frameless,
   componentColors,
   componentOrder,
+  showValues,
 }: BarGroupedChartProps) {
   const buildOption = useCallback(
     (s: ChartSeries<ChartPointStacked>[]) =>
-      buildBarGroupedOption(s, { componentColors, componentOrder }),
-    [componentColors, componentOrder],
+      buildBarGroupedOption(s, { componentColors, componentOrder, showValues }),
+    [componentColors, componentOrder, showValues],
   )
 
   return (
@@ -59,6 +68,7 @@ export function BarGroupedChart({
       error={error}
       emptyMessage={emptyMessage}
       height={height}
+      frameless={frameless}
       buildOption={buildOption}
     />
   )
@@ -67,6 +77,7 @@ export function BarGroupedChart({
 interface BuildOpts {
   componentColors?: Record<string, SemanticToken>
   componentOrder?: string[]
+  showValues?: boolean
 }
 
 // eslint-disable-next-line react-refresh/only-export-components
@@ -74,7 +85,7 @@ export function buildBarGroupedOption(
   series: ChartSeries<ChartPointStacked>[],
   opts: BuildOpts = {},
 ): EChartsCoreOption {
-  const { componentColors, componentOrder } = opts
+  const { componentColors, componentOrder, showValues } = opts
   if (series.length === 0) {
     return { backgroundColor: CHART_BG }
   }
@@ -90,6 +101,9 @@ export function buildBarGroupedOption(
     ? componentOrder.filter((c) => componentSet.has(c))
     : Array.from(componentSet)
 
+  const tc = getEChartsThemeColors()
+  const axis = getAxisBase(tc)
+
   const echartsSeries = components.map((comp, idx) => {
     const color = componentColors?.[comp]
       ? resolveToken(componentColors[comp])
@@ -99,16 +113,16 @@ export function buildBarGroupedOption(
       type: 'bar' as const,
       barMaxWidth: 14,
       itemStyle: { color, borderRadius: 2 },
+      label: showValues
+        ? { show: true, position: 'top' as const, color: tc.text, fontSize: 10, fontWeight: 500 }
+        : { show: false },
       data: dps.map((d) => d.components[comp] ?? 0),
     }
   })
 
-  const tc = getEChartsThemeColors()
-  const axis = getAxisBase(tc)
-
   return {
     backgroundColor: CHART_BG,
-    grid: { top: 20, bottom: 40, left: 56, right: 16 },
+    grid: { top: showValues ? 28 : 20, bottom: 40, left: 56, right: 16 },
     tooltip: {
       ...getTooltipBase(tc),
       trigger: 'axis',

@@ -32,6 +32,15 @@ export const TITLE_CAPABILITIES = [
   'expected_stats',
   'waypoint_match_url',
   'objective_stats',
+  'replay',
+  // Portée et dénivelé mesurés des engagements (section « Portée par arme » de la
+  // Synthèse). Absente ⇒ la section est masquée. Miroir de title.CapWeaponRange
+  // (registry.go), qui documente pourquoi Halo 5 ne l'obtient pas.
+  'weapon_range',
+  // Probabilité de victoire attendue (LUSR TrueSkill 2). REMISÉE 2026-09-07 :
+  // non accordée par aucun titre. Absente ⇒ carte / colonnes « Prob. vic. »
+  // masquées. Miroir de title.CapExpectedWinProb (registry.go).
+  'expected_win_prob',
 ] as const
 
 export type TitleCapability = (typeof TITLE_CAPABILITIES)[number]

@@ -10,6 +10,7 @@ import { useNavigate, Link } from '@tanstack/react-router'
 import { useQueryClient } from '@tanstack/react-query'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { AppFooter } from '@/components/shell/AppFooter'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { useLogin } from '@/features/auth/queries'
 import { storePasswordCredential } from '@/features/auth/credentials'
@@ -144,6 +145,8 @@ export function LoginPage() {
             )}
           </CardContent>
         </Card>
+
+        <AppFooter variant="minimal" />
       </div>
     </div>
   )

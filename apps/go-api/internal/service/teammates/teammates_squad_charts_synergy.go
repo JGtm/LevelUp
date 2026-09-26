@@ -12,6 +12,7 @@ import (
 	"levelup/go-api/internal/analysis/narrative"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
+	"levelup/go-api/internal/observability/timing"
 	"levelup/go-api/internal/port"
 )
 
@@ -194,6 +195,7 @@ func (s *TeammatesService) buildSquadSynergyRadar(
 	mainGamertag string,
 	selectedGamertags []string,
 ) []domain.SquadSynergyRadarSeries {
+	defer timing.FromContext(ctx).Section("synergy_radar")()
 	if len(allSquadRows) == 0 || len(selectedGamertags) == 0 {
 		return nil
 	}
@@ -273,17 +275,10 @@ func (s *TeammatesService) buildSquadSynergyRadar(
 }
 
 // ---------------------------------------------------------------------------
-// teammates.15 — Heatmap intensité kills par phase de match (10 buckets)
+// teammates.15 — Profil d'intensité (kills par phase de match, 10 buckets) :
+// constantes partagées ; le builder vit dans
+// teammates_squad_charts_intensity_perminute.go.
 // ---------------------------------------------------------------------------
 
 const intensityBuckets = 10
 const intensityMinMatches = 3
-
-// buildSquadIntensityProfile charge les kill events highlight pour les matchs
-// du scope, calcule pour chaque option (all + main + teammates) un profil
-// d'intensité 10-buckets × N matchs (normalisé par match).
-//
-// Renvoie nil si <3 matchs (section masquée), aucun kill event, ou aucune
-// option ne produit de profil.
-//
-//nolint:funlen // chart-builder cohésif (load kills → 10-bucket phases → profil per option).

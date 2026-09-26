@@ -12,12 +12,17 @@
  * exactement une vie ; au-dessus le joueur fait mieux, en dessous moins bien,
  * dans les DEUX cartes.
  *
- * Cadre de lecture commun et FIXE : la fenêtre 50…200 %
- * ({@link ONE_LIFE_RATE_BOUNDS}) + les deux zones
- * ({@link oneLifeZonesMarkArea}) + le repère « 1 vie » à 100. Rien n'est
- * recalculé depuis les données : deux sessions se comparent à l'œil par
- * construction. L'identité des courbes est portée par une ÉTIQUETTE DE FIN
- * (nom du joueur, à sa couleur), pas par une légende.
+ * Cadre de lecture commun : la fenêtre 50…200 % ({@link ONE_LIFE_RATE_BOUNDS})
+ * + les deux zones ({@link oneLifeZonesMarkArea}) + le repère « 1 vie » à 100.
+ * La fenêtre est le PLANCHER de comparabilité (deux sessions nominales se
+ * comparent à l'œil par construction) mais s'ÉLARGIT — jamais ne se rétrécit —
+ * quand un point dépasse 50…200 %, via {@link oneLifeWindowBoundsForData} sur
+ * l'ensemble des points tracés (tous joueurs) : DEC-5, retours utilisateur
+ * 2026-08-29 pt.4, sinon une session courte voit sa courbe écrêtée par l'axe.
+ * L'identité des courbes est portée par une LÉGENDE en pied de graphe, comme partout
+ * ailleurs dans l'app (retour utilisateur 2026-09-09 : les étiquettes de fin de courbe
+ * étaient un canal d'identité que ces deux cartes étaient seules à employer). Elle rend
+ * aussi chaque joueur masquable d'un clic, ce que l'étiquette ne savait pas faire.
  *
  * Asymétrie assumée : la résistance vit généralement au-dessus de 100 % et le
  * rendement en dessous — c'est une information, pas un défaut d'axe.
@@ -28,13 +33,16 @@ import {
   escapeHtml,
   getAxisBase,
   getEChartsThemeColors,
+  getLegendBase,
   getTooltipBase,
   hoverRevealSymbol,
+  legendEntries,
 } from '@/components/charts/_utils'
 import {
   ONE_LIFE_RATE_BOUNDS,
   ONE_LIFE_RATE_PCT,
   damagePerDeath,
+  oneLifeWindowBoundsForData,
   oneLifeZonesMarkArea,
 } from '@/lib/charts/oneLifeWindow'
 import { effectiveDmgPerFrag, formatNumberFixed } from '@/lib/formatters'
@@ -45,18 +53,17 @@ import { truncateMap } from '@/lib/charts/matchLabels'
 export type EfficiencyMetric = 'offensive' | 'defensive'
 
 const RATE_BOUNDS = ONE_LIFE_RATE_BOUNDS
-/** Plancher FIXE de l'axe (%) — jamais dérivé des données. */
+/** Plancher FIXE de la fenêtre de BASE (%) — jamais dérivé des données ; l'axe
+ *  réellement rendu peut s'ÉLARGIR sous cette valeur (DEC-5, jamais se rétrécir
+ *  au-dessus) via {@link oneLifeWindowBoundsForData} dans `buildSquadEfficiencyOption`. */
 export const RATE_AXIS_MIN_PCT = RATE_BOUNDS.min
-/** Plafond FIXE de l'axe (%) — jamais dérivé des données. */
+/** Plafond FIXE de la fenêtre de BASE (%) — jamais dérivé des données ; l'axe
+ *  réellement rendu peut s'ÉLARGIR au-dessus de cette valeur (DEC-5, jamais se
+ *  rétrécir en dessous) via {@link oneLifeWindowBoundsForData} dans `buildSquadEfficiencyOption`. */
 export const RATE_AXIS_MAX_PCT = RATE_BOUNDS.max
 
 /** Hauteur (px) d'une carte : une seule grille, indépendante du nombre de joueurs. */
 export const EFFICIENCY_CHART_HEIGHT = 300
-
-/** Gouttière droite réservée aux étiquettes de fin de courbe. */
-const END_LABEL_GUTTER = 84
-/** Longueur max d'un gamertag en étiquette de fin. */
-const PLAYER_LABEL_MAX = 13
 
 /** Libellés du chart (FR/EN fournis par la feature). */
 export interface EfficiencyChartLabels {
@@ -78,7 +85,7 @@ export interface EfficiencyChartLabels {
 
 export interface EfficiencyChartOpts {
   metric: EfficiencyMetric
-  /** gamertag → couleur hex résolue (trait + étiquette de fin). */
+  /** gamertag → couleur hex résolue (trait de la courbe + pastille de légende). */
   colorByPlayer: Record<string, string>
   labels: EfficiencyChartLabels
 }
@@ -178,8 +185,9 @@ function tooltipFormatter(opts: EfficiencyChartOpts, xLabels: string[]) {
 
 /**
  * buildSquadEfficiencyOption — une grille, N courbes joueurs superposées, taux
- * « une vie » en %, fenêtre FIXE 50…200 %, deux zones de lecture, repère 100 %
- * et étiquettes de fin de courbe. Ordre des courbes = `players`.
+ * « une vie » en %, fenêtre 50…200 % élargie sans jamais rétrécir (DEC-5, cf.
+ * {@link oneLifeWindowBoundsForData}), deux zones de lecture, repère 100 % et
+ * étiquettes de fin de courbe. Ordre des courbes = `players`.
  */
 export function buildSquadEfficiencyOption(
   rowsByPlayer: Record<string, SquadPerformanceSeriesPoint[]>,
@@ -201,9 +209,24 @@ export function buildSquadEfficiencyOption(
   const xLabels = Array.from({ length: n }, (_, i) => matchLabel(i, mapByOrder.get(i)))
   const colorOf = (p: string) => opts.colorByPlayer[p] ?? tc.axisLabel
 
+  // Points calculés une seule fois par joueur : réutilisés par la série ET par
+  // l'extent d'axe ci-dessous (jamais recalculés séparément, source unique).
+  const pointsByPlayer = new Map<string, Array<EfficiencyPoint | null>>()
+  const allRates: number[] = []
+  for (const player of players) {
+    const points = buildEfficiencyPoints(rowsByPlayer[player] ?? [], n, opts.metric)
+    pointsByPlayer.set(player, points)
+    for (const p of points) if (p != null) allRates.push(p.rate)
+  }
+  // Fenêtre 50…200 % élargie si des points dépassent, jamais rétrécie (DEC-5) :
+  // la fenêtre de comparabilité reste le plancher, une session extrême pousse
+  // l'axe plus loin plutôt que d'écrêter la courbe. Calculée sur TOUS les
+  // joueurs de la carte (pas seulement celui en cours de rendu).
+  const bounds = oneLifeWindowBoundsForData(allRates, RATE_BOUNDS)
+
   const series = players.map((player, idx) => {
     const color = colorOf(player)
-    const points = buildEfficiencyPoints(rowsByPlayer[player] ?? [], n, opts.metric)
+    const points = pointsByPlayer.get(player) ?? []
     const drawn = points.filter((p) => p != null).length
     return {
       name: player,
@@ -215,24 +238,16 @@ export function buildSquadEfficiencyOption(
       showSymbol: drawn <= 1,
       lineStyle: { color, width: LINE_W },
       connectNulls: false,
-      // Canal d'identité qui remplace la légende : nom du joueur, à sa couleur,
-      // au bout de sa courbe.
-      endLabel: {
-        show: true,
-        formatter: truncateMap(player, PLAYER_LABEL_MAX),
-        color,
-        fontSize: 10,
-        fontWeight: 600 as const,
-        distance: 6,
-      },
       // Repère et zones rendus UNE SEULE fois (portés par la première courbe) :
       // ils décrivent la grille, pas un joueur.
       ...(idx === 0
         ? {
             // Polarité unique du cadre « une vie » : les indicateurs canoniques
             // montent quand le joueur va mieux (taux rapportés à une vie), donc
-            // le vert est toujours au-dessus du repère.
-            markArea: oneLifeZonesMarkArea(ONE_LIFE_RATE_PCT, RATE_BOUNDS),
+            // le vert est toujours au-dessus du repère. `bounds` (potentiellement
+            // élargi, DEC-5) plutôt que RATE_BOUNDS : la zone ne doit jamais
+            // s'arrêter avant le bord réel de l'axe.
+            markArea: oneLifeZonesMarkArea(ONE_LIFE_RATE_PCT, bounds),
             markLine: {
               silent: true,
               symbol: 'none' as const,
@@ -253,7 +268,13 @@ export function buildSquadEfficiencyOption(
 
   return {
     backgroundColor: CHART_BG,
-    grid: { top: 16, right: END_LABEL_GUTTER, bottom: 32, left: 8, containLabel: true },
+    // Plus de gouttière droite (les étiquettes de fin ont disparu) ; `bottom: 48` réserve
+    // sa bande à la légende, qui se pose au ras du bas.
+    grid: { top: 16, right: 16, bottom: 48, left: 8, containLabel: true },
+    legend: {
+      ...getLegendBase(tc),
+      data: legendEntries(players.map((player) => ({ name: player, color: colorOf(player) }))),
+    },
     tooltip: {
       ...getTooltipBase(tc),
       trigger: 'axis',
@@ -266,15 +287,15 @@ export function buildSquadEfficiencyOption(
       data: xLabels,
       axisLabel: { ...axis.axisLabel, fontSize: 9, interval: n > 12 ? Math.floor(n / 8) : 0 },
     },
-    // Fenêtre FIXE : bornes CONSTANTES, jamais dérivées des données (deux
-    // sessions se superposent à l'œil). Un point hors fenêtre est écrêté par
-    // l'axe ; le survol en garde la valeur vraie.
+    // Fenêtre 50…200 % par défaut (deux sessions nominales se superposent à
+    // l'œil) mais ÉLARGIE si un point en sort — jamais rétrécie (DEC-5) : plus
+    // jamais de courbe écrêtée par l'axe sur une session extrême.
     yAxis: {
       ...axis,
       type: 'value',
-      min: RATE_AXIS_MIN_PCT,
-      max: RATE_AXIS_MAX_PCT,
-      interval: (RATE_AXIS_MAX_PCT - RATE_AXIS_MIN_PCT) / 3,
+      min: bounds.min,
+      max: bounds.max,
+      interval: (bounds.max - bounds.min) / 3,
       axisLabel: { ...axis.axisLabel, formatter: (v: number) => `${Math.round(v)} %` },
     },
     series,

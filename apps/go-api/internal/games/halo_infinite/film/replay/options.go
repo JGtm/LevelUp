@@ -1,0 +1,457 @@
+package replay
+
+// options.go — LE REGLAGE ET LES ENTREES DE DONNEES DE L'ASSEMBLAGE.
+//
+// DEPLACEMENT PUR depuis `build.go` (lot 1 de PLAN_CUISSON_PERF, 2026-09-02) : `Options` et ses
+// deux accesseurs de defaut y occupaient 205 lignes — presque un quart d'un fichier de 928 —
+// alors qu'ils ne sont pas de l'assemblage mais son CONTRAT D'ENTREE. Le lot 0 avait pousse
+// `build.go` de 875 a 922 lignes par l'observateur (note N-G du plan), et la migration vers un
+// film deja charge l'aurait encore alourdi. Le struct, ses commentaires et les deux methodes
+// sont repris TELS QUELS : aucune ligne de logique n'a change.
+//
+// CE QUE `Options` MELANGE, ET POURQUOI CE N'EST PAS UN DEFAUT : du REGLAGE (pas de temps, seuil
+// de publication) et des ENTREES DE DONNEES (loadouts, grenades, projectiles, zones...). Les
+// secondes vivent ici plutot qu'en parametres pour garder `BuildFromPositions` sous la limite de
+// cinq arguments du depot — c'est ecrit champ par champ, a chaque fois que le cas se pose.
+
+import (
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
+)
+
+// Options règle l'assemblage du document de rejeu.
+type Options struct {
+	// Scoped (facultatif) rend le PALIER DE LUNETTE d'un slot a un instant. Cf. zoom_state.go.
+	Scoped func(slot uint32, tsUS uint64) int
+	// FrameIntervalMS : pas de temps de la grille ; 0 -> DefaultFrameIntervalMS.
+	FrameIntervalMS int
+	// MinPoints : seuil de publication d'une track ; 0 -> DefaultMinPoints.
+	MinPoints int
+	// FilmMajorVersion : la version du film, LUE dans l'en-tete de son registre par l'appelant
+	// qui a charge le film (`grammar.FilmMajorVersion`). nil quand le film ne porte pas son
+	// registre, ou quand l'appelant construit depuis des positions sans film. Republiee telle
+	// quelle dans `Coverage.FilmMajorVersion` — cf. le commentaire de ce champ.
+	FilmMajorVersion *int
+	// FilmIdentity : la SECTION 2 de `chunk_00`, lue par l'appelant qui a ouvert le film
+	// (`grammar.ReadFilmIdentity`, via le profil du contexte). nil quand le film ne porte AUCUNE
+	// section d'identification (5 films du cache, majeures 31 et 33), quand `chunk_00` est
+	// tronqué ou encore compressé, ou quand l'appelant construit depuis des positions sans film.
+	//
+	// DEUX CHAMPS DE `coverage.decoder` EN VIENNENT, ET RIEN D'AUTRE : `build` (la clé du profil,
+	// chaîne VIDE quand cette option est nil — décision V15 (15), le bloc reste présent) et le
+	// bloc `registry` (l'empreinte du registre ECS et sa classification, absent quand cette
+	// option est nil). Les quatre révisions, elles, sont des constantes de compilation : elles ne
+	// dépendent d'aucun film et se posent toujours.
+	FilmIdentity *profile.FilmIdentity
+	// Geometry : props Forge optionnels (repères contextuels, pas le fond de carte).
+	Geometry []MapObject
+	// Structure : emprises de la géométrie structurelle de la carte (le vrai fond de
+	// carte, cf. structure.go). Optionnelle : une carte sans fichier figé donne un rejeu
+	// sans fond, pas une erreur.
+	Structure []Surface
+	// Loadouts : armes portées décodées des keyframes (cf. loadouts.go). Entrée de DONNÉES
+	// et non de réglage — elle vit ici plutôt qu'en paramètre pour ne pas pousser
+	// BuildFromPositions au-delà de 5 arguments. Absente = rejeu sans armes portées.
+	Loadouts []types.KeyframeLoadout
+	// KeyframeWalk : ce que la marche des images-clés du film a décidé et manqué (lot M3.1),
+	// publié en `coverage.keyframes`. Entrée de DONNÉES lue dans le film.
+	KeyframeWalk grammar.KeyframeWalkCoverage
+	// BirthLoadouts / BirthLoadoutStats : les DOTATIONS DE NAISSANCE lues dans le record NEW de
+	// chaque corps (lot M3.2), publiées en `loadouts` (provenance `birth`) et comptées en
+	// `coverage.birthLoadouts`. Entrées de DONNÉES lues dans le film.
+	BirthLoadouts     []types.BirthLoadout
+	BirthLoadoutStats types.BirthLoadoutStats
+	// Grenades : lancers de grenade décodés des paquets delta (cf. grenades.go). Comme
+	// Loadouts, c'est une entrée de DONNÉES. Absente = rejeu sans lancers. Le rattachement
+	// à un slot passe par le pont du fil des morts : sans morts lisibles, les lancers décodés
+	// ne sont pas publiés (on refuse de les poser sur le mauvais joueur).
+	Grenades []grammar.GrenadeThrow
+	// Projectiles : trajectoires de projectile decodees des paquets delta (cf. projectiles.go).
+	// Entree de DONNEES, comme Loadouts et Grenades. Absente = rejeu sans trajectoires.
+	Projectiles []types.ProjectileTrack
+	// Inventory : inventaire complet lu aux memes images-cles que les armes portees
+	// (cf. inventory.go). Entree de DONNEES. Absente = rejeu sans grenades ni munitions.
+	Inventory []KeyframeInventory
+	// InventoryDeltas sont les lectures d'inventaire des paquets DELTA (grenades). Absentes =
+	// le film n'en transmet pas, ou le balayage a echoue : l'axe des grenades retombe alors sur
+	// les seules images-cles.
+	InventoryDeltas []types.InventoryDelta
+	// InventoryDeltaAmmoRefused reporte la porte du scanner : le canal MUNITIONS de ce film a
+	// ete refuse en bloc. Pure telemetrie — les grenades ne sont pas concernees.
+	InventoryDeltaAmmoRefused bool
+	// AbilityRanks : les identites de capacite transmises par i48 dans les paquets DELTA
+	// (cf. abilities.go). Entree de DONNEES, comme Inventory. C'est le canal qui voit TOUTE
+	// la palette ; celui des images-cles, porte par Inventory, n'en voit que la fenetre
+	// 16..23. Absente = rejeu dont les capacites se limitent a cette fenetre.
+	AbilityRanks []types.AbilityRank
+	// CamoStates : les transmissions de la voie d'etat du camouflage (i28 queue[1], cf.
+	// filmdec/camo_state.go). Entree de DONNEES, comme AbilityRanks. Absente = rejeu sans
+	// episodes de camouflage — le surbouclier, lui, voyage dans les positions (Shield.Q).
+	CamoStates []types.CamoRead
+	// GrappleReads : les evenements de grappin lus dans le corps tag==3 d'i59 (cf.
+	// filmdec/grapple_state.go). Entree de DONNEES, comme CamoStates. Absente = rejeu sans
+	// tractions de grappin — jamais des tractions devinees.
+	GrappleReads []types.GrappleRead
+	// AbilityImpulses / AbilityImpulseStats : les IMPULSIONS DE CAPACITE lues dans le corps
+	// tag==1 des composants i57/i59 (cf. filmdec/ability_impulses.go). Entree de DONNEES,
+	// comme GrappleReads — c'est le MEME composant, l'autre valeur de son tag.
+	//
+	// LES STATISTIQUES VOYAGENT AVEC LA LISTE, et il le faut : elles portent le temoin
+	// `Absent` (le film ne declare NI i57 NI i59). Une liste vide sans lui serait
+	// indistinguable d'un film ou personne ne s'est servi de son propulseur.
+	AbilityImpulses     []types.AbilityImpulse
+	AbilityImpulseStats types.AbilityImpulseStats
+	// MovementStates / MovementStateStats : les ETATS DE MOUVEMENT a l'instant — accroupi
+	// (i29), glissade (i62), action de mobilite (i54). Entree de DONNEES, comme les impulsions.
+	//
+	// LES STATISTIQUES VOYAGENT AVEC LA LISTE, et il le faut : elles portent `Absent` (le film
+	// ne declare aucun des trois composants), `Scanned` (le balayage a tourne) et `MapWidths`
+	// (le triplet de largeurs employe — le pre-requis le plus facile a oublier). Une liste vide
+	// sans eux serait indistinguable d'un film ou personne ne s'accroupit.
+	MovementStates     []types.MovementStateRead
+	MovementStateStats types.MovementStateStats
+	// ContinuousFire / ContinuousFireStats : le TIR CONTINU lu dans la vue de controle (lot M4b) —
+	// les rafales, bornees et trouees comme le film les ecrit, et les compteurs de la lecture. Entree
+	// de DONNEES ; LES STATISTIQUES VOYAGENT AVEC LA LISTE : une liste vide sans elles ne
+	// distinguerait pas un film sans tir continu d un film dont la vue de controle n est pas lue.
+	ContinuousFire      []types.ContinuousFireBurst
+	ContinuousFireStats types.ContinuousFireStats
+	// AbilityCharges / AbilityChargeStats : les CHARGES RESTANTES lues sur les emplacements
+	// ARMES du composant i56 (cf. filmdec/ability_charges.go). Entree de DONNEES, comme
+	// AbilityImpulses — meme canal d'identite (i48), autre grandeur.
+	//
+	// LES STATISTIQUES VOYAGENT AVEC LA LISTE, et il le faut : elles portent les temoins
+	// `Absent` (le film ne declare pas i56) et `Scanned` (le balayage a tourne). Une liste
+	// vide sans eux serait indistinguable d'un film ou personne n'use ses charges.
+	AbilityCharges     []types.AbilityCharge
+	AbilityChargeStats types.AbilityChargeStats
+	// Placements / PlacementStats : les POSES d'objets d'equipement lues dans les records de
+	// CREATION de l'archetype 37 (cf. filmdec/equipment_placements.go). Entree de DONNEES,
+	// comme GrappleReads. Absente = rejeu sans poses — jamais des poses devinees.
+	//
+	// LES STATISTIQUES VOYAGENT AVEC LA LISTE, et il le faut : elles portent le decoupage de
+	// bloc CALIBRE sur ce film. Une liste vide sans elles serait indistinguable d'un film
+	// sans equipement, alors que ce peut etre un film dont la calibration a echoue.
+	// WeaponChanges : les PRISES ET LACHERS d'arme lus dans le flux delta (cf.
+	// filmdec/held_weapon_changes.go). Entree de DONNEES, comme GrappleReads. Absente =
+	// rejeu sans ramassages — jamais des ramassages devines.
+	WeaponChanges []types.HeldWeaponChange
+	// Pickups / PickupStats : les RAMASSAGES NATIFS lus dans la liste d'evenements des paquets
+	// delta (evenement `biped_pickup`, cf. filmdec/biped_pickups.go). Entree de DONNEES, comme
+	// WeaponChanges. Absente = rejeu sans ramassages natifs — jamais des ramassages devines.
+	//
+	// LES STATISTIQUES VOYAGENT AVEC LA LISTE, et il le faut : elles portent le compte des
+	// listes MULTIPLES, c'est-a-dire la mesure de ce que le canal ne peut PAS voir (un
+	// ramassage en 2e position d'une liste lui echappe). Une liste vide sans elles serait
+	// indistinguable d'un film sans ramassage.
+	Pickups     []types.BipedPickup
+	PickupStats types.BipedPickupStats
+	// EquipmentChanges / EquipmentChangeStats : les RAMASSAGES ET CONSOMMATIONS d'equipement
+	// lus dans le flux delta (cf. filmdec/equipment_changes.go). Entree de DONNEES, comme
+	// WeaponChanges. Les stats voyagent avec parce qu'elles portent le TEMOIN DE COMPLETUDE
+	// (compteur de rotation) : sans elles, la couverture ne saurait pas dire ce qui manque.
+	EquipmentChanges     []types.EquipmentChange
+	EquipmentChangeStats types.EquipmentChangeStats
+	// Translocations : les TÉLÉPORTATIONS du translocateur, datées par l'événement type 117
+	// du film (cf. filmdec/transloc_events.go). Entrée de DONNÉES, comme EquipmentChanges.
+	// Absente = rejeu sans téléportations — jamais des téléportations devinées. Ce sont les
+	// MÊMES événements qui exemptent le filtre de vitesse au décodage (décision D2) : le
+	// scan se fait UNE fois, avant les positions.
+	Translocations []types.TranslocatorTeleport
+	Placements     []types.EquipmentPlacement
+	PlacementStats grammar.EquipmentPlacementStats
+	// SpawnEvents / SpawnStats : les evenements type 103 `EquipmentSpawnedObject` lus dans la
+	// liste de tete des paquets delta — « une PIECE a ete engendree ». Entree de DONNEES, comme
+	// Placements : absente, l'origine d'une pose retombe sur ses replis nommes (lot 1.9.1).
+	SpawnEvents []types.EquipmentSpawnEvent
+	SpawnStats  types.EquipmentSpawnStats
+	// Pads : ce que le film rend sur les SOCLES — armes au sol (`ti=42`) et power-ups (`ti=37`),
+	// TROIS lectures chacun, `Scanned` disant qu'elles ont abouti (cf. build_ground_weapons.go).
+	// Entree de DONNEES, comme Placements. Absente = rejeu sans socles — jamais des socles devines.
+	Pads PadScans
+	// Vehicles : ce que le film rend sur les VEHICULES (`ti=40`) — recensement, creations,
+	// nuage de positions et evenements d'embarquement (cf. build_vehicles.go). Entree de
+	// DONNEES, comme Pads. `Scanned` faux = rejeu sans vehicules, jamais des vehicules devines.
+	Vehicles VehicleScan
+	// SpawnPoints : les points d'apparition d'objet ramassable NON-ARME de la CARTE, lus au
+	// catalogue fige par l'appelant (cf. cmd/replay-build). Entree de DONNEES, pas de reglage.
+	//
+	// POURQUOI L'APPELANT ET PAS LE BUILDER : la generation d'artefact est HORS LIGNE et le
+	// reste. Le builder ne va rien chercher — on lui donne ce que la carte declare, ou rien.
+	SpawnPoints []MapSpawnPoint
+	// SpawnPointsState dit CE QUE VAUT l'absence d'un point : carte absente du catalogue,
+	// carte connue dont les points ne sont PAS ETABLIS, ou points etablis (fut-ce a zero).
+	// Les trois valeurs et leur raison d'etre sont documentees sur
+	// `PickupCoverage.SpawnPointsState`, qui les publie. Vide = carte absente.
+	SpawnPointsState string
+	// Deaths : le fil des morts du film (chunk highlight), qui NOMME les vies et fonde TOUT le
+	// rattachement (cf. lives.go). Entrée de DONNÉES comme les précédentes.
+	//
+	// SANS ELLE, NI PONT PAR MORTS NI CALAGE D'HORLOGE DES MORTS NI LECTURE DE LA TABLE D'INDEX.
+	// Les tirs et les lancers, eux, restent publies des que le registre d'identite nomme leur
+	// slot par la table des sieges du film (`FilmTable`) — il n'existe toujours AUCUN repli qui
+	// elise un proprietaire de slot (retires le 2026-07-28) : un rejeu muet se voit, un rejeu qui
+	// pose des tirs sur le mauvais joueur ne se voit pas. (Ce paragraphe disait « aucun tir ni
+	// lancer n'est publie » : faux depuis la table des sieges, lot 1.6 — revue adverse M5, R3.)
+	Deaths []Death
+	// DeathsFeed est le VERDICT de la lecture du fil des morts ([DeathsFeedRead],
+	// [DeathsFeedEmpty], [DeathsFeedUnreadable]), pose par `FilmInputs.applyTo` depuis
+	// `FilmInputs.DeathsFeed` et publie en `coverage.bridge.deathsFeed`. Les faits persistes le
+	// portent avec sa cause (lot M8, 2026-09-24) : le rejeu depuis les faits pose le meme. Vide =
+	// aucune lecture de film derriere ces entrees (positions fournies) : cf. [deathsFeedPublie].
+	DeathsFeed string
+	// PlayerIndices est la table identité -> index de joueur, LUE dans le film (cf.
+	// player_index.go). Second maillon du pont, et lui aussi une lecture. Absente, un tir ou un
+	// lancer reste publie si le registre nomme son slot par la table des sieges (`FilmTable`).
+	PlayerIndices PlayerIndexTable
+	// FilmTable est la TABLE DES JOUEURS que le film écrit lui-même (`chunk_00`), lue par
+	// [ScanFilmPlayerTable] : le lien DIRECT `index <-> xuid <-> gamertag`.
+	//
+	// ELLE PRÉCÈDE `PlayerIndices`, ELLE NE LA REMPLACE PAS (cf. film_player_table.go) : la
+	// table du film est celle du DÉBUT du film. Vide = le registre retombe entièrement sur
+	// `PlayerIndices`, et le publie (`coverage.identity.filmTable.refus`).
+	FilmTable FilmPlayerTable
+	// PlayerTeams est l'ÉQUIPE DE CHAQUE JOUEUR telle que le film l'écrit : `index de joueur ->
+	// désignateur` (`-1` = aucune équipe), lue par [grammar.ScanPlayerTeams] dans le composant
+	// i0 de ti=9.
+	//
+	// C'EST LA SEULE SOURCE D'ÉQUIPE DU DOCUMENT (décision utilisateur du 2026-09-13, V4 du
+	// PLAN_DECODEUR_FILM) : la base n'en pose aucune, elle CONTRÔLE (cf. `ScoreboardTeams`).
+	// Vide = le film n'a pas été lu, et `coverage.teams.refusal` dit pourquoi.
+	PlayerTeams map[int]int
+	// TeamScan est le rapport de cette lecture : records, rejets par domaine, divergences. Il
+	// voyage avec la table parce qu'une table vide et une lecture refusée ne disent pas la même
+	// chose, et que la couverture publie la différence.
+	TeamScan grammar.TeamScanReport
+	// PlayerEntities sont les OCCUPANTS lus dans la même passe que `PlayerTeams`, un par entité
+	// ti=9 (lot M2.1) — la source de la présence, de l'équipe par entrée et de la place du
+	// roster (cf. occupants.go). `Scanned` faux = aucune entité lue : le roster retombe alors sur
+	// l'enveloppe des vies, repli nommé et compté.
+	PlayerEntities grammar.PlayerEntityScan
+	// ScoreboardTeams est la table `xuid -> équipe` de la FEUILLE DE MATCH, et elle n'est qu'un
+	// CONTRÔLE : aucune équipe publiée n'en sort. Elle alimente
+	// `coverage.teams.{accord, contradiction, silence}` — une contradiction se compte, elle ne
+	// se corrige pas en silence. Vide (CLI hors ligne, ouvrier sans faits) : le contrôle se tait
+	// et le document est le même, à l'octet près.
+	ScoreboardTeams map[string]int
+	// BipedCreations : les records de CRÉATION de bipède du film (`grammar.ScanBipedCreations`).
+	// C'est le lien DIRECT corps -> joueur : le film écrit l'index de participant du
+	// propriétaire dans le default-state du record (lot E2, 2026-09-08).
+	//
+	// VIDE = LE REGISTRE DÉGRADE EN ENTIER sur le pont par morts, et il le publie
+	// (`coverage.bridge.bridgeNamedLives` non nul). Ce n'est pas une option à activer : c'est
+	// l'état d'un producteur qui ne porte pas encore ce canal.
+	BipedCreations []grammar.BipedCreation
+	// RosterXUIDs : les joueurs de la FEUILLE DE MATCH, fournis par l'assembleur. Ils
+	// COMPLÈTENT le roster que le fil des morts donne (`rosterFromDeaths`) avant la lecture
+	// de l'index de joueur.
+	//
+	// LE TROU QU'ILS BOUCHENT, ET IL EST STRUCTUREL : un joueur QUI NE MEURT JAMAIS n'est
+	// dans aucun enregistrement du fil des morts, donc dans aucun roster déduit de lui, donc
+	// dans aucune table d'index — et rien ne peut plus rattacher ses pistes ni le publier au
+	// roster du document. Mesure du 2026-09-07 sur `3372e7eb` (CTF, Isolation) : le roster
+	// publié porte 6 joueurs pour 8 à la feuille, et les DEUX manquants sont exactement les
+	// deux qui finissent à 0 mort (6 frags et 8 frags — les meilleurs du match).
+	//
+	// VIDE = COMPORTEMENT D'AVANT, À L'OCTET PRÈS : le CLI hors ligne et l'ouvrier sans faits
+	// gardent le roster du fil des morts seul, et le rejeu reste publiable sans base.
+	RosterXUIDs []uint64
+	// Participants : le TABLEAU DE L'API — les participants du match sous l'identifiant de la
+	// base (`bid(N.0)` pour un bot) et leurs bornes de participation.
+	//
+	// IL NOMME CE QUE LE FILM NE TABLE PAS (lot 4.3) : les corps dont l'index de participant est
+	// LU dans le record de création mais absent de `PlayerIndexTable` — un bot déclaré, ou un
+	// siège d'index qu'un arrivant en cours a pris à un bot. Vide = aucune résolution par cette
+	// voie, et le registre le publie (cf. identity_registry_scoreboard.go).
+	Participants []Participant
+	// Bots : les bots que le film DÉCLARE (BOT_METADATA, paquet type 12), fournis par
+	// l'assembleur — le décodage vit chez son propriétaire unique (film/facts/killsource), et ce
+	// paquet-ci est title-agnostic. FilmIndex est le slot de roster déclaré, Name porte le
+	// suffixe « [bot] ». Vide = film sans bot, ou décodage killsource indisponible.
+	Bots []BotIdentity
+	// Successions : les RELAIS lus dans la base (un remplaçant arrive à cet instant de
+	// l'axe du match) — la source des fermetures par relais (cf. successions.go). Vide =
+	// aucun remplacement, ou faits de participation indisponibles.
+	Successions []Succession
+	// Objectives : les actions d'objectif NOMMÉES ET IDENTIFIÉES PAR MANCHE (cf. objectives.go).
+	// Entrée de DONNÉES, comme Loadouts et Grenades.
+	//
+	// POURQUOI DÉJÀ IDENTIFIÉES, et pas décodées ici : le NOMMAGE et le pont d'identité sont un
+	// second décodage du statborg que l'appelant fait UNE fois (cf. replaybuild/matchfacts.go),
+	// et qu'il fait servir aussi à la courbe de score — les refaire ici rejouerait ce décodage.
+	// Le pont est PAR MANCHE, par les seuls INSTANTS DE MORT (aucune base, JUSTE en multi-manche
+	// où le slot d'entité est réattribué) — comme la couronne VIP et le drapeau vivant, à cette
+	// nuance près qu'eux se résolvent dans ce paquet parce qu'ils lisent `opt.Deaths` déjà scanné
+	// ici. Absente = rejeu sans calque d'objectifs.
+	Objectives []objectives.IdentifiedEvent
+	// ObjectivesUnnamed est le nombre d'actions d'objectif que le film NOMMAIT et que le pont
+	// d'identité de l'appelant n'a PAS su attribuer — celles qui n'arrivent donc jamais dans
+	// `Objectives`.
+	//
+	// POURQUOI IL VOYAGE. Sans lui, `coverage.objectives.available` compte les seuls rescapés :
+	// le rapport rattaché/disponible se lit ~100 % sur un calque partiel, et `noSlot` — le seul
+	// champ du contrat public prévu pour dire « le pont ne couvre pas ce joueur » — est
+	// structurellement inatteignable (vérifié : 0 sur les 111 artefacts du parc). La fuite est
+	// EN AMONT du point d'équilibre, donc son compte doit descendre depuis l'amont. Zéro = le
+	// pont a nommé tout ce que le film nommait, ou l'appelant ne mesure pas cet écart.
+	ObjectivesUnnamed int
+	// ObjectivesRefused est le nombre d'actions que le film NOMMAIT et que la GARDE D'EFFECTIF
+	// de l'appelant refuse de publier : l'effectif du match dépasse les huit slots d'entité de
+	// joueur du statborg (`objectives.RosterFitsStatborg`). Le calque est alors VIDE, et
+	// ce compte est son dénominateur — il devient `coverage.objectives.refusedByRoster`.
+	ObjectivesRefused int
+	// StatborgIdentity est le pont slot d'entité statborg -> xuid PAR MANCHE, résolu par
+	// l'appelant (`replaybuild.pontParManche`) et déjà partagé par les calques d'objectif.
+	//
+	// POURQUOI ELLE ENTRE ICI. Le registre d'identité PUBLIE ce lien avec sa provenance
+	// (`identity.statborgSlots`) ; il ne le recalcule pas — un second déroulage complet du
+	// compteur de morts par cuisson est précisément ce que la mémorisation de `pontParManche`
+	// existe pour éviter. Résolveur vide = aucun lien de statborg publié.
+	StatborgIdentity objectives.RoundIdentity
+	// Score : de quoi construire LA COURBE DE SCORE (entrée de DONNÉES comme Objectives ; cf. score_timeline.go et build_score.go). Nil = ni calque ni couverture de score.
+	Score *ScoreInput
+	// Flag : de quoi construire LA VIE DES DRAPEAUX de CTF (entrée de DONNÉES comme Score ; cf.
+	// build_objectives_live.go). `Scanned` faux = ni calque ni couverture de drapeau.
+	Flag FlagInput
+	// Zone : de quoi construire L'ETAT DES ZONES (entrée de DONNÉES comme Flag ; cf.
+	// build_zones.go). Le CATALOGUE de zones vient de l'appelant — c'est lui qui sait joindre la
+	// carte du match — et il commande le balayage : sans zones, `ti=13` n'est pas lu.
+	Zone ZoneInput
+	// Vip : de quoi construire LA COURONNE VIP (entrée de DONNÉES comme Flag ; cf. vip_crown.go).
+	// `Scanned` faux = ni couronne ni couverture. La GARDE DE MODE est chez l'appelant : `comp
+	// 22 A` vaut `flag_grabs` en CTF, donc seul un appelant qui reconnaît le match VIP par
+	// `game_variant_name` le pose — ce paquet ne devine aucun mode.
+	Vip VipInput
+	// Skull : de quoi construire LE PORTEUR DU CRANE d'Oddball (entrée de DONNÉES comme Vip ; cf.
+	// skull_carries.go). `Scanned` faux = ni calque ni couverture. La GARDE DE MODE est chez
+	// l'appelant : `comp 0 A` est le score de mode de tout mode, donc seul un appelant qui
+	// reconnaît le match Oddball (par `game_variant_name`) le pose — ce paquet ne devine aucun mode.
+	Skull SkullInput
+	// Bomb : de quoi construire L'ARMEMENT DE LA BOMBE d'Assaut (entrée de DONNÉES comme Skull ;
+	// cf. bomb_armings.go). `Scanned` faux = ni balayage ni calque ni couverture. La GARDE DE
+	// MODE est chez l'appelant (`replaybuild.isBombVariant`), et elle couvre TOUTE LA FAMILLE
+	// BOMB, ONE BOMB COMPRISE : la garde par NOM qui écartait cette variante
+	// (`isArmableBombVariant`) N'EXISTE PLUS depuis le 2026-09-04. La lecture « mèche pausable »
+	// est en production et explique One Bomb sans rien casser ailleurs (9/9 explosions portées,
+	// médiane 16,18 s, CV 0,017, 0/1000 tirages nuls ; témoins Neutral Bomb 13/13 et Husky Raid
+	// 4/4 inchangés) — `9f57c612` publie 5 armements. Ce qui protège désormais SEUL est la
+	// confrontation locale TOUT-OU-RIEN du calque, par film et non par variante (cf. l'en-tête
+	// de bomb_armings.go). Ce paquet, lui, ne devine toujours aucun mode.
+	Bomb BombInput
+	// NeutralDeaths : les morts que personne ne revendique, AVEC LEUR TYPE DÉJÀ RÉSOLU
+	// (cf. NeutralDeath). Entrée de DONNÉES comme Deaths et Objectives.
+	//
+	// POURQUOI DÉJÀ RÉSOLUES, et pas décodées ici : la source du dégât fatal se lit dans le
+	// dead-state du film, et ce décodage a UN seul propriétaire dans le dépôt (le paquet
+	// `killsource` du titre). Le redécoder ici en ferait un second décodeur du même fait, et
+	// deux décodeurs du même fait divergent — c'est la règle qui gouverne déjà Objectives et
+	// les couples de `killpos.go`. L'appelant décode, résout le pictogramme du titre, fournit.
+	// Absente = rejeu dont les lignes de mort neutres gardent leur repère générique.
+	NeutralDeaths []NeutralDeath
+	// Kills : les frags/assistances RÉSOLUS EN IDENTITÉ pour la jointure avec les épisodes
+	// d'état actif (camo, surbouclier — cf. equipment_episode_kills.go). Entrée de DONNÉES
+	// comme NeutralDeaths, MÊME RAISON : la source de dégât/crédit a un seul propriétaire
+	// dans le dépôt (`killsource`), et le redécoder ici en ferait un second décodeur du même
+	// fait. `Kills.Read=false` (repli zéro) publie `Coverage.Equipment.KillsRead=false` —
+	// jamais un `EquipmentEpisode.K/A` à zéro qui se lirait comme une mesure.
+	Kills KillsInput
+	// MatchKills : les couples (tueur, victime, instant) du match, RÉSOLUS EN XUID DES DEUX
+	// CÔTÉS et datés sur l'horloge du MATCH (celle du fil des morts). Entrée de DONNÉES, MÊME
+	// PRODUCTEUR que `Kills` — `replaybuild.killRefs` les construit dans la MÊME passe, sur la
+	// même table gamertag -> xuid, pour ne pas résoudre deux fois la même identité.
+	//
+	// POURQUOI UN SECOND CHAMP ET PAS UNE VICTIME DANS `EquipmentKillRef` : les deux jointures
+	// n'ont pas la même population. Celle des épisodes crédite un TUEUR et n'a que faire de la
+	// victime — un frag dont la victime est un bot y compte ; celle de `bomb_carriers_killed`
+	// exige les DEUX identités et écarte le couple sinon. Fondre les deux aurait imposé à la
+	// première les refus de la seconde.
+	//
+	// `Read=false` publie `BombStatsCoverage.KillsRead=false`, donc `bomb_carriers_killed`
+	// absent partout — jamais un zéro qui se lirait comme une mesure.
+	MatchKills MatchKillsInput
+	// FilmClockOriginUS est l'horodatage moteur du PREMIER PAQUET du film, c'est-à-dire le
+	// zéro de l'horloge sur laquelle les highlight events sont datés (cf. origin.go). Entrée
+	// de DONNÉES, comme Loadouts et Deaths. Zéro = origine incalculable : le document ne
+	// publie alors aucune origine, et le client retombe sur son appariement.
+	FilmClockOriginUS uint64
+	// Scan : réglages du décodage offline ; zéro -> grammar.DefaultScanFilmOptions().
+	Scan *grammar.ScanFilmOptions
+	// ProfilDeBalayage est le PROFIL que les lecteurs de bits de cette cuisson porteront —
+	// largeurs calibrées et `param_4` que la passe précédente a retenus SUR CE FILM (lot 2.3).
+	//
+	// POURQUOI IL EST UN PARAMÈTRE. `replaybuild.BuildBytes` décode `killsource` PUIS appelle
+	// `BuildFromFilm` dans le MÊME processus ; jusqu'au lot 2.3 la calibration du kill-feed
+	// FUYAIT sur la cuisson par l'état du processus (découverte D1 du lot 2.2.a) — l'héritage
+	// était réel et voulu, mais invisible et incompatible avec deux décodages en parallèle. Il
+	// arrive désormais par ici : `killsource.Result.ProfilCalibre` quand le décodage a abouti,
+	// `killsource.ProfilDeDepart()` sinon.
+	//
+	// nil = l'invariant du profil ([grammar.ProfilDeBalayageParDefaut]) : c'est le cas des
+	// instruments et des tests, qui ne décodent pas de kill-feed avant la cuisson.
+	ProfilDeBalayage *grammar.ProfilDeBalayage
+	// Labels : le catalogue de libellés DU TITRE (armes, grenades, capacités), chargé
+	// depuis config/titles/{slug}/mappings/ par l'appelant hors ligne (cf. catalog.go).
+	// Absent = document sans table de libellés : le client affiche les identifiants
+	// bruts, ce qui reste vrai — contrairement à un nom approché.
+	Labels LabelCatalog
+	// MapQuant : l'ENTRÉE DE CATALOGUE de la carte du match (cf. profile.MapQuantCatalog).
+	// OBLIGATOIRE : sans elle le décodeur ne produit que des quanta, et BuildFromFilm refuse
+	// d'émettre un document plutôt que des coordonnées fausses (elles l'étaient jusqu'ici :
+	// les bornes de Cliffhanger étaient appliquées à toutes les cartes, et le filtre de
+	// téléportation en m/s décalibré d'autant).
+	//
+	// POURQUOI L'ENTRÉE ENTIÈRE ET NON `*profile.Vec3Range` (correctif du 2026-08-15) : les
+	// BORNES et les LARGEURS D'AXE sont deux faces de la même entrée de catalogue, et jusqu'ici
+	// seules les bornes descendaient. Les largeurs restaient au défaut de paquet — celles de
+	// Cliffhanger — sur toutes les autres cartes. Les porter dans un second champ aurait laissé
+	// armer l'une sans l'autre : un seul champ, donc, et l'oubli devient impossible.
+	MapQuant *profile.MapQuantEntry
+	// Observe recoit chaque etape de BuildFromFilm et sa sortie (cf. observe.go). Nil = rien —
+	// mais EN PRODUCTION IL N'EST JAMAIS NIL : `replaybuild.BuildBytes` passe toujours sa
+	// methode `b.observe`, qui teste elle-meme si un observateur est branche (cf. observe.go).
+	Observe Observer
+	// Fallbacks compte les declenchements de REPLIS de CETTE cuisson (cf. le paquet `fallback`,
+	// decision D14 du plan du decodeur). Le rapport est publie dans `coverage.fallbacks`.
+	//
+	// NIL EST VALIDE ET NE COMPTE RIEN : toutes les methodes du compteur acceptent un recepteur
+	// nil. `BuildFromFilm` en pose un avant le premier balayage (pour que les replis du BALAYAGE
+	// et ceux de l'ASSEMBLAGE tombent dans le meme compte), et `BuildFromPositions` en cree un
+	// s'il n'en trouve pas — de sorte que tout document cuit dise ce qu'il doit a un repli, quel
+	// que soit le point d'entree.
+	//
+	// PAR CUISSON, JAMAIS PAR PAQUET : deux films decodes en parallele melangeraient leurs
+	// comptes, et le critere S1 du plan retire les variables de paquet du decodeur.
+	Fallbacks *fallback.Compteur
+	// clock date la fin du balayage precedent, pour la duree Debug par balayage (cf. observe.go).
+	// NON EXPORTE ET SANS REGLAGE : c'est BuildFromFilm qui l'arme, au moment ou le decodage
+	// commence — un appelant qui le fournirait daterait le premier balayage depuis sa propre
+	// preparation. Nil (BuildFromPositions, tests) = aucune mesure, aucun cout.
+	clock *stepClock
+}
+
+func (o Options) frameIntervalMS() int {
+	if o.FrameIntervalMS > 0 {
+		return o.FrameIntervalMS
+	}
+	return DefaultFrameIntervalMS
+}
+
+// compteurDeReplis rend le compteur de la cuisson, en creant le sien quand l'appelant n'en a pas
+// fourni. MEME PATRON QUE `frameIntervalMS` / `minPoints` : le defaut vit ici, une seule fois,
+// et l'assemblage n'a pas a le connaitre.
+func (o Options) compteurDeReplis() *fallback.Compteur {
+	if o.Fallbacks != nil {
+		return o.Fallbacks
+	}
+	return fallback.NouveauCompteur()
+}
+
+func (o Options) minPoints() int {
+	if o.MinPoints > 0 {
+		return o.MinPoints
+	}
+	return DefaultMinPoints
+}

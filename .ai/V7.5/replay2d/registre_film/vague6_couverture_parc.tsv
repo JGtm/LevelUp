@@ -1,0 +1,65 @@
+film	famille	mode	carte	duree_s	schema	frames	manches	flagCarries_calque	flagFilm	flag_openings	flag_carries	flag_noBridge	zoneStates	zones_captures	zones_attributed	skullCarries	bombCarries	obj_available	obj_attached	obj_noSlot	obj_outOfWindow	oracle_lignes
+4f77afc1	CTF	BTB:CTF	Flood Gulch	1194	51	11111	1	non	false	0	0	0	0			0	0	253	253	0	0	36
+879a4dba	CTF	BTB:CTF	Fortitude	415	51	3950	1	non	false	0	0	0	0			0	0	99	99	0	0	26
+5676a9ba	TotalControl	BTB:Total Control	Insolence	682	51	6618	1	non	false	0	0	0	0			0	0	178	178	0	0	31
+16ea3668	CTF	CTF:Arena	Aquarius	417	51	3971	1	oui	true	29	29	0	0			0	0	9700	9636	0	64	8
+58864b3c	CTF	CTF:Arena	Domicile	196	51	1957	1	oui	true	20	20	0	0			0	0	64	64	0	0	8
+7fce3219	CTF	CTF:Arena	Takamanohara	919	51	9144	2	oui	true	85	85	0	0			0	0	348	348	0	0	8
+8bc6074f	CTF	CTF:Arena	Origin	486	51	4791	1	oui	true	54	53	0	0			0	0	15808	15808	0	0	10
+a0c36016	CTF	CTF:Arena	Forest	766	51	7684	1	oui	true	49	49	0	0			0	0	361	361	0	0	8
+b8a44fe8	CTF	CTF:Arena	Forest	754	51	7573	1	oui	true	63	63	0	0			0	0	254	254	0	0	8
+bc60b4d9	CTF	CTF:Arena	Illusion	414	51	3920	1	oui	true	31	31	0	0			0	0	177	177	0	0	8
+bf5ced1b	CTF	CTF:Arena	Illusion	156	51	1301	1	oui	true	12	12	0	0			0	0	54	54	0	0	9
+cde26226	CTF	CTF:Arena	Critical Dewpoint	942	51	9388	2	oui	true	89	88	0	0			0	0	415	415	0	0	8
+f8efc5ca	CTF	CTF:Arena	Absolution	416	51	4089	1	oui	true	35	35	0	0			0	0	15784	15784	0	0	8
+4ecdf3e7	CTF	CTF:Arena Neutral Flag	High Ground	297	51	2714	1	oui	true	26	25	0	0			0	0	86	86	0	0	10
+0d265ab0	SansObjectif	Slayer:Arena	Sylvanus	558	51	5518	1	non	false	0	0	0	0			0	0	0	0	0	0	0
+72b0a25e	SansObjectif	Slayer:Arena	Banished Narrows	448	51	4158	3	non	false	0	0	0	0			0	0	0	0	0	0	0
+7b0d89c4	SansObjectif	Slayer:Arena	Behemoth	599	51	6024	1	non	false	0	0	0	0			0	0	0	0	0	0	0
+b1ad85eb	SansObjectif	Slayer:Arena	Domicile	522	51	5096	1	non	false	0	0	0	0			0	0	0	0	0	0	0
+e1259a69	SansObjectif	Slayer:Arena	Takamanohara	543	51	5156	1	non	false	0	0	0	0			0	0	0	0	0	0	0
+efe716b4	SansObjectif	Slayer:Arena	Fortress	688	51	6781	1	non	false	0	0	0	0			0	0	0	0	0	0	0
+f2966f08	SansObjectif	Slayer:Arena	Behemoth	617	51	6126	1	non	false	0	0	0	0			0	0	0	0	0	0	0
+0797ce72	SansObjectif	Slayer:Arena Super Fiesta	Live Fire	434	51	4367	1	non	false	0	0	0	0			0	0	0	0	0	0	0
+0a44c6cc	SansObjectif	Slayer:Arena Super Fiesta	Launch Site	544	51	5171	1	non	false	0	0	0	0			0	0	0	0	0	0	0
+1cd3848a	SansObjectif	Slayer:Arena Super Fiesta	Behemoth	566	51	5693	1	non	false	0	0	0	0			0	0	0	0	0	0	0
+30724141	SansObjectif	Slayer:Arena Super Fiesta	Live Fire	416	51	4194	1	non	false	0	0	0	0			0	0	0	0	0	0	0
+3ba5a548	SansObjectif	Slayer:Arena Super Fiesta	Streets	462	51	4643	1	non	false	0	0	0	0			0	0	0	0	0	0	0
+46c3f91d	SansObjectif	Slayer:Arena Super Fiesta	Catalyst	452	51	4535	1	non	false	0	0	0	0			0	0	0	0	0	0	0
+5dfdc63b	SansObjectif	Slayer:Arena Super Fiesta	Forest	455	51	4407	1	non	false	0	0	0	0			0	0	0	0	0	0	0
+8a485699	SansObjectif	Slayer:Arena Super Fiesta	Launch Site	704	51	6820	1	non	false	0	0	0	0			0	0	0	0	0	0	0
+9e8fb31b	SansObjectif	Slayer:Arena Super Fiesta	Cliffhanger	414	51	4165	1	non	false	0	0	0	0			0	0	0	0	0	0	0
+9ffce8ef	SansObjectif	Slayer:Arena Super Fiesta	Bazaar	705	51	6845	1	non	false	0	0	0	0			0	0	0	0	0	0	0
+a396aa7f	SansObjectif	Slayer:Arena Super Fiesta	Streets	394	51	3964	1	non	false	0	0	0	0			0	0	0	0	0	0	0
+b1f01a33	SansObjectif	Slayer:Arena Super Fiesta	Prism	522	51	5236	1	non	false	0	0	0	0			0	0	0	0	0	0	0
+bf2a9f05	SansObjectif	Slayer:Arena Super Fiesta	Bazaar	722	51	6905	1	non	false	0	0	0	0			0	0	0	0	0	0	0
+bfcd1175	SansObjectif	Slayer:Arena Super Fiesta	Recharge	561	51	5619	1	non	false	0	0	0	0			0	0	0	0	0	0	0
+c7f94693	SansObjectif	Slayer:Arena Super Fiesta	Bazaar	501	51	4690	1	non	false	0	0	0	0			0	0	0	0	0	0	0
+d1dfbc02	SansObjectif	Slayer:Arena Super Fiesta	Prism	606	51	5987	1	non	false	0	0	0	0			0	0	0	0	0	0	0
+fccc61cd	SansObjectif	Slayer:Arena Super Fiesta	Launch Site	567	51	5472	1	non	false	0	0	0	0			0	0	0	0	0	0	0
+32d9a94f	Strongholds	Strongholds:Arena	Perilous	450	51	4418	1	non	false	0	0	0	3	55	48	0	0	148	148	0	0	8
+396cfc92	Strongholds	Strongholds:Arena	Illusion	523	51	5019	1	non	false	0	0	0	3	58	53	0	0	152	152	0	0	10
+572e236b	Strongholds	Strongholds:Arena	Fortress	431	51	4267	1	non	false	0	0	0	3	45	41	0	0	143	143	0	0	10
+81c02726	Strongholds	Strongholds:Arena	Isolation	321	51	3170	1	non	false	0	0	0	3	35	33	0	0	92	92	0	0	8
+e60aaf06	Strongholds	Strongholds:Arena	Banished Narrows	415	51	3871	3	non	false	0	0	0	3	12	10	0	0	154	24	130	0	8
+0891225f	SansObjectif	Team Slayer:Arena	Perilous	533	51	5306	1	non	false	0	0	0	0			0	0	0	0	0	0	0
+1b2d9e08	SansObjectif	Team Slayer:Arena	Dynasty	550	51	5470	1	non	false	0	0	0	0			0	0	0	0	0	0	0
+28c9b538	SansObjectif	Team Slayer:Arena	Chasm	710	51	7137	1	non	false	0	0	0	0			0	0	0	0	0	0	0
+2cf24f30	SansObjectif	Team Slayer:Arena	Snowbound	416	51	3985	1	non	false	0	0	0	0			0	0	0	0	0	0	0
+30a23d15	SansObjectif	Team Slayer:Arena	Critical Dewpoint	508	51	4934	1	non	false	0	0	0	0			0	0	0	0	0	0	0
+3923bede	SansObjectif	Team Slayer:Arena	Recharge	663	51	6655	1	non	false	0	0	0	0			0	0	0	0	0	0	0
+4577fcc4	SansObjectif	Team Slayer:Arena	Curfew	561	51	5606	1	non	false	0	0	0	0			0	0	0	0	0	0	0
+4bd6de5a	SansObjectif	Team Slayer:Arena	Solution	530	51	5238	1	non	false	0	0	0	0			0	0	0	0	0	0	0
+94a28b8b	SansObjectif	Team Slayer:Arena	Aquarius	598	51	5686	1	non	false	0	0	0	0			0	0	0	0	0	0	0
+a03a5e65	SansObjectif	Team Slayer:Arena	Opulence	417	51	4175	1	non	false	0	0	0	0			0	0	0	0	0	0	0
+a4083bd2	SansObjectif	Team Slayer:Arena	The Pit	621	51	5936	3	non	false	0	0	0	0			0	0	0	0	0	0	0
+a6ae19fb	SansObjectif	Team Slayer:Arena	Kiken'na	495	51	4935	1	non	false	0	0	0	0			0	0	0	0	0	0	0
+ac03413d	SansObjectif	Team Slayer:Arena	Empyrean	624	51	6190	1	non	false	0	0	0	0			0	0	0	0	0	0	0
+af3500aa	SansObjectif	Team Slayer:Arena	Nemesis	604	51	5551	1	non	false	0	0	0	0			0	0	0	0	0	0	0
+b0fe12b1	SansObjectif	Team Slayer:Arena	Origin	496	51	4710	1	non	false	0	0	0	0			0	0	0	0	0	0	0
+bfecd02b	SansObjectif	Team Slayer:Arena	Snowbound	510	51	5033	1	non	false	0	0	0	0			0	0	0	0	0	0	0
+d8b13ec2	SansObjectif	Team Slayer:Arena	Goliath	742	51	7389	1	non	false	0	0	0	0			0	0	0	0	0	0	0
+daaa17d6	SansObjectif	Team Slayer:Arena	Isolation	550	51	5448	1	non	false	0	0	0	0			0	0	0	0	0	0	0
+e85d7bad	SansObjectif	Team Slayer:Arena	Recharge	511	51	5141	1	non	false	0	0	0	0			0	0	0	0	0	0	0
+f0220a96	SansObjectif	Team Slayer:Arena	Starboard	544	51	5185	1	non	false	0	0	0	0			0	0	0	0	0	0	0
+faff9935	SansObjectif	Team Slayer:Arena	Shogun	542	51	5271	1	non	false	0	0	0	0			0	0	0	0	0	0	0

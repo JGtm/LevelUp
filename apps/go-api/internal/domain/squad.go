@@ -77,8 +77,15 @@ type SquadMatchRow struct {
 	EnemyMMR       *float64
 	MyTeamScore    *int
 	EnemyTeamScore *int
-	MapID          string
-	PlaylistID     string
+	// MyRoundsWon / EnemyRoundsWon / RoundsTotal / GameVariantName : les MANCHES du match
+	// et la clé de la table `regulation.toml [rounds_decide]` (ADR 0032). Nil = inconnu →
+	// l'affichage garde les points.
+	MyRoundsWon     *int
+	EnemyRoundsWon  *int
+	RoundsTotal     *int
+	GameVariantName string
+	MapID           string
+	PlaylistID      string
 	// ExpectedWinProb : proba de victoire pré-match ∈ [0,1] (LUSR v2), chargée
 	// depuis player.match_skill_rank. Nil si pré-v2 / non disponible.
 	ExpectedWinProb *float64
@@ -114,6 +121,17 @@ type ImpactEventRow struct {
 	Gamertag  string
 	EventType string
 	TimeMS    int64
+}
+
+// SquadKillLogRow : une mort publiable de `match_kill_events_latest`, lue pour le badge
+// d'impact « Voleur » (analysis.ComputeThiefBadge). Chaîne vide / nil = non mesuré.
+type SquadKillLogRow struct {
+	MatchID         string
+	TimeMS          int64
+	KillerXUID      string
+	VictimXUID      string
+	AssistXUID      string
+	KillerDamagePct *int
 }
 
 // AllyParticipant est une ligne participant côté équipe alliée d'un match.

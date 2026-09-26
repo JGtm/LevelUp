@@ -14,7 +14,6 @@ type BackfillStartRequest struct {
 	PersonalScores    bool `json:"personal_scores"`
 	PerformanceScores bool `json:"performance_scores"`
 	Aliases           bool `json:"aliases"`
-	Weapons           bool `json:"weapons"`
 	LUSR              bool `json:"lusr"`
 	// CSR : re-fetch les CSR par-match via GetMatchSkill (RankRecap) pour
 	// les matchs ranked déjà en DB sans row CSR. Idempotent : skip ceux qui

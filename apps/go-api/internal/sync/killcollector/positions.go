@@ -1,0 +1,486 @@
+package killcollector
+
+// positions.go — LE PRODUCTEUR DE `shared.kill_positions` POUR HALO INFINITE : les coordonnées
+// monde (x,y,z) du tueur et de la victime par kill, décodées du MÊME film que les morts et les
+// tirs (G.2bis — dernière pièce de la conception G.0/G.2 : la dette bloquante « table pas
+// append-only » est fermée, ce fichier câble enfin la CAPTURE).
+//
+// DEPUIS LE 2026-09-06, IL EN PRODUIT DEUX : la même lecture du film rend AUSSI
+// `shared.kill_openings` — les positions un temps-pour-tuer AVANT le coup fatal (proxy
+// d'entame, D5 du plan .ai/PLAN_DUELS_PORTEE_2026-09-06.md). Pas un second décodeur : la
+// fonction pure `replay.BuildKillOpenings`, qui décale par `replay.ShiftKillRefs`, place par LA
+// fonction de placement du paquet et n'accepte un côté que si l'instant décalé tombe dans la
+// MÊME VIE que le coup fatal. Voir composerPassePositions.
+//
+// # LE FILM EST CHARGÉ UNE FOIS, ET LE PONT DISQUE A DISPARU
+//
+// `games/halo_infinite/film/replay`/`games/halo_infinite/film/internal/grammar` exposent QUATRE lectures du film : ScanBipedPositions,
+// ScanClockOrigin, ScanPlayerIndices, ScanDeaths. Le collecteur, lui, tient les chunks EN MÉMOIRE
+// PURE (téléchargés par `FilmChunksForMatch`) — il ne les a jamais écrits sur disque.
+//
+// HISTORIQUE, ET CE QUI L'A FERMÉ. Deux ponts étaient possibles (plan G.2, §3bis) : (a) écrire les
+// chunks déjà en mémoire dans un répertoire temporaire et appeler les quatre fonctions `ScanFilm*`
+// telles quelles ; (b) des variantes mémoire de chacune. (b) était écarté parce que ç'aurait été un
+// DEUXIÈME décodeur des mêmes octets pour chacune des quatre lectures — la règle qui gouverne tout
+// ce chantier (« deux décodeurs du même fait divergeraient », répétée dans
+// killpos.go/deaths_source.go/identity.go) l'interdit. (a) a donc tenu jusqu'au lot 1 de
+// PLAN_CUISSON_PERF (item 1.6, 2026-09-02) : quatre écritures de fichiers, puis QUATRE relectures
+// et QUATRE décompressions du film entier.
+//
+// Le lot 1 a rendu (b) possible SANS second décodeur : `internal/games/halo_infinite/film/internal/source` est la source
+// unique du film (une décompression, un découpage en paquets, une grammaire), et les quatre
+// balayages prennent désormais un `*decfilm.Film`. Le collecteur charge donc le film UNE fois
+// pour les morts (`decfilm.Decode`) et le repasse tel quel ici. Plus de répertoire temporaire,
+// plus de disque plein possible — et le seul refus qui reste est celui qui protégeait d'une
+// position fausse : la séquence trouée (cf. refuserSequenceTrouee).
+//
+// # LE REGISTRE D'IDENTITÉ EST CELUI DU REJEU 2D, PAS UNE RÉSOLUTION LOCALE
+//
+// `replay.BuildKillPositions` a besoin de savoir QUI OCCUPE QUEL SIÈGE À L'INSTANT du coup fatal
+// (un joueur change de siège à chaque réapparition, et un siège peut être recyclé entre deux
+// joueurs sur un film long). Ce registre existe déjà, LU et pas voté, dans `games/halo_infinite/film/replay` —
+// c'est le MÊME que la cuisson construit (décision D11). Une résolution locale à ce paquet serait,
+// encore, un second décodeur du même fait.
+//
+// LE PONT APLATI A DISPARU DU CHEMIN (lot 6.1, 2026-09-10) : ce fichier passait
+// `reg.PontParSlot()` — le PREMIER occupant de chaque siège, quel que soit l'instant — et la
+// position d'un autre corps pouvait donc être écrite sous le nom du premier. Il passe désormais le
+// registre entier, qui répond à l'instant. Voir `.ai/V7.5/RAPPORT_PONT_APLATI_2026-09-10.md`.
+//
+// # LA CAPABILITY, ET CE QU'ELLE NE GARANTIT PAS SEULE
+//
+// `games.CapFilmKillPositions` dit que le titre EXPOSE la capture (Infinite) ; elle ne dit rien de
+// savoir si CE collecteur a été câblé avec une résolution de carte (WithPositionCapture). Les deux
+// conditions sont nécessaires : un titre qui n'a pas la capability n'essaie jamais (Debug, cas
+// fréquent et non pathologique — pas la donnée que le titre offre). Un titre qui l'a mais dont
+// le collecteur n'a pas reçu WithPositionCapture (CLI qui ne l'appelle pas, mauvaise DI en prod)
+// est, LUI, une régression de câblage : la table `kill_positions` resterait vide en silence,
+// invisible sans relire le code (constat Q8, .ai/DECOUVERTES_TACTIQUE_2026-09-07.md) — journalisé
+// en WARN et compté (`metricPositionsNotWired`) depuis la clôture Q8, pas Debug.
+//
+// # BEST-EFFORT ASSUMÉ, MÊME DOCTRINE QUE shots.go
+//
+// Les morts sont la donnée qui motive tout le chantier ; les positions sont un enrichissement
+// TROISIÈME (après le crédit, après la source du dégât). Un échec ICI ne doit JAMAIS faire
+// échouer la passe de morts, déjà écrite quand ce code s'exécute (cf. l'appel dans collector.go,
+// après c.write). Chaque sortie anticipée journalise sa cause et compte un métrique dédié — un
+// zéro qu'on ne peut interroger qu'en relisant le code n'alerte personne.
+
+import (
+	"context"
+	"fmt"
+	"log/slog"
+	"strconv"
+
+	"levelup/go-api/internal/games"
+	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
+	"levelup/go-api/internal/games/halo_infinite/film/replay"
+	"levelup/go-api/internal/games/halo_infinite/replayidentity"
+	"levelup/go-api/internal/observability"
+	"levelup/go-api/internal/persist"
+)
+
+// Compteurs de sante de la passe de positions (ADR 0009 : entiers, snake_case, aucun ratio).
+const (
+	metricPositionsMatches  = "killsource_positions_matchs_couverts"
+	metricPositionsRows     = "killsource_positions_lignes_ecrites"
+	metricPositionsNoMap    = "killsource_positions_sans_carte"
+	metricPositionsNoOrigin = "killsource_positions_sans_horloge"
+	// metricPositionsBridgeFail : le film n'a pas pu être présenté aux balayages. Le nom date du
+	// pont disque (supprimé au lot 1) ; il reste INCHANGÉ parce qu'un compteur publié est une
+	// interface, et sa seule cause aujourd'hui est la séquence trouée.
+	metricPositionsBridgeFail   = "killsource_positions_pont_echec"
+	metricPositionsAmbiguous    = "killsource_positions_index_ambigus"
+	metricPositionsNoBridge     = "killsource_positions_sans_pont_identite"
+	metricPositionsWriteFail    = "killsource_positions_erreurs_ecriture"
+	metricPositionsKillsDropped = "killsource_positions_morts_sans_position"
+	// metricPositionsNotWired : la capability est là, mais WithPositionCapture n'a pas été
+	// fourni au collecteur — régression de câblage, la table reste vide en silence si ce
+	// compteur n'est pas observé (Q8, .ai/DECOUVERTES_TACTIQUE_2026-09-07.md).
+	metricPositionsNotWired = "killsource_positions_non_cablees"
+)
+
+// collectPositions : la TROISIÈME écriture de la passe — `shared.kill_positions`.
+//
+// `deaths` est le SOUS-ENSEMBLE PRÉ-FUSION (batch.Deaths dans collect(), avant
+// MergeCreditAndFilm) : les positions n'existent QUE pour les kills que CE FILM a lui-même
+// décodés — un kill récupéré par le producteur crédit-seul (highlight_events, sans film) n'a
+// structurellement aucune position à offrir. Utiliser la liste pré-fusion n'est donc pas une
+// approximation, c'est la population exacte qui peut avoir une position.
+func (c *KillSourceCollector) collectPositions(
+	ctx context.Context, matchID string, film *decfilm.Film, res *decfilm.Result,
+	ids MatchIdentities, deaths, fusionnees []persist.KillEventInsert,
+) {
+	if !c.caps.Has(games.CapFilmKillPositions) {
+		slog.DebugContext(ctx, "killsource: positions — capability absente, passe ignoree",
+			"match_id", matchID, "capability", string(games.CapFilmKillPositions),
+			"err", games.ErrCapabilityNotSupported)
+		return
+	}
+	if c.mapNames == nil || c.mapBounds == nil {
+		observability.AddInt(metricPositionsNotWired, 1)
+		slog.WarnContext(ctx, "killsource: positions — collecteur non cable (WithPositionCapture "+
+			"absent), passe ignoree ; la capability est presente, la table restera vide sans ce "+
+			"cablage", "match_id", matchID)
+		return
+	}
+
+	kills := killRefsFromDeaths(deaths)
+	if len(kills) == 0 {
+		slog.DebugContext(ctx, "killsource: positions — aucune mort avec tueur ET victime resolus, "+
+			"rien a placer", "match_id", matchID)
+		return
+	}
+
+	entry, err := c.resolveMapBounds(ctx, matchID)
+	if err != nil {
+		observability.AddInt(metricPositionsNoMap, 1)
+		slog.InfoContext(ctx, "killsource: positions — carte hors catalogue de bornes, passe ignoree",
+			"match_id", matchID, "err", err)
+		return
+	}
+
+	if err := refuserSequenceTrouee(film); err != nil {
+		observability.AddInt(metricPositionsBridgeFail, 1)
+		slog.ErrorContext(ctx, "killsource: positions — film inexploitable",
+			"match_id", matchID, "err", err)
+		return
+	}
+
+	pass, mat, err := buildPositionRows(film, res, entry, ids, kills, matchID)
+	if err != nil {
+		slog.WarnContext(ctx, "killsource: positions — passe ignoree", "match_id", matchID, "err", err)
+		return
+	}
+
+	c.ecrireLesDeuxPasses(ctx, matchID, pass, mat, ids, fusionnees)
+}
+
+// ecrireLesDeuxPasses ecrit les positions PUIS les entames, SOUS DEUX LEASES SEPARES ET SANS
+// QUE L UNE PUISSE ANNULER L AUTRE.
+//
+// C EST LE POINT CORRIGE LE 2026-09-06 (revue adversariale, constat C7) : la passe de positions
+// coupait la passe d entames par un `return` sur son echec d ecriture, alors que writeOpenings
+// promet en doc un lease SEPARE « pour qu un echec de l une ne fasse pas retomber l autre ». Le
+// code disait le contraire de sa doc. Les deux passes sont desormais independantes : chacune
+// journalise et compte SON echec, aucune ne decide pour l autre.
+//
+// L ORDRE RESTE CELUI-CI (positions d abord) parce que les positions sont la mesure premiere et
+// l entame un proxy par-dessus : si le lease est dispute, c est la mesure qui doit l obtenir en
+// premier. Ce n est pas une dependance, c est une priorite.
+func (c *KillSourceCollector) ecrireLesDeuxPasses(
+	ctx context.Context, matchID string, pass passePositions, mat materiauDIsolement,
+	ids MatchIdentities, fusionnees []persist.KillEventInsert,
+) {
+	if err := c.writePositions(ctx, matchID, pass.rows); err != nil {
+		observability.AddInt(metricPositionsWriteFail, 1)
+		slog.ErrorContext(ctx, "killsource: positions — ecriture echouee",
+			"match_id", matchID, "err", err)
+	} else {
+		publishPositionsPass(ctx, matchID, pass.rep, len(pass.rows))
+
+		// LES FAITS D ISOLEMENT SONT LA SECONDE PROJECTION DU MEME MATERIAU (lot 7C). Ils passent
+		// APRES l ecriture des positions et ne rendent aucune erreur : leur echec ne doit couter ni
+		// le journal des morts ni les positions, deja ecrits et bien plus centraux au produit.
+		//
+		// MEME PORTE QUE LES POSITIONS (`CapFilmKillPositions`) : les deux tables reposent sur les
+		// memes positions bipeds. Une capability neuve n aurait rien gate de plus et aurait ajoute
+		// une cle a tenir a jour dans chaque `capabilities.toml`.
+		c.projeterFaitsDIsolement(ctx, matchID, mat, ids, fusionnees)
+	}
+	c.persistOpenings(ctx, matchID, pass)
+}
+
+// passePositions : ce qu UNE lecture du film produit — les positions du coup fatal ET celles
+// de l entame. Un seul type de retour parce qu il n y a qu UNE lecture : les deux jeux de
+// lignes sortent des memes trajectoires, du meme pont d identite et de la meme horloge.
+type passePositions struct {
+	rep      replay.KillPosReport
+	rows     []persist.KillPositionInsert
+	openRep  replay.KillPosReport
+	openRows []persist.KillOpeningInsert
+}
+
+// La résolution de la carte du match — son NOM par la base, puis son entrée au catalogue de
+// bornes — vit dans `map_identity.go` depuis le lot 1.9.4 : les DEUX passes du collecteur (les
+// positions et les touches) la partagent désormais, là où la passe des touches devinait la carte
+// par une signature de largeurs d'axe. Voir [KillSourceCollector.resolveMapBounds].
+
+// optionsDeBalayageDesPositions : les réglages du balayage des positions pour UNE carte — ses
+// bornes monde ET son découpage d'i0, tous deux pris au CATALOGUE.
+//
+// # CE QUE CETTE FONCTION FERME (lot 1.9.2, D-3 d'ADR 0034)
+//
+// Le collecteur partait de `DefaultScanFilmOptions()` et ne posait QUE les bornes ; `Layout`
+// restait nil, donc `DetectI0LayoutOf` DÉCIDAIT du découpage en lisant le film
+// (`filmdec/offline_biped_band.go`, `bipedI0Layout`) — alors que l'entrée de carte était déjà
+// entre les mains de l'appelant et que le chemin de CUISSON, lui, imposait le catalogue depuis le
+// 2026-09-03 (`replay/build_from_film.go`). Deux producteurs du même fait, deux règles.
+//
+// Le découpage d'axe est une DONNÉE DE PROFIL : il ne se devine pas sur le film. L'auto-détection
+// ne sait pas voir un index de région de plus d'un bit (cf. `filmdec/i0_layout.go`) ; sur Live
+// Fire elle rend `gate=5 region=0 13/12/11` là où le catalogue dit `gate=6 region=1 12/12/11`,
+// et sa porte acceptait donc des enregistrements d'une AUTRE région de compression, exprimés
+// dans une autre AABB. Mesure du lot 1.9.2 sur les 14 témoins du corpus gate et les 8 builds :
+// les deux découpages coïncident sur 15 films sur 17 ; sur les DEUX films Live Fire ils
+// diffèrent, et imposer le catalogue retire 3 positions sur 267 368 (`60ae07c4`) et 4 sur
+// 146 811 (`0797ce72`) — 26 enregistrements bruts sur 267 400 pour le premier.
+//
+// `entry` est passée PAR VALEUR et le contexte la lit à la construction : la règle du catalogue
+// est écrite UNE fois, dans `decfilm.NewFilmContextForMap`, et ce site la lit par
+// `ImposedLayout()` — le même endroit que la cuisson.
+func optionsDeBalayageDesPositions(
+	fc *decfilm.FilmContext, entry decfilm.MapQuantEntry,
+) decfilm.ScanFilmOptions {
+	opt := decfilm.DefaultScanFilmOptions()
+	rng := entry.Range()
+	opt.WorldRange = &rng
+	opt.Layout = fc.ImposedLayout()
+	return opt
+}
+
+// buildPositionRows : les QUATRE lectures du film + la composition pure. Découpée de
+// [collectPositions] pour rester sous le plafond de longueur du dépôt (80 lignes) — chaque refus
+// reste journalisable par l appelant, jamais avalé ici.
+//
+// LES QUATRE BALAYAGES PARTAGENT LE FILM DÉJÀ CHARGÉ (lot 1, item 1.6) : ils prenaient chacun un
+// répertoire et relisaient le film entier depuis le disque, décompression comprise.
+//
+// PLUS AUCUN VERROU DE DÉCODAGE (lot 2.3). Ce chemin enchaîne QUATRE balayages, et il a
+// longtemps fallu les sérialiser : les paramètres de réplication du décodeur étaient des
+// variables de paquet de `grammar`, qu'un décodage concurrent aurait écrasées. Il n'en reste
+// AUCUNE d'écrite (ratchet `archlint/filmdec_package_vars_test.go`) : chaque balayage porte son
+// profil et son observation, donc son propre état. Le verrou INTER-PROCESSUS
+// `filmproc.AcquireSolo`, lui, borne la mémoire de la machine et n'est pas concerné.
+//
+// ELLE NE COMPOSE RIEN ELLE-MEME : ce qui suit les balayages — les deux jeux de lignes — vit
+// dans `composerPassePositions`, PURE et testable sans film (revue adversariale du 2026-09-06,
+// constat B1 : aucun test ne pincait l accord entre le decalage et l instant persiste).
+func buildPositionRows(
+	film *decfilm.Film, res *decfilm.Result, entry decfilm.MapQuantEntry, ids MatchIdentities,
+	kills []replay.KillRef, matchID string,
+) (passePositions, materiauDIsolement, error) {
+
+	fc := decfilm.NewFilmContextForMap(film, &entry, nil)
+	positions, err := decfilm.ScanBipedPositions(fc, optionsDeBalayageDesPositions(fc, entry))
+	if err != nil {
+		return passePositions{}, materiauDIsolement{}, fmt.Errorf("positions bipeds: %w", err)
+	}
+
+	originUS, err := replay.ScanClockOrigin(film)
+	if err != nil {
+		observability.AddInt(metricPositionsNoOrigin, 1)
+		return passePositions{}, materiauDIsolement{}, fmt.Errorf("horloge du film: %w", err)
+	}
+
+	deathsFilm, err := replay.ScanDeaths(film)
+	if err != nil {
+		return passePositions{}, materiauDIsolement{}, fmt.Errorf("fil des morts (rejeu): %w", err)
+	}
+
+	idx, err := replay.ScanPlayerIndices(film, rosterUint64(ids.XUIDs))
+	if err != nil {
+		return passePositions{}, materiauDIsolement{}, fmt.Errorf("index de joueur: %w", err)
+	}
+	if idx.Disagreements > 0 {
+		observability.AddInt(metricPositionsAmbiguous, int64(idx.Disagreements))
+	}
+
+	// LE REGISTRE D IDENTITE EST LA MEME FONCTION PURE QUE LA CUISSON (lot P2, decision D11).
+	// Le collecteur l appelle avec ce qu il a DEJA lu — positions, fil des morts, table d index,
+	// roster de la feuille — et sans axe de frames : il n ecrit pas d artefact, il ecrit des vies
+	// et des contextes de mort sur l horloge du MATCH. Deux producteurs, un seul nommage : les
+	// deux tables du meme film ne peuvent plus diverger.
+	//
+	// LE ROSTER DE LA FEUILLE ENTRE ICI, et c est un CHANGEMENT DE SORTIE : il rend possible
+	// l identite par ELIMINATION pour un joueur qui ne meurt jamais (cf.
+	// `replay.NomParElimination`). C est la raison du bump d [IsolationDecoderRev].
+	// LE LIEN DIRECT CORPS -> JOUEUR (lot E2, 2026-09-08) : le record de creation du bipede
+	// porte l'index de participant de son proprietaire. Le collecteur le lit sur le MEME film et
+	// sous le MEME verrou de decodage que les positions ; sans lui, `match_lives` retomberait
+	// sur le pont par morts alors que la cuisson, elle, lit le film. Deux producteurs, un seul
+	// nommage : c'est toute la decision D11. Absence NON fatale — le registre degrade et le dit.
+	creations, cStats, err := decfilm.ScanBipedCreations(fc)
+	if err != nil {
+		slog.Warn("killsource: creations de bipede illisibles — degradation sur le pont par morts",
+			"err", err, "match_id", matchID)
+		creations = nil
+	}
+	if cStats.Anchors > 0 && cStats.Accepted == 0 {
+		slog.Warn("killsource: aucune signature de creation reconnue sur des ancres presentes",
+			"match_id", matchID, "ancres", cStats.Anchors, "motAlternatifModal", cStats.OtherWord)
+	}
+	lectures := lecturesDuFilm{
+		positions: positions, creations: creations, deaths: deathsFilm, idx: idx}
+	// LE ROSTER DE BOTS VOYAGE DEPUIS LE MEME DECODAGE killsource QUE LES MORTS (`res`, deja
+	// resolu par l appelant) — PAS UN SECOND BALAYAGE : `replayidentity.BotIdentities` est la
+	// MEME projection que la cuisson (lot 5.1, revue de vague 4, constat P2). Sans elle, un
+	// siege d index partage bot/humain attribue les vies du bot a l humain (cf. l en-tete de
+	// `games/halo_infinite/replayidentity/bot_identities.go`).
+	bots := replayidentity.BotIdentities(res)
+	reg := replay.BuildIdentityRegistry(entreeDuRegistre(lectures, ids, bots, matchID))
+	if !reg.PontEtabli() {
+		observability.AddInt(metricPositionsNoBridge, 1)
+		return passePositions{}, materiauDIsolement{}, fmt.Errorf(
+			"pont slot->xuid vide (vies=%d nommees=%d lectures_index=%d)",
+			reg.ViesTotal(), reg.ViesNommeesParLaLecture(), reg.LecturesIndex())
+	}
+
+	// LE MATERIAU REMONTE TEL QUEL : le registre porte les vies nommees et le calage d horloge,
+	// les positions portent le monde. La projection des faits d isolement s en sert sans
+	// rescanner le film (cf. isolation_facts.go).
+	mat := materiauDIsolement{registre: reg, positions: positions}
+	return composerPassePositions(positions, reg, kills, int64(originUS), matchID), mat, nil
+}
+
+// composerPassePositions : LES DEUX JEUX DE LIGNES D UNE SEULE LECTURE DU FILM. PURE — aucune
+// I/O, aucun film : c est la couture par laquelle un test pince l accord entre le DECALAGE de
+// l entame et l INSTANT qui finit en base (constat B1 de la revue du 2026-09-06 — avec la
+// version precedente, inverser le signe du decalage laissait toute la suite verte, et les lignes
+// auraient porte des coordonnees prises 1,5 s APRES la mort avec un `time_ms` decale de +3 s,
+// donc une jointure vide pour toujours, sans une seule erreur).
+//
+// ── ENTAME : COMPOSITION, PAS SECOND DECODEUR ────────────────────────────────────────────────
+//
+// `replay.BuildKillOpenings` fait TOUT ce que l entame demande, et rien d autre n a le droit de
+// le refaire ici : elle decale les couples de `-OpeningLeadMS`, place par LA fonction de
+// placement du paquet (celle-la meme que `BuildKillPositions`), ECARTE tout cote dont l instant
+// decale ne tombe pas dans la MEME VIE que le coup fatal — sans quoi la « position d entame »
+// serait un point de reapparition — et rend des `KillPosition` dont le `TimeMS` est DEJA celui
+// du kill. `toKillOpeningRows` n a donc AUCUNE avance a readditionner : le faire decalerait
+// toutes les lignes de 1,5 s.
+func composerPassePositions(
+	positions []decfilm.BipedPosition, reg replay.IdentityRegistry,
+	kills []replay.KillRef, originUS int64, matchID string,
+) passePositions {
+	posOut, rep := replay.BuildKillPositions(positions, reg, kills, originUS)
+	openOut, openRep := replay.BuildKillOpenings(positions, reg, kills, originUS)
+	return passePositions{
+		rep:      rep,
+		rows:     toKillPositionRows(matchID, posOut),
+		openRep:  openRep,
+		openRows: toKillOpeningRows(matchID, openOut),
+	}
+}
+
+// writePositions : l ecriture, sous son PROPRE lease court — meme raison que writeShots (le
+// lease RW de shared est la ressource la plus disputee du process, ADR 0013).
+func (c *KillSourceCollector) writePositions(ctx context.Context, matchID string, rows []persist.KillPositionInsert) error {
+	db, release, err := c.acquireShared(ctx)
+	if err != nil {
+		return fmt.Errorf("lease shared %s: %w", matchID, err)
+	}
+	defer release()
+	return persist.NewKillPositionPersister(db).PersistPass(ctx, matchID, rows)
+}
+
+// killRefsFromDeaths ne garde que les morts dont LES DEUX identites sont resolues — un xuid vide
+// (bot, nom non resolu) n a pas de position a chercher, et BuildKillPositions ne sait rien faire
+// d un KillRef a zero.
+func killRefsFromDeaths(deaths []persist.KillEventInsert) []replay.KillRef {
+	out := make([]replay.KillRef, 0, len(deaths))
+	for i := range deaths {
+		d := &deaths[i]
+		killerXUID, ok1 := parseXUID(d.FeedKillerXUID)
+		victimXUID, ok2 := parseXUID(d.VictimXUID)
+		if !ok1 || !ok2 {
+			continue
+		}
+		out = append(out, replay.KillRef{KillerXUID: killerXUID, VictimXUID: victimXUID, TimeMS: int64(d.TimeMS)})
+	}
+	return out
+}
+
+// rosterUint64 traduit les xuids texte de MatchIdentities pour ScanFilmPlayerIndices, qui lit un
+// roster numerique (le film ne porte que des motifs de bits, jamais une chaine).
+func rosterUint64(xuids []string) []uint64 {
+	out := make([]uint64, 0, len(xuids))
+	for _, s := range xuids {
+		if v, ok := parseXUID(s); ok {
+			out = append(out, v)
+		}
+	}
+	return out
+}
+
+// parseXUID : un xuid est une suite de chiffres decimale, et rien d autre — meme regle que
+// identities.go (estDecimal), reappliquee ici parce que cette lecture est numerique alors que
+// MatchIdentities.Resoudre rend des chaines.
+func parseXUID(s string) (uint64, bool) {
+	if s == "" {
+		return 0, false
+	}
+	v, err := strconv.ParseUint(s, 10, 64)
+	if err != nil {
+		return 0, false
+	}
+	return v, true
+}
+
+// toKillPositionRows traduit le resultat pur en lignes ecrivables. AUCUNE ligne pour une mort
+// dont ni le tueur ni la victime n ont ete localises — BuildKillPositions ne les rend deja pas.
+func toKillPositionRows(matchID string, positions []replay.KillPosition) []persist.KillPositionInsert {
+	out := make([]persist.KillPositionInsert, 0, len(positions))
+	for i := range positions {
+		p := &positions[i]
+		row := persist.KillPositionInsert{
+			MatchID:    matchID,
+			KillerXUID: strconv.FormatUint(p.KillerXUID, 10),
+			TimeMS:     int(p.TimeMS),
+		}
+		if p.Killer != nil {
+			row.KillerX, row.KillerY, row.KillerZ = &p.Killer.X, &p.Killer.Y, &p.Killer.Z
+		}
+		if p.Victim != nil {
+			row.VictimX, row.VictimY, row.VictimZ = &p.Victim.X, &p.Victim.Y, &p.Victim.Z
+		}
+		out = append(out, row)
+	}
+	return out
+}
+
+// refuserSequenceTrouee : REFUS SUR TROU DE SEQUENCE, le seul controle du disparu pont disque
+// qui protegeait d une position FAUSSE — et il survit tel quel, sans disque.
+//
+// `FilmOf` (bridge.go) tolere des index non contigus (les trous restent des chunks VIDES,
+// `decfilm.Decode` fait de l acces direct par index) ; les QUATRE balayages, eux, parcourent
+// les chunks de donnees par numero (`decfilm.FilmChunkNumbers`) et un chunk vide ne rend aucun
+// paquet — un film troue leur ferait donc lire un film AMPUTE, en silence, jamais une erreur. Le
+// controle ci-dessous refuse ce cas au lieu de le laisser produire une lecture partielle
+// plausible : le critere de ce chantier est qu aucune position fausse ne soit possible, un film
+// incomplet perd donc SES positions plutot que d en risquer de fausses.
+//
+// LA REGLE EST CELLE D AVANT, A L IDENTIQUE : le controle porte sur les chunks de DONNEES
+// (numeros 1..N), jamais sur l en-tete — c est ce que faisait `decfilm.CountFilmChunks`, qui
+// comptait a partir de `chunk_01.bin`. Un film reduit au seul chunk 0, ou vide, passe donc ici
+// et se fait refuser par les balayages eux-memes (`ErrNoFilmChunk`).
+func refuserSequenceTrouee(film *decfilm.Film) error {
+	if film == nil {
+		return fmt.Errorf("film absent")
+	}
+	for i := 1; i < film.NumChunks(); i++ {
+		if len(film.Chunk(i)) == 0 {
+			return fmt.Errorf("sequence de chunks trouee (chunk %d absent sur %d attendus depuis "+
+				"l index 1) — positions ignorees plutot que lues sur un film ampute",
+				i, film.NumChunks()-1)
+		}
+	}
+	return nil
+}
+
+// publishPositionsPass : les compteurs de sante (ADR 0009) et la trace de la passe.
+func publishPositionsPass(ctx context.Context, matchID string, rep replay.KillPosReport, rowsWritten int) {
+	observability.AddInt(metricPositionsMatches, 1)
+	observability.AddInt(metricPositionsRows, int64(rowsWritten))
+	if rep.Dropped > 0 {
+		observability.AddInt(metricPositionsKillsDropped, int64(rep.Dropped))
+	}
+	slog.InfoContext(ctx, "killsource: positions decodees",
+		"match_id", matchID, "kills", rep.Kills, "deux_cotes", rep.Both,
+		"tueur_seul", rep.KillerOnly, "victime_seule", rep.VictimOnly,
+		"sans_position", rep.Dropped, "sans_pont_identite", rep.NoBridge, "lignes", rowsWritten)
+}
+
+// entreeDuRegistre et lecturesDuFilm sont EXTRAITES vers positions_identity_entree.go (lot 5.1) :
+// positions.go frolait le plafond de 500 lignes du depot au moment d'ajouter `Bots`/`Participants`
+// a la couture (decouverte du lot). Meme fichier logique, autre fichier physique.

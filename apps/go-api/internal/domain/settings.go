@@ -41,13 +41,21 @@ type SettingsResponse struct {
 	SpnkrRefreshBackfillPerfScores     bool     `json:"spnkr_refresh_backfill_performance_scores"`
 	SpnkrRefreshBackfillLUSR           bool     `json:"spnkr_refresh_backfill_lusr"`
 	SpnkrRefreshBackfillEvents         bool     `json:"spnkr_refresh_backfill_events"`
-	SpnkrRefreshBackfillWeapons        bool     `json:"spnkr_refresh_backfill_weapons"`
-	FriendGamertags                    []string `json:"friend_gamertags"`
 
 	// --- Règles de sessions ---
 	SessionGapMinutes          int    `json:"session_gap_minutes"`
 	SessionSplitOnRankedChange bool   `json:"session_split_on_ranked_change"`
 	SessionTeamChangeMode      string `json:"session_team_change_mode"`
+
+	// ReplayRetentionMonths : fenêtre des artefacts de rejeu 2D (fil de l'eau + purge).
+	// 0 = illimité (tout construire, ne rien purger).
+	ReplayRetentionMonths int `json:"replay_retention_months" doc:"Fenêtre de rétention des artefacts de rejeu 2D en mois. 0 = illimité."`
+
+	// ReplayBuildLocation : OÙ se construit un rejeu. "local" (ce serveur décode
+	// lui-même) | "worker" (il met en file, un ouvrier distant décode) | "off"
+	// (aucune construction). Vide = défaut de l'instance : worker en production
+	// (le VPS web ne décode jamais), local en développement.
+	ReplayBuildLocation string `json:"replay_build_location" doc:"Lieu de construction des rejeux 2D : local | worker | off. Vide = défaut de l'instance."`
 
 	// --- Règles de badges narratifs ---
 	OutcomeExcludeBotMatchesFromBadges  bool   `json:"outcome_exclude_bot_matches_from_badges"`
@@ -76,6 +84,15 @@ type SettingsResponse struct {
 	// app_settings.json:instance_locked (pas le verrou env forcé, exposé séparément
 	// au /bootstrap). Défaut : false.
 	InstanceLocked bool `json:"instance_locked"`
+
+	// ReplaySoundVariationPercent : variation appliquée aux sons d'armes du rejeu 2D
+	// à chaque lecture (volume et hauteur, dans les fourchettes déclarées par le jeu).
+	// 0 = aucune variation, 100 = fourchettes du jeu telles quelles. Défaut : 100.
+	ReplaySoundVariationPercent int `json:"replay_sound_variation_percent" doc:"Variation des sons d'armes du rejeu 2D (0-100 %). 100 = fourchettes du jeu telles quelles."`
+
+	// ReplaySoundDistancePercent : effet de distance (atténuation + filtre passe-bas)
+	// appliqué aux sons d'armes du rejeu 2D. 0 = son pur, aucun traitement. Défaut : 0.
+	ReplaySoundDistancePercent int `json:"replay_sound_distance_percent" doc:"Effet de distance des sons d'armes du rejeu 2D (0-100 %). 0 = son pur."`
 }
 
 // UpdateSettingsRequest contient les champs modifiables (tous optionnels).
@@ -114,13 +131,17 @@ type UpdateSettingsRequest struct {
 	SpnkrRefreshBackfillPerfScores     *bool    `json:"spnkr_refresh_backfill_performance_scores,omitempty"`
 	SpnkrRefreshBackfillLUSR           *bool    `json:"spnkr_refresh_backfill_lusr,omitempty"`
 	SpnkrRefreshBackfillEvents         *bool    `json:"spnkr_refresh_backfill_events,omitempty"`
-	SpnkrRefreshBackfillWeapons        *bool    `json:"spnkr_refresh_backfill_weapons,omitempty"`
-	FriendGamertags                    []string `json:"friend_gamertags,omitempty"`
 
 	// --- Règles de sessions ---
 	SessionGapMinutes          *int    `json:"session_gap_minutes,omitempty"`
 	SessionSplitOnRankedChange *bool   `json:"session_split_on_ranked_change,omitempty"`
 	SessionTeamChangeMode      *string `json:"session_team_change_mode,omitempty"`
+
+	// ReplayRetentionMonths : fenêtre des artefacts de rejeu 2D. 0 = illimité.
+	ReplayRetentionMonths *int `json:"replay_retention_months,omitempty"`
+
+	// ReplayBuildLocation : lieu de construction des rejeux ("local"|"worker"|"off").
+	ReplayBuildLocation *string `json:"replay_build_location,omitempty"`
 
 	// --- Règles de badges narratifs ---
 	OutcomeExcludeBotMatchesFromBadges  *bool   `json:"outcome_exclude_bot_matches_from_badges,omitempty"`
@@ -141,6 +162,10 @@ type UpdateSettingsRequest struct {
 
 	// InstanceLocked : verrou « instance fermée » activable à chaud (admin).
 	InstanceLocked *bool `json:"instance_locked,omitempty"`
+
+	// Sons du rejeu 2D (réglages d'instance, page admin). Bornés 0-100 par le handler.
+	ReplaySoundVariationPercent *int `json:"replay_sound_variation_percent,omitempty"`
+	ReplaySoundDistancePercent  *int `json:"replay_sound_distance_percent,omitempty"`
 }
 
 // MediaResetRequest est le corps de POST /settings/media/reset-index.

@@ -9,9 +9,14 @@
 // d'import, elles vivent ici en zone neutre.
 //
 // Schéma : voir internal/migration/steps_shared_objective_events.go. Les pointeurs
-// (TeamID, ObjectiveID, Value) modélisent les colonnes NULL-able : team unreliable
-// sur certains matchs (mappé xuid->team via match_participants en amont),
-// objective_id (identité zone/colline) non récupérable du film -> toujours NULL.
+// (TeamID, ObjectiveID, Value) modélisent les colonnes NULL-able.
+//
+// `TeamID` VIENT DU FILM DEPUIS LE LOT 1.7.3 (2026-09-14) : l'octet 37 du bloc de pied, lu par
+// `objectives`. La phrase d'origine de ce commentaire — « team unreliable sur certains
+// matchs (mappé xuid->team via match_participants en amont) » — décrivait l'octet 55, qui vaut 0
+// partout ; elle est RÉFUTÉE (665/665 sur quatorze films). Le champ reste NULL-able parce qu'un
+// événement sans acteur identifié n'a pas d'équipe à porter. `objective_id` (identité
+// zone/colline) n'est toujours pas récupérable du film -> toujours NULL.
 
 package domain
 

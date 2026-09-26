@@ -205,7 +205,14 @@ func (e *SyncEngine) RecomputeLUSRCanonical(ctx context.Context) (int, error) {
 	}
 	defer releaseShared()
 
-	return RecomputeLUSRCanonicalForPlayer(ctx, playerHandle.SQLDb(), sharedDB, e.xuid)
+	// Titre du MOTEUR dans le ctx (miroir de engine_postsync_scoring.go) : le seam
+	// LUSR lit ctxkeys.TitleSlug alors que les bases ouvertes ici sont celles de
+	// e.titleSlug. Un ctx portant un AUTRE titre (onglet admin sur le second titre,
+	// header X-LevelUp-Title) écrirait sa chaîne dans CETTE base — corruption
+	// h5_arena du 2026-06-26 (.ai/V7.5/RAPPORT_VOLET1_LUSR_H5_2026-08-28.md §5.3 G4).
+	// Ce point unique couvre tous les appelants (admin, CLI, backfill_orchestrator).
+	titleCtx := ctxkeys.WithTitleSlug(ctx, e.titleSlug)
+	return RecomputeLUSRCanonicalForPlayer(titleCtx, playerHandle.SQLDb(), sharedDB, e.xuid)
 }
 
 // RunBackfillCSR ré-importe les CSR par-match depuis l'API Halo skill pour
@@ -217,8 +224,8 @@ func (e *SyncEngine) RecomputeLUSRCanonical(ctx context.Context) (int, error) {
 // Retourne le résumé d'exécution (matchs traités, restaurés, skippés, etc.).
 func (e *SyncEngine) RunBackfillCSR(ctx context.Context, force bool) (CSRBackfillResult, error) {
 	var empty CSRBackfillResult
-	if e.tokens == nil || e.tokens.SpartanToken == "" {
-		return empty, fmt.Errorf("RunBackfillCSR: tokens Halo absents (re-login requis)")
+	if err := e.requireTokensUnlessCustomClient("RunBackfillCSR"); err != nil {
+		return empty, err
 	}
 
 	slog.InfoContext(ctx, "RunBackfillCSR: démarrage",
@@ -282,9 +289,12 @@ func (e *SyncEngine) RunBackfillSharedCSR(ctx context.Context, opts SharedCSRBac
 	var empty SharedCSRBackfillResult
 	empty.DryRun = opts.DryRun
 
-	// En non-dry-run, les tokens Halo sont indispensables pour appeler /skill.
-	if !opts.DryRun && (e.tokens == nil || e.tokens.SpartanToken == "") {
-		return empty, fmt.Errorf("RunBackfillSharedCSR: tokens Halo absents (re-login requis) — utiliser --dry-run sinon")
+	// En non-dry-run, un client Halo est indispensable pour appeler /skill : le client
+	// poolé posé par SetCustomClient, sinon les tokens du joueur.
+	if !opts.DryRun {
+		if err := e.requireTokensUnlessCustomClient("RunBackfillSharedCSR"); err != nil {
+			return empty, err
+		}
 	}
 
 	slog.InfoContext(ctx, "RunBackfillSharedCSR: démarrage",
@@ -365,18 +375,19 @@ func loadMedalExploitMap(ctx context.Context, metadataDBPath string, sharedDB *s
 	if metadataDBPath == "" {
 		return nil
 	}
-	// Phase 2 PLAN_FIX_SYNC_RELIABILITY_2026-05-24 (site residuel detecte
-	// par audit grep 2026-05-25) : passage par le cache duckdbpkg.OpenReadOnly
-	// pour aligner le DSN avec les autres sites RO du sync engine. Empeche
-	// le bug "Can't open a connection with a different configuration"
-	// lorsque loadMedalExploitMap tourne en concurrence avec engine.go:249.
-	metaHandle, err := duckdbpkg.OpenReadOnly(metadataDBPath)
+	// OpenReadForQuery reutilise le handle deja tenu par le process (le moteur ouvre
+	// metadata en `rw:` partage depuis le 2026-09-16, engine.go ; le serveur le tient en
+	// `rw:` depuis toujours) et n ouvre en lecture seule qu a defaut. Un OpenReadOnly
+	// direct ici echouait (« different configuration ») des que le moteur tenait `rw:`,
+	// et rendait nil en Debug : medal_exploit = 0 pour tous les matchs, en silence
+	// (revue adversariale du 2026-09-16, P1). Journal en Warn : la degradation ne se
+	// tait plus.
+	metaDB, releaseMeta, err := duckdbpkg.OpenReadForQuery(metadataDBPath)
 	if err != nil {
-		slog.DebugContext(ctx, "loadMedalExploitMap: ouverture metaDB échouée", "err", err)
+		slog.WarnContext(ctx, "loadMedalExploitMap: ouverture metaDB échouée — medal_exploit à 0 pour cette passe", "err", err)
 		return nil
 	}
-	defer metaHandle.Close()
-	metaDB := metaHandle.SQLDb()
+	defer releaseMeta()
 
 	diffMap, err := LoadMedalDifficultyFromMeta(ctx, metaDB)
 	if err != nil || len(diffMap) == 0 {
@@ -487,7 +498,7 @@ func loadAllMatchIDsForPlayer(ctx context.Context, sharedDB *sql.DB, xuid string
 // loadFlaggedMatchIDs retourne les match_id dont la dominance a DÉJÀ été calculée
 // (dominance_flag NON-NULL, valeur 0 INCLUSE) — player DB.
 //
-// Append-only #23046 — IDEMPOTENCE : on inclut dominance_flag=0. Un match
+// Append-only #23645 — IDEMPOTENCE : on inclut dominance_flag=0. Un match
 // non-dominant (0 = ni domination ni humiliation ni comeback = la MAJORITÉ des
 // matchs) recalculé donne TOUJOURS 0 ; le traiter comme « non calculé » le ferait
 // ré-INSÉRER (stage='dominance', valeur 0) à chaque backfill admin non-force →
@@ -510,4 +521,21 @@ func loadFlaggedMatchIDs(ctx context.Context, playerDB *sql.DB) ([]string, error
 		ids = append(ids, id)
 	}
 	return ids, rows.Err()
+}
+
+// requireTokensUnlessCustomClient : les passes qui appellent l API Halo ont besoin SOIT du
+// client personnalisé posé par SetCustomClient (client poolé : les tokens vivent dans le
+// pool), SOIT des tokens Halo du joueur. Exiger les tokens du joueur alors qu un client
+// poolé est posé cassait `backfill --csr` / `--shared-csr` pour TOUS les joueurs depuis que
+// la CLI construit ses moteurs par le pool (revue adversariale du 2026-09-16, P0). Le
+// message ne parle plus de « re-login » : un token absent ne se répare pas par une
+// re-capture (ADR 0023).
+func (e *SyncEngine) requireTokensUnlessCustomClient(op string) error {
+	if e.customClient != nil {
+		return nil
+	}
+	if e.tokens == nil || e.tokens.SpartanToken == "" {
+		return fmt.Errorf("%s: aucun client Halo — ni client poolé (SetCustomClient), ni tokens du joueur", op)
+	}
+	return nil
 }

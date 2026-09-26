@@ -1,4 +1,4 @@
-// Package duckdb â€” queries_home_citations.go : requÃªtes page Home, citations et mÃ©dias.
+// Package duckdb — queries_home_citations.go : requêtes page Home, citations et médias.
 package duckdb
 
 // Q26 — Home : matchs d'un joueur avec KPIs pour le hero card.
@@ -136,9 +136,9 @@ SELECT
 FROM match_registry
 WHERE match_id IN (%s)`
 
-// Q26h : Home â€” mÃ©dailles par match pour un joueur, lots de match_id.
-// ParamÃ¨tres : ?1 = xuid. Les match_id sont injectÃ©s dynamiquement via IN (%s).
-// RequÃªte sur pdb.Player (shared attachÃ©) ; labels rÃ©solus ensuite via metadata.
+// Q26h : Home — médailles par match pour un joueur, lots de match_id.
+// Paramètres : ?1 = xuid. Les match_id sont injectés dynamiquement via IN (%s).
+// Requête sur pdb.Player (shared attaché) ; labels résolus ensuite via metadata.
 const Q26hMatchMedalsTemplate = `
 SELECT
     me.match_id,
@@ -149,9 +149,9 @@ WHERE me.xuid = ?
   AND me.match_id IN (%s)
 ORDER BY me.match_id, me.count DESC`
 
-// Q26i : Home â€” citations progressÃ©es par match, avec cumul global au moment du match.
-// Les match_id sont injectÃ©s dynamiquement via IN (%s).
-// RequÃªte sur pdb.Player uniquement (match_citations est dans stats.duckdb).
+// Q26i : Home — citations progressées par match, avec cumul global au moment du match.
+// Les match_id sont injectés dynamiquement via IN (%s).
+// Requête sur pdb.Player uniquement (match_citations est dans stats.duckdb).
 const Q26iMatchCitationsTemplate = `
 SELECT
     mc.match_id,
@@ -168,8 +168,8 @@ WHERE mc.match_id IN (%s)
   AND mc.value > 0
 ORDER BY mc.match_id, mc.value DESC`
 
-// Q26j : Home â€” mÃ©tadonnÃ©es citations depuis metadata.duckdb pour un ensemble de norms.
-// Les citation_name_norm sont injectÃ©s dynamiquement via IN (%s).
+// Q26j : Home — métadonnées citations depuis metadata.duckdb pour un ensemble de norms.
+// Les citation_name_norm sont injectés dynamiquement via IN (%s).
 // GROUP BY car une citation peut avoir plusieurs medal_id rows.
 //
 // GH2-B2/B6 : citation_name_display_en exposé pour la résolution locale-aware du
@@ -204,8 +204,8 @@ FROM match_participants mp
 JOIN match_registry r ON r.match_id = mp.match_id
 WHERE mp.xuid = ? ` + campaignExclusionToken
 
-// Q26c : Home -- identitÃ© record compacte depuis career_progression.
-// Un seul scan via ARG_MAX â€” remplace les 5 sous-requÃªtes corrÃ©lÃ©es de l'ancienne version.
+// Q26c : Home -- identité record compacte depuis career_progression.
+// Un seul scan via ARG_MAX — remplace les 5 sous-requêtes corrélées de l'ancienne version.
 //
 // FILTRE PAR XUID (?1) : career_progression est dans la player DB mais peut, en cas
 // de contamination de sync historique, contenir des rows d'un AUTRE joueur. Sans ce
@@ -213,7 +213,7 @@ WHERE mp.xuid = ? ` + campaignExclusionToken
 // row était plus récente — symptôme observé (Chocoboflor affichait l'identité de JGtm).
 // Concaténer xuid à une chaîne vide défait le pushdown sur l'index PK (cf.
 // career_live_repo.go : index DuckDB connu corrompu, table-scan complet, < 1k rows/joueur).
-// ParamÃ¨tre : ?1 = xuid du joueur.
+// Paramètre : ?1 = xuid du joueur.
 // BANNIÈRE/EMBLÈME/BACKDROP : champs d'apparence INDÉPENDANTS (directive
 // produit 2026-07-08) — chacun sert sa dernière valeur non vide (« jamais
 // vide »). Pas de couplage bannière↔emblème : un emblème sans nameplate
@@ -235,13 +235,13 @@ SELECT
 FROM career_progression
 WHERE xuid || '' = ?`
 
-// Q26d : Home -- assets visuels du rang carriÃ¨re courant depuis metadata.duckdb.
+// Q26d : Home -- assets visuels du rang carrière courant depuis metadata.duckdb.
 //
-// Les libellÃ©s (title FR/EN, next_rank_title) ne sont PAS lus ici : ils
-// proviennent du TitleSemanticAdapter (career_rank_translations) cÃ´tÃ© service.
+// Les libellés (title FR/EN, next_rank_title) ne sont PAS lus ici : ils
+// proviennent du TitleSemanticAdapter (career_rank_translations) côté service.
 // Le repo storage reste exclusivement responsable des paths d'assets.
 //
-// ParamÃ¨tre : ?1 = rank_id.
+// Paramètre : ?1 = rank_id.
 const Q26dHomeCareerRankMeta = `
 SELECT
 	COALESCE(
@@ -256,7 +256,7 @@ LIMIT 1`
 // Q26e : Home -- meilleur rating historique par type (CSR ou LUSR), avec
 // statut de placement par playlist_group.
 //
-// ParamÃ¨tre : ?1 = rating_type ('CSR' ou 'LUSR', case-insensitive).
+// Paramètre : ?1 = rating_type ('CSR' ou 'LUSR', case-insensitive).
 //
 // Retourne 1 ligne max :
 //
@@ -266,9 +266,9 @@ LIMIT 1`
 //   - chaque playlist_group a sa propre phase de placement de 10 matchs
 //   - match_count = COUNT(*) des rows par playlist_group pour le type donné
 //   - placement_remaining = GREATEST(0, 10 - match_count)
-//   - on prÃ©fÃ¨re le meilleur rating d'un groupe matured (match_count >= 10) ;
-//     sinon on retourne le meilleur rating du groupe le plus jouÃ© en placement,
-//     pour que le badge unranked_(10-remaining).png puisse Ãªtre construit.
+//   - on préfère le meilleur rating d'un groupe matured (match_count >= 10) ;
+//     sinon on retourne le meilleur rating du groupe le plus joué en placement,
+//     pour que le badge unranked_(10-remaining).png puisse être construit.
 //
 // **NULL handling — fix bug prod 2026-05-20** : `playlist_group` peut être NULL
 // pour les anciennes rows LUSR/CSR (avant introduction de la colonne ou pour
@@ -315,16 +315,16 @@ SELECT
 FROM match_registry mr
 WHERE mr.match_id IN (%s)`
 
-// Q26g : Home â€” 3 derniÃ¨res playlists distinctes jouÃ©es avec leur dernier rang compÃ©titif.
-// ParamÃ¨tre : ?1 = xuid du joueur.
+// Q26g : Home — 3 dernières playlists distinctes jouées avec leur dernier rang compétitif.
+// Paramètre : ?1 = xuid du joueur.
 // Retourne (playlist_id, playlist_name, is_ranked, rating_type, rating_value, tier, tier_fr,
 //
 //	sub_tier, tier_label, measurement_matches_remaining).
 //
-// playlist_name_fr est rÃ©solu en Go depuis asset_translations (mÃªme source que les tuiles de matchs).
-// rating_* sont NULL pour les playlists sans rang calculÃ©.
-// measurement_matches_remaining vient de player_csr_snapshots (snapshot le plus rÃ©cent par playlist)
-// pour permettre d'Ã©mettre `unranked_N.png` pendant la phase de placement (10 â†’ 0 matchs restants).
+// playlist_name_fr est résolu en Go depuis asset_translations (même source que les tuiles de matchs).
+// rating_* sont NULL pour les playlists sans rang calculé.
+// measurement_matches_remaining vient de player_csr_snapshots (snapshot le plus récent par playlist)
+// pour permettre d'émettre `unranked_N.png` pendant la phase de placement (10 → 0 matchs restants).
 // Q26gPlaylistPhaseBShared : Phase B (shared) — top 3 playlists pour xuid
 // avec le dernier match_id par playlist. Sprint P7 / ADR 0016 : sans préfixe
 // shared. (exécuté via pdb.SharedReadDB().Get()).
@@ -448,7 +448,7 @@ WHERE rn = 1`
 // (Phase 3.bis plan stabilisation 2026-05-22). Conservé en commentaire
 // comme référence historique. Code mort retiré.
 
-// Q28 : Home â€” medias recents depuis media_files + media_match_associations.
+// Q28 : Home — medias recents depuis media_files + media_match_associations.
 // Parametre : ?1 = LIMIT (nombre de medias).
 // Retourne uniquement les medias actifs, triés par date de modification desc.
 //
@@ -469,9 +469,9 @@ WHERE mf.status = 'active'
 ORDER BY mf.mtime DESC
 LIMIT ?`
 
-// Q26k : Home â€” arme favorite (kills totaux) du joueur toutes armes confondues.
-// ParamÃ¨tre : ?1 = xuid.
-// RequÃªte sur pdb.Player (shared attachÃ©). Label rÃ©solu ensuite via pdb.Metadata.
+// Q26k : Home — arme favorite (kills totaux) du joueur toutes armes confondues.
+// Paramètre : ?1 = xuid.
+// Requête sur pdb.Player (shared attaché). Label résolu ensuite via pdb.Metadata.
 const Q26kFavoriteWeapon = `
 SELECT
     wk.effective_weapon_id AS weapon_id,
@@ -484,8 +484,8 @@ ORDER BY total_kills DESC
 LIMIT 1`
 
 // =============================================================================
-// Sprint 13 â€” Citations + MÃ©dias
+// Sprint 13 — Citations + Médias
 // =============================================================================
 
-// Q34 : Citations â€” mappings de citation depuis metadata.duckdb.
-// ParamÃ¨tre : aucun. RequÃªte sur pdb.Metadata (pas pdb.Player).
+// Q34 : Citations — mappings de citation depuis metadata.duckdb.
+// Paramètre : aucun. Requête sur pdb.Metadata (pas pdb.Player).

@@ -277,6 +277,11 @@ func seedSharedDBForPoolTest(t *testing.T, path string) {
 			is_ranked BOOLEAN DEFAULT FALSE,
 			team_0_score INTEGER,
 			team_1_score INTEGER,
+			-- Manches (ADR 0032, migration add_team_rounds_to_match_registry) :
+			-- SMALLINT comme en prod, NULL = inconnu.
+			team_0_rounds_won SMALLINT,
+			team_1_rounds_won SMALLINT,
+			rounds_total SMALLINT,
 			duration_seconds INTEGER,
 			playable_duration_seconds INTEGER
 		)`,

@@ -1,7 +1,7 @@
 // Commande killsource — exercer le decodeur de la SOURCE DE DEGAT sur un film Theater, seul.
 //
 // A QUOI ELLE SERT. AUCUN CHEMIN D EXECUTION DE L APPLICATION ne passe encore par le paquet
-// `internal/games/halo_infinite/film/killsource` : son unique importeur cote application est le
+// `internal/games/halo_infinite/film/internal/facts/killsource` : son unique importeur cote application est le
 // pont `internal/sync/killsource_bridge.go`, ecrit d avance et lui-meme sans appelant. Le paquet
 // est donc autonome, et il doit pouvoir etre teste a fond avant d etre branche. Cette commande est
 // ce moyen. Elle ne touche ni la base, ni le reseau, ni les fichiers du jeu : elle lit des chunks
@@ -40,7 +40,8 @@ import (
 	"strings"
 	"time"
 
-	"levelup/go-api/internal/games/halo_infinite/film/killsource"
+	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
+	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
 )
 
 // defaultCacheDir : la racine du cache de films, relative a `apps/go-api/`. Meme valeur que
@@ -179,7 +180,7 @@ type rapport struct {
 	film   string
 	dir    string
 	duree  time.Duration
-	result *killsource.Result
+	result *decfilm.Result
 }
 
 // withFilm : resout le film, le decode, et passe le resultat au rendu demande.
@@ -195,15 +196,19 @@ func withFilm(args []string, o options, render func(*rapport) error) error {
 }
 
 // decoder : LA SEULE FACON DE LIRE UN FILM ICI, et c est exactement le code que le brancheur
-// ecrira — une source de chunks, un appel, un resultat.
+// ecrira — un film charge, un appel, un resultat.
+//
+// LE CHARGEMENT EST HORS DU CHRONOMETRE depuis le lot 1 de PLAN_CUISSON_PERF (item 1.4) :
+// `decfilm.Decode` ne lit plus le disque et ne decompresse plus rien, donc `duree` mesure
+// le DECODAGE seul — la lecture et l inflate du film, eux, sont le cout de `decfilm.LoadDir`.
 func decoder(film, cache string) (*rapport, error) {
 	dir, name := resoudre(film, cache)
-	src, err := killsource.DirChunks(dir)
+	src, err := decfilm.LoadDir(dir, nil)
 	if err != nil {
 		return nil, fmt.Errorf("film %s : %w", name, err)
 	}
 	t0 := time.Now()
-	res, err := killsource.Decode(context.Background(), name, src, nil)
+	res, err := decfilm.Decode(context.Background(), name, src, nil)
 	if err != nil {
 		return nil, fmt.Errorf("film %s : %w", name, err)
 	}
@@ -214,7 +219,7 @@ func decoder(film, cache string) (*rapport, error) {
 // un chemin tel quel. Rend aussi le nom court a afficher.
 func resoudre(film, cache string) (dir, name string) {
 	if len(film) == shortIDLen && !strings.ContainsAny(film, `/\.`) {
-		return filepath.Join(cache, "film_chunks", film), film
+		return filmcache.ChunkDir(cache, film), film
 	}
 	return film, filepath.Base(strings.TrimRight(filepath.Clean(film), `/\`))
 }

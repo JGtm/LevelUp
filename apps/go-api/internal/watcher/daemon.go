@@ -134,6 +134,11 @@ type Daemon struct {
 	// toucher metaDB après que main.go a fait duckdb.CloseAll() → handles
 	// DuckDB orphelins lors d'un SIGKILL d'air.
 	wg sync.WaitGroup
+
+	// profileGate : porte « profil suivi » d'AddPlayer (ADR 0035 D3). Lue sans
+	// verrou : posée une fois au câblage, avant Start. nil = porte ouverte (seam
+	// de test) ; le serveur la pose toujours.
+	profileGate domain.ProfileGate
 }
 
 // NewDaemon crée un watcher daemon (non démarré).
@@ -330,6 +335,12 @@ func (d *Daemon) AddPlayer(ctx context.Context, p domain.PlayerSummary) error {
 	}
 
 	ctx, evID := logging.WithEvent(ctx, "watcher.add_player:"+p.Gamertag)
+
+	// Porte « profil suivi » (ADR 0035 D3) — cf. daemon_profile_gate.go.
+	if err := d.checkProfileGate(ctx, p, evID); err != nil {
+		return err
+	}
+
 	slog.InfoContext(ctx, "watcher_daemon: AddPlayer démarré",
 		"gamertag", p.Gamertag, "xuid", p.XUID, "event", evID)
 
@@ -463,6 +474,13 @@ func (d *Daemon) makePresenceHandler(ctx context.Context, pw *PlayerWatcher) pre
 		if event.PresenceDetail != nil {
 			td := d.titleReg.MatchPresence(event.PresenceDetail.TitleID)
 			if td != nil {
+				// Titre tracké reconnu → mémorisé AVANT le test « titre du
+				// watcher » ci-dessous. L'ordre est le fond du sujet : ce test
+				// sort en OnPresenceInactive+return quand le joueur lance un
+				// AUTRE titre tracké ; capter le titre après lui laisserait un
+				// joueur configuré halo_5 jouant à Infinite « hors jeu » pour
+				// l'UI de présence. Cf. godoc de PlayerWatcher.currentTitleSlug.
+				pw.SetCurrentTitle(td.Slug, td.Name)
 				// Multi-titre : ce watcher ne suit QUE pw.titleSlug. Si le joueur
 				// lance un AUTRE titre tracké, ce n'est pas « son » jeu pour CE
 				// watcher → inactif ici (le watcher du même gamertag sur ce titre,
@@ -505,6 +523,7 @@ func (d *Daemon) makePresenceHandler(ctx context.Context, pw *PlayerWatcher) pre
 				"state", event.PresenceState,
 				"event", evID,
 			)
+			pw.SetCurrentTitle("", "")
 			pw.OnPresenceInactive(evCtx)
 			return
 		}
@@ -512,6 +531,7 @@ func (d *Daemon) makePresenceHandler(ctx context.Context, pw *PlayerWatcher) pre
 		// Pas de PresenceDetail (state Offline ou payload sans titre)
 		slog.DebugContext(evCtx, "watcher_daemon: présence sans titre actif",
 			"gamertag", pw.gamertag, "state", event.PresenceState, "event", evID)
+		pw.SetCurrentTitle("", "")
 		pw.OnPresenceInactive(evCtx)
 	}
 }

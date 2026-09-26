@@ -36,7 +36,7 @@ var playerSchemaSQL = migration.PlayerPersonalScoreAwardsDDL +
 // playerCoreSchemaSQL — tables player dont le DDL de soin n'est pas partagé avec un step
 // de migration (leur création vit dans create_baseline_player_v1, title-owned).
 const playerCoreSchemaSQL = `
--- player_match_enrichment : APPEND-ONLY (campagne ART #23046, 2026-06-21). La
+-- player_match_enrichment : APPEND-ONLY (campagne ART #23645, 2026-06-21). La
 -- table la PLUS écrite du projet (écritures incrémentales partielles perf/engagement/
 -- session/friends/bot/exclusion/psa) ne peut plus naître avec PK(match_id) + index
 -- ART mutés. PK technique id (séquence pme_seq) + colonne stage discriminant
@@ -121,6 +121,19 @@ CREATE OR REPLACE VIEW match_skill_rank_latest AS
             written_at DESC,
             id DESC
     ) = 1;
+-- match_skill_rank_latest_by_type : une ligne par (match_id, rating_type), la plus
+-- recente, SANS arbitrage CSR vs LUSR (graphe d'evolution de la page Carriere,
+-- Q8LUSRHistoryPlayer). Posee AUSSI ici (revue finitions R1, 2026-09-13) : une player
+-- DB creee par ce seul chemin (onboarding entre deux boots, Halo 5 hors boucle de
+-- migration du boot) doit porter la vue, sinon la page Carriere tombe en Catalog Error.
+-- A l'identique de games/halo_infinite/migrations/steps_player_match_skill_rank.go
+-- (player_msr_view_latest_by_type_v1).
+CREATE OR REPLACE VIEW match_skill_rank_latest_by_type AS
+    SELECT * FROM match_skill_rank
+    QUALIFY ROW_NUMBER() OVER (
+        PARTITION BY match_id, rating_type
+        ORDER BY written_at DESC, id DESC
+    ) = 1;
 
 CREATE SEQUENCE IF NOT EXISTS career_progression_id_seq;
 CREATE TABLE IF NOT EXISTS career_progression (
@@ -146,7 +159,7 @@ CREATE TABLE IF NOT EXISTS career_progression (
 ALTER TABLE career_progression ADD COLUMN IF NOT EXISTS last_fetch_status VARCHAR;
 -- idx_career_xuid : SUPPRIMÉ (décision 2026-08-05, arbitrage doctrinal option 2). Dans
 -- une player DB, xuid est QUASI CONSTANT (une DB = un joueur) → sélectivité nulle,
--- l'index n'accélère aucun filtre mais porte la classe de corruption ART DuckDB #23046
+-- l'index n'accélère aucun filtre mais porte la classe de corruption ART DuckDB #23645
 -- (ADR 0019/0026), la plus chère de l'histoire du projet. La convergence des DB
 -- EXISTANTES est assurée par le step drop_career_xuid_art_index_v1 (migration player).
 `
@@ -178,10 +191,19 @@ CREATE TABLE IF NOT EXISTS match_registry (
     duration_seconds          INTEGER,
     playable_duration_seconds INTEGER,
     real_start_time           TIMESTAMP,
-    team_0_score              SMALLINT,
-    team_1_score              SMALLINT,
+    -- INTEGER et pas SMALLINT : un score d'equipe depasse 32 767 (Bapteme du feu,
+    -- mesure le 2026-09-16). Les bases anterieures sont converties par l'etape
+    -- widen_match_registry_team_scores.
+    team_0_score              INTEGER,
+    team_1_score              INTEGER,
     team_0_ps_score           INTEGER,
     team_1_ps_score           INTEGER,
+    -- Manches gagnees par camp + nombre de manches jouees (CoreStats.RoundsWon/Lost/Tied).
+    -- NULL = inconnu : le lecteur retombe sur les points, jamais un zero substitue.
+    -- Convergence des DB existantes : step add_team_rounds_to_match_registry.
+    team_0_rounds_won         SMALLINT,
+    team_1_rounds_won         SMALLINT,
+    rounds_total              SMALLINT,
     backfill_completed        INTEGER  DEFAULT 0,
     participants_loaded       BOOLEAN  DEFAULT FALSE,
     events_loaded             BOOLEAN  DEFAULT FALSE,
@@ -337,7 +359,7 @@ func EnsurePlayerSchema(ctx context.Context, db *sql.DB) error {
 	return nil
 }
 
-// playerAppendOnlyCares — conversions append-only (#23046, ADR 0026) garanties à CHAQUE
+// playerAppendOnlyCares — conversions append-only (#23645, ADR 0026) garanties à CHAQUE
 // ouverture d'une player DB, en plus du DDL de soin. playerSchemaSQL crée les TABLES mais
 // jamais les vues `_latest` (leur bind échouerait sur une table legacy non convertie) :
 // sans ces appels, une player DB NEUVE ouverte hors chaîne de migrations aurait la table

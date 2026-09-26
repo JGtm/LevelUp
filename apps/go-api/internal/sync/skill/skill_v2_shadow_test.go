@@ -729,12 +729,25 @@ func TestRunLUSRV2Shadow_Canonical_WritesLegacyLUSRRow(t *testing.T) {
 // (équivalent au schéma append-only Phase 2.F).
 func openCanonicalPlayerTestDB(t *testing.T) *sql.DB {
 	t.Helper()
+	return openCanonicalPlayerTestDBWithCheck(t, "")
+}
+
+// openCanonicalPlayerTestDBWithCheck : même schéma, avec une contrainte CHECK
+// optionnelle sur match_skill_rank. Elle injecte un échec d'écriture canonical
+// DÉPENDANT DES DONNÉES (un match précis échoue, les autres passent), là où une
+// base fermée fait tout échouer. check vide = schéma d'openCanonicalPlayerTestDB.
+func openCanonicalPlayerTestDBWithCheck(t *testing.T, check string) *sql.DB {
+	t.Helper()
 	db, err := sql.Open("duckdb", "")
 	if err != nil {
 		t.Fatalf("open duckdb player: %v", err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	const ddl = `
+	constraint := ""
+	if check != "" {
+		constraint = ",\n\t\t\tCHECK (" + check + ")"
+	}
+	ddl := `
 		CREATE SEQUENCE match_skill_rank_id_seq;
 		CREATE TABLE match_skill_rank (
 			id              BIGINT DEFAULT nextval('match_skill_rank_id_seq') PRIMARY KEY,
@@ -752,7 +765,7 @@ func openCanonicalPlayerTestDB(t *testing.T) *sql.DB {
 			start_time      TIMESTAMP,
 			written_at      TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
 			created_at      TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
-			updated_at      TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)
+			updated_at      TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)` + constraint + `
 		);
 		CREATE VIEW match_skill_rank_latest AS
 		  SELECT * FROM match_skill_rank

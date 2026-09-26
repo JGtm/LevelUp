@@ -1,0 +1,70 @@
+{
+  "players": [
+    {
+      "xuid": "2533274809233885",
+      "kills": 13,
+      "deaths": 16,
+      "assists": 5,
+      "teamId": 1
+    },
+    {
+      "xuid": "2533274813765942",
+      "kills": 12,
+      "deaths": 21,
+      "assists": 12,
+      "teamId": 0
+    },
+    {
+      "xuid": "2533274837723606",
+      "kills": 32,
+      "deaths": 25,
+      "assists": 6,
+      "teamId": 1
+    },
+    {
+      "xuid": "2533274858283686",
+      "kills": 14,
+      "deaths": 21,
+      "assists": 7,
+      "teamId": 1
+    },
+    {
+      "xuid": "2533274969598328",
+      "kills": 21,
+      "deaths": 20,
+      "assists": 13,
+      "teamId": 0
+    },
+    {
+      "xuid": "2535406399121492",
+      "kills": 20,
+      "deaths": 22,
+      "assists": 4,
+      "teamId": 1
+    },
+    {
+      "xuid": "2535406887313903",
+      "kills": 22,
+      "deaths": 17,
+      "assists": 8,
+      "teamId": 0
+    },
+    {
+      "xuid": "2535428020470272",
+      "kills": 28,
+      "deaths": 21,
+      "assists": 8,
+      "teamId": 0
+    }
+  ],
+  "teamScores": [
+    174,
+    200
+  ],
+  "gameVariantName": "Ranked:Oddball",
+  "mapId": "309253f8-7a75-48ff-83e1-e7fb3db2ac47",
+  "matchId": "60ae07c4-5568-42de-99a7-76d1282edc72",
+  "mapNames": [
+    "Live Fire - Ranked"
+  ]
+}

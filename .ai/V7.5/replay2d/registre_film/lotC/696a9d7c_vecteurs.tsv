@@ -1,0 +1,13 @@
+ti	i	composant	chunk	paquet	bit_record	bit_charge	slot	gen	masque	bits_bruts_hex	champs
+12	14	managed-navpoint-radial-progress	3	236	1234	1261	1624	1	{14}	7F	progress=q127/-0.0039
+12	14	managed-navpoint-radial-progress	3	238	1225	1252	1624	1	{14}	80	progress=q128/0.0039
+12	14	managed-navpoint-radial-progress	3	240	1215	1242	1624	1	{14}	80	progress=q128/0.0039
+10	1	managed-object-boundary-color-component	2	2206	600	627	1883	2	{1}	0F6B9075	r=q15/0.0605 g=q107/0.4199 b=q144/0.5645 a=q117/0.4590
+10	1	managed-object-boundary-color-component	3	506	1528	1555	2060	0	{1}	77E7C106	r=q119/0.4668 g=q231/0.9043 b=q193/0.7559 a=q6/0.0254
+10	1	managed-object-boundary-color-component	3	606	1914	1941	2847	0	{1}	35304105	r=q53/0.2090 g=q48/0.1895 b=q65/0.2559 a=q5/0.0215
+10	26	managed-object-rtpc-component (i26)	2	1680	1146	1173	1544	1	{26}	0685454080000C40	grammaire a largeur variable : non decoupee
+10	26	managed-object-rtpc-component (i26)	2	1800	1299	1326	1544	1	{26}	0685454080002840	grammaire a largeur variable : non decoupee
+10	26	managed-object-rtpc-component (i26)	2	1920	1355	1382	1544	1	{26}	0685454080004440	grammaire a largeur variable : non decoupee
+10	27	managed-object-rtpc-component (i27)	2	2240	916	943	2950	1	{27}	2683D726EE796E48	grammaire a largeur variable : non decoupee
+10	27	managed-object-rtpc-component (i27)	3	236	1153	1180	1621	1	{27}	7CBF00668000C665	grammaire a largeur variable : non decoupee
+10	27	managed-object-rtpc-component (i27)	3	238	1144	1171	1621	1	{27}	7CBF006680018E65	grammaire a largeur variable : non decoupee

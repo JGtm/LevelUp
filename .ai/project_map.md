@@ -10,12 +10,56 @@
 > titre et langue en segments d'URL — plan `.ai/PLAN_TITLE_SLUG_URL_2026-07.md`, les
 > anciennes URLs redirigent via un splat). Ne pas s'appuyer
 > sur les sections ci-dessous sans re-vérifier dans le code.
+>
+> **Dernière mise à jour : 2026-09-23** — section « Documentation IA (.ai/) » réécrite sur l'état
+> final de la racine après le lot d'archivage (îlot du décodeur de film : 2026-09-18).
 
 > 📋 **Tâches et TODO centralisés** : voir `.ai/BACKLOG.md` et `.ai/PUNCHLIST.md` (handover GS↔OP, sources de vérité courtes).
 
 > 🧭 **Chantier Go — corpus restructuré** : point d'entrée dans `.ai/go_migration_v2/README.md` ; le corpus historique détaillé reste dans `.ai/go_migration/`.
 
 > 📘 **Onboarding nouveau dev** : `docs/FOUNDATIONS_GUIDE.md` (EN) + `docs/FR/FOUNDATIONS_GUIDE.md` — guide consolidé sur les 4 fondations transverses (canonical types + adapters + i18n manifests + ECharts wrappers). 4 ADRs dans `docs/adr/000{1,2,3,4}.md`.
+
+## Décodeur de film — cartographie À JOUR AU 2026-09-18 (îlot de fraîcheur)
+
+> Le reste de ce fichier est gelé (bandeau ci-dessus). Cette section-ci est mesurée sur l'arbre
+> à la clôture du jalon M4 — le dernier — du plan `.ai/PLAN_DECODEUR_FILM_2026-09-13.md`
+> (base `896a9ce04`) et porte sa date : elle existe parce que les briefs et les notes citaient
+> encore des chemins morts.
+> Doctrine inchangée : le code fait foi, l'ADR 0034 porte les décisions et l'état atteint.
+
+Chemins sous `apps/go-api/` sauf mention contraire.
+
+| Rôle | Chemin réel |
+|---|---|
+| Porte aux octets : chargement, décompression, chunks et paquets, lecteur de bits canonique | `internal/games/halo_infinite/film/internal/source/` |
+| Profil = DONNÉES : types de valeur, table par version de format / build / majeure, catalogue de cartes | `internal/games/halo_infinite/film/internal/profile/` |
+| Grammaire : lecteurs de records et de composants (sous-paquets `positions/`, `weaponscan/`, `weaponv3/`) | `internal/games/halo_infinite/film/internal/grammar/` |
+| Faits : kill-source, objectifs, registre des replis (99 entrées sur 7 fichiers) | `internal/games/halo_infinite/film/internal/facts/{,killsource,objectives,fallback}/` |
+| Publication : document de rejeu, `SchemaVersion` **62**, `layers` (une révision par calque : 47 calques attribués, 8 exemptions datées, 16 gardes), `coverage.deathsPaths`, chronique | `internal/games/halo_infinite/film/replay/` (EXPORTÉE, c'est le contrat public) — table des calques : `layers.go` |
+| Faits PERSISTÉS par film : codec, fichier à cinq sections, en-tête des quatre révisions, rejeu depuis les faits | `internal/games/halo_infinite/film/replay/filmfacts*.go` (13 fichiers) ; chemins par `PathResolver` : `internal/domain/title/registry_film_facts.go` ; bascule de cuisson : `internal/replaybuild/filmfacts_cuisson.go` |
+| Fichiers de faits sur le disque (NE PAS confondre avec `<short8>.facts.json`, qui est ce que la BASE sait du match) | `data/cache/film_facts/{slug}/<short8>.filmfacts.bin` |
+| Verdict de recuisson par couche (`a-jour` / `republier` / `redecoder`) | `internal/replaybuild/artifact_digest.go` (`Digest.Verdict`, `ArtifactVerdict`) |
+| Façade du décodeur : **166** symboles re-exportés (un alias, pas une frontière ; réduction NON RETENUE — V25, ratchet de surface à la place) | `internal/games/halo_infinite/film/decfilm/` |
+| Types de contrat inter-couches + golden de forme | `internal/games/halo_infinite/film/types/` (`testdata/shapes.golden`) |
+| Mécanisme d'empreinte, chronique, porte de régénération des quatre révisions | `internal/games/halo_infinite/film/revision/` |
+| Cache de films, catalogues de libellés, instruments de recherche | `internal/games/halo_infinite/film/{filmcache,damagetag,killicon,medalname,research}/` |
+| Cuisson et artefacts de rejeu | `internal/replaybuild/`, `internal/sync/replayartifacts/` |
+| Collecte kill-source et backlog (`conditionBacklog`) | `internal/sync/killcollector/` (`postsync.go`) |
+| Catalogue de profils versionné + son lecteur HORS décodeur + son outil | `data/titles/halo_infinite/reference/film_profiles.json` (racine du dépôt), `internal/games/halo_infinite/filmprofile/`, `cmd/film-profiles-build/` |
+| Outils des deux gates | `cmd/replay-equiv/`, `cmd/replay-corpus-gate/`, `internal/replaydiff/` |
+| Types sortis du décodeur vers `domain/` (feuilles) | `internal/domain/{highlightevent,equipmentusage,playerposition,replaydoc}/` |
+| Ratchets du décodeur | `internal/archlint/film_{layers_deps,file_size,function_length,types_leaf,facade_surface}_test.go`, `no_raw_film_bytes_outside_source_test.go`, `filmdec_package_vars_test.go`, `decode_lock_interdit_test.go`, `no_ad_hoc_source_fingerprint_test.go`, `no_unregistered_fallback_test.go`, `no_hardcoded_film_cache_dirs_test.go` (le littéral `film_facts`) |
+| Lecture des calques côté web (trois états : produit / non produit / inconnu) | `apps/web/src/features/match-replay/model/calquePresent.ts` ; frontière de normalisation : `apps/web/src/lib/replay/{replayNormalize,replayDocumentSchema}.ts` |
+
+**Chemins MORTS — ne plus les citer** : `filmdec/` (devenu `film/internal/grammar/`),
+`internal/analysis/filmsource/` (devenu `film/internal/source/`),
+`internal/analysis/objectiveevents/` (devenu `film/internal/facts/objectives/`),
+`internal/analysis/weaponv3/` (devenu `film/internal/grammar/weaponv3/`),
+`film/killsource/` (devenu `film/internal/facts/killsource/`),
+`KillSourceDecoderRev` (devenue `facts.Rev`), `GrammarRev` (devenue `grammar.Rev`),
+`LockProcessDecode` et `decode_gate.go` (supprimés, et leur retour est interdit par un ratchet).
+`internal/analysis/` n'importe plus AUCUN paquet de titre, production et test comprises.
 
 ## ⚠️ Limitations Connues
 
@@ -330,34 +374,36 @@ data/
 | `docs/COMMENDATIONS.md` | Commendations (ex "citations") |
 | `docs/COMMENDATIONS_REFERENCE.md` | Référentiel complet des commendations |
 
-### Documentation IA (.ai/)
+### Documentation IA (.ai/) — état au 2026-09-23 (seule section tenue de ce fichier, avec l'îlot du décodeur)
 
-| Document | Contenu |
-|----------|---------|
-| `.ai/DATA_KILLER_VICTIM.md` | Guide killer/victim et antagonistes |
-| `.ai/DATA_MATCH_RANK.md` | Rang d'un joueur lors d'un match (API vs recalcul, tie-breaker) |
-| `.ai/MIGRATION_MASTER.md` | Point d'entrée unique du chantier FastAPI/React, avec état courant, priorités MVP et navigation vers les sous-docs de migration |
-| `.ai/go_migration_v2/HALO_CANONICAL_MODEL.md` | Contrat canonique Halo entre provider de titre, produit LevelUp et analytics métier |
-| `.ai/go_migration_v2/HALO_INFINITE_CAPABILITY_MAP.md` | Capability map initiale mono-titre pour `halo_infinite`, avec projection bootstrap minimale |
-| `.ai/go_migration_v2/HALO_BOOTSTRAP_CONTRACT.md` | Contrat produit du bloc `halo` dans le bootstrap : titre, provider, capabilities et limitations utiles au consommateur |
-| `.ai/go_migration_v2/HALO_GO_TYPE_BLUEPRINT.md` | Projection documentaire des structs, enums et interfaces Go canoniques avant implémentation |
-| `.ai/go_migration_v2/HALO_INFINITE_CANONICAL_MAPPING.md` | Discipline de projection des payloads Halo Infinite vers le modèle canonique, sans mélanger analytics ni contrats HTTP |
-| `.ai/go_migration_v2/HALO_PRODUCT_CONTRACT_ADAPTERS.md` | Cadrage de la projection du canonique Halo vers les read models produit et les DTO OpenAPI |
-| `.ai/go_migration_v2/HALO_PROVIDER_ERROR_TAXONOMY.md` | Taxonomie des erreurs et limitations entre provider Halo et API produit, avec projection HTTP normalisée |
-| `.ai/go_migration_v2/OPENAPI_MVP_P0_P1.md` | Gel des contrats HTTP MVP P0/P1 à préserver avant le démarrage du backend Go |
-| `.ai/go_migration_v2/SPRINT_44_WORKPACKAGES.md` | Découpage technique par couches du Sprint 44 multi-titres : design, config, migration, validation, observabilité |
-| `.ai/go_migration_v2/ADR_S44_MULTI_TITLE_NAMESPACE.md` | ADR actant le namespace par titre et l'introduction explicite de `title_slug` dans le runtime Go |
-| `.ai/go_migration_v2/AUDIT_PLANS_VS_REALITE_2026-04-17.md` | Audit transverse plans vs réalité : Go migration, no-streamlit, écarts documentaires, vrais restants et priorités actionnables |
-| `.ai/migration/` | Corpus de migration FastAPI/React découpé par sujet : décisions, invariants, parité, slices, contrats API, audit de codebase |
-| `.ai/PLAN_MIGRATION_FASTAPI_REACT.md` | Audit exhaustif + plan de migration Streamlit vers FastAPI/React, avec perimetre fige, matrice de parite, contrats API MVP, extraction du state model, structure cible du repo, delivery par slices, cohabitation front, auth/session, tests de parite et pilotage par metriques |
-| `.ai/go_migration/` | Corpus isole du chantier Python -> Go : plan maitre, checklist, matrice, compat ops et strategie zero Python |
-| `.ai/go_migration/GO_MIGRATION_CHECKLIST.md` | Suivi vivant du chantier Python -> Go : ordre des lots, statuts d'avancement, preuves attendues, blocages et prochaine action |
-| `.ai/go_migration/MATRIX.md` | Matrice de couverture Python -> Go : packages, scripts, surfaces hors scope, bitmask et priorites de portage |
-| `.ai/go_migration/OPS_COMPAT_CHECKLIST.md` | Checklist runtime/exploitation : auth, refresh tokens, jobs persistants, mode de test, packaging, migration utilisateur |
-| `.ai/go_migration/ZERO_PYTHON_STRATEGY.md` | Cible terminale zero Python : destin de chaque module, perimetre d'extinction et contraintes de livraison |
-| `.ai/go_migration/PLAN_MIGRATION_PYTHON_TO_GO.md` | Plan de migration complete du runtime Python vers Go : perimetre, architecture cible, phasage, gates Go/No-Go, conditions de succes et d'echec ; isole avec son corpus `go_migration/` |
-| `.ai/sprints/SPRINT_GAMERTAG_ROSTER_FIX.md` | Sprint correction gamertags et roster |
-| `.ai/API_LIMITATIONS.md` | Limitations connues de l'API |
+> Réécrite par le lot d'archivage du 2026-09-23 : l'ancienne table énumérait 26 chemins qui
+> n'existaient plus (corpus `go_migration*`, `migration/`, `sprints/`, monde Python). Règle
+> (CLAUDE.md, « Workflow Agentique ») : la racine de `.ai/` ne garde que le chantier vivant ;
+> les archives de chantier v7.5 sont indexées par `.ai/V7.5/README.md`, ce qui précède v7.5
+> vit sous `.ai/archive/`. Verdict et preuve de chaque document : `.ai/V7.5/README.md`,
+> section « Ce qui est resté à la racine ».
+
+| Racine de `.ai/` | Rôle |
+|---|---|
+| `thought_log.md` | Journal des décisions (trimestre courant + précédent ; rotation vers `archive/thought_log_<AAAA>-Q<N>.md`) |
+| `project_map.md` | Ce fichier (historique gelé, hors cette section et l'îlot du décodeur) |
+| `BACKLOG.md` | Tâches et reports centralisés |
+| `PLAN_DECODEUR_FILM_2026-09-13.md`, `HANDOFF_DECODEUR_FILM_SERIE5_2026-09-22.md` | Décodeur de film : plan et handoff de la série 5 (lot 5.26 en cours) |
+| `PLAN_*` ouverts (finitions, niveaux d'armes, prises nettes, libellés en dur, tactique suite, restes v2, duels, frise, fiches compactes, ajustements pré-v7.5, fork et release, équipement gâchis, orchestration, quantum, repli game changers, retours rejeu/match view) | Chantiers vivants — un plan par chantier, source de vérité de son avancement |
+| `HANDOFF_ASSAUT_DESAMORCAGE_2026-09-04.md`, `HANDOFF_VEHICULES_2026-09-04.md`, `DECOUVERTES_TACTIQUE_2026-09-07.md`, `PROCEDURE_BASCULE_LEVELUP_2026-09-13.md` | Handoffs, registre de découvertes et procédure encore ouverts |
+| `REFERENCE_CANAUX_EQUIPEMENT_2026-09-09.md` | Équipement : à lire avant toute affirmation (CLAUDE.md) |
+| `ETAT_DE_L_ART_KILLWEAPON.md`, `ADDENDUM_ETAT_DE_L_ART_2026-07-26.md`, `README_KILLWEAPON_INDEX.md`, `GUIDE_WEAPON_SHOTS.md`, `ETAT_DE_L_ART_FORGE_PALETTE_ZONES.md`, `ARCHITECTURE_CIBLE_DECODEUR_FILM_2026-09-12.md`, `AUDIT_LECTEURS_VIES_ANONYMES_2026-09-06.md` | Références du film et des armes, citées par du code, un ADR ou un plan vivant |
+| `REFERENCE_WEAPON_IDS.md`, `I18N_REFERENCE.md`, `ENRICHMENTS_CATALOG.md`, `CHARTS_AND_TABLES.md`, `MCC_UNOFFICIAL_API_REFERENCE.md`, `STEAKTACULAR.md`, `duckdb_7659_upstream_report.md` | Références transverses (armes, i18n, enrichissements, graphes, API MCC, comeback, rapport DuckDB amont) |
+| `HANDOFF_DECODEUR_FILM_2026-09-13.md`, `PREPARATION_M2_PAS_4_A_6_2026-09-17.md`, `PREPARATION_M4_ORDRE_ET_FRONTIERES_2026-09-17.md`, `PLAN_ARME_FAVORITE_BRIEFING_EXPLORER_2026-09-17.md`, `PLAN_COMPARE_PROFIL_ARMES_2026-09-17.md`, `PLAN_EXPLORER_PORTEE_FRAGS_2026-09-17.md`, `PLAN_ESCOUADE_HORS_CADRE_2026-09-09.md`, `PLAN_FINALISATION_REJEU_2D.md`, `PLAN_MASTER_FILM_KILLFEED_REJEU.md`, `PLAN_OBJECTIFS_TEMPS_REEL.md`, `PLAN_DEPS_ECHARTS_TS7_2026-07-27.md`, `PLAN_REVUE_ANALYTIQUE_TIMESERIES_SQUAD_2026-07.md` | À ARBITRER (le 2026-09-23) : restés en place faute de preuve nette de clôture, ou parce que `PLAN_DECODEUR_FILM_2026-09-13.md` les cite ; la question posée pour chacun est dans `.ai/V7.5/README.md` |
+
+| Sous-dossier de `.ai/` | Contenu |
+|---|---|
+| `V7.5/` | Archives de chantier v7.5 (`film_re/`, `killweapon/`, `replay2d/`, `chantiers/`, `cartes/`, `icones/`, `dumps/`, `v2/`, `outillage/`, …) — index `V7.5/README.md` ; registre des reports `V7.5/REGISTRE_REPORTS.md` |
+| `archive/` | Tout ce qui précède v7.5 (V6, V7, V7.1, journaux trimestriels) |
+| `V7.2/`, `V7.2.1/`, `V7.3/` | Plans des versions 7.2 à 7.3 |
+| `H5_EXPLORATION/` | Exploration Halo 5 (registre des reports H5) |
+| `AUDIT_V75_DEPUIS_V7.3.0_2026-09-05_annexes/` | Vérifications par worker de l'audit `V7.5/v2/AUDIT_V75_DEPUIS_V7.3.0_2026-09-05.md` |
+| `charts_specs/`, `mocks/`, `diagnostics/`, `baselines/`, `migrations/`, `refs/` | Spécifications de graphes, maquettes, diagnostics, baselines, notes de migration, références externes |
 
 ## Problèmes Connus
 

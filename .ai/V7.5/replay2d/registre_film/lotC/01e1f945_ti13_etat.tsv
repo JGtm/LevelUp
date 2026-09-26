@@ -1,0 +1,53 @@
+a_identifiant	01e1f945	1395	1615899607	1	1.000	1
+a_identifiant	01e1f945	1396	858245082	1	1.000	1
+a_identifiant	01e1f945	1397	4076464935	1	1.000	1
+a_identifiant	01e1f945	1471	2029524311	4	0.250	4
+# (a) 01e1f945 : non jugeable (aucun slot a 10 emissions)
+# (b) 01e1f945 : oracle absent (famille none)
+c_etat	01e1f945	TAG 4 (R32)	1385	1	1
+c_etat	01e1f945	TAG 4 (R32)	1386	1	1
+c_etat	01e1f945	TAG 4 (R32)	1387	1	1
+c_etat	01e1f945	TAG 4 (R32)	1388	2	2
+c_etat	01e1f945	TAG 4 (R32)	1395	1	1
+c_etat	01e1f945	TAG 4 (R32)	1396	1	1
+c_etat	01e1f945	TAG 4 (R32)	1472	98	3
+c_etat	01e1f945	TAG 4 (R32)	1473	104	3
+# (c) TAG 4 (R32) 01e1f945 : enumerabilite 2/2 (100.0 %), verdict TENUE
+# (c/TAG 4 (R32)) 01e1f945 : oracle absent (famille none)
+c_etat	01e1f945	TAG 1 (enumere)	1388	1	1
+c_etat	01e1f945	TAG 1 (enumere)	1393	1	1
+# (c/TAG 1 (enumere)) 01e1f945 : oracle absent (famille none)
+# (d) 01e1f945 : unicite 293244/293244 ms (100.0 %), seuil 90 %, verdict TENUE
+d_joueur	01e1f945	0	248	51
+d_joueur	01e1f945	1	212	52
+d_joueur	01e1f945	2	258	51
+d_joueur	01e1f945	3	247	51
+d_joueur	01e1f945	4	241	47
+d_joueur	01e1f945	5	240	45
+d_joueur	01e1f945	6	251	54
+d_joueur	01e1f945	7	235	42
+d_joueur	01e1f945	8	74	46
+d_joueur	01e1f945	9	20	16
+d_joueur	01e1f945	10	22	15
+d_joueur	01e1f945	11	25	16
+d_joueur	01e1f945	12	16	13
+d_joueur	01e1f945	13	11	7
+d_joueur	01e1f945	14	41	35
+d_joueur	01e1f945	15	13	8
+d_joueur	01e1f945	16	76	16
+d_joueur	01e1f945	17	21	12
+d_joueur	01e1f945	18	26	17
+d_joueur	01e1f945	19	21	13
+d_joueur	01e1f945	20	11	10
+d_joueur	01e1f945	21	45	25
+d_joueur	01e1f945	22	13	11
+d_joueur	01e1f945	23	10	8
+d_joueur	01e1f945	24	59	17
+d_joueur	01e1f945	25	230	30
+d_joueur	01e1f945	26	8	7
+d_joueur	01e1f945	27	9	7
+d_joueur	01e1f945	28	15	12
+d_joueur	01e1f945	29	6	5
+d_joueur	01e1f945	30	14	11
+d_joueur	01e1f945	31	11	9
+# (d bis) 01e1f945 : 3603 echantillons par joueur, 32 index de joueur

@@ -34,6 +34,7 @@ import {
   getLegendBase,
   getTooltipBase,
   hoverRevealSymbol,
+  LEGEND_ITEM_WIDTH_LINE,
 } from '@/components/charts/_utils'
 import { cumulativeFdaGap, type FdaGapCumPoint } from '@/lib/charts/cumulativeFdaGap'
 import { divergentZeroGradient } from '@/lib/charts/divergentZeroGradient'
@@ -113,8 +114,13 @@ export function buildSessionFdaGapOption(
         )
       },
     },
+    // Pastille élargie : à 12 px le pointillé du FDA attendu n'affiche qu'un tiret et ne
+    // se distingue pas du trait plein de l'aire cumulée. Les COULEURS, elles, ne sont pas
+    // reprises en main ici : les deux séries portent déjà leur `lineStyle.color` (dégradé
+    // divergent pour l'aire, encre de série pour l'attendu) et la légende les suit.
     legend: {
       ...getLegendBase(tc),
+      itemWidth: LEGEND_ITEM_WIDTH_LINE,
       data: [opts.seriesLabel, opts.expectedLabel],
     },
     xAxis: {
@@ -158,7 +164,10 @@ export function buildSessionFdaGapOption(
         data: expectedValues,
         ...hoverRevealSymbol(expectedColor, 6),
         connectNulls: false,
-        lineStyle: { width: 1, color: expectedColor, type: 'dashed' },
+        // Épaisseur 2 (et non 1) : à 1 px sous un pointillé, la courbe disparaissait sous
+        // l'aire cumulée (retour utilisateur 2026-09-09 : « la courbe en pointillé est trop
+        // fine »). Même valeur que l'aire, la distinction reste portée par le tireté.
+        lineStyle: { width: 2, color: expectedColor, type: 'dashed' },
       },
     ],
   }

@@ -37,12 +37,13 @@ type PlayerPostSyncResult struct {
 	DominanceFlagsComputed int
 	SkillHealed            int
 	EventsHealed           int
-	WeaponKillsHealed      int
-	StatsHealed            int
-	AchievementsSynced     int
-	Warnings               []string
-	Duration               time.Duration
-	Err                    error
+	// WeaponKillsHealed RETIRÉ le 2026-09-01 : sa seule source
+	// (domain.PostSyncResult.WeaponKillsProcessed) est partie avec l'étape 1.55.
+	StatsHealed        int
+	AchievementsSynced int
+	Warnings           []string
+	Duration           time.Duration
+	Err                error
 }
 
 // PostSyncRunner exécute le post-sync pipeline complet pour UN joueur.

@@ -544,3 +544,83 @@ possibles, et aucune n'a pu etre departagee :
    observations uniques — deux boitiers tenus en main, visuellement proches.
 3. **Le film n'emploie pas le `sofd` de la famille A.** Argument mesure contre : c'est le seul des
    douze ou le grappin soit au rang 4 et le propulseur au rang 5.
+
+## 14. LE RANG DE PALETTE EST DANS LE FILM — mesure du 2026-08-14, elle corrige §2, §9 et §13
+
+Le §9 avait localise la grammaire d'`i48` (`FUN_1406d0ff0` : `R(3)` compteur, `R(1)` porte,
+`R(6)` identite) et le depot la reproduisait deja bit a bit dans
+`consumeBipedDesiredAbilitySet`. **Mais le deserialiseur consommait les 6 bits de l'identite
+pour rester aligne, et les jetait** : la sonde `SetAbilitySetHook` ne publiait que le `R(3)`
+et la largeur. Le rang de palette etait donc lisible depuis le debut, et personne ne l'avait
+lu. Instrument : `internal/analysis/filmdec/i48_rank_test.go` (garde `I48_FILM`).
+
+**Lecture a 100 %** : 748 lectures cumulees sur 8 films, **zero illisible**. `i48` n'a pas le
+probleme de traversee d'`i56` — il est seulement rare (0,03 a 0,09 % des records delta, soit
+a peu pres une transmission par vie, ce qui suffit a une fiche).
+
+### Ce que la mesure corrige
+
+**§2 et §13 — la contradiction « 2 sur 4 » n'existait pas.** Les index 3, 4, 5, 6 du champ
+d'image-cle ne sont pas des rangs de palette : ce sont les **trois bits de poids faible** de
+rangs valant **19, 20, 21, 22** sur le film de la verite terrain. `i48` les rend a l'identique
+sur ce meme film, par un chemin totalement independant. Le « mur au rang 3 contre mur au
+rang 2 » comparait deux palettes differentes.
+
+**§2 — le « motif 20 bits » d'ancrage n'est pas une signature de structure.** Ses trois
+derniers bits valent `010` : ce sont les bits de poids fort du rang. **L'ancre ne peut donc
+matcher que les rangs 16 a 23**, et elle rend `rang - 16`. C'est la cause, enfin nommee, de
+trois anomalies du chantier : les valeurs observees ne sortent jamais de 3-7 ; 21 films sur
+40 ne rendent AUCUNE lecture (aucun joueur n'y porte un rang 16-23 — verifie sur `00162144`,
+rangs 2, 4, 9, 10) ; et les films « ou les huit joueurs portent le meme equipement » sont un
+artefact, seuls les porteurs du rang 23 y etant visibles.
+
+**§13 — la palette varie bien d'un film a l'autre, et cela se MESURE maintenant.** Signature
+famille A (rangs 1, 2, 4, 5, 6, 8, 9, 10, 11, 12, 23) sur `00ba2e1c`, `06dfe6d9`, `00162144`,
+`084a804d` ; rangs **19 a 22 exclusivement**, aucun rang < 13, sur `000d5950`, `00502e52`,
+`07aa428d`. Presumer la famille A aurait donne des noms faux sur ces trois films.
+
+### Ce que la mesure ouvre
+
+Les rangs 8 (camouflage actif), 9 (surbouclier) et 11 (translocateur quantique) — les trois
+capacites demandees a l'ecran — sont **observes dans le corpus** : `084a804d` 8:10 9:8,
+`06dfe6d9` 8:2 9:2 11:3. Le canal d'image-cle ne les verra jamais (rangs hors 16-23). Le
+canal `i48` les voit, avec le rang complet, une fois par vie.
+
+**Ce qui reste ouvert** : les rangs 19 a 22 ne sont pas casses (le §13 le disait deja de la
+plage 13-22). Le releve Theater du 2026-07-27 les nomme indirectement sur `000d5950` — 19 mur,
+20 grappin, 21 propulseur, 22 capteur — dont 20 et 21 avec un controle de groupe.
+
+## 15. CE QUE LE LOT DU 2026-08-14 (SOIR) A ETABLI — il amende le §14 sur trois points
+
+Execution du plan `.ai/V7.5/replay2d/PLAN_RANG_CAPACITE_I48.md`. Le rang est desormais LU,
+PUBLIE et NOMME ; ce qui suit corrige ou complete ce que le §14 disait le matin meme.
+
+### La verite terrain passe de 2 sur 4 a 8 sur 8
+
+Le controle Theater des huit joueurs de `000d5950` est reproduit **8/8** par la lecture de
+production, contre 2/4 au 2026-07-28. Les trois branches d'explication ouvertes par le §13
+tombent d'un coup, et **aucune n'etait la bonne** : les deux lectures contestees etaient JUSTES,
+elles etaient comparees a la palette d'un autre film. La reconstruction est
+`rang = (motif & 0b111) << 3 | bas`, soit `bas + 16` — la constante est derivee du motif
+d'ancrage, jamais ecrite a cote de lui.
+
+### RIEN dans le film ne designe la palette — negatif mesure, pas suppose
+
+Trois sondages : le registre du `chunk_00` est bit-a-bit identique d'un film a l'autre pour les
+noms et flags de composants ; sa LONGUEUR ne suit pas les familles (1 973 120 octets aussi bien
+sur `00162144`, famille A, que sur les trois films de la famille B) ; et aucun marqueur de
+groupe de tags (`sofd`, `sofa`, `eqip`, `vcdd`, `uwfa`, `glpa`) n'apparait dans `chunk_00` ni
+dans `chunk_01`. **La palette se deduit de la signature du film, ou ne se deduit pas** — regle
+a 90 % de purete et 10 lectures minimum, insensible au seuil sur tout l'intervalle 50-96 %.
+
+### Le §14 avait manque deux lectures sur `084a804d`
+
+Ce film montre aussi **4 lectures au rang 19 et une au rang 44** — 44 est hors de toute palette
+connue (un `sofd` compte ~27 entrees). C'est le bruit attendu d'un balayage bit a bit. Il est
+compte CONTRE la purete plutot qu'ignore, et le film passe quand meme (96,2 %). Signature
+complete des sept films et couverture de nommage : voir le plan, gates 2 et 3.
+
+### Le rang 10 est le premier trou a combler
+
+Il est **observe 67 fois** sur quatre films de famille A (21, 34, 10, 2) et son identifiant de
+chaine n'est pas inverse. C'est, et de loin, le rang non nomme le plus frequent du corpus.

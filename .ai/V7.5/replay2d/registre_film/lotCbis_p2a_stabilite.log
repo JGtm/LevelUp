@@ -1,0 +1,11 @@
+﻿=== RUN   TestZoneEtatPhase2aStabilite
+    zone_state_p2a_stabilite_test.go:50: STABILITE 7344d24f vs 696a9d7c — 5 slots d'un cote, 3 de l'autre
+    zone_state_p2a_stabilite_test.go:50:   slot 1532  : zone 1 (19/22) vs zone 1 (21/21) — identique · cles 0x00000000 / 0x00000000
+    zone_state_p2a_stabilite_test.go:50:   slot 1537  : zone 2 (18/18) vs zone 2 (23/23) — identique · cles 0x27954600 / 0xE2D00983
+    zone_state_p2a_stabilite_test.go:50:   slot 1542  : zone 0 (14/15) vs zone 0 (18/19) — identique · cles 0x00000000 / 0x00000000
+    zone_state_p2a_stabilite_test.go:50:   slot 1545  : zone 0 (2/2 votes) — ABSENT de 696a9d7c
+    zone_state_p2a_stabilite_test.go:50:   slot 1547  : zone 1 (1/1 votes) — ABSENT de 696a9d7c
+    zone_state_p2a_stabilite_test.go:50:   CLAUSE DE STABILITE : 3/3 slots communs designent la MEME zone = 100.0 % (seuil 90 %) — TENUE
+--- PASS: TestZoneEtatPhase2aStabilite (0.00s)
+PASS
+ok  	levelup/go-api/internal/analysis/replay	1.435s

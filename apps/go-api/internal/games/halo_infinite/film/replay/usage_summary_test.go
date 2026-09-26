@@ -1,0 +1,475 @@
+package replay
+
+// usage_summary_test.go — la projection du résumé d'usage : les trois pièges du
+// chantier (socle d'arme contre socle de bonus, grenades hors objets lâchés,
+// panneaux du mur), les règles d'attribution (slot dernier-gagnant, index de film,
+// xuid publié des socles), et les invariants sur le document RÉEL de la fixture
+// figée (buildGolden — aucune fixture fabriquée, cf. §5.6 du handoff).
+
+import "testing"
+
+func strPtr(s string) *string { return &s }
+
+// docSocleTest — un document minimal : deux joueurs, un socle d'ARME et un socle
+// de BONUS, des occupations nommées et anonymes des deux côtés.
+func docSocleTest() *ReplayDocument {
+	return &ReplayDocument{
+		SchemaVersion:   SchemaVersion,
+		FrameIntervalMS: 100,
+		FrameCount:      1000,
+		DurationMS:      100000,
+		Roster: []RosterEntry{
+			{XUID: "111", FilmIndex: 0},
+			{XUID: "222", FilmIndex: 1},
+		},
+		Tracks: []Track{
+			{Slot: 1, XUID: "111", StartFrame: 0, EndFrame: 500},
+			{Slot: 2, XUID: "222", StartFrame: 0, EndFrame: 500},
+		},
+		WeaponPads: []WeaponPad{
+			{Weapon: "0x11223344"},   // socle d'ARME (famille hexadécimale)
+			{Weapon: "powerup_camo"}, // socle de BONUS (nom canonique)
+		},
+		PadPickups: []PadPickup{
+			{Pad: 0, TLow: 10, THigh: 20, XUID: strPtr("111")}, // arme, nommée
+			{Pad: 0, TLow: 30, THigh: 40, XUID: nil},           // arme, anonyme
+			{Pad: 1, TLow: 50, THigh: 60, XUID: nil},           // bonus, anonyme (le cas réel)
+			// LE PIÈGE, NOMMÉ : même si un xuid était un jour publié sur un socle
+			// de bonus, il ne doit JAMAIS compter dans pad_pickups — la frontière
+			// est PadWeaponFamilyKey, pas la présence d'un nom.
+			{Pad: 1, TLow: 70, THigh: 80, XUID: strPtr("111")},
+			{Pad: 9, TLow: 90, THigh: 95, XUID: strPtr("111")}, // index hors bornes
+		},
+	}
+}
+
+// TestUsageSummary_SocleArmeContreSocleBonus — l'assertion NOMINATIVE du piège
+// central (§4 du handoff) : un socle powerup_camo ne compte JAMAIS dans
+// pad_pickups ; ses occupations vont dans powerup_pad_pickups.
+func TestUsageSummary_SocleArmeContreSocleBonus(t *testing.T) {
+	s := BuildUsageSummary(docSocleTest())
+
+	if s.Match.PadOccupancies != 5 {
+		t.Errorf("PadOccupancies = %d, attendu 5 (toutes occupations, hors-bornes comprise)", s.Match.PadOccupancies)
+	}
+	if s.Match.PadNamed != 1 || s.Match.PadUnnamed != 1 {
+		t.Errorf("PadNamed/PadUnnamed = %d/%d, attendu 1/1 (socles d'ARME seuls)",
+			s.Match.PadNamed, s.Match.PadUnnamed)
+	}
+	if got := s.Match.PowerupPadPickups["powerup_camo"]; got != 2 {
+		t.Errorf("PowerupPadPickups[powerup_camo] = %d, attendu 2 (les DEUX occupations du socle de bonus, xuid publié ou non)", got)
+	}
+	// Invariant de complétude : nommées + anonymes + bonus + hors-bornes = total.
+	powerups := 0
+	for _, n := range s.Match.PowerupPadPickups {
+		powerups += n
+	}
+	if s.Match.PadNamed+s.Match.PadUnnamed+powerups+1 != s.Match.PadOccupancies {
+		t.Errorf("ventilation des occupations incomplète : %d+%d+%d+1 != %d",
+			s.Match.PadNamed, s.Match.PadUnnamed, powerups, s.Match.PadOccupancies)
+	}
+
+	// Le joueur 111 : UNE prise de socle d'arme — jamais celle du socle de bonus.
+	var p111 *UsagePlayerSummary
+	for i := range s.Players {
+		if s.Players[i].XUID == "111" {
+			p111 = &s.Players[i]
+		}
+	}
+	if p111 == nil {
+		t.Fatal("le joueur 111 n'a pas de ligne")
+	}
+	if p111.PadPickups != 1 {
+		t.Errorf("pad_pickups(111) = %d, attendu 1 — une prise sur socle powerup_camo a fui dans les socles d'arme", p111.PadPickups)
+	}
+	// La clé est NORMALISÉE par PadWeaponFamilyKey (huit hexa minuscules, sans 0x) —
+	// jamais la forme verbatim du document.
+	if got := p111.PadPickupsByWeapon["11223344"]; got != 1 {
+		t.Errorf("pad_pickups_by_weapon[11223344] = %d, attendu 1", got)
+	}
+	if _, ok := p111.PadPickupsByWeapon["powerup_camo"]; ok {
+		t.Error("powerup_camo ne doit jamais apparaître dans pad_pickups_by_weapon")
+	}
+
+	// La liste des socles d'ARME ne porte pas le socle de bonus, et porte la clé
+	// normalisée (même langue que pad_pickups_by_weapon — jointure directe).
+	if len(s.Match.WeaponPads) != 1 || s.Match.WeaponPads[0].Weapon != "11223344" {
+		t.Errorf("WeaponPads = %+v, attendu le seul socle d'arme 11223344 (clé normalisée)", s.Match.WeaponPads)
+	}
+	if s.Match.WeaponPads[0].Occupations != 2 || s.Match.WeaponPads[0].Named != 1 {
+		t.Errorf("socle d'arme : occupations/named = %d/%d, attendu 2/1",
+			s.Match.WeaponPads[0].Occupations, s.Match.WeaponPads[0].Named)
+	}
+}
+
+// TestUsageSummary_GrenadesHorsObjetsLaches — une grenade lâchée à la mort n'est
+// pas un « objet lâché au sol » (décision utilisateur 2026-09-04) ; un appareil de
+// grappin lâché, si. Et deux pièges de la revue adversariale du 2026-09-04 :
+// un LÂCHER de famille déployable (capteur) compte en lâcher, JAMAIS en
+// déploiement ; une pose SANS origine (artefact de schéma < 10, backfill) ne
+// compte nulle part — non mesuré n'est ni deployed ni dropped.
+func TestUsageSummary_GrenadesHorsObjetsLaches(t *testing.T) {
+	doc := &ReplayDocument{
+		SchemaVersion: SchemaVersion, FrameIntervalMS: 100, FrameCount: 1000,
+		Roster: []RosterEntry{{XUID: "111", FilmIndex: 0}},
+		Tracks: []Track{{Slot: 1, XUID: "111", StartFrame: 0, EndFrame: 900}},
+		EquipmentPlacements: []EquipmentPlacement{
+			{Family: "grenade_frag", Origin: OriginDropped, Owner: 1, ID: "0x72b63d70"},
+			{Family: "grenade_spike", Origin: OriginDropped, Owner: 1, ID: "0x72b63d71"},
+			{Family: "wall", Origin: OriginDropped, Owner: 1, ID: "0x8e2dc574"},
+			{Family: "grapple", Origin: OriginDropped, Owner: 1, ID: "0x273fe0eb"},
+			{Family: "powerup_overshield", Origin: OriginDropped, Owner: 1, ID: "0xc4b1aebd"},
+			{Family: "sensor", Origin: OriginDropped, Owner: 1, ID: "0x11aa22bb"},
+			{Family: "sensor", Origin: "", Owner: 1, ID: "0x11aa22bc"},
+		},
+	}
+	s := BuildUsageSummary(doc)
+	if len(s.Players) != 1 {
+		t.Fatalf("attendu 1 ligne joueur, obtenu %d", len(s.Players))
+	}
+	p := s.Players[0]
+	if p.DroppedObjects != 4 {
+		t.Errorf("dropped_objects = %d, attendu 4 (mur + grappin + surbouclier + capteur ; les DEUX grenades exclues, l'origine absente aussi)", p.DroppedObjects)
+	}
+	if len(p.DeployedByFamily) != 0 {
+		t.Errorf("deployed_by_family = %v, attendu vide : un capteur LÂCHÉ n'est pas un déploiement, et une pose sans origine ne compte nulle part", p.DeployedByFamily)
+	}
+	for _, fam := range []string{"grenade_frag", "grenade_spike"} {
+		if _, ok := p.DroppedByFamily[fam]; ok {
+			t.Errorf("la famille %q ne doit pas entrer dans dropped_by_family", fam)
+		}
+	}
+	somme := 0
+	for _, n := range p.DroppedByFamily {
+		somme += n
+	}
+	if somme != p.DroppedObjects {
+		t.Errorf("dropped_by_family somme à %d, dropped_objects = %d — l'invariant est rompu", somme, p.DroppedObjects)
+	}
+}
+
+// TestUsageSummary_DeploiementsEtPanneauxDuMur — un mur déployé publie DEUX poses
+// (appareil + panneaux) : seule celle des panneaux compte ; une grenade « déployée »
+// (un lancer) et un appareil de capacité ne comptent jamais.
+func TestUsageSummary_DeploiementsEtPanneauxDuMur(t *testing.T) {
+	doc := &ReplayDocument{
+		SchemaVersion: SchemaVersion, FrameIntervalMS: 100, FrameCount: 1000,
+		Roster: []RosterEntry{{XUID: "111", FilmIndex: 0}},
+		Tracks: []Track{{Slot: 1, XUID: "111", StartFrame: 0, EndFrame: 900}},
+		EquipmentPlacements: []EquipmentPlacement{
+			{Family: "wall", Origin: OriginDeployed, Owner: 1, ID: "0x8e2dc574"}, // l'appareil qui vole
+			{Family: "wall", Origin: OriginDeployed, Owner: 1, ID: "0x528fce46"}, // ses panneaux
+			{Family: "sensor", Origin: OriginDeployed, Owner: 1, ID: "0x72b63d69"},
+			{Family: "grenade_frag", Origin: OriginDeployed, Owner: 1, ID: "0x72b63d70"}, // un lancer
+			{Family: "thruster", Origin: OriginDeployed, Owner: 1, ID: "0x99953db8"},     // appareil porté
+			{Family: "other", Origin: OriginDeployed, Owner: 1, ID: "0xdeadbeef"},
+			{Family: "wall", Origin: OriginDeployed, Owner: -1, ID: "0x528fce46"}, // sans poseur : personne
+		},
+	}
+	s := BuildUsageSummary(doc)
+	p := s.Players[0]
+	if got := p.DeployedByFamily["wall"]; got != 1 {
+		t.Errorf("deployed[wall] = %d, attendu 1 (les panneaux seuls, jamais l'appareil)", got)
+	}
+	if got := p.DeployedByFamily["sensor"]; got != 1 {
+		t.Errorf("deployed[sensor] = %d, attendu 1", got)
+	}
+	if got := p.DeployedByFamily["other"]; got != 1 {
+		t.Errorf("deployed[other] = %d, attendu 1 (pose réelle, nature non établie)", got)
+	}
+	for _, fam := range []string{"grenade_frag", "thruster"} {
+		if _, ok := p.DeployedByFamily[fam]; ok {
+			t.Errorf("la famille %q ne doit pas entrer dans deployed_by_family", fam)
+		}
+	}
+}
+
+// TestUsageSummary_AttributionSlotEtIndexDeFilm — le grappin et les épisodes se
+// joignent par SLOT (dernier gagnant sur un slot recyclé, un bot bloque
+// l'attribution), les grenades par INDEX DE FILM.
+func TestUsageSummary_AttributionSlotEtIndexDeFilm(t *testing.T) {
+	doc := &ReplayDocument{
+		SchemaVersion: SchemaVersion, FrameIntervalMS: 100, FrameCount: 1000,
+		Roster: []RosterEntry{
+			{XUID: "111", FilmIndex: 0},
+			{XUID: "222", FilmIndex: 1},
+			{Bot: true, Name: "Recrue [bot]", FilmIndex: 2},
+		},
+		Tracks: []Track{
+			// Le slot 5 est RECYCLÉ : 111 puis 222. Depuis le 2026-09-06 (constat C5 de la
+			// revue REG-R1) le geste revient à la vie qui COUVRE son instant ; la traction
+			// ci-dessous est datée 250, donc dans la vie de 222 — le résultat ne change pas,
+			// mais il ne tient plus au « dernier gagnant ».
+			{Slot: 5, XUID: "111", StartFrame: 0, EndFrame: 100},
+			{Slot: 5, XUID: "222", StartFrame: 200, EndFrame: 400},
+			// Le slot 6 appartient à un BOT : ses gestes n'entrent dans aucune ligne.
+			{Slot: 6, Bot: "Recrue [bot]", StartFrame: 0, EndFrame: 400},
+			{Slot: 7, XUID: "111", StartFrame: 0, EndFrame: 400},
+		},
+		GrappleLines: []GrappleLine{
+			{Slot: 5, T0: 250, T1: 260}, // -> 222 (dernier gagnant)
+			{Slot: 6, T0: 10, T1: 20},   // -> bot : personne
+			{Slot: 7, T0: 10, T1: 20},   // -> 111
+		},
+		EquipmentEpisodes: []EquipmentEpisode{
+			{Slot: 7, Fam: EquipFamilyCamo, T0: 100, T1: 160, K: 2}, // 60 frames x 100 ms
+			{Slot: 7, Fam: EquipFamilyOvershield, T0: 300, T1: 310},
+			{Slot: 7, Fam: "inconnue", T0: 0, T1: 10}, // famille hors mesure : ignorée
+		},
+		Grenades: []Grenade{
+			{Idx: 0, Rank: 0}, {Idx: 0, Rank: 2}, // -> 111
+			{Idx: 1, Rank: 1}, // -> 222
+			{Idx: 2, Rank: 0}, // -> bot : personne
+			{Idx: 9, Rank: 0}, // index inconnu du roster : personne
+		},
+	}
+	s := BuildUsageSummary(doc)
+	byXUID := map[string]UsagePlayerSummary{}
+	for _, p := range s.Players {
+		byXUID[p.XUID] = p
+	}
+	if got := byXUID["222"].GrapplePulls; got != 1 {
+		t.Errorf("grapple_pulls(222) = %d, attendu 1 (slot recyclé, dernier gagnant)", got)
+	}
+	if got := byXUID["111"].GrapplePulls; got != 1 {
+		t.Errorf("grapple_pulls(111) = %d, attendu 1", got)
+	}
+	p111 := byXUID["111"]
+	if p111.CamoEpisodes != 1 || p111.CamoMS != 6000 || p111.CamoKills != 2 {
+		t.Errorf("camo(111) = %d ep / %d ms / %d kills, attendu 1/6000/2",
+			p111.CamoEpisodes, p111.CamoMS, p111.CamoKills)
+	}
+	if p111.OvershieldEpisodes != 1 || p111.OvershieldMS != 1000 {
+		t.Errorf("overshield(111) = %d ep / %d ms, attendu 1/1000",
+			p111.OvershieldEpisodes, p111.OvershieldMS)
+	}
+	if p111.GrenadesThrown != 2 || byXUID["222"].GrenadesThrown != 1 {
+		t.Errorf("grenades_thrown = %d/%d, attendu 2/1 (jointure par INDEX DE FILM)",
+			p111.GrenadesThrown, byXUID["222"].GrenadesThrown)
+	}
+	if _, ok := byXUID["bot:Recrue [bot]"]; ok {
+		t.Error("un bot ne doit jamais recevoir de ligne persistée")
+	}
+}
+
+// TestUsageSummary_FixtureFigee — la projection sur le document RÉEL de la fixture
+// figée (000d5950) : les invariants de complétude doivent tenir sur un vrai match,
+// pas seulement sur des documents synthétiques.
+func TestUsageSummary_FixtureFigee(t *testing.T) {
+	doc := buildGolden(t)
+	s := BuildUsageSummary(&doc)
+
+	if s.Match.SchemaVersion != SchemaVersion {
+		t.Errorf("SchemaVersion = %d, attendu %d", s.Match.SchemaVersion, SchemaVersion)
+	}
+	if s.Match.FrameCount != doc.FrameCount || s.Match.FrameIntervalMS != doc.FrameIntervalMS {
+		t.Errorf("axe de temps non recopié verbatim : %d/%d vs %d/%d",
+			s.Match.FrameCount, s.Match.FrameIntervalMS, doc.FrameCount, doc.FrameIntervalMS)
+	}
+	if s.Match.PadOccupancies != len(doc.PadPickups) {
+		t.Errorf("PadOccupancies = %d, attendu %d (toutes les occupations du document)",
+			s.Match.PadOccupancies, len(doc.PadPickups))
+	}
+	sommeJoueurs := 0
+	for _, p := range s.Players {
+		sommeJoueurs += p.PadPickups
+		sousSomme := 0
+		for _, n := range p.PadPickupsByWeapon {
+			sousSomme += n
+		}
+		if sousSomme != p.PadPickups {
+			t.Errorf("joueur %s : pad_pickups_by_weapon somme à %d, pad_pickups = %d",
+				p.XUID, sousSomme, p.PadPickups)
+		}
+		dropSomme := 0
+		for _, n := range p.DroppedByFamily {
+			dropSomme += n
+		}
+		if dropSomme != p.DroppedObjects {
+			t.Errorf("joueur %s : dropped_by_family somme à %d, dropped_objects = %d",
+				p.XUID, dropSomme, p.DroppedObjects)
+		}
+	}
+	if sommeJoueurs != s.Match.PadNamed {
+		t.Errorf("somme des pad_pickups joueurs = %d, PadNamed = %d — chaque prise nommée doit avoir une ligne",
+			sommeJoueurs, s.Match.PadNamed)
+	}
+	grapples := 0
+	for _, p := range s.Players {
+		grapples += p.GrapplePulls
+	}
+	if grapples > len(doc.GrappleLines) {
+		t.Errorf("tractions attribuées (%d) > tractions du document (%d)", grapples, len(doc.GrappleLines))
+	}
+	grenades := 0
+	for _, p := range s.Players {
+		grenades += p.GrenadesThrown
+	}
+	if grenades > len(doc.Grenades) {
+		t.Errorf("lancers attribués (%d) > lancers du document (%d)", grenades, len(doc.Grenades))
+	}
+}
+
+// TestUsageSummary_SlotRecycleCrediteChaqueOccupant — CONSTAT C5 DE LA REVUE REG-R1
+// (2026-09-06) : le résumé d'usage attribuait les gestes AU SLOT, « dernier gagnant », donc au
+// second occupant d'un slot recyclé — y compris pour les gestes de la vie du premier.
+//
+// LE CAS EXISTE AU PARC : `879a4dba` porte `coverage.bridge.slotCollisions = 1` (slot 610). La
+// faiblesse est antérieure au correctif « une track = une vie », mais celui-ci l'ÉLARGIT : les
+// épisodes et tractions des vies non dernières n'existaient pas avant pour être mal attribués.
+//
+// LA RÈGLE : le propriétaire se résout par PISTE — la vie qui couvre l'instant du geste —, et
+// le « dernier gagnant » ne sert plus que de repli quand aucune vie ne le couvre.
+func TestUsageSummary_SlotRecycleCrediteChaqueOccupant(t *testing.T) {
+	doc := &ReplayDocument{
+		SchemaVersion: SchemaVersion, FrameIntervalMS: 100, FrameCount: 1000,
+		Roster: []RosterEntry{{XUID: "111", FilmIndex: 0}, {XUID: "222", FilmIndex: 1}},
+		Tracks: []Track{
+			{Slot: 5, XUID: "111", StartFrame: 0, EndFrame: 100},
+			{Slot: 5, XUID: "222", StartFrame: 200, EndFrame: 400},
+		},
+		GrappleLines: []GrappleLine{
+			{Slot: 5, T0: 10, T1: 20},   // vie de 111
+			{Slot: 5, T0: 250, T1: 260}, // vie de 222
+		},
+		EquipmentEpisodes: []EquipmentEpisode{
+			{Slot: 5, Fam: EquipFamilyCamo, T0: 10, T1: 20},         // vie de 111
+			{Slot: 5, Fam: EquipFamilyCamo, T0: 250, T1: 260},       // vie de 222
+			{Slot: 5, Fam: EquipFamilyOvershield, T0: 30, T1: 40},   // vie de 111
+			{Slot: 5, Fam: EquipFamilyOvershield, T0: 300, T1: 310}, // vie de 222
+		},
+	}
+	s := BuildUsageSummary(doc)
+	byXUID := map[string]UsagePlayerSummary{}
+	for _, p := range s.Players {
+		byXUID[p.XUID] = p
+	}
+	for _, c := range []struct {
+		xuid                    string
+		pulls, camo, overshield int
+	}{{"111", 1, 1, 1}, {"222", 1, 1, 1}} {
+		p := byXUID[c.xuid]
+		if p.GrapplePulls != c.pulls || p.CamoEpisodes != c.camo || p.OvershieldEpisodes != c.overshield {
+			t.Errorf("%s : %d traction(s) / %d camo / %d surbouclier, attendu %d/%d/%d — "+
+				"chaque occupant du slot recyclé garde SES gestes", c.xuid,
+				p.GrapplePulls, p.CamoEpisodes, p.OvershieldEpisodes, c.pulls, c.camo, c.overshield)
+		}
+	}
+}
+
+// TestUsageSummary_LacherALaMortRevientAuLacheur — CONSTAT N-3 DE LA SECONDE RONDE REG-R2
+// (2026-09-06) : la correction C5 laissait le canal des POSES sur l'ancienne règle.
+//
+// LE CAS. Un objet LÂCHÉ à la mort porte `t0 = finVie + 1` (le poseur n'occupe déjà plus le
+// slot) : aucune vie ne couvre cet instant, et le repli « dernier occupant du match » créditait
+// le lâcher au joueur SUIVANT sur un slot repris. Ce n'est pas un résidu — la revue a mesuré que
+// 32 à 95 % des poses d'un film tombent hors de toute fenêtre publiée (`879a4dba` 153/351,
+// `4f77afc1` 443/466, `145908d1` 34/105) : c'est le chemin MAJORITAIRE de ce canal.
+//
+// LA RÈGLE, celle du web (`ownerAtFrameOrLast`, rosterLogic.ts) : la vie qui couvre l'instant,
+// sinon la vie qui vient de S'ACHEVER avant lui — jamais le dernier-gagnant du match.
+func TestUsageSummary_LacherALaMortRevientAuLacheur(t *testing.T) {
+	doc := &ReplayDocument{
+		SchemaVersion: SchemaVersion, FrameIntervalMS: 100, FrameCount: 1000,
+		Roster: []RosterEntry{{XUID: "111", FilmIndex: 0}, {XUID: "222", FilmIndex: 1}},
+		Tracks: []Track{
+			{Slot: 5, XUID: "111", StartFrame: 0, EndFrame: 100},
+			{Slot: 5, XUID: "222", StartFrame: 200, EndFrame: 400},
+		},
+		EquipmentPlacements: []EquipmentPlacement{
+			// Lâché à la mort de 111 : une image APRÈS la fin de sa vie.
+			{Family: "grapple", Origin: OriginDropped, Owner: 5, T0: 101, ID: "0x1"},
+			// Lâché à la mort de 222, dans les mêmes termes.
+			{Family: "grapple", Origin: OriginDropped, Owner: 5, T0: 401, ID: "0x2"},
+		},
+	}
+	s := BuildUsageSummary(doc)
+	byXUID := map[string]UsagePlayerSummary{}
+	for _, p := range s.Players {
+		byXUID[p.XUID] = p
+	}
+	if got := byXUID["111"].DroppedObjects; got != 1 {
+		t.Errorf("111 : %d lâcher(s), attendu 1 — l'objet lâché à sa mort (t0 = finVie + 1) "+
+			"doit lui revenir, pas au repreneur du slot", got)
+	}
+	if got := byXUID["222"].DroppedObjects; got != 1 {
+		t.Errorf("222 : %d lâcher(s), attendu 1", got)
+	}
+}
+
+// TestUsageSummary_UneVieSurUnSlotReprisNePerdPasSesLancers — CONSTAT N-4 DE REG-R2. Un joueur
+// dont TOUTES les vies sont sur des slots repris ensuite par un autre n'entrait pas dans
+// `avecVie` — construit depuis le seul « dernier occupant » de chaque slot —, et perdait donc
+// TOUS ses lancers de grenade, alors que l'en-tête de la fonction promet l'inverse (« seul un
+// joueur dont AU MOINS UNE VIE est publiée reçoit des lancers » : il en a une).
+func TestUsageSummary_UneVieSurUnSlotReprisNePerdPasSesLancers(t *testing.T) {
+	doc := &ReplayDocument{
+		SchemaVersion: SchemaVersion, FrameIntervalMS: 100, FrameCount: 1000,
+		Roster: []RosterEntry{{XUID: "111", FilmIndex: 0}, {XUID: "222", FilmIndex: 1}},
+		Tracks: []Track{
+			{Slot: 5, XUID: "111", StartFrame: 0, EndFrame: 100}, // unique vie de 111, slot repris
+			{Slot: 5, XUID: "222", StartFrame: 200, EndFrame: 400},
+		},
+		GrappleLines: []GrappleLine{{Slot: 5, T0: 10, T1: 20}},
+		Grenades:     []Grenade{{Idx: 0, Rank: 0}, {Idx: 0, Rank: 1}},
+	}
+	s := BuildUsageSummary(doc)
+	byXUID := map[string]UsagePlayerSummary{}
+	for _, p := range s.Players {
+		byXUID[p.XUID] = p
+	}
+	if got := byXUID["111"].GrenadesThrown; got != 2 {
+		t.Errorf("111 : %d lancer(s), attendu 2 — sa vie est publiée, le slot repris ensuite "+
+			"ne doit pas l'effacer de la table des index de film", got)
+	}
+	if got := byXUID["111"].GrapplePulls; got != 1 {
+		t.Errorf("111 : %d traction(s), attendu 1 (pré-requis du test)", got)
+	}
+}
+
+// TestUsageNAttribuePasUnGesteDuneVieSansNomAuDernierOccupant — LE RESIDU B, instruit le
+// 2026-09-06.
+//
+// VERDICT : CONFIRME, l'exemption « lecteur deja rattrape » ne le couvrait PAS. Le correctif du
+// 2026-09-06 a remplace l'agregat « dernier gagnant » par une resolution PAR VIE, mais
+// `usageSlotOwners` continuait d'ecarter les vies non nommees de `parVie` (`default: continue`).
+// Un geste mesure pendant une telle vie ne trouvait donc AUCUNE vie couvrante et `at()`
+// retombait sur `dernier[slot]` — le dernier occupant du match : sur un slot recycle, la ligne
+// d'un joueur recevait un geste qui n'est pas le sien. C'est precisement la regle que le
+// correctif declare avoir supprimee.
+//
+// LA REPONSE EST CELLE DES BOTS, POUR LA MEME RAISON : la vie entre avec un xuid VIDE. Elle
+// n'ouvre aucune ligne (une ligne est keyee par xuid) mais elle OCCUPE son slot, ce qui rend
+// l'instant NON ATTRIBUABLE au lieu de l'attribuer a tort.
+//
+// MUTATION : remettre `default: continue` rougit (« proprietaire a la frame 150 = "B" »).
+func TestUsageNAttribuePasUnGesteDuneVieSansNomAuDernierOccupant(t *testing.T) {
+	doc := &ReplayDocument{
+		Tracks: []Track{
+			{Slot: 7, StartFrame: 0, EndFrame: 100, XUID: "A"},
+			{Slot: 7, StartFrame: 120, EndFrame: 180},            // nommage non resolu
+			{Slot: 7, StartFrame: 200, EndFrame: 300, XUID: "B"}, // dernier occupant du slot
+		},
+	}
+	o := usageSlotOwners(doc, nil)
+	if got := o.at(7, 50); got != "A" {
+		t.Errorf("proprietaire a la frame 50 = %q, attendu A", got)
+	}
+	if got := o.at(7, 250); got != "B" {
+		t.Errorf("proprietaire a la frame 250 = %q, attendu B", got)
+	}
+	if got := o.at(7, 150); got != "" {
+		t.Errorf("proprietaire a la frame 150 = %q, attendu vide : la vie qui couvre cet "+
+			"instant n'est pas nommee, le geste n'est attribuable a PERSONNE — l'attribuer au "+
+			"dernier occupant du slot serait un faux positif nomme", got)
+	}
+	// `atOrJustBefore` suit la meme regle : la vie qui vient de s'achever a la frame 150 est
+	// celle sans nom, pas celle de A.
+	if got := o.atOrJustBefore(7, 190); got != "" {
+		t.Errorf("poseur a la frame 190 = %q, attendu vide", got)
+	}
+	// ... et un objet lache a la mort de A (t0 = finVie + 1) revient bien a A.
+	if got := o.atOrJustBefore(7, 101); got != "A" {
+		t.Errorf("poseur a la frame 101 = %q, attendu A", got)
+	}
+}

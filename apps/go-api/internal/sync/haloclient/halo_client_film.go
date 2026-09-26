@@ -6,7 +6,10 @@ package haloclient
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"log/slog"
+	"net/http"
 	"net/url"
 	"sort"
 	"strings"
@@ -14,6 +17,8 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	"levelup/go-api/internal/games"
+	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
+	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
 )
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -28,10 +33,15 @@ const haloUGCHost = "https://discovery-infiniteugc.svc.halowaypoint.com"
 // recopier le nombre : la ventilation des tirs (`sync/killcollector`) ne scanne que la
 // REPLICATION_DATA, la population sur laquelle la loi « un fire-event = un tir » a été mesurée.
 // Une copie locale du littéral 2 serait un magic number de plus, et il dériverait.
+//
+// LE TYPE DES TEMPS FORTS REPREND CELUI DE `filmcache` (lot L3, 2026-09-23) : c'est le type qui
+// dit qu'un film est FINALISÉ ([filmcache.Finalise]), et le prédicat vit là où le writer du cache
+// peut le lire. Un sélecteur qui compare au type 3 passe par [filmcache.EstTempsForts]
+// (garde-rail `archlint/film_finalise_predicate_test.go`).
 const (
 	FilmChunkTypeHeader          = 1
 	FilmChunkTypeReplicationData = 2
-	FilmChunkTypeHighlightEvents = 3
+	FilmChunkTypeHighlightEvents = filmcache.ChunkTypeTempsForts
 )
 
 // filmChunkParallelism : nombre max de downloads CDN parallèles dans
@@ -78,6 +88,30 @@ func buildChunkURL(blobPrefix, fileRelativePath string) string {
 	return blobPrefix + name
 }
 
+// filmMajorVersionDuCache lit le `FilmMajorVersion` d'un film en cache dans l'en-tête de son
+// registre (`chunk_00`). Registre absent ou illisible : [decfilm.FilmMajorVersionUnknown], et la
+// dégradation est consignée — le décodeur du kill-feed retombe alors sur le découpage historique
+// du gamertag, ce qui est faux sur un film de version 39-40.
+//
+// `decfilm.Inflate` rend le tampon inchangé quand il n'est pas zlib (0 registre compressé sur
+// les 1 351 du cache, mesure du 2026-09-12 — la tolérance ne coûte rien et couvre le cache
+// historique).
+func (c *HaloAPIClient) filmMajorVersionDuCache(ctx context.Context, matchID string) int {
+	registre, err := c.localFilmCache.LoadChunk(matchID, 0)
+	if err != nil {
+		slog.WarnContext(ctx, "film: registre illisible, version de film inconnue",
+			"match_id", matchID, "err", err)
+		return decfilm.FilmMajorVersionUnknown
+	}
+	version, ok := decfilm.FilmMajorVersionFromHeader(decfilm.Inflate(registre))
+	if !ok {
+		slog.WarnContext(ctx, "film: registre absent du cache, version de film inconnue",
+			"match_id", matchID)
+		return decfilm.FilmMajorVersionUnknown
+	}
+	return version
+}
+
 // fetchFilmManifest télécharge et décode le manifest film d'un match.
 // Retourne (manifest, true, nil) si disponible, (nil, false, nil) si absent (404/410).
 //
@@ -85,17 +119,37 @@ func buildChunkURL(blobPrefix, fileRelativePath string) string {
 // le cache disque survit à l'expiration de l'endpoint manifest API (Halo
 // purge les manifestes après quelques semaines/mois mais le cache local
 // conserve les blob_prefixes valides plus longtemps via le CDN).
+//
+// LA VERSION DU FILM VIENT ALORS DU FILM LUI-MÊME (2026-09-12). Le manifeste en cache ne porte
+// pas `FilmMajorVersion` — ce champ était donc posé à 0, et `GetHighlightEventsChunk` servait 0
+// à tout le pipeline de synchronisation dès que le manifeste venait du disque. Sur les 211 films
+// de version 39-40 du cache, 0 fait lire le gamertag douze octets trop tôt
+// (.ai/RAPPORT_BTB_2025_ABSTENTION_2026-09-12.md). La version est lue dans l'en-tête du registre,
+// qui est LE film et vaut donc pour les 1 351 films déjà en cache, sans migration ni champ
+// sérialisé redondant.
 func (c *HaloAPIClient) fetchFilmManifest(ctx context.Context, matchID string) (*filmManifest, bool, error) {
 	if !rexUUID.MatchString(matchID) {
 		return nil, false, fmt.Errorf("fetchFilmManifest: matchID invalide %q", matchID)
 	}
 
 	// 1. Cache disque (Python legacy).
-	if cm, err := c.localFilmCache.LoadManifest(matchID); err == nil && cm != nil {
+	//
+	// UN MANIFESTE DU CACHE NON FINALISÉ NE MASQUE PAS L'API (lot L3, 2026-09-23). Écrit avant la
+	// règle « seul un film finalisé se valide » (`ab526724`, 22/09), il décrit un film tronqué :
+	// le servir ferait refuser le film à chaque cycle sans que le serveur, qui l'a finalisé
+	// depuis, soit jamais consulté. Le manifeste de l'API prend le relais, et le writer du cache
+	// le complète au passage.
+	cm, err := c.localFilmCache.LoadManifest(matchID)
+	if err == nil && cm != nil && len(cm.Chunks) > 0 && !filmcache.Finalise(cm.Chunks, typeDuCache) {
+		slog.InfoContext(ctx, "film: manifeste du cache non finalisé (sans temps forts) — relu à l'API",
+			"match_id", matchID, "entrees", len(cm.Chunks))
+		cm = nil
+	}
+	if err == nil && cm != nil {
 		manifest := &filmManifest{
 			BlobStoragePathPrefix: cm.BlobPrefix,
 		}
-		manifest.CustomData.FilmMajorVersion = 0 // legacy cache n'a pas la version
+		manifest.CustomData.FilmMajorVersion = c.filmMajorVersionDuCache(ctx, matchID)
 		manifest.CustomData.Chunks = make([]filmChunk, 0, len(cm.Chunks))
 		for _, ch := range cm.Chunks {
 			manifest.CustomData.Chunks = append(manifest.CustomData.Chunks, filmChunk{
@@ -214,6 +268,9 @@ func (c *HaloAPIClient) fetchFilmChunks(
 	if err != nil || !found {
 		return nil, found, err
 	}
+	if err := refuserSiNonFinalise(manifest, caller, matchID); err != nil {
+		return nil, false, err
+	}
 
 	var out []FilmChunk
 	var toDownload []filmChunk
@@ -225,7 +282,7 @@ func (c *HaloAPIClient) fetchFilmChunks(
 		// SYSTÉMATIQUEMENT que les REPLICATION_DATA ; l'en-tête et le kill-feed
 		// n'y sont que sur les films téléchargés à la main (ex. J0.1). On tente
 		// donc pour tous les types : un miss retombe sur le CDN.
-		if cached, cErr := c.localFilmCache.LoadChunk(matchID, chunk.Index); cErr == nil && cached != nil {
+		if cached := c.chunkDuCache(ctx, matchID, chunk.Index); cached != nil {
 			out = append(out, FilmChunk{
 				Index:      chunk.Index,
 				ChunkType:  chunk.ChunkType,
@@ -246,7 +303,7 @@ func (c *HaloAPIClient) fetchFilmChunks(
 			i, ch := i, ch
 			eg.Go(func() error {
 				chunkURL := buildChunkURL(manifest.BlobStoragePathPrefix, ch.FileRelativePath)
-				data, dErr := c.downloadBlob(egCtx, chunkURL)
+				data, dErr := c.downloadBlob(egCtx, chunkURL, ch.ChunkSize)
 				if dErr != nil {
 					return fmt.Errorf("%s chunk %d(%s): %w", caller, ch.Index, matchID, dErr)
 				}
@@ -273,6 +330,77 @@ func (c *HaloAPIClient) fetchFilmChunks(
 	return out, true, nil
 }
 
+// refuserSiNonFinalise rend [filmcache.ErrFilmNonFinalise] quand le manifeste décrit un film en
+// cours de publication : des morceaux, mais pas celui des temps forts (lot L3, 2026-09-23).
+//
+// NI 404 NI PANNE. Le film existe et sera complet dans une minute : l'appelant reporte au cycle
+// suivant. Un manifeste à ZÉRO morceau, lui, reste un film ABSENT (expiré) — c'est le contrat
+// d'avant le lot, et `killcollector` en tire son marqueur terminal.
+func refuserSiNonFinalise(manifest *filmManifest, caller, matchID string) error {
+	chunks := manifest.CustomData.Chunks
+	if len(chunks) == 0 || filmcache.Finalise(chunks, typeDuManifesteAPI) {
+		return nil
+	}
+	return fmt.Errorf("%s(%s) : %d morceaux au manifeste : %w", caller, matchID, len(chunks),
+		filmcache.ErrFilmNonFinalise)
+}
+
+// typeDuManifesteAPI / typeDuCache : les accesseurs de type que [filmcache.Finalise] reçoit.
+func typeDuManifesteAPI(c filmChunk) int { return c.ChunkType }
+func typeDuCache(c CachedChunk) int      { return c.ChunkType }
+
+// FilmChunkRef : un chunk du film et son URL CDN PRÉ-SIGNÉE, SANS ses octets.
+type FilmChunkRef struct {
+	Index      int
+	ChunkType  int
+	StartMS    int
+	DurationMS int
+	URL        string
+}
+
+// GetFilmChunkURLs résout le manifeste d'un match et rend les RÉFÉRENCES de ses
+// chunks — sans télécharger un seul octet.
+//
+// POURQUOI CETTE MÉTHODE EXISTE. C'est la pièce de sécurité du travail délégué
+// (piste F §1) : le manifeste exige les tokens Halo, les blobs non (CDN Azure
+// pré-signé, sans authentification). Le VPS web résout donc ICI, met les URL
+// dans le job, et l'ouvrier distant décode SANS le moindre secret Halo ni le
+// moindre accès à la base. Déléguer la résolution du manifeste à l'ouvrier
+// l'obligerait à porter un token — c'est exactement ce qu'on refuse.
+//
+// Retourne (nil, false, nil) si le film est absent (404/410) — cas NORMAL :
+// ~29 % des matchs n'ont plus de film côté serveur.
+func (c *HaloAPIClient) GetFilmChunkURLs(ctx context.Context, matchID string) ([]FilmChunkRef, bool, error) {
+	manifest, found, err := c.fetchFilmManifest(ctx, matchID)
+	if err != nil || !found {
+		return nil, found, err
+	}
+	// MÊME RÈGLE QUE LE TÉLÉCHARGEMENT : l'ouvrier archive puis cuit ce qu'on lui confie, et son
+	// writer refuserait un film non finalisé — autant ne pas mettre en file un travail condamné.
+	if err := refuserSiNonFinalise(manifest, "GetFilmChunkURLs", matchID); err != nil {
+		return nil, false, err
+	}
+	out := make([]FilmChunkRef, 0, len(manifest.CustomData.Chunks))
+	for _, chunk := range manifest.CustomData.Chunks {
+		url := buildChunkURL(manifest.BlobStoragePathPrefix, chunk.FileRelativePath)
+		if url == "" {
+			continue // manifeste sans préfixe de blob (cache écrit localement) : rien à servir
+		}
+		out = append(out, FilmChunkRef{
+			Index:      chunk.Index,
+			ChunkType:  chunk.ChunkType,
+			StartMS:    chunk.ChunkStartTimeOffsetMilliseconds,
+			DurationMS: chunk.DurationMilliseconds,
+			URL:        url,
+		})
+	}
+	if len(out) == 0 {
+		return nil, false, nil
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].Index < out[j].Index })
+	return out, true, nil
+}
+
 // GetHighlightEventsChunk télécharge le chunk highlight events (ChunkType=3) du film.
 // Retourne (data, filmMajorVersion, true, nil) si disponible.
 // Retourne (nil, 0, false, nil) si le film est absent ou sans chunk highlight events.
@@ -283,16 +411,16 @@ func (c *HaloAPIClient) GetHighlightEventsChunk(ctx context.Context, matchID str
 	}
 
 	for _, chunk := range manifest.CustomData.Chunks {
-		if chunk.ChunkType != FilmChunkTypeHighlightEvents {
+		if !filmcache.EstTempsForts(chunk.ChunkType) {
 			continue
 		}
 		// Cache disque d'abord (rarement présent — Python ne cache que
 		// REPLICATION_DATA — mais on tente).
-		if cached, cErr := c.localFilmCache.LoadChunk(matchID, chunk.Index); cErr == nil && cached != nil {
+		if cached := c.chunkDuCache(ctx, matchID, chunk.Index); cached != nil {
 			return cached, manifest.CustomData.FilmMajorVersion, true, nil
 		}
 		chunkURL := buildChunkURL(manifest.BlobStoragePathPrefix, chunk.FileRelativePath)
-		data, err := c.downloadBlob(ctx, chunkURL)
+		data, err := c.downloadBlob(ctx, chunkURL, chunk.ChunkSize)
 		if err != nil {
 			// Fallback gracieux : si le manifest vient du cache local et que
 			// le blob CDN a expiré, on retourne (nil, 0, false, nil) au lieu
@@ -314,26 +442,51 @@ type FilmChunkData struct {
 	DurationMS int
 }
 
-// isNotFoundErr vérifie si l'erreur est un 404 ou 410 (film absent).
+// isNotFoundErr dit si l'erreur signale une ressource ABSENTE côté Halo (404/410) :
+// film, skill, CSR inexistants côté API, ou blob disparu du CDN.
+//
+// TYPÉ uniquement depuis le 2026-09-05 : le repli textuel
+// (« la chaîne contient HTTP 404 ») a disparu — le texte d'une erreur n'est pas
+// une API, et il suffisait qu'un message change de forme pour que le prédicat
+// devienne muet. Les deux seules sources possibles sont typées : *HTTPError
+// (doGet) et *BlobHTTPError (downloadBlob), deux types VOLONTAIREMENT distincts
+// (cf. BlobHTTPError). Garde-rail : no_text_predicate_test.go.
 func isNotFoundErr(err error) bool {
-	if err == nil {
-		return false
+	var he *HTTPError
+	if errors.As(err, &he) {
+		return he.StatusCode == http.StatusNotFound || he.StatusCode == http.StatusGone
 	}
-	s := err.Error()
-	return contains(s, "HTTP 404") || contains(s, "HTTP 410") || contains(s, "ressource absente")
-}
-
-func contains(s, sub string) bool {
-	return len(s) >= len(sub) && (s == sub || len(s) > 0 && containsStr(s, sub))
-}
-
-func containsStr(s, sub string) bool {
-	for i := 0; i <= len(s)-len(sub); i++ {
-		if s[i:i+len(sub)] == sub {
-			return true
-		}
+	var be *BlobHTTPError
+	if errors.As(err, &be) {
+		return be.StatusCode == http.StatusNotFound || be.StatusCode == http.StatusGone
 	}
 	return false
+}
+
+// IsFilmGoneErr dit si l'erreur signale un film DÉFINITIVEMENT perdu — manifeste OU
+// blobs, peu importe lequel : 404/410 typé (*HTTPError pour fetchFilmManifest/doGet,
+// *BlobHTTPError pour downloadBlob, cf. isNotFoundErr) sur l'un ou l'autre compte comme
+// définitif. C'est exactement isNotFoundErr, exporté sous ce nom pour les callers qui
+// RETENTENT un film au lieu de simplement le classer absent/présent — eux ont besoin de
+// distinguer une erreur transitoire (réseau, 5xx, rate limit) d'un lien mort, ce que
+// fetchFilmManifest et fetchFilmChunks ne leur exposent pas (ils remontent l'erreur
+// brute, transitoire ou pas).
+//
+// EXPIRATION PARTIELLE = DÉFINITIVE, biais assumé (bilan fork ChaseWoodhams 2026-09-11,
+// point 4b). Le manifeste et les blobs pré-signés expirent sur des calendriers séparés :
+// un manifeste qui répond encore alors qu'un de ses blobs rend 404/410 est indiscernable
+// d'un timeout pour un appelant qui ne regarde que "err != nil". Dans un errgroup
+// (fetchFilmChunks), UN chunk sur N qui rend 404 remonte SEUL via eg.Wait() — même si un
+// autre chunk rendait 503 en parallèle, l'un ou l'autre motif ressort au hasard des
+// goroutines. Classer cette expiration partielle comme définitive est un choix délibéré :
+// un faux « transitoire » se corrige tout seul à la passe suivante (le film redevient
+// candidat) ; un faux « définitif » serait un film réellement vivant classé perdu à tort.
+// Le biais va du bon côté — mais un chunk isolé mort à côté de chunks lisibles n'est PAS
+// la même chose qu'un manifeste entièrement 404 : un appelant qui a besoin de la
+// distinction fine (ex. republier le film partiel plutôt que l'abandonner) ne doit pas
+// se fier à ce seul prédicat.
+func IsFilmGoneErr(err error) bool {
+	return isNotFoundErr(err)
 }
 
 // downloadBlob télécharge un blob Halo sans header d'auth (pre-signed URL)

@@ -15,6 +15,7 @@ import (
 	"levelup/go-api/internal/games/halo_5/livesync"
 	"levelup/go-api/internal/service"
 	"levelup/go-api/internal/sync"
+	"levelup/go-api/internal/sync/replayartifacts"
 )
 
 // BuildEngine construit un *sync.SyncEngine fully-configured pour un
@@ -31,7 +32,8 @@ import (
 //
 // Sémantique des nils :
 //   - s.cfg.SharedProvider == nil → engine en mode legacy (OpenSharedDB direct)
-//   - s.settings == nil → pas de FriendsLoader, pas de MediaScanHook
+//   - s.settings == nil → pas de MediaScanHook
+//   - s.friends == nil → pas de FriendsLoader
 //   - s.pool == nil → pas de PooledHaloClient (le moteur tombera back sur le
 //     client default si pas .SetCustomClient — non-recommandé en prod)
 //   - s.postSyncRunner == nil → post-sync runner V1 désactivé
@@ -52,17 +54,17 @@ func (s *AutoSyncScheduler) BuildEngine(ctx context.Context, gamertag, xuid stri
 	if s.cfg.SharedProvider != nil {
 		engine.WithSharedProvider(s.cfg.SharedProvider)
 	}
-	if s.settings != nil {
+	// Amis DU JOUEUR synchronisé (fermeture sur son xuid) : la liste n'est plus
+	// celle de l'instance, donc deux joueurs auto-syncés n'héritent plus des amis
+	// l'un de l'autre.
+	if s.friends != nil && xuid != "" {
 		engine.WithFriendsLoader(func() ([]string, error) {
-			cfg, lerr := s.settings.Load()
-			if lerr != nil {
-				return nil, lerr
-			}
-			return cfg.FriendGamertags, nil
+			return s.friends.Get(xuid)
 		})
 	}
+	s.wireReplayArtifacts(engine)
 	if s.pool != nil {
-		pooledClient := sync.NewPooledHaloClient(s.pool, gamertag, xuid, 0) // 0 = defaultPooledRPS
+		pooledClient := sync.NewPooledHaloClient(s.pool, 0) // 0 = defaultPooledRPS
 		engine.SetCustomClient(pooledClient)
 	}
 	// Phase 4 plan stabilisation 2026-05-22 : injecter le runner post-sync
@@ -133,6 +135,30 @@ func (s *AutoSyncScheduler) BuildEngine(ctx context.Context, gamertag, xuid stri
 		})
 	}
 	return engine
+}
+
+// wireReplayArtifacts installe le fil de l'eau des artefacts de rejeu 2D (lot 6 v7.5).
+//
+// LE HOOK S'INSTALLE TOUJOURS, C'EST LUI QUI DÉCIDE (réglage replay_build_location,
+// relu à chaque cycle) : construire ici, mettre en file pour un ouvrier, ou ne rien
+// faire. La règle « le VPS web ne décode JAMAIS » est tenue par le point de décision
+// (replaybuild.DecidePlacement refuse « local » en production), plus par un `if`
+// recopié à chaque site de wiring.
+func (s *AutoSyncScheduler) wireReplayArtifacts(engine *sync.SyncEngine) {
+	if s.settings == nil {
+		return
+	}
+	engine.WithReplayArtifacts(replayartifacts.NewHook(s.cfg, s.settings, s.replayEnqueue))
+}
+
+// WithReplayEnqueuer branche la mise en file des rejeux (wire.ServiceRegistry.
+// EnqueueReplayBuild) sur les moteurs construits par ce scheduler. À appeler depuis
+// cmd/server/main.go APRÈS création du ServiceRegistry (même patron que
+// WithPostSyncRunner). Nil → le placement « worker » dégrade en « aucune
+// construction », journalisé.
+func (s *AutoSyncScheduler) WithReplayEnqueuer(enqueue replayartifacts.EnqueueFunc) *AutoSyncScheduler {
+	s.replayEnqueue = enqueue
+	return s
 }
 
 // defaultRunnerFactory adapte BuildEngine vers l'interface DeltaRunner

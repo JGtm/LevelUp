@@ -59,6 +59,7 @@ import (
 	"levelup/go-api/internal/domain"
 	titlepkg "levelup/go-api/internal/domain/title"
 	halomigrations "levelup/go-api/internal/games/halo_infinite/migrations"
+	"levelup/go-api/internal/games/titleseams"
 	"levelup/go-api/internal/migration"
 	"levelup/go-api/internal/observability/logging"
 	"levelup/go-api/internal/platform/duckdb"
@@ -89,6 +90,12 @@ type cliFlags struct {
 }
 
 func main() {
+	// Seams title-owned : ce binaire embarque le moteur de sync TRANSITIVEMENT (ratchet
+	// titleseams_wired_test.go, 2026-09-16). Sans ce câblage, tout chemin qui atteindrait un
+	// classifier ou une étape de migration title-owned partirait en panic fail-loud MT-15 ou
+	// en scores muets.
+	titleseams.RegisterAll("")
+
 	// Enregistre les steps de migration title-owned (halo_infinite) : sans ça,
 	// RunForDB n'applique QUE les migrations globales et rate p.ex. add_xuid
 	// (WorldSeasonPlayers échoue : colonne xuid absente) sur une DB que le serveur

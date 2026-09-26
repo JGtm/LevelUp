@@ -27,11 +27,17 @@ package migrations
 
 import (
 	"database/sql"
+	"log/slog"
 
 	halo5 "levelup/go-api/internal/games/halo_5"
 	"levelup/go-api/internal/games/weapons"
 	"levelup/go-api/internal/migration"
 )
+
+// purgeWeaponFamiliesLabelsName — step du registre GLOBAL réutilisé tel quel par le
+// set h5 (cf. purgeWeaponFamiliesLabelsStep). Nom sans préfixe `h5_` : c'est
+// exactement la même migration, pas une copie.
+const purgeWeaponFamiliesLabelsName = "purge_weapon_families_labels_columns"
 
 // metadataStepNames retourne les noms des steps metadata h5, dans l'ordre
 // d'exécution voulu. = CanonicalOrder du set (le set ne possède QUE metadata via
@@ -52,15 +58,50 @@ func metadataStepNames() []string {
 		"h5_add_commendation_definitions",
 		"h5_commendation_definitions_add_tier_targets",
 		"h5_add_weapon_registry",
+		// Purge des colonnes inertes weapon_families.name_en / name_fr : step du
+		// registre GLOBAL, réutilisé ici parce que `weapon_families` est un
+		// référentiel CROSS-TITRE (même DDL, même seed, un fichier par titre) —
+		// doit suivre h5_add_weapon_registry, créateur de la table.
+		purgeWeaponFamiliesLabelsName,
 		"h5_add_team_colors",
 	}
+}
+
+// purgeWeaponFamiliesLabelsStep rend LA MÊME migration que celle du registre
+// global (une seule définition du rebuild CTAS-swap), à insérer dans le jeu h5.
+//
+// MOTIF (incident du 2026-09-12, corrigé le 2026-09-20). Le set h5 POSSÈDE le
+// target metadata : aucun step du registre global ne s'y applique. La purge des
+// colonnes `name_en`/`name_fr` de `weapon_families` (2026-09-08) n'était donc
+// jamais jouée sur la metadata h5, qui conservait `name_en NOT NULL` alors que le
+// seed cross-titre `weapons.ApplyRegistry` n'insère plus que `family_key` →
+// « NOT NULL constraint failed: weapon_families.name_en » à CHAQUE boot, et
+// provisioning halo_5 en échec (non-fatal, mais les targets suivants — la base
+// des matchs partagés et celle du social — ne sont alors plus migrés du tout).
+//
+// Le step est idempotent (garde `columnExists(name_en)`) : no-op sur une metadata
+// h5 neuve, où `h5_add_weapon_registry` a déjà créé la table au schéma courant.
+func purgeWeaponFamiliesLabelsStep() []migration.Migration {
+	m, ok := migration.ByName(purgeWeaponFamiliesLabelsName)
+	if !ok {
+		// Ne peut arriver que si le step disparaissait du registre global : on le
+		// dit fort plutôt que de dégrader en silence (le garde-rail
+		// TestHalo5Metadata_PurgeWeaponFamiliesLabelsDansLeSet le verrouille).
+		slog.ErrorContext(migration.BootCtx(),
+			"migration h5: step du registre global introuvable, metadata halo_5 incomplète",
+			"name", purgeWeaponFamiliesLabelsName, "titleSlug", halo5.TitleSlug)
+		return nil
+	}
+	return []migration.Migration{m}
 }
 
 // MetadataSteps retourne le schéma référentiel metadata PROPRE à Halo 5 (CREATE
 // seul, idempotent, zéro seed HINF). Formes alignées sur HINF pour réutiliser les
 // helpers de lecture et le drain de catalogue à l'identique.
+// La purge cross-titre finale (purgeWeaponFamiliesLabelsStep) est concaténée au
+// jeu : l'ordre canonique la replace après h5_add_weapon_registry.
 func MetadataSteps() []migration.Migration {
-	return []migration.Migration{
+	return append([]migration.Migration{
 		{
 			Name:        "h5_add_xbox_achievement_definitions",
 			TargetDB:    migration.TargetMetadata,
@@ -298,7 +339,7 @@ func MetadataSteps() []migration.Migration {
 				`)
 			},
 		},
-	}
+	}, purgeWeaponFamiliesLabelsStep()...)
 }
 
 // Set construit le TitleMigrationSet d'Halo 5 : isolation PARTIELLE via OwnsTarget.

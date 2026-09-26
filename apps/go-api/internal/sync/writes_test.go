@@ -4,7 +4,6 @@
 package sync_test
 
 import (
-	"database/sql"
 	"testing"
 
 	"levelup/go-api/internal/domain"
@@ -118,7 +117,7 @@ func TestInsertWeaponKills(t *testing.T) {
 		t.Errorf("expected 2 weapon_kills, got %d", count)
 	}
 
-	// Append-only #23046 (Phase 2) : la ré-insertion ne DELETE plus ; elle alloue une
+	// Append-only #23645 (Phase 2) : la ré-insertion ne DELETE plus ; elle alloue une
 	// nouvelle génération qui supersède via v_weapon_kills (dernière génération) → 1 row.
 	attrs2 := []intsync.WeaponKillRow{
 		{TimeMS: 3000, WeaponID: &wid1, Confidence: "low", AttributionPath: "swap"},
@@ -129,44 +128,6 @@ func TestInsertWeaponKills(t *testing.T) {
 	_ = db.QueryRow("SELECT COUNT(*) FROM v_weapon_kills WHERE match_id = 'm1' AND xuid = 'x1'").Scan(&count)
 	if count != 1 {
 		t.Errorf("expected 1 weapon_kill (v_weapon_kills dernière génération) after replace, got %d", count)
-	}
-}
-
-func TestMarkWeaponKillsDone(t *testing.T) {
-	db, err := sql.Open("duckdb", ":memory:")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer db.Close()
-	db.SetMaxOpenConns(1)
-
-	// Create minimal match_registry schema (same as openPveDB)
-	_, err = db.Exec("CREATE TABLE match_registry (match_id VARCHAR PRIMARY KEY, backfill_completed INTEGER DEFAULT 0)")
-	if err != nil {
-		t.Fatalf("create table: %v", err)
-	}
-
-	// Seed a match
-	_, _ = db.Exec("INSERT INTO match_registry (match_id) VALUES ('m1')")
-
-	if err := intsync.MarkWeaponKillsDone(t.Context(), db, "m1", false); err != nil {
-		t.Fatalf("MarkWeaponKillsDone: %v", err)
-	}
-
-	var bits int
-	_ = db.QueryRow("SELECT backfill_completed FROM match_registry WHERE match_id = 'm1'").Scan(&bits)
-	if bits&intsync.MBitWeaponKills == 0 {
-		t.Errorf("expected MBitWeaponKills set, got bits=%d", bits)
-	}
-
-	// Mark no-film variant
-	_, _ = db.Exec("INSERT INTO match_registry (match_id) VALUES ('m2')")
-	if err := intsync.MarkWeaponKillsDone(t.Context(), db, "m2", true); err != nil {
-		t.Fatalf("MarkWeaponKillsDone noFilm: %v", err)
-	}
-	_ = db.QueryRow("SELECT backfill_completed FROM match_registry WHERE match_id = 'm2'").Scan(&bits)
-	if bits&intsync.MBitWeaponKillsNoFilm == 0 {
-		t.Errorf("expected MBitWeaponKillsNoFilm set, got bits=%d", bits)
 	}
 }
 
@@ -215,7 +176,7 @@ func TestWriteSessionAssignments_EmptySlice(t *testing.T) {
 	}
 }
 
-// TestWriteSessionAssignments_NewMatchInsertsRow : append-only #23046 — un match
+// TestWriteSessionAssignments_NewMatchInsertsRow : append-only #23645 — un match
 // sans row pré-existante reçoit désormais sa row session-stage (INSERT pur, plus
 // d'UPDATE no-op). Le writer retourne 1 et la session est lisible via la vue merge.
 func TestWriteSessionAssignments_NewMatchInsertsRow(t *testing.T) {

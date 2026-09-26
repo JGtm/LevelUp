@@ -1,0 +1,15 @@
+# temoin de la jauge en direct (CT.3.3) — artefact cuit au HEAD 1a6f4a46e, relu par TestZoneGaugeTemoin (garde ZONE_ARTEFACT)
+ARTEFACT 696a9d7c — schema 17, 5337 frames de 100 ms, 2108358 octets, 3 zone(s) publiee(s)
+  COUVERTURE : methode captures+geometry · catalogue 3 · apparies 3 · intervalles 37 · periodes colline 0 · gaugePoints 1794
+  zone 0 : 10 intervalle(s), 554 point(s) de jauge en 37 rampe(s), 11445 octets, ecart intra-rampe max 435 frame(s), trous intra-rampe > 10 frames : 20 (dont 4 a arc VISIBLE, v >= 0,05 avant le trou)
+    extrait : [{"t":471,"v":0.002},{"t":500,"v":0.036},{"t":502,"v":0.064},{"t":504,"v":0.093},{"t":506,"v":0.121},{"t":508,"v":0.15},{"t":510,"v":0.179},{"t":512,"v":0.207}]
+  zone 1 : 12 intervalle(s), 623 point(s) de jauge en 38 rampe(s), 12771 octets, ecart intra-rampe max 804 frame(s), trous intra-rampe > 10 frames : 19 (dont 4 a arc VISIBLE, v >= 0,05 avant le trou)
+    extrait : [{"t":152,"v":0.005},{"t":154,"v":0.038},{"t":155,"v":0.06},{"t":157,"v":0.081},{"t":158,"v":0.102},{"t":159,"v":0.145},{"t":161,"v":0.167},{"t":162,"v":0.188}]
+  zone 2 : 15 intervalle(s), 617 point(s) de jauge en 36 rampe(s), 12642 octets, ecart intra-rampe max 900 frame(s), trous intra-rampe > 10 frames : 18 (dont 2 a arc VISIBLE, v >= 0,05 avant le trou)
+    extrait : [{"t":83,"v":0.007},{"t":85,"v":0.036},{"t":87,"v":0.064},{"t":89,"v":0.093},{"t":91,"v":0.121},{"t":93,"v":0.15},{"t":95,"v":0.179},{"t":97,"v":0.207}]
+  POINTS : 1794 en 111 rampes · OCTETS des series : 36858 sur 2108358 = 1.748 % de l'artefact · trous intra-rampe > 1 s : 57, dont 10 a arc VISIBLE (v >= 0,05 avant le trou)
+  BASCULES du proprietaire : 34 · precedees d'un pas MONTANT de la jauge dans [t0 - 5000 ms ; t0 + 2000 ms] : 34/34 = 100.0 % (seuil 90 %) — TENU
+  TEMOIN (bascules decalees de +20000 ms) : 10/34 = 29.4 % · NIVEAU DU HASARD (part de l'axe de la zone ou une bascule tiree au hasard trouverait un de ses pas montants dans sa fenetre, moyenne sur les 34 bascules ; 1739 pas montants en tout) : 40.0 %
+--- PASS: TestZoneGaugeTemoin (0.05s)
+PASS
+ok  	levelup/go-api/internal/analysis/replay	1.459s

@@ -31,8 +31,10 @@ import type {
 import type { ExplorerManifestKey } from '@/lib/i18n/generated/explorer'
 import { matchViewManifest, type MatchViewManifestKey } from '@/lib/i18n/generated/match_view'
 import { BriefingSectionCard } from './BriefingSectionCard'
-import { deltaToken, formatSignedPoints, signOf } from './ExplorerBriefing.logic'
+import { formatSignedPoints } from '@/lib/baseline'
+import { deltaToken, favoriteWeaponSlots, signOf } from './ExplorerBriefing.logic'
 import { RankedBlock } from './ExplorerRankedBlock'
+import { FavoriteWeaponBlock } from './ExplorerBriefingWeapons'
 
 type T = (key: ExplorerManifestKey, values?: Record<string, string | number>) => string
 // TMV : résout un libellé du manifest match_view (réutilisé pour les libellés
@@ -77,6 +79,8 @@ const DOMINANCE_ITEMS: {
     labelKey: 'narrative.dominance.contre_remontada',
     token: 'narrative-contre-remontada',
   },
+  { field: 'sabordages', labelKey: 'narrative.dominance.sabordage', token: 'narrative-sabordage' },
+  { field: 'abnegations', labelKey: 'narrative.dominance.abnegation', token: 'narrative-abnegation' },
 ]
 
 export function ExplorerBriefingModules({
@@ -108,19 +112,49 @@ export function ExplorerBriefingModules({
   // Moments forts : carte omise si aucune catégorie non nulle (item 13).
   const dominance = briefing.dominance ?? null
   const showDominance = dominance != null && DOMINANCE_ITEMS.some((it) => (dominance[it.field] ?? 0) > 0)
-  if (dimensions.length === 0 && !hasContextOrRanked && !showDominance) return null
+  // Arme favorite : l'omission est décidée par le backend (aucun frag mesuré → bloc nil).
+  // Ici on ne décide que sa FORME, à partir du nombre de lignes des autres cellules — une
+  // carte de dimension en a autant que d'entrées, « Par contexte » deux, le Classement
+  // autant de chaînes AFFICHÉES (zéro si la capability du titre l'omet). Aucune mesure du
+  // DOM : un écart de hauteur constaté se corrige dans favoriteWeaponSlots.
+  const weapons = briefing.weapons ?? null
+  // Empilé sous « Par contexte », le bloc paie le chrome de sa carte en plus : la formule
+  // le compte et sert alors une arme plutôt que deux. L'habillage, lui, ne change jamais
+  // (carte dans tous les cas — décision utilisateur au gate visuel du 2026-09-17).
+  const weaponSlots = favoriteWeaponSlots({
+    dimensionLines: dimensions.map((d) => (d.entries ?? []).length),
+    rankedLines: showRanked ? (ranked?.kinds?.length ?? 0) : 0,
+    stacked: contextSplit != null,
+  })
+  if (dimensions.length === 0 && !hasContextOrRanked && !showDominance && weapons == null) return null
 
   return (
     <div className="space-y-2 pt-1">
       {/* Rangée « Par… » adaptative (DEC-GRID : auto-fit/minmax → jamais de trou en fin
           de rangée) : cartes de dimension + « Par contexte » + Classement, tous SIBLINGS
           de la MÊME grille (DP-3 — plus d'empilement en 4e colonne). */}
-      {(dimensions.length > 0 || hasContextOrRanked) && (
+      {(dimensions.length > 0 || hasContextOrRanked || weapons != null) && (
         <div className="grid grid-cols-1 gap-2 sm:[grid-template-columns:repeat(auto-fit,minmax(240px,1fr))]">
           {dimensions.map((d) => (
             <DimensionCard key={d.dimension} dim={d} t={t} hideDelta={hideDelta} />
           ))}
-          {contextSplit != null && <ContextSplitCard split={contextSplit} t={t} />}
+          {/* L'arme favorite s'empile SOUS « Par contexte » dans la MÊME cellule quand ce
+              bloc existe, et prend sa place quand il est absent : le nombre de cellules de
+              la rangée ne change jamais. `self-start` maintient la cellule à sa hauteur de
+              contenu — étirée, elle donnerait toute la place à la carte du haut (h-full) et
+              ferait déborder l'empilement. */}
+          {contextSplit != null &&
+            (weapons != null ? (
+              <div className="space-y-2 self-start">
+                <ContextSplitCard split={contextSplit} t={t} />
+                <FavoriteWeaponBlock weapons={weapons} slots={weaponSlots} t={t} locale={locale} />
+              </div>
+            ) : (
+              <ContextSplitCard split={contextSplit} t={t} />
+            ))}
+          {contextSplit == null && weapons != null && (
+            <FavoriteWeaponBlock weapons={weapons} slots={weaponSlots} t={t} locale={locale} />
+          )}
           {showRanked && ranked != null && <RankedBlock ranked={ranked} t={t} locale={locale} />}
         </div>
       )}

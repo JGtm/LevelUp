@@ -32,6 +32,8 @@ const NARRATIVE_PAIRS: Array<[SemanticToken, SemanticToken]> = [
   ['narrative-remontada', 'narrative-remontada-text'],
   ['narrative-debacle', 'narrative-debacle-text'],
   ['narrative-contre-remontada', 'narrative-contre-remontada-text'],
+  ['narrative-sabordage', 'narrative-sabordage-text'],
+  ['narrative-abnegation', 'narrative-abnegation-text'],
 ]
 
 const WCAG_AA_NORMAL = 4.5

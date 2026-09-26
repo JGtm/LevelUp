@@ -1,3 +1,4 @@
+/* eslint-disable max-lines -- 2026-09-06 (lot v2 D.11, decision utilisateur 4) : table de donnees (une entree par cle, aucun embranchement) : la decouper repartirait la meme table sur plusieurs fichiers a tenir en phase, sans retirer une seule decision au lecteur. */
 /**
  * Types de l'API LevelUp.
  *
@@ -42,6 +43,12 @@ export type TitleSummary = components['schemas']['TitleSummary']
 export type BootstrapResponse = components['schemas']['BootstrapResponse']
 
 export type PlayersListResponse = components['schemas']['PlayersListResponse']
+
+// Présence en jeu (GET /presence) — sélecteur de joueur du shell.
+// `players` est typé `PlayerPresence[] | null` par le contrat généré (toute
+// tranche Go se traduit ainsi) : les consommateurs comblent à la frontière.
+export type PresenceSnapshot = components['schemas']['PresenceSnapshot']
+export type PlayerPresence = components['schemas']['PlayerPresence']
 
 export interface SessionContextRequest {
   player_slug?: string | null
@@ -131,29 +138,12 @@ export interface FilterMatchIdsResponse {
 // Setup / Auth (Slice 1)
 // ---------------------------------------------------------------------------
 
-export interface SetupAuthInfo {
-  has_client_id: boolean
-  has_refresh_token: boolean
-  has_msal_cache: boolean
-  preferred_method: 'refresh_token' | 'device_code' | 'unknown'
-}
-
 export interface SetupPlayerInfo {
   has_any_profile: boolean
   default_player_slug: string | null
 }
 
 export type SetupNextStep = 'choose_mode' | 'auth' | 'player' | 'initial_sync' | 'smoke_test' | 'done'
-
-// @deprecated sprint 29 — GET /setup/status est un artefact mort (absent FastAPI + Go).
-// Conserver temporairement pour ne pas casser les imports existants.
-// À supprimer avec useSetupStatus() au Sprint 32.
-export interface SetupStatusResponse {
-  needs_setup: boolean
-  auth: SetupAuthInfo
-  player: SetupPlayerInfo
-  next_blocking_step: SetupNextStep
-}
 
 export interface DeviceFlowStartResponse {
   attempt_id: string
@@ -373,7 +363,6 @@ export interface BackfillStartRequest {
   personal_scores?: boolean
   performance_scores?: boolean
   aliases?: boolean
-  weapons?: boolean
   lusr?: boolean
   /** Re-fetch CSR par-match via GetMatchSkill (RankRecap). Idempotent
    *  par défaut ; force_rescan=true → re-fetche tous les matchs ranked. */
@@ -415,11 +404,15 @@ export interface SettingsResponse {
   spnkr_auto_sync_interval_minutes: number
   watcher_presence_enabled: boolean
   watcher_subscribed_players: string[]
-  friend_gamertags: string[]
   // --- Règles de sessions ---
   session_gap_minutes: number
   session_split_on_ranked_change: boolean
   session_team_change_mode: 'ignore' | 'group' | 'friends'
+  // --- Rejeu 2D : fenêtre de rétention des artefacts (0 = illimité) ---
+  replay_retention_months: number
+  // --- Rejeu 2D : où se construit un rejeu. '' = défaut de l'instance
+  // (ouvrier en production, ce serveur en développement). ---
+  replay_build_location: '' | 'local' | 'worker' | 'off'
   // --- Règles de badges narratifs ---
   outcome_exclude_bot_matches_from_badges: boolean
   outcome_exclude_bot_matches_from_records: boolean
@@ -432,6 +425,18 @@ export interface SettingsResponse {
   coach_proactive_mode: boolean
   // --- Fournisseur d'authentification (admin uniquement) ---
   auth_provider: string
+  // --- Verrou d'instance (admin uniquement, ADR 0035 D5) ---
+  // Instance fermée : un compte Xbox inconnu ne peut plus créer de compte ni de
+  // profil. Le serveur l'expose (domain.SettingsResponse:87) et accepte son
+  // PATCH sous rôle admin depuis le verrou centralisé — il manquait ici, donc
+  // aucune page ne pouvait le proposer (la prod a dû être verrouillée à la main).
+  instance_locked: boolean
+  // --- Sons d'armes du rejeu 2D (réglages d'instance, page admin) ---
+  // Les .wav extraits du jeu sont purs : ces deux pourcentages rejouent côté app ce que
+  // le moteur fait à chaque coup. Variation 100 = fourchettes du jeu telles quelles ;
+  // distance 0 = son pur, aucun traitement dans le chemin du signal.
+  replay_sound_variation_percent: number
+  replay_sound_distance_percent: number
 }
 
 export type UpdateSettingsRequest = Partial<
@@ -611,7 +616,8 @@ export interface MatchHistoryRow {
   start_time: string
   start_time_label: string
   outcome_code: number | null
-  outcome_label: string
+  /** Clé canonique d'issue (MT-06) : le web localise via useOutcomeLabel/useOutcomeMapping. */
+  outcome?: 'win' | 'loss' | 'tie' | 'dnf'
   score_label: string
   map_ui: string
   mode_ui: string
@@ -690,7 +696,8 @@ export interface ExplorerMatchRow {
   map_ui: string
   mode_ui: string
   playlist_label: string
-  outcome_label: string
+  /** Clé canonique d'issue (MT-06) : le web localise via useOutcomeLabel/useOutcomeMapping. */
+  outcome?: 'win' | 'loss' | 'tie' | 'dnf'
   outcome_code: number
   score_label: string
   is_with_friends: boolean
@@ -746,6 +753,9 @@ export interface ExplorerMatchRow {
   /** Dépassement réel du temps réglementaire en secondes (tooltip « Prolongation : +X »). */
   overtime_seconds?: number
   match_url?: string
+  /** Un artefact de rejeu 2D existe pour ce match → la ligne porte un lien vers la
+   *  page de rejeu. Absent/false = rien n'est rendu (jamais de lien vers un 404). */
+  has_replay?: boolean
   /** 0=none, 1=domination, 2=humiliation, 3=remontada, 4=débandade, 5=contre-remontada. */
   dominance_flag?: number
   /**
@@ -802,6 +812,8 @@ export interface ExplorerMatchesQueryRequest {
   map_names?: string[]
   mode_names?: string[]
   squad_scope?: 'solo' | 'squad' | ''
+  /** Présence d'un rejeu 2D : '' (tous) | 'with' | 'without'. Filtré côté Go. */
+  replay_scope?: 'with' | 'without' | ''
   match_id_search?: string
   /** Whitelist exacte de match_id (mode Joueur : matchs en commun). */
   match_ids?: string[]
@@ -823,7 +835,8 @@ export interface ExplorerCommonMatchRow {
   mode_ui: string
   were_teammates: boolean
   player_outcome: number
-  outcome_label: string
+  /** Clé canonique d'issue (MT-06) : le web localise via useOutcomeLabel/useOutcomeMapping. */
+  outcome?: 'win' | 'loss' | 'tie' | 'dnf'
   kills: number
   deaths: number
   kda: number
@@ -899,6 +912,7 @@ export type ExplorerBriefingContextSplit = components['schemas']['ExplorerBriefi
 export type ExplorerBriefingContextGroup = components['schemas']['ExplorerBriefingContextGroup']
 export type ExplorerBriefingStreaks = components['schemas']['ExplorerBriefingStreaks']
 export type ExplorerBriefingDominance = components['schemas']['ExplorerBriefingDominance']
+export type ExplorerBriefingWeapons = components['schemas']['ExplorerBriefingWeapons']
 
 // ---------------------------------------------------------------------------
 // Accueil Mission Control (Slice 5)
@@ -972,10 +986,14 @@ export interface HighlightItem {
 
 export interface RecentMatchItem {
   match_id: string
-  title: string
   detail: string
   started_at: string | null
-  outcome_label: string
+  // outcome_label supprimé côté Go le 2026-09-07 (D4/D5, lot Q4) : 0 lecteur ici.
+  // title (composite Go "<mot d'issue> · <carte>") supprimé le 2026-09-07 (lot M5
+  // L2) : seul lecteur (MatchCard.buildMatchHeading) ne s'en servait qu'en DERNIER
+  // repli, quand map_ui ET mode_ui manquaient tous les deux. outcome_tone EST la
+  // clé canonique de l'issue (win|loss|tie|dnf, cf. outcomes.toml) — à résoudre
+  // via useOutcomeLabel si un lecteur en a besoin un jour.
   outcome_tone: string
   score_label?: string | null
   narrative_badges?: string[]
@@ -1025,6 +1043,22 @@ export interface RecentMatchItem {
   session_label?: string | null
   /** True si la playlist est classée (CSR officiel). Source : match_registry.is_ranked. */
   is_ranked?: boolean | null
+  /** Un artefact de rejeu 2D existe pour ce match : la tuile porte le lien vers la page
+   *  de rejeu (résolu côté back en un listing de dossier par requête, cf. Explorer). */
+  has_replay?: boolean
+  /** Part des frags du joueur assistés par un coéquipier sur CE match, par tranche de
+   *  part de dégâts (le sens « reçues » de la page Relations, sur un seul match). Absent
+   *  quand le match n'a aucune ligne mesurée pour le joueur : la tuile n'affiche rien —
+   *  jamais un « 0 » fabriqué pour une mesure absente. */
+  assisted_frags?: MatchAssistedFrags | null
+}
+
+/** Miroir de `domain.MatchAssistedFrags` (Go). /pages/home n'a pas encore de schéma
+ *  OpenAPI dérivé (TODO Sprint 32 du contrat) : ce DTO est écrit à la main, comme
+ *  RecentMatchItem, sur l'AssistTiers généré (route Relations). */
+export interface MatchAssistedFrags {
+  frags_measured: number
+  received: AssistTiers
 }
 
 export type MatchCitationSnippet = components['schemas']['MatchCitationSnippet']
@@ -1161,6 +1195,10 @@ export type RelationInsight = components['schemas']['RelationInsight']
 export type RelationRef = components['schemas']['RelationRef']
 // RelationCSR : snapshot CSR courant de la bête noire (lot relations-G, best-effort).
 export type RelationCSR = components['schemas']['RelationCSR']
+// RelationAssists : assistances échangées avec un joueur (matchs mesurés en même équipe),
+// découpées par tranche de part (AssistTiers). Absent = aucun match mesuré ensemble.
+export type RelationAssists = components['schemas']['RelationAssists']
+export type AssistTiers = components['schemas']['AssistTiers']
 export type RelationsOverview = components['schemas']['RelationsOverview']
 export type RelationsPageResponse = components['schemas']['RelationsPageResponse']
 
@@ -1215,6 +1253,16 @@ export type TeammatesQueryRequest = components['schemas']['TeammatesQueryRequest
 export type SessionLabelEntry = components['schemas']['SessionLabelEntry']
 
 export type SessionLabelsList = components['schemas']['SessionLabelsList']
+
+/**
+ * `GET /players/{slug}/pages/teammates/sessions` (lot perf L4b, 2026-09-23) : les deux champs
+ * `composition_sessions` et `latest_composition_session` de `TeammatesPageResponse`, mêmes
+ * valeurs pour la même composition et la même option composition exacte, SANS calculer la
+ * page — la page Escouade s'y ancre avant d'envoyer sa requête lourde. Les deux champs sont
+ * toujours présents (liste vide, chaîne vide) ; le contrat déclare la liste nullable (tranche
+ * Go) : la lire par `?? []`.
+ */
+export type CompositionSessionsResponse = components['schemas']['CompositionSessionsResponse']
 
 export interface SquadTimeseriesPoint {
   period_label: string
@@ -1320,12 +1368,89 @@ export type MedalDigestItem = components['schemas']['MedalDigestItem'] & {
 
 export type MedalDigestEntry = components['schemas']['MedalDigestEntry']
 
+/** Ligne du tableau « qui assiste qui » de l'escouade (assistant → tueur assisté). */
+export type SquadAssistPair = components['schemas']['SquadAssistPair']
+
+/**
+ * Bloc « assistances » de l'escouade : les paires internes ET la couverture de la
+ * mesure (`matches_measured` / `matches_total`). Ré-export DIRECT du contrat, sans
+ * réécrire le `pairs: […] | null` : le tableau nullable est la forme réelle du fil.
+ */
+export type SquadAssistPairs = components['schemas']['SquadAssistPairs']
+
+/**
+ * L'ÉCHANGE de l'escouade — une mort vengée dans les 5 s. Ré-exports DIRECTS du
+ * contrat, sans réécrire les `… | null` : le tableau nullable est la forme réelle du
+ * fil (toute tranche Go sort ainsi), et la combler ici la ferait mentir.
+ *
+ * `couverture` / `habituel` sont des `Couverture` (taux + brut + par match + N +
+ * échantillon faible) : un taux ne voyage jamais seul.
+ */
+export type SquadEchange = components['schemas']['SquadEchange']
+export type SquadEchangeCell = components['schemas']['SquadEchangeCell']
+export type SquadEchangeBucket = components['schemas']['SquadEchangeBucket']
+export type SquadEchangeJoueur = components['schemas']['SquadEchangeJoueur']
+
+/**
+ * Le taux d'échange du camp sur UNE session (soirée) — la série de la carte « Taux
+ * d'échange par session ». Même mesure que `SquadEchange.couverture`, découpée par soirée.
+ */
+export type SquadEchangeSessionPoint = components['schemas']['SquadEchangeSessionPoint']
+
+/**
+ * Le nuage « Pourquoi la vengeance ne vient pas » (`SquadEchange.nuage_isolement`) : UN
+ * POINT PAR MORT (`morts`, distance au coéquipier visible rapportée à la portée du radar ×
+ * délai avant que le tueur tombe) et un repère médian par joueur (`reperes`). `part_isolee`
+ * et `couverture` du repère sont des `Couverture` (taux + brut + par match + N +
+ * échantillon faible), jamais un float nu.
+ *
+ * TROIS ÉTATS EXCLUSIFS PAR MORT, tranchés par le SERVEUR (décision du 2026-09-22 — la
+ * règle des 5 s vaut partout) : `vengee` (le tueur est tombé DANS `fenetre_ms`, la seule
+ * vraie riposte), `hors_fenetre` (il est tombé après : `delai_ms` est publié pour que le
+ * point reste visible, mais ce n'est pas une riposte), ou ni l'un ni l'autre (aucune
+ * riposte connue, pas de délai). `fenetre_ms` porte la fenêtre : ne jamais coder 5 000 ici.
+ */
+export type SquadNuageIsolement = components['schemas']['SquadNuageIsolement']
+export type SquadIsolementMort = components['schemas']['SquadIsolementMort']
+export type SquadIsolementRepere = components['schemas']['SquadIsolementRepere']
+
+/**
+ * La PORTÉE DES ENGAGEMENTS de tous les joueurs d'un match (lot N2, 2026-09-21) : une
+ * médiane de distance de frag par (match, joueur), et la médiane du LOBBY du match — qui se
+ * calcule sur les frags, jamais comme la moyenne des médianes par joueur. `lobby_delta_m`
+ * est l'écart signé en mètres : c'est lui qui neutralise la carte et le mode. `measured`
+ * accompagne obligatoirement chaque médiane (la couverture des positions rend les effectifs
+ * inégaux d'un joueur à l'autre).
+ */
+export type MatchRangeBlock = components['schemas']['MatchRangeBlock']
+export type MatchRangeProfile = components['schemas']['MatchRangeProfile']
+export type MatchRangePlayer = components['schemas']['MatchRangePlayer']
+
+// ─── lot U (2026-09-22, D23-4 / D23-a) : la PÉRIODE DE RÉFÉRENCE de la portée ─────────
+// `SessionPageResponse.range_reference` porte les mêmes profils que `range_profiles`, du
+// SEUL joueur consulté, sur les matchs du FILTRE de la page (même référence que l'habituel
+// des usages) — plus les deux bandes de rôle (`role_low_m` / `role_high_m`, tiers 1/3 et
+// 2/3 des matchs à >= 5 frags mesurés) et `period_median_delta_m`. Les trois sont ABSENTS
+// ENSEMBLE sous 3 matchs pleins : pas de bandes fabriquées. Un SEUL bloc pour les deux
+// colonnes du drawer — la référence dépend du filtre, pas de la session affichée.
+// `TimeseriesPageResponse.range_profiles` est, lui, un `MatchRangeBlock` ordinaire sur la
+// fenêtre de la page (joueur consulté seul, lobby entier pour la médiane).
+export type RangeReferenceBlock = components['schemas']['RangeReferenceBlock']
+
+// DÉNIVELÉ (proposition E1, 2026-09-22) : `MatchRangePlayer` porte désormais, à côté de sa
+// portée, `elevation_median_m` (médiane du dénivelé SIGNÉ de ses frags mesurés du match —
+// `killer_z - victim_z`, positif = fragué depuis le haut) et `elevation_lobby_delta_m`
+// (écart à `lobby_elevation_median_m` du profil, médiane du dénivelé de TOUS les frags
+// mesurés du match). Les trois sont OPTIONNELS : absents = pas de dénivelé mesuré ; un 0 m,
+// lui, est une mesure (« à plat »). Servis partout où `MatchRangeProfile` l'est — Escouade,
+// Sessions (session, comparée, référence) et Timeseries.
+
 export interface TeammatesPageResponse {
   options: TeammateOption[]
   teammates: TeammateRow[]
   total_matches: number
   session_labels: SessionLabelsList
-  /** Nombre total d'amis configurés (settings.friend_gamertags). Sert au label UI "parmi N amis". */
+  /** Nombre total d'amis configurés du joueur. Sert au label UI "parmi N amis". */
   friends_count: number
   timeseries?: SquadTimeseriesPoint[]
   map_breakdown?: MapBreakdownRow[]
@@ -1348,6 +1473,14 @@ export interface TeammatesPageResponse {
   native_kill_mechanics?: SquadKillMechanics
   /** Premiers frag/mort PAR MATCH, une série par joueur de l'escouade (onglet Dynamique). */
   first_blood?: FirstBloodPlayerSeriesDTO[]
+  /** Paires (assistant → tueur assisté) INTERNES à l'escouade + couverture de la
+   *  mesure. Absent quand aucun match de la sélection n'a d'assistance mesurée. */
+  assist_pairs?: SquadAssistPairs
+  /** L'ÉCHANGE (mort vengée dans les 5 s) : matrice « qui échange pour qui » +
+   *  KPI sur Synergies, distribution du délai sur Dynamique. ABSENT quand le titre
+   *  ne nomme pas le tueur de chaque mort, ou quand aucun match de la sélection ne
+   *  porte de journal des morts — une omission, jamais des zéros. */
+  echange?: SquadEchange
   /** Header alimente <SessionBriefing> (mode solo si pas de coéquipier sélectionné, mode squad sinon). */
   header?: import('@/features/squad/v2/types').SquadHeader
   /** Gamertag du joueur principal — sert à identifier le card "moi" dans header.player_cards. */
@@ -1364,6 +1497,36 @@ export interface TeammatesPageResponse {
   /** Chargements best-effort qui ont échoué : les nombres affichés sont partiels.
    *  Non vide => l'UI doit le signaler (fin des chiffres non reproductibles). */
   data_issues?: DataIssue[]
+  /**
+   * Bloc « servi ou gâché » de l'équipement (PLAN_EQUIPEMENT_GACHIS_2026-09-09, E6
+   * puis E6.1bis) — variante comptes (P9), une ligne par coéquipier SÉLECTIONNÉ.
+   *
+   * ÉCART DE CONTRAT CORRIGÉ (E6.1bis, 2026-09-09) : E6.1 avait publié ce bloc sur
+   * `domain.SquadPageV2Response` (`GET /pages/squad/v2`), une réponse que la page
+   * Escouade réelle (`SquadLayout`/`useTeammates`) ne fetch jamais. E6.1bis a
+   * déplacé la publication vers `TeammatesPageResponse` (`POST /pages/teammates`,
+   * le SEUL endpoint que la page appelle), câblée par
+   * `TeammatesService.WithEquipmentUsage` (`internal/service/teammates/teammates_service_usage.go`).
+   * Absent = scope filtré sans match ; `available:false` avec raison machine pour
+   * un titre sans `film.usage_summary` (même contrat que les autres blocs
+   * best-effort).
+   */
+  /**
+   * Profils de PORTÉE par match (lot N2) : tous les joueurs mesurés de chaque match, leur
+   * médiane et leur écart à la médiane du lobby. Alimente la carte « Rôles de portée » de
+   * l'onglet Synergies. Absent = aucun film décodé sur la sélection.
+   */
+  range_profiles?: MatchRangeBlock
+  equipment_usage?: EquipmentUsageBlock
+  /**
+   * Bloc « formes retenues » (artefact 2ec1b8eb, lot D2 du 2026-09-13) — la
+   * MATIÈRE des dix-neuf cartes des trois blocs (usages d'équipement, contrôle
+   * des armes spéciales, objectifs) : une ligne par joueur et par match, les
+   * deux camps. Publié par `TeammatesService.WithSquadFormes` sur le MÊME scope
+   * filtré que `equipment_usage`. Absent = scope sans match ; `available:false`
+   * avec raison machine pour un titre sans `film.usage_summary`.
+   */
+  formes_retenues?: SquadFormesBlock
 }
 
 /** Dégradation d'un chargement best-effort. `code` est une clé stable traduite
@@ -1462,7 +1625,18 @@ export interface SynthesisPageResponse {
   // KPI objectifs (cumul CTF/Zones/Oddball sur le scope) — omis pour un titre sans
   // capability match.objective.stats (Halo 5) ou un scope sans match à objectif.
   objective_stats?: ObjectiveAggregate | null
+  // Records de distance par arme (le frag mesuré le plus lointain de chaque arme, identifié
+  // pour ouvrir le rejeu à cet instant) — omis pour un titre sans positions par kill (Halo 5)
+  // ou un scope sans frag mesuré. Cf. PLAN_RECORDS_DISTANCE_2026-09-20.md.
+  weapon_records?: SynthesisWeaponRecords | null
 }
+
+// Records de distance par arme : le bloc, une ligne, le frag du record, une arme écartée.
+// Re-exports du contrat OpenAPI (`domain.SynthesisWeaponRecords`), jamais un mirror manuel.
+export type SynthesisWeaponRecords = components['schemas']['SynthesisWeaponRecords']
+export type WeaponDistanceRecordRow = components['schemas']['WeaponDistanceRecordRow']
+export type WeaponRecordFrag = components['schemas']['WeaponRecordFrag']
+export type WeaponExcludedFromRecords = components['schemas']['WeaponExcludedFromRecords']
 
 // Cumul des stats objectifs (CTF/Zones/Oddball) sur un scope — partagé Synthèse/Escouade.
 export type ObjectiveAggregate = components['schemas']['ObjectiveAggregate']
@@ -1471,6 +1645,26 @@ export type SynthesisWeaponKillEntry = components['schemas']['SynthesisWeaponKil
 
 // Précision par arme — accuracy en unité 0..1 (le composant multiplie par 100).
 export type SynthesisWeaponAccuracyEntry = components['schemas']['SynthesisWeaponAccuracyEntry']
+
+// Portée par arme (frags ET morts) — le bloc entier, ses lignes, un côté, une arme sous
+// le seuil de publication, et le proxy d'entame. Re-exports du contrat OpenAPI : la forme
+// est celle du service (`domain.SynthesisWeaponRange`), jamais un mirror manuel.
+export type SynthesisWeaponRange = components['schemas']['SynthesisWeaponRange']
+export type WeaponRangeRow = components['schemas']['WeaponRangeRow']
+export type WeaponRangeSide = components['schemas']['WeaponRangeSide']
+export type WeaponBelowThreshold = components['schemas']['WeaponBelowThreshold']
+// Le proxy d'entame et son delta apparié : `opening` est OMIS quand aucune entame n'est
+// mesurée, `opening.delta` quand aucun frag n'a pu être apparié à la sienne. Les deux
+// absences disent deux choses différentes et l'UI les distingue (cf. plan, D5).
+export type SynthesisOpening = components['schemas']['SynthesisOpening']
+export type SynthesisOpeningDelta = components['schemas']['SynthesisOpeningDelta']
+
+// Nuage « distance x denivele » des engagements (decision D25, proposition T5) — un point
+// par frag mesure, des deux cotes, plus les quartiles par cote et la couverture. Le
+// denivele est DEJA SIGNE du point de vue du joueur cote Go : le web ne le retouche jamais.
+export type ElevationCloudBlock = components['schemas']['ElevationCloudBlock']
+export type ElevationPoint = components['schemas']['ElevationPoint']
+export type ElevationSideSummary = components['schemas']['ElevationSideSummary']
 
 // Répartition hiérarchique des frags v2 (sunburst classe→rôle) — title-agnostic,
 // partagé par Synthesis/Match view/Timeseries/Sessions. Cf. domain/frag_distribution.go.
@@ -1658,6 +1852,72 @@ export interface MatchHighlightEvent {
   actor_gamertag?: string | null
   target_xuid: string | null
   weapon_id: number | null
+  /**
+   * Équipe de l'acteur (le TUEUR sur un event `kill`), résolue côté backend depuis le
+   * scoreboard. Absent si l'acteur n'y figure pas. Sert à colorer le nom et l'icône avec
+   * la couleur d'IDENTITÉ de l'équipe (Eagle bleu / Cobra rouge), la même que l'en-tête
+   * du scoreboard — pas un allié/ennemi binaire.
+   */
+  actor_team_id?: number | null
+  /**
+   * L'ARME DU KILL. Peuplée seulement quand la source de dégât du kill est connue ET
+   * identifiée sans ambiguïté par le backend. Absente sinon : le feed affiche le kill
+   * sans icône, et c'est le repli assumé — jamais l'icône d'une autre arme.
+   *
+   * `weapon_label` est un nom PROPRE (BR75, Needler), pas un libellé traduit : il ne
+   * passe pas par i18n.ts. Vide pour les sources sans nom propre (mêlée, grenade), qui
+   * gardent leur icône.
+   *
+   * `weapon_image_tinted` dit que l'image est un MASQUE à teindre (cf. WeaponIcon) —
+   * ne jamais le déduire de la forme de l'URL.
+   */
+  weapon_key?: string | null
+  weapon_label?: string | null
+  weapon_image_url?: string | null
+  weapon_image_tinted?: boolean | null
+  /**
+   * Le dégât fatal était-il un tir à la tête ? Peuplé ssi la source de dégât est connue
+   * ET non ambiguë — INDÉPENDAMMENT des champs `weapon_*` ci-dessus (le headshot ne
+   * dépend d'aucune résolution d'icône). Absent = non mesurable, JAMAIS false (G.1,
+   * 2026-08-30). Filtre backend STRICT : `HeadshotMultiplier` n'en fait jamais partie.
+   */
+  headshot?: boolean | null
+  /**
+   * L'ASSISTANCE du kill, lue du film — TROIS états qui ne se confondent JAMAIS :
+   * absent/'' = ON NE SAIT PAS (aucun kill-event apparié) ; 'none' = MESURÉ, pas
+   * d'assistant ; 'named' = assistant nommé (+ parts de dégâts quand elles sont lues).
+   * Ne jamais traiter l'absence comme « pas d'assistant » : c'est le mensonge que cette
+   * énumération existe pour empêcher.
+   *
+   * Les parts sont des % ENTIERS, NON bornés à 100 (mesures jusqu'à 228 — dégât
+   * excédentaire, hypothèse non établie). Absentes = non mesurées, jamais 0.
+   */
+  assist_state?: string | null
+  assist_gamertag?: string | null
+  assist_team_id?: number | null
+  killer_damage_pct?: number | null
+  assist_damage_pct?: number | null
+  /**
+   * La VICTIME du kill, jointe côté backend depuis killer_victim_pairs par la clé
+   * (tueur, instant) avec garde d'unanimité : deux victimes distinctes sur la même
+   * clé (double kill au même millisecond) n'en nomment AUCUNE. Absents quand la
+   * paire manque — jamais une victime au hasard.
+   */
+  victim_xuid?: string | null
+  victim_gamertag?: string | null
+  victim_team_id?: number | null
+  /**
+   * L'IDENTITÉ DE LA MÉDAILLE (events `medal` uniquement). medal_name est le nom
+   * ANGLAIS lu dans le film (quantité mesurée) ; label/description sont résolus
+   * locale-aware côté backend (medal_definitions), medal_image_url est le visuel du
+   * référentiel. Résolution absente → seul medal_name voyage : le front l'écrit en
+   * toutes lettres, jamais le visuel d'une autre médaille.
+   */
+  medal_name?: string | null
+  medal_name_id?: number | null
+  medal_label?: string | null
+  medal_description?: string | null
+  medal_image_url?: string | null
 }
 
 export type MatchTugOfWarBin = components['schemas']['MatchTugOfWarBin']
@@ -1668,6 +1928,34 @@ export type MatchKDTimelinePoint = components['schemas']['MatchKDTimelinePoint']
 
 /** Paire killer→victim agrégée pour le chart match_view.18 (antagonistes). */
 export type MatchKillerVictimPair = components['schemas']['MatchKillerVictimPair']
+
+/** Paire (assistant → tueur assisté) agrégée sur le match. */
+export type MatchAssistPair = components['schemas']['MatchAssistPair']
+
+/**
+ * Bloc « assistances » : les paires ET la portée de leur mesure.
+ *
+ * Ré-export DIRECT du contrat, sans réécriture du `pairs: […] | null` : le tableau
+ * nullable est la forme réelle du fil (huma sérialise toute tranche Go ainsi) et le
+ * masquer ferait porter au composant un `undefined` silencieux. `measured_deaths` à 0
+ * = « non mesuré » ; `pairs` vide avec `measured_deaths` > 0 = « aucune assistance ».
+ */
+export type MatchAssistPairs = components['schemas']['MatchAssistPairs']
+
+/**
+ * POC (LOT G.3, 2026-08-30) : une arme, ses kills mesurés et sa distance
+ * tueur-victime pour UN joueur sur CE match. `measured_kills` est TOUJOURS
+ * ≤ au total de kills à l'arme (couverture positions mesurée à 75,8 % plancher,
+ * jamais 100 %).
+ */
+export type MatchKillDistanceWeapon = components['schemas']['MatchKillDistanceWeapon']
+
+/**
+ * POC (LOT G.3) : le regroupement par joueur (xuid) des armes mesurées. Pas de
+ * gamertag ici — résolu côté front depuis le scoreboard déjà chargé (même
+ * pattern que MatchObjectivesSection).
+ */
+export type MatchKillDistancePlayer = components['schemas']['MatchKillDistancePlayer']
 
 export interface MatchCombatTab {
   weapon_kills: MatchWeaponKill[]
@@ -1680,6 +1968,11 @@ export interface MatchCombatTab {
   nemesis_duels: MatchNemesisRow[]
   /** Paires killer→victim agrégées (match_view.18). Vide si killer_victim_pairs absent. */
   killer_victim?: MatchKillerVictimPair[]
+  /**
+   * Paires (assistant → tueur assisté) + portée de la mesure. ABSENT quand le match
+   * n'a aucune ligne de film : l'UI ne rend alors rien.
+   */
+  assist_pairs?: MatchAssistPairs
   /** Phase 1 MV2 : 8 rôles narratifs typés via narrative.IdentifyImpactRoles. */
   impact_roles?: MatchViewImpactRole[]
   /** Phase 1 MV2 : cadence intra-match (ChartSeries<ChartPointStacked>). */
@@ -1689,7 +1982,54 @@ export interface MatchCombatTab {
    * match. Nil si le viewer n'a aucun kill (le front rend null). Cf. P3.
    */
   frag_distribution?: FragDistribution
+  /**
+   * POC (LOT G.3, 2026-08-30, plan retours-utilisateur §3bis DEC-8) : kills
+   * mesurés et distance tueur-victime moyenne par arme, PAR JOUEUR (pas
+   * seulement le viewer), pour ce match. Absent/vide si aucun kill n'a de
+   * position mesurée — dégradation propre, jamais d'erreur.
+   */
+  kill_distance_by_weapon?: MatchKillDistancePlayer[]
+  /**
+   * Bloc « Riposte » (D22-2, 2026-09-21) : par mort le couple (victime, vengeur, délai) et
+   * le camp de la victime, par joueur ses deux comptes. ABSENT quand le match n'a aucune
+   * ligne de journal — l'UI nomme alors l'état, elle ne disparaît pas.
+   */
+  riposte?: MatchRiposteBlock
+  /**
+   * Bloc « Dénivelé » (D24, 2026-09-22) : un point par frag et par mort du joueur consulté,
+   * distance × dénivelé signé de SON côté. ABSENT quand le match n'a aucune position
+   * mesurée — la carte ne s'affiche pas, elle n'affiche pas un nuage vide.
+   */
+  elevation?: MatchElevationBlock
 }
+
+/**
+ * Bloc « Dénivelé » de l'onglet Combat. `kills` = mes engagements (les deux côtés, chacun
+ * portant son `side`) ; `lobby` = les frags des autres, côté tueur, fond de comparaison du
+ * bouton « comparer au lobby » ; `measured_kills` / `total_kills` = la réserve de couverture.
+ */
+export type MatchElevationBlock = components['schemas']['MatchElevationBlock']
+
+/**
+ * Un engagement mesuré. `delta_z_m` est signé DU CÔTÉ DU JOUEUR CONSULTÉ : positif = il était
+ * au-dessus, pour un frag COMME pour une mort. `time_ms` est l'horloge du MATCH (le rejeu
+ * s'ouvre avec `?t=<time_ms>&clock=match`).
+ */
+export type MatchElevationKill = components['schemas']['MatchElevationKill']
+
+/**
+ * Bloc « Riposte » de l'onglet Combat. Ré-export DIRECT du contrat (tableaux nullables
+ * compris : huma sérialise ainsi toute tranche Go). `measured_deaths` est le nombre de
+ * morts lues au journal — le DÉNOMINATEUR du pied de carte, jamais un dénominateur de taux
+ * (D21 : sur un match, des comptes).
+ */
+export type MatchRiposteBlock = components['schemas']['MatchRiposteBlock']
+
+/** Une mort du match et sa riposte (vengeur + délai) quand elle a eu lieu dans la fenêtre. */
+export type MatchRiposteDeath = components['schemas']['MatchRiposteDeath']
+
+/** Les deux comptes d'un joueur : ses morts vengées (SUBI) et ses ripostes (PORTÉ). */
+export type MatchRiposteePlayer = components['schemas']['MatchRiposteePlayer']
 
 /** MV2 : rôle narratif attribué (1 entrée par joueur × rôle). */
 export type MatchViewImpactRole = components['schemas']['MatchViewImpactRole']
@@ -1732,6 +2072,15 @@ export interface MatchScoreboardRow {
   is_me: boolean
   /** True si participant détecté comme bot (xuid au format "bid(N.0)"). */
   is_bot?: boolean
+  /**
+   * Participation (API PlayerParticipationInfo) : QUI a rejoint/quitté EN COURS de
+   * partie, et QUAND (RFC3339 UTC). Absents sur les matchs d'avant les colonnes — le
+   * rejeu dérive alors la présence des bornes de vie du film (presenceFeed.ts).
+   */
+  joined_in_progress?: boolean | null
+  left_in_progress?: boolean | null
+  first_joined_time?: string | null
+  last_leave_time?: string | null
   rank: number | null
   score: number | null
   kills: number | null
@@ -1755,7 +2104,8 @@ export interface MatchScoreboardRow {
   assassination_kills?: number | null
   ground_pound_kills?: number | null
   shoulder_bash_kills?: number | null
-  outcome_label: string
+  /** Clé canonique d'issue (MT-06) : le web localise via useOutcomeLabel/useOutcomeMapping. */
+  outcome?: 'win' | 'loss' | 'tie' | 'dnf'
   /** V7 — combat yield */
   top_weapon_id?: number | null
   top_weapon_label?: string | null
@@ -1799,7 +2149,8 @@ export interface MatchTeamTab {
   encounters: MatchEncounterRow[]
 }
 
-export type AssociatedMediaItem = components['schemas']['AssociatedMediaItem']
+/** Un media associe a un match — la forme REELLEMENT servie dans `media_tab.media_items`. */
+export type MatchAssociatedMedia = components['schemas']['MatchAssociatedMedia']
 
 export type MatchMediaTab = components['schemas']['MatchMediaTab']
 
@@ -1961,6 +2312,63 @@ export interface SessionPageRequest {
 
 export type SessionPageResponse = components['schemas']['SessionPageResponse']
 
+// ─── Vague 3 (D22) : sections transverses Riposte / Appui / Portée ────────────────────
+// Contrat Go : internal/domain/coordination.go et internal/domain/match_range.go, servis
+// DANS la réponse de page existante (aucune requête de plus). `Couverture` est le même
+// type que côté Tactique (taux + brut + par match + N + drapeau d'échantillon faible) :
+// une seule définition, deux alias de lecture.
+// Les alias `CoordinationBlock` / `CoordinationMatchPoint` / `Couverture` sont poses en fin de
+// fichier (bloc du lot Q, partage par Sessions et Timeseries).
+// `MatchRangeBlock` / `MatchRangeProfile` / `MatchRangePlayer` (lot N2) sont déjà alias plus
+// haut, posés par le lot R pour l'Escouade : la page Sessions les lit tels quels.
+
+// ─── Chantier session-usage (S3) : bloc « usages d'équipement, socles et objectifs » ──
+// Contrat Go : internal/domain/session_usage.go — TOUT axe est NORMALISÉ (parts %,
+// cadences /10 min) ; les totaux bruts ne sont que des dénominateurs d'honnêteté.
+// Un champ ABSENT (undefined) est « non mesuré », JAMAIS un zéro.
+
+export type SessionUsageBlock = components['schemas']['SessionUsageBlock']
+/** Les prises de socle rangées par NIVEAU d'arme (base / terrain / puissance / bonus / non
+ *  classé). Publié par les deux blocs d'usage — page Sessions et bloc d'équipement. */
+export type SessionUsagePadTiersBlock = components['schemas']['SessionUsagePadTiersBlock']
+export type SessionUsageMetric = components['schemas']['SessionUsageMetric']
+export type SessionUsageOutcomes = components['schemas']['SessionUsageOutcomes']
+export type SessionUsageMatchPoint = components['schemas']['SessionUsageMatchPoint']
+export type SessionUsageSquadPlayer = components['schemas']['SessionUsageSquadPlayer']
+export type SessionUsageSquadShare = components['schemas']['SessionUsageSquadShare']
+export type SessionUsagePadFamily = components['schemas']['SessionUsagePadFamily']
+export type SessionUsagePowerup = components['schemas']['SessionUsagePowerup']
+export type SessionObjectivesBlock = components['schemas']['SessionObjectivesBlock']
+export type SessionObjectiveRoleMetric = components['schemas']['SessionObjectiveRoleMetric']
+export type SessionFlagGrabsNetBlock = components['schemas']['SessionFlagGrabsNetBlock']
+export type SessionObjectiveFamilyBlock = components['schemas']['SessionObjectiveFamilyBlock']
+
+// ─── PLAN_EQUIPEMENT_GACHIS_2026-09-09 (E5/E6) : bloc « servi ou gâché » au grain
+// PÉRIODE, publié avec la Synthèse et l'Escouade. Contrat Go :
+// internal/domain/equipment_usage.go. Variante COMPTES (décision P9) : l'axe des
+// barres est en objets pris, pas en pourcentage — voir usageCountsModel.ts.
+
+export type EquipmentUsageBlock = components['schemas']['EquipmentUsageBlock']
+export type EquipmentUsageFamilyLine = components['schemas']['EquipmentUsageFamilyLine']
+export type EquipmentUsagePlayerLine = components['schemas']['EquipmentUsagePlayerLine']
+export type EquipmentUsageParties = components['schemas']['EquipmentUsageParties']
+export type EquipmentUsageFriendCount = components['schemas']['EquipmentUsageFriendCount']
+
+// ─── Artefact « Les formes retenues » (2ec1b8eb, lot D2 du 2026-09-13) : la
+// matière des dix-neuf cartes de l'onglet Synergies. Contrat Go :
+// internal/domain/squad_formes.go. Le bloc ne porte AUCUN agrégat — les parts,
+// les parités et les étendues se calculent dans `features/squad/formes/model/`,
+// à l'endroit où elles s'affichent (quatre dénominateurs, six formes).
+
+export type SquadFormesBlock = components['schemas']['SquadFormesBlock']
+export type SquadFormesMatch = components['schemas']['SquadFormesMatch']
+export type SquadFormesLobbyPlayer = components['schemas']['SquadFormesLobbyPlayer']
+export type SquadFormesWeapon = components['schemas']['SquadFormesWeapon']
+export type SquadFormesWeaponPad = components['schemas']['SquadFormesWeaponPad']
+export type SquadFormesObjective = components['schemas']['SquadFormesObjective']
+export type SquadFormesObjectiveColumn = components['schemas']['SquadFormesObjectiveColumn']
+export type SquadFormesObjectivePlayer = components['schemas']['SquadFormesObjectivePlayer']
+
 // ─── Sprint 54-C : Compare joueur vs joueur ───────────────────────────────────
 
 export interface NormalizedPlayerStats {
@@ -2005,7 +2413,6 @@ export type CompareMetricRow = components['schemas']['CompareMetricRow']
 
 export interface CompareRequest {
   target_gamertag: string
-  filters?: FilterContextInput
 }
 
 export interface CompareResponse {
@@ -2019,7 +2426,26 @@ export interface CompareResponse {
   privacy_warning?: MatchPrivacyWarning | null
   /** C3.6 : indique si les données de joueur B sont partielles (champs null). */
   player_b_partial?: boolean
+  /**
+   * Profil d'armes des deux joueurs (plan .ai/PLAN_COMPARE_PROFIL_ARMES_2026-09-17.md).
+   * ADDITIF et absent quand il n'est pas lisible : titre sans registre d'armes, joueur B
+   * absent de la base partagée, câblage manquant.
+   *
+   * Typé DEPUIS LE GÉNÉRÉ, contrairement au reste de cette interface manuscrite : le champ
+   * neuf n'a aucune raison de re-diverger du contrat, et migrer l'interface entière est un
+   * lot à part (consigné en Découverte au plan).
+   */
+  weapons?: components['schemas']['CompareWeaponProfile']
 }
+
+/** Un côté du profil d'armes — le scope, les classes, la portée par rôle, le top 3. */
+export type CompareWeaponSide = components['schemas']['CompareWeaponSide']
+
+/** Une classe d'arme et la part des frags du joueur qu'elle porte. */
+export type CompareFragClass = components['schemas']['CompareFragClass']
+
+/** Une arme du top 3 : nom bilingue, frags, dimensions registre, icône. */
+export type CompareTopWeapon = components['schemas']['CompareTopWeapon']
 
 // ─── Sprint 54-B : Match Privacy ─────────────────────────────────────────────
 
@@ -2067,12 +2493,10 @@ export type AdminUserSummary = components['schemas']['AdminUserSummary']
 
 export type AdminInviteSummary = components['schemas']['AdminInviteSummary']
 
-// Base = schéma OpenAPI généré (source unique : code/created_by/created_at/
-// expires_at/used_at/used_by). On ajoute group_id (rattachement à un groupe,
-// live-fetch) tant que l'OpenAPI ne l'a pas régénéré.
-export type InviteCode = components['schemas']['InviteCode'] & {
-  group_id?: string
-}
+// Contrat GÉNÉRÉ depuis Huma : `group_id` (rattachement à un groupe) et
+// `join_url` (lien relatif /join?invite=, rendu par le serveur) y figurent
+// depuis 2026-09-15 — plus aucun champ à rajouter à la main.
+export type InviteCode = components['schemas']['InviteCode']
 
 // ---------------------------------------------------------------------------
 // Groupes / familles (accès mutuel aux données)
@@ -2210,7 +2634,7 @@ export type AdminInvariantsResponse = components['schemas']['AdminInvariantsResp
 
 export type DBContentionResponse = components['schemas']['DBContentionResponse']
 
-// ─── Admin — Santé des tokens (MSAL / XSTS / Refresh) ────────────────────────
+// ─── Admin — Santé des tokens (Accès / XSTS / Refresh) ───────────────────────
 // Miroir de domain.TokenHealthResponse (GET /admin/token-health).
 
 export type TokenStatus = 'ok' | 'expiring' | 'expired' | 'absent' | 'reauth'
@@ -2218,6 +2642,26 @@ export type TokenStatus = 'ok' | 'expiring' | 'expired' | 'absent' | 'reauth'
 export type PlayerTokenHealth = components['schemas']['PlayerTokenHealth']
 
 export type TokenHealthResponse = components['schemas']['TokenHealthResponse']
+
+// ─── Admin — Annuaire des joueurs (ADR 0035) ─────────────────────────────────
+// Miroirs de domain.AdminIdentitiesResponse (GET /admin/identities). Une ligne
+// par identité (xuid), avec ce que chacun des quatre registres en sait.
+// `xuid` peut être vide : un dossier joueur orphelin ou un profil sans identité
+// Xbox résolue reste VISIBLE, c'est même la raison d'être de cette vue.
+
+export type IdentityProfileRef = components['schemas']['ProfileRef']
+
+export type IdentityAccountRef = components['schemas']['AccountRef']
+
+export type IdentityTokenRef = components['schemas']['TokenRef']
+
+export type IdentityOrphanDirRef = components['schemas']['OrphanDirRef']
+
+export type IdentityAnomaly = components['schemas']['IdentityAnomaly']
+
+export type IdentityRecord = components['schemas']['IdentityRecord']
+
+export type AdminIdentitiesResponse = components['schemas']['AdminIdentitiesResponse']
 
 // ─── Admin — Dashboard monitoring ─────────────────────────────────────────────
 // Miroirs de domain.AdminMonitoringOverview (GET /admin/monitoring/overview),
@@ -2252,8 +2696,6 @@ export interface PostSyncCounters {
   engagement_scores_computed: number
   engagement_coefs_updated: number
   sessions_assigned: number
-  weapon_kills_processed: number
-  weapon_kills_no_film: number
   citations_computed: number
   dominance_flags_computed: number
   /** Rattrapés par la convergence (étapes 1.54 / 1.56). */
@@ -2382,12 +2824,6 @@ export type AdminPerfStats = components['schemas']['AdminPerfStats']
 /** Agrégat d'un appel API Halo attribué à un joueur. Miroir de domain.PerfPlayerCallStats. */
 export type PerfPlayerCallStats = components['schemas']['PerfPlayerCallStats']
 
-/** Miroir de domain.AdminErrorStats — logs WARN/ERROR agrégés depuis le boot. */
-export type AdminErrorStats = components['schemas']['AdminErrorStats']
-
-/** Une erreur agrégée par (niveau, message). Miroir de domain.AdminErrorBucket. */
-export type AdminErrorBucket = components['schemas']['AdminErrorBucket']
-
 /** Détection persistée avec cycle de vie. Miroir de domain.MonitoringDetection. */
 export type MonitoringDetection = components['schemas']['MonitoringDetection']
 
@@ -2417,6 +2853,20 @@ export type FeatureHeartbeat = components['schemas']['FeatureHeartbeat']
 
 /** Réponse GET /admin/monitoring/crons. Miroir de domain.AdminCronsResponse. */
 export type AdminCronsResponse = components['schemas']['AdminCronsResponse']
+
+// ─── Admin — File de construction des rejeux + ouvriers ───────────────────────
+// Miroirs de domain.BuildQueueJob / BuildQueueWorker / AdminBuildQueueResponse
+// (GET /admin/monitoring/build-queue). L'état vit côté serveur : cette vue est
+// complète même quand l'ouvrier tourne sur une autre machine.
+
+/** Un job de la file durable de construction. */
+export type BuildQueueJob = components['schemas']['BuildQueueJob']
+
+/** Un ouvrier connu de la file (dernier battement, en ligne ou non). */
+export type BuildQueueWorker = components['schemas']['BuildQueueWorker']
+
+/** Réponse GET /admin/monitoring/build-queue. */
+export type AdminBuildQueueResponse = components['schemas']['AdminBuildQueueResponse']
 
 // NB : les types Watcher (WatcherStatusResponse, WatcherPlayerStatus) existent
 // déjà plus haut dans ce fichier (section watcher historique) — le dashboard
@@ -2533,8 +2983,9 @@ export interface MatchPlayerPosition {
 // noms plat partagé par toute l'API. Le préfixe `Replay` dit de quel document ils sont les
 // pièces, et évite qu'un `Point` du rejeu soit confondu avec un point de série temporelle.
 //
-// Artefact pré-construit hors ligne (`cmd/replay-build`). Positions dans le repère monde
-// PARTAGÉ ; le client auto-ajuste via `bounds` (échelle absolue non garantie).
+// Artefact pré-construit hors ligne (`cmd/replay-build`). Positions en MÈTRES MONDE : le
+// build exige les bornes de la carte (`-map`) et refuse de produire un artefact sans elles,
+// ce qui rend le fond de carte figé superposable au rejeu. Le client auto-cadre via `bounds`.
 // `points[].t` = index de pas de temps ∈ [0, frameCount).
 export type ReplayPoint = components['schemas']['Point']
 export type ReplayTrack = components['schemas']['Track']
@@ -2547,10 +2998,409 @@ export type ReplayProjectile = components['schemas']['Projectile']
 export type ReplayLoadout = components['schemas']['Loadout']
 export type ReplayAmmoSlot = components['schemas']['AmmoSlot']
 export type ReplayInventory = components['schemas']['Inventory']
-export type ReplayLayerCoverage = components['schemas']['LayerCoverage']
-export type ReplayBridgeHealth = components['schemas']['BridgeHealth']
-export type ReplayCoverage = components['schemas']['Coverage']
-export type ReplayDocument = components['schemas']['ReplayDocument']
+/**
+ * ReplayGrenadeRead — UNE lecture des grenades portees sur l axe `grenadeReads` (schema 20).
+ * Deux canaux l alimentent, et `src` dit lequel : 'kf' (image-cle, ~20 s) ou 'delta' (paquet
+ * delta, transmis AU CHANGEMENT).
+ */
+export type ReplayGrenadeRead = components['schemas']['GrenadeRead']
+// L'état ACTIF d'un équipement (schéma 7) : épisodes datés par vie, deux familles
+// mesurées (`camo`, `overshield`) — cf. equipmentFx.ts pour la lecture côté rendu.
+export type ReplayEquipmentEpisode = components['schemas']['EquipmentEpisode']
+// La TRACTION de grappin (schéma 8) : fenêtre mesurée [t0, t1] par vie + point
+// d'accroche en coordonnées monde — cf. grappleLayer.ts pour le tracé.
+export type ReplayGrappleLine = components['schemas']['GrappleLine']
+// Une POSE d'équipement (schéma 9) : mur, capteur, ou objet dont la nature n'est pas
+// établie (`family: other`). `owner` est le SLOT du poseur (-1 si aucun bipède
+// contemporain à moins de 3 m) et `h` son cap de VISÉE à l'instant de la pose, en degrés
+// [0,360[ — la même convention que `Point.h`, et JAMAIS l'orientation de l'objet, que le
+// film ne porte pas. Cf. equipmentPlacementsLayer.ts pour le rendu.
+export type ReplayEquipmentPlacement = components['schemas']['EquipmentPlacement']
+// Un SOCLE D'ARME (schéma 11) : la position où une arme de la même famille réapparaît, ses
+// apparitions, ses intervalles de présence et son cycle de réapparition QUAND IL EST ÉTABLI
+// (`cycle` vaut `null` sinon — jamais un chiffre instable). Donnée de MATCH et non de carte :
+// le socle appartient à la carte, l'arme qui y apparaît appartient au match.
+export type ReplayWeaponPad = components['schemas']['WeaponPad']
+export type ReplayPadPresence = components['schemas']['PadPresence']
+export type ReplayPadCycle = components['schemas']['PadCycle']
+// Une occupation de socle ACHEVÉE (schéma 11) : le socle s'est vidé quelque part dans
+// [tLow, tHigh]. Depuis le schéma 30 (2026-08-31), `t` porte l'instant EXACT et `xuid` le
+// ramasseur quand l'événement natif `biped_pickup` date l'occupation ; sinon l'intervalle reste
+// seul et `xuid` vaut `null`.
+export type ReplayPadPickup = components['schemas']['PadPickup']
+// LE SCORE DANS LE TEMPS (schéma 12) : la courbe des deux équipes et les compteurs des
+// joueurs, décodés du film et publiés AUX CHANGEMENTS SEULEMENT — la donnée est une suite de
+// PALIERS, pas un échantillonnage régulier. `t` est une frame du document (la même grille que
+// `tracks`), `v` la valeur atteinte à cette frame.
+//
+// DEUX NIVEAUX DE LECTURE, ET ILS NE SE CONFONDENT PAS. `rounds` porte la valeur DANS la
+// manche (elle repart de zéro à chaque manche d'un Oddball), `total` le cumul du match.
+// Un mode à une seule manche a donc `rounds` de longueur 1 et un `total` qui lui est égal.
+//
+// UNE ÉQUIPE PEUT N'AVOIR AUCUNE SÉRIE, et c'est une mesure : le camp qui n'a jamais marqué
+// n'émet rien (temoin CTF 3-0 : une seule série publiée). Son score vaut zéro partout —
+// jamais « inconnu » (cf. teamSeriesFor, lib/replay/scoreTimeline.ts).
+export type ReplayScoreTick = components['schemas']['ScoreTick']
+export type ReplayScoreRound = components['schemas']['ScoreRound']
+export type ReplayScoreSeries = components['schemas']['ScoreSeries']
+export type ReplayTeamScore = components['schemas']['TeamScore']
+export type ReplayTeamHold = components['schemas']['TeamHold']
+export type ReplayPlayerScore = components['schemas']['PlayerScore']
+export type ReplayScoreTimeline = components['schemas']['ScoreTimeline']
+// LE REGISTRE D'IDENTITE (schema 50) : sur quoi repose chaque nom que le document sert —
+// lien direct lu dans le film, pont par morts, fermeture, elimination sur le roster, ou rien
+// du tout (`non_resolu`, publie et compte, jamais invente).
+export type ReplayIdentitySection = components['schemas']['IdentitySection']
+// La COUVERTURE du calque de score : par quelle voie l'identité des équipes a été résolue
+// (`teamIdentity` : a | a0 | b | unresolved — `a0` = score final d'un match à sens unique,
+// schéma 69), si le mode porte le compteur, si la lecture a été
+// tronquée, et le nombre de points publiés. `oracle` dit à quelle grandeur le décodage a été
+// confronté (`displayed` = le score affiché en jeu).
+export type ReplayScoreCoverage = components['schemas']['ScoreCoverage']
+// LA VIE D'UN DRAPEAU de CTF (schéma 14) : une entrée par OBJET (deux drapeaux en CTF), et une
+// suite d'intervalles d'état contigus. `team` est l'équipe PROPRIÉTAIRE du drapeau (-1 = carte
+// hors du catalogue d'objectifs).
+//
+// QUATRE ÉTATS, ET LE QUATRIÈME PORTE UN DOUTE MESURÉ. `carried` = un joueur le porte et un fait
+// DATÉ a mis fin au portage ; `carried_open` = un joueur l'a pris et RIEN dans le film ne dit
+// qu'il l'a lâché (l'intervalle court jusqu'à la fin de l'axe : c'est une borne haute, pas une
+// mesure — le contrôle indépendant du marqueur confirme 37/37 des portages fermés et 0/5 des
+// ouverts) ; `dropped` = au sol, à l'endroit du dernier porteur ; `home` = sur son socle.
+//
+// `xuid` est renseigné pour les deux états portés, `null` pour les deux autres. `x`/`y` sont en
+// coordonnées monde : pour un état porté c'est le POINT DE PRISE, et la suite se lit sur la
+// piste du porteur — le drapeau porté est à la position de son porteur, et republier sa
+// trajectoire serait republier celle du joueur.
+export type ReplayFlagCarry = components['schemas']['FlagCarry']
+export type ReplayFlagSpan = components['schemas']['FlagSpan']
+// LES OBJETS D'OBJECTIF LIBRES (schéma 21) : où se trouve l'objet quand PERSONNE ne le porte.
+// Une entrée par VIE — l'objet apparaît, réplique sa position, puis se tait parce qu'on l'a
+// ramassé ou qu'il s'est immobilisé. `family` dit ce qu'il est (`ball` aujourd'hui) et `en`/`fr`
+// le nomment ; `pts` est sa trajectoire réelle, jamais interpolée.
+//
+// UN TROU ENTRE DEUX VIES EST UN PORTAGE, MAIS LE DOCUMENT NE DIT PAS PAR QUI : l'oracle du
+// porteur a été mesuré et réfuté (phase D4). Ne pas en déduire un porteur côté client.
+export type ReplayObjectiveObjectLife = components['schemas']['ObjectiveObjectLife']
+export type ReplayObjectiveObjectPoint = components['schemas']['ObjectiveObjectPoint']
+// L'ÉTAT DE CHAQUE ZONE du mode (schéma 16) : qui la tient, depuis quand, et jusqu'à quel niveau
+// de jauge elle a été contestée. `zoneRef` est un INDEX dans `mapObjectives.zones` — le calque
+// statique servi avec le document —, jamais un nom : la lettre A/B/C affichée en jeu n'existe
+// dans aucune donnée décodée.
+//
+// `owner` vaut `null` quand PERSONNE ne tient la zone, et c'est une mesure (la valeur neutre du
+// canal), pas une absence de donnée. `active` marque la zone ACTIVE d'un mode à colline ;
+// `progress` est le sommet de la jauge atteint pendant l'intervalle, ramené à [0, 1].
+//
+// `gauge` (schéma 18) est LA JAUGE DE CAPTURE EN DIRECT : la série datée `[{t, v}]` de la valeur
+// de la jauge PENDANT ses rampes (allégée : un point par variation >= 0,02 ou par seconde de
+// rampe, rien hors rampe, chaque rampe fermée par son retour à zéro), sur la même échelle que
+// `progress`, sur les modes à zones SIMULTANÉES seulement (jamais sur une colline de KOTH, où le
+// canal est un compteur de transfert). Le rendu la lit en escalier — la dernière valeur tient
+// jusqu'au point suivant, une seconde après le dernier de la série. Absente sur un artefact de schéma
+// <= 17 — et le rendu ne dessine alors AUCUN arc : le sommet statique se lisait comme une jauge.
+export type ReplayZoneState = components['schemas']['ZoneState']
+export type ReplayZoneSpan = components['schemas']['ZoneSpan']
+export type ReplayGaugePoint = components['schemas']['GaugePoint']
+// UNE RAMPE DE LA JAUGE DE CAPTURE (schéma 64) : ses bornes, et `capturingTeam` — LE CAMP QUI LA
+// POUSSE, abouti ou non. Le serveur le LIT dans le film depuis le lot 5.6 (le canal pousseur de
+// la zone) au lieu de le déduire de l'issue. La clé est ABSENTE quand le film nomme le NEUTRE,
+// ou quand rien ne le mesure. Le rendu repeint alors au neutre, et il n'infère JAMAIS le capteur
+// d'une autre source (ni « le camp d'en face du propriétaire », qui n'existe pas sur une base
+// neutre, ni les joueurs présents dans le volume de la zone).
+//
+// `t0`/`t1` SITUENT la rampe, ils ne datent pas le geste : `t0` est le début de la suite non
+// décroissante, donc le retour à zéro qui ferme la rampe précédente. La poussée commence au
+// premier point NON NUL de `gauge` dans ces bornes (cf. `zoneSound.rampesDeJauge`).
+export type ReplayZoneGaugeRamp = components['schemas']['ZoneGaugeRamp']
+// La COUVERTURE du calque du drapeau : le verdict de mode et les trois signaux du film qui le
+// fondent, les prises de l'oracle, les portages publiés partagés en fermés / ouverts, les rejets
+// par cause, le contrôle du marqueur (sur les FERMÉS ; les ouverts ont leur propre compte) et
+// les incohérences. Absente = personne n'a lu le film pour ce calque.
+export type ReplayFlagCarriesCoverage = components['schemas']['FlagCarriesCoverage']
+
+// LA VIE D'UN VÉHICULE (schéma 39) : où il naît, sa trajectoire échantillonnée avec son cap,
+// ses épisodes d'occupation (qui est à bord et quand), et jusqu'à quelle frame l'afficher.
+// `end` vaut TOUJOURS `unknown` (cf. `apps/go-api/internal/games/halo_infinite/film/replay/document_vehicles.go`) :
+// la datation de la destruction a été mesurée et RÉFUTÉE une première fois
+// (V3_DESTRUCTION_DATEE_2026-09-02) — la disparition du sprite n'était alors JAMAIS à lire comme
+// une explosion.
+//
+// `tEnd` EST UNE DÉCLARATION EN AVANCE DE PHASE (2026-09-03) : un second lot Go mesure une
+// nouvelle fois la destruction (schéma 39) pendant que ce lot web prépare le calque. Le contrat
+// GÉNÉRÉ (`generated.ts`) ne porte NI `tEnd` NI de valeur `"destroyed"` pour `end` — l'un et
+// l'autre sont donc ajoutés ici À LA MAIN, en TOLÉRANT (optionnel), le temps que
+// `make openapi-gen` les régénère : un artefact actuel (`end` toujours `"unknown"`, `tEnd`
+// absent) traverse ce type sans aucun changement de comportement. `end` reste un `string` NU
+// (pas un littéral `'unknown' | 'destroyed'`) parce que c'est déjà ainsi côté généré — le
+// resserrer ici romprait le ré-export si le Go publie un jour une troisième valeur. Le calque lit
+// `VEHICLE_END_DESTROYED` (vehiclesLayer.ts) plutôt qu'un littéral semé à chaque appelant.
+export type ReplayVehicleTrack = components['schemas']['VehicleTrack'] & {
+  /** Index de frame de la destruction (schéma 39, `omitempty` côté Go). Absent tant que la
+   *  mesure n'a pas abouti — voir l'en-tête ci-dessus. */
+  tEnd?: number
+}
+// La naissance d'un véhicule : position, et JAMAIS de cap (`h` absent par construction — la
+// feuille d'orientation du record de création n'est pas lisible, cf. le commentaire Go). Le
+// client oriente le véhicule sur son PREMIER échantillon mobile, ou nez vers le haut de l'écran
+// s'il n'en a aucun.
+export type ReplayVehicleSpawn = components['schemas']['VehicleSpawn']
+// Un point de trajectoire : position + cap (`h`, en degrés, MÊME convention que `Point.h` — 0 =
+// +X, 90 = +Y). `h` est la direction de la VÉLOCITÉ à cet instant ; à l'arrêt il vaut le DERNIER
+// cap connu (reporté), jamais recalculé sur du bruit.
+export type ReplayVehicleSample = components['schemas']['VehicleSample']
+// Un ÉPISODE D'OCCUPATION : un bipède (son `slot`) à bord de 'T0' à 'T1'. `seat` (0 = conducteur)
+// est un POINTEUR — nil = aucun événement apparié. `xuid` vide = occupant non nommé, l'épisode
+// reste publié. Deux épisodes d'un même véhicule peuvent se chevaucher (plusieurs passagers).
+export type ReplayVehicleRide = components['schemas']['VehicleRide']
+// UNE LECTURE DE VISÉE D'OCCUPANT (schéma 39), sur l'axe de frames : `h` = cap, `p` = élévation,
+// MÊMES conventions que `Point.h`/`Point.p` (même composant `i21`, même accesseur côté Go). C'est
+// la visée de L'HOMME à bord — conducteur, artilleur ou passager, chacun la sienne —, jamais
+// l'orientation du châssis ni celle de la tourelle (celle-ci ne réplique RIEN : réfutée avec
+// témoin au lot V11). `p` absent se lit « À PLAT », jamais « inconnu ».
+export type ReplayVehicleAim = components['schemas']['VehicleAim']
+// Le sprite d'une FAMILLE de châssis, posé À LA REQUÊTE par le service (jamais dans l'artefact) :
+// `tinted` dit que le visuel se teint en `multiply` (traits noirs, cf. `tintedIconCanvas`).
+//
+// `kind`, `en` et `fr` SONT UNE DÉCLARATION EN AVANCE DE PHASE (2026-09-16, lot 1.9.9), même
+// procédé et même raison que `tEnd` ci-dessus : le contrat GÉNÉRÉ (`generated.ts`) ne les porte
+// pas encore — le numéro de schéma monte une seule fois, à la fusion de la vague de lots qui
+// touchent le document. Ils sont donc ajoutés ici À LA MAIN et en TOLÉRANT (optionnels) : un
+// artefact actuel les ignore sans aucun changement de comportement.
+//
+// CE QU'ILS DISENT. Presque toutes les familles sont des NOMS PROPRES du jeu (Warthog, Banshee) :
+// rien ne s'en traduit, la clé de la table EST le nom, et les trois champs restent vides. Ils ne
+// se remplissent que pour une famille que le titre QUALIFIE dans son manifeste — aujourd'hui la
+// seule tourelle automatique bannie, qui n'est PAS un véhicule mais un ÉLÉMENT DE CARTE
+// (`kind: "map_element"`, décision utilisateur du 2026-09-14). Le calque lit
+// `VEHICLE_KIND_MAP_ELEMENT` (vehiclesLayer.ts) plutôt qu'un littéral semé à chaque appelant.
+export type ReplayVehicleLabel = components['schemas']['VehicleLabel'] & {
+  /** NATURE de la famille quand ce n'est pas un véhicule de la partie. Absent = un véhicule. */
+  kind?: string
+  /** Libellé EN/FR de la famille. Absents pour un nom propre du jeu (le cas général). */
+  en?: string
+  fr?: string
+}
+// Ce que le calque véhicules a vu, résolu, et refusé de dire — publiée même sans véhicule (même
+// raison que `placements`/`groundWeapons` : distinguer une carte sans véhicule d'un film non lu).
+export type ReplayVehicleCoverage = components['schemas']['VehicleCoverage']
+// Une arme du REGISTRE DES ARMES DE VÉHICULE du titre (schéma 69, `doc.vehicleWeapons`, keyé par
+// `Shot.w`) : forme, teinte, son (absent = silence décidé) et ancre sur le sprite. Lue par le
+// SEUL `model/vehicleWeaponRegistry.ts`.
+export type ReplayVehicleWeapon = components['schemas']['VehicleWeapon']
+
+// ---------------------------------------------------------------------------
+// Schémas 25 à 27 du document de rejeu — ÉCRITS À LA MAIN, et voici pourquoi.
+//
+// Le contrat `api/openapi.yaml` est GÉNÉRÉ depuis les DTO Go (`make openapi-gen`), et
+// `generated.ts` en est dérivé. Les calques `weaponChanges` (schéma 25), `equipmentChanges`
+// (25) et `groundWeapons` (26) ont été livrés côté Go le 2026-08-30 SANS que le contrat soit
+// régénéré : le fichier généré ne les porte donc pas, et le lot web les consomme quand même —
+// l'artefact, lui, les publie déjà.
+//
+// CE N'EST PAS UN CONTOURNEMENT PERMANENT. Trois choses le bornent :
+//   - la forme est vérifiée SUR PIÈCES par un garde-rail qui lit les balises `json:` des
+//     structures Go (`groundWeaponContract.guard.test.ts`) — un champ renommé côté Go fait
+//     échouer la CI, exactement comme le ferait une régénération ;
+//   - ces déclarations DISPARAISSENT au prochain `make openapi-gen && make generate-types` :
+//     l'intersection ci-dessous se supprime, et les trois interfaces deviennent des
+//     ré-exports `components['schemas'][...]` comme leurs voisines ;
+//   - critère mesurable de retrait : `grep groundWeapons apps/go-api/api/openapi.yaml`
+//     renvoie le champ de `ReplayDocument` (et non le seul `GroundWeaponCoverage`).
+// ---------------------------------------------------------------------------
+
+/**
+ * ReplayWeaponChange — UN changement d'arme en main (schéma 25), daté à la milliseconde puis
+ * projeté sur l'axe de frames du document.
+ *
+ * `w` est la famille d'arme en hexadécimal 8 chiffres — MÊME espace d'identifiants que
+ * `ReplayLoadout.w` et `ReplayWeaponPad.weapon`, donc même clé dans `weaponLabels`. Elle est
+ * VIDE sur un lâcher (l'emplacement n'a plus d'arme) ; `from` porte la famille précédente
+ * quand le film la donne, et c'est elle qui NOMME l'arme lâchée.
+ *
+ * Les ré-annonces d'une arme déjà portée au spawn n'entrent pas ici : ce ne sont pas des
+ * ramassages (cf. document_weapon_changes.go).
+ */
+export interface ReplayWeaponChange {
+  /** Index de frame, sur le même axe que `ReplayPoint.t`. */
+  t: number
+  /** Slot du bipède : il désigne la Track concernée, donc une VIE. */
+  slot: number
+  kind: 'taken' | 'dropped' | 'swapped'
+  /** Famille d'arme désormais portée. Vide sur un lâcher. */
+  w?: string
+  /** Famille précédente, quand elle est connue. Vide sinon. */
+  from?: string
+  /**
+   * EMPLACEMENT d'arme touché (schéma 69) : 0 = la première arme, 1 = la seconde — la même
+   * clé que `ReplayLoadout.k` d'une dotation de naissance. Absent des artefacts antérieurs.
+   */
+  k?: number
+}
+
+/**
+ * ReplayEquipmentChange — UN ramassage ou UNE consommation d'équipement (schéma 26).
+ *
+ * `r` est le RANG DE PALETTE, même convention que `abilities[].r` : il se nomme par
+ * `abilityLabels[String(r)]`. Il vaut `REPLAY_NO_ABILITY_RANK` sur une consommation — le joueur
+ * ne porte plus rien — et `from` le porte de la même façon quand le rang précédent n'est pas
+ * lisible (première émission d'une vie).
+ *
+ * Les annonces de RÉAPPARITION n'entrent pas ici : ce que le joueur porte à sa naissance est
+ * déjà dans `abilities` (cf. document_equipment_changes.go).
+ */
+export interface ReplayEquipmentChange {
+  /** Index de frame, sur le même axe que `ReplayPoint.t`. */
+  t: number
+  /** Slot du bipède : il désigne la Track concernée, donc une VIE. */
+  slot: number
+  kind: 'taken' | 'spent'
+  /** Rang de palette désormais porté, ou `REPLAY_NO_ABILITY_RANK` sur une consommation. */
+  r: number
+  /**
+   * Rang précédent sur cette vie, ou `REPLAY_NO_ABILITY_RANK` quand il n'est pas lisible.
+   *
+   * IL N'EST UNE IDENTITÉ QUE SI `gap` EST ABSENT OU NUL — voir ci-dessous.
+   */
+  from: number
+  /**
+   * L'émission vient de la RÉCUPÉRATION GATÉE (schéma 38) : ses octets existent dans le film
+   * sous une forme que le balayage strict rejette par construction, et son compteur comble
+   * EXACTEMENT un saut annoncé par le témoin de rotation. La provenance est publiée pour que le
+   * client puisse la DIRE, jamais pour qu'il la dévalue : la certification vient du témoin, pas
+   * du chemin. Une récupérée vaut donc exactement une stricte.
+   */
+  recovered?: boolean
+  /**
+   * Le saut de compteur RÉSIDUEL depuis l'émission précédente de la même vie, APRÈS
+   * récupération (schéma 38) : absent ou 0 = chaîne saine ; n > 0 = n émissions manquent
+   * ENCORE juste avant celle-ci.
+   *
+   * SOUS UN SAUT, `from` N'EST PAS UNE IDENTITÉ FIABLE — et il n'est pas faux pour autant : il
+   * est INCONNU, et tout consommateur doit le traiter comme tel (le cas mesuré est le `spent`
+   * de JGtm sur `1b2d9e08`, qui porte le rang du grappin parce que sa prise du translocateur a
+   * été manquée). Le foyer de cette règle côté web est `identityIsUnknown`
+   * (`features/match-replay/placementTeleport.ts`).
+   */
+  gap?: number
+}
+
+/**
+ * REPLAY_NO_ABILITY_RANK — la sentinelle « pas d'équipement » de `ReplayEquipmentChange`.
+ *
+ * C'est `replay.NoAbilityRank` (= `filmdec.AbilitySetNoRank`), publiée telle quelle plutôt
+ * qu'omise pour qu'un client n'ait pas à distinguer « champ absent » de « rang zéro » : le
+ * rang 0 existe. Le garde-rail de contrat en vérifie la valeur contre le Go.
+ */
+export const REPLAY_NO_ABILITY_RANK = -1
+
+/**
+ * ReplayGroundWeapon — UNE arme au sol, individuelle, bornée par l'OBSERVATION (schéma 27).
+ *
+ * LA DISPARITION EST UN INTERVALLE QUAND `end` VAUT `seen` : `t1` est la dernière PREUVE de
+ * présence (image-clé qui recense encore l'objet), `t1max` la première preuve d'ABSENCE.
+ * L'objet a disparu quelque part entre les deux — le film ne dit pas où. Le rendu choisit dans
+ * cet intervalle, mais il choisit dans du MESURÉ : rien ne s'affiche après `t1max`.
+ *
+ * Sur `pickup` (une prise datée du flux delta) et `open` (rien ne prouve la disparition),
+ * `t1max` vaut `t1` : la fin est exacte, ou l'objet reste jusqu'au bout.
+ *
+ * LES ARMES DE SOCLE NE SONT PAS ICI : elles appartiennent à `weaponPads`, qui les publie par
+ * grappes récurrentes. Ne sortent ici que les objets qui ont BOUGÉ.
+ */
+export interface ReplayGroundWeapon {
+  /** Frame d'apparition, sur le même axe que `ReplayPoint.t`. */
+  t0: number
+  /** Dernière preuve de PRÉSENCE (cf. l'en-tête). */
+  t1: number
+  /** Première preuve d'ABSENCE ; vaut `t1` hors `end: 'seen'`. */
+  t1max: number
+  /** Position de repos — là où l'objet gît. Mêmes axes que `ReplayPoint.x/y`. */
+  x: number
+  y: number
+  z?: number
+  /** Famille d'arme en hexadécimal 8 chiffres (même espace que `ReplayLoadout.w`). */
+  w: string
+  /** Origine MESURÉE de l'apparition : l'arme d'un mort, ou le reste. */
+  origin: 'dropped' | 'spawned'
+  /** Slot de la vie qui l'a lâchée quand un lâcher coïncide, -1 sinon. */
+  dropper: number
+  /** Comment l'affichage se termine (cf. l'en-tête). */
+  end: 'pickup' | 'seen' | 'open'
+  /** Slot de la vie qui l'a prise, sur `end: 'pickup'`. -1 sinon. */
+  picker: number
+  /**
+   * Munitions EXACTES au moment ou l'arme a touche le sol, lues dans le record de CREATION de
+   * l'objet (lot 6.10, 2026-09-11). ABSENT est le cas majoritaire, et ce n'est pas un manque de
+   * l'objet mais une reserve de LECTURE du decodeur, chiffree par
+   * `coverage.groundWeaponItems.ammoRead`. L'infobulle retombe alors sur la lecture
+   * d'inventaire DATEE du lacheur (`model/groundWeaponAmmo.ts`).
+   */
+  // PAS DE `| null` ICI, a la difference des tranches : le Go publie un POINTEUR `omitempty`,
+  // donc le champ est ABSENT ou present — jamais `null`. Le garde-rail de contrat compare la
+  // forme au type genere, qui le dit aussi.
+  ammo?: ReplayGroundWeaponAmmo
+}
+
+/**
+ * ReplayGroundWeaponAmmo — ce qu'il restait dans l'arme au lacher. DEUX champs et pas trois : le
+ * troisieme que le film transmet n'a pas de semantique etablie, et un nombre au sens inconnu ne
+ * se publie pas.
+ */
+export interface ReplayGroundWeaponAmmo {
+  /** Balles au chargeur. */
+  mag: number
+  /** Balles en reserve. */
+  res: number
+}
+
+/**
+ * Les trois calques des schémas 25-27 tels que le TRANSPORT les sert : nullables comme tout
+ * slice Go, comblés à la frontière (`normalizeReplayDocument`) et jamais lus tels quels.
+ */
+interface ReplayDocumentDeltaLayers {
+  weaponChanges?: ReplayWeaponChange[] | null
+  equipmentChanges?: ReplayEquipmentChange[] | null
+  groundWeapons?: ReplayGroundWeapon[] | null
+}
+
+export type ReplayDocument = components['schemas']['ReplayDocument'] &
+  ReplayDocumentDeltaLayers
+
+// Le FOND DE CARTE : l'image vue du dessus d'une carte, et le calage qui la pose dans le
+// repère monde du rejeu. Le calage voyage AVEC l'image parce qu'une image dont on ignore où
+// elle se pose ne se superpose à rien — leçon de la première carte reconstruite, dont le
+// calage a dû être retrouvé à la main sur des trajectoires de joueur.
+export type ReplayMapBackground = components['schemas']['MapBackground']
+export type ReplayMapBackgroundCalibration = components['schemas']['MapBackgroundCalibration']
+
+// Les ZONES NOMMÉES (« callouts ») de la carte du match : polygones monde + libellés
+// FR/EN officiels, servies à part du document (résolution par carte au service, comme le
+// fond). Absentes = la carte n'en a pas (cas Forge, par construction) — pas un dégradé.
+export type ReplayMapCallouts = components['schemas']['MapCalloutsEntry']
+export type ReplayCalloutZone = components['schemas']['CalloutZone']
+
+// Les OBJECTIFS STATIQUES du mode joué : zones (boîtes orientées, cylindres) et
+// marqueurs ponctuels (apparitions, livraisons, socles), joints par map_id au catalogue
+// versionné et servis AVEC le document (`mapObjectives` — rempli à la requête, jamais
+// écrit dans l'artefact). Absents = mode sans objectifs statiques (Slayer), carte hors
+// catalogue ou map_id vide — jamais un dégradé. `team` = index d'équipe À AFFICHER,
+// -1 = neutre (les modes à possession dynamique arrivent déjà neutralisés).
+export type ReplayMapObjectives = components['schemas']['MapObjectives']
+export type ReplayObjectiveZone = components['schemas']['ObjectiveZoneDTO']
+export type ReplayObjectiveMarker = components['schemas']['ObjectiveMarkerDTO']
+
+// Les EMPLACEMENTS DE SOCLE de la carte, croisés avec le match et servis AVEC le document
+// (`mapWeaponPads` — rempli à la requête comme `mapObjectives`, jamais écrit dans
+// l'artefact). Chaque entrée porte la position du SPAWNER telle que le fichier de carte la
+// pose, au centimètre, et `pad` : l'index du socle de `weaponPads` qui la CONFIRME.
+//
+// SEULS LES EMPLACEMENTS ALLUMÉS ARRIVENT, et c'est une décision produit : le fichier de
+// carte pose les socles, le mode les allume (Cliffhanger en porte dix-sept, dix en CTF et
+// zéro en Super Fiesta). `catalogN` dit combien la carte en porte au total — ce que le
+// calque n'affiche donc pas. Absent = carte hors catalogue, ou aucun socle confirmé : le
+// calque retombe alors sur les socles du film seuls.
+export type ReplayMapWeaponPads = components['schemas']['MapWeaponPads']
+export type ReplayMapWeaponPad = components['schemas']['MapWeaponPadDTO']
 
 // La table d'appariement du film : xuid ET index de slot.
 //
@@ -2560,3 +3410,53 @@ export type ReplayDocument = components['schemas']['ReplayDocument']
 // `name` est le gamertag TEL QUE LE FILM L'ÉCRIT — ce n'est pas une résolution, rien n'est
 // allé le chercher ailleurs, donc rien ne peut l'avoir mal apparié.
 export type ReplayRosterEntry = components['schemas']['RosterEntry']
+
+// L'onglet TACTIQUE — l'écran d'entrée : les cartes JOUÉES sous le filtre courant, avec
+// leur bilan et le verdict de lisibilité du serveur (`sous_plancher`). Le plancher par
+// carte est publié AVEC les cartes (`plancher_matchs`) parce que l'écran doit pouvoir le
+// NOMMER à l'utilisateur — jamais le recopier côté client, ce qui en ferait deux vérités.
+export type TacticalMapsPage = components['schemas']['TacticalMapsPage']
+export type TacticalMapCard = components['schemas']['TacticalMapCard']
+
+// Les CORPS des deux lectures tactiques — elles sont en POST parce que leur périmètre est
+// une LISTE de match_id, qui ne tient pas dans une query string. Typer le corps sur le
+// contrat généré (et non sur un objet littéral) fait qu'un renommage côté Go casse `tsc`
+// ici, au lieu de se découvrir à l'exécution sur une grille vide.
+export type TacticalMapsBody = components['schemas']['TacticalMapsBody']
+export type TacticalRasterBody = components['schemas']['TacticalRasterBody']
+
+// La RÉPONSE du raster de placement (vue d'analyse, phase 5) : cellules pré-agrégées par le
+// serveur (bornes, pas de grille, échelle p50/p95), grappes de réapparition nommées, et les
+// compteurs de couverture (matchs retenus/en attente/non cuisables) que la vue doit afficher
+// TELS QUELS — jamais recalculés côté client, même règle que le plancher de la grille.
+export type TacticalRaster = components['schemas']['TacticalRaster']
+export type CelluleTactique = components['schemas']['CelluleTactique']
+export type BornesMonde = components['schemas']['BornesMonde']
+export type EchelleTactique = components['schemas']['EchelleTactique']
+export type TacticalCouverture = components['schemas']['Couverture']
+export type TacticalGrappe = components['schemas']['TacticalGrappe']
+
+// Le DÉTAIL D'UNE CELLULE (lien « voir dans le rejeu », lot M1) : mêmes raisons de typage
+// sur le contrat généré que les deux lectures ci-dessus — un renommage côté Go casse `tsc`
+// ici plutôt que de se découvrir à l'exécution.
+export type TacticalCelluleBody = components['schemas']['TacticalCelluleBody']
+export type TacticalCelluleReponse = components['schemas']['TacticalCelluleReponse']
+export type TacticalContribution = components['schemas']['TacticalContribution']
+
+// La section « Coordination d'équipe » (lot F, maquette 034b1915) : la FORME de la
+// distance à l'équipier au moment de mes morts. Binning SERVEUR (ADR 0010) — le web
+// dessine ce qu'il reçoit, il ne re-bucket rien.
+export type TacticalCoordination = components['schemas']['TacticalCoordination']
+export type TacticalBinDistance = components['schemas']['TacticalBinDistance']
+
+// Le bloc COORDINATION du lot N1 (riposte + appui reçu), servi tel quel par Sessions, la
+// match view et les Séries temporelles. Alias stricts du contrat généré : un renommage
+// côté Go casse `tsc` ici plutôt que de se découvrir à l'exécution. `Couverture` porte
+// déjà l'alias `TacticalCouverture` plus haut — ce second nom est celui du bloc, et le
+// rapatrier ici évite de faire lire « tactique » à un appelant de Coordination.
+export type CoordinationBlock = components['schemas']['CoordinationBlock']
+export type CoordinationRiposte = components['schemas']['CoordinationRiposte']
+export type CoordinationAppui = components['schemas']['CoordinationAppui']
+export type CoordinationSessionPoint = components['schemas']['CoordinationSessionPoint']
+export type CoordinationMatchPoint = components['schemas']['CoordinationMatchPoint']
+export type Couverture = components['schemas']['Couverture']

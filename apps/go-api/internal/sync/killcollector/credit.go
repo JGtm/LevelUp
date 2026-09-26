@@ -55,6 +55,7 @@ import (
 	"time"
 
 	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/domain/highlightevent"
 	"levelup/go-api/internal/domain/killscope"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/persist"
@@ -62,7 +63,7 @@ import (
 
 // CreditDecoderRev — la version du producteur credit-seul.
 //
-// Elle est du meme espace que [KillSourceDecoderRev] (la colonne `decoder_rev` est commune) mais
+// Elle est du meme espace que [facts.Rev] (la colonne `decoder_rev` est commune) mais
 // designe un AUTRE producteur : c est elle qui permettra de rejouer les matchs credit-seul sans
 // toucher aux matchs decodes depuis un film.
 const CreditDecoderRev = "highlight-credit-2026-08-01"
@@ -99,6 +100,41 @@ const (
 type CreditCollector struct {
 	read          *sql.DB
 	acquireShared persist.SharedWriterFn
+
+	// L annuaire des noms de la passe, charge au premier match et garde pour la vie de
+	// l instance — un collecteur = une passe (`credit_annuaire.go`, lot 5.12). Le chargeur porte
+	// son propre verrou : la passe de masse est sequentielle, mais un appelant qui
+	// paralleliserait `CollectMatch` ferait sinon courir une ecriture de carte contre ses
+	// lectures.
+	chargeur chargeurDAnnuaire
+
+	// progression : le suivi EXTERNE de la passe, optionnel (lot 5.24.3). nil = aucun suivi,
+	// et c est le defaut : seul le backfill CLI ecrit un fichier d etat. Appelee AUX MEMES
+	// JALONS que la ligne de journal de 5.12, donc depuis le seul goroutine de la passe.
+	progression func(examines, total int, reste time.Duration)
+
+	// arretDoux : le contexte dont l annulation arrete la passe ENTRE DEUX MATCHS, sans couper
+	// celui qui est en cours (lot 5.24.4, meme contrat que `KillSourceCollector.AvecArretDoux`).
+	// nil = pas d arret doux, le defaut de tous les appelants sauf le backfill CLI.
+	arretDoux context.Context
+}
+
+// AvecArretDoux installe le contexte d ARRET DOUX de la passe credit.
+//
+// IL EXISTE POUR LA MEME RAISON QUE SON HOMOLOGUE DE LA PASSE DES FILMS, et il a ete AJOUTE en
+// revue (2026-09-22) : sans lui, la commande n avait qu une facon d arreter la passe credit —
+// annuler le contexte de travail —, ce qui faisait echouer sa PREMIERE lecture au lieu de
+// l arreter proprement. L arret se decide donc ici, entre deux matchs, pendant que le contexte
+// de travail reste vivant.
+func (c *CreditCollector) AvecArretDoux(ctx context.Context) *CreditCollector {
+	c.arretDoux = ctx
+	return c
+}
+
+// AvecProgression branche le suivi externe de la passe credit. nil = aucun suivi.
+func (c *CreditCollector) AvecProgression(f func(examines, total int, reste time.Duration)) *CreditCollector {
+	c.progression = f
+	return c
 }
 
 // NewCreditCollector construit le producteur.
@@ -224,16 +260,37 @@ func (c *CreditCollector) covertParUnFilm(ctx context.Context, matchID string) (
 // (4 xuids nommes sur 16 996 ; cf. [SharedRoster.RosterForMatch]). Un joueur que la vue ne
 // nomme pas sort avec son xuid en guise de nom : `victim_gamertag` est NOT NULL, il faut un nom,
 // et le xuid en est un honnete.
-func (c *CreditCollector) evenementsDuMatch(ctx context.Context, matchID string) ([]analysis.RawEvent, error) {
-	rows, err := c.read.QueryContext(ctx, `
-		SELECT he.xuid, LOWER(he.event_type), COALESCE(he.time_ms, 0), COALESCE(g.gamertag, '')
+//
+// La vue est lue par l ANNUAIRE DE LA PASSE (`credit_annuaire.go`, lot 5.12), pas par une
+// jointure par match : meme source, meme nom, une seule evaluation.
+
+// requeteEvenementsDuMatch : LA requete des evenements d un match.
+//
+// EXTRAITE LE 2026-09-21 (lot 5.12) pour une raison de mesure : le banc de cout
+// (`credit_cost_integration_test.go`) colle le plan `EXPLAIN` de la requete QUE LA PRODUCTION
+// EXECUTE, jamais d une copie qui pourrait deriver d un caractere. Une seule definition.
+//
+// ELLE NE JOINT PLUS `v_gamertag_lookup` (lot 5.12) : la vue canonique d identite n est pas
+// filtrable par match, elle etait donc materialisee EN ENTIER a chaque match — 77,2 ms contre
+// 0,9 ms sans la jointure sur le banc de 180 000 lignes, et des heures sur la base de
+// production. Les noms viennent desormais de l annuaire de la passe (`credit_annuaire.go`),
+// c est-a-dire de la MEME vue, lue UNE FOIS.
+const requeteEvenementsDuMatch = `
+		SELECT he.xuid, LOWER(he.event_type), COALESCE(he.time_ms, 0)
 		FROM highlight_events he
-		LEFT JOIN v_gamertag_lookup g ON g.xuid = he.xuid
 		WHERE he.match_id = ?
 		  AND LOWER(he.event_type) IN (?, ?)
 		  AND he.xuid IS NOT NULL AND he.xuid <> ''
-		ORDER BY he.time_ms, he.xuid, he.event_type`,
-		matchID, analysis.EventTypeKill, analysis.EventTypeDeath)
+		ORDER BY he.time_ms, he.xuid, he.event_type`
+
+func (c *CreditCollector) evenementsDuMatch(ctx context.Context, matchID string) ([]analysis.RawEvent, error) {
+	noms, err := c.annuaire(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	rows, err := c.read.QueryContext(ctx, requeteEvenementsDuMatch,
+		matchID, highlightevent.EventTypeKill, highlightevent.EventTypeDeath)
 	if err != nil {
 		return nil, fmt.Errorf("killsource credit: evenements %s: %w", matchID, err)
 	}
@@ -242,9 +299,10 @@ func (c *CreditCollector) evenementsDuMatch(ctx context.Context, matchID string)
 	var out []analysis.RawEvent
 	for rows.Next() {
 		var ev analysis.RawEvent
-		if err := rows.Scan(&ev.XUID, &ev.EventType, &ev.TimeMS, &ev.Gamertag); err != nil {
+		if err := rows.Scan(&ev.XUID, &ev.EventType, &ev.TimeMS); err != nil {
 			return nil, fmt.Errorf("killsource credit: scan %s: %w", matchID, err)
 		}
+		ev.Gamertag = noms.nom(ev.XUID)
 		out = append(out, ev)
 	}
 	if err := rows.Err(); err != nil {
@@ -327,6 +385,39 @@ type CreditSummary struct {
 	ElapsedTime time.Duration
 }
 
+// examines : les matchs deja passes, quel que soit leur sort. `Written` + `Enriched` +
+// `NoEvents` + `Errors` — la somme est ecrite A UN SEUL ENDROIT parce que la progression et le
+// bilan la calculent tous les deux, et qu une copie qui oublierait un compteur ferait mentir un
+// ETA sans rien casser d autre.
+func (s CreditSummary) examines() int {
+	return s.Written + s.Enriched + s.NoEvents + s.Errors
+}
+
+// comptabiliser : la passe d UN match et son imputation aux compteurs.
+//
+// EXTRAITE DE [CreditCollector.CollectMatches] le 2026-09-21 : le cas d erreur y sortait par un
+// `continue` qui sautait AUSSI la journalisation de progression placee en fin de boucle. Ici
+// l erreur rend la main normalement — la boucle appelante garde un seul chemin de sortie, donc
+// un seul endroit ou la progression peut se journaliser.
+func (c *CreditCollector) comptabiliser(ctx context.Context, id string, sum *CreditSummary) {
+	outcome, deaths, err := c.CollectMatch(ctx, id)
+	if err != nil {
+		sum.Errors++
+		slog.ErrorContext(ctx, "killsource credit: match en echec", "match_id", id, "err", err)
+		return
+	}
+	switch outcome {
+	case CreditWritten:
+		sum.Written++
+		sum.Deaths += deaths
+	case CreditEnriched:
+		sum.Enriched++
+		sum.Deaths += deaths
+	case CreditNoEvents:
+		sum.NoEvents++
+	}
+}
+
 // CollectMatches : la passe de masse. Une erreur sur UN match ne l arrete pas — elle est comptee
 // et journalisee ; seul l arret de l appelant interrompt, et il rend la synthese de ce qui a ete
 // fait.
@@ -334,31 +425,50 @@ func (c *CreditCollector) CollectMatches(ctx context.Context, matchIDs []string)
 	start := time.Now()
 	sum := CreditSummary{Total: len(matchIDs)}
 	for _, id := range matchIDs {
-		if ctx.Err() != nil {
-			slog.InfoContext(ctx, "killsource credit: passe interrompue par l appelant",
-				"traites", sum.Written+sum.Enriched+sum.NoEvents+sum.Errors, "total", sum.Total)
+		if c.arretDoux != nil && c.arretDoux.Err() != nil {
+			// ARRET DOUX : le match en cours est deja fini — on ne prend pas le suivant, et la
+			// lecture du suivant n echoue pas : elle n a pas lieu.
+			slog.InfoContext(ctx, "killsource credit: arret demande — la passe s arrete entre deux matchs",
+				"traites", sum.examines(), "total", sum.Total)
 			break
 		}
-		outcome, deaths, err := c.CollectMatch(ctx, id)
-		if err != nil {
-			sum.Errors++
-			slog.ErrorContext(ctx, "killsource credit: match en echec", "match_id", id, "err", err)
-			continue
+		if ctx.Err() != nil {
+			slog.InfoContext(ctx, "killsource credit: passe interrompue par l appelant",
+				"traites", sum.examines(), "total", sum.Total)
+			break
 		}
-		switch outcome {
-		case CreditWritten:
-			sum.Written++
-			sum.Deaths += deaths
-		case CreditEnriched:
-			sum.Enriched++
-			sum.Deaths += deaths
-		case CreditNoEvents:
-			sum.NoEvents++
+		c.comptabiliser(ctx, id, &sum)
+
+		// LA PROGRESSION (lot 5.12). Elle se journalise ICI, apres la comptabilisation, pour que
+		// la ligne annonce l etat REEL des compteurs et pas celui d avant le match — et elle est
+		// HORS de la comptabilisation, donc jouee AUSSI quand le match a echoue. Une premiere
+		// version la sautait par le `continue` du cas d erreur (revue adversariale du
+		// 2026-09-21) : le jalon tombant sur un match en echec etait perdu, et une passe dont
+		// tous les matchs echouent n aurait journalise aucune progression.
+		if examines := sum.examines(); doitJournaliserProgression(examines, sum.Total) {
+			ecoule := time.Since(start)
+			reste := etaLineaire(examines, sum.Total, ecoule)
+			slog.InfoContext(ctx, "killsource: credit — progression",
+				"examines", examines, "total", sum.Total,
+				"ecrits", sum.Written, "enrichis_par_un_film", sum.Enriched,
+				"sans_evenement", sum.NoEvents, "erreurs", sum.Errors,
+				"morts", sum.Deaths, "ecoule", ecoule.Round(time.Second),
+				"eta_lineaire", reste.Round(time.Second))
+			// LE MEME JALON SERT LE FICHIER D ETAT (lot 5.24.3), et il n y en a qu UN : deux
+			// cadences pour la meme progression finiraient par annoncer deux avancees.
+			if c.progression != nil {
+				c.progression(examines, sum.Total, reste)
+			}
 		}
 	}
 	sum.ElapsedTime = time.Since(start)
-	slog.InfoContext(ctx, "killsource credit: passe terminee",
-		"total", sum.Total, "ecrits", sum.Written, "enrichis_par_un_film", sum.Enriched,
+	// LE BILAN, AU MEME FORMAT QUE LA PASSE DES FILMS (`KillSourceCollector.CollectMatches`) :
+	// meme prefixe `killsource:`, memes clefs `total` / `ecrits` / `erreurs` / `duration`, et
+	// `examines` en plus — la passe credit a des matchs sans evenement, que la passe des films
+	// n a pas. Deux bilans qui se lisent cote a cote dans le meme journal.
+	slog.InfoContext(ctx, "killsource: credit — passe terminee",
+		"total", sum.Total, "examines", sum.examines(),
+		"ecrits", sum.Written, "enrichis_par_un_film", sum.Enriched,
 		"morts", sum.Deaths, "sans_evenement", sum.NoEvents,
 		"erreurs", sum.Errors, "duration", sum.ElapsedTime)
 	return sum

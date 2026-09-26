@@ -1,3 +1,4 @@
+/* eslint-disable max-lines -- 2026-09-06 (lot v2 D.11, decision utilisateur 4) : table de donnees (une entree par cle, aucun embranchement) : la decouper repartirait la meme table sur plusieurs fichiers a tenir en phase, sans retirer une seule decision au lecteur. */
 /**
  * i18n FR/EN de la feature Ascension (V2 progression).
  *
@@ -16,6 +17,8 @@ export interface AscensionText {
   tabObjectives: string
   tabCoaching: string
   tabRealisations: string
+  /** Onglet « Tactique » (5e rang, 2026-09-06) — masqué pour un titre sans rejeu. */
+  tabTactical: string
   tipsTickerAriaLabel: string
   profilLayerTitle: string
   profilLayerDescription: string
@@ -189,6 +192,7 @@ const FR: AscensionText = {
   tabObjectives: 'Objectifs',
   tabCoaching: 'Entraînement',
   tabRealisations: 'Réalisations',
+  tabTactical: 'Tactique',
   tipsTickerAriaLabel: 'Astuces de jeu pour progresser',
   profilLayerTitle: 'Profil de jeu',
   profilLayerDescription:
@@ -423,6 +427,7 @@ const EN: AscensionText = {
   tabObjectives: 'Objectives',
   tabCoaching: 'Training',
   tabRealisations: 'Achievements',
+  tabTactical: 'Tactics',
   tipsTickerAriaLabel: 'Gameplay tips to improve',
   profilLayerTitle: 'Play profile',
   profilLayerDescription:

@@ -1,11 +1,52 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  isAnonymousPath,
   resolveIndexRedirect,
   resolvePlayerFallback,
   resolvePlayerSwitch,
+  routeShowsSoloFilters,
   type IndexRedirectInput,
 } from './shellNavigation'
+
+describe('routeShowsSoloFilters (lot perf L4a, D4.4)', () => {
+  it('pages Stats à barre solo : oui (avec ou sans segment de langue)', () => {
+    expect(routeShowsSoloFilters('/t/halo_infinite/players/p/stats/timeseries')).toBe(true)
+    expect(routeShowsSoloFilters('/t/halo_infinite/players/p/stats/sessions')).toBe(true)
+    expect(routeShowsSoloFilters('/en/t/halo_5/players/p/stats/timeseries')).toBe(true)
+  })
+
+  it('Stats à barre propre (Synthèse, stats personnelles) : non', () => {
+    expect(routeShowsSoloFilters('/t/halo_infinite/players/p/stats/synthesis')).toBe(false)
+    expect(routeShowsSoloFilters('/t/halo_infinite/players/p/stats/summary')).toBe(false)
+  })
+
+  it('Escouade, Carrière, Accueil, pages hors joueur : non (aucune résolution solo)', () => {
+    expect(routeShowsSoloFilters('/t/halo_infinite/players/p/squad/synergies')).toBe(false)
+    expect(routeShowsSoloFilters('/t/halo_infinite/players/p/squad/usages')).toBe(false)
+    expect(routeShowsSoloFilters('/t/halo_infinite/players/p/career')).toBe(false)
+    expect(routeShowsSoloFilters('/t/halo_infinite/players/p/home')).toBe(false)
+    expect(routeShowsSoloFilters('/t/halo_infinite/players/p/stats')).toBe(false)
+    expect(routeShowsSoloFilters('/settings')).toBe(false)
+  })
+})
+
+describe('isAnonymousPath', () => {
+  it('la politique de confidentialité est consultable sans compte', () => {
+    expect(isAnonymousPath('/privacy')).toBe(true)
+    expect(isAnonymousPath('/privacy/details')).toBe(true)
+  })
+
+  it('les pages applicatives ne le sont pas', () => {
+    expect(isAnonymousPath('/')).toBe(false)
+    expect(isAnonymousPath('/settings')).toBe(false)
+    expect(isAnonymousPath('/players/halo_infinite/quelquun')).toBe(false)
+  })
+
+  it('la frontière est un segment, pas un préfixe de chaîne', () => {
+    expect(isAnonymousPath('/privacy-interne')).toBe(false)
+  })
+})
 
 describe('resolvePlayerSwitch', () => {
   it('reste sur la même route (préserve la sous-page) quand on est sous une sous-page joueur', () => {

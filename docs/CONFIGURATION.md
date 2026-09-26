@@ -250,10 +250,11 @@ auto-detection) before any `os.Getenv` read.
 | `RESTIC_REPOSITORY` / `RESTIC_PASSWORD` / `RESTIC_PASSWORD_FILE` | Restic backup target/credentials. |
 | `LEVELUP_BACKUP_DIR` | Local backup directory. |
 
-> Legacy `SPNKR_OAUTH_REFRESH_TOKEN_<GAMERTAG>` env vars are still read as a
-> transitional fallback only (warn-logged, migrated into the token store at
-> boot). Do not rely on them for new setups — use `token-capture` /
-> `token-import` instead.
+> Legacy `SPNKR_OAUTH_REFRESH_TOKEN_<GAMERTAG>` env vars are NO LONGER read at
+> runtime (ADR 0023 Phase 5, 2026-08-25). The only remaining consumer is the
+> one-shot boot migration, which copies a leftover value into the token store —
+> it is scheduled for removal on 2026-10-01. Use `token-capture` /
+> `token-import`, or the Xbox SSO web flow, to seed a refresh token.
 
 ---
 
@@ -293,6 +294,7 @@ Keys read by the Go backend from `app_settings.json` (some are not in the exampl
 | `discord_notify_coach` | bool | `false` | Relay the coach's strongest proposals (progression signals) to the Discord webhook. **OFF by default — opt-in**: requires `discord_notifications_enabled` + a webhook. Emitting to an external service is a deliberate privacy choice, never on by default. Forwarded categories = coach categories only. |
 | `discord_notify_new_media` | bool | `true` | Notify on new media. |
 | `discord_notify_disk` | bool | `true` | Disk space alerts (warn > 80 % used or < 2 GB free, critical > 90 % or < 500 MB) on the data volume, sent on status change + daily reminder + recovery. |
+| `discord_notify_replay` | bool | `true` | Grouped "2D replays ready" notification. One message per 10-minute window and per title, never one per artifact: the first stored artifact arms the window, the message lists the matches at expiry. Covers every server-side write path — post-sync local build, remote worker delivery and the admin action. The CLI backfill runs in a separate process and never notifies. |
 | `discord_webhook_url` | string | `""` | Discord webhook URL (env vars take precedence). |
 | `tailscale_enabled` | bool | `false` | Enable Tailscale Funnel remote access. |
 | `user_timezone` | string | `"Europe/Paris"` | IANA timezone for display. |
@@ -306,6 +308,8 @@ Keys read by the Go backend from `app_settings.json` (some are not in the exampl
 | `backup_keep_monthly` | int | `12` | Monthly backups retained. |
 | `prestige_enabled` | bool | `true` | Enable Prestige module (overridable via `PRESTIGE_ENABLED`). |
 | `instance_locked` | bool | `false` | Lock the instance to existing users (also via `LEVELUP_INSTANCE_LOCKED`). |
+| `replay_sound_variation_percent` | int | `100` | 2D replay weapon sounds: per-shot variation of volume and pitch, within the ranges declared by the game. `100` = game ranges as they are, `0` = always the same file. Instance setting, edited from Admin · System. |
+| `replay_sound_distance_percent` | int | `0` | 2D replay weapon sounds: distance effect (attenuation + low-pass). `0` = untouched sound, no node in the signal path. Instance setting, edited from Admin · System. |
 
 ---
 

@@ -36,22 +36,23 @@ import (
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/observability/timing"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/service/fragdist"
 )
 
-// SynthesisService orchestre les donnÃ©es de la page SynthÃ¨se.
+// SynthesisService orchestre les données de la page Synthèse.
 type SynthesisService struct {
 	repo port.SynthesisRepository
 	// dataAdapter (optionnel, Phase 2 plan finition multi-titres) :
 	// quand fourni, GetSynthesisPage mesure la capability match.history pour
-	// loguer une Ã©ventuelle dÃ©gradation.
+	// loguer une éventuelle dégradation.
 	dataAdapter games.TitleDataAdapter
 	// playerMatchesRepo (P4.1+P4.3, ADR 0011) : source canonical-aware. Quand
 	// fournie avec titleSlug+gamertag, GetSynthesisPage charge directement
 	// `[]canonical.PlayerMatchRow` et appelle les analyses *FromCanonical sans
 	// converter. Le path legacy (s.repo.LoadSynthesisMatches) reste pour
-	// rÃ©trocompatibilitÃ© tant que la DI cabling n'est pas mise Ã  jour partout.
+	// rétrocompatibilité tant que la DI cabling n'est pas mise à jour partout.
 	playerMatchesRepo port.PlayerMatchesRepository
 	// personalScoreAwardsRepo (P9) : charge les fun stats (betrayals, suicides,
 	// vehicles_destroyed, hijacks) depuis personal_score_awards.
@@ -74,6 +75,12 @@ type SynthesisService struct {
 	// scope. Câblé UNIQUEMENT pour les titres à capability match.objective.stats
 	// (Infinite ; nil pour Halo 5 → bloc objective_stats omis). Best-effort.
 	objectiveStatsRepo port.ObjectiveStatsRepository
+	// weaponRangeRepo : les frags mesurés (positions par kill) dont la section « Records
+	// de distance par arme » tire le frag le plus lointain de chaque arme. Câblé
+	// INCONDITIONNELLEMENT (SynthesisCtx) : le repo seul décide, via
+	// games.ErrCapabilityNotSupported, qu'un titre n'a pas de positions — nil ou titre
+	// sans décodeur → bloc weapon_records omis. Best-effort.
+	weaponRangeRepo port.WeaponRangeRepository
 	// titleSlug est nécessaire pour appeler PlayerMatchesRepo.LoadPlayerMatches.
 	// Si "" et playerMatchesRepo != nil, fallback sur le repo legacy.
 	titleSlug  string
@@ -81,7 +88,7 @@ type SynthesisService struct {
 	playerXUID string
 }
 
-// NewSynthesisService crÃ©e un SynthesisService avec le repository injectÃ©.
+// NewSynthesisService crée un SynthesisService avec le repository injecté.
 func NewSynthesisService(repo port.SynthesisRepository) *SynthesisService {
 	return &SynthesisService{repo: repo}
 }
@@ -96,7 +103,7 @@ func (s *SynthesisService) WithDataAdapter(a games.TitleDataAdapter) *SynthesisS
 
 // WithPlayerMatchesRepo (P4.1+P4.3, ADR 0011) injecte le loader canonical-aware.
 // Quand fourni avec titleSlug+gamertag, GetSynthesisPage charge depuis le
-// loader unifiÃ© et appelle les analyses *FromCanonical (pas de converter).
+// loader unifié et appelle les analyses *FromCanonical (pas de converter).
 func (s *SynthesisService) WithPlayerMatchesRepo(
 	repo port.PlayerMatchesRepository,
 	titleSlug, gamertag string,
@@ -117,7 +124,6 @@ func (s *SynthesisService) WithPersonalScoreAwardsRepo(
 	return s
 }
 
-// WithWeaponKillsRepo injecte le loader pour le classement frags par arme.
 func (s *SynthesisService) WithWeaponKillsRepo(repo port.WeaponKillsRepository) *SynthesisService {
 	s.weaponKillsRepo = repo
 	return s
@@ -146,7 +152,14 @@ func (s *SynthesisService) WithObjectiveStatsRepo(repo port.ObjectiveStatsReposi
 	return s
 }
 
-// GetSynthesisPage construit la rÃ©ponse de la page SynthÃ¨se.
+// WithWeaponRangeRepo injecte la source des frags mesurés pour la section « Records de
+// distance par arme » (synthesis_weapon_records.go). nil → bloc weapon_records omis.
+func (s *SynthesisService) WithWeaponRangeRepo(repo port.WeaponRangeRepository) *SynthesisService {
+	s.weaponRangeRepo = repo
+	return s
+}
+
+// GetSynthesisPage construit la réponse de la page Synthèse.
 // Sprint 55 D2 : applique period et filters depuis le SynthesisRequest.
 func (s *SynthesisService) GetSynthesisPage(
 	ctx context.Context,
@@ -159,7 +172,7 @@ func (s *SynthesisService) GetSynthesisPage(
 	}
 
 	// Phase 2 plan finition multi-titres : log de la capability match.history
-	// quand un DataAdapter est injectÃ©. Sert Ã  mesurer la dÃ©gradation potentielle
+	// quand un DataAdapter est injecté. Sert à mesurer la dégradation potentielle
 	// avant la bascule fonctionnelle (le Synthesis lit aujourd'hui depuis le repo
 	// legacy car canonical.PlayerStats ne couvre pas encore SynthesisMatch).
 	if s.dataAdapter != nil {
@@ -174,10 +187,10 @@ func (s *SynthesisService) GetSynthesisPage(
 	}
 
 	// P4.3 finale (ADR 0011) : path canonical exclusif. Le legacy fallback
-	// path a Ã©tÃ© supprimÃ© â€" playerMatchesRepo + titleSlug + gamertag sont
-	// dÃ©sormais REQUIS (wirÃ©s universellement en DI via registry.go).
+	// path a été supprimé —" playerMatchesRepo + titleSlug + gamertag sont
+	// désormais REQUIS (wirés universellement en DI via registry.go).
 	if s.playerMatchesRepo == nil || s.titleSlug == "" || s.gamertag == "" {
-		return nil, fmt.Errorf("SynthesisService: PlayerMatchesRepo non cÃ¢blÃ© (P4.3 finale exige le wiring DI)")
+		return nil, fmt.Errorf("SynthesisService: PlayerMatchesRepo non câblé (P4.3 finale exige le wiring DI)")
 	}
 	canonicalRows, err := s.loadAndEnrichCanonicalRows(ctx)
 	if err != nil {
@@ -191,7 +204,9 @@ func (s *SynthesisService) GetSynthesisPage(
 	soloKPIs := analysis.ComputeSynthesisKPIsFromCanonical(filteredCanon, false, hp)
 	squadKPIs := analysis.ComputeSynthesisKPIsFromCanonical(filteredCanon, true, hp)
 	topWeeks := analysis.ComputeSynthesisTopWeeksFromCanonical(filteredCanon)
+	stop := timing.FromContext(ctx).Section("heatmap")
 	heatmap := analysis.ComputeTemporalHeatmapFromCanonical(filteredCanon)
+	stop()
 	provideSpree := games.ProvidesMaxKillingSpree(s.titleSlug)
 	overview := buildSynthesisOverviewCanonical(filteredCanon, soloKPIs, provideSpree)
 	slog.DebugContext(ctx, "synthesis: best refs detected",
@@ -235,6 +250,12 @@ func (s *SynthesisService) GetSynthesisPage(
 	// match à objectif → bloc omis.
 	objectiveStats := s.loadObjectiveStats(ctx, filteredCanon)
 
+	// Records de distance par arme : best-effort, nil si repo absent, titre sans positions
+	// par kill (capability absente → Debug) ou scope sans frag mesuré → bloc omis.
+	weaponRecords := buildWeaponRecordsSection(ctx, weaponRecordsQuery{
+		Repo: s.weaponRangeRepo, TitleSlug: s.titleSlug, Gamertag: s.gamertag, Rows: filteredCanon,
+	})
+
 	scope := domain.SynthesisScope{
 		Period:         period,
 		MatchCount:     matchCount,
@@ -244,7 +265,9 @@ func (s *SynthesisService) GetSynthesisPage(
 		ComputedAt:     time.Now().UTC(),
 	}
 
+	stop = timing.FromContext(ctx).Section("combat_profile")
 	combatProfile := buildCombatProfileFromCanonical(filteredCanon, hp)
+	stop()
 	if combatProfile != nil {
 		slog.DebugContext(ctx, "synthesis: combat profile computed",
 			"matches", combatProfile.MatchCount,
@@ -270,42 +293,24 @@ func (s *SynthesisService) GetSynthesisPage(
 		WeaponAccuracy:    weaponAccuracy,
 		CombatProfile:     combatProfile,
 		ObjectiveStats:    objectiveStats,
+		WeaponRecords:     weaponRecords,
 	}, nil
-}
-
-// loadObjectiveStats agrège (SUM) les stats objectifs du joueur sur le scope filtré.
-// Best-effort : nil si repo non câblé (capability absente), joueur inconnu, scope vide,
-// erreur SQL, ou aucun match à objectif dans le scope (bloc omis de la réponse).
-func (s *SynthesisService) loadObjectiveStats(
-	ctx context.Context, filteredCanon []canonical.PlayerMatchRow,
-) *domain.ObjectiveAggregate {
-	if s.objectiveStatsRepo == nil || s.playerXUID == "" || len(filteredCanon) == 0 {
-		return nil
-	}
-	matchIDs := make([]string, 0, len(filteredCanon))
-	for _, r := range filteredCanon {
-		matchIDs = append(matchIDs, r.Summary.MatchID)
-	}
-	byXUID, err := s.objectiveStatsRepo.LoadAggregatedByXUID(ctx, matchIDs, []string{s.playerXUID})
-	if err != nil {
-		slog.WarnContext(ctx, "synthesis: objective stats query failed (best-effort)",
-			"player_xuid", s.playerXUID, "match_count", len(matchIDs), "err", err)
-		return nil
-	}
-	return byXUID[s.playerXUID]
 }
 
 // loadAndEnrichCanonicalRows charge les canonical rows et applique
 // EnrichCanonicalAssetTranslations + log diagnostic FR. Best-effort sur enrich.
 func (s *SynthesisService) loadAndEnrichCanonicalRows(ctx context.Context) ([]canonical.PlayerMatchRow, error) {
+	stop := timing.FromContext(ctx).Section("player_matches")
 	canonicalRows, err := s.playerMatchesRepo.LoadPlayerMatches(
 		ctx, s.titleSlug, s.gamertag, port.PlayerMatchFilters{},
 	)
+	stop()
 	if err != nil {
 		return nil, fmt.Errorf("SynthesisService load: %w", err)
 	}
 	slog.DebugContext(ctx, "synthesis: loaded canonical",
 		"rows", len(canonicalRows), "title_slug", s.titleSlug)
+	defer timing.FromContext(ctx).Section("enrich_translations")()
 	if err := s.repo.EnrichCanonicalAssetTranslations(ctx, canonicalRows); err != nil {
 		slog.WarnContext(ctx, "synthesis: EnrichCanonicalAssetTranslations failed", "err", err)
 		return canonicalRows, nil
@@ -336,13 +341,11 @@ func (s *SynthesisService) loadAndEnrichCanonicalRows(ctx context.Context) ([]ca
 func (s *SynthesisService) applyFunStatsToDetailedStats(
 	ctx context.Context, detailedStats *domain.SynthesisDetailedStats, filteredCanon []canonical.PlayerMatchRow,
 ) {
+	defer timing.FromContext(ctx).Section("fun_stats")()
 	if s.playerXUID == "" {
 		return
 	}
-	matchIDs := make([]string, 0, len(filteredCanon))
-	for _, r := range filteredCanon {
-		matchIDs = append(matchIDs, r.Summary.MatchID)
-	}
+	matchIDs := synthesisMatchIDs(filteredCanon)
 	if len(matchIDs) == 0 {
 		return
 	}
@@ -383,6 +386,7 @@ func (s *SynthesisService) loadTopWeaponKills(
 	detailedStats domain.SynthesisDetailedStats,
 	totalKills int,
 ) ([]domain.SynthesisWeaponKillEntry, *domain.FragDistribution) {
+	defer timing.FromContext(ctx).Section("frag_distribution")()
 	if len(filteredCanon) == 0 || totalKills <= 0 {
 		return nil, nil
 	}
@@ -409,10 +413,7 @@ func (s *SynthesisService) loadWeaponKillRows(
 	if s.weaponKillsRepo == nil || s.gamertag == "" {
 		return nil
 	}
-	matchIDs := make([]string, 0, len(filteredCanon))
-	for _, r := range filteredCanon {
-		matchIDs = append(matchIDs, r.Summary.MatchID)
-	}
+	matchIDs := synthesisMatchIDs(filteredCanon)
 	wf := port.WeaponKillFilters{MatchIDs: matchIDs, Gamertag: s.gamertag, ResolveRoles: true}
 	rows, err := s.weaponKillsRepo.LoadWeaponKillsAggregated(ctx, s.titleSlug, wf)
 	if err != nil {
@@ -449,13 +450,11 @@ func titleHasNativeKillMechanics(slug string) bool {
 func (s *SynthesisService) loadWeaponAccuracy(
 	ctx context.Context, filteredCanon []canonical.PlayerMatchRow,
 ) []domain.SynthesisWeaponAccuracyEntry {
+	defer timing.FromContext(ctx).Section("weapon_accuracy")()
 	if s.weaponAccuracyRepo == nil || s.gamertag == "" || len(filteredCanon) == 0 {
 		return nil
 	}
-	matchIDs := make([]string, 0, len(filteredCanon))
-	for _, r := range filteredCanon {
-		matchIDs = append(matchIDs, r.Summary.MatchID)
-	}
+	matchIDs := synthesisMatchIDs(filteredCanon)
 	wf := port.WeaponAccuracyFilters{MatchIDs: matchIDs, Gamertag: s.gamertag}
 	rows, err := s.weaponAccuracyRepo.LoadWeaponAccuracyAggregated(ctx, s.titleSlug, wf)
 	if err != nil {
@@ -479,5 +478,5 @@ func (s *SynthesisService) loadWeaponAccuracy(
 // Helpers internes
 // =============================================================================
 
-// filterSynthesisByPeriod filtre les matchs SynthÃ¨se selon la pÃ©riode demandÃ©e.
-// Retourne les matchs filtrÃ©s, les filtres appliquÃ©s et ceux ignorÃ©s.
+// filterSynthesisByPeriod filtre les matchs Synthèse selon la période demandée.
+// Retourne les matchs filtrés, les filtres appliqués et ceux ignorés.

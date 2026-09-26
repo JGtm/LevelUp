@@ -1,5 +1,6 @@
 import { outcomeScale, narrativeScale } from '@/lib/accessibility/scales'
 import { tokenCssVar } from '@/lib/accessibility'
+import type { Locale } from '@/lib/i18n/locale'
 
 export interface MatchCardOutcomeStyle {
   scoreColor: string
@@ -21,8 +22,8 @@ function hexToRgba(cssVar: string, alpha: number): string {
 
 const DEFAULT_OUTCOME_STYLE: MatchCardOutcomeStyle = {
   scoreColor: tokenCssVar('divergent-neutral'),
-  panelBackground: 'rgba(158, 158, 158, 0.12)',
-  panelBorder: 'rgba(158, 158, 158, 0.28)',
+  panelBackground: 'rgba(158, 158, 158, 0.12)', // color-allow: 2026-09-06 (ronde 2, N3) — GRIS NEUTRE du panneau d'une carte de match SANS issue connue (le defaut, avant que l'issue ne teinte la carte) : une valeur de repli, pas une couleur qui dit quelque chose ; dette PREEXISTANTE au lot v2 D
+  panelBorder: 'rgba(158, 158, 158, 0.28)', // color-allow: 2026-09-06 (ronde 2, N3) — meme gris neutre, sur la bordure du meme panneau de repli ; dette PREEXISTANTE au lot v2 D
 }
 
 export function getMatchCardOutcomeStyle(tone: string | null | undefined): MatchCardOutcomeStyle {
@@ -38,21 +39,55 @@ export function getMatchCardOutcomeStyle(tone: string | null | undefined): Match
   }
 }
 
-const NARRATIVE_LABELS: Record<string, string> = {
-  dominant:         'DOMINATION',
-  humiliation:      'HUMILIATION',
-  remontada:        'REMONTADA',
-  debacle:          'DÉBÂCLE',
-  contre_remontada: 'CONTRE-REMONTADA',
+/** Types narratifs reconnus par la tuile de match (type ferme : la parite FR/EN
+ *  des libelles de badge est verifiee a la compilation). */
+export type NarrativeType =
+  | 'dominant'
+  | 'humiliation'
+  | 'remontada'
+  | 'debacle'
+  | 'contre_remontada'
+  | 'sabordage'
+  | 'abnegation'
+
+/** Libelles de badge, en majuscules (le badge est rendu en `uppercase`).
+ *  Vocabulaire EN aligne sur le manifeste `lib/i18n/generated/match_view.ts`
+ *  (cles `narrative.dominance.*`). */
+const NARRATIVE_LABELS: Record<Locale, Record<NarrativeType, string>> = {
+  fr: {
+    dominant:         'DOMINATION',
+    humiliation:      'HUMILIATION',
+    remontada:        'REMONTADA',
+    debacle:          'DÉBÂCLE',
+    contre_remontada: 'CONTRE-REMONTADA',
+    sabordage:        'SABORDAGE',
+    abnegation:       'ABNÉGATION',
+  },
+  en: {
+    dominant:         'DOMINATION',
+    humiliation:      'HUMILIATION',
+    remontada:        'COMEBACK',
+    debacle:          'COLLAPSE',
+    contre_remontada: 'COUNTER-COMEBACK',
+    sabordage:        'SCUTTLED',
+    abnegation:       'SELFLESS',
+  },
 }
 
-export function getMatchNarrativeBadgeMeta(type: string | null | undefined): MatchNarrativeBadgeMeta | null {
+function isNarrativeType(type: string): type is NarrativeType {
+  return type in NARRATIVE_LABELS.fr
+}
+
+export function getMatchNarrativeBadgeMeta(
+  type: string | null | undefined,
+  locale: Locale = 'fr',
+): MatchNarrativeBadgeMeta | null {
   if (!type) return null
   const token = narrativeScale(type)
   if (!token) return null
 
   return {
-    label:     NARRATIVE_LABELS[type] ?? type,
+    label:     isNarrativeType(type) ? NARRATIVE_LABELS[locale][type] : type,
     color:     tokenCssVar(token),
     textColor: tokenCssVar(`${token}-text` as Parameters<typeof tokenCssVar>[0]),
   }

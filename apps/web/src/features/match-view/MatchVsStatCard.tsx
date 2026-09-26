@@ -3,7 +3,10 @@
  *
  * Extrait de MatchStatCards.tsx (C6) — règle des 500 lignes par fichier.
  */
+import type { ReactNode } from 'react'
+
 import { tokenCssVar, type SemanticToken } from '@/lib/accessibility'
+import { InfoTooltip } from '@/components/ui/info-tooltip'
 import { KpiCard } from '@/components/cards/KpiCard'
 
 interface MatchVsStatCardProps {
@@ -30,6 +33,12 @@ interface MatchVsStatCardProps {
    * (l'accent dynamique type 4 prend le dessus).
    */
   fixedAccent?: SemanticToken
+  /**
+   * Aide ⓘ rendue À CÔTÉ du libellé. Absente = AUCUN nœud ajouté, donc rendu strictement
+   * identique à l'existant : seules les cartes dont la valeur ne se lit pas sans définition
+   * (Rendement, Résistance — des pourcentages rapportés à une vie de Spartan) la portent.
+   */
+  help?: ReactNode
 }
 
 export function MatchVsStatCard({
@@ -43,6 +52,7 @@ export function MatchVsStatCard({
   lowerIsBetter = false,
   precision = 0,
   fixedAccent,
+  help,
 }: MatchVsStatCardProps) {
   const fmt = (v: number | string | null | undefined) => {
     if (v == null) return '—'
@@ -67,7 +77,14 @@ export function MatchVsStatCard({
   return (
     <KpiCard accent={accent} className="h-full">
       <div className="px-3 py-2.5">
-        <p className="text-2xs text-muted-foreground uppercase tracking-wide mb-1.5">{label}</p>
+        {help == null ? (
+          <p className="text-2xs text-muted-foreground uppercase tracking-wide mb-1.5">{label}</p>
+        ) : (
+          <p className="mb-1.5 flex items-center gap-1 text-2xs uppercase tracking-wide text-muted-foreground">
+            {label}
+            <InfoTooltip content={help} iconClass="w-3 h-3" />
+          </p>
+        )}
         <div className="flex items-baseline gap-1.5">
           <div>
             <span className="text-lg font-bold text-foreground leading-none" title={primaryTitle}>{fmt(primary)}</span>

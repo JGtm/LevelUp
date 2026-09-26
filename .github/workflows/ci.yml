@@ -86,6 +86,9 @@ jobs:
       - name: Lint multi-titres (no hardcoded FieldKey)
         run: npm run lint:fields
 
+      - name: Lint couleurs (tokens semantiques uniquement)
+        run: npm run lint:colors
+
       # Ratchet knip — SANS condition de chemin, et c'est tout l'objet du step.
       # Le hook pre-push homonyme (lefthook.yml) est glob-gaté sur
       # `apps/web/src/**/*.{ts,tsx}` : il ne s'exécute que si le push CONTIENT des
@@ -130,6 +133,39 @@ jobs:
         # Le rapport HTML est uploade en artefact pour debug.
         run: npm run test:coverage --if-present
 
+      # LES DEUX SEULES PREUVES DE RENDU DU REJEU — ICI, ET PAS DANS LE JOB e2e-react
+      # (M1, registre d'audit du 2026-09-05). Le job `e2e-react` est gaté
+      # `github.event_name == 'pull_request'` (l.524) ; la campagne v7.5 travaille en
+      # branche unique, donc ZÉRO exécution depuis le tag v7.3.0 : 373 commits sur
+      # `match-replay` que ces 589 lignes de garde-rail n'ont pas protégés. Elles étaient
+      # d'ailleurs ROUGES quand on les a rejouées le 2026-09-06 (harnais périmé de deux
+      # refactorings) — un garde-rail qu'on n'exécute pas ne garde rien.
+      #
+      # POURQUOI ELLES ONT LEUR PLACE ICI : elles n'ouvrent AUCUN serveur (`page.setContent`
+      # seul ; `playwright.config.ts` n'a pas de bloc `webServer`), donc ni API démo ni Vite,
+      # contrairement au reste de `e2e/`. Coût : l'installation de Chromium (~1 min) plus
+      # ~3 s d'exécution.
+      #
+      # POURQUOI PAS EN VITEST : jsdom n'a pas de moteur 2D. Seul un Chromium réel dit ce que
+      # `oklch(...)` et `globalCompositeOperation: 'lighter'` produisent — la panne que ces
+      # specs ont démasquée (« primitives parfaites, image vide », 0 pixel changé sur fond
+      # clair) est invisible à vitest par construction.
+      - name: Rasterisation du rejeu (Playwright, sans serveur)
+        run: |
+          npx playwright install chromium --with-deps
+          npx playwright test --project=chromium --reporter=list \
+            e2e/replay-explosion-raster.spec.ts \
+            e2e/replay-muzzle-raster.spec.ts
+
+      - name: Upload Playwright report (rasterisation, si échec)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: raster-playwright-results
+          path: tests/e2e-results/
+          if-no-files-found: ignore
+          retention-days: 7
+
       - name: Upload coverage report (Vitest)
         if: always()
         uses: actions/upload-artifact@v4
@@ -159,7 +195,7 @@ jobs:
           cache-dependency-path: apps/go-api/go.sum
 
       - name: go vet (domain + analysis — sans CGo)
-        run: go vet ./internal/domain/... ./internal/analysis/...
+        run: go vet ./internal/domain/... ./internal/analysis/... ./internal/games/weapons/... ./internal/games/halo_infinite/film/internal/profile/... ./internal/games/halo_infinite/film/internal/grammar/... ./internal/games/halo_infinite/film/internal/facts/... ./internal/games/halo_infinite/film/replay/...
         env:
           CGO_ENABLED: "0"
 
@@ -168,8 +204,58 @@ jobs:
         env:
           CGO_ENABLED: "0"
 
+      # CORPUS `gamefiles` (2026-09-05) : les 62 tests de rétro-ingénierie du dépôt
+      # lisent l'installation locale de Halo Infinite et coûtent des minutes (corpus
+      # entier : ~385 s ; TestBalayageCoquille seul : 203 s, 26 cartes). Ils sont
+      # derrière `//go:build gamefiles` — donc PAS compilés par le `go test` par défaut.
+      # Sans ce vet, ils pourriraient sans que rien ne rougisse : la CI n'a pas le jeu
+      # installé, elle ne peut pas les EXÉCUTER, mais elle doit les COMPILER.
+      # Garde-rails du tag lui-même : internal/archlint/gamefiles_tag_test.go.
+      #
+      # LES DEUX PAQUETS `cmd/` SONT ARRIVÉS LE 2026-09-06 (constat I1) : jusque-là leurs
+      # tests ouvraient le jeu SANS le tag, donc le `go test` par défaut les compilait —
+      # les mettre sous le tag les aurait sortis de toute compilation en CI si cette liste
+      # n'avait pas suivi. Un tag sans vet est un fichier qui pourrit en silence.
+      #
+      # CGO OBLIGATOIRE, ET SUR LINUX SEULEMENT (correctif du 2026-09-05). `himap` importe
+      # `himodule`, qui importe `internal/ooz` — un paquet CGO (décodeur Oodle C++). Avec
+      # CGO_ENABLED=0, ooz n'a AUCUN fichier compilable : le vet meurt sur « build
+      # constraints exclude all Go files », ce qui a rougi le job ubuntu et fait annuler le
+      # job windows par fail-fast dès l'ajout de cette étape. Le toolchain C++ est garanti
+      # sur le runner Linux (le job Coverage y compile déjà ooz avec CGO_ENABLED=1) ; il ne
+      # l'est pas sur le runner Windows, et compiler le corpus DEUX fois n'apprend rien.
+      - name: go vet (corpus gamefiles — compilation seule, jamais exécuté en CI)
+        if: runner.os == 'Linux'
+        run: go vet -tags=gamefiles ./internal/himap/ ./cmd/mapstruct-build/ ./cmd/mapfond-build/
+        env:
+          CGO_ENABLED: "1"
+
+      # INSTRUMENTS `research` (2026-09-16, chantier du decodeur de film). Les instruments de
+      # recherche qui REBALAYENT les 7 bobines versionnees (`e191b_carte_ti37_*`, `e191c_*` dans
+      # `filmdec`) sont derriere `//go:build research` : ils tournent a la demande
+      # (`go test -tags research ./internal/games/halo_infinite/film/internal/grammar/ -run TestE191`),
+      # jamais en CI. Chiffres du jour : le paquet `filmdec` valait 26,1 s avant le lot 1.9.1 bis,
+      # 89,9 s apres (dont 72 s pour ces instruments), et le job de couverture Linux — atomic,
+      # coverpkg ./... — a rougi a `-timeout 600s` (run 34978931976 : `FAIL filmdec 600.236s`,
+      # aucun test en echec, un paquet entier sans verdict) alors qu'il dure deja 33 min sur 45.
+      # Meme logique que `gamefiles` : un tag sans vet est un fichier qui pourrit en silence,
+      # donc la CI COMPILE ces instruments ici. Regle ecrite au plan du decodeur (§2.3).
+      - name: go vet (instruments research — compilation seule, jamais executes en CI)
+        if: runner.os == 'Linux'
+        run: go vet -tags=research ./internal/games/halo_infinite/film/internal/grammar/
+        env:
+          CGO_ENABLED: "0"
+
+      # BUDGET 600 s (2026-09-16, run 34968331540 sur 4abf6f466) : le paquet `filmdec` a
+      # depasse les 60 s sur le runner Windows (`panic: test timed out after 1m0s` dans
+      # `kfScanNext`, ubuntu vert). Mesure locale, CGO_ENABLED=0, -count=1 : 26,1 s pour le
+      # paquet, dont sept tests de 2,5 a 5,3 s qui rebalayent chacun les images-cle des
+      # 7 bobines versionnees ; le runner Windows est deux a trois fois plus lent. 300 s est
+      # le budget que tenait l'ancien job baseline (cf. plus bas), porte a 600 s (celui du job
+      # de couverture) a la fusion du lot 1.9.1 bis, puis les instruments lourds sont passes
+      # sous le tag `research` (etape ci-dessus) : le budget reste, il n'est plus la defense.
       - name: go test (unit, no CGo DB)
-        run: go test ./internal/domain/... ./internal/analysis/... ./contracttest/... -timeout 60s -count=1
+        run: go test ./internal/domain/... ./internal/analysis/... ./internal/games/weapons/... ./internal/games/halo_infinite/film/internal/profile/... ./internal/games/halo_infinite/film/internal/grammar/... ./internal/games/halo_infinite/film/internal/facts/... ./internal/games/halo_infinite/film/replay/... ./contracttest/... -timeout 600s -count=1
         env:
           CGO_ENABLED: "0"
           LEVELUP_DEMO_MODE: "true"
@@ -273,7 +359,9 @@ jobs:
     # mono-process) dont chaque package plafonne à 600 s. Inchangé par la fusion du
     # gate baseline (D3) : le gate ajouté est une analyse de JSONL (quelques
     # secondes), c'est l'ANCIEN job dédié de 40 min qui disparaît.
-    timeout-minutes: 45
+    # 45 -> 60 (2026-09-22) : 35 a 41 min quand il passe, ANNULE a 45 min deux fois de suite sur
+    # feat/v75 959877c36 (serie 5 du decodeur + sections transverses). Retour a 45 : 3 runs < 35 min.
+    timeout-minutes: 60
     defaults:
       run:
         working-directory: apps/go-api
@@ -311,6 +399,16 @@ jobs:
       # couverture (plus lente), un budget plus court fabriquerait des timeouts qui
       # ne sont pas des régressions. Le mode autonome du script garde 300 s.
       #
+      # 600 -> 900 s (2026-09-25, campagne « retours rejeu », intégration de la vague D) :
+      # run 36162837061 sur 8487a4f91, `panic: test timed out after 10m0s` dans le paquet
+      # `film/internal/grammar` (aucun test en échec, somme des tests terminés 577 s). La
+      # marche d'image-clé prouvée de la vague D (M3, D-fix) fait passer ce paquet de 57 s
+      # à 82 s NON instrumenté (jobs « Go Build + Test » ubuntu, runs 35990146841 ->
+      # 36162837061) ; sous `-covermode=atomic -coverpkg=./...` il dépasse 600 s. Cinq tests
+      # rebalayent chacun les sept bobines versionnées (70 à 81 s chacun ici). Critère de
+      # retour à 600 s : ces balayages partagent une marche mémorisée par bobine, ou le
+      # paquet repasse sous 60 s non instrumenté.
+      #
       # `-json` retire toute sortie humaine du log : c'est le step suivant
       # (analyse du JSONL) qui réimprime les lignes utiles en cas d'échec.
       - name: go test avec couverture complète + JSONL (CGO + intégration)
@@ -322,7 +420,7 @@ jobs:
             -covermode=atomic \
             -coverpkg=./... \
             -tags=integration \
-            -timeout 600s \
+            -timeout 900s \
             -count=1 \
             -p 1 \
             ./... > baseline_current.jsonl 2>&1

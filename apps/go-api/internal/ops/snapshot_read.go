@@ -78,7 +78,7 @@ func createParquetViewStrict(ctx context.Context, db *sql.DB, viewName, file str
 // (CREATE TABLE IF NOT EXISTS + CREATE VIEW) s'appliquent sans conflit de nom.
 func sharedSnapshotRequiredTables() []string {
 	out := append([]string{}, sharedSnapshotTables...)
-	out = append(out, sharedSnapshotMatchKeyedRaw...) // weapon_kills, match_csrs, match_objective_stats (raw)
+	out = append(out, sharedSnapshotMatchKeyedRaw...) // weapon_kills, match_csrs, match_objective_stats, match_kill_events (raw)
 	out = append(out, sharedSnapshotGlobalTables...)  // xuid_aliases
 	return out
 }
@@ -156,6 +156,16 @@ func OpenSnapshotShared(ctx context.Context, paths *title.PathResolver, titleSlu
 			_ = db.Close()
 			return nil, fmt.Errorf("snapshot read shared: vue append-only: %w", err)
 		}
+	}
+	// match_kill_events_latest : par la fonction canonique de la migration (zéro
+	// divergence — c'est elle qui porte la sémantique de sélection de passe). Sur le
+	// :memory:, la table matérialisée depuis le Parquet est déjà là : les CREATE ... IF
+	// NOT EXISTS sont des no-ops, seule la vue (OR REPLACE) est posée. Ajoutée le
+	// 2026-08-12 : Q21b/Q21c (arme + assistant du kill feed) la lisent depuis le lot
+	// portage POC — sans elle, MatchView servi du snapshot rendait ces lectures vides.
+	if err := migration.EnsureMatchKillEvents(db); err != nil {
+		_ = db.Close()
+		return nil, fmt.Errorf("snapshot read shared: match_kill_events_latest: %w", err)
 	}
 	return &SnapshotQuerier{DB: db, Version: version, closeFn: func() { _ = db.Close() }}, nil
 }

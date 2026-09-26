@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Performance — mock comparaison</title>
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #0f1117; font-family: system-ui, sans-serif; padding: 32px; color: #ccc; }
+  h1 { font-size: 13px; color: #555; margin-bottom: 24px; letter-spacing: 0.05em; text-transform: uppercase; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; max-width: 1100px; }
+  .panel { background: #1a1d27; border-radius: 10px; padding: 20px; }
+  h3 { font-size: 14px; font-weight: 600; color: #e0e0e0; margin-bottom: 6px; }
+  p  { font-size: 11px; color: #55596a; line-height: 1.5; margin-bottom: 14px; }
+  .chart { height: 300px; }
+  .legend-zones { display: flex; gap: 12px; margin-top: 10px; }
+  .legend-zones span { font-size: 10px; padding: 2px 8px; border-radius: 3px; }
+</style>
+</head>
+<body>
+<h1>Performance escouade par match — mock comparaison</h1>
+<div class="grid">
+
+  <div class="panel">
+    <h3>Option A — Zones de fond</h3>
+    <p>
+      Barres en couleur joueur (identite preservee).<br>
+      Fond rouge/jaune/vert selon le tier de performance.<br>
+      <strong>Lecture :</strong> couleur = qui, zone = comment.
+    </p>
+    <div id="chartA" class="chart"></div>
+    <div class="legend-zones">
+      <span style="background:rgba(239,68,68,0.18);color:#f87171">0–40 faible</span>
+      <span style="background:rgba(250,204,21,0.18);color:#fbbf24">40–70 moyen</span>
+      <span style="background:rgba(34,197,94,0.18);color:#4ade80">70–100 bon</span>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h3>Option B — Opacite variable</h3>
+    <p>
+      Barres en couleur joueur (identite preservee).<br>
+      Opacite proportionnelle au score : 35 % (score=0) → 100 % (score=100).<br>
+      <strong>Lecture :</strong> couleur = qui, luminosite = comment.
+    </p>
+    <div id="chartB" class="chart"></div>
+  </div>
+
+</div>
+<script>
+const PLAYERS = ['Madina', 'Warlord', 'Geeky']
+// Couleurs proches de la palette Okabe-Ito utilisee dans le projet.
+const COLORS = ['#5B8DEF', '#E07B39', '#3EBF8F']
+const MATCHES = ['#1','#2','#3','#4','#5','#6','#7','#8','#9','#10']
+
+const DATA = [
+  [38, 62, 78, 29, 88, 34, 71, 65, 52, 80],
+  [72, 51, 42, 68, 55, 79, 36, 83, 76, 61],
+  [61, 75, 55, 82, 48, 65, 70, 31, 90, 44],
+]
+
+const AXIS_STYLE = {
+  axisLine:  { lineStyle: { color: '#2e3347' } },
+  axisLabel: { color: '#555', fontSize: 10 },
+  splitLine: { lineStyle: { color: '#2e3347' } },
+}
+
+const TOOLTIP_STYLE = {
+  trigger: 'axis',
+  axisPointer: { type: 'shadow' },
+  backgroundColor: '#1e2130',
+  borderColor: '#2e3347',
+  textStyle: { color: '#ccc', fontSize: 11 },
+}
+
+const BASE = {
+  backgroundColor: 'transparent',
+  grid: { top: 8, bottom: 36, left: 8, right: 8, containLabel: true },
+  legend: { data: PLAYERS, textStyle: { color: '#888', fontSize: 11 }, bottom: 0 },
+  xAxis: { type: 'category', data: MATCHES, ...AXIS_STYLE },
+  yAxis: { type: 'value', min: 0, max: 100, ...AXIS_STYLE },
+}
+
+// -----------------------------------------------------------------------
+// Option A : zones de fond via markArea
+// -----------------------------------------------------------------------
+const chartA = echarts.init(document.getElementById('chartA'))
+
+const markAreaZones = {
+  silent: true,
+  data: [
+    [{ yAxis: 0,  itemStyle: { color: 'rgba(239,68,68,0.08)' }  }, { yAxis: 40  }],
+    [{ yAxis: 40, itemStyle: { color: 'rgba(250,204,21,0.08)' } }, { yAxis: 70  }],
+    [{ yAxis: 70, itemStyle: { color: 'rgba(34,197,94,0.08)'  } }, { yAxis: 100 }],
+  ],
+}
+
+chartA.setOption({
+  ...BASE,
+  tooltip: TOOLTIP_STYLE,
+  series: PLAYERS.map((name, i) => ({
+    name,
+    type: 'bar',
+    barMaxWidth: 14,
+    itemStyle: { color: COLORS[i] },
+    data: DATA[i],
+    ...(i === 0 ? { markArea: markAreaZones } : {}),
+  })),
+})
+
+// -----------------------------------------------------------------------
+// Option B : opacite variable
+// -----------------------------------------------------------------------
+const chartB = echarts.init(document.getElementById('chartB'))
+
+chartB.setOption({
+  ...BASE,
+  tooltip: TOOLTIP_STYLE,
+  series: PLAYERS.map((name, i) => ({
+    name,
+    type: 'bar',
+    barMaxWidth: 14,
+    data: DATA[i].map((score) => ({
+      value: score,
+      itemStyle: { color: COLORS[i], opacity: 0.35 + 0.65 * (score / 100) },
+    })),
+  })),
+})
+
+window.addEventListener('resize', () => { chartA.resize(); chartB.resize() })
+</script>
+</body>
+</html>

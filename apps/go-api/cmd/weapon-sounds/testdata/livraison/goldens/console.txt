@@ -1,0 +1,12 @@
+  Covenant_provoker                  role:tir_3_coups     -> hinf_ravager.wav  +variation
+  Forerunner_sentinelbeam            role:tir_court       -> hinf_sentinel_beam.wav  +variation
+  Banished_mangler                   ev_00c0ffee          -> hinf_mangler.wav  +variation
+  Covenant_needler                   _coup_m1_1p          -> hinf_needler.wav  +variation
+  UNSC_assaultrifle                  _coup_m0_1p          -> hinf_ma40_ar.wav  +variation
+  SANS FICHIER UNSC_bulldog
+  UNSC_relatifdrive                  _coup_m0_1p          -> hinf_relatifdrive.wav  +variation
+  INTROUVABLE UNSC_sidekick -> UNSC_sidekick/0.10s_absent.wav
+  variante servie par la base : UNSC_assaultrifle_infectee         (hinf_ma40_ar)
+
+6 fichiers d'armes livres, 6 variations ; 1 fichiers d'evenements du pack INTACTS
+taille armes : 0.3 Mo

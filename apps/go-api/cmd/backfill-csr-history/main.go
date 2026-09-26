@@ -31,11 +31,18 @@ import (
 
 	_ "github.com/duckdb/duckdb-go/v2"
 
+	"levelup/go-api/internal/games/titleseams"
 	"levelup/go-api/internal/platform/auth"
 	syncpkg "levelup/go-api/internal/sync"
 )
 
 func main() {
+	// Seams title-owned (classifiers LUSR et famille objectif, provider des
+	// etapes de migration, traductions de rangs) : sans eux, tout appel au
+	// post-sync panique (fail-loud MT-15). Racine des jalons Halo 5 vide : cet
+	// outil ne seed pas de catalogue, le step h5_seed_milestone_catalog est
+	// alors un no-op gracieux documente. Cf. internal/games/titleseams.
+	titleseams.RegisterAll("")
 	xuid := flag.String("xuid", "", "XUID numérique du joueur cible (requis)")
 	playerDBPath := flag.String("player-db", "", "chemin stats.duckdb du joueur (RW requis — stopper le serveur)")
 	metadataDBPath := flag.String("metadata-db", "data/titles/halo_infinite/warehouse/metadata.duckdb", "chemin metadata.duckdb (RO, lecture csr_season_calendars)")
@@ -43,7 +50,7 @@ func main() {
 	gamertag := flag.String("gamertag", "", "gamertag (logs uniquement)")
 	titleID := flag.String("title", "halo_infinite", "title_id pour csr_season_calendars")
 	season := flag.String("season", "", "limiter à une seule saison CSR (ex: CsrSeason12-1) ; vide = toutes les saisons")
-	envFile := flag.String("env-file", ".env.local", "chemin .env.local (SPNKR_AZURE_CLIENT_ID requis par MSALProvider)")
+	envFile := flag.String("env-file", ".env.local", "chemin .env.local (secret client Azure + LEVELUP_OAUTH_CLIENT_ID, refresh OAuth via SISUProvider + MultiUserTokenStore ADR 0023)")
 	rateLimit := flag.Int("rate-limit", 60, "requêtes max/minute vers l'API skill")
 	dryRun := flag.Bool("dry-run", false, "liste les saisons ciblées sans appeler l'API ni écrire")
 	flag.Parse()
@@ -80,8 +87,8 @@ func main() {
 	defer playerDB.Close()
 	playerDB.SetMaxOpenConns(1)
 
-	// Tokens Halo (canonique ADR 0023 : store-first + legacy depuis sync_meta).
-	tokens, err := loadHaloTokens(ctx, *watcherTokensDir, *xuid, *gamertag, playerDB)
+	// Tokens Halo (canonique ADR 0023 : MultiUserTokenStore, source unique).
+	tokens, err := loadHaloTokens(ctx, *watcherTokensDir, *xuid, *gamertag)
 	if err != nil {
 		fatal("chargement tokens Halo: %v", err)
 	}
@@ -138,19 +145,13 @@ func resolveSeasons(ctx context.Context, metadataDBPath, titleID, only string) (
 	return out, rows.Err()
 }
 
-// loadHaloTokens suit le pipeline canonique ADR 0023 : MultiUserTokenStore en
-// premier, legacy (sync_meta du player DB) en secours. La rotation RT est
-// persistée par le helper.
-func loadHaloTokens(ctx context.Context, watcherTokensDir, xuid, gamertag string, playerDB *sql.DB) (*authTokens, error) {
-	var rt, msal string
-	_ = playerDB.QueryRowContext(ctx, `SELECT value FROM sync_meta WHERE key = 'oauth_refresh_token'`).Scan(&rt)
-	_ = playerDB.QueryRowContext(ctx, `SELECT value FROM sync_meta WHERE key = 'msal_token_cache'`).Scan(&msal)
-
+// loadHaloTokens suit le pipeline canonique ADR 0023 : MultiUserTokenStore,
+// source unique des refresh tokens. La rotation RT est persistée par le helper.
+func loadHaloTokens(ctx context.Context, watcherTokensDir, xuid, gamertag string) (*authTokens, error) {
 	store := auth.NewMultiUserTokenStore(watcherTokensDir)
 	provider := auth.NewSISUProvider()
-	legacy := auth.LegacyAuthInputs{OAuthRT: rt, MSALCache: msal, Source: "player_db.sync_meta"}
 
-	result, err := auth.RefreshHaloTokensViaStoreFirst(ctx, store, provider, xuid, gamertag, legacy)
+	result, err := auth.RefreshHaloTokensViaStoreFirst(ctx, store, provider, xuid, gamertag)
 	if err != nil {
 		return nil, err
 	}
@@ -167,7 +168,11 @@ type authTokens struct {
 }
 
 // loadEnvLocal injecte les variables de .env.local dans l'environnement (sans
-// écraser celles déjà définies). Requis pour SPNKR_AZURE_CLIENT_ID.
+// écraser celles déjà définies). Requis pour le secret client Azure et
+// LEVELUP_OAUTH_CLIENT_ID, lus par ResolveAzureOAuthClient lors du refresh OAuth
+// (pipeline SISUProvider + MultiUserTokenStore, ADR 0023 — MSALProvider a été
+// supprimé le 2026-07-15 ; le nom exact de la variable du secret vit dans
+// azure_credentials.go, la sentinelle du package auth interdit son littéral ici).
 func loadEnvLocal(path string) {
 	data, err := os.ReadFile(path)
 	if err != nil {

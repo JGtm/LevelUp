@@ -1,0 +1,71 @@
+﻿EXIT_oracle_export=0
+# gates de cloture du lot A phase 0 (2026-08-17)
+EXIT_vet=0
+EXIT_test_objectiveevents=0
+EXIT_test_filmdec=0
+EXIT_lint=0
+# mesures par film (script scratchpad run_film.ps1, un processus par film, plafond 3 Go surveille)
+EXIT_measure_64e8adfa=0
+EXIT_measure_530820e5=0
+EXIT_measure_53ce4390=0
+EXIT_measure_06dfe6d9=0
+EXIT_measure_0a247154=0
+EXIT_measure_01e1f945=0
+EXIT_measure_606d9844=0
+EXIT_measure_8076f97f=0
+EXIT_measure_7344d24f=0
+EXIT_measure_696a9d7c=0
+EXIT_measure_24dbb67d=0
+EXIT_measure_000d5950=0
+# controle D1 (run_d1.ps1)
+EXIT_d1_530820e5=0
+EXIT_d1_696a9d7c=0
+EXIT_d1_000d5950=0
+# aucun processus tue : KILLED_OVER_3GB=False sur les 15 executions
+EXIT_oracle_export_bis=0
+# gates de cloture de la phase 0-bis (2026-08-18)
+EXIT_vet_bis=1
+EXIT_vet_bis=0
+EXIT_test_bis=0
+EXIT_lint_bis=1
+EXIT_vet_bis2=0
+EXIT_lint_bis=0
+# phase 0-bis (2026-08-18) : mesures du corpus etendu et des manches
+EXIT_measure_00162144=0
+EXIT_measure_02784ce1=0
+EXIT_measure_0215fe6b=0
+EXIT_measure_51ebbc0f=0
+EXIT_measure_c88ec007=0
+EXIT_measure_92f18088=0
+EXIT_measure_10ed320d=0
+EXIT_measure_0c009149=0
+EXIT_measure_1b370ce1=0
+EXIT_measure_1e26f641=0
+EXIT_measure_1b1e380f=-1 # TUE au plafond 3 Go (pic 3304 Mo) : film non mesurable
+EXIT_manches_24dbb67d=0
+EXIT_manches_7344d24f=0
+EXIT_manches_606d9844=0
+EXIT_manches_8076f97f=0
+EXIT_manches_64e8adfa=0
+EXIT_rounds_diag_24dbb67d=0
+EXIT_vals_24dbb67d=0
+EXIT_vals_000d5950=0
+# KILLED_OVER_3GB=False sur toutes les executions sauf 1b1e380f
+# phase 0-ter (2026-08-18) : hypothese en-tete = manche, et rampe Strongholds
+EXIT_manches_ter_24dbb67d=0
+EXIT_manches_ter_51ebbc0f=0
+EXIT_manches_ter_c88ec007=0
+EXIT_manches_ter_92f18088=0
+EXIT_manches_ter_000d5950=0
+EXIT_manches_ter_530820e5=0
+EXIT_manches_ter_7344d24f=0
+EXIT_manches_ter_696a9d7c=0
+EXIT_manches_ter_10ed320d=0
+EXIT_manches_ter_1e26f641=0
+# KILLED_OVER_3GB=False sur les 12 executions (pic max 20,8 Mo)
+EXIT_test_ter=0
+EXIT_lint_ter=0
+# phase 1 item A.1.0 (2026-08-18)
+EXIT_test_a10=0
+EXIT_test_replay_filmdec=1
+EXIT_lint_a10=0

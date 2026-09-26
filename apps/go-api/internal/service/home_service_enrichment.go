@@ -1,10 +1,11 @@
 // Package service — home_service_enrichment.go : helpers d'enrichissement des
-// RecentMatchItem (médailles + citations) et favoris. Extrait de home_service.go
-// (refactor god-file, revue 2026-06-02).
+// RecentMatchItem (médailles + citations), favoris et lien rejeu 2D. Extrait de
+// home_service.go (refactor god-file, revue 2026-06-02).
 package service
 
 import (
 	"context"
+	"log/slog"
 	"sort"
 
 	"levelup/go-api/internal/analysis"
@@ -16,14 +17,12 @@ import (
 func buildFavoriteMatchListCanonical(
 	rows []canonical.PlayerMatchRow,
 	favoriteIDs map[string]bool,
-	locale string,
-	effectiveHpToKill float64,
-	skillBadgeURL func(tierEN string, subTier int) string,
+	opts analysis.RecentMatchesOptions,
 ) []domain.RecentMatchItem {
 	if len(favoriteIDs) == 0 {
 		return nil
 	}
-	allItems := analysis.BuildRecentMatchesWithFavoritesFromCanonical(rows, len(rows), favoriteIDs, locale, effectiveHpToKill, skillBadgeURL)
+	allItems := analysis.BuildRecentMatchesWithFavoritesFromCanonical(rows, len(rows), favoriteIDs, opts)
 	var favorites []domain.RecentMatchItem
 	for _, item := range allItems {
 		if item.IsFavorite {
@@ -33,7 +32,42 @@ func buildFavoriteMatchListCanonical(
 	return favorites
 }
 
-// enrichMatchesWithMedals injecte les TopMedals (max 4, sÃ©lection par raretÃ©/count)
+// WithReplay injecte le service de rejeu 2D — même contrat que MatchHistoryService :
+// les tuiles de match de l'Accueil portent has_replay pour poser le lien vers la page
+// de rejeu. Dégradation gracieuse si nil. Retourne le service (chaînage).
+func (s *HomeService) WithReplay(svc port.ReplayService) *HomeService {
+	s.replaySvc = svc
+	return s
+}
+
+// replayAvailability liste les matchs ayant un artefact de rejeu — UN listing de
+// dossier par requête. Service non câblé ou listing en échec (déjà journalisé par le
+// service de rejeu) : ensemble vide, les tuiles se servent sans lien plutôt qu'en 500.
+func (s *HomeService) replayAvailability(ctx context.Context) port.ReplayAvailability {
+	if s.replaySvc == nil {
+		return nil
+	}
+	set, err := s.replaySvc.AvailableSet(ctx)
+	if err != nil {
+		return nil
+	}
+	return set
+}
+
+// applyReplayAvailabilityToRecentItems pose HasReplay sur les tuiles de match (récents
+// + favoris) depuis l'ensemble résolu une fois par requête. Ensemble vide/nil = no-op.
+func applyReplayAvailabilityToRecentItems(replays port.ReplayAvailability, itemLists ...[]domain.RecentMatchItem) {
+	if len(replays) == 0 {
+		return
+	}
+	for _, items := range itemLists {
+		for i := range items {
+			items[i].HasReplay = replays.Has(items[i].MatchID)
+		}
+	}
+}
+
+// enrichMatchesWithMedals injecte les TopMedals (max 4, sélection par rareté/count)
 // dans chaque RecentMatchItem via un appel batch sur le repo.
 func enrichMatchesWithMedals(ctx context.Context, repo port.HomeRepository, items []domain.RecentMatchItem) {
 	if len(items) == 0 {
@@ -50,6 +84,34 @@ func enrichMatchesWithMedals(ctx context.Context, repo port.HomeRepository, item
 	for i, item := range items {
 		if all, ok := medalsMap[item.MatchID]; ok {
 			items[i].TopMedals = selectTopMedals(all, 4)
+		}
+	}
+}
+
+// enrichMatchesWithAssistedFrags pose AssistedFrags (part des frags assistés par un
+// coéquipier, par tranche) sur chaque tuile dont le match est MESURÉ, via un appel
+// batch sur le repo. Un match absent de la map reste nil (« on ne sait pas »).
+//
+// En erreur : journalisée en WARN puis dégradation (tous les champs restent nil) — la
+// tuile n'affiche rien plutôt que de faire tomber la page. Contrairement aux voisins
+// (médailles, citations), l'erreur n'est PAS avalée en silence (CLAUDE.md règle 3).
+func enrichMatchesWithAssistedFrags(ctx context.Context, repo port.HomeRepository, items []domain.RecentMatchItem) {
+	if len(items) == 0 {
+		return
+	}
+	matchIDs := make([]string, len(items))
+	for i, item := range items {
+		matchIDs[i] = item.MatchID
+	}
+	byMatch, err := repo.LoadMatchAssistedFrags(ctx, matchIDs)
+	if err != nil {
+		slog.WarnContext(ctx, "home_assisted_frags_load_failed", "err", err, "matches", len(matchIDs))
+		return
+	}
+	for i, item := range items {
+		if a, ok := byMatch[item.MatchID]; ok {
+			af := a
+			items[i].AssistedFrags = &af
 		}
 	}
 }
@@ -91,10 +153,10 @@ func selectTopMedals(medals []domain.RecentMatchMedal, n int) []domain.RecentMat
 	return sorted[:n]
 }
 
-// maxCitationSnippets est le nombre maximum de citations affichÃ©es par MatchCard.
+// maxCitationSnippets est le nombre maximum de citations affichées par MatchCard.
 const maxCitationSnippets = 3
 
-// enrichMatchesWithCitations injecte les TopCitations (max 3, filtre citations dÃ©jÃ  masterisÃ©es)
+// enrichMatchesWithCitations injecte les TopCitations (max 3, filtre citations déjà masterisées)
 // dans chaque RecentMatchItem via un appel batch sur le repo.
 func enrichMatchesWithCitations(ctx context.Context, repo port.HomeRepository, items []domain.RecentMatchItem) {
 	if len(items) == 0 {
@@ -215,7 +277,7 @@ func buildCommendationSnippets(rows []domain.HomeMatchCommendationRaw, limit int
 }
 
 // GetBattlePass retourne les infos Battle Pass (live d'abord, cache DB en fallback).
-// Appel live systÃ©matique pour garantir des donnÃ©es fraÃ®ches au rechargement de page.
-// Si le live Ã©choue (tokens absents, API indisponible), le cache DB est retournÃ©.
-// Si un PersistSink est configurÃ© et que le live rÃ©ussit, les donnÃ©es sont persistÃ©es
-// de maniÃ¨re synchrone avant le retour (garantit que loadTrackSnapshots lit un rang Ã  jour).
+// Appel live systématique pour garantir des données fraîches au rechargement de page.
+// Si le live échoue (tokens absents, API indisponible), le cache DB est retourné.
+// Si un PersistSink est configuré et que le live réussit, les données sont persistées
+// de manière synchrone avant le retour (garantit que loadTrackSnapshots lit un rang à jour).

@@ -28,6 +28,20 @@ export type SemanticToken =
   | 'divergent-neutral'
   | 'divergent-neg'
 
+  // ── Objectif SANS CAMP (1) ─────────────────────────────────────────────────
+  //
+  // L'encre d'une zone, d'une base ou d'un socle que PERSONNE ne tient. Elle existe à part de
+  // `divergent-neutral` pour une raison mesurable (retour utilisateur du 2026-09-08 : « sur les
+  // bases, quand elles sont neutres, on a toujours un bleu neutre ») : sur la palette PAR DÉFAUT
+  // `divergent-neutral` vaut `#60A5FA`, un BLEU — et sur une carte où « allié » se dit déjà en
+  // bleu, un neutre bleu ne se distingue pas. Les palettes daltoniennes, elles, le rendent déjà
+  // gris ; le défaut n'existait donc que sur la palette par défaut, ce qui explique qu'il ait
+  // survécu aux relectures.
+  //
+  // ACHROMATIQUE DANS TOUTES LES PALETTES, ET C'EST SA DÉFINITION : « aucun camp » n'a pas de
+  // direction à porter. Aucune palette n'a de raison de lui donner une teinte.
+  | 'zone-neutral'
+
   // ── Statuts UI (4) ─────────────────────────────────────────────────────────
   | 'success'
   | 'warning'
@@ -61,17 +75,57 @@ export type SemanticToken =
   | 'chart-series-7'
   | 'chart-series-8'
 
-  // ── Bonus (1) — segment "assistances" empilé dans les charts squad/timeseries ─
-  // Couleur dédiée et distincte des 8 couleurs verrouillées de l'escouade
-  // (4 joueurs + leurs opposés colorimétriques) — cf. squadPerformanceLineCharts.
+  // ── Bonus (1) — cœur de la faille du rejeu 2D (useReplayInks, RIFT_CORE_TOKEN) ─
+  // Jusqu'au 2026-09-17 il colorait aussi le segment « assistances » des charts
+  // squad/timeseries : ce rôle est passé à `stat-assists` (famille des stats de combat).
   | 'bonus'
 
-  // ── Badges narratifs — fond (5) ────────────────────────────────────────────
+  // ── Stats de combat (5) — famille DÉDIÉE (2026-09-17) ─────────────────────
+  // Frags, morts, assistances, et SENS d'une assistance entre le joueur et un autre
+  // (reçue : l'autre te sert ; donnée : tu le sers). Avant cette famille, chaque page
+  // empruntait un rôle voisin (issue, palier de performance, série de graphique, info,
+  // comparaison) : cinq teintes d'assistances selon la page, et l'ambre « reçue »
+  // identique au joueur d'escouade 2. Valeurs validées palette par palette avec
+  // l'utilisateur (PLAN_COULEURS_STATS_COMBAT_2026-09-17) et verrouillées par
+  // combatStatTokens.test.ts. RÈGLE : une couleur qui dit « frag / mort / assistance »
+  // passe par ces jetons ; une couleur d'équipe, de joueur ou d'issue reste la sienne.
+  // La PART de dégâts d'une assistance se dit en tons (opacités 35 / 65 / 100 %) de la
+  // couleur du sens, jamais par une autre teinte.
+  | 'stat-kills'
+  | 'stat-deaths'
+  | 'stat-assists'
+  | 'assist-received'
+  | 'assist-given'
+
+  // ── Rareté (1) — accent "légendaire", réutilisable hors Battlepass ─────────
+  // PAS un doublon de `rarity.ts` (qui reste la SEULE source des 5 teintes de
+  // rareté GameCMS, exception tolérée règle couleurs) : `legendary` est un accent
+  // générique pour tout état "rare/précieux" qui n'est PAS une rareté de reward
+  // (ex. encadré du surbouclier au rejeu 2D — un sur-bouclier est un état de jeu
+  // rare et précieux, pas un item du Battlepass). Un seul token, pas cinq : les
+  // autres paliers de rareté n'ont pas d'usage hors Battlepass à ce jour.
+  | 'legendary'
+
+  // ── Extrême rare (1) — le sommet d'une rampe d'intensité ──────────────────
+  // Accent VIOLET pour ce qui sort de l'ordinaire par le HAUT, au-delà de la zone
+  // « chaude » : le dernier palier d'une carte de chaleur, là où une poignée de
+  // cellules concentre ce que le reste de la carte n'a pas. Même statut générique
+  // que `legendary` (un rôle, pas un composant) : `legendary` dit « rare et
+  // précieux », `extreme` dit « rare et intense » — un pic, pas un trésor.
+  // PAS un token de la famille `heatmap-*` : ces six-là forment des rampes fermées
+  // à deux bouts (cold/hot, freq-low/high, divergent-low/high) et sont remappées
+  // ensemble ; celui-ci est un troisième point, réutilisable hors heatmap.
+  // Composition de la rampe qui l'emploie : `heatmapRampTokens('intensity')`.
+  | 'extreme'
+
+  // ── Badges narratifs — fond (7) ────────────────────────────────────────────
   | 'narrative-dominant'
   | 'narrative-humiliation'
   | 'narrative-remontada'
   | 'narrative-debacle'
   | 'narrative-contre-remontada'
+  | 'narrative-sabordage'
+  | 'narrative-abnegation'
 
   // ── Badges encounter (4 + 5 solid hub Relations) ───────────────────────────
   | 'narrative-encounter-ally-plus'
@@ -85,13 +139,35 @@ export type SemanticToken =
   | 'narrative-encounter-proie-favorite'
   | 'narrative-encounter-cross-game'
 
-  // ── Badges narratifs — texte (5) ───────────────────────────────────────────
+  // ── Badges narratifs — texte (7) ───────────────────────────────────────────
   // Texte sur fond coloré — calculé pour assurer le contraste WCAG AA
   | 'narrative-dominant-text'
   | 'narrative-humiliation-text'
   | 'narrative-remontada-text'
   | 'narrative-debacle-text'
   | 'narrative-contre-remontada-text'
+  | 'narrative-sabordage-text'
+  | 'narrative-abnegation-text'
+
+  // ── Classes de frags (11) — sunburst « Répartition des frags » ─────────────
+  // Famille DÉDIÉE (2026-08-29) : les classes empruntaient des tokens d'autres
+  // gammes (perf-tier, narrative, chart-series…) choisis pour leur distance sur la
+  // palette DÉFAUT — mais les palettes daltoniennes replient plusieurs de ces
+  // tokens sur la MÊME teinte (Okabe-Ito : lourde ≡ grenade ≡ équipement sur le
+  // Reddish Purple, épaule ≡ environnement sur le Sky Blue ; Cividis : deux paires
+  // exactes aussi). Une famille dédiée permet d'accorder chaque palette SANS
+  // toucher aux tokens partagés. Garde-rail par palette : fragClass.guard.test.ts.
+  | 'frag-shoulder'
+  | 'frag-sidearm'
+  | 'frag-heavy'
+  | 'frag-melee'
+  | 'frag-grenade'
+  | 'frag-spartan-ability'
+  | 'frag-vehicle'
+  | 'frag-turret'
+  | 'frag-equipment'
+  | 'frag-environmental'
+  | 'frag-unattributed'
 
   // ── Heatmaps (6) ──────────────────────────────────────────────────────────
   // cold/hot + divergent : rampes À CONNOTATION (win-rate, K/D → bien/mal).
@@ -127,21 +203,30 @@ export const ALL_TOKENS: readonly SemanticToken[] = [
   'outcome-win', 'outcome-loss', 'outcome-draw', 'outcome-dnf',
   'perf-tier-1', 'perf-tier-2', 'perf-tier-3', 'perf-tier-4', 'perf-tier-5',
   'divergent-pos', 'divergent-neutral', 'divergent-neg',
+  'zone-neutral',
   'success', 'warning', 'info', 'destructive',
   'compare-a', 'compare-b', 'compare-c',
   'squad-player-1', 'squad-player-2', 'squad-player-3', 'squad-player-4',
   'chart-series-1', 'chart-series-2', 'chart-series-3', 'chart-series-4',
   'chart-series-5', 'chart-series-6', 'chart-series-7', 'chart-series-8',
   'bonus',
+  'stat-kills', 'stat-deaths', 'stat-assists', 'assist-received', 'assist-given',
+  'legendary',
+  'extreme',
   'narrative-dominant', 'narrative-humiliation', 'narrative-remontada',
   'narrative-debacle', 'narrative-contre-remontada',
+  'narrative-sabordage', 'narrative-abnegation',
   'narrative-dominant-text', 'narrative-humiliation-text', 'narrative-remontada-text',
   'narrative-debacle-text', 'narrative-contre-remontada-text',
+  'narrative-sabordage-text', 'narrative-abnegation-text',
   'narrative-encounter-ally-plus', 'narrative-encounter-tough-enemy',
   'narrative-encounter-coriace', 'narrative-encounter-ordinal',
   'narrative-encounter-duo-gagnant', 'narrative-encounter-cameleon',
   'narrative-encounter-de-longue-date', 'narrative-encounter-recrue',
   'narrative-encounter-proie-favorite', 'narrative-encounter-cross-game',
+  'frag-shoulder', 'frag-sidearm', 'frag-heavy', 'frag-melee', 'frag-grenade',
+  'frag-spartan-ability', 'frag-vehicle', 'frag-turret', 'frag-equipment',
+  'frag-environmental', 'frag-unattributed',
   'heatmap-cold', 'heatmap-hot', 'heatmap-divergent-low', 'heatmap-divergent-high',
   'heatmap-freq-low', 'heatmap-freq-high',
   'team-ally', 'team-enemy',

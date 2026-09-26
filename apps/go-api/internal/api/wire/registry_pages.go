@@ -23,6 +23,10 @@ import (
 
 // Filters retourne un FiltersService pour le joueur.
 //
+// Les lignes de filtres du joueur passent par le cache des lectures joueur
+// (duckdb.NewCachedFiltersRepo, plan perf 2026-09-23 D5b.3) : les appels
+// `/filters/resolve` d'une même page ne relisent plus tout l'historique.
+//
 // Injecte le catalog unifié des saisons (TOML + DB live + lazy fetch) pour
 // alimenter les SeasonCounts du folding SaisonPill. Si le catalog n'est
 // pas câblé OU si le titre n'a aucune saison résolue → aucun SeasonCount
@@ -33,7 +37,7 @@ func (r *ServiceRegistry) Filters(ctx context.Context, slug string) (port.Filter
 	if err != nil {
 		return nil, err
 	}
-	svc := service.NewFiltersService(duckdb.NewFiltersRepo(pdb))
+	svc := service.NewFiltersService(duckdb.NewCachedFiltersRepo(pdb))
 	if r.seasonsCatalog != nil {
 		// Bug fix 2026-05-08 : passer pdb.TitleSlug (le titre du joueur, ex
 		// "halo_infinite") et NON le `slug` paramètre qui est le **player
@@ -90,10 +94,22 @@ func (r *ServiceRegistry) MatchView(ctx context.Context, slug string) (port.Matc
 	svc = svc.WithCitationsRepo(duckdb.NewCitationsRepo(pdb)).
 		WithSocial(duckdb.NewSocialRepo(pdb), slug).
 		WithAssetURL(r.assetURLFor(pdb.TitleSlug)).
+		// Libellés d'issue (outcomes.toml) de l'en-tête, localisés par la requête : sans
+		// cet adapter le champ retombe sur le repli FR — « Victoire » sous UI anglaise.
+		WithSemantic(r.semanticFor(pdb.TitleSlug)).
 		WithTitleSlug(pdb.TitleSlug).
+		// ModeCategory du header (garde Fiesta du rejeu 2D) : même taxonomie que
+		// MediaRepo, cf. haloInfiniteModeTaxonomy (registry_media.go).
+		WithModeTaxonomy(haloInfiniteModeTaxonomy()).
 		// Flag « Prolongation » : table réglementaire du titre (regulation.toml).
 		// Titre sans table → nil → jamais de flag.
 		WithRegulation(r.regulationFor(pdb)).
+		// Score en MANCHES : même fichier de config, autre table. Titre qui n'en déclare
+		// aucune → nil → l'en-tête garde le score de l'API.
+		WithRoundsDecide(r.roundsDecideFor(pdb)).
+		// Lecture du bloc « Score dans le temps » : même fichier de config, table
+		// [score_timeline]. Titre sans table → nil → le client garde la courbe.
+		WithScoreTimelineKind(r.scoreTimelineKindFor(pdb)).
 		WithMetadataRepo(duckdb.NewMetadataRepo(pdb)).
 		// Loader unifié des highlight_events (MV4.A) : sans lui, d.canonicalEvents
 		// reste nil et la correction T0 (vrai début de match) est du code mort sur
@@ -101,15 +117,20 @@ func (r *ServiceRegistry) MatchView(ctx context.Context, slug string) (port.Matc
 		// inclus). Câblé ici comme Timeseries (parité), le pipeline route les events
 		// par timeline.CorrectEvents avant les builders narrative.
 		WithHighlightEventsRepo(duckdb.NewHighlightEventsRepo(pdb)).
-		// Timeline objectif v3 + positions joueurs keyframe v3 : deux loaders
-		// optionnels. Titre sans film / tables absentes → le repo remonte
-		// ErrCapabilityNotSupported et l'endpoint rend un 503 propre.
-		WithObjectiveEventsRepo(duckdb.NewObjectiveEventsRepo(pdb)).
-		WithPlayerPositionsRepo(duckdb.NewPlayerPositionsRepo(pdb)).
 		// Rejeu 2D : MÊME service que l'endpoint /replay (une seule résolution de
 		// chemin dans le dépôt). Seule IsAvailable est appelée par la Match View,
 		// pour publier `replay_available` sans lire l'artefact.
-		WithReplay(service.NewReplayService(pdb.TitleSlug, r.cfg.RepoRoot))
+		WithReplay(r.replayServiceFor(pdb))
+	// Timeline objectif v3 + positions joueurs keyframe v3 : les DEUX PROJECTIONS DE
+	// L'ARTEFACT DE REJEU servies à la Match View. Câblées SOUS CONDITION : un titre qui
+	// ne déclare pas `film.replay_artifact` n'obtient AUCUN des deux loaders, et ses deux
+	// endpoints (/objective-events, /positions) rendent alors un 503
+	// capability_not_supported — non plus un 200 [] indistinguable d'un match sans données.
+	// Le pourquoi et la chaîne complète : registry_pages_film.go.
+	svc = r.filmArtifactReposFor(svc, pdb)
+	if repo := r.killDistanceRepoFor(pdb); repo != nil {
+		svc = svc.WithKillDistanceRepo(repo)
+	}
 	if loader := r.buildFriendsExtrasResolver(pdb); loader != nil {
 		svc = svc.WithFriendsExtras(loader)
 	}
@@ -124,7 +145,58 @@ func (r *ServiceRegistry) Replay(ctx context.Context, slug string) (port.ReplayS
 	if err != nil {
 		return nil, err
 	}
-	return service.NewReplayService(pdb.TitleSlug, r.cfg.RepoRoot), nil
+	return r.replayServiceFor(pdb), nil
+}
+
+// replayServiceFor construit le service de rejeu d'un joueur — UN SEUL endroit, partagé par
+// l'endpoint /replay et la Match View (qui n'en appelle qu'IsAvailable). Deux constructions
+// divergentes, ce serait une Match View qui annonce un rejeu que l'endpoint ne sert pas.
+//
+// La résolution de carte (fond de carte) lit le registre partagé et les traductions d'assets ;
+// elle est passée au service, jamais reconstruite ailleurs.
+func (r *ServiceRegistry) replayServiceFor(pdb *duckdb.PlayerDB) port.ReplayService {
+	maps := duckdb.NewReplayMapRepo(pdb.SharedReadDB(), pdb.Metadata)
+	return service.NewReplayService(pdb.TitleSlug, r.cfg.RepoRoot, maps)
+}
+
+// Tactical retourne un TacticalService pour le joueur : l'onglet Tactique
+// (lectures de placement par carte + KPI d'echange). UN SEUL endroit de
+// construction, comme replayServiceFor.
+//
+// La portee du RADAR (regulation.toml [radar_range_m]) est injectee par titre : elle borne
+// la lecture « ou je meurs isole ». Titre ou variante absents -> pas de lecture pour ces
+// matchs, et le compte des ecartes le dit.
+//
+// Multi-titre : les trois portes data-level (`film.kill_positions` pour les
+// lectures de placement, `film.kill_source` pour l'echange, `film.replay_artifact`
+// pour l'occupation) sont lues sur la CapabilityMap de
+// l'adapter du titre du joueur (capabilitiesForPDB → dataAdapterForPDB, avec repli
+// sur les capabilities HI du boot). JAMAIS une comparaison de slug. Un titre qui
+// n'expose pas les positions rend ErrCapabilityNotSupported → 503 propre.
+//
+// AUCUNE TAXONOMIE DE MODES (retrait phase 4 bis, 2026-09-06) : le lecteur tactique
+// ne filtre plus par mode. Son périmètre est une liste blanche de match_id, résolue
+// en amont par le pipeline de filtres sur la base joueur.
+func (r *ServiceRegistry) Tactical(ctx context.Context, slug string) (port.TacticalService, error) {
+	pdb, err := r.resolve(ctx, slug)
+	if err != nil {
+		return nil, err
+	}
+	repo := duckdb.NewTacticalRepo(pdb)
+	// LE LECTEUR DE SIDECARS D'OCCUPATION (phase 6) : la seule source de l'onglet qui ne
+	// soit pas une base. Il est monte ici, au seul endroit de construction du service —
+	// sans lui, la lecture « ou je passe mon temps » degrade en 503 en le disant.
+	rasters := service.NewTacticalRasterStore(r.cfg.RepoRoot, pdb.TitleSlug)
+	// LES ZONES NOMMEES viennent du MEME catalogue versionne que le rejeu 2D, par la MEME
+	// cascade (module puis asset UGC) : elles nomment les grappes de reapparition. Magasin
+	// nil impossible ici ; catalogue absent -> grappes MUETTES, jamais une erreur.
+	callouts := service.NewTacticalCalloutsStore(r.cfg.RepoRoot, pdb.TitleSlug,
+		duckdb.NewReplayMapRepo(pdb.SharedReadDB(), pdb.Metadata))
+	return service.NewTacticalService(repo, r.capabilitiesForPDB(pdb), pdb.XUID).
+		WithRasterStore(rasters).
+		WithCalloutsStore(callouts).
+		WithRetentionMois(r.retentionMoisRejeu).
+		WithRadarRange(r.radarRangeFor(pdb)), nil
 }
 
 // MatchEvents retourne un MatchEventsService pour le joueur : timeline canonique
@@ -244,12 +316,13 @@ func (r *ServiceRegistry) Sessions(ctx context.Context, slug string) (port.Sessi
 	return service.NewSessionsService(duckdb.NewSessionsRepo(pdb)), nil
 }
 
-// playerMatchesAdapterFor construit un adapter PlayerMatchesRepository pour le
-// joueur (pdb). P4.3 finale : permet aux services match-rows de consommer
-// canonical exclusivement (legacy fallback path supprimé).
+// playerMatchesAdapterFor construit le PlayerMatchesRepository du joueur (pdb).
+// P4.3 finale : permet aux services match-rows de consommer canonical
+// exclusivement (legacy fallback path supprimé). L'historique ENRICHI (libellés
+// FR/EN résolus) passe par le cache des lectures joueur, clé (xuid, titre, base,
+// filtres), invalidé en fin de post-sync (plan perf 2026-09-23, D5b.4).
 func (r *ServiceRegistry) playerMatchesAdapterFor(pdb *duckdb.PlayerDB) port.PlayerMatchesRepository {
-	pmRepo := duckdb.NewPlayerMatchesRepo(pdb)
-	return duckdb.NewPlayerMatchesAdapter(pmRepo, pdb.TitleSlug, pdb.Gamertag)
+	return duckdb.NewCachedPlayerMatchesRepo(pdb)
 }
 
 // SessionPage retourne un SessionPageService pour le joueur.
@@ -260,14 +333,35 @@ func (r *ServiceRegistry) SessionPage(ctx context.Context, slug string) (port.Se
 	}
 	svc := service.NewSessionPageService(duckdb.NewStatsRepo(pdb)).
 		WithPlayerMatchesRepo(r.playerMatchesAdapterFor(pdb), pdb.TitleSlug, pdb.Gamertag).
-		WithWeaponKillsRepo(duckdb.NewWeaponKillsRepo(pdb)).
+		WithWeaponKillsRepo(r.weaponKillsRepoFor(pdb)).
 		WithWeaponAccuracyRepo(duckdb.NewWeaponAccuracyRepo(pdb)).
-		WithHighlightEventsRepo(duckdb.NewHighlightEventsRepo(pdb), pdb.XUID)
+		WithHighlightEventsRepo(duckdb.NewHighlightEventsRepo(pdb), pdb.XUID).
+		// Bloc « portée des engagements » (D22-4) : câblage INCONDITIONNEL, MÊME repo et
+		// MÊME classificateur que la Synthèse et la Timeseries. Le repo est le seul à
+		// savoir si ce titre a des positions par kill — il rend
+		// games.ErrCapabilityNotSupported et le service omet le bloc ; un `if capability`
+		// ici prendrait la même décision à deux endroits qui divergeraient.
+		WithMatchRange(duckdb.NewWeaponRangeRepo(pdb, r.killSourceClassifierFor(pdb)), pdb.XUID)
 	// Axe « Objectifs » par opportunité (profil de participation Session) : gated par
 	// la capability match.objective.stats (Infinite ; absente pour Halo 5 → axe
 	// retiré). Jamais slug==.
 	if r.capabilitiesForPDB(pdb).Has(games.CapMatchObjectiveStats) {
 		svc = svc.WithObjectiveIndexRepo(duckdb.NewObjectiveStatsRepo(pdb), pdb.XUID)
+	}
+	// Bloc « usages d'équipement, socles et objectifs » de la session (chantier
+	// session-usage S2) : gated par film.usage_summary (Infinite ; absente pour
+	// Halo 5 → bloc Available=false avec raison machine). Jamais slug==.
+	if r.capabilitiesForPDB(pdb).Has(games.CapFilmUsageSummary) {
+		svc = svc.WithSessionUsage(duckdb.NewSessionUsageRepo(pdb), pdb.XUID, r.friendGamertagsResolver(pdb.XUID), r.cfg.RepoRoot)
+	}
+	// Bloc « Coordination » (riposte + appui reçu) de la session, lot N1 : gated par la
+	// capability du JOURNAL DES MORTS — celle qui dit que le titre nomme le tueur de
+	// chaque mort — et non par film.usage_summary, qui gate l'usage d'équipement. Deux
+	// sujets, deux gates : un titre peut nommer ses tueurs sans publier de résumé
+	// d'usage. Capability fermée ⇒ bloc Available=false avec raison machine.
+	if games.JournalDesMortsFiable(r.capabilitiesForPDB(pdb)) {
+		svc = svc.WithSessionCoordination(duckdb.NewTacticalRepo(pdb),
+			duckdb.NewCoordinationRepo(pdb), r.capabilitiesForPDB(pdb))
 	}
 	if pdb.Metadata != nil {
 		// Placement X/Y dans la colonne Rang : résolveur season_id → seuil CSR (5/10),
@@ -313,9 +407,17 @@ func (r *ServiceRegistry) Timeseries(ctx context.Context, slug string) (port.Tim
 	}
 	svc := service.NewTimeseriesService(duckdb.NewStatsRepo(pdb)).
 		WithPlayerMatchesRepo(r.playerMatchesAdapterFor(pdb), pdb.TitleSlug, pdb.Gamertag).
-		WithWeaponKillsRepo(duckdb.NewWeaponKillsRepo(pdb)).
+		WithWeaponKillsRepo(r.weaponKillsRepoFor(pdb)).
 		WithWeaponAccuracyRepo(duckdb.NewWeaponAccuracyRepo(pdb)).
-		WithHighlightEventsRepo(duckdb.NewHighlightEventsRepo(pdb), pdb.XUID)
+		WithHighlightEventsRepo(duckdb.NewHighlightEventsRepo(pdb), pdb.XUID).
+		// Portée des engagements (onglet Résumé) : câblage INCONDITIONNEL, MÊME repo et
+		// MÊME classificateur que la Synthèse (SynthesisCtx). Le repo est le seul à savoir
+		// si ce titre a des positions par kill — il rend games.ErrCapabilityNotSupported et
+		// le service omet la section ; un `if capability` ici prendrait la même décision à
+		// deux endroits qui divergeraient.
+		WithWeaponRangeRepo(duckdb.NewWeaponRangeRepo(pdb, r.killSourceClassifierFor(pdb))).
+		// Roles de portee (D23-a) : MEME repo, autre lecture (tout le lobby, par match).
+		WithMatchRange(duckdb.NewWeaponRangeRepo(pdb, r.killSourceClassifierFor(pdb)), pdb.XUID)
 	if a := r.dataAdapterForPDB(pdb); a != nil {
 		svc = svc.WithDataAdapter(a)
 	}
@@ -328,6 +430,28 @@ func (r *ServiceRegistry) Timeseries(ctx context.Context, slug string) (port.Tim
 	// (Infinite ; absente pour Halo 5 → bloc objective_stats omis). Jamais slug==.
 	if r.capabilitiesForPDB(pdb).Has(games.CapMatchObjectiveStats) {
 		svc = svc.WithObjectiveStatsRepo(duckdb.NewObjectiveStatsRepo(pdb))
+	}
+	// Usages d'équipement (onglet Progression) : MÊME repo que la Synthèse et la page
+	// Sessions — les trois lectures prennent un scope FERMÉ de match_id, seul l'ensemble
+	// d'identifiants change d'une page à l'autre. Gated par film.usage_summary (absente
+	// pour Halo 5 → bloc Available=false avec raison machine). Jamais slug==.
+	if r.capabilitiesForPDB(pdb).Has(games.CapFilmUsageSummary) {
+		svc = svc.WithEquipmentUsage(duckdb.NewSessionUsageRepo(pdb), r.friendGamertagsResolver(pdb.XUID), r.cfg.RepoRoot)
+		// Bloc « Les formes retenues », contexte SOLO (migré de l'Escouade le
+		// 2026-09-19) : MÊME repo d'usage, plus les colonnes d'objectif quand le titre
+		// les publie — deux gates indépendantes, la seconde ne retirant que les cartes
+		// d'objectif. Câblage identique à celui de la page Escouade.
+		var objectives port.SquadFormesObjectiveRepository
+		if r.capabilitiesForPDB(pdb).Has(games.CapMatchObjectiveStats) {
+			objectives = duckdb.NewObjectiveStatsRepo(pdb)
+		}
+		svc = svc.WithSquadFormes(duckdb.NewSessionUsageRepo(pdb), objectives)
+	}
+	// Bloc « Coordination » PAR SOIRÉE : MÊMES lecteurs et MÊME gate que la page
+	// Sessions — un seul producteur pour les deux mailles (service/coordination_block.go).
+	if games.JournalDesMortsFiable(r.capabilitiesForPDB(pdb)) {
+		svc = svc.WithTimeseriesCoordination(duckdb.NewTacticalRepo(pdb),
+			duckdb.NewCoordinationRepo(pdb), r.capabilitiesForPDB(pdb))
 	}
 	return svc, nil
 }
@@ -376,4 +500,132 @@ func (r *ServiceRegistry) CommendationTotalsCtx(ctx context.Context, slug string
 		}
 	}
 	return service.NewCommendationTotalsService(loader), pdb.XUID, pdb.Gamertag, nil
+}
+
+// weaponKillsRepoFor choisit LE lecteur de l'arme d'un kill pour ce titre.
+//
+// DEUX IMPLEMENTATIONS, UN SEUL PORT, et le choix est title-agnostic — aucune comparaison
+// de slug :
+//
+//  1. le titre DECLARE la capability DATA-LEVEL `film.kill_source` (capabilities.toml, via
+//     la CapabilityMap de son TitleDataAdapter) ET son adapter d'assets sait TRADUIRE une
+//     source de degat en cle de registre (`port.KillSourceClassifier`, interface
+//     OPTIONNELLE decouverte par assertion) -> le lecteur adosse a la SOURCE DE DEGAT
+//     (`match_kill_events_latest.source_tag`), qui voit l'epee, le marteau et le faisceau ;
+//  2. sinon -> le lecteur historique sur `weapon_kills`, ou l'arme est NATIVE de l'API du
+//     titre (Halo 5 : timeline API, 550 926 lignes — donnee autoritaire, sans rapport avec
+//     la correlation defaillante de Halo Infinite).
+//
+// Un titre qui declare la capability sans fournir de classificateur retombe sur le second :
+// degradation gracieuse, jamais de panique (decision A1.7 du plan).
+func (r *ServiceRegistry) weaponKillsRepoFor(pdb *duckdb.PlayerDB) port.WeaponKillsRepository {
+	if pdb == nil {
+		return nil
+	}
+	if classifier := r.killSourceClassifierFor(pdb); classifier != nil {
+		return duckdb.NewKillSourceWeaponKillsRepo(pdb, classifier)
+	}
+	return duckdb.NewWeaponKillsRepo(pdb)
+}
+
+// killSourceClassifierFor rend le traducteur « source de degat -> cle de registre » du
+// titre, ou nil s'il n'en a pas.
+//
+// ATTENTION AU PIEGE GO : le type de retour est l'INTERFACE. Rendre un pointeur concret nil
+// produirait une interface NON nil cote appelant (interface non-vide portant un pointeur
+// nil), le garde `if classifier != nil` passerait, et le premier appel dereferencerait un
+// receveur nil.
+func (r *ServiceRegistry) killSourceClassifierFor(pdb *duckdb.PlayerDB) port.KillSourceClassifier {
+	if pdb == nil {
+		return nil
+	}
+	return r.killSourceClassifierForSlug(pdb.TitleSlug)
+}
+
+// killSourceClassifierForSlug : meme resolution, a partir du seul slug — pour les runners
+// d administration, qui travaillent sur un titre sans ouvrir de base de joueur.
+func (r *ServiceRegistry) killSourceClassifierForSlug(slug string) port.KillSourceClassifier {
+	if r.titleResolver == nil {
+		return nil
+	}
+	data, err := r.titleResolver.Data(slug)
+	if err != nil || data == nil || !data.Capabilities().Has(games.CapFilmKillSource) {
+		return nil
+	}
+	classifier, ok := r.assetURLFor(slug).(port.KillSourceClassifier)
+	if !ok {
+		return nil
+	}
+	return classifier
+}
+
+// killDistanceRepoFor construit le loader « distance par arme, par joueur »
+// (POC LOT G.3, plan retours-utilisateur §3bis DEC-8), ou nil si ce titre n'a
+// rien à en dire.
+//
+// MÊME GATE que weaponKillsRepoFor, et c'est un choix délibéré, PAS
+// `film.kill_positions` (qui gouverne la CAPTURE des positions, pas la
+// lecture — cf. games/adapter.go, doc de CapFilmKillPositions) ni
+// `match.events.spatial` (qui gouverne la timeline CANONIQUE cross-titre,
+// un pipeline distinct — cf. games/halo_infinite/events.go:
+// infiniteEventLimitations). Ce lecteur a besoin de exactement la même chose
+// que KillSourceClassRepo : `match_kill_events_latest.source_tag` (via
+// `film.kill_source`) ET le classificateur qui le traduit en weapon_key. Une
+// table `kill_positions_latest` vide (titre pas encore backfillé) dégrade
+// proprement via LoadMatch (zéro ligne, zéro erreur) — inutile de la gater
+// une deuxième fois ici.
+func (r *ServiceRegistry) killDistanceRepoFor(pdb *duckdb.PlayerDB) port.KillDistanceRepository {
+	if pdb == nil || r.titleResolver == nil {
+		return nil
+	}
+	data, err := r.titleResolver.Data(pdb.TitleSlug)
+	if err != nil || data == nil || !data.Capabilities().Has(games.CapFilmKillSource) {
+		return nil
+	}
+	classifier, ok := r.assetURLFor(pdb.TitleSlug).(port.KillSourceClassifier)
+	if !ok {
+		return nil
+	}
+	return duckdb.NewKillDistanceRepo(pdb, classifier)
+}
+
+// WeaponImageURLFromAdapter rend LA fonction canonique « identifiant d'arme -> icône » du
+// dépôt : son URL, et si cette icône est un MASQUE à teinter plutôt qu'un dessin fini.
+//
+// # POURQUOI UNE FONCTION EXPORTÉE, ET NON UNE CLOSURE RECOPIÉE (D11 du plan
+// # .ai/PLAN_COMPARE_PROFIL_ARMES_2026-09-17.md)
+//
+// Elle vivait INLINE dans `api/server.go` (drawer d'assets). Le profil d'armes du Face-à-face
+// en aurait été la deuxième écriture, et la règle du dépôt veut une définition unique dès
+// qu'un motif se répète. Elle est donc ici, appelée par la méthode du registry ET par
+// `server.go` — qui vit dans un autre paquet, d'où l'export.
+//
+// # L'URL ET LE MASQUE VONT ENSEMBLE, TOUJOURS
+//
+// Les séparer est le piège : une icône-masque rendue comme un dessin fini apparaît en
+// silhouette noire. Les deux valeurs sortent donc du MÊME appel, et un appelant ne peut pas
+// obtenir l'une sans l'autre.
+//
+// Adapter nil (titre sans résolveur d'assets) -> fonction qui rend ("", false). Jamais nil :
+// un appelant qui doit tester la fonction avant de l'appeler finira par oublier.
+func WeaponImageURLFromAdapter(a games.TitleAssetURLAdapter) func(weaponID int64) (string, bool) {
+	if a == nil {
+		return func(int64) (string, bool) { return "", false }
+	}
+	return func(weaponID int64) (string, bool) {
+		url := a.WeaponImageURL(weaponID)
+		return url, url != "" && a.WeaponImageIsTinted(weaponID)
+	}
+}
+
+// weaponImageURLFor rend la fonction d'icône du titre d'un PlayerDB.
+//
+// Title-agnostic : le slug traverse `assetURLFor`, qui interroge le résolveur d'adapters —
+// aucune comparaison de slug littéral (ratchet no_slug_comparison_test.go). Titre sans
+// adapter d'assets -> fonction neutre, donc profil d'armes SANS icônes plutôt que sans profil.
+func (r *ServiceRegistry) weaponImageURLFor(pdb *duckdb.PlayerDB) func(weaponID int64) (string, bool) {
+	if pdb == nil {
+		return WeaponImageURLFromAdapter(nil)
+	}
+	return WeaponImageURLFromAdapter(r.assetURLFor(pdb.TitleSlug))
 }

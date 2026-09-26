@@ -7,7 +7,7 @@
 // GetMatchStats (Players[].PlayerTeamStats[0].Stats.<BlocMode>) mais n'étaient
 // pas extraites avant le chantier V72-03. Le sync natif les persiste désormais ;
 // ce backfill couvre les matchs ANTÉRIEURS. Écriture APPEND-ONLY INSERT-only
-// (ART-safe #23046) via persist.InsertObjectiveStats ; lecture par la vue
+// (ART-safe #23645) via persist.InsertObjectiveStats ; lecture par la vue
 // match_objective_stats_latest.
 //
 // Reprise : un match est candidat s'il n'a PAS le bit MBitObjectiveStats posé
@@ -41,6 +41,7 @@ import (
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/config"
 	titlePkg "levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/games/titleseams"
 	persist "levelup/go-api/internal/persist"
 	auth_platform "levelup/go-api/internal/platform/auth"
 	duckdbpkg "levelup/go-api/internal/platform/duckdb"
@@ -49,6 +50,12 @@ import (
 )
 
 func main() {
+	// Seams title-owned (classifiers LUSR et famille objectif, provider des
+	// etapes de migration, traductions de rangs) : sans eux, tout appel au
+	// post-sync panique (fail-loud MT-15). Racine des jalons Halo 5 vide : cet
+	// outil ne seed pas de catalogue, le step h5_seed_milestone_catalog est
+	// alors un no-op gracieux documente. Cf. internal/games/titleseams.
+	titleseams.RegisterAll("")
 	gamertag := flag.String("gamertag", "JGtm", "Gamertag dont les tokens servent à l'auth API")
 	dryRun := flag.Bool("dry-run", false, "Lister/extraire sans écrire ni marquer")
 	limit := flag.Int("limit", 0, "Limiter au N matchs candidats les plus récents (0 = tous)")
@@ -84,7 +91,7 @@ func main() {
 	// 3. Auth via MultiUserTokenStore (ADR 0023).
 	store := auth_platform.NewMultiUserTokenStore(pr.WatcherTokensDir())
 	provider := auth_platform.NewSISUProvider()
-	exch, err := auth_platform.RefreshHaloTokensViaStoreFirst(ctx, store, provider, xuid, *gamertag, auth_platform.LegacyAuthInputs{})
+	exch, err := auth_platform.RefreshHaloTokensViaStoreFirst(ctx, store, provider, xuid, *gamertag)
 	if err != nil || exch == nil {
 		fmt.Fprintf(os.Stderr, "auth %s: %v\n", *gamertag, err)
 		os.Exit(1)

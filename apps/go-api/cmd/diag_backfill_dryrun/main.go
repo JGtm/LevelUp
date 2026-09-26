@@ -6,7 +6,8 @@
 //   - Compte les matchs ranked dans shared.match_registry (CSR fetch scope)
 //   - Compte les rows match_skill_rank existantes (CSR + LUSR déjà persistées)
 //   - Compte les match_participants pour ce xuid (LUSR scope)
-//   - Vérifie la présence de SPNKR_OAUTH_REFRESH_TOKEN_<KEY> dans l'env
+//   - Vérifie la présence d'un refresh token dans le MultiUserTokenStore
+//     (data/auth/watcher_tokens/{xuid}.json — source unique ADR 0023)
 //
 // N'OUVRE QUE EN READ-ONLY, ne fait AUCUNE écriture. Aucun appel API Halo.
 //
@@ -27,6 +28,8 @@ import (
 	"strings"
 
 	duckdb "github.com/duckdb/duckdb-go/v2"
+
+	"levelup/go-api/internal/platform/auth"
 )
 
 type playerProfile struct {
@@ -85,10 +88,12 @@ func main() {
 		"gamertag", "xuid", "token", "matches", "ranked", "msr_rows", "lusr_scope")
 	fmt.Println(strings.Repeat("-", 100))
 
+	tokenStore := auth.NewMultiUserTokenStore(filepath.Join(dataRoot, "auth", "watcher_tokens"))
+
 	var grandRanked, grandMSR, grandLUSRScope, withToken, withoutToken int
 	for _, p := range players {
-		tokenKey := "SPNKR_OAUTH_REFRESH_TOKEN_" + normalizeGamertagKey(p.Gamertag)
-		hasToken := os.Getenv(tokenKey) != ""
+		user, terr := tokenStore.Load(p.XUID)
+		hasToken := terr == nil && user != nil && user.OAuthRefreshToken != ""
 		tokenStr := "MISSING"
 		if hasToken {
 			tokenStr = "OK"
@@ -131,7 +136,7 @@ func main() {
 	fmt.Println()
 	if withoutToken > 0 {
 		fmt.Println("ATTENTION : Joueurs SANS token OAuth seront SKIP par CSR backfill.")
-		fmt.Println("            Definir SPNKR_OAUTH_REFRESH_TOKEN_<GAMERTAG_UPPER> dans l'env.")
+		fmt.Println("            Authentifier le joueur (SSO Xbox) ou `go run ./cmd/token-capture/ <GT>`.")
 	}
 }
 
@@ -243,16 +248,6 @@ func countMatchSkillRank(db *sql.DB) int {
 	var n int
 	_ = db.QueryRow(`SELECT COUNT(*) FROM match_skill_rank`).Scan(&n)
 	return n
-}
-
-func normalizeGamertagKey(gt string) string {
-	key := strings.ToUpper(strings.TrimSpace(gt))
-	return strings.Map(func(r rune) rune {
-		if r == ' ' || r == '-' || r == '.' {
-			return '_'
-		}
-		return r
-	}, key)
 }
 
 func truncate(s string, n int) string {

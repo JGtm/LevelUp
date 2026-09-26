@@ -1,0 +1,61 @@
+package replaybuild
+
+import (
+	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
+	"levelup/go-api/internal/games/halo_infinite/film/replay"
+	"levelup/go-api/internal/port"
+)
+
+// buildReplayOptions assemble replay.Options a partir de ce que BuildBytes a deja resolu
+// (catalogue d'entrees, faits du match, entrees de catalogue, statistiques du film) — extrait
+// de BuildBytes (lot restes R0, deplacement pur des champs, aucun changement de sortie).
+func (b *Builder) buildReplayOptions(
+	entry decfilm.MapQuantEntry, facts port.MatchFacts, cat entreesCatalogue, stats *filmStats,
+) replay.Options {
+	return replay.Options{
+		FrameIntervalMS: b.interval,
+		Geometry:        b.geometryFor(entry.Module),
+		Structure:       b.structureFor(entry.Module),
+		Labels:          b.labels,
+		NeutralDeaths:   cat.neutral,
+		Kills:           cat.kills,
+		MatchKills:      cat.matchKills,
+		RosterXUIDs:     rosterXUIDs(facts),
+		Participants:    participantsDuTableau(facts),
+		// LA FEUILLE DE MATCH N'EST QU'UN CONTROLE DES EQUIPES (lot 1.7, decision utilisateur
+		// V4) : l'equipe publiee vient du FILM. Cette table n'alimente que
+		// `coverage.teams.{accord, contradiction, silence}` — une contradiction se compte, elle
+		// ne se corrige pas en silence.
+		ScoreboardTeams: teamByXUID(facts),
+		Bots:            cat.bots,
+		Successions:     cat.successions,
+		Objectives:      stats.objectives,
+		// LE COMPTE DES ECARTES VOYAGE AVEC LES ACTIONS, ET IL EST LE DENOMINATEUR (constat C1
+		// de la revue VIES-R1). Sans lui, `coverage.objectives.available` compte les seuls
+		// RESCAPES du pont d'identite et `noSlot` reste structurellement a zero — le defaut
+		// meme que le lot declare corriger. Mesure : `c0a82e88`, 17 actions nommees par le
+		// film, 12 identifiees par le pont par manche.
+		ObjectivesUnnamed: stats.objectivesUnnamed,
+		// LE REFUS D EFFECTIF VOYAGE AUSSI, et il est un DENOMINATEUR de meme nature : le
+		// calque se tait, et `coverage.objectives.refusedByRoster` dit combien d actions ce
+		// silence coute (129 sur les trois films BTB du parc).
+		ObjectivesRefused: stats.objectivesRefused,
+		// LE PONT DU STATBORG VOYAGE POUR ETRE PUBLIE, PAS POUR ETRE REFAIT : le registre
+		// d'identite en tire `identity.statborgSlots` avec la provenance de chaque couple.
+		StatborgIdentity: stats.statborgIdentity,
+		Score:            stats.score,
+		Flag:             stats.flag,
+		Vip:              stats.vip,
+		Skull:            stats.skull,
+		Bomb:             stats.bomb,
+		Zone: replay.ZoneInput{Zones: cat.zones, Roles: cat.zoneRoles, TeamByXUID: teamByXUID(facts),
+			Hill: isHillVariant(facts.GameVariantName)},
+		// LE PROFIL DE BALAYAGE QUE `killsource` A RETENU SUR CE FILM (lot 2.3, condition D1 du
+		// lot 2.2.a) : il voyage par les options au lieu de fuir par l'etat du processus.
+		ProfilDeBalayage: profilDeBalayageDeLaCuisson(cat.killsource),
+		MapQuant:         &entry,
+		Observe:          b.observe,
+		SpawnPoints:      cat.spawnPts,
+		SpawnPointsState: cat.spawnPointsState,
+	}
+}

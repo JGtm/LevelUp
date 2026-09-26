@@ -16,12 +16,14 @@
 // .ai/PLAN_WEAPON_TAXONOMY.md). 3 tables référentielles dans metadata.duckdb :
 //   - weapons          : 1 ligne par arme par titre (class/role/family/faction/damage_type + extra JSON).
 //   - weapon_ids       : N ids par arme (filmshell/stock_id/module…) → un id résout vers UN weapon_key.
-//   - weapon_families  : référentiel des familles cross-titre (clé → libellés FR/EN).
+//   - weapon_families  : whitelist référentielle des clés de famille cross-titre (plus
+//     de libellé EN/FR ici depuis le 2026-09-08 — colonnes name_en/name_fr jamais lues,
+//     purgées par purge_weapon_families_labels_columns, plan libellés en dur lot M5 L4).
 //
 // Choix de schéma (décision 2026-06-23) : PK simple + INSERT OR IGNORE, comme
 // labels.go / career_ranks / mode_name_tr. C'est un référentiel STATIQUE
 // seedé au boot (zéro writer concurrent, zéro UPDATE per-match) → hors périmètre
-// du bug ART #23046, donc pas d'append-only `_latest`. L'extensibilité (TTK & co
+// du bug ART #23645, donc pas d'append-only `_latest`. L'extensibilité (TTK & co
 // « un jour ») passe par la colonne `extra` JSON, pas par une nouvelle génération.
 //
 // Seed = table §6 du plan, VÉRIFIÉE halopedia.org + wiki.halo.fr. Les filmshell
@@ -37,6 +39,7 @@ import (
 	"log/slog"
 	"strconv"
 
+	"levelup/go-api/internal/games/weapons/filmshell"
 	"levelup/go-api/internal/migration"
 )
 
@@ -55,7 +58,7 @@ import (
 // auto-guérit tout ajout futur (aucun nouveau step à versionner).
 //
 // Sûreté : le seed est INSERT OR IGNORE + CREATE TABLE IF NOT EXISTS (référentiel
-// STATIQUE, PK simple, zéro writer concurrent, hors périmètre du bug ART #23046 —
+// STATIQUE, PK simple, zéro writer concurrent, hors périmètre du bug ART #23645 —
 // décision 2026-06-23). Le rejouer n'insère QUE les lignes manquantes : aucune
 // écriture destructive, aucun UPDATE. Retourne le nombre de lignes nouvellement
 // insérées (delta pré/post seed) pour la télémétrie de boot.
@@ -90,7 +93,15 @@ func countWeaponRegistryRows(db *sql.DB) int {
 	return total
 }
 
-type weaponFamilyRow struct{ key, en, fr string }
+// weaponFamilyRow — clé de famille cross-titre. Ne porte plus de libellé EN/FR
+// (retiré le 2026-09-08, plan libellés en dur lot M5 L4, migration
+// purge_weapon_families_labels_columns) : ces libellés n'avaient AUCUN lecteur
+// (ni Go, ni web — le sunburst « Frags par arme »
+// n'affiche que les niveaux classe/rôle, cf. apps/web/src/lib/i18n/manifests/frags.toml,
+// jamais le niveau famille) — 0 code mort plutôt qu'une migration vers un TOML qui
+// aurait recopié du contenu mort. family_key reste la donnée référentielle utile
+// (whitelist jointe depuis weapons.family_key).
+type weaponFamilyRow struct{ key string }
 
 // weaponRow — class = manipulation (poing/épaule/lourde/mêlée/grenade) ;
 // role = fonction de combat (automatic/precision/sniper/shotgun/sidearm/power/
@@ -126,12 +137,34 @@ const (
 	clsSidearm  = "sidearm"
 	clsGrenade  = "grenade"
 	clsMelee    = "melee"
+	// clsEquipment / clsEnvironmental : buckets HORS ARSENAL (lot 2026-08-29). Comme
+	// clsSidearm/clsGrenade/clsMelee, ils servent a la fois de class, de role ET de
+	// family — ces sources n'ont pas de fonction de combat a ventiler.
+	clsEquipment     = "equipment"
+	clsEnvironmental = "environmental"
+	// clsVehicle / clsTurret : mêmes buckets, côté engins. Les familles existent depuis
+	// le classement hors-arsenal Halo 5 du 2026-07-17 ; Halo Infinite les rejoint le
+	// 2026-09-01 (étape A6). Comme les précédents, ils servent de class, de role ET de
+	// family — un châssis n'a pas de fonction de combat à ventiler.
+	clsVehicle = "vehicle"
+	clsTurret  = "turret"
+	// clsUnattributed / clsOther : buckets fourre-tout (non résolus / résidus REQ H5).
+	// Mêmes conventions que ci-dessus : class == role == family.
+	clsUnattributed = "unattributed"
+	clsOther        = "other"
 
 	roleAuto      = "automatic"
 	rolePrecision = "precision"
 	roleSniper    = "sniper"
 	rolePower     = "power"
 	roleSpecial   = "special"
+	// roleShotgun sert à la fois de role et de family (comme clsSidearm/clsGrenade/
+	// clsMelee ci-dessus) : un fusil à pompe n'a pas de sous-famille plus fine.
+	roleShotgun = "shotgun"
+
+	// famRocketLauncher : family réutilisée ≥4 fois (goconst) — role reste rolePower,
+	// seule la family est partagée entre les lance-roquettes Infinite et H5.
+	famRocketLauncher = "rocket_launcher"
 
 	facHuman      = "human"
 	facCovenant   = "covenant"
@@ -161,6 +194,8 @@ const (
 	keyHinfGravityHammer = "hinf_gravity_hammer"
 	keyHinfShockRifle    = "hinf_shock_rifle"
 	keyHinfEnergySword   = "hinf_energy_sword"
+	keyHinfUnarmed       = "hinf_unarmed"
+	keyHinfCoilKinetic   = "hinf_coil_kinetic"
 	keyH5Magnum          = "h5_magnum"
 	keyH5OtherUGC        = "h5_other_ugc"
 	nameM41SPNKr         = "M41 SPNKr"
@@ -174,9 +209,7 @@ const (
 func ApplyRegistry(db *sql.DB) error {
 	if err := migration.ExecScript(db, `
 		CREATE TABLE IF NOT EXISTS weapon_families (
-			family_key VARCHAR PRIMARY KEY,
-			name_en    VARCHAR NOT NULL,
-			name_fr    VARCHAR NOT NULL
+			family_key VARCHAR PRIMARY KEY
 		);
 		CREATE TABLE IF NOT EXISTS weapons (
 			weapon_key   VARCHAR NOT NULL,
@@ -226,9 +259,9 @@ func ApplyRegistry(db *sql.DB) error {
 }
 
 func seedWeaponFamilies(db *sql.DB) error {
-	const q = `INSERT OR IGNORE INTO weapon_families (family_key, name_en, name_fr) VALUES (?, ?, ?)`
+	const q = `INSERT OR IGNORE INTO weapon_families (family_key) VALUES (?)`
 	for _, f := range weaponRegistryFamilies {
-		if _, err := db.ExecContext(migration.BootCtx(), q, f.key, f.en, f.fr); err != nil {
+		if _, err := db.ExecContext(migration.BootCtx(), q, f.key); err != nil {
 			return err
 		}
 	}
@@ -273,6 +306,44 @@ func FilmshellWeaponKeysByFamily() map[uint32]string {
 	return out
 }
 
+// RolesByKey rend l'index `weapon_key -> role` (fonction de combat : automatic, precision,
+// sniper, power, special, shotgun, sidearm, melee, grenade...) du registre canonique.
+//
+// POURQUOI EXPORTÉ (lot armes au sol, 2026-09-10). Le rejeu 2D publie déjà `WeaponLabel.Key`
+// à la requête (`resolveWeaponLabels`, depuis `cat.Keys[family]`, lui-même construit sur
+// `FilmshellWeaponKeysByFamily`) : le filtre « armes spéciales » (rôles sniper/power/special,
+// cf. rapport `.ai/V7.5/RAPPORT_ARMES_AU_SOL_2026-09-10.md`) a besoin du MÊME weapon_key pour
+// trouver le rôle, SANS seconde jointure ni recuisson — c'est la donnée déjà en mémoire du
+// registre statique, jamais une lecture de metadata.duckdb.
+//
+// STATIQUE ET IN-PROCESS, COMME `FilmshellWeaponKeysByFamily` : aucune ouverture de base, le
+// registre est un slice Go seedé au build. Chaque weapon_key est unique CROSS-TITRE (préfixé
+// `hinf_`/`h5_`), donc aucune collision possible entre deux armes de titres différents.
+func RolesByKey() map[string]string {
+	out := make(map[string]string, len(weaponRegistryWeapons))
+	for _, w := range weaponRegistryWeapons {
+		out[w.key] = w.role
+	}
+	return out
+}
+
+// ClassesByKey rend l'index `weapon_key -> class` (axe de MANIPULATION : shoulder,
+// heavy, sidearm, melee, grenade, equipment, vehicle...) du registre canonique.
+//
+// POURQUOI EXPORTÉ (lot « formes retenues » de l'Escouade, 2026-09-13). Le bloc
+// « contrôle des armes spéciales » range les socles en trois familles produit — armes
+// lourdes, armes de précision, autres socles. Ces deux dimensions EXISTENT déjà ici
+// (class et role) : les redéclarer dans un TOML de titre ferait une SECONDE source
+// d'identité d'arme, exactement ce que le registre a supprimé (V72-06). Le jumeau de
+// [RolesByKey], même contrat : statique, in-process, aucune ouverture de base.
+func ClassesByKey() map[string]string {
+	out := make(map[string]string, len(weaponRegistryWeapons))
+	for _, w := range weaponRegistryWeapons {
+		out[w.key] = w.class
+	}
+	return out
+}
+
 func seedWeaponFilmshellIDs(db *sql.DB) error {
 	const q = `INSERT OR IGNORE INTO weapon_ids (title_slug, id_kind, id_value, weapon_key) VALUES (?, 'filmshell', ?, ?)`
 	for _, f := range weaponRegistryInfiniteFilmshell {
@@ -297,61 +368,67 @@ func seedWeaponStockIDs(db *sql.DB) error {
 
 // weaponRegistryFamilies — référentiel des familles cross-titre (union HINF + H5, §6.3).
 var weaponRegistryFamilies = []weaponFamilyRow{
-	{"battle_rifle", "Battle Rifle", "Fusil de combat"},
-	{"dmr", "DMR", "DMR"},
-	{"stalker_rifle", "Stalker Rifle", "Fusil traqueur"},
-	{"assault_rifle", "Assault Rifle", "Fusil d'assaut"},
-	{"smg", "SMG", "Mitraillette"},
-	{"commando", "Commando", "Commando"},
-	{"sniper_rifle", "Sniper Rifle", "Fusil de précision"},
-	{"shotgun", "Shotgun", "Fusil à pompe"},
-	{"hydra", "Hydra", "Hydra"},
-	{"rocket_launcher", "Rocket Launcher", "Lance-roquettes"},
-	{"magnum", "Magnum", "Magnum"},
-	{"plasma_pistol", "Plasma Pistol", "Pistolet à plasma"},
-	{"needler", "Needler", "Needler"},
-	{"sentinel_beam", "Sentinel Beam", "Laser de Sentinelle"},
-	{"energy_sword", "Energy Sword", "Épée à énergie"},
-	{"gravity_hammer", "Gravity Hammer", "Marteau antigravité"},
-	{"skewer", "Skewer", "Empaleur"},
-	{"cindershot", "Cindershot", "Crémator"},
-	{"heatwave", "Heatwave", "Calcineur"},
-	{"ravager", "Ravager", "Ravageur"},
-	{"shock_rifle", "Shock Rifle", "Fusil électrique"},
-	{"disruptor", "Disruptor", "Disrupteur"},
-	{"mangler", "Mangler", "Déchiqueteur"},
-	{"pulse_carbine", "Pulse Carbine", "Carabine à impulsion"},
-	{"carbine", "Carbine", "Carabine"},
-	{"frag_grenade", "Frag Grenade", "Grenade à fragmentation"},
-	{"plasma_grenade", "Plasma Grenade", "Grenade à plasma"},
-	{"dynamo_grenade", "Dynamo Grenade", "Grenade Dynamo"},
-	{"splinter_grenade", "Splinter Grenade", "Grenade Splinter"},
-	{"grenade_launcher", "Grenade Launcher", "Lance-grenades"},
-	{"railgun", "Railgun", "Railgun"},
-	{"saw", "SAW", "SAW"},
-	{"spartan_laser", "Spartan Laser", "Laser Spartan"},
-	{"plasma_rifle", "Plasma Rifle", "Fusil à plasma"},
-	{"fuel_rod", "Fuel Rod Cannon", "Canon à combustible"},
-	{"storm_rifle", "Storm Rifle", "Fusil Storm"},
-	{"beam_rifle", "Beam Rifle", "Fusil à rayon"},
-	{"plasma_caster", "Plasma Caster", "Canon plasma"},
-	{"light_rifle", "Light Rifle", "Fusil léger"},
-	{"binary_rifle", "Binary Rifle", "Fusil binaire"},
-	{"boltshot", "Boltshot", "Pistolet à particules"},
-	{"incineration_cannon", "Incineration Cannon", "Canon incendiaire"},
-	{"suppressor", "Suppressor", "Éradicateur"},
-	{"scattershot", "Scattershot", "Répercuteur"},
+	{"battle_rifle"},
+	{"dmr"},
+	{"stalker_rifle"},
+	{"assault_rifle"},
+	{"smg"},
+	{"commando"},
+	{"sniper_rifle"},
+	{roleShotgun},
+	{"hydra"},
+	{famRocketLauncher},
+	{"magnum"},
+	{"plasma_pistol"},
+	{"needler"},
+	{"sentinel_beam"},
+	{"energy_sword"},
+	{"gravity_hammer"},
+	{"skewer"},
+	{"cindershot"},
+	{"heatwave"},
+	{"ravager"},
+	{"shock_rifle"},
+	{"disruptor"},
+	{"mangler"},
+	{"mutilator"}, // pose le 2026-09-10 avec `hinf_mutilator`
+	{"pulse_carbine"},
+	{"carbine"},
+	{"frag_grenade"},
+	{"plasma_grenade"},
+	{"dynamo_grenade"},
+	{"splinter_grenade"},
+	{"grenade_launcher"},
+	{"railgun"},
+	{"saw"},
+	{"spartan_laser"},
+	{"plasma_rifle"},
+	{"fuel_rod"},
+	{"storm_rifle"},
+	{"beam_rifle"},
+	{"plasma_caster"},
+	{"light_rifle"},
+	{"binary_rifle"},
+	{"boltshot"},
+	{"incineration_cannon"},
+	{"suppressor"},
+	{"scattershot"},
 	// Long-tail H5 (frags v_weapon_kills réels) : armes de mêlée d'objectif / REQ.
-	{"golf_club", "Golf Club", "Club de golf"},
-	{"oddball", "Oddball", "Oddball"},
+	{"golf_club"},
+	{"oddball"},
+	// mains nues : posee le 2026-09-24 avec `hinf_unarmed` (retours du rejeu, lot M6.3).
+	{"unarmed"},
 	// Hors-arsenal H5 (frags non-combat classés 2026-07-17) : familles neutres par
 	// catégorie (véhicule/tourelle/environnement/non-attribué/autres). Réceptacle
 	// pour le donut « Frags par type d'arme » ; exclues de l'insight coach côté web.
-	{"vehicle", "Vehicle", "Véhicule"},
-	{"turret", "Turret", "Tourelle"},
-	{"environmental", "Environmental", "Environnement"},
-	{"unattributed", "Unattributed", "Non attribué"},
-	{"other", "Other", "Autres"},
+	{clsVehicle},
+	{clsTurret},
+	{clsEnvironmental},
+	// equipment : ajoutée le 2026-08-29 avec le répulseur (lot « kills hors arme à feu »).
+	// Halo Infinite, contrairement aux cinq familles ci-dessus qui sont H5-only.
+	{clsEquipment},
+	{clsUnattributed},
+	{clsOther},
 }
 
 // weaponRegistryWeapons — 84 entrées : 29 Infinite (§6.1) + 55 Halo 5 (§6.2 :
@@ -371,13 +448,26 @@ var weaponRegistryWeapons = []weaponRow{
 	{"hinf_cqs48_bulldog", titleHINF, "CQS48 Bulldog", clsShoulder, "shotgun", "shotgun", facHuman, dmgBallistic, mfrMisriah},
 	{"hinf_hydra", titleHINF, "MLRS-2 Hydra", clsHeavy, rolePower, "hydra", facHuman, dmgExplosive, "Chalybs Defense Solutions"},
 	{"hinf_m41_spnkr", titleHINF, nameM41SPNKr, clsHeavy, rolePower, "rocket_launcher", facHuman, dmgExplosive, mfrMisriah},
-	{"hinf_fuel_rod_spnkr", titleHINF, "Fuel Rod SPNKr", clsHeavy, rolePower, "rocket_launcher", facBanished, dmgExplosive, "Banished (SPNKr modifié)"},
+	// manufacturer "modified" (pas "modifié") depuis le 2026-09-08 (lot M5 L4) : ce champ
+	// n'a AUCUN lecteur (vérifié par grep sur le module ET le web — colonne `manufacturer`
+	// jamais sélectionnée hors seed), donc pas un libellé affiché ; le mot FR isolé était
+	// simplement incohérent avec le reste du champ (EN partout ailleurs).
+	{"hinf_fuel_rod_spnkr", titleHINF, "Fuel Rod SPNKr", clsHeavy, rolePower, "rocket_launcher", facBanished, dmgExplosive, "Banished (SPNKr modified)"},
 	{"hinf_sidekick", titleHINF, "Mk50 Sidekick", clsSidearm, clsSidearm, "magnum", facHuman, dmgBallistic, "Emerson Tactical Systems"},
 	{"hinf_plasma_pistol", titleHINF, "Plasma Pistol", clsSidearm, clsSidearm, "plasma_pistol", facCovenant, dmgPlasma, "Iruiru Armory"},
 	{"hinf_needler", titleHINF, "Needler", clsShoulder, roleSpecial, "needler", facCovenant, dmgSpike, mfrLodam},
 	{"hinf_sentinel_beam", titleHINF, "Sentinel Beam", clsHeavy, roleSpecial, "sentinel_beam", facForerunner, dmgHardlight, mfrFerrarius},
-	{keyHinfEnergySword, titleHINF, "Energy Sword", clsMelee, clsMelee, "energy_sword", facCovenant, dmgPlasma, mfrQikost},
-	{keyHinfGravityHammer, titleHINF, "Gravity Hammer", clsMelee, clsMelee, "gravity_hammer", facCovenant, "gravitic", "Sacred Promissory"},
+	// ÉPÉE ET MARTEAU : ARMES LOURDES, PAS MÊLÉE — reclassés le 2026-09-01 (décision de
+	// l'utilisateur, étape A6.8). Ils étaient `melee`, ce qui les faisait écarter par le
+	// lecteur : sous D4, le TOTAL de la classe mêlée vient du compteur API, autoritatif.
+	// Or CE COMPTEUR NE LES COMPTE PAS, et c'est mesuré : sur 200 matchs,
+	// `match_participants.melee_kills` vaut 1 717 quand l'épée et le marteau pèsent 2 514
+	// à eux deux. Corpus entier : marteau 6 727, épée 3 014 — 9 741 frags qui tombaient
+	// dans « Non attribué » sans que personne ne les serve. Le registre conflatait l'arme
+	// de corps à corps et la mécanique de corps à corps ; le jeu, lui, ne les confond pas.
+	// AUCUN double comptage possible : l'écart est mesuré, pas supposé.
+	{keyHinfEnergySword, titleHINF, "Energy Sword", clsHeavy, rolePower, "energy_sword", facCovenant, dmgPlasma, mfrQikost},
+	{keyHinfGravityHammer, titleHINF, "Gravity Hammer", clsHeavy, rolePower, "gravity_hammer", facCovenant, "gravitic", "Sacred Promissory"},
 	{"hinf_skewer", titleHINF, "Skewer", clsHeavy, rolePower, "skewer", facBanished, dmgSpike, "Flaktura Workshop"},
 	{"hinf_cindershot", titleHINF, "Cindershot", clsHeavy, rolePower, "cindershot", facForerunner, dmgHardlight, mfrFerrarius},
 	{"hinf_heatwave", titleHINF, "Heatwave", clsHeavy, "shotgun", "heatwave", facForerunner, dmgHardlight, mfrFerrarius},
@@ -385,12 +475,102 @@ var weaponRegistryWeapons = []weaponRow{
 	{keyHinfShockRifle, titleHINF, "Shock Rifle", clsHeavy, roleSniper, "shock_rifle", facBanished, "shock", "Sicatt Workshop"},
 	{"hinf_disruptor", titleHINF, "Disruptor", clsSidearm, clsSidearm, "disruptor", facBanished, "shock", "Sicatt Workshop"},
 	{"hinf_mangler", titleHINF, "Mangler", clsSidearm, clsSidearm, "mangler", facBanished, dmgSpike, "Ukala Workshop"},
+	// Mutilator — pose le 2026-09-10. Elle TUE 1262 fois au corpus (vue
+	// `match_kill_events_latest`, tags 15dcdfe3 / b258262f / 01bc8b0b) et servait deja son
+	// icone (`NOM Mutilator -> killfeed-81`), mais n avait AUCUNE entree ici : ses frags
+	// n apparaissaient sur aucune ligne de statistiques d arme. Meme famille de defaut que
+	// `hinf_warthog` ci-dessous, en plus simple — aucune ambiguite, juste une entree jamais
+	// posee.
+	//
+	// CE QUI EST MESURE ET CE QUI EST DEDUIT, la distinction compte : le nom EN vient de
+	// `labels.tsv` et de la passe humaine de l atlas (index 37 des atlas d armes, 81 du kill
+	// feed), donc il est mesure. La classe `shoulder` et le role `shotgun` sont DEDUITS de sa
+	// presence dans les atlas d ARMES et de son emploi au contact — a corriger si une source
+	// dit mieux. Type de degat et fabricant laisses VIDES a dessein plutot que devines.
+	{"hinf_mutilator", titleHINF, "Mutilator", clsShoulder, roleShotgun, "mutilator", facBanished, "", ""},
 	{"hinf_pulse_carbine", titleHINF, "Pulse Carbine", clsShoulder, roleAuto, "pulse_carbine", facCovenant, dmgPlasma, mfrLodam},
 	{"hinf_stalker_rifle", titleHINF, "Stalker Rifle", clsShoulder, rolePrecision, "stalker_rifle", facCovenant, dmgPlasma, mfrQikost},
 	{"hinf_vestige_carbine", titleHINF, "Vestige Carbine", clsShoulder, rolePrecision, "carbine", facCovenant, dmgPlasma, "Sangheili"},
 	{"hinf_frag_grenade", titleHINF, "Frag Grenade", clsGrenade, clsGrenade, "frag_grenade", facHuman, dmgExplosive, mfrMisriah},
 	{"hinf_plasma_grenade", titleHINF, "Plasma Grenade", clsGrenade, clsGrenade, "plasma_grenade", facCovenant, dmgPlasma, ""},
 	{"hinf_dynamo_grenade", titleHINF, "Dynamo Grenade", clsGrenade, clsGrenade, "dynamo_grenade", facBanished, "shock", ""},
+	// ── Halo Infinite HORS ARSENAL (lot « kills hors arme à feu », 2026-08-29) ──
+	// Ces six entrées ne sont PAS des armes de l'arsenal : ce sont les sources de dégât
+	// LÉTALES que l'attribution arme-à-feu ne peut pas voir (elle repose sur les records
+	// de dégât `0xd2` du tireur, qu'aucune d'elles n'émet). Leurs kills tombaient donc
+	// dans « Non attribué ». Elles n'ont ni faction ni fabricant (`""`) et — c'est le
+	// point qui les distingue de toutes les autres lignes — AUCUN id numérique dans
+	// weapon_ids : elles ne se résolvent pas par `weapon_id` mais par le pont
+	// `killicon` (source de dégât `jpt!` → weapon_key), cf. film/killicon/data/rules.tsv.
+	//
+	// Volumétrie mesurée le 2026-08-29 sur la base de production (1 365 matchs décodés,
+	// 74 569 sources de dégât mesurées) : bobines 547 kills, chute/environnement 403,
+	// répulseur 1. Le répulseur porte sa propre classe `equipment` MALGRÉ ce volume de 1
+	// (décision D1 du plan, confirmée par l'utilisateur) : la classe ne coûte que cette
+	// ligne, un sunburst n'affiche pas une classe vide, et le jour où le geste devient
+	// courant il est compté sans code neuf.
+	{"hinf_repulsor", titleHINF, "Repulsor", clsEquipment, clsEquipment, clsEquipment, "", "", ""},
+	// Les quatre bobines : le film ne dit PAS quel modèle de bidon a explosé, il dit le
+	// TYPE D'ÉNERGIE (la racine de banque sonore). C'est donc l'énergie qui nomme, et
+	// c'est aussi ce que fait le kill feed du jeu — quatre vignettes distinctes.
+	{keyHinfCoilKinetic, titleHINF, "UNSC Fusion Coil", clsEnvironmental, clsEnvironmental, clsEnvironmental, "", dmgExplosive, ""},
+	{"hinf_coil_plasma", titleHINF, "Plasma Coil", clsEnvironmental, clsEnvironmental, clsEnvironmental, "", dmgPlasma, ""},
+	{"hinf_coil_shock", titleHINF, "Shock Coil", clsEnvironmental, clsEnvironmental, clsEnvironmental, "", "shock", ""},
+	{"hinf_coil_hardlight", titleHINF, "Blast Coil", clsEnvironmental, clsEnvironmental, clsEnvironmental, "", "hardlight", ""},
+	// Chute et environnement : les 9 tags `DEGAT_GLOBAL` sont indiscernables entre eux
+	// (tous « glda/matg : chute, environnement »). Une seule entrée, donc, et AUCUNE
+	// vignette — l'atlas a bien `killfeed-52 Fall` et `killfeed-55 environment`, mais
+	// choisir l'une des deux pour les neuf tags mettrait une icône fausse sur la moitié
+	// des cas. Une icône absente est un repli, une icône fausse est un mensonge.
+	{"hinf_environment", titleHINF, "Environment", clsEnvironmental, clsEnvironmental, clsEnvironmental, "", "", ""},
+	// MAINS NUES (retours du rejeu, lot M6.3, 2026-09-24) : l objet que le jeu remet a chaque
+	// bipede au debut de chaque vie (`filmshell.UnarmedFamily`, `WeaponTags.unarmed` du Lua
+	// global). Classe et role `melee` : sans arme, le joueur n a que le corps a corps. Il n est
+	// JAMAIS une dotation affichee ni un ramassage (regle `filmshell.IsUnarmedFamily`) ; il est
+	// nomme pour le cas « quasi impossible » d un joueur qui le TIENT en cours de partie.
+	{keyHinfUnarmed, titleHINF, "Unarmed", clsMelee, clsMelee, "unarmed", "", "", ""},
+	// ── Halo Infinite VÉHICULES ET TOURELLES (étape A6, 2026-09-01) ──
+	//
+	// MÊME RECETTE que les six entrées hors arsenal ci-dessus, et pour la même raison :
+	// ces sources n'émettent aucun record de dégât `0xd2`, donc AUCUN identifiant
+	// numérique (`weapon_ids`) — elles se résolvent par le pont `killicon` (source de
+	// dégât `jpt!` → weapon_key). C'est cette absence d'id qui garantit STRUCTURELLEMENT
+	// le non-double-comptage (garde-rail off_arsenal_guard_test.go).
+	//
+	// Le trou qu'elles comblent était chiffré : 1 441 morts de classe VEHICULE tombaient
+	// dans « Non attribué » alors que le rejeu 2D savait déjà les nommer — le kill feed
+	// affichait l'icône du Ghost et le graphe disait « Non attribué » du même kill
+	// (décision D13 du plan, mesure du 2026-09-01).
+	//
+	// LIBELLÉS ARRÊTÉS PAR L'UTILISATEUR (D14) : les noms de véhicules gardent l'anglais,
+	// à trois exceptions (Apparition, Warthog lance-roquettes, Pélican) ; les tourelles
+	// sont des DESCRIPTIONS et non des noms propres, donc traduites. Les libellés
+	// affichés vivent dans weapon_names.toml — ici, `name` est l'identité EN canonique.
+	{"hinf_ghost", titleHINF, "Ghost", clsVehicle, clsVehicle, clsVehicle, facBanished, "", ""},
+	{"hinf_banshee", titleHINF, "Banshee", clsVehicle, clsVehicle, clsVehicle, facBanished, "", ""},
+	{"hinf_wraith", titleHINF, "Wraith", clsVehicle, clsVehicle, clsVehicle, facBanished, "", ""},
+	{"hinf_phantom", titleHINF, "Phantom", clsVehicle, clsVehicle, clsVehicle, facBanished, "", ""},
+	{"hinf_chopper", titleHINF, "Chopper", clsVehicle, clsVehicle, clsVehicle, facBanished, "", ""},
+	{"hinf_wasp", titleHINF, "Wasp", clsVehicle, clsVehicle, clsVehicle, facHuman, "", ""},
+	{"hinf_scorpion", titleHINF, "Scorpion", clsVehicle, clsVehicle, clsVehicle, facHuman, "", ""},
+	{"hinf_rockethog", titleHINF, "Rockethog", clsVehicle, clsVehicle, clsVehicle, facHuman, "", ""},
+	// Warthog a MITRAILLEUSE (LAAG). Pose le 2026-09-10 : sans cette entree, les 173 frags
+	// du `vehi dd7f9102` retomberaient sur `hinf_turret_machinegun` — la tourelle FIXE de
+	// carte, qui n en compte que 11. La cle nomme le PORTEUR, pas l arme : c est ce que le
+	// kill feed du jeu affiche, et ce que `film/killicon` sait maintenant resoudre.
+	{"hinf_warthog", titleHINF, "Warthog", clsVehicle, clsVehicle, clsVehicle, facHuman, "", ""},
+	// Gungoose — le Mongoose arme de canons jumeles. Pose le 2026-09-10 avec la meme voie que
+	// le Warthog. Particularite : ses 62 frags n avaient AUCUNE ligne de statistiques
+	// jusqu ici (aucune banque sonore, donc aucune regle, donc aucune weapon_key) ; ils
+	// tombaient dans « Non attribue ». Ici on ne repare donc pas une mesure fausse, on en
+	// cree une qui n existait pas.
+	{"hinf_gungoose", titleHINF, "Gungoose", clsVehicle, clsVehicle, clsVehicle, facHuman, "", ""},
+	{"hinf_pelican", titleHINF, "Pelican", clsVehicle, clsVehicle, clsVehicle, facHuman, "", ""},
+	{"hinf_falcon_lmg", titleHINF, "Falcon LMG turret", clsTurret, clsTurret, clsTurret, facHuman, "", ""},
+	{"hinf_falcon_gl", titleHINF, "Falcon grenade launcher", clsTurret, clsTurret, clsTurret, facHuman, "", ""},
+	{"hinf_turret_machinegun", titleHINF, "Machine gun turret", clsTurret, clsTurret, clsTurret, facHuman, "", ""},
+	{"hinf_turret_plasma", titleHINF, "Plasma cannon", clsTurret, clsTurret, clsTurret, facBanished, "", ""},
+	{"hinf_turret_shade", titleHINF, "Shade turret", clsTurret, clsTurret, clsTurret, facBanished, "", ""},
 	// ── Halo 5: Guardians (§6.2) ──
 	{"h5_assault_rifle", titleH5, "Assault Rifle (MA5D)", clsShoulder, roleAuto, "assault_rifle", facHuman, dmgBallistic, mfrMisriah},
 	{"h5_battle_rifle", titleH5, "Battle Rifle (BR55HB)", clsShoulder, rolePrecision, "battle_rifle", facHuman, dmgBallistic, mfrMisriah},
@@ -499,12 +679,31 @@ var weaponRegistryInfiniteFilmshell = []weaponNumericID{
 	{keyHinfShockRifle, 0x1a22fee642c9679f}, // Ranked
 	{"hinf_disruptor", 0x84bd29ed42c9679f},
 	{"hinf_mangler", 0x80977ba542c9679f},
+	// Mutilator — id filmshell pose le 2026-09-13. L entree `hinf_mutilator` du registre
+	// avait ete posee le 2026-09-10 SANS son id : la famille 0xd7915565 restait donc absente
+	// de `FilmshellWeaponKeysByFamily`, seule jointure famille -> weapon_key du catalogue de
+	// rejeu, et l arme s affichait « 0xD7915565 » sur les socles comme dans la vue de match.
+	// L id est MESURE : il vient de `labels.go` (seed weapon_labels, « Mutilator » /
+	// « Mutilateur », present depuis avril). Garde-rail : TestFilmshellCouvreLeSeedDeLabels.
+	{"hinf_mutilator", 0xd791556542c9679f},
 	{"hinf_pulse_carbine", 0x30484ea642c9679f},
 	{"hinf_stalker_rifle", 0xdaf193c742c9679f},
 	{"hinf_vestige_carbine", 0x3e07021742c9679f},
 	{"hinf_frag_grenade", 0xb6dbead842c9679f},
 	{"hinf_plasma_grenade", 0xc1e1bab042c9679f},
 	{"hinf_dynamo_grenade", 0x3ad55da442c9679f},
+	// RETOURS DU REJEU, lots M6.3 et M6.4 (2026-09-24) — trois familles OBSERVEES au parc sous leur
+	// seul hexadecimal, etablies sur pieces (instrument
+	// `internal/himodule/m6_bobine_mains_nues_research_test.go`, modules installes en lecture
+	// seule ; la variante est lue dans la liste du tag, comme `42C9679F` pour l arsenal) :
+	//   - MAINS NUES : l objet que le jeu remet a chaque bipede (cf. filmshell/unarmed.go) ;
+	//   - BOBINE A FUSION UNSC : `forge_fusion_coil_mp` (table `MiscWeaponTags` du Lua global,
+	//     31 documents) et `fusion_coil` (table `WeaponTags`, 5 documents) — chacune DECLARE le
+	//     degat que `damagetag/data/labels.tsv` range en explosion `kineticunsc`, celle de cette
+	//     cle. Ramassees, tenues, lachees, elles s affichaient « 0xE9E7FF79 » et « 0x1D63A8CD ».
+	{keyHinfUnarmed, filmshell.UnarmedWeaponID},
+	{keyHinfCoilKinetic, 0xe9e7ff79fab48286}, // forge_fusion_coil_mp
+	{keyHinfCoilKinetic, 0x1d63a8cdfab48286}, // fusion_coil
 }
 
 // weaponRegistryH5Stock — stock_ids H5 (source : catalogue officiel weapon_labels

@@ -17,12 +17,14 @@ import (
 )
 
 // haloInfiniteModeTaxonomy est la taxonomie de classification des modes injectée dans
-// MediaRepo (F1) et MatchViewRepo (F15-2, filtrage neighbors). Le couplage
-// games/halo_infinite vit désormais au niveau composition (registry = racine DI,
-// autorisée à importer games) et NON plus dans platform/duckdb. Actuellement Halo
-// Infinite (seul titre avec ces surfaces en prod ; comportement byte-identique au code
-// d'avant F1/F15-2). FOLLOW-UP per-titre : quand un 2e titre exposera média/neighbors
-// filtrés, résoudre la taxonomie via le title resolver (comme assetURLFor).
+// MediaRepo (F1), MatchViewRepo (F15-2, filtrage neighbors) et MatchViewService
+// (MatchViewHeader.ModeCategory — corrélation Fiesta du rejeu 2D, 2026-08-20). Le
+// couplage games/halo_infinite vit désormais au niveau composition (registry = racine
+// DI, autorisée à importer games) et NON plus dans platform/duckdb ni service.
+// Actuellement Halo Infinite (seul titre avec ces surfaces en prod ; comportement
+// byte-identique au code d'avant F1/F15-2). FOLLOW-UP per-titre : quand un 2e titre
+// exposera média/neighbors/header filtrés, résoudre la taxonomie via le title
+// resolver (comme assetURLFor).
 func haloInfiniteModeTaxonomy() analysis.ModeTaxonomy {
 	return analysis.ModeTaxonomy{
 		InferCategory: halo_infinite.InferModeCategoryFromPairName,

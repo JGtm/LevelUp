@@ -1,0 +1,556 @@
+package killcollector
+
+// positions_test.go — LE CHARGEMENT DU FILM (chunks synthétiques -> `source.Film`), LA
+// COMPOSITION PURE, ET LE REFUS PROPRE. Aucun test ici n'ouvre de base ni ne lit de film réel —
+// c'est le rôle de positions_integration_test.go (fixture réelle, gate KILLSOURCE_FIXTURES) et de
+// kill_position_persister_test.go (persister, :memory:). Ce fichier verrouille exactement ce que
+// G.2bis a ajouté : l'entrée des chunks, le filtrage des identités, la traduction en lignes, et
+// que CHAQUE refus s'arrête AVANT toute tentative d'écriture (acquireShared panique s'il est
+// appelé). Le pont disque qu'il verrouillait a disparu au lot 1 (item 1.6) : son seul contrôle
+// utile, le refus d'une séquence trouée, est verrouillé ici sous son nouveau nom.
+
+import (
+	"bytes"
+	"compress/zlib"
+	"context"
+	"database/sql"
+	"errors"
+	"testing"
+
+	"levelup/go-api/internal/games"
+	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
+	"levelup/go-api/internal/games/halo_infinite/film/replay"
+	"levelup/go-api/internal/observability"
+	"levelup/go-api/internal/persist"
+	"levelup/go-api/internal/port"
+	"levelup/go-api/internal/sync/haloclient"
+)
+
+// zlibCompressForTest compresse b, pour verifier qu'un chunk COMPRESSE (la forme du cache
+// herite) arrive decompresse aux balayages — c'est `source` qui inflate, une seule fois.
+func zlibCompressForTest(t *testing.T, b []byte) []byte {
+	t.Helper()
+	var buf bytes.Buffer
+	zw := zlib.NewWriter(&buf)
+	if _, err := zw.Write(b); err != nil {
+		t.Fatalf("zlib write: %v", err)
+	}
+	if err := zw.Close(); err != nil {
+		t.Fatalf("zlib close: %v", err)
+	}
+	return buf.Bytes()
+}
+
+// ─── FilmOf : le chargement, et refuserSequenceTrouee : le refus ───────────────────────────
+//
+// LE PONT DISQUE A DISPARU AU LOT 1 (PLAN_CUISSON_PERF, item 1.6) : les chunks téléchargés ne
+// sont plus recopiés dans un répertoire temporaire pour être relus quatre fois. `FilmOf` les
+// charge une fois (`source`), et le seul contrôle qui protégeait d'une position FAUSSE — le
+// refus d'une séquence trouée — est conservé tel quel, en mémoire.
+
+func TestFilmOf_ChargeLesChunksALeurIndex(t *testing.T) {
+	chunks := []haloclient.FilmChunk{
+		{Index: 1, ChunkType: 2, StartMS: 100, Data: []byte("chunk-un-donnees")},
+		{Index: 2, ChunkType: 2, StartMS: 200, Data: []byte("chunk-deux-donnees")},
+	}
+	film, err := FilmOf(chunks)
+	if err != nil {
+		t.Fatalf("FilmOf: %v", err)
+	}
+	if got := film.NumChunks(); got != 3 {
+		t.Fatalf("NumChunks = %d, attendu 3 (dimensionne sur l index MAX, en-tete compris)", got)
+	}
+	if got := string(film.Chunk(1)); got != "chunk-un-donnees" {
+		t.Errorf("chunk 1 = %q", got)
+	}
+	if got := string(film.Chunk(2)); got != "chunk-deux-donnees" {
+		t.Errorf("chunk 2 = %q", got)
+	}
+	// LES METADONNEES SONT POSITIONNELLES et portent le manifeste : c'est par elles que les
+	// balayages traduisent un NUMERO de chunk en position (decfilm.FilmChunkNumbers).
+	meta := film.Meta()
+	if len(meta) != 3 {
+		t.Fatalf("Meta = %d entrees, attendu 3", len(meta))
+	}
+	for i, m := range meta {
+		if m.Index != i {
+			t.Errorf("Meta[%d].Index = %d, attendu %d (la position EST le numero ici)", i, m.Index, i)
+		}
+	}
+	if meta[2].ChunkType != 2 || meta[2].StartMS != 200 {
+		t.Errorf("Meta[2] = %+v, attendu le type et le debut du manifeste", meta[2])
+	}
+}
+
+// TestFilmOf_ZlibRoundTrip — les chunks descendent COMPRESSÉS du cache hérité et CLAIRS des
+// téléchargements récents. `source` décompresse à la charge, une fois pour tous les lecteurs
+// (avant, chacune des quatre lectures repayait cette décompression).
+func TestFilmOf_ZlibRoundTrip(t *testing.T) {
+	compressed := zlibCompressForTest(t, []byte("payload-compresse"))
+	film, err := FilmOf([]haloclient.FilmChunk{{Index: 1, Data: compressed}})
+	if err != nil {
+		t.Fatalf("FilmOf: %v", err)
+	}
+	if got := string(film.Chunk(1)); got != "payload-compresse" {
+		t.Errorf("chunk decompresse = %q, attendu %q", got, "payload-compresse")
+	}
+}
+
+// TestFilmOf_NumerosDeChunksVusParLesBalayages — LE CONTRAT QUI REMPLACE LE PONT DISQUE, et le
+// seul qui pouvait se perdre en route : les quatre balayages parcourent les chunks de DONNÉES par
+// NUMÉRO (`decfilm.FilmChunkNumbers`), là où ils comptaient `decfilm.CountFilmChunks(dir)` — donc
+// 1..N depuis chunk_01. Le film chargé en mémoire doit rendre exactement les mêmes numéros, sinon
+// `ScanDeaths` (qui prend le DERNIER numéro comme chunk du kill-feed) et `ScanClockOrigin` (qui
+// lit le numéro 1) changeraient de cible sans rien signaler.
+func TestFilmOf_NumerosDeChunksVusParLesBalayages(t *testing.T) {
+	film, err := FilmOf([]haloclient.FilmChunk{
+		{Index: 0, ChunkType: 1, Data: []byte("entete")},
+		{Index: 1, ChunkType: 2, Data: []byte("replication-1")},
+		{Index: 2, ChunkType: 2, Data: []byte("replication-2")},
+		{Index: 3, ChunkType: 3, Data: []byte("killfeed")},
+	})
+	if err != nil {
+		t.Fatalf("FilmOf: %v", err)
+	}
+	nums := decfilm.FilmChunkNumbers(film)
+	if len(nums) != 3 || nums[0] != 1 || nums[2] != 3 {
+		t.Fatalf("numeros = %v, attendu [1 2 3] (le registre exclu, le kill-feed en dernier)", nums)
+	}
+	// Le NUMÉRO adresse bien la position : c'est ce que `FilmChunkAt` traduit pour les balayages.
+	raw, _, ok := decfilm.FilmChunkAt(film, 3)
+	if !ok || string(raw) != "killfeed" {
+		t.Errorf("chunk numero 3 = %q (ok=%v), attendu le kill-feed", raw, ok)
+	}
+}
+
+// TestRefuserSequenceTrouee_RefuseUnTrouDeSequence — un index manquant ferait lire les quatre
+// balayages sur un film AMPUTÉ, en silence (un chunk vide ne rend aucun paquet) : le contrôle
+// refuse plutôt que de laisser passer une lecture partielle plausible.
+func TestRefuserSequenceTrouee_RefuseUnTrouDeSequence(t *testing.T) {
+	film, err := FilmOf([]haloclient.FilmChunk{
+		{Index: 1, Data: []byte("a")},
+		{Index: 3, Data: []byte("c")}, // 2 absent
+	})
+	if err != nil {
+		t.Fatalf("FilmOf: %v", err)
+	}
+	if err := refuserSequenceTrouee(film); err == nil {
+		t.Fatal("attendu un refus (trou de sequence), obtenu nil")
+	}
+}
+
+// TestRefuserSequenceTrouee_ChunkVideEstUnTrou — un chunk DÉCLARÉ mais sans octets (Data vide)
+// est un trou au même titre qu'un index manquant : il ne rend aucun paquet.
+func TestRefuserSequenceTrouee_ChunkVideEstUnTrou(t *testing.T) {
+	film, err := FilmOf([]haloclient.FilmChunk{
+		{Index: 1, Data: []byte("a")},
+		{Index: 2, Data: nil},
+	})
+	if err != nil {
+		t.Fatalf("FilmOf: %v", err)
+	}
+	if err := refuserSequenceTrouee(film); err == nil {
+		t.Fatal("attendu un refus (chunk 2 vide = trou), obtenu nil")
+	}
+}
+
+// TestRefuserSequenceTrouee_AucunChunkDeDonneesPasse — le contrôle ne juge pas l'absence de
+// contenu (0 chunk de données = 0 trou) ; c'est aux LECTEURS (ScanBipedPositions, etc.) de refuser
+// un film vide. Verrouille la frontière entre les deux responsabilités, comme le pont disque avant lui.
+func TestRefuserSequenceTrouee_AucunChunkDeDonneesPasse(t *testing.T) {
+	film, err := FilmOf(nil)
+	if err != nil {
+		t.Fatalf("FilmOf(nil): %v", err)
+	}
+	if err := refuserSequenceTrouee(film); err != nil {
+		t.Errorf("un film sans chunk de donnees doit passer ce controle, obtenu : %v", err)
+	}
+}
+
+// TestRefuserSequenceTrouee_FilmNil — le film absent est refusé ici, jamais déréférencé plus bas.
+func TestRefuserSequenceTrouee_FilmNil(t *testing.T) {
+	if err := refuserSequenceTrouee(nil); err == nil {
+		t.Fatal("attendu un refus (film nil), obtenu nil")
+	}
+}
+
+// ─── Composition pure ──────────────────────────────────────────────────────────────────────
+
+func TestKillRefsFromDeaths_NeGardeQueLesDeuxIdentitesResolues(t *testing.T) {
+	deaths := []persist.KillEventInsert{
+		{TimeMS: 1000, FeedKillerXUID: "111", VictimXUID: "222"}, // les deux resolus : garde
+		{TimeMS: 2000, FeedKillerXUID: "", VictimXUID: "222"},    // tueur non resolu (bot) : ecarte
+		{TimeMS: 3000, FeedKillerXUID: "111", VictimXUID: ""},    // victime non resolue (bot) : ecarte
+		{TimeMS: 4000, FeedKillerXUID: "abc", VictimXUID: "222"}, // xuid non numerique : ecarte
+	}
+	got := killRefsFromDeaths(deaths)
+	if len(got) != 1 {
+		t.Fatalf("attendu 1 KillRef, obtenu %d: %+v", len(got), got)
+	}
+	if got[0].KillerXUID != 111 || got[0].VictimXUID != 222 || got[0].TimeMS != 1000 {
+		t.Errorf("KillRef inattendu: %+v", got[0])
+	}
+}
+
+func TestToKillPositionRows_PositionsPartiellesRestentNil(t *testing.T) {
+	positions := []replay.KillPosition{
+		{
+			KillRef: replay.KillRef{KillerXUID: 111, VictimXUID: 222, TimeMS: 1000},
+			Killer:  &replay.Vec3{X: 1, Y: 2, Z: 3},
+			// Victim volontairement nil : position non localisee.
+		},
+	}
+	rows := toKillPositionRows("m1", positions)
+	if len(rows) != 1 {
+		t.Fatalf("attendu 1 ligne, obtenu %d", len(rows))
+	}
+	r := rows[0]
+	if r.MatchID != "m1" || r.KillerXUID != "111" || r.TimeMS != 1000 {
+		t.Errorf("ligne inattendue: %+v", r)
+	}
+	if r.KillerX == nil || *r.KillerX != 1 || r.KillerY == nil || *r.KillerY != 2 || r.KillerZ == nil || *r.KillerZ != 3 {
+		t.Errorf("position tueur inattendue: X=%v Y=%v Z=%v", r.KillerX, r.KillerY, r.KillerZ)
+	}
+	if r.VictimX != nil {
+		t.Errorf("VictimX devait rester nil (non localisee), obtenu %v", *r.VictimX)
+	}
+}
+
+func TestParseXUID(t *testing.T) {
+	cases := []struct {
+		in   string
+		want uint64
+		ok   bool
+	}{
+		{"111", 111, true},
+		{"", 0, false},
+		{"abc", 0, false},
+		{"xuid(123)", 0, false}, // forme brute jamais resolue ici : MatchIdentities.Resoudre l a deja traduite
+	}
+	for _, c := range cases {
+		got, ok := parseXUID(c.in)
+		if ok != c.ok || (ok && got != c.want) {
+			t.Errorf("parseXUID(%q) = (%d, %v), attendu (%d, %v)", c.in, got, ok, c.want, c.ok)
+		}
+	}
+}
+
+func TestRosterUint64_IgnoreLesNonNumeriques(t *testing.T) {
+	got := rosterUint64([]string{"111", "abc", "222", ""})
+	if len(got) != 2 || got[0] != 111 || got[1] != 222 {
+		t.Errorf("roster = %v, attendu [111 222]", got)
+	}
+}
+
+// ─── resolveMapBounds ──────────────────────────────────────────────────────────────────────
+
+// fakeMapNames : port.ReplayMapNameRepo minimal, sans base.
+type fakeMapNames struct {
+	keys port.MatchMapKeys
+	err  error
+}
+
+func (f fakeMapNames) MapKeysForMatch(context.Context, string) (port.MatchMapKeys, error) {
+	return f.keys, f.err
+}
+
+func (f fakeMapNames) MapKeysForMap(context.Context, string) (port.MatchMapKeys, error) {
+	return f.keys, f.err
+}
+
+func testMapQuantCatalog() *decfilm.MapQuantCatalog {
+	return &decfilm.MapQuantCatalog{
+		SchemaVersion: decfilm.MapQuantSchemaVersion,
+		Maps: map[string]decfilm.MapQuantEntry{
+			"catalyst": {
+				Min: [3]float32{-100, -100, -100},
+				Max: [3]float32{100, 100, 100},
+			},
+		},
+	}
+}
+
+func TestResolveMapBounds_EssaieLesCandidatsDansLOrdre(t *testing.T) {
+	c := &KillSourceCollector{
+		mapNames:  fakeMapNames{keys: port.MatchMapKeys{Names: []string{"Carte Forge Inconnue", "Catalyst"}}},
+		mapBounds: testMapQuantCatalog(),
+	}
+	entry, err := c.resolveMapBounds(context.Background(), "m1")
+	if err != nil {
+		t.Fatalf("resolveMapBounds: %v", err)
+	}
+	if entry.Min[0] != -100 {
+		t.Errorf("entree inattendue: %+v", entry)
+	}
+}
+
+func TestResolveMapBounds_RefuseSansCandidatConnu(t *testing.T) {
+	c := &KillSourceCollector{
+		mapNames:  fakeMapNames{keys: port.MatchMapKeys{Names: []string{"Carte Forge Inconnue"}}},
+		mapBounds: testMapQuantCatalog(),
+	}
+	if _, err := c.resolveMapBounds(context.Background(), "m1"); err == nil {
+		t.Fatal("attendu un refus (carte hors catalogue de bornes), obtenu nil")
+	}
+}
+
+func TestResolveMapBounds_PropageLErreurDeResolutionDeCarte(t *testing.T) {
+	c := &KillSourceCollector{
+		mapNames:  fakeMapNames{err: errors.New("base indisponible")},
+		mapBounds: testMapQuantCatalog(),
+	}
+	if _, err := c.resolveMapBounds(context.Background(), "m1"); err == nil {
+		t.Fatal("attendu la propagation de l erreur, obtenu nil")
+	}
+}
+
+// ─── collectPositions : chaque refus s'arrete AVANT toute ecriture ────────────────────────
+
+// panicWriter : la preuve qu'un gate a refuse EN AMONT de toute tentative d'ecriture. Un appel
+// fait echouer le test (panic non rattrapee) — c'est la propriete recherchee, pas un detail
+// d'implementation : un gate qui laisserait passer un acquireShared() ecrirait potentiellement
+// une passe partielle.
+var panicWriter persist.SharedWriterFn = func(context.Context) (*sql.DB, func(), error) {
+	panic("acquireShared ne doit jamais etre appele : un gate aurait du arreter la passe avant")
+}
+
+func killRefValide() []persist.KillEventInsert {
+	return []persist.KillEventInsert{{TimeMS: 1000, FeedKillerXUID: "111", VictimXUID: "222"}}
+}
+
+func TestCollectPositions_CapabiliteAbsenteNeTenteAucuneEcriture(t *testing.T) {
+	c := &KillSourceCollector{
+		caps:          games.CapabilityMap{}, // film.kill_positions absente
+		mapNames:      fakeMapNames{keys: port.MatchMapKeys{Names: []string{"Catalyst"}}},
+		mapBounds:     testMapQuantCatalog(),
+		acquireShared: panicWriter,
+	}
+	c.collectPositions(context.Background(), "m1", nil, nil, MatchIdentities{}, killRefValide(), killRefValide())
+}
+
+// TestCollectPositions_NonCableNeTenteAucuneEcriture — Q8 (2026-09-07) : ce cas est une
+// REGRESSION DE CABLAGE (la capability est la, WithPositionCapture non fourni), pas une
+// non-applicabilite de titre — il journalise desormais en WARN et compte
+// metricPositionsNotWired, pour qu'une table neuve restee vide en prod se remarque.
+func TestCollectPositions_NonCableNeTenteAucuneEcriture(t *testing.T) {
+	avant := observability.LoadCounter(metricPositionsNotWired)
+	c := &KillSourceCollector{
+		caps:          games.CapabilityMap{games.CapFilmKillPositions: games.CapSupported},
+		acquireShared: panicWriter,
+		// mapNames / mapBounds volontairement nil : WithPositionCapture jamais appele.
+	}
+	c.collectPositions(context.Background(), "m1", nil, nil, MatchIdentities{}, killRefValide(), killRefValide())
+	if got := observability.LoadCounter(metricPositionsNotWired) - avant; got != 1 {
+		t.Errorf("%s a bougé de %d, attendu 1 : un cablage manquant doit se compter",
+			metricPositionsNotWired, got)
+	}
+}
+
+func TestCollectPositions_AucuneIdentiteResolueNeTenteAucuneEcriture(t *testing.T) {
+	c := &KillSourceCollector{
+		caps:          games.CapabilityMap{games.CapFilmKillPositions: games.CapSupported},
+		mapNames:      fakeMapNames{keys: port.MatchMapKeys{Names: []string{"Catalyst"}}},
+		mapBounds:     testMapQuantCatalog(),
+		acquireShared: panicWriter,
+	}
+	deaths := []persist.KillEventInsert{{TimeMS: 1000, FeedKillerXUID: "", VictimXUID: ""}}
+	c.collectPositions(context.Background(), "m1", nil, nil, MatchIdentities{}, deaths, deaths)
+}
+
+func TestCollectPositions_CarteHorsCatalogueNeTenteAucuneEcriture(t *testing.T) {
+	c := &KillSourceCollector{
+		caps:          games.CapabilityMap{games.CapFilmKillPositions: games.CapSupported},
+		mapNames:      fakeMapNames{keys: port.MatchMapKeys{Names: []string{"Carte Forge Inconnue"}}},
+		mapBounds:     testMapQuantCatalog(),
+		acquireShared: panicWriter,
+	}
+	c.collectPositions(context.Background(), "m1", nil, nil, MatchIdentities{}, killRefValide(), killRefValide())
+}
+
+// TestCollectPositions_FilmIllisibleNeTenteAucuneEcriture — bornes resolues, morts resolues,
+// mais AUCUN chunk exploitable (« film illisible ») : le pont rend un repertoire vide et les
+// lectures hors ligne refusent proprement — jamais de passe partielle ecrite.
+func TestCollectPositions_FilmIllisibleNeTenteAucuneEcriture(t *testing.T) {
+	c := &KillSourceCollector{
+		caps:          games.CapabilityMap{games.CapFilmKillPositions: games.CapSupported},
+		mapNames:      fakeMapNames{keys: port.MatchMapKeys{Names: []string{"Catalyst"}}},
+		mapBounds:     testMapQuantCatalog(),
+		acquireShared: panicWriter,
+	}
+	ids := MatchIdentities{XUIDs: []string{"111", "222"}}
+	c.collectPositions(context.Background(), "m1", nil, nil, ids, killRefValide(), killRefValide())
+}
+
+// TestToKillOpeningRows_PorteLInstantDuKillSansArithmetique : LE point critique de la passe
+// d'entames. La table est clee sur l'instant DU KILL (c'est par lui que match_kill_events se
+// joint) et `replay.BuildKillOpenings` rend DEJA cet instant : la projection le recopie, sans
+// rien lui ajouter. Depuis la bascule du 2026-09-06 (item 3.10 bis), REAJOUTER OpeningLeadMS
+// ici decalerait toutes les lignes de 1,5 s et rendrait la jointure du lecteur vide, en
+// silence. L'accord entre le decalage amont et cet instant est pince par
+// TestComposerPassePositions_... (positions_openings_test.go) : ce test-ci ne verrouille que
+// la projection.
+func TestToKillOpeningRows_PorteLInstantDuKillSansArithmetique(t *testing.T) {
+	const instantDuKill = int64(9000)
+	positions := []replay.KillPosition{
+		{
+			// Ce que BuildKillOpenings rend : l'instant DU KILL, pas l'instant mesure.
+			KillRef: replay.KillRef{
+				KillerXUID: 111, VictimXUID: 222, TimeMS: instantDuKill,
+			},
+			Killer: &replay.Vec3{X: 1, Y: 2, Z: 3},
+			// Victim volontairement nil : entame non localisee d'un cote.
+		},
+	}
+	rows := toKillOpeningRows("m1", positions)
+	if len(rows) != 1 {
+		t.Fatalf("attendu 1 ligne, obtenu %d", len(rows))
+	}
+	r := rows[0]
+	if int64(r.TimeMS) != instantDuKill {
+		t.Errorf("TimeMS = %d, attendu %d (l'instant DU KILL, pas l'instant mesure)",
+			r.TimeMS, instantDuKill)
+	}
+	if r.MatchID != "m1" || r.KillerXUID != "111" {
+		t.Errorf("ligne inattendue: %+v", r)
+	}
+	if r.KillerZ == nil || *r.KillerZ != 3 {
+		t.Errorf("position tueur inattendue: Z=%v", r.KillerZ)
+	}
+	if r.VictimX != nil {
+		t.Errorf("VictimX devait rester nil (non localisee), obtenu %v", *r.VictimX)
+	}
+}
+
+// TestEntreeDuRegistrePorteLeRosterDeLaFeuille — LA COUTURE : ce que le collecteur transmet.
+//
+// `RosterXUIDs` est le champ qui ouvre l'identite par ELIMINATION (un joueur qui ne meurt jamais).
+// Sans lui, `match_lives` reperd les vies que le lot P2 vient de nommer, et RIEN d'autre ne le
+// verrait : les tests du registre construisent leur propre entree, et le seul test qui traverse
+// `buildPositionRows` exige un film.
+//
+// MUTATION : retirer `RosterXUIDs` d'`entreeDuRegistre` -> ROUGE.
+func TestEntreeDuRegistrePorteLeRosterDeLaFeuille(t *testing.T) {
+	ids := MatchIdentities{XUIDs: []string{"111", "222", "bid(7.0)"}}
+	in := entreeDuRegistre(lecturesDuFilm{}, ids, nil, "m1")
+
+	if len(in.RosterXUIDs) != 2 {
+		t.Fatalf("roster transmis = %v, attendu les deux xuids humains — sans lui, "+
+			"l'identite par elimination n'a aucun candidat", in.RosterXUIDs)
+	}
+	if in.MatchID != "m1" {
+		t.Errorf("match_id transmis = %q, attendu \"m1\"", in.MatchID)
+	}
+	// LE COLLECTEUR N'A PAS D'AXE DE FRAMES, et c'est voulu : il n'ecrit pas d'artefact. Une
+	// horloge inventee ici publierait des bornes de lien qui ne veulent rien dire.
+	if in.Clock.StepUS != 0 {
+		t.Errorf("axe de frames = %+v, attendu vide : le collecteur ne publie pas de section",
+			in.Clock)
+	}
+}
+
+// TestEntreeDuRegistrePorteLesCreationsDeBipede — LA SECONDE COUTURE (lot E2, 2026-09-08).
+//
+// `BipedCreations` est le lien DIRECT corps -> joueur. Sans lui, le collecteur retomberait sur le
+// pont par morts alors que la cuisson lit le film : deux producteurs, deux nommages de
+// `match_lives`, exactement ce que la decision D11 interdit. Son retrait ne casserait AUCUN autre
+// test du depot — les tests du registre construisent leur propre entree.
+//
+// MUTATION : retirer `BipedCreations` d'`entreeDuRegistre` -> ROUGE.
+func TestEntreeDuRegistrePorteLesCreationsDeBipede(t *testing.T) {
+	l := lecturesDuFilm{creations: []decfilm.BipedCreation{
+		{Slot: 512, Generation: 1, ParticipantIndex: 3, HasIndex: true, TimestampUS: 42},
+	}}
+	in := entreeDuRegistre(l, MatchIdentities{XUIDs: []string{"111"}}, nil, "m1")
+
+	if len(in.BipedCreations) != 1 || in.BipedCreations[0].ParticipantIndex != 3 {
+		t.Fatalf("creations transmises = %+v, attendu le record du slot 512 (index 3) — sans "+
+			"elles, match_lives est nomme par le pont par morts alors que le film le nomme",
+			in.BipedCreations)
+	}
+}
+
+// TestEntreeDuRegistrePorteLesBotsEtLesParticipants — LA TROISIEME COUTURE (lot 5.1, revue de
+// vague 4, constat P2 sur `positions.go:484-489`).
+//
+// # LA FIGURE, IDENTIQUE A CELLE DE `identity_registry_scoreboard.go` (`4f77afc1`)
+//
+// Le slot 300 partage l'index de participant 9 entre un bot que BOT_METADATA declare
+// (`bid(7.0)`) et l'humain 222, arrive en cours a 10 s. `PlayerIndices.ByXUID` resout DEJA
+// l'index 9 vers 222 (ses morts APRES l'arrivee suffisent a la bijection du collecteur) : SANS
+// `Bots` pour dire que cet index est AUSSI un bot, le lien direct
+// (`identity_registry_creation.go`) attribue TOUT le siege a 222 — y compris la vie D'AVANT
+// l'arrivee, qui appartient au bot. AVEC `Bots`, l'index sort du lien direct
+// (`IndexOutOfTable`, verdict I0) et `resolveByScoreboard` le departage PAR VIE grace a
+// `Participants` : la vie d'avant prend `bid(7.0)`, celle d'apres prend `xuid=222` avec
+// `nomPar=tableau_api`.
+//
+// `ViesNommees()` est l'accesseur que `isolation_facts.go` (`toLifeRows`) emploie pour ecrire
+// `match_lives` : c'est donc lui, et pas un accesseur de test, qui doit ne rendre qu'UNE SEULE
+// vie pour 222.
+//
+// MUTATION : retirer `Bots`/`Participants` d'`entreeDuRegistre` -> ROUGE (`ViesNommees()` rend
+// DEUX vies pour 222, la vie du bot comprise, nommees `biped_creation`/`biped_creation_propagee`
+// au lieu de `tableau_api`).
+func TestEntreeDuRegistrePorteLesBotsEtLesParticipants(t *testing.T) {
+	var pos []decfilm.BipedPosition
+	for tUS := uint64(1_000_000); tUS <= 4_000_000; tUS += 500_000 {
+		pos = append(pos, decfilm.BipedPosition{Slot: 100, TimestampUS: tUS, HasWorld: true})
+	}
+	for tUS := uint64(20_000_000); tUS <= 23_000_000; tUS += 500_000 {
+		pos = append(pos, decfilm.BipedPosition{Slot: 100, TimestampUS: tUS, HasWorld: true})
+	}
+	// Le siege partage : une vie AVANT l'arrivee de 222 (le bot), une vie APRES (l'humain).
+	for tUS := uint64(1_000_000); tUS <= 4_000_000; tUS += 500_000 {
+		pos = append(pos, decfilm.BipedPosition{Slot: 300, TimestampUS: tUS, HasWorld: true})
+	}
+	for tUS := uint64(20_000_000); tUS <= 24_000_000; tUS += 500_000 {
+		pos = append(pos, decfilm.BipedPosition{Slot: 300, TimestampUS: tUS, HasWorld: true})
+	}
+	l := lecturesDuFilm{
+		positions: pos,
+		creations: []decfilm.BipedCreation{
+			{Slot: 100, Generation: 1, ParticipantIndex: 0, HasIndex: true, TimestampUS: 1_000_000},
+			{Slot: 300, Generation: 1, ParticipantIndex: 9, HasIndex: true, TimestampUS: 1_000_000},
+		},
+		// Le slot 100 (joueur 111) CALE l'horloge du film sur celle du match — sans lui, aucune
+		// fenetre de participation n'est exprimable (cf. l'en-tete de identity_registry_scoreboard.go).
+		deaths: []replay.Death{
+			{XUID: 111, Gamertag: "MORTEL", TimeMS: 4_000},
+			{XUID: 111, Gamertag: "MORTEL", TimeMS: 23_000},
+		},
+		idx: replay.PlayerIndexTable{ByXUID: map[uint64]int{111: 0, 222: 9}, Readings: 26},
+	}
+	arrivee222 := int64(10_000)
+	ids := MatchIdentities{
+		XUIDs: []string{"111", "222"},
+		Participants: []replay.Participant{
+			{ID: "111"},
+			{ID: "bid(7.0)"},
+			{ID: "222", JoinedInProgress: true, JoinMatchMS: &arrivee222},
+		},
+	}
+	bots := []replay.BotIdentity{{FilmIndex: 9, Name: "343 Doomfruit [bot]", BotID: 7}}
+
+	in := entreeDuRegistre(l, ids, bots, "m1")
+	reg := replay.BuildIdentityRegistry(in)
+
+	var viesDe222 []replay.VieNommee
+	for _, v := range reg.ViesNommees() {
+		if v.XUID == 0 {
+			t.Fatalf("une vie sans xuid a atteint ViesNommees : %+v — les bots n'ont pas de xuid "+
+				"et n'entrent jamais dans match_lives", v)
+		}
+		if v.XUID == 222 {
+			viesDe222 = append(viesDe222, v)
+		}
+	}
+	if len(viesDe222) != 1 {
+		t.Fatalf("vies nommees pour 222 = %d, attendu 1 (%+v) — sans Bots/Participants au "+
+			"registre, le siege partage attribue AUSSI la vie du bot (avant l'arrivee) a "+
+			"l'humain", len(viesDe222), viesDe222)
+	}
+	if viesDe222[0].NomPar != replay.NomParTableauAPI {
+		t.Fatalf("nomPar = %q, attendu %q (la vie doit venir du DEPARTAGE par le tableau, pas du "+
+			"lien direct)", viesDe222[0].NomPar, replay.NomParTableauAPI)
+	}
+}

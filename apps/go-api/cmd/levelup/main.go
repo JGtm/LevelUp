@@ -19,6 +19,7 @@
 //	levelup sync-achievements (--gamertag X | --all) [--dry-run]
 //	levelup add-title      --name "Nom du jeu" [--slug s] [--capabilities c1,c2] [--xbox-id X] [--steam-id S]
 //	levelup populate-assets [--types map,playlist] [--langs fr-FR] [--dry-run] [--force] [--title-id slug]
+//	levelup identity       list | purge <xuid> [--yes]
 //
 // Variables d'environnement : LEVELUP_REPO_ROOT (auto-detecte si absent).
 //
@@ -29,6 +30,7 @@
 //   - cmd_notify.go  - notify-version, notify-sync
 //   - cmd_title.go   - add-title
 //   - cmd_populate_assets.go - populate-assets (traductions d'assets Discovery UGC)
+//   - cmd_identity.go - identity list / identity purge (annuaire des identites, ADR 0035)
 package main
 
 import (
@@ -36,9 +38,22 @@ import (
 	"os"
 
 	"levelup/go-api/internal/config"
-	halomigrations "levelup/go-api/internal/games/halo_infinite/migrations"
-	"levelup/go-api/internal/migration"
+	"levelup/go-api/internal/games/titleseams"
 )
+
+// wireStartupSeams pose les seams title-owned de la CLI — MÊME câblage que le
+// serveur (2026-09-16). Couvre MT-07 (libellés de rangs, dont dépend
+// `seed rank-translations`), les steps de migration title-owned (sans eux les
+// racines shared_social ne sont pas exécutées par RunForDB → seed-demo média
+// échoue) ET les classifiers LUSR / famille objectif : sans eux, le post-sync de
+// `sync-delta` / `sync-full` panique (fail-loud MT-15) et rend perf_scores=0
+// lusr=0 citations=0 dominance=0 sur toute la passe.
+//
+// Extrait de main() pour être exerçable par main_seams_test.go : un test qui
+// n'invoquerait pas ce chemin passerait avec ET sans le câblage.
+func wireStartupSeams(cfg *config.AppConfig) {
+	titleseams.RegisterAll(titleseams.PrestigeConfigDir(cfg.RepoRoot))
+}
 
 func main() {
 	if len(os.Args) < 2 {
@@ -52,15 +67,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	// MT-07 : source title-owned des libellés de rangs (le sous-commande
-	// `seed rank-translations` via ops.SeedRankTranslations en dépend).
-	migration.SetCareerRankTranslationsProvider(halomigrations.CareerRankTranslations)
-
-	// Steps de migration title-owned (parité cmd/server). SANS ça, les RACINES
-	// shared_social (create_base_shared_social_schema → table media_files / associations)
-	// ne sont PAS exécutées par RunForDB/RunForTitleDB dans la CLI → seed-demo média
-	// échoue (media_files absente). index-media et seed-demo en dépendent.
-	migration.SetTitleStepsProvider(halomigrations.StepsFor)
+	wireStartupSeams(cfg)
 
 	subcmd := os.Args[1]
 	args := os.Args[2:]
@@ -119,6 +126,24 @@ func main() {
 		exitErr = runBackfillH5KillMechanics(cfg, args)
 	case "backfill-killsource":
 		exitErr = runBackfillKillSource(cfg, args)
+	case "backfill-medailles-feed":
+		exitErr = runBackfillMedaillesFeed(cfg, args)
+	case "archive-films":
+		exitErr = runArchiveFilms(cfg, args)
+	case "backfill-replay":
+		exitErr = runBackfillReplay(cfg, args)
+	case "backfill-usage-summary":
+		exitErr = runBackfillUsageSummary(cfg, args)
+	case "backfill-bomb-stats":
+		exitErr = runBackfillBombStats(cfg, args)
+	case "backfill-flag-grabs-net":
+		exitErr = runBackfillFlagGrabsNet(cfg, args)
+	case "backfill-pad-tiers":
+		exitErr = runBackfillPadTiers(cfg, args)
+	case "tactical-rasters":
+		exitErr = runTacticalRasters(cfg, args)
+	case "replay-facts-export":
+		exitErr = runReplayFactsExport(cfg, args)
 	case "migrate":
 		exitErr = runMigrate(cfg, args)
 	case "restore-csr":
@@ -127,6 +152,8 @@ func main() {
 		exitErr = runAddTitle(cfg, args)
 	case "populate-assets":
 		exitErr = runPopulateAssets(cfg, args)
+	case "identity":
+		exitErr = runIdentity(cfg, args)
 	case "help", "--help", "-h":
 		printUsage()
 	default:
@@ -136,8 +163,11 @@ func main() {
 	}
 
 	if exitErr != nil {
-		fmt.Fprintf(os.Stderr, "erreur: %v\n", exitErr)
-		os.Exit(1)
+		// LE CODE DE SORTIE N EST PLUS TOUJOURS 1 (lot 5.24.4) : une passe de backfill
+		// INTERROMPUE par un signal n est pas une panne, et un script doit pouvoir faire la
+		// difference entre « relance-moi » et « repare-moi ». `sortirSur` ecrit le message et
+		// rend le code ; tout ce qui n est pas reconnu reste a 1.
+		os.Exit(sortirSur(exitErr))
 	}
 }
 
@@ -173,11 +203,50 @@ Commandes:
   recompute-friends Recompute is_with_friends sur toutes les player DBs (idempotent, --dry-run dispo)
   backfill-squad-creators Réinscrit le créateur manquant dans les escouades legacy (append-only, idempotent, --dry-run dispo, serveur arrêté)
   backfill-h5-kill-mechanics Corrige les mécaniques de kill H5 (assassination/ground_pound/shoulder_bash) écrites à 0 avant l'activation du mapper (re-fetch carnage, UPDATE ciblé, --dry-run dispo, serveur arrêté)
-  backfill-killsource Remplit match_kill_events + match_weapon_shots : décodage HORS LIGNE des films en cache (gros films en dernier, reprenable par decoder_rev) puis producteur credit-seul depuis highlight_events (--dry-run, --limit, --films-only, --credit-only, serveur arrêté)
+  backfill-killsource Remplit match_kill_events + match_weapon_shots : décodage HORS LIGNE des films en cache (gros films en dernier,
+                  reprenable par decoder_rev) puis producteur credit-seul depuis highlight_events (--dry-run, --limit, --films-only,
+                  --credit-only, serveur arrêté). --workers N décode N films en parallèle (défaut 3 ; un seul goroutine touche la
+                  base) et --status LIT le fichier d'état de la passe en cours, depuis un autre terminal, sans ouvrir aucune base.
+                  --online --gamertag <GT> va CHERCHER les films absents du cache et les y archive :
+                  c'est ce qui rattrape l'attribution des assistances, sans film il n'y en a aucune
+  backfill-medailles-feed Rend leur nom aux médailles déjà en base : relit HORS LIGNE le chunk highlight des films en cache, apparie
+                  par (xuid, time_ms) et remplit highlight_events.raw_json + type_hint, restés vides depuis avril 2026 (415 matchs /
+                  22 031 events sans identité, donc aucune médaille au fil des éliminations). Film absent du cache = match consigné
+                  et sauté (--dry-run, --limit, --cache, serveur arrêté)
+  archive-films   Télécharge et CONSERVE les films manquants du cache local (manifeste + chunks complets, sans aucun décodage). Les
+                  films EXPIRENT côté 343 et ne se retéléchargent jamais : cette passe est la seule qui les sauve. Lecture seule sur
+                  la base (elle ne peut rien corrompre) mais SERVEUR ARRÊTÉ quand même : DuckDB n'autorise qu'un processus par
+                  fichier (--dry-run, --limit, --gamertag, --sauter-marques)
+  backfill-bomb-stats  Projette en base les statistiques d'Assaut portées par les artefacts de rejeu déjà cuits (match_bomb_stats
+                  append-only + faits datés dans match_objective_events) : AUCUN décodage de film. À lancer APRÈS backfill-replay,
+                  qui est la passe qui les fait naître dans les artefacts (--dry-run, --force, --match, --limit, serveur arrêté)
+  backfill-flag-grabs-net  Projette en base les prises de drapeau BRUTES et NETTES lues du calque de drapeau des artefacts de rejeu
+  backfill-pad-tiers       Projette en base les prises de socle VENTILEES PAR NIVEAU d arme (base / terrain / puissance) lues des artefacts de rejeu
+                  déjà rangés (match_flag_grabs_net append-only) : AUCUN décodage, AUCUNE recuisson — tout artefact de schéma >= 14
+                  est lisible tel quel. La fenêtre de jonglage vient de regulation.toml ; un changement de fenêtre EXIGE --force
+                  (--dry-run, --force, --match, --limit, serveur arrêté)
+  backfill-replay Construit les artefacts de rejeu 2D de tous les films en cache : décodage HORS LIGNE via la librairie replaybuild,
+                  UN PROCESSUS PAR FILM (un film-bombe n'emporte plus la passe ni la machine ; gros films en dernier, reprenable par
+                  SchemaVersion, échecs ventilés : carte hors catalogue, mémoire, mort subite) (--dry-run, --limit, --force,
+                  --only-existing, --mem-limit-gib)
+  backfill-usage-summary Résume les artefacts de rejeu déjà cuits en usages d'équipement et de socles (match_usage_players +
+                  match_usage_films, append-only) : AUCUN décodage de film, un artefact lu à la fois, reprenable par (summary_rev,
+                  artifact_schema) via la vue _latest. --dry-run imprime les compteurs par match (prises nommées/anonymes, bonus par
+                  famille) pour les contrôles croisés (--force, --match, --limit, serveur arrêté)
+  tactical-rasters  Depose le sidecar d'occupation (« ou chaque joueur a passe son temps ») des artefacts de rejeu deja cuits :
+                  AUCUN decodage de film, AUCUNE base ouverte — une lecture d'artefacts suivie de petits JSON ranges sous
+                  data/cache/replays/{slug}/rasters/. Idempotent (un sidecar n'est refait que s'il manque ou si son artefact a
+                  change de schema) (--backfill obligatoire, --dry-run, --title, --limit)
+  replay-facts-export  Exporte les faits de match (JSON, forme de replay-build --facts) et les cartes candidates de matchs nommes, pour le harnais d'equivalence des rejeux (--out, --title)
   migrate         Migrer les donnees vers le namespace multi-titres
   restore-csr     Restaurer les CSR historiques depuis un backup DuckDB legacy (--gamertag X --backup PATH [--dry-run] [--mode preserve|overwrite])
   add-title       Initialiser l'arborescence d'un nouveau titre de jeu
   populate-assets Peupler asset_translations (noms localises des assets via Discovery UGC)
+  identity        Annuaire des identites : identity list (compte / profils / jeton / anomalies par xuid) et
+                  identity purge <xuid> [--yes] (retire compte, jeton, profils, dossiers et groupes ; SANS --yes
+                  c est une simulation qui imprime le rapport). La base partagee des matchs n est JAMAIS touchee.
+                  Le serveur ne doit pas tenir la player DB du joueur : la purge n evince que les handles du
+                  processus courant, un fichier tenu ailleurs fait echouer l etape (et le rapport le dit)
 
 Options globales:
   LEVELUP_REPO_ROOT        Racine du repo (auto-detecte si absent)

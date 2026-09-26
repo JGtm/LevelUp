@@ -1,10 +1,9 @@
 // Package sync — engine_acquire.go : helpers d'acquisition writer lease+open.
 //
 // Extrait de engine.go (refactor 2026-05-21). Regroupe les helpers package-level
-// AcquireSharedWriterStandalone / AcquireMetadataWriterStandalone /
-// AcquirePlayerWriterStandalone + la méthode proxy e.acquireSharedWriter qui
-// centralisent la prise du dblease applicatif et l'ouverture RW des trois DBs
-// principales (shared, metadata, player). Comportement INCHANGÉ — pur déplacement.
+// AcquireSharedWriterStandalone / AcquireMetadataWriterStandalone + la méthode
+// proxy e.acquireSharedWriter, qui centralisent la prise du dblease applicatif
+// et l'ouverture RW des DBs shared et metadata.
 //
 // Voir engine.go (struct SyncEngine) pour le contexte.
 package sync
@@ -98,29 +97,6 @@ func AcquireMetadataWriterStandalone(ctx context.Context, metadataPath string) (
 		return nil, nil, fmt.Errorf("AcquireMetadataWriterStandalone open: %w", err)
 	}
 	return handle.SQLDb(), func() {
-		_ = handle.Close()
-		lease.Release()
-	}, nil
-}
-
-// AcquirePlayerWriterStandalone est la variante package-level pour stats.duckdb
-// d'un joueur. Prend le lease applicatif (Kind=Player) + ouvre via le pool.
-// Retourne (*duckdbpkg.DB, releaseFunc, error) pour les callers qui consomment
-// l'API ref-comptée (queries_auth.WriteOAuthRefreshToken et co).
-//
-// Sprint chore/ci-stabilization 2026-05-20 : respecte ADR 0013 (pas d'OpenReadWrite
-// direct depuis service/handlers).
-func AcquirePlayerWriterStandalone(ctx context.Context, playerDBPath string) (*duckdbpkg.DB, func(), error) {
-	lease, err := dblease.AcquireWriterCtx(ctx, nil, playerDBPath, dblease.KindPlayer)
-	if err != nil {
-		return nil, nil, fmt.Errorf("AcquirePlayerWriterStandalone lease: %w", err)
-	}
-	handle, err := duckdbpkg.OpenReadWriteShared(playerDBPath)
-	if err != nil {
-		lease.Release()
-		return nil, nil, fmt.Errorf("AcquirePlayerWriterStandalone open: %w", err)
-	}
-	return handle, func() {
 		_ = handle.Close()
 		lease.Release()
 	}, nil

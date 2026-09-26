@@ -38,15 +38,15 @@ import (
 	"levelup/go-api/internal/api"
 	"levelup/go-api/internal/api/wire"
 	"levelup/go-api/internal/assetnames"
+	"levelup/go-api/internal/authz"
 	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/domain/title"
 	halo5 "levelup/go-api/internal/games/halo_5"
 	"levelup/go-api/internal/games/halo_5/livesync"
-	halo5migrations "levelup/go-api/internal/games/halo_5/migrations"
 	halomigrations "levelup/go-api/internal/games/halo_infinite/migrations"
-	"levelup/go-api/internal/games/halo_infinite/skillchain"
+	"levelup/go-api/internal/games/titleseams"
 	"levelup/go-api/internal/games/weapons"
 	"levelup/go-api/internal/migration"
 	"levelup/go-api/internal/notifications/external"
@@ -61,12 +61,14 @@ import (
 	"levelup/go-api/internal/platform/auth/pool"
 	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/platform/duckdb/sharedprovider"
+	"levelup/go-api/internal/platform/friendstore"
 	"levelup/go-api/internal/platform/groupstore"
 	"levelup/go-api/internal/platform/halo"
 	"levelup/go-api/internal/platform/netguard"
 	"levelup/go-api/internal/platform/settings"
 	"levelup/go-api/internal/platform/userstore"
 	"levelup/go-api/internal/port"
+	"levelup/go-api/internal/replaychild"
 	"levelup/go-api/internal/scheduler"
 	"levelup/go-api/internal/service"
 	syncpkg "levelup/go-api/internal/sync"
@@ -76,6 +78,16 @@ import (
 
 // version est injectée au build via -ldflags "-X main.version=X.Y.Z".
 var version = "dev"
+
+// serverWriteTimeout borne l'écriture d'une réponse HTTP (http.Server.WriteTimeout).
+//
+// 2026-09-23 : 30 s -> 120 s. Cause : les pages lourdes (Escouade, 25 à 55 s de calcul
+// mesurées ce jour-là) étaient coupées à 30 s — 4 096 octets écrits, 502 renvoyé par le
+// proxy, puis rejeu du front qui triplait le travail serveur (état des lieux perf du
+// 2026-09-23, constat C2). Compatible avec la prod : nginx `proxy_read_timeout 300s`
+// (packaging/nginx/levelup.conf). ReadTimeout et IdleTimeout inchangés. Le garde-rail
+// internal/api/wire/build_queue_writer_budget_test.go lit cette constante.
+const serverWriteTimeout = 120 * time.Second
 
 // buildTokenProvider instancie le TokenProvider : SISU, seul provider depuis le
 // retrait de MSAL (2026-07-15, SISU validé bout-en-bout — authentification
@@ -103,6 +115,17 @@ func buildTokenProvider(settingsStore *settings.Store, authDesc title.AuthDescri
 }
 
 func main() {
+	// --- 0 bis. Mode ENFANT DE CUISSON (lot BUILDALL, 2026-08-26) ---
+	//
+	// LE SERVEUR SE RÉ-EXÉCUTE LUI-MÊME pour décoder un film hors de son propre processus : le
+	// décodage est un amplificateur mémoire, et l'enchaîner in-process a tué la machine trois
+	// fois. L'interception est ICI, AVANT TOUT LE RESTE — un enfant qui démarrerait le serveur
+	// ouvrirait un second écrivain sur les mêmes bases, ce que le modèle mono-processus
+	// interdit (ADR 0013/0016). Même patron que le health-check ci-dessous.
+	if replaychild.IsChild(os.Args) {
+		os.Exit(replaychild.RunChild(os.Args))
+	}
+
 	// --- 0. Health-check mode (Docker HEALTHCHECK) ---
 	if len(os.Args) == 2 && os.Args[1] == "-health-check" {
 		hcClient := &http.Client{Timeout: 5 * time.Second}
@@ -320,12 +343,7 @@ func main() {
 			"hint", "définir LEVELUP_SESSION_SECRET (>=32 octets), LEVELUP_AUTH_MODE=xbox|password et LEVELUP_CORS_ORIGINS, ou retirer LEVELUP_ENV=production")
 		os.Exit(1)
 	}
-	if warnings := cfg.SecurityWarnings(); len(warnings) > 0 {
-		slog.Warn("configuration non sûre pour un déploiement multi-user exposé",
-			"issues_count", len(warnings),
-			"issues", strings.Join(warnings, " | "),
-			"prod_guard", "LEVELUP_ENV=production refuserait de démarrer dans cet état")
-	}
+	logSecurityWarnings(cfg)
 
 	// Foot-gun rate-limit (incident "Too Many Requests" prod) : le limiter applicatif
 	// (httprate) clé sur RemoteAddr. En production derrière un reverse proxy SANS
@@ -646,8 +664,8 @@ func main() {
 		// Phase 5 cleanup (2026-05-24) : auto-heal supprimé — Phase 4 batch
 		// INSERT-only path élimine la corruption ART à la racine. On garde la
 		// DÉTECTION (BootARTGuard) pour alerte ops, mais le rebuild auto au
-		// boot est remplacé par l'outil CLI manuel `force_rebuild_art --all true`
-		// (voir runbook Phase 4.5). Cf. ADR 0019.
+		// boot est remplacé par les outils CLI manuels `rebuild_mp` (shared) et
+		// `rebuild_pme_art` (player DB). Cf. ADR 0019.
 		bootCtx, bootCancel := context.WithTimeout(context.Background(), 60*time.Second)
 		defer bootCancel()
 		if sharedSQL, release, err := sharedReader.Get(bootCtx); err == nil {
@@ -674,7 +692,7 @@ func main() {
 
 	// Auth locale : user store partagé — filtrage ownership des joueurs (ADR 0029,
 	// modes password + xbox) et check "first launch" (mode password).
-	usersPath := filepath.Join(cfg.AuthDir, "users.json")
+	usersPath := cfg.UsersFilePath()
 	us := userstore.NewStore(usersPath)
 	bootSvc = bootSvc.WithUserLookup(us)
 	if cfg.AuthMode == "password" {
@@ -683,6 +701,9 @@ func main() {
 	// Groupes/familles (accès mutuel aux données, ADR 0029 multi-groupes). Le set
 	// co-membres pilote le filtrage ownership (available_players) et le switch de BDD.
 	groupStore := groupstore.NewGroupStore(filepath.Join(cfg.AuthDir, "groups.json"))
+	// Amis PAR PROFIL JOUEUR (data/global/player_friends.json) : remplace l'ancien
+	// réglage global des amis dans app_settings. Migré une fois au boot.
+	friendStore := friendstore.NewFriendStore(title.NewPathResolver(cfg.RepoRoot).PlayerFriendsPath())
 	bootSvc = bootSvc.WithCoMemberResolver(func(xuid string) map[string]bool {
 		co, _ := groupStore.CoMemberXUIDs(xuid)
 		return co
@@ -704,7 +725,10 @@ func main() {
 	}
 
 	// --- 6. Scheduler, watcher, puis routeur HTTP ---
-	settingsStore := settings.NewStore(cfg.AppSettingsPath)
+	// WithEnforcedDefaults (ADR 0035 D5) : cf. internal/api/server.go — mêmes
+	// défauts sûrs des deux côtés, sinon le boot et le routeur divergeraient.
+	settingsStore := settings.NewStore(cfg.AppSettingsPath).
+		WithEnforcedDefaults(authz.Enforced(cfg.DemoMode, cfg.AuthMode))
 	// Propage le réglage global "rendement sans assistances" au package analysis
 	// dès le boot (sinon le défaut false s'applique jusqu'au premier PATCH).
 	if s, lerr := settingsStore.Load(); lerr == nil {
@@ -715,38 +739,39 @@ func main() {
 	}
 	tokenProvider := buildTokenProvider(settingsStore, title.DefaultHaloAuthDescriptor())
 
-	// Migration boot-time : crée un groupe par défaut "Mon foyer" depuis l'ancienne
-	// liste friend_gamertags (continuité d'accès au passage multi-groupes). Idempotent.
-	migrateDefaultGroupAtBoot(ctx, cfg, settingsStore, groupStore)
+	// Migration boot-time : dote chaque profil configuré de sa propre liste d'amis,
+	// héritée de l'ancienne liste globale des amis d'app_settings. Idempotente
+	// (no-op si player_friends.json existe). S'exécute AVANT la migration de groupe,
+	// qui lit désormais le store d'amis.
+	migratePlayerFriendsAtBoot(ctx, cfg, friendStore)
+
+	// Migration boot-time : crée un groupe par défaut "Mon foyer" depuis la liste
+	// d'amis de l'admin (continuité d'accès au passage multi-groupes). Idempotent.
+	migrateDefaultGroupAtBoot(ctx, cfg, friendStore, groupStore)
 
 	// ADR 0023 Phase 2 — Migration boot-time des tokens legacy vers MultiUserTokenStore.
-	// Copie SPNKR_OAUTH_REFRESH_TOKEN_<GT> (env) + sync_meta.oauth_refresh_token (DuckDB)
-	// vers le store si les entrées correspondantes n'existent pas. Idempotent, best-effort.
-	// S'exécute AVANT buildAutoSyncPool pour que le Pool trouve déjà les tokens dans le store.
-	migrateLegacyAuthTokensAtBoot(ctx, cfg)
-
 	// Discovery + Resolver + Pool : tous les appels API Halo passent par là.
-	// - Discovery scanne env + sync_meta pour découvrir les credentials joueur.
+	// - Discovery scanne le MultiUserTokenStore (source unique ADR 0023).
 	// - Resolver échange CredentialSource → ResolvedTokens (Spartan+Clearance)
 	//   avec cache TTL ~3h30.
 	// - Pool maintient les tokens vivants, gère 429/503 cooldown, et permet
 	//   le round-robin (PolicyAnyPublic) ou pinned (PolicyPinnedPlayer).
 	//
-	// Le callback onRotated persiste le refresh_token rotaté par Microsoft
-	// dans sync_meta.oauth_refresh_token de la player DB — sans ça, le
-	// prochain refresh échouerait avec invalid_grant (Microsoft rotate
-	// systématiquement le RT à chaque usage).
+	// Le callback onRotated persiste le refresh_token rotaté par Microsoft dans le
+	// MultiUserTokenStore — sans ça, le prochain refresh échouerait avec
+	// invalid_grant (Microsoft rotate systématiquement le RT à chaque usage).
 	autoSyncPool := buildAutoSyncPool(ctx, cfg, tokenProvider)
 	if autoSyncPool != nil {
 		defer autoSyncPool.Close()
 		slog.Info("auto_sync: pool initialisé", "size", autoSyncPool.Size())
 	} else {
 		slog.Warn("auto_sync: pool non initialisé — aucun credential découvert",
-			"hint", "vérifier SPNKR_OAUTH_REFRESH_TOKEN_<GAMERTAG> dans .env.local",
+			"hint", "authentifier un joueur (SSO Xbox) ou lancer `go run ./cmd/token-capture/ <GT>`",
 		)
 	}
 
-	autoScheduler := scheduler.New(cfg, settingsStore, tokenProvider, autoSyncPool)
+	autoScheduler := scheduler.New(cfg, settingsStore, tokenProvider, autoSyncPool).
+		WithFriendStore(friendStore)
 	schedulerCtx, cancelScheduler := context.WithCancel(ctx)
 
 	// Lot C1/C2 — persistance JSON légère (HORS DuckDB) de l'état runtime admin,
@@ -958,8 +983,8 @@ func main() {
 	}()
 
 	// Phase 4.9 / PLAN_AUTH E.v2 (2026-05-24) : periodic Discovery re-scan
-	// pour hot-add nouveaux tokens (env vars ajoutées, watcher_tokens.json mis
-	// à jour) sans reboot. Skip si pool nil (aucun credential au boot).
+	// pour hot-add nouveaux tokens (nouveau SSO / token-capture écrivant dans
+	// watcher_tokens/) sans reboot. Skip si pool nil (aucun credential au boot).
 	if autoSyncPool != nil {
 		go func() {
 			rescanTicker := time.NewTicker(15 * time.Minute)
@@ -967,8 +992,7 @@ func main() {
 			runRescan := func() {
 				resolver := title.NewPathResolver(cfg.RepoRoot)
 				multiUserStore := auth.NewMultiUserTokenStore(resolver.WatcherTokensDir())
-				legacyStore := auth.NewTokenStore(resolver.WatcherTokensPath())
-				discovery := pool.NewDiscoveryWithStores(cfg, resolver, title.DefaultSlug, multiUserStore, legacyStore)
+				discovery := pool.NewDiscoveryWithStore(cfg, resolver, title.DefaultSlug, multiUserStore)
 				sources, err := discovery.Scan(schedulerCtx)
 				if err != nil {
 					slog.WarnContext(schedulerCtx, "pool: re-scan échoué (non-bloquant)",
@@ -1013,9 +1037,10 @@ func main() {
 		}
 		return nil
 	}
-	// tokenRefresher est un getter lazy qui tente un refresh MSAL/OAuth v2 depuis la DB
-	// quand le cache process de tokens est expiré (~50 min). Évite que le watcher
-	// cesse de rafraîchir le BP après une longue session sans appel HTTP de l'UI.
+	// tokenRefresher est un getter lazy qui tente un refresh OAuth v2 depuis le
+	// MultiUserTokenStore (ADR 0023) quand le cache process de tokens est expiré
+	// (~50 min). Évite que le watcher cesse de rafraîchir le BP après une longue
+	// session sans appel HTTP de l'UI.
 	tokenRefresher := func(ctx context.Context, xuid string) (*domain.HaloTokens, error) {
 		if reg != nil {
 			return reg.RefreshTokensForXUID(ctx, xuid)
@@ -1109,6 +1134,16 @@ func main() {
 	// data health + l'action POST /admin/actions/data-health/run.
 	reg.WithHealthScheduler(healthScheduler)
 
+	// Notification Discord groupée « rejeux 2D prêts » (lot B v7.5) : câble le puits
+	// d'artefacts de internal/replaybuild, par lequel passent la construction locale
+	// (post-sync), la livraison d'un ouvrier distant et l'action admin. UN SEUL câblage
+	// dans tout le dépôt (garde-rail archlint/no_second_artifact_sink_test.go) : un
+	// second REMPLACERAIT celui-ci. Posé ici, donc avant le montage des routes
+	// ouvrier et bien avant l'ouverture du port HTTP ; le scheduler d'auto-sync, lui,
+	// démarre quelques lignes plus haut — au pire les tout premiers artefacts d'un cycle
+	// déjà en cours au boot ne sont pas annoncés, jamais un artefact perdu.
+	reg.InstallReplayNotify()
+
 	// Auto-heal LUSR (garde-fou trous d'intérieur) : le cron data_health peut
 	// déclencher un replay du joueur le plus impacté. Câblé vers le runner du
 	// registry (in-server, leases coordonnés). Ne fire que si le kill-switch
@@ -1155,6 +1190,16 @@ func main() {
 	go func() {
 		defer schedulerWG.Done()
 		reg.RunDiskWatchLoop(schedulerCtx)
+	}()
+
+	// Flush des lots de rejeux prêts (lot B v7.5) : à chaque tick, les fenêtres de
+	// groupement échues sortent en UN message chacune. Sur schedulerCtx/schedulerWG comme
+	// la surveillance disque — la boucle ne fait que des lectures shared courtes, drainées
+	// avant duckdb.CloseAll.
+	schedulerWG.Add(1)
+	go func() {
+		defer schedulerWG.Done()
+		reg.RunReplayNotifyLoop(schedulerCtx)
 	}()
 
 	// Cron catalogue (hebdomadaire) : rafraîchit le catalogue (playlists / couples
@@ -1224,6 +1269,12 @@ func main() {
 		autoScheduler.WithPostSyncRunner(postSyncRunner)
 	}
 
+	// Fil de l'eau des rejeux, chemin « ouvrier » (piste F) : la mise en file vit
+	// dans le registre (elle seule a les tokens pour résoudre le manifeste et y
+	// déposer les URL pré-signées). Injectée ici, comme le runner post-sync, parce
+	// que le scheduler est construit avant le registre.
+	autoScheduler.WithReplayEnqueuer(reg.EnqueueReplayBuildJob)
+
 	// VF-1 / DC-4 — câblage du hook Prestige post-sync sur le chemin V1
 	// (auto-sync + HTTP delta + watcher, tous via BuildEngine). Avant ce fix,
 	// prestige.RunPostSyncHook ne tournait sur AUCUN chemin (stub qui jetait le
@@ -1266,8 +1317,10 @@ func main() {
 			SharedDB:       sharedSQLDB,
 			TokenProvider:  tokenProvider,
 			Settings:       settingsStore,
+			Friends:        friendStore,
 			PostSyncRunner: v2PostSyncRunner,
 			PrestigeHook:   prestigePostSyncHook,
+			ReplayEnqueue:  reg.EnqueueReplayBuildJob,
 		})
 		if v2Orch != nil {
 			autoScheduler.WithCycleOrchestrator(v2Orch)
@@ -1369,6 +1422,36 @@ func main() {
 			"interval", scheduler.DefaultWorldLeaderboardInterval)
 	}
 
+	// Purge récurrente des artefacts de rejeu 2D hors fenêtre replay_retention_months
+	// (lot 6 v7.5). SUPPRIME DES ARTEFACTS, JAMAIS DES FILMS. La fenêtre est relue à
+	// chaque tick (0 = illimité → tick no-op rapporté en succès). Visible sur
+	// /admin/monitoring/crons (ReportCronRun).
+	if settingsStore != nil {
+		replayPurgeCron := scheduler.NewReplayPurgeCron(cfg.RepoRoot, func() int {
+			s, err := settingsStore.Load()
+			if err != nil {
+				// LOGUE AVANT DE DÉGRADER (règle n°3) : sans cette ligne, un
+				// app_settings.json illisible faisait passer la fenêtre à 0 EN SILENCE —
+				// c'est-à-dire rétention illimitée, donc purge désactivée sans un mot (Q8,
+				// .ai/DECOUVERTES_TACTIQUE_2026-09-07.md).
+				slog.WarnContext(ctx, "replay_purge_cron: settings illisibles, "+
+					"rétention illimitée (purge désactivée)", "err", err)
+				return 0
+			}
+			if s != nil {
+				return s.ReplayRetentionMonths
+			}
+			return 0
+		}, 0)
+		schedulerWG.Add(1)
+		go func() {
+			defer schedulerWG.Done()
+			replayPurgeCron.Run(schedulerCtx)
+		}()
+		slog.InfoContext(ctx, "replay_purge_cron: scheduled",
+			"interval", scheduler.DefaultReplayPurgeInterval)
+	}
+
 	// MT-19 / axe E : notifier « titre prêt » injecté dans cfg (lu au runtime par le
 	// Runner live h5 via cfg.TitleReadyNotifier). Posé APRÈS NewRouter (reg dispo) et
 	// AVANT que les syncs scheduler/watcher tournent (runtime post-boot). Émet une
@@ -1392,7 +1475,7 @@ func main() {
 		Addr:         cfg.ServerAddr(),
 		Handler:      router,
 		ReadTimeout:  15 * time.Second,
-		WriteTimeout: 30 * time.Second,
+		WriteTimeout: serverWriteTimeout,
 		IdleTimeout:  60 * time.Second,
 	}
 
@@ -1624,33 +1707,21 @@ func runMigrations(metaPath, sharedPath, sharedSocialPath, pvePath, prestigeConf
 		halomigrations.RegisterMilestonesSeedMigration(configTitlesRoot)
 	}
 
-	// Phase 1.5.1 B (ADR 0025) : enregistre les migrations title-owned (Halo
-	// Infinite) auprès du runner, avant tout RunForDB. Vide tant qu'aucun step
-	// n'a été déplacé hors du package migration (no-op) ; se remplit en b3.
-	migration.SetTitleStepsProvider(halomigrations.StepsFor)
-	// ROOT FIX assets Halo 5 : enregistre le set de migrations h5 (metadata ISOLÉE
-	// — référentiels h5 propres, zéro pollution HINF ; shared/player/… hérités du
-	// fallback HINF via OwnsTarget). DOIT précéder provisionAdditionalTitle(halo_5).
-	// Le set h5 possède SON milestone_catalog (schéma + seed) — il ne retombe pas
-	// sur le seed global multi-titres ; on injecte la racine config/titles/ AVANT
-	// Register pour que le seed h5 trouve config/titles/halo_5/milestones/catalog.toml.
-	if prestigeConfigDir != "" {
-		halo5migrations.SetMilestonesSeedRoot(filepath.Dir(prestigeConfigDir))
-	}
-	halo5migrations.Register()
-	// MT-07 : source title-owned des libellés de rangs de carrière (seed offline).
-	migration.SetCareerRankTranslationsProvider(halomigrations.CareerRankTranslations)
-	// MT-15 : classifier LUSR title-owned (pair_name → chaîne TrueSkill). GetLUSRChain
-	// panique si non posé (fail-loud) — protège le chemin de scoring live.
-	syncpkg.SetLUSRChainClassifier(skillchain.ClassifyLUSRChain)
-	// MT-15+ : classifier LUSR title-aware pour Halo 5 (pas de pair_name → chaîne
-	// unique h5_arena). Le seam GetLUSRChainForTitle route h5 vers ce classifier ;
-	// les autres titres gardent le défaut Infinite. Sans ça, h5 collapserait tous
-	// ses modes dans arena_slayer (classifier Infinite sur pair_name vide).
-	syncpkg.SetLUSRChainClassifierForTitle(halo5.TitleSlug, halo5.ClassifyLUSRChain)
+	// Seams title-owned (provider d'étapes, racine des jalons h5, traductions de
+	// rangs, classifiers LUSR + famille objectif) : câblage UNIQUE, partagé avec
+	// toutes les CLI depuis le 2026-09-16 (cf. internal/games/titleseams — les
+	// commentaires MT-07 / MT-15 / D-A y ont déménagé). Sans ce câblage, un sync
+	// hors serveur panique à l'étape LUSR du post-sync.
+	titleseams.RegisterAll(prestigeConfigDir)
 	// Lot B (audit robustesse) : fail-fast au boot si le classifier LUSR par
 	// défaut n'a pas été posé, au lieu du panic tardif au 1er match live.
 	if err := syncpkg.ValidateLUSRChainClassifierWired(); err != nil {
+		return fmt.Errorf("boot: %w", err)
+	}
+	// Idem pour la famille objectif : sans elle, tout le classé serait noté en
+	// ranked_slayer (le fallback existe pour les binaires hors chemin de scoring,
+	// pas pour le serveur).
+	if err := syncpkg.ValidateObjectiveFamilyClassifierWired(); err != nil {
 		return fmt.Errorf("boot: %w", err)
 	}
 
@@ -1728,80 +1799,6 @@ func runMigrations(metaPath, sharedPath, sharedSocialPath, pvePath, prestigeConf
 	return nil
 }
 
-// provisionAdditionalActiveTitles crée + migre les warehouses des titres
-// ADDITIONNELS actifs (slug != DefaultSlug) découverts dans le registre piloté par
-// config (MT-16 / day-one 2e titre). Le titre par défaut (halo_infinite) est
-// provisionné séparément (chemin byte-identique). Chaque échec est loggé sans
-// interrompre le boot — un titre additionnel cassé ne bloque jamais Halo.
-func provisionAdditionalActiveTitles(pr *title.PathResolver, reg *title.Registry) {
-	for _, td := range reg.Active() {
-		// Le titre par défaut (built-in) est provisionné par le chemin Halo
-		// byte-identique ci-dessus → on saute son descripteur ici (flag sémantique,
-		// pas de comparaison de slug — archlint no_slug_comparison).
-		if td.IsDefault {
-			continue
-		}
-		if err := provisionAdditionalTitle(pr, td); err != nil {
-			slog.Error("provisioning titre additionnel échoué (non-fatal)", "title", td.Slug, "err", err.Error())
-			continue
-		}
-		slog.Info("titre additionnel provisionné", "title", td.Slug, "status", string(td.Status))
-	}
-}
-
-// provisionAdditionalTitle crée le warehouse + applique les migrations des DB
-// partagées d'un titre additionnel via RunForTitleDB (jeu de migrations du titre
-// si enregistré via RegisterMigrationSet, sinon set Halo en fallback). Toutes les
-// DB sont isolées par chemin sous data/titles/<slug>/. La DB PvE n'est provisionnée
-// que si le titre déclare la capability Firefight (gating par capability, jamais
-// par comparaison de slug — archlint no_slug_comparison).
-func provisionAdditionalTitle(pr *title.PathResolver, td *title.TitleDescriptor) error {
-	slug := td.Slug
-	if err := ensureWarehouseDir(pr, slug); err != nil {
-		return fmt.Errorf("warehouse dir: %w", err)
-	}
-	type target struct {
-		path string
-		kind migration.TargetDB
-	}
-	targets := []target{
-		{pr.MetadataDBPath(slug), migration.TargetMetadata},
-		{pr.SharedDBPath(slug), migration.TargetShared},
-		{pr.SharedSocialDBPath(slug), migration.TargetSharedSocial},
-	}
-	if td.HasCapability(title.CapFirefight) {
-		targets = append(targets, target{pr.SharedPVEDBPath(slug), migration.TargetSharedPvE})
-	}
-	for _, t := range targets {
-		db, err := duckdb.OpenReadWrite(t.path)
-		if err != nil {
-			return fmt.Errorf("open %s: %w", t.path, err)
-		}
-		if err := migration.RunForTitleDB(db.SQLDb(), slug, t.kind); err != nil {
-			db.Close()
-			return fmt.Errorf("migrate %s (%s): %w", t.kind, t.path, err)
-		}
-		// Auto-guérison du registre d'armes (cross-titre) sur la metadata du titre
-		// additionnel : le seed add_weapon_registry étant sauté une fois « done », les
-		// lignes ajoutées après coup (buckets non-combat H5…) manqueraient sans ce rejeu
-		// idempotent (INSERT OR IGNORE). Comparaison de TargetDB, pas de slug.
-		if t.kind == migration.TargetMetadata {
-			if _, err := weapons.ReconcileRegistry(db.SQLDb(), slug); err != nil {
-				db.Close()
-				return fmt.Errorf("reconcile weapon registry %s (%s): %w", slug, t.path, err)
-			}
-			// V72-06 : source unique des noms d'armes du titre additionnel (idempotent).
-			if _, err := weapons.ReconcileNameLabels(db.SQLDb(), slug,
-				filepath.Join(pr.RepoRoot(), "config", "titles", slug, "mappings", "weapon_names.toml")); err != nil {
-				db.Close()
-				return fmt.Errorf("reconcile weapon name labels %s (%s): %w", slug, t.path, err)
-			}
-		}
-		db.Close()
-	}
-	return nil
-}
-
 // RunPlayerMigrations applique les migrations player pour une DB individuelle.
 // Appelé lors de l'ouverture d'une player DB.
 func RunPlayerMigrations(playerDBPath string) error {
@@ -1815,12 +1812,11 @@ func RunPlayerMigrations(playerDBPath string) error {
 
 // buildAutoSyncPool construit le pool de tokens utilisé par l'AutoSyncScheduler.
 // Pipeline :
-//  1. Discovery scanne env + sync_meta DuckDB → []CredentialSource
+//  1. Discovery scanne le MultiUserTokenStore (source unique ADR 0023) → []CredentialSource
 //  2. Resolver échange ces sources en tokens Halo (cache TTL ~3h30) + callback
-//     onRotated qui persiste le RT rotaté par Microsoft dans sync_meta de la
-//     player DB. Sans cette persistance, le prochain refresh OAuth échouerait
-//     avec invalid_grant (Microsoft rotate systématiquement le RT à chaque
-//     usage pour des raisons de sécurité).
+//     onRotated qui persiste le RT rotaté par Microsoft dans le store. Sans cette
+//     persistance, le prochain refresh OAuth échouerait avec invalid_grant
+//     (Microsoft rotate systématiquement le RT à chaque usage).
 //  3. NewPool maintient les tokens vivants, gère cooldown 429/503, et expose
 //     un Acquire round-robin + pinned.
 //
@@ -1833,12 +1829,8 @@ func buildAutoSyncPool(
 	tokenProvider auth.TokenProvider,
 ) pool.Pool {
 	pr := title.NewPathResolver(cfg.RepoRoot)
-	// E.v1 — attacher les watcher stores au Discovery pour peupler le pool
-	// avec MSAL frais (watcher daemon les rafraîchit chaque ~5min) au 1er
-	// boot sans dépendre d'un sync manuel ayant écrit sync_meta DuckDB.
 	multiUserStore := auth.NewMultiUserTokenStore(pr.WatcherTokensDir())
-	legacyStore := auth.NewTokenStore(pr.WatcherTokensPath())
-	discovery := pool.NewDiscoveryWithStores(cfg, pr, title.DefaultSlug, multiUserStore, legacyStore)
+	discovery := pool.NewDiscoveryWithStore(cfg, pr, title.DefaultSlug, multiUserStore)
 	sources, err := discovery.Scan(ctx)
 	if err != nil {
 		slog.Error("auto_sync: pool discovery échoué", "err", err)
@@ -1848,48 +1840,29 @@ func buildAutoSyncPool(
 		return nil // log Warn fait par le caller
 	}
 
-	// Callback de persistance du RT rotaté (ADR 0023) :
-	//  1. PRIORITÉ — écriture dans MultiUserTokenStore (source canonique)
-	//  2. Compat — écriture aussi dans sync_meta DuckDB (legacy, retiré Phase 5)
+	// Callback de persistance du RT rotaté (ADR 0023) : écriture dans le
+	// MultiUserTokenStore, source unique (le double-write sync_meta a été retiré
+	// en Phase 5, 2026-08-25).
 	//
 	// xuid résolu via store.LoadByGamertag (l'entrée a été créée par migration
 	// Phase 2 ou par Discovery) — fallback config.LoadPlayers si pas en store.
-	// Best-effort : une erreur sur l'une des écritures n'interrompt pas l'autre.
-	authStoreForCallback := auth.NewMultiUserTokenStore(pr.WatcherTokensDir())
 	onRotated := func(ctx context.Context, gamertag, newRT string) error {
-		xuid := resolveXUIDForRotation(ctx, cfg, authStoreForCallback, gamertag)
-		if xuid != "" {
-			if err := authStoreForCallback.UpdateOAuthRefreshToken(xuid, newRT); err != nil {
-				slog.WarnContext(ctx, "onRotated: écriture store échouée",
-					"gamertag", gamertag, "xuid", xuid, "err", err)
-			}
-			// Le RT a tourné → la chaîne d'auth a changé : le cache process des
-			// HaloTokens (Spartan/Clearance, TTL 50min) peut désormais servir des
-			// tokens dérivés de l'ANCIENNE chaîne → 401 sur les fetchs live
-			// token-gated (career rank/XP, challenges, battle pass, CSR, identité
-			// Explorer). On le purge pour forcer une re-dérivation fraîche au
-			// prochain enrichWithHaloTokens. Incident 2026-06-14 (post-consolidation
-			// client ID : seuls les CLI token-capture/import invalidaient ce cache).
-			halo.InvalidateCachedPlayerTokens(xuid)
-		} else {
-			slog.WarnContext(ctx, "onRotated: xuid introuvable, store non mis à jour",
-				"gamertag", gamertag)
+		xuid := resolveXUIDForRotation(ctx, cfg, multiUserStore, gamertag)
+		if xuid == "" {
+			return fmt.Errorf("onRotated: xuid introuvable pour %s — RT rotaté non persisté", gamertag)
 		}
-
-		// Compat DuckDB (sera retiré Phase 5 quand Phase 4 sera stabilisée).
-		// Comptes token-only (watchers) : pas de player DB → le store suffit.
-		dbPath := pr.PlayerDBPath(title.DefaultSlug, gamertag)
-		if _, statErr := os.Stat(dbPath); statErr != nil {
-			slog.DebugContext(ctx, "onRotated: pas de player DB, écriture compat sync_meta ignorée",
-				"gamertag", gamertag)
-			return nil
+		if err := multiUserStore.UpdateOAuthRefreshToken(xuid, newRT); err != nil {
+			return fmt.Errorf("onRotated: écriture store (%s): %w", gamertag, err)
 		}
-		db, err := duckdb.OpenReadWriteShared(dbPath)
-		if err != nil {
-			return fmt.Errorf("open player db: %w", err)
-		}
-		defer db.Close() //nolint:errcheck // ref-count : best-effort
-		return duckdb.WriteOAuthRefreshToken(ctx, db, newRT)
+		// Le RT a tourné → la chaîne d'auth a changé : le cache process des
+		// HaloTokens (Spartan/Clearance, TTL 50min) peut désormais servir des
+		// tokens dérivés de l'ANCIENNE chaîne → 401 sur les fetchs live
+		// token-gated (career rank/XP, challenges, battle pass, CSR, identité
+		// Explorer). On le purge pour forcer une re-dérivation fraîche au
+		// prochain enrichWithHaloTokens. Incident 2026-06-14 (post-consolidation
+		// client ID : seuls les CLI token-capture/import invalidaient ce cache).
+		halo.InvalidateCachedPlayerTokens(xuid)
+		return nil
 	}
 
 	// Persistance des transitions reauth + du dernier échec OAuth permanent
@@ -1900,13 +1873,13 @@ func buildAutoSyncPool(
 			return
 		}
 		if required {
-			if _, err := authStoreForCallback.MarkReauthRequired(xuid, gamertag); err != nil {
+			if _, err := multiUserStore.MarkReauthRequired(xuid, gamertag); err != nil {
 				slog.WarnContext(ctx, "onReauth: écriture store échouée",
 					"gamertag", gamertag, "err", err)
 			}
 			return
 		}
-		if err := authStoreForCallback.ClearReauthRequired(xuid); err != nil {
+		if err := multiUserStore.ClearReauthRequired(xuid); err != nil {
 			slog.WarnContext(ctx, "onReauth: clear store échoué",
 				"gamertag", gamertag, "err", err)
 		}
@@ -1917,9 +1890,9 @@ func buildAutoSyncPool(
 		}
 		var err error
 		if class == "" {
-			err = authStoreForCallback.ClearAuthError(xuid)
+			err = multiUserStore.ClearAuthError(xuid)
 		} else {
-			err = authStoreForCallback.RecordAuthError(xuid, gamertag, class, msg)
+			err = multiUserStore.RecordAuthError(xuid, gamertag, class, msg)
 		}
 		if err != nil {
 			slog.WarnContext(ctx, "onAuthError: écriture store échouée",
@@ -1927,10 +1900,24 @@ func buildAutoSyncPool(
 		}
 	}
 
+	// Provenance MESURÉE à l'échange XBL : persistée pour que le boot suivant
+	// parte du bon préfixe RpsTicket (sinon 401 + retry à chaque échange pour les
+	// comptes qui n'acceptent pas « d= »).
+	onFamilyObserved := func(ctx context.Context, gamertag, xuid, family string) error {
+		if xuid == "" {
+			return nil
+		}
+		if err := multiUserStore.UpdateTokenClientFamily(xuid, family); err != nil {
+			return fmt.Errorf("onFamilyObserved %s: %w", gamertag, err)
+		}
+		return nil
+	}
+
 	resolver := pool.NewResolverWithCallbacks(tokenProvider, 0, pool.ResolverCallbacks{ // 0 = default TTL ~3h30
-		OnRotated:   onRotated,
-		OnReauth:    onReauth,
-		OnAuthError: onAuthError,
+		OnRotated:        onRotated,
+		OnReauth:         onReauth,
+		OnAuthError:      onAuthError,
+		OnFamilyObserved: onFamilyObserved,
 	})
 	p, err := pool.NewPool(ctx, resolver, sources, pool.PoolOptions{
 		MaxSize:     0, // 0 = tous les sources découverts
@@ -1966,9 +1953,9 @@ func resolveCSRSeasonFromDB(db *sql.DB) string {
 // Retourne nil si watcher_presence_enabled est false ou si les prérequis ne sont pas remplis.
 // getNotifier est un getter lazy (xuid → SessionNotifier) injecté par main ; peut être nil.
 // tokenProvider sert à régénérer l'access_token Microsoft via OAuth v2 refresh
-// (depuis watcher_tokens.json ou SPNKR_OAUTH_REFRESH_TOKEN_<GAMERTAG>), pour
-// que le watcher puisse aussi rafraîchir son XSTS RTA tout seul sans avoir
-// besoin que l'utilisateur regénère manuellement les tokens.
+// (refresh_token du MultiUserTokenStore, source unique ADR 0023), pour que le
+// watcher puisse aussi rafraîchir son XSTS RTA tout seul sans avoir besoin que
+// l'utilisateur regénère manuellement les tokens.
 func startWatcherDaemon(
 	ctx context.Context,
 	cfg *config.AppConfig,
@@ -2002,7 +1989,7 @@ func startWatcherDaemon(
 		return nil
 	}
 
-	// PR 2.5b — Fallback : si pas de tokens legacy mono-user, scanner le store
+	// PR 2.5b — Fallback : si l'état watcher mono-user est vide, scanner le store
 	// multi-user (data/auth/watcher_tokens/{xuid}.json) pour trouver un user avec
 	// un XSTS valide à utiliser comme tracker initial. Le 1er user trouvé devient
 	// le tracker ; les autres seront subscribés via Daemon.AddPlayer (post-login
@@ -2029,8 +2016,8 @@ func startWatcherDaemon(
 				AccessToken:    ut.AccessToken,
 				OAuthExpiresAt: ut.OAuthExpiresAt,
 			}
-			// Persister dans le legacy : permet aux prochains boots de retrouver
-			// directement le tracker via le chemin habituel.
+			// Persister dans l'état watcher mono-user : permet aux prochains boots
+			// de retrouver directement le tracker via le chemin habituel.
 			if saveErr := store.Save(tokens); saveErr != nil {
 				slog.Warn("watcher: persistance fallback tokens dans legacy échouée", "err", saveErr)
 			}
@@ -2040,11 +2027,8 @@ func startWatcherDaemon(
 
 	// 1) S'assurer qu'on a un access_token Microsoft frais.
 	//    EnsureWatcherAccessToken réutilise l'access_token courant s'il est
-	//    valide, sinon tente un OAuth v2 refresh depuis :
-	//    (a) MultiUserTokenStore (canonique, ADR 0023)
-	//    (b) tokens.RefreshToken (legacy watcher_tokens.json)
-	//    (c) SPNKR_OAUTH_REFRESH_TOKEN_<XSTSGamertag> (.env.local DEPRECATED)
-	//    Persiste la rotation dans le multi-store en priorité, puis le legacy.
+	//    valide, sinon tente un OAuth v2 refresh depuis le MultiUserTokenStore
+	//    (source unique ADR 0023) et persiste la rotation dans ce store.
 	multiStore := auth.NewMultiUserTokenStore(title.NewPathResolver(cfg.RepoRoot).WatcherTokensDir())
 	freshAccessToken, err := auth.EnsureWatcherAccessToken(ctx, multiStore, store, tokenProvider, tokens.XSTSGamertag)
 	if err != nil {
@@ -2060,7 +2044,10 @@ func startWatcherDaemon(
 	//    encore un refresh_token utilisable côté env var.
 	if freshAccessToken != "" {
 		slog.Info("watcher: refresh XSTS proactif avant démarrage…")
-		if freshResult, xerr := auth.AcquireXSTSForRTA(ctx, freshAccessToken); xerr == nil {
+		// Provenance du RpsTicket posée ET mesurée : ce chemin est l'un des 401
+		// « RpsTicket refusé » du boot (le compte du tracker n'accepte pas « d= »).
+		if freshResult, xerr := auth.AcquireXSTSForRTAWithProvenance(
+			ctx, multiStore, tokens.XSTSXUID, freshAccessToken); xerr == nil {
 			if storeErr := store.UpdateXSTS(freshResult, 55*time.Minute); storeErr == nil {
 				slog.Info("watcher: XSTS frais obtenu",
 					"gamertag", freshResult.Gamertag,
@@ -2080,7 +2067,8 @@ func startWatcherDaemon(
 
 	if !tokens.IsXSTSValid(0) {
 		slog.Warn("watcher: tokens XSTS expirés et refresh impossible, daemon désactivé",
-			"hint", "vérifier SPNKR_OAUTH_REFRESH_TOKEN_"+strings.ToUpper(tokens.XSTSGamertag)+" dans .env.local",
+			"gamertag", tokens.XSTSGamertag,
+			"hint", "re-authentifier le compte (SSO Xbox) ou `go run ./cmd/token-capture/ <GT>`",
 		)
 		return nil
 	}
@@ -2136,7 +2124,7 @@ func startWatcherDaemon(
 	// PlayerWatcher.startPoller logge un Warn-once sans paniquer.
 	var matchFetcher watcher.MatchFetcher
 	if haloPool != nil {
-		pooled := syncpkg.NewPooledHaloClient(haloPool, "", "", 5)
+		pooled := syncpkg.NewPooledHaloClient(haloPool, 5)
 		matchFetcher = watcher.NewHaloMatchFetcher(pooled)
 		slog.Info("watcher: MatchFetcher branché sur le pool auto-sync")
 	} else {
@@ -2182,6 +2170,24 @@ func startWatcherDaemon(
 		},
 	}, titleReg, syncTrigger)
 
+	// Porte « profil suivi » (ADR 0035 D3) : un couple (titre, xuid) qui n'est pas
+	// déclaré dans db_profiles.json — ou qui y est en pause / auth_only — n'entre
+	// ni dans le tracking live (Daemon.AddPlayer) ni dans le sync
+	// (Coordinator.Submit ; le daemon possède le coordinateur, WithProfileGate
+	// pose les deux). Erreur de lecture de db_profiles.json ⇒ on REFUSE, après
+	// l'avoir journalisée : on ne synchronise pas « dans le doute » (c'est
+	// exactement comme ça qu'un compte inconnu a écrit 25 matchs le 2026-07-23).
+	profileGate := func(ctx context.Context, titleSlug, xuid string) bool {
+		ok, err := cfg.HasTrackedProfile(titleSlug, xuid)
+		if err != nil {
+			slog.ErrorContext(ctx, "profil suivi : lecture de db_profiles.json échouée — requête refusée",
+				"err", err, "title_slug", titleSlug, "xuid", xuid)
+			return false
+		}
+		return ok
+	}
+	daemon.WithProfileGate(profileGate)
+
 	// Le refresh XSTS proactif a déjà été fait plus haut dans la fonction (avant
 	// le check IsXSTSValid). `tokens` reflète ici le state à jour : si un refresh
 	// a réussi, tokens.XSTSToken / XSTSUserHash sont déjà les valeurs fraîches
@@ -2194,10 +2200,10 @@ func startWatcherDaemon(
 	daemon.Start(ctx, xstsResult.AuthHeader(), playerSummaries)
 
 	// Refresh loop : met à jour les tokens XSTS et le daemon.
-	// PR 2.5b (2026-05-24) : WithMultiUserMirror — chaque refresh XSTS/OAuth
-	// du tracker initial (legacy store) est aussi mirroré dans le multi-user
-	// store. Maintient la cohérence entre les 2 stores en vue d'une future
-	// migration read-path. Read continue via legacy store (compat user).
+	// WithMultiUserMirror est OBLIGATOIRE depuis ADR 0023 Phase 5 (2026-08-25) :
+	// le MultiUserTokenStore est à la fois la SOURCE du refresh_token du tracker
+	// et la destination miroir de ses écritures XSTS/access_token. Sans lui, la
+	// boucle n'a plus aucune credential et skippe silencieusement (log Debug).
 	multiMirror := auth.NewMultiUserTokenStore(title.NewPathResolver(cfg.RepoRoot).WatcherTokensDir())
 	refreshLoop := auth.NewRefreshLoop(store, func(result *auth.XSTSResult) {
 		daemon.UpdateAuth(result.AuthHeader())
@@ -2283,25 +2289,37 @@ func resolveXUIDForRotation(ctx context.Context, cfg *config.AppConfig, store *a
 	return capturecli.ResolveXUIDForRotation(ctx, store, players, gamertag)
 }
 
-// migrateLegacyAuthTokensAtBoot copie les tokens legacy (env var
-// SPNKR_OAUTH_REFRESH_TOKEN_* + sync_meta.oauth_refresh_token / msal_token_cache
-// dans la player DB) vers le MultiUserTokenStore unique. Voir ADR 0023.
+// migratePlayerFriendsAtBoot dote chaque profil configuré de sa propre liste
+// d'amis, héritée de l'ancienne liste globale des amis d'app_settings
+// (moins son propre gamertag). Best-effort + idempotent : no-op si le fichier
+// data/global/player_friends.json existe déjà.
+func migratePlayerFriendsAtBoot(ctx context.Context, cfg *config.AppConfig, fs *friendstore.FriendStore) {
+	players, err := cfg.LoadPlayers()
+	if err != nil {
+		slog.WarnContext(ctx, "friends: migration ignorée — lecture des profils impossible", "err", err)
+		return
+	}
+	created, err := friendstore.MigrateFromAppSettings(fs, cfg.AppSettingsPath, players)
+	if err != nil {
+		slog.WarnContext(ctx, "friends: migration des amis par joueur échouée (non bloquant)", "err", err)
+		return
+	}
+	if created > 0 {
+		slog.InfoContext(ctx, "friends: listes d'amis par joueur créées depuis l'ancienne liste globale",
+			"created", created)
+	}
+}
+
+// migrateDefaultGroupAtBoot crée un groupe par défaut "Mon foyer" depuis la liste
+// d'amis de l'admin, pour préserver la continuité d'accès au passage au modèle
+// multi-groupes. Best-effort + idempotent (no-op si un groupe existe déjà).
+// Le propriétaire est l'admin de db_profiles.json ; ses amis résolus en xuid via
+// les profils connus deviennent membres.
 //
-// Idempotent, best-effort. Une erreur sur un joueur (ex. DB inexistante) ne
-// bloque pas les autres. Aucun appel HTTP — purement copie de strings entre
-// stores. S'exécute AVANT buildAutoSyncPool pour que le Pool trouve le store
-// déjà peuplé.
-//
-// Pour le caller production, la lecture des sources legacy est branchée sur
-// auth.EnvRefreshTokenForGamertag (env) + duckdb.OpenReadOnly + Read*JSON.
-// La fonction pure de migration vit dans internal/platform/auth/migration.go
-// (testable sans dépendance DuckDB).
-// migrateDefaultGroupAtBoot crée un groupe par défaut "Mon foyer" depuis l'ancienne
-// liste globale friend_gamertags, pour préserver la continuité d'accès au passage au
-// modèle multi-groupes. Best-effort + idempotent (no-op si un groupe existe déjà).
-// Le propriétaire est l'admin de db_profiles.json ; les amis résolus en xuid via les
-// profils connus deviennent membres.
-func migrateDefaultGroupAtBoot(ctx context.Context, cfg *config.AppConfig, settingsStore *settings.Store, gs *groupstore.GroupStore) {
+// Source des membres : le store d'amis PAR JOUEUR (2026-09-15), lui-même migré
+// juste avant depuis l'ancienne liste globale des amis d'app_settings —
+// d'où l'ordre imposé des deux migrations au boot.
+func migrateDefaultGroupAtBoot(ctx context.Context, cfg *config.AppConfig, fs *friendstore.FriendStore, gs *groupstore.GroupStore) {
 	adminGT := cfg.AdminPlayer()
 	if adminGT == "" {
 		return // aucun admin désigné → migration impossible
@@ -2322,12 +2340,14 @@ func migrateDefaultGroupAtBoot(ctx context.Context, cfg *config.AppConfig, setti
 		return
 	}
 
-	s, err := settingsStore.Load()
-	if err != nil || s == nil {
+	adminFriends, err := fs.Get(ownerXUID)
+	if err != nil {
+		slog.WarnContext(ctx, "groups: migration ignorée — lecture des amis de l'admin impossible",
+			"admin", adminGT, "err", err)
 		return
 	}
 	var members []domain.GroupMember
-	for _, gt := range s.FriendGamertags {
+	for _, gt := range adminFriends {
 		if xuid := byGamertag[strings.ToLower(gt)]; xuid != "" {
 			members = append(members, domain.GroupMember{XUID: xuid, Gamertag: gt})
 		}
@@ -2339,52 +2359,7 @@ func migrateDefaultGroupAtBoot(ctx context.Context, cfg *config.AppConfig, setti
 		return
 	}
 	if created {
-		slog.InfoContext(ctx, "groups: groupe par défaut créé depuis friend_gamertags",
+		slog.InfoContext(ctx, "groups: groupe par défaut créé depuis les amis de l'admin",
 			"owner", adminGT, "members", len(members)+1)
-	}
-}
-
-func migrateLegacyAuthTokensAtBoot(ctx context.Context, cfg *config.AppConfig) {
-	pr := title.NewPathResolver(cfg.RepoRoot)
-	store := auth.NewMultiUserTokenStore(pr.WatcherTokensDir())
-
-	players, err := cfg.LoadPlayers()
-	if err != nil {
-		slog.WarnContext(ctx, "auth_migration: LoadPlayers échoué — migration skipped", "err", err)
-		return
-	}
-	if len(players) == 0 {
-		slog.DebugContext(ctx, "auth_migration: aucun joueur configuré, rien à migrer")
-		return
-	}
-
-	// Convertir players → auth.LegacyPlayer (sans dépendance domain/title dans le package auth).
-	legacyPlayers := make([]auth.LegacyPlayer, 0, len(players))
-	for _, p := range players {
-		legacyPlayers = append(legacyPlayers, auth.LegacyPlayer{
-			XUID:         p.XUID,
-			Gamertag:     p.Gamertag,
-			PlayerDBPath: pr.PlayerDBPath(title.DefaultSlug, p.Gamertag),
-		})
-	}
-
-	reader := func(rctx context.Context, p auth.LegacyPlayer) (auth.LegacySources, error) {
-		out := auth.LegacySources{
-			EnvRT: auth.EnvRefreshTokenForGamertag(p.Gamertag),
-		}
-		// Lecture DuckDB best-effort : DB inexistante = nouveau joueur, on skip.
-		if p.PlayerDBPath != "" {
-			db, dbErr := duckdb.OpenReadOnly(p.PlayerDBPath)
-			if dbErr == nil {
-				out.DuckDBRT, _ = duckdb.ReadOAuthRefreshToken(rctx, db)
-				out.DuckDBMSAL, _ = duckdb.ReadMSALCacheJSON(rctx, db)
-				_ = db.Close()
-			}
-		}
-		return out, nil
-	}
-
-	if _, err := auth.MigrateLegacyTokens(ctx, store, legacyPlayers, reader); err != nil {
-		slog.WarnContext(ctx, "auth_migration: échec global", "err", err)
 	}
 }

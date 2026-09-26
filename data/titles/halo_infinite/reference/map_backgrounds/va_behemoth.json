@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "module": "va_behemoth",
+  "mapNames": [
+    "Behemoth",
+    "behemoth_va_behemoth"
+  ],
+  "image": "va_behemoth.webp",
+  "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
+  "generatedAt": "2026-08-30T21:20:12.172234Z",
+  "style": "encre",
+  "calibration": {
+    "metersPerPixel": 0.049644819895426434,
+    "originX": -184.62735732396445,
+    "originY": 114.58110434214275,
+    "widthPx": 2451,
+    "heightPx": 2452,
+    "convention": "xMonde = originX + (px + 0.5) * metersPerPixel ; yMonde = originY - (py + 0.5) * metersPerPixel"
+  },
+  "stats": {
+    "anchors": 24,
+    "anchorsInFrame": 24,
+    "anchorsWithGround": 24,
+    "anchorMedianGapM": -0.2914042311050702,
+    "instancesDrawn": 6515,
+    "instancesScenery": 274,
+    "playLevelZ": 8.731472930908204,
+    "boundaryApplied": true,
+    "boundaryPlanes": 116,
+    "boundaryCellsCleared": 4844141,
+    "waterVolumes": 0,
+    "waterCells": 0,
+    "coveredShare": 0.1788844696898025,
+    "covered": false,
+    "cellsAssumedFloor": 473108
+  },
+  "degradations": [
+    "eau : aucun volume d'eau dans le sddt de va_behemoth-rtx-new.module"
+  ]
+}

@@ -12,12 +12,14 @@ import (
 	"strings"
 
 	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/analysis/modelabel"
 	"levelup/go-api/internal/analysis/narrative"
 	skillv2 "levelup/go-api/internal/analysis/skill_v2"
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/games/mappings"
 	"levelup/go-api/internal/port"
 )
 
@@ -43,7 +45,6 @@ func buildMatchHeader(
 ) domain.MatchViewHeader {
 	h := domain.MatchViewHeader{
 		MatchID:      matchID,
-		OutcomeLabel: "-",
 		OutcomeColor: mvHexOutcomeUnknown,
 		PerfDisplay:  "-",
 		IsFavorite:   isFavorite,
@@ -56,6 +57,11 @@ func buildMatchHeader(
 	applyMatchHeaderMetaLabels(&h, meta, ctxkeys.Locale(ctx))
 	applyMatchHeaderMapImage(ctx, &h, matchID, meta, assetURL)
 	h.PlayableDurationSeconds = headerGameplayDurationSeconds(meta)
+	// L'offset de countdown voyage tel quel : les events de cette page sont recalés sur le
+	// gameplay, le film ne l'est pas. Cf. MatchViewHeader.T0Ms pour la mesure.
+	if meta.T0Ms != nil && *meta.T0Ms > 0 {
+		h.T0Ms = *meta.T0Ms
+	}
 	h.IsRanked = meta.IsRanked
 	// Lien vers la page publique du match (Waypoint pour Infinite). Via l'adapter
 	// du titre (F3) : un titre sans page publique (H5) → "" → pas de lien mort.
@@ -63,7 +69,7 @@ func buildMatchHeader(
 		h.WaypointURL = assetURL.MatchWebURL(matchID)
 	}
 
-	applyMatchHeaderOutcome(&h, meta, stats)
+	applyMatchHeaderOutcome(&h, stats)
 	applyMatchHeaderEnrichment(&h, stats, enrich)
 
 	return h
@@ -170,17 +176,30 @@ func applyMatchHeaderMapImage(
 		"map_name_en", strDeref(meta.MapNameEN))
 }
 
-// applyMatchHeaderOutcome remplit OutcomeCode/Label/Color + ScoreLabel.
-func applyMatchHeaderOutcome(h *domain.MatchViewHeader, meta *domain.MatchMetaRaw, stats *domain.PlayerMatchStatsRaw) {
+// applyMatchHeaderOutcome remplit OutcomeCode/Color. La CLÉ canonique (Outcome), elle, est
+// posée par applyMatchHeaderOutcomeKey — elle a besoin du jeu d'outcomes du titre, porté par
+// le service, pas par le builder (même raison que le score : cf. applyMatchHeaderScore).
+func applyMatchHeaderOutcome(h *domain.MatchViewHeader, stats *domain.PlayerMatchStatsRaw) {
 	if stats == nil || stats.OutcomeCode == 0 {
 		return
 	}
 	code := stats.OutcomeCode
 	h.OutcomeCode = &code
-	h.OutcomeLabel = outcomeLabel(code)
 	h.OutcomeColor = outcomeColor(code)
 	h.OutcomeColorToken = outcomeColorToken(code)
-	h.ScoreLabel = buildScoreLabelFromMeta(meta, stats)
+}
+
+// applyMatchHeaderOutcomeKey pose la CLÉ CANONIQUE de l'issue (win|loss|tie|dnf, MT-06),
+// traduite depuis le raw_code du titre (2026-09-07, décision D5 : le Go sert la clé, le web
+// localise via useOutcomeLabel — plus de texte FR/EN fabriqué côté serveur).
+//
+// Sans jeu d'outcomes (adapter non câblé, titre sans TOML) ou code non mappé : "" — ce n'est
+// pas un repli, il n'y a rien à traduire (omitempty côté JSON).
+func applyMatchHeaderOutcomeKey(h *domain.MatchViewHeader, outcomes *mappings.OutcomeMappingSet) {
+	if h.OutcomeCode == nil {
+		return
+	}
+	h.Outcome = outcomeKey(outcomes, *h.OutcomeCode)
 }
 
 // applyMatchHeaderEnrichment renseigne PerfDisplay/Color, IsExcluded, DominanceFlag/Badge.
@@ -245,22 +264,133 @@ func applyMatchHeaderOvertime(h *domain.MatchViewHeader, meta *domain.MatchMetaR
 	h.OvertimeSeconds = seconds
 }
 
-// buildScoreLabelFromMeta construit "X-Y" depuis team_0_score/team_1_score de
-// match_registry. L'équipe du joueur (stats.TeamID) est toujours affichée en
-// premier (miroir de buildHomeScoreLabel dans analysis/home.go).
-func buildScoreLabelFromMeta(meta *domain.MatchMetaRaw, stats *domain.PlayerMatchStatsRaw) string {
-	if meta == nil || meta.Team0Score == nil || meta.Team1Score == nil {
-		return ""
-	}
-	s0, s1 := int(*meta.Team0Score), int(*meta.Team1Score)
-	if s0 < 0 || s1 < 0 {
-		return ""
-	}
-	if stats != nil && stats.TeamID != nil && *stats.TeamID == 1 {
-		return fmt.Sprintf("%d-%d", s1, s0)
-	}
-	return fmt.Sprintf("%d-%d", s0, s1)
+// WithModeTaxonomy injecte la taxonomie de classification des modes (pair_name →
+// catégorie custom), pour peupler MatchViewHeader.ModeCategory. Même taxonomie que
+// MediaRepo (wire.haloInfiniteModeTaxonomy) — une seule résolution par titre.
+// Zéro-value (non injectée) : ModeCategory reste vide (dégradation gracieuse).
+func (s *MatchViewService) WithModeTaxonomy(t analysis.ModeTaxonomy) *MatchViewService {
+	s.modeTaxonomy = t
+	return s
 }
+
+// applyMatchHeaderModeCategory renseigne ModeCategory, résolu APRÈS le header pour
+// la même raison que la Prolongation et le rejeu 2D juste au-dessus : la taxonomie
+// est portée par le service (WithModeTaxonomy), pas par le builder — buildMatchHeader
+// est déjà à la limite de paramètres du dépôt.
+//
+// CONTRAIREMENT à ModeUI (applyMatchHeaderMetaLabels → NormalizeModeLabel, qui
+// extrait le SOUS-mode et peut perdre l'identité playlist : "Fiesta:Slayer on X" →
+// "Assassin"), la taxonomie CONSERVE cette identité ("Fiesta:Slayer on X" →
+// "Fiesta") : c'est la résolution de mode que matchFiestaGuard (web,
+// apps/web/src/features/match-replay/replayFiesta.ts) corrèle, pas un libellé
+// deviné. meta.PairName nil (donnée absente) → ModeCategory reste vide, le
+// consommateur se replie sur ModeUI/PlaylistLabel.
+func applyMatchHeaderModeCategory(h *domain.MatchViewHeader, meta *domain.MatchMetaRaw, taxonomy analysis.ModeTaxonomy) {
+	if h == nil || meta == nil || meta.PairName == nil {
+		return
+	}
+	h.ModeCategory = taxonomy.Classify(*meta.PairName)
+}
+
+// applyMatchHeaderScoreTimeline renseigne ScoreTimelineKind — COMMENT le bloc « Score dans
+// le temps » de la vue match doit se montrer sur le mode joué (rien / barres d'instants /
+// courbe).
+//
+// ICI ET PAS DANS LE BUILDER, pour la même raison que la Prolongation et le score : la
+// table est portée par le service (buildMatchHeader est déjà à la limite de paramètres).
+//
+// LA SOURCE EST LE `pair_name` BRUT, dont on ne retire que le suffixe de CARTE. Deux
+// libellés étaient possibles et le mauvais coûtait cher :
+//
+//	h.ModeUI                      LOCALE-AWARE — sous UI FR, « Slayer » y est déjà devenu
+//	                              « Assassin » : aucun jeton de la table ne matcherait.
+//	NormalizeModeLabel(pairName)  MANGE le jeton sur toute une famille de pair_name
+//	                              (« Super Fiesta:Slayer » -> « Super Fiesta »,
+//	                              « Team Slayer:Arena » -> « Arena ») : 460 matchs du
+//	                              registre local au mauvais verdict, dont les 429 du mode
+//	                              le plus joué du corpus (mesure du 2026-09-03).
+//
+// D'où `modelabel.StripMapSuffix` SEUL : le retrait du nom de carte protège des collisions
+// entre un jeton de mode et un nom de carte, et rien d'autre n'est touché.
+//
+// LE REPLI SE DIT PAR L'ABSENCE : `curve` est le comportement par défaut du client, donc le
+// servir explicitement serait redire le défaut sur chaque match. Le champ ne porte que ce
+// qui CHANGE quelque chose.
+//
+// TITLE-AGNOSTIC : `resolve` est la règle du TITRE COURANT, injectée au boot depuis
+// regulation.toml. Nil (titre sans table) → champ vide → le client garde la courbe.
+// Aucune comparaison de slug.
+func applyMatchHeaderScoreTimeline(
+	h *domain.MatchViewHeader, meta *domain.MatchMetaRaw, resolve func(string) string,
+) {
+	if h == nil || meta == nil || resolve == nil || meta.PairName == nil {
+		return
+	}
+	label := modelabel.StripMapSuffix(*meta.PairName)
+	if label == "" {
+		return
+	}
+	if kind := resolve(label); kind != mappings.ScoreTimelineCurve {
+		h.ScoreTimelineKind = kind
+	}
+}
+
+// applyMatchHeaderScore pose le score de l'en-tête : le libellé, ce qu'il porte (points ou
+// MANCHES), et — en lecture manches — le score de l'API en information secondaire.
+//
+// L'ÉQUIPE DU JOUEUR EST TOUJOURS À GAUCHE (stats.TeamID), comme partout ailleurs.
+//
+// `roundsDecide` est la table `game_variant_name → le résultat se lit en manches`
+// (regulation.toml). Table absente ou variante non déclarée → lecture en points, c'est-à-dire
+// le comportement d'avant le 2026-08-29. La règle elle-même n'est PAS réécrite ici : elle vit
+// dans analysis.ReadTeamScore, source unique partagée avec l'historique.
+func applyMatchHeaderScore(
+	h *domain.MatchViewHeader, meta *domain.MatchMetaRaw,
+	stats *domain.PlayerMatchStatsRaw, roundsDecide map[string]bool,
+) {
+	if meta == nil {
+		return
+	}
+	mine, theirs := int16PtrPair(meta.Team0Score, meta.Team1Score)
+	myRounds, theirRounds := int16PtrPair(meta.Team0RoundsWon, meta.Team1RoundsWon)
+	if stats != nil && stats.TeamID != nil && *stats.TeamID == 1 {
+		mine, theirs = theirs, mine
+		myRounds, theirRounds = theirRounds, myRounds
+	}
+	d, ok := analysis.ReadTeamScore(analysis.TeamScoreInput{
+		MyPoints: mine, EnemyPoints: theirs,
+		MyRoundsWon: myRounds, EnemyRoundsWon: theirRounds,
+		RoundsTotal:  int16Ptr(meta.RoundsTotal),
+		RoundsDecide: roundsDecide[strings.TrimSpace(strDeref(meta.GameVariantName))],
+	})
+	if !ok {
+		return
+	}
+	h.ScoreLabel = analysis.FormatTeamScoreLabel(d)
+	h.ScoreKind = string(d.Kind)
+	mineVal, theirsVal := d.Mine, d.Theirs
+	h.ScoreMine, h.ScoreTheirs = &mineVal, &theirsVal
+	// Le score de l'API n'accompagne le compte de manches QUE s'il dit autre chose : en
+	// lecture points, ce serait le même libellé deux fois.
+	if d.Kind == analysis.ScoreKindRounds && d.Points != nil {
+		h.ScorePointsLabel = analysis.FormatTeamScoreLabel(analysis.TeamScoreDisplay{
+			Mine: d.Points[0], Theirs: d.Points[1],
+		})
+	}
+}
+
+// int16Ptr convertit un *int16 de colonne SMALLINT en *int, en préservant le nil (« colonne
+// NULL » n'est pas « zéro »).
+func int16Ptr(v *int16) *int {
+	if v == nil {
+		return nil
+	}
+	out := int(*v)
+	return &out
+}
+
+// int16PtrPair convertit deux colonnes d'un coup — la paire est toujours lue ensemble.
+func int16PtrPair(a, b *int16) (*int, *int) { return int16Ptr(a), int16Ptr(b) }
 
 // resolveSkillIconURL retourne l'URL du badge CSR/LUSR depuis tier + sub_tier.
 // Extrait de buildRankBlock pour être réutilisé par le scoreboard (tous joueurs).

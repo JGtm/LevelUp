@@ -1,0 +1,124 @@
+film	famille	mode	duree_s	stat	publie	par_seconde
+4f77afc1	CTF	BTB:CTF	1194	assists	34	0.03
+4f77afc1	CTF	BTB:CTF	1194	flag_capture_assists	1	0.00
+4f77afc1	CTF	BTB:CTF	1194	flag_captures	1	0.00
+4f77afc1	CTF	BTB:CTF	1194	flag_carriers_killed	4	0.00
+4f77afc1	CTF	BTB:CTF	1194	flag_grabs	65	0.05
+4f77afc1	CTF	BTB:CTF	1194	flag_returns	2	0.00
+4f77afc1	CTF	BTB:CTF	1194	flag_steals	2	0.00
+4f77afc1	CTF	BTB:CTF	1194	kills	144	0.12
+879a4dba	CTF	BTB:CTF	415	assists	17	0.04
+879a4dba	CTF	BTB:CTF	415	flag_capture_assists	3	0.01
+879a4dba	CTF	BTB:CTF	415	flag_captures	3	0.01
+879a4dba	CTF	BTB:CTF	415	flag_carriers_killed	8	0.02
+879a4dba	CTF	BTB:CTF	415	flag_grabs	9	0.02
+879a4dba	CTF	BTB:CTF	415	flag_steals	4	0.01
+879a4dba	CTF	BTB:CTF	415	kills	55	0.13
+5676a9ba	TotalControl	BTB:Total Control	682	assists	39	0.06
+5676a9ba	TotalControl	BTB:Total Control	682	kills	112	0.16
+5676a9ba	TotalControl	BTB:Total Control	682	zone_captures	23	0.03
+5676a9ba	TotalControl	BTB:Total Control	682	zone_secures	4	0.01
+16ea3668	CTF	CTF:Arena	417	assists	9513	22.81
+16ea3668	CTF	CTF:Arena	417	flag_capture_assists	3	0.01
+16ea3668	CTF	CTF:Arena	417	flag_captures	4	0.01
+16ea3668	CTF	CTF:Arena	417	flag_carriers_killed	5	0.01
+16ea3668	CTF	CTF:Arena	417	flag_grabs	18	0.04
+16ea3668	CTF	CTF:Arena	417	flag_returns	8	0.02
+16ea3668	CTF	CTF:Arena	417	flag_steals	11	0.03
+16ea3668	CTF	CTF:Arena	417	kills	74	0.18
+58864b3c	CTF	CTF:Arena	196	assists	8	0.04
+58864b3c	CTF	CTF:Arena	196	flag_capture_assists	1	0.01
+58864b3c	CTF	CTF:Arena	196	flag_captures	3	0.02
+58864b3c	CTF	CTF:Arena	196	flag_carriers_killed	2	0.01
+58864b3c	CTF	CTF:Arena	196	flag_grabs	14	0.07
+58864b3c	CTF	CTF:Arena	196	flag_returns	3	0.02
+58864b3c	CTF	CTF:Arena	196	flag_steals	6	0.03
+58864b3c	CTF	CTF:Arena	196	kills	27	0.14
+7fce3219	CTF	CTF:Arena	919	assists	70	0.08
+7fce3219	CTF	CTF:Arena	919	flag_capture_assists	2	0.00
+7fce3219	CTF	CTF:Arena	919	flag_captures	5	0.01
+7fce3219	CTF	CTF:Arena	919	flag_carriers_killed	9	0.01
+7fce3219	CTF	CTF:Arena	919	flag_grabs	70	0.08
+7fce3219	CTF	CTF:Arena	919	flag_returns	8	0.01
+7fce3219	CTF	CTF:Arena	919	flag_steals	15	0.02
+7fce3219	CTF	CTF:Arena	919	kills	169	0.18
+8bc6074f	CTF	CTF:Arena	486	assists	15648	32.20
+8bc6074f	CTF	CTF:Arena	486	flag_capture_assists	3	0.01
+8bc6074f	CTF	CTF:Arena	486	flag_captures	4	0.01
+8bc6074f	CTF	CTF:Arena	486	flag_carriers_killed	7	0.01
+8bc6074f	CTF	CTF:Arena	486	flag_grabs	42	0.09
+8bc6074f	CTF	CTF:Arena	486	flag_returns	11	0.02
+8bc6074f	CTF	CTF:Arena	486	flag_steals	12	0.02
+8bc6074f	CTF	CTF:Arena	486	kills	81	0.17
+a0c36016	CTF	CTF:Arena	766	assists	61	0.08
+a0c36016	CTF	CTF:Arena	766	flag_capture_assists	85	0.11
+a0c36016	CTF	CTF:Arena	766	flag_captures	1	0.00
+a0c36016	CTF	CTF:Arena	766	flag_carriers_killed	9	0.01
+a0c36016	CTF	CTF:Arena	766	flag_grabs	32	0.04
+a0c36016	CTF	CTF:Arena	766	flag_returns	19	0.02
+a0c36016	CTF	CTF:Arena	766	flag_steals	17	0.02
+a0c36016	CTF	CTF:Arena	766	kills	137	0.18
+b8a44fe8	CTF	CTF:Arena	754	assists	44	0.06
+b8a44fe8	CTF	CTF:Arena	754	flag_captures	1	0.00
+b8a44fe8	CTF	CTF:Arena	754	flag_carriers_killed	9	0.01
+b8a44fe8	CTF	CTF:Arena	754	flag_grabs	51	0.07
+b8a44fe8	CTF	CTF:Arena	754	flag_returns	13	0.02
+b8a44fe8	CTF	CTF:Arena	754	flag_steals	12	0.02
+b8a44fe8	CTF	CTF:Arena	754	kills	124	0.16
+bc60b4d9	CTF	CTF:Arena	414	assists	35	0.08
+bc60b4d9	CTF	CTF:Arena	414	flag_capture_assists	5	0.01
+bc60b4d9	CTF	CTF:Arena	414	flag_captures	3	0.01
+bc60b4d9	CTF	CTF:Arena	414	flag_carriers_killed	11	0.03
+bc60b4d9	CTF	CTF:Arena	414	flag_grabs	19	0.05
+bc60b4d9	CTF	CTF:Arena	414	flag_returns	11	0.03
+bc60b4d9	CTF	CTF:Arena	414	flag_steals	12	0.03
+bc60b4d9	CTF	CTF:Arena	414	kills	81	0.20
+bf5ced1b	CTF	CTF:Arena	156	assists	11	0.07
+bf5ced1b	CTF	CTF:Arena	156	flag_capture_assists	2	0.01
+bf5ced1b	CTF	CTF:Arena	156	flag_captures	3	0.02
+bf5ced1b	CTF	CTF:Arena	156	flag_grabs	9	0.06
+bf5ced1b	CTF	CTF:Arena	156	flag_steals	3	0.02
+bf5ced1b	CTF	CTF:Arena	156	kills	26	0.17
+cde26226	CTF	CTF:Arena	942	assists	68	0.07
+cde26226	CTF	CTF:Arena	942	flag_capture_assists	1	0.00
+cde26226	CTF	CTF:Arena	942	flag_captures	5	0.01
+cde26226	CTF	CTF:Arena	942	flag_carriers_killed	12	0.01
+cde26226	CTF	CTF:Arena	942	flag_grabs	71	0.08
+cde26226	CTF	CTF:Arena	942	flag_returns	14	0.01
+cde26226	CTF	CTF:Arena	942	flag_steals	81	0.09
+cde26226	CTF	CTF:Arena	942	kills	163	0.17
+f8efc5ca	CTF	CTF:Arena	416	assists	15645	37.61
+f8efc5ca	CTF	CTF:Arena	416	flag_capture_assists	4	0.01
+f8efc5ca	CTF	CTF:Arena	416	flag_captures	3	0.01
+f8efc5ca	CTF	CTF:Arena	416	flag_carriers_killed	8	0.02
+f8efc5ca	CTF	CTF:Arena	416	flag_grabs	22	0.05
+f8efc5ca	CTF	CTF:Arena	416	flag_returns	8	0.02
+f8efc5ca	CTF	CTF:Arena	416	flag_steals	13	0.03
+f8efc5ca	CTF	CTF:Arena	416	kills	81	0.19
+4ecdf3e7	CTF	CTF:Arena Neutral Flag	297	assists	14	0.05
+4ecdf3e7	CTF	CTF:Arena Neutral Flag	297	flag_capture_assists	5	0.02
+4ecdf3e7	CTF	CTF:Arena Neutral Flag	297	flag_captures	5	0.02
+4ecdf3e7	CTF	CTF:Arena Neutral Flag	297	flag_carriers_killed	4	0.01
+4ecdf3e7	CTF	CTF:Arena Neutral Flag	297	flag_grabs	21	0.07
+4ecdf3e7	CTF	CTF:Arena Neutral Flag	297	flag_steals	5	0.02
+4ecdf3e7	CTF	CTF:Arena Neutral Flag	297	kills	32	0.11
+32d9a94f	Strongholds	Strongholds:Arena	450	assists	22	0.05
+32d9a94f	Strongholds	Strongholds:Arena	450	kills	71	0.16
+32d9a94f	Strongholds	Strongholds:Arena	450	zone_captures	39	0.09
+32d9a94f	Strongholds	Strongholds:Arena	450	zone_secures	16	0.04
+396cfc92	Strongholds	Strongholds:Arena	523	assists	27	0.05
+396cfc92	Strongholds	Strongholds:Arena	523	kills	67	0.13
+396cfc92	Strongholds	Strongholds:Arena	523	zone_captures	48	0.09
+396cfc92	Strongholds	Strongholds:Arena	523	zone_secures	10	0.02
+572e236b	Strongholds	Strongholds:Arena	431	assists	33	0.08
+572e236b	Strongholds	Strongholds:Arena	431	kills	65	0.15
+572e236b	Strongholds	Strongholds:Arena	431	zone_captures	36	0.08
+572e236b	Strongholds	Strongholds:Arena	431	zone_secures	9	0.02
+81c02726	Strongholds	Strongholds:Arena	321	assists	14	0.04
+81c02726	Strongholds	Strongholds:Arena	321	kills	43	0.13
+81c02726	Strongholds	Strongholds:Arena	321	zone_captures	28	0.09
+81c02726	Strongholds	Strongholds:Arena	321	zone_secures	7	0.02
+e60aaf06	Strongholds	Strongholds:Arena	415	assists	3	0.01
+e60aaf06	Strongholds	Strongholds:Arena	415	kills	9	0.02
+e60aaf06	Strongholds	Strongholds:Arena	415	zone_captures	10	0.02
+e60aaf06	Strongholds	Strongholds:Arena	415	zone_secures	2	0.00

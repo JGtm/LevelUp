@@ -16,7 +16,7 @@ import (
 // CRÉÉE DIRECTEMENT en forme APPEND-ONLY (id PK séquence + written_at + vue _latest) —
 // PAS via ApplyAppendOnlyRebuild (recette de CONVERSION d'une table mutable existante).
 // Modèle : create_world_csr_leaderboard_snapshots (steps.go). ART-safe par construction
-// (#23046) : écritures = INSERT pur (persist.persistObjectiveStats), lecture via la vue
+// (#23645) : écritures = INSERT pur (persist.persistObjectiveStats), lecture via la vue
 // match_objective_stats_latest UNIQUEMENT (une lecture brute sert des lignes périmées,
 // ADR 0026). Seul index = match_id (jamais muté) — parité idx_pve_match.
 //
@@ -30,7 +30,7 @@ import (
 // (migrations name-keyed) et resteraient sans les colonnes. La vue `_latest` est RECRÉÉE dans
 // le même step : DuckDB fige la liste de colonnes d'un `SELECT *` à la création de la vue — sans
 // CREATE OR REPLACE, la vue ignorerait les nouvelles colonnes (voire échouerait « Contents of
-// view were altered »). Un ALTER ADD COLUMN est du DDL pur, hors périmètre du bug ART #23046
+// view were altered »). Un ALTER ADD COLUMN est du DDL pur, hors périmètre du bug ART #23645
 // (suppression de lignes d'index) — aucun garde-rail ART touché.
 func sharedObjectiveStatsSteps() []migration.Migration {
 	return []migration.Migration{

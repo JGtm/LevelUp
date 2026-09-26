@@ -1,0 +1,31 @@
+﻿=== RUN   TestZoneEtatPhase2a
+    zone_state_p2a_test.go:92: FILM 000d5950 (Slayer (temoin), cliffhanger) — 8 slots dans la bande ti=13 · 661 records ancres, 267 rejoues entierement, 9 CHAINES (3.4 %)
+    zone_state_p2a_test.go:95:   VALEURS : i1 scalaire 20 · i2..i33 par joueur 566 · film de 508082 ms (0 -> 508082)
+    zone_state_p2a_test.go:97:   CHAINAGE par population : records SCALAIRES (i0/i1 seuls) 2/14 = 14.3 % · records PAR JOUEUR 7/253 = 2.8 % · temoin decale de 3 bits 11/267 = 4.1 %
+2026/08/18 13:06:00 INFO pont slot->joueur slots=93 viesNommees=90 viesTotal=105 lecturesIndex=26 desaccordsIndex=0 collisionsSlot=0
+2026/08/18 13:06:00 INFO rejeu : poses d'equipement balaye=false calibre=false decoupage="" poses=0 nommees=0 autres=0 avecPoseur=0 avecCap=0 deployees=0 lachees=0 origineInconnue=0
+2026/08/18 13:06:00 INFO rejeu : socles d'arme au sol balaye=false ancres=0 acceptees=0 retenues=0 ecartees=0 lachees=0 apparues=0 auRepos=0 grappes=0 socles=0 occupations=0 datees=0 sansPassage=0 jamaisVidees=0 cyclesEtablis=0
+2026/08/18 13:06:00 INFO rejeu : episodes d'equipement actif viesPubliees=99 viesCamo=0 episodesCamo=0 viesSurbouclier=0 episodesSurbouclier=0
+2026/08/18 13:06:00 INFO rejeu : palette de capacites palette="non classee" lectures=0 rangsNommes=0
+2026/08/18 13:06:00 INFO rejeu : couverture par calque tirsRattaches=0 tirsDisponibles=0 tirsSansSlot=0 tirsAmbigus=0 tirsHorsFenetre=0 tirsNonPublies=0 grenadesRattachees=0 grenadesDisponibles=0 verdictTirs="aucune donnée" verdictGrenades="aucune donnée" verdictPont=nominal
+    zone_state_p2a_test.go:108:   REJEU : 99 trajectoires, 4985 frames de 100 ms, origine 3604 ms · CATALOGUE : 8 zones
+    zone_state_p2a_test.go:117: 
+    zone_state_p2a_test.go:117: === STRUCTURE de ti=13 — 6 slots emettent une valeur scalaire
+    zone_state_p2a_test.go:117:     slot 1454  nom i0 0x40320723 x1 · tag dominant 6 (1/2)
+    zone_state_p2a_test.go:117:     slot 1455  nom i0 0x40320725 x1 · tag dominant 2 (1/1)
+    zone_state_p2a_test.go:117:     slot 1458  nom i0 0x68882D20 x1 · tag dominant 9 (2/5)
+    zone_state_p2a_test.go:117:     slot 1459  nom i0 0xF4C9D95D x1 · tag dominant 8 (3/6)
+    zone_state_p2a_test.go:117:     slot 1460  nom i0 0xF3E081EA x1 · tag dominant 8 (2/5)
+    zone_state_p2a_test.go:117:     slot 1461  nom i0 0x08520E95 x1 · tag dominant 6 (1/1)
+    zone_state_p2a_test.go:118: 
+    zone_state_p2a_test.go:118: === CB.2a.1 APPARIEMENT slot ti=13 -> zone — 0 captures identifiees par xuid
+    zone_state_p2a_test.go:118:   aucun oracle nomme sur ce mode : volet CB.2a.1 SANS OBJET (attendu hors zones)
+    zone_state_p2a_test.go:120: 
+    zone_state_p2a_test.go:120: === CB.2a.2 SEMANTIQUE DU TAG 4
+    zone_state_p2a_test.go:120:   aucune carte slot -> zone : volet CB.2a.2 SANS OBJET sur ce film
+    zone_state_p2a_test.go:122: 
+    zone_state_p2a_test.go:122: === CB.2a.3 KOTH — zone active appariee par la grappe des positions
+    zone_state_p2a_test.go:122:   aucune rampe du tag 3 : volet CB.2a.3 SANS OBJET sur ce film
+--- PASS: TestZoneEtatPhase2a (98.40s)
+PASS
+ok  	levelup/go-api/internal/analysis/replay	100.377s

@@ -1,0 +1,14 @@
+# temoin de la jauge en direct (CT.3.3) — artefact KOTH cuit au HEAD 1a6f4a46e, relu par TestZoneGaugeTemoin (garde ZONE_ARTEFACT) : gaugePoints 0 attendu
+ARTEFACT 01e1f945 — schema 17, 5343 frames de 100 ms, 1816981 octets, 6 zone(s) publiee(s)
+  COUVERTURE : methode positions+geometry · catalogue 8 · apparies 6 · intervalles 20 · periodes colline 20 · gaugePoints 0
+  zone 0 : 5 intervalle(s), 0 point(s) de jauge en 0 rampe(s), 4 octets, ecart intra-rampe max 0 frame(s), trous intra-rampe > 10 frames : 0 (dont 0 a arc VISIBLE, v >= 0,05 avant le trou)
+  zone 1 : 3 intervalle(s), 0 point(s) de jauge en 0 rampe(s), 4 octets, ecart intra-rampe max 0 frame(s), trous intra-rampe > 10 frames : 0 (dont 0 a arc VISIBLE, v >= 0,05 avant le trou)
+  zone 2 : 5 intervalle(s), 0 point(s) de jauge en 0 rampe(s), 4 octets, ecart intra-rampe max 0 frame(s), trous intra-rampe > 10 frames : 0 (dont 0 a arc VISIBLE, v >= 0,05 avant le trou)
+  zone 3 : 1 intervalle(s), 0 point(s) de jauge en 0 rampe(s), 4 octets, ecart intra-rampe max 0 frame(s), trous intra-rampe > 10 frames : 0 (dont 0 a arc VISIBLE, v >= 0,05 avant le trou)
+  zone 6 : 5 intervalle(s), 0 point(s) de jauge en 0 rampe(s), 4 octets, ecart intra-rampe max 0 frame(s), trous intra-rampe > 10 frames : 0 (dont 0 a arc VISIBLE, v >= 0,05 avant le trou)
+  zone 7 : 1 intervalle(s), 0 point(s) de jauge en 0 rampe(s), 4 octets, ecart intra-rampe max 0 frame(s), trous intra-rampe > 10 frames : 0 (dont 0 a arc VISIBLE, v >= 0,05 avant le trou)
+  POINTS : 0 en 0 rampes · OCTETS des series : 24 sur 1816981 = 0.001 % de l'artefact · trous intra-rampe > 1 s : 0, dont 0 a arc VISIBLE (v >= 0,05 avant le trou)
+  BASCULES : sans objet (aucun changement de proprietaire publie — mode a colline)
+--- PASS: TestZoneGaugeTemoin (0.05s)
+PASS
+ok  	levelup/go-api/internal/analysis/replay	1.690s

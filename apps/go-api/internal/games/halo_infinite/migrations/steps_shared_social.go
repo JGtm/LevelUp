@@ -37,7 +37,7 @@ func sharedSocialRootSteps() []migration.Migration {
 						id                   VARCHAR PRIMARY KEY,
 						player_slug          VARCHAR NOT NULL,
 						-- PAS de UNIQUE(file_path) : file_path est MUTÉE (insertMediaFile
-						-- conversion/HLS/reconcile) → un index ART UNIQUE = bug #23046
+						-- conversion/HLS/reconcile) → un index ART UNIQUE = bug #23645
 						-- (FATAL invalidated, blast MAX shared_social). La dédup file_path
 						-- est applicative (SELECT-then-INSERT dans insertMediaFile /
 						-- persistMediaFiles). Sur DB existantes : media_files_drop_filepath_unique_v1.
@@ -58,7 +58,7 @@ func sharedSocialRootSteps() []migration.Migration {
 					);
 					CREATE INDEX IF NOT EXISTS idx_mf_player_slug ON media_files(player_slug);
 					-- PAS d'idx_mf_kind : kind est muté (insertMediaFile conversion/HLS/reconcile)
-					-- → surface ART #23046. Drop sur DB existantes : media_files_drop_filepath_unique_v1.
+					-- → surface ART #23645. Drop sur DB existantes : media_files_drop_filepath_unique_v1.
 					CREATE INDEX IF NOT EXISTS idx_mf_created ON media_files(created_at);
 
 					CREATE TABLE IF NOT EXISTS media_match_associations (

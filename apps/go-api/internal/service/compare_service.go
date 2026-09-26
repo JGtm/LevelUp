@@ -33,8 +33,14 @@ type CompareService struct {
 	currentSeasonID string                         // saison CSR courante (pour le fetch CSR)
 	ranks           *mappings.RankCatalog          // optionnel : titres de rang carrière (même catalogue que l'Explorer)
 	liveResolver    GamertagXUIDResolver           // optionnel : résout gamertag→xuid live pour un B jamais croisé (enrichit rang/CSR)
-	xuidA           string
-	titleSlug       string
+	// weaponKills / weaponRange / weaponImage : le profil d'armes (compare_weapons.go).
+	// Les trois sont optionnels et câblés ensemble par WithWeaponProfile ; sans les deux
+	// repos, la réponse ne porte pas de champ `weapons`.
+	weaponKills port.WeaponKillsRepository
+	weaponRange port.WeaponRangeRepository
+	weaponImage weaponImageFunc
+	xuidA       string
+	titleSlug   string
 }
 
 // NewCompareService crée un CompareService.
@@ -83,16 +89,22 @@ type csrSummary struct {
 	allTimeLabel string
 }
 
-// csrUnrankedLabel : libellé quand le CSR a bien été RÉCUPÉRÉ mais que le joueur
-// n'est pas classé — à distinguer du libellé vide (= non récupéré → N/A côté front).
-const csrUnrankedLabel = "Non classé"
+// csrUnrankedLabel : clé canonique quand le CSR a bien été RÉCUPÉRÉ mais que le
+// joueur n'est pas classé — à distinguer de la clé vide (= non récupéré → N/A
+// côté front). Clé (pas un mot FR en dur, D5 2026-09-07, lot M5 L5) : le web la
+// localise via lib/skillTiers.ts::localizeTierLabel (TIER_NAME_BY_KEY['unranked'],
+// même mécanisme client-side que les noms de palier CSR eux-mêmes — aucun
+// littéral FR ne quitte plus ce fichier pour ce champ).
+const csrUnrankedLabel = "unranked"
 
 // fetchCSRSummary récupère les CSR du joueur (live, tout xuid) et en extrait le
 // meilleur courant + le meilleur all-time avec leurs libellés tier ("Platine IV",
 // "Onyx"). Tri-état porté par le libellé :
-//   - "" (label vide)        → données NON récupérées (pas d'auth/erreur) → N/A.
-//   - "Non classé"           → récupéré mais joueur non classé.
-//   - "Or III" / "Onyx" etc. → classé.
+//   - "" (label vide)  → données NON récupérées (pas d'auth/erreur) → N/A.
+//   - "unranked"       → récupéré mais joueur non classé (clé canonique, D5).
+//   - "Or III" / "Onyx" etc. → classé (cf. découverte consignée : ce libellé
+//     lui-même reste en dur, famille plus large que ce lot — .ai/PLAN_LIBELLES_
+//     EN_DUR_GO_2026-09-07.md §9).
 func (s *CompareService) fetchCSRSummary(ctx context.Context, xuid string) csrSummary {
 	if s.csr == nil || xuid == "" || s.currentSeasonID == "" {
 		return csrSummary{} // non configuré → non récupéré
@@ -102,7 +114,7 @@ func (s *CompareService) fetchCSRSummary(ctx context.Context, xuid string) csrSu
 		logBestEffortErr(ctx, "CompareService: CSR saison non disponible", err, "xuid", xuid)
 		return csrSummary{} // échec fetch → non récupéré
 	}
-	// Récupéré : on part de "Non classé" et on remplace par le tier si classé.
+	// Récupéré : on part de la clé "unranked" et on remplace par le tier si classé.
 	out := csrSummary{currentLabel: csrUnrankedLabel, allTimeLabel: csrUnrankedLabel}
 	for _, c := range csrs {
 		if c.Current.Value > out.currentValue {
@@ -201,6 +213,10 @@ func (s *CompareService) GetPage(ctx context.Context, req domain.CompareRequest)
 	}
 
 	s.attachEncounterBadges(ctx, &resp, xuidBResolved, statsB.Gamertag)
+	// Profil d'armes : ADDITIF et best-effort. Il ne peut ni échouer ni retarder la page
+	// au-delà de ses propres lectures — un nil laisse la réponse exactement telle qu'elle
+	// était avant ce chantier.
+	resp.Weapons = s.buildWeaponProfile(ctx, xuidBResolved)
 	return resp, nil
 }
 
@@ -276,7 +292,6 @@ func (s *CompareService) loadPlayerB(ctx context.Context, targetGamertag string)
 		return nil, xuidB, fmt.Errorf("CompareService.GetPage: stats joueur B introuvables: %w", err)
 	}
 	if xuidB != "" {
-		s.enrichRemotePlayerBWithCrossSample(ctx, remote, xuidB, targetGamertag)
 		s.fillCareerRankLive(ctx, remote, xuidB)
 		remote.CareerRankLabel = s.careerRankTitle(ctx, remote.CareerRank)
 		applyCSRSummary(remote, s.fetchCSRSummary(ctx, xuidB))
@@ -319,29 +334,6 @@ func (s *CompareService) enrichLocalPlayerB(ctx context.Context, local *domain.N
 		local.PerfATH = athB.PerfATH
 		local.LusrATH = athB.LusrATH
 	}
-}
-
-// enrichRemotePlayerBWithCrossSample calcule les 4 métriques locale-only sur
-// l'échantillon croisé (matchs en commun avec le joueur A).
-func (s *CompareService) enrichRemotePlayerBWithCrossSample(
-	ctx context.Context, remote *domain.NormalizedPlayerStats, xuidB, targetGamertag string,
-) {
-	sample, sErr := s.repo.GetCrossMatchSample(ctx, s.xuidA, xuidB)
-	if sErr != nil {
-		logBestEffortErr(ctx, "CompareService: cross-match sample non disponible", sErr, "xuidA", s.xuidA, "xuidB", xuidB)
-		return
-	}
-	if sample == nil || sample.MatchesCount == 0 {
-		return
-	}
-	remote.IsLocalSample = true
-	remote.MaxKillingSpree = sample.MaxKillingSpree
-	remote.AvgLifeSecs = sample.AvgLifeSecs
-	remote.PerfectKillsPerGame = sample.PerfectKillsPerGame
-	remote.HeadshotKillsPerGame = sample.HeadshotKillsPerGame
-	remote.Matches = sample.MatchesCount
-	slog.DebugContext(ctx, "CompareService: stats B enrichies par échantillon croisé",
-		"gamertag_b", targetGamertag, "matches", sample.MatchesCount)
 }
 
 // attachEncounterBadges calcule les badges historiques de rencontre. Best-effort.
@@ -427,23 +419,21 @@ var athMetrics = map[string]bool{
 //   - career_rank : disponible dès que valeur>0 (ATH local côté A OU rang récupéré
 //     en live côté B non-local via FetchLiveIdentity).
 //   - athMetrics (perf_ath/lusr_ath) : exigent IsLocal=true ET valeur>0.
-//     L'échantillon croisé ne donne pas l'ATH (stats de carrière globales).
-//   - localOnlyMetrics (spree/life/perfect/headshots) : IsLocal OU IsLocalSample
-//     (le service alimente IsLocalSample pour un joueur B remote ayant un échantillon
-//     de matchs croisés avec A — métriques alors calculées sur cet échantillon).
+//   - localOnlyMetrics (spree/life/perfect/headshots) : exigent IsLocal — elles se
+//     lisent dans la stats.duckdb du joueur, un joueur B remote n'en a aucune.
 //   - Autres : toujours disponibles (alimentées par Waypoint ou les agrégats locaux).
-func metricAvailability(key string, value float64, isLocal, isLocalSample bool) bool {
+func metricAvailability(key string, value float64, isLocal bool) bool {
 	if key == compareMetricCareerRank {
 		// Disponible dès value>0 : rang connu côté A (local/live) comme côté B
 		// non-local (fetch live). (Le CSR est traité à part dans buildMetrics, via
-		// son libellé, pour distinguer "Non classé" de "non récupéré".)
+		// sa clé, pour distinguer "unranked" de "non récupéré".)
 		return value > 0
 	}
 	if athMetrics[key] {
 		return isLocal && value > 0
 	}
 	if localOnlyMetrics[key] {
-		return isLocal || isLocalSample
+		return isLocal
 	}
 	return true
 }
@@ -504,10 +494,10 @@ func buildMetrics(a, b domain.NormalizedPlayerStats, effectiveHpToKill float64) 
 	rows := make([]domain.CompareMetricRow, 0, len(defs))
 	for _, d := range defs {
 		// CSR : la disponibilité est portée par le LIBELLÉ (tri-état) pour distinguer
-		// "Non classé" (récupéré) de N/A (non récupéré). dispX == "" → non récupéré.
+		// "unranked" (récupéré) de N/A (non récupéré). dispX == "" → non récupéré.
 		isCSR := d.key == compareMetricCSR || d.key == compareMetricCSRAllTime
-		aAvail := metricAvailability(d.key, d.va, a.IsLocal, a.IsLocalSample)
-		bAvail := metricAvailability(d.key, d.vb, b.IsLocal, b.IsLocalSample)
+		aAvail := metricAvailability(d.key, d.va, a.IsLocal)
+		bAvail := metricAvailability(d.key, d.vb, b.IsLocal)
 		if isCSR {
 			aAvail = d.dispA != ""
 			bAvail = d.dispB != ""
@@ -518,7 +508,7 @@ func buildMetrics(a, b domain.NormalizedPlayerStats, effectiveHpToKill float64) 
 			continue
 		}
 		// Si la métrique est disponible des deux côtés mais vaut 0 partout, on masque
-		// (pas d'info utile) — SAUF le CSR, où "Non classé" des deux côtés reste informatif.
+		// (pas d'info utile) — SAUF le CSR, où "unranked" des deux côtés reste informatif.
 		if !isCSR && aAvail && bAvail && d.va == 0 && d.vb == 0 {
 			continue
 		}

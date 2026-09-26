@@ -21,8 +21,9 @@ import (
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/go-chi/chi/v5"
 
-	"levelup/go-api/internal/analysis/replay"
 	"levelup/go-api/internal/api/humacore"
+	"levelup/go-api/internal/domain/replaydoc"
+	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/port"
 )
 
@@ -38,10 +39,22 @@ func NewReplayHandler(newSvc ServiceFactory[port.ReplayService]) *ReplayHandler 
 
 // Mount enregistre la route via Huma sur le sous-routeur chi (préfixe
 // /players/{player_slug} + middlewares ownership/titre/garde local hérités).
+//
+// L'IMAGE DU FOND reste une route chi NUE, comme l'export CSV de l'historique : Huma décrit
+// des charges utiles JSON typées, et forcer 700 Kio de PNG dans ce moule n'apporterait qu'un
+// schéma qui ment. Elle hérite des mêmes middlewares (ownership, titre, garde local) puisque
+// c'est le même sous-routeur.
 func (h *ReplayHandler) Mount(r chi.Router, opts ...humacore.MountOption) {
 	api := humacore.NewAPI(r, opts...)
 	huma.Get(api, "/matches/{match_id}/replay", h.handleGetReplay,
 		humacore.Op("getMatchReplay", "Rejeu 2D pré-construit d'un match", "match-view"))
+	huma.Get(api, "/matches/{match_id}/replay/background", h.handleGetBackground,
+		humacore.Op("getMatchReplayBackground",
+			"Calage du fond de carte du rejeu 2D d'un match", "match-view"))
+	huma.Get(api, "/matches/{match_id}/replay/callouts", h.handleGetCallouts,
+		humacore.Op("getMatchReplayCallouts",
+			"Zones nommées (callouts) de la carte du rejeu 2D d'un match", "match-view"))
+	r.Get("/matches/{match_id}/replay/background.png", h.handleGetBackgroundImage)
 }
 
 // replayInput : {player_slug} parent + {match_id}. match_id pris en STRING pour
@@ -51,7 +64,23 @@ type replayInput struct {
 	MatchID    string `path:"match_id"`
 }
 
-type replayOutput struct{ Body replay.ReplayDocument }
+// replayOutput : le corps est le document SERVI (`domain/replaydoc`), jamais le document
+// STOCKE. C'est cette frontiere qui rend `openapi.yaml` independant du format de fichier de
+// l'artefact — le service projette, le handler encode (cf. internal/service/replayview).
+//
+// LatestSchemaVersion voyage en EN-TÊTE, jamais dans le corps : c'est une méta HTTP (la
+// version COURANTE du producteur, `games/halo_infinite/film/replay.SchemaVersion`), distincte du
+// `schemaVersion` du corps (celle de l'ARTEFACT LU). `domain/replaydoc` est une feuille de
+// `domain/` qui n'importe jamais `games/halo_infinite/film/replay` et ne porte AUCUN numéro de version — cf.
+// `domain/replaydoc/doc.go` ("AUCUN IMPORT D'internal/games/halo_infinite/film/replay ICI, jamais" et "PAS DE
+// NUMERO DE VERSION DANS CE PAQUET"), et `replayview/parity_test.go` qui verrouille le corps
+// champ pour champ. Assembler LatestSchemaVersion ICI, à la frontière HTTP, respecte les deux
+// : le document jumeau reste inchangé, et le badge admin (lot A, 2026-09-11) lit l'en-tête
+// pour dire « à jour » ou « à recuire ».
+type replayOutput struct {
+	Body                replaydoc.ReplayDocument
+	LatestSchemaVersion int `header:"X-Replay-Latest-Schema-Version"`
+}
 
 // handleGetReplay retourne le document de rejeu 2D d'un match (404 si absent).
 func (h *ReplayHandler) handleGetReplay(ctx context.Context, in *replayInput) (*replayOutput, error) {
@@ -71,5 +100,90 @@ func (h *ReplayHandler) handleGetReplay(ctx context.Context, in *replayInput) (*
 	if err != nil {
 		return nil, humacore.NewError(http.StatusInternalServerError, "replay_error", err.Error())
 	}
-	return &replayOutput{Body: doc}, nil
+	return &replayOutput{Body: doc, LatestSchemaVersion: replay.SchemaVersion}, nil
+}
+
+type backgroundOutput struct{ Body replaydoc.MapBackground }
+
+// handleGetBackground retourne le CALAGE du fond de carte du match : mètres par pixel,
+// origine monde, taille de l'image, plus les statistiques de cuisson et les dégradations
+// déclarées. 404 quand la carte du match n'a pas d'image figée — une absence normale
+// (21 cartes en ont), que le client traduit en repli sur le sol reconstruit.
+func (h *ReplayHandler) handleGetBackground(ctx context.Context, in *replayInput) (*backgroundOutput, error) {
+	svc, err := h.newSvc(ctx, in.PlayerSlug)
+	if err != nil {
+		return nil, humacore.NewError(http.StatusNotFound, "player_not_found", err.Error())
+	}
+	if in.MatchID == "" {
+		return nil, humacore.NewError(http.StatusBadRequest, "missing_match_id", "match_id est requis")
+	}
+	bg, err := svc.MapBackground(ctx, in.MatchID)
+	if errors.Is(err, port.ErrMapBackgroundNotAvailable) {
+		return nil, humacore.NewError(http.StatusNotFound, "map_background_not_available",
+			"aucun fond de carte pour ce match")
+	}
+	if err != nil {
+		return nil, humacore.NewError(http.StatusInternalServerError, "replay_error", err.Error())
+	}
+	return &backgroundOutput{Body: *bg}, nil
+}
+
+type calloutsOutput struct{ Body replaydoc.MapCalloutsEntry }
+
+// handleGetCallouts retourne les ZONES NOMMÉES officielles de la carte du match :
+// polygones monde, tranche verticale, libellés FR/EN. 404 quand la carte n'en a pas —
+// absence NORMALE (les 22 cartes intégrées en ont ; une carte Forge n'en aura jamais,
+// son canevas n'en porte aucune) : le client n'affiche simplement pas le calque zones.
+func (h *ReplayHandler) handleGetCallouts(ctx context.Context, in *replayInput) (*calloutsOutput, error) {
+	svc, err := h.newSvc(ctx, in.PlayerSlug)
+	if err != nil {
+		return nil, humacore.NewError(http.StatusNotFound, "player_not_found", err.Error())
+	}
+	if in.MatchID == "" {
+		return nil, humacore.NewError(http.StatusBadRequest, "missing_match_id", "match_id est requis")
+	}
+	entry, err := svc.MapCallouts(ctx, in.MatchID)
+	if errors.Is(err, port.ErrMapCalloutsNotAvailable) {
+		return nil, humacore.NewError(http.StatusNotFound, "map_callouts_not_available",
+			"aucune zone nommée pour ce match")
+	}
+	if err != nil {
+		return nil, humacore.NewError(http.StatusInternalServerError, "replay_error", err.Error())
+	}
+	return &calloutsOutput{Body: *entry}, nil
+}
+
+// handleGetBackgroundImage sert le PNG du fond de carte.
+//
+// Route chi nue (cf. Mount) : la charge utile est binaire. Elle rend les mêmes 404 que le
+// calage, et pour les mêmes raisons — l'image et son calage vont toujours ensemble.
+func (h *ReplayHandler) handleGetBackgroundImage(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	slug := chi.URLParam(r, "player_slug")
+	matchID := chi.URLParam(r, "match_id")
+	svc, err := h.newSvc(ctx, slug)
+	if err != nil {
+		writeError(ctx, w, http.StatusNotFound, "player_not_found", err.Error())
+		return
+	}
+	if matchID == "" {
+		writeError(ctx, w, http.StatusBadRequest, "missing_match_id", "match_id est requis")
+		return
+	}
+	blob, contentType, err := svc.MapBackgroundImage(ctx, matchID)
+	if errors.Is(err, port.ErrMapBackgroundNotAvailable) {
+		writeError(ctx, w, http.StatusNotFound, "map_background_not_available",
+			"aucun fond de carte pour ce match")
+		return
+	}
+	if err != nil {
+		writeError(ctx, w, http.StatusInternalServerError, "replay_error", err.Error())
+		return
+	}
+	// Donnée de RÉFÉRENCE versionnée : elle ne change qu'à une re-cuisson, jamais en
+	// cours de session. `private` parce que la route est derrière l'ownership joueur.
+	// ETag fort + 304 centralisés (cache_http.go) : cf. plan étape 1, D7-D9. Le format
+	// (PNG ou WebP) est une propriété de la donnée, pas de cette route (D4) : le nom de
+	// la route reste `background.png` quel que soit le Content-Type réellement servi.
+	servirBlobAvecETag(w, r, blob, contentType, "private, max-age=3600")
 }

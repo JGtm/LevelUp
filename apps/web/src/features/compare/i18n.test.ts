@@ -67,3 +67,68 @@ describe('compare — résolution des libellés de métrique', () => {
     expect(fr.length).toBeGreaterThan(0)
   })
 })
+
+/**
+ * Parité FR/EN du dictionnaire ENTIER — pas seulement de `metrics` (2026-09-17, lot 4).
+ *
+ * Le test historique ne comparait que les clés de `metrics`, parce que c'était la seule table
+ * ouverte du dictionnaire. Le profil d'armes y ajoute onze entrées de premier niveau, dont
+ * quatre FONCTIONS : une clé oubliée en anglais serait alors `undefined` à l'appel, donc un
+ * plantage de rendu — et rien ne l'aurait vu. Le typage `Record<Locale, CompareText>` couvre
+ * les champs manquants ; ce test couvre ce qu'il ne voit pas, un champ présent mais VIDE.
+ */
+describe('compare — parité FR/EN du dictionnaire entier', () => {
+  it('mêmes clés de premier niveau, mêmes types, aucune valeur vide', () => {
+    const fr = getCompareText('fr') as unknown as Record<string, unknown>
+    const en = getCompareText('en') as unknown as Record<string, unknown>
+    expect(Object.keys(fr).sort()).toEqual(Object.keys(en).sort())
+    for (const key of Object.keys(fr)) {
+      expect(typeof fr[key], `type de ${key}`).toBe(typeof en[key])
+      if (typeof fr[key] === 'string') {
+        expect((fr[key] as string).trim(), `valeur FR de ${key}`).not.toBe('')
+        expect((en[key] as string).trim(), `valeur EN de ${key}`).not.toBe('')
+      }
+    }
+  })
+
+  it('les neuf clés du profil d’armes existent dans les deux langues', () => {
+    const attendues = [
+      'catWeapons',
+      'weaponsRangeKills',
+      'weaponsRangeDeaths',
+      'weaponsTopTitle',
+      'weaponsObserved',
+      'weaponsNoRange',
+      'weaponsPercentiles',
+      'weaponsNoMeasure',
+      'weaponsMatches',
+    ]
+    for (const locale of ['fr', 'en'] as const) {
+      const t = getCompareText(locale) as unknown as Record<string, unknown>
+      for (const key of attendues) expect(t[key], `${locale}.${key}`).toBeDefined()
+    }
+  })
+
+  /**
+   * FR SANS ANGLICISME (règle n°1 du dépôt). Le dictionnaire `compare` n'est PAS dans le
+   * périmètre du garde-rail global `lib/i18n/no-anglicisms.guard.test.ts` (consigné en
+   * Découverte au plan) : ce témoin local couvre au moins les libellés du profil d'armes,
+   * où la tentation est maximale (« kills », « range », « top weapons »).
+   */
+  it('les libellés FR du profil d’armes n’emploient aucun anglicisme', () => {
+    const fr = getCompareText('fr') as unknown as Record<string, unknown>
+    const interdits = /\b(kills?|assists?|range|top weapons?|streak|win rate)\b/i
+    const valeurs = [
+      fr.catWeapons,
+      fr.weaponsRangeKills,
+      fr.weaponsRangeDeaths,
+      fr.weaponsTopTitle,
+      fr.weaponsObserved,
+      fr.weaponsNoRange,
+      fr.weaponsPercentiles,
+      fr.weaponsNoMeasure,
+      (fr.weaponsMatches as (n: number) => string)(3),
+    ] as string[]
+    for (const v of valeurs) expect(v, `« ${v} »`).not.toMatch(interdits)
+  })
+})

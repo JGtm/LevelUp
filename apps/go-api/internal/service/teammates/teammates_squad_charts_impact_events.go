@@ -14,15 +14,27 @@ import (
 	"levelup/go-api/internal/analysis/narrative"
 	"levelup/go-api/internal/analysis/timeline"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/domain/highlightevent"
+	"levelup/go-api/internal/observability/timing"
 )
 
+// buildSquadImpactMatrix construit la matrice d'impact (badges par match et
+// par joueur de l'escouade). `allies` = équipe alliée du main par match
+// (Q32b), chargée UNE fois par GetPage et partagée avec le filtre composition
+// exacte et le profil d'intensité (CLAUDE.md n°6 : trois appelants, un seul
+// chargement). Le joueur principal est s.gamertag ; `teammates` = les coéquipiers
+// résolus (xuid), `selectedGamertags` = les lignes de la matrice (noms choisis).
+// Six paramètres : l'idiome des autres builders (ctx, rows, xuid, sélection,
+// teammates) + le chargement partagé, sans place pour regrouper sans struct ad hoc.
 func (s *TeammatesService) buildSquadImpactMatrix(
 	ctx context.Context,
 	allSquadRows []domain.SquadMatchRow,
 	mainXUID string,
-	mainGamertag string,
 	selectedGamertags []string,
+	teammates []domain.TeammateRow,
+	allies []domain.AllyParticipant,
 ) *domain.SquadImpactMatrix {
+	defer timing.FromContext(ctx).Section("impact_matrix")()
 	if len(allSquadRows) == 0 || len(selectedGamertags) == 0 {
 		return nil
 	}
@@ -57,46 +69,38 @@ func (s *TeammatesService) buildSquadImpactMatrix(
 	eventsByMatch := s.loadImpactEventsByMatch(
 		ctx, matchIDOrder, timeline.BuildTimelinesFromSquadRows(allSquadRows))
 
-	// 3. Charger les participants de l'ÉQUIPE ALLIÉE complète du main pour
-	//    chaque match (parité Python team_xuids dans compute_single_match_impact).
-	//    On passera tous ces alliés à analysis.ComputeMatchImpactFull → les
-	//    badges seront calculés en team-wide. Le filtre xuidToGT ci-dessous
-	//    ne contient QUE les squad members (main + selected) → les badges qui
-	//    tombent sur un allié non-squad sont silencieusement ignorés (cohérent
-	//    avec la sémantique de la matrice scoreboard où il n'y a pas de
-	//    ligne pour ces joueurs).
+	// 3. Indexer par match les participants de l'ÉQUIPE ALLIÉE complète du main
+	//    (parité Python team_xuids dans compute_single_match_impact). On passe
+	//    tous ces alliés à analysis.ComputeMatchImpactFull → les badges sont
+	//    calculés en team-wide. Le filtre xuidToGT ci-dessous ne contient QUE
+	//    les squad members (main + selected) → les badges qui tombent sur un
+	//    allié non-squad sont silencieusement ignorés (cohérent avec la
+	//    sémantique de la matrice scoreboard où il n'y a pas de ligne pour ces
+	//    joueurs). Sans xuid du main, aucune équipe n'est attribuable.
 	allyByMatch := map[string][]domain.AllyParticipant{}
 	if mainXUID != "" {
-		allies, err := s.repo.LoadMainTeamParticipants(ctx, mainXUID, matchIDOrder)
-		if err != nil {
-			slog.WarnContext(ctx, "teammates_impact_load_team_failed",
-				"main_xuid", mainXUID, "err", err)
-		}
 		for _, a := range allies {
 			allyByMatch[a.MatchID] = append(allyByMatch[a.MatchID], a)
 		}
 	}
 
-	// xuid → gamertag des squad members uniquement (main + selected). Sert à
-	// filtrer les badges affichés dans le scoreboard.
-	xuidToGT := map[string]string{}
-	gamertagSet := map[string]bool{mainGamertag: true}
+	// xuid → gamertag des squad members uniquement (main + coéquipiers résolus), sous le
+	// nom de leur ligne (le nom choisi). Sert à filtrer les badges affichés dans le
+	// scoreboard. L'APPARTENANCE SE DÉCIDE PAR XUID (teammates[].XUID, comme l'intensité :
+	// resolveSquadScope), jamais par égalité de gamertag : Q29 (noms choisis) et Q32b
+	// (équipe alliée) nomment chacune par l'annuaire de SES matchs, et un même xuid peut y
+	// porter deux casses — « madina » choisi, « Madina » dans Q32b : badges perdus (revue
+	// adversariale A, lot perf L9-go).
+	xuidToGT := resolveSquadScope(allSquadRows, s.gamertag, mainXUID, teammates).gtByXUID
+	gamertagSet := map[string]bool{s.gamertag: true}
 	for _, gt := range selectedGamertags {
 		gamertagSet[gt] = true
 	}
-	if mainXUID != "" {
-		xuidToGT[mainXUID] = mainGamertag
-	}
-	for _, allies := range allyByMatch {
-		for _, a := range allies {
-			if a.XUID == "" {
-				continue
-			}
-			if _, isSquad := gamertagSet[a.Gamertag]; isSquad {
-				xuidToGT[a.XUID] = a.Gamertag
-			}
-		}
-	}
+
+	// 3-bis. Badge « Voleur » : calculé sur l'escouade SEULE (tueur ET assistant amis),
+	//    depuis le journal des morts du film — hors périmètre team-wide de
+	//    ComputeMatchImpactFull, d'où un calcul à part.
+	thiefByMatch := s.loadThiefBadgesByMatch(ctx, matchIDOrder, xuidToGT)
 
 	// 4. Pour chaque match, calculer les badges via analysis.ComputeMatchImpactFull
 	//    et collecter les badges des joueurs de l'escouade uniquement.
@@ -128,6 +132,9 @@ func (s *TeammatesService) buildSquadImpactMatrix(
 		badges := analysis.ComputeMatchImpactFull(analysis.MatchImpactInput{
 			Events: evs, Participants: snaps,
 		})
+		if tb := thiefByMatch[mid]; tb != nil {
+			badges = append(badges, *tb)
+		}
 		// Filtrer aux badges des joueurs de l'escouade ET aux 8 badges du
 		// scoreboard impact (parité Python : top_gun n'est pas inclus dans
 		// la matrice impact même s'il est calculé). Les badges qui tombent
@@ -234,6 +241,7 @@ func (s *TeammatesService) buildSquadFirstBlood(
 	mainGamertag, mainXUID string,
 	teammates []domain.TeammateRow,
 ) []domain.FirstBloodPlayerSeries {
+	defer timing.FromContext(ctx).Section("first_blood")()
 	if s.repo == nil {
 		return nil
 	}
@@ -242,6 +250,9 @@ func (s *TeammatesService) buildSquadFirstBlood(
 	if len(matchIDs) == 0 || len(xuidsOrdered) == 0 {
 		return nil
 	}
+	// Métadonnées d'affichage (carte/mode/date) par match, pour le tooltip —
+	// DEC-4 (retours utilisateur 2026-08-29) : plus jamais l'uuid du match.
+	metaByMatch := squadFirstBloodMeta(allSquadRows)
 
 	// 2. Charger les events, puis les ramener au référentiel gameplay (T0 /
 	//    countdown pré-match retranché, §4.A-bis). CRITIQUE ici : le chart lit des
@@ -263,11 +274,11 @@ func (s *TeammatesService) buildSquadFirstBlood(
 	actors := make([]narrative.FirstEventActor, 0, len(events))
 	for _, e := range events {
 		switch e.EventType {
-		case analysis.EventTypeKill:
+		case highlightevent.EventTypeKill:
 			actors = append(actors, narrative.FirstEventActor{
 				MatchID: e.MatchID, XUID: e.XUID, IsKill: true, TimeMS: e.TimeMS,
 			})
-		case analysis.EventTypeDeath:
+		case highlightevent.EventTypeDeath:
 			actors = append(actors, narrative.FirstEventActor{
 				MatchID: e.MatchID, XUID: e.XUID, IsKill: false, TimeMS: e.TimeMS,
 			})
@@ -281,7 +292,8 @@ func (s *TeammatesService) buildSquadFirstBlood(
 	for _, xuid := range xuidsOrdered {
 		points := make([]domain.FirstBloodMatchPoint, 0, len(matchIDs))
 		for _, r := range byXUID[xuid] {
-			points = append(points, domain.NewFirstBloodPoint(r.MatchID, r.FirstKillMS, r.FirstDeathMS))
+			points = append(points, domain.NewFirstBloodPoint(
+				r.MatchID, r.FirstKillMS, r.FirstDeathMS, metaByMatch[r.MatchID]))
 		}
 		series := domain.FirstBloodPlayerSeries{Player: gtByXUID[xuid], Matches: points}
 		if series.HasEvents() {
@@ -292,6 +304,30 @@ func (s *TeammatesService) buildSquadFirstBlood(
 		return nil
 	}
 	return out
+}
+
+// squadFirstBloodMeta indexe carte/mode/date par match_id pour le tooltip du
+// chart « premier frag / première mort » (DEC-4). MapUI est déjà résolu sur
+// SquadMatchRow (Q30, enrichSquadMatchAssets tourne avant l'appel — cf.
+// teammates_service.go) ; ModeUI réutilise squadModeUI, le résolveur canonique
+// déjà partagé avec SquadMatchHistoryRow (teammates_service_assets.go) — ne
+// pas dupliquer sa logique pair-sinon-variant. allSquadRows porte plusieurs
+// lignes par match (une par coéquipier) : première occurrence retenue, comme
+// firstBloodScope ci-dessous (les métadonnées de match sont invariantes par
+// coéquipier).
+func squadFirstBloodMeta(rows []domain.SquadMatchRow) map[string]domain.FirstBloodMatchMeta {
+	meta := make(map[string]domain.FirstBloodMatchMeta, len(rows))
+	for _, m := range rows {
+		if _, ok := meta[m.MatchID]; ok {
+			continue
+		}
+		meta[m.MatchID] = domain.FirstBloodMatchMeta{
+			MapUI:     m.MapUI,
+			ModeUI:    squadModeUI(m),
+			StartTime: m.StartTime,
+		}
+	}
+	return meta
 }
 
 // firstBloodScope dérive le périmètre du chart « premier frag / première mort » :

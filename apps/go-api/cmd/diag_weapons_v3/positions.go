@@ -3,25 +3,24 @@ package main
 // positions.go — mode POSITIONS du CLI diag_weapons_v3.
 //
 // Pour chaque match (cache film présent), décode les positions joueurs keyframe
-// (positions.DecodeKeyframePositions, §N de .ai/RESEARCH_THEATER_RE.md) depuis le
+// (decfilm.DecodeKeyframePositions, §N de .ai/RESEARCH_THEATER_RE.md) depuis le
 // cache disque (chunks BRUTS → décompressés zlib ici), affiche un résumé par
-// match (nb positions, bornes x/y/z, split équipe best-effort), et persiste via
-// PlayerPositionsRepo si -write (DELETE-then-INSERT par match).
+// match (nb positions, bornes x/y/z, split équipe best-effort). INSPECTION SEULE depuis le
+// 2026-09-06 : `match_player_positions` est PROJETEE de l artefact de rejeu (decision 1),
+// plus ecrite par cet outil — le `-write` du mode positions est refuse.
 //
 // Décodage MATCH-LEVEL : pas d'attribution xuid (la delta-compression bloque
 // l'index par joueur, cf. positions/positions.go). team est best-effort (-1 si
 // inconnu).
 
 import (
-	"bytes"
-	"compress/zlib"
 	"context"
 	"fmt"
-	"io"
 	"math"
 
-	"levelup/go-api/internal/analysis/positions"
-	"levelup/go-api/internal/platform/duckdb"
+	"levelup/go-api/internal/domain/playerposition"
+	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
+	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
 )
 
 // runPositions traite le panel en mode POSITIONS, match par match.
@@ -34,7 +33,7 @@ func runPositions(ctx context.Context, c *conn, cfg runConfig, ids []matchRef) e
 	return nil
 }
 
-// processMatchPositions décode + résume (et persiste si cfg.write) les positions
+// processMatchPositions décode et résume les positions
 // d'un match.
 func processMatchPositions(ctx context.Context, c *conn, cfg runConfig, m matchRef) error {
 	if _, ok, err := loadRegistry(ctx, c.sqlDB, m.full); err != nil {
@@ -42,7 +41,7 @@ func processMatchPositions(ctx context.Context, c *conn, cfg runConfig, m matchR
 	} else if !ok {
 		return fmt.Errorf("absent de match_registry")
 	}
-	src, ok, err := newDiskFilmSource(cfg.cacheDir, m.short)
+	src, ok, err := filmcache.Open(cfg.cacheDir, m.short)
 	if err != nil {
 		return err
 	}
@@ -51,53 +50,48 @@ func processMatchPositions(ctx context.Context, c *conn, cfg runConfig, m matchR
 	}
 
 	chunks := collectPositionChunks(src)
-	pos := positions.DecodeKeyframePositions(chunks)
+	pos := decfilm.DecodeKeyframePositions(chunks)
 	printPositionsSummary(m, pos)
-
-	if cfg.write {
-		if err := writePositions(ctx, c, m.full, pos); err != nil {
-			return err
-		}
-		fmt.Printf("  [write] %d position(s) persistées sur match_player_positions\n", len(pos))
-	}
 	fmt.Println()
 	return nil
 }
 
-// collectPositionChunks lit + décompresse chaque chunk TYPE_2 du film et le
-// présente sous forme de positions.ChunkInput (Data = contenu DÉCOMPRESSÉ).
-func collectPositionChunks(src *diskFilmSource) []positions.ChunkInput {
-	var out []positions.ChunkInput
-	for _, meta := range src.Chunks() {
-		raw, ok := src.ChunkData(meta.Index)
-		if !ok {
+// collectPositionChunks lit + décompresse chaque chunk du film et le présente sous forme de
+// decfilm.ChunkInput (Data = contenu DÉCOMPRESSÉ).
+//
+// CE CHEMIN N'EST PAS CELUI DE LA CUISSON, et c'est délibéré (§7 de PLAN_CUISSON_PERF) :
+// `analysis/positions` sert la vue de match côté serveur, il porte son propre marcheur de
+// paquets et il n'est PAS migré vers `source`. D'où l'inflate local, à l'allowlist datée du
+// garde-rail (item 1.9). L'indice est ici la POSITION dans le manifeste, que
+// [filmcache.Source.Chunk] et [filmcache.Source.Meta] partagent.
+func collectPositionChunks(src *filmcache.Source) []decfilm.ChunkInput {
+	meta := src.Meta()
+	out := make([]decfilm.ChunkInput, 0, len(meta))
+	for i, m := range meta {
+		raw, err := src.Chunk(i)
+		if err != nil {
+			// Chunk absent du cache : le film est partiel. On le DIT (l'erreur porte le film et
+			// le chemin) et on continue — c'est la dégradation d'avant, sans le silence.
+			fmt.Printf("  chunk illisible : %v\n", err)
 			continue
 		}
-		out = append(out, positions.ChunkInput{
+		out = append(out, decfilm.ChunkInput{
 			Data:      decompressZlib(raw),
-			StartMS:   meta.StartMS,
-			ChunkType: meta.ChunkType,
+			StartMS:   m.StartMS,
+			ChunkType: m.ChunkType,
 		})
 	}
 	return out
 }
 
-// decompressZlib renvoie le contenu décompressé d'un chunk film (zlib, magic
-// 0x78). Un chunk non compressé est renvoyé tel quel.
-func decompressZlib(raw []byte) []byte {
-	if len(raw) >= 2 && raw[0] == 0x78 {
-		if z, err := zlib.NewReader(bytes.NewReader(raw)); err == nil {
-			if d, err2 := io.ReadAll(z); err2 == nil {
-				return d
-			}
-		}
-	}
-	return raw
-}
+// decompressZlib renvoie le contenu décompressé d'un chunk film. C'est [decfilm.Inflate] —
+// UN SEUL décompresseur dans le dépôt depuis le lot 2.4.2 — et la convention est la même :
+// un chunk non compressé (ou un flux tronqué) traverse tel quel.
+func decompressZlib(raw []byte) []byte { return decfilm.Inflate(raw) }
 
 // printPositionsSummary affiche le résumé d'un match : nb positions, bornes
 // x/y/z, split équipe best-effort.
-func printPositionsSummary(m matchRef, pos []positions.PlayerPosition) {
+func printPositionsSummary(m matchRef, pos []playerposition.PlayerPosition) {
 	fmt.Printf("[%s] %s — %d position(s) full-state décodées\n", m.short, m.full, len(pos))
 	if len(pos) == 0 {
 		fmt.Println("  Aucune position décodée (mode non filmé, footer absent, ou chunks TYPE_2 vides).")
@@ -116,7 +110,7 @@ type posBounds struct {
 }
 
 // boundsOf calcule les bornes min/max sur x/y/z. pos est supposé non vide.
-func boundsOf(pos []positions.PlayerPosition) posBounds {
+func boundsOf(pos []playerposition.PlayerPosition) posBounds {
 	b := posBounds{
 		xmin: pos[0].X, xmax: pos[0].X,
 		ymin: pos[0].Y, ymax: pos[0].Y,
@@ -131,7 +125,7 @@ func boundsOf(pos []positions.PlayerPosition) posBounds {
 }
 
 // positionTeamSplit compte les positions par team (0/1/inconnu).
-func positionTeamSplit(pos []positions.PlayerPosition) (t0, t1, unknown int) {
+func positionTeamSplit(pos []playerposition.PlayerPosition) (t0, t1, unknown int) {
 	for _, p := range pos {
 		switch p.Team {
 		case 0:
@@ -143,17 +137,6 @@ func positionTeamSplit(pos []positions.PlayerPosition) (t0, t1, unknown int) {
 		}
 	}
 	return
-}
-
-// writePositions persiste les positions via PlayerPositionsRepo (PlayerDB minimal :
-// seul Shared est requis, SharedReadDB() retombe sur LegacySharedReader).
-func writePositions(ctx context.Context, c *conn, matchID string, pos []positions.PlayerPosition) error {
-	if c.rwDB == nil {
-		return fmt.Errorf("connexion non-RW (write impossible)")
-	}
-	pdb := &duckdb.PlayerDB{Shared: c.rwDB}
-	repo := duckdb.NewPlayerPositionsRepo(pdb)
-	return repo.WriteMatch(ctx, matchID, pos)
 }
 
 func minF(a, b float32) float32 {

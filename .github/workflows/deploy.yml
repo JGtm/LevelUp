@@ -407,3 +407,48 @@ jobs:
             # armé plus haut, sur CE chemin comme sur tous les autres. Ne pas rajouter de
             # `docker compose up -d levelup-demo` ici — ce serait un second endroit à
             # maintenir, et surtout un chemin de sortie non couvert de plus.
+
+  # ── Job 4 : Ouvrier de rejeu 2D (second VPS, machine de calcul) ────────────
+  #
+  # CE JOB NE TOUCHE PAS LA PROD. Il met à jour un binaire Go sur une AUTRE machine
+  # (csstat) : ni docker, ni serveur web, ni base. L'ouvrier TIRE son travail en HTTPS
+  # (`POST /api/v1/internal/build-queue/claim`) et n'a aucun token Halo, aucun accès
+  # DuckDB, aucun port entrant — d'où un second VPS sans secret de production.
+  # Secrets DISTINCTS de ceux du web : VPS2_HOST / VPS2_SSH_KEY.
+  #
+  # POURQUOI `needs: [deploy]` ET PAS EN PARALLÈLE : l'ouvrier parle le protocole du
+  # serveur web. Le mettre à jour AVANT le web ferait dialoguer deux versions le temps du
+  # déploiement ; et si le web échoue, on ne veut surtout pas d'un ouvrier plus récent que
+  # la prod en face.
+  #
+  # LA CONDITION EST LA MÊME QUE CELLE DU JOB `deploy`, et pour les mêmes raisons (cf. son
+  # commentaire) : seule `main` déclenche un déploiement, `!failure()` bloque si un `needs`
+  # a échoué, `!cancelled()` ne déploie pas un run annulé. Elle n'est pas cosmétique — un
+  # `needs` légitimement SAUTÉ (soupape d'urgence) ferait sinon sauter ce job aussi.
+  #
+  # ÉTAT À LA LIVRAISON (2026-08-25) : l'unité systemd est installée DÉSACTIVÉE sur csstat.
+  # `scripts/deploy-worker.sh` met alors le binaire à jour et SORT EN 0 sans rien
+  # redémarrer — c'est le chemin nominal tant que l'activation n'a pas eu lieu. Ce job ne
+  # s'exécutera pour la première fois qu'après la fusion sur `main` (release v7.5).
+  # Séquence d'activation : docs/RUNBOOK_REPLAY_WORKER.md.
+  deploy-worker:
+    name: Deploy ouvrier de rejeu (csstat)
+    runs-on: ubuntu-latest
+    needs: [deploy]
+    if: ${{ github.ref == 'refs/heads/main' && !failure() && !cancelled() }}
+    # 50 min : même garde que les jobs ci-dessus, au-dessus du `command_timeout: 40m`.
+    timeout-minutes: 50
+
+    steps:
+      - name: Mise à jour de l'ouvrier via SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.VPS2_HOST }}
+          username: deploy
+          key: ${{ secrets.VPS2_SSH_KEY }}
+          # 40m, comme le job deploy et pour la même raison : la compilation est CGO
+          # (DuckDB est une dépendance transitive du module go-api) et le PREMIER build
+          # de cette machine se fera entièrement à froid, cache Go vide.
+          command_timeout: 40m
+          script: |
+            bash /opt/levelup/scripts/deploy-worker.sh

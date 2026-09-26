@@ -96,25 +96,6 @@ func TestStatsService_GetPage_Objective(t *testing.T) {
 	}
 }
 
-func TestStatsService_GetPage_Form(t *testing.T) {
-	now := time.Now()
-	repo := &mockStatsRepoForStats{
-		matches: []legacymatch.StatsMatchRow{
-			{MatchID: "m1", StartTime: now, Kills: 10, Deaths: 3, PerfScoreComputed: float64Ptr(1.2)},
-		},
-	}
-	svc := NewStatsService(repo).WithPlayerMatchesRepo(newStatsMockFromRows(repo.matches, nil), "Test")
-	svc.titleSlug = "halo_infinite"
-
-	resp, err := svc.GetPage(context.Background(), domain.StatsQueryRequest{Tab: "form"})
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if resp.Form == nil {
-		t.Fatal("expected Form tab to be populated")
-	}
-}
-
 func TestStatsService_GetPage_LUSR(t *testing.T) {
 	now := time.Now()
 	repo := &mockStatsRepoForStats{
@@ -183,7 +164,7 @@ func TestStatsService_GetPage_All(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if resp.WinLoss == nil || resp.Accuracy == nil || resp.Objective == nil || resp.Form == nil || resp.LUSR == nil {
+	if resp.WinLoss == nil || resp.Accuracy == nil || resp.Objective == nil || resp.LUSR == nil {
 		t.Error("expected all tabs to be populated for tab=all")
 	}
 }

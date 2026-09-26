@@ -11,7 +11,7 @@
 //   - runAchievementsSync + RunAchievementsOnly : sync Xbox achievements via
 //     TokenProvider (resolveAchievementsAccessToken → XSTS → SyncAchievements).
 //   - hasMatchesNeedingScoreRefresh : heuristique heal-only path.
-//   - resolveAchievementsAccessToken : store-first (ADR 0023) + résidus legacy.
+//   - resolveAchievementsAccessToken : MultiUserTokenStore seul (ADR 0023).
 //
 // Voir engine.go (struct SyncEngine + run()) pour le contexte.
 package sync
@@ -167,6 +167,7 @@ func (e *SyncEngine) runPostSyncPipeline(
 	client HaloClient,
 	insertedIDs []string,
 ) (r domain.PostSyncResult) {
+	defer duckdbpkg.InvalidatePlayerReadCaches(ctx, e.xuid, e.titleSlug) // perf L5b : fin du post-sync = lectures joueur cachées périmées (posé en premier, exécuté en dernier)
 	// Capture des panics du pipeline post-sync — avant ce defer un panic dans
 	// n'importe quelle étape (perf scores, LUSR, citations, etc.) tuait
 	// silencieusement tout le process server sans laisser de stack trace dans
@@ -269,14 +270,25 @@ func (e *SyncEngine) runPostSyncPipeline(
 	e.runScoringSteps(ctx, playerDB, shared, &r)
 	clock.lap("scoring", r.EngagementScoresComputed)
 
-	// 1.54 convergence events puis 1.55 weapon kills — les deux étapes « film »
-	// du post-sync, extraites dans engine_postsync_films.go (split COLLECT/FLUSH :
-	// le téléchargement du film ne tient plus le writer RW).
+	// 1.54 convergence events — étape « film » du post-sync, extraite dans
+	// engine_postsync_films.go (split COLLECT/FLUSH : le téléchargement du film ne
+	// tient plus le writer RW).
+	//
+	// L'ÉTAPE 1.55 (weapon kills) A ÉTÉ SUPPRIMÉE le 2026-09-01 avec son producteur :
+	// elle corrélait les tirs de l'attaquant avec l'instant du kill, une méthode que
+	// la source de dégât (1.57) remplace intégralement. Le numéro n'est pas réattribué.
 	films := postSyncFilmSteps{engine: e, playerDB: playerDB, shared: shared, client: client, result: &r}
 	films.runEventsConvergence(ctx)
 	clock.lap("convergence_events", r.ConvergedEvents)
-	films.runWeaponKills(ctx, insertedIDs)
-	clock.lap("weapon_kills", r.WeaponKillsProcessed)
+	// 1.57 source du kill : décodage du kill-feed — la SEULE origine de `assist_known`.
+	// AVANT 1.58, qui retrouve alors le film sur disque (cf. killcollector/postsync.go).
+	clock.lap("kill_source", films.runKillSource(ctx, insertedIDs))
+	// 1.58 artefacts de rejeu 2D (fil de l'eau LOCAL, lot 6 v7.5) : pont disque
+	// filmcache + construction replaybuild des matchs insérés, fenêtre
+	// replay_retention_months relue à chaque cycle. No-op si le hook n'est pas
+	// installé (VPS web : jamais). Cf. engine_postsync_replay.go.
+	films.runReplayArtifacts(ctx, insertedIDs)
+	clock.lap("replay_artifacts", 0)
 
 	// 1.56 PSA — convergence des personal_score_awards. Cas nominal : matchs
 	// delta-skippés (insérés en shared par un coéquipier) dont seul le

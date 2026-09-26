@@ -65,14 +65,18 @@ schema_version = 1
 "match.events.timeline"  = "degraded"
 "match.killfeed.per_kill" = "degraded"
 "match.events.spatial"   = "not_exposed"
-# Précision par arme : not_exposed, ET LA RAISON A CHANGÉ le 2026-08-02 (J4-4).
-# Ce n'est plus « la table n'est pas peuplée » : la passe de film écrit désormais les
-# tirs par arme (cf. film.weapon_shots). C'est que LE TAUX N'EST PAS PUBLIABLE — calculé
-# sur le corpus entier il INVERSE l'ordre MA40/Sidekick par rapport à la référence de
-# l'API. Ce n'est pas une imprécision, c'est une réponse fausse. 4 armes seulement
-# tiennent à ±0,03, et seulement sur les joueurs dont l'arme domine ≥ 80 % de leurs tirs.
-# Critère de bascule : une population de publication déclarée DANS LE CODE, et l'écart à
-# l'API publié à côté du taux (PLAN_BRANCHEMENT_KILLSOURCE §4.2).
+# Précision par arme : REMISÉE le 2026-09-01 (not_exposed). Le numérateur reconstruit du
+# film par l'APPARIEMENT tir↔dégât (action_weapon_fire 0xD2 ↔ damage_aftermath 0xC0 du même
+# attaquant, NOTE_ATTRIBUTION_ARME_TIR_2026-08-31) s'est révélé NON FIABLE au recalage : le
+# pairing rate ~40 %+ des touches et les armes automatiques ressortent à 0,9-3,3 % vs ~40 %
+# côté API (RECALAGE_WEAPON_ACCURACY_FILM_2026-09-01, commit 945c9fdb7). On REMISE : le code
+# backend (décodeur, mapper killcollector/hits.go, persister, table match_weapon_hit_distance)
+# est conservé, seule l'exposition est retirée. Cette clé data-level gate le numérateur film
+# (collectHits) : not_exposed ⇒ la passe film ne s'exécute pas pour Infinite, et le front
+# useCapability('weapon_accuracy') repasse à false (charts a/c masqués). La précision GLOBALE
+# reste servie par l'API. Reprise : piste compteur ECS (cf. .ai/V7.5/REGISTRE_REPORTS.md).
+# Cohérent avec la note « le taux est match.weapon.accuracy, et il est not_exposed » sur
+# film.weapon_shots plus bas.
 "match.weapon.accuracy"  = "not_exposed"
 # Libellés de playlist préfixés d'une catégorie matchmaking ("Arène delta : Héritage")
 # à retirer pour l'affichage (analysis.NormalizePlaylistLabel). Trait d'affichage du
@@ -102,3 +106,90 @@ schema_version = 1
 # ⚠ CETTE CLÉ GOUVERNE LE STOCKAGE, PAS UNE PUBLICATION : la table stocke des COMPTES,
 # elle ne publie aucun TAUX (le taux est match.weapon.accuracy, et il est not_exposed).
 "film.weapon_shots"      = "supported"
+# Positions monde (x,y,z) tueur/victime PAR KILL, décodées du MÊME film dans la MÊME
+# passe → shared.kill_positions (G.2bis, sync/killcollector). Troisième famille de
+# données du film : répond à OÙ, ni QUI (film.kill_source) ni QUOI (film.weapon_shots).
+# Plancher de couverture mesuré 75,8 % (36 artefacts, 1 994 couples) ; positions
+# absentes jamais approchées. ABSENTE pour Halo 5 : positions NATIVES dans le carnage
+# (match.events.spatial = supported), aucun décodeur de film requis.
+# ⚠ Clé FINE, même doctrine que ses deux sœurs — ne pas l'élargir.
+# ⚠ GOUVERNE LA CAPTURE (l'écriture). La lecture canonique (match.events.spatial) reste
+# not_exposed : elle désigne la TIMELINE spatiale cross-titre, un pipeline distinct que
+# personne n'alimente pour Infinite. Ce qui a changé depuis G.2bis, c'est qu'il existe
+# désormais des CONSOMMATEURS de kill_positions — la distance par arme d'un match (POC G.3,
+# KillDistanceRepo) puis la section « Portée par arme » de la Synthèse (WeaponRangeRepo,
+# 2026-09-06). Leur exposition PRODUIT ne se déclare pas ici : ce fichier ne connaît que le
+# vocabulaire data-level de games/adapter.go (toute autre clé est REJETÉE au boot par
+# games.CapabilityMapFromMappings). Elle se déclare en capability produit `weapon_range`,
+# dans internal/domain/title/registry.go — cf. la doc de CapWeaponRange, qui explique
+# pourquoi Halo 5, bien qu'il peuple kill_positions nativement, ne l'obtient pas.
+"film.kill_positions"    = "supported"
+# Résumé d'usage PAR MATCH ET PAR JOUEUR dérivé de l'ARTEFACT DE REJEU (tractions de
+# grappin, épisodes camo/surbouclier, poses et lâchers d'équipement, prises de socle
+# d'arme et de bonus) → shared.match_usage_players + match_usage_films
+# (décision utilisateur 2026-09-04 : persistance en BASE au sync, voie sidecar
+# abandonnée). Quatrième famille dérivée du film — mais PAS de la même passe : elle se
+# dérive de l'artefact QUI VIENT D'ÊTRE cuit (étape post-sync replaybuild), jamais d'un
+# second décodage. ABSENTE pour Halo 5 : pas de décodeur de film, donc aucun artefact,
+# donc rien à résumer — silence propre, pas une dégradation.
+# ⚠ Clé FINE, même doctrine que les trois film.* ci-dessus : elle gouverne la
+# PRODUCTION du résumé, pas ce qu'une page en affiche. Ne pas l'élargir.
+"film.usage_summary"     = "supported"
+# Les CINQ statistiques d'objectif de l'ASSAUT, reconstruites du FILM, par match et par
+# joueur (bomb_detonations, bomb_arms, bomb_grabs, time_as_bomb_carrier_seconds,
+# bomb_carriers_killed) → shared.match_bomb_stats (append-only + vue _latest).
+# POURQUOI PAS match.objective.stats : celle-ci gouverne le JOIN sur match_objective_stats,
+# table alimentée par le SYNC API — or l'API 343 ne publie AUCUNE statistique d'objectif
+# pour l'Assaut (famille BombStats du moteur = télémétrie Bond, jamais répliquée dans le
+# film ; mesure du 2026-09-04, cause unique du silence des deux côtés). Ces chiffres-là
+# viennent du décodeur de film, et la convention préfixe film.* tout ce qui en vient.
+# ABSENTE pour Halo 5 : pas de décodeur de film, donc rien à reconstruire — silence propre.
+# ⚠ Clé FINE, même doctrine que les quatre film.* ci-dessus : elle gouverne la PRODUCTION
+# et l'EXPOSITION de ces cinq statistiques, rien d'autre du mode Assaut. Ne pas l'élargir.
+"film.bomb_stats"        = "supported"
+# Les PRISES DE DRAPEAU BRUTES ET NETTES, lues du calque de drapeau de l'artefact, par match
+# et par joueur → shared.match_flag_grabs_net (append-only + vue _latest).
+# CE QUE « NETTE » VEUT DIRE : le compteur officiel `flag_grabs` compte chaque ramassage, donc
+# aussi le JONGLAGE (lancer le drapeau devant soi pour courir plus vite, puis le reprendre).
+# Les prises nettes replient ces allers-retours ; mesure du 2026-09-13 : 40 % du compteur
+# officiel en est. Rapport : `.ai/V7.5/RAPPORT_PRISES_NETTES_2026-09-13.md`.
+# POURQUOI PAS match.objective.stats : celle-ci gouverne le JOIN sur match_objective_stats,
+# alimentée par le SYNC API — or l'API ne publie qu'un TOTAL, sans la chronologie de portage
+# qui seule permet de reconnaître un jonglage. La grandeur vient du film.
+# ⚠ LA CLÉ NE SUFFIT PAS : le titre doit AUSSI déclarer sa fenêtre dans regulation.toml
+# ([flag_grabs_net] flag_juggle_window_s). Les deux disent deux choses — « je sais lire ce
+# calque » et « voici ma règle » — et l'absence de l'une donne le même silence propre.
+# ABSENTE pour Halo 5 : pas de décodeur de film, donc aucun calque de drapeau à lire.
+"film.flag_grabs_net"    = "supported"
+
+# film.weapon_tiers — les PRISES DE SOCLE VENTILEES PAR NIVEAU D'ARME (base / terrain /
+# puissance / non classe / bonus), par match et par joueur -> shared.match_pad_pickups_by_tier
+# (append-only + vue _latest).
+#
+# Le niveau vient de la CARTE : l'emplacement que le fichier Forge pose (ratelier ou socle de
+# puissance) confirme le socle du match a moins d'un metre ; le niveau « base » vient de
+# l'equipement de DEPART du film. Jamais du nom ni du role de l'arme — mesure du 2026-09-14 :
+# 70 socles sur 669 portent une arme de role « lourd » sur un ratelier, toutes nominales.
+#
+# ⚠ Clé FINE, même doctrine que les six film.* ci-dessus : elle gouverne la PRODUCTION et
+# l'EXPOSITION de cette ventilation, rien d'autre des socles.
+#
+# ⚠ La capability ne suffit pas : les modes a departs aleatoires se declarent dans
+# regulation.toml ([weapon_tiers] random_start_mode_tokens). Leur absence n'eteint rien —
+# elle fait seulement qu'aucun mode n'est tenu pour aleatoire.
+"film.weapon_tiers"      = "supported"
+# L'ARTEFACT DE REJEU 2D lui-même (data/cache/replays/halo_infinite/{match}.json) : trame de
+# positions, kill-feed recalé, score, roster, calques d'objectif. C'est la SOURCE dont les
+# quatre dérivés du film sont les projections (film.usage_summary, film.bomb_stats, la
+# timeline d'objectif et les positions keyframe de la Match View).
+# ABSENTE pour Halo 5 (not_exposed) : autre format de film, aucun décodeur, donc aucun
+# artefact possible — silence propre, pas une dégradation.
+# ⚠ ELLE GOUVERNE LA PRODUCTION, ET L'AFFICHAGE SUIT (décision utilisateur 2026-09-05) :
+# sans la clé, l'étape post-sync sync/replayartifacts ne met RIEN en file et ne cuit RIEN,
+# et les deux loaders du film de la Match View (/objective-events, /positions) ne sont pas
+# câblés — les routes rendent un 503 capability_not_supported au lieu d'un 200 [] trompeur.
+# La porte d'AFFICHAGE de la page de rejeu est la capability title-level `replay`
+# (domain/title/registry.go), comme match.objective.stats / objective_stats.
+# ⚠ Clé FINE, même doctrine que les cinq film.* ci-dessus : elle gouverne l'ARTEFACT, pas ce
+# que tel ou tel dérivé en tire — chacun garde la sienne. Ne pas l'élargir.
+"film.replay_artifact"   = "supported"

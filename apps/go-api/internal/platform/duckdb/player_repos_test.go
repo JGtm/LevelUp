@@ -136,6 +136,10 @@ func seedPlayerSchema(t *testing.T, db *DB) { //nolint:funlen // liste DDL plate
 			playlist_name VARCHAR, playlist_name_fr VARCHAR,
 			is_firefight BOOLEAN DEFAULT FALSE, is_ranked BOOLEAN DEFAULT FALSE,
 			team_0_score INTEGER, team_1_score INTEGER,
+			-- Manches (ADR 0032, migration add_team_rounds_to_match_registry) :
+			-- SMALLINT comme en prod, NULL = inconnu. Lues par les queries qui
+			-- projettent r.team_0_rounds_won via v_match_full / match_registry.
+			team_0_rounds_won SMALLINT, team_1_rounds_won SMALLINT, rounds_total SMALLINT,
 			duration_seconds INTEGER,
 			playable_duration_seconds INTEGER,
 			-- season_id ajouté par la migration shared_backfill_is_ranked_and_season
@@ -151,6 +155,8 @@ func seedPlayerSchema(t *testing.T, db *DB) { //nolint:funlen // liste DDL plate
 			time_played_seconds INTEGER, team_mmr DOUBLE, enemy_mmr DOUBLE,
 			kills_expected DOUBLE, deaths_expected DOUBLE,
 			kills_stddev DOUBLE, deaths_stddev DOUBLE,
+			joined_in_progress BOOLEAN, left_in_progress BOOLEAN,
+			first_joined_time TIMESTAMPTZ, last_leave_time TIMESTAMPTZ,
 			rank INTEGER, is_ranked BOOLEAN DEFAULT FALSE, team_id INTEGER DEFAULT 0,
 			avg_life_seconds DOUBLE,
 			shots_fired INTEGER, shots_hit INTEGER,
@@ -268,6 +274,10 @@ func seedPlayerSchema(t *testing.T, db *DB) { //nolint:funlen // liste DDL plate
 			id BIGINT, written_at TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP))`,
 		// Vue latest (miroir de schema.go) : player_matches_repo.go la requête.
 		`CREATE OR REPLACE VIEW match_skill_rank_latest AS SELECT * FROM match_skill_rank`,
+		// Vue PAR TYPE (miroir de la migration player_msr_view_latest_by_type_v1,
+		// 2026-09-13) : Q8LUSRHistoryPlayer la lit pour servir un checkpoint par
+		// (match_id, rating_type) sans arbitrer CSR contre LUSR.
+		`CREATE OR REPLACE VIEW match_skill_rank_latest_by_type AS SELECT * FROM match_skill_rank`,
 		// match_csrs (shared, append-only) : CSR par match/participant — source
 		// unique de season_id + measurement_matches_remaining (cf.
 		// loadMatchCSRMetaForMatches). Ces colonnes ne sont PAS sur
@@ -312,6 +322,11 @@ func seedPlayerSchema(t *testing.T, db *DB) { //nolint:funlen // liste DDL plate
 			time_as_vip_seconds DOUBLE, longest_time_as_vip_seconds DOUBLE,
 			written_at TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP))`,
 		migration.MatchObjectiveStatsLatestViewSQL("shared.match_objective_stats"),
+		// match_bomb_stats (shared, append-only) : les cinq statistiques d Assaut RECONSTRUITES
+		// DU FILM. DDL NON RECOPIEE — la migration l expose (MatchBombStatsTableSQL), pour que
+		// la fixture ne puisse pas deriver de la production sans que rien ne rougisse.
+		migration.MatchBombStatsTableSQL("shared.match_bomb_stats"),
+		migration.MatchBombStatsLatestViewSQL("shared.match_bomb_stats"),
 		// Schéma append-only (Phase 2.G refactor ART) + vue latest
 		`CREATE SEQUENCE pcs_seq START 1`,
 		`CREATE TABLE player_csr_snapshots (
@@ -327,7 +342,7 @@ func seedPlayerSchema(t *testing.T, db *DB) { //nolint:funlen // liste DDL plate
 		`CREATE OR REPLACE VIEW player_csr_snapshots_latest AS
 			SELECT * FROM player_csr_snapshots
 			QUALIFY ROW_NUMBER() OVER (PARTITION BY playlist_id, season_id ORDER BY written_at DESC, id DESC) = 1`,
-		// match_citations : append-only GÉNÉRATION (#23046 Phase 2) — generation_id
+		// match_citations : append-only GÉNÉRATION (#23645 Phase 2) — generation_id
 		// + vue _latest (DENSE_RANK par match_id). Pas de colonne id en fixture pour
 		// préserver les INSERT positionnels VALUES (match_id, citation_name_norm,
 		// value). Les readers (queries_citations, home_citations) lisent _latest.
@@ -371,7 +386,7 @@ func seedPlayerSchema(t *testing.T, db *DB) { //nolint:funlen // liste DDL plate
 			t.Fatalf("seedPlayerSchema DDL: %v\nSQL: %s", err, q)
 		}
 	}
-	// Append-only #23046 : convertit player_match_enrichment (id PK + stage + written_at)
+	// Append-only #23645 : convertit player_match_enrichment (id PK + stage + written_at)
 	// et crée la vue player_match_enrichment_latest (lue par tous les readers du package).
 	if err := migration.EnsurePlayerMatchEnrichmentAppendOnly(db.SQLDb()); err != nil {
 		t.Fatalf("EnsurePlayerMatchEnrichmentAppendOnly: %v", err)
@@ -574,6 +589,9 @@ func seedSharedDBSchema(t *testing.T, db *DB) {
 			playlist_name VARCHAR, playlist_name_fr VARCHAR,
 			is_firefight BOOLEAN DEFAULT FALSE, is_ranked BOOLEAN DEFAULT FALSE,
 			team_0_score INTEGER, team_1_score INTEGER,
+			-- Manches (ADR 0032, migration add_team_rounds_to_match_registry) :
+			-- SMALLINT comme en prod, NULL = inconnu.
+			team_0_rounds_won SMALLINT, team_1_rounds_won SMALLINT, rounds_total SMALLINT,
 			duration_seconds INTEGER,
 			playable_duration_seconds INTEGER)`,
 		// colonnes alignées sur seedPlayerSchema pour
@@ -588,6 +606,8 @@ func seedSharedDBSchema(t *testing.T, db *DB) {
 			time_played_seconds INTEGER, team_mmr DOUBLE, enemy_mmr DOUBLE,
 			kills_expected DOUBLE, deaths_expected DOUBLE,
 			kills_stddev DOUBLE, deaths_stddev DOUBLE,
+			joined_in_progress BOOLEAN, left_in_progress BOOLEAN,
+			first_joined_time TIMESTAMPTZ, last_leave_time TIMESTAMPTZ,
 			rank INTEGER, is_ranked BOOLEAN DEFAULT FALSE, team_id INTEGER DEFAULT 0,
 			avg_life_seconds DOUBLE,
 			shots_fired INTEGER, shots_hit INTEGER,

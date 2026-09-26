@@ -39,7 +39,9 @@ type MatchViewHeader struct {
 	StartTime      *time.Time `json:"start_time,omitempty"`
 	StartTimeLabel string     `json:"start_time_label"`
 	OutcomeCode    *int       `json:"outcome_code,omitempty"`
-	OutcomeLabel   string     `json:"outcome_label"`
+	// Outcome : clé canonique d'issue (win|loss|tie|dnf, MT-06) ; vide si non mappée. Le
+	// web localise via useOutcomeLabel — jamais de texte servi ici (2026-09-07).
+	Outcome string `json:"outcome,omitempty" enum:"win,loss,tie,dnf"`
 	// OutcomeColor : valeur hex legacy. Deprecated (anti-pattern CLAUDE.md
 	// règle 20 — aucun hex côté backend). Utiliser OutcomeColorToken pour
 	// les nouveaux consommateurs front qui appellent tokenCssVar().
@@ -49,6 +51,25 @@ type MatchViewHeader struct {
 	// tokenCssVar(token). Empty si outcome inconnu.
 	OutcomeColorToken string `json:"outcome_color_token,omitempty"`
 	ScoreLabel        string `json:"score_label,omitempty"`
+	// ScoreKind dit CE QUE porte ScoreLabel : "points" (le score du mode rendu par l'API)
+	// ou "rounds" (des MANCHES gagnées). Sur les variantes déclarées dans
+	// regulation.toml [rounds_decide], le cumul de points peut donner la victoire au
+	// perdant — c'est le compte de manches qui tranche (mesure du 2026-08-29,
+	// `.ai/V7.5/RAPPORT_MANCHES_2026-08-29.md`). Vide = aucun score affiché.
+	// Le client s'en sert pour LOCALISER la mention « manches » : le serveur ne met aucun
+	// mot de langue dans le libellé.
+	ScoreKind string `json:"score_kind,omitempty"`
+	// ScoreMine / ScoreTheirs : les DEUX NOMBRES derrière ScoreLabel, dans l'unité de
+	// ScoreKind (des points, ou des manches gagnées). Le libellé suffit à l'en-tête, mais
+	// pas au rejeu : son écran de fin colore chaque camp séparément et a donc besoin des
+	// nombres, pas d'une chaîne à découper. Nil = aucun score connu.
+	ScoreMine   *int `json:"score_mine,omitempty"`
+	ScoreTheirs *int `json:"score_theirs,omitempty"`
+	// ScorePointsLabel : le score de l'API « X - Y », renseigné UNIQUEMENT quand
+	// ScoreKind vaut "rounds" — la vue match l'affiche en petit et grisé à côté du compte
+	// de manches (arbitrage utilisateur du 2026-08-29). Vide sinon : en lecture points, ce
+	// serait la même valeur que ScoreLabel.
+	ScorePointsLabel string `json:"score_points_label,omitempty"`
 	// DominanceFlag : true si un badge narratif (domination/humiliation/etc.)
 	// s'applique à ce match. Maintenu pour compatibilité ascendante avec les
 	// consommateurs front V0 qui n'attendent qu'un booléen.
@@ -63,7 +84,16 @@ type MatchViewHeader struct {
 	MapID          string                   `json:"map_id,omitempty"`
 	ModeUI         string                   `json:"mode_ui"`
 	PlaylistLabel  string                   `json:"playlist_label"`
-	PerfDisplay    string                   `json:"performance_display"`
+	// ModeCategory : catégorie custom de mode (Assassin/Fiesta/Super Fiesta/Husky
+	// Raid/BTB/Ranked/Firefight/Other) résolue depuis pair_name par la taxonomie du
+	// titre (analysis.ModeTaxonomy, impl. halo_infinite.InferModeCategoryFromPairName).
+	// CONTRAIREMENT à ModeUI (le sous-mode affiché, qui peut perdre l'identité
+	// playlist : "Fiesta:Slayer on X" → "Assassin"), cette catégorie la CONSERVE
+	// ("Fiesta:Slayer on X" → "Fiesta") : c'est le champ à corréler pour savoir si un
+	// match EST une Fiesta, pas un libellé à deviner. Vide si le titre n'a pas cette
+	// notion ou si pair_name est absent — le consommateur se replie alors sur ModeUI.
+	ModeCategory string `json:"mode_category,omitempty"`
+	PerfDisplay  string `json:"performance_display"`
 	// PerfColor : valeur hex legacy. Deprecated (cf. OutcomeColor).
 	PerfColor *string `json:"performance_color,omitempty"`
 	// PerfColorToken : token sémantique perf-tier-1..5 (1=meilleur, 5=pire).
@@ -102,6 +132,38 @@ type MatchViewHeader struct {
 	// front ne pose le lien « Rejeu 2D » que quand ce booléen est vrai, sans quoi
 	// il mènerait à un 404. Faux aussi quand le titre ne produit pas de rejeu.
 	ReplayAvailable bool `json:"replay_available"`
+	// ScoreTimelineKind : COMMENT le bloc « Score dans le temps » de la vue match doit se
+	// montrer sur ce mode. Deux valeurs servies, et une troisième qui se dit en se taisant :
+	//
+	//	"hidden"  le mode marque au FRAG (Slayer) : le client n'affiche RIEN — la courbe
+	//	          redirait « Frags cumulés », juste au-dessus dans le même onglet.
+	//	"events"  le mode marque en 3 à 5 points sur tout le match (drapeau, colline,
+	//	          bombe) : le client affiche des BARRES verticales aux instants de marque,
+	//	          une courbe sur cinq paliers étant un escalier vide.
+	//	VIDE      la COURBE en escalier — le comportement d'avant le 2026-09-03, et le repli
+	//	          de tout ce qui n'est pas déclaré : titre sans table `[score_timeline]`,
+	//	          mode non déclaré, `pair_name` absent.
+	//
+	// LE REPLI NE S'ÉCRIT PAS : `curve` étant le défaut du client, le servir explicitement
+	// serait redire le défaut sur chaque match. Le champ ne porte que ce qui CHANGE quelque
+	// chose — d'où `omitempty`.
+	//
+	// La règle vit en DONNÉE (config/titles/{slug}/mappings/regulation.toml), appariée sur
+	// le `pair_name` BRUT (suffixe de carte retiré), jamais dans un `slug ==`.
+	ScoreTimelineKind string `json:"score_timeline_kind,omitempty"`
+	// T0Ms : durée du countdown pré-match, en millisecondes (real_start_time −
+	// start_time_utc, cf. domain.MatchTimeline). 0 quand elle est inconnue.
+	//
+	// POURQUOI CE CHAMP EST PUBLIÉ. Les events servis par cette page sont recalés sur
+	// le début du GAMEPLAY (correctMatchViewEventsT0) tandis que le film — donc le rejeu
+	// 2D — part du début du MATCH, countdown compris. Sans cet offset, un consommateur
+	// qui pose les deux sur la même timeline décale les kills de ~18 à 28 s. Mesuré sur
+	// 000d5950 : l'écart médian entre fins de vie du rejeu et morts du registre vaut
+	// -0,6 s à offset nul, contre 3,1 s en retranchant T0 une seconde fois.
+	//
+	// C'est un OFFSET, pas une durée d'affichage : rien ne l'affiche, il sert à remettre
+	// deux horloges l'une sur l'autre (`msFilm = event_time_ms + t0_ms`).
+	T0Ms int64 `json:"t0_ms,omitempty"`
 }
 
 // MatchViewRank : rang CSR ou LUSR pour ce match.
@@ -119,7 +181,7 @@ type MatchViewRank struct {
 // MatchViewDominanceBadge : badge narratif typé exposé dans le header.
 // Mirror frontend du narrative.DominanceBadge Go (LabelKey + ColorToken).
 type MatchViewDominanceBadge struct {
-	// Flag : valeur numérique de canonical.DominanceFlag (1..5 pour les 5
+	// Flag : valeur numérique de canonical.DominanceFlag (1..7 pour les 7
 	// badges narratifs ; 0 ou inconnu n'est pas exposé — le pointeur est nil).
 	Flag int `json:"flag"`
 	// LabelKey : clé i18n (ex. "narrative.dominance.domination").
@@ -153,7 +215,9 @@ type MatchSummaryKpis struct {
 
 // MatchPersonalResult : résultat personnel du joueur.
 type MatchPersonalResult struct {
-	OutcomeLabel string `json:"outcome_label"`
+	// Outcome : clé canonique d'issue (win|loss|tie|dnf, MT-06) ; vide si non mappée. Le
+	// web localise via useOutcomeLabel — jamais de texte servi ici.
+	Outcome string `json:"outcome,omitempty" enum:"win,loss,tie,dnf"`
 	// OutcomeColor : hex legacy (deprecated, cf. MatchViewHeader.OutcomeColor).
 	OutcomeColor string `json:"outcome_color"`
 	// OutcomeColorToken : token sémantique (cf. MatchViewHeader.OutcomeColorToken).
@@ -248,7 +312,96 @@ type MatchHighlightEvent struct {
 	EventTimeMS   *int64  `json:"event_time_ms,omitempty"`
 	ActorXUID     *string `json:"actor_xuid,omitempty"`
 	ActorGamertag *string `json:"actor_gamertag,omitempty"`
+
+	// ActorTeamID : équipe de l'acteur (le TUEUR sur un event `kill`), résolue depuis le
+	// scoreboard du match. Nil si l'acteur n'y figure pas (bot sans ligne, joueur parti).
+	//
+	// Publié pour que le kill feed colore le nom et l'icône avec la couleur d'IDENTITÉ de
+	// l'équipe — la même que l'en-tête du scoreboard, Eagle bleu contre Cobra rouge — et
+	// pas seulement un allié/ennemi binaire.
+	ActorTeamID *int `json:"actor_team_id,omitempty"`
+
+	// WeaponKey / WeaponLabel / WeaponImageURL / WeaponImageTinted : l'ARME DU KILL.
+	//
+	// Peuplés seulement pour les events `kill` dont la source de dégât est connue ET
+	// identifiée sans ambiguïté (cf. domain.KillSourceRaw et
+	// games.TitleAssetURLAdapter.KillSourceIcon). Tous vides sinon : le feed affiche
+	// alors le kill sans icône. C'est le repli assumé du lot — mesuré, compté, jamais
+	// remplacé par l'icône d'une autre arme.
+	//
+	// WeaponLabel est un nom PROPRE (BR75, Needler), pas un libellé traduit : il vient de
+	// la table de nommage embarquée du titre, pas d'un dictionnaire i18n.
+	WeaponKey         string `json:"weapon_key,omitempty"`
+	WeaponLabel       string `json:"weapon_label,omitempty"`
+	WeaponImageURL    string `json:"weapon_image_url,omitempty"`
+	WeaponImageTinted bool   `json:"weapon_image_tinted,omitempty"`
+
+	// Headshot : le dégât fatal était-il un tir à la tête ? Peuplé ssi la source de dégât est
+	// connue ET non ambiguë (cf. domain.KillSourceRaw.Headshot) — INDÉPENDAMMENT de la
+	// résolution d'icône ci-dessus : une catégorie peut être connue même quand
+	// `TitleAssetURLAdapter.KillSourceIcon` ne trouve aucune image pour le tag. Nil = non
+	// mesurable (film absent, passe non publiable, ou double kill ambigu sur la catégorie),
+	// JAMAIS false — même doctrine que KillerDamagePct ci-dessous. G.1 (2026-08-30) : filtre
+	// STRICT `source_category = 'Headshot'` uniquement (killscope.IsHeadshotCategory) ;
+	// `HeadshotMultiplier` fait chuter l'accord oracle de 99,3 % à 84,4 %, JAMAIS l'inclure.
+	Headshot *bool `json:"headshot,omitempty"`
+
+	// AssistState : l'état de la lecture d'ASSISTANCE de ce kill — TROIS valeurs qui ne
+	// se confondent JAMAIS (décodeur de film, cf. domain.KillAssistRaw) :
+	//   ""      (champ omis)  ON NE SAIT PAS — aucun kill-event apparié à cette mort ;
+	//   "none"                MESURÉ : la mort porte son événement, sans assistant ;
+	//   "named"               assistant nommé (AssistGamertag + parts de dégâts).
+	// Écrire « pas d'assistant » quand c'est « on ne sait pas » est le mensonge que cette
+	// énumération existe pour empêcher : le front n'affiche un état neutre que sur "none".
+	AssistState string `json:"assist_state,omitempty"`
+	// AssistGamertag : l'assistant, résolu comme ActorGamertag. Peuplé ssi AssistState
+	// vaut "named".
+	AssistGamertag string `json:"assist_gamertag,omitempty"`
+	// AssistTeamID : équipe de l'assistant, résolue depuis le scoreboard comme
+	// ActorTeamID. Nil si l'assistant n'y figure pas.
+	AssistTeamID *int `json:"assist_team_id,omitempty"`
+	// KillerDamagePct / AssistDamagePct : parts de dégâts en pourcentage ENTIER, telles
+	// que le film les porte — NON bornées à 100 (mesures jusqu'à 228, dégât excédentaire
+	// non établi). Nil = non mesurée, jamais 0. KillerDamagePct peut exister sur un kill
+	// "none" (la part du tueur se mesure dès que la mort porte son événement).
+	KillerDamagePct *int `json:"killer_damage_pct,omitempty"`
+	AssistDamagePct *int `json:"assist_damage_pct,omitempty"`
+
+	// VictimXUID / VictimGamertag / VictimTeamID : la VICTIME du kill, jointe depuis
+	// killer_victim_pairs par la clé (tueur, instant) — la même que l'arme et
+	// l'assistance, corrigée T0 des deux côtés. Mesuré sur 000d5950 : 93/93 appariés,
+	// 0 clé dupliquée (bijection). Tous absents quand la paire manque ou quand deux
+	// victimes distinctes partagent la même clé (double kill au même millisecond) :
+	// on n'en nomme alors AUCUNE — une victime fausse est indétectable à l'œil.
+	VictimXUID     *string `json:"victim_xuid,omitempty"`
+	VictimGamertag *string `json:"victim_gamertag,omitempty"`
+	VictimTeamID   *int    `json:"victim_team_id,omitempty"`
+
+	// L'IDENTITÉ DE LA MÉDAILLE — events `medal` uniquement.
+	//
+	// MedalName est le nom ANGLAIS lu dans le film (highlight_events.raw_json,
+	// champ medal_name) : c'est la quantité MESURÉE, elle ne dépend d'aucune table.
+	// MedalNameID / MedalLabel / MedalDescription en sont la résolution locale-aware
+	// via medal_definitions (metadata.duckdb), MedalImageURL le visuel du référentiel
+	// (TitleAssetURLAdapter.MedalImageURL). Résolution absente → seuls MedalName
+	// voyage et le front l'écrit en toutes lettres — jamais le visuel d'une autre
+	// médaille.
+	MedalName        string `json:"medal_name,omitempty"`
+	MedalNameID      *int64 `json:"medal_name_id,omitempty"`
+	MedalLabel       string `json:"medal_label,omitempty"`
+	MedalDescription string `json:"medal_description,omitempty"`
+	MedalImageURL    string `json:"medal_image_url,omitempty"`
 }
+
+// États de la lecture d'assistance d'un kill (MatchHighlightEvent.AssistState). L'état
+// « on ne sait pas » est l'ABSENCE de valeur — il n'a pas de constante, et c'est voulu :
+// personne ne doit pouvoir l'écrire par accident.
+const (
+	// AssistStateNone : mesuré, pas d'assistant sur cette mort.
+	AssistStateNone = "none"
+	// AssistStateNamed : un assistant est nommé, avec sa part de dégâts quand elle est lue.
+	AssistStateNamed = "named"
+)
 
 // MatchTugOfWarBin : tranche temporelle de la timeline tug-of-war.
 type MatchTugOfWarBin struct {
@@ -323,6 +476,20 @@ type MatchCombatTab struct {
 	// (match_view.18). Vide si killer_victim_pairs n'est pas peuplé.
 	KillerVictim []MatchKillerVictimPair `json:"killer_victim,omitempty"`
 
+	// AssistPairs : paires (assistant → tueur assisté) + la PORTÉE de leur mesure.
+	// NIL quand le match n'a aucune ligne de film : l'UI ne rend alors rien. Le bloc
+	// présent avec MeasuredDeaths à 0 est un état DIFFÉRENT (« non mesuré »), cf.
+	// domain.MatchAssistPairs.
+	AssistPairs *MatchAssistPairs `json:"assist_pairs,omitempty"`
+
+	// Riposte : « la mort de X a été vengée dans les 5 s, par Y » — par mort (victime,
+	// vengeur, délai, camp) et par joueur (ses morts vengées, les ripostes qu'il a
+	// portées). Des COMPTES, jamais un taux (D21 : un taux sur 11 morts est du bruit).
+	// NIL quand le match ne porte aucune ligne de journal des morts : sans ordre des
+	// morts il n'y a rien à dire, et l'UI ne rend rien. Même source déjà chargée que le
+	// chart antagoniste — aucune requête de plus.
+	Riposte *MatchRiposteBlock `json:"riposte,omitempty"`
+
 	// ImpactRoles (Phase 1 méta-plan § 6.1.3 — pilote MatchView aligné
 	// fondations narrative). 8 rôles narratifs typés via
 	// narrative.IdentifyImpactRoles, en parallèle des 4 ImpactBadges
@@ -341,6 +508,23 @@ type MatchCombatTab struct {
 	// scoreboard. Nil si le viewer n'a aucun kill (le front rend null). Cf.
 	// .ai/V7/PLAN_FRAG_DISTRIBUTION_V2.md P3.
 	FragDistribution *FragDistribution `json:"frag_distribution,omitempty"`
+
+	// KillDistanceByWeapon : POC (LOT G.3, 2026-08-30, plan retours-utilisateur
+	// §3bis DEC-8) — kills mesurés et distance tueur-victime moyenne par arme,
+	// PAR JOUEUR (pas seulement le viewer), pour ce match. Vide/nil si aucun kill
+	// n'a de position mesurée (titre/serveur sans capture positions, backfill non
+	// joué, ou couverture du match sous le plancher mesuré 75,8 %) — dégradation
+	// propre, jamais d'erreur : le front n'affiche alors aucune carte. Périmètre
+	// fermé : arme et distance de l'ASSISTANT hors scope (cadrage utilisateur).
+	KillDistanceByWeapon []MatchKillDistancePlayer `json:"kill_distance_by_weapon,omitempty"`
+
+	// Elevation : le DÉNIVELÉ des engagements du match, un point par frag et par mort du
+	// joueur consulté (lot Y, décision D24). MÊME source que KillDistanceByWeapon, lue au
+	// grain du frag au lieu d'être agrégée par (xuid, arme) : ici la clé est le CÔTÉ, pas
+	// l'arme — « où je frague, où je meurs ». NIL quand le match n'a aucune position
+	// mesurée : la carte ne s'affiche pas, elle n'affiche pas un nuage vide.
+	// Détail de la grandeur et convention de signe : domain/match_elevation.go.
+	Elevation *MatchElevationBlock `json:"elevation,omitempty"`
 }
 
 // ---------------------------------------------------------------------------
@@ -371,6 +555,10 @@ type PlayerWeaponKillRow struct {
 	Kills    int    `json:"kills"`
 	Label    string `json:"label,omitempty"`
 	ImageURL string `json:"image_url,omitempty"`
+	// ImageTinted : l'icône est un MASQUE (dessin porté par l'alpha, sans couleur
+	// propre) que le front doit teindre, et non une image finie. Le front ne peut pas
+	// le deviner depuis l'URL — cf. games.TitleAssetURLAdapter.WeaponImageIsTinted.
+	ImageTinted bool `json:"image_tinted,omitempty"`
 }
 
 // MatchScoreboardSkillRank : skill rank d'un joueur pour ce match (extrait
@@ -401,8 +589,15 @@ type MatchScoreboardRow struct {
 	TeamColor string `json:"team_color,omitempty"`
 	IsMe      bool   `json:"is_me"`
 	IsBot     bool   `json:"is_bot,omitempty"`
-	IsMVP     bool   `json:"is_mvp,omitempty"`
-	IsLVP     bool   `json:"is_lvp,omitempty"`
+	// Participation (API PlayerParticipationInfo) : QUI a rejoint/quitté EN COURS de
+	// partie, et QUAND (RFC3339 UTC). Absents sur les matchs d'avant les colonnes — le
+	// rejeu dérive alors la présence des bornes de vie du film (presenceFeed.ts).
+	JoinedInProgress *bool   `json:"joined_in_progress,omitempty"`
+	LeftInProgress   *bool   `json:"left_in_progress,omitempty"`
+	FirstJoinedTime  *string `json:"first_joined_time,omitempty"`
+	LastLeaveTime    *string `json:"last_leave_time,omitempty"`
+	IsMVP            bool    `json:"is_mvp,omitempty"`
+	IsLVP            bool    `json:"is_lvp,omitempty"`
 	// PerformanceScore : score de performance (0..100) calculé sur l'historique
 	// du joueur. Disponible uniquement pour les joueurs trackés (main + amis).
 	// Source : player_match_enrichment.performance_score de la player DB.
@@ -435,10 +630,12 @@ type MatchScoreboardRow struct {
 	// Mécaniques de kill NATIVES Halo 5 (assassinats + compétences spartiate :
 	// ground pound, shoulder bash). nil hors h5 (omitempty) ; affichage gated
 	// front via la capability native_kill_mechanics.
-	AssassinationKills *int   `json:"assassination_kills,omitempty"`
-	GroundPoundKills   *int   `json:"ground_pound_kills,omitempty"`
-	ShoulderBashKills  *int   `json:"shoulder_bash_kills,omitempty"`
-	OutcomeLabel       string `json:"outcome_label"`
+	AssassinationKills *int `json:"assassination_kills,omitempty"`
+	GroundPoundKills   *int `json:"ground_pound_kills,omitempty"`
+	ShoulderBashKills  *int `json:"shoulder_bash_kills,omitempty"`
+	// Outcome : clé canonique d'issue (win|loss|tie|dnf, MT-06) ; vide si non mappée. Le
+	// web localise via useOutcomeLabel — jamais de texte servi ici.
+	Outcome string `json:"outcome,omitempty" enum:"win,loss,tie,dnf"`
 	// Combat yield (V7)
 	TopWeaponID         *int64   `json:"top_weapon_id,omitempty"`
 	TopWeaponLabel      string   `json:"top_weapon_label,omitempty"`
@@ -467,10 +664,12 @@ type MatchScoreboardRow struct {
 
 // MatchScoreboardObjective : stats objectifs par joueur d'un match à objectif.
 // Blocs mutuellement exclusifs par mode (CTF / Zones (Strongholds+KOTH) / Oddball /
-// Stockpile / Extraction / VIP) : seuls les champs du mode joué sont renseignés (les autres
-// nil, omitempty). Totaux équipe/lobby calculés à la LECTURE côté front (SUM par équipe).
+// Stockpile / Extraction / VIP / Assaut) : seuls les champs du mode joué sont renseignés (les
+// autres nil, omitempty). Totaux équipe/lobby calculés à la LECTURE côté front (SUM par équipe).
 // Colonnes verrouillées sur payload réel GetMatchStats (PLAN_V72_OBJECTIVE_STATS.md ;
-// Stockpile + Extraction + VIP : V721-02, PLAN_V721_NOTION_BATCH.md).
+// Stockpile + Extraction + VIP : V721-02, PLAN_V721_NOTION_BATCH.md). L'ASSAUT EST LE SEUL BLOC
+// QUI NE VIENT PAS DE L'API : il est reconstruit du FILM et lu dans `match_bomb_stats_latest`
+// sous la capability `film.bomb_stats` — un `nil` y dit « pas mesuré », jamais « zéro ».
 type MatchScoreboardObjective struct {
 	// CTF (CaptureTheFlagStats)
 	FlagCaptures             *int     `json:"flag_captures,omitempty"`
@@ -519,6 +718,17 @@ type MatchScoreboardObjective struct {
 	MaxKillingSpreeAsVip    *int     `json:"max_killing_spree_as_vip,omitempty"`
 	TimeAsVipSeconds        *float64 `json:"time_as_vip_seconds,omitempty"`
 	LongestTimeAsVipSeconds *float64 `json:"longest_time_as_vip_seconds,omitempty"`
+	// Assaut (match_bomb_stats_latest — RECONSTRUITES DU FILM ; l'API 343 n'en publie AUCUNE
+	// pour ce mode). Table DÉDIÉE, seconde requête, gatée par la capability `film.bomb_stats` :
+	// un titre qui ne la déclare pas n'expose aucune de ces cinq clés. NULL = non mesuré,
+	// jamais zéro. LES CINQ SONT MESURÉES depuis le lot G.6 (2026-09-05),
+	// `bomb_carriers_killed` compris : `null` y dit « source non lue » (fil des morts illisible,
+	// portage non ponté), pas « impossible à mesurer » comme l'affirmait ce commentaire.
+	BombDetonations          *int     `json:"bomb_detonations,omitempty"`
+	BombArms                 *int     `json:"bomb_arms,omitempty"`
+	BombGrabs                *int     `json:"bomb_grabs,omitempty"`
+	TimeAsBombCarrierSeconds *float64 `json:"time_as_bomb_carrier_seconds,omitempty"`
+	BombCarriersKilled       *int     `json:"bomb_carriers_killed,omitempty"`
 }
 
 // MatchNemesisRow : adversaire fréquent (kills reçus de lui).
@@ -564,6 +774,9 @@ type MatchEncounterRow struct {
 	// killer_victim_pairs est absent du repo.
 	KillsDealt     *int `json:"kills_dealt,omitempty"`
 	DeathsSuffered *int `json:"deaths_suffered,omitempty"`
+	// Assists : assistances échangées sur l'historique commun (matchs mesurés en même
+	// équipe). Absent = aucun match mesuré ensemble.
+	Assists *RelationAssists `json:"assists,omitempty"`
 	// Date du dernier match commun (toutes occurrences allié + ennemi).
 	LastSeenAt *time.Time `json:"last_seen_at,omitempty"`
 	// Badges narratifs typés (chunk MV4.C / MV4.C').
@@ -602,7 +815,11 @@ type MatchAssociatedMedia struct {
 	Kind            string  `json:"kind"`
 	ThumbnailURL    *string `json:"thumbnail_url,omitempty"`
 	DurationSeconds *int    `json:"duration_seconds,omitempty"`
-	CaptureTime     *string `json:"capture_time,omitempty"`
+	// CaptureStartTime : DÉBUT de la capture (RFC3339). CaptureTime est la FIN —
+	// distinction indispensable à la piste Médias de la frise du rejeu, qui pose
+	// un clip sur son début (start si connu, sinon end − durée).
+	CaptureStartTime *string `json:"capture_start_time,omitempty"`
+	CaptureTime      *string `json:"capture_time,omitempty"`
 	// Liked : état du cœur DU VIEWER de la requête (comme MediaItem.Liked),
 	// pas un état global du média. Cf. Q24MatchMedia.
 	Liked bool `json:"liked"`

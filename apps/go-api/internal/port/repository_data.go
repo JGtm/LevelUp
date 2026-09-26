@@ -9,8 +9,8 @@ package port
 import (
 	"context"
 
-	"levelup/go-api/internal/analysis/positions"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/domain/playerposition"
 	"levelup/go-api/internal/games/canonical"
 )
 
@@ -43,6 +43,20 @@ type SquadRepository interface {
 	// title-agnostic de synthèse d'events kill/death utilisé par LoadImpactEvents
 	// (et, côté solo, par HighlightEventsRepo). Retourne nil si matchIDs est vide.
 	LoadKVPairs(ctx context.Context, matchIDs []string) ([]domain.KVPairRaw, error)
+
+	// LoadSquadAssistPairs charge les paires (assistant → tueur assisté) INTERNES à
+	// l'escouade sur une sélection de matchs (Q32d), et le nombre de ces matchs où
+	// l'assistance est mesurée ET publiable ligne à ligne (dénominateur de couverture).
+	//
+	// Les deux xuids sont contraints à `squadXUIDs` : la question posée porte sur
+	// l'escouade. Aucun gamertag n'est rendu — les noms viennent du roster de la page.
+	// Entrées vides ou titre sans décodeur de film → (nil, 0, nil), jamais une erreur.
+	LoadSquadAssistPairs(ctx context.Context, matchIDs, squadXUIDs []string) ([]domain.SquadAssistPairRaw, int, error)
+
+	// LoadSquadKillLog charge les morts publiables (match_kill_events_latest) des matchs
+	// fournis qui concernent l'escouade : victime membre, ou tueur ET assistant membres.
+	// Source du badge d'impact « Voleur ». Titre sans décodeur de film → (nil, nil).
+	LoadSquadKillLog(ctx context.Context, matchIDs, squadXUIDs []string) ([]domain.SquadKillLogRow, error)
 
 	// LoadMainTeamParticipants charge tous les participants de l'équipe alliée
 	// du joueur principal pour une liste de matchs (Q34, scoreboard impact
@@ -151,7 +165,33 @@ type ObjectiveEventsRepository interface {
 type PlayerPositionsRepository interface {
 	// LoadMatch relit toutes les positions full-state d'un match, ordonnées par
 	// time_ms ASC. Match-level : pas d'attribution xuid (Team best-effort).
-	LoadMatch(ctx context.Context, matchID string) ([]positions.PlayerPosition, error)
+	LoadMatch(ctx context.Context, matchID string) ([]playerposition.PlayerPosition, error)
+}
+
+// KillDistanceRepository — POC (LOT G.3, 2026-08-30, plan retours-utilisateur
+// §3bis DEC-8) : kills mesurés et distance tueur-victime moyenne par arme, par
+// joueur, pour UN match. Implémenté par platform/duckdb.KillDistanceRepo.
+//
+// Source : shared.kill_positions_latest × shared.match_kill_events_latest —
+// TROISIÈME famille de données du film (comme KillSourceClassRepository),
+// jamais un agrégat multi-matchs (filtre à un seul match_id, jamais un scan).
+//
+// Capability gating : retourne games.ErrCapabilityNotSupported si les tables
+// sont absentes (titre/schéma sans décodeur de film). Zéro ligne (nil, nil) est
+// l'état NOMINAL d'un match sans position mesurée — pas une panne.
+type KillDistanceRepository interface {
+	// LoadMatch relit les distances mesurées par (xuid, weapon_key) pour un
+	// match, un joueur par entrée. Ordre déterministe (xuid, puis weapon_key).
+	LoadMatch(ctx context.Context, matchID string) ([]domain.MatchKillDistancePlayer, error)
+
+	// LoadMatchElevation relit LES MÊMES frags, mais UN PAR LIGNE : distance, dénivelé
+	// physique (`killer_z - victim_z`, sans point de vue), instant, arme et les deux
+	// identités. C'est la matière de la carte « Dénivelé » de la vue match (lot Y,
+	// décision D24), qui trace un point par engagement et n'agrège donc rien.
+	//
+	// Mêmes dégradations que LoadMatch : ErrCapabilityNotSupported sans les tables,
+	// (nil, nil) sur un match sans position mesurée.
+	LoadMatchElevation(ctx context.Context, matchID string) ([]domain.MatchElevationKillRaw, error)
 }
 
 // MatchExclusionRepository gère le flag is_excluded dans player_match_enrichment.
@@ -290,6 +330,12 @@ func (n *noopSquadRepo) LoadImpactEvents(_ context.Context, _ []string) ([]domai
 	return nil, nil
 }
 func (n *noopSquadRepo) LoadKVPairs(_ context.Context, _ []string) ([]domain.KVPairRaw, error) {
+	return nil, nil
+}
+func (n *noopSquadRepo) LoadSquadAssistPairs(_ context.Context, _, _ []string) ([]domain.SquadAssistPairRaw, int, error) {
+	return nil, 0, nil
+}
+func (n *noopSquadRepo) LoadSquadKillLog(_ context.Context, _, _ []string) ([]domain.SquadKillLogRow, error) {
 	return nil, nil
 }
 func (n *noopSquadRepo) LoadMainTeamParticipants(_ context.Context, _ string, _ []string) ([]domain.AllyParticipant, error) {
@@ -451,11 +497,19 @@ type CompareRepository interface {
 	// Retourne nil si aucun match commun ou en cas d'erreur (best-effort).
 	GetEncounterStats(ctx context.Context, xuidA, xuidB string) (*domain.CompareEncounterStats, error)
 
-	// GetCrossMatchSample agrège les 4 métriques locale-only (max_killing_spree,
-	// avg_life_secs, perfect_kills_per_game, headshot_kills_per_game) du joueur
-	// xuidB calculées sur les matchs où xuidA et xuidB sont tous deux participants.
-	// Retourne (nil, nil) si aucun match croisé exploitable — best-effort.
-	GetCrossMatchSample(ctx context.Context, xuidA, xuidB string) (*domain.CrossMatchSample, error)
+	// GetWeaponScope rend le scope du profil d'armes d'un joueur : TOUS ses matchs présents
+	// dans la base partagée (campagne exclue, mêmes clauses que GetLocalStats) et ses
+	// totaux sur cet ensemble.
+	//
+	// C'EST LE SEUL SCOPE, POUR LES DEUX JOUEURS (plan
+	// .ai/PLAN_COMPARE_PROFIL_ARMES_2026-09-17.md, D2 amendé au lot 3-bis, 2026-09-17). Un
+	// second scope « croisé » (les matchs communs à A et B) a été retiré : il lisait la
+	// même table avec la même exclusion et n'y ajoutait qu'un EXISTS, donc son résultat
+	// était un SOUS-ENSEMBLE de celui-ci et la branche qui l'appelait était morte.
+	//
+	// (nil, nil) si le joueur n'a aucun match — best-effort : le profil est alors simplement
+	// absent, jamais un bloc à zéro.
+	GetWeaponScope(ctx context.Context, xuid, titleSlug string) (*domain.CompareWeaponScope, error)
 }
 
 // LeaderboardRepository fournit les données pour la page Classement.
@@ -531,7 +585,7 @@ func (n *noopCompareRepo) GetPlayerATHFor(_ context.Context, _, _ string) (*doma
 func (n *noopCompareRepo) GetEncounterStats(_ context.Context, _, _ string) (*domain.CompareEncounterStats, error) {
 	return nil, nil
 }
-func (n *noopCompareRepo) GetCrossMatchSample(_ context.Context, _, _ string) (*domain.CrossMatchSample, error) {
+func (n *noopCompareRepo) GetWeaponScope(_ context.Context, _, _ string) (*domain.CompareWeaponScope, error) {
 	return nil, nil
 }
 

@@ -449,7 +449,7 @@ func (r *CitationsRepo) loadCitationMappingMeta(ctx context.Context, norms []str
 	return result
 }
 
-// NOTE (campagne ART #23046) : WriteCitationsForMatch a été SUPPRIMÉ — c'était du
+// NOTE (campagne ART #23645) : WriteCitationsForMatch a été SUPPRIMÉ — c'était du
 // dead code (aucun caller) portant un ON CONFLICT (match_id, citation_name_norm)
 // désormais incompatible avec match_citations append-only (PK composite retirée).
 // Le seul chemin d'écriture des citations est sync.writeCitations (génération).

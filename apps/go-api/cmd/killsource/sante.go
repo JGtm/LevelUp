@@ -16,8 +16,7 @@ import (
 	"os"
 	"text/tabwriter"
 
-	"levelup/go-api/internal/analysis/filmdec"
-	"levelup/go-api/internal/games/halo_infinite/film/killsource"
+	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 )
 
 func afficherSante(r *rapport) error {
@@ -30,6 +29,9 @@ func afficherSante(r *rapport) error {
 	if len(h.Alerts()) == 0 {
 		fmt.Println("   aucune alerte")
 	}
+	for _, d := range h.Degradations() {
+		fmt.Printf("   DEGRADATION : %s\n", d)
+	}
 	blocDomaine(h)
 	blocVentilation(h)
 	blocVoies(r.result.Stats)
@@ -41,15 +43,15 @@ func afficherSante(r *rapport) error {
 
 // blocDomaine : un verdict n est PAS un jugement sur les etiquettes publiees. C est un jugement
 // sur le DOMAINE : ce film ressemble-t-il a ceux sur lesquels le decodeur a ete mesure ?
-func blocDomaine(h filmdec.KillSourceHealth) {
+func blocDomaine(h decfilm.KillSourceHealth) {
 	fmt.Println("\nLE VERDICT PORTE SUR LE DOMAINE, PAS SUR LES ETIQUETTES")
 	fmt.Println("  Il dit << ce film ressemble-t-il a ceux sur lesquels le decodeur a ete mesure >>.")
 	fmt.Println("  Un film HORS DOMAINE n est pas casse : ses lignes se ponderent, voila tout.")
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
 	fmt.Fprintf(w, "  candidats inexpliques\t%.1f %%\tseuil de sortie de domaine %.1f %% · alerte %.1f %%\t\n",
-		100*h.UnexplainedRatio(), 100*filmdec.UnexplainedWarnRatio, 100*filmdec.UnexplainedAlertRatio)
+		100*h.UnexplainedRatio(), 100*decfilm.UnexplainedWarnRatio, 100*decfilm.UnexplainedAlertRatio)
 	fmt.Fprintf(w, "  couverture\t%.1f %%\tplancher %.1f %% (la serie de reference est exacte)\t\n",
-		100*h.CoverageRatio(), 100*filmdec.CoverageWarnRatio)
+		100*h.CoverageRatio(), 100*decfilm.CoverageWarnRatio)
 	_ = w.Flush()
 	fmt.Println("  Seuils tires de la distribution de CINQ films, pas d une intuition :")
 	fmt.Println("     4 films a 8 joueurs : 7.0 / 9.4 / 11.6 / 17.8 % d inexpliques, couverture 100 %")
@@ -59,7 +61,7 @@ func blocDomaine(h filmdec.KillSourceHealth) {
 
 // blocVentilation : les candidats que rien ne publie. ILS NE SORTENT PAS et ne coutent rien au
 // consommateur — c est leur TAUX qui informe, jamais leur existence.
-func blocVentilation(h filmdec.KillSourceHealth) {
+func blocVentilation(h decfilm.KillSourceHealth) {
 	fmt.Println("\nLES CANDIDATS QUE RIEN NE PUBLIE — ils ne sortent pas, c est leur TAUX qui informe")
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
 	fmt.Fprintf(w, "  candidats consultes\t%d\t\n", h.Candidates)
@@ -74,13 +76,14 @@ func blocVentilation(h filmdec.KillSourceHealth) {
 	fmt.Println("     Il se compte sur une AUTRE population que les trois ci-dessus (le filtre de")
 	fmt.Println("     credibilite ecarte ces lignes avant qu elles ne deviennent des candidats), donc")
 	fmt.Println("     il n entre pas dans le taux. Un ratio dont le numerateur deborde du denominateur")
-	fmt.Println("     ne veut rien dire. Non nul = un participant n est pas compte.")
+	fmt.Println("     ne veut rien dire. Non nul = un participant n est pas compte — SES morts sont")
+	fmt.Println("     refusees, les autres publient (lot 5.2b.1 : ce compteur DEGRADE, il n alerte plus).")
 }
 
 // blocVoies : le cout PAR VOIE. A lire comme une VENTILATION DU COUT, jamais comme deux precisions
 // directement comparables — la bijection est ajustee sur l union des deux, et la marche en fournit
 // 91 % : le decoupage n est pas neutre vis-a-vis de cet ajustement.
-func blocVoies(s killsource.Stats) {
+func blocVoies(s decfilm.Stats) {
 	fmt.Println("\nLE COUT, VENTILE PAR VOIE DE LECTURE")
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
 	fmt.Fprintln(w, "  voie\tproposes\tapparies au couple exact\ttaux\tpublies\t")
@@ -107,7 +110,7 @@ func blocVoies(s killsource.Stats) {
 }
 
 // blocSonde : la sonde a porte de catalogue relachee. PUBLIEE, EXCLUE DES ALERTES, et c est mesure.
-func blocSonde(res *killsource.Result) {
+func blocSonde(res *decfilm.Result) {
 	if res.Probe == nil {
 		fmt.Println("\nSONDE A PORTE DE CATALOGUE RELACHEE : non executee (couverture complete).")
 		fmt.Println("  Elle ne porte de l information que sur les morts NON COUVERTES : a 100 % de")
@@ -156,7 +159,7 @@ func blocPointAveugle() {
 }
 
 // blocCompteurs : la publication expvar, telle que le brancheur l ecrira.
-func blocCompteurs(h filmdec.KillSourceHealth) {
+func blocCompteurs(h decfilm.KillSourceHealth) {
 	fmt.Println("\nCOMPTEURS PRETS POUR expvar (ADR 0009 — entiers, snake_case, aucun ratio publie)")
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
 	for _, p := range h.ExpvarPairs() {
@@ -170,10 +173,10 @@ func blocCompteurs(h filmdec.KillSourceHealth) {
 }
 
 // santeDeJSON : la meme mesure, pour la sortie JSON.
-func santeDeJSON(res *killsource.Result) santeJSON {
+func santeDeJSON(res *decfilm.Result) santeJSON {
 	h := res.Health
 	s := santeJSON{
-		Verdict: h.Verdict(), Alertes: h.Alerts(),
+		Verdict: h.Verdict(), Alertes: h.Alerts(), Degradations: h.Degradations(),
 		TauxInexpliques: h.UnexplainedRatio(), TauxCouverture: h.CoverageRatio(),
 		GateParVoie: map[string]gateJSON{
 			"sequentielle": gateDeJSON(res.Stats.Walk),
@@ -190,6 +193,9 @@ func santeDeJSON(res *killsource.Result) santeJSON {
 	}
 	if s.Alertes == nil {
 		s.Alertes = []string{}
+	}
+	if s.Degradations == nil {
+		s.Degradations = []string{}
 	}
 	for _, p := range h.ExpvarPairs() {
 		s.Compteurs = append(s.Compteurs, compteurJSON{
@@ -209,13 +215,13 @@ func santeDeJSON(res *killsource.Result) santeJSON {
 	return s
 }
 
-func gateDeJSON(p killsource.PathStats) gateJSON {
+func gateDeJSON(p decfilm.PathStats) gateJSON {
 	return gateJSON{Population: p.Population, Apparies: p.Matched, Publiees: p.Published, Taux: p.Ratio()}
 }
 
 // compteurAlerte : lesquels des compteurs publies declenchent une alerte dure.
 func compteurAlerte(nom string) bool {
-	return nom == "killsource_tag_out_of_catalogue_walk" || nom == "killsource_out_of_roster"
+	return nom == "killsource_tag_out_of_catalogue_walk"
 }
 
 // remarqueCompteur : la portee des deux compteurs porteurs, attachee au compteur lui-meme pour
@@ -226,7 +232,8 @@ func remarqueCompteur(nom string) string {
 		return "compteur principal de catalogue perime ; bruit MESURE nul sur 5 films ; AVEUGLE aux " +
 			"identifiants servis par le seul balayage — le plancher de couverture est alors le filet"
 	case "killsource_out_of_roster":
-		return "population distincte des trois compteurs `unexplained_` : ne pas l y additionner"
+		return "population distincte des trois compteurs `unexplained_` : ne pas l y additionner. " +
+			"DEGRADE, n alerte pas (lot 5.2b.1) : ces morts-la sont refusees, les autres publient"
 	case "killsource_tag_out_of_catalogue_scan":
 		return "informe, n alerte pas (rapport signal/hasard 1.10 a 1.72)"
 	default:
@@ -234,7 +241,7 @@ func remarqueCompteur(nom string) string {
 	}
 }
 
-func publicationDeJSON(res *killsource.Result) publicationJSON {
+func publicationDeJSON(res *decfilm.Result) publicationJSON {
 	p := publicationJSON{
 		LigneParLigneAutorisee: res.LineByLinePublishable(),
 		MargeDeBijection:       res.BijectionMargin,
@@ -242,6 +249,8 @@ func publicationDeJSON(res *killsource.Result) publicationJSON {
 	if p.LigneParLigneAutorisee {
 		return p
 	}
+	// `BijectionDetermined` est faux ici (sinon la porte serait ouverte), donc une marge nulle
+	// veut bien dire « deux joueurs sont interchangeables » et non « il n y avait rien a inferer ».
 	if res.BijectionMargin <= 0 {
 		p.Motif = "marge de bijection nulle : au moins deux joueurs sont interchangeables, les " +
 			"attributions individuelles sont fausses meme si l agregat est juste"

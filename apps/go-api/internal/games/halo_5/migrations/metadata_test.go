@@ -19,6 +19,7 @@ import (
 
 	halo5 "levelup/go-api/internal/games/halo_5"
 	halomigrations "levelup/go-api/internal/games/halo_infinite/migrations"
+	"levelup/go-api/internal/games/weapons"
 	"levelup/go-api/internal/migration"
 )
 
@@ -235,5 +236,152 @@ func TestHalo5Shared_InheritsInfiniteSchema(t *testing.T) {
 		if !tableExists(t, db, tbl) {
 			t.Errorf("table HINF %q absente du shared h5 — héritage uniforme cassé", tbl)
 		}
+	}
+}
+
+// TestHalo5Metadata_OrdreCanoniqueCouvreLesSteps — RATCHET. Le set h5 possède le
+// target metadata : son CanonicalOrder est le SEUL ordre d'exécution appliqué
+// (registry.runSteps). Un step absent de l'ordre part en fin de tri
+// (sortByOrder : rang len(order)) — silencieusement, et donc potentiellement
+// AVANT/APRÈS sa dépendance. Ce test exige la bijection stricte entre
+// MetadataSteps() et metadataStepNames().
+func TestHalo5Metadata_OrdreCanoniqueCouvreLesSteps(t *testing.T) {
+	Register()
+
+	order := metadataStepNames()
+	inOrder := make(map[string]int, len(order))
+	for i, n := range order {
+		if _, dup := inOrder[n]; dup {
+			t.Errorf("doublon dans metadataStepNames(): %q", n)
+		}
+		inOrder[n] = i
+	}
+
+	inSteps := make(map[string]bool, len(order))
+	for _, m := range MetadataSteps() {
+		inSteps[m.Name] = true
+		if _, ok := inOrder[m.Name]; !ok {
+			t.Errorf("step %q absent de metadataStepNames() — il serait trié en fin de cycle, hors de sa dépendance", m.Name)
+		}
+		if m.TargetDB != migration.TargetMetadata {
+			t.Errorf("step %q du jeu metadata h5 vise le target %q", m.Name, m.TargetDB)
+		}
+	}
+	for _, n := range order {
+		if !inSteps[n] {
+			t.Errorf("entrée morte dans metadataStepNames(): %q n'est fourni par aucun step", n)
+		}
+	}
+}
+
+// TestHalo5Metadata_PurgeWeaponFamiliesLabelsDansLeSet — RATCHET de l'incident du
+// 2026-09-12 (provisioning halo_5 en échec à chaque boot). `weapon_families` est
+// un référentiel CROSS-TITRE : la purge de ses colonnes de libellés doit être
+// jouée sur la metadata h5 comme sur celle d'Infinite, faute de quoi le seed
+// commun `weapons.ApplyRegistry` viole `name_en NOT NULL`. Elle doit en outre
+// suivre le créateur de la table.
+func TestHalo5Metadata_PurgeWeaponFamiliesLabelsDansLeSet(t *testing.T) {
+	Register()
+
+	order := metadataStepNames()
+	posPurge, posRegistry := -1, -1
+	for i, n := range order {
+		switch n {
+		case purgeWeaponFamiliesLabelsName:
+			posPurge = i
+		case "h5_add_weapon_registry":
+			posRegistry = i
+		}
+	}
+	if posPurge < 0 {
+		t.Fatalf("%q absent de l'ordre canonique h5 — la metadata halo_5 garderait weapon_families.name_en NOT NULL", purgeWeaponFamiliesLabelsName)
+	}
+	if posRegistry < 0 {
+		t.Fatal("h5_add_weapon_registry absent de l'ordre canonique h5")
+	}
+	if posPurge < posRegistry {
+		t.Errorf("la purge (rang %d) précède h5_add_weapon_registry (rang %d) — elle doit suivre le créateur de weapon_families", posPurge, posRegistry)
+	}
+
+	// Le step fourni est CELUI du registre global (référence par nom, pas une copie).
+	global, ok := migration.ByName(purgeWeaponFamiliesLabelsName)
+	if !ok {
+		t.Fatalf("%q introuvable dans le registre global", purgeWeaponFamiliesLabelsName)
+	}
+	var found *migration.Migration
+	for _, m := range MetadataSteps() {
+		if m.Name == purgeWeaponFamiliesLabelsName {
+			cp := m
+			found = &cp
+		}
+	}
+	if found == nil {
+		t.Fatalf("%q absent de MetadataSteps()", purgeWeaponFamiliesLabelsName)
+	}
+	if found.Description != global.Description || found.TargetDB != global.TargetDB {
+		t.Errorf("le step h5 n'est pas celui du registre global (description/target divergents) — une copie a été introduite")
+	}
+}
+
+// TestHalo5Metadata_PurgeLegacyWeaponFamilies — REPRODUCTION de l'incident, de
+// bout en bout, sur une metadata h5 dans l'état PROD d'avant le 2026-09-08 :
+// `weapon_families` porte encore name_en/name_fr NOT NULL et la purge n'est pas
+// au ledger. Le cycle de migrations puis le seed cross-titre rejoué au boot
+// (weapons.ApplyRegistry, via ReconcileRegistry) doivent tous deux réussir.
+func TestHalo5Metadata_PurgeLegacyWeaponFamilies(t *testing.T) {
+	migration.SetTitleStepsProvider(halomigrations.StepsFor)
+	Register()
+
+	db, err := sql.Open("duckdb", ":memory:")
+	if err != nil {
+		t.Fatalf("open duckdb: %v", err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+
+	// 1. Cycle nominal : le runner crée lui-même schema_migrations (aucune DDL de
+	//    ledger recopiée dans ce test — une copie dériverait sans qu'on le voie).
+	if err := migration.RunForTitleDB(db, halo5.TitleSlug, migration.TargetMetadata); err != nil {
+		t.Fatalf("RunForTitleDB initial: %v", err)
+	}
+
+	// 2. Retour à l'état LEGACY : table au schéma d'avant la purge (forme
+	//    historique, cf. games/weapons/registry.go avant le 2026-09-08) et purge
+	//    retirée du ledger.
+	for _, stmt := range []string{
+		`DROP TABLE weapon_families`,
+		`CREATE TABLE weapon_families (
+			family_key VARCHAR PRIMARY KEY,
+			name_en    VARCHAR NOT NULL,
+			name_fr    VARCHAR NOT NULL
+		)`,
+		`INSERT INTO weapon_families VALUES ('battle_rifle', 'Battle Rifle', 'Fusil de combat')`,
+		`DELETE FROM schema_migrations WHERE name = '` + purgeWeaponFamiliesLabelsName + `'`,
+	} {
+		if _, err := db.Exec(stmt); err != nil {
+			t.Fatalf("mise en état legacy (%s): %v", stmt, err)
+		}
+	}
+
+	// 3. Boot suivant : le cycle rejoue la purge...
+	if err := migration.RunForTitleDB(db, halo5.TitleSlug, migration.TargetMetadata); err != nil {
+		t.Fatalf("RunForTitleDB sur metadata h5 legacy: %v", err)
+	}
+	var nameEnCols int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM information_schema.columns
+		WHERE table_name = 'weapon_families' AND column_name IN ('name_en', 'name_fr')`).Scan(&nameEnCols); err != nil {
+		t.Fatalf("inspection des colonnes: %v", err)
+	}
+	if nameEnCols != 0 {
+		t.Errorf("weapon_families porte encore %d colonne(s) de libellé après la purge", nameEnCols)
+	}
+	// ... la ligne existante est conservée (rebuild CTAS-swap sans perte).
+	if n := rowCount(t, db, "weapon_families"); n == 0 {
+		t.Error("weapon_families vidée par la purge — perte de données")
+	}
+
+	// 4. Et le seed cross-titre rejoué à CHAQUE boot passe (c'était l'échec :
+	//    « NOT NULL constraint failed: weapon_families.name_en »).
+	if _, err := weapons.ReconcileRegistry(db, halo5.TitleSlug); err != nil {
+		t.Fatalf("ReconcileRegistry après purge: %v", err)
 	}
 }

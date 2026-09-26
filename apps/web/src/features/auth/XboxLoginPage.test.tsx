@@ -5,6 +5,7 @@
  * Couvre aussi le toggle "Connexion admin (mot de passe)".
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import type { ComponentPropsWithoutRef } from 'react'
 import { screen, waitFor, fireEvent, render } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { http, HttpResponse } from 'msw'
@@ -24,6 +25,13 @@ vi.mock('@tanstack/react-router', async (importOriginal) => {
   return {
     ...actual,
     useNavigate: () => mockNavigate,
+    // Le pied de page minimal de l'écran de connexion renvoie vers /privacy :
+    // sans routeur monté, le vrai `Link` lève. On le réduit à une ancre.
+    Link: ({ children, to, ...props }: ComponentPropsWithoutRef<'a'> & { to: string }) => (
+      <a href={to} {...props}>
+        {children}
+      </a>
+    ),
   }
 })
 
@@ -51,6 +59,19 @@ describe('XboxLoginPage', () => {
     renderWithProviders(<XboxLoginPage />)
     await waitFor(() => {
       expect(screen.getByText(/ABCD-1234/i)).toBeInTheDocument()
+    })
+  })
+
+  it('copie le user_code via le bouton icône', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined)
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true })
+    renderWithProviders(<XboxLoginPage />)
+    const button = await screen.findByRole('button', { name: /copier le code|copy code/i })
+    expect(button).not.toHaveTextContent(/\S/)
+    fireEvent.click(button)
+    await waitFor(() => {
+      expect(writeText).toHaveBeenCalledWith('ABCD-1234')
+      expect(screen.getByRole('button', { name: /code copié|code copied/i })).toBeInTheDocument()
     })
   })
 
@@ -96,7 +117,7 @@ describe('XboxLoginPage', () => {
     server.use(
       http.post('/api/v1/auth/device-flow/start', () =>
         HttpResponse.json(
-          { code: 'msal_init_error', message: 'impossible de démarrer le Device Code Flow', retryable: false },
+          { code: 'device_flow_init_error', message: 'impossible de démarrer le Device Code Flow', retryable: false },
           { status: 500 },
         ),
       ),

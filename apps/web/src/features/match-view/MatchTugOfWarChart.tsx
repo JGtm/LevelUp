@@ -12,17 +12,19 @@
  *   - `delta = 0` → pas de barre (DEC-5) ; l'axe de symétrie est `y = 0` (DEC-7)
  *     et l'échelle Y est symétrique dynamique (DEC-6).
  *
- * Kill feed conservé (DEC-2) sur le même axe X, dans une grille double :
- *   Grille haute (histogramme + lane alliée + kills alliés + vagues alliées)
- *   Grille basse (lane ennemie + kills ennemis + vagues ennemies)
+ * Lanes de temps et vagues collectives (DEC-2) sur le même axe X, dans une
+ * grille double :
+ *   Grille haute (histogramme + lane alliée + vagues alliées)
+ *   Grille basse (lane ennemie + vagues ennemies)
  *
  * Le calcul par tranche (delta, counts, cumuls, trend) et l'affectation des
  * kills vivent dans `_momentum.ts` (pur, testé). Source de données :
  * `combat_tab.tug_of_war` (bornes de bins), `combat_tab.highlight_events`
- * (kill feed + recompute des counts par équipe), scoreboard (team_side).
+ * (kills : détection des vagues + recompute des counts par équipe), scoreboard
+ * (team_side).
  */
 import type { EChartsCoreOption } from 'echarts/core'
-import { useCallback } from 'react'
+import { useCallback, useMemo } from 'react'
 import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
 import {
   CHART_BG,
@@ -44,6 +46,9 @@ import type {
 import { computeMomentumBins, type MomentumBin, type MomentumKill } from './_momentum'
 import { extractCtfCaptures, type CtfCapture } from './_objectiveCaptures'
 import type { MatchViewText } from './i18n'
+// La cascade « allie = meme camp que moi » etait ecrite ici ET dans MatchKDCumulChart, a
+// l'identique : elle vit desormais dans xuidMeta.ts, sous garde-rail.
+import { resolveXuidMeta, type XuidMeta } from './xuidMeta'
 
 interface Props {
   bins: MatchTugOfWarBin[] | null | undefined
@@ -68,8 +73,6 @@ const BAR_GAP = '20%'
 const LANE_FACTOR = 1.5 // lane des kills alliés, au-dessus des barres positives
 const TOP_FACTOR = 1.95 // headroom pour les labels ×N des vagues alliées
 const BOTTOM_FACTOR = 1.15 // juste sous la barre négative la plus profonde
-
-type XuidMeta = Map<string, { gamertag: string; ally: boolean }>
 
 interface TeamWave {
   xStart: number; xEnd: number; count: number
@@ -103,19 +106,6 @@ function formatMmSs(seconds: number): string {
   const m = Math.floor(seconds / 60)
   const s = Math.max(0, Math.floor(seconds % 60))
   return `${m}:${s.toString().padStart(2, '0')}`
-}
-
-/** Résout l'appartenance d'équipe (allié/ennemi) et le gamertag par xuid. */
-function resolveXuidMeta(scoreboard: MatchScoreboardRow[] | null | undefined, meXUID: string | null): XuidMeta {
-  const sb = scoreboard ?? []
-  const meRow = meXUID ? sb.find((r) => r.xuid === meXUID) : undefined
-  const allyTeam = meRow?.team_side ?? null
-  const meta: XuidMeta = new Map()
-  for (const r of sb) {
-    const ally = r.is_me || (allyTeam != null && r.team_side === allyTeam)
-    meta.set(r.xuid, { gamertag: displayPlayerName(r.gamertag, r.xuid), ally })
-  }
-  return meta
 }
 
 /** Résumé de tranche (delta signé, X/Y kills, cumuls) — servi par le tooltip item des barres (remplace DEC-3). */
@@ -156,32 +146,43 @@ function waveLabel(color: string, count: number, position: 'top' | 'bottom') {
   return { show: true, formatter: `×${count}`, color, fontSize: 10, fontWeight: 'bold' as const, position, distance: 6 }
 }
 
-function waveTip(side: string, w: TeamWave, xuidMeta: XuidMeta): string {
+/**
+ * headshotSuffix : ligne de tooltip supplémentaire quand la vague porte au moins un
+ * headshot connu — le décompte, pas le détail par kill (aucun rendu per-kill n'existe
+ * ailleurs dans cette carte, cf. G.1). `undefined` (non mesurable) et `false` (mesuré,
+ * pas un headshot) ne comptent PAS : seul `true` incrémente.
+ */
+function headshotSuffix(waveKills: MomentumKill[], t: MatchViewText): string {
+  const n = waveKills.filter((k) => k.headshot === true).length
+  return n > 0 ? `<br/>${escapeHtml(t.combatHeadshotCountFmt(n))}` : ''
+}
+
+function waveTip(side: string, w: TeamWave, xuidMeta: XuidMeta, t: MatchViewText): string {
   const byPlayer = new Map<string, number>()
   for (const k of w.waveKills) byPlayer.set(k.xuid, (byPlayer.get(k.xuid) ?? 0) + 1)
   const contrib = [...byPlayer.entries()]
     .sort((a, b) => b[1] - a[1])
     .map(([xuid, n]) => `${displayPlayerName(xuidMeta.get(xuid)?.gamertag, xuid)} — ${n} kill${n > 1 ? 's' : ''}`)
     .join('<br/>')
-  return `<b>Vague ${side} ×${w.count}</b> — ${formatMmSs(w.tStartMs / 1000)} → ${formatMmSs(w.tEndMs / 1000)}<br/>${contrib}`
+  return `<b>Vague ${side} ×${w.count}</b> — ${formatMmSs(w.tStartMs / 1000)} → ${formatMmSs(w.tEndMs / 1000)}<br/>${contrib}${headshotSuffix(w.waveKills, t)}`
 }
 
-interface WaveSeriesOpts { color: string; laneY: number; axisIndex: 0 | 1; sideLabel: string; xuidMeta: XuidMeta }
+interface WaveSeriesOpts { color: string; laneY: number; axisIndex: 0 | 1; sideLabel: string; xuidMeta: XuidMeta; t: MatchViewText }
 
 /** Séries de vague : un segment épais par vague, label ×N à l'extrémité. */
 function buildWaveSeries(waves: TeamWave[], opts: WaveSeriesOpts): Record<string, unknown>[] {
-  const { color, laneY, axisIndex, sideLabel, xuidMeta } = opts
+  const { color, laneY, axisIndex, sideLabel, xuidMeta, t } = opts
   const position = axisIndex === 0 ? 'top' : 'bottom'
   const side = axisIndex === 0 ? 'ally' : 'enemy'
   return waves.map((w, wi) => ({
     type: 'line',
     name: `wave-${side}-${wi}`,
     data: [
-      { value: [w.xStart, laneY], _tip: waveTip(sideLabel, w, xuidMeta) },
-      { value: [w.xEnd, laneY], _tip: waveTip(sideLabel, w, xuidMeta), label: waveLabel(color, w.count, position) },
+      { value: [w.xStart, laneY], _tip: waveTip(sideLabel, w, xuidMeta, t) },
+      { value: [w.xEnd, laneY], _tip: waveTip(sideLabel, w, xuidMeta, t), label: waveLabel(color, w.count, position) },
     ],
     lineStyle: { color, width: 4, opacity: 0.9 },
-    itemStyle: { color, borderColor: 'rgba(255,255,255,0.6)', borderWidth: 1.5 },
+    itemStyle: { color, borderColor: 'rgba(255,255,255,0.6)', borderWidth: 1.5 }, // color-allow: 2026-09-06 (revue R1, C5) — voile NEUTRE d ombre/fond d infobulle ECharts, pas une couleur de charte ; dette PREEXISTANTE au lot v2 D, a porter sur un token le jour ou un token de voile existera
     symbol: ['circle', 'circle'],
     symbolSize: 9,
     label: { show: false },
@@ -248,28 +249,26 @@ interface KillFeedInput {
   allyLaneY: number
 }
 
-/** Kill feed (DEC-2, inchangé) : lanes + scatter par kill + vagues, sur yMax. */
+/**
+ * Lanes de temps + vagues collectives (DEC-2). Les KILLS UN À UN ne sont PAS dessinés :
+ * la carte Dominance montre le momentum (barres) et les temps forts collectifs (vagues),
+ * pas le détail frag par frag — le fil détaillé vit sur la page de rejeu 2D
+ * (`features/match-replay/ReplayKillFeed`). Les lanes restent dans le graphe : ce sont
+ * elles qui portent les segments de vague, dont la position en Y n'a de sens que sur
+ * l'échelle des barres.
+ */
 function buildKillFeedSeries(input: KillFeedInput): Record<string, unknown>[] {
   const { bins, allyKills, enemyKills, colorTeam, colorEnemy, xuidMeta, t, allyLaneY } = input
-  const tip = (k: MomentumKill) => `${displayPlayerName(xuidMeta.get(k.xuid)?.gamertag, k.xuid)} — ${formatMmSs(k.tMs / 1000)}`
-  const scatterFmt = (p: { data?: { _tip?: string } }) => p.data?._tip ?? ''
   const lane = (color: string, y: number, axisIndex: 0 | 1, name: string) => ({
     type: 'line', name, data: bins.map((_, i) => [i, y]),
     lineStyle: { color, width: 1.5, opacity: 0.45 }, showSymbol: false, silent: true,
     tooltip: { show: false }, legendHoverLink: false, xAxisIndex: axisIndex, yAxisIndex: axisIndex, z: 2,
   })
-  const scatter = (kk: MomentumKill[], y: number, axisIndex: 0 | 1, name: string, color: string) => ({
-    type: 'scatter', name, data: kk.map((k) => ({ value: [k.binIdx - 0.5 + k.fracInBin, y], _tip: tip(k) })),
-    symbol: 'circle', symbolSize: 7, itemStyle: { color, opacity: 0.7 }, legendHoverLink: false,
-    xAxisIndex: axisIndex, yAxisIndex: axisIndex, tooltip: { formatter: scatterFmt }, z: 3,
-  })
   return [
     lane(colorTeam, allyLaneY, 0, 'Lane alliée'),
-    scatter(allyKills, allyLaneY, 0, 'Mes kills', colorTeam),
-    ...buildWaveSeries(detectTeamWaves(allyKills), { color: colorTeam, laneY: allyLaneY, axisIndex: 0, sideLabel: t.combatTeamLabel, xuidMeta }),
+    ...buildWaveSeries(detectTeamWaves(allyKills), { color: colorTeam, laneY: allyLaneY, axisIndex: 0, sideLabel: t.combatTeamLabel, xuidMeta, t }),
     lane(colorEnemy, 0, 1, 'Lane ennemie'),
-    scatter(enemyKills, 0, 1, 'Kills ennemis', colorEnemy),
-    ...buildWaveSeries(detectTeamWaves(enemyKills), { color: colorEnemy, laneY: 0, axisIndex: 1, sideLabel: t.combatEnemyLabel, xuidMeta }),
+    ...buildWaveSeries(detectTeamWaves(enemyKills), { color: colorEnemy, laneY: 0, axisIndex: 1, sideLabel: t.combatEnemyLabel, xuidMeta, t }),
   ]
 }
 
@@ -369,17 +368,25 @@ export function MatchTugOfWarChart({ bins, events, scoreboard, meXUID, objective
       ? [{ key: 'match_view.combat.tug_of_war', datapoints: bins }]
       : []
 
+  // Le binning des kills est mémoïsé ici : c'est lui qui alimente la détection des
+  // vagues (`buildKillFeedSeries`), dont les abscisses doivent coller à celles des
+  // barres. Deux calculs, ce serait deux vérités et un décalage visible.
+  const xuidMeta = useMemo(() => resolveXuidMeta(scoreboard, meXUID), [scoreboard, meXUID])
+  const feedKills = useMemo(
+    () => (bins && bins.length > 0 ? computeMomentumBins(bins, events, xuidMeta).kills : []),
+    [bins, events, xuidMeta],
+  )
+
   const buildOption = useCallback(
     (s: ChartSeries<MatchTugOfWarBin>[]): EChartsCoreOption => {
       if (s.length === 0 || !bins || bins.length === 0) return { backgroundColor: CHART_BG }
 
-      const xuidMeta = resolveXuidMeta(scoreboard, meXUID)
       const colorTeam = resolveToken('team-ally')
       const colorEnemy = resolveToken('team-enemy')
       const tc = getEChartsThemeColors()
       const categories = bins.map((b) => formatMmSs((b.bin_start + b.bin_end) / 2))
 
-      const { momentum, kills } = computeMomentumBins(bins, events, xuidMeta)
+      const { momentum } = computeMomentumBins(bins, events, xuidMeta)
       const binTooltips = buildBinTooltips(momentum, categories, t)
 
       // Échelle Y symétrique dynamique (DEC-6) : plus de mock 0–100.
@@ -388,8 +395,8 @@ export function MatchTugOfWarChart({ bins, events, scoreboard, meXUID, objective
       const yTopMax = yMax * TOP_FACTOR
       const yTopMin = -yMax * BOTTOM_FACTOR
 
-      const allyKills = kills.filter((k) => k.ally).sort((a, b) => a.tMs - b.tMs)
-      const enemyKills = kills.filter((k) => !k.ally).sort((a, b) => a.tMs - b.tMs)
+      const allyKills = feedKills.filter((k) => k.ally).sort((a, b) => a.tMs - b.tMs)
+      const enemyKills = feedKills.filter((k) => !k.ally).sort((a, b) => a.tMs - b.tMs)
 
       return {
         backgroundColor: CHART_BG,
@@ -419,7 +426,7 @@ export function MatchTugOfWarChart({ bins, events, scoreboard, meXUID, objective
         ],
       }
     },
-    [bins, events, scoreboard, meXUID, objectiveEvents, t],
+    [bins, events, xuidMeta, feedKills, scoreboard, meXUID, objectiveEvents, t],
   )
 
   return (

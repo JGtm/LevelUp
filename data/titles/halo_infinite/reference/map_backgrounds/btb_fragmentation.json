@@ -1,0 +1,42 @@
+{
+  "schemaVersion": 1,
+  "module": "btb_fragmentation",
+  "mapNames": [
+    "Fragmentation Heavies",
+    "fragmentation",
+    "fragmentation_heavies_map",
+    "fragmentation_map"
+  ],
+  "image": "btb_fragmentation.webp",
+  "source": "cmd/mapfond-build (internal/himap, triangles du maillage de rendu)",
+  "generatedAt": "2026-08-30T21:20:49.5531143Z",
+  "style": "encre",
+  "calibration": {
+    "metersPerPixel": 0.06331084060668946,
+    "originX": -24.006202716827392,
+    "originY": 76.47587616729737,
+    "widthPx": 2262,
+    "heightPx": 2652,
+    "convention": "xMonde = originX + (px + 0.5) * metersPerPixel ; yMonde = originY - (py + 0.5) * metersPerPixel"
+  },
+  "stats": {
+    "anchors": 45,
+    "anchorsInFrame": 45,
+    "anchorsWithGround": 30,
+    "anchorMedianGapM": -16.392629094439727,
+    "instancesDrawn": 3753,
+    "instancesScenery": 684,
+    "playLevelZ": 5.8100003814697265,
+    "boundaryApplied": true,
+    "boundaryPlanes": 60,
+    "boundaryCellsCleared": 4005941,
+    "waterVolumes": 0,
+    "waterCells": 0,
+    "coveredShare": 0.19647208004144803,
+    "covered": false,
+    "cellsAssumedFloor": 874207
+  },
+  "degradations": [
+    "eau : aucun volume d'eau dans le sddt de btb_fragmentation-rtx-new.module"
+  ]
+}

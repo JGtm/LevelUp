@@ -23,8 +23,8 @@ import (
 	"path/filepath"
 	"time"
 
-	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/ctxkeys"
+	"levelup/go-api/internal/domain/highlightevent"
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/openspartan"
 	"levelup/go-api/internal/openspartan/mapper"
@@ -320,7 +320,7 @@ func (s *OpenSpartanImportService) writeOneMatch(
 	}
 
 	// Écriture per-match INSERT-only + atomique via persist.SharedPersister (ADR
-	// 0019/0026, anti-ART #23046) : registry + participants + medals + match_csrs
+	// 0019/0026, anti-ART #23645) : registry + participants + medals + match_csrs
 	// dans UNE transaction, jamais d'ON CONFLICT DO UPDATE per-helper (l'ancien
 	// chemin sync.Insert*/Upsert* pouvait laisser un état partiel). Idempotent :
 	// si le match existe déjà, Persist no-op. Modèle identique au livesync H5.
@@ -400,7 +400,7 @@ func (s *OpenSpartanImportService) importHighlights(
 			continue
 		}
 		event := toAnalysisEvent(row)
-		n, err := sync.InsertHighlightEvents(ctx, sharedDB, row.MatchID, []analysis.HighlightEvent{event})
+		n, err := sync.InsertHighlightEvents(ctx, sharedDB, row.MatchID, []highlightevent.HighlightEvent{event})
 		if err != nil {
 			result.Errors = append(result.Errors, ImportError{MatchID: hl.MatchID, Stage: "insert_highlight", Err: err.Error()})
 			continue

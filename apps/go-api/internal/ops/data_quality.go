@@ -130,12 +130,16 @@ func CountDataQuality(ctx context.Context, sharedDB, metaDB *sql.DB, titleSlug, 
 	`, dqBitEvents)).Scan(&c.LyingBitsEvents); err != nil {
 		return c, fmt.Errorf("count lying bits events: %w", err)
 	}
-	if err := sharedDB.QueryRowContext(ctx, fmt.Sprintf(`
+	// La PREUVE du detail des armes change de table selon le titre (cf.
+	// analysis.WeaponEvidenceTable) : on sonde celle que la base CONTIENT.
+	if evidence := analysis.WeaponEvidenceTable(ctx, sharedDB); evidence != "" {
+		if err := sharedDB.QueryRowContext(ctx, fmt.Sprintf(`
 		SELECT COUNT(*) FROM match_registry r
 		WHERE (COALESCE(r.backfill_completed, 0) & %d) != 0
-		  AND NOT EXISTS (SELECT 1 FROM weapon_kills w WHERE w.match_id = r.match_id)
-	`, dqBitWeaponKills)).Scan(&c.LyingBitsWeapons); err != nil {
-		return c, fmt.Errorf("count lying bits weapons: %w", err)
+		  AND NOT EXISTS (SELECT 1 FROM %s w WHERE w.match_id = r.match_id)
+	`, dqBitWeaponKills, evidence)).Scan(&c.LyingBitsWeapons); err != nil {
+			return c, fmt.Errorf("count lying bits weapons: %w", err)
+		}
 	}
 
 	return c, nil
