@@ -16,21 +16,34 @@ package filmcache
 // deja present n'est jamais reecrit : celui du cache historique porte un blob_prefix CDN que
 // le notre n'aurait pas, et l'ecraser perdrait le repli reseau des chunks manquants.
 //
+// « PRESENT » N'EST PAS « COMPLET » (SRC-2/OPS-4, audit du decodeur de film, 2026-09-25). Un
+// chunk s'ecrit par `atomicfile.WriteFileStrict` : il est entier ou absent, jamais tronque sous
+// son nom final. Un chunk DEJA present n'est adopte que si sa taille vaut celle du
+// telechargement — un chunk tronque par une ecriture en place d'avant cette regle est remplace
+// (WARN + compteur `film_cache_chunk_remplace`). Le manifeste ecrit porte la taille de chaque
+// chunk (`size_bytes`), que le lecteur compare (cf. [ErrChunkTronque]) ; un manifeste historique
+// sans taille reste lisible et n'est pas rempli apres coup.
+//
 // SEUL UN FILM FINALISE SE VALIDE (lot L3, 2026-09-23 — cf. finalise.go). Une liste sans
 // morceau de temps forts est refusee AVANT toute ecriture ([ErrFilmNonFinalise]) : ni
-// manifeste, ni morceau orphelin. Et un manifeste deja present SANS temps forts — ecrit avant
-// cette regle, `ab526724` le 2026-09-22 — est la SEULE reecriture permise : il est remplace par
-// la liste finalisee qui le complete, a condition qu'elle en soit un SUR-ENSEMBLE EXACT par
-// index ([ErrManifesteDivergent] sinon, et rien n'est touche).
+// manifeste, ni morceau orphelin. Deux manifestes deja presents se remplacent, et eux seuls :
+//   - un manifeste SANS temps forts — ecrit avant cette regle, `ab526724` le 2026-09-22 — par
+//     la liste finalisee qui le complete, a condition qu'elle en soit un SUR-ENSEMBLE EXACT
+//     par index ([ErrManifesteDivergent] sinon, et rien n'est touche) ;
+//   - un manifeste ILLISIBLE, par la liste finalisee (WARN + compteur
+//     `film_cache_manifeste_repare`) : sans cela il bloquait le film pour toujours.
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
 
+	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/platform/atomicfile"
 )
 
@@ -65,21 +78,39 @@ type WriteChunk struct {
 	Data       []byte
 }
 
+// Compteurs de l'ecrivain (expvar, cf. `observability`).
+const (
+	// compteurChunkRemplace : un chunk present sur disque dont la taille ne valait pas celle du
+	// telechargement (ecriture interrompue d'avant l'ecriture atomique) a ete remplace.
+	compteurChunkRemplace = "film_cache_chunk_remplace"
+	// compteurManifesteRepare : un manifeste illisible a ete remplace par une liste finalisee.
+	compteurManifesteRepare = "film_cache_manifeste_repare"
+)
+
 // ErrManifesteDivergent : un manifeste NON FINALISE deja present ne se complete que par une liste
 // qui en est un SUR-ENSEMBLE EXACT — chaque entree deja validee retrouvee au meme index, avec le
 // meme type, le meme debut et la meme duree. Une divergence dit que les morceaux deja ecrits ne
 // decrivent peut-etre plus le meme film : rien n'est ecrit, et l'appelant le journalise.
 var ErrManifesteDivergent = errors.New("filmcache: la liste ne complete pas exactement le manifeste partiel deja present")
 
-// Write persiste un film FINALISE dans le cache : les fichiers de chunks manquants, puis
-// le manifeste s'il n'existe pas encore (ou s'il faut completer un manifeste partiel).
-// Idempotent : un chunk deja present sur disque n'est pas reecrit (le film est immuable
-// cote serveur).
+// sortDuManifeste : ce que [Write] fait du manifeste, decide AVANT toute ecriture.
+type sortDuManifeste int
+
+const (
+	manifesteAEcrireNeuf sortDuManifeste = iota // absent, ou partiel complete exactement
+	manifesteAConserver                         // finalise deja present (historique : blob_prefix CDN)
+	manifesteAReparer                           // present mais illisible
+)
+
+// Write persiste un film FINALISE dans le cache : les chunks manquants ou tronques, puis le
+// manifeste s'il n'existe pas encore (ou s'il faut completer un manifeste partiel, ou remplacer
+// un manifeste illisible). Idempotent : un chunk deja present A LA BONNE TAILLE n'est pas
+// reecrit (le film est immuable cote serveur).
 //
 // Refus, TOUS AVANT LA MOINDRE ECRITURE : liste vide, film non finalise
 // ([ErrFilmNonFinalise]), manifeste partiel que la liste ne complete pas exactement
-// ([ErrManifesteDivergent]), manifeste present mais illisible.
-func Write(root, shortID string, chunks []WriteChunk) error {
+// ([ErrManifesteDivergent]), manifeste present mais impossible a lire sur disque.
+func Write(ctx context.Context, root, shortID string, chunks []WriteChunk) error {
 	if len(chunks) == 0 {
 		return fmt.Errorf("filmcache: aucun chunk a ecrire pour %s", shortID)
 	}
@@ -87,7 +118,7 @@ func Write(root, shortID string, chunks []WriteChunk) error {
 		return fmt.Errorf("filmcache: %s (%d morceaux) : %w", shortID, len(chunks), ErrFilmNonFinalise)
 	}
 	manifestPath := ManifestPath(root, shortID)
-	ecrire, err := manifesteAEcrire(manifestPath, chunks)
+	sortMf, err := manifesteAEcrire(ctx, manifestPath, chunks)
 	if err != nil {
 		return fmt.Errorf("filmcache: %s : %w", shortID, err)
 	}
@@ -96,37 +127,66 @@ func Write(root, shortID string, chunks []WriteChunk) error {
 		return fmt.Errorf("filmcache: creation du dossier de chunks %s : %w", dir, err)
 	}
 	for _, c := range chunks {
-		path := filepath.Join(dir, chunkName(c.Index))
-		if _, err := os.Stat(path); err == nil {
-			continue // deja present : le film est immuable, on ne reecrit pas
-		}
-		if err := os.WriteFile(path, c.Data, 0o644); err != nil {
-			return fmt.Errorf("filmcache: ecriture du chunk %d de %s : %w", c.Index, shortID, err)
+		if err := ecrireChunk(ctx, dir, shortID, c); err != nil {
+			return err
 		}
 	}
-	if !ecrire {
-		return nil // manifeste finalise deja present (historique : blob_prefix CDN)
+	if sortMf == manifesteAConserver {
+		return nil
 	}
-	return ecrireManifeste(manifestPath, shortID, chunks)
+	if err := ecrireManifeste(manifestPath, shortID, chunks); err != nil {
+		return err
+	}
+	if sortMf == manifesteAReparer {
+		observability.IncCounter(compteurManifesteRepare)
+	}
+	return nil
 }
 
-// manifesteAEcrire decide du sort du manifeste, SANS rien ecrire : true quand il est absent, ou
-// quand il est PARTIEL et que `chunks` (finalisee) le complete exactement ; false quand un
-// manifeste finalise est deja la.
-func manifesteAEcrire(manifestPath string, chunks []WriteChunk) (bool, error) {
+// ecrireChunk pose un chunk, ATOMIQUEMENT. Un fichier deja present n'est adopte que s'il est
+// regulier et a la taille du telechargement ; sinon il est remplace, et le remplacement se
+// signale.
+func ecrireChunk(ctx context.Context, dir, shortID string, c WriteChunk) error {
+	path := CheminDuChunk(dir, c.Index)
+	info, err := os.Stat(path)
+	present := err == nil
+	switch {
+	case present && info.Mode().IsRegular() && info.Size() == int64(len(c.Data)):
+		return nil // deja entier : le film est immuable, on ne reecrit pas
+	case !present && !errors.Is(err, os.ErrNotExist):
+		return fmt.Errorf("filmcache: etat du chunk %d de %s : %w", c.Index, shortID, err)
+	}
+	if err := atomicfile.WriteFileStrict(path, c.Data, 0o644); err != nil {
+		return fmt.Errorf("filmcache: ecriture du chunk %d de %s : %w", c.Index, shortID, err)
+	}
+	if present {
+		observability.IncCounter(compteurChunkRemplace)
+		slog.WarnContext(ctx, "filmcache: chunk present a la mauvaise taille, remplace",
+			"short_id", shortID, "chunk", c.Index, "taille_disque", info.Size(),
+			"taille_attendue", len(c.Data))
+	}
+	return nil
+}
+
+// manifesteAEcrire decide du sort du manifeste, SANS rien ecrire : a ecrire quand il est absent,
+// ou quand il est PARTIEL et que `chunks` (finalisee) le complete exactement ; a conserver quand
+// un manifeste finalise est deja la ; a reparer quand il est illisible.
+func manifesteAEcrire(ctx context.Context, manifestPath string, chunks []WriteChunk) (sortDuManifeste, error) {
 	raw, err := os.ReadFile(manifestPath) //nolint:gosec // chemin compose par ManifestPath
 	if errors.Is(err, os.ErrNotExist) {
-		return true, nil
+		return manifesteAEcrireNeuf, nil
 	}
 	if err != nil {
-		return false, fmt.Errorf("lecture du manifeste existant : %w", err)
+		return 0, fmt.Errorf("lecture du manifeste existant : %w", err)
 	}
 	var existant writeManifestJSON
 	if err := json.Unmarshal(raw, &existant); err != nil {
-		return false, fmt.Errorf("manifeste existant illisible (%s) : %w", manifestPath, err)
+		slog.WarnContext(ctx, "filmcache: manifeste illisible, remplace par la liste finalisee",
+			"path", manifestPath, "err", err)
+		return manifesteAReparer, nil
 	}
 	if Finalise(existant.Chunks, typeDuManifeste) {
-		return false, nil
+		return manifesteAConserver, nil
 	}
 	parIndex := make(map[int]WriteChunk, len(chunks))
 	for _, c := range chunks {
@@ -135,15 +195,15 @@ func manifesteAEcrire(manifestPath string, chunks []WriteChunk) (bool, error) {
 	for _, e := range existant.Chunks {
 		c, ok := parIndex[e.Index]
 		if !ok || c.ChunkType != e.ChunkType || c.StartMS != e.StartMS || c.DurationMS != e.DurationMS {
-			return false, fmt.Errorf("%w (entree %d)", ErrManifesteDivergent, e.Index)
+			return 0, fmt.Errorf("%w (entree %d)", ErrManifesteDivergent, e.Index)
 		}
 	}
-	return true, nil
+	return manifesteAEcrireNeuf, nil
 }
 
 // ecrireManifeste pose le marqueur de commit, ATOMIQUEMENT : il peut desormais REMPLACER un
-// manifeste partiel, et une ecriture interrompue ne doit laisser ni l'ancien tronque ni un
-// nouveau illisible.
+// manifeste partiel ou illisible, et une ecriture interrompue ne doit laisser ni l'ancien
+// tronque ni un nouveau illisible.
 func ecrireManifeste(manifestPath, shortID string, chunks []WriteChunk) error {
 	if err := os.MkdirAll(filepath.Dir(manifestPath), 0o755); err != nil {
 		return fmt.Errorf("filmcache: creation du dossier de manifestes : %w", err)
@@ -152,6 +212,7 @@ func ecrireManifeste(manifestPath, shortID string, chunks []WriteChunk) error {
 	for _, c := range chunks {
 		mf.Chunks = append(mf.Chunks, writeManifestChunk{
 			Index: c.Index, ChunkType: c.ChunkType, StartMS: c.StartMS, DurationMS: c.DurationMS,
+			SizeBytes: int64(len(c.Data)),
 		})
 	}
 	blob, err := json.Marshal(mf)
@@ -175,9 +236,12 @@ type writeManifestJSON struct {
 	Chunks []writeManifestChunk `json:"chunks"`
 }
 
+// writeManifestChunk : une entree du manifeste. `size_bytes` est FACULTATIF (DT-4) : absent des
+// manifestes historiques, qui restent lisibles sans controle de taille.
 type writeManifestChunk struct {
-	Index      int `json:"index"`
-	ChunkType  int `json:"chunk_type"`
-	StartMS    int `json:"start_ms"`
-	DurationMS int `json:"duration_ms"`
+	Index      int   `json:"index"`
+	ChunkType  int   `json:"chunk_type"`
+	StartMS    int   `json:"start_ms"`
+	DurationMS int   `json:"duration_ms"`
+	SizeBytes  int64 `json:"size_bytes,omitempty"`
 }

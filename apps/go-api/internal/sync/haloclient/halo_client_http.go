@@ -171,7 +171,11 @@ func blobAbandon(ctx context.Context, blobURL string, status int, lastErr error,
 // Avant, TOUT statut non-200 était un échec définitif de la tentative unique, et
 // un seul 304 d'edge coûtait le film entier (errgroup : première erreur = film
 // abandonné) à CHAQUE passe de rattrapage.
-func (c *HaloAPIClient) downloadBlob(ctx context.Context, blobURL string) ([]byte, error) {
+//
+// `tailleAnnoncee` (> 0) est la taille du blob BRUT que le manifeste annonce (`ChunkSize`) : un
+// blob d'une autre taille rend [ErrChunkIncomplet], sans retentative (J2.4, 2026-09-26 — cf.
+// [blobRecu]). 0 = taille inconnue, aucun contrôle.
+func (c *HaloAPIClient) downloadBlob(ctx context.Context, blobURL string, tailleAnnoncee int) ([]byte, error) {
 	// Mode démo : aucune sortie tierce (cf. internal/platform/netguard).
 	if err := netguard.Check(ctx, "halo_api.download_blob"); err != nil {
 		return nil, err
@@ -191,21 +195,8 @@ func (c *HaloAPIClient) downloadBlob(ctx context.Context, blobURL string) ([]byt
 			slog.DebugContext(ctx, "halo_api: downloadBlob échec réseau (retry)",
 				"url", blobURL, "attempt", attempt+1, "err", at.err)
 		case at.status == http.StatusOK:
-			out, iErr := inflateBlob(at.raw)
-			if iErr != nil {
-				return nil, iErr
-			}
-			if attempt > 0 {
-				observability.AddInt(metricBlobRetrySuccess, 1)
-				if revalider {
-					slog.InfoContext(ctx, "halo_api: downloadBlob 304 puis succès",
-						"url", blobURL, "attempts", attempt+1)
-				}
-			}
-			slog.DebugContext(ctx, "halo_api: downloadBlob succès",
-				"url", blobURL, "bytes_compressed", len(at.raw), "bytes_inflated", len(out),
-				"attempts", attempt+1, "duration_ms", time.Since(start).Milliseconds())
-			return out, nil
+			return blobRecu(ctx, blobURL, at.raw, tailleAnnoncee,
+				essaiBlob{attempt: attempt, revalider: revalider, start: start})
 		case !retryableBlobStatus(at.status):
 			slog.WarnContext(ctx, "halo_api: downloadBlob HTTP error",
 				"url", blobURL, "status", at.status, "attempts", attempt+1,

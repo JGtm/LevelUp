@@ -20,7 +20,7 @@ func filmFinalise(tempsForts string) []WriteChunk {
 // le relit (manifeste + chunks), et ListShortIDs l'enumere.
 func TestWrite_PuisOpenRelit(t *testing.T) {
 	root := t.TempDir()
-	if err := Write(root, "0badf00d", filmFinalise("killfeed")); err != nil {
+	if err := Write(t.Context(), root, "0badf00d", filmFinalise("killfeed")); err != nil {
 		t.Fatalf("Write: %v", err)
 	}
 	src, found, err := Open(root, "0badf00d")
@@ -52,7 +52,7 @@ func TestWrite_NEcrasePasLeManifesteHistorique(t *testing.T) {
 	if err := os.WriteFile(mfPath, historique, 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := Write(root, "cafe0001", []WriteChunk{
+	if err := Write(t.Context(), root, "cafe0001", []WriteChunk{
 		{Index: 0, ChunkType: 1, Data: []byte("h")},
 		{Index: 1, ChunkType: ChunkTypeTempsForts, Data: []byte("tf")},
 	}); err != nil {
@@ -75,7 +75,7 @@ func TestWrite_NEcrasePasLeManifesteHistorique(t *testing.T) {
 // immuable) ; un second Write complete seulement ce qui manque.
 func TestWrite_IdempotentSurLesChunks(t *testing.T) {
 	root := t.TempDir()
-	if err := Write(root, "beef0002", filmFinalise("tf")); err != nil {
+	if err := Write(t.Context(), root, "beef0002", filmFinalise("tf")); err != nil {
 		t.Fatalf("Write 1: %v", err)
 	}
 	manquant := filepath.Join(ChunkDir(root, "beef0002"), "chunk_01.bin")
@@ -84,7 +84,7 @@ func TestWrite_IdempotentSurLesChunks(t *testing.T) {
 	}
 	second := filmFinalise("tf")
 	second[0].Data = []byte("ECRASE")
-	if err := Write(root, "beef0002", second); err != nil {
+	if err := Write(t.Context(), root, "beef0002", second); err != nil {
 		t.Fatalf("Write 2: %v", err)
 	}
 	got, err := os.ReadFile(filepath.Join(ChunkDir(root, "beef0002"), "chunk_00.bin"))

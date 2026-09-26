@@ -64,7 +64,7 @@ func TestFilmDejaEnCache(t *testing.T) {
 	const match = "aabbccdd-1111-2222-3333-444455556666"
 	court := titlePkg.FilmShortMatchID(match)
 
-	if filmDejaEnCache(racine, match) {
+	if filmDejaEnCache(t.Context(), racine, match) {
 		t.Error("cache vide : le film ne doit pas etre vu comme archive")
 	}
 
@@ -76,21 +76,63 @@ func TestFilmDejaEnCache(t *testing.T) {
 		[]byte("x"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if filmDejaEnCache(racine, match) {
+	if filmDejaEnCache(t.Context(), racine, match) {
 		t.Error("chunks orphelins SANS manifeste : le film n est pas lisible, il doit rester a " +
 			"recuperer — sinon une ecriture interrompue le perd definitivement")
 	}
 
 	// Manifeste ecrit : le film est archive. Un film FINALISE (lot L3, 2026-09-23) : le writer
 	// refuse une liste sans morceau des temps forts.
-	if err := filmcache.Write(racine, court, []filmcache.WriteChunk{
+	if err := filmcache.Write(t.Context(), racine, court, []filmcache.WriteChunk{
 		{Index: 0, ChunkType: 1, Data: []byte("entete")},
 		{Index: 1, ChunkType: filmcache.ChunkTypeTempsForts, Data: []byte("temps forts")},
 	}); err != nil {
 		t.Fatal(err)
 	}
-	if !filmDejaEnCache(racine, match) {
+	if !filmDejaEnCache(t.Context(), racine, match) {
 		t.Error("manifeste present : le film doit etre reconnu comme archive, sinon chaque passe " +
 			"le retelecharge")
+	}
+}
+
+// TestFilmDejaEnCache_ManifestePartielNestPasComplet — un manifeste SANS morceau des temps forts
+// decrit un film en cours de publication (lot L3) : present n est pas complet, le film reste a
+// archiver (le writer completera le manifeste partiel).
+func TestFilmDejaEnCache_ManifestePartielNestPasComplet(t *testing.T) {
+	racine := t.TempDir()
+	if err := filmcache.EnsureDirs(racine); err != nil {
+		t.Fatal(err)
+	}
+	const match = "aabbccdd-2222-2222-3333-444455556666"
+	partiel := []byte(`{"chunks":[{"index":0,"chunk_type":1,"start_ms":0},{"index":1,"chunk_type":2,"start_ms":0}]}`)
+	if err := os.WriteFile(filmcache.ManifestPath(racine, titlePkg.FilmShortMatchID(match)), partiel, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if filmDejaEnCache(t.Context(), racine, match) {
+		t.Error("manifeste non finalise : le film ne doit pas etre vu comme archive")
+	}
+}
+
+// TestFilmDejaEnCache_ChunkTronqueNestPasComplet — un chunk dont le fichier n a pas la taille
+// declaree au manifeste : le film n est pas complet, il reste a archiver (le writer remplacera
+// le chunk tronque).
+func TestFilmDejaEnCache_ChunkTronqueNestPasComplet(t *testing.T) {
+	racine := t.TempDir()
+	if err := filmcache.EnsureDirs(racine); err != nil {
+		t.Fatal(err)
+	}
+	const match = "aabbccdd-3333-2222-3333-444455556666"
+	court := titlePkg.FilmShortMatchID(match)
+	if err := filmcache.Write(t.Context(), racine, court, []filmcache.WriteChunk{
+		{Index: 0, ChunkType: 1, Data: []byte("entete")},
+		{Index: 1, ChunkType: filmcache.ChunkTypeTempsForts, Data: []byte("temps forts")},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filmcache.CheminDuChunk(filmcache.ChunkDir(racine, court), 1), []byte("temps"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if filmDejaEnCache(t.Context(), racine, match) {
+		t.Error("chunk tronque : le film ne doit pas etre vu comme archive")
 	}
 }

@@ -39,7 +39,7 @@ func cacheAvecManifestePartiel(t *testing.T) string {
 		entrees = append(entrees, haloclient.CachedChunk{Index: c.Index, ChunkType: c.ChunkType,
 			StartMS: c.StartMS, DurationMS: c.DurationMS})
 	}
-	if err := filmcache.Write(racine, court, aEcrire); err != nil {
+	if err := filmcache.Write(t.Context(), racine, court, aEcrire); err != nil {
 		t.Fatal(err)
 	}
 	blob, err := json.Marshal(haloclient.CachedManifest{Chunks: entrees[:2]})

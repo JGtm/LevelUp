@@ -401,7 +401,7 @@ func persistFilmToCache(ctx context.Context, d Deps, matchID string) resultatFil
 			DurationMS: c.DurationMS, Data: c.Data,
 		})
 	}
-	if err := filmcache.Write(d.CacheRoot, titlePkg.FilmShortMatchID(matchID), wc); err != nil {
+	if err := filmcache.Write(ctx, d.CacheRoot, titlePkg.FilmShortMatchID(matchID), wc); err != nil {
 		// Un client qui n'aurait pas vérifié la finalisation : le writer la vérifie, et c'est le
 		// même report.
 		if reporterNonFinalise(ctx, d, matchID, err) {

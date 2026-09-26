@@ -2,15 +2,20 @@ package filmproc
 
 // solo_test.go — LE VERROU DOIT TENIR, ET NE JAMAIS COINCER.
 //
-// Deux exigences opposees, et le test porte les deux : un second decodage doit etre REFUSE tant
-// que le premier travaille (c'est la protection), et un verrou laisse par un processus TUE doit
-// se reprendre TOUT SEUL (sinon la protection devient une panne — et le cas nominal ici est
-// justement la mort violente : la sentinelle memoire tue, l'operateur aussi).
+// Deux exigences opposees : un second decodage doit etre REFUSE tant que le premier travaille
+// (c'est la protection), et un verrou laisse par un processus TUE doit se reprendre TOUT SEUL
+// (sinon la protection devient une panne — et le cas nominal ici est justement la mort violente :
+// la sentinelle memoire tue, l'operateur aussi). Depuis le verrou OS (J2.6, 2026-09-26), la
+// seconde est une propriete du NOYAU, prouvee sur un vrai processus tue par
+// `platform/filelock.TestTryLock_LibereALaMortDuProcessus` ; ce fichier porte la premiere, et le
+// fait qu'un detenteur ne rende jamais que SON verrou.
 
 import (
+	"context"
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 )
@@ -57,38 +62,6 @@ func TestSoloRendLeVerrouALaLiberation(t *testing.T) {
 	second.Release()
 }
 
-func TestSoloRepreudUnVerrouPerime(t *testing.T) {
-	dir := t.TempDir()
-	path := filepath.Join(dir, soloFileName)
-	// Un verrou laisse par un processus TUE : le fichier existe, son battement est vieux.
-	if err := os.WriteFile(path, []byte(`{"tool":"mort","pid":1}`), 0o644); err != nil {
-		t.Fatalf("preparation : %v", err)
-	}
-	vieux := time.Now().Add(-2 * soloStale)
-	if err := os.Chtimes(path, vieux, vieux); err != nil {
-		t.Fatalf("preparation (dates) : %v", err)
-	}
-
-	l, err := AcquireSolo(dir, "test-repreneur", "match-a")
-	if err != nil {
-		t.Fatalf("un verrou PERIME n'a pas ete repris : %v — la protection deviendrait une panne "+
-			"des la premiere coupure par la sentinelle memoire", err)
-	}
-	l.Release()
-}
-
-func TestSoloNeReprendPasUnVerrouVivant(t *testing.T) {
-	dir := t.TempDir()
-	path := filepath.Join(dir, soloFileName)
-	if err := os.WriteFile(path, []byte(`{"tool":"vivant","pid":2}`), 0o644); err != nil {
-		t.Fatalf("preparation : %v", err)
-	}
-	// Battement FRAIS (l'ecriture vient d'avoir lieu) : le detenteur travaille.
-	if _, err := AcquireSolo(dir, "test-intrus", "match-b"); !errors.Is(err, ErrDecodeBusy) {
-		t.Fatalf("un verrou FRAIS a ete repris : %v", err)
-	}
-}
-
 func contains(s, sub string) bool {
 	return len(sub) == 0 || (len(s) >= len(sub) && indexOf(s, sub) >= 0)
 }
@@ -100,4 +73,101 @@ func indexOf(s, sub string) int {
 		}
 	}
 	return -1
+}
+
+// vieillirLeVerrou date d'une heure chaque fichier du dossier du verrou : l'etat d'un detenteur
+// VIVANT mais gele (pause, veille), dont aucun battement n'a ete ecrit.
+func vieillirLeVerrou(t *testing.T, dir string) {
+	t.Helper()
+	entrees, err := os.ReadDir(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	vieux := time.Now().Add(-time.Hour)
+	for _, e := range entrees {
+		if err := os.Chtimes(filepath.Join(dir, e.Name()), vieux, vieux); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
+// TestAcquireSolo_ReleaseNeLibereQueSonVerrou — un detenteur ne rend que SON verrou. Avec le
+// battement de coeur, un detenteur gele se faisait deposseder (verrou « perime » repris par B),
+// puis son Release effacait le fichier de B : C decodait pendant que B travaillait. Quel que soit
+// le chemin qui mene B au verrou, apres le Release de A, B doit toujours exclure C.
+func TestAcquireSolo_ReleaseNeLibereQueSonVerrou(t *testing.T) {
+	dir := t.TempDir()
+	a, err := AcquireSolo(dir, "outil-a", "match-a")
+	if err != nil {
+		t.Fatalf("verrou de A : %v", err)
+	}
+	vieillirLeVerrou(t, dir)
+	b, err := AcquireSolo(dir, "outil-b", "match-b")
+	if err != nil {
+		if !errors.Is(err, ErrDecodeBusy) {
+			t.Fatalf("refus de B : %v, attendu ErrDecodeBusy", err)
+		}
+		a.Release()
+		if b, err = AcquireSolo(dir, "outil-b", "match-b"); err != nil {
+			t.Fatalf("verrou de B apres le Release de A : %v", err)
+		}
+	} else {
+		a.Release()
+	}
+	defer b.Release()
+	a.Release()
+
+	if c, err := AcquireSolo(dir, "outil-c", "match-c"); err == nil {
+		c.Release()
+		t.Fatal("le Release de A a libere le verrou de B : C decode pendant que B travaille")
+	}
+}
+
+// TestAcquireSolo_RefusNommeLeDernierDetenteur — le refus nomme le detenteur ACTUEL, jamais un
+// precedent : l'operateur doit savoir quel processus attendre ou arreter.
+func TestAcquireSolo_RefusNommeLeDernierDetenteur(t *testing.T) {
+	dir := t.TempDir()
+	a, err := AcquireSolo(dir, "outil-a", "match-a")
+	if err != nil {
+		t.Fatalf("verrou de A : %v", err)
+	}
+	a.Release()
+	b, err := AcquireSolo(dir, "outil-b", "match-b")
+	if err != nil {
+		t.Fatalf("verrou de B : %v", err)
+	}
+	defer b.Release()
+
+	_, err = AcquireSolo(dir, "outil-c", "match-c")
+	if !errors.Is(err, ErrDecodeBusy) {
+		t.Fatalf("err = %v, attendu ErrDecodeBusy", err)
+	}
+	for _, attendu := range []string{"outil-b", "match-b"} {
+		if !strings.Contains(err.Error(), attendu) {
+			t.Errorf("le refus ne nomme pas %q : %s", attendu, err)
+		}
+	}
+	for _, ancien := range []string{"outil-a", "match-a"} {
+		if strings.Contains(err.Error(), ancien) {
+			t.Errorf("le refus nomme l'ancien detenteur %q : %s", ancien, err)
+		}
+	}
+}
+
+// TestAcquireSoloWait_AttendPuisPrend — le regime d'attente prend le verrou des qu'il est rendu.
+func TestAcquireSoloWait_AttendPuisPrend(t *testing.T) {
+	dir := t.TempDir()
+	tenu, err := AcquireSolo(dir, "outil-a", "match-a")
+	if err != nil {
+		t.Fatalf("verrou de A : %v", err)
+	}
+	go func() {
+		time.Sleep(300 * time.Millisecond)
+		tenu.Release()
+	}()
+	l, err := AcquireSoloWait(context.Background(), dir, "outil-b", "match-b", 5*time.Second)
+	if err != nil {
+		t.Fatalf("attendu le verrou une fois rendu, obtenu %v", err)
+	}
+	l.Release()
 }
