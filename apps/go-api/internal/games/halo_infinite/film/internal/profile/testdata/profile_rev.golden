@@ -81,6 +81,15 @@
 #               `registre_empreintes.go`, `classement_registre.go`) entrent dans SON empreinte
 #               au lieu d en ouvrir un quatrieme. Aucun des deux lots ne change ce que l autre
 #               fait lire : 3.4 pose une largeur, 3.1.1 lit des clefs et classe des empreintes.
+#
+#   2026-09-26  REVISION INCHANGEE, EMPREINTE SEULE RECOPIEE (lot J3.1 du
+#               PLAN_SUITE_AUDIT_DECODEUR_FILM_2026-09-25, decision DU-2 (a)). OUTILLAGE : le
+#               mecanisme central (`film/revision`) hache desormais le FLUX DE JETONS de chaque
+#               source (`go/scanner`) — commentaires ordinaires et mise en page ecartes, directives
+#               `//go:` gardees — et non plus ses octets. Le cadre (chemin relatif a la racine,
+#               longueur du contenu) ne change pas, et AUCUNE source de la couche ne change dans
+#               ce lot : la sortie est identique a l octet, rien n est candidat a un redecodage.
+
 profile-2026-09-17	923c8ad7d9495662e97c1240b1c3e77abcffd04d9b3ae38e5748b859e8623e63
 profile-2026-09-17.2	cf0e50d2ca6d3dde6e8c954425da64b4433e282943f9d8999039c4b1e1f3b135
-profile-2026-09-17.3	e48d405ce99ba4bc1c433e7a4c889b13847c239d81054329c29e34ea91baf67a
+profile-2026-09-17.3	d8bd4b7e37ae30c4d5654e854bf5141ce1caad1df5decb60b5f58d9dc982964c

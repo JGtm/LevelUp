@@ -49,5 +49,14 @@
 #               deja decode n est candidat a quoi que ce soit. Le critere de retrait ecrit dans
 #               le fichier supprime est tenu : plus aucun `source.ChunkMeta` ni `source.Packet`
 #               dans le depot.
+#
+#   2026-09-26  REVISION INCHANGEE, EMPREINTE SEULE RECOPIEE (lot J3.1 du
+#               PLAN_SUITE_AUDIT_DECODEUR_FILM_2026-09-25, decision DU-2 (a)). OUTILLAGE : le
+#               mecanisme central (`film/revision`) hache desormais le FLUX DE JETONS de chaque
+#               source (`go/scanner`) — commentaires ordinaires et mise en page ecartes, directives
+#               `//go:` gardees — et non plus ses octets. Le cadre (chemin relatif a la racine,
+#               longueur du contenu) ne change pas, et AUCUNE source de la couche ne change dans
+#               ce lot : la sortie est identique a l octet, rien n est candidat a un redecodage.
+
 source-2026-09-16	4d8427e406555c7cca2bbe0e94c3658a639cb394c4be305a08d7e413ab998913
-source-2026-09-16.2	1eba2c7257e9b9f5d0e26a48fd63067a008d7294dabb18e6f29276dea3e97c6a
+source-2026-09-16.2	f913b5616dd17a2f4933ed7cddb2590368933309e7cdf9d25f0d3c3153a644d2

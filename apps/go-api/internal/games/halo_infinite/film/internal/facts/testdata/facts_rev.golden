@@ -237,6 +237,15 @@
 #               de `repli_ancre_d_image_cle_par_election`. Les liaisons du monde peuvent changer
 #               (fausses ancres 192 / 1536 retirees, 1280..1298 et 1537..1601 rendus) : c est la
 #               montee UNIQUE de la vague D, `killsource-2026-09-24`, qui en porte le backlog.
+#
+#   2026-09-26  REVISION INCHANGEE, EMPREINTE SEULE RECOPIEE (lot J3.1 du
+#               PLAN_SUITE_AUDIT_DECODEUR_FILM_2026-09-25, decision DU-2 (a)). OUTILLAGE : le
+#               mecanisme central (`film/revision`) hache desormais le FLUX DE JETONS de chaque
+#               source (`go/scanner`) — commentaires ordinaires et mise en page ecartes, directives
+#               `//go:` gardees — et non plus ses octets. Le cadre (chemin relatif a la racine,
+#               longueur du contenu) ne change pas, et AUCUNE source de la couche ne change dans
+#               ce lot : la sortie est identique a l octet, rien n est candidat a un redecodage.
+
 killsource-2026-09-16.2	d09f5d19636bbb5eff1c4d38b54489868bafa127c01ce91b6cb028e9dd7bc131
 killsource-2026-09-16.3	8c87a14f4d72f8f2b05350a39c9a93b80479a372d61f3a9416628689e2b8e67e
 killsource-2026-09-16.4	a3fcc9fed6be58eeab197aaa212dd2e0e386750671ff6a67858454d76935eac8
@@ -258,4 +267,4 @@ killsource-2026-09-21.8	31745c89f06053b37e79b79810c5d1f8e1ba4e762fbf85cfa0fb21af
 killsource-2026-09-21.9	9e7a8df4984025506ce1e0b7474c5e2e10516e2b3d93b7c48561485100ca5726
 killsource-2026-09-22	eb0c32d7d98f49b8f90979270d6925327033adcf6cede45b6c945883f5f39460
 killsource-2026-09-22.2	7043543f50cecfdb485f382e9738d5d67b45776a44a4cb763af472497852b875
-killsource-2026-09-24	156d3d27a0a5c5039a509e60b65add6fbc011fe31903d64718deb408e2ecd917
+killsource-2026-09-24	3f56395c47e95fdaaddb986f8b7ef9aa1065b45434e524d3e661ef3ca49901c4

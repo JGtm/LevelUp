@@ -128,10 +128,15 @@ type Resultat struct {
 // Les fins de ligne sont normalisees en LF — sans quoi un checkout mal configure rendrait le
 // gate vert en CI et rouge sur le poste, pour une raison etrangere a la couche.
 //
+// LES COMMENTAIRES ORDINAIRES ET LA MISE EN PAGE SONT ECARTES DEPUIS LE LOT J3.1 (2026-09-26,
+// decision DU-2 (a)) : le contenu d un fichier est son FLUX DE JETONS ([jetonsDe]), directives
+// `//go:` comprises. Le cadre, lui, n a pas change — chemin relatif a la racine et longueur du
+// contenu.
+//
 // # CE QUE CE MECANISME NE FAIT PAS, ET C EST ASSUME
 //
-// Il ne distingue pas un changement de decodage d une reformulation de commentaire : le hachage
-// porte sur les OCTETS. Un garde-rail qui ne mordrait que sur le « significatif » devrait
+// Il ne distingue pas un changement de decodage d un renommage de variable locale : le hachage
+// porte sur les JETONS. Un garde-rail qui ne mordrait que sur le « significatif » devrait
 // comprendre le decodeur — il rendrait des faux negatifs, c est-a-dire le defaut meme qu il
 // existe pour fermer. Un faux positif coute une ligne a mettre a jour.
 func Calculer(racines []string, exclure func(rel string) bool, valeursAmont ...string) (Resultat, error) {
@@ -190,7 +195,11 @@ func sourcesDe(racine string, exclure func(rel string) bool) ([]sourceLue, error
 		if errLire != nil {
 			return errLire
 		}
-		lus = append(lus, sourceLue{rel: rel, texte: strings.ReplaceAll(string(blob), "\r\n", "\n")})
+		jetons, errJetons := jetonsDe(rel, strings.ReplaceAll(string(blob), "\r\n", "\n"))
+		if errJetons != nil {
+			return errJetons
+		}
+		lus = append(lus, sourceLue{rel: rel, texte: jetons})
 		return nil
 	})
 	if err != nil {
