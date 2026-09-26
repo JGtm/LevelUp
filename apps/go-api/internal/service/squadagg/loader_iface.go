@@ -96,3 +96,18 @@ type SquadV2Loader interface {
 		slug, gameVariantName string,
 	) (slope, intercept float64, ok bool, err error)
 }
+
+// SquadKillSourceCategoryLoader est l'extension OPTIONNELLE du chargeur : les frags par
+// (joueur, catégorie de source de dégât du film) — objets explosifs du décor, chute et
+// environnement — pour les « Outils de destruction » de l'Escouade (décision D8 du plan du
+// 2026-09-26). Découverte par assertion : un chargeur qui ne l'implémente pas (doublures de
+// test, titre sans film) prive seulement la carte de ces deux lignes, dont les frags
+// retombent dans le reliquat « Non attribué ». Implémentation prod :
+// duckdb.SquadV2LoaderAdapter (games.ErrCapabilityNotSupported sans film).
+type SquadKillSourceCategoryLoader interface {
+	LoadKillSourceCategories(
+		ctx context.Context,
+		slug string,
+		filters port.WeaponKillFilters,
+	) ([]port.KillSourceCategoryRow, error)
+}

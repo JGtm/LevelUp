@@ -73,8 +73,8 @@ export const FRAG_CLASS_TOKENS: Record<FragClassKey, SemanticToken> = {
   melee: 'frag-melee', // rose
   grenade: 'frag-grenade', // ambre
   spartan_ability: 'frag-spartan-ability', // indigo
-  vehicle: 'frag-vehicle', // indigo profond
-  turret: 'frag-turret', // orange brûlé
+  vehicle: 'frag-vehicle', // orange brûlé (= resource-vehicle, échangé avec la tourelle le 2026-09-26)
+  turret: 'frag-turret', // indigo profond
   equipment: 'frag-equipment', // fuchsia — hors famille bleue (décision 2026-08-29, lot A.5)
   environmental: 'frag-environmental', // bleu profond
   unattributed: 'frag-unattributed', // neutre (résidu)

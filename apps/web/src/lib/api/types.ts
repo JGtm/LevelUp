@@ -1277,22 +1277,15 @@ export type MapBreakdownRow = components['schemas']['MapBreakdownRow']
 
 export type SquadMatchSeriesPoint = components['schemas']['SquadMatchSeriesPoint']
 
-/** Une ligne du chart kills par arme teammates.09. */
-export interface SquadWeaponBar {
-  weapon_id: number
-  label: string
-  /** Classe d'arme du registre (shoulder/sidearm/heavy/melee/grenade/…). Absente si non
-   *  résolue (dont les sentinels grenade/mêlée). Sert au split gun/non-gun (buildSquadFragTools). */
-  class?: string
-  is_grenade_melee?: boolean
-  /** gamertag → kills (joueurs absents = 0). */
-  kills_by_player: Record<string, number>
-  total_squad: number
-}
+/** Une ligne des « Outils de destruction » (Escouade, D8) : un outil — arme nommée par le
+ *  registre (`kind` = `weapon`, `label` FR d'abord, `label_en` EN d'abord) ou nature nommée
+ *  par le web (mêlée, objet explosif, chute, non attribué…) —, sa classe de frag (pastille) et
+ *  les frags de chaque joueur. */
+export type SquadWeaponToolLine = components['schemas']['SquadWeaponToolLine']
 
-/** Données du chart teammates.09 — players ordonnés (main puis teammates),
- *  bars triées par TotalSquad ASC (peu utilisées en haut). */
-export type SquadWeaponKills = components['schemas']['SquadWeaponKills']
+/** Données des « Outils de destruction » — players ordonnés (main puis coéquipiers), lines
+ *  triées par total décroissant, « Non attribué » en dernier. Aucun plafond. */
+export type SquadWeaponTools = components['schemas']['SquadWeaponTools']
 
 /** Une ligne du comparatif « Précision par rôle » (Escouade) : précision + tirs par joueur,
  *  agrégés PAR RÔLE d'arme (precision/automatic/sniper/…). Shim du schéma OpenAPI (contrat
@@ -1466,7 +1459,8 @@ export interface TeammatesPageResponse {
   /** Répartition des frags PAR CLASSE (D8) par gamertag — barres empilées du
    *  sous-chart « Répartition des frags » de teammates.16. */
   frag_classes?: Record<string, FragClassEntry[]>
-  weapon_kills?: SquadWeaponKills
+  /** « Outils de destruction » (D8) : chaque frag nommé, par outil et par joueur. */
+  weapon_tools?: SquadWeaponTools
   /** Comparatif « Précision par arme » multi-joueurs (barres groupées horizontales).
    *  Précision native Halo 5 ; absent sur Infinite (capability weapon_accuracy). */
   weapon_accuracy?: SquadWeaponAccuracy

@@ -113562,3 +113562,32 @@ serveur relance a synchronise depuis). Tache Notion 10 CLOSE.
 **Resultats observes** : le décalage des étiquettes est vérifié sur un rendu SVG hors DOM d'ECharts 6.1 (fins 3,0 / 3,1 / 2,9 : 80-88 px sans décalage, 80 / 92 / 104 px avec). Gate : typecheck OK, lint 0 erreur, vitest complet 8 663 tests verts, knip-ratchet 0/0/0, couleurs en dur 0, imports croisés 7 ≤ 7. Infobulle : texte partagé conservé (la proposition de la maquette demanderait de modifier `common.toml` pour trois pages, consigné aux Découvertes du plan).
 
 **Conclusion / prochaine etape** : L1 clos, vérification superviseur puis lot L2 (Contributions : frags).
+
+## [2026-09-26] Emprise, lot L2 : « Répartition des frags » et « Outils de destruction » — Complété (`wt/emprise`, commit local)
+
+**Decision technique principale** : la Répartition des frags passe en rendu DOM (`SquadFragBreakdownCard`). Le compte de chaque classe s'écrit dans son segment s'il tient avec 6 px de marge de chaque côté, mesure au pixel par `components/charts/segmentLabelFit.ts`, réutilisable par L5.3. Sinon, ligne de repli au-dessus de la barre, alignée sur le premier segment masqué. Total au bout, légende en bas et centrée, graphe centré verticalement.
+
+Les Outils de destruction reçoivent un builder Go PROPRE à l'Escouade (`teammates_squad_weapon_tools.go`, D8), sans toucher `fragdist` :
+- une ligne par clé d'arme, grenades par type ;
+- la mêlée depuis la feuille de match, et les mécaniques natives sous capability ;
+- « objet explosif » et « chute, environnement » depuis la catégorie de source du film ;
+- le reliquat en « Non attribué », toujours dernier.
+
+Le champ `weapon_tools` remplace `weapon_kills`. Côté web : plus de plafond ni d'« Autres », légende des joueurs, compte au bout, pastille de classe, part en infobulle.
+
+Périmètre Go étendu par nécessité : 15 des 19 objets explosifs du film n'ont pas de clé de registre. D'où une interface optionnelle `port.KillSourceCategorizer` (implémentée par Halo Infinite), une lecture par catégorie sur `match_kill_events_latest` (parcours de la requête factorisé) et un chargeur Escouade optionnel. Sans film, `ErrCapabilityNotSupported` et dégradation propre.
+
+**Resultats observes** : `TestSquadWeaponTools_Soiree2209` retrouve BR75 22 / 22 / 35, Mutilateur 1 et VK78 Commando 1 (JGtm) nommés, grenade frag 2 / 1 / 4, mêlée 6 / 13 / 16, objet explosif 2 / 1 / 2, chute 0 / 1 / 1. Golden Halo 5 de fragdist inchangé.
+
+Gate :
+- Go : `go test ./...` vert sauf `internal/config` (test à fenêtre d'1 s, échec sous charge pendant que vitest tournait), vert rejoué isolé ; intégration des lecteurs de source verte ; `go-api-lint` 0 issue.
+- Contrat : gen, types et check OK. Snapshot de surface du contrat régénéré ; retrait assumé de `SquadWeaponBar` / `SquadWeaponKills`, ses deux seules disparitions.
+- Web : typecheck, lint 0 erreur, knip 0/0/0, couleurs 0, imports croisés 7 ≤ 7, vitest complet vert.
+
+**Conclusion / prochaine etape** : découvertes au plan §7. La principale : aucun lot ne monte les cartes frags sur Contributions, alors que L5.4 supprime `SquadUsagesPage`. Les autres :
+- « Grenade frag » au lieu de « Grenade à fragmentation » ;
+- mêlée feuille contre film ;
+- couleur de la ligne bidon ;
+- effets sur Halo 5.
+
+Vérification superviseur, puis L3.

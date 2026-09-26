@@ -60,6 +60,9 @@ type KillSourceWeaponKillsRepo struct {
 	classifier port.KillSourceClassifier
 	// describer NOMME la classe d'une source, pour le journal seul. Peut etre nil.
 	describer port.KillSourceDescriber
+	// categorizer range une source dans une categorie canonique (objet explosif,
+	// environnement), pour les « Outils de destruction » de l'Escouade seuls. Peut etre nil.
+	categorizer port.KillSourceCategorizer
 }
 
 // NewKillSourceWeaponKillsRepo cree le lecteur d'arme adosse a la source de degat.
@@ -69,6 +72,9 @@ func NewKillSourceWeaponKillsRepo(pdb *PlayerDB, classifier port.KillSourceClass
 	r := &KillSourceWeaponKillsRepo{pdb: pdb, classifier: classifier}
 	if d, ok := classifier.(port.KillSourceDescriber); ok {
 		r.describer = d
+	}
+	if c, ok := classifier.(port.KillSourceCategorizer); ok {
+		r.categorizer = c
 	}
 	return r
 }
@@ -134,22 +140,45 @@ func (r *KillSourceWeaponKillsRepo) queryTally(
 	slug string,
 	filters port.WeaponKillFilters,
 ) (map[sourceTally]int, error) {
+	out := map[sourceTally]int{}
+	ecartes := map[string]int{}
+	err := r.forEachSourceTally(ctx, filters, func(xuid string, sourceTag uint32, kills int) {
+		key, ok := r.classifier.KillSourceRegistryKey(sourceTag)
+		if !ok {
+			ecartes[r.classeSource(sourceTag)] += kills
+			return
+		}
+		out[sourceTally{xuid: xuid, weaponKey: key}] += kills
+	})
+	if err != nil {
+		return nil, err
+	}
+	r.journaliserEcartes(ctx, slug, ecartes, len(filters.MatchIDs))
+	return out, nil
+}
+
+// forEachSourceTally execute la requete des morts creditees (GROUP BY tueur, source) et
+// rend chaque triplet (xuid, tag, frags) a `visit`. Un seul parcours pour les deux
+// lecteurs de la source de degat (par cle de registre, par categorie).
+func (r *KillSourceWeaponKillsRepo) forEachSourceTally(
+	ctx context.Context,
+	filters port.WeaponKillFilters,
+	visit func(xuid string, sourceTag uint32, kills int),
+) error {
 	q, args := buildKillSourceWeaponQuery(filters, r.pdb.TitleSlug)
 
 	db, release, err := r.pdb.SharedReadDB().Get(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("shared reader: %w", err)
+		return fmt.Errorf("shared reader: %w", err)
 	}
 	defer release()
 
 	dbRows, err := db.QueryContext(ctx, q, args...)
 	if err != nil {
-		return nil, fmt.Errorf("query: %w", err)
+		return fmt.Errorf("query: %w", err)
 	}
 	defer dbRows.Close()
 
-	out := map[sourceTally]int{}
-	ecartes := map[string]int{}
 	for dbRows.Next() {
 		var (
 			xuid      string
@@ -162,18 +191,9 @@ func (r *KillSourceWeaponKillsRepo) queryTally(
 			slog.ErrorContext(ctx, "KillSourceWeaponKillsRepo: scan echoue, ligne sautee", "err", err)
 			continue
 		}
-		key, ok := r.classifier.KillSourceRegistryKey(sourceTag)
-		if !ok {
-			ecartes[r.classeSource(sourceTag)] += kills
-			continue
-		}
-		out[sourceTally{xuid: xuid, weaponKey: key}] += kills
+		visit(xuid, sourceTag, kills)
 	}
-	if err := dbRows.Err(); err != nil {
-		return nil, err
-	}
-	r.journaliserEcartes(ctx, slug, ecartes, len(filters.MatchIDs))
-	return out, nil
+	return dbRows.Err()
 }
 
 // classeSource nomme la classe d'une source, pour le journal seul. « inconnue » si le

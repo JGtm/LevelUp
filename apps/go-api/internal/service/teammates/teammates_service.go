@@ -469,7 +469,7 @@ func (s *TeammatesService) GetPage(
 		IntensityProfile:    sec.intensityProfile,
 		PerformanceSeries:   sec.performanceSeries,
 		FragClasses:         sec.fragClasses,
-		WeaponKills:         sec.weaponKills,
+		WeaponTools:         sec.weaponTools,
 		WeaponAccuracy:      sec.weaponAccuracy,
 		NativeKillMechanics: sec.nativeKillMechanics,
 		FirstBlood:          sec.firstBlood,

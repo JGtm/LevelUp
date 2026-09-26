@@ -12564,20 +12564,20 @@ export interface components {
             /** Format: int64 */
             total_shots_squad: number;
         };
-        SquadWeaponBar: {
-            class?: string;
-            is_grenade_melee?: boolean;
+        SquadWeaponToolLine: {
+            class: string;
             kills_by_player: {
                 [key: string]: number;
             };
-            label: string;
+            kind: string;
+            label?: string;
+            label_en?: string;
             /** Format: int64 */
             total_squad: number;
-            /** Format: int64 */
-            weapon_id: number;
+            weapon_key?: string;
         };
-        SquadWeaponKills: {
-            bars: components["schemas"]["SquadWeaponBar"][] | null;
+        SquadWeaponTools: {
+            lines: components["schemas"]["SquadWeaponToolLine"][] | null;
             players: string[] | null;
         };
         Stance: {
@@ -13266,7 +13266,7 @@ export interface components {
             /** Format: int64 */
             total_matches: number;
             weapon_accuracy?: components["schemas"]["SquadWeaponAccuracy"];
-            weapon_kills?: components["schemas"]["SquadWeaponKills"];
+            weapon_tools?: components["schemas"]["SquadWeaponTools"];
         };
         /** @description Corps de POST /pages/teammates (handler RawBody : le schéma est documenté ici, cf. domain.TeammatesQueryRequest). */
         TeammatesQueryRequest: {

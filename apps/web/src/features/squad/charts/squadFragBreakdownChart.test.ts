@@ -1,100 +1,110 @@
 /**
- * squadFragBreakdownChart.test.ts — « Répartition des frags » par joueur, barres
- * empilées PAR CLASSE (D8). Taxonomie dynamique (N classes, ordre canonique).
+ * squadFragBreakdownChart.test.ts — MODÈLE de la « Répartition des frags » par joueur :
+ * segments PAR CLASSE (ordre canonique), échelle commune, repli S3 et ton de l'écriture.
  */
 import { describe, it, expect } from 'vitest'
-import { buildFragBreakdownOption } from './squadFragBreakdownChart'
-import { fragClassColor } from '@/lib/accessibility/scales'
+import {
+  buildFragBreakdownRows,
+  fragBreakdownClasses,
+  repliOffsetPct,
+  segmentTextTone,
+} from './squadFragBreakdownChart'
 import type { FragClassEntry } from '@/lib/api/types'
 
 function cls(className: string, kills: number): FragClassEntry {
   return { class: className, kills, authoritative: false }
 }
 
-/** Libellé de classe stub (le vrai vient du manifeste `frags`). */
-const classLabel = (c: string) => `L:${c}`
 const ORDER = ['Me', 'F1']
 
-type Serie = { name: string; type: string; stack: string; itemStyle: { color: string }; data: number[] }
-
-describe('buildFragBreakdownOption (par classe)', () => {
-  it('vide → option minimale (aucune série)', () => {
-    const opt = buildFragBreakdownOption({}, { classLabel })
-    expect(opt).toMatchObject({ backgroundColor: 'transparent' })
-    expect(opt.series).toBeUndefined()
+describe('buildFragBreakdownRows', () => {
+  it('vide, ou aucune classe > 0 → aucune barre', () => {
+    expect(buildFragBreakdownRows({})).toEqual([])
+    expect(buildFragBreakdownRows({ Me: [cls('shoulder', 0)] }, ['Me'])).toEqual([])
   })
 
-  it('aucune classe > 0 → option minimale (aucune série)', () => {
-    const opt = buildFragBreakdownOption({ Me: [cls('shoulder', 0)] }, { playerOrder: ['Me'], classLabel })
-    expect(opt.series).toBeUndefined()
+  it('segments dans l’ordre canonique des classes, zéros omis, total par joueur', () => {
+    const rows = buildFragBreakdownRows(
+      {
+        Me: [cls('unattributed', 10), cls('melee', 6), cls('shoulder', 18)],
+        F1: [cls('grenade', 4), cls('heavy', 5)],
+      },
+      ORDER,
+    )
+    expect(rows.map((r) => r.player)).toEqual(['Me', 'F1'])
+    expect(rows[0].segments.map((s) => s.cls)).toEqual(['shoulder', 'melee', 'unattributed'])
+    expect(rows[0].segments.map((s) => s.kills)).toEqual([18, 6, 10])
+    expect(rows[0].total).toBe(34)
+    expect(rows[1].segments.map((s) => s.cls)).toEqual(['heavy', 'grenade'])
+    expect(rows[1].total).toBe(9)
   })
 
-  it('union DYNAMIQUE des classes, ordre canonique, data alignée par joueur', () => {
-    const rows = {
-      Me: [cls('shoulder', 18), cls('melee', 6), cls('unattributed', 10)],
-      F1: [cls('heavy', 5), cls('grenade', 4)],
-    }
-    const opt = buildFragBreakdownOption(rows, { playerOrder: ORDER, classLabel })
-    const series = opt.series as Serie[]
-    // Union présente, ordonnée FRAG_CLASS_ORDER : shoulder, heavy, melee, grenade, unattributed.
-    expect(series.map((s) => s.name)).toEqual([
-      'L:shoulder',
-      'L:heavy',
-      'L:melee',
-      'L:grenade',
-      'L:unattributed',
+  it('échelle COMMUNE : le plus gros total = 100 %, segments contigus', () => {
+    const rows = buildFragBreakdownRows(
+      { Me: [cls('shoulder', 30), cls('melee', 10)], F1: [cls('shoulder', 20)] },
+      ORDER,
+    )
+    const [me, f1] = rows
+    expect(me.segments[0]).toMatchObject({ leftPct: 0, widthPct: 75 })
+    expect(me.segments[1]).toMatchObject({ leftPct: 75, widthPct: 25 })
+    expect(f1.segments[0]).toMatchObject({ leftPct: 0, widthPct: 50 })
+  })
+
+  it('agrège plusieurs entrées d’une même classe ; classe H5 « Capacités spartanes » placée avant le résidu', () => {
+    const rows = buildFragBreakdownRows(
+      { Me: [cls('shoulder', 4), cls('shoulder', 3), cls('unattributed', 1), cls('spartan_ability', 2)] },
+      ['Me'],
+    )
+    expect(rows[0].segments.map((s) => [s.cls, s.kills])).toEqual([
+      ['shoulder', 7],
+      ['spartan_ability', 2],
+      ['unattributed', 1],
     ])
-    expect(series.every((s) => s.type === 'bar' && s.stack === 'frags')).toBe(true)
-    expect(series[0].data).toEqual([18, 0]) // shoulder
-    expect(series[1].data).toEqual([0, 5]) // heavy
-    expect(series[2].data).toEqual([6, 0]) // melee
-    expect(series[3].data).toEqual([0, 4]) // grenade
-    expect(series[4].data).toEqual([10, 0]) // unattributed
   })
 
-  it('classe H5 « Capacités spartanes » ventilée par joueur (D-P6-2)', () => {
-    // Backend H5 (hasMechanics=true) produit désormais la classe spartan_ability +
-    // le split Mêlée par joueur ; le chart, dynamique, la rend dans l'ordre canonique
-    // (juste avant unattributed).
-    const rows = {
-      Me: [cls('melee', 5), cls('spartan_ability', 4), cls('unattributed', 2)],
-      F1: [cls('shoulder', 3)],
+  it('soirée du 22/09 (maquette C3EW) : totaux 65 / 63 / 121', () => {
+    const soiree = {
+      JGtm: [cls('shoulder', 28), cls('sidearm', 13), cls('heavy', 11), cls('melee', 6), cls('grenade', 5), cls('unattributed', 2)],
+      Chocoboflor: [cls('shoulder', 24), cls('sidearm', 19), cls('heavy', 4), cls('melee', 13), cls('grenade', 2), cls('environmental', 1)],
+      Madina97294: [cls('shoulder', 45), cls('sidearm', 37), cls('heavy', 16), cls('melee', 16), cls('grenade', 3), cls('environmental', 1), cls('unattributed', 3)],
     }
-    const opt = buildFragBreakdownOption(rows, { playerOrder: ORDER, classLabel })
-    const series = opt.series as Serie[]
-    expect(series.map((s) => s.name)).toEqual([
-      'L:shoulder',
-      'L:melee',
-      'L:spartan_ability',
-      'L:unattributed',
-    ])
-    const spartan = series.find((s) => s.name === 'L:spartan_ability')!
-    expect(spartan.data).toEqual([4, 0])
-    expect(spartan.itemStyle.color).toBe(fragClassColor('spartan_ability'))
+    const rows = buildFragBreakdownRows(soiree, ['JGtm', 'Chocoboflor', 'Madina97294'])
+    expect(rows.map((r) => r.total)).toEqual([65, 63, 121])
+    const last = rows[2].segments[rows[2].segments.length - 1]
+    expect(last.leftPct + last.widthPct).toBeCloseTo(100)
   })
+})
 
-  it('couleurs PAR CLASSE via fragClassColor (hex fixes CVD-safe)', () => {
-    const rows = { Me: [cls('shoulder', 3), cls('grenade', 2)] }
-    const opt = buildFragBreakdownOption(rows, { playerOrder: ['Me'], classLabel })
-    const series = opt.series as Serie[]
-    expect(series[0].itemStyle.color).toBe(fragClassColor('shoulder'))
-    expect(series[1].itemStyle.color).toBe(fragClassColor('grenade'))
+describe('fragBreakdownClasses', () => {
+  it('union des classes présentes, ordre canonique (même source que les segments)', () => {
+    expect(
+      fragBreakdownClasses({ Me: [cls('melee', 1), cls('shoulder', 2)], F1: [cls('heavy', 1)] }, ORDER),
+    ).toEqual(['shoulder', 'heavy', 'melee'])
   })
+})
 
-  it('agrège plusieurs entrées d’une même classe pour un joueur', () => {
-    const rows = { Me: [cls('shoulder', 4), cls('shoulder', 3)] }
-    const opt = buildFragBreakdownOption(rows, { playerOrder: ['Me'], classLabel })
-    const series = opt.series as Serie[]
-    expect(series).toHaveLength(1)
-    expect(series[0].data).toEqual([7])
+describe('repliOffsetPct (S3)', () => {
+  const segments = [
+    { cls: 'shoulder', kills: 30, leftPct: 0, widthPct: 60 },
+    { cls: 'melee', kills: 2, leftPct: 60, widthPct: 4 },
+    { cls: 'grenade', kills: 1, leftPct: 64, widthPct: 2 },
+  ]
+  it('la ligne de repli s’aligne sur le PREMIER segment masqué', () => {
+    expect(repliOffsetPct(segments, (c) => c !== 'shoulder')).toBe(60)
+    expect(repliOffsetPct(segments, (c) => c === 'grenade')).toBe(64)
   })
+  it('tout tient → pas de ligne de repli', () => {
+    expect(repliOffsetPct(segments, () => false)).toBeNull()
+  })
+})
 
-  it('axe Y = joueurs dans l’ordre, inversé (main en haut)', () => {
-    const rows = { Me: [cls('melee', 1)], F1: [cls('melee', 1)] }
-    const opt = buildFragBreakdownOption(rows, { playerOrder: ORDER, classLabel })
-    const yAxis = opt.yAxis as { type: string; data: string[]; inverse: boolean }
-    expect(yAxis.type).toBe('category')
-    expect(yAxis.data).toEqual(['Me', 'F1'])
-    expect(yAxis.inverse).toBe(true)
+describe('segmentTextTone', () => {
+  it('écriture sombre sur un aplat clair, claire sur un aplat sombre', () => {
+    // Couleurs de test (pas de charte) : un jaune très clair et un bleu nuit.
+    expect(segmentTextTone('#fde68a')).toBe('dark') // color-allow: valeur de test
+    expect(segmentTextTone('#1e3a8a')).toBe('light') // color-allow: valeur de test
+  })
+  it('valeur non hex (variable CSS) → clair', () => {
+    expect(segmentTextTone('var(--x)')).toBe('light')
   })
 })

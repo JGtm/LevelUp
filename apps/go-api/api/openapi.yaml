@@ -27804,38 +27804,39 @@ components:
         - shots_fired_by_player
         - total_shots_squad
       type: object
-    SquadWeaponBar:
+    SquadWeaponToolLine:
       additionalProperties: false
       properties:
         class:
           type: string
-        is_grenade_melee:
-          type: boolean
         kills_by_player:
           additionalProperties:
             format: int64
             type: integer
           type: object
+        kind:
+          type: string
         label:
+          type: string
+        label_en:
           type: string
         total_squad:
           format: int64
           type: integer
-        weapon_id:
-          format: int64
-          type: integer
+        weapon_key:
+          type: string
       required:
-        - weapon_id
-        - label
+        - kind
+        - class
         - kills_by_player
         - total_squad
       type: object
-    SquadWeaponKills:
+    SquadWeaponTools:
       additionalProperties: false
       properties:
-        bars:
+        lines:
           items:
-            $ref: '#/components/schemas/SquadWeaponBar'
+            $ref: '#/components/schemas/SquadWeaponToolLine'
           type:
             - array
             - "null"
@@ -27847,7 +27848,7 @@ components:
             - "null"
       required:
         - players
-        - bars
+        - lines
       type: object
     Stance:
       additionalProperties: false
@@ -29510,8 +29511,8 @@ components:
           type: integer
         weapon_accuracy:
           $ref: '#/components/schemas/SquadWeaponAccuracy'
-        weapon_kills:
-          $ref: '#/components/schemas/SquadWeaponKills'
+        weapon_tools:
+          $ref: '#/components/schemas/SquadWeaponTools'
       required:
         - options
         - teammates

@@ -102,30 +102,6 @@ type SquadMatchSeriesPoint struct {
 	SessionLabel     *string  `json:"session_label,omitempty"`
 }
 
-// SquadWeaponBar est une ligne du chart kills par arme teammates.09 :
-// 1 arme avec ses kills par joueur de l'escouade + total cumulé.
-type SquadWeaponBar struct {
-	WeaponID int64  `json:"weapon_id"`
-	Label    string `json:"label"`
-	// Class : classe d'arme du registre (axe manipulation : shoulder/sidearm/heavy/
-	// melee/grenade/…) résolue via ResolveRoles. Omise ("") si non résolue (dont les
-	// sentinels grenade/mêlée, absents du registre) — omitempty : classe vide == absente,
-	// cohérent avec SynthesisWeaponKillEntry.class. Sert au split gun/non-gun côté front
-	// (buildSquadFragTools → « Outils de destruction »).
-	Class          string         `json:"class,omitempty"`
-	IsGrenadeMelee bool           `json:"is_grenade_melee,omitempty"`
-	KillsByPlayer  map[string]int `json:"kills_by_player"` // gamertag → kills
-	TotalSquad     int            `json:"total_squad"`
-}
-
-// SquadWeaponKills alimente teammates.09 (barres horizontales groupées par
-// arme, 1 trace par joueur). Players est l'ordre canonique (main puis
-// teammates) ; Bars est trié par TotalSquad ASC (peu utilisées en haut).
-type SquadWeaponKills struct {
-	Players []string         `json:"players"`
-	Bars    []SquadWeaponBar `json:"bars"`
-}
-
 // SquadWeaponAccuracyBar est une ligne du comparatif « Précision par rôle » de la page
 // Escouade : agrégat PAR RÔLE d'arme (precision/automatic/sniper/…) — les ~30 armes sont
 // regroupées par rôle pour la lisibilité — avec sa précision (0..1) par joueur, le volume
@@ -553,10 +529,9 @@ type TeammatesPageResponse struct {
 	// par-joueur ici → pas de classe spartan_ability (hasMechanics=false, cf. §6
 	// D-P6-2). Nil si aucune donnée d'arme.
 	FragClasses map[string][]FragClassEntry `json:"frag_classes,omitempty"`
-	// WeaponKills alimente teammates.09 (kills par arme, comparatif multi-joueurs).
-	// Nil si aucune donnée weapon_kills disponible (capability absente ou shared
-	// match_ids vides).
-	WeaponKills *SquadWeaponKills `json:"weapon_kills,omitempty"`
+	// WeaponTools alimente « Outils de destruction » (frags par outil et par joueur,
+	// D8). Nil si aucune donnée d'arme (capability absente ou matchs partagés vides).
+	WeaponTools *SquadWeaponTools `json:"weapon_tools,omitempty"`
 	// WeaponAccuracy alimente la comparaison « Précision par arme » multi-joueurs
 	// (heatmap joueurs×armes + dot plot). Précision NATIVE Halo 5 ; OMISE sur Infinite
 	// (capability weapon_accuracy absente) ou si aucune arme à précision pertinente.

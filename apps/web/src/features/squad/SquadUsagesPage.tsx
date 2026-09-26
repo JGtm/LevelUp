@@ -59,7 +59,7 @@ export function SquadUsagesPage() {
   // composants eux-mêmes (usageAvailabilityKind pour l'équipement, `available` pour les
   // formes). Les trois à faux : l'onglet le DIT, au lieu de laisser une page nue.
   const hasFrags =
-    playerOrder.length > 0 || pageData?.weapon_kills != null || pageData?.weapon_accuracy != null
+    playerOrder.length > 0 || pageData?.weapon_tools != null || pageData?.weapon_accuracy != null
   const hasEquipment = usageAvailabilityKind(equipmentUsage) !== 'hidden'
   const hasFormes = formes != null && formes.available
   const hasAnyBlock = hasFrags || hasEquipment || hasFormes
@@ -119,7 +119,7 @@ export function SquadUsagesPage() {
           <SectionTitle>{t.sections.fragsArmes}</SectionTitle>
           <SquadFragSection
             fragClassesByPlayer={fragClassesByPlayer}
-            weaponKills={pageData?.weapon_kills}
+            weaponTools={pageData?.weapon_tools}
             weaponAccuracy={pageData?.weapon_accuracy}
             playerColors={playerColors}
             playerOrder={playerOrder}

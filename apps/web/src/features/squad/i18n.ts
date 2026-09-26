@@ -315,6 +315,12 @@ export interface SquadText {
     rankTitle: string
     mmrLabel: string
     fragBreakdownTitle: string
+    /** Aide ⓘ de « Répartition des frags » (texte de la maquette C3EW). */
+    fragBreakdownInfo: string
+    /** Infobulle d'un segment : joueur, classe, compte et total du joueur. */
+    fragBreakdownSegment: (player: string, className: string, kills: number, total: number) => string
+    /** Nom accessible de la barre d'un joueur. */
+    fragBreakdownBarAria: (player: string, total: number) => string
   }
   /** « Écart cumulé au FDA attendu » (D3/D7 — différentiel FDA réel vs attendu par joueur). */
   fdaGap: {
@@ -335,10 +341,14 @@ export interface SquadText {
   weaponKills: {
     title: string
     description: string
-    /** Ligne agrégée des armes gun au-delà du top-N dans « Outils de destruction ». */
-    otherWeapons: string
-    /** Ligne agrégée des frags NON-arme (mêlée, grenade, engins) au-delà du top-N. */
-    otherKills: string
+    /** Aide ⓘ de « Outils de destruction » (texte de la maquette C3EW). */
+    info: string
+    /** Ligne des objets explosifs du décor (catégorie de source du film, D8). */
+    explosiveObject: string
+    /** Ligne de la chute et de l'environnement (catégorie de source du film, D8). */
+    environment: string
+    /** Infobulle d'une barre : compte de frags et part du total du joueur (en %, déjà arrondie). */
+    killsShare: (kills: number, sharePct: number) => string
   }
   /** Comparatif « Précision par rôle » multi-joueurs (Halo 5) : barres groupées horizontales (1 barre/joueur/rôle, longueur = précision %). */
   weaponAccuracy: {
@@ -686,6 +696,11 @@ const FR_TEXT: SquadText = {
     rankTitle: 'Rang & MMR équipe',
     mmrLabel: 'MMR équipe',
     fragBreakdownTitle: 'Répartition des frags',
+    fragBreakdownInfo:
+      'Les frags de chacun sur la soirée, par classe d\'arme. Le nombre écrit dans un segment est son compte de frags ; le total est au bout de la barre.',
+    fragBreakdownSegment: (player, className, kills, total) =>
+      `${player} · ${className} : ${kills} frag${kills > 1 ? 's' : ''} sur ${total}`,
+    fragBreakdownBarAria: (player, total) => `${player} : ${total} frag${total > 1 ? 's' : ''}`,
   },
   fdaGap: {
     title: 'Écart cumulé au FDA attendu',
@@ -701,8 +716,10 @@ const FR_TEXT: SquadText = {
   weaponKills: {
     title: 'Outils de destruction',
     description: 'Frags cumulés par arme sur les matchs partagés. Tri ASC : armes peu utilisées en haut, principales en bas.',
-    otherWeapons: 'Autres armes',
-    otherKills: 'Autres frags',
+    info: 'Les frags de chacun, arme par arme, sur la soirée. La pastille devant l\'arme est la couleur de sa classe dans la Répartition des frags.',
+    explosiveObject: 'Objet explosif (bidon)',
+    environment: 'Chute, environnement',
+    killsShare: (kills, sharePct) => `${kills} frag${kills > 1 ? 's' : ''} (${sharePct} % des siens)`,
   },
   weaponAccuracy: {
     title: 'Précision par rôle',
@@ -1046,6 +1063,11 @@ const EN_TEXT: SquadText = {
     rankTitle: 'Rank & Team MMR',
     mmrLabel: 'Team MMR',
     fragBreakdownTitle: 'Kill type distribution',
+    fragBreakdownInfo:
+      'Everyone\'s kills over the evening, by weapon class. The number written in a segment is its kill count; the total sits at the end of the bar.',
+    fragBreakdownSegment: (player, className, kills, total) =>
+      `${player} · ${className}: ${kills} of ${total} kill${total > 1 ? 's' : ''}`,
+    fragBreakdownBarAria: (player, total) => `${player}: ${total} kill${total > 1 ? 's' : ''}`,
   },
   fdaGap: {
     title: 'Cumulative KDA gap to expected',
@@ -1061,8 +1083,10 @@ const EN_TEXT: SquadText = {
   weaponKills: {
     title: 'Tools of destruction',
     description: 'Cumulative kills per weapon over shared matches. Sorted ASC: rare weapons on top, primaries at the bottom.',
-    otherWeapons: 'Other weapons',
-    otherKills: 'Other kills',
+    info: 'Everyone\'s kills, weapon by weapon, over the evening. The swatch before the weapon is the colour of its class in the Kill type distribution.',
+    explosiveObject: 'Explosive object (barrel)',
+    environment: 'Fall, environment',
+    killsShare: (kills, sharePct) => `${kills} kill${kills > 1 ? 's' : ''} (${sharePct}% of theirs)`,
   },
   weaponAccuracy: {
     title: 'Accuracy by role',
