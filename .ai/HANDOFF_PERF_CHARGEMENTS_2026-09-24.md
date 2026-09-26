@@ -100,7 +100,10 @@ Quatrième leçon, vue à la première CI de la branche : un test Go renommé ou
 > noms, parité exacte, revue adversariale passée) ; changelog et notes de version 7.5.0 complétés.
 > La branche `feat/perf-chargements` n'existait déjà plus (ménage du 2026-09-25). Restent à
 > l'utilisateur : push et fusion de `feat/perf-perimetre` dans `feat/v75` (« je dirais quand je
-> serais prêt »), mesure prod puis lots B et C, SSO de Chocoboflor, triage du §11.
+> serais prêt »), mesure prod, SSO de Chocoboflor, triage du §11.
+> **Décision utilisateur du 2026-09-26** : lot C (compaction des tables append-only) ABANDONNÉ,
+> jugé superflu. Lot B (pages à historique complet, cache de lecture invalidé au sync)
+> FACULTATIF : à rouvrir seulement si la mesure prod le justifie.
 
 - Go pour l'ADR (rédaction immédiate) et pour le lot A avant ou après la mesure prod.
 - Périmètre du plan structurel (lots B et C), après la mesure prod.
