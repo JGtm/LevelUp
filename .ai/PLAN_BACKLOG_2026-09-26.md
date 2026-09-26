@@ -77,6 +77,10 @@ worktree dédié du plan. Coût estimé : 10 à 12 lancements d'agents, l'un apr
   - Fusion 3 : le reste.
 - Chaque fusion se fait dans `feat/v75` (`merge --no-ff`) par le superviseur, après la CI de la
   branche verte au niveau job. La branche continue après une fusion.
+- **Seule dérogation d'ordre prévue** : A2.0 exige un navigateur ET le serveur API. Si le serveur
+  ne peut pas tourner quand A2 arrive (un autre processus tient les bases), B1 passe devant et A2
+  reprend dès que le serveur tourne. La fusion 1 attend A2. La dérogation est consignée au
+  journal.
 
 ### 1.3 Mise en place (superviseur, au GO)
 
@@ -309,23 +313,26 @@ case non statuée du lot courant. Les décisions du §2 ne se re-décident pas.
 - Fichiers : `useReplaySound.ts` fait 675 lignes (au-dessus du seuil, gelé par la baseline) :
   **il ne doit pas grossir**. `replayAudio.ts` fait 362 lignes.
 
-- [ ] **A1.0 Confirmation dans un navigateur AVANT tout code.**
-  - Script Playwright ad hoc `apps/web/.tmp.recette-fin.mjs` (supprimé après) : Chromium,
-    `--autoplay-policy=no-user-gesture-required`, Vite du worktree avec proxy vers `:8000`.
-  - Son activé (`localStorage replay-sound-on`), vitesse 1×.
-  - Instrumentation de `AudioBufferSourceNode.prototype.start` (durée du tampon) et du nombre de
-    sources réellement actives (écouteur `ended` ajouté par `addEventListener`, indépendant du
-    compteur interne du lecteur). Cette politique d'autoplay ne sert qu'à isoler l'item 11 ; la
-    recette de A2 garde la politique par défaut.
-  - Témoin dense : `000d5950-83d9-423f-ab55-d068a7237b9f` (Slayer, JGtm équipe 0).
-  - Témoin calme : un match du cache dont les 5 dernières secondes portent au plus 2 tirs
-    (mesuré sur l'artefact).
-  - Curseur environ 20 s avant la fin ; la lecture doit franchir la borne.
-  - **H1 confirmée** si, sur le témoin dense, la musique ne démarre pas alors que 8 sources sont
-    actives, et si elle démarre sur le témoin calme. Verdict et chiffres au journal.
+- [ ] **A1.0 Confirmation déterministe AVANT tout code, sur la fixture réelle versionnée**
+  `test/fixtures/go/replay_schema_71_000d5950.json.gz` (match `000d5950`, Slayer, JGtm
+  équipe 0).
+  - La fixture est chargée par le chargeur de fixtures existant, jamais par un nom de fichier en
+    dur : `feat/suite-audit-decodeur-j4` fait passer ces fixtures au schéma 72.
+  - Préféré : la piste sonore réelle du match est jouée jusqu'à la borne de fin à travers
+    `useReplaySound`, avec un faux `AudioContext` dont l'horloge avance et qui déclenche `ended`
+    à l'heure d'arrêt de chaque source. On relève le nombre de voix occupées à la borne, puis
+    `endMatch()`.
+  - Repli, si la simulation d'horloge sort du lot : compter, avec le planificateur réel et les
+    enveloppes réelles, les sons dont la plage couvre l'instant de fin.
+  - **H1 confirmée** si 8 voix sont occupées à la borne et que la musique est refusée alors que
+    la voix passe. La version « préférée » devient le test de non-régression de A1.4 (rouge
+    avant le correctif). Chiffres au journal.
   - **H1 réfutée : STOP**, rapport, aucun code. En particulier, une musique refusée alors que
-    moins de 8 sources jouent réellement signale une fuite du compteur de voix ou une autre
-    cause, que ce lot ne corrige pas.
+    moins de 8 voix sont occupées signale une fuite du compteur ou une autre cause, que ce lot
+    ne corrige pas.
+  - Le navigateur n'est pas nécessaire ici. Au GO, une autre session faisait tourner
+    `replay-equiv` et des builds Go : le serveur API n'est démarré que lorsque plus aucun
+    processus ne tient les bases (§1.3).
 - [ ] **A1.1** `replayAudio.ts` : méthode `playConclusion(url)`. Elle joue hors plafond, avec
   l'enveloppe normale, sans compter de voix. La règle est nommée une seule fois, partagée avec
   `replayAudioMix.ts` (constante ou doc commune).
@@ -339,8 +346,20 @@ case non statuée du lot courant. Les décisions du §2 ne se re-décident pas.
     ordinaire ensuite est toujours refusé.
   - (c) Garde-rail de parité : la même situation saturée passée par `applyVoiceCap` (export) et
     par le lecteur (page) garde la conclusion des deux côtés.
-- [ ] **A1.5** Recette A1.0 rejouée après correctif : musique démarrée sur le témoin dense, témoin
-  calme inchangé. Sortie au journal.
+  - (d) Le test de A1.0 sur la fixture réelle : musique refusée avant, jouée après.
+- [ ] **A1.5 Recette navigateur**, seulement si `http://127.0.0.1:8000/health` répond (le
+  superviseur démarre le serveur, jamais l'exécutant). Sinon, l'item reste ouvert au rapport et le
+  superviseur le fait avant la fusion 1.
+  - Script Playwright ad hoc `apps/web/.tmp.recette-fin.mjs` (supprimé après) : Chromium,
+    `--autoplay-policy=no-user-gesture-required` (pour isoler l'item 11 ; la recette de A2 garde
+    la politique par défaut), Vite du worktree avec proxy vers `:8000`.
+  - Son activé (`localStorage replay-sound-on`), vitesse 1×, curseur environ 20 s avant la fin ;
+    la lecture doit franchir la borne.
+  - Instrumentation de `AudioBufferSourceNode.prototype.start` (durée du tampon) et du nombre de
+    sources réellement actives (écouteur `ended` ajouté par `addEventListener`).
+  - Témoins : `000d5950-83d9-423f-ab55-d068a7237b9f` (fin dense : la musique démarre) et un match
+    du cache dont les 5 dernières secondes portent au plus 2 tirs (fin calme : inchangé). Sortie
+    au journal.
 - [ ] **A1.6 Gate utilisateur (écoute)** : le témoin dense, et le match sur lequel l'utilisateur a
   constaté le défaut (qu'il nomme).
 
