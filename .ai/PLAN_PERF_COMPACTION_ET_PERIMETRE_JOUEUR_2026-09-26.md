@@ -100,6 +100,18 @@ Décisions :
   empreintes des vues compactées), échange des fichiers en gardant l'ancien en sauvegarde. Si
   DuckDB 1.5.5 ne préserve pas la valeur courante des séquences ou un autre objet : l'option n'est
   PAS livrée, `[!]` avec la preuve (le gain de lecture ne dépend que du nombre de lignes).
+  **Amendé le 2026-09-26 (C.8, revue adversariale L1)** : JAMAIS de fenêtre sans fichier au
+  chemin de la base — l'ancien fichier est COPIÉ (sauvegarde `<nom>.avant-reecriture-<UTC>`),
+  puis UN `rename(neuf, base)` remplace la base (POSIX atomique ; `os.Rename` remplace sous
+  Windows). Juste avant ce rename : la base n'a pas changé depuis la copie (taille + date de
+  modification relevées à la fermeture du handle de copie ; pas d'empreinte : relire 1,2 Gio
+  n'est pas bon marché) et personne ne la tient (ouverture exclusive en écriture qui réussit,
+  puis fermeture) ; sinon refus. Toute erreur après la création de `<base>.reecriture` le retire,
+  avec la sauvegarde devenue inutile, journalisée en `slog`. `--backup-dir` sur un autre volume :
+  CHOIX = la sauvegarde est une copie (io.Copy) écrite directement dans ce dossier AVANT
+  l'échange, et le seul rename reste dans le dossier de la base (`<base>.reecriture` y est
+  écrit) — ni recopie après coup, ni refus : la combinaison marche sur tout volume, et la
+  sauvegarde existe avant que la base ne change.
 - DC.6 **Pas d'automatisme** : pas de compaction dans le post-sync ni au boot (elle exige
   l'écrivain exclusif et le serveur arrêté). C'est une opération d'entretien, documentée comme
   telle, à jouer après chaque campagne de redécodage (recuisson, backfill killsource).
@@ -139,6 +151,9 @@ Items :
       anti-ART rouge), passe gardée = la première au lieu de la dernière, séquence remise à zéro ;
       chacune rouge puis restaurée — quatre mutations (six variantes), toutes rouges, `cmp` à
       l'appui — Journal C
+- [x] C.8 (revue L1, 2026-09-26) échange de fichiers de `--rewrite-file` : jamais de fenêtre sans
+      base au chemin, source revérifiée (inchangée, libre) avant le rename unique, fichier neuf
+      retiré sur toute erreur ; tests des trois cas rouges sur l'ancien code puis verts — Journal C
 
 Gate C (depuis `apps/go-api`) : `gofmt -l ./internal ./cmd` vide ; `go build ./...` ; `go vet
 ./...` ; `go test ./...` ; `go test -tags=integration -p 1 ./...` (code de sortie 0 vérifié, pas
@@ -339,6 +354,43 @@ Journal C (2026-09-26, exécuteur Opus, worktree `LevelUp-wt-perf-perimetre`, ba
   absente ; artefacts de test sous `data/` (rasters, `halo_5/warehouse/metadata.duckdb`) retirés.
 - **Revue C** (deux relecteurs aveugles) : NON FAITE par l'exécuteur — sous-agents interdits par
   le brief ; au superviseur.
+- **C.8 — échange de fichiers de `--rewrite-file`** (revue adversariale L1, trois constats retenus,
+  les deux derniers bloquants). Constats : (1) `os.Rename(base, ancien)` vers un `--backup-dir` sur
+  un autre volume échoue et laissait `<base>.reecriture`, qui bloquait toute réécriture suivante ;
+  (2) entre les deux renames, plus aucun fichier au chemin de la base (un redémarrage aurait créé
+  une base vide) ; (3) rien ne revérifiait la source entre la copie et l'échange (sous Linux, un
+  serveur ouvert dans cette fenêtre écrit dans l'inode mis de côté). Correctif
+  (`cmd/levelup/cmd_compact_passes_rewrite.go`, DC.5 amendé ci-dessus) : copie de sauvegarde,
+  vérifications « inchangée » (taille + date) et « libre » (OpenReadWrite exclusif puis
+  fermeture), un seul `rename(neuf, base)` ; abandon qui retire `<base>.reecriture` et la
+  sauvegarde, journalisé ; un reste de réécriture interrompue trouvé au départ est retiré (WARN)
+  — la base est complète par construction. Points d'observation `etapeReecriture` (nil en prod) et
+  `renommer` (os.Rename) pour les tests. Tests (`cmd_compact_passes_rewrite_test.go`) :
+  `TestReecriture_SauvegardeSurUnAutreVolume` (aucun second volume sur le poste : `renommer` échoue
+  comme EXDEV / `MoveFileEx` sans COPY_ALLOWED dès que source et cible sont dans deux dossiers),
+  `TestReecriture_JamaisSansBaseAuChemin` (à chaque étape, une base complète et lisible au chemin ;
+  arrêt simulé à chacune des quatre étapes : base complète, aucun reste),
+  `TestReecriture_SourceModifieeApresLaCopie` (INSERT entre sauvegarde et échange : refus « a
+  changé depuis la copie », la ligne est conservée, aucun reste),
+  `TestReecriture_SourceTenueAvantLEchange` (processus auxiliaire qui tient la base : refus « tenue
+  par un autre processus », aucun reste ; l'ouverture de l'auxiliaire ne change pas la date du
+  fichier, c'est bien la vérification « libre » qui refuse). Démonstration sur l'ANCIEN code (celui
+  de `a74c20a34`, instrumenté des seuls points d'observation, sans autre changement) : les quatre
+  tests ROUGES — autre volume : « mise de côté … volume différent » ; jamais sans base : rouge aux
+  arrêts `apres-sauvegarde` (reste `.reecriture`) et `apres-verification` (« aucun fichier au
+  chemin de la base ») et au passage sans arrêt ; source modifiée : échange fait, got <nil> ;
+  source tenue : échange FAIT sous Windows aussi (got <nil> : DuckDB ouvre avec partage de
+  suppression, l'écriture de l'autre processus aurait été perdue). Nouveau code : verts.
+  Mutations sur le nouveau code : vérification « inchangée » retirée -> `…SourceModifiee…` rouge ;
+  vérification « libre » retirée -> `…SourceTenue…` rouge (sous Windows le rename échoue alors sur
+  le fichier tenu, sous Linux il réussirait). Doc `docs/COMMANDS.md` + FR mise à jour
+  (`--backup-dir` : sauvegardes = copies, tout volume ; rename unique ; refus). Le test
+  `TestCompactPasses_RefusSiUnAutreProcessusTientLaBase` partage désormais l'aide `tenirLaBase`
+  (nom inchangé).
+  Gate C.8 : `gofmt` vide ; `go vet ./cmd/levelup/ ./internal/migration/...` 0 ; `go test
+  ./cmd/levelup/ ./internal/migration/...` 0 (2 ok) ; `go test -tags=integration -p 1 -count=1
+  ./cmd/levelup/ ./internal/migration/... ./internal/games/halo_infinite/migrations/...` 0 (3 ok) ;
+  golangci-lint `--new-from-rev=34edf29af ./...` 0 issue, idem `--build-tags=integration`.
 
 ## 3. Étape B — Lectures bornées aux matchs du joueur (Go)
 

@@ -215,6 +215,26 @@ func TestAideTenirLaBase(t *testing.T) {
 // écrire ni sauvegarder.
 func TestCompactPasses_RefusSiUnAutreProcessusTientLaBase(t *testing.T) {
 	path := baseDeTest(t)
+	liberer := tenirLaBase(t, path)
+	for _, o := range []compactPassesOptions{{dryRun: true}, {}} {
+		err := compacterTitre(context.Background(), "halo_infinite", path, o)
+		if err == nil || !strings.Contains(err.Error(), "refus") {
+			t.Errorf("options %+v : attendu un refus, got %v", o, err)
+		}
+	}
+	liberer()
+	if n := lignes(t, path, "match_bomb_stats"); n != 6 {
+		t.Fatalf("base touchée malgré le refus : %d lignes", n)
+	}
+	if s := fichiers(t, filepath.Dir(path), "*avant-compaction*"); len(s) != 0 {
+		t.Fatalf("sauvegarde écrite malgré le refus : %v", s)
+	}
+}
+
+// tenirLaBase lance le processus auxiliaire (TestAideTenirLaBase) qui tient `path` ouverte en
+// écriture ; la fonction rendue le libère et attend sa sortie.
+func tenirLaBase(t *testing.T, path string) func() {
+	t.Helper()
 	aux := exec.Command(os.Args[0], "-test.run=^TestAideTenirLaBase$")
 	aux.Env = append(os.Environ(), envTenirLaBase+"="+path)
 	entree, err := aux.StdinPipe()
@@ -231,22 +251,12 @@ func TestCompactPasses_RefusSiUnAutreProcessusTientLaBase(t *testing.T) {
 	if ligne, err := bufio.NewReader(sortie).ReadString('\n'); err != nil || strings.TrimSpace(ligne) != "pret" {
 		t.Fatalf("processus auxiliaire : %q, %v", ligne, err)
 	}
-	for _, o := range []compactPassesOptions{{dryRun: true}, {}} {
-		err := compacterTitre(context.Background(), "halo_infinite", path, o)
-		if err == nil || !strings.Contains(err.Error(), "refus") {
-			t.Errorf("options %+v : attendu un refus, got %v", o, err)
+	return func() {
+		if err := entree.Close(); err != nil {
+			t.Errorf("processus auxiliaire, stdin : %v", err)
 		}
-	}
-	if err := entree.Close(); err != nil {
-		t.Fatal(err)
-	}
-	if err := aux.Wait(); err != nil {
-		t.Fatalf("processus auxiliaire : %v", err)
-	}
-	if n := lignes(t, path, "match_bomb_stats"); n != 6 {
-		t.Fatalf("base touchée malgré le refus : %d lignes", n)
-	}
-	if s := fichiers(t, filepath.Dir(path), "*avant-compaction*"); len(s) != 0 {
-		t.Fatalf("sauvegarde écrite malgré le refus : %v", s)
+		if err := aux.Wait(); err != nil {
+			t.Errorf("processus auxiliaire : %v", err)
+		}
 	}
 }

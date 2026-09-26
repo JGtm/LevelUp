@@ -632,8 +632,12 @@ go run ./cmd/levelup compact-passes --backup-dir D:\sauvegardes  # dossier des s
   L'option recopie la base dans un fichier neuf (`COPY FROM DATABASE`), relit les DEUX fichiers
   seuls et ne les échange que si le catalogue (tables, vues, index, séquences avec leur prochaine
   valeur, macros, types), le compte de chaque table et l'empreinte de chaque vue compactée sont
-  identiques ; l'ancien fichier est gardé sous `<nom>.avant-reecriture-<UTC>.duckdb`. Mesuré sur
-  une copie : 1 264 Mio -> 351 Mio.
+  identiques. L'ancien fichier est d'abord COPIÉ sous `<nom>.avant-reecriture-<UTC>.duckdb` (dans
+  `--backup-dir`, n'importe quel volume : les deux sauvegardes sont des copies, jamais des
+  déplacements) ; puis, seulement si la base n'a pas changé depuis la copie (taille et date de
+  modification) et qu'aucun autre processus ne la tient, UN rename atomique la remplace : le chemin
+  de la base porte toujours une base complète, quel que soit l'instant où la commande s'arrête.
+  Sinon elle refuse et retire son fichier temporaire. Mesuré sur une copie : 1 264 Mio -> 351 Mio.
 - Supprimer les sauvegardes à la main une fois l'application vérifiée.
 
 ### Migration des chemins média (one-shot, binaire autonome)
