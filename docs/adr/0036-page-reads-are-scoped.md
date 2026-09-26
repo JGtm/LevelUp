@@ -268,39 +268,59 @@ SQL cost, two to four times shorter.
 ## Exceptions (state on 2026-09-26)
 
 Every read below is outside an invariant today, with its measured cost (copy, 2 threads /
-512 MB, player `JGtm` and his last match, one call, unless stated) and what retires it. Lot A is
+512 MB, player `JGtm` and his last match, one call, unless stated) and what retires it. Lot A,
 step P2 of `.ai/PLAN_PERF_LECTURES_PERIMETRE_2026-09-26.md` (reads only, no write, no anti-ART
-invariant touched: the one structural lot accepted before the production measurement). Lot B
-(complete-history pages) is planned only after that measurement. An exception leaves this list
-together with its read; a new one needs a line here, a measured cost and a date.
+invariant touched: the one structural lot accepted before the production measurement), was done
+on 2026-09-26: its five reads of the view left the I1 table below, and what it leaves behind is
+listed under I2. Lot B (complete-history pages) is planned only after the production measurement.
+An exception leaves this list together with its read; a new one needs a line here, a measured cost
+and a date.
 
 ### Reads of `v_gamertag_lookup` (I1), frozen by the ratchet
 
 | Read | File (occurrences allowed by the ratchet) | Measured cost | Retired by |
 |---|---|---|---|
-| Match view: scoreboard (Q12), events (Q21) | `platform/duckdb/queries_match.go` (3: two reads and one SQL comment) | Q12 1.7-2.2 s (3-6 ms without the join); Q21 2.2 s | Lot A |
-| Match view: encounters (Q23), encounter stats (Q23b) | `platform/duckdb/queries_match_detail.go` (2) | Q23 2.2 s; Q23b 3.6 s, of which about 0.9 s is the kill-feed window | Lot A removes the view; the window part is not assigned |
-| Match events: `GamertagRepo.ResolveGamertags` | `platform/duckdb/gamertag_repo.go` (1) | 2.1 s | Lot A |
-| Relations: Q28 and scoped Q28 | `platform/duckdb/queries_career_encounters.go` (2) | 3.4-4.0 s (scoped to 30 matches: 2.4-2.7 s); about 0.9 s of it is the kill-feed window | Lot A (view), lot B (window) |
-| Relations: heatmap (Q29) | `platform/duckdb/queries_relations_moments.go` (1) | 2.3 s | Lot A |
 | Explorer: player search by name (`ResolveXUIDByGamertag`) | `platform/duckdb/explorer_repo.go` (1) | 2.3 s | Stays: a lookup by name (`ILIKE`) that a directory keyed by xuid cannot answer; retired with its read |
 | Media: match lobbies (`loadMatchLobbies`) | `platform/duckdb/media_repo_filters.go` (1) | one evaluation per call (1.7 to 3 s, not measured alone) | Stays; retired with its read |
 | World leaderboard file: stat ranking (`GetStatLeaderboard`) | `platform/duckdb/leaderboard_world_repo.go` (1) | one evaluation per call, not measured | Stays; retired with its read |
 | Kill collector (sync, not a page): credit-pass directory, match roster fallback | `sync/killcollector/credit_annuaire.go` (1), `sync/killcollector/roster.go` (1) | the view materialised at each pass, not measured at production size | Stays; retired with its read |
 
-The match view pays about 10 s of view evaluation per opened match when all its reads are served.
-Lot A must keep the names: restricted to the opened match, a directory loses names the view finds
-elsewhere (measured: 11 (match, player) pairs out of 93,636, in 10 matches; in Relations, 2 served
-rows of one player). The other seven files of the ratchet table (DDL, migrations, demo seed,
-schema comment, validation gate: 11 occurrences) are not reads.
+Retired on 2026-09-26 by lot A: the match view scoreboard (Q12) and events (Q21), encounters
+(Q23) and encounter stats (Q23b), `GamertagRepo.ResolveGamertags`, Relations Q28 and scoped Q28,
+and the Relations heatmap (Q29); their five files left the ratchet table. Before, the match view
+paid about 10 s of view evaluation per opened match when all its reads were served. After (copy,
+`JGtm`, his last match and 20 random matches, runs on a loaded machine): Q12 median 16-33 ms, Q21
+7-21 ms, `ResolveGamertags` 5-13 ms, Q23 46-89 ms (its own shared-history query; its directory
+≤ 9 ms), Q23b has no name at all and costs its kill-feed window; Relations Q28 directory 241-277 ms
+on top of Q28 itself, heatmap Q29 78-94 ms.
+
+Lot A kept the names: restricted to the opened match, a directory lost names the view finds
+elsewhere (11 (match, player) pairs out of 93,636, in 10 matches; in Relations, 2 served rows of
+one player). The directory therefore reads in *base scope* (see I1, "Directory scope base and the
+locating read"): aliases and participant gamertags over the whole database, the kill feed of the
+read's matches, then, for the xuids still unnamed, the kill feed of the candidate matches located
+in the raw journal and read through `_latest`. On the production copy, zero name differs from the
+view over every served row compared (Q12 93,000 rows, Q21 1,311,594 events, Q23 / Q23b 2,625 rows,
+`ResolveGamertags` 1,853 xuids, Relations 12,289 rows, heatmap 1,265 rows). The other seven files of
+the ratchet table (DDL, migrations, demo seed, schema comment, validation gate: 11 occurrences) are
+not reads.
 
 ### `_latest` windows over the whole history (I2)
 
 | Read | File | Measured cost | Retired by |
 |---|---|---|---|
 | Career: encounters (Q26), rivals (Q27, read twice) | `platform/duckdb/queries_career_encounters.go` | Q26 0.84-1.30 s and Q27 1.06-1.08 s per read at rest; 3 to 6 s under the concurrency of the page's reads at 2 threads. A constant list of the player's matches bound under the window measured 0.51-0.56 s (`JGtm`) and 0.21-0.24 s (`Nuzzles`) | Lot B |
-| Relations: Q28 once lot A has removed the view | same file | about 0.9 s | Lot B |
+| Relations: Q28 (view removed by lot A on 2026-09-26) | same file | about 0.9 s at rest; 1.72-2.21 s for Q28 alone in lot A's runs on a loaded machine | Lot B |
+| Match view: encounter stats (Q23b), kill-feed window (`kv_stats`) | `platform/duckdb/queries_match_detail.go` | about 0.9 s at rest; 1.6 to 4.6 s median alone in lot A's runs on a loaded machine | Not assigned |
 | Tactical tab entry screen: deaths per map (`MortsParCarte`) | `platform/duckdb/tactical_repo_morts_par_carte.go` | the list is bound on `match_registry` only; the kill-position and kill-journal windows run over the whole history; not measured | Not assigned |
+
+Not a window, but the same kind of cost, listed here because it is a whole-table read on a request
+path: when the base-scope directory's last fallback fires (a player that no alias, participant
+gamertag or kill feed of the read's matches names: 23 of `JGtm`'s 1,160 matches, 4,688 of
+`Nuzzles`'s 7,190), its locating read scans the raw `match_kill_events` (3.95 M rows) in two passes
+(killer, then victim): the directory then costs 150 to 360 ms, above the 100 ms budget of a match
+view read (`platform/duckdb/squad_repo_annuaire.go`, `localiserKillFeed`). A single pass (killer OR
+victim) is the lead; not measured. Not assigned.
 
 ### Complete-history pages without a cache (I3)
 

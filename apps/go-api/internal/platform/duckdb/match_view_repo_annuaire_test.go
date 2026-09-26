@@ -337,3 +337,53 @@ func TestAnnuairePorteeBase_RepliLitLaDerniereVersion(t *testing.T) {
 		t.Errorf("ResolveGamertags : x_disparu nommé %q par une version périmée, attendu absent", nom)
 	}
 }
+
+// TestAnnuairePorteeBase_RepliNommeLesVictimes : les deux branches VICTIME de la localisation du
+// repli (revue adversariale du lot A). Sur mv2, x_vicmke et x_vickvp ne sont nommés par rien
+// (ni alias, ni participant, ni kill-feed de mv2) ; hors de la lecture, x_vicmke n'est nommé QUE
+// comme victime du journal canonique (mb3) et x_vickvp QUE comme victime de la table historique
+// (mb4). La vue match et ResolveGamertags doivent leur rendre ces noms — la localisation doit
+// donc trouver mb3 et mb4 par leur colonne victime.
+func TestAnnuairePorteeBase_RepliNommeLesVictimes(t *testing.T) {
+	pdb := newTestPlayerDB(t)
+	seedPorteeBase(t, pdb)
+	ctx := context.Background()
+	for _, x := range []string{pTestXUID, "x_vicmke", "x_vickvp"} {
+		execOnSharedDBs(t, pdb, ctx, `INSERT INTO shared.match_participants (match_id, xuid, gamertag, outcome, team_id, kills)
+			VALUES ('mv2', ?, '', 2, 0, 1)`, x)
+	}
+	execOnSharedDBs(t, pdb, ctx, `INSERT INTO shared.match_kill_events_latest
+		(match_id, feed_killer_xuid, feed_killer_gamertag, victim_xuid, victim_gamertag, time_ms)
+		VALUES ('mb3', 'x_tueur', 'NomTueur', 'x_vicmke', 'NomVicMKE', 1000)`)
+	execOnSharedDBs(t, pdb, ctx, `INSERT INTO shared.killer_victim_pairs
+		(match_id, killer_xuid, killer_gamertag, victim_xuid, victim_gamertag)
+		VALUES ('mb4', 'x_tueur', 'NomTueur', 'x_vickvp', 'NomVicKVP')`)
+	attendus := map[string]string{"x_vicmke": "NomVicMKE", "x_vickvp": "NomVicKVP"}
+
+	rows, err := NewMatchViewRepo(pdb, pTestXUID).GetMatchScoreboard(ctx, "mv2")
+	if err != nil {
+		t.Fatalf("GetMatchScoreboard : %v", err)
+	}
+	vus := 0
+	for _, s := range rows {
+		if attendu, ok := attendus[s.XUID]; ok {
+			vus++
+			if s.Gamertag != attendu {
+				t.Errorf("Q12 : %s nommé %q, attendu %q (victime hors de la lecture)", s.XUID, s.Gamertag, attendu)
+			}
+			verifierNom(t, pdb, "Q12", s.XUID, s.Gamertag)
+		}
+	}
+	if vus != 2 {
+		t.Fatalf("%d victimes dans le tableau de score, attendu 2 : %+v", vus, rows)
+	}
+	carte, err := NewGamertagRepo(pdb.SharedReadDB()).ResolveGamertags(ctx, "mv2", []string{"x_vicmke", "x_vickvp"})
+	if err != nil {
+		t.Fatalf("ResolveGamertags : %v", err)
+	}
+	for x, attendu := range attendus {
+		if carte[x] != attendu {
+			t.Errorf("ResolveGamertags : %s nommé %q, attendu %q (victime hors de la lecture)", x, carte[x], attendu)
+		}
+	}
+}

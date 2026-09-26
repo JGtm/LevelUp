@@ -476,6 +476,37 @@ supprimée) :
   retiré. Dette : `squad_repo_annuaire.go` 378 L, `identity_annuaire.go` 176 L, aucune fonction
   au-delà de 80 L, `player_repos_test.go` (gelé) non touché.
 
+- [x] A.11 (2026-09-26) correctifs de la revue adversariale du lot A — (1) couverture des deux
+  branches VICTIME de la localisation (`AnnuaireKillFeedLocaliserSQL`, victime de
+  `match_kill_events` et victime de `killer_victim_pairs`) : test
+  `TestAnnuairePorteeBase_RepliNommeLesVictimes` ; (2) ADR 0036, section « Exceptions » mise à jour
+  (découverte (11) de P2).
+
+Journal A.11 (2026-09-26, sur 5ab3c13c7) :
+
+- Test : sur mv2, x_vicmke et x_vickvp ne sont nommés par rien (ni alias, ni participant, ni
+  kill-feed de mv2) ; hors de la lecture, x_vicmke n'est nommé QUE comme victime du journal canonique
+  (mb3, « NomVicMKE ») et x_vickvp QUE comme victime de `killer_victim_pairs` (mb4, « NomVicKVP »).
+  Q12 (vue match) et `ResolveGamertags` doivent rendre ces deux noms, et Q12 égale la vue.
+- Mutations (rouges puis restaurées, `cmp`) : branche victime de `match_kill_events`
+  (`identity_annuaire.go:168`, `victim_xuid` -> `feed_killer_xuid`) -> test rouge (x_vicmke
+  « Joueur cmke », absent de la carte) ; branche victime de `killer_victim_pairs` (`:174`,
+  `victim_xuid` -> `killer_xuid`) -> test rouge (x_vickvp « Joueur ckvp », absent) ; en plus, filtre
+  de nom de chacune des deux branches cassé (`:169`, `:175`, `victim_gamertag IS NULL`) -> rouge
+  deux fois.
+- ADR 0036, « Exceptions (state on 2026-09-26) » : introduction au passé pour le lot A ; tableau I1
+  réduit aux quatre lectures qui restent (Explorer, Médias, classement mondial, killcollector) ; une
+  phrase liste les lectures retirées le 2026-09-26 et leur coût après (chiffres du journal P2 / A.10) ;
+  le paragraphe « Lot A must keep the names » réécrit au passé avec le mécanisme retenu (portée base,
+  localisation) et la parité chiffrée ; tableau I2 : Q28 requalifiée (vue retirée) avec sa mesure du
+  lot A, fenêtre du kill-feed de Q23b ajoutée (environ 0,9 s au repos, 1,6 à 4,6 s de médiane sous
+  charge, non attribuée), et le repli de localisation quand il part (150 à 360 ms, au-dessus du budget
+  de 100 ms, deux passes sur la brute de 3,95 M lignes, piste « une passe unique » non mesurée).
+- Gate (consigne A.11) : `gofmt -l` des fichiers touchés vide ; `go vet ./internal/analysis/
+  ./internal/platform/duckdb/` 0 ; `go test ./internal/analysis/...` 0 ; `go test -tags=integration -p 1
+  ./internal/platform/duckdb/...` 0 (5 paquets ok) ; `golangci-lint run --new-from-rev=ea5682373 ./...`
+  0 issue, idem avec `--build-tags=integration`.
+
 ## 4. P3 — Docs de release 7.5.0 : campagne perf, lot A, ADR 0036 (EN + FR)
 
 Décisions tranchées :
@@ -559,8 +590,7 @@ Journal P3 : (vide)
   `identity_annuaire.go` couvre tout le fichier, pas le seul gabarit de localisation ; et le
   garde-rail ne scanne pas `internal/sync` (killcollector). (11) La table « Exceptions » de l'ADR 0036 (I1) liste encore les lectures
   retirées par le lot A (vue match, ResolveGamertags, Relations) et leur compte au ratchet : à retirer
-  avec elles (« An exception leaves this list together with its read »), non fait (consigne : seul le
-  paragraphe « locating read »). (12) Le harnais `player_repos_test.go` n'a pas de table brute
+  avec elles (« An exception leaves this list together with its read ») [TRAITÉE en A.11]. (12) Le harnais `player_repos_test.go` n'a pas de table brute
   `match_kill_events` : toute lecture en portée base d'un test qui l'utilise et déclenche le repli
   échoue sans `simulerJournalBrut` (`match_view_repo_annuaire_test.go`, appelée par
   `seedPorteeBase` et `TestGamertagRepo_ResolveGamertags`).
