@@ -1336,8 +1336,13 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   grammaire du record 36 — un v70 d un BTB confond les places 16 a 31 avec 0 a 15, il doit se
 	//   lire « a re-cuire ». Le garde de forme refuse une forme nouvelle sous le numero de la vague
 	//   D : d ou la montee. Detail : `document_chronicle.go`.
-	if SchemaVersion != 71 {
-		t.Fatalf("SchemaVersion = %d, attendu 71 : incrémenter exige une raison écrite ci-dessus "+
+	// - 72 (2026-09-26, lot J3.3 du PLAN_SUITE_AUDIT_DECODEUR_FILM) : UNE REVISION PAR CONSOMMATEUR
+	//   DE FAITS. `coverage.decoder.factsRev` DISPARAIT au profit de `killsourceRev` et
+	//   `objectivesRev`, et les calques d objectifs de `layers` portent `objectives-...` au lieu de
+	//   `killsource-...`. La FORME d un bloc publie change (un champ retire, deux ajoutes) : d ou
+	//   la montee. Detail : `document_chronicle.go`.
+	if SchemaVersion != 72 {
+		t.Fatalf("SchemaVersion = %d, attendu 72 : incrémenter exige une raison écrite ci-dessus "+
 			"(un champ optionnel de plus n'en est pas une)", SchemaVersion)
 	}
 }

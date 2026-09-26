@@ -614,6 +614,24 @@
 #               deja ces deux valeurs, le seul geste est de les rendre. Ce qu elles servent est
 #               l ARTEFACT (`coverage.decoder.registry`, schema 61). L empreinte monte parce que
 #               le hachage porte sur les OCTETS.
+#
+#   2026-09-26  REVISION INCHANGEE, EMPREINTE SEULE RECOPIEE (lot J3.1 du
+#               PLAN_SUITE_AUDIT_DECODEUR_FILM_2026-09-25, decision DU-2 (a)). OUTILLAGE : le
+#               mecanisme central (`film/revision`) hache desormais le FLUX DE JETONS de chaque
+#               source (`go/scanner`) — commentaires ordinaires et mise en page ecartes, directives
+#               `//go:` gardees — et non plus ses octets. Le cadre (chemin relatif a la racine,
+#               longueur du contenu) ne change pas, et AUCUNE source de la couche ne change dans
+#               ce lot : la sortie est identique a l octet, rien n est candidat a un redecodage.
+#
+#   2026-09-26  REVISION INCHANGEE, EMPREINTE SEULE RECOPIEE (lot J3.2 du
+#               PLAN_SUITE_AUDIT_DECODEUR_FILM_2026-09-25, decision DU-2 (b), constat SRC-1).
+#               OUTILLAGE : le perimetre de la couche est desormais la FERMETURE DE SES IMPORTS
+#               (bornee au module, arretee aux couches revisees, qui entrent par leur VALEUR),
+#               figee par `testdata/<couche>_perimetre.golden` ; les paquets importes hors couche
+#               (`film/types`, `film/damagetag` et ses fichiers embarques, `games/weapons/filmshell`,
+#               ...) entrent par leurs jetons, et les valeurs amont sont celles que la fermeture
+#               rencontre. AUCUNE source ne change dans ce lot : la sortie est identique a l octet,
+#               rien n est candidat a un redecodage.
 grammar-2026-09-15.38	7994ce195de82e8ca161ad32cc3ccfab5969a41aa635fb906183ecaf2c4f940e
 grammar-2026-09-15.39	1d1afcc58f4db7863b2cde9b827ee395a9754001472cc351578bb14c2d9f3e45
 grammar-2026-09-15.40	55b8ec948050dce539efbc4023dceece934f3586cea449223bf064c23a0b8ffb
@@ -645,4 +663,4 @@ grammar-2026-09-22.9	db97888d8cf1a7c90b64e5ce77ea62168019f5f2f58f041408334352ab9
 grammar-2026-09-22.10	7c59bfc495cef7388c5e2695ef9147ef4fa920ce066cdcec223ec8996929097d
 grammar-2026-09-22.11	e3b884b73dd5be965de90776a8b5ee552660ce36241b2fca09a374ae3b720d16
 grammar-2026-09-22.12	259d10ca8ef7612f8c47a76809c5b8d03669d87cf1c44a481b370d719412b822
-grammar-2026-09-24	6d5e86cce27aac120b32b2a36830ba66e50adb638e773b17a32769ba1209b04c
+grammar-2026-09-24	b88de9aa261b4aa04326b76f9083f7ca541e30137fc9bd1e31ede1af4d66dd4a

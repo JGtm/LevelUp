@@ -3,7 +3,8 @@ package replay
 import (
 	"fmt"
 
-	"levelup/go-api/internal/games/halo_infinite/film/internal/facts"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/killsource"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
@@ -19,13 +20,14 @@ import (
 // DecoderCoverage dit SOUS QUELLES RÉVISIONS cet artefact a été cuit (schéma 61, lot 2.6.3 du
 // PLAN_DECODEUR_FILM, décision V15 (11)).
 //
-// # POURQUOI LES QUATRE, ET PAS UNE SEULE
+// # POURQUOI UNE PAR COUCHE, ET PAS UNE SEULE
 //
-// Le décodeur est cinq calques et quatre d'entre eux portent leur révision (ADR 0034, D-6). Une
-// seule valeur ne dirait pas OÙ le changement a eu lieu — or c'est précisément ce que la
-// recuisson sélective par calque (4.4) doit décider : une montée de `source` re-décode tout, une
-// montée de `facts` ne concerne que les faits persistés. Les quatre sont donc publiées, dans
-// l'ordre du sens unique.
+// Le décodeur est cinq calques, et chaque couche révisée porte sa révision (ADR 0034, D-6) —
+// cinq depuis le lot J3.3, où la révision des faits s'est scindée par consommateur. Une seule
+// valeur ne dirait pas OÙ le changement a eu lieu — or c'est précisément ce que la recuisson
+// sélective par calque (4.4) doit décider : une montée de `source` re-décode tout, une montée de
+// `objectives` ne rouvre pas le backlog killsource. Toutes sont donc publiées, dans l'ordre du
+// sens unique.
 //
 // TÉLÉMÉTRIE PURE : aucun rendu n'en dépend, aucune décision de décodage n'en dépend. Le champ
 // existe dès M2 et ses valeurs deviennent EXPLOITABLES à M4 (D-7 : « la présence d'un calque se
@@ -37,8 +39,15 @@ type DecoderCoverage struct {
 	ProfileRev string `json:"profileRev"`
 	// GrammarRev : la grammaire de lecture (cadres, ordres de composants, lecteurs).
 	GrammarRev string `json:"grammarRev"`
-	// FactsRev : la couche des faits — celle qui commande le backlog killsource.
-	FactsRev string `json:"factsRev"`
+	// KillsourceRev : la sortie du kill-feed — celle qui commande le backlog killsource.
+	KillsourceRev string `json:"killsourceRev"`
+	// ObjectivesRev : la sortie des objectifs et du statborg (lot J3.3, schema 72).
+	//
+	// LES DEUX REMPLACENT `factsRev` DEPUIS LE SCHEMA 72 (lot J3.3 du
+	// PLAN_SUITE_AUDIT_DECODEUR_FILM_2026-09-25, DU-2 (c)) : une seule revision datait tout l arbre
+	// des faits, et une correction d objectifs rouvrait le backlog killsource. Une revision par
+	// consommateur de faits dit laquelle des deux sorties a bouge.
+	ObjectivesRev string `json:"objectivesRev"`
 	// Build est la CLÉ DU PROFIL, lue en clair dans la section 2 de `chunk_00` (ADR 0034, D-3).
 	//
 	// CHAÎNE VIDE ET BLOC PRÉSENT SUR UN BUILD INCONNU (décision V15 (15)). Un film dont
@@ -171,10 +180,11 @@ func countUnpublished(before, after int) int {
 // le registre n a pas ete lu.
 func couvertureDuDecodeur(id *profile.FilmIdentity) *DecoderCoverage {
 	cov := &DecoderCoverage{
-		SourceRev:  source.Rev,
-		ProfileRev: profile.Rev,
-		GrammarRev: grammar.Rev,
-		FactsRev:   facts.Rev,
+		SourceRev:     source.Rev,
+		ProfileRev:    profile.Rev,
+		GrammarRev:    grammar.Rev,
+		KillsourceRev: killsource.Rev,
+		ObjectivesRev: objectives.Rev,
 	}
 	if id == nil {
 		return cov

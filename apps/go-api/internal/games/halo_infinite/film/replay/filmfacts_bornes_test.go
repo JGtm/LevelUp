@@ -49,7 +49,8 @@ func debutDesComptes(g *FilmFacts) int {
 // quel. L en-tete est celui que l encodeur de production ecrit pour `g`.
 func fichierAutourDuBlob(t *testing.T, g *FilmFacts, blob []byte) []byte {
 	t.Helper()
-	valide, err := EncodeFilmFactsFile(&FilmFactsFile{Facts: *g})
+	valide, err := EncodeFilmFactsFile(&FilmFactsFile{Facts: *g,
+		EmpreinteDeCle: EmpreinteDeCle(goldenEntryPourTest(t))})
 	if err != nil {
 		t.Fatalf("encodage du fichier temoin : %v", err)
 	}
@@ -61,9 +62,7 @@ func fichierAutourDuBlob(t *testing.T, g *FilmFacts, blob []byte) []byte {
 	entrees := &gwriter{}
 	entrees.u(uint64(len(blob)))
 	entrees.b = append(entrees.b, blob...)
-	encodeGardesDeMode(entrees, g.FilmInputs)
-	encodeEntitesDesJoueurs(entrees, g.PlayerEntities)
-	encodeVerdictDuFilDesMorts(entrees, g.DeathsFeed)
+	encodeComplementDesEntrees(entrees, g)
 	ecrireSection(w, sectionEntrees, entrees.b)
 	return w.b
 }

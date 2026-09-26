@@ -109,7 +109,7 @@ var comparaisonsAuTypeTempsFortsTolerees = []comparaisonAuTypeTempsFortsToleree{
 		sites:   1,
 		pose:    "2026-09-23",
 		retrait: "remplacer `chunkTypePied` par `filmcache.EstTempsForts` — geste de la couche " +
-			"`facts` : l empreinte de `facts.Rev` bouge, a recopier a revision constante avec une " +
+			"`facts` : l empreinte de `objectives.Rev` bouge, a recopier a revision constante avec une " +
 			"note ecrite (sortie identique)",
 	},
 	{

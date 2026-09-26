@@ -8,9 +8,9 @@ package main
 // causes, toutes deux dans la CLASSIFICATION, aucune dans la mesure :
 //
 //	LA TELEMETRIE. Depuis le schema 61 le document publie `coverage.decoder.{sourceRev,
-//	profileRev, grammarRev, factsRev}`, `coverage.decoder.build` et
-//	`coverage.decoder.registry.fingerprint`. Ces feuilles disent QUELLE VERSION du decodeur a
-//	cuit l artefact — pas ce que le match contient. Au lot 2.6 elles etaient NEUVES, donc
+//	profileRev, grammarRev, factsRev}` (`killsourceRev` et `objectivesRev` depuis le schema 72),
+//	`coverage.decoder.build` et `coverage.decoder.registry.fingerprint`. Ces feuilles disent
+//	QUELLE VERSION du decodeur a cuit l artefact — pas ce que le match contient. Au lot 2.6 elles etaient NEUVES, donc
 //	comptees en GAINS, et le gate sortait 0 ; depuis, leur valeur BOUGE a chaque lot qui fait
 //	monter une revision, `replaydiff` les classe `changement`, et `estBloquant` refusait le run.
 //	Mesure du lot 3.3 : 51 des 59 changements des 17 temoins etaient ces trois chaines.
@@ -61,10 +61,14 @@ const sensTelemetrie = "telemetrie"
 // `namedSlots` sont des grandeurs du registre lu. Les trois decrivent LE FILM, pas la version de
 // notre code — une bascule y est une decouverte a instruire.
 var metriquesDeTelemetrie = map[string]bool{
-	"coverage.decoder.sourceRev":            true,
-	"coverage.decoder.profileRev":           true,
-	"coverage.decoder.grammarRev":           true,
+	"coverage.decoder.sourceRev":  true,
+	"coverage.decoder.profileRev": true,
+	"coverage.decoder.grammarRev": true,
+	// `factsRev` : les artefacts ANTERIEURS au schema 72 la portent encore ; la garder ici fait que
+	// sa disparition (scission par consommateur de faits, lot J3.3) n est pas lue comme une perte.
 	"coverage.decoder.factsRev":             true,
+	"coverage.decoder.killsourceRev":        true,
+	"coverage.decoder.objectivesRev":        true,
 	"coverage.decoder.build":                true,
 	"coverage.decoder.registry.fingerprint": true,
 }

@@ -34,10 +34,11 @@ package grammar_test
 //
 // # CE QU IL NE FAIT PAS, ET C EST ASSUME
 //
-// Il ne distingue pas un changement de grammaire d une reformulation de commentaire : le hachage
-// porte sur les OCTETS. Un garde-rail qui voudrait ne mordre que sur le « significatif » devrait
-// comprendre le decodeur — il rendrait des faux negatifs, c est-a-dire le defaut qu on ferme. Un
-// faux positif coute une ligne a mettre a jour.
+// Il ne distingue pas un changement de grammaire d un renommage de variable locale : le hachage
+// porte sur les JETONS (commentaires et mise en page ecartes depuis le lot J3.1). Un garde-rail
+// qui voudrait ne mordre que sur le « significatif » devrait comprendre le decodeur — il rendrait
+// des faux negatifs, c est-a-dire le defaut qu on ferme. Un faux positif coute une ligne a mettre
+// a jour.
 
 import (
 	"flag"
@@ -117,7 +118,7 @@ func messagesGrammarRev() revision.Messages {
 		Commande:  commandeRegenerationGrammarRev,
 		Question: "LA GRAMMAIRE DE LECTURE A CHANGE : une largeur, un cadre, un ordre de " +
 			"composants, un lecteur neuf. Se demander AUSSI : la SORTIE des faits peut-elle " +
-			"changer ? `facts.Rev` hache la VALEUR de cette revision, donc elle montera " +
+			"changer ? `killsource.Rev` hache la VALEUR de cette revision, donc elle montera " +
 			"mecaniquement — et les lignes de kill deja en base deviennent candidates au backlog " +
 			"de redecodage (D6, signal utilisateur). Le CONTENU CUIT change-t-il ? alors " +
 			"`replay.SchemaVersion` monte a son tour, et `backfill-replay` re-cuit.",
@@ -138,14 +139,15 @@ func racineDeLaCoucheGrammaire(t *testing.T) string {
 
 // empreinteDeLaCoucheGrammaire rend l empreinte et le nombre de fichiers haches.
 //
-// LES VALEURS AMONT SONT `profile.Rev` PUIS `source.Rev`, hachees EN TETE dans cet ordre
-// (V15 (12)) : l ordre fait partie du contrat, deux ordres differents rendent deux empreintes.
+// LE PERIMETRE EST LA FERMETURE DES IMPORTS de la couche (lot J3.2, DU-2 (b)) : elle rencontre
+// `profile` et `source`, dont les VALEURS entrent en tete, dans l ordre du sens unique, et les
+// paquets importes hors couche (`film/types`, `games/weapons/filmshell`...) par leurs octets —
+// `testdata/grammar_perimetre.golden` les liste.
 func empreinteDeLaCoucheGrammaire(t *testing.T) (string, int) {
 	t.Helper()
-	res, err := revision.Calculer(
-		[]string{racineDeLaCoucheGrammaire(t)},
+	res, err := revision.EmpreinteDeCouche(racineDeLaCoucheGrammaire(t), "grammar",
 		func(rel string) bool { return fichiersHorsGrammaire[rel] },
-		profile.Rev, source.Rev)
+		map[string]string{"profile": profile.Rev, "source": source.Rev})
 	if err != nil {
 		t.Fatalf("empreinte de la couche grammaire : %v", err)
 	}

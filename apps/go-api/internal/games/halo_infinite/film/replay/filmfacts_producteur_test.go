@@ -19,8 +19,9 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/internal/facts"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/killsource"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
@@ -56,9 +57,10 @@ func TestEnteteDesFaitsEgaleLaCouvertureDuDocument(t *testing.T) {
 				"cote gauche")
 		}
 		blob, err := EncodeFilmFactsFile(&FilmFactsFile{
-			Coverage: *couvertureDuDecodeur(id),
-			Facts:    FilmFacts{Film: goldenFilm, MapModule: entry.Module, AxisW: entry.AxisWidths},
-			Identity: identiteDeFaits(id),
+			Coverage:       *couvertureDuDecodeur(id),
+			Facts:          FilmFacts{Film: goldenFilm, MapModule: entry.Module, AxisW: entry.AxisWidths},
+			Identity:       identiteDeFaits(id),
+			EmpreinteDeCle: EmpreinteDeCle(entry),
 		})
 		if err != nil {
 			t.Fatalf("encodage : %v", err)
@@ -104,10 +106,11 @@ func TestBuildFromFactsEgaleLAssemblageDirect(t *testing.T) {
 
 	// A DROITE : le MEME etat, passe par le fichier de faits.
 	blob, err := EncodeFilmFactsFile(&FilmFactsFile{
-		Coverage:  *couvertureDuDecodeur(id),
-		Facts:     *g,
-		Identity:  identiteDeFaits(id),
-		Fallbacks: repliDuBalayage,
+		Coverage:       *couvertureDuDecodeur(id),
+		Facts:          *g,
+		Identity:       identiteDeFaits(id),
+		Fallbacks:      repliDuBalayage,
+		EmpreinteDeCle: EmpreinteDeCle(entry),
 	})
 	if err != nil {
 		t.Fatalf("encodage : %v", err)
@@ -217,7 +220,8 @@ func TestFaitsDUnSchemaAnterieurSontRefusesSurLEnTete(t *testing.T) {
 	entry := goldenEntryPourTest(t)
 	f := fichierTemoin(t)
 	f.Coverage.SourceRev, f.Coverage.ProfileRev = source.Rev, profile.Rev
-	f.Coverage.GrammarRev, f.Coverage.FactsRev = grammar.Rev, facts.Rev
+	f.Coverage.GrammarRev, f.Coverage.KillsourceRev = grammar.Rev, killsource.Rev
+	f.Coverage.ObjectivesRev = objectives.Rev
 	blob, err := EncodeFilmFactsFile(f)
 	if err != nil {
 		t.Fatalf("encodage : %v", err)
@@ -226,7 +230,7 @@ func TestFaitsDUnSchemaAnterieurSontRefusesSurLEnTete(t *testing.T) {
 	if err != nil {
 		t.Fatalf("en-tete : %v", err)
 	}
-	if err := e.Utilisable(entry); err != nil {
+	if err := e.Frais(entry); err != nil {
 		t.Fatalf("des faits du schema courant sont refuses : %v", err)
 	}
 	// LE FICHIER D AVANT : meme conteneur, memes revisions, SCHEMA ANTERIEUR.
@@ -235,7 +239,7 @@ func TestFaitsDUnSchemaAnterieurSontRefusesSurLEnTete(t *testing.T) {
 	if perime.Schema < 1 {
 		t.Skip("aucun schema anterieur a comparer")
 	}
-	err = perime.Utilisable(entry)
+	err = perime.Frais(entry)
 	if !errors.Is(err, ErrFilmFactsVersion) {
 		t.Fatalf("un fichier du schema %d doit etre refuse SUR L EN-TETE par ErrFilmFactsVersion ; "+
 			"obtenu : %v", perime.Schema, err)
@@ -247,7 +251,7 @@ func TestFaitsDUnSchemaAnterieurSontRefusesSurLEnTete(t *testing.T) {
 		t.Fatalf("en-tete du fichier tronque : %v", err)
 	}
 	tronque.Schema = SchemaDesFaits - 1
-	if !errors.Is(tronque.Utilisable(entry), ErrFilmFactsVersion) {
+	if !errors.Is(tronque.Frais(entry), ErrFilmFactsVersion) {
 		t.Error("le refus d un schema anterieur exige plus que l en-tete : un fichier perime " +
 			"couterait une lecture complete pour etre rejete")
 	}

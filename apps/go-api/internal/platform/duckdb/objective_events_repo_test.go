@@ -13,7 +13,7 @@ import (
 
 	titlepkg "levelup/go-api/internal/domain/title"
 
-	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/domain/objectiveevent"
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/migration"
 )
@@ -45,17 +45,17 @@ func newObjectiveEventsTestPlayerDB(t *testing.T) *PlayerDB {
 	}
 }
 
-func sampleObjectiveEvents() []domain.ObjectiveEvent {
+func sampleObjectiveEvents() []objectiveevent.Event {
 	team0, team1 := 0, 1
 	t1, t2 := 30000, 95000
 	cap1, cap2 := 1, 2
-	return []domain.ObjectiveEvent{
+	return []objectiveevent.Event{
 		{
 			MatchID: oeTestMatchID, Seq: 0, TimeMS: &t1,
 			ObjectiveType: "flag", EventType: "capture",
 			TeamID: &team0, ObjectiveID: nil, Value: &cap1,
 			Source: "film_ctf", Confidence: "ms_exact", Details: `{"tiers":6}`,
-			Players: []domain.ObjectiveEventPlayer{
+			Players: []objectiveevent.Player{
 				{XUID: pTestXUID, Role: "carrier"},
 				{XUID: "xuid_helper_a", Role: "escort"},
 			},
@@ -153,11 +153,11 @@ func TestObjectiveEventsRepo_WriteMatch_ReplaceIdempotent(t *testing.T) {
 	// Ré-écrit avec un set RÉDUIT (1 seul event) : le DELETE doit purger les 2
 	// anciens events + leurs joueurs avant l'INSERT.
 	t0 := 5000
-	replaced := []domain.ObjectiveEvent{{
+	replaced := []objectiveevent.Event{{
 		MatchID: oeTestMatchID, Seq: 0, TimeMS: &t0,
 		ObjectiveType: "zone", EventType: "score",
 		Source: "film_strongholds", Confidence: "approx_5s",
-		Players: []domain.ObjectiveEventPlayer{{XUID: pTestXUID, Role: "holder"}},
+		Players: []objectiveevent.Player{{XUID: pTestXUID, Role: "holder"}},
 	}}
 	if err := repo.WriteMatch(ctx, oeTestMatchID, replaced); err != nil {
 		t.Fatalf("WriteMatch #2: %v", err)
@@ -205,7 +205,7 @@ func TestObjectiveEventsRepo_WriteMatch_EmptyIsNoOp(t *testing.T) {
 	if err := repo.WriteMatch(ctx, oeTestMatchID, nil); err != nil {
 		t.Fatalf("WriteMatch(nil): %v", err)
 	}
-	if err := repo.WriteMatch(ctx, oeTestMatchID, []domain.ObjectiveEvent{}); err != nil {
+	if err := repo.WriteMatch(ctx, oeTestMatchID, []objectiveevent.Event{}); err != nil {
 		t.Fatalf("WriteMatch([]): %v", err)
 	}
 

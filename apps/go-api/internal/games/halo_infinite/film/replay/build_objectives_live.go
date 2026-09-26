@@ -121,7 +121,7 @@ type FlagInput struct {
 //
 // HORS LIGNE — appelee par BuildFromFilm.
 func decodeFilmCarrierMarks(fc *grammar.FilmContext, matchID string, in FlagInput) grammar.CarrierMarkScan {
-	if !in.Scanned || !flagFilmSignalsOf(in).IsFlagFilm() {
+	if !drapeauBalayable(in) {
 		return grammar.CarrierMarkScan{}
 	}
 	marks, err := grammar.ScanCarrierMarks(fc)

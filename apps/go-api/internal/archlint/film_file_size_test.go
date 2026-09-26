@@ -205,7 +205,10 @@ var plafondsParFichier = map[string]int{
 	// de M4b, puis l episode juge sur le vehicule par M7b) = 2587, mesure de la tete apres les trois
 	// fusions (chaque lot avait releve le plafond sur sa propre base). Puis +11 : le verdict du gate
 	// de corpus de l integration (tete contre `1a8390e9f` et contre `c9eb3b6bd`) et G1 re-mesure = 2598.
-	"internal/games/halo_infinite/film/replay/document_chronicle.go": 2598,
+	// SCHEMA 71 -> 72 (2026-09-26, lot J3.3 du PLAN_SUITE_AUDIT_DECODEUR_FILM), +29 : l entree v72
+	// (une revision par consommateur de faits, `coverage.decoder`, `layers`, le codec des faits,
+	// l effet au parc). Exception ecrite, dans le commit qui monte `SchemaVersion`.
+	"internal/games/halo_infinite/film/replay/document_chronicle.go": 2627,
 	// --- production, hors perimetre du lot 2.7 (aucune preuve d equivalence ne couvrait
 	// leur scission : elle se decidera au lot qui les rouvrira).
 	// `assist.go` EST SORTI DE CETTE TABLE LE 2026-09-16 (lot 2.6.2) : le type `Assist` a descendu
@@ -280,7 +283,9 @@ var plafondsParFichier = map[string]int{
 	// Lot D-fix (meme montee v70, 2026-09-24) : 1328 -> 1333, sa ligne dans la justification v70.
 	// SCHEMA 70 -> 71 (2026-09-24, lot M4b des retours du rejeu) : 1333 -> 1343, la justification
 	// que `TestStructureIsOptionalInDocument` exige pour la montee (le tir continu).
-	"internal/games/halo_infinite/film/replay/structure_test.go":                                  1343,
+	// SCHEMA 71 -> 72 (2026-09-26, lot J3.3 du PLAN_SUITE_AUDIT_DECODEUR_FILM) : 1343 -> 1348, la
+	// justification de la montee (une revision par consommateur de faits).
+	"internal/games/halo_infinite/film/replay/structure_test.go":                                  1348,
 	"internal/games/halo_infinite/film/replay/t0_mouvement_research_test.go":                      872,
 	"internal/games/halo_infinite/film/replay/inventory_position_i22_test.go":                     833,
 	"internal/games/halo_infinite/film/replay/ground_link_research_test.go":                       814,

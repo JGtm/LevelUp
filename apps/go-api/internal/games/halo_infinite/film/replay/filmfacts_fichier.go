@@ -38,8 +38,8 @@ package replay
 //
 // LES SECTIONS SONT A LONGUEUR PREFIXEE pour qu un lecteur SAUTE une section inconnue. La regle de
 // fraicheur du lot 4.1 reste pourtant TOUT OU RIEN (note de preparation de M4, §2.4) : faits
-// utilisables si et seulement si version de codec, schema de faits, LES QUATRE revisions et la cle
-// de cuisson sont egaux a ce que le binaire courant resout. La finesse par couche est l objet du
+// utilisables si et seulement si version de codec, schema de faits, LES REVISIONS DE COUCHE et
+// la cle de cuisson sont egaux a ce que le binaire courant resout. La finesse par couche est l objet du
 // lot 4.4 — ne pas l anticiper.
 //
 // # LES CINQ SECTIONS, ET CE QUI MANQUAIT A CHACUNE
@@ -98,6 +98,7 @@ package replay
 // dire est exactement ce que ce lot doit interdire.
 
 import (
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -114,7 +115,15 @@ const magieFaitsDeFilm = "LEVELUPFILMFACTS\n"
 
 // VersionCodecFaits est la version du CONTENEUR : forme du prefixe, de l en-tete et du cadre des
 // sections. Elle monte quand le CADRE change, jamais quand une section change de contenu.
-const VersionCodecFaits = 1
+//
+// CODEC 2 (2026-09-26, jalon J3 du PLAN_SUITE_AUDIT_DECODEUR_FILM_2026-09-25, UNE montee pour le
+// jalon, posee au lot J3.3) : l EN-TETE change de forme. J3.3 y remplace la revision unique des
+// faits par une revision par consommateur (`killsource`, `objectives`) ; J3.4 y inscrit les
+// GARDES DE L APPELANT sous lesquelles les faits ont ete cuits ; J3.5 y inscrit l EMPREINTE DE
+// L ENTREE DE CATALOGUE entiere ; J3.6 porte, dans le complement de la section 1, le temoin de
+// l inventaire (nul ou vide). Un fichier du codec 1 est refuse sur son prefixe, avant toute
+// lecture d en-tete ([TestFaitsDuCodec1SontRefusesSurLePrefixe]) : il est redecode.
+const VersionCodecFaits = 2
 
 // SchemaDesFaits est la version de la CHARGE : quelles sections existent et ce qu elles portent.
 // Elle monte quand une section nait, meurt ou change de contenu.
@@ -149,6 +158,10 @@ const VersionCodecFaits = 1
 // v27 (tirs lus par la grammaire du record — indice sur cinq bits, numero de tir, unite tireuse — et
 // le TIR CONTINU de la vue de controle). Un fichier ecrit par le code de la vague D d avant M4b porte
 // le blob v26 : il est refuse a la magie du blob, et redecode.
+// LE MEME SCHEMA 4 AU JALON J3 (2026-09-26) : le complement de la section 1 gagne, avant le verdict
+// du fil des morts, le TEMOIN DE L INVENTAIRE (nul = illisible, lot J3.6) SOUS LA MONTEE DU CODEC 2 (plan, J3.6 :
+// « meme montee que J3.4 ») — le codec 2 n a jamais ete PUBLIE sans lui (les etats intermediaires du lot n ont ecrit aucun fait dans un dossier de donnees), et un fichier du codec 1
+// est refuse sur son prefixe.
 const SchemaDesFaits = 4
 
 // Identifiants de section. Ils ne se reutilisent JAMAIS : un identifiant retire reste retire, sinon
@@ -191,9 +204,15 @@ type FilmStatborg struct {
 
 // FilmFactsFile est le contenu COMPLET d un fichier de faits : l en-tete et les cinq sections.
 type FilmFactsFile struct {
-	// Coverage : les quatre revisions, le build et le registre — l en-tete, et le MEME type que
+	// Coverage : les revisions de couche, le build et le registre — l en-tete, et le MEME type que
 	// `coverage.decoder` de l artefact.
 	Coverage DecoderCoverage
+	// Gardes : les gardes de l appelant sous lesquelles ces faits ont ete cuits — l en-tete, depuis
+	// le codec 2 (lot J3.4, RA1-1). Cf. `gardes_de_cuisson.go`.
+	Gardes GardesDeCuisson
+	// EmpreinteDeCle : l empreinte de TOUTE l entree de catalogue sous laquelle ces faits ont ete
+	// cuits ([EmpreinteDeCle]) — l en-tete, depuis le codec 2 (lot J3.5, RA1-4).
+	EmpreinteDeCle [sha256.Size]byte
 	// Facts : section 1 — les entrees de l assemblage et la cle de cuisson.
 	Facts FilmFacts
 	// Identity : section 2 — la section 2 de `chunk_00`, sans laquelle le build sort vide.
@@ -212,34 +231,12 @@ type FilmFactsFile struct {
 	Kills *killsource.Result
 }
 
-// FilmFactsEntete est ce que les PREMIERS OCTETS d un fichier de faits disent, et qui suffit a
-// decider « decoder ou relire ».
-type FilmFactsEntete struct {
-	// VersionCodec / Schema : les deux numeros lus dans le prefixe.
-	VersionCodec int
-	Schema       int
-	// Coverage : les revisions sous lesquelles ces faits ont ete pris.
-	Coverage DecoderCoverage
-	// MapModule / AxisW / LayoutDetected : la CLE DE CUISSON.
-	MapModule      string
-	AxisW          [3]uint
-	LayoutDetected bool
-	// corps est l offset du premier octet de section.
-	corps int
-}
-
 // EncodeFilmFactsFile serialise un fichier de faits.
 //
 // Rend une erreur quand une section JSON ne se serialise pas : un fichier de faits INCOMPLET
 // ecrirait des faits plausibles et faux, ce qui est pire que pas de fichier du tout.
 func EncodeFilmFactsFile(f *FilmFactsFile) ([]byte, error) {
-	entete := &gwriter{}
-	encodeCouvertureDuDecodeur(entete, f.Coverage)
-	entete.str(f.Facts.MapModule)
-	for a := 0; a < 3; a++ {
-		entete.u(uint64(f.Facts.AxisW[a]))
-	}
-	entete.bool8(f.Facts.LayoutDetected)
+	entete := encodeEnteteDuFichier(f)
 
 	w := &gwriter{b: []byte(magieFaitsDeFilm)}
 	w.u(VersionCodecFaits)
@@ -254,9 +251,7 @@ func EncodeFilmFactsFile(f *FilmFactsFile) ([]byte, error) {
 	}
 	entrees.u(uint64(len(blob)))
 	entrees.b = append(entrees.b, blob...)
-	encodeGardesDeMode(entrees, f.Facts.FilmInputs)
-	encodeEntitesDesJoueurs(entrees, f.Facts.PlayerEntities)
-	encodeVerdictDuFilDesMorts(entrees, f.Facts.DeathsFeed)
+	encodeComplementDesEntrees(entrees, &f.Facts)
 	if entrees.echec != nil {
 		return nil, entrees.echec
 	}
@@ -289,69 +284,6 @@ func ecrireSection(w *gwriter, id int, charge []byte) {
 	w.b = append(w.b, charge...)
 }
 
-// DecodeFilmFactsEntete lit le prefixe et l en-tete, ET RIEN DE PLUS.
-//
-// C EST LA PORTE DE LA DECISION « decoder ou relire » : elle ne touche aucune section, donc aucun
-// mega-octet de positions. Un fichier perime coute une lecture d en-tete.
-func DecodeFilmFactsEntete(blob []byte) (FilmFactsEntete, error) {
-	var e FilmFactsEntete
-	if len(blob) < len(magieFaitsDeFilm) || string(blob[:len(magieFaitsDeFilm)]) != magieFaitsDeFilm {
-		return e, fmt.Errorf("%w : magie absente", ErrFilmFactsVersion)
-	}
-	r := &greader{b: blob, off: len(magieFaitsDeFilm)}
-	e.VersionCodec, e.Schema = int(r.u()), int(r.u())
-	longueur := int(r.u())
-	if r.err != nil {
-		return e, fmt.Errorf("%w : prefixe illisible (%v)", ErrFilmFactsVersion, r.err)
-	}
-	if e.VersionCodec != VersionCodecFaits || e.Schema != SchemaDesFaits {
-		return e, fmt.Errorf("%w : codec %d schema %d, ce binaire lit codec %d schema %d",
-			ErrFilmFactsVersion, e.VersionCodec, e.Schema, VersionCodecFaits, SchemaDesFaits)
-	}
-	if longueur < 0 || longueur > len(r.b)-r.off {
-		return e, fmt.Errorf("%w : en-tete annonce %d octets, %d disponibles",
-			ErrFilmFactsVersion, longueur, len(r.b)-r.off)
-	}
-	e.corps = r.off + longueur
-	e.Coverage = decodeCouvertureDuDecodeur(r)
-	e.MapModule = r.str()
-	for a := 0; a < 3; a++ {
-		e.AxisW[a] = uint(r.u())
-	}
-	e.LayoutDetected = r.bool8()
-	if r.err != nil {
-		return e, fmt.Errorf("%w : en-tete illisible (%v)", ErrFilmFactsVersion, r.err)
-	}
-	return e, nil
-}
-
-// Utilisable dit si ces faits sont relisables PAR LE BINAIRE COURANT, ou rend la raison typee.
-//
-// TOUT OU RIEN, ET C EST LA REGLE DU LOT 4.1 (note de preparation de M4, §2.4) : version de codec,
-// schema de faits, LES QUATRE REVISIONS DE COUCHE et la cle de cuisson. La finesse par couche est
-// l objet du lot 4.4 (`coverage_decoder.go` le dit deja) — ne pas l anticiper ici.
-//
-// # `build` ET `registry` NE SONT PAS COMPARES, ET C EST UNE PROPRIETE, PAS UN OUBLI
-//
-// Les quatre revisions sont des CONSTANTES DE COMPILATION : le binaire courant les connait sans
-// ouvrir un fichier. `build` et le bloc `registry`, eux, sont des FAITS DU FILM — la cle ecrite
-// dans la section 2 de `chunk_00` et l empreinte de son registre ECS. Ils ne peuvent pas avoir
-// change pour un film donne, et les RECALCULER exigerait precisement ce que cette porte evite :
-// ouvrir le film. Les comparer serait donc soit impossible, soit une tautologie.
-func (e FilmFactsEntete) Utilisable(entry profile.MapQuantEntry) error {
-	if e.VersionCodec != VersionCodecFaits || e.Schema != SchemaDesFaits {
-		return ErrFilmFactsVersion
-	}
-	courantes := couvertureDuDecodeur(nil)
-	if !memesRevisionsDeCouche(e.Coverage, *courantes) {
-		return fmt.Errorf("%w : faits {%s %s %s %s} contre binaire {%s %s %s %s}",
-			ErrFilmFactsRevisions,
-			e.Coverage.SourceRev, e.Coverage.ProfileRev, e.Coverage.GrammarRev, e.Coverage.FactsRev,
-			courantes.SourceRev, courantes.ProfileRev, courantes.GrammarRev, courantes.FactsRev)
-	}
-	return verifierCleDeCuisson(e.MapModule, e.AxisW, e.LayoutDetected, entry)
-}
-
 // DecodeFilmFactsFile relit un fichier de faits ENTIER. `entry` est l entree de catalogue de la
 // carte du film : les positions sont des quanta, et les relire avec une autre entree rendrait des
 // coordonnees FAUSSES (cf. [ErrFilmFactsCarte]).
@@ -360,10 +292,12 @@ func DecodeFilmFactsFile(blob []byte, entry profile.MapQuantEntry) (*FilmFactsFi
 	if err != nil {
 		return nil, err
 	}
-	if err := verifierCleDeCuisson(entete.MapModule, entete.AxisW, entete.LayoutDetected, entry); err != nil {
+	if err := verifierCleDeCuisson(entete.MapModule, entete.AxisW, entete.LayoutDetected, entry,
+		entete.EmpreinteDeCle[:]); err != nil {
 		return nil, err
 	}
-	out := &FilmFactsFile{Coverage: entete.Coverage}
+	out := &FilmFactsFile{Coverage: entete.Coverage, Gardes: entete.Gardes,
+		EmpreinteDeCle: entete.EmpreinteDeCle}
 	r := &greader{b: blob, off: entete.corps}
 	for r.off < len(r.b) && r.err == nil {
 		id := int(r.u())
@@ -396,9 +330,7 @@ func (f *FilmFactsFile) lireSection(id int, charge []byte, entry profile.MapQuan
 			return err
 		}
 		f.Facts = *g
-		decodeGardesDeMode(r, &f.Facts.FilmInputs)
-		f.Facts.PlayerEntities = decodeEntitesDesJoueurs(r)
-		f.Facts.DeathsFeed = decodeVerdictDuFilDesMorts(r)
+		decodeComplementDesEntrees(r, &f.Facts)
 		if r.err != nil {
 			return fmt.Errorf("faits de film : canaux gardes : %w", r.err)
 		}
@@ -425,53 +357,27 @@ func lireSectionJSON(charge []byte, cible any, libelle string) error {
 	return nil
 }
 
-// encodeCouvertureDuDecodeur / decodeCouvertureDuDecodeur : [DecoderCoverage] VERBATIM.
+// encodeComplementDesEntrees / decodeComplementDesEntrees : ce que la section 1 porte APRES le blob
+// des entrees, dans l ORDRE du format — une seule ecriture, une seule lecture (les tests qui
+// fabriquent une section 1 passent par elles).
 //
-// Le bloc `registry` est un POINTEUR et son absence a un sens ecrit (le registre n a pas ete lu) :
-// il voyage donc derriere son temoin, jamais aplati sur des zeros.
-func encodeCouvertureDuDecodeur(w *gwriter, c DecoderCoverage) {
-	w.str(c.SourceRev)
-	w.str(c.ProfileRev)
-	w.str(c.GrammarRev)
-	w.str(c.FactsRev)
-	w.str(c.Build)
-	w.bool8(c.Registry != nil)
-	if c.Registry == nil {
-		return
-	}
-	w.str(c.Registry.Fingerprint)
-	w.str(c.Registry.Status)
-	w.u(uint64(c.Registry.Blocks))
-	w.u(uint64(c.Registry.NamedSlots))
+//	canaux gardes     `FlagMarks`, `ZoneReads`/`ZoneScanned`, la jauge, `BombReads`
+//	entites           les occupants du match (lot M2.2)
+//	temoin            l inventaire NUL (illisible) ou non (lot J3.6, RA1-2) : le blob relit toute
+//	d inventaire      liste en tranche VIDE, or `Inventory == nil` est une garde de calque
+//	verdict           le verdict du fil des morts (lot M8), EN DERNIER
+func encodeComplementDesEntrees(w *gwriter, g *FilmFacts) {
+	encodeGardesDeMode(w, g.FilmInputs)
+	encodeEntitesDesJoueurs(w, g.PlayerEntities)
+	w.bool8(g.Inventory != nil)
+	encodeVerdictDuFilDesMorts(w, g.DeathsFeed)
 }
 
-func decodeCouvertureDuDecodeur(r *greader) DecoderCoverage {
-	c := DecoderCoverage{
-		SourceRev:  r.str(),
-		ProfileRev: r.str(),
-		GrammarRev: r.str(),
-		FactsRev:   r.str(),
-		Build:      r.str(),
-	}
+func decodeComplementDesEntrees(r *greader, g *FilmFacts) {
+	decodeGardesDeMode(r, &g.FilmInputs)
+	g.PlayerEntities = decodeEntitesDesJoueurs(r)
 	if !r.bool8() {
-		return c
+		g.Inventory = nil
 	}
-	c.Registry = &RegistryCoverage{
-		Fingerprint: r.str(),
-		Status:      r.str(),
-		Blocks:      int(r.u()),
-		NamedSlots:  int(r.u()),
-	}
-	return c
-}
-
-// memesRevisionsDeCouche compare LES QUATRE REVISIONS, et elles seules.
-//
-// PAS `a == b` SUR LE TYPE ENTIER, et ce n est pas qu une question de perimetre : `DecoderCoverage`
-// porte un POINTEUR (`Registry`), donc `==` compare des ADRESSES — deux couvertures identiques
-// sorties de deux appels seraient alors toujours differentes, et la porte de fraicheur refuserait
-// TOUS les faits en silence (constate le 2026-09-17 a la pose de cette porte).
-func memesRevisionsDeCouche(a, b DecoderCoverage) bool {
-	return a.SourceRev == b.SourceRev && a.ProfileRev == b.ProfileRev &&
-		a.GrammarRev == b.GrammarRev && a.FactsRev == b.FactsRev
+	g.DeathsFeed = decodeVerdictDuFilDesMorts(r)
 }

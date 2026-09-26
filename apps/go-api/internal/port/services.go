@@ -10,6 +10,7 @@ import (
 
 	"levelup/go-api/internal/analysis/temporal"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/domain/objectiveevent"
 	"levelup/go-api/internal/domain/playerposition"
 	"levelup/go-api/internal/domain/replaydoc"
 	"levelup/go-api/internal/games/canonical"
@@ -149,7 +150,7 @@ type MatchViewService interface {
 	// GetObjectiveEvents retourne les events objectif v3 (timeline mode-agnostique)
 	// d'un match. Retourne games.ErrCapabilityNotSupported si le titre n'a pas la
 	// capability (repo non câblé ou tables absentes).
-	GetObjectiveEvents(ctx context.Context, matchID string) ([]domain.ObjectiveEvent, error)
+	GetObjectiveEvents(ctx context.Context, matchID string) ([]objectiveevent.Event, error)
 	// GetMatchPositions retourne les positions joueurs keyframe v3 (match-level,
 	// §N) d'un match. Retourne games.ErrCapabilityNotSupported si le titre n'a pas
 	// la capability (repo non câblé ou table absente).

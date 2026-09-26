@@ -16,8 +16,10 @@
 //
 // # CE QUE CE PAQUET NE FAIT PAS
 //
-// Il ne porte AUCUNE revision, AUCUNE racine, AUCUN golden : ce sont les couches qui les
-// declarent. Il ne connait pas non plus `testing` — un paquet de production qui declarerait un
+// Il ne porte AUCUNE revision ni AUCUN golden : ce sont les couches qui les declarent. Il porte,
+// depuis le lot J3.2, la LISTE des couches revisees — leurs noms et leurs racines, pas leurs
+// valeurs ([CouchesRevisees]) — parce que la fermeture des imports de chacune doit s arreter a
+// toutes les autres, et que cinq copies de cette liste dans cinq gates re-divergeraient. Il ne connait pas non plus `testing` — un paquet de production qui declarerait un
 // drapeau de test le poserait sur le binaire du serveur. La porte de regeneration ([Porte])
 // DECIDE a partir d un drapeau et d une variable que l appelant lui passe ; c est le fichier de
 // test de la couche qui declare `flag.Bool`.
@@ -44,8 +46,9 @@ import (
 	"hash"
 	"io/fs"
 	"os"
+	"path"
 	"path/filepath"
-	"sort"
+	"slices"
 	"strings"
 )
 
@@ -70,7 +73,7 @@ import (
 // le prefixe attrapait : un fichier renomme DANS la couche. Ce que le cadre perd — deux racines
 // qui portent le meme nom de fichier ne sont plus distinguees par leur dossier — est sans effet :
 // les racines sont hachees dans l ordre ou l appelant les donne, et la longueur du contenu
-// encadre chaque fichier (voir [Calculer]).
+// encadre chaque fichier (voir [empreinteur]).
 //
 // LE CADRE HERITE DE LA GRAMMAIRE A ETE SUPPRIME AU LOT 2.6.1, dans le commit qui a fait heriter
 // `grammar.Rev` — c etait sa cible de retrait datee, et son critere mesurable est tenu : plus
@@ -96,21 +99,13 @@ type Resultat struct {
 	Fichiers int
 }
 
-// Calculer hache les sources `.go` de production des racines et rend l empreinte AVEC le nombre
-// de fichiers.
+// empreinteur : UN hachage en cours, et le compte des fichiers qui y sont entres. C est LE cadre
+// de l empreinte, ecrit une fois : [Module.CalculerCouche] est son seul point d entree de
+// production, et chaque couche cite le compte dans ses messages d echec.
 //
-// C est LE seul point d entree du calcul : les quatre couches l appellent, chacune citant le
-// compte dans ses messages d echec. Un raccourci qui ne rendrait que l empreinte a existe au lot
-// 2.6.0 (`Empreinte`) et n a jamais eu de consommateur — il est supprime au 2.6.1 (CLAUDE.md
-// regle 7).
-//
-// `exclure` recoit le chemin de chaque fichier RELATIF A SA RACINE, en slash, et rend vrai pour
-// les fichiers a ecarter — nominalement le fichier qui PORTE la revision, qui decrit la couche
-// sans en faire partie. Nil n exclut rien.
-//
-// `valeursAmont` porte la VALEUR des revisions dont la couche depend (decision V15 (12) :
-// `facts.Rev` hache la valeur de `grammar.Rev`). Elles sont hachees EN TETE, avant toute source,
-// DANS L ORDRE DONNE — l ordre fait partie du contrat.
+// `exclure` (cf. [empreinteur.arbre]) recoit le chemin de chaque fichier RELATIF A SA RACINE, en
+// slash, et rend vrai pour les fichiers a ecarter — nominalement le fichier qui PORTE la
+// revision, qui decrit la couche sans en faire partie. Nil n exclut rien.
 //
 // # CE QUI ENTRE DANS LE HACHAGE, DANS L ORDRE
 //
@@ -118,8 +113,8 @@ type Resultat struct {
 //     quand il n y en a pas : c est cette propriete qui rend l empreinte d une couche SANS
 //     amont identique a celle des deux mecanismes d avant, donc l heritage sans
 //     renumerotation. Une valeur amont ne peut pas se confondre avec un fichier : les chemins
-//     haches finissent tous par `.go`.
-//  2. Pour chaque racine, DANS L ORDRE DONNE, ses sources triees par chemin relatif.
+//     haches finissent tous par `.go`, ou commencent par `embed:`.
+//  2. Les racines, DANS L ORDRE DONNE, chacune ses sources triees par nom hache.
 //
 // # CE QUI EST ECARTE
 //
@@ -128,54 +123,103 @@ type Resultat struct {
 // Les fins de ligne sont normalisees en LF — sans quoi un checkout mal configure rendrait le
 // gate vert en CI et rouge sur le poste, pour une raison etrangere a la couche.
 //
+// LES COMMENTAIRES ORDINAIRES ET LA MISE EN PAGE SONT ECARTES DEPUIS LE LOT J3.1 (2026-09-26,
+// decision DU-2 (a)) : le contenu d un fichier est son FLUX DE JETONS ([jetonsDe]), directives
+// `//go:` comprises, et les fichiers qu il EMBARQUE entrent a cote de lui depuis le lot J3.2
+// ([collecte.embarquer]). Le cadre, lui, n a pas change — nom relatif et longueur du contenu.
+//
 // # CE QUE CE MECANISME NE FAIT PAS, ET C EST ASSUME
 //
-// Il ne distingue pas un changement de decodage d une reformulation de commentaire : le hachage
-// porte sur les OCTETS. Un garde-rail qui ne mordrait que sur le « significatif » devrait
+// Il ne distingue pas un changement de decodage d un renommage de variable locale : le hachage
+// porte sur les JETONS. Un garde-rail qui ne mordrait que sur le « significatif » devrait
 // comprendre le decodeur — il rendrait des faux negatifs, c est-a-dire le defaut meme qu il
 // existe pour fermer. Un faux positif coute une ligne a mettre a jour.
-func Calculer(racines []string, exclure func(rel string) bool, valeursAmont ...string) (Resultat, error) {
+type empreinteur struct {
+	h        hash.Hash
+	fichiers int
+}
+
+// nouvelEmpreinteur ouvre un hachage et y verse les valeurs amont, EN TETE et dans l ordre donne.
+// AUCUN OCTET n est ecrit quand il n y en a pas (cf. [empreinteur]).
+func nouvelEmpreinteur(valeursAmont []string) *empreinteur {
 	h := sha256.New()
 	for _, v := range valeursAmont {
 		_, _ = fmt.Fprintf(h, "amont:%d\n%s\n", len(v), v)
 	}
-	total := 0
-	for _, racine := range racines {
-		lus, err := sourcesDe(racine, exclure)
-		if err != nil {
-			return Resultat{}, err
-		}
-		if len(lus) == 0 {
-			return Resultat{}, fmt.Errorf("%w : %s", ErrRacineSansSource, racine)
-		}
-		ecrireSources(h, lus)
-		total += len(lus)
-	}
-	return Resultat{Empreinte: hex.EncodeToString(h.Sum(nil)), Fichiers: total}, nil
+	return &empreinteur{h: h}
 }
 
-// sourceLue : un fichier retenu, son chemin relatif a sa racine (en slash) et son texte
-// normalise.
+// arbre verse toute l arborescence `racine`, chemins relatifs a la racine. Une racine sans source
+// de production est une ERREUR ([ErrRacineSansSource]).
+func (e *empreinteur) arbre(racine string, exclure func(rel string) bool) error {
+	lus, err := sourcesDe(racine, "", true, exclure)
+	if err != nil {
+		return err
+	}
+	if len(lus) == 0 {
+		return fmt.Errorf("%w : %s", ErrRacineSansSource, racine)
+	}
+	e.ecrire(lus)
+	return nil
+}
+
+// paquet verse UN paquet importe — le dossier `rel` du module, sans ses sous-dossiers — chemins
+// prefixes par `rel` : c est le paquet qui nomme ce qu il apporte.
+func (e *empreinteur) paquet(racineModule, rel string) error {
+	lus, err := sourcesDe(filepath.Join(racineModule, filepath.FromSlash(rel)), rel, false, nil)
+	if err != nil {
+		return err
+	}
+	if len(lus) == 0 {
+		return fmt.Errorf("%w : %s", ErrRacineSansSource, rel)
+	}
+	e.ecrire(lus)
+	return nil
+}
+
+// resultat ferme le hachage.
+func (e *empreinteur) resultat() Resultat {
+	return Resultat{Empreinte: hex.EncodeToString(e.h.Sum(nil)), Fichiers: e.fichiers}
+}
+
+// ecrire verse des sources lues dans le hachage.
+//
+// LA RACINE N EST PAS HACHEE, et c est le cadre lui-meme : seul le chemin RELATIF entre dans les
+// octets haches, de sorte qu un `git mv` de la couche entiere ne coute rien (voir l en-tete de ce
+// fichier).
+func (e *empreinteur) ecrire(lus []sourceLue) {
+	for _, f := range lus {
+		// La longueur encadre le contenu : sans elle, deux decoupages differents des memes
+		// octets rendraient la meme empreinte.
+		_, _ = fmt.Fprintf(e.h, "%s\n%d\n", f.rel, len(f.texte))
+		_, _ = e.h.Write([]byte(f.texte))
+	}
+	e.fichiers += len(lus)
+}
+
+// sourceLue : un fichier retenu, son nom HACHE (chemin relatif, en slash, eventuellement prefixe)
+// et son contenu normalise — le flux de jetons d une source, les octets d un fichier embarque.
 type sourceLue struct {
 	rel   string
 	texte string
 }
 
-// sourcesDe rend les sources `.go` de production d une racine, triees par chemin relatif.
-func sourcesDe(racine string, exclure func(rel string) bool) ([]sourceLue, error) {
-	var lus []sourceLue
+// sourcesDe rend les sources `.go` de production de `racine` — et les fichiers qu elles
+// EMBARQUENT — triees par nom hache. `recursif` faux s arrete au dossier lui-meme ; `prefixe`
+// non vide prefixe chaque nom hache ; `exclure` recoit le chemin relatif a la racine.
+func sourcesDe(racine, prefixe string, recursif bool, exclure func(rel string) bool) ([]sourceLue, error) {
+	c := &collecte{racine: racine, prefixe: prefixe, deja: map[string]bool{}}
 	err := filepath.WalkDir(racine, func(chemin string, d fs.DirEntry, errMarche error) error {
 		if errMarche != nil {
 			return errMarche
 		}
 		if d.IsDir() {
-			if d.Name() == "testdata" {
+			if d.Name() == "testdata" || (!recursif && chemin != racine) {
 				return filepath.SkipDir
 			}
 			return nil
 		}
-		nom := d.Name()
-		if !strings.HasSuffix(nom, ".go") || strings.HasSuffix(nom, "_test.go") {
+		if !estSourceDeProduction(d.Name()) {
 			return nil
 		}
 		rel, errRel := filepath.Rel(racine, chemin)
@@ -186,30 +230,38 @@ func sourcesDe(racine string, exclure func(rel string) bool) ([]sourceLue, error
 		if exclure != nil && exclure(rel) {
 			return nil
 		}
-		blob, errLire := os.ReadFile(chemin) //nolint:gosec // chemin construit depuis une racine fournie par l appelant
-		if errLire != nil {
-			return errLire
+		source, motifs, err := lireSource(chemin, rel)
+		if err != nil {
+			return err
 		}
-		lus = append(lus, sourceLue{rel: rel, texte: strings.ReplaceAll(string(blob), "\r\n", "\n")})
-		return nil
+		source.rel = nomHache(prefixe, rel)
+		c.lus = append(c.lus, source)
+		return c.embarquer(chemin, motifs)
 	})
 	if err != nil {
 		return nil, err
 	}
-	sort.Slice(lus, func(i, j int) bool { return lus[i].rel < lus[j].rel })
-	return lus, nil
+	slices.SortFunc(c.lus, func(a, b sourceLue) int { return strings.Compare(a.rel, b.rel) })
+	return c.lus, nil
 }
 
-// ecrireSources verse les sources d une racine dans le hachage.
-//
-// LA RACINE N EST PAS UN PARAMETRE, et c est le cadre lui-meme : seul le chemin RELATIF entre
-// dans les octets haches, de sorte qu un `git mv` de la couche entiere ne coute rien (voir
-// l en-tete de ce fichier).
-func ecrireSources(h hash.Hash, lus []sourceLue) {
-	for _, f := range lus {
-		// La longueur encadre le contenu : sans elle, deux decoupages differents des memes
-		// octets rendraient la meme empreinte.
-		_, _ = fmt.Fprintf(h, "%s\n%d\n", f.rel, len(f.texte))
-		_, _ = h.Write([]byte(f.texte))
+// lireSource lit une source et rend son flux de jetons et ses motifs `//go:embed`.
+func lireSource(chemin, rel string) (sourceLue, []string, error) {
+	blob, err := os.ReadFile(chemin) //nolint:gosec // chemin construit depuis une racine fournie par l appelant
+	if err != nil {
+		return sourceLue{}, nil, err
 	}
+	jetons, motifs, err := jetonsDe(rel, strings.ReplaceAll(string(blob), "\r\n", "\n"))
+	if err != nil {
+		return sourceLue{}, nil, err
+	}
+	return sourceLue{texte: jetons}, motifs, nil
+}
+
+// nomHache rend le nom sous lequel un fichier entre dans le hachage.
+func nomHache(prefixe, rel string) string {
+	if prefixe == "" {
+		return rel
+	}
+	return path.Join(prefixe, rel)
 }

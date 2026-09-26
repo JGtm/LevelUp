@@ -13,6 +13,7 @@ import (
 
 	"levelup/go-api/internal/api/handlers"
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/domain/objectiveevent"
 	"levelup/go-api/internal/domain/playerposition"
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/port"
@@ -21,7 +22,7 @@ import (
 type mockMatchViewService struct {
 	resp        domain.MatchViewResponse
 	err         error
-	objEvents   []domain.ObjectiveEvent
+	objEvents   []objectiveevent.Event
 	objEventErr error
 	positions   []playerposition.PlayerPosition
 	posErr      error
@@ -39,7 +40,7 @@ func (m *mockMatchViewService) GetMatchNeighborsFiltered(_ context.Context, _ st
 	return domain.MatchNeighbors{}, nil
 }
 
-func (m *mockMatchViewService) GetObjectiveEvents(_ context.Context, _ string) ([]domain.ObjectiveEvent, error) {
+func (m *mockMatchViewService) GetObjectiveEvents(_ context.Context, _ string) ([]objectiveevent.Event, error) {
 	return m.objEvents, m.objEventErr
 }
 
@@ -283,12 +284,12 @@ func newObjectiveEventsRouter(factory handlers.ServiceFactory[port.MatchViewServ
 func TestMatchViewHandler_ObjectiveEvents_OK(t *testing.T) {
 	tms := 12000
 	team := 0
-	events := []domain.ObjectiveEvent{
+	events := []objectiveevent.Event{
 		{
 			MatchID: "abc123", Seq: 0, TimeMS: &tms,
 			ObjectiveType: "flag", EventType: "capture", TeamID: &team,
 			Source: "ctf", Confidence: "high",
-			Players: []domain.ObjectiveEventPlayer{{XUID: "2535", Role: "capturer"}},
+			Players: []objectiveevent.Player{{XUID: "2535", Role: "capturer"}},
 		},
 		{
 			MatchID: "abc123", Seq: 1,

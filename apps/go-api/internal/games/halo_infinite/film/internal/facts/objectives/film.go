@@ -1,6 +1,6 @@
 // Package objectives — décodage des timelines d'events objectif (CTF
 // captures, Strongholds/KOTH zones, Oddball crâne) depuis les chunks film Halo,
-// vers des []domain.ObjectiveEvent (mode-agnostique, cf.
+// vers des []objectiveevent.Event (mode-agnostique, cf.
 // .ai/PLAN_WEAPON_ATTRIBUTION_V3.md §10).
 //
 // Algos PURS : zéro accès DB, zéro Streamlit, ET DEPUIS LE 2026-09-02 ZÉRO LECTURE DE FILM.
@@ -189,7 +189,7 @@ const (
 //
 // EXPORTÉ SANS CONSOMMATEUR HORS DE CE PAQUET, ET C'EST DÉLIBÉRÉ (lot 1.1.2 du
 // `.ai/PLAN_DECODEUR_FILM_2026-09-13.md`) : [FooterEvent.Team] est l'équipe que le film écrit,
-// et le lot 1.7 la fera prendre par `domain.ObjectiveEvent.TeamID` à la place du roster de la
+// et le lot 1.7 la fera prendre par `objectiveevent.Event.TeamID` à la place du roster de la
 // base (décision V4 : le film est la seule source). Le champ vit en mémoire dans ce paquet et
 // nulle part ailleurs — ni dans un document cuit, ni dans une colonne DuckDB.
 type FooterEvent struct {

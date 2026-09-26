@@ -12,9 +12,9 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/internal/facts"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/killsource"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
@@ -39,11 +39,16 @@ func fichierTemoin(t *testing.T) *FilmFactsFile {
 	return &FilmFactsFile{
 		Coverage: DecoderCoverage{
 			SourceRev: "source-x", ProfileRev: "profile-x", GrammarRev: "grammar-x",
-			FactsRev: "facts-x", Build: "HI_1_13_0",
+			KillsourceRev: "killsource-x", ObjectivesRev: "objectives-x", Build: "HI_1_13_0",
 			Registry: &RegistryCoverage{Fingerprint: "0x0123456789abcdef",
 				Status: RegistryStatutConnue, Blocks: 9, NamedSlots: 31},
 		},
-		Facts: *facts,
+		// Les gardes de l appelant (lot J3.4) : l en-tete les porte depuis le codec 2.
+		Gardes: GardesDeCuisson{Drapeau: true, Zones: true,
+			Roster: empreinteDuRoster([]uint64{2533274819954312})},
+		// L empreinte de l entree du film de reference (lot J3.5) : les tests relisent avec elle.
+		EmpreinteDeCle: EmpreinteDeCle(goldenEntryPourTest(t)),
+		Facts:          *facts,
 		Identity: &profile.FilmIdentity{Version: "v", Build: "HI_1_13_0", Flavor: "f",
 			BuildID: 7, Changelist: 9, FormatVersion: 27},
 		Fallbacks: []fallback.Declenchement{
@@ -251,12 +256,12 @@ func TestFilmFactsEnteteSeLitSurLesPremiersOctets(t *testing.T) {
 // `coverage.decoder` de l artefact produit) est verifie cote `replaybuild` au lot 4.1.2.
 func TestFilmFactsEnteteEstLeMemeTypeQueCoverageDecoder(t *testing.T) {
 	for _, cov := range []DecoderCoverage{
-		{SourceRev: "s", ProfileRev: "p", GrammarRev: "g", FactsRev: "f", Build: "HI_1_13_0",
+		{SourceRev: "s", ProfileRev: "p", GrammarRev: "g", KillsourceRev: "k", ObjectivesRev: "o", Build: "HI_1_13_0",
 			Registry: &RegistryCoverage{Fingerprint: "0xdead", Status: RegistryStatutConnue,
 				Blocks: 3, NamedSlots: 4}},
 		// BUILD VIDE ET BLOC PRESENT sur un build inconnu (V15 (15)) : le cas qui doit survivre
 		// a l aller-retour, sans quoi l ambiguite que D-7 interdit revient par le fichier.
-		{SourceRev: "s", ProfileRev: "p", GrammarRev: "g", FactsRev: "f"},
+		{SourceRev: "s", ProfileRev: "p", GrammarRev: "g", KillsourceRev: "k", ObjectivesRev: "o"},
 	} {
 		f := fichierTemoin(t)
 		f.Coverage = cov
@@ -284,7 +289,7 @@ func TestFilmFactsUtilisableRefuseLesQuatreCauses(t *testing.T) {
 	f.Coverage.SourceRev = source.Rev
 	f.Coverage.ProfileRev = profile.Rev
 	f.Coverage.GrammarRev = grammar.Rev
-	f.Coverage.FactsRev = facts.Rev
+	f.Coverage.KillsourceRev, f.Coverage.ObjectivesRev = killsource.Rev, objectives.Rev
 	blob, err := EncodeFilmFactsFile(f)
 	if err != nil {
 		t.Fatalf("encodage : %v", err)
@@ -293,12 +298,12 @@ func TestFilmFactsUtilisableRefuseLesQuatreCauses(t *testing.T) {
 	if err != nil {
 		t.Fatalf("en-tete : %v", err)
 	}
-	if err := e.Utilisable(entry); err != nil {
+	if err := e.Frais(entry); err != nil {
 		t.Fatalf("des faits frais sont refuses : %v", err)
 	}
 	autre := e
 	autre.Coverage.GrammarRev += "-bis"
-	if err := autre.Utilisable(entry); !errorsEstRevisions(err) {
+	if err := autre.Frais(entry); !errorsEstRevisions(err) {
 		t.Errorf("une revision differente doit rendre ErrFilmFactsRevisions, obtenu : %v", err)
 	}
 	// LE BUILD ET LE REGISTRE NE SONT PAS COMPARES, et c est une propriete ecrite : ce sont des
@@ -306,27 +311,27 @@ func TestFilmFactsUtilisableRefuseLesQuatreCauses(t *testing.T) {
 	autreBuild := e
 	autreBuild.Coverage.Build = "HI_9_9_9"
 	autreBuild.Coverage.Registry = nil
-	if err := autreBuild.Utilisable(entry); err != nil {
+	if err := autreBuild.Frais(entry); err != nil {
 		t.Errorf("le build et le registre ne doivent PAS peser sur la fraicheur : %v", err)
 	}
 	perime := e
 	perime.Schema = SchemaDesFaits + 1
-	if err := perime.Utilisable(entry); !errorsEstVersion(err) {
+	if err := perime.Frais(entry); !errorsEstVersion(err) {
 		t.Errorf("un schema inconnu doit rendre ErrFilmFactsVersion, obtenu : %v", err)
 	}
 	autreCarte := entry
 	autreCarte.Module = "une_autre_carte"
-	if err := e.Utilisable(autreCarte); !errorsEstCarte(err) {
+	if err := e.Frais(autreCarte); !errorsEstCarte(err) {
 		t.Errorf("une autre carte doit rendre ErrFilmFactsCarte, obtenu : %v", err)
 	}
 	decale := e
 	decale.AxisW[0]++
-	if err := decale.Utilisable(entry); !errorsEstDecoupage(err) {
+	if err := decale.Frais(entry); !errorsEstDecoupage(err) {
 		t.Errorf("un decoupage contredit doit rendre ErrFilmFactsDecoupage, obtenu : %v", err)
 	}
 	detecte := e
 	detecte.LayoutDetected = true
-	if err := detecte.Utilisable(entry); !errorsEstDecoupage(err) {
+	if err := detecte.Frais(entry); !errorsEstDecoupage(err) {
 		t.Errorf("l AUTRE sens (faits « auto-detectes » sur une carte que le catalogue impose) "+
 			"doit rendre ErrFilmFactsDecoupage, obtenu : %v", err)
 	}

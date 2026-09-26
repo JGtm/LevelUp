@@ -27,8 +27,8 @@ package types_test
 //
 // Une forme de contrat qui change sans que la revision de sa couche bouge est une rupture
 // SILENCIEUSE pour le parc deja decode. Le golden porte donc, sur sa premiere ligne de donnees,
-// les valeurs COURANTES de `source.Rev`, `grammar.Rev` et `facts.Rev` — les trois couches qui
-// produisent ces types. Le message d echec pose la question dans l ordre ou elle se decide : la
+// les valeurs COURANTES de `source.Rev`, `grammar.Rev`, `killsource.Rev` et `objectives.Rev` — les
+// couches qui produisent ces types. Le message d echec pose la question dans l ordre ou elle se decide : la
 // forme a change, la sortie peut-elle avoir change ?
 
 import (
@@ -43,7 +43,8 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/internal/facts"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/killsource"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
@@ -154,11 +155,14 @@ var typesSansForme = map[string]string{
 
 // ligneDesRevisions : la premiere ligne de donnees du golden.
 //
-// LES TROIS COUCHES QUI PRODUISENT CES TYPES, et elles seules : `profile` n en produit aucun.
+// LES COUCHES QUI PRODUISENT CES TYPES, et elles seules : `profile` n en produit aucun. Les faits
+// sont deux consommateurs depuis le lot J3.3 (`killsource`, `objectives`), et les deux nomment
+// des types de ce paquet.
 // Une forme de contrat qui change sans que la revision de sa couche bouge est une rupture
 // SILENCIEUSE pour le parc deja decode — d ou le figeage cote a cote.
 func ligneDesRevisions() string {
-	return fmt.Sprintf("revisions\tsource=%s\tgrammar=%s\tfacts=%s", source.Rev, grammar.Rev, facts.Rev)
+	return fmt.Sprintf("revisions\tsource=%s\tgrammar=%s\tkillsource=%s\tobjectives=%s",
+		source.Rev, grammar.Rev, killsource.Rev, objectives.Rev)
 }
 
 // corpsAttendu rend le contenu de donnees du golden : la ligne des revisions, puis une section
@@ -211,7 +215,7 @@ contrat. Regenerer :
 DEUX GESTES, ET LES DEUX SONT OBLIGATOIRES :
 
   1. DECIDER si la SORTIE de la couche change, et faire monter sa revision si oui —
-     `+"`facts.Rev`"+` rouvre le backlog killsource (D6, signal utilisateur), `+"`source.Rev`"+`
+     `+"`killsource.Rev`"+` rouvre le backlog killsource (D6, signal utilisateur), `+"`source.Rev`"+`
      veut dire que tout re-decode. Un champ ajoute, retire, renomme ou retype est visible
      depuis les autres couches : c est une rupture de contrat, pas un detail interne.
   2. REGENERER le golden, qui fige les formes ET les revisions :

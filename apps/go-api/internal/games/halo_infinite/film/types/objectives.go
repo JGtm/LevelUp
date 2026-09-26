@@ -97,7 +97,7 @@ type StatValue struct {
 // StatRecord est un enregistrement d'entite decode d'un paquet FRAME.
 type StatRecord struct {
 	// TimeMS est l'instant de l'emission sur l'horloge du film (meme base que le
-	// TimeMS des ObjectiveEvent).
+	// TimeMS des objectiveevent.Event).
 	TimeMS int
 	// Slot identifie l'entite : 6 et 8 sont les deux equipes, 10..24 les huit joueurs.
 	Slot int

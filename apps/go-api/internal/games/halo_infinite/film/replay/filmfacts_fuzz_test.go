@@ -110,7 +110,8 @@ func grainesDeFaits(t *testing.T) [][]byte {
 
 func encoderFichierDeFaits(t *testing.T, g *FilmFacts) []byte {
 	t.Helper()
-	b, err := EncodeFilmFactsFile(&FilmFactsFile{Facts: *g})
+	b, err := EncodeFilmFactsFile(&FilmFactsFile{Facts: *g,
+		EmpreinteDeCle: EmpreinteDeCle(goldenEntryPourTest(t))})
 	if err != nil {
 		t.Fatalf("encodage d une graine : %v", err)
 	}

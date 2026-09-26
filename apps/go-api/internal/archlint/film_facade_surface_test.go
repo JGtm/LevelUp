@@ -246,7 +246,17 @@ const plafondSurfaceFacade = 166 // 2026-09-17 — base a5d15e634
 //	                                           `UnitOtherIndex`, `ShotsByUnit`, `TirsParPlace` n en
 //	                                           ajoutent aucun. RE-MESURE A L ENTREE du lot : 275 sur
 //	                                           `c9ef97ec6` (feat/rr-vague-d).
-const plafondSurfaceReplay = 278 // 2026-09-24 — rr(m4b) sur c9ef97ec6 : 275 + 3 (FireBurst, FireBurstHole, ContinuousFireCoverage)
+//	280  audit(J3.4) (2026-09-26)              les gardes de l appelant comparees a la bascule
+//	                                           (constat RA1-1) : `replaybuild` nomme l EN-TETE des
+//	                                           faits (`replay.FilmFactsEntete`, garde dans ses
+//	                                           entrees de cuisson) et derive les gardes des options
+//	                                           (`replay.GardesDe`). DEUX symboles neufs, re-mesure
+//	                                           sur la base `08293ae55` : 278.
+//	281  audit(J3.5) (2026-09-26)              la cle de cuisson COMPLETE (constat RA1-4) : le test
+//	                                           de la bascule de `replaybuild` fabrique des faits
+//	                                           frais pour une entree de catalogue, donc nomme
+//	                                           `replay.EmpreinteDeCle`. UN symbole neuf.
+const plafondSurfaceReplay = 281 // 2026-09-26 — audit(J3.4, J3.5) sur 08293ae55 : 278 + 3 (FilmFactsEntete, GardesDe, EmpreinteDeCle)
 
 // plafondsParFamilleFacade — la surface de la facade VENTILEE PAR PAQUET D ORIGINE.
 //
@@ -260,7 +270,7 @@ const plafondSurfaceReplay = 278 // 2026-09-24 — rr(m4b) sur c9ef97ec6 : 275 +
 var plafondsParFamilleFacade = map[string]int{
 	"grammar":    46, // 2026-09-17 — base a5d15e634
 	"objectives": 37,
-	"killsource": 35,
+	"killsource": 36, // 2026-09-26 — lot J3.3 : `decfilm.Rev` renvoie a `killsource.Rev` (la famille `facts` disparait avec son paquet ; total inchange)
 	"fallback":   11,
 	"types":      10,
 	"profile":    8,
@@ -268,7 +278,6 @@ var plafondsParFamilleFacade = map[string]int{
 	"weaponscan": 5,
 	"weaponv3":   4,
 	"positions":  2,
-	"facts":      1,
 }
 
 // TestSurfaceDeLaFacadeDuDecodeur : (a) — le compte par AST, et sa ventilation par famille.

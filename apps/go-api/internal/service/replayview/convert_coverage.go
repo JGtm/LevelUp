@@ -395,12 +395,13 @@ func toEquipmentChangeCoverage(v replay.EquipmentChangeCoverage) replaydoc.Equip
 // y rougit.
 func toDecoderCoverage(v replay.DecoderCoverage) replaydoc.DecoderCoverage {
 	return replaydoc.DecoderCoverage{
-		SourceRev:  v.SourceRev,
-		ProfileRev: v.ProfileRev,
-		GrammarRev: v.GrammarRev,
-		FactsRev:   v.FactsRev,
-		Build:      v.Build,
-		Registry:   ptrOf(v.Registry, toRegistryCoverage),
+		SourceRev:     v.SourceRev,
+		ProfileRev:    v.ProfileRev,
+		GrammarRev:    v.GrammarRev,
+		KillsourceRev: v.KillsourceRev,
+		ObjectivesRev: v.ObjectivesRev,
+		Build:         v.Build,
+		Registry:      ptrOf(v.Registry, toRegistryCoverage),
 	}
 }
 

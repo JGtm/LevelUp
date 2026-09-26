@@ -2,7 +2,7 @@
 // v3 (shared.match_objective_events + shared.match_objective_event_players).
 //
 // Source : pipeline diagnostic v3 (décodage film) qui produit des
-// []domain.ObjectiveEvent par match. Ce repo persiste / relit ces events.
+// []objectiveevent.Event par match. Ce repo persiste / relit ces events.
 //
 // Connexion : comme tous les writers/readers shared (cf. weapon_kills_repo,
 // highlight_events_repo + InsertWeaponKills), on passe par
@@ -29,7 +29,7 @@ import (
 	"fmt"
 	"time"
 
-	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/domain/objectiveevent"
 	"levelup/go-api/internal/games"
 )
 
@@ -55,7 +55,7 @@ func NewObjectiveEventsRepo(pdb *PlayerDB) *ObjectiveEventsRepo {
 // anti-perte de données aligné sur InsertWeaponKills.
 //
 // Retourne games.ErrCapabilityNotSupported si les tables n'existent pas.
-func (r *ObjectiveEventsRepo) WriteMatch(ctx context.Context, matchID string, events []domain.ObjectiveEvent) error {
+func (r *ObjectiveEventsRepo) WriteMatch(ctx context.Context, matchID string, events []objectiveevent.Event) error {
 	if len(events) == 0 {
 		return nil
 	}
@@ -79,7 +79,7 @@ func (r *ObjectiveEventsRepo) WriteMatch(ctx context.Context, matchID string, ev
 }
 
 // writeObjectiveEventsTx exécute le DELETE+INSERT dans une transaction.
-func writeObjectiveEventsTx(ctx context.Context, db *sql.DB, matchID string, events []domain.ObjectiveEvent) error {
+func writeObjectiveEventsTx(ctx context.Context, db *sql.DB, matchID string, events []objectiveevent.Event) error {
 	tx, err := db.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("begin: %w", err)
@@ -104,7 +104,7 @@ func writeObjectiveEventsTx(ctx context.Context, db *sql.DB, matchID string, eve
 }
 
 // insertObjectiveEvent insère un event + ses joueurs associés.
-func insertObjectiveEvent(ctx context.Context, tx *sql.Tx, matchID string, ev domain.ObjectiveEvent) error {
+func insertObjectiveEvent(ctx context.Context, tx *sql.Tx, matchID string, ev objectiveevent.Event) error {
 	if _, err := tx.ExecContext(ctx, `
 		INSERT INTO match_objective_events (
 			match_id, seq, time_ms, objective_type, event_type,
@@ -131,7 +131,7 @@ func insertObjectiveEvent(ctx context.Context, tx *sql.Tx, matchID string, ev do
 // LoadMatch relit tous les events objectif d'un match, ordonnés par seq, avec
 // leurs joueurs associés. Retourne games.ErrCapabilityNotSupported si les tables
 // n'existent pas.
-func (r *ObjectiveEventsRepo) LoadMatch(ctx context.Context, matchID string) ([]domain.ObjectiveEvent, error) {
+func (r *ObjectiveEventsRepo) LoadMatch(ctx context.Context, matchID string) ([]objectiveevent.Event, error) {
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 
@@ -158,10 +158,10 @@ func (r *ObjectiveEventsRepo) LoadMatch(ctx context.Context, matchID string) ([]
 }
 
 // loadObjectiveEventRows lit la table parente. Retourne le slice ordonné par seq
-// + un index seq -> *ObjectiveEvent (les pointeurs ciblent les éléments du slice).
+// + un index seq -> *objectiveevent.Event (les pointeurs ciblent les éléments du slice).
 func loadObjectiveEventRows(
 	ctx context.Context, db *sql.DB, matchID string,
-) ([]domain.ObjectiveEvent, map[int]*domain.ObjectiveEvent, error) {
+) ([]objectiveevent.Event, map[int]*objectiveevent.Event, error) {
 	rows, err := db.QueryContext(ctx, `
 		SELECT seq, time_ms, objective_type, event_type,
 		       team_id, objective_id, value, source, confidence, details
@@ -173,10 +173,10 @@ func loadObjectiveEventRows(
 	}
 	defer rows.Close()
 
-	var out []domain.ObjectiveEvent
+	var out []objectiveevent.Event
 	for rows.Next() {
 		var (
-			ev                                     domain.ObjectiveEvent
+			ev                                     objectiveevent.Event
 			timeMS, teamID, objectiveID, value     sql.NullInt64
 			objType, evType, source, conf, details sql.NullString
 		)
@@ -200,7 +200,7 @@ func loadObjectiveEventRows(
 		return nil, nil, fmt.Errorf("rows: %w", err)
 	}
 
-	bySeq := make(map[int]*domain.ObjectiveEvent, len(out))
+	bySeq := make(map[int]*objectiveevent.Event, len(out))
 	for i := range out {
 		bySeq[out[i].Seq] = &out[i]
 	}
@@ -210,7 +210,7 @@ func loadObjectiveEventRows(
 // attachObjectiveEventPlayers lit la table joueurs et raccroche chaque joueur à
 // son event parent via le seq.
 func attachObjectiveEventPlayers(
-	ctx context.Context, db *sql.DB, matchID string, bySeq map[int]*domain.ObjectiveEvent,
+	ctx context.Context, db *sql.DB, matchID string, bySeq map[int]*objectiveevent.Event,
 ) error {
 	if len(bySeq) == 0 {
 		return nil
@@ -235,7 +235,7 @@ func attachObjectiveEventPlayers(
 			return fmt.Errorf("scan player: %w", err)
 		}
 		if ev, ok := bySeq[seq]; ok {
-			ev.Players = append(ev.Players, domain.ObjectiveEventPlayer{XUID: xuid, Role: role.String})
+			ev.Players = append(ev.Players, objectiveevent.Player{XUID: xuid, Role: role.String})
 		}
 	}
 	if err := rows.Err(); err != nil {

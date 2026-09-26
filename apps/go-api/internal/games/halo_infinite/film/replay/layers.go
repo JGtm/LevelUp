@@ -23,13 +23,14 @@ package replay
 // (`apps/web/src/lib/replay/replayNormalize.ts`) : il comble des CHAMPS, jamais des etapes. Le
 // nom d un calque est donc sa balise `json:` a la RACINE de [ReplayDocument].
 //
-// # LA VALEUR : L UNE DES CINQ REVISIONS CONNUES, JAMAIS UNE CHAINE LIBRE
+// # LA VALEUR : L UNE DES SIX REVISIONS CONNUES, JAMAIS UNE CHAINE LIBRE
 //
-// `source.Rev`, `profile.Rev`, `grammar.Rev`, `facts.Rev` — les quatre revisions de couche que
-// `coverage.decoder` publie deja (`coverage_decoder.go`) — plus `publication-<SchemaVersion>`
+// `source.Rev`, `profile.Rev`, `grammar.Rev`, `killsource.Rev`, `objectives.Rev` — les cinq
+// revisions de couche que `coverage.decoder` publie (`coverage_decoder.go` ; les deux dernieres
+// remplacent `facts.Rev` depuis le lot J3.3) — plus `publication-<SchemaVersion>`
 // pour ce que produit `film/replay`, qui n a pas de revision de sources (le seul `...Rev` du
 // paquet est `UsageSummaryRev`, `usage_summary.go`, et il concerne les usages, pas le document).
-// La fermeture est tenue par `TestCalquesNePortentQueLesCinqRevisionsConnues`.
+// La fermeture est tenue par `TestCalquesNePortentQueLesRevisionsConnues`.
 //
 // # LA REGLE D ATTRIBUTION, ET POURQUOI LA COUCHE LA PLUS HAUTE SUFFIT
 //
@@ -37,27 +38,29 @@ package replay
 // et non les couches qui le filtrent, le datent ou le nomment.
 //
 // Citer la seule couche la plus haute suffit parce que LES REVISIONS SONT CHAINEES : chacune
-// hache la VALEUR de celle du dessous (V15 (12) ; `profile/rev.go` : « VALEUR AMONT :
-// `source.Rev`, et elle seule »). Une montee de `source` fait donc monter `profile`, qui fait
-// monter `grammar`, qui fait monter `facts`. Un calque attribue a `grammar` est ainsi marque
-// perime par toute montee de `source` ou de `profile` sans qu il faille les inscrire.
+// hache la VALEUR des couches qu elle IMPORTE (V15 (12) ; depuis le lot J3.2, celles que la
+// fermeture de ses imports rencontre). `grammar` hache `profile` et `source`, `killsource` hache
+// `source`, `profile` et `grammar`, `objectives` hache `source`. Un calque attribue a `grammar`
+// est ainsi marque perime par toute montee de `source` ou de `profile` sans qu il faille les
+// inscrire.
 //
 // C EST AUSSI POURQUOI NI `source` NI `profile` N APPARAISSENT DANS LA TABLE : aucun champ racine
 // ne publie des octets de film bruts (ADR 0034 D-2 l interdit hors de `source`) ni une ligne de
-// la table de profil. Les deux couches gouvernent tous les calques, par la chaine, sans en
-// produire aucun. Elles restent des valeurs LEGALES (un calque futur peut en sortir) : la liste
-// des cinq est fermee par le test, pas la liste des trois employees.
+// la table de profil. Les deux couches gouvernent les calques par la chaine, sans en produire
+// aucun. Elles restent des valeurs LEGALES (un calque futur peut en sortir) : la liste des six
+// est fermee par le test, pas la liste des quatre employees.
 //
 // # LES DEUX LIMITES, ECRITES PARCE QU ELLES SONT MESUREES
 //
 //  1. L ENRICHISSEMENT D IDENTITE TRAVERSE TOUS LES CALQUES ET N EST PAS ATTRIBUE. Le registre
 //     d identite consomme `opt.Bots` (decode par `facts/killsource`) et `opt.StatborgIdentity`
 //     (par `facts/objectives`), et il NOMME des vies dans des calques attribues a `grammar`
-//     (`nameBotTracks`, `identity.go`). Une montee de `facts` SEULE peut donc changer le nom
-//     d une vie dans un calque que cette table dit `grammar-...`. Attribuer `facts` a tout ce que
+//     (`nameBotTracks`, `identity.go`). Une montee de `killsource` ou d `objectives` SEULE peut
+//     donc changer le nom d une vie dans un calque que cette table dit `grammar-...`. Attribuer
+//     les faits a tout ce que
 //     le registre touche etait l autre sortie : elle rend la table vraie et INUTILE (presque tous
 //     les calques y passent). Le choix est la SELECTIVITE, et sa limite est cette ligne.
-//  2. AUCUNE DES CINQ REVISIONS NE HACHE UN CATALOGUE DE DONNEES. `profile/rev.go` l ecrit comme
+//  2. AUCUNE DES REVISIONS NE HACHE UN CATALOGUE DE DONNEES. `profile/rev.go` l ecrit comme
 //     une limite assumee (« LE CATALOGUE DES CARTES N EST PAS HACHE »), et il en va de meme du
 //     manifeste de libelles du titre. Les champs dont la substance EST un catalogue n ont donc
 //     aucune couche : ils sont dans [calquesSansCouche], avec leur justification datee.
@@ -96,7 +99,8 @@ import (
 	"strconv"
 	"strings"
 
-	"levelup/go-api/internal/games/halo_infinite/film/internal/facts"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/killsource"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
@@ -164,23 +168,29 @@ var couchesDesCalques = map[string]string{
 	"stances":             grammar.Rev, // document_stances.go <- FilmInputs.MovementStates (i29/i62/i54, lot 5.3.6)
 	"zoneStates":          grammar.Rev, // build_zones.go <- FilmInputs.ZoneReads (le catalogue de zones vient de l appelant, il ne decode rien)
 
-	// --- LES FAITS (`facts.Rev`, orthographiee `killsource-...`) : les calques dont les lignes
-	// sortent du statborg ou du decodage killsource, tous deux faits PAR L APPELANT
-	// (`internal/replaybuild`) et passes par des options que `FilmInputs.applyTo` n ecrit pas.
-	"identity":          facts.Rev, // build_pistes.go <- `reg.Section`, qui publie `statborgSlots` (facts/objectives)
-	"roster":            facts.Rev, // build_pistes.go `buildRoster` <- opt.Bots AJOUTE des lignes (identity.go), et les bots sont decodes par facts/killsource
-	"neutralDeaths":     facts.Rev, // build_inventaire.go <- opt.NeutralDeaths, resolues par `replaybuild.neutralDeaths` sur `decfilm.Result`
-	"equipmentEpisodes": facts.Rev, // build_pistes.go : les episodes sortent de la grammaire, mais `attachAllEquipmentKills` y ECRIT `k`/`a` depuis opt.Kills (killsource)
-	"objectives":        facts.Rev, // objectives.go <- opt.Objectives (`objectives.IdentifiedEvent`)
-	"scoreTimeline":     facts.Rev, // build_score.go <- opt.Score.Records (enregistrements d entite du statborg)
-	"flagCarries":       facts.Rev, // build_objectives_live.go <- opt.Flag.Records (statborg) ; la jauge de retour vient de la grammaire (`FilmInputs.FlagGauge`), mais les LACHERS auxquels elle s apparie sortent du statborg — la revision la plus tardive gagne
-	"flagReturnZone":    facts.Rev, // build_objectives_live.go, meme entree que `flagCarries`
-	"vipCrown":          facts.Rev, // vip_crown.go <- opt.Vip.Records (statborg)
-	"skullCarries":      facts.Rev, // skull_carries.go <- opt.Skull.Records (statborg)
-	"bombArmings":       facts.Rev, // bomb_armings.go : l anneau vient de FilmInputs.BombReads, mais les armements sont DATES par les explosions de `doc.Objectives` (statborg)
-	"bombCarries":       facts.Rev, // bomb_carries.go : les transitions viennent de opt.WeaponChanges, et la chronologie est pontee par le registre (statborg + bots)
-	"bombStats":         facts.Rev, // bomb_stats_document.go <- armements, portages, actions d objectif et opt.MatchKills
-	"bombEvents":        facts.Rev, // bomb_stats_document.go, meme entree que `bombStats`
+	// --- LES FAITS : les calques dont les lignes sortent du decodage killsource ou du statborg,
+	// tous deux faits PAR L APPELANT (`internal/replaybuild`) et passes par des options que
+	// `FilmInputs.applyTo` n ecrit pas. DEPUIS LE LOT J3.3 (2026-09-26, DU-2 (c)) chaque calque porte
+	// la revision du CONSOMMATEUR qui le produit : `killsource.Rev` pour le kill-feed et les bots,
+	// `objectives.Rev` pour le statborg et les objectifs. Un calque qui lit les deux (les portages
+	// et les statistiques de la bombe) porte celui qui decode sa SUBSTANCE ; le verdict de
+	// recuisson reste sur parce que `identity` (objectives) et `roster` (killsource), NON GARDES,
+	// declarent les deux familles sur tout document assemble
+	// (`TestChaqueConsommateurDeFaitsDateUnCalqueNonGarde`).
+	"identity":          objectives.Rev, // build_pistes.go <- `reg.Section`, qui publie `statborgSlots` (facts/objectives)
+	"roster":            killsource.Rev, // build_pistes.go `buildRoster` <- opt.Bots AJOUTE des lignes (identity.go), et les bots sont decodes par facts/killsource
+	"neutralDeaths":     killsource.Rev, // build_inventaire.go <- opt.NeutralDeaths, resolues par `replaybuild.neutralDeaths` sur `decfilm.Result`
+	"equipmentEpisodes": killsource.Rev, // build_pistes.go : les episodes sortent de la grammaire, mais `attachAllEquipmentKills` y ECRIT `k`/`a` depuis opt.Kills (killsource)
+	"objectives":        objectives.Rev, // objectives.go <- opt.Objectives (`objectives.IdentifiedEvent`)
+	"scoreTimeline":     objectives.Rev, // build_score.go <- opt.Score.Records (enregistrements d entite du statborg)
+	"flagCarries":       objectives.Rev, // build_objectives_live.go <- opt.Flag.Records (statborg) ; la jauge de retour vient de la grammaire (`FilmInputs.FlagGauge`), mais les LACHERS auxquels elle s apparie sortent du statborg — la revision la plus tardive gagne
+	"flagReturnZone":    objectives.Rev, // build_objectives_live.go, meme entree que `flagCarries`
+	"vipCrown":          objectives.Rev, // vip_crown.go <- opt.Vip.Records (statborg)
+	"skullCarries":      objectives.Rev, // skull_carries.go <- opt.Skull.Records (statborg)
+	"bombArmings":       objectives.Rev, // bomb_armings.go : l anneau vient de FilmInputs.BombReads, mais les armements sont DATES par les explosions de `doc.Objectives` (statborg)
+	"bombCarries":       objectives.Rev, // bomb_carries.go : les transitions viennent de opt.WeaponChanges, et la chronologie est pontee par le registre (statborg + bots) — le statborg en donne la substance
+	"bombStats":         objectives.Rev, // bomb_stats_document.go <- armements, portages, actions d objectif (statborg) et opt.MatchKills (killsource, qui ne fait que les croiser)
+	"bombEvents":        objectives.Rev, // bomb_stats_document.go, meme entree que `bombStats`
 }
 
 // calquesSansCouche — LES CHAMPS RACINE CUITS QUI N ONT AUCUNE COUCHE PRODUCTRICE, avec la
@@ -193,16 +203,16 @@ var couchesDesCalques = map[string]string{
 var calquesSansCouche = map[string]string{
 	// N EST PAS UN CALQUE : `coverage` est la MESURE de la cuisson, toutes couches confondues
 	// (47 balises, de `tracks` a `decoder`). Lui donner une couche serait faux dans les deux
-	// sens — elle bouge avec n importe laquelle des quatre, et une montee de schema la change
+	// sens — elle bouge avec n importe laquelle des couches, et une montee de schema la change
 	// aussi. C est d ailleurs `coverage` que `layers` complete : l une dit CE QUI a ete lu,
 	// l autre SOUS QUELLE REVISION.
 	"coverage": "2026-09-17 — mesure de la cuisson, tous calques confondus : aucune couche unique ne la produit",
 	// NE SE DECRIT PAS LUI-MEME : `layers` est LA REPONSE sur les calques, comme `coverage` est
 	// leur MESURE. Une entree `layers: <revision>` serait soit circulaire (la publication le pose,
-	// mais ses valeurs bougent avec les quatre couches), soit fausse dans un sens ou dans l autre.
+	// mais ses valeurs bougent avec toutes les couches), soit fausse dans un sens ou dans l autre.
 	// Un lecteur qui veut savoir si la table est la lit l OBJET, pas une entree dedans.
 	"layers": "2026-09-17 — la reponse sur les calques, pas un calque : une entree sur elle-meme serait circulaire",
-	// SUBSTANCE = UN CATALOGUE QU AUCUNE DES CINQ REVISIONS NE HACHE (limite 2 en tete de
+	// SUBSTANCE = UN CATALOGUE QU AUCUNE REVISION NE HACHE (limite 2 en tete de
 	// fichier). Les quatre suivants sortent du catalogue FIGE de la carte, recopie verbatim par
 	// `ouvrir` (`opt.Geometry` / `opt.Structure`, poses par `replaybuild.buildReplayOptions`) ou
 	// calcule sur lui. Les attribuer a la publication laisserait croire qu une montee de schema
@@ -315,7 +325,7 @@ func (a *assemblage) poserLesCalquesProduits() {
 // # POURQUOI CE PAQUET L EXPORTE, ET POURQUOI C EST LE SEUL QUI PEUT
 //
 // La recuisson selective (lot 4.4.1) doit comparer les revisions LUES dans un artefact a celles
-// du binaire courant. Les quatre revisions de couche vivent sous `film/internal/`, donc
+// du binaire courant. Les revisions de couche vivent sous `film/internal/`, donc
 // inaccessibles a `internal/replaybuild` : le compilateur l interdit, et c est la frontiere qui le
 // veut (ADR 0034, D-1). `film/replay` est la couche de PUBLICATION — elle les importe deja toutes
 // pour composer `coverage.decoder` — donc elle est le seul point ou cette table peut se lire sans
@@ -326,17 +336,23 @@ func (a *assemblage) poserLesCalquesProduits() {
 // artefact sans connaitre les cinq noms : il coupe au premier tiret. C est la forme qui evite une
 // seconde table de prefixes chez le consommateur — la troisieme copie qu interdit la regle 6.
 //
-// LA FAMILLE DES FAITS S APPELLE `killsource`, et pas `facts` : c est la valeur de `facts.Rev`
-// qui le decide, et la table dit ce que les artefacts PORTENT, pas ce que l architecture nomme.
+// LES FAMILLES DES FAITS S APPELLENT `killsource` ET `objectives` (lot J3.3) : ce sont les
+// prefixes des valeurs, et la table dit ce que les artefacts PORTENT. Un artefact anterieur porte
+// `killsource-...` sur ses calques d objectifs : la famille reste connue, la valeur courante est
+// la meme, et c est `layers` au schema 72 qui les distingue.
 func RevisionsCourantesDesCouches() map[string]string {
-	return map[string]string{
-		"source":      source.Rev,
-		"profile":     profile.Rev,
-		"grammar":     grammar.Rev,
-		"killsource":  facts.Rev,
-		"publication": revisionDeLaPublication,
+	out := map[string]string{famillePublication: revisionDeLaPublication}
+	// LA CLE EST LE PREFIXE DE LA VALEUR (lot J3.3) : une famille neuve n a pas de seconde table a
+	// tenir, et la famille lue dans un artefact se compare a celle-ci par la meme regle.
+	for _, rev := range []string{source.Rev, profile.Rev, grammar.Rev, killsource.Rev, objectives.Rev} {
+		out[FamilleDeRevision(rev)] = rev
 	}
+	return out
 }
+
+// famillePublication : la famille de la couche de publication, dont la revision est
+// `publication-<SchemaVersion>`.
+const famillePublication = "publication"
 
 // FamilleDeRevision rend la famille d une revision de couche telle qu un artefact la porte, ou
 // la chaine vide quand la valeur n a pas la forme attendue.

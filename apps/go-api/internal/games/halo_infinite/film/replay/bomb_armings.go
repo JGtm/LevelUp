@@ -152,12 +152,11 @@ type bombFuseVerdict struct {
 //
 // HORS LIGNE — appelée par BuildFromFilm.
 func decodeFilmBombReads(fc *grammar.FilmContext, matchID string, in BombInput) []types.NavpointRadialRead {
-	if !in.Scanned {
-		return nil
-	}
-	if len(in.ChunkStartMS) == 0 {
-		slog.Warn("armement : film armable sans horloge de manifeste — calque non construit",
-			"match_id", matchID)
+	if !bombeBalayable(in) {
+		if in.Scanned {
+			slog.Warn("armement : film armable sans horloge de manifeste — calque non construit",
+				"match_id", matchID)
+		}
 		return nil
 	}
 	sc, err := grammar.ScanNavpointRadial(fc, in.ChunkStartMS)

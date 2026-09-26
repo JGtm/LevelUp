@@ -1,6 +1,6 @@
 package revision_test
 
-// equivalence_test.go — LA NON-REGRESSION DES QUATRE REVISIONS : chaque empreinte egale son
+// equivalence_test.go — LA NON-REGRESSION DES REVISIONS DE COUCHE : chaque empreinte egale son
 // golden, mesuree ICI, par un second oracle.
 //
 // # CE QUE CE FICHIER PROUVAIT, ET CE QU IL PROUVE MAINTENANT
@@ -13,9 +13,10 @@ package revision_test
 // 2026-09-16, volet grammaire le 2026-09-17) et AUCUN n a renumerote pour l outillage : le cadre
 // herite est supprime, la preuve est consommee.
 //
-// CE QU IL PROUVE DEPUIS LE VOLET GRAMMAIRE : que les QUATRE couches figent bien ce qu elles
-// annoncent, chacune sous son propre perimetre — les racines, les exclusions et l ORDRE de ses
-// valeurs amont.
+// CE QU IL PROUVE DEPUIS LE LOT J3.2 (2026-09-26) : que chaque couche fige bien ce qu elle
+// annonce, sous la MEME REGLE de perimetre — la fermeture de ses imports, arretee aux couches
+// revisees — redeclaree ici : la liste d arret, les exclusions, et les valeurs amont que la
+// fermeture doit rencontrer.
 //
 // # POURQUOI UN SECOND ORACLE, ALORS QUE CHAQUE COUCHE A DEJA SON GATE
 //
@@ -23,16 +24,16 @@ package revision_test
 // de perimetre, il regenererait simplement un golden coherent avec lui-meme. Ce fichier DECLARE
 // le perimetre une seconde fois, a un autre endroit, a partir de la racine du module. Une
 // divergence entre les deux declarations est exactement ce qu aucun gate de couche ne peut voir :
-// une racine oubliee, une exclusion en trop, deux valeurs amont interverties.
+// une racine d arret oubliee, une exclusion en trop, une valeur amont de travers.
 //
 // Il ne lit rien du lecteur de chronique du paquet (`derniereLigneDeDonnees` est reecrit ici) :
 // un oracle qui partage son lecteur avec ce qu il verifie ne verifie que lui-meme.
 //
 // # CE TEST NE MODIFIE RIEN
 //
-// Il LIT les quatre goldens et les quatre arborescences, par `runtime.Caller`. Une couche dont
-// le perimetre change legitimement se corrige en DEUX endroits, et c est voulu : la seconde
-// declaration est le prix de l oracle.
+// Il LIT les goldens et les arborescences, par `runtime.Caller`. Une couche dont le perimetre
+// change legitimement se corrige en DEUX endroits, et c est voulu : la seconde declaration est le
+// prix de l oracle.
 
 import (
 	"os"
@@ -40,7 +41,8 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/internal/facts"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/killsource"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
@@ -49,81 +51,107 @@ import (
 
 // coucheMesuree : le perimetre d une couche, redeclare ici.
 type coucheMesuree struct {
-	// nom : la couche, pour les messages.
+	// nom : la couche, pour les messages et pour la fermeture.
 	nom string
 	// revisionDuCode : la valeur de la constante, telle que le code la porte.
 	revisionDuCode string
-	// racines : les dossiers haches, dans l ordre (l ordre fait partie du contrat).
-	racines []string
-	// horsCouche : les fichiers exclus, chemins relatifs a leur racine.
+	// horsCouche : les fichiers exclus, chemins relatifs a la racine de la couche.
 	horsCouche []string
-	// amonts : les VALEURS amont, dans l ordre ou elles sont hachees.
-	amonts []string
+	// valeurs : les VALEURS des couches que la fermeture doit rencontrer — ni plus, ni moins.
+	// Depuis le lot J3.2 l ordre n est plus declare : c est la liste d arret qui ordonne.
+	valeurs map[string]string
 	// golden : le fichier qui fige le couple (revision, empreinte).
 	golden string
 }
 
-// couchesMesurees rend les quatre perimetres, resolus depuis la racine du module.
+// couchesDeLOracle : LA LISTE D ARRET, REDECLAREE ICI et non prise a `revision.CouchesRevisees` —
+// une racine oubliee ou deplacee d un cote se verrait comme une divergence de l autre.
+func couchesDeLOracle() []revision.Couche {
+	const film = "internal/games/halo_infinite/film/internal/"
+	return []revision.Couche{
+		{Nom: "source", Racine: film + "source"},
+		{Nom: "profile", Racine: film + "profile"},
+		{Nom: "grammar", Racine: film + "grammar"},
+		{Nom: "killsource", Racine: film + "facts/killsource"},
+		{Nom: "objectives", Racine: film + "facts/objectives"},
+	}
+}
+
+// couchesMesurees rend les perimetres des couches, resolus depuis la racine du module.
 //
-// LE SENS UNIQUE SE LIT DANS LA COLONNE DES AMONTS : `source` n en a aucun, `profile` hache la
-// valeur de `source`, `grammar` celles de `profile` puis de `source`, `facts` celles de `source`
-// puis de `grammar`. Chaque couche hache SES octets et les VALEURS de celles dont elle depend —
-// jamais leurs octets (ADR 0034 D-1, decision V15 (12)).
+// LE SENS UNIQUE SE LIT DANS LA COLONNE DES VALEURS : `source` et `profile` n en ont aucune (la
+// fermeture de leurs imports ne rencontre aucune couche), `grammar` rencontre `profile` et
+// `source`, `killsource` rencontre `source`, `profile` et `grammar`, `objectives` rencontre `source` seule (lot J3.3 : une revision par consommateur de faits). Chaque couche hache SES jetons,
+// ceux des paquets qu elle importe hors couche, et les VALEURS des couches qu elle importe —
+// jamais leurs octets (ADR 0034 D-1, decision V15 (12), lot J3.2).
 func couchesMesurees(t *testing.T) []coucheMesuree {
 	t.Helper()
 	film := filepath.Join(racineAPI(t), "internal", "games", "halo_infinite", "film", "internal")
 	return []coucheMesuree{
 		{
 			nom: "source", revisionDuCode: source.Rev,
-			racines:    []string{filepath.Join(film, "source")},
 			horsCouche: []string{"rev.go"},
 			golden:     filepath.Join(film, "source", "testdata", "source_rev.golden"),
 		},
 		{
 			nom: "profile", revisionDuCode: profile.Rev,
-			racines:    []string{filepath.Join(film, "profile")},
 			horsCouche: []string{"rev.go"},
-			amonts:     []string{source.Rev},
 			golden:     filepath.Join(film, "profile", "testdata", "profile_rev.golden"),
 		},
 		{
 			nom: "grammar", revisionDuCode: grammar.Rev,
-			racines: []string{filepath.Join(film, "grammar")},
 			// LA MEME LISTE QUE `grammar/rev_test.go`, ET ELLE COUVRE TOUTE LA CHRONIQUE
 			// (D3 du lot 5.20, corrigee au lot 5.21) : `_3`, `_4` et `_5` etaient hachees
 			// alors que l exclusion existe pour les tenir hors de l empreinte.
 			horsCouche: []string{"rev.go", "rev_chronique.go", "rev_chronique_archive.go",
 				"rev_chronique_archive_2.go", "rev_chronique_archive_3.go",
 				"rev_chronique_archive_4.go", "rev_chronique_archive_5.go", "rev_chronique_archive_6.go"},
-			amonts: []string{profile.Rev, source.Rev},
-			golden: filepath.Join(film, "grammar", "testdata", "grammar_rev.golden"),
+			valeurs: map[string]string{"profile": profile.Rev, "source": source.Rev},
+			golden:  filepath.Join(film, "grammar", "testdata", "grammar_rev.golden"),
 		},
 		{
-			nom: "facts", revisionDuCode: facts.Rev,
-			racines:    []string{filepath.Join(film, "facts")},
+			nom: "killsource", revisionDuCode: killsource.Rev,
+			horsCouche: []string{"rev.go", "rev_chronique.go", "rev_chronique_archive.go"},
+			valeurs:    map[string]string{"source": source.Rev, "profile": profile.Rev, "grammar": grammar.Rev},
+			golden:     filepath.Join(film, "facts", "killsource", "testdata", "killsource_rev.golden"),
+		},
+		{
+			nom: "objectives", revisionDuCode: objectives.Rev,
 			horsCouche: []string{"rev.go"},
-			amonts:     []string{source.Rev, grammar.Rev},
-			golden:     filepath.Join(film, "facts", "testdata", "facts_rev.golden"),
+			valeurs:    map[string]string{"source": source.Rev},
+			golden:     filepath.Join(film, "facts", "objectives", "testdata", "objectives_rev.golden"),
 		},
 	}
 }
 
-// TestChaqueRevisionEgaleSonGolden : les quatre couples (revision, empreinte) figes sont ceux que
-// le perimetre redeclare ici rend.
+// empreinteMesuree rend l empreinte d une couche sous le perimetre redeclare, avec `valeurs` en
+// guise de valeurs amont.
+func empreinteMesuree(t *testing.T, c coucheMesuree, valeurs map[string]string) revision.Resultat {
+	t.Helper()
+	m, err := revision.ModuleDe(racineAPI(t))
+	if err != nil {
+		t.Fatalf("module : %v", err)
+	}
+	hors := map[string]bool{}
+	for _, f := range c.horsCouche {
+		hors[f] = true
+	}
+	res, _, err := m.CalculerCouche(c.nom, couchesDeLOracle(), func(rel string) bool { return hors[rel] }, valeurs)
+	if err != nil {
+		t.Fatalf("empreinte de la couche %s : %v", c.nom, err)
+	}
+	return res
+}
+
+// TestChaqueRevisionEgaleSonGolden : les couples (revision, empreinte) figes sont ceux que le
+// perimetre redeclare ici rend.
 func TestChaqueRevisionEgaleSonGolden(t *testing.T) {
 	for _, c := range couchesMesurees(t) {
 		t.Run(c.nom, func(t *testing.T) {
-			hors := map[string]bool{}
-			for _, f := range c.horsCouche {
-				hors[f] = true
-			}
-			res, err := revision.Calculer(c.racines, func(rel string) bool { return hors[rel] }, c.amonts...)
-			if err != nil {
-				t.Fatalf("empreinte de la couche %s : %v", c.nom, err)
-			}
+			res := empreinteMesuree(t, c, c.valeurs)
 			rev, figee := derniereLigneDeDonnees(t, c.golden)
-			t.Logf("%s : revision %s, figee %s, calculee %s (%d fichiers, amonts %v)",
-				c.nom, rev, figee, res.Empreinte, res.Fichiers, c.amonts)
+			t.Logf("%s : revision %s, figee %s, calculee %s (%d fichiers, valeurs %v)",
+				c.nom, rev, figee, res.Empreinte, res.Fichiers, c.valeurs)
 			if rev != c.revisionDuCode {
 				t.Errorf("LA DERNIERE LIGNE DU GOLDEN DE %s NE FIGE PAS LA REVISION DU CODE.\n"+
 					"  golden   : %s\n  figee    : %s\n  code     : %s\n"+
@@ -134,16 +162,15 @@ func TestChaqueRevisionEgaleSonGolden(t *testing.T) {
 			if res.Empreinte != figee {
 				t.Fatalf("LE PERIMETRE REDECLARE NE REND PAS L EMPREINTE FIGEE DE %s.\n"+
 					"  golden    : %s\n  revision  : %s\n  figee     : %s\n"+
-					"  calculee  : %s (%d fichiers)\n  racines   : %v\n  hors      : %v\n"+
-					"  amonts    : %v\n"+
+					"  calculee  : %s (%d fichiers)\n  hors      : %v\n  valeurs   : %v\n"+
 					"DEUX LECTURES, ET LA SECONDE EST CELLE QUE CE FICHIER EXISTE POUR ATTRAPER :\n"+
 					"  - le gate de la couche est rouge lui aussi : la couche a change, le decider "+
 					"et regenerer la ;\n"+
 					"  - le gate de la couche est VERT : les deux declarations de perimetre ont "+
-					"DIVERGE (une racine, une exclusion, l ordre des amonts). Chercher laquelle "+
-					"des deux a raison AVANT de toucher a un golden.",
+					"DIVERGE (une racine d arret, une exclusion, une valeur amont). Chercher "+
+					"laquelle des deux a raison AVANT de toucher a un golden.",
 					strings.ToUpper(c.nom), c.golden, rev, figee, res.Empreinte, res.Fichiers,
-					c.racines, c.horsCouche, c.amonts)
+					c.horsCouche, c.valeurs)
 			}
 		})
 	}
@@ -151,71 +178,50 @@ func TestChaqueRevisionEgaleSonGolden(t *testing.T) {
 
 // TestUneMutationRougitSaCoucheEtCellesQuiEnDependent : LA PREUVE QUE LE CHAINAGE MORD.
 //
-// Le sens unique ne vaut que s il est mesure : une mutation de la couche N doit changer
-// l empreinte de N et celles de toutes les couches qui la nomment en amont. Le test le joue
-// SANS toucher au depot — il substitue la valeur amont, ce qui est exactement ce qu une montee
-// de revision fait.
+// Une mutation de la couche N doit changer l empreinte de toutes les couches dont la fermeture la
+// rencontre. Le test le joue SANS toucher au depot — il substitue la valeur amont, ce qui est
+// exactement ce qu une montee de revision fait.
 //
-// Ce que ce test NE remplace PAS : la mutation d un OCTET de source, jouee a la main par
+// Ce que ce test NE remplace PAS : la mutation d un jeton de source, jouee a la main par
 // l executeur du lot et collee a son compte rendu. Ici on prouve la PROPAGATION ; la morsure sur
-// les octets est prouvee par `TestEmpreinteMordSurLesSources`.
+// les jetons est prouvee par `TestEmpreinteMordSurLesSources` et `jetons_test.go`.
 func TestUneMutationRougitSaCoucheEtCellesQuiEnDependent(t *testing.T) {
 	couches := couchesMesurees(t)
 	reference := map[string]string{}
 	for _, c := range couches {
-		hors := map[string]bool{}
-		for _, f := range c.horsCouche {
-			hors[f] = true
-		}
-		res, err := revision.Calculer(c.racines, func(rel string) bool { return hors[rel] }, c.amonts...)
-		if err != nil {
-			t.Fatalf("empreinte de reference de %s : %v", c.nom, err)
-		}
-		reference[c.nom] = res.Empreinte
+		reference[c.nom] = empreinteMesuree(t, c, c.valeurs).Empreinte
 	}
-	// Les couches qui doivent bouger quand la valeur d une couche du dessous bouge.
+	// Les couches qui doivent bouger quand la valeur d une couche du dessous bouge : celles dont
+	// la fermeture des imports la RENCONTRE (lot J3.2). `profile` n importe pas `source`, donc
+	// n en depend plus.
 	dependants := map[string][]string{
-		"source":  {"profile", "grammar", "facts"},
-		"profile": {"grammar"},
-		"grammar": {"facts"},
+		"source":  {"grammar", "killsource", "objectives"},
+		"profile": {"grammar", "killsource"},
+		"grammar": {"killsource"},
 	}
 	for mute, attendus := range dependants {
 		for _, aval := range attendus {
 			c := coucheParNom(t, couches, aval)
-			hors := map[string]bool{}
-			for _, f := range c.horsCouche {
-				hors[f] = true
-			}
-			amonts := amontsAvecMutation(c, mute, couches)
-			res, err := revision.Calculer(c.racines, func(rel string) bool { return hors[rel] }, amonts...)
-			if err != nil {
-				t.Fatalf("empreinte mutee de %s : %v", aval, err)
-			}
-			if res.Empreinte == reference[aval] {
+			valeurs := valeursAvecMutation(c, mute)
+			if empreinteMesuree(t, c, valeurs).Empreinte == reference[aval] {
 				t.Errorf("LA MUTATION DE `%s.Rev` NE FAIT PAS BOUGER L EMPREINTE DE `%s`.\n"+
-					"  amonts de reference : %v\n  amonts mutes        : %v\n"+
+					"  valeurs de reference : %v\n  valeurs mutees        : %v\n"+
 					"Le sens unique n est pas tenu : une montee de la couche du dessous passerait "+
 					"inapercue, et c est le faux negatif que les valeurs amont (V15 (12)) existent "+
-					"pour fermer.", mute, aval, c.amonts, amonts)
+					"pour fermer.", mute, aval, c.valeurs, valeurs)
 			}
 		}
 	}
 }
 
-// amontsAvecMutation rend les amonts de `c`, la valeur de la couche `mute` remplacee par une
+// valeursAvecMutation rend les valeurs amont de `c`, celle de la couche `mute` remplacee par une
 // valeur differente — ce qu une montee de revision produit.
-func amontsAvecMutation(c coucheMesuree, mute string, couches []coucheMesuree) []string {
-	valeur := ""
-	for _, autre := range couches {
-		if autre.nom == mute {
-			valeur = autre.revisionDuCode
-		}
-	}
-	out := make([]string, len(c.amonts))
-	for i, a := range c.amonts {
-		out[i] = a
-		if a == valeur {
-			out[i] = a + "-MUTE"
+func valeursAvecMutation(c coucheMesuree, mute string) map[string]string {
+	out := make(map[string]string, len(c.valeurs))
+	for nom, v := range c.valeurs {
+		out[nom] = v
+		if nom == mute {
+			out[nom] = v + "-MUTE"
 		}
 	}
 	return out

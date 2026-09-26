@@ -1,9 +1,9 @@
 # EMPREINTE DE FORME DU DOCUMENT DE REJEU — fige par document_shape_test.go.
 # Ne s'edite JAMAIS a la main : regeneration decrite en tete de ce test.
-schema 71
-empreinte-stockee 60f69b934a703941
-empreinte-servie 60f69b934a703941
-empreinte-cuite 09c8817ef7c67780
+schema 72
+empreinte-stockee 13e4a041e8d426ba
+empreinte-servie 13e4a041e8d426ba
+empreinte-cuite dbe3c781b3d5c9e9
 empreinte-cuite-regle 2
 
 AbilityCharge
@@ -265,8 +265,9 @@ DeathsPathsCoverage
   Walk json:"walk" DeathsPathTally
 DecoderCoverage
   Build json:"build" string
-  FactsRev json:"factsRev" string
   GrammarRev json:"grammarRev" string
+  KillsourceRev json:"killsourceRev" string
+  ObjectivesRev json:"objectivesRev" string
   ProfileRev json:"profileRev" string
   Registry json:"registry,omitempty" *RegistryCoverage
   SourceRev json:"sourceRev" string

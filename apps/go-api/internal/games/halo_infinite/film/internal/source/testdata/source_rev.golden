@@ -17,7 +17,8 @@
 #                                   golden non regenere apres une montee legitime.
 #
 # CE QU UNE MONTEE VEUT DIRE ICI, ET C EST LE PLUS LARGE DU CHANTIER : la couche `source` est LA
-# PORTE AUX OCTETS (ADR 0034 D-2). Tout re-decode. `facts.Rev` hache la VALEUR de cette revision,
+# PORTE AUX OCTETS (ADR 0034 D-2). Tout re-decode. Les couches qui l importent (`grammar`,
+# `killsource`, `objectives`) hachent la VALEUR de cette revision,
 # donc une montee fait monter les faits mecaniquement — et le backlog killsource part sur SIGNAL
 # UTILISATEUR (D6), jamais automatiquement.
 #
@@ -49,5 +50,23 @@
 #               deja decode n est candidat a quoi que ce soit. Le critere de retrait ecrit dans
 #               le fichier supprime est tenu : plus aucun `source.ChunkMeta` ni `source.Packet`
 #               dans le depot.
+#
+#   2026-09-26  REVISION INCHANGEE, EMPREINTE SEULE RECOPIEE (lot J3.1 du
+#               PLAN_SUITE_AUDIT_DECODEUR_FILM_2026-09-25, decision DU-2 (a)). OUTILLAGE : le
+#               mecanisme central (`film/revision`) hache desormais le FLUX DE JETONS de chaque
+#               source (`go/scanner`) — commentaires ordinaires et mise en page ecartes, directives
+#               `//go:` gardees — et non plus ses octets. Le cadre (chemin relatif a la racine,
+#               longueur du contenu) ne change pas, et AUCUNE source de la couche ne change dans
+#               ce lot : la sortie est identique a l octet, rien n est candidat a un redecodage.
+#
+#   2026-09-26  REVISION INCHANGEE, EMPREINTE SEULE RECOPIEE (lot J3.2 du
+#               PLAN_SUITE_AUDIT_DECODEUR_FILM_2026-09-25, decision DU-2 (b), constat SRC-1).
+#               OUTILLAGE : le perimetre de la couche est desormais la FERMETURE DE SES IMPORTS
+#               (bornee au module, arretee aux couches revisees, qui entrent par leur VALEUR),
+#               figee par `testdata/<couche>_perimetre.golden` ; les paquets importes hors couche
+#               (`film/types`, `film/damagetag` et ses fichiers embarques, `games/weapons/filmshell`,
+#               ...) entrent par leurs jetons, et les valeurs amont sont celles que la fermeture
+#               rencontre. AUCUNE source ne change dans ce lot : la sortie est identique a l octet,
+#               rien n est candidat a un redecodage.
 source-2026-09-16	4d8427e406555c7cca2bbe0e94c3658a639cb394c4be305a08d7e413ab998913
-source-2026-09-16.2	1eba2c7257e9b9f5d0e26a48fd63067a008d7294dabb18e6f29276dea3e97c6a
+source-2026-09-16.2	54ac6359bef2b673de8bede08700916c3ec2101555d7e5d4d1e34389b7aabf0c

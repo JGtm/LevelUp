@@ -25,8 +25,9 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
-	"levelup/go-api/internal/games/halo_infinite/film/internal/facts"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/killsource"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
@@ -101,6 +102,7 @@ func documentsDuFilmEtDesFaits(t *testing.T, cas casDuFilDesMorts) (ReplayDocume
 		Coverage: *couvertureDuDecodeur(nil),
 		Facts: FilmFacts{Film: g.Film, MapModule: g.MapModule, AxisW: g.AxisW,
 			LayoutDetected: g.LayoutDetected, FilmInputs: s.in},
+		EmpreinteDeCle: EmpreinteDeCle(entry),
 	})
 	if err != nil {
 		t.Fatalf("%s : encodage des faits : %v", cas.nom, err)
@@ -180,7 +182,8 @@ func TestFaitsSansVerdictDuFilDesMortsSontRefuses(t *testing.T) {
 	entry := goldenEntryPourTest(t)
 	f := fichierTemoin(t)
 	f.Coverage.SourceRev, f.Coverage.ProfileRev = source.Rev, profile.Rev
-	f.Coverage.GrammarRev, f.Coverage.FactsRev = grammar.Rev, facts.Rev
+	f.Coverage.GrammarRev, f.Coverage.KillsourceRev = grammar.Rev, killsource.Rev
+	f.Coverage.ObjectivesRev = objectives.Rev
 	f.Facts.DeathsFeed = VerdictDuFilDesMorts{Verdict: DeathsFeedUnreadable, Cause: "pas de temps forts"}
 	blob, err := EncodeFilmFactsFile(f)
 	if err != nil {
@@ -191,7 +194,7 @@ func TestFaitsSansVerdictDuFilDesMortsSontRefuses(t *testing.T) {
 	}
 	avantM8 := sansLeVerdictDuFilDesMorts(t, blob, f.Facts.DeathsFeed)
 	e, err := DecodeFilmFactsEntete(avantM8)
-	if err != nil || e.Utilisable(entry) != nil {
+	if err != nil || e.Frais(entry) != nil {
 		t.Fatalf("le fichier d avant M8 doit avoir un en-tete FRAIS (schema %d) : %v", e.Schema, err)
 	}
 	if relu, err := DecodeFilmFactsFile(avantM8, entry); err == nil {

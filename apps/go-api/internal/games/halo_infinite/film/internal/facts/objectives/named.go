@@ -194,7 +194,7 @@ const (
 )
 
 // NamedEvent est une action de joueur nommee, datee a la milliseconde sur l'horloge du
-// film — la meme que celle des ObjectiveEvent et des positions du rejeu, superposable sans
+// film — la meme que celle des objectiveevent.Event et des positions du rejeu, superposable sans
 // recalage.
 type NamedEvent struct {
 	// TimeMS est l'instant de l'emission qui porte cette action.

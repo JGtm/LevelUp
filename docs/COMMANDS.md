@@ -893,7 +893,7 @@ from the JSON alone, as a clean witness.
 
 **Telemetry and rejection counters are not losses (2026-09-17, lot 3.3.3)**: the verdict used to
 count two families it should not. **Telemetry** — `coverage.decoder.{sourceRev, profileRev,
-grammarRev, factsRev}`, `coverage.decoder.build`, `coverage.decoder.registry.fingerprint` — says
+grammarRev, killsourceRev, objectivesRev}` (`factsRev` up to schema 71), `coverage.decoder.build`, `coverage.decoder.registry.fingerprint` — says
 which VERSION of the decoder baked the artifact, not what the match contains. Those leaves were
 NEW at lot 2.6, hence counted as gains; since schema 61 they are shared, so any lot that raises a
 revision made them "move" on every witness and the gate exited 1 with nothing else wrong (lot

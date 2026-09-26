@@ -6209,8 +6209,9 @@ export interface components {
         };
         DecoderCoverage: {
             build: string;
-            factsRev: string;
             grammarRev: string;
+            killsourceRev: string;
+            objectivesRev: string;
             profileRev: string;
             registry?: components["schemas"]["RegistryCoverage"];
             sourceRev: string;

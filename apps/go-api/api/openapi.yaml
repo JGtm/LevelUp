@@ -12618,9 +12618,11 @@ components:
       properties:
         build:
           type: string
-        factsRev:
-          type: string
         grammarRev:
+          type: string
+        killsourceRev:
+          type: string
+        objectivesRev:
           type: string
         profileRev:
           type: string
@@ -12632,7 +12634,8 @@ components:
         - sourceRev
         - profileRev
         - grammarRev
-        - factsRev
+        - killsourceRev
+        - objectivesRev
         - build
       type: object
     DetectionPatchInputBody:

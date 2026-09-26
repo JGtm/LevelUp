@@ -2,7 +2,7 @@
 // GET .../matches/{match_id}/objective-events.
 //
 // Sérialise la timeline objectif v3 (events mode-agnostiques décodés du film) en
-// JSON camelCase. On NE sérialise PAS domain.ObjectiveEvent brut (struct sans
+// JSON camelCase. On NE sérialise PAS objectiveevent.Event brut (struct sans
 // tags json → clés PascalCase non consommables par le front) : un DTO dédié
 // porte les tags et omet les champs non utiles à la timeline (objective_id,
 // details).
@@ -13,10 +13,10 @@ import (
 	"net/http"
 
 	"levelup/go-api/internal/api/humacore"
-	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/domain/objectiveevent"
 )
 
-// objectiveEventDTO est la projection JSON camelCase d'un domain.ObjectiveEvent.
+// objectiveEventDTO est la projection JSON camelCase d'un objectiveevent.Event.
 // Les pointeurs (timeMs, teamId, value) sont omitempty : un champ NULL en DB
 // (team unreliable, value absente) est absent du JSON plutôt que rendu à 0.
 type objectiveEventDTO struct {
@@ -38,9 +38,9 @@ type objectiveEventPlayerDTO struct {
 	Role string `json:"role"`
 }
 
-// toObjectiveEventsDTO mappe []domain.ObjectiveEvent → []objectiveEventDTO.
+// toObjectiveEventsDTO mappe []objectiveevent.Event → []objectiveEventDTO.
 // Retourne un slice non-nil vide pour sérialiser `[]` plutôt que `null`.
-func toObjectiveEventsDTO(events []domain.ObjectiveEvent) []objectiveEventDTO {
+func toObjectiveEventsDTO(events []objectiveevent.Event) []objectiveEventDTO {
 	out := make([]objectiveEventDTO, 0, len(events))
 	for _, ev := range events {
 		players := make([]objectiveEventPlayerDTO, 0, len(ev.Players))
