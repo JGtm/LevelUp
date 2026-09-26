@@ -528,68 +528,68 @@ J2.9 (preuve G-equiv 0).
 **Découpage.** Exécutant J2-a : J2.1 à J2.6 ; exécutant J2-b : J2.7 à J2.13.
 
 #### J2.1 Écriture atomique stricte (`platform/atomicfile`) — DT-3
-- [ ] Tests rouges : `TestWriteFileStrict_Atomique`, `TestWriteFileStrict_RenameRefuseRendUneErreur`
+- [x] Tests rouges : `TestWriteFileStrict_Atomique`, `TestWriteFileStrict_RenameRefuseRendUneErreur`
       (injection `renameFile` → EBUSY : erreur, cible intacte, aucun temporaire résiduel),
       `TestWriteFileStrict_TemporaireImpossibleRendUneErreur` (injection `createTemp`),
       `TestWriteFileStrict_CibleExistanteRemplaceeEntiere`.
-- [ ] `WriteFileStrict` (temporaire du même dossier, `finalizeTemp`, rename ; toute panne = erreur) ;
+- [x] `WriteFileStrict` (temporaire du même dossier, `finalizeTemp`, rename ; toute panne = erreur) ;
       `WriteFile` = `WriteFileStrict` puis repli in-place sur `isBusy` / temporaire impossible —
       aucune copie de `finalizeTemp`. L'en-tête du paquet renvoie vers `WriteFileStrict` pour les
       pertes irréversibles.
-- [ ] Tests existants de `WriteFile` verts, inchangés.
+- [x] Tests existants de `WriteFile` verts, inchangés.
 
 #### J2.2 Écrivain du cache de films (`film/filmcache/write.go`) — SRC-2/OPS-4
-- [ ] Tests rouges (`write_test.go`) : `TestWrite_ChunkTronqueSurDisqueEstRemplace`,
+- [x] Tests rouges (`write_test.go`) : `TestWrite_ChunkTronqueSurDisqueEstRemplace`,
       `TestWrite_ChunkIdentiqueNestPasReecrit`, `TestWrite_EchecDEcritureNeLaissePasDeChunkPartiel`,
       `TestWrite_ManifestePorteLesTailles`, `TestWrite_ManifesteIllisibleEstRepareParUneListeFinalisee`,
       `TestWrite_ManifesteIllisibleEtListeNonFinaliseeRefuse`.
-- [ ] Chunks par `atomicfile.WriteFileStrict` ; un chunk présent n'est adopté que si sa taille vaut
+- [x] Chunks par `atomicfile.WriteFileStrict` ; un chunk présent n'est adopté que si sa taille vaut
       `len(c.Data)`, sinon il est remplacé (WARN + compteur `film_cache_chunk_remplace`) ; champ
       `size_bytes` (omitempty) au manifeste écrit ; manifeste illisible + liste finalisée → réécrit
       atomiquement (WARN + `film_cache_manifeste_repare`). Les règles L3 (finalisation,
       sur-ensemble exact, `ErrManifesteDivergent`) sont inchangées.
 
 #### J2.3 Lecteurs du cache : un seul lieu pour la disposition et la validation
-- [ ] Tests rouges : `TestSourceChunk_TailleDuManifesteDiffereRendErrChunkTronque` (`filmcache`),
+- [x] Tests rouges : `TestSourceChunk_TailleDuManifesteDiffereRendErrChunkTronque` (`filmcache`),
       `TestLocalFilmCacheLoadChunk_MemeValidationQueFilmcache` (`sync/haloclient`),
       `TestRemoteFilms_ChunkTronqueSurDisqueRetelecharge` (`sync/killcollector`).
-- [ ] `filmcache.ErrChunkTronque` (index, attendu, lu) ; validation dans `Source.Chunk` /
+- [x] `filmcache.ErrChunkTronque` (index, attendu, lu) ; validation dans `Source.Chunk` /
       `LoadFilm` quand le manifeste porte la taille ; `haloclient.LocalFilmCache.LoadChunk` délègue
       à `filmcache` (suppression de sa copie de `chunk_%02d.bin`) ; `RemoteFilms` traite
       `ErrChunkTronque` comme « absent du disque » (réseau, puis réécriture par J2.2).
-- [ ] Ratchet : `archlint/no_hardcoded_film_cache_dirs_test.go` étendu au nom de fichier de chunk ;
+- [x] Ratchet : `archlint/no_hardcoded_film_cache_dirs_test.go` étendu au nom de fichier de chunk ;
       migrations : `cmd/fetch_film_chunks` écrit par `filmcache.Write` (un seul écrivain du cache),
       `cmd/rdata_weapon_scan` lit par un helper exporté de `filmcache` ; mutation jouée.
 
 #### J2.4 Téléchargement (`sync/haloclient/halo_client_film.go`)
-- [ ] Test rouge `TestFetchFilmChunks_TailleAnnonceeDiffereRendErrChunkIncomplet` (`httptest` qui
+- [x] Test rouge `TestFetchFilmChunks_TailleAnnonceeDiffereRendErrChunkIncomplet` (`httptest` qui
       sert moins d'octets que `ChunkSize`).
-- [ ] Comparaison `len(data)` / `ChunkSize` (si > 0) → `ErrChunkIncomplet` typée ; rien n'est
+- [x] Comparaison `len(data)` / `ChunkSize` (si > 0) → `ErrChunkIncomplet` typée ; rien n'est
       écrit ; compteur `film_fetch_chunk_incomplet` ; reprise au cycle suivant, aucun marqueur
       terminal.
 
 #### J2.5 `levelup archive-films`
-- [ ] Tests : `TestFilmDejaEnCache_ManifestePartielNestPasComplet`,
+- [x] Tests : `TestFilmDejaEnCache_ManifestePartielNestPasComplet`,
       `TestFilmDejaEnCache_ChunkTronqueNestPasComplet`.
-- [ ] Contexte par `contexteDArret()` (helper existant de `cmd/levelup`) au lieu de
+- [x] Contexte par `contexteDArret()` (helper existant de `cmd/levelup`) au lieu de
       `context.Background()` ; `filmDejaEnCache` juge par `filmcache.Finalise` et les tailles, plus
       par l'existence du manifeste (rr §8.22, même défaut « présent = complet »).
 
 #### J2.6 Verrou solo par verrou OS (OPS-1) — DT-2
-- [ ] Tests rouges (`platform/filelock`) : `TestTryLock_SecondDetenteurRefuse`,
+- [x] Tests rouges (`platform/filelock`) : `TestTryLock_SecondDetenteurRefuse`,
       `TestTryLock_LibereALaMortDuProcessus` (processus enfant de test, modèle
       `filmproc/runner_child_test.go`), `TestUnlock_Idempotent`.
-- [ ] Tests (`filmproc/solo_test.go`) : `TestAcquireSolo_ReleaseNeLibereQueSonVerrou` (rouge
+- [x] Tests (`filmproc/solo_test.go`) : `TestAcquireSolo_ReleaseNeLibereQueSonVerrou` (rouge
       aujourd'hui : `Release` supprime le fichier d'un autre détenteur),
       `TestAcquireSolo_RefusNommeLeDernierDetenteur`, `TestAcquireSoloWait_AttendPuisPrend`.
-- [ ] `platform/filelock` : `TryLock(path) (*Lock, error)`, `ErrLocked`, `(*Lock).Unlock` ;
+- [x] `platform/filelock` : `TryLock(path) (*Lock, error)`, `ErrLocked`, `(*Lock).Unlock` ;
       `filelock_windows.go` (`windows.LockFileEx`, `LOCKFILE_EXCLUSIVE_LOCK|LOCKFILE_FAIL_IMMEDIATELY`),
       `filelock_unix.go` (`unix.Flock`, `LOCK_EX|LOCK_NB`).
-- [ ] `filmproc.AcquireSolo` tient le verrou OS ; le détenteur est décrit dans
+- [x] `filmproc.AcquireSolo` tient le verrou OS ; le détenteur est décrit dans
       `film_decode.lock.json` (écrit par `WriteFileStrict`, `StartedAt` posé une seule fois) ;
       SUPPRESSION de `beat`, `soloStealIfDead`, `soloHeartbeat`, `soloStale` et de leurs tests
       (règle 7) ; en-tête du fichier réécrit. Chemin sous `PathResolver.CacheRootDir()` inchangé.
-- [ ] `archlint` : `TestPointsDEntreeDeDecodageArmentUneSentinelle`, `TestNoUnboundedFilmLoop`
+- [x] `archlint` : `TestPointsDEntreeDeDecodageArmentUneSentinelle`, `TestNoUnboundedFilmLoop`
       verts.
 
 #### J2.7 Fichier de faits : décodeur borné (RA1-5)
@@ -1201,6 +1201,22 @@ relancer un agent sans avoir vérifié qu'il est mort. Ne pas re-décider ce qui
    (`sync/killcollector/postsync_test.go`) décrivent un arriéré trié du plus vieux au plus récent ;
    l'ordre de `requeteBacklog` est inversé depuis le 2026-08-29. Le test reste vrai sur la fonction
    pure `ordonnancer`, son récit est périmé.
+4. (2026-09-26, exécutant J2-a) `cmd/rdata_weapon_scan` pointe en dur vers le cache de l'ancien
+   worktree `LevelUp-go-migration` (retiré) : l'outil n'a plus de données. Le fichier dépasse
+   déjà 500 lignes (880 -> 890 avec la migration J2.3, qui ajoute un contrôle d'erreur manquant).
+5. (2026-09-26, exécutant J2-a) Le cache mélange des chunks compressés (hérités de Python) et
+   décompressés (écrits par Go) ; `size_bytes` décrit l'octet écrit, donc cohérent, mais les deux
+   formats cohabitent.
+6. (2026-09-26, exécutant J2-a) Le message de `contexteDArret()` parle de « décodages en cours »,
+   approximatif pour `archive-films`.
+7. (2026-09-26, exécutant J2-a) `docs/CHANGELOG.md` et `docs/FR/CHANGELOG.md` décrivent le verrou
+   solo par battement de cœur (entrées historiques) — à relire en J12.5.
+8. (2026-09-26, superviseur) Coexistence de versions pendant la transition J2.6 : l'ancien code
+   traite `film_decode.lock` comme un fichier exclusif à battement ; le nouveau le garde en place
+   comme support du verrou OS. Un ancien binaire qui tourne encore à côté d'un nouveau (serveur
+   local non rebâti) peut juger ce fichier « mort » et chercher à le reprendre. Sans effet une fois
+   tous les binaires rebâtis (prod : serveur et CLI déployés ensemble) ; à rappeler dans la note
+   de déploiement de J11.
 
 ---
 
@@ -1282,3 +1298,14 @@ relancer un agent sans avoir vérifié qu'il est mort. Ne pas re-décider ce qui
   locale `feat/suite-audit-decodeur-j2b` (non poussée), fichiers disjoints (J2-b ne touche dans
   `filmproc` que le protocole de l'enfant, jamais `solo*.go`). Rapatriement par fusion dans la
   branche du plan à la fin de J2-b ; G-equiv et G-film de J2 par le superviseur sur l'ensemble.
+- 2026-09-26 : **J2-a fait** (exécutant `opus-high`) : J2.1-J2.6 cochés, 16 rouges observés sur le
+  code d'avant, mutations jouées (dont deux trous de test comblés : chunk écrit en place, retour
+  « tronqué = absent »), gates unitaires, intégration `-p 1`, vet (défaut + integration), archlint,
+  golangci verts ; superviseur : pièces relues (verrou OS, description du détenteur), unitaires +
+  archlint rejoués sur les 13 paquets touchés, commit `6ee71264b`. Choix consignés : `ChunkSize`
+  = taille du blob BRUT (comparée au corps HTTP avant décompression) ; `filmcache.Write(ctx, …)` ;
+  `fetch_film_chunks` complète un film entier ou rien ; ratchet du nom de chunk avec exceptions
+  datées pour `film/internal/source/source.go` et `grammar/film_packets.go` (toucher ces couches
+  ferait bouger leur empreinte ; J2 ne monte aucune révision) ; allowlist GOOS + 1 entrée datée
+  (`filelock_windows.go`) ; `slog` sans contexte conservé dans `filmproc` (`AcquireSolo` n'a pas de
+  ctx — relève de J12.4). Pas de mutation pour J2.5 (non P1). Découvertes §8.4-8.8.
