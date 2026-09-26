@@ -23,19 +23,22 @@
 // Temoins de calibrage : C0 (PK, Index Scan attendu des deux cotes, sinon Fatal) et
 // C1/C2 (forme de l'incident du 2026-09-13 sur une chaine rare).
 //
-// Critere D-4 (ASSERTE, a la lettre) : aucune des sept formes ne depasse
-// msrProbeBudget SANS index (mediane du temps client). Les resultats avec et sans
-// index doivent etre identiques (DB fraiche : l'index est coherent). Les formes
-// supplementaires (invariants, vue _latest) sont mesurees et journalisees, hors
-// critere.
+// Critere D-4 AMENDE (ASSERTE ; plan backlog §2 D-4, amendement du superviseur du
+// 2026-09-27, commit 99b241970) : pour chacune des sept formes, mediane SANS index <=
+// mediane AVEC index + msrProbeMargin (temps client). Les medianes absolues restent
+// journalisees. Les resultats avec et sans index doivent etre identiques (DB fraiche :
+// l'index est coherent). Les formes supplementaires (invariants, vue _latest) sont
+// mesurees et journalisees, hors critere.
 //
-// RESULTAT DU 2026-09-27 (trois passages concordants, poste charge a 87-100 % CPU par
-// une autre session) : critere NON TENU — F1 (Q24LUSRHistory, 12 000 lignes lues),
-// F2 (citations, IN(200)) et F3 (escouade, IN(1000)) depassent 10 ms sans index, mais
-// AUTANT avec index : meme plan sequentiel des deux cotes, 30/30. Seule forme qui
-// emprunte un index : F4 (rating_type = 'CSR', idx_msr_rating_type), ~10x plus LENTE
-// avec index (~20 ms contre ~2 ms). Lot B3 arrete a B3.1, index conserves (plan
-// backlog §5 B3, journal §7).
+// HISTORIQUE. Le critere d'origine (aucune forme > 10 ms sans index) a ete mesure NON
+// TENU le 2026-09-27 (poste a 87-100 % CPU) : F1 (Q24LUSRHistory, 12 000 lignes lues),
+// F2 (citations, IN(200)) et F3 (escouade, IN(1000)) depassaient 10 ms sans index, mais
+// AUTANT avec (meme plan sequentiel, 30/30) : le seuil absolu mesurait le cout de
+// lecture par le client Go et des listes IN, pas l'index. PROPOSITION de l'executant,
+// retenue par l'amendement : un critere relatif forme par forme, qui repond a la
+// question de D-4 (« le retrait ralentit-il une lecture ? »). Plus grand ecart
+// « sans - avec » alors releve : +1,1 ms. Seule forme qui emprunte un index : F4
+// (rating_type = 'CSR', idx_msr_rating_type), ~10x plus RAPIDE sans lui.
 //
 // Les textes SQL sont des INSTANTANES des lecteurs de production au 2026-09-27
 // (symbole cite pour chacun) : le paquet migration ne peut importer ni sync ni
@@ -60,7 +63,7 @@ import (
 
 const (
 	msrProbeRows   = 12000
-	msrProbeBudget = 10 * time.Millisecond
+	msrProbeMargin = 2 * time.Millisecond
 	msrProbeRuns   = 30
 	msrProbeWarmup = 3
 )
@@ -293,9 +296,9 @@ func TestMSRIndexRemovalPlanProbe(t *testing.T) {
 		} else if !strings.HasPrefix(b.plan, "SEQ") {
 			t.Errorf("[%s] plan sans index = %s, attendu sequentiel", f.id, b.plan)
 		}
-		if f.core && b.median > msrProbeBudget {
-			t.Errorf("CRITERE D-4 NON TENU : [%s] %s — mediane sans index %s > %s",
-				f.id, f.label, b.median, msrProbeBudget)
+		if f.core && b.median > a.median+msrProbeMargin {
+			t.Errorf("CRITERE D-4 NON TENU : [%s] %s — mediane sans index %s > avec index %s + %s",
+				f.id, f.label, b.median, a.median, msrProbeMargin)
 		}
 	}
 }

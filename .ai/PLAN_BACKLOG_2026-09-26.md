@@ -806,30 +806,32 @@ niveau job, fusion dans `feat/v75`, suppression du worktree et de la branche.
   conservés, raison écrite.
   → Fait : `migration/psa_index_repro_msr_planprobe_test.go` (`TestMSRIndexRemovalPlanProbe`,
   critère D-4 asserté) + `psa_index_repro_msr_fixture_test.go` (DDL, remplissage, formes).
-  **VERDICT : CRITÈRE D-4 NON TENU → STOP, index CONSERVÉS.** F1 (`Q24LUSRHistory`),
+  **Premier verdict (critère d'origine) : NON TENU → STOP.** F1 (`Q24LUSRHistory`),
   F2 (citations, IN(200)) et F3 (escouade, IN(1000)) dépassent 10 ms SANS index (13,5 / 13,5 /
   16,7 ms, médiane client, passage final) — mais AUTANT avec index (14,9 / 18,1 / 18,4 ms) :
   plan séquentiel des deux côtés, 30 fois sur 30. Le dépassement ne vient pas de l'absence
   d'index. Seule forme qui emprunte un index : F4 (`rating_type = 'CSR'`), ~10× plus LENTE
-  avec (20,3 ms contre 1,9 ms). Tableau complet et raison : journal §7 (B3). Décision de
-  l'amendement de D-4 : superviseur / utilisateur.
-- [!] **B3.2** Migration `drop_msr_secondary_art_indexes_v1` : cible player, 3
+  avec (20,3 ms contre 1,9 ms). Tableau complet et raison : journal §7 (B3).
+  **Après l'amendement de D-4 (`99b241970`) : critère relatif TENU**, assertion réécrite
+  (`msrProbeMargin`, 2 ms ; médianes absolues toujours journalisées) : `EXIT_MESURE=0`, plus
+  grand écart « sans − avec » +0,22 ms (F3). Journal §7.
+- [ ] **B3.2** Migration `drop_msr_secondary_art_indexes_v1` : cible player, 3
   `DROP INDEX IF EXISTS`. `order.go` après `player_msr_view_latest_by_type_v1` ;
   `stepDependencies` vers `lusr_chain_rework_v1` (précédent `drop_career_xuid_art_index_v1`,
   `order.go:126`).
-- [!] **B3.3** Retrait des `CREATE INDEX idx_msr_*` des autorités non scellées : `schema.go:111-113`,
+- [ ] **B3.3** Retrait des `CREATE INDEX idx_msr_*` des autorités non scellées : `schema.go:111-113`,
   `steps_player_match_skill_rank.go:109-111` et `:179-181`. Baseline scellée INTACTE (précédent
   `idx_career_xuid`).
-- [!] **B3.4** Convergence (D-4) : les `DROP INDEX IF EXISTS` des trois `idx_msr_*` ET des trois
+- [ ] **B3.4** Convergence (D-4) : les `DROP INDEX IF EXISTS` des trois `idx_msr_*` ET des trois
   index PSA retirés le 2026-09-20 (noms relus dans la migration PSA) entrent dans l'autorité
   rejouée par `EnsurePlayerSchema`.
-- [!] **B3.5** Suppressions de la liste ci-dessus, avec imports, types et jauges.
+- [ ] **B3.5** Suppressions de la liste ci-dessus, avec imports, types et jauges.
   `no_raw_rating_reads_test.go` n'est PAS modifié (fichier de `feat/perf-perimetre`) : s'il
   mentionne un index retiré, découverte.
-- [!] **B3.6** Ratchet : `match_skill_rank` entre dans `noSecondaryIndexTables`, avec une
+- [ ] **B3.6** Ratchet : `match_skill_rank` entre dans `noSecondaryIndexTables`, avec une
   dispense DATÉE pour `steps_player_baseline.go`. Balayage étendu à `internal/sync/schema.go`.
   Mutation vérifiée.
-- [!] **B3.7 Tests** (rouges d'abord) :
+- [ ] **B3.7 Tests** (rouges d'abord) :
   - `TestPlayerSchemaAuthority_NoMatchSkillRankSecondaryIndex` (`sync/schema_authority_test.go`) ;
   - `steps_player_drop_msr_secondary_indexes_test.go` : retrait, idempotence, lignes et vues
     préservées ;
@@ -837,17 +839,16 @@ niveau job, fusion dans `feat/v75`, suppression du worktree et de la branche.
     → plus aucun.
   - Aucun nouveau fichier dans `internal/sync/` (ratchet de gel) : les tests de `sync` vont dans
     les fichiers existants.
-- [!] **B3.8** En-tête du harnais `psarepro` réécrit : véhicule de reproduction pour les index
+- [ ] **B3.8** En-tête du harnais `psarepro` réécrit : véhicule de reproduction pour les index
   player restants.
-- [!] **B3.9** Vérification sur COPIE d'une vraie player DB, jamais l'original (copie faite
+- [ ] **B3.9** Vérification sur COPIE d'une vraie player DB, jamais l'original (copie faite
   serveur principal arrêté, ce que le superviseur confirme avant). Migration puis `EnsurePlayerSchema` appliqués à la copie, par la CLI existante
   si elle migre une base désignée, sinon par un test d'intégration paramétré par une variable
   d'environnement (pas d'outil jetable). Attendu : `duckdb_indexes()` sans `idx_msr_*` ni index
   PSA, mêmes nombres de lignes, vues intactes.
 
-**B3.2 à B3.9 : `[!]` non traités — STOP D-4 (B3.1).** Le critère décide seul du retrait (§2 D-4 :
-« Sinon, arrêt et rapport ») ; aucun retrait, aucune suppression, aucun ratchet tant que le
-superviseur n'a pas statué. B3.9 n'a donc pas été faite : aucune copie de player DB.
+**STOP D-4 levé.** Le STOP posé à B3.1 sur le critère d'origine a été levé par l'amendement de
+D-4 (§2, commit `99b241970`). Le critère relatif est tenu (B3.1), donc B3.2 à B3.9 reprennent.
 
 **Gate** : GO-F, plus `go test -tags=psarepro -count=1 ./internal/migration/ -run MSR -v`.
 
