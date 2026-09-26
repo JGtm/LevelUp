@@ -1056,6 +1056,18 @@ plus B5.8.
 - A1.5 : `/health` → `000`. Non faite, reste au superviseur, à 2× (cf. statut de l'item).
 - A1.6 : ouvert (superviseur).
 
+**[2026-09-26] Superviseur — vérification de A1 et dérogation d'ordre.**
+
+- Diff `a373539d9` relu : règle unique `soundOccupiesVoice`, `start` privé commun, compteur de
+  voix touché seulement pour une source soumise au plafond ; `useReplaySound.ts` reste à 675
+  lignes.
+- Gates rejoués : `EXIT_TYPECHECK=0` (cache purgé), `EXIT_LINT=0` (0 erreur, 26 avertissements
+  préexistants), `EXIT_VITEST=0` (216 fichiers, 3 179 tests réussis, 7 sautés préexistants).
+- A1.5 et A1.6 restent ouverts ; ils se feront avant la fusion 1, à 2×.
+- **Dérogation §1.2 appliquée** : à 21 h 11, une autre session fait toujours tourner deux
+  `replay-equiv` et des builds Go. Le serveur API n'est pas démarrable, donc A2 attend et B1
+  passe devant.
+
 ### Lots B
 
 (vide)
