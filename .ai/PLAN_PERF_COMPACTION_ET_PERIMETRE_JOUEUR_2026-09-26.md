@@ -105,8 +105,9 @@ Décisions :
   telle, à jouer après chaque campagne de redécodage (recuisson, backfill killsource).
 
 Items :
-- [ ] C.1 inventaire (DC.1) : tables, règle de leur vue, rapport mesuré, lecteurs bruts ; liste
-      retenue et exclusions justifiées écrites ici
+- [x] C.1 inventaire (DC.1) : tables, règle de leur vue, rapport mesuré, lecteurs bruts ; liste
+      retenue et exclusions justifiées écrites ici — Journal C, « C.1 » : 13 tables retenues
+      (12 à passe + `match_bomb_stats`), toutes les autres vues `_latest` exclues avec leur raison
 - [ ] C.2 cœur de compaction (DC.2, DC.3) + tests d'intégration : passes multiples, match à une
       seule passe, table vide, crash simulé en cours de swap (`recoverOrphan`), idempotence,
       séquence qui continue, DDL identique, vue identique avant / après
@@ -135,7 +136,81 @@ la sortie filtrée) ; garde-rails `internal/sync` (`NoART|Legacy|Sentinel`) ; go
 Revue C : OBLIGATOIRE, deux relecteurs aveugles en parallèle (skill `adversarial-review` : lentille
 L1 anti-ART / écritures, lentille L6 tests), deux rondes au plus.
 
-Journal C : (vide)
+Journal C (2026-09-26, exécuteur Opus, worktree `LevelUp-wt-perf-perimetre`, base `34edf29af`) :
+
+- **C.1 — inventaire, écrit avant tout code.** Sources : `duckdb_views()` de COPIES (lecture
+  seule, CLI 1.5.4) de chaque base de chaque titre — partagée HI (copie du 2026-09-26 14:07) et H5,
+  `shared_pve`, `shared_social` HI et H5, `metadata` HI et H5 (aucune vue `_latest`), bases joueur
+  HI (JGtm, Madina97294, Chocoboflor, XxDaemonGamerxX) et H5 (JGtm, Madina97294) ; lecteurs bruts
+  grepés sur `internal/` ET `cmd/` (FROM / JOIN, littéraux de nom de table, SQL construit par
+  concaténation), hors commentaires. Les 20 vues `_latest` de la base partagée ont le MÊME SQL sur
+  HI et H5 (diff vide).
+  - Règle « dernière passe entière par match » (`QUALIFY <passe> = first_value(<passe>) OVER
+    (PARTITION BY match_id ORDER BY written_at DESC, id DESC)`), gardées = toutes les lignes de
+    cette passe (DC.2), mesuré HI (brutes / `_latest` / gardées / matchs) :
+    `match_kill_events` 3 953 799 / 412 216 / 412 216 / 3 631 ; `match_lives` 1 725 664 / 163 092 /
+    163 092 / 1 519 ; `match_death_context` 1 516 693 / 146 654 / 146 654 / 1 516 ; `kill_openings`
+    1 495 845 / 147 225 / 147 225 / 1 519 ; `kill_positions` 1 495 728 / 147 360 / 147 360 / 1 519
+    (sa vue ajoute un `row_number() = 1` DANS la passe : les gardées sont la passe entière) ;
+    `match_weapon_shots` 896 590 / 74 882 / 74 882 / 1 593 ; `match_player_positions`
+    (`positions_pass`) 167 189 / 22 198 / 22 198 / 99 ; `match_usage_films` (`summary_pass`) 1 262 /
+    152 / 152 / 152 ; `match_pad_pickups_by_tier` 5 590 / 1 502 / 1 502 / 99 ;
+    `match_flag_grabs_net` 353 / 147 / 147 / 17 ; `match_weapon_hit_distance` 0 / 0. H5 :
+    `match_kill_events` 536 674 / 268 337 / 268 337 ; `kill_positions` 297 963 / 295 357 / 297 963
+    (une passe `legacy-<match>` par match : rien à compacter, l'écart est le `row_number` de la
+    vue) ; les autres tables vides.
+  - Règle « passe de la vue des films » : `match_usage_players_latest` = jointure sur
+    `match_usage_films_latest` (`match_id`, `summary_pass`) ; gardées = les lignes dont le couple
+    est dans cette vue : 11 465 / 1 420 / 1 420 ; 0 ligne joueur sans ligne film.
+  - Règle « dernière ligne par clé » (`row_number() OVER (PARTITION BY match_id, xuid ORDER BY
+    written_at DESC, id DESC) = 1`), produit du film (statistiques d'Assaut, `backfill-bomb-stats
+    --force` réécrit) : `match_bomb_stats` 0 / 0 aujourd'hui.
+  - **Lecteurs bruts de ces 13 tables** (hors écrivains `internal/persist`, DDL des migrations et
+    commentaires) : (1) `analysis/identity_annuaire.go` `AnnuaireKillFeedLocaliserSQL` (lecture de
+    localisation, DA.10 du lot A) ; (2) la migration `shared_kill_events_credit_base_v1`
+    (`decode_pass LIKE 'creditbase-%'` comme marque d'idempotence) ; (3) `ops/seed_demo*.go` et
+    `ops/snapshot_export.go` COPIENT les lignes brutes d'un sous-ensemble de matchs vers une autre
+    base qui les relit par la même vue ; (4) `cmd/h5-backfill`, `cmd/h5-sync` impriment un
+    `count(*)` brut de `kill_positions` (diagnostic). Aucun ne lit une ancienne passe pour sa
+    valeur : (1) après compaction la brute ne porte que les passes que la vue retient — la
+    localisation rend les matchs où la DERNIÈRE passe porte le xuid avec un nom, ce qui reste un
+    sur-ensemble des partitions `_latest` qui le montrent (égalité exacte pour la jambe kill-feed :
+    la vue de `match_kill_events` rend la passe entière) ; le pas 2 relit ces matchs par `_latest` :
+    même nom, même absence de nom, la lecture reste CORRECTE (et plus courte) ; (2) migration
+    name-keyed, appliquée le 2026-08-19 sur la base locale, jamais rejouée (`schema_migrations`), et
+    la commande joue les migrations AVANT de compacter : une base où elle n'a pas encore tourné la
+    voit tourner d'abord ; (3) la copie ne porte plus que la dernière passe, la vue de la base
+    cible rend le même résultat ; (4) le compte baisse, c'est ce qu'il doit montrer. Les écrivains
+    tirent `decode_pass` au hasard (`newDecodePassID`) et ne lisent jamais les passes précédentes ;
+    les sélections des backfills (`backfill-killsource`, `-usage-summary`, `-pad-tiers`,
+    `-flag-grabs-net`) lisent les vues `_latest`.
+  - **Retenues (13)** : `match_kill_events`, `match_lives`, `match_death_context`,
+    `kill_openings`, `kill_positions`, `match_weapon_shots`, `match_weapon_hit_distance`,
+    `match_player_positions`, `match_usage_films`, `match_usage_players`,
+    `match_pad_pickups_by_tier`, `match_flag_grabs_net`, `match_bomb_stats` — base partagée des
+    matchs, même liste pour chaque titre (tables absentes ou vides : rien à faire).
+  - **Exclues**, et pourquoi : `match_skill_rank` (bases joueur ; d'office, lectures brutes
+    volontaires, allowlist de `no_raw_rating_reads_test.go`) ; `player_match_enrichment` (vue
+    fusionnée par colonne) ; `player_skill_state_v2` (59 383 / 10 140 HI, 7 759 / 4 H5 : lecteur
+    brut de l'historique `SkillV2Repo.LoadStateHistory`, lissage TTT, et `cmd/diag_lusr_volatility`,
+    `cmd/lusr_v2_ttt_batch`) ; `world_csr_leaderboard_snapshots` (24 007 / 4 393 : lecteurs bruts
+    `leaderboard_world_batch_stats.go` x3, `leaderboard_world_repo.go` x2 — l'historique des
+    instantanés est lu) ; `match_csrs` (30 105 / 30 105 : lecteurs bruts
+    `career_repo_csr_seasons.go`, `sync/schema.go`, `ops/snapshot_read.go`) ; `player_csr_snapshots`
+    (joueur, 16 798 / 7 : lecteur brut `cmd/seed-ranked-playlists`, historique CSR) ;
+    `weapon_kills` (H5 seulement, vue `v_weapon_kills` par génération, 550 926 / 270 585 : donnée
+    d'API, pas une passe de décodage, et lecteurs bruts `ops/snapshot_read.go`, `ops/seed_demo.go`,
+    `cmd/diag_*`) ;
+    `match_citations`, `personal_score_awards` (lecteurs bruts `sync/citations_backfill.go`,
+    `sync/invariants`, `sync/convergence.go`, `cmd/backfill_all`, …) ; `player_records_history`
+    (lecteur brut `ops/records_purge.go`) ; `pve_match_stats` (20 / 20, lecture brute
+    `pve_persister.go`) ; `match_objective_stats` (26 499 / 26 499), `world_player_season_stats`
+    (13 007 / 7 047), `lusr_hyperparams_v2` (24 / 24), `player_squad_offset` (0),
+    `lusr_component_history` (joueur, ≤ 8 060 / 7 137), `streak_history` (≤ 57 / 22) et les huit
+    `*_history` de `shared_social` (≤ 254 / 191) : versions d'une donnée d'API ou d'une donnée
+    utilisateur, pas des passes de décodage — la confirmation de l'utilisateur (« aucune ancienne
+    passe n'a d'usage ») ne les couvre pas, et leur rapport (≤ 1,9 hors tables à lecteur brut) ne
+    rend aucun gain de lecture mesurable.
 
 ## 3. Étape B — Lectures bornées aux matchs du joueur (Go)
 
