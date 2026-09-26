@@ -14,6 +14,7 @@ package duckdb
 //  2. la liste recopiee dans le EXISTS de l'univers ne change pas le drapeau `mesure` ;
 //  3. la lecture d'isolement, qui porte desormais la liste sur ses TROIS vues, garde ses
 //     gardes (contexte exige, double kill au meme instant ecarte, voisinage NULL servi nil).
+// Invariant I2 de l'ADR 0036 (docs/adr/0036-page-reads-are-scoped.md).
 
 import (
 	"context"

@@ -351,7 +351,10 @@ git commit -m "refactor(phase2): ..."
   partiels et corrections nommés dans l'ADR) ·
   `0035` **annuaire des joueurs** (xuid = clé d'identité unique ; port `PlayerDirectory` ;
   aucun sync ni suivi sans profil suivi ; `Onboard` seul chemin de création ; verrou décidé
-  en un point, défauts sûrs en mode appliqué ; purge sans toucher la base partagée).
+  en un point, défauts sûrs en mode appliqué ; purge sans toucher la base partagée) ·
+  `0036` **lectures par périmètre** (ni `v_gamertag_lookup` ni fenêtre `_latest` non bornée dans
+  une lecture de page ; un chargement par requête ; cache invalidé au sync ; sync stationnaire sans
+  écrivain ; sections de durée ; bornes DuckDB lues à l'ouverture — 7 invariants à garde-rail nommé).
 
 READMEs catalogues : `apps/go-api/internal/analysis/{temporal,breakdown,narrative}/README.md`,
 `apps/web/src/components/charts/README.md` (wrappers ECharts).

@@ -94,16 +94,82 @@ Périmètre : `docs/adr/0036-page-reads-are-scoped.md` (créé), `CLAUDE.md`, le
 garde-rails cités en D1.2 (commentaire d'en-tête seulement).
 
 Items :
-- [ ] P1.1 ADR écrit (D1.1 à D1.3), chaque chemin et nom de test cité vérifié existant
-- [ ] P1.2 `CLAUDE.md` (D1.4)
-- [ ] P1.3 en-têtes des garde-rails (D1.4)
+- [x] P1.1 ADR écrit (D1.1 à D1.3), chaque chemin et nom de test cité vérifié existant —
+      `docs/adr/0036-page-reads-are-scoped.md` (328 L, EN seul) : Status / Branch / Relates to
+      (0026, 0016, 0013, 0024, 0035) / Context (protocole, tableau avant-après §6 de l'état des
+      lieux, chronos SQL, quatre formes de coût) / Decision (I1 à I7, chacun son garde-rail) /
+      Consequences / Exceptions (état au 2026-09-26) / Guardrails (ce que chaque test bloque
+      réellement et ce qu'il ne voit pas) / Alternatives rejetées par la mesure ; 47 chemins
+      cités + 5 liens d'ADR, tous existants (hors routes et branches), 20 noms de test trouvés
+      par `grep "func <Nom>("`, 40 autres identifiants trouvés ; aucun mot français hors `code`
+- [x] P1.2 `CLAUDE.md` (D1.4) — entrée `0036` **lectures par périmètre** en fin de liste des
+      ADR, trois lignes, même registre
+- [x] P1.3 en-têtes des garde-rails (D1.4) — une ligne « Invariant In de l'ADR 0036
+      (docs/adr/0036-page-reads-are-scoped.md). » à la fin du commentaire d'en-tête de 12
+      fichiers (I1 : `annuaire_ratchet_test.go` ; I2 : `tactical_repo_fenetres_test.go`,
+      `weapon_range_repo_fenetres_test.go` ; I3 : `archlint/player_read_cache_invalidation_test.go`,
+      `player_read_cache_test.go` ; I4 : `teammates_service_loads_test.go`,
+      `career_service_friends_test.go` ; I5 : `skill_v2_watermark_test.go`,
+      `lusr_watermark_guardrail_test.go` ; I6 : `middleware/slog_logger_test.go`,
+      `career_repo_annuaire_test.go` ; I7 : `db_resource_limits_env_test.go`) ; +1 ligne de
+      commentaire par fichier, aucun code
 
 Gate P1 : pour chaque chemin cité dans l'ADR, `test -e` vrai ; pour chaque nom de test cité,
 `grep -rn "func <Nom>(" apps/go-api` trouve une ligne ; `gofmt -l` vide sur les fichiers Go
 touchés ; `go vet` des paquets touchés ; `git diff --stat` = fichiers du périmètre seulement ;
 aucun mot français dans l'ADR (relecture).
 
-Journal P1 : (vide)
+Journal P1 (2026-09-26, exécuteur Opus, worktree `LevelUp-wt-perf-perimetre`, base `28b972542`) :
+
+- Garde-rails relus sur pièces (fichier ouvert, test lu), ce qu'ils bloquent RÉELLEMENT :
+  I1 `TestLecturesDeLaVueDesNoms_Ratchet` compte l'identifiant nu `v_gamertag_lookup` dans les
+  littéraux de chaîne de tout `internal/` hors tests, fichier par fichier (table qui ne fait que
+  descendre) — il ne voit pas une nouvelle lecture de page qui APPELLE un lecteur resté dans la
+  table (ex. `ResolveGamertags`) ; I2 les deux tests EXPLAIN ANALYZE ne couvrent que sept lectures
+  (tactique x4, portée x3) ; I3 le ratchet archlint ne vérifie que trois points d'appel nommés
+  (`runPostSyncPipeline`, `RecomputeIsWithFriends`, `SetExclusion`), le test P0 de L9-go est
+  `TestPlayerReadCache_DegradedLoadNotStored` (+ ses deux voisins du même fichier) ; I7 relu tel
+  que décrit (3 / 300MB posés après l'init).
+- Écarts au plan, et pourquoi : (1) I5 — `lusr_watermark_guardrail_test.go` (cité par D1.2)
+  interdit une COPIE du prédicat « déjà traité » et fige la frontière ≤, il ne fige PAS le zéro
+  écrivain ; le garde-rail réel du zéro écrivain est `skill_v2_watermark_test.go`
+  (`TestLUSRV2Shadow_Stationary_NoWriterAndOneInfoLine`, `..._NoCandidate_NoWriterAndOneInfoLine`,
+  tag `cgo`) : les deux sont cités et portent l'en-tête I5 ; (2) I4 — tests trouvés : L2
+  `teammates_service_loads_test.go` (`TestGetPage_LitLesEvenementsDImpactUneSeuleFois`,
+  `TestGetPage_UnLoadForParMembre`, `TestGetPage_DeuxRequetesDeuxLectures`) et L9-go
+  `career_service_friends_test.go` (`TestCareerService_ResolveFriendXUIDs_RegistreDAbordPuisUneLecture`) ;
+  ils figent l'Escouade et les amis de la Carrière seulement (écrit dans l'ADR) ; (3) I6 — D1.2 ne
+  nomme aucun test : cités `slog_logger_test.go` (`TestSlogLogger_TimingsLoggedForSlowRequest`,
+  `TestSlogLogger_SlowSuccessLoggedAtInfo`) et `career_repo_annuaire_test.go`
+  (`TestCareerRepo_Annuaire_SectionsDeDuree`, tag `integration`) ; l'OBLIGATION de déclarer ses
+  sections n'est gardée par aucun test : écrit « not yet guarded » dans l'ADR (découverte (1)) ;
+  (4) Exceptions : au-delà de la liste de D1.3, et pour tenir son « chaque lecture encore hors
+  invariant », ajoutés sans chiffre inventé : `MortsParCarte` (découverte (5) de L5a, revérifiée
+  dans `tactical_repo_morts_par_carte.go` : liste posée sur `mr` seulement ; non mesuré, non
+  affecté), la part fenêtre du kill-feed de Q23b (~0,9 s, que le lot A laisse en place d'après
+  DA.6 ; non affectée), les écrivains hors points d'invalidation (sync Halo 5, post-import
+  OpenSpartan, processus CLI : découvertes (3) (4) et lecture (d) de L5b ; TTL 60 s seulement) ;
+  (5) `TestCareerRepo_Annuaire_EcartNomme_NomHorsHistorique` est cité sous I1 comme modèle d'écart
+  nommé, pas comme garde-rail (son fichier porte l'en-tête I6) ; le helper
+  `exigerFenetresBornees` est cité par son nom, son fichier (`fenetres_perimetre_helpers_test.go`,
+  outil, pas garde-rail) ne porte pas d'en-tête ; `sync/no_art_patterns_test.go` cité dans
+  Consequences (invariants anti-ART intacts), sans en-tête ; (6) entrée `CLAUDE.md` en trois
+  lignes (maximum de la consigne).
+- Chiffres : tous repris de l'état des lieux (§1.3, §1.4, §2, §6), du handoff (§2, §4, §6) ou des
+  journaux L2, L5a, L5b, L6, L7, L9-go et C.4 du plan clos ; format anglais (point décimal,
+  séparateur de milliers « , ») sans arrondi ; « 10,7 s et 10,1 s » de la Carrière datés de la
+  mesure intermédiaire (non captés le matin).
+- Gate (depuis `apps/go-api`, `CGO_ENABLED=1`, GOCACHE privé, une commande `go` à la fois) :
+  `gofmt -l` sur les 12 fichiers Go touchés : vide ; `go vet ./internal/platform/duckdb/
+  ./internal/archlint/ ./internal/service/ ./internal/service/teammates/ ./internal/sync/skill/
+  ./internal/api/middleware/` : 0 ; `go vet -tags=integration ./internal/platform/duckdb/` : 0
+  (fichier `career_repo_annuaire_test.go` sous tag) ; chemins cités : tous présents (`test -e`,
+  préfixe `apps/go-api/internal/` hors `docs/` et `.ai/`) ; 20 noms de test : chacun trouvé par
+  `grep -rn "func <Nom>(" apps/go-api` ; relecture : aucun mot français hors `code` (grep des
+  accents et d'une liste de mots outils sur le texte hors backticks : 0) ; `git diff --stat` = 14
+  fichiers du périmètre (ADR, `CLAUDE.md`, 12 en-têtes) + ce plan. En plus, non exigé :
+  `go test -count=1` des sept garde-rails du paquet duckdb cités (ratchet I1, fenêtres I2, cache
+  I3 x3, bornes I7) : PASS.
 
 ## 3. P2 — Lot A : vue match et Relations sans la vue des noms (Go)
 
@@ -240,7 +306,18 @@ Journal P3 : (vide)
 
 ## 6. Découvertes (à consigner, pas à traiter)
 
-(vide)
+- (P1, 2026-09-26) (1) I6 n'est pas gardé : aucun test n'échoue quand une nouvelle lecture de page
+  ne déclare aucune section de durée (le middleware et quelques lectures seulement sont figés) —
+  règle de revue tant qu'un ratchet n'existe pas. (2) I4 n'est figé que pour l'Escouade (Q32,
+  `LoadFor`) et les amis de la Carrière ; rien de générique ne voit une lecture répétée dans une
+  autre page. (3) Le ratchet de la vue (I1) compte des littéraux : une nouvelle lecture de page qui
+  appelle un lecteur encore dans la table (`ResolveGamertags`, `loadMatchLobbies`,
+  `GetStatLeaderboard`, `ResolveXUIDByGamertag`) passe sans le faire rougir. (4) Les tests de
+  fenêtres (I2) ne couvrent que sept lectures ; `TacticalRepo.MortsParCarte` pose toujours sa liste
+  sur `mr` seulement (découverte (5) de L5a, revérifiée ce jour), coût non mesuré. (5) Lien cassé
+  dans l'ADR 0033 : `[ADR 0008](0008-title-path-isolation.md)` alors que le fichier est
+  `0008-db-schema-multi-title-and-xuid-global.md`. (6) Ce plan, §1 : « Toute autre modification =
+  découverte au §5 » alors que les découvertes sont au §6 (§5 = clôture).
 
 ## 7. Journal (superviseur)
 

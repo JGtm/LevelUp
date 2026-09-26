@@ -14,6 +14,7 @@ package duckdb
 //     (buildWeaponRangeQuery, toujours servie à LoadMatchRangeKills), sur un corpus qui
 //     exerce toutes les gardes (double frag, unanimité, publiable, bot, suicide, hors scope,
 //     gamertag à deux xuid, gamertag inconnu, tous les joueurs).
+// Invariant I2 de l'ADR 0036 (docs/adr/0036-page-reads-are-scoped.md).
 
 import (
 	"context"

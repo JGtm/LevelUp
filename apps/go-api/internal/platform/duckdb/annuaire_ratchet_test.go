@@ -18,6 +18,7 @@ package duckdb
 //
 // Seuls les littéraux de chaîne comptent (analyse syntaxique) : un commentaire Go qui cite la
 // vue n'est pas une occurrence ; un commentaire SQL DANS un littéral, si.
+// Invariant I1 de l'ADR 0036 (docs/adr/0036-page-reads-are-scoped.md).
 
 import (
 	"go/ast"

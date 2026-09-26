@@ -5,6 +5,7 @@
 // (ScanLUSRGaps). CLAUDE.md n°6 : à la 3e copie, un helper ET un garde-rail — une
 // copie qui passerait de « ≤ » à « < » rejouerait (ou sauterait) le match posé pile
 // sur le filigrane, et le pré-filtre divergerait du scoreur.
+// Invariant I5 de l'ADR 0036 (docs/adr/0036-page-reads-are-scoped.md).
 package skill
 
 import (

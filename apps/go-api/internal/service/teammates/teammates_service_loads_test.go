@@ -3,6 +3,7 @@ package teammates
 // teammates_service_loads_test.go — lot perf L2 : les lectures partagées d'une requête
 // (teammates_service_loads.go). Chaque test fait tourner GetPage sur une page COMPLÈTE (les
 // blocs consommateurs rendent tous une section) et compte les lectures faites.
+// Invariant I4 de l'ADR 0036 (docs/adr/0036-page-reads-are-scoped.md).
 
 import (
 	"context"

@@ -6,6 +6,7 @@
 // noms viennent de l'annuaire de la lecture (squad_repo_annuaire.go), sur les matchs de l'historique
 // du joueur. La référence est l'ANCIENNE expression des lecteurs sur la VRAIE vue canonique
 // (nomSelonLaVue, squad_repo_annuaire_test.go), plus le nom de chaque niveau écrit en clair.
+// Invariant I6 de l'ADR 0036 (docs/adr/0036-page-reads-are-scoped.md).
 package duckdb
 
 import (

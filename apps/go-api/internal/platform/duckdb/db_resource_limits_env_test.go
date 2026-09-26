@@ -4,6 +4,7 @@
 // .env.local, elles étaient ignorées en silence. Le test pose les variables APRÈS
 // l'init (t.Setenv) et rougit si l'on revient à des variables de paquet. Sans tag de
 // build : il tourne dans la suite par défaut, comme pool_stats_test.go.
+// Invariant I7 de l'ADR 0036 (docs/adr/0036-page-reads-are-scoped.md).
 package duckdb
 
 import (
