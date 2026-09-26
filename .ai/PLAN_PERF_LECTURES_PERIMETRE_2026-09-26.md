@@ -243,19 +243,42 @@ tests_pre_migration.jsonl` et `scripts/check_test_baseline.sh` seulement si un t
 ou supprimé.
 
 Items :
-- [ ] A.1 mode « portée base » de l'annuaire (DA.3) + tests unitaires et d'intégration contre la
-      VRAIE vue (un niveau de la cascade par xuid, dont un xuid nommé hors de la lecture)
-- [ ] A.2 vue match : Q12, Q21, Q23, Q23b sans la vue, nommées par l'annuaire du match ; parité
+- [x] A.1 mode « portée base » de l'annuaire (DA.3) + tests unitaires et d'intégration contre la
+      VRAIE vue (un niveau de la cascade par xuid, dont un xuid nommé hors de la lecture) —
+      `lectureANommer.porteeBase` + `nommerLignesPorteeBase` (`squad_repo_annuaire.go`, même
+      `nommerLignesSelon` que `nommerLignes`, Escouade / Carrière / Comparer inchangés) ; gabarits
+      `AnnuaireNomsBaseSQL` / `AnnuaireKillFeedBaseSQL` et `AnnuaireGamertags.Nomme`
+      (`analysis/identity_annuaire.go`, un gabarit par niveau, DDL de la vue intact) ; tests
+      `TestAnnuaireGamertags_Nomme`, `TestAnnuaireSQL_PorteeBase` et `match_view_repo_annuaire_test.go`
+      (x_ailleurs : participant nommé sur un autre match ; x_kfailleurs : nommé par le seul kill-feed
+      d'un autre match)
+- [x] A.2 vue match : Q12, Q21, Q23, Q23b sans la vue, nommées par l'annuaire du match ; parité
       (DA.4) sur TOUS les matchs de la copie pour Q12 / Q21, sur ≥ 200 matchs pour Q23 / Q23b ;
-      chrono avant / après (DA.6)
-- [ ] A.3 `ResolveGamertags` avec le match (DA.5) : port, service, doubles, parité sur les
-      événements de ≥ 200 matchs de la copie, chrono
-- [ ] A.4 Relations : Q28, Q28 scopé, heatmap Q29 sans la vue ; parité sur les cinq joueurs suivis
-      (tous les couples joueur / croisé, pas seulement les lignes servies) ; chrono
-- [ ] A.5 sections de durée (DA.7) + ratchet et en-têtes (DA.8)
-- [ ] A.6 mutations jouées (au moins : jointure réintroduite -> ratchet rouge ; repli portée base
+      chrono avant / après (DA.6) — Q12 et Q23 nommées en Go (`match_view_repo_scoreboard.go`,
+      `match_view_repo_noms.go`, extrait de `match_view_repo_extras.go` gelé), Q21 aussi (events à
+      xuid seulement), Q23b sans colonne de nom (sa jointure servait une colonne jamais rendue) ;
+      Q12 en ordre total (`p.xuid`) ; parité et chrono au journal (budgets JGtm tenus pour
+      l'annuaire ; Q23 dépasse 100 ms sur 1 à 8 mesures sur 42 sous charge, par sa propre requête ;
+      coût du repli quand il part : journal)
+- [x] A.3 `ResolveGamertags` avec le match (DA.5) : port, service, doubles, parité sur les
+      événements de ≥ 200 matchs de la copie, chrono — `ResolveGamertags(ctx, matchID, xuids)`,
+      `enrichGamertags` passe `tl.MatchID`, double `fakeGTResolver` + `TestGetMatchEvents_ResolveurRecoitLeMatch` ;
+      la carte ne porte que les xuids que `Nomme` accepte ; libellé du front vérifié
+      (`maskedPlayerLabel` = « Joueur » + 4 derniers caractères = `analysis.MaskedXuidLabel`)
+- [x] A.4 Relations : Q28, Q28 scopé, heatmap Q29 sans la vue ; parité sur les cinq joueurs suivis
+      (tous les couples joueur / croisé, pas seulement les lignes servies) ; chrono — nommées sur le
+      périmètre scopé ou l'historique (`matchsDuPerimetre`, `relations_repo.go`) ; la heatmap vit dans
+      `relations_moments_repo.go` (lecteur réel de Q29, hors de la liste : écart consigné)
+- [x] A.5 sections de durée (DA.7) + ratchet et en-têtes (DA.8) — sections `match_scoreboard`,
+      `match_events`, `match_encounters` (+ `_annuaire` chacune), `match_encounter_stats`,
+      `resolve_gamertags_annuaire`, `relations`, `relations_annuaire`, `relations_heatmap`,
+      `relations_heatmap_annuaire` (`TestMatchView_Annuaire_SectionsDeDuree`) ; ratchet : les cinq
+      fichiers sortent de la table (3, 2, 1, 2, 1 -> 0) ; en-têtes de `squad_repo_annuaire.go` et des
+      fichiers de requêtes mis à jour
+- [x] A.6 mutations jouées (au moins : jointure réintroduite -> ratchet rouge ; repli portée base
       retiré -> test du xuid nommé hors lecture rouge ; match non passé à `ResolveGamertags` ->
-      rouge ; une section de durée retirée -> rouge), chacune rouge puis restaurée
+      rouge ; une section de durée retirée -> rouge), chacune rouge puis restaurée — cinq jouées,
+      cinq rouges, restaurées au `cmp` (journal)
 
 Gate P2 (depuis `apps/go-api`, une commande à la fois) : `gofmt -l ./internal ./cmd` vide ;
 `go build ./...` ; `go vet ./...` ; `go test ./internal/service/... ./internal/platform/duckdb/...
@@ -265,7 +288,107 @@ Gate P2 (depuis `apps/go-api`, une commande à la fois) : `gofmt -l ./internal .
 `golangci-lint run --new-from-rev=ea5682373 ./...` 0 issue (avec et sans `--build-tags=integration`) ;
 `cmd/perimetre_probe_tmp/` absent ; `git status` sans artefact sous `data/`.
 
-Journal P2 : (vide)
+Journal P2 (2026-09-26, branche `feat/perf-perimetre` depuis 948523a36 ; commit du code f576df10e
+A.1 à A.5, puis ce journal ; reprise d'un exécuteur interrompu : aucun commit de sa part, sa sonde
+et ses sorties « avant » Q12 / Q21 réutilisées après vérification, cf. écart (8)) :
+
+- Mesure : COPIE de `shared_matches_v2.duckdb` (1,3 Go, base du 2026-09-23 19:56, pas de `.wal`)
+  dans le scratchpad, sonde temporaire `cmd/perimetre_probe_tmp/` (jamais commitée, supprimée)
+  appelant les VRAIS repos, `access_mode=read_only`, 2 threads, 512 Mo ; binaire « avant » construit
+  sur l'arbre exporté de 948523a36 (`diff -r` de `apps/go-api` contre le worktree : identique),
+  « après » sur le worktree, « sans repli » = le worktree avec le repli toute la base neutralisé le
+  temps du build (restauré au `cmp`). MACHINE PARTAGÉE ET CHARGÉE (une autre session tournait des
+  tests de fuzz) : `SELECT count(*) FROM v_gamertag_lookup` a coûté 3,0 à 8,6 s selon les passes
+  (1,7-1,8 s au lot L7) ; les chiffres absolus sont bruités, les ordres de grandeur non.
+- Chrono vue match, avant (JGtm, dernier match + 10 au hasard, 1 tour) : Q12 médiane 3,48 s
+  (2,96-7,40), Q21 3,41 s, Q23 3,56 s, Q23b 5,65 s (dont fenêtre du kill-feed seule 1,68 s), RG
+  3,31 s. Nuzzles (6 matchs) : Q12 4,22 s, Q21 4,25 s, Q23 4,67 s, Q23b 6,74 s (fenêtre 2,32 s).
+- Chrono vue match, après (JGtm, dernier match + 20 au hasard, trois passes de deux tours, 42
+  mesures par lecture et par passe) : Q12 médiane 16-33 ms, max 36-71 ms ; Q21 médiane 7-21 ms, max
+  27-53 ms ; RG médiane 5-13 ms, max 12-41 ms ; Q23 médiane 46-89 ms, max 65-156 ms ; l'annuaire du
+  match ≤ 9 ms sur TOUTES les mesures (aucun repli toute la base dans l'échantillon). BUDGET DA.6 :
+  tenu pour Q12, Q21, RG ; Q23 dépasse 100 ms sur 1, 1 puis 8 mesures sur 42 (machine chargée), par
+  sa PROPRE requête (historique commun, 40-99 ms), pas par l'annuaire. Q23b (plus aucun nom) : médiane
+  1,73-4,11 s contre 1,65-4,56 s pour sa fenêtre du kill-feed seule, mesurée juste après ; écart moyen
+  par match +182 ms dans la passe la plus chargée, dans le bruit de deux mesures de plusieurs
+  secondes — non concluant au-delà ; le reste de Q23b est la fenêtre (hors lot).
+- LE REPLI « TOUTE LA BASE » (DA.3), quand il part : la jambe kill-feed de la vue sans borne de match
+  évalue la fenêtre `_latest` du journal canonique entière (3,95 M lignes brutes) : 3 à 7 s par
+  lecture (5,3 s au CLI, 12,2 s une fois sous charge, et Q23 a alors dépassé son délai de 20 s :
+  « context deadline exceeded », section rencontres perdue pour ce match). Il part pour tout match dont
+  un participant n'a ni alias, ni nom de participant dans TOUTE la base, ni nom au kill-feed du match :
+  23 des 1 160 matchs de JGtm, 15 / 587 Chocoboflor, 14 / 1 275 Madina97294, 1 / 39 XxDaemonGamerxX,
+  4 688 / 7 190 Nuzzles (31 426 couples, 25 064 xuids sur la base ; seuls 11 de ces couples sont
+  nommés ailleurs). Nuzzles, après, 6 matchs : 4 déclenchent le repli, Q12 2,9-7,2 s et Q23 3,4-5,8 s
+  (l'annuaire), Q21 et RG ≤ 40 ms. Sans le repli : Nuzzles Q12 médiane 31-44 ms (max 51-107), Q23
+  38-46 ms ; JGtm Q12 22-34 ms, Q21 11-23 ms, Q23 72-86 ms, RG 7-10 ms.
+- Chrono Relations, après avec repli (deux tours) : JGtm Q28 1,97-2,32 s dont Q28 seule 1,72-2,08 s
+  et annuaire 241-244 ms (budget +300 ms tenu), Q28 scopé 30 matchs 132-134 ms (annuaire 4-6 ms), Q29
+  78-80 ms (annuaire 30-31 ms, budget 300 ms tenu), Q29 scopé 21-22 ms. Autres joueurs : annuaire Q28
+  Madina97294 282-311 ms, Chocoboflor 246-347 ms, XxDaemonGamerxX 8-11 ms (le premier passage
+  kill-feed sur la liste liée des matchs de l'historique) ; aucun repli. Nuzzles : annuaire Q28
+  3,8-4,9 s, Q29 4,7-5,9 s (repli : 2 973 récurrents sans aucun nom), scopés 7-10 ms. Sans le repli :
+  Nuzzles annuaire Q28 684-920 ms, Q29 223-231 ms. Avant (1 tour, passe la plus chargée) : JGtm Q28
+  14,1 s, scopé 14,9 s, Q29 20,4 s ; Nuzzles 7,4 / 5,2 / 5,2 / 5,5 s (passe de l'exécuteur précédent,
+  moins chargée : JGtm Q28 8,2 s, Q29 5,0 s).
+- Parité (DA.4), au code final, sorties comparées triées (DA.9) puis dans l'ordre : Q12 93 000 lignes
+  (tous les matchs de la copie ayant une ligne servie, 9 088 / 9 170), Q21 1 311 594 events (tous les
+  matchs), Q23 et Q23b 2 625 lignes chacune (279 couples match / joueur, 233 matchs distincts, 60
+  matchs au hasard par joueur suivi), RG 1 853 xuids (les mêmes 279 appels ; 165 matchs portent des
+  events), Relations 12 289 lignes (cinq joueurs, période entière et 30 matchs : TOUS les récurrents,
+  Q28 n'a pas de LIMIT) et heatmap 1 265 lignes : ZÉRO écart de nom ou de compteur avec le repli.
+  Écarts (i), (ii), (iii) : 0, 0, 0 sur la copie (aucun xuid d'event inconnu de toutes les sources,
+  aucun bot hors sources, aucun nom de kill-feed variable touché) ; épinglés par les tests. Aucun nom
+  perdu. Sans le repli : exactement les écarts de L7 — 11 couples Q12 (10 matchs, 8 xuids, ex.
+  « Feelgood Joker » -> « Joueur 6576 » sur trois matchs) et 2 lignes Relations de Nuzzles, des ROUGES
+  au sens de DA.4 ; Q21, Q23, RG, heatmap sans écart.
+- Ordre : Q12 avait un ordre des ex aequo (équipe, rang) stable d'une exécution à l'autre ; sans la
+  jointure il variait (689 matchs entre deux passes) -> départage `p.xuid` (conséquence de l'ADR 0036 :
+  un ordre dont une réponse dépend est total) ; l'ordre des ex aequo diffère donc de l'avant sur 5 805
+  matchs (contenu identique). Q21 : l'ordre des events de même milliseconde diffère de l'avant sur
+  3 883 matchs ; il est désormais stable d'une passe à l'autre et suit l'ordre d'insertion (`id`) à 278
+  lignes près, quand l'avant s'en écartait sur 260 036 lignes ; laissé non total (découverte (3)). Q23
+  (ex aequo de `count_together`, découverte (5) de L7) : ordre différent, contenu identique.
+- DA.5 vérifié sur pièces : `maskedPlayerLabel` (`apps/web/src/lib/players/displayName.ts`) rend
+  « Joueur » + les 4 derniers caractères, comme `analysis.MaskedXuidLabel` : un xuid absent de la carte
+  s'affiche comme la vue le rendait. Aucun lecteur web de `GET /matches/{match_id}/events` trouvé
+  (découverte (6)).
+- Mutations jouées (toutes rouges puis restaurées, `cmp` à l'appui) : jointure réintroduite dans Q12
+  -> `TestLecturesDeLaVueDesNoms_Ratchet` rouge ; repli toute la base neutralisé -> cinq tests rouges
+  (Q12, Q21, Q23, ResolveGamertags, Relations : x_kfailleurs) ; `ResolveGamertags(ctx, "", …)` dans le
+  service -> `TestGetMatchEvents_ResolveurRecoitLeMatch` rouge ; section `relations_annuaire` retirée
+  -> `TestMatchView_Annuaire_SectionsDeDuree` rouge ; Q12 nommée en portée de la lecture au lieu de la
+  portée base -> `TestMatchView_Annuaire_Q12MemeNomsQueLaVue` rouge (x_ailleurs, x_kfailleurs).
+- Écarts à la lettre, et pourquoi : (1) `match_view_repo_noms.go` (nouveau, non test) : Q21 et Q23
+  extraites de `match_view_repo_extras.go`, gelé au-delà de 500 L (578 -> 490) ; (2)
+  `relations_moments_repo.go`, hors de la liste : c'est le lecteur réel de Q29 ; (3) fixtures de tests
+  existants adaptées au schéma réel (`match_participants.gamertag`, tables de l'annuaire) :
+  `match_view_repo_meta_test.go` (attente de l'orphelin : NULL -> « Joueur 9999 », écart (i) ; nom du
+  test gardé pour ne pas toucher la baseline, commentaire « nom historique »), `relations_repo_test.go`,
+  `queries_relations_moments_timezone_test.go`, `gamertag_resolve_test.go` ; aucun test renommé ni
+  supprimé : baseline JSONL inchangée ; (4) Q12 en ordre total (cf. Ordre) ; (5) un échec de Q21 est
+  désormais journalisé (WARN) avant la dégradation en liste vide, qui était muette ; (6) un seul commit
+  de code pour A.1 à A.5 : le ratchet et le fichier de tests d'intégration couvrent les cinq items à la
+  fois, un commit intermédiaire aurait été rouge ; (7) le filtre du gate `NoArt|Legacy|Sentinel` ne voit
+  pas `TestNoARTPatterns…` (casse) : rejoué aussi avec `NoART|NoRaw|Allowlist|Bulk|Interpolated|Legacy`,
+  13 tests verts ; (8) parité « avant » Q12 / Q21 : sorties de l'exécuteur interrompu (même sonde, arbre
+  vérifié), rejouées une fois (contenu et ordre identiques) ; Q23 / Q23b / RG / Relations « avant »
+  refaites à 60 matchs par joueur.
+- Dette : aucun fichier gelé ne grossit (`queries_match.go` 622 = 622, `queries_career_encounters.go`
+  568 -> 565, `match_view_repo_extras.go` 578 -> 490) ; les autres sous 500 L ; aucune fonction
+  nouvelle au-delà de 80 L (`scanScoreboardRow` 73 -> 72) ; golangci 0 issue.
+- Gate (code f576df10e) : `gofmt -l ./internal ./cmd` vide ; `go build ./...` 0 ; `go vet ./...` 0 ;
+  `go test ./internal/service/... ./internal/platform/duckdb/... ./internal/analysis/...
+  ./internal/api/... ./internal/archlint/... ./internal/port/...` 0 (34 paquets ok, aucun `FAIL`) ;
+  `go test -tags=integration -p 1 ./internal/platform/duckdb/...` 0 (5 paquets ok) ; garde-rails
+  `internal/sync` verts ; `golangci-lint run --new-from-rev=ea5682373 ./...` 0 issue, idem avec
+  `--build-tags=integration` ; `cmd/perimetre_probe_tmp/` absent ; l'artefact
+  `data/titles/halo_5/warehouse/metadata.duckdb` recréé par `./internal/api/...` retiré, `git status`
+  sans artefact sous `data/`.
+- DÉCISION À PRENDRE (superviseur) : DA.3 tient la parité (zéro nom perdu) et les budgets de
+  l'échantillon JGtm ; hors échantillon, le repli toute la base coûte autant ou plus que la vue qu'il
+  remplace, pour 2 % des matchs de JGtm et 65 % de ceux de Nuzzles (et ses Relations). Chiffres avec
+  et sans le repli ci-dessus ; piste mesurée à titre d'information : découverte (1) de P2.
 
 ## 4. P3 — Docs de release 7.5.0 : campagne perf, lot A, ADR 0036 (EN + FR)
 
@@ -318,6 +441,29 @@ Journal P3 : (vide)
   dans l'ADR 0033 : `[ADR 0008](0008-title-path-isolation.md)` alors que le fichier est
   `0008-db-schema-multi-title-and-xuid-global.md`. (6) Ce plan, §1 : « Toute autre modification =
   découverte au §5 » alors que les découvertes sont au §6 (§5 = clôture).
+- (P2, 2026-09-26) (1) Le repli « toute la base » de DA.3 évalue la fenêtre `_latest` du journal
+  canonique entière (3 à 7 s, 12 s sous charge) pour tout match ou périmètre qui contient un xuid que
+  rien ne nomme ailleurs (2 % des matchs de JGtm, 65 % de ceux de Nuzzles, ses Relations) ; il ne
+  trouve un nom que pour 11 couples sur 31 426. Piste mesurée à titre d'information, non traitée : les
+  matchs candidats lus sur la table brute `match_kill_events` (`DISTINCT match_id WHERE
+  feed_killer_xuid IN (…) OR victim_xuid IN (…)`, 0,31 s sur la copie, 2 threads) sont un sur-ensemble
+  des partitions `_latest` de ces xuids ; lier la fenêtre à cette liste donnerait le même nom — mais
+  c'est une lecture brute d'une table append-only (règle ART n° 2 : lecture par `_latest` seulement),
+  décision hors de ce lot. (2) I4 : la vue match charge l'annuaire du même match trois fois par
+  ouverture (Q12, Q21, Q23 ; plus ResolveGamertags sur l'endpoint des events) ; quand le repli part, il
+  est payé deux fois en parallèle (Q12, Q23). (3) Q21 n'a pas d'ordre total (`time_ms` seul) : l'ordre
+  des events de même milliseconde suit aujourd'hui l'insertion ; le départager par `he.id` demanderait
+  la colonne `id` dans les schémas de test qui créent `highlight_events` (21 fixtures). (4) Commentaires
+  hors périmètre devenus faux : `domain/match_view_raw.go` (`EventRaw.Gamertag` « résolu via
+  v_gamertag_lookup… nil si orphelin, le service affichera le XUID brut »), `domain/match_view.go:306`
+  (`ActorGamertag`), `platform/duckdb/explorer_repo.go:194` (« même approche que Q12MatchScoreboard »).
+  (5) Q23 (historique commun du joueur avec chaque participant, sans nom) coûte seule 40-99 ms sous
+  charge : le budget de 100 ms n'a pas de marge. (6) Aucun lecteur web de `GET
+  /matches/{match_id}/events` (seul le type `MatchEventTimeline` est exporté, `lib/api/types.ts`) :
+  ResolveGamertags sert un endpoint sans consommateur dans `apps/web`. (7) Gate P2 : le filtre
+  `NoArt|Legacy|Sentinel` ne sélectionne pas `TestNoARTPatternsOnProtectedTables` (casse ; `NoART`).
+  (8) Le test `TestGetMatchEvents_ResolvesGamertagViaView` garde un nom historique (la vue n'est plus
+  lue) pour ne pas toucher la baseline.
 
 ## 7. Journal (superviseur)
 
