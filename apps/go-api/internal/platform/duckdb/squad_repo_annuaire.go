@@ -57,16 +57,18 @@
 // trouve AILLEURS (11 couples (match, joueur) de la vue match, 2 lignes de Relations). En portee
 // base (nommerLignesPorteeBase), alias et participants se lisent sur toute la base (le MAX de la
 // vue, predicats sur des TABLES), le kill-feed d'abord sur les matchs de la lecture, puis sur toute
-// la base pour les seuls xuids encore sans nom (lireKillFeedBase).
+// la base pour les seuls xuids encore sans nom (lireKillFeedBase), en deux pas (DA.10) : localiser
+// les matchs candidats dans la table BRUTE (match_id seulement, lecture de localisation de l'ADR
+// 0036), puis y lire la jambe de la vue, fenetres `_latest` bornees — jamais la fenetre entiere.
 //
 // Mesure sur la copie de production du 2026-09-23 (2 threads, 512 Mo) : zero ecart de nom sur les
 // 93 000 lignes de Q12 et les 1 311 594 events de Q21 (tous les matchs), les 2 625 lignes de Q23 /
 // Q23b et les 1 853 xuids de ResolveGamertags (279 couples match / joueur), les 12 289 lignes de
 // Relations et les 1 265 de la heatmap (cinq joueurs suivis, periode entiere et 30 matchs). Sans le
 // dernier repli : exactement les 11 + 2 noms perdus. Cout : l'annuaire d'un match coute moins de
-// 10 ms ; le repli toute la base evalue la fenetre `_latest` du journal canonique entiere (3 a 7 s,
-// davantage sous charge) — il part pour 23 des 1 160 matchs de JGtm, 4 688 des 7 190 de Nuzzles et
-// les Relations de Nuzzles (journal P2 du plan).
+// 10 ms ; quand le repli part (23 des 1 160 matchs de JGtm, 4 688 des 7 190 de Nuzzles), 150 a
+// 360 ms (la localisation parcourt la table brute) au lieu de 3 a 7 s quand il relisait la fenetre
+// entiere (journal P2 du plan).
 package duckdb
 
 import (
@@ -74,6 +76,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log/slog"
+	"strings"
 	"time"
 
 	"levelup/go-api/internal/analysis"
@@ -340,21 +343,36 @@ func lireKillFeed(
 	return rows.Err()
 }
 
-// lireKillFeedBase lit le niveau 4 sur TOUTE la base pour les xuids que rien d'autre ne nomme
-// (portee base, DA.3) : la jambe de la vue sans restriction de match — la fenetre `_latest` du
-// journal canonique y est evaluee en entier (cout mesure au journal P2 du plan).
+// lireKillFeedBase lit le niveau 4 sur toute la base pour les xuids que rien d'autre ne nomme
+// (portee base, DA.3), en DEUX PAS (DA.10) : localiser les matchs candidats (localiserKillFeed,
+// table brute, match_id seulement), puis y lire la jambe de la vue (lireKillFeed, fenetres
+// `_latest` bornees par match_id). Meme nom que la vue sur toute la base : la localisation rend un
+// sur-ensemble des matchs ou `_latest` porte le xuid, et les valeurs viennent de `_latest`.
 func lireKillFeedBase(ctx context.Context, db *sql.DB, xuids []string, a *analysis.AnnuaireGamertags) error {
-	rows, err := db.QueryContext(ctx, analysis.AnnuaireKillFeedBaseSQL(Placeholders(len(xuids))), ToAnySlice(xuids)...)
+	matchs, err := localiserKillFeed(ctx, db, xuids)
+	if err != nil || len(matchs) == 0 {
+		return err
+	}
+	return lireKillFeed(ctx, db, xuids, matchs, a)
+}
+
+// localiserKillFeed : les matchs candidats des xuids (analysis.AnnuaireKillFeedLocaliserSQL).
+// LECTURE DE LOCALISATION de la table append-only `match_kill_events` (ADR 0036, « locating
+// read » ; site unique) : elle ne rend que des match_id, aucune valeur n'en est lue.
+func localiserKillFeed(ctx context.Context, db *sql.DB, xuids []string) ([]string, error) {
+	valeurs := strings.TrimSuffix(strings.Repeat("(?), ", len(xuids)), ", ")
+	rows, err := db.QueryContext(ctx, analysis.AnnuaireKillFeedLocaliserSQL(valeurs), ToAnySlice(xuids)...)
 	if err != nil {
-		return fmt.Errorf("annuaire (kill-feed, toute la base): %w", err)
+		return nil, fmt.Errorf("annuaire (kill-feed, localisation): %w", err)
 	}
 	defer rows.Close()
+	var out []string
 	for rows.Next() {
-		var xuid, gamertag string
-		if err := rows.Scan(&xuid, &gamertag); err != nil {
-			return fmt.Errorf("annuaire (kill-feed, toute la base) scan: %w", err)
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, fmt.Errorf("annuaire (kill-feed, localisation) scan: %w", err)
 		}
-		a.KillFeed[xuid] = gamertag
+		out = append(out, id)
 	}
-	return rows.Err()
+	return out, rows.Err()
 }

@@ -64,7 +64,10 @@ func TestNoRawAppendOnlyReads(t *testing.T) {
 	// graphe veut TOUS les checkpoints » rendait le graphe d'évolution non réparable par
 	// un replay append-only (résidu h5_arena du 2026-06-26 encore tracé après la
 	// réparation d'août). L'allowlist est décroissante : 5 → 4 entrées.
+	// 2026-09-26 (lot A, décision DA.10 du plan perf « lectures par périmètre ») : 4 → 5, une
+	// entrée pour le SEUL site de « locating read » de l'ADR 0036 (AnnuaireKillFeedLocaliserSQL).
 	allow := map[string]string{
+		"identity_annuaire.go":         "2026-09-26 (lot A, DA.10, ADR 0036 « locating read ») : AnnuaireKillFeedLocaliserSQL lit match_kill_events BRUTE pour localiser des match_id — lecture de localisation, sur-ensemble de matchs, aucune valeur lue ; valeurs par `_latest` (AnnuaireKillFeedSQL sur ces seuls matchs).",
 		"queries_home_citations.go":    "Q26g : filtre H5 placeholder CSR=0 appliqué AVANT le choix de ligne (la vue a déjà tranché CSR>LUSR) + tie-break written_at déterministe. (NB 2026-07-10 : l'ex-mention Q26f est obsolète — la classification effective_type vit en Go sur match_registry.is_ranked et lit déjà _latest, cf. leaderboard_repo/home_repo_skill_peak.)",
 		"queries_career_encounters.go": "Q24LUSRHistory (pipeline LUSR, échelle mu) : raw VOLONTAIRE — _latest (CSR>LUSR) injecterait des valeurs CSR (échelle ~1500) sur les matchs ranked à double ligne = rupture d'échelle. DÉCISION B7 (2026-07-10) : statu quo, ne pas migrer.",
 		"queries_squad.go":             "MAX(expected_win_prob) WHERE IS NOT NULL : stale-safe (colonne écrite seulement sur LUSR) ; _latest perdrait le winProb sur ranked",

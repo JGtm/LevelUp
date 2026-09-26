@@ -13,6 +13,7 @@ import (
 func TestGamertagRepo_ResolveGamertags(t *testing.T) {
 	pdb := newTestPlayerDB(t)
 	ctx := context.Background()
+	simulerJournalBrut(t, pdb) // xMissing déclenche le repli en portée base (DA.10)
 
 	execOnSharedDBs(t, pdb, ctx,
 		`INSERT INTO shared.xuid_aliases (xuid, gamertag) VALUES (?, ?)`, "x1", "Alpha")

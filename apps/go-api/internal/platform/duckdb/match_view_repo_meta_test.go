@@ -376,6 +376,9 @@ func TestGetMatchEvents_ResolvesGamertagViaView(t *testing.T) {
 		`CREATE VIEW xuid_aliases AS SELECT * FROM shared.xuid_aliases`,
 		`CREATE VIEW match_kill_events_latest AS SELECT * FROM shared.match_kill_events_latest`,
 		`CREATE VIEW killer_victim_pairs AS SELECT * FROM shared.killer_victim_pairs`,
+		// Table brute simulée (lot A, DA.10, 2026-09-26) : une seule version par ligne, donc la
+		// brute = la `_latest` ; la localisation du repli de l'annuaire en portée base la lit.
+		`CREATE VIEW match_kill_events AS SELECT * FROM shared.match_kill_events_latest`,
 	} {
 		if _, err := pdb.Player.Exec(ctx, q); err != nil {
 			t.Fatalf("seed shared: %v\nSQL: %s", err, q)

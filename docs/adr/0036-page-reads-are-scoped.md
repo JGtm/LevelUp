@@ -120,6 +120,28 @@ for one player, none on a served row; `TestCareerRepo_Annuaire_EcartNomme_NomHor
 
 **Guardrail**: `platform/duckdb/annuaire_ratchet_test.go` — `TestLecturesDeLaVueDesNoms_Ratchet`.
 
+**Directory scope "base" and the locating read (lot A, 2026-09-26).** The match view, the match
+events resolver and Relations read their directory in *base scope* (`nommerLignesPorteeBase`): aliases
+and participant gamertags over the whole database (the view's `MAX`, predicates pushed on tables),
+the kill-feed leg on the read's matches, then, for the xuids still unnamed, on the whole database.
+That last leg is done in two steps so that it never evaluates the whole `_latest` window of the
+canonical kill feed (3 to 7 s measured): (1) **locate** the candidate matches in the raw
+append-only table `match_kill_events` and in `killer_victim_pairs`, filtered by those xuids with a
+non-empty gamertag; (2) **read** the view's kill-feed leg, `_latest` windows bound by `match_id`, on
+those candidates only. Every version of a row that ever carried the xuid designates its match, so
+the candidates are a superset of the matches where `_latest` shows it, and every value comes from
+`_latest`: the names equal the view's by construction. This amends the read rule of
+[ADR 0026](0026-append-only-art-eradication.md) (append-only tables are read through their
+`<table>_latest` view) with one exception: **a raw read of an append-only table is admitted to
+locate `match_id`s, never to read a value.** Single site today:
+`platform/duckdb/squad_repo_annuaire.go`, `localiserKillFeed`, on the template
+`analysis.AnnuaireKillFeedLocaliserSQL` (it projects `match_id` only; `TestAnnuaireSQL_PorteeBase`
+pins that, and `TestAnnuairePorteeBase_RepliLitLaDerniereVersion` fails if step 2 reads the raw
+table). The raw-read guard `TestNoRawAppendOnlyReads` (`platform/duckdb/no_raw_rating_reads_test.go`,
+scanning `platform/duckdb`, `api`, `service` and `analysis`) allowlists this one file with a dated
+justification (`identity_annuaire.go`, 2026-09-26); the allowlist is keyed by file name, so a
+second raw read added to that file would pass it: review holds that line.
+
 ### I2 — A `_latest` read on a request path binds its scope under the window
 
 DuckDB pushes under a `QUALIFY ... OVER (PARTITION BY match_id ...)` window only a constant

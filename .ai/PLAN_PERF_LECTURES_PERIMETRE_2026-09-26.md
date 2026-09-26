@@ -230,6 +230,17 @@ Décisions tranchées :
   `squad_repo_annuaire.go` (lecteurs, mesures du lot A) et des fichiers de requêtes mis à jour.
 - DA.9 L'ordre des ex aequo n'entre pas dans la parité (heatmap Q29 non déterministe : découverte
   (7) de L7, hors lot) : comparer les ensembles triés, noms et compteurs.
+- DA.10 (superviseur, 2026-09-26, après le premier journal P2) : parité exacte gardée, mais la jambe
+  kill-feed « toute la base » ne relit plus la fenêtre `_latest` entière. Deux pas : (1) LOCALISER
+  les matchs candidats dans la table BRUTE `match_kill_events` (et `killer_victim_pairs`), filtrés par
+  les xuids restants (tueur OU victime) avec un gamertag non vide — lecture qui ne rend que des
+  `match_id`, jamais une valeur (toute version d'une ligne qui a porté le xuid désigne son match :
+  sur-ensemble des matchs où `_latest` le montre) ; (2) LIRE la jambe kill-feed de portée « matchs
+  de la lecture » existante sur ces seuls candidats. Un seul gabarit, aucune copie de la cascade.
+  Garde-rail de lecture brute : une entrée d'allowlist datée pour ce seul site (ou le dire s'il ne
+  voit pas le fichier) ; test d'intégration « version ancienne ≠ `_latest` », rouge si le pas 2 lit
+  la brute ; ADR 0036 : paragraphe « locating read » avec renvoi à l'ADR 0026. Si le pas 1 dépasse
+  500 ms sur Relations Nuzzles : essayer une liste liée en un seul paramètre, sinon arrêt propre.
 
 Périmètre : `internal/platform/duckdb/{queries_match.go, queries_match_detail.go,
 match_view_repo_scoreboard.go, match_view_repo_extras.go, gamertag_repo.go,
@@ -389,6 +400,81 @@ et ses sorties « avant » Q12 / Q21 réutilisées après vérification, cf. éc
   l'échantillon JGtm ; hors échantillon, le repli toute la base coûte autant ou plus que la vue qu'il
   remplace, pour 2 % des matchs de JGtm et 65 % de ceux de Nuzzles (et ses Relations). Chiffres avec
   et sans le repli ci-dessus ; piste mesurée à titre d'information : découverte (1) de P2.
+  -> TRANCHÉE : DA.10, ci-dessous.
+
+- [x] A.10 (DA.10, 2026-09-26) repli toute la base en deux pas — `lireKillFeedBase` =
+  `localiserKillFeed` (gabarit `analysis.AnnuaireKillFeedLocaliserSQL` : `WITH cherches(xuid) AS
+  (VALUES …)`, quatre `SELECT match_id` en UNION sur `match_kill_events` et `killer_victim_pairs`,
+  xuids liés UNE fois) puis `lireKillFeed` (la jambe de la vue, inchangée, `_latest` bornée par
+  `match_id`) ; `AnnuaireKillFeedBaseSQL` supprimé (plus d'appelant) ; test
+  `TestAnnuairePorteeBase_RepliLitLaDerniereVersion` ; ADR 0036 : paragraphe « Directory scope base
+  and the locating read » sous I1.
+
+Journal A.10 (2026-09-26, code sur f576df10e ; même copie, même protocole, sonde temporaire
+supprimée) :
+
+- Garde-rail de lecture brute : `TestNoRawAppendOnlyReads` (`internal/platform/duckdb/
+  no_raw_rating_reads_test.go`, défaut ; il scanne `platform/duckdb`, `api`, `service`, `analysis`
+  et connaît `match_kill_events` depuis le 2026-09-07) — absent de mon grep `internal/archlint` /
+  `internal/sync`, trouvé ROUGE par le gate au premier passage (« internal\analysis\
+  identity_annuaire.go »), ce qui vaut mutation « entrée d'allowlist retirée ». UNE entrée ajoutée,
+  ligne 70 : `"identity_annuaire.go"`, datée du 2026-09-26, « lecture de localisation, sur-ensemble de
+  matchs, aucune valeur lue ; valeurs par `_latest` » (allowlist 4 -> 5, commentaire daté). Limite :
+  l'allowlist est par NOM DE FICHIER — une seconde lecture brute dans `identity_annuaire.go` passerait
+  (découverte (10)). Le site est aussi épinglé par `TestAnnuaireSQL_PorteeBase` (la localisation ne
+  projette que `match_id`) et le test de version ci-dessous. (Les garde-rails de `internal/sync` ne
+  lisent que les mutations de `match_kill_events` : `TestNoMutationOnAppendOnlyStateTables`.)
+- Test de version : sur mw1, une passe ancienne nomme x_version « ZzAncienNom » et x_disparu
+  « ZzDisparu », la dernière passe nomme x_version « AaNouveauNom » et ne porte plus x_disparu ;
+  Q12 et ResolveGamertags sur mv1 rendent « AaNouveauNom » et le libellé masqué / l'absence (les noms
+  choisis pour que le MAX de la brute diffère de celui de `_latest`). Journal versionné du test :
+  table brute à passes + vue `_latest` à la règle de la migration (`decode_pass` de la ligne la plus
+  récente par match). Le harnais commun (`player_repos_test.go`, gelé au-delà de 500 L) n'est pas
+  touché : la brute simulée (= la `_latest` à une version) est posée par `simulerJournalBrut` (appelée par `seedPorteeBase` et par
+  `TestGamertagRepo_ResolveGamertags`, dont un xuid inconnu déclenche le repli).
+- Mutations (rouges puis restaurées, `cmp`) : pas 2 lisant la table brute (même gabarit, `_latest`
+  remplacée par la brute) -> `TestAnnuairePorteeBase_RepliLitLaDerniereVersion` rouge (Q12 :
+  « ZzAncienNom », « ZzDisparu » ; ResolveGamertags idem) ; localisation neutralisée (aucun
+  candidat) -> six tests rouges (Q12, Q21, Q23, ResolveGamertags, Relations, version).
+- Chrono (2 threads, 512 Mo, machine toujours partagée ; vue seule 4,2 s) :
+  vue match Nuzzles, les 6 mêmes matchs, deux tours : Q12 médiane 184-211 ms (max 341), Q23 184-186
+  ms (max 336), Q21 1 ms (max 12), RG 0 ms (max 8) ; l'annuaire des 4 matchs à repli 151-325 ms
+  (ancien repli : 2,8-7,2 s ; avant le lot : Q12 4,2 s, Q23 4,7 s de médiane) ; les 2 autres ≤ 8 ms.
+  JGtm, ses 23 matchs à repli, deux tours (46 mesures par lecture) : Q12 médiane 18-28 ms (max
+  212), Q21 11-14 ms (max 177), RG 5-9 ms (max 186), Q23 177-281 ms (max 439 ; l'annuaire dépasse
+  100 ms sur 45 mesures sur 46, max 360 ms) ; ancien repli, un tour : Q23 médiane 4,19 s (max
+  15,2 s), Q12 max 6,2 s, Q21 max 4,7 s, et ResolveGamertags en ERREUR une fois (délai de 10 s
+  dépassé). Le repli ne part pas pour toutes les lectures d'un même match : Q12 écarte les lignes
+  toutes nulles, Q21 et RG ne voient que les xuids des events.
+  Relations, deux tours : JGtm Q28 2,21-2,48 s dont annuaire 275-277 ms (budget +300 ms tenu), Q29
+  90-94 ms, scopés 25-150 ms ; Madina97294 annuaire Q28 316-350 ms, Chocoboflor 237 ms, Xx 8-10 ms ;
+  Nuzzles Q28 2,31-2,46 s dont annuaire 868-871 ms (ancien repli 3,8-4,9 s ; sans repli 684-920 ms),
+  Q29 387-409 ms dont annuaire 327-345 ms (ancien 4,7-5,9 s), scopés 16-114 ms.
+  Pas 1 seul (la localisation exacte, 2 973 xuids récurrents sans nom de Nuzzles, CLI, 3 exécutions) :
+  215-219 ms -> 2 matchs candidats. Sous le seuil de 500 ms : la variante « un seul paramètre
+  tableau » n'a pas été essayée (la liste VALUES est déjà liée une fois ; 2 973 et non 25 000
+  xuids : 25 064 est le compte de toute la base, aucune lecture ne les cherche tous).
+- BUDGET DA.6 : inchangé sur l'échantillon JGtm (aucun repli) ; quand le repli part, l'annuaire coûte
+  150 à 360 ms, soit au-dessus des 100 ms d'une lecture de la vue match — la table brute (3,95 M
+  lignes) est parcourue à chaque localisation (découverte (9)).
+- Parité (au code final, même couverture que le premier balayage ; tables `_latest` et brute
+  matérialisées en tables temporaires dans la sonde pour tenir le temps — même contenu) : Q12 93 000,
+  Q21 1 311 594, Q23 / Q23b 2 625, RG 1 853, Relations 12 289, heatmap 1 265 : ZÉRO écart trié avec
+  l'avant ; Q12 et Q21 identiques octet pour octet au balayage de f576df10e (ordre compris). Les 11
+  couples Q12 (« Feelgood Joker », « madWasabii », « shake1179 », « BlockedChart3 »,
+  « Symbolicdeth », « FUGMO », « Viridianvoid », « WrathfulAsp3213 ») et les 2 lignes Relations de
+  Nuzzles gardent leur nom. Aucun nom perdu.
+- Gate (code A.10, rejoué en entier) : `gofmt -l ./internal ./cmd` vide ; `go build ./...` 0 ;
+  `go vet ./...` 0 ; `go test ./internal/service/... ./internal/platform/duckdb/...
+  ./internal/analysis/... ./internal/api/... ./internal/archlint/... ./internal/port/...` 0 (34
+  paquets ok) ; `go test -tags=integration -p 1 ./internal/platform/duckdb/...` 0 (5 paquets ok ;
+  un premier passage rouge — `TestNoRawAppendOnlyReads` et `TestGamertagRepo_ResolveGamertags` — a
+  conduit à l'entrée d'allowlist et à `simulerJournalBrut`) ; garde-rails `internal/sync`
+  (`NoArt|NoART|NoRaw|Allowlist|Bulk|Interpolated|Legacy|Sentinel`, 14 tests) verts ;
+  `golangci-lint run --new-from-rev=ea5682373 ./...` 0 issue, idem `--build-tags=integration` ;
+  `cmd/perimetre_probe_tmp/` absent ; artefact `data/titles/halo_5/warehouse/metadata.duckdb`
+  retiré. Dette : `squad_repo_annuaire.go` 378 L, `identity_annuaire.go` 176 L, aucune fonction
+  au-delà de 80 L, `player_repos_test.go` (gelé) non touché.
 
 ## 4. P3 — Docs de release 7.5.0 : campagne perf, lot A, ADR 0036 (EN + FR)
 
@@ -441,7 +527,8 @@ Journal P3 : (vide)
   dans l'ADR 0033 : `[ADR 0008](0008-title-path-isolation.md)` alors que le fichier est
   `0008-db-schema-multi-title-and-xuid-global.md`. (6) Ce plan, §1 : « Toute autre modification =
   découverte au §5 » alors que les découvertes sont au §6 (§5 = clôture).
-- (P2, 2026-09-26) (1) Le repli « toute la base » de DA.3 évalue la fenêtre `_latest` du journal
+- (P2, 2026-09-26) (1) [TRAITÉE par DA.10 / A.10 : localisation dans la brute puis lecture par
+  `_latest` bornée] Le repli « toute la base » de DA.3 évalue la fenêtre `_latest` du journal
   canonique entière (3 à 7 s, 12 s sous charge) pour tout match ou périmètre qui contient un xuid que
   rien ne nomme ailleurs (2 % des matchs de JGtm, 65 % de ceux de Nuzzles, ses Relations) ; il ne
   trouve un nom que pour 11 couples sur 31 426. Piste mesurée à titre d'information, non traitée : les
@@ -464,6 +551,19 @@ Journal P3 : (vide)
   `NoArt|Legacy|Sentinel` ne sélectionne pas `TestNoARTPatternsOnProtectedTables` (casse ; `NoART`).
   (8) Le test `TestGetMatchEvents_ResolvesGamertagViaView` garde un nom historique (la vue n'est plus
   lue) pour ne pas toucher la baseline.
+- (A.10, 2026-09-26) (9) La localisation parcourt la table brute `match_kill_events` (3,95 M lignes,
+  deux passes pour tueur et victime) à chaque repli : 150-360 ms par lecture de la vue match qui le
+  déclenche, au-dessus du budget de 100 ms ; une passe unique (`feed_killer_xuid IN … OR victim_xuid
+  IN …`) ou la compaction de la brute (lot C) sont les pistes, non mesurées. (10) L'allowlist de
+  `TestNoRawAppendOnlyReads` est indexée par nom de fichier (`filepath.Base`) : l'entrée
+  `identity_annuaire.go` couvre tout le fichier, pas le seul gabarit de localisation ; et le
+  garde-rail ne scanne pas `internal/sync` (killcollector). (11) La table « Exceptions » de l'ADR 0036 (I1) liste encore les lectures
+  retirées par le lot A (vue match, ResolveGamertags, Relations) et leur compte au ratchet : à retirer
+  avec elles (« An exception leaves this list together with its read »), non fait (consigne : seul le
+  paragraphe « locating read »). (12) Le harnais `player_repos_test.go` n'a pas de table brute
+  `match_kill_events` : toute lecture en portée base d'un test qui l'utilise et déclenche le repli
+  échoue sans `simulerJournalBrut` (`match_view_repo_annuaire_test.go`, appelée par
+  `seedPorteeBase` et `TestGamertagRepo_ResolveGamertags`).
 
 ## 7. Journal (superviseur)
 

@@ -49,6 +49,18 @@ func seedPorteeBase(t *testing.T, pdb *PlayerDB) {
 	// absent du schéma de test partagé.
 	execOnSharedDBs(t, pdb, ctx, `UPDATE shared.match_participants SET kills = 1 WHERE match_id = 'ma1'`)
 	execOnSharedDBs(t, pdb, ctx, `ALTER TABLE shared.highlight_events ADD COLUMN IF NOT EXISTS raw_json VARCHAR`)
+	simulerJournalBrut(t, pdb)
+}
+
+// simulerJournalBrut pose la table brute du kill-feed que lit la localisation du repli en portée
+// base (DA.10) : le harnais commun n'a qu'une version par ligne, la brute y est donc la `_latest`.
+// brancherJournalVersionne la remplace par un vrai journal à passes.
+func simulerJournalBrut(t *testing.T, pdb *PlayerDB) {
+	t.Helper()
+	if _, err := pdb.Player.Exec(context.Background(),
+		`CREATE VIEW match_kill_events AS SELECT * FROM shared.match_kill_events_latest`); err != nil {
+		t.Fatalf("table brute simulée : %v", err)
+	}
 }
 
 // verifierNomPorteeBase : la parité avec la jointure, et le nom en clair quand il est connu.
@@ -244,5 +256,84 @@ func TestMatchView_Annuaire_SectionsDeDuree(t *testing.T) {
 		if appels[nom] != 1 {
 			t.Errorf("section %q : %d appel(s), attendu 1 (sections : %v)", nom, appels[nom], appels)
 		}
+	}
+}
+
+// brancherJournalVersionne remplace, sur la connexion que lisent les repos, le journal simulé
+// (une version par ligne) par un journal VERSIONNÉ : une table brute où un match a plusieurs
+// passes de décodage, et une vue `_latest` qui n'en garde que la dernière — même règle que la
+// migration (`decode_pass` de la ligne la plus récente par match, `written_at` puis `id`).
+func brancherJournalVersionne(t *testing.T, pdb *PlayerDB) {
+	t.Helper()
+	ctx := context.Background()
+	const cols = "match_id, feed_killer_xuid, feed_killer_gamertag, victim_xuid, victim_gamertag, time_ms"
+	for _, q := range []string{
+		`CREATE TABLE shared.mke_versions (id INTEGER, match_id VARCHAR, decode_pass INTEGER,
+			written_at TIMESTAMP, feed_killer_xuid VARCHAR, feed_killer_gamertag VARCHAR,
+			victim_xuid VARCHAR, victim_gamertag VARCHAR, time_ms INTEGER)`,
+		`CREATE OR REPLACE VIEW match_kill_events AS
+			SELECT ` + cols + ` FROM shared.match_kill_events_latest
+			UNION ALL SELECT ` + cols + ` FROM shared.mke_versions`,
+		`CREATE OR REPLACE VIEW match_kill_events_latest AS
+			SELECT ` + cols + ` FROM shared.match_kill_events_latest
+			UNION ALL SELECT ` + cols + ` FROM (
+				SELECT * FROM shared.mke_versions
+				QUALIFY decode_pass = FIRST_VALUE(decode_pass) OVER (
+					PARTITION BY match_id ORDER BY written_at DESC, id DESC))`,
+	} {
+		if _, err := pdb.Player.Exec(ctx, q); err != nil {
+			t.Fatalf("journal versionné : %v\nSQL: %s", err, q)
+		}
+	}
+}
+
+// TestAnnuairePorteeBase_RepliLitLaDerniereVersion : DA.10 — le repli « toute la base » LOCALISE
+// ses matchs dans la table brute mais LIT les noms dans `_latest`. Sur mw1 (un autre match que
+// celui qu'on ouvre), une ANCIENNE passe nommait x_version « ZzAncienNom » et x_disparu
+// « ZzDisparu » ; la dernière passe nomme x_version « AaNouveauNom » et ne porte plus x_disparu.
+// Le nom rendu est celui de `_latest` (ou aucun) ; lire la brute rendrait le MAX des versions
+// (« ZzAncienNom », « ZzDisparu »).
+func TestAnnuairePorteeBase_RepliLitLaDerniereVersion(t *testing.T) {
+	pdb := newTestPlayerDB(t)
+	seedPorteeBase(t, pdb)
+	brancherJournalVersionne(t, pdb)
+	ctx := context.Background()
+	for _, x := range []string{pTestXUID, "x_version", "x_disparu"} {
+		execOnSharedDBs(t, pdb, ctx, `INSERT INTO shared.match_participants (match_id, xuid, gamertag, outcome, team_id, kills)
+			VALUES ('mv1', ?, '', 2, 0, 1)`, x)
+	}
+	if _, err := pdb.Player.Exec(ctx, `INSERT INTO shared.mke_versions VALUES
+		(1, 'mw1', 1, TIMESTAMP '2026-09-01 10:00:00', 'x_version', 'ZzAncienNom', 'x_autre', 'NomAutre', 1000),
+		(2, 'mw1', 1, TIMESTAMP '2026-09-01 10:00:00', 'x_disparu', 'ZzDisparu', 'x_autre', 'NomAutre', 2000),
+		(3, 'mw1', 2, TIMESTAMP '2026-09-02 10:00:00', 'x_version', 'AaNouveauNom', 'x_autre', 'NomAutre', 1000)`); err != nil {
+		t.Fatalf("versions : %v", err)
+	}
+	attendus := map[string]string{"x_version": "AaNouveauNom", "x_disparu": "Joueur paru"}
+	rows, err := NewMatchViewRepo(pdb, pTestXUID).GetMatchScoreboard(ctx, "mv1")
+	if err != nil {
+		t.Fatalf("GetMatchScoreboard : %v", err)
+	}
+	vus := 0
+	for _, s := range rows {
+		if attendu, ok := attendus[s.XUID]; ok {
+			vus++
+			if s.Gamertag != attendu {
+				t.Errorf("Q12 : %s nommé %q, attendu %q (le nom de `_latest`)", s.XUID, s.Gamertag, attendu)
+			}
+			verifierNom(t, pdb, "Q12", s.XUID, s.Gamertag)
+		}
+	}
+	if vus != 2 {
+		t.Fatalf("%d xuids versionnés dans le tableau de score, attendu 2 : %+v", vus, rows)
+	}
+	carte, err := NewGamertagRepo(pdb.SharedReadDB()).ResolveGamertags(ctx, "mv1", []string{"x_version", "x_disparu"})
+	if err != nil {
+		t.Fatalf("ResolveGamertags : %v", err)
+	}
+	if carte["x_version"] != "AaNouveauNom" {
+		t.Errorf("ResolveGamertags : x_version nommé %q, attendu « AaNouveauNom »", carte["x_version"])
+	}
+	if nom, ok := carte["x_disparu"]; ok {
+		t.Errorf("ResolveGamertags : x_disparu nommé %q par une version périmée, attendu absent", nom)
 	}
 }

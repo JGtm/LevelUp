@@ -34,7 +34,8 @@
 // lecture (AnnuaireNomsSQL, AnnuaireKillFeedSQL). Portée BASE (vue match, événements de match,
 // Relations) : alias et participants sur toute la base (AnnuaireNomsBaseSQL, la sémantique MAX de
 // la vue), kill-feed d'abord sur les matchs de la lecture puis, pour les seuls xuids encore sans
-// nom, sur toute la base (AnnuaireKillFeedBaseSQL). Les deux portées alimentent la même
+// nom, sur les matchs candidats que localise AnnuaireKillFeedLocaliserSQL (DA.10 : table brute,
+// match_id seulement), relus par AnnuaireKillFeedSQL. Les deux portées alimentent la même
 // AnnuaireGamertags et la même Resolve.
 package analysis
 
@@ -142,19 +143,34 @@ func annuaireNomsSQL(xuids, matchs string) string {
 // Paramètres, dans l'ordre : les match_id une fois PAR JAMBE (AnnuaireKillFeedJambes fois),
 // puis les xuids.
 func AnnuaireKillFeedSQL(xuids, matchs string) string {
-	return annuaireKillFeedSQL(xuids, "\n\t\t  AND match_id IN ("+matchs+")")
+	return "SELECT xuid, gamertag FROM (\n" +
+		gamertagKillFeedSQL("\n\t\t  AND match_id IN ("+matchs+")") +
+		"\n) kf\nWHERE xuid IN (" + xuids + ")"
 }
 
-// AnnuaireKillFeedBaseSQL rend le niveau 4 de la vue sur TOUTE la base (la sous-requête de la vue
-// sans restriction, gamertagKillFeedSQL("")) pour les xuids demandés — le repli « portée base »
-// des xuids que ni les alias, ni les participants de la base, ni le kill-feed des matchs de la
-// lecture ne nomment (DA.3). Aucun `match_id` ne borne les fenêtres `_latest` : ce repli paie la
-// fenêtre du journal canonique entière, d'où sa place en DERNIER, pour les seuls restants.
-// Paramètres : les xuids.
-func AnnuaireKillFeedBaseSQL(xuids string) string {
-	return annuaireKillFeedSQL(xuids, "")
-}
-
-func annuaireKillFeedSQL(xuids, scope string) string {
-	return "SELECT xuid, gamertag FROM (\n" + gamertagKillFeedSQL(scope) + "\n) kf\nWHERE xuid IN (" + xuids + ")"
+// AnnuaireKillFeedLocaliserSQL rend le PAS 1 du repli « portée base » (décision DA.10 du plan perf
+// « lectures par périmètre », 2026-09-26) : les matchs CANDIDATS où un xuid encore sans nom a porté
+// un gamertag de kill-feed, lus dans la table BRUTE `match_kill_events` et dans
+// `killer_victim_pairs`, prédicats poussés sur les tables. LECTURE DE LOCALISATION (ADR 0036,
+// « locating read » ; ADR 0026) : elle ne rend QUE des `match_id`, jamais une valeur. Toute version
+// d'une ligne qui a porté le xuid désigne son match : c'est un sur-ensemble des matchs où la vue
+// `_latest` le montre. Le PAS 2 relit ces seuls matchs par AnnuaireKillFeedSQL — la jambe de la vue,
+// fenêtres `_latest` bornées par match_id — : les noms viennent de `_latest`, la parité avec la vue
+// est exacte par construction, sans évaluer la fenêtre du journal canonique entière.
+//
+// `valeurs` : une ligne VALUES par xuid (« (?), (?) ») ; paramètres : les xuids, une fois.
+func AnnuaireKillFeedLocaliserSQL(valeurs string) string {
+	return "WITH cherches(xuid) AS (VALUES " + valeurs + ")\n" +
+		"SELECT match_id FROM match_kill_events\n" +
+		"WHERE feed_killer_xuid IN (SELECT xuid FROM cherches)\n" +
+		"  AND feed_killer_gamertag IS NOT NULL AND feed_killer_gamertag != ''\n" +
+		"UNION SELECT match_id FROM match_kill_events\n" +
+		"WHERE victim_xuid IN (SELECT xuid FROM cherches)\n" +
+		"  AND victim_gamertag IS NOT NULL AND victim_gamertag != ''\n" +
+		"UNION SELECT match_id FROM killer_victim_pairs\n" +
+		"WHERE killer_xuid IN (SELECT xuid FROM cherches)\n" +
+		"  AND killer_gamertag IS NOT NULL AND killer_gamertag != ''\n" +
+		"UNION SELECT match_id FROM killer_victim_pairs\n" +
+		"WHERE victim_xuid IN (SELECT xuid FROM cherches)\n" +
+		"  AND victim_gamertag IS NOT NULL AND victim_gamertag != ''"
 }
