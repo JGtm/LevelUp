@@ -351,10 +351,9 @@ type EventRaw struct {
 	EventType string
 	TimeMS    *int64
 	XUID      *string
-	// Gamertag : résolu côté repo via v_gamertag_lookup (bots gérés, fallback
-	// xuid raw). Nil uniquement si le xuid est orphelin (jamais en
-	// match_participants ni xuid_aliases) ; dans ce cas le service affichera
-	// le XUID brut.
+	// Gamertag : posé côté repo par l'annuaire du match en portée base (lot A, 2026-09-26 ;
+	// platform/duckdb/match_view_repo_noms.go) — cascade de la vue canonique, bots compris, et
+	// « Joueur #### » pour un xuid qu'aucune source ne nomme. Nil uniquement pour un event sans xuid.
 	Gamertag *string
 	// MedalName : nom ANGLAIS de la médaille (events `medal` uniquement), extrait
 	// côté repo du raw_json de highlight_events (champ medal_name). Nil pour les

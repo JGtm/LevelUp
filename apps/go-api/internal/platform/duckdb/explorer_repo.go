@@ -190,8 +190,8 @@ func (r *ExplorerRepo) GetMedalCountsForMatches(
 	}
 	placeholders := strings.TrimRight(strings.Repeat("?,", len(matchIDs)), ",")
 	// Frags parfaits = set de médailles « frag parfait » du titre du joueur
-	// (source unique analysis.PerfectKillMedalIDs ; HINF = {1512363953},
-	// même approche que Q12MatchScoreboard / Q30 queries_squad.go).
+	// (source unique analysis.PerfectKillMedalIDs ; HINF = {1512363953}, même clause
+	// perfectKillMedalInClause que le jeton /*__PERFECT_KILL_IN__*/ de Q12 et de Q30 queries_squad.go).
 	perfectClause := perfectKillMedalInClause("medal_name_id", pdbTitleSlug(r.pdb))
 	q := fmt.Sprintf(`
 		SELECT

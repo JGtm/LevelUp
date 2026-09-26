@@ -349,7 +349,8 @@ et ses sorties « avant » Q12 / Q21 réutilisées après vérification, cf. éc
   events), Relations 12 289 lignes (cinq joueurs, période entière et 30 matchs : TOUS les récurrents,
   Q28 n'a pas de LIMIT) et heatmap 1 265 lignes : ZÉRO écart de nom ou de compteur avec le repli.
   Écarts (i), (ii), (iii) : 0, 0, 0 sur la copie (aucun xuid d'event inconnu de toutes les sources,
-  aucun bot hors sources, aucun nom de kill-feed variable touché) ; épinglés par les tests. Aucun nom
+  aucun bot hors sources, aucun nom de kill-feed variable touché) ; (i) épinglé par un test dès P2, (iii) seulement en A.12
+  (le premier journal disait à tort « épinglés par les tests »), (ii) par le test Escouade. Aucun nom
   perdu. Sans le repli : exactement les écarts de L7 — 11 couples Q12 (10 matchs, 8 xuids, ex.
   « Feelgood Joker » -> « Joueur 6576 » sur trois matchs) et 2 lignes Relations de Nuzzles, des ROUGES
   au sens de DA.4 ; Q21, Q23, RG, heatmap sans écart.
@@ -507,6 +508,35 @@ Journal A.11 (2026-09-26, sur 5ab3c13c7) :
   ./internal/platform/duckdb/...` 0 (5 paquets ok) ; `golangci-lint run --new-from-rev=ea5682373 ./...`
   0 issue, idem avec `--build-tags=integration`.
 
+- [x] A.12 (2026-09-26) correctifs de la revue fraîche de la branche — trois constats P2, aucun
+  défaut de comportement : (1) l'ADR 0036 (tableau Guardrails, ligne I1) citait `ResolveGamertags`
+  comme lecteur « encore dans la table » du ratchet, que ce lot en a retiré ; (2) l'écart (iii) de
+  DA.4 n'était épinglé par aucun test, alors que l'en-tête de `match_view_repo_annuaire_test.go` et le
+  journal P2 l'affirmaient ; (3) commentaires rendus faux par le lot (découverte (4) de P2).
+
+Journal A.12 (2026-09-26, sur 35e9766ff) :
+
+- (1) ADR 0036 l. 347 : l'exemple devient le `ResolveXUIDByGamertag` de l'Explorer (vérifié au
+  ratchet : `platform/duckdb/explorer_repo.go`, 1 occurrence permise) ; rien d'autre dans la phrase.
+- (2) Test `TestAnnuairePorteeBase_EcartNomme_NomDeKillFeedVariable` : x_varie, sans alias ni nom de
+  participant, nommé « NomA » au kill-feed `_latest` du match lu (mv3) et « NomB » à celui d'un autre
+  match (mb5) ; la vue rend « NomB » (vérifié dans le test), Q12 et `ResolveGamertags` sur mv3 rendent
+  « NomA » — l'écart (iii) admis. En-tête du fichier de tests corrigé : (i) et (iii) nommés avec leur
+  test, (ii) renvoyé au test Escouade (`TestSquadRepo_Annuaire_BotHorsDeToutesLesSources`, même
+  cascade) ; phrase du journal P2 corrigée. Mutation : étape « kill-feed des matchs de la lecture »
+  sautée (`lireKillFeedDeLaLecture` appelée sans matchs de lecture, tout passe par le repli base) ->
+  test rouge (Q12 et ResolveGamertags rendent « NomB ») ; restaurée, `cmp` 0.
+- (3) Commentaires seuls : `domain/match_view_raw.go` (`EventRaw.Gamertag`) et `domain/match_view.go`
+  (`ActorGamertag`) décrivent l'annuaire du match en portée base (`match_view_repo_noms.go`), le
+  libellé masqué pour un xuid inconnu et le nom absent pour un event sans xuid ;
+  `platform/duckdb/explorer_repo.go` : la phrase portait sur la clause des frags parfaits et restait
+  vraie ; précisée (`perfectKillMedalInClause`, même jeton que Q12 et Q30). Fichiers gelés au-delà de
+  500 L non grossis (650, 878, 572 lignes).
+- Gate : `gofmt -l` des fichiers touchés vide ; `go vet ./internal/domain/ ./internal/platform/duckdb/`
+  0 ; `go test ./internal/domain/...` 0 ; `go test -tags=integration -p 1 ./internal/platform/duckdb/...`
+  0 ; golangci `--new-from-rev=ea5682373` 0 issue avec et sans `--build-tags=integration` ; artefacts
+  sous `data/` retirés.
+
 ## 4. P3 — Docs de release 7.5.0 : campagne perf, lot A, ADR 0036 (EN + FR)
 
 Décisions tranchées :
@@ -603,7 +633,9 @@ machine chargée — dit tel quel dans l'entrée.
   ouverture (Q12, Q21, Q23 ; plus ResolveGamertags sur l'endpoint des events) ; quand le repli part, il
   est payé deux fois en parallèle (Q12, Q23). (3) Q21 n'a pas d'ordre total (`time_ms` seul) : l'ordre
   des events de même milliseconde suit aujourd'hui l'insertion ; le départager par `he.id` demanderait
-  la colonne `id` dans les schémas de test qui créent `highlight_events` (21 fixtures). (4) Commentaires
+  la colonne `id` dans les schémas de test qui créent `highlight_events` (21 fixtures). (4) [TRAITÉE en
+  A.12 ; le commentaire d'`explorer_repo.go` était en fait encore vrai — il parle de la clause des
+  frags parfaits, pas de la vue — et a seulement été précisé] Commentaires
   hors périmètre devenus faux : `domain/match_view_raw.go` (`EventRaw.Gamertag` « résolu via
   v_gamertag_lookup… nil si orphelin, le service affichera le XUID brut »), `domain/match_view.go:306`
   (`ActorGamertag`), `platform/duckdb/explorer_repo.go:194` (« même approche que Q12MatchScoreboard »).

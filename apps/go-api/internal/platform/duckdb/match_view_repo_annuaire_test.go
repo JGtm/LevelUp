@@ -7,7 +7,10 @@
 // heatmap Q29) ne joignent plus v_gamertag_lookup : leurs noms viennent de l'annuaire en PORTÉE
 // BASE (squad_repo_annuaire.go, DA.3). La référence est l'ANCIENNE expression des lecteurs sur la
 // VRAIE vue canonique (nomSelonLaVue), plus le nom de chaque niveau écrit en clair
-// (attendusAnnuaire, attendusPorteeBase). Les écarts acceptés (DA.4) sont épinglés un par un.
+// (attendusAnnuaire, attendusPorteeBase). Les écarts acceptés (DA.4) sont épinglés un par un :
+// (i) TestMatchView_Annuaire_Q21EcartNomme_XuidInconnu, (iii)
+// TestAnnuairePorteeBase_EcartNomme_NomDeKillFeedVariable ; (ii), le bot hors de toutes les sources,
+// par TestSquadRepo_Annuaire_BotHorsDeToutesLesSources (même cascade).
 package duckdb
 
 import (
@@ -385,5 +388,53 @@ func TestAnnuairePorteeBase_RepliNommeLesVictimes(t *testing.T) {
 		if carte[x] != attendu {
 			t.Errorf("ResolveGamertags : %s nommé %q, attendu %q (victime hors de la lecture)", x, carte[x], attendu)
 		}
+	}
+}
+
+// TestAnnuairePorteeBase_EcartNomme_NomDeKillFeedVariable : l'écart (iii) de DA.4, admis et
+// épinglé ici (ADR 0036 I1 : un écart se nomme, se compte et s'épingle). x_varie n'a ni alias ni
+// nom de participant ; le kill-feed `_latest` du match lu (mv3) le nomme « NomA », celui d'un autre
+// match (mb5) « NomB ». L'annuaire lit d'abord le kill-feed des matchs de la lecture : Q12 et
+// ResolveGamertags sur mv3 rendent « NomA », le MAX des matchs LUS. La vue prend le MAX de toute la
+// base et rendrait « NomB ». Sur la copie de production, zéro cas parmi les lignes comparées
+// (journal P2 du plan).
+func TestAnnuairePorteeBase_EcartNomme_NomDeKillFeedVariable(t *testing.T) {
+	pdb := newTestPlayerDB(t)
+	seedPorteeBase(t, pdb)
+	ctx := context.Background()
+	for _, x := range []string{pTestXUID, "x_varie"} {
+		execOnSharedDBs(t, pdb, ctx, `INSERT INTO shared.match_participants (match_id, xuid, gamertag, outcome, team_id, kills)
+			VALUES ('mv3', ?, '', 2, 0, 1)`, x)
+	}
+	execOnSharedDBs(t, pdb, ctx, `INSERT INTO shared.match_kill_events_latest
+		(match_id, feed_killer_xuid, feed_killer_gamertag, victim_xuid, victim_gamertag, time_ms)
+		VALUES ('mv3', 'x_varie', 'NomA', ?, ?, 1000),
+		       ('mb5', 'x_varie', 'NomB', 'x_autre', 'NomAutre', 1000)`, pTestXUID, pTestGamertag)
+
+	if vue := nomSelonLaVue(t, pdb, "x_varie"); vue != "NomB" {
+		t.Fatalf("la vue rend %q ; l'écart (iii) suppose le MAX de toute la base, « NomB »", vue)
+	}
+	rows, err := NewMatchViewRepo(pdb, pTestXUID).GetMatchScoreboard(ctx, "mv3")
+	if err != nil {
+		t.Fatalf("GetMatchScoreboard : %v", err)
+	}
+	vu := false
+	for _, s := range rows {
+		if s.XUID == "x_varie" {
+			vu = true
+			if s.Gamertag != "NomA" {
+				t.Errorf("Q12 : x_varie nommé %q, attendu « NomA » (MAX des matchs lus, écart (iii))", s.Gamertag)
+			}
+		}
+	}
+	if !vu {
+		t.Fatalf("x_varie absent du tableau de score : %+v", rows)
+	}
+	carte, err := NewGamertagRepo(pdb.SharedReadDB()).ResolveGamertags(ctx, "mv3", []string{"x_varie"})
+	if err != nil {
+		t.Fatalf("ResolveGamertags : %v", err)
+	}
+	if carte["x_varie"] != "NomA" {
+		t.Errorf("ResolveGamertags : x_varie nommé %q, attendu « NomA » (écart (iii))", carte["x_varie"])
 	}
 }

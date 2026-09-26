@@ -303,10 +303,10 @@ type MatchWeaponKill struct {
 
 // MatchHighlightEvent : événement filmé horodaté.
 //
-// ActorGamertag est le nom à afficher (résolu via v_gamertag_lookup côté repo :
-// gère bots `bid(N.0)` → "343 Bot N" et fallback xuid raw). Le front l'affiche
-// directement, sans logique de résolution. ActorXUID reste exposé pour les
-// callers qui ont besoin de l'ID stable (deep-linking, etc.).
+// ActorGamertag est le nom à afficher, posé côté repo par l'annuaire du match en portée base (lot A ;
+// platform/duckdb/match_view_repo_noms.go) : cascade de la vue canonique, bots `bid(N.0)` → "343 Bot N",
+// « Joueur #### » pour un xuid qu'aucune source ne nomme, absent pour un event sans xuid. Le front
+// l'affiche directement. ActorXUID reste exposé pour l'ID stable (deep-linking, etc.).
 type MatchHighlightEvent struct {
 	EventType     string  `json:"event_type"`
 	EventTimeMS   *int64  `json:"event_time_ms,omitempty"`
