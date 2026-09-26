@@ -62,9 +62,7 @@ func fichierAutourDuBlob(t *testing.T, g *FilmFacts, blob []byte) []byte {
 	entrees := &gwriter{}
 	entrees.u(uint64(len(blob)))
 	entrees.b = append(entrees.b, blob...)
-	encodeGardesDeMode(entrees, g.FilmInputs)
-	encodeEntitesDesJoueurs(entrees, g.PlayerEntities)
-	encodeVerdictDuFilDesMorts(entrees, g.DeathsFeed)
+	encodeComplementDesEntrees(entrees, g)
 	ecrireSection(w, sectionEntrees, entrees.b)
 	return w.b
 }

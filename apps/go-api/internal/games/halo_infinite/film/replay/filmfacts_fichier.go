@@ -120,7 +120,8 @@ const magieFaitsDeFilm = "LEVELUPFILMFACTS\n"
 // jalon, posee au lot J3.3) : l EN-TETE change de forme. J3.3 y remplace la revision unique des
 // faits par une revision par consommateur (`killsource`, `objectives`) ; J3.4 y inscrit les
 // GARDES DE L APPELANT sous lesquelles les faits ont ete cuits ; J3.5 y inscrit l EMPREINTE DE
-// L ENTREE DE CATALOGUE entiere. Un fichier du codec 1 est refuse sur son prefixe, avant toute
+// L ENTREE DE CATALOGUE entiere ; J3.6 porte, dans le complement de la section 1, le temoin de
+// l inventaire (nul ou vide). Un fichier du codec 1 est refuse sur son prefixe, avant toute
 // lecture d en-tete ([TestFaitsDuCodec1SontRefusesSurLePrefixe]) : il est redecode.
 const VersionCodecFaits = 2
 
@@ -157,6 +158,10 @@ const VersionCodecFaits = 2
 // v27 (tirs lus par la grammaire du record — indice sur cinq bits, numero de tir, unite tireuse — et
 // le TIR CONTINU de la vue de controle). Un fichier ecrit par le code de la vague D d avant M4b porte
 // le blob v26 : il est refuse a la magie du blob, et redecode.
+// LE MEME SCHEMA 4 AU JALON J3 (2026-09-26) : le complement de la section 1 gagne, avant le verdict
+// du fil des morts, le TEMOIN DE L INVENTAIRE (nul = illisible, lot J3.6) SOUS LA MONTEE DU CODEC 2 (plan, J3.6 :
+// « meme montee que J3.4 ») — le codec 2 n a jamais ete ecrit sans lui, et un fichier du codec 1
+// est refuse sur son prefixe.
 const SchemaDesFaits = 4
 
 // Identifiants de section. Ils ne se reutilisent JAMAIS : un identifiant retire reste retire, sinon
@@ -246,9 +251,7 @@ func EncodeFilmFactsFile(f *FilmFactsFile) ([]byte, error) {
 	}
 	entrees.u(uint64(len(blob)))
 	entrees.b = append(entrees.b, blob...)
-	encodeGardesDeMode(entrees, f.Facts.FilmInputs)
-	encodeEntitesDesJoueurs(entrees, f.Facts.PlayerEntities)
-	encodeVerdictDuFilDesMorts(entrees, f.Facts.DeathsFeed)
+	encodeComplementDesEntrees(entrees, &f.Facts)
 	if entrees.echec != nil {
 		return nil, entrees.echec
 	}
@@ -327,9 +330,7 @@ func (f *FilmFactsFile) lireSection(id int, charge []byte, entry profile.MapQuan
 			return err
 		}
 		f.Facts = *g
-		decodeGardesDeMode(r, &f.Facts.FilmInputs)
-		f.Facts.PlayerEntities = decodeEntitesDesJoueurs(r)
-		f.Facts.DeathsFeed = decodeVerdictDuFilDesMorts(r)
+		decodeComplementDesEntrees(r, &f.Facts)
 		if r.err != nil {
 			return fmt.Errorf("faits de film : canaux gardes : %w", r.err)
 		}
@@ -354,4 +355,29 @@ func lireSectionJSON(charge []byte, cible any, libelle string) error {
 		return fmt.Errorf("faits de film : section %s : %w", libelle, err)
 	}
 	return nil
+}
+
+// encodeComplementDesEntrees / decodeComplementDesEntrees : ce que la section 1 porte APRES le blob
+// des entrees, dans l ORDRE du format — une seule ecriture, une seule lecture (les tests qui
+// fabriquent une section 1 passent par elles).
+//
+//	canaux gardes     `FlagMarks`, `ZoneReads`/`ZoneScanned`, la jauge, `BombReads`
+//	entites           les occupants du match (lot M2.2)
+//	temoin            l inventaire NUL (illisible) ou non (lot J3.6, RA1-2) : le blob relit toute
+//	d inventaire      liste en tranche VIDE, or `Inventory == nil` est une garde de calque
+//	verdict           le verdict du fil des morts (lot M8), EN DERNIER
+func encodeComplementDesEntrees(w *gwriter, g *FilmFacts) {
+	encodeGardesDeMode(w, g.FilmInputs)
+	encodeEntitesDesJoueurs(w, g.PlayerEntities)
+	w.bool8(g.Inventory != nil)
+	encodeVerdictDuFilDesMorts(w, g.DeathsFeed)
+}
+
+func decodeComplementDesEntrees(r *greader, g *FilmFacts) {
+	decodeGardesDeMode(r, &g.FilmInputs)
+	g.PlayerEntities = decodeEntitesDesJoueurs(r)
+	if !r.bool8() {
+		g.Inventory = nil
+	}
+	g.DeathsFeed = decodeVerdictDuFilDesMorts(r)
 }
