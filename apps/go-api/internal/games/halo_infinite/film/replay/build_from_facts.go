@@ -40,8 +40,9 @@ import (
 
 // BuildFromFacts assemble le document de rejeu DEPUIS des faits persistes.
 //
-// AUCUN OCTET DE FILM. L appelant a la charge d avoir verifie la FRAICHEUR des faits
-// ([FilmFactsEntete.Utilisable]) : cette fonction ne re-juge pas, elle assemble.
+// AUCUN OCTET DE FILM. L appelant a la charge d avoir verifie la FRAICHEUR des faits sous SES
+// gardes ([FilmFactsEntete.Utilisable] avec [GardesDe] de `opt`) : cette fonction ne re-juge pas,
+// elle restreint au besoin et assemble.
 //
 // HORS LIGNE comme son jumeau — ne jamais appeler depuis un chemin de requete ; l API sert
 // l artefact pre-construit.
@@ -54,6 +55,10 @@ func BuildFromFacts(matchID, titleSlug string, f *FilmFactsFile, opt Options) Re
 	opt.Fallbacks.Cumuler(f.Fallbacks)
 	opt.FilmIdentity = f.Identity
 	in := f.Facts.FilmInputs
+	// UN SUR-ENSEMBLE DE GARDES SE RESTREINT A LA DEMANDE (lot J3.4) : des faits cuits sous plus de
+	// gardes que cette cuisson n en commande la servent, mais les canaux qu elle ne demande pas
+	// prennent la valeur qu un balayage sous SES gardes leur aurait donnee.
+	in.restreindreAuxGardes(GardesDe(opt))
 	in.applyTo(&opt)
 	return BuildFromPositions(matchID, titleSlug, in.Positions, in.Fire, opt)
 }
@@ -97,6 +102,9 @@ func faitsDuBalayage(matchID string, fc *grammar.FilmContext, opt Options,
 		},
 		Identity:  identiteDeFaits(opt.FilmIdentity),
 		Fallbacks: opt.Fallbacks.Rapport(),
+		// LES GARDES DE L APPELANT SOUS LESQUELLES LE BALAYAGE A LU (lot J3.4) : les memes
+		// predicats que ceux du balayage, derives des memes options.
+		Gardes: GardesDe(opt),
 	}
 }
 

@@ -20,8 +20,9 @@ package replay
 // et ils disent « ce calque a ete LU », pas « ces octets ont ete lus » — un CTF qui heriterait de
 // `ZoneScanned = true` ferait mentir `coverage.zones`.
 func (s *filmScan) balayerProprietesTi13() {
-	zones := len(s.opt.Zone.Zones) > 0
-	jauge := s.opt.Flag.Scanned && flagFilmSignalsOf(s.opt.Flag).IsFlagFilm()
+	// LES MEMES PREDICATS QUE [GardesDe] (lot J3.4) : les faits disent exactement ce qui a ete lu.
+	zones := zonesBalayables(s.opt.Zone)
+	jauge := drapeauBalayable(s.opt.Flag)
 	partage := ti13Partage{fc: s.fc, matchID: s.matchID}
 	s.in.ZoneReads = decodeFilmZoneReads(&partage, zones)
 	s.in.ZoneScanned = zones

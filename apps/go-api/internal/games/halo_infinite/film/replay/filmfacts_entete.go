@@ -27,12 +27,14 @@ type FilmFactsEntete struct {
 	MapModule      string
 	AxisW          [3]uint
 	LayoutDetected bool
+	// Gardes : les gardes de l appelant sous lesquelles ces faits ont ete cuits (lot J3.4).
+	Gardes GardesDeCuisson
 	// corps est l offset du premier octet de section.
 	corps int
 }
 
 // encodeEnteteDuFichier ecrit l en-tete du FICHIER de faits : [DecoderCoverage] VERBATIM, puis la
-// CLE DE CUISSON. (`encodeEntete`, dans `filmfacts_encode.go`, est celui du BLOB des entrees.)
+// CLE DE CUISSON, puis les GARDES DE L APPELANT (codec 2). (`encodeEntete`, dans `filmfacts_encode.go`, est celui du BLOB des entrees.)
 func encodeEnteteDuFichier(f *FilmFactsFile) *gwriter {
 	entete := &gwriter{}
 	encodeCouvertureDuDecodeur(entete, f.Coverage)
@@ -41,6 +43,7 @@ func encodeEnteteDuFichier(f *FilmFactsFile) *gwriter {
 		entete.u(uint64(f.Facts.AxisW[a]))
 	}
 	entete.bool8(f.Facts.LayoutDetected)
+	encodeGardesDeCuisson(entete, f.Gardes)
 	return entete
 }
 
@@ -74,6 +77,7 @@ func DecodeFilmFactsEntete(blob []byte) (FilmFactsEntete, error) {
 		e.AxisW[a] = uint(r.u())
 	}
 	e.LayoutDetected = r.bool8()
+	e.Gardes = decodeGardesDeCuisson(r)
 	if r.err != nil {
 		return e, fmt.Errorf("%w : en-tete illisible (%v)", ErrFilmFactsVersion, r.err)
 	}
@@ -93,7 +97,27 @@ func DecodeFilmFactsEntete(blob []byte) (FilmFactsEntete, error) {
 // dans la section 2 de `chunk_00` et l empreinte de son registre ECS. Ils ne peuvent pas avoir
 // change pour un film donne, et les RECALCULER exigerait precisement ce que cette porte evite :
 // ouvrir le film. Les comparer serait donc soit impossible, soit une tautologie.
-func (e FilmFactsEntete) Utilisable(entry profile.MapQuantEntry) error {
+//
+// # LES GARDES DE L APPELANT SONT COMPAREES DEPUIS LE LOT J3.4 (RA1-1)
+//
+// `gardes` sont celles que la cuisson COURANTE commande ([GardesDe] sur ses options). Des faits
+// cuits sans l une d elles, ou sous un autre roster, rendent [ErrFilmFactsGardes] ; un sur-ensemble
+// sert (cf. `gardes_de_cuisson.go`).
+func (e FilmFactsEntete) Utilisable(entry profile.MapQuantEntry, gardes GardesDeCuisson) error {
+	if err := e.Frais(entry); err != nil {
+		return err
+	}
+	return e.Gardes.couvre(gardes)
+}
+
+// Frais dit si ces faits ont ete pris par CE binaire sur CETTE entree de catalogue — codec,
+// schema, revisions de couche, cle de cuisson —, SANS juger les gardes de l appelant.
+//
+// C EST LA PREMIERE MOITIE DE [FilmFactsEntete.Utilisable], exposee parce que la cuisson la tranche
+// AVANT de connaitre ses options : les gardes se derivent des options, et les options se
+// construisent sur le statborg — que les faits frais fournissent. La seconde moitie se juge une
+// fois les options posees (`replaybuild.documentDeLaCuisson`).
+func (e FilmFactsEntete) Frais(entry profile.MapQuantEntry) error {
 	if e.VersionCodec != VersionCodecFaits || e.Schema != SchemaDesFaits {
 		return ErrFilmFactsVersion
 	}

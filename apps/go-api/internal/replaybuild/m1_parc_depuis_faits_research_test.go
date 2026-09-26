@@ -119,7 +119,7 @@ func m1Reconstruire(b *Builder, in m1Entree) string {
 	}
 	entete, err := replay.DecodeFilmFactsEntete(blob)
 	if err == nil {
-		err = entete.Utilisable(entry)
+		err = entete.Frais(entry)
 	}
 	if err != nil {
 		return "faits perimes : " + err.Error()
@@ -129,7 +129,8 @@ func m1Reconstruire(b *Builder, in m1Entree) string {
 		return "faits illisibles : " + err.Error()
 	}
 	ctx := context.Background()
-	src := entreesDeCuisson{faits: f, statborg: f.Statborg, deaths: filmDeaths{list: f.Facts.Deaths}, kills: f.Kills}
+	src := entreesDeCuisson{faits: f, entete: entete, statborg: f.Statborg,
+		deaths: filmDeaths{list: f.Facts.Deaths}, kills: f.Kills}
 	facts := port.MatchFacts{}
 	stats := assemblerFilmStats(ctx, matchID, src.statborg, facts, src.deaths)
 	if stats.score != nil {
@@ -137,11 +138,14 @@ func m1Reconstruire(b *Builder, in m1Entree) string {
 		stats.score.HoldTicksPerPoint, _ = b.regulation.HoldTicksPerPoint(facts.GameVariantName)
 	}
 	cat := b.collecterEntreesCatalogue(matchID, []string{in.carte}, facts, &stats, src)
-	doc, err := b.documentDeLaCuisson(ctx, matchID, b.buildReplayOptions(entry, facts, cat, &stats), src)
+	// AUCUN FILM (lot J3.4) : des faits cuits sous d autres gardes de l appelant (un roster de la
+	// base, que cet outil ne fournit pas) ne se rejouent pas — `documentDeLaCuisson` voudrait
+	// charger le film, et le repertoire vide le refuse : le match est ecarte, jamais publie faux.
+	cuit, err := b.documentDeLaCuisson(ctx, matchID, "", b.buildReplayOptions(entry, facts, cat, &stats), src)
 	if err != nil {
 		return err.Error()
 	}
-	built, err := b.serialiserDocument(matchID, entry, doc, true, time.Now())
+	built, err := b.serialiserDocument(matchID, entry, cuit.doc, cuit.depuisLesFaits, time.Now())
 	if err != nil {
 		return err.Error()
 	}

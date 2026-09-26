@@ -201,6 +201,9 @@ type FilmFactsFile struct {
 	// Coverage : les revisions de couche, le build et le registre — l en-tete, et le MEME type que
 	// `coverage.decoder` de l artefact.
 	Coverage DecoderCoverage
+	// Gardes : les gardes de l appelant sous lesquelles ces faits ont ete cuits — l en-tete, depuis
+	// le codec 2 (lot J3.4, RA1-1). Cf. `gardes_de_cuisson.go`.
+	Gardes GardesDeCuisson
 	// Facts : section 1 — les entrees de l assemblage et la cle de cuisson.
 	Facts FilmFacts
 	// Identity : section 2 — la section 2 de `chunk_00`, sans laquelle le build sort vide.
@@ -285,7 +288,7 @@ func DecodeFilmFactsFile(blob []byte, entry profile.MapQuantEntry) (*FilmFactsFi
 	if err := verifierCleDeCuisson(entete.MapModule, entete.AxisW, entete.LayoutDetected, entry); err != nil {
 		return nil, err
 	}
-	out := &FilmFactsFile{Coverage: entete.Coverage}
+	out := &FilmFactsFile{Coverage: entete.Coverage, Gardes: entete.Gardes}
 	r := &greader{b: blob, off: entete.corps}
 	for r.off < len(r.b) && r.err == nil {
 		id := int(r.u())

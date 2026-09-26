@@ -37,7 +37,12 @@ package replaybuild
 //	                     Ce que ce lot preserve et PROUVE est le passage par
 //	                     `writeArtifactBytes` (`TestBrancheDesFaitsTraverseLeMemePuits`).
 //
-// # LE CHEMIN DECODE ECRIT TOUJOURS SES FAITS
+// # LE CHEMIN DECODE ECRIT SES FAITS — SI LE PUITS RANGERAIT SON ARTEFACT (lot J3.4, RA1-1)
+//
+// Les faits d une cuisson qui a decode se rangent APRES la serialisation de l artefact, et
+// seulement si le puits le rangerait (`rangerLesFaits`) : un artefact appauvri refuse ne laisse
+// pas derriere lui des faits cuits sous des gardes pauvres. Les faits frais qui ne couvrent pas
+// les gardes de la cuisson courante font redecoder (`documentDeLaCuisson`).
 //
 // Ecriture ATOMIQUE (`platform/atomicfile`) : un fichier tronque par une sentinelle memoire serait
 // relu comme des faits COMPLETS — la relecture ne juge que l en-tete, pas la vraisemblance des
@@ -58,7 +63,6 @@ import (
 	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
-	"levelup/go-api/internal/platform/atomicfile"
 )
 
 // EtapeRejeuDepuisLesFaits est le NOM de l etape que l observateur recoit pour dire QUELLE BRANCHE
@@ -71,11 +75,14 @@ const EtapeRejeuDepuisLesFaits = "filmFactsRejoue"
 
 // entreesDeCuisson porte CE QUI DIFFERE entre les deux branches, et rien de plus.
 //
-// `faits` non nil = la branche « relire » a servi ; `film` non nil = la branche « decoder ». Les
-// deux ne sont JAMAIS renseignes ensemble.
+// `faits` non nil = la branche « relire » a ete RETENUE a la bascule ; `film` non nil = la branche
+// « decoder ». Les deux ne sont JAMAIS renseignes ensemble.
 type entreesDeCuisson struct {
-	// faits : les faits relus, frais et complets. nil sur le chemin du film.
-	faits *replay.FilmFactsFile
+	// faits : les faits relus, FRAIS (codec, revisions, cle), et `entete` leur en-tete. nil sur le
+	// chemin du film. Les GARDES DE L APPELANT se jugent plus tard, sur les options
+	// (`documentDeLaCuisson`, lot J3.4).
+	faits  *replay.FilmFactsFile
+	entete replay.FilmFactsEntete
 	// film : le film charge. nil sur le chemin des faits.
 	film *decfilm.Film
 	// statborg, deaths, kills : les trois entrees que les deux branches fournissent, l une en
@@ -89,27 +96,14 @@ type entreesDeCuisson struct {
 func (b *Builder) entreesDeLaCuisson(ctx context.Context, matchID string, mapNames []string,
 	filmDir string, entry decfilm.MapQuantEntry,
 ) (entreesDeCuisson, error) {
-	if f := b.lireLesFaitsFrais(ctx, matchID, entry); f != nil {
-		return entreesDesFaits(f), nil
+	if f, entete := b.lireLesFaitsFrais(ctx, matchID, entry); f != nil {
+		src := entreesDesFaits(f)
+		src.entete = entete
+		return src, nil
 	}
-	// LE FILM EST DECOMPRESSE UNE FOIS ICI, POUR TOUTE LA CUISSON (lot 1, PLAN_CUISSON_PERF
-	// item 1.3). Avant, chacun des ~20 balayages de `BuildFromFilm` relisait et redecompressait
-	// le film entier depuis le disque. Le manifeste, deja ouvert pour le statborg, donne le
-	// type et le debut de chaque chunk ; les NUMEROS, eux, viennent des fichiers presents.
 	tFilm := time.Now()
-	src := ouvrirManifeste(ctx, matchID, filmDir)
-	// UN FILM NON FINALISE NE SE CUIT PAS (lot L3, 2026-09-23) : refuse AVANT le chargement quand
-	// son manifeste ne porte pas le morceau des temps forts, JUSTE APRES quand des morceaux du
-	// repertoire n y sont pas decrits (cf. [refuserManifesteNonFinalise]).
-	if err := refuserManifesteNonFinalise(ctx, matchID, filmDir, src); err != nil {
-		return entreesDeCuisson{}, err
-	}
-	film := chargerFilm(ctx, matchID, filmDir, src)
-	if err := refuserMorceauxHorsManifeste(ctx, matchID, src, film); err != nil {
-		return entreesDeCuisson{}, err
-	}
-	// LA PORTE DE LA CLÉ, AVANT TOUTE LECTURE (lot 3.1.1, cf. cle_du_film.go).
-	if err := ecarterSiCleInconnue(ctx, matchID, film); err != nil {
+	film, err := chargerLeFilmDeLaCuisson(ctx, matchID, filmDir)
+	if err != nil {
 		return entreesDeCuisson{}, err
 	}
 	// UNE SEULE LECTURE DU FIL DES MORTS pour les deux consommateurs de cet etage
@@ -127,6 +121,87 @@ func (b *Builder) entreesDeLaCuisson(ctx context.Context, matchID string, mapNam
 	kills := b.decodeKillSource(matchID, mapNames, film)
 	logPhase("killsource", matchID, tKS)
 	return entreesDeCuisson{film: film, statborg: statborg, deaths: deaths, kills: kills}, nil
+}
+
+// chargerLeFilmDeLaCuisson charge le film SOUS SES GARDES : manifeste finalise, morceaux decrits,
+// cle connue. Un refus sort AVANT toute lecture.
+//
+// LE FILM EST DECOMPRESSE UNE FOIS ICI, POUR TOUTE LA CUISSON (lot 1, PLAN_CUISSON_PERF item 1.3).
+// Avant, chacun des ~20 balayages de `BuildFromFilm` relisait et redecompressait le film entier
+// depuis le disque. Le manifeste, deja ouvert pour le statborg, donne le type et le debut de chaque
+// chunk ; les NUMEROS, eux, viennent des fichiers presents.
+//
+// DEUX APPELANTS : la branche « decoder » de la bascule, et `documentDeLaCuisson` quand des faits
+// frais ne couvrent pas les gardes de l appelant (lot J3.4) — le meme film, les memes gardes.
+func chargerLeFilmDeLaCuisson(ctx context.Context, matchID, filmDir string) (*decfilm.Film, error) {
+	src := ouvrirManifeste(ctx, matchID, filmDir)
+	// UN FILM NON FINALISE NE SE CUIT PAS (lot L3, 2026-09-23) : refuse AVANT le chargement quand
+	// son manifeste ne porte pas le morceau des temps forts, JUSTE APRES quand des morceaux du
+	// repertoire n y sont pas decrits (cf. [refuserManifesteNonFinalise]).
+	if err := refuserManifesteNonFinalise(ctx, matchID, filmDir, src); err != nil {
+		return nil, err
+	}
+	film := chargerFilm(ctx, matchID, filmDir, src)
+	if err := refuserMorceauxHorsManifeste(ctx, matchID, src, film); err != nil {
+		return nil, err
+	}
+	// LA PORTE DE LA CLÉ, AVANT TOUTE LECTURE (lot 3.1.1, cf. cle_du_film.go).
+	if err := ecarterSiCleInconnue(ctx, matchID, film); err != nil {
+		return nil, err
+	}
+	return film, nil
+}
+
+// documentCuit : ce que la production du document rend a `BuildBytes`.
+type documentCuit struct {
+	// doc : le document.
+	doc replay.ReplayDocument
+	// aPersister : les faits a ranger — nil quand le document a ete rejoue DEPUIS les faits (rien
+	// de neuf a ecrire) ou quand le decoupage d i0 etait illisible.
+	aPersister *replay.FilmFactsFile
+	// depuisLesFaits : la branche « relire » a SERVI (et pas seulement ete retenue a la bascule).
+	depuisLesFaits bool
+}
+
+// documentDeLaCuisson produit le document : DEPUIS LES FAITS quand la bascule les a juges frais
+// ET qu ils couvrent les gardes de cette cuisson, DEPUIS LE FILM sinon. Il ne range RIEN : les faits
+// d une cuisson decodee se rangent apres l artefact (`rangerLesFaits`, lot J3.4).
+//
+// LES GARDES SE JUGENT ICI, ET PAS A LA BASCULE (lot J3.4, RA1-1) : elles se derivent des OPTIONS
+// ([replay.GardesDe]), et les options se construisent sur le statborg que les faits frais
+// fournissent. Des faits qui ne les couvrent pas font charger le film ; le statborg et le resultat
+// killsource tires de ces faits restent justes — des faits frais sont ceux du film, sous les memes
+// revisions et la meme cle —, seul le balayage des canaux gardes est a refaire.
+//
+// LES DEUX BRANCHES CONVERGENT CHEZ L'APPELANT, sur `json.Marshal` : un second encodage aurait pu
+// diverger d'un reglage, et l'equivalence a l'octet du test S8 n'aurait plus rien prouve.
+func (b *Builder) documentDeLaCuisson(ctx context.Context, matchID, filmDir string,
+	opts replay.Options, src entreesDeCuisson,
+) (documentCuit, error) {
+	if src.faits != nil {
+		var entry decfilm.MapQuantEntry
+		if opts.MapQuant != nil {
+			entry = *opts.MapQuant
+		}
+		err := src.entete.Utilisable(entry, replay.GardesDe(opts))
+		if err == nil {
+			return documentCuit{doc: replay.BuildFromFacts(matchID, b.titleSlug, src.faits, opts),
+				depuisLesFaits: true}, nil
+		}
+		slog.InfoContext(ctx, "cuisson: faits de film cuits sous d autres gardes — redecodage",
+			"match_id", matchID, "raison", err)
+		if src.film, err = chargerLeFilmDeLaCuisson(ctx, matchID, filmDir); err != nil {
+			return documentCuit{}, err
+		}
+	}
+	tDecode := time.Now()
+	doc, aPersister, err := replay.BuildFromFilmAvecFaits(matchID, b.titleSlug, src.film, opts)
+	logPhase("decodage", matchID, tDecode)
+	if err != nil {
+		return documentCuit{}, fmt.Errorf("décodage du film %s: %w", matchID, err)
+	}
+	completerLesFaits(aPersister, src)
+	return documentCuit{doc: doc, aPersister: aPersister}, nil
 }
 
 // entreesDesFaits rend les entrees de la branche « relire ».
@@ -250,11 +325,11 @@ func (b *Builder) filmFactsPath(matchID string) string {
 // corrompu est un fait d exploitation).
 func (b *Builder) lireLesFaitsFrais(ctx context.Context, matchID string,
 	entry decfilm.MapQuantEntry,
-) *replay.FilmFactsFile {
+) (*replay.FilmFactsFile, replay.FilmFactsEntete) {
 	if b.sansFaitsPersistes {
 		slog.DebugContext(ctx, "cuisson: faits de film IGNORES sur demande (harnais S8)",
 			"match_id", matchID)
-		return nil
+		return nil, replay.FilmFactsEntete{}
 	}
 	chemin := b.filmFactsPath(matchID)
 	blob, err := os.ReadFile(chemin) //nolint:gosec // chemin resolu par PathResolver
@@ -265,54 +340,26 @@ func (b *Builder) lireLesFaitsFrais(ctx context.Context, matchID string,
 		}
 		slog.Log(ctx, niveau, "cuisson: faits de film non relus", "match_id", matchID,
 			"path", chemin, "err", err)
-		return nil
+		return nil, replay.FilmFactsEntete{}
 	}
 	entete, err := replay.DecodeFilmFactsEntete(blob)
 	if err == nil {
-		err = entete.Utilisable(entry)
+		err = entete.Frais(entry)
 	}
 	if err != nil {
 		slog.InfoContext(ctx, "cuisson: faits de film perimes — redecodage", "match_id", matchID,
 			"path", chemin, "raison", err)
-		return nil
+		return nil, replay.FilmFactsEntete{}
 	}
 	fichier, err := replay.DecodeFilmFactsFile(blob, entry)
 	if err != nil {
 		slog.WarnContext(ctx, "cuisson: faits de film illisibles malgre un en-tete frais — redecodage",
 			"match_id", matchID, "path", chemin, "err", err)
-		return nil
+		return nil, replay.FilmFactsEntete{}
 	}
-	slog.InfoContext(ctx, "cuisson: rejeu DEPUIS LES FAITS", "match_id", matchID, "path", chemin,
-		"bytes", len(blob))
-	return fichier
-}
-
-// ecrireLesFaits range les faits d une cuisson qui a DECODE. Non fatal.
-func (b *Builder) ecrireLesFaits(ctx context.Context, matchID string, f *replay.FilmFactsFile) {
-	if f == nil {
-		slog.WarnContext(ctx, "cuisson: aucun fait a persister (decoupage d i0 illisible) — la "+
-			"prochaine cuisson de ce match redecodera", "match_id", matchID)
-		return
-	}
-	blob, err := replay.EncodeFilmFactsFile(f)
-	if err != nil {
-		slog.ErrorContext(ctx, "cuisson: faits de film non serialisables", "match_id", matchID,
-			"err", err)
-		return
-	}
-	chemin := b.filmFactsPath(matchID)
-	if err := os.MkdirAll(title.NewPathResolver(b.repoRoot).FilmFactsDir(b.titleSlug), 0o750); err != nil {
-		slog.ErrorContext(ctx, "cuisson: dossier des faits de film non cree", "match_id", matchID,
-			"path", chemin, "err", err)
-		return
-	}
-	if err := atomicfile.WriteFile(chemin, blob, 0o600); err != nil {
-		slog.ErrorContext(ctx, "cuisson: faits de film non ecrits", "match_id", matchID,
-			"path", chemin, "err", err)
-		return
-	}
-	slog.InfoContext(ctx, "cuisson: faits de film ecrits", "match_id", matchID, "path", chemin,
-		"bytes", len(blob))
+	slog.InfoContext(ctx, "cuisson: faits de film FRAIS — rejeu si les gardes de l appelant les "+
+		"couvrent", "match_id", matchID, "path", chemin, "bytes", len(blob))
+	return fichier, entete
 }
 
 // horlogeDesChunks rend `index de chunk -> start_ms` pour les chunks QUE LE MANIFESTE DECRIT.

@@ -246,7 +246,13 @@ const plafondSurfaceFacade = 166 // 2026-09-17 — base a5d15e634
 //	                                           `UnitOtherIndex`, `ShotsByUnit`, `TirsParPlace` n en
 //	                                           ajoutent aucun. RE-MESURE A L ENTREE du lot : 275 sur
 //	                                           `c9ef97ec6` (feat/rr-vague-d).
-const plafondSurfaceReplay = 278 // 2026-09-24 — rr(m4b) sur c9ef97ec6 : 275 + 3 (FireBurst, FireBurstHole, ContinuousFireCoverage)
+//	280  audit(J3.4) (2026-09-26)              les gardes de l appelant comparees a la bascule
+//	                                           (constat RA1-1) : `replaybuild` nomme l EN-TETE des
+//	                                           faits (`replay.FilmFactsEntete`, garde dans ses
+//	                                           entrees de cuisson) et derive les gardes des options
+//	                                           (`replay.GardesDe`). DEUX symboles neufs, re-mesure
+//	                                           sur la base `08293ae55` : 278.
+const plafondSurfaceReplay = 280 // 2026-09-26 — audit(J3.4) sur 08293ae55 : 278 + 2 (FilmFactsEntete, GardesDe)
 
 // plafondsParFamilleFacade — la surface de la facade VENTILEE PAR PAQUET D ORIGINE.
 //

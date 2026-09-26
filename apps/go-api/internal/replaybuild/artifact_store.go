@@ -32,6 +32,7 @@ package replaybuild
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"os"
@@ -60,7 +61,7 @@ type StoredArtifact struct {
 // Tout refus rend une erreur qui enveloppe domain.ErrBuildArtifactInvalid et
 // n'écrit RIEN.
 func StoreArtifact(repoRoot, titleSlug, matchID string, blob []byte) (StoredArtifact, error) {
-	if _, err := validateArtifact(titleSlug, matchID, blob); err != nil {
+	if err := validateArtifact(titleSlug, matchID, blob); err != nil {
 		return StoredArtifact{}, err
 	}
 	outPath := title.NewPathResolver(repoRoot).ReplayArtifactPath(titleSlug, matchID)
@@ -116,20 +117,39 @@ func wouldDowngrade(outPath string, blob []byte) (enPlace Digest, oui bool) {
 	return current, true
 }
 
-// validateArtifact désérialise et contrôle l'artefact. Rend le document lu.
-func validateArtifact(titleSlug, matchID string, blob []byte) (replay.ReplayDocument, error) {
+// errRetrograderait : le puits conserverait l artefact en place, que `blob` retrograderait.
+var errRetrograderait = errors.New("l artefact retrograderait celui en place")
+
+// refusParLePuits dit, SANS RIEN ECRIRE, pourquoi le puits refuserait de ranger `blob` — ou nil
+// s il le rangerait. C est la MEME decision que [StoreArtifact] puis [writeArtifactBytes] : les
+// refus de [validateArtifact], puis la garde anti-regression ([wouldDowngrade]). Son seul appelant
+// est `rangerLesFaits` (lot J3.4) : des faits ne s ecrivent que pour un artefact que le puits
+// rangerait.
+func refusParLePuits(outPath, titleSlug, matchID string, blob []byte) error {
+	if err := validateArtifact(titleSlug, matchID, blob); err != nil {
+		return err
+	}
+	if enPlace, oui := wouldDowngrade(outPath, blob); oui {
+		return fmt.Errorf("%w (%d joueur(s) en place, schema %d)", errRetrograderait,
+			enPlace.Players, enPlace.SchemaVersion)
+	}
+	return nil
+}
+
+// validateArtifact désérialise et contrôle l'artefact.
+func validateArtifact(titleSlug, matchID string, blob []byte) error {
 	var doc replay.ReplayDocument
 	if len(blob) == 0 {
-		return doc, fmt.Errorf("%w (corps vide)", domain.ErrBuildArtifactInvalid)
+		return fmt.Errorf("%w (corps vide)", domain.ErrBuildArtifactInvalid)
 	}
 	if titleSlug == "" || matchID == "" {
-		return doc, fmt.Errorf("%w (titre et match du job requis)", domain.ErrBuildArtifactInvalid)
+		return fmt.Errorf("%w (titre et match du job requis)", domain.ErrBuildArtifactInvalid)
 	}
 	if err := json.Unmarshal(blob, &doc); err != nil {
-		return doc, fmt.Errorf("%w (JSON illisible: %v)", domain.ErrBuildArtifactInvalid, err)
+		return fmt.Errorf("%w (JSON illisible: %v)", domain.ErrBuildArtifactInvalid, err)
 	}
 	if doc.SchemaVersion != replay.SchemaVersion {
-		return doc, fmt.Errorf("%w (schéma %d, attendu %d)",
+		return fmt.Errorf("%w (schéma %d, attendu %d)",
 			domain.ErrBuildArtifactInvalid, doc.SchemaVersion, replay.SchemaVersion)
 	}
 	// La comparaison porte sur la forme COURTE : c'est l'identité sous laquelle
@@ -137,19 +157,19 @@ func validateArtifact(titleSlug, matchID string, blob []byte) (replay.ReplayDocu
 	// fichier atterrit. Un ouvrier qui rend l'id complet et un job qui porte la
 	// forme courte désignent le même match — et le même chemin.
 	if title.FilmShortMatchID(doc.MatchID) != title.FilmShortMatchID(matchID) {
-		return doc, fmt.Errorf("%w (match %q, attendu %q)",
+		return fmt.Errorf("%w (match %q, attendu %q)",
 			domain.ErrBuildArtifactInvalid, doc.MatchID, matchID)
 	}
 	if doc.TitleSlug != "" && doc.TitleSlug != titleSlug {
-		return doc, fmt.Errorf("%w (titre %q, attendu %q)",
+		return fmt.Errorf("%w (titre %q, attendu %q)",
 			domain.ErrBuildArtifactInvalid, doc.TitleSlug, titleSlug)
 	}
 	if len(doc.Tracks) == 0 {
 		// Même règle que ErrNoTracks à la construction : un document sans
 		// trajectoire se servirait comme un rejeu « propre » d'un match vide.
-		return doc, fmt.Errorf("%w (aucune trajectoire)", domain.ErrBuildArtifactInvalid)
+		return fmt.Errorf("%w (aucune trajectoire)", domain.ErrBuildArtifactInvalid)
 	}
-	return doc, nil
+	return nil
 }
 
 // writeArtifactBytes écrit un artefact déjà sérialisé, ATOMIQUEMENT — SAUF s'il RÉTROGRADERAIT

@@ -228,7 +228,7 @@ func TestFaitsDUnSchemaAnterieurSontRefusesSurLEnTete(t *testing.T) {
 	if err != nil {
 		t.Fatalf("en-tete : %v", err)
 	}
-	if err := e.Utilisable(entry); err != nil {
+	if err := e.Frais(entry); err != nil {
 		t.Fatalf("des faits du schema courant sont refuses : %v", err)
 	}
 	// LE FICHIER D AVANT : meme conteneur, memes revisions, SCHEMA ANTERIEUR.
@@ -237,7 +237,7 @@ func TestFaitsDUnSchemaAnterieurSontRefusesSurLEnTete(t *testing.T) {
 	if perime.Schema < 1 {
 		t.Skip("aucun schema anterieur a comparer")
 	}
-	err = perime.Utilisable(entry)
+	err = perime.Frais(entry)
 	if !errors.Is(err, ErrFilmFactsVersion) {
 		t.Fatalf("un fichier du schema %d doit etre refuse SUR L EN-TETE par ErrFilmFactsVersion ; "+
 			"obtenu : %v", perime.Schema, err)
@@ -249,7 +249,7 @@ func TestFaitsDUnSchemaAnterieurSontRefusesSurLEnTete(t *testing.T) {
 		t.Fatalf("en-tete du fichier tronque : %v", err)
 	}
 	tronque.Schema = SchemaDesFaits - 1
-	if !errors.Is(tronque.Utilisable(entry), ErrFilmFactsVersion) {
+	if !errors.Is(tronque.Frais(entry), ErrFilmFactsVersion) {
 		t.Error("le refus d un schema anterieur exige plus que l en-tete : un fichier perime " +
 			"couterait une lecture complete pour etre rejete")
 	}

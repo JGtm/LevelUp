@@ -261,33 +261,20 @@ func (b *Builder) BuildBytes(matchID string, mapNames []string, filmDir string, 
 		stats.score.HoldTicksPerPoint, _ = b.regulation.HoldTicksPerPoint(facts.GameVariantName)
 	}
 	cat := b.collecterEntreesCatalogue(matchID, mapNames, facts, &stats, src)
-	doc, err := b.documentDeLaCuisson(ctx, matchID, b.buildReplayOptions(entry, facts, cat, &stats), src)
+	opts := b.buildReplayOptions(entry, facts, cat, &stats)
+	cuit, err := b.documentDeLaCuisson(ctx, matchID, filmDir, opts, src)
 	if err != nil {
 		return Built{}, err
 	}
-	return b.serialiserDocument(matchID, entry, doc, src.faits != nil, debutTotal)
-}
-
-// documentDeLaCuisson produit le document : DEPUIS LES FAITS quand la bascule les a juges frais,
-// DEPUIS LE FILM sinon — et, dans ce second cas, RANGE les faits pour la prochaine fois.
-//
-// LES DEUX BRANCHES CONVERGENT CHEZ L'APPELANT, sur `json.Marshal` : un second encodage aurait pu
-// diverger d'un reglage, et l'equivalence a l'octet du test S8 n'aurait plus rien prouve.
-func (b *Builder) documentDeLaCuisson(ctx context.Context, matchID string, opts replay.Options,
-	src entreesDeCuisson,
-) (replay.ReplayDocument, error) {
-	if src.faits != nil {
-		return replay.BuildFromFacts(matchID, b.titleSlug, src.faits, opts), nil
-	}
-	tDecode := time.Now()
-	doc, aPersister, err := replay.BuildFromFilmAvecFaits(matchID, b.titleSlug, src.film, opts)
-	logPhase("decodage", matchID, tDecode)
+	built, err := b.serialiserDocument(matchID, entry, cuit.doc, cuit.depuisLesFaits, debutTotal)
 	if err != nil {
-		return replay.ReplayDocument{}, fmt.Errorf("décodage du film %s: %w", matchID, err)
+		return Built{}, err
 	}
-	completerLesFaits(aPersister, src)
-	b.ecrireLesFaits(ctx, matchID, aPersister)
-	return doc, nil
+	// LES FAITS SE RANGENT APRES L ARTEFACT, ET SEULEMENT S IL PASSE LE PUITS (lot J3.4, RA1-1).
+	if !cuit.depuisLesFaits {
+		b.rangerLesFaits(ctx, matchID, built.Blob, cuit.aPersister)
+	}
+	return built, nil
 }
 
 // entreesCatalogue porte ce que la construction lit HORS DU FILM : les zones et leurs rôles,

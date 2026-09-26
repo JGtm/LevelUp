@@ -193,7 +193,7 @@ func TestFaitsSansVerdictDuFilDesMortsSontRefuses(t *testing.T) {
 	}
 	avantM8 := sansLeVerdictDuFilDesMorts(t, blob, f.Facts.DeathsFeed)
 	e, err := DecodeFilmFactsEntete(avantM8)
-	if err != nil || e.Utilisable(entry) != nil {
+	if err != nil || e.Frais(entry) != nil {
 		t.Fatalf("le fichier d avant M8 doit avoir un en-tete FRAIS (schema %d) : %v", e.Schema, err)
 	}
 	if relu, err := DecodeFilmFactsFile(avantM8, entry); err == nil {
