@@ -132,8 +132,18 @@ worktree dédié du plan. Coût estimé : 10 à 12 lancements d'agents, l'un apr
   - Aucun changement de sémantique du découpage : les DDL actuels ne contiennent ni `;` en
     commentaire, ni `--` dans un littéral, ni `/* */`.
 - **D-4 (item 2).**
-  - Retrait des trois index si aucune forme de lecture ne dépasse **10 ms sans index** sur une
-    DB fichier de 12 000 lignes. Sinon, arrêt et rapport.
+  - ~~Retrait des trois index si aucune forme de lecture ne dépasse 10 ms sans index sur une DB
+    fichier de 12 000 lignes.~~ **AMENDÉ le 2026-09-27 par le superviseur** (STOP de B3.1) :
+    retrait des trois index si, pour chacune des sept formes, la médiane **sans index ≤ médiane
+    avec index + 2 ms**, sur une DB fichier de 12 000 lignes, plan lu par `EXPLAIN ANALYZE`
+    (DB-13 : `EXPLAIN` seul ne montre jamais l'index). Sinon, arrêt et rapport.
+  - **Raison de l'amendement** : le seuil absolu mesurait le coût de lecture de 12 000 lignes
+    par le client Go et des listes `IN`. Ce coût est identique avec et sans index : même plan
+    séquentiel pour F1-F3, sur un poste chargé à 100 % par une autre session. L'intention de D-4
+    était de vérifier que le retrait ne ralentit rien, comme le relevé PSA (0,800 contre
+    0,841 ms, même plan). Sur la mesure, le plus grand écart est de +1,1 ms. La seule forme qui
+    emprunte un index (F4) est 10 fois plus RAPIDE sans lui, et la forme de l'incident du 13/09
+    (C1/C2) est à égalité.
   - Les `DROP INDEX IF EXISTS` entrent aussi dans l'autorité rejouée à chaque ouverture, pour
     MSR **et** pour PSA. Raison : un binaire plus ancien (autre worktree, retour arrière) recrée
     les index par son `CREATE INDEX IF NOT EXISTS`, et la migration one-shot ne rejoue jamais.
