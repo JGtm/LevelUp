@@ -219,10 +219,18 @@ func createIndexSafe(db *sql.DB, ddl string) error {
 	return err
 }
 
-// execScript execute un script SQL multi-statements.
+// execScript execute un script SQL multi-statements sous le contexte de boot.
 func execScript(db *sql.DB, script string) error {
+	return execScriptContext(bootCtx(), db, script)
+}
+
+// execScriptContext est l'UNIQUE exécuteur de script SQL du module (backlog B2,
+// 2026-09-26) : découpage par splitSQL, une instruction à la fois, sous le contexte de
+// l'appelant. sync.execScript et migration.ExecScript lui délèguent ; le garde-rail
+// archlint/no_local_sql_splitter_test.go interdit toute copie.
+func execScriptContext(ctx context.Context, db *sql.DB, script string) error {
 	for _, stmt := range splitSQL(script) {
-		if _, err := db.ExecContext(bootCtx(), stmt); err != nil {
+		if _, err := db.ExecContext(ctx, stmt); err != nil {
 			return fmt.Errorf("execScript: %w (stmt=%.80s)", err, stmt)
 		}
 	}
@@ -237,6 +245,7 @@ func execScript(db *sql.DB, script string) error {
 // que des commentaires `--` et/ou des espaces (typiquement la note qui suit le
 // dernier `;` d'un CREATE) sont ignorés : un commentaire-seul n'est pas une
 // instruction exécutable (DuckDB la rejette en "empty query").
+// Limites (ni chaînes `'…'` ni commentaires `/* */`) : godoc de SplitSQL.
 func splitSQL(script string) []string {
 	var stmts []string
 	var cur strings.Builder

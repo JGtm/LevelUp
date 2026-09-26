@@ -698,27 +698,43 @@ niveau job, fusion dans `feat/v75`, suppression du worktree et de la branche.
 - `sync` est gelé (`sync_root_freeze_test.go` : aucun nouveau fichier dans `sync`). `schema.go`
   fait 569 lignes (baseline).
 
-- [ ] **B2.1** `migration.ExecScriptContext(ctx, db, script)`, cœur unique ; `ExecScript`
-  délègue.
-- [ ] **B2.2** `sync.execScript` devient un délégué d'une ligne. Suppression de `sync.splitSQL`,
+- [x] **B2.1** `migration.ExecScriptContext(ctx, db, script)`, cœur unique ; `ExecScript`
+  délègue. Fait : `migration/helpers.go:231` `execScriptContext` (cœur), `:223` `execScript`
+  délègue sous `bootCtx()` ; `helpers_export.go:61` `ExecScriptContext`, `:56` `ExecScript`.
+- [x] **B2.2** `sync.execScript` devient un délégué d'une ligne. Suppression de `sync.splitSQL`,
   de `trimSpace`, de `truncate` (s'il n'a plus d'appelant, à vérifier) et de leurs tests
-  unitaires (`schema_unit_test.go`).
-- [ ] **B2.3** `sync/skill/sqlexec_helpers_test.go` et `cmd/diag_exec/main.go` passent au
-  découpeur canonique.
-- [ ] **B2.4** Garde-rail `internal/archlint/no_local_sql_splitter_test.go` :
+  unitaires (`schema_unit_test.go`). Fait : `sync/schema.go:523` ; `splitSQL`, `trimSpace` et
+  `truncate` supprimés (aucun autre appelant dans `sync`, vérifié par grep) ; `schema.go`
+  569 → 525 lignes ; `schema_unit_test.go` supprimé (il ne testait que ces trois fonctions).
+- [x] **B2.3** `sync/skill/sqlexec_helpers_test.go` et `cmd/diag_exec/main.go` passent au
+  découpeur canonique. Fait : `sqlexec_helpers_test.go` supprimé, ses deux appelants
+  (`exclusion_filter_test.go:23`, `skill_rating_loaders_test.go:72`) appellent
+  `migration.ExecScriptContext` ; `cmd/diag_exec/main.go:37` boucle sur `migration.SplitSQL`.
+- [x] **B2.4** Garde-rail `internal/archlint/no_local_sql_splitter_test.go` :
   - interdit, hors `internal/migration/helpers*.go`, toute définition de découpeur ou
     d'exécuteur de script SQL, et `strings.Split(<x>, ";")` dans un fichier qui exécute du SQL ;
   - dispense datée pour `arbitration_clocks_utc_guard_test.go` ;
   - échec si aucun fichier n'est lu ;
   - mutation vérifiée (une copie réintroduite fait rougir).
-- [ ] **B2.5 Tests** (rouges d'abord ; aucun nouveau fichier dans `internal/sync/`) :
+  Fait (`:56`) : analyse AST de `internal/` et `cmd/`, tests compris. Définition = fonction
+  nommée comme un découpeur ou un exécuteur de script, sauf délégué `return migration.X(...)` ;
+  dans un fichier qui appelle `Exec`/`ExecContext`/`Query*` : `strings.Split*(…, ";")` et toute
+  comparaison ou `case` sur `';'`. Dispense datée `:37` (plus un contrôle d'existence du
+  fichier dispensé) ; `lus == 0` → échec (`:104`) ; ancre : `migration/helpers.go` doit être vu.
+  Rouge sur le code d'avant (7 sites, les 3 copies) ; mutation dans `cmd/diag_exec` → rouge,
+  retirée. Voir le journal.
+- [x] **B2.5 Tests** (rouges d'abord ; aucun nouveau fichier dans `internal/sync/`) :
   - `TestEnsurePlayerSchema_TrailingCommentOnly` (tag `integration`, dans
     `schema_integration_test.go`) : surcharge
     `playerSchemaSQL` + `"\n-- note finale\n"`, restauration par `t.Cleanup`, sans
     `t.Parallel`. Aujourd'hui : « empty query ».
   - `TestExecScript_TrailingCommentOnly`.
-- [ ] **B2.6** Commentaire de `steps_player_schema_authority.go:70-75` réécrit. Godoc de
-  `SplitSQL` : limites écrites (chaînes, `/* */`).
+  Fait : `schema_integration_test.go:45` et `:114`, rouges avant (« empty query »). En plus :
+  `migration/helpers_extra_test.go:45` `TestExecScriptContext_HonoursContext` (contexte annulé).
+- [x] **B2.6** Commentaire de `steps_player_schema_authority.go:70-75` réécrit. Godoc de
+  `SplitSQL` : limites écrites (chaînes, `/* */`). Fait : `steps_player_schema_authority.go:71`
+  (paragraphe « DÉCOUPAGE ») ; `helpers_export.go:72` (« LIMITES ») et renvoi depuis
+  `helpers.go` `splitSQL`. Sémantique du découpage inchangée (D-3).
 
 **Gate** : GO-F (paquets ciblés : `./internal/migration/ ./internal/sync/ ./internal/sync/skill/ ./internal/archlint/ ./cmd/diag_exec/`).
 
@@ -1030,6 +1046,21 @@ plus B5.8.
   métrique mêle donc encombrement et arrêt demandé. Non traité (hors périmètre).
 - DB-6 (B1) : `scheduler/world_leaderboard_cron_test.go` fait 613 lignes (> 500). Préexistant ;
   les nouveaux tests vont dans `world_leaderboard_persist_retry_test.go`. Non traité.
+- DB-7 (B2, 2026-09-26) : `arbitration_clocks_utc_guard_test.go` n'appelle aucune méthode qui
+  exécute du SQL. Avec le critère retenu par le garde-rail (fichier qui appelle `Exec*` ou
+  `Query*`), il ne serait pas relevé sans sa dispense : la dispense demandée par le plan est
+  donc préventive. Elle est gardée, datée, et le garde-rail échoue si le fichier disparaît.
+- DB-8 (B2) : `TestLUSRV2Shadow_RafalesBornees_300Candidats` (`sync/skill`, tag `integration`)
+  mesure une détention de rafale « < 2 s » à l'horloge murale. Sous la charge du poste (deux
+  `replay-equiv` d'une autre session), des rafales montent à 2,00-2,04 s et le test rougit.
+  Préexistant : rouge aussi sur `d61443ef5` (worktree jetable, log
+  `B2-base-d61443ef5-skill.log`). Test fragile sous charge ; non traité.
+- DB-9 (B2) : `cmd/diag_exec/main.go` ouvre la DB par un `sql.Open("duckdb", …)` direct en
+  RW (anti-patron « bare connect »). Outil de diagnostic hors image ; préexistant, non traité.
+- DB-10 (B2) : sur ce poste, `go test -tags=integration -p 1` de `internal/platform/duckdb`
+  dure 872 s seul et `internal/sync` 577 s, contre un délai par défaut de 10 min : la suite
+  complète sans `-timeout` les tue sous charge. La recette GO-F du plan (§3.3) ne fixe pas de
+  `-timeout`. Non traité.
 
 ---
 
@@ -1138,3 +1169,55 @@ plus B5.8.
   sharedprovider, archlint), `EXIT_INTEG=0` (scheduler, sharedprovider, `-p 1`), `EXIT_LINT=0`
   (`0 issues.`).
 - À 21 h 46, l'autre session fait toujours tourner `replay-equiv` : A2 attend encore, B2 suit.
+
+**[2026-09-26/27] B2 — un seul découpeur SQL (item 3) — exécutant opus, worktree du plan.**
+
+- Ordre : tests rouges (B2.5) et garde-rail (B2.4) écrits d'abord sur le code d'avant, puis
+  B2.1 → B2.6. Cache Go dédié `go-build-backlog`, une commande `go` à la fois.
+- Sonde temporaire (retirée, log `B2-sonde-equivalence.log`, `EXIT_SONDE=0`) : l'ancien
+  `sync.splitSQL` et `migration.SplitSQL` rendent les MÊMES instructions sur les quatre scripts
+  que `sync` exécute (`playerSchemaSQL` 20, `sharedSchemaSQL` 12, `sharedViewsSQL` 1,
+  `GamertagLookupViewSQL` 1). D-3 vérifiée sur pièces : aucun changement de découpage en prod.
+- Sorties rouges sur le code d'avant :
+  - `B2-5-rouge-sync.log`, `EXIT_ROUGE_SYNC=1` : `TestEnsurePlayerSchema_TrailingCommentOnly` →
+    `EnsurePlayerSchema: DDL player échoué au boot même après réparation append-only (…):
+    execScript: empty query (stmt="-- note finale")` ; `TestExecScript_TrailingCommentOnly` →
+    `execScript: empty query (stmt="-- note finale")`.
+  - `B2-4-rouge-archlint.log`, `EXIT_ROUGE_ARCHLINT=1` : 7 sites, les trois copies —
+    `cmd/diag_exec/main.go:34` (Split « ; »), `sync/schema.go:522/532/537` (execScript, splitSQL,
+    comparaison à `';'`), `sync/skill/sqlexec_helpers_test.go:15/24/26`. Aucun faux positif.
+  - `TestExecScriptContext_HonoursContext` (nouveau symbole, donc non compilable sur le code
+    d'avant) : prouvé par mutant — cœur remis sous `bootCtx()` → `err = <nil>, attendu
+    context.Canceled` (log `B2-mutants.log`).
+  - Mutation du garde-rail : une copie `strings.Split(script, ";")` + `db.Exec` réintroduite dans
+    `cmd/diag_exec/main.go` → `cmd/diag_exec/main.go:96 strings.Split*(…, ";") dans un fichier qui
+    exécute du SQL` (`EXIT_MUTANTS=1`). Les deux mutants retirés, grep `MUTANT B2` vide.
+  - Après correctif : `B2-5-vert.log`, `EXIT_VERT=0`.
+- Gates GO-F (logs `$TEMP\backlog-gates\B2-*.log`) :
+  - `EXIT_BUILD=0`, `EXIT_VET=0`, `EXIT_TEST_LOT=0` (migration, sync, sync/skill, archlint,
+    diag_exec).
+  - `EXIT_INTEG_LOT=1` : seul échec `TestLUSRV2Shadow_RafalesBornees_300Candidats` (détention
+    2,01-2,04 s > 2 s), PRÉEXISTANT (DB-8) : rouge aussi sur `d61443ef5` dans un worktree
+    jetable (`EXIT_BASE_SKILL=1`), test indépendant du diff (`rw.Exec` direct). Rejoué seul :
+    `EXIT_INTEG_SKILL_REJEU=0`.
+  - `EXIT_TEST_COMPLET=1` : 187 paquets `ok`, 4 paquets rouges sous charge —
+    `config` (`TestLoadPlayers_RacyWindowSnapshotNeverStored`), `mapcatalog` (deux tests de
+    verrou concurrent, « passage forcé » à 2 s), `sync/haloclient`
+    (`TestGetMatchFilm_ParallelDownloadFasterThanSequential`), `sync/skill` (DB-8). Rejoués
+    seuls : `EXIT_TEST_REJEU=0` (les quatre verts). Aucun ne passe par le code du lot.
+  - `EXIT_INTEG_COMPLET=1` : aucune ligne `^--- FAIL:` ; deux paquets tués au délai de 10 min
+    (`platform/duckdb` 600,3 s, `sync` 600,3 s). Rejoués seuls avec `-timeout 40m` :
+    `EXIT_INTEG_REJEU_SYNC=0` (576,5 s), `EXIT_INTEG_REJEU_DUCKDB=0` (872,3 s). Voir DB-10.
+  - `EXIT_LINT=0` (`0 issues.`).
+- Charge du poste : deux `replay-equiv` d'une autre session tournaient pendant les suites
+  complètes (plus aucun à la fin).
+- Écarts :
+  - `sqlexec_helpers_test.go` SUPPRIMÉ plutôt que réécrit : ses deux appelants appellent
+    `migration.ExecScriptContext` (un délégué de test n'aurait rien apporté).
+  - Message d'erreur de `sync.execScript` : `(stmt=%q)` tronqué par `truncate` devient celui
+    du cœur, `(stmt=%.80s)`. Aucun lecteur de ce texte (grep `stmt=`).
+  - `cmd/diag_exec` hérite de la sémantique canonique : fragment de commentaires seul ignoré,
+    `;` dans un `--` ne sépare plus.
+  - Un test de plus que la liste (`TestExecScriptContext_HonoursContext`).
+  - Les suites complètes ont dépassé les 10 min de l'outil : lancées au premier plan, basculées
+    en tâche de fond par l'outil, attendues par une boucle au premier plan.

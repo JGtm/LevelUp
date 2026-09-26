@@ -518,52 +518,8 @@ func OpenSharedDB(path string) (*duckdbpkg.DB, error) {
 	return handle, nil
 }
 
-// execScript exécute un script SQL multi-instructions séparées par ";".
+// execScript exécute un script SQL multi-instructions : délégué du découpeur unique
+// (migration.ExecScriptContext, backlog B2 2026-09-26). Gardé pour ses appels de test.
 func execScript(ctx context.Context, db *sql.DB, script string) error {
-	for _, stmt := range splitSQL(script) {
-		if _, err := db.ExecContext(ctx, stmt); err != nil {
-			return fmt.Errorf("execScript: %w (stmt=%q)", err, truncate(stmt, 80))
-		}
-	}
-	return nil
-}
-
-// splitSQL découpe un script SQL en instructions individuelles (séparateur ";").
-func splitSQL(script string) []string {
-	var stmts []string
-	var cur []byte
-	for i := 0; i < len(script); i++ {
-		ch := script[i]
-		if ch == ';' {
-			s := trimSpace(string(cur))
-			if s != "" {
-				stmts = append(stmts, s)
-			}
-			cur = cur[:0]
-		} else {
-			cur = append(cur, ch)
-		}
-	}
-	if s := trimSpace(string(cur)); s != "" {
-		stmts = append(stmts, s)
-	}
-	return stmts
-}
-
-func trimSpace(s string) string {
-	start, end := 0, len(s)
-	for start < end && (s[start] == ' ' || s[start] == '\n' || s[start] == '\r' || s[start] == '\t') {
-		start++
-	}
-	for end > start && (s[end-1] == ' ' || s[end-1] == '\n' || s[end-1] == '\r' || s[end-1] == '\t') {
-		end--
-	}
-	return s[start:end]
-}
-
-func truncate(s string, max int) string {
-	if len(s) <= max {
-		return s
-	}
-	return s[:max] + "..."
+	return migration.ExecScriptContext(ctx, db, script)
 }

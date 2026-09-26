@@ -68,11 +68,12 @@ import "database/sql"
 // personal_score_awards_latest (DENSE_RANK, génération MAX, tombstones exclus) — créée
 // par applyAppendOnlyPersonalScoreAwards (steps_player_append_only_personal_score_awards.go).
 //
-// AUCUN COMMENTAIRE EN FIN DE SCRIPT. Ce DDL est découpé sur « ; » par deux splitters
-// naïfs (migration.execScript et sync.splitSQL) : un commentaire APRÈS le dernier « ; »
-// devient une instruction vide et fait échouer sync.EnsurePlayerSchema (« empty query »,
-// constaté en CI le 2026-09-20). Le commentaire ci-dessous est donc en TÊTE, attaché au
-// premier statement ; le reste de la justification vit dans ce commentaire Go.
+// DÉCOUPAGE. Ce DDL est exécuté par le découpeur UNIQUE du module (migration.SplitSQL,
+// via ExecScriptContext ; sync.execScript lui délègue depuis le lot B2 du 2026-09-26). Il
+// ignore un fragment fait seulement de commentaires `--` et un `;` dans un `--`. Jusqu'à ce
+// lot, sync avait sa propre copie, qui passait un commentaire placé APRÈS le dernier « ; » à
+// DuckDB (« empty query », constaté en CI le 2026-09-20). Limites restantes (godoc de
+// SplitSQL) : ni `;` dans une chaîne `'…'` ni commentaire `/* */` dans ce DDL.
 const PlayerPersonalScoreAwardsDDL = `
 -- AUCUN INDEX SECONDAIRE sur cette table (décisions 2026-08-05 puis 2026-09-20, cf.
 -- l'en-tête du fichier). Les lecteurs passent tous par personal_score_awards_latest,
