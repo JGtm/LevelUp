@@ -160,7 +160,7 @@ const VersionCodecFaits = 2
 // le blob v26 : il est refuse a la magie du blob, et redecode.
 // LE MEME SCHEMA 4 AU JALON J3 (2026-09-26) : le complement de la section 1 gagne, avant le verdict
 // du fil des morts, le TEMOIN DE L INVENTAIRE (nul = illisible, lot J3.6) SOUS LA MONTEE DU CODEC 2 (plan, J3.6 :
-// « meme montee que J3.4 ») — le codec 2 n a jamais ete ecrit sans lui, et un fichier du codec 1
+// « meme montee que J3.4 ») — le codec 2 n a jamais ete PUBLIE sans lui (les etats intermediaires du lot n ont ecrit aucun fait dans un dossier de donnees), et un fichier du codec 1
 // est refuse sur son prefixe.
 const SchemaDesFaits = 4
 
