@@ -113546,3 +113546,11 @@ serveur relance a synchronise depuis). Tache Notion 10 CLOSE.
 **Resultats observes** : rouges observes et mutations jouees par les executants ; superviseur : vet + 33 paquets (dont film, replaybuild, killcollector) verts sur l'ensemble ; **replay-equiv 20/20 identiques** (BTB compris, pics <= 1,19 Gio, faits du principal intacts). Decouvertes au plan §8.4-8.11. J3 et J4.0 lances en parallele (plafond 5 agents) ; J4.0 fait (`c465f93ec`, ecart J4.0.3 accepte : bobines killsource a trames delta ajoutees au golden).
 
 **Conclusion / prochaine etape** : push, CI de la branche au niveau job, puis fusion de J2 dans `feat/v75` sur accord de l'utilisateur ; J3 en cours ; G-equiv de J3 + J4.0 sur l'arbre reuni.
+
+## [2026-09-26] Emprise, lot L0 : jetons ressource et rôles d'objectif, échange véhicule / tourelle — Complété (`wt/emprise`, commit local)
+
+**Decision technique principale** : deux familles dédiées ajoutées au contrat sémantique (`resource-powerup` / `-power-weapon` / `-vehicle` / `-rack`, `objective-role-take` / `-defend` / `-hold`), valeurs D9 du plan sur la palette par défaut et repli CSS ; `frag-vehicle` et `frag-turret` échangent leurs VALEURS dans les 4 palettes (mapping `fragClass.ts` intact) ; camouflage et surbouclier passent à `resource-powerup`, les rôles d'objectif quittent l'emprunt `chart-series-1..3`. Palettes daltoniennes : valeurs choisies parmi les teintes déjà présentes dans chaque palette par recherche exhaustive au validateur dataviz (toutes paires, clair #fdfdfe et sombre #171717).
+
+**Resultats observes** : tous les jeux passent sauf les ressources Okabe-Ito en sombre (Reddish Purple hors bande de clarté de 0,009) — aucun jeu de 4 teintes Okabe-Ito ne passe en entier, écart documenté dans la palette et au plan. Tol Bright : l'orange des véhicules échoue, `resource-vehicle` = Vibrant Red. Snapshot `coverage` mis à jour (4 palettes) ; typecheck, lint (0 erreur), vitest complet, knip-ratchet, lint-no-hardcoded-colors, lint-cross-feature-imports verts. `globals.css` n'a pas de repli `frag-*` (rien à y échanger).
+
+**Conclusion / prochaine etape** : découvertes consignées au plan §7 (commentaires périmés `fragClass.ts:76-77`, écart Okabe-Ito à confirmer). Lot suivant : L1 (Dynamique, écart cumulé au FDA attendu).

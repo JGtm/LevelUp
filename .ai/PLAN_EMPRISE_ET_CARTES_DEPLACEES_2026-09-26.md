@@ -171,12 +171,14 @@ Périmètre : `lib/accessibility/semantic-tokens.ts`, `lib/accessibility/palette
 `styles/globals.css`, `lib/accessibility/__tests__/__snapshots__/coverage.test.ts.snap`,
 `features/_shared/usage/usageMetricKinds.ts` (+ test), `features/session-detail/SessionUsageSection.tsx`.
 
-- [ ] L0.1 Ajouter les 7 jetons D9 (type, `ALL_TOKENS`, 4 palettes, repli CSS, snapshot).
-- [ ] L0.2 Échanger les valeurs `frag-vehicle` / `frag-turret` dans les 4 palettes et `globals.css`.
-- [ ] L0.3 `usageMetricKinds.ts:120-121` : camouflage et surbouclier → `resource-powerup`.
-- [ ] L0.4 `ROLE_TOKENS` / `roleToken` (`usageMetricKinds.ts:138-147`) → `objective-role-*`.
-- [ ] L0.5 Valeurs cividis / okabe-ito / tol-bright passées au validateur (clair et sombre, toutes paires) ; sorties collées dans le rapport.
+- [x] L0.1 Ajouter les 7 jetons D9 (type, `ALL_TOKENS`, 4 palettes, repli CSS, snapshot).
+- [x] L0.2 Échanger les valeurs `frag-vehicle` / `frag-turret` dans les 4 palettes et `globals.css` (`globals.css` n'a aucun repli `--ac-frag-*` : rien à y échanger, vérifié par grep ; commentaire périmé de `tol-bright.ts:61` corrigé).
+- [x] L0.3 `usageMetricKinds.ts:120-121` : camouflage et surbouclier → `resource-powerup`.
+- [x] L0.4 `ROLE_TOKENS` / `roleToken` (`usageMetricKinds.ts:138-147`) → `objective-role-*`.
+- [x] L0.5 Valeurs cividis / okabe-ito / tol-bright passées au validateur (clair et sombre, toutes paires) ; sorties collées dans le rapport.
 - Gate : `coverage.test.ts`, `fragClass.guard.test.ts`, `colorDistance.guard.test.ts`, `usageMetricKinds.test.ts` + gate commun.
+
+Journal L0 (2026-09-26, exécuteur Opus, `wt/emprise`) : 7 jetons ajoutés, véhicule / tourelle échangés dans les 4 palettes, bonus et rôles branchés sur leurs familles (`SessionUsageSection.tsx` lit `roleToken` : aucun changement requis, il suit). Valeurs retenues (teintes déjà présentes dans chaque palette, validateur dataviz toutes paires, clair #fdfdfe et sombre #171717) — ressources powerup / armes spéciales / véhicule / râtelier : Okabe-Ito #009E73 / #CC79A7 / #A04700 / #0072B2, Cividis #009E73 / #AA4499 / #A04700 / #0072B2, Tol Bright #117733 / #AA4499 / #CC3311 / #0077BB ; rôles prendre / défendre / tenir : Okabe-Ito #0072B2 / #009E73 / #B77E00, Cividis #0072B2 / #009E73 / #686B00, Tol Bright #0077BB / #117733 / #AA3377. Tout passe sauf Okabe-Ito ressources en sombre : Reddish Purple hors bande de clarté de 0,009 (L 0,679 > 0,67) — AUCUN jeu de 4 teintes Okabe-Ito ne passe tout (recherche exhaustive), l'alternative sans pourpre (ΔE 14,5 entre armes spéciales et véhicules, voisines) est pire ; écart documenté dans `okabe-ito.ts`. Tol Bright : l'orange des véhicules (`TOL_VIBRANT_ORANGE`, désormais `frag-vehicle`) échoue le validateur, `resource-vehicle` prend le Vibrant Red. Gate : typecheck, lint (0 erreur), vitest complet, knip-ratchet, lint-no-hardcoded-colors, lint-cross-feature-imports verts.
 
 ### L1 — Dynamique : écart cumulé au FDA attendu · rapide
 
@@ -289,5 +291,7 @@ l'entrée la plus récente du journal. Reprendre au premier item non statué du 
   74 d'après le journal des morts (22/09) ; détection à diagnostiquer avant tout usage.
 - `formes/` deviendra solo seul mais reste sous `features/squad/` (import croisé compté par
   `lint-cross-feature-imports`) — déplacement sous `_shared/` à décider plus tard.
+- (L0) `lib/accessibility/scales/fragClass.ts:76-77` : les commentaires « indigo profond » / « orange brûlé » décrivent les anciennes valeurs de `frag-vehicle` / `frag-turret` (échangées par L0) ; fichier hors périmètre L0 (mapping intouchable), commentaires à corriger par un lot qui y touche.
+- (L0) Palette Okabe-Ito : aucun jeu de 4 teintes de la palette ne passe le validateur dataviz en entier (ressources) ; écart résiduel accepté par l'exécuteur (bande de clarté sombre dépassée de 0,009), à confirmer par le superviseur.
 - Écart feuille / film sur les grenades (Madina97294 : 4 au film, 3 sur la feuille le 22/09) et un
   frag de la feuille sans ligne au film.

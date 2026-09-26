@@ -133,11 +133,26 @@ export const defaultPalette: Palette = {
   'frag-melee':           '#EC4899', // rose
   'frag-grenade':         '#F59E0B', // ambre
   'frag-spartan-ability': '#6366F1', // indigo-500 (cf. note ci-dessus)
-  'frag-vehicle':         '#3730A3', // indigo-800
-  'frag-turret':          '#D55E00', // orange brûlé
+  // Véhicule et tourelle ÉCHANGÉS le 2026-09-26 (D9, plan Emprise) : le véhicule
+  // prend l'orange de `resource-vehicle`, même couleur d'une page à l'autre.
+  'frag-vehicle':         '#D55E00', // orange brûlé (= resource-vehicle)
+  'frag-turret':          '#3730A3', // indigo-800
   'frag-equipment':       '#C026D3', // fuchsia-600
   'frag-environmental':   '#0072B2', // bleu profond
   'frag-unattributed':    '#60A5FA', // bleu-400 neutre (résidu)
+
+  // ── Ressources de la carte (D9, 2026-09-26) — validateur dataviz, clair et
+  // sombre, toutes paires : seule la paire bonus ↔ râtelier reste sous 15 de ΔE
+  // (13,7), ACCEPTÉE : les deux ne sont jamais voisines et toujours nommées.
+  'resource-powerup':      '#0D9488', // sarcelle — camouflage + surbouclier
+  'resource-power-weapon': '#7C3AED', // violet — armes spéciales (= frag-heavy)
+  'resource-vehicle':      '#D55E00', // orange — véhicules (= frag-vehicle)
+  'resource-rack':         '#0072B2', // bleu — armes de râtelier
+
+  // ── Rôles d'objectif (D9) — toutes vérifications passées, clair et sombre ──
+  'objective-role-take':   '#6366F1', // indigo — Prendre
+  'objective-role-defend': '#0891B2', // cyan-600 — Défendre
+  'objective-role-hold':   '#A924BD', // magenta — Tenir
 
   // ── Heatmaps (source : timeseries-heatmap.tsx, heatmapChart.ts) ────────────
   'heatmap-cold':           '#EF4444', // mauvais — rouge
