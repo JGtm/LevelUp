@@ -48,15 +48,15 @@ func decodeBipedI0Pos(pay []byte, at int, lay profile.I0Layout, wr *profile.Vec3
 	if at < 0 || at+lay.TotalBits() > total {
 		return [3]float32{}, false
 	}
-	if readBitsAt(pay, at, preGate) != 0 {
+	if uint32(source.BitsStricts(pay, at, preGate)) != 0 {
 		return [3]float32{}, false
 	}
-	if readBitsAt(pay, at+preGate, lay.GateBits-preGate) != lay.Region {
+	if uint32(source.BitsStricts(pay, at+preGate, lay.GateBits-preGate)) != lay.Region {
 		return [3]float32{}, false
 	}
 	var q [3]uint32
 	for ax := 0; ax < 3; ax++ {
-		q[ax] = readBitsAt(pay, at+lay.AxisOffset(ax), int(lay.AxisW[ax]))
+		q[ax] = uint32(source.BitsStricts(pay, at+lay.AxisOffset(ax), int(lay.AxisW[ax])))
 	}
 	if saturatedQuantum(q, lay) {
 		return [3]float32{}, false

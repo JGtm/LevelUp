@@ -43,6 +43,7 @@ package grammar
 import (
 	"fmt"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 	"path/filepath"
 	"sort"
 	"testing"
@@ -82,26 +83,26 @@ type profilDecoupe struct {
 // profilDecouper decompose un record ti=9 en sommant les largeurs lues dans l'executable.
 func profilDecouper(pay []byte, anchor, lenBits int, reg *Registry) profilDecoupe {
 	d := profilDecoupe{Anchor: anchor, LenBits: lenBits, Desync: -1}
-	d.Field26 = uint32(kfReadBits(pay, anchor+32, 26))
+	d.Field26 = uint32(source.BitsBourres(pay, anchor+32, 26))
 	p := anchor + keyframeHeaderBits
-	d.VerGate = kfReadBits(pay, p, 1) == 1
+	d.VerGate = source.BitsBourres(pay, p, 1) == 1
 	p++
 	if d.VerGate {
 		p += profilTI9VersionBits
 	}
 	p += profilTI9CorpsBits
 	d.DSBits = p - (anchor + keyframeHeaderBits)
-	d.MaskPlein = kfReadBits(pay, p, 1) == 1
+	d.MaskPlein = source.BitsBourres(pay, p, 1) == 1
 	if d.MaskPlein {
 		d.MaskBits = 1 + 64
 	} else {
-		d.MaskCompte = int(kfReadBits(pay, p+1, profilMaskCountBits))
+		d.MaskCompte = int(source.BitsBourres(pay, p+1, profilMaskCountBits))
 		d.MaskBits = 1 + profilMaskCountBits + d.MaskCompte*profilMaskIndexBits
 	}
 	d.I0Predit = keyframeHeaderBits + d.DSBits + d.MaskBits
 	d.EnteteImpliquee = equipeDecalageMesure - d.DSBits - d.MaskBits
-	d.Val186 = int(kfReadBits(pay, anchor+equipeDecalageMesure, equipeDesignatorBits))
-	d.ValI0 = int(kfReadBits(pay, anchor+d.I0Predit, equipeDesignatorBits))
+	d.Val186 = int(source.BitsBourres(pay, anchor+equipeDecalageMesure, equipeDesignatorBits))
+	d.ValI0 = int(source.BitsBourres(pay, anchor+d.I0Predit, equipeDesignatorBits))
 	d.I0Reel = profilI0Reel(pay, anchor, reg, &d)
 	return d
 }

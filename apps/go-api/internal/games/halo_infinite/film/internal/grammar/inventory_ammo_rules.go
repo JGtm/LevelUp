@@ -1,6 +1,7 @@
 package grammar
 
 import (
+	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
@@ -51,7 +52,7 @@ func invParseAmmoBlock(
 	p := s
 	sel = -1
 	rd := func(n int) uint32 {
-		v := invBits(pay, p, n)
+		v := uint32(source.BitsTolerants(pay, p, n))
 		p += n
 		return v
 	}

@@ -76,6 +76,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/filmproc"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 )
 
 // ti11AncreCand est une grammaire d'en-tete candidate.
@@ -192,20 +193,20 @@ func ti11AncrePayload(pay []byte, band map[uint32]bool, arch Archetype, cand ti1
 // exigerait le bit de tete a 1. Le balayage n'impose donc rien — il compare des decoupages.
 func ti11AncreMatch(pay []byte, p int, band map[uint32]bool, cand ti11AncreCand, entete int) (WorldObjectRecord, bool) {
 	var rec WorldObjectRecord
-	slot := uint32(PeekBits(pay, p, cand.slotBits))
+	slot := uint32(source.BitsTolerants(pay, p, cand.slotBits))
 	// La bande est indexee sur les slots du depot (13 bits utiles) : on compare sur ces bits-la,
 	// quel que soit le decoupage teste. Sinon le balayage comparerait des bandes differentes.
 	if !band[slot&0x1FFF] {
 		return rec, false
 	}
 	at := p + cand.slotBits
-	rec.Gen = uint32(PeekBits(pay, at, 2))
+	rec.Gen = uint32(source.BitsTolerants(pay, at, 2))
 	at += 2
-	if PeekBits(pay, at, cand.porteBits) != 0 {
+	if source.BitsTolerants(pay, at, cand.porteBits) != 0 {
 		return rec, false
 	}
 	at += cand.porteBits
-	mc := int(PeekBits(pay, at, 3))
+	mc := int(source.BitsTolerants(pay, at, 3))
 	if mc < 1 || mc > worldObjectMaxMaskCnt {
 		return rec, false
 	}
@@ -226,10 +227,10 @@ func ti11AncreEnTeteA(pay []byte, p int, cand ti11AncreCand, entete int) bool {
 		return false
 	}
 	at := p + cand.slotBits + 2
-	if PeekBits(pay, at, cand.porteBits) != 0 {
+	if source.BitsTolerants(pay, at, cand.porteBits) != 0 {
 		return false
 	}
-	mc := int(PeekBits(pay, at+cand.porteBits, 3))
+	mc := int(source.BitsTolerants(pay, at+cand.porteBits, 3))
 	if mc < 1 || mc > worldObjectMaxMaskCnt || p+entete+worldObjectIndexBits*mc > total {
 		return false
 	}

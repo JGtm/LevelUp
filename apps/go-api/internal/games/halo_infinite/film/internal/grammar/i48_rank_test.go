@@ -42,6 +42,7 @@ package grammar
 import (
 	"fmt"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 	"os"
 	"sort"
 	"testing"
@@ -240,12 +241,12 @@ func (w i48Walk) record(pay []byte, i0, total int, idx []int) (s i48Sample, got 
 			if at+i48CounterBits+1 > total {
 				return s, false
 			}
-			s.counter = readBitsAt(pay, at, i48CounterBits)
-			if readBitsAt(pay, at+i48CounterBits, 1) == 0 { // porte INVERSÉE
+			s.counter = uint32(source.BitsStricts(pay, at, i48CounterBits))
+			if uint32(source.BitsStricts(pay, at+i48CounterBits, 1)) == 0 { // porte INVERSÉE
 				if at+i48CounterBits+1+i48RankBits > total {
 					return s, false
 				}
-				s.rank = int(readBitsAt(pay, at+i48CounterBits+1, i48RankBits))
+				s.rank = int(uint32(source.BitsStricts(pay, at+i48CounterBits+1, i48RankBits)))
 			}
 			// Seconde lecture, par le déserialiseur de production : elle publie via le hook.
 			w.hook.got = false

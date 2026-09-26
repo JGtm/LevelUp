@@ -95,6 +95,8 @@ import (
 	"errors"
 	"fmt"
 	"math/bits"
+
+	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 )
 
 // PacketTypeDatums est le type du bloc qui precede chaque image-cle : la table de datums du
@@ -213,7 +215,7 @@ func LireBlocDeDatums(pay []byte) (BlocDeDatums, error) {
 	pos := lireEntreesDeDatum(pay, b.Entrees)
 	pos = lireBitmapsDeDatum(pay, pos, n, &b)
 	for i := range b.Queue {
-		b.Queue[i] = uint32(kfReadBits(pay, pos, 32)) //nolint:gosec // R(32)
+		b.Queue[i] = uint32(source.BitsBourres(pay, pos, 32)) //nolint:gosec // R(32)
 		pos += 32
 	}
 	return b, nil
@@ -224,16 +226,16 @@ func lireEntreesDeDatum(pay []byte, out []DatumEntry) int {
 	pos := 0
 	for i := range out {
 		e := DatumEntry{
-			Drapeaux:   uint8(kfReadBits(pay, pos, datumDrapeauxBits)),                             //nolint:gosec // R(6)
-			Gen:        uint8(kfReadBits(pay, pos+datumDrapeauxBits, datumGenBits)),                //nolint:gosec // R(8)
-			Generation: uint32(kfReadBits(pay, pos+datumDrapeauxBits+datumGenBits, datumEtatBits)), //nolint:gosec // R(32)
+			Drapeaux:   uint8(source.BitsBourres(pay, pos, datumDrapeauxBits)),                             //nolint:gosec // R(6)
+			Gen:        uint8(source.BitsBourres(pay, pos+datumDrapeauxBits, datumGenBits)),                //nolint:gosec // R(8)
+			Generation: uint32(source.BitsBourres(pay, pos+datumDrapeauxBits+datumGenBits, datumEtatBits)), //nolint:gosec // R(32)
 		}
 		pos += datumDrapeauxBits + datumGenBits + datumEtatBits
 		// LE MASQUE PAR VUE EST ECRIT LSB D ABORD (`1L << i` dans `FUN_140e74e6c`) : c est
 		// l inverse de l ordre des trois champs precedents, et le confondre decale les 33
 		// vues bout a bout.
 		for k := 0; k < datumMasqueBits; k++ {
-			e.MasqueVue |= kfBitAt(pay, pos+k) << uint(k)
+			e.MasqueVue |= uint64(source.BitAt(pay, pos+k)) << uint(k)
 		}
 		pos += datumMasqueBits
 		out[i] = e
@@ -254,7 +256,7 @@ func lireEntreesDeDatum(pay []byte, out []DatumEntry) int {
 func lireBitmapsDeDatum(pay []byte, pos, n int, b *BlocDeDatums) int {
 	for i := 0; i < n; i++ {
 		for m := range b.Entrees[i].Composants {
-			mot := kfReadBits(pay, pos, 64)
+			mot := source.BitsBourres(pay, pos, 64)
 			b.Entrees[i].Composants[m] = bits.Reverse64(mot)
 			b.BitmapBitsLeves += bits.OnesCount64(mot)
 			pos += 64

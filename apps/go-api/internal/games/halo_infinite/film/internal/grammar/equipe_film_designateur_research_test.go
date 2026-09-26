@@ -47,6 +47,8 @@ import (
 	"sort"
 	"strings"
 	"testing"
+
+	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 )
 
 // equipeDecalageMesure est le decalage, en bits depuis le debut du record d'image-cle, ou le
@@ -110,7 +112,7 @@ func equipeEgal(a, b equipeVecteur) bool {
 func equipeVecteurA(pq equipePaquet, d int) equipeVecteur {
 	v := make(equipeVecteur, 0, len(pq.Recs))
 	for _, r := range pq.Recs {
-		v = append(v, int(kfReadBits(pq.Pay, r.Bit+d, equipeDesignatorBits)))
+		v = append(v, int(source.BitsBourres(pq.Pay, r.Bit+d, equipeDesignatorBits)))
 	}
 	return v
 }

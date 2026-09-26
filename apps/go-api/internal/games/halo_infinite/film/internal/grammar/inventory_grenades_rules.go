@@ -1,5 +1,9 @@
 package grammar
 
+import (
+	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
+)
+
 // inventory_grenades_rules.go — LES DEUX VOIES DE LECTURE DES COMPTEURS DE GRENADE (i22) d'un
 // record d'image-clé. Elles vivent ici, et non dans inventory_decode.go, pour la seule raison
 // du seuil de taille du dépôt (CLAUDE.md n°5) : le fichier voisin était à 500 lignes.
@@ -72,11 +76,11 @@ const (
 func invGrenadeCountsAt(
 	pay []byte, b int, maxVal uint32,
 ) (c [invGrenadeSlots]uint32, sum uint32, ok bool) {
-	if invBits(pay, b, 3) != invGrenadeSlots {
+	if uint32(source.BitsTolerants(pay, b, 3)) != invGrenadeSlots {
 		return c, 0, false
 	}
 	for i := 0; i < invGrenadeSlots; i++ {
-		v := invBits(pay, b+3+8*i, 8)
+		v := uint32(source.BitsTolerants(pay, b+3+8*i, 8))
 		if v > maxVal {
 			return c, 0, false
 		}

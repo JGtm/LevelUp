@@ -56,6 +56,7 @@ package grammar
 import (
 	"fmt"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 	"path/filepath"
 	"sort"
 	"testing"
@@ -78,7 +79,7 @@ type profilEtatComplet struct {
 func profilLireEtatComplet(pay []byte, anchor, ti int) profilEtatComplet {
 	e := profilEtatComplet{TI: ti}
 	p := anchor + profile.KeyframeEnTeteBits
-	e.N1 = kfReadBits(pay, p, profile.KeyframeMotDeTailleBits)
+	e.N1 = source.BitsBourres(pay, p, profile.KeyframeMotDeTailleBits)
 	p += profile.KeyframeMotDeTailleBits
 	if e.N1 > 0 { // FUN_142e2bfd0 : `if (0 < (int)uVar7)` — sans taille, pas d'etat par defaut
 		br := LecteurSur(pay)
@@ -87,7 +88,7 @@ func profilLireEtatComplet(pay []byte, anchor, ti int) profilEtatComplet {
 		e.DSBits = br.BitPos() - p
 		p = br.BitPos()
 	}
-	e.N2 = kfReadBits(pay, p, profile.KeyframeMotDeTailleBits)
+	e.N2 = source.BitsBourres(pay, p, profile.KeyframeMotDeTailleBits)
 	p += profile.KeyframeMotDeTailleBits
 	e.CorpsRelatif = p - anchor
 	return e

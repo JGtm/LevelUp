@@ -362,7 +362,7 @@ func m532Lit(pay []byte, at, n int) (uint32, bool) {
 	if at < 0 || n <= 0 || n > 32 || at+n > len(pay)*8 {
 		return 0, false
 	}
-	return readBitsAt(pay, at, n), true
+	return uint32(source.BitsStricts(pay, at, n)), true
 }
 
 // m532ChampMobilite lit i54. flag1 et flag2 sont en TETE ; l identifiant optionnel suit le

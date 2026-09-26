@@ -23,6 +23,8 @@ package grammar
 import (
 	"sort"
 	"testing"
+
+	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 )
 
 // mesureIdentiteChamps porte les champs de l'etat par defaut de ti=9 pour UN record.
@@ -37,14 +39,14 @@ type mesureIdentiteChamps struct {
 func mesureLitDefautTI9(pay []byte, recBit int) mesureIdentiteChamps {
 	p := recBit + mesureTI9These
 	var c mesureIdentiteChamps
-	c.version = kfReadBits(pay, p, 1) == 1
+	c.version = source.BitsBourres(pay, p, 1) == 1
 	p++
 	if c.version {
 		p += 8
 	}
-	c.f1 = kfReadBits(pay, p, 6)
-	c.f2 = kfReadBits(pay, p+6, 6)
-	c.flag = kfReadBits(pay, p+12, 1) == 1
+	c.f1 = source.BitsBourres(pay, p, 6)
+	c.f2 = source.BitsBourres(pay, p+6, 6)
+	c.flag = source.BitsBourres(pay, p+12, 1) == 1
 	return c
 }
 

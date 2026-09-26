@@ -25,10 +25,11 @@ import (
 
 // siteBrut : une lecture d octets bruts mesuree, la ou elle est.
 type siteBrut struct {
-	fichier string // chemin relatif a apps/go-api, en slash
-	motif   string // un des motifs* declares dans le fichier principal
-	detail  string // ce qui a ete vu (identifiant, expression)
-	ligne   int
+	fichier  string // chemin relatif a apps/go-api, en slash
+	motif    string // un des motifs* declares dans le fichier principal
+	detail   string // ce qui a ete vu (identifiant, expression)
+	ligne    int
+	fonction string // la fonction englobante (motif `extraction-de-bits` seulement)
 }
 
 // cleLectureBrute : la cle (fichier, motif) que l allowlist indexe.
@@ -54,9 +55,9 @@ func balayerLecturesBrutes(t *testing.T) ([]siteBrut, int) {
 			asts[filepath.ToSlash(rel)] = f
 			fichiers++
 		}
-		types := typesDeclaresDuPaquet(asts)
+		ctx := contexteDePaquetOctets{types: typesDeclaresDuPaquet(asts), consts: constantesDuPaquet(asts)}
 		for _, rel := range clesTrieesOctets(asts) {
-			sites = append(sites, motifsDuFichier(rel, asts[rel], types, fset)...)
+			sites = append(sites, motifsDuFichier(rel, asts[rel], ctx, fset)...)
 		}
 	}
 	trierSitesBruts(sites)
@@ -191,25 +192,26 @@ func estTrancheDOctetsPartout(types map[string]map[string]bool, nom string) bool
 	return true
 }
 
-// motifsDuFichier rend les sites d un fichier : les imports de decompression, puis les quatre
-// motifs syntaxiques.
-func motifsDuFichier(rel string, f *ast.File, types map[string]map[string]bool,
-	fset *token.FileSet) []siteBrut {
+// motifsDuFichier rend les sites d un fichier : les imports de decompression, les quatre motifs
+// syntaxiques, puis les extractions de bits fonction par fonction (lot J4.6).
+func motifsDuFichier(rel string, f *ast.File, ctx contexteDePaquetOctets, fset *token.FileSet) []siteBrut {
+	types := ctx.types
 	var sites []siteBrut
 	for _, imp := range f.Imports {
 		chemin := strings.Trim(imp.Path.Value, "\"")
 		if paquetsDeDecompression[chemin] {
-			sites = append(sites, siteBrut{rel, motifInflate, chemin,
-				fset.Position(imp.Pos()).Line})
+			sites = append(sites, siteBrut{fichier: rel, motif: motifInflate, detail: chemin,
+				ligne: fset.Position(imp.Pos()).Line})
 		}
 	}
 	ast.Inspect(f, func(n ast.Node) bool {
 		motif, detail, ok := motifDuNoeud(n, types)
 		if ok {
-			sites = append(sites, siteBrut{rel, motif, detail, fset.Position(n.Pos()).Line})
+			sites = append(sites, siteBrut{fichier: rel, motif: motif, detail: detail, ligne: fset.Position(n.Pos()).Line})
 		}
 		return true
 	})
+	sites = append(sites, extractionsDeBits(rel, f, ctx, fset)...)
 	return sites
 }
 

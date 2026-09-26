@@ -32,6 +32,8 @@ package grammar
 
 import (
 	"sort"
+
+	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 )
 
 // v13BipedTI / v13VehicleTI : les deux archetypes compares. VehicleTypeIndex vaut deja 40.
@@ -191,7 +193,7 @@ func (s *v13Stats) note(r *FrameRecord) {
 }
 
 // v13HasEvents : le paquet porte-t-il une liste d'evenements ? Bit 1 du payload.
-func v13HasEvents(pay []byte) bool { return kfBitAt(pay, 1) != 0 }
+func v13HasEvents(pay []byte) bool { return source.BitAt(pay, 1) != 0 }
 
 // v13Signature123 : un delta sur le slot 123 decode-t-il en `s`, finit 35 bits plus loin, avec un
 // unique composant ?
@@ -204,7 +206,7 @@ func v13Signature123(pay []byte, s int, w *World, cfg FrameConfig) bool {
 func v13LocateStrict(pay []byte, w *World, cfg FrameConfig) int {
 	nb := len(pay) * 8
 	for s := 2; s+35 < nb; s++ {
-		if kfBitAt(pay, s-1) != 0 {
+		if source.BitAt(pay, s-1) != 0 {
 			continue
 		}
 		if v13Signature123(pay, s, w, cfg) {
@@ -218,7 +220,7 @@ func v13LocateStrict(pay []byte, w *World, cfg FrameConfig) int {
 func v13LocateFallback(pay []byte, w *World, cfg FrameConfig) int {
 	nb := len(pay) * 8
 	for s := 2; s+16 < nb; s++ {
-		if kfBitAt(pay, s-1) != 0 {
+		if source.BitAt(pay, s-1) != 0 {
 			continue
 		}
 		rec, _, ok := TryDeltaAt(pay, s, w, cfg)

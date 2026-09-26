@@ -23,6 +23,8 @@ import (
 	"path/filepath"
 	"sort"
 	"testing"
+
+	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 )
 
 // v6Root / v6Films : garde d'environnement.
@@ -134,7 +136,7 @@ func (m *v6Chain) scanFilm(dir string) {
 // sample releve le bit de continuation et le type au bon decalage et aux deux temoins.
 func (m *v6Chain) sample(pay []byte, end int) {
 	rd := func(at int) (int, int) {
-		return int(readBitsAt(pay, at, 1)), int(readBitsAt(pay, at+1, eventTypeBits))
+		return int(uint32(source.BitsStricts(pay, at, 1))), int(uint32(source.BitsStricts(pay, at+1, eventTypeBits)))
 	}
 	cont, typ2 := rd(end)
 	if cont == 1 {

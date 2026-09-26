@@ -1,5 +1,9 @@
 package grammar
 
+import (
+	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
+)
+
 // Capture OFFLINE des directions (cap de visée / vélocité) DANS LE MÊME record biped que
 // la position absolue i0 — c'est ce qui rend la validation possible : même slot, même
 // instant, même paquet.
@@ -208,7 +212,7 @@ func (p BipedPosition) VelocityVector() ([3]float32, bool) {
 
 // ReadBitsAtForDiag expose la lecture MSB-first de n bits (n <= 32) à une position bit
 // absolue : réservée aux harnais de diagnostic qui balaient un payload de paquet.
-func ReadBitsAtForDiag(b []byte, pos, n int) uint32 { return readBitsAt(b, pos, n) }
+func ReadBitsAtForDiag(b []byte, pos, n int) uint32 { return uint32(source.BitsStricts(b, pos, n)) }
 
 // scanRecordDirs lit les composants qui SUIVENT i0 dans un record biped et en extrait les
 // directions empaquetées ET la vitalité (i4 santé, i5 bouclier). `at` est le bit juste
@@ -282,7 +286,7 @@ func readAngularVelocityComponent(pay []byte, at, total int) (int, bool) {
 	if at+1 > total {
 		return at, false
 	}
-	gate := readBitsAt(pay, at, 1)
+	gate := uint32(source.BitsStricts(pay, at, 1))
 	at++
 	if gate != 0 { // absent : le moteur garde sa constante, zéro bit de charge utile
 		return at, true
@@ -338,7 +342,7 @@ func readVelocityComponent(pay []byte, at, total int, out *componentDirs) (int, 
 	if at+1 > total {
 		return at, false
 	}
-	if readBitsAt(pay, at, 1) == 1 { // outer==1 : copie brute R(96)
+	if uint32(source.BitsStricts(pay, at, 1)) == 1 { // outer==1 : copie brute R(96)
 		at++
 		if at+rawVec3Bits > total {
 			return at, false
@@ -349,7 +353,7 @@ func readVelocityComponent(pay []byte, at, total int, out *componentDirs) (int, 
 	if at+1 > total {
 		return at, false
 	}
-	if readBitsAt(pay, at, 1) == 1 { // absent : le moteur garde sa constante
+	if uint32(source.BitsStricts(pay, at, 1)) == 1 { // absent : le moteur garde sa constante
 		return at + 1, true
 	}
 	at++
@@ -357,8 +361,8 @@ func readVelocityComponent(pay []byte, at, total int, out *componentDirs) (int, 
 		return at, false
 	}
 	out.HasVel = true
-	out.VelRaw = readBitsAt(pay, at, int(aimDirBits))
-	out.VelScale = readBitsAt(pay, at+int(aimDirBits), velScaleBits)
+	out.VelRaw = uint32(source.BitsStricts(pay, at, int(aimDirBits)))
+	out.VelScale = uint32(source.BitsStricts(pay, at+int(aimDirBits), velScaleBits))
 	return at + int(aimDirBits) + velScaleBits, true
 }
 
@@ -368,14 +372,14 @@ func readForwardComponent(pay []byte, at, total int, out *componentDirs) (int, b
 	if at+1 > total {
 		return at, false
 	}
-	gate := readBitsAt(pay, at, 1)
+	gate := uint32(source.BitsStricts(pay, at, 1))
 	at++
 	if gate == 0 {
 		if at+int(aimDirBits) > total {
 			return at, false
 		}
 		out.HasAim = true
-		out.AimRaw = readBitsAt(pay, at, int(aimDirBits))
+		out.AimRaw = uint32(source.BitsStricts(pay, at, int(aimDirBits)))
 		at += int(aimDirBits)
 	}
 	if at+8 > total {
@@ -454,16 +458,16 @@ func readAimingVectorComponent(pay []byte, at, total int, out *componentDirs) {
 	if at+1+aimYawBits+aimPitchBits > total {
 		return
 	}
-	out.AimFlag0 = readBitsAt(pay, at, 1) == 1
+	out.AimFlag0 = uint32(source.BitsStricts(pay, at, 1)) == 1
 	at++
 	out.HasYaw = true
-	out.YawRaw = readBitsAt(pay, at, aimYawBits)
-	out.PitchRaw = readBitsAt(pay, at+aimYawBits, aimPitchBits)
+	out.YawRaw = uint32(source.BitsStricts(pay, at, aimYawBits))
+	out.PitchRaw = uint32(source.BitsStricts(pay, at+aimYawBits, aimPitchBits))
 	at += aimYawBits + aimPitchBits
 	if at+1 > total {
 		return
 	}
-	out.AimFlag1 = readBitsAt(pay, at, 1) == 1
+	out.AimFlag1 = uint32(source.BitsStricts(pay, at, 1)) == 1
 	at++
 	if out.AimFlag0 { // les deux directions coïncident : rien d'autre n'est transmis
 		return
@@ -472,7 +476,7 @@ func readAimingVectorComponent(pay []byte, at, total int, out *componentDirs) {
 		return
 	}
 	out.HasAimB = true
-	out.YawRawB = readBitsAt(pay, at, aimYawBits)
-	out.PitchRawB = readBitsAt(pay, at+aimYawBits, aimPitchBits)
-	out.AimFlag2 = readBitsAt(pay, at+aimYawBits+aimPitchBits, 1) == 1
+	out.YawRawB = uint32(source.BitsStricts(pay, at, aimYawBits))
+	out.PitchRawB = uint32(source.BitsStricts(pay, at+aimYawBits, aimPitchBits))
+	out.AimFlag2 = uint32(source.BitsStricts(pay, at+aimYawBits+aimPitchBits, 1)) == 1
 }

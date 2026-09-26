@@ -38,10 +38,10 @@ const e191cDebutEtat = profile.KeyframeEnTeteBits + profile.KeyframeMotDeTailleB
 
 // e191cLireV lit un prefixe `V` a la position `pos` et rend sa valeur lisible et sa largeur.
 func e191cLireV(pay []byte, pos int) (string, int) {
-	if kfReadBits(pay, pos, 1) == 0 {
+	if source.BitsBourres(pay, pos, 1) == 0 {
 		return "absent", 1
 	}
-	return fmt.Sprintf("%d", kfReadBits(pay, pos+1, 8)), 9
+	return fmt.Sprintf("%d", source.BitsBourres(pay, pos+1, 8)), 9
 }
 
 // TestE191cPrefixeV colle la distribution des prefixes `V` par bobine et par archetype.

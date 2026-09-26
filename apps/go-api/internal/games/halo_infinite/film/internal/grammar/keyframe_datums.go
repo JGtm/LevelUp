@@ -1,5 +1,9 @@
 package grammar
 
+import (
+	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
+)
+
 // keyframe_datums.go — LA TABLE DE DATUMS PAR SLOT, LUE DANS L IMAGE-CLE (lot 5.16.2/5.16.4).
 //
 // # LE MODELE, ET IL EST CELUI DU JEU
@@ -91,7 +95,7 @@ func candidatsDeDatum(pay []byte) []candidatDeDatum {
 	total := len(pay) * 8
 	out := make([]candidatDeDatum, 0, 1024)
 	for q := 0; q+64 <= total; q++ {
-		slot, ti, _, ok := kfAnchorFromID(pay, q, kfReadBits(pay, q, 32), -1, total)
+		slot, ti, _, ok := kfAnchorFromID(pay, q, source.BitsBourres(pay, q, 32), -1, total)
 		if !ok {
 			continue
 		}

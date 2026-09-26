@@ -39,6 +39,7 @@ import (
 	"strings"
 	"testing"
 
+	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
@@ -54,12 +55,12 @@ type invPosCand struct {
 func invPosCands(pay []byte, from, to int, maxVal uint32) []invPosCand {
 	var out []invPosCand
 	for b := from; b+35 <= to; b++ {
-		if invBits(pay, b, 3) != 4 {
+		if uint32(source.BitsTolerants(pay, b, 3)) != 4 {
 			continue
 		}
 		sum, ok := uint32(0), true
 		for i := 0; i < invGrenadeSlots && ok; i++ {
-			v := invBits(pay, b+3+8*i, 8)
+			v := uint32(source.BitsTolerants(pay, b+3+8*i, 8))
 			if v > maxVal {
 				ok = false
 			}

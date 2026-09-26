@@ -44,6 +44,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/filmproc"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 )
 
 // ti11CorpsBits est la taille du corps d'un record `ti=11` d'image-cle : 168 bits mesures moins
@@ -154,8 +155,8 @@ func ti11CartePayload(pay []byte, film string, vies map[string]*ti11Vie) int {
 		}
 		n++
 		c := ti11Corps{
-			hi: kfReadBits(pay, r.Bit+keyframeHeaderBits, 64),
-			lo: kfReadBits(pay, r.Bit+keyframeHeaderBits+64, ti11CorpsBits-64) << uint(128-ti11CorpsBits),
+			hi: source.BitsBourres(pay, r.Bit+keyframeHeaderBits, 64),
+			lo: source.BitsBourres(pay, r.Bit+keyframeHeaderBits+64, ti11CorpsBits-64) << uint(128-ti11CorpsBits),
 		}
 		cle := fmt.Sprintf("%s/%d/%d", film, r.Slot, r.Gen)
 		v := vies[cle]

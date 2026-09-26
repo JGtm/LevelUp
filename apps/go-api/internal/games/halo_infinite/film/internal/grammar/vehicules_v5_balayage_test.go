@@ -21,6 +21,8 @@ import (
 	"fmt"
 	"sort"
 	"testing"
+
+	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 )
 
 // v5MaxDecalage borne le balayage : au-delà, on sort du plus long record observé. Les records
@@ -154,9 +156,9 @@ func v5BalayerRecord(
 			maxDec = v5MaxDecalage
 		}
 		for d := 0; d <= maxDec; d++ {
-			vDebut := ex.Slot(kfReadBits(r.Payload, r.BitStart+d, ex.Largeur))
+			vDebut := ex.Slot(source.BitsBourres(r.Payload, r.BitStart+d, ex.Largeur))
 			v5Marquer(local, global, v5Cible{v5AncreDebut, ei, d}, cibles[vDebut], positif)
-			vFin := ex.Slot(kfReadBits(r.Payload, r.Fin-ex.Largeur-d, ex.Largeur))
+			vFin := ex.Slot(source.BitsBourres(r.Payload, r.Fin-ex.Largeur-d, ex.Largeur))
 			v5Marquer(local, global, v5Cible{v5AncreFin, ei, d}, cibles[vFin], positif)
 		}
 	}

@@ -42,6 +42,8 @@ package grammar
 import (
 	"os"
 	"testing"
+
+	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 )
 
 // lot1HeaderPostCounts decode l'en-tete du record type 36/105 (framing modele-M : 2 bits
@@ -175,7 +177,7 @@ func TestLot1ViseeGhidra(t *testing.T) {
 			if len(pay)*8 >= fireAimBit+int(FireAimBits) {
 				var fl [5]uint8
 				for i := 0; i < 5; i++ {
-					fl[i] = uint8(readBitsAt(pay, fireFlagsBit+i, 1))
+					fl[i] = uint8(uint32(source.BitsStricts(pay, fireFlagsBit+i, 1)))
 				}
 				if fl[2] == 1 && fl[3] == 0 && fl[4] == 0 {
 					isFEEmpty = true

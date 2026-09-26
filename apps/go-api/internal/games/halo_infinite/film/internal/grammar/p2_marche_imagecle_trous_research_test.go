@@ -10,6 +10,8 @@ import (
 	"fmt"
 	"sort"
 	"testing"
+
+	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 )
 
 // ---------------------------------------------------------------------------------------------
@@ -119,7 +121,7 @@ func p2ScanSA(pay []byte, from, prev, total, maxWin int) (int, bool) {
 		if ok && h.SansArchetype() && h.Slot == prev+1 {
 			return q, false
 		}
-		if ok && !h.SansArchetype() && h.Slot == prev+1 && h.Gen == 1 && kfReadBits(pay, q+32, 32) < kfArchMax {
+		if ok && !h.SansArchetype() && h.Slot == prev+1 && h.Gen == 1 && source.BitsBourres(pay, q+32, 32) < kfArchMax {
 			return q, false
 		}
 	}
@@ -173,16 +175,16 @@ func p2Credibles(pay []byte, anc map[int]bool) []p2Credible {
 	var tous []brut
 	parTI := map[int]map[uint64]int{}
 	for q := 0; q+172 <= total; q++ {
-		arch := kfReadBits(pay, q+32, 32)
+		arch := source.BitsBourres(pay, q+32, 32)
 		if arch >= kfArchMax {
 			continue
 		}
-		id := kfReadBits(pay, q, 32)
+		id := source.BitsBourres(pay, q, 32)
 		gen, slot := int(id>>30), int(id&0x3FFFFFFF)
 		if gen == 0 || slot >= kfTableCap {
 			continue
 		}
-		n1 := kfReadBits(pay, q+108, 32)
+		n1 := source.BitsBourres(pay, q+108, 32)
 		b := brut{p2Credible{bit: q, slot: slot, gen: gen, ti: int(arch), ancre: anc[q]}, n1}
 		tous = append(tous, b)
 		if parTI[b.ti] == nil {
@@ -257,7 +259,7 @@ func p2Voisinage(t *testing.T, reg *Registry, pay []byte, pas []p2Pas, de, a int
 			}
 		}
 		t.Logf("H. pas %3d bit %7d slot %4d gen %d ti %2d (%d composants, 1er %q) -> %d (+%d bits, %s) n1 %d",
-			i, p.pos, p.slot, p.gen, p.ti, nc, prem, p.nat, p.nat-p.pos, p.methode, kfReadBits(pay, p.pos+108, 32))
+			i, p.pos, p.slot, p.gen, p.ti, nc, prem, p.nat, p.nat-p.pos, p.methode, source.BitsBourres(pay, p.pos+108, 32))
 	}
 }
 
@@ -284,7 +286,7 @@ func p2Fermeture(t *testing.T, ctx ContexteDeLecture, reg *Registry, pay []byte,
 		}
 		if q != prec+1 {
 			t.Logf("K. en-tete brut bit %7d slot %4d gen %d arch %#x n1 %d", q, h.Slot, h.Gen, h.Archetype,
-				kfReadBits(pay, q+108, 32))
+				source.BitsBourres(pay, q+108, 32))
 		}
 		prec = q
 	}

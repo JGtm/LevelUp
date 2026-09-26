@@ -1,5 +1,9 @@
 package grammar
 
+import (
+	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
+)
+
 // keyframe_record_walk.go - LA MARCHE DETERMINISTE DE LA TABLE D'IMAGE-CLE : suivre l'ecrivain
 // d'un record au suivant, sans balayeur ni fenetre.
 //
@@ -85,7 +89,7 @@ func readKeyframeHeader(pay []byte, q, total int) (h KeyframeHeader, ok bool) {
 	if q < 0 || q+keyframeHeaderBits > total {
 		return h, false
 	}
-	id := kfReadBits(pay, q, 32)
+	id := source.BitsBourres(pay, q, 32)
 	if id == kfSent {
 		return h, false
 	}
@@ -97,7 +101,7 @@ func readKeyframeHeader(pay []byte, q, total int) (h KeyframeHeader, ok bool) {
 	if h.Slot >= kfTableCap {
 		return h, false
 	}
-	h.Archetype = uint32(kfReadBits(pay, q+32, 32))
+	h.Archetype = uint32(source.BitsBourres(pay, q+32, 32))
 	if h.SansArchetype() {
 		h.TI = -1
 		return h, true
@@ -189,7 +193,7 @@ func WalkKeyframeRecords(pay []byte, reg *Registry, ctx ContexteDeLecture) ([]Ke
 		}
 		h, ok := readKeyframeHeader(pay, pos, total)
 		if !ok {
-			if kfReadBits(pay, pos, 32) == kfSent {
+			if source.BitsBourres(pay, pos, 32) == kfSent {
 				return out, KeyframeStopEnd // sentinelle de fin de table
 			}
 			return out, KeyframeStopHeader

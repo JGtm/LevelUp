@@ -300,31 +300,31 @@ func scanGrenadeThrows(pay []byte, g grenadeGrammaire, cov *grenadeCouverture) [
 	limit := len(pay)*8 - g.amorce.StructureBits()
 	var out []GrenadeThrow
 	for bp := 0; bp <= limit; bp++ {
-		if PeekBits(pay, bp, g.amorce.Bits) != g.motif {
+		if source.BitsTolerants(pay, bp, g.amorce.Bits) != g.motif {
 			continue
 		}
 		cov.motifs++
 		switch ti, indetermine := typeIndexDuRecord(pay, bp); {
 		case indetermine:
 			// Le motif commence au premier bit du payload : le sixième bit d'index est HORS du
-			// tampon. Il vaudrait zéro par la tolérance de PeekBits, c'est-à-dire l'archétype
+			// tampon. Il vaudrait zéro par la tolérance de [source.BitsTolerants], c'est-à-dire l'archétype
 			// `managed-player` une fois sur deux — on ne devine pas, on compte.
 			cov.tiIndetermines++
 			continue
 		case ti != g.ti:
 			cov.naissancesAutresArchetypes++
-			if _, ok := GrenadeRankOf(uint32(PeekBits(pay, bp+g.amorce.Bits, 32))); ok {
+			if _, ok := GrenadeRankOf(uint32(source.BitsTolerants(pay, bp+g.amorce.Bits, 32))); ok {
 				cov.ecartesAvecIdentifiant++
 			}
 			continue
 		}
-		id := uint32(PeekBits(pay, bp+g.amorce.Bits, 32))
+		id := uint32(source.BitsTolerants(pay, bp+g.amorce.Bits, 32))
 		if _, ok := GrenadeRankOf(id); !ok {
 			continue
 		}
 		out = append(out, GrenadeThrow{
 			BitPos:    bp,
-			FilmIndex: int(PeekBits(pay, bp+g.amorce.IndexAuteurBit, profile.AmorceGrenadeIndexBits)),
+			FilmIndex: int(source.BitsTolerants(pay, bp+g.amorce.IndexAuteurBit, profile.AmorceGrenadeIndexBits)),
 			TypeID:    id,
 		})
 	}
@@ -336,17 +336,17 @@ func scanGrenadeThrows(pay []byte, g grenadeGrammaire, cov *grenadeCouverture) [
 //
 // LE MOTIF NE PORTE QUE CINQ DES SIX BITS. Le typeIndex d'un record fait six bits
 // (`traverse.go` : `t.TypeIndex = uint32(br.ReadBits(6))` ; `keyframe_fullstate_loop.go` :
-// `kfReadBits(pay, recBit+keyframeRecordTIBit, 6)`), et le motif commence au DEUXIÈME : le bit de
+// `source.BitsBourres(pay, recBit+keyframeRecordTIBit, 6)`), et le motif commence au DEUXIÈME : le bit de
 // poids fort (valeur 32) est donc à `bp - 1`.
 //
 //	41 = 0b101001  -> bit à bp-1 : 1
 //	 9 = 0b001001  -> bit à bp-1 : 0
 func typeIndexDuRecord(pay []byte, bp int) (int, bool) {
-	bas := int(PeekBits(pay, bp, bitsTypeIndexBasDuMotif))
+	bas := int(source.BitsTolerants(pay, bp, bitsTypeIndexBasDuMotif))
 	if bp < 1 {
 		return bas, true
 	}
-	return int(PeekBits(pay, bp-1, 1))<<bitsTypeIndexBasDuMotif | bas, false
+	return int(source.BitsTolerants(pay, bp-1, 1))<<bitsTypeIndexBasDuMotif | bas, false
 }
 
 // bitsTypeIndexBasDuMotif : les cinq bits bas du typeIndex, en tête du motif d'amorce. Il vaut
@@ -374,38 +374,4 @@ func journaliserCouvertureGrenades(g grenadeGrammaire, cov grenadeCouverture) {
 		"naissancesAutresArchetypes", cov.naissancesAutresArchetypes,
 		"naissancesAutresArchetypesAvecIdentifiant", cov.ecartesAvecIdentifiant,
 		"naissancesTypeIndexIndetermine", cov.tiIndetermines, "lancersPublies", cov.publies)
-}
-
-// PeekBits lit n bits MSB-first à la position bp, sans curseur. Tout bit HORS du buffer vaut
-// 0 — l'appelant borne son balayage, cette tolérance n'est là que pour ne jamais paniquer sur
-// un payload tronqué.
-//
-// « Hors du buffer » veut bien dire des DEUX CÔTÉS. Jusqu'au 2026-08-01 la tolérance était à
-// SENS UNIQUE : au-delà de la fin elle rendait 0, mais une position NÉGATIVE paniquait
-// (`index out of range [-1]`) — le contraire de ce que cette phrase annonce (découverte J2,
-// corrigée en J3.4). Aucun appelant de production ne recule sous zéro ; le défaut était que la
-// documentation promettait une garantie que le code n'offrait pas, sur une primitive dont
-// c'est la SEULE raison d'être.
-//
-// EXPORTÉ pour les sondes qui balayent un payload à la recherche d'un motif (marqueurs de
-// mêlée, de tir, de lancer) sans dérouler la chaîne de composants.
-//
-// Lecture par mot ([source.BitsAt]) des que la position de depart est positive et la
-// largeur tient sur 64 bits : la primitive rend deja des zeros au-dela de la fin du tampon.
-// Un depart NEGATIF ou une largeur > 64 retombent sur la boucle d'origine, seule a porter
-// ces deux conventions.
-func PeekBits(d []byte, bp, n int) uint64 {
-	if bp >= 0 && n >= 0 && n <= 64 {
-		return source.BitsAt(d, bp, uint(n))
-	}
-	var v uint64
-	for i := 0; i < n; i++ {
-		p := bp + i
-		if p < 0 || p>>3 >= len(d) {
-			v <<= 1
-			continue
-		}
-		v = (v << 1) | uint64((d[p>>3]>>uint(7-(p&7)))&1)
-	}
-	return v
 }

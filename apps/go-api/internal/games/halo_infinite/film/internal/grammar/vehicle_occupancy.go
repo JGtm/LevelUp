@@ -42,7 +42,11 @@ package grammar
 // dépôt : pas de code mort « au cas où » ; git garde l'historique). La mesure, elle, reste
 // entière : l'appelant qui la reprendra relèvera ses emprises et les passera ici.
 
-import "sort"
+import (
+	"sort"
+
+	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
+)
 
 // VehicleKeyframeBlockBits est la taille MESURÉE du bloc supplémentaire, en bits : 89, la valeur
 // la plus fréquente (10 blocs sur 18 attestés) et la seule qui se répète à l'identique d'un film
@@ -52,8 +56,8 @@ import "sort"
 // et non d'unité de comptage.
 const VehicleKeyframeBlockBits = 89
 
-// keyframeBitAt rend le bit à la position `pos` du payload (MSB d'abord, comme kfReadBits).
-func keyframeBitAt(pay []byte, pos int) bool { return kfReadBits(pay, pos, 1) == 1 }
+// keyframeBitAt rend le bit à la position `pos` du payload (MSB d'abord, convention [source.BitsBourres]).
+func keyframeBitAt(pay []byte, pos int) bool { return source.BitsBourres(pay, pos, 1) == 1 }
 
 // VehicleKeyframeState est l'état MESURÉ d'un véhicule à une image-clé.
 type VehicleKeyframeState struct {

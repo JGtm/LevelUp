@@ -272,7 +272,7 @@ func evbNoteEmbarquement(dir string, e types.VehicleEvent, c evbCadre, tot *evbT
 		var seat uint32
 		seatOK := false
 		if b := r2.EndBit; b+vehicleSeatBits <= len(pay)*8 {
-			seat = readBitsAt(pay, b, vehicleSeatBits)
+			seat = uint32(source.BitsStricts(pay, b, vehicleSeatBits))
 			seatOK = true
 			cw.sieges[seat]++
 		}

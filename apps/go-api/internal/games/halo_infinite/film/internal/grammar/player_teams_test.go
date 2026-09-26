@@ -277,7 +277,7 @@ func TestScanPlayerTeamsTemoinDUnBit(t *testing.T) {
 					}
 					bonnes++
 					tr := WalkKeyframeFullState(pay, bo.Bit, reg, ContexteParDefaut())
-					voisin := int(kfReadBits(pay, tr.Comps[0].StartBit+1, teamDesignatorBits))
+					voisin := int(source.BitsBourres(pay, tr.Comps[0].StartBit+1, teamDesignatorBits))
 					decalees++
 					if voisin != brut {
 						ecarts++

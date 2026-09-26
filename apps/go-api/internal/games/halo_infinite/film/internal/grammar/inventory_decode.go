@@ -13,9 +13,10 @@ import (
 // `inventory_grenade_selection.go`) : il LIT des bits, et l ADR 0034 D-1 dit que la couche de
 // publication ne decode rien. Deplacement pur ; ses types de resultat vivent en `film/types`
 // (`KeyframeInventory`, `SlotAmmo`, `KeyframeInventoryStats`). Le lecteur de bits prive
-// `invBitAt` / `invBits` est descendu tel quel (sa conversion au lecteur canonique de `source`
-// est le lot J4.6, sous benchmark). Le REPLI du plafond de grenades se COMPTE chez l appelant
-// (`replay`, `balayerInventaire`) : cette couche ne compte pas (D-4).
+// `invBitAt` / `invBits` est descendu tel quel, puis a ete REMPLACE au lot J4.6 par les conventions
+// nommees de `source` ([source.BitAt], [source.BitsTolerants] : zero hors bornes des deux cotes).
+// Le REPLI du plafond de grenades se COMPTE chez l appelant (`replay`, `balayerInventaire`) :
+// cette couche ne compte pas (D-4).
 //
 // CE QUI, EN REVANCHE, N'APPARTIENT PAS À CE CHANTIER : le FIL DES ÉLIMINATIONS — qui a tué qui
 // et comment, l'assistance et sa part de dégâts, le kill par véhicule. Il a sa source de vérité
@@ -278,7 +279,7 @@ func invAbilityIn(pay []byte, from, to int) []invAbilityHit {
 	var w uint32
 	const mask28 = (uint32(1) << 28) - 1
 	for b := from; b < to; b++ {
-		w = ((w << 1) | invBitAt(pay, b)) & mask28
+		w = ((w << 1) | uint32(source.BitAt(pay, b))) & mask28
 		if b-from < 27 || w != invAbilityAnchor {
 			continue
 		}
@@ -287,10 +288,10 @@ func invAbilityIn(pay []byte, from, to int) []invAbilityHit {
 			if p+20 > to {
 				break
 			}
-			if invBits(pay, p, 20) != invAbilityPattern {
+			if uint32(source.BitsTolerants(pay, p, 20)) != invAbilityPattern {
 				continue
 			}
-			out = append(out, invAbilityHit{anchorBit: b - 27, low: invBits(pay, p+20, 3)})
+			out = append(out, invAbilityHit{anchorBit: b - 27, low: uint32(source.BitsTolerants(pay, p+20, 3))})
 			break
 		}
 	}
@@ -304,7 +305,7 @@ func invAbilityIn(pay []byte, from, to int) []invAbilityHit {
 func invFirstFamily(pay []byte, from, to int, known map[uint32]bool) (int, bool) {
 	var w uint32
 	for b := from; b < to; b++ {
-		w = w<<1 | invBitAt(pay, b)
+		w = w<<1 | uint32(source.BitAt(pay, b))
 		if b-from < 31 {
 			continue
 		}
@@ -313,29 +314,4 @@ func invFirstFamily(pay []byte, from, to int, known map[uint32]bool) (int, bool)
 		}
 	}
 	return 0, false
-}
-
-// invBitAt lit UN bit, et rend 0 hors bornes.
-//
-// LA TOLÉRANCE HORS BORNES EST LE POINT : ce décodeur lit délibérément jusqu'aux limites d'un
-// record — c'est même son critère d'arrêt. Un lecteur qui paniquerait au-delà de la fin du
-// payload ferait tomber le décodage sur des films parfaitement valides.
-//
-// Ce helper vit ICI plutôt que d'emprunter celui du parser : c'est le prix, assumé, de la
-// frontière décrite en tête de fichier. Emprunter une primitive non exportée reviendrait à
-// souder les deux paquets.
-func invBitAt(buf []byte, p int) uint32 {
-	if idx := p >> 3; idx >= 0 && idx < len(buf) {
-		return uint32(buf[idx]>>(7-uint(p&7))) & 1
-	}
-	return 0
-}
-
-// invBits lit n bits à partir de p, avec la même tolérance hors bornes.
-func invBits(pay []byte, p, n int) uint32 {
-	var v uint32
-	for i := 0; i < n; i++ {
-		v = v<<1 | invBitAt(pay, p+i)
-	}
-	return v
 }

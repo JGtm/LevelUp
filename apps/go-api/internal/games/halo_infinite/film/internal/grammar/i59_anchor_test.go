@@ -48,6 +48,7 @@ package grammar
 import (
 	"fmt"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 	"math"
 	"os"
 	"path/filepath"
@@ -400,7 +401,7 @@ func TestI59AnchorBodyDump(t *testing.T) {
 				// arithmétique inverse depuis une fin de marche. Le tag externe est lu en
 				// clair — seuls les champs tag==3 sont dumpés.
 				at, ok := i59aWalkTo(pay, m.i0, total, m.idx, s, idx59)
-				if !ok || readBitsAt(pay, at, 2) != 3 {
+				if !ok || uint32(source.BitsStricts(pay, at, 2)) != 3 {
 					continue
 				}
 				// Le champ va du tag externe au record suivant moins le pied (3 bits,
@@ -427,7 +428,7 @@ func TestI59AnchorBodyDump(t *testing.T) {
 
 // i59aMatchSlot relit le slot du motif (le walk n'en a pas besoin, le dump si).
 func i59aMatchSlot(pay []byte, m i59aMatch) uint32 {
-	return readBitsAt(pay, m.pos+1, bipedSlotBits)
+	return uint32(source.BitsStricts(pay, m.pos+1, bipedSlotBits))
 }
 
 // TestI59AnchorFilmInfo imprime le découpage i0 du film et les cartes candidates du
@@ -498,7 +499,7 @@ func TestI59AnchorTemplate(t *testing.T) {
 					continue
 				}
 				at, ok := i59aWalkTo(pay, m.i0, total, m.idx, s, idx59)
-				if !ok || readBitsAt(pay, at, 2) != 3 {
+				if !ok || uint32(source.BitsStricts(pay, at, 2)) != 3 {
 					continue
 				}
 				fieldLen := matches[mi+1].pos - 3 - at
@@ -507,7 +508,7 @@ func TestI59AnchorTemplate(t *testing.T) {
 				}
 				bits := make([]byte, fieldLen)
 				for i := 0; i < fieldLen; i++ {
-					bits[i] = byte(readBitsAt(pay, at+i, 1))
+					bits[i] = byte(uint32(source.BitsStricts(pay, at+i, 1)))
 				}
 				classes[fieldLen] = append(classes[fieldLen], bits)
 			}

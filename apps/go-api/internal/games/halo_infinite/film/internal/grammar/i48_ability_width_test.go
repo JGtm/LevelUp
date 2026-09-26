@@ -45,6 +45,8 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+
+	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 )
 
 const (
@@ -139,10 +141,10 @@ func TestAbilityIndexWidth(t *testing.T) {
 					uniqAnchor++
 					s := abilitySample{film: f, slot: uint32(sp.slot), patP: hits[0]}
 					for _, r := range abilityReadings {
-						s.vals = append(s.vals, invBits(pay, hits[0]+r.at, r.width))
+						s.vals = append(s.vals, uint32(source.BitsTolerants(pay, hits[0]+r.at, r.width)))
 						g := -1
 						if r.gate >= 0 {
-							g = int(invBits(pay, hits[0]+r.gate, 1))
+							g = int(uint32(source.BitsTolerants(pay, hits[0]+r.gate, 1)))
 						}
 						s.gate = append(s.gate, g)
 					}
@@ -310,7 +312,7 @@ func abilityPatternHits(pay []byte, from, to int) []int {
 	var w uint32
 	const mask28 = (uint32(1) << 28) - 1
 	for b := from; b < to; b++ {
-		w = ((w << 1) | invBitAt(pay, b)) & mask28
+		w = ((w << 1) | uint32(source.BitAt(pay, b))) & mask28
 		if b-from < 27 || w != invAbilityAnchor {
 			continue
 		}
@@ -319,7 +321,7 @@ func abilityPatternHits(pay []byte, from, to int) []int {
 			if p+20 > to {
 				break
 			}
-			if invBits(pay, p, 20) != invAbilityPattern {
+			if uint32(source.BitsTolerants(pay, p, 20)) != invAbilityPattern {
 				continue
 			}
 			out = append(out, p)

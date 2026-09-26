@@ -1115,10 +1115,37 @@ Measured on 2026-09-26, outside `film/`:
 
 So D-2 reads, from now on: **nobody outside `source` reads a bit of a film or walks its packets;
 decompressing a chunk outside the decoder is allowed only through the re-exported
-`Inflate`/`Decompresser`, and only to hand the bytes back to a decoder entry point.** The seven
-hand-written bit readers still inside `grammar` (`readBitsAt`, `PeekBits`, `kfReadBits`,
-`kfReadBitsLoop`, `kfBitAt`, and `invBitAt` / `invBits` which came down with the inventory) are the
-second half of the plan (S2, lot J4.6, under a benchmark condition).
+`Inflate`/`Decompresser`, and only to hand the bytes back to a decoder entry point.**
+
+**Lot J4.6 (S2), same day: the seven hand-written bit readers are gone, and the gate is guarded by
+shape, not by name.** `readBitsAt`, `PeekBits`, `kfReadBits`, `kfReadBitsLoop`, `kfBitAt`,
+`invBitAt` and `invBits` were replaced by named edge conventions of the source layer
+(`source.BitsStricts` — panics on both sides; `source.BitsBourres` — zero past the end, panics
+before the start; `source.BitsTolerants` and `source.BitAt` — zero on both sides). Each old reader
+is kept as a reference copy in `source/bits_conventions_test.go` and opposed to its convention,
+value and panic alike, around every byte, word and buffer edge. The one documented difference is
+out of reach: `kfBitAt` panicked on a negative position where `BitAt` returns 0, and its six
+callers read at positions that are non-negative by construction. The DU-3 condition held: the
+dedicated benchmark (`grammar.BenchmarkBalayageBitABit`, the production scans that called the
+seven readers, on the contiguous killsource reel) measured a median paired difference of -0.9 %
+(dispersion 1.3 points) over 17 alternated A/B pairs at high priority. No decode revision rose;
+the `source` and `grammar` fingerprints were re-frozen at constant revision.
+
+The raw-bytes ratchet (`archlint/no_raw_film_bytes_outside_source_test.go`) gained a sixth,
+structural pattern (`archlint/no_raw_film_bytes_extraction_test.go`): any function in the watched
+roots that addresses the byte of a bit position (`x[p>>3]`, `x[p/8]`, directly or through a local
+index) or shifts a byte of a `[]byte` by a variable, non-multiple-of-eight amount is red, whatever
+its name; the seven names are also listed as an anti-resurrection ratchet. **Correction to the
+premise of S2:** the plan counted seven readers outside `source`; the structural pattern found nine
+more functions in six files that nobody had listed — `grammar/frame_vue_controle.go`
+(`vueCFermee`), `grammar/weaponscan/scanner.go` (`matchMarkerAt`, `readBitsUint64`,
+`readBitsUint8`), `facts/killsource/botmeta.go` (`byteAtBit`), `research/cmd_rdata_weapon_scan`
+(`bitsAt`), `cmd/diag_film` (`countMarkerBits`) and `sync/killcollector/shots.go`
+(`chercherDansChunk`, `lireIndiceAvant`). The last two break D-2 in production code outside the
+decoder, and `sync` cannot import the source layer. Porting them was not lot J4.6's scope: they are
+recorded as dated exceptions, one line per function, each with its reason and its removal criterion
+(the function no longer extracts a bit itself); an exception that stops matching turns the ratchet
+red. D-2 therefore holds for the seven, and is **not yet true** for those nine functions.
 
 The facade surface ratchet (`archlint/film_facade_surface_test.go`, decision V25) records every
 step, dated: 166 → 170 (J4.2, the four bridge reads re-exported) → 173 (J4.3, the stage and its

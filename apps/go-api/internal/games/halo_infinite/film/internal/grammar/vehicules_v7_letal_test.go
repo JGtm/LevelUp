@@ -36,6 +36,8 @@ import (
 	"sort"
 	"strconv"
 	"testing"
+
+	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 )
 
 // v7LetalMaxBit borne le balayage : le record de tir (type 36) lit jusqu'au bit 142, 256 couvre
@@ -128,7 +130,7 @@ func v7LetalOne(a *v7LetalAcc, pay []byte, end, shift bool) {
 	bits := len(pay) * 8
 	for b := eventPayloadStartBit; b < v7LetalMaxBit && b < bits; b++ {
 		c := &a.bits[b]
-		if readBitsAt(pay, b, 1) == 1 {
+		if uint32(source.BitsStricts(pay, b, 1)) == 1 {
 			c.n1++
 			if end {
 				c.e1++

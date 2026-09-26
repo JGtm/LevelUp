@@ -27,6 +27,8 @@ import (
 	"sort"
 	"strings"
 	"testing"
+
+	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 )
 
 // zcVecTarget est un composant dont on veut des vecteurs, et la largeur totale de sa charge
@@ -152,7 +154,7 @@ func zcVectorsFor(t *testing.T, sb *strings.Builder, c zcCensus, b zcBands, tg z
 					continue
 				}
 				total++
-				raw := PeekBits(pay, rec.After, width)
+				raw := source.BitsTolerants(pay, rec.After, width)
 				if len(tg.fields) > 0 {
 					hist[raw>>uint(width-tg.fields[0].bits)]++
 				}

@@ -151,20 +151,20 @@ func ScanBipedAimRecords(payload []byte, slots SlotBand, ctx ContexteDeLecture) 
 // du masque = 0 » ; tout le reste (prefixe, slot, tag == 1, couple de zeros, compteur) est
 // identique, et c'est ce qui rend le plancher de faux positifs mesurable par une bande fantome.
 func matchAimOnlyRecord(br *Lecteur, pay []byte, p, total int, slots SlotBand) (int, uint32, bool) {
-	if readBitsAt(pay, p, 1) != 1 {
+	if uint32(source.BitsStricts(pay, p, 1)) != 1 {
 		return 0, 0, false
 	}
-	slot := readBitsAt(pay, p+1, bipedSlotBits)
+	slot := uint32(source.BitsStricts(pay, p+1, bipedSlotBits))
 	if !slots.Has(slot) {
 		return 0, 0, false
 	}
-	if readBitsAt(pay, p+14, 2) != 1 { // tag == 1 : le filtre bipede eprouve
+	if uint32(source.BitsStricts(pay, p+14, 2)) != 1 { // tag == 1 : le filtre bipede eprouve
 		return 0, 0, false
 	}
-	if readBitsAt(pay, p+16, 2) != 0 { // 14e bit d'id + selecteur de baseline
+	if uint32(source.BitsStricts(pay, p+16, 2)) != 0 { // 14e bit d'id + selecteur de baseline
 		return 0, 0, false
 	}
-	mc := int(readBitsAt(pay, p+18, 3))
+	mc := int(uint32(source.BitsStricts(pay, p+18, 3)))
 	if mc < 1 || mc > bipedMaxMaskCnt {
 		return 0, 0, false
 	}
@@ -188,7 +188,7 @@ func ascendingMask(pay []byte, at, count int) ([]int, bool) {
 	out := make([]int, 0, count)
 	prev := -1
 	for k := 0; k < count; k++ {
-		idx := int(readBitsAt(pay, at+bipedIndexBits*k, bipedIndexBits))
+		idx := int(uint32(source.BitsStricts(pay, at+bipedIndexBits*k, bipedIndexBits)))
 		if idx <= prev {
 			return nil, false
 		}

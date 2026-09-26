@@ -20,6 +20,8 @@ import (
 	"os"
 	"sort"
 	"testing"
+
+	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 )
 
 // m3ScanV2 est `kfScanNext` sous la regle V2 de la sonde P2 (`p2ElectionV2`) : un voisin
@@ -39,7 +41,7 @@ func m3ScanRegle(buf []byte, from, prevSlot, total, maxWin int) (at int) {
 	}
 	sentStreak := 0
 	for q := from; q+64 <= end; q++ {
-		id := kfReadBits(buf, q, 32)
+		id := source.BitsBourres(buf, q, 32)
 		if id == kfSent {
 			if sentStreak++; sentStreak >= 2048 {
 				break
@@ -86,7 +88,7 @@ func m3ScanRecal(buf []byte, from, prevSlot, total, maxWin int) (at int) {
 	}
 	sentStreak := 0
 	for q := from; q+64 <= end; q++ {
-		id := kfReadBits(buf, q, 32)
+		id := source.BitsBourres(buf, q, 32)
 		if id == kfSent {
 			if sentStreak++; sentStreak >= 2048 {
 				break
@@ -101,7 +103,7 @@ func m3ScanRecal(buf []byte, from, prevSlot, total, maxWin int) (at int) {
 		if s == prevSlot+1 && g == 1 {
 			return q
 		}
-		if exact < 0 && g == 1 && kfReadBits(buf, q+32, 32) == BipedTypeIndex {
+		if exact < 0 && g == 1 && source.BitsBourres(buf, q+32, 32) == BipedTypeIndex {
 			exact = q
 		}
 		cand := kfCand{gen: g, slot: s, bit: q}
@@ -140,7 +142,7 @@ func m3SentinelleAvant(buf []byte, f, total, maxWin int) bool {
 	}
 	streak := 0
 	for q := f; q+32 <= end; q++ {
-		if kfReadBits(buf, q, 32) == kfSent {
+		if source.BitsBourres(buf, q, 32) == kfSent {
 			if streak++; streak >= 2048 {
 				return true
 			}
@@ -162,7 +164,7 @@ func m3ScanProdAncien(buf []byte, from, prevSlot, total, maxWin int) (at int) {
 	}
 	sentStreak := 0
 	for q := from; q+64 <= end; q++ {
-		id := kfReadBits(buf, q, 32)
+		id := source.BitsBourres(buf, q, 32)
 		if id == kfSent {
 			if sentStreak++; sentStreak >= 2048 {
 				break

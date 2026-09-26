@@ -26,6 +26,8 @@ package grammar
 import (
 	"path/filepath"
 	"testing"
+
+	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 )
 
 // v6BoardRefs rend les trois references d'un embarquement de tete, plus le bit de siege.
@@ -147,7 +149,7 @@ func (s *v6Ref2Stats) sample(pay []byte, base uint32, band SlotBand, vehBand, wp
 		}
 	}
 	if seatBit+vehicleSeatBits <= len(pay)*8 {
-		seat := int(readBitsAt(pay, seatBit, vehicleSeatBits))
+		seat := int(uint32(source.BitsStricts(pay, seatBit, vehicleSeatBits)))
 		s.seatVals[seat]++
 		if seat == 0 {
 			s.seatZero++

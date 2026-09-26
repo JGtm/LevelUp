@@ -25,7 +25,7 @@ package grammar
 // # COMMENT LE TAG EST LU SANS TOUCHER UN OCTET DE PRODUCTION
 //
 // La marche publie, pour chaque composant, son `StartBit` ([CompResult]). Le tag est donc relu
-// DIRECTEMENT dans le payload a cette position, par `kfReadBits(pay, StartBit, 2)` — la meme
+// DIRECTEMENT dans le payload a cette position, par `source.BitsBourres(pay, StartBit, 2)` — la meme
 // valeur que le `Skip(2)` a franchie, sans crochet d'observation, donc sans toucher
 // `observateur.go` ni `components_probe.go` (qui feraient bouger `grammar.Rev` et les huit
 // fixtures de contrat).
@@ -223,7 +223,7 @@ func d1Payload(pay []byte, reg *Registry, ctx ContexteDeLecture, c *d1Compte) {
 				c.presence[comp.Name]++
 				vuI55 = true
 				c.atteintI55++
-				c.tags[kfReadBits(pay, comp.StartBit, 2)]++
+				c.tags[source.BitsBourres(pay, comp.StartBit, 2)]++
 			}
 		}
 		if ferme && vuI55 {

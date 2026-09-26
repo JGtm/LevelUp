@@ -17,6 +17,8 @@ package grammar
 import (
 	"os"
 	"testing"
+
+	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 )
 
 func TestLot1TirsManques(t *testing.T) {
@@ -52,7 +54,7 @@ func TestLot1TirsManques(t *testing.T) {
 				tirs++
 				// Attaquant : offset FIXE de production (fire_events), R(5)>>1 a bit 36.
 				if len(pay)*8 >= 41 {
-					parTireur[uint64(readBitsAt(pay, 36, 5))>>1]++
+					parTireur[uint64(uint32(source.BitsStricts(pay, 36, 5)))>>1]++
 				}
 			case 0xC0: // damage_aftermath (type 0)
 				br := LecteurSur(pay)

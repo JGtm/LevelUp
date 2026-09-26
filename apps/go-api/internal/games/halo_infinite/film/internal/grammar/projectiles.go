@@ -406,17 +406,17 @@ type WorldObjectRecord struct {
 //   - maskCount minimal à 1 (et non 2) : les records d'objet du monde sont courts.
 func matchWorldObjectRecord(pay []byte, p int, band map[uint32]bool) (WorldObjectRecord, bool) {
 	var rec WorldObjectRecord
-	if PeekBits(pay, p, 1) != 1 { // préfixe de record DELTA
+	if source.BitsTolerants(pay, p, 1) != 1 { // préfixe de record DELTA
 		return rec, false
 	}
-	slot := uint32(PeekBits(pay, p+1, 13))
+	slot := uint32(source.BitsTolerants(pay, p+1, 13))
 	if !band[slot] {
 		return rec, false
 	}
-	if PeekBits(pay, p+16, 2) != 0 { // porte de masque = 0 -> branche éparse
+	if source.BitsTolerants(pay, p+16, 2) != 0 { // porte de masque = 0 -> branche éparse
 		return rec, false
 	}
-	mc := int(PeekBits(pay, p+18, 3))
+	mc := int(source.BitsTolerants(pay, p+18, 3))
 	if mc < 1 || mc > worldObjectMaxMaskCnt {
 		return rec, false
 	}
@@ -424,7 +424,7 @@ func matchWorldObjectRecord(pay []byte, p int, band map[uint32]bool) (WorldObjec
 	if !ok {
 		return rec, false
 	}
-	rec.Slot, rec.Gen = slot, uint32(PeekBits(pay, p+14, 2))
+	rec.Slot, rec.Gen = slot, uint32(source.BitsTolerants(pay, p+14, 2))
 	rec.Idx, rec.After = idx, p+worldObjectHeaderBits+worldObjectIndexBits*mc
 	return rec, true
 }
@@ -435,7 +435,7 @@ func ascendingComponents(pay []byte, at, mc int) ([]int, bool) {
 	idx := make([]int, mc)
 	prev := -1
 	for k := 0; k < mc; k++ {
-		v := int(PeekBits(pay, at+6*k, 6))
+		v := int(source.BitsTolerants(pay, at+6*k, 6))
 		if v <= prev {
 			return nil, false
 		}
@@ -457,17 +457,17 @@ func ascendingComponents(pay []byte, at, mc int) ([]int, bool) {
 // `decodeBipedI0Pos`.
 func decodeWorldObjectPos(pay []byte, at int, wr *profile.Vec3Range, lg profile.PrecisionDescriptor) ([3]float32, bool) {
 	var v [3]float32
-	if PeekBits(pay, at, 2) != 0 { // precHigh et index-sel nuls = chemin dominant
+	if source.BitsTolerants(pay, at, 2) != 0 { // precHigh et index-sel nuls = chemin dominant
 		return v, false
 	}
 	idxW := int(lg.IndexW)
-	if uint32(PeekBits(pay, at+2, idxW)) != lg.Region {
+	if uint32(source.BitsTolerants(pay, at+2, idxW)) != lg.Region {
 		return v, false
 	}
 	off := at + 2 + idxW
 	for a := 0; a < 3; a++ {
 		w := lg.AxisW[a]
-		q := PeekBits(pay, off, int(w))
+		q := source.BitsTolerants(pay, off, int(w))
 		if q == 0 || q == (uint64(1)<<w)-1 {
 			return v, false
 		}

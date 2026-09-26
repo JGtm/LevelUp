@@ -37,6 +37,7 @@ package grammar
 import (
 	"fmt"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 	"os"
 	"sort"
 	"strconv"
@@ -194,7 +195,7 @@ func i48mStrict(s i48mSetup, usMin, usMax uint64) (ems, unread []i48mCand) {
 func i48mDenseIdx(pay []byte, at int, msb bool) []int {
 	var idx []int
 	for k := 0; k < 64; k++ {
-		if readBitsAt(pay, at+k, 1) == 1 {
+		if uint32(source.BitsStricts(pay, at+k, 1)) == 1 {
 			comp := k
 			if msb {
 				comp = 63 - k
@@ -211,16 +212,16 @@ func i48mDenseIdx(pay []byte, at int, msb bool) []int {
 // conservees (le bruit noierait tout sans elles) : prefixe=1, slot dans la bande, indices
 // STRICTEMENT croissants, masque contenant i48.
 func i48mMatchAt(s i48mSetup, pay []byte, p, total int) (i48mCand, int, bool) {
-	if readBitsAt(pay, p, 1) != 1 {
+	if uint32(source.BitsStricts(pay, p, 1)) != 1 {
 		return i48mCand{}, 0, false
 	}
-	slot := readBitsAt(pay, p+1, bipedSlotBits)
+	slot := uint32(source.BitsStricts(pay, p+1, bipedSlotBits))
 	if !s.slots.Has(slot) {
 		return i48mCand{}, 0, false
 	}
-	tag := readBitsAt(pay, p+14, 2)
-	bit16 := readBitsAt(pay, p+16, 1)
-	gate := readBitsAt(pay, p+17, 1)
+	tag := uint32(source.BitsStricts(pay, p+14, 2))
+	bit16 := uint32(source.BitsStricts(pay, p+16, 1))
+	gate := uint32(source.BitsStricts(pay, p+17, 1))
 	cand := i48mCand{Slot: slot, Off: p, StopID: -1, Rank: AbilitySetNoRank}
 	guards := ""
 	if tag != 1 {
@@ -231,7 +232,7 @@ func i48mMatchAt(s i48mSetup, pay []byte, p, total int) (i48mCand, int, bool) {
 	}
 	var i0 int
 	if gate == 0 {
-		mc := int(readBitsAt(pay, p+18, 3))
+		mc := int(uint32(source.BitsStricts(pay, p+18, 3)))
 		if mc < 1 || mc > bipedMaxMaskCnt {
 			return i48mCand{}, 0, false
 		}
@@ -275,10 +276,10 @@ func i48mMatchAt(s i48mSetup, pay []byte, p, total int) (i48mCand, int, bool) {
 	}
 	const preGate = profile.I0SpineBits + profile.I0UseDefaultBits
 	if cand.Idx[0] == 0 {
-		if v := readBitsAt(pay, i0, preGate); v != 0 {
+		if v := uint32(source.BitsStricts(pay, i0, preGate)); v != 0 {
 			guards += fmt.Sprintf("pregate=%d ", v)
 		}
-		if v := readBitsAt(pay, i0+preGate, s.lay.GateBits-preGate); v != s.lay.Region {
+		if v := uint32(source.BitsStricts(pay, i0+preGate, s.lay.GateBits-preGate)); v != s.lay.Region {
 			guards += fmt.Sprintf("region=%d ", v)
 		}
 	}
@@ -292,7 +293,7 @@ func i48mAscending(pay []byte, at, count int) ([]int, bool) {
 	out := make([]int, 0, count)
 	prev := -1
 	for k := 0; k < count; k++ {
-		idx := int(readBitsAt(pay, at+bipedIndexBits*k, bipedIndexBits))
+		idx := int(uint32(source.BitsStricts(pay, at+bipedIndexBits*k, bipedIndexBits)))
 		if idx <= prev {
 			return nil, false
 		}

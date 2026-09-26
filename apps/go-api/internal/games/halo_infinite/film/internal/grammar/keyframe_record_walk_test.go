@@ -30,6 +30,8 @@ import (
 	"os"
 	"sort"
 	"testing"
+
+	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 )
 
 const kfGramFilmEnv = "KF_GRAM_FILM"
@@ -323,7 +325,7 @@ func kfGramSweep(reg *Registry, pays [][]byte, ti int) (
 			bounded++
 			lens[want-r.Bit]++
 			for off := 0; off < kfGramOffsetMax; off++ {
-				if int(kfReadBits(pay, r.Bit+off, 6)) == ti {
+				if int(source.BitsBourres(pay, r.Bit+off, 6)) == ti {
 					tiOK[off]++
 				}
 				br := LecteurSur(pay)

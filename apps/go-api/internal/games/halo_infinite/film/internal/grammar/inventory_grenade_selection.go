@@ -1,5 +1,9 @@
 package grammar
 
+import (
+	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
+)
+
 // inventory_grenade_selection.go — LA RÈGLE R5 : la grenade SÉLECTIONNÉE (composant i47)
 // dans le record de biped des images-clés. Extraite d'inventory_decode.go (seuil de taille
 // du dépôt) ; les règles R1..R4 et leurs helpers restent là-bas.
@@ -38,7 +42,7 @@ func invLastFamily(pay []byte, from, to int, known map[uint32]bool) (int, bool) 
 	var w uint32
 	last, found := 0, false
 	for b := from; b < to; b++ {
-		w = w<<1 | invBitAt(pay, b)
+		w = w<<1 | uint32(source.BitAt(pay, b))
 		if b-from < 31 {
 			continue
 		}
@@ -73,10 +77,10 @@ func invGrenadeSelection(pay []byte, famEnd, to int, gren [invGrenadeSlots]uint3
 		if b+9 > to {
 			break
 		}
-		if invBits(pay, b, 6) != mask {
+		if uint32(source.BitsTolerants(pay, b, 6)) != mask {
 			continue
 		}
-		s := int(invBits(pay, b+6, 3))
+		s := int(uint32(source.BitsTolerants(pay, b+6, 3)))
 		if s < 1 || s > invGrenadeSlots || mask&(1<<uint(s-1)) == 0 {
 			continue
 		}

@@ -36,6 +36,8 @@ import (
 	"fmt"
 	"sort"
 	"testing"
+
+	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 )
 
 // Les trois types de bloc que le repartiteur `FUN_1428e22c0` sert et que le depot ne lit pas.
@@ -125,7 +127,7 @@ func h526LireBloc(c int, pk FilmPacket, pay []byte, ic int) h526Bloc {
 		b.rangIC = pk.Index - ic
 	}
 	if pk.Type != h526TypeJete && len(pay)*8 >= h526Mot {
-		b.mot = int64(readBitsAt(pay, 0, h526Mot))
+		b.mot = int64(uint32(source.BitsStricts(pay, 0, h526Mot)))
 	}
 	n := len(pay)
 	if n > 16 {

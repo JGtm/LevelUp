@@ -19,6 +19,8 @@ import (
 	"math"
 	"os"
 	"testing"
+
+	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 )
 
 // lot1AimConc accumule la concentration d'un jeu de vecteurs de visee : pour un vrai axe
@@ -35,7 +37,7 @@ func (a *lot1AimConc) add(pay []byte, pos int) {
 	if pos < 0 || pos+30 > len(pay)*8 {
 		return
 	}
-	v, ok := DecodeAimVectorChecked(readBitsAt(pay, pos, 30), 30)
+	v, ok := DecodeAimVectorChecked(uint32(source.BitsStricts(pay, pos, 30)), 30)
 	if !ok {
 		return
 	}
@@ -94,12 +96,12 @@ func TestLot1ViseeCompare(t *testing.T) {
 			if len(pay)*8 >= fireAimBit+int(FireAimBits) {
 				var fl [5]uint8
 				for i := 0; i < 5; i++ {
-					fl[i] = uint8(readBitsAt(pay, fireFlagsBit+i, 1))
+					fl[i] = uint8(uint32(source.BitsStricts(pay, fireFlagsBit+i, 1)))
 				}
 				if fl[2] == 1 && fl[3] == 0 && fl[4] == 0 {
 					feGated++
 					feHasAim = true
-					feAim = readBitsAt(pay, fireAimBit, int(FireAimBits))
+					feAim = uint32(source.BitsStricts(pay, fireAimBit, int(FireAimBits)))
 				}
 			}
 			// modele-M : ou commence ma visee ?
@@ -121,7 +123,7 @@ func TestLot1ViseeCompare(t *testing.T) {
 			concCtrl.add(pay, 250)
 			if feHasAim {
 				lesDeux++
-				mmAim := readBitsAt(pay, aimStart, 30)
+				mmAim := uint32(source.BitsStricts(pay, aimStart, 30))
 				if mmAim == feAim {
 					valEgales++
 				}

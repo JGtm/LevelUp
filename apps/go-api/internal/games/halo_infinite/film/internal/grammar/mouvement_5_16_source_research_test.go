@@ -47,6 +47,8 @@ import (
 	"fmt"
 	"sort"
 	"testing"
+
+	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 )
 
 // TestTemoin516ImageCle compare, sur tout le film, ce que les DEUX lectures de la table
@@ -386,12 +388,12 @@ func TestTemoin516Chercher(t *testing.T) {
 			for _, cible := range cibles {
 				var hits []string
 				for q := 0; q+64 <= total; q++ {
-					if uint32(kfReadBits(pay, q, 32)) != cible {
+					if uint32(source.BitsBourres(pay, q, 32)) != cible {
 						continue
 					}
-					mot := kfReadBits(pay, q+32, 32)
+					mot := source.BitsBourres(pay, q+32, 32)
 					hits = append(hits, fmt.Sprintf("bit %d (%s l arret) mot1 %#x ti %d",
-						q, t516Avant(q, arret), mot, kfReadBits(pay, q+58, 6)))
+						q, t516Avant(q, arret), mot, source.BitsBourres(pay, q+58, 6)))
 					if len(hits) >= 6 {
 						break
 					}
@@ -423,7 +425,7 @@ func t516TableExhaustive(pay []byte) (map[uint32]uint32, int) {
 	out := map[uint32]uint32{}
 	conflits := 0
 	for q := 0; q+64 <= total; q++ {
-		slot, ti, _, ok := kfAnchorFromID(pay, q, kfReadBits(pay, q, 32), -1, total)
+		slot, ti, _, ok := kfAnchorFromID(pay, q, source.BitsBourres(pay, q, 32), -1, total)
 		if !ok {
 			continue
 		}

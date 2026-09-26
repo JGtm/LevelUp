@@ -35,6 +35,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 )
 
 const (
@@ -252,24 +253,24 @@ type p2aRecord struct {
 
 func p2aMatchRecord(pay []byte, p int, band map[uint32]bool) (p2aRecord, bool) {
 	var rec p2aRecord
-	if grammar.PeekBits(pay, p, 1) != 1 { // prefixe de record DELTA
+	if source.BitsTolerants(pay, p, 1) != 1 { // prefixe de record DELTA
 		return rec, false
 	}
-	slot := uint32(grammar.PeekBits(pay, p+1, 13))
+	slot := uint32(source.BitsTolerants(pay, p+1, 13))
 	if !band[slot] {
 		return rec, false
 	}
-	if grammar.PeekBits(pay, p+16, 2) != 0 { // porte de masque = 0 -> branche eparse
+	if source.BitsTolerants(pay, p+16, 2) != 0 { // porte de masque = 0 -> branche eparse
 		return rec, false
 	}
-	mc := int(grammar.PeekBits(pay, p+18, 3))
+	mc := int(source.BitsTolerants(pay, p+18, 3))
 	if mc < 1 || mc > p2aMaxMaskCnt {
 		return rec, false
 	}
 	idx := make([]int, mc)
 	prev := -1
 	for k := 0; k < mc; k++ {
-		v := int(grammar.PeekBits(pay, p+p2aHeaderBits+p2aIndexBits*k, p2aIndexBits))
+		v := int(source.BitsTolerants(pay, p+p2aHeaderBits+p2aIndexBits*k, p2aIndexBits))
 		if v <= prev {
 			return rec, false
 		}
@@ -432,16 +433,16 @@ func p2aHeaderAt(pay []byte, p int) bool {
 	if p < 0 || p+p2aHeaderBits+p2aIndexBits > total {
 		return false
 	}
-	if grammar.PeekBits(pay, p, 1) != 1 || grammar.PeekBits(pay, p+16, 2) != 0 {
+	if source.BitsTolerants(pay, p, 1) != 1 || source.BitsTolerants(pay, p+16, 2) != 0 {
 		return false
 	}
-	mc := int(grammar.PeekBits(pay, p+18, 3))
+	mc := int(source.BitsTolerants(pay, p+18, 3))
 	if mc < 1 || mc > p2aMaxMaskCnt || p+p2aHeaderBits+p2aIndexBits*mc > total {
 		return false
 	}
 	prev := -1
 	for k := 0; k < mc; k++ {
-		v := int(grammar.PeekBits(pay, p+p2aHeaderBits+p2aIndexBits*k, p2aIndexBits))
+		v := int(source.BitsTolerants(pay, p+p2aHeaderBits+p2aIndexBits*k, p2aIndexBits))
 		if v <= prev {
 			return false
 		}

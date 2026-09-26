@@ -31,6 +31,7 @@ package grammar
 
 import (
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 	"sort"
 )
 
@@ -215,10 +216,10 @@ func scanEquipRecoveryPacket(
 	}
 	total := len(pay) * 8
 	for p := 0; p+bipedHeaderBits+bipedIndexBits <= total; p++ {
-		if readBitsAt(pay, p, 1) != 1 {
+		if uint32(source.BitsStricts(pay, p, 1)) != 1 {
 			continue
 		}
-		slot := readBitsAt(pay, p+1, bipedSlotBits)
+		slot := uint32(source.BitsStricts(pay, p+1, bipedSlotBits))
 		var w *equipRecoveryWindow
 		for _, cand := range active {
 			if cand.slot == slot {
@@ -231,7 +232,7 @@ func scanEquipRecoveryPacket(
 		}
 		// EN-TÊTE DE PRODUCTION INTACT (R2 §4) : tag=1 et bit 16 nul. Seule la PORTE du
 		// masque (bit 17) distingue les deux formes récupérables.
-		if readBitsAt(pay, p+14, 2) != 1 || readBitsAt(pay, p+16, 1) != 0 {
+		if uint32(source.BitsStricts(pay, p+14, 2)) != 1 || uint32(source.BitsStricts(pay, p+16, 1)) != 0 {
 			continue
 		}
 		counter, rank, ok := walkEquipRecoveryAt(s, pay, p, total, last)
@@ -243,7 +244,7 @@ func scanEquipRecoveryPacket(
 				Slot: slot, Chunk: chunk, PacketIndex: pk.Index,
 				TimestampUS: pk.TimestampUS, Counter: counter, Rank: rank,
 			},
-			off: p, dense: readBitsAt(pay, p+17, 1) == 1,
+			off: p, dense: uint32(source.BitsStricts(pay, p+17, 1)) == 1,
 		})
 	}
 }
@@ -268,17 +269,17 @@ func walkEquipRecoveryAt(
 		}
 		return true
 	}
-	if readBitsAt(pay, p+17, 1) == 0 {
+	if uint32(source.BitsStricts(pay, p+17, 1)) == 0 {
 		// FORME SANS i0 : comptage 2..7, indices strictement croissants, premier != 0 (un
 		// premier index à 0 est un record standard, déjà jugé par le balayage strict). Les
 		// composants commencent juste après les indices — il n'y a pas de vec3 devant.
-		mc := int(readBitsAt(pay, p+18, 3))
+		mc := int(uint32(source.BitsStricts(pay, p+18, 3)))
 		if mc < bipedMinMaskCnt || mc > bipedMaxMaskCnt {
 			return 0, 0, false
 		}
 		// GARDE DE BORNE (revue ronde 1, F1 — panic reproduite) : la boucle d'appel ne
 		// garantit que l'en-tête et UN index ; les mc indices lisent jusqu'à p+21+6·mc, et
-		// readBitsAt indexe le tampon SANS filet. Même patron que le balayage strict
+		// [source.BitsStricts] indexe le tampon SANS filet. Même patron que le balayage strict
 		// (matchBipedHeaderRaw : needBits > total -> rejet) ; la forme dense se borne déjà.
 		if p+bipedHeaderBits+bipedIndexBits*mc > total {
 			return 0, 0, false
@@ -301,8 +302,8 @@ func walkEquipRecoveryAt(
 			return 0, 0, false
 		}
 		const preGate = profile.I0SpineBits + profile.I0UseDefaultBits
-		if readBitsAt(pay, i0, preGate) != 0 ||
-			readBitsAt(pay, i0+preGate, s.gram.lay.GateBits-preGate) != s.gram.lay.Region {
+		if uint32(source.BitsStricts(pay, i0, preGate)) != 0 ||
+			uint32(source.BitsStricts(pay, i0+preGate, s.gram.lay.GateBits-preGate)) != s.gram.lay.Region {
 			return 0, 0, false
 		}
 		walkRecordComponents(pay, i0, total, idx, s.gram, stop)
@@ -320,7 +321,7 @@ func ascendingIndices(pay []byte, at, count int) ([]int, bool) {
 	out := make([]int, 0, count)
 	prev := -1
 	for k := 0; k < count; k++ {
-		idx := int(readBitsAt(pay, at+bipedIndexBits*k, bipedIndexBits))
+		idx := int(uint32(source.BitsStricts(pay, at+bipedIndexBits*k, bipedIndexBits)))
 		if idx <= prev {
 			return nil, false
 		}
@@ -335,7 +336,7 @@ func ascendingIndices(pay []byte, at, count int) ([]int, bool) {
 func denseMaskIndices(pay []byte, at int) []int {
 	var idx []int
 	for k := 63; k >= 0; k-- {
-		if readBitsAt(pay, at+k, 1) == 1 {
+		if uint32(source.BitsStricts(pay, at+k, 1)) == 1 {
 			idx = append(idx, 63-k)
 		}
 	}

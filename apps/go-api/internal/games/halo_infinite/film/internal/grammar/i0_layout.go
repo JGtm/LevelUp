@@ -132,15 +132,15 @@ func collectI0Samples(pay []byte, slots SlotBand, chunk, pkt int, out []i0Sample
 	const preGate = profile.I0SpineBits + profile.I0UseDefaultBits
 	for p := 0; p+bipedHeaderBits+bipedIndexBits*bipedMinMaskCnt+detectWindow <= total; {
 		i0, slot, _, ok := matchBipedHeaderRaw(pay, p, total, slots, true, detectWindow)
-		if !ok || readBitsAt(pay, i0, preGate) != 0 {
+		if !ok || uint32(source.BitsStricts(pay, i0, preGate)) != 0 {
 			p++
 			continue
 		}
 		var s i0Sample
 		s.slot, s.chunk, s.pkt = slot, chunk, pkt
-		s.indexBit = uint8(readBitsAt(pay, i0+preGate, 1))
+		s.indexBit = uint8(uint32(source.BitsStricts(pay, i0+preGate, 1)))
 		for k := 0; k < detectWindow; k++ {
-			if readBitsAt(pay, i0+k, 1) == 1 {
+			if uint32(source.BitsStricts(pay, i0+k, 1)) == 1 {
 				s.bits[k>>6] |= 1 << (63 - uint(k&63))
 			}
 		}

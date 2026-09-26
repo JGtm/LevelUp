@@ -54,6 +54,7 @@ package grammar
 import (
 	"fmt"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 	"os"
 	"testing"
 )
@@ -304,7 +305,7 @@ func worldPrecWalkPayload(pay []byte, band map[uint32]bool, w *worldPrecWalk,
 			continue
 		}
 		w.cand++
-		if PeekBits(pay, rec.After, 3) != 0 {
+		if source.BitsTolerants(pay, rec.After, 3) != 0 {
 			w.gated++
 			continue
 		}

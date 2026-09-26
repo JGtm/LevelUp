@@ -31,6 +31,8 @@ import (
 	"os"
 	"sort"
 	"testing"
+
+	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 )
 
 const i47FilmEnv = "I47_FILM"
@@ -134,7 +136,7 @@ func TestI47LocationInKeyframeRecords(t *testing.T) {
 	for _, span := range []int{16, 24, 32} {
 		pre := map[uint32]int{}
 		i47ForEachBandHit(t, filmDir, known, func(pay []byte, h i47Hit) {
-			pre[invBits(pay, h.bit-span, span)]++
+			pre[uint32(source.BitsTolerants(pay, h.bit-span, span))]++
 		})
 		i47LogTopU32(t, fmt.Sprintf("préfixe %d bits avant le motif", span), pre)
 	}
@@ -391,13 +393,13 @@ func i47ScanRecord(pay []byte, sp invRecordSpan, known map[uint32]bool) ([]i47Hi
 	}
 	var out []i47Hit
 	for b := sp.from; b+9 <= sp.to; b++ {
-		w := invBits(pay, b, 6)
+		w := uint32(source.BitsTolerants(pay, b, 6))
 		direct := w == mask
 		alt := !direct && w == maskAlt && mask != maskAlt
 		if !direct && !alt {
 			continue
 		}
-		sel := int(invBits(pay, b+6, 3))
+		sel := int(uint32(source.BitsTolerants(pay, b+6, 3)))
 		if sel < 1 || sel > invGrenadeSlots {
 			continue
 		}
@@ -427,7 +429,7 @@ func i47AllFamilies(pay []byte, from, to int, known map[uint32]bool) []int {
 	var out []int
 	var w uint32
 	for b := from; b < to; b++ {
-		w = w<<1 | invBitAt(pay, b)
+		w = w<<1 | uint32(source.BitAt(pay, b))
 		if b-from < 31 {
 			continue
 		}

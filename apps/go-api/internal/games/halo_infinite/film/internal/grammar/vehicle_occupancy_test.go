@@ -3,7 +3,11 @@ package grammar
 // vehicle_occupancy_test.go — GARDE-RAIL SANS ENVIRONNEMENT de `vehicle_occupancy.go` : des
 // payloads FABRIQUÉS dont on connaît la réponse d'avance. Aucun film, aucune donnée réelle.
 
-import "testing"
+import (
+	"testing"
+
+	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
+)
 
 // TestFindKeyframeBlockInsertion exige que le localisateur retrouve EXACTEMENT une insertion
 // qu'on a fabriquée, et qu'il batte ses deux modèles dégénérés.
@@ -20,13 +24,13 @@ func TestFindKeyframeBlockInsertion(t *testing.T) {
 	// Le record LONG : court[0:p] + BLOC(d) + court[p:], le bloc étant une constante reconnaissable.
 	long := make([]byte, (lf+d+7)/8+4)
 	for i := 0; i < p; i++ {
-		kfSpanEcrire(long, i, 1, kfReadBits(court, i, 1))
+		kfSpanEcrire(long, i, 1, source.BitsBourres(court, i, 1))
 	}
 	for i := 0; i < d; i++ {
 		kfSpanEcrire(long, p+i, 1, uint64((i/7)&1))
 	}
 	for i := p; i < lf; i++ {
-		kfSpanEcrire(long, d+i, 1, kfReadBits(court, i, 1))
+		kfSpanEcrire(long, d+i, 1, source.BitsBourres(court, i, 1))
 	}
 
 	got := FindKeyframeBlockInsertion(

@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 	"os"
 	"sort"
 	"testing"
@@ -309,8 +310,8 @@ func TestInventoryValuesDeltaProbe(t *testing.T) {
 						continue
 					}
 					if at, ok := walkCursorTo(pay, i0, total, idx, lay, arch, tg); ok {
-						if readBitsAt(pay, at, 1) == 0 { // porte active-bas : chargeur present
-							mag[tg] = append(mag[tg], readBitsAt(pay, at+1, 8))
+						if uint32(source.BitsStricts(pay, at, 1)) == 0 { // porte active-bas : chargeur present
+							mag[tg] = append(mag[tg], uint32(source.BitsStricts(pay, at+1, 8)))
 						}
 					}
 				}
@@ -319,13 +320,13 @@ func TestInventoryValuesDeltaProbe(t *testing.T) {
 						continue
 					}
 					if at, ok := walkCursorTo(pay, i0, total, idx, lay, arch, tg); ok {
-						res[tg] = append(res[tg], readBitsAt(pay, at, 11))
+						res[tg] = append(res[tg], uint32(source.BitsStricts(pay, at, 11)))
 					}
 				}
 				if maskHas(idx, 47) {
 					if at, ok := walkCursorTo(pay, i0, total, idx, lay, arch, 47); ok {
-						m := readBitsAt(pay, at, 6)
-						s := readBitsAt(pay, at+6, 3)
+						m := uint32(source.BitsStricts(pay, at, 6))
+						s := uint32(source.BitsStricts(pay, at+6, 3))
 						selTot++
 						i47Sel[s]++
 						// LE TEST REFUTABLE du handoff : la selection appartient au masque.
@@ -336,7 +337,7 @@ func TestInventoryValuesDeltaProbe(t *testing.T) {
 				}
 				if maskHas(idx, 42) {
 					if at, ok := walkCursorTo(pay, i0, total, idx, lay, arch, 42); ok {
-						i42Vals[readBitsAt(pay, at, 7)]++
+						i42Vals[uint32(source.BitsStricts(pay, at, 7))]++
 					}
 				}
 				p = i0 + lay.TotalBits()

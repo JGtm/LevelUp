@@ -47,6 +47,8 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+
+	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 )
 
 const (
@@ -396,7 +398,7 @@ func (m *ti47Moisson) lit(pay []byte, rec WorldObjectRecord, chunk, tMS, width i
 				m.luesRefusee++
 				return
 			}
-			m.ajoute(PeekBits(pay, at, width), rec, chunk, tMS)
+			m.ajoute(source.BitsTolerants(pay, at, width), rec, chunk, tMS)
 			return
 		}
 		name := b.arch.component(id)

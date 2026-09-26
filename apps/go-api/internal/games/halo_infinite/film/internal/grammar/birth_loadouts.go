@@ -42,6 +42,7 @@ package grammar
 import (
 	"fmt"
 
+	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
@@ -231,7 +232,7 @@ func (s *birthScan) fermeSur(pay []byte, p int) bool {
 		}
 	case recNew:
 		id := readRecordID(br, s.cfg.IDLowBits, s.cfg.IDBase)
-		ti := uint32(PeekBits(pay, br.BitPos(), 6)) //nolint:gosec // 6 bits
+		ti := uint32(source.BitsTolerants(pay, br.BitPos(), 6)) //nolint:gosec // 6 bits
 		if lie, ok := s.monde.ArchetypeForSlot(id & 0x3fffffff); ok && lie == ti {
 			s.st.ClosedByBoundNew++
 			return true

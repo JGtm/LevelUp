@@ -35,6 +35,23 @@ package source
 // (`bits_test.go`) opposent chaque primitive a une copie de reference de l ancienne
 // implementation, sur tampons aleatoires a graine fixee, toutes largeurs 0..64, autour de chaque
 // frontiere d octet, de mot et de fin de tampon, cas hors tampon compris.
+//
+// # LES CONVENTIONS DE BORD, NOMMEES (lot J4.6, 2026-09-26)
+//
+// Hors du tampon, un lecteur doit choisir, et chaque choix a un nom ici — pas une boucle
+// recopiee chez l appelant :
+//
+//	BitsAt         zero apres la fin ; PRECONDITIONS pos >= 0, n <= 64 (non verifiees)
+//	BitsBourres    zero apres la fin, PANIQUE avant le debut, n > 64 garde les 64 derniers
+//	BitsStricts    PANIQUE des deux cotes (n <= 0 rend 0 sans lire)
+//	BitsTolerants  zero DES DEUX COTES
+//	BitAt          un bit, zero des deux cotes
+//	BitsTronques   s arrete a la fin SANS bourrer (lecteur du pied de film)
+//
+// Les sept lecteurs que la grammaire avait gardes (`readBitsAt`, `PeekBits`, `kfReadBits`,
+// `kfReadBitsLoop`, `kfBitAt`, `invBitAt`, `invBits`) sont devenus des appels a ces
+// conventions ; le differentiel qui le prouve, contre une copie de chacun, est
+// `bits_conventions_test.go`.
 
 import "encoding/binary"
 
@@ -186,6 +203,70 @@ func BitsTolerants(d []byte, pos, n int) uint64 {
 	var v uint64
 	for i := 0; i < n; i++ {
 		v = v<<1 | uint64(BitAt(d, pos+i))
+	}
+	return v
+}
+
+// BitsBourres lit `n` bits MSB d abord a la position `pos` avec LA CONVENTION DU LECTEUR
+// SEQUENTIEL ([Bits.ReadBits]), sans curseur : les bits au-dela de la fin du tampon valent ZERO
+// (bourrage de queue du moteur), une position NEGATIVE PANIQUE (`index out of range`), une
+// largeur > 64 ne garde que les 64 DERNIERS bits lus.
+//
+// ELLE EST NEE DE `grammar.kfReadBits` (lot J4.6, 2026-09-26), la primitive la plus chaude de la
+// cuisson — `kfScanNext` l appelle pour chaque position de bit d un payload d image-cle. Sa
+// forme est RECOPIEE, pas reecrite : chemin par mot sur le domaine ou il coincide avec la boucle
+// d origine, boucle d origine partout ailleurs. La panique sur position negative n est PAS un
+// accident a gommer : `grammar.kfValidAnchor` garde `q < 0` EXPRES avant sa lecture, et une
+// position negative qui deviendrait des zeros cacherait un balayage qui a perdu sa borne basse.
+// C est ce qui la separe de [BitsTolerants].
+func BitsBourres(d []byte, pos, n int) uint64 {
+	if pos >= 0 && n >= 0 && n <= 64 {
+		return BitsAt(d, pos, uint(n))
+	}
+	return bitsBourresBoucle(d, pos, n)
+}
+
+// bitsBourresBoucle est la boucle d origine de [BitsBourres] : elle seule porte les deux
+// conventions de bord que le chemin par mot ne couvre pas (position negative : l indexation
+// panique ; largeur > 64 : seuls les 64 derniers bits lus sont rendus).
+func bitsBourresBoucle(d []byte, pos, n int) uint64 {
+	var r uint64
+	for i := 0; i < n; i++ {
+		p := pos + i
+		var bit uint64
+		if idx := p >> 3; idx < len(d) {
+			bit = uint64(d[idx]>>(7-uint(p&7))) & 1
+		}
+		r = r<<1 | bit
+	}
+	return r
+}
+
+// BitsStricts lit `n` bits MSB d abord a la position `pos` et PANIQUE (`index out of range`) des
+// qu un bit demande tombe hors du tampon — avant le debut comme apres la fin. Une largeur nulle
+// ou negative rend 0 sans rien lire, donc sans paniquer ; une largeur > 64 ne garde que les 64
+// DERNIERS bits lus.
+//
+// ELLE EST NEE DE `grammar.readBitsAt` (lot J4.6, 2026-09-26), le lecteur des balayages de
+// positions, de visee et de projectiles. AUCUNE GARDE, ET C EST VOULU : ces balayages bornent eux-
+// memes leur fenetre, et une panique ici denonce un balayage qui a perdu ses bornes ; la faire
+// taire masquerait le defaut. Le chemin par mot n est pris que quand les `n` bits tiennent
+// entierement dans le tampon ; tout le reste retombe sur la boucle d origine, qui panique aux
+// memes positions qu avant.
+func BitsStricts(d []byte, pos, n int) uint64 {
+	if pos >= 0 && n > 0 && n <= 64 && pos+n <= len(d)*8 {
+		return BitsAt(d, pos, uint(n))
+	}
+	return bitsStrictsBoucle(d, pos, n)
+}
+
+// bitsStrictsBoucle est la boucle d origine de [BitsStricts] : indexation NUE, qui panique sur le
+// premier bit hors du tampon.
+func bitsStrictsBoucle(d []byte, pos, n int) uint64 {
+	var v uint64
+	for i := 0; i < n; i++ {
+		p := pos + i
+		v = v<<1 | uint64(d[p>>3]>>(7-uint(p&7))&1)
 	}
 	return v
 }

@@ -16,6 +16,8 @@ import (
 	"os"
 	"testing"
 	"time"
+
+	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 )
 
 // m3N1 est la table apprise sur le payload EN COURS de marche : archetype -> n1 vu (et combien
@@ -36,7 +38,7 @@ func m3ScanRG(buf []byte, from, prevSlot, total, maxWin int, appris m3N1) (at in
 	}
 	sentStreak := 0
 	for q := from; q < end && q+64 <= total; q++ {
-		id := kfReadBits(buf, q, 32)
+		id := source.BitsBourres(buf, q, 32)
 		if id == kfSent {
 			if sentStreak++; sentStreak >= 2048 {
 				fin = true
@@ -53,7 +55,7 @@ func m3ScanRG(buf []byte, from, prevSlot, total, maxWin int, appris m3N1) (at in
 			return q, false
 		}
 		if signe < 0 && g == 1 {
-			if ti == BipedTypeIndex || appris[ti][kfReadBits(buf, q+108, 32)] > 0 {
+			if ti == BipedTypeIndex || appris[ti][source.BitsBourres(buf, q+108, 32)] > 0 {
 				signe = q
 			}
 		}
@@ -98,7 +100,7 @@ func m3WalkRG(buf []byte, maxWin int) []KeyframeRec {
 		if appris[ti] == nil {
 			appris[ti] = map[uint64]int{}
 		}
-		appris[ti][kfReadBits(buf, pos+108, 32)]++
+		appris[ti][source.BitsBourres(buf, pos+108, 32)]++
 		st := pos + 64
 		nat := -1
 		if w, has := width[ti]; has {
@@ -217,10 +219,10 @@ func TestM3RecalN1(t *testing.T) {
 			pay := pk.Payload(data)
 			total := len(pay) * 8
 			for q := 0; q+140 <= total; q++ {
-				if kfReadBits(pay, q+32, 32) != BipedTypeIndex {
+				if source.BitsBourres(pay, q+32, 32) != BipedTypeIndex {
 					continue
 				}
-				id := kfReadBits(pay, q, 32)
+				id := source.BitsBourres(pay, q, 32)
 				if id == kfSent || id>>30 == 0 || int(id&0x3FFFFFFF) >= kfTableCap {
 					continue
 				}
@@ -228,7 +230,7 @@ func TestM3RecalN1(t *testing.T) {
 				if id>>30 != 1 {
 					gens++
 				}
-				n1s[kfReadBits(pay, q+108, 32)]++
+				n1s[source.BitsBourres(pay, q+108, 32)]++
 			}
 		}
 	}
@@ -438,14 +440,14 @@ func TestM3DiagTi9Exacts(t *testing.T) {
 	pay := paquets[0].Payload(raw)
 	total := len(pay) * 8
 	for q := 0; q+140 <= total; q++ {
-		if kfReadBits(pay, q+32, 32) != managedPlayerTypeIndex {
+		if source.BitsBourres(pay, q+32, 32) != managedPlayerTypeIndex {
 			continue
 		}
-		id := kfReadBits(pay, q, 32)
+		id := source.BitsBourres(pay, q, 32)
 		if id>>30 != 1 || int(id&0x3FFFFFFF) >= kfTableCap {
 			continue
 		}
-		t.Logf("exact ti9 : bit %d slot %d n1 %d", q, id&0x3FFFFFFF, kfReadBits(pay, q+108, 32))
+		t.Logf("exact ti9 : bit %d slot %d n1 %d", q, id&0x3FFFFFFF, source.BitsBourres(pay, q+108, 32))
 	}
 	recs, st := WalkKeyframeWorldStats(pay)
 	for i, r := range recs {

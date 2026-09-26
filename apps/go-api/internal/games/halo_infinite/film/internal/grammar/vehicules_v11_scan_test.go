@@ -33,6 +33,7 @@ package grammar
 
 import (
 	"fmt"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
 	"math"
 	"sort"
@@ -235,14 +236,14 @@ func v11BalayePayload(pay []byte, classe map[uint32]string, res map[string]*v11C
 		if pay[p>>3]>>(7-uint(p&7))&1 != 1 { // prefixe delta
 			continue
 		}
-		if readBitsAt(pay, p+16, 2) != 0 { // 14e bit d'id + selecteur de baseline
+		if uint32(source.BitsStricts(pay, p+16, 2)) != 0 { // 14e bit d'id + selecteur de baseline
 			continue
 		}
-		mc := int(readBitsAt(pay, p+18, 3))
+		mc := int(uint32(source.BitsStricts(pay, p+18, 3)))
 		if mc < 1 || mc > bipedMaxMaskCnt {
 			continue
 		}
-		slot := readBitsAt(pay, p+1, bipedSlotBits)
+		slot := uint32(source.BitsStricts(pay, p+1, bipedSlotBits))
 		nom, ok := classe[slot]
 		if !ok {
 			continue
@@ -274,7 +275,7 @@ func v11MasqueCroissant(pay []byte, at, count int) ([]int, bool) {
 	out := make([]int, 0, count)
 	prev := -1
 	for k := 0; k < count; k++ {
-		v := int(readBitsAt(pay, at+bipedIndexBits*k, bipedIndexBits))
+		v := int(uint32(source.BitsStricts(pay, at+bipedIndexBits*k, bipedIndexBits)))
 		if v <= prev || v >= v11MaxComposants {
 			return nil, false
 		}

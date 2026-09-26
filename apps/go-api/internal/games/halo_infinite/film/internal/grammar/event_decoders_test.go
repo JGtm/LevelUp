@@ -18,6 +18,7 @@ package grammar
 
 import (
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
 	"testing"
 )
@@ -137,10 +138,10 @@ func TestGrenadeThrowLayout(t *testing.T) {
 	// ne peut pas le reproduire (le bourrage y est a zero). Ce qui se verifie ici est donc la
 	// seule chose qu un flux construit puisse dire : l offset n est pas interchangeable.
 	pay := buildGrenadeRecord(10, GrenadePlasma, 5)
-	if v := PeekBits(pay, 11+24+32+47, 5); v != 5 {
+	if v := source.BitsTolerants(pay, 11+24+32+47, 5); v != 5 {
 		t.Errorf("lecture a +103 : %d, attendu 5", v)
 	}
-	if v := PeekBits(pay, 11+24+32+46, 5); v == 5 {
+	if v := source.BitsTolerants(pay, 11+24+32+46, 5); v == 5 {
 		t.Error("lecture a +102 : la meme valeur qu a +103 — le banc d essai ne discrimine plus " +
 			"les deux offsets, et ce test ne protege plus la correction qui les a departages")
 	}

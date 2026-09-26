@@ -36,6 +36,7 @@ package grammar
 import (
 	"fmt"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 	"os"
 	"sort"
 	"testing"
@@ -350,13 +351,13 @@ func i56WalkRecord(
 			return flag1, s, false
 		}
 		if id == i54Index && at+1 <= total {
-			flag1 = int(readBitsAt(pay, at, 1))
+			flag1 = int(uint32(source.BitsStricts(pay, at, 1)))
 		}
 		if id == i56Index {
 			if at+3 > total {
 				return flag1, s, false
 			}
-			s.mask = readBitsAt(pay, at, 3)
+			s.mask = uint32(source.BitsStricts(pay, at, 3))
 			p := at + 3
 			for c := 0; c < i56Charges; c++ {
 				if s.mask&(1<<uint(c)) == 0 {
@@ -365,7 +366,7 @@ func i56WalkRecord(
 				if p+7 > total {
 					return flag1, s, false
 				}
-				s.ch[c] = int(readBitsAt(pay, p, 7))
+				s.ch[c] = int(uint32(source.BitsStricts(pay, p, 7)))
 				p += 7
 			}
 			return flag1, s, true

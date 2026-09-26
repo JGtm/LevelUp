@@ -53,6 +53,7 @@ import (
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar/weaponv3"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 )
 
 // MiniFilmDir est le repertoire de la mini-bobine, relatif au paquet.
@@ -336,10 +337,10 @@ func miniPacketKind(chunk []byte, p grammar.FilmPacket, throwUS uint64) string {
 func hasKnownGrenadeMarker(pay []byte) bool {
 	limit := len(pay)*8 - (24 + 32)
 	for bp := 0; bp <= limit; bp++ {
-		if grammar.PeekBits(pay, bp, 24) != 0x4C0C00 {
+		if source.BitsTolerants(pay, bp, 24) != 0x4C0C00 {
 			continue
 		}
-		if _, ok := grammar.GrenadeRankOf(uint32(grammar.PeekBits(pay, bp+24, 32))); ok {
+		if _, ok := grammar.GrenadeRankOf(uint32(source.BitsTolerants(pay, bp+24, 32))); ok {
 			return true
 		}
 	}

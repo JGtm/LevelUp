@@ -31,6 +31,8 @@ import (
 	"sort"
 	"strings"
 	"testing"
+
+	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 )
 
 // -------------------------------------------------------------------------------------
@@ -69,13 +71,13 @@ func ti13Decode(pay []byte, bit int, modeA bool) (ti13Val, int, bool) {
 	if bit+4 > total {
 		return ti13Val{}, bit, false
 	}
-	v := ti13Val{tag: int(PeekBits(pay, bit, 4))}
+	v := ti13Val{tag: int(source.BitsTolerants(pay, bit, 4))}
 	v.payBits = managedPropertyPayloadBits(v.tag, modeA)
 	if bit+4+v.payBits > total {
 		return ti13Val{}, bit, false
 	}
 	if v.payBits > 0 {
-		v.payload = PeekBits(pay, bit+4, v.payBits)
+		v.payload = source.BitsTolerants(pay, bit+4, v.payBits)
 	}
 	return v, bit + 4 + v.payBits, true
 }
@@ -251,13 +253,13 @@ func ti13ScanRecord(acc map[int]*ti13Acc, pay []byte, rec WorldObjectRecord, ch,
 	idx := rec.Idx[0]
 	base := ti13Vec{chunk: ch, pkt: pkt, bitPay: rec.After, slot: rec.Slot, gen: rec.Gen}
 	if rec.After+64 <= len(pay)*8 {
-		base.raw64 = PeekBits(pay, rec.After, 64)
+		base.raw64 = source.BitsTolerants(pay, rec.After, 64)
 	}
 	if idx == 0 { // i0 `property-name` : R(32) fixe, deja porte (FUN_142ed69d8)
 		if rec.After+32 > len(pay)*8 {
 			return
 		}
-		base.val = ti13Val{tag: 0, payBits: 32, payload: PeekBits(pay, rec.After, 32)}
+		base.val = ti13Val{tag: 0, payBits: 32, payload: source.BitsTolerants(pay, rec.After, 32)}
 		base.chained = ti13HeaderAt(pay, rec.After+32)
 		acc[-1].add(base)
 		return

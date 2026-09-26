@@ -196,7 +196,7 @@ type guardedRef struct {
 // garde(1) ; si 1 : sonde(1) ; R(sonde?9:13) index ; R(2) génération.
 //
 // BORNÉE (lot J2.9, 2026-09-26) : une référence qui déborde du payload est rendue TRONQUÉE
-// ([refTronquee]) au lieu de faire paniquer `readBitsAt`. Une référence qui tient est lue
+// ([refTronquee]) au lieu de faire paniquer [source.BitsStricts]. Une référence qui tient est lue
 // exactement comme avant.
 func readDom1Ref(pay []byte, at int) guardedRef {
 	fin := len(pay) * 8
@@ -204,14 +204,14 @@ func readDom1Ref(pay []byte, at int) guardedRef {
 		return refTronquee(pay)
 	}
 	r := guardedRef{EndBit: at + 1}
-	if readBitsAt(pay, at, 1) == 0 {
+	if uint32(source.BitsStricts(pay, at, 1)) == 0 {
 		return r
 	}
 	b := at + 1
 	if b >= fin {
 		return refTronquee(pay)
 	}
-	sonde := int(readBitsAt(pay, b, 1))
+	sonde := int(uint32(source.BitsStricts(pay, b, 1)))
 	b++
 	w := 13
 	if sonde == 1 {
@@ -221,9 +221,9 @@ func readDom1Ref(pay []byte, at int) guardedRef {
 		return refTronquee(pay)
 	}
 	r.Present, r.Sonde = true, sonde
-	r.Index = readBitsAt(pay, b, w)
+	r.Index = uint32(source.BitsStricts(pay, b, w))
 	b += w
-	r.Gen = readBitsAt(pay, b, 2)
+	r.Gen = uint32(source.BitsStricts(pay, b, 2))
 	r.EndBit = b + 2
 	return r
 }
@@ -236,7 +236,7 @@ func readPlainRef(pay []byte, at, w int) guardedRef {
 		return refTronquee(pay)
 	}
 	r := guardedRef{EndBit: at + 1}
-	if readBitsAt(pay, at, 1) == 0 {
+	if uint32(source.BitsStricts(pay, at, 1)) == 0 {
 		return r
 	}
 	b := at + 1
@@ -244,9 +244,9 @@ func readPlainRef(pay []byte, at, w int) guardedRef {
 		return refTronquee(pay)
 	}
 	r.Present = true
-	r.Index = readBitsAt(pay, b, w)
+	r.Index = uint32(source.BitsStricts(pay, b, w))
 	b += w
-	r.Gen = readBitsAt(pay, b, 2)
+	r.Gen = uint32(source.BitsStricts(pay, b, 2))
 	r.EndBit = b + 2
 	return r
 }
@@ -294,7 +294,7 @@ func decodeVehicleEvent(pay []byte, base uint32, inBand SlotBand) (types.Vehicle
 	}
 	seatBit := derniere.EndBit
 	if seatBit+vehicleSeatBits <= len(pay)*8 {
-		ev.Seat = readBitsAt(pay, seatBit, vehicleSeatBits)
+		ev.Seat = uint32(source.BitsStricts(pay, seatBit, vehicleSeatBits))
 		ev.SeatValid = true
 	}
 	return ev, true

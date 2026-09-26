@@ -1,5 +1,9 @@
 package grammar
 
+import (
+	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
+)
+
 // keyframe_fullstate_loop.go — LA BOUCLE D'ETAT COMPLET DU JEU, PORTEE, ET DEPUIS LE LOT 1.4
 // (2026-09-14) LA SEULE LECTURE DU CORPS D'UN RECORD D'IMAGE-CLE EN PRODUCTION.
 //
@@ -85,7 +89,7 @@ func walkKeyframeFullState(pay []byte, recBit int, reg *Registry, ctx ContexteDe
 	t := EntityTrace{DesyncAt: -1}
 	// Le typeIndex se lit aux 6 bits de queue du deuxieme mot de 32 bits, position
 	// commune aux deux lectures d'en-tete (cf. `profile.KeyframeEnTeteBits`).
-	t.TypeIndex = uint32(kfReadBits(pay, recBit+keyframeRecordTIBit, 6))
+	t.TypeIndex = uint32(source.BitsBourres(pay, recBit+keyframeRecordTIBit, 6))
 	br.SetBitPos(recBit + hdr)
 	if t.TypeIndex >= objectArchetypeCount {
 		t.DesyncAt, t.EndBit = 0, br.BitPos()

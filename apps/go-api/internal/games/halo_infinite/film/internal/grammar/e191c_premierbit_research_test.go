@@ -50,19 +50,19 @@ const e191cRegionCountMax = 32
 func e191cCompteur(pay []byte, nom string, start int) (uint64, bool) {
 	switch nom {
 	case "object-region-state-component": // R(1) present + R(6) compte
-		return kfReadBits(pay, start+1, 6), true
+		return source.BitsBourres(pay, start+1, 6), true
 	case "object-damage-sections-component": // R(6) compte
-		return kfReadBits(pay, start, 6), true
+		return source.BitsBourres(pay, start, 6), true
 	case "object-constraint-component": // R(5) n
-		return kfReadBits(pay, start, 5), true
+		return source.BitsBourres(pay, start, 5), true
 	case compObjectLowFrequency: // R(2) tete ; compte a +12 ou +27
-		if kfReadBits(pay, start, 2) < 2 {
-			return kfReadBits(pay, start+27, 6), true
+		if source.BitsBourres(pay, start, 2) < 2 {
+			return source.BitsBourres(pay, start+27, 6), true
 		}
-		return kfReadBits(pay, start+12, 6), true
+		return source.BitsBourres(pay, start+12, 6), true
 	case compObjectFrameConfiguration: // porte R(1) ; si 1 : R(32) puis R(6)
-		if kfReadBits(pay, start, 1) == 1 {
-			return kfReadBits(pay, start+33, 6), true
+		if source.BitsBourres(pay, start, 1) == 1 {
+			return source.BitsBourres(pay, start+33, 6), true
 		}
 		return 0, false
 	}
@@ -114,15 +114,15 @@ func e191cJournalBobine(t *testing.T, court string, ti int) {
 // e191cJournalRecord colle UN record : ses deux mots de taille, puis chaque composant.
 func e191cJournalRecord(t *testing.T, pay []byte, reg *Registry, b keyframeBorne, n int) {
 	t.Helper()
-	n1 := kfReadBits(pay, b.Bit+profile.KeyframeEnTeteBits, 32)
+	n1 := source.BitsBourres(pay, b.Bit+profile.KeyframeEnTeteBits, 32)
 	// n2 se lit APRES l etat par defaut : on rejoue le bloc pour le localiser.
 	br2 := LecteurSur(pay)
 	br2.SetBitPos(b.Bit + profile.KeyframeEnTeteBits)
 	br2.ReadBits(profile.KeyframeMotDeTailleBits)
 	if int32(n1) > 0 { //nolint:gosec // 32 bits
-		consumeKeyframeDefaultState(br2, uint32(kfReadBits(pay, b.Bit+keyframeRecordTIBit, 6))) //nolint:gosec // 6 bits
+		consumeKeyframeDefaultState(br2, uint32(source.BitsBourres(pay, b.Bit+keyframeRecordTIBit, 6))) //nolint:gosec // 6 bits
 	}
-	n2 := kfReadBits(pay, br2.BitPos(), 32)
+	n2 := source.BitsBourres(pay, br2.BitPos(), 32)
 	tr := WalkKeyframeFullState(pay, b.Bit, reg, contexteDInstrument())
 	taille := b.Want - b.Bit
 	t.Logf("  -- record %d slot=%d bit=%d taille=%d bits, fin lue=%d, ecart=%+d, n1=%d, n2=%d",

@@ -23,7 +23,7 @@ import (
 	"io"
 	"sort"
 
-	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 )
 
 // largeurAmorceMin / largeurAmorceMax : les largeurs d amorce sondees, en bits. La grammaire
@@ -49,7 +49,7 @@ func noterAmorce(pay []byte, bp int, r *Releve) {
 			h = map[uint64]int{}
 			r.AmorceParLargeur[w] = h
 		}
-		h[grammar.PeekBits(pay, bp-w, w)]++
+		h[source.BitsTolerants(pay, bp-w, w)]++
 	}
 }
 
@@ -113,7 +113,7 @@ func noterIndexDepuisIdentifiant(pay []byte, bp int, r *Releve) {
 			r.IndexDepuisIdentifiant[d] = c
 		}
 		c.Total++
-		v := grammar.PeekBits(pay, bp+d, indexAuteurBits)
+		v := source.BitsTolerants(pay, bp+d, indexAuteurBits)
 		c.Vues |= 1 << uint(v&0x1F)
 		if v <= indexAuteurMax {
 			c.Dans0a7++

@@ -27,6 +27,8 @@ import (
 	"fmt"
 	"sort"
 	"testing"
+
+	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 )
 
 // e520Rejet est UN en-tete rejete, lu tel quel.
@@ -54,15 +56,15 @@ func e520Lire(pay []byte, cfg FrameConfig, mar d519Marche) (e520Rejet, bool) {
 		return r, false
 	}
 	r.Bit = at
-	r.Mots[0] = kfReadBits(pay, at, 32)
-	r.Mots[1] = kfReadBits(pay, at+32, 16)
+	r.Mots[0] = source.BitsBourres(pay, at, 32)
+	r.Mots[1] = source.BitsBourres(pay, at+32, 16)
 	p := at
 	if cfg.HasExtraFields {
 		p += 32
 	}
-	r.Prefixe = kfReadBits(pay, p, 1)
-	r.Low = kfReadBits(pay, p+1, cfg.IDLowBits)
-	r.Tag = kfReadBits(pay, p+1+cfg.IDLowBits, 2)
+	r.Prefixe = source.BitsBourres(pay, p, 1)
+	r.Low = source.BitsBourres(pay, p+1, cfg.IDLowBits)
+	r.Tag = source.BitsBourres(pay, p+1+cfg.IDLowBits, 2)
 	r.DepuisLa = len(pay)*8 - at
 	return r, true
 }
@@ -139,8 +141,8 @@ func TestEntete520(t *testing.T) {
 				p += 32
 			}
 			for _, wid := range []int{11, 12, 13, 14, 15} {
-				low := kfReadBits(pay, p+1, wid)
-				tag := kfReadBits(pay, p+1+wid, 2)
+				low := source.BitsBourres(pay, p+1, wid)
+				tag := source.BitsBourres(pay, p+1+wid, 2)
 				largeurs[fmt.Sprintf("W=%2d low %5d tag %d", wid, low, tag)]++
 			}
 		}
