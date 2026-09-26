@@ -140,7 +140,7 @@ traité (justification au journal §9). Aucune case vide.
 | GA2-1 | P1 | Portage divergent de `FUN_14076e524` (corps d'i54) | Reprise M4b de la campagne rr, fusionnée le 2026-09-25 (`3cca6cf47`) : les deux positions d'i54 lues au niveau 0x10 par `consumeSimStateHandleTail`, `consumeE494Position` supprimé — confirmé par P-3 ; les autres sites du même lecteur restent en J6 | [~] |
 | GA2-2 | P1 | `flock-position` lu au niveau 0 au lieu de l'immédiat 0x10 | J6 | [ ] |
 | GA1-2 | P1 | Repli « liaison par anticipation » hors registre, non compté | J8.1 | [ ] |
-| RA1-1 | P1 | Faits persistés dépendants des gardes de l'appelant, non comparées | J3.4 | [ ] |
+| RA1-1 | P1 | Faits persistés dépendants des gardes de l'appelant, non comparées | J3.4 | [x] |
 | RB2-1 | P1 | Sièges : un arrivant précoce arrête l'appariement du camp | rr vague D (M2 : chaînage nommé `repli_place_du_remplacant_par_chainage_d_equipe`) — confirmé par P-3 sur `3cca6cf47` | [~] |
 | RB2-4 | P1 | `spawnSetFrom` compare à une image-clé future | rr vague D (M3.2 : « jamais un relevé à venir », borne de vie) — confirmé par P-3 sur `3cca6cf47` | [~] |
 | RB2-5 | P1 | Un ramassage natif date plusieurs occupations de socle | J8.2 | [ ] |
@@ -151,12 +151,12 @@ traité (justification au journal §9). Aucune case vide.
 
 | ID | Traitement | Statut | ID | Traitement | Statut |
 |---|---|---|---|---|---|
-| SRC-1 | J3.2 | [ ] | FK-6 | J7.6 | [ ] |
+| SRC-1 | J3.2 | [x] | FK-6 | J7.6 | [ ] |
 | RA1-3 | J4 | [ ] | FK-7 | J7.7 | [ ] |
-| RA1-4 | J3.5 | [ ] | RB2-3 | J5.4 | [ ] |
+| RA1-4 | J3.5 | [x] | RB2-3 | J5.4 | [ ] |
 | RA1-6 | rr M8 (verdict du fil des morts dans les faits) — confirmé par P-3 | [~] | RB2-6 | J10.3 | [ ] |
 | RA1-5 | J2.7 | [x] | RB2-7 | J10.4 | [ ] |
-| RA1-2 | J3.6 | [ ] | RB2-8 | J8.3 | [ ] |
+| RA1-2 | J3.6 | [x] | RB2-8 | J8.3 | [ ] |
 | RA1-7 | J2.10 | [x] | RB1-2 | J9.4 | [ ] |
 | OPS-1 | J2.6 | [x] | RB1-3 | J9.6 | [ ] |
 | OPS-2 | J2.13 | [x] | RB1-4 | J2.8 | [x] |
@@ -205,7 +205,7 @@ traité (justification au journal §9). Aucune case vide.
 |---|---|---|---|
 | 1 | OPS-3 avant la fusion v7.5 → main | J1, fusionné dans `feat/v75` (`9cee40fac`, 2026-09-26) | [x] |
 | 2 | GB-1 : mesurer le parc puis lot de comportement | J5 | [ ] |
-| 3 | Modèle de révision / fraîcheur | J3 (DU-2) | [ ] |
+| 3 | Modèle de révision / fraîcheur | J3 (DU-2) | [x] |
 | 4 | Identité (slot, génération) de première classe | J5 | [ ] |
 | 5 | GA2-1 / GA2-2 (résidu de film dense clos le 23/09) | DU-1 = oui → J6 (GA2-1 : `[~]` reprise M4b) | [ ] |
 | 6 | Découpe de `film/replay` et façade (décision V25) | DU-4 = hors plan (`[!]` à la clôture, motif : décision du 2026-09-25) | [ ] |
@@ -663,61 +663,61 @@ couches, octets bruts commentaires compris, racines déclarées à la main) ; `f
 `replay/filmfacts_decode.go` (inventaire nil → tranche vide).
 
 #### J3.1 Empreinte insensible aux commentaires (outillage)
-- [ ] Tests rouges (`revision/empreinte_test.go`) : `TestCalculer_CommentaireSansEffet` (deux
+- [x] Tests rouges (`revision/empreinte_test.go`) : `TestCalculer_CommentaireSansEffet` (deux
       arbres de fixture qui ne diffèrent que par des commentaires),
       `TestCalculer_UnJetonChangeLEmpreinte`, `TestCalculer_ChaineContenantDeuxBarres`,
       `TestCalculer_DirectiveGoCompte` (`//go:build`, `//go:embed` changent l'empreinte).
-- [ ] `revision.Calculer` hache le flux de jetons `go/scanner` hors commentaires, directives
+- [x] `revision.Calculer` hache le flux de jetons `go/scanner` hors commentaires, directives
       `//go:` conservées ; cadre inchangé (chemin relatif à la racine + longueur).
-- [ ] Les quatre goldens régénérés à révision CONSTANTE dans le même commit ; le commit ne touche
+- [x] Les quatre goldens régénérés à révision CONSTANTE dans le même commit ; le commit ne touche
       aucun fichier des quatre couches (`git diff --stat` limité à `film/revision/` et aux
       goldens) : c'est ce qui prouve qu'il s'agit d'outillage.
 
 #### J3.2 Périmètre = fermeture des imports (SRC-1)
-- [ ] Tests rouges : `TestPerimetre_FermetureDesImports` (arbre de fixture : A → B → C ; une couche
+- [x] Tests rouges : `TestPerimetre_FermetureDesImports` (arbre de fixture : A → B → C ; une couche
       révisée entre par sa VALEUR), `TestPerimetreDeChaqueCoucheEgaleSonGolden`
       (`testdata/<couche>_perimetre.golden` : la liste des paquets hachés) ; mutation : un import
       ajouté dans une couche rougit le golden.
-- [ ] Fermeture calculée par `go/parser` (`ImportsOnly`), bornée au module, arrêtée aux couches
+- [x] Fermeture calculée par `go/parser` (`ImportsOnly`), bornée au module, arrêtée aux couches
       révisées ; `film/types`, `film/damagetag`, `games/weapons/filmshell` entrent dans les
       périmètres qui les importent ; le second oracle (`equivalence_test.go`) redéclare la même
       règle ; goldens d'empreinte régénérés à révision constante (outillage, aucune sortie ne
       change).
 
 #### J3.3 Une révision par consommateur de faits
-- [ ] Mesure écrite au rapport : fermetures de `facts/killsource` et de `facts/objectives`.
-- [ ] `killsource.Rev` (garde la valeur actuelle de `facts.Rev`, donc AUCUNE réouverture du
+- [x] Mesure écrite au rapport : fermetures de `facts/killsource` et de `facts/objectives`.
+- [x] `killsource.Rev` (garde la valeur actuelle de `facts.Rev`, donc AUCUNE réouverture du
       backlog) et `objectives.Rev` remplacent `facts.Rev` ; le backlog de `killcollector`
       (`decoder_rev`) lit `killsource.Rev` ; `couchesDesCalques` attribue chaque calque à la
       révision précise ; `coverage.decoder` publie les révisions par consommateur ; `Utilisable`
       compare toutes les révisions de couche.
-- [ ] Tests : golden de périmètre de `killsource` sans paquet d'objectifs ;
+- [x] Tests : golden de périmètre de `killsource` sans paquet d'objectifs ;
       `TestCalquesNePortentQueLesRevisionsConnues` mis à jour.
 
 #### J3.4 Gardes de l'appelant tracées (RA1-1)
-- [ ] Tests rouges : `TestUtilisable_RefuseDesFaitsCuitsSansUneGardeDemandee` (zones faux dans les
+- [x] Tests rouges : `TestUtilisable_RefuseDesFaitsCuitsSansUneGardeDemandee` (zones faux dans les
       faits, vrai demandé → `ErrFilmFactsGardes`), `TestUtilisable_AccepteUnSurEnsembleDeGardes`,
       `TestUtilisable_RefuseUnRosterDifferent`, `TestCuisson_AucunFaitEcritQuandLArtefactEstRefuse`
       (`replaybuild`).
-- [ ] `GardesDeCuisson{Drapeau, Zones, Bombe bool; Roster [32]byte}` dérivées d'`Options` en UN
+- [x] `GardesDeCuisson{Drapeau, Zones, Bombe bool; Roster [32]byte}` dérivées d'`Options` en UN
       point ; inscrites à l'en-tête des faits (montée `VersionCodecFaits`) ;
       `Utilisable(entry, gardes)` ; la cuisson n'écrit pas de faits quand l'artefact est refusé.
 
 #### J3.5 Clé de cuisson complète (RA1-4)
-- [ ] Test rouge en table : chaque champ de `MapQuantEntry` qui gouverne le décodage (module,
+- [x] Test rouge en table : chaque champ de `MapQuantEntry` qui gouverne le décodage (module,
       `AxisW`, `Region`, `RegionIndexBits`, bornes, porte) changé → `ErrFilmFactsCarte`.
-- [ ] `EmpreinteDeCle(entry)` (hachage canonique des champs gouvernants) inscrite à l'en-tête et
+- [x] `EmpreinteDeCle(entry)` (hachage canonique des champs gouvernants) inscrite à l'en-tête et
       comparée par `verifierCleDeCuisson`.
 
 #### J3.6 Inventaire nil ou vide (RA1-2)
-- [ ] Test rouge : aller-retour nil → nil et `[]` → `[]` ; couverture et calque identiques entre
+- [x] Test rouge : aller-retour nil → nil et `[]` → `[]` ; couverture et calque identiques entre
       la branche film et la branche faits sur une fixture sans inventaire.
-- [ ] Drapeau de présence au codec (même montée que J3.4).
+- [x] Drapeau de présence au codec (même montée que J3.4).
 
 #### J3.7 ADR 0034 amendé (EN)
-- [ ] D-6 et D-7 : empreinte sans commentaires, périmètre par fermeture figé par golden, révisions
+- [x] D-6 et D-7 : empreinte sans commentaires, périmètre par fermeture figé par golden, révisions
       par consommateur, gardes de l'appelant, clé complète ; constats cités.
-- [ ] D-3, règle 2 : la règle des largeurs présumées (DU-9) — une largeur trouvée par la fermeture
+- [x] D-3, règle 2 : la règle des largeurs présumées (DU-9) — une largeur trouvée par la fermeture
       est admise pour un composant de taille fixe qu'on ne fait que sauter, marquée « présumée »
       et listée par un test gelé ; l'écrivain du jeu reste la source pour tout le reste.
 
@@ -766,14 +766,14 @@ composant présent sans lecteur) ; `testdata/ecs_table.tsv` (statuts `porte`, `n
 `partiel`, `deser_non_cable`, colonne d'usage produit) ; huit mini-bobines, une par build
 (`film/replay/testdata/minifilm_*`) ; modèle d'outil `film/research/cmd_grenadeids`.
 
-- [ ] J4.0.1 Tests rouges synthétiques (`grammar/frame_closure_test.go`) :
+- [x] J4.0.1 Tests rouges synthétiques (`grammar/frame_closure_test.go`) :
       `TestFrameClosure_PaquetFermeAuBitPres` (trois vues lues jusqu'à leur terminateur, curseur sur
       la fin du paquet), `TestFrameClosure_ComposantSansLecteurNommeLeBloquant` (un delta dont le
       masque annonce un composant non porté : vue des entités non fermée, bloquant
       `ti=<a> i<idx> <nom>`), `TestFrameClosure_ArretDeLaVueDeControleCompteParCause` (chaque
       `ArretVueC`), `TestFrameClosure_BloquantLePlusFrequentDepartageParNom` (règle de
       `KeyframeClosure`).
-- [ ] J4.0.2 `grammar.FrameClosure(fc) (FrameClosureReport, error)` : par vue — paquets atteints,
+- [x] J4.0.2 `grammar.FrameClosure(fc) (FrameClosureReport, error)` : par vue — paquets atteints,
       fermés au bit près, causes d'arrêt ; par archétype — records NEW et delta, fermés, bloquant
       le plus fréquent ; et **la fermeture des records UTILES** — ceux qui portent un composant à
       usage produit (colonne `product_use` de `ecs_table.tsv`, passée en entrée : `grammar` ne lit
@@ -782,12 +782,12 @@ composant présent sans lecteur) ; `testdata/ecs_table.tsv` (statuts `porte`, `n
       appelés tels quels ; pure, sans I/O, sans état de paquet (D-5). Ni la cuisson ni le
       collecteur ne l'appellent. Test rouge ajouté à J4.0.1 :
       `TestFrameClosure_RecordUtileFermeCompteAParte`.
-- [ ] J4.0.3 Golden `testdata/frame_closure.golden` sur les huit mini-bobines (une ligne par
+- [x] J4.0.3 Golden `testdata/frame_closure.golden` sur les huit mini-bobines (une ligne par
       (film, vue) et par (film, archétype)) et ratchet `TestFrameClosureRatchet`, rouge sur une
       BAISSE de fermés ; même porte de régénération que le ratchet d'image-clé ; en-tête
       « historique des régénérations » ; mutation : décaler d'un bit un lecteur de composant →
       rouge.
-- [ ] J4.0.4 Outil `film/research/cmd_fermeture` (tag `research`) : films lus un à un, en place,
+- [x] J4.0.4 Outil `film/research/cmd_fermeture` (tag `research`) : films lus un à un, en place,
       dans l'ordre donné, sentinelle `filmproc.Arm`, option `-limite` ; sortie = TSV brut +
       résumé Markdown : par build, part des paquets fermés par vue et **part des records utiles
       fermés** (le déclencheur de la spec) ; classement des composants bloquants (archétype, index,
@@ -1233,6 +1233,24 @@ relancer un agent sans avoir vérifié qu'il est mort. Ne pas re-décider ce qui
     contrôle ») est inexact pour `product_use` ; `golangci-lint` ne voit pas les fichiers tagués
     `research` (seul `go vet -tags=research` les couvre) ; records NEW d'archétype 50-61 « hors
     registre » dans ks_000d5950 (lectures à une mauvaise position).
+14. (2026-09-26, revue J3, P2 antérieur au lot) Le catalogue de cartes `map_quant_bounds.json`,
+    lu à l'EXÉCUTION (`profile/map_bounds.go`), décide la sortie killsource
+    (`killsource/decode.go` `calibrate(..., c.opts.Carte)`) sans qu'aucune révision le couvre ; et
+    `Carte` à nil est licite (repli sur les largeurs d'une autre carte). Une entrée corrigée (cas
+    Live Fire du 2026-08-27) laisse les lignes `match_kill_events` décodées sous l'ancienne entrée
+    au `decoder_rev` courant : jamais recalculées. J3.5 ferme ce trou pour les FAITS persistés
+    seulement. Candidat naturel : J7 (killsource) — à statuer à son entrée.
+15. (2026-09-26, exécutant J3) `facts/fallback` n'est haché par aucune révision (aucun
+    consommateur ne l'importe) ; l'en-tête de `grammar/rev.go` décrit encore `facts.Rev` (J12.5) ;
+    le code des gates de couche (drapeau, porte, `switch`) existe en 5 copies (`revision` ne peut
+    pas importer `testing`) — au-delà de la règle 6, à centraliser avec garde-rail (J12) ;
+    `CLAUDE.md` résume l'ADR 0034 sans les révisions par consommateur (J12.5) ; le code de
+    balayage resté dans `film/replay` produit les faits sans être haché par une révision (fermé
+    par J4.2).
+16. (2026-09-26, superviseur) Le rapport de J3 annonçait `archlint` vert ; la branche portait un
+    rouge (`TestNoRawKillScopeLiteral` sur deux étiquettes de test « kill-feed » de J3.3), relevé
+    par l'exécutant de J3.3b et corrigé dans le lot. Leçon : rejouer `archlint` soi-même avant de
+    cocher.
 
 ---
 
@@ -1348,3 +1366,23 @@ relancer un agent sans avoir vérifié qu'il est mort. Ne pas re-décider ce qui
   pas ; mutation Block64 sur 17 bits → rouge). G-equiv de J4.0 (instrument non appelé par la
   production, empreinte régénérée à révision constante) joué avec celui de J3 sur l'arbre
   réuni, les divergences déclarées de J3 à part. Découvertes §8.12-8.13.
+- 2026-09-26 : **J3 fait** (exécutant `opus-high`, worktree `-j3`) : J3.1-J3.7, un commit par item
+  (`6b5f76915` … `8dc3155f7`, reconstruits depuis les arbres intermédiaires de l'exécutant).
+  `killsource.Rev` = `killsource-2026-09-24` (valeur de `facts.Rev`, aucun backlog rouvert) ;
+  `objectives.Rev` née à `objectives-2026-09-26` ; paquet racine `facts` supprimé ; schéma 71 → 72 ;
+  codec des faits 1 → 2 (refus du 1 testé) ; `SchemaDesFaits` reste 4 ; openapi + types web ;
+  fichiers `//go:embed` hachés (ajout hors libellé, `damagetag`) ; surface `replay.X` 278 → 281
+  (justifiée, datée). **J3.3b, décision superviseur** : la fermeture faisait entrer
+  `internal/domain` (125 fichiers), `domain/title`, `games/canonical` dans le périmètre
+  d'`objectives` pour deux structs — toute modification de `domain` aurait rougi le gate ;
+  `ObjectiveEvent`/`ObjectiveEventPlayer` déplacés dans la feuille `domain/objectiveevent`
+  (précédent `domain/highlightevent`), sans alias (`b6da334c0`, `opus-medium`). **Revue
+  adversariale J3** : 22 conditions qui tiennent, 0 P0/P1, 2 P2 — docs (ADR, SYNC_GUIDE EN+FR)
+  périmées par J3.3b : corrigées (`cddc413bb`) ; catalogue de cartes non couvert par killsource
+  pour les lignes : antérieur, §8.14. Intégration : J3 puis J4.0 fusionnés dans la branche du plan
+  (`e3a1450d3`, `097a22612`), seul conflit `grammar_rev.golden`, résolu par la porte à révision
+  constante ; vet (défaut + research) et 21 paquets (film, replaybuild, killcollector,
+  replayartifacts, archlint) verts sur l'arbre réuni. G-equiv J3 + J4.0 lancé (divergences
+  déclarées : `schemaVersion` 72, `coverage.decoder` par consommateur, `layers` des calques
+  d'objectifs → `objectives-2026-09-26`, `layers` de publication → `publication-72` ; aucune étape
+  de balayage ne doit bouger). Découvertes §8.14-8.16.
