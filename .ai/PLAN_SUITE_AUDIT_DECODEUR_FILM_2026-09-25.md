@@ -1,8 +1,8 @@
 # PLAN — Suite de l'audit du décodeur de film et du générateur d'artefacts de rejeu (2026-09-25)
 
-> **Statut : EN COURS — J1 CLOS et fusionné dans `feat/v75` le 2026-09-26 (`9cee40fac`) ; J2 en
-> cours (J2-a et J2-b en parallèle, décision utilisateur) ; décisions DU-1 à DU-9 VALIDÉES le
-> 2026-09-25.**
+> **Statut : EN COURS — J1 et J2 CLOS et fusionnés dans `feat/v75` le 2026-09-26 (`9cee40fac`,
+> `d61443ef5`) ; J3 et J4.0 faits sur la branche (vague J11) ; J4 S1 en cours ; décisions DU-1 à
+> DU-9 VALIDÉES le 2026-09-25.**
 > « ok pour le plan » n'est pas un GO : chaque jalon
 > démarre sur un GO explicite et daté de l'utilisateur. Contrat d'exécution : skill
 > `plan-execution`, précisé au §4 (en cas de divergence, ce plan fait foi).
@@ -341,6 +341,11 @@ Amendement de l'ADR 0034 D-3 écrit en J3.7 ; règle détaillée dans la spec
    identité, données persistées) : un relecteur, un worktree temporaire en lecture seule ; ses
    constats sont corrigés dans le jalon ou consignés au §8. Pas de chaîne impl → revue →
    correction systématique.
+5 bis. **Revue adversariale FINALE de tout le plan** (demande de l'utilisateur, 2026-09-26) : à la
+   fin du plan (après J12), un relecteur frais relit l'ensemble du travail livré (diff
+   `ea5682373..` tête finale). Périmètre FERMÉ : seuls les constats qui portent sur ce que le plan
+   a changé et qui l'invalident sont corrigés ; tout problème détecté hors périmètre est consigné
+   au §8, jamais traité (pas de divergence créée par la revue elle-même).
 6. **Découvertes** : §8, non traitées, sauf si elles bloquent le gate courant.
 7. **Explosion de périmètre** (> 2x l'estimation) ou hypothèse invalidée (ex. : J5.0 ne reproduit
    pas GB-1) : arrêt propre et message immédiat à l'utilisateur.
@@ -1386,3 +1391,13 @@ relancer un agent sans avoir vérifié qu'il est mort. Ne pas re-décider ce qui
   déclarées : `schemaVersion` 72, `coverage.decoder` par consommateur, `layers` des calques
   d'objectifs → `objectives-2026-09-26`, `layers` de publication → `publication-72` ; aucune étape
   de balayage ne doit bouger). Découvertes §8.14-8.16.
+- 2026-09-26 : **J2 CLOS.** Accord de l'utilisateur (« ok tu as mon go pour fusionner les
+  jalons », valable pour les fusions prévues par le plan : fin J2, fin J11, fin J12 — J3 à J10
+  restent sur la branche jusqu'à la vague J11, DU-6). CI de `8b34babd0` verte au niveau job (CI
+  36250814597 ; le rouge de la CI de `b6e95181b` était un test de durée LUSR instable,
+  `sync/skill`, 2,04 s contre 2 s sous couverture, hors périmètre, repassé vert au run suivant).
+  Fusion `--no-ff` de `8b34babd0` dans `feat/v75` depuis un worktree détaché temporaire :
+  `d61443ef5`, arbre identique à `8b34babd0`, poussé (`9cee40fac..d61443ef5`) ; G-push non rejoué
+  (même raison que J1 : arbre validé tel quel par la CI). `feat/v75` re-fusionné dans la branche
+  du plan (`9e8e55a71`, arbre inchangé). Même demande : **revue adversariale finale** de tout le
+  travail à la fin du plan, périmètre fermé (règle 5 bis du §4.1).

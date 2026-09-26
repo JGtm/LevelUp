@@ -113539,10 +113539,12 @@ serveur relance a synchronise depuis). Tache Notion 10 CLOSE.
 
 **Addendum cloture J1 (2026-09-26)** : CI de `85822591a` verte au niveau job ; fusion `--no-ff` dans `feat/v75` depuis un worktree detache temporaire (`9cee40fac`, arbre identique a celui valide par la CI, `make gate-push` non rejoue pour cette raison, ecart ecrit au plan §9), poussee. Checkout principal non touche (modifications d'une autre session). J2 lance en parallele, en deux moities simultanees (J2-a ici, J2-b dans `LevelUp-wt-suite-audit-b`), a la demande de l'utilisateur ; plafond porte a 3 agents.
 
-## [2026-09-26] Suite de l'audit du decodeur, J2 : robustesse E/S, lecteurs bornes, refus types — En cours (code et gates locaux faits sur `feat/suite-audit-decodeur` ; CI puis fusion dans `feat/v75` sur accord)
+## [2026-09-26] Suite de l'audit du decodeur, J2 : robustesse E/S, lecteurs bornes, refus types — Complété (fusionné dans `feat/v75`, `d61443ef5`)
 
 **Decision technique principale** : J2 execute en deux moities paralleles a la demande de l'utilisateur (J2-a E/S dans le worktree du plan, J2-b lecteurs et enfant dans `LevelUp-wt-suite-audit-b`), fusionnees sans conflit (`08293ae55`). Ecriture atomique stricte, tailles de chunk au manifeste et au telechargement, verrou solo par verrou OS (`platform/filelock`), decodeur des faits et lecteur `.mvar` bornes avec fuzz, references d'evenement tronquees refusees, raison typee des refus de l'enfant de cuisson (DT-5), action admin de rejeu passee par l'enfant (septieme point d'entree).
 
 **Resultats observes** : rouges observes et mutations jouees par les executants ; superviseur : vet + 33 paquets (dont film, replaybuild, killcollector) verts sur l'ensemble ; **replay-equiv 20/20 identiques** (BTB compris, pics <= 1,19 Gio, faits du principal intacts). Decouvertes au plan §8.4-8.11. J3 et J4.0 lances en parallele (plafond 5 agents) ; J4.0 fait (`c465f93ec`, ecart J4.0.3 accepte : bobines killsource a trames delta ajoutees au golden).
 
 **Conclusion / prochaine etape** : push, CI de la branche au niveau job, puis fusion de J2 dans `feat/v75` sur accord de l'utilisateur ; J3 en cours ; G-equiv de J3 + J4.0 sur l'arbre reuni.
+
+**Addendum cloture J2 (2026-09-26)** : CI de `8b34babd0` verte au niveau job ; fusion `--no-ff` dans `feat/v75` (`d61443ef5`, arbre identique a celui valide par la CI), poussee ; `feat/v75` re-fusionne dans la branche du plan. J3 (modele de revision, schema 72, codec des faits 2, revue adversariale 0 P0/P1) et J4.0 (carte de fermeture) faits et reunis sur la branche, en attente de la vague J11 ; G-equiv J3+J4.0 en cours ; J4 S1 lance. Demande utilisateur consignee au plan (§4.1 regle 5 bis) : revue adversariale finale de tout le travail, perimetre ferme.
