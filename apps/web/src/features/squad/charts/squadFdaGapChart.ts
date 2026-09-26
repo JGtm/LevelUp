@@ -98,6 +98,30 @@ function signedGapFormatter(decimals: number, intlLocale?: string): (v: number) 
   return (v: number) => nf.format(v)
 }
 
+/** Diamètre du point final (rayon ~4,5 px de la maquette C3EW) ; les autres points : 4. */
+const END_POINT_SIZE = 9
+
+/**
+ * Grossit le DERNIER point non nul d'une courbe (celui qui porte la valeur de fin),
+ * liseré à la couleur de la carte pour le détacher de la courbe ; les autres points
+ * restent des nombres bruts (petits, `symbolSize` de la série).
+ */
+function withEndPoint(
+  data: Array<number | null>,
+  cardColor: string,
+): Array<number | null | { value: number; symbolSize: number; itemStyle: object }> {
+  let last = -1
+  data.forEach((v, i) => {
+    if (v != null) last = i
+  })
+  if (last < 0) return data
+  return data.map((v, i) =>
+    i === last && v != null
+      ? { value: v, symbolSize: END_POINT_SIZE, itemStyle: { borderColor: cardColor, borderWidth: 2 } }
+      : v,
+  )
+}
+
 export function buildFdaGapCumulativeOption(
   rows: Record<string, SquadPerformanceSeriesPoint[]>,
   opts: FdaGapCumulativeOpts,
@@ -117,7 +141,9 @@ export function buildFdaGapCumulativeOption(
 
   const series = players.map((player, idx) => {
     const color = opts.colorByPlayer[player] ?? '#888' // color-allow: gris structurel pour joueur sans couleur attribuée
-    const data = hiddenPlayers.has(player) ? emptyData : cumulativeFdaGapSeries(rows[player], n)
+    const data = hiddenPlayers.has(player)
+      ? emptyData
+      : withEndPoint(cumulativeFdaGapSeries(rows[player], n), tc.card)
     return {
       name: player,
       type: 'line' as const,
