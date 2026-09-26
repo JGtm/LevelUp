@@ -179,15 +179,15 @@ func compter(ctx context.Context, q lecteurSQL, requete string, n *int64) error 
 	return q.QueryRowContext(ctx, requete).Scan(n)
 }
 
-// empreinte : ce qu'une vue rend, résumé — nombre de lignes et somme des hash de ligne (toutes
+// EmpreinteVue : ce qu'une vue rend, résumé — nombre de lignes et somme des hash de ligne (toutes
 // colonnes). Indépendante de l'ordre, sensible à toute ligne ajoutée, perdue ou modifiée.
-type empreinte struct {
+type EmpreinteVue struct {
 	Lignes int64
 	Somme  string
 }
 
-func empreinteDeVue(ctx context.Context, q lecteurSQL, vue string) (empreinte, error) {
-	var e empreinte
+func empreinteDeVue(ctx context.Context, q lecteurSQL, vue string) (EmpreinteVue, error) {
+	var e EmpreinteVue
 	err := q.QueryRowContext(ctx, fmt.Sprintf(`SELECT COUNT(*),
 		CAST(COALESCE(SUM(CAST(hash(v) AS HUGEINT)), 0) AS VARCHAR) FROM %s v`, vue)).
 		Scan(&e.Lignes, &e.Somme)
@@ -199,12 +199,12 @@ func empreinteDeVue(ctx context.Context, q lecteurSQL, vue string) (empreinte, e
 
 // echangerTable reconstruit la table à côté (DDL exact), la remplit des lignes gardées et
 // l'échange ; le DDL, les index et l'empreinte de la vue sont vérifiés avant le COMMIT.
-func echangerTable(ctx context.Context, db *sql.DB, c compactable, avant empreinte) error {
+func echangerTable(ctx context.Context, db *sql.DB, c compactable, avant EmpreinteVue) error {
 	ddl, err := ddlDeTable(ctx, db, c.Table)
 	if err != nil {
 		return err
 	}
-	creer, err := ddlDeConstruction(ddl, c.Table, compactSuffix)
+	creer, err := ddlDeConstruction(ddl, c.Table)
 	if err != nil {
 		return err
 	}
@@ -233,7 +233,7 @@ func echangerTable(ctx context.Context, db *sql.DB, c compactable, avant emprein
 type schemaAvant struct {
 	ddl   string
 	index []string
-	vue   empreinte
+	vue   EmpreinteVue
 }
 
 func verifierApresEchange(ctx context.Context, tx *sql.Tx, c compactable, avant schemaAvant) error {
@@ -273,16 +273,16 @@ func ddlDeTable(ctx context.Context, q lecteurSQL, table string) (string, error)
 	return ddl, nil
 }
 
-// ddlDeConstruction réécrit le `CREATE TABLE <table>(` en `CREATE TABLE <table><suffix>(` : le
+// ddlDeConstruction réécrit le `CREATE TABLE <table>(` en `CREATE TABLE <table>__compact(` : le
 // reste du DDL est repris au caractère près. Refus si le préfixe n'est pas celui attendu (une
 // forme de DDL inconnue ne se devine pas).
-func ddlDeConstruction(ddl, table, suffix string) (string, error) {
+func ddlDeConstruction(ddl, table string) (string, error) {
 	prefixe := "CREATE TABLE " + table + "("
 	if !strings.HasPrefix(ddl, prefixe) {
 		return "", fmt.Errorf("compaction %s: DDL de forme inattendue (préfixe %q absent) : %s",
 			table, prefixe, ddl)
 	}
-	return "CREATE TABLE " + table + suffix + "(" + ddl[len(prefixe):], nil
+	return "CREATE TABLE " + table + compactSuffix + "(" + ddl[len(prefixe):], nil
 }
 
 // ddlDesIndex rend les `CREATE INDEX` de la table, triés par nom d'index.

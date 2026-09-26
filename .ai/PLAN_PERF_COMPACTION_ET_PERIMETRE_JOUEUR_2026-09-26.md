@@ -114,9 +114,12 @@ Items :
       (cœur extrait d'`append_only_rebuild.go`, qui l'appelle), `compaction_registry.go`,
       `compaction.go` ; tests `compaction_test.go` (9) et
       `games/halo_infinite/migrations/compaction_e2e_test.go` (schéma partagé réel) — Journal C
-- [ ] C.3 commande CLI (DC.4) : `--dry-run`, refus si la base est tenue, sauvegarde, journal ;
-      tests de la commande
-- [ ] C.4 `--rewrite-file` (DC.5), ou `[!]` prouvé
+- [x] C.3 commande CLI (DC.4) : `--dry-run`, refus si la base est tenue, sauvegarde, journal ;
+      tests de la commande — `levelup compact-passes` (`cmd/levelup/cmd_compact_passes.go`), tests
+      `cmd_compact_passes_test.go` (6, dont un refus INTER-PROCESSUS par processus auxiliaire) — Journal C
+- [x] C.4 `--rewrite-file` (DC.5), ou `[!]` prouvé — livré : DuckDB 1.5.5 embarqué préserve tables,
+      vues, index, macros et la PROCHAINE valeur des séquences (`compaction_rewrite_test.go`) ;
+      `cmd_compact_passes_rewrite.go`, échange seulement si l'inventaire relu SEUL est identique
 - [ ] C.5 preuve sur copie : seconde copie de la base compactée par la commande ; empreintes des
       vues avant / après identiques pour CHAQUE table retenue ; taille du fichier avant / après ;
       chrono avant / après sur copie (2 threads / 512 Mo) : rencontres et rivaux de la Carrière,

@@ -171,7 +171,7 @@ func TestSwapTableTx_EchecApresLeDrop_Rollback(t *testing.T) {
 	ctx := context.Background()
 	ddlAvant, _ := ddlDeTable(ctx, db, "match_bomb_stats")
 	indexAvant, _ := ddlDesIndex(ctx, db, "match_bomb_stats")
-	creer, err := ddlDeConstruction(ddlAvant, "match_bomb_stats", compactSuffix)
+	creer, err := ddlDeConstruction(ddlAvant, "match_bomb_stats")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -206,7 +206,7 @@ func TestCompaction_RecupereUnOrphelin(t *testing.T) {
 	ctx := context.Background()
 	avant := lireVueOrdonnee(t, db, "match_bomb_stats_latest")
 	ddl, _ := ddlDeTable(ctx, db, "match_bomb_stats")
-	creer, err := ddlDeConstruction(ddl, "match_bomb_stats", compactSuffix)
+	creer, err := ddlDeConstruction(ddl, "match_bomb_stats")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -235,11 +235,11 @@ func TestCompaction_RecupereUnOrphelin(t *testing.T) {
 // TestDDLDeConstruction : le DDL est repris au caractère près, seul le nom change ; une forme
 // inconnue est refusée.
 func TestDDLDeConstruction(t *testing.T) {
-	got, err := ddlDeConstruction(`CREATE TABLE t(id BIGINT PRIMARY KEY, t_x VARCHAR);`, "t", "__compact")
+	got, err := ddlDeConstruction(`CREATE TABLE t(id BIGINT PRIMARY KEY, t_x VARCHAR);`, "t")
 	if err != nil || got != `CREATE TABLE t__compact(id BIGINT PRIMARY KEY, t_x VARCHAR);` {
 		t.Fatalf("got %q, %v", got, err)
 	}
-	if _, err := ddlDeConstruction(`CREATE TABLE main.t(id BIGINT);`, "t", "__compact"); err == nil {
+	if _, err := ddlDeConstruction(`CREATE TABLE main.t(id BIGINT);`, "t"); err == nil {
 		t.Fatal("forme inattendue acceptée")
 	}
 }
