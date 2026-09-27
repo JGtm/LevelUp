@@ -1250,7 +1250,7 @@ Périmètre FERMÉ : un item par constat retenu, chacun avec un test de non-rég
   libellés, zones, règles de tiers) depuis la racine du dépôt, et les artefacts d'exécution
   (rejeux, rasters, faits) depuis `<démo>/runtime/`. Test : en démo, le fond de carte d'une carte
   versionnée est servi (200), et un artefact est lu sous `runtime`.
-- [ ] **B-C8 (R2-2)** : `SquadUsualContexts` prend le titre du `PlayerDB` résolu. Le test de
+- [x] **B-C8 (R2-2)** (`wire/prestige_lazy_service.go` `SquadUsualContexts` : `resolveWithPlayerDB`, titre = `pdb.TitleSlug`, le titre de l'appelant n'a plus voix ; test d'intégration par le vrai chemin HTTP `wire/prestige_squad_usual_contexts_title_test.go` : `GET /squads?user_id=…` sans `title_slug` → handler → service paresseux → bundle → fournisseur ; rouge `halo_5 : [Arene Campagne]` puis vert, témoin `halo_infinite` 2 playlists) : `SquadUsualContexts` prend le titre du `PlayerDB` résolu. Le test de
   comportement passe par le handler, sans slug en dur.
 
 **Gate** : GO-F (paquets touchés, puis suites complètes), lint, et la baseline de tests si un test
