@@ -150,9 +150,9 @@ func cumulateRounds(raw map[int]map[int][]types.ScorePoint, real map[int]bool) m
 			pts := byRound[round]
 			sort.SliceStable(pts, func(i, j int) bool { return pts[i].TimeMS < pts[j].TimeMS })
 			kept := longestRun(pts, false)
-			if len(kept) == 0 {
-				continue
-			}
+			// `kept` N EST JAMAIS VIDE : `pts` porte au moins l emission qui a cree sa manche, et
+			// [longestRun] rend au moins un point d une suite non vide. La branche « manche sautee »
+			// qui le testait etait morte (constat FO-4, retiree au lot J8.6, 2026-09-27).
 			for _, p := range kept {
 				serie = append(serie, types.ScorePoint{
 					TimeMS: p.TimeMS, Slot: slot, Value: p.Value + offset})

@@ -33,8 +33,8 @@ func avecEmissionAberrante(recs []types.StatRecord, round, timeMS int) []types.S
 // TestLePontPlatParMortsLitLaSeriePubliee : le pont PLAT (mono-manche) deroule exactement la
 // serie totale publiee.
 //
-// MUTATION : rendre a [deathProgressions] ses gardes propres (`v.B < 0 || v.B > 1000`) au lieu
-// de la serie publiee — ROUGE (50 instants pour 3 morts).
+// ROUGE OBSERVE AVANT LE LOT (gardes propres du pont, `v.B < 0 || v.B > 1000`) : 50 instants
+// pour 3 morts sur le slot 10.
 func TestLePontPlatParMortsLitLaSeriePubliee(t *testing.T) {
 	recs := avecEmissionAberrante([]types.StatRecord{
 		recKDA(1000, 10, 0, 1, 1, 0), recKDA(2000, 10, 0, 1, 2, 0), recKDA(3000, 10, 0, 1, 3, 0),

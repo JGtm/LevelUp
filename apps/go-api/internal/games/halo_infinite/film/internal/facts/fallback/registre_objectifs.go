@@ -104,22 +104,13 @@ var registreObjectifsEtConstruction = []Repli{
 		CompteurBranche: false,
 		CibleComptage:   comptageStatborg,
 	},
-	{
-		Nom:       "repli_manche_du_slot_sautee",
-		Fait:      "la serie cumulee d'un slot pour une manche",
-		Mecanisme: "la plus longue sous-suite non decroissante est vide : la manche entiere du slot est sautee",
-		Condition: CondNonResolu,
-		Ordre:     OrdreApresLecture,
-		Sites: []Site{{
-			Fichier: pkgObjectiveEvents + "named_series.go",
-			Ancre:   "kept := longestRun(pts, false)",
-		}},
-		DatePose:        dateAudit0E,
-		CibleRetrait:    "question NE17 de la table (D) de l'audit instruite (`longestRun` ecarte-t-il des points reels ?)",
-		CritereRetrait:  "0 manche de slot sautee sur les films multi-manches du corpus",
-		CompteurBranche: false,
-		CibleComptage:   comptageStatborg,
-	},
+	// `repli_manche_du_slot_sautee` (pose le 2026-09-13) A QUITTE LE REGISTRE AU LOT J8.6 DU PLAN DE
+	// SUITE D AUDIT (2026-09-27, constat FO-4), AVEC SON CODE : la branche `len(kept) == 0` de
+	// `cumulateRounds` (et sa jumelle de `SeriesByRound`) ne pouvait pas se prendre — une manche
+	// n entre dans la table que par une emission, et `longestRun` rend au moins un point d une suite
+	// non vide (preuve : `objectives/longest_run_non_vide_test.go`). Retrait pour absence de code
+	// vivant, pas pour compte nul ; la question NE17 (`longestRun` ecarte-t-il des points reels ?)
+	// reste celle du filtre, pas d un repli.
 	{
 		Nom:       "repli_table_identite_vide",
 		Fait:      "le pont slot statborg -> joueur, par les instants de mort",

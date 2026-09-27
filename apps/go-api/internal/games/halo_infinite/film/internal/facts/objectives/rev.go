@@ -44,7 +44,9 @@ package objectives
 // (donc `identity.statborgSlots`, les calques d objectif, `scoreTimeline.players`) cesse de se
 // taire sur un slot qu une emission aberrante noyait, et le pont PLAT d un film multi-manche (hors
 // production : outils `statnames-sweep`, `zone-attribution`) voit toutes ses manches. Les faits
-// persistes de la couche deviennent `redecoder` ; aucun backlog killsource ne s ouvre.
+// persistes de la couche deviennent `redecoder` ; aucun backlog killsource ne s ouvre. Le MEME
+// rang porte le lot J8.6 (constat FO-4), neutre : les deux gardes `len(kept) == 0` de
+// `cumulateRounds` et de `SeriesByRound`, inatteignables, sont retirees.
 
 // Rev est la revision de la sortie des objectifs.
 const Rev = "objectives-2026-09-27"
