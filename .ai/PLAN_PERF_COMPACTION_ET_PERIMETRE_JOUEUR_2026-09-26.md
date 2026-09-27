@@ -521,7 +521,9 @@ Décisions :
   consignée au §6 ; pas de changement d'une autre nature dans ce lot.
 
 Items :
-- [ ] B.0 re-mesure des cibles sur la copie compactée (DB.1), liste traitée écrite ici
+- [x] B.0 re-mesure des cibles sur la copie compactée (DB.1), liste traitée écrite ici — Journal B,
+      « B.0 » : traitées Q26, Q27, Q28 (non scopé), `MortsParCarte` ; `[~]` Q28 scopé et Accueil
+      (arme favorite) ; `[!]` (DB.5) Synthèse `weapon_records` et l'annuaire de Relations de Nuzzles
 - [ ] B.1 Carrière : rencontres et rivaux bornés, rivaux en une lecture ; parité ; chrono
 - [ ] B.2 Relations : Q28 et Q28 scopé bornés ; parité ; chrono
 - [ ] B.3 Tactique `MortsParCarte` : fenêtres du journal des morts et des positions bornées ;
@@ -537,7 +539,46 @@ Gate B : comme C sans l'intégration complète : `gofmt`, build, vet, `go test .
 
 Revue B : un relecteur aveugle (lentilles SQL / périmètre et parité des chiffres).
 
-Journal B : (vide)
+Journal B (2026-09-27, exécuteur Opus, worktree `LevelUp-wt-perf-perimetre`, base `fb1e65d67`) :
+
+- **B.0 — re-mesure sur la copie COMPACTÉE ET RÉÉCRITE de C.5** (copie privée du fichier de
+  `compactC/c5root`, 351 Mio, lecture seule, 2 threads / 512 Mo ; sonde temporaire qui appelle les
+  vrais lecteurs, sections de durée relevées ; deux tours, min-max ; machine moins chargée qu'en
+  C.5). Règle de décision : une cible est TRAITÉE si au moins un des cinq joueurs dépasse 300 ms
+  aux deux tours.
+  - Carrière rencontres (`GetTopEncountersGlobal`, Q26 + annuaire) : JGtm 217-281 ms, Madina97294
+    228-336, Chocoboflor 160-178, XxDaemonGamerxX 142-145, Nuzzles 435-513 (Q26 214-279, annuaire
+    220-233) -> **TRAITÉE** (B.1).
+  - Carrière rivaux (`GetRivals`, Q27 lu deux fois + annuaire) : JGtm 287-461, Madina 291-451,
+    Chocoboflor 249-296, Xx 233-273, Nuzzles 333-375 -> **TRAITÉE** (B.1).
+  - Relations Q28 non scopé (`GetRelations(nil)`) : JGtm 299-373 (Q28 165-240, annuaire 133),
+    Madina 376-417 (Q28 210-245, annuaire 165-172), Chocoboflor 213-229, Xx 134-136, Nuzzles
+    982-1 030 (Q28 230-254, **annuaire 752-775**) -> **TRAITÉE** (B.2) pour la fenêtre du
+    kill-feed de Q28 ; l'annuaire de Nuzzles n'est PAS une fenêtre sur tout l'historique (ses
+    lectures sont des tables et des fenêtres déjà bornées par liste, lot A) : DB.5, découverte au §6.
+  - Relations Q28 scopé (30 derniers matchs) : 42-59 ms pour les cinq -> `[~]` : la variante
+    scopée lie déjà la liste en constantes sous la fenêtre du kill-feed (`kv.match_id IN (…)`).
+  - Tactique `MortsParCarte`, appelée comme par la page (liste blanche = tous les matchs du
+    joueur) : JGtm 301-386, Madina 331-343, Chocoboflor 273-278, Xx 229-246, Nuzzles 318-326 ;
+    liste de 30 matchs : 225-396 ; sans liste : 224-572 -> **TRAITÉE** (B.3) : la liste n'est
+    posée que sur `match_registry`, les deux fenêtres (positions, journal) voient toute la table.
+  - Accueil : la seule fenêtre `_latest` du film sur tout l'historique est l'arme favorite
+    (`LoadFavoriteWeapon`, source de dégât) : JGtm 119-189, Madina 103-124, Chocoboflor 99-118,
+    Xx 98-103, Nuzzles 100-102 -> `[~]` résolu par C ; l'historique canonique de la page
+    (`PlayerMatchesRepo.Load`, bases joueur copiées, Nuzzles sans base) : 43-214 ms, pas une
+    fenêtre. La page entière (1,6 s pour 310 Ko en septembre) ne se re-mesure pas sans serveur
+    (interdit) : §6.
+  - Synthèse `weapon_records` (`LoadWeaponRange`, liste = tous les matchs du joueur) : JGtm
+    335-665, Madina 269-299, Chocoboflor 177-182, Xx 49-62, Nuzzles 665-677 -> `[!]` DB.5 : ses
+    fenêtres sont DÉJÀ bornées à la liste, profil JSON de la requête relevé sur la copie
+    (fenêtres vues : JGtm 102 235 kill-feed / 96 633 positions = exactement les lignes de ses
+    matchs, Nuzzles 272 132 / 19 978) ; le coût est le volume des matchs du joueur, pas une
+    fenêtre sur tout l'historique.
+  - Coût de la liste elle-même (lecture du kill-feed d'un joueur, `COUNT(*)`, deux tours) : sans
+    liste 109-167 ms (fenêtre de 412 216 lignes) ; liste de ses matchs en constantes : JGtm 66-292
+    (102 235 lignes vues), Madina 48-55, Chocoboflor 35-39, Xx 16-18, **Nuzzles 155-173** (7 190
+    matchs, 272 132 lignes vues : la liste coûte plus que la fenêtre entière, déjà écrit à l'ADR
+    0036 pour les longues listes). Le mécanisme DB.2 reste celui du plan ; le rapport le chiffre.
 
 ## 4. Étape F — Clôture (superviseur)
 
