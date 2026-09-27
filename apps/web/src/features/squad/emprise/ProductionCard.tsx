@@ -4,8 +4,9 @@
  * maquette de l'onglet, `renderProductivite`).
  *
  * Par ressource produite (pastille de la ressource devant son nom, S8) :
- *   - la barre ÉPAISSE : les frags de notre camp contre ceux de l'adversaire, « compte · part »
- *     dans chaque segment, repli S3 au-dessus, trait 50 % (forme `PisteCampsForm`) ;
+ *   - la barre ÉPAISSE : les frags de notre camp contre ceux de l'adversaire, sur la MÊME
+ *     population que la barre fine (`production.logic.ts`), « compte · part » dans chaque
+ *     segment, repli S3 au-dessus, trait 50 % (forme `PisteCampsForm`) ;
  *   - juste dessous, la barre FINE : la part de l'exposition (temps d'effet pour les bonus,
  *     prises pour les armes spéciales), puis la ligne d'exposition (« temps d'effet : 2 min 39 ·
  *     58,5 % … 1 min 53 »).

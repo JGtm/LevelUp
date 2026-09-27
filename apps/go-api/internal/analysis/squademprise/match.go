@@ -114,9 +114,33 @@ func tallyMatch(id string, ix *index) matchTally {
 	return t
 }
 
-// tallyBonus compte les deux bonus : prises attribuées, issues, effet, socles vidés.
+// timeScaled dit si le film d'un match a une échelle de temps. Sans elle (`duration_ms` nul,
+// artefact d'un ancien schéma : `frame_interval_ms = 0`), les temps d'effet valent 0 et le
+// schéma interdit de les croire (steps_shared_usage_summary.go) : le match sort du rendement
+// des bonus, frags ET temps d'effet, comme il sort des cadences de Sessions
+// (countMeasuredWithoutDuration). Ses prises et issues restent comptées.
+func timeScaled(film sessionusage.FilmRow) bool { return film.DurationMS > 0 }
+
+// WithoutTimeScale compte les matchs filmés du périmètre sans échelle de temps : le service le
+// journalise, comme Sessions (une exclusion ne se fait jamais en silence).
+func WithoutTimeScale(in *Input) int {
+	if in.Film == nil {
+		return 0
+	}
+	n := 0
+	for _, m := range in.Current {
+		if f, ok := in.Film.Films[m.MatchID]; ok && !timeScaled(f) {
+			n++
+		}
+	}
+	return n
+}
+
+// tallyBonus compte les deux bonus : prises attribuées, issues, effet (si le film a une échelle
+// de temps), socles vidés.
 func tallyBonus(t *matchTally, c camp, film sessionusage.FilmRow, players []sessionusage.PlayerRow) {
 	families := sessionusage.PowerupFamilies()
+	scaled := timeScaled(film)
 	for i := range players {
 		p := &players[i]
 		us, who := c.side(p.XUID)
@@ -125,6 +149,9 @@ func tallyBonus(t *matchTally, c camp, film sessionusage.FilmRow, players []sess
 			oc := sessionusage.PlayerOutcomeCounts(p, []string{f})
 			t.obj.get(domain.EmpriseResourcePowerup, f).add(us, who, oc.Taken, oc.Kept, oc.Dropped)
 			t.outcomes[s].Add(oc)
+			if !scaled {
+				continue
+			}
 			ms, k := sessionusage.PowerupEffect(p, f)
 			t.effectMS[s] += ms
 			t.effectKills[s] += k

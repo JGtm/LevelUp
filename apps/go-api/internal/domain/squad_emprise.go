@@ -65,7 +65,8 @@ const (
 type SquadEmpriseBlock struct {
 	// MatchesTotal : les matchs du périmètre D2.
 	MatchesTotal int `json:"matches_total"`
-	// MatchesMeasured : parmi eux, ceux dont le film a été résumé (« sans film » pour les autres).
+	// MatchesMeasured : parmi eux, ceux dont le film a été résumé ET notre camp connu : un match
+	// filmé au camp inconnu n'apporte aucun compte, il n'est pas mesuré.
 	MatchesMeasured int `json:"matches_measured"`
 	// FilmUnavailable : raison machine quand AUCUNE grandeur du film n'est servie
 	// (EmpriseFilmUnsupported, EmpriseFilmLoadFailed). Vide sinon.
@@ -181,8 +182,8 @@ type SquadEmpriseMatchResource struct {
 // SquadEmpriseProduction — ce que chaque camp a produit d'une ressource.
 type SquadEmpriseProduction struct {
 	Resource string `json:"resource"`
-	// Kills : bonus = frags pendant l'effet (film) ; armes spéciales = frags obtenus avec
-	// (feuille de match, tous les matchs du périmètre à camp connu).
+	// Kills : bonus = frags pendant l'effet (film, matchs dont le film a une échelle de temps) ;
+	// armes spéciales = frags obtenus avec (feuille de match, tous les matchs à camp connu).
 	Kills SquadEmpriseCount `json:"kills"`
 	// Exposure : ce qui a permis ces frags. Nil sans mesure du film.
 	Exposure *SquadEmpriseExposure `json:"exposure,omitempty"`

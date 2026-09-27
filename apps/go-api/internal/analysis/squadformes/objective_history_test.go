@@ -181,3 +181,22 @@ func TestObjectiveHistory_RoleSansMesure(t *testing.T) {
 		t.Errorf("soirée sans session : libellé %q, attendu vide", got.SessionLabel)
 	}
 }
+
+// TestObjectiveHistory_FiltrePartiel_LaSoireeAfficheeNEstJamaisPrecedente — constat R10 de la
+// revue L6.1 : le filtre écarte le PREMIER match de la soirée affichée, qui commence donc avant le
+// premier match du périmètre ; elle ne doit pas se retrouver parmi ses propres soirées précédentes.
+func TestObjectiveHistory_FiltrePartiel_LaSoireeAfficheeNEstJamaisPrecedente(t *testing.T) {
+	avant, mra := soireeUniforme("s10", 10, 3, 0.5)
+	soir, mrs := soireeUniforme("s20", 20, 4, 0.4)
+	rows, camp := rowsOf(append(mra, mrs...))
+	timeline := append(append([]HistoryMatch(nil), avant...), soir...)
+	got := BuildObjectiveHistory(HistoryInput{Current: soir[1:], Timeline: timeline, Rows: rows, Camp: camp})
+	for _, e := range got.Previous {
+		if e.SessionLabel == "s20" {
+			t.Fatalf("la soirée affichée s20 figure parmi les soirées précédentes : %+v", got.Previous)
+		}
+	}
+	if len(got.Previous) != 1 || got.Previous[0].SessionLabel != "s10" {
+		t.Errorf("soirées précédentes = %+v, attendu la seule s10", got.Previous)
+	}
+}

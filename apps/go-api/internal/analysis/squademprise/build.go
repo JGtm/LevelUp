@@ -70,7 +70,8 @@ func Build(in Input) domain.SquadEmpriseBlock {
 	s := newSoiree()
 	for _, m := range current {
 		t := tallyMatch(m.MatchID, ix)
-		if t.hasFilm {
+		// Mesuré = filmé ET camp connu : un match filmé au camp inconnu n'apporte aucun compte.
+		if t.bonusMeasured() {
 			block.MatchesMeasured++
 		}
 		block.Matches = append(block.Matches, publierMatch(m, t, &in))

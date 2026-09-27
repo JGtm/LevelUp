@@ -80,11 +80,6 @@ export interface EmpriseMatchInfo {
   outcome: OutcomeValue | null
   score: string | null
   dominance: DominanceValue | undefined
-  hasFilm: boolean
-  /** Niveaux de socle mesurés : armes spéciales et râteliers se séparent sur ce match. */
-  tiersMeasured: boolean
-  /** État brut des niveaux (`measured`, `unestablished`, `not_measured`), vide sans film. */
-  tiers: string
 }
 
 function matchInfo(m: SquadEmpriseMatch, byId: Map<string, SquadMatchHistoryRow>): EmpriseMatchInfo {
@@ -97,9 +92,6 @@ function matchInfo(m: SquadEmpriseMatch, byId: Map<string, SquadMatchHistoryRow>
     outcome: h ? outcomeCodeToValue(h.outcome) : null,
     score: h?.score_label || null,
     dominance: asDominance(h?.dominance_flag),
-    hasFilm: m.has_film,
-    tiersMeasured: m.tiers === TIERS_MEASURED,
-    tiers: m.tiers ?? '',
   }
 }
 
@@ -126,7 +118,7 @@ export interface FilPoint {
 }
 
 export interface ResourceFilMatch extends EmpriseMatchInfo {
-  /** Par ressource : le point du match, ou null (rien à prendre sur la carte, sans film). */
+  /** Par ressource : le point du match, ou null (rien à prendre sur la carte, sans film, camp inconnu). */
   points: Record<string, FilPoint | null>
 }
 
@@ -140,7 +132,7 @@ export interface ResourceFil {
  * buildResourceFil — les matchs du périmètre dans l'ordre de la soirée ; pour chaque ressource
  * du bilan, la part du match et notre part CUMULÉE des prises depuis le premier match (somme de
  * nos prises / somme des prises). Un match sans la ressource n'a pas de point : la courbe file
- * jusqu'au suivant.
+ * jusqu'au suivant. Un match sans donnée (sans film, ou filmé au camp inconnu) n'en a aucun.
  */
 export function buildResourceFil(block: SquadEmpriseBlock, history: SquadMatchHistoryRow[]): ResourceFil {
   const resources = buildControlRows(block).map((r) => r.resource)
@@ -149,7 +141,7 @@ export function buildResourceFil(block: SquadEmpriseBlock, history: SquadMatchHi
   const matches = (block.matches ?? []).map((m) => {
     const points: Record<string, FilPoint | null> = {}
     for (const resource of resources) {
-      const taken = m.has_film ? matchResource(m, resource)?.taken : undefined
+      const taken = m.has_film && m.team_known ? matchResource(m, resource)?.taken : undefined
       const n = total(taken)
       if (!taken || n <= 0) {
         points[resource] = null
@@ -294,6 +286,8 @@ export type GridCell =
   | { kind: 'none' }
   /** Film non décodé : rien à lire pour une ligne qui vient du film. */
   | { kind: 'nofilm' }
+  /** Film décodé, mais notre camp inconnu (chacun pour soi, camp absent) : rien ne se partage. */
+  | { kind: 'noteam' }
   /** Film décodé, mais niveaux de socle non établis : armes spéciales et râteliers ne se séparent pas. */
   | { kind: 'untiered'; tiers: string }
 
@@ -327,9 +321,14 @@ function valueCell(taken: SquadEmpriseCount | undefined, who: GridWho[], padsEmp
   return { kind: 'value', us: taken.us, them: taken.them, share: taken.us / n, who, padsEmptied }
 }
 
-/** La case d'une ligne qui vient du film, avant toute valeur : sans film, niveaux non établis. */
+/**
+ * La case d'une ligne qui vient du film, avant toute valeur : sans film, camp inconnu, niveaux
+ * non établis. Filmé au camp inconnu, un match n'a aucun compte camp contre camp : « camp
+ * inconnu », jamais « rien à prendre ».
+ */
 function filmGate(m: SquadEmpriseMatch, resource: string): GridCell | null {
   if (!m.has_film) return { kind: 'nofilm' }
+  if (!m.team_known) return { kind: 'noteam' }
   if (resource !== RESOURCE_POWERUP && m.tiers !== TIERS_MEASURED) return { kind: 'untiered', tiers: m.tiers ?? '' }
   return null
 }

@@ -80,3 +80,26 @@ func TestHabit_SansHistoriquePasDHabitude(t *testing.T) {
 		t.Errorf("habitude publiée sans historique (sans coéquipier sélectionné) : %+v", h)
 	}
 }
+
+// TestHabit_FiltrePartiel_LaSoireeAfficheeNEstJamaisPrecedente — constat R10 de la revue L6.1 : un
+// filtre partiel écarte le PREMIER match de la soirée affichée. La soirée commence alors avant le
+// premier match du périmètre : seule la règle « une soirée qui contient un match du périmètre
+// n'est pas précédente » l'empêche de se comparer à elle-même.
+func TestHabit_FiltrePartiel_LaSoireeAfficheeNEstJamaisPrecedente(t *testing.T) {
+	in := entreeUnMatch()                                             // m1, session « s », à t0
+	soireeFilmee(&in, "s", t0.Add(-30*time.Minute), "Assassin", 1, 1) // premier match de « s », hors filtre
+	in.Timeline = append(in.Timeline, in.Current...)
+	soireeFilmee(&in, "a", t0.Add(-48*time.Hour), "Assassin", 3, 1)
+	h := Build(in).Habit
+	if h == nil {
+		t.Fatal("habitude absente")
+	}
+	for _, e := range h.Previous {
+		if e.SessionLabel == "s" {
+			t.Fatalf("la soirée affichée « s » figure parmi les soirées précédentes : %+v", h.Previous)
+		}
+	}
+	if len(h.Previous) != 1 || h.Previous[0].SessionLabel != "a" {
+		t.Errorf("soirées précédentes = %+v, attendu la seule « a »", h.Previous)
+	}
+}

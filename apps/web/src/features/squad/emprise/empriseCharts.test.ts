@@ -7,7 +7,7 @@ import { describe, expect, it } from 'vitest'
 
 import { buildHabitOption, buildResourceFilOption, pickupRadius, type EmpriseFilColors } from './empriseCharts'
 import { buildResourceFil } from './emprise.logic'
-import { EMPRISE_2209, HISTORY_2209 } from './emprise.fixtures'
+import { EMPRISE_2209, HABIT_2209, HISTORY_2209 } from './emprise.fixtures'
 import { EMPRISE_TEXT } from './empriseStrings'
 import { buildHabitView } from './habit.logic'
 
@@ -150,5 +150,41 @@ describe('buildHabitOption — soirée après soirée (22/09)', () => {
     expect(habit.xAxis.axisLabel!.formatter('5', 5)).toBe('{cur|ce soir}')
     const column = habit.series.find((s) => s.type === 'custom')!
     expect(column.data).toEqual([[5, 0]])
+  })
+})
+
+describe('buildHabitOption — ce soir sans part pour une ressource (constat R4 de la revue L6.1)', () => {
+  // Ce soir : des bonus, aucune arme spéciale prise ; les soirées précédentes en ont.
+  const block = {
+    ...EMPRISE_2209,
+    habit: {
+      ...HABIT_2209,
+      current: { ...HABIT_2209.current, shares: HABIT_2209.current.shares!.filter((s) => s.resource === 'powerup') },
+    },
+  }
+  const view = buildHabitView(block)
+  if (view.kind !== 'chart') throw new Error(view.kind)
+  const habit = buildHabitOption(view.resources, view.points, view.medians, { resource: COLORS.resource, parity: 'parity', theme: COLORS.theme }, {
+    resourceLabel: (r) => T.resources[r].label,
+    pctFmt: T.pctFmt,
+    pctIntFmt: T.pctIntFmt,
+    dateOf: (iso) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}`,
+    tonight: T.habit.tonight,
+    eveningOf: T.habit.eveningOf,
+    pointTip: T.habit.pointTip,
+    medianTip: T.habit.medianTip,
+  }) as { series: (HabitSeries & { endLabel: { show: boolean } })[] }
+  const [bonus, armes] = habit.series.filter((s) => s.type === 'line')
+
+  it('armes spéciales : ni point grossi ni valeur au bout — jamais sur la dernière soirée passée', () => {
+    expect(view.points[5].current).toBe(true)
+    expect(armes.data[5]).toBeNull()
+    expect(armes.data.some((d) => d != null && typeof d === 'object' && d.symbolSize === 11)).toBe(false)
+    expect(armes.endLabel.show).toBe(false)
+  })
+
+  it('bonus : ce soir grossi et valeur au bout, comme d’habitude', () => {
+    expect((bonus.data[5] as Item).symbolSize).toBe(11)
+    expect(bonus.endLabel.show).toBe(true)
   })
 })

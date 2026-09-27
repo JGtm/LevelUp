@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
-import { buildEveningsOption, buildFilOption, shortMap, volumeRadius, type ObjectifChartColors } from './objectifCharts'
+import { buildEveningsOption } from './eveningsChart'
+import { buildFilOption, shortMap, volumeRadius, type ObjectifChartColors } from './objectifCharts'
 import { buildEveningsView, buildSessionFil } from './objectif.logic'
 import { block0709, history0709, history0709Evenings } from './objectif.fixtures'
 import { OBJECTIF_TEXT } from './objectifStrings'

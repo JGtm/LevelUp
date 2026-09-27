@@ -21,9 +21,10 @@ import type { SquadObjectiveHistory } from '@/lib/api/types'
 import type { Locale } from '@/lib/i18n/locale'
 
 import { buildEveningsView, eveningDate, familyMix, type EveningPoint } from './objectif.logic'
-import { buildEveningsOption, resolveObjectifColors } from './objectifCharts'
+import { buildEveningsOption } from './eveningsChart'
+import { resolveObjectifColors } from './objectifCharts'
 import { ObjectifFrame, ObjectifLegend, ObjectifNote } from './ObjectifFrame'
-import type { ObjectifText } from './objectifStrings'
+import type { ObjectifNote as NoteText, ObjectifText } from './objectifStrings'
 
 /** Hauteur du graphe (maquette : 760 × 290). */
 const EVENINGS_HEIGHT = 290
@@ -82,35 +83,16 @@ export function ObjectiveEveningsCard({ history, familyLabel, locale, t }: Props
   )
 
   if (view.kind === 'belowMinimum') {
-    return (
-      <ObjectifFrame title={t.evenings.title} info={t.evenings.info} testId="objective-evenings">
-        <ObjectifNote
-          note={t.evenings.belowMinimum(view.matches, view.below, view.withObjective)}
-          testId="objective-evenings-note"
-        />
-      </ObjectifFrame>
-    )
+    return <EveningsNoteCard note={t.evenings.belowMinimum(view.matches, view.below, view.withObjective)} t={t} />
   }
   if (view.kind === 'noHistory') {
     const c = view.current
     const pct = (v: number | null) => (v == null ? '—' : t.pctFmt(v))
-    return (
-      <ObjectifFrame title={t.evenings.title} info={t.evenings.info} testId="objective-evenings">
-        <ObjectifNote
-          note={t.evenings.noHistory(pct(c.shares.take), pct(c.shares.defend), pct(c.shares.hold), c.wins, c.matches)}
-          testId="objective-evenings-note"
-        />
-      </ObjectifFrame>
-    )
+    const note = t.evenings.noHistory(pct(c.shares.take), pct(c.shares.defend), pct(c.shares.hold), c.wins, c.matches)
+    return <EveningsNoteCard note={note} t={t} />
   }
 
-  const families = [...new Set(view.points.flatMap((p) => p.families.map((f) => f.family)))]
-  // La clé des abréviations, dans l'ordre alphabétique des abréviations (maquette : « B : Bases, D : Drapeau »).
-  const abbrLegend = families
-    .map((f) => ({ a: abbr[f] ?? f, name: familyLabel(f) }))
-    .sort((x, y) => x.a.localeCompare(y.a))
-    .map((x) => t.evenings.abbrItem(x.a, x.name))
-    .join(', ')
+  const abbrLegend = abbreviationKey(view.points, abbr, familyLabel, t)
   return (
     <div className="min-w-0" data-testid="objective-evenings">
       <ChartCard
@@ -132,4 +114,28 @@ export function ObjectiveEveningsCard({ history, familyLabel, locale, t }: Props
       </ChartCard>
     </div>
   )
+}
+
+/** La carte sans graphe : la note dit pourquoi (soirée sous le minimum, pas d'historique). */
+function EveningsNoteCard({ note, t }: { note: NoteText; t: ObjectifText }) {
+  return (
+    <ObjectifFrame title={t.evenings.title} info={t.evenings.info} testId="objective-evenings">
+      <ObjectifNote note={note} testId="objective-evenings-note" />
+    </ObjectifFrame>
+  )
+}
+
+/** La clé des abréviations, dans l'ordre alphabétique des abréviations (maquette : « B : Bases, D : Drapeau »). */
+function abbreviationKey(
+  points: EveningPoint[],
+  abbr: Record<string, string>,
+  familyLabel: (family: string) => string,
+  t: ObjectifText,
+): string {
+  const families = [...new Set(points.flatMap((p) => p.families.map((f) => f.family)))]
+  return families
+    .map((f) => ({ a: abbr[f] ?? f, name: familyLabel(f) }))
+    .sort((x, y) => x.a.localeCompare(y.a))
+    .map((x) => t.evenings.abbrItem(x.a, x.name))
+    .join(', ')
 }

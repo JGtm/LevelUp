@@ -44,7 +44,7 @@ func entreeUnMatch() Input {
 		Players:    []domain.SessionUsageSquadPlayer{{XUID: "P", Gamertag: "Moi"}, {XUID: "A", Gamertag: "Alpha"}},
 		Current:    []Match{{MatchID: "m1", StartTime: t0, SessionLabel: "s", Family: "Assassin"}},
 		Film: &FilmData{
-			Films: map[string]sessionusage.FilmRow{"m1": {MatchID: "m1", PowerupPickups: map[string]int{camo: 5}}},
+			Films: map[string]sessionusage.FilmRow{"m1": {MatchID: "m1", DurationMS: 600_000, PowerupPickups: map[string]int{camo: 5}}},
 			Players: []sessionusage.PlayerRow{
 				{MatchID: "m1", XUID: "P", CamoEpisodes: 1, CamoMS: 30_000, CamoKills: 2,
 					TakenByFamily: map[string]int{camo: 2}, KeptByFamily: map[string]int{camo: 1}},
@@ -193,5 +193,64 @@ func TestBuild_CampInconnu(t *testing.T) {
 	b := Build(in)
 	if b.Matches[0].TeamKnown || len(b.Matches[0].Resources) != 0 || len(b.Resources) != 0 {
 		t.Errorf("camp inconnu : %+v", b)
+	}
+	// Constat R2 de la revue L6.1 : filmé mais sans camp, le match n'apporte rien : il n'est pas
+	// mesuré (le web l'écrit « camp inconnu », pas « rien à prendre »).
+	if !b.Matches[0].HasFilm || b.MatchesMeasured != 0 {
+		t.Errorf("camp inconnu : has_film = %v, matchs mesurés = %d ; attendu filmé, 0 mesuré",
+			b.Matches[0].HasFilm, b.MatchesMeasured)
+	}
+}
+
+// TestBuild_SansEchelleDeTemps_HorsDuRendementDesBonus — constat R1 de la revue L6.1 : un match
+// filmé sans échelle de temps (durée nulle, temps d'effet à 0 que le schéma interdit de croire)
+// sort du rendement des bonus, frags d'effet ET temps d'effet, comme il sort des cadences de
+// Sessions. Sans cette règle, ses frags d'effet s'ajoutaient à un temps d'effet nul : rendement
+// gonflé, et la barre épaisse de « Frags obtenus » ne portait plus la population de la fine.
+func TestBuild_SansEchelleDeTemps_HorsDuRendementDesBonus(t *testing.T) {
+	in := entreeUnMatch()
+	m2 := Match{MatchID: "m2", StartTime: t0.Add(15 * time.Minute), SessionLabel: "s", Family: "Assassin"}
+	in.Current = append(in.Current, m2)
+	in.Film.Films["m2"] = sessionusage.FilmRow{MatchID: "m2"} // DurationMS = 0
+	in.Film.Participants = append(in.Film.Participants, participants("m2")...)
+	in.Film.Players = append(in.Film.Players, sessionusage.PlayerRow{
+		MatchID: "m2", XUID: "P", CamoEpisodes: 1, CamoKills: 5, TakenByFamily: map[string]int{camo: 1},
+	})
+	if n := WithoutTimeScale(&in); n != 1 {
+		t.Errorf("matchs sans échelle de temps = %d, attendu 1 (m2)", n)
+	}
+	b := Build(in)
+	bonus := b.Production[0]
+	if bonus.Kills != (domain.SquadEmpriseCount{Us: 3}) || bonus.Exposure.Kills != bonus.Kills ||
+		bonus.Exposure.Value != (domain.SquadEmpriseCount{Us: 60_000}) {
+		t.Errorf("bonus = %+v / %+v, attendu les 3 frags et 60 s de m1 seul (m2 sans échelle de temps)",
+			bonus.Kills, bonus.Exposure)
+	}
+	if bonus.YieldUs == nil || math.Abs(*bonus.YieldUs-3) > 1e-9 {
+		t.Errorf("rendement = %v, attendu 3 frags par minute d'effet (celui de m1)", bonus.YieldUs)
+	}
+	// Ses prises restent comptées : seul le rendement l'écarte.
+	if r := ressource(b, domain.EmpriseResourcePowerup); r == nil || r.Taken.Us != 4 {
+		t.Errorf("bonus pris = %+v, attendu 4 chez nous (3 de m1 + 1 de m2)", r)
+	}
+}
+
+// TestBuild_ParticipantSansCamp_EstAdversaire — constat R11 de la revue L6.1 : dans un match à
+// camp connu, un participant dont le camp est inconnu compte pour l'ADVERSAIRE (même règle que
+// computeOutcomes), jamais pour nous — côté film (prises) comme côté feuille de match.
+func TestBuild_ParticipantSansCamp_EstAdversaire(t *testing.T) {
+	in := entreeUnMatch()
+	// « X » a pris deux camouflages mais n'est pas dans les participants (camp inconnu).
+	in.Film.Players = append(in.Film.Players, sessionusage.PlayerRow{
+		MatchID: "m1", XUID: "X", TakenByFamily: map[string]int{camo: 2},
+	})
+	// « Y » est dans la feuille sans camp : ses quatre frags aux armes spéciales sont les leurs.
+	in.PowerKills = append(in.PowerKills, PowerKillRow{MatchID: "m1", XUID: "Y", Kills: entier(4)})
+	b := Build(in)
+	if r := ressource(b, domain.EmpriseResourcePowerup); r == nil || r.Taken != (domain.SquadEmpriseCount{Us: 3, Them: 3}) {
+		t.Errorf("bonus pris = %+v, attendu 3 / 3 (les deux camouflages de X chez l'adversaire)", r)
+	}
+	if pwk := b.Matches[0].PowerWeaponKills; pwk == nil || *pwk != (domain.SquadEmpriseCount{Us: 3, Them: 6}) {
+		t.Errorf("frags aux armes spéciales = %+v, attendu 3 / 6 (les quatre de Y chez l'adversaire)", pwk)
 	}
 }

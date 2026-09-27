@@ -14,7 +14,7 @@ import { buildProductionRows, buildYieldRows, yieldGeometry } from './production
 const FR = EMPRISE_TEXT.fr
 
 describe('buildProductionRows', () => {
-  it('22/09 : frags pendant l’effet 8 / 5 sur 2 min 39 / 1 min 53 ; frags aux armes spéciales 47 / 54 sur 23 / 29 prises', () => {
+  it('22/09 : frags pendant l’effet 8 / 5 sur 2 min 39 / 1 min 53 ; frags aux armes spéciales 38 / 41 sur 23 / 29 prises', () => {
     const rows = buildProductionRows(EMPRISE_2209)
     expect(rows.map((r) => r.resource)).toEqual(['powerup', 'power_weapon'])
     const [bonus, armes] = rows
@@ -23,7 +23,10 @@ describe('buildProductionRows', () => {
     const fx = FR.production.exposure.effect_ms
     expect([fx.fmt(bonus.exposure!.value.us), fx.fmt(bonus.exposure!.value.them)]).toEqual(['2 min 39', '1 min 53'])
     expect(FR.pctFmt((159 / 272) * 100)).toBe('58,5 %')
-    expect(armes.kills).toEqual({ us: 47, them: 54 })
+    // Constat R3 (revue L6.1) : la barre épaisse lit exposure.kills (matchs aux prises mesurées,
+    // Detachment en sort), la population de la barre fine et du rendement — pas les 47 / 54 de la
+    // feuille entière.
+    expect(armes.kills).toEqual({ us: 38, them: 41 })
     expect(armes.exposure).toEqual({ kind: 'pickups', value: { us: 23, them: 29 } })
     expect(FR.production.exposure.pickups.fmt(23)).toBe('23 prises')
   })
@@ -39,6 +42,8 @@ describe('buildProductionRows', () => {
     const rows = buildProductionRows(block)
     expect(rows.map((r) => r.resource)).toEqual(['power_weapon'])
     expect(rows[0].exposure).toBeNull()
+    // Sans barre fine, la barre épaisse garde la feuille (aucune autre population à respecter).
+    expect(rows[0].kills).toEqual({ us: 3, them: 1 })
   })
 })
 
@@ -61,8 +66,8 @@ describe('buildYieldRows', () => {
 
 describe('yieldGeometry', () => {
   it('le zéro au milieu, ±50 % aux bords, au-delà borné', () => {
-    expect(yieldGeometry(0.25)).toEqual({ left: 50, width: 25, x: 75, clamped: false })
-    expect(yieldGeometry(-0.5)).toEqual({ left: 0, width: 50, x: 0, clamped: false })
-    expect(yieldGeometry(1.2)).toMatchObject({ left: 50, width: 50, x: 100, clamped: true })
+    expect(yieldGeometry(0.25)).toEqual({ left: 50, width: 25, x: 75 })
+    expect(yieldGeometry(-0.5)).toEqual({ left: 0, width: 50, x: 0 })
+    expect(yieldGeometry(1.2)).toEqual({ left: 50, width: 50, x: 100 })
   })
 })

@@ -30,14 +30,17 @@ import { useMemo } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { SectionTitle } from '@/components/ui/detail-section'
 import { EmptyStateNotice } from '@/components/ui/empty-state'
+import type { Locale } from '@/lib/i18n/locale'
 import { dominanceLabels } from '@/lib/narrative/dominance'
 import { useAppShellStore } from '@/stores/appShellStore'
 
-import { empriseSections } from './emprise/empriseContent'
-import { EMPRISE_TEXT } from './emprise/empriseStrings'
+import { empriseSections, type EmpriseSections } from './emprise/empriseContent'
+import { EMPRISE_TEXT, type EmpriseText } from './emprise/empriseStrings'
 import { HabitCard } from './emprise/HabitCard'
+import type { HabitView } from './emprise/habit.logic'
 import { PickupSheetsCard } from './emprise/PickupSheetsCard'
 import { ProductionCard } from './emprise/ProductionCard'
+import type { ProductionRow, YieldRow } from './emprise/production.logic'
 import { ResourceControlCard } from './emprise/ResourceControlCard'
 import { ResourceFilCard } from './emprise/ResourceFilCard'
 import { ResourceMatchGridCard } from './emprise/ResourceMatchGridCard'
@@ -65,25 +68,15 @@ export function SquadEmprisePage() {
   if (confirmedGamertags.length === 0 || selectedRows.length === 0) {
     const none = confirmedGamertags.length === 0
     return (
-      <Card>
-        <CardContent className="pt-4">
-          <EmptyStateNotice
-            title={none ? t.empty.noSelectionTitle : t.empty.invalidSelectionTitle}
-            description={none ? t.empty.noSelectionDescription : t.empty.invalidSelectionDescription}
-          />
-        </CardContent>
-      </Card>
+      <EmptyCard
+        title={none ? t.empty.noSelectionTitle : t.empty.invalidSelectionTitle}
+        description={none ? t.empty.noSelectionDescription : t.empty.invalidSelectionDescription}
+      />
     )
   }
 
   if (!Object.values(show).some(Boolean)) {
-    return (
-      <Card>
-        <CardContent className="pt-4">
-          <EmptyStateNotice title={t.empty.noDecodedFilmTitle} description={t.empty.noDecodedFilmDescription} />
-        </CardContent>
-      </Card>
-    )
+    return <EmptyCard title={t.empty.noDecodedFilmTitle} description={t.empty.noDecodedFilmDescription} />
   }
 
   return (
@@ -122,6 +115,40 @@ export function SquadEmprisePage() {
           />
         </section>
       )}
+      <UsageSections show={show} production={production} yieldRows={yieldRows} habit={habit} locale={locale} et={et} />
+    </div>
+  )
+}
+
+/** Un état vide de l'onglet, dans sa carte. */
+function EmptyCard({ title, description }: { title: string; description: string }) {
+  return (
+    <Card>
+      <CardContent className="pt-4">
+        <EmptyStateNotice title={title} description={description} />
+      </CardContent>
+    </Card>
+  )
+}
+
+/** Blocs 4 et 5 : « Prendre, et s'en servir » puis « Par rapport à d'habitude ». */
+function UsageSections({
+  show,
+  production,
+  yieldRows,
+  habit,
+  locale,
+  et,
+}: {
+  show: EmpriseSections
+  production: ProductionRow[]
+  yieldRows: YieldRow[]
+  habit: HabitView
+  locale: Locale
+  et: EmpriseText
+}) {
+  return (
+    <>
       {show.prendre && (
         <section className="space-y-2" data-testid="emprise-section-prendre">
           <SectionTitle>{et.sections.prendre}</SectionTitle>
@@ -141,6 +168,6 @@ export function SquadEmprisePage() {
           </div>
         </section>
       )}
-    </div>
+    </>
   )
 }

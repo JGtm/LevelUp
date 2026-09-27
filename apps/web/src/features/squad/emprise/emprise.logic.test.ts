@@ -16,6 +16,14 @@ import {
 } from './emprise.logic'
 import { EMPRISE_2209, HISTORY_2209, WEAPONS, XUID } from './emprise.fixtures'
 
+/**
+ * Le 22/09 où un match FILMÉ a perdu notre camp (`team_known = false`). Ses prises restent dans le
+ * bloc : le web ne doit pas compter sur leur absence pour les écarter.
+ */
+function campInconnu(matchId: string): SquadEmpriseBlock {
+  return { ...EMPRISE_2209, matches: EMPRISE_2209.matches!.map((m) => (m.match_id === matchId ? { ...m, team_known: false } : m)) }
+}
+
 const nameOf = (o: { key: string; label?: string }) =>
   o.key === 'powerup_camo' ? 'Camouflage' : o.key === 'powerup_overshield' ? 'Surbouclier' : (o.label ?? o.key)
 
@@ -73,6 +81,14 @@ describe('buildResourceFil — au fil de la session', () => {
     expect(f.matches).toHaveLength(7)
     expect(f.matches[2]).toMatchObject({ map: '', outcome: null, score: null, dominance: undefined })
     expect(f.matches[2].points.power_weapon).toMatchObject({ us: 5, them: 7 })
+  })
+
+  it('constat R2 (revue L6.1) : un match filmé au camp inconnu n’a aucun point, comme un match sans donnée ; le cumul l’ignore', () => {
+    const f = buildResourceFil(campInconnu('m2'), HISTORY_2209)
+    expect(f.matches).toHaveLength(7)
+    expect(f.matches[1].points).toEqual({ powerup: null, power_weapon: null })
+    expect(f.matches[6].points.powerup).toMatchObject({ cumUs: 8, cumTotal: 16 })
+    expect(f.matches[6].points.power_weapon).toMatchObject({ cumUs: 17, cumTotal: 44 })
   })
 })
 
@@ -157,5 +173,20 @@ describe('buildMatchGrid — match par match', () => {
     expect(g.sections[0].summary!.cells[1]).toMatchObject({ kind: 'value', us: 4, them: 0 })
     expect(g.sections[1].summary!.cells[1]).toEqual({ kind: 'untiered', tiers: 'not_measured' })
     expect(g.sections[2].items[0].cells[1]).toEqual({ kind: 'untiered', tiers: 'not_measured' })
+  })
+})
+
+describe('buildMatchGrid — camp inconnu (constat R2 de la revue L6.1)', () => {
+  const g = buildMatchGrid(campInconnu('m2'), HISTORY_2209)
+
+  it('filmé au camp inconnu : « camp inconnu » sur toutes les lignes lues au film, jamais « rien à prendre »', () => {
+    expect(g.sections[0].summary!.cells[1]).toEqual({ kind: 'noteam' })
+    expect(g.sections[1].summary!.cells[1]).toEqual({ kind: 'noteam' })
+    for (const s of g.sections) for (const row of s.items) expect(row.cells[1]).toEqual({ kind: 'noteam' })
+  })
+
+  it('« sans film » garde la priorité : Detachment reste « sans film »', () => {
+    const g2 = buildMatchGrid(campInconnu('m5'), HISTORY_2209)
+    expect(g2.sections[0].summary!.cells[4]).toEqual({ kind: 'nofilm' })
   })
 })

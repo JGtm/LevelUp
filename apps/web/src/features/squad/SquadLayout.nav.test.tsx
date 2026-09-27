@@ -17,13 +17,16 @@ import { SquadLayout } from './SquadLayout'
 import { getSquadText } from './i18n'
 import { EMPRISE_2209 } from './emprise/emprise.fixtures'
 
+/** La route active simulée (null = aucune) : `useMatchRoute` ne reconnaît qu'elle. */
+let routeActive: string | null = null
+
 vi.mock('@tanstack/react-router', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@tanstack/react-router')>()
   return {
     ...actual,
     useParams: () => ({ playerSlug: 'p' }),
     useSearch: () => ({}),
-    useMatchRoute: () => () => null,
+    useMatchRoute: () => ({ to }: { to: string }) => (to === routeActive ? {} : null),
     useNavigate: () => vi.fn(),
     Outlet: () => <div data-testid="contenu-onglet" />,
     Link: ({ children, to }: { children?: ReactNode; to?: string }) => <a href={to}>{children}</a>,
@@ -61,6 +64,7 @@ const resolveReponse = {
 }
 
 beforeEach(() => {
+  routeActive = null
   localStorage.clear()
   useSquadFilterStore.getState().resetFilters()
   useAppShellStore.setState({ locale: 'fr' })
@@ -116,5 +120,18 @@ describe('SquadLayout — barre d\'onglets', () => {
     const t = getSquadText('fr')
     const liens = Array.from(screen.getAllByRole('navigation')[0].querySelectorAll('a'))
     expect(liens.map((a) => a.textContent)).toEqual([t.nav.synergies, t.nav.contributions, t.nav.dynamique])
+  })
+
+  it('constat R13 (revue L6.1) : sur l’onglet Emprise, il reste visible même sans rien à montrer', async () => {
+    routeActive = '/{-$lang}/t/$titleSlug/players/$playerSlug/squad/emprise'
+    server.use(
+      http.post('/api/v1/players/:playerSlug/pages/teammates', () =>
+        HttpResponse.json({ ...teammatesReponse, squad_emprise: { ...EMPRISE_2209, resources: [], objects: [], matches: [], production: [], habit: undefined } }),
+      ),
+    )
+    await monter()
+    const t = getSquadText('fr')
+    const liens = Array.from(screen.getAllByRole('navigation')[0].querySelectorAll('a'))
+    expect(liens.map((a) => a.textContent)).toEqual([t.nav.synergies, t.nav.contributions, t.nav.dynamique, t.nav.emprise])
   })
 })

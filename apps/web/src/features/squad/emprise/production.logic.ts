@@ -6,30 +6,31 @@
  * Tout vient de `squad_emprise.production[]`, calculé côté Go (lot L4) — le web ne recalcule
  * aucun rendement :
  *
- *   - « Frags obtenus avec les ressources » : `kills` (barre épaisse : frags pendant l'effet pour
- *     les bonus, frags obtenus avec pour les armes spéciales, feuille de match), `exposure.value`
- *     (barre fine : temps d'effet, prises) ;
+ *   - « Frags obtenus avec les ressources » : barre épaisse = les frags, barre fine = ce qui les
+ *     a permis (`exposure.value` : temps d'effet, prises). LES DEUX BARRES PORTENT SUR LA MÊME
+ *     POPULATION que le rendement : quand l'exposition est tracée (barre fine), la barre épaisse lit
+ *     `exposure.kills` (frags des matchs où l'exposition est mesurée), jamais `kills` (feuille de
+ *     match, toute la soirée) — sinon « la coupure de l'épaisse à gauche de celle de la fine »
+ *     ne voudrait plus dire « moins produit qu'on n'a eu » (constat R3 de la revue L6.1). Les
+ *     frags de toute la soirée restent lisibles match par match (grille, ligne « frags obtenus
+ *     avec ») ;
  *   - « Rendement face à l'adversaire » : `yield_us` / `yield_them` / `relative_gap`, lus sur
- *     `exposure.kills` (un rendement se lit sur UN périmètre : les matchs dont l'exposition est
- *     mesurée).
+ *     `exposure.kills`.
  *
  * Sans film (Halo 5, D10) la production des armes spéciales n'a que `kills` : la barre épaisse
- * seule, aucune ligne de rendement. Pur : aucun React, aucune couleur, aucune chaîne de langue.
+ * seule (toute la feuille), aucune ligne de rendement. Pur : aucun React, aucune couleur, aucune
+ * chaîne de langue.
  */
 import type { SquadEmpriseBlock, SquadEmpriseCount } from '@/lib/api/types'
 
 import { RESOURCE_ORDER } from './emprise.logic'
-
-/** Natures d'exposition (contrat Go `domain.EmpriseExposure*`). */
-export const EXPOSURE_EFFECT_MS = 'effect_ms'
-export const EXPOSURE_PICKUPS = 'pickups'
 
 const total = (c: SquadEmpriseCount) => c.us + c.them
 
 /** Une ligne de « Frags obtenus avec les ressources ». */
 export interface ProductionRow {
   resource: string
-  /** Les frags de chaque camp (barre épaisse). */
+  /** Les frags de chaque camp (barre épaisse), sur la population de l'exposition quand elle existe. */
   kills: SquadEmpriseCount
   /** L'exposition de chaque camp (barre fine) ; null sans mesure du film. */
   exposure: { kind: string; value: SquadEmpriseCount } | null
@@ -44,13 +45,14 @@ function byOrder<T extends { resource: string }>(rows: T[]): T[] {
 /**
  * buildProductionRows — une ligne par ressource produite qui a au moins un frag (une barre de
  * frags vide n'a rien à partager) ; la barre fine seulement quand l'exposition existe et n'est
- * pas nulle.
+ * pas nulle, et alors la barre épaisse lit les frags de SA population (`exposure.kills`).
  */
 export function buildProductionRows(block: SquadEmpriseBlock): ProductionRow[] {
   return byOrder(block.production ?? []).flatMap((p) => {
-    if (total(p.kills) <= 0) return []
     const exposure = p.exposure && total(p.exposure.value) > 0 ? { kind: p.exposure.kind, value: p.exposure.value } : null
-    return [{ resource: p.resource, kills: p.kills, exposure }]
+    const kills = exposure && p.exposure ? p.exposure.kills : p.kills
+    if (total(kills) <= 0) return []
+    return [{ resource: p.resource, kills, exposure }]
   })
 }
 
@@ -79,9 +81,8 @@ export const YIELD_AXIS_MAX_PCT = 50
  * La géométrie d'une barre de rendement, en pourcentage de la piste : le zéro au milieu, l'écart
  * borné à l'axe (±50 %) ; `x` = le bout de la barre.
  */
-export function yieldGeometry(gap: number): { left: number; width: number; x: number; clamped: boolean } {
-  const pct = gap * 100
-  const g = Math.max(-YIELD_AXIS_MAX_PCT, Math.min(YIELD_AXIS_MAX_PCT, pct))
+export function yieldGeometry(gap: number): { left: number; width: number; x: number } {
+  const g = Math.max(-YIELD_AXIS_MAX_PCT, Math.min(YIELD_AXIS_MAX_PCT, gap * 100))
   const x = 50 + (g / YIELD_AXIS_MAX_PCT) * 50
-  return { left: Math.min(50, x), width: Math.abs(x - 50), x, clamped: g !== pct }
+  return { left: Math.min(50, x), width: Math.abs(x - 50), x }
 }

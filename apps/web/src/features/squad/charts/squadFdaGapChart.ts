@@ -31,6 +31,7 @@ import {
   getLegendBase,
   getTooltipBase,
 } from '@/components/charts/_utils'
+import { withEndPoint } from '@/components/charts/endPoint'
 import type { SquadPerformanceSeriesPoint } from '@/lib/api/types'
 import { cumulativeFdaGap, type FdaGapPair } from '@/lib/charts/cumulativeFdaGap'
 
@@ -98,28 +99,52 @@ function signedGapFormatter(decimals: number, intlLocale?: string): (v: number) 
   return (v: number) => nf.format(v)
 }
 
-/** Diamètre du point final (rayon ~4,5 px de la maquette C3EW) ; les autres points : 4. */
-const END_POINT_SIZE = 9
-
 /**
- * Grossit le DERNIER point non nul d'une courbe (celui qui porte la valeur de fin),
- * liseré à la couleur de la carte pour le détacher de la courbe ; les autres points
- * restent des nombres bruts (petits, `symbolSize` de la série).
+ * La série d'un joueur : sa courbe, le point final grossi (`withEndPoint`, source unique), la
+ * valeur de fin au bout ; la ligne 0 posée sur la première série seulement.
  */
-function withEndPoint(
-  data: Array<number | null>,
-  cardColor: string,
-): Array<number | null | { value: number; symbolSize: number; itemStyle: object }> {
-  let last = -1
-  data.forEach((v, i) => {
-    if (v != null) last = i
-  })
-  if (last < 0) return data
-  return data.map((v, i) =>
-    i === last && v != null
-      ? { value: v, symbolSize: END_POINT_SIZE, itemStyle: { borderColor: cardColor, borderWidth: 2 } }
-      : v,
-  )
+function fdaGapPlayerSeries(
+  player: string,
+  idx: number,
+  cum: Array<number | null>,
+  s: { color: string; tc: ReturnType<typeof getEChartsThemeColors>; fmtSigned: (v: number) => string },
+) {
+  const { color, tc, fmtSigned } = s
+  return {
+    name: player,
+    type: 'line' as const,
+    data: withEndPoint(cum, tc.card),
+    lineStyle: { color, width: 2 },
+    itemStyle: { color },
+    symbol: 'circle' as const,
+    symbolSize: 4,
+    connectNulls: true,
+    // Valeur de fin au bout de la courbe (précédent : squadRangeRolesChart). ECharts la
+    // pose sur le dernier point NON nul ; `moveOverlap: 'shiftY'` écarte verticalement
+    // les étiquettes de TOUTES les séries qui se chevauchent (vérifié au rendu SVG).
+    endLabel: {
+      show: true,
+      color,
+      fontSize: 11,
+      fontWeight: 600,
+      distance: 6,
+      formatter: (p: { value?: unknown }) => (typeof p.value === 'number' ? fmtSigned(p.value) : ''),
+    },
+    labelLayout: { moveOverlap: 'shiftY' as const },
+    // markLine 0 (parité cumulée : FDA réel = FDA attendu) rendue une seule fois,
+    // attachée au premier joueur.
+    ...(idx === 0
+      ? {
+          markLine: {
+            silent: true,
+            symbol: 'none',
+            lineStyle: { color: tc.axisLabel, type: 'dashed' as const, width: 1 },
+            label: { show: false },
+            data: [{ yAxis: 0 }],
+          },
+        }
+      : {}),
+  }
 }
 
 export function buildFdaGapCumulativeOption(
@@ -139,48 +164,13 @@ export function buildFdaGapCumulativeOption(
   const hiddenPlayers = opts.hiddenPlayers ?? new Set<string>()
   const emptyData = new Array<number | null>(n).fill(null)
 
-  const series = players.map((player, idx) => {
-    const color = opts.colorByPlayer[player] ?? '#888' // color-allow: gris structurel pour joueur sans couleur attribuée
-    const data = hiddenPlayers.has(player)
-      ? emptyData
-      : withEndPoint(cumulativeFdaGapSeries(rows[player], n), tc.card)
-    return {
-      name: player,
-      type: 'line' as const,
-      data,
-      lineStyle: { color, width: 2 },
-      itemStyle: { color },
-      symbol: 'circle' as const,
-      symbolSize: 4,
-      connectNulls: true,
-      // Valeur de fin au bout de la courbe (précédent : squadRangeRolesChart). ECharts la
-      // pose sur le dernier point NON nul ; `moveOverlap: 'shiftY'` écarte verticalement
-      // les étiquettes de TOUTES les séries qui se chevauchent (vérifié au rendu SVG).
-      endLabel: {
-        show: true,
-        color,
-        fontSize: 11,
-        fontWeight: 600,
-        distance: 6,
-        formatter: (p: { value?: unknown }) =>
-          typeof p.value === 'number' ? fmtSigned(p.value) : '',
-      },
-      labelLayout: { moveOverlap: 'shiftY' as const },
-      // markLine 0 (parité cumulée : FDA réel = FDA attendu) rendue une seule fois,
-      // attachée au premier joueur.
-      ...(idx === 0
-        ? {
-            markLine: {
-              silent: true,
-              symbol: 'none',
-              lineStyle: { color: tc.axisLabel, type: 'dashed' as const, width: 1 },
-              label: { show: false },
-              data: [{ yAxis: 0 }],
-            },
-          }
-        : {}),
-    }
-  })
+  const series = players.map((player, idx) =>
+    fdaGapPlayerSeries(player, idx, hiddenPlayers.has(player) ? emptyData : cumulativeFdaGapSeries(rows[player], n), {
+      color: opts.colorByPlayer[player] ?? '#888', // color-allow: gris structurel pour joueur sans couleur attribuée
+      tc,
+      fmtSigned,
+    }),
+  )
 
   return {
     backgroundColor: CHART_BG,

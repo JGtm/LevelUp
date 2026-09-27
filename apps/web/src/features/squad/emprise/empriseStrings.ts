@@ -1,28 +1,25 @@
 /**
  * empriseStrings.ts — les textes de l'onglet « Emprise » de l'Escouade (lot L5 du plan
- * PLAN_EMPRISE_ET_CARTES_DEPLACEES_2026-09-26). Titres (tableau §3 du plan), aides ⓘ (trois
- * phrases au plus) et libellés : ceux de la maquette
- * `.ai/V7.5/MAQUETTE_ONGLET_TACTIQUE_ESCOUADE_2026-09-26.html` (bloc « Proposition »).
- *
+ * PLAN_EMPRISE_ET_CARTES_DEPLACEES_2026-09-26) : titres (§3 du plan), aides ⓘ (trois phrases au
+ * plus) et libellés de la maquette `.ai/V7.5/MAQUETTE_ONGLET_TACTIQUE_ESCOUADE_2026-09-26.html`.
  * Fichier à part (précédent : `objectif/objectifStrings.ts`) : `i18n.ts` de la feature dépasse
  * déjà le seuil de taille. Parité FR / EN garantie par le typage `Record<Locale, …>`.
  */
 import type { OutcomeValue } from '@/components/charts/outcomeSequence'
 import type { Locale } from '@/lib/i18n/locale'
 
-/** Les noms d'une ressource, selon l'endroit où elle s'écrit. */
+/**
+ * Les noms d'une ressource, selon l'endroit où elle s'écrit : `label` (« Bonus »), sous-libellé
+ * de la piste du bilan (« prises · camouflage, surbouclier ») et de la synthèse de la grille
+ * (« prises »), mot du pied de fiche (« armes spéciales »).
+ */
 export interface ResourceText {
-  /** « Bonus », « Armes spéciales ». */
   label: string
-  /** Sous-libellé de la piste du bilan (« prises · camouflage, surbouclier »). */
   pisteSub: string
-  /** Sous-libellé de la ligne de synthèse de la grille (« prises »). */
   gridSub: string
-  /** Le mot du pied de fiche (« bonus », « armes spéciales »). */
   footer: string
-  /** Case vide de la ligne de synthèse (« Aucun bonus sur cette carte. »). */
+  /** Cases vides : synthèse (« Aucun bonus sur cette carte. »), objet (« : pas sur cette carte. », après son nom). */
   absent: string
-  /** Case vide d'une ligne d'objet (« : pas sur cette carte. »), après le nom de l'objet. */
   itemAbsent: string
   /** Sous-libellés de « Frags obtenus avec… » (« frags pendant l’effet ») et du « Rendement… » (« frags par prise »). */
   productionSub: string
@@ -38,9 +35,8 @@ export interface EmpriseText {
   ourSide: string
   opponent: string
   parity: string
-  /** « 60 % », « 44,2 % » (une décimale au plus). */
+  /** « 60 % », « 44,2 % » (une décimale au plus) ; `pctIntFmt` : « 17 % » (entier). */
   pctFmt: (v: number) => string
-  /** « 17 % » (entier). */
   pctIntFmt: (v: number) => string
   outcome: Record<OutcomeValue, string>
   outcomeLower: Record<OutcomeValue, string>
@@ -114,6 +110,8 @@ export interface EmpriseText {
     noFilm: string
     noFilmCell: string
     noFilmTip: string
+    noTeamCell: string
+    noTeamTip: string
     untieredCell: string
     untieredTip: string
     unestablishedTip: string
@@ -131,13 +129,8 @@ export interface EmpriseText {
   }
 }
 
-function frPct(v: number): string {
-  return `${(Math.round(v * 10) / 10).toLocaleString('fr-FR', { maximumFractionDigits: 1 })} %`
-}
-
-function enPct(v: number): string {
-  return `${(Math.round(v * 10) / 10).toLocaleString('en-GB', { maximumFractionDigits: 1 })}%`
-}
+const frPct = (v: number): string => `${(Math.round(v * 10) / 10).toLocaleString('fr-FR', { maximumFractionDigits: 1 })} %`
+const enPct = (v: number): string => `${(Math.round(v * 10) / 10).toLocaleString('en-GB', { maximumFractionDigits: 1 })}%`
 
 /** « 2 min 39 » — un temps d'effet (millisecondes), à la seconde ; « 45 s » sous la minute. */
 function duration(ms: number): string {
@@ -256,9 +249,10 @@ const FR: EmpriseText = {
   production: {
     title: 'Frags obtenus avec les ressources',
     info:
-      'La barre épaisse partage les frags obtenus grâce à la ressource, la barre fine partage ce ' +
-      'qui les a permis : temps d’effet pour un bonus, prises pour une arme spéciale. Si la ' +
-      'coupure de la barre épaisse est à gauche de celle de la fine, on a moins produit qu’on n’a eu.',
+      'La barre épaisse partage les frags obtenus grâce à la ressource, la barre fine ce qui les a ' +
+      'permis (temps d’effet d’un bonus, prises d’une arme spéciale), toutes deux sur les matchs où ' +
+      'ce qui les a permis est mesuré. Si la coupure de la barre épaisse est à gauche de celle de la ' +
+      'fine, on a moins produit qu’on n’a eu. Les frags de toute la soirée se lisent match par match.',
     ariaLabel: 'Notre part des frags obtenus avec chaque ressource, et de ce qui les a permis',
     thinLegend: 'Barre fine : temps d’effet ou prises',
     exposure: {
@@ -309,6 +303,8 @@ const FR: EmpriseText = {
     noFilm: 'Sans film',
     noFilmCell: 'sans film',
     noFilmTip: 'Film non décodé : rien à lire pour cette ligne.',
+    noTeamCell: 'camp inconnu',
+    noTeamTip: 'Notre camp est inconnu sur ce match (chacun pour soi, ou camp absent de la feuille de match) : rien ne se partage entre les deux camps.',
     untieredCell: 'non classé',
     untieredTip: 'Niveaux de socle non mesurés sur ce match : armes spéciales et armes de râtelier ne se séparent pas.',
     unestablishedTip: 'Carte absente de la référence des socles : armes spéciales et armes de râtelier ne se séparent pas.',
@@ -424,9 +420,10 @@ const EN: EmpriseText = {
   production: {
     title: 'Kills with resources',
     info:
-      'The thick bar splits the kills the resource brought, the thin bar splits what made them ' +
-      'possible: effect time for a power-up, pickups for a power weapon. If the thick bar’s split ' +
-      'sits left of the thin one’s, we produced less than we had.',
+      'The thick bar splits the kills the resource brought, the thin bar what made them possible ' +
+      '(effect time for a power-up, pickups for a power weapon), both over the matches where the ' +
+      'latter is measured. If the thick bar’s split sits left of the thin one’s, we produced less ' +
+      'than we had. Kills over the whole session read match by match.',
     ariaLabel: 'Our share of the kills made with each resource, and of what made them possible',
     thinLegend: 'Thin bar: effect time or pickups',
     exposure: {
@@ -477,6 +474,8 @@ const EN: EmpriseText = {
     noFilm: 'No film',
     noFilmCell: 'no film',
     noFilmTip: 'Film not decoded: nothing to read for this row.',
+    noTeamCell: 'side unknown',
+    noTeamTip: 'Our side is unknown in this match (free-for-all, or side missing from the match sheet): nothing splits between the two sides.',
     untieredCell: 'unsorted',
     untieredTip: 'Pad levels not measured for this match: power weapons and rack weapons can’t be told apart.',
     unestablishedTip: 'Map missing from the pad reference: power weapons and rack weapons can’t be told apart.',

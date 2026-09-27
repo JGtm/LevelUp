@@ -70,6 +70,11 @@ func (s *TeammatesService) loadEmprise(
 	} else {
 		in.Players = squadagg.SquadPlayers(playerXUID, s.gamertag, nil, nil)
 	}
+	if n := squademprise.WithoutTimeScale(&in); n > 0 {
+		// Même règle et même trace que Sessions : exclus du rendement des bonus, jamais en silence.
+		slog.WarnContext(ctx, "teammates_emprise_matchs_sans_echelle_de_temps_hors_rendement",
+			"player", s.gamertag, "matchs_sans_echelle", n, "matchs", len(current))
+	}
 	block := squademprise.Build(in)
 	slog.DebugContext(ctx, "teammates_emprise",
 		"player", s.gamertag, "matchs", block.MatchesTotal, "mesures", block.MatchesMeasured,

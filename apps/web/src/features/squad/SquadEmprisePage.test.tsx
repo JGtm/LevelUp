@@ -238,6 +238,20 @@ describe('Contrôle des ressources, match par match', () => {
     expect(within(table).getByText('frags obtenus avec')).toBeInTheDocument()
   })
 
+  it('constat R2 (revue L6.1) : un match filmé au camp inconnu dit « camp inconnu », pas « — »', () => {
+    const block: SquadEmpriseBlock = {
+      ...EMPRISE_2209,
+      matches: EMPRISE_2209.matches!.map((m) => (m.match_id === 'm2' ? { ...m, team_known: false } : m)),
+    }
+    mount({ pageData: page(block) })
+    const table = screen.getByTestId('emprise-grid-table')
+    const cells = table.querySelectorAll('[data-cell="noteam"]')
+    // Synthèse bonus, deux objets bonus, synthèse des armes spéciales et ses armes (râteliers repliés).
+    expect(cells.length).toBeGreaterThanOrEqual(3)
+    expect(cells[0].textContent).toBe('camp inconnu')
+    expect(within(table).queryByText('4–0')).toBeNull()
+  })
+
   it('armes de râtelier repliées derrière un bouton ; il les déplie', () => {
     mount()
     const toggle = screen.getByTestId('emprise-grid-racks-toggle')
@@ -285,7 +299,7 @@ describe('Prendre, et s’en servir', () => {
     expect(production.compareDocumentPosition(rendement) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   })
 
-  it('Frags obtenus : 8 · 61,5 % / 38,5 % · 5 pendant l’effet, temps d’effet 2 min 39 · 58,5 % … 1 min 53', () => {
+  it('Frags obtenus : 8 · 61,5 % / 38,5 % · 5 pendant l’effet, temps d’effet 2 min 39 · 58,5 % … 1 min 53 ; armes spéciales 38 / 41', () => {
     mount()
     const card = screen.getByTestId('emprise-production')
     const bonus = within(card).getByTestId('piste-camps-row-powerup')
@@ -295,8 +309,11 @@ describe('Prendre, et s’en servir', () => {
     expect(text('emprise-production-exposure-powerup')).toBe('temps d’effet : 2 min 39 · 58,5 %1 min 53')
     const armes = within(card).getByTestId('piste-camps-row-power_weapon')
     expect(armes.textContent).toContain('frags obtenus avec')
-    expect(armes.textContent).toContain('47 · 46,5 %')
-    expect(armes.textContent).toContain('53,5 % · 54')
+    // Constat R3 (revue L6.1) : la barre épaisse des armes spéciales porte sur la population de la
+    // fine et du rendement (38 / 41, matchs aux prises mesurées), pas sur la feuille entière (47 / 54).
+    expect(armes.textContent).toContain('38 · 48,1 %')
+    expect(armes.textContent).toContain('51,9 % · 41')
+    expect(armes.textContent).not.toContain('47')
     expect(text('emprise-production-exposure-power_weapon')).toBe('prises sur les socles : 23 prises · 44,2 %29 prises')
     // Une barre fine sous chaque barre épaisse (rôle img, nom = la ligne d'exposition).
     expect(within(bonus).getByRole('img', { name: /temps d’effet : 2 min 39/ })).toBeInTheDocument()

@@ -19,13 +19,13 @@
 import type { EChartsCoreOption } from 'echarts/core'
 
 import { CHART_BG, escapeHtml, getTooltipBase } from '@/components/charts/_utils'
+import { withEndPoint } from '@/components/charts/endPoint'
 import type { DominanceValue } from '@/components/charts/outcomeSequence'
 import { resolveToken } from '@/lib/accessibility'
 import { getEChartsThemeColors, type EChartsThemeColors } from '@/lib/echarts/themeColors'
 import { DOMINANCE_COLOR_TOKENS } from '@/lib/narrative/dominance'
 
 import {
-  endPoint,
   lineSeries,
   parityLine,
   shortMap,
@@ -93,16 +93,13 @@ const matchName = (m: ResourceFilMatch, t: EmpriseFilText) => [t.timeOf(m.startT
 function resourceSeries(matches: ResourceFilMatch[], resource: string, first: boolean, c: EmpriseFilColors, t: EmpriseFilText): unknown[] {
   const color = c.resource(resource)
   const label = t.resourceLabel(resource)
-  let last = -1
-  matches.forEach((m, i) => {
-    if (m.points[resource]) last = i
-  })
-  const data = matches.map((m, i) => {
-    const p = m.points[resource]
-    if (!p) return null
-    const v = p.cumulative * 100
-    if (i !== last) return v
-    return { ...endPoint(v, color, c.theme.card), tip: t.endTip(label, p.cumUs, p.cumTotal, t.pctFmt(v)) }
+  const cum = matches.map((m) => (m.points[resource] ? m.points[resource]!.cumulative * 100 : null))
+  const data = withEndPoint(cum, c.theme.card, {
+    color,
+    extra: (i) => {
+      const p = matches[i].points[resource]!
+      return { tip: t.endTip(label, p.cumUs, p.cumTotal, t.pctFmt(p.cumulative * 100)) }
+    },
   })
   const dots = {
     name: label,
@@ -262,7 +259,12 @@ const HABIT_RIGHT = 58
 const HABIT_TOP = 12
 const HABIT_FOOT = 30
 
-/** Une courbe par ressource : une soirée par point, ce soir grossi, médiane des précédentes en pointillé fin. */
+/**
+ * Une courbe par ressource : une soirée par point, médiane des précédentes en pointillé fin. Le
+ * point grossi et la valeur au bout sont posés sur CE SOIR (la soirée affichée), jamais sur la
+ * dernière soirée passée qui a une part : sans part ce soir, ni l'un ni l'autre (constat R4 de la
+ * revue L6.1).
+ */
 function habitSeries(
   points: HabitPoint[],
   resource: string,
@@ -274,28 +276,26 @@ function habitSeries(
   const color = c.resource(resource)
   const label = t.resourceLabel(resource)
   const med = median == null ? null : t.pctFmt(median)
-  let last = -1
-  points.forEach((p, i) => {
-    if (p.shares[resource] != null) last = i
-  })
-  const data = points.map((p, i) => {
+  const data = points.map((p) => {
     const v = p.shares[resource]
     if (v == null) return null
-    const end = i === last
     const evening = p.current ? t.tonight.charAt(0).toUpperCase() + t.tonight.slice(1) : t.eveningOf(t.dateOf(p.startTime))
     return {
       value: v,
       symbol: 'circle',
-      symbolSize: end ? 11 : 6,
-      itemStyle: { color, borderColor: c.theme.card, borderWidth: end ? 2 : 1 },
+      symbolSize: 6,
+      itemStyle: { color, borderColor: c.theme.card, borderWidth: 1 },
       tip: t.pointTip(label, evening, t.pctFmt(v), med),
     }
   })
-  const base = lineSeries(label, data, color, t.pctIntFmt)
+  const tonight = points.findIndex((p) => p.current)
+  const base = lineSeries(label, withEndPoint(data, c.theme.card, { at: tonight, size: 11 }), color, t.pctIntFmt)
   return {
     ...base,
     symbol: 'circle',
-    endLabel: { ...base.endLabel, distance: 8 },
+    // ECharts écrit la valeur au bout sur le dernier point NON nul : sans part ce soir, elle
+    // tomberait sur une soirée passée — elle se tait.
+    endLabel: { ...base.endLabel, show: tonight >= 0 && data[tonight] != null, distance: 8 },
     markLine: {
       symbol: 'none',
       label: { show: false },

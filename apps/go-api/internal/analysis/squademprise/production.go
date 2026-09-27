@@ -9,7 +9,9 @@ package squademprise
 // UN RENDEMENT SE LIT SUR UN SEUL PÉRIMÈTRE. Les frags aux armes spéciales viennent de la feuille
 // de match, qui couvre aussi les matchs sans film ; les prises, elles, n'existent que là où les
 // niveaux de socle sont mesurés. Le rendement divise donc les frags de CES matchs-là
-// (Exposure.Kills) par leurs prises ; Kills garde tous les matchs du périmètre.
+// (Exposure.Kills) par leurs prises ; Kills garde tous les matchs du périmètre. Pour les bonus,
+// un match dont le film n'a pas d'échelle de temps n'apporte ni frags ni temps d'effet
+// (timeScaled) : Kills = Exposure.Kills, un seul périmètre là aussi.
 
 import "levelup/go-api/internal/domain"
 

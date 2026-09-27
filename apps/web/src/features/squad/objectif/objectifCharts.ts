@@ -6,10 +6,8 @@
  *     parts par match en petits points pâles (taille = volume du lobby), le point final grossi
  *     et la valeur au bout de chaque courbe, le trait 50 %, puis SOUS L'AXE l'heure, la bande
  *     de résultats (victoire / défaite, encoche de dominance), la carte et le mode ;
- *   - « Rapport de force, soirée après soirée » : trois courbes (une soirée par point), ce soir à
- *     droite dans une colonne grisée, la médiane des soirées précédentes en pointillé fin de la
- *     couleur de chaque courbe, le trait 50 %, et sous chaque soirée : la date, la barre
- *     victoires / défaites, « x sur y » et le mélange de modes.
+ *   - « Rapport de force, soirée après soirée » : dans `eveningsChart.ts` (sorti à la revue L6.1,
+ *     seuil de 500 lignes), sur les briques exportées ici.
  *
  * Deux grilles par graphe : la grille du haut porte les courbes, celle du bas la bande de
  * résultats — une même abscisse, donc un alignement exact au pixel. Les marges gauche / droite
@@ -17,13 +15,14 @@
  *
  * Toutes les couleurs arrivent résolues (jetons) : aucune valeur en dur ici.
  *
- * Les briques exportées (axe en %, trait 50 %, point final grossi, courbe cumulée, API
- * `renderItem`) servent aussi au « Contrôle des ressources au fil de la session » de l'onglet
+ * Les briques exportées (axe en %, trait 50 %, courbe cumulée, infobulle, API `renderItem`,
+ * colonne de ce soir) servent aussi au « Contrôle des ressources au fil de la session » de l'onglet
  * Emprise (`emprise/empriseCharts.ts`, lot L5) : une seule grammaire de courbe cumulée.
  */
 import type { EChartsCoreOption } from 'echarts/core'
 
 import { CHART_BG, escapeHtml, getTooltipBase } from '@/components/charts/_utils'
+import { withEndPoint } from '@/components/charts/endPoint'
 import type { DominanceValue } from '@/components/charts/outcomeSequence'
 import { roleToken } from '@/features/_shared/usage/usageMetricKinds'
 import { resolveToken } from '@/lib/accessibility'
@@ -31,7 +30,7 @@ import { getEChartsThemeColors, type EChartsThemeColors } from '@/lib/echarts/th
 import { DOMINANCE_COLOR_TOKENS } from '@/lib/narrative/dominance'
 
 import { OBJECTIVE_ROLES, type ObjectiveRole } from '../formes/model/objectives'
-import type { EveningPoint, FilMatch } from './objectif.logic'
+import type { FilMatch } from './objectif.logic'
 
 /** Les couleurs résolues des deux graphes. */
 export interface ObjectifChartColors {
@@ -52,7 +51,7 @@ const FOOT = 62
 const BAND_H = 8
 
 /** Une infobulle multiligne, échappée. */
-function tip(text: string): string {
+export function tip(text: string): string {
   return text.split('\n').map(escapeHtml).join('<br>')
 }
 
@@ -83,11 +82,6 @@ export function parityLine(color: string) {
     lineStyle: { color, type: [4, 3] as number[], width: 1.5 },
     data: [{ yAxis: 50 }],
   }
-}
-
-/** Le point final grossi, liseré à la couleur de la carte (maquette : r 4,5). */
-export function endPoint(value: number, color: string, card: string) {
-  return { value, symbol: 'circle', symbolSize: 9, itemStyle: { color, borderColor: card, borderWidth: 2 } }
 }
 
 export function lineSeries(
@@ -156,52 +150,55 @@ export function volumeRadius(lobby: number, maxLobby: number): number {
   return maxLobby > 0 ? 2 + Math.sqrt(lobby / maxLobby) * 5 : 2
 }
 
-export function buildFilOption(matches: FilMatch[], c: ObjectifChartColors, t: FilChartText): EChartsCoreOption {
+/** Le nom d'un match dans les infobulles : « 21:40 · Aquarius ». */
+type MatchNamer = (m: FilMatch) => string
+
+/** Les deux séries d'un rôle : la courbe cumulée (point final grossi) et les parts par match. */
+function roleFilSeries(
+  matches: FilMatch[],
+  role: ObjectiveRole,
+  first: boolean,
+  ctx: { c: ObjectifChartColors; t: FilChartText; matchName: MatchNamer },
+) {
+  const { c, t, matchName } = ctx
   const tc = c.theme
-  const categories = matches.map((m) => m.matchId)
-  const matchName = (m: FilMatch) => `${t.timeOf(m.startTime)} · ${m.map}`
-  const series: unknown[] = []
+  const color = c.roles[role]
+  const maxLobby = Math.max(0, ...matches.map((m) => m.roles[role].lobby))
+  const cum = matches.map((m) => (m.roles[role].cumulative == null ? null : m.roles[role].cumulative! * 100))
+  const data = withEndPoint(cum, tc.card, { color })
+  const line = lineSeries(t.roles[role], data, color, t.pctFmt, first ? { markLine: parityLine(c.parity) } : {})
+  const dots = {
+    name: t.roles[role],
+    type: 'scatter' as const,
+    xAxisIndex: 0,
+    yAxisIndex: 0,
+    z: 2,
+    data: matches.map((m, i) => {
+      const r = m.roles[role]
+      if (r.share == null) return null
+      return {
+        value: [i, r.share * 100],
+        symbolSize: 2 * volumeRadius(r.lobby, maxLobby),
+        tip: t.pointTip({
+          match: matchName(m),
+          context: t.contextOf(m),
+          role: t.roles[role],
+          value: t.countFmt(r.us, role === 'hold'),
+          lobby: t.countFmt(r.lobby, role === 'hold'),
+          pct: t.pctFmt(r.share * 100),
+          cumulative: r.cumulative == null ? '—' : t.pctFmt(r.cumulative * 100),
+        }),
+      }
+    }),
+    itemStyle: { color, opacity: 0.45, borderColor: tc.card, borderWidth: 1 },
+  }
+  return [line, dots]
+}
 
-  OBJECTIVE_ROLES.forEach((role, ri) => {
-    const color = c.roles[role]
-    const maxLobby = Math.max(0, ...matches.map((m) => m.roles[role].lobby))
-    const cum = matches.map((m) => (m.roles[role].cumulative == null ? null : m.roles[role].cumulative! * 100))
-    let last = -1
-    cum.forEach((v, i) => {
-      if (v != null) last = i
-    })
-    const data = cum.map((v, i) => (i === last && v != null ? endPoint(v, color, tc.card) : v))
-    series.push(
-      lineSeries(t.roles[role], data, color, t.pctFmt, ri === 0 ? { markLine: parityLine(c.parity) } : {}),
-    )
-    series.push({
-      name: t.roles[role],
-      type: 'scatter' as const,
-      xAxisIndex: 0,
-      yAxisIndex: 0,
-      z: 2,
-      data: matches.map((m, i) => {
-        const r = m.roles[role]
-        if (r.share == null) return null
-        return {
-          value: [i, r.share * 100],
-          symbolSize: 2 * volumeRadius(r.lobby, maxLobby),
-          tip: t.pointTip({
-            match: matchName(m),
-            context: t.contextOf(m),
-            role: t.roles[role],
-            value: t.countFmt(r.us, role === 'hold'),
-            lobby: t.countFmt(r.lobby, role === 'hold'),
-            pct: t.pctFmt(r.share * 100),
-            cumulative: r.cumulative == null ? '—' : t.pctFmt(r.cumulative * 100),
-          }),
-        }
-      }),
-      itemStyle: { color, opacity: 0.45, borderColor: tc.card, borderWidth: 1 },
-    })
-  })
-
-  series.push({
+/** La bande de résultats sous l'axe : une case par match, l'encoche du drapeau de dominance. */
+function filBandSeries(matches: FilMatch[], c: ObjectifChartColors, t: FilChartText, matchName: MatchNamer) {
+  const tc = c.theme
+  return {
     type: 'custom' as const,
     xAxisIndex: 1,
     yAxisIndex: 1,
@@ -227,7 +224,55 @@ export function buildFilOption(matches: FilMatch[], c: ObjectifChartColors, t: F
       }
       return { type: 'group', children }
     },
-  })
+  }
+}
+
+/** Les deux abscisses : l'heure sous les courbes, la carte et le mode sous la bande. */
+function filXAxes(matches: FilMatch[], categories: string[], tc: EChartsThemeColors, t: FilChartText) {
+  return [
+    {
+      gridIndex: 0,
+      type: 'category',
+      data: categories,
+      axisLine: { show: false },
+      axisTick: { show: false },
+      axisLabel: {
+        color: tc.axisLabel,
+        fontSize: 9.5,
+        margin: 4,
+        interval: 0,
+        formatter: (_v: string, i: number) => t.timeOf(matches[i]?.startTime ?? ''),
+      },
+    },
+    {
+      gridIndex: 1,
+      type: 'category',
+      data: categories,
+      axisLine: { show: false },
+      axisTick: { show: false },
+      axisLabel: {
+        interval: 0,
+        margin: 6,
+        lineHeight: 12,
+        formatter: (_v: string, i: number) =>
+          `{map|${shortMap(matches[i]?.map ?? '')}}\n{mode|${t.familyLabel(matches[i]?.family ?? '')}}`,
+        rich: {
+          map: { color: tc.text, fontSize: 9.5 },
+          mode: { color: tc.axisLabel, fontSize: 9.5 },
+        },
+      },
+    },
+  ]
+}
+
+export function buildFilOption(matches: FilMatch[], c: ObjectifChartColors, t: FilChartText): EChartsCoreOption {
+  const tc = c.theme
+  const categories = matches.map((m) => m.matchId)
+  const matchName = (m: FilMatch) => `${t.timeOf(m.startTime)} · ${m.map}`
+  const series: unknown[] = [
+    ...OBJECTIVE_ROLES.flatMap((role, ri) => roleFilSeries(matches, role, ri === 0, { c, t, matchName })),
+    filBandSeries(matches, c, t, matchName),
+  ]
 
   return {
     backgroundColor: CHART_BG,
@@ -245,40 +290,7 @@ export function buildFilOption(matches: FilMatch[], c: ObjectifChartColors, t: F
         return ''
       },
     },
-    xAxis: [
-      {
-        gridIndex: 0,
-        type: 'category',
-        data: categories,
-        axisLine: { show: false },
-        axisTick: { show: false },
-        axisLabel: {
-          color: tc.axisLabel,
-          fontSize: 9.5,
-          margin: 4,
-          interval: 0,
-          formatter: (_v: string, i: number) => t.timeOf(matches[i]?.startTime ?? ''),
-        },
-      },
-      {
-        gridIndex: 1,
-        type: 'category',
-        data: categories,
-        axisLine: { show: false },
-        axisTick: { show: false },
-        axisLabel: {
-          interval: 0,
-          margin: 6,
-          lineHeight: 12,
-          formatter: (_v: string, i: number) =>
-            `{map|${shortMap(matches[i]?.map ?? '')}}\n{mode|${t.familyLabel(matches[i]?.family ?? '')}}`,
-          rich: {
-            map: { color: tc.text, fontSize: 9.5 },
-            mode: { color: tc.axisLabel, fontSize: 9.5 },
-          },
-        },
-      },
-    ],
+    xAxis: filXAxes(matches, categories, tc, t),
     yAxis: [yAxisPct(t.pctFmt, tc), { gridIndex: 1, type: 'value', min: -1, max: 1, show: false }],
     series,
     // Jamais plus de trois courbes : la légende est rendue HORS canvas (pied de carte).
@@ -292,147 +304,6 @@ export interface CustomApi {
   value: (dim: number) => unknown
   coord: (v: number[]) => number[]
   size: (v: number[]) => unknown
-}
-
-// ---------------------------------------------------------------------------
-// Soirée après soirée
-// ---------------------------------------------------------------------------
-
-export interface EveningsChartText {
-  roles: Record<ObjectiveRole, string>
-  pctFmt: (v: number, digits?: number) => string
-  tonight: string
-  dateOf: (iso: string) => string
-  outOfFmt: (wins: number, matches: number) => string
-  mixOf: (p: EveningPoint) => string
-  pointTip: (role: string, evening: string, value: string, median: string | null) => string
-  bandTip: (evening: string, wins: number, matches: number, mix: string) => string
-  eveningOf: (date: string) => string
-  medianTip: (role: string, value: string) => string
-}
-
-const EVENING_FOOT = 64
-
-export function buildEveningsOption(
-  points: EveningPoint[],
-  medians: Record<ObjectiveRole, number | null>,
-  c: ObjectifChartColors,
-  t: EveningsChartText,
-): EChartsCoreOption {
-  const tc = c.theme
-  const n = points.length
-  const categories = points.map((_, i) => String(i))
-  const eveningName = (p: EveningPoint) => (p.current ? t.tonight : t.eveningOf(t.dateOf(p.startTime)))
-  const series: unknown[] = []
-
-  OBJECTIVE_ROLES.forEach((role, ri) => {
-    const color = c.roles[role]
-    const med = medians[role]
-    const data = points.map((p, i) => {
-      const v = p.shares[role]
-      if (v == null) return null
-      const item = {
-        value: v,
-        symbol: 'circle',
-        symbolSize: i === n - 1 ? 10 : 6,
-        itemStyle: { color, borderColor: tc.card, borderWidth: 1.5 },
-        tip: t.pointTip(t.roles[role], eveningName(p), t.pctFmt(v, 1), med == null ? null : t.pctFmt(med, 1)),
-      }
-      return item
-    })
-    const extra: Record<string, unknown> = {
-      symbol: 'circle',
-      markLine: {
-        symbol: 'none',
-        label: { show: false },
-        lineStyle: { color, type: [2, 3] as number[], width: 1 },
-        data: [
-          ...(med == null ? [] : [{ yAxis: med, tip: t.medianTip(t.roles[role], t.pctFmt(med, 1)) }]),
-          ...(ri === 0 ? [{ yAxis: 50, lineStyle: { color: c.parity, type: [4, 3], width: 1.5 }, silent: true }] : []),
-        ],
-      },
-    }
-    series.push(lineSeries(t.roles[role], data, color, (v) => t.pctFmt(v), extra))
-  })
-
-  series.push(tonightColumn(n, tc.splitAreaB))
-
-  series.push({
-    type: 'custom' as const,
-    xAxisIndex: 1,
-    yAxisIndex: 1,
-    data: points.map((p, i) => ({ value: [i, 0], tip: t.bandTip(eveningName(p), p.wins, p.matches, t.mixOf(p)) })),
-    renderItem: (_params: unknown, api: CustomApi) => {
-      const i = api.value(0) as number
-      const p = points[i]
-      const [cx, cy] = api.coord([i, 0])
-      const bw = (api.size([1, 0]) as number[])[0] - 6
-      const wv = p.matches > 0 ? (p.wins / p.matches) * bw : 0
-      const x0 = cx - bw / 2
-      const h = 10
-      const children: unknown[] = []
-      if (p.wins > 0) children.push({ type: 'rect', shape: { x: x0, y: cy - h / 2, width: wv, height: h, r: 2 }, style: { fill: c.win } })
-      if (p.wins < p.matches) {
-        children.push({ type: 'rect', shape: { x: x0 + wv, y: cy - h / 2, width: bw - wv, height: h, r: 2 }, style: { fill: c.loss } })
-      }
-      return { type: 'group', children }
-    },
-  })
-
-  return {
-    backgroundColor: CHART_BG,
-    animation: false,
-    grid: [
-      { left: 40, right: 52, top: 12, bottom: EVENING_FOOT },
-      { left: 40, right: 52, bottom: EVENING_FOOT - 8 - 10, height: 10 },
-    ],
-    tooltip: {
-      ...getTooltipBase(tc),
-      trigger: 'item',
-      formatter: (p: { data?: { tip?: string } }) => (p.data?.tip ? tip(p.data.tip) : ''),
-    },
-    xAxis: [
-      {
-        gridIndex: 0,
-        type: 'category',
-        data: categories,
-        axisLine: { show: false },
-        axisTick: { show: false },
-        axisLabel: {
-          interval: 0,
-          margin: 4,
-          formatter: (_v: string, i: number) =>
-            points[i]?.current ? `{cur|${t.tonight}}` : `{d|${t.dateOf(points[i]?.startTime ?? '')}}`,
-          rich: {
-            d: { color: tc.axisLabel, fontSize: 10.5 },
-            cur: { color: tc.text, fontSize: 10.5, fontWeight: 600 },
-          },
-        },
-      },
-      {
-        gridIndex: 1,
-        type: 'category',
-        data: categories,
-        axisLine: { show: false },
-        axisTick: { show: false },
-        axisLabel: {
-          interval: 0,
-          margin: 6,
-          lineHeight: 13,
-          formatter: (_v: string, i: number) =>
-            `{n|${t.outOfFmt(points[i]?.wins ?? 0, points[i]?.matches ?? 0)}}\n{m|${points[i] ? t.mixOf(points[i]) : ''}}`,
-          rich: {
-            n: { color: tc.text, fontSize: 9.5 },
-            m: { color: tc.axisLabel, fontSize: 9.5 },
-          },
-        },
-      },
-    ],
-    yAxis: [yAxisPct((v) => t.pctFmt(v), tc), { gridIndex: 1, type: 'value', min: -1, max: 1, show: false }],
-    series,
-    legend: { show: false },
-    aria: { enabled: true },
-  }
 }
 
 /**

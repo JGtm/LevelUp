@@ -9,8 +9,9 @@
  * (feuille de match) ; les armes de râtelier REPLIÉES derrière un bouton. Une case « 5–2 » (nous
  * – eux) est colorée plus / moins que l'adversaire, saturée à trente points d'écart
  * (`bandCellInk`) ; « — » si l'objet n'était pas sur la carte ; « sans film » hachuré (la
- * hachure est réservée à ce cas, S4) ; « non classé » quand les niveaux de socle du match ne
- * séparent pas armes spéciales et râteliers. Qui chez nous a pris l'objet : dans l'infobulle.
+ * hachure est réservée à ce cas, S4) ; « camp inconnu » quand le match filmé n'a pas notre camp ;
+ * « non classé » quand ses niveaux de socle ne séparent pas armes spéciales et râteliers. Qui chez
+ * nous a pris l'objet : dans l'infobulle.
  */
 import { Fragment, useMemo, useState, type ReactNode } from 'react'
 
@@ -307,6 +308,8 @@ function cellTip(
   switch (cell.kind) {
     case 'nofilm':
       return `${head}\n${t.grid.noFilmTip}`
+    case 'noteam':
+      return `${head}\n${t.grid.noTeamTip}`
     case 'untiered':
       return `${head}\n${cell.tiers === 'unestablished' ? t.grid.unestablishedTip : t.grid.untieredTip}`
     case 'none':
@@ -338,6 +341,13 @@ function Cell({ cell, role, tip, t }: { cell: GridCell; role: RowRole; tip: stri
       body = (
         <div className={`${base} bg-muted !text-[11px] text-muted-foreground`} style={UNMEASURED_HATCH} data-cell="nofilm">
           {t.grid.noFilmCell}
+        </div>
+      )
+      break
+    case 'noteam':
+      body = (
+        <div className={`${base} bg-muted !text-[11px] text-muted-foreground`} data-cell="noteam">
+          {t.grid.noTeamCell}
         </div>
       )
       break

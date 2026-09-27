@@ -101,3 +101,31 @@ func TestRattrapage_TransmetLeSegmentDeLecture(t *testing.T) {
 		t.Error("le rattrapage n'a pas marqué un match dont les familles ont toutes écrit")
 	}
 }
+
+// TestDeriver_ArtefactNonProjetable_SansIdentite_EstMarque — constat R12 de la revue L6.1, sur
+// Halo Infinite (capability film.weapon_tiers déclarée, références présentes). Un artefact qui
+// ne PEUT pas donner de passe de niveaux (aucun humain au roster : aucune prise nommable) n'a
+// rien à écrire : ce n'est pas un défaut, il se marque comme une dérivation jouée. Son identité
+// de match ne se lit pas ici (aucun segment de lecture) et ne doit PAS l'inscrire en échec : la
+// lecture d'identité ne concerne que les artefacts projetables (`lotProjetable` la précède).
+// Sinon sa marque ne se poserait jamais et le rattrapage le reprendrait à chaque cycle.
+func TestDeriver_ArtefactNonProjetable_SansIdentite_EstMarque(t *testing.T) {
+	db := baseRegistre(t)
+	repoRoot := racineAvecConfigDuTitre(t, titlePkg.DefaultSlug)
+	inscrireAuRegistre(t, db, "sansprise1", temoinT0(), 0)
+	poserArtefact(t, repoRoot, "sansprise1") // roster vide : aucune prise nommable
+	chemin := titlePkg.NewPathResolver(repoRoot).ReplayArtifactPath(titlePkg.DefaultSlug, "sansprise1")
+
+	Deriver(context.Background(), DerivationsDeps{
+		RepoRoot: repoRoot, TitleSlug: titlePkg.DefaultSlug, Gamertag: "testeur",
+		AcquireWriter: func(context.Context) (*sql.DB, func(), error) { return db, func() {}, nil },
+	}, []ArtefactRange{{MatchID: "sansprise1", Path: chemin}})
+
+	if n := lignesDeNiveauxEnBase(t, db); n != 0 {
+		t.Errorf("%d ligne(s) de niveaux écrite(s) pour un artefact sans prise nommable", n)
+	}
+	if !replaybuild.DerivationsUpToDate(chemin) {
+		t.Fatal("artefact sans prise nommable NON marqué : il a été inscrit en échec faute d'identité, " +
+			"alors qu'il n'avait rien à projeter (le rattrapage le reprendrait à chaque cycle)")
+	}
+}

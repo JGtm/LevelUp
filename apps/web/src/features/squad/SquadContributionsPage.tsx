@@ -16,8 +16,9 @@ import { Link } from '@tanstack/react-router'
 import { SectionTitle } from '@/components/ui/detail-section'
 import { InfoTooltip } from '@/components/ui/info-tooltip'
 import { useAppShellStore } from '@/stores/appShellStore'
+import type { MedalDigestEntry, TeammatesPageResponse } from '@/lib/api/types'
 import { useSquadContext } from './SquadContext'
-import { getSquadText } from './i18n'
+import { getSquadText, type SquadText } from './i18n'
 import { SquadPerMinuteChart } from './SquadPerMinuteChart'
 import { SquadSynergyRadarChart } from './SquadSynergyRadarChart'
 import { SquadPerformanceCharts } from './SquadPerformanceCharts'
@@ -96,26 +97,7 @@ export function SquadContributionsPage() {
         />
 
         <SquadSynergyRadarChart
-          title={
-            <span className="flex items-center gap-1.5">
-              {t.synergyRadar.title}
-              <InfoTooltip
-                content={
-                  <div className="space-y-1">
-                    <p><span className="font-medium">{t.synergyRadar.axes.impact}</span> — {t.synergyRadar.tooltip.impact}</p>
-                    <p><span className="font-medium">{t.synergyRadar.axes.combat}</span> — {t.synergyRadar.tooltip.combat}</p>
-                    <p><span className="font-medium">{t.synergyRadar.axes.survival}</span> — {t.synergyRadar.tooltip.survival}</p>
-                    <p><span className="font-medium">{t.synergyRadar.axes.support}</span> — {t.synergyRadar.tooltip.support}</p>
-                    <p><span className="font-medium">{t.synergyRadar.axes.score}</span> — {t.synergyRadar.tooltip.score}</p>
-                    <p><span className="font-medium">{t.synergyRadar.axes.objective}</span> — {t.synergyRadar.tooltip.objective}</p>
-                    <Link to="/help" search={{ tab: 'glossary' }} className="block mt-2 text-primary hover:underline">
-                      {t.synergyRadar.tooltip.glossaryLink}
-                    </Link>
-                  </div>
-                }
-              />
-            </span>
-          }
+          title={<SynergyRadarTitle t={t} />}
           rows={synergyRadar}
           emptyMessage={t.empty.noBlockData}
           colorByPlayer={playerColors}
@@ -166,6 +148,60 @@ export function SquadContributionsPage() {
         />
       </section>
 
+      <ImpactMedalsMechanics
+        pageData={pageData}
+        mainPlayer={pageData?.main_player ?? playerSlug}
+        medalDigest={medalDigest}
+        playerColors={playerColors}
+        t={t}
+      />
+    </div>
+  )
+}
+
+/** Le titre du radar synergie, avec l'aide de ses six axes et le lien vers le glossaire. */
+function SynergyRadarTitle({ t }: { t: SquadText }) {
+  return (
+    <span className="flex items-center gap-1.5">
+      {t.synergyRadar.title}
+      <InfoTooltip
+        content={
+          <div className="space-y-1">
+            <p><span className="font-medium">{t.synergyRadar.axes.impact}</span> — {t.synergyRadar.tooltip.impact}</p>
+            <p><span className="font-medium">{t.synergyRadar.axes.combat}</span> — {t.synergyRadar.tooltip.combat}</p>
+            <p><span className="font-medium">{t.synergyRadar.axes.survival}</span> — {t.synergyRadar.tooltip.survival}</p>
+            <p><span className="font-medium">{t.synergyRadar.axes.support}</span> — {t.synergyRadar.tooltip.support}</p>
+            <p><span className="font-medium">{t.synergyRadar.axes.score}</span> — {t.synergyRadar.tooltip.score}</p>
+            <p><span className="font-medium">{t.synergyRadar.axes.objective}</span> — {t.synergyRadar.tooltip.objective}</p>
+            <Link to="/help" search={{ tab: 'glossary' }} className="block mt-2 text-primary hover:underline">
+              {t.synergyRadar.tooltip.glossaryLink}
+            </Link>
+          </div>
+        }
+      />
+    </span>
+  )
+}
+
+/**
+ * Impact des coéquipiers, médailles, puis mécaniques de frag (Halo 5). Sorti de la page à la
+ * revue L6.1 (fonction ramenée sous sa taille d'avant le chantier) ; rendu inchangé.
+ */
+function ImpactMedalsMechanics({
+  pageData,
+  mainPlayer,
+  medalDigest,
+  playerColors,
+  t,
+}: {
+  pageData: TeammatesPageResponse | null
+  mainPlayer: string
+  medalDigest: MedalDigestEntry[]
+  playerColors: Record<string, string>
+  t: SquadText
+}) {
+  return (
+    <>
       {/* IMPACT DES COÉQUIPIERS — arrivé de Synergies (lot 3 « sections », 2026-09-22) :
           c'est une contribution par joueur, pas une production de la composition.
           Section non-graphe toujours montée : titre + état vide géré par le composant
@@ -184,7 +220,7 @@ export function SquadContributionsPage() {
         <SectionTitle>{t.medals.title}</SectionTitle>
         <MedalDigest
           entries={medalDigest}
-          mainPlayer={pageData?.main_player ?? playerSlug}
+          mainPlayer={mainPlayer}
           t={t.medals}
         />
       </section>
@@ -200,6 +236,6 @@ export function SquadContributionsPage() {
           labelOf={(m) => t.killMechanics.labels[m as keyof typeof t.killMechanics.labels] ?? m}
         />
       </FeatureGate>
-    </div>
+    </>
   )
 }
