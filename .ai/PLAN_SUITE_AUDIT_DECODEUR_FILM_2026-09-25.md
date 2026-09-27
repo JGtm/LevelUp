@@ -152,7 +152,7 @@ traité (justification au journal §9). Aucune case vide.
 | ID | Traitement | Statut | ID | Traitement | Statut |
 |---|---|---|---|---|---|
 | SRC-1 | J3.2 | [x] | FK-6 | J7.6 | [ ] |
-| RA1-3 | J4 | [ ] | FK-7 | J7.7 | [ ] |
+| RA1-3 | J4 | [x] | FK-7 | J7.7 | [ ] |
 | RA1-4 | J3.5 | [x] | RB2-3 | J5.4 | [ ] |
 | RA1-6 | rr M8 (verdict du fil des morts dans les faits) — confirmé par P-3 | [~] | RB2-6 | J10.3 | [ ] |
 | RA1-5 | J2.7 | [x] | RB2-7 | J10.4 | [ ] |
@@ -176,11 +176,11 @@ traité (justification au journal §9). Aucune case vide.
 
 | # | Faiblesse | Traitement | Statut |
 |---|---|---|---|
-| 1 | Fraîcheur et révisions mal calées sur les sorties | J3 (+ J4 pour RA1-3) | [ ] |
+| 1 | Fraîcheur et révisions mal calées sur les sorties | J3 (+ J4 pour RA1-3) | [x] |
 | 2 | Identité (slot, génération) non typée | J5 | [ ] |
 | 3 | Portages jumeaux ; 7 lectures de bits artisanales hors `source` | J6 (portages) ; J4.6 (lectures, S2) | [ ] |
 | 4 | D-10 tenue par un ratchet de vocabulaire ; 81/99 compteurs non câblés | J8 | [ ] |
-| 5 | `film/replay` paquet-dieu ; seconde séquence de balayage dans `killcollector` | J4 (séquence unique) ; découpe complète : DU-4 | [ ] |
+| 5 | `film/replay` paquet-dieu ; seconde séquence de balayage dans `killcollector` | J4 (séquence unique) ; découpe complète : DU-4 | [x] |
 | 6 | Décodage multi-passes | `[!]` hors périmètre (§1.4) | [ ] |
 | 7 | CI : `-race` absent du film ; instruments `research` non tagués | J12.6 ; J12.7 (DU-5) | [ ] |
 | 8 | Contexte et journalisation (`context.Background()`, `slog` sans contexte, D-4 à moitié, variables exportées modifiables) | J12.3, J12.4 | [ ] |
@@ -192,10 +192,10 @@ traité (justification au journal §9). Aucune case vide.
 
 | Affirmation fausse aujourd'hui | Rendue vraie par | Statut |
 |---|---|---|
-| « replay ne décode rien » | J4.2 | [ ] |
-| « seule porte aux octets » (lectures artisanales, façade qui ré-expose `LecteurSur`/`Paquets`/`Inflate`) | J4.5 (façade), J4.6 (lecteurs, S2 ; sinon ADR D-2 corrigé) | [ ] |
+| « replay ne décode rien » | J4.2 | [x] |
+| « seule porte aux octets » (lectures artisanales, façade qui ré-expose `LecteurSur`/`Paquets`/`Inflate`) | J4.5 (façade), J4.6 (lecteurs, S2 ; sinon ADR D-2 corrigé) | [x] |
 | « D-5 prouvé sous -race » | J12.6 | [ ] |
-| « un seul étage de balayage » | J4.3 | [ ] |
+| « un seul étage de balayage » | J4.3 | [x] |
 | « verrou pris par les SIX points d'entrée » (un septième ne le prend pas) | J2.13 (identifier le septième au J2.13, avant de coder) | [x] |
 | « D-10 Reached as written » | J8 puis J12.5 | [ ] |
 
@@ -813,29 +813,29 @@ composant présent sans lecteur) ; `testdata/ecs_table.tsv` (statuts `porte`, `n
 G-equiv 0, G-CI.
 
 #### S1 — le déplacement qui corrige les défauts (obligatoire)
-- [ ] J4.1 Inventaire écrit (rapport) : chaque balayage et chaque lecture d'octets de film hors
+- [x] J4.1 Inventaire écrit (rapport) : chaque balayage et chaque lecture d'octets de film hors
       `source` (fichier, fonction, couche cible selon D-1, consommateurs) ; les chiffres ci-dessus
       re-mesurés sur l'arbre fusionné.
-- [ ] J4.2 Déplacement pur des cinq fichiers et de leurs tests vers `grammar` ; les quatre types
+- [x] J4.2 Déplacement pur des cinq fichiers et de leurs tests vers `grammar` ; les quatre types
       vers `film/types` (renommage mécanique, aucun alias) ; appelants migrés ;
       **G-equiv 0 divergence** ; empreintes régénérées à révision constante. `replay` ne lit plus
       d'octet de film (écart ADR « replay ne décode rien » fermé).
-- [ ] J4.3 Test rouge `TestCollecteurEtCuissonAppellentLeMemeEtage` (ratchet :
+- [x] J4.3 Test rouge `TestCollecteurEtCuissonAppellentLeMemeEtage` (ratchet :
       `sync/killcollector` n'appelle aucun `replay.Scan*`) et
       `TestPontDIdentite_ExemptionsDeTranslocationAppliquees` ; un étage unique de LECTURES du pont
       d'identité (positions avec exemptions, créations, morts, index, origine d'horloge) dans
       `grammar`, exposé par `decfilm`, appelé par `replay` ET par `killcollector.buildPositionRows`
       (seconde séquence supprimée). Le registre d'identité (`BuildIdentityRegistry`) reste dans
       `replay`.
-- [ ] J4.4 `IsolationDecoderRev` monté (le collecteur gagne les exemptions : changement déclaré
+- [x] J4.4 `IsolationDecoderRev` monté (le collecteur gagne les exemptions : changement déclaré
       des positions de mort et des faits d'isolement).
-- [ ] J4.5 Façade : consommateurs de `LecteurSur` / `Paquets` / `Inflate` hors `film/` listés ;
+- [x] J4.5 Façade : consommateurs de `LecteurSur` / `Paquets` / `Inflate` hors `film/` listés ;
       ceux de recherche passent sous `film/research` ; ceux de production restent et l'ADR est
       corrigé en conséquence ; ratchet de surface V25 réajusté avec justification datée (entrées
       ajoutées à `decfilm`, identifiants `replay.X` retirés hors de `film/`).
 
 #### S2 — les sept lecteurs de bits artisanaux (condition fixée d'avance)
-- [ ] J4.6 Benchmark du balayage bit à bit (`b.Loop`, mini-bobines du dépôt) mesuré AVANT ; les
+- [x] J4.6 Benchmark du balayage bit à bit (`b.Loop`, mini-bobines du dépôt) mesuré AVANT ; les
       sept lecteurs passent au lecteur canonique de `source`, conventions hors bornes rendues
       explicites (ex. : `invBitAt` rend 0 hors du tampon). Deux conditions : `replay-equiv` à zéro
       divergence ET régression du benchmark ≤ 5 %. Condition tenue : ratchet structurel (toute
@@ -1256,6 +1256,35 @@ relancer un agent sans avoir vérifié qu'il est mort. Ne pas re-décider ce qui
     rouge (`TestNoRawKillScopeLiteral` sur deux étiquettes de test « kill-feed » de J3.3), relevé
     par l'exécutant de J3.3b et corrigé dans le lot. Leçon : rejouer `archlint` soi-même avant de
     cocher.
+17. (2026-09-26, J4.6) Neuf lecteurs de bits hors de l'inventaire de l'audit, trouvés par le
+    ratchet structurel et inscrits comme exceptions datées (critère : la fonction n'extrait plus
+    de bit elle-même), non portés : `grammar/frame_vue_controle.go` `vueCFermee`,
+    `grammar/weaponscan/scanner.go` (trois), `facts/killsource/botmeta.go` `byteAtBit`,
+    `research/cmd_rdata_weapon_scan` `bitsAt`, `cmd/diag_film` `countMarkerBits`,
+    `sync/killcollector/shots.go` `chercherDansChunk`, `lireIndiceAvant` (production hors du
+    décodeur, `sync` ne peut pas importer `source`). ADR 0034 D-2 le dit.
+18. (2026-09-26, J4.2-J4.6) `replaybuild/filmload.go` lit encore le fil des morts à part
+    (`decfilm.ScanDeaths`, hors du pont) ; `cle_du_film.go` et `mpp_format_inconnu.go` tiennent
+    encore les octets de `chunk_00` dans `replay` ; en-tête de `killcollector/positions.go`
+    (« QUATRE lectures ») non réécrit (497 lignes) ; `docs/COMMANDS.md` EN/FR montre des révisions
+    périmées ; `source.BitsAt` non inlinable malgré sa doc ; `grammar.LireBlocDeDatums` exportée
+    sans appelant de production ; 18 littéraux de `cmd_rdata_weapon_scan` translittérés en ASCII
+    (ratchet des libellés accentués).
+19. (2026-09-26, J9) La lecture « du film » du nombre de drapeaux hors catalogue (J9.2) n'existe
+    pas dans la couche : seul le repli nommé est livré ; piste non mesurée (vies libres
+    simultanées de l'objet drapeau). Un portage de manche N que rien ne ferme court jusqu'à la fin
+    de l'axe (aucun fermoir de fin de manche) ; `RoundIdentity.At` paniquerait sur un pont
+    multi-manche sans débuts de manche (latent) ; lignes `match_bomb_stats` déjà écrites avec un
+    faux zéro : à vérifier au transport post-sync de J11 ; §4.4 : la porte des fixtures de
+    contrat est `REPLAY_CONTRACT_UPDATE`, pas `LEVELUP_CONTRACT_FIXTURES`.
+20. (2026-09-27, J7) Tests `KILLSOURCE_FIXTURES` : attendus d'assistants (`killEvents`, `multi`
+    de 9b191a7f/fccc61cd) à re-mesurer par le superviseur ; le suicide consommé par le recollage
+    reste perdu (antérieur) ; `pairs[].victimXUID` sans lecteur de production.
+21. (2026-09-27, J5.1-J5.3) Filtres de vitesse et d'isolement par slot et non par vie
+    (`BipedPosition` sans génération) ; `bornAt(slot)` de l'équipement par slot ; génération sur
+    2 bits sans seconde coupure pour l'équipement ; `BipedCreation.LifeKey() uint32` coexiste avec
+    `types.LifeKey` ; le collecteur n'a pas de compteur de replis (le repli de génération vivante
+    n'y est pas compté) ; en-tête de `offline_biped.go` (`idLow` 14 bits) inexact.
 
 ---
 
@@ -1427,3 +1456,37 @@ relancer un agent sans avoir vérifié qu'il est mort. Ne pas re-décider ce qui
   les politiques divergentes (roster de l'index, `CaptureDirs`, `injectiveOrEmpty`, fatalité des
   erreurs) restent chez chaque appelant. Baseline `.ai/baselines/tests_pre_migration.jsonl` à
   mettre à jour par le superviseur (tests déplacés de `replay` vers `grammar`).
+- 2026-09-26/27 : **J4 CLOS sur la branche** (fusionné `8f89aeedc`). J4.2 (`dd0d4dfa3`, feuille
+  `film/finalise`, baseline : 29 tests repointés) : G-equiv 20/20 identiques. J4.3-J4.5
+  (`ba7ad4322`, `bc982cdf8`, `a15bfc126`) : étage unique `grammar.ScanPontDIdentite` appelé par
+  la cuisson et le collecteur, politiques chez chaque appelant (roster fourni par l'appelant),
+  `IsolationDecoderRev` → `isolement-2026-09-26-pont-unique-exemptions`, façade 173 → 165,
+  `cmd/rdata_weapon_scan` sous `film/research` ; G-equiv 20/20 identiques. J4.6 (`c69d0c097`) :
+  condition S2 tenue (A/B alternés, priorité haute, 17 paires : −0,92 % ± 1,3 point), ratchet
+  structurel d'extraction de bits, allowlist NON vide (neuf lecteurs hors inventaire, §8.17 :
+  écart au « allowlist vide » du plan, retenu pour garder le périmètre fermé) ; G-equiv 20/20
+  identiques. Découvertes §8.17-8.18.
+- 2026-09-27 : **J9 fait** (`0224df408`, branche locale `-j9`, un seul commit : les états
+  intermédiaires rougissent la forme du document) : RB1-1..RB1-8, schéma 73, aucune révision de
+  couche montée ; correctif superviseur : la bombe se ferme à la mort la PLUS PRÉCOCE quel que soit
+  l'ordre de la liste (+ test). J9.2 : repli nommé seul (lecture du film absente, §8.19). G-corpus
+  à jouer.
+- 2026-09-27 : **J7 fait puis revu** (branche `-j7`) : `005e9e710` (FK-1..FK-7,
+  `killsource-2026-09-26`, un seul commit : les états intermédiaires rougissent le golden de
+  révision) ; revue ronde 1 : 4 constats (dont 3 bloquants introduits par le lot : faux couple
+  recollé masquant une mort de bot, tueur sans mort annulant l'épinglage d'un film, bot perdu sur
+  siège vacant intercalé ; ratchet contournable) corrigés (`b1c493698` ; option (c) pour FK-1,
+  décision superviseur : slot < sièges ET siège nommé). Revue ronde 2 (corrections seules) :
+  1 défaut de données introduit par la correction FK-4 (exception non bornée à l'instant : une
+  mort de bot d'un autre instant peut remplacer la ligne), 2 P2 (compteur de provenance compté
+  deux fois, ratchet aveugle aux `:=`). **Borne de 2 rondes atteinte : escaladé à l'utilisateur**
+  (options : resserrer l'exception à l'instant exact + les 2 P2 sans 3e revue — recommandé ;
+  retirer l'exception ; 3e revue). En attente de sa décision.
+- 2026-09-27 : **J5.0 fait** : instrument `gb1` (`2b2d0d4e1`) ; mesure sur 19 films
+  (`fcf1a8db4`, `.ai/V7.5/film_re/MESURE_GB1_2026-09-27.md`) : critère tenu (`084a804d` : 123
+  vies de génération 2 sans position, l'audit 122) ; 4 films touchés (`1c4c63c2` : 330 vies,
+  rejeu tronqué de 463 s) ; cibles de J5.5 écrites avant de coder. **J5.1-J5.3 faits**
+  (`10574e8ad`, `9f1563ff2`) : `types.LifeKey`, lecteur unique du handle + ratchet, filtre de
+  génération vivante (`RequireTag1` supprimé), chaînes par vie ; golden killsource régénéré par
+  le superviseur à révision constante. G-equiv de J5.1 lancé. J5.4 lancé (un calage de 10 min,
+  relancé). Découvertes §8.20-8.21.

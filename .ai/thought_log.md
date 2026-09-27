@@ -113556,3 +113556,11 @@ serveur relance a synchronise depuis). Tache Notion 10 CLOSE.
 **Resultats observes** : revue adversariale J3 : 22 conditions tiennent, 0 P0/P1, 2 P2 (docs corrigees ; catalogue de cartes lu a l'execution non couvert par killsource pour les lignes, anterieur, plan §8.14). G-equiv : 60/61 etapes identiques sur 20 films, seul l'artefact diverge, 13 differences toutes declarees (verif champ a champ sur 51101d1d) ; references re-figees au schema 72. Faits du principal intacts.
 
 **Conclusion / prochaine etape** : CI de la branche ; J4 S1 (etage de balayage unique) en cours ; mesure de reference J4.0.5 sur films reels a faire par le superviseur.
+
+## [2026-09-27] Suite de l'audit du decodeur : J4 clos sur la branche, J5.0-J5.3, J7 et J9 faits — En cours (vague J11 ; J7 en attente d'une decision utilisateur)
+
+**Decision technique principale** : J4 (etage unique du pont d'identite, feuille `film/finalise`, lecteurs de bits par `source`) fusionne dans la branche du plan ; J7 (killsource FK-1..FK-7) et J9 (drapeau/bombe/zones, schema 73) menes en parallele dans leurs worktrees ; J5.0 mesure GB-1 sur 19 films avant tout code, puis J5.1-J5.3 (identite (slot, generation) typee, filtre de generation vivante). Decisions superviseur : feuille `film/finalise` (J4.2), roster fourni par l'appelant (J4.3), allowlist datee des neuf lecteurs hors inventaire (J4.6), option (c) pour FK-1 (J7), mort la plus precoce pour la bombe (J9.5).
+
+**Resultats observes** : replay-equiv 20/20 identiques a J4.2, J4.5 et J4.6 ; benchmark J4.6 -0,92 % ; GB-1 : 4 films touches (123, 330, 74, 77 vies sans position ; `1c4c63c2` tronque de 463 s), 15 temoins intacts. Revue J7 : ronde 1 4 constats corriges, ronde 2 1 defaut de donnees introduit par la correction FK-4 -> borne de 2 rondes atteinte, escalade a l'utilisateur.
+
+**Conclusion / prochaine etape** : decision utilisateur sur J7 ; J5.4 en cours puis J5.5 (montees, G-corpus contre les cibles) ; G-equiv J5.1 en cours ; G-corpus J7/J9 ; J6 attend Ghidra (utilisateur) ; J8, J10 apres J5.
