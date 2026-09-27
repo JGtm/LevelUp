@@ -294,9 +294,17 @@ func (c corpsLu) viesOuvertes(lives []lifeSpan, vies []int) map[int]dateDeCreati
 // anterieure au record garde cet unique record : c'est le MEME corps, la creation precedant
 // toujours la replication (lot E2, cas a2).
 func (c corpsLu) recordAuDebutDe(l lifeSpan) (dateDeCreation, bool) {
+	return c.recordA(l.from)
+}
+
+// recordA est [corpsLu.recordAuDebutDe] a un instant quelconque de l'horloge du film : le corps
+// (slot, generation) qui tient le slot a `tUS`. Les lecteurs qui situent un EVENEMENT ou une
+// PISTE (lot J5.4) posent la meme question que la decoupe des vies, et ils recoivent la meme
+// reponse — une seule regle de partage d'un slot recycle.
+func (c corpsLu) recordA(tUS int64) (dateDeCreation, bool) {
 	k := -1
 	for j := range c.dates {
-		if c.dates[j].tUS > l.from {
+		if c.dates[j].tUS > tUS {
 			break
 		}
 		k = j

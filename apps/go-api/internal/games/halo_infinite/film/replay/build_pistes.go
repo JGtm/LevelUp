@@ -70,7 +70,7 @@ func (a *assemblage) poserLesPistes() {
 	// partagé, lu par l'entité qui vit à sa création (lot M2.3) —, puis les slots que le pont
 	// attribue à l'index d'un bot unique.
 	nommerLesPistesDeBotParLeurVie(a.doc.Tracks, a.reg.Vies(), a.opt.Bots, a.horloge())
-	nameBotTracks(a.doc.Tracks, a.reg.IndexParSlot(), a.opt.Bots)
+	nameBotTracks(a.doc.Tracks, a.reg.Occupants(), a.opt.Bots, a.origin, a.step)
 	// LES RELAIS EN DERNIER : le remplaçant hérite des vies restées anonymes après tout ce
 	// que la lecture et les fermetures savaient nommer (cf. successions.go). C'est un repli.
 	attributeSuccessions(a.doc.Tracks, a.opt.Successions, calageDesRelais{origin: a.origin,

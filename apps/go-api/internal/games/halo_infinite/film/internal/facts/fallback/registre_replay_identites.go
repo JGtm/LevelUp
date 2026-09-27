@@ -469,4 +469,20 @@ var registreReplayIdentites = []Repli{
 		CritereRetrait:  "0 armement anterieur a la frame 0 sur les films d'Assaut du corpus",
 		CompteurBranche: true,
 	},
+	{
+		Nom:  "repli_identite_vie_par_occupation_du_corps",
+		Fait: "le joueur d une piste publiee que ni la lecture (creation, morts, table) ni les fermetures, bots et relais n ont nommee",
+		Mecanisme: "la vie nommee du MEME CORPS (slot, generation) qui precede la piste, sinon celle qui la suit, sinon le pont par slot quand les records du slot ne divergent pas ; " +
+			"abstention entre deux occupants differents (lot J5.4 : borne au corps, RA2-2)",
+		Condition: CondNonResolu,
+		Ordre:     OrdreApresLecture,
+		Sites: []Site{{
+			Fichier: pkgReplay + "unnamed_lives.go",
+			Ancre:   "reg.fb.Declenche(fallback.NomIdentiteVieParOccupationDuCorps)",
+		}},
+		DatePose:        "2026-09-27",
+		CibleRetrait:    "J11 du plan PLAN_SUITE_AUDIT_DECODEUR_FILM (gates de corpus) : lecture de l identite des vies restantes (fin de vie sans mort ecrite, bots sans entite)",
+		CritereRetrait:  "0 piste nommee par occupation sur le corpus du gate de rejeu",
+		CompteurBranche: true,
+	},
 }

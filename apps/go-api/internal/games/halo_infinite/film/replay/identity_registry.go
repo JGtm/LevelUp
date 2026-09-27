@@ -162,6 +162,14 @@ type IdentityRegistry struct {
 	// : la table d'index EFFECTIVE, la voie de chaque lien, les gamertags du film et la
 	// couverture (cf. identity_registry_film_table.go).
 	filmTable filmTableLinks
+	// corps porte, par slot, les CORPS SUCCESSIFS (slot, generation) que les records de creation
+	// etablissent, dates (lot J5.4). C'est ce qui repond « quel corps tient ce slot a cet
+	// instant » aux lecteurs qui nomment une piste ou rattachent un evenement (cf.
+	// identity_registry_corps.go) ; vide quand le film ne porte aucune creation lue.
+	corps map[uint32]corpsLu
+	// fb est le compteur de replis de la cuisson (nil-safe) : le nommage final par occupation
+	// (unnamed_lives.go) est un repli, et il se compte la ou il nomme.
+	fb *fallback.Compteur
 }
 
 // BuildIdentityRegistry construit le registre d'identite du film. PURE : aucune I/O.
@@ -188,7 +196,8 @@ type IdentityRegistry struct {
 //     tout l'intervalle lui revient (lot P2-bis) ;
 //  5. ce qui resiste est publie « non resolu » AVEC SA CAUSE et COMPTE, avec son alarme.
 func BuildIdentityRegistry(in IdentityInput) IdentityRegistry {
-	reg := IdentityRegistry{deducedLives: map[int]bool{}}
+	reg := IdentityRegistry{deducedLives: map[int]bool{}, corps: corpsParSlot(in.BipedCreations),
+		fb: in.Fallbacks}
 	// LA TABLE EFFECTIVE SE COMPOSE AVANT TOUT LE RESTE, et `in` la porte ensuite : sans cela,
 	// deux etapes du meme registre liraient deux tables differentes du meme film.
 	reg.filmTable = composerTableDIndex(in)

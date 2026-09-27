@@ -103,4 +103,6 @@ const (
 	// NomGenerationVivanteInconnueTag1 : `grammar/generations_vivantes.go` (`Accepte`) ; compte par
 	// `replay/film_scan.go`, `balayerPositions` (lot J5.2).
 	NomGenerationVivanteInconnueTag1 Nom = "repli_generation_vivante_inconnue_tag1"
+	// NomIdentiteVieParOccupationDuCorps : `replay/unnamed_lives.go`, `nameRemainingLives` (lot J5.4).
+	NomIdentiteVieParOccupationDuCorps Nom = "repli_identite_vie_par_occupation_du_corps"
 )

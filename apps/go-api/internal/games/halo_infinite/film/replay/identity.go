@@ -285,13 +285,18 @@ func buildRoster(idx types.PlayerIndexTable, names map[uint64]string, bots []Bot
 
 // nameBotTracks pose le NOM d'un bot sur les vies que le pont attribue à son index.
 //
-// LA PORTE EST LE PONT, PAS UNE DEVINETTE : `owner` (slot -> index) ne contient un slot que
+// LA PORTE EST LE PONT, PAS UNE DEVINETTE : `occ` (slot -> index) ne connait un slot que
 // par une lecture ou une fermeture à candidat unique (cf. owners.go / closures.go). Un bot
 // n'ayant pas de xuid, ses slots n'entrent jamais par le fil des morts — seules les
 // fermetures (un bot TIRE, fermeture A) peuvent les apporter. Une vie déjà nommée par un
 // xuid n'est jamais écrasée : sur un slot recyclé humain -> bot, l'humain garde SES vies.
-func nameBotTracks(tracks []Track, owner map[uint32]int, bots []BotIdentity) {
-	if len(owner) == 0 || len(bots) == 0 {
+//
+// L'INDEX EST CELUI DU CORPS QUI TIENT LE SLOT AU MILIEU DE LA PISTE (RA2-2, lot J5.4,
+// 2026-09-27), pas celui du slot : sur un slot recyclé, le pont par slot garde le PREMIER
+// occupant, et le bot d'un corps suivant restait anonyme — puis le nommage final lui donnait
+// l'identité du corps précédent (cf. identity_registry_corps.go).
+func nameBotTracks(tracks []Track, occ occupantsDesSlots, bots []BotIdentity, origin, step uint64) {
+	if occ.vide() || len(bots) == 0 {
 		return
 	}
 	nameByIndex, partages := botNamesBySeat(bots)
@@ -305,7 +310,8 @@ func nameBotTracks(tracks []Track, owner map[uint32]int, bots []BotIdentity) {
 		if tracks[i].XUID != "" || tracks[i].Bot != "" {
 			continue
 		}
-		pi, ok := owner[tracks[i].Slot]
+		from, to := trackSpanUS(tracks[i], origin, step)
+		pi, ok := occ.indexA(tracks[i].Slot, from+(to-from)/2)
 		if !ok {
 			continue
 		}
