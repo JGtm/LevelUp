@@ -76,7 +76,6 @@ import (
 	"database/sql"
 	"fmt"
 	"log/slog"
-	"strings"
 	"time"
 
 	"levelup/go-api/internal/analysis"
@@ -160,10 +159,9 @@ func (l lectureANommer) matchsKillFeed(ctx context.Context, db *sql.DB, restants
 
 // matchsDesParticipants : parmi `matchIDs`, les matchs ou au moins un des xuids a joue.
 func matchsDesParticipants(ctx context.Context, db *sql.DB, xuids, matchIDs []string) ([]string, error) {
-	q := "SELECT DISTINCT match_id FROM match_participants WHERE xuid IN (" + Placeholders(len(xuids)) +
-		") AND match_id IN (" + Placeholders(len(matchIDs)) + ")"
-	args := append(ToAnySlice(xuids), ToAnySlice(matchIDs)...)
-	rows, err := db.QueryContext(ctx, q, args...)
+	parX, argX := clauseListeParJointure("xuid", xuids)
+	parM, argM := clauseListeParJointure("match_id", matchIDs)
+	rows, err := db.QueryContext(ctx, "SELECT DISTINCT match_id FROM match_participants WHERE "+parX+" AND "+parM, argX, argM)
 	if err != nil {
 		return nil, fmt.Errorf("annuaire (matchs des restants): %w", err)
 	}
@@ -290,13 +288,11 @@ func xuidsSansNom(xuids []string, a analysis.AnnuaireGamertags) []string {
 func lireAliasEtParticipants(
 	ctx context.Context, db *sql.DB, xuids []string, lecture lectureANommer, a *analysis.AnnuaireGamertags,
 ) error {
-	q := analysis.AnnuaireNomsBaseSQL(Placeholders(len(xuids)))
-	args := make([]any, 0, 2*len(xuids)+len(lecture.matchIDs))
-	args = append(args, ToAnySlice(xuids)...)
-	args = append(args, ToAnySlice(xuids)...)
+	q := analysis.AnnuaireNomsBaseSQL()
+	args := []any{argListe(xuids), argListe(xuids)}
 	if !lecture.porteeBase {
-		q = analysis.AnnuaireNomsSQL(Placeholders(len(xuids)), Placeholders(len(lecture.matchIDs)))
-		args = append(args, ToAnySlice(lecture.matchIDs)...)
+		q = analysis.AnnuaireNomsSQL()
+		args = append(args, argListe(lecture.matchIDs))
 	}
 	rows, err := db.QueryContext(ctx, q, args...)
 	if err != nil {
@@ -322,13 +318,12 @@ func lireAliasEtParticipants(
 func lireKillFeed(
 	ctx context.Context, db *sql.DB, xuids, matchIDs []string, a *analysis.AnnuaireGamertags,
 ) error {
-	q := analysis.AnnuaireKillFeedSQL(Placeholders(len(xuids)), Placeholders(len(matchIDs)))
-	args := make([]any, 0, analysis.AnnuaireKillFeedJambes*len(matchIDs)+len(xuids))
+	args := make([]any, 0, analysis.AnnuaireKillFeedJambes+1)
 	for range analysis.AnnuaireKillFeedJambes {
-		args = append(args, ToAnySlice(matchIDs)...)
+		args = append(args, argListe(matchIDs))
 	}
-	args = append(args, ToAnySlice(xuids)...)
-	rows, err := db.QueryContext(ctx, q, args...)
+	args = append(args, argListe(xuids))
+	rows, err := db.QueryContext(ctx, analysis.AnnuaireKillFeedSQL(), args...)
 	if err != nil {
 		return fmt.Errorf("annuaire (kill-feed): %w", err)
 	}
@@ -360,8 +355,7 @@ func lireKillFeedBase(ctx context.Context, db *sql.DB, xuids []string, a *analys
 // LECTURE DE LOCALISATION de la table append-only `match_kill_events` (ADR 0036, « locating
 // read » ; site unique) : elle ne rend que des match_id, aucune valeur n'en est lue.
 func localiserKillFeed(ctx context.Context, db *sql.DB, xuids []string) ([]string, error) {
-	valeurs := strings.TrimSuffix(strings.Repeat("(?), ", len(xuids)), ", ")
-	rows, err := db.QueryContext(ctx, analysis.AnnuaireKillFeedLocaliserSQL(valeurs), ToAnySlice(xuids)...)
+	rows, err := db.QueryContext(ctx, analysis.AnnuaireKillFeedLocaliserSQL(), argListe(xuids))
 	if err != nil {
 		return nil, fmt.Errorf("annuaire (kill-feed, localisation): %w", err)
 	}

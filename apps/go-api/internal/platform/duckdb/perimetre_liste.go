@@ -17,12 +17,32 @@ package duckdb
 // UN APPEL PAR VUE : un filtre posé sur une vue ne traverse pas la jointure vers une autre vue
 // `_latest` (ADR 0036 I2). Chaque vue lue reçoit son propre prédicat, avec la même liste.
 
-// clauseListeMatchs rend le prédicat qui borne la colonne `col` à la liste `ids`, et son unique
-// argument : la liste, liée comme `VARCHAR[]`. Une liste vide ne retient aucun match (le
-// prédicat vaut faux, jamais « tous ») ; les lecteurs rendent la main avant de toute façon.
+import "levelup/go-api/internal/analysis"
+
+// LE TEXTE DU PRÉDICAT VIT DANS `analysis` (sql_liste.go, source unique partagée avec les gabarits
+// de l'annuaire des noms, item B.7) ; ce fichier n'y ajoute que l'argument. Deux formes : la
+// constante pour `match_id` sous une fenêtre (clauseListeMatchs), la semi-jointure partout
+// ailleurs (clauseListeParJointure) — cf. l'en-tête de sql_liste.go.
+
+// clauseListeMatchs rend le prédicat CONSTANT qui borne la colonne `col` (un `match_id` sous une
+// fenêtre `_latest`) à la liste `ids`, et son unique argument : la liste, liée comme `VARCHAR[]`.
+// Une liste vide ne retient aucun match (le prédicat vaut faux, jamais « tous ») ; les lecteurs
+// rendent la main avant de toute façon.
 func clauseListeMatchs(col string, ids []string) (string, any) {
+	return analysis.SQLDansListe(col), argListe(ids)
+}
+
+// clauseListeParJointure : la même liste en SEMI-JOINTURE (listes de xuids, filtres sur des
+// tables ; jamais sous une fenêtre `_latest`).
+func clauseListeParJointure(col string, ids []string) (string, any) {
+	return analysis.SQLDansListeParJointure(col), argListe(ids)
+}
+
+// argListe rend l'argument d'une liste liée : la liste elle-même, jamais nil (un `nil` se lierait
+// comme NULL, et le prédicat vaudrait NULL au lieu de faux).
+func argListe(ids []string) any {
 	if ids == nil {
-		ids = []string{}
+		return []string{}
 	}
-	return "list_contains(?::VARCHAR[], " + col + ")", ids
+	return ids
 }
