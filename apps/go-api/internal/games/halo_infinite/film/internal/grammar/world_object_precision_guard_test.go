@@ -60,12 +60,6 @@ var worldObjectPrecisionReaders = map[string]string{
 		"(2026-09-17, lot 2.3) : `LargeursObjetDuMonde`, ses deux poses, et le contexte des " +
 		"enveloppes D2, qui pose le découpage LU DANS LE FILM. La cuisson, elle, prend celui " +
 		"du CATALOGUE de la carte — et c'est écrit à chacun des deux endroits",
-	"internal/games/halo_infinite/film/internal/grammar/traverse.go": "la LARGEUR D'INDEX DE RÉGION lue par " +
-		"la queue d'i60 (`consumeSimStateHandleTail`) — même contrat que le reste : les " +
-		"largeurs viennent de l'appelant (BuildFromFilm / installWorldObjectPrecision). " +
-		"Depuis le lot 2.7 (2026-09-16) c'est la SEULE mention restée dans ce fichier : la " +
-		"déclaration, le setter et les deux lectures du chemin de traversée en sont sortis " +
-		"par déplacement pur, vers `traverse_precision.go` et `dispatch_object.go`",
 	"internal/games/halo_infinite/film/internal/profile/profil.go": "le CHAMP `Movement.WorldObject` et " +
 		"son invariant (2026-09-17, lot 2.2.b) : l'entrée `cliffhanger` du catalogue, que " +
 		"l'installateur de `replay` remplace par la carte du match. Aucune lecture de décodage ici. " +
@@ -77,10 +71,21 @@ var worldObjectPrecisionReaders = map[string]string{
 	"internal/games/halo_infinite/film/internal/grammar/traverse_precision.go": "déclaration du global et son setter. " +
 		"Vivait dans `traverse.go` jusqu'au lot 2.7 (2026-09-16), qui l'en a sorti par " +
 		"déplacement pur — la scission des fichiers de plus de 500 lignes",
-	"internal/games/halo_infinite/film/internal/grammar/dispatch_object.go": "les deux lectures du chemin de " +
-		"traversée (`object-position-component`). Vivaient dans le `switch` de `consumeByName`, " +
-		"dans `traverse.go`, jusqu'au lot 2.7 (2026-09-16) qui a coupé ce switch en chaîne de " +
-		"maillons par déplacement pur — même contrat d'installation qu'avant",
+	"internal/games/halo_infinite/film/internal/grammar/lecteur_position.go": "LE PORTAGE UNIQUE de " +
+		"`FUN_14076e524` (lot J6.3, 2026-09-27) : `tablesDuProfil` lit la largeur d'index de plage " +
+		"(`DAT_144632be0`) et la table PAR INDEX de la carte, et `semerPositionAbsolue` la plage " +
+		"cataloguée (`Region`). Il reprend les lectures que tenaient `traverse.go` (la queue d'i60), " +
+		"`dispatch_object.go` (world-object i0), `position_capture.go` (`absAxisWFor`) et " +
+		"`components_position_i0.go` (l'index et la règle d'émission du chemin absolu). Même contrat " +
+		"d'installation qu'avant : les largeurs viennent de l'appelant (BuildFromFilm / " +
+		"installWorldObjectPrecision) ; `idx == -1` n'en prend AUCUNE — c'est la table DÉFAUT du " +
+		"build, à la ligne du niveau du site",
+	"internal/games/halo_infinite/film/internal/grammar/lecteur_position_exceptions.go": "L EXCEPTION DATEE " +
+		"world-object i0 (lot J6.3, 2026-09-27, decision du superviseur) : `consumeObjectPositionMonde` " +
+		"garde le lecteur d avant le lot — index sur `DAT_144632be0` et largeurs de la CARTE, que la " +
+		"porte soit posee ou non — parce que la lecture du jeu (table DEFAUT porte posee) fait baisser " +
+		"la fermeture d image-cle sur les anciens builds. Meme contrat d installation que le reste : " +
+		"BuildFromFilm / installWorldObjectPrecision. Vivait dans `dispatch_object.go`",
 	"internal/games/halo_infinite/film/internal/grammar/projectiles.go": "longueur du champ (`projPosBits`) et " +
 		"déquantification (`decodeWorldObjectPos`) — le balayage des objets du monde",
 	"internal/games/halo_infinite/film/internal/profile/precision.go": "CITATION en commentaire (2026-09-12, " +
@@ -97,22 +102,6 @@ var worldObjectPrecisionReaders = map[string]string{
 		"`repli_carte_absente_largeurs_par_defaut` porte au registre. C'est la question de cette " +
 		"garde, et la réponse y est écrite ; aucune largeur n'est lue ici, seul le drapeau " +
 		"`CarteLue` l'est",
-	"internal/games/halo_infinite/film/internal/grammar/position_capture.go": "LA LECTURE DU CHEMIN ABSOLU " +
-		"D'i0 (`absAxisWFor`), depuis le lot 3.4.1 : la largeur UNIFORME de 14 bits qui " +
-		"l'écrasait a disparu avec `Movement.AbsoluteAxisW`, et le bipède lit désormais la " +
-		"table PAR INDEX de la carte — la MÊME que le chemin world-object, ce qu'elle a " +
-		"toujours été chez `FUN_14076e524`. Même contrat d'installation que le reste : les " +
-		"largeurs viennent de l'appelant (BuildFromFilm / installWorldObjectPrecision) ; sans " +
-		"installation ce sont celles de Cliffhanger, et `killsource` en mesure l'écart par son " +
-		"oracle (`calibration.Desaccords`). `idx == -1` n'en prend AUCUNE : c'est la table " +
-		"DÉFAUT du build (`profile.LargeursAxeParDefautDuBuild`, ±20000)",
-	"internal/games/halo_infinite/film/internal/grammar/components_position_i0.go": "LA RÈGLE D'ÉMISSION ET " +
-		"LA LARGEUR D'INDEX DE PLAGE du chemin absolu d'i0 (correctif D1 (3.4), lot 3.4.1) : " +
-		"`consumeAbsolutePayload` n'émet une position que si l'index lu désigne la plage " +
-		"CATALOGUÉE (`Region`), et lit cet index sur `DAT_144632be0` — la largeur de la CARTE, " +
-		"pas celle du descripteur de l'appelant. Les deux viennent du descripteur installé par " +
-		"`replay.installWorldObjectPrecision` ; sans installation, `Region` vaut 0 et la " +
-		"largeur 1, c'est-à-dire le cas de 78 cartes sur 79",
 	"internal/games/halo_infinite/film/internal/grammar/keyframe_ground_weapons.go": "CITATION en commentaire " +
 		"(parenté des archétypes d'objet du monde) — aucune lecture de la valeur",
 	"internal/games/halo_infinite/film/internal/grammar/components_biped_anchor.go": "le corps tag==3 d'i59 (ancre du " +

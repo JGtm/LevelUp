@@ -33,7 +33,7 @@ package grammar
 //	FUN_14080bd28   R(15)   (un handle court, masque `& 0x7fff`)  — NEUF ici
 //	FUN_142af27f8   R(2)    (deja porte : components_object_state.go)
 //	FUN_141015740   R(32)   (deja porte : consumeObjectLowFrequency)
-//	FUN_14076e494   la queue quantifiee LEVEL=0x10 = [consumeSimStateHandleTail]
+//	FUN_14076e494   la queue quantifiee LEVEL=0x10 = [lireE494]
 //	FUN_14076dc04   R(19)   — la largeur `R9D = 0x13` est LUE AU DESASSEMBLAGE des trois sites
 //	                         (142f263e5 `LEA R9D,[RBX+0x13]` avec RBX=0 ; 142f2658b
 //	                         `MOV R9D,0x13` ; 1431c357d `MOV R9D,0x13`)
@@ -154,7 +154,7 @@ func consumePostureAnchorTail(br *Lecteur) (mot, dir uint64) {
 //	    R(15)                              FUN_14080bd28      -> dst+0xc
 //	    R(2)                               FUN_1406d310c(3)   -> dst[1]
 //	    R(2)                               FUN_1406d310c(4)   -> dst[2]
-//	    FUN_14076e494(..., 0x10)           consumeSimStateHandleTail -> dst+0x10
+//	    FUN_14076e494(..., 0x10)           lireE494 -> dst+0x10
 //	    FUN_14076dc04(..., 0x13) = R(19)   -> dst+0x1c
 //
 // C est la SEULE branche dont la charge entiere est derriere une valeur non nulle : un tag 1 a
@@ -168,14 +168,14 @@ func consumePostureTag1(br *Lecteur) (ch postureCharge) {
 	ch.handle = br.ReadBits(postureShortHandleBits) // FUN_14080bd28 = R(15)
 	br.ReadBits(postureSubTagBits)                  // FUN_1406d310c(3) = R(2) -> dst[1]
 	br.ReadBits(postureSubTagBits)                  // FUN_1406d310c(4) = R(2) -> dst[2]
-	consumeSimStateHandleTail(br)                   // FUN_14076e494(..., 0x10)
+	lireE494(br, niveauPosition)                    // FUN_14076e494(..., 0x10)
 	ch.dir = br.ReadBits(posturePackedDirBits)      // FUN_14076dc04(..., 0x13)
 	return ch
 }
 
 // consumePostureTag2 porte FUN_142f263ac (octet de genre 2) :
 //
-//	FUN_14076e494(..., 0x10)               consumeSimStateHandleTail -> dst+0
+//	FUN_14076e494(..., 0x10)               lireE494 -> dst+0
 //	FUN_14076dc04(..., 0x13) = R(19)       -> dst+0xc
 //	g = R(1)                               FUN_1406cf008 -> dst+0x1c
 //	    g == 0 : R(32)                     -> dst+0x18
@@ -186,7 +186,7 @@ func consumePostureTag1(br *Lecteur) (ch postureCharge) {
 // de 32 bits, ou une reference d entite resolue (`FUN_1408e04c8` la recopie vers `dst+0x18`,
 // sans lire un bit). C est la signature d un OBJET PORTEUR.
 func consumePostureTag2(br *Lecteur) (ch postureCharge) {
-	consumeSimStateHandleTail(br)              // FUN_14076e494(..., 0x10)
+	lireE494(br, niveauPosition)               // FUN_14076e494(..., 0x10)
 	ch.dir = br.ReadBits(posturePackedDirBits) // FUN_14076dc04(..., 0x13)
 	if br.ReadBit() {                          // FUN_1406cf008 : porte a 1 -> reference d entite
 		ch.porte = 1
@@ -203,7 +203,7 @@ func consumePostureTag2(br *Lecteur) (ch postureCharge) {
 //	R(15)                                  FUN_14080bd28 -> dst+0x20  (AVANT la porte)
 //	g = R(1)                               FUN_1406cf008 -> dst+0x1c
 //	si g != 0 :
-//	    FUN_14076e494(..., 0x10)           consumeSimStateHandleTail -> dst+0
+//	    FUN_14076e494(..., 0x10)           lireE494 -> dst+0
 //	    FUN_14076dc04(..., 0x13) = R(19)   -> dst+0xc
 //	R(32)                                  FUN_141015740 -> dst+0x18
 //	R(1) + R(1)                            FUN_1406cf008 x2 -> dst+0x1d, dst+0x1e
@@ -211,7 +211,7 @@ func consumePostureTag3(br *Lecteur) (ch postureCharge) {
 	ch.handle = br.ReadBits(postureShortHandleBits) // FUN_14080bd28 = R(15)
 	if br.ReadBit() {                               // FUN_1406cf008
 		ch.porte = 1
-		consumeSimStateHandleTail(br)              // FUN_14076e494(..., 0x10)
+		lireE494(br, niveauPosition)               // FUN_14076e494(..., 0x10)
 		ch.dir = br.ReadBits(posturePackedDirBits) // FUN_14076dc04(..., 0x13)
 	}
 	ch.mot = br.ReadBits(postureWord32Bits) // FUN_141015740 = R(32)

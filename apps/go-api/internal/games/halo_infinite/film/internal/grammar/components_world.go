@@ -14,6 +14,8 @@ package grammar
 // DÉSYNCHRONISE proprement sur les branches de largeur runtime au lieu de deviner des bits
 // (décision de méthode inscrite en tête du bloc `crew-order` de traverse.go). Les rebrancher,
 // ce serait réintroduire l'approche écartée. `state-broker` visait ti=46, ni décodé ni planifié.
+// (Lot J6.3, 2026-09-27 : la « quantification 6+level » était fausse elle aussi — aucun site du
+// jeu ne transmet le niveau du registre au lecteur ; les vec3 passent par le portage unique.)
 
 // change-scene-component (FUN_142ed3fcc): R(6) + R(12)=N + N-bit blob (N self-describing).
 func consumeChangeScene(br *Lecteur) {
@@ -44,7 +46,7 @@ func consumeSpawnFilterType(br *Lecteur) {
 		br.ReadBits(6)
 	default:
 		br.ReadBits(32)
-		consumeE524PositionBody(br)
+		lireE494(br, niveauPosition) // FUN_142b6eeec -> FUN_14076e494(0x10), CALL 142b6ef31
 		br.ReadBits(3)
 		count := int(br.ReadBits(4))
 		for i := 0; i < count; i++ {
@@ -77,7 +79,7 @@ func consumeStatborgValueStat(br *Lecteur) {
 func consumeTacmapAreaOfInterest(br *Lecteur) {
 	br.ReadBits(32)
 	br.ReadBits(3)
-	consumeE524PositionBody(br)
+	lireE494(br, niveauPosition) // FUN_142ed7764 -> FUN_1424e0e38(0x10), CALL 142ed7853
 	br.ReadBits(12)
 }
 
@@ -86,7 +88,7 @@ func consumeTacmapDisplayAsset(br *Lecteur) {
 	br.ReadBits(32)
 	br.ReadBits(32)
 	br.ReadBits(2)
-	consumeE524PositionBody(br)
+	lireE494(br, niveauPosition) // FUN_142ed7d38 -> FUN_1424e0e38(0x10), CALL 142ed7edf
 	br.ReadBits(64)
 	br.ReadBits(32)
 	br.ReadBits(64)
@@ -107,7 +109,7 @@ func consumeTacmapDisplayAsset(br *Lecteur) {
 //nolint:unused // grammaire d'un composant de ti=23 — voir la condition de retrait ci-dessus.
 func consumeSelectableZoneData(br *Lecteur) {
 	br.ReadBits(32)
-	consumeE524PositionBody(br)
+	lireE494(br, niveauPosition) // FUN_141454340 -> FUN_14076e494(0x10), CALL 14145437e
 	if br.ReadBits(1) == 0 {
 		br.ReadBits(5)
 	}
@@ -136,18 +138,6 @@ func consumeGameEngineSharedTeamLives(br *Lecteur) {
 	}
 }
 
-// consumeE524PositionBody mirrors the FUN_14076e524 absolute-position read WITHOUT a
-// leading gate (the caller supplies its own gate): R(1) index-select; if 0 -> R(idxW)
-// index; then 3 axes of R(axisW). Widths from `Lecteur.traversal` (runtime, derivable).
-func consumeE524PositionBody(br *Lecteur) {
-	if !br.ReadBit() { // FUN_14076e524 index-present select
-		br.ReadBits(br.traversal().IndexW)
-	}
-	for i := 0; i < 3; i++ {
-		br.ReadBits(br.traversal().AxisW[i]) // FUN_140cc5128 axis i
-	}
-}
-
 // consumeCompressedDir140c1e79c mirrors FUN_140c1e79c: R(1) sign; if 0 -> R(19) packed
 // magnitude (FUN_1406d8288); then R(8) scale (FUN_1406d84b4 width 0x8 @140c1e80f).
 func consumeCompressedDir140c1e79c(br *Lecteur) {
@@ -157,22 +147,21 @@ func consumeCompressedDir140c1e79c(br *Lecteur) {
 	br.ReadBits(8) // FUN_1406d84b4 width 8
 }
 
-// consumeGenericRigidBodyTransforms mirrors FUN_142f036f0 (generic-rigid-body-transforms,
-// i18 of item/object archetypes ti=36/38/39…):
-//
-//	mask = R(8) ; for each set bit (0..7): FUN_140c1e79c (compressed dir) +
-//	FUN_1404fdcb4 (local float, 0 bits) + FUN_14076e494 (e524 absolute position).
-func consumeGenericRigidBodyTransforms(br *Lecteur) {
-	mask := br.ReadBits(8)
-	for i := uint(0); i < 8; i++ {
-		if mask&(1<<i) != 0 {
-			consumeCompressedDir140c1e79c(br)
-			consumeE524PositionBody(br)
-		}
-	}
-}
-
 // Les ports `crew-marked-objects-component` (ti=14 i1) et `crew-order-component` (ti=14 i0)
 // vivaient ici ; retirés le 2026-08-01 (voir la note de retrait en tête de fichier) — le
-// dispatch de traverse.go les porte, avec la quantification 6+level et la désynchronisation
+// dispatch de traverse.go les porte (le vecteur par le portage unique depuis le lot J6.3) et la désynchronisation
 // propre sur la branche de largeur runtime.
+
+// consumeTacmapWaypointState porte ti=34 i7 (`FUN_140f04d74` -> `FUN_140f04d88`) : R(1),
+// `FUN_14080dec4` "waypoint-lockedto" = R(32), la garde de pleine precision puis
+// `FUN_14076e524(0x10)` (CALL 140f04de0) — le portage unique —, et un R(1) de plus quand son
+// `param_4` (le niveau du registre) depasse 1 (`if (1 < param_4)`). LOT J6.3 (2026-09-27) : le
+// port lisait la position aux largeurs du descripteur de TRAVERSEE et omettait ce R(1).
+func consumeTacmapWaypointState(br *Lecteur, level uint32) {
+	br.ReadBit()
+	br.ReadBits(32) // FUN_14080dec4 "waypoint-lockedto"
+	lireE494(br, niveauPosition)
+	if level > 1 {
+		br.ReadBit()
+	}
+}

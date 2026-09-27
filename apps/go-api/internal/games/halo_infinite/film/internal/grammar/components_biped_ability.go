@@ -285,7 +285,7 @@ func consumeBipedMobilityAction(br *Lecteur) {
 //
 // LES DEUX POSITIONS SONT CELLES DE LA CARTE (lot M4b, 2026-09-25). Les deux sites passent le
 // niveau 0x10 (`EBP = 0x10` @1408f0311) : ce sont les largeurs ABSOLUES de la carte
-// ([consumeSimStateHandleTail]), et non celles du DELTA du bipede (6/6/6) que lisait
+// ([lireE494]), et non celles du DELTA du bipede (6/6/6) que lisait
 // `consumeE524PositionBody`. Mesure : `8a485699` (Launch Site, 17/17/15), un bipede lu 31 bits
 // trop court a la trame 2374 — exactement 17+17+15 - 18 —, et la vue C perdue jusqu a la fin de
 // la Banshee de l index 7.
@@ -294,12 +294,12 @@ func consumeMobilityActionBody(br *Lecteur) {
 		br.ReadBits(10) // FUN_1406d310c(0x400) = 10
 	}
 	if !br.ReadBit() { // inline R(1) ; le bloc est present quand le bit vaut 0
-		consumeSimStateHandleTail(br) // FUN_14076e494 niveau 0x10 (@1408f0758, EBP = 0x10)
+		lireE494(br, niveauPosition)  // FUN_14076e494 niveau 0x10 (@1408f0758, EBP = 0x10)
 		consumeObjectForwardAndUp(br) // FUN_140c5f938 (@1408f076b)
 	}
 	br.ReadBits(64) // FUN_1406d676c(..., 0x60) = R(96), en deux lectures (ReadBits <= 64)
 	br.ReadBits(32)
-	consumeSimStateHandleTail(br) // FUN_14076f91c puis FUN_14076e524 niveau 0x10 (@1408f03c7, R9D = EBP)
+	lireE494(br, niveauPosition) // FUN_14076f91c puis FUN_14076e524 niveau 0x10 (@1408f03c7, R9D = EBP)
 	for i := 0; i < 3; i++ {
 		consume140c1e9d4(br, 12) // 3 x FUN_140c1e9d4(w=0xc)
 	}

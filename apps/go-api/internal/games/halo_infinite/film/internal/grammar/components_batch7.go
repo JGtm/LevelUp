@@ -76,7 +76,7 @@ func consumeTacmapQueuedReplayMission(br *Lecteur) {
 
 // tacmap-cooptetherarea (FUN_142ed4198): pos(e524) + R(12) + R(12).
 func consumeTacmapCoopTetherArea(br *Lecteur) {
-	consumeE524PositionBody(br)
+	lireE494(br, niveauPosition) // FUN_142ed4198 -> FUN_1424e0e38(0x10), CALL 142ed41ba
 	br.ReadBits(12)
 	br.ReadBits(12)
 }

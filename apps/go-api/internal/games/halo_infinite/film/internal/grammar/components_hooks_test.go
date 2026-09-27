@@ -277,59 +277,48 @@ func TestPlayerStateHookValues(t *testing.T) {
 	})
 }
 
-// TestPlayerDesiredRespawnLocationHook — ti=5 i12, LES TROIS BRANCHES.
+// TestPlayerDesiredRespawnLocationHook — ti=5 i12 (`FUN_142f03ec8`), LES TROIS ISSUES LUES.
 //
-// Le composant a deux portes imbriquees, et leurs trois issues ne se confondent pas : porte de
-// tete fermee (aucun champ), `precHigh` leve (l'identifiant seul, le vecteur par defaut ne
-// coutant aucun bit), et le cas complet. Publier une position a l'origine dans l'un des deux
-// premiers cas serait fabriquer une donnee.
+// Porte de tete fermee (aucun champ), porte du lecteur de position posee (table DEFAUT au niveau
+// 0x10 : 22 bits par axe, plage publiee 0) et index lu (plage de la carte, 13/13/14 sous le
+// profil par defaut, plage publiee `index + 1`). Depuis le lot J6.3 la position passe par le
+// portage unique : plus de bit precHigh (le jeu n en lit pas a ce site), plus de largeur
+// `6 + niveau du registre`.
 func TestPlayerDesiredRespawnLocationHook(t *testing.T) {
-	const niveau = 4 // largeur d'axe = 6 + 4 = 10 bits
+	const niveau = 4 // le niveau du registre ne change plus rien a la lecture
 	cas := []hookCase{
 		{
 			nom: "porte de tete FERMEE", comp: compPlayerDesiredRespawnLoc, level: niveau,
 			ecr: func(w *bitw) { w.put(0, 1) }, present: false, valeurs: nil, bits: 1,
 		},
 		{
-			nom:  "precHigh LEVE : vecteur par defaut, l'identifiant seul",
+			nom:  "porte du lecteur POSEE : table defaut, 22 bits par axe",
 			comp: compPlayerDesiredRespawnLoc, level: niveau,
 			ecr: func(w *bitw) {
-				w.put(1, 1)        // porte de tete
-				w.put(1, 1)        // precHigh == 1 -> vecteur par defaut, 0 bit
-				w.put(0x3ffff, 19) // identifiant de reapparition
-			},
-			present: false, valeurs: []uint64{0x3ffff}, bits: 1 + 1 + 19,
-		},
-		{
-			nom:  "cas complet : index absent, trois quanta, identifiant",
-			comp: compPlayerDesiredRespawnLoc, level: niveau,
-			ecr: func(w *bitw) {
-				w.put(1, 1)    // porte de tete
-				w.put(0, 1)    // precHigh == 0
-				w.put(1, 1)    // index-present select == 1 -> pas d'index lu
-				w.put(100, 10) // qx
-				w.put(200, 10) // qy
-				w.put(300, 10) // qz
+				w.put(1, 1) // porte de tete
+				w.put(1, 1) // porte du lecteur == 1 -> pas d'index, table DEFAUT
+				w.put(100, 22)
+				w.put(200, 22)
+				w.put(300, 22)
 				w.put(12345, 19)
 			},
-			present: true, valeurs: []uint64{100, 200, 300, 12345, niveau},
-			bits: 1 + 1 + 1 + 30 + 19,
+			present: true, valeurs: []uint64{100, 200, 300, 12345, 0},
+			bits: 1 + 1 + 66 + 19,
 		},
 		{
-			nom:  "cas complet avec index lu (select == 0 -> R(1))",
+			nom:  "index lu : plage 0 de la carte, 13/13/14",
 			comp: compPlayerDesiredRespawnLoc, level: niveau,
 			ecr: func(w *bitw) {
 				w.put(1, 1)
-				w.put(0, 1)
-				w.put(0, 1) // index-present select == 0 -> R(1) d'index
-				w.put(1, 1) // l'index
-				w.put(7, 10)
-				w.put(8, 10)
-				w.put(9, 10)
+				w.put(0, 1) // porte du lecteur == 0 -> R(1) d'index (DAT_144632be0 = 1)
+				w.put(0, 1) // l'index
+				w.put(7, 13)
+				w.put(8, 13)
+				w.put(9, 14)
 				w.put(1, 19)
 			},
-			present: true, valeurs: []uint64{7, 8, 9, 1, niveau},
-			bits: 1 + 1 + 1 + 1 + 30 + 19,
+			present: true, valeurs: []uint64{7, 8, 9, 1, 1},
+			bits: 1 + 1 + 1 + 40 + 19,
 		},
 	}
 	runHookCases(t, cas, func(got *[]uint64, present *bool, appels *int) {

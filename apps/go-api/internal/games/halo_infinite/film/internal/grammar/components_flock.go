@@ -39,24 +39,3 @@ func consumeFlockRememberedDanger(br *Lecteur) {
 func consumeFlockFleeing(br *Lecteur) {
 	br.ReadBits(1)
 }
-
-// consumeFlockPosition : ti21 i16, chaine 143c95758 -> getName 141177bf0 -> vtable 143d07e10
-// -> +0x28 = FUN_140ee7270 :
-//
-//	si FUN_14076f91c() != 0 : FUN_1411b259c (remplissage NaN/keep) = 0 bit
-//	sinon                   : FUN_14076e524(&dst, reader, buf, 0x10) = l'epine vec3 quantifiee
-//	                          (R(1) gate ; si 0 -> R(1) index ; puis 3 x R(6+L))
-//
-// C'est exactement le meme lecteur que le chemin ABSOLU de object-position : on reutilise
-// donc `consumeQuantVec3WithGate` et le meme predicat de contexte `fullPrecisionGate`.
-//
-// CORRIGE le 2026-08-17 (lot R7-c) : `FUN_1411b259c` n'est PAS un remplissage a zero bit,
-// c'est `FUN_1406d676c(br, br, dst, 0x60)` = R(96). L'ancien commentaire lisait le RESULTAT
-// (un NaN de conservation) et non le CURSEUR.
-func consumeFlockPosition(br *Lecteur, level uint) {
-	if fullPrecisionGate(br) {
-		br.ReadBits(rawVec3Bits) // FUN_1411b259c -> FUN_1406d676c(..., 0x60)
-		return
-	}
-	consumeQuantVec3WithGate(br, quantAxisWidth(level))
-}

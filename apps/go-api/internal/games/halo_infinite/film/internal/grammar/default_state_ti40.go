@@ -74,7 +74,7 @@ func consumeDefaultStateTI40(br *Lecteur) {
 // non etablie statiquement ». LA MENTION ETAIT PERIMEE : les deux globaux qu elle nommait —
 // l index `DAT_144632be0` et les trois largeurs per-axe `DAT_1445cc9e0` — entrent par le CATALOGUE
 // DE LA CARTE depuis le lot 3.4.1, et les DEUX fonctions de la feuille sont portees depuis le lot
-// R7-b : `FUN_14076e494` par [consumeSimStateHandleTail] et `FUN_140c1e79c` par [consume140c1e79c].
+// R7-b : `FUN_14076e494` par [lireE494] et `FUN_140c1e79c` par [consume140c1e79c].
 // La feuille se lit donc, a la largeur de la carte du match, comme le chemin world-object.
 //
 // MESURE QUI L ETABLIT (`4f77afc1`, 1 140 records `ti=40` d image-cle, 2026-09-18) : la porte
@@ -84,8 +84,8 @@ func consumeDefaultStateTI40(br *Lecteur) {
 // travers et rendent `DesyncAt == -1` — la boucle de composants ne tourne pas, ce qui est
 // exactement le faux « aucun bloquant » que le golden 0.A.3 portait sur `ti=40`.
 func consumeVehicleMediaFrame(br *Lecteur) {
-	consumeSimStateHandleTail(br) // FUN_14076e494
-	consume140c1e79c(br)          // FUN_140c1e79c
+	lireE494(br, niveauPosition) // FUN_14076e494
+	consume140c1e79c(br)         // FUN_140c1e79c
 }
 
 // VehicleDefaultStateMinBits est la largeur du chemin minimal de consumeDefaultStateTI40 (toutes
