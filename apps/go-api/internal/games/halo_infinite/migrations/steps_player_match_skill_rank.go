@@ -4,7 +4,7 @@ package migrations
 // déplacée depuis internal/migration/steps_player_*.go (Phase 1.5 b20, voie B).
 //
 // match_skill_rank est CRÉÉE par add_skill_rating_table (god-file player, RACINE restée
-// globale jusqu'à b-player-root). Ces 6 steps l'ALTERent / la migrent en append-only /
+// globale jusqu'à b-player-root). Ces 7 steps l'ALTERent / la migrent en append-only /
 // recréent la vue match_skill_rank_latest → consommateurs (créateur global + consommateur
 // titre = safe ; RunForDB combine global+title trié par canonicalOrder). DML ART-prone :
 // le rebuild append-only fait un CTAS swap (jamais d'UPDATE sur index ART).
@@ -65,6 +65,19 @@ func playerMatchSkillRankSteps() []migration.Migration {
 			Description: "match_skill_rank_latest_by_type : une ligne par (match_id, rating_type), la plus récente — sans arbitrage CSR vs LUSR",
 			ApplySchema: applyMSRViewLatestByType,
 		},
+		// DERNIER de la chaîne À DESSEIN : doit suivre tout créateur des index, dont la
+		// baseline scellée (idx_msr_rating_type, idx_msr_playlist) — précédent
+		// drop_career_xuid_art_index_v1. Plan backlog 2026-09-26, lot B3 ; mesure D-4 :
+		// internal/migration/psa_index_repro_msr_planprobe_test.go (tag psarepro).
+		{
+			Name:     "drop_msr_secondary_art_indexes_v1",
+			TargetDB: migration.TargetPlayer,
+			Description: "Retire les 3 index secondaires de match_skill_rank (idx_msr_match_lookup, " +
+				"idx_msr_rating_type, idx_msr_playlist) : un index ART désynchronisé et emprunté " +
+				"rend des lectures fausses (#23645 : 22 lignes pour 1 826, 2026-09-13) ; mesuré, " +
+				"aucune lecture ne ralentit sans eux",
+			ApplySchema: dropMSRSecondaryARTIndexes,
+		},
 	}
 }
 
@@ -72,12 +85,13 @@ func playerMatchSkillRankSteps() []migration.Migration {
 // avec les nouvelles chaînes de playlists.
 //
 // Append-only #23645 : PAS de `DELETE FROM match_skill_rank WHERE rating_type='LUSR'`
-// — un DELETE per-row sur une table append-only INDEXÉE (PK id + idx_msr_*) est un
+// — un DELETE per-row sur une table append-only INDEXÉE (PK id) est un
 // vecteur ART (« Failed to delete all rows from index »), même au boot. On purge via
-// rebuild CTAS (table sans index pendant la copie, index/PK reposés après), modèle
+// rebuild CTAS (table sans index pendant la copie, PK reposée après), modèle
 // applyAppendOnlyMatchSkillRank. Garde no-op si table absente ou aucune ligne LUSR
 // (DB neuve). canonicalOrder ordonne ce step APRÈS player_append_only_match_skill_rank_v1,
-// donc match_skill_rank est déjà append-only (id PK, msr_seq, written_at, indexes) ici.
+// donc match_skill_rank est déjà append-only (id PK, msr_seq, written_at) ici. AUCUN index
+// secondaire n'est reposé depuis le 2026-09-27 (drop_msr_secondary_art_indexes_v1).
 func lusrChainRework(db *sql.DB) error {
 	ctx := migration.BootCtx()
 	has, err := migration.TableExists(db, "match_skill_rank")
@@ -95,7 +109,7 @@ func lusrChainRework(db *sql.DB) error {
 	if n == 0 {
 		return nil
 	}
-	// Rebuild CTAS conservant tout SAUF LUSR ; restaure PK(id) + DEFAULTs + 3 index +
+	// Rebuild CTAS conservant tout SAUF LUSR ; restaure PK(id) + DEFAULTs +
 	// vue match_skill_rank_latest (priorité CSR>LUSR, à l'identique de sync/schema.go).
 	_, err = db.ExecContext(ctx, `
 		DROP VIEW IF EXISTS match_skill_rank_latest;
@@ -106,9 +120,6 @@ func lusrChainRework(db *sql.DB) error {
 		ALTER TABLE match_skill_rank ADD PRIMARY KEY (id);
 		ALTER TABLE match_skill_rank ALTER COLUMN id SET DEFAULT nextval('msr_seq');
 		ALTER TABLE match_skill_rank ALTER COLUMN written_at SET DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP);
-		CREATE INDEX IF NOT EXISTS idx_msr_match_lookup ON match_skill_rank(match_id, rating_type, written_at);
-		CREATE INDEX IF NOT EXISTS idx_msr_rating_type ON match_skill_rank(rating_type);
-		CREATE INDEX IF NOT EXISTS idx_msr_playlist    ON match_skill_rank(playlist_group);
 		CREATE OR REPLACE VIEW match_skill_rank_latest AS
 			SELECT * FROM match_skill_rank
 			QUALIFY ROW_NUMBER() OVER (
@@ -176,9 +187,6 @@ func applyAppendOnlyMatchSkillRank(db *sql.DB) error {
 		`ALTER TABLE match_skill_rank ADD PRIMARY KEY (id)`,
 		`ALTER TABLE match_skill_rank ALTER COLUMN id SET DEFAULT nextval('msr_seq')`,
 		`ALTER TABLE match_skill_rank ALTER COLUMN written_at SET DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)`,
-		`CREATE INDEX IF NOT EXISTS idx_msr_match_lookup ON match_skill_rank(match_id, rating_type, written_at)`,
-		`CREATE INDEX IF NOT EXISTS idx_msr_rating_type ON match_skill_rank(rating_type)`,
-		`CREATE INDEX IF NOT EXISTS idx_msr_playlist ON match_skill_rank(playlist_group)`,
 		`CREATE OR REPLACE VIEW match_skill_rank_latest AS
 			SELECT * FROM match_skill_rank
 			QUALIFY ROW_NUMBER() OVER (PARTITION BY match_id, rating_type ORDER BY written_at DESC, id DESC) = 1`,
@@ -355,4 +363,14 @@ func EnsureMatchSkillRankViews(db *sql.DB) error {
 		return err
 	}
 	return applyMSRViewLatestByType(db)
+}
+
+// dropMSRSecondaryARTIndexes retire les trois index secondaires de match_skill_rank.
+// DDL d'index seule : aucune ligne touchée, PK technique (id) et vues intactes.
+// Idempotent (DROP INDEX IF EXISTS) et sans effet si la table est absente.
+func dropMSRSecondaryARTIndexes(db *sql.DB) error {
+	if err := migration.ExecScriptContext(migration.BootCtx(), db, migration.PlayerRetiredMSRIndexesDropSQL); err != nil {
+		return fmt.Errorf("drop_msr_secondary_art_indexes_v1: %w", err)
+	}
+	return nil
 }

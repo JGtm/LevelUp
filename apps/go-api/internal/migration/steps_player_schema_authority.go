@@ -131,6 +131,34 @@ CREATE OR REPLACE VIEW player_csr_snapshots_latest AS
     QUALIFY ROW_NUMBER() OVER (PARTITION BY playlist_id, season_id ORDER BY written_at DESC, id DESC) = 1;
 `
 
+// PlayerRetiredPSAIndexesDropSQL / PlayerRetiredMSRIndexesDropSQL — SOURCE UNIQUE des
+// noms des index secondaires RETIRÉS des player DB (surface ART #23645) : consommée par
+// les steps de retrait (drop_psa_secondary_art_indexes_v1 ici, 2026-09-20 ;
+// drop_msr_secondary_art_indexes_v1 dans la chaîne match_skill_rank du titre, 2026-09-27)
+// ET par le soin rejoué à chaque ouverture (sync.playerSchemaSQL, via
+// PlayerRetiredARTIndexesDropSQL).
+//
+// Pourquoi le soin aussi (plan backlog 2026-09-26, décision D-4) : un binaire plus ancien
+// (autre worktree, retour arrière) RECRÉE ces index par son propre CREATE INDEX IF NOT
+// EXISTS, et un step de migration one-shot ne rejoue jamais. Les index recréés
+// reviendraient en silence, désynchronisables et empruntés par des lecteurs bruts.
+const PlayerRetiredPSAIndexesDropSQL = `
+DROP INDEX IF EXISTS idx_psa_match;
+DROP INDEX IF EXISTS idx_psa_category;
+DROP INDEX IF EXISTS idx_psa_gen;
+`
+
+// PlayerRetiredMSRIndexesDropSQL — cf. PlayerRetiredPSAIndexesDropSQL. Retrait MESURÉ
+// (critère D-4 amendé : psa_index_repro_msr_planprobe_test.go, tag psarepro).
+const PlayerRetiredMSRIndexesDropSQL = `
+DROP INDEX IF EXISTS idx_msr_match_lookup;
+DROP INDEX IF EXISTS idx_msr_rating_type;
+DROP INDEX IF EXISTS idx_msr_playlist;
+`
+
+// PlayerRetiredARTIndexesDropSQL — les deux listes, pour le soin d'EnsurePlayerSchema.
+const PlayerRetiredARTIndexesDropSQL = PlayerRetiredPSAIndexesDropSQL + PlayerRetiredMSRIndexesDropSQL
+
 // L'ordre de Register() dans cet init() est CONTRAINT : il doit reproduire l'ordre de ces
 // 6 steps dans canonicalOrder (order.go) — cf. TestSortByCanonicalIsNoOpOnCurrentRegistry.
 // Ils y occupent les positions qui suivent immédiatement repair_match_citations_primary_key
@@ -185,10 +213,7 @@ func init() {
 			"(tout passe par la vue _latest, plan Sequential Scan) et ils se désynchronisent " +
 			"sur les insertions courantes (#23645, récidive constatée le 2026-09-20)",
 		ApplySchema: func(db *sql.DB) error {
-			return execScript(db, `
-DROP INDEX IF EXISTS idx_psa_match;
-DROP INDEX IF EXISTS idx_psa_category;
-DROP INDEX IF EXISTS idx_psa_gen;`)
+			return execScript(db, PlayerRetiredPSAIndexesDropSQL)
 		},
 	})
 }

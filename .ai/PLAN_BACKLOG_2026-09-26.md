@@ -815,23 +815,61 @@ niveau job, fusion dans `feat/v75`, suppression du worktree et de la branche.
   **Après l'amendement de D-4 (`99b241970`) : critère relatif TENU**, assertion réécrite
   (`msrProbeMargin`, 2 ms ; médianes absolues toujours journalisées) : `EXIT_MESURE=0`, plus
   grand écart « sans − avec » +0,22 ms (F3). Journal §7.
-- [ ] **B3.2** Migration `drop_msr_secondary_art_indexes_v1` : cible player, 3
+- [x] **B3.2** Migration `drop_msr_secondary_art_indexes_v1` : cible player, 3
   `DROP INDEX IF EXISTS`. `order.go` après `player_msr_view_latest_by_type_v1` ;
   `stepDependencies` vers `lusr_chain_rework_v1` (précédent `drop_career_xuid_art_index_v1`,
   `order.go:126`).
-- [ ] **B3.3** Retrait des `CREATE INDEX idx_msr_*` des autorités non scellées : `schema.go:111-113`,
+  → Step title-owned, dernier de la chaîne MSR : `games/halo_infinite/migrations/steps_player_match_skill_rank.go:73`,
+  `dropMSRSecondaryARTIndexes` `:371` (découpeur canonique `migration.ExecScriptContext`).
+  Il est title-owned et non global : une étape globale placée à cet endroit de `canonicalOrder`
+  casserait `TestSortByCanonicalIsNoOpOnCurrentRegistry`. `order.go:100` ;
+  `order_dependency_test.go:55`.
+- [x] **B3.3** Retrait des `CREATE INDEX idx_msr_*` des autorités non scellées : `schema.go:111-113`,
   `steps_player_match_skill_rank.go:109-111` et `:179-181`. Baseline scellée INTACTE (précédent
   `idx_career_xuid`).
-- [ ] **B3.4** Convergence (D-4) : les `DROP INDEX IF EXISTS` des trois `idx_msr_*` ET des trois
+  → `sync/schema.go:113` (3 lignes → 1 commentaire ; 525 lignes avant, 525 après) ;
+  `lusrChainRework` et `applyAppendOnlyMatchSkillRank` sans index, commentaires à jour.
+  `steps_player_baseline.go` et son golden non touchés.
+- [x] **B3.4** Convergence (D-4) : les `DROP INDEX IF EXISTS` des trois `idx_msr_*` ET des trois
   index PSA retirés le 2026-09-20 (noms relus dans la migration PSA) entrent dans l'autorité
   rejouée par `EnsurePlayerSchema`.
-- [ ] **B3.5** Suppressions de la liste ci-dessus, avec imports, types et jauges.
+  → SOURCE UNIQUE `migration/steps_player_schema_authority.go:145-160`
+  (`PlayerRetiredPSAIndexesDropSQL`, `PlayerRetiredMSRIndexesDropSQL`,
+  `PlayerRetiredARTIndexesDropSQL`). Consommée par le step PSA (`:216`, son littéral est
+  remplacé), par le step MSR et par `sync.playerSchemaSQL` (`schema.go:36`, en dernier).
+- [x] **B3.5** Suppressions de la liste ci-dessus, avec imports, types et jauges.
   `no_raw_rating_reads_test.go` n'est PAS modifié (fichier de `feat/perf-perimetre`) : s'il
   mentionne un index retiré, découverte.
-- [ ] **B3.6** Ratchet : `match_skill_rank` entre dans `noSecondaryIndexTables`, avec une
+  → Supprimés :
+  - `scheduler/data_health_msr_index.go` et son test ;
+  - `cmd/repair_msr_index/` (3 fichiers) ;
+  - `platform/duckdb/indexcheck/` (3 fichiers) ;
+  - `archlint/no_local_msr_axes_test.go`.
+
+  Débranchés dans `data_health_check.go` : les cinq champs `MSRIndex*`, la somme
+  `WarningsTotal`, la jauge `data_health_msr_index_desync_keys`, les champs de journal et
+  l'appel. Nouveau commentaire `:67-70`.
+
+  Dans `purge_foreign_lusr_chain` :
+  - `ForeignIndexed`, `indexMismatch`, `checkIndexCoherence` et le message
+    `repair_msr_index` sont retirés ;
+  - `TestCheckIndexCoherence_BlocksCommitOnDesync` et l'assertion « ≥ 3 index » sont
+    supprimés ;
+  - `TestCensus_ForcesScanOnHealthyDB` (`purge_test.go:161`) garde le compte par scan.
+
+  `no_raw_rating_reads_test.go` : aucune mention d'index, non modifié.
+- [x] **B3.6** Ratchet : `match_skill_rank` entre dans `noSecondaryIndexTables`, avec une
   dispense DATÉE pour `steps_player_baseline.go`. Balayage étendu à `internal/sync/schema.go`.
   Mutation vérifiée.
-- [ ] **B3.7 Tests** (rouges d'abord) :
+  → `migration/metadata_art_surface_guard_test.go` :
+  - `:66` ajout de la table ;
+  - `:72` `noSecondaryIndexExemptions`, dispense datée du 2026-09-27 avec son motif ; une
+    dispense morte fait échouer le test ;
+  - `:151` balayage étendu à `sync/schema.go` ; `Fatal` si le fichier est introuvable.
+
+  Rouge sur le code d'avant (9 sites). Mutation : un mutant dans `sync/schema.go` et un dans
+  la chaîne du titre donnent `EXIT_MUTANT=1`, les deux sites sont désignés ; mutants retirés.
+- [x] **B3.7 Tests** (rouges d'abord) :
   - `TestPlayerSchemaAuthority_NoMatchSkillRankSecondaryIndex` (`sync/schema_authority_test.go`) ;
   - `steps_player_drop_msr_secondary_indexes_test.go` : retrait, idempotence, lignes et vues
     préservées ;
@@ -839,13 +877,43 @@ niveau job, fusion dans `feat/v75`, suppression du worktree et de la branche.
     → plus aucun.
   - Aucun nouveau fichier dans `internal/sync/` (ratchet de gel) : les tests de `sync` vont dans
     les fichiers existants.
-- [ ] **B3.8** En-tête du harnais `psarepro` réécrit : véhicule de reproduction pour les index
+  → Tests :
+  - `sync/schema_authority_test.go:298` `…_NoMatchSkillRankSecondaryIndex` ;
+  - `:317` `…_EnsureDropsRetiredARTIndexes` (MSR ET PSA recréés `IF NOT EXISTS`, avec
+    précondition) ;
+  - `games/halo_infinite/migrations/steps_player_drop_msr_secondary_indexes_test.go` : trois
+    tests, `:80` chaîne neuve sans index, `:90` retrait et idempotence, `:111` lignes, deux vues,
+    priorité CSR et INSERT sans id.
+
+  Tous rouges sur le code d'avant, verts après (journal). Aucun nouveau fichier sous
+  `internal/sync/`.
+- [x] **B3.8** En-tête du harnais `psarepro` réécrit : véhicule de reproduction pour les index
   player restants.
-- [ ] **B3.9** Vérification sur COPIE d'une vraie player DB, jamais l'original (copie faite
+  → `migration/psa_index_repro_test.go:13-24` (et la mention d'`indexcheck` `:158-159`).
+- [!] **B3.9** Vérification sur COPIE d'une vraie player DB, jamais l'original (copie faite
   serveur principal arrêté, ce que le superviseur confirme avant). Migration puis `EnsurePlayerSchema` appliqués à la copie, par la CLI existante
   si elle migre une base désignée, sinon par un test d'intégration paramétré par une variable
   d'environnement (pas d'outil jetable). Attendu : `duckdb_indexes()` sans `idx_msr_*` ni index
   PSA, mêmes nombres de lignes, vues intactes.
+  → **Non faite : STOP sur la condition préalable du superviseur.** Aucun serveur ne tourne
+  (`Get-Process` vide, `:8000` sans réponse). Mais les QUATRE player DB de `halo_infinite`
+  ont un `stats.duckdb.wal` à côté d'elles (dernières écritures du 23/09). Aucune copie n'a
+  été faite.
+
+  Véhicule prêt, car aucune CLI ne migre une base désignée :
+  `sync/schema_msr_views_test.go:207` `TestRetiredARTIndexes_RealPlayerDBCopy`, variable
+  `LEVELUP_B3_PLAYER_DB_COPY`, sauté sans elle.
+  - Il refuse tout chemin sous `data/titles/` et toute copie qui a un `.wal`.
+  - Il applique `RunForDB(player)` puis `EnsurePlayerSchema`.
+  - Il exige : plus aucun index retiré, mêmes lignes par table (hors `schema_migrations`),
+    mêmes vues avec les mêmes lignes.
+
+  Validé sur une base antérieure au retrait fabriquée par `:230`
+  `…_SyntheticPreRetirementDB` : rouge sur `82cd8871b`, vert après.
+
+  Pour lever le blocage : faire rejouer son WAL à une base de `halo_infinite` (ouverture puis
+  fermeture propres par le serveur), ou autoriser `halo_5/JGtm`, sans WAL. Décision du
+  superviseur.
 
 **STOP D-4 levé.** Le STOP posé à B3.1 sur le critère d'origine a été levé par l'amendement de
 D-4 (§2, commit `99b241970`). Le critère relatif est tenu (B3.1), donc B3.2 à B3.9 reprennent.
@@ -1106,6 +1174,32 @@ plus B5.8.
   et la pièce « Banc EXPLAIN » (`psa_index_repro_planprobe_test.go`) conduiraient à conclure
   « index jamais emprunté ». La mesure B3.1 passe par `EXPLAIN ANALYZE`, calibré par un
   témoin PK. Non traité ailleurs.
+- DB-14 (B3, 2026-09-27) : `migration/steps_player_lusr_components_append_only.go:17-20` garde
+  `idx_lch_component` et `idx_lch_match` en invoquant « le même raisonnement que les idx_msr_* »
+  (append-only = pas de surface ART). Ce raisonnement est réfuté deux fois par la mesure :
+  PSA le 2026-09-20, MSR le 2026-09-27, la désynchronisation se reforme sur des INSERT purs.
+  Le commentaire est désormais une doc inversée. La même question se pose pour les autres
+  index secondaires des tables append-only (`idx_pme_match_lookup`, `idx_pcs_lookup`,
+  `idx_lch_*`). Non traité.
+- DB-15 (B3) : `cmd/purge_foreign_lusr_chain` capture et REJOUE tous les index présents sur
+  `match_skill_rank` au moment du swap (`purgeForeignChain`). Sur une base où un binaire ancien
+  aurait recréé les `idx_msr_*`, la purge les reposerait ; le prochain `EnsurePlayerSchema` les
+  retire. Non traité (hors de la liste B3.5).
+- DB-16 (B3) : plusieurs fixtures de test créent encore des `idx_msr_*` dans une DDL locale de
+  schéma ancien, et ne représentent donc plus la prod. Fichiers : `sync/csr_art_repro_test.go`,
+  `csr_backfill_integration_test.go`, `csr_writes_integration_test.go`,
+  `lusrdb_helpers_test.go`, `sync/skill/skill_rating_loaders_test.go`,
+  `persist/lusr_append_only_persister_test.go`,
+  `games/halo_infinite/migrations/player_match_skill_rank_test.go`. Sans effet sur les tests.
+  Non traité.
+- DB-17 (B3.9) : les quatre player DB de `halo_infinite` du checkout principal ont un
+  `stats.duckdb.wal` à côté d'elles (dernières écritures du 23/09). Le dernier arrêt du
+  serveur n'a pas fait de CHECKPOINT, et aucune copie cohérente n'est possible sans rejouer ce
+  WAL. Les player DB `halo_5` de JGtm, XxDaemonGamerxX et des joueurs de démo n'en ont pas.
+  Non traité.
+- DB-18 (B3.9) : aucune CLI ne migre une player DB désignée (`applyMigrationsOnDB` n'est
+  exposée par aucune sous-commande prenant un chemin). Le véhicule de B3.9 est donc un test
+  paramétré par `LEVELUP_B3_PLAYER_DB_COPY`. Non traité.
 
 ---
 
@@ -1356,3 +1450,55 @@ plus B5.8.
     plafond de 500 lignes ;
   - formes supplémentaires (invariants, vue `_latest`) et témoins mesurés en plus des sept ;
   - F5 et F6 comptent chacune deux requêtes (a/b), toutes deux mesurées.
+
+**[2026-09-27] B3 (reprise) — D-4 amendé par le superviseur (`99b241970`) : B3.1 au critère relatif, B3.2 à B3.8 faits, B3.9 bloqué.**
+
+- B3.1 : l'assertion est réécrite (`msrProbeMargin` = 2 ms, sans index ≤ avec index + 2 ms,
+  sur les sept formes) et l'en-tête renvoie à l'amendement. Commit `82cd8871b`.
+  - Log `B3-1-mesure-relatif.log`, `EXIT_MESURE=0` ; plus grand écart « sans − avec »
+    +0,22 ms (F3).
+  - Gate 7 rejoué en fin de lot : `EXIT_PSAREPRO=0`. Le poste était moins chargé, et F4 avec
+    index est tombé à 3,8 ms contre 1,8 ms sans. Plus grand écart +0,31 ms (F3).
+- Rouge d'abord : tests B3.7, ratchet B3.6 et véhicule B3.9 écrits avant le code.
+  - Sorties rouges sur le code d'avant (log `B3-7-rouge.log`) :
+    - `EXIT_ROUGE_RATCHET=1` : 9 sites, six dans `steps_player_match_skill_rank.go` et trois
+      dans `sync/schema.go`. La dispense de la baseline est consommée.
+    - `EXIT_ROUGE_TITRE=1` : `3 idx_msr_* sur une player DB fraîchement migrée, attendu 0`,
+      et `step drop_msr_secondary_art_indexes_v1 absent de la chaîne match_skill_rank`
+      (×2).
+    - `EXIT_ROUGE_SYNC=1` : `idx_msr_* présent après migrations + soin` (×3), et
+      `… recréé par un binaire ancien et TOUJOURS présent après EnsurePlayerSchema` (×6 :
+      trois MSR, trois PSA).
+  - Véhicule B3.9 écrit après le code, donc son rouge est pris dans un worktree jetable à
+    `82cd8871b` (retiré ensuite) : `EXIT_ROUGE_VEHICULE=1`, `index retirés encore présents
+    après migrations + soin : [les six]`.
+  - Après le code : `EXIT_VERT_MIGRATION=0`, `EXIT_VERT_TITRE=0`, `EXIT_VERT_SYNC=0`,
+    `EXIT_VEHICULE=0` (logs `B3-7-vert.log`, `B3-9-vehicule-vert.log`).
+- Mutation du ratchet (log `B3-6-mutation.log`) : un `CREATE INDEX … match_skill_rank` dans
+  `sync/schema.go` et un dans la chaîne du titre donnent `EXIT_MUTANT=1`, les deux sites sont
+  désignés. Fichiers restaurés depuis sauvegarde, grep `MUTANT` vide.
+- Gates GO-F (logs `$TEMP\backlog-gates\B3-gate*.log`) :
+  1. `EXIT_BUILD=0` ;
+  2. `EXIT_VET=0` ;
+  3. `EXIT_TEST_LOT=0` (migration, sync, halo_infinite/migrations, scheduler,
+     purge_foreign_lusr_chain, archlint, platform/duckdb) ;
+  4. `EXIT_INTEG_LOT=0` (mêmes paquets, `-p 1 -timeout 60m`) ;
+  5. `EXIT_TEST_COMPLET=1` : 188 paquets `ok`, un seul rouge,
+     `TestLUSRV2Shadow_RafalesBornees_300Candidats` (une rafale à 3,14 s). C'est DB-8,
+     préexistant et rouge aussi sur `d61443ef5`. Rejoué seul : `EXIT_TEST_REJEU_SKILL=0` ;
+  6. `EXIT_INTEG_COMPLET=1` : 189 paquets `ok`, aucun paquet tué au délai, un seul rouge, le
+     même test DB-8 (rafales à 2,00-2,03 s). Rejoué seul : `EXIT_INTEG_REJEU_SKILL=0` ;
+  7. `EXIT_PSAREPRO=0` ;
+  8. `EXIT_LINT=0` (`0 issues.`).
+- B3.9 : STOP sur la condition préalable, les quatre player DB `halo_infinite` ont un
+  `.wal` (DB-17). Aucune copie faite, rien n'a été ouvert dans le checkout principal. Le
+  véhicule est prêt et validé (cases B3).
+- Écarts :
+  - le step est title-owned (voir B3.2) ;
+  - les noms des index retirés passent par une constante unique du paquet `migration`, que
+    le step PSA consomme aussi ;
+  - tests en plus de la liste : chaîne neuve sans index (titre), précondition du test de
+    convergence, véhicule B3.9 et sa base synthétique ;
+  - `sync/squash_convergence_test.go:210-214` : commentaire qui disait les index MSR
+    « recréés par playerSchemaSQL » corrigé ;
+  - `purge.go` : commentaires du scan forcé datés (index retiré, garde conservée).

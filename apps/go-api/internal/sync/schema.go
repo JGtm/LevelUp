@@ -28,10 +28,12 @@ import (
 // (schema_drift_healed, cf. internal/sync/schemadrift). Les blocs personal_score_awards et
 // player_csr_snapshots proviennent de la SOURCE UNIQUE côté migrations
 // (migration.PlayerPersonalScoreAwardsDDL / PlayerCSRSnapshotsDDL) — toute évolution s'y
-// fait, jamais ici. L'ordre de concaténation reproduit l'ordre historique du script.
+// fait, jamais ici. L'ordre de concaténation reproduit l'ordre historique du script ; les
+// DROP des index retirés (MSR, PSA) viennent en dernier (convergence D-4, plan 2026-09-26).
 var playerSchemaSQL = migration.PlayerPersonalScoreAwardsDDL +
 	playerCoreSchemaSQL +
-	migration.PlayerCSRSnapshotsDDL
+	migration.PlayerCSRSnapshotsDDL +
+	migration.PlayerRetiredARTIndexesDropSQL
 
 // playerCoreSchemaSQL — tables player dont le DDL de soin n'est pas partagé avec un step
 // de migration (leur création vit dans create_baseline_player_v1, title-owned).
@@ -108,9 +110,7 @@ CREATE TABLE IF NOT EXISTS match_skill_rank (
     created_at        TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP),
     updated_at        TIMESTAMP DEFAULT CAST(now() AT TIME ZONE 'UTC' AS TIMESTAMP)
 );
-CREATE INDEX IF NOT EXISTS idx_msr_match_lookup ON match_skill_rank(match_id, rating_type, written_at);
-CREATE INDEX IF NOT EXISTS idx_msr_rating_type ON match_skill_rank(rating_type);
-CREATE INDEX IF NOT EXISTS idx_msr_playlist    ON match_skill_rank(playlist_group);
+-- AUCUN index secondaire (retirés le 2026-09-27, #23645) : cf. migration.PlayerRetiredMSRIndexesDropSQL.
 CREATE OR REPLACE VIEW match_skill_rank_latest AS
     SELECT * FROM match_skill_rank
     QUALIFY ROW_NUMBER() OVER (
