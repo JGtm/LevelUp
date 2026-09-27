@@ -192,15 +192,6 @@ var analysesDeRegistreAutorisees = map[string]string{
 		"registre du film pour son propre monde. HORS PERIMETRE SANS CONDITION (decision D14 de " +
 		"PLAN_CUISSON_PERF) : `killsource` n'est pas dans ce plan. Note §8 — c'est la DERNIERE " +
 		"analyse de registre de la chaine de cuisson qui ne passe pas par `FilmContext`.",
-	"internal/sync/killcollector/hits.go": "ARRIVE PAR L'AMONT (merge de `feat/v75` du " +
-		"2026-09-03, chantier « precision par arme » remise le 2026-09-01). Cette passe rejoue le " +
-		"film DEPUIS LE DISQUE (`ConfigureFilmAccuracy(dir, ...)`) et analyse chunk_00 pour ses " +
-		"propres balayages ; elle est DESACTIVEE en production — Infinite ne declare pas la " +
-		"capability `match.weapon.accuracy` et `ConfigureFilmAccuracy` n'a aucun appelant hors " +
-		"tests. La migrer vers `FilmContext` exige de donner leur forme film a trois balayages " +
-		"neufs de l'amont (`ScanFilmWeaponShots`, `ScanFilmWeaponDamages`, `BuildBipedTracks`) : " +
-		"hors perimetre d'une reconciliation de branche, consigne au registre des reports. " +
-		"RETRAIT CIBLE : le lot qui rallume la precision par arme, ou celui qui migre `hits.go`.",
 }
 
 // TestRegistreAnalyseParLeContexteSeul — REGLE 2.

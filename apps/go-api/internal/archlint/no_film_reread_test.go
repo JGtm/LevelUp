@@ -311,9 +311,9 @@ var paquetsDeProduction = []string{
 //	          relectures aujourd'hui. Lui donner la forme film exige de creer les formes
 //	          `Scan*(film)` de trois balayages neufs de l'amont — hors perimetre d'une
 //	          reconciliation de branche. RETRAIT CIBLE : le lot qui rallume la precision par arme,
-//	          ou celui qui migre `hits.go`. Consigne au registre des reports.
+//	          ou celui qui migre `hits.go`. Consigne au registre des reports. L entree
+//	          `ReadFilmChunk` est retiree le 2026-09-27 (J10.2) : `hits.go` ne lit plus chunk_00.
 var appelsDEnveloppeAutorises = map[string]string{
-	"internal/sync/killcollector/hits.go -> ReadFilmChunk":   "amont 2026-09-03, passe desactivee",
 	"internal/sync/killcollector/hits.go -> CountFilmChunks": "amont 2026-09-03, passe desactivee",
 }
 

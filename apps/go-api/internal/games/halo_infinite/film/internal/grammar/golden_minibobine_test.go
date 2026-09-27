@@ -390,14 +390,8 @@ func famillesEvenementsEtImagesCles(r *recueil, fc *FilmContext, film *source.Fi
 	// Les tirs et degats n'ont PAS de forme `film` : leur point d'entree prend le repertoire.
 	shots, err := ScanFilmWeaponShots(bobineFamilles, bobineChunks)
 	ajouterSlice(r, "weaponShots", shots, err)
-	reg, errReg := fc.Registry()
-	if errReg != nil {
-		r.ajouter("weaponDamages", 0, nil, nil, errReg)
-		return
-	}
-	dmg, base, err := ScanFilmWeaponDamages(bobineFamilles, reg, bobineChunks)
+	dmg, err := ScanFilmWeaponDamages(bobineFamilles, bobineChunks)
 	ajouterSlice(r, "weaponDamages", dmg, err)
-	r.ajouter("weaponDamagesBaseSlot", base, base, base, nil)
 }
 
 // catalogueDuFilm rend les identifiants de famille d'arme que le film porte, tous chemins

@@ -221,47 +221,30 @@ func ScanFilmWeaponShots(dir string, n int) ([]WeaponShot, error) {
 	return out, nil
 }
 
-// ScanFilmWeaponDamages rejoue les chunks 1..n (keyframe + tick-frames comme le decodeur de
-// trame) puis decode les damage_aftermath (0xC0 type 0) : refs d'en-tete domaine-1 (blesse ref0,
-// responsable ref1), source et magnitude. Rend aussi la BASE d'atterrissage bipede (resolution
-// slot base-512), argmax des slots lies a un bipede — servant la resolution de position pour la
-// distance. Verrou de process = appelant.
-func ScanFilmWeaponDamages(dir string, reg *Registry, n int) ([]WeaponDamage, int, error) {
-	cfg := DefaultFrameConfig()
-	hit := map[int]int{}
+// ScanFilmWeaponDamages decode les damage_aftermath (0xC0 type 0) des chunks 1..n : refs
+// d'en-tete domaine-1 (blesse ref0, responsable ref1), source et magnitude. Verrou de process =
+// appelant.
+//
+// PLUS DE MONDE REJOUE NI DE BASE D'ATTERRISSAGE (J10.2, GB-4 de l'audit du 2026-09-24). Cette
+// fonction reconstruisait le monde de chaque chunk (images-cles puis `DecodeFrameRecords`, dont
+// l'erreur etait jetee par `_, _ =`) pour rendre l'argmax des bases ou les index bruts atterrissent
+// sur un bipede. Aucun appelant de production ne lisait cette base : la distance des touches
+// choisit la sienne par [ResolveHitDistanceBase], sur les positions. Le decodage des degats, lui,
+// ne lit pas le monde. Les instruments qui comparent encore cet argmax le recalculent en test.
+func ScanFilmWeaponDamages(dir string, n int) ([]WeaponDamage, error) {
 	var out []WeaponDamage
 	for c := 1; c <= n; c++ {
 		data, err := ReadFilmChunk(dir, c)
 		if err != nil {
-			return nil, 0, fmt.Errorf("chunk_%02d illisible : %w", c, err)
+			return nil, fmt.Errorf("chunk_%02d illisible : %w", c, err)
 		}
-		pks := WalkPackets(data)
-		w := NewWorld(reg)
-		for _, pk := range pks {
-			if pk.Type != PacketTypeKeyframe {
-				continue
-			}
-			for _, r := range WalkKeyframeWorld(pk.Payload(data)) {
-				w.BindFull(uint32((r.Gen<<30)|r.Slot), uint32(r.TI))
-			}
-		}
-		for _, pk := range pks {
-			if pk.Type != PacketTypeDelta || pk.Size < 1 {
-				continue
-			}
-			if pay := pk.Payload(data); pay[0]&0x40 == 0 {
-				br := LecteurSur(pay)
-				_, _ = DecodeFrameRecords(br, w, cfg)
-			}
-		}
-		out = scanChunkDamages(pks, data, w, hit, out)
+		out = scanChunkDamages(WalkPackets(data), data, out)
 	}
-	return out, lot1ArgmaxBase(hit), nil
+	return out, nil
 }
 
-// scanChunkDamages decode les damage_aftermath d'un chunk et accumule l'atterrissage bipede par
-// base (extrait de ScanFilmWeaponDamages pour tenir le seuil de 80 lignes / fonction).
-func scanChunkDamages(pks []FilmPacket, data []byte, w *World, hit map[int]int, out []WeaponDamage) []WeaponDamage {
+// scanChunkDamages decode les damage_aftermath d'un chunk (extrait de ScanFilmWeaponDamages).
+func scanChunkDamages(pks []FilmPacket, data []byte, out []WeaponDamage) []WeaponDamage {
 	for _, pk := range pks {
 		if pk.Type != PacketTypeDelta || pk.Size < 2 {
 			continue
@@ -288,14 +271,6 @@ func scanChunkDamages(pks []FilmPacket, data []byte, w *World, hit map[int]int, 
 		d.Source, d.HasSource, d.Negative = r.sourceID, r.hasSource, r.negatif
 		d.MagClear, d.MagRaw = r.dmgClear, r.dmgRaw
 		out = append(out, d)
-		for _, b := range lot1chBases {
-			if lot1chIsBiped(w, b, d.VictimIdx) {
-				hit[b]++
-			}
-			if lot1chIsBiped(w, b, d.ResponsibleIdx) {
-				hit[b]++
-			}
-		}
 	}
 	return out
 }
