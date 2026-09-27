@@ -12,7 +12,7 @@ package replayartifacts
 // toujours fermee » (`return false, false`) laisse ce grep vert, toute la suite verte, tags
 // compris — et la table ne se remplit plus jamais.
 //
-// Ces tests-ci passent par `persisterNiveauxDArmes` avec une VRAIE base migree et un VRAI
+// Ces tests-ci passent par la preparation puis l ecriture des niveaux avec une VRAIE base migree et un VRAI
 // artefact, et comptent les lignes ecrites. Ils rougissent sur la mutation.
 
 import (
@@ -101,7 +101,7 @@ func TestPersisterNiveauxDArmes_EcritQuandLaCapabiliteEstDeclaree(t *testing.T) 
 	if len(lus) != 1 {
 		t.Fatalf("%d artefact(s) lu(s), attendu 1", len(lus))
 	}
-	persisterNiveauxDArmes(context.Background(), d, &bilanDerivations{}, lus)
+	niveauxDuLot(context.Background(), d, &bilanDerivations{}, lus)
 
 	if n := lignesDeNiveauxEnBase(t, db); n == 0 {
 		t.Fatal("AUCUNE ligne ecrite alors que le titre declare film.weapon_tiers : la porte " +
@@ -127,7 +127,7 @@ func TestPersisterNiveauxDArmes_NEcritRienSansLaCapabilite(t *testing.T) {
 	db, d, lus := monterLeLot(t, "niveaux2")
 	retirerCapabiliteNiveaux(t, d.RepoRoot)
 
-	persisterNiveauxDArmes(context.Background(), d, &bilanDerivations{}, lus)
+	niveauxDuLot(context.Background(), d, &bilanDerivations{}, lus)
 
 	if n := lignesDeNiveauxEnBase(t, db); n != 0 {
 		t.Errorf("%d ligne(s) ecrite(s) sur un titre qui NE DECLARE PAS film.weapon_tiers : la "+
@@ -137,18 +137,31 @@ func TestPersisterNiveauxDArmes_NEcritRienSansLaCapabilite(t *testing.T) {
 
 // TestPersisterNiveauxDArmes_IdentiteIllisibleNEcritRien — un lot dont le registre ne rend pas
 // l identite n est PAS projete : un `pair_name` vide ecrirait un niveau « base » sur des Fiesta.
+// Et il est inscrit au bilan (lot L4.1) : sans cela sa marque se poserait, et le rattrapage ne
+// le reprendrait jamais.
 func TestPersisterNiveauxDArmes_IdentiteIllisibleNEcritRien(t *testing.T) {
 	db, d, lus := monterLeLot(t, "niveaux3")
 	// Le match disparait du registre : son identite devient illisible.
 	if _, err := db.Exec(`DELETE FROM match_registry WHERE match_id = 'niveaux3'`); err != nil {
 		t.Fatalf("suppression au registre: %v", err)
 	}
-	persisterNiveauxDArmes(context.Background(), d, &bilanDerivations{}, lus)
+	b := &bilanDerivations{}
+	niveauxDuLot(context.Background(), d, b, lus)
 
 	if n := lignesDeNiveauxEnBase(t, db); n != 0 {
 		t.Errorf("%d ligne(s) ecrite(s) sans identite de match : la projection a suppose un mode "+
 			"regulier, ce qui ecrit un niveau de base sur des equipements tires au sort", n)
 	}
+	if !b.aEchoue("niveaux3") {
+		t.Error("identite illisible sans echec au bilan : la marque de derivation se poserait sur " +
+			"un match dont les niveaux n'ont jamais ete ecrits (lot L4.1)")
+	}
+}
+
+// niveauxDuLot : la famille des niveaux d'armes telle que Deriver l'enchaine — preparation
+// (lectures) puis ecriture.
+func niveauxDuLot(ctx context.Context, d Deps, b *bilanDerivations, lus []artefactLu) {
+	ecrireNiveauxDArmes(ctx, d, b, preparerNiveauxDArmes(ctx, d, b, lus))
 }
 
 // TestPersisterNiveauxDArmes_ReferenceAbsenteNePrivePasLesAutres — cette famille s abstient
@@ -161,7 +174,7 @@ func TestPersisterNiveauxDArmes_ReferenceAbsenteNePrivePasLesAutres(t *testing.T
 		t.Fatalf("retrait de la reference: %v", err)
 	}
 	b := &bilanDerivations{}
-	persisterNiveauxDArmes(context.Background(), d, b, lus)
+	niveauxDuLot(context.Background(), d, b, lus)
 
 	if b.aEchoue("niveaux4") {
 		t.Error("la famille a pose un echec au bilan alors que SA reference manque : les " +
