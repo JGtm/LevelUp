@@ -14,6 +14,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 )
 
 func TestProfilDeDepartPourCarte_CarteEgaleALInvariantEstAppliquee(t *testing.T) {
@@ -41,5 +42,31 @@ func TestProfilDeDepartPourCarte_SansLargeursNEstPasAppliquee(t *testing.T) {
 	sansLargeurs := profile.MapQuantEntry{Module: "entree fabriquee a la main"}
 	if _, appliquee := ProfilDeDepartPourCarte(&sansLargeurs); appliquee {
 		t.Error("entree sans largeurs : rendue appliquee alors que l invariant est conserve")
+	}
+}
+
+// TestCarteLueSurCliffhangerDuCatalogue : LE CAS DE L ENQUETE DU 2026-09-27 (constat 6b), sur
+// l entree COMMISE de Cliffhanger et la bobine de ce film — pas sur une entree fabriquee. La
+// presence de la carte se lit sur l ENTREE : Cliffhanger passee est une carte LUE, meme si ses
+// largeurs sont exactement l invariant du profil. Avant J7.7, `CarteLue` y valait faux : faux
+// avertissement, faux repli compte, « DEFAUT (carte absente) » dans la calibration de 000d5950.
+//
+// MUTATION QUI DOIT LE FAIRE ROUGIR : rendre de nouveau « appliquee » sur une DIFFERENCE de largeurs
+// (`p.LargeursObjetDuMonde() != avant`).
+func TestCarteLueSurCliffhangerDuCatalogue(t *testing.T) {
+	cliff := carteDuCatalogue(t, "Cliffhanger")
+	if cliff.PrecisionAbsolue() != ProfilDeDepart().LargeursObjetDuMonde() {
+		t.Fatalf("temoin sans valeur : Cliffhanger %+v n EST PLUS l invariant %+v",
+			cliff.PrecisionAbsolue(), ProfilDeDepart().LargeursObjetDuMonde())
+	}
+	if _, lue := ProfilDeDepartPourCarte(&cliff); !lue {
+		t.Error("ProfilDeDepartPourCarte(Cliffhanger) : carte rendue NON lue alors qu elle est passee")
+	}
+	src, err := source.LoadDir(miniBobineDir, nil)
+	if err != nil {
+		t.Fatalf("mini-bobine illisible : %v", err)
+	}
+	if c := calibrationDeLaBobine(t, src, &cliff); !c.CarteLue {
+		t.Errorf("calibration de %s sous Cliffhanger : %s — la carte passee se lit absente", miniBobineFilm, c)
 	}
 }

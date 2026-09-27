@@ -303,7 +303,8 @@ func RunPostSync(ctx context.Context, h *PostSyncHook, d PostSyncDeps, insertedI
 		"gamertag", d.Gamertag, "positions", col.CaptureCablee(),
 		"demandes", len(travail), "ecrits", sum.Written,
 		"morts", sum.Deaths, "films_absents", sum.NoFilm, "sans_killfeed", sum.NoKillFeed,
-		"erreurs", sum.Errors, "backlog_restant", restant,
+		"erreurs", sum.Errors, "ecartes_carte_non_resolue", sum.CarteNonResolue,
+		"backlog_restant", restant,
 		"duree", time.Since(debut).Round(time.Second))
 	return sum.Written
 }

@@ -240,7 +240,7 @@ func (b *Builder) BuildBytes(matchID string, mapNames []string, filmDir string, 
 	ctx := context.Background()
 	// LA BASCULE (lot 4.1.2) : APRES l'entree de catalogue — elle sert aux deux branches ET
 	// valide l'en-tete des faits — et AVANT tout chargement de film. Cf. filmfacts_cuisson.go.
-	src, err := b.entreesDeLaCuisson(ctx, matchID, mapNames, filmDir, entry)
+	src, err := b.entreesDeLaCuisson(ctx, matchID, filmDir, entry)
 	if err != nil {
 		return Built{}, err
 	}

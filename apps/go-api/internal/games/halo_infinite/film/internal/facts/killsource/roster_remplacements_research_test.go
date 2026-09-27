@@ -75,6 +75,8 @@ func journaliserSortiePubliee(t *testing.T, src *source.Film, nom string) {
 	if carte := os.Getenv(ksRosterCarteEnv); carte != "" {
 		e := carteDuCatalogue(t, carte)
 		opts.Carte = &e
+	} else {
+		opts.RechercheSansCarte = true // instrument : sans carte nommee, il le DECLARE
 	}
 	res, err := Decode(context.Background(), nom, src, &opts)
 	if err != nil {

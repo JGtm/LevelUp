@@ -240,8 +240,13 @@ func mesurerUnFilm(t *testing.T, ctx context.Context, db *sql.DB, film string) *
 
 	debut = time.Now()
 	opts := decfilm.DefaultOptions()
-	opts.Carte = col.carteDuMatch(ctx, film)
+	carte, errCarte := col.carteDuMatch(ctx, film)
 	c.carte = time.Since(debut)
+	if errCarte != nil {
+		t.Logf("film %s : carte non resolue (%v) — saute (un film sans carte est mis de cote)", film, errCarte)
+		return nil
+	}
+	opts.Carte = carte
 
 	debut = time.Now()
 	res, err := decfilm.Decode(ctx, film, decode, &opts)

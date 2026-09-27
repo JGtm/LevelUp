@@ -341,7 +341,10 @@ func ksPrecRun(t *testing.T, dir string, axisW [3]uint) ksPrecMeasure {
 	if err != nil {
 		t.Fatalf("chunks de %s : %v", dir, err)
 	}
-	res, err := Decode(context.Background(), dir, src, nil)
+	// INSTRUMENT DE RECHERCHE : il mesure l effet des largeurs, il decode donc sans carte.
+	recherche := DefaultOptions()
+	recherche.RechercheSansCarte = true
+	res, err := Decode(context.Background(), dir, src, &recherche)
 	if err != nil {
 		t.Fatalf("decodage de %s aux largeurs %v : %v", dir, axisW, err)
 	}

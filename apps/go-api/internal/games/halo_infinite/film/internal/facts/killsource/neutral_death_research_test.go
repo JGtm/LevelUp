@@ -74,7 +74,10 @@ func neutralDeathReport(t *testing.T, b *strings.Builder, dir string) {
 	}
 	// LE CHEMIN PUBLIC, celui que le producteur d'artefacts consomme : mesurer par une voie
 	// interne mesurerait autre chose que ce qui est servi.
-	res, err := Decode(context.Background(), filepath.Base(dir), src, nil)
+	// INSTRUMENT DE RECHERCHE : films quelconques du cache, sans base pour en resoudre la carte.
+	recherche := DefaultOptions()
+	recherche.RechercheSansCarte = true
+	res, err := Decode(context.Background(), filepath.Base(dir), src, &recherche)
 	if err != nil {
 		t.Fatalf("Decode %s : %v", dir, err)
 	}

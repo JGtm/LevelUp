@@ -36,6 +36,13 @@ var (
 	ErrNoKillFeed = errors.New("killsource: kill-feed introuvable (aucun chunk HIGHLIGHT)")
 	// ErrRegistry : le chunk 0 ne porte pas un registre ECS lisible.
 	ErrRegistry = errors.New("killsource: registre ECS illisible")
+	// ErrCarteAbsente : aucune entree de catalogue PORTANT DES LARGEURS n a ete fournie
+	// (`Options.Carte` nil, ou entree sans largeurs d axe). Le film est MIS DE COTE, jamais decode
+	// aux largeurs d une autre carte (regle utilisateur du 2026-09-27 : « le flux du film est la
+	// seule source fiable. Pas de repli. »). Meme famille que la cle de film inconnue (D-4
+	// d ADR 0034) : le film est la, ce qui manque est une donnee cote depot.
+	ErrCarteAbsente = errors.New("killsource: carte du match absente — film mis de cote, " +
+		"jamais decode aux largeurs d une autre carte")
 )
 
 func errRegistry(err error) error { return fmt.Errorf("%w: %w", ErrRegistry, err) }
@@ -75,15 +82,22 @@ type decodeCtx struct {
 // rien lui-meme, et une cuisson qui decode aussi le rejeu 2D partage LE MEME film. `film` nil ou
 // vide rend [ErrNoChunk].
 //
-// `opts` peut valoir nil : c est alors la configuration GELEE, celle qui a produit les chiffres
-// publies. `name` sert uniquement a etiqueter la mesure de sante (identifiant de film ou de
-// match, au choix de l appelant).
+// `opts` porte la configuration GELEE ([DefaultOptions]) PLUS LA CARTE DU MATCH. LA CARTE EST
+// OBLIGATOIRE depuis le 2026-09-27 (regle utilisateur : « le flux du film est la seule source
+// fiable. Pas de repli. ») : sans entree de catalogue portant des largeurs — `opts` nil compris —
+// [Decode] rend [ErrCarteAbsente] AVANT de lire quoi que ce soit, et l appelant met le film de
+// cote. Seul un instrument de recherche decode sans carte, et il le NOMME
+// ([Options.RechercheSansCarte]). `name` sert uniquement a etiqueter la mesure de sante
+// (identifiant de film ou de match, au choix de l appelant).
 func Decode(ctx context.Context, name string, film *source.Film, opts *Options) (*Result, error) {
 	o := DefaultOptions()
 	if opts != nil {
 		o = *opts
 	}
 	o.normalize()
+	if err := exigerLaCarte(o); err != nil {
+		return nil, err
+	}
 
 	c := &decodeCtx{name: name, opts: o}
 	if err := c.prepare(ctx, film); err != nil {
@@ -120,33 +134,34 @@ func ProfilDeDepart() grammar.ProfilDeBalayage {
 // plage que la carte impose au chemin absolu de position ([profile.MapQuantEntry.PrecisionAbsolue]).
 //
 // `carte` nil, ou une entree sans largeurs (catalogue anterieur au champ, entree fabriquee a la
-// main), LAISSE l invariant : le second rendu dit `false`, l appelant le journalise et le
-// compte. C est le repli `repli_carte_absente_largeurs_par_defaut` du registre, et il n est pas
-// neutre — l invariant est l entree `cliffhanger` du catalogue, c est-a-dire UNE carte appliquee
-// a toutes.
+// main), LAISSE l invariant et le second rendu dit `false`. En production ce cas n atteint plus
+// la calibration : [Decode] le refuse ([ErrCarteAbsente], 2026-09-27). Il ne reste ouvert qu aux
+// instruments de recherche ([Options.RechercheSansCarte]) — l invariant est l entree
+// `cliffhanger` du catalogue, c est-a-dire UNE carte appliquee a toutes.
 //
 // C EST LE MEME GESTE QUE `replay.installWorldObjectPrecision`, PAR LE MEME APPEL
 // (`PoserLargeursObjetDuMondeDepuisDecoupage`) : les deux chemins de decodage du depot posent
 // desormais la carte de la meme facon, et il n y a pas deux regles a maintenir.
 //
-// « APPLIQUEE » VEUT DIRE QUE LE PROFIL PORTE CE QUE L ENTREE IMPOSE, pas que ses largeurs ont
-// CHANGE (lot J7.7, constat FK-7) : sur Cliffhanger, dont l entree EST l invariant, rien ne change et
-// la carte passait pour absente — faux repli, faux avertissement a chaque decodage.
+// LA PRESENCE DE LA CARTE SE LIT SUR L ENTREE ([carteApplicable]), JAMAIS SUR UNE DIFFERENCE DE
+// LARGEURS (lot J7.7, constat FK-7, puis 2026-09-27) : sur Cliffhanger, dont l entree EST
+// l invariant, rien ne change — et la carte passait pour absente.
 func ProfilDeDepartPourCarte(carte *profile.MapQuantEntry) (grammar.ProfilDeBalayage, bool) {
 	p := ProfilDeDepart()
-	if carte == nil {
+	if !carteApplicable(carte) {
 		return p, false
 	}
 	p.PoserLargeursObjetDuMondeDepuisDecoupage(carte.Layout())
-	return p, p.LargeursObjetDuMonde() == carte.PrecisionAbsolue()
+	return p, true
 }
 
-// avertirReplisDeCalibration DIT les replis que la calibration a poses. Deux, et chacun est
-// NOMME au registre — jamais de degradation silencieuse (CLAUDE.md regle 3).
+// avertirReplisDeCalibration DIT ce que la calibration n a pas lu — jamais de degradation
+// silencieuse (CLAUDE.md regle 3).
 //
-//	repli_carte_absente_largeurs_par_defaut        les largeurs conservees sont celles d UNE
-//	                                               carte (l entree `cliffhanger` du catalogue)
-//	                                               appliquees a celle-ci.
+//	carte absente (RECHERCHE SEULEMENT)            les largeurs conservees sont celles d UNE
+//	                                               carte (l entree `cliffhanger` du catalogue).
+//	                                               En production [Decode] refuse ce cas avant la
+//	                                               calibration ([ErrCarteAbsente]).
 //	repli_controle_corruption_section_absente      le film ne porte pas de section
 //	                                               d identification, donc pas le bit de
 //	                                               `chunk_00 + 0x0CB45C` qui decide du `R(1)`
@@ -156,7 +171,7 @@ func ProfilDeDepartPourCarte(carte *profile.MapQuantEntry) (grammar.ProfilDeBala
 // lignes, au-dela du seuil de 80 du depot (ratchet `archlint/film_function_length_test.go`).
 func (c *decodeCtx) avertirReplisDeCalibration(ctx context.Context) {
 	if !c.calib.CarteLue {
-		slog.WarnContext(ctx, "killsource: carte du match absente — la marche des morts lit ses "+
+		slog.WarnContext(ctx, "killsource: RECHERCHE SANS CARTE — la marche des morts lit ses "+
 			"positions aux largeurs d axe PAR DEFAUT, celles d une autre carte",
 			"film", c.name, "largeurs", c.calib.LueAxisW, "indexW", c.calib.LueIndexW)
 	}

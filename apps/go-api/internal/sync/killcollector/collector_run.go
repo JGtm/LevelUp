@@ -143,27 +143,56 @@ func (c *KillSourceCollector) decodeFilmForMatch(ctx context.Context, matchID st
 		return nil, nil, nil, OutcomeUnknownKey, nil
 	}
 
+	res, outcome, err := c.decoderSousLaCarte(ctx, matchID, film)
+	if outcome != OutcomeWritten {
+		return nil, nil, nil, outcome, err
+	}
+	return chunks, film, res, OutcomeWritten, nil
+}
+
+// decoderSousLaCarte : LA PORTE DE LA CARTE, puis le decodage des morts sous elle.
+//
+// LA PORTE VIENT APRES CELLE DE LA CLE ET AVANT TOUT DECODAGE (2026-09-27, regle utilisateur
+// « le flux du film est la seule source fiable. Pas de repli. ») : sans carte, le film est MIS DE
+// COTE — jamais decode aux largeurs d une autre carte. Elle vient APRES le telechargement a
+// dessein : un film expire doit recevoir son marqueur terminal `MBitFilmAbsent`, carte connue ou
+// non. Sortie de `decodeFilmForMatch`, que la porte portait au-dela des 80 lignes du depot.
+func (c *KillSourceCollector) decoderSousLaCarte(ctx context.Context, matchID string, film *decfilm.Film) (
+	*decfilm.Result, KillSourceOutcome, error,
+) {
+	carte, err := c.carteDuMatch(ctx, matchID)
+	if err != nil {
+		if !carteNonResolue(err) {
+			observability.AddInt(metricDecodeError, 1)
+			return nil, OutcomeNoFilm, fmt.Errorf("carte du match %s: %w", matchID, err)
+		}
+		return nil, ecarterSansCarte(ctx, matchID, err), nil
+	}
+
 	// LA CONFIGURATION GELEE, celle qui a produit les chiffres publies, PLUS LA CARTE DU MATCH.
 	// Ne jamais passer d autre Options ici sans une raison ecrite : ce sont elles qui
 	// definissent le decodage. `Carte` n en est pas une : c est une DONNEE d entree, la meme
-	// entree de catalogue que la passe des positions resout deja (`resolveMapBounds`), et sans
-	// elle la marche des morts lit ses positions aux largeurs d UNE AUTRE CARTE (lot 3.4.1).
+	// entree de catalogue que la passe des positions resout deja (`resolveMapBounds`).
 	opts := decfilm.DefaultOptions()
-	opts.Carte = c.carteDuMatch(ctx, matchID)
+	opts.Carte = carte
 	res, err := decfilm.Decode(ctx, matchID, film, &opts)
-	if err != nil {
+	switch {
+	case err == nil:
+		return res, OutcomeWritten, nil
+	case errors.Is(err, decfilm.ErrCarteAbsente):
+		// Une entree resolue mais SANS LARGEURS (catalogue anterieur au champ) : meme politique.
+		return nil, ecarterSansCarte(ctx, matchID, err), nil
+	case errors.Is(err, decfilm.ErrNoKillFeed):
 		// Un film sans kill-feed n est pas une panne : c est un film dont on ne peut rien
 		// publier. Le distinguer evite qu un backfill s arrete sur un vieux match.
-		if errors.Is(err, decfilm.ErrNoKillFeed) {
-			observability.AddInt(metricNoKillFeed, 1)
-			slog.InfoContext(ctx, "killsource: film sans kill-feed, rien a publier",
-				"match_id", matchID)
-			return nil, nil, nil, OutcomeNoKillFeed, nil
-		}
+		observability.AddInt(metricNoKillFeed, 1)
+		slog.InfoContext(ctx, "killsource: film sans kill-feed, rien a publier",
+			"match_id", matchID)
+		return nil, OutcomeNoKillFeed, nil
+	default:
 		observability.AddInt(metricDecodeError, 1)
-		return nil, nil, nil, OutcomeNoFilm, fmt.Errorf("decodage %s: %w", matchID, err)
+		return nil, OutcomeNoFilm, fmt.Errorf("decodage %s: %w", matchID, err)
 	}
-	return chunks, film, res, OutcomeWritten, nil
 }
 
 // collect : le corps, sans la journalisation ni la mesure de duree.

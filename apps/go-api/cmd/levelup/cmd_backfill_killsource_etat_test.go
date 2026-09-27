@@ -269,3 +269,21 @@ func TestBilanInitial_PorteLeTempsEtLesChunks(t *testing.T) {
 		}
 	}
 }
+
+// TestEtat_CarteNonResolueEstUneIssueDistincte — un film MIS DE COTE faute de carte (2026-09-27,
+// « pas de repli ») se compte dans SA colonne : ni un ecrit, ni une erreur, ni un film sans
+// kill-feed. `--status` la rend lisible.
+func TestEtat_CarteNonResolueEstUneIssueDistincte(t *testing.T) {
+	s, chemin := suiviDeTest(t, 1)
+	s.FilmFini(killcollector.EvenementDeFilm{MatchID: "petit",
+		Outcome: killcollector.OutcomeCarteNonResolue, Duree: time.Second})
+	e := lireEtat(t, chemin)
+	f := e.Films
+	if f.CarteNonResolue != 1 || f.Erreurs != 0 || f.Ecrits != 0 || f.SansKillFeed != 0 {
+		t.Errorf("carte_non_resolue/erreurs/ecrits/sans_kill_feed = %d/%d/%d/%d, attendu 1/0/0/0",
+			f.CarteNonResolue, f.Erreurs, f.Ecrits, f.SansKillFeed)
+	}
+	if sortie := rendreEtat(e, time.Now()); !strings.Contains(sortie, "1 carte non resolue") {
+		t.Errorf("--status ne dit pas la mise de cote faute de carte :\n%s", sortie)
+	}
+}

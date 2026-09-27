@@ -34,6 +34,8 @@ func TestMarquerFilmParOutcome(t *testing.T) {
 			"etat transitoire : le match doit rester candidat"},
 		{"capability absente", OutcomeNotSupported, 0, 0, false,
 			"hors titre : rien a affirmer sur son film"},
+		{"carte non resolue", OutcomeCarteNonResolue, 0, 0, false,
+			"le film EXISTE : il revient au rattrapage des que sa carte se resout (2026-09-27)"},
 	}
 	for _, c := range cas {
 		t.Run(c.nom, func(t *testing.T) {

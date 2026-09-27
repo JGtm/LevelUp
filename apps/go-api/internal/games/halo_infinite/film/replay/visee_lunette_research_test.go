@@ -296,7 +296,10 @@ func adsArmesParInstant(t *testing.T, dir string) map[int]killsource.SourceTruth
 		t.Fatalf("chunks du film : %v", err)
 	}
 	debut := time.Now()
-	res, err := killsource.Decode(context.Background(), filepath.Base(dir), src, nil)
+	// INSTRUMENT DE RECHERCHE : un film quelconque du cache, sans base pour en resoudre la carte.
+	recherche := killsource.DefaultOptions()
+	recherche.RechercheSansCarte = true
+	res, err := killsource.Decode(context.Background(), filepath.Base(dir), src, &recherche)
 	if err != nil {
 		t.Fatalf("killsource : %v", err)
 	}

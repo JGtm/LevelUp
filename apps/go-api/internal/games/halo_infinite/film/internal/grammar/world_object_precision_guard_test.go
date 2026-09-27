@@ -89,12 +89,13 @@ var worldObjectPrecisionReaders = map[string]string{
 		"par valeur par l'installateur) — aucune lecture de la valeur ici. LE TYPE A CHANGE DE " +
 		"COUCHE AU LOT 2.5.b (2026-09-16) : il descend de `grammar/components_movement.go` dans " +
 		"`profile/`, ou il est de la DONNEE ; le commentaire l'a suivi, pas la lecture",
-	"internal/games/halo_infinite/film/internal/facts/killsource/decode.go": "LE REPLI NOMMÉ, " +
+	"internal/games/halo_infinite/film/internal/facts/killsource/decode.go": "LA CARTE DU MATCH, " +
 		"et il est là précisément pour dire d'où ce chemin tient ses largeurs (lot 3.4.1) : " +
 		"`Decode` reçoit la carte du match par `Options.Carte`, la pose sur son profil de départ " +
-		"(`ProfilDeDepartPourCarte`) et AVERTIT par film quand elle manque — auquel cas la marche " +
-		"des morts lit bien les largeurs de Cliffhanger sur une autre carte, ce que " +
-		"`repli_carte_absente_largeurs_par_defaut` porte au registre. C'est la question de cette " +
+		"(`ProfilDeDepartPourCarte`). Depuis le 2026-09-27 une carte absente n est plus un repli : " +
+		"`Decode` refuse le film (`ErrCarteAbsente`) et seul un instrument de recherche qui le " +
+		"DECLARE (`RechercheSansCarte`) lit les largeurs de Cliffhanger sur une autre carte, " +
+		"averti par film. C'est la question de cette " +
 		"garde, et la réponse y est écrite ; aucune largeur n'est lue ici, seul le drapeau " +
 		"`CarteLue` l'est",
 	"internal/games/halo_infinite/film/internal/grammar/position_capture.go": "LA LECTURE DU CHEMIN ABSOLU " +

@@ -226,7 +226,10 @@ func TestBTB2025NonRegression(t *testing.T) {
 	if err != nil {
 		t.Fatalf("chargement %s : %v", id, err)
 	}
-	res, err := Decode(context.Background(), id, src, nil)
+	// INSTRUMENT DE RECHERCHE : un film quelconque du cache, sans base pour en resoudre la carte.
+	recherche := DefaultOptions()
+	recherche.RechercheSansCarte = true
+	res, err := Decode(context.Background(), id, src, &recherche)
 	if err != nil {
 		t.Fatalf("Decode : %v", err)
 	}

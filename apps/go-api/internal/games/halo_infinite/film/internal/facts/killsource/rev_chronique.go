@@ -458,3 +458,26 @@ package killsource
 // `SchemaVersion` ne monte pas (la forme du document de rejeu ne change pas) ; le codec des faits
 // ne monte pas : la section 5 gagne des champs JSON, et un fichier ecrit sous la revision
 // anterieure est refuse sur son EN-TETE, qui porte `killsource.Rev`.
+//
+// COMPLEMENT DU 2026-09-27, MEME RANG, MEME LOT NON PUBLIE (correctif J7 « carte obligatoire »,
+// enquete ENQUETE_MARCHE_KILLSOURCE_2026-09-27). La revision NE MONTE PAS : `killsource-2026-09-26`
+// n est pas publiee (la serie en base est `killsource-2026-09-24`), et deux changements d un meme
+// lot partagent un rang — en ouvrir un second ferait redecoder le parc deux fois. L empreinte, elle,
+// change (golden regenere par sa porte). Ce que la sortie gagne :
+//
+//	CARTE OBLIGATOIRE  `Decode` sans entree de catalogue portant des largeurs rend
+//	                   `ErrCarteAbsente` ; plus aucun decodage aux largeurs de l invariant
+//	                   (Cliffhanger) en production. Le collecteur met le film de cote
+//	                   (`ecarte-carte-non-resolue`, `killsource_ecartes_carte_non_resolue`, aucun
+//	                   marqueur de registre : il reste au backlog et sera decode quand sa carte se
+//	                   resoudra). Le repli `repli_carte_absente_largeurs_par_defaut` est RETIRE du
+//	                   registre ; seuls les instruments de recherche decodent sans carte, et le
+//	                   DECLARENT (`Options.RechercheSansCarte`, interdit en production par ratchet).
+//	CARTE LUE          la presence de la carte se lit sur l ENTREE (`carteApplicable`), plus sur une
+//	                   difference de largeurs — acheve FK-7 sur l entree commise de Cliffhanger.
+//
+// LA MARCHE REVIENT SUR LE BANC, PAS EN PRODUCTION : le banc `TestGoldenFilms` decodait sans carte
+// depuis `f3a2f00eb` ; sous leur carte, les quatre films rendent marche 356/369 et scan 7/8 au
+// cumul (000d5950 94/91, 9b191a7f 84/80, 78919882 98/94, fccc61cd 93/91). En production, seuls les
+// matchs SANS CARTE RESOLUE changent : ils etaient publies par le scan aux largeurs d une autre carte,
+// ils ne sont plus publies du tout.

@@ -27,14 +27,14 @@
 02:09  00426796  divergence=non  "Autres"  VEHICULE  marche
 04:53  ffebe84e  divergence=non  "Disruptor / Shock Rifle / Shock Rifle (Ranked)"  ARME  marche
 01:25  acd1cff4  divergence=oui  "M41 SPNKr"  ARME  marche
-03:37  ba5ac78e  divergence=oui  "Ravager"  ARME  scan
+03:37  ba5ac78e  divergence=oui  "Ravager"  ARME  marche
 08:38  5e389b5d  divergence=oui  "Autres"  OBJET_EXPLOSIF  marche
 
 ## MORTS DONT LA SOURCE APPARTIENT A LA VICTIME — 3 ligne(s)
 # le kill-feed credite un AUTRE joueur : les deux verites sont vraies et divergent
 # format : instant  victime  tag  etiquette  CREDIT DU JEU  voie  origine
 01:25  JGtm  acd1cff4  "M41 SPNKr"  credit=HizaroMne4262  marche  source-victime
-03:37  HizaroMne4262  ba5ac78e  "Ravager"  credit=topgunx10  scan  source-victime
+03:37  HizaroMne4262  ba5ac78e  "Ravager"  credit=topgunx10  marche  source-victime
 08:38  LORD83DAN  5e389b5d  "Autres"  credit=JGtm  marche  source-victime
 
 ## MORTS INFLIGEES PAR UN BOT — 1 ligne(s)
@@ -48,26 +48,32 @@
 29889 paquet(s) SANS evenement · 49651416 bits balayes · 0 candidat(s) accepte(s)
 
 ## COUT PAR VOIE DE LECTURE — ventilation, PAS deux precisions comparables
-marche   : 86 propose(s), 85 apparie(s) au couple exact, 85 publiee(s)
-scan     : 8 propose(s), 7 apparie(s) au couple exact, 7 publiee(s)
-marche, source appartenant a la victime : 3 propose(s), 2 publiee(s)
-scan,   source appartenant a la victime : 18 propose(s), 1 publiee(s)
-morts de BOT : 25 propose(s), 2 publiee(s)
+marche   : 93 propose(s), 91 apparie(s) au couple exact, 91 publiee(s)
+scan     : 1 propose(s), 1 apparie(s) au couple exact, 1 publiee(s)
+marche, source appartenant a la victime : 4 propose(s), 3 publiee(s)
+scan,   source appartenant a la victime : 16 propose(s), 0 publiee(s)
+morts de BOT : 2 propose(s), 2 publiee(s)
 morts infligees PAR un bot : 1 propose(s), 1 apparie(s), 1 publiee(s)
-90 enregistrement(s) lu(s) par LES DEUX voies · ACCORD 85 · DESACCORD 0
+100 enregistrement(s) lu(s) par LES DEUX voies · ACCORD 91 · DESACCORD 0
 DESACCORD doit valoir 0 : sinon l hybride n est plus une PREFERENCE mais un ARBITRAGE
 0 mort(s) a plusieurs candidats en concurrence · 0 enregistrement(s) sans position
 4686 / 4839 paquet(s) a evenements localise(s)
-calibration resolue automatiquement : axisW=16 indexW=2 [score 1113, mediane 316] | recordStateParam=4 [croissance x1.189]
+calibration resolue automatiquement : LU axisW=[17 17 15] indexW_plage=1 [CARTE] controle_corruption=false [FILM] | ORACLE axisW=26 [PROFIL PLAT (score 388, mediane 304)] desaccords=0 | DECIDE indexW_poignee=1 INVARIANT (non discriminee) [score 1879, mediane 1879]
 
 ## SANTE — un verdict porte sur le DOMAINE, pas sur les etiquettes publiees
 verdict : NOMINAL
-119 candidat(s) consulte(s) · 98 publie(s) · 21 inexplique(s) sur les candidats
-ventilation : couple sans equivalent 2 · source-victime non retenue 18 · indice de bot 1
+118 candidat(s) consulte(s) · 98 publie(s) · 20 inexplique(s) sur les candidats
+ventilation : couple sans equivalent 2 · source-victime non retenue 17 · indice de bot 1
 hors roster : 0 — COMPTEUR SEPARE, il ne se compte pas sur les candidats et n entre
    donc PAS dans le taux d inexpliques (un numerateur qui deborde son denominateur
    ne veut rien dire)
 tags hors catalogue vus par la MARCHE : 0 — compteur principal de table perimee
    PORTEE : bruit MESURE nul sur 5 films, et AVEUGLE a un tag servi par le seul SCAN
-publication ligne par ligne : AUTORISEE (marge de bijection 22)
+publication ligne par ligne : AUTORISEE (marge de bijection 0, bijection DETERMINEE (une seule affectation possible))
 roster : 9 nom(s) dont 8 humain(s) · bots declares : 343 PardonMy (slot 8, bid 7)
+
+## PROVENANCE DES INDICES — la table du film est la SOURCE, l inference le REPLI
+table du film : build HI_1_13_0 · 8 siege(s) nomme(s) · 8 indice(s) LU(S) · 0 ajout(s) au roster
+repli : 0 indice(s) laisse(s) a l inference par les votes du kill-feed, pour 0 nom(s) libre(s) — affectation unique : true
+refus de siege : bot deja epingle 0 · nom deja epingle 0 · indice hors 0..31 0
+controle par le kill-feed (jamais une correction) : accord 8 · contradiction 0 · silence 0

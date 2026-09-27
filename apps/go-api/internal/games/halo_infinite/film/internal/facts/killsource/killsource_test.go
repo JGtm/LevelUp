@@ -285,13 +285,14 @@ type reference struct {
 	// decodee (`match_participants.deaths` somme sur les participants). Elle sert au seul
 	// controle qui decide de ce lot : `couverts + morts de bot + morts par un bot == API`.
 	apiDeathsFilm int
+	carte         string // la CARTE du match, OBLIGATOIRE (cf. references_carte_test.go)
 }
 
 var references = []reference{
-	{"000d5950", 93, 1, 0, 0, 0, 93},
-	{"9b191a7f", 84, 2, 3, 1, 3, 90},
-	{"78919882", 99, 2, 0, 0, 0, 99},
-	{"fccc61cd", 95, 3, 2, 0, 1, 98},
+	{"000d5950", 93, 1, 0, 0, 0, 93, "Cliffhanger"},
+	{"9b191a7f", 84, 2, 3, 1, 3, 90, "Bazaar"},
+	{"78919882", 99, 2, 0, 0, 0, 99, "High Ground"},
+	{"fccc61cd", 95, 3, 2, 0, 1, 98, "Launch Site"},
 }
 
 // anchors : LES ANCRES DE VERITE TERRAIN, confirmees en mode Theater. C est la ressource la plus
@@ -355,7 +356,7 @@ func checkFilm(t *testing.T, dir string, ref reference) {
 	if err != nil {
 		t.Skipf("film absent : %v", err)
 	}
-	res, err := Decode(context.Background(), ref.film, src, nil)
+	res, err := Decode(context.Background(), ref.film, src, optionsDeReference(t, ref.film))
 	if err != nil {
 		t.Fatalf("Decode: %v", err)
 	}

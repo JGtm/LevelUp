@@ -70,7 +70,7 @@ func imprimableKS(s string) bool {
 // les huit indices sont LUS, aucun n est infere, et le kill-feed CONFIRME les huit.
 func TestTableDuFilmEpingleTousLesIndicesDeLaBobine(t *testing.T) {
 	src := chargerSourceKS(t, miniBobineDir)
-	res, err := Decode(t.Context(), miniBobineFilm, src, nil)
+	res, err := Decode(t.Context(), miniBobineFilm, src, optionsDeLaBobine(t))
 	if err != nil {
 		t.Fatalf("Decode : %v", err)
 	}

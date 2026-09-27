@@ -176,6 +176,7 @@ func (c *KillSourceCollector) CollectMatchesOuvriers(
 		"sans_killfeed", sum.NoKillFeed, "abandons_delai", sum.Timeouts,
 		"erreurs", sum.Errors, "capability_absente", sum.NotSupport,
 		"ecartes_cle_inconnue", sum.UnknownKey,
+		"ecartes_carte_non_resolue", sum.CarteNonResolue,
 		"duration", sum.ElapsedTime)
 	return sum
 }
@@ -223,6 +224,8 @@ func comptabiliserFilm(sum *KillSourceSummary, ev EvenementDeFilm) {
 		sum.NotSupport++
 	case OutcomeUnknownKey:
 		sum.UnknownKey++
+	case OutcomeCarteNonResolue:
+		sum.CarteNonResolue++
 	}
 }
 

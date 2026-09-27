@@ -85,27 +85,28 @@ type filmFini struct {
 
 // etatDesFilms : ce que la passe des films a fait et ce qu il lui reste.
 type etatDesFilms struct {
-	TotalRegistre  int           `json:"total_registre"`
-	AFaire         int           `json:"a_faire"`
-	DejaAJour      int           `json:"deja_a_jour"`
-	SansFilmEnCach int           `json:"sans_film_en_cache"`
-	ChunksAFaire   int           `json:"chunks_a_faire"`
-	ChunksFaits    int           `json:"chunks_faits"`
-	Traites        int           `json:"traites"`
-	Ecrits         int           `json:"ecrits"`
-	Morts          int           `json:"morts"`
-	SansFilm       int           `json:"sans_film"`
-	SansKillFeed   int           `json:"sans_kill_feed"`
-	CleInconnue    int           `json:"cle_inconnue"`
-	AbandonsDelai  int           `json:"abandons_delai"`
-	Erreurs        int           `json:"erreurs"`
-	Ouvriers       int           `json:"ouvriers"`
-	EnCours        []filmEnCours `json:"en_cours"`
-	DernierFini    *filmFini     `json:"dernier_fini,omitempty"`
-	DebitParMin    float64       `json:"debit_films_par_min"`
-	CoutParChunkS  float64       `json:"cout_par_chunk_s"`
-	RestantS       float64       `json:"restant_s"`
-	FinEstimeeA    *time.Time    `json:"fin_estimee_a,omitempty"`
+	TotalRegistre   int           `json:"total_registre"`
+	AFaire          int           `json:"a_faire"`
+	DejaAJour       int           `json:"deja_a_jour"`
+	SansFilmEnCach  int           `json:"sans_film_en_cache"`
+	ChunksAFaire    int           `json:"chunks_a_faire"`
+	ChunksFaits     int           `json:"chunks_faits"`
+	Traites         int           `json:"traites"`
+	Ecrits          int           `json:"ecrits"`
+	Morts           int           `json:"morts"`
+	SansFilm        int           `json:"sans_film"`
+	SansKillFeed    int           `json:"sans_kill_feed"`
+	CleInconnue     int           `json:"cle_inconnue"`
+	CarteNonResolue int           `json:"carte_non_resolue"`
+	AbandonsDelai   int           `json:"abandons_delai"`
+	Erreurs         int           `json:"erreurs"`
+	Ouvriers        int           `json:"ouvriers"`
+	EnCours         []filmEnCours `json:"en_cours"`
+	DernierFini     *filmFini     `json:"dernier_fini,omitempty"`
+	DebitParMin     float64       `json:"debit_films_par_min"`
+	CoutParChunkS   float64       `json:"cout_par_chunk_s"`
+	RestantS        float64       `json:"restant_s"`
+	FinEstimeeA     *time.Time    `json:"fin_estimee_a,omitempty"`
 }
 
 // etatDuCredit : la progression de la passe credit.
@@ -260,6 +261,8 @@ func (s *suiviDeLaPasse) comptabiliser(ev killcollector.EvenementDeFilm) {
 		f.SansKillFeed++
 	case ev.Outcome == killcollector.OutcomeUnknownKey:
 		f.CleInconnue++
+	case ev.Outcome == killcollector.OutcomeCarteNonResolue:
+		f.CarteNonResolue++
 	case ev.Outcome == killcollector.OutcomeTimeout:
 		f.AbandonsDelai++
 	}
@@ -321,6 +324,7 @@ func (s *suiviDeLaPasse) chiffresDeProgression() []any {
 		"chunks_faits", f.ChunksFaits, "chunks_a_faire", f.ChunksAFaire,
 		"ecrits", f.Ecrits, "morts", f.Morts, "sans_film", f.SansFilm,
 		"sans_kill_feed", f.SansKillFeed, "cle_inconnue", f.CleInconnue,
+		"carte_non_resolue", f.CarteNonResolue,
 		"erreurs", f.Erreurs, "abandons_delai", f.AbandonsDelai,
 		"films_par_min", f.DebitParMin, "cout_par_chunk_s", f.CoutParChunkS,
 		"restant", time.Duration(f.RestantS * float64(time.Second)).Round(time.Second),

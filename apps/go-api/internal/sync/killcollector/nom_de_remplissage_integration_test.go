@@ -26,12 +26,13 @@ import (
 
 // TestCollecteur_NEcritJamaisUnNomDeRemplissage — LA CHAINE ENTIERE, sur le film qui publiait `?10`.
 func TestCollecteur_NEcritJamaisUnNomDeRemplissage(t *testing.T) {
-	const film = "b1ad85eb" // match a remplacement : le temoin de FK-1 et de FK-2
+	const film = "b1ad85eb"  // match a remplacement : le temoin de FK-1 et de FK-2
+	const carte = "Domicile" // la carte du match (PLAN_DECODEUR_FILM, table du lot 5.2b.1)
 	chunks := chargerFilmDeFixture(t, film)
 
 	db := openSharedTestDB(t)
 	client := &fakeFilmClient{chunks: map[string][]haloclient.FilmChunk{film: chunks}}
-	col := NewKillSourceCollector(client, fakeRoster{}, sharedWriter(db), capsAvecFilm(), 0)
+	col := sousLaCarte(t, NewKillSourceCollector(client, fakeRoster{}, sharedWriter(db), capsAvecFilm(), 0), carte)
 	outcome, _, err := col.CollectMatch(context.Background(), film)
 	if err != nil {
 		t.Fatalf("CollectMatch: %v", err)

@@ -31,7 +31,7 @@ import (
 // balayages. `film` nil (chunks illisibles, déjà journalisé par `chargerFilm`) n'est plus une
 // lecture ratée ici mais un refus en amont — `decfilm.Decode` rend alors `ErrNoChunk`, et le
 // journal en Info ci-dessous reste la SEULE trace côté cuisson, au même niveau qu'avant.
-func (b *Builder) decodeKillSource(matchID string, mapNames []string, film *decfilm.Film) *decfilm.Result {
+func (b *Builder) decodeKillSource(matchID string, entry decfilm.MapQuantEntry, film *decfilm.Film) *decfilm.Result {
 	opts := decfilm.DefaultOptions()
 	// LA CARTE DU MATCH DESCEND DANS LE DECODAGE DES MORTS (lot 3.4.1). Les largeurs d'axe du
 	// chemin absolu de position sont une constante PAR CARTE ; jusqu'à ce lot `killsource` les
@@ -39,16 +39,12 @@ func (b *Builder) decodeKillSource(matchID string, mapNames []string, film *decf
 	// chemin de décodage dans ce cas. L'inférence est devenue ORACLE (V17, M3-Q8 : « la valeur
 	// LUE prime sur la valeur mesurée »), et la valeur lue arrive ici.
 	//
-	// ELLE EST DÉJÀ RÉSOLUE PAR `BuildBytes` (même appel, même catalogue) : la relire coûte une
-	// recherche en table et évite un septième paramètre à `collecterEntreesCatalogue`. Un échec
-	// n'est PAS fatal — le décodage continue aux largeurs par défaut, il le dit, et le repli
-	// `repli_carte_absente_largeurs_par_defaut` le porte au registre.
-	if entry, err := b.ResolveMapEntry(mapNames); err == nil {
-		opts.Carte = &entry
-	} else {
-		slog.Info("replaybuild: carte hors catalogue — la source de dégât décode aux largeurs par défaut",
-			"err", err, "match_id", matchID, "cartes", mapNames)
-	}
+	// C'EST L'ENTRÉE QUE `BuildBytes` A DÉJÀ RÉSOLUE, ET IL N'Y EN A PAS D'AUTRE (2026-09-27) : une
+	// carte hors catalogue y est refusée AVANT toute lecture (`ErrMapNotInCatalog`), donc ce
+	// décodage ne voit jamais un match sans carte. La seconde résolution qu'il faisait, et sa
+	// branche « largeurs par défaut », ont disparu avec le repli — « le flux du film est la seule
+	// source fiable. Pas de repli. »
+	opts.Carte = &entry
 	res, err := decfilm.Decode(context.Background(), matchID, film, &opts)
 	if err != nil {
 		slog.Info("replaybuild: source de dégât non décodée — morts neutres et frags sous effet non décodés",

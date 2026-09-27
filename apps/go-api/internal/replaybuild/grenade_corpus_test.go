@@ -311,7 +311,10 @@ func chargerArtefactEtFilm(t *testing.T, path, cacheFilms string) (*filmDeLArtef
 		t.Logf("  %s : chunks absents du cache (%v) — film ecarte", court, err)
 		return nil, false
 	}
-	res, err := decfilm.Decode(context.Background(), doc.MatchID, src, nil)
+	// INSTRUMENT DE RECHERCHE : le film d un artefact du cache, sans base pour en resoudre la carte.
+	recherche := decfilm.DefaultOptions()
+	recherche.RechercheSansCarte = true
+	res, err := decfilm.Decode(context.Background(), doc.MatchID, src, &recherche)
 	if err != nil {
 		t.Logf("  %s : source de degat non decodee (%v) — film ecarte", court, err)
 		return nil, false

@@ -131,7 +131,12 @@ const exigenceDeJustificationDatee = "UNE HAUSSE EXIGE UNE JUSTIFICATION DATEE D
 // symboles qu il etait seul a citer (`DecodeFrameRecords`, `FrameConfig`, `NewWorld`,
 // `ProfilDeBalayageParDefaut`, `Registry`, `World`). `Inflate` reste : il a des consommateurs de
 // production (ADR 0034, amendement du 2026-09-26 bis, D-2).
-const plafondSurfaceFacade = 165 // 2026-09-26 — J4.5 sur 4c4452c05 : 173 - 8 (consommateur de recherche descendu sous film/research)
+// 166 LE 2026-09-27 (correctif killsource « carte obligatoire », base `cb6d9e96a` re-mesuree : 165) :
+// UN renvoi neuf, `ErrCarteAbsente`. Sans carte du match, `killsource.Decode` refuse le film au lieu
+// de le decoder aux largeurs d une autre carte (regle utilisateur « pas de repli ») ; le collecteur
+// doit NOMMER cette erreur pour classer le film « mis de cote » et non « panne », comme la cle de
+// film inconnue.
+const plafondSurfaceFacade = 166 // 2026-09-27 — carte obligatoire sur cb6d9e96a : 165 + 1 (ErrCarteAbsente)
 
 // plafondSurfaceReplay — identifiants `replay.<Symbole>` DISTINCTS cites hors de `film/`.
 //
@@ -297,7 +302,7 @@ const plafondSurfaceReplay = 276 // 2026-09-26 — audit(J4.2) sur 7e8730281 : 2
 var plafondsParFamilleFacade = map[string]int{
 	"grammar":    46, // 2026-09-26 — J4.2 : +4 (lectures du pont) ; J4.3 : +3 (etage du pont) ; J4.5 : -7 (DecodeFrameRecords, FrameConfig, LecteurSur, NewWorld, ProfilDeBalayageParDefaut, Registry, World)
 	"objectives": 37,
-	"killsource": 36, // 2026-09-26 — lot J3.3 : `decfilm.Rev` renvoie a `killsource.Rev` (la famille `facts` disparait avec son paquet ; total inchange)
+	"killsource": 37, // 2026-09-26 — lot J3.3 : `decfilm.Rev` renvoie a `killsource.Rev` (la famille `facts` disparait avec son paquet ; total inchange) ; 2026-09-27 — carte obligatoire : +1 (`ErrCarteAbsente`)
 	"fallback":   11,
 	"types":      10,
 	"profile":    8,

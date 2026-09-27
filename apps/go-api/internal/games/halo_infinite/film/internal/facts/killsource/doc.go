@@ -35,9 +35,11 @@
 // Une seule fonction publique, [Decode]. Le cablage complet tient en quelques lignes :
 //
 //	film, err := source.Load(source.MemoryChunks(chunks), meta) // les chunks telecharges
-//	res, err := killsource.Decode(ctx, matchID, film, nil)              // nil = la config GELEE
+//	opts := killsource.DefaultOptions()                       // la config GELEE
+//	opts.Carte = &entree                                     // la CARTE du match : OBLIGATOIRE
+//	res, err := killsource.Decode(ctx, matchID, film, &opts)
 //	if err != nil {
-//	    return err                                       // errors.Is(err, killsource.ErrNoKillFeed), ...
+//	    return err // errors.Is(err, killsource.ErrCarteAbsente) : film mis de cote ; ErrNoKillFeed, ...
 //	}
 //	for _, k := range res.Kills {
 //	    // k.Victim            : la victime

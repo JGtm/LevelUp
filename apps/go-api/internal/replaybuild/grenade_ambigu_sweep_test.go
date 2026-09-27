@@ -91,7 +91,10 @@ func balayerUnFilm(b *balayage, cache, court string) {
 		b.echecs++
 		return
 	}
-	res, err := decfilm.Decode(context.Background(), court, src, nil)
+	// INSTRUMENT DE RECHERCHE : tout le cache, sans base pour resoudre la carte de chaque film.
+	recherche := decfilm.DefaultOptions()
+	recherche.RechercheSansCarte = true
+	res, err := decfilm.Decode(context.Background(), court, src, &recherche)
 	if err != nil {
 		b.echecs++
 		return

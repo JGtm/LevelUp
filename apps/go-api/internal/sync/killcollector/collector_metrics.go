@@ -36,10 +36,14 @@ const (
 	// `grammar` nomme (`filmdec_unknown_build_<build>`, `filmdec_unknown_format_<n>`) : ceux-la
 	// disent QUELLE cle manque, celui-ci dit combien de PASSES la politique a arretees. Les
 	// deux se lisent ensemble, et leur somme par cle doit se recouper.
-	metricUnknownKey  = "killsource_ecartes_cle_inconnue"
-	metricDeaths      = "killsource_morts_ecrites"
-	metricNotPublish  = "killsource_passes_non_publiables"
-	metricAssistExtra = "killsource_assist_extra_count"
+	metricUnknownKey = "killsource_ecartes_cle_inconnue"
+	// metricCarteNonResolue : films ECARTES parce que la carte du match n est pas resolue
+	// ([OutcomeCarteNonResolue], 2026-09-27). Un nombre qui monte dit que des films attendent une
+	// carte : un nom manquant au registre des matchs, ou une carte a ajouter au catalogue de bornes.
+	metricCarteNonResolue = "killsource_ecartes_carte_non_resolue"
+	metricDeaths          = "killsource_morts_ecrites"
+	metricNotPublish      = "killsource_passes_non_publiables"
+	metricAssistExtra     = "killsource_assist_extra_count"
 	// LES QUATRE COMPTEURS DE PROVENANCE DU LIEN `indice -> joueur` (lot 1.8). Ils disent, en
 	// exploitation et pas seulement dans le journal du jour, quelle part de chaque passe vient
 	// d une LECTURE et quelle part d un REPLI (D14 c du chantier, D-10 d ADR 0034) :

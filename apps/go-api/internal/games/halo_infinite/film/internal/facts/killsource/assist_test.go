@@ -417,7 +417,7 @@ func decodeFixture(t *testing.T, root, id string) *Result {
 	if err != nil {
 		t.Fatalf("%s: %v", id, err)
 	}
-	res, err := Decode(context.Background(), id, src, nil)
+	res, err := Decode(context.Background(), id, src, optionsDeReference(t, id))
 	if err != nil {
 		t.Fatalf("%s: %v", id, err)
 	}
@@ -432,7 +432,7 @@ func prepareForAssist(t *testing.T, root, id string) (*decodeCtx, *assistScan) {
 	if err != nil {
 		t.Fatalf("%s: %v", id, err)
 	}
-	c := &decodeCtx{name: id, opts: DefaultOptions()}
+	c := &decodeCtx{name: id, opts: *optionsDeReference(t, id)}
 	if err := c.prepare(context.Background(), src); err != nil {
 		t.Fatalf("%s: %v", id, err)
 	}
