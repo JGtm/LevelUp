@@ -1241,7 +1241,7 @@ Périmètre FERMÉ : un item par constat retenu, chacun avec un test de non-rég
   avec son test.
 - [x] **B-C4 (C5)** (`config.go` 640 → 629 lignes : `loadStatePaths`, `demoFixturesDirFromEnv`, `statePaths.backupConfig` et `statePaths.persistBatchAsync` dans `config_demo.go`, comportement identique ; gel `config/config_size_ratchet_test.go` ≤ 629, rouge à 640 puis vert) : `config.go` revient à au plus 629 lignes, les ajouts démo passant dans
   `config_demo.go`.
-- [ ] **B-C5 (C6)** : le retrait convergent d'un index par `EnsurePlayerSchema` est journalisé
+- [x] **B-C5 (C6)** (`sync/schemadrift/drift.go` : `Report` → `reportRetiredIndexes`, WARN `schema_drift_healed` `action=dropped` par index présent avant le soin et absent après ; `action=created` ajouté aux créations ; test d'intégration `sync/schema_index_retired_log_test.go` : 2 index recréés → 2 WARN exactement, rouge (0) puis vert ; base à jour → aucun WARN) : le retrait convergent d'un index par `EnsurePlayerSchema` est journalisé
   (`schema_drift_healed`, ou un log dédié de même contrat) seulement quand un index a vraiment
   été retiré. Test : index recréé, puis ouverture, puis log présent ; base à jour, puis
   ouverture, puis aucun log.
