@@ -190,7 +190,8 @@ type MovementStateStats struct {
 	// note 5.3). Les attribuer a tort serait pire que de les jeter, et ce compteur dit le prix.
 	SlotUnbound int
 	// DatumBindings et DatumAmbiguous : ce que la TABLE DE DATUMS de l image-cle a ajoute au
-	// monde, et ce qu elle a ECARTE (un slot vu avec deux archetypes est ambigu). La branche
+	// monde, et ses SLOTS AMBIGUS (un slot vu avec deux archetypes, ou ecarte en entier par la
+	// croissance des slots — cf. `grammar.TableDeDatums`, J10.5). La branche
 	// vive de la boucle de records lit l archetype d un delta dans cette table
 	// (`FUN_1406cbaa0` cas DELTA) ; la marche d ancres ne la lit que le long de la CHAINE des
 	// records, et cette chaine se coupe. Sans ces deux compteurs, « N liaisons de plus » ne se

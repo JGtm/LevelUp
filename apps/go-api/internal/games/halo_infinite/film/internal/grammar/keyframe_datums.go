@@ -49,7 +49,9 @@ import (
 // Or le modele du jeu n a besoin QUE de `slot -> archetype`. Cette table-ci se lit donc a
 // POSITION LIBRE : les gardes de `kfAnchorFromID` a chaque position de bit, SANS la contrainte
 // de croissance qui appartient a une marche de records. Un slot vu avec DEUX archetypes est
-// AMBIGU et n entre pas dans la table — on ne devine pas.
+// AMBIGU : il est COMPTE, et la table en retient un par la regle de coincidence de la grammaire
+// (cf. [TableDeDatums] ; jusqu au 2026-09-27 cette phrase disait qu il n y entrait pas, ce que
+// le code ne faisait plus depuis la contrainte de croissance du lot 5.16.4).
 //
 // HORS LIGNE — jamais depuis un chemin de requete.
 
@@ -69,16 +71,39 @@ import (
 // `bfecd02b` et quatre paquets de plus en DEBORDEMENT. Avec elle, la croissance mesuree par
 // l ecrivain fait le tri.
 //
-// `ambigus` compte les candidats que la croissance a ECARTES : un compteur muet cacherait une
-// table sale.
+// `ambigus` compte les SLOTS AMBIGUS : ceux dont un candidat ecarte disait AUTRE CHOSE que la
+// table — un slot vu avec deux archetypes (la table en retient un, par la regle de coincidence
+// ci-dessous), ou un slot que la croissance a ecarte en entier. Deux lectures identiques d un meme
+// slot ne sont pas une ambiguite. Un compteur muet cacherait une table sale (J10.5, GA1-4 : il
+// comptait les CANDIDATS ecartes, la ou ses lecteurs annoncent des slots).
+//
+// LA REGLE DE COINCIDENCE EST CELLE DE LA GRAMMAIRE : a slot egal, la generation la plus basse,
+// puis le candidat le plus TOT dans le payload — l ordre de [kfCand.betterThan] a slot egal. La
+// suite croissante gardait la coincidence la plus TARDIVE (J10.5, GA1-4).
 func TableDeDatums(pay []byte) (table map[uint32]uint32, ambigus int) {
-	cands := candidatsDeDatum(pay)
+	return tableDesCandidats(candidatsDeDatum(pay))
+}
+
+// tableDesCandidats est [TableDeDatums] sur des candidats deja lus.
+func tableDesCandidats(cands []candidatDeDatum) (table map[uint32]uint32, ambigus int) {
 	garde := plusLongueSuiteCroissante(cands)
 	table = make(map[uint32]uint32, len(garde))
 	for _, i := range garde {
 		table[cands[i].slot] = cands[i].ti
 	}
-	return table, len(cands) - len(garde)
+	return table, slotsAmbigus(cands, table)
+}
+
+// slotsAmbigus compte les slots dont un candidat contredit la table : absent d elle, ou retenu
+// avec un autre archetype.
+func slotsAmbigus(cands []candidatDeDatum, table map[uint32]uint32) int {
+	ambigus := map[uint32]bool{}
+	for _, c := range cands {
+		if ti, retenu := table[c.slot]; !retenu || ti != c.ti {
+			ambigus[c.slot] = true
+		}
+	}
+	return len(ambigus)
 }
 
 // candidatDeDatum est un en-tete de record d image-cle candidat : sa position en bits, son slot
@@ -87,6 +112,7 @@ type candidatDeDatum struct {
 	bit  int
 	slot uint32
 	ti   uint32
+	gen  int
 }
 
 // candidatsDeDatum rend, EN ORDRE DE BIT, tous les en-tetes candidats du payload : les gardes de
@@ -95,18 +121,20 @@ func candidatsDeDatum(pay []byte) []candidatDeDatum {
 	total := len(pay) * 8
 	out := make([]candidatDeDatum, 0, 1024)
 	for q := 0; q+64 <= total; q++ {
-		slot, ti, _, ok := kfAnchorFromID(pay, q, source.BitsBourres(pay, q, 32), -1, total)
+		slot, ti, gen, ok := kfAnchorFromID(pay, q, source.BitsBourres(pay, q, 32), -1, total)
 		if !ok {
 			continue
 		}
 		//nolint:gosec // slot < kfTableCap et ti < kfArchMax par les gardes de kfAnchorFromID
-		out = append(out, candidatDeDatum{bit: q, slot: uint32(slot), ti: uint32(ti)})
+		out = append(out, candidatDeDatum{bit: q, slot: uint32(slot), ti: uint32(ti), gen: gen})
 	}
 	return out
 }
 
 // plusLongueSuiteCroissante rend les INDEX de la plus longue sous-suite de `cands` strictement
 // croissante en slot (les candidats sont deja en ordre de bit). Patience sorting, O(n log n).
+// A slot egal, la queue en place ne cede qu a une generation plus basse : le premier candidat
+// gagne, comme a l election de la marche ([kfCand.betterThan]).
 func plusLongueSuiteCroissante(cands []candidatDeDatum) []int {
 	if len(cands) == 0 {
 		return nil
@@ -123,6 +151,10 @@ func plusLongueSuiteCroissante(cands []candidatDeDatum) []int {
 			} else {
 				hi = mid
 			}
+		}
+		if lo < len(queues) && cands[queues[lo]].slot == cands[i].slot &&
+			cands[i].gen >= cands[queues[lo]].gen {
+			continue // coincidence : la queue en place la precede, a generation egale ou plus basse
 		}
 		if lo > 0 {
 			pred[i] = queues[lo-1]
@@ -143,7 +175,7 @@ func plusLongueSuiteCroissante(cands []candidatDeDatum) []int {
 // LierTableDeDatums pose dans `w` les liaisons de la table de datums des paquets d image-cle d un
 // chunk, SANS ecraser une liaison deja posee (un record d image-cle marche ou un NEW propre dit
 // davantage : il porte aussi la position et la generation). Rend le nombre de liaisons posees et
-// le nombre de slots ambigus ecartes.
+// le nombre de slots ambigus (cf. [TableDeDatums]).
 //
 // C est le geste qui donne au monde hors ligne le modele de la branche vive : l archetype d un
 // slot que la chaine de l image-cle n a pas atteint et qu aucun NEW n a declare.
