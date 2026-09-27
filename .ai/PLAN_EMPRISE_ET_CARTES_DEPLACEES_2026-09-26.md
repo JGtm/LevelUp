@@ -435,7 +435,8 @@ Journal L6.1, ronde 1 (2026-09-27, exécuteur Opus, `wt/emprise`) — chaque con
 - [x] L6.3 Fusion `wt/emprise` → `feat/v75` (sur accord), CI verte au niveau job.
   Journal L6.3 (2026-09-27) : fusion `90415aa5b` ; le push a été refusé par deux garde-rails du pre-push que les gates des lots ne jouaient pas : `lint-no-hardcoded-fields` (libellés d'issue en dur dans `empriseStrings.ts` → lus dans `outcomes.toml` via `useOutcomeLabel`, hook `emprise/useOutcomeLabels.ts` ; « Catalyst » dans la soirée témoin → fichier de données de test ajouté à la liste blanche, daté) et `lint-contract-ratchet` (`SquadWeaponBar` supprimé en L2, entrée de référence obsolète retirée). Gate rejoué : deux garde-rails propres, typecheck OK, vitest `src/features/squad` vert, knip 0. Poussé `0cae929af` (tous les garde-rails du pre-push verts) ; CI verte au niveau job sur les deux exécutions (runs 36335594113 pull_request et 36335588369 push, E2E ignoré dans la seconde).
 - [ ] L6.4 Gate visuel par l'utilisateur, soirée du 22/09, maquettes à côté ; il nomme les témoins.
-- [ ] L6.5 Prod (sur accord, prévenir avant) : mêmes rattrapages après déploiement.
+- [!] L6.5 Prod (sur accord, prévenir avant) : mêmes rattrapages après déploiement.
+  2026-09-27 : décision utilisateur, il fait le rattrapage prod lui-même (copie de fichiers). Procédure, garde-fous (base locale arrêtée au 22/09, une copie écraserait les matchs plus récents de la prod) et voie recommandée : `.ai/HANDOFF_EMPRISE_CLOTURE_2026-09-27.md` §3.
 - [ ] L6.6 Mettre à jour `REFERENCE_CANAUX_EQUIPEMENT_2026-09-09.md` §4 (périmé), ce plan, le journal.
 
 ### L7 — Véhicules (données du film + lignes des cartes) · lourd, après L6
