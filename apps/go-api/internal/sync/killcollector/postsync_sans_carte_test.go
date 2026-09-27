@@ -11,6 +11,7 @@ import (
 	"context"
 	"sync"
 	"testing"
+	"time"
 
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/port"
@@ -73,7 +74,7 @@ func verifierLectures(t *testing.T, cartes *cartesComptees, attendu int, pourquo
 
 func TestTravailDuCycleNeRelitPasLesCartesDejaConstatees(t *testing.T) {
 	h, col, cartes, src := cycleSansCarte(t)
-	reg := &registreSansCarte{ids: map[string]struct{}{}}
+	reg := nouveauRegistreSansCarte()
 	reg.accorder(context.Background(), "catalogue-1")
 
 	verifierTravail(t, 1, h.travailDuCycle(context.Background(), col, reg, src, nil))
@@ -99,7 +100,7 @@ func TestTravailDuCycleNeRelitPasLesCartesDejaConstatees(t *testing.T) {
 // la carte d un match constate sans : chaque match se relit UNE fois sous le nouveau.
 func TestTravailDuCycleRelitQuandLeCatalogueChange(t *testing.T) {
 	h, col, cartes, src := cycleSansCarte(t)
-	reg := &registreSansCarte{ids: map[string]struct{}{}}
+	reg := nouveauRegistreSansCarte()
 	reg.accorder(context.Background(), "catalogue-1")
 	verifierTravail(t, 1, h.travailDuCycle(context.Background(), col, reg, src, nil))
 
@@ -112,7 +113,9 @@ func TestTravailDuCycleRelitQuandLeCatalogueChange(t *testing.T) {
 // registre les matchs qui n y sont plus (la jauge ne compte pas des fantomes).
 func TestRegistreElagueCeQuiAQuitteLeBacklog(t *testing.T) {
 	h, col, _, src := cycleSansCarte(t)
-	reg := &registreSansCarte{empreinte: "catalogue-1", ids: map[string]struct{}{"parti": {}}}
+	reg := nouveauRegistreSansCarte()
+	reg.empreinte = "catalogue-1"
+	reg.ids["parti"] = reg.heure()
 	verifierTravail(t, 1, h.travailDuCycle(context.Background(), col, reg, src, nil))
 	if _, reste := reg.ids["parti"]; reste {
 		t.Error("un match qui a quitte le backlog reste au registre (et compte dans la jauge)")
@@ -149,4 +152,25 @@ func TestRegistreDuCycleSansCarteCablee(t *testing.T) {
 	if v := observability.LoadCounter(CompteurPostSyncSansCarte); v != 42 {
 		t.Errorf("%s = %d, attendu 42", CompteurPostSyncSansCarte, v)
 	}
+}
+
+// TestTravailDuCycleRelitUnConstatExpire : la cause d un constat peut disparaitre sans changement
+// de catalogue (backfill des noms du registre, traduction arrivee) — passe sa duree de vie, le
+// match est relu.
+func TestTravailDuCycleRelitUnConstatExpire(t *testing.T) {
+	h, col, cartes, src := cycleSansCarte(t)
+	horloge := time.Date(2026, 9, 27, 12, 0, 0, 0, time.UTC)
+	reg := nouveauRegistreSansCarte()
+	reg.maintenant = func() time.Time { return horloge }
+	reg.accorder(context.Background(), "catalogue-1")
+
+	verifierTravail(t, 1, h.travailDuCycle(context.Background(), col, reg, src, nil))
+	horloge = horloge.Add(DureeDeVieDesConstatsSansCarte - time.Minute)
+	verifierTravail(t, 2, h.travailDuCycle(context.Background(), col, reg, src, nil))
+	verifierLectures(t, cartes, 1, "un constat encore valide a ete relu")
+
+	horloge = horloge.Add(2 * time.Minute) // le constat du cycle 1 a depasse sa duree de vie
+	verifierTravail(t, 3, h.travailDuCycle(context.Background(), col, reg, src, nil))
+	verifierLectures(t, cartes, 2, "un constat EXPIRE n a pas ete relu : un nom de carte reecrit en "+
+		"base (backfill des noms, traduction arrivee) ne serait jamais vu sans changement de catalogue")
 }

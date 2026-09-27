@@ -117,12 +117,20 @@ func argsBacklog() []any {
 // ⚠ LECTURE PAR LA VUE `_latest` (ADR 0026) : une lecture brute servirait des passes perimees
 // et ferait sauter des matchs a redecoder.
 func backlogAJour(ctx context.Context, db *sql.DB, horizon, offset int) (ids []string, total int) {
+	total = tailleDuBacklog(ctx, db)
+	ids, _ = pageDuBacklog(ctx, db, horizon, offset)
+	return ids, total
+}
+
+// tailleDuBacklog : le `COUNT(*)` SANS borne, le plus cher des deux lectures. UNE fois par cycle,
+// jamais par page. C est une variable de paquet pour une seule raison : la couture qui laisse un
+// test COMPTER ses appels sur un cycle pagine (postsync_compte_integration_test.go).
+var tailleDuBacklog = func(ctx context.Context, db *sql.DB) (total int) {
 	if err := db.QueryRowContext(ctx, requeteBacklogTaille, argsBacklog()...).Scan(&total); err != nil {
 		slog.WarnContext(ctx, "post-sync: killsource taille du backlog illisible", "err", err)
 		// On continue : une jauge absente ne doit pas empecher le travail.
 	}
-	ids, _ = pageDuBacklog(ctx, db, horizon, offset)
-	return ids, total
+	return total
 }
 
 // pageDuBacklog lit UNE page d identifiants, sans la taille. `ok == false` : page illisible.

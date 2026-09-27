@@ -489,7 +489,10 @@ package killsource
 // CORRECTIONS DE REVUE DU MEME JOUR, SANS EFFET SUR LA SORTIE (l empreinte ne bouge pas) : un match
 // dont le registre ne porte ni `map_id` ni `map_name` (`port.ErrMatchMapUnknown`) est une carte NON
 // RESOLUE, plus une panne retentee et telechargee a chaque cycle ; le post-sync ne relit plus la
-// carte d un match deja constate sans elle sous le meme catalogue de bornes (registre en memoire,
-// jauge `killsource_postsync_backlog_sans_carte`) et ne compte plus le backlog qu une fois par
-// cycle. Residu accepte : un film expire SANS carte n est jamais telecharge, donc jamais marque
+// carte d un match deja constate sans elle sous le meme catalogue de bornes, pendant six heures au
+// plus (registre en memoire, jauge `killsource_postsync_backlog_sans_carte`) et ne compte plus le
+// backlog qu une fois par cycle. Le resolveur de carte du post-sync EMPRUNTE les metadonnees que le
+// processus tient : un `map_name` reste UUID brut au registre est traduit comme au backfill hors
+// ligne, au lieu d etre ecarte pour toujours (regression de la carte obligatoire, fermee le meme
+// jour). Residu accepte : un film expire SANS carte n est jamais telecharge, donc jamais marque
 // `MBitFilmAbsent`, et reste au backlog.

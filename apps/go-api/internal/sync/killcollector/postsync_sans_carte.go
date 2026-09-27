@@ -18,12 +18,12 @@ package killcollector
 //	                      des entrees chargees, [empreinteDuCatalogue]) ; le catalogue est relu a
 //	                      chaque cycle, et une autre empreinte vide le registre : chaque match est
 //	                      relu une fois sous le nouveau catalogue.
+//	le constat vieillit   passe [DureeDeVieDesConstatsSansCarte] (6 h), le match est relu : la
+//	                      cause peut disparaitre SANS changement de catalogue (backfill des noms du
+//	                      registre, traduction arrivee dans `asset_translations`).
 //	le processus redemarre le registre n est pas persiste.
 //	le match quitte le    quand un cycle a lu le backlog JUSQU A SA FIN, les entrees qu il n a pas
 //	backlog               vues sont retirees ([registreSansCarte.elaguer]).
-//
-// RESIDU ACCEPTE : un nom de carte qui arriverait en base apres le constat (registre des matchs
-// complete plus tard) n est relu qu au prochain changement de catalogue ou redemarrage.
 //
 // # LA JAUGE
 //
@@ -38,10 +38,22 @@ import (
 	"encoding/json"
 	"log/slog"
 	"sync"
+	"time"
 
 	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 	"levelup/go-api/internal/observability"
 )
+
+// DureeDeVieDesConstatsSansCarte : au-dela, un constat « sans carte » est OUBLIE et le match relu.
+//
+// POURQUOI UNE DUREE EN PLUS DE L EMPREINTE DU CATALOGUE. La cause d un constat peut disparaitre
+// SANS que le catalogue de bornes change : un `map_name` brut (UUID) reecrit par le backfill des
+// noms du registre (`BackfillRegistryNames`, action admin ou CLI), ou une traduction arrivee dans
+// `asset_translations` que le resolveur du post-sync sait desormais lire. Six heures bornent ce
+// retard a moins d une journee de jeu, pour un cout d une relecture de nom par match sans carte et
+// par six heures (au plus 512 par cycle, cf. [PostSyncBacklogPagesMax]) — contre une a CHAQUE cycle
+// avant le registre.
+const DureeDeVieDesConstatsSansCarte = 6 * time.Hour
 
 const (
 	// CompteurPostSyncSansCarte : la JAUGE des matchs du backlog constates sans carte resolue.
@@ -56,7 +68,23 @@ const (
 type registreSansCarte struct {
 	mu        sync.Mutex
 	empreinte string
-	ids       map[string]struct{}
+	// ids : l heure du CONSTAT de chaque match.
+	ids map[string]time.Time
+	// maintenant : l horloge (nil : time.Now) — la couture des tests de duree de vie.
+	maintenant func() time.Time
+}
+
+// nouveauRegistreSansCarte : un registre vide, a l horloge du systeme.
+func nouveauRegistreSansCarte() *registreSansCarte {
+	return &registreSansCarte{ids: map[string]time.Time{}}
+}
+
+// heure : l heure du registre.
+func (r *registreSansCarte) heure() time.Time {
+	if r.maintenant != nil {
+		return r.maintenant()
+	}
+	return time.Now()
 }
 
 var (
@@ -70,7 +98,7 @@ func registreDuTitre(slug string) *registreSansCarte {
 	defer registresMu.Unlock()
 	r, ok := registresSansCarte[slug]
 	if !ok {
-		r = &registreSansCarte{ids: map[string]struct{}{}}
+		r = nouveauRegistreSansCarte()
 		registresSansCarte[slug] = r
 	}
 	return r
@@ -117,20 +145,25 @@ func (r *registreSansCarte) accorder(ctx context.Context, empreinte string) {
 			"constates sans carte seront relus", "constates", len(r.ids))
 	}
 	r.empreinte = empreinte
-	r.ids = map[string]struct{}{}
+	r.ids = map[string]time.Time{}
 }
 
-// filtrer rend les ids que le registre ne connait pas, dans l ordre, et le nombre de sautes.
+// filtrer rend les ids que le registre ne connait pas (ou plus : constat expire, retire), dans
+// l ordre, et le nombre de sautes.
 func (r *registreSansCarte) filtrer(ids []string) (inconnus []string, sautes int) {
 	if r == nil {
 		return ids, 0
 	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
+	maintenant := r.heure()
 	for _, id := range ids {
-		if _, connu := r.ids[id]; connu {
-			sautes++
-			continue
+		if constat, connu := r.ids[id]; connu {
+			if maintenant.Sub(constat) < DureeDeVieDesConstatsSansCarte {
+				sautes++
+				continue
+			}
+			delete(r.ids, id) // constat expire : le match est relu (et reinscrit s il reste sans carte)
 		}
 		inconnus = append(inconnus, id)
 	}
@@ -145,7 +178,7 @@ func (r *registreSansCarte) noter(ids []string) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	for _, id := range ids {
-		r.ids[id] = struct{}{}
+		r.ids[id] = r.heure()
 	}
 }
 
