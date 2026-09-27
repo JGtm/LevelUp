@@ -597,13 +597,32 @@ toujours « 7 <= plafond » — PASSÉ (logs `A3-red.log` / `A3-green.log`). CI 
     rouges au journal. Trois comptes de téléchargement existants sont passés de 1 à 2
     (`useReplaySound.test.tsx:122` et `:448`, `useAudioUnlock.test.tsx:86`), conséquence directe
     du préchargement de A4.2.
-- [ ] **A4.7** Recette navigateur instrumentée (script de A1.0) : l'extrait démarre une seule
+- [!] **A4.7** Recette navigateur instrumentée (script de A1.0) : l'extrait démarre une seule
   fois, au clic. Puis **gate utilisateur (écoute)** : la résolution tombe au coup d'envoi. Une
   itération est permise sur R, d'après l'indication de l'utilisateur.
-  - **Statut (2026-09-27)** : NON FAITE par l'exécutant, `/health` a rendu `000` (serveur
-    arrêté). Reste au superviseur. À y mesurer en plus : premier « Lecture » après un
-    rechargement complet (DA-9 : extrait attendu MUET) contre « Lecture » après une navigation
-    dans l'application (extrait attendu). Gate utilisateur (écoute) : ouvert, après la fusion.
+  - **Statut (2026-09-27, superviseur)** : serveur API indisponible ; décision de l'utilisateur
+    du 2026-09-27, ses vérifications se font après la fusion ; la logique de déclenchement et
+    d'alignement est couverte par les tests A4.6 et A4.9. Gate utilisateur (écoute) : ouvert,
+    après la fusion.
+- [x] **A4.8 (DA-10, ajouté par le superviseur le 2026-09-27)** Les trois fanfares de fin
+  retrouvent leur niveau prévu, −18 LUFS : gain LINÉAIRE mesuré par `ebur128`,
+  gain = min(−18 − I, −1 − TP), sur les fichiers stéréo du dépôt, sans autre traitement.
+  Commandes et mesures avant/après (I, TP, durée identique) au journal. Garde-rail de niveau
+  calculé sur les échantillons PCM (musiques de fin et intro ; voix si simple), rouge sur les
+  fichiers d'avant, critère documenté.
+  - **Statut** : gains +7,0 / +7,1 / +7,3 dB → −18,0 LUFS pour les trois, durées identiques.
+    Garde-rail `sound/replaySoundLevels.guard.test.ts` : RMS maximal sur 400 ms glissantes (pas
+    un LUFS), bande [−20 ; −14] dBFS pour les musiques + l'intro, [−21 ; −13] pour les voix. Il
+    vit dans un fichier à part (`replaySoundAssets.guard.test.ts` a atteint `max-lines`). La
+    lecture des chunks passe par `test/wavFile.ts`, que `fmtDe` réutilise.
+- [ ] **A4.9 (DA-9, ajouté par le superviseur le 2026-09-27)** L'intro joue aussi au premier
+  « Lecture » après un rechargement : si son tampon n'est pas décodé au geste, attente bornée du
+  décodage, puis départ avec un décalage égal au temps écoulé depuis le geste, converti en temps
+  de lecture (`src.start(t, offset)`). Borne : offset ≤ durée du préambule à la vitesse courante
+  (1,0 s à 1×, 0,5 s à 2×) ; au-delà, silence. Implémentation dans la couche son
+  (`replayAudio.ts` / `introSound.ts`), `useReplaySound.ts` ne grossit pas. Tests (faux contexte
+  à décodage asynchrone) : décodage en 200 ms → offset ≈ 0,2 s ; au-delà de la borne → aucune
+  source ; déjà décodé → offset 0. Rouge avant.
 
 **Gate** : WEB (filtres `src/features/match-replay`), recette A4.7, gate utilisateur.
 
@@ -1395,7 +1414,8 @@ est supprimé.
   Leur réduction en stéréo s'est faite APRÈS la normalisation de `_fin_partie/livraison/`
   (4 canaux, −18 LUFS). La preuve : le mixage par défaut de ffmpeg sur la livraison redonne à
   l'identique le RMS par canal des copies du dépôt (−29,18 / −28,87 dB). Conséquence : l'intro,
-  livrée à −18 LUFS (D-8), sonne environ 7 LU plus fort que les fanfares. Non traité.
+  livrée à −18 LUFS (D-8), sonne environ 7 LU plus fort que les fanfares. **Traité par A4.8**
+  (décision du superviseur, 2026-09-27).
 - DA-11 (A4.0) : la réduction 4 → 2 canaux n'a pas de recette écrite. ffmpeg devine « 4.0 »
   (FL FR FC BC) pour ces WAV sans masque de canaux, et c'est ce mixage implicite qui a servi aux
   fanfares (DA-10). Pour l'intro, le mixage est écrit : quadriphonie (c0 + 0,707·c2 à gauche,
@@ -1860,6 +1880,43 @@ plan.**
     7 sautés (A2 : 217 et 3 188 ; +2 fichiers, +16 tests).
 - A4.7 : `/health` → `000`, recette non faite, reste au superviseur (cf. statut de l'item et
   DA-9). Gate utilisateur (écoute) ouvert, après la fusion.
+
+**[2026-09-27] A4.8 — les trois fanfares de fin retrouvent −18 LUFS (DA-10) — exécutant opus.**
+
+- Mesure `ebur128=peak=true` sur les fichiers stéréo du dépôt, avant correctif (originaux
+  gardés hors dépôt le temps du lot) :
+
+  | Fichier | I avant | Crête avant | Gain = min(−18 − I, −1 − TP) | I après | Crête après | Durée (s) |
+  |---|---|---|---|---|---|---|
+  | `end_victory_music_01` | −25,0 LUFS | −10,7 dBFS | min(+7,0 ; +9,7) = **+7,0 dB** | −18,0 | −3,7 | 10,588250 = |
+  | `end_defeat_music_01` | −25,1 | −10,2 | min(+7,1 ; +9,2) = **+7,1 dB** | −18,0 | −3,1 | 9,926458 = |
+  | `end_tie_music_01` | −25,3 | −11,9 | min(+7,3 ; +10,9) = **+7,3 dB** | −18,0 | −4,6 | 11,666667 = |
+
+  - « Crête » est le « Peak » d'`ebur128=peak=true`, lu comme TP dans la formule. `ebur128` ne
+    donne qu'un dixième de LU, d'où des gains au dixième de dB.
+- Commande exacte, une par fichier, depuis `static/sounds/halo_infinite/` (`<orig>` = la copie
+  du fichier d'avant) :
+  `ffmpeg -y -i <orig>/end_victory_music_01.wav -af "volume=7.0dB" -map_metadata -1 -fflags +bitexact -flags:a +bitexact -c:a pcm_s16le -ar 48000 -ac 2 end_victory_music_01.wav`
+  (7.1dB pour `end_defeat`, 7.3dB pour `end_tie`). Seul changement d'en-tête : le chunk `LIST`
+  (`ISFT Lavf62.3…`) laissé par l'ancienne réduction ne figure plus.
+- Garde-rail `sound/replaySoundLevels.guard.test.ts`. Critère : RMS maximal sur 400 ms
+  glissantes, en dBFS, calculé sur le PCM ; ce n'est pas un LUFS. Mesures du critère :
+
+  | Fichiers | Avant | Après | Bande |
+  |---|---|---|---|
+  | fanfares | −24,20 / −23,78 / −24,13 | −17,20 / −16,68 / −16,83 | [−20 ; −14] |
+  | intro | −17,29 | −17,29 | [−20 ; −14] |
+  | 11 voix | −16,02 à −18,70 | inchangées | [−21 ; −13] |
+
+- Rouge (fichiers d'avant remis le temps du run, log `A4-8-rouge.log`, `EXIT_ROUGE_A48=1`) :
+  `expected [ { …(2) }, { …(2) }, { …(2) } ] to deeply equal []`, avec exactement les trois
+  fanfares (`"db": -24.20`, `-23.78`, `-24.13`) ; voix et intro vertes.
+- Premier jet dans `replaySoundAssets.guard.test.ts` : `max-lines` en erreur (505 > 500). Le
+  bloc est donc déplacé dans son fichier, avec la lecture des chunks partagée par
+  `test/wavFile.ts`, pour éviter une 4e copie du parcours RIFF.
+- Gates (logs `A4-8-*.log`) : `EXIT_TYPECHECK=0` (purge), `EXIT_LINT=0` (0 erreur,
+  26 avertissements préexistants), `EXIT_VITEST_MATCH_REPLAY=0` : 220 fichiers et 3 206 tests
+  réussis, 4 fichiers et 7 tests sautés.
 
 ### Lots B
 

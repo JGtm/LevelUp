@@ -67,6 +67,7 @@ import { allEngineStems, VEHICLE_ENGINE_STEMS } from './vehicleEngineSound'
 import { VEHICLE_SHOT_LOOPS, VEHICLE_SHOT_SOUND_VARIANTS } from './vehicleShotSound'
 
 import { racineDuDepot } from '../test/featureFiles'
+import { wavFormat } from '../test/wavFile'
 
 /**
  * Les stems de TIR DE VÉHICULE (lot du 2026-09-04) : des ARMES au sens de la règle de durée
@@ -219,20 +220,7 @@ function wavDurationS(file: string): number {
  * d'intro, plutôt que d'en écrire une troisième lecture du chunk `fmt `.
  */
 function fmtDe(stem: string): { canaux: number; cadence: number; bits: number } {
-  const buf = readFileSync(resolve(SOUNDS_DIR, `${stem}.wav`))
-  for (let at = 12; at + 8 <= buf.length; ) {
-    const id = buf.toString('latin1', at, at + 4)
-    const size = buf.readUInt32LE(at + 4)
-    if (id === 'fmt ') {
-      return {
-        canaux: buf.readUInt16LE(at + 10),
-        cadence: buf.readUInt32LE(at + 12),
-        bits: buf.readUInt16LE(at + 22),
-      }
-    }
-    at += 8 + size + (size % 2)
-  }
-  throw new Error(`${stem} : chunk fmt introuvable`)
+  return wavFormat(resolve(SOUNDS_DIR, `${stem}.wav`))
 }
 
 describe('garde-rail : durée livrée par catégorie', () => {
@@ -893,3 +881,4 @@ describe('garde-rail : la musique d intro (item 7, décision D-8)', () => {
     expect(s).toBeLessThanOrEqual(SOUND_CUT_MAX_S)
   })
 })
+
