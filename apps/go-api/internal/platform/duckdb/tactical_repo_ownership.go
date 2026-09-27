@@ -32,8 +32,8 @@ import (
 // une seconde definition de l'univers tactique, c'est une verification INDEPENDANTE de ce
 // que le client a demande.
 //
-// campaignExclusionToken TERMINE LE WHERE (prefixe `Q`, garde-rail structurel
-// campaign_exclusion_guard_test.go) : sans lui, un match de Campagne Halo 5 (masque
+// campaignExclusionToken TERMINE LE WHERE (garde-rail
+// internal/archlint/campaign_exclusion_guard_test.go) : sans lui, un match de Campagne Halo 5 (masque
 // partout ailleurs cote lecture) serait declare ouvrable ici. Resolu au call site par
 // resolveCampaignExclusion, qui connait le titre du joueur (no-op pour Infinite).
 const QTacticalMatchsOuvrablesTemplate = `

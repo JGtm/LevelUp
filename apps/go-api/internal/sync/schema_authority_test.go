@@ -274,6 +274,83 @@ func TestPlayerSchemaAuthority_NoPersonalScoreAwardsSecondaryIndex(t *testing.T)
 	}
 }
 
+// retiredMSRIndexes / retiredPSAIndexes — index secondaires retirés des player DB :
+// match_skill_rank le 2026-09-27 (plan backlog 2026-09-26, lot B3, D-4 amendé),
+// personal_score_awards le 2026-09-20. Clé = nom, valeur = DDL d'avant le retrait.
+var (
+	retiredMSRIndexes = map[string]string{
+		"idx_msr_match_lookup": `CREATE INDEX IF NOT EXISTS idx_msr_match_lookup ON match_skill_rank(match_id, rating_type, written_at)`,
+		"idx_msr_rating_type":  `CREATE INDEX IF NOT EXISTS idx_msr_rating_type ON match_skill_rank(rating_type)`,
+		"idx_msr_playlist":     `CREATE INDEX IF NOT EXISTS idx_msr_playlist ON match_skill_rank(playlist_group)`,
+	}
+	retiredPSAIndexes = map[string]string{
+		"idx_psa_match":    `CREATE INDEX IF NOT EXISTS idx_psa_match ON personal_score_awards(match_id)`,
+		"idx_psa_category": `CREATE INDEX IF NOT EXISTS idx_psa_category ON personal_score_awards(award_category)`,
+		"idx_psa_gen":      `CREATE INDEX IF NOT EXISTS idx_psa_gen ON personal_score_awards(match_id, xuid, generation_id)`,
+	}
+)
+
+// TestPlayerSchemaAuthority_NoMatchSkillRankSecondaryIndex — 2026-09-27 : match_skill_rank
+// n'a plus AUCUN index secondaire. idx_msr_playlist désynchronisé servait 22 lignes pour
+// 1 826 réelles (JGtm, 2026-09-13) : un index ART désynchronisé ET emprunté rend des
+// lectures fausses. Ni la chaîne (step drop_msr_secondary_art_indexes_v1), ni le soin ne
+// doivent les laisser en place.
+func TestPlayerSchemaAuthority_NoMatchSkillRankSecondaryIndex(t *testing.T) {
+	db := freshMigratedPlayerDB(t)
+	if err := sync.EnsurePlayerSchema(context.Background(), db); err != nil {
+		t.Fatalf("EnsurePlayerSchema: %v", err)
+	}
+	keys := snapshotSchemaKeys(t, db)
+	for idx := range retiredMSRIndexes {
+		if keys["index "+idx+" ON match_skill_rank"] {
+			t.Errorf("%s présent après migrations + soin — les index secondaires de "+
+				"match_skill_rank sont supprimés partout (step drop_msr_secondary_art_indexes_v1 "+
+				"+ retrait de playerSchemaSQL et des steps de la chaîne)", idx)
+		}
+	}
+}
+
+// TestPlayerSchemaAuthority_EnsureDropsRetiredARTIndexes — convergence (D-4) : un binaire
+// plus ancien (autre worktree, retour arrière) RECRÉE les index retirés par son propre
+// CREATE INDEX IF NOT EXISTS, et la migration one-shot ne rejoue jamais. Le soin rejoué à
+// chaque ouverture doit donc les retirer à nouveau — MSR ET PSA.
+func TestPlayerSchemaAuthority_EnsureDropsRetiredARTIndexes(t *testing.T) {
+	db := freshMigratedPlayerDB(t)
+	for _, ddl := range []map[string]string{retiredMSRIndexes, retiredPSAIndexes} {
+		for name, stmt := range ddl {
+			if _, err := db.Exec(stmt); err != nil {
+				t.Fatalf("recréation de %s (binaire ancien): %v", name, err)
+			}
+		}
+	}
+	pre := snapshotSchemaKeys(t, db)
+	for name := range retiredMSRIndexes {
+		if !pre["index "+name+" ON match_skill_rank"] {
+			t.Fatalf("préalable : %s absent après recréation — le test ne mordrait pas", name)
+		}
+	}
+	for name := range retiredPSAIndexes {
+		if !pre["index "+name+" ON personal_score_awards"] {
+			t.Fatalf("préalable : %s absent après recréation — le test ne mordrait pas", name)
+		}
+	}
+	if err := sync.EnsurePlayerSchema(context.Background(), db); err != nil {
+		t.Fatalf("EnsurePlayerSchema: %v", err)
+	}
+	keys := snapshotSchemaKeys(t, db)
+	for table, ddl := range map[string]map[string]string{
+		"match_skill_rank":      retiredMSRIndexes,
+		"personal_score_awards": retiredPSAIndexes,
+	} {
+		for name := range ddl {
+			if keys["index "+name+" ON "+table] {
+				t.Errorf("%s recréé par un binaire ancien et TOUJOURS présent après "+
+					"EnsurePlayerSchema — le soin doit porter son DROP INDEX IF EXISTS", name)
+			}
+		}
+	}
+}
+
 // ── MORSURE ──────────────────────────────────────────────────────────────────
 
 // TestPlayerSchemaAuthority_BiteProof — preuve que l'invariant MORD. On reproduit dans la

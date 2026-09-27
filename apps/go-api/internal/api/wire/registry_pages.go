@@ -148,17 +148,6 @@ func (r *ServiceRegistry) Replay(ctx context.Context, slug string) (port.ReplayS
 	return r.replayServiceFor(pdb), nil
 }
 
-// replayServiceFor construit le service de rejeu d'un joueur — UN SEUL endroit, partagé par
-// l'endpoint /replay et la Match View (qui n'en appelle qu'IsAvailable). Deux constructions
-// divergentes, ce serait une Match View qui annonce un rejeu que l'endpoint ne sert pas.
-//
-// La résolution de carte (fond de carte) lit le registre partagé et les traductions d'assets ;
-// elle est passée au service, jamais reconstruite ailleurs.
-func (r *ServiceRegistry) replayServiceFor(pdb *duckdb.PlayerDB) port.ReplayService {
-	maps := duckdb.NewReplayMapRepo(pdb.SharedReadDB(), pdb.Metadata)
-	return service.NewReplayService(pdb.TitleSlug, r.cfg.RepoRoot, maps)
-}
-
 // Tactical retourne un TacticalService pour le joueur : l'onglet Tactique
 // (lectures de placement par carte + KPI d'echange). UN SEUL endroit de
 // construction, comme replayServiceFor.
@@ -186,7 +175,7 @@ func (r *ServiceRegistry) Tactical(ctx context.Context, slug string) (port.Tacti
 	// LE LECTEUR DE SIDECARS D'OCCUPATION (phase 6) : la seule source de l'onglet qui ne
 	// soit pas une base. Il est monte ici, au seul endroit de construction du service —
 	// sans lui, la lecture « ou je passe mon temps » degrade en 503 en le disant.
-	rasters := service.NewTacticalRasterStore(r.cfg.RepoRoot, pdb.TitleSlug)
+	rasters := service.NewTacticalRasterStore(r.cfg.RuntimePaths().RepoRoot(), pdb.TitleSlug)
 	// LES ZONES NOMMEES viennent du MEME catalogue versionne que le rejeu 2D, par la MEME
 	// cascade (module puis asset UGC) : elles nomment les grappes de reapparition. Magasin
 	// nil impossible ici ; catalogue absent -> grappes MUETTES, jamais une erreur.

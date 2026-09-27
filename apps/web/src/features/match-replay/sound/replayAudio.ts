@@ -83,6 +83,22 @@ export const SOUND_FADE_S = 0.25
 export const SOUND_MAX_VOICES = 8
 
 /**
+ * soundOccupiesVoice — LA RÈGLE UNIQUE du plafond de voix, partagée par le lecteur de la page
+ * (`ReplayAudioPlayer.play` / `playConclusion`) et par l'export (`applyVoiceCap`).
+ *
+ * LA CONCLUSION (voix d'annonceur et fanfare de fin de MATCH) ÉCHAPPE AU PLAFOND ET N'OCCUPE
+ * AUCUNE VOIX. Le plafond arbitre entre des sons DE MÊLÉE, tous équivalents ; la conclusion n'en
+ * est pas — c'est ce que le rejeu raconte en dernier. Sur une fin disputée, les derniers tirs
+ * tiennent les huit voix : l'export l'a vécu en recette le 2026-08-28 (clip terminé sans un mot,
+ * exception posée le 29/08), la page le 2026-09-26 (item 11 : la voix prenait la dernière place,
+ * la fanfare jouée juste après était refusée en silence). La voix « manche terminée », elle, vit
+ * dans la piste et reste soumise au plafond (décision D-1 du plan backlog du 2026-09-26).
+ */
+export function soundOccupiesVoice(sound: { conclusion?: boolean }): boolean {
+  return sound.conclusion !== true
+}
+
+/**
  * Durée de la rampe de volume, en secondes. Poser `gain.value` d'un coup pendant qu'un son
  * joue fait un CLIC (discontinuité) — au curseur de volume, qui émet des dizaines de
  * valeurs par seconde, ce serait un crépitement. 20 ms suffisent et ne s'entendent pas.
@@ -313,8 +329,21 @@ export class ReplayAudioPlayer {
    * son en retard sur son image est pire qu'un son manqué.
    */
   play(url: string, draw?: SoundDraw, shape?: SoundShape): void {
+    this.start(url, soundOccupiesVoice({}), draw, shape)
+  }
+
+  /**
+   * playConclusion joue un son de FIN DE MATCH (voix d'annonceur, fanfare) : même enveloppe que
+   * `play`, mais HORS PLAFOND et sans compter de voix — règle et raison : `soundOccupiesVoice`.
+   */
+  playConclusion(url: string): void {
+    this.start(url, soundOccupiesVoice({ conclusion: true }))
+  }
+
+  /** start pose une source enveloppée ; `voix` dit si elle se soumet au plafond et le tient. */
+  private start(url: string, voix: boolean, draw?: SoundDraw, shape?: SoundShape): void {
     const buf = this.buffers.get(url)
-    if (!buf || this.voices >= SOUND_MAX_VOICES) {
+    if (!buf || (voix && this.voices >= SOUND_MAX_VOICES)) {
       if (buf === undefined) this.preload([url])
       return
     }
@@ -333,13 +362,13 @@ export class ReplayAudioPlayer {
     if (draw && draw.playbackRate !== 1) src.playbackRate.value = draw.playbackRate
     src.connect(gain)
     gain.connect(this.master)
-    this.voices++
+    if (voix) this.voices++
     // UN SON TENU se retient : la pause et le saut l'éteignent (`stopHeld`), sinon une rafale de
     // dix secondes continuerait de tirer sur une image arrêtée.
     const tenu = loop ? { src, gain } : null
     if (tenu) this.held.add(tenu)
     src.onended = () => {
-      this.voices--
+      if (voix) this.voices--
       if (tenu) this.held.delete(tenu)
       src.disconnect()
       gain.disconnect()

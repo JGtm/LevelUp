@@ -21,6 +21,7 @@ import (
 	"strings"
 	"time"
 
+	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
@@ -314,7 +315,7 @@ func (r *ServiceRegistry) sharedProviderForTitle(titleSlug string) sharedprovide
 		return r.cfg.SharedProvider
 	}
 	p, err := r.cfg.SharedManager.For(
-		titlePkg.NewPathResolver(r.cfg.RepoRoot).SharedDBPath(titleSlug), r.cfg.UserTimezone)
+		config.SharedDBPath(r.cfg, titleSlug), r.cfg.UserTimezone)
 	if err != nil {
 		monitoringLog.Warn("build queue: provider shared du titre introuvable — dérivations non persistées",
 			"title", titleSlug, "err", err)
@@ -326,6 +327,10 @@ func (r *ServiceRegistry) sharedProviderForTitle(titleSlug string) sharedprovide
 // sharedWriterForTitle rend l'acquisition d'un writer shared POUR CE TITRE, sous la forme que
 // les dérivations attendent. Nil quand rien ne peut écrire (aucun provider) : les projections
 // le journalisent alors et ne persistent rien.
+//
+// LE CHEMIN EST CELUI DE config.SharedDBPath (lot B5.4 du backlog 2026-09-26) : en démo, la
+// base de la fixture — la même que les lecteurs et les 4 bases du boot —, jamais le shared
+// réel du dépôt.
 //
 // L'ACQUISITION EST BORNÉE PAR [acquireWriterDepot], et non par `acquireWriterTimeout` : ce
 // chemin-ci vit dans un handler HTTP dont le serveur ferme l'écriture à 30 s (constat C7).
@@ -340,7 +345,7 @@ func (r *ServiceRegistry) sharedWriterForTitle(
 		defer cancel()
 		return syncpkg.AcquireSharedWriterStandalone(
 			ctxkeys.WithDBWriterLabel(acquireCtx, "replay_derivations"),
-			provider, titlePkg.NewPathResolver(r.cfg.RepoRoot).SharedDBPath(titleSlug))
+			provider, config.SharedDBPath(r.cfg, titleSlug))
 	}
 }
 

@@ -7,6 +7,8 @@ import (
 	"testing"
 
 	_ "github.com/duckdb/duckdb-go/v2"
+
+	"levelup/go-api/internal/migration"
 )
 
 func openLUSRDB(t *testing.T) *sql.DB {
@@ -69,7 +71,7 @@ func openLUSRDB(t *testing.T) *sql.DB {
 					id DESC
 			) = 1;
 	`
-	if err := execScript(t.Context(), db, ddl); err != nil {
+	if err := migration.ExecScriptContext(t.Context(), db, ddl); err != nil {
 		t.Fatal(err)
 	}
 	return db

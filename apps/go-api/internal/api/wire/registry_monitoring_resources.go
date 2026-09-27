@@ -115,7 +115,7 @@ func (r *ServiceRegistry) fillResourceDatabases(ctx context.Context, resp *domai
 // MEME TRAITEMENT QUE LE DISQUE ET LES BASES : best-effort, et un dossier illisible est LOGGE
 // chez `ops.FilmFactsInventory` plutot qu'avale.
 func (r *ServiceRegistry) fillResourceFilmFacts(resp *domain.AdminResourcesResponse) {
-	pr := titlePkg.NewPathResolver(r.cfg.RepoRoot)
+	pr := r.cfg.RuntimePaths() // démo : sous `<démo>/runtime/` (lot B5.5)
 	for _, desc := range titlePkg.DefaultRegistry().NonArchived() {
 		if desc.IsInternal || !desc.IsActive() {
 			continue
