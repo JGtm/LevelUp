@@ -29,10 +29,12 @@ import {
   lineSeries,
   parityLine,
   shortMap,
+  tonightColumn,
   yAxisPct,
   type CustomApi,
 } from '../objectif/objectifCharts'
 import type { ResourceFil, ResourceFilMatch } from './emprise.logic'
+import type { HabitPoint } from './habit.logic'
 import { resolveResourceColor } from './resourceColors'
 
 export interface EmpriseFilColors {
@@ -228,4 +230,137 @@ export function resolveEmpriseFilColors(): EmpriseFilColors {
     dominance: (d) => resolveToken(DOMINANCE_COLOR_TOKENS[d]),
     theme,
   }
+}
+
+// ---------------------------------------------------------------------------
+// Contrôle des ressources, soirée après soirée (bloc « Par rapport à d'habitude »)
+// ---------------------------------------------------------------------------
+
+export interface HabitChartColors {
+  resource: (resource: string) => string
+  parity: string
+  theme: EChartsThemeColors
+}
+
+export interface HabitChartText {
+  resourceLabel: (resource: string) => string
+  /** Part avec une décimale au plus (infobulles). */
+  pctFmt: (v: number) => string
+  /** Part entière (valeur au bout des courbes, graduation 100 %). */
+  pctIntFmt: (v: number) => string
+  /** « 28/07 ». */
+  dateOf: (iso: string) => string
+  tonight: string
+  eveningOf: (date: string) => string
+  pointTip: (resource: string, evening: string, value: string, median: string | null) => string
+  medianTip: (resource: string, value: string) => string
+}
+
+/** Géométrie de la maquette (`renderHabChart` : 520 × 220, marges 36 / 58, haut 12, pied 30). */
+const HABIT_LEFT = 36
+const HABIT_RIGHT = 58
+const HABIT_TOP = 12
+const HABIT_FOOT = 30
+
+/** Une courbe par ressource : une soirée par point, ce soir grossi, médiane des précédentes en pointillé fin. */
+function habitSeries(
+  points: HabitPoint[],
+  resource: string,
+  median: number | null,
+  first: boolean,
+  c: HabitChartColors,
+  t: HabitChartText,
+) {
+  const color = c.resource(resource)
+  const label = t.resourceLabel(resource)
+  const med = median == null ? null : t.pctFmt(median)
+  let last = -1
+  points.forEach((p, i) => {
+    if (p.shares[resource] != null) last = i
+  })
+  const data = points.map((p, i) => {
+    const v = p.shares[resource]
+    if (v == null) return null
+    const end = i === last
+    const evening = p.current ? t.tonight.charAt(0).toUpperCase() + t.tonight.slice(1) : t.eveningOf(t.dateOf(p.startTime))
+    return {
+      value: v,
+      symbol: 'circle',
+      symbolSize: end ? 11 : 6,
+      itemStyle: { color, borderColor: c.theme.card, borderWidth: end ? 2 : 1 },
+      tip: t.pointTip(label, evening, t.pctFmt(v), med),
+    }
+  })
+  const base = lineSeries(label, data, color, t.pctIntFmt)
+  return {
+    ...base,
+    symbol: 'circle',
+    endLabel: { ...base.endLabel, distance: 8 },
+    markLine: {
+      symbol: 'none',
+      label: { show: false },
+      data: [
+        ...(median == null
+          ? []
+          : [{ yAxis: median, tip: t.medianTip(label, med ?? ''), lineStyle: { color, type: [2, 3], width: 1, opacity: 0.9 } }]),
+        ...(first ? [{ yAxis: 50, silent: true, lineStyle: { color: c.parity, type: [4, 3], width: 1.5 } }] : []),
+      ],
+    },
+  }
+}
+
+/**
+ * buildHabitOption — « Contrôle des ressources, soirée après soirée » (maquette,
+ * `renderHabChart('habPrises', …)`) : une courbe par ressource (couleurs `resource-*`), une
+ * soirée par point, ce soir à droite dans une colonne grisée, la médiane des soirées précédentes
+ * en pointillé fin de la couleur de chaque courbe (quand elle existe), le trait 50 %, la valeur
+ * entière au bout ; sous l'axe, la date de chaque soirée, « ce soir » en gras.
+ */
+export function buildHabitOption(
+  resources: string[],
+  points: HabitPoint[],
+  medians: Record<string, number | null>,
+  c: HabitChartColors,
+  t: HabitChartText,
+): EChartsCoreOption {
+  const tc = c.theme
+  const categories = points.map((_, i) => String(i))
+  return {
+    backgroundColor: CHART_BG,
+    animation: false,
+    grid: { left: HABIT_LEFT, right: HABIT_RIGHT, top: HABIT_TOP, bottom: HABIT_FOOT },
+    tooltip: {
+      ...getTooltipBase(tc),
+      trigger: 'item',
+      formatter: (p: { data?: { tip?: string } }) => (p.data?.tip ? tipHtml(p.data.tip) : ''),
+    },
+    xAxis: {
+      type: 'category',
+      data: categories,
+      axisLine: { show: false },
+      axisTick: { show: false },
+      axisLabel: {
+        interval: 0,
+        margin: 8,
+        formatter: (_v: string, i: number) =>
+          points[i]?.current ? `{cur|${t.tonight}}` : `{d|${t.dateOf(points[i]?.startTime ?? '')}}`,
+        rich: {
+          d: { color: tc.axisLabel, fontSize: 10.5 },
+          cur: { color: tc.text, fontSize: 10.5, fontWeight: 700 },
+        },
+      },
+    },
+    yAxis: yAxisPct(t.pctIntFmt, tc),
+    series: [
+      ...resources.map((r, i) => habitSeries(points, r, medians[r] ?? null, i === 0, c, t)),
+      tonightColumn(points.length, tc.splitAreaB),
+    ],
+    legend: { show: false },
+    aria: { enabled: true },
+  }
+}
+
+/** Les couleurs du graphe d'habitude, résolues au rendu (thème, palette). */
+export function resolveHabitColors(): HabitChartColors {
+  return { resource: resolveResourceColor, parity: resolveToken('warning'), theme: getEChartsThemeColors() }
 }

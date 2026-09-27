@@ -24,10 +24,16 @@ export interface ResourceText {
   absent: string
   /** Case vide d'une ligne d'objet (« : pas sur cette carte. »), après le nom de l'objet. */
   itemAbsent: string
+  /** Sous-libellés de « Frags obtenus avec… » (« frags pendant l’effet ») et du « Rendement… » (« frags par prise »). */
+  productionSub: string
+  yieldSub: string
 }
 
+/** Une exposition (barre fine) : son nom (« temps d’effet ») et le format de sa valeur (« 2 min 39 »). */
+export interface ExposureText { name: string; fmt: (v: number) => string }
+
 export interface EmpriseText {
-  sections: { bilan: string; roles: string; carte: string }
+  sections: { bilan: string; roles: string; carte: string; prendre: string; habitude: string }
   resources: Record<string, ResourceText>
   ourSide: string
   opponent: string
@@ -67,6 +73,38 @@ export interface EmpriseText {
     /** « 1 perdue : gardé sans l’activer ». */
     lostFmt: (kept: number, dropped: number) => string | null
   }
+  production: {
+    title: string
+    info: string
+    ariaLabel: string
+    thinLegend: string
+    exposure: Record<string, ExposureText>
+    segmentTip: (side: string, sub: string, value: number, total: number, pct: string) => string
+    thinTip: (side: string, name: string, value: string, pct: string) => string
+    exposureLine: (name: string, value: string, pct: string) => string
+  }
+  yield: {
+    title: string
+    info: string
+    ariaLabel: string
+    more: string
+    less: string
+    /** Graduations de l'axe (−50 % à +50 %), écart signé (« +14 % »), rendements bruts (« 3,0 contre 2,7 »). */
+    axis: [string, string, string, string, string]
+    gapFmt: (gap: number) => string
+    rawFmt: (us: number, them: number) => string
+    tip: (resource: string, sub: string, us: number, them: number, gap: string) => string
+  }
+  habit: {
+    title: string
+    info: string
+    tonight: string
+    pointTip: (resource: string, evening: string, value: string, median: string | null) => string
+    eveningOf: (date: string) => string
+    medianTip: (resource: string, value: string) => string
+    noHistory: (list: string) => { lead: string; rest: string }
+    shareItem: (resource: string, pct: string) => string
+  }
   grid: {
     title: string
     info: string
@@ -101,8 +139,33 @@ function enPct(v: number): string {
   return `${(Math.round(v * 10) / 10).toLocaleString('en-GB', { maximumFractionDigits: 1 })}%`
 }
 
+/** « 2 min 39 » — un temps d'effet (millisecondes), à la seconde ; « 45 s » sous la minute. */
+function duration(ms: number): string {
+  const sec = Math.round(ms / 1000)
+  const m = Math.floor(sec / 60)
+  return m === 0 ? `${sec} s` : `${m} min ${String(sec % 60).padStart(2, '0')}`
+}
+
+/** Une décimale, séparateur de la langue (« 3,0 », « 3.0 »). */
+function dec1(v: number, locale: string): string {
+  return v.toLocaleString(locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 })
+}
+
+/** « +14 % » / « −8 % » / « 0 % » : l'écart relatif en points entiers, signe typographique. */
+function signedPct(gap: number, sep: string): string {
+  const n = Math.round(Math.abs(gap) * 100)
+  if (n === 0) return `0${sep}%`
+  return `${gap > 0 ? '+' : '−'}${n}${sep}%`
+}
+
 const FR: EmpriseText = {
-  sections: { bilan: 'Bilan de la soirée', roles: 'Rôles dans l’escouade', carte: 'Carte par carte' },
+  sections: {
+    bilan: 'Bilan de la soirée',
+    roles: 'Rôles dans l’escouade',
+    carte: 'Carte par carte',
+    prendre: 'Prendre, et s’en servir',
+    habitude: 'Par rapport à d’habitude',
+  },
   resources: {
     powerup: {
       label: 'Bonus',
@@ -111,6 +174,8 @@ const FR: EmpriseText = {
       footer: 'bonus',
       absent: 'Aucun bonus sur cette carte.',
       itemAbsent: ' : pas sur cette carte.',
+      productionSub: 'frags pendant l’effet',
+      yieldSub: 'frags par minute d’effet',
     },
     power_weapon: {
       label: 'Armes spéciales',
@@ -119,6 +184,8 @@ const FR: EmpriseText = {
       footer: 'armes spéciales',
       absent: 'Aucune arme spéciale prise.',
       itemAbsent: ' : aucune prise sur cette carte.',
+      productionSub: 'frags obtenus avec',
+      yieldSub: 'frags par prise',
     },
     rack: {
       label: 'Armes de râtelier',
@@ -127,6 +194,8 @@ const FR: EmpriseText = {
       footer: 'armes de râtelier',
       absent: 'Aucune arme de râtelier prise.',
       itemAbsent: ' : aucune prise sur cette carte.',
+      productionSub: 'frags obtenus avec',
+      yieldSub: 'frags par prise',
     },
   },
   ourSide: 'Notre camp',
@@ -184,6 +253,50 @@ const FR: EmpriseText = {
       return `${lead}${kept} gardé${kept > 1 ? 's' : ''} sans l’activer, ${dropped} lâché${dropped > 1 ? 's' : ''} en mourant`
     },
   },
+  production: {
+    title: 'Frags obtenus avec les ressources',
+    info:
+      'La barre épaisse partage les frags obtenus grâce à la ressource, la barre fine partage ce ' +
+      'qui les a permis : temps d’effet pour un bonus, prises pour une arme spéciale. Si la ' +
+      'coupure de la barre épaisse est à gauche de celle de la fine, on a moins produit qu’on n’a eu.',
+    ariaLabel: 'Notre part des frags obtenus avec chaque ressource, et de ce qui les a permis',
+    thinLegend: 'Barre fine : temps d’effet ou prises',
+    exposure: {
+      effect_ms: { name: 'temps d’effet', fmt: duration },
+      pickups: { name: 'prises sur les socles', fmt: (v) => `${v} prise${v > 1 ? 's' : ''}` },
+    },
+    segmentTip: (side, sub, value, tot, pct) => `${side} · ${sub}\n${value} sur ${tot} (${pct})`,
+    thinTip: (side, name, value, pct) => `${side} · ${name}\n${value} (${pct})`,
+    exposureLine: (name, value, pct) => `${name} : ${value} · ${pct}`,
+  },
+  yield: {
+    title: 'Rendement face à l’adversaire',
+    info:
+      'Combien notre camp produit de plus ou de moins que l’adversaire pour la même exposition : ' +
+      'par minute d’effet d’un bonus, par prise d’arme spéciale. Zéro veut dire autant que lui. ' +
+      'Les deux rendements bruts sont écrits sous la valeur.',
+    ariaLabel: 'Notre rendement face à celui de l’adversaire, par ressource',
+    more: 'Plus productifs que l’adversaire',
+    less: 'Moins',
+    axis: ['−50 %', '−25', 'autant', '+25', '+50 %'],
+    gapFmt: (gap) => signedPct(gap, ' '),
+    rawFmt: (us, them) => `${dec1(us, 'fr-FR')} contre ${dec1(them, 'fr-FR')}`,
+    tip: (resource, sub, us, them, gap) => `${resource} · ${sub}\nNous ${dec1(us, 'fr-FR')}, eux ${dec1(them, 'fr-FR')} : ${gap}`,
+  },
+  habit: {
+    title: 'Contrôle des ressources, soirée après soirée',
+    info:
+      'Notre part des prises sur chaque soirée comparable de la composition (mêmes familles de ' +
+      'mode que ce soir), la dernière à droite. Le trait fin pointillé de chaque couleur est la ' +
+      'médiane des soirées précédentes.',
+    tonight: 'ce soir',
+    pointTip: (resource, evening, value, med) =>
+      `${resource}\n${evening} : ${value}${med ? `\nMédiane des soirées précédentes : ${med}` : ''}`,
+    eveningOf: (date) => `Soirée du ${date}`,
+    medianTip: (resource, value) => `${resource}\nMédiane des soirées précédentes : ${value}`,
+    noHistory: (list) => ({ lead: 'Aucune soirée précédente comparable. ', rest: `Ce soir, notre part des prises : ${list}.` }),
+    shareItem: (resource, pct) => `${resource.toLowerCase()} ${pct}`,
+  },
   grid: {
     title: 'Contrôle des ressources, match par match',
     info:
@@ -215,7 +328,13 @@ const FR: EmpriseText = {
 }
 
 const EN: EmpriseText = {
-  sections: { bilan: 'Session summary', roles: 'Roles within the squad', carte: 'Map by map' },
+  sections: {
+    bilan: 'Session summary',
+    roles: 'Roles within the squad',
+    carte: 'Map by map',
+    prendre: 'Taking, and using',
+    habitude: 'Compared with usual',
+  },
   resources: {
     powerup: {
       label: 'Power-ups',
@@ -224,6 +343,8 @@ const EN: EmpriseText = {
       footer: 'power-ups',
       absent: 'No power-up on this map.',
       itemAbsent: ': not on this map.',
+      productionSub: 'kills during the effect',
+      yieldSub: 'kills per minute of effect',
     },
     power_weapon: {
       label: 'Power weapons',
@@ -232,6 +353,8 @@ const EN: EmpriseText = {
       footer: 'power weapons',
       absent: 'No power weapon picked up.',
       itemAbsent: ': not picked up on this map.',
+      productionSub: 'kills with them',
+      yieldSub: 'kills per pickup',
     },
     rack: {
       label: 'Rack weapons',
@@ -240,6 +363,8 @@ const EN: EmpriseText = {
       footer: 'rack weapons',
       absent: 'No rack weapon picked up.',
       itemAbsent: ': not picked up on this map.',
+      productionSub: 'kills with them',
+      yieldSub: 'kills per pickup',
     },
   },
   ourSide: 'Our side',
@@ -295,6 +420,50 @@ const EN: EmpriseText = {
       if (kept === 0) return `${n} lost: dropped on death`
       return `${n} lost: ${kept} held without activating, ${dropped} dropped on death`
     },
+  },
+  production: {
+    title: 'Kills with resources',
+    info:
+      'The thick bar splits the kills the resource brought, the thin bar splits what made them ' +
+      'possible: effect time for a power-up, pickups for a power weapon. If the thick bar’s split ' +
+      'sits left of the thin one’s, we produced less than we had.',
+    ariaLabel: 'Our share of the kills made with each resource, and of what made them possible',
+    thinLegend: 'Thin bar: effect time or pickups',
+    exposure: {
+      effect_ms: { name: 'effect time', fmt: duration },
+      pickups: { name: 'pickups from the pads', fmt: (v) => `${v} pickup${v > 1 ? 's' : ''}` },
+    },
+    segmentTip: (side, sub, value, tot, pct) => `${side} · ${sub}\n${value} of ${tot} (${pct})`,
+    thinTip: (side, name, value, pct) => `${side} · ${name}\n${value} (${pct})`,
+    exposureLine: (name, value, pct) => `${name}: ${value} · ${pct}`,
+  },
+  yield: {
+    title: 'Efficiency against the opponent',
+    info:
+      'How much more or less our side produces than the opponent for the same exposure: per ' +
+      'minute of power-up effect, per power weapon pickup. Zero means as much as them. Both raw ' +
+      'rates are written next to the value.',
+    ariaLabel: 'Our efficiency against the opponent’s, per resource',
+    more: 'More productive than the opponent',
+    less: 'Less',
+    axis: ['−50%', '−25', 'even', '+25', '+50%'],
+    gapFmt: (gap) => signedPct(gap, ''),
+    rawFmt: (us, them) => `${dec1(us, 'en-GB')} vs ${dec1(them, 'en-GB')}`,
+    tip: (resource, sub, us, them, gap) => `${resource} · ${sub}\nUs ${dec1(us, 'en-GB')}, them ${dec1(them, 'en-GB')}: ${gap}`,
+  },
+  habit: {
+    title: 'Resource control, session by session',
+    info:
+      'Our share of the pickups on each comparable session of the line-up (same mode families as ' +
+      'tonight), the latest on the right. Each colour’s thin dotted line is the median of the ' +
+      'previous sessions.',
+    tonight: 'tonight',
+    pointTip: (resource, evening, value, med) =>
+      `${resource}\n${evening}: ${value}${med ? `\nMedian of the previous sessions: ${med}` : ''}`,
+    eveningOf: (date) => `Session of ${date}`,
+    medianTip: (resource, value) => `${resource}\nMedian of the previous sessions: ${value}`,
+    noHistory: (list) => ({ lead: 'No comparable previous session. ', rest: `Tonight, our share of the pickups: ${list}.` }),
+    shareItem: (resource, pct) => `${resource.toLowerCase()} ${pct}`,
   },
   grid: {
     title: 'Resource control, match by match',

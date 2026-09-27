@@ -12,6 +12,8 @@
  */
 import type {
   SquadEmpriseBlock,
+  SquadEmpriseEvening,
+  SquadEmpriseHabit,
   SquadEmpriseMatch,
   SquadEmpriseObject,
   SquadEmpriseObjectShare,
@@ -258,6 +260,35 @@ function eveningObjects(matches: SquadEmpriseMatch[]): SquadEmpriseObject[] {
 
 const EMPRISE_MATCHES = MATCHES.map(match)
 
+function evening(label: string, start: string, bonus: [number, number], power: [number, number]): SquadEmpriseEvening {
+  const share = (resource: string, [us, them]: [number, number]) => ({ resource, taken: { us, them }, share: us / (us + them) })
+  return {
+    session_label: label,
+    start_time: start,
+    match_count: 6,
+    measured_matches: 6,
+    shares: [share('powerup', bonus), share('power_weapon', power)],
+  }
+}
+
+/**
+ * « Par rapport à d'habitude » (maquette, `renderHabChart('habPrises', …)`) : cinq soirées
+ * précédentes filmées puis ce soir, familles Assassin et Drapeau. La maquette ne publie que les
+ * parts ; les comptes des soirées précédentes sont CHOISIS pour les reproduire (58,3 % = 7 sur
+ * 12, …). Ce soir : les prises du bilan, 12 / 8 (60 %) et 23 / 29 (44,2 %).
+ */
+export const HABIT_2209: SquadEmpriseHabit = {
+  families: ['Assassin', 'Drapeau'],
+  current: evening('22/09', '2026-09-22T19:23:00Z', [12, 8], [23, 29]),
+  previous: [
+    evening('28/07', '2026-07-28T19:00:00Z', [7, 5], [10, 10]),
+    evening('31/07', '2026-07-31T19:00:00Z', [28, 15], [20, 17]),
+    evening('27/08', '2026-08-27T19:00:00Z', [6, 2], [11, 12]),
+    evening('01/09', '2026-09-01T19:00:00Z', [13, 11], [23, 17]),
+    evening('07/09', '2026-09-07T19:00:00Z', [6, 4], [20, 21]),
+  ],
+}
+
 /** Le bloc `squad_emprise` de la soirée du 22/09. */
 export const EMPRISE_2209: SquadEmpriseBlock = {
   matches_total: 7,
@@ -277,7 +308,29 @@ export const EMPRISE_2209: SquadEmpriseBlock = {
   ],
   objects: eveningObjects(EMPRISE_MATCHES),
   matches: EMPRISE_MATCHES,
-  production: [],
+  production: [
+    // Maquette (PRODUCTIVITE) et L4.6 : frags pendant l'effet 8 / 5, temps d'effet 2 min 39 /
+    // 1 min 53 ; rendements calculés comme le Go (frags par minute d'effet).
+    {
+      resource: 'powerup',
+      kills: { us: 8, them: 5 },
+      exposure: { kind: 'effect_ms', value: { us: 159_000, them: 113_000 }, kills: { us: 8, them: 5 } },
+      yield_us: 8 / (159_000 / 60_000),
+      yield_them: 5 / (113_000 / 60_000),
+      relative_gap: 8 / (159_000 / 60_000) / (5 / (113_000 / 60_000)) - 1,
+    },
+    // Frags aux armes spéciales 47 / 54 (feuille, sept matchs) ; prises 23 / 29 ; rendement sur
+    // les seuls matchs dont les prises sont mesurées (règle L4 : Detachment en sort, 38 / 41).
+    {
+      resource: 'power_weapon',
+      kills: { us: 47, them: 54 },
+      exposure: { kind: 'pickups', value: { us: 23, them: 29 }, kills: { us: 38, them: 41 } },
+      yield_us: 38 / 23,
+      yield_them: 41 / 29,
+      relative_gap: 38 / 23 / (41 / 29) - 1,
+    },
+  ],
+  habit: HABIT_2209,
 }
 
 /** L'historique de matchs de la page (résultat, score, dominance, carte, mode). */

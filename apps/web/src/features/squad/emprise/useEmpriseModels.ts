@@ -12,7 +12,9 @@ import type { Locale } from '@/lib/i18n/locale'
 
 import { TEAM_REST_INK, squadPlayerInk } from '../formes/colors'
 import { RESOURCE_POWERUP, buildControlRows, buildMatchGrid, buildPickupSheets, buildResourceFil } from './emprise.logic'
+import { buildHabitView } from './habit.logic'
 import type { PickupIdentity } from './PickupSheetsCard'
+import { buildProductionRows, buildYieldRows } from './production.logic'
 
 export function useEmpriseModels(pageData: TeammatesPageResponse | null, mainPlayerLabel: string, restLabel: string, locale: Locale) {
   const block = pageData?.squad_emprise
@@ -31,6 +33,9 @@ export function useEmpriseModels(pageData: TeammatesPageResponse | null, mainPla
   const fil = useMemo(() => (block ? buildResourceFil(block, history) : null), [block, history])
   const sheets = useMemo(() => (block ? buildPickupSheets(block, objectName) : null), [block, objectName])
   const grid = useMemo(() => (block ? buildMatchGrid(block, history) : null), [block, history])
+  const production = useMemo(() => (block ? buildProductionRows(block) : []), [block])
+  const yieldRows = useMemo(() => (block ? buildYieldRows(block) : []), [block])
+  const habit = useMemo(() => (block ? buildHabitView(block) : ({ kind: 'none' } as const)), [block])
 
   const identities = useMemo<PickupIdentity[]>(() => {
     const emblems = new Map(medalDigest.map((e) => [e.player.toLowerCase(), e.emblem_url]))
@@ -48,5 +53,5 @@ export function useEmpriseModels(pageData: TeammatesPageResponse | null, mainPla
     [block],
   )
 
-  return { objectName, controlRows, fil, sheets, grid, identities, playerName }
+  return { objectName, controlRows, fil, sheets, grid, production, yieldRows, habit, identities, playerName }
 }

@@ -15,6 +15,7 @@ import { useSquadFilterStore } from '@/stores/squadFilterStore'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { SquadLayout } from './SquadLayout'
 import { getSquadText } from './i18n'
+import { EMPRISE_2209 } from './emprise/emprise.fixtures'
 
 vi.mock('@tanstack/react-router', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@tanstack/react-router')>()
@@ -39,6 +40,8 @@ const teammatesReponse = {
   composition_sessions: [],
   latest_composition_session: '',
   match_history: [],
+  // Un bloc Emprise avec de quoi montrer : sans lui, l'onglet se masque (D10, test dédié).
+  squad_emprise: EMPRISE_2209,
 }
 
 const resolveReponse = {
@@ -101,5 +104,17 @@ describe('SquadLayout — barre d\'onglets', () => {
     // (EN « Map control ») ; « Tactique » et « Contrôle » sont déjà pris ailleurs.
     expect(t.nav.emprise).toBe('Emprise')
     expect(getSquadText('en').nav.emprise).toBe('Map control')
+  })
+
+  it('D10 : sans rien à montrer (Halo 5 sans frags aux armes spéciales, périmètre vide), l’onglet Emprise se masque', async () => {
+    server.use(
+      http.post('/api/v1/players/:playerSlug/pages/teammates', () =>
+        HttpResponse.json({ ...teammatesReponse, squad_emprise: { ...EMPRISE_2209, resources: [], objects: [], matches: [], production: [], habit: undefined } }),
+      ),
+    )
+    await monter()
+    const t = getSquadText('fr')
+    const liens = Array.from(screen.getAllByRole('navigation')[0].querySelectorAll('a'))
+    expect(liens.map((a) => a.textContent)).toEqual([t.nav.synergies, t.nav.contributions, t.nav.dynamique])
   })
 })

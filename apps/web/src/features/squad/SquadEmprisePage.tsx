@@ -9,7 +9,15 @@
  *   1. « Bilan de la soirée » : « Contrôle des ressources » | « Contrôle des ressources au fil
  *      de la session », côte à côte, même hauteur (S2) ;
  *   2. « Rôles dans l'escouade » : « Répartition des prises dans l'escouade », pleine largeur ;
- *   3. « Carte par carte » : « Contrôle des ressources, match par match », pleine largeur.
+ *   3. « Carte par carte » : « Contrôle des ressources, match par match », pleine largeur ;
+ *   4. « Prendre, et s'en servir » : « Frags obtenus avec les ressources » | « Rendement face à
+ *      l'adversaire », côte à côte, même hauteur (la survivante prend la rangée) ;
+ *   5. « Par rapport à d'habitude » : « Contrôle des ressources, soirée après soirée », dans la
+ *      colonne de gauche comme dans la maquette (la carte d'isolement de droite est hors
+ *      périmètre : rien n'est rendu à sa place).
+ *
+ * Sans film (Halo 5, D10), seuls les frags aux armes spéciales restent (barre épaisse seule) ;
+ * sans rien à montrer, la barre d'onglets masque l'onglet (même prédicat : `empriseContent.ts`).
  *
  * AUCUNE REQUÊTE NEUVE : la page lit `SquadContext` (bloc `squad_emprise`, historique de matchs
  * pour le résultat, la carte et la dominance ; emblèmes des fiches de médailles), publié par
@@ -25,12 +33,16 @@ import { EmptyStateNotice } from '@/components/ui/empty-state'
 import { dominanceLabels } from '@/lib/narrative/dominance'
 import { useAppShellStore } from '@/stores/appShellStore'
 
+import { empriseSections } from './emprise/empriseContent'
 import { EMPRISE_TEXT } from './emprise/empriseStrings'
+import { HabitCard } from './emprise/HabitCard'
 import { PickupSheetsCard } from './emprise/PickupSheetsCard'
+import { ProductionCard } from './emprise/ProductionCard'
 import { ResourceControlCard } from './emprise/ResourceControlCard'
 import { ResourceFilCard } from './emprise/ResourceFilCard'
 import { ResourceMatchGridCard } from './emprise/ResourceMatchGridCard'
 import { useEmpriseModels } from './emprise/useEmpriseModels'
+import { YieldCard } from './emprise/YieldCard'
 import { TEAM_REST_INK } from './formes/colors'
 import { getSquadText } from './i18n'
 import { useSquadContext } from './SquadContext'
@@ -41,12 +53,14 @@ export function SquadEmprisePage() {
   const t = getSquadText(locale)
   const et = EMPRISE_TEXT[locale]
   const dominance = useMemo(() => dominanceLabels(locale), [locale])
-  const { objectName, controlRows, fil, sheets, grid, identities, playerName } = useEmpriseModels(
+  const models = useEmpriseModels(
     pageData,
     pageData?.main_player ?? playerSlug,
     et.sheets.rest,
     locale,
   )
+  const { objectName, controlRows, fil, sheets, grid, production, yieldRows, habit, identities, playerName } = models
+  const show = empriseSections(models)
 
   if (confirmedGamertags.length === 0 || selectedRows.length === 0) {
     const none = confirmedGamertags.length === 0
@@ -62,11 +76,7 @@ export function SquadEmprisePage() {
     )
   }
 
-  const hasBilan = controlRows.length > 0 && fil != null
-  const hasSheets = sheets != null && sheets.sections.some((s) => s.lines.length > 0)
-  const hasGrid = grid != null && grid.columns.length > 0 && grid.sections.length > 0
-
-  if (!hasBilan && !hasSheets && !hasGrid) {
+  if (!Object.values(show).some(Boolean)) {
     return (
       <Card>
         <CardContent className="pt-4">
@@ -78,7 +88,7 @@ export function SquadEmprisePage() {
 
   return (
     <div className="space-y-6" data-testid="squad-emprise-page">
-      {hasBilan && (
+      {show.bilan && fil && (
         <section className="space-y-2" data-testid="emprise-section-bilan">
           <SectionTitle>{et.sections.bilan}</SectionTitle>
           <div className="grid gap-4 lg:grid-cols-2">
@@ -87,7 +97,7 @@ export function SquadEmprisePage() {
           </div>
         </section>
       )}
-      {hasSheets && (
+      {show.roles && sheets && (
         <section className="space-y-2" data-testid="emprise-section-roles">
           <SectionTitle>{et.sections.roles}</SectionTitle>
           <PickupSheetsCard
@@ -99,7 +109,7 @@ export function SquadEmprisePage() {
           />
         </section>
       )}
-      {hasGrid && (
+      {show.carte && grid && (
         <section className="space-y-2" data-testid="emprise-section-carte">
           <SectionTitle>{et.sections.carte}</SectionTitle>
           <ResourceMatchGridCard
@@ -110,6 +120,25 @@ export function SquadEmprisePage() {
             locale={locale}
             t={et}
           />
+        </section>
+      )}
+      {show.prendre && (
+        <section className="space-y-2" data-testid="emprise-section-prendre">
+          <SectionTitle>{et.sections.prendre}</SectionTitle>
+          {/* Une carte seule (sans rendement : Halo 5, D10) prend la rangée (précédent : Dynamique, L1). */}
+          <div className="grid gap-4 lg:grid-cols-2 lg:[&>*:only-child]:col-span-2">
+            {production.length > 0 && <ProductionCard rows={production} t={et} />}
+            {yieldRows.length > 0 && <YieldCard rows={yieldRows} t={et} />}
+          </div>
+        </section>
+      )}
+      {show.habitude && habit.kind !== 'none' && (
+        <section className="space-y-2" data-testid="emprise-section-habitude">
+          <SectionTitle>{et.sections.habitude}</SectionTitle>
+          {/* Demi-largeur à gauche, comme la maquette : la carte d'isolement de droite est hors périmètre. */}
+          <div className="grid gap-4 lg:grid-cols-2">
+            <HabitCard view={habit} locale={locale} t={et} />
+          </div>
         </section>
       )}
     </div>

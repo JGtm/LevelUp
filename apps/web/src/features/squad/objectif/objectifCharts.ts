@@ -355,21 +355,7 @@ export function buildEveningsOption(
     series.push(lineSeries(t.roles[role], data, color, (v) => t.pctFmt(v), extra))
   })
 
-  // La colonne de ce soir, grisée (maquette : muted à 75 %), sous les courbes.
-  series.push({
-    type: 'custom' as const,
-    xAxisIndex: 0,
-    yAxisIndex: 0,
-    silent: true,
-    z: 0,
-    data: [[n - 1, 0]],
-    renderItem: (_params: unknown, api: CustomApi) => {
-      const [cx, yBottom] = api.coord([n - 1, 0])
-      const yTop = api.coord([n - 1, 100])[1]
-      const w = (api.size([1, 0]) as number[])[0]
-      return { type: 'rect', shape: { x: cx - w / 2, y: yTop, width: w, height: yBottom - yTop }, style: { fill: tc.splitAreaB } }
-    },
-  })
+  series.push(tonightColumn(n, tc.splitAreaB))
 
   series.push({
     type: 'custom' as const,
@@ -446,6 +432,28 @@ export function buildEveningsOption(
     series,
     legend: { show: false },
     aria: { enabled: true },
+  }
+}
+
+/**
+ * La colonne de ce soir (la dernière catégorie), grisée sur toute la hauteur de l'axe 0-100,
+ * sous les courbes (maquette : fond atténué). Partagée avec « Contrôle des ressources, soirée
+ * après soirée » de l'onglet Emprise.
+ */
+export function tonightColumn(n: number, fill: string) {
+  return {
+    type: 'custom' as const,
+    xAxisIndex: 0,
+    yAxisIndex: 0,
+    silent: true,
+    z: 0,
+    data: [[n - 1, 0]],
+    renderItem: (_params: unknown, api: CustomApi) => {
+      const [cx, yBottom] = api.coord([n - 1, 0])
+      const yTop = api.coord([n - 1, 100])[1]
+      const w = (api.size([1, 0]) as number[])[0]
+      return { type: 'rect', shape: { x: cx - w / 2, y: yTop, width: w, height: yBottom - yTop }, style: { fill } }
+    },
   }
 }
 

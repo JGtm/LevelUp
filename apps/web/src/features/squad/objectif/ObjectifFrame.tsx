@@ -59,6 +59,8 @@ export type ObjectifLegendItem =
   | { kind: 'ring'; label: string; color: string }
   | { kind: 'notch'; label: string; color: string }
   | { kind: 'hatch'; label: string }
+  // « Frags obtenus avec les ressources » : la barre fine (4 px de haut, maquette).
+  | { kind: 'thin'; label: string; color: string }
 
 export function ObjectifLegend({ items, ariaLabel }: { items: ObjectifLegendItem[]; ariaLabel: string }) {
   return (
@@ -112,6 +114,8 @@ function LegendMark({ item }: { item: ObjectifLegendItem }) {
       return (
         <span className="inline-block h-[11px] w-[11px] rounded-full" style={{ boxShadow: `inset 0 0 0 2px ${item.color}` }} aria-hidden />
       )
+    case 'thin':
+      return <span className="inline-block h-1 w-[11px] rounded-[2px]" style={{ backgroundColor: item.color }} aria-hidden />
     case 'notch':
       return <span className="inline-block h-[11px] w-[3px] rounded-[1px]" style={{ backgroundColor: item.color }} aria-hidden />
     case 'hatch':

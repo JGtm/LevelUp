@@ -21,6 +21,7 @@ import { useSegmentLabelFit } from '@/components/charts/segmentLabelFit'
 import { Tooltip } from '@/components/ui/tooltip'
 import { tokenCssVar } from '@/lib/accessibility'
 
+import { pisteColumns } from './pisteLayout'
 import { TipText } from './TipText'
 
 const ALLY = tokenCssVar('team-ally')
@@ -40,6 +41,8 @@ export interface PisteCampsRow {
   them: number
   usTip: string
   themTip: string
+  /** Sous la barre, dans sa colonne (« Frags obtenus avec les ressources » : la barre fine et la ligne d'exposition). */
+  below?: ReactNode
 }
 
 export interface PisteCampsFormProps {
@@ -57,22 +60,31 @@ const fitKey = (row: string, side: 'us' | 'them') => `${row}|${side}`
 export function PisteCampsForm({ rows, pctFmt, axisMaxLabel, labelWidth = 118 }: PisteCampsFormProps) {
   const ref = useRef<HTMLDivElement | null>(null)
   const hidden = useSegmentLabelFit(ref, rows)
-  const columns = `${labelWidth}px minmax(0,1fr)`
+  const columns = pisteColumns(labelWidth)
   return (
     <div ref={ref} className="flex flex-col gap-3.5">
       {rows.map((row) => (
         <PisteRow key={row.key} row={row} columns={columns} hidden={hidden} pctFmt={pctFmt} />
       ))}
-      {/* Axe à 10 px des pistes (maquette : écart du corps de carte, pas celui des pistes). */}
-      <div className="-mt-1 grid gap-3" style={{ gridTemplateColumns: columns }} aria-hidden>
-        <span />
-        <div className="relative h-3.5 text-[10.5px] tabular-nums text-muted-foreground">
-          {TICKS.map((v) => (
-            <span key={v} className="absolute -translate-x-1/2" style={{ left: `${v}%` }}>
-              {v === 100 ? axisMaxLabel : v}
-            </span>
-          ))}
-        </div>
+      <TrackAxis columns={columns} ticks={TICKS.map((v) => ({ at: v, label: v === 100 ? axisMaxLabel : String(v) }))} />
+    </div>
+  )
+}
+
+/**
+ * TrackAxis — l'axe sous les pistes, dans la colonne des barres ; à 10 px des pistes (maquette :
+ * écart du corps de carte, pas celui des pistes). `at` en pourcentage de la piste.
+ */
+export function TrackAxis({ columns, ticks }: { columns: string; ticks: { at: number; label: string }[] }) {
+  return (
+    <div className="-mt-1 grid gap-3" style={{ gridTemplateColumns: columns }} aria-hidden>
+      <span />
+      <div className="relative h-3.5 text-[10.5px] tabular-nums text-muted-foreground">
+        {ticks.map((tick) => (
+          <span key={tick.at} className="absolute -translate-x-1/2 whitespace-nowrap" style={{ left: `${tick.at}%` }}>
+            {tick.label}
+          </span>
+        ))}
       </div>
     </div>
   )
@@ -122,6 +134,7 @@ function PisteRow({
           </div>
         )}
         <CampTrack row={row} share={share} usPct={usPct} themPct={themPct} usHidden={usHidden} themHidden={themHidden} />
+        {row.below}
       </div>
     </div>
   )
@@ -176,11 +189,73 @@ function CampTrack({
           {themPct} · <b className="font-extrabold">{row.them}</b>
         </Segment>
       )}
-      <div
-        className="pointer-events-none absolute -bottom-[3px] -top-[3px] left-1/2 w-0 border-l-2 border-dashed"
-        style={{ borderColor: PARITY }}
-        aria-hidden
-      />
+      <ParityMark />
+    </div>
+  )
+}
+
+/** Le trait 50 % en pointillé `warning` (S5), 3 px au-delà de la piste. */
+function ParityMark() {
+  return (
+    <div
+      className="pointer-events-none absolute -bottom-[3px] -top-[3px] left-1/2 w-0 border-l-2 border-dashed"
+      style={{ borderColor: PARITY }}
+      aria-hidden
+    />
+  )
+}
+
+/**
+ * ThinCampTrack — la BARRE FINE (8 px) des deux camps, sous une piste : notre part en
+ * `team-ally`, celle de l'adversaire en `team-enemy`, filet de 2 px entre les deux, trait 50 %.
+ * Aucune valeur dedans (maquette : la ligne d'exposition dessous les écrit) ; infobulle par camp.
+ */
+export function ThinCampTrack({ us, them, usTip, themTip, label }: { us: number; them: number; usTip: string; themTip: string; label: string }) {
+  const n = us + them
+  const share = n > 0 ? (us / n) * 100 : 0
+  return (
+    <div className="relative h-2 rounded-[3px] bg-muted" role="img" aria-label={label}>
+      {us > 0 && (
+        <ThinSegment left={0} width={share} color={ALLY} rounded={them > 0 ? 'rounded-l-[3px]' : 'rounded-[3px]'} tip={usTip} />
+      )}
+      {them > 0 && (
+        <ThinSegment
+          left={share}
+          width={100 - share}
+          color={ENEMY}
+          rounded={us > 0 ? 'rounded-r-[3px]' : 'rounded-[3px]'}
+          separated={us > 0}
+          tip={themTip}
+        />
+      )}
+      <ParityMark />
+    </div>
+  )
+}
+
+function ThinSegment({
+  left,
+  width,
+  color,
+  rounded,
+  separated,
+  tip,
+}: {
+  left: number
+  width: number
+  color: string
+  rounded: string
+  separated?: boolean
+  tip: string
+}) {
+  return (
+    <div
+      className={`absolute inset-y-0 ${rounded}`}
+      style={{ left: `${left}%`, width: `${width}%`, backgroundColor: color, boxShadow: separated ? '-2px 0 0 var(--card)' : undefined }}
+    >
+      <Tooltip content={<TipText text={tip} />} className="h-full w-full">
+        <div className="h-full w-full cursor-help" />
+      </Tooltip>
     </div>
   )
 }

@@ -343,11 +343,14 @@ réutilisées (`Piste100Form` revue, `GrilleForm`, `OutcomeSequenceTape`, `sessi
 coquille de fiche L3.4), suppressions D12.
 
 - [x] L5.1 Onglet « Emprise » (D1), route et redirection, titre de page, tests de navigation (`SquadLayout.nav.test.tsx`, `pageTitle.labels.guard.test.ts`, `shellNavigation.test.ts`) ; test de la redirection `squad/usages.test.ts` ajouté.
-- [ ] L5.2 Les 7 cartes du §3 (Emprise), dans l'ordre et les blocs de la maquette, spec S1-S13. (Ouvert : les trois cartes restantes relèvent de L5b.)
+- [x] L5.2 Les 7 cartes du §3 (Emprise), dans l'ordre et les blocs de la maquette, spec S1-S13 (L5a : a-d ; L5b : e-g).
   - [x] L5.2a « Contrôle des ressources » (bloc « Bilan de la soirée », à gauche) — L5a.
   - [x] L5.2b « Contrôle des ressources au fil de la session » (même rangée, à droite, même hauteur) — L5a.
   - [x] L5.2c « Répartition des prises dans l'escouade » (bloc « Rôles dans l'escouade ») — L5a.
   - [x] L5.2d « Contrôle des ressources, match par match » (bloc « Carte par carte ») — L5a.
+  - [x] L5.2e « Frags obtenus avec les ressources » (bloc « Prendre, et s'en servir », à gauche) — L5b.
+  - [x] L5.2f « Rendement face à l'adversaire » (même rangée, à droite, même hauteur) — L5b.
+  - [x] L5.2g « Contrôle des ressources, soirée après soirée » (bloc « Par rapport à d'habitude », à gauche) — L5b.
 - [x] L5.3 `Piste100Form` : adversaire en `team-enemy` plein, « compte · part » dans les segments, repli S3, trait 50 % (S5). Fait par une NOUVELLE forme `emprise/PisteCampsForm.tsx` (justification au journal L5a) ; `Piste100Form` devient mort avec ses quatre appelants (L5.4).
 - [ ] L5.4 Supprimer : `EquipmentRegularityCard`, `EquipmentLobbyTrackCard`, `EquipmentSquadGridCard`, `EquipmentSquadTrackCard`, `PadsGapSquadCard`, `PadsTwoFriezesCard`, `PadsSquadByMatchCard`, `PadsSquadWeaponGridCard`, la branche `contexte === 'squad'` et `FormesContexte`, `lobbyParts`, `teamShareOfMatch`, le mode `'squad'` d'`EquipmentUsageSection`, `SquadUsagesPage.tsx` et ses tests / fixtures, les clés i18n orphelines ; `equipment_usage` retiré de `/pages/teammates` s'il n'a plus de lecteur.
 - [ ] L5.5 Abaisser les plafonds `knip-ratchet` et `lint-cross-feature-imports` si la suppression les fait baisser.

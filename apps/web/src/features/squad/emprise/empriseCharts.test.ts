@@ -5,10 +5,11 @@
  */
 import { describe, expect, it } from 'vitest'
 
-import { buildResourceFilOption, pickupRadius, type EmpriseFilColors } from './empriseCharts'
+import { buildHabitOption, buildResourceFilOption, pickupRadius, type EmpriseFilColors } from './empriseCharts'
 import { buildResourceFil } from './emprise.logic'
 import { EMPRISE_2209, HISTORY_2209 } from './emprise.fixtures'
 import { EMPRISE_TEXT } from './empriseStrings'
+import { buildHabitView } from './habit.logic'
 
 const T = EMPRISE_TEXT.fr
 const COLORS: EmpriseFilColors = {
@@ -104,5 +105,50 @@ describe('buildResourceFilOption — 22/09', () => {
     const origin = band.renderItem!(null, api(2)).children
     expect(origin.map((c) => c.style.fill)).toEqual(['loss'])
     expect((band.data[0] as Item).tip).toBe('19:23 · Starboard\nVictoire 3–0 · Domination')
+  })
+})
+
+type HabitSeries = Omit<Series, 'markLine'> & { markLine?: { data: { yAxis: number; lineStyle?: { color?: string; type?: number[] } }[] } }
+
+describe('buildHabitOption — soirée après soirée (22/09)', () => {
+  const view = buildHabitView(EMPRISE_2209)
+  if (view.kind !== 'chart') throw new Error(view.kind)
+  const habit = buildHabitOption(view.resources, view.points, view.medians, { resource: COLORS.resource, parity: 'parity', theme: COLORS.theme }, {
+    resourceLabel: (r) => T.resources[r].label,
+    pctFmt: T.pctFmt,
+    pctIntFmt: T.pctIntFmt,
+    dateOf: (iso) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}`,
+    tonight: T.habit.tonight,
+    eveningOf: T.habit.eveningOf,
+    pointTip: T.habit.pointTip,
+    medianTip: T.habit.medianTip,
+  }) as { series: HabitSeries[]; xAxis: Axis }
+  const hl = habit.series.filter((s) => s.type === 'line')
+
+  it('une courbe par ressource, à sa couleur ; ce soir grossi, valeur au bout 60 % et 44 %', () => {
+    expect(hl.map((s) => s.name)).toEqual(['Bonus', 'Armes spéciales'])
+    expect(hl.map((s) => s.lineStyle?.color)).toEqual(['res-powerup', 'res-power_weapon'])
+    const tonight = hl[0].data[5] as Item
+    expect(tonight.symbolSize).toBe(11)
+    expect((hl[0].data[0] as Item).symbolSize).toBe(6)
+    expect(hl[0].endLabel!.formatter({ value: tonight.value })).toBe('60 %')
+    expect(hl[1].endLabel!.formatter({ value: (hl[1].data[5] as Item).value })).toBe('44 %')
+    expect(tonight.tip).toBe('Bonus\nCe soir : 60 %\nMédiane des soirées précédentes : 60 %')
+    expect((hl[1].data[0] as Item).tip).toBe('Armes spéciales\nSoirée du 28/07 : 50 %\nMédiane des soirées précédentes : 50 %')
+  })
+
+  it('médiane en pointillé fin de la couleur de chaque courbe ; trait 50 % sur la première seulement', () => {
+    expect(hl[0].markLine!.data.map((d) => [Math.round(d.yAxis), d.lineStyle?.color, d.lineStyle?.type])).toEqual([
+      [60, 'res-powerup', [2, 3]],
+      [50, 'parity', [4, 3]],
+    ])
+    expect(hl[1].markLine!.data.map((d) => [Math.round(d.yAxis), d.lineStyle?.color])).toEqual([[50, 'res-power_weapon']])
+  })
+
+  it('dates sous l’axe, « ce soir » en gras ; colonne de ce soir grisée', () => {
+    expect(habit.xAxis.axisLabel!.formatter('0', 0)).toBe('{d|28/07}')
+    expect(habit.xAxis.axisLabel!.formatter('5', 5)).toBe('{cur|ce soir}')
+    const column = habit.series.find((s) => s.type === 'custom')!
+    expect(column.data).toEqual([[5, 0]])
   })
 })

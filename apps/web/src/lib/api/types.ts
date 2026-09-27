@@ -2391,6 +2391,8 @@ export type SquadEmpriseMatch = components['schemas']['SquadEmpriseMatch']
 export type SquadEmpriseObject = components['schemas']['SquadEmpriseObject']
 export type SquadEmpriseObjectShare = components['schemas']['SquadEmpriseObjectShare']
 export type SquadEmpriseCount = components['schemas']['SquadEmpriseCount']
+export type SquadEmpriseHabit = components['schemas']['SquadEmpriseHabit']
+export type SquadEmpriseEvening = components['schemas']['SquadEmpriseEvening']
 
 // ─── Sprint 54-C : Compare joueur vs joueur ───────────────────────────────────
 
