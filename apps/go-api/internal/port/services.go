@@ -232,11 +232,19 @@ type MatchMapKeys struct {
 	PairName string
 }
 
+// ErrMatchMapUnknown : la base ne porte AUCUNE identité de carte pour ce match (ni map_id ni
+// nom, ou match absent du registre). C'est une DONNÉE ABSENTE, pas une panne de lecture — la
+// distinction est le contrat : le décodeur de la source des kills met un tel match de côté au
+// lieu de le retenter à chaque cycle (revue du correctif J7, 2026-09-27). Toute autre erreur
+// d'un [ReplayMapNameRepo] est une panne.
+var ErrMatchMapUnknown = errors.New("carte inconnue pour ce match")
+
 // ReplayMapNameRepo résout la carte d'un match. Le document de rejeu ne porte aucune
 // identité de carte (il est décodé des seuls chunks du film) : c'est la base qui la nomme.
 type ReplayMapNameRepo interface {
 	// MapKeysForMatch retourne les identités de carte du match (map_id + noms candidats).
-	// Erreur = carte inconnue, l'appelant dégrade sans fond.
+	// Erreur = carte inconnue, l'appelant dégrade sans fond. [ErrMatchMapUnknown] quand la
+	// base n'en porte aucune ; toute autre erreur est une panne de lecture.
 	MapKeysForMatch(ctx context.Context, matchID string) (MatchMapKeys, error)
 	// MapKeysForMap retourne les mêmes identités à partir du SEUL map_id, pour les
 	// surfaces qui raisonnent par CARTE et non par match (grille de l'onglet Tactique).

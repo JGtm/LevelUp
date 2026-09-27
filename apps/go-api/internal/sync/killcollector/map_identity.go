@@ -39,6 +39,7 @@ import (
 
 	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 	"levelup/go-api/internal/observability"
+	"levelup/go-api/internal/port"
 )
 
 // ErrSansNomDeCarte : ce match n'a AUCUNE identité de carte exploitable — la base ne le connaît
@@ -118,10 +119,10 @@ var errCarteNonCablee = errors.New("killcollector: resolution de carte non cable
 // EXIGENT la carte (`resolveMapBounds`) : sans elle, rien ne se decode, et l appelant met le film
 // de cote ([carteNonResolue], [ecarterSansCarte]).
 //
-// TROIS CAUSES DE MISE DE COTE, et une seule panne. [errCarteNonCablee], [ErrSansNomDeCarte] et
-// [decfilm.ErrUnknownMapBounds] disent qu il manque une DONNEE (cablage, registre des matchs,
-// catalogue de bornes) ; une erreur de LECTURE du nom en base reste une panne, retentee au cycle
-// suivant.
+// QUATRE CAUSES DE MISE DE COTE, et une seule panne. [errCarteNonCablee], [ErrSansNomDeCarte],
+// [port.ErrMatchMapUnknown] et [decfilm.ErrUnknownMapBounds] disent qu il manque une DONNEE
+// (cablage, registre des matchs — dit par le collecteur ou par le resolveur —, catalogue de
+// bornes) ; une erreur de LECTURE du nom en base reste une panne, retentee au cycle suivant.
 func (c *KillSourceCollector) carteDuMatch(ctx context.Context, matchID string) (*decfilm.MapQuantEntry, error) {
 	if !c.CaptureCablee() {
 		return nil, errCarteNonCablee
@@ -136,8 +137,14 @@ func (c *KillSourceCollector) carteDuMatch(ctx context.Context, matchID string) 
 // carteNonResolue : l erreur dit-elle qu une DONNEE manque (le film se met de cote), et non que la
 // lecture a echoue (le film est en erreur, donc retente) ? [decfilm.ErrCarteAbsente] est la meme
 // famille : une entree resolue sans largeurs.
+//
+// [port.ErrMatchMapUnknown] EN EST AUSSI (revue du 2026-09-27) : le resolveur de production la rend
+// quand `match_registry` ne porte ni `map_id` ni `map_name` pour le match (ou ne le connait pas).
+// C est la meme absence que [ErrSansNomDeCarte], dite par le resolveur au lieu du collecteur ; la
+// ranger en panne gardait le match, le telechargeait et le comptait en erreur a chaque cycle.
 func carteNonResolue(err error) bool {
 	return errors.Is(err, errCarteNonCablee) || errors.Is(err, ErrSansNomDeCarte) ||
+		errors.Is(err, port.ErrMatchMapUnknown) ||
 		errors.Is(err, decfilm.ErrUnknownMapBounds) || errors.Is(err, decfilm.ErrCarteAbsente)
 }
 

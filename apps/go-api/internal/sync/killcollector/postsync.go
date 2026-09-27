@@ -48,16 +48,13 @@ import (
 	"time"
 
 	"levelup/go-api/internal/analysis"
-	"levelup/go-api/internal/domain/killscope"
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games"
-	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/persist"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/sync/haloclient"
-	"levelup/go-api/internal/sync/matchflags"
 )
 
 // DefaultPostSyncPerCycle borne le nombre de films decodes par cycle.
@@ -93,7 +90,9 @@ const PostSyncMatchTimeout = 3 * time.Minute
 // Compteurs de l etape, publies en expvar (ADR 0009).
 const (
 	CompteurPostSyncTraites = "killsource_postsync_matchs_traites"
-	CompteurPostSyncRetard  = "killsource_postsync_backlog_restant"
+	// CompteurPostSyncRetard : le backlog restant apres le cycle, matchs sans carte COMPRIS ; le
+	// retard que le decodeur peut resorber est ce nombre moins [CompteurPostSyncSansCarte].
+	CompteurPostSyncRetard = "killsource_postsync_backlog_restant"
 	// CompteurPostSyncClientSansFilm : le client injecte ne porte pas GetFilmChunks, donc
 	// l etape ne peut rien faire. C EST UN DEFAUT DE CABLAGE, PAS UN ETAT NORMAL.
 	CompteurPostSyncClientSansFilm = "killsource_postsync_client_sans_film"
@@ -289,20 +288,26 @@ func RunPostSync(ctx context.Context, h *PostSyncHook, d PostSyncDeps, insertedI
 	// d une etape qui ne tourne pas, et c est exactement l ambiguite qui a dure cinq mois.
 	if len(backlog) == 0 {
 		observability.SetInt(CompteurPostSyncRetard, int64(total))
+		observability.SetInt(CompteurPostSyncSansCarte, 0)
 		return 0
 	}
 
 	racine, cache := h.racineDuCache(ctx, d.LocalCache)
 	source := NewRemoteFilms(NewLocalCacheFilms(cache), d.Fetcher, racine)
 	debut := time.Now()
+	capture := h.capture(ctx, d)
 	col := NewKillSourceCollector(
 		source, rosterParSegment{withRead: d.WithRead}, d.AcquireWriter, caps, PostSyncMatchTimeout,
-	).WithBudget(PostSyncBudget).AvecCapture(h.capture(ctx, d))
+	).WithBudget(PostSyncBudget).AvecCapture(capture)
 	// LA CARTE AVANT LA BORNE ET AVANT LE TELECHARGEMENT (2026-09-27, cf. postsync_travail.go) :
-	// un match sans carte ne prend ni une place du cycle ni un telechargement.
-	travail := h.travailDuCycle(ctx, d, col, backlog, insertedIDs)
+	// un match sans carte ne prend ni une place du cycle ni un telechargement, et un match DEJA
+	// constate sans carte n est pas relu (cf. postsync_sans_carte.go).
+	reg := registreDuCycle(ctx, d.TitleSlug, capture)
+	travail := h.travailDuCycle(ctx, col, reg,
+		sourceDuBacklog{premiere: backlog, lire: lectureDesPages(ctx, d, h.horizon)}, insertedIDs)
 	restant := max(0, total-len(travail))
 	observability.SetInt(CompteurPostSyncRetard, int64(restant))
+	publierSansCarte(reg, restant)
 	if len(travail) == 0 {
 		return 0
 	}
@@ -459,34 +464,3 @@ var requeteBacklog = `SELECT r.match_id` + conditionBacklog + `
 // requeteBacklogTaille : la jauge, SANS borne. Elle repond a « combien reste-t-il », pas a
 // « qu est-ce que je traite maintenant ».
 var requeteBacklogTaille = `SELECT COUNT(*)` + conditionBacklog
-
-// backlogAJour rend la liste de travail bornee et la taille TOTALE du backlog.
-//
-// ⚠ LECTURE PAR LA VUE `_latest` (ADR 0026) : une lecture brute servirait des passes perimees
-// et ferait sauter des matchs a redecoder.
-func backlogAJour(ctx context.Context, db *sql.DB, horizon, offset int) (ids []string, total int) {
-	args := []any{matchflags.MBitFilmAbsent, decfilm.Rev, killscope.ReadPathCreditBackfill}
-
-	if err := db.QueryRowContext(ctx, requeteBacklogTaille, args...).Scan(&total); err != nil {
-		slog.WarnContext(ctx, "post-sync: killsource taille du backlog illisible", "err", err)
-		// On continue : une jauge absente ne doit pas empecher le travail.
-	}
-	rows, err := db.QueryContext(ctx, requeteBacklog, append(args, horizon, offset)...)
-	if err != nil {
-		slog.WarnContext(ctx, "post-sync: killsource backlog illisible", "err", err)
-		return nil, total
-	}
-	defer func() { _ = rows.Close() }()
-	for rows.Next() {
-		var id string
-		if err := rows.Scan(&id); err != nil {
-			slog.WarnContext(ctx, "post-sync: killsource backlog (scan)", "err", err)
-			return ids, total
-		}
-		ids = append(ids, id)
-	}
-	if err := rows.Err(); err != nil {
-		slog.WarnContext(ctx, "post-sync: killsource backlog (rows)", "err", err)
-	}
-	return ids, total
-}

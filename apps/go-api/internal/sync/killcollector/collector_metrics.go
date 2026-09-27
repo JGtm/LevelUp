@@ -43,8 +43,11 @@ const (
 	metricCarteNonResolue = "killsource_ecartes_carte_non_resolue"
 	// metricCarteAvantTelechargement : matchs RETIRES D UNE LISTE DE TRAVAIL faute de carte resolue,
 	// AVANT tout telechargement ([KillSourceCollector.RetenirLesMatchsAvecCarte], 2026-09-27). Il
-	// compte des EVICTIONS, pas des matchs distincts : un match Forge reste au backlog et se retire
-	// a chaque cycle ou il est rencontre. Distinct de `killsource_ecartes_carte_non_resolue`, qui ne
+	// compte des EVICTIONS, pas des matchs distincts : un match Forge reste au backlog. Au post-sync
+	// il ne se compte qu une fois par catalogue de bornes et par vie du processus (registre de
+	// `postsync_sans_carte.go` ; les cycles suivants le SAUTENT et le comptent dans
+	// `killsource_postsync_sans_carte_deja_constates`) ; `backfill-killsource` le recompte a chaque
+	// lancement. Distinct de `killsource_ecartes_carte_non_resolue`, qui ne
 	// compte plus que les films arrives au decodeur sans carte (entree sans largeurs, appelant qui
 	// n a pas filtre) — celui-la doit rester a zero sur les trois chemins de collecte.
 	metricCarteAvantTelechargement = "killsource_ecartes_carte_avant_telechargement"

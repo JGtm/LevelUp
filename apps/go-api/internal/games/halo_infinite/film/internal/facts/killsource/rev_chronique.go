@@ -479,5 +479,17 @@ package killsource
 // LA MARCHE REVIENT SUR LE BANC, PAS EN PRODUCTION : le banc `TestGoldenFilms` decodait sans carte
 // depuis `f3a2f00eb` ; sous leur carte, les quatre films rendent marche 356/369 et scan 7/8 au
 // cumul (000d5950 94/91, 9b191a7f 84/80, 78919882 98/94, fccc61cd 93/91). En production, seuls les
-// matchs SANS CARTE RESOLUE changent : ils etaient publies par le scan aux largeurs d une autre carte,
-// ils ne sont plus publies du tout.
+// matchs SANS CARTE RESOLUE changent : ils etaient publies par le scan aux largeurs d une autre carte ;
+// les NOUVELLES passes ne les publient plus (le match est mis de cote, il reste au backlog). LES
+// LIGNES DEJA EN BASE RESTENT : celles d un match sans carte decode a `killsource-2026-09-24` (aux
+// largeurs de Cliffhanger) demeurent dans `match_kill_events`, et aucune passe ne les remplace —
+// le match n est plus jamais decode tant que sa carte ne se resout pas. Leur sort (purge ou non)
+// est une decision renvoyee a J11 ; ce lot ne touche a aucune donnee.
+//
+// CORRECTIONS DE REVUE DU MEME JOUR, SANS EFFET SUR LA SORTIE (l empreinte ne bouge pas) : un match
+// dont le registre ne porte ni `map_id` ni `map_name` (`port.ErrMatchMapUnknown`) est une carte NON
+// RESOLUE, plus une panne retentee et telechargee a chaque cycle ; le post-sync ne relit plus la
+// carte d un match deja constate sans elle sous le meme catalogue de bornes (registre en memoire,
+// jauge `killsource_postsync_backlog_sans_carte`) et ne compte plus le backlog qu une fois par
+// cycle. Residu accepte : un film expire SANS carte n est jamais telecharge, donc jamais marque
+// `MBitFilmAbsent`, et reste au backlog.

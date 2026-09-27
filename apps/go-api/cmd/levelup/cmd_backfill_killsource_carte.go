@@ -32,9 +32,9 @@ func selectionSansBorne(o killsourceOptions) killsourceOptions {
 // idsAvecCarte : les identifiants dont la carte se resout, dans l ordre, au plus `limit` (0 : tous).
 func idsAvecCarte(ctx context.Context, col *killcollector.KillSourceCollector, ids []string, limit int) []string {
 	retenus, ecartes := col.RetenirLesMatchsAvecCarte(ctx, ids, limit)
-	if ecartes > 0 {
+	if len(ecartes) > 0 {
 		fmt.Printf("films ecartes faute de carte resolue : %d (aucun telechargement ni decodage ; ils "+
-			"restent candidats et reviendront quand leur carte se resoudra)\n", ecartes)
+			"restent candidats et reviendront quand leur carte se resoudra)\n", len(ecartes))
 	}
 	return retenus
 }

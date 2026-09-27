@@ -154,9 +154,13 @@ func (c *KillSourceCollector) decodeFilmForMatch(ctx context.Context, matchID st
 //
 // LA PORTE VIENT APRES CELLE DE LA CLE ET AVANT TOUT DECODAGE (2026-09-27, regle utilisateur
 // « le flux du film est la seule source fiable. Pas de repli. ») : sans carte, le film est MIS DE
-// COTE — jamais decode aux largeurs d une autre carte. Elle vient APRES le telechargement a
-// dessein : un film expire doit recevoir son marqueur terminal `MBitFilmAbsent`, carte connue ou
-// non. Sortie de `decodeFilmForMatch`, que la porte portait au-dela des 80 lignes du depot.
+// COTE — jamais decode aux largeurs d une autre carte. Ce n est PLUS la premiere porte : les trois
+// chemins de collecte retirent les matchs sans carte AVANT le telechargement
+// (`RetenirLesMatchsAvecCarte`, carte_avant_telechargement.go). Celle-ci reste le filet du
+// decodeur : un appelant qui n a pas filtre, ou une entree resolue sans largeurs
+// (`ErrCarteAbsente`). Un film expire SANS carte ne recoit donc jamais `MBitFilmAbsent` — residu
+// accepte, ecrit a l endroit du filtre. Sortie de `decodeFilmForMatch`, que la porte portait
+// au-dela des 80 lignes du depot.
 func (c *KillSourceCollector) decoderSousLaCarte(ctx context.Context, matchID string, film *decfilm.Film) (
 	*decfilm.Result, KillSourceOutcome, error,
 ) {
