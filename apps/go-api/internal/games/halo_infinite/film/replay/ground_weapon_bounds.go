@@ -216,3 +216,78 @@ func gwPickupRefPos(
 	p := life.Pts[len(life.Pts)-1]
 	return [3]float32{p.X, p.Y, p.Z}, true
 }
+
+// naissanceDObjet est une creation d'objet du monde vue par le bornage des vies de cle : sa date,
+// sa generation, et ce qui PROUVE qu'elle est un objet reel (RB2-3, lot J5.4, 2026-09-27).
+type naissanceDObjet struct {
+	tUS uint64
+	gen uint32
+	// retenue : la regle d'identite de la chaine la reconnait (objet publie, ou objet d'objectif
+	// ecarte mais reel). C'est une lecture du film.
+	retenue bool
+	// recensee : sa cle est vue par une image-cle a sa creation ou apres. Une seconde lecture,
+	// qui ne vaut que pour une cle DIFFERENTE de celle qu'on borne (sinon le recensement ne dit
+	// pas lequel des deux objets il voit).
+	recensee bool
+}
+
+// naissancesDObjetParSlot range les creations d'objets du monde par SLOT, triees par date.
+//
+// POURQUOI LE SLOT ET NON LA CLE : un slot d'objet ne porte qu'une entite a la fois. La creation
+// SUIVANTE sur ce slot prouve donc que l'objet precedent n'y est plus, quelle que soit sa
+// generation et que l'artefact la publie ou non. Borner la vie d'une cle par la seule reprise de
+// la MEME cle parmi les creations PUBLIEES laissait un successeur ecarte (objet d'objectif) ou
+// d'une autre generation hors du bornage : le recensement prolongeait l'objet precedent.
+//
+// MAIS UNE CREATION ACCEPTEE PAR LE BALAYAGE N'EST PAS TOUJOURS UN OBJET. Mesure du 2026-09-27 sur
+// les huit mini-bobines de build : parmi les successeurs d'une autre generation, ceux que ni la
+// regle d'identite ni le recensement ne confirment sont CONTREDITS 29 fois par le recensement (la
+// cle precedente est encore vue apres eux) ; ceux que l'une des deux lectures confirme, jamais.
+// Seul un successeur PROUVE borne donc la vie. Les deux chaines (socles, poses d'equipement)
+// passent par ce seul helper.
+type naissancesDObjetParSlot map[uint32][]naissanceDObjet
+
+// ajouter inscrit une creation.
+func (c naissancesDObjetParSlot) ajouter(slot uint32, n naissanceDObjet) {
+	c[slot] = append(c[slot], n)
+}
+
+// trier ordonne chaque slot par date (puis generation : l'ordre est total).
+func (c naissancesDObjetParSlot) trier() {
+	for s := range c {
+		l := c[s]
+		sort.Slice(l, func(i, j int) bool {
+			if l[i].tUS != l[j].tUS {
+				return l[i].tUS < l[j].tUS
+			}
+			return l[i].gen < l[j].gen
+		})
+	}
+}
+
+// finDeVie rend la fin de la vie de l'objet de cle `k` ne a `t0` : la premiere creation PROUVEE
+// de son slot strictement posterieure, ou `borne` si elle vient plus tot (ou s'il n'y en a pas).
+func (c naissancesDObjetParSlot) finDeVie(k types.LifeKey, t0, borne uint64) uint64 {
+	for _, n := range c[k.Slot] {
+		if n.tUS <= t0 {
+			continue
+		}
+		if n.tUS >= borne {
+			break
+		}
+		if n.retenue || (n.recensee && n.gen != k.Gen) {
+			return n.tUS
+		}
+	}
+	return borne
+}
+
+// recenseeDepuis dit si l'une des images-cles `vues` tombe a `t` ou apres.
+func recenseeDepuis(vues []uint64, t uint64) bool {
+	for _, v := range vues {
+		if v >= t {
+			return true
+		}
+	}
+	return false
+}
