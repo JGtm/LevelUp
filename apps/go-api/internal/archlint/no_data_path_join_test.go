@@ -28,6 +28,9 @@ var dataPathJoinAllowlist = map[string]bool{
 	// Config : défauts du data-root (amont du resolver, bootstrap).
 	"internal/config/config.go":          true,
 	"internal/config/config_settings.go": true,
+	// 2026-09-27 (backlog, lot B-C4) : défaut de LEVELUP_DEMO_FIXTURES_DIR (`<repo>/data/demo`),
+	// DÉPLACÉ de config.go (gel de taille à 629 lignes) — même site, pas un nouveau.
+	"internal/config/config_demo.go": true,
 	// Wiring DI (racine api/, hors handlers) : chemins cache/jobs/stash au boot.
 	"internal/api/server.go":       true,
 	"internal/api/server_apiv1.go": true, // K2a : construction DI extraite de NewRouter
