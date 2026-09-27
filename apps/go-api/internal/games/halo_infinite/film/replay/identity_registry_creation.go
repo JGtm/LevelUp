@@ -193,8 +193,8 @@ func indicesDeViesParSlot(lives []lifeSpan) map[uint32][]int {
 // d'une vie — le moteur cree l'entite, puis replique ses positions dans un paquet ULTERIEUR. Un
 // partage par containment rendrait donc « propage » partout, ce qui serait exact au sens litteral
 // et faux au sens utile : le record ouvre bien UNE vie, celle du sejour qu'il inaugure. La regle
-// retenue est donc « la premiere vie du corps qui n'est pas deja terminee a la date du record »,
-// et il y a exactement un `direct` par record.
+// retenue est donc « la premiere vie DE CE CORPS qui n'est pas deja terminee a la date du
+// record », et il y a au plus un `direct` par record (aucun quand le corps ne replique rien).
 func (r *creationReport) appliquerAuCorps(lives []lifeSpan, vies []int, c corpsLu, t resolutionDIndex) {
 	ouvertes := c.viesOuvertes(lives, vies)
 	for _, i := range vies {
@@ -257,14 +257,23 @@ func (r *creationReport) refuserFauteDeTable(i, pi int) {
 	r.indexLu[i] = uint32(pi)
 }
 
-// viesOuvertes apparie chaque record du corps a LA VIE QU'IL OUVRE : la premiere vie du slot que
-// le record ne trouve pas deja terminee, et qu'aucun record anterieur n'a deja ouverte. Rend
+// viesOuvertes apparie chaque record du corps a LA VIE QU'IL OUVRE : la premiere vie DE CE CORPS
+// que le record ne trouve pas deja terminee, et qu'aucun record anterieur n'a deja ouverte. Rend
 // le record (index de participant et date) par indice de vie.
+//
+// LA VIE DOIT ETRE CELLE DE SON CORPS (RA2-1, lot J5.4, 2026-09-27). Le corps d'une vie est la cle
+// (slot, generation) du record qui tient le slot a son debut ([corpsLu.recordAuDebutDe]). Sans
+// cette garde, le record d'un corps qui ne replique AUCUNE position ouvrait la premiere vie du
+// corps SUIVANT du slot recycle, publiee `direct` sous le joueur precedent — latent tant que les
+// corps de generation >= 2 n'avaient pas de positions (GB-1, corrige au lot J5.2).
 func (c corpsLu) viesOuvertes(lives []lifeSpan, vies []int) map[int]dateDeCreation {
 	out := map[int]dateDeCreation{}
 	for _, d := range c.dates {
 		for _, i := range vies {
 			if _, deja := out[i]; deja || lives[i].to < d.tUS {
+				continue
+			}
+			if corps, connu := c.recordAuDebutDe(lives[i]); !connu || corps != d {
 				continue
 			}
 			out[i] = d
