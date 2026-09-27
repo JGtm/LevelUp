@@ -40,7 +40,7 @@ type World struct {
 	// [World.vueDeLEspaceDeNoms].
 	nsImageCle int8
 	// anticipee / chunkCourant / anticipations : LE REPLI DU LOT 5.23, cf.
-	// [World.LierParAnticipation]. `anticipee` nil = repli absent, et rien ne change.
+	// [World.LierParRepliDAnticipation]. `anticipee` nil = repli absent, et rien ne change.
 	anticipee     *TableAnticipee
 	chunkCourant  int
 	anticipations map[uint32]int
@@ -91,7 +91,7 @@ func NewWorld(reg *Registry) *World {
 // ni par le bloc de type 1 de ce chunk (0 sur 23 325 rejets — 5.21.2), et le decodeur ne lit
 // AUCUN record `NEW` la ou elle nait. **Le record de naissance reste NON LU** : ce repli ne le
 // remplace pas, il le rend inutile pour la SUITE du flux. Il est NOMME, DATE (2026-09-22) et
-// COMPTE — [Observation.LiaisonsParAnticipation], par archetype, a cote de `RejetsHorsDatum`.
+// COMPTE — [Observation.LiaisonsParRepliDAnticipation], par archetype, a cote de `RejetsHorsDatum`.
 //
 // SUR QUELLE FOI. L image-cle du chunk SUIVANT declare 74,7 % des slots rejetes, avec leur
 // archetype, sous la cle MEME que `FUN_1406caad8` compare (l eid entier — cf.
@@ -101,17 +101,17 @@ func NewWorld(reg *Registry) *World {
 // INCONNUE, sans position. Elle ne dit que ce qu elle sait — l archetype.
 
 // PoserTableAnticipee installe (ou retire, avec nil) la table anticipee du film. Sans elle
-// [World.LierParAnticipation] ne pose rien et la marche se comporte exactement comme avant.
+// [World.LierParRepliDAnticipation] ne pose rien et la marche se comporte exactement comme avant.
 func (w *World) PoserTableAnticipee(t *TableAnticipee) { w.anticipee = t }
 
 // PoserChunkCourant annonce le chunk que la marche parcourt : la table anticipee ne rend qu une
 // declaration STRICTEMENT POSTERIEURE a lui.
 func (w *World) PoserChunkCourant(n int) { w.chunkCourant = n }
 
-// LierParAnticipation lie le slot de l eid `id` a l archetype que la premiere image-cle
+// LierParRepliDAnticipation lie le slot de l eid `id` a l archetype que la premiere image-cle
 // POSTERIEURE au chunk courant lui donne, et rend cet archetype. `false` = la table est absente,
 // le slot est deja lie, ou aucune image-cle ulterieure ne le declare.
-func (w *World) LierParAnticipation(id uint32) (uint32, bool) {
+func (w *World) LierParRepliDAnticipation(id uint32) (uint32, bool) {
 	if w.anticipee == nil {
 		return 0, false
 	}
@@ -140,8 +140,13 @@ func (w *World) LierParAnticipation(id uint32) (uint32, bool) {
 	return ti, true
 }
 
-// AnticipationsParArchetype rend, par archetype, le nombre de liaisons que le repli a posees.
-func (w *World) AnticipationsParArchetype() map[uint32]int { return w.anticipations }
+// LiaisonsDuRepliDAnticipation rend, par archetype, le nombre de liaisons que le repli a posees.
+//
+// C EST LE COMPTE QUE LA CUISSON PUBLIE (lot J8.1 du plan de suite d audit, 2026-09-27, constat
+// GA1-2) : la marche du frame-processeur le somme dans [MarcheDesTrames], et `replay` le verse au
+// compteur de replis de la cuisson sous `repli_liaison_par_anticipation`. Avant ce lot il n avait
+// aucun appelant : le repli decidait des stances sans que l artefact le dise.
+func (w *World) LiaisonsDuRepliDAnticipation() map[uint32]int { return w.anticipations }
 
 // PoserVueCourante annonce au monde la vue de replication que la marche parcourt.
 func (w *World) PoserVueCourante(v int) { w.vueCourante = int8(v) } //nolint:gosec // v vaut 0..2

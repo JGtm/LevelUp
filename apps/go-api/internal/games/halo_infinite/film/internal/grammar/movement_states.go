@@ -120,6 +120,12 @@ type MarcheDesTrames struct {
 	MovementStateStats  types.MovementStateStats
 	ContinuousFire      []types.ContinuousFireBurst
 	ContinuousFireStats types.ContinuousFireStats
+	// LiaisonsParRepliDAnticipation : les liaisons que le repli `repli_liaison_par_anticipation`
+	// ([World.LierParRepliDAnticipation]) a posees pendant la marche, tous archetypes confondus.
+	// `replay` les verse au compteur de replis de la cuisson (lot J8.1, constat GA1-2). Ce compte
+	// N EST PAS dans [types.MovementStateStats] : il ne se persiste pas avec les faits, il voyage
+	// dans le rapport des replis que le fichier de faits porte deja.
+	LiaisonsParRepliDAnticipation int
 }
 
 // ScanMarcheDesTrames deroule la marche du frame-processeur sur un film DEJA CHARGE et rend ses
@@ -159,6 +165,7 @@ func ScanMarcheDesTrames(fc *FilmContext) (MarcheDesTrames, error) {
 	// MESURE, que `Absent` publie au lieu de le confondre avec un film ou personne ne s accroupit.
 	absent := sc.crouch < 0 && sc.slide < 0 && sc.mobility < 0 && sc.ability < 0
 	sc.marcher(fc, reg, chunks, !absent)
+	m.LiaisonsParRepliDAnticipation = sc.liaisonsDuRepliDAnticipation()
 	m.ContinuousFire = sc.tir.terminer()
 	m.ContinuousFireStats.Scanned = true
 	if absent {
@@ -188,7 +195,7 @@ func (sc *movementStateScanner) marcher(fc *FilmContext, reg *Registry, chunks [
 	// passe sur les images-cles de tous les chunks (1,8 s sur un film de 29 chunks, aucun
 	// decodage de trame) ; au point de rejet, la marche y lit l archetype qu une image-cle
 	// ULTERIEURE donne a un eid que le monde ne connait pas encore. Cf. `keyframe_anticipe.go`
-	// et [World.LierParAnticipation] : le record de naissance n est toujours pas lu.
+	// et [World.LierParRepliDAnticipation] : le record de naissance n est toujours pas lu.
 	sc.monde.PoserTableAnticipee(ConstruireTableAnticipee(fc))
 	for _, c := range chunks {
 		data, pks, ok := fc.ChunkAt(c)
@@ -385,4 +392,14 @@ func sortMovementStates(out []types.MovementStateRead) {
 		}
 		return a.Kind < b.Kind
 	})
+}
+
+// liaisonsDuRepliDAnticipation somme, tous archetypes confondus, les liaisons que le repli
+// `repli_liaison_par_anticipation` a posees dans le monde de la marche.
+func (sc *movementStateScanner) liaisonsDuRepliDAnticipation() int {
+	n := 0
+	for _, k := range sc.monde.LiaisonsDuRepliDAnticipation() {
+		n += k
+	}
+	return n
 }

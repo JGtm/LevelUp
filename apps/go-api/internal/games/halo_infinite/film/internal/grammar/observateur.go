@@ -301,15 +301,15 @@ type Observation struct {
 	//	                  `bfecd02b` ; le compteur existe pour que ce zero soit VU et non
 	//	                  suppose.
 	RejetsHorsDatum, RejetsDeVue int
-	// LiaisonsParAnticipation compte, PAR ARCHETYPE, les liaisons que le REPLI du lot 5.23 a
+	// LiaisonsParRepliDAnticipation compte, PAR ARCHETYPE, les liaisons que le REPLI du lot 5.23 a
 	// posees au point de rejet : l eid n etait dans aucune table de datums connue, mais une
-	// image-cle ULTERIEURE le declare (cf. [World.LierParAnticipation]). Chacune est un rejet
+	// image-cle ULTERIEURE le declare (cf. [World.LierParRepliDAnticipation]). Chacune est un rejet
 	// hors datum EVITE — les deux compteurs se lisent ensemble, et leur somme est le nombre de
 	// deltas que le monde hors ligne ne savait pas cadrer.
 	//
 	// C EST UN COMPTEUR D OBSERVATION, PAS UN CHAMP DU CONTRAT : `Observation` n est jamais
 	// publie, `replay.SchemaVersion` ne bouge pas, et la forme des faits persistes non plus.
-	LiaisonsParAnticipation map[uint32]int
+	LiaisonsParRepliDAnticipation map[uint32]int
 	// NeufsContreUnVivant : NEW refuses ([contreditUneEntiteVivante]), ventiles par le verdict de
 	// l image-cle suivante (DFIX-R6, `keyframe_liaison.go`) ; `neufsRefuses` attend ce verdict.
 	NeufsContreUnVivant                                                            int
@@ -437,14 +437,14 @@ func (o *Observation) compterRejetDeVue() {
 	}
 }
 
-// compterLiaisonParAnticipation compte une liaison posee par le repli du lot 5.23, par archetype
-// (cf. [Observation.LiaisonsParAnticipation]).
-func (o *Observation) compterLiaisonParAnticipation(ti uint32) {
+// compterLiaisonParRepliDAnticipation compte une liaison posee par le repli du lot 5.23, par archetype
+// (cf. [Observation.LiaisonsParRepliDAnticipation]).
+func (o *Observation) compterLiaisonParRepliDAnticipation(ti uint32) {
 	if o == nil {
 		return
 	}
-	if o.LiaisonsParAnticipation == nil {
-		o.LiaisonsParAnticipation = map[uint32]int{}
+	if o.LiaisonsParRepliDAnticipation == nil {
+		o.LiaisonsParRepliDAnticipation = map[uint32]int{}
 	}
-	o.LiaisonsParAnticipation[ti]++
+	o.LiaisonsParRepliDAnticipation[ti]++
 }

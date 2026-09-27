@@ -22,7 +22,7 @@ package grammar
 // premiere passe sur les images-cles de TOUS les chunks construit la table
 // `(slot, tete) -> archetype` du film entier ; la marche des trames, au point de rejet,
 // consulte cette table AVANT de rejeter, et lie l entite PAR ANTICIPATION sur la foi d une
-// image-cle ULTERIEURE. Le repli est NOMME (`LiaisonsParAnticipation`), DATE (2026-09-22) et
+// image-cle ULTERIEURE. Le repli est NOMME (`LiaisonsParRepliDAnticipation`), DATE (2026-09-22) et
 // COMPTE. Il ne remplace pas la lecture de la naissance : il la rend inutile pour la SUITE du
 // flux.
 //

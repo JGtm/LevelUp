@@ -410,4 +410,54 @@ var registreFilmdec = []Repli{
 		CritereRetrait:  "0 slot compte sur le corpus du gate de rejeu ET sur le parc re-decode",
 		CompteurBranche: true,
 	},
+	{
+		// LOT J8.1 DU PLAN DE SUITE D AUDIT (2026-09-27), CONSTAT GA1-2 : le repli du lot 5.23
+		// (2026-09-22) decidait hors registre et ne se comptait nulle part — sur `bfecd02b`, les
+		// stances passent de 616 a 841 par lui sans que l artefact le dise. Ses identifiants
+		// portent desormais `Repli`, pour que le ratchet de vocabulaire les voie.
+		//
+		// LA TABLE ANTICIPEE A UN SECOND USAGE QUI N EST PAS UN REPLI : `SlotDeLArchetype`
+		// (`debut_de_liste.go`, reprise M4b) lit la BANDE d un archetype dans les images-cles pour
+		// proposer un candidat de debut de liste, et ce candidat n est retenu que si la chaine de
+		// records qu il ouvre finit AU BIT PRES sur le debut localise. C est une lecture prouvee
+		// par le flux, pas une decision a la place d une lecture : elle n entre pas ici.
+		Nom:  "repli_liaison_par_anticipation",
+		Fait: "l archetype d un slot jamais lie dont un record delta arrive (une entite nee en milieu de chunk, que ni l image-cle de son chunk ni la table de datums ne declarent)",
+		Mecanisme: "la table anticipee des images-cles du film rend l archetype que la PREMIERE image-cle STRICTEMENT POSTERIEURE au chunk courant donne a l eid entier (slot et tete) ; " +
+			"le slot est lie comme une liaison de datum (Soft, generation et vue inconnues, sans position) et son corps est lu ; compte = liaisons posees",
+		// LECTURE NON PORTEE : le film ecrit la naissance (un record NEW), et le decodeur ne le lit
+		// pas la ou l entite nait (0,0 % dans l image-cle du chunk, 0 sur 23 325 rejets dans le
+		// bloc de type 1 — lots 5.20.2 et 5.21.2).
+		Condition: CondLectureNonPortee,
+		Ordre:     OrdreApresLecture,
+		Sites: []Site{{
+			Fichier: pkgFilmdec + "world.go",
+			Ancre:   "func (w *World) LierParRepliDAnticipation(id uint32) (uint32, bool) {",
+		}, {
+			Fichier: pkgFilmdec + "world.go",
+			Ancre:   "func (w *World) LiaisonsDuRepliDAnticipation() map[uint32]int {",
+		}, {
+			Fichier: pkgFilmdec + "frame_infer.go",
+			Ancre:   "ti, anticipe := w.LierParRepliDAnticipation(id)",
+		}, {
+			Fichier: pkgFilmdec + "observateur.go",
+			Ancre:   "LiaisonsParRepliDAnticipation map[uint32]int",
+		}, {
+			Fichier: pkgFilmdec + "observateur.go",
+			Ancre:   "func (o *Observation) compterLiaisonParRepliDAnticipation(ti uint32) {",
+		}, {
+			// L ANCRE EST LA TRANSMISSION, PAS LA DECLARATION : elle nomme le champ et la methode
+			// (le ratchet de vocabulaire les voit couverts), et l effacer fait rougir la direction
+			// (B) — le seul maillon que le test du paquet ne tient pas.
+			Fichier: pkgFilmdec + "movement_states.go",
+			Ancre:   "m.LiaisonsParRepliDAnticipation = sc.liaisonsDuRepliDAnticipation()",
+		}, {
+			Fichier: "internal/games/halo_infinite/film/replay/film_scan_mouvement.go",
+			Ancre:   "s.opt.Fallbacks.DeclencheN(fallback.NomLiaisonParAnticipation, m.LiaisonsParRepliDAnticipation)",
+		}},
+		DatePose:        "2026-09-27",
+		CibleRetrait:    "la lecture du record de naissance d une entite nee en milieu de chunk ; a defaut, retrait au jalon suivant si le compte est nul au corpus gate de J11 (regle 4 de D-10, 2026-09-27)",
+		CritereRetrait:  "record de naissance lu ET 0 liaison par anticipation comptee sur le corpus du gate de rejeu",
+		CompteurBranche: true,
+	},
 }
