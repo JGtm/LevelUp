@@ -509,20 +509,29 @@ branche verte au niveau job.
     (#11), qui vit dans `components/charts/` et sert squad, timeseries et session-detail ;
   - l.213 : « all 11 wrappers », alors qu'il y en a 12.
 
-- [ ] **A3.1** Détection des dérogations mortes dans le script : collecter les clés réellement
+- [x] **A3.1** Détection des dérogations mortes dans le script : collecter les clés réellement
   consommées pendant le balayage (même logique de saut que l.297, `cross-feature-allow`), puis
   `exit 1` en listant les entrées jamais servies. Démontrer le rouge sur l'état actuel (sortie
-  au journal).
-- [ ] **A3.2** Retirer les entrées que le script déclare mortes, et elles seules (liste
+  au journal). Rouge obtenu : 16 entrées mortes (liste identique aux Pièces ci-dessus, la
+  re-vérification post-`feat/v75` ne montre aucune dérive).
+- [x] **A3.2** Retirer les entrées que le script déclare mortes, et elles seules (liste
   ci-dessus, re-vérifiée au moment du lot), avec leurs commentaires devenus orphelins.
-- [ ] **A3.3** README l.24 (wrapper 10 seul dans `features/timeseries/` ; `FirstBloodLanes` dans
+  16 entrées retirées : `auth=>auth`, `admin=>lab`, `career=>compare`, `explorer=>compare`,
+  `palmares=>compare`, `career=>leaderboard`, `career=>citations`, `friends=>settings`,
+  `lab=>squad`, `squad=>settings`, `squad=>compare`, `personal-stats=>filters`,
+  `personal-stats=>synthesis`, `personal-stats=>squad`, `match-view=>settings`,
+  `squad=>timeseries`. Script vert, ratchet inchangé (« 7 <= plafond »).
+- [x] **A3.3** README l.24 (wrapper 10 seul dans `features/timeseries/` ; `FirstBloodLanes` dans
   `components/charts/`, consommateurs cités) et l.213 (12 wrappers).
-- [ ] **A3.4** `.github/workflows/ci.yml`, job web : étape `node tools/lint-cross-feature-imports.mjs`
+- [x] **A3.4** `.github/workflows/ci.yml`, job web : étape `node tools/lint-cross-feature-imports.mjs`
   après `lint:colors`, depuis la racine du dépôt. Aucun déclencheur ni `paths-ignore` modifié
-  (invariants `archlint`, vérifiés par la CI).
+  (invariants `archlint`, vérifiés par la CI). Étape ajoutée en chemin relatif
+  `../../tools/lint-cross-feature-imports.mjs` (patron identique au step « Ratchet knip » juste
+  en dessous, cohérent avec `working-directory: apps/web` du job `frontend`).
 
 **Gate** : `node tools/lint-cross-feature-imports.mjs` rouge avant A3.2, puis exit 0 avec
-toujours « 7 <= plafond » ; CI de branche verte, étape nouvelle comprise.
+toujours « 7 <= plafond » — PASSÉ (logs `A3-red.log` / `A3-green.log`). CI de branche verte,
+étape nouvelle comprise : à vérifier par le superviseur (l'exécutant ne pousse pas).
 
 ### A4 — Musique d'intro au lancement du rejeu (item 7) — S
 
@@ -1339,6 +1348,12 @@ est supprimé.
   0,8 à 4,3 s après sa création dans un geste, plus lentement quand la lecture tourne déjà (lecture
   automatique). Les sons lancés entre-temps partent à la reprise. Hors de portée de la page (le
   contexte ne peut naître qu'au geste) ; à confirmer à l'oreille en A2.5.
+- DA-8 (A3.2, 2026-09-27) : `tools/lint-cross-feature-imports.mjs:215` (commentaire de
+  `citations=>commendations` / `home=>citations`) dit « analogue à career=>citations » — cette
+  paire vient d'être retirée comme dérogation morte (A3.2). La phrase reste une analogie
+  descriptive, pas une déclaration de l'entrée elle-même : elle n'est pas orpheline au sens du
+  lot (rien ne la référence plus), mais elle nomme une entrée qui n'existe plus. Non traité —
+  hors périmètre A3 (le lot ne retire que les entrées mortes et LEURS commentaires).
 
 ### Lots B
 
@@ -1689,6 +1704,37 @@ est supprimé.
     7 sautés.
 - Nettoyage : Vite `:5174` arrêté (arbre du PID 23016), scripts `.tmp.*.mjs` supprimés,
   `routeTree.gen.ts` inchangé. Serveur `:8000` non touché.
+
+**[2026-09-27] A3 — dérogations mortes et README des graphes (item 5) — exécutant, worktree du
+plan.**
+
+- Pièces re-vérifiées avant action (règle n°4 du contrat) : `feat/v75` a bougé
+  `tools/lint-cross-feature-imports.mjs` depuis la rédaction du plan (chantier Emprise) — la
+  re-lecture confirme les 16 entrées mortes listées dans les Pièces d'A3, sans écart.
+- A3.1 : ajout de `usedAllowEntries` (Set alimenté au même point que la vérification
+  `ALLOWED_CROSS_IMPORTS.has(paire|module)` du balayage cross-feature), puis calcul de
+  `deadAllowEntries` = entrées déclarées jamais servies, `exit 1` listant ces entrées avant le
+  rapport habituel du script. Rouge démontré sur l'état d'avant retrait : 16 entrées
+  (`$TEMP\backlog-gates\A3-red.log`), liste identique à celle du plan.
+- A3.2 : retrait des 16 entrées et de leurs commentaires devenus orphelins (les commentaires
+  couvrant un mélange d'entrées vivantes et mortes sont conservés, réduits à ce qui reste
+  vivant — ex. « Leaderboard consommé par carrière + palmarès » → « … par palmarès » après
+  retrait de `career=>leaderboard`). Script revérifié vert (`$TEMP\backlog-gates\A3-green.log`),
+  toujours « 7 <= plafond » (ratchet inchangé, 7 violations non déclarées identiques à avant).
+- A3.3 : `components/charts/README.md` l.24 et l.213 corrigées (wrapper 10 seul dans
+  `features/timeseries/`, `FirstBloodLanes` confirmé dans `components/charts/` par
+  `find` ; 12 wrappers, pas 11).
+- A3.4 : étape CI ajoutée au job `frontend` (`.github/workflows/ci.yml`), après
+  `lint:colors`, chemin relatif `../../tools/lint-cross-feature-imports.mjs` (le job tourne sous
+  `working-directory: apps/web`, même patron que le step « Ratchet knip » voisin). Diff limité à
+  +8 lignes, aucun déclencheur ni `paths-ignore` touché (vérifié par diff ciblé).
+- Découverte hors périmètre, non traitée : DA-8 (commentaire résiduel « analogue à
+  career=>citations » à la ligne 215 du script, référence descriptive à une entrée retirée,
+  pas une déclaration de dérogation).
+- Gates : `EXIT_RED=1` puis `EXIT_GREEN=0` (script), `EXIT_NPM_LINT=0` (`npm run lint`,
+  0 erreur / 26 warnings préexistants). `git status` avant staging : seuls
+  `.github/workflows/ci.yml`, `apps/web/src/components/charts/README.md` et
+  `tools/lint-cross-feature-imports.mjs` modifiés ; `routeTree.gen.ts` non touché.
 
 ### Lots B
 

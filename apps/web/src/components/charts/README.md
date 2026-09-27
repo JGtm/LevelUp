@@ -21,7 +21,7 @@ ADR : `docs/adr/0001-charts-stack-echarts.md`. Live sandbox : `/lab/charts`.
 | 11 | `<FirstBloodLanes>` | One lane per player: first-kill / first-death timing clouds + median advance window | Squad "Dynamique" tab, Timeseries "Progression" tab, Session chart stack |
 | 12 | `<WeaponAccuracyChart>` | Per-weapon accuracy bars, coloured by weapon class, hover linked to the frag sunburst | Synthesis, Timeseries "Résumé" tab, SessionFragCard |
 
-> Wrappers 10–11 are kept in `features/timeseries/` (not in this folder) because they compose `<ChartCard>` directly with custom `buildOption` and aren't reusable elsewhere.
+> Wrapper 10 alone is kept in `features/timeseries/` (not in this folder) because it composes `<ChartCard>` directly with a custom `buildOption` and isn't reusable elsewhere. `FirstBloodLanes` (#11) lives in this folder — it's consumed by Squad, Timeseries and Session Detail (see catalog above).
 
 ## Common API contract
 
@@ -210,7 +210,7 @@ FR literal here.
 
 ## Live sandbox
 
-Run `npm run dev` and navigate to `/lab/charts` for visual samples of all 11 wrappers with realistic demo data. Sandbox is hardcoded-strings-allowed (lint exception) — useful for visual regression checks.
+Run `npm run dev` and navigate to `/lab/charts` for visual samples of all 12 wrappers with realistic demo data. Sandbox is hardcoded-strings-allowed (lint exception) — useful for visual regression checks.
 
 ## Reference
 
