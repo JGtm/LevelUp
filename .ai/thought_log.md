@@ -113669,3 +113669,11 @@ Sans film, le détail des grenades par type ne vient plus de la table native : u
 **Resultats observes** : test « ce soir sans part pour un rôle » (Tenir absent ce soir) rouge sous deux mutations (`show: true`, `at` retiré), vert corrigé. Gate web : typecheck OK, lint 0 erreur (26 avertissements préexistants), vitest `src/features/squad` + `endPoint` en `--pool=forks` : 808 tests verts, knip 0/0/0, couleurs 0.
 
 **Conclusion / prochaine etape** : R14 et R15 statués `[x]` au plan, découvertes correspondantes marquées traitées. Vérification superviseur, puis L6.2.
+
+## [2026-09-27] Emprise, lots L6.1 à L6.3 : revue close, rattrapage local, fusion dans `feat/v75` — En cours (fusion faite ; CI, gate visuel utilisateur, prod et L6.6 restent)
+
+**Decision technique principale** : fusion `--no-ff` de `wt/emprise` dans `feat/v75` sur accord de l'utilisateur (il ne peut vérifier qu'après fusion). Le merge est fait sur une tête détachée du worktree à `origin/feat/v75` puis poussé, pour ne pas toucher aux modifications non commitées d'autres sessions dans le dossier principal (`CLAUDE.md`, `CONTRIBUTING`, journal).
+
+**Resultats observes** : revue adversariale close (ronde 1 : R1-R13 corrigés, ronde 2 : 0 constat, R14-R15 promus et corrigés). Rattrapage local : `backfill-pad-tiers` 12 écrits / 99 déjà en base / 0 échec ; `backfill-usage-summary` 0 écrit / 17 à jour / 111 artefacts au schéma périmé (hors chantier). Serveurs de gate du worktree arrêtés.
+
+**Conclusion / prochaine etape** : CI verte au niveau job sur `feat/v75` (L6.3), puis gate visuel de l'utilisateur sur la soirée du 22/09 (L6.4), rattrapages prod sur accord (L6.5), mise à jour de la référence équipement §4 (L6.6), puis plan détaillé du lot L7 (véhicules) soumis à l'utilisateur.
