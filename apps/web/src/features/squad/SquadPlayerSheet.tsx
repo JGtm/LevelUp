@@ -44,8 +44,11 @@ export function SquadSheetAvatar({
   )
 }
 
-/** Une section de fiche : son étiquette en capitales de 9 px, puis son contenu. */
-export function SquadSheetSection({ label, children }: { label: string; children: ReactNode }) {
+/**
+ * Une section de fiche : son étiquette en capitales de 9 px (un texte, ou un texte précédé d'une
+ * pastille : les ressources de l'Emprise, S8), puis son contenu.
+ */
+export function SquadSheetSection({ label, children }: { label: ReactNode; children: ReactNode }) {
   return (
     <div>
       <p className="text-[9px] uppercase tracking-wider text-muted-foreground mb-1.5">{label}</p>

@@ -1530,6 +1530,14 @@ export interface TeammatesPageResponse {
    * 0..1. Absent sans coéquipier sélectionné ou sans stats d’objectif.
    */
   squad_objective_history?: SquadObjectiveHistory
+  /**
+   * Bloc « Emprise » (lot L4 du plan PLAN_EMPRISE_ET_CARTES_DEPLACEES_2026-09-26) : les prises de
+   * chaque ressource (bonus, armes spéciales, armes de râtelier) par notre camp et par
+   * l’adversaire, sur le périmètre D2 — bilan, match par match, objet par objet, qui chez nous,
+   * production et habitude. Résultat, score et dominance se joignent depuis `match_history`.
+   * Absent = périmètre sans match. Lu par l’onglet Emprise (lot L5).
+   */
+  squad_emprise?: SquadEmpriseBlock
 }
 
 /** Dégradation d'un chargement best-effort. `code` est une clé stable traduite
@@ -2374,6 +2382,15 @@ export type SquadFormesWeaponPad = components['schemas']['SquadFormesWeaponPad']
 export type SquadFormesObjective = components['schemas']['SquadFormesObjective']
 export type SquadFormesObjectiveColumn = components['schemas']['SquadFormesObjectiveColumn']
 export type SquadFormesObjectivePlayer = components['schemas']['SquadFormesObjectivePlayer']
+
+// ─── Bloc « Emprise » (lot L4 du plan PLAN_EMPRISE_ET_CARTES_DEPLACEES_2026-09-26). Contrat Go :
+// internal/domain/squad_emprise.go. Les ressources sont une LISTE (une ressource sans donnée est
+// absente) ; résultat, score et dominance se joignent depuis `match_history` par `match_id`.
+export type SquadEmpriseBlock = components['schemas']['SquadEmpriseBlock']
+export type SquadEmpriseMatch = components['schemas']['SquadEmpriseMatch']
+export type SquadEmpriseObject = components['schemas']['SquadEmpriseObject']
+export type SquadEmpriseObjectShare = components['schemas']['SquadEmpriseObjectShare']
+export type SquadEmpriseCount = components['schemas']['SquadEmpriseCount']
 
 // ─── Sprint 54-C : Compare joueur vs joueur ───────────────────────────────────
 

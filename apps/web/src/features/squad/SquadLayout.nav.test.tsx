@@ -1,7 +1,8 @@
 /**
  * SquadLayout.nav.test.tsx — LA BARRE D'ONGLETS DE L'ESCOUADE : quatre onglets, pas
  * cinq (lot 3 « sections », 2026-09-22). Passée de trois à quatre avec l'arrivée
- * d'Usages, elle a un PLAFOND : quatre onglets maximum, un axe de lecture par onglet.
+ * d'Usages (renommé « Emprise » le 2026-09-27), elle a un PLAFOND : quatre onglets
+ * maximum, un axe de lecture par onglet.
  * Ce test est le ratchet de ce plafond autant que du libellé des quatre.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
@@ -88,13 +89,17 @@ describe('SquadLayout — barre d\'onglets', () => {
       t.nav.synergies,
       t.nav.contributions,
       t.nav.dynamique,
-      t.nav.usages,
+      t.nav.emprise,
     ])
     expect(liens.map((a) => a.getAttribute('href'))).toEqual([
       '/{-$lang}/t/$titleSlug/players/$playerSlug/squad/synergies',
       '/{-$lang}/t/$titleSlug/players/$playerSlug/squad/contributions',
       '/{-$lang}/t/$titleSlug/players/$playerSlug/squad/dynamique',
-      '/{-$lang}/t/$titleSlug/players/$playerSlug/squad/usages',
+      '/{-$lang}/t/$titleSlug/players/$playerSlug/squad/emprise',
     ])
+    // D1 (plan PLAN_EMPRISE_ET_CARTES_DEPLACEES_2026-09-26) : l'onglet s'appelle « Emprise »
+    // (EN « Map control ») ; « Tactique » et « Contrôle » sont déjà pris ailleurs.
+    expect(t.nav.emprise).toBe('Emprise')
+    expect(getSquadText('en').nav.emprise).toBe('Map control')
   })
 })

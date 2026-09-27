@@ -2,7 +2,7 @@
  * SquadLayout — layout partagé de la section Escouade.
  *
  * Gère la sélection des coéquipiers (via data.options), les KPI cards et la
- * navigation par onglets (Synergies / Contributions / Dynamique / Usages). Expose les données
+ * navigation par onglets (Synergies / Contributions / Dynamique / Emprise). Expose les données
  * sélectionnées via SquadContext pour les onglets enfants.
  *
  * Multi-titres : tous les libellés métier passent par useFieldMappings
@@ -19,7 +19,8 @@
  * sessions pickées, composition stricte) — ce dont sa requête a besoin.
  *
  * Route parente : /players/$playerSlug/squad
- * Routes enfants : /squad/synergies · /squad/contributions · /squad/dynamique · /squad/usages
+ * Routes enfants : /squad/synergies · /squad/contributions · /squad/dynamique · /squad/emprise
+ * (/squad/usages, l'ancien nom de l'onglet, redirige vers /squad/emprise).
  */
 import { useState, useMemo } from 'react'
 import { Outlet, useParams, Link, useMatchRoute } from '@tanstack/react-router'
@@ -230,11 +231,11 @@ export function SquadLayout() {
   const synergiesRoute = '/{-$lang}/t/$titleSlug/players/$playerSlug/squad/synergies' as const
   const contributionsRoute = '/{-$lang}/t/$titleSlug/players/$playerSlug/squad/contributions' as const
   const dynamiqueRoute = '/{-$lang}/t/$titleSlug/players/$playerSlug/squad/dynamique' as const
-  const usagesRoute = '/{-$lang}/t/$titleSlug/players/$playerSlug/squad/usages' as const
+  const empriseRoute = '/{-$lang}/t/$titleSlug/players/$playerSlug/squad/emprise' as const
   const isSynergies = !!matchRoute({ to: synergiesRoute, fuzzy: true })
   const isContributions = !!matchRoute({ to: contributionsRoute, fuzzy: true })
   const isDynamique = !!matchRoute({ to: dynamiqueRoute, fuzzy: true })
-  const isUsages = !!matchRoute({ to: usagesRoute, fuzzy: true })
+  const isEmprise = !!matchRoute({ to: empriseRoute, fuzzy: true })
 
   // ── Gestion chargement / erreur ──────────────────────────────────────────
   // La barre de filtres (sticky) est toujours rendue; seul le contenu est
@@ -417,11 +418,11 @@ export function SquadLayout() {
                 {t.nav.dynamique}
               </Link>
               <Link
-                to="/{-$lang}/t/$titleSlug/players/$playerSlug/squad/usages"
+                to="/{-$lang}/t/$titleSlug/players/$playerSlug/squad/emprise"
                 params={{ titleSlug, playerSlug }}
-                className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${isUsages ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
+                className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${isEmprise ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
               >
-                {t.nav.usages}
+                {t.nav.emprise}
               </Link>
             </nav>
           </div>

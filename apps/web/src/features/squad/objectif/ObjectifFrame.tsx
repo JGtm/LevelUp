@@ -53,6 +53,12 @@ export type ObjectifLegendItem =
   | { kind: 'pair'; label: string; colors: [string, string] }
   | { kind: 'parity'; label: string; color: string }
   | { kind: 'median'; label: string }
+  // Onglet Emprise (lot L5) : pastille de prise, pastille vide (bonus perdu), encoche de
+  // dominance, hachure « sans film » — les marques de la maquette de l'onglet.
+  | { kind: 'dot'; label: string; color: string }
+  | { kind: 'ring'; label: string; color: string }
+  | { kind: 'notch'; label: string; color: string }
+  | { kind: 'hatch'; label: string }
 
 export function ObjectifLegend({ items, ariaLabel }: { items: ObjectifLegendItem[]; ariaLabel: string }) {
   return (
@@ -96,6 +102,25 @@ function LegendMark({ item }: { item: ObjectifLegendItem }) {
           style={{
             backgroundImage:
               'repeating-linear-gradient(to right, var(--muted-foreground) 0 3px, transparent 3px 5px)', // color-allow: repère neutre de la légende (maquette C3EW)
+          }}
+          aria-hidden
+        />
+      )
+    case 'dot':
+      return <span className="inline-block h-[11px] w-[11px] rounded-full" style={{ backgroundColor: item.color }} aria-hidden />
+    case 'ring':
+      return (
+        <span className="inline-block h-[11px] w-[11px] rounded-full" style={{ boxShadow: `inset 0 0 0 2px ${item.color}` }} aria-hidden />
+      )
+    case 'notch':
+      return <span className="inline-block h-[11px] w-[3px] rounded-[1px]" style={{ backgroundColor: item.color }} aria-hidden />
+    case 'hatch':
+      return (
+        <span
+          className="inline-block h-[11px] w-[11px] rounded-[2px] bg-muted"
+          style={{
+            backgroundImage:
+              'repeating-linear-gradient(45deg, transparent 0 4px, color-mix(in oklab, var(--muted-foreground) 70%, transparent) 4px 6px)', // color-allow: hachure « sans film » de la légende (maquette de l'onglet Emprise)
           }}
           aria-hidden
         />

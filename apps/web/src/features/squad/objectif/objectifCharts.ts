@@ -16,6 +16,10 @@
  * sont FIXES (pas de `containLabel`) pour que les deux grilles tombent l'une sous l'autre.
  *
  * Toutes les couleurs arrivent résolues (jetons) : aucune valeur en dur ici.
+ *
+ * Les briques exportées (axe en %, trait 50 %, point final grossi, courbe cumulée, API
+ * `renderItem`) servent aussi au « Contrôle des ressources au fil de la session » de l'onglet
+ * Emprise (`emprise/empriseCharts.ts`, lot L5) : une seule grammaire de courbe cumulée.
  */
 import type { EChartsCoreOption } from 'echarts/core'
 
@@ -52,7 +56,7 @@ function tip(text: string): string {
   return text.split('\n').map(escapeHtml).join('<br>')
 }
 
-function yAxisPct(pctFmt: (v: number) => string, tc: EChartsThemeColors, gridIndex = 0) {
+export function yAxisPct(pctFmt: (v: number) => string, tc: EChartsThemeColors, gridIndex = 0) {
   return {
     gridIndex,
     type: 'value' as const,
@@ -71,7 +75,7 @@ function yAxisPct(pctFmt: (v: number) => string, tc: EChartsThemeColors, gridInd
 }
 
 /** Le trait 50 % (repère, jamais une donnée), posé sur la première courbe. */
-function parityLine(color: string) {
+export function parityLine(color: string) {
   return {
     silent: true,
     symbol: 'none',
@@ -82,11 +86,11 @@ function parityLine(color: string) {
 }
 
 /** Le point final grossi, liseré à la couleur de la carte (maquette : r 4,5). */
-function endPoint(value: number, color: string, card: string) {
+export function endPoint(value: number, color: string, card: string) {
   return { value, symbol: 'circle', symbolSize: 9, itemStyle: { color, borderColor: card, borderWidth: 2 } }
 }
 
-function lineSeries(
+export function lineSeries(
   name: string,
   data: unknown[],
   color: string,
@@ -284,7 +288,7 @@ export function buildFilOption(matches: FilMatch[], c: ObjectifChartColors, t: F
 }
 
 /** Le sous-ensemble de l'API `renderItem` d'ECharts utilisé ici. */
-interface CustomApi {
+export interface CustomApi {
   value: (dim: number) => unknown
   coord: (v: number[]) => number[]
   size: (v: number[]) => unknown

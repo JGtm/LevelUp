@@ -23,7 +23,7 @@ export interface SquadText {
     synergies: string
     contributions: string
     dynamique: string
-    usages: string
+    emprise: string
   }
   /**
    * Titres de section transverses (lot 3 « sections », 2026-09-22) — un titre coiffe
@@ -95,7 +95,7 @@ export interface SquadText {
     noDataDescription: string
     /** Message court pour un bloc non-graphe vide (tape, table, scoreboard). */
     noBlockData: string
-    /** Onglet Usages sans aucun bloc à montrer (aucun film décodé sur la sélection). */
+    /** Onglet Emprise (ex-Usages) sans rien à montrer (aucun film décodé sur la sélection). */
     noDecodedFilmTitle: string
     noDecodedFilmDescription: string
   }
@@ -398,7 +398,7 @@ const FR_TEXT: SquadText = {
     synergies: 'Synergies',
     contributions: 'Contributions',
     dynamique: 'Dynamique',
-    usages: 'Usages',
+    emprise: 'Emprise',
   },
   sections: {
     historique: 'Historique',
@@ -755,7 +755,7 @@ const EN_TEXT: SquadText = {
     synergies: 'Synergies',
     contributions: 'Contributions',
     dynamique: 'Dynamics',
-    usages: 'Usage',
+    emprise: 'Map control',
   },
   sections: {
     historique: 'History',
