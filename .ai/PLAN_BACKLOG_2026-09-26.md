@@ -1231,7 +1231,7 @@ Périmètre FERMÉ : un item par constat retenu, chacun avec un test de non-rég
   et `PATCH /watcher/subscriptions` répondent 403 `demo_mode_forbidden`, sur le modèle de
   `settings_backup.go` (B5.6). Tests handler : 403 en démo, comportement inchangé hors démo.
   Contrat OpenAPI tenu comme pour B5.6.
-- [ ] **B-C2 (C3)** : en démo, la section Identités ne balaie pas les dossiers du dépôt :
+- [x] **B-C2 (C3)** (`api/server_player_directory.go` buildPlayerDirectory : aucun témoin disque en démo — branche « collecte coupée » ; pas de `NewPathFS` sur la racine démo, dont les dossiers ne portent pas les clés de profil ; `server_player_directory_demo_test.go`, rouge puis vert, témoin hors démo) : en démo, la section Identités ne balaie pas les dossiers du dépôt :
   `NewPathFS` sur la racine démo, ou collecte des dossiers orphelins coupée en démo. Test sur un
   dépôt leurre avec un dossier de joueur réel, qui ne doit pas apparaître.
 - [ ] **B-C3 (C4)** : d'abord, vérifier si `fetchGameCMSImage` sort réellement sur le réseau en
