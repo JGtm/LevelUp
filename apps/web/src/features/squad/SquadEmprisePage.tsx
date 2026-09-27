@@ -45,6 +45,7 @@ import { ResourceControlCard } from './emprise/ResourceControlCard'
 import { ResourceFilCard } from './emprise/ResourceFilCard'
 import { ResourceMatchGridCard } from './emprise/ResourceMatchGridCard'
 import { useEmpriseModels } from './emprise/useEmpriseModels'
+import { useOutcomeLabels } from './emprise/useOutcomeLabels'
 import { YieldCard } from './emprise/YieldCard'
 import { TEAM_REST_INK } from './formes/colors'
 import { getSquadText } from './i18n'
@@ -56,6 +57,7 @@ export function SquadEmprisePage() {
   const t = getSquadText(locale)
   const et = EMPRISE_TEXT[locale]
   const dominance = useMemo(() => dominanceLabels(locale), [locale])
+  const outcomes = useOutcomeLabels()
   const models = useEmpriseModels(
     pageData,
     pageData?.main_player ?? playerSlug,
@@ -86,7 +88,7 @@ export function SquadEmprisePage() {
           <SectionTitle>{et.sections.bilan}</SectionTitle>
           <div className="grid gap-4 lg:grid-cols-2">
             <ResourceControlCard rows={controlRows} t={et} />
-            <ResourceFilCard fil={fil} dominanceLabels={dominance} locale={locale} t={et} />
+            <ResourceFilCard fil={fil} dominanceLabels={dominance} outcomeLabels={outcomes} locale={locale} t={et} />
           </div>
         </section>
       )}
@@ -110,6 +112,7 @@ export function SquadEmprisePage() {
             itemName={(row) => (row.object ? objectName(row.object) : '')}
             playerName={playerName}
             dominanceLabels={dominance}
+            outcomeLabels={outcomes}
             locale={locale}
             t={et}
           />

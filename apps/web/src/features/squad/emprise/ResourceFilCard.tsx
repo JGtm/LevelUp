@@ -11,7 +11,7 @@
 import { useCallback, useMemo } from 'react'
 
 import { ChartCard, type ChartSeries } from '@/components/charts/ChartCard'
-import type { DominanceValue } from '@/components/charts/outcomeSequence'
+import type { DominanceValue, OutcomeValue } from '@/components/charts/outcomeSequence'
 import { InfoTooltip } from '@/components/ui/info-tooltip'
 import { tokenCssVar } from '@/lib/accessibility'
 import type { Locale } from '@/lib/i18n/locale'
@@ -23,6 +23,7 @@ import type { ResourceFil, ResourceFilMatch } from './emprise.logic'
 import { buildResourceFilOption, resolveEmpriseFilColors } from './empriseCharts'
 import type { EmpriseText } from './empriseStrings'
 import { resourceInk } from './resourceColors'
+import { inSentence } from './useOutcomeLabels'
 
 /** Hauteur du graphe (maquette : 520 × 246). */
 const FIL_HEIGHT = 246
@@ -30,11 +31,12 @@ const FIL_HEIGHT = 246
 interface Props {
   fil: ResourceFil
   dominanceLabels: Record<DominanceValue, string>
+  outcomeLabels: Record<OutcomeValue, string>
   locale: Locale
   t: EmpriseText
 }
 
-export function ResourceFilCard({ fil, dominanceLabels, locale, t }: Props) {
+export function ResourceFilCard({ fil, dominanceLabels, outcomeLabels, locale, t }: Props) {
   const legend = useMemo(
     () => (
       <ObjectifLegend
@@ -61,14 +63,14 @@ export function ResourceFilCard({ fil, dominanceLabels, locale, t }: Props) {
         pctFmt: t.pctFmt,
         pctIntFmt: t.pctIntFmt,
         timeOf: (iso) => formatMatchTime(iso, locale),
-        outcomeOf: (m) => (m.outcome ? t.outcomeLower[m.outcome] : null),
-        resultOf: (m) => (m.outcome ? `${t.outcome[m.outcome]}${m.score ? ` ${m.score}` : ''}` : null),
+        outcomeOf: (m) => (m.outcome ? inSentence(outcomeLabels[m.outcome]) : null),
+        resultOf: (m) => (m.outcome ? `${outcomeLabels[m.outcome]}${m.score ? ` ${m.score}` : ''}` : null),
         dominanceLabel: (d) => dominanceLabels[d],
         pointTip: t.fil.pointTip,
         endTip: t.fil.endTip,
         bandTip: t.fil.bandTip,
       }),
-    [fil, t, locale, dominanceLabels],
+    [fil, t, locale, dominanceLabels, outcomeLabels],
   )
 
   return (

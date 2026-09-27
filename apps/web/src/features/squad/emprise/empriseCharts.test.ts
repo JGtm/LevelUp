@@ -10,8 +10,11 @@ import { buildResourceFil } from './emprise.logic'
 import { EMPRISE_2209, HABIT_2209, HISTORY_2209 } from './emprise.fixtures'
 import { EMPRISE_TEXT } from './empriseStrings'
 import { buildHabitView } from './habit.logic'
+import { inSentence } from './useOutcomeLabels'
 
 const T = EMPRISE_TEXT.fr
+/** Libellés d'issue du manifest du titre (`outcomes.toml`, fr). */
+const OUTCOME_FR = { win: 'Victoire', loss: 'Défaite', tie: 'Égalité', dnf: 'Abandon' } as const
 const COLORS: EmpriseFilColors = {
   resource: (r) => `res-${r}`,
   win: 'win',
@@ -51,8 +54,8 @@ const opt = buildResourceFilOption(fil, COLORS, {
   pctFmt: T.pctFmt,
   pctIntFmt: T.pctIntFmt,
   timeOf: (iso) => iso.slice(11, 16),
-  outcomeOf: (m) => (m.outcome ? T.outcomeLower[m.outcome] : null),
-  resultOf: (m) => (m.outcome ? `${T.outcome[m.outcome]} ${m.score}` : null),
+  outcomeOf: (m) => (m.outcome ? inSentence(OUTCOME_FR[m.outcome]) : null),
+  resultOf: (m) => (m.outcome ? `${OUTCOME_FR[m.outcome]} ${m.score}` : null),
   dominanceLabel: (d) => (d === 1 ? 'Domination' : String(d)),
   pointTip: T.fil.pointTip,
   endTip: T.fil.endTip,

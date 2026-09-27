@@ -16,7 +16,7 @@
 import { Fragment, useMemo, useState, type ReactNode } from 'react'
 
 import { Tooltip } from '@/components/ui/tooltip'
-import type { DominanceValue } from '@/components/charts/outcomeSequence'
+import type { DominanceValue, OutcomeValue } from '@/components/charts/outcomeSequence'
 import { tokenCssVar } from '@/lib/accessibility'
 import type { Locale } from '@/lib/i18n/locale'
 import { DOMINANCE_COLOR_TOKENS } from '@/lib/narrative/dominance'
@@ -36,6 +36,7 @@ import {
 import type { EmpriseText } from './empriseStrings'
 import { resourceInk } from './resourceColors'
 import { TipText } from './TipText'
+import { inSentence } from './useOutcomeLabels'
 
 const OUTCOME_TOKENS = {
   win: 'outcome-win',
@@ -51,13 +52,14 @@ interface Props {
   /** Le nom d'un joueur de l'escouade par xuid (vide = inconnu). */
   playerName: (xuid: string) => string
   dominanceLabels: Record<DominanceValue, string>
+  outcomeLabels: Record<OutcomeValue, string>
   locale: Locale
   t: EmpriseText
 }
 
 type RowRole = 'summary' | 'item' | 'kills'
 
-export function ResourceMatchGridCard({ grid, itemName, playerName, dominanceLabels, locale, t }: Props) {
+export function ResourceMatchGridCard({ grid, itemName, playerName, dominanceLabels, outcomeLabels, locale, t }: Props) {
   const [racksOpen, setRacksOpen] = useState(false)
   const legend = useMemo(
     () => (
@@ -79,7 +81,7 @@ export function ResourceMatchGridCard({ grid, itemName, playerName, dominanceLab
         formatMatchTime(m.startTime, locale),
         m.map,
         m.mode,
-        m.outcome ? `${t.outcomeLower[m.outcome]}${m.score ? ` ${m.score}` : ''}` : null,
+        m.outcome ? `${inSentence(outcomeLabels[m.outcome])}${m.score ? ` ${m.score}` : ''}` : null,
       ),
     whoText: (who) =>
       who
@@ -100,7 +102,7 @@ export function ResourceMatchGridCard({ grid, itemName, playerName, dominanceLab
         >
           <div />
           {grid.columns.map((m) => (
-            <MatchHead key={m.matchId} m={m} dominanceLabels={dominanceLabels} locale={locale} t={t} />
+            <MatchHead key={m.matchId} m={m} dominanceLabels={dominanceLabels} outcomeLabels={outcomeLabels} locale={locale} t={t} />
           ))}
           {grid.sections.map((s, si) => (
             <Fragment key={s.resource}>
@@ -250,15 +252,17 @@ function SummaryLabel({ resource, label, sub }: { resource: string; label: strin
 function MatchHead({
   m,
   dominanceLabels,
+  outcomeLabels,
   locale,
   t,
 }: {
   m: EmpriseMatchInfo
   dominanceLabels: Record<DominanceValue, string>
+  outcomeLabels: Record<OutcomeValue, string>
   locale: Locale
   t: EmpriseText
 }) {
-  const result = m.outcome ? `${t.outcome[m.outcome]}${m.score ? ` ${m.score}` : ''}` : null
+  const result = m.outcome ? `${outcomeLabels[m.outcome]}${m.score ? ` ${m.score}` : ''}` : null
   const dom = m.dominance ? dominanceLabels[m.dominance] : null
   const domInk = m.dominance ? tokenCssVar(DOMINANCE_COLOR_TOKENS[m.dominance]) : ''
   return (

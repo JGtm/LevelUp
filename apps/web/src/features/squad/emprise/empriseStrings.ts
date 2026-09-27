@@ -5,7 +5,6 @@
  * Fichier à part (précédent : `objectif/objectifStrings.ts`) : `i18n.ts` de la feature dépasse
  * déjà le seuil de taille. Parité FR / EN garantie par le typage `Record<Locale, …>`.
  */
-import type { OutcomeValue } from '@/components/charts/outcomeSequence'
 import type { Locale } from '@/lib/i18n/locale'
 
 /**
@@ -38,8 +37,6 @@ export interface EmpriseText {
   /** « 60 % », « 44,2 % » (une décimale au plus) ; `pctIntFmt` : « 17 % » (entier). */
   pctFmt: (v: number) => string
   pctIntFmt: (v: number) => string
-  outcome: Record<OutcomeValue, string>
-  outcomeLower: Record<OutcomeValue, string>
   control: {
     title: string
     info: string
@@ -196,8 +193,6 @@ const FR: EmpriseText = {
   parity: '50 % : autant que l’adversaire',
   pctFmt: frPct,
   pctIntFmt: (v) => `${Math.round(v)} %`,
-  outcome: { win: 'Victoire', loss: 'Défaite', tie: 'Égalité', dnf: 'Abandon' },
-  outcomeLower: { win: 'victoire', loss: 'défaite', tie: 'égalité', dnf: 'abandon' },
   control: {
     title: 'Contrôle des ressources',
     info:
@@ -368,8 +363,6 @@ const EN: EmpriseText = {
   parity: '50%: as much as the opponent',
   pctFmt: enPct,
   pctIntFmt: (v) => `${Math.round(v)}%`,
-  outcome: { win: 'Win', loss: 'Loss', tie: 'Tie', dnf: 'Left' },
-  outcomeLower: { win: 'win', loss: 'loss', tie: 'tie', dnf: 'left' },
   control: {
     title: 'Resource control',
     info:

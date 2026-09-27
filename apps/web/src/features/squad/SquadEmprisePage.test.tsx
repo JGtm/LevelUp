@@ -24,6 +24,22 @@ vi.mock('echarts-for-react', () => ({
   default: () => <div data-testid="echarts-mock" />,
 }))
 
+// Libellés d'issue du manifest du titre (`outcomes.toml`), dans la langue de l'interface,
+// servis sans attendre le chargement des correspondances.
+const { OUTCOMES } = vi.hoisted(() => ({
+  OUTCOMES: {
+    fr: { win: 'Victoire', loss: 'Défaite', tie: 'Égalité', dnf: 'Abandon' },
+    en: { win: 'Win', loss: 'Loss', tie: 'Tie', dnf: 'DNF' },
+  } as Record<string, Record<string, string>>,
+}))
+vi.mock('@/lib/i18n/fieldMappings', async (importOriginal) => {
+  const { useAppShellStore: store } = await import('@/stores/appShellStore')
+  return {
+    ...(await importOriginal<typeof import('@/lib/i18n/fieldMappings')>()),
+    useOutcomeLabel: (key: string) => OUTCOMES[store.getState().locale]?.[key] ?? key,
+  }
+})
+
 const ROW = (gamertag: string): TeammateRow => ({
   gamertag,
   xuid: 'x',
