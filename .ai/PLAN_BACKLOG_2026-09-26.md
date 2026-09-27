@@ -1245,7 +1245,7 @@ Périmètre FERMÉ : un item par constat retenu, chacun avec un test de non-rég
   (`schema_drift_healed`, ou un log dédié de même contrat) seulement quand un index a vraiment
   été retiré. Test : index recréé, puis ouverture, puis log présent ; base à jour, puis
   ouverture, puis aucun log.
-- [ ] **B-C6 (code mort)** : `title.DemoLayout.Root()` est supprimé.
+- [x] **B-C6 (code mort)** (`domain/title/demo_layout.go` : `Root()` retiré, aucun appelant ni test ; anti-résurrection `domain/title/demo_layout_no_root_test.go` par réflexion, rouge puis vert) : `title.DemoLayout.Root()` est supprimé.
 - [ ] **B-C7 (R2-1)** : en démo, le service de rejeu lit les données VERSIONNÉES (fonds, mappings,
   libellés, zones, règles de tiers) depuis la racine du dépôt, et les artefacts d'exécution
   (rejeux, rasters, faits) depuis `<démo>/runtime/`. Test : en démo, le fond de carte d'une carte

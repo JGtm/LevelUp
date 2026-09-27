@@ -41,9 +41,6 @@ func NewDemoLayout(root string) DemoLayout {
 	return DemoLayout{root: root}
 }
 
-// Root rend la racine de l'arbre démo.
-func (d DemoLayout) Root() string { return d.root }
-
 // TitleDir rend le sous-arbre d'un titre : la racine pour le titre par défaut (PLAT),
 // `<démo>/titles/<slug>` pour un titre additionnel.
 func (d DemoLayout) TitleDir(slug string) string {
