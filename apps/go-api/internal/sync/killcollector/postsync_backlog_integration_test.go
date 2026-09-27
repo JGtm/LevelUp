@@ -92,7 +92,7 @@ func TestBacklogAJour_SelectionOrdreEtJauge(t *testing.T) {
 	inscrireMatch(t, db, "vierge-ancien", t0.AddDate(0, 3, 0), 0)
 	inscrireMatch(t, db, "vierge-recent", t0.AddDate(0, 4, 0), 0)
 
-	ids, total := backlogAJour(context.Background(), db, 10)
+	ids, total := backlogAJour(context.Background(), db, 10, 0)
 
 	if total != 3 {
 		t.Errorf("taille du backlog = %d, attendu 3 (via-credit, vierge-ancien, vierge-recent)", total)
@@ -109,7 +109,7 @@ func TestBacklogAJour_SelectionOrdreEtJauge(t *testing.T) {
 	}
 
 	// L horizon borne la liste, JAMAIS la jauge.
-	bornee, totalBorne := backlogAJour(context.Background(), db, 1)
+	bornee, totalBorne := backlogAJour(context.Background(), db, 1, 0)
 	if len(bornee) != 1 || bornee[0] != "vierge-recent" {
 		t.Errorf("liste bornee = %v, attendu [vierge-recent]", bornee)
 	}
@@ -128,7 +128,7 @@ func TestBacklogAJour_PasseAncienneNeComptePas(t *testing.T) {
 	inscrirePasseFilm(t, db, "revision-perimee", "killsource-2020-01-01", killscope.ReadPathFilmWalk, "p1",
 		time.Date(2026, 4, 1, 12, 0, 0, 0, time.UTC))
 
-	ids, total := backlogAJour(context.Background(), db, 10)
+	ids, total := backlogAJour(context.Background(), db, 10, 0)
 	if total != 1 || len(ids) != 1 || ids[0] != "revision-perimee" {
 		t.Errorf("liste = %v (total %d) ; un match decode a une revision perimee doit rester "+
 			"candidat", ids, total)
@@ -145,14 +145,14 @@ func TestBacklogAJour_PasseCouranteSupplanteLaPerimee(t *testing.T) {
 	inscrirePasseFilm(t, db, "redecode", "killsource-2020-01-01", killscope.ReadPathFilmWalk, "p1", quand)
 	inscrirePasseFilm(t, db, "redecode", decfilm.Rev, killscope.ReadPathFilmWalk, "p2", quand.Add(time.Hour))
 
-	if ids, total := backlogAJour(context.Background(), db, 10); total != 0 || len(ids) != 0 {
+	if ids, total := backlogAJour(context.Background(), db, 10, 0); total != 0 || len(ids) != 0 {
 		t.Errorf("liste = %v (total %d) ; la passe COURANTE doit faire sortir le match", ids, total)
 	}
 }
 
 // TestBacklogAJour_BaseVide : aucune ligne, aucune erreur, aucune panique.
 func TestBacklogAJour_BaseVide(t *testing.T) {
-	ids, total := backlogAJour(context.Background(), baseBacklog(t), 10)
+	ids, total := backlogAJour(context.Background(), baseBacklog(t), 10, 0)
 	if len(ids) != 0 || total != 0 {
 		t.Errorf("liste = %v, total = %d ; attendu vide", ids, total)
 	}

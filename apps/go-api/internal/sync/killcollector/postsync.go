@@ -120,6 +120,9 @@ type PostSyncHook struct {
 	repoRoot  string
 	cacheRoot string
 	perCycle  int
+	// horizon : la taille d une PAGE de backlog lue par cycle ([PostSyncBacklogHorizon]). Un champ
+	// et non la constante en dur, pour que les tests exercent la pagination sans inscrire 64 matchs.
+	horizon int
 
 	caps    games.CapabilityMap
 	capsErr error
@@ -142,6 +145,7 @@ func NewPostSyncHook(repoRoot string, perCycle int) *PostSyncHook {
 		repoRoot:  repoRoot,
 		cacheRoot: titlePkg.NewPathResolver(repoRoot).CacheRootDir(),
 		perCycle:  perCycle,
+		horizon:   PostSyncBacklogHorizon,
 	}
 }
 
@@ -279,14 +283,12 @@ func RunPostSync(ctx context.Context, h *PostSyncHook, d PostSyncDeps, insertedI
 		total   int
 	)
 	d.WithRead(ctx, "killsource_select", func(sharedDB *sql.DB) {
-		backlog, total = backlogAJour(ctx, sharedDB, PostSyncBacklogHorizon)
+		backlog, total = backlogAJour(ctx, sharedDB, h.horizon, 0)
 	})
-	travail, _ := ordonnancer(backlog, insertedIDs, h.perCycle)
-	restant := max(0, total-len(travail))
 	// Le backlog est PUBLIE meme a zero : une cle absente de /debug/vars ne se distingue pas
 	// d une etape qui ne tourne pas, et c est exactement l ambiguite qui a dure cinq mois.
-	observability.SetInt(CompteurPostSyncRetard, int64(restant))
-	if len(travail) == 0 {
+	if len(backlog) == 0 {
+		observability.SetInt(CompteurPostSyncRetard, int64(total))
 		return 0
 	}
 
@@ -296,6 +298,14 @@ func RunPostSync(ctx context.Context, h *PostSyncHook, d PostSyncDeps, insertedI
 	col := NewKillSourceCollector(
 		source, rosterParSegment{withRead: d.WithRead}, d.AcquireWriter, caps, PostSyncMatchTimeout,
 	).WithBudget(PostSyncBudget).AvecCapture(h.capture(ctx, d))
+	// LA CARTE AVANT LA BORNE ET AVANT LE TELECHARGEMENT (2026-09-27, cf. postsync_travail.go) :
+	// un match sans carte ne prend ni une place du cycle ni un telechargement.
+	travail := h.travailDuCycle(ctx, d, col, backlog, insertedIDs)
+	restant := max(0, total-len(travail))
+	observability.SetInt(CompteurPostSyncRetard, int64(restant))
+	if len(travail) == 0 {
+		return 0
+	}
 	sum := col.CollectMatches(ctx, travail)
 	observability.AddInt(CompteurPostSyncTraites, int64(sum.Written))
 
@@ -444,7 +454,7 @@ const conditionBacklog = `
 // recents sont a la fois les seuls recuperables et ceux que l utilisateur regarde.
 var requeteBacklog = `SELECT r.match_id` + conditionBacklog + `
 		ORDER BY ` + analysis.SQLStartTimeCanonical("r") + ` DESC, r.match_id
-		LIMIT ?`
+		LIMIT ? OFFSET ?`
 
 // requeteBacklogTaille : la jauge, SANS borne. Elle repond a « combien reste-t-il », pas a
 // « qu est-ce que je traite maintenant ».
@@ -454,14 +464,14 @@ var requeteBacklogTaille = `SELECT COUNT(*)` + conditionBacklog
 //
 // ⚠ LECTURE PAR LA VUE `_latest` (ADR 0026) : une lecture brute servirait des passes perimees
 // et ferait sauter des matchs a redecoder.
-func backlogAJour(ctx context.Context, db *sql.DB, horizon int) (ids []string, total int) {
+func backlogAJour(ctx context.Context, db *sql.DB, horizon, offset int) (ids []string, total int) {
 	args := []any{matchflags.MBitFilmAbsent, decfilm.Rev, killscope.ReadPathCreditBackfill}
 
 	if err := db.QueryRowContext(ctx, requeteBacklogTaille, args...).Scan(&total); err != nil {
 		slog.WarnContext(ctx, "post-sync: killsource taille du backlog illisible", "err", err)
 		// On continue : une jauge absente ne doit pas empecher le travail.
 	}
-	rows, err := db.QueryContext(ctx, requeteBacklog, append(args, horizon)...)
+	rows, err := db.QueryContext(ctx, requeteBacklog, append(args, horizon, offset)...)
 	if err != nil {
 		slog.WarnContext(ctx, "post-sync: killsource backlog illisible", "err", err)
 		return nil, total

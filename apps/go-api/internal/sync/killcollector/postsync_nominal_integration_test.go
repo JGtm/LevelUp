@@ -55,6 +55,9 @@ func depsDeTest(db *sql.DB, films *filmsTraces, cache *haloclient.LocalFilmCache
 		AcquireWriter: func(context.Context) (*sql.DB, func(), error) { return db, func() {}, nil },
 		TitleSlug:     "halo_infinite",
 		Gamertag:      "GT",
+		// TOUS LES MATCHS SOUS UNE CARTE DU CATALOGUE : depuis le 2026-09-27, un match sans carte
+		// resolue est retire de la liste de travail AVANT le telechargement.
+		MapNames: nomsDeCarteFixes{noms: []string{"Bazaar"}},
 	}
 }
 

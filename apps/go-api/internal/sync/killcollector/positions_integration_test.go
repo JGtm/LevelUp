@@ -6,14 +6,10 @@
 // RelitParLaVue) : ⚠ LES FILMS NE SONT PAS VERSIONNES (107 Mo). Sans KILLSOURCE_FIXTURES, ce
 // test se SKIPPE — la commande exacte est dans collector_test.go.
 //
-// CE QUE CE FICHIER NE PEUT PAS SAVOIR, ET COMMENT IL S EN ACCOMMODE : cette session n a acces
-// a aucune donnee de production (pas de data/ dans ce worktree — CLAUDE.md du chantier), donc
-// elle ignore quelle carte le film de reference (9b191a7f) a ete joue sur, et si cette carte est
-// meme au catalogue de bornes (elle peut etre une carte Forge, hors des 79 cartes natives). Le
-// test offre donc TOUS les noms du catalogue REEL (config versionne, pas data/) comme candidats
-// — Lookup fait une correspondance EXACTE par cle normalisee, donc une carte absente reste
-// absente meme avec la liste complete en candidats — et traite « 0 ligne de position » comme un
-// SKIP documente plutot qu un echec : ce cas est aussi legitime qu un match sans film.
+// LA CARTE DU FILM EST SA VRAIE CARTE (2026-09-27) : 9b191a7f a ete joue sur Bazaar
+// (`cartes_des_films_integration_test.go`). Le test offrait jusque-la TOUS les noms du catalogue
+// comme candidats, et la premiere entree de l iteration d une map Go gagnait — une carte tiree au
+// hasard. « 0 ligne de position » reste un SKIP documente plutot qu un echec.
 package killcollector
 
 import (
@@ -36,15 +32,6 @@ import (
 func realMapQuantCatalog(t *testing.T) *decfilm.MapQuantCatalog {
 	t.Helper()
 	return catalogueDeBornesVersionne(t)
-}
-
-// allCatalogNames : TOUS les noms du catalogue REEL, comme candidats (cf. en-tete du fichier).
-func allCatalogNames(cat *decfilm.MapQuantCatalog) []string {
-	names := make([]string, 0, len(cat.Maps))
-	for name := range cat.Maps {
-		names = append(names, name)
-	}
-	return names
 }
 
 // staticMapNames : port.ReplayMapNameRepo qui rend TOUJOURS la meme liste, sans base — le test
@@ -75,7 +62,7 @@ func TestKillSourcePositionsFilmReelEtRelitParLaVue(t *testing.T) {
 		games.CapFilmKillPositions: games.CapSupported,
 	}
 	col := NewKillSourceCollector(client, fakeRoster{}, sharedWriter(db), caps, 0).
-		WithPositionCapture(staticMapNames{names: allCatalogNames(cat)}, cat)
+		WithPositionCapture(cartesDesFixtures(), cat)
 
 	if _, _, err := col.CollectMatch(context.Background(), film); err != nil {
 		t.Fatalf("CollectMatch: %v", err)

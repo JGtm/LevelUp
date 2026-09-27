@@ -109,7 +109,8 @@ func (r filmRoster) IdentitiesForMatch(context.Context, string) (MatchIdentities
 	}, nil
 }
 
-// filmsDeFixture liste les films disponibles, dans un ordre STABLE (deux exécutions doivent
+// filmsDeFixture liste les films disponibles DE CARTE CONNUE (cartes_des_films_integration_test.go,
+// 2026-09-27 : un film sans carte est mis de cote), dans un ordre STABLE (deux exécutions doivent
 // essayer les mêmes dans le même ordre).
 func filmsDeFixture(t *testing.T) []string {
 	t.Helper()
@@ -125,7 +126,7 @@ func filmsDeFixture(t *testing.T) []string {
 	}
 	var out []string
 	for _, e := range entrees {
-		if e.IsDir() {
+		if e.IsDir() && cartesDesFilmsDeFixture[e.Name()] != "" {
 			out = append(out, e.Name())
 		}
 	}
@@ -168,7 +169,7 @@ func TestKillSourceFaitsDIsolementFilmReel(t *testing.T) {
 				games.CapFilmKillSource:    games.CapSupported,
 				games.CapFilmKillPositions: games.CapSupported,
 			}, 0).
-			WithPositionCapture(staticMapNames{names: allCatalogNames(cat)}, cat)
+			WithPositionCapture(cartesDesFixtures(), cat)
 
 		if _, _, err := col.CollectMatch(context.Background(), film); err != nil {
 			t.Logf("film %s : CollectMatch a echoue (%v) — on essaie le suivant", film, err)

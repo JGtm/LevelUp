@@ -34,7 +34,7 @@ func TestRunPostSync_FilmAbsent_PoseLeMarqueurEtDraineLeBacklog(t *testing.T) {
 	inscrireMatch(t, db, "sans-film", t0, 0)
 
 	// Etat initial : le match est bien candidat.
-	if ids, total := backlogAJour(context.Background(), db, 10); total != 1 || len(ids) != 1 || ids[0] != "sans-film" {
+	if ids, total := backlogAJour(context.Background(), db, 10, 0); total != 1 || len(ids) != 1 || ids[0] != "sans-film" {
 		t.Fatalf("backlog initial = %v (total %d), attendu [sans-film] — le test ne mesure rien "+
 			"si le match n est pas candidat au depart", ids, total)
 	}
@@ -60,7 +60,7 @@ func TestRunPostSync_FilmAbsent_PoseLeMarqueurEtDraineLeBacklog(t *testing.T) {
 	}
 
 	// La boucle : le backlog draine.
-	if ids, total := backlogAJour(context.Background(), db, 10); total != 0 || len(ids) != 0 {
+	if ids, total := backlogAJour(context.Background(), db, 10, 0); total != 0 || len(ids) != 0 {
 		t.Errorf("backlog apres passe = %v (total %d), attendu vide — le marqueur terminal ne "+
 			"draine pas", ids, total)
 	}

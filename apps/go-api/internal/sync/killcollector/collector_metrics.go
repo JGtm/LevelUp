@@ -41,9 +41,16 @@ const (
 	// ([OutcomeCarteNonResolue], 2026-09-27). Un nombre qui monte dit que des films attendent une
 	// carte : un nom manquant au registre des matchs, ou une carte a ajouter au catalogue de bornes.
 	metricCarteNonResolue = "killsource_ecartes_carte_non_resolue"
-	metricDeaths          = "killsource_morts_ecrites"
-	metricNotPublish      = "killsource_passes_non_publiables"
-	metricAssistExtra     = "killsource_assist_extra_count"
+	// metricCarteAvantTelechargement : matchs RETIRES D UNE LISTE DE TRAVAIL faute de carte resolue,
+	// AVANT tout telechargement ([KillSourceCollector.RetenirLesMatchsAvecCarte], 2026-09-27). Il
+	// compte des EVICTIONS, pas des matchs distincts : un match Forge reste au backlog et se retire
+	// a chaque cycle ou il est rencontre. Distinct de `killsource_ecartes_carte_non_resolue`, qui ne
+	// compte plus que les films arrives au decodeur sans carte (entree sans largeurs, appelant qui
+	// n a pas filtre) — celui-la doit rester a zero sur les trois chemins de collecte.
+	metricCarteAvantTelechargement = "killsource_ecartes_carte_avant_telechargement"
+	metricDeaths                   = "killsource_morts_ecrites"
+	metricNotPublish               = "killsource_passes_non_publiables"
+	metricAssistExtra              = "killsource_assist_extra_count"
 	// LES QUATRE COMPTEURS DE PROVENANCE DU LIEN `indice -> joueur` (lot 1.8). Ils disent, en
 	// exploitation et pas seulement dans le journal du jour, quelle part de chaque passe vient
 	// d une LECTURE et quelle part d un REPLI (D14 c du chantier, D-10 d ADR 0034) :

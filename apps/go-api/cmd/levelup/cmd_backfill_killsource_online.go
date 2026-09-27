@@ -68,7 +68,7 @@ func passeDesFilmsEnLigne(
 ) (*suiviDeLaPasse, error) {
 	cacheRoot := resoudreCacheFilms(cfg, o.cacheDir)
 
-	candidats, err := matchsSansPasseDeFilm(ctx, db, o)
+	candidats, err := matchsSansPasseDeFilm(ctx, db, selectionSansBorne(o))
 	if err != nil {
 		return nil, err
 	}
@@ -123,6 +123,9 @@ func passeDesFilmsEnLigne(
 		source, killcollector.NewSharedRoster(db), writerDeja(db), caps,
 		0, // limite par match : le defaut du collecteur (45 min)
 	).AvecCapture(capture)
+	// LES MATCHS SANS CARTE SORTENT AVANT LE TELECHARGEMENT ET AVANT LA BORNE (2026-09-27, cf.
+	// cmd_backfill_killsource_carte.go) : aucun aller-retour reseau pour un film non decodable.
+	candidats = idsAvecCarte(ctx, collecteur, candidats, o.limit)
 	debut := time.Now()
 	sum := collecteur.CollectMatches(ctx, candidats)
 	fmt.Printf("films (en ligne) : %d ecrits (%d morts), %d absents/expires, %d sans kill-feed, "+

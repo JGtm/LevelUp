@@ -55,8 +55,11 @@ var vuesComparees = []string{
 // filmsDuTestDEgalite : des films du bas du cout QUI ECRIVENT (cf. D1 (5.24) : les moins chers
 // du cache ne produisent rien neuf fois sur dix). Une dizaine de secondes en serie.
 var filmsDuTestDEgalite = []string{
-	"ee90570b", "c0a82e88", "e157a672", "1a37bcc8",
-	"30d3c047", "cf040013", "114b0040", "aa056037", "bf5ced1b",
+	// 2026-09-27 : neuf films DE CARTE CONNUE (cartes_des_films_integration_test.go). La liste
+	// precedente (ee90570b, c0a82e88, e157a672, 1a37bcc8, 30d3c047, 114b0040, aa056037) n a pas de
+	// carte au registre commis : sans carte, un film est mis de cote et le test ne comparerait rien.
+	"cf040013", "bf5ced1b", "008e1bba", "58864b3c", "3685373c",
+	"846044ba", "a17e61a2", "e94163af", "b8d1fe0c",
 }
 
 // baseDeLEgalite prepare une base de test peuplee des memes films, et rend le collecteur cable
@@ -79,15 +82,9 @@ func baseDeLEgalite(t *testing.T, films map[string][]haloclient.FilmChunk, porte
 		partage = partage.AvecAnnuaireDePasse()
 	}
 	var roster KillSourceRoster = partage
-	// LES NOMS DE CARTE SONT TRIES, ET CE N EST PAS COSMETIQUE. `allCatalogNames` parcourt une
-	// MAP : l ordre des candidats change a chaque appel, et `entreeDeCatalogueParNom` retient le
-	// PREMIER qui resout (`repli_carte_premier_nom_resolu`). Deux passes tireraient donc deux
-	// entrees de catalogue differentes, donc deux dequantifications, donc deux jeux de positions
-	// — un ecart imputable au DOUBLE DE TEST, pas aux ouvriers. En production le nom vient de
-	// `match_registry` et il n y a rien a trier.
-	noms := allCatalogNames(cat)
-	sort.Strings(noms)
-	var cartes = staticMapNames{names: noms}
+	// LA VRAIE CARTE DE CHAQUE FILM (cartes_des_films_integration_test.go) : la resolution sur tous
+	// les noms du catalogue tirait une carte au hasard de l iteration d une map Go.
+	cartes := cartesDesFixtures()
 	col := NewKillSourceCollector(
 		&fakeFilmClient{chunks: films},
 		porte.GarderLeRoster(roster),
