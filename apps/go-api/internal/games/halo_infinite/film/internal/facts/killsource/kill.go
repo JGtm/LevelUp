@@ -240,7 +240,8 @@ type Coverage struct {
 	// ReconstructedPairs : couples reconstruits, couples fabriques COMPRIS.
 	ReconstructedPairs int
 	// GhostPairs : les couples FABRIQUES, retires de `RealPairs`. Publie pour que le retrait
-	// soit visible et non dissimule.
+	// soit visible et non dissimule. Depuis le lot J7.4 (FK-4), seuls ceux dont la mort de bot est
+	// PUBLIEE : c est ce qui tient `Covered <= RealPairs`.
 	GhostPairs int
 	// SameInstantPairs : couples portant kill ET death au MEME instant. Les autres couples
 	// reconstruits sont RECOLLES sur un voisin — un recollage legitime et mesure (ces couples
@@ -263,6 +264,12 @@ type Coverage struct {
 	// produit aucun couple. NE PAS L ADDITIONNER A `Covered` : le seul denominateur qui
 	// l accueille est celui des morts de l API, la seule reference complete.
 	BotKillerDeaths int
+	// BotsNonEpingles : bots declares par BOT_METADATA dont le slot tombe sur un siege que la table du
+	// film NOMME (tenu par un humain), sous le nombre de sieges ([Roster.UnpinnedBots], lot J7.2,
+	// constat FK-1 ; un siege VACANT ne desepingle rien). Leurs morts et celles qu ils
+	// infligent ne se publient pas, et le registre d identite du rejeu ne les recoit pas : non nul =
+	// une perte a regarder, journalisee par film.
+	BotsNonEpingles int
 }
 
 // UnclaimedDeath : UNE MORT QUE PERSONNE NE REVENDIQUE, et la source qui l a causee.
@@ -446,11 +453,29 @@ type Stats struct {
 	// meme instant, LU au kill-event 85, ou RECOLLE sur le voisin (le repli). Lot 1.9.3.
 	Couples types.CoupleStats
 	// Appariement : D OU VIENT L APPARIEMENT dead-state <-> kill-feed de chaque ligne publiee —
-	// l identite de paquet, ou la fenetre de 2,5 s (le repli). Lot 1.9.7.
+	// l identite de paquet, ou la fenetre de 2,5 s (le repli). Lot 1.9.7. UNE PROVENANCE PAR LIGNE
+	// PUBLIEE, comptee sur ce qui reste publie : quand le temps 4 remplace une ligne du temps 3
+	// (`AutoInfligeesSurCoupleFabriqueRemplacees`), la provenance de la ligne remplacee est retiree
+	// avant que celle de la mort de bot soit comptee (revue ronde 2 du lot J7) — sans quoi
+	// `Fenetre`, critere de retrait d un repli, compterait une ligne qui n existe plus.
 	Appariement types.ApparStats
 	// Replis : les comptes des replis que les champs ci-dessus ne portaient pas (lot J8.7, cf.
 	// `replis_du_decodage.go`). La cuisson les verse a `coverage.fallbacks`.
 	Replis ReplisDuDecodage
+	// NomsDeRemplissageRefuses : lignes des temps 4 et 5 NON publiees parce que le nom pris au
+	// roster est un nom de remplissage (lot J7.1, [pass.nomPubliable]). Zero attendu : les deux
+	// temps ne designent que des indices epingles sur un bot.
+	NomsDeRemplissageRefuses int
+	// CollisionsDeMortDeBot : morts de bot (temps 4) NON publiees parce que leur instant porte deja
+	// une ligne publiee par un temps prioritaire (lot J7.4, constat FK-4). Un instant publie ne se
+	// reecrit jamais ; l ecart se compte ici.
+	CollisionsDeMortDeBot int
+	// AutoInfligeesSurCoupleFabriqueRemplacees : lignes du temps 3 posees sur un couple RECOLLE,
+	// remplacees par la mort de bot que le temps 4 verifie au meme instant — son dead-state a la
+	// milliseconde de la ligne (revue du lot J7, rondes 1 et 2, cf. `autoSurCoupleFabrique`).
+	// `SelfWalk` / `SelfScan.Published` les comptent encore : c est ce que le temps 3 a publie, pas
+	// ce qui reste ; `Appariement` non.
+	AutoInfligeesSurCoupleFabriqueRemplacees int
 }
 
 // PathStats : le gate (b) d une voie. `Population` est ce qu elle a propose, `Matched` ce dont

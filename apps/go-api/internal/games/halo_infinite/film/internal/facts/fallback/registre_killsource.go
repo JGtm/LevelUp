@@ -122,7 +122,7 @@ var registreKillsource = []Repli{
 		Mecanisme: "la chaine « ? » est rendue ; pour la victime et le tueur elle part en base telle quelle",
 		Condition: CondNonResolu,
 		Ordre:     OrdreApresLecture,
-		Sites: []Site{{Fichier: pkgKillsource + "replis_du_decodage.go", Ancre: "r.NomsHorsBijection += unSi(kills[i].Victim == nomHorsBijection)"}, siteDeVersement("NomRosterIndiceHorsBijection"), {
+		Sites: []Site{{Fichier: pkgKillsource + "replis_du_decodage.go", Ancre: "r.NomsHorsBijection += unSi(estNomDeRemplissage(kills[i].Victim))"}, siteDeVersement("NomRosterIndiceHorsBijection"), {
 			Fichier: pkgKillsource + "roster.go",
 			Ancre:   "return \"?\"",
 		}},

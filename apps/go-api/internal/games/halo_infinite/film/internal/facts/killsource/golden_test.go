@@ -49,6 +49,7 @@ import (
 	"strings"
 	"testing"
 
+	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 )
 
@@ -91,17 +92,26 @@ func TestGoldenFilms(t *testing.T) {
 	comparerGolden(t, "cumul", cumul.rendre())
 }
 
-// decoderFixture : le decodage, plus le controle negatif qui exige de relire les paquets.
+// decoderFixture : le decodage SOUS LA CARTE DU FILM, plus le controle negatif qui exige de relire
+// les paquets.
+//
+// LE BANC DECODAIT SANS CARTE DEPUIS `f3a2f00eb` (2026-09-17), et personne ne l a vu : trois des
+// quatre films etaient decodes aux largeurs de Cliffhanger, leur marche des morts se
+// desynchronisait et le scan publiait a sa place (enquete ENQUETE_MARCHE_KILLSOURCE_2026-09-27).
+// Chaque reference porte donc sa carte, et le test ECHOUE si la calibration ne la dit pas lue.
 func decoderFixture(t *testing.T, dir string) (*Result, negControle) {
 	t.Helper()
+	film := filepath.Base(dir)
+	opts := optionsDeReference(t, film)
 	src, err := source.LoadDir(dir, nil)
 	if err != nil {
 		t.Skipf("film absent : %v", err)
 	}
-	res, err := Decode(t.Context(), filepath.Base(dir), src, nil)
+	res, err := Decode(t.Context(), film, src, opts)
 	if err != nil {
 		t.Fatalf("Decode: %v", err)
 	}
+	exigerLaCarteLue(t, film, res, opts.Carte)
 	return res, controleNegatif(t, src, len(res.Roster.IndexToName))
 }
 
@@ -180,4 +190,18 @@ func ligne(ls []string, i int) string {
 		return "<absente>"
 	}
 	return ls[i]
+}
+
+// exigerLaCarteLue : la reference a-t-elle ete decodee SOUS SA CARTE ? La calibration doit le dire
+// (« [CARTE] ») et le profil calibre porter les largeurs de l entree. Sinon le golden figerait une
+// marche decodee aux largeurs d une autre carte — la regression que ce garde ferme.
+func exigerLaCarteLue(t *testing.T, film string, res *Result, carte *profile.MapQuantEntry) {
+	t.Helper()
+	if !strings.Contains(res.Calibration, "[CARTE]") {
+		t.Fatalf("%s : decode SANS SA CARTE (calibration %q) — un golden ne fige pas un decodage aux "+
+			"largeurs d une autre carte", film, res.Calibration)
+	}
+	if got := res.ProfilCalibre.LargeursObjetDuMonde(); got != carte.PrecisionAbsolue() {
+		t.Fatalf("%s : le profil calibre porte %+v, la carte impose %+v", film, got, carte.PrecisionAbsolue())
+	}
 }

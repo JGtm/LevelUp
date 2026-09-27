@@ -162,7 +162,10 @@ func TestRegistrePorteToutesSesFamilles(t *testing.T) {
 // comme une CONTRADICTION comptée (`coverage.score.roundsContradicted`).
 // FUSION (2026-09-17) : trois baisses partant de 6 (1.9.13, 1.9.10, 1.9.11) ; le registre ne porte
 // plus que TROIS entrées `devant_la_lecture` — le ratchet suit.
-const ratchetDevantLaLecture = 3
+// BAISSÉ À 2 LE 2026-09-27 (correctif « carte obligatoire ») : `repli_carte_absente_largeurs_par_defaut`
+// est RETIRÉ — sans carte, `killsource.Decode` refuse le film au lieu de le décoder aux largeurs
+// d une autre carte.
+const ratchetDevantLaLecture = 2
 
 func TestReplisDevantLaLectureNeMontentPas(t *testing.T) {
 	n := NbDevantLaLecture()

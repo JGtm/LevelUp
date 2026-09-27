@@ -154,7 +154,7 @@ func TestKillSourceCollecteFilmReelEtRelitParLaVue(t *testing.T) {
 
 	db := openSharedTestDB(t)
 	client := &fakeFilmClient{chunks: map[string][]haloclient.FilmChunk{film: chunks}}
-	col := NewKillSourceCollector(client, fakeRoster{}, sharedWriter(db), capsAvecFilm(), 0)
+	col := sousLaCarte(t, NewKillSourceCollector(client, fakeRoster{}, sharedWriter(db), capsAvecFilm(), 0), carteDe9b191a7f)
 
 	outcome, _, err := col.CollectMatch(context.Background(), film)
 	if err != nil {
@@ -267,7 +267,7 @@ func TestTirsParArmeSuiventLeurPropreCapability(t *testing.T) {
 	compterTirs := func(t *testing.T, caps games.CapabilityMap) (morts, tirs int) {
 		t.Helper()
 		db := openSharedTestDB(t)
-		col := NewKillSourceCollector(client, fakeRoster{}, sharedWriter(db), caps, 0)
+		col := sousLaCarte(t, NewKillSourceCollector(client, fakeRoster{}, sharedWriter(db), caps, 0), carteDe9b191a7f)
 		if _, _, err := col.CollectMatch(context.Background(), film); err != nil {
 			t.Fatalf("CollectMatch: %v", err)
 		}
@@ -315,7 +315,7 @@ func TestKillSourceRosterResoutLesXuid(t *testing.T) {
 	client := &fakeFilmClient{chunks: map[string][]haloclient.FilmChunk{film: chunks}}
 
 	// On lit d abord les noms du film pour fabriquer un roster credible.
-	col := NewKillSourceCollector(client, fakeRoster{}, sharedWriter(db), capsAvecFilm(), 0)
+	col := sousLaCarte(t, NewKillSourceCollector(client, fakeRoster{}, sharedWriter(db), capsAvecFilm(), 0), carteDe9b191a7f)
 	if _, _, err := col.CollectMatch(context.Background(), film); err != nil {
 		t.Fatalf("passe de reconnaissance: %v", err)
 	}
@@ -326,8 +326,7 @@ func TestKillSourceRosterResoutLesXuid(t *testing.T) {
 	}
 
 	db2 := openSharedTestDB(t)
-	col2 := NewKillSourceCollector(client, fakeRoster{victime: "xuid(2533274792395366)"},
-		sharedWriter(db2), capsAvecFilm(), 0)
+	col2 := sousLaCarte(t, NewKillSourceCollector(client, fakeRoster{victime: "xuid(2533274792395366)"}, sharedWriter(db2), capsAvecFilm(), 0), carteDe9b191a7f)
 	if _, _, err := col2.CollectMatch(context.Background(), film); err != nil {
 		t.Fatalf("passe avec roster: %v", err)
 	}

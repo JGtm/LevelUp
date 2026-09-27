@@ -272,6 +272,10 @@ func Decode(ctx context.Context, name string, film *source.Film, opts *killsourc
 
 var ErrNoKillFeed = killsource.ErrNoKillFeed
 
+// ErrCarteAbsente : film MIS DE COTE faute de carte (2026-09-27, « pas de repli ») — le collecteur
+// le classe comme la cle de film inconnue, jamais comme une panne.
+var ErrCarteAbsente = killsource.ErrCarteAbsente
+
 type FeedTruth = killsource.FeedTruth
 
 const FilmTableNoSection = killsource.FilmTableNoSection

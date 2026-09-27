@@ -154,6 +154,7 @@ func TestCarteReelleLueParLaMarche(t *testing.T) {
 	}{{"SANS carte", nil}, {"AVEC carte", &entree}} {
 		opts := DefaultOptions()
 		opts.Carte = cas.carte
+		opts.RechercheSansCarte = cas.carte == nil // la mesure SANS carte est une mesure de recherche
 		res, errD := Decode(context.Background(), filepath.Base(dir), src, &opts)
 		if errD != nil {
 			t.Fatalf("%s : decodage : %v", cas.nom, errD)

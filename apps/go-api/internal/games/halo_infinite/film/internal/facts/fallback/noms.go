@@ -233,8 +233,6 @@ const (
 	NomSondeNonLanceePorteRelachee Nom = "repli_sonde_non_lancee_porte_relachee"
 	// NomLibelleDeSourceAutres : `killsource/label.go`.
 	NomLibelleDeSourceAutres Nom = "repli_libelle_de_source_autres"
-	// NomCarteAbsenteLargeursParDefaut : `killsource/decode.go`.
-	NomCarteAbsenteLargeursParDefaut Nom = "repli_carte_absente_largeurs_par_defaut"
 	// NomLargeurMotDePoigneeInferee : `killsource/calibrate.go`.
 	NomLargeurMotDePoigneeInferee Nom = "repli_largeur_mot_de_poignee_inferee"
 

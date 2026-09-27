@@ -119,7 +119,6 @@ var versementsDesReplis = []ligneDeVersement{
 	}},
 	{fallback.NomSondeNonLanceePorteRelachee, func(s sourcesDeReplis) int { return s.killsource.Replis.SondeNonLancee }},
 	{fallback.NomLibelleDeSourceAutres, func(s sourcesDeReplis) int { return s.killsource.Replis.LibellesAutres }},
-	{fallback.NomCarteAbsenteLargeursParDefaut, func(s sourcesDeReplis) int { return s.killsource.Replis.CarteAbsente }},
 	{fallback.NomControleCorruptionSectionAbsente, func(s sourcesDeReplis) int { return s.killsource.Replis.ControleDeCorruptionNonDeclare }},
 	{fallback.NomLargeurMotDePoigneeInferee, func(s sourcesDeReplis) int { return s.killsource.Replis.MotDePoigneeInfere }},
 

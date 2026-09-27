@@ -45,6 +45,8 @@ func TestCalibrationP4(t *testing.T) {
 			t.Fatalf("carte %q : %v", carte, err)
 		}
 		o.Carte = &e
+	} else {
+		o.RechercheSansCarte = true // instrument : sans carte nommee, il le DECLARE
 	}
 	res, err := Decode(context.Background(), filepath.Base(dir), film, &o)
 	if err != nil {

@@ -62,6 +62,8 @@ type indexParMotif struct {
 	desaccords int
 	// absents : xuids cherches dont le motif n apparait dans aucun chunk de replication.
 	absents int
+	// tueursEcartes : TUEURS SANS MORT ecartes seuls ([indexParMotif.retenirLesLectures]).
+	tueursEcartes int
 }
 
 // lireIndexParMotif cherche, pour chaque xuid que le FILM nomme, l index de joueur ecrit devant
@@ -99,18 +101,7 @@ func lireIndexParMotif(f *film, slots []types.PlayerSlot, kf *killFeed) indexPar
 			vus[x][pi]++
 		}
 	}
-	for _, x := range xuids {
-		switch par := vus[x]; {
-		case len(par) == 0:
-			out.absents++
-		case len(par) > 1:
-			out.desaccords++
-		default:
-			for pi := range par {
-				out.retenir(pi, nomDuXUID[x])
-			}
-		}
-	}
+	out.retenirLesLectures(vus, xuids, nomDuXUID, tueursSansMort(slots, kf, nomDuXUID))
 	out.refuserSiElleSeContredit()
 	return out
 }
@@ -136,6 +127,8 @@ func lireIndexParMotif(f *film, slots []types.PlayerSlot, kf *killFeed) indexPar
 // desaccord a arbitrer, c est le signe que la lecture est fausse — et il faut alors ne rien
 // publier plutot que trancher ». Un seul desaccord, une seule collision, et l epinglage par motif
 // ne pose rien sur ce film ; les compteurs, eux, restent publies pour qu on sache POURQUOI.
+// Les TUEURS SANS MORT (lot J7.3) n y entrent pas : ils ne font que completer, et s ecartent seuls
+// (`index_motif_tueurs.go`).
 //
 // CE QUE CELA COUTE, ET C EST ASSUME : un film dont un seul xuid serait mal lu perd aussi les
 // bons. Le cout inverse est mesure a 28 lignes fausses sur un seul temoin ; celui-ci ne l est

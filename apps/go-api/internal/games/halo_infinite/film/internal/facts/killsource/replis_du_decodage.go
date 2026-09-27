@@ -62,9 +62,6 @@ type ReplisDuDecodage struct {
 	// LibellesAutres : `repli_libelle_de_source_autres` — morts publiees (revendiquees ou non) dont
 	// la source porte le libelle « Autres » (`label.go`).
 	LibellesAutres int
-	// CarteAbsente : `repli_carte_absente_largeurs_par_defaut` — decodage sans entree de catalogue :
-	// la marche lit aux largeurs de l invariant, UNE fois par decodage (`decode.go`).
-	CarteAbsente int
 	// ControleDeCorruptionNonDeclare : `repli_controle_corruption_section_absente`, site de la
 	// calibration — film sans section d identification, UNE fois par decodage (`decode.go`).
 	ControleDeCorruptionNonDeclare int
@@ -97,12 +94,15 @@ func (c *decodeCtx) replisDuResultat(kills []Kill, unclaimed []UnclaimedDeath, s
 		ChainesArretees:                c.killEvents.chainesArretees,
 		TypeDeChunkPerdu:               1, // `loadFilm` jette le type du manifeste a chaque decodage
 		SondeNonLancee:                 unSi(!sondeLancee),
-		CarteAbsente:                   unSi(!c.calib.CarteLue),
 		ControleDeCorruptionNonDeclare: unSi(!c.calib.ControleDeCorruptionLu),
 		MotDePoigneeInfere:             unSi(c.calib.PoigneeDecidee),
 	}
 	for i := range kills {
-		r.NomsHorsBijection += unSi(kills[i].Victim == nomHorsBijection) + unSi(kills[i].Feed.Killer == nomHorsBijection)
+		// Le nom se juge par LE predicat unique du remplissage (lot J7.1, FK-2, DT-6 ; ratchet
+		// `archlint/killsource_nom_de_remplissage_test.go`), pas par une comparaison a « ? » : depuis
+		// J7 les temps 4 et 5 refusent un tel nom ([pass.nomPubliable]), et ce compte tient le
+		// critere de retrait du repli (« 0 ligne de mort ecrite avec un nom « ? » »).
+		r.NomsHorsBijection += unSi(estNomDeRemplissage(kills[i].Victim)) + unSi(estNomDeRemplissage(kills[i].Feed.Killer))
 		r.LibellesAutres += unSi(!kills[i].Source.Named)
 	}
 	for i := range unclaimed {
@@ -110,7 +110,3 @@ func (c *decodeCtx) replisDuResultat(kills []Kill, unclaimed []UnclaimedDeath, s
 	}
 	return r
 }
-
-// nomHorsBijection : le nom que [roster.nameOf] rend a un indice que la bijection ne resout pas —
-// le litteral du site de `repli_roster_indice_hors_bijection`, relu ici pour le compter.
-const nomHorsBijection = "?"

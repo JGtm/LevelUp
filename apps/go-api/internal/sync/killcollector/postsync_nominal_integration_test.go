@@ -48,6 +48,9 @@ func (f *filmsTraces) GetFilmChunks(_ context.Context, matchID string) ([]halocl
 // qui rendent le meme handle — le process de test est seul, ADR 0013 est satisfaite par ce
 // fait, pas par un verrou de plus.
 func depsDeTest(db *sql.DB, films *filmsTraces, cache *haloclient.LocalFilmCache) PostSyncDeps {
+	// Le registre des matchs sans carte est un etat de PAQUET : un test ne doit pas heriter des
+	// constats d un autre (memes identifiants m1..mN, memes titre et catalogue).
+	oublierLesMatchsSansCarte()
 	return PostSyncDeps{
 		Fetcher:       films,
 		LocalCache:    cache,
@@ -55,6 +58,9 @@ func depsDeTest(db *sql.DB, films *filmsTraces, cache *haloclient.LocalFilmCache
 		AcquireWriter: func(context.Context) (*sql.DB, func(), error) { return db, func() {}, nil },
 		TitleSlug:     "halo_infinite",
 		Gamertag:      "GT",
+		// TOUS LES MATCHS SOUS UNE CARTE DU CATALOGUE : depuis le 2026-09-27, un match sans carte
+		// resolue est retire de la liste de travail AVANT le telechargement.
+		MapNames: nomsDeCarteFixes{noms: []string{"Bazaar"}},
 	}
 }
 
@@ -142,4 +148,12 @@ func TestRunPostSync_PrepareLeCacheEtArchiveAuMemeEndroit(t *testing.T) {
 		t.Errorf("racine retenue = %q, attendu celle du moteur %q — deux racines et l archivage "+
 			"n est jamais relu", h2.cacheRacine, autre)
 	}
+}
+
+// oublierLesMatchsSansCarte vide les registres de tous les titres (etat de paquet partage entre
+// tests).
+func oublierLesMatchsSansCarte() {
+	registresMu.Lock()
+	defer registresMu.Unlock()
+	registresSansCarte = map[string]*registreSansCarte{}
 }

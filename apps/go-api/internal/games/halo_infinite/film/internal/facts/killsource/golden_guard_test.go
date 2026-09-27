@@ -206,7 +206,7 @@ func TestLigneDiscriminanteEstServieParLaMarche(t *testing.T) {
 	if err != nil {
 		t.Skipf("film absent : %v", err)
 	}
-	gelee, err := Decode(t.Context(), "fccc61cd", src, nil)
+	gelee, err := Decode(t.Context(), "fccc61cd", src, optionsDeReference(t, "fccc61cd"))
 	if err != nil {
 		t.Fatalf("Decode (configuration gelee) : %v", err)
 	}
@@ -225,7 +225,7 @@ func TestLigneDiscriminanteEstServieParLaMarche(t *testing.T) {
 			ligne.Read.Path)
 	}
 
-	faible := DefaultOptions()
+	faible := *optionsDeReference(t, "fccc61cd")
 	faible.StrongTagRequired = false
 	sans, err := Decode(t.Context(), "fccc61cd", src, &faible)
 	if err != nil {

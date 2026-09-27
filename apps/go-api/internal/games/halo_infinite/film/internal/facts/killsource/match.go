@@ -195,22 +195,6 @@ func (c *decodeCtx) resolveBotKillerDeaths(all []sourcedCandidate) []botKillerMa
 	return ms
 }
 
-// ghostPairs : les couples FABRIQUES dont le kill est en realite une mort de BOT.
-//
-// ILS DOIVENT SORTIR DU DENOMINATEUR. Ce ne sont pas des morts manquees, ce sont des morts qui
-// N EXISTENT PAS : la vraie victime est un bot, et la reconstruction a pris la victime du voisin.
-// Le decodeur a ainsi corrige NOTRE PROPRE APPARIEMENT, verifie en Theater. Compter une mort
-// inexistante comme manquee fausse le denominateur ; l alerter comme anomalie serait pire.
-func (c *decodeCtx) ghostPairs() map[int]bool {
-	g := map[int]bool{}
-	for _, m := range c.resolveBotDeaths() {
-		if m.found && m.fab {
-			g[m.event.timeMS] = true
-		}
-	}
-	return g
-}
-
 // killDraft : ce que l APPARIEMENT sait d une mort, avant que la source ne s y ajoute. Il existe
 // pour que [decodeCtx.buildKill] garde deux parametres : la verite du feed d un cote, la verite
 // de la source de l autre — la separation des deux verites jusque dans la signature.

@@ -188,7 +188,7 @@ func verifierRefusAvantBalayage(t *testing.T, e entreesDeCuisson, err error) {
 // (constat L3-R4). Le temoin « 34 au manifeste + 3 hors manifeste » ne traverse pas la bascule.
 func TestEntreesDeLaCuisson_RefuseLeTemoinPartiel(t *testing.T) {
 	dir, _ := repertoireDuTemoin(t, temoinPartiel(t))
-	e, err := constructeurSansFaits(t).entreesDeLaCuisson(context.Background(), "ab526724", nil,
+	e, err := constructeurSansFaits(t).entreesDeLaCuisson(context.Background(), "ab526724",
 		dir, decfilm.MapQuantEntry{})
 	verifierRefusAvantBalayage(t, e, err)
 }
@@ -199,7 +199,7 @@ func TestEntreesDeLaCuisson_RefuseDesMorceauxHorsManifeste(t *testing.T) {
 	entrees := append(temoinPartiel(t), filmcache.WriteChunk{Index: 36,
 		ChunkType: finalise.ChunkTypeTempsForts, StartMS: 681909, DurationMS: 3})
 	dir, _ := repertoireDuTemoin(t, entrees)
-	e, err := constructeurSansFaits(t).entreesDeLaCuisson(context.Background(), "ab526724", nil,
+	e, err := constructeurSansFaits(t).entreesDeLaCuisson(context.Background(), "ab526724",
 		dir, decfilm.MapQuantEntry{})
 	verifierRefusAvantBalayage(t, e, err)
 	if !strings.Contains(err.Error(), "[34 35]") {
@@ -219,7 +219,7 @@ func TestEntreesDeLaCuisson_RefuseUnManifesteIllisible(t *testing.T) {
 	if _, _, err := filmcache.OpenChunkDir(dir); err == nil {
 		t.Fatal("temoin : le manifeste corrompu se lit — le cas ne teste rien")
 	}
-	e, err := constructeurSansFaits(t).entreesDeLaCuisson(context.Background(), "ab526724", nil,
+	e, err := constructeurSansFaits(t).entreesDeLaCuisson(context.Background(), "ab526724",
 		dir, decfilm.MapQuantEntry{})
 	verifierRefusAvantBalayage(t, e, err)
 	if !strings.Contains(err.Error(), "illisible") {

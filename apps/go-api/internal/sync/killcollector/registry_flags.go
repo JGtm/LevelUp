@@ -68,6 +68,7 @@ func marquerRegistre(ctx context.Context, db *sql.DB, matchID string, bit int) e
 //	OutcomeNoKillFeed                  rien             le film EXISTE, il est juste muet
 //	OutcomeTimeout / NotSupported      rien             etat transitoire ou hors titre
 //	OutcomeUnknownKey                  rien             le film EXISTE, la TABLE lui manque
+//	OutcomeCarteNonResolue             rien             le film EXISTE, sa CARTE n est pas resolue
 //
 // ⚠ `OutcomeNoKillFeed` NE POSE PAS MBitFilmAbsent, et c est delibere : le film est bien
 // la, il ne porte simplement pas de chunk HIGHLIGHT. Le marquer « absent » le retirerait

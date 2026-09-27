@@ -76,8 +76,9 @@ func rendreFilms(e etatDeLaPasse) string {
 	fmt.Fprintf(&b, "  films        %d / %d traites — %d chunks / %d\n",
 		f.Traites, f.AFaire, f.ChunksFaits, f.ChunksAFaire)
 	fmt.Fprintf(&b, "               %d ecrits (%d morts), %d sans film, %d sans kill-feed, "+
-		"%d cle inconnue, %d abandons sur delai, %d erreurs\n",
-		f.Ecrits, f.Morts, f.SansFilm, f.SansKillFeed, f.CleInconnue, f.AbandonsDelai, f.Erreurs)
+		"%d cle inconnue, %d carte non resolue, %d abandons sur delai, %d erreurs\n",
+		f.Ecrits, f.Morts, f.SansFilm, f.SansKillFeed, f.CleInconnue, f.CarteNonResolue,
+		f.AbandonsDelai, f.Erreurs)
 	fmt.Fprintf(&b, "               %d deja a jour au demarrage (sautes : c est la REPRISE, et "+
 		"elle se decide en base)\n", e.RepriseDe)
 	fmt.Fprintf(&b, "               %d ouvrier(s), %.2f films/min, %.3f s/chunk mesure%s\n",

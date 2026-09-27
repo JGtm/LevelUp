@@ -240,4 +240,12 @@ const (
 	// registry_flags.go) : `MBitFilmAbsent` est TERMINAL, et le film reviendra au rattrapage
 	// des que la ligne de profil sera ecrite.
 	OutcomeUnknownKey KillSourceOutcome = "ecarte-cle-inconnue"
+	// OutcomeCarteNonResolue : la CARTE du match n est pas resolue (aucun nom en base, nom hors
+	// catalogue de bornes, ou collecteur sans resolution de carte cablee). Le film est MIS DE COTE
+	// (2026-09-27, regle utilisateur « le flux du film est la seule source fiable. Pas de repli. ») :
+	// le decoder aux largeurs d une AUTRE carte desynchronise la marche des morts et fait publier le
+	// scan a sa place. Meme politique que [OutcomeUnknownKey] : ni un film absent ni une panne, AUCUN
+	// marqueur de registre (cf. registry_flags.go) — le film revient au rattrapage des que sa carte
+	// se resout.
+	OutcomeCarteNonResolue KillSourceOutcome = "ecarte-carte-non-resolue"
 )

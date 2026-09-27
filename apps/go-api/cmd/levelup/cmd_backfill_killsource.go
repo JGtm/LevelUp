@@ -332,17 +332,16 @@ func passeDesFilms(
 	// `AvecArretDoux` qui porte l arret, et il l applique ENTRE deux films.
 	ctxTravail := context.WithoutCancel(ctx)
 
-	candidats, bilan, err := filmsACollecter(ctxTravail, db, cacheRoot, o)
+	candidats, bilan, err := filmsACollecter(ctxTravail, db, cacheRoot, selectionSansBorne(o))
 	if err != nil {
 		return nil, err
 	}
-	fmt.Printf("films a decoder : %d (cache %s)\n", len(candidats), cacheRoot)
-	fmt.Println(bilanInitial(candidats, bilan.TotalRegistre, bilan.DejaAJour, o.workers))
-	if len(candidats) == 0 {
-		return nil, nil
-	}
-	if o.dryRun {
-		afficherPlan(candidats)
+	if len(candidats) == 0 || o.dryRun {
+		fmt.Printf("films a decoder : %d (cache %s)\n", len(candidats), cacheRoot)
+		fmt.Println(bilanInitial(candidats, bilan.TotalRegistre, bilan.DejaAJour, o.workers))
+		if len(candidats) > 0 {
+			afficherPlan(candidats)
+		}
 		return nil, nil
 	}
 
@@ -363,21 +362,20 @@ func passeDesFilms(
 	capture, cleanupPositions := positionCaptureDeps(cfg, o.titleSlug, db, porte)
 	defer cleanupPositions()
 
+	collecteur := collecteurHorsLigne(cache, db, porte, caps, capture).AvecArretDoux(ctx)
+	// LES MATCHS SANS CARTE SORTENT AVANT LA BORNE ET AVANT TOUT DECODAGE (2026-09-27, cf.
+	// cmd_backfill_killsource_carte.go) : `--limit` s applique a ceux qui ont une carte.
+	candidats = candidatsAvecCarte(ctxTravail, collecteur, candidats, o.limit)
+	fmt.Printf("films a decoder : %d (cache %s)\n", len(candidats), cacheRoot)
+	fmt.Println(bilanInitial(candidats, bilan.TotalRegistre, bilan.DejaAJour, o.workers))
+	if len(candidats) == 0 {
+		return nil, nil
+	}
 	// LE SUIVI (lot 5.24.3) : il ecrit le fichier d etat APRES CHAQUE FILM et journalise une
 	// ligne de progression tous les 25 films OU toutes les 60 s. Il ne decide rien — ni ce qui
 	// est decode, ni ce qui est ecrit.
 	suivi := nouveauSuivi(cheminEtat, o.titleSlug, candidats, bilan, o)
-
-	collecteur := killcollector.NewKillSourceCollector(
-		killcollector.NewLocalCacheFilms(cache),
-		// L ANNUAIRE DE PASSE (lot 5.24.2) : `v_gamertag_lookup` lue UNE FOIS, pas par match.
-		// C est la seule lecture repetee que la decomposition 5.24.1 ait trouvee — et depuis que
-		// la passe a des ouvriers, elle serait SERIALISEE derriere la porte, donc un plafond.
-		porte.GarderLeRoster(killcollector.NewSharedRoster(db).AvecAnnuaireDePasse()),
-		porte.GarderLeWriter(writerDeja(db)),
-		caps,
-		0, // limite par match : le defaut du collecteur (45 min)
-	).AvecCapture(capture).AvecObservateur(suivi).AvecArretDoux(ctx)
+	collecteur.AvecObservateur(suivi)
 
 	ids := make([]string, 0, len(candidats))
 	for _, c := range candidats {

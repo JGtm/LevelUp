@@ -187,13 +187,18 @@ func TestEtiquetageGardeLaClasseMemeSansNom(t *testing.T) {
 	}
 }
 
+// TestRosterEpingleLesBotsAuDelaDesHumains : l espace des humains est celui des huit PLACES que la
+// table du film donne (lot J7.2, FK-1) — il ne se compte plus sur les noms du kill-feed.
 func TestRosterEpingleLesBotsAuDelaDesHumains(t *testing.T) {
 	kf := &killFeed{names: []string{"A", "B", "C", "D", "E", "F", "G", "H"}}
 	bm := botMeta{NBots: 2, Bots: []bot{
 		{Slot: 8, BotID: 39, Name: "343 Aloysius"}, // au-dela des humains : EPINGLE
 		{Slot: 3, BotID: 7, Name: "343 Contredit"}, // dans l espace des humains : NON epingle
 	}}
-	r := buildRoster(kf, bm, true, FilmTable{}, indexParMotif{})
+	table := FilmTable{Build: "b", Seats: map[int]string{
+		0: "A", 1: "B", 2: "C", 3: "D", 4: "E", 5: "F", 6: "G", 7: "H",
+	}}
+	r := buildRoster(kf, bm, true, table, indexParMotif{})
 	if r.nPlay != 9 {
 		t.Errorf("nPlay = %d, attendu 9 (la borne se DERIVE du slot declare)", r.nPlay)
 	}
@@ -280,13 +285,14 @@ type reference struct {
 	// decodee (`match_participants.deaths` somme sur les participants). Elle sert au seul
 	// controle qui decide de ce lot : `couverts + morts de bot + morts par un bot == API`.
 	apiDeathsFilm int
+	carte         string // la CARTE du match, OBLIGATOIRE (cf. references_carte_test.go)
 }
 
 var references = []reference{
-	{"000d5950", 93, 1, 0, 0, 0, 93},
-	{"9b191a7f", 84, 2, 3, 1, 3, 90},
-	{"78919882", 99, 2, 0, 0, 0, 99},
-	{"fccc61cd", 95, 3, 2, 0, 1, 98},
+	{"000d5950", 93, 1, 0, 0, 0, 93, "Cliffhanger"},
+	{"9b191a7f", 84, 2, 3, 1, 3, 90, "Bazaar"},
+	{"78919882", 99, 2, 0, 0, 0, 99, "High Ground"},
+	{"fccc61cd", 95, 3, 2, 0, 1, 98, "Launch Site"},
 }
 
 // anchors : LES ANCRES DE VERITE TERRAIN, confirmees en mode Theater. C est la ressource la plus
@@ -350,7 +356,7 @@ func checkFilm(t *testing.T, dir string, ref reference) {
 	if err != nil {
 		t.Skipf("film absent : %v", err)
 	}
-	res, err := Decode(context.Background(), ref.film, src, nil)
+	res, err := Decode(context.Background(), ref.film, src, optionsDeReference(t, ref.film))
 	if err != nil {
 		t.Fatalf("Decode: %v", err)
 	}

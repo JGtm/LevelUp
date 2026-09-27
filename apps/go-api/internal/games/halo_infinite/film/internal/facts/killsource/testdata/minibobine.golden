@@ -10,9 +10,9 @@
 # chunk HIGHLIGHT. Contigu et depuis le debut PARCE QUE LE DECODEUR L EXIGE : le monde
 # s accumule depuis l en-tete. Une bobine de paquets cherry-pickes n y decode AUCUNE mort.
 #
-# PORTEE — la calibration automatique tombe ici en PROFIL PLAT (l echantillon du prefixe ne rend
-# aucun record de biped) : le couple axisW/indexW ci-dessous est le DEFAUT, pas un resultat de
-# balayage. Seul TestGoldenFilms verrouille le balayage, sur les films entiers.
+# PORTEE — la bobine est decodee sous SA CARTE (Cliffhanger, dont l entree EST l invariant du
+# profil) : le couple LU ci-dessous vient du catalogue, et l ORACLE n y decide rien. Seul
+# TestGoldenFilms verrouille le decodage sur les films entiers.
 #
 # REGENERATION :
 #   go test ./internal/games/halo_infinite/film/internal/facts/killsource/ -run TestGoldenMiniBobine -update
@@ -61,7 +61,7 @@ morts infligees PAR un bot : 0 propose(s), 0 apparie(s), 0 publiee(s)
 DESACCORD doit valoir 0 : sinon l hybride n est plus une PREFERENCE mais un ARBITRAGE
 0 mort(s) a plusieurs candidats en concurrence · 0 enregistrement(s) sans position
 460 / 473 paquet(s) a evenements localise(s)
-calibration resolue automatiquement : LU axisW=[13 13 14] indexW_plage=1 [DEFAUT (carte absente)] controle_corruption=false [FILM] | ORACLE axisW=23 [score 8, mediane 1] desaccords=1 | DECIDE indexW_poignee=1 INVARIANT (non discriminee) [score 68, mediane 68]
+calibration resolue automatiquement : LU axisW=[13 13 14] indexW_plage=1 [CARTE] controle_corruption=false [FILM] | ORACLE axisW=23 [score 8, mediane 1] desaccords=1 | DECIDE indexW_poignee=1 INVARIANT (non discriminee) [score 68, mediane 68]
 
 ## SANTE — un verdict porte sur le DOMAINE, pas sur les etiquettes publiees
 verdict : HORS DOMAINE MESURE

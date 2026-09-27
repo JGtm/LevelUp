@@ -140,7 +140,13 @@ const exigenceDeJustificationDatee = "UNE HAUSSE EXIGE UNE JUSTIFICATION DATEE D
 // facade — la hausse que la decision 4 du superviseur accepte.
 // 185 LE MEME JOUR (sous-lot collecteur) : NEUF constantes de nom de plus, celles des replis que
 // `sync/killcollector` declenche sur le compteur de sa passe.
-const plafondSurfaceFacade = 185 // 2026-09-27 — J8.7 sur 5fad0cc93 : 165 + 2 (objectives) + 18 (noms de replis de la construction et du collecteur)
+// 186 A LA FUSION DE J7 (2026-09-27, `feat/suite-audit-decodeur-j7` dans `feat/suite-audit-decodeur`) :
+// les deux hausses s ADDITIONNENT — J8.7 (+20, ci-dessus) et le correctif killsource « carte
+// obligatoire » de J7 (+1, base `cb6d9e96a` re-mesuree : 165) : UN renvoi neuf, `ErrCarteAbsente`.
+// Sans carte du match, `killsource.Decode` refuse le film au lieu de le decoder aux largeurs d une
+// autre carte (regle utilisateur « pas de repli ») ; le collecteur doit NOMMER cette erreur pour
+// classer le film « mis de cote » et non « panne », comme la cle de film inconnue.
+const plafondSurfaceFacade = 186 // 2026-09-27 — J8.7 sur 5fad0cc93 : 165 + 2 (objectives) + 18 (noms de replis de la construction et du collecteur) ; fusion J7 : + 1 (ErrCarteAbsente, carte obligatoire)
 
 // plafondSurfaceReplay — identifiants `replay.<Symbole>` DISTINCTS cites hors de `film/`.
 //
@@ -311,7 +317,7 @@ const plafondSurfaceReplay = 277 // 2026-09-27 — audit(J8.7) sur 5fad0cc93 : 2
 var plafondsParFamilleFacade = map[string]int{
 	"grammar":    46, // 2026-09-26 — J4.2 : +4 (lectures du pont) ; J4.3 : +3 (etage du pont) ; J4.5 : -7 (DecodeFrameRecords, FrameConfig, LecteurSur, NewWorld, ProfilDeBalayageParDefaut, Registry, World)
 	"objectives": 39, // 2026-09-27 — J8.7 : +2 (StatRecordsAvecReplis, ComptesDesReplisObjectifs)
-	"killsource": 36, // 2026-09-26 — lot J3.3 : `decfilm.Rev` renvoie a `killsource.Rev` (la famille `facts` disparait avec son paquet ; total inchange)
+	"killsource": 37, // 2026-09-26 — lot J3.3 : `decfilm.Rev` renvoie a `killsource.Rev` (la famille `facts` disparait avec son paquet ; total inchange) ; 2026-09-27 — carte obligatoire (J7) : +1 (`ErrCarteAbsente`)
 	"fallback":   29, // 2026-09-27 — J8.7 : +18 (noms des replis declenches par replaybuild, sync/replayartifacts et sync/killcollector)
 	"types":      10,
 	"profile":    8,

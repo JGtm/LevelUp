@@ -38,11 +38,10 @@ package killsource
 //	                                    se verifie la, et nulle part ailleurs dans cette bobine.
 //	LA CALIBRATION ET `recordStateParam` le canal de detection PROUVE (voir ci-dessous).
 //
-// CE QU ELLE NE VERROUILLE PAS, ET IL FAUT LE DIRE. La calibration automatique tombe ici en
-// PROFIL PLAT : l echantillon de paquets type-0 sans event du prefixe ne rend aucun record de
-// biped, le balayage ne departage rien et les valeurs par defaut sont conservees. Le couple
-// (axisW, indexW) de ce golden est donc le DEFAUT, pas un resultat de balayage — seul
-// [TestGoldenFilms] verrouille le balayage lui-meme, sur les films entiers.
+// CE QU ELLE NE VERROUILLE PAS, ET IL FAUT LE DIRE. La bobine est decodee sous SA CARTE
+// ([miniBobineCarte], 2026-09-27 : sans carte, [Decode] refuse le film) ; l entree de Cliffhanger
+// EST l invariant du profil, donc les largeurs LUES sont celles de l invariant et l oracle n y
+// decide rien. Seul [TestGoldenFilms] verrouille le decodage sur les films entiers.
 //
 // TEMOIN DE DETECTION, JOUE LE 2026-08-02 — sans lui ce fichier ne serait qu une esperance.
 // En neutralisant le `br.ReadBits(2)` de `consumeAbsoluteWithGate` (la cause etablie de la
@@ -109,7 +108,7 @@ func TestGoldenMiniBobine(t *testing.T) {
 		t.Fatalf("mini-bobine incomplete : %d chunk(s) sous %s, %d attendus (%d de prefixe + le "+
 			"chunk HIGHLIGHT)", n, miniBobineDir, miniBobineChunks, miniBobinePrefixe)
 	}
-	res, err := Decode(t.Context(), miniBobineFilm, src, nil)
+	res, err := Decode(t.Context(), miniBobineFilm, src, optionsDeLaBobine(t))
 	if err != nil {
 		t.Fatalf("Decode sur la mini-bobine : %v", err)
 	}
@@ -149,9 +148,9 @@ const enteteMiniBobine = `# GOLDEN killsource — MINI-BOBINE (prefixe du film %
 # chunk HIGHLIGHT. Contigu et depuis le debut PARCE QUE LE DECODEUR L EXIGE : le monde
 # s accumule depuis l en-tete. Une bobine de paquets cherry-pickes n y decode AUCUNE mort.
 #
-# PORTEE — la calibration automatique tombe ici en PROFIL PLAT (l echantillon du prefixe ne rend
-# aucun record de biped) : le couple axisW/indexW ci-dessous est le DEFAUT, pas un resultat de
-# balayage. Seul TestGoldenFilms verrouille le balayage, sur les films entiers.
+# PORTEE — la bobine est decodee sous SA CARTE (Cliffhanger, dont l entree EST l invariant du
+# profil) : le couple LU ci-dessous vient du catalogue, et l ORACLE n y decide rien. Seul
+# TestGoldenFilms verrouille le decodage sur les films entiers.
 #
 # REGENERATION :
 #   go test ./internal/games/halo_infinite/film/internal/facts/killsource/ -run TestGoldenMiniBobine -update

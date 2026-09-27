@@ -12,7 +12,8 @@ package killsource
 // REGLE D EPINGLAGE, structurelle et qui ne regarde AUCUN resultat : un bot dont le slot tombe
 // AU-DELA de l espace des humains est ajoute au roster et son indice est EPINGLE (il sort de
 // l espace de recherche de la bijection) ; un bot dont le slot tombe DANS cet espace contredit
-// le modele et n est PAS epingle — il est signale, pas dissimule.
+// le modele et n est PAS epingle — il est signale, pas dissimule. L ESPACE DES HUMAINS EST LU DANS
+// LA TABLE DU FILM ([borneDesHumainsDuFilm], lot J7.2), jamais compte sur le kill-feed.
 //
 // POURQUOI EPINGLER PLUTOT QUE LAISSER LIBRE : un bot n apparait JAMAIS au kill-feed. Laisser
 // son indice libre offrirait au solveur une case qui score zero, et lui permettrait d y ranger
@@ -74,97 +75,21 @@ const (
 	OriginNone IndexOrigin = "silence"
 )
 
-// FilmTablePinning : ce que la table du film a epingle, et ce que le kill-feed en dit.
-//
-// LES TROIS DERNIERS CHAMPS SONT UN CONTROLE, JAMAIS UNE DECISION (D14 b) : la table du film
-// n est pas corrigee par les votes du kill-feed, elle est CONFRONTEE a eux. Une contradiction se
-// compte et se lit ; elle ne se resout pas en silence.
-type FilmTablePinning struct {
-	// Refusal : la cause nommee quand la table n a pas ete lue. Vide = lue.
-	Refusal FilmTableRefusal
-	// Build : le build lu en clair (renseigne meme sur un refus pour build inconnu).
-	Build string
-	// Seats : les sieges OCCUPES et NOMMES que la table rend.
-	Seats int
-	// Pinned : les indices dont le joueur vient de la table — la part LUE de la bijection.
-	Pinned int
-	// AddedNames : les noms que la table ajoute au roster parce que le kill-feed ne les porte
-	// pas. Mesure du 2026-09-14 : 6 sur 30 films, tous des joueurs qui n ont ni tue ni sont morts.
-	AddedNames int
-	// BotConflict : sieges refuses parce que BOT_METADATA epingle deja cet indice. Deux lectures
-	// du film qui se contredisent : on garde la plus ancienne et la plus eprouvee (le bot), et on
-	// COMPTE. Mesure du 2026-09-14 : 0 sur 30 films.
-	BotConflict int
-	// DuplicateName : sieges refuses parce que le meme nom est deja epingle a un autre indice.
-	DuplicateName int
-	// OutOfRange : sieges dont l indice sort de l espace des 5 bits (0..31). Impossible par
-	// construction de la table de 32 ; compte pour que l impossible se voie s il arrive.
-	OutOfRange int
-	// Inferred : les indices laisses a l inference — LE REPLI, compte.
-	Inferred int
-	// FreeNames : les NOMS que l inference a encore a placer sur ces indices. Il n est PAS la
-	// meme quantite que `Inferred` et il ne l a plus jamais ete depuis le lot 1.8 : la table du
-	// film ajoute au roster les joueurs que le kill-feed ne nomme pas, donc il peut rester plus
-	// de noms libres que d indices libres (cf. [roster.freeSlots]). Sans ce compte, « un seul
-	// indice a inferer » se lisait a tort « une seule affectation possible » — alors que deux
-	// noms pour un indice se tranchent par les votes, et qu un nom sans kill ni mort n en porte
-	// aucun : le choix etait ARBITRAIRE (revue de jalon M1, lentille L4).
-	FreeNames int
-	// MotifPinned / MotifAgree / MotifContradict / MotifDuplicate : LE LIEN PAR LE MOTIF DU XUID
-	// (lot 5.2b.1, `index_motif.go`), ventile comme la table l est au-dessus. `MotifPinned` est
-	// ce qu il AJOUTE — les indices que ni BOT_METADATA ni la table de `chunk_00` n epinglent,
-	// c est-a-dire les REMPLACANTS ; `MotifAgree` / `MotifContradict` sont le CONTROLE sur les
-	// indices deja epingles (meme nom / autre nom), et une contradiction ne tranche rien : la
-	// table de `chunk_00` garde la main, elle est la plus eprouvee. `MotifDuplicate` : le nom lu
-	// est deja epingle ailleurs.
-	MotifPinned, MotifAgree, MotifContradict, MotifDuplicate int
-	// MotifReadings / MotifDisagreements / MotifAbsent : le COUT de cette lecture. `Readings` =
-	// chunks de replication qui ont livre au moins un index ; `Disagreements` = xuids lus a deux
-	// index differents (non publies) ; `Absent` = xuids dont le motif ne figure dans aucun chunk.
-	MotifReadings, MotifDisagreements, MotifAbsent int
-	// Agree / Contradict / Silent : le CONTROLE des indices epingles par les votes du kill-feed.
-	// `Agree` = les votes designent le meme joueur ; `Contradict` = ils en designent un autre,
-	// strictement plus vote ; `Silent` = aucun vote sur cet indice (le joueur n a ni tue ni est
-	// mort dans la fenetre d appariement).
-	Agree, Contradict, Silent int
-}
-
-// AffectationUnique dit si l inference n avait QU UNE SEULE affectation possible a rendre.
-//
-// C EST LA QUESTION QUE `Inferred <= 1` CROYAIT POSER, ET QU IL NE POSAIT PAS. Un indice libre
-// pour DEUX noms libres se tranche par les votes du kill-feed, et le cout d un nom qui n a ni
-// tue ni ete tue vaut zero contre tous les indices : le hongrois rend alors un nom pris au
-// hasard du departage ([permLess]), [refine] ne peut rien echanger (il lui faudrait deux indices
-// libres) et [bijectionMargin] rend structurellement zero (sa double boucle ne tourne pas sur
-// une seule case libre). La porte de publication ligne par ligne reposait donc sur ce seul
-// booleen, et publiait la source du degat, le credit, l assistant et les deux parts de degats
-// sur un occupant TIRE AU SORT.
-//
-// LES TROIS REGIMES, ET POURQUOI LE PREMIER RESTE VRAI. Aucun indice libre : la bijection est
-// entierement LUE, il n y a rien a choisir — les noms libres qui restent ne portent aucun
-// indice, ce qui est exact (cf. [hungarianStart]). Un indice libre pour au plus un nom libre :
-// l affectation est forcee. Au-dela : au moins un choix, donc la marge de bijection reprend son
-// office.
-func (t FilmTablePinning) AffectationUnique() bool {
-	switch t.Inferred {
-	case 0:
-		return true
-	case 1:
-		return t.FreeNames <= 1
-	default:
-		return false
-	}
-}
-
 // roster : l etat interne. `pin` associe un indice absolu a une position de `names`.
 type roster struct {
-	names    []string
-	pin      map[int]int
-	nPlay    int // borne du gate des indices, derivee du film
-	nHumans  int
-	bots     botMeta
-	unpinned []bot
-	perm     []int
+	names   []string
+	pin     map[int]int
+	nPlay   int // borne du gate des indices, derivee du film
+	nHumans int // noms du kill-feed : leur position dans `names`, JAMAIS une borne d indice
+	// borneHumains : l ESPACE DES HUMAINS, lu dans la table du film ([borneDesHumainsDuFilm],
+	// lot J7.2). Un bot n est desepingle que si son slot y tombe ET que la table y NOMME un humain
+	// ([roster.contreditLaTable]).
+	borneHumains int
+	// siegesHumains : les sieges que la table NOMME (occupes par un humain a l ouverture).
+	siegesHumains map[int]bool
+	bots          botMeta
+	unpinned      []bot
+	perm          []int
 	// seatPin : les indices epingles par la TABLE DU FILM (sous-ensemble de `pin` ; le reste de
 	// `pin` vient de BOT_METADATA). Sert a nommer la provenance de chaque indice.
 	seatPin map[int]bool
@@ -212,6 +137,8 @@ func buildRoster(kf *killFeed, bm botMeta, useBots bool, t FilmTable, m indexPar
 		bots:     bm,
 		seatPin:  map[int]bool{},
 		motifPin: map[int]bool{},
+		// L ESPACE DES HUMAINS VIENT DE LA TABLE DU FILM, JAMAIS DU NOMBRE DE NOMS DU FEED (FK-1).
+		borneHumains: borneDesHumainsDuFilm(t), siegesHumains: siegesNommes(t),
 	}
 	if useBots {
 		r.pinBots(bm)
@@ -227,6 +154,13 @@ func buildRoster(kf *killFeed, bm botMeta, useBots bool, t FilmTable, m indexPar
 	}
 	return r
 }
+
+// estNomDeRemplissage : LE predicat unique du nom qui ne designe personne (lot J7.1, FK-2, DT-6) —
+// le remplissage `?N` fabrique ci-dessus et le `?` que [roster.nameOf] rend hors bijection. Un
+// gamertag ne porte jamais `?`. Ni la provenance, ni l assistant, ni une victime ou un tueur pris au
+// roster ne se publient sous un tel nom ; aucune autre comparaison a `?` n existe dans ce paquet
+// (ratchet `archlint/killsource_nom_de_remplissage_test.go`).
+func estNomDeRemplissage(nom string) bool { return strings.HasPrefix(nom, "?") }
 
 // pinBots : l epinglage des slots de bot (cf. l en-tete du fichier).
 //
@@ -251,7 +185,7 @@ func buildRoster(kf *killFeed, bm botMeta, useBots bool, t FilmTable, m indexPar
 // un second. Un slot, un indice, un nom — et zero nom libre fabrique.
 func (r *roster) pinBots(bm botMeta) {
 	for _, b := range bm.Bots {
-		if b.Slot < r.nHumans || b.Slot >= 32 {
+		if r.contreditLaTable(b.Slot) || b.Slot >= 32 {
 			r.unpinned = append(r.unpinned, b)
 			continue
 		}
@@ -340,7 +274,7 @@ func (r *roster) pinUnSiege(idx int, nom string, posDuNom map[string]int, prises
 // lecture la plus eprouvee), doublon (le nom est deja epingle a un autre indice), epinglage.
 func (r *roster) pinMotifSeats(m indexParMotif) {
 	r.table.MotifReadings, r.table.MotifDisagreements = m.lectures, m.desaccords
-	r.table.MotifAbsent = m.absents
+	r.table.MotifAbsent, r.table.MotifTueursEcartes = m.absents, m.tueursEcartes
 	if len(m.nomParIndex) == 0 {
 		return
 	}
@@ -401,7 +335,7 @@ func (r *roster) originOf(i int) IndexOrigin {
 		return OriginXUIDMotif
 	case r.isBotIndex(i):
 		return OriginBotMeta
-	case r.nameOf(i) == "?" || strings.HasPrefix(r.nameOf(i), "?"):
+	case estNomDeRemplissage(r.nameOf(i)):
 		return OriginNone
 	default:
 		return OriginInference

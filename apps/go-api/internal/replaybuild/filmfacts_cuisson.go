@@ -94,8 +94,8 @@ type entreesDeCuisson struct {
 }
 
 // entreesDeLaCuisson resout la bascule et rend les entrees de la branche retenue.
-func (b *Builder) entreesDeLaCuisson(ctx context.Context, matchID string, mapNames []string,
-	filmDir string, entry decfilm.MapQuantEntry,
+func (b *Builder) entreesDeLaCuisson(ctx context.Context, matchID, filmDir string,
+	entry decfilm.MapQuantEntry,
 ) (entreesDeCuisson, error) {
 	if f, entete := b.lireLesFaitsFrais(ctx, matchID, entry); f != nil {
 		src := entreesDesFaits(f)
@@ -119,7 +119,7 @@ func (b *Builder) entreesDeLaCuisson(ctx context.Context, matchID string, mapNam
 	// cuisson du rejeu — au lieu de deux, comme avant la jointure des frags sous effet actif
 	// (PLAN_RETOURS_UTILISATEUR_2026-08-29 §LOT F.1).
 	tKS := time.Now()
-	kills := b.decodeKillSource(matchID, mapNames, film)
+	kills := b.decodeKillSource(matchID, entry, film)
 	logPhase("killsource", matchID, tKS)
 	return entreesDeCuisson{film: film, statborg: statborg, deaths: deaths, kills: kills}, nil
 }

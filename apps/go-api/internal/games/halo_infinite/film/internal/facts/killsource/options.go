@@ -17,8 +17,8 @@ import (
 )
 
 // Options : les quatre bascules mesurables, plus la CARTE du match (une donnee, pas une
-// bascule). Le zero-value N EST PAS la configuration retenue :
-// passer `nil` a [Decode], ou partir de [DefaultOptions], est la bonne facon de faire.
+// bascule). Le zero-value N EST PAS la configuration retenue : partir de [DefaultOptions] et y
+// poser la CARTE du match (obligatoire depuis le 2026-09-27 — `nil` rend [ErrCarteAbsente]).
 type Options struct {
 	// Bots : lire BOT_METADATA (paquet type 12) pour etendre le roster et epingler les slots
 	// de bot. Sans lui, `nPlayers` reste le nombre de joueurs du kill-feed et les morts de bot
@@ -94,15 +94,26 @@ type Options struct {
 	// MEME geste ; les separer aurait ete une regression sur toute carte dont les largeurs ne
 	// sont pas l invariant.
 	//
-	// NIL EST LICITE, ET COMPTE : le decodeur retombe sur l invariant, le DIT
-	// (`repli_carte_absente_largeurs_par_defaut` au registre, avertissement par film) et
-	// [Result.Calibration] porte la mention. C est le cas d un appelant sans base sous la main
-	// (CLI unitaire, ouvrier distant, collecteur sans `WithPositionCapture`).
+	// NIL N EST PLUS LICITE (2026-09-27, regle utilisateur : « le flux du film est la seule
+	// source fiable. Pas de repli. ») : [Decode] rend [ErrCarteAbsente] et l appelant met le film
+	// de cote. Le repli `repli_carte_absente_largeurs_par_defaut`, qui decodait aux largeurs de
+	// l invariant, est RETIRE du registre avec cette garde (son critere de retrait est tenu).
 	//
 	// PROVENANCE DES VALEURS : [profile.MapQuantEntry.PrecisionAbsolue] — les trois largeurs
 	// d axe derivees des bornes par la loi du moteur (accord 79 cartes sur 79), la largeur
 	// d index de plage et l index de la plage jouee.
 	Carte *profile.MapQuantEntry
+
+	// RechercheSansCarte : RESERVE AUX INSTRUMENTS DE RECHERCHE — jamais en production.
+	//
+	// Elle ouvre, EXPLICITEMENT, la seule porte vers le decodage sans carte : un instrument qui
+	// mesure un film quelconque du cache n a pas de base pour en resoudre la carte, et certains
+	// mesurent justement l effet de son absence. Le decodeur garde alors l invariant du profil (les
+	// largeurs de `cliffhanger`), l avertit par film et [Result.Calibration] porte la mention
+	// « DEFAUT (carte absente) ». Ce n est PAS un repli de production : le ratchet
+	// `archlint/killsource_recherche_sans_carte_test.go` refuse ce champ dans tout fichier de
+	// production hors de ce paquet.
+	RechercheSansCarte bool
 }
 
 // bijectionSeed : graine FIXE de la montee locale. Elle ne doit pas bouger : c est elle qui

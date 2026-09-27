@@ -61,13 +61,16 @@ var assistAttendu = map[string]struct {
 	// fccc61cd : +1 attachee et +1 sans assistant avec 7ter.79 (la mort infligee par `bid(7.0)`
 	// n en nomme aucun) — `named` NE BOUGE PAS. L ecart a l API y reste de 2, il n avait aucune
 	// chance d etre comble par ce lot, et c est ce que la mesure dit.
-	"fccc61cd": {killEvents: 105, attached: 95, named: 16, noAssist: 79, multi: 1, apiTotal: 18},
+	// J7 (FK-6, 2026-09-27) : le doublon d enregistrement qui faisait le multi-attachement est retire
+	// (`assistScan.dedoublonner`) — 105 -> 104 kill-events, multi 1 -> 0 ; rien d autre ne bouge.
+	"fccc61cd": {killEvents: 104, attached: 95, named: 16, noAssist: 79, multi: 0, apiTotal: 18},
 	// 9b191a7f porte la RESERVE ARITHMETIQUE consignee dans `assist.go`. RE_LOG 7ter.79 en
 	// recupere DEUX des trois manquantes : les kills du bot sont desormais publies, donc leurs
 	// assistants aussi (84 -> 87 attachees, 22 -> 24 nommees). Il en reste 6 a l API, et le
 	// plafond honnete est 24 + 3 (les trois morts DU bot, sans kill-event trouve) = 27 < 30.
 	// Son multiset n est donc toujours PAS declare : le figer reviendrait a figer l anomalie.
-	"9b191a7f": {killEvents: 101, attached: 87, named: 24, noAssist: 63, multi: 1, apiTotal: 30},
+	// J7 (FK-6) : doublon retire, 101 -> 100 kill-events, multi 1 -> 0.
+	"9b191a7f": {killEvents: 100, attached: 87, named: 24, noAssist: 63, multi: 0, apiTotal: 30},
 }
 
 func fixturesRoot(t *testing.T) string {
@@ -306,8 +309,8 @@ func TestAssistExtraNEstPasMuet(t *testing.T) {
 // publiait alors << PAS D ASSISTANT, MESURE >> alors qu un enregistrement attache en nommait un —
 // une MESURE D ABSENCE FABRIQUEE A PARTIR D UN DESACCORD, qu aucun compteur ne voyait.
 //
-// SA PRECONDITION EST REELLE, PAS THEORIQUE : `Stats.Assist.Multi` vaut 1 sur `9b191a7f` et 1 sur
-// `fccc61cd` (fige dans `assistAttendu`). Ce que le corpus ne produit pas, c est le DESACCORD
+// SA PRECONDITION ETAIT REELLE : `Stats.Assist.Multi` valait 1 sur `9b191a7f` et 1 sur
+// `fccc61cd` avant que J7 (FK-6) ne retire le doublon qui la produisait. Ce que le corpus ne produit pas, c est le DESACCORD
 // lui-meme — les deux enregistrements y sont identiques (RE_LOG 7ter.77). D ou ce test : la regle
 // de preference est une DECISION, et une decision se teste sur le cas qu elle tranche.
 //
@@ -414,7 +417,7 @@ func decodeFixture(t *testing.T, root, id string) *Result {
 	if err != nil {
 		t.Fatalf("%s: %v", id, err)
 	}
-	res, err := Decode(context.Background(), id, src, nil)
+	res, err := Decode(context.Background(), id, src, optionsDeReference(t, id))
 	if err != nil {
 		t.Fatalf("%s: %v", id, err)
 	}
@@ -429,7 +432,7 @@ func prepareForAssist(t *testing.T, root, id string) (*decodeCtx, *assistScan) {
 	if err != nil {
 		t.Fatalf("%s: %v", id, err)
 	}
-	c := &decodeCtx{name: id, opts: DefaultOptions()}
+	c := &decodeCtx{name: id, opts: *optionsDeReference(t, id)}
 	if err := c.prepare(context.Background(), src); err != nil {
 		t.Fatalf("%s: %v", id, err)
 	}

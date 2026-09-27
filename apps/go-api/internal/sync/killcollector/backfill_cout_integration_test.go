@@ -76,9 +76,12 @@ import (
 // `KILLSOURCE_ECHANTILLON` (liste separee par des virgules) remplace la liste, pour la machine
 // qui n a pas ce cache-la.
 var echantillonParDefaut = []string{
-	// le bas du cout, films productifs (5 a 11 chunks)
-	"4555ce28", "ee90570b", "c0a82e88", "e157a672", "1a37bcc8",
-	"30d3c047", "cf040013", "114b0040", "aa056037", "bf5ced1b",
+	// le bas du cout, films productifs (10 a 14 chunks) DE CARTE CONNUE (2026-09-27,
+	// cartes_des_films_integration_test.go : huit films de la liste precedente — 4555ce28, ee90570b,
+	// c0a82e88, e157a672, 1a37bcc8, 30d3c047, 114b0040, aa056037 — n ont pas de carte au registre
+	// commis, et un film sans carte est mis de cote)
+	"cf040013", "bf5ced1b", "008e1bba", "58864b3c", "3685373c",
+	"846044ba", "a17e61a2", "e94163af", "b8d1fe0c", "a32ee8d2",
 	// deux films au cout median (29 chunks)
 	"e624c2a4", "e85d7bad",
 	// le plus gros du corpus : 69 chunks, 92,2 Mio sur disque
@@ -133,7 +136,7 @@ func collecteurDeMesure(t *testing.T, db *sql.DB, chunks map[string][]haloclient
 			games.CapFilmWeaponShots:   games.CapSupported,
 			games.CapFilmKillPositions: games.CapSupported,
 		}, 0).
-		WithPositionCapture(staticMapNames{names: allCatalogNames(cat)}, cat)
+		WithPositionCapture(cartesDesFixtures(), cat)
 }
 
 // inscrireFilmAuRegistre pose le match au registre et ses participants, tires DU FILM LUI-MEME
@@ -240,8 +243,13 @@ func mesurerUnFilm(t *testing.T, ctx context.Context, db *sql.DB, film string) *
 
 	debut = time.Now()
 	opts := decfilm.DefaultOptions()
-	opts.Carte = col.carteDuMatch(ctx, film)
+	carte, errCarte := col.carteDuMatch(ctx, film)
 	c.carte = time.Since(debut)
+	if errCarte != nil {
+		t.Logf("film %s : carte non resolue (%v) — saute (un film sans carte est mis de cote)", film, errCarte)
+		return nil
+	}
+	opts.Carte = carte
 
 	debut = time.Now()
 	res, err := decfilm.Decode(ctx, film, decode, &opts)

@@ -220,8 +220,11 @@ type KillSourceSummary struct {
 	NotSupport int
 	// UnknownKey : films ECARTES parce que leur cle ecrite est absente de la table de profil
 	// (lot 3.1.1). Ni un ecrit, ni une erreur : la passe s est arretee AVANT tout decodage.
-	UnknownKey  int
-	ElapsedTime time.Duration
+	UnknownKey int
+	// CarteNonResolue : films ECARTES parce que la carte du match n est pas resolue (2026-09-27).
+	// Ni un ecrit, ni une erreur : la passe s est arretee AVANT tout decodage.
+	CarteNonResolue int
+	ElapsedTime     time.Duration
 }
 
 // CollectMatches : la passe de fond, EN SERIE — le chemin de REFERENCE.
@@ -302,6 +305,7 @@ func (c *KillSourceCollector) CollectMatches(ctx context.Context, matchIDs []str
 		"sans_killfeed", sum.NoKillFeed, "abandons_delai", sum.Timeouts,
 		"erreurs", sum.Errors, "capability_absente", sum.NotSupport,
 		"ecartes_cle_inconnue", sum.UnknownKey,
+		"ecartes_carte_non_resolue", sum.CarteNonResolue,
 		"duration", sum.ElapsedTime)
 	return sum
 }

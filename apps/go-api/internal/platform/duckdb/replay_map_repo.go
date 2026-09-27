@@ -24,8 +24,11 @@ import (
 	"levelup/go-api/internal/port"
 )
 
-// ErrMatchMapUnknown signale qu'aucun nom de carte n'est connu pour ce match.
-var ErrMatchMapUnknown = errors.New("duckdb: carte inconnue pour ce match")
+// ErrMatchMapUnknown signale qu'aucun nom de carte n'est connu pour ce match. C'est LA
+// sentinelle du port ([port.ErrMatchMapUnknown]), pas une copie : un appelant qui ne connaît que
+// le port (le décodeur de la source des kills) doit pouvoir distinguer cette DONNÉE ABSENTE d'une
+// panne de lecture (revue du correctif J7, 2026-09-27).
+var ErrMatchMapUnknown = port.ErrMatchMapUnknown
 
 // ReplayMapRepo résout la carte d'un match (registre partagé + traductions d'assets).
 type ReplayMapRepo struct {

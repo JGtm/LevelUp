@@ -33,7 +33,6 @@ import (
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/observability"
-	duckdbpkg "levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/sync/killcollector"
 	"levelup/go-api/internal/sync/replayartifacts"
 )
@@ -572,12 +571,9 @@ func (s postSyncFilmSteps) runKillSource(ctx context.Context, insertedIDs []stri
 		// LA CAPTURE DES POSITIONS, ENFIN CABLEE AU SYNC (correction P0-1, 2026-09-07). Sans
 		// elle, `collectPositions` sortait en Debug et NI `kill_positions` NI les faits
 		// d'isolement n'etaient jamais produits au fil de l'eau — seul le backfill hors ligne
-		// les ecrivait. METADATA NIL, ET C'EST DELIBERE : le serveur tient deja metadata en
-		// RW, et en ouvrir un second handle echouerait sur « different configuration »
-		// (ADR 0016) ; le resolveur retombe alors sur le libelle BRUT du registre
-		// (`match_registry.map_name`), qui suffit au catalogue de bornes — indexe en anglais,
-		// comme ce libelle.
-		MapNames:   duckdbpkg.NewReplayMapRepo(sharedLecteur{acces: s.shared}, nil),
+		// les ecrivait. LES METADONNEES SONT EMPRUNTEES, JAMAIS OUVERTES (2026-09-27) : le
+		// processus les tient deja (ADR 0013/0016) ; cf. killcollector/resolveur_de_carte.go.
+		MapNames:   killcollector.ResolveurDeCartePostSync(sharedLecteur{acces: s.shared}, e.metadataDBPath),
 		Fetcher:    fetcher,
 		LocalCache: e.localFilmCache,
 		WithRead:   s.withRead,

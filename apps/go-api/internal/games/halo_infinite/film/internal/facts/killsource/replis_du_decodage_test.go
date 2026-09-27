@@ -28,7 +28,7 @@ func TestReplisDuResultatPorteChaqueCompte(t *testing.T) {
 		killEvents: &assistScan{chainesArretees: 8},
 		calib:      calibration{CarteLue: false, ControleDeCorruptionLu: false, PoigneeDecidee: true},
 	}
-	kills := []Kill{{Victim: nomHorsBijection, Feed: FeedTruth{Killer: nomHorsBijection}}}
+	kills := []Kill{{Victim: "?", Feed: FeedTruth{Killer: "?"}}} // le nom que [roster.nameOf] rend hors bijection
 	unclaimed := []UnclaimedDeath{{}}
 	r := c.replisDuResultat(kills, unclaimed, false)
 	v := reflect.ValueOf(r)
@@ -65,16 +65,19 @@ func TestLeFiltreDeCredibiliteCompteSesRejets(t *testing.T) {
 
 // TestLeDecodageDeLaBobineV40PorteSesReplis : sur de vrais octets, les deux replis que tout decodage
 // declenche (pied par argmax, type de chunk perdu) sont comptes, et le compte voyage dans le resultat.
+//
+// La bobine se decode SOUS SA CARTE (Fragmentation) : sans carte, [Decode] refuse le film depuis le
+// 2026-09-27 ([ErrCarteAbsente]), et `repli_carte_absente_largeurs_par_defaut` n existe plus.
 func TestLeDecodageDeLaBobineV40PorteSesReplis(t *testing.T) {
-	res, err := Decode(context.Background(), miniBobineV40Film, chargerMiniBobineV40(t), nil)
+	carte := carteDuCatalogue(t, "Fragmentation")
+	opts := DefaultOptions()
+	opts.Carte = &carte
+	res, err := Decode(context.Background(), miniBobineV40Film, chargerMiniBobineV40(t), &opts)
 	if err != nil {
 		t.Fatalf("decodage de la bobine v40 : %v", err)
 	}
 	if res.Stats.Replis.PiedParArgmax != 1 || res.Stats.Replis.TypeDeChunkPerdu != 1 {
 		t.Errorf("pied par argmax %d, type de chunk perdu %d — attendu 1 et 1 par decodage",
 			res.Stats.Replis.PiedParArgmax, res.Stats.Replis.TypeDeChunkPerdu)
-	}
-	if res.Stats.Replis.CarteAbsente != 1 {
-		t.Errorf("decodage sans `Options.Carte` : carte absente comptee %d, attendu 1", res.Stats.Replis.CarteAbsente)
 	}
 }
