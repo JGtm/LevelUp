@@ -1246,7 +1246,7 @@ Périmètre FERMÉ : un item par constat retenu, chacun avec un test de non-rég
   été retiré. Test : index recréé, puis ouverture, puis log présent ; base à jour, puis
   ouverture, puis aucun log.
 - [x] **B-C6 (code mort)** (`domain/title/demo_layout.go` : `Root()` retiré, aucun appelant ni test ; anti-résurrection `domain/title/demo_layout_no_root_test.go` par réflexion, rouge puis vert) : `title.DemoLayout.Root()` est supprimé.
-- [ ] **B-C7 (R2-1)** : en démo, le service de rejeu lit les données VERSIONNÉES (fonds, mappings,
+- [x] **B-C7 (R2-1)** (`service/replay_service.go` : deux racines, `repoRoot` = données versionnées, `runtimeRoot` = artefacts (`ReplayArtifactPath`/`ReplayArtifactsDir`), `NewReplayServiceRoots` ; `NewReplayService` = deux racines égales, inchangé pour la CLI et les tests ; construction sortie de `registry_pages.go` (632 → 620 L) vers `wire/registry_replay_service.go` `replayServiceFrom` : `cfg.RepoRoot` + `cfg.RuntimePaths()` ; aucun fichier du §3.1.6 touché ; test HTTP par le vrai `ReplayHandler` `wire/registry_replay_service_demo_test.go` : démo → fond versionné 200, artefact sous runtime 200, artefact du dépôt 404 ; rouge 404 sur le fond avant, vert après ; témoin hors démo) : en démo, le service de rejeu lit les données VERSIONNÉES (fonds, mappings,
   libellés, zones, règles de tiers) depuis la racine du dépôt, et les artefacts d'exécution
   (rejeux, rasters, faits) depuis `<démo>/runtime/`. Test : en démo, le fond de carte d'une carte
   versionnée est servi (200), et un artefact est lu sous `runtime`.

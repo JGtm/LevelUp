@@ -148,18 +148,6 @@ func (r *ServiceRegistry) Replay(ctx context.Context, slug string) (port.ReplayS
 	return r.replayServiceFor(pdb), nil
 }
 
-// replayServiceFor construit le service de rejeu d'un joueur — UN SEUL endroit, partagé par
-// l'endpoint /replay et la Match View (qui n'en appelle qu'IsAvailable). Deux constructions
-// divergentes, ce serait une Match View qui annonce un rejeu que l'endpoint ne sert pas.
-//
-// La résolution de carte (fond de carte) lit le registre partagé et les traductions d'assets ;
-// elle est passée au service, jamais reconstruite ailleurs.
-func (r *ServiceRegistry) replayServiceFor(pdb *duckdb.PlayerDB) port.ReplayService {
-	maps := duckdb.NewReplayMapRepo(pdb.SharedReadDB(), pdb.Metadata)
-	// Artefacts lus sous cfg.RuntimePaths (sous `<démo>/runtime/` en démo, lot B5.5).
-	return service.NewReplayService(pdb.TitleSlug, r.cfg.RuntimePaths().RepoRoot(), maps)
-}
-
 // Tactical retourne un TacticalService pour le joueur : l'onglet Tactique
 // (lectures de placement par carte + KPI d'echange). UN SEUL endroit de
 // construction, comme replayServiceFor.
