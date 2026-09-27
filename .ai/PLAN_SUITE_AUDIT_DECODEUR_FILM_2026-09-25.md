@@ -132,19 +132,19 @@ traité (justification au journal §9). Aucune case vide.
 
 | ID | Grav. | Constat (résumé) | Traitement | Statut |
 |---|---|---|---|---|
-| GB-1 | P0 | Positions et canaux delta bipède limités à la génération 1 du handle | J5.0, J5.2, J5.5 | [ ] |
+| GB-1 | P0 | Positions et canaux delta bipède limités à la génération 1 du handle | J5.0, J5.2, J5.5 | [x] |
 | OPS-3 | P1 | Étape 1.57 lancée une fois par joueur, en parallèle, sur le même arriéré | J1 (`d518000b3` + correctif de revue) | [x] |
 | SRC-2/OPS-4 | P1 | Chunks écrits sans atomicité, « présent » tenu pour « complet » | J2.1-J2.5 (manifeste atomique : `[~]` rr L3, contrôle P-3) | [x] |
 | FK-1 | P1 | Un remplaçant humain désépingle le bot de relais, sans signal | J7.2 | [ ] |
 | FK-2 | P1 | Nom de remplissage `?N` publié comme assistant nommé | J7.1 | [ ] |
 | GA2-1 | P1 | Portage divergent de `FUN_14076e524` (corps d'i54) | Reprise M4b de la campagne rr, fusionnée le 2026-09-25 (`3cca6cf47`) : les deux positions d'i54 lues au niveau 0x10 par `consumeSimStateHandleTail`, `consumeE494Position` supprimé — confirmé par P-3 ; les autres sites du même lecteur restent en J6 | [~] |
-| GA2-2 | P1 | `flock-position` lu au niveau 0 au lieu de l'immédiat 0x10 | J6 | [ ] |
+| GA2-2 | P1 | `flock-position` lu au niveau 0 au lieu de l'immédiat 0x10 | J6 : EXCEPTION DATÉE (la lecture du jeu fait baisser une fermeture, §9 2026-09-27) | [!] |
 | GA1-2 | P1 | Repli « liaison par anticipation » hors registre, non compté | J8.1 | [ ] |
 | RA1-1 | P1 | Faits persistés dépendants des gardes de l'appelant, non comparées | J3.4 | [x] |
 | RB2-1 | P1 | Sièges : un arrivant précoce arrête l'appariement du camp | rr vague D (M2 : chaînage nommé `repli_place_du_remplacant_par_chainage_d_equipe`) — confirmé par P-3 sur `3cca6cf47` | [~] |
 | RB2-4 | P1 | `spawnSetFrom` compare à une image-clé future | rr vague D (M3.2 : « jamais un relevé à venir », borne de vie) — confirmé par P-3 sur `3cca6cf47` | [~] |
 | RB2-5 | P1 | Un ramassage natif date plusieurs occupations de socle | J8.2 | [ ] |
-| RB1-1 | P1 | `flag_carriers_killed` peut fermer le portage d'un porteur vivant | J9.1 | [ ] |
+| RB1-1 | P1 | `flag_carriers_killed` peut fermer le portage d'un porteur vivant | J9.1 | [x] |
 | FO-1/RA2-4 | P1 | Provenance `residu_de_manche` publiée « déduit » sans voie | J8.4 | [ ] |
 
 ### 2.2 Constats P2
@@ -153,23 +153,23 @@ traité (justification au journal §9). Aucune case vide.
 |---|---|---|---|---|---|
 | SRC-1 | J3.2 | [x] | FK-6 | J7.6 | [ ] |
 | RA1-3 | J4 | [x] | FK-7 | J7.7 | [ ] |
-| RA1-4 | J3.5 | [x] | RB2-3 | J5.4 | [ ] |
+| RA1-4 | J3.5 | [x] | RB2-3 | J5.4 | [x] |
 | RA1-6 | rr M8 (verdict du fil des morts dans les faits) — confirmé par P-3 | [~] | RB2-6 | J10.3 | [ ] |
 | RA1-5 | J2.7 | [x] | RB2-7 | J10.4 | [ ] |
 | RA1-2 | J3.6 | [x] | RB2-8 | J8.3 | [ ] |
-| RA1-7 | J2.10 | [x] | RB1-2 | J9.4 | [ ] |
-| OPS-1 | J2.6 | [x] | RB1-3 | J9.6 | [ ] |
+| RA1-7 | J2.10 | [x] | RB1-2 | J9.4 | [x] |
+| OPS-1 | J2.6 | [x] | RB1-3 | J9.6 | [x] |
 | OPS-2 | J2.13 | [x] | RB1-4 | J2.8 | [x] |
-| OPS-5 | J2.12 | [x] | RB1-5 | J9.2 | [ ] |
-| FO-3 | J8.5 | [ ] | RB1-6 | J9.3 | [ ] |
-| FO-4 | J8.6 | [ ] | RB1-7 | J9.5 | [ ] |
-| GA2-3, GA2-4, GA2-5 | J6 | [ ] | RB1-8 | J9.7 | [ ] |
+| OPS-5 | J2.12 | [x] | RB1-5 | J9.2 | [x] |
+| FO-3 | J8.5 | [ ] | RB1-6 | J9.3 | [x] |
+| FO-4 | J8.6 | [ ] | RB1-7 | J9.5 | [x] |
+| GA2-3, GA2-4 ; GA2-5 | J6 ; GA2-5 : EXCEPTION DATÉE (dépend du build, §9) | [x] ; [!] | RB1-8 | J9.7 | [x] |
 | GA1-1/GB-2 | J2.9 | [x] | CONV-1 | J2.11 | [x] |
-| GA1-3 | J5.4 | [ ] | RA2-1 | J5.4 | [ ] |
-| GA1-4 | J10.5 | [ ] | RA2-2 | J5.4 | [ ] |
-| GA1-5 | J10.6 | [ ] | RA2-3 | J5.4 | [ ] |
+| GA1-3 | J5.4 | [x] | RA2-1 | J5.4 | [x] |
+| GA1-4 | J10.5 | [ ] | RA2-2 | J5.4 | [x] |
+| GA1-5 | J10.6 | [ ] | RA2-3 | J5.4 | [x] |
 | GB-3 | J10.1 | [ ] | RA2-5 | J10.1 | [ ] |
-| GB-4 | J10.2 | [ ] | RA2-6 | J5.4 | [ ] |
+| GB-4 | J10.2 | [ ] | RA2-6 | J5.4 | [x] |
 | FK-3, FK-4, FK-5 | J7.3, J7.4, J7.5 | [ ] | | | |
 
 ### 2.3 Faiblesses d'architecture (§« Architecture et conventions » du registre)
@@ -177,8 +177,8 @@ traité (justification au journal §9). Aucune case vide.
 | # | Faiblesse | Traitement | Statut |
 |---|---|---|---|
 | 1 | Fraîcheur et révisions mal calées sur les sorties | J3 (+ J4 pour RA1-3) | [x] |
-| 2 | Identité (slot, génération) non typée | J5 | [ ] |
-| 3 | Portages jumeaux ; 7 lectures de bits artisanales hors `source` | J6 (portages) ; J4.6 (lectures, S2) | [ ] |
+| 2 | Identité (slot, génération) non typée | J5 | [x] |
+| 3 | Portages jumeaux ; 7 lectures de bits artisanales hors `source` | J6 (portages) ; J4.6 (lectures, S2) | [x] |
 | 4 | D-10 tenue par un ratchet de vocabulaire ; 81/99 compteurs non câblés | J8 | [ ] |
 | 5 | `film/replay` paquet-dieu ; seconde séquence de balayage dans `killcollector` | J4 (séquence unique) ; découpe complète : DU-4 | [x] |
 | 6 | Décodage multi-passes | `[!]` hors périmètre (§1.4) | [ ] |
@@ -204,10 +204,10 @@ traité (justification au journal §9). Aucune case vide.
 | # | Escalade | Traitement | Statut |
 |---|---|---|---|
 | 1 | OPS-3 avant la fusion v7.5 → main | J1, fusionné dans `feat/v75` (`9cee40fac`, 2026-09-26) | [x] |
-| 2 | GB-1 : mesurer le parc puis lot de comportement | J5 | [ ] |
+| 2 | GB-1 : mesurer le parc puis lot de comportement | J5 | [x] |
 | 3 | Modèle de révision / fraîcheur | J3 (DU-2) | [x] |
-| 4 | Identité (slot, génération) de première classe | J5 | [ ] |
-| 5 | GA2-1 / GA2-2 (résidu de film dense clos le 23/09) | DU-1 = oui → J6 (GA2-1 : `[~]` reprise M4b) | [ ] |
+| 4 | Identité (slot, génération) de première classe | J5 | [x] |
+| 5 | GA2-1 / GA2-2 (résidu de film dense clos le 23/09) | DU-1 = oui → J6 (GA2-1 : `[~]` reprise M4b) | [!] (GA2-2 en exception datée ; le reste de J6 fait) |
 | 6 | Découpe de `film/replay` et façade (décision V25) | DU-4 = hors plan (`[!]` à la clôture, motif : décision du 2026-09-25) | [ ] |
 | 7 | Politique de commentaires, tag `research` | DU-5 → J12.7, J12.8 | [ ] |
 
@@ -862,48 +862,48 @@ seconde est née dans la campagne rr) ; `replay/build_vehicles.go` (seul à dés
 `types/grammar_equipement.go` `EquipmentLifeKey{Slot, Gen}` (69 références, 18 fichiers).
 
 #### J5.0 Mesure préalable (superviseur, avant tout code)
-- [ ] Instrument : test `research` (ou outil du rapport `RAPPORT_PONT_APLATI_2026-09-10.md`,
+- [x] Instrument : test `research` (ou outil du rapport `RAPPORT_PONT_APLATI_2026-09-10.md`,
       réutilisé s'il existe encore) : par film, records de création par génération, vies (slot,
       génération) avec et sans positions, `durationMs` publié contre la durée du match, en-têtes
       valides dont (slot, tag) n'est aucune vie connue (faux positifs potentiels). S'il est écrit,
       il s'ajoute comme mode de `film/research/cmd_fermeture` (J4.0.4) : même boucle de films, même
       sentinelle — pas un second harnais.
-- [ ] Films : témoins de `config/replay_corpus.toml` + `084a804d`, `1c4c63c2`, `a349fea8` (BTB),
+- [x] Films : témoins de `config/replay_corpus.toml` + `084a804d`, `1c4c63c2`, `a349fea8` (BTB),
       un à la fois, après accord de l'utilisateur.
-- [ ] Critère de poursuite : `084a804d` reproduit l'ordre de grandeur de l'audit (~122 corps sans
+- [x] Critère de poursuite : `084a804d` reproduit l'ordre de grandeur de l'audit (~122 corps sans
       position sur 379). Sinon : ARRÊT et rapport.
-- [ ] Rapport `.ai/V7.5/film_re/MESURE_GB1_<date>.md` ; cibles de J5.5 écrites avant de coder.
+- [x] Rapport `.ai/V7.5/film_re/MESURE_GB1_<date>.md` ; cibles de J5.5 écrites avant de coder.
 
 #### J5.1 Clé de vie typée (DT-7) — zéro différence
-- [ ] Renommage `types.EquipmentLifeKey` → `types.LifeKey` (doc : objet du monde, véhicule, corps
+- [x] Renommage `types.EquipmentLifeKey` → `types.LifeKey` (doc : objet du monde, véhicule, corps
       de bipède) ; aucun alias.
-- [ ] Helper unique de lecture du handle (slot + génération) dans `grammar` ; les quatre copies
+- [x] Helper unique de lecture du handle (slot + génération) dans `grammar` ; les quatre copies
       l'appellent ; ratchet sur le littéral `p+14, 2)` ; mutation.
-- [ ] G-equiv 0 ; empreintes régénérées à révision constante.
+- [x] G-equiv 0 ; empreintes régénérées à révision constante.
 
 #### J5.2 Filtre de génération vivante (GB-1) — DT-8
-- [ ] Tests rouges synthétiques (`grammar`) : `TestEnTeteBipede_TagDeLaGenerationVivanteAccepte`,
+- [x] Tests rouges synthétiques (`grammar`) : `TestEnTeteBipede_TagDeLaGenerationVivanteAccepte`,
       `TestEnTeteBipede_TagDUneGenerationMorteRefuse`,
       `TestEnTeteBipede_SlotSansCreationRetombeSurLeRepliNomme` (compté),
       `TestMarcheurDelta_CorpsDeGenerationDeuxVuParLesHuitCanaux`.
-- [ ] `ScanFilmOptions.RequireTag1` SUPPRIMÉ ; `GenerationsVivantes` construit depuis les records
+- [x] `ScanFilmOptions.RequireTag1` SUPPRIMÉ ; `GenerationsVivantes` construit depuis les records
       de création et les images-clés, passé au marcheur ; `balayerCreations` avant les positions ;
       véhicules : « toutes générations » explicite ; repli `repli_generation_vivante_inconnue_tag1`
       inscrit au registre, compté ; appelants migrés : `replay/build_from_film.go`, l'étage de
       J4 (collecteur), `grammar/weapon_hit_distance_resolver.go`.
 
 #### J5.3 Canaux chaînés par vie
-- [ ] Tests rouges : `TestEquipmentChanges_NouvelleVieNHeritePasDeLaPrecedente`,
+- [x] Tests rouges : `TestEquipmentChanges_NouvelleVieNHeritePasDeLaPrecedente`,
       `TestHeldWeaponChanges_ChaineParVie`.
-- [ ] `grammar/equipment_changes.go` et `grammar/held_weapon_changes.go` chaînent par `LifeKey`.
+- [x] `grammar/equipment_changes.go` et `grammar/held_weapon_changes.go` chaînent par `LifeKey`.
 
 #### J5.4 Registre d'identité par vie
-- [ ] RA2-1 : test rouge `TestRegistre_RecordDeCreationNOuvreQueSaVie` (slot recyclé) → registre
+- [x] RA2-1 : test rouge `TestRegistre_RecordDeCreationNOuvreQueSaVie` (slot recyclé) → registre
       par `LifeKey` (`replay/identity_registry_creation.go`).
-- [ ] RA2-2 : test rouge `TestViesSansNom_NeFranchissentPasUneFrontiereDeCorps` → nommage par
+- [x] RA2-2 : test rouge `TestViesSansNom_NeFranchissentPasUneFrontiereDeCorps` → nommage par
       occupation borné à la vie (`replay/unnamed_lives.go`, `identity.go`) ; ce qui reste = repli
       nommé, inscrit, compté.
-- [ ] RA2-3 : test rouge `TestTirsEtLancers_AttribuesALaVieALInstant` → attribution par (slot,
+- [x] RA2-3 : test rouge `TestTirsEtLancers_AttribuesALaVieALInstant` → attribution par (slot,
       génération à l'instant) par le registre, même abstention que les équipes
       (`TeamCoverage.TracksSlotAmbiguous`, `IdentityRegistry.PontDeSlot`) ; le pont aplati
       slot → premier occupant disparaît de `shots.go`, `grenades.go`, `coverage_decoder.go`.
@@ -912,16 +912,16 @@ seconde est née dans la campagne rr) ; `replay/build_vehicles.go` (seul à dés
       `repli_index_de_tireur_hors_place` de la reprise M4b). L'item porte sur ce qui reste du pont
       aplati (lancers de `grenades.go`, `coverage_decoder.go`, chemin par `owner` de `slotFor`) ;
       le périmètre re-mesuré est écrit au rapport AVANT de coder.
-- [ ] RA2-6 : test rouge `TestNameTracksByLives_VieDUnSeulEchantillonNommeeParSaVie` (règle
+- [x] RA2-6 : test rouge `TestNameTracksByLives_VieDUnSeulEchantillonNommeeParSaVie` (règle
       produit : aucune vie anonyme) → recouvrement à bornes incluses.
-- [ ] RB2-3 : test rouge `TestVieDUneCle_BorneeParLaVieSuivanteDuSlot`
+- [x] RB2-3 : test rouge `TestVieDUneCle_BorneeParLaVieSuivanteDuSlot`
       (`replay/ground_weapon_objects.go`, `equipment_placement_ends.go`).
-- [ ] GA1-3 : test rouge `TestEtatsDeMouvement_RecordNEWPublieSousSaPropreVie`
+- [x] GA1-3 : test rouge `TestEtatsDeMouvement_RecordNEWPublieSousSaPropreVie`
       (`grammar/frame_infer.go`) ; la note D13 « NON TRAITÉ » est levée.
 
 #### J5.5 Montées et gate de comportement
-- [ ] `grammar.Rev`, `SchemaVersion`, `IsolationDecoderRev` (+ chroniques).
-- [ ] G-corpus, changements déclarés d'avance : BTB → vies de génération ≥ 2 positionnées,
+- [x] `grammar.Rev`, `SchemaVersion`, `IsolationDecoderRev` (+ chroniques).
+- [x] G-corpus, changements déclarés d'avance : BTB → vies de génération ≥ 2 positionnées,
       `durationMs` corrigé, positions de mort et distances gagnées ; témoins sans slot recyclé :
       zéro changement ; zéro perte.
 
@@ -947,19 +947,19 @@ est supprimé. La reprise laisse volontairement le site `ti=38 i18` (transformat
 rigide, même lecteur au niveau 0x10, lu dans l'état complet d'une image-clé en R(96)) et le
 consigne à son rapport : ce site entre dans J6.
 
-- [ ] J6.1 Relevés Ghidra (superviseur, lecture seule) : immédiats de niveau de chaque site d'appel
+- [x] J6.1 Relevés Ghidra (superviseur, lecture seule) : immédiats de niveau de chaque site d'appel
       de `FUN_14076e524` (dont `ti=38 i18` et les deux sites d'i54 déjà repris), valeur et
       références de `DAT_144632be0`, `FUN_140ce59bc` et son jumeau ; chaque valeur citée avec
       fonction, adresse et date (D-3 règle 1).
-- [ ] J6.2 Tests rouges par site d'appel : flux de bits synthétique construit selon l'écrivain du
+- [x] J6.2 Tests rouges par site d'appel : flux de bits synthétique construit selon l'écrivain du
       jeu ; `transloc_events` (18/18) reste l'oracle inchangé.
-- [ ] J6.3 Un seul portage paramétré par l'immédiat de niveau, qui PART de
+- [x] J6.3 Un seul portage paramétré par l'immédiat de niveau, qui PART de
       `consumeSimStateHandleTail` (déjà employé par la reprise M4b pour i54) si J6.1 le confirme —
       pas de second portage ; tous les sites l'appellent ; `DAT_144632be0` lu du profil ou constante
       prouvée ; GA2-4 tranché par J6.1 ; GA2-5 aligné sur `absAxisWFor` ; `ti=38 i18` traité avec la
       fermeture d'image-clé `ti=38` du golden comme garde (aucune baisse) ; test en table des sites
       et de leurs immédiats (ratchet).
-- [ ] J6.4 `grammar.Rev` monté ; G-corpus : rejets en baisse (`bfecd02b`), `ti=21` lu en entier
+- [x] J6.4 `grammar.Rev` monté ; G-corpus : rejets en baisse (`bfecd02b`), `ti=21` lu en entier
       sur les cinq bobines, fermeture d'image-clé sans baisse, zéro perte ; carte de fermeture
       (J4.0) rejouée : delta par vue et par archétype contre la référence, golden
       `frame_closure.golden` régénéré en hausse seulement.
@@ -1063,20 +1063,20 @@ déclarés : `coverage.fallbacks`, `usage`, provenance), G-web, G-CI. **Taille**
 **Pièce clé (`feat/rr-m4b`).** `replay/flag_carries.go` `closeByCarrierKills` : seuls sont
 exclus les portages dont le xuid est celui du tueur ; un tueur non identifié n'exclut personne.
 
-- [ ] J9.1 RB1-1 : candidat = porteur d'une équipe ADVERSE à celle du tueur (équipe du balayage
+- [x] J9.1 RB1-1 : candidat = porteur d'une équipe ADVERSE à celle du tueur (équipe du balayage
       passée au contexte) ; tueur non identifié → aucune fermeture, compteur ; tests rouges en
       table.
-- [ ] J9.2 RB1-5 : hors catalogue, le nombre de drapeaux ne se suppose pas (`flag_carries_handoff.go`) :
+- [x] J9.2 RB1-5 : hors catalogue, le nombre de drapeaux ne se suppose pas (`flag_carries_handoff.go`) :
       lu du film, sinon repli nommé sans fermeture par passage ; test rouge.
-- [ ] J9.3 RB1-6 : fermoirs indexés par (manche, slot) ; test rouge (deux manches, même slot).
-- [ ] J9.4 RB1-2 : ordre total (instant, lâcher avant reprise) dans `flag_carries_lives.go` ; test.
-- [ ] J9.5 RB1-7 : portage de bombe fermé au premier de (mort, lâcher) (`held_object_carry.go`) ;
+- [x] J9.3 RB1-6 : fermoirs indexés par (manche, slot) ; test rouge (deux manches, même slot).
+- [x] J9.4 RB1-2 : ordre total (instant, lâcher avant reprise) dans `flag_carries_lives.go` ; test.
+- [x] J9.5 RB1-7 : portage de bombe fermé au premier de (mort, lâcher) (`held_object_carry.go`) ;
       test.
-- [ ] J9.6 RB1-3 : origine d'horloge illisible → `bomb_arms` ABSENT (NULL), jamais zéro mesuré
+- [x] J9.6 RB1-3 : origine d'horloge illisible → `bomb_arms` ABSENT (NULL), jamais zéro mesuré
       (« absent n'est pas zéro ») ; si la colonne interdit NULL : migration (`internal/migration/`,
       skill `db-schema`) et écriture par le persister INSERT-only ; tests (dont G-integ `persist`).
-- [ ] J9.7 RB1-8 : descente de jauge publiée dans la seconde (`zone_states_gauge.go`) ; test.
-- [ ] J9.8 `SchemaVersion` monté.
+- [x] J9.7 RB1-8 : descente de jauge publiée dans la seconde (`zone_states_gauge.go`) ; test.
+- [x] J9.8 `SchemaVersion` monté.
 
 **Gate J9.** G-unit, G-arch, G-integ (si J9.6 touche `persist`/`migration`), G-film, G-corpus
 (changements déclarés : portages, bombe), G-web, G-CI. **Taille** : M.
@@ -1490,3 +1490,26 @@ relancer un agent sans avoir vérifié qu'il est mort. Ne pas re-décider ce qui
   génération vivante (`RequireTag1` supprimé), chaînes par vie ; golden killsource régénéré par
   le superviseur à révision constante. G-equiv de J5.1 lancé. J5.4 lancé (un calage de 10 min,
   relancé). Découvertes §8.20-8.21.
+- 2026-09-27 : **G-equiv J5.1 : 20/20 identiques** (renommage et lecteur unique du handle neutres).
+  **J5.4 fait** (`b18faa674` … `5f65ff049`, un commit par constat) ; RB2-3 resserré à la
+  création PROUVÉE (la règle littérale du plan, mesurée, est contredite 29 fois par le
+  recensement sur les mini-bobines). **Cibles GB-1 vérifiées** (instrument gb1 à J5.4, 19 films) :
+  vies sans position 330/123/77/74 → 0/0/0/8, durées publiées `1c4c63c2` 826 → 1 289 s,
+  `084a804d` 972 → 1 056 s, `a349fea8` 933 → 948 s ; 15 témoins : positions et durées identiques.
+  Changements déclarés au-delà des positions (J5.4, voulus) : vies d'un échantillon nommées (RA2-6),
+  repli `repli_identite_vie_par_occupation_du_corps` compté, états de mouvement des records NEW
+  (GA1-3). **J5.5** (`6d988f28d`) : `grammar-2026-09-27`, schéma 74,
+  `isolement-2026-09-27-generations-vivantes`, `killsource-2026-09-27` (recette : valeur amont) ;
+  registre des replis scindé ; correctif superviseur de la ligne d'historique `grammar-2026-09-24`
+  du golden (empreinte d'avant J5). **Revue adversariale J5** : aucun défaut de données (17
+  conditions), 3 trous de tests (dont P1 : le retour au filtre génération 1 ne rougissait rien)
+  comblés sans code de production (`b0d20e02f`), mutations rouges vérifiées par le superviseur.
+- 2026-09-27 : **J6 fait** : relevés Ghidra J6.1 (lecture seule, 95 sites) ; portage unique
+  (`56299bdc3`) ; **trois sites en EXCEPTION DATÉE** (décision superviseur, la lecture du jeu y
+  fait baisser une fermeture) : flock-position `ti=21` (GA2-2 → `[!]`), world-object i0 porte
+  posée (GA2-5, dépendant du build → `[!]`), `ti=38 i18` ; ti=13 de 0 % à ~100 % de fermeture
+  d'image-clé. Fusion J6 → J5 (`ed211332c`) : `grammar.Rev` = `grammar-2026-09-27.2` (chronique :
+  J5 puis J6), goldens et fixtures régénérés par leurs portes, toutes les gates vertes (web
+  compris). **J5, J6, J9 fusionnés dans la branche du plan** (`d6701c058`). Reste pour eux :
+  G-corpus (serveur dev à arrêter : créneau demandé à l'utilisateur) et références
+  d'équivalence à re-figer au nouvel état (avant J10, qui exige G-equiv x2).

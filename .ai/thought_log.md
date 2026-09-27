@@ -113564,3 +113564,11 @@ serveur relance a synchronise depuis). Tache Notion 10 CLOSE.
 **Resultats observes** : replay-equiv 20/20 identiques a J4.2, J4.5 et J4.6 ; benchmark J4.6 -0,92 % ; GB-1 : 4 films touches (123, 330, 74, 77 vies sans position ; `1c4c63c2` tronque de 463 s), 15 temoins intacts. Revue J7 : ronde 1 4 constats corriges, ronde 2 1 defaut de donnees introduit par la correction FK-4 -> borne de 2 rondes atteinte, escalade a l'utilisateur.
 
 **Conclusion / prochaine etape** : decision utilisateur sur J7 ; J5.4 en cours puis J5.5 (montees, G-corpus contre les cibles) ; G-equiv J5.1 en cours ; G-corpus J7/J9 ; J6 attend Ghidra (utilisateur) ; J8, J10 apres J5.
+
+## [2026-09-27] Suite de l'audit du decodeur : J5 (GB-1, identite par vie), J6 (portage unique) et J9 reunis sur la branche du plan — En cours (vague J11)
+
+**Decision technique principale** : GB-1 corrige par le filtre de generation vivante (J5.2) et l'identite du rejeu rattachee au corps (J5.4) ; un seul portage de la lecture de position du jeu parametre par l'immediat de niveau releve dans Ghidra (J6), trois sites laisses sur leur ancien lecteur en exceptions datees parce que la lecture du jeu y fait baisser une fermeture ; montees grammar-2026-09-27 puis .2, schema 74, killsource-2026-09-27, isolement-2026-09-27.
+
+**Resultats observes** : cibles GB-1 atteintes (330/123/77/74 vies sans position -> 0/0/0/8, rejeu de 1c4c63c2 allonge de 463 s, 15 temoins identiques) ; G-equiv J5.1 20/20 identiques ; revue J5 sans defaut de donnees, trois trous de tests combles ; fermeture ti=13 de 0 a ~100 %. Fusions J9 -> J5, J6 -> J5, J5 -> plan sans conflit de fond.
+
+**Conclusion / prochaine etape** : J8 et J10 ; G-corpus J5/J7/J9 (creneau serveur arrete a obtenir) ; decision utilisateur sur J7 ; references d'equivalence a re-figer avant J10.
