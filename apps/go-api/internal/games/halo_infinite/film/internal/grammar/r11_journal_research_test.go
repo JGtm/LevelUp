@@ -208,7 +208,7 @@ func r11Walk(s r8MobSetup, idx, stat map[string]int, set func(uint32, uint64)) {
 			pay := pk.Payload(data)
 			total := len(pay) * 8
 			for p := 0; p+minRecord <= total; {
-				i0, slot, ids, ok := matchBipedHeader(pay, p, total, s.slots, true, s.lay)
+				i0, slot, ids, ok := matchBipedHeader(pay, p, total, s.slots, nil, s.lay)
 				if !ok {
 					p++
 					continue

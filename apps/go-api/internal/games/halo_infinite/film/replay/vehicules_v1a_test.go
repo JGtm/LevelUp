@@ -63,7 +63,7 @@ const (
 // partie des pas que la mesure de continuite compte.
 func v1aOptions(wr *profile.Vec3Range, filtres bool) grammar.ScanFilmOptions {
 	opt := grammar.DefaultScanFilmOptions()
-	opt.WorldRange, opt.RequireTag1 = wr, false
+	opt.WorldRange, opt.Generations = wr, grammar.ToutesLesGenerations()
 	if !filtres {
 		opt.MaxSpeedMPS, opt.IsolationGapMS = 0, 0
 	}

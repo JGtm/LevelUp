@@ -222,8 +222,9 @@ func (r *rapportGB1) ecrireSection(w io.Writer) {
 	fmt.Fprintln(w, "## GB-1 — vies du bipede par generation du handle")
 	fmt.Fprintln(w)
 	fmt.Fprintln(w, "Vie = (slot, generation) connue par un record de creation ou d image-cle. "+
-		"Filtre prod = `DefaultScanFilmOptions` (tag 1), en quanta (sans filtre de vitesse). "+
-		"Generation vivante = en-tetes du meme marcheur filtre desarme dont (slot, tag) est une vie "+
+		"Filtre prod = `DefaultScanFilmOptions` (generation 1 avant le lot J5.2, generations vivantes du film depuis), "+
+		"en quanta (sans filtre de vitesse), chaque position rattachee a sa vie (slot, tag). "+
+		"Generation vivante = en-tetes du meme marcheur filtre leve dont (slot, tag) est une vie "+
 		"connue, isolement 15 s par (slot, tag). Orphelin = en-tete brut dont (slot, tag) n est "+
 		"aucune vie connue (faux positif potentiel). Durees en ms ; `durationMs` publie reconstitue "+
 		"par la formule de `replay` sur les positions prod.")

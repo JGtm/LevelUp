@@ -181,7 +181,7 @@ func i48Scan(dir string, chunks []int, slots SlotBand, w i48Walk) ([]i48Sample, 
 			pay := pk.Payload(data)
 			total := len(pay) * 8
 			for p := 0; p+minRecord <= total; {
-				i0, slot, idx, ok := matchBipedHeader(pay, p, total, slots, true, lay)
+				i0, slot, idx, ok := matchBipedHeader(pay, p, total, slots, nil, lay)
 				if !ok {
 					p++
 					continue

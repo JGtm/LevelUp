@@ -116,7 +116,7 @@ func i57hScan(t *testing.T, s eaFilmSetup, idx57 int) ([]i57hSample, i57hStats) 
 			pay := pk.Payload(data)
 			total := len(pay) * 8
 			for p := 0; p+minRecord <= total; {
-				if i0, slot, idx, ok := matchBipedHeader(pay, p, total, s.slots, true, s.lay); ok {
+				if i0, slot, idx, ok := matchBipedHeader(pay, p, total, s.slots, nil, s.lay); ok {
 					st.sparse++
 					i57hAccount(pay, i0, total, idx, s, idx57, &capt, &st, &samples, slot, pk.TimestampUS)
 					p = i0 + s.lay.TotalBits()

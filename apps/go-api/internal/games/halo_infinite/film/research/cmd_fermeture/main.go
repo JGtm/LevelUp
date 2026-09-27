@@ -9,7 +9,8 @@
 //     intermediaire — et le classement des causes d arret, c est-a-dire la liste courte de ce qui
 //     merite Ghidra (ou une largeur mesuree presumee, decision DU-9) ;
 //   - `gb1` : la MESURE PREALABLE DU CONSTAT GB-1 (lot J5.0) : les vies (slot, generation) du
-//     bipede, celles que le filtre `RequireTag1` laisse sans position, `durationMs` contre la duree
+//     bipede, celles que le filtre de production laisse sans position (la generation 1 seule
+//     avant le lot J5.2, les generations vivantes depuis), `durationMs` contre la duree
 //     du film, et les en-tetes dont (slot, tag) n est aucune vie connue (cf. gb1.go).
 //
 // Il ne compile QUE sous le tag `research`. Il lit les films EN PLACE, UN A LA FOIS, dans l ordre

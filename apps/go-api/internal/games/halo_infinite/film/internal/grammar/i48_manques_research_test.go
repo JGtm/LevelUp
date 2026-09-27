@@ -160,7 +160,7 @@ func i48mStrict(s i48mSetup, usMin, usMax uint64) (ems, unread []i48mCand) {
 	i48mPackets(s, usMin, usMax, func(c int, pk FilmPacket, pay []byte) {
 		total := len(pay) * 8
 		for p := 0; p+s.minRec <= total; {
-			i0, slot, idx, ok := matchBipedHeader(pay, p, total, s.slots, true, s.lay)
+			i0, slot, idx, ok := matchBipedHeader(pay, p, total, s.slots, nil, s.lay)
 			if !ok {
 				p++
 				continue

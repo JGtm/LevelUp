@@ -384,4 +384,30 @@ var registreFilmdec = []Repli{
 		CritereRetrait:  "porte lue a l ecrivain ET 0 lecture supposee comptee sur le corpus du gate de rejeu",
 		CompteurBranche: true,
 	},
+	{
+		Nom:  "repli_generation_vivante_inconnue_tag1",
+		Fait: "la generation du handle sous laquelle un record delta bipede est lu (positions, huit canaux delta, visee seule, recuperation d equipement), sur un slot dont aucune generation n est connue",
+		Mecanisme: "le slot n est designe ni par un record de creation de bipede ni par un record ti=35 d image-cle : seule la generation 1 est acceptee (le filtre `RequireTag1` d avant le lot J5.2) ; " +
+			"compte = slots distincts des positions publiees dans ce cas",
+		// NON RESOLU : les deux lectures qui designent une vie ont tourne sur tout le film et n ont
+		// rien rendu pour ce slot (un corps cree puis detruit entre deux images-cles, dont la
+		// creation n a pas ete acceptee). Mesure J5.0 (19 films, 2026-09-27) : aucune position de
+		// production dont la vie (slot, 1) serait inconnue — le repli est attendu a zero sur le parc.
+		Condition: CondNonResolu,
+		Ordre:     OrdreApresLecture,
+		Sites: []Site{{
+			Fichier: pkgFilmdec + "generations_vivantes.go",
+			Ancre:   "return h.Gen == generationDuRepli",
+		}, {
+			Fichier: pkgFilmdec + "generations_vivantes.go",
+			Ancre:   "func (g *GenerationsVivantes) SlotsEnRepli(pos []BipedPosition) int {",
+		}, {
+			Fichier: "internal/games/halo_infinite/film/replay/film_scan.go",
+			Ancre:   "s.opt.Fallbacks.DeclencheN(fallback.NomGenerationVivanteInconnueTag1,",
+		}},
+		DatePose:        "2026-09-27",
+		CibleRetrait:    "J11 (gates de corpus du plan PLAN_SUITE_AUDIT_DECODEUR_FILM) : retrait si le compte est a zero sur le corpus, sinon lecture des vies manquantes (creations refusees par la signature)",
+		CritereRetrait:  "0 slot compte sur le corpus du gate de rejeu ET sur le parc re-decode",
+		CompteurBranche: true,
+	},
 }

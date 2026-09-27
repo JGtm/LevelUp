@@ -91,7 +91,7 @@ func TestV10MasqueDeadState(t *testing.T) {
 				}
 			}
 		})
-		opt := ScanFilmOptions{RequireTag1: false, DropSaturated: true, CaptureDirs: true,
+		opt := ScanFilmOptions{Generations: ToutesLesGenerations(), DropSaturated: true, CaptureDirs: true,
 			QuantaOnly: true, DynPrecOrientation: true}
 		lay := entry.Layout()
 		if lay.Valid() {
@@ -174,7 +174,7 @@ func v10ControlBiped(t *testing.T, dir, short8 string, entry profile.MapQuantEnt
 			}
 		}
 	})
-	opt := ScanFilmOptions{RequireTag1: true, DropSaturated: true, CaptureDirs: true, QuantaOnly: true}
+	opt := ScanFilmOptions{DropSaturated: true, CaptureDirs: true, QuantaOnly: true}
 	lay := entry.Layout()
 	if lay.Valid() {
 		opt.Layout = &lay

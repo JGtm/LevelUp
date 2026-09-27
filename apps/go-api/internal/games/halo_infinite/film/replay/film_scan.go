@@ -54,6 +54,10 @@ func (s *filmScan) balayerPositions() error {
 		return s.pont.ErrPositions
 	}
 	s.in.Positions = s.pont.Positions
+	// LE REPLI DU FILTRE DE GENERATION SE COMPTE ICI (lot J5.2) : un slot dont aucune generation
+	// n est connue a ete lu a la seule generation 1. `grammar` le nomme, la cuisson le compte.
+	s.opt.Fallbacks.DeclencheN(fallback.NomGenerationVivanteInconnueTag1,
+		s.pont.Generations.SlotsEnRepli(s.in.Positions))
 	s.opt.observe("positions", s.in.Positions)
 	s.balayerCreations()
 	// Les tirs sont décodés du MÊME film et sur la MÊME horloge que les positions ; leur

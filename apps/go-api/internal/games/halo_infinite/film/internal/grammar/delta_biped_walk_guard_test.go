@@ -74,7 +74,7 @@ func TestMarcheurDeltaBipedeSArreteSurLaBorne(t *testing.T) {
 	pay := make([]byte, 64)
 
 	var vus []deltaBipedRecord
-	walkDeltaBipedPayload(pay, slots, lay, true, func(r deltaBipedRecord) {
+	walkDeltaBipedPayload(pay, slots, lay, nil, func(r deltaBipedRecord) {
 		vus = append(vus, r)
 	})
 	// Un payload de zeros ne porte aucun record valide : le marcheur doit rendre la main sans
@@ -141,7 +141,7 @@ func TestMarcheurDeltaBipedeNeRebalaiePasUnRecordPublie(t *testing.T) {
 
 	slots := NewSlotBand(map[uint32]bool{slotVrai: true, slotLeurre: true})
 	var vus []deltaBipedRecord
-	walkDeltaBipedPayload(pay, slots, cliffLayout, true, func(r deltaBipedRecord) {
+	walkDeltaBipedPayload(pay, slots, cliffLayout, nil, func(r deltaBipedRecord) {
 		vus = append(vus, r)
 	})
 

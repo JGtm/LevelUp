@@ -68,6 +68,8 @@ func BuildBipedTracks(dir string, entry profile.MapQuantEntry, n int) (map[uint3
 			profile.ErrUnknownMapBounds, dir)
 	}
 	wr := entry.Range()
+	// Generations nil : les generations VIVANTES du film (lot J5.2) — un corps de generation >= 2 a
+	// ses positions, donc ses distances.
 	opt := DefaultScanFilmOptions()
 	opt.MaxSpeedMPS = 0
 	opt.IsolationGapMS = 0

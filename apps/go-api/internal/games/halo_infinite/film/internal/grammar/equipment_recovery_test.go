@@ -9,6 +9,8 @@ package grammar
 import (
 	"reflect"
 	"testing"
+
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // emiss fabrique une émission stricte minimale pour les fenêtres.
@@ -33,7 +35,7 @@ func TestFenetresDeRecuperationSurLesSautsDeCompteur(t *testing.T) {
 		}
 		return 0, false
 	}
-	wins := buildEquipRecoveryWindows(bySlot, born)
+	wins := buildEquipRecoveryWindows(parVieDe(bySlot), born)
 	if len(wins) != 3 {
 		t.Fatalf("%d fenêtre(s), attendu 3 (deux sauts + une tête) : %+v", len(wins), wins)
 	}
@@ -54,9 +56,9 @@ func TestFenetresDeRecuperationSurLesSautsDeCompteur(t *testing.T) {
 	}
 	// Sans témoin de naissance, AUCUNE fenêtre de tête n'est bâtie : la récupération de tête
 	// exige le témoin, comme le classement des réapparitions.
-	if got := buildEquipRecoveryWindows(map[uint32][]abilityEmission{
+	if got := buildEquipRecoveryWindows(parVieDe(map[uint32][]abilityEmission{
 		602: bySlot[602],
-	}, nil); len(got) != 0 {
+	}), nil); len(got) != 0 {
 		t.Errorf("fenêtre de tête bâtie SANS témoin de naissance : %+v", got)
 	}
 }
@@ -262,4 +264,14 @@ func TestCounterGap(t *testing.T) {
 			t.Errorf("counterGap(c%d -> c%d) = %d, attendu %d", c.from, c.to, got, c.want)
 		}
 	}
+}
+
+// parVieDe range des emissions synthetiques (generation 0, celle de leur valeur zero) par VIE,
+// la forme que `buildEquipRecoveryWindows` recoit depuis le lot J5.3.
+func parVieDe(m map[uint32][]abilityEmission) map[types.LifeKey][]abilityEmission {
+	out := make(map[types.LifeKey][]abilityEmission, len(m))
+	for slot, list := range m {
+		out[types.LifeKey{Slot: slot}] = list
+	}
+	return out
 }

@@ -112,7 +112,7 @@ func v9Collect(t *testing.T, dir string, ti int) []v9Record {
 		recs = append(recs, v9Record{idx: append([]int{}, idx...), pay: pay, at: at})
 	})
 	defer SetRecordMaskHook(prev)
-	opt := ScanFilmOptions{RequireTag1: false, DropSaturated: true, CaptureDirs: true, QuantaOnly: true}
+	opt := ScanFilmOptions{Generations: ToutesLesGenerations(), DropSaturated: true, CaptureDirs: true, QuantaOnly: true}
 	if _, err := ScanFilmBipedPositionsForBand(dir, NewSlotBand(kf.Band), opt); err != nil {
 		t.Fatalf("balayage ti=%d : %v", ti, err)
 	}

@@ -187,7 +187,7 @@ func i59aMatches(pay []byte, total int, s eaFilmSetup) []i59aMatch {
 	minRecord := bipedHeaderBits + bipedIndexBits*bipedMinMaskCnt + s.lay.TotalBits()
 	var out []i59aMatch
 	for pos := 0; pos+minRecord <= total; {
-		i0, _, idx, ok := matchBipedHeader(pay, pos, total, s.slots, true, s.lay)
+		i0, _, idx, ok := matchBipedHeader(pay, pos, total, s.slots, nil, s.lay)
 		if !ok {
 			pos++
 			continue
@@ -756,7 +756,7 @@ func i59aCollect(s eaFilmSetup, idx59 int) (events []i59aEvent, read, unread int
 			pay := pk.Payload(data)
 			total := len(pay) * 8
 			for pos := 0; pos+minRecord <= total; {
-				i0, slot, idx, ok := matchBipedHeader(pay, pos, total, s.slots, true, s.lay)
+				i0, slot, idx, ok := matchBipedHeader(pay, pos, total, s.slots, nil, s.lay)
 				if !ok {
 					pos++
 					continue

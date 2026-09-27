@@ -129,7 +129,7 @@ func v2bProcessFilm(t *testing.T, dir, short8 string, entry profile.MapQuantEntr
 	// (FUN_140c5f7ec / FUN_140d87740), pas celles du bipede. Sans ce drapeau le curseur
 	// arrive decale sur i4 — c'est la cause racine du bruit mesure le 2026-09-01.
 	// V2B_LEGACY_I2I3=1 rejoue l'ancienne grammaire (temoin de la correction).
-	opt := ScanFilmOptions{RequireTag1: false, DropSaturated: true, CaptureDirs: true, QuantaOnly: true,
+	opt := ScanFilmOptions{Generations: ToutesLesGenerations(), DropSaturated: true, CaptureDirs: true, QuantaOnly: true,
 		DynPrecOrientation: os.Getenv("V2B_LEGACY_I2I3") == ""}
 	lay := entry.Layout()
 	if lay.Valid() {
@@ -225,7 +225,7 @@ func v2bProcessFilm(t *testing.T, dir, short8 string, entry profile.MapQuantEntr
 // quanta + part de pas DECROISSANTS (une vraie sante ne remonte pas). Temoin de non-regression :
 // sur le meme film, la sante du JOUEUR (validee) doit etre concentree et monotone.
 func v2bControlBiped(t *testing.T, dir, short8 string, entry profile.MapQuantEntry) {
-	opt := ScanFilmOptions{RequireTag1: true, DropSaturated: true, CaptureDirs: true, QuantaOnly: true}
+	opt := ScanFilmOptions{DropSaturated: true, CaptureDirs: true, QuantaOnly: true}
 	lay := entry.Layout()
 	if lay.Valid() {
 		opt.Layout = &lay

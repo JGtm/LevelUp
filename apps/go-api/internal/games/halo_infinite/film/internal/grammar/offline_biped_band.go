@@ -64,8 +64,10 @@ func ScanFilmBipedPositionsForBand(dir string, band SlotBand, opt ScanFilmOption
 // pour un archétype autre que le bipède, tous déjà dans ScanFilmOptions — aucune ligne à
 // recopier :
 //
-//   - RequireTag1 est à DÉSARMER : le tag de 2 bits est la génération du handle, et les objets
-//     du monde en emploient les quatre valeurs (règle établie par matchWorldObjectRecord).
+//   - Generations est à LEVER ([ToutesLesGenerations]) : le tag de 2 bits est la génération du
+//     handle, et les objets du monde en emploient les quatre valeurs (règle établie par
+//     matchWorldObjectRecord). Laissé nil, le filtre est celui des générations vivantes du
+//     BIPÈDE (lot J5.2) : un slot qu'aucune lecture bipède ne désigne retombe sur la génération 1.
 //   - MaxSpeedMPS et IsolationGapMS sont les deux filtres de post-traitement du bipède ; ils
 //     s'appliquent tels quels, et zéro les désarme pour obtenir le flux brut.
 //   - Layout à nil laisse DetectI0LayoutOf lire le découpage DANS LE FILM : les largeurs d'axe
@@ -89,6 +91,11 @@ func ScanBipedPositionsForBand(fc *FilmContext, band SlotBand, opt ScanFilmOptio
 	lay, err := bipedI0Layout(film, opt)
 	if err != nil {
 		return nil, err
+	}
+	if opt.Generations == nil {
+		// LE FILTRE DE GENERATION DU FILM (lot J5.2, DT-8) : les generations vivantes relevees une
+		// fois par le contexte, sur les creations de bipede et les images-cles.
+		opt.Generations = fc.GenerationsVivantes()
 	}
 	out, read := scanBipedChunks(film, chunks, band, lay, opt, fc.ContexteDeLecture())
 	if read == 0 {

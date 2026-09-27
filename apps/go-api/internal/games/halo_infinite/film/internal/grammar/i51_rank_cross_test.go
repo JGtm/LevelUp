@@ -109,7 +109,7 @@ func i51xScan(t *testing.T, s eaFilmSetup, idx51 int) (out []i51xSample, records
 			pay := pk.Payload(data)
 			total := len(pay) * 8
 			for p := 0; p+minRecord <= total; {
-				i0, slot, idx, ok := matchBipedHeader(pay, p, total, s.slots, true, s.lay)
+				i0, slot, idx, ok := matchBipedHeader(pay, p, total, s.slots, nil, s.lay)
 				if !ok {
 					p++
 					continue

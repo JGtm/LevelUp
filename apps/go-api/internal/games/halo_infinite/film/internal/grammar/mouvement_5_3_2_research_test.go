@@ -152,7 +152,7 @@ func m532Lire(t *testing.T, dir string) ([]m532Ech, []m532Ech, uint64) {
 	if restore, errMPP := InstallFilmFormatMPP(fc); errMPP == nil {
 		defer restore()
 	}
-	opt := ScanFilmOptions{RequireTag1: os.Getenv("MOUV532_TAG1") != "0", DropSaturated: true, QuantaOnly: true}
+	opt := ScanFilmOptions{Generations: map[bool]*GenerationsVivantes{true: nil, false: ToutesLesGenerations()}[os.Getenv("MOUV532_TAG1") != "0"], DropSaturated: true, QuantaOnly: true}
 	chunks, err := bipedScanChunks(film, opt)
 	if err != nil {
 		t.Fatalf("chunks : %v", err)
@@ -184,7 +184,7 @@ func m532Lire(t *testing.T, dir string) ([]m532Ech, []m532Ech, uint64) {
 			ts := pk.TimestampUS
 			switch pk.Type {
 			case PacketTypeDelta:
-				walkDeltaBipedPayload(pay, band, lay, opt.RequireTag1, func(r deltaBipedRecord) {
+				walkDeltaBipedPayload(pay, band, lay, opt.Generations, func(r deltaBipedRecord) {
 					out = append(out, m532Record(pay, r, arch, ctx, i0Bits, ts))
 				})
 			case PacketTypeKeyframe:

@@ -44,7 +44,7 @@ type v5EchQ struct {
 
 // v5PositionsBande décode les positions (quanta) des slots d'une bande donnée.
 func v5PositionsBande(dir string, bande SlotBand) ([]v5EchQ, error) {
-	ps, err := ScanFilmBipedPositionsForBand(dir, bande, ScanFilmOptions{QuantaOnly: true})
+	ps, err := ScanFilmBipedPositionsForBand(dir, bande, ScanFilmOptions{QuantaOnly: true, Generations: ToutesLesGenerations()})
 	if err != nil {
 		return nil, err
 	}

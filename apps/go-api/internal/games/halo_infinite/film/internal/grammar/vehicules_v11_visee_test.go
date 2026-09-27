@@ -91,7 +91,7 @@ func v11ViseeUnFilm(t *testing.T, dir string) {
 		dir, len(vues), float64(len(vues))/float64(bande.Count()), bande.Count(),
 		len(bruit), float64(len(bruit))/float64(fantome.Count()), fantome.Count())
 
-	opt := ScanFilmOptions{RequireTag1: true, DropSaturated: true, CaptureDirs: true, QuantaOnly: true}
+	opt := ScanFilmOptions{DropSaturated: true, CaptureDirs: true, QuantaOnly: true}
 	pos, err := ScanFilmBipedPositions(dir, opt)
 	if err != nil {
 		t.Logf("V11 %s : balayage bipede : %v", dir, err)
@@ -116,7 +116,7 @@ func v11LitViseesSansI0(dir string, bande SlotBand) []v11Visee {
 			if pk.Type != PacketTypeDelta {
 				continue
 			}
-			for _, a := range ScanBipedAimRecords(pk.Payload(data), bande, ContexteParDefaut()) {
+			for _, a := range ScanBipedAimRecords(pk.Payload(data), bande, nil, ContexteParDefaut()) {
 				out = append(out, v11Visee{Slot: a.Slot, TS: pk.TimestampUS,
 					YawRaw: a.YawRaw, PitchRaw: a.PitchRaw})
 			}
@@ -279,7 +279,7 @@ func v11OccupationUnFilm(t *testing.T, dir string) {
 	for _, v := range vues {
 		parSlot[v.Slot] = append(parSlot[v.Slot], v)
 	}
-	opt := ScanFilmOptions{RequireTag1: true, DropSaturated: true, CaptureDirs: true, QuantaOnly: true}
+	opt := ScanFilmOptions{DropSaturated: true, CaptureDirs: true, QuantaOnly: true}
 	pos, _ := ScanFilmBipedPositions(dir, opt)
 	posSlot := map[uint32][]uint64{}
 	posTous := map[uint32][]uint64{}

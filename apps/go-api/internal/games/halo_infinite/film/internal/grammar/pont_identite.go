@@ -10,7 +10,8 @@ package grammar
 // teleportations ouvrent au filtre de vitesse (decision D2 du PLAN_LECTURE_FIABLE_EQUIPEMENT), les
 // creations de bipede (le lien direct corps -> joueur), le fil des morts, la table d index de
 // joueur et l origine d horloge du film. L ordre est celui des dependances : les exemptions avant
-// les positions, les morts avant l index (le roster de l index en derive).
+// les positions, les CREATIONS avant les positions (elles designent les generations vivantes du
+// handle, lot J5.2), les morts avant l index (le roster de l index en derive).
 //
 // # POURQUOI UN SEUL ETAGE
 //
@@ -58,6 +59,9 @@ type LecturesDuPont struct {
 	Creations      []BipedCreation
 	StatsCreations types.BipedCreationStats
 	ErrCreations   error
+	// Generations : les generations vivantes du handle bipede sous lesquelles les positions ont ete
+	// lues (lot J5.2). La cuisson en tire le compte du repli nomme ([GenerationsVivantes.SlotsEnRepli]).
+	Generations *GenerationsVivantes
 
 	Morts    []types.Death
 	ErrMorts error
@@ -90,8 +94,14 @@ func (e etageDuPont) lire(fc *FilmContext, opt OptionsDuPont) LecturesDuPont {
 	film := fc.Film()
 	var l LecturesDuPont
 	l.Translocations = e.teleportations(film, opt.Carte)
+	// LES CREATIONS AVANT LES POSITIONS (lot J5.2, DT-8) : elles designent les generations VIVANTES
+	// du handle, que le balayage des positions lit ensuite par le contexte (memorisees : un seul
+	// balayage des creations par film).
+	l.Creations, l.StatsCreations, l.ErrCreations = fc.CreationsDeBipede()
+	if l.Generations = opt.Balayage.Generations; l.Generations == nil {
+		l.Generations = fc.GenerationsVivantes()
+	}
 	l.Positions, l.ErrPositions = e.positions(fc, optionsDesPositionsDuPont(opt.Balayage, l.Translocations))
-	l.Creations, l.StatsCreations, l.ErrCreations = ScanBipedCreations(fc)
 	l.Morts, l.ErrMorts = ScanDeaths(film)
 	if l.ErrMorts == nil && len(l.Morts) > 0 && opt.RosterDesMorts != nil {
 		l.IndexLu = true

@@ -114,7 +114,7 @@ func r9Scan(s r8MobSetup) (i57 []r9Read, i59 []r8TagRead, masked int) {
 			pay := pk.Payload(data)
 			total := len(pay) * 8
 			for p := 0; p+minRecord <= total; {
-				i0, slot, ids, ok := matchBipedHeader(pay, p, total, s.slots, true, s.lay)
+				i0, slot, ids, ok := matchBipedHeader(pay, p, total, s.slots, nil, s.lay)
 				if !ok {
 					p++
 					continue

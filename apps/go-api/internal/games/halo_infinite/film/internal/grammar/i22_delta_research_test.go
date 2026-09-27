@@ -97,7 +97,7 @@ func TestI22DeltaResearch(t *testing.T) {
 			pay := pk.Payload(data)
 			total := len(pay) * 8
 			for p := 0; p+minRecord <= total; {
-				i0, slot, idx, ok := matchBipedHeader(pay, p, total, slots, true, lay)
+				i0, slot, idx, ok := matchBipedHeader(pay, p, total, slots, nil, lay)
 				if !ok {
 					p++
 					continue
@@ -201,7 +201,7 @@ func TestInventoryComponentsDeltaCensus(t *testing.T) {
 			pay := pk.Payload(data)
 			total := len(pay) * 8
 			for p := 0; p+minRecord <= total; {
-				i0, _, idx, ok := matchBipedHeader(pay, p, total, slots, true, lay)
+				i0, _, idx, ok := matchBipedHeader(pay, p, total, slots, nil, lay)
 				if !ok {
 					p++
 					continue
@@ -300,7 +300,7 @@ func TestInventoryValuesDeltaProbe(t *testing.T) {
 			pay := pk.Payload(data)
 			total := len(pay) * 8
 			for p := 0; p+minRecord <= total; {
-				i0, _, idx, ok := matchBipedHeader(pay, p, total, slots, true, lay)
+				i0, _, idx, ok := matchBipedHeader(pay, p, total, slots, nil, lay)
 				if !ok {
 					p++
 					continue

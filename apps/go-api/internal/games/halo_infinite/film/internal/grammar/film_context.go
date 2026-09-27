@@ -128,9 +128,8 @@ type FilmContext struct {
 	regErr error
 	regLu  bool
 
-	// prof est le PROFIL du film, resolu UNE fois (cf. l en-tete) et immuable. `profLu` dit
-	// s il l a ete : `NewFilmContextForMap` le pose a la construction, `NewFilmContext` au
-	// premier acces.
+	// prof est le PROFIL du film, resolu UNE fois (cf. l en-tete) et immuable. `profLu` dit s il l a
+	// ete : `NewFilmContextForMap` le pose a la construction, `NewFilmContext` au premier acces.
 	prof   profile.Profile
 	profLu bool
 
@@ -141,9 +140,10 @@ type FilmContext struct {
 	// [FilmContext.PoserProfilDeBalayage]. C est ce qui a remplace l heritage par l etat du
 	// processus : rien ici n est partage entre deux films.
 	bal ProfilDeBalayage
-	// corr / corrLue / corrLu : le CONTROLE DE CORRUPTION PAR COMPOSANT derive du film, et
-	// pourquoi il ne vit pas dans `bal` — cf. `controle_corruption_du_film.go`.
+	// corr / corrLue / corrLu : le CONTROLE DE CORRUPTION PAR COMPOSANT (controle_corruption_du_film.go).
 	corr, corrLue, corrLu bool
+	// vies : les CREATIONS de bipede et les GENERATIONS VIVANTES du handle (generations_vivantes.go).
+	vies memoDesVies
 	// obs est l OBSERVATEUR de ce contexte (lot 2.3) : jamais nil, tous ses champs nuls en
 	// production. Un balayage qui publie y installe ses crochets ; un instrument aussi, et
 	// c est la seule surface qui lui reste depuis que les vingt-huit reglages publics ont

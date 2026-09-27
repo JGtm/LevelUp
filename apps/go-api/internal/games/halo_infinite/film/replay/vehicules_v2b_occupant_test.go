@@ -174,7 +174,7 @@ func v2boReportRelay(t *testing.T, dir string, evs []types.VehicleEvent) {
 
 // v2boBipedTracks rend les instants (ms) de position par slot bipede (QuantaOnly, sans bornes).
 func v2boBipedTracks(t *testing.T, dir string) map[uint32][]int64 {
-	opt := grammar.ScanFilmOptions{RequireTag1: true, DropSaturated: true, QuantaOnly: true}
+	opt := grammar.ScanFilmOptions{DropSaturated: true, QuantaOnly: true}
 	pos, err := grammar.ScanFilmBipedPositions(dir, opt)
 	if err != nil {
 		t.Logf("    positions bipede illisibles (%v) — recoupement saute", err)

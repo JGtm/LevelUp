@@ -30,7 +30,7 @@ package grammar
 //
 // # AUCUNE GRAMMAIRE N'EST REECRITE ICI
 //
-// L'en-tete est celle de `matchBipedHeaderRaw` (meme prefixe, meme slot 13 bits, meme tag == 1,
+// L'en-tete est celle de `matchBipedHeaderRaw` (meme prefixe, meme slot 13 bits, meme filtre de generation,
 // meme couple de zeros, meme compteur de masque), a la SEULE exception documentee : le premier
 // index du masque n'est pas contraint a zero. Les composants qui precedent `i21` sont consommes
 // par leurs detenteurs existants (`readVelocityComponent`, `readForwardComponent`,
@@ -92,6 +92,7 @@ func ScanBipedAimOnly(fc *FilmContext) ([]BipedAim, error) {
 	if band.Count() == 0 {
 		return nil, fmt.Errorf("aucun slot biped (ti=%d) dans les keyframes du film", BipedTypeIndex)
 	}
+	gens := fc.GenerationsVivantes() // lot J5.2 : les generations vivantes du film, pas la seule 1
 	var out []BipedAim
 	read := 0
 	for _, c := range nums {
@@ -104,7 +105,7 @@ func ScanBipedAimOnly(fc *FilmContext) ([]BipedAim, error) {
 			if pk.Type != PacketTypeDelta {
 				continue
 			}
-			for _, a := range ScanBipedAimRecords(pk.Payload(data), band, fc.ContexteDeLecture()) {
+			for _, a := range ScanBipedAimRecords(pk.Payload(data), band, gens, fc.ContexteDeLecture()) {
 				a.Chunk, a.PacketIndex, a.TimestampUS = c, pk.Index, pk.TimestampUS
 				out = append(out, a)
 			}
@@ -118,8 +119,9 @@ func ScanBipedAimOnly(fc *FilmContext) ([]BipedAim, error) {
 
 // ScanBipedAimRecords balaie un payload de paquet delta bit a bit et renvoie les visees des
 // records bipedes SANS position. PUR (aucune I/O) : c'est le coeur testable. Les champs
-// Chunk/PacketIndex/TimestampUS sont laisses a zero (remplis par l'appelant).
-func ScanBipedAimRecords(payload []byte, slots SlotBand, ctx ContexteDeLecture) []BipedAim {
+// Chunk/PacketIndex/TimestampUS sont laisses a zero (remplis par l'appelant). `gens` est le filtre de
+// generation du handle (lot J5.2) ; nil : tous les slots au repli nomme (generation 1).
+func ScanBipedAimRecords(payload []byte, slots SlotBand, gens *GenerationsVivantes, ctx ContexteDeLecture) []BipedAim {
 	total := len(payload) * 8
 	var out []BipedAim
 	// UN SEUL lecteur de bits pour tout le payload : les composants de vitalite traverses avant
@@ -127,7 +129,7 @@ func ScanBipedAimRecords(payload []byte, slots SlotBand, ctx ContexteDeLecture) 
 	br := LecteurSur(payload)
 	br.PoserContexte(ctx)
 	for p := 0; p+bipedHeaderBits <= total; {
-		at, slot, ok := matchAimOnlyRecord(br, payload, p, total, slots)
+		at, slot, ok := matchAimOnlyRecord(br, payload, p, slots, gens)
 		if !ok {
 			p++
 			continue
@@ -148,9 +150,10 @@ func ScanBipedAimRecords(payload []byte, slots SlotBand, ctx ContexteDeLecture) 
 // par `i0`, consomme les composants qui precedent `i21`, et rend le bit ou commence `i21`.
 //
 // La seule difference avec `matchBipedHeaderRaw` est l'ABSENCE de la contrainte « premier index
-// du masque = 0 » ; tout le reste (prefixe, slot, tag == 1, couple de zeros, compteur) est
+// du masque = 0 » ; tout le reste (prefixe, slot, generation vivante, couple de zeros, compteur) est
 // identique, et c'est ce qui rend le plancher de faux positifs mesurable par une bande fantome.
-func matchAimOnlyRecord(br *Lecteur, pay []byte, p, total int, slots SlotBand) (int, uint32, bool) {
+func matchAimOnlyRecord(br *Lecteur, pay []byte, p int, slots SlotBand, gens *GenerationsVivantes) (int, uint32, bool) {
+	total := len(pay) * 8
 	if uint32(source.BitsStricts(pay, p, 1)) != 1 {
 		return 0, 0, false
 	}
@@ -158,7 +161,7 @@ func matchAimOnlyRecord(br *Lecteur, pay []byte, p, total int, slots SlotBand) (
 	if !slots.Has(h.Slot) {
 		return 0, 0, false
 	}
-	if h.Gen != 1 { // tag == 1 : le filtre bipede eprouve
+	if !gens.Accepte(h) { // generation vivante du slot, ou repli nomme (generations_vivantes.go)
 		return 0, 0, false
 	}
 	slot := h.Slot

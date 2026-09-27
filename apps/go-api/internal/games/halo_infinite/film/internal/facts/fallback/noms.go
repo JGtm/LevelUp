@@ -100,4 +100,7 @@ const (
 	// NomIndexDeTireurHorsPlace : `replay/tirs_index_fiable.go` ; compte par `replay/build_pistes.go`
 	// (lot M4b.4, inscrit a la revue du lot).
 	NomIndexDeTireurHorsPlace Nom = "repli_index_de_tireur_hors_place"
+	// NomGenerationVivanteInconnueTag1 : `grammar/generations_vivantes.go` (`Accepte`) ; compte par
+	// `replay/film_scan.go`, `balayerPositions` (lot J5.2).
+	NomGenerationVivanteInconnueTag1 Nom = "repli_generation_vivante_inconnue_tag1"
 )

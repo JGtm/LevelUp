@@ -3,8 +3,10 @@
 package main
 
 // gb1.go — LE MODE `gb1` : LA MESURE PREALABLE DU CONSTAT GB-1 (lot J5.0 du plan de suite de
-// l audit du decodeur). GB-1 : les positions et les canaux delta du bipede ne sont lus que pour la
-// generation 1 du handle d un slot (`ScanFilmOptions.RequireTag1`, `matchBipedHeaderRaw`).
+// l audit du decodeur). GB-1 : les positions et les canaux delta du bipede n etaient lus que pour la
+// generation 1 du handle d un slot (`ScanFilmOptions.RequireTag1`, supprime au lot J5.2 au profit du
+// filtre des generations VIVANTES, `grammar.GenerationsVivantes`). L instrument mesure le filtre de
+// PRODUCTION en vigueur : avant J5.2 la generation 1, depuis J5.2 les generations vivantes.
 //
 // # LES DEFINITIONS, EXACTES
 //
@@ -14,10 +16,11 @@ package main
 //	                l en-tete NEW) ou un record d image-cle (`MarcheDImageCle().Records`, champ
 //	                `Gen`), sur TOUS les paquets d image-cle du film.
 //	POSITION PROD   un echantillon rendu par `grammar.ScanBipedPositions` sous
-//	                `DefaultScanFilmOptions` (tag == 1, saturation ecartee, isolement 15 s), en
-//	                quanta seuls (aucune borne de carte : le filtre de vitesse n est PAS joue).
-//	                Il est rattache a la vie (slot, 1) — le filtre ne laisse passer que le tag 1.
-//	EN-TETE BRUT    un record que le MEME marcheur ancre filtre DESARME (`RequireTag1 = false`,
+//	                `DefaultScanFilmOptions` (filtre de generation du film, saturation ecartee,
+//	                isolement 15 s), en quanta seuls (aucune borne de carte : le filtre de vitesse
+//	                n est PAS joue). Il est rattache a SA vie (slot, tag relu du handle par
+//	                `grammar.LireHandleDelta`, cf. `mesurerProd`).
+//	EN-TETE BRUT    un record que le MEME marcheur ancre filtre LEVE (`ToutesLesGenerations`,
 //	                saturation ecartee, aucun isolement) : en-tete bipede valide (prefixe, slot
 //	                dans la bande, bits nuls, masque croissant depuis 0, i0 absolu de la region).
 //	                Son tag est lu par l observateur (cf. `balayerBrut`).
@@ -27,7 +30,7 @@ package main
 //	ORPHELIN        un en-tete brut dont (slot, tag) n est AUCUNE vie connue : FAUX POSITIF
 //	                POTENTIEL d un filtre « generation vivante » (bruit d ancrage bit a bit, ou vie
 //	                qu aucune des deux lectures n a vue). « Garde » s il survit a l isolement.
-//	ORPHELIN PROD   une position prod dont la vie (slot, 1) n est pas connue.
+//	ORPHELIN PROD   une position prod dont la vie (slot, tag) n est pas connue.
 //
 // # LES DUREES
 //
@@ -50,9 +53,6 @@ import (
 
 // nombreDeTags : le tag du handle tient sur deux bits.
 const nombreDeTags = 4
-
-// genProd : la seule generation que le filtre de production laisse passer.
-const genProd = 1
 
 // pasDeFrameUS : le pas de la grille du rejeu (`replay.DefaultFrameIntervalMS` = 100 ms), en
 // microsecondes. Seconde copie de la valeur, pour reconstituer `durationMs` sans cuisson.
@@ -132,7 +132,7 @@ func mesurerGB1(fc *grammar.FilmContext) (mesureGB1, error) {
 	if err != nil {
 		return m, fmt.Errorf("decoupage i0 illisible : %w", err)
 	}
-	cre, _, err := grammar.ScanBipedCreations(fc)
+	cre, _, err := fc.CreationsDeBipede() // memorisees : le filtre de production les relit
 	if err != nil {
 		return m, fmt.Errorf("creations : %w", err)
 	}
@@ -217,25 +217,47 @@ func (m *mesureGB1) vie(k cleDeVie) *vieGB1 {
 	return v
 }
 
-// mesurerProd joue le balayage des positions sous le filtre de production (quanta seuls) et
-// rattache chaque position a la vie (slot, 1). Le balayage est libere au retour, avant le brut.
+// mesurerProd joue le balayage des positions sous le filtre de PRODUCTION (`DefaultScanFilmOptions`,
+// quanta seuls) et rattache chaque position a SA vie (slot, tag relu du handle). Le crochet qui relit
+// le tag ne tire qu avant les filtres de post-traitement : le balayage se fait donc isolement desarme,
+// puis l isolement de production est rejoue (`DropIsolated`, le meme appel que la production, par
+// slot) — sa sortie est une sous-suite ORDONNEE de son entree, ce qui rend a chaque position gardee le
+// tag de son record. Le balayage est libere au retour, avant le brut.
 func (m *mesureGB1) mesurerProd(fc *grammar.FilmContext, lay profile.I0Layout) error {
 	opt := grammar.DefaultScanFilmOptions()
 	opt.QuantaOnly, opt.Layout = true, &lay
-	prod, err := grammar.ScanBipedPositions(fc, opt)
+	isolement := opt.IsolationGapMS
+	opt.IsolationGapMS = 0
+	lus, tags, err := balayerAvecTags(fc, lay, opt)
 	if err != nil {
 		return fmt.Errorf("positions prod : %w", err)
 	}
+	prod := grammar.DropIsolated(lus, isolement)
 	m.positionsProd = len(prod)
-	for _, p := range prod {
+	j := 0
+	for i, p := range lus {
+		if j >= len(prod) || !memeEchantillon(p, prod[j]) {
+			continue
+		}
+		j++
 		m.prod.etendre(p.TimestampUS)
-		if v := m.vies[cleDeVie{p.Slot, genProd}]; v != nil {
+		if v := m.vies[cleDeVie{p.Slot, tags[i]}]; v != nil {
 			v.prod++
 		} else {
 			m.orphelinsProd++
 		}
 	}
+	if j != len(prod) {
+		return fmt.Errorf("%w : %d positions gardees par l isolement, %d rattachees", errEnTeteIntrouvable, len(prod), j)
+	}
 	return nil
+}
+
+// memeEchantillon : deux positions sont le meme echantillon du balayage (meme paquet, meme slot,
+// meme instant, memes quanta).
+func memeEchantillon(a, b grammar.BipedPosition) bool {
+	return a.Chunk == b.Chunk && a.PacketIndex == b.PacketIndex && a.Slot == b.Slot &&
+		a.TimestampUS == b.TimestampUS && a.Q == b.Q
 }
 
 // rattacherBrut range les en-tetes bruts par tag, les rattache a leur vie ou aux orphelins, puis
@@ -304,15 +326,28 @@ const (
 // errEnTeteIntrouvable : la reconstitution de l en-tete ne retombe pas sur le record publie.
 var errEnTeteIntrouvable = errors.New("en-tete reconstitue divergent du record publie par le marcheur")
 
-// balayerBrut joue le marcheur des positions filtre DESARME et rend, pour chaque record, son tag.
+// balayerBrut joue le marcheur des positions filtre LEVE (`grammar.ToutesLesGenerations`, saturation
+// ecartee, aucun isolement) et rend, pour chaque record, son tag.
+func balayerBrut(fc *grammar.FilmContext, lay profile.I0Layout) ([]grammar.BipedPosition, []uint32, error) {
+	opt := grammar.ScanFilmOptions{QuantaOnly: true, Layout: &lay, DropSaturated: true,
+		Generations: grammar.ToutesLesGenerations()}
+	brut, tags, err := balayerAvecTags(fc, lay, opt)
+	if err != nil {
+		return nil, nil, fmt.Errorf("positions brutes : %w", err)
+	}
+	return brut, tags, nil
+}
+
+// balayerAvecTags joue le marcheur des positions sous `opt` (qui ne doit porter AUCUN filtre de
+// post-traitement : ni isolement, ni bornes de carte) et rend, pour chaque record, son tag.
 //
 // Le tag n est publie par aucune sortie du marcheur ; il est relu par `RecordMaskHook`, le seul
 // crochet de l observateur qui recoive le payload et la position d un record EMIS. Le crochet ne
 // tire que sous `CaptureDirs`, AVANT les filtres de post-traitement : c est pourquoi l isolement
-// est desarme ici (et rejoue par tag ensuite) et pourquoi aucune borne de carte n est donnee (le
+// est desarme par l appelant (et rejoue ensuite) et pourquoi aucune borne de carte n est donnee (le
 // filtre de vitesse n est pas joue) — la sortie du marcheur et les appels du crochet sont alors en
 // bijection, dans le meme ordre, ce qui est verifie.
-func balayerBrut(fc *grammar.FilmContext, lay profile.I0Layout) ([]grammar.BipedPosition, []uint32, error) {
+func balayerAvecTags(fc *grammar.FilmContext, lay profile.I0Layout, opt grammar.ScanFilmOptions) ([]grammar.BipedPosition, []uint32, error) {
 	obs := fc.Observation()
 	precedent := obs.RecordMaskHook
 	defer func() { obs.RecordMaskHook = precedent }()
@@ -327,10 +362,10 @@ func balayerBrut(fc *grammar.FilmContext, lay profile.I0Layout) ([]grammar.Biped
 		h := grammar.LireHandleDelta(pay, p)
 		tags, slots = append(tags, h.Gen), append(slots, h.Slot)
 	}
-	opt := grammar.ScanFilmOptions{QuantaOnly: true, Layout: &lay, DropSaturated: true, CaptureDirs: true}
+	opt.CaptureDirs = true
 	brut, err := grammar.ScanBipedPositions(fc, opt)
 	if err != nil {
-		return nil, nil, fmt.Errorf("positions brutes : %w", err)
+		return nil, nil, err
 	}
 	if len(brut) != len(tags) {
 		return nil, nil, fmt.Errorf("%w : %d records, %d appels du crochet", errEnTeteIntrouvable, len(brut), len(tags))

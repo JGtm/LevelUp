@@ -68,7 +68,7 @@ func glResolve(t *testing.T) glSetup {
 	// mesure tournait aux largeurs par defaut (13/13/14) : toutes les positions ti=42 etaient
 	// dequantifiees faux — mediane 42 m, temoin egal, zero verdict.
 	wr := entry.Range()
-	raw, err := grammar.ScanFilmBipedPositions(dir, grammar.ScanFilmOptions{WorldRange: &wr})
+	raw, err := grammar.ScanFilmBipedPositions(dir, grammar.ScanFilmOptions{WorldRange: &wr, Generations: grammar.ToutesLesGenerations()})
 	if err != nil {
 		t.Fatalf("positions : %v", err)
 	}

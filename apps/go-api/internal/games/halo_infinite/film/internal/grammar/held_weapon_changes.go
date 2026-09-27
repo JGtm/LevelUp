@@ -119,7 +119,7 @@ func ScanHeldWeaponChanges(
 				TimestampUS: r.Packet.TimestampUS, Chunk: r.Chunk, Slot: r.Slot, SlotIndex: id,
 				Emplacement: rang, Family: last.high, Low: last.low, Previous: noVariant,
 			}
-			if chaine.qualifier(&ch) {
+			if chaine.qualifier(&ch, r.Gen) {
 				st.Repeats++
 			}
 			out = append(out, ch)
@@ -130,15 +130,17 @@ func ScanHeldWeaponChanges(
 }
 
 // heldWeaponChain enchaîne les émissions d'un emplacement : chacune se lit contre la précédente
-// de la MÊME VIE, et la première d'une vie contre son spawn.
+// de la MÊME VIE, et la première d'une vie contre son spawn. La vie est la clé (slot, génération du
+// handle) depuis le lot J5.3 : deux corps successifs d'un slot ne se chaînent plus, même sans
+// témoin de naissance (`DebutDeVie` reste la seconde coupure : la génération ne fait que 2 bits).
 type heldWeaponChain struct {
 	spawn SpawnPredicate
 	prev  map[heldWeaponKey]heldWeaponPrev
 }
 
-// heldWeaponKey désigne un emplacement d'un slot (par son index de composant).
+// heldWeaponKey désigne un emplacement d'une VIE (par son index de composant).
 type heldWeaponKey struct {
-	slot uint32
+	vie  types.LifeKey
 	comp int
 }
 
@@ -153,15 +155,15 @@ func newHeldWeaponChain(spawn SpawnPredicate) *heldWeaponChain {
 	return &heldWeaponChain{spawn: spawn, prev: map[heldWeaponKey]heldWeaponPrev{}}
 }
 
-// qualifier pose `Previous` et `Kind` de l'émission `ch`, et dit si elle RÉPÈTE la famille
-// précédente de sa vie (propriété que le canal ne devrait jamais violer, cf. `Repeats`).
-func (c *heldWeaponChain) qualifier(ch *types.HeldWeaponChange) (repete bool) {
+// qualifier pose `Previous` et `Kind` de l'émission `ch`, émise par la vie (ch.Slot, gen), et dit si elle
+// RÉPÈTE la famille précédente de sa vie (propriété que le canal ne devrait jamais violer, cf. `Repeats`).
+func (c *heldWeaponChain) qualifier(ch *types.HeldWeaponChange, gen uint32) (repete bool) {
 	var sp SpawnState
 	spOK := false
 	if c.spawn != nil {
 		sp, spOK = c.spawn(ch.Slot, ch.TimestampUS)
 	}
-	k := heldWeaponKey{ch.Slot, ch.SlotIndex}
+	k := heldWeaponKey{types.LifeKey{Slot: ch.Slot, Gen: gen}, ch.SlotIndex}
 	p, vu := c.prev[k]
 	if vu && sp.DebutDeVie > p.debut {
 		vu = false // une nouvelle vie a commencé sur ce slot depuis l'émission précédente

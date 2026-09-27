@@ -96,14 +96,16 @@ func ScanEquipmentChanges(
 	walk := walkAbilityEmissionsWith(setup, func(e abilityEmission) {
 		strict = append(strict, e)
 	})
-	bySlot := map[uint32][]abilityEmission{}
+	// PAR VIE, PAS PAR SLOT (lot J5.3) : un slot porte ses corps successifs depuis que les generations
+	// >= 2 du handle sont lues (lot J5.2) ; chaque corps a sa chaine de compteur R(3).
+	parVie := map[types.LifeKey][]abilityEmission{}
 	for _, e := range strict {
-		bySlot[e.Slot] = append(bySlot[e.Slot], e)
+		parVie[e.Vie()] = append(parVie[e.Vie()], e)
 	}
-	for _, list := range bySlot {
+	for _, list := range parVie {
 		sortEmissionsByFilmOrder(list)
 	}
-	recovered := scanEquipmentRecovery(setup, buildEquipRecoveryWindows(bySlot, bornAt))
+	recovered := scanEquipmentRecovery(setup, buildEquipRecoveryWindows(parVie, bornAt))
 	out, st := assembleEquipmentChanges(strict, recovered, bornAt)
 	st.Walk = walk
 	return out, st, nil
@@ -167,31 +169,31 @@ func assembleEquipmentChanges(
 	return out, st
 }
 
-// mergeEquipEmissions fusionne les deux sources par vie, dans l'ordre total du film (offset
+// mergeEquipEmissions fusionne les deux sources par vie — la clé (slot, génération du handle), lot J5.3 —, dans l'ordre total du film (offset
 // de bit compris), puis passe le VERROU FINAL. st.Recovered ne compte que les récupérées qui
 // SURVIVENT au verrou : une récupérée retirée n'est pas publiée, elle ne se compte pas.
 func mergeEquipEmissions(
 	strict []abilityEmission, recovered []equipRecovered, st *types.EquipmentChangeStats,
-) map[uint32][]equipEmission {
-	merged := map[uint32][]equipEmission{}
+) map[types.LifeKey][]equipEmission {
+	merged := map[types.LifeKey][]equipEmission{}
 	for _, e := range strict {
-		merged[e.Slot] = append(merged[e.Slot], equipEmission{abilityEmission: e, off: -1})
+		merged[e.Vie()] = append(merged[e.Vie()], equipEmission{abilityEmission: e, off: -1})
 	}
 	// hasHead : les vies dont une récupérée vient de la fenêtre de TÊTE. Leur chaîne commence
 	// au compteur VIRTUEL equipRecoveryHeadCounter, et c'est cette amorce que le verrou final
 	// doit voir (revue ronde 2, « verrou tête partielle »).
-	hasHead := map[uint32]bool{}
+	hasHead := map[types.LifeKey]bool{}
 	for _, r := range recovered {
-		merged[r.Slot] = append(merged[r.Slot], equipEmission{
+		merged[r.Vie()] = append(merged[r.Vie()], equipEmission{
 			abilityEmission: r.abilityEmission, recovered: true, off: r.off, head: r.head})
 		if r.head {
-			hasHead[r.Slot] = true
+			hasHead[r.Vie()] = true
 		}
 	}
-	for slot, list := range merged {
+	for vie, list := range merged {
 		sort.Slice(list, func(i, j int) bool { return equipEmissionLess(list[i], list[j]) })
-		list = pruneRecoveredViolations(list, hasHead[slot])
-		merged[slot] = list
+		list = pruneRecoveredViolations(list, hasHead[vie])
+		merged[vie] = list
 		for _, e := range list {
 			if e.recovered {
 				st.Recovered++
