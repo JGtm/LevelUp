@@ -33,7 +33,7 @@ func TestCoverageBalancedOnEmptyInputs(t *testing.T) {
 		{"sans rien", nil, nil},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			shots, _, cov := buildShots(tc.pos, events, 1_000_000, 100_000, tc.owner)
+			shots, _, cov := buildShots(tc.pos, events, 1_000_000, 100_000, occupantsPlats(tc.owner))
 			if len(shots) != 0 {
 				t.Errorf("aucun tir ne devrait etre publie, obtenu %d", len(shots))
 			}
@@ -49,11 +49,11 @@ func TestCoverageBalancedOnEmptyInputs(t *testing.T) {
 
 func TestCoverageBalancedWithNoEvents(t *testing.T) {
 	// Zéro disponible : la somme doit valoir zéro, pas produire un compteur fantôme.
-	_, _, cov := buildShots(nil, nil, 0, 100_000, nil)
+	_, _, cov := buildShots(nil, nil, 0, 100_000, occupantsPlats(nil))
 	if cov.Available != 0 || !cov.Balanced() {
 		t.Errorf("couverture incoherente sur entree vide : %+v", cov)
 	}
-	_, gcov := buildGrenades(nil, nil, 0, 100_000, nil, nil, nil)
+	_, gcov := buildGrenades(nil, nil, 0, 100_000, occupantsPlats(nil), nil, nil)
 	if gcov.Available != 0 || !gcov.Balanced() {
 		t.Errorf("couverture incoherente sur entree vide (grenades) : %+v", gcov)
 	}
@@ -67,7 +67,7 @@ func TestCoverageCountsOutOfWindow(t *testing.T) {
 	pos := []grammar.BipedPosition{posAt(10, 1_000_000, 1, 1, 90)}
 	far := 1_000_000 + uint64(shotPosToleranceUS) + 500_000
 	events := []grammar.FireEvent{fireAt(far, 3, 90)}
-	shots, _, cov := buildShots(pos, events, 1_000_000, 100_000, map[uint32]int{10: 3})
+	shots, _, cov := buildShots(pos, events, 1_000_000, 100_000, occupantsPlats(map[uint32]int{10: 3}))
 	if len(shots) != 0 {
 		t.Fatalf("un tir hors fenetre ne doit pas etre publie : %+v", shots)
 	}
@@ -220,7 +220,7 @@ func TestGrenadePlacedFromProjectileWithoutBridge(t *testing.T) {
 	}}}
 	// AUCUNE position de biped, AUCUN pont : le lancer doit quand meme etre situe.
 	// (pubProjByRaw nil : la piste d'un seul point n'est pas publiee, donc pas de lien.)
-	gren, cov := buildGrenades(nil, throws, 1_000_000, 100_000, nil, proj, nil)
+	gren, cov := buildGrenades(nil, throws, 1_000_000, 100_000, occupantsPlats(nil), proj, nil)
 	if len(gren) != 1 {
 		t.Fatalf("le lancer doit etre situe sans pont, obtenu %d : %+v", len(gren), gren)
 	}
@@ -264,7 +264,7 @@ func TestGrenadeLinksItsPublishedProjectile(t *testing.T) {
 	if len(published) != 1 || pubByRaw[0] != 0 {
 		t.Fatalf("projectile attendu publie a l'index 0 : %+v / %+v", published, pubByRaw)
 	}
-	gren, _ := buildGrenades(nil, throws, 1_000_000, 100_000, nil, proj, pubByRaw)
+	gren, _ := buildGrenades(nil, throws, 1_000_000, 100_000, occupantsPlats(nil), proj, pubByRaw)
 	if len(gren) != 1 {
 		t.Fatalf("le lancer doit etre situe, obtenu %d", len(gren))
 	}

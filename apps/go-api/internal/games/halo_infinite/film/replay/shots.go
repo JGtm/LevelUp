@@ -73,9 +73,9 @@ type orphanShot struct {
 // AMBIGUS n'y sont PAS, et c'est une mesure : l'ambiguïté naît de DEUX slots du même joueur qui
 // répliquent tous deux une position à cet instant — donc d'un joueur qui n'est PAS embarqué.
 func buildShots(pos []grammar.BipedPosition, events []grammar.FireEvent, origin, step uint64,
-	owner map[uint32]int) ([]Shot, []orphanShot, LayerCoverage) {
+	occ occupantsDesSlots) ([]Shot, []orphanShot, LayerCoverage) {
 	cov := LayerCoverage{Available: len(events)}
-	if len(pos) == 0 || len(events) == 0 || len(owner) == 0 {
+	if len(pos) == 0 || len(events) == 0 || occ.vide() {
 		cov.NoSlot = len(events) // rien pour rattacher : tout est écarté, et c'est dit
 		return nil, nil, cov
 	}
@@ -90,13 +90,13 @@ func buildShots(pos []grammar.BipedPosition, events []grammar.FireEvent, origin,
 		if s, ok := tirParLUnite(tracks, e, origin, step); ok {
 			cov.count(reasonAttached)
 			cov.ByUnit++
-			if pi, connu := owner[s.Slot]; connu && e.HasShooter && pi != e.FilmIndex {
+			if pi, connu := occ.indexA(s.Slot, int64(e.TimestampUS)); connu && e.HasShooter && pi != e.FilmIndex {
 				cov.UnitOtherIndex++
 			}
 			out = append(out, s)
 			continue
 		}
-		slot, reason := slotFor(tracks, owner, e.FilmIndex, e.TimestampUS)
+		slot, reason := slotFor(tracks, occ, e.FilmIndex, e.TimestampUS)
 		if reason != reasonAttached {
 			cov.count(reason)
 			if reason == reasonNoSlot {

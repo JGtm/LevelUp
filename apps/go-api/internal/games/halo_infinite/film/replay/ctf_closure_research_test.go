@@ -126,7 +126,7 @@ func ctfDecodeFilm(t *testing.T, cat *profile.MapQuantCatalog, dir, mapName stri
 func ctfCoverageOf(tracks map[uint32]slotTrack, owner map[uint32]int, fire []grammar.FireEvent) LayerCoverage {
 	cov := LayerCoverage{Available: len(fire)}
 	for _, e := range fire {
-		_, reason := slotFor(tracks, owner, e.FilmIndex, e.TimestampUS)
+		_, reason := slotFor(tracks, occupantsPlats(owner), e.FilmIndex, e.TimestampUS)
 		cov.count(reason)
 	}
 	return cov

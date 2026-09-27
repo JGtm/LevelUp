@@ -39,7 +39,7 @@ import (
 // fireBurstBoard est ce que la publication consulte pour UNE rafale.
 type fireBurstBoard struct {
 	vehicules vehicleShotBoard
-	slotsOf   map[int][]uint32
+	occupants occupantsDesSlots
 	places    tireursParPlace
 	vies      map[uint32][][2]int // fenetres [premiere, derniere frame] des pistes publiees, par slot
 	dotations map[uint32][]Loadout
@@ -49,7 +49,7 @@ type fireBurstBoard struct {
 
 // buildFireBursts publie les rafales et rend leur couverture. Nil sans aucune lecture.
 func buildFireBursts(doc *ReplayDocument, in []types.ContinuousFireBurst, st types.ContinuousFireStats,
-	owner map[uint32]int, clock replayClock) ([]FireBurst, *ContinuousFireCoverage) {
+	occ occupantsDesSlots, clock replayClock) ([]FireBurst, *ContinuousFireCoverage) {
 	if !st.Scanned {
 		return nil, nil
 	}
@@ -57,7 +57,7 @@ func buildFireBursts(doc *ReplayDocument, in []types.ContinuousFireBurst, st typ
 	b := fireBurstBoard{
 		vehicules: vehicleShotBoard{rides: vehicleRidesByOccupant(doc.Vehicles), tracks: doc.Vehicles,
 			lives: vehicleLifeIndex(doc.Vehicles), clock: clock},
-		slotsOf: vehicleSlotsByPlayer(owner), places: nouveauxTireursParPlace(doc.Roster),
+		occupants: occ, places: nouveauxTireursParPlace(doc.Roster),
 		vies: fenetresDesPistes(doc.Tracks), dotations: dotationsParSlot(doc.Loadouts),
 		prises: prisesParSlot(doc.WeaponChanges), cov: cov,
 	}
@@ -91,7 +91,7 @@ func (b fireBurstBoard) publier(r types.ContinuousFireBurst) (FireBurst, bool) {
 	f := FireBurst{T0: clock.frame(r.StartUS), T1: clock.frame(r.EndUS),
 		StartBound: r.StartBound, EndBound: r.EndBound}
 	idx, parPlace := b.places.tireur(r.FilmIndex, f.T0)
-	slots := b.slotsOf[idx]
+	slots := b.occupants.slotsDe(idx, int64(r.StartUS))
 	if len(slots) == 0 {
 		b.cov.NoPlayer++
 		return FireBurst{}, false

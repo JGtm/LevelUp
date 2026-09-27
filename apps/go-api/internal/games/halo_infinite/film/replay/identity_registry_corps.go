@@ -17,10 +17,13 @@ package replay
 //	[IdentityRegistry.Occupants]   le pont slot -> index de joueur A L'INSTANT : le record de
 //	                               creation du corps vivant quand les records d'un slot divergent,
 //	                               le pont par slot sinon, rien sur un slot ambigu (la meme
-//	                               abstention que [IdentityRegistry.PontDeSlot] et que les equipes)
+//	                               abstention que [IdentityRegistry.PontDeSlot] et que les equipes),
+//	                               et sa forme inverse `slotsDe` (tirs embarques, rafales)
 //	memeCorps / pontDuCorps        le nommage final par occupation borne au corps (unnamed_lives.go)
 
 import (
+	"sort"
+
 	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
@@ -72,6 +75,31 @@ func (o occupantsDesSlots) indexA(slot uint32, tUS int64) (int, bool) {
 	}
 	pi, ok := o.plat[slot]
 	return pi, ok
+}
+
+// slotsDe rend, en ordre croissant, les slots que le joueur `pi` tient a `tUS` — la forme inverse de
+// [occupantsDesSlots.indexA], pour les portes qui cherchent le corps d'un TIREUR (tirs embarques,
+// rafales). Le tri rend la decision d'ambiguite independante de l'ordre d'iteration des maps.
+func (o occupantsDesSlots) slotsDe(pi int, tUS int64) []uint32 {
+	var out []uint32
+	vus := make(map[uint32]bool, len(o.plat)+len(o.corps))
+	essayer := func(s uint32) {
+		if vus[s] {
+			return
+		}
+		vus[s] = true
+		if idx, ok := o.indexA(s, tUS); ok && idx == pi {
+			out = append(out, s)
+		}
+	}
+	for s := range o.plat {
+		essayer(s)
+	}
+	for s := range o.corps {
+		essayer(s)
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i] < out[j] })
+	return out
 }
 
 // corpsDuSlot est le corps qui tient un slot a un instant : sa cle (slot, generation), et si elle

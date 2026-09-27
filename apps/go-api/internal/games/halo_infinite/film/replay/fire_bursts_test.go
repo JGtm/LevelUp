@@ -30,7 +30,7 @@ func fbDoc() *ReplayDocument {
 }
 
 func fbPublier(doc *ReplayDocument, rs ...types.ContinuousFireBurst) ([]FireBurst, *ContinuousFireCoverage) {
-	return buildFireBursts(doc, rs, types.ContinuousFireStats{Scanned: true}, map[uint32]int{10: 3, 11: 4},
+	return buildFireBursts(doc, rs, types.ContinuousFireStats{Scanned: true}, occupantsPlats(map[uint32]int{10: 3, 11: 4}),
 		vsClock())
 }
 
@@ -151,7 +151,7 @@ func TestCoupsALaCadenceEtALaMontee(t *testing.T) {
 
 // TestSansMarcheDesTramesAucuneCouverture — un artefact reconstruit sans la marche n affirme rien.
 func TestSansMarcheDesTramesAucuneCouverture(t *testing.T) {
-	out, cov := buildFireBursts(fbDoc(), nil, types.ContinuousFireStats{}, nil, vsClock())
+	out, cov := buildFireBursts(fbDoc(), nil, types.ContinuousFireStats{}, occupantsPlats(nil), vsClock())
 	if out != nil || cov != nil {
 		t.Errorf("rafales %v couverture %v : attendu nil, nil", out, cov)
 	}

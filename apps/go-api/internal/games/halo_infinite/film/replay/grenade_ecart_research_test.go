@@ -167,7 +167,7 @@ func grenEcartCas2(doc ReplayDocument, l *grenEcartLectures) []grenEcartCas {
 		Clock:   IdentityClock{OriginUS: origin, StepUS: step, FrameCount: doc.FrameCount},
 		MatchID: doc.MatchID,
 	})
-	owner := reg.IndexParSlot()
+	owner := reg.Occupants()
 	tracks := indexBySlot(sorted)
 	births := projectileBirths(l.proj)
 	var out []grenEcartCas
@@ -192,7 +192,7 @@ func grenEcartCas2(doc ReplayDocument, l *grenEcartLectures) []grenEcartCas {
 // grenEcartAuteur rend la position répliquée du lanceur à l'instant du lancer, quand le pont et
 // le film la donnent tous les deux.
 func grenEcartAuteur(g grammar.GrenadeThrow, tracks map[uint32]slotTrack,
-	owner map[uint32]int) (grammar.BipedPosition, bool) {
+	owner occupantsDesSlots) (grammar.BipedPosition, bool) {
 	slot, reason := slotFor(tracks, owner, g.FilmIndex, g.TimestampUS)
 	if reason != reasonAttached {
 		return grammar.BipedPosition{}, false

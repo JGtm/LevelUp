@@ -118,7 +118,7 @@ func (a *assemblage) poserLesEquipesEtLeRoster() {
 	// la presence de chaque occupant et ses tirs (cf. sieges.go).
 	// L INDEX DE TIREUR N EST LU COMME PLACE QUE S IL L EST SUR CE FILM (lot M4b.4,
 	// tirs_index_fiable.go) : sinon la lecture des places par les tirs s abstient.
-	a.indexTireur = mesurerIndexDeTireur(a.fire, a.reg.IndexParSlot())
+	a.indexTireur = mesurerIndexDeTireur(a.fire, a.reg.Occupants())
 	a.indexTireur.journaliser(a.matchID)
 	if !a.indexTireur.estLaPlace() {
 		a.opt.Fallbacks.DeclencheN(fallback.NomIndexDeTireurHorsPlace, a.indexTireur.total)
@@ -148,7 +148,7 @@ func (a *assemblage) poserTirsProjectilesEtGrenades() {
 	if a.indexTireur.estLaPlace() {
 		fire, a.siegeCov.TirsParPlace = nouveauxTireursParPlace(a.doc.Roster).tirsParPlace(a.fire, a.horloge())
 	}
-	shots, a.shotOrphans, a.shotCov = buildShots(a.sorted, fire, a.origin, a.step, a.reg.IndexParSlot())
+	shots, a.shotOrphans, a.shotCov = buildShots(a.sorted, fire, a.origin, a.step, a.reg.Occupants())
 	a.doc.Shots = keepShotsOfPublishedTracks(shots, a.doc.Tracks)
 	a.shotCov.Unpublished = countUnpublished(len(shots), len(a.doc.Shots))
 	a.shotCov.Attached = len(a.doc.Shots)
@@ -184,7 +184,7 @@ func (a *assemblage) poserTirsProjectilesEtGrenades() {
 	}
 
 	var gren []Grenade
-	gren, a.grenCov = buildGrenades(a.sorted, a.opt.Grenades, a.origin, a.step, a.reg.IndexParSlot(), a.opt.Projectiles, pubProjByRaw)
+	gren, a.grenCov = buildGrenades(a.sorted, a.opt.Grenades, a.origin, a.step, a.reg.Occupants(), a.opt.Projectiles, pubProjByRaw)
 	a.doc.Grenades = keepGrenadesOfPublishedTracks(gren, a.doc.Tracks)
 	a.grenCov.Unpublished = countUnpublished(len(gren), len(a.doc.Grenades))
 	a.grenCov.Attached = len(a.doc.Grenades)
