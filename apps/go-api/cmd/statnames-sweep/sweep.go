@@ -17,7 +17,7 @@ import (
 	"levelup/go-api/internal/filmproc"
 	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // sweepMaxComp : le dernier index de composant balaye. L'archetype 6 declare 28
@@ -99,7 +99,7 @@ func sweepFilm(cache, id string) error {
 		return fmt.Errorf("film absent du cache (%s)", cache)
 	}
 	recs, truncated := decfilm.StatRecordsCtx(context.Background(), film, id)
-	deaths, err := replay.ScanDeaths(film)
+	deaths, err := decfilm.ScanDeaths(film)
 	if err != nil {
 		return fmt.Errorf("fil des morts : %w", err)
 	}
@@ -140,7 +140,7 @@ func sweepEmplacements(id string, recs []decfilm.StatRecord, identity map[int]st
 
 // deathInstants traduit le fil des morts dans la forme du pont d'identite — meme
 // conversion que `deathInstantsOf` du rejeu (xuid decimal, horloge du match).
-func deathInstants(deaths []replay.Death) []decfilm.DeathInstant {
+func deathInstants(deaths []types.Death) []decfilm.DeathInstant {
 	out := make([]decfilm.DeathInstant, 0, len(deaths))
 	for _, d := range deaths {
 		out = append(out, decfilm.DeathInstant{

@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // relireLesFaits encode `g` en fichier de faits et le relit, sur l entree du film de reference.
@@ -38,7 +39,7 @@ func TestFaits_InventaireNilResteNilEtVideResteVide(t *testing.T) {
 		t.Errorf("inventaire NUL (illisible) relu comme une tranche de %d element(s), non nulle : "+
 			"le rejeu le dirait « lu, et rien »", len(relu))
 	}
-	g.Inventory = []KeyframeInventory{}
+	g.Inventory = []types.KeyframeInventory{}
 	if relu := relireLesFaits(t, g).Facts.Inventory; relu == nil || len(relu) != 0 {
 		t.Errorf("inventaire VIDE (lu, rien) relu %v (nil = %v)", relu, relu == nil)
 	}

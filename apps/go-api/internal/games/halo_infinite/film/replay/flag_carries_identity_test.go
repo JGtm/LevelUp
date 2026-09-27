@@ -17,7 +17,7 @@ import (
 // flagIdentityRecs — deux slots dont le pont PAR MORTS ne nomme que le premier : le slot 10
 // aligne trois progressions du compteur de morts sur le fil de "aaa", le slot 12 n'en aligne
 // que deux (sous `deathInstantMin` = 3).
-func flagIdentityRecs() ([]types.StatRecord, []Death) {
+func flagIdentityRecs() ([]types.StatRecord, []types.Death) {
 	rec := func(t, slot int, kills, deaths int64) types.StatRecord {
 		return types.StatRecord{TimeMS: t, Slot: slot, Round: 0,
 			Comps: map[int]types.StatValue{2: {A: kills, B: deaths}}}
@@ -26,7 +26,7 @@ func flagIdentityRecs() ([]types.StatRecord, []Death) {
 		rec(1000, 10, 1, 1), rec(2000, 10, 2, 2), rec(3000, 10, 3, 3),
 		rec(5000, 12, 1, 1), rec(6000, 12, 2, 2),
 	}
-	deaths := []Death{
+	deaths := []types.Death{
 		{XUID: 111, TimeMS: 1000}, {XUID: 111, TimeMS: 2000}, {XUID: 111, TimeMS: 3000},
 		{XUID: 222, TimeMS: 5000}, {XUID: 222, TimeMS: 6000},
 	}

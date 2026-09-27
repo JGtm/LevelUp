@@ -2,7 +2,8 @@
 
 **Status**: Accepted (2026-09-13), amended at the M2 closure (2026-09-17), at the M3 closure
 (2026-09-17), at the **M4 closure (2026-09-18)** with the state reached, decision by decision, and on
-**2026-09-26** by the audit follow-up (revision model and facts freshness: D-3 rule 2, D-6, D-7).
+**2026-09-26** by the audit follow-up (revision model and facts freshness: D-3 rule 2, D-6, D-7; then
+one scan stage for the identity bridge and the facade over the bytes: D-1, D-2).
 M4 is the last milestone of `.ai/PLAN_DECODEUR_FILM_2026-09-13.md`: the publication path is built,
 and what the effort leaves open is named in the M4 section rather than promised to a next one.
 
@@ -1045,6 +1046,111 @@ for any presumed width that stops closing on a new build. The rule is safe becau
 shifts everything after it: packets stop closing at once, and the error is seen and counted, never
 silent. It complements, and does not relax, the user's rule of 2026-09-21 on player states (Ghidra
 for used values).
+
+## Amendment of 2026-09-26 (bis) — one scan stage for the identity bridge (audit follow-up, J4)
+
+Source: `.ai/PLAN_SUITE_AUDIT_DECODEUR_FILM_2026-09-25.md`, decision DU-3 (option S, first half S1),
+finding RA1-3 and architecture weaknesses 3 and 5. No decode revision rose: the moves are pure and
+the fingerprints of `source`, `grammar`, `killsource` and `objectives` were re-frozen at constant
+revision. `IsolationDecoderRev` (the killsource collector's isolation facts) rose to
+`isolement-2026-09-26-pont-unique-exemptions`.
+
+### D-1 — Five layers. **"`replay` decodes nothing" is now true of the identity-bridge reads.**
+
+Five reading files lived in `film/replay` — the death feed (`deaths_source.go`), the player-index
+table read in the replication chunks (`player_index.go`), the film clock origin (`origin.go`), the
+film's own player table (`film_player_table.go`) and the keyframe inventory with its three rule
+files (`inventory_*.go`, which carried a private bit reader). They went down to `grammar` (lot J4.2,
+`dd0d4dfa3`); their result types went to `film/types` (`Death`, `PlayerIndexTable`,
+`KeyframeInventory`, `SlotAmmo`, `KeyframeInventoryStats`), except `FilmPlayerTable`, which carries
+a method and stays in `grammar` with its read. What those files did that is not a read stayed in
+`replay`: the roster given to the index, the injectivity it demands, the origin of frame 0 and its
+witness, the log and the expvar counter of an unknown build (D-4: the grammar names its counters,
+the orchestrator wires them). The finalisation predicate (`ChunkTypeTempsForts`, `EstTempsForts`,
+`ErrFilmNonFinalise`, `Finalise`) left `film/filmcache` for the leaf `film/finalise`: importing the
+cache from `grammar` would have pulled `observability`, `ctxkeys` and the whole of
+`internal/domain` into the grammar's revision perimeter.
+
+What remains, named so it is not re-discovered: `replay/cle_du_film.go` and
+`replay/mpp_format_inconnu.go` still fetch the `chunk_00` bytes (`grammar.FilmRegistryChunk`) and
+hand them to `grammar.ReadFilmIdentity`. They read no bit themselves, but they are the last places
+where the publication layer holds film bytes.
+
+### "One scan stage". **Reached for the identity bridge (lot J4.3).**
+
+The replay cook and the killsource collector (`sync/killcollector`, `buildPositionRows`) both build
+the identity registry from the same six reads: translocator teleports, biped positions **with the
+teleport exemptions** (decision D2 of the equipment plan), biped creations, the death feed, the
+player-index table and the film clock origin. The collector used to copy the sequence, and the copy
+had drifted: its positions were read without the exemptions. Both now call
+`grammar.ScanPontDIdentite` (re-exported by the facade), which returns each read with its error and
+decides nothing. The **policies** that legitimately differ stay with each caller: the roster given
+to the index (`OptionsDuPont.RosterDesMorts` — death feed plus caller roster for the cook, the match
+sheet for the collector), direction capture (in the base scan options the caller passes), the
+injectivity of the index table, and which errors are fatal. Guard:
+`archlint/film_pont_identite_test.go` (neither caller calls one of the six reads itself, the
+collector calls no `Scan*` of the publication layer). The collector's only output change is the
+exemptions: on a film without translocator events its reads are byte-identical to the old sequence
+(`killcollector.TestPontDuCollecteur_SeuleLExemptionChange`).
+
+### D-2 — One gate to the bytes. **Corrected: the facade still re-exports `Inflate`, and says why.**
+
+The M2 section claimed the gate was held while the facade `film/decfilm` re-exported the canonical
+bit reader (`LecteurSur`), the packet walker (`Paquets`) and the tolerant decompressor (`Inflate`).
+Measured on 2026-09-26, outside `film/`:
+
+- `LecteurSur` and `Paquets` had one consumer, the throwaway research tool
+  `cmd/rdata_weapon_scan`. It moved to `film/research/cmd_rdata_weapon_scan` (build tag
+  `research`, split into four files under the 500-line threshold, pure move) and reads the inner
+  layers directly, like its neighbours. **The facade no longer re-exports the bit reader or the
+  packet walker**, nor the six symbols only that tool used (`DecodeFrameRecords`, `FrameConfig`,
+  `NewWorld`, `ProfilDeBalayageParDefaut`, `Registry`, `World`).
+- `Inflate` keeps production consumers outside the decoder, and it **stays**:
+  `sync/haloclient` and `cmd/levelup` (`backfill-medailles-feed`) decompress the cached `chunk_00`
+  to hand it to `FilmMajorVersionFromHeader` / `HighlightProfileFromHeader`; `cmd/diag_weapons_v3`
+  (an operational CLI that writes positions) decompresses chunks for
+  `DecodeKeyframePositions`; three tests build fixtures with it. None of them reads a bit: they
+  decompress with the source layer's single decompression contract and give the bytes back to a
+  decoder parser.
+
+So D-2 reads, from now on: **nobody outside `source` reads a bit of a film or walks its packets;
+decompressing a chunk outside the decoder is allowed only through the re-exported
+`Inflate`/`Decompresser`, and only to hand the bytes back to a decoder entry point.**
+
+**Lot J4.6 (S2), same day: the seven hand-written bit readers are gone, and the gate is guarded by
+shape, not by name.** `readBitsAt`, `PeekBits`, `kfReadBits`, `kfReadBitsLoop`, `kfBitAt`,
+`invBitAt` and `invBits` were replaced by named edge conventions of the source layer
+(`source.BitsStricts` — panics on both sides; `source.BitsBourres` — zero past the end, panics
+before the start; `source.BitsTolerants` and `source.BitAt` — zero on both sides). Each old reader
+is kept as a reference copy in `source/bits_conventions_test.go` and opposed to its convention,
+value and panic alike, around every byte, word and buffer edge. The one documented difference is
+out of reach: `kfBitAt` panicked on a negative position where `BitAt` returns 0, and its six
+callers read at positions that are non-negative by construction. The DU-3 condition held: the
+dedicated benchmark (`grammar.BenchmarkBalayageBitABit`, the production scans that called the
+seven readers, on the contiguous killsource reel) measured a median paired difference of -0.9 %
+(dispersion 1.3 points) over 17 alternated A/B pairs at high priority. No decode revision rose;
+the `source` and `grammar` fingerprints were re-frozen at constant revision.
+
+The raw-bytes ratchet (`archlint/no_raw_film_bytes_outside_source_test.go`) gained a sixth,
+structural pattern (`archlint/no_raw_film_bytes_extraction_test.go`): any function in the watched
+roots that addresses the byte of a bit position (`x[p>>3]`, `x[p/8]`, directly or through a local
+index) or shifts a byte of a `[]byte` by a variable, non-multiple-of-eight amount is red, whatever
+its name; the seven names are also listed as an anti-resurrection ratchet. **Correction to the
+premise of S2:** the plan counted seven readers outside `source`; the structural pattern found nine
+more functions in six files that nobody had listed — `grammar/frame_vue_controle.go`
+(`vueCFermee`), `grammar/weaponscan/scanner.go` (`matchMarkerAt`, `readBitsUint64`,
+`readBitsUint8`), `facts/killsource/botmeta.go` (`byteAtBit`), `research/cmd_rdata_weapon_scan`
+(`bitsAt`), `cmd/diag_film` (`countMarkerBits`) and `sync/killcollector/shots.go`
+(`chercherDansChunk`, `lireIndiceAvant`). The last two break D-2 in production code outside the
+decoder, and `sync` cannot import the source layer. Porting them was not lot J4.6's scope: they are
+recorded as dated exceptions, one line per function, each with its reason and its removal criterion
+(the function no longer extracts a bit itself); an exception that stops matching turns the ratchet
+red. D-2 therefore holds for the seven, and is **not yet true** for those nine functions.
+
+The facade surface ratchet (`archlint/film_facade_surface_test.go`, decision V25) records every
+step, dated: 166 → 170 (J4.2, the four bridge reads re-exported) → 173 (J4.3, the stage and its
+two types) → 165 (J4.5, eight symbols without consumers removed). The companion surface
+(`replay.X` cited outside `film/`) went 281 → 276 at J4.2.
 
 ## Corrections to statements made elsewhere
 

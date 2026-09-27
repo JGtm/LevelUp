@@ -53,6 +53,7 @@ import (
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar/weaponv3"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 )
 
 // MiniFilmDir est le repertoire de la mini-bobine, relatif au paquet.
@@ -187,7 +188,7 @@ func selectMiniFilmPackets(dir string) (miniSelection, error) {
 	if err != nil {
 		return sel, err
 	}
-	deaths, err := ScanFilmDeaths(dir)
+	deaths, err := grammar.ScanFilmDeaths(dir)
 	if err != nil {
 		return sel, err
 	}
@@ -336,10 +337,10 @@ func miniPacketKind(chunk []byte, p grammar.FilmPacket, throwUS uint64) string {
 func hasKnownGrenadeMarker(pay []byte) bool {
 	limit := len(pay)*8 - (24 + 32)
 	for bp := 0; bp <= limit; bp++ {
-		if grammar.PeekBits(pay, bp, 24) != 0x4C0C00 {
+		if source.BitsTolerants(pay, bp, 24) != 0x4C0C00 {
 			continue
 		}
-		if _, ok := grammar.GrenadeRankOf(uint32(grammar.PeekBits(pay, bp+24, 32))); ok {
+		if _, ok := grammar.GrenadeRankOf(uint32(source.BitsTolerants(pay, bp+24, 32))); ok {
 			return true
 		}
 	}
@@ -481,7 +482,7 @@ func TestMiniFilmDecodesProjectileFlights(t *testing.T) {
 
 // TestMiniFilmDecodesTheDeathThread : le fil des morts, du chunk highlight tel quel.
 func TestMiniFilmDecodesTheDeathThread(t *testing.T) {
-	deaths, err := ScanFilmDeaths(MiniFilmDir)
+	deaths, err := grammar.ScanFilmDeaths(MiniFilmDir)
 	if err != nil {
 		t.Fatalf("ScanFilmDeaths : %v", err)
 	}
@@ -524,7 +525,7 @@ func TestMiniFilmDecodesTheKeyframes(t *testing.T) {
 	if len(lo) != wantLoadouts {
 		t.Errorf("%d loadouts decodes des images-cles, attendu %d", len(lo), wantLoadouts)
 	}
-	inv, invStats, err := ScanFilmKeyframeInventory(MiniFilmDir, loadoutFamilies(), 0, nil)
+	inv, invStats, err := grammar.ScanFilmKeyframeInventory(MiniFilmDir, loadoutFamilies(), 0)
 	if err != nil {
 		t.Fatalf("ScanFilmKeyframeInventory : %v", err)
 	}

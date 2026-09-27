@@ -1,4 +1,4 @@
-package replay
+package grammar
 
 // deaths_source_version_test.go — LE FIL DES MORTS SUIT LA VERSION DU FILM, ET UN TEST LE PROUVE.
 //
@@ -26,12 +26,11 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 )
 
 // miniBobineV40 : la bobine de version 40, relative a CE paquet.
-const miniBobineV40 = "../internal/facts/killsource/testdata/minibobine_e5adf7b2"
+const miniBobineV40 = "../facts/killsource/testdata/minibobine_e5adf7b2"
 
 // miniBobineV40Version : la version que son registre declare.
 const miniBobineV40Version = 40
@@ -48,7 +47,7 @@ func TestScanDeathsSuitLaVersionDuFilm(t *testing.T) {
 		t.Fatalf("bobine v40 illisible sous %s : %v — elle est VERSIONNEE, son absence est une "+
 			"erreur, pas une raison d ignorer le test", miniBobineV40, err)
 	}
-	version, lue := grammar.FilmMajorVersion(film)
+	version, lue := FilmMajorVersion(film)
 	if !lue || version != miniBobineV40Version {
 		t.Fatalf("la bobine v40 declare la version %d (lue=%v), %d attendue : son registre "+
 			"(`chunk_00.bin`) a change ou manque", version, lue, miniBobineV40Version)
@@ -74,8 +73,8 @@ Sur un film de version 39-40 le gamertag vit a l OCTET 12 du bloc d event. Passe
 rend ici 2 noms pour 199 morts : l artefact de rejeu nomme alors ses vies avec du rembourrage
 (.ai/RAPPORT_BTB_2025_ABSTENTION_2026-09-12.md).
 
-Verifier que ScanDeaths passe la version lue par grammar.FilmMajorVersion a
-grammar.ParseHighlightEvents.`,
+Verifier que ScanDeaths passe la version lue par FilmMajorVersion a
+ParseHighlightEvents.`,
 			miniBobineV40, version, len(deaths), len(noms), miniBobineV40NomsPlancher)
 	}
 }

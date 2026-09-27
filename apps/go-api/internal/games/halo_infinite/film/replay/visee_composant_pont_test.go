@@ -32,6 +32,7 @@ import (
 	"sort"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // vfPropagationUS : ecart maximal entre deux fragments de meme slot consideres comme la meme
@@ -167,7 +168,7 @@ type vfRattachement struct {
 
 // vfRattacheAnonymes nomme les fragments anonymes qui satisfont le double critere, et rend le
 // compte rendu de CHAQUE fragment — rattache ou non.
-func vfRattacheAnonymes(lives []lifeSpan, deaths []Death, off int64) []vfRattachement {
+func vfRattacheAnonymes(lives []lifeSpan, deaths []types.Death, off int64) []vfRattachement {
 	var out []vfRattachement
 	for i := range lives {
 		if lives[i].xuid != 0 {
@@ -183,7 +184,7 @@ func vfRattacheAnonymes(lives []lifeSpan, deaths []Death, off int64) []vfRattach
 }
 
 // vfCandidatsDe compte les joueurs qui satisfont les deux volets du critere pour un fragment.
-func vfCandidatsDe(lives []lifeSpan, frag lifeSpan, deaths []Death, off int64) vfRattachement {
+func vfCandidatsDe(lives []lifeSpan, frag lifeSpan, deaths []types.Death, off int64) vfRattachement {
 	r := vfRattachement{slot: frag.slot, from: frag.from, to: frag.to}
 	fin := frag.to / 1000
 	vus := map[uint64]bool{}
@@ -205,7 +206,7 @@ func vfCandidatsDe(lives []lifeSpan, frag lifeSpan, deaths []Death, off int64) v
 
 // vfMortDedans dit qu'une mort du joueur tombe strictement a l'interieur de [debut ; fin] —
 // le volet (c) du critere. Le fragment ne peut alors pas etre une vie de ce joueur.
-func vfMortDedans(deaths []Death, xuid uint64, off, debut, fin int64) bool {
+func vfMortDedans(deaths []types.Death, xuid uint64, off, debut, fin int64) bool {
 	for _, d := range deaths {
 		if d.XUID != xuid {
 			continue
@@ -252,7 +253,7 @@ func vfBatPont(dir, gt string) (vfPont, error) {
 		return p, fmt.Errorf("balayage des positions : %w", err)
 	}
 	p.positions = len(pos)
-	deaths, err := ScanFilmDeaths(dir)
+	deaths, err := grammar.ScanFilmDeaths(dir)
 	if err != nil {
 		return p, fmt.Errorf("fil des morts : %w", err)
 	}

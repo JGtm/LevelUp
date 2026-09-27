@@ -30,6 +30,8 @@ package grammar
 
 import (
 	"testing"
+
+	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 )
 
 // v6ScanMaxBit borne le balayage : au-dela, on n'est plus dans la liste d'evenements mais dans
@@ -61,10 +63,10 @@ func v6TryVehicleEventAt(
 	if b < 1 || b+shift+v6MaxEventBits > total {
 		return v6Candidate{}, false
 	}
-	if readBitsAt(pay, b, 1) != 1 {
+	if uint32(source.BitsStricts(pay, b, 1)) != 1 {
 		return v6Candidate{}, false
 	}
-	typ := int(readBitsAt(pay, b+1, eventTypeBits))
+	typ := int(uint32(source.BitsStricts(pay, b+1, eventTypeBits)))
 	body := b + 1 + eventTypeBits + shift
 	var seatBit int
 	var slot uint32
@@ -103,11 +105,11 @@ func v6TryVehicleEventAt(
 	if seatBit+vehicleSeatBits+1 > total {
 		return v6Candidate{}, false
 	}
-	seat := readBitsAt(pay, seatBit, vehicleSeatBits)
+	seat := uint32(source.BitsStricts(pay, seatBit, vehicleSeatBits))
 	if seat >= 8 {
 		return v6Candidate{}, false // mesure : 100 % des sieges attestes sont dans 0..7
 	}
-	if readBitsAt(pay, seatBit+vehicleSeatBits, 1) != 0 {
+	if uint32(source.BitsStricts(pay, seatBit+vehicleSeatBits, 1)) != 0 {
 		return v6Candidate{}, false // l'evenement vehicule TERMINE la liste (mesure : 99 %)
 	}
 	if !band.Has(slot) {

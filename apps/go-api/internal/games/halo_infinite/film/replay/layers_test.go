@@ -190,7 +190,7 @@ func TestCalquesGardesNommentUnCalqueDeLaTable(t *testing.T) {
 func optionsToutesGardesOuvertes() Options {
 	return Options{
 		MapQuant:            &profile.MapQuantEntry{},
-		Inventory:           []KeyframeInventory{},
+		Inventory:           []types.KeyframeInventory{},
 		AbilityImpulseStats: types.AbilityImpulseStats{Scanned: true},
 		AbilityChargeStats:  types.AbilityChargeStats{Scanned: true},
 		Score:               &ScoreInput{},

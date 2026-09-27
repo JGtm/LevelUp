@@ -145,7 +145,7 @@ func TestEtatVivantOddballIdentite(t *testing.T) {
 	}
 
 	instants := d4EvenementsCrane(t, root, id)
-	clockUS, err := ScanFilmClockOrigin(objChunkDir(root, id))
+	clockUS, err := grammar.ScanFilmClockOrigin(objChunkDir(root, id))
 	if err != nil {
 		t.Fatalf("%s : origine d'horloge illisible : %v", id, err)
 	}

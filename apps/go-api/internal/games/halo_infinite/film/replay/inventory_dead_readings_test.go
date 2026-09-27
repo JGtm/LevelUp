@@ -1,6 +1,10 @@
 package replay
 
-import "testing"
+import (
+	"testing"
+
+	"levelup/go-api/internal/games/halo_infinite/film/types"
+)
 
 // inventory_dead_readings_test.go — le MARQUAGE des lectures vides, sur pieces montees a la main.
 //
@@ -8,14 +12,14 @@ import "testing"
 // ici on verrouille la REGLE : qui recoit `dead`, qui garde `unknown`, et qui ne recoit rien.
 
 // invRawEmpty / invRawFull : deux records d'image-cle, l'un vide, l'autre porteur.
-func invRawEmpty(slot uint32, tsUS uint64) KeyframeInventory {
-	return KeyframeInventory{
+func invRawEmpty(slot uint32, tsUS uint64) types.KeyframeInventory {
+	return types.KeyframeInventory{
 		TimestampUS: tsUS, Slot: slot,
 		SelectedGrenadeRank: -1, DrawnSlot: -1, AbilityRank: -1,
 	}
 }
 
-func invRawFull(slot uint32, tsUS uint64) KeyframeInventory {
+func invRawFull(slot uint32, tsUS uint64) types.KeyframeInventory {
 	r := invRawEmpty(slot, tsUS)
 	r.GrenadesRead = true
 	r.Grenades[0] = 2
@@ -23,7 +27,7 @@ func invRawFull(slot uint32, tsUS uint64) KeyframeInventory {
 }
 
 func TestBuildInventoryMarqueLesLecturesVides(t *testing.T) {
-	out, _ := buildInventory([]KeyframeInventory{
+	out, _ := buildInventory([]types.KeyframeInventory{
 		invRawFull(7, 1_000_000),
 		invRawEmpty(7, 2_000_000),
 	}, 1_000_000, 100_000)
@@ -45,7 +49,7 @@ func TestMarkInventoryDeadReadings(t *testing.T) {
 	clk := replayClock{origin: 0, step: 100_000, frames: 10_000}
 	own := regDe(OwnerReport{SlotXUID: map[uint32]uint64{slot: xuid}, DeathOffsetMS: 1_000})
 	// Mort a 10 000 ms d'horloge FILM (9 000 ms d'horloge match + 1 000 de decalage).
-	deaths := []Death{{XUID: xuid, TimeMS: 9_000}}
+	deaths := []types.Death{{XUID: xuid, TimeMS: 9_000}}
 
 	cas := []struct {
 		nom  string
@@ -75,7 +79,7 @@ func TestMarkInventoryDeadReadingsNeTouchePasAuxPleines(t *testing.T) {
 	const slot, xuid = uint32(7), uint64(42)
 	inv := []Inventory{{T: 101, Slot: slot, G: []uint32{2, 0, 0, 0}}}
 	n := markInventoryDeadReadings(inv,
-		[]Death{{XUID: xuid, TimeMS: 10_000}},
+		[]types.Death{{XUID: xuid, TimeMS: 10_000}},
 		regDe(OwnerReport{SlotXUID: map[uint32]uint64{slot: xuid}}),
 		replayClock{origin: 0, step: 100_000, frames: 1_000})
 	if n != 0 || inv[0].Empty != "" {
@@ -88,7 +92,7 @@ func TestMarkInventoryDeadReadingsNeTouchePasAuxPleines(t *testing.T) {
 // `unknown`. On ne requalifie pas par defaut : « on ne sait pas » est une reponse.
 func TestMarkInventoryDeadReadingsSansFilDesMorts(t *testing.T) {
 	clk := replayClock{origin: 0, step: 100_000, frames: 1_000}
-	deaths := []Death{{XUID: 42, TimeMS: 10_000}}
+	deaths := []types.Death{{XUID: 42, TimeMS: 10_000}}
 	for nom, appel := range map[string]func(inv []Inventory) int{
 		"sans morts": func(inv []Inventory) int {
 			return markInventoryDeadReadings(inv, nil, regDe(OwnerReport{SlotXUID: map[uint32]uint64{7: 42}}), clk)

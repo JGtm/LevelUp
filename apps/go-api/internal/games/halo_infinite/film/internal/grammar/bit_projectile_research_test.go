@@ -189,13 +189,13 @@ func bitProjLis(
 	pay []byte, rec WorldObjectRecord, w [3]uint, rng profile.Vec3Range, porte int, attendue uint64,
 ) (bpEchantillon, bool) {
 	var e bpEchantillon
-	e.porte = PeekBits(pay, rec.After, porte)
+	e.porte = source.BitsTolerants(pay, rec.After, porte)
 	if e.porte != attendue {
 		return e, false
 	}
 	off := rec.After + porte
 	for a := 0; a < 3; a++ {
-		q := PeekBits(pay, off, int(w[a]))
+		q := source.BitsTolerants(pay, off, int(w[a]))
 		if q == 0 || q == (uint64(1)<<w[a])-1 {
 			return e, false
 		}

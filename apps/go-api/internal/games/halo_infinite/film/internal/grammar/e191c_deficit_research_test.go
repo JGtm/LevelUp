@@ -44,7 +44,7 @@ func e191cN2AvecDelta(ancres []e191cAncre, ti int, delta int) (float64, uint64) 
 		if n1 > 0 {
 			consumeKeyframeDefaultState(br, uint32(ti)) //nolint:gosec // index d archetype
 		}
-		hist[kfReadBits(a.Pay, br.BitPos()+delta, 32)]++
+		hist[source.BitsBourres(a.Pay, br.BitPos()+delta, 32)]++
 	}
 	meilleure, n := uint64(0), 0
 	for v, c := range hist {

@@ -26,6 +26,7 @@ import (
 	"os"
 	"testing"
 
+	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
@@ -95,7 +96,7 @@ func TestM3ImageCleN2(t *testing.T) {
 						m3EtatParDefautOpt32(br)
 					} else {
 						m3EtatParDefautSansOpt32(br)
-						portes[PeekBits(pay, br.BitPos()-1, 1)]++
+						portes[source.BitsTolerants(pay, br.BitPos()-1, 1)]++
 					}
 					if br.p.Grammaire.ControleDeCorruption {
 						br.ReadBits(mot)

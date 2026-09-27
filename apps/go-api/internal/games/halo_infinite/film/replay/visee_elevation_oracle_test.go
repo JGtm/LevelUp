@@ -104,12 +104,12 @@ type aimBilan struct {
 func aimOracle(t *testing.T, dir string, pos []grammar.BipedPosition) {
 	t.Helper()
 	couples, nKills, ambigus := aimCouples(t, dir)
-	deaths, err := ScanFilmDeaths(dir)
+	deaths, err := grammar.ScanFilmDeaths(dir)
 	if err != nil {
 		t.Fatalf("fil des morts : %v", err)
 	}
 	debut := time.Now()
-	idx, err := ScanFilmPlayerIndices(dir, rosterFromDeaths(deaths))
+	idx, err := grammar.ScanFilmPlayerIndices(dir, rosterFromDeaths(deaths))
 	if err != nil {
 		t.Fatalf("index de joueur : %v", err)
 	}

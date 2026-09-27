@@ -106,9 +106,9 @@ func temoinB1ad85eb() ([]RosterEntry, []Track, entreesDesOccupants, entreesDesPl
 		tirs = append(tirs, FireEventRef{FilmIndex: 5, TimestampUS: uint64(f) * 100_000})
 	}
 	tirs = append(tirs, FireEventRef{FilmIndex: 0, TimestampUS: 50_000_000}) // MONEY, sa place
-	table := FilmPlayerTable{}
+	table := grammar.FilmPlayerTable{}
 	for i := 0; i < 8; i++ {
-		table.Seats = append(table.Seats, FilmPlayerSeat{FilmIndex: i, XUID: uint64(100 + i)})
+		table.Seats = append(table.Seats, grammar.FilmPlayerSeat{FilmIndex: i, XUID: uint64(100 + i)})
 	}
 	horloge := replayClock{origin: 0, step: 100_000, frames: temoinFrames}
 	parIndex := map[int]int{0: 0, 1: 1, 2: 1, 3: 0, 4: 1, 6: 0, 7: 1, 9: 0, 10: 0} // l'index 8 diverge

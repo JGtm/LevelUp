@@ -16,6 +16,7 @@ import (
 	"levelup/go-api/internal/ctxkeys"
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
+	"levelup/go-api/internal/games/halo_infinite/film/finalise"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/replaybuild"
 )
@@ -123,7 +124,7 @@ type bilanCuisson struct {
 	echecs   int
 	// ecartes : films MIS DE COTE, jamais comptes en echec : cle ecrite absente de la table de
 	// profil (lot 3.1.1, `replaybuild.ErrUnknownFilmKey`), ou film au cache que la cuisson refuse
-	// comme NON FINALISE (lot L3, `filmcache.ErrFilmNonFinalise`). SEPARE DES ECHECS, et ce n est
+	// comme NON FINALISE (lot L3, `finalise.ErrFilmNonFinalise`). SEPARE DES ECHECS, et ce n est
 	// pas cosmetique : un echec appelle un diagnostic, un ecarte appelle une LIGNE DE TABLE
 	// (`docs/RUNBOOK_FILM_PROFILES.md`) ou un film a completer — les melanger noierait l evenement
 	// « le jeu a change » dans le bruit des cuissons qui plantent. Le journal PAR MATCH dit lequel.
@@ -337,7 +338,7 @@ func cuireUnMatch(ctx context.Context, d Deps, w buildWork, b *bilanCuisson, res
 		// film dont le manifeste ne porte pas le morceau des temps forts, ou dont des morceaux ne
 		// sont pas décrits par le manifeste : cuire un film TRONQUÉ publierait un document faux
 		// (`ab526724`). Même frontière de processus, donc même classement par le type.
-		if errors.Is(berr, filmcache.ErrFilmNonFinalise) {
+		if errors.Is(berr, finalise.ErrFilmNonFinalise) {
 			slog.InfoContext(ctx, "post-sync: artefact rejeu ÉCARTÉ — film non finalisé au cache",
 				"gamertag", d.Gamertag, "match_id", w.matchID, "err", berr)
 			b.ecartes++

@@ -12,7 +12,7 @@ import (
 	"fmt"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
+	"levelup/go-api/internal/games/halo_infinite/film/finalise"
 	"levelup/go-api/internal/replaybuild"
 )
 
@@ -20,7 +20,7 @@ import (
 var refusTypes = []error{
 	replaybuild.ErrMapNotInCatalog,
 	replaybuild.ErrUnknownFilmKey,
-	filmcache.ErrFilmNonFinalise,
+	finalise.ErrFilmNonFinalise,
 }
 
 func TestEnfant_RaisonParRefusType(t *testing.T) {

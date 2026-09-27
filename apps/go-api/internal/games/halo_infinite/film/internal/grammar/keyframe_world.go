@@ -38,57 +38,19 @@ type KeyframeRec struct {
 	Slot, TI, Gen, Bit int
 }
 
-// kfReadBits lit n bits big-endian à partir de la position bit pos (0-safe hors borne).
-//
-// Lecture par mot ([source.BitsAt]) sur le domaine ou elle coincide avec la boucle
-// d'origine : `pos >= 0` et `0 <= n <= 64`. C'est la primitive la plus chaude de toute la
-// cuisson (58 a 61 % du CPU au profil du 2026-09-02) : `kfScanNext` l'appelle pour CHAQUE
-// position de bit du payload d'image-cle.
-func kfReadBits(buf []byte, pos, n int) uint64 {
-	if pos >= 0 && n >= 0 && n <= 64 {
-		return source.BitsAt(buf, pos, uint(n))
-	}
-	return kfReadBitsLoop(buf, pos, n)
-}
-
-// kfReadBitsLoop est la lecture bit a bit d'origine, gardee pour les positions NEGATIVES
-// (l'indexation y panique, comme avant) et les largeurs > 64 (seuls les 64 derniers bits
-// lus sont rendus). Aucun appelant de production n'y passe : elle est la pour que la
-// reecriture par mot ne CHANGE rien, pas pour servir.
-func kfReadBitsLoop(buf []byte, pos, n int) uint64 {
-	var r uint64
-	for i := 0; i < n; i++ {
-		p := pos + i
-		var bit uint64
-		if idx := p >> 3; idx < len(buf) {
-			bit = uint64(buf[idx]>>(7-uint(p&7))) & 1
-		}
-		r = r<<1 | bit
-	}
-	return r
-}
-
-// kfBitAt lit le bit unique à la position p (0 hors borne).
-func kfBitAt(buf []byte, p int) uint64 {
-	if idx := p >> 3; idx < len(buf) {
-		return uint64(buf[idx]>>(7-uint(p&7))) & 1
-	}
-	return 0
-}
-
 // kfValidAnchor : en-tête de record valide ? gen∈{1,2,3}, prev<slot<cap. FILTRE FORT
 // anti-faux-positif : le mot 32-bit à q+32 doit être < archMax (vrai pour TOUT record au
 // spawn, car field26==0 -> ce mot == ti < 50). ti/field26 EXTRAITS de façon durcie.
 // field26 n'est PAS rendu : il ne sert qu'à expliquer pourquoi le filtre fort tient
 // (field26==0 au spawn -> le mot 32-bit vaut ti), et aucun appelant ne l'a jamais lu.
 func kfValidAnchor(buf []byte, q, prevSlot, total int) (slot, ti, gen int, ok bool) {
-	// La garde est ICI AUSSI parce qu'elle protege la LECTURE qui suit : `kfReadBits` a une
-	// position negative panique (convention preservee, cf. `source.BitsAt`). [kfAnchorFromID] la
+	// La garde est ICI AUSSI parce qu'elle protege la LECTURE qui suit : [source.BitsBourres] a une
+	// position negative panique (convention nommee, cf. sa documentation). [kfAnchorFromID] la
 	// rejoue pour son autre appelant, qui lui a deja lu l'identifiant.
 	if q < 0 || q+64 > total {
 		return
 	}
-	return kfAnchorFromID(buf, q, kfReadBits(buf, q, 32), prevSlot, total)
+	return kfAnchorFromID(buf, q, source.BitsBourres(buf, q, 32), prevSlot, total)
 }
 
 // kfAnchorFromID est [kfValidAnchor] quand l'appelant a DEJA lu les 32 bits d'identifiant a
@@ -111,10 +73,10 @@ func kfAnchorFromID(buf []byte, q int, id uint64, prevSlot, total int) (slot, ti
 	if slot <= prevSlot || slot >= kfTableCap {
 		return
 	}
-	if kfReadBits(buf, q+32, 32) >= kfArchMax { // filtre fort : field26==0 & ti<50
+	if source.BitsBourres(buf, q+32, 32) >= kfArchMax { // filtre fort : field26==0 & ti<50
 		return
 	}
-	ti = int(kfReadBits(buf, q+keyframeRecordTIBit, 6)) // extraction durcie (== mot 32-bit quand field26==0)
+	ti = int(source.BitsBourres(buf, q+keyframeRecordTIBit, 6)) // extraction durcie (== mot 32-bit quand field26==0)
 	ok = true
 	return
 }
@@ -234,7 +196,7 @@ func (r *kfRecherche) suivante(from, prevSlot int) kfIssue {
 	r.cands = r.cands[:0]
 	sentStreak := 0
 	for q := from; q < end && q+64 <= r.total; q++ {
-		id := kfReadBits(r.buf, q, 32)
+		id := source.BitsBourres(r.buf, q, 32)
 		if id == kfSent {
 			if sentStreak++; sentStreak >= 2048 {
 				iss.fin = true

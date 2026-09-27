@@ -223,7 +223,7 @@ func creationsParSlot(creations []grammar.BipedCreation) map[uint32][]uint64 {
 
 // mortsParJoueur groupe les instants des morts ECRITES du fil par joueur, sur l'horloge du FILM
 // (microsecondes) — `horlogeFilm = horlogeFil + deathOffsetMS`, la convention de match_clock.go.
-func mortsParJoueur(deaths []Death, offsetMS int64) map[uint64][]int64 {
+func mortsParJoueur(deaths []types.Death, offsetMS int64) map[uint64][]int64 {
 	out := make(map[uint64][]int64, len(deaths))
 	for _, d := range deaths {
 		out[d.XUID] = append(out[d.XUID], (d.TimeMS+offsetMS)*1000)

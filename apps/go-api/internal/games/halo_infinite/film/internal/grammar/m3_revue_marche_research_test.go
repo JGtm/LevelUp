@@ -48,7 +48,7 @@ func m3rvScan(buf []byte, from, prevSlot, total, maxWin int, r m3rvRegle, streak
 	}
 	sentStreak := s0
 	for q := from; (r.borneLarge && q < end && q+64 <= total) || (!r.borneLarge && q+64 <= end); q++ {
-		id := kfReadBits(buf, q, 32)
+		id := source.BitsBourres(buf, q, 32)
 		if id == kfSent {
 			if sentStreak++; sentStreak >= 2048 {
 				fin = true

@@ -42,7 +42,7 @@ const (
 
 // objDeathInstants traduit le fil des morts du rejeu dans la forme qu'attend le pont de
 // production.
-func objDeathInstants(deaths []Death) []types.DeathInstant {
+func objDeathInstants(deaths []types.Death) []types.DeathInstant {
 	out := make([]types.DeathInstant, 0, len(deaths))
 	for _, d := range deaths {
 		out = append(out, types.DeathInstant{
@@ -54,13 +54,13 @@ func objDeathInstants(deaths []Death) []types.DeathInstant {
 
 // objIdentites rend le pont slot statborg -> xuid par les INSTANTS DE MORT, tel que la
 // PRODUCTION le calcule.
-func objIdentites(film *source.Film, deaths []Death) map[int]string {
+func objIdentites(film *source.Film, deaths []types.Death) map[int]string {
 	return objectives.SlotIdentityFromDeaths(film, objDeathInstants(deaths))
 }
 
 // objRoundIdentites rend le pont slot statborg -> xuid PAR MANCHE, tel que la production le
 // calcule desormais pour les calques d'objectifs vivants (drapeau, couronne, porteur du crane).
-func objRoundIdentites(film *source.Film, deaths []Death) objectives.RoundIdentity {
+func objRoundIdentites(film *source.Film, deaths []types.Death) objectives.RoundIdentity {
 	return objectives.ResolveRoundIdentity(objectives.StatRecords(film), objDeathInstants(deaths))
 }
 

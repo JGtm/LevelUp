@@ -14,15 +14,15 @@ import (
 // une lecture partielle publiée comme pleine reproduirait, sous une autre forme, le défaut que
 // la version 19 vient de fermer.
 
-func kfGren(ts uint64, slot uint32, g [4]uint32, sel int) KeyframeInventory {
-	return KeyframeInventory{
+func kfGren(ts uint64, slot uint32, g [4]uint32, sel int) types.KeyframeInventory {
+	return types.KeyframeInventory{
 		TimestampUS: ts, Slot: slot, Grenades: g, GrenadesRead: true,
 		SelectedGrenadeRank: sel, AbilityRank: -1, DrawnSlot: -1,
 	}
 }
 
 func TestBuildGrenadeReadsPublieLesDeuxCanauxAvecLeurSource(t *testing.T) {
-	kf := []KeyframeInventory{kfGren(1_000_000, 7, [4]uint32{1, 0, 2, 0}, 2)}
+	kf := []types.KeyframeInventory{kfGren(1_000_000, 7, [4]uint32{1, 0, 2, 0}, 2)}
 	deltas := []types.InventoryDelta{{
 		Slot: 7, TimestampUS: 1_500_000, Grenades: []uint32{1, 0, 1, 0},
 		SelRead: true, Sel: 2, Mask: 0b0101,
@@ -50,7 +50,7 @@ func TestBuildGrenadeReadsPublieLesDeuxCanauxAvecLeurSource(t *testing.T) {
 // l'axe, et lui en inventer une la poserait sur la première image comme si elle y avait été
 // mesurée.
 func TestBuildGrenadeReadsEcarteCeQuiPrecedeLOrigine(t *testing.T) {
-	kf := []KeyframeInventory{kfGren(500_000, 7, [4]uint32{1, 0, 0, 0}, -1)}
+	kf := []types.KeyframeInventory{kfGren(500_000, 7, [4]uint32{1, 0, 0, 0}, -1)}
 	deltas := []types.InventoryDelta{
 		{Slot: 7, TimestampUS: 400_000, Grenades: []uint32{2, 0, 0, 0}},
 		{Slot: 7, TimestampUS: 2_000_000, Grenades: []uint32{0, 0, 0, 0}},
@@ -98,10 +98,10 @@ func TestBuildGrenadeReadsNePubliePasDeSelectionDevinee(t *testing.T) {
 // delta ne doivent JAMAIS entrer dans `Inventory`, sous peine de masquer une lecture pleine par
 // une lecture partielle et de vider la cellule de munitions (défaut fermé en v19).
 func TestGrenadeReadsNAffectePasLInventaire(t *testing.T) {
-	kf := []KeyframeInventory{{
+	kf := []types.KeyframeInventory{{
 		TimestampUS: 1_000_000, Slot: 7, Grenades: [4]uint32{1, 0, 0, 0}, GrenadesRead: true,
 		SelectedGrenadeRank: -1, AbilityRank: -1, DrawnSlot: 0, AmmoRead: true,
-		Ammo: [4]SlotAmmo{}, AmmoCandidates: 1,
+		Ammo: [4]types.SlotAmmo{}, AmmoCandidates: 1,
 	}}
 	inv, dropped := buildInventory(kf, 1_000_000, 100_000)
 	if dropped != 0 || len(inv) != 1 {

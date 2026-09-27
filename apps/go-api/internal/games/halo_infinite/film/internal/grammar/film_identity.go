@@ -211,7 +211,7 @@ func lireControleDeCorruption(d []byte, buildOff int) bool {
 	if bit < 0 || (bit+1+7)/8 > len(d) {
 		return false
 	}
-	return kfReadBits(d, bit, 1) == 1
+	return source.BitsBourres(d, bit, 1) == 1
 }
 
 // lireHorodatage lit les 32 bits de `_time64()` : ils suivent le booleen d'un bit et les deux

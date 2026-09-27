@@ -115,7 +115,7 @@ func bpExtraire(t *testing.T, cache, id string) (
 	if err != nil {
 		t.Fatalf("%s : canal des armes tenues illisible : %v", id, err)
 	}
-	deaths, err := ScanFilmDeaths(dir)
+	deaths, err := grammar.ScanFilmDeaths(dir)
 	if err != nil {
 		t.Fatalf("%s : fil des morts illisible : %v", id, err)
 	}
@@ -134,7 +134,7 @@ func bpExtraire(t *testing.T, cache, id string) (
 	if err != nil {
 		t.Fatalf("%s : positions bipeds illisibles : %v", id, err)
 	}
-	idx, err := ScanFilmPlayerIndices(dir, xuids)
+	idx, err := grammar.ScanFilmPlayerIndices(dir, xuids)
 	if err != nil {
 		t.Logf("%s : index de joueur illisible (%v) — pont par le seul fil des morts", id, err)
 	}

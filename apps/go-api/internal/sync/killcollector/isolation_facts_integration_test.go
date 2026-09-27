@@ -33,7 +33,7 @@ import (
 
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
+
 	"levelup/go-api/internal/sync/haloclient"
 )
 
@@ -54,7 +54,7 @@ const filmsEssayesAuMax = 20
 // `len(ids.Equipes) == 0` de `projeterFaitsDIsolement` sautait la projection sur CHAQUE film
 // essayé. Ce test annonçait une couverture qu'il n'avait jamais : il ne pouvait que se sauter.
 //
-// `replay.ScanDeaths(film)` lit le fil des morts du MÊME film (XUID + gamertag, une lecture
+// `decfilm.ScanDeaths(film)` lit le fil des morts du MÊME film (XUID + gamertag, une lecture
 // structurelle, jamais un nom à parser) : les xuids qui y meurent sont RÉELLEMENT ceux que la
 // passe crédit va résoudre. Deux camps par parité de l'ordre stable — le film ne porte aucun
 // camp (`Track.Team` vaut -1 partout, cf. `MatchIdentities.Equipes`), la composition exacte
@@ -71,7 +71,7 @@ type filmRoster struct {
 // filmRosterDepuisFilm construit le roster. Une erreur ou un fil des morts vide n'est pas
 // fatale ici : l'appelant essaie le film suivant, exactement comme pour un décodage échoué.
 func filmRosterDepuisFilm(film *decfilm.Film) (filmRoster, error) {
-	deaths, err := replay.ScanDeaths(film)
+	deaths, err := decfilm.ScanDeaths(film)
 	if err != nil {
 		return filmRoster{}, err
 	}

@@ -25,7 +25,7 @@ import (
 // skullIdentityRecs — deux slots dont le pont PAR MORTS ne nomme que le premier : le slot 10
 // aligne trois progressions du compteur de morts sur le fil de "111", le slot 12 n'en aligne que
 // deux (sous `deathInstantMin` = 3). Le slot 12 porte les tics de score de mode.
-func skullIdentityRecs() ([]types.StatRecord, []Death) {
+func skullIdentityRecs() ([]types.StatRecord, []types.Death) {
 	mort := func(t, slot int, kills, deaths int64) types.StatRecord {
 		return types.StatRecord{TimeMS: t, Slot: slot, Round: 0,
 			Comps: map[int]types.StatValue{2: {A: kills, B: deaths}}}
@@ -39,7 +39,7 @@ func skullIdentityRecs() ([]types.StatRecord, []Death) {
 		mort(5000, 12, 1, 1), mort(6000, 12, 2, 2),
 		tic(7000, 12, 1), tic(8000, 12, 2), tic(9000, 12, 3),
 	}
-	deaths := []Death{
+	deaths := []types.Death{
 		{XUID: 111, TimeMS: 1000}, {XUID: 111, TimeMS: 2000}, {XUID: 111, TimeMS: 3000},
 		{XUID: 222, TimeMS: 5000}, {XUID: 222, TimeMS: 6000},
 	}

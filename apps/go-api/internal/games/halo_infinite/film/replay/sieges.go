@@ -65,6 +65,7 @@ import (
 	"sort"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
 // SeatSourceLu / SeatSourceTirs / SeatSourceApparie / SeatSourceOuverte / SeatSourceIndex : les
@@ -199,7 +200,7 @@ type SeatCoverage struct {
 
 // entreesDesPlaces porte ce que la pose consomme hors du roster et des occupants.
 type entreesDesPlaces struct {
-	table FilmPlayerTable
+	table grammar.FilmPlayerTable
 	fire  []FireEventRef
 	// horloge porte la grille du document et le compteur de replis de la cuisson.
 	horloge replayClock
@@ -296,7 +297,7 @@ func (c *SeatCoverage) compterLesEntrees(roster []RosterEntry, pp *poseDesPlaces
 // siegesDuDebut rend les index que la table de `chunk_00` occupe, ou NIL quand le film ne porte
 // pas sa table — nil et une table vide ne disent pas la meme chose, et tout ce fichier en
 // depend.
-func siegesDuDebut(table FilmPlayerTable) map[int]bool {
+func siegesDuDebut(table grammar.FilmPlayerTable) map[int]bool {
 	if !table.Lue() {
 		return nil
 	}

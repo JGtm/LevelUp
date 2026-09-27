@@ -1,4 +1,9 @@
-package replay
+package grammar
+
+import (
+	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
+)
 
 // inventory_ammo_rules.go — LE BLOC MUNITIONS (i30..i42, règles R3+R4) d'un record de biped
 // aux images-clés. Extrait d'inventory_decode.go (seuil de taille du dépôt, CLAUDE.md n°5),
@@ -14,28 +19,10 @@ package replay
 // ouvrir la porte à des débuts absurdes.
 const invAmmoSearchSpan = 300
 
-// SlotAmmo est l'état de munitions d'UN emplacement d'arme.
-//
-// LES TROIS CAS NE SE CONFONDENT PAS, et c'est tout l'intérêt des pointeurs :
-//   - Mag non nil    : arme à chargeur (chargeur + réserve) ;
-//   - Gauge non nil  : arme à jauge de charge, fraction dans [0,1] sur 4096 niveaux ;
-//   - les deux nil   : le film n'écrit RIEN pour cet emplacement. Pour une arme à charge, cela
-//     veut dire PLEIN — le flux est différentiel et le plein est la valeur par défaut, donc il
-//     n'est jamais transmis. Ce n'est PAS « zéro » : publier 0 affirmerait un chargeur vide.
-type SlotAmmo struct {
-	Mag   *uint32
-	Res   *uint32
-	Gauge *float64
-	// Overheat et Flags sont lus mais non interprétés : ils bornent le parse (leur largeur
-	// entre dans le critère d'atterrissage) sans qu'on prétende savoir ce qu'ils disent.
-	Overheat uint32
-	Flags    uint32
-}
-
 // readAmmo résout le bloc de munitions et pose son résultat sur l'inventaire. Rend le PREMIER
 // BIT du bloc retenu, qui est aussi le repère de R2b (cf. inventory_grenades_rules.go) : le
 // début du bloc est établi par un critère de largeur, sans aucune information de grenade.
-func readAmmo(pay []byte, inv *KeyframeInventory, from, firstFamilyBit int) (start int, ok bool) {
+func readAmmo(pay []byte, inv *types.KeyframeInventory, from, firstFamilyBit int) (start int, ok bool) {
 	end := firstFamilyBit - 1
 	lo := end - invAmmoSearchSpan
 	if lo < from {
@@ -61,11 +48,11 @@ func readAmmo(pay []byte, inv *KeyframeInventory, from, firstFamilyBit int) (sta
 // déborde de `limit`.
 func invParseAmmoBlock(
 	pay []byte, s, limit int,
-) (st [invGrenadeSlots]SlotAmmo, sel int, end int, ok bool) {
+) (st [invGrenadeSlots]types.SlotAmmo, sel int, end int, ok bool) {
 	p := s
 	sel = -1
 	rd := func(n int) uint32 {
-		v := invBits(pay, p, n)
+		v := uint32(source.BitsTolerants(pay, p, n))
 		p += n
 		return v
 	}

@@ -41,6 +41,7 @@ import (
 	"levelup/go-api/internal/domain/highlightevent"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 const ctfFatalFilmsEnv = "CTF_FATAL_FILMS"
@@ -104,11 +105,11 @@ func ctfFatalReport(t *testing.T, cat *profile.MapQuantCatalog, dir, short, mapN
 		t.Fatalf("tirs : %v", err)
 	}
 	evs := ctfHighlightEvents(t, dir)
-	deaths, err := ScanFilmDeaths(dir)
+	deaths, err := grammar.ScanFilmDeaths(dir)
 	if err != nil {
 		t.Fatalf("morts : %v", err)
 	}
-	idx, err := ScanFilmPlayerIndices(dir, rosterFromDeaths(deaths))
+	idx, err := grammar.ScanFilmPlayerIndices(dir, rosterFromDeaths(deaths))
 	if err != nil {
 		t.Fatalf("index : %v", err)
 	}
@@ -150,7 +151,7 @@ func ctfFatalReport(t *testing.T, cat *profile.MapQuantCatalog, dir, short, mapN
 // la localisation du TIR fatal (maillons 3 et 4 ci-dessous), qui exige en plus un record de tir.
 func ctfWriteKillPositions(b *strings.Builder, pos []grammar.BipedPosition,
 	tracks map[uint32]slotTrack, owner map[uint32]int, lives []lifeSpan,
-	tbl PlayerIndexTable, pairs []ctfKillPair, off int64) {
+	tbl types.PlayerIndexTable, pairs []ctfKillPair, off int64) {
 	named := map[uint32]uint64{}
 	for _, l := range lives {
 		if l.xuid != 0 {
@@ -231,7 +232,7 @@ func ctfPairKills(evs []highlightevent.HighlightEvent, off int64) ([]ctfKillPair
 // ctfWriteFatalDelays mesure l'écart entre la mort et le tir du tueur le plus proche en amont.
 // Publié AVANT tout critère : la fenêtre doit se lire dans la donnée.
 func ctfWriteFatalDelays(b *strings.Builder, pairs []ctfKillPair, fire []grammar.FireEvent,
-	tbl PlayerIndexTable) {
+	tbl types.PlayerIndexTable) {
 	var d []int64
 	for _, p := range pairs {
 		pi, ok := tbl.ByXUID[p.killerXUID]
@@ -263,7 +264,7 @@ func ctfWriteFatalDelays(b *strings.Builder, pairs []ctfKillPair, fire []grammar
 
 // ctfWriteFatalCoverage chiffre les maillons 3 et 4 pour un pont donné.
 func ctfWriteFatalCoverage(b *strings.Builder, label string, pairs []ctfKillPair,
-	fire []grammar.FireEvent, tracks map[uint32]slotTrack, owner map[uint32]int, tbl PlayerIndexTable) {
+	fire []grammar.FireEvent, tracks map[uint32]slotTrack, owner map[uint32]int, tbl types.PlayerIndexTable) {
 	var noIndex, noShot, placed, unplaced int
 	for _, p := range pairs {
 		pi, ok := tbl.ByXUID[p.killerXUID]
@@ -289,7 +290,7 @@ func ctfWriteFatalCoverage(b *strings.Builder, label string, pairs []ctfKillPair
 
 // ctfFatalStatus rend le statut d'une mort pour le pont donné, en un mot joignable.
 func ctfFatalStatus(p ctfKillPair, fire []grammar.FireEvent, tracks map[uint32]slotTrack,
-	owner map[uint32]int, tbl PlayerIndexTable) string {
+	owner map[uint32]int, tbl types.PlayerIndexTable) string {
 	pi, ok := tbl.ByXUID[p.killerXUID]
 	if !ok {
 		return "tueur_hors_table"

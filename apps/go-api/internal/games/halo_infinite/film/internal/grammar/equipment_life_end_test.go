@@ -25,6 +25,7 @@ package grammar
 
 import (
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
 	"os"
 	"sort"
@@ -443,10 +444,10 @@ func lifeEndCountDel(pay []byte, band map[uint32]bool) int {
 	cnt := 0
 	last := len(pay)*8 - (3 + 13 + 2 + 32)
 	for p := 0; p <= last; p++ {
-		if PeekBits(pay, p, 1) != 0 || PeekBits(pay, p+1, 2) != uint64(recDel) {
+		if source.BitsTolerants(pay, p, 1) != 0 || source.BitsTolerants(pay, p+1, 2) != uint64(recDel) {
 			continue
 		}
-		if band[uint32(PeekBits(pay, p+3, 13))] {
+		if band[uint32(source.BitsTolerants(pay, p+3, 13))] {
 			cnt++
 		}
 	}

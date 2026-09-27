@@ -105,9 +105,9 @@ func leurreDansLAxeDUnRecord(slot uint32) (qx, qy, qz uint64) {
 	writeBipedHeaderEtMasque(w, slot, 1, bipedMinMaskCnt)
 	w.bits(0, cliffLayout.GateBits) // le gate d'i0 du leurre : i0 absolu, region 0
 	w.bits(0, total-w.n)            // le reste de l'axe, libre
-	return uint64(readBitsAt(w.buf, 0, axe[0])),
-		uint64(readBitsAt(w.buf, axe[0], axe[1])),
-		uint64(readBitsAt(w.buf, axe[0]+axe[1], axe[2]))
+	return uint64(uint32(source.BitsStricts(w.buf, 0, axe[0]))),
+		uint64(uint32(source.BitsStricts(w.buf, axe[0], axe[1]))),
+		uint64(uint32(source.BitsStricts(w.buf, axe[0]+axe[1], axe[2])))
 }
 
 // TestMarcheurDeltaBipedeNeRebalaiePasUnRecordPublie — L'AVANCE, EXERCEE POUR DE VRAI.

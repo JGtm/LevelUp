@@ -16,6 +16,8 @@ import (
 	"fmt"
 	"os"
 	"testing"
+
+	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 )
 
 // TestM3Registre publie les composants du bipede tels que le registre DU FILM les nomme.
@@ -175,7 +177,7 @@ func TestM3ImageCleDS32(t *testing.T) {
 						b2.PoserContexte(ctx)
 						b2.SetBitPos(debut)
 						consumeBipedDefaultState(b2)
-						portes[PeekBits(pay, b2.BitPos()-1, 1)]++
+						portes[source.BitsTolerants(pay, b2.BitPos()-1, 1)]++
 					}
 					consumeBipedDefaultStateTail(br)
 					br.ReadBits(32) // n2
@@ -187,8 +189,8 @@ func TestM3ImageCleDS32(t *testing.T) {
 						c.desync++
 					}
 					for _, cr := range tr.Comps {
-						if cr.Index == 43 && PeekBits(pay, cr.StartBit, 1) == 1 &&
-							cat[uint32(PeekBits(pay, cr.StartBit+1, 32))] {
+						if cr.Index == 43 && source.BitsTolerants(pay, cr.StartBit, 1) == 1 &&
+							cat[uint32(source.BitsTolerants(pay, cr.StartBit+1, 32))] {
 							c.cat++
 						}
 					}
@@ -317,7 +319,7 @@ func m3SuivantPropre(pay []byte, p int, w *World, cfg FrameConfig) string {
 		return "delta-sale"
 	case recNew:
 		id := readRecordID(br, cfg.IDLowBits, cfg.IDBase)
-		ti := uint32(PeekBits(pay, br.BitPos(), 6))
+		ti := uint32(source.BitsTolerants(pay, br.BitPos(), 6))
 		if lie, ok := w.ArchetypeForSlot(id & 0x3fffffff); ok && lie == ti {
 			return "new-lie"
 		}
@@ -387,7 +389,7 @@ func m3Chaine(pay []byte, p int, w *World, cfg FrameConfig, max int) (string, in
 		readRecordType(br)
 		readRecordID(br, cfg.IDLowBits, cfg.IDBase)
 		// un NEW de bipede se traverse sous H-DS32, les autres par la production
-		if PeekBits(pay, br.BitPos(), 6) == BipedTypeIndex {
+		if source.BitsTolerants(pay, br.BitPos(), 6) == BipedTypeIndex {
 			tr := m3TraverserDS32(br, w.Reg)
 			p = tr.EndBit
 		} else {

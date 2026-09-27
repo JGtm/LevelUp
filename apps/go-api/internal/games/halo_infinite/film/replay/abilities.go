@@ -75,7 +75,7 @@ type AbilityRead struct {
 // les départager quand elles divergent supposerait de savoir laquelle a tort, ce qu'on ne
 // sait pas — et le client, lui, prend simplement la plus récente.
 func buildAbilityReads(
-	ranks []types.AbilityRank, inv []KeyframeInventory, origin, step uint64,
+	ranks []types.AbilityRank, inv []types.KeyframeInventory, origin, step uint64,
 ) []AbilityRead {
 	out := make([]AbilityRead, 0, len(ranks)+len(inv))
 	for _, r := range ranks {

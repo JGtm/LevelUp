@@ -19,6 +19,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // flagTestClosedScan monte un portage FERME PAR UN FAIT : une prise a 1 000 ms, puis la mort du
@@ -42,7 +43,7 @@ func flagTestClosedScan(free []flagFreeLife) FlagCarryScan {
 // (le portage se rouvre jusqu'a la frame 60) et lui seul — c'est exactement l'etat d'avant ce lot.
 func TestUneVieLibreFermeUnPortageDejaFermeParLaMort(t *testing.T) {
 	tracks := []Track{flagTestTrack(10, "1", 0, 99, 50, 50)}
-	ctx := flagTestCtx(tracks, []Death{{XUID: 1, TimeMS: 6000}}, 100)
+	ctx := flagTestCtx(tracks, []types.Death{{XUID: 1, TimeMS: 6000}}, 100)
 
 	// TEMOIN — sans vie libre, la mort borne le portage a la frame 60.
 	got, cov := buildFlagCarries(flagTestClosedScan(nil), ctx)
@@ -71,7 +72,7 @@ func TestUneVieLibreFermeUnPortageDejaFermeParLaMort(t *testing.T) {
 // posterieure a la fermeture n'en est pas un. Sans ce refus, la regle allongerait des portages.
 func TestUneVieLibreApresLaFermetureNeChangeRien(t *testing.T) {
 	tracks := []Track{flagTestTrack(10, "1", 0, 99, 50, 50)}
-	ctx := flagTestCtx(tracks, []Death{{XUID: 1, TimeMS: 6000}}, 100)
+	ctx := flagTestCtx(tracks, []types.Death{{XUID: 1, TimeMS: 6000}}, 100)
 	free := []flagFreeLife{flagTestLife(80, [2]float32{50.5, 50.5})}
 	got, cov := buildFlagCarries(flagTestClosedScan(free), ctx)
 	f := flagOfTeam(t, got, 0)

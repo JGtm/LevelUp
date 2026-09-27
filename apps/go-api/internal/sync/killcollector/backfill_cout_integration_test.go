@@ -54,7 +54,7 @@ import (
 
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
+
 	"levelup/go-api/internal/sync/haloclient"
 )
 
@@ -137,7 +137,7 @@ func collecteurDeMesure(t *testing.T, db *sql.DB, chunks map[string][]haloclient
 }
 
 // inscrireFilmAuRegistre pose le match au registre et ses participants, tires DU FILM LUI-MEME
-// (`replay.ScanDeaths`) : les xuids que la passe va resoudre sont alors les VRAIS, et la
+// (`decfilm.ScanDeaths`) : les xuids que la passe va resoudre sont alors les VRAIS, et la
 // jointure `v_gamertag_lookup` du roster a de quoi travailler.
 func inscrireFilmAuRegistre(t *testing.T, db *sql.DB, film string, decode *decfilm.Film) int {
 	t.Helper()
@@ -145,7 +145,7 @@ func inscrireFilmAuRegistre(t *testing.T, db *sql.DB, film string, decode *decfi
 		film, "streets"); err != nil {
 		t.Fatalf("registre %s: %v", film, err)
 	}
-	deaths, err := replay.ScanDeaths(decode)
+	deaths, err := decfilm.ScanDeaths(decode)
 	if err != nil {
 		return 0
 	}

@@ -260,12 +260,12 @@ func v3dContexte(t *testing.T, dir string, bip, vehPos []grammar.BipedPosition) 
 		morts:   map[uint64][]uint64{},
 		sorties: map[uint32][]uint64{},
 	}
-	deaths, err := ScanFilmDeaths(dir)
+	deaths, err := grammar.ScanFilmDeaths(dir)
 	if err != nil {
 		t.Logf("V3d %s : fil des morts illisible (%v) — aucune datation possible", shortOf(dir), err)
 		return ctx
 	}
-	idx, err := ScanFilmPlayerIndices(dir, rosterFromDeaths(deaths))
+	idx, err := grammar.ScanFilmPlayerIndices(dir, rosterFromDeaths(deaths))
 	if err != nil {
 		t.Logf("V3d %s : index joueur illisible (%v) — pont sans identite", shortOf(dir), err)
 	}

@@ -96,16 +96,16 @@ func p2bBuild(t *testing.T, dir, short string, quant *profile.MapQuantEntry, zon
 		t.Fatalf("positions illisibles (%s) : %v", dir, err)
 	}
 	opt := Options{Objectives: caps, Zone: zone, MapQuant: quant}
-	deaths, err := ScanFilmDeaths(dir)
+	deaths, err := grammar.ScanFilmDeaths(dir)
 	if err != nil {
 		t.Fatalf("fil des morts illisible (%s) : %v", dir, err)
 	}
 	opt.Deaths = deaths
-	if idx, err := ScanFilmPlayerIndices(dir, rosterFromDeaths(deaths)); err == nil {
+	if idx, err := grammar.ScanFilmPlayerIndices(dir, rosterFromDeaths(deaths)); err == nil {
 		table, _ := injectiveOrEmpty(idx)
 		opt.PlayerIndices = table
 	}
-	clockUS, err := ScanFilmClockOrigin(dir)
+	clockUS, err := grammar.ScanFilmClockOrigin(dir)
 	if err != nil {
 		t.Logf("origine d'horloge illisible : %v — les instants ne seront pas recales", err)
 	}

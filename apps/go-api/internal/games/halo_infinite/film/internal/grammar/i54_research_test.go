@@ -32,6 +32,7 @@ package grammar
 
 import (
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 	"os"
 	"sort"
 	"testing"
@@ -232,7 +233,7 @@ func i54Flag1(pay []byte, i0, total int, idx []int, lay profile.I0Layout, arch A
 			if at+1 > total {
 				return -1
 			}
-			return int(readBitsAt(pay, at, 1))
+			return int(uint32(source.BitsStricts(pay, at, 1)))
 		}
 		name := arch.component(id)
 		if name == "" {

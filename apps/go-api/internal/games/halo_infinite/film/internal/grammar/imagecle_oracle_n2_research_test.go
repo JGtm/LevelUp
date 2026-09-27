@@ -41,6 +41,7 @@ package grammar
 import (
 	"fmt"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 	"sort"
 	"testing"
 )
@@ -105,7 +106,7 @@ func imcoCollecter(f imcFilm, groupes map[imcoCle]*imcoGroupe) {
 				want = -1 // dernier record du payload : aucune frontiere annoncee
 			}
 			g.Ancres = append(g.Ancres, imcoAncre{Pay: pay, Bit: s.BitStart, Want: want})
-			g.N1[kfReadBits(pay, s.BitStart+imcoDebutN1, profile.KeyframeMotDeTailleBits)]++
+			g.N1[source.BitsBourres(pay, s.BitStart+imcoDebutN1, profile.KeyframeMotDeTailleBits)]++
 			e := profilLireEtatComplet(pay, s.BitStart, s.TI)
 			g.Portee[e.DSBits]++
 			g.N2Porte[e.N2]++
@@ -141,7 +142,7 @@ func (g *imcoGroupe) imcoRetenues() []imcoAncre {
 	}
 	out := make([]imcoAncre, 0, len(g.Ancres))
 	for _, a := range g.Ancres {
-		if kfReadBits(a.Pay, a.Bit+imcoDebutN1, profile.KeyframeMotDeTailleBits) == modal {
+		if source.BitsBourres(a.Pay, a.Bit+imcoDebutN1, profile.KeyframeMotDeTailleBits) == modal {
 			out = append(out, a)
 		}
 	}
@@ -157,13 +158,13 @@ func (g *imcoGroupe) imcoBalayer(ancres []imcoAncre) (ws []int, vals map[int]uin
 	}
 	for w := 0; w <= imcoBalayageMax; w++ {
 		p := imcoDebutEtat + w
-		v := kfReadBits(ancres[0].Pay, ancres[0].Bit+p, profile.KeyframeMotDeTailleBits)
+		v := source.BitsBourres(ancres[0].Pay, ancres[0].Bit+p, profile.KeyframeMotDeTailleBits)
 		if v == 0 || v > imcoTailleMax {
 			continue
 		}
 		bon := true
 		for _, a := range ancres[1:] {
-			if kfReadBits(a.Pay, a.Bit+p, profile.KeyframeMotDeTailleBits) != v {
+			if source.BitsBourres(a.Pay, a.Bit+p, profile.KeyframeMotDeTailleBits) != v {
 				bon = false
 				break
 			}
@@ -277,8 +278,7 @@ func imcoAnalyser(g *imcoGroupe, regs map[string]*Registry) imcoLigne {
 // POURQUOI LE JEU SYSTEMATIQUE. La constance de `n2` et la fermeture sont DEUX CHAINES
 // distinctes, et elles peuvent se contredire : une zone de bits constante peut exister a une
 // largeur qui ne ferme pas, et une largeur qui ferme peut ne pas rendre `n2` constant. Ne
-// tester que les zones ferait manquer le second cas — donc taire une contradiction au lieu de
-// la publier.
+// tester que les zones ferait manquer le second cas — donc taire une contradiction au lieu de la publier.
 func imcoLargeursAEprouver(zones []int, portee int) []int {
 	vus := map[int]bool{}
 	var out []int

@@ -34,6 +34,8 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+
+	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 )
 
 const (
@@ -128,18 +130,18 @@ func ti42HeaderMatches(buf []byte, r ti42CaptureRecord, h int) bool {
 	p := r.bitPos - h
 	switch h {
 	case 18:
-		if PeekBits(buf, p, 1) != 0 || int(PeekBits(buf, p+1, 2)) != r.kind {
+		if source.BitsTolerants(buf, p, 1) != 0 || int(source.BitsTolerants(buf, p+1, 2)) != r.kind {
 			return false
 		}
 	case 16:
-		if PeekBits(buf, p, 1) != 1 || r.kind != 3 {
+		if source.BitsTolerants(buf, p, 1) != 1 || r.kind != 3 {
 			return false
 		}
 	default:
 		return false
 	}
-	low := uint32(PeekBits(buf, r.bitPos-15, 13))
-	tag := uint32(PeekBits(buf, r.bitPos-2, 2))
+	low := uint32(source.BitsTolerants(buf, r.bitPos-15, 13))
+	tag := uint32(source.BitsTolerants(buf, r.bitPos-2, 2))
 	return low == (r.id&0x3fffffff)&0x1fff && tag == r.id>>30
 }
 
@@ -154,7 +156,7 @@ func ti42BodyWidths(buf []byte, recs []ti42CaptureRecord, hdr []int) (widths, ti
 			widths[i] = recs[i+1].bitPos - hdr[i+1] - recs[i].bitPos
 		}
 		if recs[i].kind == 1 {
-			tis[i] = int(PeekBits(buf, recs[i].bitPos, 6))
+			tis[i] = int(source.BitsTolerants(buf, recs[i].bitPos, 6))
 		}
 	}
 	return widths, tis
@@ -254,7 +256,7 @@ func ti42CountLandingsTI(
 			continue
 		}
 		gateAt := br.BitPos()
-		if PeekBits(buf, gateAt, 1) != 0 {
+		if source.BitsTolerants(buf, gateAt, 1) != 0 {
 			continue // porte ouverte : masque + composants, largeurs dependantes de la carte
 		}
 		total++

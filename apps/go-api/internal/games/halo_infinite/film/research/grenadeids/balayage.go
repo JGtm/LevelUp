@@ -15,6 +15,7 @@ import (
 	"sort"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 )
 
 // structureBits : la taille de la structure exploitee par la production — marqueur, identifiant,
@@ -236,7 +237,7 @@ func lireLesDeuxSignaux(pay []byte, b *Bobine, chunk int, p grammar.FilmPacket, 
 	var marqueurs []Occurrence
 	var absolus []occAbsolue
 	for bp := 0; bp <= limAbsolu; bp++ {
-		v := grammar.PeekBits(pay, bp, 32)
+		v := source.BitsTolerants(pay, bp, 32)
 		if id := uint32(v); estIdentifiantActuel(id) {
 			r.Absolus[id]++
 			noterAmorce(pay, bp, r)
@@ -287,10 +288,10 @@ func occurrenceAu(pay []byte, bp, chunk int, p grammar.FilmPacket, src SourceMar
 		Paquet:        p.Index,
 		BitPos:        bp,
 		TimestampUS:   p.TimestampUS,
-		ID:            uint32(grammar.PeekBits(pay, bp+24, 32)),
-		Index:         int(grammar.PeekBits(pay, bp+24+32+47, 5)),
-		IndexAlt:      int(grammar.PeekBits(pay, bp+24+32+47-1, 5)),
-		IDAlt:         uint32(grammar.PeekBits(pay, bp+23, 32)),
+		ID:            uint32(source.BitsTolerants(pay, bp+24, 32)),
+		Index:         int(source.BitsTolerants(pay, bp+24+32+47, 5)),
+		IndexAlt:      int(source.BitsTolerants(pay, bp+24+32+47-1, 5)),
+		IDAlt:         uint32(source.BitsTolerants(pay, bp+23, 32)),
 		TypeIndex:     ti,
 		TiIndetermine: indetermine,
 	}
@@ -308,7 +309,7 @@ func compterDecalages(pay []byte, m Occurrence, fenetre int, r *Releve) {
 		r.ParDecalage[m.Source] = parSource
 	}
 	for d := -fenetre; d <= fenetre; d++ {
-		id := uint32(grammar.PeekBits(pay, m.BitPos+24+d, 32))
+		id := uint32(source.BitsTolerants(pay, m.BitPos+24+d, 32))
 		if !estIdentifiantActuel(id) {
 			continue
 		}

@@ -10,7 +10,11 @@ package replay
 // `archlint/no_life_cause_divergence_test.go`) et COMMENT on cale les deux horloges. Le second
 // est ici. Aucune ligne n a change : memes constantes, memes fonctions, meme ordre.
 
-import "sort"
+import (
+	"sort"
+
+	"levelup/go-api/internal/games/halo_infinite/film/types"
+)
 
 // deathOffsetStepMS est le pas du balayage fin du calage, et la grille reste ancrée sur la
 // PREMIÈRE FIN DE VIE — celle sur laquelle le balayage linéaire d'avant 2026-09-07 était déjà
@@ -82,7 +86,7 @@ const deathOffsetMargeMin = 2
 // BTB, d'où le vote de [voteDeathOffsets], qui localise les calages candidats en UN parcours,
 // et [refineDeathOffset], qui garde la règle historique (pas de 10 ms, plateau centré) sur la
 // seule fenêtre utile autour de chacun.
-func bestDeathOffset(lives []lifeSpan, deaths []Death) (int64, int, int) {
+func bestDeathOffset(lives []lifeSpan, deaths []types.Death) (int64, int, int) {
 	ends := lifeEndsMS(lives)
 	if len(ends) == 0 || len(deaths) == 0 {
 		return 0, 0, 0
@@ -144,7 +148,7 @@ func bestDeathOffset(lives []lifeSpan, deaths []Death) (int64, int, int) {
 // LE BUDGET N'EST PLUS UN PARAMÈTRE : les quatre appelants passaient tous
 // [deathOffsetCandidats], et un levier que personne ne bouge est du code mort déguisé en
 // souplesse (`unparam` le signalait, lot R7).
-func voteDeathOffsets(ends []int64, deaths []Death) []int64 {
+func voteDeathOffsets(ends []int64, deaths []types.Death) []int64 {
 	const k = deathOffsetCandidats
 	const w = deathMatchWindowMS
 	instantsMorts := make([]int64, len(deaths))
@@ -229,7 +233,7 @@ func paniersParPivot(pivots, autres []int64, pivotEstFin bool) [2]map[int64]int 
 // un réglage : un plateau ne peut pas dépasser `2 × deathMatchWindowMS` (au-delà, une mort au
 // moins sort de la fenêtre), et le centre du panier voté est à au plus une demi-largeur du
 // vrai calage. Tout plateau du maximum tient donc dedans.
-func refineDeathOffset(ends []int64, deaths []Death, around int64) (int64, int) {
+func refineDeathOffset(ends []int64, deaths []types.Death, around int64) (int64, int) {
 	anchor := ends[0]
 	for _, e := range ends {
 		anchor = minI64(anchor, e)
@@ -268,7 +272,7 @@ func alignOnGridI64(v, anchor, step int64) int64 {
 
 // countDeathMatches compte les morts appariables à une fin de vie, chaque vie servant une
 // seule fois.
-func countDeathMatches(ends []int64, deaths []Death, off int64) int {
+func countDeathMatches(ends []int64, deaths []types.Death, off int64) int {
 	used := make([]bool, len(ends))
 	n := 0
 	for _, d := range deaths {
@@ -316,7 +320,7 @@ type deathPair struct {
 // d'iteration — une boucle naive donnerait un resultat different selon l'ordre des slots, donc
 // non reproductible. Le resultat sort TRIE PAR VIE, pour la meme raison : un journal dont les
 // lignes changent d'ordre d'un run a l'autre ne se compare pas.
-func apparierMortsEtVies(lives []lifeSpan, deaths []Death, off int64) []deathPair {
+func apparierMortsEtVies(lives []lifeSpan, deaths []types.Death, off int64) []deathPair {
 	ends := lifeEndsMS(lives)
 	type candidat struct {
 		di, li int

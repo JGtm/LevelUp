@@ -17,6 +17,7 @@ import (
 
 	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 	"levelup/go-api/internal/persist"
 	"levelup/go-api/internal/port"
 )
@@ -201,12 +202,12 @@ func positionsDUneVie() []decfilm.BipedPosition {
 // registreDeTest construit le VRAI registre (`replay.BuildIdentityRegistry`) : une trajectoire,
 // une mort du fil qui la clôt, une table d'index. `desaccords` injecte un désaccord de lecture
 // par la table d'index — la seule entrée publique qui le porte, et celle que la production
-// alimente (`replay.ScanPlayerIndices`).
+// alimente (`decfilm.ScanPlayerIndices`).
 func registreDeTest(pos []decfilm.BipedPosition, desaccords int) replay.IdentityRegistry {
 	return replay.BuildIdentityRegistry(replay.IdentityInput{
 		Positions: pos,
-		Deaths:    []replay.Death{{XUID: 111, TimeMS: 10_000}},
-		PlayerIndices: replay.PlayerIndexTable{
+		Deaths:    []types.Death{{XUID: 111, TimeMS: 10_000}},
+		PlayerIndices: types.PlayerIndexTable{
 			ByXUID: map[uint64]int{111: 0}, Readings: 26, Disagreements: desaccords,
 		},
 	})
@@ -234,8 +235,8 @@ func TestRegistreDuCollecteurNommeParElimination(t *testing.T) {
 	}
 	entree := replay.IdentityInput{
 		Positions: pos,
-		Deaths:    []replay.Death{{XUID: 111, TimeMS: 10_000}},
-		PlayerIndices: replay.PlayerIndexTable{
+		Deaths:    []types.Death{{XUID: 111, TimeMS: 10_000}},
+		PlayerIndices: types.PlayerIndexTable{
 			ByXUID: map[uint64]int{111: 0}, Readings: 26,
 		},
 	}
@@ -278,8 +279,8 @@ func TestRegistreDuCollecteurSeTaitADeuxCandidats(t *testing.T) {
 	}
 	reg := replay.BuildIdentityRegistry(replay.IdentityInput{
 		Positions:     pos,
-		Deaths:        []replay.Death{{XUID: 111, TimeMS: 10_000}},
-		PlayerIndices: replay.PlayerIndexTable{ByXUID: map[uint64]int{111: 0}, Readings: 26},
+		Deaths:        []types.Death{{XUID: 111, TimeMS: 10_000}},
+		PlayerIndices: types.PlayerIndexTable{ByXUID: map[uint64]int{111: 0}, Readings: 26},
 		RosterXUIDs:   rosterUint64([]string{"111", "222", "333"}),
 	})
 	if n := len(reg.ViesNommees()); n != 1 {

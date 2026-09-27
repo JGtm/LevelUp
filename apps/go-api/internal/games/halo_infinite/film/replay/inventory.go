@@ -1,6 +1,7 @@
 package replay
 
 import (
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 	"log/slog"
 	"sort"
 )
@@ -136,7 +137,7 @@ const invDeadWindowMS = 8_000
 // LA CONDITION EST CELLE DU DÉCODEUR, PAS CELLE DU DOCUMENT : elle se lit sur les drapeaux du
 // record, avant toute projection. La tester après coup sur l'`Inventory` publié reviendrait à
 // redécouvrir par ses champs vides ce que la lecture savait déjà.
-func invReadingIsEmpty(r KeyframeInventory) bool {
+func invReadingIsEmpty(r types.KeyframeInventory) bool {
 	return !r.GrenadesRead && !r.AmmoRead
 }
 
@@ -147,7 +148,7 @@ func invReadingIsEmpty(r KeyframeInventory) bool {
 //
 // Un inventaire ANTÉRIEUR à l'origine du rejeu est écarté : il n'a pas de place sur l'axe, et
 // lui en inventer une le poserait sur la première image comme s'il y avait été mesuré.
-func buildInventory(raw []KeyframeInventory, origin, step uint64) ([]Inventory, int) {
+func buildInventory(raw []types.KeyframeInventory, origin, step uint64) ([]Inventory, int) {
 	if len(raw) == 0 {
 		return nil, 0
 	}
@@ -202,7 +203,7 @@ func buildInventory(raw []KeyframeInventory, origin, step uint64) ([]Inventory, 
 //
 // Les deux autres décrits par la carte mémoire sont structurellement vides — leur vacuité sert
 // de critère au décodage, elle n'a rien à dire à l'écran.
-func ammoSlotsOf(r KeyframeInventory) []AmmoSlot {
+func ammoSlotsOf(r types.KeyframeInventory) []AmmoSlot {
 	out := make([]AmmoSlot, 0, 2)
 	for k := 0; k < 2 && k < len(r.Ammo); k++ {
 		a := r.Ammo[k]
@@ -221,38 +222,6 @@ func ammoSlotsOf(r KeyframeInventory) []AmmoSlot {
 func keepInventoryOfPublishedTracks(inv []Inventory, tracks []Track) []Inventory {
 	return keepOfPublishedTracks(inv, tracks,
 		func(i Inventory, published map[uint32]bool) bool { return published[i.Slot] })
-}
-
-// KeyframeInventoryStats compte ce que ScanFilmKeyframeInventory (inventory_decode.go) a
-// rencontré. Sans ces dénominateurs, une fiche clairsemée ne se diagnostique pas : rien ne
-// distingue « peu de keyframes dans le film » de « chunks corrompus » (audit
-// AUDIT_AVAL_INVENTAIRE_2026-08-24.md, point 3). Même vocabulaire que les scanners frères
-// (types.AbilityRankStats, CamoStateStats, GrappleStats). Vit ici, avec InventoryCoverage
-// qu'elle alimente, et non dans inventory_decode.go (seuil de taille du dépôt, CLAUDE.md n°5).
-type KeyframeInventoryStats struct {
-	// Chunks est le nombre total de chunks du film (CountFilmChunks).
-	Chunks int
-	// ChunksUnread est le nombre de chunks dont la lecture disque a échoué — un `continue`
-	// nu ne les révélait auparavant nulle part, ni compteur ni log.
-	ChunksUnread int
-	// Keyframes est le nombre de paquets d'image-clé parcourus, tous chunks confondus.
-	Keyframes int
-	// Records est le nombre de records de biped (ti=invBipedTI) rencontrés dans ces
-	// images-clés. `keyframeInventories` n'en écarte AUCUN — chaque record produit une
-	// lecture, lue ou non — donc ce compte est AUSSI le nombre de lectures rendues : la même
-	// grandeur n'est pas dupliquée sous deux noms.
-	Records int
-	// GrenadesByAnchor / GrenadesByPosition comptent les lectures de compteurs de grenade PAR
-	// VOIE : R2a, ancrée sur la capacité, et R2b, le repli positionnel livré le 2026-08-25
-	// (cf. inventory_grenades_rules.go). Leur somme est le nombre de records dont les grenades
-	// ont été lues ; `Records` en reste le dénominateur.
-	//
-	// LES DEUX SONT COMPTÉES SÉPARÉMENT PARCE QU'ELLES N'ONT PAS LE MÊME STATUT. R2a est exacte
-	// par construction — l'ancre borne le champ. R2b repose sur une LOI DE POSITION mesurée sur
-	// 24 films ; fondue dans un total, une dérive du repli sur un film d'une autre version du
-	// jeu ne se verrait nulle part.
-	GrenadesByAnchor   int
-	GrenadesByPosition int
 }
 
 // InventoryCoverage est la couverture du calque INVENTAIRE (munitions, grenades, capacité,
@@ -287,7 +256,7 @@ type InventoryCoverage struct {
 // des trajectoires publiées), publié (après les deux). Pure télémétrie : n'affecte aucun champ
 // consommé par le client — n'incrémente donc pas SchemaVersion (même règle que
 // Structure/StructureBounds, cf. TestStructureIsOptionalInDocument).
-func buildInventoryCoverage(decoded []KeyframeInventory, built, published []Inventory, droppedBeforeOrigin int) *InventoryCoverage {
+func buildInventoryCoverage(decoded []types.KeyframeInventory, built, published []Inventory, droppedBeforeOrigin int) *InventoryCoverage {
 	return &InventoryCoverage{
 		Decoded:             len(decoded),
 		DroppedBeforeOrigin: droppedBeforeOrigin,
@@ -304,7 +273,7 @@ func buildInventoryCoverage(decoded []KeyframeInventory, built, published []Inve
 // de couverture, et son ABSENCE est l'information. Une tranche VIDE mais NON NULLE est l'autre
 // cas — la lecture a eu lieu et n'a rien rendu —, et celle-là publie bien {0,0,0,0}. Confondre
 // les deux fait passer une panne de décodage pour un film sans inventaire.
-func attachInventoryCoverage(doc *ReplayDocument, decoded []KeyframeInventory, built []Inventory, droppedBeforeOrigin int) {
+func attachInventoryCoverage(doc *ReplayDocument, decoded []types.KeyframeInventory, built []Inventory, droppedBeforeOrigin int) {
 	if decoded == nil || doc.Coverage == nil {
 		return
 	}

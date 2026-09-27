@@ -70,7 +70,7 @@ func b3ChargerPositions(t *testing.T, dir string) (b3Pos, uint64) {
 	if err != nil {
 		t.Fatalf("%s : positions illisibles : %v", dir, err)
 	}
-	originUS, err := ScanFilmClockOrigin(dir)
+	originUS, err := grammar.ScanFilmClockOrigin(dir)
 	if err != nil {
 		t.Fatalf("%s : horloge illisible : %v", dir, err)
 	}

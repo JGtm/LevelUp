@@ -199,7 +199,7 @@ func familiesByRecordRecs(pay []byte, marches []KeyframeRec, known map[uint32]bo
 	total := len(pay) * 8
 	var w uint32
 	for b := 0; b < total; b++ {
-		w = w<<1 | uint32(kfBitAt(pay, b))
+		w = w<<1 | uint32(source.BitAt(pay, b))
 		if b < 31 || !known[w] {
 			continue
 		}

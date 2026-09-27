@@ -19,6 +19,7 @@ import (
 
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
+	"levelup/go-api/internal/games/halo_infinite/film/finalise"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/sync/haloclient"
 )
@@ -63,8 +64,8 @@ func TestLocalCacheFilms_ManifestePartiel_NonServi(t *testing.T) {
 	src := NewLocalCacheFilms(haloclient.NewLocalFilmCache(racine))
 
 	chunks, found, err := src.GetFilmChunks(context.Background(), matchRemote)
-	if !errors.Is(err, filmcache.ErrFilmNonFinalise) {
-		t.Fatalf("err = %v, attendu filmcache.ErrFilmNonFinalise", err)
+	if !errors.Is(err, finalise.ErrFilmNonFinalise) {
+		t.Fatalf("err = %v, attendu finalise.ErrFilmNonFinalise", err)
 	}
 	if found || chunks != nil {
 		t.Errorf("manifeste partiel servi : found=%v, %d morceaux", found, len(chunks))

@@ -30,6 +30,7 @@ import (
 	"flag"
 	"fmt"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -92,8 +93,8 @@ func FuzzFilmRecordReaders(f *testing.F) {
 		// 2026-08-01 la tolerance etait a SENS UNIQUE et une position negative paniquait
 		// (`index out of range [-1]`), alors que la documentation annoncait le contraire
 		// (decouverte J2, alignee en J3.4). Cette ligne est ce qui interdit la rechute.
-		_ = PeekBits(payload, len(payload)*8-3, 24)
-		_ = PeekBits(payload, -4, 24)
+		_ = source.BitsTolerants(payload, len(payload)*8-3, 24)
+		_ = source.BitsTolerants(payload, -4, 24)
 		// decodeFireEvent est appele SANS garde de longueur, exactement comme le fait
 		// `ScanFilmFireEvents` (qui n exige que `p.Size >= 1`). C etait la panique la plus
 		// serieuse des deux : le decodeur lisait jusqu au bit 112 a offsets FIXES via

@@ -38,6 +38,7 @@ import (
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 	"levelup/go-api/internal/port"
 )
 
@@ -405,7 +406,7 @@ func (p *pontParManche) identite() decfilm.RoundIdentity {
 }
 
 // deathInstantsOf traduit le fil des morts du film dans la forme qu'attend le pont d'identite.
-func deathInstantsOf(deaths []replay.Death) []decfilm.DeathInstant {
+func deathInstantsOf(deaths []types.Death) []decfilm.DeathInstant {
 	out := make([]decfilm.DeathInstant, 0, len(deaths))
 	for _, d := range deaths {
 		out = append(out, decfilm.DeathInstant{

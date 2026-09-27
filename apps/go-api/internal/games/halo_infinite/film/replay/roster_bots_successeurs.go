@@ -44,11 +44,12 @@ import (
 	"sort"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // rosterDesOccupants est le roster publie : celui de [buildRoster], plus les bots successeurs
 // d'un humain que le film montre (cf. l'en-tete). Rend aussi le nombre de ces bots.
-func rosterDesOccupants(idx PlayerIndexTable, names map[uint64]string, bots []BotIdentity,
+func rosterDesOccupants(idx types.PlayerIndexTable, names map[uint64]string, bots []BotIdentity,
 	scan grammar.PlayerEntityScan, equipes teamPublication) ([]RosterEntry, int) {
 	return admettreLesBotsSuccesseurs(buildRoster(idx, names, bots, equipes), bots, scan, equipes)
 }

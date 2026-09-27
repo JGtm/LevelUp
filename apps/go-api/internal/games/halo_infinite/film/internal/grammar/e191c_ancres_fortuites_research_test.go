@@ -60,7 +60,7 @@ func e191cRecords(pay []byte) []e191cRec {
 	toutes := keyframeBornesToutes(pay)
 	out := make([]e191cRec, 0, len(toutes))
 	for _, b := range toutes {
-		out = append(out, e191cRec{Bit: b.Bit, TI: b.TI, N1: kfReadBits(pay, b.Bit+e191cN1Bit, 32)})
+		out = append(out, e191cRec{Bit: b.Bit, TI: b.TI, N1: source.BitsBourres(pay, b.Bit+e191cN1Bit, 32)})
 	}
 	return out
 }

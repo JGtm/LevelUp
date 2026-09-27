@@ -28,6 +28,7 @@ import (
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 const ctfBridgeFilmsEnv = "CTF_BRIDGE_FILMS"
@@ -75,7 +76,7 @@ func ctfBridgeReport(t *testing.T, cat *profile.MapQuantCatalog, dir, short, map
 	if err != nil {
 		t.Fatalf("positions : %v", err)
 	}
-	deaths, err := ScanFilmDeaths(dir)
+	deaths, err := grammar.ScanFilmDeaths(dir)
 	if err != nil {
 		t.Fatalf("morts : %v", err)
 	}
@@ -103,7 +104,7 @@ func ctfBridgeReport(t *testing.T, cat *profile.MapQuantCatalog, dir, short, map
 
 // ctfWriteWindowSweep rejoue l'appariement avec des fenêtres de plus en plus larges. Si la
 // fenêtre de 150 ms était la contrainte qui mord, l'élargir nommerait davantage de vies.
-func ctfWriteWindowSweep(b *strings.Builder, tracks map[uint32]slotTrack, deaths []Death) {
+func ctfWriteWindowSweep(b *strings.Builder, tracks map[uint32]slotTrack, deaths []types.Death) {
 	fmt.Fprintf(b, "\n# sensibilite a la fenetre d'appariement\n")
 	for _, w := range ctfWidenedWindows {
 		lv := buildLifeSpans(tracks) // vies neuves : nameLivesByDeaths écrit dedans
@@ -116,7 +117,7 @@ func ctfWriteWindowSweep(b *strings.Builder, tracks map[uint32]slotTrack, deaths
 // ctfNameWithWindow est nameLivesByDeaths avec sa fenêtre en paramètre. C'est une COPIE DE
 // RECHERCHE assumée : la constante du code reste intouchée, et une mesure de sensibilité qui
 // modifierait le code mesuré ne vaudrait rien.
-func ctfNameWithWindow(lives []lifeSpan, deaths []Death, off, windowMS int64) int {
+func ctfNameWithWindow(lives []lifeSpan, deaths []types.Death, off, windowMS int64) int {
 	ends := lifeEndsMS(lives)
 	type pair struct {
 		di, li int
@@ -174,7 +175,7 @@ func ctfWriteUnnamedLives(b *strings.Builder, lives []lifeSpan, fire []grammar.F
 // ctfWriteDriftProbe cherche une DÉRIVE entre l'horloge du fil des morts et celle du film :
 // l'offset qui apparie le mieux la première moitié du film contre celui de la seconde. Deux
 // valeurs éloignées signeraient une dérive ; deux valeurs proches l'écartent.
-func ctfWriteDriftProbe(b *strings.Builder, lives []lifeSpan, deaths []Death, off int64, origin uint64) {
+func ctfWriteDriftProbe(b *strings.Builder, lives []lifeSpan, deaths []types.Death, off int64, origin uint64) {
 	mid := int64(origin) + (lives[len(lives)-1].to-int64(origin))/2
 	var early, late []lifeSpan
 	for _, l := range lives {

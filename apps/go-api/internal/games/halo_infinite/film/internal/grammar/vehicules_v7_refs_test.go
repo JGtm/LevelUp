@@ -54,6 +54,8 @@ import (
 	"path/filepath"
 	"sort"
 	"testing"
+
+	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 )
 
 // v7CensusTolUS est la tolerance de fenetre d'une vie recensee, DE PART ET D'AUTRE. C'est la
@@ -252,7 +254,7 @@ func (sc *v7Scan) sample(ty int, pay []byte, at uint64, veh, gnd v7Bande) {
 			t.exp[k] += veh.chance(w, vBase, at)
 			row := t.cells[k]
 			for b := eventPayloadStartBit; b <= v7MaxBit && b+w <= bits; b++ {
-				raw := readBitsAt(pay, b, w)
+				raw := uint32(source.BitsStricts(pay, b, w))
 				if veh.ending(vBase+raw, at) {
 					row[b].end++
 				}

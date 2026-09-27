@@ -61,6 +61,7 @@ import (
 
 	"levelup/go-api/internal/games/canonical"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // Les DEUX voies de nommage par le record de creation. Elles repondent a « comment sait-on a qui
@@ -127,7 +128,7 @@ func (r IdentityRegistry) CauseNonResolue(i int) canonical.LinkMethod {
 // arrivent anonymes. Elle rend le rapport, jamais une decision — le registre en tire la
 // couverture et les alarmes.
 func nommerViesParCreations(lives []lifeSpan, creations []grammar.BipedCreation,
-	idx PlayerIndexTable, bots []BotIdentity, scan grammar.PlayerEntityScan) creationReport {
+	idx types.PlayerIndexTable, bots []BotIdentity, scan grammar.PlayerEntityScan) creationReport {
 	rep := creationReport{Records: len(creations), causes: map[int]canonical.LinkMethod{},
 		indexLu: map[int]uint32{}}
 	if len(lives) == 0 {

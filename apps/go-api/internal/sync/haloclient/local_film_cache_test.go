@@ -8,6 +8,7 @@ import (
 
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
+	"levelup/go-api/internal/games/halo_infinite/film/finalise"
 )
 
 // TestLocalFilmCacheLoadChunk_MemeValidationQueFilmcache — le lecteur du client Halo lit le
@@ -23,7 +24,7 @@ func TestLocalFilmCacheLoadChunk_MemeValidationQueFilmcache(t *testing.T) {
 	if err := filmcache.Write(t.Context(), racine, court, []filmcache.WriteChunk{
 		{Index: 0, ChunkType: 1, Data: []byte("header")},
 		{Index: 1, ChunkType: 2, Data: []byte("replication")},
-		{Index: 2, ChunkType: filmcache.ChunkTypeTempsForts, Data: []byte("killfeed")},
+		{Index: 2, ChunkType: finalise.ChunkTypeTempsForts, Data: []byte("killfeed")},
 	}); err != nil {
 		t.Fatalf("Write: %v", err)
 	}

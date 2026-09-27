@@ -134,7 +134,7 @@ func TestAucuneTableDeDomainesRecopiee(t *testing.T) {
 //  1. UNE COPIE REPARTIE ENTRE DEUX SUITES IMBRIQUEES (`br.Skip(2)` puis
 //     `if x { br.ReadBits(7) }`). C'est le prix de la borne ci-dessus ; aucune des six copies
 //     d'origine n'avait cette forme. NON FERME.
-//  2. UNE COPIE PAR ARITHMETIQUE D'OFFSET, sans lecteur (`readBitsAt(pay, p+2, 7)`). La suivre
+//  2. UNE COPIE PAR ARITHMETIQUE D'OFFSET, sans lecteur (`source.BitsStricts(pay, p+2, 7)`). La suivre
 //     demanderait de suivre la valeur de `p`, et le controle mentirait plus souvent qu'il
 //     n'attraperait. NON FERME.
 //  3. UNE OPERATION DE LARGEUR NULLE INTERCALEE (`br.Skip(1); br.ReadBit(); br.Skip(0);

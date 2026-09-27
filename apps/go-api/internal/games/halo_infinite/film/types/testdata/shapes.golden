@@ -203,6 +203,11 @@ Val18	int8	-
 SrcTag0	uint32	-
 SrcTag4c	uint32	-
 
+## Death (grammar)
+XUID	uint64	-
+Gamertag	string	-
+TimeMS	int64	-
+
 ## EquipmentChange (grammar)
 TimestampUS	uint64	-
 Chunk	int	-
@@ -338,6 +343,29 @@ Mag	*uint32	-
 FracQ	*uint32	-
 Res	*uint32	-
 
+## KeyframeInventory (grammar)
+TimestampUS	uint64	-
+Chunk	int	-
+PacketIndex	int	-
+Slot	uint32	-
+Grenades	[4]uint32	-
+GrenadesRead	bool	-
+GrenadesByPosition	bool	-
+SelectedGrenadeRank	int	-
+AbilityRank	int	-
+Ammo	[4]types.SlotAmmo	-
+AmmoRead	bool	-
+DrawnSlot	int	-
+AmmoCandidates	int	-
+
+## KeyframeInventoryStats (grammar)
+Chunks	int	-
+ChunksUnread	int	-
+Keyframes	int	-
+Records	int	-
+GrenadesByAnchor	int	-
+GrenadesByPosition	int	-
+
 ## KeyframeLoadout (grammar)
 TimestampUS	uint64	-
 Chunk	int	-
@@ -394,6 +422,11 @@ TypeIndex	uint32	-
 Dead	types.DeadState	-
 TailDesync	bool	-
 
+## PlayerIndexTable (grammar)
+ByXUID	map[uint64]int	-
+Readings	int	-
+Disagreements	int	-
+
 ## PlayerSlot (grammar)
 FilmIndex	int	-
 XUID	uint64	-
@@ -427,6 +460,13 @@ AtRest	bool	-
 Slot	uint32	-
 Gen	uint32	-
 Pts	[]types.ProjectileSample	-
+
+## SlotAmmo (grammar)
+Mag	*uint32	-
+Res	*uint32	-
+Gauge	*float64	-
+Overheat	uint32	-
+Flags	uint32	-
 
 ## TranslocatorTeleport (grammar)
 TimestampUS	uint64	-

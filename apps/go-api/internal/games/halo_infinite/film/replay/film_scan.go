@@ -48,28 +48,12 @@ func (s *filmScan) balayerPositions() error {
 		slog.Warn("rejeu : version de film illisible — le fil des morts retombe sur le decoupage "+
 			"historique du gamertag", "match_id", s.matchID)
 	}
-	// TÉLÉPORTATIONS DU TRANSLOCATEUR : lues AVANT les positions, parce qu'elles servent
-	// deux fois — le calque `translocations` du document, et l'EXEMPTION du filtre de
-	// vitesse (décision D2) : une arrivée de téléportation part à 193-1540 m/s, le filtre à
-	// 100 m/s la rejetait à tort (R3 : 51/51 rejets mesurés, tous à ±200 ms d'un événement
-	// 117 du même slot). Sur un film sans tête 117, la liste est vide et le filtre est
-	// bit à bit identique à l'actuel — invariance prouvée par test.
-	//
-	// L'ENTRÉE DE CATALOGUE Y DESCEND parce que la CHARGE de l'événement porte les deux
-	// positions du va-et-vient, quantifiées aux bornes de la carte (R6 §1, validé 18/18) :
-	// sans elle le scanner rendrait des quanta invérifiables, donc rien. Elle est garantie
-	// non nulle ici (refus en tête de BuildFromFilm).
-	s.in.Translocations = grammar.ScanTranslocatorTeleports(s.film, s.opt.MapQuant)
-	s.scan.TeleportExemptions = grammar.TeleportExemptionsOf(s.in.Translocations)
-	if len(s.in.Translocations) > 0 {
-		slog.Info("translocateur : teleportations lues", "evenements", len(s.in.Translocations))
-	}
+	s.lirePontDIdentite()
 	s.opt.observe("translocations", s.in.Translocations)
-	positions, err := grammar.ScanBipedPositions(s.fc, s.scan)
-	if err != nil {
-		return err
+	if s.pont.ErrPositions != nil {
+		return s.pont.ErrPositions
 	}
-	s.in.Positions = positions
+	s.in.Positions = s.pont.Positions
 	s.opt.observe("positions", s.in.Positions)
 	s.balayerCreations()
 	// Les tirs sont décodés du MÊME film et sur la MÊME horloge que les positions ; leur
@@ -111,7 +95,7 @@ func (s *filmScan) balayerPositions() error {
 // registre dégrade alors sur le pont par morts et le PUBLIE
 // (`coverage.bridge.bridgeNamedLives`).
 func (s *filmScan) balayerCreations() {
-	creations, creaStats, err := grammar.ScanBipedCreations(s.fc)
+	creations, creaStats, err := s.pont.Creations, s.pont.StatsCreations, s.pont.ErrCreations
 	if err != nil {
 		slog.Warn("creations de bipede illisibles — le registre degrade sur le pont par morts",
 			"err", err, "match_id", s.matchID)
@@ -182,8 +166,17 @@ func (s *filmScan) balayerPortage() {
 // balayerInventaire lit l'inventaire complet des images-cles, puis son suivi dans les paquets
 // delta. MÊMES images-clés, MÊME horloge, même record de biped que les armes portées.
 func (s *filmScan) balayerInventaire() {
+	// LE PLAFOND DE GRENADES N EST PAS FOURNI (0) : la lecture applique `grammar.DefaultGrenadeMax`,
+	// et c est un REPLI NOMME ET COMPTE (D14) — le plafond est une donnee de MODE, pas une
+	// constante. Il se compte ICI depuis le lot J4.2 : la lecture est descendue en `grammar`, qui
+	// nomme ses replis et ne les compte pas (ADR 0034 D-4). Meme condition qu avant : un catalogue
+	// de familles vide ne lit rien, donc ne se replie sur rien.
+	familles := loadoutFamilies()
+	if len(familles) > 0 {
+		s.opt.Fallbacks.Declenche(fallback.NomPlafondGrenadeParDefaut)
+	}
 	// Absence non fatale — un rejeu sans grenades reste un rejeu valide.
-	inventory, invStats, err := ScanKeyframeInventory(s.fc, loadoutFamilies(), 0, s.opt.Fallbacks)
+	inventory, invStats, err := grammar.ScanKeyframeInventory(s.fc, familles, 0)
 	if err != nil {
 		slog.Warn("inventaire illisible — rejeu sans grenades ni munitions", "err", err, "match_id", s.matchID)
 		inventory = nil
@@ -412,15 +405,16 @@ func (s *filmScan) balayerPont() {
 	s.in.Projectiles = proj
 	s.opt.observe("projectiles", s.in.Projectiles)
 	// Le fil des morts NOMME les vies par le pont par morts, cale l'horloge des morts et ouvre la
-	// lecture de la table d'index (cf. [filmScan.lireLeFilDesMorts]).
-	s.lireLeFilDesMorts()
+	// lecture de la table d index (cf. [filmScan.poserLeFilDesMorts]). Il a ete LU par l etage du pont.
+	s.poserLeFilDesMorts(s.pont.Morts, s.pont.ErrMorts)
 	deaths := s.in.Deaths
 	s.opt.observe("deaths", s.in.Deaths)
 	// LA TABLE DES JOUEURS QUE LE FILM ÉCRIT (lot 1.6) : `chunk_00` porte les 32 sièges du match
 	// avec leur XUID et leur gamertag. C'est le lien DIRECT, et il se lit AVANT la table des
 	// chunks de réplication parce que c'est lui qui la précède dans le registre d'identité —
 	// jamais l'inverse (cf. film_player_table.go). Un refus est NOMMÉ, journalisé et publié.
-	s.in.FilmTable = ScanFilmPlayerTable(s.film, s.matchID)
+	table, err := grammar.ScanFilmPlayerTable(s.film)
+	s.in.FilmTable = consignerLaTableDuFilm(table, err, s.matchID)
 	s.opt.observe("filmTable", s.in.FilmTable)
 	// L'EQUIPE DE CHAQUE JOUEUR (lot 1.7) : le composant i0 de ti=9 de la trame d'etat, a une
 	// position DERIVEE de la grammaire. C'est la SEULE source d'equipe du document (V4) ; la
@@ -436,7 +430,9 @@ func (s *filmScan) balayerPont() {
 	// lectures — la table des sieges du film (`FilmTable`) en tete (message corrige a la revue
 	// adverse M5, constat R3, 2026-09-24 : il disait « aucun tir ni lancer n'est publie »).
 	if len(deaths) > 0 {
-		idx, err := ScanPlayerIndices(s.film, rosterOf(deaths, s.opt.RosterXUIDs))
+		// LUE PAR L ETAGE DU PONT sur le roster de cette cuisson (`rosterOf`) : un fil non vide
+		// l a toujours fait lire.
+		idx, err := s.pont.Index, s.pont.ErrIndex
 		if err != nil {
 			slog.Warn("index de joueur illisible — les tireurs ne seront nommes que par les autres "+
 				"lectures du registre (table des sieges du film)", "err", err, "match_id", s.matchID)
@@ -452,7 +448,7 @@ func (s *filmScan) balayerPont() {
 	// L'origine d'horloge du film : deux en-têtes de paquet, aucune estimation (cf.
 	// origin.go). Son absence n'est pas fatale — le document sort sans origine, et le
 	// client retombe sur l'appariement.
-	clockUS, err := ScanClockOrigin(s.film)
+	clockUS, err := s.pont.OrigineUS, s.pont.ErrOrigine
 	if err != nil {
 		slog.Warn("origine d'horloge illisible — rejeu sans origine publiee", "err", err, "match_id", s.matchID)
 		clockUS = 0
@@ -461,9 +457,10 @@ func (s *filmScan) balayerPont() {
 	s.opt.observe("clockOrigin", s.in.FilmClockOriginUS)
 }
 
-// lireLeFilDesMorts lit le fil des morts, pose son VERDICT (`coverage.bridge.deathsFeed`, lot M5.2
-// des retours rejeu) et le fil lui-meme dans les entrees. Un fil VIDE est une mesure, un fil
-// ILLISIBLE une panne, et le document les distingue au lieu de les laisser aux seuls journaux.
+// poserLeFilDesMorts pose le fil des morts LU par l etage du pont (lot J4.3), son VERDICT
+// (`coverage.bridge.deathsFeed`, lot M5.2 des retours rejeu) et le fil lui-meme dans les entrees.
+// Un fil VIDE est une mesure, un fil ILLISIBLE une panne, et le document les distingue au lieu de
+// les laisser aux seuls journaux.
 // Le verdict et sa cause sont des ENTREES depuis le lot M8 (2026-09-24) : ils voyagent dans les
 // faits persistes (cf. fil_des_morts_verdict.go).
 //
@@ -473,8 +470,7 @@ func (s *filmScan) balayerPont() {
 //
 // UNE METHODE A PART (revue adverse M5, constat R1, 2026-09-24) pour que le trajet « octets ->
 // verdict -> document » se teste sur la bobine du depot, que le balayage des positions refuse.
-func (s *filmScan) lireLeFilDesMorts() {
-	deaths, err := ScanDeaths(s.film)
+func (s *filmScan) poserLeFilDesMorts(deaths []types.Death, err error) {
 	s.in.DeathsFeed = verdictDeLaLecture(deaths, err)
 	switch s.in.DeathsFeed.Verdict {
 	case DeathsFeedUnreadable:

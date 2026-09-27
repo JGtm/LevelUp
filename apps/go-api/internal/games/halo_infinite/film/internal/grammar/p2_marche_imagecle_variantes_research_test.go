@@ -18,6 +18,8 @@ package grammar
 import (
 	"fmt"
 	"testing"
+
+	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 )
 
 // p2CandN est un candidat avec son archetype et son n1.
@@ -38,7 +40,7 @@ func p2Candidats(pay []byte, from, prev, total, maxWin int) (voisin int, c []p2C
 	}
 	sent := 0
 	for q := from; q+64 <= end; q++ {
-		id := kfReadBits(pay, q, 32)
+		id := source.BitsBourres(pay, q, 32)
 		if id == kfSent {
 			if sent++; sent >= 2048 {
 				break
@@ -53,7 +55,7 @@ func p2Candidats(pay []byte, from, prev, total, maxWin int) (voisin int, c []p2C
 		if s == prev+1 && g == 1 {
 			return q, nil
 		}
-		c = append(c, p2CandN{bit: q, slot: s, gen: g, ti: ti, n1: kfReadBits(pay, q+108, 32)})
+		c = append(c, p2CandN{bit: q, slot: s, gen: g, ti: ti, n1: source.BitsBourres(pay, q+108, 32)})
 	}
 	return -1, c
 }
@@ -106,8 +108,8 @@ func p2ModalN1(pay []byte) map[int]uint64 {
 	par := map[int]map[uint64]int{}
 	vu := map[int]bool{}
 	for q := 0; q+172 <= total; q++ {
-		arch := kfReadBits(pay, q+32, 32)
-		id := kfReadBits(pay, q, 32)
+		arch := source.BitsBourres(pay, q+32, 32)
+		id := source.BitsBourres(pay, q, 32)
 		if arch >= kfArchMax || id>>30 == 0 || int(id&0x3FFFFFFF) >= kfTableCap || vu[q-1] {
 			continue
 		}
@@ -116,7 +118,7 @@ func p2ModalN1(pay []byte) map[int]uint64 {
 		if par[ti] == nil {
 			par[ti] = map[uint64]int{}
 		}
-		par[ti][kfReadBits(pay, q+108, 32)]++
+		par[ti][source.BitsBourres(pay, q+108, 32)]++
 	}
 	out := map[int]uint64{}
 	for ti, m := range par {

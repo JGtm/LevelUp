@@ -60,7 +60,11 @@ package grammar
 // marche (cuisson, kill-feed, instrument), rendent donc les MÊMES records : une largeur de carte
 // manquante ne peut que faire échouer une fermeture (moins de preuves), jamais en fabriquer une.
 
-import "levelup/go-api/internal/games/halo_infinite/film/internal/profile"
+import (
+	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
+
+	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
+)
 
 // PreuveDImageCle est la grammaire qu'une marche d'ancres consulte pour PROUVER un candidat : le
 // registre du film et son contexte de lecture invariant. Le pointeur nil ne prouve rien.
@@ -107,7 +111,7 @@ func (p *PreuveDImageCle) prouve(pay []byte, bit, slot int) bool {
 		return false
 	}
 	//nolint:gosec // mot de taille de 32 bits, compare SIGNE comme chez l'ecrivain
-	if n1 := int32(kfReadBits(pay, bit+cadre.EnTeteBits, cadre.MotDeTailleBits)); n1 <= 0 {
+	if n1 := int32(source.BitsBourres(pay, bit+cadre.EnTeteBits, cadre.MotDeTailleBits)); n1 <= 0 {
 		return false
 	}
 	tr := WalkKeyframeFullState(pay, bit, p.reg, p.ctx)

@@ -324,7 +324,7 @@ func duelsBLireFilm(
 	if err != nil {
 		t.Fatalf("positions bipeds : %v", err)
 	}
-	origin, err := replay.ScanClockOrigin(film)
+	origin, err := decfilm.ScanClockOrigin(film)
 	if err != nil {
 		t.Fatalf("horloge du film : %v", err)
 	}
@@ -352,7 +352,7 @@ func duelsBPontIdentite(
 	t *testing.T, film *decfilm.Film, positions []decfilm.BipedPosition, equipes map[uint64]int64,
 ) (map[uint32]uint64, replay.IdentityRegistry) {
 	t.Helper()
-	deaths, err := replay.ScanDeaths(film)
+	deaths, err := decfilm.ScanDeaths(film)
 	if err != nil {
 		t.Fatalf("fil des morts : %v", err)
 	}
@@ -360,7 +360,7 @@ func duelsBPontIdentite(
 	for x := range equipes {
 		roster = append(roster, x)
 	}
-	idx, err := replay.ScanPlayerIndices(film, roster)
+	idx, err := decfilm.ScanPlayerIndices(film, roster)
 	if err != nil {
 		t.Fatalf("index de joueur : %v", err)
 	}

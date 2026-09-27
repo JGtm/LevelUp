@@ -1,5 +1,9 @@
 package grammar
 
+import (
+	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
+)
+
 // player_teams.go — L'EQUIPE DE CHAQUE JOUEUR, LUE DANS LE FILM (lot 1.7 du PLAN_DECODEUR_FILM).
 //
 // # OU ELLE EST, ET PAR QUELLES DEUX CHAINES ON LE SAIT
@@ -269,7 +273,7 @@ func lireEquipeDuRecord(pay []byte, recBit int, reg *Registry, ctx ContexteDeLec
 	if attendu != i0 || i0+teamDesignatorBits > len(pay)*8 {
 		return 0, 0, false
 	}
-	return idx, int(kfReadBits(pay, i0, teamDesignatorBits)), true
+	return idx, int(source.BitsBourres(pay, i0, teamDesignatorBits)), true
 }
 
 // publierEquipes ne garde que les index dont TOUTES les lectures s'accordent. Un index

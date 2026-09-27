@@ -14,6 +14,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // entreeTroisBots : un humain (slot 100, index 0) et trois corps de bots sur l'index 8.
@@ -39,7 +40,7 @@ func entreeTroisBots(avecEntites bool) IdentityInput {
 	}
 	in := IdentityInput{
 		Positions: pos, BipedCreations: creations,
-		PlayerIndices: PlayerIndexTable{ByXUID: map[uint64]int{111: 0}, Readings: 20},
+		PlayerIndices: types.PlayerIndexTable{ByXUID: map[uint64]int{111: 0}, Readings: 20},
 		Bots: []BotIdentity{
 			{FilmIndex: 8, Name: "343 Hundy [bot]", BotID: 16, Declarations: [][2]uint64{{1_200_000, 27_300_000}}},
 			{FilmIndex: 8, Name: "343 PardonMy [bot]", BotID: 7, Declarations: [][2]uint64{{81_200_000, 83_100_000}}},

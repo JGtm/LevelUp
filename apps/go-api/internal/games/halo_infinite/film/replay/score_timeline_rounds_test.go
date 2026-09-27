@@ -31,7 +31,7 @@ func multiRoundClock() scoreClock {
 // slots. Le compteur de morts (comp 2 B) est l'ancre d'identite ; ses instants correspondent au
 // fil des morts. Chaque (slot, manche) porte aussi un train de score de mode (comp 0 A, >= 3
 // emissions) pour que RealRounds tienne les deux manches pour reelles.
-func reassignFixture() ([]types.StatRecord, []Death) {
+func reassignFixture() ([]types.StatRecord, []types.Death) {
 	var recs []types.StatRecord
 	// Score de mode : trois emissions croissantes par manche sur le slot 22 -> manches 0 et 1.
 	recs = append(recs, modeRamp(22, 0, 1_000, 1_000, 10, 20, 30)...)
@@ -49,7 +49,7 @@ func reassignFixture() ([]types.StatRecord, []Death) {
 	add(20, 0, 1_500, [3]int64{40, 80, 120})   // B, manche 0
 	add(22, 1, 11_000, [3]int64{50, 150, 250}) // B, manche 1
 	add(20, 1, 11_500, [3]int64{60, 160, 260}) // A, manche 1
-	deaths := []Death{
+	deaths := []types.Death{
 		{XUID: 1001, TimeMS: 1_000}, {XUID: 1001, TimeMS: 2_000}, {XUID: 1001, TimeMS: 3_000},
 		{XUID: 1002, TimeMS: 1_500}, {XUID: 1002, TimeMS: 2_500}, {XUID: 1002, TimeMS: 3_500},
 		{XUID: 1002, TimeMS: 11_000}, {XUID: 1002, TimeMS: 12_000}, {XUID: 1002, TimeMS: 13_000},

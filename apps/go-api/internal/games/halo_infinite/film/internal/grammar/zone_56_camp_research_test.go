@@ -66,6 +66,7 @@ import (
 	"strconv"
 	"testing"
 
+	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
@@ -115,7 +116,7 @@ func (a *zone56Acc) add(rec WorldObjectRecord, pay []byte) {
 	if a.noms[i] == nil {
 		a.noms[i] = map[uint32]int{}
 	}
-	a.noms[i][uint32(PeekBits(pay, rec.After, 32))]++
+	a.noms[i][uint32(source.BitsTolerants(pay, rec.After, 32))]++
 }
 
 // TestZone56MasqueTi23 — CE QUE LE FILM DECLARE DE `ti=23`.

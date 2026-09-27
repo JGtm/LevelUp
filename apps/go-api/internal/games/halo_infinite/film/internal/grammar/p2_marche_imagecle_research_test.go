@@ -36,6 +36,8 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+
+	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 )
 
 const p2BipedeTI = 35
@@ -62,7 +64,7 @@ func p2ScanNext(buf []byte, from, prevSlot, total, maxWin int) p2Scan {
 	}
 	sentStreak := 0
 	for q := from; q+64 <= end; q++ {
-		id := kfReadBits(buf, q, 32)
+		id := source.BitsBourres(buf, q, 32)
 		if id == kfSent {
 			if sentStreak++; sentStreak >= 2048 {
 				break
@@ -157,15 +159,15 @@ func p2Recenser(pay []byte, ti uint64) []p2Entete {
 	total := len(pay) * 8
 	var out []p2Entete
 	for q := 0; q+172 <= total; q++ {
-		if kfReadBits(pay, q+32, 32) != ti {
+		if source.BitsBourres(pay, q+32, 32) != ti {
 			continue
 		}
-		id := kfReadBits(pay, q, 32)
+		id := source.BitsBourres(pay, q, 32)
 		gen, slot := int(id>>30), int(id&0x3FFFFFFF)
 		if gen == 0 || slot >= kfTableCap {
 			continue
 		}
-		out = append(out, p2Entete{bit: q, slot: slot, gen: gen, n1: kfReadBits(pay, q+108, 32)})
+		out = append(out, p2Entete{bit: q, slot: slot, gen: gen, n1: source.BitsBourres(pay, q+108, 32)})
 	}
 	return out
 }
@@ -282,7 +284,7 @@ func p2Depart(t *testing.T, pay []byte, depart *p2Scan, recs []KeyframeRec) {
 	t.Helper()
 	h, ok := readKeyframeHeader(pay, 1, len(pay)*8)
 	t.Logf("B. bit 1 : id=%#08x arch=%#08x (readKeyframeHeader ok=%v slot=%d gen=%d sansArch=%v)",
-		kfReadBits(pay, 1, 32), kfReadBits(pay, 33, 32), ok, h.Slot, h.Gen, h.SansArchetype())
+		source.BitsBourres(pay, 1, 32), source.BitsBourres(pay, 33, 32), ok, h.Slot, h.Gen, h.SansArchetype())
 	if depart == nil {
 		t.Logf("B. DEPART ACCEPTE au bit 1")
 	} else {

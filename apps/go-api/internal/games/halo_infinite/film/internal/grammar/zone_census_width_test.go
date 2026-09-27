@@ -38,6 +38,8 @@ import (
 	"sort"
 	"strings"
 	"testing"
+
+	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 )
 
 // zcWidthSweep sont les largeurs de champ de slot probees. 13 est la valeur cablee en
@@ -57,17 +59,17 @@ func zcHeaderBitsFor(w int) int { return w + 8 }
 // grammaire, memes deux ecarts assumes (aucun filtre sur le tag, compte de masque minimal a 1).
 func zcMatchRecordW(pay []byte, p int, band map[uint32]bool, w int) (WorldObjectRecord, bool) {
 	var rec WorldObjectRecord
-	if PeekBits(pay, p, 1) != 1 { // prefixe de record DELTA
+	if source.BitsTolerants(pay, p, 1) != 1 { // prefixe de record DELTA
 		return rec, false
 	}
-	slot := uint32(PeekBits(pay, p+1, w))
+	slot := uint32(source.BitsTolerants(pay, p+1, w))
 	if !band[slot] {
 		return rec, false
 	}
-	if PeekBits(pay, p+w+3, 2) != 0 { // selecteur de base ET porte de masque nuls
+	if source.BitsTolerants(pay, p+w+3, 2) != 0 { // selecteur de base ET porte de masque nuls
 		return rec, false
 	}
-	mc := int(PeekBits(pay, p+w+5, 3))
+	mc := int(source.BitsTolerants(pay, p+w+5, 3))
 	if mc < 1 || mc > worldObjectMaxMaskCnt {
 		return rec, false
 	}
@@ -76,7 +78,7 @@ func zcMatchRecordW(pay []byte, p int, band map[uint32]bool, w int) (WorldObject
 	if !ok {
 		return rec, false
 	}
-	rec.Slot, rec.Gen = slot, uint32(PeekBits(pay, p+w+1, 2))
+	rec.Slot, rec.Gen = slot, uint32(source.BitsTolerants(pay, p+w+1, 2))
 	rec.Idx, rec.After = idx, p+hdr+worldObjectIndexBits*mc
 	return rec, true
 }

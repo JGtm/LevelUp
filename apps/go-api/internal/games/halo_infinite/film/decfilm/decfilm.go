@@ -116,9 +116,6 @@ func CountFilmChunks(dir string) int { return grammar.CountFilmChunks(dir) }
 
 const CoverageWarnRatio = grammar.CoverageWarnRatio
 
-func DecodeFrameRecords(br *grammar.Lecteur, w *grammar.World, cfg grammar.FrameConfig) ([]grammar.FrameRecord, error) {
-	return grammar.DecodeFrameRecords(br, w, cfg)
-}
 func DefaultScanFilmOptions() grammar.ScanFilmOptions { return grammar.DefaultScanFilmOptions() }
 func DetectI0LayoutOf(film *source.Film) (profile.I0Layout, grammar.I0LayoutReport, error) {
 	return grammar.DetectI0LayoutOf(film)
@@ -141,7 +138,6 @@ func FilmWeaponHitDistance(dir string, entry profile.MapQuantEntry, damages []gr
 }
 
 type FireEvent = grammar.FireEvent
-type FrameConfig = grammar.FrameConfig
 
 func HighlightProfileFromHeader(chunk0 []byte) profile.HighlightProfile {
 	return grammar.HighlightProfileFromHeader(chunk0)
@@ -151,12 +147,10 @@ type KillSourceHealth = grammar.KillSourceHealth
 
 const KnownRegistryFingerprint = grammar.KnownRegistryFingerprint
 
-func LecteurSur(buf []byte) *grammar.Lecteur                { return grammar.LecteurSur(buf) }
 func NewFilmContext(film *source.Film) *grammar.FilmContext { return grammar.NewFilmContext(film) }
 func NewFilmContextForMap(film *source.Film, entry *profile.MapQuantEntry, forced *profile.I0Layout) *grammar.FilmContext {
 	return grammar.NewFilmContextForMap(film, entry, forced)
 }
-func NewWorld(reg *grammar.Registry) *grammar.World { return grammar.NewWorld(reg) }
 func PairWeaponHits(shots []grammar.WeaponShot, damages []grammar.WeaponDamage, window uint64, dist grammar.WeaponHitDistanceFunc) []grammar.WeaponHitStats {
 	return grammar.PairWeaponHits(shots, damages, window, dist)
 }
@@ -169,13 +163,10 @@ func ParseRegistryChunk(data []byte) (*grammar.Registry, error) {
 
 type ProfilDeBalayage = grammar.ProfilDeBalayage
 
-func ProfilDeBalayageParDefaut() grammar.ProfilDeBalayage { return grammar.ProfilDeBalayageParDefaut() }
 func ReadFilmChunk(dir string, chunk int) ([]byte, error) { return grammar.ReadFilmChunk(dir, chunk) }
 func ReadPlayerTable(chunk0 []byte, ident profile.FilmIdentity) ([]types.PlayerSlot, grammar.PlayerTableReport, error) {
 	return grammar.ReadPlayerTable(chunk0, ident)
 }
-
-type Registry = grammar.Registry
 
 func RegistryFingerprint(reg *grammar.Registry) uint64 { return grammar.RegistryFingerprint(reg) }
 func ScanBipedCreations(fc *grammar.FilmContext) ([]grammar.BipedCreation, types.BipedCreationStats, error) {
@@ -183,6 +174,19 @@ func ScanBipedCreations(fc *grammar.FilmContext) ([]grammar.BipedCreation, types
 }
 func ScanBipedPositions(fc *grammar.FilmContext, opt grammar.ScanFilmOptions) ([]grammar.BipedPosition, error) {
 	return grammar.ScanBipedPositions(fc, opt)
+}
+
+type LecturesDuPont = grammar.LecturesDuPont
+type OptionsDuPont = grammar.OptionsDuPont
+
+func ScanPontDIdentite(fc *grammar.FilmContext, opt grammar.OptionsDuPont) grammar.LecturesDuPont {
+	return grammar.ScanPontDIdentite(fc, opt)
+}
+func ScanClockOrigin(film *source.Film) (uint64, error)    { return grammar.ScanClockOrigin(film) }
+func ScanDeaths(film *source.Film) ([]types.Death, error)  { return grammar.ScanDeaths(film) }
+func ScanFilmDeaths(filmDir string) ([]types.Death, error) { return grammar.ScanFilmDeaths(filmDir) }
+func ScanPlayerIndices(film *source.Film, roster []uint64) (types.PlayerIndexTable, error) {
+	return grammar.ScanPlayerIndices(film, roster)
 }
 
 type ScanFilmOptions = grammar.ScanFilmOptions
@@ -210,7 +214,6 @@ type WeaponHitDistanceFunc = grammar.WeaponHitDistanceFunc
 const WeaponHitPairWindowUS = grammar.WeaponHitPairWindowUS
 
 type WeaponHitStats = grammar.WeaponHitStats
-type World = grammar.World
 
 // ---- killsource ----
 type ApparStats = types.ApparStats
@@ -421,8 +424,6 @@ func LoadDir(dir string, meta []types.ChunkMeta) (*source.Film, error) {
 }
 
 type MemoryChunks = source.MemoryChunks
-
-func Paquets(chunk []byte, ch int) []types.Packet { return source.Paquets(chunk, ch) }
 
 // ---- weaponscan ----
 func FindFramePositions(data []byte) []int { return weaponscan.FindFramePositions(data) }

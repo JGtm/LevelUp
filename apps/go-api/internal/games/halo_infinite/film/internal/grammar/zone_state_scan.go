@@ -318,10 +318,10 @@ func worldObjectHeaderAt(pay []byte, p int) bool {
 	if p < 0 || p+worldObjectHeaderBits+worldObjectIndexBits > total {
 		return false
 	}
-	if PeekBits(pay, p, 1) != 1 || PeekBits(pay, p+16, 2) != 0 {
+	if source.BitsTolerants(pay, p, 1) != 1 || source.BitsTolerants(pay, p+16, 2) != 0 {
 		return false
 	}
-	mc := int(PeekBits(pay, p+18, 3))
+	mc := int(source.BitsTolerants(pay, p+18, 3))
 	if mc < 1 || mc > worldObjectMaxMaskCnt || p+worldObjectHeaderBits+worldObjectIndexBits*mc > total {
 		return false
 	}

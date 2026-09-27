@@ -20,6 +20,7 @@ import (
 	"levelup/go-api/internal/ctxkeys"
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
+	"levelup/go-api/internal/games/halo_infinite/film/finalise"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/replaybuild"
 	"levelup/go-api/internal/sync/haloclient"
@@ -37,7 +38,7 @@ func (f fetcherNonFinalise) GetFilmChunks(context.Context, string) ([]haloclient
 			{Index: 1, ChunkType: haloclient.FilmChunkTypeReplicationData, Data: []byte("r")},
 		}, true, nil
 	}
-	return nil, false, fmt.Errorf("GetFilmChunks(m) : %w", filmcache.ErrFilmNonFinalise)
+	return nil, false, fmt.Errorf("GetFilmChunks(m) : %w", finalise.ErrFilmNonFinalise)
 }
 
 // horlogeDeTest remplace la memoire des attentes par une memoire neuve a horloge tenue, et la
@@ -122,7 +123,7 @@ func TestReporterNonFinalise_HorsDelai_SignaleUneFoisParFilm(t *testing.T) {
 	ctx := context.Background()
 	instant := horlogeDeTest(t)
 	d := Deps{Gamertag: "g"}
-	err := fmt.Errorf("GetFilmChunks(m) : %w", filmcache.ErrFilmNonFinalise)
+	err := fmt.Errorf("GetFilmChunks(m) : %w", finalise.ErrFilmNonFinalise)
 	horsDelai := func() int64 { return compteur(CompteurFilmsNonFinalisesHorsDelai) }
 	depart := horsDelai()
 
@@ -163,7 +164,7 @@ func TestPersistFilmToCache_FilmArchive_CloreLAttente(t *testing.T) {
 	ctx := context.Background()
 	instant := horlogeDeTest(t)
 	cle := cleDAttente(ctx, "m1")
-	reporterNonFinalise(ctx, Deps{}, "m1", filmcache.ErrFilmNonFinalise)
+	reporterNonFinalise(ctx, Deps{}, "m1", finalise.ErrFilmNonFinalise)
 	*instant = instant.Add(time.Minute)
 
 	d := Deps{Gamertag: "g", TitleSlug: titlePkg.DefaultSlug, CacheRoot: t.TempDir(),
@@ -204,7 +205,7 @@ func (r refusDontLeTexteNeDitRien) Is(target error) bool { return target == r.ci
 // jamais en echec, qui ferait chercher une panne. Il ne lit pas le texte : l'erreur injectee ne
 // cite pas la sentinelle.
 func TestReplayArtifacts_FilmNonFinaliseReporteSansEchec(t *testing.T) {
-	for _, cible := range []error{filmcache.ErrFilmNonFinalise, replaybuild.ErrUnknownFilmKey} {
+	for _, cible := range []error{finalise.ErrFilmNonFinalise, replaybuild.ErrUnknownFilmKey} {
 		d := Deps{
 			RepoRoot: t.TempDir(), TitleSlug: titlePkg.DefaultSlug, CacheRoot: t.TempDir(),
 			BuildOne: func(context.Context, BuildOneRequest) (BuildOneResult, error) {

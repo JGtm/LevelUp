@@ -267,7 +267,7 @@ func printSelection(all []candidate, elig []eligible, rej rejects) {
 // d'identite. Un fil illisible rend une liste vide : le pont retombe alors sur les seuls
 // totaux, exactement comme avant ce correctif — une degradation, jamais une erreur.
 func deathInstantsOf(film *decfilm.Film) []decfilm.DeathInstant {
-	deaths, err := replay.ScanDeaths(film)
+	deaths, err := decfilm.ScanDeaths(film)
 	if err != nil {
 		fmt.Printf("    fil des morts illisible (%v) — pont d'identite par totaux seuls\n", err)
 		return nil

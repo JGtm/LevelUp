@@ -20,6 +20,7 @@ import (
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/persist"
 	"levelup/go-api/internal/port"
@@ -514,11 +515,11 @@ func TestEntreeDuRegistrePorteLesBotsEtLesParticipants(t *testing.T) {
 		},
 		// Le slot 100 (joueur 111) CALE l'horloge du film sur celle du match — sans lui, aucune
 		// fenetre de participation n'est exprimable (cf. l'en-tete de identity_registry_scoreboard.go).
-		deaths: []replay.Death{
+		deaths: []types.Death{
 			{XUID: 111, Gamertag: "MORTEL", TimeMS: 4_000},
 			{XUID: 111, Gamertag: "MORTEL", TimeMS: 23_000},
 		},
-		idx: replay.PlayerIndexTable{ByXUID: map[uint64]int{111: 0, 222: 9}, Readings: 26},
+		idx: types.PlayerIndexTable{ByXUID: map[uint64]int{111: 0, 222: 9}, Readings: 26},
 	}
 	arrivee222 := int64(10_000)
 	ids := MatchIdentities{

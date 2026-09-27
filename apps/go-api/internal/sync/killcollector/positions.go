@@ -75,6 +75,7 @@ import (
 	"levelup/go-api/internal/games"
 	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 	"levelup/go-api/internal/games/halo_infinite/replayidentity"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/persist"
@@ -239,53 +240,35 @@ func optionsDeBalayageDesPositions(
 	return opt
 }
 
-// buildPositionRows : les QUATRE lectures du film + la composition pure. Découpée de
-// [collectPositions] pour rester sous le plafond de longueur du dépôt (80 lignes) — chaque refus
-// reste journalisable par l appelant, jamais avalé ici.
+// buildPositionRows : l ETAGE DU PONT D IDENTITE + la composition pure. Decoupee de
+// [collectPositions] pour rester sous le plafond de longueur du depot (80 lignes) — chaque refus
+// reste journalisable par l appelant, jamais avale ici.
 //
-// LES QUATRE BALAYAGES PARTAGENT LE FILM DÉJÀ CHARGÉ (lot 1, item 1.6) : ils prenaient chacun un
-// répertoire et relisaient le film entier depuis le disque, décompression comprise.
+// UNE SEULE SEQUENCE DE LECTURES, CELLE DE LA CUISSON (lot J4.3, 2026-09-26, constat RA1-3). Le
+// collecteur recopiait la sequence — positions, horloge, fil des morts, table d index, creations —
+// et la recopie avait diverge : ses positions etaient lues SANS les exemptions de translocation
+// que la cuisson applique. Il appelle desormais `decfilm.ScanPontDIdentite`, le MEME etage que
+// `replay` ; les exemptions entrent donc ici, et c est un changement DECLARE de ses sorties (cf.
+// [IsolationDecoderRev]). Ses POLITIQUES restent ici : le roster de la feuille pour l index,
+// aucune capture de direction, la table d index sans exigence d injectivite, et des erreurs
+// FATALES pour la passe (sauf les creations), dans l ordre d avant (ratchet
+// `archlint/film_pont_identite_test.go`).
 //
-// PLUS AUCUN VERROU DE DÉCODAGE (lot 2.3). Ce chemin enchaîne QUATRE balayages, et il a
-// longtemps fallu les sérialiser : les paramètres de réplication du décodeur étaient des
-// variables de paquet de `grammar`, qu'un décodage concurrent aurait écrasées. Il n'en reste
-// AUCUNE d'écrite (ratchet `archlint/filmdec_package_vars_test.go`) : chaque balayage porte son
-// profil et son observation, donc son propre état. Le verrou INTER-PROCESSUS
-// `filmproc.AcquireSolo`, lui, borne la mémoire de la machine et n'est pas concerné.
+// PLUS AUCUN VERROU DE DECODAGE (lot 2.3) : chaque balayage porte son profil et son observation,
+// donc son propre etat. Le verrou INTER-PROCESSUS `filmproc.AcquireSolo`, lui, borne la memoire
+// de la machine et n est pas concerne.
 //
-// ELLE NE COMPOSE RIEN ELLE-MEME : ce qui suit les balayages — les deux jeux de lignes — vit
-// dans `composerPassePositions`, PURE et testable sans film (revue adversariale du 2026-09-06,
-// constat B1 : aucun test ne pincait l accord entre le decalage et l instant persiste).
+// ELLE NE COMPOSE RIEN ELLE-MEME : ce qui suit les lectures — les deux jeux de lignes — vit dans
+// `composerPassePositions`, PURE et testable sans film (revue adversariale du 2026-09-06, constat
+// B1 : aucun test ne pincait l accord entre le decalage et l instant persiste).
 func buildPositionRows(
 	film *decfilm.Film, res *decfilm.Result, entry decfilm.MapQuantEntry, ids MatchIdentities,
 	kills []replay.KillRef, matchID string,
 ) (passePositions, materiauDIsolement, error) {
-
-	fc := decfilm.NewFilmContextForMap(film, &entry, nil)
-	positions, err := decfilm.ScanBipedPositions(fc, optionsDeBalayageDesPositions(fc, entry))
+	lectures, originUS, err := lireLePontDuCollecteur(film, entry, ids, matchID)
 	if err != nil {
-		return passePositions{}, materiauDIsolement{}, fmt.Errorf("positions bipeds: %w", err)
+		return passePositions{}, materiauDIsolement{}, err
 	}
-
-	originUS, err := replay.ScanClockOrigin(film)
-	if err != nil {
-		observability.AddInt(metricPositionsNoOrigin, 1)
-		return passePositions{}, materiauDIsolement{}, fmt.Errorf("horloge du film: %w", err)
-	}
-
-	deathsFilm, err := replay.ScanDeaths(film)
-	if err != nil {
-		return passePositions{}, materiauDIsolement{}, fmt.Errorf("fil des morts (rejeu): %w", err)
-	}
-
-	idx, err := replay.ScanPlayerIndices(film, rosterUint64(ids.XUIDs))
-	if err != nil {
-		return passePositions{}, materiauDIsolement{}, fmt.Errorf("index de joueur: %w", err)
-	}
-	if idx.Disagreements > 0 {
-		observability.AddInt(metricPositionsAmbiguous, int64(idx.Disagreements))
-	}
-
 	// LE REGISTRE D IDENTITE EST LA MEME FONCTION PURE QUE LA CUISSON (lot P2, decision D11).
 	// Le collecteur l appelle avec ce qu il a DEJA lu — positions, fil des morts, table d index,
 	// roster de la feuille — et sans axe de frames : il n ecrit pas d artefact, il ecrit des vies
@@ -294,24 +277,8 @@ func buildPositionRows(
 	//
 	// LE ROSTER DE LA FEUILLE ENTRE ICI, et c est un CHANGEMENT DE SORTIE : il rend possible
 	// l identite par ELIMINATION pour un joueur qui ne meurt jamais (cf.
-	// `replay.NomParElimination`). C est la raison du bump d [IsolationDecoderRev].
-	// LE LIEN DIRECT CORPS -> JOUEUR (lot E2, 2026-09-08) : le record de creation du bipede
-	// porte l'index de participant de son proprietaire. Le collecteur le lit sur le MEME film et
-	// sous le MEME verrou de decodage que les positions ; sans lui, `match_lives` retomberait
-	// sur le pont par morts alors que la cuisson, elle, lit le film. Deux producteurs, un seul
-	// nommage : c'est toute la decision D11. Absence NON fatale — le registre degrade et le dit.
-	creations, cStats, err := decfilm.ScanBipedCreations(fc)
-	if err != nil {
-		slog.Warn("killsource: creations de bipede illisibles — degradation sur le pont par morts",
-			"err", err, "match_id", matchID)
-		creations = nil
-	}
-	if cStats.Anchors > 0 && cStats.Accepted == 0 {
-		slog.Warn("killsource: aucune signature de creation reconnue sur des ancres presentes",
-			"match_id", matchID, "ancres", cStats.Anchors, "motAlternatifModal", cStats.OtherWord)
-	}
-	lectures := lecturesDuFilm{
-		positions: positions, creations: creations, deaths: deathsFilm, idx: idx}
+	// `replay.NomParElimination`). C est la raison du bump d [IsolationDecoderRev] du 2026-09-08.
+	//
 	// LE ROSTER DE BOTS VOYAGE DEPUIS LE MEME DECODAGE killsource QUE LES MORTS (`res`, deja
 	// resolu par l appelant) — PAS UN SECOND BALAYAGE : `replayidentity.BotIdentities` est la
 	// MEME projection que la cuisson (lot 5.1, revue de vague 4, constat P2). Sans elle, un
@@ -329,8 +296,52 @@ func buildPositionRows(
 	// LE MATERIAU REMONTE TEL QUEL : le registre porte les vies nommees et le calage d horloge,
 	// les positions portent le monde. La projection des faits d isolement s en sert sans
 	// rescanner le film (cf. isolation_facts.go).
-	mat := materiauDIsolement{registre: reg, positions: positions}
-	return composerPassePositions(positions, reg, kills, int64(originUS), matchID), mat, nil
+	mat := materiauDIsolement{registre: reg, positions: lectures.positions}
+	return composerPassePositions(lectures.positions, reg, kills, int64(originUS), matchID), mat, nil
+}
+
+// lireLePontDuCollecteur appelle l etage unique du pont d identite et y applique les POLITIQUES
+// du collecteur : le roster de la feuille pour la table d index, et la fatalite des erreurs dans
+// l ordre d avant le lot J4.3 (positions, horloge — comptee —, fil des morts, index). Les
+// creations de bipede restent NON fatales : le registre degrade sur le pont par morts et le dit.
+func lireLePontDuCollecteur(
+	film *decfilm.Film, entry decfilm.MapQuantEntry, ids MatchIdentities, matchID string,
+) (lecturesDuFilm, uint64, error) {
+	fc := decfilm.NewFilmContextForMap(film, &entry, nil)
+	pont := decfilm.ScanPontDIdentite(fc, decfilm.OptionsDuPont{
+		Balayage: optionsDeBalayageDesPositions(fc, entry), Carte: &entry,
+		RosterDesMorts: func([]types.Death) []uint64 { return rosterUint64(ids.XUIDs) },
+	})
+	switch {
+	case pont.ErrPositions != nil:
+		return lecturesDuFilm{}, 0, fmt.Errorf("positions bipeds: %w", pont.ErrPositions)
+	case pont.ErrOrigine != nil:
+		observability.AddInt(metricPositionsNoOrigin, 1)
+		return lecturesDuFilm{}, 0, fmt.Errorf("horloge du film: %w", pont.ErrOrigine)
+	case pont.ErrMorts != nil:
+		return lecturesDuFilm{}, 0, fmt.Errorf("fil des morts (rejeu): %w", pont.ErrMorts)
+	case pont.ErrIndex != nil:
+		return lecturesDuFilm{}, 0, fmt.Errorf("index de joueur: %w", pont.ErrIndex)
+	}
+	if pont.Index.Disagreements > 0 {
+		observability.AddInt(metricPositionsAmbiguous, int64(pont.Index.Disagreements))
+	}
+	// LE LIEN DIRECT CORPS -> JOUEUR (lot E2, 2026-09-08) : le record de creation du bipede porte
+	// l index de participant de son proprietaire. Sans lui, `match_lives` retomberait sur le pont
+	// par morts alors que la cuisson, elle, lit le film. Absence NON fatale.
+	creations, cStats := pont.Creations, pont.StatsCreations
+	if pont.ErrCreations != nil {
+		slog.Warn("killsource: creations de bipede illisibles — degradation sur le pont par morts",
+			"err", pont.ErrCreations, "match_id", matchID)
+		creations = nil
+	}
+	if cStats.Anchors > 0 && cStats.Accepted == 0 {
+		slog.Warn("killsource: aucune signature de creation reconnue sur des ancres presentes",
+			"match_id", matchID, "ancres", cStats.Anchors, "motAlternatifModal", cStats.OtherWord)
+	}
+	return lecturesDuFilm{
+		positions: pont.Positions, creations: creations, deaths: pont.Morts, idx: pont.Index,
+	}, pont.OrigineUS, nil
 }
 
 // composerPassePositions : LES DEUX JEUX DE LIGNES D UNE SEULE LECTURE DU FILM. PURE — aucune

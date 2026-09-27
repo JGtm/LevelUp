@@ -44,6 +44,7 @@ import (
 
 	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
@@ -179,7 +180,7 @@ func TestAssautA5PontIdentite(t *testing.T) {
 			t.Fatalf("film %s absent du cache : %v", id, err)
 		}
 		recs, _ := objectives.StatRecordsCtx(context.Background(), src, id)
-		deaths, err := ScanFilmDeaths(filepath.Join(cache, "film_chunks", id))
+		deaths, err := grammar.ScanFilmDeaths(filepath.Join(cache, "film_chunks", id))
 		if err != nil {
 			t.Fatalf("%s : fil des morts illisible : %v", id, err)
 		}

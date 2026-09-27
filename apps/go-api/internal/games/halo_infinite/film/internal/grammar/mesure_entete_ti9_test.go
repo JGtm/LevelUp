@@ -41,6 +41,7 @@ package grammar
 import (
 	"fmt"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 	"os"
 	"path/filepath"
 	"sort"
@@ -145,7 +146,7 @@ func mesureMarche(pay []byte, r KeyframeRec, reg *Registry, hdr int) (EntityTrac
 	var vals []uint64
 	for _, c := range tr.Comps {
 		if c.Name == mesureTI9Designator && c.Ported {
-			vals = append(vals, kfReadBits(pay, c.StartBit, mesureTI9DesignatorBits))
+			vals = append(vals, source.BitsBourres(pay, c.StartBit, mesureTI9DesignatorBits))
 		}
 	}
 	return tr, vals, true

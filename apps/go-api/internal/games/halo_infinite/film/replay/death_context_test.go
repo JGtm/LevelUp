@@ -25,6 +25,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // posMonde pose une position monde d'un slot, à un instant de l'horloge du FILM.
@@ -44,10 +45,10 @@ func pisteMonde(slot uint32, deMS, aMS int64, x, y float32) []grammar.BipedPosit
 }
 
 // mortFilm : une mort du fil du FILM — c'est elle qui NOMME la vie qu'elle clôt.
-func mortFilm(xuid uint64, tMS int64) Death { return Death{XUID: xuid, TimeMS: tMS} }
+func mortFilm(xuid uint64, tMS int64) types.Death { return types.Death{XUID: xuid, TimeMS: tMS} }
 
 // dcEntree monte une entrée : le pont est construit par `ResolveSlotXUID`, le vrai.
-func dcEntree(pos []grammar.BipedPosition, mortsFilm []Death, journal []MortDuJournal) EntreeContexteMorts {
+func dcEntree(pos []grammar.BipedPosition, mortsFilm []types.Death, journal []MortDuJournal) EntreeContexteMorts {
 	rep := BuildIdentityRegistry(IdentityInput{Positions: pos, Deaths: mortsFilm, PlayerIndices: indexDe(111, 222, 333, 444, 999)})
 	return EntreeContexteMorts{
 		Positions: pos,
@@ -65,7 +66,7 @@ func dcEntree(pos []grammar.BipedPosition, mortsFilm []Death, journal []MortDuJo
 //	999   adversaire en (1,0), visible          -> n'entre nulle part
 //
 // Les vies se nomment par les morts du fil : chaque joueur en a une qui clôt sa vie.
-func corpusDeReference() ([]grammar.BipedPosition, []Death, []MortDuJournal) {
+func corpusDeReference() ([]grammar.BipedPosition, []types.Death, []MortDuJournal) {
 	var pos []grammar.BipedPosition
 	pos = append(pos, pisteMonde(1, 0, 10_000, 0, 0)...)  // moi
 	pos = append(pos, pisteMonde(2, 0, 20_000, 3, 0)...)  // visible a 3 m
@@ -74,7 +75,7 @@ func corpusDeReference() ([]grammar.BipedPosition, []Death, []MortDuJournal) {
 	pos = append(pos, pisteMonde(4, 20_000, 25_000, 5, 5)...)
 	pos = append(pos, pisteMonde(9, 0, 20_000, 1, 0)...) // adversaire tout proche
 
-	mortsFilm := []Death{
+	mortsFilm := []types.Death{
 		mortFilm(333, 6_000), mortFilm(111, 10_000),
 		mortFilm(222, 20_000), mortFilm(999, 20_000), mortFilm(444, 25_000),
 	}
@@ -121,7 +122,7 @@ func TestContextesDesMorts_SlotRecycle_LePremierOccupantNHeritePas(t *testing.T)
 	pos = append(pos, pisteMonde(2, 0, 10_000, 50, 50)...)    // 222, loin, puis mort
 	pos = append(pos, pisteMonde(2, 18_000, 28_000, 3, 0)...) // 333 REPREND LE SLOT, a 3 m
 
-	mortsFilm := []Death{mortFilm(222, 10_000), mortFilm(333, 28_000), mortFilm(111, 25_000)}
+	mortsFilm := []types.Death{mortFilm(222, 10_000), mortFilm(333, 28_000), mortFilm(111, 25_000)}
 	// LE JOURNAL PORTE TOUTES LES MORTS, y compris celle de 222 : c'est lui qui dit qui
 	// attend sa reapparition.
 	journal := []MortDuJournal{
@@ -155,7 +156,7 @@ func TestContextesDesMorts_MortRecente_NEstPasVisible(t *testing.T) {
 	pos = append(pos, pisteMonde(1, 0, 10_000, 0, 0)...)
 	pos = append(pos, pisteMonde(2, 0, 9_500, 3, 0)...) // 222 meurt a 9 500, a 3 m de moi
 
-	mortsFilm := []Death{mortFilm(222, 9_500), mortFilm(111, 10_000)}
+	mortsFilm := []types.Death{mortFilm(222, 9_500), mortFilm(111, 10_000)}
 	journal := []MortDuJournal{
 		{VictimeXUID: 222, TempsMS: 9_500}, {VictimeXUID: 111, TempsMS: 10_000},
 	}
@@ -195,7 +196,7 @@ func TestContextesDesMorts_LaFenetreDeVisibilite(t *testing.T) {
 			pos = append(pos, pisteMonde(2, 0, 10_000-cas.age, 3, 0)...)
 			pos = append(pos, pisteMonde(2, 10_100, 20_000, 3, 0)...)
 
-			mortsFilm := []Death{mortFilm(111, 10_000), mortFilm(222, 20_000)}
+			mortsFilm := []types.Death{mortFilm(111, 10_000), mortFilm(222, 20_000)}
 			journal := []MortDuJournal{{VictimeXUID: 111, TempsMS: 10_000}}
 			e := dcEntree(pos, mortsFilm, journal)
 			e.Equipes = map[uint64]int{111: 0, 222: 0}
@@ -279,7 +280,7 @@ func TestContextesDesMorts_HorlogeDuFilmConvertie(t *testing.T) {
 	pos = append(pos, pisteMonde(2, dec, dec+20_000, 3, 0)...)
 
 	// Le fil des morts est sur l'horloge du MATCH : 10 000 et 20 000.
-	mortsFilm := []Death{mortFilm(111, 10_000), mortFilm(222, 20_000)}
+	mortsFilm := []types.Death{mortFilm(111, 10_000), mortFilm(222, 20_000)}
 	journal := []MortDuJournal{{VictimeXUID: 111, TempsMS: 10_000}}
 	e := dcEntree(pos, mortsFilm, journal)
 	e.Equipes = map[uint64]int{111: 0, 222: 0}

@@ -38,6 +38,7 @@ import (
 	"levelup/go-api/internal/filmproc"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 const (
@@ -123,7 +124,7 @@ func TestOddballPortageProximite(t *testing.T) {
 		return
 	}
 	pont := objBridgeOf(t, root, id)
-	deaths, err := ScanFilmDeaths(dir)
+	deaths, err := grammar.ScanFilmDeaths(dir)
 	if err != nil {
 		t.Fatalf("%s : fil des morts illisible : %v", id, err)
 	}
@@ -224,7 +225,7 @@ func d6Bornes(t *testing.T, root, id string) (profile.Vec3Range, profile.I0Layou
 // lieu d'etre le plus proche. Meme chaine, meme cloture, meme metrique — c'est ce qui rend la
 // comparaison honnete.
 func d6Reconstruit(vies []flagFreeLife, socles []PointObjective, tracks map[uint32]slotTrack,
-	pont objBridge, deaths []Death, rng *rand.Rand,
+	pont objBridge, deaths []types.Death, rng *rand.Rand,
 ) []d6Trou {
 	out := make([]d6Trou, 0, len(vies))
 	for i := 0; i+1 < len(vies); i++ {
@@ -322,7 +323,7 @@ func d6TireAuHasard(pont objBridge, exclu uint64, rng *rand.Rand) uint64 {
 }
 
 // d6FinPortage borne le portage : la fin du trou, ou la MORT du porteur si elle tombe avant.
-func d6FinPortage(tr d6Trou, deaths []Death, pont objBridge) uint64 {
+func d6FinPortage(tr d6Trou, deaths []types.Death, pont objBridge) uint64 {
 	if tr.classe != "porte" {
 		return tr.debutUS
 	}

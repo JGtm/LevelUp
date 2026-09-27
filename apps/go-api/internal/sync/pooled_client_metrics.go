@@ -15,7 +15,7 @@ import (
 	"errors"
 	"time"
 
-	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
+	"levelup/go-api/internal/games/halo_infinite/film/finalise"
 	"levelup/go-api/internal/observability"
 )
 
@@ -54,7 +54,7 @@ func observeHaloCall(title, call, player string, start time.Time, err error) {
 	// match detecte moins d une minute apres sa fin — une panne a chercher qui n existe pas. Ce
 	// report se compte chez ses appelants (`postsync_replay_films_non_finalises_total`,
 	// `killsource_films_non_finalises`).
-	if errors.Is(err, filmcache.ErrFilmNonFinalise) {
+	if errors.Is(err, finalise.ErrFilmNonFinalise) {
 		err = nil
 	}
 	ms := time.Since(start).Milliseconds()

@@ -207,7 +207,7 @@ func TestInventoryDeltaConfrontationCorpus(t *testing.T) {
 func invConfrontOneFilm(dir string) (invConfrontation, []float64, []float64, error) {
 	var c invConfrontation
 
-	kf, _, err := ScanFilmKeyframeInventory(dir, loadoutFamilies(), 0, nil)
+	kf, _, err := grammar.ScanFilmKeyframeInventory(dir, loadoutFamilies(), 0)
 	if err != nil {
 		return c, nil, nil, fmt.Errorf("images-clés : %w", err)
 	}
@@ -284,7 +284,7 @@ func invLastDeltaBefore(seq []types.InventoryDelta, at uint64) (types.InventoryD
 // invConfrontAmmo confronte, pour chaque emplacement d'arme, le dernier CHARGEUR transmis en
 // delta au chargeur de l'image-clé — a la seule condition que les deux lectures soient proches
 // dans le temps (cf. invAmmoWindowUS).
-func invConfrontAmmo(c *invConfrontation, seq []types.InventoryDelta, k KeyframeInventory) {
+func invConfrontAmmo(c *invConfrontation, seq []types.InventoryDelta, k types.KeyframeInventory) {
 	for slot := 0; slot < 2 && slot < len(k.Ammo); slot++ {
 		if k.Ammo[slot].Mag == nil {
 			continue
@@ -333,8 +333,8 @@ func invConfrontAmmo(c *invConfrontation, seq []types.InventoryDelta, k Keyframe
 // quand l'inventaire d'un joueur CHANGE reellement, le canal delta le rapporte-t-il ? Un
 // rappel bas ne rend pas les lectures fausses (la concordance le mesure a part) ; il borne le
 // gain de fraicheur qu'on peut promettre.
-func invRecall(c *invConfrontation, kf []KeyframeInventory, bySlot map[uint32][]types.InventoryDelta) {
-	bySlotKF := map[uint32][]KeyframeInventory{}
+func invRecall(c *invConfrontation, kf []types.KeyframeInventory, bySlot map[uint32][]types.InventoryDelta) {
+	bySlotKF := map[uint32][]types.KeyframeInventory{}
 	for _, k := range kf {
 		if k.GrenadesRead {
 			bySlotKF[k.Slot] = append(bySlotKF[k.Slot], k)
@@ -376,7 +376,7 @@ func invSameGrenades(delta []uint32, kfv [4]uint32) bool {
 // invFreshness échantillonne à 1 Hz, sur la durée de vie de chaque slot, l'âge de la dernière
 // lecture connue — d'abord avec les images-clés seules, puis les deux canaux fusionnés.
 func invFreshness(
-	kf []KeyframeInventory, bySlot map[uint32][]types.InventoryDelta,
+	kf []types.KeyframeInventory, bySlot map[uint32][]types.InventoryDelta,
 ) (ageKF, ageMerged []float64, between int) {
 	kfBySlot := map[uint32][]uint64{}
 	for _, k := range kf {

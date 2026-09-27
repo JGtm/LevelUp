@@ -20,6 +20,8 @@ import (
 	"path/filepath"
 	"sort"
 	"testing"
+
+	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 )
 
 // v6FrameScore evalue un candidat de debut de trame ECS : il rejoue la boucle de records a
@@ -50,7 +52,7 @@ func v6FrameScore(pay []byte, S int, w *World, cfg FrameConfig) (walked int, cle
 		return walked, false
 	}
 	for b := br.BitPos(); b < len(pay)*8; b++ {
-		if readBitsAt(pay, b, 1) != 0 {
+		if uint32(source.BitsStricts(pay, b, 1)) != 0 {
 			return walked, false
 		}
 	}

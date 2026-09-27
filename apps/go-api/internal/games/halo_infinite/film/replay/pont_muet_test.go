@@ -13,6 +13,7 @@ package replay
 // Toutes les fixtures sont synthétiques : aucun film n'est lu, la CI les joue.
 
 import (
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 	"sort"
 	"testing"
 )
@@ -30,14 +31,14 @@ func pontVie(slot uint32, finMS int64) lifeSpan {
 // le calage d'exactement une période apparie chaque mort à la fin de vie SUIVANTE et rend un
 // second candidat presque aussi bon — une ambiguïté de la fixture, pas du film. Aucun match
 // réel n'a des morts également espacées.
-func pontFixture(originMS, premiereMortMS int64, n int) ([]lifeSpan, []Death) {
+func pontFixture(originMS, premiereMortMS int64, n int) ([]lifeSpan, []types.Death) {
 	var lives []lifeSpan
-	var deaths []Death
+	var deaths []types.Death
 	tMatch := premiereMortMS
 	for i := 0; i < n; i++ {
 		residu := int64(i%3) * 12 // 0, 12, 24 ms : sous la fenêtre de 150
 		lives = append(lives, pontVie(uint32(500+i), originMS+tMatch+residu))
-		deaths = append(deaths, Death{XUID: uint64(1000 + i), TimeMS: tMatch})
+		deaths = append(deaths, types.Death{XUID: uint64(1000 + i), TimeMS: tMatch})
 		tMatch += 3_000 + int64(i*2_777)%9_000 // pas irrégulier, déterministe
 	}
 	return lives, deaths
@@ -121,7 +122,7 @@ func TestUnFilmDejaCaleRetientLeMemeEntier(t *testing.T) {
 
 // pontCalageHistorique est le balayage linéaire d'avant le 2026-09-07, à l'identique : plage
 // `[min(fins) − 60 000, max(fins)]`, pas de 10 ms, plateau centré. ORACLE DE TEST UNIQUEMENT.
-func pontCalageHistorique(ends []int64, deaths []Death) (int64, int) {
+func pontCalageHistorique(ends []int64, deaths []types.Death) (int64, int) {
 	lo, hi := ends[0], ends[0]
 	for _, e := range ends {
 		lo, hi = minI64(lo, e), maxI64(hi, e)
@@ -177,7 +178,7 @@ func TestLeCalageResteVideSansMortNiVie(t *testing.T) {
 // Configuration mesurée sur `3372e7eb` : 8 joueurs à la feuille, 6 au roster publié, et les
 // deux manquants sont exactement ceux qui finissent à 0 mort (6 et 8 frags).
 func TestUnJoueurQuiNeMeurtJamaisEntreAuRosterParLaFeuille(t *testing.T) {
-	deaths := []Death{{XUID: 11, TimeMS: 1000}, {XUID: 13, TimeMS: 2000}, {XUID: 11, TimeMS: 3000}}
+	deaths := []types.Death{{XUID: 11, TimeMS: 1000}, {XUID: 13, TimeMS: 2000}, {XUID: 11, TimeMS: 3000}}
 	feuille := []uint64{11, 12, 13, 14} // 12 et 14 ne meurent jamais
 
 	got := rosterOf(deaths, feuille)
@@ -197,7 +198,7 @@ func TestUnJoueurQuiNeMeurtJamaisEntreAuRosterParLaFeuille(t *testing.T) {
 // ne doit pas devenir une entrée de roster, et un joueur présent des deux côtés ne compte
 // qu'une fois.
 func TestLeRosterNAdmetNiZeroNiDoublon(t *testing.T) {
-	deaths := []Death{{XUID: 0, TimeMS: 10}, {XUID: 21, TimeMS: 20}}
+	deaths := []types.Death{{XUID: 0, TimeMS: 10}, {XUID: 21, TimeMS: 20}}
 
 	got := rosterOf(deaths, []uint64{21, 0, 22})
 
@@ -210,7 +211,7 @@ func TestLeRosterNAdmetNiZeroNiDoublon(t *testing.T) {
 // de manche ou de film, que `buildLifeSpans` produit dans un même cycle de réplication) et
 // `mMorts` morts simultanées (un multi-kill), placées pour que tous leurs couples désignent le
 // même écart faux, à `decalage` du vrai calage.
-func pontFixtureAmas(originMS, premiereMortMS int64, n, kFins, mMorts int, decalage int64) ([]lifeSpan, []Death) {
+func pontFixtureAmas(originMS, premiereMortMS int64, n, kFins, mMorts int, decalage int64) ([]lifeSpan, []types.Death) {
 	lives, deaths := pontFixture(originMS, premiereMortMS, n)
 	const finDeMancheMS = 300_000
 	for i := 0; i < kFins; i++ {
@@ -218,7 +219,7 @@ func pontFixtureAmas(originMS, premiereMortMS int64, n, kFins, mMorts int, decal
 		lives = append(lives, pontVie(uint32(900+i), originMS+finDeMancheMS+int64(i%2)*16))
 	}
 	for j := 0; j < mMorts; j++ {
-		deaths = append(deaths, Death{
+		deaths = append(deaths, types.Death{
 			XUID:   uint64(9000 + j),
 			TimeMS: finDeMancheMS - decalage + int64(j%2)*8,
 		})
@@ -280,10 +281,10 @@ func TestSansFeuilleLeRosterEstCeluiDeLAncienCorps(t *testing.T) {
 		return graine
 	}
 	for tirage := 0; tirage < 300; tirage++ {
-		deaths := make([]Death, 0, 24)
+		deaths := make([]types.Death, 0, 24)
 		for i := 0; i < 1+int(suivant()%24); i++ {
 			// Des xuids du domaine réel (]2e15, 3e15[), certains répétés.
-			deaths = append(deaths, Death{
+			deaths = append(deaths, types.Death{
 				XUID:   2_000_000_000_000_000 + suivant()%1_000_000_000_000_000,
 				TimeMS: int64(suivant() % 600_000),
 			})
@@ -310,7 +311,7 @@ func TestSansFeuilleLeRosterEstCeluiDeLAncienCorps(t *testing.T) {
 // pontRosterHistorique est le corps de `rosterFromDeaths` d'avant le 2026-09-07, recopié à
 // l'identique. ORACLE DE TEST UNIQUEMENT — il ne doit jamais déléguer au code de production,
 // c'est tout son intérêt.
-func pontRosterHistorique(deaths []Death) []uint64 {
+func pontRosterHistorique(deaths []types.Death) []uint64 {
 	seen := map[uint64]bool{}
 	out := make([]uint64, 0, 8)
 	for _, d := range deaths {

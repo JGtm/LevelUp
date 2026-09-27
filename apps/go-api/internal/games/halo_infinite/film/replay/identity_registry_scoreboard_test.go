@@ -5,6 +5,7 @@ import (
 
 	"levelup/go-api/internal/games/canonical"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // identity_registry_scoreboard_test.go — LES PROPRIETES DU NOMMAGE PAR LE TABLEAU DE L'API.
@@ -45,11 +46,11 @@ func filmSiegePartage() IdentityInput {
 		BipedCreations: []grammar.BipedCreation{
 			creationDe(100, 1_000_000, 0), creationDe(300, 1_000_000, 9),
 		},
-		Deaths: []Death{
+		Deaths: []types.Death{
 			{XUID: 111, Gamertag: "MORTEL", TimeMS: 4_000},
 			{XUID: 111, Gamertag: "MORTEL", TimeMS: 23_000},
 		},
-		PlayerIndices: PlayerIndexTable{ByXUID: map[uint64]int{111: 0, 222: 9}, Readings: 26},
+		PlayerIndices: types.PlayerIndexTable{ByXUID: map[uint64]int{111: 0, 222: 9}, Readings: 26},
 		Bots:          []BotIdentity{{FilmIndex: 9, Name: "343 Doomfruit [bot]", BotID: 7}},
 		Clock:         IdentityClock{OriginUS: 1_000_000, StepUS: 100_000, FrameCount: 241},
 		MatchID:       "test",

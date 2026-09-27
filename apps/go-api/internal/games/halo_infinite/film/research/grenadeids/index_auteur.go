@@ -37,6 +37,7 @@ import (
 	"sort"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 )
 
 // indexAuteurBit : la position de production du champ d index, en bits depuis le marqueur.
@@ -84,7 +85,7 @@ func balayerIndexAuteur(pay []byte, o Occurrence, fenetre int, r *Releve) {
 			r.IndexParDecalage[d] = c
 		}
 		c.Total++
-		v := grammar.PeekBits(pay, o.BitPos+indexAuteurBit+d, indexAuteurBits)
+		v := source.BitsTolerants(pay, o.BitPos+indexAuteurBit+d, indexAuteurBits)
 		c.Vues |= 1 << uint(v&0x1F)
 		if v <= indexAuteurMax {
 			c.Dans0a7++

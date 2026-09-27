@@ -241,6 +241,11 @@ var constructeursDeLecteurDeBits = map[string]bool{
 	"bitAt": true, "bits32": true, "bitsN": true, "bitsWide": true, "wordBitsAt": true,
 	"readBitsBE": true, "readByteAtBit": true, "readU64LEAtBit": true,
 	"scanEvents": true,
+	// Les sept lecteurs de la grammaire remplaces au lot J4.6 (2026-09-26) par les conventions
+	// nommees de la source : RATCHET ANTI-RESURRECTION par le nom. La forme de leur calcul est
+	// tenue, elle, par le motif `extraction-de-bits` (`no_raw_film_bytes_extraction_test.go`).
+	"readBitsAt": true, "PeekBits": true, "kfReadBits": true, "kfReadBitsLoop": true,
+	"kfBitAt": true, "invBitAt": true, "invBits": true,
 }
 
 // typesDeLecteurDeBits : les types dont la DECLARATION ou la construction par litteral ouvre
@@ -279,7 +284,13 @@ func TestAucuneLectureDOctetsBrutsHorsDeLaSource(t *testing.T) {
 	}
 	violations := map[string]string{}
 	for _, s := range sites {
+		if exceptionDExtraction(s) != nil {
+			continue // exception DATEE du motif `extraction-de-bits` (lot J4.6)
+		}
 		cle := cleLectureBrute(s.fichier, s.motif)
+		if s.fonction != "" {
+			cle += " | " + s.fonction
+		}
 		if violations[cle] != "" {
 			continue
 		}
@@ -301,7 +312,9 @@ func TestAucuneLectureDOctetsBrutsHorsDeLaSource(t *testing.T) {
 		"recopier `bitAt`) est exactement ce que les lots 2.4 et 2.5.e ont supprime.\n"+
 		"IL N Y A PLUS D ALLOWLIST : elle s est videe au lot 2.5.e avec sa derniere entree, et "+
 		"le mecanisme qui la portait est parti avec elle. Une tolerance re-devient une "+
-		"DECISION a ecrire, pas une ligne a remplir.",
+		"DECISION a ecrire, pas une ligne a remplir. Seule exception : les extractions de bits "+
+		"DATEES du lot J4.6 (`exceptionsDExtraction`), une par fonction, chacune avec son "+
+		"critere de retrait.",
 		len(lignes), strings.Join(lignes, "\n  "))
 }
 

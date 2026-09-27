@@ -18,6 +18,7 @@ import (
 	"levelup/go-api/internal/config"
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
+	"levelup/go-api/internal/games/halo_infinite/film/finalise"
 )
 
 func TestArchiveFilms_GamertagObligatoireHorsDryRun(t *testing.T) {
@@ -85,7 +86,7 @@ func TestFilmDejaEnCache(t *testing.T) {
 	// refuse une liste sans morceau des temps forts.
 	if err := filmcache.Write(t.Context(), racine, court, []filmcache.WriteChunk{
 		{Index: 0, ChunkType: 1, Data: []byte("entete")},
-		{Index: 1, ChunkType: filmcache.ChunkTypeTempsForts, Data: []byte("temps forts")},
+		{Index: 1, ChunkType: finalise.ChunkTypeTempsForts, Data: []byte("temps forts")},
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -125,7 +126,7 @@ func TestFilmDejaEnCache_ChunkTronqueNestPasComplet(t *testing.T) {
 	court := titlePkg.FilmShortMatchID(match)
 	if err := filmcache.Write(t.Context(), racine, court, []filmcache.WriteChunk{
 		{Index: 0, ChunkType: 1, Data: []byte("entete")},
-		{Index: 1, ChunkType: filmcache.ChunkTypeTempsForts, Data: []byte("temps forts")},
+		{Index: 1, ChunkType: finalise.ChunkTypeTempsForts, Data: []byte("temps forts")},
 	}); err != nil {
 		t.Fatal(err)
 	}

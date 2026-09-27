@@ -5,6 +5,7 @@ import (
 
 	"levelup/go-api/internal/games/canonical"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // identity_registry_exclusion_test.go — LES PROPRIETES DE L'EXCLUSION TEMPORELLE.
@@ -35,7 +36,7 @@ func filmExclusion() IdentityInput {
 	pos = sejour(pos, 200, 1, 8)
 	pos = sejour(pos, 200, 30, 36)
 	pos = sejour(pos, 400, 16, 24)
-	deaths := []Death{
+	deaths := []types.Death{
 		{XUID: 111, Gamertag: "UN", TimeMS: 4_000},
 		{XUID: 222, Gamertag: "DEUX", TimeMS: 8_000},
 		{XUID: 111, Gamertag: "UN", TimeMS: 20_000},
@@ -44,7 +45,7 @@ func filmExclusion() IdentityInput {
 	}
 	return IdentityInput{
 		Positions: pos, Deaths: deaths,
-		PlayerIndices: PlayerIndexTable{ByXUID: map[uint64]int{111: 0, 222: 1}, Readings: 26},
+		PlayerIndices: types.PlayerIndexTable{ByXUID: map[uint64]int{111: 0, 222: 1}, Readings: 26},
 		RosterXUIDs:   []uint64{111, 222},
 		Clock:         IdentityClock{OriginUS: 1_000_000, StepUS: 100_000, FrameCount: 360},
 		MatchID:       "test-exclusion",
@@ -126,8 +127,8 @@ func TestExclusionSeTaitADeuxCandidats(t *testing.T) {
 	in.Positions = sejour(in.Positions, 300, 1, 6)
 	in.Positions = sejour(in.Positions, 300, 28, 38)
 	in.Deaths = append(in.Deaths,
-		Death{XUID: 333, Gamertag: "TROIS", TimeMS: 6_000},
-		Death{XUID: 333, Gamertag: "TROIS", TimeMS: 38_000})
+		types.Death{XUID: 333, Gamertag: "TROIS", TimeMS: 6_000},
+		types.Death{XUID: 333, Gamertag: "TROIS", TimeMS: 38_000})
 	in.PlayerIndices.ByXUID[333] = 2
 	in.RosterXUIDs = []uint64{111, 222, 333}
 	reg := BuildIdentityRegistry(in)
@@ -201,12 +202,12 @@ func TestExclusionSeTaitSansAucunCandidat(t *testing.T) {
 	pos = sejour(pos, 400, 16, 24)
 	in := IdentityInput{
 		Positions: pos,
-		Deaths: []Death{
+		Deaths: []types.Death{
 			{XUID: 333, Gamertag: "TROIS", TimeMS: 17_000},
 			{XUID: 111, Gamertag: "UN", TimeMS: 20_000},
 			{XUID: 222, Gamertag: "DEUX", TimeMS: 30_000},
 		},
-		PlayerIndices: PlayerIndexTable{
+		PlayerIndices: types.PlayerIndexTable{
 			ByXUID: map[uint64]int{111: 0, 222: 1, 333: 2}, Readings: 26},
 		RosterXUIDs: []uint64{111, 222, 333},
 		Clock:       IdentityClock{OriginUS: 1_000_000, StepUS: 100_000, FrameCount: 300},
@@ -237,14 +238,14 @@ func TestExclusionSeTaitSurDeuxViesQuiSeDisputentLeMemeJoueur(t *testing.T) {
 	pos = sejour(pos, 500, 15, 25)
 	in := IdentityInput{
 		Positions: pos,
-		Deaths: []Death{
+		Deaths: []types.Death{
 			{XUID: 222, Gamertag: "DEUX", TimeMS: 5_000},
 			{XUID: 111, Gamertag: "UN", TimeMS: 12_000},
 			{XUID: 333, Gamertag: "TROIS", TimeMS: 20_000},
 			{XUID: 111, Gamertag: "UN", TimeMS: 25_000},
 			{XUID: 222, Gamertag: "DEUX", TimeMS: 32_000},
 		},
-		PlayerIndices: PlayerIndexTable{
+		PlayerIndices: types.PlayerIndexTable{
 			ByXUID: map[uint64]int{111: 0, 222: 1, 333: 2}, Readings: 26},
 		RosterXUIDs: []uint64{111, 222, 333},
 		Clock:       IdentityClock{OriginUS: 1_000_000, StepUS: 100_000, FrameCount: 320},
@@ -276,14 +277,14 @@ func TestExclusionRendAmbiguUnSlotQueDeuxJoueursSePartagent(t *testing.T) {
 	pos = sejour(pos, 400, 30, 38) // nommee par la mort de 111 — plus de 5 s apres, donc une AUTRE vie
 	in := IdentityInput{
 		Positions: pos,
-		Deaths: []Death{
+		Deaths: []types.Death{
 			{XUID: 111, Gamertag: "UN", TimeMS: 4_000},
 			{XUID: 222, Gamertag: "DEUX", TimeMS: 8_000},
 			{XUID: 111, Gamertag: "UN", TimeMS: 20_000},
 			{XUID: 222, Gamertag: "DEUX", TimeMS: 36_000},
 			{XUID: 111, Gamertag: "UN", TimeMS: 38_000},
 		},
-		PlayerIndices: PlayerIndexTable{ByXUID: map[uint64]int{111: 0, 222: 1}, Readings: 26},
+		PlayerIndices: types.PlayerIndexTable{ByXUID: map[uint64]int{111: 0, 222: 1}, Readings: 26},
 		RosterXUIDs:   []uint64{111, 222},
 		Clock:         IdentityClock{OriginUS: 1_000_000, StepUS: 100_000, FrameCount: 380},
 		MatchID:       "test-slot-partage",

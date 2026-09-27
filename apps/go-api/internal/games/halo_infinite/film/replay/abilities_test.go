@@ -5,39 +5,13 @@ import (
 	"testing"
 )
 
-// TestInvAbilityRankHighEstLaQueueDuMotif verrouille la DERIVATION, pas la valeur.
-//
-// Le facteur 16 n'est pas une constante posee a cote du motif d'ancrage : ce sont ses trois
-// derniers bits. L'ecrire deux fois aurait permis a l'un des deux de deriver ; ce test dit
-// que la reconstruction suit le motif, et que la fenetre visible du canal d'image-cle est
-// exactement 16..23 — ce qui est la cause, enfin nommee, des 21 films sur 40 muets.
-func TestInvAbilityRankHighEstLaQueueDuMotif(t *testing.T) {
-	if invAbilityRankHigh != 2 {
-		t.Fatalf("les 3 bits de poids fort du rang valent %d, attendu 2 (la queue `010` du motif)",
-			invAbilityRankHigh)
-	}
-	if got := invAbilityRankOf(0); got != 16 {
-		t.Errorf("le bas de la fenetre vaut %d, attendu 16", got)
-	}
-	if got := invAbilityRankOf(7); got != 23 {
-		t.Errorf("le haut de la fenetre vaut %d, attendu 23", got)
-	}
-	// CONTROLE SUR PIECES (film 000d5950) : le canal i48, independant, rend 20 sur les slots
-	// que le releve Theater nomme grappin (bas 4), 21 sur le propulseur (5), 19 sur le mur (3).
-	for low, want := range map[uint32]int{3: 19, 4: 20, 5: 21, 6: 22} {
-		if got := invAbilityRankOf(low); got != want {
-			t.Errorf("bits bas %d -> rang %d, attendu %d", low, got, want)
-		}
-	}
-}
-
 func TestBuildAbilityReadsFusionneLesDeuxCanaux(t *testing.T) {
 	const origin, step = 1_000_000, 100_000
 	ranks := []types.AbilityRank{
 		{TimestampUS: 500_000, Slot: 512, Rank: 8},   // avant l'origine : ecarte
 		{TimestampUS: 1_300_000, Slot: 512, Rank: 8}, // camouflage — invisible du canal kf
 	}
-	inv := []KeyframeInventory{
+	inv := []types.KeyframeInventory{
 		{TimestampUS: 1_300_000, Slot: 513, AbilityRank: 20},
 		{TimestampUS: 1_200_000, Slot: 512, AbilityRank: -1}, // non lu : ecarte
 		{TimestampUS: 400_000, Slot: 513, AbilityRank: 23},   // avant l'origine : ecarte

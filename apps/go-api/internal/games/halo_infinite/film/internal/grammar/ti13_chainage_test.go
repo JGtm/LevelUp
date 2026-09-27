@@ -33,6 +33,8 @@ import (
 	"sort"
 	"strings"
 	"testing"
+
+	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 )
 
 // ti13MaxComp est le plus grand index de composant que l'archetype ti=13 declare (34 composants :
@@ -87,13 +89,13 @@ func ti13HeaderAt(pay []byte, p int) bool {
 	if p+worldObjectHeaderBits+worldObjectIndexBits > total {
 		return false
 	}
-	if PeekBits(pay, p, 1) != 1 {
+	if source.BitsTolerants(pay, p, 1) != 1 {
 		return false
 	}
-	if PeekBits(pay, p+16, 2) != 0 {
+	if source.BitsTolerants(pay, p+16, 2) != 0 {
 		return false
 	}
-	mc := int(PeekBits(pay, p+18, 3))
+	mc := int(source.BitsTolerants(pay, p+18, 3))
 	if mc < 1 || mc > worldObjectMaxMaskCnt {
 		return false
 	}

@@ -36,6 +36,7 @@ import (
 
 	"levelup/go-api/internal/filmproc"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
 const (
@@ -138,7 +139,7 @@ func d10Evenements(t *testing.T, root, id string) []d10Th10 {
 // des vies libres — la conversion est celle de D4 (`ScanFilmClockOrigin`).
 func d10Transitions(t *testing.T, root, id string, e d8Etat) (naissances, silences []int64) {
 	t.Helper()
-	clockUS, err := ScanFilmClockOrigin(objChunkDir(root, id))
+	clockUS, err := grammar.ScanFilmClockOrigin(objChunkDir(root, id))
 	if err != nil {
 		t.Fatalf("%s : origine d'horloge illisible : %v", id, err)
 	}

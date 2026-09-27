@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // flag_assign_test.go — A QUEL DRAPEAU UN PORTAGE APPARTIENT, sans film.
@@ -100,7 +101,7 @@ func TestFlagAssignLeSolSuitLeTempsEtNonLOrdreDesPrises(t *testing.T) {
 			map[int]string{12: "1", 14: "2", 16: "3", 18: "4"}),
 		Spawns: flagAssignSpawns(),
 	}
-	deaths := []Death{{XUID: 1, TimeMS: 4800}, {XUID: 2, TimeMS: 9000}}
+	deaths := []types.Death{{XUID: 1, TimeMS: 4800}, {XUID: 2, TimeMS: 9000}}
 
 	got, cov := buildFlagCarries(scan, flagTestCtx(tracks, deaths, 100))
 	if cov.Carries != 4 || !cov.Balanced() {
@@ -223,7 +224,7 @@ func TestFlagAssignLeVolResteAuSocle(t *testing.T) {
 		Identity: objectives.FlatRoundIdentity(map[int]string{12: "1", 14: "2"}),
 		Spawns:   flagAssignSpawns(),
 	}
-	deaths := []Death{{XUID: 1, TimeMS: 2000}}
+	deaths := []types.Death{{XUID: 1, TimeMS: 2000}}
 
 	got, cov := buildFlagCarries(scan, flagTestCtx(tracks, deaths, 100))
 	if cov.Carries != 2 || !cov.Balanced() {

@@ -27,6 +27,8 @@ import (
 	"math"
 	"sort"
 	"testing"
+
+	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 )
 
 // v5ContactUS est la fenêtre temporelle dans laquelle on cherche la position d'un véhicule
@@ -239,7 +241,7 @@ func v5Contient(r v5KfRec, cible uint32) bool {
 	}
 	for _, ex := range v5Extracteurs {
 		for d := 0; d+ex.Largeur <= long; d++ {
-			if ex.Slot(kfReadBits(r.Payload, r.BitStart+d, ex.Largeur)) == cible {
+			if ex.Slot(source.BitsBourres(r.Payload, r.BitStart+d, ex.Largeur)) == cible {
 				return true
 			}
 		}

@@ -1,6 +1,7 @@
 package replay
 
 import (
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 	"log/slog"
 	"sort"
 )
@@ -29,7 +30,7 @@ import (
 // SANS FIL DES MORTS, RIEN NE BOUGE : les lectures gardent `unknown`, ce qui est exactement ce
 // qu'on sait d'elles. C'est une dégradation, et elle est journalisée par l'appelant avec les
 // autres couvertures — jamais une requalification par défaut.
-func markInventoryDeadReadings(inv []Inventory, deaths []Death, reg IdentityRegistry, clk replayClock) int {
+func markInventoryDeadReadings(inv []Inventory, deaths []types.Death, reg IdentityRegistry, clk replayClock) int {
 	if len(inv) == 0 || len(deaths) == 0 || !reg.PontEtabli() {
 		return 0
 	}
@@ -65,7 +66,7 @@ func markInventoryDeadReadings(inv []Inventory, deaths []Death, reg IdentityRegi
 // L'IDENTITÉ EST LE XUID, jamais un index (règle du chantier : un ordre n'est pas une identité).
 // Le décalage vient de `bestDeathOffset` et s'applique dans le même sens que `nameLivesByDeaths` :
 // instant_film = instant_match + offset.
-func deathTimesByVictimMS(deaths []Death, offsetMS int64) map[uint64][]int64 {
+func deathTimesByVictimMS(deaths []types.Death, offsetMS int64) map[uint64][]int64 {
 	out := make(map[uint64][]int64, len(deaths))
 	for _, d := range deaths {
 		out[d.XUID] = append(out[d.XUID], d.TimeMS+offsetMS)

@@ -1,5 +1,9 @@
 package grammar
 
+import (
+	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
+)
+
 // Décodage de la VISÉE MODALE du record de tir `action_weapon_fire` (type 36).
 //
 // CE QUE CE FICHIER PORTE. La visée ne se lit qu'au bout de la grammaire réelle du record —
@@ -85,7 +89,7 @@ func readAimAt(pay []byte, e *FireEvent, aimBit int) {
 	if aimBit < 0 || len(pay)*8 < aimBit+int(FireAimBits) {
 		return
 	}
-	if v, ok := DecodeAimVectorChecked(readBitsAt(pay, aimBit, int(FireAimBits)), FireAimBits); ok {
+	if v, ok := DecodeAimVectorChecked(uint32(source.BitsStricts(pay, aimBit, int(FireAimBits))), FireAimBits); ok {
 		e.HasAim, e.Aim = true, v
 	}
 }

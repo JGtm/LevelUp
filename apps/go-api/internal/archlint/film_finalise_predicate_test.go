@@ -11,9 +11,14 @@ package archlint
 // une troisieme dans une commande, une quatrieme dans une fixture — et AUCUN ne l appliquait au
 // seul moment qui comptait : l archivage. `ab526724` a ete archive 50 s apres la fin de son match,
 // sur 34 morceaux au lieu de 37, et toute sa chaine d identite est tombee. La regle vit
-// desormais dans `film/filmcache/finalise.go` ([filmcache.Finalise] pour juger un film,
-// [filmcache.EstTempsForts] pour SELECTIONNER le morceau), et CLAUDE.md regle 6 veut le
+// desormais dans `film/finalise/finalise.go` ([finalise.Finalise] pour juger un film,
+// [finalise.EstTempsForts] pour SELECTIONNER le morceau), et CLAUDE.md regle 6 veut le
 // garde-rail avec la centralisation : une factorisation sans garde-rail re-diverge.
+//
+// LE PREDICAT A QUITTE `film/filmcache` LE 2026-09-26 (lot J4.2 du PLAN_SUITE_AUDIT_DECODEUR_FILM) pour
+// la feuille `film/finalise` : la lecture du fil des morts, descendue en `grammar`, le consulte,
+// et `filmcache` aurait tire `internal/domain` dans le perimetre de revision de la grammaire.
+// Deplacement pur, sans alias ; seul le chemin ci-dessous a change.
 //
 // # CE QU IL CHERCHE, DANS LES SOURCES DE PRODUCTION DE `cmd/` ET `internal/`
 //
@@ -33,7 +38,7 @@ package archlint
 //     2026-09-23 dans `sync/killcollector/cache_films.go`, et figee par
 //     [TestDetecteurDeComparaisonAuTypeTempsForts]) ;
 //   - remettre `chunk.ChunkType != FilmChunkTypeHighlightEvents` dans `haloclient` ;
-//   - ecrire `if m.ChunkType >= 3 {` a la place de `filmcache.EstTempsForts` (mutation R-b de la
+//   - ecrire `if m.ChunkType >= 3 {` a la place de `finalise.EstTempsForts` (mutation R-b de la
 //     revue adverse du lot, invisible avant que l ordre entre dans le detecteur) ;
 //   - ajouter une SECONDE comparaison dans un fichier tolere (compte gele, constat L3-R7) ;
 //   - migrer un site allowliste sans retirer son entree : « entree perimee, la retirer ».
@@ -60,11 +65,11 @@ import (
 )
 
 // fichierDuPredicatFinalise : le SEUL fichier qui compare au type des temps forts.
-const fichierDuPredicatFinalise = "internal/games/halo_infinite/film/filmcache/finalise.go"
+const fichierDuPredicatFinalise = "internal/games/halo_infinite/film/finalise/finalise.go"
 
 // operateursDeComparaison : egalite ET ordre. L ORDRE EN FAIT PARTIE depuis la reprise du lot
 // (constat L3-R7 de la revue adverse, mutation R-b : `m.ChunkType >= 3` a la place de
-// `filmcache.EstTempsForts(m.ChunkType)` restait vert) — « au moins le type des temps forts »
+// `finalise.EstTempsForts(m.ChunkType)` restait vert) — « au moins le type des temps forts »
 // est une regle recopiee au meme titre que « egal au type des temps forts ».
 var operateursDeComparaison = map[token.Token]bool{
 	token.EQL: true, token.NEQ: true, token.LSS: true, token.GTR: true, token.LEQ: true, token.GEQ: true,
@@ -96,25 +101,25 @@ type comparaisonAuTypeTempsFortsToleree struct {
 // comparaisonsAuTypeTempsFortsTolerees — LES TROIS SITES MESURES LE 2026-09-23, hors du
 // perimetre ferme du lot L3 (qui a migre les siens : `haloclient`, `replay.ScanDeaths`). Tous
 // trois SELECTIONNENT le morceau des temps forts ; aucun ne juge la finalisation. Critere de
-// retrait commun : le site passe par `filmcache.EstTempsForts`, et son entree part dans le meme
+// retrait commun : le site passe par `finalise.EstTempsForts`, et son entree part dans le meme
 // commit.
 var comparaisonsAuTypeTempsFortsTolerees = []comparaisonAuTypeTempsFortsToleree{
 	{
 		fichier: "cmd/levelup/cmd_backfill_medailles_feed.go", sites: 1, pose: "2026-09-23",
 		retrait: "remplacer `chunk.ChunkType != haloclient.FilmChunkTypeHighlightEvents` par " +
-			"`!filmcache.EstTempsForts(chunk.ChunkType)`",
+			"`!finalise.EstTempsForts(chunk.ChunkType)`",
 	},
 	{
 		fichier: "internal/games/halo_infinite/film/internal/facts/objectives/extract.go",
 		sites:   1,
 		pose:    "2026-09-23",
-		retrait: "remplacer `chunkTypePied` par `filmcache.EstTempsForts` — geste de la couche " +
+		retrait: "remplacer `chunkTypePied` par `finalise.EstTempsForts` — geste de la couche " +
 			"`facts` : l empreinte de `objectives.Rev` bouge, a recopier a revision constante avec une " +
 			"note ecrite (sortie identique)",
 	},
 	{
 		fichier: "internal/testfixtures/jgtm_full_match.go", sites: 1, pose: "2026-09-23",
-		retrait: "remplacer `c.ChunkType == 3` par `filmcache.EstTempsForts(c.ChunkType)`",
+		retrait: "remplacer `c.ChunkType == 3` par `finalise.EstTempsForts(c.ChunkType)`",
 	},
 }
 
@@ -145,8 +150,8 @@ func TestAucuneComparaisonAuTypeTempsFortsHorsDuPredicat(t *testing.T) {
 	}
 	sort.Strings(violations)
 	t.Errorf("%d comparaison(s) au type des temps forts hors du predicat unique :\n  %s\n"+
-		"Juger un film : filmcache.Finalise(chunks, typeDe). Selectionner son morceau des temps "+
-		"forts : filmcache.EstTempsForts(chunkType). Une regle recopiee re-diverge — c est ainsi "+
+		"Juger un film : finalise.Finalise(chunks, typeDe). Selectionner son morceau des temps "+
+		"forts : finalise.EstTempsForts(chunkType). Une regle recopiee re-diverge — c est ainsi "+
 		"qu `ab526724` a ete archive avant sa finalisation.",
 		len(violations), strings.Join(violations, "\n  "))
 }

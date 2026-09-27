@@ -23,6 +23,8 @@ import (
 	"path/filepath"
 	"sort"
 	"testing"
+
+	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 )
 
 // equipeTI est l'index d'archetype « managed-player » (le profil du joueur) dont le composant
@@ -116,7 +118,7 @@ func equipePaquetsModaux(pqs []equipePaquet) (gardes []equipePaquet, ecartes int
 // equipeLireDesignateur lit le champ de 4 bits a `bit`, et rend le BRUT ainsi que la valeur
 // stockee par le jeu (brut - 1 ; -1 = aucune equipe).
 func equipeLireDesignateur(pay []byte, bit int) (brut int, stocke int) {
-	brut = int(kfReadBits(pay, bit, equipeDesignatorBits))
+	brut = int(source.BitsBourres(pay, bit, equipeDesignatorBits))
 	return brut, brut - 1
 }
 

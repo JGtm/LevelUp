@@ -16,6 +16,7 @@ import (
 
 	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // decodeKillSource décode killsource UNE SEULE FOIS par match. neutralDeaths ET killRefs en
@@ -105,7 +106,7 @@ func profilDeBalayageDeLaCuisson(res *decfilm.Result) *decfilm.ProfilDeBalayage 
 // externe à charger.
 //
 // L'HORLOGE DES COUPLES EST CELLE DU MATCH, sans conversion : `decfilm.Kill.TimeMS` et
-// `replay.Death.TimeMS` sont le MÊME champ du MÊME enregistrement du chunk highlight. La
+// `types.Death.TimeMS` sont le MÊME champ du MÊME enregistrement du chunk highlight. La
 // dérivation et son contrôle vivent en tête de `replay.MatchKillsInput` — c'est là que la règle
 // doit être lue, pas ici, parce que c'est là qu'elle est consommée.
 //
@@ -197,11 +198,11 @@ func (r killResolution) log(matchID string, total int) {
 }
 
 // gamertagXUIDIndex construit gamertag -> xuid depuis le fil des morts du film — le MÊME
-// enregistrement porte les deux pour la victime (cf. replay.Death). EN CAS DE DIVERGENCE, LE
+// enregistrement porte les deux pour la victime (cf. types.Death). EN CAS DE DIVERGENCE, LE
 // PREMIER GAGNE — même règle que replay.gamertagsOf (identity.go), pour la même raison : les
 // 32 octets d'un même xuid ne varient pas d'un enregistrement à l'autre à l'intérieur d'un
 // film, donc rien à arbitrer.
-func gamertagXUIDIndex(deaths []replay.Death) map[string]uint64 {
+func gamertagXUIDIndex(deaths []types.Death) map[string]uint64 {
 	out := make(map[string]uint64, len(deaths))
 	for _, d := range deaths {
 		if d.Gamertag == "" {

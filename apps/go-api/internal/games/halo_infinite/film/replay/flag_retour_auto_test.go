@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // flag_retour_auto_test.go — LE RETOUR AUTOMATIQUE DU DRAPEAU, sans film.
@@ -16,7 +17,7 @@ import (
 // TestFlagRetourAutomatiqueParLObjet — le drapeau au sol rentre a la naissance de l'objet AU SOCLE.
 func TestFlagRetourAutomatiqueParLObjet(t *testing.T) {
 	tracks := []Track{flagTestTrack(10, "1", 0, 99, 95, 95)}
-	deaths := []Death{{XUID: 1, TimeMS: 4000}}
+	deaths := []types.Death{{XUID: 1, TimeMS: 4000}}
 	scan := FlagCarryScan{
 		Scanned: true, Signals: flagTestSignals(),
 		Events: []objectives.NamedEvent{
@@ -81,7 +82,7 @@ func TestFlagRetourAutomatiqueSAbstientSiUnAutreDrapeauGitLa(t *testing.T) {
 		flagTestTrack(10, "1", 0, 99, 95, 95), // vole le drapeau de l'equipe 1, meurt sur place
 		porteur,
 	}
-	deaths := []Death{{XUID: 1, TimeMS: 4000}, {XUID: 2, TimeMS: 4000}}
+	deaths := []types.Death{{XUID: 1, TimeMS: 4000}, {XUID: 2, TimeMS: 4000}}
 	scan := FlagCarryScan{
 		Scanned: true, Signals: flagTestSignals(),
 		Events: []objectives.NamedEvent{

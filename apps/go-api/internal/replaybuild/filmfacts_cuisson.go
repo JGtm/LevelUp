@@ -62,6 +62,7 @@ import (
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
+	"levelup/go-api/internal/games/halo_infinite/film/finalise"
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
 )
 
@@ -218,7 +219,7 @@ func entreesDesFaits(f *replay.FilmFactsFile) entreesDeCuisson {
 		deaths: filmDeaths{list: f.Facts.Deaths, err: f.Facts.DeathsFeed.Erreur()}, kills: f.Kills}
 }
 
-// refuserManifesteNonFinalise rend [filmcache.ErrFilmNonFinalise] enveloppee quand le manifeste du
+// refuserManifesteNonFinalise rend [finalise.ErrFilmNonFinalise] enveloppee quand le manifeste du
 // film ne porte pas le morceau des TEMPS FORTS — la signature d un film archive avant que le
 // serveur l ait finalise (`ab526724`, 2026-09-22 : 34 morceaux sur 37, fil des morts illisible,
 // toute la chaine d identite tombee).
@@ -232,12 +233,12 @@ func refuserManifesteNonFinalise(ctx context.Context, matchID, filmDir string, s
 	if src == nil {
 		return jugerFilmSansManifeste(ctx, matchID, filmDir)
 	}
-	if filmcache.Finalise(src.Meta(), typeDeChunkMeta) {
+	if finalise.Finalise(src.Meta(), typeDeChunkMeta) {
 		return nil
 	}
 	slog.WarnContext(ctx, "cuisson: film ECARTE — manifeste non finalise (sans morceau des temps "+
 		"forts) ; aucun artefact n est cuit", "match_id", matchID, "entrees", len(src.Meta()))
-	return fmt.Errorf("%w (match %s, %d entrees au manifeste)", filmcache.ErrFilmNonFinalise,
+	return fmt.Errorf("%w (match %s, %d entrees au manifeste)", finalise.ErrFilmNonFinalise,
 		matchID, len(src.Meta()))
 }
 
@@ -267,19 +268,19 @@ func jugerFilmSansManifeste(ctx context.Context, matchID, filmDir string) error 
 		slog.WarnContext(ctx, "cuisson: film ECARTE — manifeste present mais illisible, finalisation "+
 			"non prouvable ; aucun artefact n est cuit", "match_id", matchID, "err", err)
 		return fmt.Errorf("%w (match %s, manifeste present mais illisible : %v)",
-			filmcache.ErrFilmNonFinalise, matchID, err)
+			finalise.ErrFilmNonFinalise, matchID, err)
 	case found:
 		slog.WarnContext(ctx, "cuisson: film ECARTE — manifeste apparu pendant la cuisson ; la "+
 			"suivante le lira", "match_id", matchID)
 		return fmt.Errorf("%w (match %s, manifeste apparu pendant la cuisson)",
-			filmcache.ErrFilmNonFinalise, matchID)
+			finalise.ErrFilmNonFinalise, matchID)
 	}
 	slog.WarnContext(ctx, "cuisson: film SANS manifeste — finalisation non prouvable, fil des morts "+
 		"par le repli repli_temps_forts_dernier_numero", "match_id", matchID, "filmDir", filmDir)
 	return nil
 }
 
-// refuserMorceauxHorsManifeste rend [filmcache.ErrFilmNonFinalise] enveloppee quand le repertoire
+// refuserMorceauxHorsManifeste rend [finalise.ErrFilmNonFinalise] enveloppee quand le repertoire
 // porte des morceaux que le manifeste ne decrit pas — l autre moitie de la signature
 // d `ab526724` : les morceaux 34 a 36 etaient arrives sur le disque onze secondes apres un
 // manifeste deja valide. Un tel manifeste ne dit pas le film entier ; les morceaux en trop n ont
@@ -305,11 +306,11 @@ func refuserMorceauxHorsManifeste(ctx context.Context, matchID string, src *film
 	}
 	slog.WarnContext(ctx, "cuisson: film ECARTE — morceaux presents au cache mais absents du "+
 		"manifeste ; aucun artefact n est cuit", "match_id", matchID, "hors_manifeste", horsManifeste)
-	return fmt.Errorf("%w (match %s, morceaux hors manifeste %v)", filmcache.ErrFilmNonFinalise,
+	return fmt.Errorf("%w (match %s, morceaux hors manifeste %v)", finalise.ErrFilmNonFinalise,
 		matchID, horsManifeste)
 }
 
-// typeDeChunkMeta : l accesseur de type que [filmcache.Finalise] recoit.
+// typeDeChunkMeta : l accesseur de type que [finalise.Finalise] recoit.
 func typeDeChunkMeta(m decfilm.ChunkMeta) int { return m.ChunkType }
 
 // filmFactsPath rend le chemin des faits de ce match, par le PathResolver et jamais a la main.

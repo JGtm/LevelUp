@@ -124,7 +124,7 @@ func TestUneVieLibreNeeAUnSocleNeFermeRien(t *testing.T) {
 // l'objet se pose.
 func TestLeLacherPrendLaPositionDeLaPisteLibre(t *testing.T) {
 	tracks := []Track{flagTestTrack(10, "1", 0, 99, 95, 95)}
-	deaths := []Death{{XUID: 1, TimeMS: 4000}}
+	deaths := []types.Death{{XUID: 1, TimeMS: 4000}}
 	scan := FlagCarryScan{
 		Scanned: true, Signals: flagTestSignals(),
 		Events: []objectives.NamedEvent{

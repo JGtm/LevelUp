@@ -108,13 +108,13 @@ func manchesInstants(j, debut int) []int {
 
 // manchesMorts date les morts au meme instant que la progression du compteur de morts : c'est
 // l'ancre du pont d'identite PAR MANCHE. Le xuid du slot d'index j est `100<slot>`.
-func manchesMorts() []Death {
-	var out []Death
+func manchesMorts() []types.Death {
+	var out []types.Death
 	for j, slot := range manchesSlots {
 		xuid := uint64(1_000 + slot)
 		for _, debut := range []int{manchesDebutR0, manchesDebutR1} {
 			for _, t := range manchesInstants(j, debut) {
-				out = append(out, Death{XUID: xuid, TimeMS: int64(t)})
+				out = append(out, types.Death{XUID: xuid, TimeMS: int64(t)})
 			}
 		}
 	}

@@ -37,6 +37,8 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+
+	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 )
 
 func TestC2DecorTi40(t *testing.T) {
@@ -88,7 +90,7 @@ func c2Imagescles(t *testing.T, fc *FilmContext, w *bufio.Writer) (n, incoh int)
 				if !coh {
 					incoh++
 				}
-				gen := kfReadBits(pay, b.Bit, 32) >> 30
+				gen := source.BitsBourres(pay, b.Bit, 32) >> 30
 				for _, c := range champs {
 					fmt.Fprintf(w, "KF\t%d\t%d\t%d\t%s\t%s\n", b.Slot, gen, pk.TimestampUS, c[0], c[1])
 				}
@@ -105,12 +107,12 @@ func c2Brut(pay []byte, a, b int) string {
 		return "0:-"
 	}
 	if n <= 64 {
-		return strconv.Itoa(n) + ":" + strconv.FormatUint(kfReadBits(pay, a, n), 16)
+		return strconv.Itoa(n) + ":" + strconv.FormatUint(source.BitsBourres(pay, a, n), 16)
 	}
 	h := fnv.New64a()
 	var sb strings.Builder
 	for i := a; i < b; i++ {
-		sb.WriteByte(byte('0' + kfReadBits(pay, i, 1)))
+		sb.WriteByte(byte('0' + source.BitsBourres(pay, i, 1)))
 	}
 	_, _ = h.Write([]byte(sb.String()))
 	return strconv.Itoa(n) + ":#" + strconv.FormatUint(h.Sum64()&0xffffffff, 16)

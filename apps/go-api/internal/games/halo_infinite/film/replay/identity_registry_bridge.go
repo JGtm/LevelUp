@@ -38,7 +38,11 @@ package replay
 //	                    films, celui-la absent), donc il ne peut pas etre regenere aujourd'hui.
 //	critere mesurable : `bridgeNamedLives == 0` sur toute cuisson de film du parc.
 
-import "log/slog"
+import (
+	"log/slog"
+
+	"levelup/go-api/internal/games/halo_infinite/film/types"
+)
 
 // bridgeVerification est ce que la confrontation du pont au lien direct etablit.
 type bridgeVerification struct {
@@ -66,7 +70,7 @@ func marquerCauseDeMort(lives []lifeSpan, pairs []deathPair) {
 
 // verifierParLesMorts confronte la victime de chaque mort appariee au joueur que la LECTURE
 // DIRECTE a pose sur la meme vie. Elle ne modifie AUCUNE vie.
-func verifierParLesMorts(lives []lifeSpan, deaths []Death, pairs []deathPair,
+func verifierParLesMorts(lives []lifeSpan, deaths []types.Death, pairs []deathPair,
 	matchID string) bridgeVerification {
 	v := bridgeVerification{Matched: len(pairs)}
 	for _, p := range pairs {
@@ -95,7 +99,7 @@ func nomParLecture(nomPar string) bool {
 // nommerParLesMorts pose l'identite de la victime sur la vie que sa mort termine. APPELEE DANS
 // UN SEUL CAS — aucune lecture directe recue (cf. l'en-tete du fichier) — et l'appelant publie
 // son compte pour que le cas ne passe pas inapercu.
-func nommerParLesMorts(lives []lifeSpan, deaths []Death, pairs []deathPair) int {
+func nommerParLesMorts(lives []lifeSpan, deaths []types.Death, pairs []deathPair) int {
 	n := 0
 	for _, p := range pairs {
 		if lives[p.li].xuid != 0 {

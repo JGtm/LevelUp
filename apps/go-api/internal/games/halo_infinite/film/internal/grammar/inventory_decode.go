@@ -1,28 +1,22 @@
-package replay
+package grammar
 
 import (
-	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
-	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // inventory_decode.go — L'INVENTAIRE COMPLET d'un biped à une image-clé : grenades portées
 // avec leur type, capacité d'armure, munitions des deux emplacements, et emplacement dégainé.
 //
-// POURQUOI CE CODE VIT DANS LA COUCHE REJEU ET NON DANS `grammar`.
-//
-// C'est une question de COUCHES, pas de propriété. `grammar` porte les primitives GÉNÉRIQUES du
-// format — parcourir les paquets, borner les records d'une image-clé, déquantifier. L'inventaire,
-// lui, est un décodage SPÉCIFIQUE au rejeu, bâti sur ces primitives : il vit donc avec ce qu'il
-// sert, à côté de sa projection (inventory.go) et du fil des morts (deaths_source.go), qui
-// suivent déjà cette règle dans ce paquet.
-//
-// La frontière est tenue par la discipline d'appel : ce fichier ne touche au parser que par sa
-// SURFACE PUBLIQUE (`CountFilmChunks`, `ReadFilmChunk`, `WalkPackets`, `MarcheDImageCle` / `WalkKeyframeWorld`,
-// `PacketTypeKeyframe`). Il n'emprunte aucune primitive interne — d'où `invBitAt` plutôt qu'un
-// helper non exporté du paquet voisin. Si cette liste d'appels devait s'allonger, ce serait le
-// signe qu'il faut un PORT explicite (une interface côté rejeu, implémentée par un adaptateur),
-// et non une intrusion de plus.
+// DESCENDU DE `film/replay` AU LOT J4.2 (2026-09-26, PLAN_SUITE_AUDIT_DECODEUR_FILM, DU-3 = S1),
+// avec ses trois fichiers de regles (`inventory_ammo_rules.go`, `inventory_grenades_rules.go`,
+// `inventory_grenade_selection.go`) : il LIT des bits, et l ADR 0034 D-1 dit que la couche de
+// publication ne decode rien. Deplacement pur ; ses types de resultat vivent en `film/types`
+// (`KeyframeInventory`, `SlotAmmo`, `KeyframeInventoryStats`). Le lecteur de bits prive
+// `invBitAt` / `invBits` est descendu tel quel, puis a ete REMPLACE au lot J4.6 par les conventions
+// nommees de `source` ([source.BitAt], [source.BitsTolerants] : zero hors bornes des deux cotes).
+// Le REPLI du plafond de grenades se COMPTE chez l appelant (`replay`, `balayerInventaire`) :
+// cette couche ne compte pas (D-4).
 //
 // CE QUI, EN REVANCHE, N'APPARTIENT PAS À CE CHANTIER : le FIL DES ÉLIMINATIONS — qui a tué qui
 // et comment, l'assistance et sa part de dégâts, le kill par véhicule. Il a sa source de vérité
@@ -62,7 +56,7 @@ import (
 //   - la table des capacités est PARTIELLE, et propre à la PALETTE du match : un rang hors
 //     table doit s'afficher « inconnu », jamais être deviné ;
 //   - ce canal est BORGNE — il ne voit que les rangs 16 à 23 (invAbilityRankHigh). Le rang
-//     complet vient d'i48, dans les paquets delta (grammar.ScanFilmAbilityRanks) ;
+//     complet vient d'i48, dans les paquets delta (ScanFilmAbilityRanks) ;
 //   - 51 records sur 150 admettent plusieurs parses du bloc de munitions. Le plus long est
 //     retenu et le NOMBRE DE CANDIDATS est publié, pour que le départage reste visible.
 
@@ -101,8 +95,9 @@ const invAbilityRankHigh = invAbilityPattern & 0x7
 func invAbilityRankOf(low uint32) int { return int(invAbilityRankHigh<<3 | (low & 0x7)) }
 
 // invGrenadeSlots est le nombre de types de grenade décrits par i22, et aussi le nombre
-// d'emplacements d'arme décrits par la carte mémoire (0x7F0 + s*0x90, quatre entrées).
-const invGrenadeSlots = 4
+// d'emplacements d'arme décrits par la carte mémoire (0x7F0 + s*0x90, quatre entrées). La
+// dimension fait partie de la forme de [types.KeyframeInventory] : une seule source.
+const invGrenadeSlots = types.InventorySlotCount
 
 // DefaultGrenadeMax borne un compteur de grenade plausible. Un Spartan en porte deux par type ;
 // la borne sert à écarter les motifs qui ressemblent à i22 par hasard, pas à contraindre une
@@ -113,95 +108,49 @@ const DefaultGrenadeMax uint32 = 2
 // invAmmoSearchSpan) vit dans inventory_ammo_rules.go — seuil de taille du dépôt (CLAUDE.md
 // n°5), même raison que le renvoi vers inventory_grenades_rules.go plus bas.
 
-// KeyframeInventory est l'inventaire d'un biped à l'instant d'une image-clé.
-type KeyframeInventory struct {
-	// TimestampUS est l'horodatage du paquet — MÊME horloge que BipedPosition.TimestampUS.
-	TimestampUS uint64
-	// Chunk / PacketIndex localisent l'image-clé dans le film.
-	Chunk, PacketIndex int
-	// Slot est le slot du biped porteur (celui des trajectoires).
-	Slot uint32
-	// Grenades porte le compteur de chaque type, par rang (0 Fragmentation, 1 Plasma,
-	// 2 Dynamo, 3 Spike). Nulle et GrenadesRead faux = non lu, jamais « zéro grenade ».
-	Grenades     [invGrenadeSlots]uint32
-	GrenadesRead bool
-	// GrenadesByPosition dit par QUELLE VOIE les compteurs ont été lus : faux = R2a, par
-	// l'ancre de capacité ; vrai = R2b, par la position relative au bloc de munitions (cf.
-	// inventory_grenades_rules.go). Sans conséquence sur la valeur publiée — les deux voies
-	// lisent le même champ, et sur les 1 167 records où les deux s'appliquent elles rendent la
-	// même position 1 167 fois. C'est une TÉLÉMÉTRIE : elle alimente KeyframeInventoryStats,
-	// pour qu'une dérive du repli se voie au lieu de se fondre dans le total.
-	GrenadesByPosition bool
-	// SelectedGrenadeRank est le rang de grenade SÉLECTIONNÉ (i47), ou -1 non lu. C'est le
-	// type qui partira au prochain lancer. Publié seulement si le masque lu recoupe
-	// exactement les compteurs i22 et si la sélection est unanime dans la fenêtre (cf.
-	// invGrenadeSelLo) : à défaut, -1 — une sélection ne se devine pas.
-	SelectedGrenadeRank int
-	// AbilityRank est le RANG de palette de la capacité portée, ou -1 non lu.
-	//
-	// C'EST UN RANG, PAS UN INDEX — il l'est depuis le 2026-08-14 (cf. invAbilityRankHigh), et
-	// le champ a changé de nom parce qu'il a changé de grandeur. Ce canal ne voit QUE la
-	// fenêtre 16..23 de la palette : hors d'elle, l'ancre ne matche pas et la lecture n'existe
-	// pas. Le rang complet, sur toute la palette, vient d'i48 (grammar.ScanFilmAbilityRanks).
-	//
-	// Le NOM ne se décide pas ici : la table est partielle ET propre à la palette du match,
-	// et la nommer est le travail de la couche qui possède le catalogue.
-	AbilityRank int
-	// Ammo est l'état des quatre emplacements décrits par la carte mémoire. Seuls les deux
-	// premiers portent une arme ; les deux autres sont vides, et cette vacuité fait partie du
-	// critère de parse (44 bits nuls).
-	Ammo     [invGrenadeSlots]SlotAmmo
-	AmmoRead bool
-	// DrawnSlot est le sélecteur i42 : 0 ou 1 = cet emplacement est dégainé, 2 = aucune arme
-	// dégainée, -1 = non lu. LE 2 EST UNE VALEUR : au premier keyframe le match n'a pas
-	// commencé et les huit joueurs ont leurs armes rangées.
-	DrawnSlot int
-	// AmmoCandidates est le nombre de débuts de bloc qui satisfaisaient le critère. 1 = lecture
-	// unique ; au-delà, le plus long a été retenu et ce nombre dit que le départage a eu lieu.
-	AmmoCandidates int
-}
-
 // ScanFilmKeyframeInventory décode l'inventaire de tous les keyframes du film de dir.
-// `KeyframeInventoryStats` vit dans inventory.go avec `InventoryCoverage` (seuil de taille).
+// `types.KeyframeInventoryStats` vit en `film/types`, a cote de `types.KeyframeInventory`.
 // `known` est le prédicat d'appartenance au catalogue de familles d'arme : c'est lui qui borne
 // le bloc de munitions (R4 s'appuie sur la position de la première arme). Sans lui, aucune
 // munition n'est lue. HORS LIGNE (I/O disque sur tout le film) — jamais depuis un chemin de
 // requête.
 // ENVELOPPE D2, HORS PRODUCTION ; la cuisson appelle [ScanKeyframeInventory].
 func ScanFilmKeyframeInventory(
-	dir string, known map[uint32]bool, grenMax uint32, fb *fallback.Compteur,
-) ([]KeyframeInventory, KeyframeInventoryStats, error) {
+	dir string, known map[uint32]bool, grenMax uint32,
+) ([]types.KeyframeInventory, types.KeyframeInventoryStats, error) {
 	if len(known) == 0 {
-		return nil, KeyframeInventoryStats{}, nil // catalogue vide : rien a chercher
+		return nil, types.KeyframeInventoryStats{}, nil // catalogue vide : rien a chercher
 	}
 	film, err := source.LoadDir(dir, nil)
 	if err != nil {
-		return nil, KeyframeInventoryStats{}, err
+		return nil, types.KeyframeInventoryStats{}, err
 	}
-	return ScanKeyframeInventory(grammar.NewFilmContext(film), known, grenMax, fb)
+	return ScanKeyframeInventory(NewFilmContext(film), known, grenMax)
 }
 
 // ScanKeyframeInventory décode l'inventaire des images-clés d'un film DEJA CHARGE.
 //
-// Les records viennent de la marche d'image-clé DU FILM ([grammar.FilmContext.MarcheDImageCle],
+// Les records viennent de la marche d'image-clé DU FILM ([FilmContext.MarcheDImageCle],
 // lot D-fix) : celle des autres balayages de la cuisson.
+//
+// `grenMax` NUL : [DefaultGrenadeMax] s applique. C est le REPLI NOMME
+// `repli_plafond_grenade_par_defaut` (le plafond est une donnee de MODE, pas une constante) ; il
+// se COMPTE chez l appelant de production (`replay`, `balayerInventaire`) depuis le lot J4.2 —
+// cette couche nomme ses replis, elle ne les compte pas (ADR 0034 D-4).
 func ScanKeyframeInventory(
-	fc *grammar.FilmContext, known map[uint32]bool, grenMax uint32, fb *fallback.Compteur,
-) ([]KeyframeInventory, KeyframeInventoryStats, error) {
-	var st KeyframeInventoryStats
+	fc *FilmContext, known map[uint32]bool, grenMax uint32,
+) ([]types.KeyframeInventory, types.KeyframeInventoryStats, error) {
+	var st types.KeyframeInventoryStats
 	if len(known) == 0 {
 		return nil, st, nil
 	}
 	if grenMax == 0 {
-		// REPLI NOMME ET COMPTE (D14) : le plafond est une donnee de MODE, pas une constante ;
-		// l'appelant qui n'en fournit pas se voit servir celui d'un mode par defaut.
-		fb.Declenche(fallback.NomPlafondGrenadeParDefaut)
 		grenMax = DefaultGrenadeMax
 	}
 	nums := fc.ChunkNumbers()
 	st.Chunks = len(nums)
 	marche := fc.MarcheDImageCle()
-	var out []KeyframeInventory
+	var out []types.KeyframeInventory
 	for _, c := range nums {
 		chunk, pks, ok := fc.ChunkAt(c)
 		if !ok {
@@ -209,7 +158,7 @@ func ScanKeyframeInventory(
 			continue
 		}
 		for _, p := range pks {
-			if p.Type != grammar.PacketTypeKeyframe {
+			if p.Type != PacketTypeKeyframe {
 				continue
 			}
 			st.Keyframes++
@@ -230,7 +179,7 @@ func ScanKeyframeInventory(
 		}
 	}
 	if st.ChunksUnread == st.Chunks {
-		return nil, st, grammar.ErrNoReadableFilmChunk
+		return nil, st, ErrNoReadableFilmChunk
 	}
 	return out, st, nil
 }
@@ -238,19 +187,19 @@ func ScanKeyframeInventory(
 // keyframeInventories décode un payload de keyframe, un inventaire par record de biped.
 // PUR (aucune I/O) — c'est le cœur testable. Sans preuve (marche des instruments) ; la cuisson passe
 // par [keyframeInventoriesDe] sur les records de la marche de son film.
-func keyframeInventories(pay []byte, known map[uint32]bool, grenMax uint32) []KeyframeInventory {
+func keyframeInventories(pay []byte, known map[uint32]bool, grenMax uint32) []types.KeyframeInventory {
 	return keyframeInventoriesDe(pay, invRecordSpans(pay), known, grenMax)
 }
 
 // keyframeInventoriesDe est [keyframeInventories] sur des records DEJA bornes.
 func keyframeInventoriesDe(pay []byte, spans []invRecordSpan, known map[uint32]bool,
-	grenMax uint32) []KeyframeInventory {
-	out := make([]KeyframeInventory, 0, len(spans))
+	grenMax uint32) []types.KeyframeInventory {
+	out := make([]types.KeyframeInventory, 0, len(spans))
 	for _, sp := range spans {
 		if sp.ti != invBipedTI {
 			continue
 		}
-		inv := KeyframeInventory{
+		inv := types.KeyframeInventory{
 			Slot: uint32(sp.slot), AbilityRank: -1, DrawnSlot: -1, SelectedGrenadeRank: -1,
 		}
 		// R1 : l'ancre doit être UNIQUE dans le record. Deux ancres, c'est une lecture qu'on
@@ -297,11 +246,11 @@ type invRecordSpan struct {
 // invRecordSpans découpe le payload en records, bornes données par WalkKeyframeWorld — le même
 // walker que keyframe_loadout.go, déjà validé 249/250 entités et 8/8 bipeds.
 func invRecordSpans(pay []byte) []invRecordSpan {
-	return invRecordSpansDe(pay, grammar.WalkKeyframeWorld(pay))
+	return invRecordSpansDe(pay, WalkKeyframeWorld(pay))
 }
 
 // invRecordSpansDe borne des records DEJA marches (cf. [invRecordSpans]).
-func invRecordSpansDe(pay []byte, recs []grammar.KeyframeRec) []invRecordSpan {
+func invRecordSpansDe(pay []byte, recs []KeyframeRec) []invRecordSpan {
 	if len(recs) == 0 {
 		return nil
 	}
@@ -330,7 +279,7 @@ func invAbilityIn(pay []byte, from, to int) []invAbilityHit {
 	var w uint32
 	const mask28 = (uint32(1) << 28) - 1
 	for b := from; b < to; b++ {
-		w = ((w << 1) | invBitAt(pay, b)) & mask28
+		w = ((w << 1) | uint32(source.BitAt(pay, b))) & mask28
 		if b-from < 27 || w != invAbilityAnchor {
 			continue
 		}
@@ -339,10 +288,10 @@ func invAbilityIn(pay []byte, from, to int) []invAbilityHit {
 			if p+20 > to {
 				break
 			}
-			if invBits(pay, p, 20) != invAbilityPattern {
+			if uint32(source.BitsTolerants(pay, p, 20)) != invAbilityPattern {
 				continue
 			}
-			out = append(out, invAbilityHit{anchorBit: b - 27, low: invBits(pay, p+20, 3)})
+			out = append(out, invAbilityHit{anchorBit: b - 27, low: uint32(source.BitsTolerants(pay, p+20, 3))})
 			break
 		}
 	}
@@ -356,7 +305,7 @@ func invAbilityIn(pay []byte, from, to int) []invAbilityHit {
 func invFirstFamily(pay []byte, from, to int, known map[uint32]bool) (int, bool) {
 	var w uint32
 	for b := from; b < to; b++ {
-		w = w<<1 | invBitAt(pay, b)
+		w = w<<1 | uint32(source.BitAt(pay, b))
 		if b-from < 31 {
 			continue
 		}
@@ -365,29 +314,4 @@ func invFirstFamily(pay []byte, from, to int, known map[uint32]bool) (int, bool)
 		}
 	}
 	return 0, false
-}
-
-// invBitAt lit UN bit, et rend 0 hors bornes.
-//
-// LA TOLÉRANCE HORS BORNES EST LE POINT : ce décodeur lit délibérément jusqu'aux limites d'un
-// record — c'est même son critère d'arrêt. Un lecteur qui paniquerait au-delà de la fin du
-// payload ferait tomber le décodage sur des films parfaitement valides.
-//
-// Ce helper vit ICI plutôt que d'emprunter celui du parser : c'est le prix, assumé, de la
-// frontière décrite en tête de fichier. Emprunter une primitive non exportée reviendrait à
-// souder les deux paquets.
-func invBitAt(buf []byte, p int) uint32 {
-	if idx := p >> 3; idx >= 0 && idx < len(buf) {
-		return uint32(buf[idx]>>(7-uint(p&7))) & 1
-	}
-	return 0
-}
-
-// invBits lit n bits à partir de p, avec la même tolérance hors bornes.
-func invBits(pay []byte, p, n int) uint32 {
-	var v uint32
-	for i := 0; i < n; i++ {
-		v = v<<1 | invBitAt(pay, p+i)
-	}
-	return v
 }

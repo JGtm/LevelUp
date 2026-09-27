@@ -51,6 +51,7 @@ import (
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // SEUILS, ecrits AVANT toute mesure.
@@ -112,11 +113,11 @@ func v2dProcessFilm(t *testing.T, dir string, entry profile.MapQuantEntry, ag *v
 		t.Fatalf("positions joueur : %v", err)
 	}
 	tracks := indexBySlot(ppos)
-	deaths, err := ScanFilmDeaths(dir)
+	deaths, err := grammar.ScanFilmDeaths(dir)
 	if err != nil {
 		t.Fatalf("fil des morts : %v", err)
 	}
-	idx, err := ScanFilmPlayerIndices(dir, rosterFromDeaths(deaths))
+	idx, err := grammar.ScanFilmPlayerIndices(dir, rosterFromDeaths(deaths))
 	if err != nil {
 		t.Logf("index joueur illisible (%v) — pont sans identite", err)
 	}
@@ -162,7 +163,7 @@ type v2dFilmResult struct {
 
 // v2dScoreFilm classe chaque vie de vehicule : DETRUIT (mort coincidente) vs DESPAWN.
 func v2dScoreFilm(kf grammar.WorldObjectKeyframes, vtracks, ptracks map[uint32]slotTrack,
-	deaths []Death, xuidSlots map[uint64][]uint32, off int64) v2dFilmResult {
+	deaths []types.Death, xuidSlots map[uint64][]uint32, off int64) v2dFilmResult {
 	var fr v2dFilmResult
 	for key, seen := range kf.SeenUS {
 		if len(seen) == 0 {
@@ -238,8 +239,8 @@ func v2dTightEnd(vt slotTrack, firstSeen, goneBy uint64) (uint64, [3]float64, bo
 }
 
 // v2dNearestDeath rend la mort la plus proche (horloge film) de endMS dans la fenetre.
-func v2dNearestDeath(deaths []Death, off, endMS, winMS int64) (Death, bool) {
-	best, bd, ok := Death{}, winMS+1, false
+func v2dNearestDeath(deaths []types.Death, off, endMS, winMS int64) (types.Death, bool) {
+	best, bd, ok := types.Death{}, winMS+1, false
 	for _, d := range deaths {
 		if delta := absI64(d.TimeMS + off - endMS); delta <= winMS && delta < bd {
 			bd, best, ok = delta, d, true
@@ -252,7 +253,7 @@ func v2dNearestDeath(deaths []Death, off, endMS, winMS int64) (Death, bool) {
 // rend la distance a la derniere position du vehicule. hasSlot : la victime est nommee dans le pont ;
 // hasSample : un echantillon joueur existe a moins de v2dVictimGapMS de la mort. Un occupant EMBARQUE
 // cesse de repliquer sa position (V1a.4) : hasSample faux est alors le signal, pas un echec.
-func v2dVictimProbe(d Death, off int64, ptracks map[uint32]slotTrack,
+func v2dVictimProbe(d types.Death, off int64, ptracks map[uint32]slotTrack,
 	xuidSlots map[uint64][]uint32, vehPos [3]float64) (dist float64, hasSample, hasSlot bool) {
 	slots := xuidSlots[d.XUID]
 	if len(slots) == 0 {

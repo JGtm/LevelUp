@@ -121,8 +121,8 @@ func grenEcartMesureFilm(t *testing.T, parc string, f grenEcartFilm) {
 type grenEcartLectures struct {
 	positions []grammar.BipedPosition
 	creations []grammar.BipedCreation
-	deaths    []Death
-	indices   PlayerIndexTable
+	deaths    []types.Death
+	indices   types.PlayerIndexTable
 	fire      []grammar.FireEvent
 	throws    []grammar.GrenadeThrow
 	proj      []types.ProjectileTrack
@@ -137,9 +137,9 @@ func (l *grenEcartLectures) observe(step string, v any) {
 	case etapeCreationsBipede:
 		l.creations, _ = v.([]grammar.BipedCreation)
 	case etapeMorts:
-		l.deaths, _ = v.([]Death)
+		l.deaths, _ = v.([]types.Death)
 	case etapeIndicesJoueur:
-		l.indices, _ = v.(PlayerIndexTable)
+		l.indices, _ = v.(types.PlayerIndexTable)
 	case etapeFire:
 		l.fire, _ = v.([]grammar.FireEvent)
 	case etapeGrenades:

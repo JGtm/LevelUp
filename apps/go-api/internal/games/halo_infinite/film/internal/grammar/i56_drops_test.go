@@ -38,6 +38,7 @@ package grammar
 
 import (
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 	"os"
 	"sort"
 	"testing"
@@ -204,7 +205,7 @@ func i56dWalk(pay []byte, i0, total int, idx []int, env i56dEnv) int {
 			return flag1
 		}
 		if id == i54Index && at+1 <= total {
-			flag1 = int(readBitsAt(pay, at, 1))
+			flag1 = int(uint32(source.BitsStricts(pay, at, 1)))
 		}
 		name := env.arch.component(id)
 		if name == "" {

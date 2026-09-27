@@ -31,10 +31,11 @@ package archlint
 //	R4 (le chargement) `replay`, la couche de PUBLICATION, ne CHARGE pas le film : elle le
 //	              RECOIT. Aucun appel a un chargeur de `source` dans ses fichiers de production.
 //
-// LES QUATRE AXES SONT STRICTS SAUF R4. R1 n a jamais eu d exception ; la tolerance de LIEU (R2)
-// a ete supprimee au lot 2.5.a avec sa derniere entree, celle de COUCHE VIDE (R3) au lot 2.5.b,
-// celle d ARETE au lot 2.5.e-d. R4 nait au lot 2.5.e-d avec une allowlist DATEE de quatre
-// entrees, et son critere de retrait est celui, deja ecrit, des enveloppes D2.
+// LES QUATRE AXES SONT STRICTS. R1 n a jamais eu d exception ; la tolerance de LIEU (R2) a ete
+// supprimee au lot 2.5.a avec sa derniere entree, celle de COUCHE VIDE (R3) au lot 2.5.b, celle
+// d ARETE au lot 2.5.e-d. R4 est nee au lot 2.5.e-d avec une allowlist DATEE de quatre entrees ;
+// elle s est videe le 2026-09-26 (lot J4.2 : les quatre enveloppes descendues en `grammar`) et
+// le mecanisme est parti avec elle.
 //
 // # L HISTOIRE DE CE RATCHET, EN TROIS MESURES
 //
@@ -105,9 +106,8 @@ package archlint
 //   - faire importer `internal/analysis` par une couche : R2 rougit, et il n y a plus de table
 //     ou l inscrire ;
 //   - ajouter un `source.LoadDir(...)` dans un fichier de production de `replay` : R4 rougit ;
-//   - retirer une entree de `chargementsToleresDansReplay` sans porter son enveloppe : la
-//     violation rougit. Y ajouter une entree sans violation reelle : « entree perimee, la
-//     retirer ».
+//   - remettre une enveloppe `ScanFilmXxx(dir)` qui charge le film dans `replay` : R4 rougit, et
+//     il n y a plus de table ou l inscrire.
 
 import (
 	"sort"
@@ -204,6 +204,11 @@ var couchesDuDecodeur = map[string]coucheFilm{
 	// sous la sentinelle de `filmproc`, et mesure par `grammar.FrameClosure` — il ne decode rien
 	// pour la production et ne publie rien. Un seul paquet (`main`), sans bibliotheque a cote.
 	"internal/games/halo_infinite/film/research/cmd_fermeture": horsCoucheFilm,
+	// Lot J4.5 (2026-09-26) : l instrument de recherche du SWAP d arme, descendu de
+	// `cmd/rdata_weapon_scan` (tag `research`). Il lit le registre et les trames d UN film du cache
+	// par les couches internes — il etait le seul consommateur hors du decodeur de
+	// `decfilm.LecteurSur` et `decfilm.Paquets`. Il ne decode rien pour la production.
+	"internal/games/halo_infinite/film/research/cmd_rdata_weapon_scan": horsCoucheFilm,
 
 	// --- source : charger, decompresser, decouper, lire l en-tete, tenir le lecteur de bits.
 	// `source` est une FEUILLE sans aucun import du depot (ratchet `filmsource_leaf_test.go`)
@@ -270,6 +275,11 @@ var couchesDuDecodeur = map[string]coucheFilm{
 	// stockage local au-dessus de `source`, pas une etape de decodage — meme rangement par la
 	// note §2.2, et il reste hors de `film/internal/` pour rester accessible a ses appelants.
 	"internal/games/halo_infinite/film/filmcache": horsCoucheFilm,
+	// `finalise` : LE PREDICAT « film finalise » (type de manifeste des temps forts), sorti de
+	// `filmcache` en FEUILLE au lot J4.2 (2026-09-26) : la lecture du fil des morts, descendue en
+	// `grammar`, le consulte sans tirer le cache disque ni `internal/domain` dans sa revision. Il
+	// ne lit aucun octet de film : il juge des types de manifeste.
+	"internal/games/halo_infinite/film/finalise": horsCoucheFilm,
 	// `revision` : L OUTILLAGE D EMPREINTE partage par les revisions de couche (lot 2.6.0,
 	// 2026-09-17). Il ne lit AUCUN octet de film — il hache des octets de SOURCE — donc il n est
 	// ni une etape de decodage ni une publication : meme rangement que les trois catalogues de
@@ -309,8 +319,8 @@ var couchesDuDecodeur = map[string]coucheFilm{
 // 2.5.b : une table vide qu on garde « au cas ou » invite a la remplir, alors qu une arete hors
 // regle re-devient une DECISION a ecrire. LES QUATRE AXES DU RATCHET SONT DESORMAIS STRICTS —
 // R1 (le sens) n a jamais eu d exception, R2 (le lieu) n en a plus depuis le 2.5.a, R3 (le
-// peuplement) depuis le 2.5.b, et R1/R2 n ont plus AUCUNE table. Seule R4, posee ci-dessous,
-// porte encore une allowlist, et elle est datee avec son critere de retrait.
+// peuplement) depuis le 2.5.b, et R1/R2 n ont plus AUCUNE table. R4, posee ci-dessous, a
+// perdu la sienne le 2026-09-26 (lot J4.2).
 
 // LA TOLERANCE DE LIEU A ETE SUPPRIMEE LE 2026-09-16 (lot 2.5.a), AVEC SA DERNIERE ENTREE.
 // `paquetHorsLieuTolere` / `paquetsHorsLieuToleres` dataient le sursis d un paquet de couche
@@ -444,57 +454,19 @@ var chargeursDeSource = map[string]bool{
 // les appeler. Les doubler ici serait la copie de garde-rail que CLAUDE.md regle 6 interdit.
 const coucheQuiNeChargePas = "internal/games/halo_infinite/film/replay"
 
-// chargementToleré : une enveloppe D2 de `replay` qui charge encore le film elle-meme.
-type chargementTolere struct {
-	fichier   string // chemin relatif a `apps/go-api`
-	enveloppe string // la fonction qui charge
-	pose      string // date de mise en table
-	retrait   string // le critere mesurable de retrait
-}
-
-// chargementsToleresDansReplay — LES QUATRE ENVELOPPES D2 MESUREES LE 2026-09-17.
-//
-// Toutes les quatre sont des `ScanFilmXxx(dir)` declarees HORS PRODUCTION dans leur propre
-// godoc : la cuisson appelle leur jumelle qui prend un `*source.Film` deja charge. Les
-// supprimer est un changement de CONTENU (elles ont une soixantaine d appelants — tests de
-// recherche et `cmd/diag_deaths`), hors d un lot de deplacements : elles portent donc le
-// critere de retrait DEJA ECRIT par `no_film_reread_test.go` pour toute la famille D2.
-var chargementsToleresDansReplay = []chargementTolere{
-	{
-		fichier:   "internal/games/halo_infinite/film/replay/deaths_source.go",
-		enveloppe: "ScanFilmDeaths", pose: "2026-09-17",
-		retrait: "avec la famille D2 : quand `grep -r 'ScanFilm[A-Za-z]*(' --include=*.go` ne " +
-			"rend plus que leurs definitions (critere de `no_film_reread_test.go`, lot 6)",
-	},
-	{
-		fichier:   "internal/games/halo_infinite/film/replay/inventory_decode.go",
-		enveloppe: "ScanFilmKeyframeInventory", pose: "2026-09-17",
-		retrait: "idem",
-	},
-	{
-		fichier:   "internal/games/halo_infinite/film/replay/origin.go",
-		enveloppe: "ScanFilmClockOrigin", pose: "2026-09-17",
-		retrait: "idem",
-	},
-	{
-		fichier:   "internal/games/halo_infinite/film/replay/player_index.go",
-		enveloppe: "ScanFilmPlayerIndices", pose: "2026-09-17",
-		retrait: "idem",
-	},
-}
+// LA TOLERANCE DE R4 A ETE SUPPRIMEE LE 2026-09-26 (lot J4.2 du PLAN_SUITE_AUDIT_DECODEUR_FILM),
+// AVEC SES QUATRE ENTREES. `chargementTolere` / `chargementsToleresDansReplay` dataient le
+// sursis des quatre enveloppes D2 de `replay` qui chargeaient le film elles-memes
+// (`ScanFilmDeaths`, `ScanFilmKeyframeInventory`, `ScanFilmClockOrigin`, `ScanFilmPlayerIndices`).
+// Elles sont DESCENDUES EN `grammar` avec leurs lectures (DU-3 = S1 : « replay ne decode
+// rien ») : la regle 3 de `no_film_reread_test.go` les garde desormais, comme la quarantaine
+// d enveloppes D2 de `grammar`. Le mecanisme part avec elles, comme les tolerances de R1, R2 et
+// R3 : une table vide qu on garde invite a la remplir. R4 EST STRICTE.
 
 // TestCoucheDePublicationNeChargePasLeFilm : R4.
 func TestCoucheDePublicationNeChargePasLeFilm(t *testing.T) {
-	sites := chargementsDeSourceDansReplay(t)
-	tolere := map[string]bool{}
-	for _, c := range chargementsToleresDansReplay {
-		tolere[c.fichier] = true
-	}
 	var violations []string
-	for _, s := range sites {
-		if tolere[s.fichier] {
-			continue
-		}
+	for _, s := range chargementsDeSourceDansReplay(t) {
 		violations = append(violations, s.fichier+" : "+s.detail)
 	}
 	if len(violations) == 0 {
@@ -506,23 +478,4 @@ func TestCoucheDePublicationNeChargePasLeFilm(t *testing.T) {
 		"cuisson (lot 1 de PLAN_CUISSON_PERF : ~94 %% du temps de cuisson avant correction), en "+
 		"amont, et circule par valeur.",
 		len(violations), strings.Join(violations, "\n  "))
-}
-
-// TestAllowlistDeChargementNEstPasPerimee : une entree qui ne decrit plus un chargement reel se
-// RETIRE, dans le commit meme qui la resout.
-func TestAllowlistDeChargementNEstPasPerimee(t *testing.T) {
-	vivants := map[string]bool{}
-	for _, s := range chargementsDeSourceDansReplay(t) {
-		vivants[s.fichier] = true
-	}
-	for _, c := range chargementsToleresDansReplay {
-		if strings.TrimSpace(c.retrait) == "" {
-			t.Errorf("`chargementsToleresDansReplay` cite %s sans critere de retrait : une "+
-				"tolerance sans cible est une dette anonyme.", c.fichier)
-		}
-		if !vivants[c.fichier] {
-			t.Errorf("`chargementsToleresDansReplay` cite %s (%s, pose %s), qui ne charge plus "+
-				"le film : entree perimee, la retirer.", c.fichier, c.enveloppe, c.pose)
-		}
-	}
 }

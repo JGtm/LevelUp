@@ -110,7 +110,7 @@ func TestAssautA1Identite(t *testing.T) {
 	}
 
 	debuts, explosions := a1ClassesTemporelles(t, id, src)
-	clockUS, err := ScanFilmClockOrigin(objChunkDir(root, id))
+	clockUS, err := grammar.ScanFilmClockOrigin(objChunkDir(root, id))
 	if err != nil {
 		t.Fatalf("%s : origine d'horloge illisible : %v", id, err)
 	}

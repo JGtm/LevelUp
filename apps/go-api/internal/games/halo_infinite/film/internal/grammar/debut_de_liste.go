@@ -1,5 +1,9 @@
 package grammar
 
+import (
+	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
+)
+
 // debut_de_liste.go — LA LISTE D UN PAQUET A EVENEMENTS COMMENCE A SES RECORDS NEW DE TETE (lot
 // M4b de la campagne « retours rejeu », 2026-09-25).
 //
@@ -58,14 +62,14 @@ func candidatsDeTete(pay []byte, fin int, w *World) []int {
 // enteteNeufEn lit, sans lecteur, l en-tete d un record NEW a `p` : prefixe `0` puis `01`, slot,
 // generation, archetype borne par le registre des objets ([objectArchetypeCount]).
 func enteteNeufEn(pay []byte, p int) (slot, ti uint32, ok bool) {
-	if PeekBits(pay, p, 1) != 0 || PeekBits(pay, p+1, 2) != 1 {
+	if source.BitsTolerants(pay, p, 1) != 0 || source.BitsTolerants(pay, p+1, 2) != 1 {
 		return 0, 0, false
 	}
-	ti = uint32(PeekBits(pay, p+woNewTypeBits+woNewSlotBits+woNewGenBits, woNewTIBits)) //nolint:gosec // 6 bits
+	ti = uint32(source.BitsTolerants(pay, p+woNewTypeBits+woNewSlotBits+woNewGenBits, woNewTIBits)) //nolint:gosec // 6 bits
 	if ti >= objectArchetypeCount {
 		return 0, 0, false
 	}
-	return uint32(PeekBits(pay, p+woNewTypeBits, woNewSlotBits)), ti, true //nolint:gosec // 13 bits
+	return uint32(source.BitsTolerants(pay, p+woNewTypeBits, woNewSlotBits)), ti, true //nolint:gosec // 13 bits
 }
 
 // motFacultatifDEnTete rend la largeur du mot facultatif qui precede le type de chaque record

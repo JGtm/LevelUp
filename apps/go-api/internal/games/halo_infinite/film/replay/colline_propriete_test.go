@@ -120,7 +120,7 @@ func ctCharge(t *testing.T) ctEntree {
 		t.Skipf("film %s (%s) : le lot C-ter ne mesure que les KOTH", short, film.Mode)
 	}
 	e := ctEntree{dir: dir, short: short, film: film}
-	clockUS, err := ScanFilmClockOrigin(dir)
+	clockUS, err := grammar.ScanFilmClockOrigin(dir)
 	if err != nil {
 		t.Fatalf("origine d'horloge illisible (%s) : %v", dir, err)
 	}

@@ -31,6 +31,7 @@ package grammar
 import (
 	"fmt"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 	"os"
 	"sort"
 	"testing"
@@ -144,14 +145,14 @@ func i57ScanPacket(
 func i57MatchDense(
 	pay []byte, p, total int, slots SlotBand, lay profile.I0Layout, arch Archetype,
 ) (int, uint32, []int, bool) {
-	slot := readBitsAt(pay, p+1, bipedSlotBits)
-	if readBitsAt(pay, p, 1) != 1 || !slots.Has(slot) {
+	slot := uint32(source.BitsStricts(pay, p+1, bipedSlotBits))
+	if uint32(source.BitsStricts(pay, p, 1)) != 1 || !slots.Has(slot) {
 		return 0, 0, nil, false
 	}
-	if readBitsAt(pay, p+14, 2) != 1 || readBitsAt(pay, p+16, 1) != 0 {
+	if uint32(source.BitsStricts(pay, p+14, 2)) != 1 || uint32(source.BitsStricts(pay, p+16, 1)) != 0 {
 		return 0, 0, nil, false
 	}
-	if readBitsAt(pay, p+i57GateOffset, 1) != 1 { // porte à 1 = masque DENSE
+	if uint32(source.BitsStricts(pay, p+i57GateOffset, 1)) != 1 { // porte à 1 = masque DENSE
 		return 0, 0, nil, false
 	}
 	maskAt := p + i57GateOffset + 1
@@ -160,7 +161,7 @@ func i57MatchDense(
 	}
 	var idx []int
 	for b := 0; b < i57DenseMaskBits; b++ {
-		if readBitsAt(pay, maskAt+b, 1) == 1 {
+		if uint32(source.BitsStricts(pay, maskAt+b, 1)) == 1 {
 			idx = append(idx, b)
 		}
 	}
@@ -168,7 +169,7 @@ func i57MatchDense(
 		return 0, 0, nil, false
 	}
 	i0 := maskAt + i57DenseMaskBits
-	if readBitsAt(pay, i0, lay.GateBits) != 0 { // i0 absolu, comme le chemin creux
+	if uint32(source.BitsStricts(pay, i0, lay.GateBits)) != 0 { // i0 absolu, comme le chemin creux
 		return 0, 0, nil, false
 	}
 	if _, _, _, ok := i57Walk(pay, i0, total, idx, lay, arch, -1); !ok {
@@ -240,13 +241,13 @@ func i57Walk(
 			return val, flag1, "", false
 		}
 		if id == i54Index && at+1 <= total {
-			flag1 = int(readBitsAt(pay, at, 1))
+			flag1 = int(uint32(source.BitsStricts(pay, at, 1)))
 		}
 		if id == stopAt {
 			if at+2 > total {
 				return val, flag1, "", false
 			}
-			val = int(readBitsAt(pay, at, 2))
+			val = int(uint32(source.BitsStricts(pay, at, 2)))
 			return val, flag1, "", true
 		}
 		name := arch.component(id)

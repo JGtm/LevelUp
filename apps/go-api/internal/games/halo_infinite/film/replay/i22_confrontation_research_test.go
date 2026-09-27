@@ -21,6 +21,7 @@ package replay
 import (
 	"encoding/json"
 	"fmt"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"os"
 	"sort"
 	"testing"
@@ -58,7 +59,7 @@ func TestI22Confrontation(t *testing.T) {
 
 	// La telemetrie de couverture (KeyframeInventoryStats, lot 2 du 2026-08-25) ne concerne
 	// pas cette sonde : elle confronte les lectures, pas la sante du scan.
-	kf, _, err := ScanFilmKeyframeInventory(dir, loadoutFamilies(), 0, nil)
+	kf, _, err := grammar.ScanFilmKeyframeInventory(dir, loadoutFamilies(), 0)
 	if err != nil {
 		t.Fatalf("keyframes : %v", err)
 	}

@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // posDe pose un point de réplication d'un slot à un instant, en microsecondes.
@@ -27,8 +28,8 @@ func pisteContinue(slot uint32, deUS, aUS uint64) []grammar.BipedPosition {
 }
 
 // indexDe pose la table identité -> index du film, lue sans désaccord.
-func indexDe(xuids ...uint64) PlayerIndexTable {
-	t := PlayerIndexTable{ByXUID: map[uint64]int{}, Readings: 26}
+func indexDe(xuids ...uint64) types.PlayerIndexTable {
+	t := types.PlayerIndexTable{ByXUID: map[uint64]int{}, Readings: 26}
 	for i, x := range xuids {
 		t.ByXUID[x] = i
 	}
@@ -59,7 +60,7 @@ func causesParXUID(vies []VieNommee) map[uint64][]string {
 func TestViesNommees_MortPuisFinDeFilm(t *testing.T) {
 	pos := append(pisteContinue(1, 0, 10_000_000), pisteContinue(1, 20_000_000, 30_000_000)...)
 	pos = append(pos, pisteContinue(2, 0, 25_000_000)...)
-	morts := []Death{{XUID: 111, TimeMS: 10_000}, {XUID: 222, TimeMS: 25_000}}
+	morts := []types.Death{{XUID: 111, TimeMS: 10_000}, {XUID: 222, TimeMS: 25_000}}
 	rep := BuildIdentityRegistry(IdentityInput{Positions: pos, Deaths: morts, PlayerIndices: indexDe(111, 222)})
 
 	vies := rep.ViesNommees()
@@ -85,7 +86,7 @@ func TestViesNommees_MortPuisFinDeFilm(t *testing.T) {
 func TestViesNommees_HorlogeDuMatch(t *testing.T) {
 	const decalageMS = 4_000
 	pos := pisteContinue(1, decalageMS*1000, decalageMS*1000+10_000_000)
-	morts := []Death{{XUID: 111, TimeMS: 10_000}}
+	morts := []types.Death{{XUID: 111, TimeMS: 10_000}}
 	rep := BuildIdentityRegistry(IdentityInput{Positions: pos, Deaths: morts, PlayerIndices: indexDe(111)})
 
 	vies := rep.ViesNommees()
@@ -114,7 +115,7 @@ func TestViesNommees_CoupureSansMort(t *testing.T) {
 	// Deux slots : le 1 est coupé au milieu, le 2 meurt pour que le pont existe.
 	pos := append(pisteContinue(1, 0, 5_000_000), pisteContinue(1, 15_000_000, 20_000_000)...)
 	pos = append(pos, pisteContinue(2, 0, 20_000_000)...)
-	morts := []Death{{XUID: 222, TimeMS: 20_000}}
+	morts := []types.Death{{XUID: 222, TimeMS: 20_000}}
 	rep := BuildIdentityRegistry(IdentityInput{Positions: pos, Deaths: morts, PlayerIndices: indexDe(111, 222)})
 
 	for _, v := range rep.ViesNommees() {
@@ -131,7 +132,7 @@ func TestViesNommees_CoupureSansMort(t *testing.T) {
 // chaque film y ajouterait des vies attribuées au même fantôme.
 func TestViesNommees_AucuneVieAnonyme(t *testing.T) {
 	pos := append(pisteContinue(1, 0, 10_000_000), pisteContinue(7, 0, 10_000_000)...)
-	morts := []Death{{XUID: 111, TimeMS: 10_000}}
+	morts := []types.Death{{XUID: 111, TimeMS: 10_000}}
 	rep := BuildIdentityRegistry(IdentityInput{Positions: pos, Deaths: morts, PlayerIndices: indexDe(111)})
 
 	for _, v := range rep.ViesNommees() {
@@ -155,7 +156,7 @@ func TestViesNommees_SansPont_RienNeSort(t *testing.T) {
 // ordre. Sans tri total, l'ordre suivrait celui des slots, un détail d'implémentation.
 func TestViesNommees_OrdreTotal(t *testing.T) {
 	pos := append(pisteContinue(3, 0, 10_000_000), pisteContinue(1, 0, 10_000_000)...)
-	morts := []Death{{XUID: 111, TimeMS: 10_000}, {XUID: 222, TimeMS: 10_000}}
+	morts := []types.Death{{XUID: 111, TimeMS: 10_000}, {XUID: 222, TimeMS: 10_000}}
 	rep := BuildIdentityRegistry(IdentityInput{Positions: pos, Deaths: morts, PlayerIndices: indexDe(111, 222)})
 
 	vies := rep.ViesNommees()
@@ -188,7 +189,7 @@ func TestViesNommees_LesDeuxAxesSontOrthogonaux(t *testing.T) {
 	pos := pisteContinue(1, 0, 1_000_000)                          // 111, meurt a 1 000 ms
 	pos = append(pos, pisteContinue(3, 9_000_000, 10_000_000)...)  // 111 reapparait, meurt a 10 000 ms
 	pos = append(pos, pisteContinue(2, 20_000_000, 21_000_000)...) // ANONYME : personne ne le nomme par une mort
-	morts := []Death{
+	morts := []types.Death{
 		{XUID: 111, TimeMS: 1_000},
 		{XUID: 111, TimeMS: 10_000},
 		{XUID: 222, TimeMS: 12_000}, // ne termine aucune vie : candidat libre pour la fermeture B
@@ -238,7 +239,7 @@ func TestViesNommees_ToutesLesCausesSontAtteignables(t *testing.T) {
 	}
 	// `death` : le nommage par le fil des morts.
 	rep := BuildIdentityRegistry(IdentityInput{Positions: pisteContinue(1, 0, 10_000_000),
-		Deaths: []Death{{XUID: 111, TimeMS: 10_000}}, PlayerIndices: indexDe(111)})
+		Deaths: []types.Death{{XUID: 111, TimeMS: 10_000}}, PlayerIndices: indexDe(111)})
 	trouve := false
 	for _, v := range rep.ViesNommees() {
 		if v.Cause == CauseVieMort {

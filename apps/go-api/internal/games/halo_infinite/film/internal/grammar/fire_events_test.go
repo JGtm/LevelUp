@@ -152,25 +152,3 @@ func TestDecodeFireEventRefuseRecordTronque(t *testing.T) {
 		t.Errorf("payload portant la tête entière (%d bits) refusé", finTete)
 	}
 }
-
-// TestPeekBitsToleranceDesDeuxCotes : la tolérance de PeekBits vaut aux DEUX bouts.
-//
-// Sa documentation a toujours annoncé « ne jamais paniquer sur un payload tronqué », mais
-// jusqu'au 2026-08-01 une position NÉGATIVE paniquait (`index out of range [-1]`) — une
-// primitive dont c'est la seule raison d'être ne tenait sa promesse que d'un côté.
-func TestPeekBitsToleranceDesDeuxCotes(t *testing.T) {
-	d := []byte{0xFF, 0xFF}
-	if got := PeekBits(d, -8, 8); got != 0 {
-		t.Errorf("lecture entièrement avant le début = %#x, attendu 0", got)
-	}
-	if got := PeekBits(d, len(d)*8, 8); got != 0 {
-		t.Errorf("lecture entièrement après la fin = %#x, attendu 0", got)
-	}
-	// À cheval sur le début : 4 bits hors buffer (0) puis 4 bits à 1 -> 0b00001111.
-	if got := PeekBits(d, -4, 8); got != 0x0F {
-		t.Errorf("lecture à cheval sur le début = %#x, attendu 0x0F", got)
-	}
-	if got := PeekBits(nil, -4, 8); got != 0 {
-		t.Errorf("buffer vide = %#x, attendu 0", got)
-	}
-}

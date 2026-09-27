@@ -26,6 +26,8 @@ package replay
 // corpus donne 0 desaccord d'index sur les huit builds — les index rendus sont donc les memes.
 
 import (
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 	"sort"
 	"testing"
 )
@@ -45,7 +47,7 @@ func TestRosterHorsLigneEstCompletParLaTableDuFilm(t *testing.T) {
 			opt.PlayerIndices = indexDuFilDesMorts(g.PlayerIndices, g.Deaths)
 
 			sansTable := opt
-			sansTable.FilmTable = FilmPlayerTable{Refusal: FilmTableNoSection}
+			sansTable.FilmTable = grammar.FilmPlayerTable{Refusal: grammar.FilmTableNoSection}
 			avant := BuildFromPositions(b.Short8, "halo_infinite", g.Positions, g.Fire, sansTable)
 			apres := BuildFromPositions(b.Short8, "halo_infinite", g.Positions, g.Fire, opt)
 
@@ -69,14 +71,14 @@ func TestRosterHorsLigneEstCompletParLaTableDuFilm(t *testing.T) {
 
 // indexDuFilDesMorts restreint une table d'index aux xuids que le fil des morts porte — le
 // MODELE EXACT de ce que la lecture rend sans feuille de match (cf. l'en-tete).
-func indexDuFilDesMorts(t PlayerIndexTable, deaths []Death) PlayerIndexTable {
+func indexDuFilDesMorts(t types.PlayerIndexTable, deaths []types.Death) types.PlayerIndexTable {
 	vus := map[uint64]bool{}
 	for _, d := range deaths {
 		if d.XUID != 0 {
 			vus[d.XUID] = true
 		}
 	}
-	out := PlayerIndexTable{ByXUID: map[uint64]int{}, Readings: t.Readings,
+	out := types.PlayerIndexTable{ByXUID: map[uint64]int{}, Readings: t.Readings,
 		Disagreements: t.Disagreements}
 	for x, pi := range t.ByXUID {
 		if vus[x] {
@@ -87,7 +89,7 @@ func indexDuFilDesMorts(t PlayerIndexTable, deaths []Death) PlayerIndexTable {
 }
 
 // siegesAbsentsDuRoster rend les rangs des sieges de la table du film qu'un roster ne porte pas.
-func siegesAbsentsDuRoster(film FilmPlayerTable, roster []RosterEntry) []int {
+func siegesAbsentsDuRoster(film grammar.FilmPlayerTable, roster []RosterEntry) []int {
 	publies := map[int]bool{}
 	for _, r := range roster {
 		if r.XUID != "" {

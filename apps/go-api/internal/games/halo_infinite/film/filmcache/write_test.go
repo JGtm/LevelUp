@@ -1,6 +1,7 @@
 package filmcache
 
 import (
+	"levelup/go-api/internal/games/halo_infinite/film/finalise"
 	"os"
 	"path/filepath"
 	"testing"
@@ -12,7 +13,7 @@ func filmFinalise(tempsForts string) []WriteChunk {
 	return []WriteChunk{
 		{Index: 0, ChunkType: 1, StartMS: 0, DurationMS: 0, Data: []byte("header")},
 		{Index: 1, ChunkType: 2, StartMS: 0, DurationMS: 20000, Data: []byte("replication")},
-		{Index: 2, ChunkType: ChunkTypeTempsForts, StartMS: 0, DurationMS: 20000, Data: []byte(tempsForts)},
+		{Index: 2, ChunkType: finalise.ChunkTypeTempsForts, StartMS: 0, DurationMS: 20000, Data: []byte(tempsForts)},
 	}
 }
 
@@ -54,7 +55,7 @@ func TestWrite_NEcrasePasLeManifesteHistorique(t *testing.T) {
 	}
 	if err := Write(t.Context(), root, "cafe0001", []WriteChunk{
 		{Index: 0, ChunkType: 1, Data: []byte("h")},
-		{Index: 1, ChunkType: ChunkTypeTempsForts, Data: []byte("tf")},
+		{Index: 1, ChunkType: finalise.ChunkTypeTempsForts, Data: []byte("tf")},
 	}); err != nil {
 		t.Fatalf("Write: %v", err)
 	}

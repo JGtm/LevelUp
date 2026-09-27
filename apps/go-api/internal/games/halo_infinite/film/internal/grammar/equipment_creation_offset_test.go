@@ -30,6 +30,7 @@ package grammar
 
 import (
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 	"os"
 	"testing"
 )
@@ -249,12 +250,12 @@ func (pr *equipOffsetProbe) back(pay []byte, b int, life equipCreationLifeKey) {
 	firstAny := -1
 	for d := 1; d <= equipCreationMaxBack && b-d >= 0; d++ {
 		p := b - d
-		if PeekBits(pay, p, 1) != 0 || PeekBits(pay, p+1, 2) != 1 {
+		if source.BitsTolerants(pay, p, 1) != 0 || source.BitsTolerants(pay, p+1, 2) != 1 {
 			continue
 		}
-		ti := uint32(PeekBits(pay, p+woNewTypeBits+woNewSlotBits+woNewGenBits, woNewTIBits))
-		slot := uint32(PeekBits(pay, p+woNewTypeBits, woNewSlotBits))
-		gen := uint32(PeekBits(pay, p+woNewTypeBits+woNewSlotBits, woNewGenBits))
+		ti := uint32(source.BitsTolerants(pay, p+woNewTypeBits+woNewSlotBits+woNewGenBits, woNewTIBits))
+		slot := uint32(source.BitsTolerants(pay, p+woNewTypeBits, woNewSlotBits))
+		gen := uint32(source.BitsTolerants(pay, p+woNewTypeBits+woNewSlotBits, woNewGenBits))
 		if firstAny < 0 {
 			firstAny = d
 			pr.ti[ti]++
@@ -285,7 +286,7 @@ func (pr *equipOffsetProbe) profile(pay []byte, p int, d uint32) {
 		pr.bits[d] = prof
 	}
 	for i := 0; i < equipProfileBits; i++ {
-		if PeekBits(pay, p+i, 1) == 1 {
+		if source.BitsTolerants(pay, p+i, 1) == 1 {
 			prof[i]++
 		}
 	}

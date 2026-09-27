@@ -25,7 +25,10 @@ package replay
 // Deux entites candidates d'occupants differents, ou aucune : la lecture se TAIT et les voies
 // d'avant reprennent (tableau de l'API, relais), comme sans entite.
 
-import "levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+import (
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
+)
 
 // proprietaireDEntite est une entite d'un index partage : sa fenetre LARGE et son occupant (un
 // `bid` de bot ou un xuid d'humain, jamais les deux).
@@ -47,7 +50,7 @@ type entitesDesIndexPartages map[int][]proprietaireDEntite
 // lireEntitesDesIndexPartages construit la table. Nil sans entite lue : la lecture se tait, et
 // tout se passe comme avant le lot M2.3.
 func lireEntitesDesIndexPartages(scan grammar.PlayerEntityScan, bots []BotIdentity,
-	idx PlayerIndexTable) entitesDesIndexPartages {
+	idx types.PlayerIndexTable) entitesDesIndexPartages {
 	if !scan.Scanned || len(scan.Entities) == 0 {
 		return nil
 	}

@@ -20,7 +20,7 @@ import (
 	"io"
 	"strings"
 
-	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 )
 
 // dumpAvant / dumpApres : la fenetre relevee autour du marqueur, en bits.
@@ -42,7 +42,7 @@ func releverTranche(pay []byte, o Occurrence) Tranche {
 	var b strings.Builder
 	b.Grow(dumpAvant + dumpApres)
 	for i := -dumpAvant; i < dumpApres; i++ {
-		b.WriteByte(byte('0' + grammar.PeekBits(pay, o.BitPos+i, 1)))
+		b.WriteByte(byte('0' + source.BitsTolerants(pay, o.BitPos+i, 1)))
 	}
 	return Tranche{Occurrence: o, Bits: b.String()}
 }

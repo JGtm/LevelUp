@@ -44,6 +44,8 @@ package grammar
 import (
 	"path/filepath"
 	"testing"
+
+	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 )
 
 const (
@@ -60,7 +62,7 @@ const (
 func rtCompteMotif(pay []byte, motif uint64) int {
 	n, fin := 0, len(pay)*8-32
 	for p := 0; p <= fin; p++ {
-		if kfReadBits(pay, p, 32) == motif {
+		if source.BitsBourres(pay, p, 32) == motif {
 			n++
 		}
 	}
@@ -106,7 +108,7 @@ func rtMesureFilm(v equipeVue) (sentinelles int, avant map[int]int, recs int) {
 		sentinelles += rtCompteMotif(pq.Pay, rtSentinelle)
 		for _, r := range pq.Recs {
 			e := profilLireEtatComplet(pq.Pay, r.Bit, equipeTI)
-			avant[int(kfReadBits(pq.Pay, r.Bit+e.CorpsRelatif-32, 32))]++
+			avant[int(source.BitsBourres(pq.Pay, r.Bit+e.CorpsRelatif-32, 32))]++
 			recs++
 		}
 	}

@@ -29,6 +29,7 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 const (
@@ -98,11 +99,11 @@ func mesureOrigine(t *testing.T, dir, short string) (int64, int64) {
 			originUS = p.TimestampUS
 		}
 	}
-	clockUS, err := ScanFilmClockOrigin(dir)
+	clockUS, err := grammar.ScanFilmClockOrigin(dir)
 	if err != nil {
 		t.Fatalf("origine d'horloge : %v", err)
 	}
-	deaths, err := ScanFilmDeaths(dir)
+	deaths, err := grammar.ScanFilmDeaths(dir)
 	if err != nil {
 		t.Fatalf("fil des morts : %v", err)
 	}
@@ -129,7 +130,7 @@ func mesureOrigine(t *testing.T, dir, short string) (int64, int64) {
 // L'appariement mort <-> vie reutilise `nameLivesByDeaths` (production) : la vie porte le
 // xuid de sa victime, on reprend la plus proche parmi les siennes. Aucune seconde
 // implementation de l'appariement ne vit ici.
-func ecartFilFiche(lives []lifeSpan, deaths []Death, off int64, originUS uint64, lu int64) (int64, int64, int) {
+func ecartFilFiche(lives []lifeSpan, deaths []types.Death, off int64, originUS uint64, lu int64) (int64, int64, int) {
 	nameLivesByDeaths(lives, deaths, off)
 	originMs := int64(originUS) / 1000
 	var bruts []int64

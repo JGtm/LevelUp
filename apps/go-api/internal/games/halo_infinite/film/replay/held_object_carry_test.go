@@ -5,7 +5,11 @@ package replay
 // l'agrégation du temps de portage. La validation SUR FILMS vit dans
 // bombe_b2_chronologie_test.go (V1/V2/V3, garde ASSAUT_CACHE).
 
-import "testing"
+import (
+	"testing"
+
+	"levelup/go-api/internal/games/halo_infinite/film/types"
+)
 
 // hocEvents construit des événements de test.
 func hocEvents(list ...HeldObjectEvent) []HeldObjectEvent { return list }
@@ -34,7 +38,7 @@ func TestBuildHeldObjectCarryMortFermeLaPeriode(t *testing.T) {
 	c := BuildHeldObjectCarry(hocEvents(
 		HeldObjectEvent{TimeMS: 1000, Slot: 5, Pickup: true},
 		HeldObjectEvent{TimeMS: 6000, Slot: 9, Pickup: true},
-	), occupantFige(map[uint32]uint64{5: 42, 9: 77}), []Death{{XUID: 42, TimeMS: 2500}})
+	), occupantFige(map[uint32]uint64{5: 42, 9: 77}), []types.Death{{XUID: 42, TimeMS: 2500}})
 	if len(c.Periods) != 2 {
 		t.Fatalf("périodes : %d, attendu 2", len(c.Periods))
 	}

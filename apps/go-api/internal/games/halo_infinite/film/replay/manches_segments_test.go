@@ -87,19 +87,19 @@ func TestSegmentEntierExemptePubliePourLeJoueur(t *testing.T) {
 // manchesMortsRelecteur date les morts sur les instants EXACTS de la fixture du relecteur :
 // l'index de decalage d'un slot est celui qu'il a DANS SON GROUPE (precoces ou tardifs), comme
 // dans [manchesBloc].
-func manchesMortsRelecteur() []Death {
-	var out []Death
+func manchesMortsRelecteur() []types.Death {
+	var out []types.Death
 	for j, slot := range manchesSlots {
 		xuid := uint64(1_000 + slot)
 		for _, t := range manchesInstants(j, manchesDebutR0) {
-			out = append(out, Death{XUID: xuid, TimeMS: int64(t)})
+			out = append(out, types.Death{XUID: xuid, TimeMS: int64(t)})
 		}
 		debut, idx := 70_000, j-3
 		if j < 3 {
 			debut, idx = 40_000, j
 		}
 		for _, t := range manchesInstants(idx, debut) {
-			out = append(out, Death{XUID: xuid, TimeMS: int64(t)})
+			out = append(out, types.Death{XUID: xuid, TimeMS: int64(t)})
 		}
 	}
 	return out
@@ -201,24 +201,24 @@ const (
 // mode par manche (sans lui `RealRounds` n'en reconnait aucune, et la fixture ne prouverait rien),
 // un slot minoritaire qui declare la manche 1 en avance, et un slot REATTRIBUE d'une manche a
 // l'autre.
-func identiteFixture() ([]types.StatRecord, []Death) {
+func identiteFixture() ([]types.StatRecord, []types.Death) {
 	recs := manchesCorps(0, manchesDebutR0)
 	recs = append(recs, manchesCorps(1, identiteDebutR1)...)
 	// LE FAUX POSITIF : un enregistrement isole, slot 10, qui declare la manche 1 a 85 s.
 	recs = append(recs, statRec(identiteEgarePre, 10, 1,
 		map[int]types.StatValue{3: {A: 0}}))
 
-	var deaths []Death
+	var deaths []types.Death
 	for j, slot := range manchesSlots {
 		for _, t := range manchesInstants(j, manchesDebutR0) {
-			deaths = append(deaths, Death{XUID: uint64(1_000 + slot), TimeMS: int64(t)})
+			deaths = append(deaths, types.Death{XUID: uint64(1_000 + slot), TimeMS: int64(t)})
 		}
 		xuid := uint64(1_000 + slot)
 		if slot == identiteSlotReattribue {
 			xuid = 9_022 // le slot change de joueur en manche 1
 		}
 		for _, t := range manchesInstants(j, identiteDebutR1) {
-			deaths = append(deaths, Death{XUID: xuid, TimeMS: int64(t)})
+			deaths = append(deaths, types.Death{XUID: xuid, TimeMS: int64(t)})
 		}
 	}
 	return recs, deaths

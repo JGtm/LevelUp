@@ -236,7 +236,7 @@ func ScanBipedRecords(payload []byte, slots SlotBand, lay profile.I0Layout, opt 
 	walkDeltaBipedPayload(payload, slots, lay, opt.RequireTag1, func(r deltaBipedRecord) {
 		var q [3]uint32
 		for ax := 0; ax < 3; ax++ {
-			q[ax] = readBitsAt(payload, r.I0+lay.AxisOffset(ax), int(lay.AxisW[ax]))
+			q[ax] = uint32(source.BitsStricts(payload, r.I0+lay.AxisOffset(ax), int(lay.AxisW[ax])))
 		}
 		if opt.DropSaturated && saturatedQuantum(q, lay) {
 			return
@@ -271,10 +271,10 @@ func matchBipedHeader(pay []byte, p, total int, slots SlotBand, needTag1 bool, l
 		return 0, 0, nil, false
 	}
 	const preGate = profile.I0SpineBits + profile.I0UseDefaultBits
-	if readBitsAt(pay, i0, preGate) != 0 { // i0 absolu : spine + useDefault nuls
+	if uint32(source.BitsStricts(pay, i0, preGate)) != 0 { // i0 absolu : spine + useDefault nuls
 		return 0, 0, nil, false
 	}
-	if readBitsAt(pay, i0+preGate, lay.GateBits-preGate) != lay.Region {
+	if uint32(source.BitsStricts(pay, i0+preGate, lay.GateBits-preGate)) != lay.Region {
 		return 0, 0, nil, false
 	}
 	return i0, slot, idx, true
@@ -285,20 +285,20 @@ func matchBipedHeader(pay []byte, p, total int, slots SlotBand, needTag1 bool, l
 // contenu d'i0 : c'est le point d'entrée du détecteur de découpage (i0_layout.go), qui doit
 // justement mesurer i0 sans en présupposer la structure.
 func matchBipedHeaderRaw(pay []byte, p, total int, slots SlotBand, needTag1 bool, needBits int) (int, uint32, []int, bool) {
-	if readBitsAt(pay, p, 1) != 1 {
+	if uint32(source.BitsStricts(pay, p, 1)) != 1 {
 		return 0, 0, nil, false
 	}
-	slot := readBitsAt(pay, p+1, bipedSlotBits)
+	slot := uint32(source.BitsStricts(pay, p+1, bipedSlotBits))
 	if !slots.Has(slot) {
 		return 0, 0, nil, false
 	}
-	if needTag1 && readBitsAt(pay, p+14, 2) != 1 {
+	if needTag1 && uint32(source.BitsStricts(pay, p+14, 2)) != 1 {
 		return 0, 0, nil, false
 	}
-	if readBitsAt(pay, p+16, 2) != 0 { // (14e bit id ou LSB tag) + gate — PAS un maskSel
+	if uint32(source.BitsStricts(pay, p+16, 2)) != 0 { // (14e bit id ou LSB tag) + gate — PAS un maskSel
 		return 0, 0, nil, false
 	}
-	mc := int(readBitsAt(pay, p+18, 3))
+	mc := int(uint32(source.BitsStricts(pay, p+18, 3)))
 	if mc < bipedMinMaskCnt || mc > bipedMaxMaskCnt {
 		return 0, 0, nil, false
 	}
@@ -328,7 +328,7 @@ func ascendingFromZero(pay []byte, at, count int) ([]int, bool) {
 	}
 	prev := -1
 	for k := 0; k < count; k++ {
-		idx := int(readBitsAt(pay, at+bipedIndexBits*k, bipedIndexBits))
+		idx := int(uint32(source.BitsStricts(pay, at+bipedIndexBits*k, bipedIndexBits)))
 		if (k == 0 && idx != 0) || idx <= prev {
 			return nil, false
 		}
@@ -360,24 +360,4 @@ func DequantBipedAxis(q uint32, ax int, lay profile.I0Layout, world profile.Vec3
 	rng := world[ax]
 	step := (float64(rng.Max) - float64(rng.Min)) / float64(uint64(1)<<lay.AxisW[ax])
 	return float32(float64(rng.Min) + step*(float64(q)+quantCenter))
-}
-
-// readBitsAt lit n bits MSB-first à la position bit pos (n <= 32).
-//
-// AUCUNE GARDE, ET C'EST VOULU : une lecture hors du tampon PANIQUE (`index out of range`).
-// Les balayages qui l'appellent bornent eux-memes leur fenetre ; une panique ici denonce un
-// balayage qui a perdu ses bornes, et la faire taire masquerait le defaut. Cette convention
-// est INCHANGEE par la lecture par mot : le chemin rapide n'est pris que quand les n bits
-// tiennent entierement dans le tampon, tout le reste retombe sur la boucle d'origine — qui
-// panique aux memes positions qu'avant.
-func readBitsAt(b []byte, pos, n int) uint32 {
-	if pos >= 0 && n > 0 && n <= 64 && pos+n <= len(b)*8 {
-		return uint32(source.BitsAt(b, pos, uint(n)))
-	}
-	var v uint32
-	for i := 0; i < n; i++ {
-		p := pos + i
-		v = v<<1 | uint32(b[p>>3]>>(7-uint(p&7))&1)
-	}
-	return v
 }

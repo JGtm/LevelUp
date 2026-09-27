@@ -79,7 +79,7 @@ type GrenadeRead struct {
 // l'axe, et leur en inventer une les poserait sur la première image comme si elles y avaient
 // été mesurées.
 func buildGrenadeReads(
-	kf []KeyframeInventory, deltas []types.InventoryDelta, origin, step uint64,
+	kf []types.KeyframeInventory, deltas []types.InventoryDelta, origin, step uint64,
 ) []GrenadeRead {
 	out := make([]GrenadeRead, 0, len(kf)+len(deltas))
 	for _, r := range kf {

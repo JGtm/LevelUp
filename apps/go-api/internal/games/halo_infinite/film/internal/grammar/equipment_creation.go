@@ -329,20 +329,20 @@ func matchWorldObjectNewHeader(
 func matchWorldObjectNewHeaderIn(
 	pay []byte, p int, dansLaBande func(uint32) bool, ti uint32,
 ) (slot, gen uint32, ok bool) {
-	if PeekBits(pay, p, 1) != 0 { // un record DELTA ouvre sur 1
+	if source.BitsTolerants(pay, p, 1) != 0 { // un record DELTA ouvre sur 1
 		return 0, 0, false
 	}
-	if PeekBits(pay, p+1, 2) != 1 { // type de record : 1 = NEW
+	if source.BitsTolerants(pay, p+1, 2) != 1 { // type de record : 1 = NEW
 		return 0, 0, false
 	}
-	if uint32(PeekBits(pay, p+woNewTypeBits+woNewSlotBits+woNewGenBits, woNewTIBits)) != ti {
+	if uint32(source.BitsTolerants(pay, p+woNewTypeBits+woNewSlotBits+woNewGenBits, woNewTIBits)) != ti {
 		return 0, 0, false
 	}
-	slot = uint32(PeekBits(pay, p+woNewTypeBits, woNewSlotBits))
+	slot = uint32(source.BitsTolerants(pay, p+woNewTypeBits, woNewSlotBits))
 	if !dansLaBande(slot) {
 		return 0, 0, false
 	}
-	return slot, uint32(PeekBits(pay, p+woNewTypeBits+woNewSlotBits, woNewGenBits)), true
+	return slot, uint32(source.BitsTolerants(pay, p+woNewTypeBits+woNewSlotBits, woNewGenBits)), true
 }
 
 // readCreation déroule le corps d'un record de création : le default-state (qui publie les deux

@@ -71,7 +71,7 @@ type FilmInputs struct {
 	Pickups     []types.BipedPickup
 	PickupStats types.BipedPickupStats
 	// Inventory est l'inventaire complet lu aux memes images-cles que les armes portees.
-	Inventory []KeyframeInventory
+	Inventory []types.KeyframeInventory
 	// InventoryDeltas sont les lectures d'inventaire des paquets DELTA (grenades, jeu
 	// selectionne) ; InventoryDeltaAmmoRefused est le VERDICT de la porte du canal munitions,
 	// publie tel quel dans la couverture.
@@ -143,7 +143,7 @@ type FilmInputs struct {
 	// Projectiles sont les trajectoires de projectile.
 	Projectiles []types.ProjectileTrack
 	// Deaths est le fil des morts : il NOMME les vies et fonde tout le rattachement.
-	Deaths []Death
+	Deaths []types.Death
 	// DeathsFeed est le VERDICT de la lecture du fil des morts et sa cause (lot M8 des retours
 	// rejeu) : une entree comme les autres, pour que le rejeu depuis les faits publie le meme
 	// `coverage.bridge.deathsFeed` que le decodage (cf. fil_des_morts_verdict.go).
@@ -155,15 +155,15 @@ type FilmInputs struct {
 	// `Options.PlayerIndices` INTACT — ce qui revient au meme : aucun appelant de `BuildFromFilm`
 	// ne la fournit (verifie le 2026-09-14 ; les seuls remplisseurs de ce champ passent par
 	// `BuildFromPositions`, cf. `killcollector/positions_identity_entree.go`).
-	PlayerIndices PlayerIndexTable
+	PlayerIndices types.PlayerIndexTable
 	// FilmTable est la TABLE DES JOUEURS QUE LE FILM ECRIT (`chunk_00`, section 2 et corps) :
-	// le lien DIRECT `index <-> xuid <-> gamertag`, lu par [ScanFilmPlayerTable].
+	// le lien DIRECT `index <-> xuid <-> gamertag`, lu par [grammar.ScanFilmPlayerTable].
 	//
 	// ELLE NE REMPLACE PAS `PlayerIndices`, ELLE LA PRECEDE : la table du film est celle du
 	// DEBUT du film, et un joueur qui rejoint en cours de partie n'y a pas de siege (mesure du
 	// 2026-09-14 : jusqu'a 5 sur un BTB). Le registre d'identite pose les sieges du film, puis
 	// COMPLETE par la lecture des chunks pour les xuids dont la table est muette.
-	FilmTable FilmPlayerTable
+	FilmTable grammar.FilmPlayerTable
 	// PlayerTeams est l'EQUIPE DE CHAQUE JOUEUR, lue dans la trame d'etat par
 	// [grammar.ScanPlayerTeams] : `index de joueur -> designateur` (`-1` = aucune equipe).
 	// C'est la SEULE source d'equipe du document (V4) ; la base ne fait que controler.

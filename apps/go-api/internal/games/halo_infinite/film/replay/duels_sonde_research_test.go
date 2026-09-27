@@ -148,7 +148,7 @@ func duelsBornes(t *testing.T, carte string) profile.Vec3Range {
 // regle « deux decodeurs du meme fait divergeraient », cf. l'en-tete de killpos_bridge.go).
 func duelsMorts(t *testing.T, film *source.Film, lives []lifeSpan) []duelMort {
 	t.Helper()
-	deaths, err := ScanDeaths(film)
+	deaths, err := grammar.ScanDeaths(film)
 	if err != nil {
 		t.Fatalf("fil des morts : %v", err)
 	}

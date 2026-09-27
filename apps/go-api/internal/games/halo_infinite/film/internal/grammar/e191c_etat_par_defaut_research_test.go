@@ -124,7 +124,7 @@ func e191cUnRecord(pay []byte, reg *Registry, b keyframeBorne, m *e191cEtatMesur
 func e191cLargeurPortee(pay []byte, reg *Registry, bit int) int {
 	br := LecteurSur(pay)
 	br.SetBitPos(bit + profile.KeyframeEnTeteBits)
-	ti := uint32(kfReadBits(pay, bit+keyframeRecordTIBit, 6)) //nolint:gosec // 6 bits
+	ti := uint32(source.BitsBourres(pay, bit+keyframeRecordTIBit, 6)) //nolint:gosec // 6 bits
 	avant := br.BitPos()
 	br.ReadBits(profile.KeyframeMotDeTailleBits)
 	debut := br.BitPos()

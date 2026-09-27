@@ -1,4 +1,4 @@
-package replay
+package grammar
 
 // inventory_trous_rapport_test.go — L'AGREGATION ET LA MISE EN FORME de la mesure des trous
 // d'inventaire. Le diagnostic bit a bit vit dans `inventory_trous_mesure_test.go` ; ici on

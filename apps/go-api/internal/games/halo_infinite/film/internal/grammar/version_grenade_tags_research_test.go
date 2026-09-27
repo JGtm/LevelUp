@@ -151,12 +151,12 @@ func hgrenPayload(pay []byte, compte map[uint32]*hgrenCand) int {
 	limit := len(pay)*8 - ref.amorce.StructureBits()
 	vus := 0
 	for bp := 0; bp <= limit; bp++ {
-		if PeekBits(pay, bp, ref.amorce.Bits) != ref.motif {
+		if source.BitsTolerants(pay, bp, ref.amorce.Bits) != ref.motif {
 			continue
 		}
 		vus++
-		id := uint32(PeekBits(pay, bp+24, 32))
-		idx := int(PeekBits(pay, bp+24+32+47, 5))
+		id := uint32(source.BitsTolerants(pay, bp+24, 32))
+		idx := int(source.BitsTolerants(pay, bp+24+32+47, 5))
 		c := compte[id]
 		if c == nil {
 			rang, connu := GrenadeRankOf(id)

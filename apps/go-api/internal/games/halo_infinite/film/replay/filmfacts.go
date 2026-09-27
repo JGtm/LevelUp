@@ -44,7 +44,7 @@ import (
 // un fixture qui ne porterait que la table figerait un refus comme un film sans equipes.
 //
 // v20 (2026-09-14, lot 1.6) : le fixture porte LA TABLE DES JOUEURS DU FILM (`FilmInputs.FilmTable`,
-// lue par `ScanFilmPlayerTable` dans `chunk_00`) — le lien DIRECT `index <-> xuid <-> gamertag`
+// lue par `grammar.ScanFilmPlayerTable` dans `chunk_00`) — le lien DIRECT `index <-> xuid <-> gamertag`
 // dont le registre d identite fait sa source premiere. Elle porte son REFUS comme elle porte ses
 // sieges : une table non lue n est pas une table vide, et le document publie la difference.
 // Les neuf champs courts et le jeton de session que `types.PlayerSlot` expose N ENTRENT PAS —

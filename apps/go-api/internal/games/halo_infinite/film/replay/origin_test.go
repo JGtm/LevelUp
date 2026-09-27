@@ -62,25 +62,6 @@ func TestResolveOriginMs_TemoinPauvreNeContreditPas(t *testing.T) {
 	}
 }
 
-func TestScanFilmClockOrigin_LitUnHorodatage(t *testing.T) {
-	// LA VALEUR N'EST PAS VERROUILLEE ICI, et c'est delibere : la mini-bobine REORDONNE les
-	// paquets de son chunk 1 (identites d'abord, cf. minifilm_test.go), son premier
-	// horodatage n'est donc pas le zero d'un vrai film. Ce qui se verrouille est la LECTURE.
-	got, err := ScanFilmClockOrigin(MiniFilmDir)
-	if err != nil {
-		t.Fatalf("lecture de l'origine d'horloge : %v", err)
-	}
-	if got == 0 {
-		t.Fatalf("horodatage nul : l'en-tete de paquet n'a pas ete lu")
-	}
-}
-
-func TestScanFilmClockOrigin_FilmAbsent(t *testing.T) {
-	if _, err := ScanFilmClockOrigin("testdata/film_inexistant"); err == nil {
-		t.Fatalf("aucune erreur sur un film absent")
-	}
-}
-
 // TestCoverageSaysWhetherOriginIsResolved — L'ARTEFACT DOIT DIRE QUE SON AXE DE TEMPS EST
 // DOUTEUX (correctif de revue R1).
 //

@@ -38,6 +38,8 @@ package grammar
 import (
 	"sort"
 	"testing"
+
+	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 )
 
 // rbBipedArchetype : l'archetype du spartan (TI=35), le seul a porter la forme lourde du
@@ -206,7 +208,7 @@ func rbDedupKills(kills []geoKill) []geoKill {
 }
 
 // rbHasEvents : le paquet porte-t-il une liste d'evenements ? Bit 1 du payload (killsource).
-func rbHasEvents(pay []byte) bool { return kfBitAt(pay, 1) != 0 }
+func rbHasEvents(pay []byte) bool { return source.BitAt(pay, 1) != 0 }
 
 // rbHarvestPacket : snapshot, marche jusqu'a rbViews vues, restore, puis recolte les dead-states
 // PROPRES et credibles. Reproduit killsource/walk.go:walkPacket + selectCredible.
@@ -257,7 +259,7 @@ func rbSignature123(pay []byte, s int, w *World, cfg FrameConfig) bool {
 func rbLocateStrict(pay []byte, w *World, cfg FrameConfig) int {
 	nb := len(pay) * 8
 	for s := 2; s+35 < nb; s++ {
-		if kfBitAt(pay, s-1) != 0 {
+		if source.BitAt(pay, s-1) != 0 {
 			continue
 		}
 		if rbSignature123(pay, s, w, cfg) {
@@ -271,7 +273,7 @@ func rbLocateStrict(pay []byte, w *World, cfg FrameConfig) int {
 func rbLocateFallback(pay []byte, w *World, cfg FrameConfig) int {
 	nb := len(pay) * 8
 	for s := 2; s+16 < nb; s++ {
-		if kfBitAt(pay, s-1) != 0 {
+		if source.BitAt(pay, s-1) != 0 {
 			continue
 		}
 		rec, _, ok := TryDeltaAt(pay, s, w, cfg)

@@ -45,6 +45,8 @@ package grammar
 import (
 	"sort"
 	"testing"
+
+	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 )
 
 // t526TeteTir est le type d evenement de tete du record de tir (numerotation TRAME), le meme que
@@ -208,7 +210,7 @@ func t526Balayer(pay []byte, de, a int, eid uint32, w int) bool {
 	motif := (eid&0x3fffffff)<<2 | eid>>30
 	masque := uint32(1)<<(w+2) - 1
 	for pos := de; pos+w+2 <= a; pos++ {
-		if readBitsAt(pay, pos, w+2) == motif&masque {
+		if uint32(source.BitsStricts(pay, pos, w+2)) == motif&masque {
 			return true
 		}
 	}
@@ -218,7 +220,7 @@ func t526Balayer(pay []byte, de, a int, eid uint32, w int) bool {
 // t526Balayer32 cherche le mot de 32 bits de l eid a toute position de [de, a).
 func t526Balayer32(pay []byte, de, a int, eid uint32) bool {
 	for pos := de; pos+32 <= a; pos++ {
-		if readBitsAt(pay, pos, 32) == eid {
+		if uint32(source.BitsStricts(pay, pos, 32)) == eid {
 			return true
 		}
 	}

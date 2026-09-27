@@ -24,7 +24,7 @@ package filmcache
 // chunk (`size_bytes`), que le lecteur compare (cf. [ErrChunkTronque]) ; un manifeste historique
 // sans taille reste lisible et n'est pas rempli apres coup.
 //
-// SEUL UN FILM FINALISE SE VALIDE (lot L3, 2026-09-23 — cf. finalise.go). Une liste sans
+// SEUL UN FILM FINALISE SE VALIDE (lot L3, 2026-09-23 — cf. `film/finalise`). Une liste sans
 // morceau de temps forts est refusee AVANT toute ecriture ([ErrFilmNonFinalise]) : ni
 // manifeste, ni morceau orphelin. Deux manifestes deja presents se remplacent, et eux seuls :
 //   - un manifeste SANS temps forts — ecrit avant cette regle, `ab526724` le 2026-09-22 — par
@@ -43,6 +43,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"levelup/go-api/internal/games/halo_infinite/film/finalise"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/platform/atomicfile"
 )
@@ -114,8 +115,8 @@ func Write(ctx context.Context, root, shortID string, chunks []WriteChunk) error
 	if len(chunks) == 0 {
 		return fmt.Errorf("filmcache: aucun chunk a ecrire pour %s", shortID)
 	}
-	if !Finalise(chunks, typeAEcrire) {
-		return fmt.Errorf("filmcache: %s (%d morceaux) : %w", shortID, len(chunks), ErrFilmNonFinalise)
+	if !finalise.Finalise(chunks, typeAEcrire) {
+		return fmt.Errorf("filmcache: %s (%d morceaux) : %w", shortID, len(chunks), finalise.ErrFilmNonFinalise)
 	}
 	manifestPath := ManifestPath(root, shortID)
 	sortMf, err := manifesteAEcrire(ctx, manifestPath, chunks)
@@ -185,7 +186,7 @@ func manifesteAEcrire(ctx context.Context, manifestPath string, chunks []WriteCh
 			"path", manifestPath, "err", err)
 		return manifesteAReparer, nil
 	}
-	if Finalise(existant.Chunks, typeDuManifeste) {
+	if finalise.Finalise(existant.Chunks, typeDuManifeste) {
 		return manifesteAConserver, nil
 	}
 	parIndex := make(map[int]WriteChunk, len(chunks))

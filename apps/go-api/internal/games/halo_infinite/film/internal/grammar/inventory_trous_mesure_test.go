@@ -1,4 +1,4 @@
-package replay
+package grammar
 
 // inventory_trous_mesure_test.go — MESURER LES TROUS DE LA FICHE D'INVENTAIRE (aucune
 // correction, aucune publication).
@@ -50,7 +50,7 @@ import (
 	"strings"
 	"testing"
 
-	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
@@ -178,7 +178,7 @@ func invTrousEnvInt(key string, def int) int {
 func invTrousFilm(t *testing.T, dir string, dig int) *invTrousCompte {
 	t.Helper()
 	c := invTrousNewCompte(filepath.Base(dir))
-	known := loadoutFamilies()
+	known := hwCatalogue()
 	diags, slotSets := invTrousWalk(t, dir, known, c)
 	if len(diags) == 0 {
 		return c
@@ -198,11 +198,11 @@ func invTrousWalk(
 	t *testing.T, dir string, known map[uint32]bool, c *invTrousCompte,
 ) ([]invTrousDiag, []map[uint32]bool) {
 	t.Helper()
-	n := grammar.CountFilmChunks(dir)
+	n := CountFilmChunks(dir)
 	var diags []invTrousDiag
 	var slotSets []map[uint32]bool
 	for ch := 1; ch <= n; ch++ {
-		chunk, err := grammar.ReadFilmChunk(dir, ch)
+		chunk, err := ReadFilmChunk(dir, ch)
 		if err != nil {
 			// UN CHUNK ILLISIBLE N'EST PAS UNE MESURE : il est compte, et le film qui en
 			// porte est ecarte de l'agregat par l'appelant. Sans ce compteur, une lecture
@@ -210,8 +210,8 @@ func invTrousWalk(
 			c.chunksIllisibles++
 			continue
 		}
-		for _, p := range grammar.WalkPackets(chunk) {
-			if p.Type != grammar.PacketTypeKeyframe {
+		for _, p := range WalkPackets(chunk) {
+			if p.Type != PacketTypeKeyframe {
 				continue
 			}
 			c.keyframes++
@@ -273,7 +273,7 @@ func invTrousDiagnose(pay []byte, sp invRecordSpan, known map[uint32]bool) invTr
 	}
 	if first, ok := invFirstFamily(pay, sp.from, sp.to, known); ok {
 		d.fam = true
-		var inv KeyframeInventory
+		var inv types.KeyframeInventory
 		inv.DrawnSlot = -1
 		readAmmo(pay, &inv, sp.from, first)
 		d.ammoSols, d.drawn = inv.AmmoCandidates, inv.DrawnSlot
@@ -287,7 +287,7 @@ func invTrousAncres(pay []byte, from, to int) []int {
 	var w uint32
 	const mask28 = (uint32(1) << 28) - 1
 	for b := from; b < to; b++ {
-		w = ((w << 1) | invBitAt(pay, b)) & mask28
+		w = ((w << 1) | uint32(source.BitAt(pay, b))) & mask28
 		if b-from >= 27 && w == invAbilityAnchor {
 			out = append(out, b)
 		}
@@ -303,10 +303,10 @@ func invTrousGen(pay []byte, b, to, win int) []int {
 		if p+23 > to {
 			break
 		}
-		if invBits(pay, p, 17) != invTrousPrefix {
+		if uint32(source.BitsTolerants(pay, p, 17)) != invTrousPrefix {
 			continue
 		}
-		out = append(out, int(invBits(pay, p+17, 6)))
+		out = append(out, int(uint32(source.BitsTolerants(pay, p+17, 6))))
 	}
 	return out
 }
@@ -319,7 +319,7 @@ func invTrousMotifLarge(pay []byte, b, to int) int {
 		if p+20 > to {
 			return -1
 		}
-		if invBits(pay, p, 20) == invAbilityPattern {
+		if uint32(source.BitsTolerants(pay, p, 20)) == invAbilityPattern {
 			return off
 		}
 	}
@@ -331,11 +331,11 @@ func invTrousMotifLarge(pay []byte, b, to int) int {
 // champ.
 func invTrousMotifPartout(pay []byte, from, to int) (motif, pref int, pos []int) {
 	for b := from; b+20 <= to; b++ {
-		if invBits(pay, b, 20) == invAbilityPattern {
+		if uint32(source.BitsTolerants(pay, b, 20)) == invAbilityPattern {
 			motif++
 			pos = append(pos, b)
 		}
-		if invBits(pay, b, 17) == invTrousPrefix {
+		if uint32(source.BitsTolerants(pay, b, 17)) == invTrousPrefix {
 			pref++
 		}
 	}
@@ -360,7 +360,7 @@ func invTrousAncreH1(pay []byte, from, to int) []invTrousH1 {
 	var w uint32
 	const mask28 = (uint32(1) << 28) - 1
 	for b := from; b < to; b++ {
-		w = ((w << 1) | invBitAt(pay, b)) & mask28
+		w = ((w << 1) | uint32(source.BitAt(pay, b))) & mask28
 		if b-from < 27 {
 			continue
 		}
@@ -382,12 +382,12 @@ func invTrousAncreH1(pay []byte, from, to int) []invTrousH1 {
 // R2 le rejette — la mesure « zero grenade » devient alors indistinguable d'une non-lecture.
 func invTrousI22Zero(pay []byte, from, to int) bool {
 	for b := from; b+35 <= to; b++ {
-		if invBits(pay, b, 3) != 4 {
+		if uint32(source.BitsTolerants(pay, b, 3)) != 4 {
 			continue
 		}
 		sum, ok := uint32(0), true
 		for i := 0; i < invGrenadeSlots && ok; i++ {
-			v := invBits(pay, b+3+8*i, 8)
+			v := uint32(source.BitsTolerants(pay, b+3+8*i, 8))
 			if v > DefaultGrenadeMax {
 				ok = false
 			}
@@ -410,8 +410,8 @@ type invTrousPref struct {
 func invTrousPrefHits(pay []byte, from, to int) []invTrousPref {
 	var out []invTrousPref
 	for b := from; b+23 <= to; b++ {
-		if invBits(pay, b, 17) == invTrousPrefix {
-			out = append(out, invTrousPref{pos: b, rang: int(invBits(pay, b+17, 6))})
+		if uint32(source.BitsTolerants(pay, b, 17)) == invTrousPrefix {
+			out = append(out, invTrousPref{pos: b, rang: int(uint32(source.BitsTolerants(pay, b+17, 6)))})
 		}
 	}
 	return out
@@ -458,7 +458,7 @@ func invTrousJoinI48(t *testing.T, dir string, diags []invTrousDiag) {
 	if invTrousEnvInt(invTrousI48Env, 1) == 0 {
 		return
 	}
-	ranks, st, err := grammar.ScanFilmAbilityRanks(dir)
+	ranks, st, err := ScanFilmAbilityRanks(dir)
 	if err != nil {
 		t.Logf("    i48 illisible (%v) — controle croise saute", err)
 		return

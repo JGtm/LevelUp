@@ -10,6 +10,7 @@ package killcollector
 import (
 	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // entreeDuRegistre assemble ce que le collecteur donne au registre d'identite. PURE — aucun film,
@@ -57,6 +58,6 @@ func entreeDuRegistre(
 type lecturesDuFilm struct {
 	positions []decfilm.BipedPosition
 	creations []decfilm.BipedCreation
-	deaths    []replay.Death
-	idx       replay.PlayerIndexTable
+	deaths    []types.Death
+	idx       types.PlayerIndexTable
 }

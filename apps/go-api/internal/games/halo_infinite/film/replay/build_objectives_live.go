@@ -250,7 +250,7 @@ func attachFlagLayer(doc *ReplayDocument, carries []FlagCarry, cov *FlagCarriesC
 }
 
 // deathInstantsOf traduit le fil des morts du rejeu dans la forme qu'attend le pont d'identite.
-func deathInstantsOf(deaths []Death) []types.DeathInstant {
+func deathInstantsOf(deaths []types.Death) []types.DeathInstant {
 	out := make([]types.DeathInstant, 0, len(deaths))
 	for _, d := range deaths {
 		out = append(out, types.DeathInstant{

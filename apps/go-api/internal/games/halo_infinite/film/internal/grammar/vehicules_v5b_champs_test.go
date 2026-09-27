@@ -23,6 +23,8 @@ import (
 	"fmt"
 	"sort"
 	"testing"
+
+	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 )
 
 // v5bMarge élargit le balayage de part et d'autre du bloc : la position d'insertion `p` est
@@ -60,13 +62,13 @@ func v5bFormes() []v5bForme {
 		out = append(out, v5bForme{
 			Nom: "brut-" + e.Nom, Cible: "slot",
 			Lire: func(pay []byte, at int, _ uint32) (uint32, bool) {
-				return e.Slot(kfReadBits(pay, at, e.Largeur)), true
+				return e.Slot(source.BitsBourres(pay, at, e.Largeur)), true
 			},
 		})
 		out = append(out, v5bForme{
 			Nom: "brut-idx-" + e.Nom, Cible: "index",
 			Lire: func(pay []byte, at int, _ uint32) (uint32, bool) {
-				return e.Slot(kfReadBits(pay, at, e.Largeur)), true
+				return e.Slot(source.BitsBourres(pay, at, e.Largeur)), true
 			},
 		})
 	}
@@ -96,7 +98,7 @@ func v5bFormes() []v5bForme {
 	out = append(out, v5bForme{
 		Nom: "siège R(6)", Cible: "siege",
 		Lire: func(pay []byte, at int, _ uint32) (uint32, bool) {
-			return uint32(kfReadBits(pay, at, vehicleSeatBits)), true
+			return uint32(source.BitsBourres(pay, at, vehicleSeatBits)), true
 		},
 	})
 	return out

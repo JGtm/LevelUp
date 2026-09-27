@@ -32,7 +32,11 @@ package grammar
 // changement casserait des empreintes gelées. Les deux se rejoignent au pas 4 de M2 (« une
 // seule porte aux octets ») ; la découverte est consignée au plan § 4 (D1 (1.9.10)).
 
-import "sort"
+import (
+	"sort"
+
+	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
+)
 
 // marchViews est le nombre de VUES de réplication déroulées par paquet. Huit, valeur de
 // `killsource` : une mort peut vivre dans une vue > 0, et la mesure V13 a été conduite sous
@@ -100,7 +104,7 @@ func (tl *marchTimeline) advanceTo(at uint64) *World {
 }
 
 // marchHasEvents dit si le paquet porte une liste d'événements (bit 1 du payload).
-func marchHasEvents(pay []byte) bool { return kfBitAt(pay, 1) != 0 }
+func marchHasEvents(pay []byte) bool { return source.BitAt(pay, 1) != 0 }
 
 // marchSignature123 : un delta du slot de signature décode-t-il en `s`, finit-il exactement
 // `marchSignatureBits` plus loin, avec un composant unique ?
@@ -120,7 +124,7 @@ func marchLocateStrict(pay []byte, w *World, cfg FrameConfig) int {
 	defer cfg.Obs.neutraliserEtatsDeMouvement()() // essais d offset : aucune lecture publiee
 	nb := len(pay) * 8
 	for s := 2; s+marchSignatureBits < nb; s++ {
-		if kfBitAt(pay, s-1) != 0 {
+		if source.BitAt(pay, s-1) != 0 {
 			continue
 		}
 		if marchSignature123(pay, s, w, cfg) {
@@ -136,7 +140,7 @@ func marchLocateFallback(pay []byte, w *World, cfg FrameConfig) int {
 	defer cfg.Obs.neutraliserEtatsDeMouvement()() // essais d offset : aucune lecture publiee
 	nb := len(pay) * 8
 	for s := 2; s+16 < nb; s++ {
-		if kfBitAt(pay, s-1) != 0 {
+		if source.BitAt(pay, s-1) != 0 {
 			continue
 		}
 		rec, _, ok := TryDeltaAt(pay, s, w, cfg)

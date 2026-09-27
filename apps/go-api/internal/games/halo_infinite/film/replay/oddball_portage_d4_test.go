@@ -87,7 +87,7 @@ func TestEtatVivantOddballPortage(t *testing.T) {
 	if !ok {
 		return
 	}
-	clockUS, err := ScanFilmClockOrigin(dir)
+	clockUS, err := grammar.ScanFilmClockOrigin(dir)
 	if err != nil {
 		t.Fatalf("%s : origine d'horloge illisible : %v", id, err)
 	}
@@ -102,7 +102,7 @@ func TestEtatVivantOddballPortage(t *testing.T) {
 
 	src, _ := objOpenFilm(t, root, id)
 	recs := objectives.StatRecords(src)
-	deaths, err := ScanFilmDeaths(dir)
+	deaths, err := grammar.ScanFilmDeaths(dir)
 	if err != nil {
 		t.Fatalf("%s : fil des morts illisible : %v", id, err)
 	}

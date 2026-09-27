@@ -3,7 +3,7 @@ package main
 // decode.go — L'ENFANT : decode UN film sous la sentinelle memoire et emet le dump tague.
 //
 // AUCUNE base : le pont slot->xuid vient du fil des morts du film (SlotIdentityByDeaths) et le
-// gamertag vient du MEME fil (replay.Death.Gamertag, lu dans le film). Tout tient hors ligne.
+// gamertag vient du MEME fil (types.Death.Gamertag, lu dans le film). Tout tient hors ligne.
 //
 // La sentinelle n'a droit de cite que dans un processus sans ecriture : c'est le cas, ce binaire
 // n'ouvre aucune base et n'ecrit que sur stdout (le parent capte).
@@ -19,7 +19,7 @@ import (
 	"levelup/go-api/internal/filmproc"
 	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 	"levelup/go-api/internal/games/halo_infinite/film/filmcache"
-	"levelup/go-api/internal/games/halo_infinite/film/replay"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // sweepMaxComp : dernier index de composant balaye (archetype 6 = 28 emplacements, 0..27).
@@ -64,7 +64,7 @@ func decodeFilm(cache, id string) error {
 		return fmt.Errorf("film absent du cache (%s)", cache)
 	}
 	recs, truncated := decfilm.StatRecordsCtx(context.Background(), film, id)
-	deaths, err := replay.ScanDeaths(film)
+	deaths, err := decfilm.ScanDeaths(film)
 	if err != nil {
 		return fmt.Errorf("fil des morts : %w", err)
 	}
@@ -79,7 +79,7 @@ func decodeFilm(cache, id string) error {
 }
 
 // emitGamertags emet le gamertag lu DANS le film pour chaque xuid (deduplique).
-func emitGamertags(id string, deaths []replay.Death) {
+func emitGamertags(id string, deaths []types.Death) {
 	seen := map[uint64]string{}
 	for _, d := range deaths {
 		if d.Gamertag != "" {
@@ -92,7 +92,7 @@ func emitGamertags(id string, deaths []replay.Death) {
 }
 
 // emitDeaths emet les instants de mort par xuid (horloge du match, ms).
-func emitDeaths(id string, deaths []replay.Death) {
+func emitDeaths(id string, deaths []types.Death) {
 	byX := map[uint64][]int{}
 	for _, d := range deaths {
 		byX[d.XUID] = append(byX[d.XUID], int(d.TimeMS))

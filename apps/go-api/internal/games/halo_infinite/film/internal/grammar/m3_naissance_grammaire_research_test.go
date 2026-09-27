@@ -23,6 +23,8 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+
+	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 )
 
 // m3Catalogue rend les familles (moities hautes) que le document nomme.
@@ -263,7 +265,7 @@ func TestM3NaissanceBits(t *testing.T) {
 				if p >= len(pay)*8 {
 					break
 				}
-				sb.WriteByte('0' + byte(PeekBits(pay, p, 1)))
+				sb.WriteByte('0' + byte(source.BitsTolerants(pay, p, 1)))
 			}
 			t.Logf("   +%04d %s", o, sb.String())
 		}
@@ -289,7 +291,7 @@ func TestM3NaissanceExport(t *testing.T) {
 	bits := func(pay []byte, de, n int) string {
 		var b strings.Builder
 		for k := 0; k < n && de+k < len(pay)*8; k++ {
-			b.WriteByte('0' + byte(PeekBits(pay, de+k, 1)))
+			b.WriteByte('0' + byte(source.BitsTolerants(pay, de+k, 1)))
 		}
 		return b.String()
 	}
@@ -365,8 +367,8 @@ func TestM3ImageCleBipede(t *testing.T) {
 				fam := uint32(0)
 				for _, cr := range tr.Comps {
 					if cr.Index == 43 {
-						if PeekBits(pay, cr.StartBit, 1) == 1 {
-							fam = uint32(PeekBits(pay, cr.StartBit+1, 32))
+						if source.BitsTolerants(pay, cr.StartBit, 1) == 1 {
+							fam = uint32(source.BitsTolerants(pay, cr.StartBit+1, 32))
 						}
 					}
 				}

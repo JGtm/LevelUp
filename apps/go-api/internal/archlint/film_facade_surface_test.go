@@ -114,7 +114,24 @@ const exigenceDeJustificationDatee = "UNE HAUSSE EXIGE UNE JUSTIFICATION DATEE D
 	"jamais un chiffre change seul."
 
 // plafondSurfaceFacade — declarations exportees de premier niveau de la facade.
-const plafondSurfaceFacade = 166 // 2026-09-17 — base a5d15e634
+// 170 LE 2026-09-26 (lot J4.2 du PLAN_SUITE_AUDIT_DECODEUR_FILM, base `7e8730281` re-mesuree : 166) :
+// QUATRE renvois neufs de la famille `grammar` — `ScanClockOrigin`, `ScanDeaths`, `ScanFilmDeaths`,
+// `ScanPlayerIndices`. Ce ne sont pas des symboles NEUFS du decodeur : ce sont les quatre lectures du
+// pont d identite que `sync/killcollector`, `replaybuild` et quatre outils `cmd/` appelaient dans la
+// couche de publication, descendues en `grammar` (DU-3 = S1, « replay ne decode rien »). Le
+// compagnon baisse d autant (281 -> 276, ci-dessous).
+// 173 LE 2026-09-26 (lot J4.3, base `4c4452c05` re-mesuree : 170) : L ETAGE UNIQUE du pont d identite
+// — `ScanPontDIdentite` et ses deux types, `OptionsDuPont` / `LecturesDuPont`, que
+// `sync/killcollector` doit NOMMER pour fournir sa politique (roster de l index) et lire les
+// six lectures. Les quatre renvois de J4.2 restent : des tests et `replaybuild` les citent.
+// 165 LE 2026-09-26 (lot J4.5, meme base) : HUIT symboles sans consommateur retires. L unique
+// consommateur hors du decodeur de `LecteurSur` et `Paquets` (le lecteur de bits et le marcheur de
+// paquets), l outil de recherche `cmd/rdata_weapon_scan`, est descendu sous
+// `film/research/cmd_rdata_weapon_scan` et lit les couches internes ; avec eux tombent les six
+// symboles qu il etait seul a citer (`DecodeFrameRecords`, `FrameConfig`, `NewWorld`,
+// `ProfilDeBalayageParDefaut`, `Registry`, `World`). `Inflate` reste : il a des consommateurs de
+// production (ADR 0034, amendement du 2026-09-26 bis, D-2).
+const plafondSurfaceFacade = 165 // 2026-09-26 — J4.5 sur 4c4452c05 : 173 - 8 (consommateur de recherche descendu sous film/research)
 
 // plafondSurfaceReplay — identifiants `replay.<Symbole>` DISTINCTS cites hors de `film/`.
 //
@@ -256,7 +273,17 @@ const plafondSurfaceFacade = 166 // 2026-09-17 — base a5d15e634
 //	                                           de la bascule de `replaybuild` fabrique des faits
 //	                                           frais pour une entree de catalogue, donc nomme
 //	                                           `replay.EmpreinteDeCle`. UN symbole neuf.
-const plafondSurfaceReplay = 281 // 2026-09-26 — audit(J3.4, J3.5) sur 08293ae55 : 278 + 3 (FilmFactsEntete, GardesDe, EmpreinteDeCle)
+//	276  audit(J4.2) (2026-09-26)              BAISSE : les lectures du pont d identite quittent la
+//	                                           couche de publication pour `grammar` (DU-3 = S1).
+//	                                           CINQ identifiants disparaissent hors de `film/` —
+//	                                           `Death`, `PlayerIndexTable` (devenus `types.X`),
+//	                                           `ScanClockOrigin`, `ScanFilmDeaths`,
+//	                                           `ScanPlayerIndices` (devenus `decfilm.X`) ;
+//	                                           `ScanDeaths` reste cite par deux commentaires
+//	                                           historiques de
+//	                                           `film_finalise_predicate_test.go`. Re-mesure sur
+//	                                           `7e8730281` : 281.
+const plafondSurfaceReplay = 276 // 2026-09-26 — audit(J4.2) sur 7e8730281 : 281 - 5 (lectures du pont descendues en grammar)
 
 // plafondsParFamilleFacade — la surface de la facade VENTILEE PAR PAQUET D ORIGINE.
 //
@@ -268,13 +295,13 @@ const plafondSurfaceReplay = 281 // 2026-09-26 — audit(J3.4, J3.5) sur 08293ae
 // A quoi elle sert : un total qui ne bouge pas peut cacher un symbole retire d un cote et ajoute
 // de l autre. La ventilation nomme alors la couche qui a grossi.
 var plafondsParFamilleFacade = map[string]int{
-	"grammar":    46, // 2026-09-17 — base a5d15e634
+	"grammar":    46, // 2026-09-26 — J4.2 : +4 (lectures du pont) ; J4.3 : +3 (etage du pont) ; J4.5 : -7 (DecodeFrameRecords, FrameConfig, LecteurSur, NewWorld, ProfilDeBalayageParDefaut, Registry, World)
 	"objectives": 37,
 	"killsource": 36, // 2026-09-26 — lot J3.3 : `decfilm.Rev` renvoie a `killsource.Rev` (la famille `facts` disparait avec son paquet ; total inchange)
 	"fallback":   11,
 	"types":      10,
 	"profile":    8,
-	"source":     7,
+	"source":     6, // 2026-09-26 — J4.5 : -1 (Paquets)
 	"weaponscan": 5,
 	"weaponv3":   4,
 	"positions":  2,

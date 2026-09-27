@@ -1,5 +1,9 @@
 package grammar
 
+import (
+	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
+)
+
 // player_entities_entetes.go — CE QUI PROUVE UNE ABSENCE : L'EN-TETE EXACT, CHERCHE PARTOUT (lot
 // D-fix de la campagne « retours rejeu », reprise apres la revue adverse du 2026-09-24, constat
 // DFIX-R2).
@@ -36,7 +40,7 @@ func slotsDEntetesExacts(pay []byte) map[int]bool {
 	out := map[int]bool{}
 	total := len(pay) * 8
 	for q := 0; q+64 <= total; q++ {
-		id := kfReadBits(pay, q, 32)
+		id := source.BitsBourres(pay, q, 32)
 		if id>>30 == 0 {
 			continue
 		}
@@ -44,7 +48,7 @@ func slotsDEntetesExacts(pay []byte) map[int]bool {
 		if slot >= kfTableCap {
 			continue
 		}
-		if kfReadBits(pay, q+32, 32) == managedPlayerTypeIndex {
+		if source.BitsBourres(pay, q+32, 32) == managedPlayerTypeIndex {
 			out[slot] = true
 		}
 	}

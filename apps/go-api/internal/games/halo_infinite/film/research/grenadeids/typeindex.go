@@ -14,7 +14,7 @@ package grenadeids
 //
 // LE SIXIEME BIT EST JUSTE AVANT. Le typeIndex d un record fait SIX bits — `traverse.go:94`
 // (`t.TypeIndex = uint32(br.ReadBits(6))`) et `keyframe_fullstate_loop.go:88`
-// (`kfReadBits(pay, recBit+keyframeRecordTIBit, 6)`). Le marqueur commence au deuxieme de ces
+// (`source.BitsBourres(pay, recBit+keyframeRecordTIBit, 6)`). Le marqueur commence au deuxieme de ces
 // six bits : son bit de poids fort (valeur 32) est donc a `marqueur - 1`.
 //
 //	41 = 0b101001  -> bit a -1 : 1
@@ -24,7 +24,7 @@ package grenadeids
 // autres. La seule position ou il manque est `marqueur = 0` (debut de payload), comptee a part
 // — jamais devinee a zero en silence.
 
-import "levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+import "levelup/go-api/internal/games/halo_infinite/film/internal/source"
 
 // bitsTypeIndexBasDuMarqueur : les cinq bits bas du typeIndex, en tete du marqueur.
 const bitsTypeIndexBasDuMarqueur = 5
@@ -32,11 +32,11 @@ const bitsTypeIndexBasDuMarqueur = 5
 // typeIndexDuRecord rend le typeIndex complet du record dont le marqueur est a `bp`, et si son
 // bit de poids fort etait hors du payload (auquel cas seul le reste module 32 est connu).
 func typeIndexDuRecord(pay []byte, bp int) (int, bool) {
-	bas := int(grammar.PeekBits(pay, bp, bitsTypeIndexBasDuMarqueur))
+	bas := int(source.BitsTolerants(pay, bp, bitsTypeIndexBasDuMarqueur))
 	if bp < 1 {
 		return bas, true
 	}
-	return int(grammar.PeekBits(pay, bp-1, 1))<<bitsTypeIndexBasDuMarqueur | bas, false
+	return int(source.BitsTolerants(pay, bp-1, 1))<<bitsTypeIndexBasDuMarqueur | bas, false
 }
 
 // FiltrerParTi rend les occurrences dont le typeIndex resolu vaut `ti`. `ti < 0` les rend

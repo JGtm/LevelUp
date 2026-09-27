@@ -114,7 +114,7 @@ func BuildFromFilmAvecFaits(matchID, titleSlug string, film *source.Film, opt Op
 // verdict sortait par un second retour de [scanFilmInputs] puis une affectation dans
 // [BuildFromFilmAvecFaits], deux maillons qu aucun test ne pouvait atteindre (la seule bobine du
 // depot n a aucune image-cle de bipede, et le balayage des positions la refuse). Ici, le trajet
-// « octets du film -> verdict -> document » tient dans [filmScan.lireLeFilDesMorts] puis cette
+// « octets du film -> verdict -> document » tient dans [filmScan.poserLeFilDesMorts] puis cette
 // methode, et `TestLeBalayagePublieLeVerdictDuFilDesMorts` le parcourt sur de vrais octets.
 //
 // `opt` est celui de l APPELANT (identite du film, compteur de replis), pas `s.opt` : le
@@ -165,6 +165,9 @@ type filmScan struct {
 	fc      *grammar.FilmContext
 	scan    grammar.ScanFilmOptions
 	world   profile.Vec3Range
+	// pont porte les six lectures du pont d identite, faites d un seul appel par l etage unique
+	// (`grammar.ScanPontDIdentite`, lot J4.3) et posees par les phases a leur place d avant.
+	pont grammar.LecturesDuPont
 	// opt porte ce que l'APPELANT a fourni : l'observateur, son horloge, et les gardes de mode
 	// des trois calques qui ne se balaient que sur demande (drapeau, zones, bombe). Les
 	// balayages n'y ECRIVENT jamais — leurs sorties vont dans `in`.

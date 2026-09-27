@@ -1,4 +1,4 @@
-package filmcache
+package finalise
 
 // finalise.go — UN FILM N'EST ARCHIVE, DECODE NI CUIT QUE FINALISE (lot L3 de
 // PLAN_RETOURS_REJEU_2026-09-23, 2026-09-23).
@@ -16,12 +16,21 @@ package filmcache
 //
 // # UN SEUL PREDICAT, ET UN RATCHET
 //
-// [Finalise] est LE predicat : le writer ([Write]), le telechargement
+// [Finalise] est LE predicat : le writer (`filmcache.Write`), le telechargement
 // (`sync/haloclient.fetchFilmChunks`), le killsource (`sync/killcollector.LocalCacheFilms`), la
-// cuisson (`replaybuild`) et le fil des morts (`replay.ScanDeaths`) le partagent. Une comparaison
+// cuisson (`replaybuild`) et le fil des morts (`grammar.ScanDeaths`) le partagent. Une comparaison
 // au type 3 recopiee ailleurs re-divergerait : `archlint/film_finalise_predicate_test.go` interdit
 // toute comparaison au type des temps forts hors de ce fichier (allowlist datee des sites
 // anterieurs au lot, chacun avec son critere de retrait).
+//
+// # POURQUOI UNE FEUILLE (lot J4.2 du PLAN_SUITE_AUDIT_DECODEUR_FILM, 2026-09-26)
+//
+// Ce fichier vivait dans `film/filmcache`. La lecture du fil des morts, descendue en `grammar`,
+// choisit son morceau par ce predicat : importer `filmcache` aurait fait entrer dans le perimetre
+// de revision de `grammar` le cache disque et, par `observability` -> `ctxkeys`, `internal/domain`
+// entier (toute modification du domaine aurait rougi le gate de la grammaire). Le predicat n'a
+// besoin que de la bibliotheque standard : il est sorti dans cette FEUILLE, sans alias laisse
+// derriere lui (precedent J3.3b, `domain/objectiveevent`).
 //
 // # CE QUE LA REGLE COUTE SI ELLE SE TROMPE
 //

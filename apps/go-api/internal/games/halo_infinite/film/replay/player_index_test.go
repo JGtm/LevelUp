@@ -22,7 +22,12 @@ package replay
 //	                                                       xuids ; les inclure ecraserait la bonne
 //	                                                       table par une table nulle
 
-import "testing"
+import (
+	"testing"
+
+	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
+)
 
 // TestRosterFromDeathsIsStableAndDeduplicated : le roster est une LECTURE, lui aussi.
 //
@@ -30,7 +35,7 @@ import "testing"
 // de donnees, et il alimente une resolution qui doit etre reproductible d une execution a
 // l autre. Un ordre d apparition dependrait du decodage du chunk highlight.
 func TestRosterFromDeathsIsStableAndDeduplicated(t *testing.T) {
-	deaths := []Death{
+	deaths := []types.Death{
 		{XUID: 300, TimeMS: 10}, {XUID: 100, TimeMS: 20}, {XUID: 300, TimeMS: 30},
 		{XUID: 200, TimeMS: 40}, {XUID: 100, TimeMS: 50},
 	}
@@ -56,14 +61,14 @@ func TestRosterFromDeathsIsStableAndDeduplicated(t *testing.T) {
 // deux joueurs sur la meme trace, et rien a l ecran ne le dirait — exactement le mode d echec
 // que ce chantier refuse (« je prefere rien afficher que quelque chose de completement faux »).
 func TestInjectiveOrEmptyRefusesASharedIndex(t *testing.T) {
-	bonne := PlayerIndexTable{ByXUID: map[uint64]int{10: 0, 20: 1, 30: 2}, Readings: 26}
+	bonne := types.PlayerIndexTable{ByXUID: map[uint64]int{10: 0, 20: 1, 30: 2}, Readings: 26}
 	got, col := injectiveOrEmpty(bonne)
 	if col != 0 || len(got.ByXUID) != 3 {
 		t.Errorf("une table injective a ete alteree : %d collision(s), %d entree(s)",
 			col, len(got.ByXUID))
 	}
 
-	partagee := PlayerIndexTable{ByXUID: map[uint64]int{10: 1, 20: 1, 30: 2}, Readings: 26,
+	partagee := types.PlayerIndexTable{ByXUID: map[uint64]int{10: 1, 20: 1, 30: 2}, Readings: 26,
 		Disagreements: 0}
 	vide, col := injectiveOrEmpty(partagee)
 	if col != 1 {
@@ -80,27 +85,17 @@ func TestInjectiveOrEmptyRefusesASharedIndex(t *testing.T) {
 	}
 }
 
-// TestScanFilmPlayerIndicesRefusesWithoutARoster : sans roster, il n y a rien a resoudre.
-func TestScanFilmPlayerIndicesRefusesWithoutARoster(t *testing.T) {
-	if _, err := ScanFilmPlayerIndices(MiniFilmDir, nil); err == nil {
-		t.Error("aucune erreur sur un roster vide : le resolveur balayerait le film pour rien")
-	}
-	if _, err := ScanFilmPlayerIndices("testdata/film-qui-n-existe-pas", []uint64{1}); err == nil {
-		t.Error("aucune erreur sur un repertoire sans chunk")
-	}
-}
-
 // TestScanFilmPlayerIndicesReadsTheFilm : LA TABLE SE LIT, SUR DU BINAIRE REEL.
 //
 // Elle etait autrefois CALCULEE par affectation de cout minimal sur les 8! permutations : la
 // bonne table sortait, mais par un choix a marge etroite (32 contradictions contre 39 pour la
 // deuxieme). Le film l ecrit ; ce test verifie qu on la lit toujours, et qu elle est injective.
 func TestScanFilmPlayerIndicesReadsTheFilm(t *testing.T) {
-	deaths, err := ScanFilmDeaths(MiniFilmDir)
+	deaths, err := grammar.ScanFilmDeaths(MiniFilmDir)
 	if err != nil {
 		t.Fatalf("ScanFilmDeaths : %v", err)
 	}
-	idx, err := ScanFilmPlayerIndices(MiniFilmDir, rosterFromDeaths(deaths))
+	idx, err := grammar.ScanFilmPlayerIndices(MiniFilmDir, rosterFromDeaths(deaths))
 	if err != nil {
 		t.Fatalf("ScanFilmPlayerIndices : %v", err)
 	}

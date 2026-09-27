@@ -24,6 +24,7 @@ import (
 
 	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 	"levelup/go-api/internal/observability"
 )
 
@@ -43,7 +44,7 @@ func registreSynthetique(positions []decfilm.BipedPosition,
 		sieges = append(sieges, s)
 	}
 	sort.Slice(sieges, func(i, j int) bool { return sieges[i] < sieges[j] })
-	idx := replay.PlayerIndexTable{ByXUID: map[uint64]int{}, Readings: 1}
+	idx := types.PlayerIndexTable{ByXUID: map[uint64]int{}, Readings: 1}
 	creations := make([]decfilm.BipedCreation, 0, len(sieges))
 	for i, s := range sieges {
 		idx.ByXUID[slotXUID[s]] = i
