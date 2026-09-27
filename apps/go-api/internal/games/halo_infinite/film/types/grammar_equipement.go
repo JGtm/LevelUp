@@ -163,15 +163,24 @@ type EquipmentCreationStats struct {
 	WithAmmo int
 }
 
-// EquipmentLifeKey identifie une vie d'objet du monde : LA PAIRE (slot, génération), jamais le
-// slot seul — le pool de slots reboucle et la génération ne fait que 2 bits.
-type EquipmentLifeKey struct{ Slot, Gen uint32 }
+// LifeKey identifie UNE VIE d'entité du film : LA PAIRE (slot, génération) du handle, jamais
+// le slot seul — le pool de slots reboucle et la génération ne fait que 2 bits. C'est la clé
+// de TOUTES les entités que le film désigne par un handle : un objet du monde (équipement,
+// arme au sol, projectile), un véhicule, et le corps d'un bipède — le même slot porte les
+// corps successifs de plusieurs joueurs quand le pool reboucle (BTB long, constat GB-1 de
+// l'audit du 2026-09-24).
+//
+// NÉE `EquipmentLifeKey` pour les objets du monde, renommée au lot J5.1 du
+// PLAN_SUITE_AUDIT_DECODEUR_FILM (2026-09-27, décision DT-7) : la clé existait déjà, on la
+// généralise au lieu d'en créer une seconde. Aucun alias. Le handle se lit en UN point :
+// `grammar.LireHandle`.
+type LifeKey struct{ Slot, Gen uint32 }
 
 // EquipmentPlacement est UNE pose d'objet d'équipement, telle que le film la porte.
 type EquipmentPlacement struct {
 	// Life identifie la vie d'objet (slot, génération) — la clé qui relie le record de création
 	// à la trajectoire décodée des paquets delta.
-	Life EquipmentLifeKey
+	Life LifeKey
 	// T0US est l'instant du record de création : la pose. T1US est le dernier point de la vie
 	// décodée, c'est-à-dire l'instant où l'objet cesse de bouger — une BORNE INFÉRIEURE de sa
 	// durée de vie, jamais sa disparition (cf. l'en-tête de ce fichier). Les deux sur l'horloge
@@ -197,13 +206,13 @@ type EquipmentSpawnEvent struct {
 	// Spawned est la vie d'objet ENGENDRÉE, telle que la référence 1 la désigne : la paire
 	// (slot, génération), exactement la clé qu'un record de création écrit. Ne vaut que si
 	// [EquipmentSpawnEvent.SpawnedValid].
-	Spawned EquipmentLifeKey
+	Spawned LifeKey
 	// SpawnedValid : la référence 1 portait sa garde. Faux sur 6 occurrences sur 931.
 	SpawnedValid bool
 	// Source est la PREMIÈRE référence, rendue BRUTE et non interprétée : elle désigne un
 	// `ti=37` de longue durée que les images-clés voient et qu'aucune création delta ne porte.
 	// PISTE pour l'équipement source d'un déploiement, non instruite (table D du registre 0.E).
-	Source EquipmentLifeKey
+	Source LifeKey
 	// SourceValid : la référence 0 portait sa garde (929 sur 931).
 	SourceValid bool
 	// Ref2Present : la TROISIÈME référence portait sa garde. Comptée et JAMAIS LUE : la mesure

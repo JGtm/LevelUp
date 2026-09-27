@@ -353,7 +353,7 @@ func encodeKeyframes(w *gwriter, kf grammar.WorldObjectKeyframes) {
 	}
 	// L ORDRE DES CLES EST RENDU TOTAL : une map Go s itere au hasard, et un fixture dont les
 	// octets changent a chaque regeneration n est plus un fixture.
-	keys := make([]types.EquipmentLifeKey, 0, len(kf.SeenUS))
+	keys := make([]types.LifeKey, 0, len(kf.SeenUS))
 	for k := range kf.SeenUS {
 		keys = append(keys, k)
 	}
@@ -387,9 +387,9 @@ func decodeKeyframes(r *greader) grammar.WorldObjectKeyframes {
 		kf.TimesUS = append(kf.TimesUS, lastTS)
 	}
 	n = r.compte(3) // cle (slot, gen) + compte d instants
-	kf.SeenUS = make(map[types.EquipmentLifeKey][]uint64, n)
+	kf.SeenUS = make(map[types.LifeKey][]uint64, n)
 	for k := 0; k < n && r.err == nil; k++ {
-		key := types.EquipmentLifeKey{Slot: uint32(r.u()), Gen: uint32(r.u())}
+		key := types.LifeKey{Slot: uint32(r.u()), Gen: uint32(r.u())}
 		np := r.compte(2)
 		seen := make([]uint64, 0, np)
 		lastTS = 0

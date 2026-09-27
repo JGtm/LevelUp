@@ -219,7 +219,8 @@ func scanEquipRecoveryPacket(
 		if uint32(source.BitsStricts(pay, p, 1)) != 1 {
 			continue
 		}
-		slot := uint32(source.BitsStricts(pay, p+1, bipedSlotBits))
+		h := LireHandleDelta(pay, p)
+		slot := h.Slot
 		var w *equipRecoveryWindow
 		for _, cand := range active {
 			if cand.slot == slot {
@@ -232,7 +233,7 @@ func scanEquipRecoveryPacket(
 		}
 		// EN-TÊTE DE PRODUCTION INTACT (R2 §4) : tag=1 et bit 16 nul. Seule la PORTE du
 		// masque (bit 17) distingue les deux formes récupérables.
-		if uint32(source.BitsStricts(pay, p+14, 2)) != 1 || uint32(source.BitsStricts(pay, p+16, 1)) != 0 {
+		if h.Gen != 1 || uint32(source.BitsStricts(pay, p+16, 1)) != 0 {
 			continue
 		}
 		counter, rank, ok := walkEquipRecoveryAt(s, pay, p, total, last)

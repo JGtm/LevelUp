@@ -270,12 +270,12 @@ WithRef	int	-
 WithID	int	-
 WithAmmo	int	-
 
-## EquipmentLifeKey (grammar)
+## LifeKey (grammar)
 Slot	uint32	-
 Gen	uint32	-
 
 ## EquipmentPlacement (grammar)
-Life	types.EquipmentLifeKey	-
+Life	types.LifeKey	-
 T0US	uint64	-
 T1US	uint64	-
 X	float32	-
@@ -288,9 +288,9 @@ Points	int	-
 Chunk	int	-
 PacketIndex	int	-
 TimestampUS	uint64	-
-Spawned	types.EquipmentLifeKey	-
+Spawned	types.LifeKey	-
 SpawnedValid	bool	-
-Source	types.EquipmentLifeKey	-
+Source	types.LifeKey	-
 SourceValid	bool	-
 Ref2Present	bool	-
 

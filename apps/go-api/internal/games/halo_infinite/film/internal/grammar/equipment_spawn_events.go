@@ -142,6 +142,6 @@ func decodeEquipmentSpawnEvent(pay []byte) (ev types.EquipmentSpawnEvent, presen
 }
 
 // spawnLifeKey applique la base mesurée à l'index d'une référence et rend la clé de vie.
-func spawnLifeKey(r guardedRef) types.EquipmentLifeKey {
-	return types.EquipmentLifeKey{Slot: r.Index + equipmentSpawnRefBase, Gen: r.Gen}
+func spawnLifeKey(r guardedRef) types.LifeKey {
+	return types.LifeKey{Slot: r.Index + equipmentSpawnRefBase, Gen: r.Gen}
 }

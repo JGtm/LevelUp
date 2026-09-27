@@ -86,7 +86,7 @@ func gwTestPadScan(t *testing.T) (WorldObjectScan, []grammar.BipedPosition) {
 		},
 		Keyframes: grammar.WorldObjectKeyframes{
 			TimesUS: kf,
-			SeenUS: map[types.EquipmentLifeKey][]uint64{
+			SeenUS: map[types.LifeKey][]uint64{
 				{Slot: 10}: {20_000_000},
 				{Slot: 11}: {40_000_000},
 				{Slot: 12}: {60_000_000},
@@ -302,7 +302,7 @@ func TestGroundWeaponObjectsBorneParLaRepriseDeCle(t *testing.T) {
 		},
 		Keyframes: grammar.WorldObjectKeyframes{
 			TimesUS: []uint64{0, 20_000_000, 40_000_000},
-			SeenUS:  map[types.EquipmentLifeKey][]uint64{{Slot: 40, Gen: 1}: {20_000_000, 40_000_000}},
+			SeenUS:  map[types.LifeKey][]uint64{{Slot: 40, Gen: 1}: {20_000_000, 40_000_000}},
 		},
 	}
 	// Le nuage deborde la derniere image-cle : sans cela la fin du film tomberait dessus et

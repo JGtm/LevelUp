@@ -195,7 +195,7 @@ func e191MesureUnFilm(t *testing.T, root string, f e191Film) ([]e191Pose, bool) 
 		t.Logf("film %s : evenements 103 illisibles (%v) — hors mesure", f.Short8, err)
 		return nil, false
 	}
-	designees := map[types.EquipmentLifeKey][]uint64{}
+	designees := map[types.LifeKey][]uint64{}
 	for _, e := range spawns {
 		if e.SpawnedValid {
 			designees[e.Spawned] = append(designees[e.Spawned], e.TimestampUS)
@@ -321,7 +321,7 @@ func e191ObjetsPortes(t *testing.T) map[string]bool {
 
 // e191UnePose annote UNE pose avec ce que chaque signal en dit.
 func e191UnePose(p types.EquipmentPlacement, film string,
-	designees map[types.EquipmentLifeKey][]uint64, portes map[string]bool, ctx e191Ctx,
+	designees map[types.LifeKey][]uint64, portes map[string]bool, ctx e191Ctx,
 ) e191Pose {
 	fam := ctx.familles[p.GlobalID]
 	if fam == "" {

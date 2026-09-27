@@ -79,7 +79,7 @@ const vehicleRelayMarginFrames = 0
 // vehicleLife est une vie de vehicule telle que le recensement la borne, decoupee de sa voisine
 // du meme slot.
 type vehicleLife struct {
-	key types.EquipmentLifeKey
+	key types.LifeKey
 	// firstUS / lastUS : premiere et derniere image-cle qui RECENSE la vie.
 	firstUS, lastUS uint64
 	// goneByUS est la premiere image-cle qui ne la recense PLUS : la premiere preuve d absence.
@@ -216,14 +216,14 @@ func assignVehicleWindows(lives []vehicleLife) {
 // que 2 bits, et ce record est celui d un objet ulterieur du meme (slot, gen). Il ne pesait pas tant
 // que le plus precoce gagnait ; il le peut depuis que F-1 ecarte une fausse naissance anterieure
 // (revue adverse du lot M1, 2026-09-24).
-func vehicleSpawnsByLife(cre []types.EquipmentCreation, lives []vehicleLife) map[types.EquipmentLifeKey]types.EquipmentCreation {
-	fin := make(map[types.EquipmentLifeKey]uint64, len(lives))
+func vehicleSpawnsByLife(cre []types.EquipmentCreation, lives []vehicleLife) map[types.LifeKey]types.EquipmentCreation {
+	fin := make(map[types.LifeKey]uint64, len(lives))
 	for _, l := range lives {
 		fin[l.key] = l.hiUS
 	}
-	out := map[types.EquipmentLifeKey]types.EquipmentCreation{}
+	out := map[types.LifeKey]types.EquipmentCreation{}
 	for _, c := range cre {
-		k := types.EquipmentLifeKey{Slot: c.Slot, Gen: c.Gen}
+		k := types.LifeKey{Slot: c.Slot, Gen: c.Gen}
 		if hi, vie := fin[k]; !vie || c.TimestampUS > hi {
 			continue
 		}

@@ -29,7 +29,7 @@ import (
 
 // lecPose fabrique une pose brute avec une CLE DE VIE choisie — c'est elle que l'evenement 103
 // designe, et sans elle la lecture n'a rien a apparier.
-func lecPose(frame int, globalID uint32, life types.EquipmentLifeKey, x float32,
+func lecPose(frame int, globalID uint32, life types.LifeKey, x float32,
 ) types.EquipmentPlacement {
 	p := origPoseOf(frame, globalID, x, 0, 0)
 	p.Life = life
@@ -37,10 +37,10 @@ func lecPose(frame int, globalID uint32, life types.EquipmentLifeKey, x float32,
 }
 
 // lecSpawn fabrique un evenement 103 qui designe `life` a la frame donnee.
-func lecSpawn(frame int, life types.EquipmentLifeKey) types.EquipmentSpawnEvent {
+func lecSpawn(frame int, life types.LifeKey) types.EquipmentSpawnEvent {
 	return types.EquipmentSpawnEvent{
 		TimestampUS: eqTS(frame), Spawned: life, SpawnedValid: true,
-		Source: types.EquipmentLifeKey{Slot: 900}, SourceValid: true,
+		Source: types.LifeKey{Slot: 900}, SourceValid: true,
 	}
 }
 
@@ -90,7 +90,7 @@ func lecCuisson(in equipmentInputs) ([]EquipmentPlacement, *EquipmentPlacementCo
 // Le VERDICT ne change pas (un panneau n'existe que deploye), mais la PROVENANCE si : c'est
 // exactement la difference que `coverage.placements.byCause` existe pour publier.
 func TestOriginePoseLitLEvenementEngendre(t *testing.T) {
-	vie := types.EquipmentLifeKey{Slot: 1030, Gen: 2}
+	vie := types.LifeKey{Slot: 1030, Gen: 2}
 	pos := []grammar.BipedPosition{origPos(512, 0, 0, 0, 0), origPos(512, 40, 4, 0, 0)}
 	raw := []types.EquipmentPlacement{lecPose(40, wallPanelGlobalID, vie, 4)}
 
@@ -141,7 +141,7 @@ func TestFenetreFausseeNeChangeRienAuPanneau(t *testing.T) {
 		origPos(512, 0, 0, 0, 0), origPos(512, 20, 2, 0, 0), origPos(512, 40, 4, 0, 0),
 	}
 	for _, frame := range []int{20, 40} {
-		vie := types.EquipmentLifeKey{Slot: uint32(1000 + frame), Gen: 1}
+		vie := types.LifeKey{Slot: uint32(1000 + frame), Gen: 1}
 		out, cov, _ := lecCuisson(equipmentInputs{
 			Raw:       []types.EquipmentPlacement{lecPose(frame, wallPanelGlobalID, vie, 4)},
 			Positions: pos,
@@ -162,7 +162,7 @@ func TestFenetreFausseeNeChangeRienAuPanneau(t *testing.T) {
 func TestOriginePoseLitLaMortEcrite(t *testing.T) {
 	pos := []grammar.BipedPosition{origPos(512, 0, 0, 0, 0), origPos(512, 40, 4, 0, 0)}
 	raw := []types.EquipmentPlacement{
-		lecPose(40, wallDeviceGlobalID, types.EquipmentLifeKey{Slot: 1040, Gen: 0}, 4),
+		lecPose(40, wallDeviceGlobalID, types.LifeKey{Slot: 1040, Gen: 0}, 4),
 	}
 
 	out, cov, _ := lecCuisson(equipmentInputs{
@@ -203,7 +203,7 @@ func TestOriginePoseLitLaPriseEcrite(t *testing.T) {
 		origPos(512, 0, 0, 0, 0), origPos(512, 20, 2, 0, 0), origPos(512, 40, 4, 0, 0),
 	}
 	raw := []types.EquipmentPlacement{
-		lecPose(20, wallDeviceGlobalID, types.EquipmentLifeKey{Slot: 1041, Gen: 0}, 2),
+		lecPose(20, wallDeviceGlobalID, types.LifeKey{Slot: 1041, Gen: 0}, 2),
 	}
 
 	out, cov, _ := lecCuisson(equipmentInputs{
@@ -229,7 +229,7 @@ func TestOriginePoseCompteLaContradiction(t *testing.T) {
 	pos := []grammar.BipedPosition{origPos(512, 0, 0, 0, 0), origPos(512, 40, 4, 0, 0)}
 	out, cov, fb := lecCuisson(equipmentInputs{
 		Raw: []types.EquipmentPlacement{
-			lecPose(40, wallDeviceGlobalID, types.EquipmentLifeKey{Slot: 1042, Gen: 0}, 4),
+			lecPose(40, wallDeviceGlobalID, types.LifeKey{Slot: 1042, Gen: 0}, 4),
 		},
 		Positions: pos,
 		Lives:     []lifeSpan{lecVieMorte(512, 0, 40)},
@@ -253,17 +253,17 @@ func TestOriginePoseCompteLaContradiction(t *testing.T) {
 // porte une cause, et une seule. Un ecart signale un chemin de classification qui a fui — la
 // meme regle que l'equilibre des origines, un etage plus bas.
 func TestByCauseSommeAuxPlacements(t *testing.T) {
-	vie := types.EquipmentLifeKey{Slot: 1050, Gen: 3}
+	vie := types.LifeKey{Slot: 1050, Gen: 3}
 	pos := []grammar.BipedPosition{
 		origPos(512, 0, 0, 0, 0), origPos(512, 20, 2, 0, 0), origPos(512, 40, 4, 0, 0),
 	}
 	_, cov, _ := lecCuisson(equipmentInputs{
 		Raw: []types.EquipmentPlacement{
-			lecPose(40, wallPanelGlobalID, vie, 4),                                   // spawn_event
-			lecPose(40, wallDeviceGlobalID, types.EquipmentLifeKey{Slot: 1051}, 4),   // death_written
-			lecPose(20, wallDeviceGlobalID, types.EquipmentLifeKey{Slot: 1052}, 2),   // none
-			lecPose(20, wallDeviceGlobalID, types.EquipmentLifeKey{Slot: 1053}, 300), // no_owner
-			lecPose(20, wallPanelGlobalID, types.EquipmentLifeKey{Slot: 1054}, 300),  // manifest_piece
+			lecPose(40, wallPanelGlobalID, vie, 4),                          // spawn_event
+			lecPose(40, wallDeviceGlobalID, types.LifeKey{Slot: 1051}, 4),   // death_written
+			lecPose(20, wallDeviceGlobalID, types.LifeKey{Slot: 1052}, 2),   // none
+			lecPose(20, wallDeviceGlobalID, types.LifeKey{Slot: 1053}, 300), // no_owner
+			lecPose(20, wallPanelGlobalID, types.LifeKey{Slot: 1054}, 300),  // manifest_piece
 		},
 		Positions: pos,
 		Spawns:    []types.EquipmentSpawnEvent{lecSpawn(40, vie)},
@@ -291,7 +291,7 @@ func TestByCauseSommeAuxPlacements(t *testing.T) {
 // « designer » des poses qu'aucun evenement ne concerne : mesure du 2026-09-15, 3 evenements
 // « designaient » 83 poses de `d9781168`. Le temps est la seconde moitie de la cle.
 func TestDesignationExigeLeTempsEtPasSeulementLaCle(t *testing.T) {
-	vie := types.EquipmentLifeKey{Slot: 1060, Gen: 1}
+	vie := types.LifeKey{Slot: 1060, Gen: 1}
 	src := nouvelleSourceOrigine([]types.EquipmentSpawnEvent{lecSpawn(40, vie)}, nil, nil)
 	cas := []struct {
 		nom   string
@@ -313,7 +313,7 @@ func TestDesignationExigeLeTempsEtPasSeulementLaCle(t *testing.T) {
 			t.Errorf("%s : designe = %v, attendu %v", c.nom, got, c.want)
 		}
 	}
-	autre := lecPose(40, wallPanelGlobalID, types.EquipmentLifeKey{Slot: 1060, Gen: 2}, 0)
+	autre := lecPose(40, wallPanelGlobalID, types.LifeKey{Slot: 1060, Gen: 2}, 0)
 	if src.designeParUnEvenement(autre) {
 		t.Error("une GENERATION differente est designee : la cle de vie est la paire complete")
 	}

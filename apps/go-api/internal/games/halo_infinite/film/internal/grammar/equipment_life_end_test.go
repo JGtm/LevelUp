@@ -97,8 +97,8 @@ func lifeEndRegistry(t *testing.T, dir string) {
 // matière commune aux deux règles comparées.
 func lifeEndRawSamples(
 	dir string, n int, band map[uint32]bool, lg profile.PrecisionDescriptor,
-) map[types.EquipmentLifeKey][]types.ProjectileSample {
-	out := map[types.EquipmentLifeKey][]types.ProjectileSample{}
+) map[types.LifeKey][]types.ProjectileSample {
+	out := map[types.LifeKey][]types.ProjectileSample{}
 	for c := 1; c <= n; c++ {
 		chunk, err := ReadFilmChunk(dir, c)
 		if err != nil {
@@ -111,7 +111,7 @@ func lifeEndRawSamples(
 			pay := p.Payload(chunk)
 			for _, s := range scanProjectileRecords(pay, band, &equipCreationUnitRange, lg) {
 				s.TimestampUS, s.Chunk = p.TimestampUS, c
-				k := types.EquipmentLifeKey{Slot: s.slot, Gen: s.gen}
+				k := types.LifeKey{Slot: s.slot, Gen: s.gen}
 				out[k] = append(out[k], s.ProjectileSample)
 			}
 		}
@@ -146,7 +146,7 @@ func lifeEndGapOnly(pts []types.ProjectileSample) [][]types.ProjectileSample {
 // lifeEndConfirmed est une pose confirmée par l'oracle, réduite à ce que la sonde de queue
 // doit connaître : sa clé de vie, son instant de pose, la fin de son flux de POSITION.
 type lifeEndConfirmed struct {
-	key      types.EquipmentLifeKey
+	key      types.LifeKey
 	gid      uint32
 	t0, t1US uint64
 }
@@ -155,7 +155,7 @@ type lifeEndConfirmed struct {
 // production publie), identifiant par identifiant.
 func lifeEndDurations(
 	t *testing.T, fc *FilmContext, band map[uint32]bool,
-	spans map[types.EquipmentLifeKey][]EquipmentLifeSpan, raw map[types.EquipmentLifeKey][]types.ProjectileSample,
+	spans map[types.LifeKey][]EquipmentLifeSpan, raw map[types.LifeKey][]types.ProjectileSample,
 ) []lifeEndConfirmed {
 	t.Helper()
 	var out []lifeEndConfirmed
@@ -168,7 +168,7 @@ func lifeEndDurations(
 	byID := map[uint32][]pair{}
 	seen := map[[3]uint64]bool{}
 	for _, c := range cre {
-		k := types.EquipmentLifeKey{Slot: c.Slot, Gen: c.Gen}
+		k := types.LifeKey{Slot: c.Slot, Gen: c.Gen}
 		life, hit := MatchEquipmentLife(spans[k], [3]float32{c.X, c.Y, c.Z}, eps, c.TimestampUS)
 		if !hit {
 			continue
@@ -223,7 +223,7 @@ func lifeEndKeyframeCensus(t *testing.T, dir string, n int, confirmed []lifeEndC
 	t.Helper()
 	type kf struct {
 		ts   uint64
-		live map[types.EquipmentLifeKey]bool
+		live map[types.LifeKey]bool
 	}
 	var kfs []kf
 	for c := 1; c <= n; c++ {
@@ -235,10 +235,10 @@ func lifeEndKeyframeCensus(t *testing.T, dir string, n int, confirmed []lifeEndC
 			if p.Type != PacketTypeKeyframe {
 				continue
 			}
-			live := map[types.EquipmentLifeKey]bool{}
+			live := map[types.LifeKey]bool{}
 			for _, r := range WalkKeyframeWorld(p.Payload(chunk)) {
 				if r.TI == EquipmentTypeIndex {
-					live[types.EquipmentLifeKey{Slot: uint32(r.Slot), Gen: uint32(r.Gen)}] = true
+					live[types.LifeKey{Slot: uint32(r.Slot), Gen: uint32(r.Gen)}] = true
 				}
 			}
 			kfs = append(kfs, kf{ts: p.TimestampUS, live: live})
@@ -318,7 +318,7 @@ func lifeEndKeyframeCensus(t *testing.T, dir string, n int, confirmed []lifeEndC
 // construction, sur la même durée et le même balayage.
 func lifeEndTailProbe(
 	t *testing.T, dir string, n int, band map[uint32]bool,
-	raw map[types.EquipmentLifeKey][]types.ProjectileSample, confirmed []lifeEndConfirmed,
+	raw map[types.LifeKey][]types.ProjectileSample, confirmed []lifeEndConfirmed,
 	lg profile.PrecisionDescriptor,
 ) {
 	t.Helper()
@@ -350,7 +350,7 @@ func lifeEndTailProbe(
 	ctrl, ctrlHits := 0, 0
 	for slot := range band {
 		for gen := uint32(0); gen < 4; gen++ {
-			k := types.EquipmentLifeKey{Slot: slot, Gen: gen}
+			k := types.LifeKey{Slot: slot, Gen: gen}
 			if len(raw[k]) > 0 {
 				continue
 			}
@@ -372,8 +372,8 @@ func lifeEndTailProbe(
 
 // lifeEndAllRecords collecte les instants de TOUS les records d'objet du monde de la bande,
 // SANS exiger la position (i0) : c'est le balayage le plus large possible sur cet archétype.
-func lifeEndAllRecords(dir string, n int, band map[uint32]bool, lg profile.PrecisionDescriptor) map[types.EquipmentLifeKey][]uint64 {
-	out := map[types.EquipmentLifeKey][]uint64{}
+func lifeEndAllRecords(dir string, n int, band map[uint32]bool, lg profile.PrecisionDescriptor) map[types.LifeKey][]uint64 {
+	out := map[types.LifeKey][]uint64{}
 	posBits := projPosBits(lg)
 	for c := 1; c <= n; c++ {
 		chunk, err := ReadFilmChunk(dir, c)
@@ -391,7 +391,7 @@ func lifeEndAllRecords(dir string, n int, band map[uint32]bool, lg profile.Preci
 				if !okR || len(rec.Idx) < 2 {
 					continue // >= 2 composants : un masque à un seul index n'est pas sélectif
 				}
-				k := types.EquipmentLifeKey{Slot: rec.Slot, Gen: rec.Gen}
+				k := types.LifeKey{Slot: rec.Slot, Gen: rec.Gen}
 				out[k] = append(out[k], p.TimestampUS)
 				bit = rec.After - 1
 			}

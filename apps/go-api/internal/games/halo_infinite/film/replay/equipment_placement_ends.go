@@ -32,7 +32,7 @@ type placEnd struct {
 func placementEnds(
 	raw []types.EquipmentPlacement, census grammar.WorldObjectKeyframes, clock replayClock,
 ) []placEnd {
-	byLife := map[types.EquipmentLifeKey][]int{}
+	byLife := map[types.LifeKey][]int{}
 	for i, p := range raw {
 		byLife[p.Life] = append(byLife[p.Life], i)
 	}

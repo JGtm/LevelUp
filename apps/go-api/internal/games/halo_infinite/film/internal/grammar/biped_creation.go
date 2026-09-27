@@ -53,7 +53,7 @@ package grammar
 // # LE LECTEUR N'A BESOIN D'AUCUNE HORLOGE
 //
 // La création DÉSIGNE sa vie par le couple `(slot, génération)` du handle — la même clé que
-// `types.EquipmentLifeKey` pour les objets du monde. L'horodatage publié sert au rattachement et aux
+// `types.LifeKey` pour les objets du monde. L'horodatage publié sert au rattachement et aux
 // journaux, jamais à une décision de lecture.
 //
 // HORS LIGNE (parcours de tous les paquets delta du film) — jamais depuis un chemin de requête.
@@ -92,7 +92,7 @@ const bipedCreationPrologueBits = 1 + 8 + 1 + 32 + 1 + bipedCreationIndexBits
 type BipedCreation struct {
 	// Slot et Generation identifient LA VIE du corps — la paire, pas le slot seul : le pool de
 	// slots reboucle et la génération ne fait que deux bits. C'est la même clé de vie que
-	// `types.EquipmentLifeKey` emploie pour les objets du monde.
+	// `types.LifeKey`.
 	Slot, Generation uint32
 	// ParticipantIndex est l'index de participant ABSOLU du propriétaire du corps, dans l'espace
 	// que `PlayerIndexTable` publie pour les humains et que `BOT_METADATA` emploie pour les bots

@@ -63,13 +63,13 @@ type EquipmentLifeSpan struct {
 // initiale de cet oracle) perdait la moitié des poses sur les films BTB : un record de création
 // tardif ne retombait sur AUCUN premier point connu. On garde donc toutes les vies de la clé,
 // triées par instant, et c'est la POSITION qui départage.
-func EquipmentLifeSpans(tracks []types.ProjectileTrack) map[types.EquipmentLifeKey][]EquipmentLifeSpan {
-	out := make(map[types.EquipmentLifeKey][]EquipmentLifeSpan, len(tracks))
+func EquipmentLifeSpans(tracks []types.ProjectileTrack) map[types.LifeKey][]EquipmentLifeSpan {
+	out := make(map[types.LifeKey][]EquipmentLifeSpan, len(tracks))
 	for _, tr := range tracks {
 		if len(tr.Pts) == 0 {
 			continue
 		}
-		k := types.EquipmentLifeKey{Slot: tr.Slot, Gen: tr.Gen}
+		k := types.LifeKey{Slot: tr.Slot, Gen: tr.Gen}
 		p := tr.Pts[0]
 		out[k] = append(out[k], EquipmentLifeSpan{
 			T0US:   p.TimestampUS,
@@ -225,7 +225,7 @@ func (c MPPCalibration) String() string {
 // poses inventées, et un identifiant lu 3 bits trop tôt est une invention.
 // ENVELOPPE D2, HORS PRODUCTION ; la cuisson appelle [CalibrateMPPWidthsOf].
 func CalibrateMPPWidths(
-	dir string, wr *profile.Vec3Range, band map[uint32]bool, spans map[types.EquipmentLifeKey][]EquipmentLifeSpan,
+	dir string, wr *profile.Vec3Range, band map[uint32]bool, spans map[types.LifeKey][]EquipmentLifeSpan,
 ) (MPPCalibration, bool) {
 	film, err := source.LoadDir(dir, nil)
 	if err != nil {
@@ -237,7 +237,7 @@ func CalibrateMPPWidths(
 // CalibrateMPPWidthsOf mesure le découpage du bloc MPP sur un film DEJA CHARGE.
 func CalibrateMPPWidthsOf(
 	fc *FilmContext, wr *profile.Vec3Range, band map[uint32]bool,
-	spans map[types.EquipmentLifeKey][]EquipmentLifeSpan,
+	spans map[types.LifeKey][]EquipmentLifeSpan,
 ) (MPPCalibration, bool) {
 	cal := MPPCalibration{ByWidths: map[profile.MPPWidths]int{}, Lives: len(spans)}
 	if wr == nil || len(band) == 0 || len(spans) == 0 {
@@ -288,7 +288,7 @@ func CalibrateMPPWidthsOf(
 // mppCalibProbe porte ce que la marche d'un payload doit connaître (règle des 5 paramètres).
 type mppCalibProbe struct {
 	walk  equipCreationWalk
-	spans map[types.EquipmentLifeKey][]EquipmentLifeSpan
+	spans map[types.LifeKey][]EquipmentLifeSpan
 	eps   [3]float32
 	cal   *MPPCalibration
 }
@@ -309,7 +309,7 @@ func (pr *mppCalibProbe) scanPayload(pay []byte, atUS uint64) {
 		if !ok {
 			continue
 		}
-		spans := pr.spans[types.EquipmentLifeKey{Slot: slot, Gen: gen}]
+		spans := pr.spans[types.LifeKey{Slot: slot, Gen: gen}]
 		if len(spans) == 0 {
 			continue // une vie que les paquets delta n'ont pas vue ne peut rien arbitrer
 		}

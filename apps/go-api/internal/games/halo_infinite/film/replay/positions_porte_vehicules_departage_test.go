@@ -20,7 +20,7 @@ import (
 // 1,5 s en (5, 5), avec les echantillons donnes.
 func departageVie(t *testing.T, nee bool, pos []grammar.BipedPosition) (VehicleTrack, VehicleCoverage) {
 	t.Helper()
-	key := types.EquipmentLifeKey{Slot: 770, Gen: 1}
+	key := types.LifeKey{Slot: 770, Gen: 1}
 	times := []uint64{2_000_000, 22_000_000, 42_000_000, 62_000_000, 82_000_000, 102_000_000}
 	scan := VehicleScan{Scanned: true, Keyframes: vehKeyframes(times, key, times), Positions: pos}
 	if nee {
@@ -134,7 +134,7 @@ func TestDepartagePremierSejourLongJamaisEcarte(t *testing.T) {
 // premiere image-cle qui ne la recense plus) ; le record de 60 s ne lui donne ni point
 // d apparition ni chassis.
 func TestNaissancePosterieureALaFinDeLaVieIgnoree(t *testing.T) {
-	key := types.EquipmentLifeKey{Slot: 770, Gen: 1}
+	key := types.LifeKey{Slot: 770, Gen: 1}
 	scan := VehicleScan{
 		Scanned:   true,
 		Keyframes: vehKeyframes([]uint64{2_000_000, 22_000_000, 42_000_000}, key, []uint64{2_000_000, 22_000_000}),

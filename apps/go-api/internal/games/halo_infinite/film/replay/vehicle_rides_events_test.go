@@ -116,8 +116,8 @@ func TestVehicleEpisodeCarriesEventVehicle(t *testing.T) {
 // c est bien le nom qui a decide, et rien d autre.
 func TestVehicleRideFromEventName(t *testing.T) {
 	const occ = uint32(500)
-	nomme := types.EquipmentLifeKey{Slot: 770, Gen: 1}
-	proche := types.EquipmentLifeKey{Slot: 771, Gen: 1}
+	nomme := types.LifeKey{Slot: 770, Gen: 1}
+	proche := types.LifeKey{Slot: 771, Gen: 1}
 	in := vehicleRideInputs{
 		vehBySlot: map[uint32][]grammar.BipedPosition{
 			770: {vehPos(770, 2_000_000, 100, 100)},
@@ -127,7 +127,7 @@ func TestVehicleRideFromEventName(t *testing.T) {
 			{key: nomme, loUS: 0, hiUS: 30_000_000},
 			{key: proche, loUS: 0, hiUS: 30_000_000},
 		},
-		drawable: map[types.EquipmentLifeKey]bool{nomme: true, proche: true},
+		drawable: map[types.LifeKey]bool{nomme: true, proche: true},
 		clock:    vehClock(),
 	}
 	bySlot := map[uint32][]grammar.BipedPosition{occ: {
@@ -139,7 +139,7 @@ func TestVehicleRideFromEventName(t *testing.T) {
 		name     string
 		muette   bool
 		nomValid bool
-		want     types.EquipmentLifeKey
+		want     types.LifeKey
 		wantSrc  vehicleResolvedBy
 	}{
 		{"le nom prime sur la distance", false, true, nomme, vehicleResolvedByEvent},
@@ -150,7 +150,7 @@ func TestVehicleRideFromEventName(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			cin := in
 			if c.muette {
-				cin.drawable = map[types.EquipmentLifeKey]bool{proche: true}
+				cin.drawable = map[types.LifeKey]bool{proche: true}
 			}
 			ep := base
 			ep.vehValid = c.nomValid
@@ -169,8 +169,8 @@ func TestVehicleRideFromEventName(t *testing.T) {
 // TestVehicleLifeNamedByEventNearest : quand l instant de la sortie tombe HORS de toutes les
 // fenetres du slot nomme, la vie la plus proche DANS LE TEMPS est retenue, et la voie le dit.
 func TestVehicleLifeNamedByEventNearest(t *testing.T) {
-	tot := types.EquipmentLifeKey{Slot: 770, Gen: 1}
-	tard := types.EquipmentLifeKey{Slot: 770, Gen: 2}
+	tot := types.LifeKey{Slot: 770, Gen: 1}
+	tard := types.LifeKey{Slot: 770, Gen: 2}
 	lives := []vehicleLife{
 		{key: tot, loUS: 0, hiUS: 10_000_000},
 		{key: tard, loUS: 60_000_000, hiUS: 90_000_000},
@@ -178,7 +178,7 @@ func TestVehicleLifeNamedByEventNearest(t *testing.T) {
 	cases := []struct {
 		name string
 		atUS uint64
-		want types.EquipmentLifeKey
+		want types.LifeKey
 		src  vehicleResolvedBy
 	}{
 		{"dans la fenetre", 5_000_000, tot, vehicleResolvedByEvent},
@@ -209,8 +209,8 @@ func TestVehicleLifeNamedByEventNearest(t *testing.T) {
 func TestVehicleRideSeatLuDansLeFilm(t *testing.T) {
 	const occupant, vehicule = uint32(500), uint32(700)
 	clock := vehClock()
-	key := types.EquipmentLifeKey{Slot: vehicule, Gen: 1}
-	rides := map[types.EquipmentLifeKey][]VehicleRide{
+	key := types.LifeKey{Slot: vehicule, Gen: 1}
+	rides := map[types.LifeKey][]VehicleRide{
 		key: {{Slot: occupant, T0: 40, T1: 160}, {Slot: occupant + 1, T0: 40, T1: 160}},
 	}
 	occ := []types.VehicleOccupancy{
@@ -281,7 +281,7 @@ func TestVehicleEpisodeCoversGap(t *testing.T) {
 // lui, le test ne prouverait pas que la porte existe.
 func TestVehicleRideFromEpisodeAnchors(t *testing.T) {
 	const occ, veh = uint32(500), uint32(770)
-	key := types.EquipmentLifeKey{Slot: veh, Gen: 1}
+	key := types.LifeKey{Slot: veh, Gen: 1}
 	in := vehicleRideInputs{
 		vehBySlot: map[uint32][]grammar.BipedPosition{veh: {
 			vehPos(veh, 2_000_000, 10, 10), vehPos(veh, 9_000_000, 10, 10),
@@ -329,7 +329,7 @@ func TestVehicleRideFromEpisodeAnchors(t *testing.T) {
 // DE VIE du vehicule, pas a l instant de l embarquement.
 func TestVehicleRideTerminalSilenceClosesAtLifeEnd(t *testing.T) {
 	const occ, veh = uint32(500), uint32(770)
-	key := types.EquipmentLifeKey{Slot: veh, Gen: 1}
+	key := types.LifeKey{Slot: veh, Gen: 1}
 	in := vehicleRideInputs{
 		vehBySlot: map[uint32][]grammar.BipedPosition{veh: {vehPos(veh, 2_000_000, 10, 10)}},
 		lives:     []vehicleLife{{key: key, loUS: 0, hiUS: 21_000_000}},
@@ -368,7 +368,7 @@ func TestVehicleEpisodeReappearanceClosesOpenEnd(t *testing.T) {
 	if len(eps) != 1 || !eps[0].openEnd || eps[0].reappearUS != 11_000_000 {
 		t.Fatalf("episode = %+v, attendu ouvert avec reapparition a 11000000", eps)
 	}
-	key := types.EquipmentLifeKey{Slot: veh, Gen: 1}
+	key := types.LifeKey{Slot: veh, Gen: 1}
 	in := vehicleRideInputs{
 		vehBySlot: map[uint32][]grammar.BipedPosition{veh: {vehPos(veh, 2_000_000, 10, 10)}},
 		lives:     []vehicleLife{{key: key, loUS: 0, hiUS: 90_000_000}},

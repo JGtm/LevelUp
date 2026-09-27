@@ -61,7 +61,7 @@ const (
 
 // v1cVie est une vie de vehicule telle que le recensement la borne.
 type v1cVie struct {
-	Key         types.EquipmentLifeKey
+	Key         types.LifeKey
 	T0, T1      uint64 // premiere et derniere image-cle qui la recense
 	CensusCount int    // nombre d'images-cles qui la recensent
 	Cand        map[uint32]uint64

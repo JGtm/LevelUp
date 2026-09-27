@@ -46,7 +46,6 @@ import (
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
-	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
 )
 
 // nombreDeTags : le tag du handle tient sur deux bits.
@@ -290,18 +289,16 @@ func (m *mesureGB1) garder(p grammar.BipedPosition, t uint32) {
 	o.dernierUS = max(o.dernierUS, p.TimestampUS)
 }
 
-// Reconstitution de l en-tete d un record bipede a partir de ce que l observateur recoit (la fin
-// d i0 et la liste des index du masque). Ce sont les largeurs de la grammaire
+// Reconstitution du DEBUT de l en-tete d un record bipede a partir de ce que l observateur recoit
+// (la fin d i0 et la liste des index du masque). Ce sont les largeurs de la grammaire
 // (`grammar/offline_biped.go`, en-tete de fichier : `[1 prefixe][13 slot][2 tag][2 nuls][3
-// nombre d index]` puis 6 bits par index). La reconstitution est VERIFIEE a chaque record : le
-// slot relu doit etre celui que le marcheur a publie, sinon le film echoue (`balayerBrut`).
+// nombre d index]` puis 6 bits par index). Le HANDLE (slot, tag) se relit ensuite par
+// `grammar.LireHandleDelta`, le lecteur unique du handle (lot J5.1) : l instrument ne recopie plus
+// ses largeurs. La reconstitution est VERIFIEE a chaque record : le slot relu doit etre celui que
+// le marcheur a publie, sinon le film echoue (`balayerBrut`).
 const (
 	enteteBipedeBits     = 21
 	indexDeComposantBits = 6
-	slotDEnTeteBits      = 13
-	decalageDuSlot       = 1
-	decalageDuTag        = decalageDuSlot + slotDEnTeteBits
-	largeurDuTag         = 2
 )
 
 // errEnTeteIntrouvable : la reconstitution de l en-tete ne retombe pas sur le record publie.
@@ -327,8 +324,8 @@ func balayerBrut(fc *grammar.FilmContext, lay profile.I0Layout) ([]grammar.Biped
 			tags, slots = append(tags, 0), append(slots, ^uint32(0))
 			return
 		}
-		tags = append(tags, uint32(source.BitsStricts(pay, p+decalageDuTag, largeurDuTag)))       //nolint:gosec // 2 bits
-		slots = append(slots, uint32(source.BitsStricts(pay, p+decalageDuSlot, slotDEnTeteBits))) //nolint:gosec // 13 bits
+		h := grammar.LireHandleDelta(pay, p)
+		tags, slots = append(tags, h.Gen), append(slots, h.Slot)
 	}
 	opt := grammar.ScanFilmOptions{QuantaOnly: true, Layout: &lay, DropSaturated: true, CaptureDirs: true}
 	brut, err := grammar.ScanBipedPositions(fc, opt)

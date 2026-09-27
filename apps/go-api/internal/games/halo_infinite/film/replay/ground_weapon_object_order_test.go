@@ -25,7 +25,7 @@ import (
 // seul le reste de l'objet le distingue.
 func objetExAequo(gen uint32, familyID uint32, status string, dropper int) gwPickupObject {
 	return gwPickupObject{
-		Key: types.EquipmentLifeKey{Slot: 42, Gen: gen},
+		Key: types.LifeKey{Slot: 42, Gen: gen},
 		Appar: gwPadApparition{
 			Kind: gwPadKindWeapon, Family: "sniper",
 			X: 10, Y: 20, Z: 30, TUS: 1_000_000,

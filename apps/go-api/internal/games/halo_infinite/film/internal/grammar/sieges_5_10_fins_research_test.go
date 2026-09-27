@@ -28,7 +28,7 @@ func TestSieges510FinsDeVie(t *testing.T) {
 	kf := ScanWorldObjectKeyframes(rec.fc, VehicleTypeIndex)
 	dernier := kf.LastTimeUS()
 	type fin struct {
-		key            types.EquipmentLifeKey
+		key            types.LifeKey
 		premier, ultim uint64
 		supUS          uint64
 		supprime       bool

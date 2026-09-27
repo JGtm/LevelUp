@@ -134,7 +134,7 @@ func v8UnFilm(t *testing.T, root string, f v0Film, tot *v8Bilan) {
 // trajectoire — c est-a-dire si les deux entites sont les deux faces d un meme vehicule.
 func v8Muettes(t *testing.T, ctx v4Ctx) {
 	t.Helper()
-	pleine := map[types.EquipmentLifeKey]bool{}
+	pleine := map[types.LifeKey]bool{}
 	for _, l := range ctx.lives {
 		_, hasSpawn := ctx.spawns[l.key]
 		if hasSpawn || len(ctx.vehBySlot[l.key.Slot]) > 0 {
@@ -149,7 +149,7 @@ func v8Muettes(t *testing.T, ctx v4Ctx) {
 		muettes++
 		voisins := ""
 		for _, d := range []int{1, -1} {
-			v := types.EquipmentLifeKey{Slot: uint32(int(l.key.Slot) + d), Gen: l.key.Gen}
+			v := types.LifeKey{Slot: uint32(int(l.key.Slot) + d), Gen: l.key.Gen}
 			for _, o := range ctx.lives {
 				if o.key != v || !pleine[v] {
 					continue
@@ -173,7 +173,7 @@ func v8Muettes(t *testing.T, ctx v4Ctx) {
 }
 
 // v8Famille rend la famille de chassis d une vie, ou « - ».
-func v8Famille(ctx v4Ctx, key types.EquipmentLifeKey) string {
+func v8Famille(ctx v4Ctx, key types.LifeKey) string {
 	sp, ok := ctx.spawns[key]
 	if !ok || !sp.MPPPresent[grammar.MPPWord32] {
 		return "famille -"
@@ -184,7 +184,7 @@ func v8Famille(ctx v4Ctx, key types.EquipmentLifeKey) string {
 // v8Episodes compare les deux voies, episode par episode.
 func v8Episodes(
 	t *testing.T, eps []vehicleEpisode, bySlot map[uint32][]grammar.BipedPosition,
-	in vehicleRideInputs, spawns map[types.EquipmentLifeKey]types.EquipmentCreation,
+	in vehicleRideInputs, spawns map[types.LifeKey]types.EquipmentCreation,
 	tot *v8Bilan,
 ) {
 	t.Helper()
@@ -307,7 +307,7 @@ func v8Permute(ep vehicleEpisode, nommes []uint32, i int) (vehicleEpisode, bool)
 func v8Desaccord(
 	t *testing.T, ep vehicleEpisode, ev, geo vehicleLife,
 	bySlot map[uint32][]grammar.BipedPosition, in vehicleRideInputs,
-	spawns map[types.EquipmentLifeKey]types.EquipmentCreation,
+	spawns map[types.LifeKey]types.EquipmentCreation,
 ) {
 	t.Helper()
 	pts := bySlot[ep.slot]
@@ -326,7 +326,7 @@ func v8Desaccord(
 // v8Vie decrit une vie candidate : identite, chassis, famille, nuage, fenetre, naissance.
 func v8Vie(
 	l vehicleLife, in vehicleRideInputs,
-	spawns map[types.EquipmentLifeKey]types.EquipmentCreation,
+	spawns map[types.LifeKey]types.EquipmentCreation,
 ) string {
 	chassis, famille, naissance := "-", "-", "aucune"
 	if sp, ok := spawns[l.key]; ok {
@@ -347,7 +347,7 @@ func v8Vie(
 // la taire ferait passer pour « introuvable » un vehicule dont on sait exactement ou il est.
 func v8DistTo(
 	e grammar.BipedPosition, has bool, l vehicleLife, in vehicleRideInputs,
-	spawns map[types.EquipmentLifeKey]types.EquipmentCreation,
+	spawns map[types.LifeKey]types.EquipmentCreation,
 ) string {
 	if !has {
 		return "pas d ancre"

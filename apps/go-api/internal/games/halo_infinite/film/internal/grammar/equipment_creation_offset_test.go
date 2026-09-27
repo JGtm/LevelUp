@@ -254,8 +254,8 @@ func (pr *equipOffsetProbe) back(pay []byte, b int, life equipCreationLifeKey) {
 			continue
 		}
 		ti := uint32(source.BitsTolerants(pay, p+woNewTypeBits+woNewSlotBits+woNewGenBits, woNewTIBits))
-		slot := uint32(source.BitsTolerants(pay, p+woNewTypeBits, woNewSlotBits))
-		gen := uint32(source.BitsTolerants(pay, p+woNewTypeBits+woNewSlotBits, woNewGenBits))
+		h := LireHandle(pay, p+woNewTypeBits)
+		slot, gen := h.Slot, h.Gen
 		if firstAny < 0 {
 			firstAny = d
 			pr.ti[ti]++

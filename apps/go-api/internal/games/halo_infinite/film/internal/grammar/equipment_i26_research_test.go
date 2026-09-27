@@ -103,7 +103,7 @@ func TestI26HandlesAppartenance(t *testing.T) {
 			if biped.Has(en.Val) {
 				inBiped++
 			}
-			if seen := kf.SeenUS[types.EquipmentLifeKey{Slot: en.Val, Gen: en.Tail}]; len(seen) > 0 {
+			if seen := kf.SeenUS[types.LifeKey{Slot: en.Val, Gen: en.Tail}]; len(seen) > 0 {
 				inLives++
 			}
 		}

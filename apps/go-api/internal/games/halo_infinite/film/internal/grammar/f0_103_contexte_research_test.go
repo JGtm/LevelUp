@@ -24,7 +24,7 @@ package grammar
 // le type 103 les domaines sont {0,0,7}, soit TROIS references de 13 bits — exactement la
 // largeur de `FrameConfig.IDLowBits`, celle de l en-tete NEW d un record de creation
 // (`woNewSlotBits`). L hypothese testee est donc mecanique : `(index, generation)` d une
-// reference du 103 est la cle de vie d une entite, la MEME paire que `types.EquipmentLifeKey` et que
+// reference du 103 est la cle de vie d une entite, la MEME paire que `types.LifeKey` et que
 // `types.EquipmentCreation.Slot/Gen`. Le test est un APPARIEMENT EXACT, pas une fenetre de temps.
 //
 // # POURQUOI LES COORDONNEES NE SONT PAS JUGEES ICI

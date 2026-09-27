@@ -27,4 +27,4 @@
 #               internal/domain/objectiveevent) : le perimetre perd internal/domain,
 #               internal/domain/title et internal/games/canonical. Renommage mecanique, aucune
 #               sortie ne change ; serie nee sur cette branche, jamais publiee.
-objectives-2026-09-26	ae15642ba284af8f6c93475de984cd72264f4bf607bc87500899db1375e6da59
+objectives-2026-09-26	8f57c703543b3303cbf1fd186473212f2dab9853b189256f135ce19dc8775de2

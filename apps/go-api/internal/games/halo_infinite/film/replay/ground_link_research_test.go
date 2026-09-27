@@ -109,16 +109,16 @@ func glDist(ax, ay, az, bx, by, bz float32) float64 {
 type glLife struct{ firstSeen, lastSeen uint64 }
 
 // glCensus recense les vies ti=42 aux images-cles, par paire (slot, generation).
-func glCensus(t *testing.T, dir string) (map[types.EquipmentLifeKey]*glLife, []uint64) {
+func glCensus(t *testing.T, dir string) (map[types.LifeKey]*glLife, []uint64) {
 	t.Helper()
 	kf, err := grammar.ScanFilmKeyframeGroundWeapons(dir, loadoutFamilies())
 	if err != nil {
 		t.Fatalf("recensement images-cles : %v", err)
 	}
-	lives := map[types.EquipmentLifeKey]*glLife{}
+	lives := map[types.LifeKey]*glLife{}
 	seen := map[uint64]bool{}
 	for _, g := range kf {
-		k := types.EquipmentLifeKey{Slot: g.Slot, Gen: g.Gen}
+		k := types.LifeKey{Slot: g.Slot, Gen: g.Gen}
 		l := lives[k]
 		if l == nil {
 			l = &glLife{firstSeen: g.TimestampUS, lastSeen: g.TimestampUS}
@@ -163,12 +163,12 @@ func glRestLives(t *testing.T, s glSetup) []glRestLife {
 	if !gw.Scanned || len(gw.Tracks) == 0 {
 		t.Fatalf("chaine des socles muette : scanned=%v pistes=%d", gw.Scanned, len(gw.Tracks))
 	}
-	byPair := map[types.EquipmentLifeKey][]types.ProjectileTrack{}
+	byPair := map[types.LifeKey][]types.ProjectileTrack{}
 	for _, tr := range gw.Tracks {
 		if len(tr.Pts) == 0 {
 			continue
 		}
-		k := types.EquipmentLifeKey{Slot: tr.Slot, Gen: tr.Gen}
+		k := types.LifeKey{Slot: tr.Slot, Gen: tr.Gen}
 		byPair[k] = append(byPair[k], tr)
 	}
 	var out []glRestLife
@@ -404,7 +404,7 @@ func TestLienPriseEquipementPose(t *testing.T) {
 
 	// Fenetre de vie d'une pose : de sa creation a sa derniere image-cle recensee AVANT la
 	// pose suivante de la meme cle (le pool de cles reboucle), plus un intervalle de grace.
-	byLife := map[types.EquipmentLifeKey][]int{}
+	byLife := map[types.LifeKey][]int{}
 	for i, p := range poses {
 		byLife[p.Life] = append(byLife[p.Life], i)
 	}

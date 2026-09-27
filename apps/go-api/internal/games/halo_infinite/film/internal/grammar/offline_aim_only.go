@@ -154,13 +154,14 @@ func matchAimOnlyRecord(br *Lecteur, pay []byte, p, total int, slots SlotBand) (
 	if uint32(source.BitsStricts(pay, p, 1)) != 1 {
 		return 0, 0, false
 	}
-	slot := uint32(source.BitsStricts(pay, p+1, bipedSlotBits))
-	if !slots.Has(slot) {
+	h := LireHandleDelta(pay, p)
+	if !slots.Has(h.Slot) {
 		return 0, 0, false
 	}
-	if uint32(source.BitsStricts(pay, p+14, 2)) != 1 { // tag == 1 : le filtre bipede eprouve
+	if h.Gen != 1 { // tag == 1 : le filtre bipede eprouve
 		return 0, 0, false
 	}
+	slot := h.Slot
 	if uint32(source.BitsStricts(pay, p+16, 2)) != 0 { // 14e bit d'id + selecteur de baseline
 		return 0, 0, false
 	}

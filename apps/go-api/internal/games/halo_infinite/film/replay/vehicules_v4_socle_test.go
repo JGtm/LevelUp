@@ -47,7 +47,7 @@ type v4Ctx struct {
 	// recalculer a chaque etage.
 	lives     []vehicleLife
 	vehBySlot map[uint32][]grammar.BipedPosition
-	spawns    map[types.EquipmentLifeKey]types.EquipmentCreation
+	spawns    map[types.LifeKey]types.EquipmentCreation
 	// lifeBySlot indexe les vies par slot, et slots liste TOUS les slots de vehicule (ceux du
 	// nuage ET ceux qui n ont qu une naissance), TRIES. Les deux existent pour le cout : la
 	// mesure interroge le voisin le plus proche des dizaines de milliers de fois, et un balayage

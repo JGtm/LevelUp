@@ -23,7 +23,7 @@ import (
 // generation) avec ses soeurs : seul le contenu la distingue.
 func poseExAequo(t1us uint64, x float32, globalID uint32, points int) types.EquipmentPlacement {
 	return types.EquipmentPlacement{
-		Life:     types.EquipmentLifeKey{Slot: 7, Gen: 1},
+		Life:     types.LifeKey{Slot: 7, Gen: 1},
 		T0US:     1000,
 		T1US:     t1us,
 		X:        x,
@@ -81,16 +81,16 @@ func TestLessPlacementRespecteLesCriteresDeTete(t *testing.T) {
 		t.Error("la pose la plus precoce doit passer devant, quel que soit son contenu")
 	}
 	memeInstant := poseExAequo(9000, 99, 999, 99)
-	memeInstant.Life = types.EquipmentLifeKey{Slot: 2, Gen: 0}
+	memeInstant.Life = types.LifeKey{Slot: 2, Gen: 0}
 	autreSlot := poseExAequo(0, 0, 0, 0)
-	autreSlot.Life = types.EquipmentLifeKey{Slot: 3, Gen: 0}
+	autreSlot.Life = types.LifeKey{Slot: 3, Gen: 0}
 	if !lessPlacement(memeInstant, autreSlot) {
 		t.Error("a instant de pose egal, le plus petit slot passe devant")
 	}
 	gen0 := poseExAequo(9000, 99, 999, 99)
-	gen0.Life = types.EquipmentLifeKey{Slot: 2, Gen: 0}
+	gen0.Life = types.LifeKey{Slot: 2, Gen: 0}
 	gen1 := poseExAequo(0, 0, 0, 0)
-	gen1.Life = types.EquipmentLifeKey{Slot: 2, Gen: 1}
+	gen1.Life = types.LifeKey{Slot: 2, Gen: 1}
 	if !lessPlacement(gen0, gen1) {
 		t.Error("a instant de pose et slot egaux, la plus petite generation passe devant")
 	}

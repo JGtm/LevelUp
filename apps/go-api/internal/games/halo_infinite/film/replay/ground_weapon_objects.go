@@ -91,7 +91,7 @@ func weaponPadRule(flags map[uint32]Label) padRule {
 
 // gwPickupObject est une apparition retenue, bornée et datée.
 type gwPickupObject struct {
-	Key types.EquipmentLifeKey
+	Key types.LifeKey
 	// Appar est l'apparition au sens des socles : position de CRÉATION, classe, vie delta.
 	Appar gwPadApparition
 	// FamilyID est le mot MPP de 32 bits — l'identité brute de l'arme, celle que l'artefact
@@ -145,7 +145,7 @@ func padObjects(
 	scan WorldObjectScan, rule padRule, lives map[uint32][]equipLife,
 	positions []grammar.BipedPosition,
 ) ([]gwPickupObject, gwRejects) {
-	byKey := map[types.EquipmentLifeKey][]types.EquipmentCreation{}
+	byKey := map[types.LifeKey][]types.EquipmentCreation{}
 	kept := 0
 	var rejected gwRejects
 	for _, c := range scan.Creations {
@@ -163,7 +163,7 @@ func padObjects(
 			continue
 		}
 		kept++
-		k := types.EquipmentLifeKey{Slot: c.Slot, Gen: c.Gen}
+		k := types.LifeKey{Slot: c.Slot, Gen: c.Gen}
 		byKey[k] = append(byKey[k], c)
 	}
 	filmEnd := gwFilmEndUS(scan, positions)
@@ -329,10 +329,10 @@ func gwPickupResolve(
 // gwTracksByKey indexe les pistes delta par vie (slot, gen).
 func gwTracksByKey(
 	tracks []types.ProjectileTrack,
-) map[types.EquipmentLifeKey][]types.ProjectileTrack {
-	out := map[types.EquipmentLifeKey][]types.ProjectileTrack{}
+) map[types.LifeKey][]types.ProjectileTrack {
+	out := map[types.LifeKey][]types.ProjectileTrack{}
 	for _, tr := range tracks {
-		k := types.EquipmentLifeKey{Slot: tr.Slot, Gen: tr.Gen}
+		k := types.LifeKey{Slot: tr.Slot, Gen: tr.Gen}
 		out[k] = append(out[k], tr)
 	}
 	return out

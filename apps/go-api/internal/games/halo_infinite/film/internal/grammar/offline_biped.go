@@ -58,7 +58,7 @@ const (
 	bipedIndexBits  = 6  // un index de composant
 	bipedMinMaskCnt = 2
 	bipedMaxMaskCnt = 7
-	bipedSlotBits   = 13
+	bipedSlotBits   = handleSlotBits // le slot du handle (cf. handle.go)
 )
 
 // BipedPosition est une position absolue de biped décodée offline.
@@ -288,13 +288,14 @@ func matchBipedHeaderRaw(pay []byte, p, total int, slots SlotBand, needTag1 bool
 	if uint32(source.BitsStricts(pay, p, 1)) != 1 {
 		return 0, 0, nil, false
 	}
-	slot := uint32(source.BitsStricts(pay, p+1, bipedSlotBits))
-	if !slots.Has(slot) {
+	h := LireHandleDelta(pay, p)
+	if !slots.Has(h.Slot) {
 		return 0, 0, nil, false
 	}
-	if needTag1 && uint32(source.BitsStricts(pay, p+14, 2)) != 1 {
+	if needTag1 && h.Gen != 1 {
 		return 0, 0, nil, false
 	}
+	slot := h.Slot
 	if uint32(source.BitsStricts(pay, p+16, 2)) != 0 { // (14e bit id ou LSB tag) + gate — PAS un maskSel
 		return 0, 0, nil, false
 	}

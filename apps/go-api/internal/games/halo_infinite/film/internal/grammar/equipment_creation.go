@@ -80,9 +80,9 @@ func (o *Observation) publishEquipmentCreation(f EquipmentCreationField, value u
 // R(2)), readRecordID (R(IDLowBits=13) puis R(2) de génération, cf. DefaultFrameConfig) et
 // TraverseEntity (R(6) typeIndex).
 const (
-	woNewTypeBits   = 3  // R(1)=0 « pas un delta » + R(2)=1 « recNew »
-	woNewSlotBits   = 13 // FrameConfig.IDLowBits
-	woNewGenBits    = 2
+	woNewTypeBits   = 3              // R(1)=0 « pas un delta » + R(2)=1 « recNew »
+	woNewSlotBits   = handleSlotBits // FrameConfig.IDLowBits — le handle se lit par LireHandle
+	woNewGenBits    = handleGenBits
 	woNewTIBits     = 6
 	woNewHeaderBits = woNewTypeBits + woNewSlotBits + woNewGenBits + woNewTIBits
 )
@@ -338,11 +338,11 @@ func matchWorldObjectNewHeaderIn(
 	if uint32(source.BitsTolerants(pay, p+woNewTypeBits+woNewSlotBits+woNewGenBits, woNewTIBits)) != ti {
 		return 0, 0, false
 	}
-	slot = uint32(source.BitsTolerants(pay, p+woNewTypeBits, woNewSlotBits))
-	if !dansLaBande(slot) {
+	h := LireHandle(pay, p+woNewTypeBits)
+	if !dansLaBande(h.Slot) {
 		return 0, 0, false
 	}
-	return slot, uint32(source.BitsTolerants(pay, p+woNewTypeBits+woNewSlotBits, woNewGenBits)), true
+	return h.Slot, h.Gen, true
 }
 
 // readCreation déroule le corps d'un record de création : le default-state (qui publie les deux

@@ -247,7 +247,7 @@ const equipmentTakenMatchUS = 50_000
 // porterait sept. Il est construit une fois par cuisson ([nouvelleSourceOrigine]) et partagé.
 type poseOrigineSource struct {
 	// spawns : par clé de vie d'objet, les instants des événements 103 qui la désignent.
-	spawns map[types.EquipmentLifeKey][]uint64
+	spawns map[types.LifeKey][]uint64
 	// morts : par SIÈGE, les instants des morts ÉCRITES (fil des morts apparié aux vies par le
 	// registre d'identité — lots 1.6 et 1.8, seul producteur de liens).
 	morts map[uint32][]uint64
@@ -263,7 +263,7 @@ func nouvelleSourceOrigine(
 	spawns []types.EquipmentSpawnEvent, vies []lifeSpan, changes []types.EquipmentChange,
 ) poseOrigineSource {
 	src := poseOrigineSource{
-		spawns: map[types.EquipmentLifeKey][]uint64{},
+		spawns: map[types.LifeKey][]uint64{},
 		morts:  map[uint32][]uint64{},
 		prises: map[uint32][]uint64{},
 	}

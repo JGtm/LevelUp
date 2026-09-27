@@ -409,8 +409,8 @@ func matchWorldObjectRecord(pay []byte, p int, band map[uint32]bool) (WorldObjec
 	if source.BitsTolerants(pay, p, 1) != 1 { // préfixe de record DELTA
 		return rec, false
 	}
-	slot := uint32(source.BitsTolerants(pay, p+1, 13))
-	if !band[slot] {
+	h := LireHandleDelta(pay, p)
+	if !band[h.Slot] {
 		return rec, false
 	}
 	if source.BitsTolerants(pay, p+16, 2) != 0 { // porte de masque = 0 -> branche éparse
@@ -424,7 +424,7 @@ func matchWorldObjectRecord(pay []byte, p int, band map[uint32]bool) (WorldObjec
 	if !ok {
 		return rec, false
 	}
-	rec.Slot, rec.Gen = slot, uint32(source.BitsTolerants(pay, p+14, 2))
+	rec.Slot, rec.Gen = h.Slot, h.Gen
 	rec.Idx, rec.After = idx, p+worldObjectHeaderBits+worldObjectIndexBits*mc
 	return rec, true
 }

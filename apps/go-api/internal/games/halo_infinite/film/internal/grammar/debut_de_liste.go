@@ -69,7 +69,7 @@ func enteteNeufEn(pay []byte, p int) (slot, ti uint32, ok bool) {
 	if ti >= objectArchetypeCount {
 		return 0, 0, false
 	}
-	return uint32(source.BitsTolerants(pay, p+woNewTypeBits, woNewSlotBits)), ti, true //nolint:gosec // 13 bits
+	return LireHandle(pay, p+woNewTypeBits).Slot, ti, true
 }
 
 // motFacultatifDEnTete rend la largeur du mot facultatif qui precede le type de chaque record

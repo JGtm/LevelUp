@@ -39,9 +39,9 @@ import (
 // vehicleFilmRides porte ce que la LECTURE rend : les episodes par vie, les occupants que le
 // film nomme par vie, et les fenetres publiees (en frames) qui servent au test de contradiction.
 type vehicleFilmRides struct {
-	rides     map[types.EquipmentLifeKey][]VehicleRide
-	occupants map[types.EquipmentLifeKey]map[uint32]bool
-	fenetres  map[types.EquipmentLifeKey][][2]int
+	rides     map[types.LifeKey][]VehicleRide
+	occupants map[types.LifeKey]map[uint32]bool
+	fenetres  map[types.LifeKey][][2]int
 }
 
 // vehicleFilmTally compte ce que la lecture a rendu et ce qu elle a du ecarter.
@@ -61,9 +61,9 @@ type vehicleFilmTally struct {
 // buildVehicleFilmRides construit les episodes LUS. PUR.
 func buildVehicleFilmRides(in vehicleRideInputs) (vehicleFilmRides, vehicleFilmTally) {
 	out := vehicleFilmRides{
-		rides:     map[types.EquipmentLifeKey][]VehicleRide{},
-		occupants: map[types.EquipmentLifeKey]map[uint32]bool{},
-		fenetres:  map[types.EquipmentLifeKey][][2]int{},
+		rides:     map[types.LifeKey][]VehicleRide{},
+		occupants: map[types.LifeKey]map[uint32]bool{},
+		fenetres:  map[types.LifeKey][][2]int{},
 	}
 	var t vehicleFilmTally
 	if len(in.occupancy) == 0 || len(in.lives) == 0 || in.clock.step == 0 {
@@ -96,7 +96,7 @@ func buildVehicleFilmRides(in vehicleRideInputs) (vehicleFilmRides, vehicleFilmT
 }
 
 // ajouter range un episode lu dans les trois index de la structure.
-func (f vehicleFilmRides) ajouter(key types.EquipmentLifeKey, r VehicleRide) {
+func (f vehicleFilmRides) ajouter(key types.LifeKey, r VehicleRide) {
 	f.rides[key] = append(f.rides[key], r)
 	if f.occupants[key] == nil {
 		f.occupants[key] = map[uint32]bool{}
@@ -127,7 +127,7 @@ func (f vehicleFilmRides) trier() {
 //
 // Une vie dont le film n a RIEN lu n est jamais contredite : l absence de lecture n est pas une
 // absence d occupant.
-func (f vehicleFilmRides) contredit(key types.EquipmentLifeKey, r VehicleRide) bool {
+func (f vehicleFilmRides) contredit(key types.LifeKey, r VehicleRide) bool {
 	occ := f.occupants[key]
 	if len(occ) == 0 {
 		return false
@@ -162,7 +162,7 @@ func vehicleFilmRideOf(o types.VehicleOccupancy, endUS uint64, in vehicleRideInp
 // vehicleFilmRideEnd rend la borne de fin d un episode lu et LA CAUSE qui l a posee.
 func vehicleFilmRideEnd(
 	o types.VehicleOccupancy, lectures []types.VehicleOccupancy,
-	pts []grammar.BipedPosition, lives []vehicleLife, key types.EquipmentLifeKey,
+	pts []grammar.BipedPosition, lives []vehicleLife, key types.LifeKey,
 ) (uint64, int) {
 	fin, par := vehicleLifeEndUS(lives, key), vehicleFilmEndByLife
 	if at, ok := vehicleNextOccupancy(lectures, o.TimestampUS); ok && at < fin {
@@ -228,7 +228,7 @@ func vehicleFirstPointAfter(pts []grammar.BipedPosition, afterUS uint64) (uint64
 }
 
 // vehicleLifeEndUS rend la borne haute de la vie demandee.
-func vehicleLifeEndUS(lives []vehicleLife, key types.EquipmentLifeKey) uint64 {
+func vehicleLifeEndUS(lives []vehicleLife, key types.LifeKey) uint64 {
 	for _, l := range lives {
 		if l.key == key {
 			return l.hiUS
