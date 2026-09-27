@@ -363,9 +363,15 @@ case non statuée du lot courant. Les décisions du §2 ne se re-décident pas.
   - **Statut** : (a) `useReplaySound.test.tsx:418`, (b) `replayAudio.test.ts:169`,
     (c) `replayAudioMix.test.ts:160`, (d) `endMatchVoiceCap.witness.test.tsx:195` (+ témoin 1×
     `:203`, vert avant et après). Sorties rouges au journal.
-- [!] **A1.5 Recette navigateur**, seulement si `http://127.0.0.1:8000/health` répond (le
+- [x] **A1.5 Recette navigateur**, seulement si `http://127.0.0.1:8000/health` répond (le
   superviseur démarre le serveur, jamais l'exécutant). Sinon, l'item reste ouvert au rapport et le
   superviseur le fait avant la fusion 1.
+  - **Statut (2026-09-27)** : FAITE par l'exécutant de A2 (serveur démarré par le superviseur),
+    **avec un témoin dense SUBSTITUÉ** : sur les données de ce poste, `000d5950` ne joue AUCUNE
+    conclusion, à 1× comme à 2× (vue match partielle `scoreboard_empty`, issue « défaite » :
+    `endMatchSoundSpec` rend `null`, aucune prise `end_*` n'est même téléchargée). Témoin dense de
+    remplacement `ac03413d` (victoire de Chocoboflor) : voix ET fanfare démarrent à 2× et à 1×,
+    7 à 8 sources actives à la borne. Chiffres au journal, écart en DA-5.
   - **Statut (2026-09-26)** : NON FAITE par l'exécutant — `/health` a rendu `000` (serveur
     arrêté). Reste au superviseur avant la fusion 1. ATTENTION (A1.0) : à 1× le témoin dense
     jouait déjà la fanfare ; la recette ne discrimine le correctif qu'à 2× (`SOUND_MAX_SPEED`).
@@ -1169,6 +1175,12 @@ plus B5.8.
   rafales), là où les commentaires de `SOUND_MAX_VOICES` (`replayAudio.ts`) et de
   `replaySound.ts` citent « 483 tirs sonores » et « 46 sources refusées » : relevés datés du
   2026-08-15, antérieurs au modèle des rafales (M4b). Chiffres historiques, non corrigés.
+- DA-5 (A1.5, 2026-09-27) : sur les données de ce poste, la vue match des matchs sondés est
+  PARTIELLE (`scoreboard_empty`) : `readVictory` ne lit jamais deux camps, donc le rejeu n'y joue
+  une conclusion que sur une VICTOIRE (réplique « Vainqueur » sans camps) et jamais sur une
+  défaite ou une égalité — l'écran de fin est touché de la même façon. Le témoin `000d5950` n'y
+  joue rien. Donnée du poste (cf. mémoire « plusieurs postes, jeux de données différents »), pas un
+  défaut du code : non traité. L'écoute A1.6 se fait sur les données de l'utilisateur.
 
 ### Lots B
 
@@ -1325,7 +1337,8 @@ plus B5.8.
   - `EXIT_VITEST_MATCH_REPLAY=0` : 216 fichiers réussis et 4 sautés, 3 179 tests réussis et 7 sautés.
   - Un premier lancement a buté sur « Timeout waiting for worker » (démarrage du worker, pas un
     test). Relancé tel quel : vert.
-- A1.5 : `/health` → `000`. Non faite, reste au superviseur, à 2× (cf. statut de l'item).
+- A1.5 : `/health` → `000`. Non faite, reste au superviseur, à 2× (cf. statut de l'item). Faite le
+  2026-09-27 par l'exécutant de A2 (entrée suivante).
 - A1.6 : ouvert (superviseur).
 
 **[2026-09-26] Superviseur — vérification de A1 et dérogation d'ordre.**
@@ -1339,6 +1352,35 @@ plus B5.8.
 - **Dérogation §1.2 appliquée** : à 21 h 11, une autre session fait toujours tourner deux
   `replay-equiv` et des builds Go. Le serveur API n'est pas démarrable, donc A2 attend et B1
   passe devant.
+
+**[2026-09-27] A1.5 — recette navigateur de la musique de fin — exécutant opus (lot A2).**
+
+- Environnement : API `:8000` démarrée par le superviseur (`/health` → 200), Vite du worktree
+  détaché sur `:5174` (proxy vers `:8000`), script `apps/web/.tmp.recette-fin.mjs` (supprimé).
+  Chromium sans tête, `--autoplay-policy=no-user-gesture-required`. Son activé, vitesse posée par
+  `replay-speed`, curseur posé par la frise à 200 images (20 s) avant la borne, puis « Lecture ».
+  Instrumentation : `AudioBufferSourceNode.prototype.start` (durée du tampon, fichier retrouvé par
+  `fetch` → `decodeAudioData`), sources actives comptées par un écouteur `ended` posé par
+  `addEventListener` (Chromium émet parfois deux `ended` pour une source : dédoublonnés).
+- `000d5950` (JGtm), 2× et 1× : **aucune conclusion**, 0 prise `end_*` téléchargée. Sur ce poste
+  la vue match est partielle (`partial_reasons` = `scoreboard_empty`, `events_empty`), l'issue
+  est « défaite » (`outcome_code` 3, « Super Fiesta » sur Dévissage), donc `readVictory` ne lit pas
+  deux camps et `endMatchSoundSpec` rend `null` (seule une victoire a une réplique sans camps).
+  Aucun lien avec le correctif ; même constat sur les autres matchs du cache sondés (`28c9b538`,
+  `4f77afc1`, `94a28b8b` : `scoreboard` vide). Voir DA-5.
+- Témoin dense substitué `ac03413d-2c03-4e3e-9e9c-c10165e40be0` (Chocoboflor, victoire 50-48,
+  `outcome_code` 2 → réplique « Vainqueur » + fanfare de victoire) :
+  - 2×, passe 1 : voix `end_winner_voice_fr_01.wav` (1,26 s) et fanfare `end_victory_music_01.wav`
+    (10,59 s) démarrées, **7 sources actives à la borne** ;
+  - 2×, passe 2 : les deux démarrées, **8 sources actives à la borne** (le plafond est plein : avant
+    le correctif, ni la voix ni la fanfare ne seraient passées) ;
+  - 1× : les deux démarrées, **7 sources actives à la borne**.
+- Témoin calme `4bd6de5a-98de-45cc-8c10-47f58280d2b9` (Chocoboflor, victoire 50-40, 0 tir dans les
+  5 dernières secondes du film) : 2× → les deux démarrées, 5 sources actives à la borne ; 1× → les
+  deux démarrées, 0 source active. Inchangé.
+- Une passe isolée de `000d5950` à 1× a vu 8 sources lancées et aucune terminée (`ended` jamais
+  reçu, contexte figé) ; rejouée deux fois, normale (60 et 48 `ended`). Aléa du navigateur sans
+  tête sur un poste chargé, non retenu.
 
 ### Lots B
 
