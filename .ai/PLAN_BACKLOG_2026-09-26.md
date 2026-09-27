@@ -649,6 +649,11 @@ Si la condition n'est pas remplie quand le plan arrive ici : A5 passe en `[!]` (
 donnée que seul l'utilisateur produit), l'entrée du backlog est réécrite avec cette condition, et
 la fusion 3 se fait sans A5.
 
+**Statut (superviseur, 2026-09-27) : condition NON remplie → A5 `[!]` en entier.** Aucun match
+multi-équipes réel n'a été joué entre-temps. L'entrée backlog « [replay/sons] Fins de partie
+multi-équipes par couleur » est réécrite avec la condition d'entrée et renvoie à cette section, qui
+reste le plan d'exécution prêt à reprendre : pièces, décision D-9, items A5.0 à A5.7.
+
 **Pièces** (dossier `apps/web/src/features/match-replay/`) :
 - `model/victoryLogic.ts:122` : `if (camps.length !== 2) return null`.
 - Consommateurs : `ReplayVictoryOverlay.tsx:138,161`, `export/exportOverlayPanels.ts:135`,
@@ -670,43 +675,52 @@ la fusion 3 se fait sans A5.
   `92374` = lime et `256805823` = cyan (mal transcrits « line » et « science »). En FR, mauve,
   verte, citron, jaune et orange ne sont transcrits que dans `ecoute_fin_partie.html:953-959`.
 
-- [ ] **A5.0 Table équipe → couleur annoncée.**
+- [!] **A5.0 Table équipe → couleur annoncée.**
   - Recherche hors ligne bornée à une passe dans les fichiers du jeu installé, avec les lecteurs
     de tags et de modules existants.
   - À défaut, table limitée aux couleurs établies par les matchs réels (condition 2).
   - Source de chaque ligne au journal.
   - Une couleur non établie n'est pas mappée.
-- [ ] **A5.1** `victoryLogic.ts` : nouvelle lecture
+- [!] **A5.1** `victoryLogic.ts` : nouvelle lecture
   `readMultiTeamVictory(scoreboard, outcomeCode, subject)` → `{ outcome, mine, winner }`.
   - Multi-équipes = au moins 3 camps et au moins un camp de 2 joueurs ou plus. FFA = chaque camp
     compte un seul joueur (inchangé).
   - Gagnant = le `team_side` commun à toutes les lignes `outcome === 'win'` ; `null` s'il est
     ambigu, et le repli actuel s'applique.
   - `readVictory` reste inchangé : ses 14 cas figent la lecture à 2 équipes.
-- [ ] **A5.2** `ReplayVictoryOverlay` selon D-9 : ligne « Victoire de l'équipe <Nom> » /
+- [!] **A5.2** `ReplayVictoryOverlay` selon D-9 : ligne « Victoire de l'équipe <Nom> » /
   « <Name> team wins » en FR et EN dans l'i18n de la feature, logo du gagnant par
   `teamLogoPath`, jetons de couleur uniquement (skill `color-tokens`).
-- [ ] **A5.3** Export et capture : `exportOverlayPanels.ts`, `useReplayExport.ts`,
+- [!] **A5.3** Export et capture : `exportOverlayPanels.ts`, `useReplayExport.ts`,
   `useReplayCapture.ts`.
-- [ ] **A5.4** Son :
+- [!] **A5.4** Son :
   - `END_TEAM_WIN_VOICE_STEMS` (team_id → locale → stems) pour les lignes établies en A5.0 ;
   - `EndMatchSoundSpec.winnerTeamID` ;
   - `endMatchSounds`, `endMatchSoundStems` et `soundFamiliesFor` étendus ;
   - FFA et 2 équipes inchangés.
-- [ ] **A5.5** Assets `end_team_<couleur>_voice_{fr,en}_01.wav` (couleurs établies seulement) :
+- [!] **A5.5** Assets `end_team_<couleur>_voice_{fr,en}_01.wav` (couleurs établies seulement) :
   −16 LUFS, −1 dBTP, stéréo PCM 16 bits 48 kHz, ffmpeg. Garde-rails : complétude (chaque
   team_id mappé a FR et EN), fichier ↔ stem, décodable.
-- [ ] **A5.6 Tests** :
+- [!] **A5.6 Tests** :
   - `victoryLogic.test` : multi-équipes gagné et perdu, gagnant ambigu, FFA inchangé, 2 équipes
     inchangé ;
   - `endMatchSound.test`, `ReplayVictoryOverlay.test`, `useReplaySound.test`.
-- [ ] **A5.7 Gates utilisateur** (visuel et écoute) : le témoin multi-équipes, nommé par
+- [!] **A5.7 Gates utilisateur** (visuel et écoute) : le témoin multi-équipes, nommé par
   l'utilisateur ; non-régression sur un match à 2 équipes et un FFA gagné.
 
 **Gate** : WEB (filtres `src/features/match-replay src/lib/halo`), gates utilisateur.
 
 **Fusion 3 (fin du plan)** : suite vitest complète, typecheck purgé, CI de branche verte au
 niveau job, fusion dans `feat/v75`, suppression du worktree et de la branche.
+
+**Superviseur, vérification de A3 et A4 (2026-09-27)** :
+- A3 : `node tools/lint-cross-feature-imports.mjs` → `EXIT_SCRIPT=0`, « 7 <= plafond » ; étape CI
+  relue ; aucun déclencheur modifié.
+- A4 : mesures refaites par `ebur128` sur les fanfares après A4.8 : −18,0 / −18,0 / −18,0 LUFS,
+  crêtes de −3,1 à −4,6 dBFS ; intro à −17,9 LUFS.
+- A4.7 et A5 : statués `[!]` (justifications à leurs sections).
+- **Gates utilisateur APRÈS la fusion** (décision de l'utilisateur du 2026-09-27) : écoutes A1.6,
+  A2.5 et A4, listées dans le compte rendu de fusion.
 
 ---
 
@@ -1354,7 +1368,7 @@ est supprimé.
     OpenAPI ;
   - `api/wire/prestige_lazy_service.go` est passé de 519 à 525 lignes (commentaire).
   Les deux sont versés au backlog (entrée [go/hygiène]).
-- [ ] **Fusion 2** : CI de branche verte au niveau job, fusion dans `feat/v75`, CI de `feat/v75`
+- [x] **Fusion 2** : CI de branche verte au niveau job, fusion dans `feat/v75`, CI de `feat/v75`
   au niveau job. Puis **vérification sur données réelles par le superviseur**, après mise à jour
   du checkout principal :
   - redémarrage du serveur ;
@@ -1362,6 +1376,16 @@ est supprimé.
     présent » ;
   - aucune ERROR d'ouverture de player DB ;
   - `duckdb_indexes()` sans `idx_msr_*` sur les player DB.
+  - **Fait le 2026-09-27** : fusion `9d4e0cf34` (A1, A2, B1-B5, B-C) dans `feat/v75`, qui avait
+    avancé de 23 commits (chantier Emprise).
+    - Un conflit, dans `api/wire/registry_build_queue.go`. Emprise passe désormais le provider à
+      `sharedWriterForTitle` ; la correction B5.4 (chemin démo) est reportée dans
+      `sharedProviderForTitle`.
+    - Gates locaux sur le résultat : build, vet, tests de api/wire, config, `cmd/server`,
+      archlint, scheduler et sharedprovider sous `LEVELUP_DEMO_MODE=true`, typecheck web.
+    - CI verte au niveau job sur la branche temporaire `feat/backlog-fusion` (run
+      `36346518013`), puis fast-forward de `feat/v75` sur `9d4e0cf34`.
+    - La vérification sur données réelles se fait avec le code de la fusion 3, voir plus bas.
 
 ---
 
