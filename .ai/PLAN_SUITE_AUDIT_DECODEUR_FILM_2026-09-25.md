@@ -1513,3 +1513,22 @@ relancer un agent sans avoir vérifié qu'il est mort. Ne pas re-décider ce qui
   compris). **J5, J6, J9 fusionnés dans la branche du plan** (`d6701c058`). Reste pour eux :
   G-corpus (serveur dev à arrêter : créneau demandé à l'utilisateur) et références
   d'équivalence à re-figer au nouvel état (avant J10, qui exige G-equiv x2).
+- 2026-09-27 : références d'équivalence re-figées à l'état J5+J6+J9 (`8f91628b5`). **J10.2-J10.6
+  faits** (`f5c223978` … `b3a38a5a5`) ; G-equiv contre ces références : seules
+  `movementStates.stats` (20 films, J10.5 : `DatumAmbiguous` compte des slots) et l'artefact de
+  `000d5950`/`e5adf7b2` (J10.3/J10.4, déclarés) divergent ; la table des joueurs est identique sur
+  les 20 films (risque J10.6 de décalage des `FilmIndex` non déclenché). **J10.1 : explosion de
+  périmètre** (231 appels `sort.Slice*`/`sort.Sort` en production contre 43 annoncés ; le 43 de
+  l'audit n'a pas de critère écrit) → arrêt, escalade. **J8** : J8.1-J8.6 et J8.7 (sous-lot
+  replay) faits, schéma 75 (`d039aa0ab` … `5fad0cc93`) ; J8.7 arrêté pour 42 entrées (hypothèse
+  « `Declenche` au site » fausse : `grammar`/`profile` ne peuvent pas importer `fallback`,
+  `killsource`/`objectives` ne doivent pas) → **décision superviseur** : les comptes voyagent
+  comme données, une seule fonction de versement dans `replay`, champ d'`Options` cumulé à
+  l'assemblage pour `replaybuild`, compteur par passe au collecteur, hausse datée de la façade,
+  catégorie « outil hors production » pour `repli_famille_objectif_vide` ; suite relancée.
+- 2026-09-27 : **décisions de l'utilisateur** (« ok avec tes recos ») : (1) **J10.1 / DT-9
+  amendé** : correction ciblée des tris qui décident d'une sortie (GB-3, RA2-5 et relevé ciblé)
+  + ratchet en CLIQUET (nouvel appel interdit, appels existants listés nommément, liste qui ne
+  peut que diminuer), conversion du reste reportée à J12 (DT-10) ; (2) **J7** : l'exception FK-4
+  est resserrée à l'instant exact, et les deux P2 de la ronde 2 (provenance comptée deux fois,
+  ratchet aveugle aux `:=`) sont corrigés, sans troisième revue (vérification superviseur).
