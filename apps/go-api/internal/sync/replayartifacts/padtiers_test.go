@@ -294,3 +294,20 @@ func validerPasse(b persist.PadTiersBatch) error {
 
 // mapvarVec : une position d emplacement sur l axe X, les deux autres a zero.
 func mapvarVec(x float64) mapvar.Vec3 { return mapvar.Vec3{X: x} }
+
+// TestDeriver_LesAppelantsTransmettentLeSegmentDeLecture — les deux appelants de ce paquet
+// passent leur segment de lecture à Deriver (lot L4.1 ; le troisième, le dépôt d'ouvrier, est
+// gardé dans api/wire). Retirer le champ ramènerait la panne sans qu'aucun autre test ne rougisse
+// sur le chemin de la cuisson locale (revue du lot L4, constat C-2).
+func TestDeriver_LesAppelantsTransmettentLeSegmentDeLecture(t *testing.T) {
+	for _, f := range []string{"artifacts.go", "derivations_backlog.go"} {
+		src, err := os.ReadFile(f)
+		if err != nil {
+			t.Fatalf("lecture de %s : %v", f, err)
+		}
+		if !strings.Contains(string(src), "WithRead: d.WithRead, AcquireWriter: d.AcquireWriter,") {
+			t.Errorf("%s n'appelle plus Deriver avec son segment de lecture : les niveaux d'armes ne "+
+				"liraient plus l'identite des matchs, et ne seraient ni ecrits ni marques", f)
+		}
+	}
+}

@@ -84,3 +84,20 @@ func TestDeriver_NiveauxProjetesAuFilDeLEau(t *testing.T) {
 		t.Error("marque absente alors que toutes les familles ont pu ecrire")
 	}
 }
+
+// TestRattrapage_TransmetLeSegmentDeLecture — le RATTRAPAGE (troisième appelant de Deriver) doit
+// transmettre son segment de lecture : sans lui, ses cinq matchs les plus récents restaient non
+// marqués et re-dérivés à chaque cycle, sans niveaux (revue du lot L4, constat C-2).
+func TestRattrapage_TransmetLeSegmentDeLecture(t *testing.T) {
+	db, d, _ := monterLeLot(t, "rattrape1")
+	chemin := cheminDuLot(d, "rattrape1")
+
+	rattraperDerivations(context.Background(), d)
+
+	if n := lignesDeNiveauxEnBase(t, db); n == 0 {
+		t.Fatal("le rattrapage n'a écrit aucun niveau d'arme : son segment de lecture n'arrive pas aux familles")
+	}
+	if !replaybuild.DerivationsUpToDate(chemin) {
+		t.Error("le rattrapage n'a pas marqué un match dont les familles ont toutes écrit")
+	}
+}

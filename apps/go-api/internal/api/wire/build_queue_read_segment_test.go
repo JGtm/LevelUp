@@ -12,6 +12,8 @@ package wire
 import (
 	"context"
 	"database/sql"
+	"os"
+	"strings"
 	"testing"
 
 	"levelup/go-api/internal/platform/duckdb/sharedprovider"
@@ -49,5 +51,19 @@ func TestSharedReadDepot_ProviderFermeSauteLEtape(t *testing.T) {
 	if appele {
 		t.Error("l'etape a ete jouee sur un provider ferme : la lecture doit etre sautee, et la " +
 			"famille qui l'attendait doit le savoir (elle n'est pas appelee)")
+	}
+}
+
+// TestDepot_TransmetLeSegmentDeLectureAuxDerivations — le dépôt d'ouvrier passe bien le segment
+// du provider du titre à Deriver : le test du helper seul ne dit pas qu'il est branché (revue du
+// lot L4, constat C-2).
+func TestDepot_TransmetLeSegmentDeLectureAuxDerivations(t *testing.T) {
+	src, err := os.ReadFile("registry_build_queue.go")
+	if err != nil {
+		t.Fatalf("lecture de registry_build_queue.go : %v", err)
+	}
+	if !strings.Contains(string(src), "WithRead:      sharedReadDepot(provider, titleSlug),") {
+		t.Error("le dépôt d'ouvrier n'appelle plus Deriver avec le segment de lecture du titre : les " +
+			"niveaux d'armes n'y seraient ni projetés ni marqués")
 	}
 }
