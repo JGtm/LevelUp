@@ -1,11 +1,15 @@
-// Package duckdb — career_repo_encounters.go : encounters globaux + rivals
-// (top neměsis / top souffre-douleur) pour la page Carrière. Découpé de
-// career_repo.go (god-file split, refactor 2026-05-27).
+// Package duckdb — career_repo_encounters.go : encounters globaux pour la page Carrière (les
+// rivaux vivent dans career_repo_rivals.go). Découpé de career_repo.go (god-file split,
+// refactor 2026-05-27).
 //
 // NOMS (lot perf L7, 2026-09-23) : Q26, Q27 et Q10 ne joignent plus v_gamertag_lookup, qui se
 // matérialisait en entier à chaque lecture (1,7 à 3 s ; trois fois par ouverture de la page
 // Carrière). Leurs lignes sont nommées par l'annuaire de la lecture (squad_repo_annuaire.go), sur
 // les matchs de l'historique du joueur (QMatchsDuJoueurTpl) : même cascade que la vue.
+//
+// PÉRIMÈTRE (lot B du plan perf, 2026-09-27, ADR 0036 I2) : Q26 et Q27 lisent d'abord cette
+// liste, la lient en UNE constante (clauseListeMatchs) sous la fenêtre `_latest` du kill-feed,
+// puis la passent telle quelle à l'annuaire — une seule lecture de la liste par appel.
 package duckdb
 
 import (
@@ -22,7 +26,8 @@ import (
 
 // QMatchsDuJoueurTpl : les matchs de l'historique du joueur, exclusion Campagne comprise — le
 // `my_history` de Q26. Ce sont les « matchs de la lecture » sur lesquels l'annuaire nomme les
-// lignes des lectures Carrière agrégées (D7.1 du plan perf). Paramètre : ?1 = xuid du joueur.
+// lignes des lectures Carrière agrégées (D7.1 du plan perf), et la liste liée sous les fenêtres
+// `_latest` des lectures d'historique complet (lot B). Paramètre : ?1 = xuid du joueur.
 const QMatchsDuJoueurTpl = `SELECT DISTINCT match_id FROM match_participants WHERE xuid = ?` + campaignExclusionToken
 
 // GetTopEncountersGlobal retourne les 10 joueurs les plus croisés au niveau
@@ -32,7 +37,6 @@ func (r *CareerRepo) GetTopEncountersGlobal(ctx context.Context, excludeXUIDs []
 	ctx, cancel := context.WithTimeout(ctx, careerEncountersTimeout)
 	defer cancel()
 
-	sqlText, args := r.topEncountersQuery(ctx, excludeXUIDs)
 	db, release, err := r.pdb.SharedReadDB().Get(ctx)
 	if err != nil {
 		return nil, nil, fmt.Errorf("CareerRepo.GetTopEncountersGlobal: shared reader: %w", err)
@@ -40,14 +44,14 @@ func (r *CareerRepo) GetTopEncountersGlobal(ctx context.Context, excludeXUIDs []
 	defer release()
 
 	stop := timing.FromContext(ctx).Section("top_encounters")
-	encounters, stats, err := scanTopEncounters(ctx, db, sqlText, args)
+	matchs, encounters, stats, err := r.lireTopEncounters(ctx, db, excludeXUIDs)
 	stop()
 	if err != nil {
 		return nil, nil, fmt.Errorf("CareerRepo.GetTopEncountersGlobal: %w", err)
 	}
-	// Noms : l'annuaire de la lecture — les xuids du top, sur l'historique que Q26 vient d'agréger.
+	// Noms : l'annuaire de la lecture — les xuids du top, sur les matchs que Q26 vient d'agréger.
 	stop = timing.FromContext(ctx).Section("top_encounters_annuaire")
-	err = nommerSurLHistorique(ctx, db, r.historique(), encounters, accesLigne[domain.MatchEncounterRow]{
+	err = nommerLignes(ctx, db, matchs, encounters, accesLigne[domain.MatchEncounterRow]{
 		xuid:   func(e domain.MatchEncounterRow) string { return e.XUID },
 		nommer: func(e *domain.MatchEncounterRow, gt string) { e.Gamertag = gt },
 	})
@@ -58,11 +62,29 @@ func (r *CareerRepo) GetTopEncountersGlobal(ctx context.Context, excludeXUIDs []
 	return encounters, stats, nil
 }
 
-// topEncountersQuery assemble Q26 et ses arguments.
-func (r *CareerRepo) topEncountersQuery(ctx context.Context, excludeXUIDs []string) (string, []any) {
+// lireTopEncounters lit les matchs du joueur puis Q26 bornée à ces matchs. Sans match : aucune
+// ligne, sans requête (`IN ()` n'est pas du SQL valide ; Q26 n'aurait rien rendu).
+func (r *CareerRepo) lireTopEncounters(ctx context.Context, db *sql.DB, excludeXUIDs []string) (
+	[]string, []domain.MatchEncounterRow, []domain.EncounterStatsRaw, error,
+) {
+	matchs, err := matchsDeLHistorique(ctx, db, r.historique())
+	if err != nil || len(matchs) == 0 {
+		return matchs, nil, nil, err
+	}
+	sqlText, args := r.topEncountersQuery(ctx, matchs, excludeXUIDs)
+	encounters, stats, err := scanTopEncounters(ctx, db, sqlText, args)
+	return matchs, encounters, stats, err
+}
+
+// topEncountersQuery assemble Q26 et ses arguments : la liste `matchs` (non vide) sous la
+// fenêtre du kill-feed, puis l'exclusion des amis.
+func (r *CareerRepo) topEncountersQuery(ctx context.Context, matchs, excludeXUIDs []string) (string, []any) {
+	x := r.pdb.XUID
+	liste, listeArg := clauseListeMatchs("kv.match_id", matchs)
+	args := make([]any, 0, 8+len(excludeXUIDs))
+	args = append(args, x, x, x, x, x, x, x, listeArg)
 	// Construit la clause d'exclusion friends. Si liste vide, %s = "".
 	excludeClause := ""
-	args := []any{r.pdb.XUID, r.pdb.XUID, r.pdb.XUID, r.pdb.XUID, r.pdb.XUID, r.pdb.XUID, r.pdb.XUID}
 	if len(excludeXUIDs) > 0 {
 		placeholders := strings.Repeat("?,", len(excludeXUIDs))
 		placeholders = strings.TrimRight(placeholders, ",")
@@ -72,16 +94,16 @@ func (r *CareerRepo) topEncountersQuery(ctx context.Context, excludeXUIDs []stri
 		}
 	}
 	// PMT-5 : exprs win/loss title-aware (fallback "e.my_outcome = 2/3" byte-identique
-	// Halo). Ordre des %s du template : win, loss, win, loss, puis excludeClause.
+	// Halo). Ordre des %s du template : win, loss, win, loss, liste, puis excludeClause.
 	winExpr := outcomeSQLEq(ctx, "e.my_outcome", canonical.OutcomeWin, "e.my_outcome = 2")
 	lossExpr := outcomeSQLEq(ctx, "e.my_outcome", canonical.OutcomeLoss, "e.my_outcome = 3")
 	// Masquage Campagne (Halo 5) : my_history ne joint pas match_registry → forme
 	// sous-requête by-match-id (sans placeholder, résolue AVANT Sprintf). No-op Infinite.
 	tpl := resolveCampaignExclusionByMatchID(Q26CareerTopEncountersTpl, r.pdb.TitleSlug, "match_id")
-	return fmt.Sprintf(tpl, winExpr, lossExpr, winExpr, lossExpr, excludeClause), args
+	return fmt.Sprintf(tpl, winExpr, lossExpr, winExpr, lossExpr, " AND "+liste, excludeClause), args
 }
 
-// scanTopEncounters exécute Q26 et rend ses lignes, SANS nom (cf. nommerSurLHistorique). Le
+// scanTopEncounters exécute Q26 et rend ses lignes, SANS nom (cf. GetTopEncountersGlobal). Le
 // curseur est fermé au retour : l'annuaire relit la même connexion ensuite.
 func scanTopEncounters(ctx context.Context, db *sql.DB, q string, args []any) ([]domain.MatchEncounterRow, []domain.EncounterStatsRaw, error) {
 	rows, err := db.QueryContext(ctx, q, args...)
@@ -142,100 +164,6 @@ func encounterFromStats(st domain.EncounterStatsRaw, countTogether int, lastSeen
 		enc.LastSeenAt = &t
 	}
 	return enc
-}
-
-// rivalsOrderColXxx : colonnes SQL acceptées par queryRivals.
-const (
-	rivalsOrderColFrags  = "frags"
-	rivalsOrderColDeaths = "deaths"
-)
-
-// rivalLu : une ligne de Q27 avant projection — `match` est le match de la rencontre où
-// l'annuaire cherche un adversaire que seul le kill-feed connaît (cf. Q27CareerRivalsTpl).
-type rivalLu struct {
-	domain.CareerRivalRawRow
-	match string
-}
-
-// GetRivals retourne les top némésis (par deaths DESC) et top souffre-douleur
-// (par frags DESC), 10 chacun, depuis le kill-feed canonique via SharedReader.
-// Pas de seuil min — le ratio est calculé côté service.
-func (r *CareerRepo) GetRivals(ctx context.Context) (nemeses, victims []domain.CareerRivalRawRow, err error) {
-	ctx, cancel := context.WithTimeout(ctx, careerRivalsTimeout)
-	defer cancel()
-
-	db, release, err := r.pdb.SharedReadDB().Get(ctx)
-	if err != nil {
-		return nil, nil, fmt.Errorf("CareerRepo.GetRivals: shared reader: %w", err)
-	}
-	defer release()
-
-	nem, err := r.queryRivals(ctx, db, rivalsOrderColDeaths)
-	if err != nil {
-		return nil, nil, err
-	}
-	vic, err := r.queryRivals(ctx, db, rivalsOrderColFrags)
-	if err != nil {
-		return nil, nil, err
-	}
-	// Noms : UN annuaire pour les deux listes (un même adversaire y figure souvent deux fois).
-	lus := make([]*rivalLu, 0, len(nem)+len(vic))
-	for i := range nem {
-		lus = append(lus, &nem[i])
-	}
-	for i := range vic {
-		lus = append(lus, &vic[i])
-	}
-	stop := timing.FromContext(ctx).Section("rivals_annuaire")
-	err = nommerSurLHistorique(ctx, db, r.historique(), lus, accesLigne[*rivalLu]{
-		xuid:   func(l *rivalLu) string { return l.XUID },
-		match:  func(l *rivalLu) string { return l.match },
-		nommer: func(l **rivalLu, gt string) { (*l).Gamertag = gt },
-	})
-	stop()
-	if err != nil {
-		return nil, nil, fmt.Errorf("CareerRepo.GetRivals: %w", err)
-	}
-	return projeterRivaux(nem), projeterRivaux(vic), nil
-}
-
-// projeterRivaux rend les lignes du contrat (nil pour une liste vide, comme la lecture d'origine).
-func projeterRivaux(lus []rivalLu) []domain.CareerRivalRawRow {
-	if len(lus) == 0 {
-		return nil
-	}
-	out := make([]domain.CareerRivalRawRow, len(lus))
-	for i, l := range lus {
-		out[i] = l.CareerRivalRawRow
-	}
-	return out
-}
-
-// queryRivals exécute Q27CareerRivalsTpl avec orderCol pour le tri (frags ou deaths), SANS nom.
-func (r *CareerRepo) queryRivals(ctx context.Context, db *sql.DB, orderCol string) ([]rivalLu, error) {
-	if orderCol != rivalsOrderColFrags && orderCol != rivalsOrderColDeaths {
-		return nil, fmt.Errorf("CareerRepo.queryRivals: invalid order column %q", orderCol)
-	}
-	defer timing.FromContext(ctx).Section("rivals")()
-	sqlText := fmt.Sprintf(Q27CareerRivalsTpl, orderCol)
-	rows, err := db.QueryContext(
-		ctx, sqlText,
-		r.pdb.XUID, r.pdb.XUID, r.pdb.XUID, r.pdb.XUID, r.pdb.XUID, r.pdb.XUID,
-	)
-	if err != nil {
-		return nil, fmt.Errorf("CareerRepo.queryRivals(%s): %w", orderCol, err)
-	}
-	defer rows.Close()
-
-	var results []rivalLu
-	for rows.Next() {
-		var l rivalLu
-		if err := rows.Scan(&l.XUID, &l.Frags, &l.Deaths, &l.MatchCount, &l.match); err != nil {
-			return nil, fmt.Errorf("CareerRepo.queryRivals(%s) scan: %w", orderCol, err)
-		}
-		results = append(results, l)
-	}
-	return results, rows.Err()
 }
 
 // historique : le joueur sur les matchs duquel l'annuaire nomme une lecture agrégée

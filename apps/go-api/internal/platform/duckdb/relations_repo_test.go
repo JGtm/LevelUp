@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-// seedRelations crée le schéma minimal pour Q28RelationsTpl : match_participants
+// seedRelations crée le schéma minimal pour Q28RelationsScopedTpl : match_participants
 // (avec team_id/outcome/kda), match_registry (start_time_utc + start_time),
 // le kill-feed canonique et xuid_aliases (root-level, contrat
 // SharedReader sans préfixe shared.) — les noms viennent de l'annuaire en portée base (lot A).

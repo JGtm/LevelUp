@@ -117,8 +117,8 @@ func TestCareerRepo_Annuaire_EcartNomme_NomHorsHistorique(t *testing.T) {
 }
 
 // TestCareerRepo_Annuaire_SectionsDeDuree : D7.4 — chaque lecture et son annuaire ont leur
-// section (des feuilles, cf. observability/timing) ; Q27 est lue deux fois (némésis puis
-// souffre-douleur), son annuaire une seule. Mêmes sections pour Q10 et la page Comparer (L7.3).
+// section (des feuilles, cf. observability/timing) ; Q27 est lue UNE fois (lot B, 2026-09-27 : les deux
+// classements se trient en Go), son annuaire aussi. Mêmes sections pour Q10 et la page Comparer (L7.3).
 func TestCareerRepo_Annuaire_SectionsDeDuree(t *testing.T) {
 	pdb := newTestPlayerDB(t)
 	seedAnnuaire(t, pdb)
@@ -141,7 +141,7 @@ func TestCareerRepo_Annuaire_SectionsDeDuree(t *testing.T) {
 	for _, s := range chrono.Snapshot() {
 		appels[s.Name] = s.Calls
 	}
-	for nom, n := range map[string]int{"top_encounters": 1, "top_encounters_annuaire": 1, "rivals": 2,
+	for nom, n := range map[string]int{"top_encounters": 1, "top_encounters_annuaire": 1, "rivals": 1,
 		"rivals_annuaire": 1, "encounters": 1, "encounters_annuaire": 1, "compare_local_stats": 1,
 		"compare_local_stats_annuaire": 1} {
 		if appels[nom] != n {

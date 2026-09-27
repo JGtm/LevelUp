@@ -46,7 +46,6 @@ func TestCampaignExclusionTokenWiredInStatQueries(t *testing.T) {
 		{"Q4SharedMatchesForFilters (cascade filtres, v_match_full)", Q4SharedMatchesForFilters},
 		{"Q4MVSharedMatchesForFilters (cascade filtres, MV)", Q4MVSharedMatchesForFilters},
 		{"Q26CareerTopEncountersTpl (career encounters)", Q26CareerTopEncountersTpl},
-		{"Q28RelationsTpl (hub Relations)", Q28RelationsTpl},
 		{"Q28RelationsScopedTpl (hub Relations scopé)", Q28RelationsScopedTpl},
 		{"QRelationsCoreFormTpl (forme récente noyau dur)", QRelationsCoreFormTpl},
 	}
