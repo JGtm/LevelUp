@@ -1203,6 +1203,58 @@ plus B5.8.
   gates du lot concerné rejoués. Constats P2 : découvertes, versés au backlog.
   - Le lot de corrections (B-C) attend le relecteur 2, pour traiter les constats des deux
     relectures d'un seul coup. La ronde 2 relira ensuite les seules corrections (§8 du skill).
+  - **Relecteur 2 : 2 constats recevables ; 18 conditions vérifiées qui tiennent.** Triage :
+    - **R2-1, P1 (régression de B5)** : `api/wire/registry_pages.go:160`. En démo, le service de
+      rejeu est enraciné sur `RuntimePaths()` (`<démo>/runtime`). Or il y lit aussi des DONNÉES
+      VERSIONNÉES :
+      - `MapBackgroundDir`, soit 218 fonds de carte ;
+      - `TitleMappingsDir` (`replay_map_objectives.go:107`, `replay_vehicle_weapons.go:44`) ;
+      - `replaylabels.Load` (`replay_weapon_labels.go:50`, `replay_vehicle_labels.go:126`) ;
+      - `zonesPourIdentites` (`replay_map_callouts.go:52`) ;
+      - `ReglesDepartsAleatoires` (`replay_weapon_tiers.go:46`).
+      Résultat : l'onglet Tactique de la démo répond 404 sur les fonds de carte, et les
+      catalogues du rejeu sont introuvables. C'est une régression par rapport à la base.
+    - **R2-2, P2 → corrigé** : `handlers/prestige_squads.go:162,192`. Le web appelle `/squads`
+      sans `title_slug` (`apps/web/src/lib/prestige.ts:478-481`), donc `SquadUsualContexts`
+      reçoit `""` et l'exclusion de la campagne ne s'applique pas sur le vrai chemin HTTP. Le
+      test passe `"halo_5"` en dur. Correction : le titre vient du `PlayerDB` résolu
+      (`pdb.TitleSlug`), et le test passe par le chemin réel.
+    - Non traité (découverte) : les lecteurs agrégés de `medals_earned` (`Q36aMedalTotals`,
+      `queries_citations.go:38`) ne sont pas couverts par le critère D-5. À ajouter à l'entrée
+      backlog des lecteurs non exclus, avec DB-26.
+
+### B-C — Corrections de la revue adversariale (ronde 1)
+
+Périmètre FERMÉ : un item par constat retenu, chacun avec un test de non-régression rouge avant.
+
+- [ ] **B-C1 (C1 + C2)** : en mode démo, `POST /setup/players`, `DELETE /profiles/{p}/titles/{t}/data`
+  et `PATCH /watcher/subscriptions` répondent 403 `demo_mode_forbidden`, sur le modèle de
+  `settings_backup.go` (B5.6). Tests handler : 403 en démo, comportement inchangé hors démo.
+  Contrat OpenAPI tenu comme pour B5.6.
+- [ ] **B-C2 (C3)** : en démo, la section Identités ne balaie pas les dossiers du dépôt :
+  `NewPathFS` sur la racine démo, ou collecte des dossiers orphelins coupée en démo. Test sur un
+  dépôt leurre avec un dossier de joueur réel, qui ne doit pas apparaître.
+- [ ] **B-C3 (C4)** : d'abord, vérifier si `fetchGameCMSImage` sort réellement sur le réseau en
+  démo (couverture `netguard`). Ensuite, en démo, aucun `PersistBinary` sous le cache réel : les
+  écritures vont sous `<démo>/runtime/`, ou n'ont pas lieu. Si le réseau sortait en démo : trou
+  de l'hermétisme réseau, corrigé ici (le ratchet `netguard_coverage_test.go` doit le voir),
+  avec son test.
+- [ ] **B-C4 (C5)** : `config.go` revient à au plus 629 lignes, les ajouts démo passant dans
+  `config_demo.go`.
+- [ ] **B-C5 (C6)** : le retrait convergent d'un index par `EnsurePlayerSchema` est journalisé
+  (`schema_drift_healed`, ou un log dédié de même contrat) seulement quand un index a vraiment
+  été retiré. Test : index recréé, puis ouverture, puis log présent ; base à jour, puis
+  ouverture, puis aucun log.
+- [ ] **B-C6 (code mort)** : `title.DemoLayout.Root()` est supprimé.
+- [ ] **B-C7 (R2-1)** : en démo, le service de rejeu lit les données VERSIONNÉES (fonds, mappings,
+  libellés, zones, règles de tiers) depuis la racine du dépôt, et les artefacts d'exécution
+  (rejeux, rasters, faits) depuis `<démo>/runtime/`. Test : en démo, le fond de carte d'une carte
+  versionnée est servi (200), et un artefact est lu sous `runtime`.
+- [ ] **B-C8 (R2-2)** : `SquadUsualContexts` prend le titre du `PlayerDB` résolu. Le test de
+  comportement passe par le handler, sans slug en dur.
+
+**Gate** : GO-F (paquets touchés, puis suites complètes), lint, et la baseline de tests si un test
+est supprimé.
 - [ ] **Fusion 2** : CI de branche verte au niveau job, fusion dans `feat/v75`, CI de `feat/v75`
   au niveau job. Puis **vérification sur données réelles par le superviseur**, après mise à jour
   du checkout principal :
