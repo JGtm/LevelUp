@@ -176,16 +176,24 @@ func consumeDefaultStateTI10(br *Lecteur) {
 // consumeDefaultStateTI13 porte FUN_140ce55e8 (archetype 13, « managed-object-property-name ») :
 //
 //	V ; FUN_14080dec4 "propertyName" = R(32) ;
-//	g = R(1) ; si g == 0 -> 1 x FUN_140ce59bc [R(4)] ; sinon 32 x FUN_140ce59bc.
+//	g = R(1) ; si g == 0 -> 1 x FUN_140ce59bc en MODE A (index -1) ; sinon 32 x FUN_140ce59bc en
+//	MODE B (index 0..31).
+//
+// `FUN_140ce59bc` N EST PAS UN R(4) (lot J6.3, releve du 2026-09-27, GA2-4) : il lit l etiquette
+// PUIS TOUJOURS la charge du variant (`FUN_140ce5aa4`, appel en 140ce5a09). Desassemblage de
+// `FUN_140ce55e8` : g == 0 -> `OR dword [RSP+0x30],0xffffffff` puis CALL 140ce59bc (mode A) ;
+// g == 1 -> `MOV dword [RSP+0x30],EDI` ; CALL ; `INC EDI` ; `CMP EDI,0x20` (mode B). Le R(4) seul
+// sous-lisait chaque variant dont l etiquette porte une charge ; le portage unique de la
+// fonction est [lireVariantDePropriete], celui du composant `ti=13 i1` / `i2..i33`.
 func consumeDefaultStateTI13(br *Lecteur) {
 	consumeVersionPrefix(br)
 	br.ReadBits(32) // FUN_14080dec4 "propertyName"
-	n := 1
-	if br.ReadBit() {
-		n = 32
+	if !br.ReadBit() {
+		lireVariantDePropriete(br, true) // mode A, index -1
+		return
 	}
-	for i := 0; i < n; i++ {
-		br.ReadBits(4) // FUN_140ce59bc = R(4)
+	for i := 0; i < managedPropertyPlayerCount; i++ {
+		lireVariantDePropriete(br, false) // mode B, index i
 	}
 }
 

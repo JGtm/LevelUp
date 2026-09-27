@@ -143,16 +143,28 @@ func (o *Observation) publishManagedProperty(f ManagedPropertyField, values ...u
 	o.ManagedPropertyHook(f, values)
 }
 
+// lireVariantDePropriete porte `FUN_140ce59bc` puis `FUN_140ce5aa4` : l etiquette R(4), puis
+// TOUJOURS la charge que le mode choisit (mode A : index -1 ; mode B : index 0..31). Rend
+// l etiquette, la charge et sa largeur (0 : etiquette muette dans ce mode). C est le SEUL
+// portage de la fonction du jeu : le composant (ci-dessous) et l etat par defaut de ti=13
+// (`consumeDefaultStateTI13`) l appellent tous deux (lot J6.3, GA2-4).
+func lireVariantDePropriete(br *Lecteur, modeA bool) (tag, charge uint64, n int) {
+	tag = br.ReadBits(managedPropertyTagBits)
+	n = managedPropertyPayloadBits(int(tag), modeA)
+	if n > 0 {
+		charge = br.ReadBits(uint(n))
+	}
+	return tag, charge, n
+}
+
 // consumeManagedPropertyVariant lit un variant dans le mode demande et publie (tag [, quantum]).
-// C'est le coeur partage, image de `FUN_140ce59bc` puis `FUN_140ce5aa4`.
 func consumeManagedPropertyVariant(br *Lecteur, f ManagedPropertyField, modeA bool) {
-	tag := br.ReadBits(managedPropertyTagBits)
-	n := managedPropertyPayloadBits(int(tag), modeA)
+	tag, charge, n := lireVariantDePropriete(br, modeA)
 	if n == 0 {
 		br.obs.publishManagedProperty(f, tag)
 		return
 	}
-	br.obs.publishManagedProperty(f, tag, br.ReadBits(uint(n)))
+	br.obs.publishManagedProperty(f, tag, charge)
 }
 
 // consumeManagedObjectProperty (ti=13 i1) — lecteur `FUN_140ce5554` puis `FUN_140ce59bc`.

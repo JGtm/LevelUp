@@ -159,6 +159,13 @@
 #     lectures de la fausse ancre 192 s en vont), et les records qu elles effacaient
 #     reviennent (bcb6d393 ti=9 151 -> 152, ti=38 1878 -> 1894 ; fb1a1a72 ti=9 94 -> 96,
 #     ti=38 2550 -> 2584 ; ti=37, 42, 43, 47, 10 aussi). 0 ligne `fermes` ne descend.
+#   2026-09-27 lot J6.3 : L ETAT PAR DEFAUT DE ti=13 LIT LA CHARGE DE SES VARIANTS (GA2-4).
+#     `FUN_140ce59bc` lit l etiquette R(4) PUIS la charge de `FUN_140ce5aa4` (mode A si g = 0,
+#     mode B x32 si g = 1) ; le R(4) seul sous-lisait. ti=13 passe de 0 % a ~100 % :
+#     a521164d 0 -> 220/220, 60ae07c4 0 -> 446/454, 11de8353 0 -> 112/112, 111fa685
+#     0 -> 104/104, e5adf7b2 0 -> 80/80, bcb6d393 0 -> 330/331, fb1a1a72 0 -> 209/209.
+#     Le portage unique de `FUN_14076e524` ne bouge aucune autre ligne ; ses trois sites qui
+#     faisaient baisser ti=38 / ti=42 restent en exceptions datees. 0 ligne `fermes` ne descend.
 a521164d	ti=2	0	11	i11 game-engine-soft-ceilings-component
 a521164d	ti=4	10	10	
 a521164d	ti=5	352	352	
@@ -167,7 +174,7 @@ a521164d	ti=9	262	262
 a521164d	ti=10	0	573	i2 managed-object-navpoint-component
 a521164d	ti=11	0	18	i4 managed-objective-interaction-filter-component
 a521164d	ti=12	0	298	i13 managed-navpoint-top-progress
-a521164d	ti=13	0	220	
+a521164d	ti=13	220	220	
 a521164d	ti=14	352	352	
 a521164d	ti=15	11	11	
 a521164d	ti=17	363	363	
@@ -198,7 +205,7 @@ a521164d	ti=47	249	262
 60ae07c4	ti=10	1	376	i2 managed-object-navpoint-component
 60ae07c4	ti=11	0	135	i4 managed-objective-interaction-filter-component
 60ae07c4	ti=12	0	204	i13 managed-navpoint-top-progress
-60ae07c4	ti=13	0	454	
+60ae07c4	ti=13	446	454	
 60ae07c4	ti=14	960	960	
 60ae07c4	ti=15	30	30	
 60ae07c4	ti=17	990	990	
@@ -230,7 +237,7 @@ a521164d	ti=47	249	262
 11de8353	ti=10	0	95	i2 managed-object-navpoint-component
 11de8353	ti=11	0	14	i4 managed-objective-interaction-filter-component
 11de8353	ti=12	0	31	i13 managed-navpoint-top-progress
-11de8353	ti=13	0	112	
+11de8353	ti=13	112	112	
 11de8353	ti=14	512	512	
 11de8353	ti=15	16	16	
 11de8353	ti=17	528	528	
@@ -261,7 +268,7 @@ a521164d	ti=47	249	262
 111fa685	ti=10	0	103	i2 managed-object-navpoint-component
 111fa685	ti=11	0	13	i4 managed-objective-interaction-filter-component
 111fa685	ti=12	1	15	i13 managed-navpoint-top-progress
-111fa685	ti=13	0	104	
+111fa685	ti=13	104	104	
 111fa685	ti=14	448	448	
 111fa685	ti=15	14	14	
 111fa685	ti=17	462	462	
@@ -291,7 +298,7 @@ e5adf7b2	ti=9	261	261
 e5adf7b2	ti=10	0	262	i2 managed-object-navpoint-component
 e5adf7b2	ti=11	0	10	i4 managed-objective-interaction-filter-component
 e5adf7b2	ti=12	0	60	i13 managed-navpoint-top-progress
-e5adf7b2	ti=13	0	80	
+e5adf7b2	ti=13	80	80	
 e5adf7b2	ti=14	352	352	
 e5adf7b2	ti=15	11	11	
 e5adf7b2	ti=17	363	363	
@@ -323,7 +330,7 @@ bcb6d393	ti=9	152	152
 bcb6d393	ti=10	2	428	i2 managed-object-navpoint-component
 bcb6d393	ti=11	0	85	i4 managed-objective-interaction-filter-component
 bcb6d393	ti=12	4	160	i13 managed-navpoint-top-progress
-bcb6d393	ti=13	0	331	
+bcb6d393	ti=13	330	331	
 bcb6d393	ti=14	608	608	
 bcb6d393	ti=15	19	19	
 bcb6d393	ti=17	627	627	
@@ -354,7 +361,7 @@ fb1a1a72	ti=9	96	96
 fb1a1a72	ti=10	0	461	i2 managed-object-navpoint-component
 fb1a1a72	ti=11	0	55	i4 managed-objective-interaction-filter-component
 fb1a1a72	ti=12	0	122	i13 managed-navpoint-top-progress
-fb1a1a72	ti=13	0	209	
+fb1a1a72	ti=13	209	209	
 fb1a1a72	ti=14	384	384	
 fb1a1a72	ti=15	12	12	
 fb1a1a72	ti=17	396	396	

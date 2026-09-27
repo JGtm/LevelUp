@@ -184,63 +184,16 @@ const (
 // 22 reglages morts, et c est la valeur que la production decode.
 const absDequantMode = AbsDequantRange
 
-// absAxisWFor retourne la largeur de l axe i pour l index de plage idx.
-//
-// LARGEURS D AXE PAR INDEX DE PLAGE DE REPLICATION — LE SAVOIR, ET DESORMAIS LA LECTURE.
-//
-// SOURCE, DESASSEMBLAGE : `FUN_14076e524(out, reader, outIndexPtr, LEVEL)` choisit ses trois
-// largeurs dans DEUX tables distinctes selon l'index lu au flux :
-//
-//	index == -1 (bit de porte pose)  ->  DAT_1445cc9e0 + LEVEL*0xc                (table DEFAUT)
-//	index >= 0                       ->  DAT_1445ccbe0 + (index*0x20 + LEVEL)*0xc (table PAR INDEX)
-//
-// et LEVEL est un IMMEDIAT STATIQUE 0x10 = 16 aux neuf sites d'appel du composant de position
-// (`MOV R9D,0x10` en 1406d008a, 140f04dd5, 140f04f32, 140f04f80, 140f04fe5, 140f05018,
-// 140fb8b33, 140ee7288, 14226a6b8). Les deux tables sont remplies par la MEME loi
-// (`FUN_140be9b88`, cf. `profile/loi_largeurs.go`) sur DEUX jeux de bornes : celles du BUILD
-// (`+/-20000`, `.rdata`) pour la table defaut, celles de la CARTE pour la table par index.
-//
-// CE QUE LE LOT 3.4.1 CHANGE, ET C'EST LE LOT ENTIER. La largeur UNIFORME de 14 bits
-// (`Movement.AbsoluteAxisW`), qui ecrasait les trois largeurs de la carte des qu'elle etait
-// posee — c'est-a-dire toujours, en production — A DISPARU, et `idx` cesse d'etre jete :
-//
-//	idx == -1  la table DEFAUT au niveau du composant de position, soit `22/22/22` sur ce
-//	           build ([profile.LargeursAxeParDefautDuBuild]) — et surtout PAS les largeurs de
-//	           la carte ;
-//	idx >= 0   la table PAR INDEX de la carte, portee par le descripteur absolu du profil
-//	           ([profile.MapQuantEntry.PrecisionAbsolue], pose par `replay`). C'est la MEME
-//	           table que le chemin world-object : les deux la lisent, et c'est leur double
-//	           implantation qui les avait laisses diverger.
-//
-// LE COMPTE SE FERME A L'UNITE SUR LA MESURE QUI FAISAIT AUTORITE, et il ne se fermait pas
-// avant : la capture CE du dispatch donne i0 du bipede a 47 bits, une seule valeur distincte,
-// 100 % de 154 158 dispatches, et
-//
-//	1 bUsePred + 1 bDelta + 1 precHigh + 1 indexSel + 1 IndexW + (13+13+14) + 2 finite = 47
-//
-// avec les largeurs de Cliffhanger. Avec l'uniforme 14 on lisait 49.
-//
-// LE CATALOGUE NE PORTE QUE LA PLAGE JOUEE, et c'est une limite ASSUMEE, ecrite ici parce
-// qu'elle se voit dans le compte : une carte qui declare plusieurs plages n'a d'entree que pour
-// celle de l'arene (`Region`). Un record d'une AUTRE plage est donc lu aux largeurs de
-// celle-la — le moins mauvais choix, et le seul qui garde l'alignement du record suivant — puis
-// sa position n'est PAS emise (`consumeAbsolutePayload`). L'histogramme
-// [Observation.IndexAbsolus] compte les index rencontres : jamais un zero muet.
-func absAxisWFor(br *Lecteur, idx, i int) uint {
-	if i == 0 {
-		br.obs.compterIndexAbsolu(idx)
-	}
-	if idx < 0 {
-		return profile.LargeursAxeParDefautDuBuild(profile.NiveauPositionDObjet)[i]
-	}
-	return br.worldObjectPrecision().AxisW[i]
-}
+// LES LARGEURS D AXE DU CHEMIN ABSOLU (`absAxisWFor` jusqu au lot J6.3) sont lues par le portage
+// unique de `FUN_14076e524`, `lecteur_position.go` ([largeursDeLaLigne]) : la table DEFAUT a la
+// ligne du NIVEAU DU SITE quand la porte est posee, la table PAR INDEX de la carte sinon. Le
+// niveau n y est plus fige a 0x10 : c est l immediat de chaque site d appel.
 
 // dequantWorldAxis dequantizes one absolute quantized axis word (width bits). Deux formes :
 //   - AbsDequantRange (défaut) : min + step*(q+0.5) via la plage de l'index (FUN_140c1e978).
 //   - AbsDequantCenteredQuantum : (q - 2^(bits-1)) * DeltaQuantum — grille fine centrée sur 0.
 //
-// LA PLAGE SUIT L'INDEX DEPUIS LE LOT 3.4.1, exactement comme la largeur (`absAxisWFor`) et
+// LA PLAGE SUIT L'INDEX DEPUIS LE LOT 3.4.1, exactement comme la largeur (`largeursDeLaLigne`) et
 // comme chez `FUN_14076e524` : bornes et largeurs voyagent ENSEMBLE, elles sortent de la meme
 // AABB. `idx == -1` (porte posee) dequantifie dans la boite monde du BUILD (`+/-20000`) ; tout
 // `idx >= 0` dequantifie dans la plage de la CARTE que le profil porte.

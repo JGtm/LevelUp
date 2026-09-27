@@ -214,4 +214,10 @@ const enteteCarteDeFermeture = "" +
 	"#       ks_e5adf7b2 paquets 371/584 (63,5 %), records utiles 0/1 ; premier bloquant\n" +
 	"#         `vue C : terminateur hors cadre` (160 paquets).\n" +
 	"#     Mutation jouee : `Block64` d object-shield-vitality lu sur 17 bits au lieu de 16 ->\n" +
-	"#     sept lignes de ks_000d5950 en BAISSE et une disparue : le ratchet rougit.\n"
+	"#     sept lignes de ks_000d5950 en BAISSE et une disparue : le ratchet rougit.\n" +
+	"#   2026-09-27 lot J6.3 : portage unique de `FUN_14076e524`. AUCUN compte `fermes` ne bouge.\n" +
+	"#     ks_000d5950 vue=C : 3 485 -> 3 483 paquets atteints ; deux paquets de plus s arretent en\n" +
+	"#     vue B (`fin de payload` 6 -> 7, `ti=23 i1 selectable-zone-data` 0 -> 1). Ligne NEUVE :\n" +
+	"#     ks_000d5950 `ti=23` 0/1 (un record de l archetype des zones atteint). Le flock-position,\n" +
+	"#     dont la lecture du jeu faisait monter ks_000d5950 mais baisser ks_e5adf7b2, reste en\n" +
+	"#     exception datee (`lecteur_position_exceptions.go`). 0 ligne `fermes` ne descend.\n"

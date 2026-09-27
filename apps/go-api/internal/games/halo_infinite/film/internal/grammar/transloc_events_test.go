@@ -175,7 +175,7 @@ func TestDecodeTranslocJumpPorteInversee(t *testing.T) {
 	for i := 0; i < 2; i++ {
 		w.put(1, 1) // porte de région à 1 = bornes PAR DÉFAUT du moteur
 		for ax := 0; ax < 3; ax++ {
-			w.put(translocDefaultAxisBits, uint64(1<<21)) // le milieu de la plage
+			w.put(22, uint64(1<<21)) // table DEFAUT au niveau 0x10 : 22 bits ; le milieu de la plage
 		}
 	}
 	w.put(1, 1)

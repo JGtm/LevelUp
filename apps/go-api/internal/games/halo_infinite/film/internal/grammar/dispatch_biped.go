@@ -236,18 +236,15 @@ func consumeManagedAndObjectiveComponent(br *Lecteur, name string, level uint32)
 	case "asset-transform-component":
 		// ti44 i0 (deser FUN_142ed3c64, resolu STATIQUEMENT : chaine .rdata 143c949b0 ->
 		// getName 141178040 -> descripteur 143d08c18 -> +0x20 thunk -> +0x28 = FUN_142ed3c64).
-		// Corps = 5 x FUN_142ed9530, chacune = FUN_14076e494(...,0x1e,0,0,0) -> FUN_14076e524 :
-		//   R(1) gate ; si gate==0 -> R(DAT_144632be0 = 1) index ; puis 3 x R(6+L) (FUN_140cc5128).
-		// L = niveau de precision du composant dans chunk_00, la largeur venant de la table
-		// DAT_1445cc9e0 indexee par le niveau (largeur = 6+L, verifie sur le dump
-		// ce_prec_widths_1445cc9e0.bin).
+		// Corps = 5 x FUN_142ed9530, chacune = FUN_14076e494(...,0x1e,0,0,0) (CALL 142ed9556).
 		//
-		// ti44 i0 EST A L1, PAS A L0 (lot 1.2, 2026-09-14) : cette ligne disait « L0 -> 6 bits
-		// par axe » parce que le registre se lisait un cran trop tot et servait le niveau du
-		// composant PRECEDENT. Sous le cadrage du jeu le niveau est 1, donc 7 bits par axe, et
-		// le budget passe de 5 x (1+1+3x6) = 100 bits a 5 x (1+1+3x7) = 115.
+		// LE NIVEAU EST L IMMEDIAT 0x1E DU SITE, PAS CELUI DU REGISTRE (lot J6.3, releve du
+		// 2026-09-27). Ce site lisait 3 x R(6 + niveau du registre) — 7 bits par axe au niveau 1
+		// — et un index fige a 1 bit. Au niveau 30 le pas de la loi passe sous 1e-4 : les DEUX
+		// tables donnent 26/26/26, quelles que soient les bornes, et l index est lu sur
+		// `DAT_144632be0` bits. Le portage unique ([lireE494]) le lit.
 		for i := 0; i < 5; i++ {
-			consumeQuantVec3WithGate(br, quantAxisWidth(uint(level)))
+			lireE494(br, niveauTransformDActif)
 		}
 		return variant, nil, true
 	case "spawn-filter-weight-component":

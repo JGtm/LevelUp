@@ -339,6 +339,13 @@ func mesurerFermetureBobines(t *testing.T) string {
 	b.WriteString("#     lectures de la fausse ancre 192 s en vont), et les records qu elles effacaient\n")
 	b.WriteString("#     reviennent (bcb6d393 ti=9 151 -> 152, ti=38 1878 -> 1894 ; fb1a1a72 ti=9 94 -> 96,\n")
 	b.WriteString("#     ti=38 2550 -> 2584 ; ti=37, 42, 43, 47, 10 aussi). 0 ligne `fermes` ne descend.\n")
+	b.WriteString("#   2026-09-27 lot J6.3 : L ETAT PAR DEFAUT DE ti=13 LIT LA CHARGE DE SES VARIANTS (GA2-4).\n")
+	b.WriteString("#     `FUN_140ce59bc` lit l etiquette R(4) PUIS la charge de `FUN_140ce5aa4` (mode A si g = 0,\n")
+	b.WriteString("#     mode B x32 si g = 1) ; le R(4) seul sous-lisait. ti=13 passe de 0 % a ~100 % :\n")
+	b.WriteString("#     a521164d 0 -> 220/220, 60ae07c4 0 -> 446/454, 11de8353 0 -> 112/112, 111fa685\n")
+	b.WriteString("#     0 -> 104/104, e5adf7b2 0 -> 80/80, bcb6d393 0 -> 330/331, fb1a1a72 0 -> 209/209.\n")
+	b.WriteString("#     Le portage unique de `FUN_14076e524` ne bouge aucune autre ligne ; ses trois sites qui\n")
+	b.WriteString("#     faisaient baisser ti=38 / ti=42 restent en exceptions datees. 0 ligne `fermes` ne descend.\n")
 	for _, court := range closureMiniFilms() {
 		dir := filepath.Join("..", "..", "replay", "testdata", "minifilm_"+court)
 		stats := fermetureDUneBobine(t, dir)

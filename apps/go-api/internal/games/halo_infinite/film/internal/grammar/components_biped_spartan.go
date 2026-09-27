@@ -418,6 +418,6 @@ func consumeSpartanAbilityTag3(br *Lecteur) {
 		br.ReadBits(6) // FUN_14297ea84 = R(6) ; la porte `dst[2] & 1` est FERMEE par l init
 	}
 	if br.ReadBit() { // t : porte de la queue handle
-		consumeSimStateHandleTail(br) // FUN_14076e494, meme lecteur qu i60
+		lireE494(br, niveauPosition) // FUN_14076e494, meme lecteur qu i60
 	}
 }

@@ -275,3 +275,36 @@ package grammar
 // crochet de capture) : aucun changement du kill-feed n est attendu (cf. sa chronique).
 // `objectives.Rev` n est pas concerne : sa fermeture ne rencontre que `source`. `replay.SchemaVersion` monte (73 -> 74) et `killcollector.IsolationDecoderRev` aussi
 // (les positions du collecteur passent par le meme etage du pont).
+//
+// ENTREE `grammar-2026-09-27.2` (2026-09-27, lot J6.3 du plan de suite de l audit du decodeur) :
+// UN SEUL PORTAGE DE `FUN_14076e524`. Le rang `.2` distingue ce lot de J5, qui a monte
+// `grammar-2026-09-27` en parallele ; rang fixe a la fusion des deux lots : `.2` suit J5.
+//
+// CE QUE LE RANG CHANGE (releve Ghidra du 2026-09-27, `lecteur_position.go`). Le lecteur de position
+// quantifiee et ses deux enveloppes (`FUN_14076e494` : garde de pleine precision ; `FUN_14076e420` :
+// bit precHigh) ont UN portage, parametre par l IMMEDIAT DE NIVEAU du site d appel. Tous les sites
+// l appellent avec l immediat releve, que tient `lecteur_position_ratchet_test.go`. Lectures qui
+// changent :
+//
+//	asset-transform `ti=44 i0`   niveau 0x1E : 26/26/26 et index sur `DAT_144632be0` (7/7/7 et 1 bit)
+//	unit-actor-state (visee)     le 0x10 est un NIVEAU : garde, porte, index, trois axes (R(16) plat)
+//	crew-order, tacmap-poiicon et -poiiconoffset, flock-destination, player-desired-respawn-location
+//	                              plus de bit precHigh, axes a la ligne 0x10 (6 + niveau du registre)
+//	tacmap-waypointstate, -areaofinterest, -displayasset, -cooptetherarea, spawn-filter-type,
+//	selectable-zone-data         largeurs de la ligne 0x10 et garde (descripteur de traversee)
+//	tacmap-waypointstate         + R(1) quand le niveau du registre depasse 1 (`FUN_140f04d88`)
+//	i0 bipede, precHigh = 1       `FUN_141f85880` : 3 x 14 bits sur +/-100, puis R(2) (0 bit)
+//	i0 absolu predit, cVar1 = 1   idem (0 bit)
+//	i0 repli du delta predit      `FUN_14076e524` nu : un bit precHigh de moins
+//	trame media de l etat par defaut du bipede   garde, porte, index, axes (branche inerte)
+//	`DAT_144632be0`               lue du profil partout (GA2-3) — plus de 1 cable
+//	etat par defaut `ti=13`       la charge de chaque variant apres l etiquette (GA2-4)
+//	translocateur                 le meme lecteur, sous la garde ; oracle 18/18 inchange
+//
+// TROIS EXCEPTIONS DATEES gardent leur ancien lecteur (`lecteur_position_exceptions.go`, decision du
+// superviseur) : flock-position `ti=21 i16`, world-object i0 (porte posee) et `ti=38 i18` — la
+// lecture du jeu y fait baisser la fermeture des bobines.
+//
+// Mesure (bobines du depot) : fermeture d image-cle `ti=13` de 0 % a ~100 % sur les sept bobines,
+// aucune autre ligne ne bouge ; carte de fermeture sans aucun compte `fermes` modifie, une ligne
+// neuve (ks_000d5950 `ti=23` 0/1). Golden des familles de mini-bobine inchange.

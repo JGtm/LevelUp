@@ -59,18 +59,22 @@ func niveauAncienneLecture(d []byte, b, i int) uint32 {
 func archetypesMesures() []int { return []int{9, 11, 12, 35, 40, 42, 43} }
 
 // lecteursQuiConsommentLeNiveau : les composants dont le deser de `consumeByName` utilise
-// l'argument `level`, releves le 2026-09-14 (`grep -n level traverse.go`). TOUT le reste du
-// dispatch ignore le niveau : un niveau qui bouge n'y change pas un bit, et c'est ce qui borne
-// l'effet du correctif.
+// l'argument `level`. TOUT le reste du dispatch ignore le niveau : un niveau qui bouge n'y change
+// pas un bit, et c'est ce qui borne l'effet du correctif.
+//
+// RELEVE LE 2026-09-14, PUIS REVU AU LOT J6.3 (2026-09-27) : six des sept vec3 qui lisaient une
+// largeur `6 + niveau du registre` (crew-order, tacmap-poiicon et -poiiconoffset,
+// flock-destination, player-desired-respawn-location, asset-transform) passent par le
+// portage unique de `FUN_14076e524`, a l immediat du site — aucun site du jeu ne transmet le niveau
+// du registre au lecteur. Le niveau ne garde qu une queue, `if (1 < param_4)`, chez deux
+// desserialiseurs du jeu (`FUN_140fb8af0`, `FUN_140f04d88`) ; flock-position reste une exception
+// datee (`lecteur_position_exceptions.go`). Les autres consommateurs du niveau
+// (navpoint, glissade, i59...) ne sont pas recenses ici : la mesure du lot 1.2 ne les visait pas.
 func lecteursQuiConsommentLeNiveau() map[string]string {
 	return map[string]string{
-		"crew-order-component":        "traverse.go quantAxisWidth(level)",
-		"tacmap-poiiconoffset":        "traverse.go quantAxisWidth(level)",
-		"tacmap-poiicon":              "traverse.go quantAxisWidth(level)",
-		"flock-destination-component": "traverse.go quantAxisWidth(level)",
-		compPlayerDesiredRespawnLoc:   "traverse.go consumePlayerDesiredRespawnLocation(br, level)",
-		"flock-position-component":    "traverse.go consumeFlockPosition(br, uint(level))",
-		"asset-transform-component":   "traverse.go quantAxisWidth(level) x5",
+		"flock-destination-component": "dispatch_player.go R(2) si level > 1 (FUN_140fb8af0)",
+		"tacmap-waypointstate":        "dispatch_item.go R(1) si level > 1 (FUN_140f04d88)",
+		"flock-position-component":    "lecteur_position_exceptions.go 6+level (exception datee J6.3)",
 	}
 }
 

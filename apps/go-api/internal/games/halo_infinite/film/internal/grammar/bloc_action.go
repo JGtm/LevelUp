@@ -23,7 +23,7 @@ package grammar
 //	le VECTEUR `FUN_1431a0cbc` : `FUN_142af27f8` = R(2) mode ; 1 -> `FUN_14076dc04` a
 //	  `R9D = 0x13` (@1431a0cdf) = R(19) ; 0 -> `FUN_14076e494(br, dst, 0x10, 0, 0, 0)`
 //	  (@1431a0d0d) = la position quantifiee de niveau 16, exactement le lecteur que le depot porte
-//	  deja sous le nom [consumeSimStateHandleTail] ; 2 et 3 -> une constante, ZERO bit. Le port
+//	  deja sous le nom [lireE494] ; 2 et 3 -> une constante, ZERO bit. Le port
 //	  lisait `R(1)[R(1)[R(1)]]`.
 //
 // Le reste etait juste et ne bouge pas : la garde de tete, les six bits de gachettes
@@ -134,13 +134,13 @@ func lireIndexArme(br *Lecteur) int {
 
 // lireVecteur1431a0cbc lit `FUN_1431a0cbc` : R(2) mode ; 1 -> R(19) ; 0 -> la position
 // quantifiee de niveau 16 (`FUN_14076e494(..., 0x10, 0, 0, 0)`, le lecteur de
-// [consumeSimStateHandleTail]) ; 2 et 3 -> une constante, zero bit.
+// [lireE494]) ; 2 et 3 -> une constante, zero bit.
 func lireVecteur1431a0cbc(br *Lecteur) {
 	switch br.ReadBits(2) { // FUN_142af27f8
 	case modeVecteurDirection:
 		br.ReadBits(largeurVecteurDirection)
 	case modeVecteurQuantifie:
-		consumeSimStateHandleTail(br)
+		lireE494(br, niveauPosition)
 	}
 }
 

@@ -41,8 +41,9 @@ import (
 // FUN_1405838f0(dst+0x70)/FUN_142e2de9c, which inspect the freshly-memset(0) DST
 // buffer — NOT the bitstream. On a fresh keyframe decode that object is empty, so
 // iVar15 == -1 and the quat + second FUN_1407f2058 are SKIPPED. Modeled by
-// bipedMediaFramePresent (default false). When set, the quat is FUN_14076e524:
-// R(1) gate; if bit==0 R(DAT_144632be0=1) index, plus FUN_1407f2058.
+// bipedMediaFramePresent (default false). When set, the quat is FUN_14076e494(0x10), read by the
+// single port [lireE494] (lot J6.3) — guard, gate, index on DAT_144632be0 bits, three axes —
+// plus FUN_1407f2058.
 //
 // FUN_14080cfe8 (object-multiplayer-properties block): the largest sub-reader of the
 // default-state, ported bit-exact in consumeMultiplayerPropertiesBlock. The
@@ -298,13 +299,14 @@ func consumeBipedSpartanAbilityMalleableProperty(br *Lecteur) {
 }
 
 // consumeBipedDefaultStateMediaFrame ports the iVar15 != -1 branch of FUN_140F44C38
-// (@142451b3e): quat FUN_14076e494 + FUN_1407f2058. The quat (FUN_14076e524) is
-// R(1) gate; if bit==0 -> R(DAT_144632be0=1) index. Then FUN_1407f2058 = R(1);
-// if bit==0 R(5). Only reached when the DST media-frame object is non-empty.
+// (@142451b3e): quat FUN_14076e494(0x10) (CALL 142451b5d) + FUN_1407f2058 (R(1); if bit==0
+// R(5)). Only reached when the DST media-frame object is non-empty.
+//
+// LOT J6.3 (2026-09-27, GA2-3) : the port read the gate and a 1-bit index only — no guard, no
+// axes, and `DAT_144632be0` wired to 1 although the map sets it (1 for one declared range,
+// ceilLog2(count) otherwise). The single port [lireE494] reads it all.
 func consumeBipedDefaultStateMediaFrame(br *Lecteur) {
-	if !br.ReadBit() { // FUN_14076e524 quat gate; if bit==0 read index
-		br.ReadBits(1) // DAT_144632be0 = 1 (quat index width)
-	}
+	lireE494(br, niveauPosition)
 	consumeGate0R(br, 5) // FUN_1407f2058
 }
 

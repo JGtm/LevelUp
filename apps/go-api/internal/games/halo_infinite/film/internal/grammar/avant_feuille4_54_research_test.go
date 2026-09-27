@@ -79,7 +79,7 @@ func avantFeuille4UnPaquet(pay []byte, ctx ContexteDeLecture, n, plats *int, zs,
 		if !br.ReadBit() {                    // feuille 3 : la porte bVar14
 			continue
 		}
-		consumeSimStateHandleTail(br) // feuille 4, premiere moitie : la position absolue
+		lireE494(br, niveauPosition) // feuille 4, premiere moitie : la position absolue
 		// feuille 4, seconde moitie : FUN_140c1e79c = R(1) porte ; si 0 -> R(19) ; puis R(8).
 		up := [3]float32{0, 0, 1}
 		if br.ReadBit() {
