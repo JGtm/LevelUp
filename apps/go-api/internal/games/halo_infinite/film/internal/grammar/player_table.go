@@ -269,6 +269,15 @@ func remplirRapport(rep *PlayerTableReport, dt departTable) {
 //
 // Ce n'est pas un seuil, c'est la seule regle qui se justifie : une lecture qui explique HUIT
 // enregistrements explique le film mieux qu'une qui n'en explique qu'UN.
+//
+// # A COMPLETUDE EGALE, LE RECUL LE PLUS LONG GAGNE (J10.6, GA1-5 de l'audit du 2026-09-24)
+//
+// La queue du tampon est faite de zeros : la lecture SANS recul ferme elle aussi a 32 slots, ses
+// derniers « vacants » etant du bourrage, et elle visite les memes enregistrements. Tant que la
+// premiere lecture gardait sa place a egalite, le recul ne decidait jamais : `HeadVacant` valait 0
+// par construction et le rang de chaque joueur d'un roster dont le slot 0 est vacant etait faux
+// d'autant. Un recul, lui, n'est essaye que sur des enregistrements que le predicat grammatical
+// de vacance reconnait un par un — la ou le bourrage de queue n'est que ce qui reste du tampon.
 func chercherDepart(d []byte, candidats []int, finBit, persoBits int) (departTable, bool) {
 	reels := candidatsReels(d, candidats, finBit, persoBits)
 	dt := departTable{essais: len(reels)}
@@ -280,7 +289,9 @@ func chercherDepart(d []byte, candidats []int, finBit, persoBits int) (departTab
 	for tete := 0; tete < playerTableSlots && reels[0]-tete*vide >= 0; tete++ {
 		depart := reels[0] - tete*vide
 		slots, vac, ferme := marcherTable(d, depart, finBit, persoBits)
-		if ferme && visiteTousLesReels(slots, reels) && len(slots) > len(dt.slots) {
+		// `>=` ET NON `>` (J10.6, GA1-5) : a completude egale, le recul le plus long gagne — cf.
+		// « A COMPLETUDE EGALE » ci-dessus.
+		if ferme && visiteTousLesReels(slots, reels) && len(slots) >= len(dt.slots) {
 			dt.slots, dt.vacants, dt.teteVacants, dt.premierBit = slots, vac, tete, depart
 			trouve = true
 		}
