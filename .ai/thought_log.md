@@ -113610,3 +113610,14 @@ Sans film, le détail des grenades par type ne vient plus de la table native : u
 - Web : vitest complet 8 668 tests verts, lint 0 erreur, ratchets verts.
 
 **Conclusion / prochaine etape** : L2 clos. Vérification superviseur, puis L3.
+
+## [2026-09-27] Emprise, lot L3 : les quatre cartes d'objectif sur Contributions, périmètre D2, historique d'objectif — Complété (`wt/emprise`, commit local)
+
+**Decision technique principale** : les blocs d'usage de `/pages/teammates` lisent désormais le périmètre D2 (composition exacte ∩ matchs filtrés, matchs filtrés seuls sans coéquipier), verrouillé par un ratchet. Nouveau bloc `squad_objective_history` : calcul pur dans `analysis/squadformes` (réutilise `familyColumnsOfRole`, pas de 3e copie), une seule lecture `LoadObjectiveColumnRows` sur l'historique de la composition, camp = équipe alliée déjà chargée par la page, drapeau neutre écarté par `skillchain.IsNeutralFlagSubMode` (ajouté à la source unique, injecté au câblage sous capability). Côté web, dossier `features/squad/objectif/` : rapport de force par famille (cadres, barre camp contre camp, repli S3), fil de la session et soirée après soirée (ECharts, deux grilles alignées : courbes puis bande de résultats), fiches dans la coquille `SquadPlayerSheet` extraite de `MedalDigest`. Suppressions : deux cartes squad d'objectif de `formes/`, `roleLobbyParts`, `SquadObjectiveStatsPanel` et `objective_stats_by_xuid` de bout en bout.
+
+**Resultats observes** :
+- Témoins retrouvés par tests : 07/09 Prendre 39,0 / Défendre 36,8 / Tenir 43,8 % (Go et web), 1 victoire sur 7, 4 Bases · 3 Drapeau ; 22/09 JGtm 4 drapeaux capturés, 3 volés.
+- Go : suite complète verte, lint 0 issue, ratchets objectif / intersection verts. Contrat régénéré et vérifié.
+- Web : typecheck, lint (0 erreur), knip, couleurs, imports croisés verts ; vitest 8 687 verts, 10 garde-rails en délai dépassé sous charge, verts rejoués (deux d'entre eux seulement avec un délai de 60 s : 6 à 9 s même seuls sur la machine chargée).
+
+**Conclusion / prochaine etape** : L3 clos, sept découvertes consignées au plan (fond de pastille des médailles invalide gardé tel quel, drapeau neutre présent dans le fil, « ce soir » = périmètre entier, 0 sur 0, abréviations, taille de `teammates_service.go`, gate du prédicat). Vérification superviseur, gate visuel au L6, puis L4.

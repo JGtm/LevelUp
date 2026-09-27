@@ -7,6 +7,7 @@ import (
 	"log/slog"
 
 	"levelup/go-api/internal/games"
+	"levelup/go-api/internal/games/halo_infinite/skillchain"
 	"levelup/go-api/internal/platform/duckdb"
 	"levelup/go-api/internal/platform/duckdb/sharedprovider"
 	"levelup/go-api/internal/port"
@@ -152,11 +153,6 @@ func (r *ServiceRegistry) SquadV2Ctx(ctx context.Context, slug string) (port.Squ
 	// player ; on lui propage le gamertag de la session courante (chunk S11).
 	loader.SetDefaultGamertag(pdb.Gamertag)
 	svc := service.NewSquadServiceV2(loader)
-	// KPI objectifs par xuid (CTF/Zones/Oddball) : gated par la capability
-	// match.objective.stats (Infinite ; absente pour Halo 5). Jamais slug==.
-	if r.capabilitiesForPDB(pdb).Has(games.CapMatchObjectiveStats) {
-		svc = svc.WithObjectiveStatsRepo(duckdb.NewObjectiveStatsRepo(pdb))
-	}
 	return svc, pdb.XUID, pdb.Gamertag, nil
 }
 
@@ -259,6 +255,13 @@ func (r *ServiceRegistry) TeammatesCtx(ctx context.Context, slug string) (port.T
 			objectives = duckdb.NewObjectiveStatsRepo(pdb)
 		}
 		svc = svc.WithSquadFormes(duckdb.NewSessionUsageRepo(pdb), objectives, r.cfg.RepoRoot)
+	}
+	// Historique d'objectif (« Rapport de force, soirée après soirée », D6) : le titre qui
+	// publie les stats d'objectif dit aussi quels modes l'historique écarte (le drapeau neutre,
+	// lu dans la source unique des sous-modes objectif). Même gate que les colonnes d'objectif
+	// qu'il lit ; jamais une comparaison de slug. Sans lui, l'historique n'écarte aucun mode.
+	if r.capabilitiesForPDB(pdb).Has(games.CapMatchObjectiveStats) {
+		svc = svc.WithObjectiveHistory(skillchain.IsNeutralFlagSubMode)
 	}
 	return svc, pdb.XUID, pdb.Gamertag, nil
 }

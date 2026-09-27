@@ -42,34 +42,47 @@ var _ port.SessionUsageRepository = (*mockTeammatesUsageRepo)(nil)
 
 func teammatesUsageTeam(v int) *int { return &v }
 
-// TestTeammatesService_GetPage_PublieLeBlocEquipementSurLeScopeFiltre —
-// le coéquipier SÉLECTIONNÉ (pas un ami configuré) devient le joueur suivi du
-// bloc, et le scope est celui de filteredMatches (le joueur principal), pas
-// l'intersection escouade.
-func TestTeammatesService_GetPage_PublieLeBlocEquipementSurLeScopeFiltre(t *testing.T) {
-	t.Parallel()
-	t0 := time.Now().UTC().Add(-time.Hour)
+// usageFixture — deux matchs filtrés : m1 joué avec Ally1, m2 sans lui. Les deux ont un film et
+// les deux joueurs principaux y ont des lignes d'usage.
+func usageFixture(t0 time.Time) (*mockSquadRepo, *mockTeammatesUsageRepo) {
 	repo := &mockSquadRepo{
 		topRows: []domain.TopTeammateRow{
 			{XUID: "x1", Gamertag: "Ally1", GamesTogether: 3, WinsTogether: 2, WinRate: 0.66, AvgKDA: 1.2},
 		},
 		synthRows: []legacymatch.SynthesisMatchRow{
 			{MatchID: "m1", StartTime: t0, Outcome: domain.OutcomeWin, Kills: 10, Deaths: 3},
+			{MatchID: "m2", StartTime: t0.Add(15 * time.Minute), Outcome: domain.OutcomeLoss, Kills: 4, Deaths: 8},
 		},
+		squadRows: []domain.SquadMatchRow{{MatchID: "m1", StartTime: t0, Outcome: domain.OutcomeWin}},
 	}
 	usageRepo := &mockTeammatesUsageRepo{
-		films: map[string]sessionusage.FilmRow{"m1": {MatchID: "m1", DurationMS: 600000}},
+		films: map[string]sessionusage.FilmRow{
+			"m1": {MatchID: "m1", DurationMS: 600000}, "m2": {MatchID: "m2", DurationMS: 600000},
+		},
 		players: []sessionusage.PlayerRow{
 			{MatchID: "m1", XUID: "player-xuid", PadPickups: 2,
 				TakenByFamily: map[string]int{"wall": 2}, KeptByFamily: map[string]int{"wall": 2}},
 			{MatchID: "m1", XUID: "x1", PadPickups: 1,
 				TakenByFamily: map[string]int{"wall": 1}, KeptByFamily: map[string]int{"wall": 1}},
+			{MatchID: "m2", XUID: "player-xuid", PadPickups: 1,
+				TakenByFamily: map[string]int{"wall": 1}, KeptByFamily: map[string]int{"wall": 1}},
 		},
 		participants: []sessionusage.ParticipantRow{
 			{MatchID: "m1", XUID: "player-xuid", Gamertag: "Main", TeamID: teammatesUsageTeam(0), PresentAtCompletion: true},
 			{MatchID: "m1", XUID: "x1", Gamertag: "Ally1", TeamID: teammatesUsageTeam(0), PresentAtCompletion: true},
+			{MatchID: "m2", XUID: "player-xuid", Gamertag: "Main", TeamID: teammatesUsageTeam(0), PresentAtCompletion: true},
 		},
 	}
+	return repo, usageRepo
+}
+
+// TestTeammatesService_GetPage_PublieLeBlocEquipementSurLePerimetreEscouade — D2 (plan
+// PLAN_EMPRISE_ET_CARTES_DEPLACEES_2026-09-26) : avec un coéquipier SÉLECTIONNÉ, le périmètre est
+// la composition exacte ∩ les matchs filtrés (m1 seul : m2 a été joué sans Ally1), et le
+// coéquipier sélectionné (pas un ami configuré) devient le joueur suivi du bloc.
+func TestTeammatesService_GetPage_PublieLeBlocEquipementSurLePerimetreEscouade(t *testing.T) {
+	t.Parallel()
+	repo, usageRepo := usageFixture(time.Now().UTC().Add(-time.Hour))
 	svc := NewTeammatesService(repo, nil).
 		WithPlayerMatchesRepo(newSynthMockFromRows(repo.synthRows, repo.synthErr), "halo_infinite", "Main").
 		WithEquipmentUsage(usageRepo)
@@ -85,10 +98,34 @@ func TestTeammatesService_GetPage_PublieLeBlocEquipementSurLeScopeFiltre(t *test
 		t.Fatalf("bloc équipement = %+v, attendu disponible", block)
 	}
 	if block.MatchesMeasured != 1 || block.MatchesTotal != 1 {
-		t.Errorf("couverture = %d/%d, attendu 1/1", block.MatchesMeasured, block.MatchesTotal)
+		t.Errorf("couverture = %d/%d, attendu 1/1 (m2, joué sans Ally1, hors périmètre)", block.MatchesMeasured, block.MatchesTotal)
 	}
 	if len(block.TrackedPlayers) != 1 || block.TrackedPlayers[0].Gamertag != "Ally1" {
 		t.Fatalf("coéquipiers suivis = %+v, attendu [Ally1] (le coéquipier SÉLECTIONNÉ)", block.TrackedPlayers)
+	}
+	if resp.TotalMatches != 2 {
+		t.Errorf("TotalMatches = %d, attendu 2 (le compteur de la page reste celui des matchs filtrés)", resp.TotalMatches)
+	}
+}
+
+// TestTeammatesService_GetPage_SansSelectionLePerimetreEstLeScopeFiltre — D2, repli : sans
+// coéquipier sélectionné, les blocs d'usage lisent tous les matchs filtrés du joueur.
+func TestTeammatesService_GetPage_SansSelectionLePerimetreEstLeScopeFiltre(t *testing.T) {
+	t.Parallel()
+	repo, usageRepo := usageFixture(time.Now().UTC().Add(-time.Hour))
+	svc := NewTeammatesService(repo, nil).
+		WithPlayerMatchesRepo(newSynthMockFromRows(repo.synthRows, repo.synthErr), "halo_infinite", "Main").
+		WithEquipmentUsage(usageRepo)
+
+	resp, err := svc.GetPage(context.Background(), "player-xuid", domain.TeammatesQueryRequest{})
+	if err != nil {
+		t.Fatalf("erreur inattendue : %v", err)
+	}
+	if b := resp.EquipmentUsage; b == nil || b.MatchesTotal != 2 {
+		t.Fatalf("bloc équipement = %+v, attendu les 2 matchs filtrés", b)
+	}
+	if resp.SquadObjectiveHistory != nil {
+		t.Errorf("historique d'objectif publié sans composition : %+v", resp.SquadObjectiveHistory)
 	}
 }
 

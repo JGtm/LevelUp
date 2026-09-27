@@ -12196,9 +12196,6 @@ export interface components {
             kpis_by_xuid?: {
                 [key: string]: components["schemas"]["KPIStats"];
             };
-            objective_stats_by_xuid?: {
-                [key: string]: components["schemas"]["ObjectiveAggregate"];
-            };
             player_cards?: components["schemas"]["PlayerScoreCard"][] | null;
             solo_kpis?: components["schemas"]["KPIStats"];
             squad_score?: components["schemas"]["SquadScoreCard"];
@@ -12366,6 +12363,36 @@ export interface components {
             /** Format: int64 */
             plancher_echantillon_faible: number;
             reperes: components["schemas"]["SquadIsolementRepere"][] | null;
+        };
+        SquadObjectiveEvening: {
+            /** Format: double */
+            defend?: number;
+            families: components["schemas"]["SquadObjectiveFamilyCount"][] | null;
+            /** Format: double */
+            hold?: number;
+            /** Format: int64 */
+            objective_matches: number;
+            session_label: string;
+            start_time: string;
+            /** Format: double */
+            take?: number;
+            /** Format: int64 */
+            wins: number;
+        };
+        SquadObjectiveFamilyCount: {
+            family: string;
+            /** Format: int64 */
+            matches: number;
+        };
+        SquadObjectiveHistory: {
+            current: components["schemas"]["SquadObjectiveEvening"];
+            /** Format: int64 */
+            evenings_below_minimum: number;
+            /** Format: int64 */
+            evenings_with_objective: number;
+            /** Format: int64 */
+            min_objective_matches: number;
+            previous: components["schemas"]["SquadObjectiveEvening"][] | null;
         };
         SquadPageResponse: {
             selected_teammate?: components["schemas"]["SelectedTeammateData"];
@@ -13260,6 +13287,7 @@ export interface components {
             range_profiles?: components["schemas"]["MatchRangeBlock"];
             session_labels: components["schemas"]["SessionLabelsList"];
             session_timeline?: components["schemas"]["SquadSessionPoint"][] | null;
+            squad_objective_history?: components["schemas"]["SquadObjectiveHistory"];
             synergy_radar?: components["schemas"]["SquadSynergyRadarSeries"][] | null;
             teammates: components["schemas"]["TeammateRow"][] | null;
             timeseries?: components["schemas"]["SquadTimeseriesPoint"][] | null;

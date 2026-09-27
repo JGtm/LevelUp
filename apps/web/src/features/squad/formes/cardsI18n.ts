@@ -32,8 +32,6 @@ export type FormesCardKey =
   | 'objectivesGapRole'
   | 'objectivesSharesByFamily'
   | 'objectivesRawGrid'
-  | 'objectivesGapSquad'
-  | 'objectivesLobbyTrack'
 
 export interface FormesCardText {
   title: string
@@ -234,20 +232,6 @@ export const FORMES_CARDS_TEXT: Record<Locale, FormesCardsText> = {
           '**À dire à l’écran** : les matchs sans objectif n’y figurent pas — ce n’est pas un trou ' +
           'de mesure.',
       },
-      objectivesGapSquad: {
-        title: 'Rapport de force par famille de mode',
-        note:
-          'Le rapport de force sur les grandeurs que le mode publie vraiment. On y lit ce que les ' +
-          'trois rôles fusionnaient — une colonne perdue pendant qu’une autre est dominée.',
-      },
-      objectivesLobbyTrack: {
-        title: 'Ce que mon camp prend de l’objectif',
-        note:
-          '**La carte de synthèse du bloc** : la partie colorée dit l’avantage sur le lobby, les ' +
-          'segments disent le rôle de chacun. **Ce qu’elle abandonne** : l’axe « Tenir » est en ' +
-          'secondes et les deux autres en actions — les trois barres ne se comparent qu’à leur ' +
-          'propre parité.',
-      },
     },
   },
   en: {
@@ -407,19 +391,6 @@ export const FORMES_CARDS_TEXT: Record<Locale, FormesCardsText> = {
           'is the card to open when a share surprises you: it gives the count that produced it. ' +
           '**To say on screen**: matches without an objective are not listed — that is not a ' +
           'measurement gap.',
-      },
-      objectivesGapSquad: {
-        title: 'Balance of power by mode family',
-        note:
-          'The balance of power on the measures the mode really publishes. It shows what the three ' +
-          'roles were merging — one column lost while another is dominated.',
-      },
-      objectivesLobbyTrack: {
-        title: 'What my side takes of the objective',
-        note:
-          '**The summary card of the block**: the coloured part says the advantage over the lobby, ' +
-          'the segments say each player’s role. **What it gives up**: the “Hold” axis is in seconds ' +
-          'and the other two in actions — the three bars only compare to their own parity.',
       },
     },
   },

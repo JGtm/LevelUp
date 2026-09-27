@@ -26892,10 +26892,6 @@ components:
           additionalProperties:
             $ref: '#/components/schemas/KPIStats'
           type: object
-        objective_stats_by_xuid:
-          additionalProperties:
-            $ref: '#/components/schemas/ObjectiveAggregate'
-          type: object
         player_cards:
           items:
             $ref: '#/components/schemas/PlayerScoreCard'
@@ -27348,6 +27344,80 @@ components:
         - fenetre_ms
         - plafond_ms
         - plancher_echantillon_faible
+      type: object
+    SquadObjectiveEvening:
+      additionalProperties: false
+      properties:
+        defend:
+          format: double
+          type: number
+        families:
+          items:
+            $ref: '#/components/schemas/SquadObjectiveFamilyCount'
+          type:
+            - array
+            - "null"
+        hold:
+          format: double
+          type: number
+        objective_matches:
+          format: int64
+          type: integer
+        session_label:
+          type: string
+        start_time:
+          type: string
+        take:
+          format: double
+          type: number
+        wins:
+          format: int64
+          type: integer
+      required:
+        - session_label
+        - start_time
+        - objective_matches
+        - wins
+        - families
+      type: object
+    SquadObjectiveFamilyCount:
+      additionalProperties: false
+      properties:
+        family:
+          type: string
+        matches:
+          format: int64
+          type: integer
+      required:
+        - family
+        - matches
+      type: object
+    SquadObjectiveHistory:
+      additionalProperties: false
+      properties:
+        current:
+          $ref: '#/components/schemas/SquadObjectiveEvening'
+        evenings_below_minimum:
+          format: int64
+          type: integer
+        evenings_with_objective:
+          format: int64
+          type: integer
+        min_objective_matches:
+          format: int64
+          type: integer
+        previous:
+          items:
+            $ref: '#/components/schemas/SquadObjectiveEvening'
+          type:
+            - array
+            - "null"
+      required:
+        - current
+        - previous
+        - evenings_with_objective
+        - evenings_below_minimum
+        - min_objective_matches
       type: object
     SquadPageResponse:
       additionalProperties: false
@@ -29488,6 +29558,8 @@ components:
           type:
             - array
             - "null"
+        squad_objective_history:
+          $ref: '#/components/schemas/SquadObjectiveHistory'
         synergy_radar:
           items:
             $ref: '#/components/schemas/SquadSynergyRadarSeries'

@@ -18,7 +18,6 @@ import {
   objectiveFamilies,
   objectiveMatches,
   objectiveCell,
-  roleLobbyParts,
 } from './objectives'
 import {
   aggregateWeaponClass,
@@ -114,13 +113,6 @@ describe('objectifs', () => {
     expect(take.lobby).toBe(4)
     const hold = aggregateRole(block, 'hold')
     expect(hold.lobby).toBeCloseTo(77.4, 6)
-  })
-
-  it('sépare l’escouade, le reste du camp et l’adversaire par rôle', () => {
-    const parts = roleLobbyParts(block, 'defend', [FORMES_MAIN_XUID])
-    expect(parts.bySquad[FORMES_MAIN_XUID]).toBe(2)
-    expect(parts.teamRest).toBe(0)
-    expect(parts.opponents).toBe(1)
   })
 
   it('rend 0 pour un joueur absent de la feuille d’objectif', () => {

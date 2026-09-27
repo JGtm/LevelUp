@@ -26,8 +26,11 @@ const frCards = FORMES_CARDS_TEXT.fr
 const ALL_CARDS = Object.keys(frCards.cards) as FormesCardKey[]
 
 describe('FormesRetenuesSection', () => {
-  it('les DIX-NEUF cartes de l’artefact se répartissent entre les deux contextes', () => {
-    expect(ALL_CARDS).toHaveLength(19)
+  // DIX-SEPT depuis le lot L3 du plan PLAN_EMPRISE_ET_CARTES_DEPLACEES_2026-09-26 : les deux
+  // cartes d'objectif du contexte escouade ont laissé la place à la section « Objectif » de
+  // l'onglet Contributions (features/squad/objectif/).
+  it('les DIX-SEPT cartes de l’artefact se répartissent entre les deux contextes', () => {
+    expect(ALL_CARDS).toHaveLength(17)
     const { container: solo } = render(
       <FormesRetenuesSection block={formesFixture()} locale="fr" contexte="solo" />,
     )
@@ -55,6 +58,8 @@ describe('FormesRetenuesSection', () => {
     const texteSquad = squad.textContent ?? ''
     expect(texteSquad).toContain(frCards.cards.equipmentSquadGrid.title)
     expect(texteSquad).not.toContain(frCards.cards.equipmentShares.title)
+    // Le bloc Objectifs est solo seul : l'escouade lit ses cartes d'objectif sur Contributions.
+    expect(texteSquad).not.toContain(fr.blocks.objectives.title)
   })
 
   it('rend les trois blocs, chacun avec son titre — plus aucun intertitre de contexte', () => {

@@ -1,10 +1,10 @@
 // Package teammates — teammates_service_formes.go : LE BLOC « FORMES RETENUES »
 // de l'onglet Synergies (artefact 2ec1b8eb, lot D2 du 2026-09-13).
 //
-// MÊME SCOPE ET MÊMES AMIS QUE LE BLOC D'ÉQUIPEMENT (teammates_service_usage.go) :
-// `filteredMatches` — les matchs du joueur principal après période, cascade et
-// sessions, la même population que Options/MatchHistory/TotalMatches — et les
-// coéquipiers SÉLECTIONNÉS comme escouade. Deux blocs de la même page qui
+// MÊME PÉRIMÈTRE ET MÊMES AMIS QUE LE BLOC D'ÉQUIPEMENT (teammates_service_usage.go) :
+// le périmètre D2 — la composition exacte ∩ les matchs filtrés (période, cascade,
+// sessions), les matchs filtrés seuls sans coéquipier — et les coéquipiers
+// SÉLECTIONNÉS comme escouade. Deux blocs de la même page qui
 // répondraient sur deux scopes différents seraient deux vérités.
 //
 // L'IDENTITÉ D'AFFICHAGE D'UN MATCH (heure, mode, carte) vient de l'historique
@@ -39,7 +39,7 @@ func (s *TeammatesService) WithSquadFormes(
 	return s
 }
 
-// loadSquadFormes publie le bloc sur le scope filtré de la page. lectures : les lectures
+// loadSquadFormes publie le bloc sur le périmètre D2 de la page. lectures : les lectures
 // communes au bloc « servi ou gâché », déjà faites (nil ⇒ le bloc les fait).
 func (s *TeammatesService) loadSquadFormes(
 	ctx context.Context, playerXUID string, filteredMatches []legacymatch.SynthesisMatchRow,

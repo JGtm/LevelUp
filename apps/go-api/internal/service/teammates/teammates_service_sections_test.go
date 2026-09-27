@@ -203,8 +203,8 @@ func TestLoadUsageBlocks_RequeteDejaAnnulee(t *testing.T) {
 	repo, _ := pageCompleteFixture()
 	svc := NewTeammatesService(repo, nil).
 		WithEquipmentUsage(usageAnnulant{mockTeammatesUsageRepo: &mockTeammatesUsageRepo{}, a: a})
-	equipement, formes := svc.loadUsageBlocks(ctx, "x_main", repo.synthRows, nil, domain.TeammatesQueryRequest{})
-	if equipement != nil || formes != nil || a.vues["usage"] != 0 {
-		t.Fatalf("blocs %v / %v, lectures %d : attendu aucun bloc et aucune lecture", equipement, formes, a.vues["usage"])
+	b := svc.loadUsageBlocks(ctx, "x_main", porteeUsage{filtered: repo.synthRows}, domain.TeammatesQueryRequest{})
+	if b.equipement != nil || b.formes != nil || b.objectif != nil || a.vues["usage"] != 0 {
+		t.Fatalf("blocs %+v, lectures %d : attendu aucun bloc et aucune lecture", b, a.vues["usage"])
 	}
 }

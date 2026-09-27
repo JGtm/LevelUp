@@ -4,7 +4,7 @@
  * Consomme le contexte SquadContext fourni par SquadLayout. Affiche les
  * charts de contribution par joueur : K/D/A par minute, synergies radar, frags et armes
  * (Répartition des frags, Outils de destruction — arrivés d'Usages au lot L2 du plan
- * PLAN_EMPRISE_ET_CARTES_DEPLACEES_2026-09-26),
+ * PLAN_EMPRISE_ET_CARTES_DEPLACEES_2026-09-26), objectif (quatre cartes, lot L3 du même plan),
  * performance, impact des coéquipiers, médailles, mécaniques de frag. Le
  * « Premier frag / première mort » a rejoint l'onglet Dynamique (chart lanes) ;
  * l'impact et les médailles sont arrivés de Synergies (lot 3, 2026-09-22).
@@ -23,6 +23,7 @@ import { SquadSynergyRadarChart } from './SquadSynergyRadarChart'
 import { SquadPerformanceCharts } from './SquadPerformanceCharts'
 import { SquadKillMechanicsChart } from './SquadKillMechanicsChart'
 import { SquadFragSection } from './SquadFragSection'
+import { SquadObjectiveSection } from './objectif/SquadObjectiveSection'
 import { SquadImpactScoreboard } from './SquadImpactScoreboard'
 import { MedalDigest } from './MedalDigest'
 import { FeatureGate } from '@/lib/capabilities/FeatureGate'
@@ -62,6 +63,8 @@ export function SquadContributionsPage() {
     () => [mainPlayerKey, ...confirmedGamertags].filter((p) => fragClasses?.[p] || performanceSeries?.[p]),
     [mainPlayerKey, confirmedGamertags, fragClasses, performanceSeries],
   )
+  const matchHistory = useMemo(() => pageData?.match_history ?? [], [pageData?.match_history])
+  const medalDigest = useMemo(() => pageData?.medal_digest ?? [], [pageData?.medal_digest])
   const synergyAxisLabels = useMemo<Record<string, string>>(
     () => ({
       combat: t.synergyRadar.axes.combat,
@@ -139,6 +142,19 @@ export function SquadContributionsPage() {
         />
       </section>
 
+      {/* OBJECTIF — quatre cartes (lot L3 du plan PLAN_EMPRISE_ET_CARTES_DEPLACEES_2026-09-26) :
+          rapport de force par famille | au fil de la session, puis la répartition dans
+          l'escouade, puis soirée après soirée. Périmètre D2 (composition exacte ∩ filtres) ;
+          la section se retire sans match à objectif. */}
+      <SquadObjectiveSection
+        block={pageData?.formes_retenues}
+        matchHistory={matchHistory}
+        objectiveHistory={pageData?.squad_objective_history}
+        medalDigest={medalDigest}
+        mainPlayerLabel={mainPlayerKey}
+        locale={locale}
+      />
+
       <section className="space-y-3">
         <SectionTitle>{t.performanceCharts.title}</SectionTitle>
         <SquadPerformanceCharts
@@ -167,7 +183,7 @@ export function SquadContributionsPage() {
       <section className="space-y-3">
         <SectionTitle>{t.medals.title}</SectionTitle>
         <MedalDigest
-          entries={pageData?.medal_digest ?? []}
+          entries={medalDigest}
           mainPlayer={pageData?.main_player ?? playerSlug}
           t={t.medals}
         />

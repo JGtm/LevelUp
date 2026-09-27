@@ -49,8 +49,6 @@ import {
 } from './cards/EquipmentCards'
 import {
   ObjectivesGapRoleCard,
-  ObjectivesGapSquadCard,
-  ObjectivesLobbyTrackCard,
   ObjectivesRawGridCard,
   ObjectivesSharesByFamilyCard,
 } from './cards/ObjectiveCards'
@@ -204,23 +202,16 @@ export function FormesRetenuesSection({
         </div>
       )}
 
-      {/* AUCUN MATCH À OBJECTIF = AUCUNE SECTION : l'intertitre partait avec (D8). */}
-      {hasObjectives && (
+      {/* AUCUN MATCH À OBJECTIF = AUCUNE SECTION : l'intertitre partait avec (D8). LE BLOC
+          OBJECTIFS EST SOLO SEUL : les cartes d'objectif de l'escouade vivent sur l'onglet
+          Contributions (lot L3 du plan PLAN_EMPRISE_ET_CARTES_DEPLACEES_2026-09-26). */}
+      {solo && hasObjectives && (
         <>
           <BlockTitle aide={t.blocks.objectives.aide}>{t.blocks.objectives.title}</BlockTitle>
           <div className="space-y-4">
-            {solo ? (
-              <>
-                <ObjectivesGapRoleCard vm={vm} />
-                <ObjectivesSharesByFamilyCard vm={vm} />
-                <ObjectivesRawGridCard vm={vm} />
-              </>
-            ) : (
-              <>
-                <ObjectivesGapSquadCard vm={vm} />
-                <ObjectivesLobbyTrackCard vm={vm} />
-              </>
-            )}
+            <ObjectivesGapRoleCard vm={vm} />
+            <ObjectivesSharesByFamilyCard vm={vm} />
+            <ObjectivesRawGridCard vm={vm} />
           </div>
         </>
       )}

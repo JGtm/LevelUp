@@ -386,19 +386,6 @@ export interface SquadText {
   errors: {
     loadError: (message: string) => string
   }
-  /** KPI objectifs cumulés de l'escouade (CTF/Zones/Oddball) — V72-03. */
-  objectives: {
-    title: string
-    flagCaptures: string
-    flagReturns: string
-    flagSteals: string
-    flagCarrierTime: string
-    zoneCaptures: string
-    zoneSecures: string
-    zoneTime: string
-    skullGrabs: string
-    skullCarrierTime: string
-  }
 }
 
 const FR_TEXT: SquadText = {
@@ -755,18 +742,7 @@ const FR_TEXT: SquadText = {
   errors: {
     loadError: (message) => `Erreur : ${message}`,
   },
-  objectives: {
-    title: 'Objectifs de l’escouade',
-    flagCaptures: 'Captures de drapeau',
-    flagReturns: 'Retours de drapeau',
-    flagSteals: 'Vols de drapeau',
-    flagCarrierTime: 'Temps porteur (drapeau)',
-    zoneCaptures: 'Zones capturées',
-    zoneSecures: 'Zones sécurisées',
-    zoneTime: 'Temps en zone',
-    skullGrabs: 'Récupérations du crâne',
-    skullCarrierTime: 'Temps porteur (crâne)',
-  },
+
 }
 
 const EN_TEXT: SquadText = {
@@ -1122,18 +1098,7 @@ const EN_TEXT: SquadText = {
   errors: {
     loadError: (message) => `Error: ${message}`,
   },
-  objectives: {
-    title: 'Squad objectives',
-    flagCaptures: 'Flag captures',
-    flagReturns: 'Flag returns',
-    flagSteals: 'Flag steals',
-    flagCarrierTime: 'Flag carrier time',
-    zoneCaptures: 'Zones captured',
-    zoneSecures: 'Zones secured',
-    zoneTime: 'Time in zones',
-    skullGrabs: 'Skull grabs',
-    skullCarrierTime: 'Skull carrier time',
-  },
+
 }
 
 const DICTS: Record<Locale, SquadText> = {

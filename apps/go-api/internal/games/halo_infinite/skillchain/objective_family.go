@@ -67,12 +67,30 @@ func IsObjectiveSubMode(pairName string) bool {
 	return isObjectiveModeLabel(toLowerASCII(analysis.NormalizeModeLabel(prefix)))
 }
 
+// neutralFlagModeLabel — le sous-mode « drapeau neutre » de LA liste ci-dessous, nommé pour
+// que IsNeutralFlagSubMode le lise sans en écrire une seconde copie.
+const neutralFlagModeLabel = "neutral flag ctf"
+
+// IsNeutralFlagSubMode indique si le pair_name porte le sous-mode « drapeau neutre » — un seul
+// drapeau, que personne ne peut renvoyer : les retours y sont nuls par construction et la part
+// d'objectif d'un camp y est mécanique. Écarté de l'historique d'objectif de l'Escouade
+// (« Rapport de force, soirée après soirée », décision D6 du plan
+// PLAN_EMPRISE_ET_CARTES_DEPLACEES_2026-09-26). Mêmes deux lectures que IsObjectiveSubMode
+// (sous-mode à droite, puis préfixe des pair_name inversés).
+func IsNeutralFlagSubMode(pairName string) bool {
+	if toLowerASCII(analysis.NormalizeModeLabel(pairName)) == neutralFlagModeLabel {
+		return true
+	}
+	prefix, _, hasSeparator := strings.Cut(pairName, ":")
+	return hasSeparator && toLowerASCII(analysis.NormalizeModeLabel(prefix)) == neutralFlagModeLabel
+}
+
 // isObjectiveModeLabel — LA liste (17 entrées), sur un label DÉJÀ normalisé
 // (NormalizeModeLabel puis minuscule ASCII). Ne pas appeler ailleurs qu'ici :
 // IsObjectiveSubMode est le point d'entrée de la classification.
 func isObjectiveModeLabel(label string) bool {
 	switch label {
-	case "ctf", "capture the flag", "neutral flag ctf", "one flag ctf", "covert one flag",
+	case "ctf", "capture the flag", neutralFlagModeLabel, "one flag ctf", "covert one flag",
 		"ctf 3 captures",
 		"strongholds", "oddball", "king of the hill",
 		"total control", "land grab", "extraction", "stockpile",

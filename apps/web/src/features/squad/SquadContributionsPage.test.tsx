@@ -13,6 +13,7 @@ import { useAppShellStore } from '@/stores/appShellStore'
 import * as squadContextModule from './SquadContext'
 import type { TeammatesPageResponse } from '@/lib/api/types'
 import { SquadContributionsPage } from './SquadContributionsPage'
+import { block0709, history0709, history0709Evenings } from './objectif/objectif.fixtures'
 
 // Stub des charts ECharts pour éviter les erreurs de résolution en env test.
 vi.mock('./SquadPerMinuteChart', () => ({
@@ -128,5 +129,34 @@ describe('SquadContributionsPage', () => {
     renderWithProviders(<SquadContributionsPage />)
     expect(screen.getByText('Répartition des frags')).toBeInTheDocument()
     expect(screen.getByText('Outils de destruction')).toBeInTheDocument()
+  })
+
+  // LOT L3 du plan PLAN_EMPRISE_ET_CARTES_DEPLACEES_2026-09-26 : la section « Objectif » suit
+  // « Frags et armes » et précède « Performance » ; elle se retire sans match à objectif.
+  it('monte la section « Objectif » après « Frags et armes », avant « Performance »', () => {
+    mockSquadContext({
+      confirmedGamertags: ['Chocoboflor', 'Madina97294'],
+      pageData: {
+        main_player: 'JGtm',
+        formes_retenues: block0709(),
+        match_history: history0709(),
+        squad_objective_history: history0709Evenings(),
+      } as unknown as TeammatesPageResponse,
+    })
+    const { container } = renderWithProviders(<SquadContributionsPage />)
+    const text = container.textContent ?? ''
+    const frags = text.indexOf('Frags et armes')
+    const objectif = text.indexOf('Rapport de force par famille de mode')
+    const perf = text.indexOf('Performance')
+    expect(screen.getByTestId('squad-objective-section')).toBeInTheDocument()
+    expect(frags).toBeLessThan(objectif)
+    expect(objectif).toBeLessThan(perf)
+    expect(screen.getByText('Répartition de l’objectif dans l’escouade')).toBeInTheDocument()
+  })
+
+  it('sans match à objectif, pas de section « Objectif »', () => {
+    mockSquadContext({})
+    renderWithProviders(<SquadContributionsPage />)
+    expect(screen.queryByTestId('squad-objective-section')).toBeNull()
   })
 })

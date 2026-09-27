@@ -1501,7 +1501,9 @@ export interface TeammatesPageResponse {
    * déplacé la publication vers `TeammatesPageResponse` (`POST /pages/teammates`,
    * le SEUL endpoint que la page appelle), câblée par
    * `TeammatesService.WithEquipmentUsage` (`internal/service/teammates/teammates_service_usage.go`).
-   * Absent = scope filtré sans match ; `available:false` avec raison machine pour
+   * Périmètre D2 (PLAN_EMPRISE_ET_CARTES_DEPLACEES_2026-09-26) : la composition exacte ∩ les
+   * matchs filtrés, les matchs filtrés seuls sans coéquipier sélectionné.
+   * Absent = périmètre sans match ; `available:false` avec raison machine pour
    * un titre sans `film.usage_summary` (même contrat que les autres blocs
    * best-effort).
    */
@@ -1516,11 +1518,18 @@ export interface TeammatesPageResponse {
    * Bloc « formes retenues » (artefact 2ec1b8eb, lot D2 du 2026-09-13) — la
    * MATIÈRE des dix-neuf cartes des trois blocs (usages d'équipement, contrôle
    * des armes spéciales, objectifs) : une ligne par joueur et par match, les
-   * deux camps. Publié par `TeammatesService.WithSquadFormes` sur le MÊME scope
-   * filtré que `equipment_usage`. Absent = scope sans match ; `available:false`
+   * deux camps. Publié par `TeammatesService.WithSquadFormes` sur le MÊME périmètre
+   * D2 que `equipment_usage`. Absent = périmètre sans match ; `available:false`
    * avec raison machine pour un titre sans `film.usage_summary`.
    */
   formes_retenues?: SquadFormesBlock
+  /**
+   * « Rapport de force, soirée après soirée » (lot L3 du plan
+   * PLAN_EMPRISE_ET_CARTES_DEPLACEES_2026-09-26, D6/D7) : la soirée affichée (périmètre D2) et
+   * les dix soirées précédentes de la composition d’au moins trois matchs à objectif. Parts en
+   * 0..1. Absent sans coéquipier sélectionné ou sans stats d’objectif.
+   */
+  squad_objective_history?: SquadObjectiveHistory
 }
 
 /** Dégradation d'un chargement best-effort. `code` est une clé stable traduite
@@ -2355,6 +2364,9 @@ export type EquipmentUsageFriendCount = components['schemas']['EquipmentUsageFri
 // à l'endroit où elles s'affichent (quatre dénominateurs, six formes).
 
 export type SquadFormesBlock = components['schemas']['SquadFormesBlock']
+/** Le rapport de force à l’objectif, soirée après soirée (lot L3, D6/D7). */
+export type SquadObjectiveHistory = components['schemas']['SquadObjectiveHistory']
+export type SquadObjectiveEvening = components['schemas']['SquadObjectiveEvening']
 export type SquadFormesMatch = components['schemas']['SquadFormesMatch']
 export type SquadFormesLobbyPlayer = components['schemas']['SquadFormesLobbyPlayer']
 export type SquadFormesWeapon = components['schemas']['SquadFormesWeapon']

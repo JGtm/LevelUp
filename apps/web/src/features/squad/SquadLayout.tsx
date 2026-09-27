@@ -32,7 +32,6 @@ import { useFiltersResolve } from '@/features/filters/queries'
 import { EmptyStateCard } from '@/components/ui/empty-state'
 import { AddFriendModal } from '@/features/friends/AddFriendFlow'
 import { getSquadText } from './i18n'
-import { SquadObjectiveStatsPanel } from './SquadObjectiveStatsPanel'
 import { formatMessage } from '@/lib/i18n/format'
 import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
 import { log } from './_logger'
@@ -388,13 +387,6 @@ export function SquadLayout() {
                 : undefined
             return <SessionBriefing kpis={toContractKpis(soloKpis)} squad={briefingSquad} />
           })()}
-
-          {/* Objectifs de l'escouade (CTF/Zones/Oddball) — capability-gated + data-driven. */}
-          <SquadObjectiveStatsPanel
-            statsByXuid={data?.header?.objective_stats_by_xuid}
-            texts={t}
-            numLoc={t.intlLocale}
-          />
 
           {/* « Cap d'escouade » (Enregistrer cette compo) — remonté AU-DESSUS de la
               barre d'onglets L3, commun aux deux onglets (Synergies / Contributions). */}

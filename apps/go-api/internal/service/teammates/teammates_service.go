@@ -106,6 +106,7 @@ type TeammatesService struct {
 	formesUsageRepo     port.SquadFormesUsageRepository
 	formesObjectiveRepo port.SquadFormesObjectiveRepository
 	repoRoot            string
+	objectiveModeEcarte func(pairName string) bool // D6, cf. teammates_service_objective_history.go
 	// matchRangeRepo (optionnel) : le lecteur de portee de frag de TOUT le lobby, par
 	// match (lot N2, D22-5). Sans lui, pas de referentiel : le bloc « roles de portee »
 	// est omis. Cf. teammates_squad_range.go.
@@ -443,10 +444,13 @@ func (s *TeammatesService) GetPage(
 		compositionSessions = wrapSessionLabelsAsComposition(sessionLabels.Squad)
 	}
 
-	// Blocs « servi ou gâché » (E6.1bis) et « formes retenues » (lot D2) : best-effort, gatés
-	// par film.usage_summary, sur le scope FILTRÉ de la page (filteredMatches) — jamais
-	// l'intersection escouade ; lectures communes faites une fois (teammates_service_usage.go).
-	equipmentUsage, squadFormes := s.loadUsageBlocks(ctx, playerXUID, filteredMatches, sec.matchHistory, req)
+	// Blocs « servi ou gâché », « formes retenues » et historique d'objectif : best-effort, sur le
+	// périmètre D2 — la composition exacte (allSquadRows, après filterExactComposition) ∩
+	// filteredMatches, filteredMatches seul sans coéquipier (teammates_service_usage.go).
+	usage := s.loadUsageBlocks(ctx, playerXUID, porteeUsage{
+		filtered: filteredMatches, squadRows: allSquadRows, timelineRows: allSquadRowsForTimeline,
+		mainTeamByMatch: mainTeamByMatch, history: sec.matchHistory,
+	}, req)
 	if err := ctx.Err(); err != nil {
 		return requeteAnnulee(err)
 	}
@@ -483,8 +487,9 @@ func (s *TeammatesService) GetPage(
 		CompositionSessions:      compositionSessions,
 		LatestCompositionSession: latestCompositionSession,
 		DataIssues:               issues.list(),
-		EquipmentUsage:           equipmentUsage,
-		SquadFormes:              squadFormes,
+		EquipmentUsage:           usage.equipement,
+		SquadFormes:              usage.formes,
+		SquadObjectiveHistory:    usage.objectif,
 	}, nil
 }
 
