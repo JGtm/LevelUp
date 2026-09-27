@@ -1441,6 +1441,29 @@ est supprimé.
 - DB-33 (B5) : `internal/config/config.go` passe de 629 à 640 lignes (seuil 500, dette
   préexistante) ; la bascule démo vit dans `config_demo.go` pour limiter la croissance. Non traité.
   **Traité par B-C4 (2026-09-27)** : retour à 629 lignes, gel par `config/config_size_ratchet_test.go`.
+- DB-34 (B-C1, 2026-09-27) : deux contrats de refus démo coexistent. `demo_mode_forbidden` (403,
+  `handlers.refuseInDemo`, 4 routes) et `demo_mode_unsupported` (422, en ligne dans
+  `handlers/settings.go` : `PATCH /settings`, `POST /settings/media/scan`). Non traité.
+- DB-35 (B-C1) : `PATCH /profiles/{p}/titles/{t}/sync` (`TitleSyncHandler.SetSync`) reste ouvert en
+  démo et écrit `db_profiles.json` (la fixture, montée en écriture en production), comme les
+  routes fermées par B-C1. Hors des trois routes du triage ; famille de DB-28. Non traité.
+- DB-36 (B-C1) : `WatcherHandler` construit son magasin de tokens mono-utilisateur sur
+  `title.NewPathResolver(cfg.RepoRoot).WatcherTokensPath()` (`watcher_handler.go:55`), pas sur
+  `<démo>/auth`. `POST /watcher/auth/start` est atteignable en démo (`RequireAdmin` transparent) et
+  lance un device code flow, que l'allowlist netguard déclare « CLI uniquement »
+  (`platform/auth/xbox_device_code.go`). Sortie réseau et écriture sous le dépôt non vérifiées.
+  Non traité.
+- DB-37 (B-C8) : le paramètre de requête `title_slug` de `GET /squads` (`listMySquadsInput`) n'a
+  plus d'effet : l'indice d'escouade prend le titre du PlayerDB résolu. Le retirer change le
+  contrat OpenAPI (et les types web générés). Non traité.
+- DB-38 (B-C7) : l'overlay NON versionné des socles
+  (`data/titles/<slug>/reference/generated/map_weapon_pads.json`, sortie de runtime) est lu par le
+  service de rejeu à la racine du DÉPÔT, en démo comme ailleurs : il vit sous
+  `data/titles/*/reference/**`, lecture classée légitime en B5. Non traité.
+- DB-39 (B-C2) : en démo, la section Identités n'a plus de témoin disque : `dir_exists` et
+  `db_exists` valent `false` pour tous les profils de la fixture (dont les dossiers portent un autre
+  nom que la clé de profil : `DemoPlayer` → `DEMO`). Affichage honnête (aucune lecture), mais
+  appauvri. Non traité.
 
 ---
 
@@ -2176,3 +2199,71 @@ ouvertes en démo par `RequireAdmin`) restent hors périmètre, versées aux dé
     sauvegarde hors démo lancée ;
   - la migration des amis n'est plus rendue sensible dans le test manifeste (garde-rail de la clé
     legacy) : son sort est asserté par la liste des coupées.
+
+**[2026-09-27] B-C — corrections de la revue adversariale, ronde 1 (exécutant opus, worktree du plan). B-C1 à B-C8 faits.**
+
+- Méthode : un test par item, rouge sur le code d'avant (ou sur un échafaudage sans comportement :
+  paramètre démo de `NewTitleSyncHandler` stocké non lu, `replayServiceFrom` à la sémantique d'avant),
+  puis correctif, puis vert. Cache Go dédié `go-build-backlog`, une commande `go` à la fois. Logs sous
+  `$TEMP\backlog-gates\BC-*.log`.
+- Sorties rouges :
+  - B-C1 `BC-1-rouge.log`, `EXIT_ROUGE_BC1=1` : `statut 201, attendu 403` (création de profil, l'annuaire
+    a reçu la demande) ; `statut 200, attendu 403` + dossier du joueur effacé + entrée halo_5 retirée
+    (purge) ; `statut 200, attendu 403` + `app_settings.json` écrit + abonnements du watcher modifiés.
+    Témoins hors démo verts. Garde-rail `BC-1-rouge-garde.log`, `EXIT_ROUGE_GARDE_BC1=1` :
+    `internal/api/handlers/settings_backup.go:29` (littéral de B5.6).
+  - B-C2 `BC-2-rouge.log`, `EXIT_ROUGE_BC2=1` : `le dossier d'un joueur réel du dépôt apparaît dans les
+    identités (VraiJoueur)`.
+  - B-C3 : pas de rouge possible, il n'y avait rien à corriger (verdict réseau ci-dessous).
+  - B-C4 `BC-4-rouge.log`, `EXIT_ROUGE_BC4=1` : `config.go fait 640 lignes, gel à 629`.
+  - B-C5 `BC-5-rouge.log`, `EXIT_ROUGE_BC5=1` : `retrait de idx_msr_playlist : 0 ligne(s)
+    schema_drift_healed action=dropped, attendu 1` (idem `idx_psa_match`), `WARN capturés = []`.
+  - B-C6 `BC-6-rouge.log`, `EXIT_ROUGE_BC6=1` : `DemoLayout.Root() existe`.
+  - B-C7 `BC-7-rouge.log` puis `BC-7-rouge-final.log` (version finale du test, construction d'avant
+    remise le temps du passage), `EXIT_ROUGE_BC7_FINAL=1` : `démo : fond de carte versionné, statut
+    404, attendu 200 — map_background_not_available`.
+  - B-C8 `BC-8-rouge.log`, `EXIT_ROUGE_BC8=1` : `halo_5 : playlists habituelles [Arene Campagne],
+    attendu 1`.
+- Verdict réseau B-C3 : PAS de trou. `fetchGameCMSImage` → `doGet` → `netguard.Check(ctx,
+  "gamecms_assets.get")` avant `httpClient.Do` ; GameCMS est la seule source d'un payload binaire, donc
+  aucun `PersistBinary` en démo. Log `BC-3-verif-reseau-2.log` : `demo mode: external fetch skipped
+  surface=gamecms_assets.get`, 0 requête, cache vide, `EXIT_VERIF_RESEAU_BC3=0`. Aucun code modifié.
+- Mutations (retirées ensuite, `grep MUTANT` sans résultat du lot) :
+  - B-C1 `BC-1-mutant.log`, `EXIT_MUTANT_BC1=1` : littéral ajouté dans `setup.go` → garde-rail rouge
+    (`setup.go:462`). Une première tentative par chemin relatif .NET a échoué sans rien écrire
+    (résolue contre le checkout principal, dossier inexistant) ; rejouée en chemin absolu.
+  - B-C3 `BC-3-mutant.log`, `EXIT_MUTANT_BC3=1` : garde `netguard.Check` retiré de `doGet` → le test
+    du lot rougit (1 requête, image écrite dans le cache) ET `TestOutboundCallsAreNetguarded` désigne
+    `assets/fetcher_gamecms.go`.
+- Gates GO-F (logs `BC-gate*.log`) :
+  1. `EXIT_BUILD=0` ; 2. `EXIT_VET=0` ;
+  3. `EXIT_TEST_LOT=1` au premier passage : `TestNoNewDataPathJoin`, DÛ AU LOT (B-C4 a déplacé le
+     défaut `<repo>/data/demo` de `config.go` vers `config_demo.go`) → entrée datée ajoutée à
+     l'allowlist (même site de bootstrap, pas un nouveau), `EXIT_TEST_ARCHLINT_REJEU=0` ; les 13 autres
+     paquets étaient `ok`. `EXIT_INTEG_LOT=0` (14 paquets, `-p 1`) ;
+  4. `EXIT_TEST_COMPLET=1` : 187 `ok`, 2 rouges préexistants et fragiles sous charge : `mapcatalog`
+     (`Accès refusé` au rename, cf. B2/B5) et `sync/skill` DB-8 (rafale à 2,03 s). Rejoués seuls :
+     `EXIT_TEST_REJEU_MAPCATALOG=0`, `EXIT_TEST_REJEU_SKILL=0` ;
+  5. `EXIT_INTEG_COMPLET=0` (190 `ok`, aucune ligne `^--- FAIL:`) ;
+  6. `make go-api-lint` : `0 issues.`, `EXIT_LINT=0`.
+- Baseline de tests : aucun test supprimé.
+- Écarts :
+  - B-C1 : helper `handlers.refuseInDemo` + garde-rail `archlint/no_demo_forbidden_literal_test.go`
+    (4e copie du refus, règle n°6) ; `settings_backup.go` (B5.6) migré dessus. Contrat OpenAPI tenu
+    comme B5.6 : aucune déclaration (réponse `default` ApiError), `openapi.yaml` inchangé.
+    `NewTitleSyncHandler` prend le mode démo au constructeur (2 appels de test adaptés).
+  - B-C2 : branche « collecte coupée » retenue, pas un `PathFS` sur la racine démo (la fixture nomme
+    ses dossiers autrement que ses clés de profil, cf. DB-39).
+  - B-C3 : test de non-régression vert sur le code d'avant (rien à corriger) ; son pouvoir est prouvé
+    par mutation, pas par un rouge d'avant.
+  - B-C4 : gel de taille par test (`config/config_size_ratchet_test.go`) ; allowlist datée de
+    `config_demo.go` dans `no_data_path_join_test.go` (hors liste du lot, relevée au gate).
+  - B-C6 : test anti-résurrection par réflexion (`domain/title/demo_layout_no_root_test.go`).
+  - B-C7 : construction du rejeu sortie de `registry_pages.go` (632 → 620 L, dette gelée) vers
+    `wire/registry_replay_service.go` ; `service.NewReplayServiceRoots` ajouté, `NewReplayService`
+    délègue avec deux racines égales (CLI et ~70 appels de test inchangés). Aucun fichier du §3.1.6
+    touché. Le test HTTP ajoute un leurre (artefact du dépôt → 404 en démo) ; premier essai du leurre
+    faussé par `FilmShortMatchID` (8 caractères : `match-demo` et `match-depot` = même fichier),
+    identifiants corrigés.
+  - B-C8 : le correctif vit dans `LazyPrestigeService` (seul point qui connaît le PlayerDB) ; le
+    paramètre `title_slug` de la requête devient inerte (DB-37).
