@@ -1901,3 +1901,34 @@ plus B5.8.
     passée en `TIMESTAMPTZ` ensuite (type seul, lecteurs inchangés) ;
   - baseline de tests : aucune ligne à retirer, `TestCampaignExclusionStructuralCoverage` est
     absent de `.ai/baselines/tests_pre_migration.jsonl`.
+
+**[2026-09-27] Superviseur — vérification de B4 et de A2, changement de fusion.**
+
+- **B4** (`a9e2192ac`) :
+  - diff échantillonné (rencontres, deltas notifiés, co-occurrence inter-titres) ;
+  - gates rejoués : `EXIT_BUILD=0`, `EXIT_VET=0`, `EXIT_TEST=0` (archlint, platform/duckdb/...,
+    api/wire, progression, service, analysis), `EXIT_INTEG=0` (filtre Campaign, CrossGame,
+    Prestige, Relations sur les trois paquets de comportement) ;
+  - lint local non conclusif : une autre session tenait golangci-lint (« parallel golangci-lint
+    is running »), puis délai dépassé sous charge avec `--allow-parallel-runners`. Le lint de
+    l'exécutant était vert ; la CI de branche fait foi.
+- **A2** (`1fc63eca0`, `89f311191`) :
+  - `useAudioUnlock` relu : `click`/`keyup` justifiés par la non-régression du 27/08,
+    `hasBeenActive` pour le passage d'un rejeu à un autre ;
+  - gates rejoués : `EXIT_TYPECHECK=0` (cache purgé), `EXIT_LINT=0`, vitest match-replay
+    3 187/3 188, avec un seul échec, un délai de 5 s sur `carriedGlyphPulse.guard.test.ts` sous
+    charge, rejoué seul : 3/3 verts.
+- **Témoin de l'écoute A1.6** : `000d5950` ne joue aucune conclusion sur ce poste (vue match sans
+  tableau des scores, DA-5). L'écoute se fait sur `ac03413d-2c03-4e3e-9e9c-c10165e40be0`, joueur
+  Chocoboflor, victoire, fin dense, à 2× et à 1×. Le match où l'utilisateur a constaté le défaut
+  est aussi à écouter, s'il le nomme.
+- **Fusions** :
+  - une seule branche, et B1-B4 ont été intercalés avant A2 (dérogation §1.2). La fusion 1
+    (A1 + A2 seuls) n'est donc plus possible sans cherry-pick, lequel entrerait en conflit sur
+    ce plan ;
+  - décision : les fusions 1 et 2 sont regroupées. A1, A2 et B1 à B5 seront fusionnés ensemble,
+    après la revue adversariale de B et les écoutes A1.6 / A2.5. La fusion 3 (A3, A4, A5) est
+    inchangée ;
+  - la v7.5 n'est pas fusionnée dans main à ce jour : le délai reste sans effet.
+- Le serveur API tourne sur :8000 depuis 12 h 05 (checkout principal, accord de l'utilisateur,
+  bases libres). B5.8 exige qu'il soit arrêté : c'est le superviseur qui le coordonne.
