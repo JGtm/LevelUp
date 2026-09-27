@@ -21,6 +21,7 @@ import (
 	"strings"
 	"time"
 
+	"levelup/go-api/internal/config"
 	"levelup/go-api/internal/ctxkeys"
 	"levelup/go-api/internal/domain"
 	titlePkg "levelup/go-api/internal/domain/title"
@@ -307,13 +308,16 @@ func (r *ServiceRegistry) deriverArtefactRange(ctx context.Context, titleSlug, m
 // fichier. Le Manager déduplique par chemin — pour le titre par défaut il rend le MÊME
 // provider, sans ouvrir la moindre connexion supplémentaire.
 //
+// LE CHEMIN EST CELUI DE config.SharedDBPath (lot B5.4 du backlog 2026-09-26) : en démo, la
+// base de la fixture — la même que les lecteurs et les 4 bases du boot —, jamais le shared
+// réel du dépôt.
+//
 // L'ACQUISITION EST BORNÉE PAR [acquireWriterDepot], et non par `acquireWriterTimeout` : ce
 // chemin-ci vit dans un handler HTTP dont le serveur ferme l'écriture à 30 s (constat C7).
 func (r *ServiceRegistry) sharedWriterForTitle(titleSlug string) func(context.Context) (*sql.DB, func(), error) {
 	provider := r.cfg.SharedProvider
 	if r.cfg.SharedManager != nil {
-		p, err := r.cfg.SharedManager.For(
-			titlePkg.NewPathResolver(r.cfg.RepoRoot).SharedDBPath(titleSlug), r.cfg.UserTimezone)
+		p, err := r.cfg.SharedManager.For(config.SharedDBPath(r.cfg, titleSlug), r.cfg.UserTimezone)
 		if err != nil {
 			// Jamais muet : sans provider du titre, on REFUSE d'écrire plutôt que d'écrire
 			// dans le shared d'un autre titre.
@@ -331,7 +335,7 @@ func (r *ServiceRegistry) sharedWriterForTitle(titleSlug string) func(context.Co
 		defer cancel()
 		return syncpkg.AcquireSharedWriterStandalone(
 			ctxkeys.WithDBWriterLabel(acquireCtx, "replay_derivations"),
-			provider, titlePkg.NewPathResolver(r.cfg.RepoRoot).SharedDBPath(titleSlug))
+			provider, config.SharedDBPath(r.cfg, titleSlug))
 	}
 }
 

@@ -6,7 +6,6 @@ import (
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/domain/title"
 	"os"
-	"path/filepath"
 	"sync"
 	"time"
 )
@@ -114,10 +113,10 @@ func (c *AppConfig) LoadPlayers(titleFilter ...string) ([]domain.PlayerSummary, 
 		// un coéquipier vers SA player DB (perf/LUSR) via resolveByGT. Title-aware :
 		// un roster peut différer par titre (un titre additionnel a son propre sous-arbre
 		// data/demo/titles/{slug}/players/).
-		titleDir := demoTitleDir(c.DemoFixturesDir, titleSlug)
+		layout := c.DemoLayout()
 		var out []domain.PlayerSummary
 		for _, d := range DemoRoster {
-			if _, err := os.Stat(filepath.Join(titleDir, "players", d.Dir, "stats.duckdb")); err != nil {
+			if _, err := os.Stat(layout.PlayerDBPath(titleSlug, d.Dir)); err != nil {
 				continue // coéquipier non seedé pour ce titre
 			}
 			out = append(out, domain.PlayerSummary{

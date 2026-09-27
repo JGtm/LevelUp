@@ -201,7 +201,8 @@ func main() {
 	}
 
 	preliminaryRepoRoot := os.Getenv("LEVELUP_REPO_ROOT") // peut être vide, sera résolu plus tard
-	logsCfg := logging.LoadConfig(preliminaryRepoRoot)
+	// Démo : logs et crash log sous `<démo>/runtime/logs` (lot B5, D-7), cf. bootLogsConfig.
+	logsCfg := bootLogsConfig(preliminaryRepoRoot)
 
 	// MT-05 (PMT-10 PR-4) : namespacer les fichiers logs par titre UNIQUEMENT
 	// quand plusieurs titres sont servis (déploiement multi-titre). En mono-titre
@@ -380,11 +381,11 @@ func main() {
 	// --- 3. Connexions DuckDB ---
 	pr := title.NewPathResolver(cfg.RepoRoot)
 	titleSlug := title.DefaultSlug
-	sharedPath := pr.SharedDBPath(titleSlug)
-	metaPath := pr.MetadataDBPath(titleSlug)
-	sharedSocialPath := pr.SharedSocialDBPath(titleSlug)
-
-	pvePath := pr.SharedPVEDBPath(titleSlug)
+	dbPaths := resolveBootDBPaths(cfg, pr)
+	sharedPath := dbPaths.shared
+	metaPath := dbPaths.metadata
+	sharedSocialPath := dbPaths.sharedSocial
+	pvePath := dbPaths.pve
 
 	// En DEMO_MODE, les DB de la FIXTURE font autorité — INCONDITIONNELLEMENT.
 	//
@@ -402,18 +403,8 @@ func main() {
 	// (cf. internal/platform/netguard) : la présence ou non de données réelles
 	// sur la machine ne doit RIEN changer à ce que sert la démo.
 	if cfg.DemoMode {
-		for _, dp := range []struct {
-			name string
-			path *string
-		}{
-			{"shared", &sharedPath},
-			{"metadata", &metaPath},
-			{"shared_social", &sharedSocialPath},
-			{"shared_pve", &pvePath},
-		} {
-			*dp.path = demoWarehouseDBPath(cfg.DemoFixturesDir, *dp.path)
-			slog.Info("demo_mode: utilisation fixture", "db", dp.name, "path", *dp.path)
-		}
+		slog.Info("demo_mode: utilisation fixture", "shared", sharedPath, "metadata", metaPath,
+			"shared_social", sharedSocialPath, "shared_pve", pvePath)
 
 		// Validation au boot — la fixture joueur doit exister, sinon les requêtes
 		// /pages/* échouent avec un IO Error opaque et le frontend affiche
@@ -425,8 +416,7 @@ func main() {
 		// jamais : elle criait « fixture absente » sur une fixture parfaitement
 		// installée, à chaque démarrage — un WARN qui a masqué le vrai défaut
 		// ci-dessus pendant tout le chantier.
-		demoStats := filepath.Join(cfg.DemoFixturesDir, "players",
-			config.DemoRoster[0].Dir, "stats.duckdb")
+		demoStats := demoFixturePlayerDBPath(cfg)
 		if _, err := os.Stat(demoStats); os.IsNotExist(err) {
 			slog.Warn(
 				"demo_mode: fixture joueur absente — les requêtes /pages/* échoueront avec un IO Error",
@@ -703,7 +693,7 @@ func main() {
 	groupStore := groupstore.NewGroupStore(filepath.Join(cfg.AuthDir, "groups.json"))
 	// Amis PAR PROFIL JOUEUR (data/global/player_friends.json) : remplace l'ancien
 	// réglage global des amis dans app_settings. Migré une fois au boot.
-	friendStore := friendstore.NewFriendStore(title.NewPathResolver(cfg.RepoRoot).PlayerFriendsPath())
+	friendStore := bootFriendStore(cfg)
 	bootSvc = bootSvc.WithCoMemberResolver(func(xuid string) map[string]bool {
 		co, _ := groupStore.CoMemberXUIDs(xuid)
 		return co
@@ -711,7 +701,7 @@ func main() {
 
 	// PR-B : expose reauth_required (refresh_token mort) du joueur courant au front.
 	// Lecture par-xuid dans le MultiUserTokenStore (data/auth/watcher_tokens/{xuid}.json).
-	reauthStore := auth.NewMultiUserTokenStore(title.NewPathResolver(cfg.RepoRoot).WatcherTokensDir())
+	reauthStore := auth.NewMultiUserTokenStore(cfg.WatcherTokensDir())
 	bootSvc = bootSvc.WithReauthChecker(reauthStore.IsReauthRequired)
 
 	// --- 5. Sprint 0 : validation des types critiques ---
@@ -739,15 +729,17 @@ func main() {
 	}
 	tokenProvider := buildTokenProvider(settingsStore, title.DefaultHaloAuthDescriptor())
 
-	// Migration boot-time : dote chaque profil configuré de sa propre liste d'amis,
-	// héritée de l'ancienne liste globale des amis d'app_settings. Idempotente
-	// (no-op si player_friends.json existe). S'exécute AVANT la migration de groupe,
-	// qui lit désormais le store d'amis.
-	migratePlayerFriendsAtBoot(ctx, cfg, friendStore)
+	// Tâches de fond et étapes de boot (cf. background_tasks.go) : en démo, celles qui
+	// écrivent ou lisent comme état hors de la racine démo sont coupées (lot B5, D-7).
+	// schedulerWG track les goroutines « suivies » pour que le shutdown les attende
+	// (sur ctx.Done()) avant duckdb.CloseAll() — sans ce wait, un cycle RunOnce en cours
+	// peut encore toucher metaDB après la fermeture.
+	var schedulerWG sync.WaitGroup
+	boot := newBootTasks(cfg.DemoMode, &schedulerWG)
 
-	// Migration boot-time : crée un groupe par défaut "Mon foyer" depuis la liste
-	// d'amis de l'admin (continuité d'accès au passage multi-groupes). Idempotent.
-	migrateDefaultGroupAtBoot(ctx, cfg, friendStore, groupStore)
+	// Migrations boot-time (amis par joueur, puis groupe par défaut « Mon foyer ») —
+	// idempotentes, ordre imposé ; cf. runBootMigrations.
+	runBootMigrations(ctx, boot, cfg, friendStore, groupStore)
 
 	// ADR 0023 Phase 2 — Migration boot-time des tokens legacy vers MultiUserTokenStore.
 	// Discovery + Resolver + Pool : tous les appels API Halo passent par là.
@@ -760,7 +752,10 @@ func main() {
 	// Le callback onRotated persiste le refresh_token rotaté par Microsoft dans le
 	// MultiUserTokenStore — sans ça, le prochain refresh échouerait avec
 	// invalid_grant (Microsoft rotate systématiquement le RT à chaque usage).
-	autoSyncPool := buildAutoSyncPool(ctx, cfg, tokenProvider)
+	var autoSyncPool pool.Pool
+	if !boot.cutInDemo(stepTokenPool) {
+		autoSyncPool = buildAutoSyncPool(ctx, cfg, tokenProvider)
+	}
 	if autoSyncPool != nil {
 		defer autoSyncPool.Close()
 		slog.Info("auto_sync: pool initialisé", "size", autoSyncPool.Size())
@@ -780,8 +775,10 @@ func main() {
 	// (dernière exécution / issue / déclencheur) partagé scheduler↔services (C2).
 	// Chemins via le PathResolver (data/global/admin_state/*.json). Best-effort :
 	// un échec de lecture/écriture est loggé et l'API sert l'état mémoire.
-	postSyncStore := adminstate.NewFileStore(pr.PostSyncSnapshotPath())
-	adminActionJournal := adminstate.NewActionJournal(adminstate.NewFileStore(pr.ActionJournalPath()))
+	// Démo : sous `<démo>/runtime/` (cfg.RuntimePaths, lot B5.5).
+	runtimePaths := cfg.RuntimePaths()
+	postSyncStore := adminstate.NewFileStore(runtimePaths.PostSyncSnapshotPath())
+	adminActionJournal := adminstate.NewActionJournal(adminstate.NewFileStore(runtimePaths.ActionJournalPath()))
 	if err := adminActionJournal.Load(ctx); err != nil {
 		slog.ErrorContext(ctx, "adminstate: chargement du journal des actions échoué — démarrage à vide", "err", err)
 	}
@@ -807,7 +804,7 @@ func main() {
 	// autoBatchQueue.Drain() + Close() AVANT duckdb.CloseAll() (ordre critique).
 	var autoBatchQueue *persist.BatchQueue
 	var workerWG sync.WaitGroup // tracks the batch Worker goroutine lifecycle
-	if cfg.PersistBatchAsync {
+	if !boot.cutInDemo(stepPersistQueue) && cfg.PersistBatchAsync {
 		walDir := pr.WALDir()
 		q, qErr := persist.NewBatchQueue(persist.BatchQueueConfig{
 			WALDir:      walDir,
@@ -873,46 +870,7 @@ func main() {
 	//   - data/sync_cache/sync.RunDelta_* > 7 jours (fetch cache éphémère)
 	//   - data/wal/*.json ACKés > 7 jours (résidus si BatchQueue active)
 	// Best-effort, non-bloquant sur erreur.
-	go func() {
-		ticker := time.NewTicker(24 * time.Hour)
-		defer ticker.Stop()
-		runJanitor := func() {
-			cacheRoot := pr.SyncCacheDir()
-			if n, err := syncpkg.PurgeOldFetchCache(cacheRoot, 7*24*time.Hour); err != nil {
-				slog.WarnContext(schedulerCtx, "janitor: PurgeOldFetchCache échoué (non-bloquant)",
-					"err", err)
-			} else if n > 0 {
-				slog.InfoContext(schedulerCtx, "janitor: fetch_cache purgé",
-					"dirs_removed", n)
-			}
-			if autoBatchQueue != nil {
-				// Garde-fou anti-perte (PLAN_PERSIST_ROBUSTNESS Phase 1) :
-				// re-tenter les WAL pending AVANT de purger, sinon on pourrait
-				// effacer un batch qu'on aurait pu rejouer.
-				if rerr := autoBatchQueue.RecoverPending(); rerr != nil {
-					slog.WarnContext(schedulerCtx, "janitor: RecoverPending échoué (non-bloquant)",
-						"module", logging.ModulePersist, "err", rerr)
-				}
-				if n, err := autoBatchQueue.PurgeOldWAL(7 * 24 * time.Hour); err != nil {
-					slog.WarnContext(schedulerCtx, "janitor: PurgeOldWAL échoué (non-bloquant)",
-						"module", logging.ModulePersist, "err", err)
-				} else if n > 0 {
-					slog.InfoContext(schedulerCtx, "janitor: WAL purgé",
-						"module", logging.ModulePersist, "files_removed", n)
-				}
-			}
-		}
-		// Run once at boot (in case of stale data from previous run).
-		runJanitor()
-		for {
-			select {
-			case <-schedulerCtx.Done():
-				return
-			case <-ticker.C:
-				runJanitor()
-			}
-		}
-	}()
+	boot.launch(janitorTask(schedulerCtx, pr, autoBatchQueue))
 
 	// Recovery périodique des WAL pending (PLAN_PERSIST_ROBUSTNESS Phase 1).
 	// Avant : RecoverPending n'était appelé qu'au boot → un batch échoué
@@ -921,21 +879,7 @@ func main() {
 	// 10 min. Le dédup inFlight de la queue évite de re-pousser un batch déjà
 	// en vol (seuls les WAL réellement bloqués sont rejoués).
 	if autoBatchQueue != nil {
-		go func() {
-			recTicker := time.NewTicker(10 * time.Minute)
-			defer recTicker.Stop()
-			for {
-				select {
-				case <-schedulerCtx.Done():
-					return
-				case <-recTicker.C:
-					if rerr := autoBatchQueue.RecoverPending(); rerr != nil {
-						slog.WarnContext(schedulerCtx, "persist: recovery périodique échouée (non-bloquant)",
-							"module", logging.ModulePersist, "err", rerr)
-					}
-				}
-			}
-		}()
+		boot.launch(walRecoveryTask(schedulerCtx, autoBatchQueue))
 	}
 
 	// CHECKPOINT périodique shared_social — vide le WAL toutes les 5 min sans
@@ -957,71 +901,13 @@ func main() {
 	// LookupCachedDB : pas d'ouverture propre — on réutilise la connexion du
 	// pool process-wide (même *sql.DB que SharedSocialPersister). Si le premier
 	// joueur n'a pas encore été chargé, on skip le tick silencieusement.
-	go func() {
-		ckptTicker := time.NewTicker(5 * time.Minute)
-		defer ckptTicker.Stop()
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case <-ckptTicker.C:
-				socialDB, ok := duckdb.LookupCachedDB(sharedSocialPath)
-				if !ok {
-					continue // DB pas encore ouverte, skip
-				}
-				ckptStart := time.Now()
-				ckptCtx, ckptCancel := context.WithTimeout(context.Background(), 10*time.Second)
-				if _, err := socialDB.SQLDb().ExecContext(ckptCtx, "CHECKPOINT"); err != nil {
-					slog.WarnContext(ckptCtx, "shared_social: periodic checkpoint failed", "err", err)
-				} else {
-					slog.DebugContext(ckptCtx, "shared_social: periodic checkpoint",
-						"duration_ms", time.Since(ckptStart).Milliseconds())
-				}
-				ckptCancel()
-			}
-		}
-	}()
+	boot.launch(socialCheckpointTask(ctx, sharedSocialPath))
 
 	// Phase 4.9 / PLAN_AUTH E.v2 (2026-05-24) : periodic Discovery re-scan
 	// pour hot-add nouveaux tokens (nouveau SSO / token-capture écrivant dans
 	// watcher_tokens/) sans reboot. Skip si pool nil (aucun credential au boot).
 	if autoSyncPool != nil {
-		go func() {
-			rescanTicker := time.NewTicker(15 * time.Minute)
-			defer rescanTicker.Stop()
-			runRescan := func() {
-				resolver := title.NewPathResolver(cfg.RepoRoot)
-				multiUserStore := auth.NewMultiUserTokenStore(resolver.WatcherTokensDir())
-				discovery := pool.NewDiscoveryWithStore(cfg, resolver, title.DefaultSlug, multiUserStore)
-				sources, err := discovery.Scan(schedulerCtx)
-				if err != nil {
-					slog.WarnContext(schedulerCtx, "pool: re-scan échoué (non-bloquant)",
-						"err", err)
-					return
-				}
-				added := 0
-				for _, src := range sources {
-					if err := autoSyncPool.AddOrUpdateSource(schedulerCtx, src); err != nil {
-						slog.DebugContext(schedulerCtx, "pool: re-scan AddOrUpdateSource skip",
-							"gamertag", src.Gamertag, "err", err)
-						continue
-					}
-					added++
-				}
-				if added > 0 {
-					slog.InfoContext(schedulerCtx, "pool: re-scan terminé",
-						"sources_scanned", len(sources), "sources_processed", added, "pool_size", autoSyncPool.Size())
-				}
-			}
-			for {
-				select {
-				case <-schedulerCtx.Done():
-					return
-				case <-rescanTicker.C:
-					runRescan()
-				}
-			}
-		}()
+		boot.launch(poolRescanTask(schedulerCtx, cfg, autoSyncPool))
 	}
 
 	// Watcher daemon (présence Xbox RTA + Steam) — démarré avant le scheduler pour câbler
@@ -1047,7 +933,10 @@ func main() {
 		}
 		return nil, fmt.Errorf("registry non initialisé")
 	}
-	var watcherDaemon *watcher.Daemon = startWatcherDaemon(ctx, cfg, settingsStore, tokenProvider, notifierGetter, tokenRefresher, autoSyncPool, autoScheduler)
+	var watcherDaemon *watcher.Daemon
+	if !boot.cutInDemo(stepWatcher) {
+		watcherDaemon = startWatcherDaemon(ctx, cfg, settingsStore, tokenProvider, notifierGetter, tokenRefresher, autoSyncPool, autoScheduler)
+	}
 	if watcherDaemon != nil {
 		autoScheduler.ActivityChecker = watcher.NewStateProvider(watcherDaemon)
 		// Dédup cross-source (unification 2026-06-02) : le Coordinator du watcher
@@ -1058,15 +947,8 @@ func main() {
 		autoScheduler.SyncGate = watcherDaemon.SyncGate()
 	}
 
-	// schedulerWG track la goroutine du scheduler pour que le shutdown attende
-	// qu'elle retourne (sur ctx.Done()) avant duckdb.CloseAll(). Sans ce wait,
-	// un cycle RunOnce en cours peut encore toucher metaDB après la fermeture.
-	var schedulerWG sync.WaitGroup
-	schedulerWG.Add(1)
-	go func() {
-		defer schedulerWG.Done()
-		autoScheduler.Run(schedulerCtx)
-	}()
+	// Scheduler d'auto-sync (goroutine suivie par schedulerWG).
+	boot.launch(loopTask(taskAutoSync, true, schedulerCtx, autoScheduler.Run))
 
 	// 2026-05-08 — Data health scheduler : audit périodique multi-DB
 	// (UUIDs résiduels, bits menteurs, garbage URLs). Depuis 2026-05-20 les
@@ -1075,11 +957,7 @@ func main() {
 	// d'émission de notif `data_health_warning` (jargon dev sans intérêt
 	// pour un end user lambda sur une app de stats).
 	healthScheduler := scheduler.NewDataHealthScheduler(cfg.RepoRoot)
-	schedulerWG.Add(1)
-	go func() {
-		defer schedulerWG.Done()
-		healthScheduler.Run(schedulerCtx)
-	}()
+	boot.launch(loopTask(taskDataHealth, true, schedulerCtx, healthScheduler.Run))
 
 	// Backup restic des bases DuckDB (pkg/duckdbbackup).
 	// La PLANIFICATION est externe (systemd timers côté serveur, cf.
@@ -1157,8 +1035,9 @@ func main() {
 	// survit au restart : détections avec cycle de vie, historique crons, dernier
 	// audit data-health. Best-effort : un échec d'ouverture dégrade les sections
 	// (jamais fatal). Le flush périodique du delta ErrorCollector tourne sur
-	// schedulerCtx/schedulerWG (drainé AVANT duckdb.CloseAll — écriture sûre).
-	if monStore, mErr := ops.NewMonitoringStore(ctx, pr.GlobalMonitoringDB()); mErr != nil {
+	// schedulerCtx/schedulerWG (drainé AVANT duckdb.CloseAll — écriture sûre). En démo :
+	// base EN MÉMOIRE, rien de persisté (openMonitoringStore, lot B5.3).
+	if monStore, mErr := openMonitoringStore(ctx, cfg, pr); mErr != nil {
 		slog.Warn("monitoring store: ouverture échouée — sections détections dégradées", "err", mErr)
 	} else {
 		reg.WithMonitoringStore(monStore)
@@ -1175,32 +1054,20 @@ func main() {
 				slog.Warn("monitoring store: cron run non persisté", "cron", name, "err", err)
 			}
 		})
-		schedulerWG.Add(1)
-		go func() {
-			defer schedulerWG.Done()
-			reg.RunDetectionFlushLoop(schedulerCtx)
-		}()
+		boot.launch(loopTask(taskDetectionFlush, true, schedulerCtx, reg.RunDetectionFlushLoop))
 	}
 
 	// Surveillance disque du volume data (lot ops 2026-07-13, suite incident
 	// disque-plein VPS) : dépassement de seuil (A5.3 : 80 %/90 % ou 2 Go/500 Mo)
 	// → log WARN/ERROR (détection persistée + badge admin) + notification Discord
 	// si webhook configuré. Indépendante du monitoring store (log-driven).
-	schedulerWG.Add(1)
-	go func() {
-		defer schedulerWG.Done()
-		reg.RunDiskWatchLoop(schedulerCtx)
-	}()
+	boot.launch(loopTask(taskDiskWatch, true, schedulerCtx, reg.RunDiskWatchLoop))
 
 	// Flush des lots de rejeux prêts (lot B v7.5) : à chaque tick, les fenêtres de
 	// groupement échues sortent en UN message chacune. Sur schedulerCtx/schedulerWG comme
 	// la surveillance disque — la boucle ne fait que des lectures shared courtes, drainées
 	// avant duckdb.CloseAll.
-	schedulerWG.Add(1)
-	go func() {
-		defer schedulerWG.Done()
-		reg.RunReplayNotifyLoop(schedulerCtx)
-	}()
+	boot.launch(loopTask(taskReplayNotify, true, schedulerCtx, reg.RunReplayNotifyLoop))
 
 	// Cron catalogue (hebdomadaire) : rafraîchit le catalogue (playlists / couples
 	// map-mode / maps / modes) via le drain DiscoveryUGC testé (même chemin que l'action
@@ -1232,12 +1099,9 @@ func main() {
 		// pas d'experience_rules.toml → skip propre. Comportement prod identique au
 		// proxy, signal précis.
 		WithCatalogAdapterCheck(reg.HasCatalogAdapter)
-	schedulerWG.Add(1)
-	go func() {
-		defer schedulerWG.Done()
-		catalogCron.Run(schedulerCtx)
-	}()
-	slog.InfoContext(ctx, "catalog_refresh_cron: scheduled", "module", logging.ModuleCatalog, "interval", scheduler.DefaultCatalogRefreshInterval)
+	if boot.launch(loopTask(taskCatalogCron, true, schedulerCtx, catalogCron.Run)) {
+		slog.InfoContext(ctx, "catalog_refresh_cron: scheduled", "module", logging.ModuleCatalog, "interval", scheduler.DefaultCatalogRefreshInterval)
+	}
 
 	// Balayage de noms d'assets (filet de rattrapage de la traîne), distinct du cron
 	// catalogue : ART-safe (asset_translations via ops.UpsertAssetTranslation), gaté par
@@ -1251,12 +1115,9 @@ func main() {
 			// Même gate RÉEL que le drain catalogue : le sweep de noms passe par le
 			// même fetcher /hi/ hardcodé, donc même critère (catalog adapter résolvable).
 			WithCatalogAdapterCheck(reg.HasCatalogAdapter)
-		schedulerWG.Add(1)
-		go func() {
-			defer schedulerWG.Done()
-			sweepCron.Run(schedulerCtx)
-		}()
-		slog.InfoContext(ctx, "asset_name_sweep_cron: scheduled", "module", logging.ModuleSync, "interval", scheduler.DefaultAssetNameSweepInterval)
+		if boot.launch(loopTask(taskAssetNameSweep, true, schedulerCtx, sweepCron.Run)) {
+			slog.InfoContext(ctx, "asset_name_sweep_cron: scheduled", "module", logging.ModuleSync, "interval", scheduler.DefaultAssetNameSweepInterval)
+		}
 	}
 
 	// Phase 4 plan stabilisation 2026-05-22 — câblage post-sync runner sur
@@ -1370,17 +1231,14 @@ func main() {
 				return err
 			}
 			playerDBPath := pr.PlayerDBPath(halo5.TitleSlug, p.Gamertag)
-			cacheRoot := filepath.Join(pr.RepoRoot(), "data", "cache")
+			cacheRoot := pr.CacheRootDir()
 			_, err = livesync.PersistAppearance(rctx, src, playerDBPath, cacheRoot, p.Gamertag, p.XUID)
 			return err
 		})
-		schedulerWG.Add(1)
-		go func() {
-			defer schedulerWG.Done()
-			spartanCron.Run(schedulerCtx)
-		}()
-		slog.InfoContext(ctx, "spartan_cron: scheduled",
-			"interval", scheduler.DefaultSpartanCustomizationInterval)
+		if boot.launch(loopTask(taskSpartanCron, true, schedulerCtx, spartanCron.Run)) {
+			slog.InfoContext(ctx, "spartan_cron: scheduled",
+				"interval", scheduler.DefaultSpartanCustomizationInterval)
+		}
 	}
 
 	// Cron classement CSR mondial : capture quotidienne du leaderboard scrapé
@@ -1395,9 +1253,7 @@ func main() {
 	if cfg.SharedProvider != nil {
 		lbScraper := halo.NewLeaderboardScraper(800 * time.Millisecond)
 		worldLbCron := scheduler.NewWorldLeaderboardCron(cfg.SharedProvider, lbScraper, 0)
-		schedulerWG.Add(1)
-		go func() {
-			defer schedulerWG.Done()
+		worldLbTask := loopTask(taskWorldLeaderbd, true, schedulerCtx, func(sctx context.Context) {
 			// Enrichissement des stats joueur (ranked-only, dédup match-centric,
 			// append-only) : TOUJOURS actif, via le POOL multi-token (comptes db_profiles
 			// round-robin — même chemin d'auth que le reste de l'app et que le CLI
@@ -1417,10 +1273,12 @@ func main() {
 				slog.InfoContext(ctx, "world_leaderboard_cron: enrichissement actif (pool multi-token)",
 					"token_accounts", gts)
 			}
-			worldLbCron.Run(schedulerCtx)
-		}()
-		slog.InfoContext(ctx, "world_leaderboard_cron: scheduled",
-			"interval", scheduler.DefaultWorldLeaderboardInterval)
+			worldLbCron.Run(sctx)
+		})
+		if boot.launch(worldLbTask) {
+			slog.InfoContext(ctx, "world_leaderboard_cron: scheduled",
+				"interval", scheduler.DefaultWorldLeaderboardInterval)
+		}
 	}
 
 	// Purge récurrente des artefacts de rejeu 2D hors fenêtre replay_retention_months
@@ -1444,13 +1302,10 @@ func main() {
 			}
 			return 0
 		}, 0)
-		schedulerWG.Add(1)
-		go func() {
-			defer schedulerWG.Done()
-			replayPurgeCron.Run(schedulerCtx)
-		}()
-		slog.InfoContext(ctx, "replay_purge_cron: scheduled",
-			"interval", scheduler.DefaultReplayPurgeInterval)
+		if boot.launch(loopTask(taskReplayPurge, true, schedulerCtx, replayPurgeCron.Run)) {
+			slog.InfoContext(ctx, "replay_purge_cron: scheduled",
+				"interval", scheduler.DefaultReplayPurgeInterval)
+		}
 	}
 
 	// MT-19 / axe E : notifier « titre prêt » injecté dans cfg (lu au runtime par le
@@ -1466,7 +1321,9 @@ func main() {
 
 	// app_release : émission asynchrone d'une notification in-app par joueur si la
 	// version a changé depuis sync_meta.last_seen_app_version. Ne bloque pas le boot.
-	go wire.EmitAppReleaseForAllPlayers(context.Background(), cfg, reg, cfg.AppVersion)
+	boot.launch(loopTask(taskAppRelease, false, context.Background(), func(c context.Context) {
+		wire.EmitAppReleaseForAllPlayers(c, cfg, reg, cfg.AppVersion)
+	}))
 
 	// Relais coach externe (Discord webhook, opt-in) : une ligne d'état au boot,
 	// comme les autres sous-systèmes. OFF par défaut (cf. internal/notifications/external).
@@ -1505,21 +1362,9 @@ func main() {
 	// logs/server.crash.log + recover() dans post-sync). Diagnostic immédiat
 	// au prochain incident type 2026-05-22 (silence total post 18:41:19).
 	startedAt := time.Now()
-	go func() {
-		ticker := time.NewTicker(30 * time.Second)
-		defer ticker.Stop()
-		for {
-			select {
-			case <-schedulerCtx.Done():
-				return
-			case <-ticker.C:
-				slog.InfoContext(schedulerCtx, "heartbeat: alive",
-					"uptime_s", int(time.Since(startedAt).Seconds()),
-					"goroutines", runtime.NumGoroutine(),
-				)
-			}
-		}
-	}()
+	boot.launch(heartbeatTask(schedulerCtx, startedAt))
+	// LE log Info de boot qui liste, en démo, ce qui est coupé (no-op hors démo).
+	boot.logCut(ctx)
 
 	<-sigCh
 	fmt.Fprint(os.Stderr, "\n  [..] Arret en cours...")
@@ -1830,7 +1675,7 @@ func buildAutoSyncPool(
 	tokenProvider auth.TokenProvider,
 ) pool.Pool {
 	pr := title.NewPathResolver(cfg.RepoRoot)
-	multiUserStore := auth.NewMultiUserTokenStore(pr.WatcherTokensDir())
+	multiUserStore := auth.NewMultiUserTokenStore(cfg.WatcherTokensDir())
 	discovery := pool.NewDiscoveryWithStore(cfg, pr, title.DefaultSlug, multiUserStore)
 	sources, err := discovery.Scan(ctx)
 	if err != nil {

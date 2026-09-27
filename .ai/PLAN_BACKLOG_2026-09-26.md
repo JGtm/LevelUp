@@ -1120,32 +1120,32 @@ plus `go test -count=1 ./...` complet.
 - Traduction des chemins démo en **3 copies** (règle n°6) : `cmd/server/demo_paths.go:27`,
   `internal/config/player_resolver.go:82`, `internal/ops/seed_demo_multititle.go:32`.
 
-- [ ] **B5.0** Ré-inventaire, au début du lot, des tâches de fond et des chemins de `main.go` (le
+- [x] **B5.0** (tableau de 40 lignes au journal B, entrée « B5.0 » du 2026-09-27) Ré-inventaire, au début du lot, des tâches de fond et des chemins de `main.go` (le
   code bouge). Chacun est classé : coupé en démo / redirigé sous la racine démo / légitime.
   Tableau au journal ; il fait foi pour B5.2-B5.5.
-- [ ] **B5.1** Un seul helper de disposition démo, qui remplace les 3 copies, plus un garde-rail
+- [x] **B5.1** (`internal/domain/title/demo_layout.go` `title.DemoLayout` ; garde-rail `internal/archlint/no_demo_layout_translation_test.go`, rouge 29 sites puis mutation ; copies supprimées : `cmd/server/demo_paths.go` demoWarehouseDBPath, `config/player_resolver.go` demoTitleDir + 3 traducteurs, `ops/seed_demo_multititle.go` demoTitleSubdir ; seed de la démo migré sur la disposition) Un seul helper de disposition démo, qui remplace les 3 copies, plus un garde-rail
   (test grep qui interdit la traduction hors du helper).
-- [ ] **B5.2** `config.Load` en démo, sans variable explicite, selon D-7 :
+- [x] **B5.2** (`config/config.go` Load + `config/config_demo.go` statePaths, RuntimePaths, WatcherTokensDir, TitleSettingsPath, DemoLogsDir ; logs par `cmd/server/demo_paths.go` bootLogsConfig ; variable explicite gagne ; `git check-ignore` : `data/demo/runtime/x` → `.gitignore:132`, `tests/fixtures/demo-root/runtime/x` → `.gitignore:198`) `config.Load` en démo, sans variable explicite, selon D-7 :
   - `SessionDir` → `<démo>/runtime/sessions` ;
   - `AuthDir` → `<démo>/auth` ;
   - logs et crash log → `<démo>/runtime/logs` ;
   - `AppSettingsPath`, `DBProfilesPath` et overlays de titre → fichiers de la fixture.
   - `git check-ignore` vérifié pour `runtime/` sous `data/demo` et `tests/fixtures/demo-root`.
-- [ ] **B5.3** Tâches de fond coupées en démo, avec garde explicite et un seul log Info au boot
+- [x] **B5.3** (`cmd/server/background_tasks.go` : table `demoPolicies`, `bootTasks.launch`/`cutInDemo`/`logCut` ; `PersistBatchAsync` forcé à false en démo dans `config.Load` ; `ops.MonitoringStoreInMemory` ; 16 tâches déclarées dont 12 coupées et 4 gardées, 5 étapes de boot coupées ; un seul log Info `demo_mode: tâches de fond coupées`) Tâches de fond coupées en démo, avec garde explicite et un seul log Info au boot
   qui liste ce qui est coupé :
   - janitor ;
   - file persist asynchrone (`PersistBatchAsync` forcé à false, aucun `RecoverPending`) ;
   - magasin de monitoring en mémoire ;
   - santé données ; purge des rejeux ; surveillance disque ; migration des amis ;
   - et toute autre tâche classée « coupée » en B5.0.
-- [ ] **B5.4** L'écrivain de la file de build (`sharedWriterForTitle`) passe par la même
+- [x] **B5.4** (`wire/registry_build_queue.go` sharedWriterForTitle → `config.SharedDBPath`) L'écrivain de la file de build (`sharedWriterForTitle`) passe par la même
   disposition démo que les 4 bases.
-- [ ] **B5.5** Caches écrits en démo (aide, `jobs.json`) → `<démo>/runtime/`. Rejeux et faits de
+- [x] **B5.5** (`cfg.RuntimePaths()` : `api/server.go` jobs + amis, `server_apiv1.go` cache de l'aide, `cmd/server` amis + état admin, `registry_pages.go` rejeux + rasters, `registry_monitoring_resources.go` faits de film ; tokens par `cfg.WatcherTokensDir()` ; cache d'assets inchangé, lecture seule) Caches écrits en démo (aide, `jobs.json`) → `<démo>/runtime/`. Rejeux et faits de
   film lus sous la racine démo (aucun en démo, comme en prod). Cache d'assets : lecture seule
   autorisée.
-- [ ] **B5.6** Sauvegarde : établir si `POST /settings/backup/run` est atteignable en démo
+- [x] **B5.6** (atteignable : `middleware/require_admin.go:18` transparent en démo → refus 403 `demo_mode_forbidden` dans `handlers/settings_backup.go` ; `settings_backup_demo_test.go`, rouge puis vert) Sauvegarde : établir si `POST /settings/backup/run` est atteignable en démo
   (comportement de `RequireAdmin` en démo). Si oui : refus en démo, avec un test.
-- [ ] **B5.7 Tests** (rouges d'abord) :
+- [x] **B5.7 Tests** (rouges d'abord ; sorties au journal B5) :
   - (1) `internal/config` : `Load()` avec un `LEVELUP_REPO_ROOT` leurre et le mode démo → aucun
     chemin d'exécution sous le leurre.
   - (2) `cmd/server` : le lancement des tâches de fond est extrait de `main()` vers une fonction
@@ -1155,7 +1155,7 @@ plus `go test -count=1 ./...` complet.
   - (3) `demo_paths_test.go` étendu à tous les chemins de `cfg`.
   - (4) `archlint/no_data_path_join_test.go` étendu à `cmd/server` (`main.go:1373` corrigé, ou
     dispensé avec une justification datée).
-- [ ] **B5.8 Preuve de bout en bout**, avec le serveur principal ARRÊTÉ (le superviseur le
+- [!] **B5.8 Preuve de bout en bout** (NON JOUÉE par l'exécutant le 2026-09-27 : `http://127.0.0.1:8000/health` répondait 200 — serveur du checkout principal actif, que l'exécutant n'arrête pas ; à jouer par le superviseur, cf. journal B5), avec le serveur principal ARRÊTÉ (le superviseur le
   coordonne) : marqueur daté, `make demo-visual`, puis `find data logs -newer <marqueur>` doit
   être vide hors de la racine démo. Sortie au journal.
 
@@ -1327,6 +1327,32 @@ plus B5.8.
   obtenue ». Non traité.
 - DB-27 (B4) : la sonde du garde sur `internal/sync`, `internal/ops` et `cmd` relève 56
   lecteurs sans exclusion (17 + 10 + 29), liste au journal B4. Tri séparé (§1.4). Non traité.
+- DB-28 (B5, 2026-09-27) : `RequireAdmin` (et `RequireAuth`) sont transparents en démo
+  (`middleware/require_admin.go:18`) : TOUTES les actions d'administration sont ouvertes à un
+  visiteur de la démo publique. B5.6 ne ferme que `POST /settings/backup/run`. Les autres
+  écritures déclenchées par requête gardent leurs chemins sous `LEVELUP_REPO_ROOT` (actions admin de
+  `wire/registry_actions.go`, qualité des données, construction locale d'un rejeu par
+  `wire/registry_replay_build.go` — fichier du §3.1.6 —, recalcul des sessions qui écrit les player
+  DB de la fixture…). Non traité.
+- DB-29 (B5) : la file de build lit l'artefact déposé sous le dépôt
+  (`wire/registry_build_queue.go:393`, `requireArtifactBeforeSuccess`) et l'écrit par
+  `registry_replay_build.go` (§3.1.6), alors que le lecteur du rejeu passe désormais par
+  `cfg.RuntimePaths()`. Identique hors démo ; en démo, n'est atteignable qu'avec
+  `LEVELUP_BUILD_WORKER_TOKEN` posé. Non traité.
+- DB-30 (B5) : conséquence pour le conteneur `levelup-demo` de production : sessions, logs par
+  module (jusqu'à 100 Mo × 4 par module) et caches d'exécution vont désormais sous
+  `/app/data/demo/runtime/`, donc sur l'hôte dans `./data/demo/runtime/` (bind-mount RW), au lieu du
+  système de fichiers éphémère du conteneur. Les sessions survivent donc au redémarrage du
+  conteneur, et le disque du VPS porte ces fichiers. Non traité (à apprécier au déploiement).
+- DB-31 (B5) : une variable explicite (`LEVELUP_SESSION_DIR`, `LEVELUP_AUTH_DIR`,
+  `LEVELUP_LOGS_DIR`, `LEVELUP_DB_PROFILES`, `LEVELUP_APP_SETTINGS`, `LEVELUP_BACKUP_DIR`) garde la
+  main en démo (contrat documenté) ; posée dans le `.env.local` du dépôt, elle ramènerait l'écriture
+  sous le dépôt. Aucune n'y figure sur ce poste (vérifié le 2026-09-27). Non traité.
+- DB-32 (B5) : lecteurs d'overlay de titre encore dérivés du dépôt, hors des chemins servis en
+  démo : `wire/post_sync_deltas.go:219` (post-sync), `wire/registry_replay_notify.go:111` (boucle
+  coupée en démo), `config.CSRSeasonIDForTitle` (`config.go:484`). Non traité.
+- DB-33 (B5) : `internal/config/config.go` passe de 629 à 640 lignes (seuil 500, dette
+  préexistante) ; la bascule démo vit dans `config_demo.go` pour limiter la croissance. Non traité.
 
 ---
 
@@ -1932,3 +1958,133 @@ plus B5.8.
   - la v7.5 n'est pas fusionnée dans main à ce jour : le délai reste sans effet.
 - Le serveur API tourne sur :8000 depuis 12 h 05 (checkout principal, accord de l'utilisateur,
   bases libres). B5.8 exige qu'il soit arrêté : c'est le superviseur qui le coordonne.
+
+**[2026-09-27] B5.0 — ré-inventaire des tâches de fond et des chemins, avant tout code (exécutant opus, worktree du plan). Ce tableau fait foi pour B5.2-B5.5.**
+
+Relevé sur `9d55d02b7`. Lignes de `cmd/server/main.go` sauf mention. « Réel » = sous `LEVELUP_REPO_ROOT`
+(le vrai checkout sur le poste de dev et dans le harnais visuel). `<démo>` = `LEVELUP_DEMO_FIXTURES_DIR`.
+
+| # | Tâche ou chemin | En démo avant B5 | Classement |
+|---|---|---|---|
+| 1 | Logs par module + crash log (`logging.LoadConfig`, l.203-240) | `<repo>/logs` (ou `logs/` du cwd) | redirigé `<démo>/runtime/logs` (B5.2) |
+| 2 | Registre de titres et `config/titles/**` (l.378, 465), seeds Prestige et jalons (l.1692-1716), `static/`, `WebDistDir`, README, changelog | lecture | légitime |
+| 3 | 4 bases warehouse (l.383-416) | fixture (`demoWarehouseDBPath`) | redirigé, déjà ; passe par le helper (B5.1) |
+| 4 | Contrôle de la fixture joueur (l.428) | fixture | redirigé ; helper (B5.1) |
+| 5 | `ensureWarehouseDir`, metadata pré-construite, titres additionnels, migrations player (l.447-516) | déjà gardés hors démo | légitime (garde existante) |
+| 6 | `runMigrations` (l.466) | bases de la fixture | légitime (sous `<démo>`) |
+| 7 | `users.json`, `groups.json` (l.695-703), `invites.json` (`api/server.go:694-697`) | `<repo>/data/auth` | redirigé `<démo>/auth` par `AuthDir` (B5.2) |
+| 8 | Store d'amis `data/global/player_friends.json` (l.706, `api/server.go:691`) | réel, lu et écrit | redirigé `<démo>/runtime/…` (B5.5) |
+| 9 | Tokens `data/auth/watcher_tokens` : `reauthStore` (l.714), `authStore` (`server_apiv1.go:1342`), SSO xbox (`server_apiv1.go:341`) | lecture réelle | redirigé `<démo>/auth/watcher_tokens`, vide (B5.2) |
+| 10 | `app_settings.json` (l.730), `db_profiles.json` (`AdminPlayer`, l.2324 ; `config_players.go:167`), overlays de titre (`handlers/settings.go:154,309,317,507`) | réels sans variable explicite | redirigés vers la fixture (B5.2) |
+| 11 | `migratePlayerFriendsAtBoot` (l.746) | écrit `player_friends.json` réel | coupé (B5.3) |
+| 12 | `migrateDefaultGroupAtBoot` (l.750) | lit le vrai `db_profiles`, écrit `groups.json` | coupé (B5.3) |
+| 13 | `buildAutoSyncPool` (l.763) | lit les tokens réels | coupé (pool nil), ce qui coupe aussi 19, l'orchestrateur V2 (l.1298) et 34 |
+| 14 | Snapshot post-sync et journal des actions admin (l.783-789) | lus et écrits dans `data/global/admin_state` | redirigé `<démo>/runtime/…` (B5.5) |
+| 15 | File persist asynchrone, ouvrier, `RecoverPending` (l.808-870) | WAL réel `data/wal`, rejeu dans les VRAIES player DB | coupé : `PersistBatchAsync` forcé à false (B5.3) |
+| 16 | Janitor (l.876-915) : `data/sync_cache` + WAL | purge réelle au boot puis toutes les 24 h | coupé (B5.3) |
+| 17 | Recovery WAL périodique (l.923) | — | coupé (suit 15) |
+| 18 | `CHECKPOINT` périodique de `shared_social` (l.960) | base de la fixture | légitime |
+| 19 | Re-scan du pool (l.988) | — | coupé (suit 13) |
+| 20 | Watcher (l.1050) | lit `data/auth/watcher_tokens.json` réel | coupé (B5.3) |
+| 21 | Scheduler d'auto-sync, `Run` (l.1066) | cycle + snapshot `admin_state` | coupé (l'objet reste construit pour le routeur) |
+| 22 | Santé données (l.1077) | audit des bases réelles | coupé (B5.3) |
+| 23 | Sauvegarde restic (l.1090) + `POST /settings/backup/run` | bases réelles ; `RequireAdmin` transparent en démo | refus en démo (B5.6) |
+| 24 | Sessions : `MkdirAll` + purge au boot puis toutes les 6 h (`api/server.go:582-676`) | `data/sessions` réel | redirigé `<démo>/runtime/sessions` (B5.2) |
+| 25 | `jobs.json` (`api/server.go:685`) | `data/cache/jobs.json` réel | redirigé `<démo>/runtime/…` (B5.5) |
+| 26 | Cache de l'aide (`server_apiv1.go:325`) | écrit dans `data/cache` réel | redirigé `<démo>/runtime/…` (B5.5) |
+| 27 | Cache d'assets (`server_apiv1.go:1383`) | lecture de `data/cache` | légitime, lecture seule (réseau coupé) |
+| 28 | `monitoring.duckdb` (l.1161) : marqueur `server_boot`, puits des crons, flush des détections (l.1178), file de build | base réelle ouverte en ÉCRITURE | redirigé EN MÉMOIRE (B5.3) ; le flush reste actif sur la base mémoire |
+| 29 | Surveillance disque (l.1190) | écrit `admin_state/disk_watch_state.json` réel | coupé (B5.3) |
+| 30 | Notification des rejeux prêts (l.1199) | lit l'overlay de titre réel | coupé (B5.3) |
+| 31 | Cron catalogue (l.1215) | réseau (coupé par netguard) puis écritures metadata | coupé (B5.3) |
+| 32 | Balayage des noms d'assets (l.1247) | réseau | coupé (B5.3) |
+| 33 | Cron classement mondial + enrichisseur (l.1395-1421) | `worldenrich.BuildEnricher` lit les tokens réels ; réseau | coupé (B5.3) |
+| 34 | Cron Spartan (l.1346) ; `data/cache` à la main (l.1373) | — | coupé (suit 13) ; l.1373 corrigé (B5.7-4) |
+| 35 | Purge des rejeux (l.1430) | `os.Remove` sur le vrai `data/cache/replays` d'après le vrai shared | coupé (B5.3) |
+| 36 | `EmitAppReleaseForAllPlayers` (l.1469) | player DB de la fixture (résolveur démo) ; no-op en `dev` | légitime |
+| 37 | `external.LogBootState` (l.1473) | lit `app_settings` de la fixture | légitime |
+| 38 | Heartbeat (l.1508) | log seul | légitime |
+| 39 | Écrivain de la file de build (`wire/registry_build_queue.go:311-334`) | vrai shared | redirigé vers la disposition démo (B5.4) |
+| 40 | Rejeux et rasters (`registry_pages.go:159,189`), faits de film (`registry_monitoring_resources.go:117` → `FilmFactsDir`) | lecture de `data/cache` réel | redirigé `<démo>/runtime/…`, vide (B5.5) |
+
+Hors du tableau : les écritures DÉCLENCHÉES PAR REQUÊTE hors `/settings/backup/run` (actions admin
+ouvertes en démo par `RequireAdmin`) restent hors périmètre, versées aux découvertes (DB-28).
+
+**[2026-09-27] B5 — mode démo hermétique côté fichiers (item 8) — exécutant opus, worktree du plan. B5.0 à B5.7 faits, B5.8 non jouée.**
+
+- Ordre : tableau B5.0 au journal avant tout code (ci-dessus), puis garde-rails et tests rouges
+  d'abord, sur le code d'avant ou sur un échafaudage sans comportement (méthodes aux sémantiques
+  d'avant). Cache Go dédié `go-build-backlog`, une commande `go` à la fois.
+- B5.1 : `title.DemoLayout` (`internal/domain/title/demo_layout.go`) remplace les trois copies ;
+  le seed de la démo (`ops/seed_demo*.go`) est migré sur la disposition. Garde-rail
+  `archlint/no_demo_layout_translation_test.go` (AST, `internal/` + `cmd/`) : noms de traducteurs,
+  `filepath.Join` d'une base « demo/fixture » avec un segment de la disposition, tout segment de
+  la disposition dans les fichiers de l'arbre démo ; base littérale (chemin relatif) exclue.
+- B5.2 : défauts démo dans `config.Load` via `statePaths` (`config_demo.go`), une variable
+  explicite garde la main ; `cfg.RuntimePaths()`, `cfg.WatcherTokensDir()`,
+  `cfg.TitleSettingsPath()` rendent exactement les chemins d'avant hors démo. Logs : `bootLogsConfig`
+  + `config.DemoLogsDir()` (lu avant `config.Load`).
+- B5.3 : `cmd/server/background_tasks.go` porte le lancement (janitor, recovery WAL, checkpoint,
+  re-scan du pool, heartbeat déplacés de `main.go`, qui passe de 2 366 à 2 211 lignes) et la table
+  `demoPolicies` ; `bootTasks.cutInDemo` pour les étapes de boot (migrations amis et groupe, pool de
+  tokens, file persist, watcher) ; un seul log Info `demo_mode: tâches de fond coupées` en fin de boot.
+- Sorties rouges (logs `$TEMP\backlog-gates\B5-*.log`) :
+  - garde B5.1, `B5-1-rouge-garde.log`, `EXIT_ROUGE_GARDE=1` : 29 sites (les 3 traducteurs, `main.go:428`,
+    `config_players.go:120`, `player_resolver.go` ×9, seed ×14) ;
+  - (4) `B5-7-4-rouge-datapath.log`, `EXIT_ROUGE_DATAPATH=1` :
+    `cmd/server/main.go:1373  cacheRoot := filepath.Join(pr.RepoRoot(), "data", "cache")` ;
+  - (1) `B5-7-1-rouge-config.log`, `EXIT_ROUGE_CONFIG=1` : 18 chemins « sous le dépôt LEURRE en mode
+    démo » (SessionDir, AuthDir, UsersFilePath, DBProfilesPath, AppSettingsPath, Backup.BackupDir,
+    WatcherTokensDir, TitleSettingsPath ×2, RuntimePaths ×7…), logs non redirigés, et
+    `PersistBatchAsync = true en démo` ;
+  - (3) worktree jetable à `9d55d02b7` + fichiers d'échafaudage seuls (retiré ensuite),
+    `B5-7-3-rouge-demopaths-9d55d02b7.log`, `EXIT_ROUGE_DEMOPATHS_AVANT=1` : 21 chemins « sous le
+    DÉPÔT en mode démo » (logs, cfg, runtime ×11) ; les 4 bases et la fixture joueur étaient déjà
+    redirigées ;
+  - (2) extraction sans gardes, `B5-7-2-rouge-taches.log`, `EXIT_ROUGE_TACHES=1` : `CRÉÉ
+    data/global/monitoring.duckdb`, `CRÉÉ data/global/player_friends.json`, `SUPPRIMÉ
+    data/sync_cache/sync.RunDelta_vieux` (+ son fichier), 7 tâches coupées LANCÉES ;
+  - B5.6 `B5-6-rouge-backup.log`, `EXIT_ROUGE_BACKUP=1` : `statut 200, attendu 403`, `un cycle de
+    sauvegarde a été lancé (1 énumération(s) de cibles)`.
+  - Après correctif : `EXIT_VERT_CONFIG=0`, `EXIT_VERT_DEMOPATHS=0`, `EXIT_VERT_TACHES=0`,
+    `EXIT_VERT_BACKUP=0`.
+- Mutations (log `B5-mutations.log`), retirées ensuite (grep `MUTANT B5` vide) : une traduction
+  `filepath.Join(cfg.DemoFixturesDir, "warehouse", …)` dans `demo_paths.go` → garde B5.1 rouge ;
+  `data/cache` à la main dans `main.go` → `TestNoNewDataPathJoin` rouge ; janitor déclaré gardé →
+  `SUPPRIMÉ data/sync_cache/…` et `statut démo 0, attendu 1` ; `EXIT_MUTANT_ARCHLINT=1`,
+  `EXIT_MUTANT_TACHES=1`.
+- Gates GO-F (logs `$TEMP\backlog-gates\B5-gate*.log`) :
+  1. `EXIT_BUILD=0` ; 2. `EXIT_VET=0` ;
+  3. `EXIT_TEST_LOT=1` au premier passage : deux garde-rails d'archlint relevaient MON diff
+     (`TestNoNewFrenchLabelLiteral` : message FR du refus de sauvegarde → passé en anglais technique ;
+     `TestNoGlobalFriendGamertagsKey` : clé legacy dans mon test → retirée, remplacée par une
+     assertion sur la liste des coupées). Rejeu des 3 paquets touchés : `EXIT_TEST_LOT_REJEU=0` ; les
+     11 autres paquets du lot étaient `ok` ;
+  4. `EXIT_INTEG_LOT=0` (14 paquets, `-p 1`) ;
+  5. `EXIT_TEST_COMPLET=1` : 186 `ok`, 3 rouges — `platform/duckdb`
+     `TestNoUnauthorizedSharedSocialMention` (DÛ AU LOT : `background_tasks.go` et `demo_layout.go`
+     mentionnent `shared_social` ; deux entrées datées ajoutées à la liste blanche), `mapcatalog`
+     `TestAddOverlayEntryConcurrentNePerdPasDEntree` (« Accès refusé » au rename sous charge,
+     préexistant, cf. B2) et `sync/skill` DB-8 (préexistant). Rejoués seuls : `EXIT_TEST_REJEU_DUCKDB=0`,
+     `EXIT_TEST_REJEU_MAPCATALOG=0`, `EXIT_TEST_REJEU_SKILL=0` ;
+  6. `EXIT_INTEG_COMPLET=0` (190 `ok`, aucune ligne `^--- FAIL:`, lancé après la liste blanche) ;
+  7. `EXIT_LINT=2` au premier passage (goconst sur `"true"` déplacé dans `config_demo.go`, unparam
+     sur le slug de `resolveBootDBPaths`) → corrigés ; `EXIT_BUILD_FINAL=0`, `EXIT_VET_FINAL=0`,
+     `EXIT_TEST_FINAL=0` (cmd/server, config), `EXIT_INTEG_FINAL=0` (cmd/server, config, archlint),
+     `EXIT_LINT_2=0` (`0 issues.`).
+- B5.8 : NON JOUÉE. À l'arrivée sur l'item, `http://127.0.0.1:8000/health` répondait 200 (serveur du
+  checkout principal). Rien n'a été arrêté ; le superviseur la fait jouer.
+- Baseline de tests : aucun test supprimé présent dans `.ai/baselines/tests_pre_migration.jsonl`
+  (les deux `TestDemoWarehouseDBPath_*` renommés en sont absents).
+- Écarts :
+  - `sessionComputeOptionsFor` prend désormais une fonction de chemin d'overlay (5 appels de test
+    adaptés) ; les overlays de `handlers/settings.go:507/551` suivent donc aussi la fixture ;
+  - hors du périmètre cité mais nécessaires : liste blanche `shared_social` de
+    `platform/duckdb/no_attach_on_social_test.go` (2 entrées datées) ; `docs/CONFIGURATION.md` et
+    `docs/FR/CONFIGURATION.md` (section « Chemins du mode démo », règle n°15) ; commentaire de
+    `wire/prestige_setup.go:66` qui citait `ops.demoTitleSubdir` ;
+  - tests en plus de la liste : `title/demo_layout_test.go`, variables explicites (config),
+    déclaration des statuts (`TestBackgroundTasks_DeclarationDemo`), hors démo tout lancé,
+    sauvegarde hors démo lancée ;
+  - la migration des amis n'est plus rendue sensible dans le test manifeste (garde-rail de la clé
+    legacy) : son sort est asserté par la liste des coupées.

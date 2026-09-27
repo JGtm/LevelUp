@@ -221,15 +221,20 @@ func Load() (*AppConfig, error) {
 	// (No-op si main() a déjà appelé BootstrapEnvLocal — loadEnvLocal n'écrase
 	// jamais une var déjà définie.)
 	loadEnvLocal(filepath.Join(repoRoot, ".env.local"))
-	demoMode := strings.ToLower(getEnvOrDefault("LEVELUP_DEMO_MODE", "false")) == "true"
+	demoMode := demoModeFromEnv()
+	demoFixturesDir := demoFixturesDirFromEnv(repoRoot)
+	// Chemins d'état et d'exécution : défauts du dépôt hors démo (inchangés), disposition démo
+	// en démo (lot B5, D-7) ; une variable explicite garde la main. Cf. config_demo.go.
+	st := newStatePaths(demoMode, demoFixturesDir)
+	appSettingsPath := st.path("LEVELUP_APP_SETTINGS", filepath.Join(repoRoot, "app_settings.json"), titlePkg.DemoLayout.AppSettingsPath)
 
 	cfg := &AppConfig{
 		RepoRoot:          repoRoot,
-		DBProfilesPath:    getEnvOrDefault("LEVELUP_DB_PROFILES", filepath.Join(repoRoot, "db_profiles.json")),
-		AppSettingsPath:   getEnvOrDefault("LEVELUP_APP_SETTINGS", filepath.Join(repoRoot, "app_settings.json")),
-		SessionDir:        getEnvOrDefault("LEVELUP_SESSION_DIR", filepath.Join(repoRoot, "data", "sessions")),
+		DBProfilesPath:    st.path("LEVELUP_DB_PROFILES", filepath.Join(repoRoot, "db_profiles.json"), titlePkg.DemoLayout.DBProfilesPath),
+		AppSettingsPath:   appSettingsPath,
+		SessionDir:        st.path("LEVELUP_SESSION_DIR", filepath.Join(repoRoot, "data", "sessions"), titlePkg.DemoLayout.SessionDir),
 		DemoMode:          demoMode,
-		DemoFixturesDir:   getEnvOrDefault("LEVELUP_DEMO_FIXTURES_DIR", filepath.Join(repoRoot, "data", "demo")),
+		DemoFixturesDir:   demoFixturesDir,
 		DemoLocale:        getEnvOrDefault("LEVELUP_DEMO_LOCALE", "en"),
 		APIHost:           getEnvOrDefault("LEVELUP_API_HOST", "127.0.0.1"),
 		APIPort:           getEnvInt("LEVELUP_API_PORT", 8000),
@@ -237,8 +242,8 @@ func Load() (*AppConfig, error) {
 		CORSOrigins:       parseCORSOrigins(getEnvOrDefault("LEVELUP_CORS_ORIGINS", "")),
 		Lang:              getEnvOrDefault("LEVELUP_LANG", "fr"),
 		AppVersion:        getEnvOrDefault("LEVELUP_APP_VERSION", "dev"),
-		DiscordWebhookURL: loadDiscordWebhookURL(getEnvOrDefault("LEVELUP_APP_SETTINGS", filepath.Join(repoRoot, "app_settings.json"))),
-		AuthDir:           getEnvOrDefault("LEVELUP_AUTH_DIR", filepath.Join(repoRoot, "data", "auth")),
+		DiscordWebhookURL: loadDiscordWebhookURL(appSettingsPath),
+		AuthDir:           st.path("LEVELUP_AUTH_DIR", filepath.Join(repoRoot, "data", "auth"), titlePkg.DemoLayout.AuthDir),
 		AuthMode:          getEnvOrDefault("LEVELUP_AUTH_MODE", "none"),
 		OAuthRedirectURI:  getEnvOrDefault("LEVELUP_OAUTH_REDIRECT_URI", ""),
 		RegistrationMode:  getEnvOrDefault("LEVELUP_REGISTRATION", "invite"),
@@ -249,13 +254,14 @@ func Load() (*AppConfig, error) {
 		WebDistDir:        getEnvOrDefault("LEVELUP_WEB_DIST", ""),
 		RateLimitRPM:      getEnvInt("LEVELUP_RATE_LIMIT_RPM", DefaultRateLimitRPM),
 	}
-	appSettingsPath := getEnvOrDefault("LEVELUP_APP_SETTINGS", filepath.Join(repoRoot, "app_settings.json"))
 	cfg.UserTimezone = loadUserTimezone(appSettingsPath)
 	cfg.CurrentCSRSeasonID = loadCSRSeasonID(appSettingsPath)
 	cfg.MediaCapturesBaseDir = loadMediaCapturesBaseDir(appSettingsPath)
 	cfg.Backup = loadBackupConfig(repoRoot, appSettingsPath)
+	cfg.Backup.BackupDir = st.path("LEVELUP_BACKUP_DIR", cfg.Backup.BackupDir, demoBackupDir)
 	cfg.PrestigeEnabled = prestige.IsEnabled(appSettingsPath)
-	cfg.PersistBatchAsync = getEnvOrDefault("LEVELUP_PERSIST_BATCH_ASYNC", "") != "0"
+	// Démo : file persist asynchrone COUPÉE (B5, D-7) — pas de WAL, pas de RecoverPending.
+	cfg.PersistBatchAsync = !demoMode && getEnvOrDefault("LEVELUP_PERSIST_BATCH_ASYNC", "") != "0"
 	cfg.EventsConvergence = getEnvOrDefault("LEVELUP_EVENTS_CONVERGENCE", "") != "0"
 	cfg.EventsConvergenceMax = getEnvInt("LEVELUP_EVENTS_CONVERGENCE_MAX", DefaultEventsConvergenceMax)
 	if cfg.EventsConvergenceMax <= 0 {
@@ -263,6 +269,11 @@ func Load() (*AppConfig, error) {
 	}
 	cfg.BuildWorkerToken = strings.TrimSpace(getEnvOrDefault("LEVELUP_BUILD_WORKER_TOKEN", ""))
 	return cfg, nil
+}
+
+// demoFixturesDirFromEnv lit LEVELUP_DEMO_FIXTURES_DIR (défaut `<repoRoot>/data/demo`).
+func demoFixturesDirFromEnv(repoRoot string) string {
+	return getEnvOrDefault("LEVELUP_DEMO_FIXTURES_DIR", filepath.Join(repoRoot, "data", "demo"))
 }
 
 // IsProduction indique si le serveur tourne en mode production (LEVELUP_ENV=production),

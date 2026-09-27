@@ -156,7 +156,8 @@ func (r *ServiceRegistry) Replay(ctx context.Context, slug string) (port.ReplayS
 // elle est passée au service, jamais reconstruite ailleurs.
 func (r *ServiceRegistry) replayServiceFor(pdb *duckdb.PlayerDB) port.ReplayService {
 	maps := duckdb.NewReplayMapRepo(pdb.SharedReadDB(), pdb.Metadata)
-	return service.NewReplayService(pdb.TitleSlug, r.cfg.RepoRoot, maps)
+	// Artefacts lus sous cfg.RuntimePaths (sous `<démo>/runtime/` en démo, lot B5.5).
+	return service.NewReplayService(pdb.TitleSlug, r.cfg.RuntimePaths().RepoRoot(), maps)
 }
 
 // Tactical retourne un TacticalService pour le joueur : l'onglet Tactique
@@ -186,7 +187,7 @@ func (r *ServiceRegistry) Tactical(ctx context.Context, slug string) (port.Tacti
 	// LE LECTEUR DE SIDECARS D'OCCUPATION (phase 6) : la seule source de l'onglet qui ne
 	// soit pas une base. Il est monte ici, au seul endroit de construction du service —
 	// sans lui, la lecture « ou je passe mon temps » degrade en 503 en le disant.
-	rasters := service.NewTacticalRasterStore(r.cfg.RepoRoot, pdb.TitleSlug)
+	rasters := service.NewTacticalRasterStore(r.cfg.RuntimePaths().RepoRoot(), pdb.TitleSlug)
 	// LES ZONES NOMMEES viennent du MEME catalogue versionne que le rejeu 2D, par la MEME
 	// cascade (module puis asset UGC) : elles nomment les grappes de reapparition. Magasin
 	// nil impossible ici ; catalogue absent -> grappes MUETTES, jamais une erreur.

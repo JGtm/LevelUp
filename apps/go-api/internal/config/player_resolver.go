@@ -59,7 +59,7 @@ func (cfg *AppConfig) sharedReaderForTitle(titleSlug string) duckdb.SharedReader
 		if title.IsDefaultSlug(titleSlug) {
 			return cfg.SharedProvider
 		}
-		return cfg.sharedProviderForPath(titleSlug, demoSharedDBPath(cfg, titleSlug))
+		return cfg.sharedProviderForPath(titleSlug, cfg.DemoLayout().SharedDBPath(titleSlug))
 	}
 	return cfg.sharedProviderForPath(titleSlug, title.NewPathResolver(cfg.RepoRoot).SharedDBPath(titleSlug))
 }
@@ -76,30 +76,6 @@ func (cfg *AppConfig) sharedProviderForPath(titleSlug, path string) duckdb.Share
 	return provider
 }
 
-// demoTitleDir retourne le sous-répertoire démo d'un titre. Titre par défaut (ou
-// slug vide) → fixturesDir plat (byte-identique mono-titre) ; titre additionnel →
-// fixturesDir/titles/{slug}/ (miroir du PathResolver prod, cf. ops.demoTitleSubdir).
-func demoTitleDir(fixturesDir, titleSlug string) string {
-	if title.IsDefaultSlug(titleSlug) {
-		return fixturesDir
-	}
-	return filepath.Join(fixturesDir, "titles", titleSlug)
-}
-
-// demoSharedDBPath / demoMetaDBPath / demoSharedSocialPath : chemins title-scopés des
-// DB démo d'un titre (cf. demoTitleDir).
-func demoSharedDBPath(cfg *AppConfig, titleSlug string) string {
-	return filepath.Join(demoTitleDir(cfg.DemoFixturesDir, titleSlug), "warehouse", "shared_matches_v2.duckdb")
-}
-
-func demoMetaDBPath(cfg *AppConfig, titleSlug string) string {
-	return filepath.Join(demoTitleDir(cfg.DemoFixturesDir, titleSlug), "warehouse", "metadata.duckdb")
-}
-
-func demoSharedSocialPath(cfg *AppConfig, titleSlug string) string {
-	return filepath.Join(demoTitleDir(cfg.DemoFixturesDir, titleSlug), "warehouse", "shared_social.duckdb")
-}
-
 // PrestigeBundleDBPaths retourne les chemins des DEUX bases ouvertes au boot par le
 // module Prestige (shared_social + metadata) pour le titre par défaut — les seules
 // que le bundle épingle (cf. wire.NewPrestigeBundleAt).
@@ -111,7 +87,7 @@ func demoSharedSocialPath(cfg *AppConfig, titleSlug string) string {
 func (cfg *AppConfig) PrestigeBundleDBPaths() (sharedSocialPath, metadataPath string) {
 	slug := title.DefaultSlug
 	if cfg.DemoMode && cfg.DemoFixturesDir != "" {
-		return demoSharedSocialPath(cfg, slug), demoMetaDBPath(cfg, slug)
+		return cfg.DemoLayout().SharedSocialDBPath(slug), cfg.DemoLayout().MetadataDBPath(slug)
 	}
 	pr := title.NewPathResolver(cfg.RepoRoot)
 	return pr.SharedSocialDBPath(slug), pr.MetadataDBPath(slug)
@@ -175,15 +151,13 @@ func resolveDemoPlayer(ctx context.Context, cfg *AppConfig, slug, titleSlug stri
 		titleSlug = title.DefaultSlug
 	}
 	dir := cfg.DemoFixturesDir
-	// titleDir : sous-arbre démo du titre (default → plat ; additionnel → titles/{slug}/).
-	titleDir := demoTitleDir(dir, titleSlug)
 	def := demoDefForSlug(slug) // DemoPlayer (main) ou un coéquipier DemoPlayer2/3
 
 	// Résolution du chemin stats.duckdb : structure seed-demo (par joueur du
 	// roster, title-scopée) d'abord, plate (fixtures legacy, main only) ensuite.
-	statsPath := filepath.Join(titleDir, "players", def.Dir, "stats.duckdb")
-	sharedPath := demoSharedDBPath(cfg, titleSlug)
-	metaPath := demoMetaDBPath(cfg, titleSlug)
+	statsPath := cfg.DemoLayout().PlayerDBPath(titleSlug, def.Dir)
+	sharedPath := cfg.DemoLayout().SharedDBPath(titleSlug)
+	metaPath := cfg.DemoLayout().MetadataDBPath(titleSlug)
 	xuidBytes := def.XUID
 	gamertag := def.Gamertag
 
@@ -213,7 +187,7 @@ func resolveDemoPlayer(ctx context.Context, cfg *AppConfig, slug, titleSlug stri
 	// schéma canonique (migrations TargetSharedSocial). Le pipeline média EXIGE un
 	// SharedSocial non-nil (sinon 0 média, pas de fallback Player DB — cf.
 	// media_repo_q37_pipeline.go). Vide si la fixture est absente (titre sans média).
-	sharedSocialPath := demoSharedSocialPath(cfg, titleSlug)
+	sharedSocialPath := cfg.DemoLayout().SharedSocialDBPath(titleSlug)
 	if _, err := os.Stat(sharedSocialPath); os.IsNotExist(err) {
 		sharedSocialPath = ""
 	}
@@ -283,7 +257,7 @@ func SharedDBPath(cfg *AppConfig, titleSlug string) string {
 		titleSlug = title.DefaultSlug
 	}
 	if cfg.DemoMode {
-		return demoSharedDBPath(cfg, titleSlug)
+		return cfg.DemoLayout().SharedDBPath(titleSlug)
 	}
 	return title.NewPathResolver(cfg.RepoRoot).SharedDBPath(titleSlug)
 }
@@ -295,7 +269,7 @@ func MetadataDBPath(cfg *AppConfig, titleSlug string) string {
 		titleSlug = title.DefaultSlug
 	}
 	if cfg.DemoMode && cfg.DemoFixturesDir != "" {
-		return demoMetaDBPath(cfg, titleSlug)
+		return cfg.DemoLayout().MetadataDBPath(titleSlug)
 	}
 	return title.NewPathResolver(cfg.RepoRoot).MetadataDBPath(titleSlug)
 }

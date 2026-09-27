@@ -1,6 +1,7 @@
 // Package archlint — no_data_path_join_test.go : ratchet L2-(2) (ARCHI TOP3).
 //
-// Interdit tout NOUVEAU `filepath.Join(..., "data", ...)` à la main dans internal/ :
+// Interdit tout NOUVEAU `filepath.Join(..., "data", ...)` à la main dans internal/ et
+// cmd/server (binaire serveur, ajouté le 2026-09-27 — lot B5.7-4) :
 // les chemins physiques passent par PathResolver (domain/title/registry.go), source
 // unique (ADR 0008, règle CLAUDE.md « jamais de filepath.Join(..., "data", ...) »).
 //
@@ -41,15 +42,36 @@ var dataPathJoinAllowlist = map[string]bool{
 
 var dataPathJoinRE = regexp.MustCompile(`filepath\.Join\(.*"data"`)
 
+// dataPathJoinRacinesBalayees : racines balayées, relatives à apps/go-api. `cmd/server`
+// ajouté le 2026-09-27 (backlog, lot B5.7-4) : le binaire serveur y échappait, et
+// main.go construisait encore `data/cache` à la main pour le cron Spartan.
+var dataPathJoinRacinesBalayees = []string{"internal", "cmd/server"}
+
 func TestNoNewDataPathJoin(t *testing.T) {
 	_, thisFile, _, ok := runtime.Caller(0)
 	if !ok {
 		t.Fatal("runtime.Caller a échoué")
 	}
-	internalRoot := filepath.Dir(filepath.Dir(thisFile))
+	goAPIRoot := filepath.Dir(filepath.Dir(filepath.Dir(thisFile)))
 
 	var violations []string
-	err := filepath.WalkDir(internalRoot, func(path string, d os.DirEntry, err error) error {
+	for _, racine := range dataPathJoinRacinesBalayees {
+		violations = append(violations, dataPathJoinsSous(t, goAPIRoot, racine)...)
+	}
+	if len(violations) > 0 {
+		t.Errorf("filepath.Join(..., \"data\", ...) à la main interdit (L2-2) — "+
+			"passer par PathResolver (domain/title/registry.go), ou allowlister "+
+			"transitoirement un site de bootstrap justifié :\n  %s",
+			strings.Join(violations, "\n  "))
+	}
+}
+
+// dataPathJoinsSous rend les `filepath.Join(..., "data", ...)` hors allowlist sous
+// goAPIRoot/racine (fichiers de test et dossiers `migrations` exclus).
+func dataPathJoinsSous(t *testing.T, goAPIRoot, racine string) []string {
+	t.Helper()
+	var violations []string
+	err := filepath.WalkDir(filepath.Join(goAPIRoot, filepath.FromSlash(racine)), func(path string, d os.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
@@ -62,7 +84,7 @@ func TestNoNewDataPathJoin(t *testing.T) {
 		if !strings.HasSuffix(path, ".go") || strings.HasSuffix(path, "_test.go") {
 			return nil
 		}
-		rel, _ := filepath.Rel(filepath.Dir(internalRoot), path)
+		rel, _ := filepath.Rel(goAPIRoot, path)
 		rel = filepath.ToSlash(rel)
 		if dataPathJoinAllowlist[rel] {
 			return nil
@@ -83,12 +105,7 @@ func TestNoNewDataPathJoin(t *testing.T) {
 		return nil
 	})
 	if err != nil {
-		t.Fatalf("walk internal/: %v", err)
+		t.Fatalf("walk %s: %v", racine, err)
 	}
-	if len(violations) > 0 {
-		t.Errorf("filepath.Join(..., \"data\", ...) à la main interdit (L2-2) — "+
-			"passer par PathResolver (domain/title/registry.go), ou allowlister "+
-			"transitoirement un site de bootstrap justifié :\n  %s",
-			strings.Join(violations, "\n  "))
-	}
+	return violations
 }

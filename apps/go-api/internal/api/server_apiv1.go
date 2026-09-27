@@ -322,7 +322,7 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 	// P8.10 : la logique git + parsing markdown vit dans
 	// service.ReleaseNotesService ; le handler ne fait que cache + I/O HTTP.
 	releaseBuilder := service.NewReleaseNotesService(cfg.RepoRoot)
-	help := handlers.NewHelpHandler(releaseBuilder, titlePkg.NewPathResolver(cfg.RepoRoot).CacheRootDir())
+	help := handlers.NewHelpHandler(releaseBuilder, cfg.RuntimePaths().CacheRootDir())
 	help.Mount(r, apiOpt)
 
 	// Sprint 14 : contexte de session
@@ -338,7 +338,7 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 	if cfg.AuthMode == "xbox" {
 		// PR 2.5a : injection du MultiUserTokenStore pour persister les tokens RTA
 		// après login (data/auth/watcher_tokens/{xuid}.json).
-		watcherTokensDir := titlePkg.NewPathResolver(cfg.RepoRoot).WatcherTokensDir()
+		watcherTokensDir := cfg.WatcherTokensDir()
 		multiUserTokens := auth_platform.NewMultiUserTokenStore(watcherTokensDir)
 
 		// PR 2.5b : daemonGetter retourne le daemon courant (capturé par closure).
@@ -1339,7 +1339,7 @@ func buildAPIV1Deps(r chi.Router, in apiV1Inputs) apiV1Deps {
 	// derrière (ni sync_meta DuckDB, ni env var, ni store mono-user). Idempotent :
 	// peut être re-créé à chaque boot (pointe sur le même répertoire
 	// `data/auth/watcher_tokens/`).
-	authStore := auth_platform.NewMultiUserTokenStore(titlePkg.NewPathResolver(cfg.RepoRoot).WatcherTokensDir())
+	authStore := auth_platform.NewMultiUserTokenStore(cfg.WatcherTokensDir())
 	reg.WithAuthStore(authStore)
 
 	// Transcoding média HLS asynchrone : le registry partage le jobStore process-wide
