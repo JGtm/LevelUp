@@ -1,6 +1,8 @@
 package replay
 
 import (
+	"cmp"
+	"slices"
 	"sort"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
@@ -151,11 +153,12 @@ func flagLifeTimeline(raws []flagCarryRaw, scan FlagCarryScan, ctx flagCarryCtx,
 	for _, h := range flagObjectHomecomings(scan, ctx) {
 		out = append(out, flagLifeEvent{at: h.at, kind: flagLifeHome, carry: -1, flag: h.flag, x: h.x, y: h.y})
 	}
-	sort.SliceStable(out, func(i, j int) bool {
-		if out[i].at != out[j].at {
-			return out[i].at < out[j].at
-		}
-		return out[i].kind < out[j].kind
+	// UN ORDRE TOTAL (lot J9.4, RB1-2) : l instant, puis le genre — la FIN avant le retour, la
+	// rentree et la reprise —, puis le portage et le drapeau. C est CET ordre, et lui seul, que les
+	// transitions de chaque drapeau suivent ensuite (cf. [spansOfTransitions]).
+	slices.SortStableFunc(out, func(a, b flagLifeEvent) int {
+		return cmp.Or(cmp.Compare(a.at, b.at), cmp.Compare(a.kind, b.kind),
+			cmp.Compare(a.carry, b.carry), cmp.Compare(a.flag, b.flag))
 	})
 	return out
 }
@@ -357,11 +360,22 @@ func flagCarriesOf(trans [][]flagTransition, scan FlagCarryScan, frames int) []F
 // Une transition de duree nulle n'est pas une anomalie : une prise qui suit immediatement une fin
 // (reprise au sol dans la meme frame) produit un `dropped` qui ne dure pas une frame. Le publier
 // donnerait au client un etat a dessiner qui n'a jamais existe a l'ecran.
+//
+// LES TRANSITIONS ARRIVENT DANS L ORDRE DES INSTANTS, ET CET ORDRE NE SE RETRIE PLUS (lot J9.4,
+// constat RB1-2 de l audit du 2026-09-24). Elles sont posees evenement par evenement dans l ordre
+// total de [flagLifeTimeline]. Les retrier par FRAME SEULE inversait deux faits d une meme frame :
+// la fin d un portage se pose a `frame(t1) + 1` (la frame de la fin reste portee), une reprise ou
+// un retour quelques millisecondes plus tard a `frame(t)` — la reprise passait AVANT le lacher, et
+// le drapeau restait publie au sol pendant qu un joueur courait avec. Une transition qui tombe sur
+// une frame ANTERIEURE a la precedente y est donc RECALEE : elle suit ce qui l a precedee dans le
+// temps, et le fait anterieur, reduit a zero frame, disparait de la publication.
 func spansOfTransitions(ts []flagTransition, frames int) []FlagSpan {
 	if len(ts) == 0 {
 		return nil
 	}
-	sort.SliceStable(ts, func(i, j int) bool { return ts[i].frame < ts[j].frame })
+	for i := 1; i < len(ts); i++ {
+		ts[i].frame = max(ts[i].frame, ts[i-1].frame)
+	}
 	out := make([]FlagSpan, 0, len(ts))
 	for i, t := range ts {
 		if t.state == flagStateUnknown {

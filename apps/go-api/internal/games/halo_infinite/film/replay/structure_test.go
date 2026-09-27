@@ -1341,8 +1341,23 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   `objectivesRev`, et les calques d objectifs de `layers` portent `objectives-...` au lieu de
 	//   `killsource-...`. La FORME d un bloc publie change (un champ retire, deux ajoutes) : d ou
 	//   la montee. Detail : `document_chronicle.go`.
-	if SchemaVersion != 72 {
-		t.Fatalf("SchemaVersion = %d, attendu 72 : incrémenter exige une raison écrite ci-dessus "+
+	// - 73 (2026-09-26, jalon J9 du PLAN_SUITE_AUDIT_DECODEUR_FILM) : DRAPEAU, BOMBE, ZONES. Des
+	//   CHANGEMENTS DE SENS, sans champ racine neuf : `flag_carriers_killed` ne ferme plus que le
+	//   portage d un ADVERSAIRE du tueur, une carte hors catalogue ne suppose plus un seul drapeau,
+	//   les fermoirs par slot suivent la manche, la reprise d une meme frame passe apres le lacher,
+	//   le portage de bombe se ferme a la mort anterieure au lacher, `bomb_arms` est ABSENT sans
+	//   horloge du film, et une descente de jauge se publie dans la seconde. Deux compteurs de
+	//   couverture optionnels (`coverage.flagCarries.unjudgedCarrierKills`,
+	//   `bombStats.coverage.armingsNoClock`). Un v72 doit se lire « a republier ». Detail :
+	//   `document_chronicle.go`.
+	// - 74 (2026-09-27, jalon J5 du PLAN_SUITE_AUDIT_DECODEUR_FILM, lot J5.5) : L IDENTITE PAR VIE.
+	//   Aucun champ neuf ; le CONTENU change : les corps de generation >= 2 d un slot recycle ont
+	//   leurs positions (GB-1, `durationMs` n est plus tronque), l identite, les tirs et les lancers
+	//   se rattachent au corps (slot, generation) vivant a l instant, la vie d une cle d objet est
+	//   bornee par la creation prouvee suivante. `grammar.Rev` monte avec elle : un v73 doit se lire
+	//   « a redecoder ». Detail : `document_chronicle.go`.
+	if SchemaVersion != 74 {
+		t.Fatalf("SchemaVersion = %d, attendu 74 : incrémenter exige une raison écrite ci-dessus "+
 			"(un champ optionnel de plus n'en est pas une)", SchemaVersion)
 	}
 }

@@ -235,7 +235,7 @@ func vehicleEpisodeCovers(eps []vehicleEpisode, g vehicleGap) bool {
 // pour cela que la premiere passe d abord.
 func vehicleRideFromEpisode(
 	ep vehicleEpisode, bySlot map[uint32][]grammar.BipedPosition, in vehicleRideInputs,
-) (types.EquipmentLifeKey, VehicleRide, vehicleEpisode, bool) {
+) (types.LifeKey, VehicleRide, vehicleEpisode, bool) {
 	pts := bySlot[ep.slot]
 	life, src := vehicleLifeFromEvent(ep, in)
 	if src == vehicleResolvedNone {
@@ -245,7 +245,7 @@ func vehicleRideFromEpisode(
 		}
 	}
 	if src == vehicleResolvedNone {
-		return types.EquipmentLifeKey{}, VehicleRide{}, vehicleEpisode{}, false
+		return types.LifeKey{}, VehicleRide{}, vehicleEpisode{}, false
 	}
 	ep.resolvedBy = src
 	if ep.openEnd {

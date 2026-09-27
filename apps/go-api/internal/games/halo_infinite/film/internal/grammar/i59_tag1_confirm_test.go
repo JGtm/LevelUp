@@ -131,7 +131,7 @@ func i59t1Scan(s eaFilmSetup, idx59 int) (reads []i59t1Read, slotFirst map[uint3
 			pay := pk.Payload(data)
 			total := len(pay) * 8
 			for p := 0; p+minRecord <= total; {
-				i0, slot, idx, ok := matchBipedHeader(pay, p, total, s.slots, true, s.lay)
+				i0, slot, idx, ok := matchBipedHeader(pay, p, total, s.slots, nil, s.lay)
 				if !ok {
 					p++
 					continue

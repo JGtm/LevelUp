@@ -109,6 +109,28 @@ func TestRoundIdentityResolveByTime(t *testing.T) {
 	}
 }
 
+// TestRoundAtSuitLaMancheDeAt — [RoundIdentity.RoundAt] place un instant dans LA MEME manche que
+// celle ou [RoundIdentity.At] nomme ses slots (lot J9.3) : sans cela, un calque qui indexe ses
+// faits par (manche, slot) les rangerait dans une manche et les nommerait dans une autre.
+func TestRoundAtSuitLaMancheDeAt(t *testing.T) {
+	recs, deaths := twoRoundReassignedFixture()
+	ri := ResolveRoundIdentity(recs, deaths)
+	for _, cas := range []struct{ t, veut int }{{2000, 0}, {9000, 0}, {12000, 1}, {40000, 1}} {
+		if got := ri.RoundAt(cas.t); got != cas.veut {
+			t.Errorf("RoundAt(%d) = %d, attendu %d", cas.t, got, cas.veut)
+		}
+		if ri.At(22, cas.t) != ri.AtRound(ri.RoundAt(cas.t), 22) {
+			t.Errorf("a %d ms, At et AtRound(RoundAt) ne nomment pas le meme joueur", cas.t)
+		}
+	}
+	if got := FlatRoundIdentity(map[int]string{12: "a"}).RoundAt(123_456); got != 0 {
+		t.Errorf("mono-manche : RoundAt = %d, attendu 0", got)
+	}
+	if got := (RoundIdentity{}).RoundAt(5); got != 0 {
+		t.Errorf("resolveur vide : RoundAt = %d, attendu 0", got)
+	}
+}
+
 // TestIdentifyNamedEventsByRoundReassignedSlot — LE CAS QUI FONDE LA MIGRATION DU CALQUE
 // OBJECTIFS : deux actions sur LE MEME slot 22, une par manche. Le pont par manche attribue la
 // manche 0 a "A" et la manche 1 a "B" ; le pont plat les donne TOUTES DEUX a "A" (il ne voit que

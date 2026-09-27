@@ -1,10 +1,17 @@
 //go:build research
 
-// Command cmd_fermeture mesure la CARTE DE FERMETURE DES TRAMES DELTA sur un corpus de films (lot
-// J4.0 du plan de suite de l audit du decodeur, item J4.0.4) : par build, la part des paquets
-// fermes au bit pres par vue, la part des RECORDS UTILES fermes — le declencheur du chantier de
-// representation intermediaire — et le classement des causes d arret, c est-a-dire la liste
-// courte de ce qui merite Ghidra (ou une largeur mesuree presumee, decision DU-9).
+// Command cmd_fermeture mesure un corpus de films, UN A LA FOIS, sous l un ou l autre de ses deux
+// MODES (`-mode`, liste separee par des virgules ; defaut `fermeture`) :
+//
+//   - `fermeture` : la CARTE DE FERMETURE DES TRAMES DELTA (lot J4.0 du plan de suite de l audit
+//     du decodeur, item J4.0.4) : par build, la part des paquets fermes au bit pres par vue, la
+//     part des RECORDS UTILES fermes — le declencheur du chantier de representation
+//     intermediaire — et le classement des causes d arret, c est-a-dire la liste courte de ce qui
+//     merite Ghidra (ou une largeur mesuree presumee, decision DU-9) ;
+//   - `gb1` : la MESURE PREALABLE DU CONSTAT GB-1 (lot J5.0) : les vies (slot, generation) du
+//     bipede, celles que le filtre de production laisse sans position (la generation 1 seule
+//     avant le lot J5.2, les generations vivantes depuis), `durationMs` contre la duree
+//     du film, et les en-tetes dont (slot, tag) n est aucune vie connue (cf. gb1.go).
 //
 // Il ne compile QUE sous le tag `research`. Il lit les films EN PLACE, UN A LA FOIS, dans l ordre
 // donne, sous la sentinelle memoire de `filmproc` armee film par film ; il n ecrit que dans le
@@ -12,13 +19,14 @@
 //
 //	cd apps/go-api
 //	go run -tags=research ./internal/games/halo_infinite/film/research/cmd_fermeture \
-//	  -racine <parc>/data/cache/film_chunks -films 0797ce72,bfecd02b -sortie <dossier hors data>
+//	  -racine <parc>/data/cache/film_chunks -films 0797ce72,bfecd02b -sortie <dossier hors data> \
+//	  [-mode fermeture,gb1]
 //
-// La mesure elle-meme est `grammar.FrameClosure` (la marche de production, aucune lecture de bits
-// de plus), sous le contexte des instruments (`grammar.ContexteDeFilm` : largeurs d axe lues dans
-// le film, profil par defaut). Le verrou de decodage de `filmproc` n est PAS pris : il ecrirait
-// un fichier sous la racine du cache ; la serialisation des decodages sur la machine est celle de
-// l operateur, comme pour `cmd_grenadeids`.
+// La mesure de fermeture est `grammar.FrameClosure` (la marche de production, aucune lecture de
+// bits de plus), sous le contexte des instruments (`grammar.ContexteDeFilm` : largeurs d axe lues
+// dans le film, profil par defaut). Le verrou de decodage de `filmproc` n est PAS pris : il
+// ecrirait un fichier sous la racine du cache ; la serialisation des decodages sur la machine est
+// celle de l operateur, comme pour `cmd_grenadeids`.
 package main
 
 import (
@@ -49,6 +57,15 @@ const tableParDefaut = "internal/games/halo_infinite/film/internal/grammar/testd
 // repertoireInterdit : le rapport ne s ecrit jamais sous un repertoire de ce nom.
 const repertoireInterdit = "data"
 
+// Les noms de mode reconnus par `-mode`.
+const (
+	modeFermeture = "fermeture"
+	modeGB1       = "gb1"
+)
+
+// modes dit quelles mesures l outil fait sur chaque film.
+type modes struct{ fermeture, gb1 bool }
+
 func main() {
 	racine := flag.String("racine", "", "racine portant les repertoires de films (lecture seule)")
 	films := flag.String("films", "", "identifiants de films, separes par des virgules, mesures dans cet ordre")
@@ -57,23 +74,20 @@ func main() {
 	table := flag.String("table", tableParDefaut, "chemin de ecs_table.tsv (usage produit et statuts)")
 	top := flag.Int("top", 30, "nombre de causes d arret classees dans le resume ; 0 = toutes")
 	plafond := flag.Int("plafond-gib", plafondParDefautGiB, "plafond memoire par film ; 0 desarme")
+	mode := flag.String("mode", modeFermeture, "mesures par film : fermeture, gb1, ou les deux (fermeture,gb1)")
 	flag.Parse()
 
 	ids := borner(decouper(*films), *limite)
-	if *racine == "" || len(ids) == 0 || *sortie == "" {
-		fmt.Fprintln(os.Stderr, "usage : -racine <dir> -films <id,id,...> -sortie <dir hors data> [-limite N]")
+	md, errMode := lireModes(*mode)
+	if *racine == "" || len(ids) == 0 || *sortie == "" || errMode != nil {
+		fmt.Fprintln(os.Stderr, "usage : -racine <dir> -films <id,id,...> -sortie <dir hors data> "+
+			"[-limite N] [-mode fermeture,gb1]")
+		if errMode != nil {
+			fmt.Fprintln(os.Stderr, errMode)
+		}
 		os.Exit(2)
 	}
-	if err := preparerSortie(*sortie); err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(2)
-	}
-	tab, err := lireTable(*table)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(2)
-	}
-	rap, err := ouvrirRapport(*sortie, tab)
+	rap, err := preparer(*sortie, *table, md)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(2)
@@ -95,8 +109,43 @@ func main() {
 	}
 }
 
-// mesurerUnFilm ouvre UN film, le mesure sous sa propre sentinelle, ecrit ses lignes, et le
-// laisse partir avant le suivant.
+// preparer verifie et cree le repertoire du rapport, relit la table ECS si le mode `fermeture`
+// la demande, et ouvre le rapport.
+func preparer(sortie, table string, md modes) (*rapport, error) {
+	if err := preparerSortie(sortie); err != nil {
+		return nil, err
+	}
+	var tab tableECS
+	if md.fermeture {
+		var err error
+		if tab, err = lireTable(table); err != nil {
+			return nil, err
+		}
+	}
+	return ouvrirRapport(sortie, tab, md)
+}
+
+// lireModes lit la valeur de `-mode`.
+func lireModes(v string) (modes, error) {
+	var md modes
+	for _, m := range decouper(v) {
+		switch m {
+		case modeFermeture:
+			md.fermeture = true
+		case modeGB1:
+			md.gb1 = true
+		default:
+			return modes{}, fmt.Errorf("-mode : %q inconnu (fermeture, gb1)", m)
+		}
+	}
+	if !md.fermeture && !md.gb1 {
+		return modes{}, errors.New("-mode : aucun mode demande")
+	}
+	return md, nil
+}
+
+// mesurerUnFilm ouvre UN film, le mesure sous sa propre sentinelle dans chacun des modes
+// demandes, ecrit ses lignes, et le laisse partir avant le suivant.
 func mesurerUnFilm(racine, id string, plafondGiB int, rap *rapport) error {
 	garde := filmproc.Arm(nomOutil, plafondGiB, func(pic uint64) {
 		fmt.Fprintf(os.Stderr, "%s : plafond memoire franchi (%d octets) — arret\n", id, pic)
@@ -108,16 +157,42 @@ func mesurerUnFilm(racine, id string, plafondGiB int, rap *rapport) error {
 	if fc == nil {
 		return fmt.Errorf("film illisible : %w", errLargeurs)
 	}
-	carte, err := grammar.FrameClosure(fc, rap.tab.utiles)
-	if err != nil {
-		return err
+	build := buildDuFilm(fc)
+	if rap.modes.fermeture {
+		carte, err := grammar.FrameClosure(fc, rap.tab.utiles)
+		if err != nil {
+			return err
+		}
+		m := mesureFilm{id: id, build: build, carte: carte, pic: garde.Peak(),
+			duree: time.Since(debut), largeursLues: errLargeurs == nil}
+		fmt.Printf("%s  build=%s  paquets=%d/%d  utiles=%d/%d  pic=%s  %s\n", id, m.build,
+			carte.PaquetsFermes, carte.Paquets, carte.Utiles.RecordsFermes, carte.Utiles.Records,
+			mio(m.pic), m.duree.Round(time.Millisecond))
+		if err := rap.ajouter(m); err != nil {
+			return err
+		}
 	}
-	m := mesureFilm{id: id, build: buildDuFilm(fc), carte: carte, pic: garde.Peak(),
-		duree: time.Since(debut), largeursLues: errLargeurs == nil}
-	fmt.Printf("%s  build=%s  paquets=%d/%d  utiles=%d/%d  pic=%s  %s\n", id, m.build,
-		carte.PaquetsFermes, carte.Paquets, carte.Utiles.RecordsFermes, carte.Utiles.Records,
-		mio(m.pic), m.duree.Round(time.Millisecond))
-	return rap.ajouter(m)
+	if rap.modes.gb1 {
+		if err := mesurerEtEcrireGB1(fc, id, build, garde, rap); err != nil {
+			return err
+		}
+	}
+	rap.mesures++
+	return nil
+}
+
+// mesurerEtEcrireGB1 fait la mesure GB-1 d un film deja ouvert et l ajoute au rapport.
+func mesurerEtEcrireGB1(fc *grammar.FilmContext, id, build string, garde *filmproc.Guard, rap *rapport) error {
+	debut := time.Now()
+	g, err := mesurerGB1(fc)
+	if err != nil {
+		return fmt.Errorf("gb1 : %w", err)
+	}
+	g.id, g.build, g.pic, g.duree = id, build, garde.Peak(), time.Since(debut)
+	fmt.Printf("%s  gb1  vies=%d  sans_position_prod=%d  sans_position_vivante=%d  orphelins=%d  pic=%s  %s\n",
+		id, len(g.vies), g.viesSansPositionProd(), g.viesSansPositionVivante(), g.totalOrphelins(),
+		mio(g.pic), g.duree.Round(time.Millisecond))
+	return rap.gb1.ajouter(g)
 }
 
 // buildDuFilm rend le build en clair de la section d identification de `chunk_00`, ou

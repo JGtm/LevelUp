@@ -306,11 +306,12 @@ func (sc *movementStateScanner) paquet(chunk int, pk FilmPacket, data []byte, cf
 
 // recevoir capte UNE publication du deserialiseur.
 //
-// LE FILTRE EST ICI, ET IL EST NECESSAIRE : `i54` est un composant du bipede, mais l attribution
-// de slot du chemin d inference est PARTIELLE — `decodeInferLoop` ne pose pas le slot de capture
-// pour un record NEW, si bien qu une lecture herite alors du slot du record precedent (D13 de la
-// note 5.3). Ne garder que les slots LIES AU BIPEDE ecarte ces lectures au lieu de les attribuer
-// a tort, et `SlotUnbound` dit combien.
+// LE FILTRE EST ICI, ET IL RESTE NECESSAIRE : `i54` est un composant du bipede, et la lecture ne
+// vaut que sur un slot LIE AU BIPEDE. Jusqu au lot J5.4, `decodeInferLoop` ne posait pas le slot
+// de capture d un record NEW, qui publiait sous le slot du record precedent (D13 de la note 5.3,
+// levee par GA1-3) ; le NEW publie desormais sous SON slot, mais ce slot n est lie qu APRES la
+// traversee — la lecture d un NEW sur un slot neuf est donc ecartee ici, et `SlotUnbound` dit
+// combien.
 func (sc *movementStateScanner) recevoir(comp EtatMouvementComposant, slot uint32, v []uint64) {
 	var lu types.MovementStateRead
 	switch comp {

@@ -12,7 +12,7 @@ package grammar
 // EXACTEMENT ce qu'il est.
 //
 // CE QUE CET INSTRUMENT AJOUTE : un MIROIR de `consumeMobilityActionBody` qui appelle les
-// MEMES primitives de production (`consumeSimStateHandleTail`, `consumeObjectForwardAndUp`,
+// MEMES primitives de production (`lireE494`, `consumeObjectForwardAndUp`,
 // `consume140c1e9d4`) dans le MEME ordre, mais RETIENT les petits champs terminaux —
 // R(10), R(10), R(1), R(7), R(2), R(1). La sequence n'est ecrite qu'ici et le jour ou la
 // production corrige une largeur, ce miroir devient faux : il porte donc son propre
@@ -152,12 +152,12 @@ func r8MirrorBody(br *Lecteur, ev *r8MobEvent) {
 		br.ReadBits(10)
 	}
 	if !br.ReadBit() {
-		consumeSimStateHandleTail(br)
+		lireE494(br, niveauPosition)
 		consumeObjectForwardAndUp(br)
 	}
 	br.ReadBits(64)
 	br.ReadBits(32)
-	consumeSimStateHandleTail(br)
+	lireE494(br, niveauPosition)
 	for i := 0; i < 3; i++ {
 		consume140c1e9d4(br, 12)
 	}
@@ -190,7 +190,7 @@ func r8ScanMobility(t *testing.T, s r8MobSetup) ([]r8MobEvent, int, int) {
 			pay := pk.Payload(data)
 			total := len(pay) * 8
 			for p := 0; p+minRecord <= total; {
-				i0, slot, idx, ok := matchBipedHeader(pay, p, total, s.slots, true, s.lay)
+				i0, slot, idx, ok := matchBipedHeader(pay, p, total, s.slots, nil, s.lay)
 				if !ok {
 					p++
 					continue

@@ -51,9 +51,9 @@ import (
 )
 
 // r9Ent identifie UNE VIE d'entite ti=37 : la paire (slot, generation), jamais le seul slot
-// (le pool reboucle et la generation ne fait que 2 bits). C'est `types.EquipmentLifeKey`, repris
+// (le pool reboucle et la generation ne fait que 2 bits). C'est `types.LifeKey`, repris
 // tel quel pour que la jointure avec les poses se fasse sans conversion.
-type r9Ent = types.EquipmentLifeKey
+type r9Ent = types.LifeKey
 
 // r9Owner est UNE observation de portage : ce bipede tenait cette entite a cet instant.
 type r9Owner struct {

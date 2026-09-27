@@ -300,7 +300,7 @@ func v0GrammaireUnFilm(t *testing.T, root string, f v0Film) {
 	// RequireTag1 est DESARME : le tag de 2 bits est la generation du handle, et les objets du
 	// monde en emploient les quatre (regle etablie par matchWorldObjectRecord).
 	opt := grammar.DefaultScanFilmOptions()
-	opt.WorldRange, opt.RequireTag1 = &wr, false
+	opt.WorldRange, opt.Generations = &wr, grammar.ToutesLesGenerations()
 	lay, _, err := detecterI0Layout(dir)
 	if err != nil {
 		t.Logf("V0 %s : decoupage i0 illisible : %v", f.ID, err)

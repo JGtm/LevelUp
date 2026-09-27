@@ -405,7 +405,7 @@ func v13AnchorI11(t *testing.T, dir string) (nRec, nI11 int) {
 			}
 		}
 	})
-	_, err := ScanFilmBipedPositions(dir, ScanFilmOptions{RequireTag1: true, DropSaturated: true,
+	_, err := ScanFilmBipedPositions(dir, ScanFilmOptions{DropSaturated: true,
 		CaptureDirs: true, QuantaOnly: true})
 	SetRecordMaskHook(prev)
 	if err != nil {

@@ -46,7 +46,7 @@ const vehicleSeatTolMS = vehicleEventTolMS
 // c est la FENETRE qui rattache deja l episode a sa vie — ajouter une egalite de generation ne
 // departagerait rien qu elle n ait departage, et perdrait les lectures dont le handle a reboucle.
 func assignVehicleSeats(
-	rides map[types.EquipmentLifeKey][]VehicleRide, occ []types.VehicleOccupancy,
+	rides map[types.LifeKey][]VehicleRide, occ []types.VehicleOccupancy,
 	clock replayClock,
 ) int {
 	if len(rides) == 0 || len(occ) == 0 || clock.step == 0 {

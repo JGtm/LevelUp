@@ -18,7 +18,9 @@ package replay
 //	                     (appendGaugeReset : la jauge ne redescend jamais autrement). Entre deux
 //	                     rampes la jauge n'a rien a montrer.
 //	ALLEGEE              dans une rampe, un point n'est publie que si la jauge a bouge d'au moins
-//	                     zoneGaugeMinDelta depuis le dernier point publie, OU si une seconde s'est
+//	                     zoneGaugeMinDelta depuis le dernier point publie — dans un sens OU dans
+//	                     l'autre depuis le lot J9.7 (une descente attendait la seconde suivante) —,
+//	                     OU si une seconde s'est
 //	                     ecoulee sans point (zoneGaugeMaxGapMS) : c'est ce qui borne le poids
 //	                     (<= +2 % de l'artefact, mesure au journal). Le premier et le dernier
 //	                     point de chaque rampe sont toujours publies : le depart et le sommet sont
@@ -114,7 +116,13 @@ func appendGaugeThinned(out []GaugePoint, ss []zoneSample, t0, t1, gap int) ([]G
 		s := ss[i]
 		m := gaugeMilliOf(s.v)
 		last := i+1 >= len(ss) || ss[i+1].t > t1
-		if !first && !last && m-lastM < zoneGaugeMinDeltaMilli && s.t-lastT < gap {
+		// UNE VARIATION, PAS UNE MONTEE (lot J9.7, constat RB1-8) : la difference SIGNEE laissait
+		// une descente sous le seuil jusqu a la seconde suivante.
+		variation := m - lastM
+		if variation < 0 {
+			variation = -variation
+		}
+		if !first && !last && variation < zoneGaugeMinDeltaMilli && s.t-lastT < gap {
 			continue
 		}
 		out = pushGaugePoint(out, GaugePoint{T: s.t, V: float32(m) / zoneGaugeMilli})

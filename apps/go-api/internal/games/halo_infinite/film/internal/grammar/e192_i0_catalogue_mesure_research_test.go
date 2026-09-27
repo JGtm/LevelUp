@@ -197,7 +197,7 @@ func e192Balayages(film *source.Film, entry profile.MapQuantEntry, l *e192Ligne)
 
 	// BRUT : tous filtres désarmés, saturation comprise. C'est la population d'ENREGISTREMENTS
 	// que la porte de région accepte ou écarte, sans qu'aucun post-traitement ne la retouche.
-	br := ScanFilmOptions{RequireTag1: true, WorldRange: &rng}
+	br := ScanFilmOptions{WorldRange: &rng}
 	e, _ := ScanBipedPositions(NewFilmContext(film), br)
 	br.Layout = &impose
 	f, _ := ScanBipedPositions(NewFilmContext(film), br)
@@ -208,7 +208,7 @@ func e192Balayages(film *source.Film, entry profile.MapQuantEntry, l *e192Ligne)
 	// TAG LIBRE, sur les seuls films qui divergent : la génération du handle ne filtre plus, la
 	// population est alors TOUT ce que la marche reconnaît. C'est la variante la plus large, celle
 	// qui borne par le haut ce que la porte de région écarte.
-	br.RequireTag1, br.Layout = false, nil
+	br.Generations, br.Layout = ToutesLesGenerations(), nil
 	g, _ := ScanBipedPositions(NewFilmContext(film), br)
 	br.Layout = &impose
 	h, _ := ScanBipedPositions(NewFilmContext(film), br)

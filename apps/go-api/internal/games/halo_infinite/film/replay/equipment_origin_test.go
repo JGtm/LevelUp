@@ -27,7 +27,7 @@ func origPos(slot uint32, frame int, x, y, z float32) grammar.BipedPosition {
 // origPose fabrique une pose brute a l'instant de la frame donnee.
 func origPose(frame int, x, y, z float32) types.EquipmentPlacement {
 	return types.EquipmentPlacement{
-		Life: types.EquipmentLifeKey{}, T0US: eqTS(frame), T1US: eqTS(frame + 10),
+		Life: types.LifeKey{}, T0US: eqTS(frame), T1US: eqTS(frame + 10),
 		X: x, Y: y, Z: z, GlobalID: 0x2974c233, Points: 4,
 	}
 }

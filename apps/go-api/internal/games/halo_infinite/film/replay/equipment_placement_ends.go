@@ -25,14 +25,16 @@ type placEnd struct {
 
 // placementEnds borne la disparition de chaque pose par le recensement des images-clés —
 // mêmes règles que la chaîne des socles (`gwPickupBoundsFrom`, un seul exemplaire), la vie
-// d'une clé étant fermée par la pose SUIVANTE de la même clé (le pool de clés reboucle).
+// d'une clé étant fermée par la pose SUIVANTE de la même clé (le pool de clés reboucle) — et, depuis
+// le lot J5.4 (RB2-3), par la pose suivante de son SLOT, quelle que soit sa génération
+// ([naissancesDObjetParSlot]).
 //
 // Rendu INDEXÉ sur `raw` : l'appelant filtre les poses hors axe après coup, l'index doit
 // survivre au filtre.
 func placementEnds(
 	raw []types.EquipmentPlacement, census grammar.WorldObjectKeyframes, clock replayClock,
 ) []placEnd {
-	byLife := map[types.EquipmentLifeKey][]int{}
+	byLife := map[types.LifeKey][]int{}
 	for i, p := range raw {
 		byLife[p.Life] = append(byLife[p.Life], i)
 	}
@@ -40,6 +42,12 @@ func placementEnds(
 	// À la fin de film exacte, la DERNIÈRE image-clé serait retranchée et une pose encore
 	// recensée à cette image-clé sortirait « disparue » au lieu d'« ouverte ».
 	filmEnd := census.LastTimeUS() + 1
+	// Toute pose balayee est publiee : elle est donc RETENUE, et elle borne la precedente de son slot.
+	parSlot := naissancesDObjetParSlot{}
+	for _, p := range raw {
+		parSlot.ajouter(p.Life.Slot, naissanceDObjet{tUS: p.T0US, gen: p.Life.Gen, retenue: true})
+	}
+	parSlot.trier()
 	out := make([]placEnd, len(raw))
 	for life, idxs := range byLife {
 		sort.Slice(idxs, func(a, b int) bool { return raw[idxs[a]].T0US < raw[idxs[b]].T0US })
@@ -48,6 +56,7 @@ func placementEnds(
 			if j+1 < len(idxs) {
 				lifeEnd = raw[idxs[j+1]].T0US
 			}
+			lifeEnd = parSlot.finDeVie(life, raw[i].T0US, lifeEnd)
 			seen := gwPickupSeenWithin(census.SeenUS[life], raw[i].T0US, lifeEnd)
 			b := gwPickupBoundsFrom(raw[i].T0US, lifeEnd, filmEnd, census.TimesUS, seen)
 			switch {

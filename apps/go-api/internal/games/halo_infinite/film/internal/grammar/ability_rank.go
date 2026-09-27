@@ -66,10 +66,12 @@ func ScanAbilityRanks(fc *FilmContext) ([]types.AbilityRank, types.AbilityRankSt
 		if e.Rank == AbilitySetNoRank {
 			return
 		}
-		// Les deux types ont la MÊME forme et des CONTRATS différents — l'un peut porter la
-		// porte ouverte, l'autre jamais —, ce qui est exactement pourquoi ils restent deux :
-		// la conversion est le point où le contrat se resserre, juste après le filtre.
-		out = append(out, types.AbilityRank(e))
+		// Les deux types ont des CONTRATS différents — l'un peut porter la porte ouverte, l'autre
+		// jamais —, ce qui est exactement pourquoi ils restent deux : la conversion est le point où le
+		// contrat se resserre, juste après le filtre. Elle est EXPLICITE depuis le lot J5.3 : l'émission
+		// porte en plus la génération du handle, que le type publié ne porte pas.
+		out = append(out, types.AbilityRank{Slot: e.Slot, Chunk: e.Chunk, PacketIndex: e.PacketIndex,
+			TimestampUS: e.TimestampUS, Counter: e.Counter, Rank: e.Rank})
 	})
 	if err != nil {
 		return nil, st, err
@@ -80,7 +82,10 @@ func ScanAbilityRanks(fc *FilmContext) ([]types.AbilityRank, types.AbilityRankSt
 // abilityEmission est UNE lecture d'i48 telle que le déserialiseur la publie, LA PORTE
 // OUVERTE COMPRISE. C'est la matière brute des deux vues du composant.
 type abilityEmission struct {
-	Slot        uint32
+	Slot uint32
+	// Gen est la GENERATION du handle du record porteur (lot J5.3) : la vie est (Slot, Gen), et c est
+	// par elle que les emissions d equipement se chainent ([abilityEmission.Vie]).
+	Gen         uint32
 	Chunk       int
 	PacketIndex int
 	TimestampUS uint64
@@ -89,6 +94,9 @@ type abilityEmission struct {
 	// capacité à cet instant. C'est une information, pas un défaut de lecture.
 	Rank int
 }
+
+// Vie rend la cle de vie du corps qui porte l emission : (slot, generation du handle).
+func (e abilityEmission) Vie() types.LifeKey { return types.LifeKey{Slot: e.Slot, Gen: e.Gen} }
 
 // abilityScanSetup porte le contexte résolu d'un balayage i48 : le contexte du film, la liste
 // de ses chunks, la bande de slots biped, le découpage d'i0 et l'archétype. Il est PARTAGÉ
@@ -182,7 +190,7 @@ func walkAbilityEmissionsWith(s abilityScanSetup, visit func(abilityEmission)) t
 			st.Gated++
 		}
 		visit(abilityEmission{
-			Slot: r.Slot, Chunk: r.Chunk, PacketIndex: r.Packet.Index,
+			Slot: r.Slot, Gen: r.Gen, Chunk: r.Chunk, PacketIndex: r.Packet.Index,
 			TimestampUS: r.Packet.TimestampUS,
 			Counter:     last.counter, Rank: last.rank,
 		})

@@ -43,7 +43,7 @@ func v7DeltaScan(t *testing.T, dir string, want map[int]bool, acc map[int]*v7Del
 		return 0, 0
 	}
 	opt := DefaultScanFilmOptions()
-	opt.RequireTag1, opt.MaxSpeedMPS, opt.IsolationGapMS, opt.QuantaOnly = false, 0, 0, true
+	opt.Generations, opt.MaxSpeedMPS, opt.IsolationGapMS, opt.QuantaOnly = ToutesLesGenerations(), 0, 0, true
 	pos, err := ScanFilmBipedPositionsForBand(dir, NewSlotBand(k.Band), opt)
 	if err != nil {
 		t.Logf("positions illisibles dans %s : %v", dir, err)

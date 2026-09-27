@@ -2,44 +2,21 @@ package grammar
 
 import (
 	"math"
-	"os"
-	"path/filepath"
-	"regexp"
-	"strings"
 	"testing"
+
+	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 )
 
-// TestQuantAxisWidthCentralized est le garde-rail de la règle CLAUDE #6 : la largeur d'axe
-// de la TABLE PAR DÉFAUT (boîte monde ; 6+level, forme fermée de FUN_140be9b88) doit passer
-// par le helper unique quantAxisWidth — jamais réintroduite en littéral inline.
+// quant_width_guard_test.go — LA LARGEUR DE LA TABLE PAR INDEX N EST PAS CELLE DE LA TABLE DEFAUT.
 //
-// PÉRIMÈTRE : ce garde-rail ne couvre QUE la table par défaut. La largeur de la position
-// d'objet (i0) vient de la table PAR RÉGION (AABB du BSP de la carte) et n'a rien à voir
-// avec 6+L ; elle est détenue par profile.I0Layout / DetectI0Layout et vérifiée contre les bornes
-// du module par cmd/tmp_boundstest. Confondre les deux est l'erreur que ce commentaire
-// existe pour empêcher.
-func TestQuantAxisWidthCentralized(t *testing.T) {
-	bad := regexp.MustCompile(`6\s*\+\s*uint\(level\)`)
-	files, err := filepath.Glob("*.go")
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, f := range files {
-		if strings.HasSuffix(f, "_test.go") {
-			continue // ce fichier référence le motif dans la regex ci-dessus
-		}
-		src, err := os.ReadFile(f)
-		if err != nil {
-			t.Fatal(err)
-		}
-		for i, line := range strings.Split(string(src), "\n") {
-			if bad.MatchString(line) {
-				t.Errorf("%s:%d largeur de quantification inline interdite (%q) — utiliser quantAxisWidth(uint(level))",
-					f, i+1, strings.TrimSpace(line))
-			}
-		}
-	}
-}
+// LOT J6.3 (2026-09-27) : `quantAxisWidth` (`min(26, 6 + niveau du registre)`) est supprimee avec
+// ses deux tests (`TestQuantAxisWidthCentralized`, `TestQuantAxisWidthFormula`). Le releve Ghidra
+// du lot J6.1 l a infirmee a ses quatre sites verifies — aucun site du jeu ne transmet le niveau du
+// registre au lecteur `FUN_14076e524` — et sa forme fermee etait fausse de 17 a 22 (le plafond de
+// comptage 2^22 de la loi, que la formule de reference ci-dessous n a pas non plus). Les vec3
+// passent par le portage unique (`lecteur_position.go`) ; la loi vit dans `profile` et y est
+// testee (`loi_largeurs_test.go`) ; le garde-rail contre un lecteur local est
+// `lecteur_position_ratchet_test.go`.
 
 // referenceAxisWidth réimplémente la formule COMPLÈTE de FUN_140be9b88 pour un axe :
 //
@@ -62,32 +39,9 @@ func referenceAxisWidth(extent float64, level uint) uint {
 	return w
 }
 
-// TestQuantAxisWidthFormula ancre la forme fermée min(26, 6+L) contre la formule COMPLÈTE,
-// et non contre elle-même : sans cela le test serait tautologique (il vérifierait 6+L == 6+L).
-// La boîte monde est documentée tantôt à ±19968, tantôt à ±20000 (DAT_143b8c6b8) : les deux
-// lectures donnent les MÊMES largeurs sur tout le domaine, ce que le test constate aussi.
-func TestQuantAxisWidthFormula(t *testing.T) {
-	for _, extent := range []float64{39936, 40000} {
-		for l := uint(0); l <= 24; l++ {
-			if got, want := quantAxisWidth(l), referenceAxisWidth(extent, l); got != want {
-				t.Errorf("boîte %g : quantAxisWidth(%d) = %d, formule complète = %d", extent, l, got, want)
-			}
-		}
-	}
-	// cap à 26 (0x1a) pour L élevé.
-	for _, l := range []uint{20, 21, 40} {
-		if got := quantAxisWidth(l); got > 26 {
-			t.Errorf("quantAxisWidth(%d) = %d, dépasse le cap 26", l, got)
-		}
-	}
-	if got := quantAxisWidth(20); got != 26 {
-		t.Errorf("quantAxisWidth(20) = %d, want 26", got)
-	}
-}
-
 // TestRegionAxisWidthIsNotDefaultTable est la contrepartie du garde-rail : la largeur de la
 // position d'objet vient de la table PAR RÉGION (extent du BSP au niveau 16), pas de
-// quantAxisWidth. Les valeurs de bornes sont celles lues dans les modules du jeu
+// la table DEFAUT (22 au niveau 16). Les valeurs de bornes sont celles lues dans les modules du jeu
 // (cmd/mapquant-build) et les largeurs celles mesurées dans les films (DetectI0Layout).
 func TestRegionAxisWidthIsNotDefaultTable(t *testing.T) {
 	cases := []struct {
@@ -107,8 +61,8 @@ func TestRegionAxisWidthIsNotDefaultTable(t *testing.T) {
 			}
 		}
 		// et elle ne coïncide PAS avec la table par défaut au même niveau (22 à L=16).
-		if referenceAxisWidth(c.extent[0], 16) == quantAxisWidth(16) {
-			t.Errorf("%s : largeur région confondue avec la table par défaut (%d)", c.name, quantAxisWidth(16))
+		if defaut := profile.LargeursAxeParDefautDuBuild(16)[0]; referenceAxisWidth(c.extent[0], 16) == defaut {
+			t.Errorf("%s : largeur région confondue avec la table par défaut (%d)", c.name, defaut)
 		}
 	}
 }

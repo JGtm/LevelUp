@@ -68,7 +68,7 @@ var e191Composants = []struct {
 
 // e191CleCreation identifie le record de creation d une pose : la vie de l objet et son instant.
 type e191CleCreation struct {
-	Life types.EquipmentLifeKey
+	Life types.LifeKey
 	T0US uint64
 }
 
@@ -124,7 +124,7 @@ func e191ComposantsDUnFilm(t *testing.T, root string, f e191Film) (map[string]in
 	}
 	parMasque := map[e191CleCreation][]int{}
 	for _, c := range cre {
-		parMasque[e191CleCreation{types.EquipmentLifeKey{Slot: c.Slot, Gen: c.Gen}, c.TimestampUS}] = c.Mask
+		parMasque[e191CleCreation{types.LifeKey{Slot: c.Slot, Gen: c.Gen}, c.TimestampUS}] = c.Mask
 	}
 	ctx := e191Contexte(g)
 	ctx.familles = goldenCatalog(t).EquipmentFamilies
@@ -134,7 +134,7 @@ func e191ComposantsDUnFilm(t *testing.T, root string, f e191Film) (map[string]in
 		t.Logf("film %s : evenements 103 illisibles (%v) — hors mesure", f.Short8, err)
 		return nil, nil, false
 	}
-	designees := map[types.EquipmentLifeKey][]uint64{}
+	designees := map[types.LifeKey][]uint64{}
 	for _, e := range spawns {
 		if e.SpawnedValid {
 			designees[e.Spawned] = append(designees[e.Spawned], e.TimestampUS)

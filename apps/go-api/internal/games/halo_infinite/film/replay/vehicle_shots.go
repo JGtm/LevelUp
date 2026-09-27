@@ -70,7 +70,7 @@ func attachVehicleShots(
 	if len(rides) == 0 {
 		return
 	}
-	slotsOf := vehicleSlotsByPlayer(reg.IndexParSlot())
+	occ := reg.Occupants()
 	published := publishedSlots(doc.Tracks)
 	board := vehicleShotBoard{
 		rides: rides, tracks: doc.Vehicles, lives: vehicleLifeIndex(doc.Vehicles), clock: clock,
@@ -78,7 +78,7 @@ func attachVehicleShots(
 	}
 	var added []Shot
 	for _, o := range orphans {
-		s, verdict, onCarrier, parUnite := board.shotOf(o, slotsOf[o.ev.FilmIndex])
+		s, verdict, onCarrier, parUnite := board.shotOf(o, occ.slotsDe(o.ev.FilmIndex, int64(o.ev.TimestampUS)))
 		vehicleShotTally(doc.Coverage.Vehicles, verdict)
 		if verdict != vehicleShotPlaced {
 			continue
@@ -353,20 +353,6 @@ func vehicleRidesByOccupant(tracks []VehicleTrack) map[uint32][]vehicleShotRide 
 		for _, r := range tr.Rides {
 			out[r.Slot] = append(out[r.Slot], vehicleShotRide{track: i, ride: r})
 		}
-	}
-	return out
-}
-
-// vehicleSlotsByPlayer inverse le pont slot -> index de joueur du film. Un joueur porte
-// plusieurs slots dans un match (un par réapparition) : ils sont TRIÉS, pour que la décision
-// d'ambiguïté ne dépende pas de l'ordre d'itération d'une map.
-func vehicleSlotsByPlayer(owner map[uint32]int) map[int][]uint32 {
-	out := map[int][]uint32{}
-	for s, pi := range owner {
-		out[pi] = append(out[pi], s)
-	}
-	for pi := range out {
-		sort.Slice(out[pi], func(i, j int) bool { return out[pi][i] < out[pi][j] })
 	}
 	return out
 }

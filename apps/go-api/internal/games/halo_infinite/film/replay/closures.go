@@ -188,7 +188,9 @@ func claimsFromShots(tracks map[uint32]slotTrack, owner map[uint32]int, lives []
 	free []int, fire []FireEventRef) shotClaims {
 	c := shotClaims{byBody: map[uint32]map[int]int{}, blocked: map[uint32]bool{}, life: map[uint32]int{}}
 	for _, e := range fire {
-		if _, r := slotFor(tracks, owner, e.FilmIndex, e.TimestampUS); r == reasonAttached {
+		// LE PONT EN CONSTRUCTION, PAR SLOT : les fermetures decident un proprietaire PAR SLOT (cf.
+		// l'en-tete), et elles tournent avant que le registre ne serve ses occupants a l'instant.
+		if _, r := slotFor(tracks, occupantsPlats(owner), e.FilmIndex, e.TimestampUS); r == reasonAttached {
 			continue
 		}
 		cand := livesCoveringAt(lives, free, e.TimestampUS)

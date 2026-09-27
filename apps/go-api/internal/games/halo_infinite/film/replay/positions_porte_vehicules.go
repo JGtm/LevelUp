@@ -120,7 +120,7 @@ type bilanSilences struct{ ecartes, nonTranches int }
 // les echantillons ecartes, avec le bilan. `spawns` porte la naissance de chaque vie (apres F-1) :
 // c est la voisine gauche de son premier sejour.
 func ecarterLesSejoursAuTraversDUnSilence(bySlot map[uint32][]grammar.BipedPosition,
-	lives []vehicleLife, spawns map[types.EquipmentLifeKey]types.EquipmentCreation, fb *fallback.Compteur,
+	lives []vehicleLife, spawns map[types.LifeKey]types.EquipmentCreation, fb *fallback.Compteur,
 ) (map[uint32][]grammar.BipedPosition, bilanSilences) {
 	ecartes := map[uint32]map[int]bool{}
 	var b bilanSilences

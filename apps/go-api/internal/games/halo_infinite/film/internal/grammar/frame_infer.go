@@ -283,6 +283,9 @@ func decodeInferLoop(br *Lecteur, buf []byte, w *World, cfg FrameConfig) ([]Fram
 		}
 		id := readRecordID(br, cfg.IDLowBits, cfg.IDBase)
 		slot := id & 0x3fffffff
+		// SLOT DE CAPTURE DE CHAQUE RECORD, NEW COMPRIS (GA1-3, lot J5.4 ; leve D13 de la note 5.3) :
+		// sans lui, un NEW publiait ses etats sous le slot du record precedent.
+		br.poserSlotDeCapture(slot)
 		finEntete := br.BitPos()
 		rec := FrameRecord{Type: typ, ID: id, Slot: slot, DesyncAt: -1}
 		if rejetDeVue(typ, id, w, cfg) {

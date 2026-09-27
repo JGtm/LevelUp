@@ -193,8 +193,8 @@ func indicesDeViesParSlot(lives []lifeSpan) map[uint32][]int {
 // d'une vie — le moteur cree l'entite, puis replique ses positions dans un paquet ULTERIEUR. Un
 // partage par containment rendrait donc « propage » partout, ce qui serait exact au sens litteral
 // et faux au sens utile : le record ouvre bien UNE vie, celle du sejour qu'il inaugure. La regle
-// retenue est donc « la premiere vie du corps qui n'est pas deja terminee a la date du record »,
-// et il y a exactement un `direct` par record.
+// retenue est donc « la premiere vie DE CE CORPS qui n'est pas deja terminee a la date du
+// record », et il y a au plus un `direct` par record (aucun quand le corps ne replique rien).
 func (r *creationReport) appliquerAuCorps(lives []lifeSpan, vies []int, c corpsLu, t resolutionDIndex) {
 	ouvertes := c.viesOuvertes(lives, vies)
 	for _, i := range vies {
@@ -257,14 +257,23 @@ func (r *creationReport) refuserFauteDeTable(i, pi int) {
 	r.indexLu[i] = uint32(pi)
 }
 
-// viesOuvertes apparie chaque record du corps a LA VIE QU'IL OUVRE : la premiere vie du slot que
-// le record ne trouve pas deja terminee, et qu'aucun record anterieur n'a deja ouverte. Rend
+// viesOuvertes apparie chaque record du corps a LA VIE QU'IL OUVRE : la premiere vie DE CE CORPS
+// que le record ne trouve pas deja terminee, et qu'aucun record anterieur n'a deja ouverte. Rend
 // le record (index de participant et date) par indice de vie.
+//
+// LA VIE DOIT ETRE CELLE DE SON CORPS (RA2-1, lot J5.4, 2026-09-27). Le corps d'une vie est la cle
+// (slot, generation) du record qui tient le slot a son debut ([corpsLu.recordAuDebutDe]). Sans
+// cette garde, le record d'un corps qui ne replique AUCUNE position ouvrait la premiere vie du
+// corps SUIVANT du slot recycle, publiee `direct` sous le joueur precedent — latent tant que les
+// corps de generation >= 2 n'avaient pas de positions (GB-1, corrige au lot J5.2).
 func (c corpsLu) viesOuvertes(lives []lifeSpan, vies []int) map[int]dateDeCreation {
 	out := map[int]dateDeCreation{}
 	for _, d := range c.dates {
 		for _, i := range vies {
 			if _, deja := out[i]; deja || lives[i].to < d.tUS {
+				continue
+			}
+			if corps, connu := c.recordAuDebutDe(lives[i]); !connu || corps != d {
 				continue
 			}
 			out[i] = d
@@ -285,9 +294,17 @@ func (c corpsLu) viesOuvertes(lives []lifeSpan, vies []int) map[int]dateDeCreati
 // anterieure au record garde cet unique record : c'est le MEME corps, la creation precedant
 // toujours la replication (lot E2, cas a2).
 func (c corpsLu) recordAuDebutDe(l lifeSpan) (dateDeCreation, bool) {
+	return c.recordA(l.from)
+}
+
+// recordA est [corpsLu.recordAuDebutDe] a un instant quelconque de l'horloge du film : le corps
+// (slot, generation) qui tient le slot a `tUS`. Les lecteurs qui situent un EVENEMENT ou une
+// PISTE (lot J5.4) posent la meme question que la decoupe des vies, et ils recoivent la meme
+// reponse — une seule regle de partage d'un slot recycle.
+func (c corpsLu) recordA(tUS int64) (dateDeCreation, bool) {
 	k := -1
 	for j := range c.dates {
-		if c.dates[j].tUS > l.from {
+		if c.dates[j].tUS > tUS {
 			break
 		}
 		k = j

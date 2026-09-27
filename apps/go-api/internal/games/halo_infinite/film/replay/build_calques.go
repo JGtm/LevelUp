@@ -132,7 +132,7 @@ func (a *assemblage) poserArmesAuSolEtVehicules() {
 	// dotations et les prises (arme en main) et la pose des places (le tireur est l occupant de sa
 	// place) — cf. fire_bursts.go.
 	a.doc.Bursts, a.doc.Coverage.ContinuousFire = buildFireBursts(&a.doc, a.opt.ContinuousFire,
-		a.opt.ContinuousFireStats, a.reg.IndexParSlot(),
+		a.opt.ContinuousFireStats, a.reg.Occupants(),
 		replayClock{origin: a.origin, step: a.step, frames: a.doc.FrameCount, fb: a.opt.Fallbacks})
 	logFireBursts(a.doc.Coverage.ContinuousFire)
 }

@@ -239,16 +239,16 @@ func lessPlacement(a, b types.EquipmentPlacement) bool {
 // au cours d'un match. Dédupliquer sur la paire seule fondrait deux poses distinctes du même
 // socle en une, et c'est la deuxième — la plus tardive — qui disparaîtrait.
 func confirmPlacements(
-	cre []types.EquipmentCreation, spans map[types.EquipmentLifeKey][]EquipmentLifeSpan,
+	cre []types.EquipmentCreation, spans map[types.LifeKey][]EquipmentLifeSpan,
 	eps [3]float32, st *EquipmentPlacementStats,
 ) []types.EquipmentPlacement {
 	type lifeInstance struct {
-		key   types.EquipmentLifeKey
+		key   types.LifeKey
 		spanT uint64
 	}
 	best := map[lifeInstance]types.EquipmentPlacement{}
 	for _, c := range cre {
-		k := types.EquipmentLifeKey{Slot: c.Slot, Gen: c.Gen}
+		k := types.LifeKey{Slot: c.Slot, Gen: c.Gen}
 		life, hit := MatchEquipmentLife(spans[k], [3]float32{c.X, c.Y, c.Z}, eps, c.TimestampUS)
 		if !hit {
 			continue

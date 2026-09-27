@@ -120,7 +120,7 @@ func i57ScanPacket(
 	total := len(pay) * 8
 	minRecord := bipedHeaderBits + bipedIndexBits*bipedMinMaskCnt + lay.TotalBits()
 	for p := 0; p+minRecord <= total; {
-		if i0, slot, idx, ok := matchBipedHeader(pay, p, total, slots, true, lay); ok {
+		if i0, slot, idx, ok := matchBipedHeader(pay, p, total, slots, nil, lay); ok {
 			c.sparse++
 			i57Account(pay, i0, total, idx, lay, arch, c, false, slot, tsUS)
 			p = i0 + lay.TotalBits()

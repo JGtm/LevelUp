@@ -43,6 +43,16 @@ package replay
 // un slot, (a) et (b) rendent celui qui l'occupait à cet instant-là — jamais « le premier », qui
 // est ce que `SlotXUID` retient et ce que le constat P1-7 a fait corriger ailleurs.
 //
+// # BORNÉ AU CORPS, PAS AU SLOT (RA2-2, lot J5.4, 2026-09-27)
+//
+// Un slot recyclé porte plusieurs CORPS (slot, génération), chacun ouvert par son record de
+// création : (a), (b) et (c) ne cherchent que dans le corps qui tient le slot au milieu de la
+// piste (identity_registry_corps.go), et le pont par slot ne sert que si les records du slot ne
+// divergent pas. Sans cette borne, la vie d'un corps que la lecture n'a pas nommé (bot, index
+// hors table) prenait l'identité du corps PRÉCÉDENT du siège. Ce nommage reste une DÉDUCTION :
+// il est inscrit au registre des replis (`repli_identite_vie_par_occupation_du_corps`) et compté
+// à chaque piste qu'il nomme.
+//
 // CE QUI RÉSISTE N'EST PAS DEVINÉ. Un slot dont aucune vie n'est nommée et que le pont ne nomme
 // pas reste sans nom : il entre dans `Coverage.Bridge.UnnamedLives` et dans un `slog.Error` qui
 // porte le match, le slot et les bornes. On ne publie pas une identité inventée ; on publie le
@@ -51,6 +61,8 @@ package replay
 import (
 	"log/slog"
 	"strconv"
+
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
 )
 
 // unnamedLivesReport est ce que la passe de nommage final rend — par CAUSE, jamais un total
@@ -92,8 +104,17 @@ func nameRemainingLives(tracks []Track, reg IdentityRegistry,
 			continue
 		}
 		from, to := trackSpanUS(tracks[i], origin, step)
-		xuid, cause := slotOccupantAround(named[tracks[i].Slot], from, to,
-			reg.PontDeSlot(tracks[i].Slot))
+		// LE CORPS DE LA PISTE SE LIT A SON MILIEU : ses bornes sont arrondies a la grille du
+		// document, et un record de creation peut tomber dans la meme frame que sa premiere
+		// position — le debut arrondi designerait alors le corps precedent.
+		slot := tracks[i].Slot
+		xuid, cause := slotOccupantAround(reg.memeCorps(named[slot], slot, from+(to-from)/2),
+			from, to, reg.pontDuCorps(slot))
+		if cause == occupantPrevious || cause == occupantNext || cause == occupantBridge {
+			// REPLI NOMME ET COMPTE (D-10) : c'est une DEDUCTION par l'occupation du corps, pas
+			// une lecture — chaque piste qu'elle nomme se compte.
+			reg.fb.Declenche(fallback.NomIdentiteVieParOccupationDuCorps)
+		}
 		switch cause {
 		case occupantPrevious:
 			tracks[i].XUID, rep.byPrevious = xuid, rep.byPrevious+1

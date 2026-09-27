@@ -189,7 +189,7 @@ func TestV7Temps(t *testing.T) {
 			continue
 		}
 		opt := DefaultScanFilmOptions()
-		opt.RequireTag1, opt.MaxSpeedMPS, opt.IsolationGapMS, opt.QuantaOnly = false, 0, 0, true
+		opt.Generations, opt.MaxSpeedMPS, opt.IsolationGapMS, opt.QuantaOnly = ToutesLesGenerations(), 0, 0, true
 		pos, err := ScanFilmBipedPositionsForBand(d, NewSlotBand(k.Band), opt)
 		if err != nil {
 			t.Logf("film %-10s positions illisibles : %v", filepath.Base(filepath.Clean(d)), err)

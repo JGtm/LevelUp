@@ -84,12 +84,6 @@ const (
 	// contrôlée : c'est un identifiant de contenu, pas une signature de format — un autre
 	// effet en changerait sans rien changer aux positions qui suivent.
 	translocEffectWordBits = 32
-	// translocDefaultBound / translocDefaultAxisBits : bornes et largeurs PAR DÉFAUT du
-	// moteur (DAT_143b8c6b8 = ±20000, 22 bits par axe), la branche que la porte de région
-	// ouvre quand son bit vaut 1. Jamais observée sur les 18 événements des 5 films : elle
-	// est implémentée parce qu'elle EST le layout, pas parce qu'elle a été vue.
-	translocDefaultBound    = 20000
-	translocDefaultAxisBits = 22
 	// translocMaxAxisBits : plafond de la loi du moteur sur une largeur d'axe
 	// (min(26, ...), cf. profile.MapQuantEntry.AxisWidths). translocMaxRegionBits borne de même la
 	// largeur de l'index de région. Au-delà, l'entrée de catalogue est refusée plutôt que
@@ -205,31 +199,45 @@ func decodeTranslocJump(br *Lecteur, entry *profile.MapQuantEntry) ([3]float32, 
 // readTranslocVec lit UNE position quantifiée de la charge et la déquantifie en coordonnées
 // monde. PORTE INVERSÉE (cf. l'en-tête, piège n°1) : bit à 0 -> index de région puis bornes
 // de la carte ; bit à 1 -> bornes par défaut du moteur.
+//
+// LA LECTURE EST CELLE DU PORTAGE UNIQUE (lot J6.3, 2026-09-27) : `FUN_140f04fb8` garde chaque
+// position par `FUN_14076f91c` puis appelle `FUN_14076e524(0x10)` (CALLs 140f04ff0 et 140f05023,
+// `MOV R9D,0x10` en 140f04fe5 et 140f05018). Ce fichier en tenait une seconde copie — largeur par
+// défaut 22 et bornes ±20000 recopiées en constantes, sans la garde. Les tables viennent ici de
+// l'ENTRÉE DE CATALOGUE du match ([tablesDeLEntree]), pas du profil du lecteur : le balayage du
+// translocateur n'installe aucun profil, et c'est l'entrée qui porte les bornes.
 func readTranslocVec(br *Lecteur, entry *profile.MapQuantEntry) ([3]float32, bool) {
 	var out [3]float32
-	widths := [3]uint{translocDefaultAxisBits, translocDefaultAxisBits, translocDefaultAxisBits}
-	rng := profile.Vec3Range{
-		{Min: -translocDefaultBound, Max: translocDefaultBound},
-		{Min: -translocDefaultBound, Max: translocDefaultBound},
-		{Min: -translocDefaultBound, Max: translocDefaultBound},
+	pos, ok := lireE494Sur(br, niveauPosition, tablesDeLEntree(entry))
+	if !ok || pos.brute {
+		return out, false // pas de bornes -> pas de coordonnée monde (map_bounds.go) ; brut -> pas de quanta
 	}
-	if !br.ReadBit() {
-		if !translocEntryUsable(entry) {
-			return out, false // pas de bornes -> pas de coordonnée monde (map_bounds.go)
-		}
-		if uint32(br.ReadBits(entry.EffectiveRegionIndexBits())) != entry.Region {
+	rng := profile.QuantRangeParDefautDuBuild()
+	if pos.idx >= 0 {
+		if uint32(pos.idx) != entry.Region {
 			// Une AUTRE région : ses quanta sont exprimés dans une autre AABB, et les
 			// déquantifier avec ces bornes produirait une position fausse silencieuse —
 			// exactement le refus que porte profile.I0Layout.Region sur le chemin du bipède.
 			return out, false
 		}
-		widths, rng = entry.AxisWidths, entry.Range()
+		rng = entry.Range()
 	}
-	lay := profile.I0Layout{AxisW: widths}
+	lay := profile.I0Layout{AxisW: pos.w}
 	for ax := 0; ax < 3; ax++ {
-		out[ax] = DequantBipedAxis(uint32(br.ReadBits(widths[ax])), ax, lay, rng)
+		out[ax] = DequantBipedAxis(uint32(pos.q[ax]), ax, lay, rng)
 	}
 	return out, br.Remaining() >= 0
+}
+
+// tablesDeLEntree rend les tables de `FUN_14076e524` que porte une entrée de catalogue. Une
+// entrée absente ou hors enveloppe ([translocEntryUsable]) ne sait pas lire un index : la lecture
+// s'arrête alors sur la porte — la table DÉFAUT, elle, reste lisible sans carte.
+func tablesDeLEntree(e *profile.MapQuantEntry) tablesDePosition {
+	if !translocEntryUsable(e) {
+		return tablesDePosition{}
+	}
+	return tablesDePosition{indexW: e.EffectiveRegionIndexBits(), axesCarte: e.AxisWidths,
+		bornesCarte: bornesDeLaPlage(e.Range()), indexLisible: true}
 }
 
 // translocEntryUsable dit si l'entrée de catalogue permet une déquantification : bornes

@@ -62,7 +62,7 @@ func consumeDefaultStateTI41(br *Lecteur, param5 bool) {
 	}
 	br.ReadBits(largeurEchelleProjectile) // dst+0x90
 	if br.ReadBit() {                     // drapeau 8
-		consumeSimStateHandleTail(br) // FUN_14076e494(..., 0x10, 0, param_5, 0)
+		lireE494(br, niveauPosition) // FUN_14076e494(..., 0x10, 0, param_5, 0)
 		br.ReadBits(largeurVecteurDirection)
 		br.ReadBits(largeurVitesseProjectile)
 	}
@@ -116,7 +116,7 @@ func consume1408eff64(br *Lecteur, p bool) {
 // (`MOV R9D,0xd` @142f04745, boucle de `FUN_140c1e9d4`), puis R(1)[R(16)].
 func consume142f04664(br *Lecteur, c bool) {
 	if !c {
-		consumeSimStateHandleTail(br)
+		lireE494(br, niveauPosition)
 		return
 	}
 	br.ReadBits(2)

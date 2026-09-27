@@ -41,7 +41,7 @@ func gwFlagScan(id uint32) (WorldObjectScan, []grammar.BipedPosition) {
 		},
 		Keyframes: grammar.WorldObjectKeyframes{
 			TimesUS: kf,
-			SeenUS: map[types.EquipmentLifeKey][]uint64{
+			SeenUS: map[types.LifeKey][]uint64{
 				{Slot: 10}: {20_000_000}, {Slot: 11}: {40_000_000},
 				{Slot: 12}: {60_000_000}, {Slot: 13}: {80_000_000},
 			},

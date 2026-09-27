@@ -30,9 +30,11 @@ package grammar
 // ne touche ni matchBipedHeader ni ascendingFromZero, et ne lit que des fenêtres bornées.
 
 import (
+	"sort"
+
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/source"
-	"sort"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
 // equipRecoveryMaxDense borne le nombre de composants d'un masque dense candidat — enveloppe
@@ -50,7 +52,10 @@ const equipRecoveryHeadCounter = equipmentFirstCounter - 1
 // émissions d'une même vie, ou la tête d'une vie dont la première émission n'a pas le
 // compteur attendu (fenêtre [naissance, première émission]).
 type equipRecoveryWindow struct {
+	// slot et gen : la VIE dont la chaine a saute (lot J5.3) ; seul un record de CE handle comble la
+	// fenetre.
 	slot  uint32
+	gen   uint32
 	fromC uint32 // compteur d'avant (equipRecoveryHeadCounter pour une tête de vie)
 	toC   uint32 // compteur d'après (l'émission qui ferme la fenêtre)
 	miss  int    // émissions manquées annoncées : (toC − fromC − 1) modulo 8
@@ -78,19 +83,22 @@ type equipRecovered struct {
 
 // buildEquipRecoveryWindows dresse les fenêtres de re-balayage d'un film : une par saut de
 // compteur, plus une par tête de vie hors norme quand le témoin de naissance existe.
-// `bySlot` doit être trié par instant croissant à l'intérieur de chaque slot.
+// `parVie` doit être trié par instant croissant à l'intérieur de chaque vie (slot, génération du
+// handle, lot J5.3). Le témoin de naissance reste par SLOT : les positions ne portent pas la
+// génération (limite décrite au rapport du lot).
 func buildEquipRecoveryWindows(
-	bySlot map[uint32][]abilityEmission, bornAt func(uint32) (uint64, bool),
+	parVie map[types.LifeKey][]abilityEmission, bornAt func(uint32) (uint64, bool),
 ) []equipRecoveryWindow {
 	var out []equipRecoveryWindow
-	for slot, list := range bySlot {
+	for vie, list := range parVie {
+		slot := vie.Slot
 		if len(list) == 0 {
 			continue
 		}
 		if first := list[0]; first.Counter != equipmentFirstCounter && bornAt != nil {
 			if birth, ok := bornAt(slot); ok && birth < first.TimestampUS {
 				out = append(out, equipRecoveryWindow{
-					slot: slot, fromC: equipRecoveryHeadCounter, toC: first.Counter,
+					slot: slot, gen: vie.Gen, fromC: equipRecoveryHeadCounter, toC: first.Counter,
 					miss:  counterStep(equipmentFirstCounter, first.Counter),
 					tsMin: birth, tsMax: first.TimestampUS,
 					chunkMin: 1, chunkMax: first.Chunk, head: true,
@@ -103,7 +111,7 @@ func buildEquipRecoveryWindows(
 				continue
 			}
 			out = append(out, equipRecoveryWindow{
-				slot: slot, fromC: list[i-1].Counter, toC: list[i].Counter, miss: step - 1,
+				slot: slot, gen: vie.Gen, fromC: list[i-1].Counter, toC: list[i].Counter, miss: step - 1,
 				tsMin: list[i-1].TimestampUS, tsMax: list[i].TimestampUS,
 				chunkMin: list[i-1].Chunk, chunkMax: list[i].Chunk,
 			})
@@ -113,9 +121,17 @@ func buildEquipRecoveryWindows(
 		if out[i].tsMin != out[j].tsMin {
 			return out[i].tsMin < out[j].tsMin
 		}
-		return out[i].slot < out[j].slot
+		return cmpVie(out[i], out[j])
 	})
 	return out
+}
+
+// cmpVie departage deux fenetres de meme debut par leur vie : slot, puis generation du handle.
+func cmpVie(a, b equipRecoveryWindow) bool {
+	if a.slot != b.slot {
+		return a.slot < b.slot
+	}
+	return a.gen < b.gen
 }
 
 // scanEquipmentRecovery re-balaye les fenêtres et rend, pour chacune, les émissions
@@ -215,14 +231,15 @@ func scanEquipRecoveryPacket(
 		return
 	}
 	total := len(pay) * 8
+	gens := s.fc.GenerationsVivantes() // lot J5.2 : generations vivantes du film, memorisees par le contexte
 	for p := 0; p+bipedHeaderBits+bipedIndexBits <= total; p++ {
 		if uint32(source.BitsStricts(pay, p, 1)) != 1 {
 			continue
 		}
-		slot := uint32(source.BitsStricts(pay, p+1, bipedSlotBits))
+		h := LireHandleDelta(pay, p)
 		var w *equipRecoveryWindow
 		for _, cand := range active {
-			if cand.slot == slot {
+			if cand.slot == h.Slot && cand.gen == h.Gen { // la VIE de la fenetre (lot J5.3)
 				w = cand
 				break
 			}
@@ -230,9 +247,9 @@ func scanEquipRecoveryPacket(
 		if w == nil {
 			continue
 		}
-		// EN-TÊTE DE PRODUCTION INTACT (R2 §4) : tag=1 et bit 16 nul. Seule la PORTE du
-		// masque (bit 17) distingue les deux formes récupérables.
-		if uint32(source.BitsStricts(pay, p+14, 2)) != 1 || uint32(source.BitsStricts(pay, p+16, 1)) != 0 {
+		// EN-TÊTE DE PRODUCTION INTACT (R2 §4) : génération vivante (lot J5.2 ; la seule 1
+		// avant) et bit 16 nul. Seule la PORTE du masque (bit 17) distingue les deux formes récupérables.
+		if !gens.Accepte(h) || uint32(source.BitsStricts(pay, p+16, 1)) != 0 {
 			continue
 		}
 		counter, rank, ok := walkEquipRecoveryAt(s, pay, p, total, last)
@@ -241,7 +258,7 @@ func scanEquipRecoveryPacket(
 		}
 		w.cands = append(w.cands, equipRecovered{
 			abilityEmission: abilityEmission{
-				Slot: slot, Chunk: chunk, PacketIndex: pk.Index,
+				Slot: h.Slot, Gen: h.Gen, Chunk: chunk, PacketIndex: pk.Index,
 				TimestampUS: pk.TimestampUS, Counter: counter, Rank: rank,
 			},
 			off: p, dense: uint32(source.BitsStricts(pay, p+17, 1)) == 1,

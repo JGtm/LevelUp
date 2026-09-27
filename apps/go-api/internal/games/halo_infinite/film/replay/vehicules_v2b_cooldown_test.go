@@ -118,7 +118,7 @@ func v2cProcessFilm(t *testing.T, dir, short8 string, entry profile.MapQuantEntr
 	kf := grammar.ScanFilmWorldObjectKeyframes(dir, grammar.VehicleTypeIndex)
 	v2cAttachCensus(lives, kf)
 
-	opt := grammar.ScanFilmOptions{WorldRange: &wr, RequireTag1: false, DropSaturated: true}
+	opt := grammar.ScanFilmOptions{WorldRange: &wr, Generations: grammar.ToutesLesGenerations(), DropSaturated: true}
 	if lay := entry.Layout(); lay.Valid() {
 		opt.Layout = &lay
 	}
@@ -160,7 +160,7 @@ func v2cLivesPerBirth(cre []types.EquipmentCreation) []*v2cLife {
 // v2cAttachCensus pose goneBy (premiere image-cle apres le dernier recensement) par vie.
 func v2cAttachCensus(lives []*v2cLife, kf grammar.WorldObjectKeyframes) {
 	for _, l := range lives {
-		seen := kf.SeenUS[types.EquipmentLifeKey{Slot: l.slot, Gen: l.gen}]
+		seen := kf.SeenUS[types.LifeKey{Slot: l.slot, Gen: l.gen}]
 		if len(seen) == 0 {
 			continue
 		}

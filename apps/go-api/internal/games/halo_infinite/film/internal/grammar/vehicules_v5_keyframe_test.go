@@ -64,7 +64,7 @@ func v5Episodes(dir string) ([]v5Episode, map[uint32][]uint64, error) {
 	if err != nil {
 		return nil, nil, fmt.Errorf("événements véhicule : %w", err)
 	}
-	pos, err := ScanFilmBipedPositions(dir, ScanFilmOptions{QuantaOnly: true})
+	pos, err := ScanFilmBipedPositions(dir, ScanFilmOptions{QuantaOnly: true, Generations: ToutesLesGenerations()})
 	if err != nil {
 		return nil, nil, fmt.Errorf("positions bipède : %w", err)
 	}

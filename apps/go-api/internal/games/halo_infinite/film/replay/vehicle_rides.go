@@ -145,7 +145,7 @@ type vehicleRideInputs struct {
 	// est ici parce que le nom porte par un evenement peut designer une vie que le calque ne
 	// publie pas — la TOURELLE d un Warthog, entite `ti=40` attachee qui ne replique jamais sa
 	// position (cf. `vehicleLifeFromEvent`).
-	drawable map[types.EquipmentLifeKey]bool
+	drawable map[types.LifeKey]bool
 	clock    replayClock
 }
 
@@ -155,10 +155,10 @@ type vehicleRideInputs struct {
 // l assemblage — un nom d evenement qui designe une vie non dessinable ferait disparaitre
 // l occupant (cf. `vehicleLifeFromEvent`, et la tourelle du Warthog qui l a revele).
 func vehicleDrawableLives(
-	lives []vehicleLife, spawns map[types.EquipmentLifeKey]types.EquipmentCreation,
+	lives []vehicleLife, spawns map[types.LifeKey]types.EquipmentCreation,
 	bySlot map[uint32][]grammar.BipedPosition,
-) map[types.EquipmentLifeKey]bool {
-	out := make(map[types.EquipmentLifeKey]bool, len(lives))
+) map[types.LifeKey]bool {
+	out := make(map[types.LifeKey]bool, len(lives))
 	for _, l := range lives {
 		if sp, ok := spawns[l.key]; ok && sp.TimestampUS > 0 {
 			out[l.key] = true
@@ -356,13 +356,13 @@ func vehicleSampleNear(
 // reponse est donc unique.
 func vehicleLifeAt(
 	lives []vehicleLife, slot uint32, atUS uint64,
-) (types.EquipmentLifeKey, bool) {
+) (types.LifeKey, bool) {
 	for _, l := range lives {
 		if l.key.Slot == slot && atUS >= l.loUS && atUS <= l.hiUS {
 			return l.key, true
 		}
 	}
-	return types.EquipmentLifeKey{}, false
+	return types.LifeKey{}, false
 }
 
 // vehicleEventsByOccupant range les evenements par slot d occupant, embarquements d un cote et

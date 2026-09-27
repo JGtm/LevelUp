@@ -159,7 +159,7 @@ func TestMouvement532Etalonnage(t *testing.T) {
 			occur[id]++
 		}
 	})
-	opt := ScanFilmOptions{RequireTag1: true, DropSaturated: false, CaptureDirs: true, QuantaOnly: true}
+	opt := ScanFilmOptions{DropSaturated: false, CaptureDirs: true, QuantaOnly: true}
 	// LE PROFIL DU FILM EST INSTALLE AVANT LE BALAYAGE, et c est une mesure a consigner :
 	// `ScanFilmBipedPositions(dir, opt)` — la porte la plus courte — rend ZERO record sur ce
 	// film, parce qu elle ouvre la bobine par `contexteDeBobine` sans poser le decoupage MPP du

@@ -143,7 +143,7 @@ func ventiler(scan replay.VehicleScan, doc replay.ReplayDocument) []ventLigne {
 }
 
 // ventUneVie statue UNE vie : sa cause, et une seule.
-func ventUneVie(key types.EquipmentLifeKey, seen []uint64, publiees, naissances map[[2]uint32]bool,
+func ventUneVie(key types.LifeKey, seen []uint64, publiees, naissances map[[2]uint32]bool,
 	posParSlot map[uint32][]uint64) ventLigne {
 	k := [2]uint32{key.Slot, key.Gen}
 	g := ventLigne{

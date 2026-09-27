@@ -93,7 +93,7 @@ func eqScan(t *testing.T, s hwSetup) []eqEmission {
 			pay := pk.Payload(data)
 			total := len(pay) * 8
 			for p := 0; p+s.minRecord <= total; {
-				i0, slot, idx, ok := matchBipedHeader(pay, p, total, s.slots, true, s.lay)
+				i0, slot, idx, ok := matchBipedHeader(pay, p, total, s.slots, nil, s.lay)
 				if !ok {
 					p++
 					continue
@@ -307,7 +307,7 @@ func TestEquipmentPremiereEmissionContreDebutDeVie(t *testing.T) {
 		}
 	}
 
-	pos, err := ScanFilmBipedPositions(dir, ScanFilmOptions{QuantaOnly: true})
+	pos, err := ScanFilmBipedPositions(dir, ScanFilmOptions{QuantaOnly: true, Generations: ToutesLesGenerations()})
 	if err != nil {
 		t.Fatalf("positions illisibles : %v", err)
 	}
@@ -368,7 +368,7 @@ func TestEquipmentPorteOuverteContreFinDeVie(t *testing.T) {
 
 	s := hwResolve(t, dir)
 	ev := eqScan(t, s)
-	pos, err := ScanFilmBipedPositions(dir, ScanFilmOptions{QuantaOnly: true})
+	pos, err := ScanFilmBipedPositions(dir, ScanFilmOptions{QuantaOnly: true, Generations: ToutesLesGenerations()})
 	if err != nil {
 		t.Fatalf("positions illisibles : %v", err)
 	}

@@ -336,7 +336,7 @@ func v11DistinctUnFilm(t *testing.T, dir string) {
 		t.Logf("V11 DISTINCT %s : %v", dir, err)
 		return
 	}
-	opt := ScanFilmOptions{DropSaturated: true, QuantaOnly: true, CaptureDirs: true,
+	opt := ScanFilmOptions{DropSaturated: true, QuantaOnly: true, CaptureDirs: true, Generations: ToutesLesGenerations(),
 		DynPrecOrientation: true}
 	bandeV := ScanFilmWorldObjectKeyframes(dir, v11VehiculeTI).Band
 	veh, err := ScanFilmBipedPositionsForBand(dir, NewSlotBand(bandeV), opt)

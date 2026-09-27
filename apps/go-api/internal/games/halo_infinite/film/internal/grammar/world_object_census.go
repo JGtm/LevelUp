@@ -50,7 +50,7 @@ type WorldObjectKeyframes struct {
 	// SeenUS porte, par vie d'objet (slot, gen), les instants des images-clés qui la RECENSENT,
 	// triés. Une vie absente n'est PAS une vie inexistante : elle a pu naître et disparaître
 	// entre deux images-clés (24,0 % des apparitions mesurées sur huit films).
-	SeenUS map[types.EquipmentLifeKey][]uint64
+	SeenUS map[types.LifeKey][]uint64
 }
 
 // LastTimeUS rend l'instant de la DERNIÈRE image-clé du film, ou zéro s'il n'y en a aucune.
@@ -71,7 +71,7 @@ func (k WorldObjectKeyframes) LastTimeUS() uint64 {
 func ScanFilmWorldObjectKeyframes(dir string, ti int) WorldObjectKeyframes {
 	film, err := source.LoadDir(dir, nil)
 	if err != nil {
-		return WorldObjectKeyframes{SeenUS: map[types.EquipmentLifeKey][]uint64{}}
+		return WorldObjectKeyframes{SeenUS: map[types.LifeKey][]uint64{}}
 	}
 	return ScanWorldObjectKeyframes(NewFilmContext(film), ti)
 }
@@ -79,7 +79,7 @@ func ScanFilmWorldObjectKeyframes(dir string, ti int) WorldObjectKeyframes {
 // ScanWorldObjectKeyframes marche les images-clés d'un film DEJA CHARGE, par la marche
 // d'image-clé du film ([FilmContext.MarcheDImageCle], lot D-fix).
 func ScanWorldObjectKeyframes(fc *FilmContext, ti int) WorldObjectKeyframes {
-	out := WorldObjectKeyframes{SeenUS: map[types.EquipmentLifeKey][]uint64{}}
+	out := WorldObjectKeyframes{SeenUS: map[types.LifeKey][]uint64{}}
 	seen, others := map[uint32]bool{}, map[uint32]bool{}
 	marche := fc.MarcheDImageCle()
 	for _, c := range fc.ChunkNumbers() {
@@ -117,7 +117,7 @@ func (k *WorldObjectKeyframes) censusPacket(
 			continue
 		}
 		seen[slot] = true
-		key := types.EquipmentLifeKey{Slot: slot, Gen: uint32(r.Gen)}
+		key := types.LifeKey{Slot: slot, Gen: uint32(r.Gen)}
 		// UN RECORD PAR VIE ET PAR IMAGE-CLÉ : le même objet peut être répliqué deux fois
 		// dans un même paquet, et compter deux fois le même instant fausserait le bornage.
 		if v := k.SeenUS[key]; len(v) > 0 && v[len(v)-1] == atUS {

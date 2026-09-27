@@ -282,7 +282,7 @@ func r12Walk(s r12Setup, want func(slot uint32, ms int64, ids []int) bool) {
 			total := len(pay) * 8
 			ms := s.ms(pk.TimestampUS)
 			for p := 0; p+minRecord <= total; {
-				i0, slot, ids, ok := matchBipedHeader(pay, p, total, s.slots, true, s.lay)
+				i0, slot, ids, ok := matchBipedHeader(pay, p, total, s.slots, nil, s.lay)
 				if !ok {
 					p++
 					continue

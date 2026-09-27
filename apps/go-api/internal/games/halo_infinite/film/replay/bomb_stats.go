@@ -175,6 +175,13 @@ type BombStatsInput struct {
 	// `premierPaquetDuFilmUS/1000 − deathOffsetMS` (dérivation complète dans bomb_arms.go).
 	// Lu UNIQUEMENT par la jointure de `bomb_arms` ; 16-81 ms mesurés sur les films témoins.
 	FilmToMatchOffsetMS int
+	// ClockRead : l'ORIGINE D'HORLOGE DU FILM a été lue (`Options.FilmClockOriginUS` non nul) —
+	// sans elle, `FilmToMatchOffsetMS` n'est pas un recalage mais `−deathOffsetMS`, faux de
+	// plusieurs secondes. Faux = la jointure ne tourne pas : chaque armement est publié SANS
+	// acteur (`ArmingsNoClock`) et `bomb_arms` reste absent partout — jamais le zéro qu'une
+	// jointure sur une horloge fausse produisait (lot J9.6, constat RB1-3). Un film SANS
+	// armement garde son zéro mesuré : il n'y avait rien à joindre.
+	ClockRead bool
 }
 
 // BombPlayerStats porte les statistiques d'UN joueur. Un champ à `nil` n'a pas été mesuré.
@@ -235,9 +242,15 @@ type BombStatsCoverage struct {
 	// à l'instant armé), ArmingsNoBridge (une période retenue, mais son slot n'est pas ponté)
 	// et ArmingsAmbiguous (DEUX porteurs couvraient l'instant : le repli ne tranche jamais).
 	//
+	// Une QUATRIÈME raison vit à part, parce qu'elle ne juge pas l'armement mais la jointure
+	// elle-même : ArmingsNoClock (schéma 73, lot J9.6) compte les armements publiés sans acteur
+	// parce que l'ORIGINE D'HORLOGE DU FILM est illisible — la jointure n'a pas tourné, et
+	// `bomb_arms` est alors ABSENT (cf. `BombStatsInput.ClockRead`).
+	//
 	// INVARIANT PUBLIÉ, vrai par construction : la somme des `bomb_arms` de tous les joueurs
 	// vaut ArmingsAttributed ; ArmingsAttributed == ArmingsByDrop + ArmingsByActiveCarry ; et
-	// ArmingsAttributed + ArmingsNoCarrier + ArmingsNoBridge + ArmingsAmbiguous == Armings.
+	// ArmingsAttributed + ArmingsNoCarrier + ArmingsNoBridge + ArmingsAmbiguous +
+	// ArmingsNoClock == Armings.
 	// Un armement n'est jamais attribué deux fois, ni à un joueur deviné.
 	Armings              int `json:"armings"`
 	ArmingsAttributed    int `json:"armingsAttributed"`
@@ -246,6 +259,7 @@ type BombStatsCoverage struct {
 	ArmingsNoCarrier     int `json:"armingsNoCarrier"`
 	ArmingsNoBridge      int `json:"armingsNoBridge"`
 	ArmingsAmbiguous     int `json:"armingsAmbiguous"`
+	ArmingsNoClock       int `json:"armingsNoClock,omitempty"`
 	// Periods / PeriodsNoBridge / PeriodsOpen / PeriodsByDeath ventilent le portage : combien
 	// de périodes, combien sans identité pontée (écartées), combien restées ouvertes à la fin
 	// du film (comptées en ramassages mais PAS en temps), combien fermées par la mort.
@@ -346,9 +360,10 @@ func bombPlayerRows(in BombStatsInput, t bombTallies) []BombPlayerStats {
 			row.Detonations = measuredInt(t.detonations[x])
 		}
 		// `bomb_arms` demande les DEUX canaux : l'anneau date l'armement, le portage le
-		// nomme. Sans l'un des deux, le champ reste absent — jamais un zéro qui laisserait
-		// croire que le joueur n'a rien armé.
-		if in.ArmingsRead && in.CarryRead {
+		// nomme — et l'horloge du film qui les recale (cf. [bombArmsMeasured]). Sans l'un des
+		// trois, le champ reste absent — jamais un zéro qui laisserait croire que le joueur
+		// n'a rien armé.
+		if bombArmsMeasured(in) {
 			row.Arms = measuredInt(t.arms[x])
 		}
 		if in.CarryRead {

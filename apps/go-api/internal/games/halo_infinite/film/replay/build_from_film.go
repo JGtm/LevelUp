@@ -211,6 +211,8 @@ func scanFilmInputs(matchID string, film *source.Film, fc *grammar.FilmContext,
 		s.scan = *opt.Scan
 	}
 	s.scan.WorldRange = &s.world
+	// `Generations` nil (defaut) : les generations VIVANTES du handle, relevees par le contexte sur les
+	// creations et les images-cles (lot J5.2, constat GB-1) — plus la seule generation 1.
 	// Le cap de visée (Point.H) se lit dans le MÊME record que la position : la capture des
 	// directions est donc toujours active pour l'artefact. Elle n'altère aucune position
 	// (lecture seule après le vec3 d'i0).

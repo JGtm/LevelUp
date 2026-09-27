@@ -69,7 +69,7 @@ type flagFreeLife struct {
 	// ID est l'identifiant d'objet du manifeste (le mot MPP de 32 bits).
 	ID uint32
 	// Key est la vie au sens du film — LA PAIRE (slot, generation), jamais le slot seul.
-	Key types.EquipmentLifeKey
+	Key types.LifeKey
 	// T0US est l'instant de CREATION, T1US le dernier instant REPLIQUE. Egaux quand la vie
 	// n'a laisse aucun echantillon de position : l'objet est ne immobile (a son socle) et n'a
 	// jamais bouge, ce qui est une vie libre parfaitement reelle, reduite a un point.
@@ -116,14 +116,14 @@ func flagFreeLives(scan WorldObjectScan, flags map[uint32]Label) []flagFreeLife 
 	if !scan.Scanned || len(flags) == 0 {
 		return nil
 	}
-	byKey := map[types.EquipmentLifeKey][]types.EquipmentCreation{}
-	ids := map[types.EquipmentLifeKey]uint32{}
+	byKey := map[types.LifeKey][]types.EquipmentCreation{}
+	ids := map[types.LifeKey]uint32{}
 	for _, c := range scan.Creations {
 		w, ok := gwPadsIdentity(c)
 		if !ok || flags[w] == (Label{}) {
 			continue
 		}
-		k := types.EquipmentLifeKey{Slot: c.Slot, Gen: c.Gen}
+		k := types.LifeKey{Slot: c.Slot, Gen: c.Gen}
 		byKey[k], ids[k] = append(byKey[k], c), w
 	}
 	tracks := gwTracksByKey(scan.Tracks)
@@ -143,7 +143,7 @@ func flagFreeLives(scan WorldObjectScan, flags map[uint32]Label) []flagFreeLife 
 }
 
 // flagFreeLifeOf assemble UNE vie libre : sa creation, puis sa piste si elle en a une.
-func flagFreeLifeOf(id uint32, k types.EquipmentLifeKey, c types.EquipmentCreation,
+func flagFreeLifeOf(id uint32, k types.LifeKey, c types.EquipmentCreation,
 	tracks []types.ProjectileTrack, lifeEnd uint64) flagFreeLife {
 	l := flagFreeLife{ID: id, Key: k, T0US: c.TimestampUS, T1US: c.TimestampUS,
 		Pts: []flagFreeSample{{TUS: c.TimestampUS, X: c.X, Y: c.Y}}}

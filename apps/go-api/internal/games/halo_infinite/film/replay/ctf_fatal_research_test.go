@@ -277,7 +277,7 @@ func ctfWriteFatalCoverage(b *strings.Builder, label string, pairs []ctfKillPair
 			noShot++
 			continue
 		}
-		if _, r := slotFor(tracks, owner, pi, found.TimestampUS); r == reasonAttached {
+		if _, r := slotFor(tracks, occupantsPlats(owner), pi, found.TimestampUS); r == reasonAttached {
 			placed++
 			continue
 		}
@@ -299,7 +299,7 @@ func ctfFatalStatus(p ctfKillPair, fire []grammar.FireEvent, tracks map[uint32]s
 	if !ok2 {
 		return "aucun_tir"
 	}
-	if _, r := slotFor(tracks, owner, pi, e.TimestampUS); r == reasonAttached {
+	if _, r := slotFor(tracks, occupantsPlats(owner), pi, e.TimestampUS); r == reasonAttached {
 		return "PLACE"
 	}
 	return "non_place"

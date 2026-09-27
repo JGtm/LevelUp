@@ -29,8 +29,9 @@ func TestFlagCarriesPriseSansPontComptee(t *testing.T) {
 }
 
 // TestFlagCarriesPorteurTueAmbigu — `flag_carriers_killed` est credite au TUEUR : quand deux
-// portages sont ouverts, rien ne dit lequel tombe. Il ne doit alors fermer personne, et se
-// compter.
+// portages ADVERSES au tueur sont ouverts, rien ne dit lequel tombe. Il ne doit alors fermer
+// personne, et se compter. Depuis le lot J9.1 la victime ne peut etre qu un adversaire du tueur :
+// la table des equipes le dit (sans elle, l evenement serait NON JUGE, pas ambigu).
 func TestFlagCarriesPorteurTueAmbigu(t *testing.T) {
 	tracks := []Track{
 		flagTestTrack(10, "1", 0, 99, 10, 10),
@@ -45,10 +46,12 @@ func TestFlagCarriesPorteurTueAmbigu(t *testing.T) {
 		},
 		Identity: objectives.FlatRoundIdentity(map[int]string{12: "1", 14: "2", 16: "3"}),
 		Spawns:   []FlagSpawn{{Team: 0}, {Team: 1, X: 100, Y: 100}},
+		TeamOf:   map[string]int{"1": 0, "2": 0, "3": 1},
 	}
 	got, cov := buildFlagCarries(scan, flagTestCtx(tracks, nil, 100))
-	if cov.AmbiguousCarrierKills != 1 {
-		t.Errorf("%d porteurs tues ambigus, attendu 1", cov.AmbiguousCarrierKills)
+	if cov.AmbiguousCarrierKills != 1 || cov.UnjudgedCarrierKills != 0 {
+		t.Errorf("%d porteurs tues ambigus et %d non juges, attendu 1 et 0",
+			cov.AmbiguousCarrierKills, cov.UnjudgedCarrierKills)
 	}
 	for _, f := range got {
 		for _, s := range f.Spans {

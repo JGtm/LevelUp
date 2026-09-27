@@ -86,3 +86,34 @@ func TestPontDIdentite_IndexSeulementSurUnFilDesMorts(t *testing.T) {
 		t.Error("sans roster fourni par l appelant, la table d index ne se lit pas")
 	}
 }
+
+// TestPontDIdentite_CreationsLuesAvantLesPositions : l etage lit les CREATIONS de bipede AVANT les
+// positions (lot J5.2, DT-8) — elles designent les generations vivantes que le balayage des
+// positions applique — et rend l ensemble sous lequel les positions ont ete lues, celui dont la
+// cuisson tire le compte du repli `repli_generation_vivante_inconnue_tag1`. MUTATION : remettre la
+// lecture des creations APRES celle des positions fait rougir la premiere assertion.
+func TestPontDIdentite_CreationsLuesAvantLesPositions(t *testing.T) {
+	film := chargerMiniBobine(t)
+	fc := NewFilmContext(film)
+	creationsDejaLues := false
+	e := etageDuPont{
+		teleportations: func(*source.Film, *profile.MapQuantEntry) []types.TranslocatorTeleport { return nil },
+		positions: func(c *FilmContext, _ ScanFilmOptions) ([]BipedPosition, error) {
+			creationsDejaLues = c.vies.creationsLues
+			return nil, nil
+		},
+	}
+	l := e.lire(fc, OptionsDuPont{Balayage: DefaultScanFilmOptions()})
+	if !creationsDejaLues {
+		t.Fatal("le balayage des positions a tourne AVANT la lecture des creations : les generations " +
+			"vivantes du handle ne sont pas connues quand les positions sont lues (constat GB-1)")
+	}
+	if l.Generations == nil || l.Generations != fc.GenerationsVivantes() {
+		t.Fatalf("l etage rend %p, attendu les generations vivantes du contexte %p", l.Generations, fc.GenerationsVivantes())
+	}
+	leve := DefaultScanFilmOptions()
+	leve.Generations = ToutesLesGenerations()
+	if got := e.lire(NewFilmContext(film), OptionsDuPont{Balayage: leve}).Generations; got != leve.Generations {
+		t.Errorf("un filtre fourni par l appelant doit etre celui que l etage rend")
+	}
+}

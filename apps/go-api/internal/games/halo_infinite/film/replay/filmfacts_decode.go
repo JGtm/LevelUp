@@ -344,7 +344,7 @@ func decodeMonde(r *greader, g *FilmFacts) {
 	for k := 0; k < n && r.err == nil; k++ {
 		lastTS += r.u()
 		p := types.EquipmentPlacement{T0US: lastTS, T1US: r.u()}
-		p.Life = types.EquipmentLifeKey{Slot: uint32(r.u()), Gen: uint32(r.u())}
+		p.Life = types.LifeKey{Slot: uint32(r.u()), Gen: uint32(r.u())}
 		p.X, p.Y, p.Z = r.f32(), r.f32(), r.f32()
 		p.GlobalID, p.Points = uint32(r.u()), int(r.u())
 		g.Placements = append(g.Placements, p)
@@ -367,9 +367,9 @@ func decodeSpawnEvents(r *greader, g *FilmFacts) {
 		lastTS += r.u()
 		e := types.EquipmentSpawnEvent{TimestampUS: lastTS}
 		e.Chunk, e.PacketIndex = int(r.i()), int(r.i())
-		e.Spawned = types.EquipmentLifeKey{Slot: uint32(r.u()), Gen: uint32(r.u())}
+		e.Spawned = types.LifeKey{Slot: uint32(r.u()), Gen: uint32(r.u())}
 		e.SpawnedValid = r.bool8()
-		e.Source = types.EquipmentLifeKey{Slot: uint32(r.u()), Gen: uint32(r.u())}
+		e.Source = types.LifeKey{Slot: uint32(r.u()), Gen: uint32(r.u())}
 		e.SourceValid = r.bool8()
 		e.Ref2Present = r.bool8()
 		g.SpawnEvents = append(g.SpawnEvents, e)

@@ -30,16 +30,16 @@ const (
 
 // vehKeyframes fabrique un recensement : `timesUS` sont TOUTES les images-cles du film, `seen`
 // celles qui recensent la vie (slot, gen).
-func vehKeyframes(timesUS []uint64, key types.EquipmentLifeKey, seen []uint64) grammar.WorldObjectKeyframes {
+func vehKeyframes(timesUS []uint64, key types.LifeKey, seen []uint64) grammar.WorldObjectKeyframes {
 	return grammar.WorldObjectKeyframes{
 		Band:    map[uint32]bool{key.Slot: true},
 		TimesUS: timesUS,
-		SeenUS:  map[types.EquipmentLifeKey][]uint64{key: seen},
+		SeenUS:  map[types.LifeKey][]uint64{key: seen},
 	}
 }
 
 // vehCreation fabrique un record de creation : naissance datee, position, mot d identite.
-func vehCreation(key types.EquipmentLifeKey, tUS uint64, x, y float32, chassis uint32) types.EquipmentCreation {
+func vehCreation(key types.LifeKey, tUS uint64, x, y float32, chassis uint32) types.EquipmentCreation {
 	c := types.EquipmentCreation{Slot: key.Slot, Gen: key.Gen, TimestampUS: tUS, X: x, Y: y}
 	c.MPPPresent[grammar.MPPWord32] = true
 	c.MPPVal[grammar.MPPWord32] = uint64(chassis)
@@ -89,7 +89,7 @@ func vehVelScale(mps float64) uint32 {
 // --- Vie SANS occupant : elle sort quand meme, avec sa naissance et sa trajectoire ------------
 
 func TestVehiculeVieSansOccupant(t *testing.T) {
-	key := types.EquipmentLifeKey{Slot: 700, Gen: 1}
+	key := types.LifeKey{Slot: 700, Gen: 1}
 	scan := VehicleScan{
 		Scanned:   true,
 		Keyframes: vehKeyframes([]uint64{2_000_000, 22_000_000, 42_000_000}, key, []uint64{2_000_000, 22_000_000}),
@@ -134,7 +134,7 @@ func TestVehiculeVieSansOccupant(t *testing.T) {
 // --- Vie AVEC episodes board -> exit : bornes datees a la milliseconde ------------------------
 
 func TestVehiculeEpisodeBoardExit(t *testing.T) {
-	key := types.EquipmentLifeKey{Slot: 700, Gen: 1}
+	key := types.LifeKey{Slot: 700, Gen: 1}
 	const bipedSlot = uint32(42)
 	scan := VehicleScan{
 		Scanned:   true,
@@ -199,7 +199,7 @@ func TestVehiculeEpisodeBoardExit(t *testing.T) {
 // TestVehiculeEpisodeSansEvenement : sans liste d evenements, le TROU DE POSITION seul borne
 // l episode — c est le repli mesure (86,3 % des trous portent leur sortie, mais 13,7 % non).
 func TestVehiculeEpisodeSansEvenement(t *testing.T) {
-	key := types.EquipmentLifeKey{Slot: 700, Gen: 1}
+	key := types.LifeKey{Slot: 700, Gen: 1}
 	const bipedSlot = uint32(42)
 	scan := VehicleScan{
 		Scanned:   true,
@@ -235,7 +235,7 @@ func TestVehiculeEpisodeSansEvenement(t *testing.T) {
 // n est pas un episode. Sans ce refus, tout joueur qui se deconnecte ou entre dans un ascenseur
 // deviendrait le conducteur du vehicule le plus proche de la carte.
 func TestVehiculeTrouLoinDuVehicule(t *testing.T) {
-	key := types.EquipmentLifeKey{Slot: 700, Gen: 1}
+	key := types.LifeKey{Slot: 700, Gen: 1}
 	scan := VehicleScan{
 		Scanned:   true,
 		Keyframes: vehKeyframes([]uint64{2_000_000, 22_000_000}, key, []uint64{2_000_000, 22_000_000}),
@@ -258,7 +258,7 @@ func TestVehiculeTrouLoinDuVehicule(t *testing.T) {
 // --- Famille inconnue : la vie sort, sans sprite, et le compteur le DIT ------------------------
 
 func TestVehiculeFamilleInconnue(t *testing.T) {
-	key := types.EquipmentLifeKey{Slot: 701, Gen: 0}
+	key := types.LifeKey{Slot: 701, Gen: 0}
 	scan := VehicleScan{
 		Scanned:   true,
 		Keyframes: vehKeyframes([]uint64{2_000_000}, key, []uint64{2_000_000}),
@@ -288,7 +288,7 @@ func TestVehiculeFamilleInconnue(t *testing.T) {
 // --- Cap : la velocite i1 oriente, l arret reporte le dernier cap -----------------------------
 
 func TestVehiculeCapParVelocite(t *testing.T) {
-	key := types.EquipmentLifeKey{Slot: 700, Gen: 1}
+	key := types.LifeKey{Slot: 700, Gen: 1}
 	// Direction +Y a 10 m/s : cap attendu 90 deg. Puis un echantillon a l ARRET : il doit garder
 	// le cap precedent, pas en perdre l orientation.
 	scan := VehicleScan{
@@ -323,12 +323,12 @@ func TestVehiculeCapParVelocite(t *testing.T) {
 // --- Deux vies d un meme slot : le recensement les separe, la fenetre les decoupe --------------
 
 func TestVehiculeDeuxViesDunMemeSlot(t *testing.T) {
-	k0 := types.EquipmentLifeKey{Slot: 700, Gen: 0}
-	k1 := types.EquipmentLifeKey{Slot: 700, Gen: 1}
+	k0 := types.LifeKey{Slot: 700, Gen: 0}
+	k1 := types.LifeKey{Slot: 700, Gen: 1}
 	kf := grammar.WorldObjectKeyframes{
 		Band:    map[uint32]bool{700: true},
 		TimesUS: []uint64{2_000_000, 22_000_000, 42_000_000, 62_000_000},
-		SeenUS: map[types.EquipmentLifeKey][]uint64{
+		SeenUS: map[types.LifeKey][]uint64{
 			k0: {2_000_000, 22_000_000},
 			k1: {42_000_000, 62_000_000},
 		},
@@ -377,7 +377,7 @@ func TestVehiculeNonBalayeNePublieRien(t *testing.T) {
 // TestVehiculeVieSansPositionNiNaissance : une vie recensee dont rien ne donne la position n a
 // rien a dessiner. Elle est ECARTEE et COMPTEE — jamais inventee a l origine du repere.
 func TestVehiculeVieSansPositionNiNaissance(t *testing.T) {
-	key := types.EquipmentLifeKey{Slot: 702, Gen: 2}
+	key := types.LifeKey{Slot: 702, Gen: 2}
 	scan := VehicleScan{
 		Scanned:   true,
 		Keyframes: vehKeyframes([]uint64{2_000_000, 22_000_000}, key, []uint64{2_000_000}),

@@ -163,7 +163,7 @@ func zone56LogVies(t *testing.T, kf WorldObjectKeyframes) {
 	if len(kf.SeenUS) == 0 {
 		return
 	}
-	cles := make([]types.EquipmentLifeKey, 0, len(kf.SeenUS))
+	cles := make([]types.LifeKey, 0, len(kf.SeenUS))
 	for k := range kf.SeenUS {
 		cles = append(cles, k)
 	}

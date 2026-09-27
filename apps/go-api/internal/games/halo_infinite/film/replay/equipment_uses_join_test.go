@@ -36,7 +36,7 @@ import (
 // eqLife est une VIE d'objet d'equipement IDENTIFIEE : sa pose lui donne un GlobalID `eqip`,
 // donc une famille, et ses lectures lui donnent des signaux datables.
 type eqLife struct {
-	key      types.EquipmentLifeKey
+	key      types.LifeKey
 	inst     int
 	globalID uint32
 	family   string
@@ -58,7 +58,7 @@ func eqUsesBuildLives(
 	placements []types.EquipmentPlacement, families map[uint32]string,
 	samples []grammar.EquipmentStateSample,
 ) ([]eqLife, []bool) {
-	byKey := map[types.EquipmentLifeKey][]int{}
+	byKey := map[types.LifeKey][]int{}
 	lives := make([]eqLife, 0, len(placements))
 	sorted := append([]types.EquipmentPlacement(nil), placements...)
 	sort.Slice(sorted, func(i, j int) bool { return sorted[i].T0US < sorted[j].T0US })
@@ -75,7 +75,7 @@ func eqUsesBuildLives(
 	}
 	attached := make([]bool, len(samples))
 	for i, s := range samples {
-		k := types.EquipmentLifeKey{Slot: s.Slot, Gen: s.Gen}
+		k := types.LifeKey{Slot: s.Slot, Gen: s.Gen}
 		idx := -1
 		for _, li := range byKey[k] {
 			if lives[li].t0US <= s.TimestampUS+eqUsesCreationSlackUS {

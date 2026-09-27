@@ -66,13 +66,13 @@ type eqlLife struct {
 // delta, bornée en fin par le recensement des images-clés de la MÊME paire (slot, génération),
 // contenu à la fenêtre de la vie — la paire reboucle, son recensement mêle plusieurs vies.
 func eqlLivesFromScan(scan WorldObjectScan) []eqlLife {
-	byPair := map[types.EquipmentLifeKey][]types.ProjectileTrack{}
+	byPair := map[types.LifeKey][]types.ProjectileTrack{}
 	for _, tr := range scan.Tracks {
 		if len(tr.Pts) == 0 {
 			continue
 		}
-		byPair[types.EquipmentLifeKey{Slot: tr.Slot, Gen: tr.Gen}] = append(
-			byPair[types.EquipmentLifeKey{Slot: tr.Slot, Gen: tr.Gen}], tr)
+		byPair[types.LifeKey{Slot: tr.Slot, Gen: tr.Gen}] = append(
+			byPair[types.LifeKey{Slot: tr.Slot, Gen: tr.Gen}], tr)
 	}
 	var out []eqlLife
 	for k, list := range byPair {

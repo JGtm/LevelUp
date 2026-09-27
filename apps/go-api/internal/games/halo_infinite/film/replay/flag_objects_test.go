@@ -29,7 +29,7 @@ import (
 // flagTestLife fabrique une vie libre a l'echelle du contexte de test (100 ms/frame, origine 0) :
 // `frame` est la frame de sa creation, les points suivent toutes les 5 frames.
 func flagTestLife(frame int, pts ...[2]float32) flagFreeLife {
-	l := flagFreeLife{ID: 0x2a392328, Key: types.EquipmentLifeKey{Slot: 7}}
+	l := flagFreeLife{ID: 0x2a392328, Key: types.LifeKey{Slot: 7}}
 	for i, p := range pts {
 		at := uint64(frame+i*5) * 100_000
 		l.Pts = append(l.Pts, flagFreeSample{TUS: at, X: p[0], Y: p[1]})

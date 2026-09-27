@@ -58,7 +58,7 @@ const (
 	bipedIndexBits  = 6  // un index de composant
 	bipedMinMaskCnt = 2
 	bipedMaxMaskCnt = 7
-	bipedSlotBits   = 13
+	bipedSlotBits   = handleSlotBits // le slot du handle (cf. handle.go)
 )
 
 // BipedPosition est une position absolue de biped décodée offline.
@@ -110,8 +110,13 @@ func (p BipedPosition) ShieldAt() (float32, bool) {
 type ScanFilmOptions struct {
 	// Chunks à balayer ; vide -> tous les chunks présents (chunk_01..chunk_NN).
 	Chunks []int
-	// RequireTag1 exige tag == 1 dans l'en-tête (filtre éprouvé sur 000d5950).
-	RequireTag1 bool
+	// Generations dit quelles GÉNÉRATIONS du handle un record doit porter pour être lu (lot J5.2,
+	// DT-8 ; remplace `RequireTag1`, qui n'acceptait que la génération 1 — constat GB-1). nil
+	// (défaut) = les générations VIVANTES du film, relevées par le contexte
+	// ([FilmContext.GenerationsVivantes]) ; [ToutesLesGenerations] pour les objets du monde, dont
+	// le tag prend ses quatre valeurs. Le cœur pur [ScanBipedRecords], qui ne connaît pas le film,
+	// lit nil comme un ensemble VIDE : chaque slot retombe sur le repli nommé (génération 1).
+	Generations *GenerationsVivantes
 	// DropSaturated rejette les positions dont un axe tombe dans le bucket extrême
 	// (q == 0 ou q == 2^w-1) : ce sont des valeurs écrêtées, pas des positions réelles
 	// (9 points sur 171 116 pour 000d5950, mais ils multipliaient le span Z par 8).
@@ -164,10 +169,10 @@ const DefaultMaxSpeedMPS = 100
 // position courante — sinon une ancre elle-même fausse condamnerait tout le reste du slot.
 const maxRejectStreak = 3
 
-// DefaultScanFilmOptions est le réglage validé sur 000d5950.
+// DefaultScanFilmOptions est le réglage validé sur 000d5950. Le filtre de génération y est celui
+// du film (Generations nil : les générations vivantes, cf. generations_vivantes.go).
 func DefaultScanFilmOptions() ScanFilmOptions {
 	return ScanFilmOptions{
-		RequireTag1:    true,
 		DropSaturated:  true,
 		MaxSpeedMPS:    DefaultMaxSpeedMPS,
 		IsolationGapMS: DefaultIsolationGapMS,
@@ -233,7 +238,7 @@ func ScanBipedRecords(payload []byte, slots SlotBand, lay profile.I0Layout, opt 
 	// L'ANCRAGE EST CELUI DU MARCHEUR UNIQUE (delta_biped_walk.go) : ce balayage etait la
 	// neuvieme copie de la meme triple boucle. L'avance de curseur, la borne et le pas d'echec
 	// sont les siens ; ne reste ici que la LECTURE du record.
-	walkDeltaBipedPayload(payload, slots, lay, opt.RequireTag1, func(r deltaBipedRecord) {
+	walkDeltaBipedPayload(payload, slots, lay, opt.Generations, func(r deltaBipedRecord) {
 		var q [3]uint32
 		for ax := 0; ax < 3; ax++ {
 			q[ax] = uint32(source.BitsStricts(payload, r.I0+lay.AxisOffset(ax), int(lay.AxisW[ax])))
@@ -265,8 +270,8 @@ func ScanBipedRecords(payload []byte, slots SlotBand, lay profile.I0Layout, opt 
 // sur les cartes dont la région jouée n'est pas la première du bloc structure-BSP) et
 // renvoie l'offset bit de i0, le slot et la liste des index de composants du masque.
 // Un record d'une autre région est écarté : ses quanta vivent dans une autre AABB.
-func matchBipedHeader(pay []byte, p, total int, slots SlotBand, needTag1 bool, lay profile.I0Layout) (int, uint32, []int, bool) {
-	i0, slot, idx, ok := matchBipedHeaderRaw(pay, p, total, slots, needTag1, lay.TotalBits())
+func matchBipedHeader(pay []byte, p, total int, slots SlotBand, gens *GenerationsVivantes, lay profile.I0Layout) (int, uint32, []int, bool) {
+	i0, slot, idx, ok := matchBipedHeaderRaw(pay, p, total, slots, gens, lay.TotalBits())
 	if !ok {
 		return 0, 0, nil, false
 	}
@@ -284,17 +289,18 @@ func matchBipedHeader(pay []byte, p, total int, slots SlotBand, needTag1 bool, l
 // vérifie que needBits bits restent lisibles après le début d'i0. Il ne suppose RIEN du
 // contenu d'i0 : c'est le point d'entrée du détecteur de découpage (i0_layout.go), qui doit
 // justement mesurer i0 sans en présupposer la structure.
-func matchBipedHeaderRaw(pay []byte, p, total int, slots SlotBand, needTag1 bool, needBits int) (int, uint32, []int, bool) {
+func matchBipedHeaderRaw(pay []byte, p, total int, slots SlotBand, gens *GenerationsVivantes, needBits int) (int, uint32, []int, bool) {
 	if uint32(source.BitsStricts(pay, p, 1)) != 1 {
 		return 0, 0, nil, false
 	}
-	slot := uint32(source.BitsStricts(pay, p+1, bipedSlotBits))
-	if !slots.Has(slot) {
+	h := LireHandleDelta(pay, p)
+	if !slots.Has(h.Slot) {
 		return 0, 0, nil, false
 	}
-	if needTag1 && uint32(source.BitsStricts(pay, p+14, 2)) != 1 {
+	if !gens.Accepte(h) { // generation vivante du slot, ou repli nomme (generations_vivantes.go)
 		return 0, 0, nil, false
 	}
+	slot := h.Slot
 	if uint32(source.BitsStricts(pay, p+16, 2)) != 0 { // (14e bit id ou LSB tag) + gate — PAS un maskSel
 		return 0, 0, nil, false
 	}

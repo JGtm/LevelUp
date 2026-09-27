@@ -37,12 +37,27 @@ func (r *rapport) terminer(top int) error {
 	return f.Close()
 }
 
-// ecrireResume ecrit le resume Markdown.
+// ecrireResume ecrit le resume Markdown : les sections du mode `fermeture`, puis celle du mode
+// `gb1`, chacune seulement si son mode a ete demande.
 func (r *rapport) ecrireResume(w io.Writer, top int) {
-	fmt.Fprintf(w, "# Carte de fermeture des trames delta — %s\n\n", time.Now().Format("2006-01-02"))
-	fmt.Fprintf(w, "Films mesures : %d ; echecs : %d. Table ECS : `%s`. Contexte d instrument "+
-		"(largeurs d axe lues dans le film, profil par defaut, sans calibration killsource).\n\n",
-		r.mesures, r.echecs, r.tab.chemin)
+	titre := "Carte de fermeture des trames delta"
+	if !r.modes.fermeture {
+		titre = "Mesure GB-1 des vies du bipede"
+	}
+	fmt.Fprintf(w, "# %s — %s\n\n", titre, time.Now().Format("2006-01-02"))
+	fmt.Fprintf(w, "Films mesures : %d ; echecs : %d. Contexte d instrument (largeurs d axe lues "+
+		"dans le film, profil par defaut, sans calibration killsource).\n\n", r.mesures, r.echecs)
+	if r.modes.fermeture {
+		r.ecrireFermeture(w, top)
+	}
+	if r.gb1 != nil {
+		r.gb1.ecrireSection(w)
+	}
+}
+
+// ecrireFermeture ecrit les deux sections du mode `fermeture`.
+func (r *rapport) ecrireFermeture(w io.Writer, top int) {
+	fmt.Fprintf(w, "Table ECS : `%s`.\n\n", r.tab.chemin)
 	fmt.Fprintln(w, "## Par build")
 	fmt.Fprintln(w)
 	fmt.Fprintln(w, "| Build | Films | Paquets fermes | Vue A | Vue B | Vue C | Records utiles fermes | "+

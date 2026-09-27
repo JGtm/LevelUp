@@ -69,11 +69,11 @@ type gwPickupFilm struct {
 	bySlot        map[uint32][]grammar.BipedPosition
 	lives         map[uint32][]equipLife
 	kfTimes       []uint64
-	seen          map[types.EquipmentLifeKey][]uint64
+	seen          map[types.LifeKey][]uint64
 	loadouts      map[uint64]map[uint32][]string
 	keyframes     grammar.WorldObjectKeyframes
 	tracks        []types.ProjectileTrack
-	spans         map[types.EquipmentLifeKey][]grammar.EquipmentLifeSpan
+	spans         map[types.LifeKey][]grammar.EquipmentLifeSpan
 	filmEndUS     uint64
 	rng           *rand.Rand
 }

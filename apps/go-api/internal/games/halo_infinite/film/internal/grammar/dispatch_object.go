@@ -154,17 +154,9 @@ func consumeByName(br *Lecteur, name string, typeIndex uint32, level uint32) (va
 		// contre 5 là-bas. C'est ce qui explique la contradiction « i0 45 vs 47 bits » qui
 		// traînait dans les notes : ce ne sont pas deux mesures du même champ, ce sont deux
 		// archétypes différents.
-		if br.ReadBit() { // precHigh (FUN_14076e420 R(1))
-			br.ReadBits(59) // precHigh=1 : FUN_141f85880 AABB + handle-tail + R(2) (total 60 mesuré)
-		} else {
-			if !br.ReadBit() { // FUN_14076e524 index-sel ; si 0 -> lit l'index de région
-				br.ReadBits(br.worldObjectPrecision().IndexW)
-			}
-			for a := 0; a < 3; a++ {
-				br.ReadBits(br.worldObjectPrecision().AxisW[a]) // FUN_140cc5128 axe a
-			}
-			br.ReadBits(2) // FUN_14076e304 R(2) finite (handle-tail = 0 bit quand precHigh=0)
-		}
+		//
+		// EXCEPTION DU PORTAGE UNIQUE (lot J6.3, 2026-09-27) : [consumeObjectPositionMonde].
+		consumeObjectPositionMonde(br)
 		return variant, nil, true
 	case "object-translational-velocity-component": // world-object i1 (FUN_14076e228)
 		consume14076d528(br) // R(1)[+R(19)+R(10)]

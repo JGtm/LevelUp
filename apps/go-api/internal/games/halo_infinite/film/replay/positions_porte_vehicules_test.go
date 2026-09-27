@@ -17,7 +17,7 @@ import (
 // les 20 s sur deux minutes), avec sa naissance a 1,5 s et les echantillons donnes.
 func porteVieVehicule(t *testing.T, pos []grammar.BipedPosition) (VehicleTrack, VehicleCoverage) {
 	t.Helper()
-	key := types.EquipmentLifeKey{Slot: 770, Gen: 1}
+	key := types.LifeKey{Slot: 770, Gen: 1}
 	times := []uint64{2_000_000, 22_000_000, 42_000_000, 62_000_000, 82_000_000, 102_000_000}
 	scan := VehicleScan{
 		Scanned:   true,
@@ -153,7 +153,7 @@ func TestPorteVehiculeChuteContinueConservee(t *testing.T) {
 // n a aucun echantillon, n est plus publiee (`NoPosition`) ; la vie dont la naissance fausse
 // precedait la vraie garde la vraie.
 func TestPorteVehiculeHorsEmpriseAuTraversDeLAssemblage(t *testing.T) {
-	vraie, fantome := types.EquipmentLifeKey{Slot: 770, Gen: 1}, types.EquipmentLifeKey{Slot: 771, Gen: 1}
+	vraie, fantome := types.LifeKey{Slot: 770, Gen: 1}, types.LifeKey{Slot: 771, Gen: 1}
 	times := []uint64{2_000_000, 22_000_000}
 	kf := vehKeyframes(times, vraie, times)
 	kf.Band[771] = true
@@ -197,8 +197,8 @@ func TestPorteVehiculeHorsEmpriseAuTraversDeLAssemblage(t *testing.T) {
 // Un vehicule largue d en haut (naissance hors emprise, puis descente continue) garde sa naissance.
 // Trois echantillons IDENTIQUES hors carte, eux (la Wraith de 0a44c6cc), sont isoles et ecartes.
 func TestPorteVehiculeContinuiteHorsEmprise(t *testing.T) {
-	vie := types.EquipmentLifeKey{Slot: 770, Gen: 1}
-	largue := types.EquipmentLifeKey{Slot: 771, Gen: 1}
+	vie := types.LifeKey{Slot: 770, Gen: 1}
+	largue := types.LifeKey{Slot: 771, Gen: 1}
 	times := []uint64{2_000_000, 22_000_000}
 	kf := vehKeyframes(times, vie, times)
 	kf.Band[771] = true

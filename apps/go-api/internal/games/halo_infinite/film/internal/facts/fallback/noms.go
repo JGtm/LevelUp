@@ -32,6 +32,9 @@ const (
 	NomIdentitePisteMeilleurRecouvrement Nom = "repli_identite_piste_meilleur_recouvrement"
 	// NomPositionLacherPrendLaPrise : `replay/flag_carries.go`, `attachFlagCarryPositions`.
 	NomPositionLacherPrendLaPrise Nom = "repli_position_lacher_prend_la_prise"
+	// NomNombreDrapeauxHorsCatalogueSansPassage : `replay/flag_carries_handoff.go`,
+	// `countFlagCountUnread` (lot J9.2, constat RB1-5).
+	NomNombreDrapeauxHorsCatalogueSansPassage Nom = "repli_nombre_drapeaux_hors_catalogue_sans_passage"
 	// NomPisteDrapeauSansPontEcartee : `replay/flag_carrier_tracks.go`, `tracksByXUID`.
 	NomPisteDrapeauSansPontEcartee Nom = "repli_piste_drapeau_sans_pont_ecartee"
 	// NomCollineVotesPeriodeEntiere : `replay/zone_states_hill.go`, `buildDesignatedHills`.
@@ -100,4 +103,9 @@ const (
 	// NomIndexDeTireurHorsPlace : `replay/tirs_index_fiable.go` ; compte par `replay/build_pistes.go`
 	// (lot M4b.4, inscrit a la revue du lot).
 	NomIndexDeTireurHorsPlace Nom = "repli_index_de_tireur_hors_place"
+	// NomGenerationVivanteInconnueTag1 : `grammar/generations_vivantes.go` (`Accepte`) ; compte par
+	// `replay/film_scan.go`, `balayerPositions` (lot J5.2).
+	NomGenerationVivanteInconnueTag1 Nom = "repli_generation_vivante_inconnue_tag1"
+	// NomIdentiteVieParOccupationDuCorps : `replay/unnamed_lives.go`, `nameRemainingLives` (lot J5.4).
+	NomIdentiteVieParOccupationDuCorps Nom = "repli_identite_vie_par_occupation_du_corps"
 )

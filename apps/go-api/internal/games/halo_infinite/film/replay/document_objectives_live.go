@@ -278,6 +278,12 @@ type FlagCarriesCoverage struct {
 	// AmbiguousCarrierKills : evenements `flag_carriers_killed` qu'aucun portage ouvert UNIQUE
 	// ne permet de rattacher a une victime. Ils ne ferment alors aucun portage.
 	AmbiguousCarrierKills int `json:"ambiguousCarrierKills"`
+	// UnjudgedCarrierKills : evenements `flag_carriers_killed` que la regle n a PAS PU JUGER —
+	// tueur non nomme par le pont, equipe du tueur non lue, ou seuls des porteurs d equipe non lue
+	// ouverts a cet instant (schema 73, lot J9.1 : la victime ne peut etre qu un ADVERSAIRE du
+	// tueur, cf. flag_carries_killed.go). Ils ne ferment aucun portage. `omitempty` pour la meme
+	// raison que `closedByHandoff` : zero sur tout film hors CTF.
+	UnjudgedCarrierKills int `json:"unjudgedCarrierKills,omitempty"`
 	// AmbiguousReturns : evenements `flag_returns` survenus alors que zero ou plusieurs drapeaux
 	// etaient au sol. Ils ne renvoient alors aucun drapeau a sa base.
 	AmbiguousReturns int `json:"ambiguousReturns"`

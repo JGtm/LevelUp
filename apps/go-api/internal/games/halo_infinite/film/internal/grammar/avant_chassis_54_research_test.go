@@ -123,7 +123,7 @@ func avantBalayer(t *testing.T, fc *FilmContext, wr *profile.Vec3Range) *avantVe
 		return nil
 	}
 	opt := DefaultScanFilmOptions()
-	opt.RequireTag1 = false
+	opt.Generations = ToutesLesGenerations()
 	opt.CaptureDirs = true
 	opt.DynPrecOrientation = true
 	if l := fc.ImposedLayout(); l != nil {

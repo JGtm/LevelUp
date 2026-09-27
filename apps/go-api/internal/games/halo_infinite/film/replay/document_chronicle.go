@@ -2625,3 +2625,80 @@ package replay
 //	                « schema perime » : verdict `republier`. Mais ses faits persistes sont du codec
 //	                1, refuses sur leur prefixe : la cuisson les ecarte, REDECODE le film et ecrit
 //	                des faits du codec 2. La vague unique du jalon J11 le fait pour tout le parc.
+
+// v73 (2026-09-26, jalon J9 du PLAN_SUITE_AUDIT_DECODEUR_FILM_2026-09-25, constats RB1-1, RB1-2,
+// RB1-3, RB1-5, RB1-6, RB1-7, RB1-8 de l audit du 2026-09-24) : DRAPEAU, BOMBE, ZONES. Sept
+// corrections de PUBLICATION ; la forme ne gagne que deux compteurs de couverture optionnels, mais
+// le SENS de plusieurs calques change, et un artefact 72 doit se lire « a republier ».
+//
+//	`flagCarries`   `flag_carriers_killed` (credite au tueur) ne ferme plus que le portage d un
+//	                ADVERSAIRE du tueur, lu dans `TeamOf` : un coequipier du tueur perdait son
+//	                portage et sa capture, et un tueur non nomme n excluait personne (RB1-1). Les
+//	                evenements que la regle ne peut pas juger (tueur non nomme, equipe non lue)
+//	                ne ferment rien et se comptent : `coverage.flagCarries.unjudgedCarrierKills`
+//	                (NOUVEAU, `omitempty`). Hors catalogue d objectifs, le nombre de drapeaux ne
+//	                se suppose plus a un : ni passage de main en main ni retour credite ne
+//	                ferment un portage, le repli `repli_nombre_drapeaux_hors_catalogue_sans_passage`
+//	                se compte par portage (RB1-5). La capture et la prise suivante « du meme slot »
+//	                ne bornent un portage que dans la MEME MANCHE (RB1-6). Une reprise ou un retour
+//	                tombes dans la frame d un lacher, apres lui, passent apres lui : les transitions
+//	                suivent l ordre total des instants, plus un retri par frame seule (RB1-2).
+//	`bombCarries`,  une periode de portage se ferme au PREMIER de (mort, lacher) : un lacher emis
+//	`bombStats`     apres la mort du porteur ne prolonge plus sa periode, qui devient une fin PAR
+//	                MORT — donc plus candidate a la regle du lacher de `bomb_arms` (RB1-7).
+//	`bombStats`,    origine d horloge du film illisible (`FilmClockOriginUS` nul) : la jointure de
+//	`bombEvents`    `bomb_arms` ne tourne plus sur un recalage faux, `bomb_arms` est ABSENT (NULL
+//	                en base, jamais un zero mesure), les armements sont publies sans acteur et
+//	                comptes dans `bombStats.coverage.armingsNoClock` (NOUVEAU, `omitempty`) ; un
+//	                film sans armement garde son zero mesure (RB1-3).
+//	`zoneStates`,   l allegement de la jauge mesure une VARIATION, plus une montee : une descente
+//	`flagCarries`   d au moins 0,02 se publie a sa frame, et non plus une seconde plus tard — la
+//	                jauge des zones et la jauge de RETOUR DU DRAPEAU partagent cet allegement
+//	                (RB1-8).
+//
+//	CE QUI MONTE    `SchemaVersion` 72 -> 73. AUCUNE revision de couche : les sept corrections
+//	AVEC ELLE       vivent dans `film/replay` (publication). `objectives.Rev` reste
+//	                `objectives-2026-09-26` — la sortie de la couche des objectifs ne change pas ;
+//	                son empreinte est recopiee a revision constante (accesseur `RoundAt` ajoute
+//	                pour les fermoirs par manche, lot J9.3).
+//
+//	LE PARC         un artefact 72 se lit « decodage intact » et « schema perime » : verdict
+//	                `republier`, depuis ses faits persistes, qui portent tout ce que ces regles
+//	                lisent (statborg, fil des morts, origine d horloge, armes tenues, jauges).
+
+// v74 (2026-09-27, jalon J5 du PLAN_SUITE_AUDIT_DECODEUR_FILM_2026-09-25, lot J5.5 ; constats GB-1,
+// RA2-1, RA2-2, RA2-3, RA2-6, RB2-3 et GA1-3 de l audit du 2026-09-24) : L IDENTITE PAR VIE. La
+// FORME du document ne change pas (aucun champ, `document_shape.golden` ne bouge que par sa ligne
+// de schema) ; son CONTENU change, et un artefact 73 doit se lire « a redecoder ».
+//
+//	`tracks`,      les corps de GENERATION >= 2 d un slot bipede recycle sont lus (filtre de
+//	`durationMs`,  generation vivante, `grammar-2026-09-27`, GB-1) : leurs positions sont publiees,
+//	`frameCount`,  et la duree du rejeu n est plus tronquee a la derniere vie de generation 1.
+//	`bounds`       Cibles mesurees avant de coder (`.ai/V7.5/film_re/MESURE_GB1_2026-09-27.md`) :
+//	               `1c4c63c2` ~825,9 s -> ~1 288,7 s, `084a804d` ~972,4 s -> ~1 055,8 s,
+//	               `a349fea8` ~933,1 s -> ~948,0 s ; aucune vie de generation >= 2 sans position sur
+//	               `084a804d`, `1c4c63c2`, `4f77afc1`. Les quinze autres temoins ne changent pas.
+//	`tracks`,      l identite se decide PAR VIE (slot, generation) : le record de creation d un
+//	`identity`     corps n ouvre que la vie de ce corps (RA2-1) ; le nommage par occupation est borne
+//	               au corps (RA2-2, repli `repli_identite_vie_par_occupation_du_corps`, compte) ;
+//	               une vie d un seul echantillon nomme sa piste (RA2-6).
+//	`shots`,       tirs, lancers, tirs embarques et rafales sont attribues au corps VIVANT a
+//	`grenades`,    l instant, avec abstention sur un slot ambigu (RA2-3).
+//	`bursts`
+//	`groundWeapons`, `equipmentPlacements` : la vie d une cle d objet est bornee par la creation
+//	               PROUVEE suivante du slot (RB2-3).
+//	`stances`      un record NEW publie ses etats de mouvement sous son propre slot (GA1-3).
+//	calques de l   l equipement (emissions d `i48`), sa recuperation et l arme tenue sont chaines
+//	equipement     par vie et non plus par slot (J5.3) : un slot recycle ne prolonge plus la
+//	et des armes   chaine du corps precedent.
+//
+//	CE QUI MONTE    `SchemaVersion` 73 -> 74 ; `grammar.Rev` `grammar-2026-09-24` ->
+//	AVEC ELLE       `grammar-2026-09-27` ; `killsource.Rev` `killsource-2026-09-24` ->
+//	                `killsource-2026-09-27` (derriere la grammaire, par sa fermeture, aucun
+//	                changement du kill-feed attendu) ; `killcollector.IsolationDecoderRev` ->
+//	                `isolement-2026-09-27-generations-vivantes`. `objectives.Rev` reste
+//	                `objectives-2026-09-26` (sa fermeture ne rencontre que `source`).
+//
+//	LE PARC         un artefact 73 porte `grammar-2026-09-24` sur ses calques de grammaire : verdict
+//	                `redecoder` (ses faits persistes portent l ancienne revision de grammaire et
+//	                n ont pas les positions des corps recycles).

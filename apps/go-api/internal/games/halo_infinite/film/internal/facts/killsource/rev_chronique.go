@@ -412,3 +412,25 @@ package killsource
 // `repli_episode_borne_par_la_vie_suivante`) dont les gardes vivent dans la PUBLICATION (episodes
 // d occupation du calque des vehicules). Aucune ligne de kill ne change ; le backlog reste celui
 // de la vague. L entree de la branche, datee a son rang, reste dans `rev_chronique_archive.go`.
+
+// ENTREE `killsource-2026-09-27` (2026-09-27, lot J5.5 du PLAN_SUITE_AUDIT_DECODEUR_FILM_2026-09-25) :
+// LA REVISION MONTE DERRIERE LA GRAMMAIRE, PAR LA RECETTE DU SENS UNIQUE (ADR 0034 D-6 (2) et (3)).
+//
+// AUCUN OCTET DU PERIMETRE DE `killsource` N EST TOUCHE PAR LE JALON J5 hors `film/types`
+// (renommage `EquipmentLifeKey` -> `LifeKey` du lot J5.1, deja recopie a revision constante). Ce
+// qui monte est la VALEUR de `grammar.Rev` (`grammar-2026-09-24` -> `grammar-2026-09-27` : filtre
+// de generation vivante GB-1, chaines d equipement par vie, slot de capture des records NEW), que
+// la fermeture des imports de cette couche rencontre et hache. La chaine est mecanique : une montee
+// de la couche du dessous remonte jusqu au backlog killsource, sans qu on ait a la plaider.
+//
+// CE QUE CE BACKLOG RAPPORTERAIT POUR LE KILL-FEED : RIEN ATTENDU, et c est argumente, non mesure
+// par ce lot. `killsource` ne lit ni les positions bipedes, ni les huit canaux delta, ni les
+// chaines d equipement que J5 change, et n installe aucun crochet de capture (le slot de capture
+// pose sur un record NEW ne sert qu aux crochets et a l accumulateur, sans installateur en
+// production). La preuve se lit au gate du superviseur (equivalence `killsource` sur `replay-equiv`
+// et corpus gate).
+//
+// LES LIGNES DE `match_kill_events` DEJA EN BASE DEVIENNENT CANDIDATES au redecodage
+// (`conditionBacklog`, `sync/killcollector/postsync.go`) : geste de PRODUCTION, pris par le pilote
+// SUR SIGNAL UTILISATEUR (D6), jamais automatique. La meme vague (J11) rejoue de toute facon les
+// faits d isolement, dont `IsolationDecoderRev` monte au meme lot.

@@ -37,7 +37,7 @@ func TestPremiereEmissionContreLaDotationDeNaissance(t *testing.T) {
 	} {
 		ch := types.HeldWeaponChange{TimestampUS: 200, Slot: 9, SlotIndex: 43 + c.emplacement,
 			Emplacement: c.emplacement, Family: c.famille, Previous: noVariant}
-		newHeldWeaponChain(spawn).qualifier(&ch)
+		newHeldWeaponChain(spawn).qualifier(&ch, 1)
 		if ch.Kind != c.kind || ch.Previous != c.previous {
 			t.Errorf("%s : %s depuis %08x, attendu %s depuis %08x", c.nom, ch.Kind, ch.Previous,
 				c.kind, c.previous)
@@ -58,12 +58,12 @@ func TestLaChaineDesEmissionsSeCoupeAChaqueVie(t *testing.T) {
 	}
 	chaine := newHeldWeaponChain(spawn)
 	vie1 := types.HeldWeaponChange{TimestampUS: 200, Slot: 9, SlotIndex: 43, Family: 0xC, Previous: noVariant}
-	chaine.qualifier(&vie1)
+	chaine.qualifier(&vie1, 1)
 	if vie1.Kind != types.HeldWeaponSwapped || vie1.Previous != 0xA {
 		t.Fatalf("vie 1 : %s depuis %08x, attendu swapped depuis a", vie1.Kind, vie1.Previous)
 	}
 	vie2 := types.HeldWeaponChange{TimestampUS: 600, Slot: 9, SlotIndex: 43, Family: 0xB, Previous: noVariant}
-	if chaine.qualifier(&vie2) {
+	if chaine.qualifier(&vie2, 1) {
 		t.Error("la première émission d'une vie ne peut pas « répéter » la vie précédente")
 	}
 	if vie2.Kind != types.HeldWeaponRestated || vie2.Previous != noVariant {
@@ -71,7 +71,7 @@ func TestLaChaineDesEmissionsSeCoupeAChaqueVie(t *testing.T) {
 			vie2.Previous)
 	}
 	suite := types.HeldWeaponChange{TimestampUS: 700, Slot: 9, SlotIndex: 43, Family: 0xD, Previous: noVariant}
-	chaine.qualifier(&suite)
+	chaine.qualifier(&suite, 1)
 	if suite.Kind != types.HeldWeaponSwapped || suite.Previous != 0xB {
 		t.Fatalf("suite de la vie 2 : %s depuis %08x, attendu swapped depuis b", suite.Kind, suite.Previous)
 	}

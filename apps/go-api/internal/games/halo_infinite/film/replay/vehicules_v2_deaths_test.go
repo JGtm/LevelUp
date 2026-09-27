@@ -313,7 +313,7 @@ func v2dPlayerPositions(dir string, wr profile.Vec3Range, lay profile.I0Layout) 
 }
 
 func v2dVehicleTracks(dir string, band map[uint32]bool, wr profile.Vec3Range, lay profile.I0Layout) map[uint32]slotTrack {
-	opt := grammar.ScanFilmOptions{WorldRange: &wr, RequireTag1: false, DropSaturated: true}
+	opt := grammar.ScanFilmOptions{WorldRange: &wr, Generations: grammar.ToutesLesGenerations(), DropSaturated: true}
 	if lay.Valid() {
 		opt.Layout = &lay
 	}

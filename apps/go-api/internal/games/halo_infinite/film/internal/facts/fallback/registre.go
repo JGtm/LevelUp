@@ -28,7 +28,8 @@ package fallback
 //
 // [Table] trie par nom. Le découpage en fichiers (cinq jusqu au lot 1.9.4, qui a scindé
 // `registre_killsource.go` à 523 lignes ; `registre_replay_positions.go` né au lot M1 des retours
-// du rejeu, `registre_replay_places.go` au lot M2.3, 2026-09-23) ne suit que la limite de 500
+// du rejeu, `registre_replay_places.go` au lot M2.3, 2026-09-23, `registre_replay_objectifs.go`
+// au lot J5.5 du plan de suite d'audit, 2026-09-27) ne suit que la limite de 500
 // lignes du dépôt et le paquet des sites. Un fichier de plus s'ajoute à [Tranches], et à rien
 // d'autre.
 
@@ -60,6 +61,7 @@ func Tranches() []Tranche {
 		{"filmdec", registreFilmdec},
 		{"replay/positions", registreReplayPositions},
 		{"replay/vehicules", registreReplayVehicules},
+		{"replay/objectifs", registreReplayObjectifs},
 	}
 }
 

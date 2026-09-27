@@ -9,7 +9,11 @@ package main
 //	fermeture_archetypes.tsv  une ligne par (film, archetype)
 //	fermeture_bloquants.tsv   une ligne par (film, cause d arret)
 //	fermeture_resume.md       par build : paquets fermes par vue, records utiles fermes ; puis le
-//	                          classement des bloquants du corpus
+//	                          classement des bloquants du corpus ; puis, en mode `gb1`, la
+//	                          section GB-1
+//
+// Les trois TSV de fermeture ne sont crees qu en mode `fermeture` ; ceux du mode `gb1`
+// (`gb1_*.tsv`) sont decrits dans gb1_rapport.go.
 //
 // Les chiffres sont colles, sans interpretation : les verdicts appartiennent a la note de
 // mesure (J4.0.5), pas a l instrument.
@@ -56,33 +60,50 @@ type cumulBloquant struct {
 // rapport porte les fichiers ouverts et les cumuls.
 type rapport struct {
 	dir                          string
+	modes                        modes
 	tab                          tableECS
 	films, archetypes, bloquants *os.File
 	parBuild                     map[string]*cumulBuild
 	parBloquant                  map[string]*cumulBloquant
-	mesures, echecs              int
+	// gb1 porte les sorties du mode `gb1` ; nil hors de ce mode.
+	gb1             *rapportGB1
+	mesures, echecs int
 }
 
-// ouvrirRapport cree les trois TSV et ecrit leurs en-tetes.
-func ouvrirRapport(dir string, tab tableECS) (*rapport, error) {
-	r := &rapport{dir: dir, tab: tab, parBuild: map[string]*cumulBuild{},
+// ouvrirRapport cree les TSV des modes demandes et ecrit leurs en-tetes.
+func ouvrirRapport(dir string, tab tableECS, md modes) (*rapport, error) {
+	r := &rapport{dir: dir, modes: md, tab: tab, parBuild: map[string]*cumulBuild{},
 		parBloquant: map[string]*cumulBloquant{}}
+	if md.fermeture {
+		if err := r.ouvrirFermeture(); err != nil {
+			return nil, errors.Join(err, r.fermer())
+		}
+	}
+	if md.gb1 {
+		var err error
+		if r.gb1, err = ouvrirRapportGB1(dir); err != nil {
+			return nil, errors.Join(err, r.fermer())
+		}
+	}
+	return r, nil
+}
+
+// ouvrirFermeture cree les trois TSV du mode `fermeture`.
+func (r *rapport) ouvrirFermeture() error {
 	var err error
-	if r.films, err = creerTSV(dir, "fermeture_films.tsv", "film\tbuild\tlargeurs_lues\tpaquets\t"+
+	if r.films, err = creerTSV(r.dir, "fermeture_films.tsv", "film\tbuild\tlargeurs_lues\tpaquets\t"+
 		"paquets_fermes\tlistes_non_localisees\tvueA_atteints\tvueA_fermes\tvueB_atteints\t"+
 		"vueB_fermes\tvueC_atteints\tvueC_fermes\tutiles\tutiles_fermes\tentrees_controle_fermees\t"+
 		"premier_bloquant\tpic_octets\tduree_ms"); err != nil {
-		return nil, err
+		return err
 	}
-	if r.archetypes, err = creerTSV(dir, "fermeture_archetypes.tsv", "film\tbuild\tti\tneufs\t"+
+	if r.archetypes, err = creerTSV(r.dir, "fermeture_archetypes.tsv", "film\tbuild\tti\tneufs\t"+
 		"neufs_fermes\tdeltas\tdeltas_fermes\tutiles\tutiles_fermes\tbloquant"); err != nil {
-		return nil, errors.Join(err, r.fermer())
+		return err
 	}
-	if r.bloquants, err = creerTSV(dir, "fermeture_bloquants.tsv", "film\tbuild\tcause\tti\tindex\t"+
-		"composant\tstatut\tusage_produit\tpaquets\tutiles_en_jeu"); err != nil {
-		return nil, errors.Join(err, r.fermer())
-	}
-	return r, nil
+	r.bloquants, err = creerTSV(r.dir, "fermeture_bloquants.tsv", "film\tbuild\tcause\tti\tindex\t"+
+		"composant\tstatut\tusage_produit\tpaquets\tutiles_en_jeu")
+	return err
 }
 
 // creerTSV cree un fichier du rapport et y ecrit l en-tete.
@@ -117,7 +138,6 @@ func (r *rapport) ajouter(m mesureFilm) error {
 		return err
 	}
 	r.cumulerBuild(m)
-	r.mesures++
 	return nil
 }
 
@@ -194,10 +214,19 @@ func (r *rapport) cumulerBloquant(build, cause string, b grammar.FrameBlockerSta
 	}
 }
 
-// fermer ferme les trois TSV.
+// fermer ferme les TSV ouverts des deux modes.
 func (r *rapport) fermer() error {
+	errs := []error{fermerTSV(r.films, r.archetypes, r.bloquants)}
+	if r.gb1 != nil {
+		errs = append(errs, r.gb1.fermer())
+	}
+	return errors.Join(errs...)
+}
+
+// fermerTSV ferme les fichiers ouverts parmi ceux donnes.
+func fermerTSV(fichiers ...*os.File) error {
 	var errs []error
-	for _, f := range []*os.File{r.films, r.archetypes, r.bloquants} {
+	for _, f := range fichiers {
 		if f != nil {
 			errs = append(errs, f.Close())
 		}

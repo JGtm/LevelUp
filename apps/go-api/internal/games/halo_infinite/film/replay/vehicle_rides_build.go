@@ -29,7 +29,7 @@ import (
 type vehicleRideBuild struct {
 	in  vehicleRideInputs
 	lus vehicleFilmRides
-	out map[types.EquipmentLifeKey][]VehicleRide
+	out map[types.LifeKey][]VehicleRide
 	st  vehicleRideStats
 	// boards / exits : les evenements ranges par occupant ; bySlot le nuage des bipedes.
 	boards, exits map[uint32][]types.VehicleEvent
@@ -40,11 +40,11 @@ type vehicleRideBuild struct {
 // rattachement. PUR.
 func buildVehicleRides(
 	in vehicleRideInputs,
-) (map[types.EquipmentLifeKey][]VehicleRide, vehicleRideStats) {
+) (map[types.LifeKey][]VehicleRide, vehicleRideStats) {
 	if in.clock.step == 0 || len(in.lives) == 0 {
 		return nil, vehicleRideStats{}
 	}
-	b := &vehicleRideBuild{in: in, out: map[types.EquipmentLifeKey][]VehicleRide{}}
+	b := &vehicleRideBuild{in: in, out: map[types.LifeKey][]VehicleRide{}}
 	b.boards, b.exits = vehicleEventsByOccupant(in.events)
 	b.bySlot = in.bipedsBySlot
 	if b.bySlot == nil {

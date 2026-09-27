@@ -143,7 +143,7 @@ type v4TirArg struct {
 func v4TirRattache(
 	ctx v4Ctx, slotTracks map[uint32]slotTrack, e grammar.FireEvent, ag *v4TirAgg,
 ) bool {
-	slot, reason := slotFor(slotTracks, ctx.own.IndexParSlot(), e.FilmIndex, e.TimestampUS)
+	slot, reason := slotFor(slotTracks, ctx.own.Occupants(), e.FilmIndex, e.TimestampUS)
 	if reason == reasonAttached {
 		if p, d := slotTracks[slot].at(e.TimestampUS); d <= shotPosToleranceUS && p.HasWorld {
 			ag.attaches++

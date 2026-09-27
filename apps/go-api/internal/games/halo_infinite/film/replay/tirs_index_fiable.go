@@ -38,14 +38,15 @@ type accordIndexUnite struct {
 }
 
 // mesurerIndexDeTireur compare, tir par tir, l index de tireur a l index du joueur dont le bipede
-// est l unite tireuse.
-func mesurerIndexDeTireur(fire []grammar.FireEvent, owner map[uint32]int) accordIndexUnite {
+// est l unite tireuse A L INSTANT DU TIR (RA2-3, lot J5.4) : sur un slot recycle, le corps vivant
+// est celui du record de creation qui tient le slot a cet instant, pas son premier occupant.
+func mesurerIndexDeTireur(fire []grammar.FireEvent, occ occupantsDesSlots) accordIndexUnite {
 	var m accordIndexUnite
 	for _, e := range fire {
 		if !e.Unit.Present || !e.HasShooter {
 			continue
 		}
-		pi, ok := owner[e.Unit.Slot]
+		pi, ok := occ.indexA(e.Unit.Slot, int64(e.TimestampUS))
 		if !ok {
 			continue
 		}

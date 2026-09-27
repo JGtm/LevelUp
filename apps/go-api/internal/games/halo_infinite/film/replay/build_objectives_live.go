@@ -303,6 +303,7 @@ func logFlagCarriesCoverage(cov *FlagCarriesCoverage) {
 		"horsFenetre", cov.OutOfWindow, "slotsAmbigus", cov.AmbiguousSlot, "marqueurConfirme", cov.MarkerConfirmed,
 		"marqueurObserve", cov.MarkerObserved, "socles", cov.Spawns,
 		"simultaneite", cov.Overlaps, "porteursTuesAmbigus", cov.AmbiguousCarrierKills,
+		"porteursTuesNonJuges", cov.UnjudgedCarrierKills,
 		"retoursAmbigus", cov.AmbiguousReturns, "rentreesParLObjet", cov.HomeByObject,
 		"rentreesAmbigues", cov.AmbiguousHomecomings)
 	// LA JAUGE DE RETOUR porte ses six denominateurs au journal comme elle les porte a

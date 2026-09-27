@@ -242,3 +242,69 @@ package grammar
 // d un record, depart d un composant : le corps de mort de 8a485699 p692), `m4b_monture_research_test.go`
 // (la 3e monture de 81c02726, OUVERTE : aucun embarquement lu apres la naissance du dispositif
 // 2308, dont le NEW desynchronise sur `ti=43 i21`).
+
+// ENTREE `grammar-2026-09-27` (2026-09-27, lot J5.5 du PLAN_SUITE_AUDIT_DECODEUR_FILM_2026-09-25) :
+// UNE SEULE MONTEE POUR TOUT LE JALON J5 (lots J5.1 a J5.4), dont les commits avaient refige le
+// golden a revision constante en attendant celle-ci. Ce qui change est ce que la grammaire REND :
+// des lectures de plus (les corps de generation >= 2) et des chaines rattachees a la bonne vie.
+//
+// J5.1 (neutre, dit pour memoire) : la cle de vie `types.EquipmentLifeKey` devient `types.LifeKey`
+// (sans alias) et le handle se lit par un lecteur UNIQUE (`handle.go`, `LireHandle` /
+// `LireHandleDelta`) ; aucun bit n est lu autrement.
+//
+// J5.2 (GB-1, DT-8) : LE FILTRE DE GENERATION VIVANTE (`generations_vivantes.go`). Les positions
+// bipedes et les huit canaux delta n acceptaient qu une generation de handle egale a 1
+// (`ScanFilmOptions.RequireTag1`, supprime, et trois copies en dur) : quand le pool de slots
+// reboucle, les corps de generation 2 et 3 n avaient aucune position ni lecture delta. Une
+// generation est desormais lue quand une creation de bipede ou un record `ti=35` d image-cle l a vue
+// designer un corps ; un slot dont aucune generation n est connue retombe sur l ancien filtre, repli
+// nomme `repli_generation_vivante_inconnue_tag1`. L etage du pont d identite (`pont_identite.go`)
+// lit les creations AVANT les positions ; les vehicules sont lus sous toutes les generations.
+// Mesure J5.0 (`.ai/V7.5/film_re/MESURE_GB1_2026-09-27.md`) : quatre films touches (`084a804d`,
+// `1c4c63c2`, `a349fea8`, `4f77afc1`), les quinze autres temoins sans aucune vie de generation >= 2.
+//
+// J5.3 : l equipement, sa recuperation et l arme tenue sont CHAINES PAR VIE (`LifeKey`) et non plus
+// par slot : un slot recycle ne prolonge plus la chaine du corps precedent.
+//
+// J5.4 GA1-3 : `decodeInferLoop` pose le slot de capture de CHAQUE record, NEW compris (D13 de la
+// note 5.3 levee) : un NEW ne publie plus ses etats de mouvement sous le slot du record precedent.
+//
+// `killsource.Rev` MONTE derriere elle (`killsource-2026-09-27`), par la recette du sens unique : sa
+// fermeture hache la VALEUR de cette constante. Aucune lecture qu il consomme n a change (il ne lit
+// ni les positions bipedes, ni les canaux delta, ni les chaines d equipement, et n installe aucun
+// crochet de capture) : aucun changement du kill-feed n est attendu (cf. sa chronique).
+// `objectives.Rev` n est pas concerne : sa fermeture ne rencontre que `source`. `replay.SchemaVersion` monte (73 -> 74) et `killcollector.IsolationDecoderRev` aussi
+// (les positions du collecteur passent par le meme etage du pont).
+//
+// ENTREE `grammar-2026-09-27.2` (2026-09-27, lot J6.3 du plan de suite de l audit du decodeur) :
+// UN SEUL PORTAGE DE `FUN_14076e524`. Le rang `.2` distingue ce lot de J5, qui a monte
+// `grammar-2026-09-27` en parallele ; rang fixe a la fusion des deux lots : `.2` suit J5.
+//
+// CE QUE LE RANG CHANGE (releve Ghidra du 2026-09-27, `lecteur_position.go`). Le lecteur de position
+// quantifiee et ses deux enveloppes (`FUN_14076e494` : garde de pleine precision ; `FUN_14076e420` :
+// bit precHigh) ont UN portage, parametre par l IMMEDIAT DE NIVEAU du site d appel. Tous les sites
+// l appellent avec l immediat releve, que tient `lecteur_position_ratchet_test.go`. Lectures qui
+// changent :
+//
+//	asset-transform `ti=44 i0`   niveau 0x1E : 26/26/26 et index sur `DAT_144632be0` (7/7/7 et 1 bit)
+//	unit-actor-state (visee)     le 0x10 est un NIVEAU : garde, porte, index, trois axes (R(16) plat)
+//	crew-order, tacmap-poiicon et -poiiconoffset, flock-destination, player-desired-respawn-location
+//	                              plus de bit precHigh, axes a la ligne 0x10 (6 + niveau du registre)
+//	tacmap-waypointstate, -areaofinterest, -displayasset, -cooptetherarea, spawn-filter-type,
+//	selectable-zone-data         largeurs de la ligne 0x10 et garde (descripteur de traversee)
+//	tacmap-waypointstate         + R(1) quand le niveau du registre depasse 1 (`FUN_140f04d88`)
+//	i0 bipede, precHigh = 1       `FUN_141f85880` : 3 x 14 bits sur +/-100, puis R(2) (0 bit)
+//	i0 absolu predit, cVar1 = 1   idem (0 bit)
+//	i0 repli du delta predit      `FUN_14076e524` nu : un bit precHigh de moins
+//	trame media de l etat par defaut du bipede   garde, porte, index, axes (branche inerte)
+//	`DAT_144632be0`               lue du profil partout (GA2-3) — plus de 1 cable
+//	etat par defaut `ti=13`       la charge de chaque variant apres l etiquette (GA2-4)
+//	translocateur                 le meme lecteur, sous la garde ; oracle 18/18 inchange
+//
+// TROIS EXCEPTIONS DATEES gardent leur ancien lecteur (`lecteur_position_exceptions.go`, decision du
+// superviseur) : flock-position `ti=21 i16`, world-object i0 (porte posee) et `ti=38 i18` — la
+// lecture du jeu y fait baisser la fermeture des bobines.
+//
+// Mesure (bobines du depot) : fermeture d image-cle `ti=13` de 0 % a ~100 % sur les sept bobines,
+// aucune autre ligne ne bouge ; carte de fermeture sans aucun compte `fermes` modifie, une ligne
+// neuve (ks_000d5950 `ti=23` 0/1). Golden des familles de mini-bobine inchange.

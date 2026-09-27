@@ -167,34 +167,6 @@ func consumeCorruptionCheck(br *Lecteur) {
 	}
 }
 
-// consumeSimStateHandleTail porte FUN_14076e494(br, dst, LEVEL=0x10, 0, 0, param_6=0) — la
-// QUEUE d'i60, RÉSOLUE le 2026-08-17 (lot R7-b) après avoir été longtemps portée « largeur
-// inconnue, désync propre ».
-//
-//	cVar1 = FUN_14076f91c()   garde RUNTIME (DAT_144e61ea0 / DAT_145121140), 0 bit
-//	                          = `Lecteur.fullPrecision`, déjà modélisée ici.
-//	cVar1 != 0 : FUN_1411b259c -> FUN_1406d676c(br, br, dst, 0x60)   = R(96) brut.
-//	cVar1 == 0 (retail, dominant) : FUN_14076e524(dst, br, idxOut, LEVEL=0x10) =
-//	          R(1) porte d'index ; si 0 -> R(DAT_144632be0) index de région ;
-//	          puis FUN_140cc5128 = 3 axes aux largeurs de la ligne LEVEL=16.
-//
-// C'est EXACTEMENT le lecteur absolu de `consumeAbsoluteWithGate`, MOINS son bit precHigh
-// (ici la garde est runtime, pas un bit du flux) et MOINS son R(2) « fini » de queue — que
-// FUN_14076e494 n'appelle pas.
-func consumeSimStateHandleTail(br *Lecteur) {
-	if fullPrecisionGate(br) { // FUN_14076f91c vrai -> copie brute
-		br.ReadBits(rawVec3Bits) // FUN_1406d676c(..., 0x60)
-		return
-	}
-	idx := -1
-	if !br.ReadBit() { // FUN_14076e524 : porte d'index ; 0 -> lit l'index de région
-		idx = int(br.ReadBits(br.worldObjectPrecision().IndexW))
-	}
-	for i := 0; i < 3; i++ {
-		br.ReadBits(absAxisWFor(br, idx, i)) // FUN_140cc5128 axe i
-	}
-}
-
 // consume140c1e79c porte FUN_140c1e79c (direction+magnitude d'i60) :
 //
 //	R(1) gate ; si bit==0 -> R(19) packed dir (FUN_1406d8288 dequant, 0 bit)
@@ -239,8 +211,8 @@ func consumeSimulationState(br *Lecteur) {
 	for i := 0; i < 4; i++ {
 		br.ReadBits(16) // FUN_142ee2194 = R(16)
 	}
-	consume140c1e79c(br)          // FUN_140c1e79c = R(1)[R19]+R8
-	consumeSimStateHandleTail(br) // FUN_14076e494, predicat vrai par construction
+	consume140c1e79c(br)         // FUN_140c1e79c = R(1)[R19]+R8
+	lireE494(br, niveauPosition) // FUN_14076e494(0x10), CALL 142ed6fd5 ; predicat vrai par construction
 }
 
 func traverseComponentLoop(br *Lecteur, arch Archetype, t *EntityTrace) {

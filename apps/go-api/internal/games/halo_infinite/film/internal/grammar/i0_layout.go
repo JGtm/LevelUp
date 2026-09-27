@@ -131,7 +131,9 @@ func collectI0Samples(pay []byte, slots SlotBand, chunk, pkt int, out []i0Sample
 	total := len(pay) * 8
 	const preGate = profile.I0SpineBits + profile.I0UseDefaultBits
 	for p := 0; p+bipedHeaderBits+bipedIndexBits*bipedMinMaskCnt+detectWindow <= total; {
-		i0, slot, _, ok := matchBipedHeaderRaw(pay, p, total, slots, true, detectWindow)
+		// nil : aucune generation connue, tous les slots au repli nomme (generation 1) — le filtre
+		// d avant le lot J5.2, bit a bit ; le detecteur mesure i0 avant que le film soit lu.
+		i0, slot, _, ok := matchBipedHeaderRaw(pay, p, total, slots, nil, detectWindow)
 		if !ok || uint32(source.BitsStricts(pay, i0, preGate)) != 0 {
 			p++
 			continue

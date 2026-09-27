@@ -232,8 +232,9 @@ func decodeFilmVehicleEvents(fc *grammar.FilmContext, matchID string) []types.Ve
 // vehicleScanOptions rend les reglages du nuage `ti=40`. QUATRE ecarts au bipede, tous documentes
 // par `ScanBipedPositionsForBand` et tous necessaires :
 //
-//   - `RequireTag1` DESARME : le tag de 2 bits est la generation du handle, et les objets du
-//     monde en emploient les quatre valeurs. Arme, la bande ne rendrait qu un quart du nuage ;
+//   - TOUTES LES GENERATIONS, explicitement (`grammar.ToutesLesGenerations`, lot J5.2 — c etait
+//     `RequireTag1` desarme) : le tag de 2 bits est la generation du handle, et les objets du
+//     monde en emploient les quatre valeurs. Filtre, la bande ne rendrait qu un quart du nuage ;
 //   - `CaptureDirs` ARME : c est lui qui livre la VELOCITE `i1`, seule orientation validee d un
 //     vehicule en mouvement (V1a.3 : ecart median 1,7 a 2,1 deg au deplacement sur 4 films,
 //     temoin par melange 51 a 88 deg) ;
@@ -251,7 +252,7 @@ func decodeFilmVehicleEvents(fc *grammar.FilmContext, matchID string) []types.Ve
 //     l'auto-detection reprend, comme pour le bipede.
 func vehicleScanOptions(fc *grammar.FilmContext, wr *profile.Vec3Range) grammar.ScanFilmOptions {
 	opt := grammar.DefaultScanFilmOptions()
-	opt.RequireTag1 = false
+	opt.Generations = grammar.ToutesLesGenerations()
 	opt.CaptureDirs = true
 	opt.DynPrecOrientation = true
 	opt.WorldRange = wr

@@ -88,7 +88,7 @@ type Grenade struct {
 // index PUBLIÉ (cf. buildProjectiles) : c'est lui qui alimente Grenade.Proj. Nil = aucun
 // projectile publié, les lancers sortent sans lien — jamais un index qui ne pointe rien.
 func buildGrenades(pos []grammar.BipedPosition, throws []grammar.GrenadeThrow,
-	origin, step uint64, owner map[uint32]int, proj []types.ProjectileTrack,
+	origin, step uint64, occ occupantsDesSlots, proj []types.ProjectileTrack,
 	pubProjByRaw map[int]int) ([]Grenade, LayerCoverage) {
 	cov := LayerCoverage{Available: len(throws)}
 	if len(throws) == 0 {
@@ -106,7 +106,7 @@ func buildGrenades(pos []grammar.BipedPosition, throws []grammar.GrenadeThrow,
 			cov.count(reasonNoSlot)
 			continue
 		}
-		gr, rawProj, ok := locateThrow(g, births, tracks, owner)
+		gr, rawProj, ok := locateThrow(g, births, tracks, occ)
 		if !ok {
 			cov.count(reasonNoSlot)
 			continue
@@ -166,8 +166,8 @@ func buildGrenades(pos []grammar.BipedPosition, throws []grammar.GrenadeThrow,
 // pont, la source reste utilisable — c'était sa raison d'être — mais une fenêtre qui porte
 // PLUSIEURS naissances n'est plus tranchée au hasard : elle n'est pas publiée.
 func locateThrow(g grammar.GrenadeThrow, births []projectileBirth,
-	tracks map[uint32]slotTrack, owner map[uint32]int) (Grenade, int, bool) {
-	slot, author := authorBiped(g, tracks, owner)
+	tracks map[uint32]slotTrack, occ occupantsDesSlots) (Grenade, int, bool) {
+	slot, author := authorBiped(g, tracks, occ)
 	if b, ok := birthForThrow(births, g.TimestampUS, author); ok {
 		// LE SLOT EST PORTÉ MÊME ICI, ET IL NE L'ÉTAIT PAS : la branche projectile rendait un
 		// `Grenade` sans `Slot`, donc à zéro — et zéro RESSEMBLE à un slot, si bien qu'un
@@ -186,8 +186,8 @@ func locateThrow(g grammar.GrenadeThrow, births []projectileBirth,
 // donnent tous les deux. Le slot peut être connu sans que la position le soit (réplication trop
 // lointaine) : le premier retour vaut alors le slot, le second nil.
 func authorBiped(g grammar.GrenadeThrow, tracks map[uint32]slotTrack,
-	owner map[uint32]int) (uint32, *grammar.BipedPosition) {
-	slot, reason := slotFor(tracks, owner, g.FilmIndex, g.TimestampUS)
+	occ occupantsDesSlots) (uint32, *grammar.BipedPosition) {
+	slot, reason := slotFor(tracks, occ, g.FilmIndex, g.TimestampUS)
 	if reason != reasonAttached {
 		return 0, nil
 	}

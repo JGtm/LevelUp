@@ -1,8 +1,9 @@
 package fallback
 
-// registre_replay_identites.go — les replis des calques IDENTITÉ, VIES, DRAPEAU, ZONE,
-// VÉHICULE, CRÂNE et BOMBE (`internal/games/halo_infinite/film/replay/`). Les replis des PLACES
-// et des PRÉSENCES du roster vivent dans `registre_replay_places.go` depuis le lot M2.3.
+// registre_replay_identites.go — les replis des calques IDENTITÉ, VIES et VÉHICULE
+// (`internal/games/halo_infinite/film/replay/`). Les replis des PLACES et des PRÉSENCES du roster
+// vivent dans `registre_replay_places.go` depuis le lot M2.3 ; ceux des calques DRAPEAU, ZONE,
+// CRÂNE et BOMBE dans `registre_replay_objectifs.go` depuis le lot J5.5 (2026-09-27).
 
 var registreReplayIdentites = []Repli{
 	{
@@ -264,209 +265,19 @@ var registreReplayIdentites = []Repli{
 		CibleComptage:   comptageFamille19,
 	},
 	{
-		Nom:       "repli_drapeau_seul_en_jeu",
-		Fait:      "quel drapeau une prise concerne",
-		Mecanisme: "aucun drapeau au sol ne convient : s'il n'en reste qu'UN en jeu, c'est lui",
+		Nom:  "repli_identite_vie_par_occupation_du_corps",
+		Fait: "le joueur d une piste publiee que ni la lecture (creation, morts, table) ni les fermetures, bots et relais n ont nommee",
+		Mecanisme: "la vie nommee du MEME CORPS (slot, generation) qui precede la piste, sinon celle qui la suit, sinon le pont par slot quand les records du slot ne divergent pas ; " +
+			"abstention entre deux occupants differents (lot J5.4 : borne au corps, RA2-2)",
 		Condition: CondNonResolu,
 		Ordre:     OrdreApresLecture,
 		Sites: []Site{{
-			Fichier: pkgReplay + "flag_assign.go",
-			Ancre:   "if f := g.seulEnJeu(recevable); f >= 0 {",
+			Fichier: pkgReplay + "unnamed_lives.go",
+			Ancre:   "reg.fb.Declenche(fallback.NomIdentiteVieParOccupationDuCorps)",
 		}},
-		DatePose:        dateAudit0E,
-		CibleRetrait:    "lot 1.9.6 (le drapeau qui rentre pris dans ev.flag, deja nomme en amont)",
-		CritereRetrait:  "0 recours a la regle « seul en jeu » une fois ev.flag lu ; coverage.flagCarries.ambiguousReturns a 0",
-		CompteurBranche: false,
-		CibleComptage:   "lot 1.9.6",
-	},
-	{
-		Nom:       "repli_invariant_propre_drapeau_muet",
-		Fait:      "un portage designe-t-il le drapeau de l'equipe de son porteur (ce qu'aucune regle du mode n'autorise)",
-		Mecanisme: "l'invariant rend FAUX des qu'une des deux equipes est inconnue : il se tait au lieu de refuser",
-		Condition: CondNonResolu,
-		Ordre:     OrdreApresLecture,
-		Sites: []Site{{
-			Fichier: pkgReplay + "flag_assign.go",
-			Ancre:   "func sonPropreDrapeau(spawns []FlagSpawn, f int, equipe int, connue bool) bool {",
-		}},
-		DatePose:        dateAudit0E,
-		CibleRetrait:    "lot 1.7 (l'equipe vient du film) : l'equipe du porteur est desormais lue, donc le silence doit disparaitre",
-		CritereRetrait:  "0 portage dont l'equipe du porteur est inconnue sur les 8 builds (coverage.flagCarries.carrierTeamUnknown a 0)",
-		CompteurBranche: false,
-		CibleComptage:   comptageFamille19,
-	},
-	{
-		Nom:       "repli_index_drapeau_zero_pour_tous",
-		Fait:      "l'index de drapeau de CHAQUE portage d'un film sans socle catalogue",
-		Mecanisme: "aucun socle : tous les portages recoivent flagIndex = 0",
-		Condition: CondSectionAbsente,
-		Ordre:     OrdreSansLecture,
-		Sites: []Site{{
-			Fichier: pkgReplay + "flag_assign.go",
-			Ancre:   "raws[i].flagIndex = 0",
-		}},
-		DatePose:        dateAudit0E,
-		CibleRetrait:    "lot de completion du catalogue de socles (hors famille 1.9)",
-		CritereRetrait:  "0 film CTF sans socle catalogue sur le parc",
-		CompteurBranche: false,
-		CibleComptage:   comptageFamille19,
-	},
-	{
-		Nom:       "repli_position_lacher_prend_la_prise",
-		Fait:      "ou un drapeau a ete lache",
-		Mecanisme: "aucun point publie a la frame de fin : la position de LACHER prend celle de la PRISE",
-		Condition: CondNonResolu,
-		Ordre:     OrdreApresLecture,
-		Sites: []Site{{
-			Fichier: pkgReplay + "flag_carries.go",
-			Ancre:   "r.x1, r.y1 = p0.X, p0.Y",
-		}},
-		DatePose: dateAudit0E,
-		// CIBLE REECRITE LE 2026-09-16 (revue de jalon M1) : elle nommait le lot 1.9.13, fusionne
-		// le 2026-09-15.
-		//
-		// ET LE CRITERE N'EST PAS MESURE, CONTRAIREMENT A CE QUE LES GOLDENS LAISSENT CROIRE.
-		// Le compteur est câblé et les 8 goldens d'assemblage affichent 0 — mais ce 0 dit
-		// « NON EXERCÉ », pas « non déclenché » : `FilmInputs.applyTo` (`film_inputs.go`) pose
-		// `opt.Flag.Marks` et JAMAIS `opt.Flag.Scanned`, donc `attachFlagCarries` prend sa
-		// branche vide sur les huit fixtures, `buildFlagCarries` ne reçoit aucun portage et
-		// `attachFlagCarryPositions` n'est jamais atteint. Aucun des huit films n'apporte de
-		// calque drapeau. La mesure demande un film de CTF cuit en entier — corpus gate, ou un
-		// fixture d'entrées portant le canal drapeau.
-		CibleRetrait: "M2 : mesurer d'abord (le canal drapeau n'est exerce par AUCUN des 8 goldens), puis retrait sec si le compte est nul au corpus gate",
-		// Deux points identiques se lisent sur la carte comme un portage immobile : le repli
-		// FABRIQUE une donnée plausible, ce qui est la forme la plus difficile à repérer.
-		CritereRetrait:  "0 portage dont la fin n'a pas de point publie, mesure sur un corpus qui PORTE le calque drapeau (les 8 goldens ne l'exercent pas — verifie le 2026-09-16)",
-		CompteurBranche: true,
-	},
-	{
-		Nom:       "repli_piste_drapeau_sans_pont_ecartee",
-		Fait:      "quelles pistes peuvent porter un drapeau",
-		Mecanisme: "le pont ne nomme pas le slot : la piste est ecartee en silence, sans etre comptee comme le REFUS nomme voisin (AmbiguousSlot)",
-		Condition: CondNonResolu,
-		Ordre:     OrdreApresLecture,
-		Sites: []Site{{
-			Fichier: pkgReplay + "flag_carrier_tracks.go",
-			Ancre:   "continue // le pont ne nomme pas ce slot : aucun porteur a inventer",
-		}},
-		DatePose:        dateAudit0E,
-		CibleRetrait:    "lot 1.6 (lien direct par la table du film)",
-		CritereRetrait:  "0 piste ecartee faute de pont sur les 8 builds",
-		CompteurBranche: true,
-	},
-	{
-		Nom:       "repli_zone_camp_sans_roster",
-		Fait:      "a quel camp crediter une capture de zone",
-		Mecanisme: "roster vide : TOUTE valeur non neutre du canal compte comme une capture du camp",
-		Condition: CondSectionAbsente,
-		Ordre:     OrdreApresLecture,
-		Sites: []Site{{
-			Fichier: pkgReplay + "zone_states_owner.go",
-			Ancre:   "case len(teams) == 0 && v != zoneNeutralOwner:",
-		}},
-		DatePose:        dateAudit0E,
-		CibleRetrait:    "lot 1.7 (l'equipe vient du film) porte au calque des zones — cf. D3 (1.7), ZoneInput.TeamByXUID prend TOUJOURS l'equipe de la base",
-		CritereRetrait:  "le roster des zones vient du film ; 0 film a roster vide sur les 8 builds",
-		CompteurBranche: false,
-		CibleComptage:   comptageFamille19,
-	},
-	{
-		Nom:       "repli_zone_proprietaire_sans_roster",
-		Fait:      "quel camp possede une zone a un instant",
-		Mecanisme: "roster vide : toute valeur <= 1 est tenue pour un camp",
-		Condition: CondSectionAbsente,
-		Ordre:     OrdreApresLecture,
-		Sites: []Site{{
-			Fichier: pkgReplay + "zone_states_owner.go",
-			Ancre:   "case len(teams) == 0 && v <= 1:",
-		}},
-		DatePose:        dateAudit0E,
-		CibleRetrait:    "meme cible que repli_zone_camp_sans_roster",
-		CritereRetrait:  "0 film a roster vide sur les 8 builds",
-		CompteurBranche: false,
-		CibleComptage:   comptageFamille19,
-	},
-	{
-		Nom:       "repli_zone_camp_de_capture_deduit_de_l_issue",
-		Fait:      "quel CAMP pousse la jauge d'une zone, rampe par rampe",
-		Mecanisme: "aucun canal POUSSEUR n'a ete elu pour cette zone : le camp est DEDUIT de l'issue — le proprietaire juste apres le sommet d'une rampe ABOUTIE. Une rampe avortee reste alors sans camp",
-		// NI `film_muet` NI `lecture_non_portee`, ET LE DIRE EST LE POINT. Le lot 5.6 a MESURE
-		// que le film porte ce fait (un second canal `ti=13 tag 4` par zone : 69 rampes
-		// abouties sur deux films, 69 accords, 0 desaccord) et que le decodeur le LIT deja.
-		// Ce qui manque quand ce repli se declenche, c'est l'ELECTION du canal — elle exige au
-		// moins deux rampes abouties concordantes, et une zone tres peu disputee n'en a pas
-		// assez. Le classer `film_muet` enverrait chercher la correction dans la grammaire,
-		// ou il n'y a rien a faire.
-		Condition: CondNonResolu,
-		Ordre:     OrdreApresLecture,
-		Sites: []Site{{
-			Fichier: pkgReplay + "zone_states_capturer.go",
-			Ancre:   "fb.Declenche(fallback.NomZoneCampDeCaptureDeduitDeLIssue)",
-		}},
-		DatePose:        "2026-09-21",
-		CibleRetrait:    "un critere d'election qui n'exige pas deux rampes abouties — par exemple l'election du POUSSEUR une fois pour le film (les trois zones d'une carte partagent la meme structure de blocs) au lieu d'une election par zone",
-		CritereRetrait:  "0 declenchement sur les films a zones du parc",
-		CompteurBranche: true,
-	},
-	{
-		Nom:       "repli_colline_votes_periode_entiere",
-		Fait:      "ou se trouve la colline designee d'une periode",
-		Mecanisme: "aucune rampe de capture dans la periode : les votes sont repris sur TOUTE la periode, rampes comprises ou non",
-		Condition: CondNonResolu,
-		Ordre:     OrdreApresLecture,
-		Sites: []Site{{
-			Fichier: pkgReplay + "zone_states_hill.go",
-			Ancre:   "votes = hillVotes(zones, pts, p.t0, p.t1)",
-		}},
-		DatePose:        dateAudit0E,
-		CibleRetrait:    "lot de conversion du calque des collines (hors famille 1.9 a ce jour)",
-		CritereRetrait:  "0 periode sans rampe sur les films a collines du corpus",
-		CompteurBranche: true,
-	},
-	{
-		Nom:       "repli_colline_dernier_intervalle_ouvert",
-		Fait:      "jusqu'a quand court la propriete d'une colline",
-		Mecanisme: "le dernier groupe court jusqu'a l'infini (borne ouverte a droite), faute d'emission de fin",
-		Condition: CondFilmMuet,
-		Ordre:     OrdreSansLecture,
-		Sites: []Site{{
-			Fichier: pkgReplay + "zone_states_hill_owners.go",
-			Ancre:   "t1 := int(^uint(0) >> 1)",
-		}},
-		DatePose:        dateAudit0E,
-		CibleRetrait:    "aucune tant que le canal reste un ETAT sans emission de fin ; le COMPTE est ce qui manque",
-		CritereRetrait:  "intervalles ouverts comptes dans ZonesCoverage ; retrait si une fin ecrite est etablie",
-		CompteurBranche: true,
-	},
-	{
-		Nom:       "repli_crane_porteur_sans_vie_nommee",
-		Fait:      "un portage de crane est-il refuse faute de porteur present",
-		Mecanisme: "le joueur n'a AUCUNE vie nommee : la porte laisse passer sans rien verifier",
-		Condition: CondNonResolu,
-		Ordre:     OrdreApresLecture,
-		Sites: []Site{{
-			Fichier: pkgReplay + "skull_carries.go",
-			Ancre:   "func (p carrierPresence) gate(xuid string, f0, f1 int) (int, int, bool) {",
-		}},
-		DatePose:        dateAudit0E,
-		CibleRetrait:    "lot 1.9.5 (le porteur du crane lu au canal des armes tenues)",
-		CritereRetrait:  "0 porteur sans vie nommee sur les films Oddball du corpus",
-		CompteurBranche: false,
-		CibleComptage:   "lot 1.9.5",
-	},
-	{
-		Nom:       "repli_armement_bombe_debut_a_zero",
-		Fait:      "l'instant de debut d'un armement de bombe commence avant la frame 0",
-		Mecanisme: "la conversion en frame echoue : le debut est pose a 0",
-		Condition: CondNonResolu,
-		Ordre:     OrdreApresLecture,
-		Sites: []Site{{
-			Fichier: pkgReplay + "bomb_armings.go",
-			Ancre:   "startT, ok := c.frameOf(int(r.StartMS))",
-		}},
-		DatePose:        dateAudit0E,
-		CibleRetrait:    "lot de conversion de l'origine du rejeu (coverage.originResolved)",
-		CritereRetrait:  "0 armement anterieur a la frame 0 sur les films d'Assaut du corpus",
+		DatePose:        "2026-09-27",
+		CibleRetrait:    "J11 du plan PLAN_SUITE_AUDIT_DECODEUR_FILM (gates de corpus) : lecture de l identite des vies restantes (fin de vie sans mort ecrite, bots sans entite)",
+		CritereRetrait:  "0 piste nommee par occupation sur le corpus du gate de rejeu",
 		CompteurBranche: true,
 	},
 }

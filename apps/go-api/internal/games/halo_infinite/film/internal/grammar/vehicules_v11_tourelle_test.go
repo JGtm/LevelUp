@@ -220,7 +220,7 @@ func v11TourelleUnFilm(t *testing.T, dir string) {
 // absolu accepte. Flux BRUT : aucun post-filtre ne peut avoir efface un slot.
 func v11SlotsAvecPosition(t *testing.T, dir string, band map[uint32]bool) map[uint32]int {
 	t.Helper()
-	opt := ScanFilmOptions{RequireTag1: false, DropSaturated: true, QuantaOnly: true}
+	opt := ScanFilmOptions{Generations: ToutesLesGenerations(), DropSaturated: true, QuantaOnly: true}
 	pos, err := ScanFilmBipedPositionsForBand(dir, NewSlotBand(band), opt)
 	if err != nil {
 		t.Logf("V11 %s : balayage de positions : %v", dir, err)

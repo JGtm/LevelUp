@@ -22,7 +22,7 @@ func horlogeDeTest(frames int) replayClock {
 // vieDeTest : une vie bornee a la main, deja fenetree (c est ce que fait `assignVehicleWindows`).
 func vieDeTest(slot, gen uint32, firstUS, lastUS, goneByUS, loUS, hiUS uint64) vehicleLife {
 	return vehicleLife{
-		key: types.EquipmentLifeKey{Slot: slot, Gen: gen}, firstUS: firstUS, lastUS: lastUS,
+		key: types.LifeKey{Slot: slot, Gen: gen}, firstUS: firstUS, lastUS: lastUS,
 		goneByUS: goneByUS, loUS: loUS, hiUS: hiUS, census: 2,
 	}
 }
@@ -144,7 +144,7 @@ func TestTallyVehicleEndsCompteLaContradiction(t *testing.T) {
 // vivant — c est elle qui effacait les vehicules avant la fin du rejeu.
 func TestAssignVehicleWindowsSansBorneHaute(t *testing.T) {
 	lives := []vehicleLife{
-		{key: types.EquipmentLifeKey{Slot: 777, Gen: 1}, firstUS: 0, lastUS: 200_000_000, goneByUS: 0},
+		{key: types.LifeKey{Slot: 777, Gen: 1}, firstUS: 0, lastUS: 200_000_000, goneByUS: 0},
 	}
 	assignVehicleWindows(lives)
 	if lives[0].hiUS != ^uint64(0) {
@@ -158,8 +158,8 @@ func TestAssignVehicleWindowsSansBorneHaute(t *testing.T) {
 // decoupage legitime d une fenetre sans borne haute.
 func TestAssignVehicleWindowsFrontiereEntreDeuxVies(t *testing.T) {
 	lives := []vehicleLife{
-		{key: types.EquipmentLifeKey{Slot: 777, Gen: 1}, firstUS: 0, lastUS: 40_000_000, goneByUS: 0},
-		{key: types.EquipmentLifeKey{Slot: 777, Gen: 2}, firstUS: 100_000_000, lastUS: 140_000_000},
+		{key: types.LifeKey{Slot: 777, Gen: 1}, firstUS: 0, lastUS: 40_000_000, goneByUS: 0},
+		{key: types.LifeKey{Slot: 777, Gen: 2}, firstUS: 100_000_000, lastUS: 140_000_000},
 	}
 	assignVehicleWindows(lives)
 	if lives[0].hiUS != 100_000_000 {
@@ -176,7 +176,7 @@ func TestAssignVehicleWindowsFrontiereEntreDeuxVies(t *testing.T) {
 func TestVehicleLivesPoseLaMortEcrite(t *testing.T) {
 	kf := grammar.WorldObjectKeyframes{
 		TimesUS: []uint64{0, 20_000_000, 40_000_000, 60_000_000},
-		SeenUS: map[types.EquipmentLifeKey][]uint64{
+		SeenUS: map[types.LifeKey][]uint64{
 			{Slot: 777, Gen: 1}: {0, 20_000_000, 40_000_000},
 			{Slot: 778, Gen: 1}: {0, 20_000_000, 40_000_000, 60_000_000},
 		},

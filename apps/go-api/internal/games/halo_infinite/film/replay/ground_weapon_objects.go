@@ -91,7 +91,7 @@ func weaponPadRule(flags map[uint32]Label) padRule {
 
 // gwPickupObject est une apparition retenue, bornée et datée.
 type gwPickupObject struct {
-	Key types.EquipmentLifeKey
+	Key types.LifeKey
 	// Appar est l'apparition au sens des socles : position de CRÉATION, classe, vie delta.
 	Appar gwPadApparition
 	// FamilyID est le mot MPP de 32 bits — l'identité brute de l'arme, celle que l'artefact
@@ -134,7 +134,10 @@ func (o gwPickupObject) gwPickupDateUS() uint64 {
 // et date la disparition de chacune. PUR.
 //
 // LES CRÉATIONS SONT GROUPÉES PAR CLÉ AVANT TOUT : la REPRISE d'une clé (slot, gen) borne la vie
-// de la précédente, sans quoi le recensement du suivant prouverait la survie du précédent.
+// de la précédente, sans quoi le recensement du suivant prouverait la survie du précédent. Depuis
+// le lot J5.4 (RB2-3), la vie d'une clé finit aussi à la création PROUVÉE suivante DE SON SLOT, quelle
+// que soit sa génération ([naissancesDObjetParSlot]) : un objet d'objectif écarté, ou une création
+// d'une autre génération que le recensement confirme, prouve lui aussi que l'objet n'y est plus.
 //
 // LE SECOND RETOUR EST LE COMPTE DES ÉCARTÉES, MESURÉ SUR LE CHEMIN DE REJET LUI-MÊME (correctif
 // de revue du 2026-08-17). Il valait auparavant `Accepted − len(objs)`, une différence : elle
@@ -145,7 +148,7 @@ func padObjects(
 	scan WorldObjectScan, rule padRule, lives map[uint32][]equipLife,
 	positions []grammar.BipedPosition,
 ) ([]gwPickupObject, gwRejects) {
-	byKey := map[types.EquipmentLifeKey][]types.EquipmentCreation{}
+	byKey := map[types.LifeKey][]types.EquipmentCreation{}
 	kept := 0
 	var rejected gwRejects
 	for _, c := range scan.Creations {
@@ -163,11 +166,12 @@ func padObjects(
 			continue
 		}
 		kept++
-		k := types.EquipmentLifeKey{Slot: c.Slot, Gen: c.Gen}
+		k := types.LifeKey{Slot: c.Slot, Gen: c.Gen}
 		byKey[k] = append(byKey[k], c)
 	}
 	filmEnd := gwFilmEndUS(scan, positions)
 	tracks := gwTracksByKey(scan.Tracks)
+	parSlot := naissancesProuvees(scan, rule)
 	out := make([]gwPickupObject, 0, kept)
 	for k, list := range byKey {
 		sort.Slice(list, func(i, j int) bool { return list[i].TimestampUS < list[j].TimestampUS })
@@ -176,6 +180,7 @@ func padObjects(
 			if i+1 < len(list) {
 				lifeEnd = list[i+1].TimestampUS
 			}
+			lifeEnd = parSlot.finDeVie(k, c.TimestampUS, lifeEnd)
 			w, _ := gwPadsIdentity(c)
 			fam, _ := rule.Family(w)
 			o := gwPickupObject{Key: k, FamilyID: w, HasAmmo: c.HasAmmo, Ammo: c.Ammo,
@@ -193,6 +198,23 @@ func padObjects(
 	}
 	sort.Slice(out, func(i, j int) bool { return gwPickupLess(out[i], out[j]) })
 	return out, rejected
+}
+
+// naissancesProuvees range les creations du balayage par slot, avec ce qui PROUVE chacune : la regle
+// d'identite de la chaine (objet publie ou objet d'objectif) et le recensement de sa cle (cf.
+// [naissancesDObjetParSlot], RB2-3).
+func naissancesProuvees(scan WorldObjectScan, rule padRule) naissancesDObjetParSlot {
+	out := naissancesDObjetParSlot{}
+	for _, c := range scan.Creations {
+		w, ok := gwPadsIdentity(c)
+		_, publiee := rule.Family(w)
+		k := types.LifeKey{Slot: c.Slot, Gen: c.Gen}
+		out.ajouter(c.Slot, naissanceDObjet{tUS: c.TimestampUS, gen: c.Gen,
+			retenue:  ok && (publiee || rule.Objectives[w] != (Label{})),
+			recensee: recenseeDepuis(scan.Keyframes.SeenUS[k], c.TimestampUS)})
+	}
+	out.trier()
+	return out
 }
 
 // gwPickupLess est l'ordre TOTAL des objets au sol : l'apparition d'abord, PUIS l'objet lui-même.
@@ -329,10 +351,10 @@ func gwPickupResolve(
 // gwTracksByKey indexe les pistes delta par vie (slot, gen).
 func gwTracksByKey(
 	tracks []types.ProjectileTrack,
-) map[types.EquipmentLifeKey][]types.ProjectileTrack {
-	out := map[types.EquipmentLifeKey][]types.ProjectileTrack{}
+) map[types.LifeKey][]types.ProjectileTrack {
+	out := map[types.LifeKey][]types.ProjectileTrack{}
 	for _, tr := range tracks {
-		k := types.EquipmentLifeKey{Slot: tr.Slot, Gen: tr.Gen}
+		k := types.LifeKey{Slot: tr.Slot, Gen: tr.Gen}
 		out[k] = append(out[k], tr)
 	}
 	return out

@@ -137,17 +137,20 @@ func actorStateWidth(p uint32) uint {
 //	R(1) a (bit0); R(1) b (bit1); FUN_141d0f344 = R(32) (unconditional).
 //	if a==0:
 //	   if b!=0: R(1) c; R(2); R(10) dequant; R(10) dequant [EBP=0xa @1422cdd62];
-//	            FUN_14076e494 quat (width 0x10=16); FUN_14080d69c (R1+optR32);
+//	            FUN_14076e494(0x10) quat; FUN_14080d69c (R1+optR32);
 //	            FUN_141d0f344 = R(32); then FUN_1408f0ac4(...,0).
-//	   else  : FUN_14076e494 quat (width 0x10=16).
+//	   else  : FUN_14076e494(0x10) quat.
 //	else    : FUN_1408f0ac4(...,0).
 //	if b==0: R(8) (tail, *(param_2+0x2c)+=8).
 //	FUN_14080d69c (R1+optR32).
 //
 // CORRECTIONS vs earlier model: FUN_141d0f344 is R(32) (not R(1)); the two
 // aiming dequants are R(10) (not R(12)); the b!=0 path also calls FUN_1408f0ac4
-// (param_3=0, no probe) before merging. Quat width confirmed 16 by the R8D=0x10
-// arg at the FUN_14076e494 call site.
+// (param_3=0, no probe) before merging.
+//
+// LE 0x10 EST UN NIVEAU, PAS UNE LARGEUR (lot J6.3, releve du 2026-09-27, CALLs 1422cddc1 et
+// 1422cde0e : `FUN_14076e494(param_2, ..., 0x10, 0, param_3, 0)`). Ce port lisait R(16) plat ;
+// le jeu lit la garde, la porte, l index et trois axes a la ligne 0x10 — le portage unique.
 func consume14058c058(br *Lecteur) {
 	for i := 0; i < 5; i++ {
 		if !br.ReadBit() { // present
@@ -158,16 +161,16 @@ func consume14058c058(br *Lecteur) {
 		consume141d0f344(br) // FUN_141d0f344 = R(32)
 		switch {
 		case !a && b:
-			br.ReadBit()            // c
-			br.ReadBits(2)          // R(2) ushort
-			br.ReadBits(10)         // FUN_1406d84b4 dequant (width 0xa)
-			br.ReadBits(10)         // FUN_1406d84b4 dequant (width 0xa)
-			consumeQuat16(br)       // FUN_14076e494 quat (width 0x10=16)
-			consumeOpt32(br)        // FUN_14080d69c
-			consume141d0f344(br)    // FUN_141d0f344 = R(32)
-			consume1408f0ac4(br, 0) // FUN_1408f0ac4(...,0)
+			br.ReadBit()                 // c
+			br.ReadBits(2)               // R(2) ushort
+			br.ReadBits(10)              // FUN_1406d84b4 dequant (width 0xa)
+			br.ReadBits(10)              // FUN_1406d84b4 dequant (width 0xa)
+			lireE494(br, niveauPosition) // FUN_14076e494(..., 0x10, 0, param_3, 0)
+			consumeOpt32(br)             // FUN_14080d69c
+			consume141d0f344(br)         // FUN_141d0f344 = R(32)
+			consume1408f0ac4(br, 0)      // FUN_1408f0ac4(...,0)
 		case !a:
-			consumeQuat16(br) // FUN_14076e494 quat (width 0x10=16)
+			lireE494(br, niveauPosition) // FUN_14076e494(..., 0x10, 0, param_3, 0)
 		default:
 			consume1408f0ac4(br, 0) // FUN_1408f0ac4(...,0)
 		}
@@ -188,10 +191,6 @@ func consume141d0f344(br *Lecteur) {
 		Present: true, Val: uint32(v),
 	})
 }
-
-// consumeQuat16 models FUN_14076e494 16-bit quat: R(16) core (gate/index variants
-// collapse to a 16-bit field in the common exact case).
-func consumeQuat16(br *Lecteur) { br.ReadBits(16) }
 
 // ---------------------------------------------------------------------------
 // i21 unit-desired-aiming-vector  (deser FUN_14076df7c)

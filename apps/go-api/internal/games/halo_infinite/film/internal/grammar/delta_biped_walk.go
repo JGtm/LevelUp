@@ -1,6 +1,9 @@
 package grammar
 
-import "levelup/go-api/internal/games/halo_infinite/film/internal/profile"
+import (
+	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
+	"levelup/go-api/internal/games/halo_infinite/film/types"
+)
 
 // delta_biped_walk.go — LE MARCHEUR DE RECORDS DELTA BIPEDE, ET IL EST UNIQUE.
 //
@@ -48,6 +51,9 @@ type deltaBipedRecord struct {
 	// annonce (le premier est i0 lui-meme).
 	Slot uint32
 	Mask []int
+	// Gen est la GENERATION du handle (lot J5.2) : la vie du corps est la paire (Slot, Gen), cf.
+	// [deltaBipedRecord.Vie]. Le slot seul designe tous les corps successifs du slot.
+	Gen uint32
 	// Chunk et Packet situent le record dans le film. Ils sont a ZERO quand la marche porte
 	// sur un payload seul (`walkDeltaBipedPayload`), qui ne sait rien du film.
 	Chunk  int
@@ -67,21 +73,23 @@ func deltaBipedMinRecord(i0Bits int) int {
 // walkDeltaBipedPayload ancre tous les records bipedes d'UN payload de paquet delta et appelle
 // `visit` pour chacun, dans l'ordre du flux.
 //
-// `needTag1` est passe tel quel a `matchBipedHeader` : les huit balayages de canal exigent le
-// tag (true), `ScanBipedRecords` le tient de ses options.
+// `gens` est le FILTRE DE GENERATION (lot J5.2, DT-8), passe tel quel a `matchBipedHeader` : les
+// huit balayages de canal recoivent les generations VIVANTES du film ([FilmContext.GenerationsVivantes]),
+// `ScanBipedRecords` celles de ses options. nil : tous les slots dans le repli nomme (generation 1).
 func walkDeltaBipedPayload(
-	pay []byte, slots SlotBand, lay profile.I0Layout, needTag1 bool, visit func(deltaBipedRecord),
+	pay []byte, slots SlotBand, lay profile.I0Layout, gens *GenerationsVivantes, visit func(deltaBipedRecord),
 ) {
 	total := len(pay) * 8
 	i0Bits := lay.TotalBits()
 	minRecord := deltaBipedMinRecord(i0Bits)
 	for p := 0; p+minRecord <= total; {
-		i0, slot, idx, ok := matchBipedHeader(pay, p, total, slots, needTag1, lay)
+		i0, slot, idx, ok := matchBipedHeader(pay, p, total, slots, gens, lay)
 		if !ok {
 			p++
 			continue
 		}
-		visit(deltaBipedRecord{Payload: pay, Total: total, I0: i0, Slot: slot, Mask: idx})
+		gen := LireHandleDelta(pay, i0-bipedHeaderBits-bipedIndexBits*len(idx)).Gen
+		visit(deltaBipedRecord{Payload: pay, Total: total, I0: i0, Slot: slot, Gen: gen, Mask: idx})
 		p = i0 + i0Bits // pas de re-scan chevauchant
 	}
 }
@@ -96,6 +104,9 @@ func walkDeltaBipedPayload(
 func walkDeltaBipedRecords(
 	fc *FilmContext, chunks []int, slots SlotBand, lay profile.I0Layout, visit func(deltaBipedRecord),
 ) {
+	// LES GENERATIONS VIVANTES DU FILM, et non plus `true` en dur (constat GB-1) : un corps de generation
+	// >= 2 est lu par les huit canaux comme par les positions.
+	gens := fc.GenerationsVivantes()
 	for _, c := range chunks {
 		data, pks, ok := fc.ChunkAt(c)
 		if !ok {
@@ -105,10 +116,13 @@ func walkDeltaBipedRecords(
 			if pk.Type != PacketTypeDelta {
 				continue
 			}
-			walkDeltaBipedPayload(pk.Payload(data), slots, lay, true, func(r deltaBipedRecord) {
+			walkDeltaBipedPayload(pk.Payload(data), slots, lay, gens, func(r deltaBipedRecord) {
 				r.Chunk, r.Packet = c, pk
 				visit(r)
 			})
 		}
 	}
 }
+
+// Vie rend la cle de vie du corps qui porte ce record : (slot, generation du handle).
+func (r deltaBipedRecord) Vie() types.LifeKey { return types.LifeKey{Slot: r.Slot, Gen: r.Gen} }

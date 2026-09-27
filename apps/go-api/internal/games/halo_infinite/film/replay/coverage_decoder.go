@@ -138,14 +138,19 @@ type ProjectileCoverage struct {
 // C'EST LA MÊME PORTE QUE `uniqueSlotFor`, mais elle DIT pourquoi elle se ferme. L'ancienne
 // version rendait un booléen : « slot introuvable » et « slot ambigu » y étaient
 // indiscernables, alors qu'ils désignent deux chantiers différents.
-func slotFor(tracks map[uint32]slotTrack, owner map[uint32]int, pi int, tUS uint64) (uint32, rejectReason) {
+//
+// LE SLOT EST CELUI DU CORPS VIVANT A L'INSTANT (RA2-3, lot J5.4, 2026-09-27) : `occ` rend l'index
+// du corps qui tient chaque slot a `tUS` ([occupantsDesSlots.indexA]). Le pont aplati d'avant donnait
+// un slot recycle a son PREMIER occupant pour tout le film : l'evenement du second restait sans
+// slot, et celui du premier, mort depuis, se posait sur la position du second.
+func slotFor(tracks map[uint32]slotTrack, occ occupantsDesSlots, pi int, tUS uint64) (uint32, rejectReason) {
 	var found uint32
 	n := 0
-	for slot, idx := range owner {
-		if idx != pi {
+	for slot, tr := range tracks {
+		if idx, ok := occ.indexA(slot, int64(tUS)); !ok || idx != pi {
 			continue
 		}
-		if _, d := tracks[slot].at(tUS); d <= shotPosToleranceUS {
+		if _, d := tr.at(tUS); d <= shotPosToleranceUS {
 			found = slot
 			n++
 		}

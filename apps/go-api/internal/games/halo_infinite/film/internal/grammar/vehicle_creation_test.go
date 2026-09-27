@@ -148,7 +148,7 @@ func (pr vehProbe) scan(band map[uint32]bool, deser func(*Lecteur)) (
 // le nuage de reference du gate : un i0 de creation doit y coincider.
 func vehicleBuildCloud(t *testing.T, dir string, band map[uint32]bool, lay profile.I0Layout) map[[3]int32]bool {
 	t.Helper()
-	opt := ScanFilmOptions{WorldRange: &equipCreationUnitRange, RequireTag1: false, Layout: &lay, DropSaturated: true}
+	opt := ScanFilmOptions{WorldRange: &equipCreationUnitRange, Generations: ToutesLesGenerations(), Layout: &lay, DropSaturated: true}
 	pos, err := ScanFilmBipedPositionsForBand(dir, NewSlotBand(band), opt)
 	if err != nil {
 		t.Fatalf("nuage de positions ti=40 illisible : %v", err)

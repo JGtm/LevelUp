@@ -71,7 +71,7 @@ func puTestScan(id uint32, x, y float32) WorldObjectScan {
 		},
 		Keyframes: grammar.WorldObjectKeyframes{
 			TimesUS: []uint64{0, 20_000_000, 40_000_000, 60_000_000, 80_000_000},
-			SeenUS: map[types.EquipmentLifeKey][]uint64{
+			SeenUS: map[types.LifeKey][]uint64{
 				{Slot: 20}: {20_000_000},
 				{Slot: 21}: {40_000_000},
 				{Slot: 22}: {60_000_000},
