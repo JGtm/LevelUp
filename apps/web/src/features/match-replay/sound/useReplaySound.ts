@@ -31,7 +31,7 @@
  *    (SOUND_RESYNC_JUMP_MS) : ce qui a été enjambé ne se rejoue pas ;
  *  - AVANCE RAPIDE : au-delà de SOUND_MAX_SPEED, le curseur suit sans jouer.
  *
- * LE SON DE FIN DE PARTIE (lot C, 2026-08-27) EST LE SEUL QUI NE VIENNE PAS DE LA PISTE. Il
+ * LE SON DE FIN DE PARTIE (lot C) NE VIENT PAS DE LA PISTE, comme l'intro (`introSound.ts`). Il
  * n'a pas d'instant sur l'horloge du film : c'est la LECTURE qui l'appelle en arrivant sur la
  * borne de fin (`useReplayPlayback.onEnded`), une fois par arrivée. Il passe par le même
  * lecteur, donc par la même préférence et le même volume — son coupé, rien ; et il obéit aussi
@@ -43,17 +43,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { useSettings } from '@/features/settings/queries'
 import type { ReplayKill } from '../model/killFeedLogic'
-import { seededRandom, soundUrlOf } from './replayAudioMix'
+import { soundUrlOf } from './replayAudioMix'
 
 import { persistPreference, readStoredFlag, readStoredNumber } from '../settings/replayPreferences'
-import {
-  END_FFA_WIN_VOICE_STEMS,
-  END_MUSIC_STEMS,
-  END_VOICE_STEMS,
-  endMatchSounds,
-  endMatchSoundStems,
-  type EndMatchSoundSpec,
-} from './endMatchSound'
+import { endMatchSounds, endMatchSoundStems, type EndMatchSoundSpec } from './endMatchSound'
+import { endMatchSoundsFor, soundFamiliesFor } from './exportSoundFamilies'
+import { INTRO_MUSIC_STEM } from './introSound'
 import type { ReplayLocale } from '../i18n/i18n'
 import { ReplayAudioPlayer, soundShapeOf } from './replayAudio'
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
@@ -71,7 +66,6 @@ import {
   sideResolverFromScoreboard,
   type ScoreboardSide,
 } from './objectiveSound'
-import { ROUND_OVER_SOUND_STEMS } from './roundOverSound'
 import { pickVariantStem, stemsOf, type ReplaySoundEvent } from './replaySoundVariants'
 import {
   advanceSoundCursor,
@@ -168,6 +162,9 @@ export interface ReplaySound {
    * (cf. `endMatchSoundSpec`) ou si la vitesse dépasse SOUND_MAX_SPEED.
    */
   endMatch: () => void
+  /** LA MUSIQUE D'INTRO (item 7, `introSound.ts`) : au départ depuis le préambule, par la voie
+   *  ordinaire — son coupé ou vitesse au-delà de SOUND_MAX_SPEED, silence. Jamais dans l'export. */
+  intro: () => void
   /**
    * LA PISTE AUDIO À JOINDRE À UNE VIDÉO enregistrée, ou `null`.
    *
@@ -380,7 +377,7 @@ export function useReplaySound(
   // Les prises de la FIN entrent dans le préchargement avec la piste : le tirage n'a lieu qu'à
   // l'arrivée en fin, et un fichier demandé à cet instant sonnerait après le silence.
   const urls = useMemo(
-    () => soundURLsFor(timeline, [...endMatchSoundStems(endMatch), ...engine.stems]),
+    () => soundURLsFor(timeline, [...endMatchSoundStems(endMatch), INTRO_MUSIC_STEM, ...engine.stems]),
     [timeline, endMatch, engine.stems],
   )
 
@@ -587,6 +584,12 @@ export function useReplaySound(
     }
   }, [])
 
+  // L'INTRO passe par `play` (voie ordinaire, plafond de voix compris) : aucune règle à part.
+  const playIntro = useCallback(() => {
+    const url = urlsRef.current.get(INTRO_MUSIC_STEM)
+    if (url && onRef.current && soundPlaysAtSpeed(speedRef.current)) playerRef.current?.play(url)
+  }, [])
+
   // LA PISTE POUR L'EXPORT SE LIT À L'APPEL, JAMAIS AU RENDU — même patron que
   // `recordingTrack` juste au-dessus, et pour la même raison : `variationPercentRef` est une
   // REF (réglage d'instance de la page admin). La lire pendant le rendu rendrait une valeur
@@ -633,43 +636,8 @@ export function useReplaySound(
     seek,
     setTransportPlaying,
     endMatch: playEndMatch,
+    intro: playIntro,
     recordingTrack,
     exportTrack,
   }
-}
-
-/**
- * endMatchSoundsFor — les prises de fin QUE L'EXPORT JOUERA, tirage seme.
- *
- * Le chemin temps reel tire au hasard a chaque arrivee en fin ; un fichier, lui, doit sonner
- * pareil a chaque export du meme match (decision D7 du plan d'export).
- */
-function endMatchSoundsFor(spec: EndMatchSoundSpec | null): string[] {
-  if (!spec) return []
-  return endMatchSounds(spec.outcome, spec.ffa, spec.locale, seededRandom(spec.outcome.length))
-}
-
-/**
- * soundFamiliesFor — quels stems sont de la VOIX, quels stems sont de la MUSIQUE.
- *
- * On liste TOUTES les prises possibles, pas seulement celle qui a ete tiree : le classement doit
- * valoir quel que soit le tirage, et un stem de trop dans la liste ne coute rien (rien ne le
- * jouera).
- *
- * LA VOIX DE FIN DE MANCHE EST DE LA VOIX. Elle vit dans la piste, melee aux bruitages, et c'est
- * la seule voix qu'un extrait de milieu de match peut contenir.
- */
-function soundFamiliesFor(
-  spec: EndMatchSoundSpec | null,
-  /** Absente (anciens appels), la voix de fin de manche n'est pas dans la piste non plus. */
-  locale: ReplayLocale | undefined,
-): { voice: readonly string[]; music: readonly string[] } {
-  const voice: string[] = locale ? [ROUND_OVER_SOUND_STEMS[locale]] : []
-  const music: string[] = []
-  if (spec) {
-    voice.push(...END_FFA_WIN_VOICE_STEMS[spec.locale])
-    for (const parIssue of Object.values(END_VOICE_STEMS)) voice.push(...parIssue[spec.locale])
-    music.push(...Object.values(END_MUSIC_STEMS))
-  }
-  return { voice, music }
 }

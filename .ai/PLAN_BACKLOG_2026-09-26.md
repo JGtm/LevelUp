@@ -554,29 +554,56 @@ toujours « 7 <= plafond » — PASSÉ (logs `A3-red.log` / `A3-green.log`). CI 
 - Garde-rails d'assets : `replaySoundAssets.guard.test.ts` (stem ↔ fichier `:115-161`, plafond
   `SOUND_CUT_MAX_S` `:400-406`, décodable `:541-585`).
 
-- [ ] **A4.0** Mesure de la piste avec ffmpeg (énergie par fenêtre de 50 ms, `astats` ou
+- [x] **A4.0** Mesure de la piste avec ffmpeg (énergie par fenêtre de 50 ms, `astats` ou
   `ebur128`) : repérer R, la dernière attaque forte de la montée. Tableau des mesures et R
   retenu au journal.
-- [ ] **A4.1** Asset `static/sounds/halo_infinite/intro_music_01.wav` selon D-8 (fondu de sortie
+  - **Statut (2026-09-27)** : `astats` par fenêtre de 50 ms (puis 10 ms autour de la montée).
+    **R = 3,19 s** (attaque la plus forte de la piste, après un creux). Tableau au journal.
+- [x] **A4.1** Asset `static/sounds/halo_infinite/intro_music_01.wav` selon D-8 (fondu de sortie
   de 300 ms s'il est coupé avant la fin naturelle). Commande ffmpeg exacte au journal, pour être
   reproductible.
-- [ ] **A4.2** `sound/introSound.ts` : `INTRO_MUSIC_STEM`, famille `music` pour les familles
+  - **Statut** : extrait [2,19 ; 5,19] s (3,000 s), coupé avant la fin, donc fondus de 100 ms en
+    entrée et de 300 ms en sortie. Gain −6,80 dB. Résultat : −18,00 LUFS, −6,02 dBTP, PCM 16 bits
+    48 kHz stéréo. Commande au journal.
+- [x] **A4.2** `sound/introSound.ts` : `INTRO_MUSIC_STEM`, famille `music` pour les familles
   d'export (non joué dans l'export, décision D-8), préchargement par `soundURLsFor`.
-- [ ] **A4.3** `useReplayPlayback.ts` : option `onStarted`, appelée par `togglePlay` et `restart`
+  - **Statut** : `sound/introSound.ts:26` ; famille `music` dans
+    `sound/exportSoundFamilies.ts:53` ; préchargement `sound/useReplaySound.ts:380`.
+- [x] **A4.3** `useReplayPlayback.ts` : option `onStarted`, appelée par `togglePlay` et `restart`
   quand la lecture démarre avec `frameRef.current <= leadInFrame`, après l'éventuel rembobinage.
   Jamais sur une reprise, un glissé, un saut, `openAtFrame` ou une lecture automatique.
-- [ ] **A4.4** Lecture par la voie ordinaire (`play`), avec le son activé et une vitesse d'au plus
+  - **Statut** : option `hooks/useReplayPlayback.ts:191`, `restart` `:447`, `togglePlay` `:458`
+    (après `onTransportGesture` et le rembobinage). Câblage `ui/ReplayCanvas.tsx:644`
+    (`onStarted: sound.intro`, sur une ligne existante).
+- [x] **A4.4** Lecture par la voie ordinaire (`play`), avec le son activé et une vitesse d'au plus
   `SOUND_MAX_SPEED`. Toute ligne ajoutée à `useReplaySound.ts` est compensée par une extraction
   dans le même lot (le fichier ne grossit pas).
-- [ ] **A4.5** Garde-rails d'assets étendus au nouveau stem (fichier ↔ stem, durée, décodable).
-- [ ] **A4.6 Tests** (rouges d'abord) :
+  - **Statut** : `playIntro` `sound/useReplaySound.ts:588`, commande `intro` `:167` et `:639`.
+    675 → 643 lignes : `endMatchSoundsFor` et `soundFamiliesFor` extraits tels quels dans
+    `sound/exportSoundFamilies.ts`. Voir DA-9 : sur le premier « Lecture » après un
+    rechargement, l'extrait n'est pas encore décodé et la voie ordinaire le saute.
+- [x] **A4.5** Garde-rails d'assets étendus au nouveau stem (fichier ↔ stem, durée, décodable).
+  - **Statut** : `sound/replaySoundAssets.guard.test.ts:168` (manifeste), `:884` (format 48 kHz,
+    16 bits, stéréo, et durée entre 1 et 3 s). « Décodable » : le balayage existant couvre tout
+    WAV livré. `fmtDe` remonté du bloc des moteurs au niveau du module (`:221`), sans 3e copie.
+- [x] **A4.6 Tests** (rouges d'abord) :
   - `useReplayPlayback.test.tsx` : un seul déclenchement au départ depuis le préambule ; aucun
     après pause/reprise, glissé, saut ou lien ; déclenchement après « Recommencer » et après
     « Lecture » en fin de rejeu.
   - `useReplaySound.test` : son coupé ou vitesse supérieure à 2× donnent le silence.
+  - **Statut** : fichiers dédiés (les voisins dépassent déjà 480 lignes) :
+    `hooks/useReplayPlayback.intro.test.tsx` (9 cas, `:86` à `:152`) et
+    `sound/introSound.test.tsx` (5 cas, `:65` à `:97`, dont l'absence dans l'export). Sorties
+    rouges au journal. Trois comptes de téléchargement existants sont passés de 1 à 2
+    (`useReplaySound.test.tsx:122` et `:448`, `useAudioUnlock.test.tsx:86`), conséquence directe
+    du préchargement de A4.2.
 - [ ] **A4.7** Recette navigateur instrumentée (script de A1.0) : l'extrait démarre une seule
   fois, au clic. Puis **gate utilisateur (écoute)** : la résolution tombe au coup d'envoi. Une
   itération est permise sur R, d'après l'indication de l'utilisateur.
+  - **Statut (2026-09-27)** : NON FAITE par l'exécutant, `/health` a rendu `000` (serveur
+    arrêté). Reste au superviseur. À y mesurer en plus : premier « Lecture » après un
+    rechargement complet (DA-9 : extrait attendu MUET) contre « Lecture » après une navigation
+    dans l'application (extrait attendu). Gate utilisateur (écoute) : ouvert, après la fusion.
 
 **Gate** : WEB (filtres `src/features/match-replay`), recette A4.7, gate utilisateur.
 
@@ -1354,6 +1381,31 @@ est supprimé.
   descriptive, pas une déclaration de l'entrée elle-même : elle n'est pas orpheline au sens du
   lot (rien ne la référence plus), mais elle nomme une entrée qui n'existe plus. Non traité —
   hors périmètre A3 (le lot ne retire que les entrées mortes et LEURS commentaires).
+- DA-9 (A4.4, 2026-09-27) : **sur le premier « Lecture » après un RECHARGEMENT complet, l'intro
+  est muette.** Le lecteur audio naît dans ce clic (`onTransportGesture` → `wake` →
+  `openPlayer`), le préchargement démarre, puis `onStarted` → `play` trouve le tampon encore
+  absent et le saute (`replayAudio.ts:345-348`, « un son en retard sur son image est pire qu'un
+  son manqué »). Elle joue quand le lecteur existe déjà : arrivée par un lien dans l'application
+  (`hasBeenActive`, A2), un geste antérieur sur la page, « Recommencer », ou un rejeu terminé.
+  Le texte de A4.4 impose la voie ordinaire ; un départ différé jusqu'au décodage (tant que la
+  lecture est encore dans le préambule) serait une décision de conception hors du plan. Non
+  traité, remonté au superviseur.
+- DA-10 (A4.1) : les trois fanfares du dépôt (`end_*_music_01.wav`) mesurent **−25,1 à −25,4
+  LUFS** (TP −10,2 à −11,9), et non −18 comme le dit `endMatchSound.ts` (« livrées à −18 LUFS »).
+  Leur réduction en stéréo s'est faite APRÈS la normalisation de `_fin_partie/livraison/`
+  (4 canaux, −18 LUFS). La preuve : le mixage par défaut de ffmpeg sur la livraison redonne à
+  l'identique le RMS par canal des copies du dépôt (−29,18 / −28,87 dB). Conséquence : l'intro,
+  livrée à −18 LUFS (D-8), sonne environ 7 LU plus fort que les fanfares. Non traité.
+- DA-11 (A4.0) : la réduction 4 → 2 canaux n'a pas de recette écrite. ffmpeg devine « 4.0 »
+  (FL FR FC BC) pour ces WAV sans masque de canaux, et c'est ce mixage implicite qui a servi aux
+  fanfares (DA-10). Pour l'intro, le mixage est écrit : quadriphonie (c0 + 0,707·c2 à gauche,
+  c1 + 0,707·c3 à droite), puis normalisation mesurée APRÈS le mixage. L'agencement réel des
+  canaux 3 et 4 du Wwise n'est pas établi. Ils sont 11 à 12 dB sous les canaux 1-2 (RMS −28,8 et
+  −25,9 dB, contre −17,4 et −16,9 dB). Non traité.
+- DA-12 (A4.0) : le point de coupe vaut pour 1×. À 2× (`SOUND_MAX_SPEED`), le préambule ne dure
+  que 0,5 s alors que l'extrait n'est pas accéléré : la résolution tombe 0,5 s APRÈS le coup
+  d'envoi. D-8 accepte toute vitesse ≤ `SOUND_MAX_SPEED`, rien n'est donc changé. À écouter aux
+  deux vitesses (l'utilisateur regarde à 1× ou 2×, cf. A1.6).
 
 ### Lots B
 
@@ -1735,6 +1787,79 @@ plan.**
   0 erreur / 26 warnings préexistants). `git status` avant staging : seuls
   `.github/workflows/ci.yml`, `apps/web/src/components/charts/README.md` et
   `tools/lint-cross-feature-imports.mjs` modifiés ; `routeTree.gen.ts` non touché.
+
+**[2026-09-27] A4 — musique d'intro au lancement du rejeu (item 7) — exécutant opus, worktree du
+plan.**
+
+- A4.0, mesure (ffmpeg 8.1.2, aucun Python). La source `402178411.wav` fait 16,000 s, en PCM
+  16 bits 48 kHz sur 4 canaux sans masque. RMS par canal : −17,4 / −16,9 / −28,8 / −25,9 dB.
+  Crêtes à 0,0 dBFS sur les canaux 1 et 2. Énergie par fenêtre de 50 ms, après le mixage stéréo
+  de A4.1 (`asetnsamples=n=2400,astats=metadata=1:reset=1`, 320 fenêtres, relevé complet dans
+  `$TEMP/backlog-gates/A4-0-astats.txt`). Extrait :
+
+  | t (s) | RMS (dB) | Crête (dB) | Lecture |
+  |---|---|---|---|
+  | 0,00-0,35 | −14,8 → −22,6 | −7,6 → −13,5 | ouverture, retombe |
+  | 0,40 | −17,6 (+4,5) | −7,9 | attaque |
+  | 1,20 | −13,8 (+4,0) | −3,8 | attaque |
+  | 1,60 | −10,1 (+6,1) | −0,1 | attaque |
+  | 2,20 / 2,40 | −11,7 / −10,2 | −1,6 / −2,0 | attaques rapprochées |
+  | 2,80 | −9,1 (+5,5) | +0,2 | attaque après un creux (−14,7 à 2,65) |
+  | 3,15 | −11,2 | +0,5 | **contient R** |
+  | 3,20 / 3,45 | −9,3 / −9,8 | +0,7 / −1,4 | queue de l'attaque |
+  | 3,90-8,00 | −13,5 → −17,1 | −1,8 → −8,9 | plateau tenu |
+  | 8,00-14,50 | −17,1 → −84 | | décroissance jusqu'au silence (≈ 15,1 s) |
+
+  Au pas de 10 ms entre 2,50 et 4,10 s, l'attaque la plus forte de toute la piste tombe à
+  **3,19 s** : RMS −6,2 dB, crête +0,5 dBFS, après un creux de −15 dB entre 3,12 et 3,18 s. Elle
+  clôt la série d'attaques croissantes de la montée (1,20 / 1,60 / 2,20 / 2,40 / 2,80). Les
+  attaques suivantes (3,38 : −8,5 ; 3,47 : −8,9) sont plus faibles et forment sa queue. Dès
+  ~3,9 s commence le plateau. **R = 3,19 s.**
+- A4.1, commande exacte, depuis la racine du worktree (source lue, jamais modifiée) :
+  1. mesure de l'extrait avant gain :
+     `ffmpeg -i "<source>" -af "aformat=sample_fmts=fltp,pan=stereo|c0=c0+0.707*c2|c1=c1+0.707*c3,atrim=start=2.19:end=5.19,asetpts=PTS-STARTPTS,afade=t=in:st=0:d=0.1,afade=t=out:st=2.7:d=0.3,loudnorm=I=-18:TP=-1:print_format=json" -f null -`
+     → I = −11,20 LUFS, TP = +0,78 dBTP. Gain = min(−18 − I, −1 − TP) = min(−6,80 ; −1,78)
+     = **−6,80 dB** (recette du lot C, gain linéaire pur) ;
+  2. production :
+     `ffmpeg -y -i "<source>" -af "aformat=sample_fmts=fltp,pan=stereo|c0=c0+0.707*c2|c1=c1+0.707*c3,atrim=start=2.19:end=5.19,asetpts=PTS-STARTPTS,afade=t=in:st=0:d=0.1,afade=t=out:st=2.7:d=0.3,volume=-6.80dB" -map_metadata -1 -fflags +bitexact -flags:a +bitexact -c:a pcm_s16le -ar 48000 -ac 2 static/sounds/halo_infinite/intro_music_01.wav`
+     `<source>` = `C:\Users\Guillaume\Desktop\Halo Infinite - Sons armes\_fin_partie\mus_mp_global_wav\402178411.wav`.
+  - Contrôle `loudnorm` du fichier livré : **I = −18,00 LUFS, TP = −6,02 dBTP**, LRA 0,3.
+    `ffprobe` : `pcm_s16le`, 48 000 Hz, 2 canaux, 16 bits, 3,000000 s. Taille 576 044 o,
+    en-tête RIFF sans chunk `LIST`. SHA-256 `d1d7cf79…2924b62d`.
+  - Fenêtre D-8 : [R − 1 ; R + 2] = [2,19 ; 5,19], bien en deçà de la fin de piste. L'extrait
+    est donc coupé avant sa fin naturelle, d'où le fondu de sortie de 300 ms.
+  - Mixage 4 → 2 canaux : voir DA-11. Niveau relatif aux fanfares : voir DA-10.
+- A4.2 à A4.5 : statuts dans la section du lot.
+  - `useReplaySound.ts` passe de 675 à 643 lignes. Ajouts : 3 lignes de doc de `intro`, 5 de
+    `playIntro`, 1 au retour, 2 imports. Retraits : `endMatchSoundsFor` et `soundFamiliesFor`
+    (déplacés tels quels dans `exportSoundFamilies.ts`, seul changement : `INTRO_MUSIC_STEM` en
+    famille `music`), puis les imports devenus inutiles.
+  - En-tête du hook : « le seul qui ne vienne pas de la piste » est devenu faux, la phrase est
+    corrigée sur la même ligne.
+  - Doubles de `ReplaySound` : le champ `intro` est ajouté à ceux de
+    `ReplaySettingsDrawer.test.tsx` et `ReplayTransport.test.tsx` (typage).
+- A4.6, sorties rouges. Log `A4-6-rouge.log`, `EXIT_ROUGE=1`, 13 échecs sur 46. Conditions : code
+  de production inchangé, `introSound.ts` réduit à la constante, asset retiré le temps du run.
+  - Lecture (5) : `expected "vi.fn()" to be called 1 times, but got 0 times` (×3) et
+    `… 2 times, but got 0 times` (×2) ;
+  - son (5) : `expected [ Array(1) ] to include '/static/sounds/halo_infinite/intro_mu…'`,
+    `TypeError: result.current.intro is not a function` (×3),
+    `expected [] to include 'intro_music_01'` ;
+  - garde-rails (3) : `expected [ 'intro_music_01' ] to deeply equal []` (stem sans fichier),
+    `ENOENT` (×2, format et durée).
+  - Les 4 cas « aucun signal » de la lecture sont des gardes : verts avant comme après.
+  - Après le code, 3 échecs de compte (`expected "vi.fn()" to be called 1 times, but got 2
+    times`), conséquence du préchargement (log `A4-6-vert-1.log`). Les assertions sont corrigées
+    en nommant les fichiers attendus.
+- Gates WEB (logs `$TEMP\backlog-gates\A4-*.log`) :
+  - `EXIT_TYPECHECK=0` (après purge de `node_modules/.tmp`) ;
+  - `EXIT_LINT=0` : 0 erreur, 26 avertissements, même total qu'en A1/A2. Aucun n'est sur une
+    ligne touchée : les `exhaustive-deps` de `useReplaySound.ts` visent `engine`, que
+    `playIntro` ne lit pas ;
+  - `EXIT_VITEST_MATCH_REPLAY=0` : 219 fichiers réussis et 4 sautés, 3 204 tests réussis et
+    7 sautés (A2 : 217 et 3 188 ; +2 fichiers, +16 tests).
+- A4.7 : `/health` → `000`, recette non faite, reste au superviseur (cf. statut de l'item et
+  DA-9). Gate utilisateur (écoute) ouvert, après la fusion.
 
 ### Lots B
 
