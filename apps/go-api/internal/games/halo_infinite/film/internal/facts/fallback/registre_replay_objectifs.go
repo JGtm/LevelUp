@@ -18,12 +18,14 @@ var registreReplayObjectifs = []Repli{
 		Sites: []Site{{
 			Fichier: pkgReplay + "flag_assign.go",
 			Ancre:   "if f := g.seulEnJeu(recevable); f >= 0 {",
+		}, {
+			Fichier: pkgReplay + "flag_assign.go",
+			Ancre:   "g.fb.Declenche(fallback.NomDrapeauSeulEnJeu)",
 		}},
 		DatePose:        dateAudit0E,
 		CibleRetrait:    "lot 1.9.6 (le drapeau qui rentre pris dans ev.flag, deja nomme en amont)",
 		CritereRetrait:  "0 recours a la regle « seul en jeu » une fois ev.flag lu ; coverage.flagCarries.ambiguousReturns a 0",
-		CompteurBranche: false,
-		CibleComptage:   "lot 1.9.6",
+		CompteurBranche: true,
 	},
 	{
 		Nom:       "repli_invariant_propre_drapeau_muet",
@@ -34,12 +36,14 @@ var registreReplayObjectifs = []Repli{
 		Sites: []Site{{
 			Fichier: pkgReplay + "flag_assign.go",
 			Ancre:   "func sonPropreDrapeau(spawns []FlagSpawn, f int, equipe int, connue bool) bool {",
+		}, {
+			Fichier: pkgReplay + "flag_assign.go",
+			Ancre:   "g.fb.Declenche(fallback.NomInvariantPropreDrapeauMuet)",
 		}},
 		DatePose:        dateAudit0E,
 		CibleRetrait:    "lot 1.7 (l'equipe vient du film) : l'equipe du porteur est desormais lue, donc le silence doit disparaitre",
 		CritereRetrait:  "0 portage dont l'equipe du porteur est inconnue sur les 8 builds (coverage.flagCarries.carrierTeamUnknown a 0)",
-		CompteurBranche: false,
-		CibleComptage:   comptageFamille19,
+		CompteurBranche: true,
 	},
 	{
 		Nom:       "repli_index_drapeau_zero_pour_tous",
@@ -50,12 +54,14 @@ var registreReplayObjectifs = []Repli{
 		Sites: []Site{{
 			Fichier: pkgReplay + "flag_assign.go",
 			Ancre:   "raws[i].flagIndex = 0",
+		}, {
+			Fichier: pkgReplay + "flag_assign.go",
+			Ancre:   "ctx.fb.DeclencheN(fallback.NomIndexDrapeauZeroPourTous, len(raws))",
 		}},
 		DatePose:        dateAudit0E,
 		CibleRetrait:    "lot de completion du catalogue de socles (hors famille 1.9)",
 		CritereRetrait:  "0 film CTF sans socle catalogue sur le parc",
-		CompteurBranche: false,
-		CibleComptage:   comptageFamille19,
+		CompteurBranche: true,
 	},
 	{
 		Nom:  "repli_nombre_drapeaux_hors_catalogue_sans_passage",
@@ -130,12 +136,14 @@ var registreReplayObjectifs = []Repli{
 		Sites: []Site{{
 			Fichier: pkgReplay + "zone_states_owner.go",
 			Ancre:   "case len(teams) == 0 && v != zoneNeutralOwner:",
+		}, {
+			Fichier: pkgReplay + "zone_states_owner.go",
+			Ancre:   "fb.DeclencheN(fallback.NomZoneCampSansRoster, captures)",
 		}},
 		DatePose:        dateAudit0E,
 		CibleRetrait:    "lot 1.7 (l'equipe vient du film) porte au calque des zones — cf. D3 (1.7), ZoneInput.TeamByXUID prend TOUJOURS l'equipe de la base",
 		CritereRetrait:  "le roster des zones vient du film ; 0 film a roster vide sur les 8 builds",
-		CompteurBranche: false,
-		CibleComptage:   comptageFamille19,
+		CompteurBranche: true,
 	},
 	{
 		Nom:       "repli_zone_proprietaire_sans_roster",
@@ -146,12 +154,14 @@ var registreReplayObjectifs = []Repli{
 		Sites: []Site{{
 			Fichier: pkgReplay + "zone_states_owner.go",
 			Ancre:   "case len(teams) == 0 && v <= 1:",
+		}, {
+			Fichier: pkgReplay + "zone_states_owner.go",
+			Ancre:   "fb.DeclencheN(fallback.NomZoneProprietaireSansRoster, n)",
 		}},
 		DatePose:        dateAudit0E,
 		CibleRetrait:    "meme cible que repli_zone_camp_sans_roster",
 		CritereRetrait:  "0 film a roster vide sur les 8 builds",
-		CompteurBranche: false,
-		CibleComptage:   comptageFamille19,
+		CompteurBranche: true,
 	},
 	{
 		Nom:       "repli_zone_camp_de_capture_deduit_de_l_issue",
@@ -214,12 +224,14 @@ var registreReplayObjectifs = []Repli{
 		Sites: []Site{{
 			Fichier: pkgReplay + "skull_carries.go",
 			Ancre:   "func (p carrierPresence) gate(xuid string, f0, f1 int) (int, int, bool) {",
+		}, {
+			Fichier: pkgReplay + "skull_carries.go",
+			Ancre:   "p.fbCrane.Declenche(fallback.NomCranePorteurSansVieNommee)",
 		}},
 		DatePose:        dateAudit0E,
 		CibleRetrait:    "lot 1.9.5 (le porteur du crane lu au canal des armes tenues)",
 		CritereRetrait:  "0 porteur sans vie nommee sur les films Oddball du corpus",
-		CompteurBranche: false,
-		CibleComptage:   "lot 1.9.5",
+		CompteurBranche: true,
 	},
 	{
 		Nom:       "repli_armement_bombe_debut_a_zero",

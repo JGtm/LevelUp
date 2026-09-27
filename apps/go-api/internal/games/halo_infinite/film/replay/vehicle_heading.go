@@ -81,7 +81,10 @@ func vehicleVelocityHeadingOf(p grammar.BipedPosition) (float32, bool) {
 // logVehicleHeadingSource compte D OU sort le cap des echantillons du nuage. Il n ajoute AUCUN
 // champ au document (le schema ne bouge pas) : c est un denominateur de journal, celui qui dira
 // si la part du cap LU recule sur un build ou une carte donnes.
-func logVehicleHeadingSource(pos []grammar.BipedPosition) {
+//
+// IL REND LE NOMBRE D ECHANTILLONS DONT LE CAP SORT DE LA VELOCITE : c est le compte du repli
+// `repli_cap_vehicule_vitesse_insuffisante`, verse par [attachVehicles] (lot J8.7).
+func logVehicleHeadingSource(pos []grammar.BipedPosition) int {
 	var film, velocite, aucun, modeNonPublie int
 	for _, p := range pos {
 		switch {
@@ -99,6 +102,7 @@ func logVehicleHeadingSource(pos []grammar.BipedPosition) {
 	slog.Info("rejeu : source du cap des vehicules",
 		"echantillons", len(pos), "capDuFilm", film, "capParVelocite", velocite,
 		"sansCap", aucun, "roulisLuMaisModeNonPublie", modeNonPublie)
+	return velocite
 }
 
 func vehicleHeadingHasFilm(p grammar.BipedPosition) bool {

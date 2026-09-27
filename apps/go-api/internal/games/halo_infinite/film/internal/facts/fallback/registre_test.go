@@ -268,3 +268,29 @@ func abrege(s string) string {
 	}
 	return strings.TrimSpace(string(r[:max])) + "..."
 }
+
+// TestChaqueRepliEstCompte — LE RATCHET DU LOT J8.7 DU PLAN DE SUITE D AUDIT (2026-09-27) : AUCUNE
+// entree du registre n a son compteur NON BRANCHE.
+//
+// POURQUOI ZERO, ET PAS UN PLAFOND QUI DESCEND. D-10 (regle 4) supprime un repli dont le compte est
+// NUL au corpus gate d une cloture de jalon. Un compteur non branche publie un zero qui n en est pas
+// un : l entree serait supprimee alors qu elle decide peut-etre des faits a chaque film. L audit du
+// 2026-09-24 en comptait 81 sur 99 ; le lot les a tous cables. Un repli NEUF entre donc au registre
+// AVEC son compteur au site, ou il n entre pas.
+//
+// MUTATION : remettre `CompteurBranche: false` (et une `CibleComptage`) sur une entree — ROUGE, qui
+// la nomme.
+func TestChaqueRepliEstCompte(t *testing.T) {
+	var nonBranches []string
+	for _, r := range Table() {
+		if !r.CompteurBranche {
+			nonBranches = append(nonBranches, string(r.Nom))
+		}
+	}
+	if len(nonBranches) > 0 {
+		t.Errorf("%d repli(s) sans compteur branche : %v\n"+
+			"Un repli se compte a son site (`fb.Declenche(fallback.NomX)`), et son compte voyage jusqu a "+
+			"`coverage.fallbacks` (cuisson) ou jusqu a l expvar et au journal du film (collecteur).",
+			len(nonBranches), nonBranches)
+	}
+}

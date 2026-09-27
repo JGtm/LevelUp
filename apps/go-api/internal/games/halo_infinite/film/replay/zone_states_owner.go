@@ -18,7 +18,11 @@ package replay
 //	                  CONTROLE publie (`ownerChecked` / `ownerAgreed`) porte sur autre chose :
 //	                  la VALEUR contre l'equipe du capteur, que le vote n'a pas servi a choisir.
 
-import "sort"
+import (
+	"sort"
+
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
+)
 
 // zoneOwnerMinAgreements est le nombre MINIMAL de captures concordantes qu'un canal doit porter
 // pour etre elu proprietaire d'une zone (revue R1, 2026-08-18).
@@ -78,6 +82,7 @@ func zoneOwnerStates(in ZoneInput, ser zoneSeries, pairs []zonePair, c zoneCtx,
 			zoneRampsCtx{teams: teams, win: win, fb: c.fb})
 		out = append(out, st)
 	}
+	compterLesReplisSansRoster(c.fb, len(in.TeamByXUID) == 0, len(teams) == 0, len(pairs), out)
 	checkOwnerAgreement(ser, ownerSlot, pairs, in.TeamByXUID, win, cov)
 	return out
 }
@@ -423,4 +428,27 @@ func zoneValueAfter(ss []zoneSample, t, win int) (uint64, bool) {
 		return 0, false
 	}
 	return ss[i].v, true
+}
+
+// compterLesReplisSansRoster verse au compteur de la cuisson les deux replis d un roster VIDE
+// (lot J8.7) : chaque capture jugee par la regle « toute valeur non neutre est un camp »
+// ([ownerScores]), et chaque intervalle publie avec un camp que seule la regle « toute valeur
+// <= 1 est un camp » a pose ([zoneOwnerTeam]).
+func compterLesReplisSansRoster(fb *fallback.Compteur, sansRoster, sansCamps bool, captures int,
+	etats []ZoneState) {
+	if sansRoster {
+		fb.DeclencheN(fallback.NomZoneCampSansRoster, captures)
+	}
+	if !sansCamps {
+		return
+	}
+	n := 0
+	for _, st := range etats {
+		for _, sp := range st.Spans {
+			if sp.Owner != nil {
+				n++
+			}
+		}
+	}
+	fb.DeclencheN(fallback.NomZoneProprietaireSansRoster, n)
 }

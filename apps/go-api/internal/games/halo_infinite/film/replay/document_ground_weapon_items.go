@@ -33,6 +33,7 @@ import (
 	"log/slog"
 	"sort"
 
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
@@ -209,7 +210,7 @@ func buildGroundWeaponItems(
 		moving = append(moving, o)
 	}
 	bySlot := gwItemPositionsBySlot(positions)
-	pickers := gwItemLinkPickups(moving, changes, bySlot, &cov)
+	pickers := gwItemLinkPickups(moving, changes, bySlot, &cov, clock.fb)
 
 	out := make([]GroundWeapon, 0, len(moving))
 	for i, o := range moving {
@@ -322,7 +323,7 @@ type gwItemPick struct {
 // l'arme que la prise NOMME.
 func gwItemLinkPickups(
 	objs []gwPickupObject, changes []types.HeldWeaponChange,
-	bySlot map[uint32][]grammar.BipedPosition, cov *GroundWeaponItemsCoverage,
+	bySlot map[uint32][]grammar.BipedPosition, cov *GroundWeaponItemsCoverage, fb *fallback.Compteur,
 ) []gwItemPick {
 	out := make([]gwItemPick, len(objs))
 	takes := make([]types.HeldWeaponChange, 0, len(changes))
@@ -335,10 +336,12 @@ func gwItemLinkPickups(
 	cov.TakesTotal = len(takes)
 	for _, ch := range takes {
 		if ch.Family == grammar.NoWeaponVariant {
+			fb.Declenche(fallback.NomLienPriseArmeAbandonne)
 			continue
 		}
 		actor, ok := gwItemActorAt(bySlot, ch.Slot, ch.TimestampUS)
 		if !ok {
+			fb.Declenche(fallback.NomLienPriseArmeAbandonne)
 			continue
 		}
 		best, bestD := -1, float64(gwItemLinkMaxDist)

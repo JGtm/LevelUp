@@ -66,6 +66,18 @@ func xuidOfPublishedTrack(t Track, slotXUID map[uint32]uint64) string {
 	return ""
 }
 
+// pistesNommeesParLePont compte les pistes publiees SANS nom lu que le pont nomme — le repli
+// `repli_nom_piste_par_le_pont` de [xuidOfPublishedTrack], vu sur les pistes et non par lecteur.
+func pistesNommeesParLePont(tracks []Track, slotXUID map[uint32]uint64) int {
+	n := 0
+	for _, t := range tracks {
+		if t.XUID == "" && xuidOfPublishedTrack(t, slotXUID) != "" {
+			n++
+		}
+	}
+	return n
+}
+
 // publishedXUIDs indexe les JOUEURS qui portent une trajectoire publiée — nom lu ou pont.
 //
 // C'est LE SEUL endroit du paquet où cet ensemble se construit (cf. garde-rail).

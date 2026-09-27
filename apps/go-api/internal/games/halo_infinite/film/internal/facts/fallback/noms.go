@@ -118,4 +118,44 @@ const (
 	// `CompletedByRoundResidue` ; compte par `replay/identity_registry_section.go`,
 	// `compterLesSlotsParResidu` (lot J8.4, constats FO-1 / RA2-4).
 	NomIdentiteDeSlotParResiduDeManche Nom = "repli_identite_de_slot_par_residu_de_manche"
+	// NomCapVehiculeVitesseInsuffisante : compte par `build_vehicles.go` (lot J8.7).
+	NomCapVehiculeVitesseInsuffisante Nom = "repli_cap_vehicule_vitesse_insuffisante"
+	// NomEpisodeOccupationParTrouDePosition : compte par `build_vehicles.go` (lot J8.7).
+	NomEpisodeOccupationParTrouDePosition Nom = "repli_episode_occupation_par_trou_de_position"
+	// NomMortEcarteeHorsEquipeDeBase : compte par `death_context.go` (lot J8.7).
+	NomMortEcarteeHorsEquipeDeBase Nom = "repli_mort_ecartee_hors_equipe_de_base"
+	// NomCoequipierHorsDeVueParDefaut : compte par `death_context.go` (lot J8.7).
+	NomCoequipierHorsDeVueParDefaut Nom = "repli_coequipier_hors_de_vue_par_defaut"
+	// NomCranePorteurSansVieNommee : compte par `skull_carries.go` (lot J8.7).
+	NomCranePorteurSansVieNommee Nom = "repli_crane_porteur_sans_vie_nommee"
+	// NomIndexDrapeauZeroPourTous : compte par `flag_assign.go` (lot J8.7).
+	NomIndexDrapeauZeroPourTous Nom = "repli_index_drapeau_zero_pour_tous"
+	// NomInvariantPropreDrapeauMuet : compte par `flag_assign.go` (lot J8.7).
+	NomInvariantPropreDrapeauMuet Nom = "repli_invariant_propre_drapeau_muet"
+	// NomDrapeauSeulEnJeu : compte par `flag_assign.go` (lot J8.7).
+	NomDrapeauSeulEnJeu Nom = "repli_drapeau_seul_en_jeu"
+	// NomFamilleArmeIdentifiantBrut : compte par `ground_weapon_pads.go` (lot J8.7).
+	NomFamilleArmeIdentifiantBrut Nom = "repli_famille_arme_identifiant_brut"
+	// NomIdentitePremierOccupantDuSiege : compte par `identity_registry.go` (lot J8.7).
+	NomIdentitePremierOccupantDuSiege Nom = "repli_identite_premier_occupant_du_siege"
+	// NomImpulsionFusionneeDansLeGeste : compte par `document_ability_impulses.go` (lot J8.7).
+	NomImpulsionFusionneeDansLeGeste Nom = "repli_impulsion_fusionnee_dans_le_geste"
+	// NomRangCapaciteVieElargie : compte par `document_ability_impulses.go` (lot J8.7).
+	NomRangCapaciteVieElargie Nom = "repli_rang_capacite_vie_elargie"
+	// NomLienPriseArmeAbandonne : compte par `document_ground_weapon_items.go` (lot J8.7).
+	NomLienPriseArmeAbandonne Nom = "repli_lien_prise_arme_abandonne"
+	// NomNomPisteParLePont : compte par `build_inventaire.go` (lot J8.7).
+	NomNomPisteParLePont Nom = "repli_nom_piste_par_le_pont"
+	// NomPortageFermeALaPriseSuivante : compte par `bomb_carries.go` (lot J8.7).
+	NomPortageFermeALaPriseSuivante Nom = "repli_portage_ferme_a_la_prise_suivante"
+	// NomPorteurAnonymeSansFinParMort : compte par `bomb_carries.go` (lot J8.7).
+	NomPorteurAnonymeSansFinParMort Nom = "repli_porteur_anonyme_sans_fin_par_mort"
+	// NomTractionVieDuTir : compte par `build_calques.go` (lot J8.7).
+	NomTractionVieDuTir Nom = "repli_traction_vie_du_tir"
+	// NomTractionVieLaPlusProche : compte par `build_calques.go` (lot J8.7).
+	NomTractionVieLaPlusProche Nom = "repli_traction_vie_la_plus_proche"
+	// NomZoneCampSansRoster : compte par `zone_states_owner.go` (lot J8.7).
+	NomZoneCampSansRoster Nom = "repli_zone_camp_sans_roster"
+	// NomZoneProprietaireSansRoster : compte par `zone_states_owner.go` (lot J8.7).
+	NomZoneProprietaireSansRoster Nom = "repli_zone_proprietaire_sans_roster"
 )

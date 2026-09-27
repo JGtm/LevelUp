@@ -34,6 +34,7 @@ package replay
 // prédicat de famille.
 
 import (
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
 	"log/slog"
 	"strconv"
@@ -139,6 +140,9 @@ func attachBombCarries(doc *ReplayDocument, opt Options, reg IdentityRegistry, c
 			"match_id", doc.MatchID, "transitions", len(events))
 	} else {
 		carry = BuildHeldObjectCarry(events, occupantParMatchMS(reg), opt.Deaths)
+		// LES DEUX REPLIS DE LA RECONSTRUCTION DES PERIODES, comptes pour la cuisson (lot J8.7).
+		clock.fb.DeclencheN(fallback.NomPortageFermeALaPriseSuivante, carry.replis.priseSuivante)
+		clock.fb.DeclencheN(fallback.NomPorteurAnonymeSansFinParMort, carry.replis.porteurAnonyme)
 		carries, cov = buildBombCarries(carry, matchClock{
 			origin: clock.origin, step: clock.step, frames: clock.frames,
 			deathOffsetMS: reg.DeathOffsetMS(),

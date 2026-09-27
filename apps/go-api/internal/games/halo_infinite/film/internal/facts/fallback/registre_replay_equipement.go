@@ -125,6 +125,9 @@ var registreReplayEquipement = []Repli{
 		Sites: []Site{{
 			Fichier: pkgReplay + "grapple_lines.go",
 			Ancre:   "track = lifeCovering(vies, t0)",
+		}, {
+			Fichier: pkgReplay + "build_calques.go",
+			Ancre:   "a.opt.Fallbacks.DeclencheN(fallback.NomTractionVieDuTir, grapCov.viesParLeTir)",
 		}},
 		DatePose: dateAudit0E,
 		// CIBLE REECRITE LE 2026-09-16 (revue de jalon M1) : elle nommait le lot 1.9.13, fusionne
@@ -132,8 +135,7 @@ var registreReplayEquipement = []Repli{
 		// zero n'y serait pas lisible (cf. [Repli.CompteurBranche]).
 		CibleRetrait:    "M2, pas 2 (les lecteurs recoivent le profil) : cabler le compteur au meme geste, puis retrait sec si le compte est nul",
 		CritereRetrait:  "0 traction dont l'accroche tombe hors de toute vie sur les 8 builds — NON MESURE (compteur non cable au 2026-09-16)",
-		CompteurBranche: false,
-		CibleComptage:   comptageFamille19,
+		CompteurBranche: true,
 	},
 	{
 		Nom:       "repli_traction_vie_la_plus_proche",
@@ -144,14 +146,16 @@ var registreReplayEquipement = []Repli{
 		Sites: []Site{{
 			Fichier: pkgReplay + "grapple_lines.go",
 			Ancre:   "track = lifeNearest(vies, tAttach)",
+		}, {
+			Fichier: pkgReplay + "build_calques.go",
+			Ancre:   "a.opt.Fallbacks.DeclencheN(fallback.NomTractionVieLaPlusProche, grapCov.viesLesPlusProches)",
 		}},
 		DatePose: dateAudit0E,
 		// CIBLE REECRITE LE 2026-09-16 (revue de jalon M1) : meme raison que
 		// repli_traction_vie_du_tir, meme geste de cablage.
 		CibleRetrait:    "M2, pas 2 : cabler le compteur puis retrait sec si le compte est nul",
 		CritereRetrait:  "0 traction sans vie couvrante sur les 8 builds — NON MESURE (compteur non cable au 2026-09-16)",
-		CompteurBranche: false,
-		CibleComptage:   comptageFamille19,
+		CompteurBranche: true,
 	},
 	{
 		Nom:       "repli_famille_arme_identifiant_brut",
@@ -162,14 +166,16 @@ var registreReplayEquipement = []Repli{
 		Sites: []Site{{
 			Fichier: pkgReplay + "ground_weapon_rules.go",
 			Ancre:   "return fmt.Sprintf(\"0x%08x\", w)",
+		}, {
+			Fichier: pkgReplay + "ground_weapon_pads.go",
+			Ancre:   "clock.fb.DeclencheN(fallback.NomFamilleArmeIdentifiantBrut, gwFamillesBrutes(wObjs))",
 		}},
 		DatePose:     dateAudit0E,
 		CibleRetrait: "aucune tant que le catalogue d'armes est incomplet ; retrait sec des que le compte est nul sur le parc",
 		// Ce repli-ci est HONNÊTE (il ne fabrique aucun nom) ; ce qui manque est son COMPTE :
 		// un artefact ne dit pas combien de ses familles sont des identifiants bruts.
 		CritereRetrait:  "0 famille rendue sous forme 0x%08x sur le parc",
-		CompteurBranche: false,
-		CibleComptage:   comptageFamille19,
+		CompteurBranche: true,
 	},
 	{
 		Nom:       "repli_lien_prise_arme_abandonne",
@@ -180,12 +186,14 @@ var registreReplayEquipement = []Repli{
 		Sites: []Site{{
 			Fichier: pkgReplay + "document_ground_weapon_items.go",
 			Ancre:   "actor, ok := gwItemActorAt(bySlot, ch.Slot, ch.TimestampUS)",
+		}, {
+			Fichier: pkgReplay + "document_ground_weapon_items.go",
+			Ancre:   "fb.Declenche(fallback.NomLienPriseArmeAbandonne)",
 		}},
 		DatePose:        dateAudit0E,
 		CibleRetrait:    "lot de conversion du lien de prise (table C13 : trois hypotheses de lien natif REFUTEES — le repli restera, son COMPTE PAR CAUSE est ce qui manque)",
 		CritereRetrait:  "les deux causes comptees separement dans GroundWeaponItemsCoverage ; le repli lui-meme est legitime tant que le negatif tient",
-		CompteurBranche: false,
-		CibleComptage:   comptageFamille19,
+		CompteurBranche: true,
 	},
 	{
 		Nom:       "repli_impulsion_fusionnee_dans_le_geste",
@@ -196,12 +204,14 @@ var registreReplayEquipement = []Repli{
 		Sites: []Site{{
 			Fichier: pkgReplay + "document_ability_impulses.go",
 			Ancre:   "last[r.Slot] = r.TimestampUS",
+		}, {
+			Fichier: pkgReplay + "document_ability_impulses.go",
+			Ancre:   "in.fb.DeclencheN(fallback.NomImpulsionFusionneeDansLeGeste, len(in.reads)-len(episodes))",
 		}},
 		DatePose:        dateAudit0E,
 		CibleRetrait:    "aucune tant que le film ne borne pas un geste ; le COMPTE des fusions est ce qui manque",
 		CritereRetrait:  "fusions comptees dans AbilityImpulseCoverage ; retrait si le film s'avere porter une borne de geste",
-		CompteurBranche: false,
-		CibleComptage:   comptageFamille19,
+		CompteurBranche: true,
 	},
 	{
 		Nom:       "repli_rang_capacite_vie_elargie",
@@ -212,6 +222,9 @@ var registreReplayEquipement = []Repli{
 		Sites: []Site{{
 			Fichier: pkgReplay + "document_ability_impulses.go",
 			Ancre:   "if int64(at)+lifeGapUS >= l.from && int64(at) <= l.to+lifeGapUS {",
+		}, {
+			Fichier: pkgReplay + "document_ability_impulses.go",
+			Ancre:   "idx.fb.Declenche(fallback.NomRangCapaciteVieElargie)",
 		}},
 		DatePose: dateAudit0E,
 		// CIBLE REECRITE LE 2026-09-16 (revue de jalon M1). Le lot 1.9.13, fusionne le
@@ -221,8 +234,7 @@ var registreReplayEquipement = []Repli{
 		// de chiffre a lui.
 		CibleRetrait:    "M2, pas 2 : cabler le compteur, mesurer le residu, puis retrait sec s'il est nul",
 		CritereRetrait:  "0 elargissement necessaire sur les 8 builds — RESIDU NON MESURE (compteur non cable au 2026-09-16 ; le 1.9.13 a fait tomber les grandeurs voisines sans les annuler)",
-		CompteurBranche: false,
-		CibleComptage:   comptageFamille19,
+		CompteurBranche: true,
 	},
 	{
 		Nom:       "repli_porteur_anonyme_sans_fin_par_mort",
@@ -233,14 +245,16 @@ var registreReplayEquipement = []Repli{
 		Sites: []Site{{
 			Fichier: pkgReplay + "held_object_carry.go",
 			Ancre:   "if p.XUID == 0 {",
+		}, {
+			Fichier: pkgReplay + "bomb_carries.go",
+			Ancre:   "clock.fb.DeclencheN(fallback.NomPorteurAnonymeSansFinParMort, carry.replis.porteurAnonyme)",
 		}},
 		DatePose:     dateAudit0E,
 		CibleRetrait: "lot 1.9.5 (le porteur du crane lu au canal des armes tenues) et le registre d'identite 1.6",
 		// Décision utilisateur du 2026-09-06 : « les vies anonymes n'existent pas ». Un porteur
 		// sans xuid est un défaut de pont, pas une catégorie de donnée.
 		CritereRetrait:  "0 porteur sans xuid sur les 8 builds",
-		CompteurBranche: false,
-		CibleComptage:   comptageFamille19,
+		CompteurBranche: true,
 	},
 	{
 		Nom:       "repli_portage_ferme_a_la_prise_suivante",
@@ -251,6 +265,9 @@ var registreReplayEquipement = []Repli{
 		Sites: []Site{{
 			Fichier: pkgReplay + "held_object_carry.go",
 			Ancre:   "func premiereMortDans(mortsDe map[uint64][]int, p HeldObjectPeriod, avant int) (int, bool) {",
+		}, {
+			Fichier: pkgReplay + "bomb_carries.go",
+			Ancre:   "clock.fb.DeclencheN(fallback.NomPortageFermeALaPriseSuivante, carry.replis.priseSuivante)",
 		}},
 		DatePose:       dateAudit0E,
 		CibleRetrait:   "lot 1.9.5",
@@ -258,8 +275,7 @@ var registreReplayEquipement = []Repli{
 		// Le négatif « la mort ferme SANS émission » est une AFFIRMATION sans chiffre
 		// (`held_object_carry.go:20-22`), pas une mesure : c'est pourquoi la condition est
 		// `film_muet` mais que le critère de retrait est une mesure à faire.
-		CompteurBranche: false,
-		CibleComptage:   comptageFamille19,
+		CompteurBranche: true,
 	},
 	{
 		Nom:       "repli_plafond_grenade_par_defaut",

@@ -33,6 +33,7 @@ package replay
 // que le canal possède, et il vient d'un relevé, pas d'un modèle.
 
 import (
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
 	"log/slog"
 	"sort"
@@ -173,6 +174,8 @@ type abilityImpulseInputs struct {
 	palette *AbilityPalette
 	// measured : les familles que le TITRE déclare mesurées sur ce canal.
 	measured []string
+	// fb : le compteur de replis de la cuisson (lot J8.7). Nil ne compte rien.
+	fb *fallback.Compteur
 }
 
 // buildAbilityImpulses replie les lectures en épisodes, leur donne une identité par le rang
@@ -188,7 +191,7 @@ func buildAbilityImpulses(
 		return nil, cov
 	}
 	b := &abilityImpulseBuilder{
-		byLife: newAbilityRankIndex(in.ranks, in.lives), palette: in.palette,
+		byLife: newAbilityRankIndex(in.ranks, in.lives, in.fb), palette: in.palette,
 		measured: make(map[string]bool, len(in.measured)),
 		origin:   origin, step: step, cov: &cov,
 	}
@@ -206,7 +209,10 @@ func buildAbilityImpulses(
 	// jamais rien retirer — code mort, CLAUDE.md n7 ; constat H2 de la revue de ronde 1).
 	published := publishedSlots(tracks)
 	var out []AbilityImpulse
-	for _, ep := range foldAbilityImpulses(in.reads) {
+	episodes := foldAbilityImpulses(in.reads)
+	// LES LECTURES ABSORBEES DANS UN GESTE sont le compte du repli de la fenetre d une seconde (lot J8.7).
+	in.fb.DeclencheN(fallback.NomImpulsionFusionneeDansLeGeste, len(in.reads)-len(episodes))
+	for _, ep := range episodes {
 		cov.Episodes++
 		switch {
 		case ep.tsUS < origin:
@@ -307,10 +313,13 @@ func foldAbilityImpulses(reads []types.AbilityImpulse) []abilityImpulseEpisode {
 type abilityRankIndex struct {
 	ranks map[uint32][]types.AbilityRank
 	lives map[uint32][]lifeSpan
+	// fb compte les vies retrouvees par la SEULE tolerance de bord (lot J8.7). Nil ne compte rien.
+	fb *fallback.Compteur
 }
 
-func newAbilityRankIndex(ranks []types.AbilityRank, lives []lifeSpan) *abilityRankIndex {
+func newAbilityRankIndex(ranks []types.AbilityRank, lives []lifeSpan, fb *fallback.Compteur) *abilityRankIndex {
 	idx := &abilityRankIndex{
+		fb:    fb,
 		ranks: make(map[uint32][]types.AbilityRank, len(ranks)),
 		lives: make(map[uint32][]lifeSpan, len(lives)),
 	}
@@ -341,6 +350,10 @@ func (idx *abilityRankIndex) rankInLife(slot uint32, at uint64) (int, bool) {
 	}
 	if !found {
 		return 0, false
+	}
+	if int64(at) < span.from || int64(at) > span.to {
+		// LA VIE N EST RETROUVEE QUE PAR LA TOLERANCE DE BORD : c est le repli inscrit.
+		idx.fb.Declenche(fallback.NomRangCapaciteVieElargie)
 	}
 	best, bestT, got := 0, uint64(0), false
 	for _, r := range idx.ranks[slot] {

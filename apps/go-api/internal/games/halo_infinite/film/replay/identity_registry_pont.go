@@ -188,22 +188,27 @@ func indexToXUIDOf(xuidToIndex map[uint64]int) map[int]uint64 {
 //
 // LE MOTIF EST CELUI DU DÉPÔT — « par vie d'abord, pont en repli » (cf. `tracksByXUID`) — et
 // c'est ici qu'il vit pour tous ses lecteurs : la table par vie est déjà DANS cet objet.
-func (r OwnerReport) xuidNumAt(slot uint32, tUS uint64) uint64 {
+//
+// LE SECOND RETOUR dit que le nom servi vient du
+// PREMIER OCCUPANT du siege (`repli_identite_premier_occupant_du_siege`) et non d une vie qui
+// couvre l instant — le registre le compte (lot J8.7).
+func (r OwnerReport) xuidNumAt(slot uint32, tUS uint64) (uint64, bool) {
 	t := int64(tUS)
 	for _, l := range r.lives {
 		if l.slot != slot || l.xuid == 0 || t < l.from || t > l.to {
 			continue
 		}
-		return l.xuid
+		return l.xuid, false
 	}
 	// LE REPLI PAR SLOT S'ABSTIENT SUR UN SLOT AMBIGU (2026-09-07). `SlotXUID` y garde le
 	// PREMIER occupant nommé, par ordre des vies : le servir à un instant que sa vie ne couvre
 	// pas reviendrait à publier un nom arbitraire, et c'est exactement ce que cette méthode
 	// existe pour éviter. Sans vie couvrante ET sur un slot à plusieurs occupants, on se tait.
 	if r.SlotAmbiguous[slot] {
-		return 0
+		return 0, false
 	}
-	return r.SlotXUID[slot]
+	x := r.SlotXUID[slot]
+	return x, x != 0
 }
 
 // NamingBridge rend le pont slot -> joueur DÉBARRASSÉ DES SLOTS AMBIGUS — celui que doit
