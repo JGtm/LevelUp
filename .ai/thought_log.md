@@ -113677,3 +113677,11 @@ Sans film, le détail des grenades par type ne vient plus de la table native : u
 **Resultats observes** : revue adversariale close (ronde 1 : R1-R13 corrigés, ronde 2 : 0 constat, R14-R15 promus et corrigés). Rattrapage local : `backfill-pad-tiers` 12 écrits / 99 déjà en base / 0 échec ; `backfill-usage-summary` 0 écrit / 17 à jour / 111 artefacts au schéma périmé (hors chantier). Serveurs de gate du worktree arrêtés.
 
 **Conclusion / prochaine etape** : CI verte au niveau job sur `feat/v75` (L6.3), puis gate visuel de l'utilisateur sur la soirée du 22/09 (L6.4), rattrapages prod sur accord (L6.5), mise à jour de la référence équipement §4 (L6.6), puis plan détaillé du lot L7 (véhicules) soumis à l'utilisateur.
+
+## [2026-09-27] Emprise, lot L6.3 : fusion dans `feat/v75`, CI verte — Complété (L6.4 gate visuel utilisateur en attente)
+
+**Decision technique principale** : fusion `90415aa5b` + correctif `0cae929af` poussés sur `feat/v75`. Le premier push a été refusé par deux garde-rails que les gates des lots ne jouaient pas (`lint-no-hardcoded-fields`, `lint-contract-ratchet`) : libellés d'issue lus dans `outcomes.toml` (`useOutcomeLabels`), fichier de données de test du 22/09 en liste blanche datée, entrée `SquadWeaponBar` obsolète retirée. Dossier principal avancé en avance rapide, sans toucher aux modifications non commitées d'autres sessions (journal réappliqué à l'identique en fin de fichier).
+
+**Resultats observes** : pre-push vert (go-vet-cgo, govulncheck, knip, contrats, couleurs, champs, shared_social). CI verte au niveau job : runs 36335594113 et 36335588369.
+
+**Conclusion / prochaine etape** : gate visuel de l'utilisateur (L6.4), puis L6.5 prod sur accord, L6.6 référence équipement §4, plan du lot L7 (véhicules). Leçon : jouer `lefthook run pre-push` dans le gate de chaque lot web.
