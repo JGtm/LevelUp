@@ -36,7 +36,7 @@ func TestDeriver_UnSegmentAcquisEtRelacheUneFois(t *testing.T) {
 
 	Deriver(ctx, DerivationsDeps{
 		RepoRoot: d.RepoRoot, TitleSlug: d.TitleSlug, Gamertag: d.Gamertag,
-		AcquireWriter: d.AcquireWriter,
+		WithRead: d.WithRead, AcquireWriter: d.AcquireWriter,
 	}, []ArtefactRange{{MatchID: matchID, Path: chemin}})
 
 	if acquis != 1 || relaches != 1 {

@@ -169,6 +169,23 @@ export type SemanticToken =
   | 'frag-environmental'
   | 'frag-unattributed'
 
+  // ── Ressources de la carte (4) — onglet Emprise de l'Escouade (2026-09-26) ──
+  // Famille DÉDIÉE (décision D9 du plan « Emprise ») : bonus (camouflage +
+  // surbouclier), armes spéciales (socles de puissance), véhicules, armes de
+  // râtelier. La couleur NOMME une ressource (pastille devant chaque nom) ; le
+  // camp se lit aux couleurs d'équipe, jamais à ces jetons.
+  | 'resource-powerup'
+  | 'resource-power-weapon'
+  | 'resource-vehicle'
+  | 'resource-rack'
+
+  // ── Rôles d'objectif (3) — Prendre / Défendre / Tenir (2026-09-26) ──────────
+  // Famille DÉDIÉE (D9) : la couleur IDENTIFIE un rôle, elle ne juge rien (ni
+  // gamme ordinale ni gamme de statut). Remplace l'emprunt `chart-series-1..3`.
+  | 'objective-role-take'
+  | 'objective-role-defend'
+  | 'objective-role-hold'
+
   // ── Heatmaps (6) ──────────────────────────────────────────────────────────
   // cold/hot + divergent : rampes À CONNOTATION (win-rate, K/D → bien/mal).
   // freq-low/high : rampe NEUTRE mono-teinte pour les heatmaps de FRÉQUENCE
@@ -227,6 +244,8 @@ export const ALL_TOKENS: readonly SemanticToken[] = [
   'frag-shoulder', 'frag-sidearm', 'frag-heavy', 'frag-melee', 'frag-grenade',
   'frag-spartan-ability', 'frag-vehicle', 'frag-turret', 'frag-equipment',
   'frag-environmental', 'frag-unattributed',
+  'resource-powerup', 'resource-power-weapon', 'resource-vehicle', 'resource-rack',
+  'objective-role-take', 'objective-role-defend', 'objective-role-hold',
   'heatmap-cold', 'heatmap-hot', 'heatmap-divergent-low', 'heatmap-divergent-high',
   'heatmap-freq-low', 'heatmap-freq-high',
   'team-ally', 'team-enemy',

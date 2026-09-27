@@ -113572,3 +113572,141 @@ serveur relance a synchronise depuis). Tache Notion 10 CLOSE.
 **Resultats observes** : cibles GB-1 atteintes (330/123/77/74 vies sans position -> 0/0/0/8, rejeu de 1c4c63c2 allonge de 463 s, 15 temoins identiques) ; G-equiv J5.1 20/20 identiques ; revue J5 sans defaut de donnees, trois trous de tests combles ; fermeture ti=13 de 0 a ~100 %. Fusions J9 -> J5, J6 -> J5, J5 -> plan sans conflit de fond.
 
 **Conclusion / prochaine etape** : J8 et J10 ; G-corpus J5/J7/J9 (creneau serveur arrete a obtenir) ; decision utilisateur sur J7 ; references d'equivalence a re-figer avant J10.
+## [2026-09-26] Emprise, lot L0 : jetons ressource et rôles d'objectif, échange véhicule / tourelle — Complété (`wt/emprise`, commit local)
+
+**Decision technique principale** : deux familles dédiées ajoutées au contrat sémantique (`resource-powerup` / `-power-weapon` / `-vehicle` / `-rack`, `objective-role-take` / `-defend` / `-hold`), valeurs D9 du plan sur la palette par défaut et repli CSS ; `frag-vehicle` et `frag-turret` échangent leurs VALEURS dans les 4 palettes (mapping `fragClass.ts` intact) ; camouflage et surbouclier passent à `resource-powerup`, les rôles d'objectif quittent l'emprunt `chart-series-1..3`. Palettes daltoniennes : valeurs choisies parmi les teintes déjà présentes dans chaque palette par recherche exhaustive au validateur dataviz (toutes paires, clair #fdfdfe et sombre #171717).
+
+**Resultats observes** : tous les jeux passent sauf les ressources Okabe-Ito en sombre (Reddish Purple hors bande de clarté de 0,009) — aucun jeu de 4 teintes Okabe-Ito ne passe en entier, écart documenté dans la palette et au plan. Tol Bright : l'orange des véhicules échoue, `resource-vehicle` = Vibrant Red. Snapshot `coverage` mis à jour (4 palettes) ; typecheck, lint (0 erreur), vitest complet, knip-ratchet, lint-no-hardcoded-colors, lint-cross-feature-imports verts. `globals.css` n'a pas de repli `frag-*` (rien à y échanger).
+
+**Conclusion / prochaine etape** : découvertes consignées au plan §7 (commentaires périmés `fragClass.ts:76-77`, écart Okabe-Ito à confirmer). Lot suivant : L1 (Dynamique, écart cumulé au FDA attendu).
+
+## [2026-09-26] Emprise, lot L1 : « Écart cumulé au FDA attendu » passe sur Dynamique — Complété (`wt/emprise`, commit local)
+
+**Decision technique principale** : la carte quitte Usages (slot `leftOfBreakdown` de `SquadFragSection` supprimé, montage et gate `expected_stats` retirés d'`SquadUsagesPage`) et se monte sur Dynamique, sur la même rangée que « Balance des dégâts cumulée » (grille `md:grid-cols-2`, même abscisse `xAxisLabels(n)`, mêmes séries et couleurs, même hauteur par étirement de grille ; la survivante prend la rangée si une capability manque, la rangée vide se retire). Les pastilles « écart moyen par match » disparaissent (composant, clé `fdaGap.averageCaption`, `meanFdaGapPerMatch` mort et ses tests). La valeur de fin s'écrit au bout de chaque courbe par `endLabel` ECharts (signée, une décimale, locale de l'interface, couleur du joueur), les chevauchements écartés par `labelLayout.moveOverlap: 'shiftY'` ; légende en bas et centrée.
+
+**Resultats observes** : le décalage des étiquettes est vérifié sur un rendu SVG hors DOM d'ECharts 6.1 (fins 3,0 / 3,1 / 2,9 : 80-88 px sans décalage, 80 / 92 / 104 px avec). Gate : typecheck OK, lint 0 erreur, vitest complet 8 663 tests verts, knip-ratchet 0/0/0, couleurs en dur 0, imports croisés 7 ≤ 7. Infobulle : texte partagé conservé (la proposition de la maquette demanderait de modifier `common.toml` pour trois pages, consigné aux Découvertes du plan).
+
+**Conclusion / prochaine etape** : L1 clos, vérification superviseur puis lot L2 (Contributions : frags).
+
+## [2026-09-26] Emprise, lot L2 : « Répartition des frags » et « Outils de destruction » — Complété (`wt/emprise`, commit local)
+
+**Decision technique principale** : la Répartition des frags passe en rendu DOM (`SquadFragBreakdownCard`). Le compte de chaque classe s'écrit dans son segment s'il tient avec 6 px de marge de chaque côté, mesure au pixel par `components/charts/segmentLabelFit.ts`, réutilisable par L5.3. Sinon, ligne de repli au-dessus de la barre, alignée sur le premier segment masqué. Total au bout, légende en bas et centrée, graphe centré verticalement.
+
+Les Outils de destruction reçoivent un builder Go PROPRE à l'Escouade (`teammates_squad_weapon_tools.go`, D8), sans toucher `fragdist` :
+- une ligne par clé d'arme, grenades par type ;
+- la mêlée depuis la feuille de match, et les mécaniques natives sous capability ;
+- « objet explosif » et « chute, environnement » depuis la catégorie de source du film ;
+- le reliquat en « Non attribué », toujours dernier.
+
+Le champ `weapon_tools` remplace `weapon_kills`. Côté web : plus de plafond ni d'« Autres », légende des joueurs, compte au bout, pastille de classe, part en infobulle.
+
+Périmètre Go étendu par nécessité : 15 des 19 objets explosifs du film n'ont pas de clé de registre. D'où une interface optionnelle `port.KillSourceCategorizer` (implémentée par Halo Infinite), une lecture par catégorie sur `match_kill_events_latest` (parcours de la requête factorisé) et un chargeur Escouade optionnel. Sans film, `ErrCapabilityNotSupported` et dégradation propre.
+
+**Resultats observes** : `TestSquadWeaponTools_Soiree2209` retrouve BR75 22 / 22 / 35, Mutilateur 1 et VK78 Commando 1 (JGtm) nommés, grenade frag 2 / 1 / 4, mêlée 6 / 13 / 16, objet explosif 2 / 1 / 2, chute 0 / 1 / 1. Golden Halo 5 de fragdist inchangé.
+
+Gate :
+- Go : `go test ./...` vert sauf `internal/config` (test à fenêtre d'1 s, échec sous charge pendant que vitest tournait), vert rejoué isolé ; intégration des lecteurs de source verte ; `go-api-lint` 0 issue.
+- Contrat : gen, types et check OK. Snapshot de surface du contrat régénéré ; retrait assumé de `SquadWeaponBar` / `SquadWeaponKills`, ses deux seules disparitions.
+- Web : typecheck, lint 0 erreur, knip 0/0/0, couleurs 0, imports croisés 7 ≤ 7, vitest complet vert.
+
+**Conclusion / prochaine etape** : découvertes au plan §7. La principale : aucun lot ne monte les cartes frags sur Contributions, alors que L5.4 supprime `SquadUsagesPage`. Les autres :
+- « Grenade frag » au lieu de « Grenade à fragmentation » ;
+- mêlée feuille contre film ;
+- couleur de la ligne bidon ;
+- effets sur Halo 5.
+
+Vérification superviseur, puis L3.
+
+## [2026-09-27] Emprise, lot L2 (compléments) : cartes frags montées sur Contributions, grenades sans film — Complété (`wt/emprise`, commit local)
+
+**Decision technique principale** : le superviseur accepte le périmètre étendu du lot et trois écarts à la maquette :
+- libellé « Grenade frag » du registre ;
+- mêlée lue sur la feuille, avec l'écart d'un frag chez Chocoboflor ;
+- ligne bidon à la couleur « Non attribué ».
+
+Il ajoute L2.6 : `SquadFragSection` quitte Usages pour Contributions, section « Frags et armes » placée entre la rangée Stats par minute / Radar synergie et « Performance ». « Répartition des frags » est pleine largeur, « Outils de destruction » juste en dessous. Le code devenu mort sur Usages est retiré.
+
+Sans film, le détail des grenades par type ne vient plus de la table native : un joueur sans grenade typée AU FILM a une ligne « Grenade » (nature `grenade`) au total de sa feuille. Ses grenades ne tombent plus en « Non attribué ».
+
+**Resultats observes** :
+- Tests Halo 5 et par joueur des grenades verts ; tests de page mis à jour : Contributions monte les deux cartes avant Performance, Usages ne les monte plus.
+- Go : vert sauf un test LUSR à seuil de 2 s (dépassé de 17 ms sous charge), vert rejoué isolé ; lint 0 issue.
+- Contrat inchangé.
+- Web : vitest complet 8 668 tests verts, lint 0 erreur, ratchets verts.
+
+**Conclusion / prochaine etape** : L2 clos. Vérification superviseur, puis L3.
+
+## [2026-09-27] Emprise, lot L3 : les quatre cartes d'objectif sur Contributions, périmètre D2, historique d'objectif — Complété (`wt/emprise`, commit local)
+
+**Decision technique principale** : les blocs d'usage de `/pages/teammates` lisent désormais le périmètre D2 (composition exacte ∩ matchs filtrés, matchs filtrés seuls sans coéquipier), verrouillé par un ratchet. Nouveau bloc `squad_objective_history` : calcul pur dans `analysis/squadformes` (réutilise `familyColumnsOfRole`, pas de 3e copie), une seule lecture `LoadObjectiveColumnRows` sur l'historique de la composition, camp = équipe alliée déjà chargée par la page, drapeau neutre écarté par `skillchain.IsNeutralFlagSubMode` (ajouté à la source unique, injecté au câblage sous capability). Côté web, dossier `features/squad/objectif/` : rapport de force par famille (cadres, barre camp contre camp, repli S3), fil de la session et soirée après soirée (ECharts, deux grilles alignées : courbes puis bande de résultats), fiches dans la coquille `SquadPlayerSheet` extraite de `MedalDigest`. Suppressions : deux cartes squad d'objectif de `formes/`, `roleLobbyParts`, `SquadObjectiveStatsPanel` et `objective_stats_by_xuid` de bout en bout.
+
+**Resultats observes** :
+- Témoins retrouvés par tests : 07/09 Prendre 39,0 / Défendre 36,8 / Tenir 43,8 % (Go et web), 1 victoire sur 7, 4 Bases · 3 Drapeau ; 22/09 JGtm 4 drapeaux capturés, 3 volés.
+- Go : suite complète verte, lint 0 issue, ratchets objectif / intersection verts. Contrat régénéré et vérifié.
+- Web : typecheck, lint (0 erreur), knip, couleurs, imports croisés verts ; vitest 8 687 verts, 10 garde-rails en délai dépassé sous charge, verts rejoués (deux d'entre eux seulement avec un délai de 60 s : 6 à 9 s même seuls sur la machine chargée).
+
+**Conclusion / prochaine etape** : L3 clos, sept découvertes consignées au plan (fond de pastille des médailles invalide gardé tel quel, drapeau neutre présent dans le fil, « ce soir » = périmètre entier, 0 sur 0, abréviations, taille de `teammates_service.go`, gate du prédicat). Vérification superviseur, gate visuel au L6, puis L4.
+
+## [2026-09-27] Emprise, lot L3 (corrections superviseur) : drapeau neutre hors du fil, taille de `teammates_service.go` — Complété (`wt/emprise`, commit local)
+
+**Decision technique principale** : un seul prédicat « mode écarté » (`modesEcartes`) sur une seule source (`pair_name` brut des lignes canoniques, complété par les lignes escouade) sert le fil de la session et l'historique d'objectif. Le bloc formes publie `excluded_from_balance` par match, et le fil web ignore ces matchs : la fin du fil tombe sur le point « ce soir ». `filterCanonicalByMatchIDsSet` est déplacée dans `teammates_service_briefing.go` : `teammates_service.go` revient à 501 lignes.
+
+**Resultats observes** : tests Go (même match écarté dans le bloc et dans l'historique) et web (07/09 + un match neutre : fin du fil 39,0 / 36,8 / 43,8 % = point du soir) verts ; paquets Go touchés verts, lint 0 issue, contrat vérifié, typecheck, lint web, ratchets verts ; les 8 garde-rails en délai dépassé passent chacun seul au délai standard.
+
+**Conclusion / prochaine etape** : L3 clos. Vérification superviseur, puis L4.
+
+## [2026-09-27] Emprise, lot L4 : panne des niveaux de socle, bloc `squad_emprise` (données Go) — Complété (`wt/emprise`, commits locaux `0aaf61afb`, `35acc94ea` + clôture)
+
+**Decision technique principale** : (1) la panne des niveaux de socle avait deux causes empilées — `DerivationsDeps` sans `WithRead` (aucune identité de match lisible, marque posée quand même) et une lecture placée sous le segment d'écriture mémoïsé de la passe (attente de swap jusqu'à `ErrSwapTimeout` en B-swap) ; correctif : `WithRead` transmis par les trois appelants, préparation (lectures) avant la première famille qui écrit, identité indisponible = échec au bilan et `ErrorContext`. (2) Bloc `squad_emprise` sur `/pages/teammates` : calcul pur `analysis/squademprise`, orchestration `service/teammates`, périmètre D2, bonus = prises attribuées (`taken_json`), armes spéciales / râteliers = niveaux `puissance` / `terrain`, frags aux armes spéciales = feuille de match (tous titres), habitude = 10 soirées précédentes sur les familles de ce soir, compte de `composition_sessions`. Comptes d'issue exposés sans toucher la bascule « utilisé » (garde-rail et golden inchangés).
+
+**Resultats observes** : témoins du 22/09 retrouvés par test d'intégration sur fixture (persisters réels, vues `_latest`) — bonus 12 / 8, armes spéciales 23 / 29, frags d'effet 8 / 5, temps d'effet 159 / 113 s, frags aux armes spéciales 47 / 54, bonus perdus 2 sur 12 et 2 sur 8, fiches et fil de la session de la maquette. Écart assumé et documenté : rendement des armes spéciales sur le périmètre des prises (+16,9 %) au lieu de la division mixte de la maquette (+10 %). Gate : `go test ./...` vert ; intégration `-p 1` verte hors deux paquets sensibles à la charge (ops, killcollector), verts rejoués seuls ; 22 tests ciblés verts ; lint 0 issue ; contrat additif régénéré et vérifié ; typecheck web OK. Revue adversariale (2 relecteurs) : 0 P0, 0 P1, 3 P2 — 2 corrigés (tests des appelants, isolation du test writer), 1 consigné (rendement des bonus quand les frags ne sont pas rattachés).
+
+**Conclusion / prochaine etape** : L4 clos, sept découvertes au plan, dont une à ne pas perdre : les matchs dérivés pendant la panne sont marqués et ne seront repris que par `levelup backfill-pad-tiers` (L6.2). Vérification superviseur, puis L5 (onglet web).
+
+## [2026-09-27] Emprise, lot L5a : onglet « Emprise » (route, redirection), piste camp contre camp, quatre cartes — En cours (L5a fait sur `wt/emprise`, commit local ; L5b reste : trois cartes, suppressions D12, Halo 5)
+
+**Decision technique principale** : (1) l'onglet Usages devient « Emprise » (`squad/emprise`), `squad/usages` redirige en `beforeLoad` avec paramètres ET recherche (`session`, `teammates`) ; `routeTree.gen.ts` régénéré par le générateur du routeur avec la configuration du plugin Vite (diff additif). (2) L5.3 par une NOUVELLE forme `emprise/PisteCampsForm.tsx` plutôt que `Piste100Form` revue : l'ancienne répond à une autre question (lobby découpé par joueur, adversaire hachuré) et ses quatre appelants meurent en L5.4. (3) Quatre cartes branchées sur `squad_emprise` + `match_history` (jointure L3.2), modèles purs `emprise/emprise.logic.ts`, ressources pilotées par la liste du bloc (`RESOURCE_ORDER` ; les véhicules de L7 = une entrée de plus) ; cadre, légende, coquille de fiche et briques de courbe de L3 réutilisés (exportés, pas recopiés). (4) `TeammatesPageResponse` (écrit à la main) ne déclarait pas `squad_emprise` : ajouté.
+
+**Resultats observes** : témoins du 22/09 retrouvés par tests sur la fixture de la maquette — bonus 12 / 8 (« 12 · 60 % » / « 40 % · 8 »), armes spéciales 23 / 29 (« 23 · 44,2 % »), fin des courbes 60 % et 44 %, fiches bonus 3 / 3 / 5 / 1 et armes spéciales 9 / 3 / 3 / 8 (JGtm « 3 bonus » / « 9 armes spéciales »), bonus perdus 2 sur 12 (17 %) et 2 sur 8 (25 %), Starboard « Victoire 3–0 » + « Domination », Detachment « sans film » avec frags aux armes spéciales 9–13, 13 armes de râtelier repliées. Écarts assumés à la maquette : repli des pistes limité à la valeur masquée, pastille de ressource sur le bouton des râteliers (S8), case « non classé » quand les niveaux de socle ne sont pas établis. Gate web vert : typecheck, `tsc -b --force`, lint 0 erreur, vitest complet (818 fichiers, 8 745 tests passés, ignorés préexistants), knip 0/0/0, couleurs 0, imports croisés 7 ≤ 7. Aucun Go touché.
+
+**Conclusion / prochaine etape** : L5.1 et L5.3 clos, L5.2 ouvert (quatre cartes sur sept). Vérification superviseur, puis L5b : « Frags obtenus avec les ressources », « Rendement face à l'adversaire » (lire `production[].exposure.kills`, découverte L4), « Contrôle des ressources, soirée après soirée », suppressions L5.4 (y ajouter `Piste100Form`, découverte L5a), plafonds L5.5, Halo 5 L5.6.
+
+## [2026-09-27] Emprise, lot L5b : trois cartes de l'onglet, suppression de l'ancien onglet Usages, Halo 5 — Complété (`wt/emprise`, commits locaux)
+
+**Decision technique principale** : (1) les trois dernières cartes de l'onglet Emprise d'après la maquette v21 — « Frags obtenus avec les ressources » (barre épaisse des frags par `PisteCampsForm`, étendue d'un emplacement `below` pour la barre fine de l'exposition et sa ligne de valeurs), « Rendement face à l'adversaire » (écart relatif publié par le Go, barre divergente sur −50 / +50 %, rendements bruts de l'autre côté du zéro), « Contrôle des ressources, soirée après soirée » (ECharts, une soirée par point, colonne « ce soir », médiane à partir de trois soirées précédentes — D5 ; brique `tonightColumn` extraite de l'objectif, pas copiée). (2) Un prédicat unique `empriseContent.ts` lu par la page ET la barre d'onglets : sans rien à montrer, l'onglet se masque (D10) ; sans film, seule la barre épaisse des frags aux armes spéciales reste, et la grille exige une ligne lue au film. (3) L5.4 : l'ancien onglet Usages et tout ce qui ne servait qu'à lui partent (huit cartes squad de `formes/`, `Piste100Form`, `lobbyParts`, `teamShareOfMatch`, le contexte escouade de `FormesRetenuesSection`, le mode `'squad'` d'`EquipmentUsageSection`, les clés i18n orphelines) ; côté Go, `equipment_usage` quitte `/pages/teammates` (plus de lecteur), `WithEquipmentUsage` devient `WithUsageSummary`, contrat régénéré ; `formes_retenues` reste (Contributions le lit).
+
+**Resultats observes** : témoins retrouvés par tests — frags pendant l'effet 8 / 5 (« 8 · 61,5 % »), temps d'effet 2 min 39 · 58,5 % / 1 min 53, frags aux armes spéciales 47 / 54, prises 23 / 29 (44,2 %), rendement bonus 3,0 contre 2,7 (+14 %), armes spéciales 1,7 contre 1,4 (+17 %, règle L4 : périmètre des prises mesurées ; la maquette dit +10 %), habitude ce soir 60 % / 44 % et médianes 60 / 50 %. Écarts à la maquette : axes alignés sur la colonne des barres (la maquette les décale), valeur de rendement dans le bout de la barre au-delà de ±40 %, médiane sous condition D5. Gates : `go test ./...` vert hors le test LUSR à seuil de 2 s (non touché, vert rejoué seul), lint Go 0 issue, contrat régénéré et vérifié ; web typecheck, `tsc -b --force`, lint 0 erreur, vitest complet 8 754 tests verts, knip 0/0/0, couleurs 0, imports croisés 7 ≤ 7.
+
+**Conclusion / prochaine etape** : L5 clos (L5.1 à L5.6 statués). Vérification superviseur, puis L6 (revue adversariale du diff cumulé, rattrapages, fusion, gate visuel).
+
+## [2026-09-27] Emprise, lot L6.1 ronde 1 : correctifs de la revue adversariale (R1 à R13) — Complété (`wt/emprise`, commit local)
+
+**Decision technique principale** : treize constats retenus par le superviseur, tous vérifiés sur pièces puis corrigés avec un test de non-régression vu rouge par mutation. Données : un match filmé sans échelle de temps sort du rendement des bonus (frags ET temps d'effet, même règle et même trace `Warn` que Sessions) ; un match filmé au camp inconnu n'est plus « mesuré » (Go) et s'écrit « camp inconnu » dans la grille, hors du fil (web) ; la barre épaisse des armes spéciales lit `exposure.kills` quand la barre fine est tracée (même population que la fine et le rendement, 38 / 41 le 22/09), infobulle réécrite. Front : le point et la valeur de « ce soir » ne se posent plus sur une soirée passée ; code mort retiré ; sept fonctions ramenées sous leurs seuils (le graphe des soirées de l'objectif sort dans `objectif/eveningsChart.ts`) ; « grossir le point final » centralisé dans `components/charts/endPoint.ts` (cinq copies migrées, garde-rail sans allowlist qui s'auto-teste sur les anciennes copies). Tests ajoutés pour le câblage de `TeammatesCtx` (arbre syntaxique : argument et porte de chaque option), le filtre partiel de l'habitude et de l'historique d'objectif, le participant sans camp, l'artefact non projetable (intégration) et l'onglet actif de la barre d'onglets.
+
+**Resultats observes** : aucune correction de code pour R8 à R13 (les tests prouvent le comportement existant ; R12 : le code fait ce que dit son commentaire). Le constat R2 citait `build.go:184-186`, lignes inexistantes : le compteur visé est celui de `squademprise.Build`. Gates : `go test ./...` vert, intégration `-p 1` des quatre arbres verte, lint Go 0 issue (rejoué après un délai dépassé à froid), contrat inchangé et vérifié ; web typecheck, `tsc -b --force`, lint 0 erreur, knip 0/0/0, couleurs 0, imports croisés 7 ≤ 7, vitest complet vert hors quatre garde-rails en délai dépassé sous charge, verts rejoués seuls.
+
+**Conclusion / prochaine etape** : ronde 1 close (R1 à R13 statués `[x]`), quatre découvertes consignées au plan (fonction L2 à 89 lignes, valeur au bout du graphe des soirées de l'objectif, ligne des frags d'un match au camp inconnu, référence de ligne du constat R2). Vérification superviseur ; ronde 2 de revue si le superviseur la demande, puis L6.2.
+
+## [2026-09-27] Emprise, lot L6.1 : R14 et R15 (découvertes de la ronde 1 promues) — Complété (`wt/emprise`, commit local)
+
+**Decision technique principale** : R14 — `FragBreakdownBar` (Répartition des frags, 89 lignes) découpé en trois composants (`FragBreakdownBar` 48 lignes, `FragBreakdownRepli`, `FragBreakdownSeg`), mêmes nœuds et attributs, tests de la carte inchangés. R15 — « Rapport de force, soirée après soirée » : le point grossi se pose sur l'index de la soirée affichée (`current`) via `withEndPoint`, et la valeur au bout (`endLabel`, qu'ECharts pose sur le dernier point non nul) ne s'affiche que si ce soir a une part — même correction que R4 côté ressources.
+
+**Resultats observes** : test « ce soir sans part pour un rôle » (Tenir absent ce soir) rouge sous deux mutations (`show: true`, `at` retiré), vert corrigé. Gate web : typecheck OK, lint 0 erreur (26 avertissements préexistants), vitest `src/features/squad` + `endPoint` en `--pool=forks` : 808 tests verts, knip 0/0/0, couleurs 0.
+
+**Conclusion / prochaine etape** : R14 et R15 statués `[x]` au plan, découvertes correspondantes marquées traitées. Vérification superviseur, puis L6.2.
+
+## [2026-09-27] Emprise, lots L6.1 à L6.3 : revue close, rattrapage local, fusion dans `feat/v75` — En cours (fusion faite ; CI, gate visuel utilisateur, prod et L6.6 restent)
+
+**Decision technique principale** : fusion `--no-ff` de `wt/emprise` dans `feat/v75` sur accord de l'utilisateur (il ne peut vérifier qu'après fusion). Le merge est fait sur une tête détachée du worktree à `origin/feat/v75` puis poussé, pour ne pas toucher aux modifications non commitées d'autres sessions dans le dossier principal (`CLAUDE.md`, `CONTRIBUTING`, journal).
+
+**Resultats observes** : revue adversariale close (ronde 1 : R1-R13 corrigés, ronde 2 : 0 constat, R14-R15 promus et corrigés). Rattrapage local : `backfill-pad-tiers` 12 écrits / 99 déjà en base / 0 échec ; `backfill-usage-summary` 0 écrit / 17 à jour / 111 artefacts au schéma périmé (hors chantier). Serveurs de gate du worktree arrêtés.
+
+**Conclusion / prochaine etape** : CI verte au niveau job sur `feat/v75` (L6.3), puis gate visuel de l'utilisateur sur la soirée du 22/09 (L6.4), rattrapages prod sur accord (L6.5), mise à jour de la référence équipement §4 (L6.6), puis plan détaillé du lot L7 (véhicules) soumis à l'utilisateur.
+
+## [2026-09-27] Emprise, lot L6.3 : fusion dans `feat/v75`, CI verte — Complété (L6.4 gate visuel utilisateur en attente)
+
+**Decision technique principale** : fusion `90415aa5b` + correctif `0cae929af` poussés sur `feat/v75`. Le premier push a été refusé par deux garde-rails que les gates des lots ne jouaient pas (`lint-no-hardcoded-fields`, `lint-contract-ratchet`) : libellés d'issue lus dans `outcomes.toml` (`useOutcomeLabels`), fichier de données de test du 22/09 en liste blanche datée, entrée `SquadWeaponBar` obsolète retirée. Dossier principal avancé en avance rapide, sans toucher aux modifications non commitées d'autres sessions (journal réappliqué à l'identique en fin de fichier).
+
+**Resultats observes** : pre-push vert (go-vet-cgo, govulncheck, knip, contrats, couleurs, champs, shared_social). CI verte au niveau job : runs 36335594113 et 36335588369.
+
+**Conclusion / prochaine etape** : gate visuel de l'utilisateur (L6.4), puis L6.5 prod sur accord, L6.6 référence équipement §4, plan du lot L7 (véhicules). Leçon : jouer `lefthook run pre-push` dans le gate de chaque lot web.

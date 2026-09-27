@@ -26,6 +26,7 @@ import (
 	titlePkg "levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/ops"
+	"levelup/go-api/internal/platform/duckdb/sharedprovider"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/replaybuild"
 	syncpkg "levelup/go-api/internal/sync"
@@ -289,40 +290,48 @@ func (r *ServiceRegistry) deriverArtefactRange(ctx context.Context, titleSlug, m
 		r.replayDerivationsFn(ctx, titleSlug, ranges)
 		return
 	}
+	provider := r.sharedProviderForTitle(titleSlug)
 	replayartifacts.Deriver(ctx, replayartifacts.DerivationsDeps{
 		RepoRoot:  r.cfg.RepoRoot,
 		TitleSlug: titleSlug,
 		// Gamertag VIDE, et c'est exact : un dépôt d'ouvrier ne travaille pour aucun joueur
 		// en particulier. Le champ ne sert qu'au journal.
-		AcquireWriter: r.sharedWriterForTitle(titleSlug),
+		WithRead:      sharedReadDepot(provider, titleSlug),
+		AcquireWriter: r.sharedWriterForTitle(provider, titleSlug),
 	}, ranges)
 }
 
-// sharedWriterForTitle rend l'acquisition d'un writer shared POUR CE TITRE, sous la forme que
-// les dérivations attendent. Nil quand rien ne peut écrire (aucun provider câblé) : les
-// projections le journalisent alors et ne persistent rien.
+// sharedProviderForTitle résout le provider shared DU TITRE. Nil quand aucun n'est câblé, ou
+// quand celui du titre est introuvable : on REFUSE alors de lire et d'écrire plutôt que de
+// toucher le shared d'un autre titre.
 //
 // LE PROVIDER EST RÉSOLU PAR TITRE, JAMAIS `cfg.SharedProvider` NU : celui-ci est le provider
 // du titre par DÉFAUT (B-swap), et un artefact d'un autre titre écrirait dans le mauvais
 // fichier. Le Manager déduplique par chemin — pour le titre par défaut il rend le MÊME
 // provider, sans ouvrir la moindre connexion supplémentaire.
+func (r *ServiceRegistry) sharedProviderForTitle(titleSlug string) sharedprovider.Provider {
+	if r.cfg.SharedManager == nil {
+		return r.cfg.SharedProvider
+	}
+	p, err := r.cfg.SharedManager.For(
+		titlePkg.NewPathResolver(r.cfg.RepoRoot).SharedDBPath(titleSlug), r.cfg.UserTimezone)
+	if err != nil {
+		monitoringLog.Warn("build queue: provider shared du titre introuvable — dérivations non persistées",
+			"title", titleSlug, "err", err)
+		return nil
+	}
+	return p
+}
+
+// sharedWriterForTitle rend l'acquisition d'un writer shared POUR CE TITRE, sous la forme que
+// les dérivations attendent. Nil quand rien ne peut écrire (aucun provider) : les projections
+// le journalisent alors et ne persistent rien.
 //
 // L'ACQUISITION EST BORNÉE PAR [acquireWriterDepot], et non par `acquireWriterTimeout` : ce
 // chemin-ci vit dans un handler HTTP dont le serveur ferme l'écriture à 30 s (constat C7).
-func (r *ServiceRegistry) sharedWriterForTitle(titleSlug string) func(context.Context) (*sql.DB, func(), error) {
-	provider := r.cfg.SharedProvider
-	if r.cfg.SharedManager != nil {
-		p, err := r.cfg.SharedManager.For(
-			titlePkg.NewPathResolver(r.cfg.RepoRoot).SharedDBPath(titleSlug), r.cfg.UserTimezone)
-		if err != nil {
-			// Jamais muet : sans provider du titre, on REFUSE d'écrire plutôt que d'écrire
-			// dans le shared d'un autre titre.
-			monitoringLog.Warn("build queue: provider shared du titre introuvable — dérivations non persistées",
-				"title", titleSlug, "err", err)
-			return nil
-		}
-		provider = p
-	}
+func (r *ServiceRegistry) sharedWriterForTitle(
+	provider sharedprovider.Provider, titleSlug string,
+) func(context.Context) (*sql.DB, func(), error) {
 	if provider == nil {
 		return nil
 	}
@@ -332,6 +341,29 @@ func (r *ServiceRegistry) sharedWriterForTitle(titleSlug string) func(context.Co
 		return syncpkg.AcquireSharedWriterStandalone(
 			ctxkeys.WithDBWriterLabel(acquireCtx, "replay_derivations"),
 			provider, titlePkg.NewPathResolver(r.cfg.RepoRoot).SharedDBPath(titleSlug))
+	}
+}
+
+// sharedReadDepot rend le segment de LECTURE shared du titre que les dérivations empruntent
+// (identité des matchs des niveaux d'armes, lot L4.1 : son absence vidait la table). Nil sans
+// provider — les niveaux ne sont alors ni projetés ni marqués, et c'est journalisé.
+//
+// L'ATTENTE D'UN SWAP EST BORNÉE PAR [acquireWriterDepot], comme celle du writer, et pour la
+// même raison (constat C7) : les deux attentes sont successives — la lecture a lieu AVANT la
+// première écriture — et leur somme est ce que borne `build_queue_writer_budget_test.go`.
+func sharedReadDepot(provider sharedprovider.Provider, titleSlug string) func(context.Context, string, func(*sql.DB)) {
+	if provider == nil {
+		return nil
+	}
+	return func(ctx context.Context, step string, fn func(*sql.DB)) {
+		db, release, err := provider.Get(sharedprovider.WithSwapWaitBudget(ctx, acquireWriterDepot))
+		if err != nil {
+			monitoringLog.WarnContext(ctx, "build queue: lecture shared indisponible — étape de dérivation sautée",
+				"title", titleSlug, "step", step, "err", err)
+			return
+		}
+		defer release()
+		fn(db)
 	}
 }
 

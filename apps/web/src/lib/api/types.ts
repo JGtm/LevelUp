@@ -1277,22 +1277,15 @@ export type MapBreakdownRow = components['schemas']['MapBreakdownRow']
 
 export type SquadMatchSeriesPoint = components['schemas']['SquadMatchSeriesPoint']
 
-/** Une ligne du chart kills par arme teammates.09. */
-export interface SquadWeaponBar {
-  weapon_id: number
-  label: string
-  /** Classe d'arme du registre (shoulder/sidearm/heavy/melee/grenade/…). Absente si non
-   *  résolue (dont les sentinels grenade/mêlée). Sert au split gun/non-gun (buildSquadFragTools). */
-  class?: string
-  is_grenade_melee?: boolean
-  /** gamertag → kills (joueurs absents = 0). */
-  kills_by_player: Record<string, number>
-  total_squad: number
-}
+/** Une ligne des « Outils de destruction » (Escouade, D8) : un outil — arme nommée par le
+ *  registre (`kind` = `weapon`, `label` FR d'abord, `label_en` EN d'abord) ou nature nommée
+ *  par le web (mêlée, objet explosif, chute, non attribué…) —, sa classe de frag (pastille) et
+ *  les frags de chaque joueur. */
+export type SquadWeaponToolLine = components['schemas']['SquadWeaponToolLine']
 
-/** Données du chart teammates.09 — players ordonnés (main puis teammates),
- *  bars triées par TotalSquad ASC (peu utilisées en haut). */
-export type SquadWeaponKills = components['schemas']['SquadWeaponKills']
+/** Données des « Outils de destruction » — players ordonnés (main puis coéquipiers), lines
+ *  triées par total décroissant, « Non attribué » en dernier. Aucun plafond. */
+export type SquadWeaponTools = components['schemas']['SquadWeaponTools']
 
 /** Une ligne du comparatif « Précision par rôle » (Escouade) : précision + tirs par joueur,
  *  agrégés PAR RÔLE d'arme (precision/automatic/sniper/…). Shim du schéma OpenAPI (contrat
@@ -1466,7 +1459,8 @@ export interface TeammatesPageResponse {
   /** Répartition des frags PAR CLASSE (D8) par gamertag — barres empilées du
    *  sous-chart « Répartition des frags » de teammates.16. */
   frag_classes?: Record<string, FragClassEntry[]>
-  weapon_kills?: SquadWeaponKills
+  /** « Outils de destruction » (D8) : chaque frag nommé, par outil et par joueur. */
+  weapon_tools?: SquadWeaponTools
   /** Comparatif « Précision par arme » multi-joueurs (barres groupées horizontales).
    *  Précision native Halo 5 ; absent sur Infinite (capability weapon_accuracy). */
   weapon_accuracy?: SquadWeaponAccuracy
@@ -1498,35 +1492,37 @@ export interface TeammatesPageResponse {
    *  Non vide => l'UI doit le signaler (fin des chiffres non reproductibles). */
   data_issues?: DataIssue[]
   /**
-   * Bloc « servi ou gâché » de l'équipement (PLAN_EQUIPEMENT_GACHIS_2026-09-09, E6
-   * puis E6.1bis) — variante comptes (P9), une ligne par coéquipier SÉLECTIONNÉ.
-   *
-   * ÉCART DE CONTRAT CORRIGÉ (E6.1bis, 2026-09-09) : E6.1 avait publié ce bloc sur
-   * `domain.SquadPageV2Response` (`GET /pages/squad/v2`), une réponse que la page
-   * Escouade réelle (`SquadLayout`/`useTeammates`) ne fetch jamais. E6.1bis a
-   * déplacé la publication vers `TeammatesPageResponse` (`POST /pages/teammates`,
-   * le SEUL endpoint que la page appelle), câblée par
-   * `TeammatesService.WithEquipmentUsage` (`internal/service/teammates/teammates_service_usage.go`).
-   * Absent = scope filtré sans match ; `available:false` avec raison machine pour
-   * un titre sans `film.usage_summary` (même contrat que les autres blocs
-   * best-effort).
-   */
-  /**
    * Profils de PORTÉE par match (lot N2) : tous les joueurs mesurés de chaque match, leur
    * médiane et leur écart à la médiane du lobby. Alimente la carte « Rôles de portée » de
    * l'onglet Synergies. Absent = aucun film décodé sur la sélection.
    */
   range_profiles?: MatchRangeBlock
-  equipment_usage?: EquipmentUsageBlock
   /**
    * Bloc « formes retenues » (artefact 2ec1b8eb, lot D2 du 2026-09-13) — la
    * MATIÈRE des dix-neuf cartes des trois blocs (usages d'équipement, contrôle
    * des armes spéciales, objectifs) : une ligne par joueur et par match, les
-   * deux camps. Publié par `TeammatesService.WithSquadFormes` sur le MÊME scope
-   * filtré que `equipment_usage`. Absent = scope sans match ; `available:false`
-   * avec raison machine pour un titre sans `film.usage_summary`.
+   * deux camps. Publié par `TeammatesService.WithSquadFormes` sur le périmètre D2 de la
+   * page ; lu par les cartes d'objectif de Contributions (`equipment_usage` a quitté cette
+   * réponse au lot L5.4 du plan PLAN_EMPRISE_ET_CARTES_DEPLACEES_2026-09-26 : plus de lecteur).
+   * Absent = périmètre sans match ; `available:false` avec raison machine pour un titre sans
+   * `film.usage_summary`.
    */
   formes_retenues?: SquadFormesBlock
+  /**
+   * « Rapport de force, soirée après soirée » (lot L3 du plan
+   * PLAN_EMPRISE_ET_CARTES_DEPLACEES_2026-09-26, D6/D7) : la soirée affichée (périmètre D2) et
+   * les dix soirées précédentes de la composition d’au moins trois matchs à objectif. Parts en
+   * 0..1. Absent sans coéquipier sélectionné ou sans stats d’objectif.
+   */
+  squad_objective_history?: SquadObjectiveHistory
+  /**
+   * Bloc « Emprise » (lot L4 du plan PLAN_EMPRISE_ET_CARTES_DEPLACEES_2026-09-26) : les prises de
+   * chaque ressource (bonus, armes spéciales, armes de râtelier) par notre camp et par
+   * l’adversaire, sur le périmètre D2 — bilan, match par match, objet par objet, qui chez nous,
+   * production et habitude. Résultat, score et dominance se joignent depuis `match_history`.
+   * Absent = périmètre sans match. Lu par l’onglet Emprise (lot L5).
+   */
+  squad_emprise?: SquadEmpriseBlock
 }
 
 /** Dégradation d'un chargement best-effort. `code` est une clé stable traduite
@@ -2361,6 +2357,9 @@ export type EquipmentUsageFriendCount = components['schemas']['EquipmentUsageFri
 // à l'endroit où elles s'affichent (quatre dénominateurs, six formes).
 
 export type SquadFormesBlock = components['schemas']['SquadFormesBlock']
+/** Le rapport de force à l’objectif, soirée après soirée (lot L3, D6/D7). */
+export type SquadObjectiveHistory = components['schemas']['SquadObjectiveHistory']
+export type SquadObjectiveEvening = components['schemas']['SquadObjectiveEvening']
 export type SquadFormesMatch = components['schemas']['SquadFormesMatch']
 export type SquadFormesLobbyPlayer = components['schemas']['SquadFormesLobbyPlayer']
 export type SquadFormesWeapon = components['schemas']['SquadFormesWeapon']
@@ -2368,6 +2367,17 @@ export type SquadFormesWeaponPad = components['schemas']['SquadFormesWeaponPad']
 export type SquadFormesObjective = components['schemas']['SquadFormesObjective']
 export type SquadFormesObjectiveColumn = components['schemas']['SquadFormesObjectiveColumn']
 export type SquadFormesObjectivePlayer = components['schemas']['SquadFormesObjectivePlayer']
+
+// ─── Bloc « Emprise » (lot L4 du plan PLAN_EMPRISE_ET_CARTES_DEPLACEES_2026-09-26). Contrat Go :
+// internal/domain/squad_emprise.go. Les ressources sont une LISTE (une ressource sans donnée est
+// absente) ; résultat, score et dominance se joignent depuis `match_history` par `match_id`.
+export type SquadEmpriseBlock = components['schemas']['SquadEmpriseBlock']
+export type SquadEmpriseMatch = components['schemas']['SquadEmpriseMatch']
+export type SquadEmpriseObject = components['schemas']['SquadEmpriseObject']
+export type SquadEmpriseObjectShare = components['schemas']['SquadEmpriseObjectShare']
+export type SquadEmpriseCount = components['schemas']['SquadEmpriseCount']
+export type SquadEmpriseHabit = components['schemas']['SquadEmpriseHabit']
+export type SquadEmpriseEvening = components['schemas']['SquadEmpriseEvening']
 
 // ─── Sprint 54-C : Compare joueur vs joueur ───────────────────────────────────
 

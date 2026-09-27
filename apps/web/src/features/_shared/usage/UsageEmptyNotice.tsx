@@ -8,7 +8,7 @@
  * IL SE DESSINE COMME TOUS LES AUTRES ÉTATS VIDES DE L'APP (2026-09-22) : `EmptyStateNotice`
  * (`components/ui/empty-state.tsx`, 48 fichiers), titre en gras puis description en gris
  * dans le cadre pointillé — le même gabarit que `TimeseriesRangeRolesCard`,
- * `SquadRangeRolesCard` ou `SquadUsagesPage` posent DÉJÀ à l'intérieur d'une carte. Ce
+ * `SquadRangeRolesCard` ou `SquadEmprisePage` posent DÉJÀ à l'intérieur d'une carte. Ce
  * fichier rendait jusqu'ici un simple `<p>` gris : dans une rangée où la carte voisine
  * portait le cadre canonique, la même absence se lisait de deux façons (retour utilisateur
  * du 2026-09-22 sur « Contrôle des armes spéciales »). Aucun style local ici, donc : la

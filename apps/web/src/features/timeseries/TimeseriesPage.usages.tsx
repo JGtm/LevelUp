@@ -94,7 +94,6 @@ export function TimeseriesUsagesTab({ data, locale, t }: TimeseriesUsagesTabProp
         <DetailSection title={t('timeseries.usages.equipment_title')}>
           <EquipmentUsageSection
             usage={data.equipment_usage}
-            mode="solo"
             t={usageText}
             locale={locale}
           />
@@ -104,7 +103,7 @@ export function TimeseriesUsagesTab({ data, locale, t }: TimeseriesUsagesTabProp
       {/* « Les formes retenues », CONTEXTE SOLO — elle ne porte PLUS de titre de section
           depuis la décision D5 du 2026-09-21 (trois intertitres se suivaient) : chacun de ses
           blocs porte le sien. On ne lui en repose donc pas un ici. */}
-      <FormesRetenuesSection block={data.formes_retenues} locale={locale} contexte="solo" />
+      <FormesRetenuesSection block={data.formes_retenues} locale={locale} />
     </div>
   )
 }

@@ -15,7 +15,7 @@
  *   `--fam-*`    -> USAGE_METRIC_TOKENS (features/_shared/usage) : les gestes
  *                                      gardent l'encre qu'ils ont sur la vue
  *                                      match et la page Sessions
- *   hachure adverse -> motif neutre (l'adversaire est compté, jamais coloré)
+ *   hachure du non mesuré -> motif neutre (le match sans film, jamais une donnée)
  */
 import type { CSSProperties } from 'react'
 
@@ -67,22 +67,10 @@ export function axisInk(axis: EquipmentAxis): string {
 }
 
 /**
- * LA HACHURE DE L'ADVERSAIRE — deuxième copie ASSUMÉE du motif de
- * `features/_shared/usage/UsageForms.tsx` (l'import croisé entre features est
- * interdit par le ratchet). À la troisième copie : centraliser dans
- * `components/` et poser le garde-rail (CLAUDE.md n°6).
- *
- * L'adversaire n'a ni couleur d'équipe ni nom : il est compté, jamais affiché.
- */
-export const ENEMY_HATCH: CSSProperties = {
-  backgroundImage:
-    'repeating-linear-gradient(45deg, transparent 0px, transparent 4px, color-mix(in oklab, var(--muted-foreground) 45%, transparent) 4px, color-mix(in oklab, var(--muted-foreground) 45%, transparent) 6px)',
-}
-
-/**
- * LA HACHURE DU NON MESURÉ — le match sans film décodé. Même grammaire que
- * celle de l'adversaire (une hachure, jamais un aplat), mais plus pâle : ce
- * n'est pas une donnée, c'est une absence.
+ * LA HACHURE DU NON MESURÉ — le match sans film décodé (une hachure, jamais un aplat,
+ * pâle : ce n'est pas une donnée, c'est une absence). La hachure de l'adversaire, sa
+ * voisine, est partie avec les cartes du contexte escouade (lot L5.4 du plan
+ * PLAN_EMPRISE_ET_CARTES_DEPLACEES_2026-09-26).
  */
 export const UNMEASURED_HATCH: CSSProperties = {
   backgroundImage:

@@ -42,6 +42,20 @@ func TestExactCompositionWiringPresent(t *testing.T) {
 		"compFilter.applyShared(")
 }
 
+// TestUsageScopeReadsSquadPopulation verrouille le périmètre D2 des blocs d'usage et de
+// l'historique d'objectif (plan PLAN_EMPRISE_ET_CARTES_DEPLACEES_2026-09-26) : ils lisent la
+// population escouade APRÈS filterExactComposition (allSquadRows, passée à loadUsageBlocks par
+// GetPage), intersectée avec filteredMatches — jamais filteredMatches seul quand une escouade
+// est sélectionnée, jamais l'intersection brute.
+func TestUsageScopeReadsSquadPopulation(t *testing.T) {
+	dir := packageDir(t)
+	mustContain(t, filepath.Join(dir, "teammates_service.go"),
+		"filtered: filteredMatches, squadRows: allSquadRows, timelineRows: allSquadRowsForTimeline,")
+	mustContain(t, filepath.Join(dir, "teammates_service_usage.go"),
+		"filterExactComposition",
+		"scope := perimetreEscouade(p.filtered, p.squadRows, selection)")
+}
+
 // TestNoRawIntersectionConsumption : tout fichier (hors test) qui appelle
 // intersectSquadRowsByMatchID DOIT aussi référencer filterExactComposition — le
 // résultat de l'intersection ne doit jamais être consommé brut.

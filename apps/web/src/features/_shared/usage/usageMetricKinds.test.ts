@@ -9,7 +9,14 @@ import { describe, expect, it } from 'vitest'
 import type { SessionUsageMetric } from '@/lib/api/types'
 
 import { USAGE_TEXT } from './usageI18n'
-import { equipmentMetrics, metricKind, metricLabel } from './usageMetricKinds'
+import {
+  ROLE_TOKENS,
+  USAGE_METRIC_TOKENS,
+  equipmentMetrics,
+  metricKind,
+  metricLabel,
+  roleToken,
+} from './usageMetricKinds'
 
 const t = USAGE_TEXT.fr
 
@@ -71,5 +78,23 @@ describe('classement et tri des grandeurs', () => {
     expect(metricLabel('equipment_threat_seeker', t)).toBe(t.equipSeeker)
     expect(metricLabel('equipment_repair_field', t)).toBe(t.equipField)
     expect(metricLabel('equipment_mystere', t)).toBe(t.metricDeployedFmt('mystere'))
+  })
+})
+
+describe('encres — familles dédiées (D9, plan Emprise, 2026-09-26)', () => {
+  it('camouflage et surbouclier prennent la ressource « bonus »', () => {
+    expect(USAGE_METRIC_TOKENS.camo).toBe('resource-powerup')
+    expect(USAGE_METRIC_TOKENS.overshield).toBe('resource-powerup')
+  })
+
+  it('les trois rôles d\'objectif prennent la famille objective-role-*', () => {
+    expect(ROLE_TOKENS).toEqual({
+      take: 'objective-role-take',
+      defend: 'objective-role-defend',
+      hold: 'objective-role-hold',
+    })
+    expect(roleToken('take')).toBe('objective-role-take')
+    expect(roleToken('defend')).toBe('objective-role-defend')
+    expect(roleToken('hold')).toBe('objective-role-hold')
   })
 })

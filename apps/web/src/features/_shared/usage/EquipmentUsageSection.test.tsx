@@ -1,7 +1,8 @@
 /**
  * EquipmentUsageSection.test.tsx — l'orchestrateur du bloc « servi ou gâché » en
- * variante COMPTES (P9), monté par la Synthèse (mode 'solo') et l'Escouade (mode
- * 'squad'), PLAN_EQUIPEMENT_GACHIS_2026-09-09, étapes E5.8-E5.10/E6.2-E6.4.
+ * variante COMPTES (P9), monté par les Séries temporelles (solo seul depuis le lot L5.4 du
+ * plan PLAN_EMPRISE_ET_CARTES_DEPLACEES_2026-09-26), PLAN_EQUIPEMENT_GACHIS_2026-09-09,
+ * étapes E5.8-E5.10/E6.2-E6.4.
  */
 import { describe, expect, it } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
@@ -28,7 +29,7 @@ function ouvrirAideDe(container: HTMLElement, titre: string) {
 describe('EquipmentUsageSection', () => {
   it('bloc absent : rien ne se rend (jamais un graphe fantôme)', () => {
     const { container } = render(
-      <EquipmentUsageSection usage={undefined} mode="solo" t={t} locale="fr" />,
+      <EquipmentUsageSection usage={undefined} t={t} locale="fr" />,
     )
     expect(container.firstChild).toBeNull()
   })
@@ -40,7 +41,7 @@ describe('EquipmentUsageSection', () => {
       matches_measured: 0,
       matches_total: 0,
     }
-    const { container } = render(<EquipmentUsageSection usage={usage} mode="solo" t={t} locale="fr" />)
+    const { container } = render(<EquipmentUsageSection usage={usage} t={t} locale="fr" />)
     expect(container.firstChild).toBeNull()
   })
 
@@ -51,7 +52,7 @@ describe('EquipmentUsageSection', () => {
       matches_measured: 0,
       matches_total: 12,
     }
-    render(<EquipmentUsageSection usage={usage} mode="solo" t={t} locale="fr" />)
+    render(<EquipmentUsageSection usage={usage} t={t} locale="fr" />)
     expect(screen.getByText(t.unavailableLoadFailed)).toBeInTheDocument()
   })
 
@@ -66,7 +67,7 @@ describe('EquipmentUsageSection', () => {
       ],
       players: [{ xuid: 'me', taken: 178, used: 83, kept: 21, dropped: 36, pad_pickups: 12 }],
     }
-    render(<EquipmentUsageSection usage={usage} mode="solo" t={t} locale="fr" />)
+    render(<EquipmentUsageSection usage={usage} t={t} locale="fr" />)
     // "Mur de protection" (wall) doit apparaitre AVANT "Capteur de menaces" (sensor).
     const labels = screen.getAllByText(/Mur de protection|Capteur de menaces/)
     expect(labels[0]).toHaveTextContent('Mur de protection')
@@ -80,7 +81,7 @@ describe('EquipmentUsageSection', () => {
     expect(screen.getByText('12 prises')).toBeInTheDocument()
   })
 
-  it('mode squad : une ligne par coequipier (equipement ET armes), pas par famille', () => {
+  it('armes speciales : une ligne par sujet (moi, coequipier suivi), jamais par famille', () => {
     const usage: EquipmentUsageBlock = {
       available: true,
       matches_measured: 42,
@@ -91,11 +92,9 @@ describe('EquipmentUsageSection', () => {
         { xuid: 'f1', taken: 74, used: 60, kept: 4, dropped: 10, pad_pickups: 31 },
       ],
     }
-    render(<EquipmentUsageSection usage={usage} mode="squad" t={t} locale="fr" />)
+    render(<EquipmentUsageSection usage={usage} t={t} locale="fr" />)
     expect(screen.getAllByText('Moi').length).toBeGreaterThan(0)
     expect(screen.getAllByText('Madina').length).toBeGreaterThan(0)
-    expect(screen.getByText('88 pris')).toBeInTheDocument()
-    expect(screen.getByText('74 pris')).toBeInTheDocument()
     expect(screen.getByText('41 prises')).toBeInTheDocument()
     expect(screen.getByText('31 prises')).toBeInTheDocument()
   })
@@ -107,7 +106,7 @@ describe('EquipmentUsageSection', () => {
       matches_total: 3,
       families: [{ family_key: 'wall', taken: 10, used: 5, kept: 3, dropped: 2 }],
     }
-    render(<EquipmentUsageSection usage={usage} mode="solo" t={t} locale="fr" />)
+    render(<EquipmentUsageSection usage={usage} t={t} locale="fr" />)
     // Pas de sous-total "Mon équipe" : aucun donut ne s'est rendu.
     expect(screen.queryByText(t.rowMyTeam)).not.toBeInTheDocument()
     // La carte de part des armes speciales se rend TOUJOURS, avec son titre et son texte
@@ -179,12 +178,12 @@ describe('EquipmentUsageSection — les niveaux d’armes', () => {
   } as unknown as NonNullable<EquipmentUsageBlock['pad_tiers']>
 
   it('n’affiche AUCUNE rangée quand le bloc des niveaux est absent', () => {
-    render(<EquipmentUsageSection usage={blocAvecNiveaux()} mode="solo" t={t} locale="fr" />)
+    render(<EquipmentUsageSection usage={blocAvecNiveaux()} t={t} locale="fr" />)
     expect(screen.queryByText(t.blockPadTiers)).not.toBeInTheDocument()
   })
 
   it('affiche une ligne par niveau, dans l’ordre écrit, et le total du niveau', () => {
-    render(<EquipmentUsageSection usage={blocAvecNiveaux(niveaux)} mode="solo" t={t} locale="fr" />)
+    render(<EquipmentUsageSection usage={blocAvecNiveaux(niveaux)} t={t} locale="fr" />)
     expect(screen.getByText(t.blockPadTiers)).toBeInTheDocument()
     const terrain = screen.getByText(t.padTierLabels.terrain)
     const puissance = screen.getByText(t.padTierLabels.puissance)
@@ -207,7 +206,7 @@ describe('EquipmentUsageSection — les niveaux d’armes', () => {
         { tier: 'base', player_total: 30, lobby_total: 90, weapons: [] },
       ],
     } as unknown as NonNullable<EquipmentUsageBlock['pad_tiers']>
-    render(<EquipmentUsageSection usage={blocAvecNiveaux(avecBase)} mode="solo" t={t} locale="fr" />)
+    render(<EquipmentUsageSection usage={blocAvecNiveaux(avecBase)} t={t} locale="fr" />)
     const bouton = screen.getByRole('button', { name: t.padTierBaseToggleFmt(1) })
     expect(bouton).toHaveAttribute('aria-expanded', 'false')
     expect(screen.queryByText(t.padTierLabels.base)).not.toBeInTheDocument()
@@ -218,7 +217,7 @@ describe('EquipmentUsageSection — les niveaux d’armes', () => {
 
   it('porte les notes de mesure dans l’infobulle du titre, pas sous la grille', () => {
     const { container } = render(
-      <EquipmentUsageSection usage={blocAvecNiveaux(niveaux)} mode="solo" t={t} locale="fr" />,
+      <EquipmentUsageSection usage={blocAvecNiveaux(niveaux)} t={t} locale="fr" />,
     )
     // UNE SEULE AIDE PAR CARTE, VISIBLE (2026-09-21) : fermée, aucune note dans le DOM.
     expect(screen.queryByText(t.padTierNoPadsFmt(1))).not.toBeInTheDocument()
@@ -234,7 +233,7 @@ describe('EquipmentUsageSection — les niveaux d’armes', () => {
     render(
       <EquipmentUsageSection
         usage={blocAvecNiveaux(niveaux)}
-        mode="squad"
+       
         t={USAGE_TEXT.en}
         locale="en"
       />,

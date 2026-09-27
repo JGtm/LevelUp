@@ -15,18 +15,18 @@ import { TooltipParagraphs } from '@/components/ui/info-tooltip'
 import { titleWithInfo } from '@/components/ui/title-with-info'
 import { SectionCard } from '@/components/ui/section-card'
 
-import { ENEMY_HATCH, PARITY_INK, UNMEASURED_HATCH } from './colors'
+import { PARITY_INK } from './colors'
 import { RichText } from './forms/RichText'
 
-/** Une entrée de légende : une pastille (aplat, hachure ou trait) et son nom. */
+/**
+ * Une entrée de légende : une pastille (aplat ou trait) et son nom. Les hachures (adversaire,
+ * non mesuré) n'avaient de lecteurs que dans les cartes du contexte escouade, retirées au lot
+ * L5.4 du plan PLAN_EMPRISE_ET_CARTES_DEPLACEES_2026-09-26.
+ */
 export interface FormesLegendEntry {
   label: string
-  /** L'encre de l'aplat. Absente avec `hatch` ou `line`. */
+  /** L'encre de l'aplat. Absente avec `line`. */
   ink?: string
-  /** Hachure de l'adversaire (compté, jamais nommé). */
-  hatch?: boolean
-  /** Hachure du non mesuré (pas de film décodé). */
-  unmeasured?: boolean
   /** Le trait de parité — un repère, pas une donnée. */
   line?: boolean
 }
@@ -53,15 +53,6 @@ function LegendChip({ entry }: { entry: FormesLegendEntry }) {
       <i
         className="inline-block h-3.5 w-[3px] flex-none"
         style={{ backgroundColor: PARITY_INK }}
-        aria-hidden="true"
-      />
-    )
-  }
-  if (entry.hatch || entry.unmeasured) {
-    return (
-      <i
-        className="inline-block h-2.5 w-2.5 flex-none border border-muted-foreground"
-        style={entry.hatch ? ENEMY_HATCH : UNMEASURED_HATCH}
         aria-hidden="true"
       />
     )

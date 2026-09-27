@@ -66,19 +66,15 @@ export interface FormesText {
   columns: Record<string, string>
   /** Les colonnes propres au bloc « contrôle des armes spéciales ». */
   padsColumns: {
-    /** Le nom de la grandeur « prises de socle » dans une forme. */
-    pads: string
     rate: string
     mine: string
     occupations: string
     rateLegend: string
     rateAxis: string
-    namedPickupsFmt: (n: number) => string
   }
   /** Étiquettes communes aux six formes. */
   common: {
     notMeasured: string
-    noMeasure: string
     inMyTeam: string
     inLobby: string
     myShare: string
@@ -90,21 +86,14 @@ export interface FormesText {
     aboveFmt: (above: number, total: number) => string
     pointsFmt: (signed: string) => string
     morePlus: string
-    moreThanOpponent: string
     lessThanLobby: string
     lessThanOpponent: string
     less: string
     outOfFmt: (value: string, total: string) => string
-    enemyTeam: string
-    enemyTeamCounted: string
-    teamRest: string
     noFilm: string
     noMeasureOnAxis: string
     aboveBelowByMatch: string
     unknownWeapon: string
-    occupationsShortFmt: (n: number) => string
-    /** Le dénominateur d'une piste dont l'escouade est le tout. */
-    inSquadFmt: (n: number) => string
     /**
      * Le pied d'une forme par match ALIMENTÉE PAR LE FILM : ce qu'elle montre,
      * ce qu'elle a laissé de côté faute de place, ce qu'elle a écarté faute de
@@ -123,10 +112,7 @@ export interface FormesText {
     lowestToHighest: string
     meanPerMatch: string
     shareAxis: string
-    lobbyShareAxis: string
-    squadShareAxis: string
     gapAxis: string
-    padShareAxis: string
     matchesAxis: string
     /**
      * L'en-tête d'une colonne de LÂCHERS par famille (D9, 2026-09-21). Forme NEUTRE
@@ -143,7 +129,6 @@ export interface FormesText {
     gapTipFmt: (row: string, value: string, parity: string, gap: string) => string
     shareTipFmt: (row: string, side: string, value: string, detail: string) => string
     spreadTipFmt: (row: string, side: string, from: string, to: string) => string
-    segmentTipFmt: (name: string, row: string, value: string, total: string) => string
     rangeTipFmt: (row: string, from: string, to: string) => string
     meanTipFmt: (row: string, value: string) => string
   }
@@ -287,17 +272,14 @@ export const FORMES_TEXT: Record<Locale, FormesText> = {
     },
     columns: FR_COLUMNS,
     padsColumns: {
-      pads: 'Prises de socle',
       rate: 'Taux de rafle',
       mine: 'Mes prises',
       occupations: 'Occupations du socle',
       rateLegend: 'Prises rapportées aux occupations du socle',
       rateAxis: 'une échelle par colonne — le taux est une part des occupations',
-      namedPickupsFmt: (n) => `${n} prises nommées`,
     },
     common: {
       notMeasured: 'non mesuré',
-      noMeasure: 'aucune mesure',
       inMyTeam: 'dans mon équipe',
       inLobby: 'dans le lobby',
       myShare: 'Ma part',
@@ -309,20 +291,14 @@ export const FORMES_TEXT: Record<Locale, FormesText> = {
       aboveFmt: (above, total) => `${above}/${total} au-dessus`,
       pointsFmt: (signed) => `${signed} pts`,
       morePlus: 'Plus que la moyenne du lobby',
-      moreThanOpponent: "Plus que l'équipe adverse",
       lessThanLobby: 'Moins que la moyenne du lobby',
       lessThanOpponent: 'Moins',
       less: 'Moins',
       outOfFmt: (value, total) => `${value} sur ${total}`,
-      enemyTeam: 'équipe adverse',
-      enemyTeamCounted: 'Équipe adverse (comptée, jamais nommée)',
-      teamRest: 'Coéquipier hors escouade',
       noFilm: 'Match sans film décodé',
       noMeasureOnAxis: 'Aucune mesure sur cet axe',
       aboveBelowByMatch: 'Au-dessus / en dessous par match',
       unknownWeapon: 'arme non cataloguée',
-      occupationsShortFmt: (n) => `${n} occ.`,
-      inSquadFmt: (n) => `${n} dans l'escouade`,
       foldMeasuredFmt: (shown, hidden, unmeasured) =>
         `Affichés : les ${frCount(shown)} derniers matchs à film décodé` +
         (hidden > 0 ? ` · ${frCount(hidden)} autres matchs mesurés ne sont pas affichés` : '') +
@@ -342,11 +318,7 @@ export const FORMES_TEXT: Record<Locale, FormesText> = {
       lowestToHighest: 'Du match le plus faible au plus fort',
       meanPerMatch: 'Moyenne par match',
       shareAxis: 'part, en pourcentage du dénominateur de la ligne',
-      lobbyShareAxis: 'part du lobby',
-      squadShareAxis:
-        "part de l'escouade — les coéquipiers hors escouade et l'adversaire ne comptent pas ici",
       gapAxis: 'écart à la parité, en points de pourcentage',
-      padShareAxis: 'part des occupations du socle — une échelle par joueur',
       matchesAxis: 'les matchs de la période, dans l’ordre',
       droppedFamilyFmt: (family) => `Lâchés : ${family}`,
       totalFmt: (n) => `${n} au total`,
@@ -360,7 +332,6 @@ export const FORMES_TEXT: Record<Locale, FormesText> = {
       shareTipFmt: (row, side, value, detail) => `${row} ${side} : ${value} (${detail})`,
       spreadTipFmt: (row, side, from, to) =>
         `${row} ${side} — étendue par match : de ${from} à ${to}`,
-      segmentTipFmt: (name, row, value, total) => `${name} — ${row} : ${value} sur ${total}`,
       rangeTipFmt: (row, from, to) => `${row} — du match le plus faible ${from} au plus fort ${to}`,
       meanTipFmt: (row, value) => `${row} — moyenne par match : ${value}`,
     },
@@ -428,17 +399,14 @@ export const FORMES_TEXT: Record<Locale, FormesText> = {
     },
     columns: EN_COLUMNS,
     padsColumns: {
-      pads: 'Pad pickups',
       rate: 'Take rate',
       mine: 'My pickups',
       occupations: 'Pad occupations',
       rateLegend: 'Pickups against pad occupations',
       rateAxis: 'one scale per column — the rate is a share of occupations',
-      namedPickupsFmt: (n) => `${n} named pickups`,
     },
     common: {
       notMeasured: 'not measured',
-      noMeasure: 'no measure',
       inMyTeam: 'in my team',
       inLobby: 'in the lobby',
       myShare: 'My share',
@@ -450,20 +418,14 @@ export const FORMES_TEXT: Record<Locale, FormesText> = {
       aboveFmt: (above, total) => `${above}/${total} above`,
       pointsFmt: (signed) => `${signed} pts`,
       morePlus: 'More than the lobby average',
-      moreThanOpponent: 'More than the other team',
       lessThanLobby: 'Less than the lobby average',
       lessThanOpponent: 'Less',
       less: 'Less',
       outOfFmt: (value, total) => `${value} out of ${total}`,
-      enemyTeam: 'other team',
-      enemyTeamCounted: 'Other team (counted, never named)',
-      teamRest: 'Teammate outside the squad',
       noFilm: 'Match without a decoded film',
       noMeasureOnAxis: 'No measure on this axis',
       aboveBelowByMatch: 'Above / below, match by match',
       unknownWeapon: 'uncatalogued weapon',
-      occupationsShortFmt: (n) => `${n} occ.`,
-      inSquadFmt: (n) => `${n} in the squad`,
       foldMeasuredFmt: (shown, hidden, unmeasured) =>
         `Shown: the last ${enCount(shown)} matches with a decoded film` +
         (hidden > 0 ? ` · ${enCount(hidden)} other measured matches are not shown` : '') +
@@ -483,11 +445,7 @@ export const FORMES_TEXT: Record<Locale, FormesText> = {
       lowestToHighest: 'From the weakest match to the strongest',
       meanPerMatch: 'Average per match',
       shareAxis: 'share, in percent of the denominator of the row',
-      lobbyShareAxis: 'share of the lobby',
-      squadShareAxis:
-        'share of the squad — teammates outside the squad and the other team are not counted here',
       gapAxis: 'gap to parity, in percentage points',
-      padShareAxis: 'share of pad occupations — one scale per player',
       matchesAxis: 'the matches of the period, in order',
       droppedFamilyFmt: (family) => `Dropped: ${family}`,
       totalFmt: (n) => `${n} in total`,
@@ -499,7 +457,6 @@ export const FORMES_TEXT: Record<Locale, FormesText> = {
       gapTipFmt: (row, value, parity, gap) => `${row}: ${value} · parity ${parity} · gap ${gap} points`,
       shareTipFmt: (row, side, value, detail) => `${row} ${side}: ${value} (${detail})`,
       spreadTipFmt: (row, side, from, to) => `${row} ${side} — spread by match: from ${from} to ${to}`,
-      segmentTipFmt: (name, row, value, total) => `${name} — ${row}: ${value} out of ${total}`,
       rangeTipFmt: (row, from, to) => `${row} — from the lowest match ${from} to the highest ${to}`,
       meanTipFmt: (row, value) => `${row} — average per match: ${value}`,
     },

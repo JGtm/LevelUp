@@ -9,7 +9,6 @@ import * as squadContextModule from './SquadContext'
 import type { TeammateRow, TeammatesPageResponse } from '@/lib/api/types'
 import { SquadSynergiesPage } from './SquadSynergiesPage'
 import { echangeDe } from './squadRiposte.fixtures'
-import { pageWithEquipmentUsage } from './squadUsages.fixtures'
 
 const ROW = (gamertag: string): TeammateRow => ({
   gamertag,
@@ -111,16 +110,23 @@ describe('SquadSynergiesPage — empty states', () => {
 })
 
 // LOT 3 « sections » (2026-09-22) — UN SEUL AXE PAR ONGLET. Synergies ne dit plus que ce
-// que la composition PRODUIT ensemble : ce qu'elle UTILISE (frags et armes, équipement,
-// formes) est parti sur Usages, l'impact et les médailles sur Contributions. Ces
-// assertions sont le RATCHET du déménagement : elles échouent si un bloc revient ici.
+// que la composition PRODUIT ensemble : ce qu'elle UTILISE est parti sur Usages (devenu
+// Emprise au plan PLAN_EMPRISE_ET_CARTES_DEPLACEES_2026-09-26), les frags et armes, l'impact
+// et les médailles sur Contributions. Ces assertions sont le RATCHET du déménagement : elles
+// échouent si un bloc revient ici.
 describe('SquadSynergiesPage — ce qui a déménagé (lot 3)', () => {
   it('ni frags et armes, ni équipement, ni impact, ni médailles', () => {
     setTitleCaps(['expected_stats'])
     mockSquadContext({
       selectedRows: [ROW('A'), ROW('B')],
       confirmedGamertags: ['A', 'B'],
-      pageData: pageWithEquipmentUsage(),
+      pageData: {
+        options: [],
+        teammates: [],
+        total_matches: 42,
+        session_labels: { solo: [], squad: [] },
+        friends_count: 0,
+      } as TeammatesPageResponse,
     })
     renderWithProviders(<SquadSynergiesPage />)
     expect(screen.queryByText('Écart cumulé au FDA attendu')).toBeNull()

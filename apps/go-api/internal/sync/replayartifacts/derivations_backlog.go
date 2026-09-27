@@ -83,7 +83,7 @@ func rattraperDerivations(ctx context.Context, d Deps) {
 	observability.AddIntT(titre, CompteurDerivationsRattrapees, int64(len(candidats)))
 	Deriver(ctx, DerivationsDeps{
 		RepoRoot: d.RepoRoot, TitleSlug: d.TitleSlug, Gamertag: d.Gamertag,
-		AcquireWriter: d.AcquireWriter,
+		WithRead: d.WithRead, AcquireWriter: d.AcquireWriter,
 	}, candidats)
 }
 

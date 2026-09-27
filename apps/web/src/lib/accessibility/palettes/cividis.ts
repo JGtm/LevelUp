@@ -182,15 +182,31 @@ export const cividisPalette: Palette = {
   // ici (≥ 8 ailleurs), seuil documenté au test.
   'frag-heavy':           CIVIDIS_DARKEST,  // t=0.00
   'frag-shoulder':        CIVIDIS_T25,      // t=0.25
-  'frag-vehicle':         CIVIDIS_T40,      // t=0.40
+  // Véhicule et tourelle ÉCHANGÉS le 2026-09-26 (D9) : véhicule = orange des véhicules.
+  'frag-turret':          CIVIDIS_T40,      // t=0.40
   'frag-unattributed':    CIVIDIS_MID,      // t=0.50 — gris-brun neutre (résidu)
   'frag-sidearm':         CIVIDIS_T60,      // t=0.60
   'frag-grenade':         CIVIDIS_T75,      // t=0.75 (l'ocre, écho de l'ambre)
   'frag-melee':           CIVIDIS_T90,      // t=0.90
   'frag-environmental':   CIVIDIS_LIGHTEST, // t=1.00 (identité par clarté, pas par teinte)
   'frag-spartan-ability': SAFE_BLUE,        // emprunt hors rampe
-  'frag-turret':          SAFE_VERMILLION_DEEP,
+  'frag-vehicle':         SAFE_VERMILLION_DEEP, // (= resource-vehicle)
   'frag-equipment':       SAFE_REDDISH_PURPLE,
+
+  // ── Ressources de la carte (D9, 2026-09-26) — teintes déjà présentes ici ─────
+  // La rampe ne distingue que par la clarté : on reprend les emprunts hors rampe
+  // de ce fichier. Validateur dataviz (toutes paires, clair et sombre) : tout passe ;
+  // CVD 6,4 bleu ↔ pourpre (bande 6-8, légale : chaque ressource est nommée) et
+  // vermillon sombre à 2,9:1 sur le thème sombre (libellés visibles).
+  'resource-powerup':      '#009E73',            // Bluish Green (= narrative-abnegation)
+  'resource-power-weapon': ASSIST_GIVEN_PURPLE,  // Tol Muted Purple
+  'resource-vehicle':      SAFE_VERMILLION_DEEP, // (= frag-vehicle)
+  'resource-rack':         SAFE_BLUE,
+
+  // ── Rôles d'objectif (D9) — validateur : tout passe, clair et sombre ─────────
+  'objective-role-take':   SAFE_BLUE,
+  'objective-role-defend': '#009E73',              // Bluish Green
+  'objective-role-hold':   ASSIST_RECEIVED_OLIVE,  // olive chaud
 
   // ── Heatmaps — axe blue/vermillion ────────────────────────────────────────
   'heatmap-cold':           SAFE_VERMILLION,

@@ -47,7 +47,7 @@ const SQUAD_TAB_SOURCES = [
   { suffix: '/squad/synergies', navKey: 'synergies' },
   { suffix: '/squad/contributions', navKey: 'contributions' },
   { suffix: '/squad/dynamique', navKey: 'dynamique' },
-  { suffix: '/squad/usages', navKey: 'usages' },
+  { suffix: '/squad/emprise', navKey: 'emprise' },
 ] as const
 
 describe('garde-rail : les titres de page des onglets Escouade suivent features/squad/i18n.ts', () => {

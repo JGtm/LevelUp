@@ -65,9 +65,8 @@ type ArtefactRange struct {
 
 // DerivationsDeps : ce dont les derivations ont besoin, INDEPENDAMMENT du rangeur.
 //
-// C'est un sous-ensemble strict de [Deps] : le chemin ouvrier n'a ni client film, ni segment de
-// lecture, ni placement — lui demander un [Deps] complet l'obligerait a inventer des champs
-// qu'il ne possede pas.
+// C'est un sous-ensemble strict de [Deps] : le chemin ouvrier n'a ni client film ni placement —
+// lui demander un [Deps] complet l'obligerait a inventer des champs qu'il ne possede pas.
 type DerivationsDeps struct {
 	// RepoRoot, TitleSlug : resolution des chemins et lecture des capabilities du titre.
 	RepoRoot  string
@@ -75,6 +74,11 @@ type DerivationsDeps struct {
 	// Gamertag : identite journalisee (aucun role fonctionnel). Vide sur le chemin ouvrier,
 	// qui ne travaille pour aucun joueur en particulier.
 	Gamertag string
+	// WithRead ouvre un segment de LECTURE shared court. Les niveaux d'armes y lisent l'identite
+	// des matchs (carte, mode) AVANT la premiere ecriture de la passe (padtiers_preparation.go).
+	// NIL = ces matchs ne sont ni projetes ni marques, et c'est journalise en erreur : son
+	// absence sur les trois chemins a vide la table du 2026-09-14 au 2026-09-27 (lot L4.1).
+	WithRead func(ctx context.Context, step string, fn func(sharedDB *sql.DB))
 	// AcquireWriter ouvre un segment d'ECRITURE shared COURT. NIL = les derivations LISENT et
 	// ne persistent rien, ce qui est journalise par chaque projection. Jamais un panic.
 	AcquireWriter func(ctx context.Context) (*sql.DB, func(), error)
@@ -87,6 +91,7 @@ func (dd DerivationsDeps) deps() Deps {
 		RepoRoot:      dd.RepoRoot,
 		TitleSlug:     dd.TitleSlug,
 		Gamertag:      dd.Gamertag,
+		WithRead:      dd.WithRead,
 		AcquireWriter: dd.AcquireWriter,
 	}
 }
@@ -115,6 +120,11 @@ func Deriver(ctx context.Context, dd DerivationsDeps, ranges []ArtefactRange) {
 	if len(lus) == 0 {
 		return
 	}
+	b := &bilanDerivations{}
+	// LES LECTURES EN BASE AVANT TOUT SEGMENT D'ECRITURE (lot L4.1) : le segment ci-dessous est
+	// tenu jusqu'a la fin de la passe, et une lecture ouverte pendant qu'il l'est attendrait en
+	// B-swap un retour en lecture seule qu'il empeche. Seuls les niveaux d'armes lisent la base.
+	niveaux := preparerNiveauxDArmes(ctx, d, b, lus)
 	// UN SEUL SEGMENT D'ECRITURE POUR LES QUATRE FAMILLES (constat C7 de la revue A-R1) : la
 	// source d'acquisition est memoisee ici, et relachee ici. Le nil reste nil — un chemin sans
 	// writer cable doit continuer de degrader famille par famille, avec ses journaux.
@@ -123,7 +133,6 @@ func Deriver(ctx context.Context, dd DerivationsDeps, ranges []ArtefactRange) {
 		defer w.fermer()
 		d.AcquireWriter = w.acquerir
 	}
-	b := &bilanDerivations{}
 	// LE REPORT DU COUP D'ENVOI EN PREMIER, puis les deux projections. L'ordre est celui
 	// d'avant (artifacts.go) et il n'est pas indifferent : le T0 ecrit `match_registry`, une
 	// table match-of-record, et il vaut mieux qu'il passe avant les tables derivees si le
@@ -139,8 +148,8 @@ func Deriver(ctx context.Context, dd DerivationsDeps, ranges []ArtefactRange) {
 
 	// LES NIVEAUX D ARMES, meme motif et meme raison : une projection de LECTURE sur
 	// l artefact deja range, qui rend lisible aux pages d agregat ce que la vue match resout
-	// deja a la requete (cf. padtiers.go).
-	persisterNiveauxDArmes(ctx, d, b, lus)
+	// deja a la requete (cf. padtiers.go). Projetes plus haut, ecrits ici.
+	ecrireNiveauxDArmes(ctx, d, b, niveaux)
 	// LES RASTERS TACTIQUES, QUATRIEME PROJECTION — memes artefacts lus, meme place (apres
 	// toute cuisson). La seule qui n'ecrit AUCUNE base : son resultat est un fichier pose a
 	// cote de son artefact (cf. raster.go), donc hors du segment d'ecriture shared partage

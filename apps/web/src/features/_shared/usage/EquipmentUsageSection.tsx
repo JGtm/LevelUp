@@ -10,14 +10,15 @@
  *   1. « Usages d'équipement » (barres) | « Ma part de l'équipement du lobby » (donut) ;
  *   2. « Contrôle des armes spéciales » (barres) | « Ma part des armes spéciales du lobby ».
  * Le tir n'est pas mesuré au grain des socles (P5/E6.1) : la barre de la seconde rangée est
- * un compte simple, sans pile d'issues. En mode squad, les deux donuts disent « Notre part ».
+ * un compte simple, sans pile d'issues.
  *
- * DEUX MODES, une seule différence : la BASE des lignes de la barre équipement.
- *   - 'solo' (Synthèse) : une ligne par FAMILLE (`usage.families`, déjà triée côté Go).
- *   - 'squad' (Escouade) : une ligne par COÉQUIPIER SUIVI (`usage.players`, toutes
- *     familles confondues) — la barre armes spéciales, elle, est TOUJOURS construite
- *     depuis `usage.players` sur les deux pages : il n'existe aucune ventilation des
- *     prises de socle par famille d'arme (Go, `internal/domain/equipment_usage.go`).
+ * LA BARRE ÉQUIPEMENT a une ligne par FAMILLE (`usage.families`, déjà triée côté Go) ; la
+ * barre armes spéciales, elle, est construite depuis `usage.players` (une ligne par sujet) :
+ * il n'existe aucune ventilation des prises de socle par famille d'arme (Go,
+ * `internal/domain/equipment_usage.go`). Le mode 'squad' (une ligne d'équipement par
+ * coéquipier suivi, donuts « Notre part ») est parti avec l'ancien onglet Usages de
+ * l'Escouade (lot L5.4 du plan PLAN_EMPRISE_ET_CARTES_DEPLACEES_2026-09-26) : la section ne
+ * sert plus que le solo.
  *
  * TROIS AJUSTEMENTS DU 2026-09-21 (lot A2) :
  *   - UNE SEULE AIDE PAR CARTE, VISIBLE : l'aide d'en-tête (invisible, sur le libellé), les
@@ -53,9 +54,6 @@ import { equipmentFamilyLabel, type UsageText } from './usageI18n'
 export interface EquipmentUsageSectionProps {
   /** Le bloc `equipment_usage` de la réponse de page — absent : rien ne se rend. */
   usage: EquipmentUsageBlock | null | undefined
-  /** 'solo' (Synthèse, une ligne par famille) ou 'squad' (Escouade, une ligne par
-   *  coéquipier suivi) — cf. l'en-tête du fichier. */
-  mode: 'solo' | 'squad'
   t: UsageText
   locale: Locale
 }
@@ -88,25 +86,7 @@ function familyRows(usage: EquipmentUsageBlock, t: UsageText): UsageCountsRowInp
   }))
 }
 
-function playerEquipmentRows(usage: EquipmentUsageBlock, t: UsageText): UsageCountsRowInput[] {
-  const players = usage.players ?? []
-  const mainXuid = players[0]?.xuid
-  const tracked = usage.tracked_players ?? []
-  return players.map((p: EquipmentUsagePlayerLine) => ({
-    key: p.xuid,
-    label: playerLabel(p.xuid, mainXuid, tracked, t),
-    taken: p.taken,
-    outcomes: {
-      used: p.used,
-      kept: p.kept,
-      dropped: p.dropped,
-      teammates_used_rate_pct: p.teammates_used_rate_pct,
-      opponents_used_rate_pct: p.opponents_used_rate_pct,
-    },
-  }))
-}
-
-/** La barre « armes spéciales » — TOUJOURS par sujet, sur les deux pages (P5/E6.1 :
+/** La barre « armes spéciales » — TOUJOURS par sujet (P5/E6.1 :
  *  aucune ventilation par famille d'arme au grain période). Le tir n'étant pas mesuré à
  *  ce grain, une ligne n'a pas d'`outcomes` : un aplat simple, jamais un zéro inventé. */
 function playerWeaponRows(usage: EquipmentUsageBlock, t: UsageText): UsageCountsRowInput[] {
@@ -127,17 +107,16 @@ function hasMeasure(rows: UsageCountsRowInput[]): boolean {
 
 interface CardContentProps {
   usage: EquipmentUsageBlock
-  mode: 'solo' | 'squad'
   t: UsageText
   locale: Locale
 }
 
 /** La rangée « équipement » : les comptes à gauche, la part du lobby à droite. */
-function EquipmentCards({ usage, mode, t, locale }: CardContentProps) {
-  const rows = mode === 'solo' ? familyRows(usage, t) : playerEquipmentRows(usage, t)
+function EquipmentCards({ usage, t, locale }: CardContentProps) {
+  const rows = familyRows(usage, t)
   const grid = buildCountsGrid(rows, { t, locale, unit: 'equipment' })
   const donut = buildPartiesDonutModel(usage.equipment_parties, usage.tracked_players ?? [], t, locale)
-  const donutTitle = mode === 'solo' ? t.viewEquipmentPartsSolo : t.viewEquipmentPartsSquad
+  const donutTitle = t.viewEquipmentPartsSolo
   return (
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
       <SectionCard
@@ -171,11 +150,11 @@ function EquipmentCards({ usage, mode, t, locale }: CardContentProps) {
 }
 
 /** La rangée « armes spéciales » : mêmes deux questions, sur les prises de socle. */
-function PadControlCards({ usage, mode, t, locale }: CardContentProps) {
+function PadControlCards({ usage, t, locale }: CardContentProps) {
   const rows = playerWeaponRows(usage, t)
   const grid = buildCountsGrid(rows, { t, locale, unit: 'weapon' })
   const donut = buildPartiesDonutModel(usage.weapon_pad_parties, usage.tracked_players ?? [], t, locale)
-  const donutTitle = mode === 'solo' ? t.viewWeaponPartsSolo : t.viewWeaponPartsSquad
+  const donutTitle = t.viewWeaponPartsSolo
   // ZÉRO SOCLE SUR UNE MESURE FAITE, ce n'est pas « aucun film » : c'est un mode qui
   // n'allume aucun socle (Super Fiesta). Deux causes, deux phrases (D8).
   const empty = <UsageEmptyNotice reason="no-pads" t={t} />
@@ -250,7 +229,7 @@ function PadTierCards({ usage, t, locale }: CardContentProps) {
   )
 }
 
-export function EquipmentUsageSection({ usage, mode, t, locale }: EquipmentUsageSectionProps) {
+export function EquipmentUsageSection({ usage, t, locale }: EquipmentUsageSectionProps) {
   const availability = usageAvailability(usage)
   if (availability.kind === 'hidden' || usage == null) return null
   if (availability.kind === 'empty') {
@@ -267,15 +246,15 @@ export function EquipmentUsageSection({ usage, mode, t, locale }: EquipmentUsage
         {/* LA RANGÉE DES NIVEAUX A SA PROPRE DISPONIBILITÉ (revue du 2026-09-14). Elle vient
             d'une AUTRE passe, sur d'autres matchs : un résumé d'usage vide ne prouve rien de
             ses niveaux, et l'avaler ici masquerait une mesure qui existe. */}
-        <PadTierCards usage={usage} mode={mode} t={t} locale={locale} />
+        <PadTierCards usage={usage} t={t} locale={locale} />
       </>
     )
   }
   return (
     <>
-      <EquipmentCards usage={usage} mode={mode} t={t} locale={locale} />
-      <PadControlCards usage={usage} mode={mode} t={t} locale={locale} />
-      <PadTierCards usage={usage} mode={mode} t={t} locale={locale} />
+      <EquipmentCards usage={usage} t={t} locale={locale} />
+      <PadControlCards usage={usage} t={t} locale={locale} />
+      <PadTierCards usage={usage} t={t} locale={locale} />
     </>
   )
 }

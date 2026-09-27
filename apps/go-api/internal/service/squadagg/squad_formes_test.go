@@ -15,7 +15,7 @@ func TestFormesSquadPlayers_NomDuJoueurDeLaPage(t *testing.T) {
 		{MatchID: "m1", XUID: "moi", Gamertag: "", TeamID: &team},
 		{MatchID: "m1", XUID: "cop", Gamertag: "Madina97294", TeamID: &team},
 	}
-	got := formesSquadPlayers("moi", "JGtm", participants, []string{"Madina97294"})
+	got := SquadPlayers("moi", "JGtm", participants, []string{"Madina97294"})
 	if len(got) != 2 {
 		t.Fatalf("le joueur de la page et son coéquipier attendus, obtenu %+v", got)
 	}
@@ -30,7 +30,7 @@ func TestFormesSquadPlayers_NomDuJoueurDeLaPage(t *testing.T) {
 // À défaut de nom connu de la page, les participants restent le repli.
 func TestFormesSquadPlayers_RepliSurLesParticipants(t *testing.T) {
 	participants := []sessionusage.ParticipantRow{{MatchID: "m1", XUID: "moi", Gamertag: "JGtm"}}
-	got := formesSquadPlayers("moi", "", participants, nil)
+	got := SquadPlayers("moi", "", participants, nil)
 	if len(got) != 1 || got[0].Gamertag != "JGtm" {
 		t.Fatalf("repli participants attendu, obtenu %+v", got)
 	}

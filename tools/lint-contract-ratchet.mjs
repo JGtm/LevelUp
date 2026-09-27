@@ -88,7 +88,6 @@ const BASELINE_COLLISIONS = new Set([
   'SettingsResponse',
   'SquadIntensityProfile',
   'SquadTimeseriesPoint',
-  'SquadWeaponBar',
   'TeammateKPIs',
   'TeammatesPageResponse',
   // 2026-08-05 (R2) : TeammatesQueryRequest RETIRÉ — re-shimé. La collision venait de
