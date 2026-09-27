@@ -135,42 +135,42 @@ traité (justification au journal §9). Aucune case vide.
 | GB-1 | P0 | Positions et canaux delta bipède limités à la génération 1 du handle | J5.0, J5.2, J5.5 | [x] |
 | OPS-3 | P1 | Étape 1.57 lancée une fois par joueur, en parallèle, sur le même arriéré | J1 (`d518000b3` + correctif de revue) | [x] |
 | SRC-2/OPS-4 | P1 | Chunks écrits sans atomicité, « présent » tenu pour « complet » | J2.1-J2.5 (manifeste atomique : `[~]` rr L3, contrôle P-3) | [x] |
-| FK-1 | P1 | Un remplaçant humain désépingle le bot de relais, sans signal | J7.2 | [ ] |
-| FK-2 | P1 | Nom de remplissage `?N` publié comme assistant nommé | J7.1 | [ ] |
+| FK-1 | P1 | Un remplaçant humain désépingle le bot de relais, sans signal | J7.2 | [x] |
+| FK-2 | P1 | Nom de remplissage `?N` publié comme assistant nommé | J7.1 | [x] |
 | GA2-1 | P1 | Portage divergent de `FUN_14076e524` (corps d'i54) | Reprise M4b de la campagne rr, fusionnée le 2026-09-25 (`3cca6cf47`) : les deux positions d'i54 lues au niveau 0x10 par `consumeSimStateHandleTail`, `consumeE494Position` supprimé — confirmé par P-3 ; les autres sites du même lecteur restent en J6 | [~] |
 | GA2-2 | P1 | `flock-position` lu au niveau 0 au lieu de l'immédiat 0x10 | J6 : EXCEPTION DATÉE (la lecture du jeu fait baisser une fermeture, §9 2026-09-27) | [!] |
-| GA1-2 | P1 | Repli « liaison par anticipation » hors registre, non compté | J8.1 | [ ] |
+| GA1-2 | P1 | Repli « liaison par anticipation » hors registre, non compté | J8.1 | [x] |
 | RA1-1 | P1 | Faits persistés dépendants des gardes de l'appelant, non comparées | J3.4 | [x] |
 | RB2-1 | P1 | Sièges : un arrivant précoce arrête l'appariement du camp | rr vague D (M2 : chaînage nommé `repli_place_du_remplacant_par_chainage_d_equipe`) — confirmé par P-3 sur `3cca6cf47` | [~] |
 | RB2-4 | P1 | `spawnSetFrom` compare à une image-clé future | rr vague D (M3.2 : « jamais un relevé à venir », borne de vie) — confirmé par P-3 sur `3cca6cf47` | [~] |
-| RB2-5 | P1 | Un ramassage natif date plusieurs occupations de socle | J8.2 | [ ] |
+| RB2-5 | P1 | Un ramassage natif date plusieurs occupations de socle | J8.2 | [x] |
 | RB1-1 | P1 | `flag_carriers_killed` peut fermer le portage d'un porteur vivant | J9.1 | [x] |
-| FO-1/RA2-4 | P1 | Provenance `residu_de_manche` publiée « déduit » sans voie | J8.4 | [ ] |
+| FO-1/RA2-4 | P1 | Provenance `residu_de_manche` publiée « déduit » sans voie | J8.4 | [x] |
 
 ### 2.2 Constats P2
 
 | ID | Traitement | Statut | ID | Traitement | Statut |
 |---|---|---|---|---|---|
-| SRC-1 | J3.2 | [x] | FK-6 | J7.6 | [ ] |
-| RA1-3 | J4 | [x] | FK-7 | J7.7 | [ ] |
+| SRC-1 | J3.2 | [x] | FK-6 | J7.6 | [x] |
+| RA1-3 | J4 | [x] | FK-7 | J7.7 | [x] |
 | RA1-4 | J3.5 | [x] | RB2-3 | J5.4 | [x] |
-| RA1-6 | rr M8 (verdict du fil des morts dans les faits) — confirmé par P-3 | [~] | RB2-6 | J10.3 | [ ] |
-| RA1-5 | J2.7 | [x] | RB2-7 | J10.4 | [ ] |
-| RA1-2 | J3.6 | [x] | RB2-8 | J8.3 | [ ] |
+| RA1-6 | rr M8 (verdict du fil des morts dans les faits) — confirmé par P-3 | [~] | RB2-6 | J10.3 | [x] |
+| RA1-5 | J2.7 | [x] | RB2-7 | J10.4 | [x] |
+| RA1-2 | J3.6 | [x] | RB2-8 | J8.3 | [x] |
 | RA1-7 | J2.10 | [x] | RB1-2 | J9.4 | [x] |
 | OPS-1 | J2.6 | [x] | RB1-3 | J9.6 | [x] |
 | OPS-2 | J2.13 | [x] | RB1-4 | J2.8 | [x] |
 | OPS-5 | J2.12 | [x] | RB1-5 | J9.2 | [x] |
-| FO-3 | J8.5 | [ ] | RB1-6 | J9.3 | [x] |
-| FO-4 | J8.6 | [ ] | RB1-7 | J9.5 | [x] |
+| FO-3 | J8.5 | [x] | RB1-6 | J9.3 | [x] |
+| FO-4 | J8.6 | [x] | RB1-7 | J9.5 | [x] |
 | GA2-3, GA2-4 ; GA2-5 | J6 ; GA2-5 : EXCEPTION DATÉE (dépend du build, §9) | [x] ; [!] | RB1-8 | J9.7 | [x] |
 | GA1-1/GB-2 | J2.9 | [x] | CONV-1 | J2.11 | [x] |
 | GA1-3 | J5.4 | [x] | RA2-1 | J5.4 | [x] |
-| GA1-4 | J10.5 | [ ] | RA2-2 | J5.4 | [x] |
-| GA1-5 | J10.6 | [ ] | RA2-3 | J5.4 | [x] |
-| GB-3 | J10.1 | [ ] | RA2-5 | J10.1 | [ ] |
-| GB-4 | J10.2 | [ ] | RA2-6 | J5.4 | [x] |
-| FK-3, FK-4, FK-5 | J7.3, J7.4, J7.5 | [ ] | | | |
+| GA1-4 | J10.5 | [x] | RA2-2 | J5.4 | [x] |
+| GA1-5 | J10.6 | [x] | RA2-3 | J5.4 | [x] |
+| GB-3 | J10.1 | [x] | RA2-5 | J10.1 | [x] |
+| GB-4 | J10.2 | [x] | RA2-6 | J5.4 | [x] |
+| FK-3, FK-4, FK-5 | J7.3, J7.4, J7.5 | [x] | | | |
 
 ### 2.3 Faiblesses d'architecture (§« Architecture et conventions » du registre)
 
@@ -184,7 +184,7 @@ traité (justification au journal §9). Aucune case vide.
 | 6 | Décodage multi-passes | `[!]` hors périmètre (§1.4) | [ ] |
 | 7 | CI : `-race` absent du film ; instruments `research` non tagués | J12.6 ; J12.7 (DU-5) | [ ] |
 | 8 | Contexte et journalisation (`context.Background()`, `slog` sans contexte, D-4 à moitié, variables exportées modifiables) | J12.3, J12.4 | [ ] |
-| 9 | Déterminisme par chance (43 `sort.Slice`) | J10.1 | [ ] |
+| 9 | Déterminisme par chance (43 `sort.Slice`) | J10.1 (tris qui décident d une sortie + cliquet, DT-9 amendé) ; conversion du reste : J12.1 | [ ] |
 | 10 | Bibliothèque standard moderne quasi absente | J12.1, J12.2 | [ ] |
 | 11 | Documentation périmée | J12.5 | [ ] |
 
@@ -979,29 +979,29 @@ consigne à son rapport : ce site entre dans J6.
 `ProfilDeDepartPourCarte` (rend « largeurs changées », faux sur Cliffhanger dont l'entrée EST
 l'invariant).
 
-- [ ] J7.1 FK-2 : prédicat unique `estNomDeRemplissage` (DT-6) employé par `assist.go`, le site de
+- [x] J7.1 FK-2 : prédicat unique `estNomDeRemplissage` (DT-6) employé par `assist.go`, le site de
       la ligne ~401 et tout nom publié (tueur, victime) ; test rouge
       `TestAssist_NomDeRemplissageNestJamaisPublie` ; test d'intégration
       `TestCollecteur_NEcritJamaisUnNomDeRemplissage` ; ratchet (aucune comparaison à `"?"` hors du
       prédicat dans `killsource`) ; mutation.
-- [ ] J7.2 FK-1 : la borne de l'espace des humains vient du film (sièges de la table, capacité des
+- [x] J7.2 FK-1 : la borne de l'espace des humains vient du film (sièges de la table, capacité des
       équipes — règle produit : places finies, un partant libère sa place), jamais du nombre de
       noms du kill-feed ; bots non épinglés et retraits de `bot_identities.go` journalisés et
       comptés (`killsource_bots_non_epingles`), publiés en couverture ; tests rouges
       `TestRoster_RemplacantHumainNeDesepinglePasLeBotDeRelais`,
       `TestRoster_BotNonEpingleEstCompte` ; le témoin `index_motif_test.go` gagne le cas « bot dans
       l'espace des humains ».
-- [ ] J7.3 FK-3 : le motif du xuid cherche aussi les joueurs qui tuent sans mourir
+- [x] J7.3 FK-3 : le motif du xuid cherche aussi les joueurs qui tuent sans mourir
       (`index_motif.go`, `feed.go`) ; test rouge.
-- [ ] J7.4 FK-4 : le temps 4 ne réécrit jamais un instant publié (collision comptée) ; invariant
+- [x] J7.4 FK-4 : le temps 4 ne réécrit jamais un instant publié (collision comptée) ; invariant
       `Covered ≤ RealPairs` tenu et testé (`match.go`) ; tests rouges.
-- [ ] J7.5 FK-5 : numérateur de santé sans double comptage (`hybrid.go` contre le contrat de
+- [x] J7.5 FK-5 : numérateur de santé sans double comptage (`hybrid.go` contre le contrat de
       `killhealth.go`) ; test rouge.
-- [ ] J7.6 FK-6 : dédoublonnage des records par le champ `bit` prévu pour cela
+- [x] J7.6 FK-6 : dédoublonnage des records par le champ `bit` prévu pour cela
       (`feed_couples.go`, `assist.go`) ; test rouge (records dupliqués → aucun couple fabriqué).
-- [ ] J7.7 FK-7 : `ProfilDeDepartPourCarte` rend « carte appliquée » quand l'entrée fournit ses
+- [x] J7.7 FK-7 : `ProfilDeDepartPourCarte` rend « carte appliquée » quand l'entrée fournit ses
       largeurs ; test rouge `TestProfilDeDepartPourCarte_CarteEgaleALInvariantEstAppliquee`.
-- [ ] J7.8 `killsource.Rev` monté (+ chronique) → backlog rouvert, traité en J11.
+- [x] J7.8 `killsource.Rev` monté (+ chronique) → backlog rouvert, traité en J11.
 
 **Gate J7.** G-unit (`killsource`, `replayidentity`), G-arch, G-integ (`sync/killcollector`,
 `persist`), tests `KILLSOURCE_FIXTURES` en local (superviseur), G-corpus (changements déclarés :
@@ -1021,7 +1021,7 @@ comptes se RE-MESURENT à l'entrée du jalon ;
 `replay/identity_registry_section.go` `methodeStatborg` (`residu_de_manche` → `MethodNone`) ;
 `games/canonical/film_identity.go` (`LinkMethod`).
 
-- [ ] J8.1 GA1-2 : entrée `repli_liaison_par_anticipation` (constante, fait, mécanisme, condition,
+- [x] J8.1 GA1-2 : entrée `repli_liaison_par_anticipation` (constante, fait, mécanisme, condition,
       ordre, site, date, cible, critère) ; identifiants renommés pour porter « Repli » (le ratchet
       de vocabulaire les voit) ; compte remonté par `AnticipationsParArchetype` jusqu'au
       `fallback.Compteur` de la cuisson (`DeclencheN`) ; test rouge sur un `World` synthétique.
@@ -1029,26 +1029,26 @@ comptes se RE-MESURENT à l'entrée du jalon ;
       archétype pour le début de liste de `debut_de_liste.go`, PROUVÉ par la chaîne de records qui
       finit au bit près) : c'est une lecture, pas un repli ; seul `LierParAnticipation` s'inscrit,
       et le rapport le justifie.
-- [ ] J8.2 RB2-5 : un ramassage natif date au plus une occupation (ensemble consommé) ; le reste
+- [x] J8.2 RB2-5 : un ramassage natif date au plus une occupation (ensemble consommé) ; le reste
       s'abstient et se compte ; plus de double crédit dans `usage_summary.go` ; tests rouges ;
       golden `assembly_a521164d` : changement déclaré.
-- [ ] J8.3 RB2-8 : fenêtre 200 ms / 1,5 m de l'origine `dropped` inscrite comme repli nommé et
+- [x] J8.3 RB2-8 : fenêtre 200 ms / 1,5 m de l'origine `dropped` inscrite comme repli nommé et
       comptée (critère de retrait : conversion le jour où une lecture est trouvée) ; test.
-- [ ] J8.4 FO-1/RA2-4 : `canonical.MethodRoundResidue` (`"residu_de_manche"`) et son mapping ;
+- [x] J8.4 FO-1/RA2-4 : `canonical.MethodRoundResidue` (`"residu_de_manche"`) et son mapping ;
       test d'exhaustivité (chaque `objectives.Origin*` a une voie canonique non vide) ; entrée de
       repli de la voie, comptée ; contrat Go/web vérifié (union TS des méthodes si elle existe).
-- [ ] J8.5 FO-3 : le pont par instants de mort lit le compteur avec les MÊMES filtres que la série
+- [x] J8.5 FO-3 : le pont par instants de mort lit le compteur avec les MÊMES filtres que la série
       publiée (une fonction de filtre partagée) ; test rouge.
-- [ ] J8.6 FO-4 : site manquant de `repli_emission_du_compteur_de_morts_jetee` ajouté ; branche
+- [x] J8.6 FO-4 : site manquant de `repli_emission_du_compteur_de_morts_jetee` ajouté ; branche
       `len(kept) == 0` supprimée ou prouvée atteignable par un test.
-- [ ] J8.7 Câblage (sous-lots par famille ; comptes de l'audit, à re-mesurer : `grammar` 11,
+- [ ] J8.7 Câblage (FAIT sauf 2 replis lus à la consultation et la porte de présence de la bombe : lot J8.7-bis, §9 2026-09-28) (sous-lots par famille ; comptes de l'audit, à re-mesurer : `grammar` 11,
       `killsource` 29, `objectives` 20, `replay` 21) : constante + `Declenche` au site + `CompteurBranche: true` + `CibleComptage`
       vidée ; entrée sans code vivant retirée ; hors cuisson (collecteur), le compte voyage dans
       le résultat et se publie en expvar par nom + journal par film ; `CibleRetrait` des entrées
       qui nomment un jalon clos réécrite selon la règle 4 (« retrait au jalon suivant si compte
       nul au corpus gate de J11 », datée) ; ratchet `TestChaqueRepliEstCompte` (0 entrée à
       `false`) ; `no_stale_fallback_target_test.go` étendu aux cibles symboliques.
-- [ ] J8.8 Montées : `SchemaVersion` (contenu de `coverage.fallbacks`) ; empreintes des couches
+- [x] J8.8 Montées : `SchemaVersion` (contenu de `coverage.fallbacks`) ; empreintes des couches
       régénérées à révision constante quand les sorties de décodage sont inchangées (preuve
       G-equiv hors `coverage.fallbacks` + équivalence killsource sur les lignes).
 
@@ -1085,21 +1085,21 @@ exclus les portages dont le xuid est celui du tueur ; un tueur non identifié n'
 
 ### J10 — Déterminisme et correctifs résiduels
 
-- [ ] J10.1 Tri total (GB-3, RA2-5, faiblesse 9 — DT-9) : les 43 `sort.Slice` du périmètre relus un
+- [x] J10.1 (DT-9 AMENDÉ le 2026-09-27 : tris qui décident d une sortie corrigés, ratchet en cliquet de 188 appels nommés, conversion du reste en J12.1) Tri total (GB-3, RA2-5, faiblesse 9 — DT-9) : les 43 `sort.Slice` du périmètre relus un
       par un (clé unique prouvée, ou départage total ajouté) ; `equipmentChanges[]` et `buildRoster`
       reçoivent un ordre total ; tests rouges `TestEquipmentChanges_OrdreStableSurExAequo` et
       `TestBuildRoster_DeuxBotsDuMemeIndex` (50 exécutions, sortie identique) ; ratchet
       `archlint/film_tri_total_test.go` ; G-equiv exécuté DEUX fois (sorties identiques entre les
       deux passes).
-- [ ] J10.2 GB-4 : `_, _ = DecodeFrameRecords(…)` et le calcul mort de `weapon_hits.go` supprimés
+- [x] J10.2 GB-4 : `_, _ = DecodeFrameRecords(…)` et le calcul mort de `weapon_hits.go` supprimés
       avec les tests qui ne tenaient qu'eux (règle 7).
-- [ ] J10.3 RB2-6 : tolérance de siège exprimée en `time.Duration` (plus de division d'une durée en
+- [x] J10.3 RB2-6 : tolérance de siège exprimée en `time.Duration` (plus de division d'une durée en
       ms par un pas en µs) ; test rouge.
-- [ ] J10.4 RB2-7 : le lien prise → arme au sol respecte `LowUS` ; test rouge.
-- [ ] J10.5 GA1-4 : règle de coïncidence de la LIS des datums alignée sur la grammaire, `ambigus`
+- [x] J10.4 RB2-7 : le lien prise → arme au sol respecte `LowUS` ; test rouge.
+- [x] J10.5 GA1-4 : règle de coïncidence de la LIS des datums alignée sur la grammaire, `ambigus`
       mesure ce que son commentaire dit ; test rouge.
-- [ ] J10.6 GA1-5 : recul sur les vacants de tête non neutralisé par le bourrage ; test rouge.
-- [ ] J10.7 `grammar.Rev` et `SchemaVersion` montés.
+- [x] J10.6 GA1-5 : recul sur les vacants de tête non neutralisé par le bourrage ; test rouge.
+- [x] J10.7 `grammar.Rev` et `SchemaVersion` montés.
 
 **Gate J10.** G-unit, G-arch, G-film, G-equiv (x2), G-corpus (changements déclarés : ordres sur
 ex æquo, sièges, armes au sol), carte de fermeture rejouée pour J10.5 et J10.6 (aucune baisse),
@@ -1285,6 +1285,13 @@ relancer un agent sans avoir vérifié qu'il est mort. Ne pas re-décider ce qui
     2 bits sans seconde coupure pour l'équipement ; `BipedCreation.LifeKey() uint32` coexiste avec
     `types.LifeKey` ; le collecteur n'a pas de compteur de replis (le repli de génération vivante
     n'y est pas compté) ; en-tête de `offline_biped.go` (`idLow` 14 bits) inexact.
+22. (2026-09-27, J8.7) Le commentaire d'en-tête de `toDeathContextRows` est séparé de sa fonction
+    (antérieur) ; `document_chronicle.go` ne cite pas les familles câblées (plafond de taille gelé
+    hors montée de schéma) ; CLAUDE.md et ADR 0034 annoncent une façade à 166 symboles (186 après
+    J7+J8, ratchet daté) : J12.5.
+23. (2026-09-27, J10 et J7) Énumération périmée dans un test d'isolement ; commentaire de
+    `calibrate.go` qui décrit l'ancien comportement ; texte du registre des replis qui cite des
+    comptes d'avant J8 : J12.5 (documentation), sans effet de sortie.
 
 ---
 
@@ -1532,3 +1539,17 @@ relancer un agent sans avoir vérifié qu'il est mort. Ne pas re-décider ce qui
   peut que diminuer), conversion du reste reportée à J12 (DT-10) ; (2) **J7** : l'exception FK-4
   est resserrée à l'instant exact, et les deux P2 de la ronde 2 (provenance comptée deux fois,
   ratchet aveugle aux `:=`) sont corrigés, sans troisième revue (vérification superviseur).
+- 2026-09-28 : **J7, J8 et J10 réunis sur la branche du plan** (fusions J8 sans conflit, J10
+  `2a66eefa4`, J7 `c5e8e7b3e`) : `killsource-2026-09-27` (chronique -09-26 puis -09-27, rangs
+  anciens archivés), `SchemaVersion` 76, façade 186 (ratchet daté), marche 356/369 et scan 7/8
+  sur les films de l'enquête ; les sept gates verts sur l'arbre intégré (agent d'intégration). Le
+  repli `repli_carte_absente_largeurs_par_defaut` retiré par J7 (carte obligatoire) perd ses
+  comptes J8. **J8.7 non clos** : deux replis se déclenchent à la consultation
+  (`repli_emission_hors_domaine_jetee`, `repli_instant_sur_la_premiere_manche`) et la porte de
+  présence partagée crâne/bombe n'est pas vérifiée. **Décision superviseur (domaine décodeur)** :
+  lot J8.7-bis — les deux replis se comptent par ÉVÉNEMENT DISTINCT (clé de l'émission ou de
+  l'instant, ensemble partagé par pointeur entre les copies consultées par les calques : N
+  consultations d'un même événement comptent une fois), la liste `replisEnAttenteDeDecision`
+  disparaît ; la bombe reçoit son propre nom de repli si la porte partagée la compte sous le
+  nom du crâne ; `rawSeriesByKey` devient un site du repli d'émission hors domaine. Schéma 76
+  non publié : régénération à révision constante.
