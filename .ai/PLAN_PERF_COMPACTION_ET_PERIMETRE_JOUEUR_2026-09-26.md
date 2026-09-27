@@ -918,3 +918,15 @@ case non statuée de l'étape courante (C, puis B, puis F).
   des frags échangés. F.1 et F.3 faits ; restent F.2 (compaction locale, avec l'utilisateur), F.4,
   F.5 (sur son signal). Proposé à l'utilisateur, non lancé : lier aussi les listes de l'annuaire des
   noms en un paramètre tableau (découverte (12) : 0,8-0,9 s des Relations de Nuzzles).
+- 2026-09-27 (CI de la branche, run 36338338660) : tous les jobs verts — dont Go Build + Test ubuntu
+  (variante POSIX de la réécriture prouvée) et Coverage + Baseline — sauf Go Lint : 3 goconst sur des
+  sites de production de `games/halo_infinite/migrations` (`kill_positions`, `decode_pass`), dont
+  le compte passait le seuil à cause des littéraux du test bout-à-bout de la compaction. Le ratchet
+  CI compare à `origin/main` (pas à `feat/v75`), d'où l'écart avec les lints locaux
+  `--new-from-rev`. Correctif : deux constantes dans le test ; lint `--new-from-merge-base=origin/main`
+  rejoué en local, 0 issue. Leçon : rejouer le lint avec la base de la CI avant de pousser.
+- 2026-09-27 : compaction de la base LOCALE faite (F.2, partie données) après libération de la base
+  par la session Emprise : 11 367 480 → 1 117 021 lignes, fichier 1 264,3 → 350,3 Mio, inventaire
+  identique (128 objets), relecture de contrôle (9 170 matchs, 412 216 morts servies) ; sauvegardes
+  `*.halo_infinite.avant-compaction-20260927T163336Z.duckdb` et `*.avant-reecriture-20260927T163443Z.duckdb`.
+  Mesure des pages : après la fusion dans `feat/v75` (consigne utilisateur).

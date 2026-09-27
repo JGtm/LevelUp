@@ -27,15 +27,22 @@ import (
 	"levelup/go-api/internal/migration"
 )
 
+// tableKillPositions et passeDeDecodage : une seule occurrence de chaque littéral dans ce fichier
+// (goconst compte les occurrences du paquet, tests compris, et signale les sites de production).
+const (
+	tableKillPositions = "kill_positions"
+	passeDeDecodage    = "decode_pass"
+)
+
 // colonneDePasse : l'oracle du test, écrit indépendamment du registre. "" = dernière ligne par
 // clé (match_id, xuid).
 var colonneDePasse = map[string]string{
-	"match_kill_events": "decode_pass", "match_lives": "decode_pass",
-	"match_death_context": "decode_pass", "kill_openings": "decode_pass",
-	"kill_positions": "decode_pass", "match_weapon_shots": "decode_pass",
+	"match_kill_events": passeDeDecodage, "match_lives": passeDeDecodage,
+	"match_death_context": passeDeDecodage, "kill_openings": passeDeDecodage,
+	tableKillPositions: passeDeDecodage, "match_weapon_shots": passeDeDecodage,
 	"match_player_positions": "positions_pass", "match_usage_films": "summary_pass",
-	"match_usage_players": "summary_pass", "match_pad_pickups_by_tier": "decode_pass",
-	"match_flag_grabs_net": "decode_pass", "match_bomb_stats": "",
+	"match_usage_players": "summary_pass", "match_pad_pickups_by_tier": passeDeDecodage,
+	"match_flag_grabs_net": passeDeDecodage, "match_bomb_stats": "",
 }
 
 // passeSemee : une passe d'un match, écrite à l'instant `sec`, de `n` lignes.
@@ -152,7 +159,7 @@ func semerTout(t *testing.T, db *sql.DB) {
 			semerPasse(t, db, table, cols, p, 0)
 		}
 	}
-	semerPasse(t, db, "kill_positions", colonnesDe(t, db, "kill_positions"),
+	semerPasse(t, db, tableKillPositions, colonnesDe(t, db, tableKillPositions),
 		passeSemee{"m1", "p1c", 3, 1}, 0)
 }
 
@@ -279,7 +286,7 @@ func verifierRapport(t *testing.T, rs []migration.CompactionTable, statut string
 		}
 		raw, kept, latest := int64(13), int64(7), int64(7)
 		switch r.Table {
-		case "kill_positions":
+		case tableKillPositions:
 			raw, kept = 14, 8
 		case "match_usage_films":
 			raw, kept, latest = 6, 3, 3
