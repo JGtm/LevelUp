@@ -127,3 +127,8 @@ const comptageFamille19 = "lot de conversion 1.9.x du fait, ou pas 2 de M2 (port
 // expvar par nom et au journal du film, plan J8.7), le compteur recu est nil et le compte est
 // perdu. Posee le 2026-09-27 par le sous-lot `replay` du lot J8.7, qui a arme les sites.
 const comptageCollecteur = "suite du lot J8.7 du plan de suite d audit (sous-lot collecteur) : la passe de sync/killcollector passe son compteur par film a replay.ContextesDesMorts et le publie en expvar par nom et au journal du film"
+
+// date0927 : le jour des jalons J5 et J8 du plan de suite d audit, ou plusieurs replis sont nes ;
+// `goconst` refuse a juste titre une cinquieme occurrence du litteral. C EST UNE DATE, PAS UN LOT,
+// comme [dateVague2] et [dateM3].
+const date0927 = "2026-09-27"

@@ -287,7 +287,7 @@ var registreReplayIdentites = []Repli{
 			Fichier: pkgReplay + "unnamed_lives.go",
 			Ancre:   "reg.fb.Declenche(fallback.NomIdentiteVieParOccupationDuCorps)",
 		}},
-		DatePose:        "2026-09-27",
+		DatePose:        date0927,
 		CibleRetrait:    "J11 du plan PLAN_SUITE_AUDIT_DECODEUR_FILM (gates de corpus) : lecture de l identite des vies restantes (fin de vie sans mort ecrite, bots sans entite)",
 		CritereRetrait:  "0 piste nommee par occupation sur le corpus du gate de rejeu",
 		CompteurBranche: true,

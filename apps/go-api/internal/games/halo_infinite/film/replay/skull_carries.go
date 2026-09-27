@@ -252,10 +252,7 @@ type carrierPresence struct {
 	// Quelqu'un est la, on ne sait pas qui — donc on ne peut RIEN affirmer sur l'absence d'un
 	// joueur a cet instant.
 	unnamed []presenceSpan
-	// fbCrane : le compteur de replis de la cuisson, pose par le SEUL calque du crane (lot J8.7) : le
-	// passage sans vie nommee est inscrit au registre pour le crane (`repli_crane_porteur_sans_vie_nommee`).
-	// Nil (la bombe) ne compte rien.
-	fbCrane *fallback.Compteur
+	fbCrane *fallback.Compteur // compteur de la cuisson (J8.7), pose par le seul calque du crane ; nil ne compte rien
 }
 
 // carrierPresenceOf indexe les vies bipedes PUBLIEES (`doc.Tracks`) : les nommees par xuid, les
@@ -279,8 +276,8 @@ type carrierPresence struct {
 //
 // Une vie dont l'identite est deduite entre donc DANS LES DEUX : sous son xuid (c'est sa
 // presence a lui) ET parmi les vies qui ne prouvent l'absence de personne.
-func carrierPresenceOf(tracks []Track, deduced map[int]bool) carrierPresence {
-	p := carrierPresence{named: map[string][]presenceSpan{}}
+func carrierPresenceOf(tracks []Track, deduced map[int]bool, fbCrane *fallback.Compteur) carrierPresence {
+	p := carrierPresence{named: map[string][]presenceSpan{}, fbCrane: fbCrane}
 	for i, t := range tracks {
 		span := presenceSpan{t.StartFrame, t.EndFrame}
 		switch {
@@ -459,12 +456,10 @@ func attachSkullCarries(doc *ReplayDocument, opt Options, reg IdentityRegistry, 
 		Records:  in.Records,
 		Identity: skullIdentityOf(in, opt),
 	}
-	presence := carrierPresenceOf(doc.Tracks, deduced)
-	presence.fbCrane = clock.fb
 	carries, cov := buildSkullCarries(scan, matchClock{
 		origin: clock.origin, step: clock.step, frames: clock.frames,
 		deathOffsetMS: reg.DeathOffsetMS(),
-	}, presence)
+	}, carrierPresenceOf(doc.Tracks, deduced, clock.fb))
 	doc.SkullCarries = carries
 	if doc.Coverage != nil {
 		doc.Coverage.SkullCarries = cov

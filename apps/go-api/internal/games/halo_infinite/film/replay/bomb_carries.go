@@ -146,7 +146,7 @@ func attachBombCarries(doc *ReplayDocument, opt Options, reg IdentityRegistry, c
 		carries, cov = buildBombCarries(carry, matchClock{
 			origin: clock.origin, step: clock.step, frames: clock.frames,
 			deathOffsetMS: reg.DeathOffsetMS(),
-		}, carrierPresenceOf(doc.Tracks, deduced))
+		}, carrierPresenceOf(doc.Tracks, deduced, nil))
 	}
 	doc.BombCarries = carries
 	if doc.Coverage != nil {

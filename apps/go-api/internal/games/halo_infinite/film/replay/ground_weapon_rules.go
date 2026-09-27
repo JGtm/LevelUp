@@ -397,15 +397,18 @@ func gwPadsIdentity(c types.EquipmentCreation) (uint32, bool) {
 // socle rendrait deux familles pour un seul canon (piège documenté par keyframe_loadout.go).
 // À défaut de nom, l'identifiant brut : une famille sans nom reste une famille.
 func gwPadsWeaponFamily(w uint32) string {
-	if !gwPadsFamilleBrute(w) {
-		return weaponv3.WeaponName(w)
+	if n := weaponv3.WeaponName(w); n != "" {
+		return n
 	}
-	return fmt.Sprintf("0x%08x", w)
+	return gwPadsFamilleBruteNom(w)
 }
+
+// gwPadsFamilleBruteNom : la forme BRUTE du nom de famille, celle du repli.
+func gwPadsFamilleBruteNom(w uint32) string { return fmt.Sprintf("0x%08x", w) }
 
 // gwPadsFamilleBrute dit que le catalogue ne nomme pas l identifiant : [gwPadsWeaponFamily] rend
 // alors sa valeur brute (`repli_famille_arme_identifiant_brut`, compte par [gwFamillesBrutes]).
-func gwPadsFamilleBrute(w uint32) bool { return weaponv3.WeaponName(w) == "" }
+func gwPadsFamilleBrute(w uint32) bool { return gwPadsWeaponFamily(w) == gwPadsFamilleBruteNom(w) }
 
 // gwFamillesBrutes compte les objets de la voie des armes dont la famille est rendue BRUTE.
 func gwFamillesBrutes(objs []gwPickupObject) int {

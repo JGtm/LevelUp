@@ -422,7 +422,7 @@ var registreObjectifsEtConstruction = []Repli{
 			Fichier: "internal/games/halo_infinite/film/replay/identity_registry_section.go",
 			Ancre:   "fb.Declenche(fallback.NomIdentiteDeSlotParResiduDeManche)",
 		}},
-		DatePose:        "2026-09-27",
+		DatePose:        date0927,
 		CibleRetrait:    "retrait au jalon suivant si le compte est nul au corpus gate de J11 (regle 4 de D-10, 2026-09-27) ; sinon une lecture du film qui nomme le slot muet (instant de mort ou table d identite de la manche)",
 		CritereRetrait:  "0 couple (manche, slot) publie sous `residu_de_manche` sur le corpus du gate de rejeu",
 		CompteurBranche: true,

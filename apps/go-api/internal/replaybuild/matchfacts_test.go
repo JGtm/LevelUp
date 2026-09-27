@@ -169,7 +169,9 @@ func TestIdentifyRoundEventsMultiManche(t *testing.T) {
 		t.Errorf("capture de manche 1 attribuee a %q, attendu \"B\" (slot 22 reattribue)", capX)
 	}
 
-	// CONTRE-EPREUVE : le pont plat par instants de mort la donne a "A".
+	// CONTRE-EPREUVE : le pont plat par instants de mort ne sait pas l attribuer. Il la donnait a
+	// "A" (il ne voyait que la manche 0) ; depuis le lot J8.5 (2026-09-27, constat FO-3) il deroule
+	// la serie TOTALE publiee, ou A et B sont a egalite sur le slot 22, et il se tait.
 	flat := decfilm.IdentifyNamedEvents(named, decfilm.SlotIdentityByDeaths(recs, deaths))
 	var flatCapX string
 	for _, e := range flat {
@@ -177,8 +179,8 @@ func TestIdentifyRoundEventsMultiManche(t *testing.T) {
 			flatCapX = e.XUID
 		}
 	}
-	if flatCapX != "A" {
-		t.Fatalf("pont plat : capture attribuee a %q, attendu \"A\" (temoin de la difference)", flatCapX)
+	if flatCapX != "" {
+		t.Fatalf("pont plat : capture attribuee a %q, attendu \"\" (slot 22 muet : temoin de la difference)", flatCapX)
 	}
 	if flatCapX == capX {
 		t.Error("le pont par manche ne DIFFERE PAS du pont plat sur la capture de manche 1 — " +

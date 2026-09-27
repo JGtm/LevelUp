@@ -333,7 +333,7 @@ var registreReplayEquipement = []Repli{
 			Fichier: pkgReplay + "ground_weapon_pads.go",
 			Ancre:   "clock.fb.DeclencheN(fallback.NomOrigineAuSolLacheeParFenetre, wc.dropped+pc.dropped)",
 		}},
-		DatePose:        "2026-09-27",
+		DatePose:        date0927,
 		CibleRetrait:    "conversion le jour ou une lecture du lacher est trouvee (evenement natif ou composant de l objet) ; a defaut, retrait au jalon suivant si le compte est nul au corpus gate de J11 (regle 4 de D-10, 2026-09-27)",
 		CritereRetrait:  "origine lue dans le film pour chaque objet au sol publie `dropped`, ET 0 declenchement sur le corpus du gate de rejeu",
 		CompteurBranche: true,

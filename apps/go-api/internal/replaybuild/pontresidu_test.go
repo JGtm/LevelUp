@@ -51,9 +51,14 @@ func deuxManchesDeuxMuets() ([]decfilm.StatRecord, []decfilm.DeathInstant,
 	}
 	// LES QUATRE SLOTS EMETTENT EN ALTERNANCE, comme sur un film reel : tous declarent la manche
 	// dans la meme salve, sinon `ResolveRoundBounds` ecarte les emissions du slot le plus precoce.
+	// ET UNE SALVE A ZERO OUVRE CHAQUE MANCHE (lot J8.5, 2026-09-27, constat FO-3) : le pont par
+	// instants de mort deroule desormais la serie PUBLIEE, que la borne de manche confronte au temps ;
+	// le premier enregistrement du slot le plus precoce (le 10) precede le debut par consensus et en
+	// est ecarte. Sans cette salve, c etait sa PREMIERE MORT de la manche 1 — le pont ne nommait plus
+	// le slot 10, et le residu de `ddd` ne se calculait plus. Une emission a zero ne gagne aucune unite.
 	for _, round := range []int{0, 1} {
 		base := 10000 + round*200000
-		for pas := int64(1); pas <= 8; pas++ {
+		for pas := int64(0); pas <= 8; pas++ {
 			for i, slot := range slots {
 				s := seg[round][slot]
 				t := base + int(pas)*4000 + i*500
@@ -64,7 +69,7 @@ func deuxManchesDeuxMuets() ([]decfilm.StatRecord, []decfilm.DeathInstant,
 				if d > s[1] {
 					d = s[1]
 				}
-				if pas <= s[1] {
+				if pas >= 1 && pas <= s[1] {
 					deaths = append(deaths,
 						decfilm.DeathInstant{XUID: porteur[round][slot], TimeMS: t})
 				}
