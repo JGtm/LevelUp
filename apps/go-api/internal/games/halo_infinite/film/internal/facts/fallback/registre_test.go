@@ -269,17 +269,26 @@ func abrege(s string) string {
 	return strings.TrimSpace(string(r[:max])) + "..."
 }
 
-// TestChaqueRepliEstCompte — LE RATCHET DU LOT J8.7 DU PLAN DE SUITE D AUDIT (2026-09-27) : AUCUNE
-// entree du registre n a son compteur NON BRANCHE.
+// plafondReplisNonComptes : le nombre d entrees dont le compteur n est PAS branche.
 //
-// POURQUOI ZERO, ET PAS UN PLAFOND QUI DESCEND. D-10 (regle 4) supprime un repli dont le compte est
-// NUL au corpus gate d une cloture de jalon. Un compteur non branche publie un zero qui n en est pas
-// un : l entree serait supprimee alors qu elle decide peut-etre des faits a chaque film. L audit du
-// 2026-09-24 en comptait 81 sur 99 ; le lot les a tous cables. Un repli NEUF entre donc au registre
-// AVEC son compteur au site, ou il n entre pas.
+// LA CIBLE EST ZERO (plan J8.7 du 2026-09-25 : « ratchet `TestChaqueRepliEstCompte` (0 entree a
+// `false`) »), et ce plafond est l ETAT INTERMEDIAIRE du lot, date. Mesures : 81 sur 99 a l audit du
+// 2026-09-24 ; 82 sur 118 a l entree du lot J8 (2026-09-27, tete `7e407b942`) ; 62 sur 119 apres les
+// items J8.1 a J8.6 (trois entrees neuves, cablees ; deux retirees avec leur code) et le sous-lot
+// `replay` du J8.7 (18 cablees ; les deux replis du contexte de mort, executes par le collecteur,
+// attendent le compteur de sa passe). Il ne MONTE jamais ; il descend dans le commit qui cable, et la
+// constante disparait avec le dernier compteur : le test exige alors zero.
+const plafondReplisNonComptes = 62
+
+// TestChaqueRepliEstCompte — LE RATCHET DU LOT J8.7 DU PLAN DE SUITE D AUDIT (2026-09-27).
 //
-// MUTATION : remettre `CompteurBranche: false` (et une `CibleComptage`) sur une entree — ROUGE, qui
-// la nomme.
+// POURQUOI. D-10 (regle 4) supprime un repli dont le compte est NUL au corpus gate d une cloture de
+// jalon. Un compteur non branche publie un zero qui n en est pas un : l entree serait supprimee alors
+// qu elle decide peut-etre des faits a chaque film. Un repli NEUF entre donc au registre AVEC son
+// compteur au site, ou il n entre pas.
+//
+// MUTATION : remettre `CompteurBranche: false` (et une `CibleComptage`) sur une entree cablee —
+// ROUGE (63 au-dessus du plafond 62), qui nomme les entrees.
 func TestChaqueRepliEstCompte(t *testing.T) {
 	var nonBranches []string
 	for _, r := range Table() {
@@ -287,10 +296,15 @@ func TestChaqueRepliEstCompte(t *testing.T) {
 			nonBranches = append(nonBranches, string(r.Nom))
 		}
 	}
-	if len(nonBranches) > 0 {
-		t.Errorf("%d repli(s) sans compteur branche : %v\n"+
+	if len(nonBranches) > plafondReplisNonComptes {
+		t.Errorf("%d repli(s) sans compteur branche (plafond %d) : %v\n"+
 			"Un repli se compte a son site (`fb.Declenche(fallback.NomX)`), et son compte voyage jusqu a "+
 			"`coverage.fallbacks` (cuisson) ou jusqu a l expvar et au journal du film (collecteur).",
-			len(nonBranches), nonBranches)
+			len(nonBranches), plafondReplisNonComptes, nonBranches)
+	}
+	if len(nonBranches) < plafondReplisNonComptes {
+		t.Errorf("%d repli(s) sans compteur branche, sous le plafond %d : BAISSER le plafond dans ce "+
+			"commit — un plafond au-dessus de la mesure reconstitue une marge en silence",
+			len(nonBranches), plafondReplisNonComptes)
 	}
 }

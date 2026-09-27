@@ -146,7 +146,8 @@ var registreReplayIdentites = []Repli{
 		CibleRetrait: "lot 1.7 (l'equipe vient du film, V4) porte jusqu'a ce calque",
 		// Aucune ligne, aucun compteur, aucun log : une mort disparaît du calque sans trace.
 		CritereRetrait:  "l'equipe vient du film et non de la base ; 0 mort ecartee sur les 8 builds",
-		CompteurBranche: true,
+		CompteurBranche: false,
+		CibleComptage:   comptageCollecteur,
 	},
 	{
 		Nom:       "repli_coequipier_hors_de_vue_par_defaut",
@@ -164,7 +165,8 @@ var registreReplayIdentites = []Repli{
 		DatePose:        dateAudit0E,
 		CibleRetrait:    "lot de conversion du contexte d'isolement (hors famille 1.9 a ce jour)",
 		CritereRetrait:  "un quatrieme etat NOMME « non lu » separe l'ignorance de la mesure, et son compte tombe a 0",
-		CompteurBranche: true,
+		CompteurBranche: false,
+		CibleComptage:   comptageCollecteur,
 	},
 	// RETIRE LE 2026-09-16 (lot 1.9.10) : `repli_fin_de_vie_vehicule_par_recensement`. La fin de
 	// vie d'un véhicule se LIT au composant `object-dead-state` de `ti=40`
