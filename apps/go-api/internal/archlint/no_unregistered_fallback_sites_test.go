@@ -35,7 +35,7 @@ func TestToutDeclenchementEstAUnSiteDuRegistre(t *testing.T) {
 	appelsVus := 0
 	for _, sous := range perimetreReplis {
 		parcourirGoProduction(t, filepath.Join(racine, sous), func(rel string, f *ast.File) {
-			for _, a := range declenchementsDuFichier(f) {
+			for _, a := range declenchementsDuFichierOuDeSaTable(rel, f) {
 				nom, connu := valeurDeLaConstante[a]
 				if !connu {
 					t.Errorf("%s : `Declenche`/`DeclencheN` appelé avec %q, qui n'est pas une "+

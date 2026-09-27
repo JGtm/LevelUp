@@ -21,6 +21,10 @@ func (c *FilmContext) controleDeCorruptionDuFilm() bool {
 		var g GrammaireBalayage
 		g, c.corrLue = grammaireSousFilm(c.bal.Grammaire, c.Profile())
 		c.corr = g.ControleDeCorruption
+		if !c.corrLue {
+			// Repli `repli_controle_corruption_section_absente`, UNE fois par film (lot J8.7).
+			c.NoterReplis(ComptesDesReplis{ControleDeCorruptionNonDeclare: 1})
+		}
 	}
 	return c.corr
 }

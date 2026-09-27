@@ -10,9 +10,10 @@ package fallback
 //
 // CONTRAINTE DE CÂBLAGE : le ratchet `archlint/filmdec_package_vars_test.go` gèle le nombre de
 // variables de paquet de `grammar`, et le critère S1 du plan vise ZÉRO variable mutable dans le
-// décodeur. Un compteur de replis ne s'y câble donc pas par une globale : il passera par le
-// `FilmContext` (D1 : un seul objet par film, le profil résolu à la construction) au pas 2 de
-// M2, qui est le lot où les lecteurs reçoivent ce porteur.
+// décodeur. Un compteur de replis ne s'y câble donc pas par une globale, et `grammar` ne peut pas
+// importer ce registre : depuis le lot J8.7 (2026-09-27), chaque repli se compte EN DONNÉES au
+// rapport du `FilmContext` (`grammar/replis_du_film.go`), et `replay` le verse au compteur de la
+// cuisson par sa table (`replay/versement_des_replis.go`, [siteDeVersement]).
 
 const pkgFilmdec = "internal/games/halo_infinite/film/internal/grammar/"
 
@@ -63,9 +64,15 @@ var registreFilmdec = []Repli{
 			Fichier: pkgFilmdec + "equipment_placements.go",
 			Ancre:   "cal, ok := CalibrateMPPWidthsOf(fc, wr, band, spans)",
 		}, {
+			Fichier: pkgFilmdec + "equipment_placements.go",
+			Ancre:   "fc.NoterReplis(ComptesDesReplis{LargeursMPPCalibrees: 1})",
+		}, {
 			Fichier: "internal/games/halo_infinite/film/replay/build_ground_weapons.go",
 			Ancre:   "return calibrees",
-		}},
+		}, {
+			Fichier: "internal/games/halo_infinite/film/replay/build_ground_weapons.go",
+			Ancre:   "fc.NoterReplis(grammar.ComptesDesReplis{LargeursMPPCalibrees: 1})",
+		}, siteDeVersement("NomLargeursMppCalibreesSurLeFilm")},
 		DatePose:     dateVague2,
 		CibleRetrait: "l executable d un build <= HI_1_11_0, relu comme FUN_141fd72c0 l a ete pour HI_1_13_0 — ou un profil mesure par un oracle valide au-dessus du seuil de coincidence",
 		// POURQUOI CE REPLI EXISTE, ET POURQUOI CE N'EST PAS UNE DETTE ORDINAIRE.
@@ -93,8 +100,7 @@ var registreFilmdec = []Repli{
 		// pas attendre le comptage differe ci-dessous. Branche de production gardee par
 		// `replay/mpp_format_inconnu_test.go`, mutation verifiee dans les deux sens.
 		CritereRetrait:  "les formats du parc portent leur largeur MPP au profil ; 0 recours a la calibration sur le parc",
-		CompteurBranche: false,
-		CibleComptage:   comptageParFilmContext,
+		CompteurBranche: true,
 	},
 	{
 		Nom:       "repli_i0_porte_et_region_par_defaut",
@@ -105,7 +111,14 @@ var registreFilmdec = []Repli{
 		Sites: []Site{{
 			Fichier: pkgFilmdec + "i0_layout.go",
 			Ancre:   "GateBits: profile.DefaultI0GateBits,",
-		}},
+		}, {
+			// LES DEUX APPELANTS QUI DETECTENT, et qui comptent le verdict UNE fois par contexte (lot J8.7).
+			Fichier: pkgFilmdec + "film_context.go",
+			Ancre:   "c.noterI0ParDefaut(c.layErr)",
+		}, {
+			Fichier: pkgFilmdec + "offline_biped_band.go",
+			Ancre:   "fc.noterI0ParDefaut(nil)",
+		}, siteDeVersement("NomI0PorteEtRegionParDefaut")},
 		DatePose: dateAudit0E,
 		// RETROGRADE AU LOT 1.9.2 (2026-09-15), `inconditionnel / devant_la_lecture` ->
 		// `carte_absente_du_catalogue / apres_lecture`, ET LE RATCHET DES SEPT DESCEND A SIX.
@@ -138,8 +151,7 @@ var registreFilmdec = []Repli{
 		// 146 860 (`0797ce72`) qui appartiennent a une AUTRE region de compression.
 		CibleRetrait:    "lot 3.x (profil par carte) — la moitie `DetectI0Layout` est faite au lot 1.9.4, restent les deux appelants de `DetectI0LayoutOf`",
 		CritereRetrait:  "aucun chemin de production n'appelle DetectI0LayoutOf ; le decoupage vient du catalogue sur les 8 builds",
-		CompteurBranche: false,
-		CibleComptage:   comptageParFilmContext,
+		CompteurBranche: true,
 	},
 	{
 		Nom:       "repli_bande_bipede_comblee",
@@ -150,12 +162,15 @@ var registreFilmdec = []Repli{
 		Sites: []Site{{
 			Fichier: pkgFilmdec + "offline_biped_band.go",
 			Ancre:   "func fillSlotBand(s map[uint32]bool) SlotBand { return NewSlotBand(filledSlotMap(s)) }",
-		}},
+		}, {
+			// COMPTE = slots AJOUTES par le comblement a ceux vus, sommes sur les releves du contexte.
+			Fichier: pkgFilmdec + "offline_biped_band.go",
+			Ancre:   "fc.NoterReplis(ComptesDesReplis{SlotsBipedesComblees: band.Count() - len(seen)})",
+		}, siteDeVersement("NomBandeBipedeComblee")},
 		DatePose:        dateAudit0E,
 		CibleRetrait:    "lot 3.5 (la bande de slots bipede par build)",
 		CritereRetrait:  "la bande vient du profil du build ; 0 comblement sur les 8 builds",
-		CompteurBranche: false,
-		CibleComptage:   "lot 3.5",
+		CompteurBranche: true,
 	},
 	{
 		Nom:       "repli_largeurs_monde_par_defaut_conservees",
@@ -166,12 +181,21 @@ var registreFilmdec = []Repli{
 		Sites: []Site{{
 			Fichier: pkgFilmdec + "profil_balayage.go",
 			Ancre:   "if l.AxisW[0] == 0 || l.AxisW[1] == 0 || l.AxisW[2] == 0 {",
-		}},
+		}, {
+			// La pose REND son rapport ; les contextes qui l appellent le notent (lot J8.7).
+			Fichier: pkgFilmdec + "profil_balayage.go",
+			Ancre:   "return ComptesDesReplis{LargeursMondeParDefaut: 1}",
+		}, {
+			Fichier: pkgFilmdec + "film_context.go",
+			Ancre:   "c.NoterReplis(c.bal.PoserLargeursObjetDuMondeDepuisDecoupage(l))",
+		}, {
+			Fichier: "internal/games/halo_infinite/film/replay/world_object_precision.go",
+			Ancre:   "fc.NoterReplis(bal.PoserLargeursObjetDuMondeDepuisDecoupage(e.Layout()))",
+		}, siteDeVersement("NomLargeursMondeParDefautConservees")},
 		DatePose:        dateAudit0E,
 		CibleRetrait:    "lot 3.4 (les largeurs sont une donnee de la carte et du build)",
 		CritereRetrait:  "les largeurs viennent du profil ; 0 conservation du defaut sur les 8 builds",
-		CompteurBranche: false,
-		CibleComptage:   comptageParFilmContext,
+		CompteurBranche: true,
 	},
 	{
 		Nom:       "repli_index_de_region_largeur_un",
@@ -182,12 +206,14 @@ var registreFilmdec = []Repli{
 		Sites: []Site{{
 			Fichier: pkgFilmdec + "profil_balayage.go",
 			Ancre:   "if l.GateBits > profile.I0SpineBits+profile.I0UseDefaultBits {",
-		}},
+		}, {
+			Fichier: pkgFilmdec + "profil_balayage.go",
+			Ancre:   "replis.IndexDeRegionLargeurUn = 1",
+		}, siteDeVersement("NomIndexDeRegionLargeurUn")},
 		DatePose:        dateAudit0E,
 		CibleRetrait:    "lot 3.4",
 		CritereRetrait:  "la largeur d'index vient du profil de la carte ; 0 recours au defaut",
-		CompteurBranche: false,
-		CibleComptage:   comptageParFilmContext,
+		CompteurBranche: true,
 	},
 	// `repli_largeur_absolue_uniforme` EST RETIRE LE 2026-09-17 (lot 3.4.1-a), ET SON CRITERE
 	// EST TENU : « les trois axes prennent leur largeur du profil ; le reglage global uniforme
@@ -206,14 +232,18 @@ var registreFilmdec = []Repli{
 		Sites: []Site{{
 			Fichier: pkgProfile + "mpp_widths.go",
 			Ancre:   "const mppLeadParDefaut = 9",
-		}},
+		}, {
+			// LE SEUL SITE OU LE DEFAUT DECIDE UN BALAYAGE (socles, vehicules) : ni relue ni calibree
+			// (lot J8.7). La voie equipement ne balaie pas sans pose (`equipment_placements.go`).
+			Fichier: "internal/games/halo_infinite/film/replay/build_ground_weapons.go",
+			Ancre:   "fc.NoterReplis(grammar.ComptesDesReplis{LargeursMPPParDefaut: 1})",
+		}, siteDeVersement("NomLargeursMppParDefaut")},
 		DatePose:     dateAudit0E,
 		CibleRetrait: "lot 3.x (profil par build : les largeurs MPP sont une donnee du build)",
 		// La voie ÉQUIPEMENT journalise quand elle retombe sur le défaut ; la voie SOCLES se
 		// tait. Deux chemins, une seule constante, un seul silence.
 		CritereRetrait:  "les largeurs MPP viennent du profil du build ; 0 recours au defaut sur les 8 builds",
-		CompteurBranche: false,
-		CibleComptage:   comptageParFilmContext,
+		CompteurBranche: true,
 	},
 	{
 		Nom:       "repli_chunks_apres_trou_abandonnes",
@@ -224,12 +254,15 @@ var registreFilmdec = []Repli{
 		Sites: []Site{{
 			Fichier: pkgFilmdec + "film_chunks.go",
 			Ancre:   "break // trou de numerotation : meme arret que l'ancien CountFilmChunks",
-		}},
+		}, {
+			// COMPTE = chunks de donnees du manifeste abandonnes, releve UNE fois par contexte (lot J8.7).
+			Fichier: pkgFilmdec + "film_chunks.go",
+			Ancre:   "c.NoterReplis(ComptesDesReplis{ChunksApresTrouAbandonnes: abandonnes})",
+		}, siteDeVersement("NomChunksApresTrouAbandonnes")},
 		DatePose:        dateAudit0E,
 		CibleRetrait:    "lot de conversion du manifeste (le manifeste dit quels chunks existent ; un trou est une donnee, pas une borne)",
 		CritereRetrait:  "0 film du parc dont l'enumeration s'arrete avant le dernier chunk du manifeste",
-		CompteurBranche: false,
-		CibleComptage:   comptageParFilmContext,
+		CompteurBranche: true,
 	},
 	{
 		Nom:       "repli_ancre_sans_vie_delta_ecartee",
@@ -240,12 +273,14 @@ var registreFilmdec = []Repli{
 		Sites: []Site{{
 			Fichier: pkgFilmdec + "equipment_creation_width.go",
 			Ancre:   "continue // une vie que les paquets delta n'ont pas vue ne peut rien arbitrer",
-		}},
+		}, {
+			Fichier: pkgFilmdec + "equipment_creation_width.go",
+			Ancre:   "fc.NoterReplis(ComptesDesReplis{AncresSansVieDelta: pr.sansVie})",
+		}, siteDeVersement("NomAncreSansVieDeltaEcartee")},
 		DatePose:        dateAudit0E,
 		CibleRetrait:    "lot 3.x (largeurs de creation par build, la calibration disparait)",
 		CritereRetrait:  "les largeurs viennent du profil ; la calibration est retiree avec ses tests",
-		CompteurBranche: false,
-		CibleComptage:   comptageParFilmContext,
+		CompteurBranche: true,
 	},
 	{
 		Nom:       "repli_registre_inconnu_sans_lecteur_de_troncature",
@@ -256,14 +291,21 @@ var registreFilmdec = []Repli{
 		Sites: []Site{{
 			Fichier: pkgFilmdec + "registry_fingerprint.go",
 			Ancre:   "func warnUnknownRegistry(fp uint64, blocks, slots int) {",
-		}},
+		}, {
+			// COMPTE = UN film dont l empreinte n est pas celle de reference, au registre memorise du
+			// contexte (lot J8.7) — la ou `warnUnknownRegistry` ne signale qu UNE fois par processus.
+			Fichier: pkgFilmdec + "replis_du_film.go",
+			Ancre:   "c.NoterReplis(ComptesDesReplis{RegistreInconnu: 1})",
+		}, {
+			Fichier: pkgFilmdec + "film_context.go",
+			Ancre:   "c.noterRegistre(c.reg)",
+		}, siteDeVersement("NomRegistreInconnuSansLecteurDeTroncature")},
 		DatePose:     "2026-09-14",
 		CibleRetrait: "lot 3.1 (build inconnu actif, profil comme donnee fabriquee) : un build inconnu devient une erreur typee, une troncature en est une autre",
 		// Découverte D6 (1.2) : la troncature est NOMMÉE dans `Registry` mais n'a AUCUN lecteur,
 		// et le seul signal qui sort en exploitation attribue la mauvaise cause.
 		CritereRetrait:  "les deux causes sont distinguees a la sortie (erreur typee `build_inconnu` contre `tronque`) et comptees separement",
-		CompteurBranche: false,
-		CibleComptage:   "lot 3.1",
+		CompteurBranche: true,
 	},
 	{
 		Nom:       "repli_amorce_grenade_profil_de_reference",
@@ -277,7 +319,10 @@ var registreFilmdec = []Repli{
 		}, {
 			Fichier: pkgFilmdec + "grenade_events.go",
 			Ancre:   "g := grammaireDeReference()",
-		}},
+		}, {
+			Fichier: pkgFilmdec + "grenade_events.go",
+			Ancre:   "fc.NoterReplis(ComptesDesReplis{AmorceGrenadeDeReference: 1})",
+		}, siteDeVersement("NomAmorceGrenadeProfilDeReference")},
 		DatePose: dateM3,
 		// POURQUOI LE REFUS SERAIT PIRE QUE LE REPLI. D-4 d ADR 0034 interdit de lire un film au
 		// profil du build VOISIN ; ici la reference n est pas un voisin choisi au jugement, c est
@@ -285,12 +330,10 @@ var registreFilmdec = []Repli{
 		// le parc au premier patch du jeu, c est-a-dire exactement le defaut que le lot 3.3.1
 		// vient de fermer sur les builds anciens.
 		CibleRetrait: "retrait sec des que la table du profil couvre toutes les clefs du parc : le prochain patch du jeu ajoute sa clef d amorce en meme temps que son empreinte de registre",
-		// Le compte n est pas branche pour la meme raison que les autres replis de `grammar` : le
-		// decodeur ne porte pas de compteur de replis, et le cablage passe par le `FilmContext`.
-		// D ici la, le declenchement sort en AVERTISSEMENT par film, avec la clef refusee.
+		// COMPTE depuis le lot J8.7 (2026-09-27) au rapport du contexte de film, verse par la table de
+		// `replay` ; le declenchement sort aussi en AVERTISSEMENT par film, avec la clef refusee.
 		CritereRetrait:  "0 film cuit sous le profil de reference ; chaque clef du parc porte sa ligne d amorce",
-		CompteurBranche: false,
-		CibleComptage:   comptageParFilmContext,
+		CompteurBranche: true,
 	},
 	{
 		Nom:       "repli_controle_corruption_section_absente",
@@ -308,6 +351,10 @@ var registreFilmdec = []Repli{
 			Fichier: pkgFilmdec + "controle_corruption_du_film.go",
 			Ancre:   "func (c *FilmContext) ControleDeCorruptionRepli() bool {",
 		}, {
+			// COMPTE au rapport du contexte, UNE fois par film (lot J8.7).
+			Fichier: pkgFilmdec + "controle_corruption_du_film.go",
+			Ancre:   "c.NoterReplis(ComptesDesReplis{ControleDeCorruptionNonDeclare: 1})",
+		}, siteDeVersement("NomControleCorruptionSectionAbsente"), {
 			Fichier: pkgKillsource + "decode.go",
 			Ancre:   "if !c.calib.ControleDeCorruptionLu {",
 		}},
@@ -326,138 +373,5 @@ var registreFilmdec = []Repli{
 		CritereRetrait:  "0 film cuit sans declaration de ce bit ; les cinq films de format 20 portent leur position au profil",
 		CompteurBranche: false,
 		CibleComptage:   comptageParFilmContext,
-	},
-	{
-		Nom:  "repli_ancre_d_image_cle_par_election",
-		Fait: "le record SUIVANT de la table d image-cle, quand aucun voisin immediat (slot+1, generation 1) ne suit et qu aucun en-tete exact de bipede ne precede le candidat retenu",
-		Mecanisme: "election sur la fenetre de 120 000 bits : consecutif d abord, puis generation basse, puis SLOT BAS, puis bit bas (`kfCand.betterThan`) ; " +
-			"depuis le lot D-fix (2026-09-24), l elu qu un record PROUVE par la grammaire du film contredit (ordre des bits et des slots inverse) est refuse et l election reprend sans lui (`grammar/keyframe_world_preuve.go`, compte `coverage.keyframes.refutations`)",
-		// LECTURE NON PORTEE : le film ECRIT la table comme une chaine (`FUN_142e2bfd0` enchaine
-		// les entrees, une par entite vivante) et la marche deterministe qui la suivrait
-		// (`WalkKeyframeRecords`) ne ferme pas encore tous les archetypes. C est une dette nommee.
-		Condition: CondLectureNonPortee,
-		// APRES LECTURE : le voisin immediat et le recalage sur l en-tete exact d un bipede sont
-		// tentes d abord ; l election n entre que si les deux se taisent.
-		Ordre: OrdreApresLecture,
-		Sites: []Site{{
-			Fichier: pkgFilmdec + "keyframe_world.go",
-			Ancre:   "iss.dec = kfElection // repli nomme `repli_ancre_d_image_cle_par_election`",
-		}, {
-			Fichier: "internal/games/halo_infinite/film/replay/film_scan.go",
-			Ancre:   "s.opt.Fallbacks.DeclencheN(fallback.NomAncreDImageCleParElection, marche.Elections)",
-		}},
-		DatePose: "2026-09-23",
-		// POSE PAR LE LOT M3.1 DE LA CAMPAGNE « RETOURS REJEU » : l election etait la regle
-		// UNIQUE du balayeur, muette ; elle devient le repli d une lecture (voisin, recalage) et se
-		// compte. Son defaut est MESURE (sonde P2, 81c02726 morceau 9 et a0c36016 morceau 2 : une
-		// fausse ancre de slot bas, prise dans le corps du dernier bipede, elue devant les vrais
-		// bipedes) ; le recalage le ferme pour les bipedes, pas pour les autres archetypes
-		// (minibobine bcb6d393, image-cle 0 : le record ti=9 slot 1297 perd contre la fausse
-		// ancre 192/ti 1 de son propre corps). LE LOT D-fix (2026-09-24) FERME CE CAS SANS SEUIL :
-		// la table est a slots croissants, donc un candidat que la grammaire du film PROUVE (sa
-		// marche d etat complet, contenu compris, ferme sur l en-tete valide suivant) interdit
-		// tout elu qui contredit cet ordre avec lui — la fausse ancre 192 (dans le corps du
-		// record 1298) est refusee devant les records 1280..1298 prouves, et l election reprend.
-		// L election reste le repli : elle decide encore la ou aucun record prouve ne la contredit.
-		CibleRetrait:    "la marche deterministe (`WalkKeyframeRecords`, cadre d etat complet de l ecrivain) fermant tous les archetypes des bobines par build",
-		CritereRetrait:  "`KeyframeClosure` a 100 % sur les sept bobines par build ET 0 election comptee sur le corpus du gate de rejeu",
-		CompteurBranche: true,
-	},
-	{
-		Nom:  "repli_physique_de_type_de_vehicule_supposee",
-		Fait: "la porte du corps de ti=40 i34 vehicle-type-physics (l octet +0x818 du vehicule, que le deserialiseur FUN_142f02498 et l ecrivain FUN_142f04e90 testent) est POSEE quand le masque annonce le composant",
-		Mecanisme: "le corps est lu : R(1) mode, puis la paire avant/haut (FUN_140c5f938) et la vitesse angulaire (FUN_14076e1c8) du mode ; " +
-			"prouve par l oracle de cadrage (1cd3848a, fenetre de la LAAG : 0 -> 765 paquets sur 785 dont la vue C ferme au bit pres)",
-		// LECTURE NON PORTEE : l octet +0x818 n est ecrit par aucun record du flux lu (ni i34, ni
-		// i33 qui le teste aussi) ; il est pose quand le jeu construit le vehicule.
-		Condition: CondLectureNonPortee,
-		Ordre:     OrdreSansLecture,
-		Sites: []Site{{
-			Fichier: pkgFilmdec + "composants_vue_b_m4b.go",
-			Ancre:   "func consumeVehicleTypePhysics(br *Lecteur) {",
-		}, {
-			Fichier: "internal/games/halo_infinite/film/replay/film_scan_mouvement.go",
-			Ancre:   "s.opt.Fallbacks.DeclencheN(fallback.NomPhysiqueDeTypeDeVehiculeSupposee, st.VehicleTypePhysicsAssumed)",
-		}},
-		DatePose:        "2026-09-25",
-		CibleRetrait:    "la lecture de l ecrivain de l octet +0x818 du vehicule (Ghidra : construction du vehicule depuis son tag), qui fait de la porte une lecture",
-		CritereRetrait:  "porte lue a l ecrivain ET 0 lecture supposee comptee sur le corpus du gate de rejeu",
-		CompteurBranche: true,
-	},
-	{
-		Nom:  "repli_generation_vivante_inconnue_tag1",
-		Fait: "la generation du handle sous laquelle un record delta bipede est lu (positions, huit canaux delta, visee seule, recuperation d equipement), sur un slot dont aucune generation n est connue",
-		Mecanisme: "le slot n est designe ni par un record de creation de bipede ni par un record ti=35 d image-cle : seule la generation 1 est acceptee (le filtre `RequireTag1` d avant le lot J5.2) ; " +
-			"compte = slots distincts des positions publiees dans ce cas",
-		// NON RESOLU : les deux lectures qui designent une vie ont tourne sur tout le film et n ont
-		// rien rendu pour ce slot (un corps cree puis detruit entre deux images-cles, dont la
-		// creation n a pas ete acceptee). Mesure J5.0 (19 films, 2026-09-27) : aucune position de
-		// production dont la vie (slot, 1) serait inconnue — le repli est attendu a zero sur le parc.
-		Condition: CondNonResolu,
-		Ordre:     OrdreApresLecture,
-		Sites: []Site{{
-			Fichier: pkgFilmdec + "generations_vivantes.go",
-			Ancre:   "return h.Gen == generationDuRepli",
-		}, {
-			Fichier: pkgFilmdec + "generations_vivantes.go",
-			Ancre:   "func (g *GenerationsVivantes) SlotsEnRepli(pos []BipedPosition) int {",
-		}, {
-			Fichier: "internal/games/halo_infinite/film/replay/film_scan.go",
-			Ancre:   "s.opt.Fallbacks.DeclencheN(fallback.NomGenerationVivanteInconnueTag1,",
-		}},
-		DatePose:        date0927,
-		CibleRetrait:    "J11 (gates de corpus du plan PLAN_SUITE_AUDIT_DECODEUR_FILM) : retrait si le compte est a zero sur le corpus, sinon lecture des vies manquantes (creations refusees par la signature)",
-		CritereRetrait:  "0 slot compte sur le corpus du gate de rejeu ET sur le parc re-decode",
-		CompteurBranche: true,
-	},
-	{
-		// LOT J8.1 DU PLAN DE SUITE D AUDIT (2026-09-27), CONSTAT GA1-2 : le repli du lot 5.23
-		// (2026-09-22) decidait hors registre et ne se comptait nulle part — sur `bfecd02b`, les
-		// stances passent de 616 a 841 par lui sans que l artefact le dise. Ses identifiants
-		// portent desormais `Repli`, pour que le ratchet de vocabulaire les voie.
-		//
-		// LA TABLE ANTICIPEE A UN SECOND USAGE QUI N EST PAS UN REPLI : `SlotDeLArchetype`
-		// (`debut_de_liste.go`, reprise M4b) lit la BANDE d un archetype dans les images-cles pour
-		// proposer un candidat de debut de liste, et ce candidat n est retenu que si la chaine de
-		// records qu il ouvre finit AU BIT PRES sur le debut localise. C est une lecture prouvee
-		// par le flux, pas une decision a la place d une lecture : elle n entre pas ici.
-		Nom:  "repli_liaison_par_anticipation",
-		Fait: "l archetype d un slot jamais lie dont un record delta arrive (une entite nee en milieu de chunk, que ni l image-cle de son chunk ni la table de datums ne declarent)",
-		Mecanisme: "la table anticipee des images-cles du film rend l archetype que la PREMIERE image-cle STRICTEMENT POSTERIEURE au chunk courant donne a l eid entier (slot et tete) ; " +
-			"le slot est lie comme une liaison de datum (Soft, generation et vue inconnues, sans position) et son corps est lu ; compte = liaisons posees",
-		// LECTURE NON PORTEE : le film ecrit la naissance (un record NEW), et le decodeur ne le lit
-		// pas la ou l entite nait (0,0 % dans l image-cle du chunk, 0 sur 23 325 rejets dans le
-		// bloc de type 1 — lots 5.20.2 et 5.21.2).
-		Condition: CondLectureNonPortee,
-		Ordre:     OrdreApresLecture,
-		Sites: []Site{{
-			Fichier: pkgFilmdec + "world.go",
-			Ancre:   "func (w *World) LierParRepliDAnticipation(id uint32) (uint32, bool) {",
-		}, {
-			Fichier: pkgFilmdec + "world.go",
-			Ancre:   "func (w *World) LiaisonsDuRepliDAnticipation() map[uint32]int {",
-		}, {
-			Fichier: pkgFilmdec + "frame_infer.go",
-			Ancre:   "ti, anticipe := w.LierParRepliDAnticipation(id)",
-		}, {
-			Fichier: pkgFilmdec + "observateur.go",
-			Ancre:   "LiaisonsParRepliDAnticipation map[uint32]int",
-		}, {
-			Fichier: pkgFilmdec + "observateur.go",
-			Ancre:   "func (o *Observation) compterLiaisonParRepliDAnticipation(ti uint32) {",
-		}, {
-			// L ANCRE EST LA TRANSMISSION, PAS LA DECLARATION : elle nomme le champ et la methode
-			// (le ratchet de vocabulaire les voit couverts), et l effacer fait rougir la direction
-			// (B) — le seul maillon que le test du paquet ne tient pas.
-			Fichier: pkgFilmdec + "movement_states.go",
-			Ancre:   "m.LiaisonsParRepliDAnticipation = sc.liaisonsDuRepliDAnticipation()",
-		}, {
-			Fichier: "internal/games/halo_infinite/film/replay/film_scan_mouvement.go",
-			Ancre:   "s.opt.Fallbacks.DeclencheN(fallback.NomLiaisonParAnticipation, m.LiaisonsParRepliDAnticipation)",
-		}},
-		DatePose:        date0927,
-		CibleRetrait:    "la lecture du record de naissance d une entite nee en milieu de chunk ; a defaut, retrait au jalon suivant si le compte est nul au corpus gate de J11 (regle 4 de D-10, 2026-09-27)",
-		CritereRetrait:  "record de naissance lu ET 0 liaison par anticipation comptee sur le corpus du gate de rejeu",
-		CompteurBranche: true,
 	},
 }

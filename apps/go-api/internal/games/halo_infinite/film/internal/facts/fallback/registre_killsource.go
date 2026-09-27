@@ -91,7 +91,11 @@ var registreKillsource = []Repli{
 			// ce jour-là ce site redeviendra unique.
 			Fichier: pkgFilmdec + "object_deaths_march.go",
 			Ancre:   "func marchLocateFallback(pay []byte, w *World, cfg FrameConfig) int {",
-		}},
+		}, {
+			// COMPTE du site de `grammar` au rapport du contexte de film (lot J8.7).
+			Fichier: pkgFilmdec + "object_deaths.go",
+			Ancre:   "fc.NoterReplis(ComptesDesReplis{LocalisationsALargeurLibre: largeurLibre})",
+		}, siteDeVersement("NomLocalisationLargeurLibre")},
 		DatePose:     dateAudit0E,
 		CibleRetrait: "lot 3.4 (largeurs calibrees par la carte et le build)",
 		// Ce repli-ci porte DÉJÀ son nom dans le code (`locateFallback`, `marchLocateFallback`) :

@@ -183,6 +183,8 @@ func ScanEquipmentPlacements(
 		return nil, st, nil // ni profil relu ni calibration : aucune pose, et les stats le disent
 	default:
 		fc.PoserMPP(cal.Widths)
+		// Repli `repli_largeurs_mpp_calibrees_sur_le_film` : la calibration DECIDE (lot J8.7).
+		fc.NoterReplis(ComptesDesReplis{LargeursMPPCalibrees: 1})
 	}
 
 	cre, cst, err := ScanEquipmentCreationsForBand(fc, wr, band)

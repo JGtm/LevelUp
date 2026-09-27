@@ -307,8 +307,9 @@ type Observation struct {
 	// hors datum EVITE — les deux compteurs se lisent ensemble, et leur somme est le nombre de
 	// deltas que le monde hors ligne ne savait pas cadrer.
 	//
-	// C EST UN COMPTEUR D OBSERVATION, PAS UN CHAMP DU CONTRAT : `Observation` n est jamais
-	// publie, `replay.SchemaVersion` ne bouge pas, et la forme des faits persistes non plus.
+	// C EST LA SOURCE UNIQUE DU COMPTE PUBLIE (lot J8.7, 2026-09-27) : la marche des trames le somme
+	// ([MarcheDesTrames.LiaisonsParRepliDAnticipation]) et `replay` le verse au compteur de replis de
+	// la cuisson. `Observation` elle-meme n est jamais publiee, et la forme des faits ne change pas.
 	LiaisonsParRepliDAnticipation map[uint32]int
 	// NeufsContreUnVivant : NEW refuses ([contreditUneEntiteVivante]), ventiles par le verdict de
 	// l image-cle suivante (DFIX-R6, `keyframe_liaison.go`) ; `neufsRefuses` attend ce verdict.

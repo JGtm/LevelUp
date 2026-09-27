@@ -67,18 +67,26 @@ var (
 // POSITION vaut le numero, convention d'une source qui commence au registre — c'est la forme d'un
 // pipeline qui vient de telecharger `chunk_00..chunk_NN`.
 func FilmChunkNumbers(f *source.Film) []int {
+	out, _ := numerosDesChunks(f)
+	return out
+}
+
+// numerosDesChunks est [FilmChunkNumbers], plus le nombre de chunks de DONNEES du manifeste que
+// le trou de numerotation ABANDONNE — le compte de `repli_chunks_apres_trou_abandonnes` (lot J8.7).
+// [FilmContext.ChunkNumbers] le verse au rapport du film ; l enveloppe publique le jette.
+func numerosDesChunks(f *source.Film) (out []int, abandonnes int) {
 	if f == nil || f.NumChunks() == 0 {
-		return nil
+		return nil, 0
 	}
 	meta := f.Meta()
 	if len(meta) == 0 {
-		out := make([]int, 0, f.NumChunks()-1)
+		out = make([]int, 0, f.NumChunks()-1)
 		for c := 1; c < f.NumChunks(); c++ {
 			out = append(out, c)
 		}
-		return out
+		return out, 0
 	}
-	out := make([]int, 0, len(meta))
+	out = make([]int, 0, len(meta))
 	want := 1
 	for i, m := range meta {
 		if i >= f.NumChunks() {
@@ -88,12 +96,52 @@ func FilmChunkNumbers(f *source.Film) []int {
 			continue // le registre (0), ou un fichier dont le nom ne porte pas de numero
 		}
 		if m.Index != want {
+			abandonnes = chunksDeDonneesDes(meta[i:min(len(meta), f.NumChunks())])
 			break // trou de numerotation : meme arret que l'ancien CountFilmChunks
 		}
 		out = append(out, m.Index)
 		want++
 	}
-	return out
+	return out, abandonnes
+}
+
+// chunksDeDonneesDes compte les entrees du manifeste qui portent un chunk de DONNEES (numero >= 1).
+func chunksDeDonneesDes(meta []types.ChunkMeta) int {
+	n := 0
+	for _, m := range meta {
+		if m.Index >= 1 {
+			n++
+		}
+	}
+	return n
+}
+
+// ChunkNumbers rend les numeros des chunks de DONNEES du film ([FilmChunkNumbers]), releves une
+// fois. La tranche est celle du contexte : ses lecteurs la parcourent, ils ne la modifient pas.
+//
+// DEPLACEE DE `film_context.go` AU LOT J8.7 (2026-09-27), avec [FilmContext.ChunkAt] : le releve y
+// porte desormais le compte du repli `repli_chunks_apres_trou_abandonnes`, et `film_context.go` est
+// a son plafond de 500 lignes. Elle vit a cote de la regle qu elle memorise.
+func (c *FilmContext) ChunkNumbers() []int {
+	if c == nil {
+		return nil
+	}
+	if !c.chunksLus {
+		var abandonnes int
+		c.chunks, abandonnes = numerosDesChunks(c.film)
+		c.chunksLus = true
+		c.NoterReplis(ComptesDesReplis{ChunksApresTrouAbandonnes: abandonnes})
+	}
+	return c.chunks
+}
+
+// ChunkAt rend les octets decompresses du chunk de NUMERO `num` et ses paquets ([FilmChunkAt]).
+// Rien n'est memorise : la conversion des en-tetes est deja le prix plancher (cf. film_chunks.go).
+func (c *FilmContext) ChunkAt(num int) ([]byte, []FilmPacket, bool) {
+	if c == nil {
+		return nil, nil, false
+	}
+	return FilmChunkAt(c.film, num)
 }
 
 // FilmChunkAt rend les octets DECOMPRESSES du chunk de NUMERO `num` et ses paquets deja decoupes.

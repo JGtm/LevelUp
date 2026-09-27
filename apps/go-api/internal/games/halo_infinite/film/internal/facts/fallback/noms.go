@@ -158,4 +158,39 @@ const (
 	NomZoneCampSansRoster Nom = "repli_zone_camp_sans_roster"
 	// NomZoneProprietaireSansRoster : compte par `zone_states_owner.go` (lot J8.7).
 	NomZoneProprietaireSansRoster Nom = "repli_zone_proprietaire_sans_roster"
+
+	// LES REPLIS DE `grammar` ET `profile` (sous-lot grammar du lot J8.7, 2026-09-27) : comptes en
+	// DONNEES au rapport du contexte de film (`grammar.ComptesDesReplis`), et verses au compteur de
+	// la cuisson par la table de `replay/versement_des_replis.go`, qui cite ces noms.
+
+	// NomChunkDeReplicationSaute : `grammar/player_index.go`.
+	NomChunkDeReplicationSaute Nom = "repli_chunk_de_replication_saute"
+	// NomTempsFortsDernierNumero : `grammar/deaths_source.go`.
+	NomTempsFortsDernierNumero Nom = "repli_temps_forts_dernier_numero"
+	// NomLargeursMppCalibreesSurLeFilm : `grammar/equipment_placements.go`, `replay/build_ground_weapons.go`.
+	NomLargeursMppCalibreesSurLeFilm Nom = "repli_largeurs_mpp_calibrees_sur_le_film"
+	// NomI0PorteEtRegionParDefaut : `grammar/film_context.go`, `grammar/offline_biped_band.go`.
+	NomI0PorteEtRegionParDefaut Nom = "repli_i0_porte_et_region_par_defaut"
+	// NomBandeBipedeComblee : `grammar/offline_biped_band.go`.
+	NomBandeBipedeComblee Nom = "repli_bande_bipede_comblee"
+	// NomLargeursMondeParDefautConservees : `grammar/profil_balayage.go`.
+	NomLargeursMondeParDefautConservees Nom = "repli_largeurs_monde_par_defaut_conservees"
+	// NomIndexDeRegionLargeurUn : `grammar/profil_balayage.go`.
+	NomIndexDeRegionLargeurUn Nom = "repli_index_de_region_largeur_un"
+	// NomLargeursMppParDefaut : `profile/mpp_widths.go`, compte par `replay/build_ground_weapons.go`.
+	NomLargeursMppParDefaut Nom = "repli_largeurs_mpp_par_defaut"
+	// NomChunksApresTrouAbandonnes : `grammar/film_chunks.go`.
+	NomChunksApresTrouAbandonnes Nom = "repli_chunks_apres_trou_abandonnes"
+	// NomAncreSansVieDeltaEcartee : `grammar/equipment_creation_width.go`.
+	NomAncreSansVieDeltaEcartee Nom = "repli_ancre_sans_vie_delta_ecartee"
+	// NomRegistreInconnuSansLecteurDeTroncature : `grammar/registry_fingerprint.go`, compte par
+	// `grammar/replis_du_film.go`.
+	NomRegistreInconnuSansLecteurDeTroncature Nom = "repli_registre_inconnu_sans_lecteur_de_troncature"
+	// NomAmorceGrenadeProfilDeReference : `profile/grenade.go`, `grammar/grenade_events.go`.
+	NomAmorceGrenadeProfilDeReference Nom = "repli_amorce_grenade_profil_de_reference"
+	// NomControleCorruptionSectionAbsente : `grammar/controle_corruption_du_film.go` (et la calibration
+	// de `killsource`).
+	NomControleCorruptionSectionAbsente Nom = "repli_controle_corruption_section_absente"
+	// NomLocalisationLargeurLibre : `grammar/object_deaths_march.go` (et la marche de `killsource`).
+	NomLocalisationLargeurLibre Nom = "repli_localisation_largeur_libre"
 )

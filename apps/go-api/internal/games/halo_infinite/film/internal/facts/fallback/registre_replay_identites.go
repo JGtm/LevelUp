@@ -269,12 +269,16 @@ var registreReplayIdentites = []Repli{
 		Sites: []Site{{
 			Fichier: pkgFilmdec + "player_index.go",
 			Ancre:   "raw, _, ok := FilmChunkAt(film, c)",
-		}},
+		}, {
+			// COMPTE = chunks sautes (illisibles ET a resolution vide), rendu par la lecture et note au
+			// rapport du contexte par l etage du pont d identite (lot J8.7).
+			Fichier: pkgFilmdec + "pont_identite.go",
+			Ancre:   "fc.NoterReplis(ComptesDesReplis{ChunksDeReplicationSautes: sautes})",
+		}, siteDeVersement("NomChunkDeReplicationSaute")},
 		DatePose:        dateAudit0E,
 		CibleRetrait:    "lot 1.6 (la table du film remplace cette voie) : le repli tombe quand la table de chunk_00 est le lien direct partout",
 		CritereRetrait:  "0 chunk saute sur les 8 builds, ou la voie entiere retiree avec ses tests",
-		CompteurBranche: false,
-		CibleComptage:   comptageFamille19,
+		CompteurBranche: true,
 	},
 	{
 		Nom:  "repli_identite_vie_par_occupation_du_corps",

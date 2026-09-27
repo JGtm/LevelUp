@@ -159,14 +159,22 @@ func marchLocateFallback(pay []byte, w *World, cfg FrameConfig) int {
 // désigne des positions où le slot de signature porte une AUTRE génération, et la marche y
 // meurt aussitôt (mesure : 3 morts perdues sur un film, dont un double kill).
 func marchLocate(pay []byte, w *World, cfg FrameConfig) int {
+	s, _ := marchLocalise(pay, w, cfg)
+	return s
+}
+
+// marchLocalise est [marchLocate], plus `aLargeurLibre` : la position vient de [marchLocateFallback]
+// (repli `repli_localisation_largeur_libre`, compte par [ScanMarchFacts] — lot J8.7).
+func marchLocalise(pay []byte, w *World, cfg FrameConfig) (int, bool) {
 	defer cfg.Obs.neutraliserEtatsDeMouvement()() // son propre TryDeltaAt de controle est un essai
 	if s := marchLocateStrict(pay, w, cfg); s >= 0 {
 		if rec, _, ok := TryDeltaAt(pay, s, w, cfg); ok &&
 			w.GenerationMatches(rec.ID, cfg.Profil.Grammaire.GenerationStricte) {
-			return s
+			return s, false
 		}
 	}
-	return marchLocateFallback(pay, w, cfg)
+	s := marchLocateFallback(pay, w, cfg)
+	return s, s >= 0
 }
 
 // marchRecordsOf déroule la boucle de records d'UN paquet depuis le bit `start`, jusqu'à
@@ -194,12 +202,20 @@ func marchRecordsOf(pay []byte, w *World, cfg FrameConfig, start int) []FrameRec
 // portait une liste d'événements et s'il a été localisé. `ok` faux = paquet à événements non
 // localisé : aucun point de départ sûr, il se saute (jamais une marche au hasard).
 func marchStartOf(pay []byte, w *World, cfg FrameConfig) (start int, withEvents, ok bool) {
+	start, withEvents, ok, _ = marchDebut(pay, w, cfg)
+	return start, withEvents, ok
+}
+
+// marchDebut est [marchStartOf], plus le verdict du repli `repli_localisation_largeur_libre` : le
+// paquet a ete localise par la seconde passe a LARGEUR LIBRE. [ScanMarchFacts] le compte au rapport
+// du contexte (lot J8.7) ; la calibration du cadre, qui ESSAIE des largeurs, ne compte rien.
+func marchDebut(pay []byte, w *World, cfg FrameConfig) (start int, withEvents, ok, aLargeurLibre bool) {
 	if !marchHasEvents(pay) {
-		return cfg.PacketPreambleBits, false, true
+		return cfg.PacketPreambleBits, false, true, false
 	}
-	s := marchLocate(pay, w, cfg)
+	s, aLargeurLibre := marchLocalise(pay, w, cfg)
 	if s < 0 {
-		return 0, true, false
+		return 0, true, false, false
 	}
-	return s, true, true
+	return s, true, true, aLargeurLibre
 }

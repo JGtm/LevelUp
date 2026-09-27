@@ -65,7 +65,9 @@ func installWorldObjectPrecision(fc *grammar.FilmContext, matchID string, fb *fa
 	}
 	// e.Layout() porte les largeurs d'axe ET la largeur de l'index de région (2 bits sur
 	// Live Fire — lot C catalogues, 2026-08-27) : les deux sont des constantes par carte.
+	// La pose rend ses replis (largeurs ou index de region par defaut) : ils rejoignent le rapport
+	// du contexte, que le balayage verse au compteur de la cuisson (lot J8.7).
 	bal := fc.ProfilDeBalayage()
-	bal.PoserLargeursObjetDuMondeDepuisDecoupage(e.Layout())
+	fc.NoterReplis(bal.PoserLargeursObjetDuMondeDepuisDecoupage(e.Layout()))
 	fc.PoserProfilDeBalayage(bal)
 }

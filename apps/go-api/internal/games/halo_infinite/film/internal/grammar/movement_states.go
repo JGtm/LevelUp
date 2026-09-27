@@ -395,10 +395,18 @@ func sortMovementStates(out []types.MovementStateRead) {
 }
 
 // liaisonsDuRepliDAnticipation somme, tous archetypes confondus, les liaisons que le repli
-// `repli_liaison_par_anticipation` a posees dans le monde de la marche.
+// `repli_liaison_par_anticipation` a posees pendant la marche.
+//
+// UNE SEULE SOURCE DEPUIS LE LOT J8.7 (2026-09-27) : l observation de la marche
+// ([Observation.LiaisonsParRepliDAnticipation]), incrementee au point de rejet. Le monde tenait un
+// second compte du MEME fait (`World.anticipations`), retire : deux compteurs d un seul fait
+// finissent par diverger sans que rien ne dise lequel publier.
 func (sc *movementStateScanner) liaisonsDuRepliDAnticipation() int {
+	if sc.obs == nil {
+		return 0
+	}
 	n := 0
-	for _, k := range sc.monde.LiaisonsDuRepliDAnticipation() {
+	for _, k := range sc.obs.LiaisonsParRepliDAnticipation {
 		n += k
 	}
 	return n

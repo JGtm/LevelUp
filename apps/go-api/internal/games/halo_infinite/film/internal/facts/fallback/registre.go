@@ -29,7 +29,8 @@ package fallback
 // [Table] trie par nom. Le découpage en fichiers (cinq jusqu au lot 1.9.4, qui a scindé
 // `registre_killsource.go` à 523 lignes ; `registre_replay_positions.go` né au lot M1 des retours
 // du rejeu, `registre_replay_places.go` au lot M2.3, 2026-09-23, `registre_replay_objectifs.go`
-// au lot J5.5 du plan de suite d'audit, 2026-09-27) ne suit que la limite de 500
+// au lot J5.5 du plan de suite d'audit, 2026-09-27, `registre_filmdec_marche.go` au sous-lot
+// `grammar` du lot J8.7, le même jour) ne suit que la limite de 500
 // lignes du dépôt et le paquet des sites. Un fichier de plus s'ajoute à [Tranches], et à rien
 // d'autre.
 
@@ -59,6 +60,7 @@ func Tranches() []Tranche {
 		{"killsource/calibration", registreKillsourceCalibration},
 		{"objectifs et construction", registreObjectifsEtConstruction},
 		{"filmdec", registreFilmdec},
+		{"filmdec/marche", registreFilmdecMarche},
 		{"replay/positions", registreReplayPositions},
 		{"replay/vehicules", registreReplayVehicules},
 		{"replay/objectifs", registreReplayObjectifs},
@@ -127,6 +129,17 @@ const comptageFamille19 = "lot de conversion 1.9.x du fait, ou pas 2 de M2 (port
 // expvar par nom et au journal du film, plan J8.7), le compteur recu est nil et le compte est
 // perdu. Posee le 2026-09-27 par le sous-lot `replay` du lot J8.7, qui a arme les sites.
 const comptageCollecteur = "suite du lot J8.7 du plan de suite d audit (sous-lot collecteur) : la passe de sync/killcollector passe son compteur par film a replay.ContextesDesMorts et le publie en expvar par nom et au journal du film"
+
+// fichierDeVersement : LA TABLE de `replay` qui verse au compteur de la cuisson les comptes de replis
+// que `grammar`, `profile`, `killsource` et `objectives` rendent EN DONNEES (lot J8.7, 2026-09-27).
+const fichierDeVersement = "internal/games/halo_infinite/film/replay/versement_des_replis.go"
+
+// siteDeVersement rend le site d un repli verse par cette table : son ancre est la LIGNE de la table,
+// `{fallback.NomX,`. La direction (C) d `archlint` relit les noms de la table comme des declenchements,
+// et exige ce site ; retirer la ligne fait rougir la direction (E) (`fallback_versement_test.go`).
+func siteDeVersement(constante string) Site {
+	return Site{Fichier: fichierDeVersement, Ancre: "{fallback." + constante + ","}
+}
 
 // date0927 : le jour des jalons J5 et J8 du plan de suite d audit, ou plusieurs replis sont nes ;
 // `goconst` refuse a juste titre une cinquieme occurrence du litteral. C EST UNE DATE, PAS UN LOT,

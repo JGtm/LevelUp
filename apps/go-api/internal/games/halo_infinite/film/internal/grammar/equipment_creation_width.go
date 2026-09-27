@@ -276,6 +276,8 @@ func CalibrateMPPWidthsOf(
 			break // le verdict est net : lire plus de chunks ne l'affinerait pas
 		}
 	}
+	// Repli `repli_ancre_sans_vie_delta_ecartee` : les ancres que la calibration n a pas pu arbitrer (lot J8.7).
+	fc.NoterReplis(ComptesDesReplis{AncresSansVieDelta: pr.sansVie})
 	best, ok := mppCalibVerdict(cal.ByWidths)
 	cal.Widths, cal.Agree = best.widths, best.agree
 	cal.Runner, cal.RunnerAgree = best.runner, best.runnerAgree
@@ -291,6 +293,8 @@ type mppCalibProbe struct {
 	spans map[types.LifeKey][]EquipmentLifeSpan
 	eps   [3]float32
 	cal   *MPPCalibration
+	// sansVie : ancres ecartees faute de vie delta (`repli_ancre_sans_vie_delta_ecartee`).
+	sansVie int
 }
 
 // scanPayload compte, pour CHAQUE découpage candidat, les records dont la position retombe sur
@@ -311,6 +315,7 @@ func (pr *mppCalibProbe) scanPayload(pay []byte, atUS uint64) {
 		}
 		spans := pr.spans[types.LifeKey{Slot: slot, Gen: gen}]
 		if len(spans) == 0 {
+			pr.sansVie++
 			continue // une vie que les paquets delta n'ont pas vue ne peut rien arbitrer
 		}
 		pr.cal.Anchors++

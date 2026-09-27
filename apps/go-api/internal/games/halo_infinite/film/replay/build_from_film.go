@@ -98,6 +98,9 @@ func BuildFromFilmAvecFaits(matchID, titleSlug string, film *source.Film, opt Op
 	if err != nil {
 		return ReplayDocument{}, nil, err
 	}
+	// LE RAPPORT DES REPLIS DE `grammar` ET `profile` REJOINT LE COMPTEUR ICI, AVANT LA CAPTURE DES
+	// FAITS (lot J8.7) : il fait partie du balayage, donc du rapport que les faits persistes portent.
+	versementDuBalayage(opt.Fallbacks, fc)
 	// LES FAITS SE CAPTURENT ICI, ENTRE LE BALAYAGE ET L ASSEMBLAGE, et pas apres : le rapport
 	// de replis ne doit porter que les declenchements DU BALAYAGE (cf. `build_from_facts.go`).
 	faits := faitsDuBalayage(matchID, fc, opt, s.in)

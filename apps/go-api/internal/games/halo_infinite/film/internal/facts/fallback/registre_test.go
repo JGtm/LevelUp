@@ -37,6 +37,9 @@ const plancherEntrees = 60
 //
 // IL ÉTAIT À 2 ET NE MORDAIT SUR RIEN (revue de jalon M1, ronde 2, constat F1) : la garde
 // `len(tranches) < 2` laissait passer 6 -> 5, donc le retrait d'un fichier de tranche entier.
+// Mesuré le 2026-09-27 (sous-lot `grammar` du lot J8.7) : DOUZE familles (la douzième,
+// `filmdec/marche`, reçoit par déplacement pur les quatre replis de la marche du flux de
+// `registre_filmdec.go`, passé à 510 lignes avec les sites de compte du sous-lot).
 // Mesuré le 2026-09-27 (lot J5.5 du plan de suite d'audit) : ONZE familles (la onzième,
 // `replay/objectifs`, reçoit par déplacement pur les replis des calques drapeau, zone, crâne et
 // bombe de `registre_replay_identites.go`, passé à 509 lignes à la fusion de J9 dans J5).
@@ -53,9 +56,9 @@ const plancherEntrees = 60
 // Mesuré le 2026-09-16 : SIX familles (`replay/equipement` 14, `replay/identites` 22,
 // `killsource` 26, `killsource/carte` 2, `objectifs et construction` 21, `grammar` 11 — 96
 // entrées). Le plancher vaut donc la valeur réelle : une famille en moins se voit.
-const plancherTranches = 11
+const plancherTranches = 12
 
-// famillesAttendues : LES ONZE FAMILLES, NOMMÉES, DANS L'ORDRE DE L'ASSEMBLAGE.
+// famillesAttendues : LES FAMILLES, NOMMÉES, DANS L'ORDRE DE L'ASSEMBLAGE.
 //
 // POURQUOI UNE LISTE DE NOMS, ET PAS UN CHAÎNON ARITHMÉTIQUE (revue de jalon M1, ronde 2,
 // constat F1). Le test refermait sa boucle sur `somme(tranches) == len(Table())` — une
@@ -80,6 +83,7 @@ var famillesAttendues = []string{
 	"killsource/calibration",
 	"objectifs et construction",
 	"filmdec",
+	"filmdec/marche",
 	"replay/positions",
 	"replay/vehicules",
 	"replay/objectifs",
@@ -278,7 +282,11 @@ func abrege(s string) string {
 // `replay` du J8.7 (18 cablees ; les deux replis du contexte de mort, executes par le collecteur,
 // attendent le compteur de sa passe). Il ne MONTE jamais ; il descend dans le commit qui cable, et la
 // constante disparait avec le dernier compteur : le test exige alors zero.
-const plafondReplisNonComptes = 62
+// 50 apres le sous-lot `grammar` du J8.7 (2026-09-27) : douze replis de `grammar` et `profile` comptes
+// en donnees au rapport du contexte de film et verses par la table de `replay` ; deux autres
+// (`repli_controle_corruption_section_absente`, `repli_localisation_largeur_libre`) le sont pour leur
+// site de `grammar` et attendent celui de `killsource`.
+const plafondReplisNonComptes = 50
 
 // TestChaqueRepliEstCompte — LE RATCHET DU LOT J8.7 DU PLAN DE SUITE D AUDIT (2026-09-27).
 //

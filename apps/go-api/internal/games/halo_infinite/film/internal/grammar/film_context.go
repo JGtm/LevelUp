@@ -149,6 +149,8 @@ type FilmContext struct {
 	// c est la seule surface qui lui reste depuis que les vingt-huit reglages publics ont
 	// disparu. Il ne change AUCUNE consommation de bits.
 	obs *Observation
+	// replis : le RAPPORT des replis de `grammar` et `profile` sur ce film (replis_du_film.go, lot J8.7).
+	replis replisDuContexte
 }
 
 // Observation rend l observateur de ce contexte. Jamais nil.
@@ -200,7 +202,7 @@ func (c *FilmContext) PoserLargeursObjetDuMonde(d profile.PrecisionDescriptor) {
 // PoserLargeursObjetDuMondeDepuisDecoupage installe les largeurs d axe de la CARTE sur ce
 // contexte. C est la porte de `replay.installWorldObjectPrecision` et des instruments.
 func (c *FilmContext) PoserLargeursObjetDuMondeDepuisDecoupage(l profile.I0Layout) {
-	c.bal.PoserLargeursObjetDuMondeDepuisDecoupage(l)
+	c.NoterReplis(c.bal.PoserLargeursObjetDuMondeDepuisDecoupage(l))
 }
 
 // ContexteDeLecture rend ce que les lecteurs de ce contexte portent : son profil de balayage et
@@ -353,27 +355,6 @@ func (c *FilmContext) Film() *source.Film {
 	return c.film
 }
 
-// ChunkNumbers rend les numeros des chunks de DONNEES du film ([FilmChunkNumbers]), releves une
-// fois. La tranche est celle du contexte : ses lecteurs la parcourent, ils ne la modifient pas.
-func (c *FilmContext) ChunkNumbers() []int {
-	if c == nil {
-		return nil
-	}
-	if !c.chunksLus {
-		c.chunks, c.chunksLus = FilmChunkNumbers(c.film), true
-	}
-	return c.chunks
-}
-
-// ChunkAt rend les octets decompresses du chunk de NUMERO `num` et ses paquets ([FilmChunkAt]).
-// Rien n'est memorise : la conversion des en-tetes est deja le prix plancher (cf. film_chunks.go).
-func (c *FilmContext) ChunkAt(num int) ([]byte, []FilmPacket, bool) {
-	if c == nil {
-		return nil, nil, false
-	}
-	return FilmChunkAt(c.film, num)
-}
-
 // BipedSlots rend la bande de slots bipede du film ([bipedSlotBand] sur TOUS les chunks de
 // donnees), relevee une fois.
 //
@@ -412,6 +393,7 @@ func (c *FilmContext) I0Layout() (profile.I0Layout, error) {
 	if !c.layLu {
 		c.lay, _, c.layErr = DetectI0LayoutOf(c.film)
 		c.layLu = true
+		c.noterI0ParDefaut(c.layErr)
 	}
 	return c.lay, c.layErr
 }
@@ -439,6 +421,7 @@ func (c *FilmContext) Registry() (*Registry, error) {
 		} else {
 			c.reg, c.regErr = ParseRegistryChunk(raw)
 		}
+		c.noterRegistre(c.reg)
 	}
 	return c.reg, c.regErr
 }

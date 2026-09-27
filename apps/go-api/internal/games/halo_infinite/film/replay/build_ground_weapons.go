@@ -160,11 +160,19 @@ func gwWidthsForFilm(fc *grammar.FilmContext, calibrees profile.MPPWidths) profi
 	if res.FormatInconnu {
 		publierFormatSansProfil(res.FormatVersion)
 	}
+	if calibrees.Valid() {
+		// La calibration DECIDE les largeurs installees : `repli_largeurs_mpp_calibrees_sur_le_film`
+		// (lot J8.7), au rapport du contexte.
+		fc.NoterReplis(grammar.ComptesDesReplis{LargeursMPPCalibrees: 1})
+	}
 	return calibrees
 }
 
 func gwInstallMPPWidths(fc *grammar.FilmContext, w profile.MPPWidths) func() {
 	if !w.Valid() {
+		// Ni relue ni calibree : le balayage se fait aux largeurs de l INVARIANT (9/5), repli
+		// `repli_largeurs_mpp_par_defaut` (lot J8.7), au rapport du contexte.
+		fc.NoterReplis(grammar.ComptesDesReplis{LargeursMPPParDefaut: 1})
 		return func() {}
 	}
 	prev := fc.PoserMPP(w)

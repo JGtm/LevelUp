@@ -395,14 +395,17 @@ var registreObjectifsEtConstruction = []Repli{
 		Condition: CondSectionAbsente,
 		Ordre:     OrdreApresLecture,
 		Sites: []Site{
-			{Fichier: pkgFilmdec + "deaths_source.go", Ancre: "return nums[len(nums)-1], nil"},
+			{Fichier: pkgFilmdec + "deaths_source.go", Ancre: "return nums[len(nums)-1], true, nil"},
 			{Fichier: pkgReplaybuild + "filmfacts_cuisson.go", Ancre: "func jugerFilmSansManifeste("},
+			// COMPTE : le verdict rendu par la lecture et note au rapport du contexte par l etage du
+			// pont d identite — UNE lecture du fil par balayage de cuisson (lot J8.7).
+			{Fichier: pkgFilmdec + "pont_identite.go", Ancre: "fc.NoterReplis(ComptesDesReplis{TempsFortsAuDernierNumero: unSi(auDernierNumero)})"},
+			siteDeVersement("NomTempsFortsDernierNumero"),
 		},
 		DatePose:        "2026-09-23",
 		CibleRetrait:    "le refus des films sans manifeste par la cuisson (replaybuild.jugerFilmSansManifeste), le jour ou replay-build et les instruments qui chargent un repertoire nu (grammar.ScanFilmDeaths, descendue de replay au lot J4.2) lisent aussi son manifeste",
 		CritereRetrait:  "0 repertoire de morceaux sans manifeste au cache (1 625 sur 1 625 en portent un le 2026-09-23) et 0 WARN (film SANS manifeste) de la cuisson sur une republication complete du parc",
-		CompteurBranche: false,
-		CibleComptage:   "le lot qui passera le compteur de la cuisson a grammar.ScanDeaths (descendue de replay au lot J4.2 ; appelee deux fois par cuisson, sans match_id) ; d ici la, chaque declenchement en cuisson est journalise en WARN par replaybuild.jugerFilmSansManifeste",
+		CompteurBranche: true,
 	},
 	{
 		// LOT J8.4 DU PLAN DE SUITE D AUDIT (2026-09-27), CONSTATS FO-1 / RA2-4 : la voie etait

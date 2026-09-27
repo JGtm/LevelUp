@@ -39,11 +39,11 @@ type World struct {
 	// `nsImageCleInconnu` avant la premiere liaison d image-cle. Voir
 	// [World.vueDeLEspaceDeNoms].
 	nsImageCle int8
-	// anticipee / chunkCourant / anticipations : LE REPLI DU LOT 5.23, cf.
-	// [World.LierParRepliDAnticipation]. `anticipee` nil = repli absent, et rien ne change.
-	anticipee     *TableAnticipee
-	chunkCourant  int
-	anticipations map[uint32]int
+	// anticipee / chunkCourant : LE REPLI DU LOT 5.23, cf. [World.LierParRepliDAnticipation].
+	// `anticipee` nil = repli absent, et rien ne change. Le monde ne COMPTE pas ses liaisons : la
+	// source unique du compte est [Observation.LiaisonsParRepliDAnticipation] (lot J8.7).
+	anticipee    *TableAnticipee
+	chunkCourant int
 	// anticipationDite : le journal du premier usage a-t-il ete ecrit pour ce monde ?
 	anticipationDite bool
 }
@@ -80,8 +80,7 @@ const vueInconnue int8 = -1
 
 // NewWorld creates an empty World bound to a parsed archetype registry.
 func NewWorld(reg *Registry) *World {
-	return &World{Reg: reg, slots: map[uint32]slotState{}, nsImageCle: nsImageCleInconnu,
-		anticipations: map[uint32]int{}}
+	return &World{Reg: reg, slots: map[uint32]slotState{}, nsImageCle: nsImageCleInconnu}
 }
 
 // --- LE REPLI DU LOT 5.23 : LA LIAISON PAR ANTICIPATION -------------------------------------
@@ -124,10 +123,6 @@ func (w *World) LierParRepliDAnticipation(id uint32) (uint32, bool) {
 		return 0, false
 	}
 	w.BindDatum(slot, ti)
-	if w.anticipations == nil {
-		w.anticipations = map[uint32]int{}
-	}
-	w.anticipations[ti]++
 	if !w.anticipationDite {
 		w.anticipationDite = true
 		// Pas de `ctx` ici : le monde n en porte pas, et `registry_fingerprint.go` a le meme
@@ -139,14 +134,6 @@ func (w *World) LierParRepliDAnticipation(id uint32) (uint32, bool) {
 	}
 	return ti, true
 }
-
-// LiaisonsDuRepliDAnticipation rend, par archetype, le nombre de liaisons que le repli a posees.
-//
-// C EST LE COMPTE QUE LA CUISSON PUBLIE (lot J8.1 du plan de suite d audit, 2026-09-27, constat
-// GA1-2) : la marche du frame-processeur le somme dans [MarcheDesTrames], et `replay` le verse au
-// compteur de replis de la cuisson sous `repli_liaison_par_anticipation`. Avant ce lot il n avait
-// aucun appelant : le repli decidait des stances sans que l artefact le dise.
-func (w *World) LiaisonsDuRepliDAnticipation() map[uint32]int { return w.anticipations }
 
 // PoserVueCourante annonce au monde la vue de replication que la marche parcourt.
 func (w *World) PoserVueCourante(v int) { w.vueCourante = int8(v) } //nolint:gosec // v vaut 0..2
