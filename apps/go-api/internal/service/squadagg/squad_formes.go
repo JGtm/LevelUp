@@ -97,14 +97,14 @@ func BuildSquadFormesBlock(ctx context.Context, q SquadFormesQuery) *domain.Squa
 	tc := sessionusage.BuildTeamContext(q.PlayerXUID, participants)
 	in := squadformes.Input{
 		PlayerXUID:   q.PlayerXUID,
-		SquadPlayers: formesSquadPlayers(q.PlayerXUID, q.MainGamertag, participants, q.SelectedGamertags),
+		SquadPlayers: SquadPlayers(q.PlayerXUID, q.MainGamertag, participants, q.SelectedGamertags),
 		Metas:        q.Metas,
 		Matches:      sessionusage.BuildMatchInputs(matchIDs, films, players, tc),
 		Films:        films,
 		Pads:         pads,
 		Gamertags:    formesGamertags(participants),
 		Objectives:   loadFormesObjectives(ctx, q, matchIDs),
-		Weapons:      formesWeaponCatalog(ctx, q),
+		Weapons:      WeaponCatalog(ctx, q.RepoRoot, q.TitleSlug, q.Locale),
 		// La clé du mur voyage en PARAMÈTRE : `internal/analysis` est
 		// title-agnostic (ADR 0012/0025) et ne peut pas importer le paquet du
 		// titre qui nomme ses familles d'équipement.
@@ -120,14 +120,14 @@ func BuildSquadFormesBlock(ctx context.Context, q SquadFormesQuery) *domain.Squa
 	return &block
 }
 
-// formesSquadPlayers — le joueur de la page EN TÊTE, puis les coéquipiers
+// SquadPlayers — le joueur de la page EN TÊTE, puis les coéquipiers
 // sélectionnés résolus contre les participants du scope (même résolution que le
 // bloc d'usage : ResolveScopeFriends, insensible à la casse du gamertag).
 //
 // LE NOM DU JOUEUR DE LA PAGE VIENT DE LA PAGE, et les participants ne sont que
 // son repli : sur un scope dont aucune ligne de participant ne porte son
 // gamertag, l'écran affichait son XUID.
-func formesSquadPlayers(
+func SquadPlayers(
 	playerXUID, mainGamertag string, participants []sessionusage.ParticipantRow, selected []string,
 ) []domain.SessionUsageSquadPlayer {
 	me := domain.SessionUsageSquadPlayer{XUID: playerXUID, Gamertag: mainGamertag}
@@ -222,21 +222,22 @@ func joindrePrisesNettes(
 	return rows
 }
 
-// formesWeaponCatalog — clé de famille d'arme -> nom du titre et dimensions du
+// WeaponCatalog — clé de famille d'arme -> nom du titre (langue de la requête) et dimensions du
 // registre canonique. Map vide (jamais nil-panic) quand le catalogue manque :
-// les armes gardent alors leur clé à l'écran, jamais un nom approchant.
-func formesWeaponCatalog(ctx context.Context, q SquadFormesQuery) map[string]squadformes.WeaponInfo {
+// les armes gardent alors leur clé à l'écran, jamais un nom approchant. Partagé par les blocs
+// « formes retenues » et « Emprise » de l'Escouade : une seule résolution du catalogue.
+func WeaponCatalog(ctx context.Context, repoRoot, titleSlug, locale string) map[string]squadformes.WeaponInfo {
 	out := map[string]squadformes.WeaponInfo{}
-	if q.RepoRoot == "" || q.TitleSlug == "" {
+	if repoRoot == "" || titleSlug == "" {
 		return out
 	}
-	cat, err := replaylabels.Catalogue(q.RepoRoot, q.TitleSlug)
+	cat, err := replaylabels.Catalogue(repoRoot, titleSlug)
 	if err != nil {
-		slog.WarnContext(ctx, "formes retenues: catalogue d'armes illisible — socles non nommés",
-			"err", err, "titleSlug", q.TitleSlug)
+		slog.WarnContext(ctx, "escouade: catalogue d'armes illisible — socles non nommés",
+			"err", err, "titleSlug", titleSlug)
 		return out
 	}
-	frPreferred := q.Locale != "en"
+	frPreferred := locale != "en"
 	roles, classes := weapons.RolesByKey(), weapons.ClassesByKey()
 	for family, key := range cat.Keys {
 		info := squadformes.WeaponInfo{WeaponKey: key, Role: roles[key], Class: classes[key]}

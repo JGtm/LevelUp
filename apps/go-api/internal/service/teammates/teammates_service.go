@@ -98,13 +98,13 @@ type TeammatesService struct {
 	// film.usage_summary ; nil → bloc servi avec Available=false et raison
 	// machine. Cf. teammates_service_usage.go.
 	sessionUsageRepo port.SessionUsageRepository
-	// formesUsageRepo / formesObjectiveRepo / repoRoot (lot D2, 2026-09-13) : les
-	// deux sources du bloc « formes retenues » et la racine du dépôt, où se lit le
-	// catalogue d'armes du titre. Cf. teammates_service_formes.go.
+	// formesUsageRepo / formesObjectiveRepo / repoRoot (lot D2) : les deux sources du bloc
+	// « formes retenues » et la racine du dépôt (catalogue d'armes), cf. teammates_service_formes.go.
 	formesUsageRepo     port.SquadFormesUsageRepository
 	formesObjectiveRepo port.SquadFormesObjectiveRepository
 	repoRoot            string
-	objectiveModeEcarte func(pairName string) bool // D6, cf. teammates_service_objective_history.go
+	objectiveModeEcarte func(pairName string) bool  // D6, cf. teammates_service_objective_history.go
+	empriseRepo         port.SquadEmpriseRepository // feuille de match de l'Emprise, cf. teammates_service_emprise.go
 	// matchRangeRepo (optionnel) : le lecteur de portee de frag de TOUT le lobby, par
 	// match (lot N2, D22-5). Sans lui, pas de referentiel : le bloc « roles de portee »
 	// est omis. Cf. teammates_squad_range.go.
@@ -383,9 +383,8 @@ func (s *TeammatesService) GetPage(
 		return requeteAnnulee(err)
 	}
 
-	// Header (SessionBriefing) — alimente le composant <SessionBriefing> dans
-	// SquadLayout. Mode solo (SoloKPIs uniquement) si aucun coequipier
-	// selectionne ; mode squad complet sinon.
+	// Header (SessionBriefing) de SquadLayout : mode solo (SoloKPIs uniquement) sans coéquipier
+	// sélectionné, mode squad complet sinon.
 	mainFilteredCanonical := filterCanonicalByMatchIDsSet(canonicalRows, filteredMatches)
 	compFilter := &exactCompositionFilter{
 		teamByMatch:   exactTeamByMatch,
@@ -442,12 +441,12 @@ func (s *TeammatesService) GetPage(
 		compositionSessions = wrapSessionLabelsAsComposition(sessionLabels.Squad)
 	}
 
-	// Blocs « servi ou gâché », « formes retenues » et historique d'objectif : best-effort, sur le
-	// périmètre D2 — la composition exacte (allSquadRows, après filterExactComposition) ∩
-	// filteredMatches, filteredMatches seul sans coéquipier (teammates_service_usage.go).
+	// Blocs d'usage (servi ou gâché, formes, historique d'objectif, Emprise) : best-effort, sur le
+	// périmètre D2 — composition exacte ∩ filteredMatches, ou filteredMatches seul (teammates_service_usage.go).
 	usage := s.loadUsageBlocks(ctx, playerXUID, porteeUsage{
 		filtered: filteredMatches, squadRows: allSquadRows, timelineRows: allSquadRowsForTimeline,
 		mainTeamByMatch: mainTeamByMatch, history: sec.matchHistory, pairNames: pairNamesOf(canonicalRows, allSquadRowsForTimeline),
+		compositionSessions: compositionSessions,
 	}, req)
 	if err := ctx.Err(); err != nil {
 		return requeteAnnulee(err)
@@ -488,6 +487,7 @@ func (s *TeammatesService) GetPage(
 		EquipmentUsage:           usage.equipement,
 		SquadFormes:              usage.formes,
 		SquadObjectiveHistory:    usage.objectif,
+		SquadEmprise:             usage.emprise,
 	}, nil
 }
 

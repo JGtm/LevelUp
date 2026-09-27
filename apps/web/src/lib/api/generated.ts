@@ -12090,6 +12090,115 @@ export interface components {
             matchs_mesures: number;
             session_label: string;
         };
+        SquadEmpriseBlock: {
+            film_unavailable?: string;
+            habit?: components["schemas"]["SquadEmpriseHabit"];
+            matches: components["schemas"]["SquadEmpriseMatch"][] | null;
+            /** Format: int64 */
+            matches_measured: number;
+            /** Format: int64 */
+            matches_total: number;
+            objects: components["schemas"]["SquadEmpriseObject"][] | null;
+            players: components["schemas"]["SessionUsageSquadPlayer"][] | null;
+            production: components["schemas"]["SquadEmpriseProduction"][] | null;
+            resources: components["schemas"]["SquadEmpriseResource"][] | null;
+            sheet_unavailable?: string;
+        };
+        SquadEmpriseCampOutcomes: {
+            them: components["schemas"]["SquadEmpriseOutcomeCounts"];
+            us: components["schemas"]["SquadEmpriseOutcomeCounts"];
+        };
+        SquadEmpriseCount: {
+            /** Format: int64 */
+            them: number;
+            /** Format: int64 */
+            us: number;
+        };
+        SquadEmpriseEvening: {
+            /** Format: int64 */
+            match_count: number;
+            /** Format: int64 */
+            measured_matches: number;
+            session_label: string;
+            shares: components["schemas"]["SquadEmpriseShare"][] | null;
+            start_time: string;
+        };
+        SquadEmpriseExposure: {
+            kills: components["schemas"]["SquadEmpriseCount"];
+            kind: string;
+            value: components["schemas"]["SquadEmpriseCount"];
+        };
+        SquadEmpriseHabit: {
+            current: components["schemas"]["SquadEmpriseEvening"];
+            families: string[] | null;
+            previous: components["schemas"]["SquadEmpriseEvening"][] | null;
+        };
+        SquadEmpriseMatch: {
+            has_film: boolean;
+            match_id: string;
+            power_weapon_kills?: components["schemas"]["SquadEmpriseCount"];
+            resources: components["schemas"]["SquadEmpriseMatchResource"][] | null;
+            team_known: boolean;
+            tiers?: string;
+        };
+        SquadEmpriseMatchResource: {
+            objects: components["schemas"]["SquadEmpriseObject"][] | null;
+            resource: string;
+            taken: components["schemas"]["SquadEmpriseCount"];
+        };
+        SquadEmpriseObject: {
+            key: string;
+            label?: string;
+            /** Format: int64 */
+            pads_emptied?: number;
+            resource: string;
+            squad: components["schemas"]["SquadEmpriseObjectShare"][] | null;
+            taken: components["schemas"]["SquadEmpriseCount"];
+            weapon_key?: string;
+        };
+        SquadEmpriseObjectShare: {
+            /** Format: int64 */
+            dropped?: number;
+            /** Format: int64 */
+            kept?: number;
+            /** Format: int64 */
+            taken: number;
+            xuid?: string;
+        };
+        SquadEmpriseOutcomeCounts: {
+            /** Format: int64 */
+            dropped: number;
+            /** Format: int64 */
+            kept: number;
+            /** Format: int64 */
+            taken: number;
+            /** Format: int64 */
+            used: number;
+        };
+        SquadEmpriseProduction: {
+            exposure?: components["schemas"]["SquadEmpriseExposure"];
+            kills: components["schemas"]["SquadEmpriseCount"];
+            /** Format: double */
+            relative_gap?: number;
+            resource: string;
+            /** Format: double */
+            yield_them?: number;
+            /** Format: double */
+            yield_us?: number;
+        };
+        SquadEmpriseResource: {
+            /** Format: int64 */
+            matches_measured: number;
+            outcomes?: components["schemas"]["SquadEmpriseCampOutcomes"];
+            resource: string;
+            taken: components["schemas"]["SquadEmpriseCount"];
+        };
+        SquadEmpriseShare: {
+            resource: string;
+            /** Format: double */
+            share: number;
+            taken: components["schemas"]["SquadEmpriseCount"];
+        };
         SquadEngagementSession: {
             durations_seconds: number[] | null;
             labels: string[] | null;
@@ -13288,6 +13397,7 @@ export interface components {
             range_profiles?: components["schemas"]["MatchRangeBlock"];
             session_labels: components["schemas"]["SessionLabelsList"];
             session_timeline?: components["schemas"]["SquadSessionPoint"][] | null;
+            squad_emprise?: components["schemas"]["SquadEmpriseBlock"];
             squad_objective_history?: components["schemas"]["SquadObjectiveHistory"];
             synergy_radar?: components["schemas"]["SquadSynergyRadarSeries"][] | null;
             teammates: components["schemas"]["TeammateRow"][] | null;

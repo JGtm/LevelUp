@@ -40,7 +40,8 @@ func (s *TeammatesService) WithEquipmentUsage(repo port.SessionUsageRepository) 
 
 // porteeUsage — ce que GetPage donne aux blocs d'usage : les deux populations dont le
 // périmètre D2 est l'intersection, l'historique de la composition et son camp par match
-// (historique d'objectif), et l'historique de matchs de la page (libellés).
+// (historique d'objectif), l'historique de matchs de la page (libellés) et les sessions de la
+// composition (compte de matchs d'une soirée, ADR 0033 — habitude de l'Emprise).
 type porteeUsage struct {
 	filtered        []legacymatch.SynthesisMatchRow
 	squadRows       []domain.SquadMatchRow
@@ -50,14 +51,16 @@ type porteeUsage struct {
 	// pairNames : match_id -> pair_name BRUT, lu sur les lignes canoniques du joueur. LA source
 	// unique du mode écarté (drapeau neutre, D6) pour le fil de la session ET l'historique : la
 	// fin du fil doit tomber sur le point « ce soir ».
-	pairNames map[string]string
+	pairNames           map[string]string
+	compositionSessions []domain.CompositionSessionEntry
 }
 
-// blocsUsage — les trois blocs publiés.
+// blocsUsage — les quatre blocs publiés.
 type blocsUsage struct {
 	equipement *domain.EquipmentUsageBlock
 	formes     *domain.SquadFormesBlock
 	objectif   *domain.SquadObjectiveHistory
+	emprise    *domain.SquadEmpriseBlock
 }
 
 // loadUsageBlocks publie les blocs du résumé d'usage — « servi ou gâché » et « formes
@@ -82,6 +85,8 @@ func (s *TeammatesService) loadUsageBlocks(
 			out.objectif = s.loadObjectiveHistory(ctx, lignesDuPerimetre(p.squadRows, scope), p.timelineRows, p.mainTeamByMatch, p.pairNames)
 		})
 	}
+	// L'Emprise (lot L4) : ses propres lectures, le même périmètre (teammates_service_emprise.go).
+	siVivante(ctx, func() { out.emprise = s.loadEmprise(ctx, playerXUID, p, req, perimetreLu{scope, lectures}) })
 	return out
 }
 
