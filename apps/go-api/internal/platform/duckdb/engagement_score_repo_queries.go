@@ -325,6 +325,7 @@ func (r *EngagementScoreRepo) LoadAllCoefficients(
 
 // ListRecentPvPMatchIDs liste les match_ids PvP du joueur, ordre chronologique
 // croissant. Utilise par le service Timeseries (Mock 11).
+// Campagne exclue (D-5, backlog B4) : titre = celui de la base partagée lue.
 func (r *EngagementScoreRepo) ListRecentPvPMatchIDs(
 	ctx context.Context,
 	xuid string,
@@ -349,6 +350,7 @@ func (r *EngagementScoreRepo) ListRecentPvPMatchIDs(
 		WHERE mp.xuid = ?
 		  AND mr.start_time IS NOT NULL
 		  AND COALESCE(mr.is_firefight, FALSE) = FALSE
+		` + excludeCampaignClause(pdbTitleSlug(r.pdb), "mr") + `
 		ORDER BY mr.start_time DESC
 		LIMIT ?
 	`

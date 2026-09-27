@@ -963,7 +963,7 @@ D-4 (§2, commit `99b241970`). Le critère relatif est tenu (B3.1), donc B3.2 à
 - Les deux cas cités par le backlog sont réglés : `GetLocalStats` est exclu
   (`compare_repo.go:123`), `GetCrossMatchSample` a été supprimé (`aa1a8dc2c`).
 
-- [ ] **B4.1 Nouveau balayage AST**, selon D-5 : `internal/archlint/campaign_exclusion_guard_test.go`
+- [x] **B4.1 Nouveau balayage AST**, selon D-5 : `internal/archlint/campaign_exclusion_guard_test.go`
   (balayage multi-racines). Il REMPLACE le garde de `platform/duckdb`, qui est supprimé avec
   reprise à l'identique de ses 6 dispenses : pas deux gardes pour une même règle.
   - toutes les `FuncDecl` et `GenDecl`, quel que soit le nom ;
@@ -976,7 +976,12 @@ D-4 (§2, commit `99b241970`). Le critère relatif est tenu (B3.1), donc B3.2 à
     ensemble fourni par l'appelant / exclu au call site / sémantique) ;
   - échec sur une dispense qui ne correspond plus à rien ; `scanned > 0` par racine ; mutation
     vérifiée.
-- [ ] **B4.2 Corrections.** Chacune porte un cas dans `campaign_exclusion_behavior_test.go` (tag
+  - **Fait (2026-09-27)** : `TestCampaignExclusionGuard` (`archlint/campaign_exclusion_guard_test.go`,
+    dispenses dans `campaign_exclusion_guard_dispenses_test.go`). Une constante nommée qui est
+    elle-même un lecteur garde son verdict (son texte n'est pas recopié chez ses utilisateurs :
+    un signalement, pas deux). Garde de `platform/duckdb` (`TestCampaignExclusionStructuralCoverage`)
+    supprimé ; ses 6 dispenses reprises mot pour mot. Mutations : voir journal B4.
+- [x] **B4.2 Corrections.** Chacune porte un cas dans `campaign_exclusion_behavior_test.go` (tag
   `integration`), rouge avant :
   1. `platform/duckdb/compare_repo.go:GetEncounterStats` (matchs communs A/B) ;
   2. `platform/duckdb/campaign_repo.go:(*CampaignSampleProvider).LoadAxisSamples` ;
@@ -988,13 +993,25 @@ D-4 (§2, commit `99b241970`). Le critère relatif est tenu (B3.1), donc B3.2 à
      `loadPlayerStats` (2 requêtes), `loadComebackContext` ;
   7. `api/wire/post_sync_deltas_snapshot.go:SnapshotPlayerState` (3 requêtes) ;
   8. `platform/duckdb/prestige_squad_match_provider.go:124,220` (`xuid IN`, roster).
-- [ ] **B4.3 À statuer par lecture de l'appelant ou de la capability** :
+  - **Fait** : les 8, chacun rouge sur le code d'avant puis vert (journal B4). Cas dans
+    `platform/duckdb/`, `platform/duckdb/prestige/` et `api/wire/campaign_exclusion_behavior_test.go`,
+    chacun joué pour `halo_5` (Campagne masquée) ET `halo_infinite` (résolveur neutre). Titre :
+    celui de la base partagée lue (`pdbTitleSlug` / `pdb.TitleSlug`) ou le `titleSlug` déjà passé
+    par l'appelant Prestige (paramètres `_` renommés). `loadPlayerStats` compte TROIS requêtes
+    (la 3e, métriques de combat), toutes corrigées.
+- [x] **B4.3 À statuer par lecture de l'appelant ou de la capability** :
   - `fanout_repo.go:CountCommonMatchesForXUID` : si l'ensemble fourni est exclu à la source,
     dispense avec renvoi `fichier:ligne` ; sinon, correction.
   - `leaderboard_world_repo.go:GetStatLeaderboard:612` (agrégat sans filtre xuid, hors critère) :
     si le lecteur ne sert qu'un titre sans variante de campagne, justification écrite ; sinon,
     correction.
-- [ ] **B4.4 Dispenses justifiées** :
+  - **Statué** : `CountCommonMatchesForXUID` → dispense « ensemble fourni par l'appelant » :
+    l'ensemble est `insertedMatchIDs` (seul appelant `service/fanout_service.go:73`), matchs
+    nouvellement insérés, et la Campagne n'est plus collectée (`games/halo_5/capture.go:263`,
+    `isExcludedH5GameMode` `:128-129`). `GetStatLeaderboard` : DÉJÀ exclu,
+    `excludeCampaignByMatchID(titleSlug, "mp.match_id")` à `leaderboard_world_repo.go:620` —
+    rien à faire.
+- [x] **B4.4 Dispenses justifiées** :
   - `engagement_score_repo_queries.go:LoadMatchEngagementContext` (mono-match) ;
   - `csr_coverage_repo.go:countRankedMatchesInRegistry` (prédicat classé : la campagne n'est
     jamais classée) ;
@@ -1006,15 +1023,25 @@ D-4 (§2, commit `99b241970`). Le critère relatif est tenu (B3.1), donc B3.2 à
   - les faux positifs éventuels (`media_repo_filters.go:loadMatchLobbies`,
     `analysis/match_filter.go:195`, `analysis/identity_annuaire.go:97`), si le motif les
     attrape.
-- [ ] **B4.5** Tout autre entrant révélé par le balayage est statué selon les mêmes catégories.
+  - **Fait** : les 4 dispenses, les 6 reprises, et 2 faux positifs attrapés
+    (`BuildNeighborsWhereClause` exclu au call site, `AnnuaireNomsSQL` sémantique).
+    `loadMatchLobbies` n'est pas attrapé (aucun filtre xuid) : pas de dispense. Pièces dans le
+    champ `raison` de chaque dispense.
+- [x] **B4.5** Tout autre entrant révélé par le balayage est statué selon les mêmes catégories.
   S'il n'entre dans aucune : **STOP**. La liste des lecteurs de `sync/`, `ops/` et `cmd/`
   (enquête : `sync/engagement.go:352`, `performance_helpers.go:228`, `session_recalc.go:30`,
   `skill/skill_rating_loaders.go:73`, `skill/skill_v2_shadow.go:434`, `assists_model.go:68`,
   `citations.go:379`, `friends_recompute.go:200`, `snapshot/snapshot_readiness_eval.go:208`,
   `csr_shared_backfill.go:194`, `ops/milestone_dates.go:294`) est écrite au journal pour le
   backlog. Rien n'y est corrigé.
-- [ ] **B4.6** Aucune comparaison de slug ajoutée (ratchet `no_slug_comparison_test.go`). Les
+  - **Fait** : 8 autres entrants, tous dans une catégorie (aucun STOP) : 3 « exclu au call
+    site », 2 « sémantique », 3 « ensemble fourni par l'appelant » (détail au journal). Liste
+    `sync/`, `ops/`, `cmd/` relevée par le garde lui-même (sonde temporaire, retirée) : au
+    journal B4.
+- [x] **B4.6** Aucune comparaison de slug ajoutée (ratchet `no_slug_comparison_test.go`). Les
   fichiers de `feat/perf-perimetre` ne sont pas touchés (§3.1.6).
+  - **Fait** : aucune comparaison ajoutée (seul littéral de slug : les tests, en données) ;
+    ratchet vert dans la gate archlint. Aucun fichier du §3.1.6 dans le diff.
 
 **Gate** : GO-S sur `./internal/archlint/ ./internal/platform/duckdb/... ./internal/api/wire/ ./internal/progression/... ./internal/service/... ./internal/analysis/...`,
 plus `go test -count=1 ./...` complet.
@@ -1237,6 +1264,24 @@ plus B5.8.
   les 12 000 de la mesure D-4. Le critère relatif compare deux plans séquentiels qui croissent
   pareil avec le volume, mais il n'a pas été mesuré à ce volume. F4 (seul lecteur qui prenait
   l'index) y était plus lent AVEC l'index. Non traité.
+- DB-22 (B4, 2026-09-27) : `service.FanoutService` (`BuildPlan`, `Execute`) n'a AUCUN appelant
+  de production (seuls ses tests) : code mort au sens de la règle n°7. Non traité.
+- DB-23 (B4) : `CampaignSampleProvider.LoadAxisSamples` (filtre `mr.start_time >= ? AND <= ?`,
+  tri) et `EngagementScoreRepo.ListRecentPvPMatchIDs` (`mr.start_time IS NOT NULL`, tri) lisent
+  `start_time` brut, contre la règle n°8. Non traité.
+- DB-24 (B4) : `ListRecentPvPMatchIDs` ignore une erreur de `Scan` (`if err == nil`), et la
+  lecture des coefficients juste au-dessus fait `continue` sur erreur, sans log (anti-patron
+  n°10). Non traité.
+- DB-25 (B4) : `QKillsBetweenPlayers` (frags échangés entre deux joueurs, lu par
+  `GetEncounterStats` et l'Explorateur) n'exclut pas la Campagne. Hors critère (source
+  `match_kill_events_latest`, pas `match_participants`). La base crédit de Halo 5 y verse
+  `killer_victim_pairs` : des frags de Campagne peuvent donc compter dans ce duel, alors que
+  le nombre de rencontres ne les compte plus. Non traité.
+- DB-26 (B4) : `SnapshotPlayerState` → `loadEarnedMedalIDs` (`medals_earned`, hors critère)
+  n'exclut pas la Campagne : une médaille obtenue seulement en Campagne compte comme « déjà
+  obtenue ». Non traité.
+- DB-27 (B4) : la sonde du garde sur `internal/sync`, `internal/ops` et `cmd` relève 56
+  lecteurs sans exclusion (17 + 10 + 29), liste au journal B4. Tri séparé (§1.4). Non traité.
 
 ---
 
@@ -1592,3 +1637,103 @@ plus B5.8.
   - C1/C2, à égalité à 12 000 lignes, un scan d'environ 1-2 ms attendu à 34 000.
   La marge de 2 ms n'est pas menacée, et l'argument de correction (index désynchronisé =
   lecture fausse) prime.
+
+**[2026-09-27] B4 — garde-rail d'exclusion de la Campagne (item 4) — exécutant opus, worktree du plan.**
+
+- Ordre : garde (B4.1) écrit d'abord et lancé sur le code d'avant (33 entrants, log
+  `B4-1-premier-balayage.log`), cas de comportement écrits et rouges, puis corrections,
+  dispenses, mutations, gates. Cache Go dédié `go-build-backlog`, une commande `go` à la fois.
+- Garde : 5 racines, 5 588 déclarations balayées ; 83 lecteurs, 62 exclus, 21 dispensés
+  (`platform/duckdb` 72/54, `progression` 4/4, `api/wire` 5/4, `service` 0/0, `analysis` 2/0).
+- Entrants (lecteur → statut, catégorie, pièce dans la dispense) :
+  - corrigés (B4.2) : `GetEncounterStats`, `LoadAxisSamples`, `ListRecentPvPMatchIDs`, `q31`
+    (title-agnostic), `RecentMatches`, `CumulativeSince`, `candidateMatches`,
+    `SquadUsualContexts`, `loadProgressionSharedMatches`, `loadPlayerStats` (3 requêtes),
+    `loadComebackContext`, `SnapshotPlayerState` (3 requêtes) ;
+  - mono-match : `Q17PlayerMatchStats`, `Q17bIsParticipant`, `Q26MatchExpectedStats`,
+    `LoadMatchEngagementContext` ;
+  - ensemble fourni par l'appelant : `Q25MatchParticipants`, `CountCommonMatchesForXUID`,
+    `Q32bMainTeamParticipantsTemplate`, `LinkTargetsForMatches`, `matchsDesParticipants` ;
+  - exclu au call site : `QRelationsPlayerWinRateTpl`, `Q25NeighborMatchesTemplate`,
+    `BuildNeighborsWhereClause`, `playerMatchesSharedBaseSelect`,
+    `Q42MapStatsSquadExtraExclusionFrag`, `clauseCoequipier` ;
+  - sémantique : `countRankedMatchesInRegistry`, `LoadMatchCandidatesForMedia`,
+    `lastMatchByXUID`, `AnnuaireNomsSQL`, `appendPlayerMatchSetFilters`,
+    `buildRelationAssistsQuery`.
+- Sorties rouges sur le code d'avant (Halo 5 ; Halo Infinite vert partout, résolveur neutre) :
+  - `B4-2-rouge-duckdb.log`, `EXIT_ROUGE_DUCKDB=1` : `2 rencontres, attendu 1` ;
+    `échantillons [5 50], attendu [5]` ; `[arena1 camp1], attendu [arena1]` ;
+    `matchs communs avec B = 2, attendu 1`.
+  - `B4-2-rouge-prestige.log`, `EXIT_ROUGE_PRESTIGE=1` : `matchs [camp1 arena1], attendu
+    [arena1]` ; `cumul 55 sur 2 match(s), attendu 5 sur 1` ; `matchs d'escouade [arena1 camp1],
+    attendu 1` ; `playlists usuelles [Arene Campagne], attendu 1`.
+  - `B4-2-rouge-wire.log`, `EXIT_ROUGE_WIRE=1` : `matchs [arena1 camp1], attendu [arena1]` ;
+    `matches_played / accuracy_threshold_days / combat_precision_matches = 2, attendu 1` ;
+    dernier match `2026-09-02` au lieu du `2026-09-01` et match précédent présent ; `KD 55,
+    attendu 5`, `taux de victoire 0.5, attendu 1`, `meilleur KDA sur "camp1"`, dernier match
+    `2026-09-02`.
+  - Après correctif : `B4-2-vert.log`, `EXIT_VERT=0`.
+- Mutations du garde (logs `B4-1-mutation.log`, `B4-1-mutation-2.log`), toutes retirées
+  (grep `MUTANT B4` vide) :
+  - exclusion retirée de `GetEncounterStats` → `EXIT_MUTANT=1`,
+    `compare_repo.go:CompareRepo.GetEncounterStats (ligne 213)` ;
+  - exclusion retirée de `SquadUsualContexts` (forme `xuid IN`) → désigné (ligne 211), et une
+    dispense fictive → `dispense périmée : …nexiste_pas.go:MUTANT` ; `EXIT_MUTANT_2=1`.
+- Lecteurs de `sync/`, `ops/`, `cmd/` pour le backlog (sonde temporaire du garde sur ces
+  racines, retirée ; log `B4-5-sonde-sync-ops-cmd.log`) — 56, rien corrigé :
+  - `internal/sync` (17) : `assists_model.go:loadAssistsSamples`,
+    `backfill.go:FindMatchesMissingParticipantBits`, `findMatchesInSharedAll`,
+    `findMatchesInSharedDB`, `citations.go:loadMatchStats`, `comeback.go:loadMyTeamAndOutcome`,
+    `csr_shared_backfill.go:loadRankedMatchesForSharedCSRBackfill`,
+    `engagement.go:loadMatchesForEngagement`, `engine_backfills.go:loadAllMatchIDsForPlayer`,
+    `enrichments.go:queryAnyBotMatchIDs`, `querySignificantBotMatchIDs`,
+    `friends_recompute.go:loadMatchesWithFriends`, `performance_helpers.go:loadHistoryForPerf`,
+    `session_recalc.go:sessionMatchesSQL`, `skill/skill_rating_loaders.go:loadLUSRMatchData`,
+    `skill/skill_v2_shadow.go:loadShadowMatches`,
+    `snapshot/snapshot_readiness_eval.go:loadSnapshotSharedFacts` ;
+  - `internal/ops` (10) : `archive.go:ArchiveMatches`, `deleteArchivedParticipants`,
+    `listArchivableYears`, `data_quality_examples.go:exampleMatchIDsFor`,
+    `milestone_dates.go:loadCrossingMatches`, `seed_demo.go:selectRecentMatchIDs`,
+    `sharedTablesWhere`, `seed_demo_corpus.go:applyUniversalAnonymization`,
+    `selectRecentRankedMatchIDs`, `seed_demo_prestige.go:loadDemoCorpusStats` ;
+  - `cmd` (29) : `audit_coverage:auditPlayer`, `backfill_all:loadMissingPSAMatches`,
+    `backfill_kda_accuracy:main`, `backfill_participation_info:updateParticipationInfo`,
+    `backfill_quit_timestamps:updateQuitTimestamps`, `backfill_time_played:commitUpdates`,
+    `diag_backfill_dryrun:countMatchParticipants`, `countRankedForPlayer`,
+    `diag_csr:diagUnrankedDates`, `diagUnrankedDatesXUID`, `diag_expected_kd:main`,
+    `diag_highlight_match:main`, `diag_kpm:main`, `diag_lusr_player:loadMatches`,
+    `diag_lusr_volatility:loadTrajectory`, `printPlayerCoverage`, `diag_orphan_session:main`,
+    `diag_perfsim:universeSQL`, `diag_recent_match_sync:inspectMatch`,
+    `diag_session_map_winrate:computeSquad`, `findSessionsOnDate`, `loadHistory`,
+    `matchHasAllXUIDs`, `h5-roster-refetch:insertParticipant`,
+    `h5-roster-topup:insertParticipant`, `levelup/cmd_backfill_h5_kill_mechanics:applyMechanicUpdates`,
+    `lusr_v2_phase0:loadMatches`, `repair_data_consistency:chantier3BackfillXUIDAliases`,
+    `seed-medal:main`.
+  - Beaucoup sont des écritures ou des backfills (pas des lecteurs d'affichage) : le tri reste à
+    faire (§1.4).
+- Gates (logs `$TEMP\backlog-gates\B4-gate-*.log`) :
+  - `EXIT_BUILD=0`, `EXIT_VET=0`, `EXIT_VET_INTEG=0` (lot, tag `integration`) ;
+  - `EXIT_TEST_LOT=1` au premier passage : `TestMatchRegistryFixturesDeTestAlignees` (ma
+    fixture Prestige déclarait `start_time_utc TIMESTAMP`) ; fixture passée en `TIMESTAMPTZ`,
+    `EXIT_TEST_ARCHLINT=0`, cas Prestige rejoués verts (`EXIT_VERT_PRESTIGE=0`) ;
+  - `EXIT_INTEG_LOT=1` au premier passage : 3 tests dont la fixture de shared n'avait pas de
+    `match_registry` (`TestCountCrossTitleCooccurrences`,
+    `TestCooccurrencesByXUID_PicksMaxTitle`, `…_SkipsTitleOnQueryError`) ; la table ajoutée
+    aux deux fixtures (tout shared réel la porte), suite rejouée : `EXIT_INTEG_LOT_2=0` ;
+  - `EXIT_TEST_COMPLET=0` (189 paquets `ok`, aucune ligne `^--- FAIL:`) ;
+  - `EXIT_LINT=0` (`0 issues.`).
+  - Aucun échec préexistant rencontré cette fois (DB-8 est passé).
+- Écarts :
+  - `loadPlayerStats` : 3 requêtes corrigées, pas 2 ;
+  - `GetStatLeaderboard` : déjà exclu, rien fait ;
+  - commentaires de `tactical_repo_univers.go` / `tactical_repo_ownership.go` qui décrivaient
+    l'ancien garde (« ne balaye QUE les constantes Q ») réécrits au passé, avec renvoi au
+    nouveau (doc inversée sinon) ;
+  - deux fixtures de test existantes complétées d'une table `match_registry` ;
+  - `candidateMatches` prend une struct `candidateQuery` (5 paramètres au plus) ;
+  - le test `TestCampaignExclusionTokenWiredInStatQueries` (liste positive de 21 constantes)
+    est conservé : le plan ne vise que le garde structurel et ses 6 dispenses ;
+  - le rouge des cas Prestige a été pris avec `start_time_utc TIMESTAMP` ; la fixture est
+    passée en `TIMESTAMPTZ` ensuite (type seul, lecteurs inchangés) ;
+  - baseline de tests : aucune ligne à retirer, `TestCampaignExclusionStructuralCoverage` est
+    absent de `.ai/baselines/tests_pre_migration.jsonl`.

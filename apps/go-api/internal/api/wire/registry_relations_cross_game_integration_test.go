@@ -38,6 +38,10 @@ func seedSharedForTitle(t *testing.T, repoRoot, slug string, pairs [][2]string) 
 	if _, err := db.Exec(ctx, `CREATE TABLE IF NOT EXISTS match_participants (match_id VARCHAR, xuid VARCHAR)`); err != nil {
 		t.Fatalf("ddl %s: %v", slug, err)
 	}
+	// match_registry : lu par l'exclusion de la Campagne de q31 (backlog B4) ; tout shared réel le porte.
+	if _, err := db.Exec(ctx, `CREATE TABLE IF NOT EXISTS match_registry (match_id VARCHAR, game_variant_id VARCHAR)`); err != nil {
+		t.Fatalf("ddl registry %s: %v", slug, err)
+	}
 	for _, p := range pairs {
 		if _, err := db.Exec(ctx, `INSERT INTO match_participants VALUES (?, ?)`, p[0], p[1]); err != nil {
 			t.Fatalf("insert %s: %v", slug, err)
