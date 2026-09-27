@@ -1234,7 +1234,7 @@ Périmètre FERMÉ : un item par constat retenu, chacun avec un test de non-rég
 - [x] **B-C2 (C3)** (`api/server_player_directory.go` buildPlayerDirectory : aucun témoin disque en démo — branche « collecte coupée » ; pas de `NewPathFS` sur la racine démo, dont les dossiers ne portent pas les clés de profil ; `server_player_directory_demo_test.go`, rouge puis vert, témoin hors démo) : en démo, la section Identités ne balaie pas les dossiers du dépôt :
   `NewPathFS` sur la racine démo, ou collecte des dossiers orphelins coupée en démo. Test sur un
   dépôt leurre avec un dossier de joueur réel, qui ne doit pas apparaître.
-- [ ] **B-C3 (C4)** : d'abord, vérifier si `fetchGameCMSImage` sort réellement sur le réseau en
+- [x] **B-C3 (C4)** (verdict réseau : PAS de trou — `fetchGameCMSImage` → `doGet` → `netguard.Check("gamecms_assets.get")` avant `httpClient.Do` (`assets/fetcher_gamecms.go:334`), seule source d'un payload binaire ; donc aucun `PersistBinary` en démo, aucun code modifié. Test `assets/demo_offline_no_persist_test.go` : 0 requête et cache vide en démo, persistance hors démo ; vert sur le code d'avant (rien à corriger), pouvoir discriminant prouvé par mutation : garde retiré → ce test ET `TestOutboundCallsAreNetguarded` rouges) : d'abord, vérifier si `fetchGameCMSImage` sort réellement sur le réseau en
   démo (couverture `netguard`). Ensuite, en démo, aucun `PersistBinary` sous le cache réel : les
   écritures vont sous `<démo>/runtime/`, ou n'ont pas lieu. Si le réseau sortait en démo : trou
   de l'hermétisme réseau, corrigé ici (le ratchet `netguard_coverage_test.go` doit le voir),
