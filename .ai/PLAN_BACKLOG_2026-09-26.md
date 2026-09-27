@@ -425,7 +425,7 @@ case non statuée du lot courant. Les décisions du §2 ne se re-décident pas.
   - (d) le passage d'un rejeu à un autre démonte le composant, et le document, qui a pourtant
     déjà reçu un geste, n'en profite pas.
 
-- [ ] **A2.0 Reproduction AVANT tout code**, avec la politique d'autoplay PAR DÉFAUT (jamais
+- [x] **A2.0 Reproduction AVANT tout code**, avec la politique d'autoplay PAR DÉFAUT (jamais
   `no-user-gesture-required`), dans Chromium et dans Firefox (`npx playwright install firefox`
   s'il est absent).
   - Préférence « son activé » posée dans le stockage local.
@@ -440,24 +440,49 @@ case non statuée du lot courant. Les décisions du §2 ne se re-décident pas.
     sautés faute de chargement.
   - Verdict par chemin et par navigateur au journal. Si aucun chemin ne reproduit le défaut :
     **STOP**, rapport.
-- [ ] **A2.1 Correctif**, selon la cause mesurée et dans le cadre de D-10 :
+  - **Statut (2026-09-27)** : défaut REPRODUIT sur le chemin 4 (lecture automatique) et sur le
+    chemin 5b ajouté (lecture automatique + lien vers un autre rejeu), dans les deux navigateurs :
+    aucun contexte, aucun son, quel que soit le clic hors transport. Chemins 1, 2, 3 et 5 (avec
+    « Lecture » ou Espace) : son en 0,19 à 2,2 s. Cause retenue : hypothèse (a), et (d) pour le
+    lien. Décodage des sons ≤ 1,1 s (une passe à 2,6 s sous charge) : pas de téléchargement
+    anticipé. Tableau au journal.
+- [x] **A2.1 Correctif**, selon la cause mesurée et dans le cadre de D-10 :
   - ouverture au premier geste sur la page (écouteur unique `pointerdown` / `keydown` au niveau du
     document, posé seulement si la préférence est « activé » et qu'aucun lecteur n'existe,
     retiré ensuite) ;
   - ouverture dès l'affichage si `navigator.userActivation?.hasBeenActive` ;
   - téléchargement anticipé des sons (décodage à l'ouverture) seulement si A2.0 mesure un délai
     supérieur à 2 s.
-- [ ] **A2.2** `useReplaySound.ts` ne grossit pas : la logique d'ouverture vit dans un module
+  - **Statut** : `sound/useAudioUnlock.ts:40` (ouverture dès l'affichage si `hasBeenActive`),
+    `:44-48` (écouteur unique, retiré au premier geste). **Écart** : `click` et `keyup` au lieu de
+    `pointerdown` et `keydown`. Ces deux-là ouvrent le lecteur AVANT la bascule du bouton du son
+    (et avant la touche M, écoutée par la fenêtre), qui le couperait : régression du 27/08 prouvée
+    par test (journal). Pas de téléchargement anticipé (A2.0 : décodage < 2 s).
+- [x] **A2.2** `useReplaySound.ts` ne grossit pas : la logique d'ouverture vit dans un module
   dédié (par exemple `sound/useAudioUnlock.ts`). L'en-tête « DEUX ÉTATS » est mis à jour avec la
   nouvelle liste des gestes.
-- [ ] **A2.3 Tests** (rouges d'abord, jsdom) :
+  - **Statut** : 675 lignes avant, 675 après (`useAudioUnlock(on, wake)` en `:460`, en-tête
+    « DEUX ÉTATS » `:18-23` réécrit avec la nouvelle liste des gestes).
+- [x] **A2.3 Tests** (rouges d'abord, jsdom) :
   - préférence « activé », aucun lecteur : un `pointerdown` sur le document ouvre le lecteur une
     seule fois, et l'écouteur est retiré ;
   - `userActivation.hasBeenActive` vrai à l'affichage : le lecteur s'ouvre sans geste ;
   - préférence « coupé » : rien ne s'ouvre, rien ne se télécharge ;
   - non-régression du 27/08 : le premier clic sur le bouton du son ouvre et ne coupe pas.
-- [ ] **A2.4** Recette A2.0 rejouée après correctif : pour chaque chemin et dans les deux
+  - **Statut** : `sound/useAudioUnlock.test.tsx` (9 cas, à travers `useReplaySound`) : clic `:81`,
+    touche `:94`, écouteur retiré `:103`, `hasBeenActive` `:112` et `:121`, bouton du son `:136`,
+    touche M `:149`, démontage `:159`, préférence « coupé » `:168`. Le `pointerdown` du texte est
+    remplacé par `click` (écart de A2.1). Sorties rouges au journal.
+- [!] **A2.4** Recette A2.0 rejouée après correctif : pour chaque chemin et dans les deux
   navigateurs, son audible au plus tard 2 s après le geste. Sortie au journal.
+  - **Statut (2026-09-27)** : Chromium, 7 chemins sur 7 sous 2 s. Firefox : chemins 1, 2, 3, 5 et
+    5b sous 2 s. Chemins 4 et 7 (lecture automatique, puis clic ou touche neutre) : le lecteur
+    s'ouvre bien au geste (0 contexte avant, 1 après), mais le contexte de Firefox ne passe
+    « running » que 0,8 à 4,3 s plus tard (4 passes : 0,8 / 2,2 / 2,9 / 4,3 s). La même latence a
+    été mesurée AVANT le correctif sur le chemin 1 (0,8 à 1,4 s, et une passe sans démarrage en
+    6 s). Le poste était chargé à 100 % par les tests Go du superviseur. La page ne peut pas créer
+    le contexte avant le geste. Critère « ≤ 2 s » non tenu dans Firefox sous charge : A2.5 tranche
+    à l'oreille (DA-7).
 - [ ] **A2.5 Gate utilisateur** (Firefox, son usage réel) : recharger un rejeu avec le son activé
   donne du son sans toucher au bouton du son ; passer à un autre rejeu aussi.
 
@@ -1181,6 +1206,14 @@ plus B5.8.
   défaite ou une égalité — l'écran de fin est touché de la même façon. Le témoin `000d5950` n'y
   joue rien. Donnée du poste (cf. mémoire « plusieurs postes, jeux de données différents »), pas un
   défaut du code : non traité. L'écoute A1.6 se fait sur les données de l'utilisateur.
+- DA-6 (A2.0, 2026-09-27) : sous Chromium, `page.evaluate` de Playwright s'exécute avec
+  `userGesture=true` (sondé : `hasBeenActive` vrai avant tout geste). Une recette de son qui évalue
+  du code dans la page avant son premier geste mesure donc un document déjà activé. À savoir pour
+  les recettes à venir (A4 : musique d'intro).
+- DA-7 (A2.4) : dans Firefox sans tête, sur ce poste chargé, le contexte audio passe `running`
+  0,8 à 4,3 s après sa création dans un geste, plus lentement quand la lecture tourne déjà (lecture
+  automatique). Les sons lancés entre-temps partent à la reprise. Hors de portée de la page (le
+  contexte ne peut naître qu'au geste) ; à confirmer à l'oreille en A2.5.
 
 ### Lots B
 
@@ -1381,6 +1414,95 @@ plus B5.8.
 - Une passe isolée de `000d5950` à 1× a vu 8 sources lancées et aucune terminée (`ended` jamais
   reçu, contexte figé) ; rejouée deux fois, normale (60 et 48 `ended`). Aléa du navigateur sans
   tête sur un poste chargé, non retenu.
+
+**[2026-09-27] A2 — son perdu au rechargement ou en changeant de rejeu (item 12) — exécutant opus.**
+
+- Environnement :
+  - même Vite `:5174` que A1.5, API `:8000` du superviseur ;
+  - script `apps/web/.tmp.recette-son.mjs` (supprimé) ;
+  - Chromium et Firefox 153 (`npx playwright install firefox`) SANS TÊTE, **aucun drapeau
+    d'autoplay** ;
+  - préférences : `replay-sound-on`=true, `replay-speed`=1 ;
+  - rejeu A `ac03413d` (image 3 123), rejeu B `94a28b8b` (image 3 481), joueur Chocoboflor,
+    passage dense (environ 95 tirs en 6 s).
+- **Piège de mesure écarté (DA-6)** : avant le geste, AUCUN `page.evaluate`. Tout passe par la
+  console de la page ; les gestes sont de vraies entrées (`mouse.click`, `keyboard.press`).
+- Politique vérifiée par sonde, dans les deux navigateurs :
+  - contexte créé hors geste → `suspended` ;
+  - créé dans `pointerdown`, `click` ou `keydown` (touche « a ») → `running`.
+  - Firefox met 0,4 à 1,2 s à passer `running` : un premier relevé à 400 ms disait `suspended` à
+    tort.
+- Mesures par chemin, sur une fenêtre de 6 s après le geste :
+  - état du contexte ;
+  - délai geste → premier `start()` ;
+  - délai geste → contexte `running` ;
+  - fin du dernier décodage ;
+  - sons sautés = sons de la même fenêtre rejouée tiède (pause, même image, relecture) moins les
+    sons à froid. Ce chiffre est bruité par le plafond de voix (valeurs négatives possibles).
+- **A2.0, avant correctif** (log `$TEMP/backlog-gates/A2-0-recette-avant.log`) :
+
+  | Chemin | Chromium | Firefox | Verdict |
+  |---|---|---|---|
+  | 1 rechargement + Lecture | running ; 1er son 0,35 à 1,4 s ; sautés 1 à 3 ; décodage ≤ 1,0 s | running à 0,8 / 1,0 s (une passe : jamais en 6 s, 23 sautés) ; 1er son 0,6 à 2,2 s | pas reproduit |
+  | 2 rechargement + Espace | running ; 1er son 0,48 s ; sautés 1 | running à 1,4 s ; 1er son 0,5 à 1,3 s ; sautés 2 à 6 | pas reproduit |
+  | 3 clic frise, puis Lecture | clic frise : 0 contexte ; 1er son 0,6 à 1,5 s après Lecture ; sautés 1 à 16 | clic frise : 0 contexte ; 1er son 0,9 s ; sautés 1 | pas reproduit (le clic frise n'ouvre rien) |
+  | 4 lecture auto + clic neutre | **0 contexte, 0 son**, avant et après le clic | **0 contexte, 0 son** | **REPRODUIT** |
+  | 5 A joué, lien vers B, Lecture | contexte neuf au geste ; 1er son 0,19 s ; sautés 1 | 1er son 0,46 s ; sautés 11 | pas reproduit |
+  | 5b lecture auto, A, lien vers B | **B muet** : aucun contexte, 0 son | **B muet** | **REPRODUIT** |
+
+- Cause retenue :
+  - (a) la lecture automatique démarre sans geste de transport, et rien d'autre n'ouvre le
+    lecteur ;
+  - (d) le lien remonte le composant, qui ne profite pas du geste déjà reçu ;
+  - (b) écartée : décodage ≤ 1,1 s (une passe à 2,6 s sous charge), donc pas de téléchargement
+    anticipé ;
+  - (c) écartée comme cause du silence : le contexte de Firefox démarre, en 0,8 à 1,4 s.
+- A2.1 / A2.2 :
+  - `sound/useAudioUnlock.ts` (53 lignes), appelé par `useReplaySound.ts:460`
+    (`useAudioUnlock(on, wake)`) ;
+  - `open` est lu par une ref : l'effet ne dépend que de la préférence ;
+  - `useReplaySound.ts` : 675 → 675 lignes.
+- **Écart au texte de A2.1 (`pointerdown`/`keydown` → `click`/`keyup`), prouvé** :
+  - la variante `pointerdown`/`keydown` passée par les tests (log
+    `A2-3-variante-pointerdown.log`, `EXIT_VARIANTE_POINTERDOWN=1`) casse « le premier clic sur
+    le BOUTON DU SON active et ne coupe pas » et « la touche M active et ne coupe pas »
+    (`expected false to be true` sur `on`) : le document ouvre le lecteur avant la bascule, qui
+    coupe ;
+  - `click` et `keyup` arrivent après le bouton (React, sous la racine) et après le raccourci
+    (`keydown` sur la fenêtre) ;
+  - la recette confirme qu'un contexte né dans `click` ou `keyup` démarre : l'activation est
+    acquise dès `pointerdown` ou `keydown`.
+- A2.3, sorties rouges (code de production inchangé, log `A2-3-rouge.log`), `EXIT_ROUGE=1`,
+  4 échecs sur 9 :
+  - clic : `expected +0 to be 1` ;
+  - touche : `expected +0 to be 1` ;
+  - écouteur retiré : `expected [] to deeply equal ArrayContaining ["click", "keyup"]` ;
+  - `hasBeenActive` : `expected +0 to be 1`.
+  - Les 5 autres (préférence « coupé », document jamais activé, bouton du son, touche M,
+    démontage) sont des gardes, vertes avant comme après.
+  - Après correctif : `EXIT_VERT=0`, 41/41 avec `useReplaySound.test.tsx`.
+- **A2.4, après correctif** (log `A2-4-recette-apres.log`) :
+
+  | Chemin | Chromium | Firefox |
+  |---|---|---|
+  | 1 rechargement + Lecture | running à 0,18 s ; 1er son 0,89 s ; sautés 4 | running à 0,94 s ; 1er son 0,64 s ; sautés 1 |
+  | 2 rechargement + Espace | running à 0,17 s ; 1er son 0,60 s ; sautés 6 | running à 0,80 s ; 1er son 1,14 s ; sautés 2 |
+  | 3 clic frise, puis Lecture | contexte ouvert AU CLIC FRISE ; 1er son 0,43 s après Lecture | ouvert au clic frise, running avant Lecture ; 1er son 0,79 s |
+  | 4 lecture auto + clic neutre | 0 contexte avant ; running à 0,46 s ; 1er son 1,04 s | 0 contexte avant ; running à 0,81 s, puis 2,24 s (2 passes) |
+  | 5 A joué, lien vers B, Lecture | contexte de B ouvert à l'affichage ; 1er son 0,13 s ; sautés 0 | idem ; 1er son 0,13 s ; sautés 0 |
+  | 5b lecture auto, A, lien vers B | **B sonne sans geste** : 37 sons en 6 s, 1er à 0,15 s | **B sonne** : 27 sons, 1er à 0,27 s |
+  | 7 lecture auto + touche « x » | running à 0,11 s ; 1er son 0,31 s | running à 4,35 s, puis 2,93 s (2 passes) |
+
+  - En dev, `StrictMode` monte deux fois : le rejeu B compte deux contextes, dont le premier est
+    fermé par le démontage simulé (3 au total avec A). Sans effet en production.
+- Gates WEB (logs `$TEMP\backlog-gates\A2-*.log`) :
+  - `EXIT_TYPECHECK=0` (après purge de `node_modules/.tmp`) ;
+  - `EXIT_LINT=0` : 0 erreur, 26 avertissements préexistants, dont 4 `exhaustive-deps` sur
+    `engine` dans `useReplaySound.ts`, sur des lignes non touchées ;
+  - `EXIT_VITEST_MATCH_REPLAY=0` : 217 fichiers réussis et 4 sautés, 3 188 tests réussis et
+    7 sautés.
+- Nettoyage : Vite `:5174` arrêté (arbre du PID 23016), scripts `.tmp.*.mjs` supprimés,
+  `routeTree.gen.ts` inchangé. Serveur `:8000` non touché.
 
 ### Lots B
 

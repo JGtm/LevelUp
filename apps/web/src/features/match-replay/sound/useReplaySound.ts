@@ -15,14 +15,12 @@
  * aurait pu tout réparer — basculait la préférence à « coupé ». Il fallait donc DEUX clics pour
  * entendre quoi que ce soit, ce qui ressemblait à une panne.
  *
- * LE DÉSACCORD SE RÉSOUT DANS LE PREMIER GESTE, quel qu'il soit, et jamais avant :
- *  - le bouton du son ACTIVE quand rien ne joue, au lieu de couper une préférence déjà à
- *    « activé » (`toggle`) ;
- *  - un geste de transport — « Lecture », « Recommencer » — éveille le lecteur si la
- *    préférence le demande (`wake`, appelé par `useReplayPlayback`), pour que le son revienne
- *    sans même passer par le bouton.
- * Dans les deux cas l'AudioContext naît DANS un geste utilisateur : la doctrine ne bouge pas,
- * c'est la liste des gestes qui comptent qui s'allonge.
+ * LE DÉSACCORD SE RÉSOUT AU PREMIER GESTE, quel qu'il soit, et jamais avant (item 12, 2026-09-27) :
+ *  - le bouton du son ACTIVE quand rien ne joue, au lieu de couper (`toggle`) ;
+ *  - « Lecture » et « Recommencer » éveillent le lecteur (`wake`, via `useReplayPlayback`) ;
+ *  - tout autre clic ou touche sur la page aussi, et un document qui a DÉJÀ reçu un geste
+ *    (autre rejeu sans rechargement) l'ouvre dès l'affichage (`useAudioUnlock`).
+ * Jamais de son sans geste préalable : c'est la liste des gestes qui s'allonge.
  *
  * TROIS SILENCES SONT VOULUS, et aucun n'est un bug :
  *  - COUPÉ PAR DÉFAUT : rien ne sonne, rien ne se télécharge même, tant que l'utilisateur
@@ -82,6 +80,7 @@ import {
   type SoundCursor,
 } from './replaySoundCursor'
 import { useReplayEngineSound } from './useReplayEngineSound'
+import { useAudioUnlock } from './useAudioUnlock'
 import type { EnginePlan } from './vehicleEngineSound'
 
 /** Préférences persistées — patron partagé (replayPreferences.ts), né ici. */
@@ -458,6 +457,7 @@ export function useReplaySound(
     if (!onRef.current || playerRef.current) return
     openPlayer()
   }, [openPlayer])
+  useAudioUnlock(on, wake)
 
   const toggle = useCallback(() => {
     // RIEN À COMMANDER, RIEN NE BOUGE (correctif du 2026-08-28, revue R1). Le bouton du son ne
