@@ -90,7 +90,7 @@ var registreObjectifsEtConstruction = []Repli{
 	},
 	{
 		Nom:       "repli_emission_hors_domaine_jetee",
-		Fait:      "quelles emissions d'un compteur nomme entrent dans la serie",
+		Fait:      "quelles emissions d'un compteur nomme entrent dans la serie, ET depuis le lot J8.5 (2026-09-27) dans la progression du compteur de morts que le pont par instants de mort deroule",
 		Mecanisme: "valeur negative, ou canal B hors domaine du score de mode : l'emission est jetee par un `continue`",
 		Condition: CondNonResolu,
 		Ordre:     OrdreApresLecture,
@@ -155,22 +155,13 @@ var registreObjectifsEtConstruction = []Repli{
 		CompteurBranche: false,
 		CibleComptage:   comptageStatborg,
 	},
-	{
-		Nom:       "repli_emission_du_compteur_de_morts_jetee",
-		Fait:      "la progression du compteur de morts d'un slot",
-		Mecanisme: "valeur hors [0, maxDeathsPerSlot] : l'emission est jetee par un `continue`",
-		Condition: CondNonResolu,
-		Ordre:     OrdreApresLecture,
-		Sites: []Site{{
-			Fichier: pkgObjectiveEvents + "slotidentity_deaths.go",
-			Ancre:   "if !ok || v.B < 0 || v.B > maxDeathsPerSlot {",
-		}},
-		DatePose:        dateAudit0E,
-		CibleRetrait:    "lot de conversion statborg",
-		CritereRetrait:  "0 emission hors domaine sur les 8 builds (une valeur hors domaine est un defaut d'alignement)",
-		CompteurBranche: false,
-		CibleComptage:   comptageStatborg,
-	},
+	// `repli_emission_du_compteur_de_morts_jetee` (pose le 2026-09-13) A QUITTE LE REGISTRE AU LOT
+	// J8.5 DU PLAN DE SUITE D AUDIT (2026-09-27, constat FO-3), AVEC SON CODE : les deux gardes
+	// propres du pont par instants de mort (`v.B < 0 || v.B > maxDeathsPerSlot`, a plat ET par
+	// manche — le second site que l audit FO-4 disait manquant) ont disparu, le pont deroulant
+	// desormais la serie PUBLIEE du compteur. Une emission negative y est jetee sous
+	// `repli_emission_hors_domaine_jetee` (`named_series.go`), un pas aberrant par la borne par pas
+	// de la serie (`boundSteps`). Retrait pour absence de code vivant, pas pour compte nul.
 	{
 		Nom:       "repli_debut_de_manche_au_minimum",
 		Fait:      "l'instant de debut d'une manche",

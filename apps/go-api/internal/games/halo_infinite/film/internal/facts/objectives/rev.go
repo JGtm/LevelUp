@@ -34,6 +34,17 @@ package objectives
 // AUCUNE SORTIE NE CHANGE : ce rang pose la constante, son golden et son gate. Les calques qu elle
 // date portaient jusqu ici la valeur de `facts.Rev` (`killsource-2026-09-24`) dans `layers` : ils
 // portent desormais la sienne, et c est ce que la montee de schema du meme lot publie.
+//
+// ENTREE `objectives-2026-09-27` (2026-09-27, lot J8.5 du plan de suite d audit, constat FO-3) :
+// LE PONT PAR INSTANTS DE MORT DEROULE LA SERIE PUBLIEE DU COMPTEUR DE MORTS. `deathProgressions`
+// et sa version par manche appliquaient leurs propres gardes (slot de joueur, valeur dans
+// [0, 1000]) ; ils deroulent desormais `SeriesTotal` / `SeriesByRound` de `DeathsComponent` — la
+// manche confrontee au temps, les manches fantomes ecartees, la plus longue sous-suite non
+// decroissante, la borne par pas. LA SORTIE CHANGE : l identite statborg par instants de mort
+// (donc `identity.statborgSlots`, les calques d objectif, `scoreTimeline.players`) cesse de se
+// taire sur un slot qu une emission aberrante noyait, et le pont PLAT d un film multi-manche (hors
+// production : outils `statnames-sweep`, `zone-attribution`) voit toutes ses manches. Les faits
+// persistes de la couche deviennent `redecoder` ; aucun backlog killsource ne s ouvre.
 
 // Rev est la revision de la sortie des objectifs.
-const Rev = "objectives-2026-09-26"
+const Rev = "objectives-2026-09-27"

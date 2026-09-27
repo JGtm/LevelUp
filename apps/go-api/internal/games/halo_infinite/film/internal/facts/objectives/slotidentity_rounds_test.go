@@ -12,9 +12,9 @@ import (
 //	film MONO-MANCHE  -> le resultat est EXACTEMENT celui du pont plat (neutralite garantie
 //	                     pour les calques deja livres, couronne VIP et drapeau CTF) ;
 //	film MULTI-MANCHE -> quand le SLOT est reattribue d'une manche a l'autre, le pont par manche
-//	                     nomme le BON joueur de chaque manche, la ou le pont plat se trompe apres
-//	                     la bascule (il ne voit que la premiere manche, le compteur de morts
-//	                     repartant de zero).
+//	                     nomme le BON joueur de chaque manche, la ou le pont plat ne le peut pas
+//	                     (il se trompait apres la bascule jusqu au lot J8.5 ; il se tait depuis,
+//	                     les deux joueurs du slot etant a egalite sur le match entier).
 //
 // Les enregistrements sont SYNTHETIQUES : ils portent le compteur de morts (`comp 2 B`) que les
 // deux ponts lisent et le score de mode (`comp 0 A`) que [RealRounds] exige pour reconnaitre une
@@ -60,9 +60,13 @@ func TestSlotIdentityByRoundReassignedSlot(t *testing.T) {
 	recs, deaths := twoRoundReassignedFixture()
 
 	flat := SlotIdentityByDeaths(recs, deaths)
-	// Le pont plat ne voit que la manche 0 (le compteur repart de zero en manche 1).
-	if flat[22] != "A" {
-		t.Fatalf("pont plat slot 22 = %q, attendu \"A\" (il ne voit que la manche 0)", flat[22])
+	// LE PONT PLAT NE PEUT PAS NOMMER LE SLOT REATTRIBUE. Il ne voyait que la manche 0 (le compteur
+	// repart de zero en manche 1) et nommait \"A\" pour tout le match ; depuis le lot J8.5
+	// (2026-09-27, constat FO-3) il deroule la serie TOTALE publiee, voit les six morts du slot, A
+	// et B a egalite (3 contre 3), et la marge de prudence le fait TAIRE — le silence au lieu de
+	// l erreur. Seul le pont par manche sait nommer ce slot.
+	if flat[22] != "" {
+		t.Fatalf("pont plat slot 22 = %q, attendu \"\" (A et B a egalite sur le match entier)", flat[22])
 	}
 	if flat[20] != "C" {
 		t.Fatalf("pont plat slot 20 = %q, attendu \"C\"", flat[20])
@@ -154,14 +158,13 @@ func TestIdentifyNamedEventsByRoundReassignedSlot(t *testing.T) {
 		t.Errorf("action de manche 1 = %+v, attendu {12000, B} (slot reattribue)", byRound[1])
 	}
 
-	// CONTRE-EPREUVE : le pont plat par instants de mort donne les DEUX actions a "A".
+	// CONTRE-EPREUVE : le pont plat par instants de mort n attribue AUCUNE des deux actions. Il les
+	// donnait toutes deux a \"A\" (il ne voyait que la manche 0) ; depuis le lot J8.5 (2026-09-27,
+	// constat FO-3) il lit la serie totale publiee, ou A et B sont a egalite sur le slot 22, et se
+	// tait. Le pont par manche, lui, les attribue toutes les deux, a deux joueurs differents.
 	flat := IdentifyNamedEvents(named, SlotIdentityByDeaths(recs, deaths))
-	if len(flat) != 2 || flat[0].XUID != "A" || flat[1].XUID != "A" {
-		t.Fatalf("pont plat : attendu deux actions attribuees a A, obtenu %+v", flat)
-	}
-	if flat[1].XUID == byRound[1].XUID {
-		t.Error("le pont par manche ne DIFFERE PAS du pont plat sur l'action de manche 1 — " +
-			"la correction est nulle")
+	if len(flat) != 0 {
+		t.Fatalf("pont plat : attendu aucune action attribuee (slot 22 muet), obtenu %+v", flat)
 	}
 }
 

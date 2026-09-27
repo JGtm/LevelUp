@@ -157,61 +157,60 @@ func deathThreadByXUID(deaths []types.DeathInstant) map[string][]int {
 	return out
 }
 
-// maxDeathsPerSlot est le plafond au-dela duquel une emission du compteur de morts n'est plus une
-// mesure mais une LECTURE FAUSSE, et se jette comme les negatives.
-//
-// POURQUOI CE PLAFOND EXISTE — BLOQUANT DE PRODUCTION DU 2026-08-18. La progression se DEROULE :
-// une unite gagnee par le compteur = un instant ajoute a la serie. Sans borne haute, une emission
-// aberrante (le champ lu au mauvais endroit sur un film dont la grammaire differe) fait boucler
-// `prev` jusqu'a cette valeur — un compteur a quelques centaines de millions alloue autant
-// d'entiers. Mesure du terrain : `cmd/replay-build --facts` montait a 19-22 Go et ne rendait
-// jamais la main, et la pile designait ce deroulage. Le garde `v.B < 0` existait deja et couvrait
-// l'autre moitie du meme defaut ; il lui manquait sa symetrique.
-//
-// MILLE, ET PAS DIX : ce n'est pas un seuil de plausibilite du jeu (un joueur meurt quelques
-// dizaines de fois), c'est une BORNE DE SURETE. La poser au plus juste ferait jeter des lectures
-// vraies sur un mode ou une partie longue qu'on n'a pas encore vue ; la poser ici ne coute rien
-// (mille entiers) et ferme la porte a l'allocation illimitee. Une valeur superieure n'est
-// interpretable ni comme un compte de morts ni comme rien d'autre.
-const maxDeathsPerSlot = 1000
-
 // deathProgressions rend, par slot de joueur, UN instant par unite gagnee par le compteur de
 // morts (`comp 2 B`) — la serie que le fil des morts doit reproduire.
 //
-// Les emissions negatives (ancrages parasites), celles qui depassent [maxDeathsPerSlot] et les
-// reculs sont ecartes : le compteur d'un joueur ne redescend pas, ne s'envole pas, et une valeur
-// qui fait l'un ou l'autre est une lecture fausse.
+// ELLE DEROULE LA SERIE TOTALE PUBLIEE ([SeriesTotal] de [DeathsComponent]), ET RIEN D AUTRE
+// (lot J8.5 du plan de suite d audit, constat FO-3, 2026-09-27). Le pont appliquait ses propres
+// gardes (slot de joueur, valeur dans [0, 1000]) quand la serie que le document publie passe par
+// d autres filtres — manche confrontee au temps, manches fantomes, plus longue sous-suite non
+// decroissante, borne par pas. Une emission que la serie publiee jette fabriquait ici des morts
+// (49 au meme instant pour une emission a 50), qui noyaient les coincidences du slot et le
+// faisaient taire. Lire LA serie publiee rend le desaccord impossible par construction.
+//
+// LA BORNE MEMOIRE DU BLOQUANT DU 2026-08-18 EST TENUE PAR LA MEME SERIE : un pas au-dela de
+// `maxUnrollPerStep` n y laisse aucune unite ([boundSteps]), donc une emission aberrante (des
+// centaines de millions) ne deroule rien. Le plafond propre au pont (`maxDeathsPerSlot`, 1 000) a
+// disparu avec ses gardes : il bornait une valeur que la serie publiee ne laisse plus passer.
 func deathProgressions(recs []types.StatRecord) map[int][]int {
-	// StatRecords trie par instant : la serie d'un slot arrive donc deja chronologique.
-	raw := map[int][]deathCount{}
-	for _, r := range recs {
-		if IsTeamSlot(r.Slot) {
-			continue
+	return instantsDesMorts(SeriesTotal(recs, DeathsComponent, false))
+}
+
+// deathProgressionsByRound est [deathProgressions] MANCHE PAR MANCHE : `manche -> slot ->
+// instants`, deroule depuis la serie PAR MANCHE publiee ([SeriesByRound]), dont les valeurs
+// repartent de zero a chaque manche comme le compteur du jeu.
+func deathProgressionsByRound(recs []types.StatRecord) map[int]map[int][]int {
+	parManche := map[int]map[int][]types.ScorePoint{}
+	for slot, byRound := range SeriesByRound(recs, DeathsComponent, false) {
+		for round, pts := range byRound {
+			if parManche[round] == nil {
+				parManche[round] = map[int][]types.ScorePoint{}
+			}
+			parManche[round][slot] = pts
 		}
-		v, ok := r.Comps[coreKillsComp]
-		if !ok || v.B < 0 || v.B > maxDeathsPerSlot {
-			continue
-		}
-		raw[r.Slot] = append(raw[r.Slot], deathCount{timeMS: r.TimeMS, deaths: v.B})
 	}
-	out := make(map[int][]int, len(raw))
-	for slot, serie := range raw {
+	out := make(map[int]map[int][]int, len(parManche))
+	for round, series := range parManche {
+		out[round] = instantsDesMorts(series)
+	}
+	return out
+}
+
+// instantsDesMorts deroule une serie de compteur de morts (valeurs non decroissantes, partant de
+// zero) en un instant par unite gagnee.
+func instantsDesMorts(series map[int][]types.ScorePoint) map[int][]int {
+	out := make(map[int][]int, len(series))
+	for slot, pts := range series {
 		prev := int64(0)
 		var instants []int
-		for _, p := range serie {
-			for ; prev < p.deaths; prev++ {
-				instants = append(instants, p.timeMS)
+		for _, p := range pts {
+			for ; prev < p.Value; prev++ {
+				instants = append(instants, p.TimeMS)
 			}
 		}
 		out[slot] = instants
 	}
 	return out
-}
-
-// deathCount est une emission datee du compteur de morts d'un slot.
-type deathCount struct {
-	timeMS int
-	deaths int64
 }
 
 // bestDeathClaim designe le joueur dont le fil des morts coincide le mieux avec la serie d'un

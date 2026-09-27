@@ -14,8 +14,10 @@ import (
 // Sur d9781168 (Oddball, 3 manches), les instants de mort du slot 22 valent scuderiasven en
 // manche 0 puis LadyJezz en manches 1-2 — un slot n'est donc PAS une identite stable sur le
 // match. En plus, le compteur de morts (`comp 2 B`) REPART DE ZERO a chaque manche : un
-// deroulage monotone sur tout le match ne voit que la manche 0. Les deux defauts se corrigent
-// d'un coup en resolvant l'identite MANCHE PAR MANCHE.
+// deroulage monotone sur tout le match ne voyait que la manche 0 (depuis le lot J8.5 du
+// 2026-09-27, le pont plat deroule la serie TOTALE publiee, cumulee par manche : il voit toutes les
+// manches, mais un slot reattribue y met deux joueurs a egalite et il se tait). Les deux defauts
+// se corrigent d un coup en resolvant l identite MANCHE PAR MANCHE.
 //
 // # La resolution reutilise l'algorithme prudent du pont plat
 //
@@ -49,10 +51,11 @@ func SlotIdentityByRound(recs []types.StatRecord, deaths []types.DeathInstant) m
 		return map[int]map[int]string{r: slotIdentityFromDeaths(recs, deaths)}
 	}
 	thread := deathThreadByXUID(deaths)
+	parManche := deathProgressionsByRound(recs)
 	out := make(map[int]map[int]string, len(rounds))
 	for _, round := range rounds {
 		claim := map[int]string{}
-		for slot, pts := range deathProgressionsForRound(recs, round) {
+		for slot, pts := range parManche[round] {
 			if xuid, ok := bestDeathClaim(pts, thread); ok {
 				claim[slot] = xuid
 			}
@@ -72,36 +75,6 @@ func realRoundsSorted(recs []types.StatRecord) []int {
 		}
 	}
 	sort.Ints(out)
-	return out
-}
-
-// deathProgressionsForRound est [deathProgressions] RESTREINT a une manche : par slot de joueur,
-// un instant par unite gagnee par le compteur de morts (`comp 2 B`) DANS cette manche. Memes
-// gardes que le pont plat (slot de joueur, valeur dans [0, maxDeathsPerSlot], reculs jetes).
-func deathProgressionsForRound(recs []types.StatRecord, round int) map[int][]int {
-	raw := map[int][]deathCount{}
-	for _, r := range recs {
-		if r.Round != round || IsTeamSlot(r.Slot) {
-			continue
-		}
-		v, ok := r.Comps[coreKillsComp]
-		if !ok || v.B < 0 || v.B > maxDeathsPerSlot {
-			continue
-		}
-		raw[r.Slot] = append(raw[r.Slot], deathCount{timeMS: r.TimeMS, deaths: v.B})
-	}
-	out := make(map[int][]int, len(raw))
-	for slot, serie := range raw {
-		// StatRecords trie deja par instant : la serie d'un slot arrive chronologique.
-		prev := int64(0)
-		var instants []int
-		for _, p := range serie {
-			for ; prev < p.deaths; prev++ {
-				instants = append(instants, p.timeMS)
-			}
-		}
-		out[slot] = instants
-	}
 	return out
 }
 
