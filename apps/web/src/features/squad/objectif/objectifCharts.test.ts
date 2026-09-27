@@ -103,3 +103,38 @@ describe('buildEveningsOption — soirée après soirée (07/09)', () => {
     expect(opt.series.filter((s) => s.type === 'custom')).toHaveLength(2)
   })
 })
+
+describe('buildEveningsOption — ce soir sans part pour un rôle (constat R15 de la revue L6.1)', () => {
+  // Ce soir : aucune part « Tenir » (rôle non joué) ; les soirées précédentes en ont.
+  const h = history0709Evenings()
+  const view = buildEveningsView({ ...h, current: { ...h.current, hold: undefined } })
+  if (view.kind !== 'chart') throw new Error('attendu : graphe')
+  const opt = buildEveningsOption(view.points, view.medians, COLORS, {
+    roles: T.roles,
+    pctFmt: T.pctFmt,
+    tonight: T.evenings.tonight,
+    dateOf: (iso) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}`,
+    outOfFmt: T.evenings.outOfFmt,
+    mixOf: () => '4 B · 3 D',
+    pointTip: T.evenings.pointTip,
+    bandTip: T.evenings.bandTip,
+    eveningOf: T.evenings.eveningOf,
+    medianTip: (r, v) => `${r} ${v}`,
+  }) as { series: (Series & { endLabel: { show: boolean } })[] }
+  const lines = opt.series.filter((s) => s.type === 'line')
+  const hold = lines.find((s) => s.name === T.roles.hold)!
+  const take = lines.find((s) => s.name === T.roles.take)!
+  const grown = (d: unknown) => d != null && typeof d === 'object' && (d as { symbolSize?: number }).symbolSize === 10
+
+  it('Tenir : ni point grossi ni valeur au bout — jamais sur une soirée passée', () => {
+    expect(view.points[10].current).toBe(true)
+    expect(hold.data[10]).toBeNull()
+    expect(hold.data.some(grown)).toBe(false)
+    expect(hold.endLabel.show).toBe(false)
+  })
+
+  it('Prendre : ce soir grossi et valeur au bout, comme d’habitude', () => {
+    expect(grown(take.data[10])).toBe(true)
+    expect(take.endLabel.show).toBe(true)
+  })
+})

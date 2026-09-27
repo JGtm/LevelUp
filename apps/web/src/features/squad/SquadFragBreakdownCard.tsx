@@ -28,6 +28,7 @@ import {
   repliOffsetPct,
   segmentTextTone,
   type FragBreakdownRow,
+  type FragBreakdownSegment,
 } from './charts/squadFragBreakdownChart'
 import type { SquadText } from './i18n'
 
@@ -114,24 +115,18 @@ export function SquadFragBreakdownCard({
   )
 }
 
-function FragBreakdownBar({
-  row,
-  color,
-  hidden,
-  tones,
-  classLabel,
-  t,
-}: {
+interface FragBreakdownBarProps {
   row: FragBreakdownRow
   color: string | undefined
   hidden: ReadonlySet<string>
   tones: Map<string, 'dark' | 'light'>
   classLabel: (cls: string) => string
   t: SquadText
-}) {
+}
+
+function FragBreakdownBar({ row, color, hidden, tones, classLabel, t }: FragBreakdownBarProps) {
   const isHidden = (cls: string) => hidden.has(fitKey(row.player, cls))
   const offset = repliOffsetPct(row.segments, isHidden)
-  const folded = row.segments.filter((s) => isHidden(s.cls))
   return (
     <div
       className="grid grid-cols-[7rem_minmax(0,1fr)_2.5rem] items-center gap-2.5 text-xs"
@@ -145,22 +140,12 @@ function FragBreakdownBar({
       </div>
       <div className="flex min-w-0 flex-col gap-[3px]">
         {offset != null && (
-          <div
-            className="flex gap-2 text-2xs font-semibold tabular-nums"
-            style={{ paddingLeft: `${offset}%` }}
-            data-testid={`frag-breakdown-repli-${row.player}`}
-          >
-            {folded.map((s) => (
-              <span key={s.cls} className="inline-flex items-center gap-[3px]" title={classLabel(s.cls)}>
-                <span
-                  className="inline-block h-2 w-2 rounded-[2px]"
-                  style={{ backgroundColor: fragClassCssVar(s.cls) }}
-                  aria-hidden
-                />
-                {s.kills}
-              </span>
-            ))}
-          </div>
+          <FragBreakdownRepli
+            row={row}
+            offset={offset}
+            folded={row.segments.filter((s) => isHidden(s.cls))}
+            classLabel={classLabel}
+          />
         )}
         <div
           className="relative h-[22px]"
@@ -168,39 +153,102 @@ function FragBreakdownBar({
           aria-label={t.performanceCharts.fragBreakdownBarAria(row.player, row.total)}
         >
           {row.segments.map((s, i) => (
-            <div
+            <FragBreakdownSeg
               key={s.cls}
-              className={`absolute inset-y-0 ${i === 0 ? 'rounded-l-[3px]' : 'border-l-2 border-card'}`}
-              style={{ left: `${s.leftPct}%`, width: `${s.widthPct}%`, backgroundColor: fragClassCssVar(s.cls) }}
-              data-fit-key={fitKey(row.player, s.cls)}
-              data-testid={`frag-breakdown-seg-${row.player}-${s.cls}`}
-            >
-              <Tooltip
-                content={t.performanceCharts.fragBreakdownSegment(row.player, classLabel(s.cls), s.kills, row.total)}
-                className="h-full w-full"
-              >
-                <div className="flex h-full w-full cursor-help items-center justify-center overflow-hidden">
-                  {/* `text-white` / `text-black` : une écriture posée SUR un aplat, question de
-                      contraste dans le segment et non couleur sémantique (même usage que
-                      StackedTrack). */}
-                  <span
-                    data-fit-label
-                    className={`whitespace-nowrap text-2xs font-semibold tabular-nums ${
-                      tones.get(s.cls) === 'dark' ? 'text-black' : 'text-white'
-                    }`}
-                    style={{ visibility: isHidden(s.cls) ? 'hidden' : 'visible' }}
-                  >
-                    {s.kills}
-                  </span>
-                </div>
-              </Tooltip>
-            </div>
+              row={row}
+              seg={s}
+              first={i === 0}
+              hidden={isHidden(s.cls)}
+              tone={tones.get(s.cls)}
+              classLabel={classLabel}
+              t={t}
+            />
           ))}
         </div>
       </div>
       <div className="text-right font-semibold tabular-nums" data-testid={`frag-breakdown-total-${row.player}`}>
         {row.total}
       </div>
+    </div>
+  )
+}
+
+/** La ligne de repli au-dessus de la barre : pastille + compte des segments trop étroits. */
+function FragBreakdownRepli({
+  row,
+  offset,
+  folded,
+  classLabel,
+}: {
+  row: FragBreakdownRow
+  offset: number
+  folded: FragBreakdownSegment[]
+  classLabel: (cls: string) => string
+}) {
+  return (
+    <div
+      className="flex gap-2 text-2xs font-semibold tabular-nums"
+      style={{ paddingLeft: `${offset}%` }}
+      data-testid={`frag-breakdown-repli-${row.player}`}
+    >
+      {folded.map((s) => (
+        <span key={s.cls} className="inline-flex items-center gap-[3px]" title={classLabel(s.cls)}>
+          <span
+            className="inline-block h-2 w-2 rounded-[2px]"
+            style={{ backgroundColor: fragClassCssVar(s.cls) }}
+            aria-hidden
+          />
+          {s.kills}
+        </span>
+      ))}
+    </div>
+  )
+}
+
+/** Un segment de la barre : aplat de la classe, compte écrit dedans s'il y tient, infobulle. */
+function FragBreakdownSeg({
+  row,
+  seg: s,
+  first,
+  hidden,
+  tone,
+  classLabel,
+  t,
+}: {
+  row: FragBreakdownRow
+  seg: FragBreakdownSegment
+  first: boolean
+  hidden: boolean
+  tone: 'dark' | 'light' | undefined
+  classLabel: (cls: string) => string
+  t: SquadText
+}) {
+  return (
+    <div
+      className={`absolute inset-y-0 ${first ? 'rounded-l-[3px]' : 'border-l-2 border-card'}`}
+      style={{ left: `${s.leftPct}%`, width: `${s.widthPct}%`, backgroundColor: fragClassCssVar(s.cls) }}
+      data-fit-key={fitKey(row.player, s.cls)}
+      data-testid={`frag-breakdown-seg-${row.player}-${s.cls}`}
+    >
+      <Tooltip
+        content={t.performanceCharts.fragBreakdownSegment(row.player, classLabel(s.cls), s.kills, row.total)}
+        className="h-full w-full"
+      >
+        <div className="flex h-full w-full cursor-help items-center justify-center overflow-hidden">
+          {/* `text-white` / `text-black` : une écriture posée SUR un aplat, question de
+              contraste dans le segment et non couleur sémantique (même usage que
+              StackedTrack). */}
+          <span
+            data-fit-label
+            className={`whitespace-nowrap text-2xs font-semibold tabular-nums ${
+              tone === 'dark' ? 'text-black' : 'text-white'
+            }`}
+            style={{ visibility: hidden ? 'hidden' : 'visible' }}
+          >
+            {s.kills}
+          </span>
+        </div>
+      </Tooltip>
     </div>
   )
 }

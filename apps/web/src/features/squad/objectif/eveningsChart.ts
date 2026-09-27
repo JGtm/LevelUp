@@ -73,8 +73,11 @@ function roleEveningSeries(
       ],
     },
   }
-  const tonight = withEndPoint(data, c.theme.card, { at: points.length - 1, size: 10, borderWidth: 1.5 })
-  return lineSeries(t.roles[role], tonight, color, (v) => t.pctFmt(v), extra)
+  // Ce soir = la soirée affichée, jamais le dernier point non nul : un rôle sans part ce soir n'a
+  // ni point grossi ni valeur au bout (ECharts l'écrirait sur une soirée passée — constat R15).
+  const at = points.findIndex((p) => p.current)
+  const base = lineSeries(t.roles[role], withEndPoint(data, c.theme.card, { at, size: 10, borderWidth: 1.5 }), color, (v) => t.pctFmt(v), extra)
+  return { ...base, endLabel: { ...base.endLabel, show: at >= 0 && data[at] != null } }
 }
 
 /** Sous chaque soirée : la barre victoires / défaites. */

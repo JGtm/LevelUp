@@ -113661,3 +113661,11 @@ Sans film, le détail des grenades par type ne vient plus de la table native : u
 **Resultats observes** : aucune correction de code pour R8 à R13 (les tests prouvent le comportement existant ; R12 : le code fait ce que dit son commentaire). Le constat R2 citait `build.go:184-186`, lignes inexistantes : le compteur visé est celui de `squademprise.Build`. Gates : `go test ./...` vert, intégration `-p 1` des quatre arbres verte, lint Go 0 issue (rejoué après un délai dépassé à froid), contrat inchangé et vérifié ; web typecheck, `tsc -b --force`, lint 0 erreur, knip 0/0/0, couleurs 0, imports croisés 7 ≤ 7, vitest complet vert hors quatre garde-rails en délai dépassé sous charge, verts rejoués seuls.
 
 **Conclusion / prochaine etape** : ronde 1 close (R1 à R13 statués `[x]`), quatre découvertes consignées au plan (fonction L2 à 89 lignes, valeur au bout du graphe des soirées de l'objectif, ligne des frags d'un match au camp inconnu, référence de ligne du constat R2). Vérification superviseur ; ronde 2 de revue si le superviseur la demande, puis L6.2.
+
+## [2026-09-27] Emprise, lot L6.1 : R14 et R15 (découvertes de la ronde 1 promues) — Complété (`wt/emprise`, commit local)
+
+**Decision technique principale** : R14 — `FragBreakdownBar` (Répartition des frags, 89 lignes) découpé en trois composants (`FragBreakdownBar` 48 lignes, `FragBreakdownRepli`, `FragBreakdownSeg`), mêmes nœuds et attributs, tests de la carte inchangés. R15 — « Rapport de force, soirée après soirée » : le point grossi se pose sur l'index de la soirée affichée (`current`) via `withEndPoint`, et la valeur au bout (`endLabel`, qu'ECharts pose sur le dernier point non nul) ne s'affiche que si ce soir a une part — même correction que R4 côté ressources.
+
+**Resultats observes** : test « ce soir sans part pour un rôle » (Tenir absent ce soir) rouge sous deux mutations (`show: true`, `at` retiré), vert corrigé. Gate web : typecheck OK, lint 0 erreur (26 avertissements préexistants), vitest `src/features/squad` + `endPoint` en `--pool=forks` : 808 tests verts, knip 0/0/0, couleurs 0.
+
+**Conclusion / prochaine etape** : R14 et R15 statués `[x]` au plan, découvertes correspondantes marquées traitées. Vérification superviseur, puis L6.2.
