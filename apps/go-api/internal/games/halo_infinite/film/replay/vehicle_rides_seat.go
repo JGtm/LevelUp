@@ -27,13 +27,28 @@ package replay
 // PUR : aucune I/O, aucune lecture de film.
 
 import (
+	"time"
+
 	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
 
-// vehicleSeatTolMS est la tolerance appliquee AVANT le debut d un episode pour y rattacher la
+// vehicleSeatTol est la tolerance appliquee AVANT le debut d un episode pour y rattacher la
 // montee a bord qui l ouvre. Meme valeur et meme raison que `vehicleEventTolMS` : deux paquets
 // delta valent ~1 s, et le biais joue CONTRE le rattachement quand il manque.
-const vehicleSeatTolMS = vehicleEventTolMS
+//
+// UNE DUREE, PAS UN NOMBRE DE MILLISECONDES (J10.3, RB2-6 de l audit du 2026-09-24) : la
+// constante en ms etait divisee par le pas de la grille, qui est en MICROSECONDES, et rendait
+// 0 frame. La conversion passe desormais par [replayClock.framesOf].
+const vehicleSeatTol = time.Duration(vehicleEventTolMS) * time.Millisecond
+
+// framesOf rend le nombre de frames entieres que couvre une duree de film sur la grille du
+// rejeu (arrondi vers le bas). Zero quand la grille n a pas d echelle.
+func (c replayClock) framesOf(d time.Duration) int {
+	if c.step == 0 || d <= 0 {
+		return 0
+	}
+	return int(uint64(d.Microseconds()) / c.step) //nolint:gosec // d > 0 ; quelques frames
+}
 
 // assignVehicleSeats pose, sur chaque episode publie, le siege que le film ECRIT pour lui, et
 // rend le nombre d episodes servis.
@@ -52,7 +67,7 @@ func assignVehicleSeats(
 	if len(rides) == 0 || len(occ) == 0 || clock.step == 0 {
 		return 0
 	}
-	tol := int(vehicleSeatTolMS / clock.step) //nolint:gosec // pas de grille, quelques frames
+	tol := clock.framesOf(vehicleSeatTol)
 	var servis int
 	for key, list := range rides {
 		for i := range list {
