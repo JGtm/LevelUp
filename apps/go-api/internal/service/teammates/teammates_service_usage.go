@@ -22,6 +22,7 @@ import (
 	"context"
 
 	"levelup/go-api/internal/domain"
+	"levelup/go-api/internal/games/canonical"
 	"levelup/go-api/internal/legacymatch"
 	"levelup/go-api/internal/observability/timing"
 	"levelup/go-api/internal/port"
@@ -46,6 +47,10 @@ type porteeUsage struct {
 	timelineRows    []domain.SquadMatchRow
 	mainTeamByMatch map[string]map[string]struct{}
 	history         []domain.SquadMatchHistoryRow
+	// pairNames : match_id -> pair_name BRUT, lu sur les lignes canoniques du joueur. LA source
+	// unique du mode écarté (drapeau neutre, D6) pour le fil de la session ET l'historique : la
+	// fin du fil doit tomber sur le point « ce soir ».
+	pairNames map[string]string
 }
 
 // blocsUsage — les trois blocs publiés.
@@ -71,10 +76,10 @@ func (s *TeammatesService) loadUsageBlocks(
 	siVivante(ctx, func() {
 		out.equipement = s.loadEquipmentUsage(ctx, playerXUID, scope, req.SelectedGamertags, req.Locale, lectures)
 	})
-	siVivante(ctx, func() { out.formes = s.loadSquadFormes(ctx, playerXUID, scope, p.history, req, lectures) })
+	siVivante(ctx, func() { out.formes = s.loadSquadFormes(ctx, playerXUID, scope, p, req, lectures) })
 	if selection {
 		siVivante(ctx, func() {
-			out.objectif = s.loadObjectiveHistory(ctx, lignesDuPerimetre(p.squadRows, scope), p.timelineRows, p.mainTeamByMatch)
+			out.objectif = s.loadObjectiveHistory(ctx, lignesDuPerimetre(p.squadRows, scope), p.timelineRows, p.mainTeamByMatch, p.pairNames)
 		})
 	}
 	return out
@@ -162,6 +167,23 @@ func (s *TeammatesService) loadEquipmentUsage(
 		TitleSlug: s.titleSlug,
 		Locale:    locale,
 	})
+}
+
+// pairNamesOf — match_id -> pair_name brut : celui des lignes canoniques du joueur d'abord,
+// celui des lignes escouade (même colonne du registre) pour les matchs qui n'en portent pas.
+func pairNamesOf(rows []canonical.PlayerMatchRow, squadRows []domain.SquadMatchRow) map[string]string {
+	out := make(map[string]string, len(rows))
+	for _, r := range rows {
+		if r.Enrichment.PairName != nil && *r.Enrichment.PairName != "" {
+			out[r.Summary.MatchID] = *r.Enrichment.PairName
+		}
+	}
+	for _, r := range squadRows {
+		if _, ok := out[r.MatchID]; !ok && r.PairName != "" {
+			out[r.MatchID] = r.PairName
+		}
+	}
+	return out
 }
 
 // teammatesMatchIDs — les identifiants d'un scope de SynthesisMatchRow, dans

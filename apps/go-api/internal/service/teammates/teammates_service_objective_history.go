@@ -19,9 +19,10 @@ import (
 	"levelup/go-api/internal/observability/timing"
 )
 
-// WithObjectiveHistory injecte le savoir du titre sur les modes que l'historique d'objectif
-// écarte (D6 : le drapeau neutre, où personne ne peut renvoyer le drapeau et où la part d'un
-// camp est mécanique). Nil ⇒ aucun mode écarté. Le prédicat vient du paquet du titre, posé au
+// WithObjectiveHistory injecte le savoir du titre sur les modes que les parts de rôle de
+// l'escouade écartent — l'historique d'objectif ET le fil de la session (bloc formes,
+// `excluded_from_balance`) — (D6 : le drapeau neutre, où personne ne peut renvoyer le drapeau
+// et où la part d'un camp est mécanique). Nil ⇒ aucun mode écarté. Le prédicat vient du paquet du titre, posé au
 // câblage (jamais une comparaison de slug ici).
 func (s *TeammatesService) WithObjectiveHistory(modeEcarte func(pairName string) bool) *TeammatesService {
 	s.objectiveModeEcarte = modeEcarte
@@ -34,6 +35,7 @@ func (s *TeammatesService) WithObjectiveHistory(modeEcarte func(pairName string)
 // périmètre est vide, ou quand la lecture échoue — la carte se retire, jamais la page.
 func (s *TeammatesService) loadObjectiveHistory(
 	ctx context.Context, current, timeline []domain.SquadMatchRow, camp map[string]map[string]struct{},
+	pairNames map[string]string,
 ) *domain.SquadObjectiveHistory {
 	if s.formesObjectiveRepo == nil || len(current) == 0 {
 		return nil
@@ -54,8 +56,8 @@ func (s *TeammatesService) loadObjectiveHistory(
 		return nil
 	}
 	h := squadformes.BuildObjectiveHistory(squadformes.HistoryInput{
-		Current:  s.historyMatches(current),
-		Timeline: s.historyMatches(timeline),
+		Current:  historyMatches(current, s.modesEcartes(pairNames)),
+		Timeline: historyMatches(timeline, s.modesEcartes(pairNames)),
 		Rows:     rows,
 		Camp:     camp,
 	})
@@ -66,9 +68,25 @@ func (s *TeammatesService) loadObjectiveHistory(
 	return &h
 }
 
+// modesEcartes — le prédicat « mode écarté » d'un match : le pair_name brut des lignes
+// canoniques du joueur (pairNames) d'abord, celui passé par l'appelant en repli, jugé par le
+// prédicat du titre (WithObjectiveHistory). Le fil de la session (bloc formes) et l'historique
+// passent par LUI SEUL : même prédicat, même source, donc la fin du fil égale le point du soir.
+func (s *TeammatesService) modesEcartes(pairNames map[string]string) func(matchID, pairName string) bool {
+	return func(matchID, pairName string) bool {
+		if s.objectiveModeEcarte == nil {
+			return false
+		}
+		if p, ok := pairNames[matchID]; ok {
+			pairName = p
+		}
+		return s.objectiveModeEcarte(pairName)
+	}
+}
+
 // historyMatches projette les lignes escouade sur l'entrée du calcul : session, heure,
-// victoire du camp du joueur principal, et mode écarté par le titre.
-func (s *TeammatesService) historyMatches(rows []domain.SquadMatchRow) []squadformes.HistoryMatch {
+// victoire du camp du joueur principal, et mode écarté (ecarte).
+func historyMatches(rows []domain.SquadMatchRow, ecarte func(matchID, pairName string) bool) []squadformes.HistoryMatch {
 	out := make([]squadformes.HistoryMatch, 0, len(rows))
 	for _, r := range rows {
 		m := squadformes.HistoryMatch{
@@ -77,9 +95,7 @@ func (s *TeammatesService) historyMatches(rows []domain.SquadMatchRow) []squadfo
 		if r.SessionLabel != nil {
 			m.SessionLabel = *r.SessionLabel
 		}
-		if s.objectiveModeEcarte != nil {
-			m.Excluded = s.objectiveModeEcarte(r.PairName)
-		}
+		m.Excluded = ecarte(r.MatchID, r.PairName)
 		out = append(out, m)
 	}
 	return out

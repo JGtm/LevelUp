@@ -175,6 +175,12 @@ type SquadFormesObjective struct {
 	// N secondes comptent pour une ». Le web en fait son infobulle ; le libellé,
 	// lui, reste côté web (aucune chaîne de langue ne descend d'ici).
 	FlagJuggleWindowSeconds float64 `json:"flag_juggle_window_seconds,omitempty"`
+	// ExcludedFromBalance : le mode de ce match est écarté des parts de rôle de l'escouade
+	// (« Rapport de force au fil de la session » et « soirée après soirée ») — le drapeau
+	// neutre, où personne ne peut renvoyer le drapeau et où la part d'un camp est mécanique
+	// (D6 du plan PLAN_EMPRISE_ET_CARTES_DEPLACEES_2026-09-26). Même prédicat du titre que
+	// l'historique d'objectif : la fin du fil égale le point « ce soir ».
+	ExcludedFromBalance bool `json:"excluded_from_balance,omitempty"`
 }
 
 // SquadFormesObjectiveColumn — une grandeur du mode et son rôle.

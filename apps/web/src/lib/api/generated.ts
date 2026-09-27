@@ -12159,6 +12159,7 @@ export interface components {
         };
         SquadFormesObjective: {
             columns?: components["schemas"]["SquadFormesObjectiveColumn"][] | null;
+            excluded_from_balance?: boolean;
             family: string;
             /** Format: double */
             flag_juggle_window_seconds?: number;

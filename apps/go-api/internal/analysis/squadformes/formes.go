@@ -47,6 +47,10 @@ type MatchMeta struct {
 	StartTime string
 	ModeLabel string
 	MapLabel  string
+	// ObjectiveExcluded : mode que le titre écarte des parts de rôle de l'escouade (drapeau
+	// neutre, D6 du plan PLAN_EMPRISE_ET_CARTES_DEPLACEES_2026-09-26). Décidé par l'appelant :
+	// ce paquet n'importe aucun paquet de titre.
+	ObjectiveExcluded bool
 }
 
 // FilmPads — le grain match des socles, lu sur `match_usage_films_latest`
@@ -184,6 +188,9 @@ func Build(in Input) domain.SquadFormesBlock {
 			teamOf = mi.TeamOf
 		}
 		m.Objective = buildObjective(objByMatch[meta.MatchID], columnsByFamily, teamOf)
+		if m.Objective != nil {
+			m.Objective.ExcludedFromBalance = meta.ObjectiveExcluded
+		}
 		if m.Measured {
 			out.MatchesMeasured++
 		}

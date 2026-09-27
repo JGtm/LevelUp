@@ -80,6 +80,30 @@ describe('buildSessionFil — rapport de force au fil de la session (07/09)', ()
     expect(d2?.map).toBe('Domicile')
   })
 
+  it('drapeau neutre (excluded_from_balance) : le fil l’ignore, sa fin égale le point « ce soir »', () => {
+    const b = block0709()
+    const d3 = b.matches![6]
+    // Un 8e match, en drapeau neutre, où notre camp fait tout : il changerait le cumul s'il comptait.
+    b.matches!.push({
+      ...d3,
+      match_id: 'neutre',
+      start_time: '2026-09-07T20:30:00Z',
+      objective: {
+        ...d3.objective!,
+        excluded_from_balance: true,
+        players: d3.objective!.players!.map((p) => (p.team_id === 0 ? p : { ...p, values: {} })),
+      },
+    })
+    const f = buildSessionFil(b, history0709())
+    expect(f.map((m) => m.matchId)).not.toContain('neutre')
+    const last = f[f.length - 1]
+    const soir = history0709Evenings().current
+    for (const [role, v] of [['take', soir.take], ['defend', soir.defend], ['hold', soir.hold]] as const) {
+      expect(r1(last.roles[role].cumulative)).toBe(r1(v))
+    }
+    expect(f).toHaveLength(soir.objective_matches)
+  })
+
   it('un rôle que le lobby n’a pas joué (0 sur 0) ne pèse pas dans le cumul', () => {
     const b = block0709()
     const m0 = b.matches![0]

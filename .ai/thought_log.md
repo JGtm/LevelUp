@@ -113621,3 +113621,11 @@ Sans film, le détail des grenades par type ne vient plus de la table native : u
 - Web : typecheck, lint (0 erreur), knip, couleurs, imports croisés verts ; vitest 8 687 verts, 10 garde-rails en délai dépassé sous charge, verts rejoués (deux d'entre eux seulement avec un délai de 60 s : 6 à 9 s même seuls sur la machine chargée).
 
 **Conclusion / prochaine etape** : L3 clos, sept découvertes consignées au plan (fond de pastille des médailles invalide gardé tel quel, drapeau neutre présent dans le fil, « ce soir » = périmètre entier, 0 sur 0, abréviations, taille de `teammates_service.go`, gate du prédicat). Vérification superviseur, gate visuel au L6, puis L4.
+
+## [2026-09-27] Emprise, lot L3 (corrections superviseur) : drapeau neutre hors du fil, taille de `teammates_service.go` — Complété (`wt/emprise`, commit local)
+
+**Decision technique principale** : un seul prédicat « mode écarté » (`modesEcartes`) sur une seule source (`pair_name` brut des lignes canoniques, complété par les lignes escouade) sert le fil de la session et l'historique d'objectif. Le bloc formes publie `excluded_from_balance` par match, et le fil web ignore ces matchs : la fin du fil tombe sur le point « ce soir ». `filterCanonicalByMatchIDsSet` est déplacée dans `teammates_service_briefing.go` : `teammates_service.go` revient à 501 lignes.
+
+**Resultats observes** : tests Go (même match écarté dans le bloc et dans l'historique) et web (07/09 + un match neutre : fin du fil 39,0 / 36,8 / 43,8 % = point du soir) verts ; paquets Go touchés verts, lint 0 issue, contrat vérifié, typecheck, lint web, ratchets verts ; les 8 garde-rails en délai dépassé passent chacun seul au délai standard.
+
+**Conclusion / prochaine etape** : L3 clos. Vérification superviseur, puis L4.

@@ -130,13 +130,17 @@ function matchRole(match: SquadFormesMatch, role: ObjectiveRole): { us: number; 
 
 /**
  * buildSessionFil — les matchs à objectif du périmètre, dans l'ordre chronologique, avec la part
- * de chaque rôle et son cumul (moyenne des parts depuis le premier match, D7). Le résultat, le
+ * de chaque rôle et son cumul (moyenne des parts depuis le premier match, D7). Les matchs dont le
+ * serveur écarte le mode (`excluded_from_balance` : drapeau neutre, D6) n'y entrent pas — même
+ * prédicat et même source que l'historique : la fin du fil égale le point « ce soir ». Le résultat, le
  * score et la dominance viennent de l'historique de la page, joint par `match_id` : un match
  * sans ligne d'historique garde sa case, sans résultat.
  */
 export function buildSessionFil(block: SquadFormesBlock, history: SquadMatchHistoryRow[]): FilMatch[] {
   const byId = new Map(history.map((h) => [h.match_id, h]))
-  const matches = [...objectiveMatches(block)].sort((a, b) =>
+  const matches = [...objectiveMatches(block)]
+    .filter((m) => !m.objective?.excluded_from_balance)
+    .sort((a, b) =>
     (a.start_time ?? '').localeCompare(b.start_time ?? ''),
   )
   const sums: Record<ObjectiveRole, { sum: number; n: number }> = {

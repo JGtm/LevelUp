@@ -26807,6 +26807,8 @@ components:
           type:
             - array
             - "null"
+        excluded_from_balance:
+          type: boolean
         family:
           type: string
         flag_juggle_window_seconds:

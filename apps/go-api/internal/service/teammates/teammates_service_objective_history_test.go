@@ -122,3 +122,40 @@ func TestTeammatesService_GetPage_HistoriqueObjectifDegrade(t *testing.T) {
 		}
 	}
 }
+
+// TestTeammatesService_GetPage_FilEtHistoriqueEcartentLeMemeMatch — correction L3 (découverte
+// 2) : le drapeau neutre est marqué `excluded_from_balance` sur le bloc formes (le fil de la
+// session l'ignore) par le MÊME prédicat et la MÊME source que l'historique, qui l'écarte du
+// point « ce soir ».
+func TestTeammatesService_GetPage_FilEtHistoriqueEcartentLeMemeMatch(t *testing.T) {
+	t.Parallel()
+	repo, obj := historiqueFixture()
+	usage := &compteurUsageRepo{lectures: map[string]int{}, mockTeammatesUsageRepo: &mockTeammatesUsageRepo{}}
+	svc := NewTeammatesService(repo, nil).
+		WithPlayerMatchesRepo(newSynthMockFromRows(repo.synthRows, nil), "halo_infinite", "Main").
+		WithSquadFormes(usage, obj, "").
+		WithObjectiveHistory(estNeutre)
+	resp, err := svc.GetPage(context.Background(), "player-xuid", domain.TeammatesQueryRequest{SelectedGamertags: []string{"Ally1"}})
+	if err != nil {
+		t.Fatalf("GetPage : %v", err)
+	}
+	if resp.SquadFormes == nil {
+		t.Fatal("bloc formes absent")
+	}
+	ecartes := map[string]bool{}
+	for _, m := range resp.SquadFormes.Matches {
+		if m.Objective == nil {
+			t.Fatalf("match %s sans objectif", m.MatchID)
+		}
+		ecartes[m.MatchID] = m.Objective.ExcludedFromBalance
+	}
+	want := map[string]bool{"b0": false, "b1": false, "b2": false, "bn": true}
+	for id, w := range want {
+		if ecartes[id] != w {
+			t.Errorf("match %s : excluded_from_balance = %v, attendu %v (bloc %v)", id, ecartes[id], w, ecartes)
+		}
+	}
+	if h := resp.SquadObjectiveHistory; h == nil || h.Current.ObjectiveMatches != 3 {
+		t.Errorf("historique = %+v, attendu 3 matchs (le même drapeau neutre écarté)", h)
+	}
+}

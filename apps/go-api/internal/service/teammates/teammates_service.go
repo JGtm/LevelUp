@@ -30,8 +30,6 @@ import (
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
-	"levelup/go-api/internal/games/canonical"
-	"levelup/go-api/internal/legacymatch"
 	"levelup/go-api/internal/observability/timing"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/service/squadagg"
@@ -449,7 +447,7 @@ func (s *TeammatesService) GetPage(
 	// filteredMatches, filteredMatches seul sans coéquipier (teammates_service_usage.go).
 	usage := s.loadUsageBlocks(ctx, playerXUID, porteeUsage{
 		filtered: filteredMatches, squadRows: allSquadRows, timelineRows: allSquadRowsForTimeline,
-		mainTeamByMatch: mainTeamByMatch, history: sec.matchHistory,
+		mainTeamByMatch: mainTeamByMatch, history: sec.matchHistory, pairNames: pairNamesOf(canonicalRows, allSquadRowsForTimeline),
 	}, req)
 	if err := ctx.Err(); err != nil {
 		return requeteAnnulee(err)
@@ -491,30 +489,6 @@ func (s *TeammatesService) GetPage(
 		SquadFormes:              usage.formes,
 		SquadObjectiveHistory:    usage.objectif,
 	}, nil
-}
-
-// filterCanonicalByMatchIDsSet ne garde que les canonical rows dont le match_id
-// figure dans le slice de SynthesisMatchRow filtré (post cascade + sessions).
-// Sert de pont entre la pipeline legacy SynthesisMatchRow et les builders
-// canoniques (ComputeKPIStats, squadagg.BuildSquadHeader).
-func filterCanonicalByMatchIDsSet(
-	rows []canonical.PlayerMatchRow,
-	filtered []legacymatch.SynthesisMatchRow,
-) []canonical.PlayerMatchRow {
-	if len(filtered) == 0 || len(rows) == 0 {
-		return nil
-	}
-	keep := make(map[string]struct{}, len(filtered))
-	for _, m := range filtered {
-		keep[m.MatchID] = struct{}{}
-	}
-	out := make([]canonical.PlayerMatchRow, 0, len(filtered))
-	for _, r := range rows {
-		if _, ok := keep[r.Summary.MatchID]; ok {
-			out = append(out, r)
-		}
-	}
-	return out
 }
 
 // buildBriefingHeaderForTeammatesPage construit le SquadHeader pour la page
