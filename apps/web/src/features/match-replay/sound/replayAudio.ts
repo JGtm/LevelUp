@@ -171,7 +171,8 @@ export class ReplayAudioPlayer {
   private master: GainNode
   /** URL -> buffer décodé, ou null = absent/indécodable (silence mémorisé). */
   private buffers = new Map<string, AudioBuffer | null>()
-  private pending = new Set<string>()
+  /** URL -> chargement en cours : une seule requête par URL, et une promesse qu'on peut attendre. */
+  private loading = new Map<string, Promise<void>>()
   private voices = 0
   /** Les sons TENUS en vol (rafales de tir continu), que la pause et le saut éteignent. */
   private held = new Set<{ src: AudioBufferSourceNode; gain: GainNode }>()
@@ -301,9 +302,8 @@ export class ReplayAudioPlayer {
    */
   preload(urls: Iterable<string>): void {
     for (const url of urls) {
-      if (this.buffers.has(url) || this.pending.has(url)) continue
-      this.pending.add(url)
-      void this.load(url)
+      if (this.buffers.has(url) || this.loading.has(url)) continue
+      this.loading.set(url, this.load(url))
     }
   }
 
@@ -319,7 +319,7 @@ export class ReplayAudioPlayer {
       console.warn('[replay-audio] son indisponible, silence :', url, err)
       this.buffers.set(url, null)
     } finally {
-      this.pending.delete(url)
+      this.loading.delete(url)
     }
   }
 
@@ -340,15 +340,36 @@ export class ReplayAudioPlayer {
     this.start(url, soundOccupiesVoice({ conclusion: true }))
   }
 
+  /** L'URL est-elle décodée (tampon prêt, pas un absent mémorisé) ? */
+  isLoaded(url: string): boolean {
+    return !!this.buffers.get(url)
+  }
+
+  /** Se résout quand le chargement de l'URL est fini, réussi ou non ; le lance au besoin. */
+  whenLoaded(url: string): Promise<void> {
+    this.preload([url])
+    return this.loading.get(url) ?? Promise.resolve()
+  }
+
+  /**
+   * playFrom joue comme `play` (voie ordinaire, plafond de voix), mais en entrant dans le tampon à
+   * `offsetS` : un son parti en retard reste calé sur l'instant où il aurait dû partir (musique
+   * d'intro, A4.9). Le reste de l'enveloppe est décalé d'autant.
+   */
+  playFrom(url: string, offsetS: number): void {
+    this.start(url, soundOccupiesVoice({}), undefined, undefined, offsetS)
+  }
+
   /** start pose une source enveloppée ; `voix` dit si elle se soumet au plafond et le tient. */
-  private start(url: string, voix: boolean, draw?: SoundDraw, shape?: SoundShape): void {
+  private start(url: string, voix: boolean, draw?: SoundDraw, shape?: SoundShape, offsetS = 0): void {
     const buf = this.buffers.get(url)
     if (!buf || (voix && this.voices >= SOUND_MAX_VOICES)) {
       if (buf === undefined) this.preload([url])
       return
     }
     const t0 = this.ctx.currentTime
-    const { fadeStartS, stopS, loop } = soundEnvelopeOf(buf.duration, shape)
+    const env = soundEnvelopeOf(buf.duration, shape)
+    const [fadeStartS, stopS, loop] = [env.fadeStartS - offsetS, env.stopS - offsetS, env.loop]
     // La VARIATION de cette lecture (fourchettes RANGED du jeu, tirées en amont) : un gain
     // de départ et une vitesse de lecture. Sans tirage, la tenue est à 1 — inchangé.
     const tenue = draw ? gainFromDb(draw.gainDb) : 1
@@ -373,7 +394,7 @@ export class ReplayAudioPlayer {
       src.disconnect()
       gain.disconnect()
     }
-    src.start(t0)
+    src.start(t0, offsetS)
     src.stop(t0 + stopS)
   }
 

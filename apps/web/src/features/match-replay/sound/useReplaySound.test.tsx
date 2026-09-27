@@ -119,8 +119,11 @@ describe('useReplaySound — activation', () => {
     await act(async () => { await flushAudio() })
     expect(result.current.on).toBe(true)
     expect(ctx.resumed).toBe(1)
-    expect(fetchMock).toHaveBeenCalledTimes(1)
-    expect(String(fetchMock.mock.calls[0][0])).toBe('/static/sounds/halo_infinite/hinf_br75.wav')
+    // Le kill du match, et l'extrait d'intro que tout match peut jouer au départ (item 7).
+    expect(fetchMock.mock.calls.map((c) => String(c[0]))).toEqual([
+      '/static/sounds/halo_infinite/hinf_br75.wav',
+      '/static/sounds/halo_infinite/intro_music_01.wav',
+    ])
   })
 
   it('activer en plein match ne déverse pas ce qui précède : le premier battement recale', async () => {
@@ -445,7 +448,7 @@ describe('useReplaySound — la fin de partie', () => {
     const { result } = mountWithEnd(null)
     act(() => result.current.toggle())
     await act(async () => { await flushAudio() })
-    expect(fetchMock).toHaveBeenCalledTimes(1) // le seul son du match : le kill au BR
+    expect(fetchMock).toHaveBeenCalledTimes(2) // le seul son du match (le kill au BR) + l'intro
     act(() => result.current.endMatch())
     expect(ctx.sources).toHaveLength(0)
   })
