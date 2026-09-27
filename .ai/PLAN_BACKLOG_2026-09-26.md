@@ -1572,3 +1572,23 @@ plus B5.8.
   - Une copie de plus que la consigne : `h5-avant`, identique à l'original, faite avec les
     mêmes contrôles, pour prouver l'attribution. Les copies restent sous
     `$env:TEMP\backlog-b3\` pour contre-vérification.
+
+**[2026-09-27] Superviseur — vérification de B3 (mesure, retrait, baseline, B3.9).**
+
+- Diffs relus :
+  - `82cd8871b` : mesure au critère relatif ;
+  - `7e9ef7c15` : retrait, soin convergent, ratchet, suppressions ;
+  - `e1e4232a2` : baseline, exactement les 12 tests supprimés par B2, 48 lignes ;
+  - `0b6c11f73` : B3.9.
+- Gates rejoués avec le cache dédié : `EXIT_BUILD=0`, `EXIT_VET=0` (`./...`), tests unitaires du
+  lot verts, `EXIT_INTEG=0` (migration, chaîne du titre, purge), `EXIT_INTEG_SYNC=0`,
+  `EXIT_PSAREPRO=0`, `EXIT_LINT=0`.
+- Un seul rouge : `internal/sync` tué au délai de 11 min, parce que le poste s'est mis en veille
+  la nuit (5 h 48 de temps mur). Rejoué seul après le réveil : `ok` (103 s).
+- DB-21 est apprécié sans nouvelle mesure. À 33 702 lignes au lieu de 12 000, les formes
+  séquentielles coûtent environ 2,8 fois plus, mais pareil avec et sans index (même plan). Les
+  seules formes qui empruntent un index sont :
+  - F4, 10 fois plus lente AVEC l'index ;
+  - C1/C2, à égalité à 12 000 lignes, un scan d'environ 1-2 ms attendu à 34 000.
+  La marge de 2 ms n'est pas menacée, et l'argument de correction (index désynchronisé =
+  lecture fausse) prime.
