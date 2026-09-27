@@ -89,7 +89,7 @@ func TestVentilationCompteParIndiceEtParArme(t *testing.T) {
 	ecrireFireEvent(&b, 3, a2)
 	ecrireFireEvent(&b, 7, a2)
 
-	batch := BuildWeaponShotsBatch("m1", [][]byte{b.bytes()}, nil, nil)
+	batch := BuildWeaponShotsBatch("m1", [][]byte{b.bytes()}, nil, nil, nil)
 
 	if len(batch.Players) != 2 {
 		t.Fatalf("joueurs = %d, attendu 2 (indices 3 et 7) : %+v", len(batch.Players), batch.Players)
@@ -124,7 +124,7 @@ func TestVentilationLitLIndiceSurCinqBits(t *testing.T) {
 	ecrireFireEvent(&b, 20, a1)
 	ecrireFireEvent(&b, 31, a1)
 
-	batch := BuildWeaponShotsBatch("m1", [][]byte{b.bytes()}, nil, nil)
+	batch := BuildWeaponShotsBatch("m1", [][]byte{b.bytes()}, nil, nil, nil)
 
 	vus := map[int]bool{}
 	for _, p := range batch.Players {
@@ -148,7 +148,7 @@ func TestVentilationRefuseLesSentinelles(t *testing.T) {
 	}
 	ecrireFireEvent(&b, 5, a1)
 
-	batch := BuildWeaponShotsBatch("m1", [][]byte{b.bytes()}, nil, nil)
+	batch := BuildWeaponShotsBatch("m1", [][]byte{b.bytes()}, nil, nil, nil)
 
 	for _, p := range batch.Players {
 		for _, w := range p.Weapons {
@@ -175,7 +175,7 @@ func TestReferenceAbsenteNEstPasZero(t *testing.T) {
 	// Ici aucun xuid n est resolu (le chunk ne porte aucun motif de xuid) : les deux joueurs
 	// sortent SANS xuid, donc SANS reference.
 	batch := BuildWeaponShotsBatch("m1", [][]byte{chunk}, []string{"2533274792395366"},
-		map[string]int{"2533274792395366": 0})
+		map[string]int{"2533274792395366": 0}, nil)
 
 	for _, p := range batch.Players {
 		if p.XUID == "" && p.ShotsFired != nil {
@@ -200,7 +200,7 @@ func TestResolutionIndiceLitLesCinqBitsAvantLeMotif(t *testing.T) {
 	b.writeBits(motifXUID(t, xuid), 64)
 	b.pad(32)
 
-	got := resolvePlayerIndices([]string{xuid}, [][]byte{b.bytes()})
+	got := resolvePlayerIndices([]string{xuid}, [][]byte{b.bytes()}, nil)
 	if got[indice] != xuid {
 		t.Fatalf("resolution = %v — attendu l indice %d sur %s", got, indice, xuid)
 	}
@@ -223,7 +223,7 @@ func TestResolutionRefuseDeTrancherEntreDeuxXuids(t *testing.T) {
 	b.writeBits(motifXUID(t, x2), 64)
 	b.pad(16)
 
-	got := resolvePlayerIndices([]string{x1, x2}, [][]byte{b.bytes()})
+	got := resolvePlayerIndices([]string{x1, x2}, [][]byte{b.bytes()}, nil)
 	if got[indice] != "" {
 		t.Fatalf("indice %d resolu a %q — deux xuids le revendiquent, aucun ne doit gagner",
 			indice, got[indice])
@@ -267,7 +267,7 @@ func TestRechercheDeMotifsEquivautALaVersionNaive(t *testing.T) {
 	chunks := [][]byte{c1.bytes(), c2.bytes(), c3.bytes()}
 	xuids := []string{x1, x2, x3}
 
-	rapide := resolvePlayerIndices(xuids, chunks)
+	rapide := resolvePlayerIndices(xuids, chunks, nil)
 
 	// La version NAIVE, telle qu elle etait employee avant l optimisation.
 	numeriques := make([]uint64, 0, len(xuids))

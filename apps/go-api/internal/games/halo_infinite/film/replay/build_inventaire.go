@@ -171,5 +171,9 @@ func (a *assemblage) clore() {
 		"verdictTirs", a.doc.Coverage.Verdict["shots"],
 		"verdictGrenades", a.doc.Coverage.Verdict["grenades"],
 		"verdictPont", a.doc.Coverage.Verdict["bridge"])
+	// Les replis que l appelant apporte en donnees (kill-feed, objectifs, construction) rejoignent
+	// le compteur ICI, sur les deux chemins de la cuisson, et jamais dans le rapport du balayage
+	// que les faits persistent (lot J8.7 ; cf. versement_des_replis.go).
+	versementDeLAssemblage(a.opt.Fallbacks, a.opt.ReplisHorsBalayage)
 	attachFallbackCoverage(&a.doc, a.opt.Fallbacks) // EN DERNIER : cf. fallbacks_publication.go
 }

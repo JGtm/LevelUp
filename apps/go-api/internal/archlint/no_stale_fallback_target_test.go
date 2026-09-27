@@ -104,26 +104,50 @@ func TestAucuneCibleDeRepliNeNommeUnLotClos(t *testing.T) {
 }
 
 // ciblePerimee rend le diagnostic d'un champ, ou "" quand il tient.
+//
+// # LE PLAN DU DECODEUR EST CLOS, ET LES CIBLES SYMBOLIQUES AVEC LUI (lot J8.7, 2026-09-27)
+//
+// Jusqu au lot J8.7, un item `[ ]` ou `[!]` du plan se lisait « ouvert », une FAMILLE (`lot 3.4`) ou
+// une famille GENERIQUE (`1.9.x`, `3.x`) se lisait vivante, et un JALON (`M2`, « pas 2 de M2 ») n etait
+// meme pas releve. Or le PLAN_DECODEUR_FILM est CLOS — cloture de M4 et du chantier le 2026-09-18
+// (ADR 0034), plan archive sous `.ai/V7.5/` — et la campagne « retours rejeu », qui numerotait ses
+// lots `M1` a `M8`, l est aussi (handoff du 2026-09-25) : aucun lot de ces deux plans ne fera plus
+// rien. Une cible qui en nomme un ne designe PLUS RIEN, et c est exactement la cible sans echeance
+// que ce garde-rail existe pour refuser. D ou trois familles de references perimees :
+//
+//	numerique  un item du plan (quel que soit son statut) ou une famille d items (`3.4`, `1.8`)
+//	symbolique un jalon (`M2`, `M4b`) ou une famille generique (`1.9.x`, `3.x`)
+//
+// La cible vivante nomme un lot du PLAN VIVANT (`J11`, `J8.7`), ou une condition mesurable sans lot
+// — la forme de la regle 4 de D-10 : « retrait au jalon suivant si compte nul au corpus gate de J11 ».
 func ciblePerimee(valeur string, clos, ouverts map[string]bool) string {
-	refs := referenceDeLot.FindAllString(valeur, -1)
-	vus := make([]string, 0, len(refs))
-	for _, ref := range refs {
-		switch {
-		case ouverts[ref]:
-			return "" // une cible vivante suffit
-		case clos[ref]:
+	var vus []string
+	for _, ref := range referenceDeLot.FindAllString(valeur, -1) {
+		if clos[ref] || ouverts[ref] || estFamilleDuPlan(ref, clos, ouverts) {
 			vus = append(vus, ref)
 		}
-		// Un jeton qui n'est NI clos NI ouvert (`3.x`, `4.4`, une version) designe un lot que le
-		// plan ne coche pas encore : la cible reste vivante.
-		if !clos[ref] && !ouverts[ref] {
-			return ""
+	}
+	vus = append(vus, referenceSymbolique.FindAllString(valeur, -1)...)
+	if len(vus) == 0 {
+		return "" // aucun lot du plan clos : la cible est une condition, ou un lot du plan vivant
+	}
+	return "lot(s) ou jalon(s) d un plan CLOS : " + strings.Join(vus, ", ") + " — dans " + tronquer(valeur)
+}
+
+// referenceSymbolique : un JALON (`M2`, `M4b`) ou une FAMILLE GENERIQUE (`1.9.x`, `3.x`) — les deux
+// formes que la regle numerique ne voyait pas (cf. [ciblePerimee]).
+var referenceSymbolique = regexp.MustCompile(`\bM[0-9]+[a-z]?\b|\b[0-9]+(?:\.[0-9]+)*\.x\b`)
+
+// estFamilleDuPlan : `ref` prefixe au moins un item du plan (`3.4` pour `3.4.1`).
+func estFamilleDuPlan(ref string, clos, ouverts map[string]bool) bool {
+	for _, ens := range []map[string]bool{clos, ouverts} {
+		for id := range ens {
+			if strings.HasPrefix(id, ref+".") {
+				return true
+			}
 		}
 	}
-	if len(vus) == 0 {
-		return "" // aucun lot cite : la cible est une condition, D14 l'autorise
-	}
-	return "lot(s) coche(s) au plan : " + strings.Join(vus, ", ") + " — dans " + tronquer(valeur)
+	return false
 }
 
 // tronquer borne la citation du champ dans le message d'erreur.

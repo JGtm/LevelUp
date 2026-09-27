@@ -448,6 +448,9 @@ type Stats struct {
 	// Appariement : D OU VIENT L APPARIEMENT dead-state <-> kill-feed de chaque ligne publiee —
 	// l identite de paquet, ou la fenetre de 2,5 s (le repli). Lot 1.9.7.
 	Appariement types.ApparStats
+	// Replis : les comptes des replis que les champs ci-dessus ne portaient pas (lot J8.7, cf.
+	// `replis_du_decodage.go`). La cuisson les verse a `coverage.fallbacks`.
+	Replis ReplisDuDecodage
 }
 
 // PathStats : le gate (b) d une voie. `Population` est ce qu elle a propose, `Matched` ce dont

@@ -53,6 +53,10 @@ type walkResult struct {
 	bipHi    int
 	located  int
 	withEv   int
+	// LES COMPTES DES REPLIS DE LA MARCHE (lot J8.7), verses a [ReplisDuDecodage] : dead-states jetes par
+	// desynchronisation, par le filtre de credibilite (bande, roster, enumeration), et paquets
+	// localises a largeur libre.
+	desync, horsBande, horsRoster, horsEnum, largeurLibre int
 }
 
 // walkFrom : marche la boucle de records depuis le bit `start`, jusqu a `views` vues de
@@ -114,13 +118,21 @@ func locateFallback(pl []byte, w *grammar.World, cfg grammar.FrameConfig) int {
 
 // locateRecords : le localisateur complet — signature stricte, puis repli. -1 si aucune position.
 func locateRecords(pl []byte, w *grammar.World, cfg grammar.FrameConfig) int {
+	s, _ := locateRecordsAvecVerdict(pl, w, cfg)
+	return s
+}
+
+// locateRecordsAvecVerdict est [locateRecords], plus `aLargeurLibre` : la position vient de
+// [locateFallback] — le verdict de `repli_localisation_largeur_libre` que [runWalk] compte (lot J8.7).
+func locateRecordsAvecVerdict(pl []byte, w *grammar.World, cfg grammar.FrameConfig) (int, bool) {
 	if s := locateStrict(pl, w, cfg); s >= 0 {
 		if rec, _, ok := grammar.TryDeltaAt(pl, s, w, cfg); ok &&
 			w.GenerationMatches(rec.ID, cfg.Profil.Grammaire.GenerationStricte) {
-			return s
+			return s, false
 		}
 	}
-	return locateFallback(pl, w, cfg)
+	s := locateFallback(pl, w, cfg)
+	return s, s >= 0
 }
 
 // runWalk : la passe de marche complete sur tous les paquets type-0, dans l ordre du temps.
@@ -140,14 +152,17 @@ func runWalk(f *film, tl *timeline, r *roster, views int, prof grammar.ProfilDeB
 		start := 2
 		if hasEvents(p) {
 			res.withEv++
-			s := locateRecords(p.payload, w, cfg)
+			s, aLargeurLibre := locateRecordsAvecVerdict(p.payload, w, cfg)
 			if s < 0 {
 				continue
 			}
 			res.located++
+			res.largeurLibre += unSi(aLargeurLibre)
 			start = s
 		}
-		res.deads = append(res.deads, walkPacket(p, w, cfg, start, views, f.ms(p))...)
+		deads, desync := walkPacket(p, w, cfg, start, views, f.ms(p))
+		res.deads = append(res.deads, deads...)
+		res.desync += desync
 	}
 	sort.Slice(res.deads, func(i, j int) bool { return res.deads[i].ms < res.deads[j].ms })
 	res.selectCredible(r)
@@ -157,12 +172,16 @@ func runWalk(f *film, tl *timeline, r *roster, views int, prof grammar.ProfilDeB
 // walkPacket : les dead-states d un seul paquet. Le monde est restaure : une marche qui a
 // desynchronise ne doit pas laisser de liaison derriere elle (les deux politiques qui les
 // conservaient ont ete MESUREES COMME PERDANTES, 330 -> 328 puis 315 sur 372).
+//
+// Le second rendu compte les dead-states JETES par desynchronisation — `repli_record_desynchronise_jete`
+// (lot J8.7).
 func walkPacket(p *packet, w *grammar.World, cfg grammar.FrameConfig,
-	start, views, ms int) []deadRecord {
+	start, views, ms int) ([]deadRecord, int) {
 	snap := w.Snapshot()
 	recs := walkFrom(p.payload, w, cfg, start, views)
 	w.Restore(snap)
 	var out []deadRecord
+	jetes := 0
 	for i := range recs {
 		r := &recs[i]
 		if r.Trace.Dead == nil || !r.Trace.Dead.Mort {
@@ -173,12 +192,13 @@ func walkPacket(p *packet, w *grammar.World, cfg grammar.FrameConfig,
 		// dead-state) >> existe dans l outil de RE derriere une bascule ; elle n est PAS la
 		// configuration mesuree, et c est la configuration mesuree qui est gelee ici.
 		if r.DesyncAt != -1 {
+			jetes++
 			continue
 		}
 		out = append(out, deadRecord{ms: ms, chunk: p.chunk, pidx: p.idx, slot: int(r.Slot),
 			bit: deadStateBit(r), dead: *r.Trace.Dead})
 	}
-	return out
+	return out, jetes
 }
 
 // deadStateBit : position du composant dead-state dans le record, -1 s il n y figure pas.
@@ -201,15 +221,19 @@ const deadStateComponent = "object-dead-state-component"
 func (res *walkResult) selectCredible(r *roster) {
 	for _, d := range res.deads {
 		if d.slot < res.bipLo || d.slot > res.bipHi {
+			res.horsBande++
 			continue
 		}
 		if d.dead.EnumA < 0 || int(d.dead.EnumA) >= r.nPlay {
+			res.horsRoster++
 			continue
 		}
 		if d.dead.EnumB < 0 || int(d.dead.EnumB) >= r.nPlay {
+			res.horsRoster++
 			continue
 		}
 		if d.dead.Val0c > 9 {
+			res.horsEnum++
 			continue
 		}
 		res.credible = append(res.credible, d)

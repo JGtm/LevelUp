@@ -96,6 +96,8 @@ func (c *KillSourceCollector) collectHits(
 		return
 	}
 	if c.filmDir == nil {
+		// Repli `repli_precision_par_arme_passe_sautee` : plus silencieux depuis le lot J8.7.
+		replisDeLaPasse(ctx).Declenche(decfilm.NomPrecisionParArmePasseSautee)
 		return // numerateur non configure (chemin live sans cache disque) : best-effort silencieux
 	}
 	dir := c.filmDir(matchID)
@@ -152,7 +154,7 @@ func (c *KillSourceCollector) buildHitsBatches(
 
 	// LE PONT FilmIndex -> xuid : le resolveur EXISTANT (indice de replication -> xuid), sur les
 	// memes chunks de replication que la ventilation des tirs. Voir la reserve en tete de fichier.
-	piToXUID := resolvePlayerIndices(parts.XUIDs, ReplicationChunks(chunks))
+	piToXUID := resolvePlayerIndices(parts.XUIDs, ReplicationChunks(chunks), parts.replis)
 	resolveXUID := func(filmIndex int) string { return piToXUID[filmIndex] }
 
 	accuracy, distance := ingest.MapWeaponAccuracyFilm(matchID, stats, resolveXUID, migration.WeaponHitDistanceDecoderRev)
@@ -171,12 +173,14 @@ func (c *KillSourceCollector) resolveHitDistanceFunc(
 ) decfilm.WeaponHitDistanceFunc {
 	entry, ok := c.entreeDeCarteDesTouches(ctx, matchID)
 	if !ok {
+		replisDeLaPasse(ctx).Declenche(decfilm.NomDistancesDeToucheDesactivees)
 		return nil
 	}
 	distFn, base, err := decfilm.FilmWeaponHitDistance(dir, entry, damages, n)
 	if err != nil {
 		slog.DebugContext(ctx, "killsource: precision par arme — positions bipedes indisponibles, distances desactivees",
 			"match_id", matchID, "err", err)
+		replisDeLaPasse(ctx).Declenche(decfilm.NomDistancesDeToucheDesactivees)
 		return nil
 	}
 	slog.DebugContext(ctx, "killsource: precision par arme — distances actives",
@@ -225,6 +229,7 @@ func (c *KillSourceCollector) entreeDeCarteDesTouches(
 		return decfilm.MapQuantEntry{}, false
 	}
 	entry, err := c.entreeDeCatalogueParNom(noms)
+	premierNomSansArbitrage(ctx, noms, err)
 	if err != nil {
 		observability.AddInt(metricHitsNoMapEntry, 1)
 		slog.InfoContext(ctx, "killsource: precision par arme — carte hors catalogue de bornes, distances desactivees",

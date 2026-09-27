@@ -7,16 +7,23 @@ package fallback
 // NOTE D'ARCHITECTURE : `internal/analysis/` n'importe JAMAIS `internal/games/{slug}/`
 // (décision D9 du plan, garde-rail `archlint/no_title_package_in_analysis_test.go`, dont
 // l'allowlist doit se VIDER au pas 5 de M2). Les replis d'`objectives` sont donc DÉCLARÉS
-// ici et leur compteur ne peut pas être câblé depuis ce paquet : il viendra par inversion de
-// dépendance (un port défini côté `analysis/`, l'implémentation injectée par l'appelant) au lot
-// qui convertit le fait. C'est écrit entrée par entrée dans CibleComptage.
+// ici et leur compteur n'est pas câblé depuis ce paquet. DEPUIS LE LOT J8.7 (2026-09-27, décision 1
+// du superviseur), ils se comptent EN DONNÉES dans ce que le paquet rend déjà — le balayage du
+// statborg et le résolveur d'identité par manche (`objectives.ComptesDesReplis`) — et la table de
+// `replay` les verse ([siteDeVersement]). Deux entrées font exception, écrites dans leur
+// CibleComptage (`comptageALaConsultation`).
 
 const (
 	pkgObjectiveEvents = "internal/games/halo_infinite/film/internal/facts/objectives/"
 	pkgReplaybuild     = "internal/replaybuild/"
-	// comptageStatborg : la cible de cablage commune aux replis du lecteur statborg — un port
-	// defini cote `analysis/`, dont l'appelant fournit l'implementation (cf. note d'architecture).
-	comptageStatborg = "lot de conversion statborg (port cote analysis/)"
+	// comptageALaConsultation : la raison, ecrite une fois, des DEUX replis d `objectives` que le lot
+	// J8.7 (2026-09-27) n a PAS cables — ils se declenchent a la CONSULTATION, dans une fonction pure
+	// que chaque calque de `replay` appelle sur sa propre copie, et aucun resultat unique ne les porte
+	// en donnees (decision 1 du superviseur). Cf. `objectives/replis_des_objectifs.go`.
+	comptageALaConsultation = "DECISION D ARCHITECTURE ATTENDUE (lot J8.7, 2026-09-27) : le repli se declenche A LA CONSULTATION, " +
+		"dans une fonction pure appelee par une dizaine de calques de replay sur leurs propres copies ; aucun resultat " +
+		"unique ne le porte en donnees. Le compter demande un port injecte a chaque calque, ou un parametre de comptage " +
+		"sur les entrees publiques qui l atteignent — arbitrage du superviseur"
 )
 
 var registreObjectifsEtConstruction = []Repli{
@@ -26,15 +33,14 @@ var registreObjectifsEtConstruction = []Repli{
 		Mecanisme: "en-tete non reconnu, aucun composant decode, ou compteur hors domaine : l'enregistrement est abandonne par un `continue` muet",
 		Condition: CondNonResolu,
 		Ordre:     OrdreApresLecture,
-		Sites: []Site{{
+		Sites: []Site{{Fichier: pkgObjectiveEvents + "statborg.go", Ancre: "c.EnregistrementsAbandonnes += abandonnes"}, {Fichier: pkgReplaybuild + "matchfacts.go", Ancre: "sb.Replis.Plus(pont.identite().ComptesDesReplis())"}, siteDeVersement("NomEnregistrementStatborgAbandonne"), {
 			Fichier: pkgObjectiveEvents + "statborg.go",
 			Ancre:   "if len(comps) == 0 || !statCountersInDomain(comps) {",
 		}},
 		DatePose:        dateAudit0E,
-		CibleRetrait:    "volet statborg du registre des reports (toujours ouvert) ; hors famille 1.9 a ce jour",
+		CibleRetrait:    "le volet statborg du registre des reports (toujours ouvert) ; a defaut, " + retraitRegle4,
 		CritereRetrait:  "abandons comptes par cause et rapportes a la population lue ; retrait quand le compte est nul",
-		CompteurBranche: false,
-		CibleComptage:   comptageStatborg + ", cf. note d'architecture",
+		CompteurBranche: true,
 	},
 	{
 		Nom:       "repli_composants_statborg_arretes",
@@ -42,15 +48,14 @@ var registreObjectifsEtConstruction = []Repli{
 		Mecanisme: "un composant non decodable arrete la boucle : les suivants du MEME enregistrement sont perdus sans trace",
 		Condition: CondLectureNonPortee,
 		Ordre:     OrdreApresLecture,
-		Sites: []Site{{
+		Sites: []Site{{Fichier: pkgObjectiveEvents + "statborg.go", Ancre: "return out, h1, true"}, {Fichier: pkgObjectiveEvents + "statborg.go", Ancre: "c.ComposantsArretes += arretes"}, siteDeVersement("NomComposantsStatborgArretes"), {
 			Fichier: pkgObjectiveEvents + "statborg.go",
 			Ancre:   "v, w, ok := decodeStatComponent(pay, q)",
 		}},
 		DatePose:        dateAudit0E,
-		CibleRetrait:    "lot 3.6 (les composants manquants, archetype par archetype)",
+		CibleRetrait:    "les composants manquants portes, archetype par archetype ; a defaut, " + retraitRegle4,
 		CritereRetrait:  "0 arret en milieu d'enregistrement sur les 8 builds",
-		CompteurBranche: false,
-		CibleComptage:   comptageStatborg,
+		CompteurBranche: true,
 	},
 	{
 		Nom:       "repli_manche_zero_decretee",
@@ -84,7 +89,7 @@ var registreObjectifsEtConstruction = []Repli{
 		// « designateur 2, manche 1 absente », et 23 des 24 ont fini de 38 a 442 s DANS leur
 		// temps reglementaire sur un mode SANS manche. Les vraies prolongations, elles, sont
 		// ecrites en designateur 1 CONTIGU et la chaine les publie deja.
-		CibleRetrait:    "cloture de M2 (la revision a zero difference)",
+		CibleRetrait:    "la revision a zero difference de la chaine des manches ; a defaut, " + retraitRegle4,
 		CritereRetrait:  "0 film du corpus gate ou aucune manche n'est admise (le compteur publie en `coverage.fallbacks[]` le dit) ; retrait sec au jalon suivant si le compte reste nul",
 		CompteurBranche: true,
 	},
@@ -99,10 +104,10 @@ var registreObjectifsEtConstruction = []Repli{
 			Ancre:   "if val < 0 {",
 		}},
 		DatePose:        dateAudit0E,
-		CibleRetrait:    "lot de conversion des series nommees (hors famille 1.9 a ce jour)",
+		CibleRetrait:    "la conversion des series nommees ; a defaut, " + retraitRegle4,
 		CritereRetrait:  "emissions jetees comptees par cause ; une emission negative est un defaut d'alignement, pas une donnee a filtrer",
 		CompteurBranche: false,
-		CibleComptage:   comptageStatborg,
+		CibleComptage:   comptageALaConsultation,
 	},
 	// `repli_manche_du_slot_sautee` (pose le 2026-09-13) A QUITTE LE REGISTRE AU LOT J8.6 DU PLAN DE
 	// SUITE D AUDIT (2026-09-27, constat FO-4), AVEC SON CODE : la branche `len(kept) == 0` de
@@ -117,15 +122,14 @@ var registreObjectifsEtConstruction = []Repli{
 		Mecanisme: "aucune mort fournie : une table VIDE est rendue, indiscernable d'un pont qui n'a rien pu resoudre",
 		Condition: CondSectionAbsente,
 		Ordre:     OrdreApresLecture,
-		Sites: []Site{{
+		Sites: []Site{{Fichier: pkgObjectiveEvents + "slotidentity_deaths.go", Ancre: "c.TablesIdentiteVides++"}, siteDeVersement("NomTableIdentiteVide"), {
 			Fichier: pkgObjectiveEvents + "slotidentity_deaths.go",
 			Ancre:   "return map[int]string{}",
 		}},
 		DatePose:        dateAudit0E,
-		CibleRetrait:    "lot 1.6 porte a ce calque (la table du film donne le lien direct)",
+		CibleRetrait:    "la table du film donne le lien direct a ce calque ; a defaut, " + retraitRegle4,
 		CritereRetrait:  "0 pont vide faute de morts sur les 8 builds",
-		CompteurBranche: false,
-		CibleComptage:   comptageStatborg,
+		CompteurBranche: true,
 	},
 	{
 		Nom:       "repli_mort_sans_xuid_ignoree",
@@ -133,18 +137,17 @@ var registreObjectifsEtConstruction = []Repli{
 		Mecanisme: "une mort sans xuid est ignoree par un `continue`",
 		Condition: CondNonResolu,
 		Ordre:     OrdreApresLecture,
-		Sites: []Site{{
+		Sites: []Site{{Fichier: pkgObjectiveEvents + "slotidentity_deaths.go", Ancre: "c.MortsSansXUID++"}, siteDeVersement("NomMortSansXuidIgnoree"), {
 			Fichier: pkgObjectiveEvents + "slotidentity_deaths.go",
 			Ancre:   "if d.XUID == \"\" {",
 		}},
 		DatePose:     dateAudit0E,
-		CibleRetrait: "lot 1.8 porte jusqu'a ce calque",
+		CibleRetrait: "la table du film portee jusqu a ce calque ; a defaut, " + retraitRegle4,
 		// Contredit la décision utilisateur du 2026-09-06 (« les vies anonymes n'existent
 		// pas ; une vie est un humain ou un bot ») : une mort sans xuid est un défaut de
 		// nommage, à réparer à la source.
 		CritereRetrait:  "0 mort sans xuid sur les 8 builds",
-		CompteurBranche: false,
-		CibleComptage:   comptageStatborg,
+		CompteurBranche: true,
 	},
 	// `repli_emission_du_compteur_de_morts_jetee` (pose le 2026-09-13) A QUITTE LE REGISTRE AU LOT
 	// J8.5 DU PLAN DE SUITE D AUDIT (2026-09-27, constat FO-3), AVEC SON CODE : les deux gardes
@@ -159,7 +162,7 @@ var registreObjectifsEtConstruction = []Repli{
 		Mecanisme: "hors consensus : le MINIMUM des instants observes fait office de debut",
 		Condition: CondNonResolu,
 		Ordre:     OrdreApresLecture,
-		Sites: []Site{{
+		Sites: []Site{{Fichier: pkgObjectiveEvents + "slotidentity_rounds.go", Ancre: "c.DebutsDeMancheAuMinimum += len(min)"}, siteDeVersement("NomDebutDeMancheAuMinimum"), {
 			Fichier: pkgObjectiveEvents + "slotidentity_rounds.go",
 			Ancre:   "if cur, seen := min[r.Round]; !seen || r.TimeMS < cur {",
 		}},
@@ -171,10 +174,9 @@ var registreObjectifsEtConstruction = []Repli{
 		// fait juge — les 41 designateurs materiels du corpus de verdict sont declares par les
 		// DIX slots. Il vit donc avec le fait « l instant de debut d une manche », pas avec
 		// « quelles manches sont reelles », et il suit la chaine des bornes.
-		CibleRetrait:    "cloture de M2 (la revision a zero difference), avec la chaine des bornes de manche",
+		CibleRetrait:    "la chaine des bornes de manche lue au consensus ; a defaut, " + retraitRegle4,
 		CritereRetrait:  "0 manche du corpus gate dont le debut vienne du minimum au lieu du consensus",
-		CompteurBranche: false,
-		CibleComptage:   "lot de conversion des BORNES de manche (port cote analysis/, cf. note d architecture)",
+		CompteurBranche: true,
 	},
 	{
 		Nom:       "repli_slot_abandonne_au_premier_arrive",
@@ -182,15 +184,14 @@ var registreObjectifsEtConstruction = []Repli{
 		Mecanisme: "premier arrive, premier servi : le slot deja attribue ou le joueur deja pris est abandonne",
 		Condition: CondNonResolu,
 		Ordre:     OrdreApresLecture,
-		Sites: []Site{{
+		Sites: []Site{{Fichier: pkgObjectiveEvents + "slotidentity_rounds.go", Ancre: "replis: ri.replis.Plus(ComptesDesReplis{SlotsAbandonnes: abandonnes})"}, siteDeVersement("NomSlotAbandonneAuPremierArrive"), {
 			Fichier: pkgObjectiveEvents + "slotidentity_rounds.go",
-			Ancre:   "if _, deja := fusion[slot]; deja || pris[xuid] {",
+			Ancre:   "if prev, deja := fusion[slot]; deja || pris[xuid] {",
 		}},
 		DatePose:        dateAudit0E,
-		CibleRetrait:    "lot 1.6 porte a ce calque",
+		CibleRetrait:    "la table du film portee a ce calque ; a defaut, " + retraitRegle4,
 		CritereRetrait:  "0 abandon par premier arrive sur les 8 builds",
-		CompteurBranche: false,
-		CibleComptage:   comptageStatborg,
+		CompteurBranche: true,
 	},
 	{
 		Nom:       "repli_instant_sur_la_premiere_manche",
@@ -207,10 +208,10 @@ var registreObjectifsEtConstruction = []Repli{
 		// (`RoundIdentity.roundOfTime`), pas dans la resolution des manches. Le compter
 		// demanderait un compteur par APPEL, donc un parametre de plus a `buildPlayerScores`,
 		// qui en porte deja cinq — le plafond du depot. Il suit la chaine des bornes.
-		CibleRetrait:    "cloture de M2 (la revision a zero difference), avec la chaine des bornes de manche",
+		CibleRetrait:    "la chaine des bornes de manche lue au consensus ; a defaut, " + retraitRegle4,
 		CritereRetrait:  "0 instant anterieur a la premiere manche une fois les bornes lues au consensus",
 		CompteurBranche: false,
-		CibleComptage:   "lot de conversion des BORNES de manche (port cote analysis/, cf. note d architecture)",
+		CibleComptage:   comptageALaConsultation,
 	},
 	{
 		Nom:       "repli_famille_objectif_vide",
@@ -226,7 +227,17 @@ var registreObjectifsEtConstruction = []Repli{
 		CibleRetrait:    "question NE13 de la table (D) : le classement par `strings.Contains` sur le nom de variante est hors doctrine multi-titre (skill `halo-modes`)",
 		CritereRetrait:  "la famille vient du manifeste de titre ; 0 match a famille vide sur le parc",
 		CompteurBranche: false,
-		CibleComptage:   "lot de conversion des familles d'objectif (port cote analysis/)",
+		CibleComptage:   "aucune : outil hors production (cf. HorsProduction) — ni cuisson ni passe ou se compter",
+		// OUTIL HORS PRODUCTION (lot J8.7, 2026-09-27, decision 5 du superviseur) : `objectives.Extract`
+		// n a qu un appelant, l outil de diagnostic `cmd/diag_weapons_v3` (via `decfilm.Extract`) ; la
+		// cuisson nomme ses actions par `NamedEventsFrom` sur la famille de `ObjectiveTypeOf`. L entree
+		// reste inscrite (le code existe et decide dans l outil) et sort du ratchet des compteurs.
+		HorsProduction: &OutilHorsProduction{
+			Date:      date0927,
+			Raison:    "le seul appelant de objectives.Extract est l outil de diagnostic cmd/diag_weapons_v3 ; aucune cuisson ni passe de synchronisation ne l execute",
+			Symbole:   "Extract",
+			Appelants: []string{"cmd/diag_weapons_v3"},
+		},
 	},
 	{
 		Nom:       "repli_assistant_non_resolu_abandonne",
@@ -234,15 +245,14 @@ var registreObjectifsEtConstruction = []Repli{
 		Mecanisme: "le nom de l'assistant ne se resout pas en xuid : le champ reste vide et le frag est publie sans assistant",
 		Condition: CondNonResolu,
 		Ordre:     OrdreApresLecture,
-		Sites: []Site{{
+		Sites: []Site{{Fichier: pkgReplaybuild + "kills.go", Ancre: "r.assistantsNonResolus++"}, {Fichier: pkgReplaybuild + "kills.go", Ancre: "fb.DeclencheN(decfilm.NomAssistantNonResoluAbandonne, r.assistantsNonResolus)"}, {
 			Fichier: pkgReplaybuild + "kills.go",
 			Ancre:   "ref.AssistXUID, ref.AssistKnown = aXUID, true",
 		}},
 		DatePose:        dateAudit0E,
-		CibleRetrait:    "lot 1.8 porte (la table du film nomme les indices)",
+		CibleRetrait:    "la table du film nomme les indices de l assistant ; a defaut, " + retraitRegle4,
 		CritereRetrait:  "0 assistant non resolu sur les 8 builds",
-		CompteurBranche: false,
-		CibleComptage:   comptageFamille19,
+		CompteurBranche: true,
 	},
 	{
 		Nom:       "repli_gamertag_premier_xuid_gagne",
@@ -250,15 +260,14 @@ var registreObjectifsEtConstruction = []Repli{
 		Mecanisme: "en cas de divergence, le PREMIER vu gagne",
 		Condition: CondContradiction,
 		Ordre:     OrdreApresLecture,
-		Sites: []Site{{
+		Sites: []Site{{Fichier: pkgReplaybuild + "kills.go", Ancre: "divergences++"}, {Fichier: pkgReplaybuild + "kills.go", Ancre: "fb.DeclencheN(decfilm.NomGamertagPremierXuidGagne, divergences)"}, {
 			Fichier: pkgReplaybuild + "kills.go",
-			Ancre:   "if _, seen := out[d.Gamertag]; !seen {",
+			Ancre:   "if premier, seen := out[d.Gamertag]; !seen {",
 		}},
 		DatePose:        dateAudit0E,
-		CibleRetrait:    "lot 1.8 porte : un gamertag qui porte deux xuids est une contradiction a compter, pas a trancher",
+		CibleRetrait:    "un gamertag a deux xuids devient une contradiction comptee, plus tranchee ; a defaut, " + retraitRegle4,
 		CritereRetrait:  "0 divergence gamertag -> xuid sur les 8 builds",
-		CompteurBranche: false,
-		CibleComptage:   comptageFamille19,
+		CompteurBranche: true,
 	},
 	{
 		Nom:       "repli_mort_neutre_sans_xuid_abandonnee",
@@ -266,15 +275,14 @@ var registreObjectifsEtConstruction = []Repli{
 		Mecanisme: "victime sans xuid : la mort est abandonnee (elle ne rencontrerait aucune piste)",
 		Condition: CondNonResolu,
 		Ordre:     OrdreApresLecture,
-		Sites: []Site{{
+		Sites: []Site{{Fichier: pkgReplaybuild + "replaybuild.go", Ancre: "fb.Declenche(decfilm.NomMortNeutreSansXuidAbandonnee)"}, {
 			Fichier: pkgReplaybuild + "replaybuild.go",
 			Ancre:   "if d.VictimXUID == 0 {",
 		}},
 		DatePose:        dateAudit0E,
-		CibleRetrait:    "lot 1.8 porte jusqu'au constructeur",
+		CibleRetrait:    "la table du film portee jusqu au constructeur ; a defaut, " + retraitRegle4,
 		CritereRetrait:  "0 mort neutre sans xuid sur les 8 builds",
-		CompteurBranche: false,
-		CibleComptage:   comptageFamille19,
+		CompteurBranche: true,
 	},
 	{
 		Nom:       "repli_repere_neutre_generique_conserve",
@@ -282,15 +290,14 @@ var registreObjectifsEtConstruction = []Repli{
 		Mecanisme: "nature non etablie par l'adaptateur d'assets : le fil garde son repere generique",
 		Condition: CondSectionAbsente,
 		Ordre:     OrdreApresLecture,
-		Sites: []Site{{
+		Sites: []Site{{Fichier: pkgReplaybuild + "replaybuild.go", Ancre: "fb.Declenche(decfilm.NomRepereNeutreGeneriqueConserve)"}, {
 			Fichier: pkgReplaybuild + "replaybuild.go",
 			Ancre:   "kind, img, ok := adapter.NeutralDeathIcon(d.Source.Tag)",
 		}},
 		DatePose:        dateAudit0E,
 		CibleRetrait:    "completion de la table d'assets de morts neutres",
 		CritereRetrait:  "0 mort neutre sans icone nommee sur le parc",
-		CompteurBranche: false,
-		CibleComptage:   comptageFamille19,
+		CompteurBranche: true,
 	},
 	{
 		Nom:       "repli_relais_de_bot_abandonne",
@@ -298,7 +305,7 @@ var registreObjectifsEtConstruction = []Repli{
 		Mecanisme: "le xuid n'a pas la forme bid(N.0) : le relais est abandonne (un humain est nomme par le fil des morts)",
 		Condition: CondNonResolu,
 		Ordre:     OrdreApresLecture,
-		Sites: []Site{{
+		Sites: []Site{{Fichier: pkgReplaybuild + "replaybuild.go", Ancre: "fb.Declenche(decfilm.NomRelaisDeBotAbandonne)"}, {
 			Fichier: pkgReplaybuild + "replaybuild.go",
 			Ancre:   "if _, err := fmt.Sscanf(p.XUID, \"bid(%d.0)\", &id); err != nil {",
 		}},
@@ -311,8 +318,7 @@ var registreObjectifsEtConstruction = []Repli{
 		// par celle qui correspond au mecanisme.
 		CibleRetrait:    "le lot qui fera nommer les vies d'un relais par le registre d'identite plutot que par la participation de la base",
 		CritereRetrait:  "0 vie anonyme restante sur un siege de bot relaye, sur les 8 builds, sans passer par `Succession`",
-		CompteurBranche: false,
-		CibleComptage:   "le meme lot : le compteur n'a de sens qu'au site qui subsistera",
+		CompteurBranche: true,
 	},
 	{
 		Nom:       "repli_participant_sans_xuid_retire",
@@ -320,9 +326,9 @@ var registreObjectifsEtConstruction = []Repli{
 		Mecanisme: "un joueur sans xuid est retire du tableau par un `continue`",
 		Condition: CondSectionAbsente,
 		Ordre:     OrdreApresLecture,
-		Sites: []Site{{
-			Fichier: pkgReplaybuild + "matchfacts.go",
-			Ancre:   "func participantsDuTableau(facts port.MatchFacts) []replay.Participant {",
+		Sites: []Site{{Fichier: pkgReplaybuild + "matchfacts_feuille.go", Ancre: "fb.Declenche(decfilm.NomParticipantSansXuidRetire)"}, {
+			Fichier: pkgReplaybuild + "matchfacts_feuille.go",
+			Ancre:   "func participantsDuTableau(facts port.MatchFacts, fb *decfilm.Compteur) []replay.Participant {",
 		}},
 		DatePose: dateAudit0E,
 		// CIBLE REECRITE LE 2026-09-16 (revue de jalon M1) : elle nommait le lot 1.6.3, fusionne.
@@ -330,10 +336,9 @@ var registreObjectifsEtConstruction = []Repli{
 		// du roster), mais il n'a PAS porte cette completude au TABLEAU DES PARTICIPANTS, qui
 		// vient encore de la feuille de match : le `continue` de `participantsDuTableau` est
 		// intact. La cible est donc le lot qui bascule le tableau sur le roster du film.
-		CibleRetrait:    "M2 : le tableau des participants se derive du roster HORS LIGNE, deja complet, au lieu de la feuille de match",
+		CibleRetrait:    "le tableau des participants derive du roster HORS LIGNE, deja complet, au lieu de la feuille de match ; a defaut, " + retraitRegle4,
 		CritereRetrait:  "0 joueur retire du tableau sur les 8 builds — NON MESURE (compteur non cable au 2026-09-16)",
-		CompteurBranche: false,
-		CibleComptage:   comptageFamille19,
+		CompteurBranche: true,
 	},
 	{
 		Nom:       "repli_camp_inconnu_retire_de_la_table",
@@ -341,15 +346,14 @@ var registreObjectifsEtConstruction = []Repli{
 		Mecanisme: "un camp inconnu (-1) n'entre PAS dans la table, ce qui le rend indistinct d'un joueur absent",
 		Condition: CondSectionAbsente,
 		Ordre:     OrdreApresLecture,
-		Sites: []Site{{
-			Fichier: pkgReplaybuild + "matchfacts.go",
+		Sites: []Site{{Fichier: pkgReplaybuild + "matchfacts_feuille.go", Ancre: "retires++"}, {Fichier: pkgReplaybuild + "options.go", Ancre: "cat.replis.DeclencheN(decfilm.NomCampInconnuRetireDeLaTable, campsRetires)"}, {
+			Fichier: pkgReplaybuild + "matchfacts_feuille.go",
 			Ancre:   "if p.TeamID < 0 {",
 		}},
 		DatePose:        dateAudit0E,
-		CibleRetrait:    "lot 1.7 (V4) porte aux zones — cf. D3 (1.7) : ZoneInput.TeamByXUID prend TOUJOURS l'equipe de la base",
+		CibleRetrait:    "l equipe lue dans le film sert aux zones, la table de la base n est plus qu un controle ; a defaut, " + retraitRegle4,
 		CritereRetrait:  "les calques prennent l'equipe du film ; la table de base ne sert plus que de controle",
-		CompteurBranche: false,
-		CibleComptage:   comptageFamille19,
+		CompteurBranche: true,
 	},
 	{
 		Nom:       "repli_catalogue_de_zones_absent",
@@ -357,15 +361,14 @@ var registreObjectifsEtConstruction = []Repli{
 		Mecanisme: "le titre n'a pas de table d'objectifs : le rejeu est publie SANS aucun etat de zone",
 		Condition: CondSectionAbsente,
 		Ordre:     OrdreApresLecture,
-		Sites: []Site{{
+		Sites: []Site{{Fichier: pkgReplaybuild + "zones.go", Ancre: "fb.Declenche(decfilm.NomCatalogueDeZonesAbsent)"}, {
 			Fichier: pkgReplaybuild + "zones.go",
 			Ancre:   "titre sans table d'objectifs",
 		}},
 		DatePose:        dateAudit0E,
 		CibleRetrait:    "aucune (degradation gracieuse multi-titre, `ErrCapabilityNotSupported`) ; le COMPTE est ce qui manque",
 		CritereRetrait:  "coverage.zones distingue « titre sans table » de « carte hors catalogue » ; retrait sans objet",
-		CompteurBranche: false,
-		CibleComptage:   comptageFamille19,
+		CompteurBranche: true,
 	},
 	{
 		Nom:       "repli_fraicheur_des_derivations_par_taille",
@@ -373,15 +376,14 @@ var registreObjectifsEtConstruction = []Repli{
 		Mecanisme: "comparaison de la REVISION et de la TAILLE en octets de l'artefact — compromis assume, pas une empreinte",
 		Condition: CondFilmMuet,
 		Ordre:     OrdreSansLecture,
-		Sites: []Site{{
+		Sites: []Site{{Fichier: "internal/sync/replayartifacts/derivations_backlog.go", Ancre: "fb.Declenche(decfilm.NomFraicheurDesDerivationsParTaille)"}, {
 			Fichier: pkgReplaybuild + "derivations_index.go",
 			Ancre:   "return m.Rev == DerivationsRev && int64(m.ArtifactBytes) == st.Size()",
 		}},
 		DatePose:        dateAudit0E,
-		CibleRetrait:    "lot 4.4 (la recuisson selective par couche) : une revision par calque remplace la taille",
+		CibleRetrait:    "la recuisson selective par couche : une revision par calque remplace la taille ; a defaut, " + retraitRegle4,
 		CritereRetrait:  "la fraicheur se juge sur la revision de calque portee par le document, jamais sur une taille",
-		CompteurBranche: false,
-		CibleComptage:   "lot 4.4",
+		CompteurBranche: true,
 	},
 	{
 		// POSE AU LOT L3 DES RETOURS REJEU (2026-09-23, constat L3-R8 de sa revue adverse). La regle

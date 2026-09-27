@@ -105,6 +105,7 @@ import (
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/killsource"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
@@ -200,6 +201,11 @@ type FilmStatborg struct {
 	// pas le manifeste. L anneau d armement de la bombe se date sur elle (`bombInput`) : sans
 	// elle, un film d Assaut rejoue perdrait `chunkStartMS` et le calque d armement avec.
 	ChunkStartMS map[int]int
+	// Replis : les comptes des replis du BALAYAGE du statborg (enregistrements abandonnes,
+	// composants arretes — lot J8.7). Ils voyagent avec les enregistrements parce qu un rejeu depuis
+	// les faits ne rebalaie pas le film : sans eux, une republication les perdrait. La cuisson les
+	// verse au compteur a l assemblage ([Options.ReplisHorsBalayage]).
+	Replis objectives.ComptesDesReplis
 }
 
 // FilmFactsFile est le contenu COMPLET d un fichier de faits : l en-tete et les cinq sections.

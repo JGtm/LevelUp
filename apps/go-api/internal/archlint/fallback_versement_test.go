@@ -193,3 +193,54 @@ func TestChaqueTableDeVersementATouJoursSonSite(t *testing.T) {
 		}
 	}
 }
+
+// TestLesReplisHorsProductionNOntQueLeursOutilsPourAppelants — LA PREUVE DE LA CATEGORIE « OUTIL HORS
+// PRODUCTION » (lot J8.7, decision 5 du superviseur, 2026-09-27).
+//
+// Une entree sort du ratchet des compteurs parce que son code ne tourne QUE dans un outil. Cette
+// affirmation se VERIFIE : aucun fichier non-test du module n appelle `decfilm.<Symbole>` ni
+// `objectives.<Symbole>` hors des repertoires qu elle nomme (la facade qui le renvoie et le paquet qui
+// le definit exceptes). Le jour ou une cuisson ou une passe l appelle, l entree doit etre CABLEE.
+//
+// MUTATION JOUEE (2026-09-27) : un appel `decfilm.Extract(...)` ajoute dans `internal/replaybuild`
+// fait rougir ce test.
+func TestLesReplisHorsProductionNOntQueLeursOutilsPourAppelants(t *testing.T) {
+	racine := racineGoAPI(t)
+	for _, r := range decfilm.Table() {
+		h := r.HorsProduction
+		if h == nil {
+			continue
+		}
+		for _, sous := range []string{"internal", "cmd"} {
+			parcourirGoProduction(t, filepath.Join(racine, sous), func(rel string, f *ast.File) {
+				if appelantAdmis(rel, h.Appelants) {
+					return
+				}
+				ast.Inspect(f, func(n ast.Node) bool {
+					sel, ok := n.(*ast.SelectorExpr)
+					if !ok || sel.Sel.Name != h.Symbole {
+						return true
+					}
+					if x, ok := sel.X.(*ast.Ident); ok && (x.Name == "decfilm" || x.Name == "objectives") {
+						t.Errorf("%s : %s appelle %s.%s — le repli %s n est plus d un outil hors production : le CABLER",
+							r.Nom, rel, x.Name, h.Symbole, r.Nom)
+					}
+					return true
+				})
+			}, racine)
+		}
+	}
+}
+
+// appelantAdmis : le fichier vit sous un appelant nomme, ou dans la facade qui renvoie le symbole.
+func appelantAdmis(rel string, appelants []string) bool {
+	if strings.HasPrefix(rel, "internal/games/halo_infinite/film/decfilm/") {
+		return true
+	}
+	for _, a := range appelants {
+		if strings.HasPrefix(rel, strings.TrimSuffix(a, "/")+"/") {
+			return true
+		}
+	}
+	return false
+}

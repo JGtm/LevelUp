@@ -12,6 +12,11 @@ import (
 func (b *Builder) buildReplayOptions(
 	entry decfilm.MapQuantEntry, facts port.MatchFacts, cat entreesCatalogue, stats *filmStats,
 ) replay.Options {
+	// LES DEUX PROJECTIONS DE LA FEUILLE QUI SE REPLIENT SE CALCULENT AVANT LE RAPPORT de la construction
+	// (lot J8.7) : leurs comptes doivent y etre quand `ReplisHorsBalayage` le prend.
+	participants := participantsDuTableau(facts, cat.replis)
+	camps, campsRetires := tableDesCamps(facts)
+	cat.replis.DeclencheN(decfilm.NomCampInconnuRetireDeLaTable, campsRetires)
 	return replay.Options{
 		FrameIntervalMS: b.interval,
 		Geometry:        b.geometryFor(entry.Module),
@@ -21,12 +26,12 @@ func (b *Builder) buildReplayOptions(
 		Kills:           cat.kills,
 		MatchKills:      cat.matchKills,
 		RosterXUIDs:     rosterXUIDs(facts),
-		Participants:    participantsDuTableau(facts),
+		Participants:    participants,
 		// LA FEUILLE DE MATCH N'EST QU'UN CONTROLE DES EQUIPES (lot 1.7, decision utilisateur
 		// V4) : l'equipe publiee vient du FILM. Cette table n'alimente que
 		// `coverage.teams.{accord, contradiction, silence}` — une contradiction se compte, elle
 		// ne se corrige pas en silence.
-		ScoreboardTeams: teamByXUID(facts),
+		ScoreboardTeams: camps,
 		Bots:            cat.bots,
 		Successions:     cat.successions,
 		Objectives:      stats.objectives,
@@ -53,6 +58,12 @@ func (b *Builder) buildReplayOptions(
 		// LE PROFIL DE BALAYAGE QUE `killsource` A RETENU SUR CE FILM (lot 2.3, condition D1 du
 		// lot 2.2.a) : il voyage par les options au lieu de fuir par l'etat du processus.
 		ProfilDeBalayage: profilDeBalayageDeLaCuisson(cat.killsource),
+		// LES COMPTES DE REPLIS QUE LA CUISSON APPORTE (lot J8.7, decisions 1 et 2) : ceux du kill-feed
+		// (son resultat, decode ou RELU dans les faits), ceux des objectifs (section statborg et pont),
+		// et le rapport de la construction. Ils sont recalcules a chaque cuisson et l ASSEMBLAGE les
+		// verse une fois — jamais le compteur des options, que les faits persistes capturent.
+		ReplisHorsBalayage: replay.ReplisHorsBalayage{KillSource: cat.killsource, Objectifs: stats.replisObjectifs,
+			Construction: cat.replis.Rapport()},
 		MapQuant:         &entry,
 		Observe:          b.observe,
 		SpawnPoints:      cat.spawnPts,

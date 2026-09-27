@@ -20,6 +20,7 @@ import (
 	"database/sql"
 	"fmt"
 	"levelup/go-api/internal/analysis"
+	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 	"levelup/go-api/internal/games/halo_infinite/film/replay"
 	"levelup/go-api/internal/observability"
 	"log/slog"
@@ -75,6 +76,7 @@ func (r *SharedRoster) IdentitiesForMatch(ctx context.Context, matchID string) (
 		ParNom:     make(map[string]string, len(parXUID)),
 		ShotsFired: map[string]int{},
 		Equipes:    map[string]int{},
+		replis:     replisDeLaPasse(ctx),
 	}
 	ambigus := map[string]bool{}
 	for xuid, gt := range parXUID {
@@ -90,6 +92,8 @@ func (r *SharedRoster) IdentitiesForMatch(ctx context.Context, matchID string) (
 		}
 		out.ParNom[gt] = xuid
 	}
+	// Repli `repli_homonymes_sans_xuid` : un nom porte par deux participants ne recoit aucun xuid (lot J8.7).
+	out.replis.DeclencheN(decfilm.NomHomonymesSansXuid, len(ambigus))
 	if err := r.participantsForMatch(ctx, matchID, &out); err != nil {
 		return MatchIdentities{}, err
 	}

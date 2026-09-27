@@ -270,6 +270,7 @@ func (c *decodeCtx) finish() *Result {
 		res.Probe = &probe
 		res.Health.TagOutOfCatalogueScan = probe.Uncovered
 	}
+	res.Stats.Replis = c.replisDuResultat(kills, p.unclaimed, res.Probe != nil)
 	return res
 }
 

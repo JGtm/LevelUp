@@ -141,6 +141,9 @@ type assistScan struct {
 	gate15 bool
 	// packetsWithEvents, packetsWithKill : denominateurs de la passe.
 	packetsWithEvents, packetsWithKill int
+	// chainesArretees : chaines de kill-events plausibles arretees sur un code non modelise
+	// (`repli_chaine_evenement_code_non_modelise`, lot J8.7).
+	chainesArretees int
 }
 
 // minChain : profondeur de chaine exigee pour retenir un candidat. Trois evenements — le seuil
@@ -161,7 +164,8 @@ func scanKillEvents(f *film) *assistScan {
 			continue
 		}
 		s.packetsWithEvents++
-		recs := killEventsIn(p.payload, s.gate15)
+		recs, arretees := killEventsAvecArrets(p.payload, s.gate15)
+		s.chainesArretees += arretees
 		if len(recs) > 0 {
 			s.packetsWithKill++
 		}
@@ -173,32 +177,6 @@ func scanKillEvents(f *film) *assistScan {
 	}
 	sort.Slice(s.recs, func(i, j int) bool { return s.recs[i].ms < s.recs[j].ms })
 	return s
-}
-
-// killEventsIn : les kill-events d un paquet. Le motif R(7) == 85 precede d un bit de
-// continuation a 1 est un GENERATEUR de candidats ; c est la CHAINE qui tranche.
-func killEventsIn(pl []byte, gate15 bool) []killEventRec {
-	var out []killEventRec
-	nb := len(pl) * 8
-	for x := 1; x+8 <= nb; x++ {
-		if !estAncreDeKillEvent(pl, x) {
-			continue
-		}
-		r := nouveauCurseurEv(pl, x+7)
-		if !evPresence(r, killEventCode) {
-			continue
-		}
-		k := readKillEvent(pl, r.pos())
-		if !killEventPlausible(k) {
-			continue
-		}
-		n := evChainLen(pl, k.end, gate15, maxChainProbe)
-		if n < minChain {
-			continue
-		}
-		out = append(out, killEventRec{bit: x, fields: k, chain: n})
-	}
-	return out
 }
 
 // pickGate15 : `gate15` est un etat RUNTIME du jeu, absent du flux de bits — il ne se lit pas, il

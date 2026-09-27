@@ -193,4 +193,112 @@ const (
 	NomControleCorruptionSectionAbsente Nom = "repli_controle_corruption_section_absente"
 	// NomLocalisationLargeurLibre : `grammar/object_deaths_march.go` (et la marche de `killsource`).
 	NomLocalisationLargeurLibre Nom = "repli_localisation_largeur_libre"
+
+	// LES REPLIS DE `killsource` (sous-lot killsource du lot J8.7, 2026-09-27) : comptes en DONNEES
+	// dans `killsource.Stats` (`Replis`, et les comptes que le decodeur tenait deja), verses par la
+	// table de `replay/versement_des_replis.go` a l assemblage.
+
+	// NomRecordDesynchroniseJete : `killsource/walk.go`.
+	NomRecordDesynchroniseJete Nom = "repli_record_desynchronise_jete"
+	// NomDeadstateHorsBandeBipede : `killsource/walk.go`.
+	NomDeadstateHorsBandeBipede Nom = "repli_deadstate_hors_bande_bipede"
+	// NomDeadstateIndiceHorsRoster : `killsource/walk.go`.
+	NomDeadstateIndiceHorsRoster Nom = "repli_deadstate_indice_hors_roster"
+	// NomDeadstateCategorieHorsEnum : `killsource/walk.go`.
+	NomDeadstateCategorieHorsEnum Nom = "repli_deadstate_categorie_hors_enum"
+	// NomRosterNomInvente : `killsource/roster.go`.
+	NomRosterNomInvente Nom = "repli_roster_nom_invente"
+	// NomRosterIndiceHorsBijection : `killsource/roster.go`.
+	NomRosterIndiceHorsBijection Nom = "repli_roster_indice_hors_bijection"
+	// NomBijectionHongroiseDuFeed : `killsource/bijection.go` (`RosterTable.Inferred`).
+	NomBijectionHongroiseDuFeed Nom = "repli_bijection_hongroise_du_feed"
+	// NomCoupleRecolleSurLeVoisin : `killsource/feed_couples.go` (`CoupleStats.Recolles`).
+	NomCoupleRecolleSurLeVoisin Nom = "repli_couple_recolle_sur_le_voisin"
+	// NomGamertagParXuidBrut : `killsource/feed.go`.
+	NomGamertagParXuidBrut Nom = "repli_gamertag_par_xuid_brut"
+	// NomChunkDuPiedParArgmax : `killsource/feed.go`.
+	NomChunkDuPiedParArgmax Nom = "repli_chunk_du_pied_par_argmax"
+	// NomChaineEvenementCodeNonModelise : `killsource/eventbody.go`, `killsource/eventchain.go`.
+	NomChaineEvenementCodeNonModelise Nom = "repli_chaine_evenement_code_non_modelise"
+	// NomTypeDeChunkPerduDuManifeste : `killsource/chunks.go`.
+	NomTypeDeChunkPerduDuManifeste Nom = "repli_type_de_chunk_perdu_du_manifeste"
+	// NomMortNonRevendiqueeLaPlusProche : `killsource/hybrid.go` (`ApparStats.NonRevendiqueeFenetre`).
+	NomMortNonRevendiqueeLaPlusProche Nom = "repli_mort_non_revendiquee_la_plus_proche"
+	// NomMortDeBotPremierCandidat : `killsource/match.go` (`ApparStats.BotFenetre`).
+	NomMortDeBotPremierCandidat Nom = "repli_mort_de_bot_premier_candidat"
+	// NomAppariementParFenetreTemporelle : `killsource/paquet_identite.go`, `match.go`, `assist.go`
+	// (`ApparStats.Fenetre` + `AssistStats.ParLaFenetre`).
+	NomAppariementParFenetreTemporelle Nom = "repli_appariement_par_fenetre_temporelle"
+	// NomSondeNonLanceePorteRelachee : `killsource/decode.go`.
+	NomSondeNonLanceePorteRelachee Nom = "repli_sonde_non_lancee_porte_relachee"
+	// NomLibelleDeSourceAutres : `killsource/label.go`.
+	NomLibelleDeSourceAutres Nom = "repli_libelle_de_source_autres"
+	// NomCarteAbsenteLargeursParDefaut : `killsource/decode.go`.
+	NomCarteAbsenteLargeursParDefaut Nom = "repli_carte_absente_largeurs_par_defaut"
+	// NomLargeurMotDePoigneeInferee : `killsource/calibrate.go`.
+	NomLargeurMotDePoigneeInferee Nom = "repli_largeur_mot_de_poignee_inferee"
+
+	// LES REPLIS D `objectives` (sous-lot objectives du lot J8.7, 2026-09-27) : comptes en DONNEES
+	// par le balayage du statborg et par le resolveur d identite par manche
+	// (`objectives.ComptesDesReplis`), verses par la table de `replay` a l assemblage.
+
+	// NomEnregistrementStatborgAbandonne : `objectives/statborg.go`.
+	NomEnregistrementStatborgAbandonne Nom = "repli_enregistrement_statborg_abandonne"
+	// NomComposantsStatborgArretes : `objectives/statborg.go`.
+	NomComposantsStatborgArretes Nom = "repli_composants_statborg_arretes"
+	// NomTableIdentiteVide : `objectives/slotidentity_deaths.go`.
+	NomTableIdentiteVide Nom = "repli_table_identite_vide"
+	// NomMortSansXuidIgnoree : `objectives/slotidentity_deaths.go`.
+	NomMortSansXuidIgnoree Nom = "repli_mort_sans_xuid_ignoree"
+	// NomDebutDeMancheAuMinimum : `objectives/slotidentity_rounds.go`.
+	NomDebutDeMancheAuMinimum Nom = "repli_debut_de_manche_au_minimum"
+	// NomSlotAbandonneAuPremierArrive : `objectives/slotidentity_rounds.go`.
+	NomSlotAbandonneAuPremierArrive Nom = "repli_slot_abandonne_au_premier_arrive"
+
+	// LES REPLIS DE LA CONSTRUCTION (`internal/replaybuild`, sous-lot replaybuild du lot J8.7,
+	// 2026-09-27) : `Declenche` au site, sur le compteur de la construction de la cuisson, dont le
+	// rapport voyage dans `replay.Options.ReplisHorsBalayage` ; cites par `decfilm`.
+
+	// NomAssistantNonResoluAbandonne : `replaybuild/kills.go`.
+	NomAssistantNonResoluAbandonne Nom = "repli_assistant_non_resolu_abandonne"
+	// NomGamertagPremierXuidGagne : `replaybuild/kills.go`.
+	NomGamertagPremierXuidGagne Nom = "repli_gamertag_premier_xuid_gagne"
+	// NomMortNeutreSansXuidAbandonnee : `replaybuild/replaybuild.go`.
+	NomMortNeutreSansXuidAbandonnee Nom = "repli_mort_neutre_sans_xuid_abandonnee"
+	// NomRepereNeutreGeneriqueConserve : `replaybuild/replaybuild.go`.
+	NomRepereNeutreGeneriqueConserve Nom = "repli_repere_neutre_generique_conserve"
+	// NomRelaisDeBotAbandonne : `replaybuild/replaybuild.go`.
+	NomRelaisDeBotAbandonne Nom = "repli_relais_de_bot_abandonne"
+	// NomParticipantSansXuidRetire : `replaybuild/matchfacts_feuille.go`.
+	NomParticipantSansXuidRetire Nom = "repli_participant_sans_xuid_retire"
+	// NomCampInconnuRetireDeLaTable : `replaybuild/matchfacts_feuille.go`, compte par `options.go`.
+	NomCampInconnuRetireDeLaTable Nom = "repli_camp_inconnu_retire_de_la_table"
+	// NomCatalogueDeZonesAbsent : `replaybuild/zones.go`.
+	NomCatalogueDeZonesAbsent Nom = "repli_catalogue_de_zones_absent"
+	// NomFraicheurDesDerivationsParTaille : `replaybuild/derivations_index.go`, compte par la passe
+	// des derivations de `sync/replayartifacts` (hors cuisson : expvar par nom et journal du cycle).
+	NomFraicheurDesDerivationsParTaille Nom = "repli_fraicheur_des_derivations_par_taille"
+
+	// LES REPLIS DU COLLECTEUR (`internal/sync/killcollector`, sous-lot collecteur du lot J8.7,
+	// 2026-09-27) : `Declenche` au site, sur le compteur de la passe du film, publie en expvar par
+	// nom et au journal du film (`killcollector/replis_de_la_passe.go`) ; cites par `decfilm`.
+
+	// NomXuidVidePourNomInconnu : `killcollector/identities.go`.
+	NomXuidVidePourNomInconnu Nom = "repli_xuid_vide_pour_nom_inconnu"
+	// NomHomonymesSansXuid : `killcollector/roster.go`.
+	NomHomonymesSansXuid Nom = "repli_homonymes_sans_xuid"
+	// NomIndiceEnCollisionJete : `killcollector/shots.go`.
+	NomIndiceEnCollisionJete Nom = "repli_indice_en_collision_jete"
+	// NomPremiereOccurrenceSansConcordance : `killcollector/shots.go`.
+	NomPremiereOccurrenceSansConcordance Nom = "repli_premiere_occurrence_sans_concordance"
+	// NomPrecisionParArmePasseSautee : `killcollector/hits.go`.
+	NomPrecisionParArmePasseSautee Nom = "repli_precision_par_arme_passe_sautee"
+	// NomIdentitePontParMorts : `killcollector/positions.go`.
+	NomIdentitePontParMorts Nom = "repli_identite_pont_par_morts"
+	// NomCoequipiersPartisConstanteNulle : `killcollector/isolation_facts.go`.
+	NomCoequipiersPartisConstanteNulle Nom = "repli_coequipiers_partis_constante_nulle"
+	// NomDistancesDeToucheDesactivees : `killcollector/hits.go`.
+	NomDistancesDeToucheDesactivees Nom = "repli_distances_de_touche_desactivees"
+	// NomCartePremierNomResolu : `killcollector/map_identity.go` (et `hits.go`).
+	NomCartePremierNomResolu Nom = "repli_carte_premier_nom_resolu"
 )

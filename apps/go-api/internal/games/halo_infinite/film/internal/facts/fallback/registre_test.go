@@ -37,6 +37,9 @@ const plancherEntrees = 60
 //
 // IL ÉTAIT À 2 ET NE MORDAIT SUR RIEN (revue de jalon M1, ronde 2, constat F1) : la garde
 // `len(tranches) < 2` laissait passer 6 -> 5, donc le retrait d'un fichier de tranche entier.
+// Mesuré le 2026-09-27 (sous-lot `killsource` du lot J8.7) : TREIZE familles (la treizième,
+// `killsource/collecteur`, reçoit par déplacement pur les sept replis de `sync/killcollector` de
+// `registre_killsource.go`, qui portait 523 lignes — décision 6 du superviseur).
 // Mesuré le 2026-09-27 (sous-lot `grammar` du lot J8.7) : DOUZE familles (la douzième,
 // `filmdec/marche`, reçoit par déplacement pur les quatre replis de la marche du flux de
 // `registre_filmdec.go`, passé à 510 lignes avec les sites de compte du sous-lot).
@@ -56,7 +59,7 @@ const plancherEntrees = 60
 // Mesuré le 2026-09-16 : SIX familles (`replay/equipement` 14, `replay/identites` 22,
 // `killsource` 26, `killsource/carte` 2, `objectifs et construction` 21, `grammar` 11 — 96
 // entrées). Le plancher vaut donc la valeur réelle : une famille en moins se voit.
-const plancherTranches = 12
+const plancherTranches = 13
 
 // famillesAttendues : LES FAMILLES, NOMMÉES, DANS L'ORDRE DE L'ASSEMBLAGE.
 //
@@ -81,6 +84,7 @@ var famillesAttendues = []string{
 	"killsource",
 	"killsource/carte",
 	"killsource/calibration",
+	"killsource/collecteur",
 	"objectifs et construction",
 	"filmdec",
 	"filmdec/marche",
@@ -273,20 +277,25 @@ func abrege(s string) string {
 	return strings.TrimSpace(string(r[:max])) + "..."
 }
 
-// plafondReplisNonComptes : le nombre d entrees dont le compteur n est PAS branche.
+// replisEnAttenteDeDecision : LES SEULES ENTREES DE PRODUCTION DONT LE COMPTEUR N EST PAS BRANCHE, et
+// pourquoi. PAS UN PLAFOND : une liste NOMMEE, datee, qui ne s allonge jamais.
 //
-// LA CIBLE EST ZERO (plan J8.7 du 2026-09-25 : « ratchet `TestChaqueRepliEstCompte` (0 entree a
-// `false`) »), et ce plafond est l ETAT INTERMEDIAIRE du lot, date. Mesures : 81 sur 99 a l audit du
-// 2026-09-24 ; 82 sur 118 a l entree du lot J8 (2026-09-27, tete `7e407b942`) ; 62 sur 119 apres les
-// items J8.1 a J8.6 (trois entrees neuves, cablees ; deux retirees avec leur code) et le sous-lot
-// `replay` du J8.7 (18 cablees ; les deux replis du contexte de mort, executes par le collecteur,
-// attendent le compteur de sa passe). Il ne MONTE jamais ; il descend dans le commit qui cable, et la
-// constante disparait avec le dernier compteur : le test exige alors zero.
-// 50 apres le sous-lot `grammar` du J8.7 (2026-09-27) : douze replis de `grammar` et `profile` comptes
-// en donnees au rapport du contexte de film et verses par la table de `replay` ; deux autres
-// (`repli_controle_corruption_section_absente`, `repli_localisation_largeur_libre`) le sont pour leur
-// site de `grammar` et attendent celui de `killsource`.
-const plafondReplisNonComptes = 50
+// LA CIBLE DU LOT J8.7 ETAIT ZERO (plan J8.7 du 2026-09-25, decision 8 du superviseur). Historique des
+// mesures : 81 sur 99 a l audit du 2026-09-24 ; 82 sur 118 a l entree du lot J8 ; 62 apres les items
+// J8.1 a J8.6 et le sous-lot `replay` ; 50, 29, 23, 14 puis 3 apres les sous-lots `grammar`,
+// `killsource`, `objectives`, `replaybuild` et `collecteur` du 2026-09-27. Des trois restantes, UNE
+// sort par la categorie « outil hors production » ([Repli.HorsProduction],
+// `repli_famille_objectif_vide`), et les DEUX ci-dessous attendent une DECISION D ARCHITECTURE que le
+// lot n a pas recue : elles se declenchent A LA CONSULTATION, dans des fonctions pures appelees par une
+// dizaine de calques de `replay` sur leurs propres copies, et aucun resultat unique ne les porte en
+// donnees (decision 1 du superviseur). Cf. `comptageALaConsultation` (registre_objectifs.go).
+//
+// Retirer une entree de cette liste EST le geste qui la cable ; la liste disparait avec la derniere, et
+// le test exige alors zero.
+var replisEnAttenteDeDecision = map[Nom]string{
+	"repli_emission_hors_domaine_jetee":    "2026-09-27 — series nommees : consultation par les calques de score, de colline, de crane et par les actions nommees",
+	"repli_instant_sur_la_premiere_manche": "2026-09-27 — RoundIdentity.roundOfTime : consultation par les calques de drapeau, couronne, crane et par les actions nommees",
+}
 
 // TestChaqueRepliEstCompte — LE RATCHET DU LOT J8.7 DU PLAN DE SUITE D AUDIT (2026-09-27).
 //
@@ -295,24 +304,34 @@ const plafondReplisNonComptes = 50
 // qu elle decide peut-etre des faits a chaque film. Un repli NEUF entre donc au registre AVEC son
 // compteur au site, ou il n entre pas.
 //
-// MUTATION : remettre `CompteurBranche: false` (et une `CibleComptage`) sur une entree cablee —
-// ROUGE (63 au-dessus du plafond 62), qui nomme les entrees.
+// SEULES EXCEPTIONS : la categorie explicite « outil hors production » ([Repli.HorsProduction]) et la
+// liste nommee [replisEnAttenteDeDecision].
+//
+// MUTATION JOUEE (2026-09-27) : remettre `CompteurBranche: false` (et une `CibleComptage`) sur
+// `repli_chunks_apres_trou_abandonnes` — ROUGE, qui nomme l entree.
 func TestChaqueRepliEstCompte(t *testing.T) {
 	var nonBranches []string
+	vus := map[Nom]bool{}
 	for _, r := range Table() {
-		if !r.CompteurBranche {
-			nonBranches = append(nonBranches, string(r.Nom))
+		if r.CompteurBranche || r.HorsProduction != nil {
+			continue
 		}
+		if _, attendue := replisEnAttenteDeDecision[r.Nom]; attendue {
+			vus[r.Nom] = true
+			continue
+		}
+		nonBranches = append(nonBranches, string(r.Nom))
 	}
-	if len(nonBranches) > plafondReplisNonComptes {
-		t.Errorf("%d repli(s) sans compteur branche (plafond %d) : %v\n"+
-			"Un repli se compte a son site (`fb.Declenche(fallback.NomX)`), et son compte voyage jusqu a "+
-			"`coverage.fallbacks` (cuisson) ou jusqu a l expvar et au journal du film (collecteur).",
-			len(nonBranches), plafondReplisNonComptes, nonBranches)
+	if len(nonBranches) > 0 {
+		t.Errorf("%d repli(s) sans compteur branche : %v\n"+
+			"Un repli se compte a son site (`fb.Declenche(fallback.NomX)`) ou en DONNEES verses par la table de\n"+
+			"`replay/versement_des_replis.go`, et son compte voyage jusqu a `coverage.fallbacks` (cuisson) ou\n"+
+			"jusqu a l expvar et au journal de sa passe (collecteur, derivations).", len(nonBranches), nonBranches)
 	}
-	if len(nonBranches) < plafondReplisNonComptes {
-		t.Errorf("%d repli(s) sans compteur branche, sous le plafond %d : BAISSER le plafond dans ce "+
-			"commit — un plafond au-dessus de la mesure reconstitue une marge en silence",
-			len(nonBranches), plafondReplisNonComptes)
+	for nom := range replisEnAttenteDeDecision {
+		if !vus[nom] {
+			t.Errorf("%s est dans replisEnAttenteDeDecision mais n est plus une entree non branchee : "+
+				"le RETIRER de la liste dans le commit qui le cable", nom)
+		}
 	}
 }

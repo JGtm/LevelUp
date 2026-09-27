@@ -129,10 +129,19 @@ func SlotIdentityByDeaths(recs []types.StatRecord, deaths []types.DeathInstant) 
 
 // slotIdentityFromDeaths est le coeur pur du pont par instants.
 func slotIdentityFromDeaths(recs []types.StatRecord, deaths []types.DeathInstant) map[int]string {
+	return slotIdentityFromDeathsCompte(recs, deaths, nil)
+}
+
+// slotIdentityFromDeathsCompte est [slotIdentityFromDeaths], qui compte ses deux replis dans `c`
+// (nil : rien) — la table vide faute de morts, les morts sans xuid (lot J8.7).
+func slotIdentityFromDeathsCompte(recs []types.StatRecord, deaths []types.DeathInstant, c *ComptesDesReplis) map[int]string {
 	if len(deaths) == 0 {
+		if c != nil {
+			c.TablesIdentiteVides++
+		}
 		return map[int]string{}
 	}
-	thread := deathThreadByXUID(deaths)
+	thread := deathThreadByXUIDCompte(deaths, c)
 	claim := map[int]string{}
 	for slot, pts := range deathProgressions(recs) {
 		if xuid, ok := bestDeathClaim(pts, thread); ok {
@@ -142,11 +151,15 @@ func slotIdentityFromDeaths(recs []types.StatRecord, deaths []types.DeathInstant
 	return withoutContestedXUID(claim)
 }
 
-// deathThreadByXUID range les morts du fil par joueur, chaque serie triee.
-func deathThreadByXUID(deaths []types.DeathInstant) map[string][]int {
+// deathThreadByXUIDCompte range les morts du fil par joueur, chaque serie triee, et compte dans `c` (nil : rien) les morts
+// ignorees faute de xuid — `repli_mort_sans_xuid_ignoree` (lot J8.7).
+func deathThreadByXUIDCompte(deaths []types.DeathInstant, c *ComptesDesReplis) map[string][]int {
 	out := map[string][]int{}
 	for _, d := range deaths {
 		if d.XUID == "" {
+			if c != nil {
+				c.MortsSansXUID++
+			}
 			continue
 		}
 		out[d.XUID] = append(out[d.XUID], d.TimeMS)

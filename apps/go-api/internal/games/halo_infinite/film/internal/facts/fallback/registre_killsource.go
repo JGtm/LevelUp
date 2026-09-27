@@ -1,7 +1,8 @@
 package fallback
 
-// registre_killsource.go — les replis du décodeur de morts (`film/facts/killsource/`) et du
-// collecteur qui l'écrit en base (`internal/sync/killcollector/`).
+// registre_killsource.go — les replis du décodeur de morts (`film/facts/killsource/`). Ceux du
+// collecteur qui l'écrit en base (`internal/sync/killcollector/`) vivent dans
+// `registre_killsource_collecteur.go` depuis le lot J8.7 (2026-09-27, scission de taille).
 
 const (
 	pkgKillsource    = "internal/games/halo_infinite/film/internal/facts/killsource/"
@@ -15,17 +16,16 @@ var registreKillsource = []Repli{
 		Mecanisme: "un record dont la marche s'est desynchronisee est jete, et la marche du paquet s'arrete la",
 		Condition: CondNonResolu,
 		Ordre:     OrdreApresLecture,
-		Sites: []Site{{
+		Sites: []Site{{Fichier: pkgKillsource + "walk.go", Ancre: "jetes++"}, {Fichier: pkgKillsource + "walk.go", Ancre: "res.desync += desync"}, siteDeVersement("NomRecordDesynchroniseJete"), {
 			Fichier: pkgKillsource + "walk.go",
 			Ancre:   "if r.DesyncAt != -1 {",
 		}},
 		DatePose:     dateAudit0E,
-		CibleRetrait: "lot 3.x (registre ECS par build) : une desynchronisation est une grammaire fausse, pas une donnee",
+		CibleRetrait: "le registre ECS lu par build : une desynchronisation est une grammaire fausse, pas une donnee ; a defaut, " + retraitRegle4,
 		// PIÈGE CONNU (mémoire du chantier véhicules, 2026-09-05) : un filtre `DesyncAt == -1`
 		// JETAIT des morts de véhicule réellement lues.
 		CritereRetrait:  "0 record desynchronise sur les 8 builds une fois le registre ECS resolu par build",
-		CompteurBranche: false,
-		CibleComptage:   comptageFamille19,
+		CompteurBranche: true,
 	},
 	{
 		Nom:       "repli_deadstate_hors_bande_bipede",
@@ -33,15 +33,14 @@ var registreKillsource = []Repli{
 		Mecanisme: "slot hors de la bande de slots bipede du film : le dead-state est rejete par un `continue` nu",
 		Condition: CondNonResolu,
 		Ordre:     OrdreApresLecture,
-		Sites: []Site{{
+		Sites: []Site{{Fichier: pkgKillsource + "walk.go", Ancre: "res.horsBande++"}, siteDeVersement("NomDeadstateHorsBandeBipede"), {
 			Fichier: pkgKillsource + "walk.go",
 			Ancre:   "if d.slot < res.bipLo || d.slot > res.bipHi {",
 		}},
 		DatePose:        dateAudit0E,
-		CibleRetrait:    "lot 3.5 (la bande de slots bipede par build)",
+		CibleRetrait:    "la bande de slots bipede lue au profil du build ; a defaut, " + retraitRegle4,
 		CritereRetrait:  "la bande vient du profil du build ; 0 rejet hors bande sur les 8 builds",
-		CompteurBranche: false,
-		CibleComptage:   comptageFamille19,
+		CompteurBranche: true,
 	},
 	{
 		Nom:       "repli_deadstate_indice_hors_roster",
@@ -49,15 +48,14 @@ var registreKillsource = []Repli{
 		Mecanisme: "indice de victime ou de tueur hors [0, nPlay) : rejete par un `continue` nu",
 		Condition: CondNonResolu,
 		Ordre:     OrdreApresLecture,
-		Sites: []Site{{
+		Sites: []Site{{Fichier: pkgKillsource + "walk.go", Ancre: "res.horsRoster++"}, siteDeVersement("NomDeadstateIndiceHorsRoster"), {
 			Fichier: pkgKillsource + "walk.go",
 			Ancre:   "if d.dead.EnumA < 0 || int(d.dead.EnumA) >= r.nPlay {",
 		}},
 		DatePose:        dateAudit0E,
-		CibleRetrait:    "lot 1.8 (le kill feed prend la table du film) porte jusqu'au rejet",
+		CibleRetrait:    "le kill feed prend la table du film jusqu au rejet ; a defaut, " + retraitRegle4,
 		CritereRetrait:  "0 rejet pour indice hors roster sur les 8 builds ; un indice hors domaine est un defaut de largeur, pas une donnee",
-		CompteurBranche: false,
-		CibleComptage:   comptageFamille19,
+		CompteurBranche: true,
 	},
 	{
 		Nom:       "repli_deadstate_categorie_hors_enum",
@@ -65,15 +63,14 @@ var registreKillsource = []Repli{
 		Mecanisme: "valeur hors de l'enumeration connue (> 9) : le dead-state est rejete par un `continue` nu",
 		Condition: CondNonResolu,
 		Ordre:     OrdreApresLecture,
-		Sites: []Site{{
+		Sites: []Site{{Fichier: pkgKillsource + "walk.go", Ancre: "res.horsEnum++"}, siteDeVersement("NomDeadstateCategorieHorsEnum"), {
 			Fichier: pkgKillsource + "walk.go",
 			Ancre:   "if d.dead.Val0c > 9 {",
 		}},
 		DatePose:        dateAudit0E,
-		CibleRetrait:    "lot 3.x (enumeration par build)",
+		CibleRetrait:    "l enumeration des categories lue au profil du build ; a defaut, " + retraitRegle4,
 		CritereRetrait:  "0 categorie hors enumeration sur les 8 builds",
-		CompteurBranche: false,
-		CibleComptage:   comptageFamille19,
+		CompteurBranche: true,
 	},
 	{
 		Nom:       "repli_localisation_largeur_libre",
@@ -81,7 +78,7 @@ var registreKillsource = []Repli{
 		Mecanisme: "seconde passe a LARGEUR LIBRE, essayee seulement apres l'echec de la signature",
 		Condition: CondNonResolu,
 		Ordre:     OrdreApresLecture,
-		Sites: []Site{{
+		Sites: []Site{{Fichier: pkgKillsource + "walk.go", Ancre: "res.largeurLibre += unSi(aLargeurLibre)"}, {
 			Fichier: pkgKillsource + "walk.go",
 			Ancre:   "func locateFallback(pl []byte, w *grammar.World, cfg grammar.FrameConfig) int {",
 		}, {
@@ -97,13 +94,12 @@ var registreKillsource = []Repli{
 			Ancre:   "fc.NoterReplis(ComptesDesReplis{LocalisationsALargeurLibre: largeurLibre})",
 		}, siteDeVersement("NomLocalisationLargeurLibre")},
 		DatePose:     dateAudit0E,
-		CibleRetrait: "lot 3.4 (largeurs calibrees par la carte et le build)",
+		CibleRetrait: "les largeurs calibrees par la carte et le build ; a defaut, " + retraitRegle4,
 		// Ce repli-ci porte DÉJÀ son nom dans le code (`locateFallback`, `marchLocateFallback`) :
 		// c'est ce que la convention du garde-rail exige, et il entre au registre pour cette
 		// raison.
 		CritereRetrait:  "0 recours a la largeur libre sur les 8 builds une fois les largeurs prises au profil",
-		CompteurBranche: false,
-		CibleComptage:   comptageFamille19,
+		CompteurBranche: true,
 	},
 	{
 		Nom:       "repli_roster_nom_invente",
@@ -111,15 +107,14 @@ var registreKillsource = []Repli{
 		Mecanisme: "moins de noms que de sieges : des noms ?N sont fabriques pour rendre le probleme d'affectation carre",
 		Condition: CondNonResolu,
 		Ordre:     OrdreApresLecture,
-		Sites: []Site{{
+		Sites: []Site{{Fichier: pkgKillsource + "roster.go", Ancre: "r.nomsInventes = max(0, r.nPlay-len(r.names))"}, siteDeVersement("NomRosterNomInvente"), {
 			Fichier: pkgKillsource + "roster.go",
 			Ancre:   "r.names = append(r.names, fmt.Sprintf(\"?%d\", len(r.names)))",
 		}},
 		DatePose:        dateAudit0E,
-		CibleRetrait:    "lot 1.8 (la table du film donne le lien indice -> joueur) : un nom fabrique ne doit plus servir",
+		CibleRetrait:    "la table du film donne le lien indice -> joueur : un nom fabrique ne sert plus ; a defaut, " + retraitRegle4,
 		CritereRetrait:  "0 nom ?N fabrique sur les 8 builds quand la table du film est lue",
-		CompteurBranche: false,
-		CibleComptage:   comptageFamille19,
+		CompteurBranche: true,
 	},
 	{
 		Nom:       "repli_roster_indice_hors_bijection",
@@ -127,15 +122,14 @@ var registreKillsource = []Repli{
 		Mecanisme: "la chaine « ? » est rendue ; pour la victime et le tueur elle part en base telle quelle",
 		Condition: CondNonResolu,
 		Ordre:     OrdreApresLecture,
-		Sites: []Site{{
+		Sites: []Site{{Fichier: pkgKillsource + "replis_du_decodage.go", Ancre: "r.NomsHorsBijection += unSi(kills[i].Victim == nomHorsBijection)"}, siteDeVersement("NomRosterIndiceHorsBijection"), {
 			Fichier: pkgKillsource + "roster.go",
 			Ancre:   "return \"?\"",
 		}},
 		DatePose:        dateAudit0E,
-		CibleRetrait:    "lot 1.8 porte jusqu'a l'ecriture en base",
+		CibleRetrait:    "la table du film portee jusqu a l ecriture en base ; a defaut, " + retraitRegle4,
 		CritereRetrait:  "0 ligne de mort ecrite avec un nom « ? » sur le parc",
-		CompteurBranche: false,
-		CibleComptage:   comptageFamille19,
+		CompteurBranche: true,
 	},
 	{
 		Nom:       "repli_bijection_hongroise_du_feed",
@@ -143,20 +137,19 @@ var registreKillsource = []Repli{
 		Mecanisme: "affectation hongroise sur les votes du kill feed, puis raffinement local",
 		Condition: CondSectionAbsente,
 		Ordre:     OrdreApresLecture,
-		Sites: []Site{{
+		Sites: []Site{siteDeVersement("NomBijectionHongroiseDuFeed"), {
 			Fichier: pkgKillsource + "bijection.go",
 			Ancre:   "r.table.Inferred = len(free)",
 		}},
 		DatePose:     "2026-09-14",
-		CibleRetrait: "cloture de M1 puis recuisson : la table du film (lot 1.8) doit couvrir 100 % des indices",
+		CibleRetrait: "la table du film couvre 100 % des indices ; a defaut, " + retraitRegle4,
 		// Repli POSÉ ET COMPTÉ par le lot 1.8 : `RosterTable.Inferred` est son compteur, publié
 		// dans les statistiques de collecte. Il entre au registre pour que sa condition de
 		// retrait soit lisible au même endroit que les autres.
 		CritereRetrait:  "RosterTable.Inferred a 0 sur le parc apres la recuisson de cloture M1",
-		CompteurBranche: false,
+		CompteurBranche: true,
 		// CIBLE REECRITE LE 2026-09-16 (revue de jalon M1) : elle nommait le lot 1.9.3, fusionne
 		// le 2026-09-15 sans avoir publie ce compte sous son nom de registre.
-		CibleComptage: "cloture de M1, avec la recuisson (le compte existe deja sous RosterTable.Inferred ; il reste a le publier sous ce nom)",
 	},
 	{
 		Nom:       "repli_couple_recolle_sur_le_voisin",
@@ -168,22 +161,19 @@ var registreKillsource = []Repli{
 		// BOT_METADATA), ou deux enregistrements en nomment des victimes differentes.
 		Condition: CondSectionAbsente,
 		Ordre:     OrdreApresLecture,
-		Sites: []Site{{
+		Sites: []Site{siteDeVersement("NomCoupleRecolleSurLeVoisin"), {
 			Fichier: pkgKillsource + "feed_couples.go",
 			Ancre:   "func (res *resolveurDeCouples) repliRecollageSurLeVoisin(i int) {",
 		}},
 		DatePose:     dateVague2,
-		CibleRetrait: "cloture de M1 puis lot 3.6 : la table du film doit couvrir 100 % des indices, et la chaine d'evenements ne doit plus s'arreter",
+		CibleRetrait: "la table du film couvre 100 % des indices et la chaine d evenements ne s arrete plus ; a defaut, " + retraitRegle4,
 		// MESURE DU LOT 1.9.3 (21 films entiers, 8 builds, 14 temoins) : 281 kills sans mort en
 		// face, 198 decides par la lecture (198 accords, 0 contradiction), 1 victime BOT nommee,
 		// 1 ambigu, 81 muets. Les 81 muets sont le compte a faire tomber ; 46 d'entre eux
 		// viennent des trois films sans table de joueurs exploitable (`a349fea8`, `a521164d`,
 		// `50247b26`), les autres d'une chaine d'evenements qui s'arrete avant le kill-event.
 		CritereRetrait:  "CoupleStats.Recolles a 0 sur les 8 builds et sur le corpus gate",
-		CompteurBranche: false,
-		CibleComptage: "cloture M1 ou pas 2 de M2 : le compte EXISTE deja sous `CoupleStats.Recolles` " +
-			"et sort en `killsource_couple_recolle` ; il reste a le publier sous ce nom dans " +
-			"`coverage.fallbacks[]`, ce qui demande au compteur de traverser `replaybuild/kills.go`",
+		CompteurBranche: true,
 	},
 	{
 		Nom:       "repli_gamertag_par_xuid_brut",
@@ -191,15 +181,14 @@ var registreKillsource = []Repli{
 		Mecanisme: "la forme xuid:<N> remplace le nom",
 		Condition: CondSectionAbsente,
 		Ordre:     OrdreApresLecture,
-		Sites: []Site{{
+		Sites: []Site{{Fichier: pkgKillsource + "feed.go", Ancre: "kf.nomsParXUID += unSi(parXUID)"}, siteDeVersement("NomGamertagParXuidBrut"), {
 			Fichier: pkgKillsource + "feed.go",
 			Ancre:   "name := gt[e.XUID]",
 		}},
 		DatePose:        dateAudit0E,
-		CibleRetrait:    "lot 1.8 porte : la table du film nomme les joueurs a zero mort",
+		CibleRetrait:    "la table du film nomme les joueurs a zero mort ; a defaut, " + retraitRegle4,
 		CritereRetrait:  "0 nom sous la forme xuid:<N> sur les 8 builds",
-		CompteurBranche: false,
-		CibleComptage:   comptageFamille19,
+		CompteurBranche: true,
 	},
 	{
 		Nom:       "repli_chunk_du_pied_par_argmax",
@@ -207,19 +196,18 @@ var registreKillsource = []Repli{
 		Mecanisme: "chaque chunk est parse en evenements de highlight et celui qui porte le PLUS de kills gagne",
 		Condition: CondNonResolu,
 		Ordre:     OrdreDevantLaLecture,
-		Sites: []Site{{
+		Sites: []Site{{Fichier: pkgKillsource + "replis_du_decodage.go", Ancre: "// `loadKillFeed` designe le pied par argmax a chaque decodage"}, siteDeVersement("NomChunkDuPiedParArgmax"), {
 			Fichier: pkgKillsource + "feed.go",
 			Ancre:   "if nk > bestN {",
 		}},
 		DatePose:     dateAudit0E,
-		CibleRetrait: "lot 1.9.8 (le chunk du pied pris au type du manifeste)",
+		CibleRetrait: "le chunk du pied pris au type du manifeste ; a defaut, " + retraitRegle4,
 		// ORDRE `devant_la_lecture` : le TYPE du chunk est porté par `source.Film.Meta()` et
 		// déjà lu par ce patron (`objectives/extract.go`) ; l'argmax décide sans le
 		// consulter. RÉSERVE du plan : le manifeste est un descripteur EXTERNE, l'argmax restera
 		// donc en repli COMPTÉ après la conversion.
 		CritereRetrait:  "le type du manifeste decide ; l'argmax ne se declenche que sur un film sans manifeste, et son compte le dit",
-		CompteurBranche: false,
-		CibleComptage:   "lot 1.9.8",
+		CompteurBranche: true,
 	},
 	{
 		Nom:       "repli_chaine_evenement_code_non_modelise",
@@ -227,15 +215,14 @@ var registreKillsource = []Repli{
 		Mecanisme: "code hors des 28 modelises (95 codes sur 123) ou cfgIdx non resolu : la chaine s'arrete",
 		Condition: CondLectureNonPortee,
 		Ordre:     OrdreApresLecture,
-		Sites: []Site{
+		Sites: []Site{{Fichier: pkgKillsource + "eventchain.go", Ancre: "arretees += unSi(arretee)"}, {Fichier: pkgKillsource + "assist.go", Ancre: "s.chainesArretees += arretees"}, siteDeVersement("NomChaineEvenementCodeNonModelise"),
 			{Fichier: pkgKillsource + "eventbody.go", Ancre: "func evBody(r *curseurEv, code int, gate15 bool) bool {"},
 			{Fichier: pkgKillsource + "eventchain.go", Ancre: "if c < 0 || c >= len(presRange) {"},
 		},
 		DatePose:        dateAudit0E,
-		CibleRetrait:    "lot 3.6 (les composants manquants, archetype par archetype)",
+		CibleRetrait:    "les codes d evenement manquants portes, archetype par archetype, ou leur longueur lue chez l ecrivain ; a defaut, " + retraitRegle4,
 		CritereRetrait:  "les 95 codes non modelises portes, ou leur longueur lue chez l'ecrivain ; 0 arret de chaine sur les 8 builds",
-		CompteurBranche: false,
-		CibleComptage:   comptageFamille19,
+		CompteurBranche: true,
 	},
 	{
 		Nom:       "repli_type_de_chunk_perdu_du_manifeste",
@@ -243,7 +230,7 @@ var registreKillsource = []Repli{
 		Mecanisme: "la traduction du film ne recopie PAS Meta() : le type du manifeste est perdu, et l'argmax le remplace en aval",
 		Condition: CondInconditionnel,
 		Ordre:     OrdreDevantLaLecture,
-		Sites: []Site{{
+		Sites: []Site{{Fichier: pkgKillsource + "replis_du_decodage.go", Ancre: "// `loadFilm` jette le type du manifeste a chaque decodage"}, siteDeVersement("NomTypeDeChunkPerduDuManifeste"), {
 			Fichier: pkgKillsource + "chunks.go",
 			// L ANCRE EST LA TRADUCTION ELLE-MEME depuis le lot 2.1.4 : c est LA ligne ou
 			// `Meta()` est perdu, donc celle que ce repli decrit. Elle pointait jusque-la sur
@@ -252,12 +239,11 @@ var registreKillsource = []Repli{
 			Ancre: "f := &film{src: src, packets: packetsOf(src)}",
 		}},
 		DatePose:     dateAudit0E,
-		CibleRetrait: "lot 1.9.8 (cause racine de l'argmax du pied)",
+		CibleRetrait: "le type du manifeste voyage jusqu au decodeur (cause racine de l argmax du pied) ; a defaut, " + retraitRegle4,
 		// DÉFAUT DÉJÀ MESURÉ (audit 0.E) : c'est la cause racine de la ligne A7. Le type existe
 		// à l'entrée du décodeur et il est jeté à la traduction.
 		CritereRetrait:  "Meta() voyage jusqu'au decodeur ; repli_chunk_du_pied_par_argmax se declenche alors seulement sans manifeste",
-		CompteurBranche: false,
-		CibleComptage:   "lot 1.9.8",
+		CompteurBranche: true,
 	},
 	{
 		Nom:       "repli_mort_non_revendiquee_la_plus_proche",
@@ -269,7 +255,7 @@ var registreKillsource = []Repli{
 		// associer : le repli y est la voie normale, et c'est un negatif MESURE.
 		Condition: CondNonResolu,
 		Ordre:     OrdreApresLecture,
-		Sites: []Site{
+		Sites: []Site{siteDeVersement("NomMortNonRevendiqueeLaPlusProche"),
 			{
 				Fichier: pkgKillsource + "hybrid.go",
 				Ancre:   "func (p *pass) choisirNonRevendiquee(e feedEvent) (sourcedCandidate, bool, bool) {",
@@ -280,15 +266,11 @@ var registreKillsource = []Repli{
 			},
 		},
 		DatePose:     dateAudit0E,
-		CibleRetrait: "lot 3.6 (composants manquants) : une mort non revendiquee n'aura de lecture que si le film nomme son instant autrement que par le kill feed",
+		CibleRetrait: "le film nomme l instant d une mort non revendiquee autrement que par le kill feed (composants manquants portes) ; a defaut, " + retraitRegle4,
 		// MESURE DU LOT 1.9.7 (21 films entiers, 8 builds) : 17 morts non revendiquees, dont
 		// 17 SANS aucune identite en face. Le repli les sert toutes, et le compte le dit.
 		CritereRetrait:  "ApparStats.NonRevendiqueeFenetre a 0 sur les 8 builds et sur le corpus gate",
-		CompteurBranche: false,
-		CibleComptage: "cloture M1 ou pas 2 de M2 : le compte EXISTE sous `ApparStats." +
-			"NonRevendiqueeFenetre` et sort en `killsource_appariement_non_revendiquee_fenetre` ; " +
-			"il reste a le publier sous ce nom dans `coverage.fallbacks[]`, ce qui demande au " +
-			"compteur de traverser `replaybuild/kills.go`",
+		CompteurBranche: true,
 	},
 	{
 		Nom:       "repli_mort_de_bot_premier_candidat",
@@ -300,7 +282,7 @@ var registreKillsource = []Repli{
 		// kill-event a associer, et le repli reste la voie normale de ces deux populations.
 		Condition: CondNonResolu,
 		Ordre:     OrdreApresLecture,
-		Sites: []Site{
+		Sites: []Site{siteDeVersement("NomMortDeBotPremierCandidat"),
 			{
 				Fichier: pkgKillsource + "match.go",
 				Ancre:   "func (c *decodeCtx) resolveBotDeaths() []botMatch {",
@@ -315,15 +297,12 @@ var registreKillsource = []Repli{
 			},
 		},
 		DatePose:     dateAudit0E,
-		CibleRetrait: "lot 3.6 (composants manquants) : la chaine d'evenements doit atteindre le kill-event 85 des morts de bot",
+		CibleRetrait: "la chaine d evenements atteint le kill-event 85 des morts de bot (composants manquants portes) ; a defaut, " + retraitRegle4,
 		// MESURE DU LOT 1.9.7 (21 films entiers, 8 builds) : 6 morts DE bot et 4 morts PAR un
 		// bot apparieees, dont UNE SEULE par l'identite de paquet — les 9 autres n'ont aucune
 		// identite en face.
 		CritereRetrait:  "ApparStats.BotFenetre a 0 sur les 8 builds et sur le corpus gate",
-		CompteurBranche: false,
-		CibleComptage: "cloture M1 ou pas 2 de M2 : le compte EXISTE sous `ApparStats.BotFenetre` " +
-			"et sort en `killsource_appariement_bot_fenetre` ; il reste a le publier sous ce nom " +
-			"dans `coverage.fallbacks[]`, ce qui demande au compteur de traverser `replaybuild/kills.go`",
+		CompteurBranche: true,
 	},
 	{
 		Nom:       "repli_appariement_par_fenetre_temporelle",
@@ -337,7 +316,7 @@ var registreKillsource = []Repli{
 		// ou paquet designe qui ne porte aucun dead-state satisfaisant la contrainte de couple.
 		Condition: CondNonResolu,
 		Ordre:     OrdreApresLecture,
-		Sites: []Site{
+		Sites: []Site{siteDeVersement("NomAppariementParFenetreTemporelle"),
 			{
 				Fichier: pkgKillsource + "paquet_identite.go",
 				Ancre:   "func choisirParIdentitePuisFenetre(n int, identite, fenetre, couple func(int) bool) (int, bool) {",
@@ -360,7 +339,7 @@ var registreKillsource = []Repli{
 			},
 		},
 		DatePose:     "2026-09-16",
-		CibleRetrait: "cloture de M1 puis lot 3.6 : tout instant du kill feed doit porter un kill-event 85 aux deux indices EPINGLES",
+		CibleRetrait: "tout instant du kill feed porte un kill-event 85 aux deux indices EPINGLES ; a defaut, " + retraitRegle4,
 		// MESURE DU LOT 1.9.7 (21 films entiers, 8 builds, 14 temoins du corpus gate) : 2 899
 		// appariements, 2 205 a identite EGALE des deux cotes, 2 a identite DIFFERENTE, 692 SANS
 		// identite du cote feed. L'appariement par identite seule rend 2 204 accords et ZERO
@@ -370,11 +349,7 @@ var registreKillsource = []Repli{
 		// refusee sur les films sans section d'identification).
 		CritereRetrait: "ApparStats.Fenetre et AssistStats.ParLaFenetre a 0 sur les 8 builds et " +
 			"sur le corpus gate — le site de l'assistant y est DEJA a zero",
-		CompteurBranche: false,
-		CibleComptage: "cloture M1 ou pas 2 de M2 : le compte EXISTE sous `ApparStats.Fenetre` et " +
-			"`AssistStats.ParLaFenetre`, et sort en `killsource_appariement_fenetre` et " +
-			"`killsource_assistant_fenetre` ; il reste a le publier sous ces noms dans " +
-			"`coverage.fallbacks[]`, ce qui demande au compteur de traverser `replaybuild/kills.go`",
+		CompteurBranche: true,
 	},
 	{
 		Nom:       "repli_sonde_non_lancee_porte_relachee",
@@ -382,15 +357,14 @@ var registreKillsource = []Repli{
 		Mecanisme: "couverture jugee complete : la sonde a porte relachee n'est pas lancee et Probe reste nil — indiscernable d'une sonde a zero",
 		Condition: CondNonResolu,
 		Ordre:     OrdreApresLecture,
-		Sites: []Site{{
+		Sites: []Site{{Fichier: pkgKillsource + "replis_du_decodage.go", Ancre: "unSi(!sondeLancee)"}, siteDeVersement("NomSondeNonLanceePorteRelachee"), {
 			Fichier: pkgKillsource + "decode.go",
 			Ancre:   "if cov.Covered < cov.RealPairs {",
 		}},
 		DatePose:        dateAudit0E,
-		CibleRetrait:    "lot de cloture du diagnostic killsource (hors famille 1.9)",
+		CibleRetrait:    "la cloture du diagnostic killsource (sonde non lancee distinguee de sonde lancee a zero) ; a defaut, " + retraitRegle4,
 		CritereRetrait:  "Probe distingue « non lancee » de « lancee, zero trouve » ; le repli disparait avec l'ambiguite",
-		CompteurBranche: false,
-		CibleComptage:   comptageFamille19,
+		CompteurBranche: true,
 	},
 	{
 		Nom:       "repli_libelle_de_source_autres",
@@ -398,130 +372,13 @@ var registreKillsource = []Repli{
 		Mecanisme: "nom vide ou non publiable : la chaine « Autres » est publiee a sa place",
 		Condition: CondSectionAbsente,
 		Ordre:     OrdreApresLecture,
-		Sites: []Site{{
+		Sites: []Site{{Fichier: pkgKillsource + "replis_du_decodage.go", Ancre: "r.LibellesAutres += unSi(!kills[i].Source.Named)"}, siteDeVersement("NomLibelleDeSourceAutres"), {
 			Fichier: pkgKillsource + "label.go",
 			Ancre:   "if l.Name != \"\" && l.Publishable() {",
 		}},
 		DatePose:        dateAudit0E,
-		CibleRetrait:    "completion du catalogue de sources (206 tags sur 468 concernes, audit 0.E)",
+		CibleRetrait:    "la completion du catalogue de sources (206 tags sur 468 concernes a l audit du 2026-09-13) ; a defaut, " + retraitRegle4,
 		CritereRetrait:  "0 libelle « Autres » publie sur le parc",
-		CompteurBranche: false,
-		CibleComptage:   comptageFamille19,
-	},
-	{
-		Nom:       "repli_xuid_vide_pour_nom_inconnu",
-		Fait:      "le xuid de la victime d'une mort ecrite en base",
-		Mecanisme: "le nom ne se resout dans aucune table : un xuid VIDE est rendu et la mort est ecrite sans xuid de victime",
-		Condition: CondNonResolu,
-		Ordre:     OrdreApresLecture,
-		Sites: []Site{{
-			Fichier: pkgKillcollector + "identities.go",
-			Ancre:   "return \"\", nom",
-		}},
-		DatePose:        dateAudit0E,
-		CibleRetrait:    "lot 1.8 porte jusqu'a l'ecriture (la table du film nomme les joueurs a zero mort)",
-		CritereRetrait:  "0 ligne de `match_deaths` sans xuid de victime sur le parc",
-		CompteurBranche: false,
-		CibleComptage:   comptageFamille19,
-	},
-	{
-		Nom:       "repli_homonymes_sans_xuid",
-		Fait:      "le xuid des participants qui portent le MEME gamertag dans un match",
-		Mecanisme: "aucun des deux n'est retenu — ecrire les morts de l'un sous le xuid de l'autre serait pire",
-		Condition: CondContradiction,
-		Ordre:     OrdreApresLecture,
-		Sites: []Site{{
-			Fichier: pkgKillcollector + "roster.go",
-			Ancre:   "ambigus := map[string]bool{}",
-		}},
-		DatePose:        dateAudit0E,
-		CibleRetrait:    "lot 1.8 porte : la table du film donne l'index, pas le nom, donc l'homonymie cesse d'etre un obstacle",
-		CritereRetrait:  "0 match a homonymes non resolus sur le parc ; le repli est SAIN, c'est son silence qui ne l'est pas",
-		CompteurBranche: false,
-		CibleComptage:   comptageFamille19,
-	},
-	{
-		Nom:       "repli_indice_en_collision_jete",
-		Fait:      "le joueur d'un indice de replication, pour les tirs et les touches",
-		Mecanisme: "deux xuids sur le meme indice : les DEUX sont jetes",
-		Condition: CondContradiction,
-		Ordre:     OrdreApresLecture,
-		Sites: []Site{{
-			Fichier: pkgKillcollector + "shots.go",
-			Ancre:   "out[pi] = \"\"",
-		}},
-		DatePose:        dateAudit0E,
-		CibleRetrait:    "lot 1.8 porte aux tirs et aux touches (D3 (1.8) : cette voie sert `match_weapon_shots` et `match_weapon_accuracy`)",
-		CritereRetrait:  "l'indice vient de la table du film ; 0 collision sur le parc",
-		CompteurBranche: false,
-		CibleComptage:   comptageFamille19,
-	},
-	{
-		Nom:       "repli_premiere_occurrence_sans_concordance",
-		Fait:      "quel motif de xuid retenir quand un chunk en porte plusieurs",
-		Mecanisme: "la PREMIERE occurrence gagne, sans exiger que les suivantes concordent",
-		Condition: CondNonResolu,
-		Ordre:     OrdreApresLecture,
-		Sites: []Site{{
-			Fichier: pkgKillcollector + "shots.go",
-			Ancre:   "continue // premiere occurrence gagnante",
-		}},
-		DatePose:     dateAudit0E,
-		CibleRetrait: "lot 1.8 porte aux tirs et aux touches",
-		// CONTRASTE MESURÉ par l'audit 0.E : `replay/player_index.go` REFUSE de publier sur
-		// désaccord, ce chemin-ci retient la première valeur vue.
-		CritereRetrait:  "l'indice vient de la table du film ; la voie par motifs est retiree avec ses tests",
-		CompteurBranche: false,
-		CibleComptage:   comptageFamille19,
-	},
-	{
-		Nom:       "repli_precision_par_arme_passe_sautee",
-		Fait:      "la precision par arme d'un match",
-		Mecanisme: "cache de films non configure : toute la passe est sautee, en best-effort silencieux",
-		Condition: CondSectionAbsente,
-		Ordre:     OrdreSansLecture,
-		Sites: []Site{{
-			Fichier: pkgKillcollector + "hits.go",
-			Ancre:   "numerateur non configure (chemin live sans cache disque)",
-		}},
-		DatePose:        dateAudit0E,
-		CibleRetrait:    "aucune (configuration d'exploitation) ; le COMPTE est ce qui manque",
-		CritereRetrait:  "un compteur expvar dit combien de matchs passent sans numerateur film ; retrait sans objet",
-		CompteurBranche: false,
-		CibleComptage:   comptageFamille19,
-	},
-	{
-		Nom:       "repli_identite_pont_par_morts",
-		Fait:      "le nom d'un corps de bipede, quand le lien direct n'a pas pu etre lu",
-		Mecanisme: "les creations de bipede sont illisibles (TOUTE erreur, y compris transitoire) : le registre retombe sur le pont par le fil des morts",
-		Condition: CondSectionAbsente,
-		Ordre:     OrdreApresLecture,
-		Sites: []Site{{
-			Fichier: pkgKillcollector + "positions.go",
-			Ancre:   "creations de bipede illisibles",
-		}},
-		DatePose:     dateAudit0E,
-		CibleRetrait: "lot 1.6 (le registre d'identite prend la table du film comme lien direct)",
-		// DÉFAUT DÉJÀ MESURÉ (audit 0.E) : deux `slog.Warn`, aucun expvar. Une erreur
-		// transitoire dégrade silencieusement l'identité de TOUT un match.
-		CritereRetrait:  "0 degradation sur le pont par morts dans les journaux du parc ; le lien direct couvre 100 % des corps",
-		CompteurBranche: false,
-		CibleComptage:   comptageFamille19,
-	},
-	{
-		Nom:       "repli_coequipiers_partis_constante_nulle",
-		Fait:      "le nombre de coequipiers PARTIS a l'instant d'une mort (`teammates_left`)",
-		Mecanisme: "la colonne est ecrite a 0 sur toutes les lignes depuis le retrait de son producteur, indiscernable d'une mesure",
-		Condition: CondInconditionnel,
-		Ordre:     OrdreSansLecture,
-		Sites: []Site{{
-			Fichier: pkgKillcollector + "isolation_facts.go",
-			Ancre:   "TeammatesLeft:  0,",
-		}},
-		DatePose:        dateAudit0E,
-		CibleRetrait:    "retrait de la colonne (append-only, ADR 0026 : la colonne reste, c'est son ECRITURE qui doit devenir nulle explicite)",
-		CritereRetrait:  "la colonne cesse d'etre ecrite, ou un producteur la remplit ; un zero constant ne se distingue d'une mesure par rien",
-		CompteurBranche: false,
-		CibleComptage:   comptageFamille19,
+		CompteurBranche: true,
 	},
 }

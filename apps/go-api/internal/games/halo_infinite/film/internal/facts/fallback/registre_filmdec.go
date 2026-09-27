@@ -22,8 +22,8 @@ const pkgFilmdec = "internal/games/halo_infinite/film/internal/grammar/"
 // pas le fichier d origine : c est la constante qui dit le repli, ou qu elle vive.
 const pkgProfile = "internal/games/halo_infinite/film/internal/profile/"
 
-// comptageParFilmContext : la raison, écrite une fois, du câblage différé des replis `grammar`.
-const comptageParFilmContext = "pas 2 de M2 (les lecteurs recoivent le profil via FilmContext : le seul porteur par film sans variable de paquet, cf. S1)"
+// LA CONSTANTE `comptageParFilmContext` A ETE SUPPRIMEE LE 2026-09-27 (lot J8.7) avec le dernier
+// compteur qu elle differait : les replis de `grammar` et `profile` se comptent au rapport du contexte.
 
 var registreFilmdec = []Repli{
 	{
@@ -43,7 +43,7 @@ var registreFilmdec = []Repli{
 			Ancre:   "clock.fb.Declenche(fallback.NomCadreDeMarcheParDefautConserve)",
 		}},
 		DatePose:     "2026-09-16",
-		CibleRetrait: "M3 (le cadre de la boucle de records devient une donnee de PROFIL par build, comme les largeurs du bloc MPP)",
+		CibleRetrait: "le cadre de la boucle de records devient une donnee de PROFIL par build, comme les largeurs du bloc MPP ; a defaut, " + retraitRegle4,
 		// ORDRE `apres_lecture` : le balayage des six largeurs candidates tourne D ABORD, sur
 		// l oracle de la signature du slot 123 ; ce repli n entre que si AUCUNE ne se detache.
 		// CE QU IL EMPECHE, ET C EST MESURE (2026-09-16) : sur `minibobine_e5adf7b2` les six
@@ -149,7 +149,7 @@ var registreFilmdec = []Repli{
 		// divergent (`gate=6 region=1 12/12/11` contre `gate=5 region=0 13/12/11`), et la porte
 		// de region du catalogue ecarte 26 enregistrements sur 267 400 (`60ae07c4`) et 11 sur
 		// 146 860 (`0797ce72`) qui appartiennent a une AUTRE region de compression.
-		CibleRetrait:    "lot 3.x (profil par carte) — la moitie `DetectI0Layout` est faite au lot 1.9.4, restent les deux appelants de `DetectI0LayoutOf`",
+		CibleRetrait:    "aucun chemin de production n appelle `DetectI0LayoutOf` (profil par carte : restent les appelants du contexte et du balayage des positions) ; a defaut, " + retraitRegle4,
 		CritereRetrait:  "aucun chemin de production n'appelle DetectI0LayoutOf ; le decoupage vient du catalogue sur les 8 builds",
 		CompteurBranche: true,
 	},
@@ -168,7 +168,7 @@ var registreFilmdec = []Repli{
 			Ancre:   "fc.NoterReplis(ComptesDesReplis{SlotsBipedesComblees: band.Count() - len(seen)})",
 		}, siteDeVersement("NomBandeBipedeComblee")},
 		DatePose:        dateAudit0E,
-		CibleRetrait:    "lot 3.5 (la bande de slots bipede par build)",
+		CibleRetrait:    "la bande de slots bipede lue au profil du build ; a defaut, " + retraitRegle4,
 		CritereRetrait:  "la bande vient du profil du build ; 0 comblement sur les 8 builds",
 		CompteurBranche: true,
 	},
@@ -193,7 +193,7 @@ var registreFilmdec = []Repli{
 			Ancre:   "fc.NoterReplis(bal.PoserLargeursObjetDuMondeDepuisDecoupage(e.Layout()))",
 		}, siteDeVersement("NomLargeursMondeParDefautConservees")},
 		DatePose:        dateAudit0E,
-		CibleRetrait:    "lot 3.4 (les largeurs sont une donnee de la carte et du build)",
+		CibleRetrait:    "les largeurs, donnee de la carte et du build ; a defaut, " + retraitRegle4,
 		CritereRetrait:  "les largeurs viennent du profil ; 0 conservation du defaut sur les 8 builds",
 		CompteurBranche: true,
 	},
@@ -211,7 +211,7 @@ var registreFilmdec = []Repli{
 			Ancre:   "replis.IndexDeRegionLargeurUn = 1",
 		}, siteDeVersement("NomIndexDeRegionLargeurUn")},
 		DatePose:        dateAudit0E,
-		CibleRetrait:    "lot 3.4",
+		CibleRetrait:    "la largeur d index de region lue au profil de la carte ; a defaut, " + retraitRegle4,
 		CritereRetrait:  "la largeur d'index vient du profil de la carte ; 0 recours au defaut",
 		CompteurBranche: true,
 	},
@@ -239,7 +239,7 @@ var registreFilmdec = []Repli{
 			Ancre:   "fc.NoterReplis(grammar.ComptesDesReplis{LargeursMPPParDefaut: 1})",
 		}, siteDeVersement("NomLargeursMppParDefaut")},
 		DatePose:     dateAudit0E,
-		CibleRetrait: "lot 3.x (profil par build : les largeurs MPP sont une donnee du build)",
+		CibleRetrait: "les largeurs MPP lues au profil du build ; a defaut, " + retraitRegle4,
 		// La voie ÉQUIPEMENT journalise quand elle retombe sur le défaut ; la voie SOCLES se
 		// tait. Deux chemins, une seule constante, un seul silence.
 		CritereRetrait:  "les largeurs MPP viennent du profil du build ; 0 recours au defaut sur les 8 builds",
@@ -278,7 +278,7 @@ var registreFilmdec = []Repli{
 			Ancre:   "fc.NoterReplis(ComptesDesReplis{AncresSansVieDelta: pr.sansVie})",
 		}, siteDeVersement("NomAncreSansVieDeltaEcartee")},
 		DatePose:        dateAudit0E,
-		CibleRetrait:    "lot 3.x (largeurs de creation par build, la calibration disparait)",
+		CibleRetrait:    "les largeurs de creation d equipement lues au profil du build, la calibration retiree avec ses tests ; a defaut, " + retraitRegle4,
 		CritereRetrait:  "les largeurs viennent du profil ; la calibration est retiree avec ses tests",
 		CompteurBranche: true,
 	},
@@ -301,7 +301,7 @@ var registreFilmdec = []Repli{
 			Ancre:   "c.noterRegistre(c.reg)",
 		}, siteDeVersement("NomRegistreInconnuSansLecteurDeTroncature")},
 		DatePose:     "2026-09-14",
-		CibleRetrait: "lot 3.1 (build inconnu actif, profil comme donnee fabriquee) : un build inconnu devient une erreur typee, une troncature en est une autre",
+		CibleRetrait: "un build inconnu devient une erreur typee, une troncature en est une autre ; a defaut, " + retraitRegle4,
 		// Découverte D6 (1.2) : la troncature est NOMMÉE dans `Registry` mais n'a AUCUN lecteur,
 		// et le seul signal qui sort en exploitation attribue la mauvaise cause.
 		CritereRetrait:  "les deux causes sont distinguees a la sortie (erreur typee `build_inconnu` contre `tronque`) et comptees separement",
@@ -344,7 +344,7 @@ var registreFilmdec = []Repli{
 		// [ErrNoFilmIdentity] — c est son echec, pas une decision prise avant elle, qui ouvre ce
 		// repli (D14 (b) : lire d abord, se replier ensuite).
 		Ordre: OrdreApresLecture,
-		Sites: []Site{{
+		Sites: []Site{{Fichier: pkgKillsource + "replis_du_decodage.go", Ancre: "unSi(!c.calib.ControleDeCorruptionLu)"}, {
 			Fichier: pkgFilmdec + "profil_balayage.go",
 			Ancre:   "func grammaireSousFilm(g GrammaireBalayage, p profile.Profile) (GrammaireBalayage, bool) {",
 		}, {
@@ -371,7 +371,6 @@ var registreFilmdec = []Repli{
 		// la valeur que tout le parc declare.
 		CibleRetrait:    "lot qui donnera un profil aux films de format 20 (section d identification absente) : le bit se lira alors a une position derivee de la version de format plutot que de l ancre de la chaine de build",
 		CritereRetrait:  "0 film cuit sans declaration de ce bit ; les cinq films de format 20 portent leur position au profil",
-		CompteurBranche: false,
-		CibleComptage:   comptageParFilmContext,
+		CompteurBranche: true,
 	},
 }

@@ -97,6 +97,28 @@ type Nom = fallback.Nom
 const NomGardeEquipementNegatifAZero = fallback.NomGardeEquipementNegatifAZero
 const NomGestePremiereVieDuSlot = fallback.NomGestePremiereVieDuSlot
 
+// Les replis que `replaybuild` et `sync/replayartifacts` declenchent eux-memes (lot J8.7).
+const NomAssistantNonResoluAbandonne = fallback.NomAssistantNonResoluAbandonne
+const NomGamertagPremierXuidGagne = fallback.NomGamertagPremierXuidGagne
+const NomMortNeutreSansXuidAbandonnee = fallback.NomMortNeutreSansXuidAbandonnee
+const NomRepereNeutreGeneriqueConserve = fallback.NomRepereNeutreGeneriqueConserve
+const NomRelaisDeBotAbandonne = fallback.NomRelaisDeBotAbandonne
+const NomParticipantSansXuidRetire = fallback.NomParticipantSansXuidRetire
+const NomCampInconnuRetireDeLaTable = fallback.NomCampInconnuRetireDeLaTable
+const NomCatalogueDeZonesAbsent = fallback.NomCatalogueDeZonesAbsent
+const NomFraicheurDesDerivationsParTaille = fallback.NomFraicheurDesDerivationsParTaille
+
+// Les replis que `sync/killcollector` declenche lui-meme, sur le compteur de sa passe (lot J8.7).
+const NomXuidVidePourNomInconnu = fallback.NomXuidVidePourNomInconnu
+const NomHomonymesSansXuid = fallback.NomHomonymesSansXuid
+const NomIndiceEnCollisionJete = fallback.NomIndiceEnCollisionJete
+const NomPremiereOccurrenceSansConcordance = fallback.NomPremiereOccurrenceSansConcordance
+const NomPrecisionParArmePasseSautee = fallback.NomPrecisionParArmePasseSautee
+const NomIdentitePontParMorts = fallback.NomIdentitePontParMorts
+const NomCoequipiersPartisConstanteNulle = fallback.NomCoequipiersPartisConstanteNulle
+const NomDistancesDeToucheDesactivees = fallback.NomDistancesDeToucheDesactivees
+const NomCartePremierNomResolu = fallback.NomCartePremierNomResolu
+
 func NouveauCompteur() *fallback.Compteur { return fallback.NouveauCompteur() }
 
 type Site = fallback.Site
@@ -374,6 +396,11 @@ func StatRecords(film *source.Film) []types.StatRecord { return objectives.StatR
 func StatRecordsCtx(ctx context.Context, film *source.Film, matchID string) ([]types.StatRecord, bool) {
 	return objectives.StatRecordsCtx(ctx, film, matchID)
 }
+func StatRecordsAvecReplis(ctx context.Context, film *source.Film, matchID string) ([]types.StatRecord, bool, objectives.ComptesDesReplis) {
+	return objectives.StatRecordsAvecReplis(ctx, film, matchID)
+}
+
+type ComptesDesReplisObjectifs = objectives.ComptesDesReplis
 
 type StatValue = types.StatValue
 

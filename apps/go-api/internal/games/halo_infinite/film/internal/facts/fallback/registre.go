@@ -29,8 +29,8 @@ package fallback
 // [Table] trie par nom. Le découpage en fichiers (cinq jusqu au lot 1.9.4, qui a scindé
 // `registre_killsource.go` à 523 lignes ; `registre_replay_positions.go` né au lot M1 des retours
 // du rejeu, `registre_replay_places.go` au lot M2.3, 2026-09-23, `registre_replay_objectifs.go`
-// au lot J5.5 du plan de suite d'audit, 2026-09-27, `registre_filmdec_marche.go` au sous-lot
-// `grammar` du lot J8.7, le même jour) ne suit que la limite de 500
+// au lot J5.5 du plan de suite d'audit, 2026-09-27, `registre_filmdec_marche.go` et
+// `registre_killsource_collecteur.go` au lot J8.7, le même jour) ne suit que la limite de 500
 // lignes du dépôt et le paquet des sites. Un fichier de plus s'ajoute à [Tranches], et à rien
 // d'autre.
 
@@ -58,6 +58,7 @@ func Tranches() []Tranche {
 		{"killsource", registreKillsource},
 		{"killsource/carte", registreKillsourceCarte},
 		{"killsource/calibration", registreKillsourceCalibration},
+		{"killsource/collecteur", registreKillsourceCollecteur},
 		{"objectifs et construction", registreObjectifsEtConstruction},
 		{"filmdec", registreFilmdec},
 		{"filmdec/marche", registreFilmdecMarche},
@@ -104,31 +105,23 @@ const dateVague2 = "2026-09-15"
 // retrait ni du critere, que chaque entree porte a part.
 const dateM3 = "2026-09-17"
 
-// comptageFamille19 : la raison, écrite une fois, pour laquelle le compteur d'un repli hérité
-// n'est pas câblé au lot 1.9.0.
-//
-// LE CÂBLAGE SUIT LA CONVERSION, ET CE N'EST PAS UN REPORT. Le compteur d'un repli doit
-// atteindre la couverture du document, donc traverser la chaîne d'appel de la cuisson ; sur la
-// grande majorité des sites cette chaîne passe par des fonctions pures déjà à cinq paramètres
-// (limite du dépôt) que le pas 2 de M2 — « les lecteurs reçoivent le profil, famille par
-// famille » — va de toute façon retoucher. Câbler maintenant, puis re-câbler au pas 2, serait
-// de la dette payée deux fois ; câbler au moment où le lot de conversion ouvre déjà le fichier
-// coûte une ligne. Le registre le dit entrée par entrée ([Repli.CibleComptage]) pour qu'un
-// compte absent ne se lise jamais comme un compte nul.
-const comptageFamille19 = "lot de conversion 1.9.x du fait, ou pas 2 de M2 (porteur du profil)"
-
 // LA CONSTANTE `lot194` A ÉTÉ SUPPRIMÉE LE 2026-09-15, AVEC LE LOT QU'ELLE NOMMAIT. Quatre
 // entrées la citaient comme cible de retrait ou de comptage ; le lot 1.9.4 est fait — la carte
 // d'un film vient de son nom de match et non plus d'une signature de largeurs d'axe — et chacune
 // des quatre porte désormais SA propre cible, distincte des trois autres. Une constante partagée
 // par des entrées dont les cibles ont divergé mentirait sur ce qui reste à faire.
 
-// comptageCollecteur : la cible de comptage des replis dont le SITE compte deja (`Declenche` sur
-// le compteur recu) mais qui s executent dans la passe du COLLECTEUR (`sync/killcollector`), hors
-// de toute cuisson : tant que la passe ne cree pas son compteur par film et ne le publie pas (en
-// expvar par nom et au journal du film, plan J8.7), le compteur recu est nil et le compte est
-// perdu. Posee le 2026-09-27 par le sous-lot `replay` du lot J8.7, qui a arme les sites.
-const comptageCollecteur = "suite du lot J8.7 du plan de suite d audit (sous-lot collecteur) : la passe de sync/killcollector passe son compteur par film a replay.ContextesDesMorts et le publie en expvar par nom et au journal du film"
+// LES CONSTANTES `comptageFamille19` ET `comptageCollecteur` ONT ÉTÉ SUPPRIMÉES LE 2026-09-27 (lot
+// J8.7) avec le dernier compteur qu'elles différaient : les replis hérités se comptent en données
+// (`grammar`, `killsource`, `objectives`) ou au site (`replaybuild`, `sync/killcollector`).
+
+// retraitRegle4 : LA CIBLE DE RETRAIT DE LA REGLE 4 DE D-10, ecrite une fois (lot J8.7, 2026-09-27,
+// decision 7 du superviseur). Elle remplace, dans chaque [Repli.CibleRetrait], le lot ou le jalon d un
+// plan CLOS (PLAN_DECODEUR_FILM, cloture du 2026-09-18 ; campagne des retours du rejeu) que la cible
+// nommait : la condition de lecture qui retirerait le repli reste ecrite devant elle, et a defaut le
+// compte decide — un repli nul au corpus gate de J11 sort au jalon suivant. Le garde-rail
+// `archlint/no_stale_fallback_target_test.go` refuse toute cible qui nommerait de nouveau un lot clos.
+const retraitRegle4 = "retrait au jalon suivant si le compte est nul au corpus gate de J11 (regle 4 de D-10, 2026-09-27)"
 
 // fichierDeVersement : LA TABLE de `replay` qui verse au compteur de la cuisson les comptes de replis
 // que `grammar`, `profile`, `killsource` et `objectives` rendent EN DONNEES (lot J8.7, 2026-09-27).

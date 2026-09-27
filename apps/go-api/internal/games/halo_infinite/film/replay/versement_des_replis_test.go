@@ -18,7 +18,10 @@ import (
 	"testing"
 
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/killsource"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 )
 
 // TestChaqueChampDuRapportDeGrammaireEstVerse : chaque champ de [grammar.ComptesDesReplis] est verse
@@ -107,6 +110,113 @@ func appelsDansLOrdre(t *testing.T, fichier, fonction string) []string {
 		})
 	}
 	return out
+}
+
+// TestChaqueCompteDuKillFeedEstVerse : chaque champ de [killsource.ReplisDuDecodage], et chacun des
+// comptes que le decodeur tenait deja, arrive au compteur sous UN nom, a l assemblage.
+func TestChaqueCompteDuKillFeedEstVerse(t *testing.T) {
+	typ := reflect.TypeOf(killsource.ReplisDuDecodage{})
+	poseurs := map[string]func(*killsource.Result){}
+	for i := 0; i < typ.NumField(); i++ {
+		i := i
+		poseurs["Replis."+typ.Field(i).Name] = func(r *killsource.Result) {
+			reflect.ValueOf(&r.Stats.Replis).Elem().Field(i).SetInt(7)
+		}
+	}
+	poseurs["Couples.Recolles"] = func(r *killsource.Result) { r.Stats.Couples.Recolles = 7 }
+	poseurs["Appariement.Fenetre"] = func(r *killsource.Result) { r.Stats.Appariement.Fenetre = 7 }
+	poseurs["Assist.ParLaFenetre"] = func(r *killsource.Result) { r.Stats.Assist.ParLaFenetre = 7 }
+	poseurs["Appariement.BotFenetre"] = func(r *killsource.Result) { r.Stats.Appariement.BotFenetre = 7 }
+	poseurs["Appariement.NonRevendiqueeFenetre"] = func(r *killsource.Result) { r.Stats.Appariement.NonRevendiqueeFenetre = 7 }
+	poseurs["Roster.FilmTable.Inferred"] = func(r *killsource.Result) { r.Roster.FilmTable.Inferred = 7 }
+	for champ, poser := range poseurs {
+		var ks killsource.Result
+		poser(&ks)
+		fb := fallback.NouveauCompteur()
+		versementDeLAssemblage(fb, ReplisHorsBalayage{KillSource: &ks})
+		rap := fb.Rapport()
+		if len(rap) != 1 || rap[0].Declenchements != 7 {
+			t.Errorf("le compte %s n arrive pas au compteur sous UN nom : rapport %v", champ, rap)
+			continue
+		}
+		if _, ok := fallback.Lire(rap[0].Nom); !ok {
+			t.Errorf("le compte %s est verse sous %s, hors du registre", champ, rap[0].Nom)
+		}
+	}
+}
+
+// TestChaqueCompteDesObjectifsEstVerse : chaque champ de [objectives.ComptesDesReplis] arrive au
+// compteur sous UN nom, a l assemblage.
+func TestChaqueCompteDesObjectifsEstVerse(t *testing.T) {
+	typ := reflect.TypeOf(objectives.ComptesDesReplis{})
+	for i := 0; i < typ.NumField(); i++ {
+		var c objectives.ComptesDesReplis
+		reflect.ValueOf(&c).Elem().Field(i).SetInt(7)
+		fb := fallback.NouveauCompteur()
+		versementDeLAssemblage(fb, ReplisHorsBalayage{Objectifs: c})
+		rap := fb.Rapport()
+		if len(rap) != 1 || rap[0].Declenchements != 7 {
+			t.Errorf("le compte %s n arrive pas au compteur sous UN nom : rapport %v", typ.Field(i).Name, rap)
+		}
+	}
+}
+
+// TestLesReplisHorsBalayageNeSeComptentQuUneFoisDepuisLesFaits — DECISION 2 DU SUPERVISEUR.
+//
+// Les comptes que l appelant apporte ([Options.ReplisHorsBalayage]) se versent a l ASSEMBLAGE, jamais
+// dans le rapport du balayage que les faits persistent : republier depuis les faits les reverse donc
+// UNE fois, comme la cuisson du film. Les deux chemins publient le meme `coverage.fallbacks`.
+//
+// MUTATION JOUEE (2026-09-27) : verser aussi `opt.ReplisHorsBalayage` dans [BuildFromFacts] avant
+// l assemblage (ce que ferait un pre-remplissage du compteur par l appelant) fait rougir ce test
+// (« repli_chunk_du_pied_par_argmax 2, attendu 1 »).
+func TestLesReplisHorsBalayageNeSeComptentQuUneFoisDepuisLesFaits(t *testing.T) {
+	entry := goldenEntryPourTest(t)
+	g := loadGoldenInputs(t)
+	id := &profile.FilmIdentity{Build: "HI_1_13_0", FormatVersion: 27}
+	repliDuBalayage := []fallback.Declenchement{{Nom: fallback.NomPlafondGrenadeParDefaut, Declenchements: 2}}
+	ks := &killsource.Result{}
+	ks.Stats.Replis.PiedParArgmax = 1
+	ks.Stats.Couples.Recolles = 3
+	horsBalayage := ReplisHorsBalayage{KillSource: ks}
+
+	optDirect := g.options()
+	optDirect.MapQuant, optDirect.FilmIdentity, optDirect.ReplisHorsBalayage = &entry, id, horsBalayage
+	optDirect.Fallbacks = fallback.NouveauCompteur()
+	optDirect.Fallbacks.Cumuler(repliDuBalayage)
+	direct := BuildFromPositions(goldenFilm, "halo_infinite", g.Positions, g.Fire, optDirect)
+
+	blob, err := EncodeFilmFactsFile(&FilmFactsFile{
+		Coverage: *couvertureDuDecodeur(id), Facts: *g, Identity: identiteDeFaits(id),
+		Fallbacks: repliDuBalayage, EmpreinteDeCle: EmpreinteDeCle(entry),
+	})
+	if err != nil {
+		t.Fatalf("encodage : %v", err)
+	}
+	f, err := DecodeFilmFactsFile(blob, entry)
+	if err != nil {
+		t.Fatalf("relecture : %v", err)
+	}
+	rejoue := BuildFromFacts(goldenFilm, "halo_infinite", f, Options{MapQuant: &entry, ReplisHorsBalayage: horsBalayage})
+
+	attendu := map[string]int{
+		string(fallback.NomPlafondGrenadeParDefaut): 2, string(fallback.NomChunkDuPiedParArgmax): 1,
+		string(fallback.NomCoupleRecolleSurLeVoisin): 3,
+	}
+	for nom, doc := range map[string]ReplayDocument{"film": direct, "faits": rejoue} {
+		got := map[string]int{}
+		for _, h := range doc.Coverage.Fallbacks {
+			got[h.Name] = h.Hits
+		}
+		for n, want := range attendu {
+			if got[n] != want {
+				t.Errorf("chemin %s : %s %d, attendu %d", nom, n, got[n], want)
+			}
+		}
+	}
+	if renderAssembly(direct) != renderAssembly(rejoue) {
+		t.Error("les deux chemins de la cuisson ne publient pas le meme document")
+	}
 }
 
 // grammarContexteAvec rend un contexte de film (sans film) dont le rapport vaut `r`.

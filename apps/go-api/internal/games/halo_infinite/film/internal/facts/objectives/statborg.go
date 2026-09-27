@@ -176,6 +176,16 @@ func StatRecords(film *source.Film) []types.StatRecord {
 //
 // LE FILM ARRIVE DEJA CHARGE, et seuls les chunks du MANIFESTE sont balayes (cf. [manifestChunks]).
 func StatRecordsCtx(ctx context.Context, film *source.Film, matchID string) (recs []types.StatRecord, truncated bool) {
+	recs, truncated, _ = StatRecordsAvecReplis(ctx, film, matchID)
+	return recs, truncated
+}
+
+// StatRecordsAvecReplis est [StatRecordsCtx], plus les comptes des deux replis du balayage —
+// enregistrements abandonnes et composants arretes (lot J8.7). La cuisson les porte avec la section
+// statborg des faits persistes, et les verse au compteur a l assemblage.
+func StatRecordsAvecReplis(ctx context.Context, film *source.Film, matchID string) (
+	recs []types.StatRecord, truncated bool, replis ComptesDesReplis,
+) {
 	var out []types.StatRecord
 	for _, c := range chunksDatables(ctx, film, matchID) {
 		frames := framesOf(film, c.pos)
@@ -185,17 +195,17 @@ func StatRecordsCtx(ctx context.Context, film *source.Film, matchID string) (rec
 		base := frames[0].TS
 		for _, f := range frames {
 			tMS := c.meta.StartMS + int((f.TS-base)/1000)
-			out = append(out, scanFrameForRecords(f.Payload, tMS)...)
+			out = append(out, scanFrameAvecReplis(f.Payload, tMS, &replis)...)
 			if len(out) >= statMaxRecordsPerFilm {
 				slog.WarnContext(ctx,
 					"statborg: plafond d'enregistrements atteint, lecture tronquee",
 					"match_id", matchID, "records", len(out),
 					"limite", statMaxRecordsPerFilm, "chunk", c.meta.Index)
-				return sortRecords(out), true
+				return sortRecords(out), true, replis
 			}
 		}
 	}
-	return sortRecords(out), false
+	return sortRecords(out), false, replis
 }
 
 // sortRecords ordonne les enregistrements par temps puis par slot.
@@ -214,18 +224,32 @@ func sortRecords(out []types.StatRecord) []types.StatRecord {
 
 // scanFrameForRecords balaie un paquet FRAME et rend les enregistrements qu'il porte.
 func scanFrameForRecords(pay []byte, tMS int) []types.StatRecord {
+	return scanFrameAvecReplis(pay, tMS, nil)
+}
+
+// scanFrameAvecReplis est [scanFrameForRecords], qui compte ses deux replis dans `c` (nil : rien).
+func scanFrameAvecReplis(pay []byte, tMS int, c *ComptesDesReplis) []types.StatRecord {
 	var out []types.StatRecord
+	var abandonnes, arretes int
 	lim := len(pay)*8 - statTailBits
 	for b := 1; b < lim; b++ {
 		slot, idx, at, ok := matchRecordHeader(pay, b)
 		if !ok {
 			continue
 		}
-		comps, round := decodeComponents(pay, at, idx)
+		comps, round, arrete := decodeComponentsAvecArret(pay, at, idx)
 		if len(comps) == 0 || !statCountersInDomain(comps) {
+			abandonnes++
 			continue
 		}
+		if arrete {
+			arretes++
+		}
 		out = append(out, types.StatRecord{TimeMS: tMS, Slot: slot, Round: round, Comps: comps})
+	}
+	if c != nil {
+		c.EnregistrementsAbandonnes += abandonnes
+		c.ComposantsArretes += arretes
 	}
 	return out
 }
@@ -316,22 +340,29 @@ func denseComponentList(pay []byte, p int) ([]int, bool) {
 // Les composants suivants ne sont pas re-contraints — leurs largeurs sont chainees, une lecture
 // qui derape s'arrete d'elle-meme.
 func decodeComponents(pay []byte, at int, idx []int) (map[int]types.StatValue, int) {
+	out, round, _ := decodeComponentsAvecArret(pay, at, idx)
+	return out, round
+}
+
+// decodeComponentsAvecArret est [decodeComponents], plus `arrete` : un composant non decodable a
+// ARRETE la boucle avant le dernier annonce — le verdict de `repli_composants_statborg_arretes`.
+func decodeComponentsAvecArret(pay []byte, at int, idx []int) (map[int]types.StatValue, int, bool) {
 	h1 := int(source.BitsTronques(pay, at, statHdrBits))
 	h2 := int(source.BitsTronques(pay, at+statHdrBits, statHdrBits))
 	if h1 != h2 || h1 > statMaxRound {
-		return nil, 0
+		return nil, 0, false
 	}
 	out := make(map[int]types.StatValue, len(idx))
 	q := at
 	for _, i := range idx {
 		v, w, ok := decodeStatComponent(pay, q)
 		if !ok {
-			break
+			return out, h1, true
 		}
 		out[i] = v
 		q += w
 	}
-	return out, h1
+	return out, h1, false
 }
 
 // decodeStatComponent lit un composant et rend sa largeur consommee. Reproduit

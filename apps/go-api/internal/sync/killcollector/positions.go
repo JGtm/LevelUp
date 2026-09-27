@@ -333,6 +333,7 @@ func lireLePontDuCollecteur(
 	if pont.ErrCreations != nil {
 		slog.Warn("killsource: creations de bipede illisibles — degradation sur le pont par morts",
 			"err", pont.ErrCreations, "match_id", matchID)
+		ids.replis.Declenche(decfilm.NomIdentitePontParMorts) // repli compte depuis le lot J8.7
 		creations = nil
 	}
 	if cStats.Anchors > 0 && cStats.Accepted == 0 {

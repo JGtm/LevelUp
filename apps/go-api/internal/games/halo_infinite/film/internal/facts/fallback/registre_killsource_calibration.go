@@ -38,7 +38,7 @@ var registreKillsourceCalibration = []Repli{
 		Mecanisme: "aucune source lue : les trois largeurs candidates sont scorees AU TRIPLET LU de la carte (le monde que la production decode) sur le nombre de records de bipede lus sans desynchronisation ; la meilleure n est retenue QUE si elle domine la mediane d un facteur 2, sinon l invariant 1 tient",
 		Condition: CondNonResolu,
 		Ordre:     OrdreSansLecture,
-		Sites: []Site{{
+		Sites: []Site{{Fichier: pkgKillsource + "calibrate.go", Ancre: "res.PoigneeDecidee = true"}, siteDeVersement("NomLargeurMotDePoigneeInferee"), {
 			Fichier: pkgKillsource + "calibrate.go",
 			Ancre:   "res.Profil.Mouvement.Traversal.IndexW = retenu",
 		}},
@@ -63,7 +63,6 @@ var registreKillsourceCalibration = []Repli{
 		// `consumePositionHandleTail` lit derriere le bit de poignee (`FUN_1406d3140`).
 		CibleRetrait:    "lot qui RELEVERA la largeur du mot de poignee CHEZ L ECRIVAIN — le bitlen du compte de poignees de `FUN_1406d3140` — et la fera entrer au profil par une cle que le film ecrit, comme la loi des largeurs d axe y est entree",
 		CritereRetrait:  "`calibration.PoigneeDiscriminee` cesse d etre le juge : la valeur vient d une lecture sur les 8 builds du corpus, le balayage devient ORACLE (il compte ses desaccords avec elle, il n ecrit plus), et `replay-equiv` ne bouge sur AUCUNE des trois etapes derriere i0 (`abilityImpulses`, `grappleReads.stats`, `pads`) sur les 20 films",
-		CompteurBranche: false,
-		CibleComptage:   comptageFamille19,
+		CompteurBranche: true,
 	},
 }

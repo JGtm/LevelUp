@@ -17,7 +17,7 @@ var registreReplayEquipement = []Repli{
 			Ancre:   "fb.Declenche(fallback.NomPieceEngendreeSansEvenement)",
 		}},
 		DatePose:     dateVague2,
-		CibleRetrait: "lot 3.x (profil par build) : la lecture des evenements de liste sur les builds anciens",
+		CibleRetrait: "la lecture des evenements de liste sur les builds anciens (profil par build) ; a defaut, " + retraitRegle4,
 		// MESURE DU 2026-09-15 : 9 poses de panneau sur 124, et TOUTES sur les deux films de
 		// build les plus anciens du corpus — `a521164d` (HI_1_4_1, 0 evenement 103 lu sur
 		// 4 956 listes) et `50247b26` (v31 sans section, 2 evenements). C'est une limite de
@@ -45,7 +45,7 @@ var registreReplayEquipement = []Repli{
 		// cuisson, dans `BuildUsageSummary` ; son compte n'entre donc jamais dans
 		// `coverage.fallbacks[]`. Les deux instruments qui le mesurent VRAIMENT sont nommes
 		// ci-dessous.
-		CibleRetrait: "retrait sec a M2 (D14 d) : le compte est DEJA nul sur les 8 builds, et le journal des passes le confirme ou l'infirme sur le parc",
+		CibleRetrait: "le compte est deja nul sur les 8 builds, et le journal des passes le confirme ou l infirme sur le parc ; a defaut, " + retraitRegle4,
 		// DÉFAUT MESURÉ PUIS REFERMÉ. Audit 0.E, constat N-3 de REG-R2 : 32 à 95 % des poses d'un
 		// film tombaient hors de toute fenêtre publiée (153/351, 443/466, 34/105 sur trois films).
 		// MESURE DU 2026-09-16, compteur câblé, les 8 builds
@@ -76,7 +76,7 @@ var registreReplayEquipement = []Repli{
 		DatePose: dateAudit0E,
 		// CIBLE REECRITE LE 2026-09-16 (revue de jalon M1) : elle nommait le seul lot 1.9.13,
 		// fusionne le 2026-09-15.
-		CibleRetrait: "retrait sec a M2 (D14 d) : meme canal et meme mesure que repli_geste_dernier_occupant_du_match",
+		CibleRetrait: "meme canal et meme mesure que repli_geste_dernier_occupant_du_match ; a defaut, " + retraitRegle4,
 		// MESURE DU 2026-09-16, compteur câblé, les 8 builds
 		// (`replay/usage_summary_replis_test.go`) : **0 déclenchement sur 8/8**.
 		// MEMES DEUX INSTRUMENTS que `repli_geste_dernier_occupant_du_match` (ronde 2, F2) :
@@ -101,7 +101,7 @@ var registreReplayEquipement = []Repli{
 		// CIBLE REECRITE LE 2026-09-16 (revue de jalon M1) : elle nommait le lot 1.9.13, fusionne
 		// le 2026-09-15 — et ce lot ne pouvait PAS la fermer : il recolle des vies, il ne
 		// reconcilie pas trois canaux d'equipement entre eux.
-		CibleRetrait: "M2 puis M3 (reconciliation des trois canaux prises / utilises / laches) ; PAS de retrait sec : le compte est MESURE NON NUL",
+		CibleRetrait: "la reconciliation des trois canaux prises / utilises / laches (le compte est MESURE NON NUL : pas de retrait sec) ; a defaut, " + retraitRegle4,
 		// D14 (b) : un désaccord entre deux lectures est une CONTRADICTION, pas un repli. Elle
 		// doit se compter, jamais disparaître dans un `max(0, x)`.
 		// MESURE DU 2026-09-16, compteur câblé, les 8 builds
@@ -133,7 +133,7 @@ var registreReplayEquipement = []Repli{
 		// CIBLE REECRITE LE 2026-09-16 (revue de jalon M1) : elle nommait le lot 1.9.13, fusionne
 		// le 2026-09-15 sans avoir cable ce compteur — sa frequence reste donc INCONNUE, et un
 		// zero n'y serait pas lisible (cf. [Repli.CompteurBranche]).
-		CibleRetrait:    "M2, pas 2 (les lecteurs recoivent le profil) : cabler le compteur au meme geste, puis retrait sec si le compte est nul",
+		CibleRetrait:    "mesurer le compte desormais cable ; a defaut, " + retraitRegle4,
 		CritereRetrait:  "0 traction dont l'accroche tombe hors de toute vie sur les 8 builds — NON MESURE (compteur non cable au 2026-09-16)",
 		CompteurBranche: true,
 	},
@@ -153,7 +153,7 @@ var registreReplayEquipement = []Repli{
 		DatePose: dateAudit0E,
 		// CIBLE REECRITE LE 2026-09-16 (revue de jalon M1) : meme raison que
 		// repli_traction_vie_du_tir, meme geste de cablage.
-		CibleRetrait:    "M2, pas 2 : cabler le compteur puis retrait sec si le compte est nul",
+		CibleRetrait:    "mesurer le compte desormais cable ; a defaut, " + retraitRegle4,
 		CritereRetrait:  "0 traction sans vie couvrante sur les 8 builds — NON MESURE (compteur non cable au 2026-09-16)",
 		CompteurBranche: true,
 	},
@@ -232,7 +232,7 @@ var registreReplayEquipement = []Repli{
 		// impulsions `sans identite` 4 -> 3 sur `000d5950` et 2 -> 0 sur `11de8353`, charges
 		// 20 -> 13 et 8 -> 1. Le compteur n'a pas ete cable au passage, donc le RESIDU n'a pas
 		// de chiffre a lui.
-		CibleRetrait:    "M2, pas 2 : cabler le compteur, mesurer le residu, puis retrait sec s'il est nul",
+		CibleRetrait:    "mesurer le residu du compteur desormais cable ; a defaut, " + retraitRegle4,
 		CritereRetrait:  "0 elargissement necessaire sur les 8 builds — RESIDU NON MESURE (compteur non cable au 2026-09-16 ; le 1.9.13 a fait tomber les grandeurs voisines sans les annuler)",
 		CompteurBranche: true,
 	},
@@ -250,7 +250,7 @@ var registreReplayEquipement = []Repli{
 			Ancre:   "clock.fb.DeclencheN(fallback.NomPorteurAnonymeSansFinParMort, carry.replis.porteurAnonyme)",
 		}},
 		DatePose:     dateAudit0E,
-		CibleRetrait: "lot 1.9.5 (le porteur du crane lu au canal des armes tenues) et le registre d'identite 1.6",
+		CibleRetrait: "le porteur du crane lu au canal des armes tenues, et le registre d identite par la table du film ; a defaut, " + retraitRegle4,
 		// Décision utilisateur du 2026-09-06 : « les vies anonymes n'existent pas ». Un porteur
 		// sans xuid est un défaut de pont, pas une catégorie de donnée.
 		CritereRetrait:  "0 porteur sans xuid sur les 8 builds",
@@ -270,7 +270,7 @@ var registreReplayEquipement = []Repli{
 			Ancre:   "clock.fb.DeclencheN(fallback.NomPortageFermeALaPriseSuivante, carry.replis.priseSuivante)",
 		}},
 		DatePose:       dateAudit0E,
-		CibleRetrait:   "lot 1.9.5",
+		CibleRetrait:   "le porteur du crane lu au canal des armes tenues ; a defaut, " + retraitRegle4,
 		CritereRetrait: "question NE7 de la table (D) de l'audit instruite : combien de morts de porteur sont suivies d'une emission du canal ? Le repli tombe si le canal emet",
 		// Le négatif « la mort ferme SANS émission » est une AFFIRMATION sans chiffre
 		// (`held_object_carry.go:20-22`), pas une mesure : c'est pourquoi la condition est
@@ -291,7 +291,7 @@ var registreReplayEquipement = []Repli{
 			{Fichier: pkgReplay + "film_scan.go", Ancre: "s.opt.Fallbacks.Declenche(fallback.NomPlafondGrenadeParDefaut)"},
 		},
 		DatePose:        dateAudit0E,
-		CibleRetrait:    "lot 3.x (profil par build et par carte) : un plafond est une donnee de mode, pas une constante",
+		CibleRetrait:    "un plafond lu comme une donnee de mode (profil par build et par carte), pas une constante ; a defaut, " + retraitRegle4,
 		CritereRetrait:  "le plafond vient du manifeste de mode ; 0 recours au defaut sur les 8 builds",
 		CompteurBranche: true,
 	},
@@ -306,7 +306,7 @@ var registreReplayEquipement = []Repli{
 			Ancre:   "if e.AxisWidths[0] == 0 || e.AxisWidths[1] == 0 || e.AxisWidths[2] == 0 {",
 		}},
 		DatePose:     dateAudit0E,
-		CibleRetrait: "lot 3.4 (largeurs par carte et par build, donnees de profil)",
+		CibleRetrait: "les largeurs par carte et par build, donnees de profil ; a defaut, " + retraitRegle4,
 		// DÉFAUT DÉJÀ MESURÉ (audit 0.E) : le défaut conservé est celui d'UNE carte, appliqué
 		// à toutes ; l'écart n'était que journalisé (slog.Warn), jamais compté.
 		CritereRetrait:  "0 film cuit sur les largeurs par defaut ; le catalogue porte les largeurs de toutes les cartes du parc",

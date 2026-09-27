@@ -153,18 +153,15 @@ func marchLocateFallback(pay []byte, w *World, cfg FrameConfig) int {
 	return -1
 }
 
-// marchLocate rend le bit de départ de la boucle de records d'un paquet à événements, ou -1.
+// marchLocalise rend le bit de départ de la boucle de records d'un paquet à événements, ou -1, et
+// `aLargeurLibre` : la position vient de [marchLocateFallback] (repli
+// `repli_localisation_largeur_libre`, compte par [ScanMarchFacts] — lot J8.7). C est l ex-`marchLocate`,
+// dont l enveloppe a un rendu n a plus d appelant de production et vit dans les instruments de
+// recherche (`march_locate_research_test.go`).
 //
 // LE CONTRÔLE DE GÉNÉRATION EST INDISPENSABLE DES DEUX CÔTÉS : sans lui, le localisateur
 // désigne des positions où le slot de signature porte une AUTRE génération, et la marche y
 // meurt aussitôt (mesure : 3 morts perdues sur un film, dont un double kill).
-func marchLocate(pay []byte, w *World, cfg FrameConfig) int {
-	s, _ := marchLocalise(pay, w, cfg)
-	return s
-}
-
-// marchLocalise est [marchLocate], plus `aLargeurLibre` : la position vient de [marchLocateFallback]
-// (repli `repli_localisation_largeur_libre`, compte par [ScanMarchFacts] — lot J8.7).
 func marchLocalise(pay []byte, w *World, cfg FrameConfig) (int, bool) {
 	defer cfg.Obs.neutraliserEtatsDeMouvement()() // son propre TryDeltaAt de controle est un essai
 	if s := marchLocateStrict(pay, w, cfg); s >= 0 {
