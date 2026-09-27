@@ -1155,9 +1155,30 @@ plus `go test -count=1 ./...` complet.
   - (3) `demo_paths_test.go` étendu à tous les chemins de `cfg`.
   - (4) `archlint/no_data_path_join_test.go` étendu à `cmd/server` (`main.go:1373` corrigé, ou
     dispensé avec une justification datée).
-- [!] **B5.8 Preuve de bout en bout** (NON JOUÉE par l'exécutant le 2026-09-27 : `http://127.0.0.1:8000/health` répondait 200 — serveur du checkout principal actif, que l'exécutant n'arrête pas ; à jouer par le superviseur, cf. journal B5), avec le serveur principal ARRÊTÉ (le superviseur le
+- [x] **B5.8 Preuve de bout en bout** (NON JOUÉE par l'exécutant le 2026-09-27 : `http://127.0.0.1:8000/health` répondait 200 — serveur du checkout principal actif, que l'exécutant n'arrête pas ; à jouer par le superviseur, cf. journal B5), avec le serveur principal ARRÊTÉ (le superviseur le
   coordonne) : marqueur daté, `make demo-visual`, puis `find data logs -newer <marqueur>` doit
   être vide hors de la racine démo. Sortie au journal.
+  - **JOUÉE par le superviseur le 2026-09-27 à 21 h 11**, sur le code de `94363c225` (B5 + B-C1
+    à B-C10). Variante plus exigeante que le harnais : la racine du DÉPÔT est le vrai checkout
+    principal, et non le worktree.
+    - Mise en place : binaire `cmd/server` du worktree, `LEVELUP_REPO_ROOT` = checkout
+      principal, `LEVELUP_DEMO_MODE=true`, `LEVELUP_DEMO_FIXTURES_DIR` = COPIE de
+      `data/demo` sous `%TEMP%`, port 8010. Aucun serveur ne tournait sur :8000 et aucune
+      écriture n'avait eu lieu dans `data/` ni `logs/` du principal pendant les 15 minutes
+      précédentes.
+    - Sollicitations :
+      - `bootstrap` 200 (joueur démo) ;
+      - `POST /setup/players`, `POST /settings/backup/run`,
+        `DELETE /profiles/DemoPlayer/titles/halo_infinite/data`, `PATCH /watcher/subscriptions` :
+        les quatre en 403 `demo_mode_forbidden` ;
+      - `GET /admin/identities` 200, sans aucun gamertag réel ;
+      - notes de version FR et EN 200, monitoring 200.
+    - Puis 60 s de marche, et arrêt.
+    - Résultat : **0 fichier créé ou modifié et 0 dossier créé** sous `data/` et `logs/` du
+      checkout principal après le marqueur. 8 fichiers d'exécution sous
+      `<copie démo>/runtime/` (data, logs, sessions).
+    - Au passage : une ERROR de requête sur `titles/halo_5/warehouse/metadata.duckdb` de la
+      fixture au boot. Elle est préexistante (fixture), sans lien avec l'hermétisme. Découverte.
 
 **Gate** : GO-F (paquets ciblés : `./cmd/server/ ./internal/config/ ./internal/archlint/ ./internal/platform/netguard/ ./internal/scheduler/ ./internal/api/... ./internal/ops/ ./internal/persist/...`),
 plus B5.8.
