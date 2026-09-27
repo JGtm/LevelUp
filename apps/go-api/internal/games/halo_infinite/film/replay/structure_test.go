@@ -1341,8 +1341,17 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   `objectivesRev`, et les calques d objectifs de `layers` portent `objectives-...` au lieu de
 	//   `killsource-...`. La FORME d un bloc publie change (un champ retire, deux ajoutes) : d ou
 	//   la montee. Detail : `document_chronicle.go`.
-	if SchemaVersion != 72 {
-		t.Fatalf("SchemaVersion = %d, attendu 72 : incrémenter exige une raison écrite ci-dessus "+
+	// - 73 (2026-09-26, jalon J9 du PLAN_SUITE_AUDIT_DECODEUR_FILM) : DRAPEAU, BOMBE, ZONES. Des
+	//   CHANGEMENTS DE SENS, sans champ racine neuf : `flag_carriers_killed` ne ferme plus que le
+	//   portage d un ADVERSAIRE du tueur, une carte hors catalogue ne suppose plus un seul drapeau,
+	//   les fermoirs par slot suivent la manche, la reprise d une meme frame passe apres le lacher,
+	//   le portage de bombe se ferme a la mort anterieure au lacher, `bomb_arms` est ABSENT sans
+	//   horloge du film, et une descente de jauge se publie dans la seconde. Deux compteurs de
+	//   couverture optionnels (`coverage.flagCarries.unjudgedCarrierKills`,
+	//   `bombStats.coverage.armingsNoClock`). Un v72 doit se lire « a republier ». Detail :
+	//   `document_chronicle.go`.
+	if SchemaVersion != 73 {
+		t.Fatalf("SchemaVersion = %d, attendu 73 : incrémenter exige une raison écrite ci-dessus "+
 			"(un champ optionnel de plus n'en est pas une)", SchemaVersion)
 	}
 }

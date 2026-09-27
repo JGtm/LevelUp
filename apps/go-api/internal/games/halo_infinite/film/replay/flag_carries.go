@@ -52,8 +52,9 @@ import (
 //
 // `flag_carriers_killed` est credite au TUEUR, pas a la victime : il ne nomme donc PAS le porteur
 // qui tombe. Il ne sert ici qu'a fermer un portage que le fil des morts aurait manque, et
-// SEULEMENT quand exactement UN portage est ouvert a cet instant — sinon rien n'indique lequel,
-// et l'evenement se compte en incoherence plutot que de fermer au hasard.
+// SEULEMENT quand exactement UN portage d'un ADVERSAIRE du tueur est ouvert a cet instant — sinon
+// rien n'indique lequel, et l'evenement se compte plutot que de fermer au hasard
+// (`flag_carries_killed.go`, lot J9.1).
 //
 // # A quel DRAPEAU un portage appartient
 //
@@ -79,7 +80,10 @@ import (
 //
 // Carte hors du catalogue d'objectifs : aucun socle, tous les portages tombent dans un seul
 // drapeau d'equipe [TeamNeutral]. Le calque reste vrai (les portages sont ceux qu'ils sont), il
-// est seulement moins detaille — et la couverture publie `Spawns: 0`.
+// est seulement moins detaille — et la couverture publie `Spawns: 0`. Le NOMBRE de drapeaux n'y
+// est pas suppose pour autant (lot J9.2) : les regles qui nomment un drapeau par l'equipe — le
+// passage de main en main, le retour credite — se taisent, et le repli se compte
+// (`flag_carries_handoff.go`, [flagCountUnread]).
 
 const (
 	// flagGrabMergeMS : deux prises separees de moins que cela sont LA MEME action. Un vol
@@ -180,11 +184,19 @@ type flagCarryCtx struct {
 
 // flagOpening est une prise, avant tout bornage.
 type flagOpening struct {
-	slot  int
+	slot int
+	// round est la manche de la prise ([objectives.RoundIdentity.RoundAt]) : le slot statborg est
+	// reattribue d une manche a l autre, et les fermoirs PAR SLOT ne valent que dans la manche.
+	round int
 	xuid  string
 	t0    int64 // horloge du MATCH, ms
 	steal bool
 }
+
+// flagRoundSlot est la cle des fermoirs par slot : LA MANCHE ET LE SLOT, jamais le slot seul
+// (constat RB1-6 de l audit du 2026-09-24, lot J9.3). La capture ou la prise d un autre joueur au
+// meme slot, en manche suivante, ne sont pas des faits du portage de la manche precedente.
+type flagRoundSlot struct{ round, slot int }
 
 // flagCarryRaw est un portage borne, avant mise en spans.
 type flagCarryRaw struct {
@@ -252,7 +264,7 @@ func buildFlagCarries(scan FlagCarryScan, ctx flagCarryCtx) ([]FlagCarry, *FlagC
 		named = append(named, o)
 	}
 	logFlagOpeningsWithoutBridge(sansPont, len(openings))
-	raws := boundFlagCarries(named, scan.Events, ctx)
+	raws := boundFlagCarries(named, scan, ctx)
 	// LES QUATRE CHAINES DE FERMETURE S'APPLIQUENT EN SUITE, ET LA PLUS PRECOCE GAGNE — chacune
 	// EFFACANT l'etat de fin de celle qu'elle remplace (cf. [flagCloseAt], flag_carries_close.go).
 	// Les compteurs `closedBy*` ne s'incrementent donc PAS ici : ils se derivent du fermoir en
@@ -261,10 +273,12 @@ func buildFlagCarries(scan FlagCarryScan, ctx flagCarryCtx) ([]FlagCarry, *FlagC
 	// LE PASSAGE DE MAIN EN MAIN SE FERME AVANT TOUTE GEOMETRIE : le drapeau est nomme par
 	// l'EQUIPE du preneur (regle du mode), pas par sa position (cf. flag_carries_handoff.go).
 	cov.CarrierTeamUnknown = closeByHandoff(raws, named, scan)
+	countFlagCountUnread(scan, len(raws), ctx.fb)
 	// LE DRAPEAU RENTRE CHEZ LUI FERME AUSSI, et par les deux chaines qui le datent — le retour
 	// credite et la rentree de l'objet (cf. flag_carries_home.go).
 	closeByHomecoming(raws, scan, ctx)
-	raws, cov.AmbiguousCarrierKills = closeByCarrierKills(raws, scan.Events, scan.Identity)
+	// LA CHUTE CREDITEE NE FERME QUE LE PORTAGE D UN ADVERSAIRE DU TUEUR (lot J9.1, RB1-1).
+	cov.AmbiguousCarrierKills, cov.UnjudgedCarrierKills = closeByCarrierKills(raws, scan)
 	// LE LACHER VOLONTAIRE SE FERME ICI, ET AVANT LES POSITIONS : c'est lui qui deplace `t1`,
 	// donc le point de lacher que la ligne suivante ira lire sur la piste du porteur.
 	raws = closeByFreeLives(raws, ctx, scan)
@@ -279,22 +293,24 @@ func buildFlagCarries(scan FlagCarryScan, ctx flagCarryCtx) ([]FlagCarry, *FlagC
 	return assembleFlagLives(raws, scan, ctx, cov), cov
 }
 
-// flagOpenings rend les prises de l'oracle, par SLOT statborg, fusionnees et triees.
+// flagOpenings rend les prises de l'oracle, par (MANCHE, SLOT statborg), fusionnees et triees.
 func flagOpenings(evs []objectives.NamedEvent, identity objectives.RoundIdentity) []flagOpening {
-	bySlot := map[int][]flagOpening{}
+	bySlot := map[flagRoundSlot][]flagOpening{}
 	for _, e := range evs {
 		steal := e.Stat == objectives.StatFlagSteals
 		if e.Stat != objectives.StatFlagGrabs && !steal {
 			continue
 		}
-		bySlot[e.Slot] = append(bySlot[e.Slot],
-			flagOpening{slot: e.Slot, xuid: identity.At(e.Slot, e.TimeMS), t0: int64(e.TimeMS), steal: steal})
+		k := flagRoundSlot{round: identity.RoundAt(e.TimeMS), slot: e.Slot}
+		bySlot[k] = append(bySlot[k], flagOpening{slot: e.Slot, round: k.round,
+			xuid: identity.At(e.Slot, e.TimeMS), t0: int64(e.TimeMS), steal: steal})
 	}
 	var out []flagOpening
 	for _, ops := range bySlot {
 		sort.SliceStable(ops, func(i, j int) bool { return ops[i].t0 < ops[j].t0 })
 		for _, o := range ops {
-			if n := len(out); n > 0 && out[n-1].slot == o.slot && o.t0-out[n-1].t0 <= flagGrabMergeMS {
+			if n := len(out); n > 0 && out[n-1].slot == o.slot && out[n-1].round == o.round &&
+				o.t0-out[n-1].t0 <= flagGrabMergeMS {
 				// Un vol l'emporte sur une prise jumelle : c'est lui qui dit d'ou vient le
 				// drapeau (du socle), et l'attribution en depend.
 				out[n-1].steal = out[n-1].steal || o.steal
@@ -318,16 +334,17 @@ func sortFlagOpenings(ops []flagOpening) {
 	})
 }
 
-// boundFlagCarries ferme chaque prise au PREMIER des faits qui l'interrompent.
-func boundFlagCarries(ops []flagOpening, evs []objectives.NamedEvent, ctx flagCarryCtx) []flagCarryRaw {
-	captures := timesBySlot(evs, objectives.StatFlagCaptures)
+// boundFlagCarries ferme chaque prise au PREMIER des faits qui l'interrompent. La capture et la
+// prise suivante sont celles du MEME (manche, slot) : cf. [flagRoundSlot].
+func boundFlagCarries(ops []flagOpening, scan FlagCarryScan, ctx flagCarryCtx) []flagCarryRaw {
+	captures := timesByRoundSlot(scan.Events, objectives.StatFlagCaptures, scan.Identity)
 	deaths := deathTimesByXUID(ctx.deaths)
 	next := nextOpeningOfSlot(ops)
-	end := flagMatchEnd(evs, ctx)
+	end := flagMatchEnd(scan.Events, ctx)
 	out := make([]flagCarryRaw, 0, len(ops))
 	for i, o := range ops {
 		t1, captured, by := end, false, flagCloserNone
-		if c, ok := firstAfter(captures[o.slot], o.t0); ok && c < t1 {
+		if c, ok := firstAfter(captures[flagRoundSlot{round: o.round, slot: o.slot}], o.t0); ok && c < t1 {
 			t1, captured, by = c, true, flagCloserBound
 		}
 		if d, ok := firstAfter(deaths[o.xuid], o.t0); ok && d < t1 {
@@ -344,49 +361,19 @@ func boundFlagCarries(ops []flagOpening, evs []objectives.NamedEvent, ctx flagCa
 	return out
 }
 
-// nextOpeningOfSlot rend, par index de prise, l'instant de la prise SUIVANTE du meme slot.
+// nextOpeningOfSlot rend, par index de prise, l'instant de la prise SUIVANTE du meme (manche,
+// slot).
 func nextOpeningOfSlot(ops []flagOpening) map[int]int64 {
-	last := map[int]int{}
+	last := map[flagRoundSlot]int{}
 	out := map[int]int64{}
 	for i, o := range ops {
-		if prev, ok := last[o.slot]; ok {
+		k := flagRoundSlot{round: o.round, slot: o.slot}
+		if prev, ok := last[k]; ok {
 			out[prev] = o.t0
 		}
-		last[o.slot] = i
+		last[k] = i
 	}
 	return out
-}
-
-// closeByCarrierKills raccourcit un portage quand `flag_carriers_killed` date une chute que le
-// fil des morts n'a pas vue. Ne s'applique QUE si un seul portage est ouvert a cet instant :
-// sinon rien ne dit lequel, et l'evenement se compte en incoherence.
-func closeByCarrierKills(raws []flagCarryRaw, evs []objectives.NamedEvent,
-	identity objectives.RoundIdentity) ([]flagCarryRaw, int) {
-	ambiguous := 0
-	for _, e := range evs {
-		if e.Stat != objectives.StatFlagCarriersKilled {
-			continue
-		}
-		at, killer := int64(e.TimeMS), identity.At(e.Slot, e.TimeMS)
-		open, several := -1, false
-		for i := range raws {
-			if raws[i].t0 >= at || at >= raws[i].t1 || raws[i].xuid == killer {
-				continue
-			}
-			if open >= 0 {
-				several = true
-				break
-			}
-			open = i
-		}
-		switch {
-		case several:
-			ambiguous++
-		case open >= 0:
-			flagCloseAt(&raws[open], at, flagCloserCarrierKill)
-		}
-	}
-	return raws, ambiguous
 }
 
 // attachFlagCarryPositions pose la position de PRISE et celle de LACHER sur chaque portage, et
@@ -431,12 +418,14 @@ func sqDist(ax, ay, bx, by float32) float64 {
 	return dx*dx + dy*dy
 }
 
-// timesBySlot rend, par slot statborg, les instants tries d'une statistique.
-func timesBySlot(evs []objectives.NamedEvent, stat string) map[int][]int64 {
-	out := map[int][]int64{}
+// timesByRoundSlot rend, par (manche, slot statborg), les instants tries d'une statistique.
+func timesByRoundSlot(evs []objectives.NamedEvent, stat string,
+	identity objectives.RoundIdentity) map[flagRoundSlot][]int64 {
+	out := map[flagRoundSlot][]int64{}
 	for _, e := range evs {
 		if e.Stat == stat {
-			out[e.Slot] = append(out[e.Slot], int64(e.TimeMS))
+			k := flagRoundSlot{round: identity.RoundAt(e.TimeMS), slot: e.Slot}
+			out[k] = append(out[k], int64(e.TimeMS))
 		}
 	}
 	for s := range out {

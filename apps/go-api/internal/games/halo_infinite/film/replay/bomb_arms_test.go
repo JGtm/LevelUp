@@ -241,7 +241,7 @@ func TestBombArmsLacherPrimeSurRepli(t *testing.T) {
 		// PREMIER armement, et le second — pourtant nomme par un GESTE — resterait anonyme.
 		// La structure en deux passes l'interdit.
 		got, evts := BuildBombStats(BombStatsInput{
-			ArmingsRead: true, Armings: []BombArming{baArming(100000), baArming(106000)},
+			ArmingsRead: true, ClockRead: true, Armings: []BombArming{baArming(100000), baArming(106000)},
 			CarryRead: true, Carry: bombCarryDe(bombPeriode(9, 80000, 106200)),
 		})
 		assertBombInt(t, got, "9", func(p BombPlayerStats) *int { return p.Arms }, 1, "arms")
@@ -271,7 +271,7 @@ func TestBombArmsRecalageHorloge(t *testing.T) {
 		// L'armement est daté 100 000 ms sur l'horloge du FILM, soit 140 000 ms sur celle du
 		// MATCH — l'horloge des périodes de portage.
 		in := BombStatsInput{
-			ArmingsRead: true, Armings: []BombArming{baArming(100000)},
+			ArmingsRead: true, ClockRead: true, Armings: []BombArming{baArming(100000)},
 			CarryRead: true, Carry: bombCarryDe(bombPeriode(7, 120000, 140126)),
 			FilmToMatchOffsetMS: offset,
 		}
@@ -298,7 +298,7 @@ func TestBombArmsRecalageHorloge(t *testing.T) {
 		// Aucun lâcher ici (période fermée par la mort) : seul le repli peut nommer, et il ne
 		// le peut QUE si l'instant du film est recalé sur l'horloge du match.
 		in := BombStatsInput{
-			ArmingsRead: true, Armings: []BombArming{baArming(100000)},
+			ArmingsRead: true, ClockRead: true, Armings: []BombArming{baArming(100000)},
 			CarryRead: true, Carry: bombCarryDe(baPeriodeMort(8, 120000, 160000)),
 			FilmToMatchOffsetMS: offset,
 		}
@@ -333,7 +333,7 @@ func TestBombArmsSourcesNonLues(t *testing.T) {
 	})
 
 	t.Run("portage non lu : fait date publie SANS acteur, champ absent", func(t *testing.T) {
-		got, evts := BuildBombStats(BombStatsInput{ArmingsRead: true, Armings: armings})
+		got, evts := BuildBombStats(BombStatsInput{ArmingsRead: true, ClockRead: true, Armings: armings})
 		assertBombAbsent(t, got, func(p BombPlayerStats) bool { return p.Arms != nil }, "arms")
 		assertBombEvents(t, evts, []BombEvent{{Type: BombEventArmed, TimeMS: 100000}})
 		assertBombArmCoverage(t, got.Coverage, BombStatsCoverage{
@@ -349,7 +349,7 @@ func baJouer(t *testing.T, armings []BombArming, periodes []HeldObjectPeriod,
 ) {
 	t.Helper()
 	got, evts := BuildBombStats(BombStatsInput{
-		ArmingsRead: true, Armings: armings,
+		ArmingsRead: true, ClockRead: true, Armings: armings,
 		CarryRead: true, Carry: bombCarryDe(periodes...),
 	})
 	for xuid, n := range veut {

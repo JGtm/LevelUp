@@ -32,6 +32,9 @@ const (
 	NomIdentitePisteMeilleurRecouvrement Nom = "repli_identite_piste_meilleur_recouvrement"
 	// NomPositionLacherPrendLaPrise : `replay/flag_carries.go`, `attachFlagCarryPositions`.
 	NomPositionLacherPrendLaPrise Nom = "repli_position_lacher_prend_la_prise"
+	// NomNombreDrapeauxHorsCatalogueSansPassage : `replay/flag_carries_handoff.go`,
+	// `countFlagCountUnread` (lot J9.2, constat RB1-5).
+	NomNombreDrapeauxHorsCatalogueSansPassage Nom = "repli_nombre_drapeaux_hors_catalogue_sans_passage"
 	// NomPisteDrapeauSansPontEcartee : `replay/flag_carrier_tracks.go`, `tracksByXUID`.
 	NomPisteDrapeauSansPontEcartee Nom = "repli_piste_drapeau_sans_pont_ecartee"
 	// NomCollineVotesPeriodeEntiere : `replay/zone_states_hill.go`, `buildDesignatedHills`.

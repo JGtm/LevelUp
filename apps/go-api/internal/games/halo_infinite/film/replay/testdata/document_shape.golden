@@ -1,9 +1,9 @@
 # EMPREINTE DE FORME DU DOCUMENT DE REJEU — fige par document_shape_test.go.
 # Ne s'edite JAMAIS a la main : regeneration decrite en tete de ce test.
-schema 72
-empreinte-stockee 13e4a041e8d426ba
-empreinte-servie 13e4a041e8d426ba
-empreinte-cuite dbe3c781b3d5c9e9
+schema 73
+empreinte-stockee fbd091f06422cb47
+empreinte-servie fbd091f06422cb47
+empreinte-cuite 214a1229f10af442
 empreinte-cuite-regle 2
 
 AbilityCharge
@@ -132,6 +132,7 @@ BombStatsCoverage
   ArmingsByDrop json:"armingsByDrop" int
   ArmingsNoBridge json:"armingsNoBridge" int
   ArmingsNoCarrier json:"armingsNoCarrier" int
+  ArmingsNoClock json:"armingsNoClock,omitempty" int
   ArmingsRead json:"armingsRead" bool
   CarryRead json:"carryRead" bool
   Detonations json:"detonations" int
@@ -414,6 +415,7 @@ FlagCarriesCoverage
   Spawns json:"spawns" int
   Steals json:"steals" int
   TeamBirths json:"teamBirths" int
+  UnjudgedCarrierKills json:"unjudgedCarrierKills,omitempty" int
   Unresolved json:"unresolved" int
 FlagCarry
   Spans json:"spans" []FlagSpan

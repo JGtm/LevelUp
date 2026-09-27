@@ -21,6 +21,9 @@ package replay
 
 import (
 	"testing"
+
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
 )
 
 // flagHandoffScan : deux socles d'equipe, et la table des equipes de l'appelant.
@@ -87,18 +90,103 @@ func TestUnePriseDUnADVERSAIRENeFermeRien(t *testing.T) {
 	}
 }
 
-// TestUnSeulDrapeauEnJeuToutePriseDUnAutreFerme — la carte hors catalogue d'objectifs (aucun
-// socle) et la variante DRAPEAU NEUTRE ne mettent en jeu qu'UN drapeau : il n'appartient a
-// personne, et toute prise d'un autre joueur le borne, coequipier ou non.
+// TestUnSeulDrapeauEnJeuToutePriseDUnAutreFerme — la variante DRAPEAU NEUTRE (un seul socle
+// retenu, cf. flag_neutral.go) ne met en jeu qu'UN drapeau : il n'appartient a personne, et toute
+// prise d'un autre joueur le borne, coequipier ou non.
+//
+// CE TEST COUVRAIT AUSSI LA CARTE HORS CATALOGUE (aucun socle) jusqu'au lot J9.1-J9.2 : sa premisse
+// y etait fausse (constat RB1-5), cf. [TestHorsCatalogueLeNombreDeDrapeauxNeSeSupposePas].
 func TestUnSeulDrapeauEnJeuToutePriseDUnAutreFerme(t *testing.T) {
 	raws, ops := flagHandoffCas()
 	scan := flagHandoffScan(map[string]int{"1": 0, "2": 1}) // ADVERSAIRES
-	scan.Spawns = nil
+	scan.Spawns = []FlagSpawn{{Team: TeamNeutral, Neutral: true, X: 50, Y: 50}}
 	unnamed := closeByHandoff(raws, ops, scan)
 	closed := flagComptePar(raws, flagCloserHandoff)
 	if closed != 1 || unnamed != 0 || raws[0].t1 != 3000 {
 		t.Errorf("(%d, %d) et borne %d — attendu (1, 0) et 3000 : un seul drapeau est en jeu",
 			closed, unnamed, raws[0].t1)
+	}
+}
+
+// TestHorsCatalogueLeNombreDeDrapeauxNeSeSupposePas — CONSTAT RB1-5 (audit du 2026-09-24, lot
+// J9.2). Une carte hors du catalogue d'objectifs ne donne AUCUN socle : rien ne dit combien de
+// drapeaux sont en jeu. Le supposer UNIQUE faisait de toute prise d'un ADVERSAIRE un passage de
+// main en main — c'est exactement la regle sans son filtre d'equipe, que la mesure du lot 6.11
+// chiffre a 57 portages et 775,1 s retires a tort sur les 11 films CTF du parc. Le nombre n'est
+// donc plus suppose : aucun drapeau n'est nomme par l'equipe, rien n'est ferme, le silence se
+// compte (`carrierTeamUnknown`) et le repli NOMME se declenche une fois par portage non juge.
+//
+// MUTATION : `len(spawns) <= 1` dans [flagSingleInPlay] rougit ce test et
+// [TestHorsCatalogueUnRetourCrediteNeFermeRien].
+func TestHorsCatalogueLeNombreDeDrapeauxNeSeSupposePas(t *testing.T) {
+	for _, cas := range []struct {
+		nom   string
+		teams map[string]int
+	}{
+		{"adversaires", map[string]int{"1": 0, "2": 1}},
+		{"coequipiers", map[string]int{"1": 0, "2": 0}},
+	} {
+		t.Run(cas.nom, func(t *testing.T) {
+			raws, ops := flagHandoffCas()
+			scan := flagHandoffScan(cas.teams)
+			scan.Spawns = nil
+			unnamed := closeByHandoff(raws, ops, scan)
+			closed := flagComptePar(raws, flagCloserHandoff)
+			if closed != 0 || unnamed != 2 || raws[0].t1 != 6000 {
+				t.Errorf("(%d, %d) et borne %d — attendu (0, 2) et 6000 : le nombre de drapeaux "+
+					"d'une carte hors catalogue n'est pas lu", closed, unnamed, raws[0].t1)
+			}
+		})
+	}
+}
+
+// TestHorsCatalogueLeRepliSeCompteParPortage — le silence de la regle n'est pas muet : le repli
+// NOMME se declenche une fois par portage publie, et zero fois des qu'un socle est connu.
+func TestHorsCatalogueLeRepliSeCompteParPortage(t *testing.T) {
+	for _, cas := range []struct {
+		nom    string
+		spawns []FlagSpawn
+		veut   int
+	}{
+		{"hors catalogue", nil, 2},
+		{"deux socles", flagInvariantSpawns(), 0},
+	} {
+		t.Run(cas.nom, func(t *testing.T) {
+			scan := FlagCarryScan{
+				Scanned: true, Signals: flagTestSignals(),
+				Events: []objectives.NamedEvent{
+					{TimeMS: 1000, Slot: 12, Stat: objectives.StatFlagSteals},
+					{TimeMS: 3000, Slot: 14, Stat: objectives.StatFlagSteals},
+				},
+				Identity: objectives.FlatRoundIdentity(map[int]string{12: "1", 14: "2"}),
+				Spawns:   cas.spawns, TeamOf: map[string]int{"1": 0, "2": 1},
+			}
+			ctx := flagTestCtx([]Track{flagTestTrack(10, "1", 0, 99, 2, 2),
+				flagTestTrack(11, "2", 0, 99, 98, 98)}, nil, 100)
+			ctx.fb = fallback.NouveauCompteur()
+			if _, cov := buildFlagCarries(scan, ctx); cov == nil || cov.Carries != 2 {
+				t.Fatalf("couverture %+v : deux portages publies attendus", cov)
+			}
+			if n := ctx.fb.Compte(fallback.NomNombreDrapeauxHorsCatalogueSansPassage); n != cas.veut {
+				t.Errorf("repli declenche %d fois, attendu %d", n, cas.veut)
+			}
+		})
+	}
+}
+
+// TestHorsCatalogueUnRetourCrediteNeFermeRien — le MEME postulat nommait le drapeau d'un retour
+// credite : hors catalogue, le retour d'un joueur de l'equipe 0 (qui rend SON drapeau) fermait le
+// portage de son coequipier, qui tient l'AUTRE.
+func TestHorsCatalogueUnRetourCrediteNeFermeRien(t *testing.T) {
+	raws, _ := flagHandoffCas()
+	scan := flagHandoffScan(map[string]int{"1": 0, "2": 0, "3": 0})
+	scan.Spawns = nil
+	scan.Identity = objectives.FlatRoundIdentity(map[int]string{16: "3"})
+	scan.Events = []objectives.NamedEvent{{TimeMS: 2000, Slot: 16, Stat: objectives.StatFlagReturns}}
+	closeByHomecoming(raws, scan, flagTestCtx(nil, nil, 100))
+	if n := flagComptePar(raws, flagCloserReturn); n != 0 || raws[0].t1 != 6000 {
+		t.Errorf("%d portages fermes par un retour, borne %d — attendu 0 et 6000 : hors catalogue "+
+			"le retour ne nomme aucun drapeau", n, raws[0].t1)
 	}
 }
 

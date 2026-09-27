@@ -186,6 +186,9 @@ func bombArmsByXUID(in BombStatsInput, cov *BombStatsCoverage) (map[string]int, 
 	cov.Armings = len(in.Armings)
 	armings := append([]BombArming(nil), in.Armings...)
 	sort.SliceStable(armings, func(i, j int) bool { return armings[i].TimeMS < armings[j].TimeMS })
+	if !in.ClockRead {
+		return nil, bombArmsSansHorloge(armings, cov)
+	}
 	cands := bombArmCandidates(in)
 	used := make([]bool, len(cands))
 	verdicts := make([]bombArmVerdict, len(armings))
@@ -212,6 +215,27 @@ func bombArmsByXUID(in BombStatsInput, cov *BombStatsCoverage) (map[string]int, 
 		}
 	}
 	return bombArmSynthese(armings, verdicts, cands, cov)
+}
+
+// bombArmsSansHorloge publie chaque armement comme un fait DATÉ SANS ACTEUR, quand l'origine
+// d'horloge du film est illisible (lot J9.6, constat RB1-3). L'instant armé est vrai — il est sur
+// l'horloge du film, celle du manifeste —, c'est le RECALAGE vers les périodes de portage qui
+// manque : aucune des deux règles ne peut tourner, et aucune ne tourne.
+func bombArmsSansHorloge(armings []BombArming, cov *BombStatsCoverage) []BombEvent {
+	events := make([]BombEvent, 0, len(armings))
+	for _, a := range armings {
+		events = append(events, BombEvent{Type: BombEventArmed, TimeMS: a.TimeMS})
+	}
+	cov.ArmingsNoClock = len(armings)
+	return events
+}
+
+// bombArmsMeasured dit si `bomb_arms` est une MESURE pour ce film. Elle demande les DEUX canaux
+// — l'anneau date l'armement, le portage le nomme — ET, dès qu'il y a au moins un armement à
+// joindre, l'horloge du film qui les recale (`BombStatsInput.ClockRead`). Un film sans armement
+// n'a rien à joindre : son zéro est mesuré, horloge ou non.
+func bombArmsMeasured(in BombStatsInput) bool {
+	return in.ArmingsRead && in.CarryRead && (in.ClockRead || len(in.Armings) == 0)
 }
 
 // bombArmSynthese transforme les verdicts en comptes par joueur, en faits datés et en

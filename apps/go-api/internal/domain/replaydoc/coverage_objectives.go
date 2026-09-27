@@ -31,6 +31,7 @@ type FlagCarriesCoverage struct {
 	Overlaps              int  `json:"overlaps"`
 	ClosedOverlaps        int  `json:"closedOverlaps"`
 	AmbiguousCarrierKills int  `json:"ambiguousCarrierKills"`
+	UnjudgedCarrierKills  int  `json:"unjudgedCarrierKills,omitempty"`
 	AmbiguousReturns      int  `json:"ambiguousReturns"`
 	HomeByObject          int  `json:"homeByObject"`
 	AmbiguousHomecomings  int  `json:"ambiguousHomecomings"`
@@ -156,6 +157,7 @@ type BombStatsCoverage struct {
 	ArmingsNoCarrier     int  `json:"armingsNoCarrier"`
 	ArmingsNoBridge      int  `json:"armingsNoBridge"`
 	ArmingsAmbiguous     int  `json:"armingsAmbiguous"`
+	ArmingsNoClock       int  `json:"armingsNoClock,omitempty"`
 	Periods              int  `json:"periods"`
 	PeriodsNoBridge      int  `json:"periodsNoBridge"`
 	PeriodsOpen          int  `json:"periodsOpen"`

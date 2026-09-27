@@ -2625,3 +2625,43 @@ package replay
 //	                « schema perime » : verdict `republier`. Mais ses faits persistes sont du codec
 //	                1, refuses sur leur prefixe : la cuisson les ecarte, REDECODE le film et ecrit
 //	                des faits du codec 2. La vague unique du jalon J11 le fait pour tout le parc.
+
+// v73 (2026-09-26, jalon J9 du PLAN_SUITE_AUDIT_DECODEUR_FILM_2026-09-25, constats RB1-1, RB1-2,
+// RB1-3, RB1-5, RB1-6, RB1-7, RB1-8 de l audit du 2026-09-24) : DRAPEAU, BOMBE, ZONES. Sept
+// corrections de PUBLICATION ; la forme ne gagne que deux compteurs de couverture optionnels, mais
+// le SENS de plusieurs calques change, et un artefact 72 doit se lire « a republier ».
+//
+//	`flagCarries`   `flag_carriers_killed` (credite au tueur) ne ferme plus que le portage d un
+//	                ADVERSAIRE du tueur, lu dans `TeamOf` : un coequipier du tueur perdait son
+//	                portage et sa capture, et un tueur non nomme n excluait personne (RB1-1). Les
+//	                evenements que la regle ne peut pas juger (tueur non nomme, equipe non lue)
+//	                ne ferment rien et se comptent : `coverage.flagCarries.unjudgedCarrierKills`
+//	                (NOUVEAU, `omitempty`). Hors catalogue d objectifs, le nombre de drapeaux ne
+//	                se suppose plus a un : ni passage de main en main ni retour credite ne
+//	                ferment un portage, le repli `repli_nombre_drapeaux_hors_catalogue_sans_passage`
+//	                se compte par portage (RB1-5). La capture et la prise suivante « du meme slot »
+//	                ne bornent un portage que dans la MEME MANCHE (RB1-6). Une reprise ou un retour
+//	                tombes dans la frame d un lacher, apres lui, passent apres lui : les transitions
+//	                suivent l ordre total des instants, plus un retri par frame seule (RB1-2).
+//	`bombCarries`,  une periode de portage se ferme au PREMIER de (mort, lacher) : un lacher emis
+//	`bombStats`     apres la mort du porteur ne prolonge plus sa periode, qui devient une fin PAR
+//	                MORT — donc plus candidate a la regle du lacher de `bomb_arms` (RB1-7).
+//	`bombStats`,    origine d horloge du film illisible (`FilmClockOriginUS` nul) : la jointure de
+//	`bombEvents`    `bomb_arms` ne tourne plus sur un recalage faux, `bomb_arms` est ABSENT (NULL
+//	                en base, jamais un zero mesure), les armements sont publies sans acteur et
+//	                comptes dans `bombStats.coverage.armingsNoClock` (NOUVEAU, `omitempty`) ; un
+//	                film sans armement garde son zero mesure (RB1-3).
+//	`zoneStates`,   l allegement de la jauge mesure une VARIATION, plus une montee : une descente
+//	`flagCarries`   d au moins 0,02 se publie a sa frame, et non plus une seconde plus tard — la
+//	                jauge des zones et la jauge de RETOUR DU DRAPEAU partagent cet allegement
+//	                (RB1-8).
+//
+//	CE QUI MONTE    `SchemaVersion` 72 -> 73. AUCUNE revision de couche : les sept corrections
+//	AVEC ELLE       vivent dans `film/replay` (publication). `objectives.Rev` reste
+//	                `objectives-2026-09-26` — la sortie de la couche des objectifs ne change pas ;
+//	                son empreinte est recopiee a revision constante (accesseur `RoundAt` ajoute
+//	                pour les fermoirs par manche, lot J9.3).
+//
+//	LE PARC         un artefact 72 se lit « decodage intact » et « schema perime » : verdict
+//	                `republier`, depuis ses faits persistes, qui portent tout ce que ces regles
+//	                lisent (statborg, fil des morts, origine d horloge, armes tenues, jauges).

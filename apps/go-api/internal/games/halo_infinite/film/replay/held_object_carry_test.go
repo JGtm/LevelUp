@@ -50,6 +50,54 @@ func TestBuildHeldObjectCarryMortFermeLaPeriode(t *testing.T) {
 	}
 }
 
+// TestBuildHeldObjectCarryMortAvantLeLacher — CONSTAT RB1-7 (audit du 2026-09-24, lot J9.5). Le
+// porteur meurt a 2500 et le canal n'emet son lacher qu'a 4000 (la transition DEPUIS la famille
+// suit la mort, elle ne la precede pas). La periode se ferme au PREMIER des deux : la mort. Le
+// lacher fermait seul, et creditait 1,5 s de portage a un joueur mort — et une pose par lacher
+// dans la fenetre de `bomb_arms`.
+//
+// MUTATION : fermer au lacher sans consulter le fil des morts (`fermer(tr.tMS, false)`) rougit
+// ce test.
+func TestBuildHeldObjectCarryMortAvantLeLacher(t *testing.T) {
+	c := BuildHeldObjectCarry(hocEvents(
+		HeldObjectEvent{TimeMS: 1000, Slot: 5, Pickup: true},
+		HeldObjectEvent{TimeMS: 4000, Slot: 5, Pickup: false},
+	), occupantFige(map[uint32]uint64{5: 42}), []types.Death{{XUID: 42, TimeMS: 2500}})
+	if len(c.Periods) != 1 {
+		t.Fatalf("périodes : %d, attendu 1", len(c.Periods))
+	}
+	if p := c.Periods[0]; p.FinMS != 2500 || !p.FinParMort || p.Ouverte {
+		t.Errorf("période : %+v, attendu fin 2500 par mort", p)
+	}
+	if c.CarryMSByXUID[42] != 1500 {
+		t.Errorf("portage du mort : %d, attendu 1500", c.CarryMSByXUID[42])
+	}
+}
+
+// TestBuildHeldObjectCarryPlusPrecoceDesMortsQuelQueSoitLOrdre : deux morts dans la période,
+// données dans le désordre — la période se ferme à la PLUS PRÉCOCE, pas à la première lue.
+func TestBuildHeldObjectCarryPlusPrecoceDesMortsQuelQueSoitLOrdre(t *testing.T) {
+	c := BuildHeldObjectCarry(hocEvents(
+		HeldObjectEvent{TimeMS: 1000, Slot: 5, Pickup: true},
+		HeldObjectEvent{TimeMS: 4000, Slot: 5, Pickup: false},
+	), occupantFige(map[uint32]uint64{5: 42}), []types.Death{{XUID: 42, TimeMS: 3000}, {XUID: 42, TimeMS: 2000}})
+	if p := c.Periods[0]; p.FinMS != 2000 || !p.FinParMort {
+		t.Errorf("période : %+v, attendu fin 2000 par la mort la plus précoce", p)
+	}
+}
+
+// TestBuildHeldObjectCarryLacherAvantLaMort — LE TEMOIN : une mort POSTERIEURE au lacher ne
+// change rien, le lacher ferme.
+func TestBuildHeldObjectCarryLacherAvantLaMort(t *testing.T) {
+	c := BuildHeldObjectCarry(hocEvents(
+		HeldObjectEvent{TimeMS: 1000, Slot: 5, Pickup: true},
+		HeldObjectEvent{TimeMS: 4000, Slot: 5, Pickup: false},
+	), occupantFige(map[uint32]uint64{5: 42}), []types.Death{{XUID: 42, TimeMS: 4500}})
+	if p := c.Periods[0]; p.FinMS != 4000 || p.FinParMort {
+		t.Errorf("période : %+v, attendu fin 4000 par lacher", p)
+	}
+}
+
 func TestBuildHeldObjectCarryFinDeFilm(t *testing.T) {
 	// Prise sans lâcher ni mort : période OUVERTE, exclue du temps de portage.
 	c := BuildHeldObjectCarry(hocEvents(
