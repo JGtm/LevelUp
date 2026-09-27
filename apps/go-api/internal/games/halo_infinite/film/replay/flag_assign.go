@@ -1,6 +1,10 @@
 package replay
 
-import "sort"
+import (
+	"sort"
+
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
+)
 
 // flag_assign.go — A QUEL DRAPEAU UN PORTAGE APPARTIENT.
 //
@@ -140,6 +144,8 @@ type flagGround struct {
 	// teamOf est la table xuid -> equipe LUE DANS LE FILM (`FlagCarryScan.TeamOf`). Vide :
 	// l'invariant « jamais son propre drapeau » se tait, faute d'equipe lue.
 	teamOf map[string]int
+	// fb : le compteur de replis de la cuisson (lot J8.7). Nil ne compte rien.
+	fb *fallback.Compteur
 }
 
 // prendre note qu'un drapeau vient d'etre pris : il quitte le sol, et il est en jeu.
@@ -251,6 +257,7 @@ func assignFlags(raws []flagCarryRaw, scan FlagCarryScan, ctx flagCarryCtx,
 	cov *FlagCarriesCoverage) {
 	spawns := scan.Spawns
 	if len(spawns) == 0 {
+		ctx.fb.DeclencheN(fallback.NomIndexDrapeauZeroPourTous, len(raws))
 		for i := range raws {
 			raws[i].flagIndex = 0
 		}
@@ -259,6 +266,7 @@ func assignFlags(raws []flagCarryRaw, scan FlagCarryScan, ctx flagCarryCtx,
 	g := &flagGround{
 		sol: make([]*[2]float32, len(spawns)), enJeu: make([]bool, len(spawns)),
 		teamOf: scan.TeamOf,
+		fb:     ctx.fb,
 	}
 	for _, ev := range flagGroundTimeline(raws, scan, ctx) {
 		switch {
@@ -278,6 +286,10 @@ func assignFlags(raws []flagCarryRaw, scan FlagCarryScan, ctx flagCarryCtx,
 func (g *flagGround) ouvrir(raws []flagCarryRaw, i int, spawns []FlagSpawn,
 	cov *FlagCarriesCoverage) {
 	equipe, connue := g.equipeDe(raws[i].xuid)
+	if !connue || equipe == TeamNeutral {
+		// L INVARIANT SE TAIT sur une equipe non lue : c est le repli inscrit, compte par portage.
+		g.fb.Declenche(fallback.NomInvariantPropreDrapeauMuet)
+	}
 	f, parElimination := g.choisir(raws[i], spawns, nil)
 	if sonPropreDrapeau(spawns, f, equipe, connue) {
 		// LA GEOMETRIE A DESIGNE SON PROPRE DRAPEAU : refuse, et les MEMES TROIS REGLES se
@@ -295,6 +307,7 @@ func (g *flagGround) ouvrir(raws []flagCarryRaw, i int, spawns []FlagSpawn,
 	}
 	if parElimination {
 		cov.AssignedByPlay++
+		g.fb.Declenche(fallback.NomDrapeauSeulEnJeu)
 	}
 	g.prendre(f)
 }

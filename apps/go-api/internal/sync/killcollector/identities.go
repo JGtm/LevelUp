@@ -50,6 +50,10 @@ type MatchIdentities struct {
 	// departager un siege d index PARTAGE entre un bot et un humain arrive en cours (lot 5.1,
 	// revue de vague 4, constat P2 — cf. identity_registry_scoreboard.go pour la regle).
 	Participants []replay.Participant
+	// replis : le compteur des replis de la passe du film (lot J8.7, replis_de_la_passe.go), recopie
+	// du contexte par `IdentitiesForMatch` pour les fonctions pures qui recoivent ces identites. nil :
+	// rien n est compte (identites construites a la main, tests).
+	replis *decfilm.Compteur
 }
 
 // Resoudre : LE nom que le film donne devient un xuid et un gamertag. UNE SEULE COPIE DE CETTE
@@ -69,6 +73,16 @@ type MatchIdentities struct {
 // vue canonique — sinon la table stockerait `xuid:2535...` comme pseudo, exactement l « xuid brut
 // a l affichage » que `v_gamertag_lookup` existe pour empecher.
 func (m MatchIdentities) Resoudre(nom string) (xuid, gamertag string) {
+	xuid, gamertag = m.resoudre(nom)
+	if xuid == "" {
+		// Repli `repli_xuid_vide_pour_nom_inconnu` : le nom ne se resout dans aucune table (lot J8.7).
+		m.replis.Declenche(decfilm.NomXuidVidePourNomInconnu)
+	}
+	return xuid, gamertag
+}
+
+// resoudre est la regle de [MatchIdentities.Resoudre], sans le compte.
+func (m MatchIdentities) resoudre(nom string) (xuid, gamertag string) {
 	if reste, ok := strings.CutPrefix(nom, decfilm.XUIDNamePrefix); ok {
 		if estDecimal(reste) {
 			if gt := m.ParXUID[reste]; gt != "" {

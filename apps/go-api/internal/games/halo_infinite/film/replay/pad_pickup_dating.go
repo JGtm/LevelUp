@@ -57,7 +57,9 @@ type PadDatingStats struct {
 	// ramassage natif peut être daté sans que le pont slot -> joueur nomme sa vie).
 	Named int `json:"named"`
 	// Ambiguous compte les fenêtres où PLUSIEURS ramassages natifs de la même famille
-	// tombaient : on s'abstient plutôt que de nommer un ramasseur au hasard.
+	// tombaient, ET (lot J8.2, 2026-09-27) celles dont l'unique ramassage était aussi le
+	// candidat unique d'une autre occupation : on s'abstient plutôt que de nommer un ramasseur
+	// au hasard, ou de créditer deux prises pour un seul ramassage.
 	Ambiguous int `json:"ambiguous"`
 	// Uncovered compte les fenêtres qu'aucun ramassage natif ne couvre — elles gardent leur
 	// intervalle, intact.
@@ -117,11 +119,58 @@ func PadWeaponFamilyKey(s string) (string, bool) {
 //
 // `pads` sert à retrouver la FAMILLE d'arme du socle : `PadPickup.Pad` est un index dans
 // `pads`, et c'est la famille qui apparie une occupation à un ramassage natif.
+//
+// UN RAMASSAGE NATIF DATE AU PLUS UNE OCCUPATION (lot J8.2 du plan de suite d audit, constat
+// RB2-5, 2026-09-27). Deux socles de la même arme dont les fenêtres se chevauchent peuvent
+// voir le MÊME ramassage comme leur candidat unique ; rien dans l'événement ne dit de quel
+// socle il vient, et le poser sur les deux créditait le joueur de deux prises pour une seule
+// (`BuildUsageSummary`). Un ramassage revendiqué par plusieurs occupations est donc CONSOMMÉ
+// par aucune : elles s'abstiennent et se comptent dans `Ambiguous`, comme la fenêtre qui voit
+// plusieurs ramassages — c'est la même ambiguïté vue de l'autre côté de la jointure.
 func datePadPickups(pads []WeaponPad, picks []PadPickup, pickups []Pickup) PadDatingStats {
 	st := PadDatingStats{Occupations: len(picks)}
 	if len(picks) == 0 {
 		return st
 	}
+	candidat := candidatsDeDatation(pads, picks, pickups, &st)
+	revendications := map[int]int{}
+	for _, c := range candidat {
+		if c >= 0 {
+			revendications[c]++
+		}
+	}
+	for i := range picks {
+		c := candidat[i]
+		switch {
+		case c < 0:
+			continue // déjà classée par candidatsDeDatation
+		case revendications[c] > 1:
+			// Ramassage DISPUTÉ entre plusieurs occupations : on s'abstient (RB2-5).
+			st.Ambiguous++
+			continue
+		}
+		k := &picks[i]
+		t := pickups[c].T
+		k.T = &t
+		st.Dated++
+		if pickups[c].XUID != "" {
+			x := pickups[c].XUID
+			k.XUID = &x
+			st.Named++
+		}
+	}
+	return st
+}
+
+// candidatNonDate : la valeur de [candidatsDeDatation] pour une occupation déjà classée
+// (hors bornes, power-up, non couverte, ambiguë) — elle ne sera pas datée.
+const candidatNonDate = -1
+
+// candidatsDeDatation rend, pour chaque occupation, l'INDEX dans `pickups` de son ramassage natif
+// candidat quand il est UNIQUE dans sa fenêtre, [candidatNonDate] sinon ; il compte dans `st` les
+// occupations qu'il classe lui-même (hors bornes et non couvertes dans `Uncovered`, power-ups
+// dans `PowerupOccupations`, fenêtres à plusieurs ramassages dans `Ambiguous`).
+func candidatsDeDatation(pads []WeaponPad, picks []PadPickup, pickups []Pickup, st *PadDatingStats) []int {
 	// PAS DE RETOUR ANTICIPÉ QUAND LE CANAL NATIF EST VIDE, et c'est un correctif de revue
 	// (ronde 2) : la première version versait alors TOUTES les occupations dans `Uncovered`,
 	// power-ups compris — c'est-à-dire exactement la lecture mensongère (« le canal a cherché
@@ -131,8 +180,8 @@ func datePadPickups(pads []WeaponPad, picks []PadPickup, pickups []Pickup) PadDa
 	//
 	// Index par famille NORMALISÉE : une occupation ne s'apparie qu'à un ramassage de LA MÊME
 	// arme, et les deux côtés ne l'écrivent pas pareil (cf. l'en-tête).
-	byFamily := map[string][]Pickup{}
-	for _, p := range pickups {
+	byFamily := map[string][]int{}
+	for j, p := range pickups {
 		if p.Kind != PickupWeapon {
 			continue // un socle d'arme ne rend pas de l'équipement
 		}
@@ -140,9 +189,11 @@ func datePadPickups(pads []WeaponPad, picks []PadPickup, pickups []Pickup) PadDa
 		if !ok {
 			continue
 		}
-		byFamily[key] = append(byFamily[key], p)
+		byFamily[key] = append(byFamily[key], j)
 	}
+	out := make([]int, len(picks))
 	for i := range picks {
+		out[i] = candidatNonDate
 		k := &picks[i]
 		if k.Pad < 0 || k.Pad >= len(pads) {
 			st.Uncovered++
@@ -155,28 +206,21 @@ func datePadPickups(pads []WeaponPad, picks []PadPickup, pickups []Pickup) PadDa
 			st.PowerupOccupations++
 			continue
 		}
-		var hits []Pickup
-		for _, p := range byFamily[key] {
-			if p.T >= k.TLow && p.T <= k.THigh {
-				hits = append(hits, p)
+		var hits []int
+		for _, j := range byFamily[key] {
+			if pickups[j].T >= k.TLow && pickups[j].T <= k.THigh {
+				hits = append(hits, j)
 			}
 		}
 		switch len(hits) {
 		case 0:
 			st.Uncovered++
 		case 1:
-			t := hits[0].T
-			k.T = &t
-			st.Dated++
-			if hits[0].XUID != "" {
-				x := hits[0].XUID
-				k.XUID = &x
-				st.Named++
-			}
+			out[i] = hits[0]
 		default:
 			// Plusieurs candidats : on s'abstient. Voir l'en-tête de ce fichier.
 			st.Ambiguous++
 		}
 	}
-	return st
+	return out
 }

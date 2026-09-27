@@ -27,6 +27,7 @@ import (
 	"strconv"
 
 	"levelup/go-api/internal/games/canonical"
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
@@ -136,6 +137,9 @@ func buildIdentitySection(r IdentityRegistry, in IdentityInput) IdentitySection 
 		BipedSlots:    identityBipedSlots(r, in.Clock),
 		StatborgSlots: identityStatborgSlots(in),
 	}
+	// LA VOIE DU RESIDU EST UN REPLI COMPTE (lot J8.4, constats FO-1 / RA2-4) : un couple nomme
+	// par elle est un couple que les instants de mort et la feuille n ont pas tranche.
+	compterLesSlotsParResidu(s.StatborgSlots, in.Fallbacks)
 	s.Coverage.FilmTable = r.CouvertureTableDuFilm()
 	for _, p := range s.Players {
 		s.Coverage.FilmIndex.Add(p.Link.Source)
@@ -324,6 +328,8 @@ func methodeStatborg(origin string) canonical.LinkMethod {
 		return canonical.MethodSheetTriplet
 	case objectives.OriginElimination:
 		return canonical.MethodRosterElimination
+	case objectives.OriginRoundResidue:
+		return canonical.MethodRoundResidue
 	}
 	return canonical.MethodNone
 }
@@ -362,4 +368,14 @@ func triesParXUID(byXUID map[uint64]int) []uint64 {
 	}
 	trierUint64(out)
 	return out
+}
+
+// compterLesSlotsParResidu verse au compteur de replis de la cuisson un declenchement par couple
+// (manche, slot) que le RESIDU DE MANCHE a nomme.
+func compterLesSlotsParResidu(slots []IdentityStatborgSlot, fb *fallback.Compteur) {
+	for _, s := range slots {
+		if s.Link.Method == canonical.MethodRoundResidue {
+			fb.Declenche(fallback.NomIdentiteDeSlotParResiduDeManche)
+		}
+	}
 }

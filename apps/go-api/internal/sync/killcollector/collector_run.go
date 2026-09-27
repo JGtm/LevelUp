@@ -54,6 +54,11 @@ func (c *KillSourceCollector) CollectMatch(ctx context.Context, matchID string) 
 	// est domine par le decodage, mais un CDN qui ne repond pas bloquerait tout autant.
 	matchCtx, cancel := context.WithTimeout(ctx, c.timeout)
 	defer cancel()
+	// LE COMPTEUR DES REPLIS DE CETTE PASSE (lot J8.7, cf. replis_de_la_passe.go) : ne ici, publie a
+	// la sortie quelle qu elle soit — un abandon rend compte de ce qui s est deja declenche.
+	replis := decfilm.NouveauCompteur()
+	matchCtx = avecReplisDeLaPasse(matchCtx, replis)
+	defer publierReplisDeLaPasse(ctx, matchID, replis)
 
 	outcome, deaths, err := c.collect(matchCtx, matchID)
 	dur := time.Since(start)
@@ -240,7 +245,7 @@ func (c *KillSourceCollector) collectShots(
 			"err", games.ErrCapabilityNotSupported)
 		return
 	}
-	batch := BuildWeaponShotsBatch(matchID, ReplicationChunks(chunks), parts.XUIDs, parts.ShotsFired)
+	batch := BuildWeaponShotsBatch(matchID, ReplicationChunks(chunks), parts.XUIDs, parts.ShotsFired, parts.replis)
 	if err := c.writeShots(ctx, batch); err != nil {
 		observability.AddInt(metricShotsWriteFail, 1)
 		slog.ErrorContext(ctx, "killsource: ecriture de la ventilation des tirs echouee",

@@ -72,10 +72,13 @@ func zeroEstimator(int) float64 { return 0 }
 //
 // `chunks` sont les chunks REPLICATION_DATA DECOMPRESSES ; `shotsFired` la reference de l API
 // par xuid (absente = la porte refusera, elle ne suppose pas).
+//
+// `fb` recoit les replis de la resolution des indices (collisions, premieres occurrences
+// discordantes) — le compteur de la passe du film (lot J8.7) ; nil ne compte rien.
 func BuildWeaponShotsBatch(
-	matchID string, chunks [][]byte, rosterXUIDs []string, shotsFired map[string]int,
+	matchID string, chunks [][]byte, rosterXUIDs []string, shotsFired map[string]int, fb *decfilm.Compteur,
 ) persist.WeaponShotsBatch {
-	piToXUID := resolvePlayerIndices(rosterXUIDs, chunks)
+	piToXUID := resolvePlayerIndices(rosterXUIDs, chunks, fb)
 
 	// Comptage (indice de replication x arme). L indice est celui du FILM, jamais un rang de
 	// base : c est la seule quantite qui ne depende d aucune resolution.
@@ -119,7 +122,10 @@ const maxReplicationIndex = 31
 //
 // Un xuid non resolu n a PAS de ligne : mieux vaut un joueur absent de la table qu un joueur
 // dont les tirs sont attribues a un autre.
-func resolvePlayerIndices(rosterXUIDs []string, chunks [][]byte) map[int]string {
+//
+// `fb` recoit ses deux replis (lot J8.7) : les indices en COLLISION jetes, et les occurrences
+// suivantes d un motif qui DISCORDENT de la premiere, retenue sans controle. nil ne compte rien.
+func resolvePlayerIndices(rosterXUIDs []string, chunks [][]byte, fb *decfilm.Compteur) map[int]string {
 	motifs := make(map[uint64]string, len(rosterXUIDs))
 	for _, s := range rosterXUIDs {
 		v, err := strconv.ParseUint(s, 10, 64)
@@ -129,7 +135,10 @@ func resolvePlayerIndices(rosterXUIDs []string, chunks [][]byte) map[int]string 
 		motifs[motifDuXUID(v)] = s
 	}
 	out := map[int]string{}
-	for x, pi := range chercherMotifs(motifs, chunks) {
+	trouves, discordances := chercherMotifs(motifs, chunks)
+	fb.DeclencheN(decfilm.NomPremiereOccurrenceSansConcordance, discordances)
+	collisions := 0
+	for x, pi := range trouves {
 		if pi < 0 || pi > maxReplicationIndex {
 			continue
 		}
@@ -137,10 +146,12 @@ func resolvePlayerIndices(rosterXUIDs []string, chunks [][]byte) map[int]string 
 		// les tirs d un joueur sous le nom d un autre, ce qui est pire que de n en publier aucun.
 		if _, deja := out[pi]; deja {
 			out[pi] = ""
+			collisions++
 			continue
 		}
 		out[pi] = x
 	}
+	fb.DeclencheN(decfilm.NomIndiceEnCollisionJete, collisions)
 	return out
 }
 
@@ -169,10 +180,14 @@ func motifDuXUID(xuid uint64) uint64 { return bits.ReverseBytes64(xuid) }
 // L EQUIVALENCE EST EXACTE, ET ELLE EST TESTEE : chunks dans l ordre, positions croissantes,
 // premiere occurrence gagnante — les trois proprietes de `ResolveBest`. Le test
 // `TestRechercheDeMotifsEquivautALaVersionNaive` confronte les deux implementations.
-func chercherMotifs(motifs map[uint64]string, chunks [][]byte) map[string]int {
+//
+// LE SECOND RENDU COMPTE LES OCCURRENCES SUIVANTES QUI DISCORDENT de la premiere (un autre indice
+// lu avant le meme motif), vues avant l arret de la recherche : la premiere gagne SANS controle
+// de concordance (`repli_premiere_occurrence_sans_concordance`, lot J8.7). La valeur rendue ne change pas.
+func chercherMotifs(motifs map[uint64]string, chunks [][]byte) (map[string]int, int) {
 	out := make(map[string]int, len(motifs))
 	if len(motifs) == 0 {
-		return out
+		return out, 0
 	}
 	// Prefiltre : les 16 bits de poids fort de chaque motif. Une position dont les 16 premiers
 	// bits ne sont ceux d aucun motif ne peut pas etre un motif — le test coute un acces tableau.
@@ -181,13 +196,14 @@ func chercherMotifs(motifs map[uint64]string, chunks [][]byte) map[string]int {
 		prefiltre[m>>48] = true
 	}
 
+	discordances := 0
 	for _, data := range chunks {
 		if len(out) == len(motifs) {
 			break // tout est resolu : le reste du film n apprendrait rien
 		}
-		chercherDansChunk(motifs, &prefiltre, data, out)
+		chercherDansChunk(motifs, &prefiltre, data, out, &discordances)
 	}
-	return out
+	return out, discordances
 }
 
 // chercherDansChunk : la fenetre glissante sur UN chunk.
@@ -195,7 +211,7 @@ func chercherMotifs(motifs map[uint64]string, chunks [][]byte) map[string]int {
 // `pos` designe le bit qui vient d entrer dans la fenetre ; le motif commence donc a
 // `pos-63`, et l indice se lit sur les 5 bits qui PRECEDENT — d ou la garde `pos >= 68`.
 func chercherDansChunk(
-	motifs map[uint64]string, prefiltre *[1 << 16]bool, data []byte, out map[string]int,
+	motifs map[uint64]string, prefiltre *[1 << 16]bool, data []byte, out map[string]int, discordances *int,
 ) {
 	var fenetre uint64
 	total := len(data) * 8
@@ -208,10 +224,13 @@ func chercherDansChunk(
 		if !ok {
 			continue
 		}
-		if _, deja := out[xuid]; deja {
+		debut := pos - 63
+		if premier, deja := out[xuid]; deja {
+			if debut >= decfilm.PIBits && lireIndiceAvant(data, debut) != premier {
+				*discordances++
+			}
 			continue // premiere occurrence gagnante, comme `ResolveBest`
 		}
-		debut := pos - 63
 		if debut < decfilm.PIBits {
 			continue // pas assez de bits AVANT le motif pour porter un indice
 		}

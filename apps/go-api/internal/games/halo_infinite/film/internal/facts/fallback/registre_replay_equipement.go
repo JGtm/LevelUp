@@ -17,7 +17,7 @@ var registreReplayEquipement = []Repli{
 			Ancre:   "fb.Declenche(fallback.NomPieceEngendreeSansEvenement)",
 		}},
 		DatePose:     dateVague2,
-		CibleRetrait: "lot 3.x (profil par build) : la lecture des evenements de liste sur les builds anciens",
+		CibleRetrait: "la lecture des evenements de liste sur les builds anciens (profil par build) ; a defaut, " + retraitRegle4,
 		// MESURE DU 2026-09-15 : 9 poses de panneau sur 124, et TOUTES sur les deux films de
 		// build les plus anciens du corpus — `a521164d` (HI_1_4_1, 0 evenement 103 lu sur
 		// 4 956 listes) et `50247b26` (v31 sans section, 2 evenements). C'est une limite de
@@ -45,7 +45,7 @@ var registreReplayEquipement = []Repli{
 		// cuisson, dans `BuildUsageSummary` ; son compte n'entre donc jamais dans
 		// `coverage.fallbacks[]`. Les deux instruments qui le mesurent VRAIMENT sont nommes
 		// ci-dessous.
-		CibleRetrait: "retrait sec a M2 (D14 d) : le compte est DEJA nul sur les 8 builds, et le journal des passes le confirme ou l'infirme sur le parc",
+		CibleRetrait: "le compte est deja nul sur les 8 builds, et le journal des passes le confirme ou l infirme sur le parc ; a defaut, " + retraitRegle4,
 		// DÉFAUT MESURÉ PUIS REFERMÉ. Audit 0.E, constat N-3 de REG-R2 : 32 à 95 % des poses d'un
 		// film tombaient hors de toute fenêtre publiée (153/351, 443/466, 34/105 sur trois films).
 		// MESURE DU 2026-09-16, compteur câblé, les 8 builds
@@ -76,7 +76,7 @@ var registreReplayEquipement = []Repli{
 		DatePose: dateAudit0E,
 		// CIBLE REECRITE LE 2026-09-16 (revue de jalon M1) : elle nommait le seul lot 1.9.13,
 		// fusionne le 2026-09-15.
-		CibleRetrait: "retrait sec a M2 (D14 d) : meme canal et meme mesure que repli_geste_dernier_occupant_du_match",
+		CibleRetrait: "meme canal et meme mesure que repli_geste_dernier_occupant_du_match ; a defaut, " + retraitRegle4,
 		// MESURE DU 2026-09-16, compteur câblé, les 8 builds
 		// (`replay/usage_summary_replis_test.go`) : **0 déclenchement sur 8/8**.
 		// MEMES DEUX INSTRUMENTS que `repli_geste_dernier_occupant_du_match` (ronde 2, F2) :
@@ -101,7 +101,7 @@ var registreReplayEquipement = []Repli{
 		// CIBLE REECRITE LE 2026-09-16 (revue de jalon M1) : elle nommait le lot 1.9.13, fusionne
 		// le 2026-09-15 — et ce lot ne pouvait PAS la fermer : il recolle des vies, il ne
 		// reconcilie pas trois canaux d'equipement entre eux.
-		CibleRetrait: "M2 puis M3 (reconciliation des trois canaux prises / utilises / laches) ; PAS de retrait sec : le compte est MESURE NON NUL",
+		CibleRetrait: "la reconciliation des trois canaux prises / utilises / laches (le compte est MESURE NON NUL : pas de retrait sec) ; a defaut, " + retraitRegle4,
 		// D14 (b) : un désaccord entre deux lectures est une CONTRADICTION, pas un repli. Elle
 		// doit se compter, jamais disparaître dans un `max(0, x)`.
 		// MESURE DU 2026-09-16, compteur câblé, les 8 builds
@@ -125,15 +125,17 @@ var registreReplayEquipement = []Repli{
 		Sites: []Site{{
 			Fichier: pkgReplay + "grapple_lines.go",
 			Ancre:   "track = lifeCovering(vies, t0)",
+		}, {
+			Fichier: pkgReplay + "build_calques.go",
+			Ancre:   "a.opt.Fallbacks.DeclencheN(fallback.NomTractionVieDuTir, grapCov.viesParLeTir)",
 		}},
 		DatePose: dateAudit0E,
 		// CIBLE REECRITE LE 2026-09-16 (revue de jalon M1) : elle nommait le lot 1.9.13, fusionne
 		// le 2026-09-15 sans avoir cable ce compteur — sa frequence reste donc INCONNUE, et un
 		// zero n'y serait pas lisible (cf. [Repli.CompteurBranche]).
-		CibleRetrait:    "M2, pas 2 (les lecteurs recoivent le profil) : cabler le compteur au meme geste, puis retrait sec si le compte est nul",
+		CibleRetrait:    "mesurer le compte desormais cable ; a defaut, " + retraitRegle4,
 		CritereRetrait:  "0 traction dont l'accroche tombe hors de toute vie sur les 8 builds — NON MESURE (compteur non cable au 2026-09-16)",
-		CompteurBranche: false,
-		CibleComptage:   comptageFamille19,
+		CompteurBranche: true,
 	},
 	{
 		Nom:       "repli_traction_vie_la_plus_proche",
@@ -144,14 +146,16 @@ var registreReplayEquipement = []Repli{
 		Sites: []Site{{
 			Fichier: pkgReplay + "grapple_lines.go",
 			Ancre:   "track = lifeNearest(vies, tAttach)",
+		}, {
+			Fichier: pkgReplay + "build_calques.go",
+			Ancre:   "a.opt.Fallbacks.DeclencheN(fallback.NomTractionVieLaPlusProche, grapCov.viesLesPlusProches)",
 		}},
 		DatePose: dateAudit0E,
 		// CIBLE REECRITE LE 2026-09-16 (revue de jalon M1) : meme raison que
 		// repli_traction_vie_du_tir, meme geste de cablage.
-		CibleRetrait:    "M2, pas 2 : cabler le compteur puis retrait sec si le compte est nul",
+		CibleRetrait:    "mesurer le compte desormais cable ; a defaut, " + retraitRegle4,
 		CritereRetrait:  "0 traction sans vie couvrante sur les 8 builds — NON MESURE (compteur non cable au 2026-09-16)",
-		CompteurBranche: false,
-		CibleComptage:   comptageFamille19,
+		CompteurBranche: true,
 	},
 	{
 		Nom:       "repli_famille_arme_identifiant_brut",
@@ -162,14 +166,16 @@ var registreReplayEquipement = []Repli{
 		Sites: []Site{{
 			Fichier: pkgReplay + "ground_weapon_rules.go",
 			Ancre:   "return fmt.Sprintf(\"0x%08x\", w)",
+		}, {
+			Fichier: pkgReplay + "ground_weapon_pads.go",
+			Ancre:   "clock.fb.DeclencheN(fallback.NomFamilleArmeIdentifiantBrut, gwFamillesBrutes(wObjs))",
 		}},
 		DatePose:     dateAudit0E,
 		CibleRetrait: "aucune tant que le catalogue d'armes est incomplet ; retrait sec des que le compte est nul sur le parc",
 		// Ce repli-ci est HONNÊTE (il ne fabrique aucun nom) ; ce qui manque est son COMPTE :
 		// un artefact ne dit pas combien de ses familles sont des identifiants bruts.
 		CritereRetrait:  "0 famille rendue sous forme 0x%08x sur le parc",
-		CompteurBranche: false,
-		CibleComptage:   comptageFamille19,
+		CompteurBranche: true,
 	},
 	{
 		Nom:       "repli_lien_prise_arme_abandonne",
@@ -180,12 +186,14 @@ var registreReplayEquipement = []Repli{
 		Sites: []Site{{
 			Fichier: pkgReplay + "document_ground_weapon_items.go",
 			Ancre:   "actor, ok := gwItemActorAt(bySlot, ch.Slot, ch.TimestampUS)",
+		}, {
+			Fichier: pkgReplay + "document_ground_weapon_items.go",
+			Ancre:   "fb.Declenche(fallback.NomLienPriseArmeAbandonne)",
 		}},
 		DatePose:        dateAudit0E,
 		CibleRetrait:    "lot de conversion du lien de prise (table C13 : trois hypotheses de lien natif REFUTEES — le repli restera, son COMPTE PAR CAUSE est ce qui manque)",
 		CritereRetrait:  "les deux causes comptees separement dans GroundWeaponItemsCoverage ; le repli lui-meme est legitime tant que le negatif tient",
-		CompteurBranche: false,
-		CibleComptage:   comptageFamille19,
+		CompteurBranche: true,
 	},
 	{
 		Nom:       "repli_impulsion_fusionnee_dans_le_geste",
@@ -196,12 +204,14 @@ var registreReplayEquipement = []Repli{
 		Sites: []Site{{
 			Fichier: pkgReplay + "document_ability_impulses.go",
 			Ancre:   "last[r.Slot] = r.TimestampUS",
+		}, {
+			Fichier: pkgReplay + "document_ability_impulses.go",
+			Ancre:   "in.fb.DeclencheN(fallback.NomImpulsionFusionneeDansLeGeste, len(in.reads)-len(episodes))",
 		}},
 		DatePose:        dateAudit0E,
 		CibleRetrait:    "aucune tant que le film ne borne pas un geste ; le COMPTE des fusions est ce qui manque",
 		CritereRetrait:  "fusions comptees dans AbilityImpulseCoverage ; retrait si le film s'avere porter une borne de geste",
-		CompteurBranche: false,
-		CibleComptage:   comptageFamille19,
+		CompteurBranche: true,
 	},
 	{
 		Nom:       "repli_rang_capacite_vie_elargie",
@@ -212,6 +222,9 @@ var registreReplayEquipement = []Repli{
 		Sites: []Site{{
 			Fichier: pkgReplay + "document_ability_impulses.go",
 			Ancre:   "if int64(at)+lifeGapUS >= l.from && int64(at) <= l.to+lifeGapUS {",
+		}, {
+			Fichier: pkgReplay + "document_ability_impulses.go",
+			Ancre:   "idx.fb.Declenche(fallback.NomRangCapaciteVieElargie)",
 		}},
 		DatePose: dateAudit0E,
 		// CIBLE REECRITE LE 2026-09-16 (revue de jalon M1). Le lot 1.9.13, fusionne le
@@ -219,10 +232,9 @@ var registreReplayEquipement = []Repli{
 		// impulsions `sans identite` 4 -> 3 sur `000d5950` et 2 -> 0 sur `11de8353`, charges
 		// 20 -> 13 et 8 -> 1. Le compteur n'a pas ete cable au passage, donc le RESIDU n'a pas
 		// de chiffre a lui.
-		CibleRetrait:    "M2, pas 2 : cabler le compteur, mesurer le residu, puis retrait sec s'il est nul",
+		CibleRetrait:    "mesurer le residu du compteur desormais cable ; a defaut, " + retraitRegle4,
 		CritereRetrait:  "0 elargissement necessaire sur les 8 builds — RESIDU NON MESURE (compteur non cable au 2026-09-16 ; le 1.9.13 a fait tomber les grandeurs voisines sans les annuler)",
-		CompteurBranche: false,
-		CibleComptage:   comptageFamille19,
+		CompteurBranche: true,
 	},
 	{
 		Nom:       "repli_porteur_anonyme_sans_fin_par_mort",
@@ -233,14 +245,16 @@ var registreReplayEquipement = []Repli{
 		Sites: []Site{{
 			Fichier: pkgReplay + "held_object_carry.go",
 			Ancre:   "if p.XUID == 0 {",
+		}, {
+			Fichier: pkgReplay + "bomb_carries.go",
+			Ancre:   "clock.fb.DeclencheN(fallback.NomPorteurAnonymeSansFinParMort, carry.replis.porteurAnonyme)",
 		}},
 		DatePose:     dateAudit0E,
-		CibleRetrait: "lot 1.9.5 (le porteur du crane lu au canal des armes tenues) et le registre d'identite 1.6",
+		CibleRetrait: "le porteur du crane lu au canal des armes tenues, et le registre d identite par la table du film ; a defaut, " + retraitRegle4,
 		// Décision utilisateur du 2026-09-06 : « les vies anonymes n'existent pas ». Un porteur
 		// sans xuid est un défaut de pont, pas une catégorie de donnée.
 		CritereRetrait:  "0 porteur sans xuid sur les 8 builds",
-		CompteurBranche: false,
-		CibleComptage:   comptageFamille19,
+		CompteurBranche: true,
 	},
 	{
 		Nom:       "repli_portage_ferme_a_la_prise_suivante",
@@ -251,15 +265,17 @@ var registreReplayEquipement = []Repli{
 		Sites: []Site{{
 			Fichier: pkgReplay + "held_object_carry.go",
 			Ancre:   "func premiereMortDans(mortsDe map[uint64][]int, p HeldObjectPeriod, avant int) (int, bool) {",
+		}, {
+			Fichier: pkgReplay + "bomb_carries.go",
+			Ancre:   "clock.fb.DeclencheN(fallback.NomPortageFermeALaPriseSuivante, carry.replis.priseSuivante)",
 		}},
 		DatePose:       dateAudit0E,
-		CibleRetrait:   "lot 1.9.5",
+		CibleRetrait:   "le porteur du crane lu au canal des armes tenues ; a defaut, " + retraitRegle4,
 		CritereRetrait: "question NE7 de la table (D) de l'audit instruite : combien de morts de porteur sont suivies d'une emission du canal ? Le repli tombe si le canal emet",
 		// Le négatif « la mort ferme SANS émission » est une AFFIRMATION sans chiffre
 		// (`held_object_carry.go:20-22`), pas une mesure : c'est pourquoi la condition est
 		// `film_muet` mais que le critère de retrait est une mesure à faire.
-		CompteurBranche: false,
-		CibleComptage:   comptageFamille19,
+		CompteurBranche: true,
 	},
 	{
 		Nom:       "repli_plafond_grenade_par_defaut",
@@ -275,7 +291,7 @@ var registreReplayEquipement = []Repli{
 			{Fichier: pkgReplay + "film_scan.go", Ancre: "s.opt.Fallbacks.Declenche(fallback.NomPlafondGrenadeParDefaut)"},
 		},
 		DatePose:        dateAudit0E,
-		CibleRetrait:    "lot 3.x (profil par build et par carte) : un plafond est une donnee de mode, pas une constante",
+		CibleRetrait:    "un plafond lu comme une donnee de mode (profil par build et par carte), pas une constante ; a defaut, " + retraitRegle4,
 		CritereRetrait:  "le plafond vient du manifeste de mode ; 0 recours au defaut sur les 8 builds",
 		CompteurBranche: true,
 	},
@@ -290,10 +306,36 @@ var registreReplayEquipement = []Repli{
 			Ancre:   "if e.AxisWidths[0] == 0 || e.AxisWidths[1] == 0 || e.AxisWidths[2] == 0 {",
 		}},
 		DatePose:     dateAudit0E,
-		CibleRetrait: "lot 3.4 (largeurs par carte et par build, donnees de profil)",
+		CibleRetrait: "les largeurs par carte et par build, donnees de profil ; a defaut, " + retraitRegle4,
 		// DÉFAUT DÉJÀ MESURÉ (audit 0.E) : le défaut conservé est celui d'UNE carte, appliqué
 		// à toutes ; l'écart n'était que journalisé (slog.Warn), jamais compté.
 		CritereRetrait:  "0 film cuit sur les largeurs par defaut ; le catalogue porte les largeurs de toutes les cartes du parc",
+		CompteurBranche: true,
+	},
+	{
+		// LOT J8.3 DU PLAN DE SUITE D AUDIT (2026-09-27), CONSTAT RB2-8 : la fenetre decidait
+		// l origine et le lacheur d un objet au sol sans etre inscrite (D-10 regle 1). Elle est la
+		// meme que celle des poses d equipement (`originDropWindowUS`, `originDropMaxDist`), qui
+		// n y entre qu APRES l evenement natif ; ici aucune lecture ne la precede.
+		Nom:  "repli_origine_au_sol_lachee_par_fenetre",
+		Fait: "l origine `dropped` d un objet au sol (arme ou power-up) et son lacheur, publies par `weaponPads`, `coverage.groundWeapons` et le calque des armes au sol",
+		Mecanisme: "une vie de bipede s acheve a moins de 200 ms (originDropWindowUS) et 1,5 m (originDropMaxDist) de la creation : l objet est classe `dropped`, le plus petit slot en fenetre est le lacheur ; " +
+			"compte = apparitions ainsi classees, deux voies reunies",
+		// LA QUESTION EST OUVERTE : aucun negatif n est mesure (on ne sait pas si le film ecrit
+		// le lacher d une arme comme il ecrit la pose d un equipement, evenement 103). La
+		// condition retenue est donc la DETTE — un lecteur a trouver —, pas `film_muet`.
+		Condition: CondLectureNonPortee,
+		Ordre:     OrdreSansLecture,
+		Sites: []Site{{
+			Fichier: pkgReplay + "ground_weapon_rules.go",
+			Ancre:   "func gwPadsClass(lives map[uint32][]equipLife, a gwPadApparition) (string, int) {",
+		}, {
+			Fichier: pkgReplay + "ground_weapon_pads.go",
+			Ancre:   "clock.fb.DeclencheN(fallback.NomOrigineAuSolLacheeParFenetre, wc.dropped+pc.dropped)",
+		}},
+		DatePose:        date0927,
+		CibleRetrait:    "conversion le jour ou une lecture du lacher est trouvee (evenement natif ou composant de l objet) ; a defaut, retrait au jalon suivant si le compte est nul au corpus gate de J11 (regle 4 de D-10, 2026-09-27)",
+		CritereRetrait:  "origine lue dans le film pour chaque objet au sol publie `dropped`, ET 0 declenchement sur le corpus du gate de rejeu",
 		CompteurBranche: true,
 	},
 }

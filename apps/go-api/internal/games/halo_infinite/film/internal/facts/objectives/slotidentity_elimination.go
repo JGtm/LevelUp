@@ -194,6 +194,7 @@ func (ri RoundIdentity) copieProfonde() RoundIdentity {
 		byRound: make(map[int]map[int]string, len(ri.byRound)),
 		origins: make(map[int]map[int]string, len(ri.byRound)),
 		starts:  ri.starts,
+		replis:  ri.replis,
 	}
 	for round, m := range ri.byRound {
 		copie := make(map[int]string, len(m))

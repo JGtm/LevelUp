@@ -9,7 +9,11 @@ package replay
 // ses commentaires de mesure ; seule la designation des variables a change (`doc` -> `a.doc`).
 // Voir `build.go` pour l ordre des passes et ce qu il protege.
 
-import "log/slog"
+import (
+	"log/slog"
+
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
+)
 
 // poserLibellesEtInventaire publie les tables de libelles, les morts sans revendication et le
 // calque d inventaire avec sa couverture gardee.
@@ -25,6 +29,9 @@ func (a *assemblage) poserLibellesEtInventaire() {
 	// l'est : le client déduit ces lignes DE SES PISTES, une entrée sans piste ne rencontrerait
 	// jamais de ligne à décorer (même règle que les tirs, lancers et actions d'objectif).
 	a.doc.NeutralDeaths = keepNeutralDeathsOfPublishedTracks(a.opt.NeutralDeaths, a.doc.Tracks, a.reg.PontEpure())
+	// LES PISTES ANONYMES QUE LE PONT NOMME, comptees UNE fois par cuisson (lot J8.7) : chaque calque
+	// qui interroge le pont les relit, compter a chaque lecture multiplierait le meme fait.
+	a.opt.Fallbacks.DeclencheN(fallback.NomNomPisteParLePont, pistesNommeesParLePont(a.doc.Tracks, a.reg.PontEpure()))
 	builtInv, invDroppedOrigin := buildInventory(a.opt.Inventory, a.origin, a.step)
 	a.doc.Inventory = keepInventoryOfPublishedTracks(builtInv, a.doc.Tracks)
 	// COUVERTURE DU CALQUE INVENTAIRE (audit AUDIT_AVAL_INVENTAIRE_2026-08-24.md, point 5),
@@ -109,6 +116,7 @@ func (a *assemblage) poserImpulsionsEtCharges() {
 	a.doc.AbilityImpulses, aiCov = buildAbilityImpulses(abilityImpulseInputs{
 		reads: a.opt.AbilityImpulses, stats: a.opt.AbilityImpulseStats, ranks: a.opt.AbilityRanks,
 		lives: a.reg.Vies(), palette: a.palette, measured: a.opt.Labels.AbilityImpulseFamilies,
+		fb: a.opt.Fallbacks,
 	}, a.doc.Tracks, a.origin, a.step)
 	// LA COUVERTURE NE SE PUBLIE QUE SI LE BALAYAGE A TOURNE — patron `attachInventoryCoverage`
 	// (inventory.go), et pour la raison qu'il documente : publier {0,0,0,...} affirmerait
@@ -131,6 +139,7 @@ func (a *assemblage) poserImpulsionsEtCharges() {
 	a.doc.AbilityCharges, acCov = buildAbilityCharges(abilityChargeInputs{
 		reads: a.opt.AbilityCharges, stats: a.opt.AbilityChargeStats, ranks: a.opt.AbilityRanks,
 		lives: a.reg.Vies(), palette: a.palette, measured: a.opt.Labels.AbilityChargeFamilies,
+		fb: a.opt.Fallbacks,
 	}, a.doc.Tracks, a.origin, a.step)
 	// LA COUVERTURE NE SE PUBLIE QUE SI LE BALAYAGE A TOURNE — le patron exact du bloc
 	// ci-dessus (`attachInventoryCoverage`, et la lecon H1 de la seconde passe de revue P3) :
@@ -162,5 +171,9 @@ func (a *assemblage) clore() {
 		"verdictTirs", a.doc.Coverage.Verdict["shots"],
 		"verdictGrenades", a.doc.Coverage.Verdict["grenades"],
 		"verdictPont", a.doc.Coverage.Verdict["bridge"])
+	// Les replis que l appelant apporte en donnees (kill-feed, objectifs, construction) rejoignent
+	// le compteur ICI, sur les deux chemins de la cuisson, et jamais dans le rapport du balayage
+	// que les faits persistent (lot J8.7 ; cf. versement_des_replis.go).
+	versementDeLAssemblage(a.opt.Fallbacks, a.opt.ReplisHorsBalayage)
 	attachFallbackCoverage(&a.doc, a.opt.Fallbacks) // EN DERNIER : cf. fallbacks_publication.go
 }

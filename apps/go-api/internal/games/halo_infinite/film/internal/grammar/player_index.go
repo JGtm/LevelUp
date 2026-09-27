@@ -54,24 +54,35 @@ func ScanFilmPlayerIndices(filmDir string, roster []uint64) (types.PlayerIndexTa
 
 // ScanPlayerIndices lit l'index de joueur de chaque xuid du roster dans un film DEJA CHARGE.
 func ScanPlayerIndices(film *source.Film, roster []uint64) (types.PlayerIndexTable, error) {
+	out, _, err := scanPlayerIndices(film, roster)
+	return out, err
+}
+
+// scanPlayerIndices est [ScanPlayerIndices], plus le nombre de chunks de replication SAUTES faute
+// d etre lisibles — le compte de `repli_chunk_de_replication_saute`, que l etage du pont d identite
+// verse au rapport de son contexte (lot J8.7).
+func scanPlayerIndices(film *source.Film, roster []uint64) (types.PlayerIndexTable, int, error) {
 	out := types.PlayerIndexTable{ByXUID: map[uint64]int{}}
 	if len(roster) == 0 {
-		return out, fmt.Errorf("roster vide : rien à résoudre")
+		return out, 0, fmt.Errorf("roster vide : rien à résoudre")
 	}
 	nums := FilmChunkNumbers(film)
 	if len(nums) == 0 {
-		return out, ErrNoReadableFilmChunk
+		return out, 0, ErrNoReadableFilmChunk
 	}
 	// Chunks de RÉPLICATION seulement : le 0 est le registre, le dernier porte les highlights.
 	// Les deux rendent une table nulle, et l'inclure écraserait la bonne.
 	seen := map[uint64]map[int]int{}
+	sautes := 0
 	for _, c := range nums[:len(nums)-1] {
 		raw, _, ok := FilmChunkAt(film, c)
 		if !ok {
+			sautes++
 			continue
 		}
 		got := weaponv3.ResolveXuidToPI(roster, raw)
 		if len(got) == 0 {
+			sautes++ // resolution vide : sautee comme un chunk illisible, et comptee avec lui
 			continue
 		}
 		out.Readings++
@@ -83,7 +94,7 @@ func ScanPlayerIndices(film *source.Film, roster []uint64) (types.PlayerIndexTab
 		}
 	}
 	if out.Readings == 0 {
-		return out, fmt.Errorf("aucun chunk de réplication n'a livré d'index de joueur")
+		return out, sautes, fmt.Errorf("aucun chunk de réplication n'a livré d'index de joueur")
 	}
 	for x, byIdx := range seen {
 		if len(byIdx) > 1 {
@@ -94,5 +105,5 @@ func ScanPlayerIndices(film *source.Film, roster []uint64) (types.PlayerIndexTab
 			out.ByXUID[x] = pi
 		}
 	}
-	return out, nil
+	return out, sautes, nil
 }

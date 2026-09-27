@@ -270,7 +270,7 @@ func scoreRecordsOf(in *ScoreInput) []types.StatRecord {
 // couvre l'instant si elle est nommee, sinon le pont par slot — et rien du tout sur un slot
 // ambigu. Chaine vide = personne ne le nomme.
 func (r IdentityRegistry) XUIDAt(slot uint32, tUS uint64) string {
-	x := r.own.xuidNumAt(slot, tUS)
+	x := r.xuidNumAt(slot, tUS)
 	if x == 0 {
 		return ""
 	}
@@ -286,7 +286,17 @@ func (r IdentityRegistry) XUIDAt(slot uint32, tUS uint64) string {
 // morts et le pont. Leur faire formater puis reparser une chaine par lecture serait un aller-retour
 // pur, et c'est exactement ce que les lecteurs du pont aplati evitaient en le lisant a nu.
 func (r IdentityRegistry) XUIDNumAt(slot uint32, tUS uint64) uint64 {
-	return r.own.xuidNumAt(slot, tUS)
+	return r.xuidNumAt(slot, tUS)
+}
+
+// xuidNumAt sert les deux accesseurs, et COMPTE le repli du premier occupant du siege quand c est
+// lui qui nomme (lot J8.7) : une demande qu aucune vie couvrante ne tranche.
+func (r IdentityRegistry) xuidNumAt(slot uint32, tUS uint64) uint64 {
+	x, parLePremierOccupant := r.own.xuidNumAt(slot, tUS)
+	if parLePremierOccupant {
+		r.fb.Declenche(fallback.NomIdentitePremierOccupantDuSiege)
+	}
+	return x
 }
 
 // DeathOffsetMS rend le calage du fil des morts sur l'horloge du film

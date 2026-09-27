@@ -92,6 +92,11 @@ func ScanBipedPositionsForBand(fc *FilmContext, band SlotBand, opt ScanFilmOptio
 	if err != nil {
 		return nil, err
 	}
+	if opt.Layout == nil {
+		// Le decoupage vient de l AUTO-DETECTION : repli `repli_i0_porte_et_region_par_defaut`,
+		// compte une fois par contexte (lot J8.7).
+		fc.noterI0ParDefaut(nil)
+	}
 	if opt.Generations == nil {
 		// LE FILTRE DE GENERATION DU FILM (lot J5.2, DT-8) : les generations vivantes relevees une
 		// fois par le contexte, sur les creations de bipede et les images-cles.
@@ -188,7 +193,10 @@ func bipedSlotBand(fc *FilmContext, chunks []int) SlotBand {
 			break
 		}
 	}
-	return fillSlotBand(seen)
+	band := fillSlotBand(seen)
+	// Repli `repli_bande_bipede_comblee` : les slots que le comblement AJOUTE a ceux vus (lot J8.7).
+	fc.NoterReplis(ComptesDesReplis{SlotsBipedesComblees: band.Count() - len(seen)})
+	return band
 }
 
 // fillSlotBand comble les trous entre le min et le max de l'ensemble (bande contiguë) et

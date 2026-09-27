@@ -140,21 +140,24 @@ func ScanMarchFacts(fc *FilmContext) (MarchFacts, error) {
 	st.CadreLocalises, st.CadreDauphin, st.CadreEvenements = meilleur.located, dauphin.located, meilleur.events
 	h := &objectDeathHarvest{reg: reg, idx: map[uint32]int{}, st: &st}
 	tl := newMarchTimeline(reg, kfs)
+	largeurLibre := 0
 	for _, d := range deltas {
 		w := tl.advanceTo(d.timestampUS)
-		start, withEvents, ok := marchStartOf(d.payload, w, cfg)
+		start, withEvents, ok, aLargeurLibre := marchDebut(d.payload, w, cfg)
 		if withEvents {
 			st.EventPackets++
 		}
 		if !ok {
 			continue
 		}
+		largeurLibre += unSi(aLargeurLibre) // repli `repli_localisation_largeur_libre` (lot J8.7)
 		if withEvents {
 			st.LocatedPackets++
 		}
 		st.Packets++
 		h.harvest(marchRecordsOf(d.payload, w, cfg, start), d.timestampUS)
 	}
+	fc.NoterReplis(ComptesDesReplis{LocalisationsALargeurLibre: largeurLibre})
 	return MarchFacts{
 		Deaths: dedupObjectDeaths(h.out), Occupancy: dedupOccupancy(h.rides), Stats: st,
 	}, nil

@@ -41,6 +41,7 @@ package replay
 import (
 	"log/slog"
 
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
@@ -285,7 +286,10 @@ func attachVehicles(
 	doc.VehicleCycles = buildVehicleCycles(tracks, clock.step, &cov)
 	doc.Coverage.Vehicles = &cov
 	logVehicleCoverage(&cov)
-	logVehicleHeadingSource(scan.Positions)
+	// DEUX REPLIS COMPTES ICI (lot J8.7) : le cap deduit de la velocite, et l episode d occupation
+	// reconstruit du trou de position.
+	clock.fb.DeclencheN(fallback.NomCapVehiculeVitesseInsuffisante, logVehicleHeadingSource(scan.Positions))
+	clock.fb.DeclencheN(fallback.NomEpisodeOccupationParTrouDePosition, st.repli)
 	logVehicleRideResolution(st)
 }
 

@@ -77,10 +77,15 @@ func (p *ProfilDeBalayage) PoserLargeursObjetDuMonde(d profile.PrecisionDescript
 // SOURCE ATTENDUE : `profile.MapQuantEntry.AxisWidths`, deduit des bornes par la loi du moteur. Le
 // decoupage lu dans le film (`DetectI0Layout`) sert de controle : s il contredit le catalogue,
 // ce sont les BORNES qui sont fausses.
-func (p *ProfilDeBalayage) PoserLargeursObjetDuMondeDepuisDecoupage(l profile.I0Layout) {
+//
+// LE RENDU EST LE RAPPORT DES DEUX REPLIS DE LA POSE (lot J8.7) — `repli_largeurs_monde_par_defaut_conservees`
+// et `repli_index_de_region_largeur_un` —, que l appelant verse au rapport de SON contexte de film
+// ([FilmContext.NoterReplis]) : un profil de balayage n en porte pas.
+func (p *ProfilDeBalayage) PoserLargeursObjetDuMondeDepuisDecoupage(l profile.I0Layout) ComptesDesReplis {
 	if l.AxisW[0] == 0 || l.AxisW[1] == 0 || l.AxisW[2] == 0 {
-		return // decoupage non detecte : garder le defaut plutot qu installer des zeros
+		return ComptesDesReplis{LargeursMondeParDefaut: 1} // decoupage non detecte : garder le defaut plutot qu installer des zeros
 	}
+	var replis ComptesDesReplis
 	p.Mouvement.WorldObject.AxisW = l.AxisW
 	// La largeur de l INDEX DE REGION est elle aussi une constante par carte
 	// (ceilLog2(nb de regions) — 2 bits sur Live Fire, lot C catalogues 2026-08-27). Un
@@ -91,6 +96,8 @@ func (p *ProfilDeBalayage) PoserLargeursObjetDuMondeDepuisDecoupage(l profile.I0
 	// SON record.
 	if l.GateBits > profile.I0SpineBits+profile.I0UseDefaultBits {
 		p.Mouvement.WorldObject.IndexW = uint(l.GateBits - profile.I0SpineBits - profile.I0UseDefaultBits)
+	} else {
+		replis.IndexDeRegionLargeurUn = 1 // porte trop courte : la largeur d index en place reste
 	}
 	// LA REGION ATTENDUE SUIT LES LARGEURS, par le meme chemin et dans le meme appel
 	// (lot B-bis, 2026-09-12). Sans elle, le lecteur world-object exigeait un index de region
@@ -103,6 +110,7 @@ func (p *ProfilDeBalayage) PoserLargeursObjetDuMondeDepuisDecoupage(l profile.I0
 	// `SimStateComplet` porte depuis le lot R7-b, et il est TENU par ce geste meme (cf.
 	// [grammaireSousCarte]).
 	p.Grammaire = grammaireSousCarte(p.Grammaire, true)
+	return replis
 }
 
 // grammaireSousCarte rend la grammaire d un profil selon que les LARGEURS D AXE DE LA CARTE du

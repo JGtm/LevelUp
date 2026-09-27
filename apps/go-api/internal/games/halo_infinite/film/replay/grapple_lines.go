@@ -74,6 +74,10 @@ type GrappleCoverage struct {
 	// BrokenBodies : corps tag==3 non décodables (grammaire non établie, cf.
 	// components_biped_anchor.go) — comptés, jamais devinés.
 	BrokenBodies int `json:"brokenBodies"`
+	// viesParLeTir / viesLesPlusProches : les tractions posees sur une vie qui ne couvre PAS l accroche
+	// — la vie du tir, ou la plus proche en temps. NON PUBLIES (champs non exportes) : ce sont les
+	// comptes des deux replis inscrits, verses au compteur de la cuisson (lot J8.7).
+	viesParLeTir, viesLesPlusProches int
 }
 
 // buildGrappleLines assemble les tractions : appariement tir->accroche par vie, ancre
@@ -160,8 +164,14 @@ func grappleLinesOfLife(list []types.GrappleRead, entry profile.MapQuantEntry,
 			}
 			pendingFire = -1
 		}
-		if l, ok := grappleLine(r, startUS, entry, origin, step, vies); ok {
+		if l, voie, ok := grappleLine(r, startUS, entry, origin, step, vies); ok {
 			out = append(out, l)
+			switch voie {
+			case tractionParLeTir:
+				cov.viesParLeTir++
+			case tractionLaPlusProche:
+				cov.viesLesPlusProches++
+			}
 		}
 	}
 	if pendingFire >= 0 {
@@ -179,7 +189,7 @@ func grappleLinesOfLife(list []types.GrappleRead, entry profile.MapQuantEntry,
 // précédentes (cf. buildGrappleLines). L'accroche fait foi plutôt que le tir : c'est elle
 // qui atteste la traction, et c'est sur elle que le calque est daté.
 func grappleLine(r types.GrappleRead, startUS uint64, entry profile.MapQuantEntry,
-	origin, step uint64, vies []*Track) (GrappleLine, bool) {
+	origin, step uint64, vies []*Track) (GrappleLine, voieDeTraction, bool) {
 	lay := profile.I0Layout{AxisW: entry.AxisWidths}
 	wr := entry.Range()
 	ax := grammar.DequantBipedAxis(r.PosQ[0], 0, lay, wr)
@@ -187,9 +197,11 @@ func grappleLine(r types.GrappleRead, startUS uint64, entry profile.MapQuantEntr
 	az := grammar.DequantBipedAxis(r.PosQ[2], 2, lay, wr)
 	t0 := frameOf(startUS, origin, step)
 	tAttach := frameOf(r.TimestampUS, origin, step)
+	voie := tractionSurSaVie
 	track := lifeCovering(vies, tAttach)
 	if track == nil {
 		track = lifeCovering(vies, t0) // l'accroche tombe dans un trou : le tir décide
+		voie = tractionParLeTir
 	}
 	if track == nil {
 		// AUCUNE FENÊTRE NE COUVRE NI L'ACCROCHE NI LE TIR : la traction se rattache à la vie
@@ -208,9 +220,10 @@ func grappleLine(r types.GrappleRead, startUS uint64, entry profile.MapQuantEntr
 		// sur sa vie suivante la traction d'un joueur qui vient de mourir serait faux
 		// (constat N-1 de la seconde ronde REG-R2).
 		track = lifeNearest(vies, tAttach)
+		voie = tractionLaPlusProche
 	}
 	if track == nil {
-		return GrappleLine{}, false // aucune vie publiée : aucune fiche où poser la traction
+		return GrappleLine{}, voie, false // aucune vie publiée : aucune fiche où poser la traction
 	}
 	t1 := grappleArrival(track, tAttach, int(grapplePullCapUS/step), ax, ay, az)
 	if t0 < track.StartFrame {
@@ -220,9 +233,9 @@ func grappleLine(r types.GrappleRead, startUS uint64, entry profile.MapQuantEntr
 		t1 = track.EndFrame
 	}
 	if t1 <= t0 {
-		return GrappleLine{}, false // mort à l'accroche ou fenêtre hors de la vie publiée
+		return GrappleLine{}, voie, false // mort à l'accroche ou fenêtre hors de la vie publiée
 	}
-	return GrappleLine{Slot: r.Slot, T0: t0, T1: t1, AX: round2(ax), AY: round2(ay), AZ: round2(az)}, true
+	return GrappleLine{Slot: r.Slot, T0: t0, T1: t1, AX: round2(ax), AY: round2(ay), AZ: round2(az)}, voie, true
 }
 
 // lifeCovering rend la vie du slot dont la fenêtre publiée contient cette frame, nil si aucune.
@@ -289,3 +302,13 @@ func grappleArrival(track *Track, tAttach, capFrames int, ax, ay, az float32) in
 	}
 	return best
 }
+
+// voieDeTraction dit PAR QUELLE VIE une traction a ete posee : celle qui couvre l accroche (la
+// lecture), ou l un des deux replis inscrits — la vie du tir, la vie la plus proche (lot J8.7).
+type voieDeTraction int
+
+const (
+	tractionSurSaVie voieDeTraction = iota
+	tractionParLeTir
+	tractionLaPlusProche
+)

@@ -82,14 +82,18 @@ func TestUneProgressionNormaleSeDerouleEncore(t *testing.T) {
 //
 // Le plafond est une BORNE DE SURETE, pas un seuil de plausibilite : le poser au plus juste
 // ferait jeter des lectures vraies sur un mode ou une partie qu'on n'a pas encore vue.
+//
+// DEPUIS LE LOT J8.5 (2026-09-27, constat FO-3), LE PLAFOND EST CELUI DE LA SERIE PUBLIEE : le pont
+// deroule [SeriesTotal], dont la borne porte sur le PAS ([boundSteps], `maxUnrollPerStep`) et non
+// plus sur la valeur (`maxDeathsPerSlot`, 1 000, retire avec les gardes propres du pont).
 func TestLePlafondEstAuBordEtPasEnDessous(t *testing.T) {
-	got := deathProgressions([]types.StatRecord{bombRecord(10, 1000, maxDeathsPerSlot)})
-	if n := len(got[10]); n != maxDeathsPerSlot {
-		t.Errorf("%d instants pour une emission a la valeur du plafond, attendu %d — le plafond "+
-			"doit etre INCLUS", n, maxDeathsPerSlot)
+	got := deathProgressions([]types.StatRecord{bombRecord(10, 1000, maxUnrollPerStep)})
+	if n := len(got[10]); n != maxUnrollPerStep {
+		t.Errorf("%d instants pour un pas a la valeur du plafond, attendu %d — le plafond "+
+			"doit etre INCLUS", n, maxUnrollPerStep)
 	}
-	auDela := deathProgressions([]types.StatRecord{bombRecord(10, 1000, maxDeathsPerSlot+1)})
+	auDela := deathProgressions([]types.StatRecord{bombRecord(10, 1000, maxUnrollPerStep+1)})
 	if n := len(auDela[10]); n != 0 {
-		t.Errorf("%d instants pour une emission JUSTE au-dessus du plafond, attendu 0", n)
+		t.Errorf("%d instants pour un pas JUSTE au-dessus du plafond, attendu 0", n)
 	}
 }

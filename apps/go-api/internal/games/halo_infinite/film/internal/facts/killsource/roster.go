@@ -178,6 +178,8 @@ type roster struct {
 	motifPin map[int]bool
 	// table : ce que l epinglage par la table a produit, compteurs de controle compris.
 	table FilmTablePinning
+	// nomsInventes : noms `?N` fabriques (`repli_roster_nom_invente`, lot J8.7).
+	nomsInventes int
 }
 
 // BotSuffix : marqueur ajoute au nom d un bot. Il doit rester visible : un consommateur ne doit
@@ -219,6 +221,7 @@ func buildRoster(kf *killFeed, bm botMeta, useBots bool, t FilmTable, m indexPar
 	// Les indices libres qui ne recoivent aucun nom (trous entre le dernier humain et un slot
 	// de bot eleve) recoivent un nom de remplissage : le probleme d affectation doit avoir AU
 	// MOINS autant de noms libres que d indices libres, sinon le hongrois n est pas defini.
+	r.nomsInventes = max(0, r.nPlay-len(r.names))
 	for len(r.names) < r.nPlay {
 		r.names = append(r.names, fmt.Sprintf("?%d", len(r.names)))
 	}

@@ -73,7 +73,10 @@ func ScanFilmDeaths(filmDir string) ([]types.Death, error) {
 // critere de retrait ecrit la-bas). En cuisson il n est atteint que par un repertoire VRAIMENT
 // sans manifeste, que `replaybuild.jugerFilmSansManifeste` laisse passer en le journalisant ; un
 // manifeste present mais illisible y est refuse (constat L3-R8 de la revue adverse du lot).
-func numeroDesTempsForts(film *source.Film, nums []int) (int, error) {
+//
+// Le second rendu dit que le REPLI a decide (lot J8.7) : l etage du pont d identite le verse au
+// rapport de son contexte ([ComptesDesReplis.TempsFortsAuDernierNumero]).
+func numeroDesTempsForts(film *source.Film, nums []int) (int, bool, error) {
 	n, type3, typee := -1, false, false
 	for _, m := range film.Meta() {
 		if m.ChunkType != 0 {
@@ -85,11 +88,11 @@ func numeroDesTempsForts(film *source.Film, nums []int) (int, error) {
 	}
 	switch {
 	case type3:
-		return n, nil
+		return n, false, nil
 	case typee:
-		return 0, ErrFilSansTempsForts
+		return 0, false, ErrFilSansTempsForts
 	default:
-		return nums[len(nums)-1], nil
+		return nums[len(nums)-1], true, nil
 	}
 }
 
@@ -108,17 +111,25 @@ func numeroDesTempsForts(film *source.Film, nums []int) (int, error) {
 // dependent — cf. .ai/RAPPORT_BTB_2025_ABSTENTION_2026-09-12.md. Film sans registre : version 0,
 // decoupage historique, et c est L APPELANT qui consigne la degradation (voir le corps).
 func ScanDeaths(film *source.Film) ([]types.Death, error) {
+	out, _, err := scanDeaths(film)
+	return out, err
+}
+
+// scanDeaths est [ScanDeaths], plus le verdict du repli `repli_temps_forts_dernier_numero` (le
+// morceau des temps forts designe par son numero faute de manifeste type), que l etage du pont
+// d identite verse au rapport de son contexte (lot J8.7).
+func scanDeaths(film *source.Film) ([]types.Death, bool, error) {
 	nums := FilmChunkNumbers(film)
 	if len(nums) == 0 {
-		return nil, ErrNoReadableFilmChunk
+		return nil, false, ErrNoReadableFilmChunk
 	}
-	n, err := numeroDesTempsForts(film, nums)
+	n, auDernierNumero, err := numeroDesTempsForts(film, nums)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 	raw, _, ok := FilmChunkAt(film, n)
 	if !ok {
-		return nil, fmt.Errorf("chunk highlight (%d) : absent du film", n)
+		return nil, auDernierNumero, fmt.Errorf("chunk highlight (%d) : absent du film", n)
 	}
 	// LE WARN DU REGISTRE ABSENT MONTE CHEZ L APPELANT, ET C EST DELIBERE (revue adversariale du
 	// 2026-09-12, constat P2-4). Deux raisons : cette fonction ne connait pas le `match_id` — elle
@@ -133,7 +144,7 @@ func ScanDeaths(film *source.Film) ([]types.Death, error) {
 	// pour une valeur qui tient dans les quatre premiers octets.
 	evs, err := ParseHighlightEvents(raw, HighlightProfileOfFilm(film).MajorVersion)
 	if err != nil {
-		return nil, fmt.Errorf("chunk highlight (%d) : %w", n, err)
+		return nil, auDernierNumero, fmt.Errorf("chunk highlight (%d) : %w", n, err)
 	}
 	out := make([]types.Death, 0, len(evs))
 	for _, e := range evs {
@@ -143,8 +154,8 @@ func ScanDeaths(film *source.Film) ([]types.Death, error) {
 		out = append(out, types.Death{XUID: e.XUID, Gamertag: e.Gamertag, TimeMS: int64(e.TimeMS)})
 	}
 	if len(out) == 0 {
-		return nil, fmt.Errorf("chunk highlight (%d) : %w", n, ErrFilDesMortsSansMort)
+		return nil, auDernierNumero, fmt.Errorf("chunk highlight (%d) : %w", n, ErrFilDesMortsSansMort)
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].TimeMS < out[j].TimeMS })
-	return out, nil
+	return out, auDernierNumero, nil
 }

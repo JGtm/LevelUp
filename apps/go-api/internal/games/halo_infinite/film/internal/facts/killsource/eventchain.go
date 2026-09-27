@@ -298,23 +298,31 @@ func killEventPlausible(k killEventFields) bool {
 // evStep : decode UN evenement complet a partir de son bit de continuation.
 // `fin` vaut vrai quand le bit de continuation est a 0 — fin NORMALE de la liste, pas une erreur.
 func evStep(r *curseurEv, gate15 bool) (fin, ok bool) {
+	fin, ok, _ = evStepAvecVerdict(r, gate15)
+	return fin, ok
+}
+
+// evStepAvecVerdict est [evStep], plus `nonModelise` : l arret vient d un code dont la longueur
+// n est pas modelisee (presence a cfgIdx non resolu, ou corps inconnu) et non d un debordement —
+// le verdict de `repli_chaine_evenement_code_non_modelise` (lot J8.7).
+func evStepAvecVerdict(r *curseurEv, gate15 bool) (fin, ok, nonModelise bool) {
 	if r.epuise() {
-		return false, false
+		return false, false, false
 	}
 	if r.g1() == 0 {
-		return true, true
+		return true, true, false
 	}
 	code := int(r.rd(7))
 	if r.over || code >= 123 {
-		return false, false
+		return false, false, false
 	}
 	if !evPresence(r, code) {
-		return false, false
+		return false, false, !r.over
 	}
 	if !evBody(r, code, gate15) {
-		return false, false
+		return false, false, !r.over
 	}
-	return false, !r.over
+	return false, !r.over, false
 }
 
 // evChainLen : nombre d evenements enchaines depuis `p`, borne a `maxEv`. C EST LE CRITERE DE
@@ -322,14 +330,61 @@ func evStep(r *curseurEv, gate15 bool) (fin, ok bool) {
 // gardes (rappel 99.2 %), 11/1739 faux gardes, dont 10 sont des kill-events REELS du meme paquet
 // (multi-kill atteste) et 1 porte un indice de victime hors roster (RE_LOG 7ter.25 (3)).
 func evChainLen(pl []byte, p int, gate15 bool, maxEv int) int {
+	n, _ := evChainLenAvecVerdict(pl, p, gate15, maxEv)
+	return n
+}
+
+// evChainLenAvecVerdict est [evChainLen], plus `arretee` : la chaine s est arretee sur un code non
+// modelise ([evStepAvecVerdict]) avant sa fin normale et avant `maxEv`.
+func evChainLenAvecVerdict(pl []byte, p int, gate15 bool, maxEv int) (n int, arretee bool) {
 	r := nouveauCurseurEv(pl, p)
-	n := 0
 	for n < maxEv {
-		fin, ok := evStep(r, gate15)
+		fin, ok, nonModelise := evStepAvecVerdict(r, gate15)
 		if fin || !ok {
-			return n
+			return n, nonModelise
 		}
 		n++
 	}
-	return n
+	return n, false
+}
+
+// DEPLACEES DE `assist.go` AU LOT J8.7 (2026-09-27), deplacement pur : le compte des chaines arretees
+// y portait le fichier a 507 lignes. Elles sont la GENERATION des candidats de chaine, et vivent
+// desormais a cote de la chaine qui les tranche.
+
+// killEventsIn : les kill-events d un paquet. Le motif R(7) == 85 precede d un bit de
+// continuation a 1 est un GENERATEUR de candidats ; c est la CHAINE qui tranche.
+func killEventsIn(pl []byte, gate15 bool) []killEventRec {
+	out, _ := killEventsAvecArrets(pl, gate15)
+	return out
+}
+
+// killEventsAvecArrets est [killEventsIn], plus le nombre de chaines ouvertes par un kill-event
+// PLAUSIBLE qui se sont arretees sur un code non modelise — gardees ou non. C est le compte de
+// `repli_chaine_evenement_code_non_modelise` (lot J8.7) ; seul le balayage retenu
+// ([scanKillEvents]) le garde, l essai de `gate15` le jette.
+func killEventsAvecArrets(pl []byte, gate15 bool) ([]killEventRec, int) {
+	var out []killEventRec
+	arretees := 0
+	nb := len(pl) * 8
+	for x := 1; x+8 <= nb; x++ {
+		if !estAncreDeKillEvent(pl, x) {
+			continue
+		}
+		r := nouveauCurseurEv(pl, x+7)
+		if !evPresence(r, killEventCode) {
+			continue
+		}
+		k := readKillEvent(pl, r.pos())
+		if !killEventPlausible(k) {
+			continue
+		}
+		n, arretee := evChainLenAvecVerdict(pl, k.end, gate15, maxChainProbe)
+		arretees += unSi(arretee)
+		if n < minChain {
+			continue
+		}
+		out = append(out, killEventRec{bit: x, fields: k, chain: n})
+	}
+	return out, arretees
 }

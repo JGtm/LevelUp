@@ -18,16 +18,18 @@ var registreReplayIdentites = []Repli{
 			// rougir `archlint/no_identity_bridge_outside_registry_test.go`, qui interdit ce
 			// nom hors du registre d'identite — commentaires exclus, chaines comprises.
 			Ancre: "if r.SlotAmbiguous[slot] {",
+		}, {
+			Fichier: pkgReplay + "identity_registry.go",
+			Ancre:   "r.fb.Declenche(fallback.NomIdentitePremierOccupantDuSiege)",
 		}},
 		DatePose: dateAudit0E,
 		// CIBLE CORRIGEE AU LOT 1.9.14 (2026-09-15) : ce repli sert `XUIDAt` sur un siege dont
 		// aucune vie nommee ne couvre l'instant. Ni 1.9.13 (les vies finissent a une mort ecrite)
 		// ni 1.9.14 (le siege d'une fiche) ne le retirent — aucun des deux ne change ce que le
 		// pont sait d'un slot a un instant. La cible est le lot qui fermera ce trou-la.
-		CibleRetrait:    "le lot qui donnera une vie nommee a tout instant d'un siege occupe (suite du registre d'identite, M2 ou M3)",
+		CibleRetrait:    "une vie nommee a tout instant d un siege occupe (suite du registre d identite) ; a defaut, " + retraitRegle4,
 		CritereRetrait:  "0 recours au premier occupant sur les 8 builds : toute demande tombe dans une vie couvrante",
-		CompteurBranche: false,
-		CibleComptage:   comptageFamille19,
+		CompteurBranche: true,
 	},
 	{
 		Nom:       "repli_nom_piste_par_le_pont",
@@ -38,12 +40,14 @@ var registreReplayIdentites = []Repli{
 		Sites: []Site{{
 			Fichier: pkgReplay + "published_tracks.go",
 			Ancre:   "return strconv.FormatUint(x, 10)",
+		}, {
+			Fichier: pkgReplay + "build_inventaire.go",
+			Ancre:   "a.opt.Fallbacks.DeclencheN(fallback.NomNomPisteParLePont, pistesNommeesParLePont(a.doc.Tracks, a.reg.PontEpure()))",
 		}},
 		DatePose:        dateAudit0E,
-		CibleRetrait:    "lot 1.6 (le registre d'identite prend la table du film comme lien direct) : le compte doit tomber avec la couverture du lien direct",
+		CibleRetrait:    "le registre d identite prend la table du film comme lien direct : le compte tombe avec la couverture du lien direct ; a defaut, " + retraitRegle4,
 		CritereRetrait:  "coverage.identity.coverage.filmTable a 100 % et 0 piste nommee par le pont sur les 8 builds",
-		CompteurBranche: false,
-		CibleComptage:   comptageFamille19,
+		CompteurBranche: true,
 	},
 	{
 		Nom:       "repli_identite_piste_meilleur_recouvrement",
@@ -73,7 +77,7 @@ var registreReplayIdentites = []Repli{
 		//	    le zéro dure — en laissant l'arbitrage anonyme dans le code, ce que D14 (a)
 		//	    interdit. Le retrait propre est une CONVERSION (abstention explicite dès deux
 		//	    candidats), et elle appartient à M2.
-		CibleRetrait: "M2 : abstention explicite des deux candidats, puis retrait de l'entree (le compte est nul depuis le 2026-09-15)",
+		CibleRetrait: "abstention explicite des deux candidats, puis retrait de l entree (compte nul depuis le 2026-09-15) ; a defaut, " + retraitRegle4,
 		// Sans seuil, un recouvrement d'une seule frame l'emporte sur l'absence : le compte dit
 		// combien de pistes sont nommées par un arbitrage plutôt que par une lecture.
 		CritereRetrait:  "0 piste arbitree par recouvrement sur les 8 builds : TENU le 2026-09-16 (0/8, goldens d'assemblage) ; reste a confirmer au corpus gate",
@@ -111,7 +115,7 @@ var registreReplayIdentites = []Repli{
 			Condition: CondSectionAbsente,
 		}},
 		DatePose:     "2026-09-14",
-		CibleRetrait: "lot M2 (retrait sec si le compte reste nul au corpus gate — D14 d)",
+		CibleRetrait: "le compte reste nul au corpus gate (D14 d) ; a defaut, " + retraitRegle4,
 		// CE QUE LA CONVERSION A FERME, MESURE (`decoupe_des_vies_mesure_test.go`, 8 builds,
 		// 2026-09-15) : sur 212 coupures decidees par le seuil, 4 portaient une mort ecrite, 0 un
 		// record de creation, 0 une frontiere de manche — et 208 n'etaient justifiees PAR RIEN.
@@ -131,16 +135,18 @@ var registreReplayIdentites = []Repli{
 		Mecanisme: "la victime n'est dans aucune equipe de la feuille de match : la mort est ecartee ENTIEREMENT",
 		Condition: CondSectionAbsente,
 		Ordre:     OrdreApresLecture,
-		Sites: []Site{{
+		Sites: []Site{{Fichier: pkgKillcollector + "isolation_facts.go", Ancre: "Fallbacks: ids.replis,"}, {
 			Fichier: pkgReplay + "death_context.go",
 			Ancre:   "if !dansUneEquipe {",
+		}, {
+			Fichier: pkgReplay + "death_context.go",
+			Ancre:   "e.Fallbacks.Declenche(fallback.NomMortEcarteeHorsEquipeDeBase)",
 		}},
 		DatePose:     dateAudit0E,
-		CibleRetrait: "lot 1.7 (l'equipe vient du film, V4) porte jusqu'a ce calque",
+		CibleRetrait: "l equipe lue dans le film portee jusqu a ce calque ; a defaut, " + retraitRegle4,
 		// Aucune ligne, aucun compteur, aucun log : une mort disparaît du calque sans trace.
 		CritereRetrait:  "l'equipe vient du film et non de la base ; 0 mort ecartee sur les 8 builds",
-		CompteurBranche: false,
-		CibleComptage:   comptageFamille19,
+		CompteurBranche: true,
 	},
 	{
 		Nom:       "repli_coequipier_hors_de_vue_par_defaut",
@@ -148,15 +154,17 @@ var registreReplayIdentites = []Repli{
 		Mecanisme: "ni visible ni en attente : « hors de vue » par defaut de fin de fonction — indistinct de « canal non lu »",
 		Condition: CondNonResolu,
 		Ordre:     OrdreApresLecture,
-		Sites: []Site{{
+		Sites: []Site{{Fichier: pkgKillcollector + "isolation_facts.go", Ancre: "Fallbacks: ids.replis,"}, {
 			Fichier: pkgReplay + "death_context.go",
 			Ancre:   "return EtatHorsDeVue",
+		}, {
+			Fichier: pkgReplay + "death_context.go",
+			Ancre:   "e.Fallbacks.Declenche(fallback.NomCoequipierHorsDeVueParDefaut)",
 		}},
 		DatePose:        dateAudit0E,
-		CibleRetrait:    "lot de conversion du contexte d'isolement (hors famille 1.9 a ce jour)",
+		CibleRetrait:    "la conversion du contexte d isolement (l etat du coequipier lu dans le film) ; a defaut, " + retraitRegle4,
 		CritereRetrait:  "un quatrieme etat NOMME « non lu » separe l'ignorance de la mesure, et son compte tombe a 0",
-		CompteurBranche: false,
-		CibleComptage:   comptageFamille19,
+		CompteurBranche: true,
 	},
 	// RETIRE LE 2026-09-16 (lot 1.9.10) : `repli_fin_de_vie_vehicule_par_recensement`. La fin de
 	// vie d'un véhicule se LIT au composant `object-dead-state` de `ti=40`
@@ -181,6 +189,9 @@ var registreReplayIdentites = []Repli{
 		Sites: []Site{{
 			Fichier: pkgReplay + "vehicle_heading.go",
 			Ancre:   "return vehicleVelocityHeadingOf(p)",
+		}, {
+			Fichier: pkgReplay + "build_vehicles.go",
+			Ancre:   "clock.fb.DeclencheN(fallback.NomCapVehiculeVitesseInsuffisante, logVehicleHeadingSource(scan.Positions))",
 		}},
 		DatePose: dateAudit0E,
 		// LE NEGATIF QUI TENAIT ICI EST TOMBE : « i2 REFUTE » datait du lot 5.2b.2, qui avait
@@ -188,8 +199,7 @@ var registreReplayIdentites = []Repli{
 		// desormais REELLE et datee, et le compte qui manquait existe.
 		CibleRetrait:    "le mode 0 d'i2 rendu publiable (sa direction lue n'est pas verticale sur les vieux builds : |z| median 0,585 contre 0,979 — a instruire avant tout elargissement), ou la reconstruction du chemin delta par registre d'etat par entite",
 		CritereRetrait:  "part de `capParVelocite` nulle au journal `rejeu : source du cap des vehicules` sur le parc",
-		CompteurBranche: false,
-		CibleComptage:   comptageFamille19,
+		CompteurBranche: true,
 	},
 	{
 		Nom:       "repli_episode_occupation_par_trou_de_position",
@@ -203,17 +213,17 @@ var registreReplayIdentites = []Repli{
 		Sites: []Site{
 			{Fichier: pkgReplay + "vehicle_rides.go", Ancre: "repli int"},
 			{Fichier: pkgReplay + "vehicle_rides_build.go", Ancre: "b.st.repli++"},
+			{Fichier: pkgReplay + "build_vehicles.go", Ancre: "clock.fb.DeclencheN(fallback.NomEpisodeOccupationParTrouDePosition, st.repli)"},
 		},
 		DatePose:     dateAudit0E,
-		CibleRetrait: "lot 2.2 (M2, les lecteurs recoivent le profil : cablage des compteurs) puis le chantier vehicules — le lot 1.9.10 (2026-09-16) a lu la fin de vie au dead-state SANS convertir l episode d occupation par trou de position (cible reecrite a sa fusion)",
+		CibleRetrait: "l episode d occupation borne par une lecture (le dead-state lit deja la fin de vie du vehicule, pas la fin de l occupation) ; a defaut, " + retraitRegle4,
 		// Ce repli-ci porte DÉJÀ son nom (`st.repli`) et son compte — et DEPUIS LE SCHEMA 67 il
 		// le porte jusqu'au document : `rides[].src = "proximity"` et `coverage.vehicles.
 		// ridesProximity` disent, par épisode et en total, ce qui est DÉDUIT plutôt que LU. Le
 		// lot 5.10 a aussi posé sa borne : un épisode de repli n'est publié que si aucune
 		// lecture d'`object-parent-state` de la même vie ne le contredit.
 		CritereRetrait:  "0 episode de provenance `proximity` sur les 8 builds une fois les montees a bord lues sur tous les sieges",
-		CompteurBranche: false,
-		CibleComptage:   "PUBLIE depuis le schema 67 (`coverage.vehicles.ridesProximity`) ; son entree dans `coverage.fallbacks` viendra avec le cablage general des compteurs",
+		CompteurBranche: true,
 	},
 	{
 		Nom:       "repli_chassis_vehicule_marqueur_neutre",
@@ -237,7 +247,7 @@ var registreReplayIdentites = []Repli{
 			},
 		},
 		DatePose:     dateAudit0E,
-		CibleRetrait: "lot 2.2 (M2) puis le chantier vehicules — 22 chassis restes sans piece ecrite au lot 1.9.9 (2026-09-16) : chaque chassis prouve entre en table sous sa famille, ce repli tombe quand il n en reste aucun (cible reecrite a la fusion, le lot 1.9.10 n en nommait aucun)",
+		CibleRetrait: "chaque chassis prouve entre en table sous sa famille (22 chassis sans piece ecrite le 2026-09-16), et le repli tombe quand il n en reste aucun ; a defaut, " + retraitRegle4,
 		// Décision utilisateur du 2026-09-14 : le parc d'assets véhicules est COMPLET ; un
 		// châssis absent de la table est un MISMATCH à nommer, jamais un véhicule manquant.
 		// Le lot 1.9.9 a NOMME le premier d'entre eux (`0x038df01a`, la tourelle automatique
@@ -257,12 +267,16 @@ var registreReplayIdentites = []Repli{
 		Sites: []Site{{
 			Fichier: pkgFilmdec + "player_index.go",
 			Ancre:   "raw, _, ok := FilmChunkAt(film, c)",
-		}},
+		}, {
+			// COMPTE = chunks sautes (illisibles ET a resolution vide), rendu par la lecture et note au
+			// rapport du contexte par l etage du pont d identite (lot J8.7).
+			Fichier: pkgFilmdec + "pont_identite.go",
+			Ancre:   "fc.NoterReplis(ComptesDesReplis{ChunksDeReplicationSautes: sautes})",
+		}, siteDeVersement("NomChunkDeReplicationSaute")},
 		DatePose:        dateAudit0E,
-		CibleRetrait:    "lot 1.6 (la table du film remplace cette voie) : le repli tombe quand la table de chunk_00 est le lien direct partout",
+		CibleRetrait:    "la table de chunk_00 est le lien direct partout ; a defaut, " + retraitRegle4,
 		CritereRetrait:  "0 chunk saute sur les 8 builds, ou la voie entiere retiree avec ses tests",
-		CompteurBranche: false,
-		CibleComptage:   comptageFamille19,
+		CompteurBranche: true,
 	},
 	{
 		Nom:  "repli_identite_vie_par_occupation_du_corps",
@@ -275,7 +289,7 @@ var registreReplayIdentites = []Repli{
 			Fichier: pkgReplay + "unnamed_lives.go",
 			Ancre:   "reg.fb.Declenche(fallback.NomIdentiteVieParOccupationDuCorps)",
 		}},
-		DatePose:        "2026-09-27",
+		DatePose:        date0927,
 		CibleRetrait:    "J11 du plan PLAN_SUITE_AUDIT_DECODEUR_FILM (gates de corpus) : lecture de l identite des vies restantes (fin de vie sans mort ecrite, bots sans entite)",
 		CritereRetrait:  "0 piste nommee par occupation sur le corpus du gate de rejeu",
 		CompteurBranche: true,

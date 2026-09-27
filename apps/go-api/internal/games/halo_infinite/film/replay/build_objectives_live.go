@@ -167,8 +167,10 @@ func attachFlagCarries(doc *ReplayDocument, opt Options, reg IdentityRegistry, c
 	// grammaire n'est pas celle du CTF ce compteur se lit n'importe ou. Mesure du terrain :
 	// `cmd/replay-build --facts` montait a 19-22 Go et ne rendait jamais la main.
 	//
-	// LE PLAFOND DU DEROULAGE EST LA VRAIE CORRECTION (`objectives.maxDeathsPerSlot`) : il
-	// ferme le defaut la ou il est, y compris sur un film de CTF. Cette garde-ci est la seconde
+	// LA BORNE DU DEROULAGE EST LA VRAIE CORRECTION : le pont deroule la serie PUBLIEE du compteur
+	// de morts, dont un pas aberrant ne laisse aucune unite (`objectives.maxUnrollPerStep`, lot J8.5
+	// du 2026-09-27 ; c etait `objectives.maxDeathsPerSlot`). Elle ferme le defaut la ou il est, y
+	// compris sur un film de CTF. Cette garde-ci est la seconde
 	// moitie, et elle vaut par elle-meme : sur les neuf dixiemes des matchs — tout ce qui n'est
 	// pas du CTF — ce pont ne sert a RIEN, puisque le calque ne publie rien. On ne le paye plus.
 	if !in.Scanned || !signals.IsFlagFilm() {

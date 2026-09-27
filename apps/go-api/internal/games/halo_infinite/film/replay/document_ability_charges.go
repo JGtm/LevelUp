@@ -34,6 +34,7 @@ package replay
 // jamais déguisées en mesure (la leçon H2 de la revue P3, appliquée d'emblée).
 
 import (
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
 	"log/slog"
 )
@@ -118,6 +119,8 @@ type abilityChargeInputs struct {
 	// measured : les familles que le TITRE déclare mesurées sur CE canal (les charges — pas
 	// celles du canal d'impulsion : deux mesures, deux listes).
 	measured []string
+	// fb : le compteur de replis de la cuisson (lot J8.7). Nil ne compte rien.
+	fb *fallback.Compteur
 }
 
 // buildAbilityCharges donne une identité aux lectures armées par le rang i48 de leur vie,
@@ -132,7 +135,7 @@ func buildAbilityCharges(
 		return nil, cov
 	}
 	b := &abilityChargeBuilder{
-		byLife: newAbilityRankIndex(in.ranks, in.lives), palette: in.palette,
+		byLife: newAbilityRankIndex(in.ranks, in.lives, in.fb), palette: in.palette,
 		measured: make(map[string]bool, len(in.measured)),
 		origin:   origin, step: step, cov: &cov,
 	}

@@ -61,7 +61,9 @@ func (c *KillSourceCollector) resolveMapBounds(ctx context.Context, matchID stri
 	if err != nil {
 		return decfilm.MapQuantEntry{}, err
 	}
-	return c.entreeDeCatalogueParNom(noms)
+	entry, err := c.entreeDeCatalogueParNom(noms)
+	premierNomSansArbitrage(ctx, noms, err)
+	return entry, err
 }
 
 // nomsDeCarteDuMatch rend les identités de carte candidates du match, telles que la BASE les
@@ -131,4 +133,13 @@ func (c *KillSourceCollector) carteDuMatch(ctx context.Context, matchID string) 
 		return nil
 	}
 	return &entry
+}
+
+// premierNomSansArbitrage compte `repli_carte_premier_nom_resolu` sur le compteur de la passe : une
+// entree de catalogue a resolu alors que PLUSIEURS identites de carte etaient candidates — la
+// premiere qui resout a gagne sans arbitrage (lot J8.7).
+func premierNomSansArbitrage(ctx context.Context, noms []string, err error) {
+	if err == nil && len(noms) > 1 {
+		replisDeLaPasse(ctx).Declenche(decfilm.NomCartePremierNomResolu)
+	}
 }

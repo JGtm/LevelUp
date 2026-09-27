@@ -245,6 +245,9 @@ func grammaireDesLancers(fc *FilmContext) grenadeGrammaire {
 	p := fc.Profile()
 	if a, connue := profile.AmorceGrenadePour(p.Build(), p.Highlight().MajorVersion); connue {
 		g.amorce = a
+	} else {
+		// Repli `repli_amorce_grenade_profil_de_reference` : la cle du film n a pas de ligne (lot J8.7).
+		fc.NoterReplis(ComptesDesReplis{AmorceGrenadeDeReference: 1})
 	}
 	if reg, err := fc.Registry(); err == nil && reg != nil {
 		if ti, vus := tiProjectileParNom(reg); vus > 0 {

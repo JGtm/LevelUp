@@ -56,8 +56,10 @@ type feedEvent struct {
 // chargement (cf. `feed_couples.go` et [decodeCtx.prepare]).
 type killFeed struct {
 	events []feedEvent // instants, tries
-	pairs  []feedEvent // couples publies (meme instant + lus au kill-event + recolles)
-	names  []string    // roster HUMAIN, trie
+	// nomsParXUID : evenements de kill ou de mort nommes `xuid:<N>` (`repli_gamertag_par_xuid_brut`, lot J8.7).
+	nomsParXUID int
+	pairs       []feedEvent // couples publies (meme instant + lus au kill-event + recolles)
+	names       []string    // roster HUMAIN, trie
 	// xuidDe : le xuid que le kill-feed porte pour chaque gamertag. Il sert quand un couple LU
 	// au kill-event nomme une victime dont aucun instant voisin ne porte la mort.
 	xuidDe map[string]uint64
@@ -143,15 +145,18 @@ func buildFeed(evs []highlightevent.HighlightEvent) *killFeed {
 	}
 	for _, e := range evs {
 		name := gt[e.XUID]
-		if name == "" {
+		parXUID := name == ""
+		if parXUID {
 			name = fmt.Sprintf("%s%d", XUIDNamePrefix, e.XUID)
 		}
 		switch e.EventType {
 		case highlightevent.EventTypeKill:
 			kf.nKills++
+			kf.nomsParXUID += unSi(parXUID)
 			at(e.TimeMS).killer = name
 		case highlightevent.EventTypeDeath:
 			kf.nDeaths++
+			kf.nomsParXUID += unSi(parXUID)
 			ev := at(e.TimeMS)
 			ev.victim = name
 			ev.victimXUID = e.XUID

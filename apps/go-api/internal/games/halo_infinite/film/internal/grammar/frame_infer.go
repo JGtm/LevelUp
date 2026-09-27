@@ -144,7 +144,7 @@ func DecodeFrameInfer(buf []byte, w *World, cfg FrameConfig) ([]FrameRecord, int
 // rejet hors datum, la table anticipee du film est consultee : si une image-cle ULTERIEURE
 // declare cet eid avec son archetype, l entite est liee PAR ANTICIPATION et son corps est lu.
 // Le record de naissance n est toujours pas lu — c est un REPLI, il est NOMME et COMPTE
-// ([Observation.LiaisonsParAnticipation]). Sans table installee, rien ne change d un bit.
+// ([Observation.LiaisonsParRepliDAnticipation]). Sans table installee, rien ne change d un bit.
 //
 // `id` est l eid COMPLET et non le slot : la cle que `FUN_1406caad8` compare porte les deux bits
 // de tete, et 638 des 23 325 en-tetes rejetes de `bfecd02b` presentent une tete qu AUCUNE
@@ -155,12 +155,12 @@ func rejetDeVue(typ int, id uint32, w *World, cfg FrameConfig) bool {
 	}
 	slot := id & 0x3fffffff
 	if _, lie := w.ArchetypeForSlot(slot); !lie {
-		ti, anticipe := w.LierParAnticipation(id)
+		ti, anticipe := w.LierParRepliDAnticipation(id)
 		if !anticipe {
 			cfg.Obs.compterRejetHorsDatum()
 			return true
 		}
-		cfg.Obs.compterLiaisonParAnticipation(ti)
+		cfg.Obs.compterLiaisonParRepliDAnticipation(ti)
 	}
 	if !w.VuePossede(slot) {
 		cfg.Obs.compterRejetDeVue()

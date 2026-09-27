@@ -18,12 +18,14 @@ var registreReplayObjectifs = []Repli{
 		Sites: []Site{{
 			Fichier: pkgReplay + "flag_assign.go",
 			Ancre:   "if f := g.seulEnJeu(recevable); f >= 0 {",
+		}, {
+			Fichier: pkgReplay + "flag_assign.go",
+			Ancre:   "g.fb.Declenche(fallback.NomDrapeauSeulEnJeu)",
 		}},
 		DatePose:        dateAudit0E,
-		CibleRetrait:    "lot 1.9.6 (le drapeau qui rentre pris dans ev.flag, deja nomme en amont)",
+		CibleRetrait:    "le drapeau qui rentre pris dans ev.flag, deja nomme en amont ; a defaut, " + retraitRegle4,
 		CritereRetrait:  "0 recours a la regle « seul en jeu » une fois ev.flag lu ; coverage.flagCarries.ambiguousReturns a 0",
-		CompteurBranche: false,
-		CibleComptage:   "lot 1.9.6",
+		CompteurBranche: true,
 	},
 	{
 		Nom:       "repli_invariant_propre_drapeau_muet",
@@ -34,12 +36,14 @@ var registreReplayObjectifs = []Repli{
 		Sites: []Site{{
 			Fichier: pkgReplay + "flag_assign.go",
 			Ancre:   "func sonPropreDrapeau(spawns []FlagSpawn, f int, equipe int, connue bool) bool {",
+		}, {
+			Fichier: pkgReplay + "flag_assign.go",
+			Ancre:   "g.fb.Declenche(fallback.NomInvariantPropreDrapeauMuet)",
 		}},
 		DatePose:        dateAudit0E,
-		CibleRetrait:    "lot 1.7 (l'equipe vient du film) : l'equipe du porteur est desormais lue, donc le silence doit disparaitre",
+		CibleRetrait:    "l equipe du porteur est lue dans le film : le silence doit disparaitre ; a defaut, " + retraitRegle4,
 		CritereRetrait:  "0 portage dont l'equipe du porteur est inconnue sur les 8 builds (coverage.flagCarries.carrierTeamUnknown a 0)",
-		CompteurBranche: false,
-		CibleComptage:   comptageFamille19,
+		CompteurBranche: true,
 	},
 	{
 		Nom:       "repli_index_drapeau_zero_pour_tous",
@@ -50,12 +54,14 @@ var registreReplayObjectifs = []Repli{
 		Sites: []Site{{
 			Fichier: pkgReplay + "flag_assign.go",
 			Ancre:   "raws[i].flagIndex = 0",
+		}, {
+			Fichier: pkgReplay + "flag_assign.go",
+			Ancre:   "ctx.fb.DeclencheN(fallback.NomIndexDrapeauZeroPourTous, len(raws))",
 		}},
 		DatePose:        dateAudit0E,
-		CibleRetrait:    "lot de completion du catalogue de socles (hors famille 1.9)",
+		CibleRetrait:    "la completion du catalogue de socles ; a defaut, " + retraitRegle4,
 		CritereRetrait:  "0 film CTF sans socle catalogue sur le parc",
-		CompteurBranche: false,
-		CibleComptage:   comptageFamille19,
+		CompteurBranche: true,
 	},
 	{
 		Nom:  "repli_nombre_drapeaux_hors_catalogue_sans_passage",
@@ -100,7 +106,7 @@ var registreReplayObjectifs = []Repli{
 		// `attachFlagCarryPositions` n'est jamais atteint. Aucun des huit films n'apporte de
 		// calque drapeau. La mesure demande un film de CTF cuit en entier — corpus gate, ou un
 		// fixture d'entrées portant le canal drapeau.
-		CibleRetrait: "M2 : mesurer d'abord (le canal drapeau n'est exerce par AUCUN des 8 goldens), puis retrait sec si le compte est nul au corpus gate",
+		CibleRetrait: "mesurer d abord (le canal drapeau n est exerce par AUCUN des 8 goldens) ; a defaut, " + retraitRegle4,
 		// Deux points identiques se lisent sur la carte comme un portage immobile : le repli
 		// FABRIQUE une donnée plausible, ce qui est la forme la plus difficile à repérer.
 		CritereRetrait:  "0 portage dont la fin n'a pas de point publie, mesure sur un corpus qui PORTE le calque drapeau (les 8 goldens ne l'exercent pas — verifie le 2026-09-16)",
@@ -117,7 +123,7 @@ var registreReplayObjectifs = []Repli{
 			Ancre:   "continue // le pont ne nomme pas ce slot : aucun porteur a inventer",
 		}},
 		DatePose:        dateAudit0E,
-		CibleRetrait:    "lot 1.6 (lien direct par la table du film)",
+		CibleRetrait:    "le lien direct par la table du film ; a defaut, " + retraitRegle4,
 		CritereRetrait:  "0 piste ecartee faute de pont sur les 8 builds",
 		CompteurBranche: true,
 	},
@@ -130,12 +136,14 @@ var registreReplayObjectifs = []Repli{
 		Sites: []Site{{
 			Fichier: pkgReplay + "zone_states_owner.go",
 			Ancre:   "case len(teams) == 0 && v != zoneNeutralOwner:",
+		}, {
+			Fichier: pkgReplay + "zone_states_owner.go",
+			Ancre:   "fb.DeclencheN(fallback.NomZoneCampSansRoster, captures)",
 		}},
 		DatePose:        dateAudit0E,
-		CibleRetrait:    "lot 1.7 (l'equipe vient du film) porte au calque des zones — cf. D3 (1.7), ZoneInput.TeamByXUID prend TOUJOURS l'equipe de la base",
+		CibleRetrait:    "l equipe lue dans le film portee au calque des zones (la table de la base n est plus qu un controle) ; a defaut, " + retraitRegle4,
 		CritereRetrait:  "le roster des zones vient du film ; 0 film a roster vide sur les 8 builds",
-		CompteurBranche: false,
-		CibleComptage:   comptageFamille19,
+		CompteurBranche: true,
 	},
 	{
 		Nom:       "repli_zone_proprietaire_sans_roster",
@@ -146,12 +154,14 @@ var registreReplayObjectifs = []Repli{
 		Sites: []Site{{
 			Fichier: pkgReplay + "zone_states_owner.go",
 			Ancre:   "case len(teams) == 0 && v <= 1:",
+		}, {
+			Fichier: pkgReplay + "zone_states_owner.go",
+			Ancre:   "fb.DeclencheN(fallback.NomZoneProprietaireSansRoster, n)",
 		}},
 		DatePose:        dateAudit0E,
 		CibleRetrait:    "meme cible que repli_zone_camp_sans_roster",
 		CritereRetrait:  "0 film a roster vide sur les 8 builds",
-		CompteurBranche: false,
-		CibleComptage:   comptageFamille19,
+		CompteurBranche: true,
 	},
 	{
 		Nom:       "repli_zone_camp_de_capture_deduit_de_l_issue",
@@ -186,7 +196,7 @@ var registreReplayObjectifs = []Repli{
 			Ancre:   "votes = hillVotes(zones, pts, p.t0, p.t1)",
 		}},
 		DatePose:        dateAudit0E,
-		CibleRetrait:    "lot de conversion du calque des collines (hors famille 1.9 a ce jour)",
+		CibleRetrait:    "la conversion du calque des collines ; a defaut, " + retraitRegle4,
 		CritereRetrait:  "0 periode sans rampe sur les films a collines du corpus",
 		CompteurBranche: true,
 	},
@@ -214,12 +224,14 @@ var registreReplayObjectifs = []Repli{
 		Sites: []Site{{
 			Fichier: pkgReplay + "skull_carries.go",
 			Ancre:   "func (p carrierPresence) gate(xuid string, f0, f1 int) (int, int, bool) {",
+		}, {
+			Fichier: pkgReplay + "skull_carries.go",
+			Ancre:   "p.fbCrane.Declenche(fallback.NomCranePorteurSansVieNommee)",
 		}},
 		DatePose:        dateAudit0E,
-		CibleRetrait:    "lot 1.9.5 (le porteur du crane lu au canal des armes tenues)",
+		CibleRetrait:    "le porteur du crane lu au canal des armes tenues ; a defaut, " + retraitRegle4,
 		CritereRetrait:  "0 porteur sans vie nommee sur les films Oddball du corpus",
-		CompteurBranche: false,
-		CibleComptage:   "lot 1.9.5",
+		CompteurBranche: true,
 	},
 	{
 		Nom:       "repli_armement_bombe_debut_a_zero",

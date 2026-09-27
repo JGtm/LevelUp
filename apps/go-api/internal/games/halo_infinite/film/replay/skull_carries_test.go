@@ -200,7 +200,7 @@ func TestSkullCarrierPresence(t *testing.T) {
 	}
 	// Aucune identite deduite ici : les quatre xuids viennent de la lecture.
 	deduites := map[int]bool{}
-	p := carrierPresenceOf(tracks, deduites)
+	p := carrierPresenceOf(tracks, deduites, nil)
 	if len(p.named) != 2 {
 		t.Fatalf("xuids indexes = %d, attendu 2 : %+v", len(p.named), p.named)
 	}
@@ -387,7 +387,7 @@ func TestUneIdentiteDEDUITENeProuveLAbsenceDePersonne(t *testing.T) {
 		{Slot: 9, StartFrame: 0, EndFrame: 300, XUID: "1"},
 	}
 	// La piste d'indice 1 est celle que le nommage final a nommee.
-	p := carrierPresenceOf(tracks, map[int]bool{1: true})
+	p := carrierPresenceOf(tracks, map[int]bool{1: true}, nil)
 	if len(p.unnamed) != 1 {
 		t.Fatalf("vies sans identite LUE = %d, attendu 1 (la vie deduite du slot 7)", len(p.unnamed))
 	}
@@ -409,7 +409,7 @@ func TestUneIdentiteLUEProuveToujoursUnePresence(t *testing.T) {
 		{Slot: 7, StartFrame: 100, EndFrame: 200, XUID: "2"},
 		{Slot: 9, StartFrame: 0, EndFrame: 50, XUID: "1"},
 	}
-	p := carrierPresenceOf(tracks, nil) // aucune identite deduite : tout vient de la lecture
+	p := carrierPresenceOf(tracks, nil, nil) // aucune identite deduite : tout vient de la lecture
 	if len(p.unnamed) != 0 {
 		t.Fatalf("aucune identite deduite ici : unnamed = %d, attendu 0", len(p.unnamed))
 	}

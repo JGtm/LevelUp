@@ -6,7 +6,7 @@
 
 ## AXE DE TEMPS
 8117 frames · intervalle 100 ms · duree 811700 ms
-schema 74 · titre halo_infinite
+schema 75 · titre halo_infinite
 version majeure du film : 37
 origine de la frame 0 sur l horloge du fil : 11847 ms
 coup d envoi date par le film : 33547 ms · 169/169 piste(s) en mouvement · rafale 7 · marge depuis la frame 0 : 21700 ms
@@ -364,7 +364,7 @@ POWER-UPS (voie ti=37) — balaye=true · 399 creation(s) acceptee(s) -> 13 rete
     presence t0=5798 prouvee jusqu a 5798, absente a 5882
     presence t0=6997 prouvee jusqu a 7282, absente a 7482
     presence t0=7300 prouvee jusqu a 7300, absente a 7482
-36 occupation(s) achevee(s) publiee(s) · 15 datee(s) a l instant exact par l evenement natif · 15 avec un ramasseur nomme
+36 occupation(s) achevee(s) publiee(s) · 11 datee(s) a l instant exact par l evenement natif · 11 avec un ramasseur nomme
 
 ## ARMES PORTEES — l inventaire, pas la main : le loadout ne dit pas QUELLE arme est degainee
 252 loadout(s) publie(s) · 6 famille(s) distincte(s)
@@ -389,7 +389,8 @@ entrees 8 · sieges 8 · lus 8 · tirs 0 · apparies 0 · ouvertes 0 · sans pla
 arrivants 0 · presences closes 0 · sans presence 0 · occupants au plus 8 · depassements 0 · relais bornes 0 · sans table false
 
 ## REPLIS DECLENCHES — la part de ce document qui ne vient PAS d une lecture du film
-aucun : chaque fait publie vient d une lecture (ou d un repli dont le compteur n est pas encore cable)
+repli_identite_premier_occupant_du_siege         74
+repli_origine_au_sol_lachee_par_fenetre          184
 
 ## LIBELLES D ARMES — le tag brut reste A COTE du libelle, jamais a sa place
 11 identifiant(s) nomme(s) ; un identifiant absent garde son hexadecimal a l ecran et

@@ -114,7 +114,10 @@ func profilDeBalayageDeLaCuisson(res *decfilm.Result) *decfilm.ProfilDeBalayage 
 // ouvraient et reparsaient chacun le chunk highlight, pour en tirer le même fil. Ils reçoivent
 // désormais le MÊME résultat, lu une fois par `BuildBytes` — mêmes valeurs, mêmes refus
 // journalisés, une décompression et un parse de moins par cuisson.
-func (b *Builder) killRefs(matchID string, deaths filmDeaths, res *decfilm.Result) (replay.KillsInput, replay.MatchKillsInput) {
+//
+// `fb` recoit les deux replis de la resolution (assistant non resolu, gamertag a deux xuids) — le
+// compteur de la CONSTRUCTION (lot J8.7), que l assemblage verse ; nil ne compte rien.
+func (b *Builder) killRefs(matchID string, deaths filmDeaths, res *decfilm.Result, fb *decfilm.Compteur) (replay.KillsInput, replay.MatchKillsInput) {
 	if res == nil {
 		return replay.KillsInput{}, replay.MatchKillsInput{}
 	}
@@ -128,7 +131,10 @@ func (b *Builder) killRefs(matchID string, deaths filmDeaths, res *decfilm.Resul
 			"err", deaths.err, "match_id", matchID)
 		return replay.KillsInput{}, replay.MatchKillsInput{}
 	}
-	r := resolveKills(res.Kills, gamertagXUIDIndex(deaths.list))
+	parGamertag, divergences := gamertagXUIDIndex(deaths.list)
+	fb.DeclencheN(decfilm.NomGamertagPremierXuidGagne, divergences)
+	r := resolveKills(res.Kills, parGamertag)
+	fb.DeclencheN(decfilm.NomAssistantNonResoluAbandonne, r.assistantsNonResolus)
 	r.log(matchID, len(res.Kills))
 	return replay.KillsInput{Read: true, Kills: r.refs, Paths: voiesDesMorts(res)},
 		replay.MatchKillsInput{Read: true, Kills: r.pairs, Dropped: len(res.Kills) - len(r.pairs)}
@@ -147,6 +153,10 @@ type killResolution struct {
 	// mort n'est dans aucun enregistrement du fil, et aucune période de portage ne lui est
 	// pontée non plus — l'écarter ne perd donc rien de mesurable.
 	victimUnresolved int
+	// assistantsNonResolus : assistants nommés par le kill-feed que la résolution ne sait pas
+	// traduire en xuid — le frag est publié sans eux (`repli_assistant_non_resolu_abandonne`,
+	// lot J8.7).
+	assistantsNonResolus int
 }
 
 // resolveKills résout tueur, assistant et victime en xuid, EN UNE PASSE. Pure : aucune I/O,
@@ -166,6 +176,8 @@ func resolveKills(kills []decfilm.Kill, byGamertag map[string]uint64) killResolu
 		if k.Assist.Known && k.Assist.Name != "" {
 			if aXUID, ok := resolveKillIdentity(k.Assist.Name, byGamertag); ok {
 				ref.AssistXUID, ref.AssistKnown = aXUID, true
+			} else {
+				r.assistantsNonResolus++
 			}
 		}
 		r.refs = append(r.refs, ref)
@@ -202,17 +214,23 @@ func (r killResolution) log(matchID string, total int) {
 // PREMIER GAGNE — même règle que replay.gamertagsOf (identity.go), pour la même raison : les
 // 32 octets d'un même xuid ne varient pas d'un enregistrement à l'autre à l'intérieur d'un
 // film, donc rien à arbitrer.
-func gamertagXUIDIndex(deaths []types.Death) map[string]uint64 {
+//
+// LE SECOND RENDU COMPTE LES DIVERGENCES que la regle tranche en silence — un gamertag vu avec un
+// AUTRE xuid que le premier (`repli_gamertag_premier_xuid_gagne`, lot J8.7).
+func gamertagXUIDIndex(deaths []types.Death) (map[string]uint64, int) {
 	out := make(map[string]uint64, len(deaths))
+	divergences := 0
 	for _, d := range deaths {
 		if d.Gamertag == "" {
 			continue
 		}
-		if _, seen := out[d.Gamertag]; !seen {
+		if premier, seen := out[d.Gamertag]; !seen {
 			out[d.Gamertag] = d.XUID
+		} else if premier != d.XUID {
+			divergences++
 		}
 	}
-	return out
+	return out, divergences
 }
 
 // resolveKillIdentity résout un nom killsource (gamertag, ou repli `xuid:<N>`) en xuid.

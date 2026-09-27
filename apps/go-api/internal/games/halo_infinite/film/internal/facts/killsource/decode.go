@@ -134,7 +134,10 @@ func ProfilDeDepartPourCarte(carte *profile.MapQuantEntry) (grammar.ProfilDeBala
 		return p, false
 	}
 	avant := p.LargeursObjetDuMonde()
-	p.PoserLargeursObjetDuMondeDepuisDecoupage(carte.Layout())
+	// Les replis de la pose ne se comptent pas ICI : les largeurs conservees sont celles que ce
+	// second rendu nomme (`repli_carte_absente_largeurs_par_defaut`, compte par la calibration), et
+	// la cuisson pose la MEME carte sur son contexte, qui compte l index de region (lot J8.7).
+	_ = p.PoserLargeursObjetDuMondeDepuisDecoupage(carte.Layout())
 	return p, p.LargeursObjetDuMonde() != avant
 }
 
@@ -267,6 +270,7 @@ func (c *decodeCtx) finish() *Result {
 		res.Probe = &probe
 		res.Health.TagOutOfCatalogueScan = probe.Uncovered
 	}
+	res.Stats.Replis = c.replisDuResultat(kills, p.unclaimed, res.Probe != nil)
 	return res
 }
 

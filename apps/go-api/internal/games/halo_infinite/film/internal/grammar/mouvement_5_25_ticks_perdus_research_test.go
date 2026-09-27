@@ -307,7 +307,7 @@ func t525TableauA(t *testing.T, p *t525Passe) {
 		m533bPart(n[t525Abandonnee], loc), n[t525Debordement])
 	t.Logf("    CONTROLE (gate 5.23) : rejets hors datum %d · de vue %d · liaisons par "+
 		"anticipation %d", p.obs.RejetsHorsDatum, p.obs.RejetsDeVue,
-		t525Somme(p.obs.LiaisonsParAnticipation))
+		t525Somme(p.obs.LiaisonsParRepliDAnticipation))
 	t.Logf("    BITS : %d au total · %d lus (%.1f %%) · %d NON LUS (%.1f %%)",
 		bitsTot, bitsLus, m533bPart(bitsLus, bitsTot), bitsTot-bitsLus,
 		m533bPart(bitsTot-bitsLus, bitsTot))

@@ -4,6 +4,7 @@ import (
 	"log/slog"
 	"sort"
 
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/objectives"
 	"levelup/go-api/internal/games/halo_infinite/film/types"
 )
@@ -251,6 +252,7 @@ type carrierPresence struct {
 	// Quelqu'un est la, on ne sait pas qui — donc on ne peut RIEN affirmer sur l'absence d'un
 	// joueur a cet instant.
 	unnamed []presenceSpan
+	fbCrane *fallback.Compteur // compteur de la cuisson (J8.7), pose par le seul calque du crane ; nil ne compte rien
 }
 
 // carrierPresenceOf indexe les vies bipedes PUBLIEES (`doc.Tracks`) : les nommees par xuid, les
@@ -274,8 +276,8 @@ type carrierPresence struct {
 //
 // Une vie dont l'identite est deduite entre donc DANS LES DEUX : sous son xuid (c'est sa
 // presence a lui) ET parmi les vies qui ne prouvent l'absence de personne.
-func carrierPresenceOf(tracks []Track, deduced map[int]bool) carrierPresence {
-	p := carrierPresence{named: map[string][]presenceSpan{}}
+func carrierPresenceOf(tracks []Track, deduced map[int]bool, fbCrane *fallback.Compteur) carrierPresence {
+	p := carrierPresence{named: map[string][]presenceSpan{}, fbCrane: fbCrane}
 	for i, t := range tracks {
 		span := presenceSpan{t.StartFrame, t.EndFrame}
 		switch {
@@ -307,6 +309,7 @@ func carrierPresenceOf(tracks []Track, deduced map[int]bool) carrierPresence {
 func (p carrierPresence) gate(xuid string, f0, f1 int) (int, int, bool) {
 	spans := p.named[xuid]
 	if len(spans) == 0 {
+		p.fbCrane.Declenche(fallback.NomCranePorteurSansVieNommee)
 		return f0, f1, true
 	}
 	// L'IGNORANCE PASSE AVANT LE ROGNAGE, et c'est la moitie la plus couteuse du correctif : sur
@@ -456,7 +459,7 @@ func attachSkullCarries(doc *ReplayDocument, opt Options, reg IdentityRegistry, 
 	carries, cov := buildSkullCarries(scan, matchClock{
 		origin: clock.origin, step: clock.step, frames: clock.frames,
 		deathOffsetMS: reg.DeathOffsetMS(),
-	}, carrierPresenceOf(doc.Tracks, deduced))
+	}, carrierPresenceOf(doc.Tracks, deduced, clock.fb))
 	doc.SkullCarries = carries
 	if doc.Coverage != nil {
 		doc.Coverage.SkullCarries = cov

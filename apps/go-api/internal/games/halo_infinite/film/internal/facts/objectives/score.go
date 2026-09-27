@@ -140,9 +140,8 @@ func SeriesByRound(recs []types.StatRecord, c StatComponent, teams bool) map[int
 			if c.Unitary {
 				kept = boundedSeries(kept)
 			}
-			if len(kept) == 0 {
-				continue
-			}
+			// `kept` N EST JAMAIS VIDE ([longestRun] et [boundedSeries] gardent la cardinalite d une
+			// suite non vide) : la garde qui le testait etait morte (constat FO-4, lot J8.6, 2026-09-27).
 			if out[slot] == nil {
 				out[slot] = map[int][]types.ScorePoint{}
 			}

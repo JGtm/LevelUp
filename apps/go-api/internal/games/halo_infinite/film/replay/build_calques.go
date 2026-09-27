@@ -9,7 +9,11 @@ package replay
 // ses commentaires de mesure ; seule la designation des variables a change (`doc` -> `a.doc`).
 // Voir `build.go` pour l ordre des passes et ce qu il protege.
 
-import "log/slog"
+import (
+	"log/slog"
+
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
+)
 
 // poserGrappinEtPoses publie les tractions de grappin (qui exigent les bornes de la carte) et
 // les poses d equipement.
@@ -21,6 +25,9 @@ func (a *assemblage) poserGrappinEtPoses() {
 	case a.opt.MapQuant != nil:
 		var grapCov *GrappleCoverage
 		a.doc.GrappleLines, grapCov = buildGrappleLines(a.opt.GrappleReads, *a.opt.MapQuant, a.origin, a.step, a.doc.Tracks)
+		// LES DEUX REPLIS DE LA VIE D UNE TRACTION, comptes pour la cuisson (lot J8.7).
+		a.opt.Fallbacks.DeclencheN(fallback.NomTractionVieDuTir, grapCov.viesParLeTir)
+		a.opt.Fallbacks.DeclencheN(fallback.NomTractionVieLaPlusProche, grapCov.viesLesPlusProches)
 		a.doc.Coverage.Grapple = grapCov
 		slog.Info("rejeu : tractions de grappin",
 			"tirs", grapCov.LightReads, "accroches", grapCov.HeavyReads,

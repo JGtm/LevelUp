@@ -27,7 +27,7 @@ const catalystMapID = "f7e8cde9-0c0a-487c-94a3-61bfa0f20465"
 // meme, zone par zone, sur le catalogue VERSIONNE.
 func TestMatchZonesSuitLOrdreDuCalqueServi(t *testing.T) {
 	b, cat := zonesTestBuilder(t)
-	zones, roles := b.matchZones("m", vagabondMapID, "Arena:Strongholds")
+	zones, roles := b.matchZones("m", vagabondMapID, "Arena:Strongholds", nil)
 	if len(zones) == 0 {
 		t.Fatalf("aucune zone rendue pour Bastion sur Vagabond — le catalogue en porte")
 	}
@@ -59,8 +59,8 @@ func TestMatchZonesSuitLOrdreDuCalqueServi(t *testing.T) {
 // normaliser d'abord garderait « Arena » sur le premier, et le mode serait perdu en silence.
 func TestMatchZonesLitLeModeDansLesDeuxOrdres(t *testing.T) {
 	b, _ := zonesTestBuilder(t)
-	direct, _ := b.matchZones("m", vagabondMapID, "Strongholds:Arena")
-	inverse, _ := b.matchZones("m", vagabondMapID, "Arena:Strongholds")
+	direct, _ := b.matchZones("m", vagabondMapID, "Strongholds:Arena", nil)
+	inverse, _ := b.matchZones("m", vagabondMapID, "Arena:Strongholds", nil)
 	if len(direct) == 0 {
 		t.Fatalf("aucune zone pour la variante « Strongholds:Arena » — l'ordre du registre est perdu")
 	}
@@ -81,7 +81,7 @@ func TestMatchZonesModesSansZone(t *testing.T) {
 	for _, mapID := range []string{vagabondMapID, catalystMapID} {
 		for _, variant := range []string{"Arena:Slayer", "Arena:CTF", "CTF:Arena", "Arena:Oddball",
 			"Arena:Extraction", ""} {
-			if zones, roles := b.matchZones("m", mapID, variant); len(zones) != 0 {
+			if zones, roles := b.matchZones("m", mapID, variant, nil); len(zones) != 0 {
 				t.Errorf("carte %s, variante %q : %d zone(s) appariee(s) (%v), attendu aucune",
 					mapID, variant, len(zones), roles)
 			}
@@ -96,7 +96,7 @@ func TestMatchZonesModesSansZone(t *testing.T) {
 func TestMatchZonesKOTHViennentDuRoleHill(t *testing.T) {
 	b, cat := zonesTestBuilder(t)
 	for _, variant := range []string{"Arena:King of the Hill", "KOTH:Arena", "Ranked:King of the Hill"} {
-		zones, roles := b.matchZones("m", catalystMapID, variant)
+		zones, roles := b.matchZones("m", catalystMapID, variant, nil)
 		if len(zones) != 6 {
 			t.Fatalf("variante %q : %d zone(s), attendu les 6 collines de Catalyst (%v)", variant, len(zones), roles)
 		}
@@ -113,7 +113,7 @@ func TestMatchZonesKOTHViennentDuRoleHill(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Catalyst absente du catalogue : %v", err)
 	}
-	zones, _ := b.matchZones("m", catalystMapID, "KOTH:Arena")
+	zones, _ := b.matchZones("m", catalystMapID, "KOTH:Arena", nil)
 	served := replay.BuildMapObjectives(entry, []replay.ObjectiveRoleSpec{{Role: mapvar.RoleHill, Neutral: true}})
 	if served == nil || len(served.Zones) != len(zones) {
 		t.Fatalf("le service sert %d colline(s), l'artefact en apparie %d", zonesServedCount(served), len(zones))
@@ -129,7 +129,7 @@ func TestMatchZonesKOTHViennentDuRoleHill(t *testing.T) {
 // 3 zones de Bastion, 6 collines), Bastion ne rend que ses zones — la table decide, pas la carte.
 func TestMatchZonesBastionSansCollines(t *testing.T) {
 	b, _ := zonesTestBuilder(t)
-	zones, roles := b.matchZones("m", catalystMapID, "Arena:Strongholds")
+	zones, roles := b.matchZones("m", catalystMapID, "Arena:Strongholds", nil)
 	if len(zones) != 3 || roles != "strongholds_zone" {
 		t.Fatalf("Bastion sur Catalyst : %d zone(s), roles %q — attendu 3 zones, « strongholds_zone »", len(zones), roles)
 	}
@@ -139,7 +139,7 @@ func TestMatchZonesBastionSansCollines(t *testing.T) {
 // propre, pas une erreur.
 func TestMatchZonesSansMapID(t *testing.T) {
 	b, _ := zonesTestBuilder(t)
-	if zones, _ := b.matchZones("m", "", "Arena:Strongholds"); zones != nil {
+	if zones, _ := b.matchZones("m", "", "Arena:Strongholds", nil); zones != nil {
 		t.Errorf("%d zone(s) appariee(s) sans map_id", len(zones))
 	}
 }

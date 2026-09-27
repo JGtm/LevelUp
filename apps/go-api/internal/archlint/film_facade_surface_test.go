@@ -131,7 +131,16 @@ const exigenceDeJustificationDatee = "UNE HAUSSE EXIGE UNE JUSTIFICATION DATEE D
 // symboles qu il etait seul a citer (`DecodeFrameRecords`, `FrameConfig`, `NewWorld`,
 // `ProfilDeBalayageParDefaut`, `Registry`, `World`). `Inflate` reste : il a des consommateurs de
 // production (ADR 0034, amendement du 2026-09-26 bis, D-2).
-const plafondSurfaceFacade = 165 // 2026-09-26 — J4.5 sur 4c4452c05 : 173 - 8 (consommateur de recherche descendu sous film/research)
+// 167 LE 2026-09-27 (lot J8.7, sous-lot objectives, base `5fad0cc93` re-mesuree : 165) : les replis
+// d `objectives` comptes EN DONNEES (decision 1 du superviseur) — `StatRecordsAvecReplis` (le balayage
+// du statborg qui rend ses comptes a `replaybuild`) et l alias `ComptesDesReplisObjectifs` (le champ
+// qui les porte jusqu aux options de la cuisson).
+// 176 LE MEME JOUR (sous-lot replaybuild) : NEUF constantes de nom de repli (`Nom*`, famille `fallback`)
+// que `replaybuild` et `sync/replayartifacts` DECLENCHENT eux-memes et ne peuvent citer que par la
+// facade — la hausse que la decision 4 du superviseur accepte.
+// 185 LE MEME JOUR (sous-lot collecteur) : NEUF constantes de nom de plus, celles des replis que
+// `sync/killcollector` declenche sur le compteur de sa passe.
+const plafondSurfaceFacade = 185 // 2026-09-27 — J8.7 sur 5fad0cc93 : 165 + 2 (objectives) + 18 (noms de replis de la construction et du collecteur)
 
 // plafondSurfaceReplay — identifiants `replay.<Symbole>` DISTINCTS cites hors de `film/`.
 //
@@ -283,7 +292,12 @@ const plafondSurfaceFacade = 165 // 2026-09-26 — J4.5 sur 4c4452c05 : 173 - 8 
 //	                                           historiques de
 //	                                           `film_finalise_predicate_test.go`. Re-mesure sur
 //	                                           `7e8730281` : 281.
-const plafondSurfaceReplay = 276 // 2026-09-26 — audit(J4.2) sur 7e8730281 : 281 - 5 (lectures du pont descendues en grammar)
+//	277  audit(J8.7) (2026-09-27)              les replis comptes EN DONNEES (decisions 1 et 2 du
+//	                                           superviseur) : `replaybuild` pose le champ d options
+//	                                           que l assemblage verse au compteur
+//	                                           (`replay.ReplisHorsBalayage`). UN symbole neuf,
+//	                                           re-mesure sur la base `5fad0cc93` : 276.
+const plafondSurfaceReplay = 277 // 2026-09-27 — audit(J8.7) sur 5fad0cc93 : 276 + 1 (replay.ReplisHorsBalayage)
 
 // plafondsParFamilleFacade — la surface de la facade VENTILEE PAR PAQUET D ORIGINE.
 //
@@ -296,9 +310,9 @@ const plafondSurfaceReplay = 276 // 2026-09-26 — audit(J4.2) sur 7e8730281 : 2
 // de l autre. La ventilation nomme alors la couche qui a grossi.
 var plafondsParFamilleFacade = map[string]int{
 	"grammar":    46, // 2026-09-26 — J4.2 : +4 (lectures du pont) ; J4.3 : +3 (etage du pont) ; J4.5 : -7 (DecodeFrameRecords, FrameConfig, LecteurSur, NewWorld, ProfilDeBalayageParDefaut, Registry, World)
-	"objectives": 37,
+	"objectives": 39, // 2026-09-27 — J8.7 : +2 (StatRecordsAvecReplis, ComptesDesReplisObjectifs)
 	"killsource": 36, // 2026-09-26 — lot J3.3 : `decfilm.Rev` renvoie a `killsource.Rev` (la famille `facts` disparait avec son paquet ; total inchange)
-	"fallback":   11,
+	"fallback":   29, // 2026-09-27 — J8.7 : +18 (noms des replis declenches par replaybuild, sync/replayartifacts et sync/killcollector)
 	"types":      10,
 	"profile":    8,
 	"source":     6, // 2026-09-26 — J4.5 : -1 (Paquets)

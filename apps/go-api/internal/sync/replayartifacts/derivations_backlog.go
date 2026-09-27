@@ -43,6 +43,7 @@ import (
 
 	"levelup/go-api/internal/ctxkeys"
 	titlePkg "levelup/go-api/internal/domain/title"
+	"levelup/go-api/internal/games/halo_infinite/film/decfilm"
 	"levelup/go-api/internal/observability"
 	"levelup/go-api/internal/replaybuild"
 )
@@ -100,6 +101,8 @@ func candidatsDerivations(ctx context.Context, sharedDB *sql.DB, d Deps) (work [
 		return nil, 0, false
 	}
 	paths := titlePkg.NewPathResolver(d.RepoRoot)
+	fb := decfilm.NouveauCompteur()
+	defer publierReplisDesDerivations(ctx, fb)
 	for _, id := range ids {
 		p := paths.ReplayArtifactPath(d.TitleSlug, id)
 		if !artefactPresent(p) {
@@ -108,6 +111,9 @@ func candidatsDerivations(ctx context.Context, sharedDB *sql.DB, d Deps) (work [
 			continue
 		}
 		if replaybuild.DerivationsUpToDate(p) {
+			// « A jour » se decide sur la REVISION et la TAILLE de l artefact, jamais sur son contenu :
+			// le repli `repli_fraicheur_des_derivations_par_taille` (lot J8.7).
+			fb.Declenche(decfilm.NomFraicheurDesDerivationsParTaille)
 			continue
 		}
 		if len(work) < maxPerCycle {
@@ -151,4 +157,23 @@ func lireHorizonRegistre(ctx context.Context, sharedDB *sql.DB, d Deps) ([]strin
 		return out, false
 	}
 	return out, true
+}
+
+// prefixeReplisDesDerivations : le prefixe des compteurs expvar PAR REPLI de ce jugement (ADR 0009 :
+// entiers, snake_case). Le nom du repli suit TEL QU AU REGISTRE, pour qu une ligne de `/debug/vars`
+// se relise au registre sans table de correspondance (lot J8.7, 2026-09-27).
+const prefixeReplisDesDerivations = "postsync_replay_"
+
+// publierReplisDesDerivations publie les replis du jugement de fraicheur d UN cycle : un compteur
+// expvar par nom, et une ligne de journal — « aucun » compris, qui distingue « jamais declenche » de
+// « jamais instrumente » (D14 d). Le cycle n est pas une cuisson : ces replis n ont pas de document
+// ou voyager.
+func publierReplisDesDerivations(ctx context.Context, fb *decfilm.Compteur) {
+	titre := ctxkeys.TitleSlug(ctx)
+	rap := fb.Rapport()
+	for _, r := range rap {
+		observability.AddIntT(titre, prefixeReplisDesDerivations+string(r.Nom), int64(r.Declenchements))
+	}
+	slog.InfoContext(ctx, "post-sync: rejeu 2D — replis du jugement de fraicheur des derives",
+		"titleSlug", titre, "replis", decfilm.Texte(rap))
 }

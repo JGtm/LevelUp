@@ -37,6 +37,12 @@ const plancherEntrees = 60
 //
 // IL ÉTAIT À 2 ET NE MORDAIT SUR RIEN (revue de jalon M1, ronde 2, constat F1) : la garde
 // `len(tranches) < 2` laissait passer 6 -> 5, donc le retrait d'un fichier de tranche entier.
+// Mesuré le 2026-09-27 (sous-lot `killsource` du lot J8.7) : TREIZE familles (la treizième,
+// `killsource/collecteur`, reçoit par déplacement pur les sept replis de `sync/killcollector` de
+// `registre_killsource.go`, qui portait 523 lignes — décision 6 du superviseur).
+// Mesuré le 2026-09-27 (sous-lot `grammar` du lot J8.7) : DOUZE familles (la douzième,
+// `filmdec/marche`, reçoit par déplacement pur les quatre replis de la marche du flux de
+// `registre_filmdec.go`, passé à 510 lignes avec les sites de compte du sous-lot).
 // Mesuré le 2026-09-27 (lot J5.5 du plan de suite d'audit) : ONZE familles (la onzième,
 // `replay/objectifs`, reçoit par déplacement pur les replis des calques drapeau, zone, crâne et
 // bombe de `registre_replay_identites.go`, passé à 509 lignes à la fusion de J9 dans J5).
@@ -53,9 +59,9 @@ const plancherEntrees = 60
 // Mesuré le 2026-09-16 : SIX familles (`replay/equipement` 14, `replay/identites` 22,
 // `killsource` 26, `killsource/carte` 2, `objectifs et construction` 21, `grammar` 11 — 96
 // entrées). Le plancher vaut donc la valeur réelle : une famille en moins se voit.
-const plancherTranches = 11
+const plancherTranches = 13
 
-// famillesAttendues : LES ONZE FAMILLES, NOMMÉES, DANS L'ORDRE DE L'ASSEMBLAGE.
+// famillesAttendues : LES FAMILLES, NOMMÉES, DANS L'ORDRE DE L'ASSEMBLAGE.
 //
 // POURQUOI UNE LISTE DE NOMS, ET PAS UN CHAÎNON ARITHMÉTIQUE (revue de jalon M1, ronde 2,
 // constat F1). Le test refermait sa boucle sur `somme(tranches) == len(Table())` — une
@@ -78,8 +84,10 @@ var famillesAttendues = []string{
 	"killsource",
 	"killsource/carte",
 	"killsource/calibration",
+	"killsource/collecteur",
 	"objectifs et construction",
 	"filmdec",
+	"filmdec/marche",
 	"replay/positions",
 	"replay/vehicules",
 	"replay/objectifs",
@@ -267,4 +275,63 @@ func abrege(s string) string {
 		return s
 	}
 	return strings.TrimSpace(string(r[:max])) + "..."
+}
+
+// replisEnAttenteDeDecision : LES SEULES ENTREES DE PRODUCTION DONT LE COMPTEUR N EST PAS BRANCHE, et
+// pourquoi. PAS UN PLAFOND : une liste NOMMEE, datee, qui ne s allonge jamais.
+//
+// LA CIBLE DU LOT J8.7 ETAIT ZERO (plan J8.7 du 2026-09-25, decision 8 du superviseur). Historique des
+// mesures : 81 sur 99 a l audit du 2026-09-24 ; 82 sur 118 a l entree du lot J8 ; 62 apres les items
+// J8.1 a J8.6 et le sous-lot `replay` ; 50, 29, 23, 14 puis 3 apres les sous-lots `grammar`,
+// `killsource`, `objectives`, `replaybuild` et `collecteur` du 2026-09-27. Des trois restantes, UNE
+// sort par la categorie « outil hors production » ([Repli.HorsProduction],
+// `repli_famille_objectif_vide`), et les DEUX ci-dessous attendent une DECISION D ARCHITECTURE que le
+// lot n a pas recue : elles se declenchent A LA CONSULTATION, dans des fonctions pures appelees par une
+// dizaine de calques de `replay` sur leurs propres copies, et aucun resultat unique ne les porte en
+// donnees (decision 1 du superviseur). Cf. `comptageALaConsultation` (registre_objectifs.go).
+//
+// Retirer une entree de cette liste EST le geste qui la cable ; la liste disparait avec la derniere, et
+// le test exige alors zero.
+var replisEnAttenteDeDecision = map[Nom]string{
+	"repli_emission_hors_domaine_jetee":    "2026-09-27 — series nommees : consultation par les calques de score, de colline, de crane et par les actions nommees",
+	"repli_instant_sur_la_premiere_manche": "2026-09-27 — RoundIdentity.roundOfTime : consultation par les calques de drapeau, couronne, crane et par les actions nommees",
+}
+
+// TestChaqueRepliEstCompte — LE RATCHET DU LOT J8.7 DU PLAN DE SUITE D AUDIT (2026-09-27).
+//
+// POURQUOI. D-10 (regle 4) supprime un repli dont le compte est NUL au corpus gate d une cloture de
+// jalon. Un compteur non branche publie un zero qui n en est pas un : l entree serait supprimee alors
+// qu elle decide peut-etre des faits a chaque film. Un repli NEUF entre donc au registre AVEC son
+// compteur au site, ou il n entre pas.
+//
+// SEULES EXCEPTIONS : la categorie explicite « outil hors production » ([Repli.HorsProduction]) et la
+// liste nommee [replisEnAttenteDeDecision].
+//
+// MUTATION JOUEE (2026-09-27) : remettre `CompteurBranche: false` (et une `CibleComptage`) sur
+// `repli_chunks_apres_trou_abandonnes` — ROUGE, qui nomme l entree.
+func TestChaqueRepliEstCompte(t *testing.T) {
+	var nonBranches []string
+	vus := map[Nom]bool{}
+	for _, r := range Table() {
+		if r.CompteurBranche || r.HorsProduction != nil {
+			continue
+		}
+		if _, attendue := replisEnAttenteDeDecision[r.Nom]; attendue {
+			vus[r.Nom] = true
+			continue
+		}
+		nonBranches = append(nonBranches, string(r.Nom))
+	}
+	if len(nonBranches) > 0 {
+		t.Errorf("%d repli(s) sans compteur branche : %v\n"+
+			"Un repli se compte a son site (`fb.Declenche(fallback.NomX)`) ou en DONNEES verses par la table de\n"+
+			"`replay/versement_des_replis.go`, et son compte voyage jusqu a `coverage.fallbacks` (cuisson) ou\n"+
+			"jusqu a l expvar et au journal de sa passe (collecteur, derivations).", len(nonBranches), nonBranches)
+	}
+	for nom := range replisEnAttenteDeDecision {
+		if !vus[nom] {
+			t.Errorf("%s est dans replisEnAttenteDeDecision mais n est plus une entree non branchee : "+
+				"le RETIRER de la liste dans le commit qui le cable", nom)
+		}
+	}
 }

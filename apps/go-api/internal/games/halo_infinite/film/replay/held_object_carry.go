@@ -76,6 +76,18 @@ type HeldObjectCarry struct {
 	// CarryMSByXUID : temps de portage cumulé par joueur ponté (les périodes ouvertes ne
 	// comptent pas — leur fin n'est pas connue).
 	CarryMSByXUID map[uint64]int
+	// replis : ce que la reconstruction a DECIDE faute de lecture, compte pour la cuisson (lot J8.7).
+	replis replisDuPortage
+}
+
+// replisDuPortage compte les deux replis de la reconstruction des periodes.
+type replisDuPortage struct {
+	// priseSuivante : periodes fermees a la prise suivante faute de mort du porteur dans
+	// l intervalle (`repli_portage_ferme_a_la_prise_suivante`).
+	priseSuivante int
+	// porteurAnonyme : periodes d un porteur sans xuid, dont la fin par mort est affirmee fausse
+	// (`repli_porteur_anonyme_sans_fin_par_mort`).
+	porteurAnonyme int
 }
 
 // heldObjectTransitions extrait les transitions de la famille depuis les événements datés.
@@ -115,7 +127,7 @@ func BuildHeldObjectCarry(events []HeldObjectEvent, occupant func(slot uint32, m
 			TimeMS: tr.tMS, Slot: tr.slot, XUID: occupant(tr.slot, tr.tMS), Pickup: tr.pickup,
 		})
 	}
-	out.Periods = heldObjectPeriods(trans, occupant, mortsDe)
+	out.Periods, out.replis = heldObjectPeriods(trans, occupant, mortsDe)
 	for _, p := range out.Periods {
 		if p.XUID != 0 && !p.Ouverte {
 			out.CarryMSByXUID[p.XUID] += p.FinMS - p.DebutMS
@@ -127,8 +139,9 @@ func BuildHeldObjectCarry(events []HeldObjectEvent, occupant func(slot uint32, m
 // heldObjectPeriods déroule les transitions en périodes (prise -> lâcher | mort | fin).
 func heldObjectPeriods(
 	trans []heldObjectTransition, occupant func(uint32, int) uint64, mortsDe map[uint64][]int,
-) []HeldObjectPeriod {
+) ([]HeldObjectPeriod, replisDuPortage) {
 	var out []HeldObjectPeriod
+	var replis replisDuPortage
 	ouverte := -1
 	fermer := func(fin int, parMort bool) {
 		out[ouverte].FinMS = fin
@@ -149,11 +162,17 @@ func heldObjectPeriods(
 		}
 		if ouverte >= 0 {
 			fin, parMort := premiereMortDans(mortsDe, out[ouverte], tr.tMS)
+			if !parMort {
+				replis.priseSuivante++
+			}
 			fermer(fin, parMort)
 		}
 		out = append(out, HeldObjectPeriod{
 			Slot: tr.slot, XUID: occupant(tr.slot, tr.tMS), DebutMS: tr.tMS, Ouverte: true,
 		})
+		if out[len(out)-1].XUID == 0 {
+			replis.porteurAnonyme++
+		}
 		ouverte = len(out) - 1
 	}
 	if ouverte >= 0 {
@@ -164,7 +183,7 @@ func heldObjectPeriods(
 			out[ouverte].FinMS = HeldObjectOpenEndMS
 		}
 	}
-	return out
+	return out, replis
 }
 
 // premiereMortDans rend la première mort du porteur de p dans [p.DebutMS, avant], ou

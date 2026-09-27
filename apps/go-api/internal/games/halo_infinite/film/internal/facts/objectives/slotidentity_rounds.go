@@ -14,8 +14,10 @@ import (
 // Sur d9781168 (Oddball, 3 manches), les instants de mort du slot 22 valent scuderiasven en
 // manche 0 puis LadyJezz en manches 1-2 — un slot n'est donc PAS une identite stable sur le
 // match. En plus, le compteur de morts (`comp 2 B`) REPART DE ZERO a chaque manche : un
-// deroulage monotone sur tout le match ne voit que la manche 0. Les deux defauts se corrigent
-// d'un coup en resolvant l'identite MANCHE PAR MANCHE.
+// deroulage monotone sur tout le match ne voyait que la manche 0 (depuis le lot J8.5 du
+// 2026-09-27, le pont plat deroule la serie TOTALE publiee, cumulee par manche : il voit toutes les
+// manches, mais un slot reattribue y met deux joueurs a egalite et il se tait). Les deux defauts
+// se corrigent d un coup en resolvant l identite MANCHE PAR MANCHE.
 //
 // # La resolution reutilise l'algorithme prudent du pont plat
 //
@@ -40,19 +42,26 @@ import (
 // Pour <= 1 manche reelle, retourne `{manche: SlotIdentityByDeaths(recs, deaths)}` : le pont
 // plat, mot pour mot (cf. l'en-tete, NEUTRALITE MONO-MANCHE).
 func SlotIdentityByRound(recs []types.StatRecord, deaths []types.DeathInstant) map[int]map[int]string {
+	return slotIdentityByRoundCompte(recs, deaths, nil)
+}
+
+// slotIdentityByRoundCompte est [SlotIdentityByRound], qui compte les replis du pont par instants
+// dans `c` (nil : rien) — c est la porte de [ResolveRoundIdentity] (lot J8.7).
+func slotIdentityByRoundCompte(recs []types.StatRecord, deaths []types.DeathInstant, c *ComptesDesReplis) map[int]map[int]string {
 	rounds := realRoundsSorted(recs)
 	if len(rounds) <= 1 {
 		r := 0
 		if len(rounds) == 1 {
 			r = rounds[0]
 		}
-		return map[int]map[int]string{r: slotIdentityFromDeaths(recs, deaths)}
+		return map[int]map[int]string{r: slotIdentityFromDeathsCompte(recs, deaths, c)}
 	}
-	thread := deathThreadByXUID(deaths)
+	thread := deathThreadByXUIDCompte(deaths, c)
+	parManche := deathProgressionsByRound(recs)
 	out := make(map[int]map[int]string, len(rounds))
 	for _, round := range rounds {
 		claim := map[int]string{}
-		for slot, pts := range deathProgressionsForRound(recs, round) {
+		for slot, pts := range parManche[round] {
 			if xuid, ok := bestDeathClaim(pts, thread); ok {
 				claim[slot] = xuid
 			}
@@ -72,36 +81,6 @@ func realRoundsSorted(recs []types.StatRecord) []int {
 		}
 	}
 	sort.Ints(out)
-	return out
-}
-
-// deathProgressionsForRound est [deathProgressions] RESTREINT a une manche : par slot de joueur,
-// un instant par unite gagnee par le compteur de morts (`comp 2 B`) DANS cette manche. Memes
-// gardes que le pont plat (slot de joueur, valeur dans [0, maxDeathsPerSlot], reculs jetes).
-func deathProgressionsForRound(recs []types.StatRecord, round int) map[int][]int {
-	raw := map[int][]deathCount{}
-	for _, r := range recs {
-		if r.Round != round || IsTeamSlot(r.Slot) {
-			continue
-		}
-		v, ok := r.Comps[coreKillsComp]
-		if !ok || v.B < 0 || v.B > maxDeathsPerSlot {
-			continue
-		}
-		raw[r.Slot] = append(raw[r.Slot], deathCount{timeMS: r.TimeMS, deaths: v.B})
-	}
-	out := make(map[int][]int, len(raw))
-	for slot, serie := range raw {
-		// StatRecords trie deja par instant : la serie d'un slot arrive chronologique.
-		prev := int64(0)
-		var instants []int
-		for _, p := range serie {
-			for ; prev < p.deaths; prev++ {
-				instants = append(instants, p.timeMS)
-			}
-		}
-		out[slot] = instants
-	}
 	return out
 }
 
@@ -126,6 +105,9 @@ type RoundIdentity struct {
 	// [RoundIdentity.At] a placer un instant dans sa manche. Vide ou singleton : `At` rend
 	// toujours l'unique manche.
 	starts []roundStart
+	// replis : les comptes des replis de la CONSTRUCTION du resolveur (lot J8.7), recopies par
+	// chaque completion ([RoundIdentity.ComptesDesReplis]).
+	replis ComptesDesReplis
 }
 
 // roundStart associe une manche a son premier instant sur l'horloge des enregistrements.
@@ -137,7 +119,8 @@ type roundStart struct {
 // ResolveRoundIdentity construit le resolveur : l'identite par manche PLUS les bornes de manche
 // (en ms) qui permettent de placer un instant dans sa manche.
 func ResolveRoundIdentity(recs []types.StatRecord, deaths []types.DeathInstant) RoundIdentity {
-	byRound := SlotIdentityByRound(recs, deaths)
+	var replis ComptesDesReplis
+	byRound := slotIdentityByRoundCompte(recs, deaths, &replis)
 	// TOUT CE QUE CETTE VOIE NOMME VIENT DES INSTANTS DE MORT — mono-manche comprise, ou elle
 	// delegue au pont plat, qui apparie lui aussi des instants (`slotIdentityFromDeaths`).
 	origins := make(map[int]map[int]string, len(byRound))
@@ -148,7 +131,8 @@ func ResolveRoundIdentity(recs []types.StatRecord, deaths []types.DeathInstant) 
 		}
 		origins[round] = o
 	}
-	return RoundIdentity{byRound: byRound, origins: origins, starts: roundStartsOf(recs, byRound)}
+	starts := roundStartsOfCompte(recs, byRound, &replis)
+	return RoundIdentity{byRound: byRound, origins: origins, starts: starts, replis: replis}
 }
 
 // FlatRoundIdentity fabrique un resolveur d'UNE seule manche a partir d'une table plate. Sert aux
@@ -171,6 +155,12 @@ func FlatRoundIdentity(identity map[int]string) RoundIdentity {
 // alors le minimum de ses instants declares — le comportement d'avant, faute de mieux, et sur une
 // manche que la decoupe ne borne de toute facon pas.
 func roundStartsOf(recs []types.StatRecord, byRound map[int]map[int]string) []roundStart {
+	return roundStartsOfCompte(recs, byRound, nil)
+}
+
+// roundStartsOfCompte est [roundStartsOf], qui compte dans `c` (nil : rien) les manches dont le
+// debut vient du MINIMUM des instants declares — `repli_debut_de_manche_au_minimum` (lot J8.7).
+func roundStartsOfCompte(recs []types.StatRecord, byRound map[int]map[int]string, c *ComptesDesReplis) []roundStart {
 	if len(byRound) <= 1 {
 		return nil
 	}
@@ -186,6 +176,9 @@ func roundStartsOf(recs []types.StatRecord, byRound map[int]map[int]string) []ro
 		if cur, seen := min[r.Round]; !seen || r.TimeMS < cur {
 			min[r.Round] = r.TimeMS
 		}
+	}
+	if c != nil {
+		c.DebutsDeMancheAuMinimum += len(min) // a ce point, `min` ne porte que les manches hors consensus
 	}
 	for round := range byRound {
 		if debut, fixe := consensus[round]; fixe {
@@ -284,9 +277,13 @@ func (ri RoundIdentity) CompletedByLines(recs []types.StatRecord, lines []types.
 		slots = append(slots, slot)
 	}
 	sort.Ints(slots)
+	abandonnes := 0 // `repli_slot_abandonne_au_premier_arrive` (lot J8.7) : un accord n en est pas un
 	for _, slot := range slots {
 		xuid := triplet[slot]
-		if _, deja := fusion[slot]; deja || pris[xuid] {
+		if prev, deja := fusion[slot]; deja || pris[xuid] {
+			if prev != xuid {
+				abandonnes++
+			}
 			continue
 		}
 		fusion[slot] = xuid
@@ -294,7 +291,8 @@ func (ri RoundIdentity) CompletedByLines(recs []types.StatRecord, lines []types.
 		pris[xuid] = true
 	}
 	return RoundIdentity{byRound: map[int]map[int]string{round: fusion},
-		origins: map[int]map[int]string{round: origins}, starts: ri.starts}
+		origins: map[int]map[int]string{round: origins}, starts: ri.starts,
+		replis: ri.replis.Plus(ComptesDesReplis{SlotsAbandonnes: abandonnes})}
 }
 
 // AtRound rend le xuid du slot POUR UNE MANCHE connue — la voie du porteur, qui itere deja les

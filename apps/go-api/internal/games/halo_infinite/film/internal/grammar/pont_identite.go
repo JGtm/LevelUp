@@ -28,7 +28,9 @@ package grammar
 // part du fil des morts, le collecteur de la feuille de match — [OptionsDuPont.RosterDesMorts]),
 // la capture des directions ([ScanFilmOptions.CaptureDirs], dans la base que l appelant fournit),
 // l injectivite exigee de la table, et la FATALITE des erreurs : l etage ne decide d aucune, il
-// rend chaque lecture avec son erreur. Il ne journalise ni ne compte rien (ADR 0034 D-4).
+// rend chaque lecture avec son erreur. Il ne journalise rien (ADR 0034 D-4) ; ses deux replis
+// (temps forts au dernier numero, chunks de replication sautes) se comptent au RAPPORT du contexte
+// de l appelant, en donnees (lot J8.7) — c est l appelant qui les publie, ou non.
 
 import (
 	"levelup/go-api/internal/games/halo_infinite/film/internal/profile"
@@ -102,10 +104,17 @@ func (e etageDuPont) lire(fc *FilmContext, opt OptionsDuPont) LecturesDuPont {
 		l.Generations = fc.GenerationsVivantes()
 	}
 	l.Positions, l.ErrPositions = e.positions(fc, optionsDesPositionsDuPont(opt.Balayage, l.Translocations))
-	l.Morts, l.ErrMorts = ScanDeaths(film)
+	// LES DEUX LECTURES DE L ETAGE QUI SE REPLIENT RENDENT LEUR COMPTE (lot J8.7) : le fil des morts lu
+	// au dernier numero faute de manifeste, les chunks de replication sautes par la table d index.
+	// Ils rejoignent le rapport du contexte de l APPELANT.
+	var auDernierNumero bool
+	l.Morts, auDernierNumero, l.ErrMorts = scanDeaths(film)
+	fc.NoterReplis(ComptesDesReplis{TempsFortsAuDernierNumero: unSi(auDernierNumero)})
 	if l.ErrMorts == nil && len(l.Morts) > 0 && opt.RosterDesMorts != nil {
 		l.IndexLu = true
-		l.Index, l.ErrIndex = ScanPlayerIndices(film, opt.RosterDesMorts(l.Morts))
+		var sautes int
+		l.Index, sautes, l.ErrIndex = scanPlayerIndices(film, opt.RosterDesMorts(l.Morts))
+		fc.NoterReplis(ComptesDesReplis{ChunksDeReplicationSautes: sautes})
 	}
 	l.OrigineUS, l.ErrOrigine = ScanClockOrigin(film)
 	return l

@@ -1356,8 +1356,14 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   se rattachent au corps (slot, generation) vivant a l instant, la vie d une cle d objet est
 	//   bornee par la creation prouvee suivante. `grammar.Rev` monte avec elle : un v73 doit se lire
 	//   « a redecoder ». Detail : `document_chronicle.go`.
-	if SchemaVersion != 74 {
-		t.Fatalf("SchemaVersion = %d, attendu 74 : incrémenter exige une raison écrite ci-dessus "+
+	// - 75 (2026-09-27, jalon J8 du PLAN_SUITE_AUDIT_DECODEUR_FILM) : LES REPLIS D-10. Aucun champ
+	//   neuf ; le CONTENU change : `coverage.fallbacks` porte les replis dont le compteur est
+	//   desormais branche, un ramassage natif ne date plus qu une occupation de socle, la voie
+	//   `residu_de_manche` se publie sous son nom, et le pont par instants de mort deroule la serie
+	//   publiee (`objectives.Rev` monte) : un v74 doit se lire « a redecoder ». Detail :
+	//   `document_chronicle.go`.
+	if SchemaVersion != 75 {
+		t.Fatalf("SchemaVersion = %d, attendu 75 : incrémenter exige une raison écrite ci-dessus "+
 			"(un champ optionnel de plus n'en est pas une)", SchemaVersion)
 	}
 }

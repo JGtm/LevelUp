@@ -408,25 +408,25 @@ func TestOwnerReportXuidAtSuitLOccupantDansLeTemps(t *testing.T) {
 			{slot: 7, from: 25_000_000, to: 40_000_000, xuid: 222},
 		},
 	}
-	if got := own.xuidNumAt(7, 5_000_000); got != 111 {
+	if got, _ := own.xuidNumAt(7, 5_000_000); got != 111 {
 		t.Errorf("occupant a 5 s = %d, attendu 111", got)
 	}
-	if got := own.xuidNumAt(7, 30_000_000); got != 222 {
+	if got, _ := own.xuidNumAt(7, 30_000_000); got != 222 {
 		t.Errorf("occupant a 30 s = %d, attendu 222 — le pont par slot rend le PREMIER occupant, "+
 			"la vie qui couvre l instant rend le bon", got)
 	}
 	// HORS de toute vie nommee : le pont par slot reste le repli, jamais un vide.
-	if got := own.xuidNumAt(7, 20_000_000); got != 111 {
+	if got, _ := own.xuidNumAt(7, 20_000_000); got != 111 {
 		t.Errorf("hors vie : %d, attendu le repli par le pont (111)", got)
 	}
 	// Slot que RIEN ne nomme : vide — le contrat prevoit l episode publie et l occupant inconnu.
-	if got := own.xuidNumAt(99, 5_000_000); got != 0 {
+	if got, _ := own.xuidNumAt(99, 5_000_000); got != 0 {
 		t.Errorf("slot sans pont : %d, attendu zero", got)
 	}
 	// Une vie NON NOMMEE ne masque pas le pont : elle n est pas une reponse.
 	muet := OwnerReport{SlotXUID: map[uint32]uint64{8: 333},
 		lives: []lifeSpan{{slot: 8, from: 0, to: 10_000_000}}}
-	if got := muet.xuidNumAt(8, 5_000_000); got != 333 {
+	if got, _ := muet.xuidNumAt(8, 5_000_000); got != 333 {
 		t.Errorf("vie non nommee : %d, attendu le repli par le pont (333)", got)
 	}
 }

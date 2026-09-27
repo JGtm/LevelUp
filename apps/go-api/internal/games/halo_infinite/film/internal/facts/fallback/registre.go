@@ -29,7 +29,8 @@ package fallback
 // [Table] trie par nom. Le découpage en fichiers (cinq jusqu au lot 1.9.4, qui a scindé
 // `registre_killsource.go` à 523 lignes ; `registre_replay_positions.go` né au lot M1 des retours
 // du rejeu, `registre_replay_places.go` au lot M2.3, 2026-09-23, `registre_replay_objectifs.go`
-// au lot J5.5 du plan de suite d'audit, 2026-09-27) ne suit que la limite de 500
+// au lot J5.5 du plan de suite d'audit, 2026-09-27, `registre_filmdec_marche.go` et
+// `registre_killsource_collecteur.go` au lot J8.7, le même jour) ne suit que la limite de 500
 // lignes du dépôt et le paquet des sites. Un fichier de plus s'ajoute à [Tranches], et à rien
 // d'autre.
 
@@ -57,8 +58,10 @@ func Tranches() []Tranche {
 		{"killsource", registreKillsource},
 		{"killsource/carte", registreKillsourceCarte},
 		{"killsource/calibration", registreKillsourceCalibration},
+		{"killsource/collecteur", registreKillsourceCollecteur},
 		{"objectifs et construction", registreObjectifsEtConstruction},
 		{"filmdec", registreFilmdec},
+		{"filmdec/marche", registreFilmdecMarche},
 		{"replay/positions", registreReplayPositions},
 		{"replay/vehicules", registreReplayVehicules},
 		{"replay/objectifs", registreReplayObjectifs},
@@ -102,21 +105,36 @@ const dateVague2 = "2026-09-15"
 // retrait ni du critere, que chaque entree porte a part.
 const dateM3 = "2026-09-17"
 
-// comptageFamille19 : la raison, écrite une fois, pour laquelle le compteur d'un repli hérité
-// n'est pas câblé au lot 1.9.0.
-//
-// LE CÂBLAGE SUIT LA CONVERSION, ET CE N'EST PAS UN REPORT. Le compteur d'un repli doit
-// atteindre la couverture du document, donc traverser la chaîne d'appel de la cuisson ; sur la
-// grande majorité des sites cette chaîne passe par des fonctions pures déjà à cinq paramètres
-// (limite du dépôt) que le pas 2 de M2 — « les lecteurs reçoivent le profil, famille par
-// famille » — va de toute façon retoucher. Câbler maintenant, puis re-câbler au pas 2, serait
-// de la dette payée deux fois ; câbler au moment où le lot de conversion ouvre déjà le fichier
-// coûte une ligne. Le registre le dit entrée par entrée ([Repli.CibleComptage]) pour qu'un
-// compte absent ne se lise jamais comme un compte nul.
-const comptageFamille19 = "lot de conversion 1.9.x du fait, ou pas 2 de M2 (porteur du profil)"
-
 // LA CONSTANTE `lot194` A ÉTÉ SUPPRIMÉE LE 2026-09-15, AVEC LE LOT QU'ELLE NOMMAIT. Quatre
 // entrées la citaient comme cible de retrait ou de comptage ; le lot 1.9.4 est fait — la carte
 // d'un film vient de son nom de match et non plus d'une signature de largeurs d'axe — et chacune
 // des quatre porte désormais SA propre cible, distincte des trois autres. Une constante partagée
 // par des entrées dont les cibles ont divergé mentirait sur ce qui reste à faire.
+
+// LES CONSTANTES `comptageFamille19` ET `comptageCollecteur` ONT ÉTÉ SUPPRIMÉES LE 2026-09-27 (lot
+// J8.7) avec le dernier compteur qu'elles différaient : les replis hérités se comptent en données
+// (`grammar`, `killsource`, `objectives`) ou au site (`replaybuild`, `sync/killcollector`).
+
+// retraitRegle4 : LA CIBLE DE RETRAIT DE LA REGLE 4 DE D-10, ecrite une fois (lot J8.7, 2026-09-27,
+// decision 7 du superviseur). Elle remplace, dans chaque [Repli.CibleRetrait], le lot ou le jalon d un
+// plan CLOS (PLAN_DECODEUR_FILM, cloture du 2026-09-18 ; campagne des retours du rejeu) que la cible
+// nommait : la condition de lecture qui retirerait le repli reste ecrite devant elle, et a defaut le
+// compte decide — un repli nul au corpus gate de J11 sort au jalon suivant. Le garde-rail
+// `archlint/no_stale_fallback_target_test.go` refuse toute cible qui nommerait de nouveau un lot clos.
+const retraitRegle4 = "retrait au jalon suivant si le compte est nul au corpus gate de J11 (regle 4 de D-10, 2026-09-27)"
+
+// fichierDeVersement : LA TABLE de `replay` qui verse au compteur de la cuisson les comptes de replis
+// que `grammar`, `profile`, `killsource` et `objectives` rendent EN DONNEES (lot J8.7, 2026-09-27).
+const fichierDeVersement = "internal/games/halo_infinite/film/replay/versement_des_replis.go"
+
+// siteDeVersement rend le site d un repli verse par cette table : son ancre est la LIGNE de la table,
+// `{fallback.NomX,`. La direction (C) d `archlint` relit les noms de la table comme des declenchements,
+// et exige ce site ; retirer la ligne fait rougir la direction (E) (`fallback_versement_test.go`).
+func siteDeVersement(constante string) Site {
+	return Site{Fichier: fichierDeVersement, Ancre: "{fallback." + constante + ","}
+}
+
+// date0927 : le jour des jalons J5 et J8 du plan de suite d audit, ou plusieurs replis sont nes ;
+// `goconst` refuse a juste titre une cinquieme occurrence du litteral. C EST UNE DATE, PAS UN LOT,
+// comme [dateVague2] et [dateM3].
+const date0927 = "2026-09-27"

@@ -129,14 +129,20 @@ func TestScoreTimelineReassignedSlotAttributesToRoundOwner(t *testing.T) {
 // 0 : slot 22 = A, slot 20 = B pour TOUT le match. Elle donne donc la courbe ENTIERE du slot 22 a
 // A (560 attendu -> 550 fautif : la manche 1 du slot 22 est celle de B) et celle du slot 20 a B
 // (370 -> 380). Les totaux DIFFERENT du chemin par manche : c'est exactement le defaut corrige.
+//
+// DEPUIS LE LOT J8.5 (2026-09-27, constat FO-3) LE PONT PLAT SE TAIT sur ce film : il deroule la
+// serie TOTALE publiee du compteur de morts, voit les deux manches, et A et B y sont a egalite sur
+// chacun des deux slots reattribues. L identite plate de la contre-epreuve est donc posee A LA
+// MAIN — celle que le pont rendait avant le lot (slot 22 = A, slot 20 = B) — : c est la
+// projection PLATE d une telle identite qui est en cause ici, pas la facon de l obtenir.
 func TestScoreTimelineReassignedContreEpreuve(t *testing.T) {
 	recs, deaths := reassignFixture()
 	c := multiRoundClock()
 
-	flatIdent := objectives.SlotIdentityByDeaths(recs, deathInstantsOf(deaths))
-	if flatIdent[22] != "1001" || flatIdent[20] != "1002" {
-		t.Fatalf("pont plat = %v, attendu {22:1001(A), 20:1002(B)} (il ne voit que la manche 0)", flatIdent)
+	if pont := objectives.SlotIdentityByDeaths(recs, deathInstantsOf(deaths)); len(pont) != 0 {
+		t.Fatalf("pont plat = %v, attendu vide (A et B a egalite sur les deux slots reattribues)", pont)
 	}
+	flatIdent := map[int]string{22: "1001", 20: "1002"}
 	flat := buildPlayerScoresFlat(recs, flatIdent, c)
 	fa := playerByXUID(flat, "1001")
 	fb := playerByXUID(flat, "1002")

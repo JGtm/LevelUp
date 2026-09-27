@@ -75,6 +75,9 @@ type Builder struct {
 	// calque d ETAT DES ZONES (cf. zones.go). Meme cache, meme raison que ci-dessus.
 	roles      *mappings.ObjectiveRoleSet
 	rolesTried bool
+	// tableDObjectifsAbsente : le titre n a PAS de table de roles (fichier absent) — le verdict qui
+	// fait compter `repli_catalogue_de_zones_absent` a chaque cuisson (lot J8.7).
+	tableDObjectifsAbsente bool
 	// regulation : la table de reglement du titre (regulation.toml), d ou sort la CIBLE DE
 	// VICTOIRE publiee avec la courbe de score. Chargee une fois au NewBuilder, best-effort :
 	// table absente ou illisible = aucune cible, jamais un echec (le client a son repli).
@@ -296,6 +299,8 @@ type entreesCatalogue struct {
 	// killsource : le resultat du kill-feed, ou nil. Il ne voyage ici que pour son PROFIL DE
 	// BALAYAGE (lot 2.3 — cf. profilDeBalayageDeLaCuisson).
 	killsource *decfilm.Result
+	// replis : le compteur des replis de la construction de CETTE cuisson (lot J8.7).
+	replis *decfilm.Compteur
 }
 
 // collecterEntreesCatalogue rassemble tout ce que `BuildFromFilm` reçoit SANS l'avoir décodé
@@ -316,6 +321,10 @@ func (b *Builder) collecterEntreesCatalogue(
 	src entreesDeCuisson,
 ) entreesCatalogue {
 	deaths, ksRes := src.deaths, src.kills
+	// LE COMPTEUR DES REPLIS DE LA CONSTRUCTION (lot J8.7, decision 2 du superviseur) : un par cuisson,
+	// JAMAIS le compteur des options — son rapport voyage dans `ReplisHorsBalayage` et l assemblage le
+	// verse, sur les deux chemins (film et faits) sans jamais entrer dans les faits persistes.
+	fb := decfilm.NouveauCompteur()
 	// Les SOCLES de drapeau viennent du catalogue de carte, pas du film : ils s'ajoutent aux
 	// lectures que le second décodage a déjà faites (cf. flagspawns.go).
 	stats.flag.Spawns = b.flagSpawns(matchID, facts.MapID)
@@ -323,7 +332,7 @@ func (b *Builder) collecterEntreesCatalogue(
 	// Les ZONES du mode viennent du même catalogue de carte, dans l'ORDRE OÙ LE SERVICE LES SERT :
 	// c'est cet ordre qui donne son sens à `zoneStates[].zoneRef` (cf. zones.go). Aucune zone =
 	// aucun balayage de `ti=13`, donc aucun coût sur les modes qui n'en ont pas.
-	zones, zoneRoles := b.matchZones(matchID, facts.MapID, facts.GameVariantName)
+	zones, zoneRoles := b.matchZones(matchID, facts.MapID, facts.GameVariantName, fb)
 	b.observe("zones", zones)
 	b.observe("zoneRoles", zoneRoles)
 	// L ETAPE `killsource` RESTE OBSERVEE ICI, A SA PLACE DANS LA SUITE : seul le DECODAGE est
@@ -336,26 +345,27 @@ func (b *Builder) collecterEntreesCatalogue(
 	spawnPts, mapState := b.spawnPoints(matchID, facts.MapID, mapNames)
 	b.observe("spawnPoints", spawnPts)
 	b.observe("spawnPointsState", mapState)
-	neutral := b.neutralDeaths(matchID, ksRes)
+	neutral := b.neutralDeaths(matchID, ksRes, fb)
 	b.observe("neutralDeaths", neutral)
 	// UNE SEULE ÉTAPE OBSERVÉE, et c'est délibéré : `matchKills` sort de la MÊME passe et n'est
 	// pas un balayage de plus. L'observateur continue de rendre EXACTEMENT `replay.KillsInput`,
 	// sans quoi le harnais d'équivalence aurait vu bouger `killRefs` sur les 13 films alors que
 	// rien de ce qu'il mesure n'a changé.
-	kills, matchKills := b.killRefs(matchID, deaths, ksRes)
+	kills, matchKills := b.killRefs(matchID, deaths, ksRes, fb)
 	b.observe("killRefs", kills)
 	// Les IDENTITÉS DE BOT et les RELAIS sortent du MÊME décodage killsource (amont
 	// 2026-09-02/03) : ils se calculent ici, où `ksRes` vit, et voyagent avec les autres
 	// entrées. Aucune étape observée ne s'ajoute — ce sont des projections de `killsource`,
 	// déjà observé plus haut.
 	bots := replayidentity.BotIdentities(ksRes)
-	successions := botSuccessions(matchID, facts, ksRes)
+	successions := botSuccessions(matchID, facts, ksRes, fb)
 	return entreesCatalogue{
 		killsource: ksRes,
 		zones:      zones, zoneRoles: zoneRoles,
 		spawnPts: spawnPts, spawnPointsState: mapState,
 		neutral: neutral, kills: kills, matchKills: matchKills,
 		bots: bots, successions: successions,
+		replis: fb,
 	}
 }
 
@@ -414,7 +424,7 @@ func (b *Builder) BuildMatch(matchID string, mapNames []string, filmDir string, 
 //
 // TOUT ÉCHEC EST NON FATAL : un film dont la source de dégât ne se décode pas reste un rejeu
 // valide, aux repères génériques. Le refus est JOURNALISÉ (decodeKillSource), jamais avalé.
-func (b *Builder) neutralDeaths(matchID string, res *decfilm.Result) []replay.NeutralDeath {
+func (b *Builder) neutralDeaths(matchID string, res *decfilm.Result, fb *decfilm.Compteur) []replay.NeutralDeath {
 	if res == nil {
 		return nil
 	}
@@ -433,10 +443,12 @@ func (b *Builder) neutralDeaths(matchID string, res *decfilm.Result) []replay.Ne
 			// Le xuid est la SEULE clé de jointure avec les pistes. Sans lui, l'entrée ne
 			// rencontrerait aucune ligne — et un « 0 » sérialisé pourrait en rencontrer une
 			// qui ne lui appartient pas.
+			fb.Declenche(decfilm.NomMortNeutreSansXuidAbandonnee)
 			continue
 		}
 		kind, img, ok := adapter.NeutralDeathIcon(d.Source.Tag)
 		if !ok {
+			fb.Declenche(decfilm.NomRepereNeutreGeneriqueConserve)
 			continue // nature non établie : le fil garde son repère neutre
 		}
 		out = append(out, replay.NeutralDeath{
@@ -466,7 +478,7 @@ func (b *Builder) neutralDeaths(matchID string, res *decfilm.Result) []replay.Ne
 // BOT_METADATA du décodage killsource (BotID N — la clé exacte), l'instant de la base.
 // Un bot déclaré par la base mais absent du roster du film n'entre pas : sans nom lu, on
 // n'attribue rien — et l'écart se journalise, jamais avalé.
-func botSuccessions(matchID string, facts port.MatchFacts, res *decfilm.Result) []replay.Succession {
+func botSuccessions(matchID string, facts port.MatchFacts, res *decfilm.Result, fb *decfilm.Compteur) []replay.Succession {
 	if res == nil || len(res.Roster.Bots) == 0 {
 		return nil
 	}
@@ -487,6 +499,7 @@ func botSuccessions(matchID string, facts port.MatchFacts, res *decfilm.Result) 
 		}
 		var id int
 		if _, err := fmt.Sscanf(p.XUID, "bid(%d.0)", &id); err != nil {
+			fb.Declenche(decfilm.NomRelaisDeBotAbandonne)
 			continue // un humain qui rejoint est nommé par le fil des morts, pas par relais
 		}
 		ref, ok := byID[id]

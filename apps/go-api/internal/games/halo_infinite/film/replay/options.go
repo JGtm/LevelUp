@@ -425,6 +425,12 @@ type Options struct {
 	// PAR CUISSON, JAMAIS PAR PAQUET : deux films decodes en parallele melangeraient leurs
 	// comptes, et le critere S1 du plan retire les variables de paquet du decodeur.
 	Fallbacks *fallback.Compteur
+	// ReplisHorsBalayage porte les comptes de replis que l APPELANT apporte, et que l ASSEMBLAGE
+	// verse au compteur, en fin de passe (lot J8.7, decisions 1 et 2 du superviseur) : ils ne
+	// viennent pas du balayage, donc ils ne sont PAS dans le rapport que les faits persistes
+	// portent, et une republication depuis les faits les reverse une fois, comme la cuisson du film.
+	// Zero = rien a verser. Cf. `versement_des_replis.go`.
+	ReplisHorsBalayage ReplisHorsBalayage
 	// clock date la fin du balayage precedent, pour la duree Debug par balayage (cf. observe.go).
 	// NON EXPORTE ET SANS REGLAGE : c'est BuildFromFilm qui l'arme, au moment ou le decodage
 	// commence — un appelant qui le fournirait daterait le premier balayage depuis sa propre

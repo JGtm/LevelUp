@@ -111,7 +111,7 @@ func TestGate516(t *testing.T) {
 		}
 	}
 	b.rejetsHorsDatum, b.rejetsDeVue = obs.RejetsHorsDatum, obs.RejetsDeVue
-	b.anticipees = obs.LiaisonsParAnticipation
+	b.anticipees = obs.LiaisonsParRepliDAnticipation
 	t.Logf("PAQUETS %d (%d non localises) · FERMES %d dont a reste NUL %d · debordements %d",
 		b.paquets, b.nonLocalise, b.fermes, b.nul, b.debordements)
 	t.Logf("  reste hors bourrage (paquets) : %d", b.resteHorsBourrage)

@@ -40,6 +40,7 @@ import (
 	"math"
 	"sort"
 
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
@@ -107,6 +108,9 @@ type EntreeContexteMorts struct {
 	// Equipes : xuid -> numéro d'équipe, depuis `match_participants`. JAMAIS depuis le film,
 	// qui ne porte aucun camp.
 	Equipes map[uint64]int
+	// Fallbacks : le compteur de replis de la PASSE de l appelant (le collecteur, hors cuisson :
+	// il le publie en expvar par nom et au journal du film). Nil ne compte rien (lot J8.7).
+	Fallbacks *fallback.Compteur
 }
 
 // ContexteMort est ce que la lecture saura d'une mort : combien de coéquipiers dans chaque état,
@@ -169,6 +173,7 @@ func ContextesDesMorts(e EntreeContexteMorts) []ContexteMort {
 		}
 		son, dansUneEquipe := e.Equipes[m.VictimeXUID]
 		if !dansUneEquipe {
+			e.Fallbacks.Declenche(fallback.NomMortEcarteeHorsEquipeDeBase)
 			continue
 		}
 		out = append(out, contexteDUneMort(e, pos, vies, mortsPar, m, son, lieu))
@@ -199,6 +204,7 @@ func contexteDUneMort(e EntreeContexteMorts, pos positionsParXUID, vies map[uint
 			c.EnAttente++
 		default:
 			c.HorsDeVue++
+			e.Fallbacks.Declenche(fallback.NomCoequipierHorsDeVueParDefaut)
 		}
 	}
 	if !math.IsInf(plusProche, 1) {

@@ -90,6 +90,10 @@ type calibration struct {
 	// lisible doit pouvoir lire la difference.
 	PoigneeScore, PoigneeMedian int
 	PoigneeDiscriminee          bool
+	// PoigneeDecidee : le balayage du mot de poignee a TOURNE — retenue ou invariant faute de
+	// discrimination, la largeur ne vient d aucune lecture (`repli_largeur_mot_de_poignee_inferee`,
+	// compte par decodage, lot J8.7).
+	PoigneeDecidee bool
 	// CarteLue : les largeurs viennent-elles de l entree de catalogue de la CARTE du match ?
 	// FAUX = repli `repli_carte_absente_largeurs_par_defaut` — l invariant conserve, c est-a-dire
 	// les largeurs d UNE carte (`cliffhanger`) appliquees a celle-ci. Jamais un zero muet : le
@@ -278,6 +282,7 @@ func decideMotDePoignee(sample []*packet, tl *timeline, cfg grammar.FrameConfig,
 	res.PoigneeIndexW, res.PoigneeScore, res.PoigneeMedian = retenu, score, med
 	res.PoigneeDiscriminee = discriminee
 	res.Profil.Mouvement.Traversal.IndexW = retenu
+	res.PoigneeDecidee = true
 }
 
 // motDePoigneeRetenu : LA DECISION, ISOLEE POUR ETRE TESTABLE SANS FILM.

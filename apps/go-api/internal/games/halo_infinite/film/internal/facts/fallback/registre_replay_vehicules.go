@@ -46,7 +46,7 @@ var registreReplayVehicules = []Repli{
 			Ancre:   "fb.Declenche(fallback.NomTourellePorteurVoisinDeSlot)",
 		}},
 		DatePose:     dateRetoursRejeu,
-		CibleRetrait: "lot M4b des retours du rejeu (PLAN_RETOURS_REJEU_2026-09-23) ou tout lot qui lit le parent d une piece montee dans le film",
+		CibleRetrait: "la lecture du parent d une piece montee dans le film ; a defaut, " + retraitRegle4,
 		// MESURE DU 2026-09-23 sur les 111 documents du parc (instrument `enfants.mjs` de
 		// l annexe, relu par le lot) : LAAG `dd7f9102` 45 vies, voisin `slot+1` Warthog 44/45 ;
 		// roquettes `bcfb852f` 16 vies, 15/16 ; tourelles du Falcon `1a043c29` puis `f4c45d71`,
@@ -75,7 +75,7 @@ var registreReplayVehicules = []Repli{
 			Ancre:   "fb.Declenche(fallback.NomTourelleMonteeLoinDuPorteur)",
 		}},
 		DatePose:     dateFalconM7b,
-		CibleRetrait: "lot M4b des retours du rejeu (PLAN_RETOURS_REJEU_2026-09-23) ou tout lot qui lit la montee a bord d un artilleur (i10 sur la tourelle) ou le parent d une piece montee",
+		CibleRetrait: "la lecture de la montee a bord d un artilleur (i10 sur la tourelle) ou du parent d une piece montee ; a defaut, " + retraitRegle4,
 		// MESURE DU 2026-09-24 (107 documents rejoues des faits, reprise du lot M7b) : 18
 		// episodes de repli reportes d une piece sur son porteur ; 12 ont leur dernier point a
 		// 0,9-2,2 m du porteur (age 0 frame), 5 a 21,6-90,9 m (fin d une vie, ou point d une vie

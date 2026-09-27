@@ -240,6 +240,26 @@ type Repli struct {
 	// CibleComptage : quand [Repli.CompteurBranche] est faux, le lot qui câblera le compteur —
 	// et pourquoi il n'est pas câblé ici. Vide quand le compteur est branché.
 	CibleComptage string
+	// HorsProduction : l entree decrit un repli dont le code ne tourne QUE dans un OUTIL (`cmd/`),
+	// jamais dans une cuisson ni dans une passe de synchronisation — il n a donc ni document ni passe
+	// ou se compter, et il sort du ratchet des compteurs par cette categorie EXPLICITE, datee et
+	// justifiee, plutot que par une allowlist nue (lot J8.7, decision 5 du superviseur). nil pour
+	// toute autre entree. Le garde-rail `archlint` verifie que le symbole n a d appelant hors test
+	// que parmi [OutilHorsProduction.Appelants].
+	HorsProduction *OutilHorsProduction
+}
+
+// OutilHorsProduction : pourquoi un repli n a pas de compteur, et ce qui le prouve.
+type OutilHorsProduction struct {
+	// Date : le jour de la categorisation, `AAAA-MM-JJ`.
+	Date string
+	// Raison : ce qui fait de ce code un outil hors production, en une phrase.
+	Raison string
+	// Symbole : le symbole exporte qui porte le repli (`Extract`) ; ses appels se cherchent sous
+	// `decfilm.<Symbole>` et `objectives.<Symbole>` dans tout le module, tests exclus.
+	Symbole string
+	// Appelants : les SEULS repertoires (relatifs a `apps/go-api/`) ou un appel est admis.
+	Appelants []string
 }
 
 // Paquet rend le paquet Go du premier site — la clé de regroupement des rapports.
@@ -366,6 +386,14 @@ func verifierUneEntree(r Repli, vus map[Nom]bool) []string {
 	}
 	if r.CompteurBranche && strings.TrimSpace(r.CibleComptage) != "" {
 		add("CibleComptage renseignee alors que le compteur est deja branche")
+	}
+	if h := r.HorsProduction; h != nil {
+		switch {
+		case r.CompteurBranche:
+			add("outil hors production ET compteur branche : l un exclut l autre")
+		case !dateConforme(h.Date) || strings.TrimSpace(h.Raison) == "" || strings.TrimSpace(h.Symbole) == "" || len(h.Appelants) == 0:
+			add("outil hors production incomplet (date, raison, symbole et appelants obligatoires)")
+		}
 	}
 	return pbs
 }

@@ -2702,3 +2702,35 @@ package replay
 //	LE PARC         un artefact 73 porte `grammar-2026-09-24` sur ses calques de grammaire : verdict
 //	                `redecoder` (ses faits persistes portent l ancienne revision de grammaire et
 //	                n ont pas les positions des corps recycles).
+
+// v75 (2026-09-27, jalon J8 du PLAN_SUITE_AUDIT_DECODEUR_FILM_2026-09-25 ; constats GA1-2, RB2-5,
+// RB2-8, FO-1 / RA2-4, FO-3, FO-4 et faiblesse 4 de l audit du 2026-09-24) : LES REPLIS D-10,
+// CONVERSIONS ET COMPTEURS. La FORME du document ne change pas (aucun champ) ; son CONTENU change.
+//
+//	`coverage.     de nouveaux noms s y publient, ceux des replis dont le compteur est desormais
+//	fallbacks`     branche : `repli_liaison_par_anticipation` (balayage des etats de mouvement,
+//	               GA1-2), `repli_origine_au_sol_lachee_par_fenetre` (RB2-8),
+//	               `repli_identite_de_slot_par_residu_de_manche` (FO-1), et dix-huit replis du
+//	               paquet de publication (vehicules, drapeaux, crane, bombe, grappin, capacites,
+//	               armes au sol, pistes, zones, siege). Un artefact 74 ne les portait pas : son
+//	               zero n etait pas une mesure.
+//	`padPickups`,  un ramassage natif ne date et ne nomme plus qu UNE occupation de socle : un
+//	`coverage.     ramassage que plusieurs occupations revendiquent n en date aucune (`t` et `xuid`
+//	padDating`     restent nuls, l intervalle est intact) et se compte dans `ambiguous` (RB2-5).
+//	               Le resume d usage (`pad_pickups`, cle `(UsageSummaryRev, SchemaVersion)`) ne
+//	               credite plus deux prises pour une.
+//	`identity.     la voie `residu_de_manche` se publie sous son nom (`method`), et non plus vide
+//	statborgSlots` (FO-1 / RA2-4).
+//	`identity`,    le pont par instants de mort deroule la serie PUBLIEE du compteur de morts
+//	calques d      (FO-3) : `objectives.Rev` monte, donc la famille `objectives` de `layers`.
+//	objectif
+//
+//	CE QUI MONTE    `SchemaVersion` 74 -> 75 ; `objectives.Rev` `objectives-2026-09-26` ->
+//	AVEC ELLE       `objectives-2026-09-27`. `grammar.Rev` RESTE `grammar-2026-09-27.2` : le lot
+//	                J8.1 ne change aucune sortie de decodage (renommage des identifiants du repli,
+//	                compte transporte par la marche) ; son empreinte est recopiee a revision
+//	                constante. `source`, `profile`, `killsource` ne bougent pas.
+//
+//	LE PARC         un artefact 74 porte `objectives-2026-09-26` sur ses calques d objectif :
+//	                verdict `redecoder` (ses faits persistes portent l ancienne revision
+//	                d objectifs, et un rapport de replis sans les noms neufs).

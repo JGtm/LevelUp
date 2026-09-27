@@ -25,7 +25,12 @@ import (
 // porteLocalisateurs : les trois fonctions du LOCALISATEUR de paquet. Ce sont les seuls chemins
 // speculatifs du depot qui ne passent pas par une inference, donc les seuls qui doivent appeler
 // la neutralisation eux-memes.
-var porteLocalisateurs = []string{"marchLocateStrict", "marchLocateFallback", "marchLocate"}
+//
+// `marchLocalise` Y REMPLACE `marchLocate` AU LOT J8.7 (2026-09-27) : c est elle qui essaie la
+// signature stricte puis la largeur libre, et qui rend en plus le verdict du repli
+// `repli_localisation_largeur_libre` ; `marchLocate` n en est plus que l enveloppe a un rendu, sans
+// essai propre. Le motif accepte donc un rendu multiple.
+var porteLocalisateurs = []string{"marchLocateStrict", "marchLocateFallback", "marchLocalise"}
 
 // TestPorteEtatsMouvementNeutraliseeParLesTroisNeutralisations : les trois portes de
 // neutralisation eteignent la publication des etats de mouvement, et la restaurent.
@@ -78,7 +83,7 @@ func TestLocalisateursDeclarentLaPorte(t *testing.T) {
 	}
 	src := string(data)
 	for _, nom := range porteLocalisateurs {
-		re := regexp.MustCompile(`(?s)\nfunc ` + regexp.QuoteMeta(nom) + `\([^)]*\) int \{(.*?)\n\}`)
+		re := regexp.MustCompile(`(?s)\nfunc ` + regexp.QuoteMeta(nom) + `\([^)]*\) (?:int|\(int, bool\)) \{(.*?)\n\}`)
 		m := re.FindStringSubmatch(src)
 		if m == nil {
 			t.Fatalf("%s : fonction %s introuvable — le ratchet ne garde plus rien (elle a "+

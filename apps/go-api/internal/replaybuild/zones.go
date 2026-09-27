@@ -75,7 +75,10 @@ var heldZoneRoles = map[mapvar.Role]bool{
 }
 
 // matchZones rend le catalogue de zones du match et les roles qui le composent, DANS L'ORDRE.
-func (b *Builder) matchZones(matchID, mapID, variant string) ([]replay.Zone, string) {
+//
+// `fb` recoit `repli_catalogue_de_zones_absent` quand le titre n a pas de table d objectifs : le
+// rejeu sort alors sans aucun etat de zone (lot J8.7). nil ne compte rien.
+func (b *Builder) matchZones(matchID, mapID, variant string, fb *decfilm.Compteur) ([]replay.Zone, string) {
 	if mapID == "" {
 		slog.Debug("replaybuild: match sans map_id — rejeu sans etat de zone",
 			"match_id", matchID, "titleSlug", b.titleSlug)
@@ -83,6 +86,9 @@ func (b *Builder) matchZones(matchID, mapID, variant string) ([]replay.Zone, str
 	}
 	roles := b.zoneRoles(variant)
 	if len(roles) == 0 {
+		if b.tableDObjectifsAbsente {
+			fb.Declenche(decfilm.NomCatalogueDeZonesAbsent)
+		}
 		// Mode sans zone TENUE : le cas nominal (Assassin, CTF, Oddball, Extraction) — meme
 		// quand la carte declare des volumes sous d'autres roles.
 		return nil, ""
@@ -227,6 +233,7 @@ func (b *Builder) objectiveRoles() *mappings.ObjectiveRoleSet {
 	case errors.Is(err, fs.ErrNotExist):
 		slog.Debug("replaybuild: titre sans table d'objectifs — rejeu sans etat de zone",
 			"titleSlug", b.titleSlug)
+		b.tableDObjectifsAbsente = true
 		return nil
 	case err != nil:
 		// Une table PRESENTE mais invalide est une erreur de configuration, pas une donnee

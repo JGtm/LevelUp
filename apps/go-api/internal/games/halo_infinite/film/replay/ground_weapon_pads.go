@@ -41,6 +41,7 @@ import (
 	"log/slog"
 	"sort"
 
+	"levelup/go-api/internal/games/halo_infinite/film/internal/facts/fallback"
 	"levelup/go-api/internal/games/halo_infinite/film/internal/grammar"
 )
 
@@ -201,6 +202,11 @@ func buildWeaponPads(
 	pu, puPicks, pc, _ := buildPadChain(
 		scans.Powerups, powerupPadRule(cat.EquipmentFamilies), in, cov)
 	cov.PowerupKept, cov.PowerupPads = pc.kept, pc.pads
+	// L ORIGINE `dropped` DES DEUX VOIES EST DECIDEE PAR LA FENETRE DE FIN DE VIE ([gwPadsClass]) :
+	// un repli nomme, compte ici une fois par apparition ainsi classee (lot J8.3, constat RB2-8).
+	clock.fb.DeclencheN(fallback.NomOrigineAuSolLacheeParFenetre, wc.dropped+pc.dropped)
+	// Une famille d arme que le catalogue ne nomme pas sort sous sa valeur brute (lot J8.7).
+	clock.fb.DeclencheN(fallback.NomFamilleArmeIdentifiantBrut, gwFamillesBrutes(wObjs))
 	for i := range puPicks {
 		puPicks[i].Pad += len(pads)
 	}

@@ -317,6 +317,8 @@ func toDeathContextRows(mat materiauDIsolement, ids MatchIdentities,
 		Registre:  mat.registre,
 		Journal:   journal,
 		Equipes:   equipes,
+		// LES DEUX REPLIS DU CONTEXTE DE MORT se comptent sur le compteur de la passe (lot J8.7).
+		Fallbacks: ids.replis,
 	})
 	// LE RESTE EST « SANS LIEU » : la mort est resolue, sa victime a une equipe, et pourtant
 	// aucun contexte n'est sorti — c'est que le film ne la montrait pas a cet instant.
@@ -341,6 +343,8 @@ func toDeathContextRows(mat materiauDIsolement, ids MatchIdentities,
 			TeammatesTotal: c.Total,
 		})
 	}
+	// Repli `repli_coequipiers_partis_constante_nulle` : chaque ligne ecrit la constante (lot J8.7).
+	ids.replis.DeclencheN(decfilm.NomCoequipiersPartisConstanteNulle, len(out))
 	return out, ecarts
 }
 

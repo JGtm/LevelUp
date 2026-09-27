@@ -28,7 +28,7 @@ var registreKillsourceCarte = []Repli{
 		Mecanisme: "aucune entree de catalogue n a ete passee a `killsource.Decode` : l invariant du profil est conserve, c est-a-dire les largeurs d UNE carte (`cliffhanger`, 13/13/14) appliquees a celle du match",
 		Condition: CondSectionAbsente,
 		Ordre:     OrdreDevantLaLecture,
-		Sites: []Site{{
+		Sites: []Site{{Fichier: pkgKillsource + "replis_du_decodage.go", Ancre: "unSi(!c.calib.CarteLue)"}, siteDeVersement("NomCarteAbsenteLargeursParDefaut"), {
 			Fichier: pkgKillsource + "decode.go",
 			Ancre:   "if !c.calib.CarteLue {",
 		}},
@@ -44,10 +44,9 @@ var registreKillsourceCarte = []Repli{
 		//
 		// L ORACLE EST SON CONTROLE : sur un film dont la carte manque, `calibration.Desaccords`
 		// compte ce que le balayage aurait designe contre ce qui est applique.
-		CibleRetrait:    "lot qui rendra l entree de catalogue obligatoire a `killsource.Decode` (un film dont la carte est inconnue serait alors mis de cote plutot que decode aux largeurs d une autre — cf. D1 (cloture M2), question ouverte au pilote)",
+		CibleRetrait:    "l entree de catalogue rendue obligatoire a `killsource.Decode` (un film dont la carte est inconnue serait mis de cote plutot que decode aux largeurs d une autre — question ouverte au pilote) ; a defaut, " + retraitRegle4,
 		CritereRetrait:  "0 appel de production sans `Options.Carte` ; la CLI et les instruments la resolvent eux aussi, ou disent pourquoi ils ne le peuvent pas",
-		CompteurBranche: false,
-		CibleComptage:   comptageFamille19,
+		CompteurBranche: true,
 	},
 	{
 		Nom:       "repli_distances_de_touche_desactivees",
@@ -55,7 +54,7 @@ var registreKillsourceCarte = []Repli{
 		Mecanisme: "carte hors catalogue, ou positions de bipedes indisponibles : les distances sont desactivees, les touches restent comptees",
 		Condition: CondSectionAbsente,
 		Ordre:     OrdreApresLecture,
-		Sites: []Site{{
+		Sites: []Site{{Fichier: pkgKillcollector + "hits.go", Ancre: "replisDeLaPasse(ctx).Declenche(decfilm.NomDistancesDeToucheDesactivees)"}, {
 			Fichier: pkgKillcollector + "hits.go",
 			Ancre:   "carte hors catalogue de bornes, distances desactivees",
 		}},
@@ -84,8 +83,7 @@ var registreKillsourceCarte = []Repli{
 		// bas de page, et un numero de decouverte s'y confond avec un numero de lot.
 		CibleRetrait:    "le lot qui rallume la precision par arme : tant que la passe ne tourne pas, ses trois compteurs restent a zero par construction et ne prouvent rien",
 		CritereRetrait:  "passe rallumee, puis 0 match a distances desactivees sur le parc pour les trois causes",
-		CompteurBranche: false,
-		CibleComptage:   "compteurs expvar deja cables (trois causes) ; `fallback.Compteur` au pas 2 de M2 si la passe rejoint une cuisson",
+		CompteurBranche: true,
 	},
 	{
 		Nom:       "repli_carte_premier_nom_resolu",
@@ -97,7 +95,7 @@ var registreKillsourceCarte = []Repli{
 		// dans `positions.go` et la passe des TOUCHES en avait une seconde, par signature de
 		// largeurs d'axe. Les deux passes partagent desormais cette fonction : une seule regle
 		// pour une seule question, donc un seul site a convertir le jour ou l'arbitrage existera.
-		Sites: []Site{{
+		Sites: []Site{{Fichier: pkgKillcollector + "map_identity.go", Ancre: "replisDeLaPasse(ctx).Declenche(decfilm.NomCartePremierNomResolu)"}, {Fichier: pkgKillcollector + "hits.go", Ancre: "premierNomSansArbitrage(ctx, noms, err)"}, {
 			Fichier: pkgKillcollector + "map_identity.go",
 			Ancre:   "if entry, err := c.mapBounds.Lookup(name); err == nil {",
 		}},
@@ -116,9 +114,8 @@ var registreKillsourceCarte = []Repli{
 		// divergent — une question de qualite du REGISTRE DES MATCHS, pas du decodeur de film,
 		// et hors du perimetre d'un lot de la famille 1.9 (regle 7 : la decouverte se consigne,
 		// elle ne se traite pas).
-		CibleRetrait:    "un lot de qualite du registre des matchs (arbitrage entre `asset_translations` et `match_registry.map_name`), ou lot 3.x si le profil par carte rend l'identite sans la base",
+		CibleRetrait:    "un arbitrage du registre des matchs entre `asset_translations` et `match_registry.map_name`, ou un profil par carte qui rend l identite sans la base ; a defaut, " + retraitRegle4,
 		CritereRetrait:  "0 match du parc ou deux noms candidats resolvent DES ENTREES DIFFERENTES du catalogue — mesure a faire avant tout arbitrage",
-		CompteurBranche: false,
-		CibleComptage:   comptageFamille19,
+		CompteurBranche: true,
 	},
 }
