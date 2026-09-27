@@ -231,7 +231,26 @@ func (c *KillSourceCollector) writeIsolationFacts(ctx context.Context, matchID s
 // tout match qui a des positions ; il ne declenche rien par lui-meme — seule la commande
 // `levelup backfill-killsource` re-decode, et les films sans translocateur y reecriront une passe
 // au contenu inchange.
-const IsolationDecoderRev = "isolement-2026-09-26-pont-unique-exemptions"
+//
+// # POURQUOI ELLE BOUGE LE 2026-09-27 (lot J5.5 du PLAN_SUITE_AUDIT_DECODEUR_FILM, constat GB-1)
+//
+// L etage du pont d identite que le collecteur appelle (`decfilm.ScanPontDIdentite`) lit desormais
+// les corps de GENERATION >= 2 : le filtre `RequireTag1` (generation du handle egale a 1) est
+// remplace par le filtre de generation vivante (`grammar.Rev` `grammar-2026-09-27`), et les
+// creations sont lues AVANT les positions pour le nourrir. Sur un film ou le pool de slots bipedes
+// reboucle (un BTB long), les corps recycles n avaient aucune position.
+//
+// CE QUI CHANGE, et seulement sur ces films (mesure J5.0 : `084a804d`, `1c4c63c2`, `a349fea8`,
+// `4f77afc1` parmi 19 ; `.ai/V7.5/film_re/MESURE_GB1_2026-09-27.md`) : `positions` gagne les
+// echantillons des corps de generation >= 2 ; en aval, les vies decoupees de ces slots
+// (`match_lives`), le lieu et le contexte de mort (`match_death_context`) et la position du tueur
+// ou de la victime a l instant du coup (`kill_positions` / `kill_openings`) changent. Un film dont
+// aucun slot ne reboucle garde des lectures identiques.
+//
+// CE QUE LE BUMP DECLENCHE : comme aux lots precedents, `matchsAJour` rend eligible au redecodage
+// tout match qui a des positions ; il ne declenche rien par lui-meme — seule la commande
+// `levelup backfill-killsource` re-decode.
+const IsolationDecoderRev = "isolement-2026-09-27-generations-vivantes"
 
 // materiauDIsolement : ce que la passe de positions a lu et que la projection reutilise.
 //

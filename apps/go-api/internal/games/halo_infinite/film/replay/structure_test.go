@@ -1350,8 +1350,14 @@ func TestStructureIsOptionalInDocument(t *testing.T) {
 	//   couverture optionnels (`coverage.flagCarries.unjudgedCarrierKills`,
 	//   `bombStats.coverage.armingsNoClock`). Un v72 doit se lire « a republier ». Detail :
 	//   `document_chronicle.go`.
-	if SchemaVersion != 73 {
-		t.Fatalf("SchemaVersion = %d, attendu 73 : incrémenter exige une raison écrite ci-dessus "+
+	// - 74 (2026-09-27, jalon J5 du PLAN_SUITE_AUDIT_DECODEUR_FILM, lot J5.5) : L IDENTITE PAR VIE.
+	//   Aucun champ neuf ; le CONTENU change : les corps de generation >= 2 d un slot recycle ont
+	//   leurs positions (GB-1, `durationMs` n est plus tronque), l identite, les tirs et les lancers
+	//   se rattachent au corps (slot, generation) vivant a l instant, la vie d une cle d objet est
+	//   bornee par la creation prouvee suivante. `grammar.Rev` monte avec elle : un v73 doit se lire
+	//   « a redecoder ». Detail : `document_chronicle.go`.
+	if SchemaVersion != 74 {
+		t.Fatalf("SchemaVersion = %d, attendu 74 : incrémenter exige une raison écrite ci-dessus "+
 			"(un champ optionnel de plus n'en est pas une)", SchemaVersion)
 	}
 }
