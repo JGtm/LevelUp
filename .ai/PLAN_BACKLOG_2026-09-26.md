@@ -1239,7 +1239,7 @@ Périmètre FERMÉ : un item par constat retenu, chacun avec un test de non-rég
   écritures vont sous `<démo>/runtime/`, ou n'ont pas lieu. Si le réseau sortait en démo : trou
   de l'hermétisme réseau, corrigé ici (le ratchet `netguard_coverage_test.go` doit le voir),
   avec son test.
-- [ ] **B-C4 (C5)** : `config.go` revient à au plus 629 lignes, les ajouts démo passant dans
+- [x] **B-C4 (C5)** (`config.go` 640 → 629 lignes : `loadStatePaths`, `demoFixturesDirFromEnv`, `statePaths.backupConfig` et `statePaths.persistBatchAsync` dans `config_demo.go`, comportement identique ; gel `config/config_size_ratchet_test.go` ≤ 629, rouge à 640 puis vert) : `config.go` revient à au plus 629 lignes, les ajouts démo passant dans
   `config_demo.go`.
 - [ ] **B-C5 (C6)** : le retrait convergent d'un index par `EnsurePlayerSchema` est journalisé
   (`schema_drift_healed`, ou un log dédié de même contrat) seulement quand un index a vraiment
@@ -1440,6 +1440,7 @@ est supprimé.
   coupée en démo), `config.CSRSeasonIDForTitle` (`config.go:484`). Non traité.
 - DB-33 (B5) : `internal/config/config.go` passe de 629 à 640 lignes (seuil 500, dette
   préexistante) ; la bascule démo vit dans `config_demo.go` pour limiter la croissance. Non traité.
+  **Traité par B-C4 (2026-09-27)** : retour à 629 lignes, gel par `config/config_size_ratchet_test.go`.
 
 ---
 

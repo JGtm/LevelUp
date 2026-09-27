@@ -221,11 +221,7 @@ func Load() (*AppConfig, error) {
 	// (No-op si main() a déjà appelé BootstrapEnvLocal — loadEnvLocal n'écrase
 	// jamais une var déjà définie.)
 	loadEnvLocal(filepath.Join(repoRoot, ".env.local"))
-	demoMode := demoModeFromEnv()
-	demoFixturesDir := demoFixturesDirFromEnv(repoRoot)
-	// Chemins d'état et d'exécution : défauts du dépôt hors démo (inchangés), disposition démo
-	// en démo (lot B5, D-7) ; une variable explicite garde la main. Cf. config_demo.go.
-	st := newStatePaths(demoMode, demoFixturesDir)
+	st := loadStatePaths(repoRoot) // mode démo + chemins d'état et d'exécution, cf. config_demo.go
 	appSettingsPath := st.path("LEVELUP_APP_SETTINGS", filepath.Join(repoRoot, "app_settings.json"), titlePkg.DemoLayout.AppSettingsPath)
 
 	cfg := &AppConfig{
@@ -233,8 +229,8 @@ func Load() (*AppConfig, error) {
 		DBProfilesPath:    st.path("LEVELUP_DB_PROFILES", filepath.Join(repoRoot, "db_profiles.json"), titlePkg.DemoLayout.DBProfilesPath),
 		AppSettingsPath:   appSettingsPath,
 		SessionDir:        st.path("LEVELUP_SESSION_DIR", filepath.Join(repoRoot, "data", "sessions"), titlePkg.DemoLayout.SessionDir),
-		DemoMode:          demoMode,
-		DemoFixturesDir:   demoFixturesDir,
+		DemoMode:          st.demo,
+		DemoFixturesDir:   st.fixturesDir,
 		DemoLocale:        getEnvOrDefault("LEVELUP_DEMO_LOCALE", "en"),
 		APIHost:           getEnvOrDefault("LEVELUP_API_HOST", "127.0.0.1"),
 		APIPort:           getEnvInt("LEVELUP_API_PORT", 8000),
@@ -257,11 +253,9 @@ func Load() (*AppConfig, error) {
 	cfg.UserTimezone = loadUserTimezone(appSettingsPath)
 	cfg.CurrentCSRSeasonID = loadCSRSeasonID(appSettingsPath)
 	cfg.MediaCapturesBaseDir = loadMediaCapturesBaseDir(appSettingsPath)
-	cfg.Backup = loadBackupConfig(repoRoot, appSettingsPath)
-	cfg.Backup.BackupDir = st.path("LEVELUP_BACKUP_DIR", cfg.Backup.BackupDir, demoBackupDir)
+	cfg.Backup = st.backupConfig(repoRoot, appSettingsPath)
 	cfg.PrestigeEnabled = prestige.IsEnabled(appSettingsPath)
-	// Démo : file persist asynchrone COUPÉE (B5, D-7) — pas de WAL, pas de RecoverPending.
-	cfg.PersistBatchAsync = !demoMode && getEnvOrDefault("LEVELUP_PERSIST_BATCH_ASYNC", "") != "0"
+	cfg.PersistBatchAsync = st.persistBatchAsync()
 	cfg.EventsConvergence = getEnvOrDefault("LEVELUP_EVENTS_CONVERGENCE", "") != "0"
 	cfg.EventsConvergenceMax = getEnvInt("LEVELUP_EVENTS_CONVERGENCE_MAX", DefaultEventsConvergenceMax)
 	if cfg.EventsConvergenceMax <= 0 {
@@ -269,11 +263,6 @@ func Load() (*AppConfig, error) {
 	}
 	cfg.BuildWorkerToken = strings.TrimSpace(getEnvOrDefault("LEVELUP_BUILD_WORKER_TOKEN", ""))
 	return cfg, nil
-}
-
-// demoFixturesDirFromEnv lit LEVELUP_DEMO_FIXTURES_DIR (défaut `<repoRoot>/data/demo`).
-func demoFixturesDirFromEnv(repoRoot string) string {
-	return getEnvOrDefault("LEVELUP_DEMO_FIXTURES_DIR", filepath.Join(repoRoot, "data", "demo"))
 }
 
 // IsProduction indique si le serveur tourne en mode production (LEVELUP_ENV=production),

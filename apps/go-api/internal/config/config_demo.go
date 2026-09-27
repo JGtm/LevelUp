@@ -80,12 +80,21 @@ func DemoLogsDir() (string, bool) {
 // disposition démo. Dans les deux cas, une variable d'environnement posée garde la main
 // (contrat documenté de docs/CONFIGURATION.md) — même sémantique que getEnvOrDefault.
 type statePaths struct {
-	demo   bool
-	layout title.DemoLayout
+	demo        bool
+	fixturesDir string
+	layout      title.DemoLayout
 }
 
-func newStatePaths(demoMode bool, fixturesDir string) statePaths {
-	return statePaths{demo: demoMode, layout: title.NewDemoLayout(fixturesDir)}
+// loadStatePaths lit le mode démo (LEVELUP_DEMO_MODE) et la racine démo
+// (LEVELUP_DEMO_FIXTURES_DIR) de l'environnement, pour Load.
+func loadStatePaths(repoRoot string) statePaths {
+	fixturesDir := demoFixturesDirFromEnv(repoRoot)
+	return statePaths{demo: demoModeFromEnv(), fixturesDir: fixturesDir, layout: title.NewDemoLayout(fixturesDir)}
+}
+
+// demoFixturesDirFromEnv lit LEVELUP_DEMO_FIXTURES_DIR (défaut `<repoRoot>/data/demo`).
+func demoFixturesDirFromEnv(repoRoot string) string {
+	return getEnvOrDefault("LEVELUP_DEMO_FIXTURES_DIR", filepath.Join(repoRoot, "data", "demo"))
 }
 
 func (s statePaths) path(envKey, prodDefault string, demoPath func(title.DemoLayout) string) string {
@@ -102,4 +111,18 @@ func (s statePaths) path(envKey, prodDefault string, demoPath func(title.DemoLay
 // est de toute façon refusée en démo, cf. handlers/settings_backup.go).
 func demoBackupDir(l title.DemoLayout) string {
 	return filepath.Join(l.RuntimeDir(), "backups")
+}
+
+// backupConfig lit la configuration de sauvegarde (loadBackupConfig) ; en démo, sans
+// LEVELUP_BACKUP_DIR explicite, le dossier de sauvegarde va sous `<démo>/runtime/`.
+func (s statePaths) backupConfig(repoRoot, appSettingsPath string) BackupConfig {
+	b := loadBackupConfig(repoRoot, appSettingsPath)
+	b.BackupDir = s.path("LEVELUP_BACKUP_DIR", b.BackupDir, demoBackupDir)
+	return b
+}
+
+// persistBatchAsync : file persist asynchrone (LEVELUP_PERSIST_BATCH_ASYNC, active sauf "0").
+// COUPÉE en démo (B5, D-7) : pas de WAL, pas de RecoverPending.
+func (s statePaths) persistBatchAsync() bool {
+	return !s.demo && getEnvOrDefault("LEVELUP_PERSIST_BATCH_ASYNC", "") != "0"
 }
