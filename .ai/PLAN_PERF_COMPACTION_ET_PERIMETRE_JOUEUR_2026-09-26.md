@@ -524,14 +524,25 @@ Items :
 - [x] B.0 re-mesure des cibles sur la copie compactée (DB.1), liste traitée écrite ici — Journal B,
       « B.0 » : traitées Q26, Q27, Q28 (non scopé), `MortsParCarte` ; `[~]` Q28 scopé et Accueil
       (arme favorite) ; `[!]` (DB.5) Synthèse `weapon_records` et l'annuaire de Relations de Nuzzles
-- [ ] B.1 Carrière : rencontres et rivaux bornés, rivaux en une lecture ; parité ; chrono
-- [ ] B.2 Relations : Q28 et Q28 scopé bornés ; parité ; chrono
-- [ ] B.3 Tactique `MortsParCarte` : fenêtres du journal des morts et des positions bornées ;
-      parité ; chrono
-- [ ] B.4 Accueil et Synthèse (`weapon_records`) : selon B.0 et DB.5
-- [ ] B.5 garde-rails (DB.4), sections de durée, ADR 0036 mis à jour
-- [ ] B.6 mutations : liste retirée de sous la fenêtre (test de fenêtres rouge), rivaux relus deux
-      fois (test de comptage rouge), exclusion Campagne retirée (parité rouge)
+- [x] B.1 Carrière : rencontres et rivaux bornés, rivaux en une lecture ; parité ; chrono —
+      `f81a8a09c` (`career_repo_encounters.go`, `career_repo_rivals.go`, `perimetre_liste.go`) ;
+      Journal B
+- [x] B.2 Relations : Q28 et Q28 scopé bornés ; parité ; chrono — `f81a8a09c` : Q28 sans liste
+      RETIRÉ, l'historique passe par la requête scopée (même liste, un paramètre `VARCHAR[]`) ; Q28
+      scopé était déjà borné (B.0), il change seulement de forme de liaison ; Journal B
+- [x] B.3 Tactique `MortsParCarte` : fenêtres du journal des morts et des positions bornées ;
+      parité ; chrono — `f81a8a09c` ; Journal B
+- [!] B.4 Accueil et Synthèse (`weapon_records`) : selon B.0 et DB.5 — Accueil `[~]` résolu par C
+      (sa seule fenêtre `_latest` d'historique complet, l'arme favorite : 0,10-0,19 s ; la page
+      entière ne se re-mesure pas sans serveur) ; `weapon_records` `[!]` DB.5 (fenêtres déjà
+      bornées, coût = volume des matchs du joueur, 0,05-0,68 s) ; rien codé ; à revoir avec
+      l'utilisateur (§6)
+- [x] B.5 garde-rails (DB.4), sections de durée, ADR 0036 mis à jour — `f81a8a09c` (tests),
+      `3e1683842` (ADR) ; sections `top_encounters`, `rivals`, `relations` et leurs `_annuaire`
+      conservées (`rivals` : un appel au lieu de deux) ; Journal B
+- [x] B.6 mutations : liste retirée de sous la fenêtre (test de fenêtres rouge), rivaux relus deux
+      fois (test de comptage rouge), exclusion Campagne retirée (parité rouge) — six mutations,
+      toutes rouges ; Journal B
 
 Gate B : comme C sans l'intégration complète : `gofmt`, build, vet, `go test ./internal/service/...
 ./internal/platform/duckdb/... ./internal/analysis/... ./internal/api/... ./internal/archlint/...`,
@@ -578,7 +589,95 @@ Journal B (2026-09-27, exécuteur Opus, worktree `LevelUp-wt-perf-perimetre`, ba
     liste 109-167 ms (fenêtre de 412 216 lignes) ; liste de ses matchs en constantes : JGtm 66-292
     (102 235 lignes vues), Madina 48-55, Chocoboflor 35-39, Xx 16-18, **Nuzzles 155-173** (7 190
     matchs, 272 132 lignes vues : la liste coûte plus que la fenêtre entière, déjà écrit à l'ADR
-    0036 pour les longues listes). Le mécanisme DB.2 reste celui du plan ; le rapport le chiffre.
+    0036 pour les longues listes). Le mécanisme DB.2 reste celui du plan ; sa FORME de liaison est tranchée en B.1.
+- **B.1 à B.3 — mécanisme** (`f81a8a09c`). Chaque lecture traitée lit d'abord la liste (les
+  matchs du joueur, `QMatchsDuJoueurTpl`, Campagne exclue ; ou la liste blanche de la page pour
+  `MortsParCarte` et Q28 scopé), la lie sous CHAQUE vue `_latest` qu'elle lit, puis passe la même
+  liste à son annuaire (une lecture de la liste par appel ; l'annuaire la relisait déjà).
+  FORME DE LIAISON, décidée sur mesure : un premier jet en `IN (?, ?, …)` faisait RÉGRESSER Nuzzles
+  (Q26 615-729 -> 726-809 ms, Q28 1 543-1 586 -> 1 548-1 788, `MortsParCarte` 492-598 -> 613-743,
+  trois tours alternés) ; sonde sur la lecture du kill-feed d'un joueur (trois tours) : 7 190
+  paramètres en `IN` 304-341 ms, la même liste en littéraux 196-220, en UN paramètre `VARCHAR[]`
+  (`list_contains(?::VARCHAR[], match_id)`) 192-249 (fenêtre bornée : 272 132 lignes vues), sans
+  liste 195-214 ; JGtm (1 160) : `IN` 98-107, `VARCHAR[]` 64-87, sans liste 223-274. Le coût d'un
+  long `IN` est la liaison de ses paramètres : la liste est donc liée en UN paramètre par vue
+  (`clauseListeMatchs`, `platform/duckdb/perimetre_liste.go`, helper unique), c'est toujours une
+  constante sous la fenêtre (vérifié par EXPLAIN ANALYZE). Détail par lecture : Q26 — `kv_stats`
+  borné ; Q27 — UNE lecture de l'agrégat de tous les adversaires, `classerRivaux` trie en Go
+  (clé DESC, matchs DESC, xuid ASC — l'ordre total de l'ancien `ORDER BY`, octet par octet) et
+  prend dix lignes par classement, `career_repo_rivals.go` (sorti de `career_repo_encounters.go`) ;
+  Q28 — la variante sans liste (`Q28RelationsTpl`) est RETIRÉE, l'historique passe par
+  `Q28RelationsScopedTpl` (la clause `my_history` y est redondante avec la liste de l'historique,
+  sans effet sur les lignes) ; `MortsParCarte` — la liste sur `kp.match_id` ET `e.match_id`, plus
+  sur `mr.match_id` (la jointure du registre sur `kp` la porte déjà) ; sans liste blanche (aucun
+  appelant de production), la liste des matchs du joueur. `queries_career_encounters.go` passe de
+  565 à 484 lignes (gelé au-delà de 500 avant). Une liste vide rend la main sans requête, avec le
+  même résultat qu'avant (nil / carte vide / `[]` pour un scope vide).
+- **Parité (DB.3)** : sortie des vrais lecteurs, sérialisée en JSON, AVANT (code `fb1e65d67`) /
+  APRÈS sur la copie compactée, cinq joueurs, neuf lectures (49 comparaisons) : 29 IDENTIQUES à
+  l'octet, ordre compris (Q26 : 10 rencontres + 10 stats par joueur ; Q27 : 10 némésis + 10
+  souffre-douleur ; Q28 : 1 231 / 2 938 / 490 / 21 / 7 450 lignes = 12 130 ; Q28 scopé 30 matchs :
+  159 lignes ; arme favorite ; historique canonique), 20 identiques EN ENSEMBLES là où l'ordre
+  n'était pas total (`MortsParCarte` sans `ORDER BY` : 26 784 morts sur liste complète, 1 364 sur
+  30 matchs, idem sans liste ; `weapon_records`, non modifié, agrégat par hachage) ; noms compris.
+  Données : 0 ligne du kill-feed des cinq joueurs hors de leurs matchs (HI, pas de Campagne). SEUL
+  ÉCART VOULU, Halo 5 : les jambes kill-feed de Q26 / Q27 / Q28 n'excluaient pas la Campagne, la
+  liste l'exclut (comme l'historique dont ces lignes relèvent) — copie H5 : 118 morts entre deux
+  joueurs dans 63 matchs de Campagne ne comptent plus (test `…CampagneHorsDeLaListe`).
+- **Chronos** (copie compactée, 2 threads / 512 Mo, lecteur complet avec annuaire, trois tours
+  ALTERNÉS avant / après, machine chargée, min-max) : Q26 JGtm 282-301 -> 169-287 ms (cinq tours :
+  228-295 -> 164-187), Madina 324-395 -> 193-267, Chocoboflor 180-298 -> 100-107, Xx 144-161 ->
+  42-46, Nuzzles 497-575 -> 533-712 (cinq tours : médiane 519 -> 579 ; requête seule, quatre tours
+  alternés : 328-530 -> 317-638, neutre au bruit près) ; Q27 JGtm 460-465 -> 133-247, Madina
+  371-500 -> 122-163, Chocoboflor 303-380 -> 75-90, Xx 235-257 -> 25-30, Nuzzles 388-457 -> 306-354 ;
+  Q28 JGtm 371-421 -> 253-437 (cinq tours : 302-391 -> 233-272), Madina 409-451 -> 308-333,
+  Chocoboflor 242-392 -> 150-168, Xx 139-168 -> 43-44, Nuzzles 1 097-1 296 -> 1 144-1 224 (cinq
+  tours : médiane 1 061 -> 1 158 ; l'annuaire en fait 0,8-0,9 s) ; Q28 scopé 30 matchs 43-128 ->
+  31-55 ; `MortsParCarte` liste complète JGtm 371-622 -> 227-383, Madina 351-507 -> 162-241,
+  Chocoboflor 308-471 -> 115-150, Xx 269-283 -> 28-35, Nuzzles 356-588 -> 238-260 ; liste de 30
+  matchs 237-480 -> 23-53 pour les cinq. Nuzzles : sa liste (7 190 matchs) couvre 66 % des lignes
+  du kill-feed, la borne n'y gagne presque rien sur Q26 / Q28.
+- **B.5 — garde-rails** (`f81a8a09c`, suite par défaut) : `career_repo_fenetres_test.go` —
+  `TestLecturesHistorique_FenetresBorneesAuxMatchsDuJoueur` (quatre matchs du joueur parmi dix :
+  Q26, Q27, Q28 historique ET scopé, `MortsParCarte` sans liste blanche, chaque fenêtre rejouée
+  sous EXPLAIN ANALYZE par `exigerFenetresBornees` ; plus UNE seule lecture de l'agrégat Q27, par
+  le carnet de requêtes) et `TestLecturesHistorique_CampagneHorsDeLaListe` (Halo 5, duel de
+  Campagne hors des rivaux et des frags échangés) ; `tactical_repo_fenetres_test.go` —
+  `MortsParCarte` restreinte à deux matchs ; `career_repo_rivals_test.go` —
+  `TestClasserRivaux_OrdreTotalEtLimite` (ex aequo, limite, agrégat non modifié). Démonstration
+  sur le code de `fb1e65d67` (arbre exporté, mêmes tests) : ROUGES — fenêtre de 30 lignes pour une
+  borne de 12 (Q26) et de 6 (`MortsParCarte`), agrégat Q27 lu 2 fois, souffre-douleur à 2 frags
+  sur 2 matchs (Campagne comptée). `TestCareerRepo_Annuaire_SectionsDeDuree` (intégration) attend
+  désormais `rivals` : 1 appel. `campaign_exclusion_guard_test.go` : l'entrée du template retiré
+  sort de la liste. ADR 0036 (`3e1683842`) : trois lignes retirées de la table I2 avec leur coût
+  après, lignes I3 (Accueil, `weapon_records`) re-mesurées, garde-rails I2 complétés, conséquence
+  sur la liaison d'une longue liste.
+- **B.6 — mutations** (chacune appliquée, test rouge, fichier restauré, `cmp` identique) :
+  (1a) liste liée en semi-jointure (`col IN (SELECT unnest(?::VARCHAR[]))` dans `clauseListeMatchs`)
+  -> `…FenetresBorneesAuxMatchsDuJoueur` rouge sur les cinq lectures (fenêtres de 30 lignes pour
+  12 et 6) et `TestTacticalRepo_PerimetreRestreint_FenetresBornees` rouge (`MortsParCarte`) ;
+  (1b) liste retirée de sous la fenêtre du journal de `MortsParCarte` (`OR TRUE`) -> les deux tests
+  de fenêtres rouges ; (1c) liste retirée de sous la fenêtre de Q27 -> rouge (« GetRivals : une
+  fenêtre a vu 30 lignes, borne 12 ») ; (2) rivaux relus deux fois (un agrégat par classement) ->
+  rouge (« agrégat Q27 lu 2 fois, want 1 ») ; (3) exclusion Campagne retirée de
+  `QMatchsDuJoueurTpl` -> `…CampagneHorsDeLaListe` rouge (2 frags sur 2 matchs) ; (4) départage par
+  xuid retiré de `classerRivaux` -> `TestClasserRivaux_OrdreTotalEtLimite` rouge.
+- **Gate B** (code `f81a8a09c`, depuis `apps/go-api`, `CGO_ENABLED=1`, GOCACHE privé) : `gofmt -l
+  ./internal ./cmd` vide ; `go build ./...` 0 ; `go vet ./...` 0 ; `go test ./internal/service/...
+  ./internal/platform/duckdb/... ./internal/analysis/... ./internal/api/... ./internal/archlint/...`
+  : 32 `ok`, 2 sans test, UN rouge — `internal/archlint` `TestAucunSuffixeDePlateformeAccidentel` sur
+  `cmd/levelup/cmd_compact_passes_remplacement_windows.go` (fichier de C.10), rouge à l'identique
+  sur l'arbre exporté de `fb1e65d67`, hors du diff de B (découverte (11)) ; le reste d'`archlint`
+  vert (`-skip` de ce seul test) ; `go test -tags=integration -p 1 -timeout 30m
+  ./internal/platform/duckdb/...` 0 (5 `ok`, `duckdb` 470 s) ; golangci-lint
+  `--new-from-rev=fb1e65d67 ./...` 0 issue, idem `--build-tags=integration` (lancés avec
+  `--allow-parallel-runners` : un autre golangci-lint tenait le verrou du poste) ; aucun test retiré
+  ni renommé (`git diff` : 0 `func Test` supprimé) ; sonde `cmd/perimetre_probe_tmp` absente ;
+  artefact `data/titles/halo_5/warehouse/metadata.duckdb` créé par les tests, retiré. Hors gate,
+  pour contrôle : `go test -tags=integration -run 'Relations|Career|Rival|Tactical|Encounter'
+  ./internal/service/...` vert.
+- **Revue B** (un relecteur aveugle) : NON FAITE par l'exécuteur — sous-agents interdits par le
+  brief ; au superviseur.
 
 ## 4. Étape F — Clôture (superviseur)
 
@@ -640,6 +739,35 @@ case non statuée de l'étape courante (C, puis B, puis F).
   touche ni `internal/service`, ni `internal/platform`, ni `internal/analysis`. Le gate du lot A ne
   jouait l'intégration que sur `./internal/platform/duckdb/...`. Non traité (hors périmètre de C :
   fixture d'un test du lot A).
+- (B, 2026-09-27) (11) `internal/archlint` `TestAucunSuffixeDePlateformeAccidentel` est ROUGE sur
+  `fb1e65d67` : `cmd/levelup/cmd_compact_passes_remplacement_windows.go` (C.10) porte un suffixe
+  de plateforme que le garde-rail n'autorise pas (le renommer, ou l'inscrire dans
+  `goosSuffixAllowed` avec sa justification). Fichier de la compaction : non touché (brief).
+  (12) L'annuaire en portée base (lot A) lie ses listes en `IN (?, …)` : pour les Relations de
+  Nuzzles, 14 900, 10 163 et 17 741 paramètres (alias/participants, matchs des restants,
+  kill-feed), 0,8-0,9 s des 1,1-1,3 s de la lecture — la même cause que celle mesurée en B.1 (la
+  liaison de milliers de paramètres, pas le filtre) ; `clauseListeMatchs` s'y appliquerait. Non
+  traité (DB.5 : ce ne sont pas des fenêtres sur tout l'historique). Idem, à moindre échelle, pour
+  l'annuaire de Q26 (7 210 et 7 192 paramètres, ~0,25 s chez Nuzzles). (13) Les autres lectures
+  tactiques (`KillEvents`, `MortsAvecContexte`, `KillPositions`, l'univers) lient la liste blanche
+  en `IN` jusqu'à trois fois (et `clausePerimetre` sur `mr.match_id`) : à liste longue (onglet
+  Tactique sans filtre, 7 190 matchs), des dizaines de milliers de paramètres. Non mesuré, non
+  traité. (14) Accueil : la page entière (1,6 s pour 310 Ko en septembre) ne se re-mesure pas sans
+  serveur ; ses lectures de la base partagée mesurées sur la copie restent sous 0,22 s (arme
+  favorite 0,10-0,19 s, historique canonique 0,04-0,21 s) : si la page reste lente, la cause est
+  ailleurs (taille de la réponse, lectures joueur ou sociales, concurrence). Synthèse
+  `weapon_records` : 0,05-0,68 s, fenêtres déjà bornées ; le coût suit le volume des matchs du
+  joueur (Nuzzles, JGtm). À décider avec l'utilisateur (un cache est exclu par décision). (15)
+  Halo 5 : la liste des matchs du joueur exclut la Campagne, les jambes kill-feed de Q26 / Q27 /
+  Q28 ne l'excluaient pas — 118 morts entre deux joueurs dans 63 matchs de Campagne de la copie H5
+  sortent des rivaux et des frags échangés (écart voulu par DB.2, figé par
+  `TestLecturesHistorique_CampagneHorsDeLaListe`) ; non mesuré sur les joueurs H5 un par un.
+  (16) La découverte (9) ne se reproduit plus : `go test -tags=integration -run
+  TestRelationsSegmentation ./internal/service/` est VERT sur l'arbre exporté de `fb1e65d67` comme
+  après B (les journaux montrent encore une erreur de liaison `publishable` dans l'enrichissement
+  des assistances Q28c, journalisée en WARN et sans effet sur le verdict). (17) Sur ce poste
+  partagé, les chronos varient du simple au double d'un tour à l'autre (charge) : seuls des tours
+  ALTERNÉS avant / après sont comparables ; un golangci-lint concurrent tenait le verrou du poste.
 
 ## 7. Journal (superviseur)
 
