@@ -11,6 +11,8 @@ package migration
 import (
 	"context"
 	"database/sql"
+	"errors"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -102,5 +104,25 @@ func TestInventaire_EcartsDetectes(t *testing.T) {
 	}
 	if n := len(a.Ecarts(a)); n != 0 {
 		t.Fatalf("inventaire différent de lui-même : %v", a.Ecarts(a))
+	}
+}
+
+// TestCopierBaseVers_CibleExistanteRefusee : une cible qui existe déjà n'est jamais attachée ni
+// écrite (ErrCibleExiste, avant l'ATTACH) ; son contenu est intact.
+func TestCopierBaseVers_CibleExistanteRefusee(t *testing.T) {
+	dir := t.TempDir()
+	src := ouvrirFichier(t, filepath.Join(dir, "src.duckdb"))
+	defer src.Close() //nolint:errcheck
+	seedBombStats(t, src)
+	cible := filepath.Join(dir, "deja.duckdb")
+	if err := os.WriteFile(cible, []byte("autre"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	err := CopierBaseVers(context.Background(), src, cible)
+	if !errors.Is(err, ErrCibleExiste) {
+		t.Fatalf("attendu ErrCibleExiste, got %v", err)
+	}
+	if got, _ := os.ReadFile(cible); string(got) != "autre" {
+		t.Fatalf("cible touchée : %q", got)
 	}
 }

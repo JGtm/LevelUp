@@ -127,7 +127,7 @@ func compacterTitre(ctx context.Context, slug, path string, o compactPassesOptio
 		return err
 	}
 	if o.rewriteFile {
-		if err := reecrireFichier(ctx, path, o.backupDir); err != nil {
+		if err := reecrireFichier(ctx, slug, path, o.backupDir); err != nil {
 			return err
 		}
 	}
@@ -159,7 +159,7 @@ func compacterSousVerrou(ctx context.Context, slug, path string, o compactPasses
 	if err := preparerPourSauvegarde(ctx, slug, path); err != nil {
 		return err
 	}
-	sauvegarde, err := copierFichier(ctx, path, o.backupDir, "avant-compaction")
+	sauvegarde, err := copierFichier(ctx, path, o.backupDir, slug, "avant-compaction")
 	if err != nil {
 		return fmt.Errorf("sauvegarde préalable impossible, rien n'est compacté : %w", err)
 	}
@@ -205,9 +205,14 @@ func closeLogged(ctx context.Context, handle *duckdb.DB, path string) {
 	}
 }
 
-// cheminDeSauvegarde rend `<dossier>/<nom>.<etiquette>-<horodatage UTC><ext>` (dossier de la base
-// si `dossier` est vide), dossier créé au besoin.
-func cheminDeSauvegarde(path, dossier, etiquette string) (string, error) {
+// horlogeSauvegarde : l'horloge des noms de sauvegarde (remplaçable par les tests).
+var horlogeSauvegarde = time.Now
+
+// cheminDeSauvegarde rend `<dossier>/<nom>.<slug>.<etiquette>-<horodatage UTC><ext>` (dossier de la
+// base si `dossier` est vide), dossier créé au besoin. Le SLUG est dans le nom : les bases de deux
+// titres portent le même nom de fichier, et un `--backup-dir` commun les recevrait sinon sous le
+// même nom dans la même seconde (C.11).
+func cheminDeSauvegarde(path, dossier, slug, etiquette string) (string, error) {
 	if dossier == "" {
 		dossier = filepath.Dir(path)
 	}
@@ -215,19 +220,19 @@ func cheminDeSauvegarde(path, dossier, etiquette string) (string, error) {
 		return "", err
 	}
 	nom := strings.TrimSuffix(filepath.Base(path), filepath.Ext(path))
-	return filepath.Join(dossier, fmt.Sprintf("%s.%s-%s%s", nom, etiquette,
-		time.Now().UTC().Format("20060102T150405Z"), filepath.Ext(path))), nil
+	return filepath.Join(dossier, fmt.Sprintf("%s.%s.%s-%s%s", nom, slug, etiquette,
+		horlogeSauvegarde().UTC().Format("20060102T150405Z"), filepath.Ext(path))), nil
 }
 
 // copierFichier copie `path` octet pour octet sous cheminDeSauvegarde et rend le chemin écrit.
 // Refus si la base porte un WAL non vide (le CHECKPOINT qui précède doit l'avoir vidé). Une copie
 // qui échoue en cours de route (disque plein, Sync) est RETIRÉE : un fichier tronqué ne reste
 // jamais sous un nom de sauvegarde valide.
-func copierFichier(ctx context.Context, path, dossier, etiquette string) (string, error) {
+func copierFichier(ctx context.Context, path, dossier, slug, etiquette string) (string, error) {
 	if fi, err := os.Stat(path + ".wal"); err == nil && fi.Size() > 0 {
 		return "", fmt.Errorf("%s.wal non vide (%d octets) : la copie ne serait pas la base entière", path, fi.Size())
 	}
-	cible, err := cheminDeSauvegarde(path, dossier, etiquette)
+	cible, err := cheminDeSauvegarde(path, dossier, slug, etiquette)
 	if err != nil {
 		return "", err
 	}

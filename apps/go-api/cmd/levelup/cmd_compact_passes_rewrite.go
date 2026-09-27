@@ -27,14 +27,17 @@ package main
 //     ouvrirait, écrirait, ferait son CHECKPOINT et fermerait ENTIÈREMENT dans cet intervalle de
 //     quelques microsecondes.
 //
-// Un WAL non vide à côté de la base AU LANCEMENT (transactions d'un processus tué avant son
-// CHECKPOINT) fait refuser d'entrée : la commande n'ouvre pas une base qu'un autre a laissée à
-// mi-chemin. Toute erreur avant le remplacement retire le fichier neuf et la sauvegarde partielle
+// WAL : un `.wal` laissé AU LANCEMENT de la commande (processus tué avant son CHECKPOINT) est
+// rejoué par sa PREMIÈRE ouverture (preparerPourSauvegarde : récupération normale de DuckDB, sans
+// perte), donc présent dans la sauvegarde et la compaction. Cette étape-ci refuse d'entrée un WAL
+// non vide qui serait apparu ENTRE la compaction et la réécriture : elle n'ouvre pas une base
+// qu'un autre a laissée à mi-chemin. Toute erreur avant le remplacement retire le fichier neuf et la sauvegarde partielle
 // ou devenue inutile, journalisé. Un `<base>.reecriture` trouvé au départ est le reste d'une
 // réécriture interrompue : la base est complète par construction, le reste est retiré (WARN).
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -74,8 +77,18 @@ var renommer = os.Rename
 
 // reecriture : l'état d'une réécriture en cours.
 type reecriture struct {
-	path, neuf, sauvegarde string
-	source                 *duckdb.DB // la connexion qui tient le verrou ; nil une fois fermée
+	slug, path, neuf string
+	// neufCree, sauvegarde : ce que CETTE exécution a créé — abandonner ne retire rien d'autre (C.11).
+	neufCree   bool
+	sauvegarde string
+	source     *duckdb.DB // la connexion qui tient le verrou ; nil une fois fermée
+}
+
+// copierVers recopie la base dans `cible` et dit si CETTE exécution a créé le fichier (une cible
+// préexistante est refusée par migration.CopierBaseVers avant tout ATTACH, et n'est pas à nous).
+func copierVers(ctx context.Context, db *sql.DB, cible string) (bool, error) {
+	err := migration.CopierBaseVers(ctx, db, cible)
+	return !errors.Is(err, migration.ErrCibleExiste), err
 }
 
 // fermerSource ferme la connexion qui tient le verrou (une seule fois).
@@ -92,8 +105,8 @@ func (r *reecriture) fermerSource() error {
 }
 
 // reecrireFichier réécrit `path` (appelé sous le bail d'écrivain, handle de compaction fermé).
-func reecrireFichier(ctx context.Context, path, dossierSauvegarde string) error {
-	r := &reecriture{path: path, neuf: path + suffixeFichierReecriture}
+func reecrireFichier(ctx context.Context, slug, path, dossierSauvegarde string) error {
+	r := &reecriture{slug: slug, path: path, neuf: path + suffixeFichierReecriture}
 	if err := refuserWALNonVide(path); err != nil {
 		return err
 	}
@@ -135,7 +148,7 @@ func (r *reecriture) preparerSousVerrou(ctx context.Context, dossierSauvegarde s
 	if err != nil {
 		return 0, fmt.Errorf("réécriture : inventaire de %s: %w", r.path, err)
 	}
-	if err := migration.CopierBaseVers(ctx, db, r.neuf); err != nil {
+	if r.neufCree, err = copierVers(ctx, db, r.neuf); err != nil {
 		return 0, err
 	}
 	if err := passerEtape(etapeApresCopie); err != nil {
@@ -147,11 +160,16 @@ func (r *reecriture) preparerSousVerrou(ctx context.Context, dossierSauvegarde s
 	if err := passerEtape(etapeApresInventaire); err != nil {
 		return 0, err
 	}
-	// Le chemin est retenu AVANT la copie : abandonner retire aussi une sauvegarde partielle.
-	if r.sauvegarde, err = cheminDeSauvegarde(r.path, dossierSauvegarde, "avant-reecriture"); err != nil {
+	chemin, err := cheminDeSauvegarde(r.path, dossierSauvegarde, r.slug, "avant-reecriture")
+	if err != nil {
 		return 0, fmt.Errorf("réécriture : dossier de sauvegarde: %w", err)
 	}
-	if err := migration.CopierBaseVers(ctx, db, r.sauvegarde); err != nil {
+	// Une sauvegarde partielle créée ici est retirée par abandonner ; un fichier préexistant, JAMAIS.
+	cree, err := copierVers(ctx, db, chemin)
+	if cree {
+		r.sauvegarde = chemin
+	}
+	if err != nil {
 		return 0, fmt.Errorf("réécriture : sauvegarde: %w", err)
 	}
 	if err := verifierCopie(ctx, avant, r.sauvegarde); err != nil {
@@ -193,21 +211,25 @@ func verifierWALAvantRemplacement(r *reecriture) error {
 }
 
 // refuserWALNonVide : une base dont le WAL porte des transactions d'un processus tué avant son
-// CHECKPOINT n'est pas réécrite ; l'exploitant l'ouvre d'abord (serveur ou CLI) pour le rejouer.
+// CHECKPOINT APRÈS la compaction n'est pas réécrite ; relancer la commande (sa première ouverture
+// rejoue le WAL).
 func refuserWALNonVide(path string) error {
 	if fi, err := os.Stat(path + ".wal"); err == nil && fi.Size() > 0 {
 		return fmt.Errorf("réécriture refusée : %s.wal non vide (%d octets) — transactions d'un autre "+
-			"processus non intégrées ; ouvrir la base une fois (serveur ou CLI) pour les rejouer, puis "+
-			"relancer", path, fi.Size())
+			"processus apparues depuis la compaction ; relancer `compact-passes` (sa première ouverture "+
+			"les rejoue)", path, fi.Size())
 	}
 	return nil
 }
 
 // abandonner ferme la source si elle est encore ouverte, retire le fichier neuf et la sauvegarde
-// (partielle ou devenue inutile), journalise, rend l'erreur. La base n'a pas été touchée.
+// (partielle ou devenue inutile) QUE CETTE EXÉCUTION A CRÉÉS, journalise, rend l'erreur. La base n'a
+// pas été touchée.
 func (r *reecriture) abandonner(ctx context.Context, cause error) error {
 	errs := r.fermerSource()
-	errs = errors.Join(errs, retirerFichiers(r.neuf, r.neuf+".wal"))
+	if r.neufCree {
+		errs = errors.Join(errs, retirerFichiers(r.neuf, r.neuf+".wal"))
+	}
 	if r.sauvegarde != "" {
 		errs = errors.Join(errs, retirerFichiers(r.sauvegarde, r.sauvegarde+".wal"))
 	}

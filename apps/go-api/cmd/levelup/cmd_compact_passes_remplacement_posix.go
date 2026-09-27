@@ -2,8 +2,10 @@
 
 package main
 
-// cmd_compact_passes_remplacement_other.go — le remplacement de la base par le fichier réécrit,
+// cmd_compact_passes_remplacement_posix.go — le remplacement de la base par le fichier réécrit,
 // hors Windows (POSIX ; cf. cmd_compact_passes_rewrite.go, « LA MÉTHODE »).
+// Contrainte de plateforme EXPLICITE (ligne `//go:build`), jamais par le nom : un suffixe `_windows`
+// / `_linux` serait une contrainte implicite (archlint `TestAucunSuffixeDePlateformeAccidentel`).
 //
 // `rename(2)` remplace le NOM de façon atomique pendant que la connexion est encore ouverte :
 // l'ancien inode reste verrouillé par elle jusqu'à la fermeture, et un processus qui ouvre le

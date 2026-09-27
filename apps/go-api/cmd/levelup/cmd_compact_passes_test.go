@@ -92,7 +92,7 @@ func TestCompactPasses_DryRunPuisSauvegardeEtCompaction(t *testing.T) {
 	if err := compacterTitre(ctx, "halo_infinite", path, compactPassesOptions{}); err != nil {
 		t.Fatalf("compaction: %v", err)
 	}
-	sauvegardes := fichiers(t, dir, "shared_matches_v2.avant-compaction-*.duckdb")
+	sauvegardes := fichiers(t, dir, "shared_matches_v2.halo_infinite.avant-compaction-*.duckdb")
 	if len(sauvegardes) != 1 {
 		t.Fatalf("sauvegardes = %v, attendu une", sauvegardes)
 	}
@@ -146,7 +146,7 @@ func TestCompactPasses_RewriteFile(t *testing.T) {
 	if err := compacterTitre(ctx, "halo_infinite", path, compactPassesOptions{rewriteFile: true}); err != nil {
 		t.Fatalf("compaction + réécriture: %v", err)
 	}
-	if a := fichiers(t, dir, "shared_matches_v2.avant-reecriture-*.duckdb"); len(a) != 1 {
+	if a := fichiers(t, dir, "shared_matches_v2.halo_infinite.avant-reecriture-*.duckdb"); len(a) != 1 {
 		t.Fatalf("ancien fichier gardé = %v, attendu un", a)
 	}
 	if _, err := os.Stat(path + ".reecriture"); !os.IsNotExist(err) {
@@ -182,7 +182,7 @@ func TestCopierFichier_RefuseUnWALNonVide(t *testing.T) {
 	if err := os.WriteFile(path+".wal", []byte("wal"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := copierFichier(context.Background(), path, "", "avant-compaction"); err == nil {
+	if _, err := copierFichier(context.Background(), path, "", "halo_infinite", "avant-compaction"); err == nil {
 		t.Fatal("copie acceptée avec un WAL non vide")
 	}
 }

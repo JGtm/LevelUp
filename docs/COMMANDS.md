@@ -599,7 +599,7 @@ go run ./cmd/levelup compact-passes --backup-dir D:\backups  # where the backups
 ```
 
 - **Backup (mandatory)**: a byte-for-byte copy of the DB file, taken after a `CHECKPOINT` with
-  the file closed, printed as `sauvegarde : <path>` (`<name>.avant-compaction-<UTC>.duckdb`).
+  the file closed, printed as `sauvegarde : <path>` (`<name>.<slug>.avant-compaction-<UTC>.duckdb`).
   Restore = put that file back in place, server stopped. The Parquet backup tooling (`backup`)
   is not used: it drops sequences, views and indexes.
 - **`--rewrite-file`**: DuckDB reuses freed blocks but never shrinks a file. The option copies
@@ -608,16 +608,19 @@ go run ./cmd/levelup compact-passes --backup-dir D:\backups  # where the backups
   table's row count and every compacted view's fingerprint are identical. The command holds the
   DuckDB lock of the DB from start to finish (no other process can open it meanwhile): one
   connection runs the `CHECKPOINT`, the copy into the new file and the backup of the old one
-  (`<name>.avant-reecriture-<UTC>.duckdb`, written by `COPY FROM DATABASE` into `--backup-dir`,
+  (`<name>.<slug>.avant-reecriture-<UTC>.duckdb`, written by `COPY FROM DATABASE` into `--backup-dir`,
   any volume — the bytes of a file DuckDB holds cannot be read on Windows), and both copies are
   checked under that lock. Then ONE rename puts the new file in place — the DB path always holds a
   complete database, whatever the moment the command stops. On Linux the rename happens while the
   connection is still open; on Windows, which refuses to replace a held file, the connection is
   closed and the rename follows at once: a process that opened the DB in between still holds it,
   the rename fails and the command refuses, DB untouched. The only theoretical loss is a process
-  that would open, write, checkpoint and close ENTIRELY within those few microseconds. A non-empty
-  `.wal` next to the DB at launch (a process killed before its checkpoint) is refused: open the DB
-  once to replay it. On any error the temporary file and the backup are removed. Measured on a
+  that would open, write, checkpoint and close ENTIRELY within those few microseconds. A `.wal`
+  left at launch by a process killed before its checkpoint is replayed by the command's first
+  opening (normal DuckDB recovery, nothing lost) and is in the backup and the compaction; the
+  rewrite step itself refuses a non-empty `.wal` that would appear between the compaction and
+  the rewrite. Backups carry the title slug (`<name>.<slug>.avant-…`) and an existing file is
+  never overwritten nor removed. On any error the temporary file and the backup are removed. Measured on a
   copy: 1 264 MiB -> 351 MiB.
 - Delete the backups by hand once the app has been checked.
 

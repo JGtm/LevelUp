@@ -625,7 +625,7 @@ go run ./cmd/levelup compact-passes --backup-dir D:\sauvegardes  # dossier des s
 
 - **Sauvegarde (obligatoire)** : copie octet pour octet du fichier de la base, prise après un
   `CHECKPOINT`, fichier fermé, affichée `sauvegarde : <chemin>`
-  (`<nom>.avant-compaction-<UTC>.duckdb`). Restaurer = remettre ce fichier en place, serveur
+  (`<nom>.<slug>.avant-compaction-<UTC>.duckdb`). Restaurer = remettre ce fichier en place, serveur
   arrêté. L'outillage de sauvegarde Parquet (`backup`) n'est pas utilisé : il perd séquences,
   vues et index.
 - **`--rewrite-file`** : DuckDB réutilise les blocs libérés mais ne rétrécit jamais un fichier.
@@ -634,7 +634,7 @@ go run ./cmd/levelup compact-passes --backup-dir D:\sauvegardes  # dossier des s
   valeur, macros, types), le compte de chaque table et l'empreinte de chaque vue compactée sont
   identiques. La commande TIENT le verrou DuckDB de la base du début à la fin (aucun autre
   processus ne peut l'ouvrir entre-temps) : une seule connexion fait le `CHECKPOINT`, la copie vers
-  le fichier neuf et la sauvegarde de l'ancien (`<nom>.avant-reecriture-<UTC>.duckdb`, écrite par
+  le fichier neuf et la sauvegarde de l'ancien (`<nom>.<slug>.avant-reecriture-<UTC>.duckdb`, écrite par
   `COPY FROM DATABASE` dans `--backup-dir`, n'importe quel volume — sous Windows, les octets d'un
   fichier tenu par DuckDB ne se lisent pas), et les deux copies sont vérifiées sous ce verrou.
   Puis UN rename met le fichier neuf en place — le chemin de la base porte toujours une base
@@ -643,8 +643,12 @@ go run ./cmd/levelup compact-passes --backup-dir D:\sauvegardes  # dossier des s
   connexion est fermée et le rename suit aussitôt : un processus qui a ouvert la base entre les
   deux la tient encore, le rename échoue et la commande refuse, base intacte. Seule perte
   théorique : un processus qui ouvrirait, écrirait, ferait son checkpoint et fermerait ENTIÈREMENT
-  en ces quelques microsecondes. Un `.wal` non vide à côté de la base au lancement (processus tué
-  avant son checkpoint) est refusé : ouvrir la base une fois pour le rejouer. Sur toute erreur, le
+  en ces quelques microsecondes. Un `.wal` laissé au lancement par un processus
+  tué avant son checkpoint est rejoué par la première ouverture de la commande (récupération
+  normale de DuckDB, sans perte) et se retrouve dans la sauvegarde et la compaction ; l'étape de
+  réécriture refuse, elle, un `.wal` non vide qui apparaîtrait entre la compaction et la
+  réécriture. Les sauvegardes portent le slug du titre (`<nom>.<slug>.avant-…`) et un fichier
+  existant n'est jamais écrasé ni retiré. Sur toute erreur, le
   fichier temporaire et la sauvegarde sont retirés. Mesuré sur une copie : 1 264 Mio -> 351 Mio.
 - Supprimer les sauvegardes à la main une fois l'application vérifiée.
 

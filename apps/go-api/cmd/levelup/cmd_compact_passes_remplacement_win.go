@@ -2,8 +2,10 @@
 
 package main
 
-// cmd_compact_passes_remplacement_windows.go — le remplacement de la base par le fichier réécrit,
+// cmd_compact_passes_remplacement_win.go — le remplacement de la base par le fichier réécrit,
 // sous Windows (cf. cmd_compact_passes_rewrite.go, « LA MÉTHODE »).
+// Contrainte de plateforme EXPLICITE (ligne `//go:build`), jamais par le nom : un suffixe `_windows`
+// / `_linux` serait une contrainte implicite (archlint `TestAucunSuffixeDePlateformeAccidentel`).
 //
 // Windows refuse de remplacer un fichier que DuckDB tient (mesuré le 2026-09-27 : « Accès
 // refusé »). La connexion est donc FERMÉE, puis le rename suit IMMÉDIATEMENT — rien entre les deux

@@ -131,7 +131,7 @@ Décisions :
   tenu est impossible sous Windows, mesuré), les inventaires des deux copies se font sous ce
   verrou ; les vérifications « inchangée » et « libre » disparaissent avec leur code. Un `.wal`
   non vide au lancement est refusé d'entrée. Remplacement par un point de variation
-  (`cmd_compact_passes_remplacement_{windows,other}.go`) : POSIX — rename PENDANT que la connexion
+  (`cmd_compact_passes_remplacement_{win,posix}.go`, contrainte de build explicite — renommés en C.11) : POSIX — rename PENDANT que la connexion
   est ouverte, puis fermeture ; Windows — un fichier tenu ne s'y remplace pas (mesuré : « Accès
   refusé ») : fermeture puis rename IMMÉDIAT, sans travail entre les deux. Pourquoi la voie A ne
   rouvre aucune fenêtre de perte sous Windows : un tiers qui ouvre entre la fermeture et le rename
@@ -189,6 +189,9 @@ Items :
 - [x] C.10 (seconde revue, 2026-09-26) `--rewrite-file` sous verrou TENU du début à la fin (voie A),
       WAL étranger refusé d'entrée, sauvegardes partielles retirées, orphelin refusé avant toute
       sauvegarde — Journal C
+- [x] C.11 (relecture de C.10, 2026-09-27) sauvegardes nommées par titre et jamais écrasées ni
+      retirées si préexistantes, doc du WAL au lancement corrigée, variantes de remplacement
+      renommées sans suffixe de plateforme implicite — Journal C
 
 Gate C (depuis `apps/go-api`) : `gofmt -l ./internal ./cmd` vide ; `go build ./...` ; `go vet
 ./...` ; `go test ./...` ; `go test -tags=integration -p 1 ./...` (code de sortie 0 vérifié, pas
@@ -494,6 +497,44 @@ Journal C (2026-09-26, exécuteur Opus, worktree `LevelUp-wt-perf-perimetre`, ba
   `go test -tags=integration -p 1 -count=1 ./cmd/levelup/ ./internal/migration/...
   ./internal/games/halo_infinite/migrations/...` 0 (3 ok) ; golangci-lint `--new-from-rev=34edf29af`
   0 issue, idem `--build-tags=integration` (lint sous GOOS=windows).
+- **C.11 — relecture de C.10** (aucun P0 / P1 ; deux P2 et un rouge de gate). (1) Deux titres,
+  même `--backup-dir`, même seconde : les deux sauvegardes `shared_matches_v2.avant-reecriture-<t>`
+  portaient le même nom, le second `CopierBaseVers` ATTACHait la sauvegarde de l'autre titre, puis
+  `abandonner` la SUPPRIMAIT (régression de C.10, C.9 faisait un `O_EXCL`). Forme retenue : le nom
+  porte le slug (`cheminDeSauvegarde(path, dossier, slug, etiquette)` :
+  `<nom>.<slug>.<etiquette>-<UTC>`), pour la réécriture ET la compaction ; `migration.CopierBaseVers`
+  refuse une cible existante AVANT l'ATTACH (`ErrCibleExiste`, `os.Lstat`) ; `abandonner` ne retire
+  que ce que CETTE exécution a créé (`neufCree`, `sauvegarde` renseignée par `copierVers` seulement si
+  la cible n'était pas préexistante). La sauvegarde `avant-compaction` (octets, `O_EXCL`) ne
+  retirait déjà que sa propre cible ; elle prend le slug aussi. Horloge des noms injectable
+  (`horlogeSauvegarde`) pour le test. (2) La doc EN + FR et le commentaire annonçaient « WAL non vide
+  au lancement → refus » : faux par la commande, dont la première ouverture (`preparerPourSauvegarde`)
+  REJOUE le WAL (récupération normale, sans perte) et le fait entrer dans la sauvegarde et la
+  compaction ; l'étape de réécriture refuse seulement un WAL apparu entre la compaction et la
+  réécriture. Doc, commentaire et message de refus corrigés. (3) Rouge archlint
+  `TestAucunSuffixeDePlateformeAccidentel` : le test prescrit « RENOMMER, ou inscrire dans
+  `goosSuffixAllowed` » — et réserve l'allowlist aux ADAPTATEURS SYSTÈME (appel d'API du système).
+  Nos variantes n'appellent aucune API système : RENOMMÉES `cmd_compact_passes_remplacement_win.go`
+  / `_posix.go`, leur contrainte restant EXPLICITE (`//go:build windows` / `!windows`, déjà en
+  tête) ; aucune entrée d'allowlist, garde-rail inchangé.
+  Tests : `TestReecriture_SauvegardePreexistanteJamaisTouchee` (horloge figée, cible pré-créée avec
+  un contenu : refus « existe déjà », contenu intact, base intacte, aucun reste) — ROUGE sur C.10
+  instrumenté (horloge + paramètre de slug seulement) : « le fichier préexistant a été touché : "" »
+  (il était SUPPRIMÉ) ; `TestCopierBaseVers_CibleExistanteRefusee` (migration) — rouge par mutation
+  (contrôle `Lstat` neutralisé : « attendu ErrCibleExiste, got … attache de … IO Error ») ;
+  `TestCompactPasses_WALNonVideAuLancement_RejoueEtVaAuBout` (commande complète, WAL laissé par
+  `disable_checkpoint_on_shutdown` : la commande va au bout, la ligne du WAL est dans la base
+  réécrite) — VERT sur C.10 : il fige le comportement réel que la doc décrit désormais (pas un
+  défaut du code) ; `TestReecriture_WALNonVideAuLancement` renommé
+  `TestReecritureDirecte_WALApparuAvantLaReecriture_Refuse` (test de ce lot, hors baseline ; aide
+  `laisserUnWAL` extraite). Archlint : rouge avec l'ancien nom `_windows.go` (rejoué : « cmd/levelup/
+  cmd_compact_passes_remplacement_windows.go »), vert après renommage. Motifs de deux tests adaptés
+  au nom `<nom>.halo_infinite.avant-…`.
+  Gate C.11 : `gofmt` vide ; `go vet ./cmd/levelup/ ./internal/migration/... ./internal/archlint/...`
+  0 ; `go test ./cmd/levelup/ ./internal/migration/... ./internal/archlint/...` 0 (3 ok) ;
+  `go test -tags=integration -p 1 -count=1 ./cmd/levelup/ ./internal/migration/...
+  ./internal/games/halo_infinite/migrations/...` 0 (3 ok) ; golangci-lint `--new-from-rev=34edf29af`
+  0 issue, idem `--build-tags=integration`.
 
 ## 3. Étape B — Lectures bornées aux matchs du joueur (Go)
 

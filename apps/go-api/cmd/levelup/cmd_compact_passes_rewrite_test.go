@@ -18,6 +18,7 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+	"time"
 
 	"levelup/go-api/internal/platform/duckdb"
 )
@@ -130,7 +131,7 @@ func TestReecriture_TiersRefuseDuDebutALaFin(t *testing.T) {
 		}
 		return nil
 	})
-	if err := reecrireFichier(context.Background(), path, ""); err != nil {
+	if err := reecrireFichier(context.Background(), "halo_infinite", path, ""); err != nil {
 		t.Fatalf("réécriture : %v", err)
 	}
 	if len(vues) != len(sousVerrou) {
@@ -155,7 +156,7 @@ func TestReecriture_JamaisSansBaseAuChemin(t *testing.T) {
 			}
 			return nil
 		})
-		if err := reecrireFichier(context.Background(), path, ""); err != nil {
+		if err := reecrireFichier(context.Background(), "halo_infinite", path, ""); err != nil {
 			t.Fatal(err)
 		}
 		if err := baseComplete(path, 3); err != nil {
@@ -177,7 +178,7 @@ func TestReecriture_JamaisSansBaseAuChemin(t *testing.T) {
 				}
 				return nil
 			})
-			if err := reecrireFichier(context.Background(), path, ""); !errors.Is(err, errArret) {
+			if err := reecrireFichier(context.Background(), "halo_infinite", path, ""); !errors.Is(err, errArret) {
 				t.Fatalf("attendu l'arrêt simulé, got %v", err)
 			}
 			if err := baseComplete(path, 3); err != nil {
@@ -207,7 +208,7 @@ func TestReecriture_TiersTientLaBaseAuRemplacement_Windows(t *testing.T) {
 		}
 		return nil
 	})
-	err := reecrireFichier(context.Background(), path, "")
+	err := reecrireFichier(context.Background(), "halo_infinite", path, "")
 	if liberer != nil {
 		liberer()
 	}
@@ -243,7 +244,7 @@ func TestReecriture_RemplacementSousVerrou_POSIX(t *testing.T) {
 		}
 		return nil
 	})
-	if err := reecrireFichier(context.Background(), path, ""); err != nil {
+	if err := reecrireFichier(context.Background(), "halo_infinite", path, ""); err != nil {
 		t.Fatal(err)
 	}
 	if !sousVerrou {
@@ -254,11 +255,10 @@ func TestReecriture_RemplacementSousVerrou_POSIX(t *testing.T) {
 	}
 }
 
-// TestReecriture_WALNonVideAuLancement : un processus tué avant son CHECKPOINT a laissé un WAL
-// non vide — refus d'entrée ; le WAL et la base sont intacts, et ses transactions ne sont pas
-// perdues (la ligne est servie dès que la base est rouverte normalement).
-func TestReecriture_WALNonVideAuLancement(t *testing.T) {
-	path := baseCompacteeDeTest(t)
+// laisserUnWAL : un processus « tué » avant son CHECKPOINT — une ligne (m9, x9) commitée dans le
+// `.wal` et absente du fichier principal. Rend l'état du WAL.
+func laisserUnWAL(t *testing.T, path string) os.FileInfo {
+	t.Helper()
 	db, err := sql.Open("duckdb", path)
 	if err != nil {
 		t.Fatal(err)
@@ -276,7 +276,17 @@ func TestReecriture_WALNonVideAuLancement(t *testing.T) {
 	if err != nil || fi.Size() == 0 {
 		t.Fatalf("fixture : WAL non vide attendu (%v)", err)
 	}
-	err = reecrireFichier(context.Background(), path, "")
+	return fi
+}
+
+// TestReecritureDirecte_WALApparuAvantLaReecriture_Refuse : l'étape de réécriture appelée SEULE
+// (ce qui se passe quand un WAL apparaît entre la compaction et la réécriture — la commande, elle,
+// rejoue un WAL présent au lancement : TestCompactPasses_WALNonVideAuLancement_RejoueEtVaAuBout)
+// refuse un WAL non vide ; WAL et base intacts, la ligne revient à la réouverture normale.
+func TestReecritureDirecte_WALApparuAvantLaReecriture_Refuse(t *testing.T) {
+	path := baseCompacteeDeTest(t)
+	fi := laisserUnWAL(t, path)
+	err := reecrireFichier(context.Background(), "halo_infinite", path, "")
 	if err == nil || !strings.Contains(err.Error(), "wal non vide") {
 		t.Fatalf("attendu un refus d'entrée sur le WAL, got %v", err)
 	}
@@ -334,10 +344,62 @@ func TestCopierFichier_EchecEnCoursDeCopieNeLaisseRien(t *testing.T) {
 		t.Fatal(err)
 	}
 	dest := t.TempDir()
-	if _, err := copierFichier(context.Background(), faux, dest, "avant-compaction"); err == nil {
+	if _, err := copierFichier(context.Background(), faux, dest, "halo_infinite", "avant-compaction"); err == nil {
 		t.Fatal("copie d'un dossier acceptée")
 	}
 	if s := fichiers(t, dest, "*"); len(s) != 0 {
 		t.Fatalf("copie partielle laissée : %v", s)
+	}
+}
+
+// TestCompactPasses_WALNonVideAuLancement_RejoueEtVaAuBout : par la COMMANDE complète, un WAL
+// laissé au lancement est rejoué par sa première ouverture (récupération normale de DuckDB, sans
+// perte), intégré à la sauvegarde et à la compaction ; la réécriture va au bout et la ligne du WAL
+// est dans la base réécrite.
+func TestCompactPasses_WALNonVideAuLancement_RejoueEtVaAuBout(t *testing.T) {
+	path := baseDeTest(t)
+	laisserUnWAL(t, path)
+	if err := compacterTitre(context.Background(), "halo_infinite", path,
+		compactPassesOptions{rewriteFile: true}); err != nil {
+		t.Fatalf("compaction + réécriture avec un WAL au lancement : %v", err)
+	}
+	if err := baseComplete(path, 4); err != nil {
+		t.Fatalf("la ligne du WAL n'est pas dans la base réécrite : %v", err)
+	}
+	if s := fichiers(t, filepath.Dir(path), "*avant-reecriture*"); len(s) != 1 {
+		t.Fatalf("sauvegarde d'avant réécriture : %v", s)
+	}
+}
+
+// TestReecriture_SauvegardePreexistanteJamaisTouchee : la cible de la sauvegarde existe déjà (la
+// sauvegarde d'un autre titre, même seconde, même `--backup-dir`) — refus AVANT l'ATTACH, le
+// fichier préexistant intact, la base intacte, aucun reste de cette exécution.
+func TestReecriture_SauvegardePreexistanteJamaisTouchee(t *testing.T) {
+	path := baseCompacteeDeTest(t)
+	fige := horlogeSauvegarde()
+	ancienne := horlogeSauvegarde
+	horlogeSauvegarde = func() time.Time { return fige }
+	defer func() { horlogeSauvegarde = ancienne }()
+	cible, err := cheminDeSauvegarde(path, "", "halo_infinite", "avant-reecriture")
+	if err != nil {
+		t.Fatal(err)
+	}
+	contenu := []byte("sauvegarde d'un autre titre")
+	if err := os.WriteFile(cible, contenu, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	err = reecrireFichier(context.Background(), "halo_infinite", path, "")
+	if got, errLecture := os.ReadFile(cible); errLecture != nil || string(got) != string(contenu) {
+		t.Fatalf("le fichier préexistant a été touché : %q, %v", got, errLecture)
+	}
+	if err == nil || !strings.Contains(err.Error(), "existe déjà") {
+		t.Fatalf("attendu un refus (cible préexistante), got %v", err)
+	}
+	if err := os.Remove(cible); err != nil {
+		t.Fatal(err)
+	}
+	aucunReste(t, path)
+	if err := baseComplete(path, 3); err != nil {
+		t.Fatal(err)
 	}
 }

@@ -22,8 +22,10 @@ package migration
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"log/slog"
+	"os"
 	"sort"
 	"strings"
 )
@@ -159,11 +161,19 @@ func clesTriees[V any](a, b map[string]V) []string {
 // aliasReecriture : le nom sous lequel le fichier neuf est attaché le temps de la copie.
 const aliasReecriture = "levelup_reecriture"
 
+// ErrCibleExiste : CopierBaseVers refuse une cible qui existe déjà — un ATTACH l'ouvrirait (la
+// sauvegarde d'un autre titre, par exemple) au lieu d'en créer une neuve (C.11).
+var ErrCibleExiste = errors.New("la cible existe déjà")
+
 // CopierBaseVers recopie la base ouverte (catalogue puis données) dans le fichier `cible`, qui
-// ne doit pas exister, puis le détache. Aucune écriture dans la base source.
+// ne doit pas exister (ErrCibleExiste, vérifié AVANT l'ATTACH), puis le détache. Aucune écriture
+// dans la base source.
 func CopierBaseVers(ctx context.Context, db *sql.DB, cible string) error {
 	if strings.ContainsAny(cible, "'\x00") {
 		return fmt.Errorf("réécriture: chemin cible refusé (%q)", cible)
+	}
+	if _, err := os.Lstat(cible); !os.IsNotExist(err) {
+		return fmt.Errorf("réécriture: %s: %w (le fichier n'est pas touché)", cible, ErrCibleExiste)
 	}
 	var source string
 	if err := db.QueryRowContext(ctx, `SELECT current_database()`).Scan(&source); err != nil {
