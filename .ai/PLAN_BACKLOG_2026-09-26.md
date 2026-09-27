@@ -890,30 +890,50 @@ niveau job, fusion dans `feat/v75`, suppression du worktree et de la branche.
 - [x] **B3.8** En-tête du harnais `psarepro` réécrit : véhicule de reproduction pour les index
   player restants.
   → `migration/psa_index_repro_test.go:13-24` (et la mention d'`indexcheck` `:158-159`).
-- [!] **B3.9** Vérification sur COPIE d'une vraie player DB, jamais l'original (copie faite
+- [x] **B3.9** Vérification sur COPIE d'une vraie player DB, jamais l'original (copie faite
   serveur principal arrêté, ce que le superviseur confirme avant). Migration puis `EnsurePlayerSchema` appliqués à la copie, par la CLI existante
   si elle migre une base désignée, sinon par un test d'intégration paramétré par une variable
   d'environnement (pas d'outil jetable). Attendu : `duckdb_indexes()` sans `idx_msr_*` ni index
   PSA, mêmes nombres de lignes, vues intactes.
-  → **Non faite : STOP sur la condition préalable du superviseur.** Aucun serveur ne tourne
-  (`Get-Process` vide, `:8000` sans réponse). Mais les QUATRE player DB de `halo_infinite`
-  ont un `stats.duckdb.wal` à côté d'elles (dernières écritures du 23/09). Aucune copie n'a
-  été faite.
+  → Fait le 2026-09-27, sur décision du superviseur : `halo_infinite/JGtm` avec son `.wal`
+  copié dans le même geste, et `halo_5/JGtm`, qui n'a pas de WAL.
+  - Contrôles faits avant chaque copie : aucun serveur, `:8000` muet.
+  - Après chaque copie : même taille, même date et même SHA-256 que l'original.
+  - Aucun original n'a été ouvert.
 
-  Véhicule prêt, car aucune CLI ne migre une base désignée :
-  `sync/schema_msr_views_test.go:207` `TestRetiredARTIndexes_RealPlayerDBCopy`, variable
-  `LEVELUP_B3_PLAYER_DB_COPY`, sauté sans elle.
-  - Il refuse tout chemin sous `data/titles/` et toute copie qui a un `.wal`.
-  - Il applique `RunForDB(player)` puis `EnsurePlayerSchema`.
-  - Il exige : plus aucun index retiré, mêmes lignes par table (hors `schema_migrations`),
-    mêmes vues avec les mêmes lignes.
+  Aucune CLI ne migre une base désignée ; le véhicule est donc un test,
+  `sync/schema_msr_views_test.go:220` `TestRetiredARTIndexes_RealPlayerDBCopy` (variable
+  `LEVELUP_B3_PLAYER_DB_COPY`, sauté sans elle).
+  - Il refuse tout chemin sous `data/titles/`.
+  - Il accepte un `.wal` copié avec la base, et journalise l'issue de son rejeu.
+  - Il applique `RunForDB(player)` puis `EnsurePlayerSchema` (`:170`).
+  - Il compare index, lignes par table (hors `schema_migrations`), vues et leurs lignes.
+  - Validé sur une base synthétique (`:240`) : rouge sur `82cd8871b`, vert après.
 
-  Validé sur une base antérieure au retrait fabriquée par `:230`
-  `…_SyntheticPreRetirementDB` : rouge sur `82cd8871b`, vert après.
-
-  Pour lever le blocage : faire rejouer son WAL à une base de `halo_infinite` (ouverture puis
-  fermeture propres par le serveur), ou autoriser `halo_5/JGtm`, sans WAL. Décision du
-  superviseur.
+  - **`halo_infinite/JGtm`** (log `B3-9-copie-hi.log`, `EXIT_COPIE_HI=0`) :
+    - WAL (745 o, 2026-09-23 19:56:45) : **rejeu RÉUSSI**, aucune erreur ART.
+    - Avant : `idx_msr_match_lookup`, `idx_msr_rating_type` et `idx_msr_playlist` présents
+      (les index PSA étaient déjà partis) ; 34 tables, 8 vues ; `match_skill_rank` 33 702
+      lignes, `personal_score_awards` 3 971, `match_skill_rank_latest` 1 152,
+      `match_skill_rank_latest_by_type` 2 287.
+    - Migration : une seule étape appliquée, `drop_msr_secondary_art_indexes_v1`.
+    - Après : aucun index retiré ; 34 tables et 8 vues, mêmes lignes partout.
+  - **`halo_5/JGtm`** (log `B3-9-copie-h5.log`, `EXIT_COPIE_H5=1`) :
+    - Avant : les six index retirés présents ; 32 tables, 8 vues ; `match_skill_rank` 7 657,
+      `personal_score_awards` 234, `match_skill_rank_latest` 1 780,
+      `match_skill_rank_latest_by_type` 3 924.
+    - Migration : 12 étapes appliquées ; la base avait du retard sur la chaîne (DB-20).
+    - Après : **aucun index retiré** ; `match_skill_rank`, `personal_score_awards` et les
+      8 vues inchangés.
+    - Deux écarts, qui ne viennent PAS de B3 :
+      - `player_match_enrichment` passe de 56 365 à 57 763 lignes (INSERT append-only de
+        `player_dominance_flag_reset_none_v1`) ;
+      - `arc_titles`, vide, est supprimée (`drop_arc_titles`).
+    - Preuve de l'attribution : une seconde copie (`h5-avant`, identique à l'original) passée
+      au code d'avant B3 (`82cd8871b`, worktree jetable retiré ensuite ; log
+      `B3-9-copie-h5-code-avant.log`) donne les MÊMES deux écarts. Elle applique 11 étapes,
+      et les trois `idx_msr_*` y restent. La seule différence imputable à B3 est donc le
+      retrait des index.
 
 **STOP D-4 levé.** Le STOP posé à B3.1 sur le critère d'origine a été levé par l'amendement de
 D-4 (§2, commit `99b241970`). Le critère relatif est tenu (B3.1), donc B3.2 à B3.9 reprennent.
@@ -1200,6 +1220,23 @@ plus B5.8.
 - DB-18 (B3.9) : aucune CLI ne migre une player DB désignée (`applyMigrationsOnDB` n'est
   exposée par aucune sous-commande prenant un chemin). Le véhicule de B3.9 est donc un test
   paramétré par `LEVELUP_B3_PLAYER_DB_COPY`. Non traité.
+- DB-19 (B3.9, 2026-09-27) : le rejeu du WAL du 23/09 (`halo_infinite/JGtm`, 745 o)
+  RÉUSSIT sur une copie, sans erreur ART. Le prochain démarrage du serveur rejouera ce même
+  WAL sur l'original ; la copie ne montre aucun obstacle. Les trois autres player DB
+  `halo_infinite` (DB-17) n'ont pas été essayées.
+- DB-20 (B3.9) : la player DB `halo_5/JGtm` avait 12 étapes de retard sur la chaîne player.
+  Parmi elles : `player_msr_view_latest_by_type_v1` (13/09), `drop_arc_titles`,
+  `player_dominance_flag_reset_none_v1`, `create_personal_score_awards_player_v1`,
+  `drop_psa_*` et les DEFAULT UTC. Cela confirme que les player DB Halo 5 sont hors de la
+  boucle de migration du boot (commentaire de `sync/schema_msr_views_test.go`) : pour elles,
+  seul `EnsurePlayerSchema` agit. Le retrait des index MSR et PSA les couvre donc par le
+  soin (B3.4), pas par le step. Autre point : le véhicule migre par `RunForDB`, qui force
+  le slug par défaut. Pour le type player, `halo_5` délègue aux étapes de `halo_infinite`, le
+  résultat est donc le même. Non traité.
+- DB-21 (B3.9) : `match_skill_rank` de `halo_infinite/JGtm` compte 33 702 lignes, 2,8 fois
+  les 12 000 de la mesure D-4. Le critère relatif compare deux plans séquentiels qui croissent
+  pareil avec le volume, mais il n'a pas été mesuré à ce volume. F4 (seul lecteur qui prenait
+  l'index) y était plus lent AVEC l'index. Non traité.
 
 ---
 
@@ -1502,3 +1539,36 @@ plus B5.8.
   - `sync/squash_convergence_test.go:210-214` : commentaire qui disait les index MSR
     « recréés par playerSchemaSQL » corrigé ;
   - `purge.go` : commentaires du scan forcé datés (index retiré, garde conservée).
+
+**[2026-09-27] B3 — baseline de tests et B3.9 (décisions du superviseur).**
+
+- Baseline (le run CI `36278286217` rougissait au job « Go Coverage + Baseline ») :
+  - retrait de `.ai/baselines/tests_pre_migration.jsonl` des 12 tests de
+    `internal/sync` supprimés par B2 : `TestSplitSQL_*` ×5, `TestTrimSpace_*` ×4,
+    `TestTruncate_*` ×3 ;
+  - 48 lignes (4 par test), 60 878 → 60 830 lignes, diff limité à ces 48 suppressions ;
+  - les homonymes de `internal/migration` et `internal/notify` restent.
+  - Balayage des 9 693 paires (paquet, test) de la baseline contre les `func Test…` du
+    code : ces 12 sont les SEULES absentes.
+  - Les tests supprimés par B3 sont postérieurs à la capture du 26/06 et absents de la
+    baseline.
+  - Preuve : `check_test_baseline.sh tests --from-jsonl` sur un run
+    `go test -json -tags=integration -p 1` de 7 paquets (`EXIT_BASELINE_JSONL=0`), baseline
+    restreinte à ces paquets dans un banc temporaire.
+    - Avant retrait : `EXIT_BASELINE_AVANT=1`, « internal/sync : 12/850 absents ».
+    - Après retrait : `EXIT_BASELINE_APRES=0`, « Tous les tests baseline présents ».
+    - Logs `B3-baseline-check-avant.log` et `B3-baseline-check-apres.log`.
+  - Commit dédié `e1e4232a2`.
+- B3.9 : véhicule assoupli (WAL de la copie accepté, issue du rejeu journalisée) ; deux
+  copies traitées, plus une copie de contrôle passée au code d'avant (détail dans la case
+  B3.9).
+  - Rejeu du WAL `halo_infinite` : réussi (DB-19).
+  - Vérifications : `EXIT_SYNC_FINAL=0` (synthétique vert, réelle sautée sans variable),
+    `EXIT_VET_SYNC=0`, `EXIT_LINT=0`.
+- Écarts :
+  - le passage `halo_5` rougit par construction : le véhicule exige les mêmes lignes
+    partout, et la base avait 12 étapes de retard. Les deux écarts viennent d'étapes hors B3,
+    et la copie de contrôle au code d'avant le prouve. Le véhicule n'a pas été relâché.
+  - Une copie de plus que la consigne : `h5-avant`, identique à l'original, faite avec les
+    mêmes contrôles, pour prouver l'attribution. Les copies restent sous
+    `$env:TEMP\backlog-b3\` pour contre-vérification.

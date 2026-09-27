@@ -91,7 +91,9 @@ func keysOf(m map[string]string) []string {
 // lot B3.9) ────────────────────────────────────────────────────────────────────────────
 //
 // envPlayerDBCopy désigne une COPIE de player DB, JAMAIS l'original : copie faite serveur
-// arrêté, sans fichier .wal à côté de l'original, hors de l'arborescence data/titles/.
+// arrêté, hors de l'arborescence data/titles/. Un fichier .wal copié AVEC la base, dans le
+// même geste, est accepté : son rejeu se fait dans la copie, à l'ouverture, et son issue
+// est journalisée (réussi, ou l'erreur rendue — par exemple ART #23645).
 // Sans la variable, le test est sauté (gates et CI). Exemple, depuis apps/go-api :
 //
 //	$env:LEVELUP_B3_PLAYER_DB_COPY = "$env:TEMP\backlog-b3\stats.duckdb"
@@ -167,11 +169,22 @@ func queryNames(t *testing.T, db *sql.DB, query string) []string {
 // table, mêmes vues avec les mêmes lignes.
 func verifyRetiredARTIndexConvergence(t *testing.T, path string) {
 	t.Helper()
+	wal, walErr := os.Stat(path + ".wal")
 	db, err := sql.Open("duckdb", path)
 	if err != nil {
 		t.Fatalf("open %s : %v", path, err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
+	// La première connexion ouvre le fichier et REJOUE le WAL présent à côté.
+	if err := db.PingContext(t.Context()); err != nil {
+		t.Fatalf("ouverture de %s (rejeu du WAL : %v) ÉCHOUÉE : %v", path, walErr == nil, err)
+	}
+	if walErr == nil {
+		t.Logf("WAL présent à l'ouverture (%d o, %s) : rejeu RÉUSSI", wal.Size(),
+			wal.ModTime().Format("2006-01-02 15:04:05"))
+	} else {
+		t.Logf("aucun WAL à l'ouverture")
+	}
 
 	before := inventoryPlayerDB(t, db)
 	t.Logf("AVANT : index retirés présents %v ; %d tables, %d vues ; match_skill_rank=%d, "+
@@ -216,9 +229,6 @@ func TestRetiredARTIndexes_RealPlayerDBCopy(t *testing.T) {
 	if strings.Contains(strings.ToLower(filepath.ToSlash(abs)), "/data/titles/") {
 		t.Fatalf("REFUS : %s est dans l'arborescence data/titles/ — ce test écrit dans la base, "+
 			"il ne s'applique qu'à une COPIE", abs)
-	}
-	if _, err := os.Stat(abs + ".wal"); err == nil {
-		t.Fatalf("REFUS : %s.wal existe — la copie n'est pas cohérente sans son WAL", abs)
 	}
 	verifyRetiredARTIndexConvergence(t, abs)
 }
