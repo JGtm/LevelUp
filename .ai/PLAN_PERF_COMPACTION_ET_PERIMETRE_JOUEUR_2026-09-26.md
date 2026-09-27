@@ -92,7 +92,11 @@ Décisions :
   index secondaires (posés après le RENAME) et leur seule source a disparu avec la table ; les
   reposer exigerait de dupliquer le DDL d'index des migrations ou de le faire voyager dans un
   commentaire de catalogue, pour un état que l'échange transactionnel ne produit pas. L'exploitant
-  remet la sauvegarde `*.avant-compaction-*`. La conversion append-only garde `recoverOrphan`.
+  remet la sauvegarde `*.avant-compaction-*` prise par l'exécution INTERROMPUE (la plus récente
+  antérieure à l'orphelin) ; les écritures postérieures à cette sauvegarde sont perdues. Corrigé en
+  C.10 : ce refus passe AVANT toute sauvegarde (et avant les migrations), en dry-run comme pour de
+  bon — auparavant la sauvegarde de l'exécution courante copiait l'état déjà orphelin. La
+  conversion append-only garde `recoverOrphan`.
 - DC.4 **Exécution** : commande CLI `levelup` (placement cohérent avec les commandes existantes de
   `cmd/levelup/`, nom à justifier au rapport), par titre via `PathResolver` et le registre des
   titres (aucun `slug == ...`), écrivain exclusif par le bail (ADR 0013), REFUS si le serveur ou un
@@ -118,6 +122,26 @@ Décisions :
   l'échange, et le seul rename reste dans le dossier de la base (`<base>.reecriture` y est
   écrit) — ni recopie après coup, ni refus : la combinaison marche sur tout volume, et la
   sauvegarde existe avant que la base ne change.
+  **Amendé de nouveau le 2026-09-26 (C.10, seconde revue ; méthode décidée par le superviseur,
+  VOIE A)** : la vérification « inchangée » (taille + date) de C.8 ne voyait pas un tiers qui
+  écrit dans le `.wal` puis meurt avant son CHECKPOINT, et l'ouverture « libre » REJOUAIT ce WAL
+  étranger avant le remplacement par la copie d'avant (P1). Nouvelle méthode : UNE connexion en
+  écriture TIENT le verrou DuckDB de la base du début à la fin ; elle fait le CHECKPOINT, la copie
+  vers le fichier neuf et la SAUVEGARDE par `COPY FROM DATABASE` (lire les octets d'un fichier
+  tenu est impossible sous Windows, mesuré), les inventaires des deux copies se font sous ce
+  verrou ; les vérifications « inchangée » et « libre » disparaissent avec leur code. Un `.wal`
+  non vide au lancement est refusé d'entrée. Remplacement par un point de variation
+  (`cmd_compact_passes_remplacement_{windows,other}.go`) : POSIX — rename PENDANT que la connexion
+  est ouverte, puis fermeture ; Windows — un fichier tenu ne s'y remplace pas (mesuré : « Accès
+  refusé ») : fermeture puis rename IMMÉDIAT, sans travail entre les deux. Pourquoi la voie A ne
+  rouvre aucune fenêtre de perte sous Windows : un tiers qui ouvre entre la fermeture et le rename
+  TIENT la base au moment du rename, le rename échoue, refus propre (fichier neuf retiré, base
+  intacte, le tiers continue sur son fichier) ; un tiers qui ouvre après le rename ouvre le fichier
+  neuf ; seule borne théorique, nommée dans la doc : un tiers qui ouvrirait, écrirait, ferait son
+  CHECKPOINT et fermerait ENTIÈREMENT dans ces quelques microsecondes. La voie C (refuser
+  `--rewrite-file` sous Windows) est écartée : l'utilisateur veut réduire sa base locale, sous
+  Windows. Toute copie partielle (sauvegarde de la compaction ou de la réécriture, fichier neuf)
+  est retirée sur erreur, journalisée.
 - DC.6 **Pas d'automatisme** : pas de compaction dans le post-sync ni au boot (elle exige
   l'écrivain exclusif et le serveur arrêté). C'est une opération d'entretien, documentée comme
   telle, à jouer après chaque campagne de redécodage (recuisson, backfill killsource).
@@ -162,6 +186,9 @@ Items :
       retiré sur toute erreur ; tests des trois cas rouges sur l'ancien code puis verts — Journal C
 - [x] C.9 (revue L6, 2026-09-26) `verifierApresEchange` verrouillée par des tests qui produisent
       les écarts ; orphelin de compaction REFUSÉ (les index secondaires seraient perdus) — Journal C
+- [x] C.10 (seconde revue, 2026-09-26) `--rewrite-file` sous verrou TENU du début à la fin (voie A),
+      WAL étranger refusé d'entrée, sauvegardes partielles retirées, orphelin refusé avant toute
+      sauvegarde — Journal C
 
 Gate C (depuis `apps/go-api`) : `gofmt -l ./internal ./cmd` vide ; `go build ./...` ; `go vet
 ./...` ; `go test ./...` ; `go test -tags=integration -p 1 ./...` (code de sortie 0 vérifié, pas
@@ -424,6 +451,49 @@ Journal C (2026-09-26, exécuteur Opus, worktree `LevelUp-wt-perf-perimetre`, ba
   `go test -tags=integration -p 1 -count=1 ./cmd/levelup/ ./internal/migration/...
   ./internal/games/halo_infinite/migrations/...` 0 (3 ok) ; golangci-lint `--new-from-rev=34edf29af`
   0 issue, idem `--build-tags=integration`.
+- **C.10 — `--rewrite-file` sous verrou tenu** (seconde revue : un P1, deux P2 ; méthode décidée
+  par le superviseur, voie A, DC.5 amendé de nouveau). Mesures Windows préalables (sonde retirée),
+  NOTRE connexion DuckDB tenant la base après CHECKPOINT : lecture des octets du fichier ÉCHOUE
+  (« utilisé par un autre processus ») ; `os.Rename(neuf, base)` ÉCHOUE (« Accès refusé ») ; le
+  même rename après fermeture réussit. Code : `cmd_compact_passes_rewrite.go` (une connexion
+  `r.source` tient la base : CHECKPOINT, inventaire, `CopierBaseVers` vers le fichier neuf puis
+  vers la sauvegarde, inventaire des deux copies relues seules, sous le verrou ; refus d'entrée
+  d'un `.wal` non vide ; `abandonner` ferme, retire fichier neuf et sauvegarde, journalise ; une
+  erreur APRÈS le remplacement ne retire rien), `cmd_compact_passes_remplacement_windows.go`
+  (fermeture puis rename immédiat, refus si le rename échoue) et `..._other.go` (rename sous
+  verrou puis fermeture). Retirés avec leur code (zéro code mort) : `etatFichier`,
+  `lireEtatFichier`, `verifierSourceInchangee`, `verifierSourceLibre`, `echanger`. P2 :
+  `copierFichier` (sauvegarde de la compaction) retire sa cible sur toute erreur après sa création
+  (journalisé), `cheminDeSauvegarde` extrait ; `migration.VerifierAucunOrphelin` appelée par la
+  commande AVANT les migrations et la sauvegarde ; message et commentaire de `refuserOrphelin`
+  corrigés (sauvegarde de l'exécution interrompue, écritures postérieures perdues). Tests
+  (`cmd_compact_passes_rewrite_test.go`, `cmd_compact_passes_test.go`) : AJOUTÉS
+  `TestReecriture_TiersRefuseDuDebutALaFin` (processus auxiliaire `TestAideEssayerLaBase` à chacune
+  des quatre étapes sous verrou), `TestReecriture_TiersTientLaBaseAuRemplacement_Windows`,
+  `TestReecriture_RemplacementSousVerrou_POSIX` (`t.Skip` sous Windows, raison écrite : prouvé par
+  la CI Linux seulement), `TestReecriture_WALNonVideAuLancement` (WAL laissé par
+  `disable_checkpoint_on_shutdown` : refus, WAL intact, la ligne revient à la réouverture),
+  `TestCopierFichier_EchecEnCoursDeCopieNeLaisseRien` (la « base » est un dossier : la lecture
+  échoue après la création de la cible), `TestCompactPasses_OrphelinRefuseAvantTouteSauvegarde`
+  (réel, dry-run, `--rewrite-file`) ; GARDÉS et adaptés `TestReecriture_JamaisSansBaseAuChemin`
+  (étapes observées puis arrêt à chacune, aucun WAL resté à côté de la base réécrite) et
+  `TestReecriture_SauvegardeSurUnAutreVolume` ; RETIRÉS (leur objet disparaît avec les
+  vérifications) `TestReecriture_SourceModifieeApresLaCopie` et
+  `TestReecriture_SourceTenueAvantLEchange` — tests de ce lot, absents de la baseline.
+  Démonstration sur le code de C.9 (instrumenté des seuls points d'observation et de la signature
+  de `copierFichier`) : ROUGES — `TiersRefuseDuDebutALaFin` (un tiers ouvre la base aux quatre
+  étapes), `TiersTientLaBaseAuRemplacement_Windows` (got <nil> : le point `apres-fermeture` n'existe
+  pas, l'échange se fait — comportement nouveau, le C.9 refusait aussi par sa vérification
+  « libre » dans ce cas), `WALNonVideAuLancement` (got <nil>), `CopierFichier_EchecEnCours…`
+  (copie partielle laissée), `OrphelinRefuseAvantTouteSauvegarde` (« sauvegarde prise malgré
+  l'orphelin ») ; verts sur C.9 : `JamaisSansBaseAuChemin` et `SauvegardeSurUnAutreVolume`
+  (conservés, déjà acquis en C.8). Nouveau code : tous verts sous Windows, le test POSIX saute.
+  Limites : la variante `_other.go` ne compile ni ne se teste sur ce poste (pas de chaîne cgo
+  Linux) : compilation, lint et `TestReecriture_RemplacementSousVerrou_POSIX` relèvent de la CI.
+  Gate C.10 : `gofmt` vide ; `go vet` 0 ; `go test ./cmd/levelup/ ./internal/migration/...` 0 ;
+  `go test -tags=integration -p 1 -count=1 ./cmd/levelup/ ./internal/migration/...
+  ./internal/games/halo_infinite/migrations/...` 0 (3 ok) ; golangci-lint `--new-from-rev=34edf29af`
+  0 issue, idem `--build-tags=integration` (lint sous GOOS=windows).
 
 ## 3. Étape B — Lectures bornées aux matchs du joueur (Go)
 

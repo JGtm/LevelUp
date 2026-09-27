@@ -182,7 +182,7 @@ func TestCopierFichier_RefuseUnWALNonVide(t *testing.T) {
 	if err := os.WriteFile(path+".wal", []byte("wal"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := copierFichier(path, "", "avant-compaction"); err == nil {
+	if _, err := copierFichier(context.Background(), path, "", "avant-compaction"); err == nil {
 		t.Fatal("copie acceptée avec un WAL non vide")
 	}
 }
@@ -257,6 +257,39 @@ func tenirLaBase(t *testing.T, path string) func() {
 		}
 		if err := aux.Wait(); err != nil {
 			t.Errorf("processus auxiliaire : %v", err)
+		}
+	}
+}
+
+// TestCompactPasses_OrphelinRefuseAvantTouteSauvegarde : une table du registre absente et sa
+// `__compact` orpheline — la commande refuse AVANT de sauvegarder (sinon elle copierait l'état
+// déjà orphelin et masquerait la bonne sauvegarde), en dry-run comme pour de bon, et le message
+// renvoie à la sauvegarde antérieure à l'interruption.
+func TestCompactPasses_OrphelinRefuseAvantTouteSauvegarde(t *testing.T) {
+	path := baseDeTest(t)
+	h, err := duckdb.OpenReadWrite(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, q := range []string{
+		`CREATE TABLE match_bomb_stats__compact AS SELECT * FROM match_bomb_stats`,
+		`DROP TABLE match_bomb_stats`,
+	} {
+		if _, err := h.SQLDb().Exec(q); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := h.Close(); err != nil {
+		t.Fatal(err)
+	}
+	for _, o := range []compactPassesOptions{{}, {dryRun: true}, {rewriteFile: true}} {
+		err := compacterTitre(context.Background(), "halo_infinite", path, o)
+		if s := fichiers(t, filepath.Dir(path), "*avant-*"); len(s) != 0 {
+			t.Fatalf("options %+v : sauvegarde prise malgré l'orphelin : %v", o, s)
+		}
+		if err == nil || !strings.Contains(err.Error(), "orpheline") ||
+			!strings.Contains(err.Error(), "ANTÉRIEURE") {
+			t.Fatalf("options %+v : attendu le refus de l'orpheline, got %v", o, err)
 		}
 	}
 }

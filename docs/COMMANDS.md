@@ -605,12 +605,20 @@ go run ./cmd/levelup compact-passes --backup-dir D:\backups  # where the backups
 - **`--rewrite-file`**: DuckDB reuses freed blocks but never shrinks a file. The option copies
   the DB into a new file (`COPY FROM DATABASE`), re-reads BOTH files alone and swaps them only if
   the catalog (tables, views, indexes, sequences with their next value, macros, types), every
-  table's row count and every compacted view's fingerprint are identical. The old file is first
-  COPIED to `<name>.avant-reecriture-<UTC>.duckdb` (in `--backup-dir`, any volume: both backups
-  are copies, never moves); then, only if the DB has not changed since the copy (size and
-  modification time) and no other process holds it, ONE atomic rename replaces it: the DB path
-  always holds a complete database, whatever the moment the command stops. Otherwise it refuses
-  and removes its temporary file. Measured on a copy: 1 264 MiB -> 351 MiB.
+  table's row count and every compacted view's fingerprint are identical. The command holds the
+  DuckDB lock of the DB from start to finish (no other process can open it meanwhile): one
+  connection runs the `CHECKPOINT`, the copy into the new file and the backup of the old one
+  (`<name>.avant-reecriture-<UTC>.duckdb`, written by `COPY FROM DATABASE` into `--backup-dir`,
+  any volume — the bytes of a file DuckDB holds cannot be read on Windows), and both copies are
+  checked under that lock. Then ONE rename puts the new file in place — the DB path always holds a
+  complete database, whatever the moment the command stops. On Linux the rename happens while the
+  connection is still open; on Windows, which refuses to replace a held file, the connection is
+  closed and the rename follows at once: a process that opened the DB in between still holds it,
+  the rename fails and the command refuses, DB untouched. The only theoretical loss is a process
+  that would open, write, checkpoint and close ENTIRELY within those few microseconds. A non-empty
+  `.wal` next to the DB at launch (a process killed before its checkpoint) is refused: open the DB
+  once to replay it. On any error the temporary file and the backup are removed. Measured on a
+  copy: 1 264 MiB -> 351 MiB.
 - Delete the backups by hand once the app has been checked.
 
 ### Media paths migration (one-shot, standalone binary)

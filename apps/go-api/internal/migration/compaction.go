@@ -318,8 +318,13 @@ func ddlDesIndex(ctx context.Context, q lecteurSQL, table string) ([]string, err
 // elle. Les reposer exigerait de recopier le DDL d'index des migrations dans le registre, ou de le
 // faire voyager dans un commentaire de catalogue — deux surfaces nouvelles pour un état que cette
 // commande ne produit pas. Renommer sans eux perdrait les index pour de bon (`CREATE INDEX IF NOT
-// EXISTS` d'une migration déjà appliquée ne rejoue jamais). La commande a pris une sauvegarde
-// octet pour octet avant de compacter : c'est elle qu'on remet en place.
+// EXISTS` d'une migration déjà appliquée ne rejoue jamais).
+//
+// LA SAUVEGARDE À REMETTRE est celle que l'exécution INTERROMPUE a prise avant de compacter (la
+// plus récente `*.avant-compaction-*` ANTÉRIEURE à l'orphelin) : les écritures postérieures à
+// cette sauvegarde sont perdues. Ce refus passe AVANT toute sauvegarde de l'exécution courante
+// (VerifierAucunOrphelin, appelée par la commande avant sa copie) — sinon celle-ci copierait
+// l'état déjà orphelin, 1,2 Gio de plus à chaque tentative, et masquerait la bonne.
 func refuserOrphelin(ctx context.Context, db *sql.DB, table string) error {
 	hasMain, err := tableExists(db, table)
 	if err != nil || hasMain {
@@ -334,5 +339,19 @@ func refuserOrphelin(ctx context.Context, db *sql.DB, table string) error {
 		"table", table, "orpheline", orphelin)
 	return fmt.Errorf("compaction %s: table absente et %s orpheline (échange interrompu hors de "+
 		"cette commande) : récupération REFUSÉE, elle perdrait les index secondaires — remettre en "+
-		"place la sauvegarde `*.avant-compaction-*.duckdb`, serveur arrêté", table, orphelin)
+		"place, serveur arrêté, la sauvegarde `*.avant-compaction-*.duckdb` prise par l'exécution "+
+		"interrompue (la plus récente ANTÉRIEURE à l'interruption) ; les écritures postérieures à "+
+		"cette sauvegarde seront perdues", table, orphelin)
+}
+
+// VerifierAucunOrphelin refuse une base où une table du registre est absente et sa table de
+// construction présente (refuserOrphelin). À appeler AVANT toute sauvegarde et avant les
+// migrations (une migration pourrait recréer la table vide et masquer l'orphelin).
+func VerifierAucunOrphelin(ctx context.Context, db *sql.DB) error {
+	for _, c := range tablesCompactables {
+		if err := refuserOrphelin(ctx, db, c.Table); err != nil {
+			return err
+		}
+	}
+	return nil
 }

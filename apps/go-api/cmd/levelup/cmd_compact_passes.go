@@ -159,7 +159,7 @@ func compacterSousVerrou(ctx context.Context, slug, path string, o compactPasses
 	if err := preparerPourSauvegarde(ctx, slug, path); err != nil {
 		return err
 	}
-	sauvegarde, err := copierFichier(path, o.backupDir, "avant-compaction")
+	sauvegarde, err := copierFichier(ctx, path, o.backupDir, "avant-compaction")
 	if err != nil {
 		return fmt.Errorf("sauvegarde préalable impossible, rien n'est compacté : %w", err)
 	}
@@ -184,6 +184,10 @@ func preparerPourSauvegarde(ctx context.Context, slug, path string) error {
 	}
 	defer closeLogged(ctx, handle, path)
 	db := handle.SQLDb()
+	// Un orphelin se refuse AVANT les migrations et AVANT la sauvegarde (migration.refuserOrphelin).
+	if err := migration.VerifierAucunOrphelin(ctx, db); err != nil {
+		return err
+	}
 	// Les tables et vues du registre doivent être à jour AVANT d'être lues : cette commande tourne
 	// serveur arrêté, rien n'a joué les migrations pour elle.
 	if err := migration.RunForTitleDB(db, slug, migration.TargetShared); err != nil {
@@ -201,13 +205,9 @@ func closeLogged(ctx context.Context, handle *duckdb.DB, path string) {
 	}
 }
 
-// copierFichier copie `path` octet pour octet sous `<dossier>/<nom>.<etiquette>-<horodatage>.duckdb`
-// (dossier de la base si `dossier` est vide) et rend le chemin écrit. Refus si une base porte
-// un WAL non vide (le CHECKPOINT qui précède doit l'avoir vidé) ou si la cible existe.
-func copierFichier(path, dossier, etiquette string) (string, error) {
-	if fi, err := os.Stat(path + ".wal"); err == nil && fi.Size() > 0 {
-		return "", fmt.Errorf("%s.wal non vide (%d octets) : la copie ne serait pas la base entière", path, fi.Size())
-	}
+// cheminDeSauvegarde rend `<dossier>/<nom>.<etiquette>-<horodatage UTC><ext>` (dossier de la base
+// si `dossier` est vide), dossier créé au besoin.
+func cheminDeSauvegarde(path, dossier, etiquette string) (string, error) {
 	if dossier == "" {
 		dossier = filepath.Dir(path)
 	}
@@ -215,8 +215,22 @@ func copierFichier(path, dossier, etiquette string) (string, error) {
 		return "", err
 	}
 	nom := strings.TrimSuffix(filepath.Base(path), filepath.Ext(path))
-	cible := filepath.Join(dossier, fmt.Sprintf("%s.%s-%s%s", nom, etiquette,
-		time.Now().UTC().Format("20060102T150405Z"), filepath.Ext(path)))
+	return filepath.Join(dossier, fmt.Sprintf("%s.%s-%s%s", nom, etiquette,
+		time.Now().UTC().Format("20060102T150405Z"), filepath.Ext(path))), nil
+}
+
+// copierFichier copie `path` octet pour octet sous cheminDeSauvegarde et rend le chemin écrit.
+// Refus si la base porte un WAL non vide (le CHECKPOINT qui précède doit l'avoir vidé). Une copie
+// qui échoue en cours de route (disque plein, Sync) est RETIRÉE : un fichier tronqué ne reste
+// jamais sous un nom de sauvegarde valide.
+func copierFichier(ctx context.Context, path, dossier, etiquette string) (string, error) {
+	if fi, err := os.Stat(path + ".wal"); err == nil && fi.Size() > 0 {
+		return "", fmt.Errorf("%s.wal non vide (%d octets) : la copie ne serait pas la base entière", path, fi.Size())
+	}
+	cible, err := cheminDeSauvegarde(path, dossier, etiquette)
+	if err != nil {
+		return "", err
+	}
 	src, err := os.Open(path)
 	if err != nil {
 		return "", err
@@ -231,7 +245,10 @@ func copierFichier(path, dossier, etiquette string) (string, error) {
 		errCopie = dst.Sync()
 	}
 	if err := errors.Join(errCopie, dst.Close()); err != nil {
-		return "", fmt.Errorf("copie vers %s: %w", cible, err)
+		errRetrait := retirerFichiers(cible)
+		slog.ErrorContext(ctx, "sauvegarde en échec, copie partielle retirée", "cible", cible,
+			"err", err, "err_retrait", errRetrait)
+		return "", errors.Join(fmt.Errorf("copie vers %s: %w", cible, err), errRetrait)
 	}
 	return cible, nil
 }

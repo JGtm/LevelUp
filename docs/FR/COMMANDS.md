@@ -632,12 +632,20 @@ go run ./cmd/levelup compact-passes --backup-dir D:\sauvegardes  # dossier des s
   L'option recopie la base dans un fichier neuf (`COPY FROM DATABASE`), relit les DEUX fichiers
   seuls et ne les échange que si le catalogue (tables, vues, index, séquences avec leur prochaine
   valeur, macros, types), le compte de chaque table et l'empreinte de chaque vue compactée sont
-  identiques. L'ancien fichier est d'abord COPIÉ sous `<nom>.avant-reecriture-<UTC>.duckdb` (dans
-  `--backup-dir`, n'importe quel volume : les deux sauvegardes sont des copies, jamais des
-  déplacements) ; puis, seulement si la base n'a pas changé depuis la copie (taille et date de
-  modification) et qu'aucun autre processus ne la tient, UN rename atomique la remplace : le chemin
-  de la base porte toujours une base complète, quel que soit l'instant où la commande s'arrête.
-  Sinon elle refuse et retire son fichier temporaire. Mesuré sur une copie : 1 264 Mio -> 351 Mio.
+  identiques. La commande TIENT le verrou DuckDB de la base du début à la fin (aucun autre
+  processus ne peut l'ouvrir entre-temps) : une seule connexion fait le `CHECKPOINT`, la copie vers
+  le fichier neuf et la sauvegarde de l'ancien (`<nom>.avant-reecriture-<UTC>.duckdb`, écrite par
+  `COPY FROM DATABASE` dans `--backup-dir`, n'importe quel volume — sous Windows, les octets d'un
+  fichier tenu par DuckDB ne se lisent pas), et les deux copies sont vérifiées sous ce verrou.
+  Puis UN rename met le fichier neuf en place — le chemin de la base porte toujours une base
+  complète, quel que soit l'instant où la commande s'arrête. Sous Linux, le rename a lieu pendant
+  que la connexion est encore ouverte ; sous Windows, qui refuse de remplacer un fichier tenu, la
+  connexion est fermée et le rename suit aussitôt : un processus qui a ouvert la base entre les
+  deux la tient encore, le rename échoue et la commande refuse, base intacte. Seule perte
+  théorique : un processus qui ouvrirait, écrirait, ferait son checkpoint et fermerait ENTIÈREMENT
+  en ces quelques microsecondes. Un `.wal` non vide à côté de la base au lancement (processus tué
+  avant son checkpoint) est refusé : ouvrir la base une fois pour le rejouer. Sur toute erreur, le
+  fichier temporaire et la sauvegarde sont retirés. Mesuré sur une copie : 1 264 Mio -> 351 Mio.
 - Supprimer les sauvegardes à la main une fois l'application vérifiée.
 
 ### Migration des chemins média (one-shot, binaire autonome)

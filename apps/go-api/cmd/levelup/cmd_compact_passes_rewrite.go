@@ -1,33 +1,37 @@
 package main
 
-// cmd_compact_passes_rewrite.go — `compact-passes --rewrite-file` (DC.5, amendé en C.8) : rendre
-// au disque la place que la compaction a libérée.
+// cmd_compact_passes_rewrite.go — `compact-passes --rewrite-file` (DC.5, amendé en C.8 puis C.10) :
+// rendre au disque la place que la compaction a libérée.
 //
 // DuckDB réutilise les blocs libérés mais ne rétrécit jamais un fichier : seule une recopie dans
 // un fichier NEUF (migration.CopierBaseVers, COPY FROM DATABASE) le réduit. L'échange n'a lieu
-// que si le fichier neuf, rouvert SEUL, porte exactement le même inventaire que l'ancien —
-// catalogue (tables, vues, index, séquences avec leur prochaine valeur, macros, types), compte
-// de chaque table, empreinte de chaque vue compactée.
+// que si le fichier neuf porte exactement le même inventaire que la base — catalogue (tables,
+// vues, index, séquences avec leur prochaine valeur, macros, types), compte de chaque table,
+// empreinte de chaque vue compactée.
 //
-// LES TROIS RÈGLES DE L'ÉCHANGE (revue adversariale L1 du 2026-09-26, C.8) :
-//   - JAMAIS de fenêtre sans fichier au chemin de la base : l'ancien fichier n'est pas déplacé,
-//     il est COPIÉ (sauvegarde `<nom>.avant-reecriture-<t>`), puis UN SEUL `rename(neuf, base)`
-//     remplace la base en une opération (POSIX `rename` atomique ; sous Windows, `os.Rename`
-//     remplace un fichier existant). Un arrêt à n'importe quel instant laisse au chemin de la base
-//     soit l'ancienne base, soit la neuve, complètes ;
-//   - la sauvegarde est une COPIE (io.Copy), jamais un rename : `--backup-dir` peut être sur un
-//     autre volume. Le seul rename reste dans le dossier de la base (`<base>.reecriture` y est
-//     écrit) ;
-//   - juste avant l'échange, la base doit n'avoir PAS bougé depuis la copie (taille et date de
-//     modification relevées à la fermeture du handle de copie) et n'être tenue par personne
-//     (ouverture exclusive en écriture qui réussit, puis fermeture) : sous Linux, un processus
-//     qui aurait ouvert la base entre-temps continuerait d'écrire dans l'inode remplacé, et ses
-//     écritures disparaîtraient sans erreur. Sinon : refus, base intacte.
+// LA MÉTHODE (C.10, décision du superviseur après la seconde revue) : UNE connexion en écriture
+// TIENT le verrou DuckDB de la base du début à la fin. Elle fait le CHECKPOINT, la copie vers le
+// fichier neuf, puis la SAUVEGARDE par COPY FROM DATABASE (lire les octets d'un fichier que DuckDB
+// tient est impossible sous Windows — mesuré : « utilisé par un autre processus »). L'inventaire
+// du fichier neuf et celui de la sauvegarde se font sous ce verrou. Aucun autre processus ne peut
+// donc ouvrir la base entre la copie et le remplacement : rien ne peut s'y écrire qui manquerait
+// au fichier neuf.
 //
-// Toute erreur après la création de `<base>.reecriture` le retire (et la sauvegarde devenue
-// inutile), journalisée avant que l'erreur ne remonte. Un `<base>.reecriture` trouvé au départ
-// est le reste d'une réécriture interrompue : la base, elle, est complète par construction ; le
-// reste est retiré (WARN) au lieu de bloquer les réécritures suivantes.
+// Le remplacement est un rename UNIQUE de `<base>.reecriture` sur la base — jamais de fenêtre
+// sans fichier au chemin de la base — et dépend du système (cmd_compact_passes_remplacement_*.go) :
+//   - POSIX : rename PENDANT que la connexion est ouverte (l'ancien inode reste verrouillé jusqu'à
+//     la fermeture ; un processus qui ouvre le chemin après le rename ouvre le fichier neuf) ;
+//   - Windows : un fichier tenu ne se remplace pas (mesuré : « Accès refusé ») — fermeture puis
+//     rename IMMÉDIAT. Un tiers qui ouvre la base entre les deux la tient au moment du rename :
+//     le rename échoue, refus, base d'origine intacte. Seule borne théorique : un tiers qui
+//     ouvrirait, écrirait, ferait son CHECKPOINT et fermerait ENTIÈREMENT dans cet intervalle de
+//     quelques microsecondes.
+//
+// Un WAL non vide à côté de la base AU LANCEMENT (transactions d'un processus tué avant son
+// CHECKPOINT) fait refuser d'entrée : la commande n'ouvre pas une base qu'un autre a laissée à
+// mi-chemin. Toute erreur avant le remplacement retire le fichier neuf et la sauvegarde partielle
+// ou devenue inutile, journalisé. Un `<base>.reecriture` trouvé au départ est le reste d'une
+// réécriture interrompue : la base est complète par construction, le reste est retiré (WARN).
 
 import (
 	"context"
@@ -36,23 +40,26 @@ import (
 	"log/slog"
 	"os"
 	"strings"
-	"time"
 
 	"levelup/go-api/internal/migration"
 	"levelup/go-api/internal/platform/duckdb"
 )
 
 // etapeReecriture : point d'observation entre les étapes de la réécriture (tests : arrêt simulé,
-// source modifiée ou tenue). nil en production.
+// tiers qui tente d'ouvrir la base). nil en production.
 var etapeReecriture func(etape string) error
 
-// Les étapes observables, dans l'ordre.
+// Les étapes observables. `apres-fermeture` n'existe que sous Windows (entre la fermeture et le
+// rename), `apres-remplacement` que sous POSIX (rename fait, connexion encore ouverte).
 const (
-	etapeApresCopie        = "apres-copie"
-	etapeApresInventaire   = "apres-inventaire"
-	etapeApresSauvegarde   = "apres-sauvegarde"
-	etapeApresVerification = "apres-verification"
-	etapeApresEchange      = "apres-echange"
+	etapeApresCopie          = "apres-copie"
+	etapeApresInventaire     = "apres-inventaire"
+	etapeApresSauvegarde     = "apres-sauvegarde"
+	etapeAvantRemplacement   = "avant-remplacement"
+	etapeApresFermeture      = "apres-fermeture"
+	etapeApresRemplacement   = "apres-remplacement"
+	etapeApresEchange        = "apres-echange"
+	suffixeFichierReecriture = ".reecriture"
 )
 
 func passerEtape(nom string) error {
@@ -65,132 +72,148 @@ func passerEtape(nom string) error {
 // renommer : os.Rename, remplaçable par les tests (un rename entre deux volumes échoue).
 var renommer = os.Rename
 
-// etatFichier : ce qui dit qu'un fichier n'a pas bougé.
-type etatFichier struct {
-	taille int64
-	modif  time.Time
-}
-
-func lireEtatFichier(path string) (etatFichier, error) {
-	fi, err := os.Stat(path)
-	if err != nil {
-		return etatFichier{}, err
-	}
-	return etatFichier{taille: fi.Size(), modif: fi.ModTime()}, nil
-}
-
-// reecriture : l'état d'une réécriture en cours, pour l'abandon.
+// reecriture : l'état d'une réécriture en cours.
 type reecriture struct {
 	path, neuf, sauvegarde string
+	source                 *duckdb.DB // la connexion qui tient le verrou ; nil une fois fermée
+}
+
+// fermerSource ferme la connexion qui tient le verrou (une seule fois).
+func (r *reecriture) fermerSource() error {
+	if r.source == nil {
+		return nil
+	}
+	h := r.source
+	r.source = nil
+	if err := h.Close(); err != nil {
+		return fmt.Errorf("réécriture : fermeture de %s: %w", r.path, err)
+	}
+	return nil
 }
 
 // reecrireFichier réécrit `path` (appelé sous le bail d'écrivain, handle de compaction fermé).
 func reecrireFichier(ctx context.Context, path, dossierSauvegarde string) error {
-	r := reecriture{path: path, neuf: path + ".reecriture"}
+	r := &reecriture{path: path, neuf: path + suffixeFichierReecriture}
+	if err := refuserWALNonVide(path); err != nil {
+		return err
+	}
 	if err := retirerResteInterrompu(ctx, r.neuf); err != nil {
 		return err
 	}
-	avant, etat, err := copierVersFichierNeuf(ctx, path, r.neuf)
-	if err == nil {
-		err = passerEtape(etapeApresCopie)
+	h, err := duckdb.OpenReadWrite(path)
+	if err != nil {
+		return fmt.Errorf("refus : %s est tenue par un autre processus : %w", path, err)
 	}
+	r.source = h
+	nObjets, err := r.preparerSousVerrou(ctx, dossierSauvegarde)
 	if err != nil {
 		return r.abandonner(ctx, err)
 	}
-	apres, err := inventaireDuFichier(ctx, r.neuf)
-	if err == nil {
-		err = verifierInventaire(avant, apres)
-	}
-	if err == nil {
-		err = passerEtape(etapeApresInventaire)
+	remplace, err := remplacerSousVerrou(r)
+	if err != nil && !remplace {
+		return r.abandonner(ctx, err)
 	}
 	if err != nil {
-		return r.abandonner(ctx, err)
+		// La base EST remplacée (fichier neuf complet) : rien à retirer, la sauvegarde reste.
+		slog.ErrorContext(ctx, "réécriture : base remplacée, erreur après le remplacement",
+			"path", path, "sauvegarde", r.sauvegarde, "err", err)
+		return err
 	}
-	if r.sauvegarde, err = copierFichier(path, dossierSauvegarde, "avant-reecriture"); err != nil {
-		return r.abandonner(ctx, fmt.Errorf("réécriture : sauvegarde de %s: %w", path, err))
-	}
-	if err := r.echanger(ctx, etat); err != nil {
-		return r.abandonner(ctx, err)
-	}
-	fmt.Printf("réécriture : inventaire identique (%d objets, %d tables, %d vues compactées) ; "+
-		"ancien fichier sauvegardé : %s\n", len(apres.Objets), len(apres.Comptes), len(apres.Vues), r.sauvegarde)
+	fmt.Printf("réécriture : inventaire identique (%d objets) ; ancien fichier sauvegardé : %s\n",
+		nObjets, r.sauvegarde)
 	return passerEtape(etapeApresEchange)
 }
 
-func verifierInventaire(avant, apres migration.Inventaire) error {
+// preparerSousVerrou : CHECKPOINT, copie vers le fichier neuf, sauvegarde, et les deux inventaires
+// comparés à celui de la base — tout sous le verrou de r.source. Rend le nombre d'objets.
+func (r *reecriture) preparerSousVerrou(ctx context.Context, dossierSauvegarde string) (int, error) {
+	db := r.source.SQLDb()
+	if _, err := db.ExecContext(ctx, `CHECKPOINT`); err != nil {
+		return 0, fmt.Errorf("réécriture : checkpoint: %w", err)
+	}
+	avant, err := migration.LireInventaire(ctx, db)
+	if err != nil {
+		return 0, fmt.Errorf("réécriture : inventaire de %s: %w", r.path, err)
+	}
+	if err := migration.CopierBaseVers(ctx, db, r.neuf); err != nil {
+		return 0, err
+	}
+	if err := passerEtape(etapeApresCopie); err != nil {
+		return 0, err
+	}
+	if err := verifierCopie(ctx, avant, r.neuf); err != nil {
+		return 0, err
+	}
+	if err := passerEtape(etapeApresInventaire); err != nil {
+		return 0, err
+	}
+	// Le chemin est retenu AVANT la copie : abandonner retire aussi une sauvegarde partielle.
+	if r.sauvegarde, err = cheminDeSauvegarde(r.path, dossierSauvegarde, "avant-reecriture"); err != nil {
+		return 0, fmt.Errorf("réécriture : dossier de sauvegarde: %w", err)
+	}
+	if err := migration.CopierBaseVers(ctx, db, r.sauvegarde); err != nil {
+		return 0, fmt.Errorf("réécriture : sauvegarde: %w", err)
+	}
+	if err := verifierCopie(ctx, avant, r.sauvegarde); err != nil {
+		return 0, fmt.Errorf("réécriture : sauvegarde: %w", err)
+	}
+	if err := passerEtape(etapeApresSauvegarde); err != nil {
+		return 0, err
+	}
+	return len(avant.Objets), passerEtape(etapeAvantRemplacement)
+}
+
+// verifierCopie relit une copie SEULE (aucun ATTACH : ses vues se lient à ses tables) et la
+// compare à l'inventaire de la base.
+func verifierCopie(ctx context.Context, avant migration.Inventaire, chemin string) error {
+	handle, err := duckdb.OpenReadOnly(chemin)
+	if err != nil {
+		return fmt.Errorf("réécriture : ouverture de %s: %w", chemin, err)
+	}
+	apres, err := migration.LireInventaire(ctx, handle.SQLDb())
+	closeLogged(ctx, handle, chemin)
+	if err != nil {
+		return fmt.Errorf("réécriture : inventaire de %s: %w", chemin, err)
+	}
 	if ecarts := avant.Ecarts(apres); len(ecarts) > 0 {
-		return fmt.Errorf("réécriture refusée, le fichier neuf diffère :\n%s", strings.Join(ecarts, "\n"))
+		return fmt.Errorf("réécriture refusée, %s diffère de la base :\n%s", chemin, strings.Join(ecarts, "\n"))
 	}
 	return nil
 }
 
-// echanger : dernières vérifications de la source, puis le rename unique.
-func (r reecriture) echanger(ctx context.Context, etat etatFichier) error {
-	if err := passerEtape(etapeApresSauvegarde); err != nil {
-		return err
-	}
-	if err := verifierSourceInchangee(r.path, etat); err != nil {
-		return err
-	}
-	if err := verifierSourceLibre(ctx, r.path); err != nil {
-		return err
-	}
-	if err := passerEtape(etapeApresVerification); err != nil {
-		return err
-	}
-	// Un WAL VIDE resté à côté d'un fichier serait repris par l'autre après l'échange.
+// verifierWALAvantRemplacement : aucun WAL ne doit accompagner l'échange — celui de la base serait
+// repris par le fichier neuf, celui du fichier neuf n'a pas lieu d'être après son DETACH.
+func verifierWALAvantRemplacement(r *reecriture) error {
 	for _, p := range []string{r.path + ".wal", r.neuf + ".wal"} {
 		if fi, err := os.Stat(p); err == nil && fi.Size() > 0 {
 			return fmt.Errorf("réécriture : %s non vide, échange refusé", p)
 		}
-		if err := os.Remove(p); err != nil && !os.IsNotExist(err) {
-			return fmt.Errorf("réécriture : WAL vide %s: %w", p, err)
-		}
 	}
-	if err := renommer(r.neuf, r.path); err != nil {
-		return fmt.Errorf("réécriture : remplacement de %s: %w", r.path, err)
+	return retirerFichiers(r.neuf + ".wal") // vide ou absent : le fichier neuf n'est ouvert par personne
+}
+
+// refuserWALNonVide : une base dont le WAL porte des transactions d'un processus tué avant son
+// CHECKPOINT n'est pas réécrite ; l'exploitant l'ouvre d'abord (serveur ou CLI) pour le rejouer.
+func refuserWALNonVide(path string) error {
+	if fi, err := os.Stat(path + ".wal"); err == nil && fi.Size() > 0 {
+		return fmt.Errorf("réécriture refusée : %s.wal non vide (%d octets) — transactions d'un autre "+
+			"processus non intégrées ; ouvrir la base une fois (serveur ou CLI) pour les rejouer, puis "+
+			"relancer", path, fi.Size())
 	}
 	return nil
 }
 
-// verifierSourceInchangee : la base est-elle celle que la copie a lue ?
-func verifierSourceInchangee(path string, etat etatFichier) error {
-	maintenant, err := lireEtatFichier(path)
-	if err != nil {
-		return fmt.Errorf("réécriture : état de %s: %w", path, err)
-	}
-	if maintenant.taille != etat.taille || !maintenant.modif.Equal(etat.modif) {
-		return fmt.Errorf("réécriture refusée : %s a changé depuis la copie (taille %d -> %d, "+
-			"modifiée %s -> %s) — un autre processus l'a ouverte ?", path, etat.taille,
-			maintenant.taille, etat.modif.Format(time.RFC3339Nano), maintenant.modif.Format(time.RFC3339Nano))
-	}
-	return nil
-}
-
-// verifierSourceLibre : une ouverture EXCLUSIVE en écriture réussit (personne ne tient la base),
-// puis fermeture.
-func verifierSourceLibre(ctx context.Context, path string) error {
-	handle, err := duckdb.OpenReadWrite(path)
-	if err != nil {
-		return fmt.Errorf("réécriture refusée : %s est tenue par un autre processus : %w", path, err)
-	}
-	if err := handle.Close(); err != nil {
-		return fmt.Errorf("réécriture : fermeture de %s: %w", path, err)
-	}
-	slog.DebugContext(ctx, "réécriture : base libre avant l'échange", "path", path)
-	return nil
-}
-
-// abandonner retire le fichier neuf et la sauvegarde devenue inutile, journalise, rend l'erreur.
-func (r reecriture) abandonner(ctx context.Context, cause error) error {
-	errRetrait := retirerFichiers(r.neuf, r.neuf+".wal")
+// abandonner ferme la source si elle est encore ouverte, retire le fichier neuf et la sauvegarde
+// (partielle ou devenue inutile), journalise, rend l'erreur. La base n'a pas été touchée.
+func (r *reecriture) abandonner(ctx context.Context, cause error) error {
+	errs := r.fermerSource()
+	errs = errors.Join(errs, retirerFichiers(r.neuf, r.neuf+".wal"))
 	if r.sauvegarde != "" {
-		errRetrait = errors.Join(errRetrait, retirerFichiers(r.sauvegarde))
+		errs = errors.Join(errs, retirerFichiers(r.sauvegarde, r.sauvegarde+".wal"))
 	}
 	slog.ErrorContext(ctx, "réécriture abandonnée, base laissée telle quelle", "path", r.path,
-		"err", cause, "err_retrait", errRetrait)
-	return errors.Join(cause, errRetrait)
+		"err", cause, "err_retrait", errs)
+	return errors.Join(cause, errs)
 }
 
 // retirerResteInterrompu : un `<base>.reecriture` présent au départ vient d'une réécriture
@@ -201,47 +224,6 @@ func retirerResteInterrompu(ctx context.Context, neuf string) error {
 	}
 	slog.WarnContext(ctx, "réécriture : reste d'une réécriture interrompue retiré", "fichier", neuf)
 	return retirerFichiers(neuf, neuf+".wal")
-}
-
-// copierVersFichierNeuf : inventaire de la base SEULE, puis recopie dans `neuf`, handle fermé au
-// retour ; rend aussi l'état du fichier à cet instant (référence de verifierSourceInchangee).
-func copierVersFichierNeuf(ctx context.Context, path, neuf string) (migration.Inventaire, etatFichier, error) {
-	avant, err := inventaireEtCopie(ctx, path, neuf)
-	if err != nil {
-		return avant, etatFichier{}, err
-	}
-	etat, err := lireEtatFichier(path)
-	if err != nil {
-		return avant, etat, fmt.Errorf("réécriture : état de %s: %w", path, err)
-	}
-	return avant, etat, nil
-}
-
-func inventaireEtCopie(ctx context.Context, path, neuf string) (migration.Inventaire, error) {
-	handle, err := duckdb.OpenReadWrite(path)
-	if err != nil {
-		return migration.Inventaire{}, fmt.Errorf("réécriture : ouverture de %s: %w", path, err)
-	}
-	defer closeLogged(ctx, handle, path)
-	avant, err := migration.LireInventaire(ctx, handle.SQLDb())
-	if err != nil {
-		return avant, fmt.Errorf("réécriture : inventaire de %s: %w", path, err)
-	}
-	return avant, migration.CopierBaseVers(ctx, handle.SQLDb(), neuf)
-}
-
-// inventaireDuFichier relit le fichier neuf SEUL (aucun ATTACH : ses vues se lient à ses tables).
-func inventaireDuFichier(ctx context.Context, neuf string) (migration.Inventaire, error) {
-	handle, err := duckdb.OpenReadOnly(neuf)
-	if err != nil {
-		return migration.Inventaire{}, fmt.Errorf("réécriture : ouverture de %s: %w", neuf, err)
-	}
-	defer closeLogged(ctx, handle, neuf)
-	inv, err := migration.LireInventaire(ctx, handle.SQLDb())
-	if err != nil {
-		return inv, fmt.Errorf("réécriture : inventaire de %s: %w", neuf, err)
-	}
-	return inv, nil
 }
 
 func retirerFichiers(chemins ...string) error {
