@@ -56,7 +56,7 @@ func pageEmprise(t *testing.T, usage port.SessionUsageRepository, feuille port.S
 	svc := NewTeammatesService(repo, nil).
 		WithPlayerMatchesRepo(newSynthMockFromRows(repo.synthRows, repo.synthErr), "halo_infinite", "Main")
 	if usage != nil {
-		svc = svc.WithEquipmentUsage(usage)
+		svc = svc.WithUsageSummary(usage)
 	}
 	if feuille != nil {
 		svc = svc.WithEmprise(feuille)

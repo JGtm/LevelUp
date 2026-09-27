@@ -29772,8 +29772,6 @@ components:
             - "null"
         echange:
           $ref: '#/components/schemas/SquadEchange'
-        equipment_usage:
-          $ref: '#/components/schemas/EquipmentUsageBlock'
         first_blood:
           items:
             $ref: '#/components/schemas/FirstBloodPlayerSeries'

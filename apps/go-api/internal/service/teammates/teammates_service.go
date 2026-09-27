@@ -484,7 +484,6 @@ func (s *TeammatesService) GetPage(
 		CompositionSessions:      compositionSessions,
 		LatestCompositionSession: latestCompositionSession,
 		DataIssues:               issues.list(),
-		EquipmentUsage:           usage.equipement,
 		SquadFormes:              usage.formes,
 		SquadObjectiveHistory:    usage.objectif,
 		SquadEmprise:             usage.emprise,

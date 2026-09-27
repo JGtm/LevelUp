@@ -1,6 +1,8 @@
 /**
- * cardsI18n.ts — LES DIX-NEUF CARTES de l'artefact 2ec1b8eb : titre, note de
- * pied, sous-titres, et les deux paragraphes de constat qui se calculent.
+ * cardsI18n.ts — LES NEUF CARTES SOLO de l'artefact 2ec1b8eb (Séries temporelles) : titre,
+ * note de pied, sous-titres, et les deux paragraphes de constat qui se calculent. Les cartes
+ * du contexte escouade ont été retirées au lot L5.4 du plan
+ * PLAN_EMPRISE_ET_CARTES_DEPLACEES_2026-09-26 (onglet Emprise).
  *
  * LES NOTES DISENT LA MÉTHODE, PAS LA SOIRÉE. Celles de la maquette citaient les
  * chiffres de sa session (« le camouflage est à 79 % Madina97294 ») : ces
@@ -13,22 +15,14 @@
  */
 import type { Locale } from '@/lib/i18n/locale'
 
-/** Les dix-neuf cartes, dans l'ordre de l'artefact. */
+/** Les neuf cartes solo, dans l'ordre de l'artefact. */
 export type FormesCardKey =
   | 'equipmentShares'
   | 'equipmentByMatch'
   | 'equipmentSpread'
-  | 'equipmentRegularity'
-  | 'equipmentLobbyTrack'
-  | 'equipmentSquadGrid'
-  | 'equipmentSquadTrack'
   | 'padsGapSolo'
   | 'padsShareSolo'
   | 'padsWeaponGrid'
-  | 'padsGapSquad'
-  | 'padsTwoFriezes'
-  | 'padsSquadByMatch'
-  | 'padsSquadWeaponGrid'
   | 'objectivesGapRole'
   | 'objectivesSharesByFamily'
   | 'objectivesRawGrid'
@@ -42,8 +36,6 @@ export interface FormesCardsText {
   cards: Record<FormesCardKey, FormesCardText>
   subtitles: {
     myShareByMatch: string
-    whenTeamShare: string
-    whoLobbyShare: string
   }
   familyMatchesFmt: (family: string, matches: number) => string
   families: Record<string, string>
@@ -70,8 +62,6 @@ export const FORMES_CARDS_TEXT: Record<Locale, FormesCardsText> = {
   fr: {
     subtitles: {
       myShareByMatch: 'Match par match — ma part du lobby',
-      whenTeamShare: 'Quand — la part de mon camp, match par match',
-      whoLobbyShare: 'Qui — la part de chacun dans le lobby',
     },
     familyMatchesFmt: (family, matches) =>
       `${family} — ${matches > 1 ? `${matches} matchs` : `${matches} match`}`,
@@ -126,35 +116,6 @@ export const FORMES_CARDS_TEXT: Record<Locale, FormesCardsText> = {
           'n’est pas du bruit, c’est le mode et la carte. **Ce qu’elle abandonne** : l’ordre des ' +
           'matchs — on ne voit plus QUAND le pic a eu lieu, c’est la grille au-dessus qui le dit.',
       },
-      equipmentRegularity: {
-        title: 'Régularité match par match',
-        note:
-          '**Un écart systématique se voit à la couleur d’une ligne entière**, un accident se voit ' +
-          'à une case isolée. **Ce qu’elle abandonne** : le volume, et l’intensité sature à trente ' +
-          'points.',
-      },
-      equipmentLobbyTrack: {
-        title: 'Part de mon camp',
-        note:
-          '**Deux questions d’un coup** : combien mon camp prend du lobby (la partie colorée face ' +
-          'au trait de parité) et qui le prend chez nous (les segments). Complémentaire de la ' +
-          'bande ci-dessus : celle-ci dit *quand*, celle-là dit *qui*.',
-      },
-      equipmentSquadGrid: {
-        title: 'Cadence de chacun sur la période',
-        note:
-          '**Le même usage comparé entre coéquipiers, sur la même base — la moyenne par match ' +
-          'mesuré.** **Ce qu’elle abandonne** : la variation d’un match à l’autre, écrasée par la ' +
-          'moyenne.',
-      },
-      equipmentSquadTrack: {
-        title: 'Qui porte quel usage dans l’escouade',
-        note:
-          '**La répartition des rôles à l’intérieur du groupe.** **Ce qu’elle abandonne — et c’est ' +
-          'important** : le dénominateur est l’escouade SEULE, pas le lobby. Il n’y a donc **pas ' +
-          'de trait de parité** ici : la barre ne dit rien de l’adversaire. À lire avec ' +
-          '« Part de mon camp ».',
-      },
       padsGapSolo: {
         title: 'Écart à la parité, par famille d’arme',
         note:
@@ -177,38 +138,6 @@ export const FORMES_CARDS_TEXT: Record<Locale, FormesCardsText> = {
           '4. **Ce qu’elle abandonne** : un petit dénominateur reste fragile (une arme apparue deux ' +
           'fois donne 50 % ou 0 %), et la colonne d’occupations est là pour qu’on le voie. Les ' +
           'armes les plus rares sont repliées hors du tableau.',
-      },
-      padsGapSquad: {
-        title: 'Écart à la parité, par famille d’arme',
-        note:
-          'Le rapport de force arme par arme. Une moyenne proche de la parité peut cacher deux ' +
-          'faits opposés — une famille tenue, une autre perdue.',
-      },
-      padsTwoFriezes: {
-        title: 'Détail des prises d’armes spéciales',
-        note:
-          '**Les deux frises dans une seule carte, l’une au-dessus de l’autre** : elles répondent ' +
-          'à deux questions qui ne se posent jamais séparément — *quand* le camp a tenu les socles, ' +
-          'et *qui* les a tenus. **Ce qu’elle abandonne** : les occupations de socle dont ' +
-          'l’événement natif ne nomme pas le ramasseur ne sont versées à aucun camp — la barre ' +
-          'porte les prises NOMMÉES, pas la totalité des socles.',
-      },
-      padsSquadByMatch: {
-        title: 'Emprise de l’escouade, match par match',
-        note:
-          '**Sur quelle carte l’escouade a tenu les armes, et sur laquelle elle les a laissées.** ' +
-          'Même grammaire que la piste du lobby, mais une ligne par match au lieu d’une ligne par ' +
-          'axe. **Ce qu’elle abandonne** : quelle arme — c’est un bilan de contrôle, pas un ' +
-          'inventaire.',
-      },
-      padsSquadWeaponGrid: {
-        title: 'Taux de rafle de chaque coéquipier',
-        note:
-          '**La spécialisation.** Chaque colonne a sa propre échelle, donc chaque joueur se lit ' +
-          'contre lui-même, puis les trois se comparent par les chiffres. **Ce qu’elle abandonne** : ' +
-          'le dénominateur est le même pour tous (les occupations du socle), donc la somme des ' +
-          'colonnes ne fait pas 100 % — le reste est allé au lobby adverse. C’est la piste ' +
-          'ci-dessus qui dit ce reste.',
       },
       objectivesGapRole: {
         title: 'Écart à la parité, par rôle',
@@ -237,8 +166,6 @@ export const FORMES_CARDS_TEXT: Record<Locale, FormesCardsText> = {
   en: {
     subtitles: {
       myShareByMatch: 'Match by match — my share of the lobby',
-      whenTeamShare: 'When — my side’s share, match by match',
-      whoLobbyShare: 'Who — each player’s share of the lobby',
     },
     familyMatchesFmt: (family, matches) =>
       `${family} — ${matches > 1 ? `${matches} matches` : `${matches} match`}`,
@@ -291,33 +218,6 @@ export const FORMES_CARDS_TEXT: Record<Locale, FormesCardsText> = {
           'the mode and the map. **What it gives up**: the order of matches — you no longer see ' +
           'WHEN the peak happened; the grid above says that.',
       },
-      equipmentRegularity: {
-        title: 'Regularity, match by match',
-        note:
-          '**A systematic gap shows as the colour of a whole row**, an accident shows as a single ' +
-          'cell. **What it gives up**: volume, and intensity saturates at thirty points.',
-      },
-      equipmentLobbyTrack: {
-        title: 'My side’s share',
-        note:
-          '**Two questions at once**: how much my side takes from the lobby (the coloured part ' +
-          'against the parity line) and who takes it among us (the segments). Complementary to the ' +
-          'band above: this one says *who*, that one says *when*.',
-      },
-      equipmentSquadGrid: {
-        title: 'Each player over the period',
-        note:
-          '**The same action compared across teammates, on the same basis — the average per ' +
-          'measured match.** **What it gives up**: the variation from one match to the next, ' +
-          'flattened by the average.',
-      },
-      equipmentSquadTrack: {
-        title: 'Who carries which usage in the squad',
-        note:
-          '**How roles split inside the group.** **What it gives up — and it matters**: the ' +
-          'denominator is the squad ALONE, not the lobby. There is therefore **no parity line** ' +
-          'here: the bar says nothing about the other team. Read it with “My side’s share”.',
-      },
       padsGapSolo: {
         title: 'Gap to parity, by weapon family',
         note:
@@ -340,35 +240,6 @@ export const FORMES_CARDS_TEXT: Record<Locale, FormesCardsText> = {
           '4 out of 4. **What it gives up**: a small denominator stays fragile (a weapon that ' +
           'appeared twice gives 50% or 0%), and the occupations column is there so you see it. The ' +
           'rarest weapons are folded out of the table.',
-      },
-      padsGapSquad: {
-        title: 'Gap to parity, by weapon family',
-        note:
-          'The balance of power weapon by weapon. An average close to parity can hide two opposite ' +
-          'facts — one family held, another lost.',
-      },
-      padsTwoFriezes: {
-        title: 'Special weapon pickups in detail',
-        note:
-          '**Both friezes in a single card, one above the other**: they answer two questions that ' +
-          'are never asked separately — *when* the side held the pads, and *who* held them. **What ' +
-          'it gives up**: pad occupations whose native event does not name the picker belong to no ' +
-          'side — the bar carries NAMED pickups, not the totality of the pads.',
-      },
-      padsSquadByMatch: {
-        title: 'Squad grip, match by match',
-        note:
-          '**On which map the squad held the weapons, and on which it let them go.** Same grammar ' +
-          'as the lobby track, but one row per match instead of one row per axis. **What it gives ' +
-          'up**: which weapon — this is a control summary, not an inventory.',
-      },
-      padsSquadWeaponGrid: {
-        title: 'Take rate of each teammate',
-        note:
-          '**Specialisation.** Each column has its own scale, so each player reads against ' +
-          'themselves, then the numbers compare them. **What it gives up**: the denominator is the ' +
-          'same for all (pad occupations), so the columns do not add up to 100% — the rest went to ' +
-          'the other team. The track above says that rest.',
       },
       objectivesGapRole: {
         title: 'Gap to parity, by role',

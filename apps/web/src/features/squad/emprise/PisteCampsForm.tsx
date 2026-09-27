@@ -11,9 +11,10 @@
  * du côté de son camp (S3 : jamais tronquée, jamais seulement en infobulle). Le trait 50 % en
  * pointillé `warning` (S5). Axe 0-100 % sous les pistes.
  *
- * Remplace, pour l'Emprise, `formes/forms/Piste100Form` (piste du lobby découpée par joueur,
- * adversaire hachuré et anonyme) : une autre question, dont les quatre cartes appelantes sont
- * retirées au lot L5.4.
+ * Une ligne peut porter, sous sa barre, un contenu de plus (`below`) : « Frags obtenus avec
+ * les ressources » y pose la barre fine de l'exposition (`ThinCampTrack`) et sa ligne de
+ * valeurs. L'ancienne piste du lobby découpée par joueur (`Piste100Form`, adversaire hachuré)
+ * est supprimée avec ses quatre cartes (lot L5.4).
  */
 import { useRef, type ReactNode } from 'react'
 

@@ -243,13 +243,12 @@ func (r *ServiceRegistry) TeammatesCtx(ctx context.Context, slug string) (port.T
 	if r.capabilitiesForPDB(pdb).Has(games.CapMatchObjectiveStats) {
 		svc = svc.WithObjectiveIndexRepo(duckdb.NewObjectiveStatsRepo(pdb))
 	}
-	// Bloc « servi ou gâché » de l'équipement (étape E6.1bis) : MÊME repo que les
-	// pages Sessions, Synthèse et Squad V2, sur le scope FILTRÉ de cette page
-	// (filteredMatches — cf. teammates_service_usage.go). Gated par
-	// film.usage_summary (Infinite ; absente pour Halo 5 → bloc Available=false
-	// avec raison machine). Jamais slug==.
+	// Résumé d'usage (lectures communes des blocs d'usage et de l'Emprise) : MÊME repo que les
+	// pages Sessions et Synthèse, sur le périmètre D2 de cette page (cf.
+	// teammates_service_usage.go). Gated par film.usage_summary (Infinite ; absente pour Halo 5
+	// → l'Emprise ne publie que la feuille de match, film_unsupported). Jamais slug==.
 	if r.capabilitiesForPDB(pdb).Has(games.CapFilmUsageSummary) {
-		svc = svc.WithEquipmentUsage(duckdb.NewSessionUsageRepo(pdb))
+		svc = svc.WithUsageSummary(duckdb.NewSessionUsageRepo(pdb))
 		// Bloc « formes retenues » (lot D2, 2026-09-13) : MÊME repo d'usage, plus les
 		// colonnes d'objectif quand le titre les publie — deux gates indépendantes, la
 		// seconde ne retirant que les cartes d'objectif. Le catalogue d'armes du titre

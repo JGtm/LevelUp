@@ -1,12 +1,11 @@
 /**
  * FormesRetenuesSection.tsx — LA SECTION « Les formes retenues » (artefact 2ec1b8eb) :
- * trois blocs, et les cartes DU SEUL CONTEXTE DEMANDÉ.
+ * trois blocs, contexte SOLO seul (Séries temporelles, onglet Progression).
  *
- * UNE PAGE = UN CONTEXTE (2026-09-19, PLAN_AJUSTEMENTS_PRE_V75 item 1.E). Les deux
- * contextes cohabitaient sur l'Escouade, séparés par deux intertitres qui les nommaient :
- * neuf cartes y parlaient de MOI sur une page qui parle de NOUS.
- * Le contexte solo vit désormais sur Timeseries (onglet Progression), l'escouade sur la
- * page Escouade — même bloc de contrat, même modèle de vue, même composant.
+ * UNE PAGE = UN CONTEXTE (2026-09-19, PLAN_AJUSTEMENTS_PRE_V75 item 1.E). Le contexte
+ * escouade (huit cartes sur l'ancien onglet Usages) a été retiré au lot L5.4 du plan
+ * PLAN_EMPRISE_ET_CARTES_DEPLACEES_2026-09-26 : l'onglet Emprise le remplace, et les cartes
+ * d'objectif de l'escouade vivent sur Contributions (lot L3).
  *
  * L'ORDRE DES BLOCS EST CELUI DE L'ARTEFACT : équipement, armes spéciales, objectifs.
  * Chaque titre de bloc porte son AIDE ⓘ — ce que le bloc mesure et ce qu'il ne mesure pas,
@@ -38,45 +37,23 @@ import type { SquadFormesBlock } from '@/lib/api/types'
 import type { Locale } from '@/lib/i18n/locale'
 
 import { FORMES_CARDS_TEXT } from './cardsI18n'
-import {
-  EquipmentByMatchCard,
-  EquipmentLobbyTrackCard,
-  EquipmentRegularityCard,
-  EquipmentSharesCard,
-  EquipmentSpreadCard,
-  EquipmentSquadGridCard,
-  EquipmentSquadTrackCard,
-} from './cards/EquipmentCards'
+import { EquipmentByMatchCard, EquipmentSharesCard, EquipmentSpreadCard } from './cards/EquipmentCards'
 import {
   ObjectivesGapRoleCard,
   ObjectivesRawGridCard,
   ObjectivesSharesByFamilyCard,
 } from './cards/ObjectiveCards'
-import {
-  PadsGapSoloCard,
-  PadsGapSquadCard,
-  PadsShareSoloCard,
-  PadsSquadByMatchCard,
-  PadsSquadWeaponGridCard,
-  PadsTwoFriezesCard,
-  PadsWeaponGridCard,
-} from './cards/PadCards'
+import { PadsGapSoloCard, PadsShareSoloCard, PadsWeaponGridCard } from './cards/PadCards'
 import { FORMES_TEXT, type FormesEmptyCause, type FormesText } from './i18n'
 import { EQUIPMENT_AXES, axisValue, lobbyOf } from './model/access'
 import { objectiveMatches } from './model/objectives'
 import { namedPickups, unnamedOccupations } from './model/pads'
 import { buildFormesViewModel, type FormesViewModel } from './viewModel'
 
-/** Le contexte de lecture : « moi dans mon équipe et dans le lobby », ou « mon camp
- *  contre le leur ». Une page n'en montre qu'un. */
-export type FormesContexte = 'solo' | 'squad'
-
 export interface FormesRetenuesSectionProps {
   /** Le bloc `formes_retenues` de la réponse — absent : rien ne se rend. */
   block: SquadFormesBlock | null | undefined
   locale: Locale
-  /** Le contexte des cartes montées. */
-  contexte: FormesContexte
   /** Le nom du joueur de la page (`main_player` de la réponse) — voir viewModel. */
   mainPlayerLabel?: string
 }
@@ -132,12 +109,7 @@ function BlockEmpty({ cause, t }: { cause: FormesEmptyCause; t: FormesText }) {
   )
 }
 
-export function FormesRetenuesSection({
-  block,
-  locale,
-  contexte,
-  mainPlayerLabel,
-}: FormesRetenuesSectionProps) {
+export function FormesRetenuesSection({ block, locale, mainPlayerLabel }: FormesRetenuesSectionProps) {
   const t = FORMES_TEXT[locale]
   const ct = FORMES_CARDS_TEXT[locale]
   const vm = useMemo(
@@ -151,7 +123,6 @@ export function FormesRetenuesSection({
   // section se retire, elle n'affiche pas une coquille vide.
   if (vm == null) return null
 
-  const solo = contexte === 'solo'
   const hasObjectives = objectiveMatches(vm.block).length > 0
   const equipmentEmpty = equipmentCause(vm)
   const padsEmpty = padsCause(vm)
@@ -163,20 +134,9 @@ export function FormesRetenuesSection({
         <BlockEmpty cause={equipmentEmpty} t={t} />
       ) : (
         <div className="space-y-4">
-          {solo ? (
-            <>
-              <EquipmentSharesCard vm={vm} />
-              <EquipmentByMatchCard vm={vm} />
-              <EquipmentSpreadCard vm={vm} />
-            </>
-          ) : (
-            <>
-              <EquipmentRegularityCard vm={vm} />
-              <EquipmentLobbyTrackCard vm={vm} />
-              <EquipmentSquadGridCard vm={vm} />
-              <EquipmentSquadTrackCard vm={vm} />
-            </>
-          )}
+          <EquipmentSharesCard vm={vm} />
+          <EquipmentByMatchCard vm={vm} />
+          <EquipmentSpreadCard vm={vm} />
         </div>
       )}
 
@@ -185,27 +145,14 @@ export function FormesRetenuesSection({
         <BlockEmpty cause={padsEmpty} t={t} />
       ) : (
         <div className="space-y-4">
-          {solo ? (
-            <>
-              <PadsGapSoloCard vm={vm} />
-              <PadsShareSoloCard vm={vm} />
-              <PadsWeaponGridCard vm={vm} />
-            </>
-          ) : (
-            <>
-              <PadsGapSquadCard vm={vm} />
-              <PadsTwoFriezesCard vm={vm} />
-              <PadsSquadByMatchCard vm={vm} />
-              <PadsSquadWeaponGridCard vm={vm} />
-            </>
-          )}
+          <PadsGapSoloCard vm={vm} />
+          <PadsShareSoloCard vm={vm} />
+          <PadsWeaponGridCard vm={vm} />
         </div>
       )}
 
-      {/* AUCUN MATCH À OBJECTIF = AUCUNE SECTION : l'intertitre partait avec (D8). LE BLOC
-          OBJECTIFS EST SOLO SEUL : les cartes d'objectif de l'escouade vivent sur l'onglet
-          Contributions (lot L3 du plan PLAN_EMPRISE_ET_CARTES_DEPLACEES_2026-09-26). */}
-      {solo && hasObjectives && (
+      {/* AUCUN MATCH À OBJECTIF = AUCUNE SECTION : l'intertitre partait avec (D8). */}
+      {hasObjectives && (
         <>
           <BlockTitle aide={t.blocks.objectives.aide}>{t.blocks.objectives.title}</BlockTitle>
           <div className="space-y-4">

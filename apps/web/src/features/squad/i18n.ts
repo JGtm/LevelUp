@@ -32,7 +32,6 @@ export interface SquadText {
   sections: {
     historique: string
     fragsArmes: string
-    equipement: string
   }
   selection: {
     placeholder: (count: number) => string
@@ -403,7 +402,6 @@ const FR_TEXT: SquadText = {
   sections: {
     historique: 'Historique',
     fragsArmes: 'Frags et armes',
-    equipement: 'Équipement et armes de socle',
   },
   selection: {
     placeholder: (count) => `Rechercher parmi ${count} coéquipiers…`,
@@ -760,7 +758,6 @@ const EN_TEXT: SquadText = {
   sections: {
     historique: 'History',
     fragsArmes: 'Kills and weapons',
-    equipement: 'Equipment and pad weapons',
   },
   selection: {
     placeholder: (count) => `Search among ${count} teammates…`,

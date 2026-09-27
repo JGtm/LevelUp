@@ -97,7 +97,7 @@ func serviceAnnulable(a *annulation) *TeammatesService {
 	return NewTeammatesService(repoAnnulant{countingSquadRepo: repo, a: a}, nil).
 		WithPlayerMatchesRepo(newSynthMockFromRows(repo.synthRows, nil), "halo_infinite", "Main").
 		WithSquadLoader(loaderAnnulant{fakeSquadLoader: loader, a: a}).
-		WithEquipmentUsage(usageAnnulant{mockTeammatesUsageRepo: &mockTeammatesUsageRepo{}, a: a})
+		WithUsageSummary(usageAnnulant{mockTeammatesUsageRepo: &mockTeammatesUsageRepo{}, a: a})
 }
 
 // sectionsVues : les sections de durée ouvertes par la requête.
@@ -136,7 +136,7 @@ func TestGetPage_AnnuleeEntreDeuxSections(t *testing.T) {
 			"map_stats", []string{"match_history", "session_timeline", "map_heatmap", "impact_matrix",
 				"medal_digest", "briefing_header", "composition_sessions", "usage_shared"}},
 		{"pendant les lectures d'usage", "usage", []string{"Ally"},
-			"usage_shared", []string{"equipment_usage", "squad_formes"}},
+			"usage_shared", []string{"squad_formes"}},
 	}
 	for _, c := range cas {
 		t.Run(c.nom, func(t *testing.T) {
@@ -183,7 +183,7 @@ func TestGetPage_NonAnnuleeToutesLesSections(t *testing.T) {
 		"top_teammates", "player_matches", "teammate_rows", "main_team_allies", "squad_members",
 		"impact_events_shared", "enrich_assets", "map_stats", "match_history", "session_timeline",
 		"map_heatmap", "impact_matrix", "medal_digest", "briefing_header",
-		"composition_sessions", "usage_shared", "equipment_usage", "squad_formes",
+		"composition_sessions", "usage_shared", "squad_formes",
 	} {
 		if !vues[nom] {
 			t.Errorf("section %q absente d'une page non annulée", nom)
@@ -202,9 +202,9 @@ func TestLoadUsageBlocks_RequeteDejaAnnulee(t *testing.T) {
 	a := &annulation{vues: map[string]int{}}
 	repo, _ := pageCompleteFixture()
 	svc := NewTeammatesService(repo, nil).
-		WithEquipmentUsage(usageAnnulant{mockTeammatesUsageRepo: &mockTeammatesUsageRepo{}, a: a})
+		WithUsageSummary(usageAnnulant{mockTeammatesUsageRepo: &mockTeammatesUsageRepo{}, a: a})
 	b := svc.loadUsageBlocks(ctx, "x_main", porteeUsage{filtered: repo.synthRows}, domain.TeammatesQueryRequest{})
-	if b.equipement != nil || b.formes != nil || b.objectif != nil || a.vues["usage"] != 0 {
+	if b.formes != nil || b.objectif != nil || b.emprise != nil || a.vues["usage"] != 0 {
 		t.Fatalf("blocs %+v, lectures %d : attendu aucun bloc et aucune lecture", b, a.vues["usage"])
 	}
 }

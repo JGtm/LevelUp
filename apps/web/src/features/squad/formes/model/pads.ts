@@ -18,7 +18,7 @@
  */
 import type { SquadFormesBlock, SquadFormesMatch, SquadFormesWeapon } from '@/lib/api/types'
 
-import { isMySide, lobbyOf, matchSizes, measuredMatches, parityOf, sharePct, average } from './access'
+import { lobbyOf, matchSizes, measuredMatches, parityOf, sharePct, average } from './access'
 
 /** Les trois familles d'arme de socle, dans l'ordre d'affichage de l'artefact. */
 export const WEAPON_CLASSES = ['heavy', 'precision', 'other'] as const
@@ -102,11 +102,8 @@ export function namedPickups(block: SquadFormesBlock): number {
 /** L'agrégat d'une famille d'arme : ma part et celle de mon camp dans le lobby. */
 export interface WeaponClassAggregate {
   me: number
-  team: number
   lobby: number
   myShareOfLobbyPct: number | null
-  teamShareOfLobbyPct: number | null
-  teamParity: number | null
   lobbyParity: number | null
 }
 
@@ -122,31 +119,23 @@ export function aggregateWeaponClass(
 ): WeaponClassAggregate {
   const main = block.main_xuid ?? ''
   let me = 0
-  let team = 0
   let lobby = 0
-  const teamSizes: number[] = []
   const lobbySizes: number[] = []
   for (const match of measuredMatches(block)) {
-    const sizes = matchSizes(match)
-    teamSizes.push(sizes.team)
-    lobbySizes.push(sizes.lobby)
+    lobbySizes.push(matchSizes(match).lobby)
     for (const p of lobbyOf(match)) {
       let v = 0
       for (const [key, count] of Object.entries(p.pads_by_weapon ?? {})) {
         if ((weapons[key]?.class ?? 'other') === weaponClass) v += count
       }
       lobby += v
-      if (isMySide(match, p)) team += v
       if (p.xuid === main) me += v
     }
   }
   return {
     me,
-    team,
     lobby,
     myShareOfLobbyPct: sharePct(me, lobby),
-    teamShareOfLobbyPct: sharePct(team, lobby),
-    teamParity: parityOf(average(teamSizes) ?? 0),
     lobbyParity: parityOf(average(lobbySizes) ?? 0),
   }
 }

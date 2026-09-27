@@ -63,17 +63,15 @@ describe('socles', () => {
     // Lobby : 3 + 2 (l'adversaire prend un SPNKr et un S7) = 5.
     const heavy = aggregateWeaponClass(block, weapons, 'heavy')
     expect(heavy.me).toBe(2)
-    expect(heavy.team).toBe(3)
     expect(heavy.lobby).toBe(5)
     // Précision : la carabine du match 2 — moi 1, mon camp 2, lobby 3.
     const precision = aggregateWeaponClass(block, weapons, 'precision')
     expect(precision.me).toBe(1)
-    expect(precision.team).toBe(2)
     expect(precision.lobby).toBe(3)
     // Autres socles : l'arme non cataloguée, prise par un allié hors escouade.
     const other = aggregateWeaponClass(block, weapons, 'other')
     expect(other.me).toBe(0)
-    expect(other.team).toBe(1)
+    expect(other.lobby).toBe(1)
   })
 })
 

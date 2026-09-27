@@ -588,18 +588,12 @@ type TeammatesPageResponse struct {
 	// de la page. Non vide = les nombres affichés sont partiels ; le front DOIT le
 	// signaler (fin des chiffres non reproductibles). Vide/absent = page complète.
 	DataIssues []DataIssue `json:"data_issues,omitempty"`
-	// EquipmentUsage : le bloc « servi ou gâché » de l'équipement (étape E6.1bis) sur le
-	// périmètre D2 de la page (PLAN_EMPRISE_ET_CARTES_DEPLACEES_2026-09-26 : composition exacte ∩
-	// scope filtré, scope filtré seul sans coéquipier) — une ligne pour le joueur principal + une
-	// par coéquipier SÉLECTIONNÉ. Nil si le périmètre n'a aucun match ; Available=false avec
-	// raison machine pour un titre sans film.usage_summary.
-	EquipmentUsage *EquipmentUsageBlock `json:"equipment_usage,omitempty"`
-
-	// SquadFormes : le bloc « formes retenues » (artefact 2ec1b8eb, lot D2 du
-	// 2026-09-13) — la matière des dix-neuf cartes des trois blocs (usages
-	// d'équipement, contrôle des armes spéciales, objectifs) sur le MÊME périmètre D2
-	// que EquipmentUsage. Nil si le périmètre n'a aucun match ;
-	// Available=false avec raison machine pour un titre sans film.usage_summary.
+	// SquadFormes : le bloc « formes retenues » (artefact 2ec1b8eb, lot D2 du 2026-09-13) sur
+	// le périmètre D2 de la page (PLAN_EMPRISE_ET_CARTES_DEPLACEES_2026-09-26 : composition
+	// exacte ∩ scope filtré, scope filtré seul sans coéquipier) ; lu par les cartes d'objectif de
+	// Contributions (le bloc « servi ou gâché », `equipment_usage`, a quitté cette réponse au lot
+	// L5.4 : plus de lecteur). Nil si le périmètre n'a aucun match ; Available=false avec raison
+	// machine pour un titre sans film.usage_summary.
 	SquadFormes *SquadFormesBlock `json:"formes_retenues,omitempty"`
 
 	// SquadObjectiveHistory : le rapport de force à l'objectif, soirée après soirée (lot L3 du
