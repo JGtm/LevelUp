@@ -156,7 +156,8 @@ whole table while every returned number stays the same, so no value test can see
 `TestTacticalRepo_PerimetreRestreint_FenetresBornees`;
 `platform/duckdb/weapon_range_repo_fenetres_test.go` — `TestWeaponRange_Perimetre_FenetresBornees`;
 `platform/duckdb/career_repo_fenetres_test.go` — `TestLecturesHistorique_FenetresBorneesAuxMatchsDuJoueur`,
-`TestLecturesHistorique_CampagneHorsDeLaListe` (lot B, 2026-09-27).
+`TestLecturesHistorique_CampagneHorsDeLaListe` (lot B, 2026-09-27);
+`platform/duckdb/annuaire_fenetres_test.go` — `TestAnnuaire_ListesLieesEnUnParametre` (item B.7).
 
 ### I3 — Data re-read from one request to the next goes through a cache invalidated at sync, never filled by a degraded load
 
@@ -262,10 +263,18 @@ SQL cost, two to four times shorter.
   `_latest` state along the ADR 0026 recipe, changes that order of magnitude; it touches the
   anti-ART invariants and waits for production evidence. Lot B (2026-09-27) measured that the cost
   of a long `IN` is the binding of its thousands of parameters, not the filter: the same list as
-  ONE `VARCHAR[]` parameter (`list_contains(?::VARCHAR[], match_id)`, `clauseListeMatchs` in
-  `platform/duckdb/perimetre_liste.go`) descends under the window as well and, on the compacted
-  copy (kill feed of one player, three runs), costs 64-87 ms instead of 98-107 ms at 1,160 matches
-  and 192-249 ms instead of 304-341 ms at 7,190 (the whole window: 223-274 and 195-214 ms).
+  ONE `VARCHAR[]` parameter (`list_contains(?::VARCHAR[], match_id)`) descends under the window as
+  well and, on the compacted copy (kill feed of one player, three runs), costs 64-87 ms instead of
+  98-107 ms at 1,160 matches and 192-249 ms instead of 304-341 ms at 7,190 (the whole window:
+  223-274 and 195-214 ms). That constant form is evaluated row by row in time proportional to the
+  list, so it is kept for the `match_id` lists that must cross a window: 3,000 xuids against the
+  raw kill journal cost 38-44 s (4.0-4.4 s compacted), against 0.11-0.12 s for the same single
+  parameter in a semi-join (`col IN (SELECT unnest(?::VARCHAR[]))`), which does not descend under a
+  window. Both forms have one text source, `analysis/sql_liste.go` (`SQLDansListe`,
+  `SQLDansListeParJointure`), used by the directory templates and by
+  `platform/duckdb/perimetre_liste.go`; the ratchet `TestListeLiee_TexteEnUnSeulEndroit`
+  (`archlint/liste_liee_ratchet_test.go`) forbids a hand-written copy. A short list pays for it:
+  with 8 xuids, 3.3 ms in `IN`, 6.9 ms as one parameter (item B.7, 2026-09-27).
 - No write changed shape: INSERT-only through `persist`, reads through the `_latest` views, no
   allowlist of `sync/no_art_patterns_test.go` touched.
 - Production has not been measured. The instruments exist (`http_timings`,
@@ -335,12 +344,29 @@ whitelist the tab sends by default (all the player's matches) `JGtm` 371-622 -> 
 30-match whitelist 313-480 -> 30-53 ms. `Nuzzles` (7,190 matches, whose kill feed holds 66 % of the
 journal, so the list saves little): Q27 388-457 -> 306-354 ms, `MortsParCarte` 356-588 -> 238-260
 ms, Q26 and Q28 unchanged within the noise (five runs, medians 519 -> 579 ms and 1,061 -> 1,158 ms;
-0.8 to 0.9 s of Q28 is its directory, whose reads were already bound). Served rows identical on the
+0.8 to 0.9 s of Q28 is its directory, whose reads were already bound: see the next paragraph). Served rows identical on the
 five tracked players (top 10 and rivals byte for byte, 12,130 Relations rows, 26,784 deaths per map
 compared as sets: their order was never total). One intended difference, Halo 5 only: the kill-feed
 legs of Q26, Q27 and Q28 did not exclude Campaign matches; the list does (the history those rows
 belong to already did), so the 118 kill events between two players in the 63 Campaign matches of
 the Halo 5 copy no longer count.
+
+Item B.7 (2026-09-27): the directory itself (`platform/duckdb/squad_repo_annuaire.go`, templates
+`analysis/identity_annuaire.go`) bound its lists as `IN (?, ?, …)`: up to 14,900, 10,163 and
+17,741 parameters per query for `Nuzzles`' Relations. Every list of the directory is now one
+`VARCHAR[]` parameter — the `match_id`s of the kill-feed leg as the constant that crosses the
+`_latest` window, every other list in a semi-join, the locating read's xuids unfolded in its
+`cherches` CTE — with the templates still the single source shared with the view (the view's DDL is
+unchanged). Measured on the compacted copy (three alternated runs): `Nuzzles` Relations Q28
+1,118-1,339 -> 551-839 ms (directory 731-912 -> 256-286 ms), heatmap 294-340 -> 179-199 ms; Squad
+(`JGtm`, a composition of 579 matches) Q32 314-702 -> 192-257 ms, Q32b 103-106 -> 46-62 ms; the
+match view of `JGtm`, whose lists are short, pays the fixed cost of the parameter: medians Q12
+14-17 -> 19-21 ms, Q21 9-10 -> 13-14 ms, Q23 38-47 -> 48-51 ms, `ResolveGamertags` 4-5 -> 8 ms.
+Names identical to the previous code on every read that goes through the directory (Squad Q29, Q32,
+Q32b; Career Q26, Q27, Q10; Compare; match view Q12 and Q21 on 322 matches, Q23 and
+`ResolveGamertags` on 279; Relations Q28 and heatmap; five players), `ResolveGamertags` still
+leaving an unnamed xuid out of its map. Guardrail: `TestAnnuaire_ListesLieesEnUnParametre`
+(`platform/duckdb/annuaire_fenetres_test.go`).
 
 Not a window, but the same kind of cost, listed here because it is a whole-table read on a request
 path: when the base-scope directory's last fallback fires (a player that no alias, participant
@@ -390,7 +416,7 @@ as for any DuckDB test). Integration: `go test -tags=integration -p 1 ./internal
 | Inv. | Test (file) | Runs in | What it actually blocks | What it does not see |
 |---|---|---|---|---|
 | I1 | `TestLecturesDeLaVueDesNoms_Ratchet` (`platform/duckdb/annuaire_ratchet_test.go`) | default suite | Parses every non-test Go file under `internal/` and counts, per file, the bare identifier `v_gamertag_lookup` in string literals (a Go comment does not count, an SQL comment inside a literal does); fails when a file exceeds its dated allowance and when it falls below it, so the table only descends. | A new page read that calls a reader still in the table (for instance the Explorer's `ResolveXUIDByGamertag`) adds no literal and passes. |
-| I2 | `TestTacticalRepo_PerimetreRestreint_FenetresBornees` (`platform/duckdb/tactical_repo_fenetres_test.go`), `TestWeaponRange_Perimetre_FenetresBornees` (`platform/duckdb/weapon_range_repo_fenetres_test.go`), `TestLecturesHistorique_FenetresBorneesAuxMatchsDuJoueur`, `TestLecturesHistorique_CampagneHorsDeLaListe` (`platform/duckdb/career_repo_fenetres_test.go`) | default suite | Seed ten matches, ask for two, record the SQL the real reader sends, replay each query under `EXPLAIN (ANALYZE, FORMAT JSON)` and fail if any `WINDOW` operator saw more rows than the two matches hold, or if fewer queries than expected carry a window (shared helper `exigerFenetresBornees`). Covers `KillEvents`, `MortsAvecContexte`, `KillPositions`, `Univers`, `MortsParCarte`, `LoadWeaponRange`, `LoadWeaponOpening`, `LoadMatchRangeKills`. The lot B test seeds four matches of the player among ten and holds the whole-history reads (`GetTopEncountersGlobal`, `GetRivals`, `GetRelations` on the history and on a scope, `MortsParCarte` without a whitelist) to the player's matches; it also fails if `GetRivals` reads its aggregate more than once, and if a Halo 5 Campaign duel enters the rivals or the encounters. | Any other `_latest` reader: nothing checks the windows of a read these tests do not call. |
+| I2 | `TestTacticalRepo_PerimetreRestreint_FenetresBornees` (`platform/duckdb/tactical_repo_fenetres_test.go`), `TestWeaponRange_Perimetre_FenetresBornees` (`platform/duckdb/weapon_range_repo_fenetres_test.go`), `TestLecturesHistorique_FenetresBorneesAuxMatchsDuJoueur`, `TestLecturesHistorique_CampagneHorsDeLaListe` (`platform/duckdb/career_repo_fenetres_test.go`), `TestAnnuaire_ListesLieesEnUnParametre` (`platform/duckdb/annuaire_fenetres_test.go`) | default suite | Seed ten matches, ask for two, record the SQL the real reader sends, replay each query under `EXPLAIN (ANALYZE, FORMAT JSON)` and fail if any `WINDOW` operator saw more rows than the two matches hold, or if fewer queries than expected carry a window (shared helper `exigerFenetresBornees`). Covers `KillEvents`, `MortsAvecContexte`, `KillPositions`, `Univers`, `MortsParCarte`, `LoadWeaponRange`, `LoadWeaponOpening`, `LoadMatchRangeKills`. The lot B test seeds four matches of the player among ten and holds the whole-history reads (`GetTopEncountersGlobal`, `GetRivals`, `GetRelations` on the history and on a scope, `MortsParCarte` without a whitelist) to the player's matches; it also fails if `GetRivals` reads its aggregate more than once, and if a Halo 5 Campaign duel enters the rivals or the encounters. The item B.7 test holds the directory's kill-feed leg to the player's matches in read and base scope, requires the name a kill feed alone gives, and fails if a directory query binds more than five arguments (a list bound value by value). | Any other `_latest` reader: nothing checks the windows of a read these tests do not call. |
 | I3 | `TestPlayerReadCacheInvalidationPoints` (`archlint/player_read_cache_invalidation_test.go`) | default suite | Parses `runPostSyncPipeline`, `RecomputeIsWithFriends` and `SetExclusion` and fails if one of them no longer calls `InvalidatePlayerReadCaches`, or cannot be found. | A new writer of the cached rows without the call, or a new cache. |
 | I3 | `TestPlayerReadCache_DegradedLoadNotStored`, `TestPlayerReadCache_RequestEndedDuringLoadNotStored`, `TestPlayerReadCache_DegradedLoadNotSharedWithWaiters` (`platform/duckdb/player_read_cache_test.go`) | default suite | With fake loaders: a load that reports a degraded step, or whose request ends while it runs, is returned to its requester but not stored; a request waiting on a degraded load reloads for itself. | A best-effort step that swallows its error without reporting it: the cache cannot know. |
 | I4 | `TestGetPage_LitLesEvenementsDImpactUneSeuleFois`, `TestGetPage_UnLoadForParMembre`, `TestGetPage_DeuxRequetesDeuxLectures` (`service/teammates/teammates_service_loads_test.go`) | default suite | Run the Squad `GetPage` on a page where every consumer renders its section and count the reads: one `LoadImpactEvents` for the four consumers, one history load per member, and two requests read twice (the memo does not outlive its request). | Pages other than Squad. |

@@ -584,6 +584,12 @@ Items :
 - [x] B.6 mutations : liste retirée de sous la fenêtre (test de fenêtres rouge), rivaux relus deux
       fois (test de comptage rouge), exclusion Campagne retirée (parité rouge) — six mutations,
       toutes rouges ; Journal B
+- [x] B.7 (ajouté le 2026-09-27, validé par l'utilisateur : découverte (12)) annuaire des noms :
+      listes de xuids et de match_id liées en UN paramètre `VARCHAR[]` (même mécanisme que
+      `clauseListeMatchs`, helper étendu, pas de seconde copie), portée lecture et base,
+      localisation comprise ; noms identiques, contrat de `ResolveGamertags`, DDL de la vue et
+      allowlist de localisation inchangés ; parité sur les lectures de l'annuaire, chronos,
+      mutations — Journal B, « B.7 »
 
 Gate B : comme C sans l'intégration complète : `gofmt`, build, vet, `go test ./internal/service/...
 ./internal/platform/duckdb/... ./internal/analysis/... ./internal/api/... ./internal/archlint/...`,
@@ -719,6 +725,85 @@ Journal B (2026-09-27, exécuteur Opus, worktree `LevelUp-wt-perf-perimetre`, ba
   ./internal/service/...` vert.
 - **Revue B** (un relecteur aveugle) : NON FAITE par l'exécuteur — sous-agents interdits par le
   brief ; au superviseur.
+- **B.7 — annuaire des noms, listes liées en un paramètre** (item ajouté le 2026-09-27 sur
+  validation de l'utilisateur : découverte (12) ; base `f4c4f474e`). Toutes les requêtes de
+  l'annuaire (`platform/duckdb/squad_repo_annuaire.go`, gabarits `analysis/identity_annuaire.go`) :
+  alias et participants (portée lecture et portée base), matchs des restants, jambe kill-feed,
+  localisation. MESURE PRÉALABLE qui décide de la forme : `list_contains(?::VARCHAR[], col)` est
+  évalué ligne à ligne en temps proportionnel à la liste — 3 000 xuids contre la table brute du
+  journal : 38-44 s (non compactée), 4,0-4,4 s (compactée), contre 0,11-0,12 s / 0,07-0,09 s pour
+  la MÊME liste en semi-jointure `IN (SELECT unnest(?::VARCHAR[]))` ; la semi-jointure, elle, ne
+  descend pas sous une fenêtre (mutation M1a de B.6). D'où DEUX formes d'un même paramètre, texte
+  unique dans `analysis/sql_liste.go` (`SQLDansListe` : constante, réservée aux match_id qui
+  bornent une vue `_latest` ; `SQLDansListeParJointure` : semi-jointure, tout le reste ;
+  `SQLListeEnLignes` pour la CTE de la localisation) ; `platform/duckdb/perimetre_liste.go`
+  (`clauseListeMatchs`, `clauseListeParJointure`, `argListe`) y ajoute l'argument, jamais nil.
+  Annuaire : xuids et match_id filtrés sur des tables en semi-jointure, match_id de la jambe
+  kill-feed (quatre jambes, dont deux vues `_latest`) en constante, xuids de la localisation dépliés
+  dans `cherches`. Chaque requête de l'annuaire porte désormais 1 à 5 arguments (Nuzzles, Relations :
+  14 900, 10 163 et 17 741 avant). Gabarits : source unique conservée (`gamertagKillFeedSQL`
+  inchangée, `analysis/identity.go` non modifié : DDL de `v_gamertag_lookup` identique à l'octet),
+  entrée `identity_annuaire.go` de l'allowlist de localisation inchangée et toujours valide (le
+  site y reste). `killcollector` n'appelle pas l'annuaire (grep : aucun gabarit ni `nommerLignes`
+  sous `internal/sync`) : son intégration n'est pas jouée.
+  Garde-rails : `annuaire_fenetres_test.go` — `TestAnnuaire_ListesLieesEnUnParametre` (un xuid que
+  seul le kill-feed nomme, en portée lecture — rivaux — et en portée base — Relations : nom exact,
+  au plus cinq arguments par requête d'annuaire, fenêtres bornées aux matchs du joueur) ;
+  `archlint/liste_liee_ratchet_test.go` — `TestListeLiee_TexteEnUnSeulEndroit` (littéraux
+  `::VARCHAR[]` sous internal/ : `analysis/sql_liste.go` 1, `platform/duckdb/fanout_repo.go` 2
+  copies ANTÉRIEURES consignées, non migrées). Démonstration sur `f4c4f474e` : le premier test
+  ROUGE (« requête d'annuaire à 8 arguments », « à 9 arguments »).
+  **Parité des noms** (copie compactée, code `f4c4f474e` en référence, vrais lecteurs, cinq
+  joueurs) : 13 / 13 fichiers identiques — 11 à l'octet, 2 en ensembles là où l'ordre n'était pas
+  total (et varie d'un tour à l'autre AVANT déjà : heatmap Q29, Q23) : Escouade Q29 (4 joueurs à
+  base joueur, 156 noms), Q32 et Q32b (30 derniers matchs, 200 au hasard, composition avec le
+  coéquipier principal : 15 lectures, 650 033 et 14 968 champs de nom) ; Carrière Q26 (50), Q27
+  (100), Q10 (224), Comparer (5) ; vue match Q12 et Q21 sur 322 matchs (300 au hasard dans la base +
+  les 23 matchs à repli de JGtm : 3 538 et 53 977 noms), Q23 sur 279 matchs de joueur (2 538),
+  `ResolveGamertags` 2 133 xuids (1 854 nommés, 279 ABSENTS de la carte : un xuid inconnu ajouté
+  par match, contrat « absent si non nommé » tenu, repli de localisation exercé) ; Relations Q28
+  historique et 30 matchs (12 289 lignes), heatmap Q29 (1 265).
+  **Chronos** (copie compactée, 2 threads / 512 Mo, trois tours ALTERNÉS avant / après, min-max) :
+  Relations Nuzzles Q28 1 118-1 339 -> 551-839 ms (annuaire 731-912 -> 256-286), heatmap 294-340 ->
+  179-199 (annuaire 200-238 -> 96-105) ; JGtm Q28 205-249 -> 196-222 (annuaire 80-98 -> 47-49),
+  heatmap 74-109 -> 90-91 ; Escouade JGtm (composition de 579 matchs) Q29 50-65 -> 42-54, Q32
+  314-702 -> 192-257, Q32b 103-106 -> 46-62 ; vue match, médianes sur 21 matchs (le dernier + 20 au
+  hasard) : Nuzzles Q12 56-65 -> 50-61, Q21 1 -> 1, Q23 72-84 -> 64-83, `ResolveGamertags` 0 -> 0 ;
+  JGtm Q12 14-17 -> 19-21, Q21 9-10 -> 13-14, Q23 38-47 -> 48-51, `ResolveGamertags` 4-5 -> 8. COÛT
+  FIXE NOMMÉ : sur une petite liste (8 xuids, alias et participants de toute la base), `IN` 3,3 ms,
+  semi-jointure 6,9 ms, constante 8,1 ms (médianes de 15) — l'`IN` court pousse son filtre dans le
+  scan, la liste liée non : +3 à +5 ms par lecture de la vue match de JGtm, sous le budget de 100 ms.
+  **Mutations** (chacune rouge, fichier restauré, `cmp` identique) : (1) liste de la jambe kill-feed
+  retirée de sous la fenêtre (`OR TRUE`) -> `TestAnnuaire_ListesLieesEnUnParametre` rouge (fenêtre
+  de 32 lignes pour 14, portée lecture et base) et `TestAnnuairePorteeBase_EcartNomme_…` rouge ;
+  (2) semi-jointure au lieu de la constante sous la fenêtre -> même rouge ; (3) liste de matchs
+  VIDE (jambe kill-feed) -> rouge (« Joueur 0199 » au lieu du nom), `TestCareerRepo_Annuaire_Q26…`
+  rouge (« Joueur nemi », « Joueur _kfl ») ; (4) paramètre MAL TYPÉ (xuids en une chaîne) -> erreur
+  de conversion, rouge sur trois tests ; (5) paramètres MAL ORDONNÉS (xuids avant les match_id,
+  jambe kill-feed) -> rouge (noms perdus) ; (6) liste VIDE à la localisation -> `TestMatchView_
+  Annuaire_Q12…` et `…Q23…` rouges (« Joueur eurs » au lieu de « NomKFAilleurs ») ; (7) littéral
+  `?::VARCHAR[]` ajouté à la main -> ratchet rouge.
+  **Gate B.7** (depuis `apps/go-api`, `CGO_ENABLED=1`, GOCACHE privé) : `gofmt -l ./internal ./cmd`
+  vide ; `go build ./...` 0 ; `go vet ./...` 0 ; `go test ./internal/service/...
+  ./internal/platform/duckdb/... ./internal/analysis/... ./internal/api/... ./internal/archlint/...`
+  0 (33 `ok`, 2 sans test ; `archlint` vert, le rouge (11) est corrigé par C.11) ; `go test
+  -tags=integration -p 1 -timeout 30m ./internal/platform/duckdb/...` 0 (5 `ok`, `duckdb` 543 s) ;
+  `go test -tags=integration -p 1 -timeout 30m ./internal/service/...` 0 (6 `ok`) ; `killcollector`
+  non joué (n'appelle pas l'annuaire) ; golangci-lint `--new-from-rev=f4c4f474e ./...` 0 issue, idem
+  `--build-tags=integration` (`--allow-parallel-runners`) ; aucun test retiré ; sondes hors du
+  worktree ; artefacts de test sous `data/` (rasters, `halo_5/warehouse/metadata.duckdb`) retirés.
+  **Découvertes de B.7** (consignées ici, §6 non touché sur consigne) : (a) la clause `my_history`
+  de Q28 (B.2) borne une TABLE (`match_participants`) par la forme constante — hors de la doctrine
+  écrite en B.7 (semi-jointure hors fenêtre) ; résultat identique, coût non mesuré, non traité.
+  (b) `platform/duckdb/fanout_repo.go` porte deux semi-jointures `?::VARCHAR[]` écrites à la main,
+  antérieures au helper, consignées dans le ratchet, non migrées. (c) Base NON compactée (copie du
+  2026-09-26, kill-feed d'un joueur, deux tours) : fenêtre entière 2,75-3,56 s ; liste en constante
+  (forme de B.1-B.3) Nuzzles 1,16-1,61 s, JGtm 1,54-2,23 s ; en `IN` Nuzzles 0,68-0,97 s, JGtm
+  1,64-2,07 s — la borne reste un gain avant la compaction, mais l'`IN` y bat la constante pour
+  Nuzzles : l'ordre des gains s'inverse selon l'état de la base (mesuré sur copie compactée, B.1).
+  (d) Coût fixe de la liste liée sur une liste courte (+3 à +5 ms par lecture de la vue match de
+  JGtm, cf. chronos) : un choix de forme selon la taille de la liste le supprimerait, au prix d'un
+  seuil ; non fait.
 
 ## 4. Étape F — Clôture (superviseur)
 
