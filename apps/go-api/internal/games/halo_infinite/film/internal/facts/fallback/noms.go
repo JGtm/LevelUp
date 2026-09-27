@@ -111,4 +111,7 @@ const (
 	// NomLiaisonParAnticipation : `grammar/world.go`, `World.LierParRepliDAnticipation` ; compte par
 	// `replay/film_scan_mouvement.go`, `balayerEtatsDeMouvement` (lot J8.1, constat GA1-2).
 	NomLiaisonParAnticipation Nom = "repli_liaison_par_anticipation"
+	// NomOrigineAuSolLacheeParFenetre : `replay/ground_weapon_rules.go`, `gwPadsClass` ; compte par
+	// `replay/ground_weapon_pads.go`, `buildWeaponPads` (lot J8.3, constat RB2-8).
+	NomOrigineAuSolLacheeParFenetre Nom = "repli_origine_au_sol_lachee_par_fenetre"
 )

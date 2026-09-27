@@ -296,4 +296,30 @@ var registreReplayEquipement = []Repli{
 		CritereRetrait:  "0 film cuit sur les largeurs par defaut ; le catalogue porte les largeurs de toutes les cartes du parc",
 		CompteurBranche: true,
 	},
+	{
+		// LOT J8.3 DU PLAN DE SUITE D AUDIT (2026-09-27), CONSTAT RB2-8 : la fenetre decidait
+		// l origine et le lacheur d un objet au sol sans etre inscrite (D-10 regle 1). Elle est la
+		// meme que celle des poses d equipement (`originDropWindowUS`, `originDropMaxDist`), qui
+		// n y entre qu APRES l evenement natif ; ici aucune lecture ne la precede.
+		Nom:  "repli_origine_au_sol_lachee_par_fenetre",
+		Fait: "l origine `dropped` d un objet au sol (arme ou power-up) et son lacheur, publies par `weaponPads`, `coverage.groundWeapons` et le calque des armes au sol",
+		Mecanisme: "une vie de bipede s acheve a moins de 200 ms (originDropWindowUS) et 1,5 m (originDropMaxDist) de la creation : l objet est classe `dropped`, le plus petit slot en fenetre est le lacheur ; " +
+			"compte = apparitions ainsi classees, deux voies reunies",
+		// LA QUESTION EST OUVERTE : aucun negatif n est mesure (on ne sait pas si le film ecrit
+		// le lacher d une arme comme il ecrit la pose d un equipement, evenement 103). La
+		// condition retenue est donc la DETTE — un lecteur a trouver —, pas `film_muet`.
+		Condition: CondLectureNonPortee,
+		Ordre:     OrdreSansLecture,
+		Sites: []Site{{
+			Fichier: pkgReplay + "ground_weapon_rules.go",
+			Ancre:   "func gwPadsClass(lives map[uint32][]equipLife, a gwPadApparition) (string, int) {",
+		}, {
+			Fichier: pkgReplay + "ground_weapon_pads.go",
+			Ancre:   "clock.fb.DeclencheN(fallback.NomOrigineAuSolLacheeParFenetre, wc.dropped+pc.dropped)",
+		}},
+		DatePose:        "2026-09-27",
+		CibleRetrait:    "conversion le jour ou une lecture du lacher est trouvee (evenement natif ou composant de l objet) ; a defaut, retrait au jalon suivant si le compte est nul au corpus gate de J11 (regle 4 de D-10, 2026-09-27)",
+		CritereRetrait:  "origine lue dans le film pour chaque objet au sol publie `dropped`, ET 0 declenchement sur le corpus du gate de rejeu",
+		CompteurBranche: true,
+	},
 }
