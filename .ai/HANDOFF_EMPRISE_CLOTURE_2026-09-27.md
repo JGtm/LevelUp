@@ -94,3 +94,86 @@ traîner un `shared_matches_v2.duckdb.wal` de l'ancienne base à côté ; relanc
   hors chantier).
 - Leçon : les gates des lots web doivent jouer `lefthook run pre-push` ; deux garde-rails
   (`lint-no-hardcoded-fields`, `lint-contract-ratchet`) n'ont échoué qu'au push.
+
+## 5. Décision du 2026-09-27 : la riposte et l'isolement remplacés par deux graphes
+
+Décision utilisateur : le bloc « Groupés ou isolés » (nuage d'isolement, riposte, « Isolement,
+soirée après soirée », mis de côté au §0 du plan) n'est PAS repris. Il est remplacé par les
+deux graphes de l'artefact « Écart à l'équipe »
+(https://claude.ai/artifact/TtJstMS6cBuCo4jP7tyRzo, proposition 2) :
+**« Placement et rendement de chaque vie »** et **« Part des vies par placement »**.
+La mise en forme y a été réfléchie avec l'utilisateur : la PORTER telle quelle, ne rien
+réinventer (titres, libellés, ordre, couleurs, légendes, infobulles ci-dessous sont les siens).
+
+**Emplacement retenu** : onglet Emprise, à la place réservée au bloc « Groupés ou isolés »
+(le nuage pleine largeur, la barre des quarts dessous). La carte Riposte de Synergies (« Frags non
+ripostés », `SquadRiposteCard` + `SquadRiposteMatricePanel`) disparaît avec ses tests et son
+champ de contrat (règle « 0 code mort ») : l'artefact le dit, « celui-ci prend sa place ».
+
+### Grandeur et unité
+
+- Unité = la **vie** (apparition → mort ou fin de manche), une ligne de la table des vies
+  (`persist/lives_persister.go` : début, fin, cause de fin).
+- Par vie : **distance médiane au coéquipier vivant le plus proche pendant la vie, en portées de
+  radar** de la variante (`regulation.toml [radar_range_m]`, 18 m Arène, 24 m BTB ; match sans
+  portée connue hors de l'univers), **part du temps de la vie hors radar** (infobulle seulement),
+  **frags dans la vie**, **durée**.
+- Exige un **balayage des trajectoires du film au sync**, agrégé par vie (n'existe pas : c'est le
+  gros du lot, côté Go, écrit sous les règles anti-ART — table append-only + vue `_latest`).
+- Pièges tranchés dans l'artefact : instants où l'équipe est à terre, où le joueur porte
+  l'objectif, où il est en véhicule → hors du dénominateur, comptés à part et publiés, jamais
+  mélangés. N et échantillon faible publiés.
+- Quarts : **isolé** = distance médiane ≥ 1,0 portée de radar ; **rentable** = au moins un frag
+  dans la vie.
+
+### « Placement et rendement de chaque vie » (nuage, hauteur 420)
+
+- Un point par vie, couleur du joueur (couleurs d'escouade), liseré 1 px couleur de carte.
+  Taille = durée : `6 + min(durée, 90 s) / 9`.
+- X : « distance médiane au coéquipier le plus proche pendant la vie, en portées de radar »,
+  titre d'axe centré sous l'axe, bornes 0 à 2, pas de 0,25, libellés à deux décimales avec virgule.
+- Y : « frags dans la vie », −0,5 à 5,5, pas de 1, libellés négatifs masqués ; léger décalage
+  vertical aléatoire (±0,25) pour décoller les points de même compte (affichage seulement).
+- Repère du radar : trait vertical pointillé à 1,0, couleur d'accent, étiquette « portée du radar »
+  en haut à l'intérieur (11 px) ; PAS de zone « isolé » teintée sur ce graphe.
+- Frontière horizontale pointillée (gris discret) à 0,5 : « au moins un frag dans la vie ».
+- Quatre quarts nommés, texte gris discret 12 px, titre en capitales + sous-titre :
+  - haut gauche « À PORTÉE ET RENTABLE » / « sûr » ;
+  - haut droite « ISOLÉ ET RENTABLE » / « flanqueur, surveiller la régularité » ;
+  - bas gauche « À PORTÉE ET COÛTEUX » / « duel à travailler, pas le placement » ;
+  - bas droite « ISOLÉ ET COÛTEUX » / « vie donnée pour rien, seul » — le SEUL quart teinté
+    (couleur du quart coûteux à 10 %, son texte dans cette couleur) : c'est celui que la vue
+    existe pour trouver. Les quarts ne se classent pas du bon au mauvais.
+- **Gros point par joueur** : médiane X × médiane des frags de ses vies, taille
+  `18 + min(nombre de vies, 200) / 10`, couleur du joueur, cerclé 2 px couleur de texte, au-dessus
+  du semis.
+- Infobulle d'une vie : « **Joueur** · une vie de m:ss » / « distance médiane X radar · P % de la
+  vie hors radar · k frag(s) ». Infobulle du gros point : « **Joueur** · N vies » / « médiane X
+  radar · k frag(s) par vie » / « P % des vies isolées et sans frag ».
+- Légende en bas, centrée, un item par joueur ; un clic isole le semis ET le gros point du joueur
+  (même nom de série).
+
+### « Part des vies par placement » (barres, hauteur 230)
+
+- Une barre horizontale empilée à 100 % par joueur (premier joueur en haut), épaisseur 22,
+  séparateur 1 px couleur de carte entre segments. Axe X de 0 à 100 %, noms des joueurs en gras.
+- Quatre segments, dans cet ordre et ces couleurs — l'échelle de niveaux de l'app, validée
+  daltonisme dans les palettes ; jamais une même teinte à deux opacités :
+  « à portée et rentable » `perf-tier-1`, « isolé et rentable » `perf-tier-2`,
+  « à portée et coûteux » `perf-tier-4`, « isolé et coûteux » `perf-tier-5`
+  (`perf-tier-3` n'est pas utilisé ; mêmes couleurs pour les quarts du nuage).
+- Valeur « v % » écrite DANS le segment (11 px, gras, encre sombre), seulement à partir de 8 %.
+- Infobulle : « **Joueur** · N vies » puis une ligne par quart « nom : v % ».
+- Légende en bas, centrée.
+
+### Règles de rendu à tenir (goûts de l'utilisateur, déjà appliqués à l'Emprise)
+
+Légendes en bas et centrées ; graphe centré verticalement dans son bloc ; valeurs dans les barres,
+pas de texte en bout de ligne ; titres factuels (ceux ci-dessus) ; FR et EN ; jetons de couleur
+seulement (skill `color-tokens`).
+
+### Suite
+
+Un plan dédié (balayage Go puis cartes), revu avec `plan-review`, à soumettre avant tout code. Il
+passe après L6.6 ; son ordre par rapport à L7 (véhicules) est à fixer avec l'utilisateur, les deux
+lots touchant au film au sync.

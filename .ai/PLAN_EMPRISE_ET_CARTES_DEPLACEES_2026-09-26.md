@@ -19,6 +19,10 @@
 - **Bloc « Groupés ou isolés » et carte « Isolement, soirée après soirée »** : mis de côté le
   2026-09-26 (« on met de côté l'isolement et la riposte »). Rien n'est rendu à leur place ; la
   maquette v21 garde leur état pour plus tard. La riposte reste sur Synergies, inchangée.
+  **2026-09-27 : décision utilisateur, ils ne sont PAS repris** : remplacés par « Placement et
+  rendement de chaque vie » et « Part des vies par placement » (artefact TtJstMS6cBuCo4jP7tyRzo),
+  la carte Riposte de Synergies disparaît ; spécification dans
+  `.ai/HANDOFF_EMPRISE_CLOTURE_2026-09-27.md` §5, lot et plan à part.
 - **Véhicules** (prises, pertes, temps à bord, frags depuis un véhicule côté adversaire) : aucune
   donnée en base (seulement dans l'artefact de rejeu). Demandés par l'utilisateur, ils font
   l'objet du lot **L7**, APRÈS L6. D'ici là, les lignes « Véhicules » ne sont PAS rendues (pas de
