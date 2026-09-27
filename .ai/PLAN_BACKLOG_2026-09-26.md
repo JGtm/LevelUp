@@ -1254,6 +1254,7 @@ Périmètre FERMÉ : un item par constat retenu, chacun avec un test de non-rég
   comportement passe par le handler, sans slug en dur.
 
 - [x] **B-C9 (CI de branche, run `36328284365`, job « Go Coverage + Baseline »)** (`config.LoadForCLI` dans `config/config_demo.go` : `DemoMode` tel que l'environnement le pose, AUCUNE redirection d'état B5.2/B5.5 — `statePaths.demo` faux, `demoState()` pour `RuntimePaths`/`WatcherTokensDir`/`TitleSettingsPath` ; `Load` inchangé pour le serveur ; `config.go` reste à 629 lignes (champ `stateFromRepo`, `load(fromRepo)`) ; `cmd/levelup/main.go` → `LoadForCLI` pour TOUTES les sous-commandes, statuées au journal ; E2E `ops/seed_demo_cli_test.go` joué sans la variable ET avec `LEVELUP_DEMO_MODE=true`, rouge `…/data/demo/db_profiles.json: … introuvable` (erreur de la CI) puis vert ; `config/config_cli_test.go` : chemins d'état en démo = hors démo, témoin serveur redirigé) : `seed-demo` sous `LEVELUP_DEMO_MODE=true` lit les vrais profils et les vraies bases ; son comportement ne dépend pas de la variable.
+- [x] **B-C10 (inversion du choix de B-C9, DB-40)** (`config/config_demo.go` : `Load()` = chemins d'état du dépôt en démo, `DemoMode` lu de l'environnement, sémantique d'avant B5 ; `LoadServer()` = redirections B5.2/B5.5 + coupure de la file persist, appelé par `cmd/server/main.go:311` et lui seul ; `LoadForCLI` supprimé sans alias, `cmd/levelup/main.go` revenu à `Load()` ; inventaire des appelants au journal ; tests d'hermétisme `config_demo_hermetic_test.go` (tests renommés `TestLoadServer_*`) et `cmd/server/demo_paths_test.go` (`chargerCfg`, donc aussi le manifeste des tâches de fond) sur `LoadServer`, manifeste renforcé des écritures d'exécution du serveur (sessions, `jobs.json`) ; `config_cli_test.go` réécrit en `config_load_state_test.go` ; rouge `Load` en démo redirige puis vert ; mutation `LoadServer` sans redirection → les trois familles d'hermétisme rouges ; docs CONFIGURATION EN + FR) : la redirection démo des chemins d'état appartient au seul processus serveur, les autres binaires n'en héritent plus.
 
 **Gate** : GO-F (paquets touchés, puis suites complètes), lint, et la baseline de tests si un test
 est supprimé.
@@ -1471,6 +1472,8 @@ est supprimé.
   `LEVELUP_DEMO_MODE=true`, ils suivent les redirections d'état du serveur démo (profils, réglages,
   auth, tokens vers `<démo>/…`) : `token-capture` écrirait par exemple dans le magasin de tokens de la
   démo. B-C9 ne couvre que `cmd/levelup`. Non traité.
+  **Traité par B-C10 (2026-09-27)** : `config.Load()` ne redirige plus, seul `cmd/server` appelle
+  `config.LoadServer()`.
 - DB-41 (B-C9) : sous `LEVELUP_DEMO_MODE=true`, la CLI garde les effets de `DemoMode` antérieurs à B5 :
   `config.SharedDBPath`, `MetadataDBPath`, `PrestigeBundleDBPaths` et la résolution des player DB
   visent la fixture démo. Une sous-commande de sync lancée dans cet environnement écrirait donc dans
@@ -2322,3 +2325,58 @@ ouvertes en démo par `RequireAdmin`) restent hors périmètre, versées aux dé
   sont des sous-tests ; aucun test supprimé.
 - Découvertes : DB-40 (autres binaires `cmd/*` sur `config.Load`), DB-41 (effets de `DemoMode` sur les
   bases dans la CLI).
+
+**[2026-09-27] B-C10 — la redirection démo des chemins d'état appartient au seul serveur (item ajouté par le superviseur ; inversion du choix de B-C9, d'après DB-40).**
+
+- Décision : `config.Load()` retrouve la sémantique d'avant B5 pour les chemins d'état (profils,
+  réglages et tout ce qui en dérive, auth, sessions, sauvegarde, caches d'exécution, file persist
+  asynchrone non coupée) ; `DemoMode` reste lu de l'environnement, et les bases (fixture) se comportent
+  comme avant B5 (DB-41, inchangé). `config.LoadServer()` applique les redirections de B5.2 et B5.5 et
+  la coupure de la file persist. `config.LoadForCLI()` est supprimé sans alias. Mécanique :
+  `load(fromRepo)` dans `config.go` (toujours 629 lignes) ; `Load` pose `stateFromRepo`, que
+  `demoState()` lit pour `RuntimePaths` / `WatcherTokensDir` / `TitleSettingsPath`. Une `AppConfig`
+  construite à la main avec `DemoMode` (tests) suit la disposition, comme le serveur.
+- Inventaire des appelants de `config.Load()` (hors tests ; `grep` sur `apps/go-api`). Aucun appelant
+  sous `internal/`. `config.DemoLogsDir()` (redirection des logs) n'est lu que par `cmd/server`
+  (`demo_paths.go:66`).
+
+  | Appelant | Processus | Statut |
+  |---|---|---|
+  | `cmd/server/main.go:311` | serveur API | → `LoadServer()` ; tout ce qui tourne dans le serveur reçoit ce `cfg` par injection (aucun autre `config.Load` dans le processus) |
+  | `cmd/levelup/main.go:64` | CLI opérateur | `Load()` (retour d'avant B-C9) |
+  | `cmd/backfill-team-rounds`, `backfill-team-scores`, `backfill-world-player-stats`, `backfill_kda_accuracy`, `backfill_objective_stats` | outils de rattrapage | `Load()`, données réelles |
+  | `cmd/backup-once`, `restore`, `restore_one_player`, `cleanup_media_index`, `purge_player_media` | outils d'exploitation | `Load()`, données réelles |
+  | `cmd/diag_appearance`, `diag_emblem_colors`, `diag_emblem_mapping`, `diag_live_economy`, `diag_matchstats_dump`, `probe-h5`, `probe-mcc` | diagnostics | `Load()`, données réelles |
+  | `cmd/get-token`, `token-capture`, `token-import` | auth opérateur | `Load()` : magasin de tokens RÉEL (DB-40) |
+  | `cmd/h5-appearance-backfill`, `h5-backfill`, `h5-csr-backfill`, `h5-csr-match-backfill`, `h5-enrich`, `h5-events-backfill`, `h5-kill-kind-backfill`, `h5-lusr-backfill`, `h5-metadata-fetch`, `h5-roster-refetch`, `h5-roster-topup`, `h5-sync`, `h5-teamscore-backfill` | outils Halo 5 | `Load()`, données réelles |
+  | `cmd/mapobj-build`, `migrate-static-maps`, `populate-career-rank-images`, `prestige-tuning-analyze`, `refresh-career-ranks`, `refresh-metadata`, `refresh_golden_fixture`, `seed-rank-translations`, `world-aliases-persist` | outils de référentiels | `Load()`, données réelles |
+
+  Tests appelants : `internal/config/*_test.go` (`Load` pour les tests hors démo et le nouveau test
+  d'état, `LoadServer` pour l'hermétisme) et `cmd/server/demo_paths_test.go` (`LoadServer`).
+- Tests :
+  - rouge (`BC-10-rouge.log`, `EXIT_ROUGE_BC10=1`, échafaudage `LoadServer` = sémantique d'alors) :
+    `TestLoad_DemoMode_CheminsDEtatDuDepot` → `SessionDir … \002\runtime\sessions en démo, attendu
+    … \001\data\sessions`, idem `AuthDir`, `DBProfilesPath`, `AdminStateDir`, `FilmFacts`,
+    `TitleSettingsPath`… ; vert après inversion (`EXIT_VERT_BC10=0`, config + cmd/server) ;
+  - hermétisme sur `LoadServer` : `config_demo_hermetic_test.go` (tests renommés `TestLoadServer_*`,
+    absents de la baseline) et `cmd/server/demo_paths_test.go` (`chargerCfg`, qui sert aussi le
+    manifeste des tâches de fond) ;
+  - mutation `LoadServer` = `Load` (aucune redirection), logs `BC-10-mutant.log` puis
+    `BC-10-mutant-2.log`, `EXIT_MUTANT_BC10=1` : `TestLoadServer_DemoMode_AucunCheminDExecutionSousLeLeurre`,
+    `TestLoadServer_DemoMode_Redirige`, `TestDemoBootPaths_TousSousLaRacineDemo` rouges. Au premier
+    passage, le manifeste restait VERT : il n'exerçait que les coupures de B5.3, décidées par `DemoMode`.
+    Il est renforcé des écritures d'exécution du serveur démo (répertoire et purge des sessions au
+    boot, `jobs.json`) ; au second passage il rougit (`CRÉÉ data/cache/jobs.json`, `CRÉÉ
+    data/sessions`). Mutant retiré (`grep MUTANT` vide dans `config_demo.go`) ;
+  - E2E `TestSeedDemoCLI_E2E` : deux sous-tests verts dans les deux passages d'intégration.
+- Gates (logs `BC10-gate-*.log`) : `EXIT_BUILD_BC10=0`, `EXIT_VET_BC10=0` ; unitaires (config,
+  cmd/server, cmd/levelup, ops, archlint) `EXIT_TEST_BC10=0` et, sous `LEVELUP_DEMO_MODE=true`,
+  `EXIT_TEST_DEMO_BC10=0` ; intégration des mêmes paquets (hors archlint) `EXIT_INTEG_BC10=0` et, sous la
+  variable, `EXIT_INTEG_DEMO_BC10=0` ; suite unitaire complète sous `LEVELUP_DEMO_MODE=true` :
+  `EXIT_TEST_COMPLET_DEMO_BC10=1`, 188 `ok`, un seul rouge préexistant, `sync/skill` DB-8 (rafale
+  2,04 s), rejoué seul sous la variable : `EXIT_TEST_REJEU_SKILL_BC10=0` ; `make go-api-lint` :
+  `0 issues.`, `EXIT_LINT_BC10=0`.
+- Écarts : docs `CONFIGURATION.md` et `docs/FR/CONFIGURATION.md` (règle n°15) précisent que la
+  redirection ne vaut que pour le serveur API ; manifeste des tâches de fond renforcé (ci-dessus) ;
+  `config_cli_test.go` renommé `config_load_state_test.go`. Aucun test supprimé présent dans la
+  baseline.

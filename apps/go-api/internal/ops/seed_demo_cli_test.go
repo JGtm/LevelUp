@@ -9,7 +9,7 @@
 // CGO_ENABLED=1 requis (driver duckdb + binaire compilé). Tag integration
 // pour ne pas tourner sur les CI sans CGO.
 //
-// MODE DÉMO (lot B-C9 du backlog 2026-09-26) : la CI lance toute la suite avec
+// MODE DÉMO (lots B-C9 et B-C10 du backlog 2026-09-26) : la CI lance toute la suite avec
 // LEVELUP_DEMO_MODE=true. seed-demo PRODUIT la démo à partir des vraies données : il lit
 // les vrais profils et les vraies bases, que la variable soit posée ou non. Les deux cas
 // sont joués explicitement, indépendamment de l'environnement du poste.

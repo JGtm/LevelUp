@@ -23,8 +23,11 @@ import (
 	"time"
 
 	"levelup/go-api/internal/config"
+	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/domain/title"
 	"levelup/go-api/internal/platform/groupstore"
+	jobs_platform "levelup/go-api/internal/platform/jobs"
+	session_platform "levelup/go-api/internal/platform/session"
 	"levelup/go-api/internal/scheduler"
 )
 
@@ -153,6 +156,11 @@ func TestBackgroundTasks_Demo_ManifesteDuDepotInchange(t *testing.T) {
 	if err := mon.Close(); err != nil {
 		t.Errorf("fermeture du magasin monitoring : %v", err)
 	}
+	// Écritures du serveur démo sous ses chemins d'exécution (lot B-C10) : répertoire et purge
+	// des sessions au boot (api/server.go), file des jobs (jobs.json). Elles ne restent hors du
+	// dépôt que si la configuration du serveur (LoadServer) redirige ses chemins d'état.
+	session_platform.NewStore(cfg.SessionDir, time.Hour, "test-secret-32-bytesXXXXXXXXXX").PurgeExpired()
+	jobs_platform.NewStore(cfg.RuntimePaths().JobsCachePath()).Create(domain.JobTypeScanMedia, "")
 
 	apres := manifeste(t, depot)
 	var ecarts []string

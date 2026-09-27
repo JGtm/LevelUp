@@ -1,12 +1,13 @@
 package config
 
-// config_cli_test.go — la CLI opérateur (cmd/levelup) lit les chemins d'état du DÉPÔT, que
-// LEVELUP_DEMO_MODE soit posé ou non (lot B-C9 du backlog 2026-09-26).
+// config_load_state_test.go — la redirection démo des chemins d'état appartient au SEUL
+// processus serveur (lots B-C9 puis B-C10 du backlog 2026-09-26).
 //
-// La CI lance toute la suite Go avec LEVELUP_DEMO_MODE=true. Depuis B5.2, config.Load y
-// redirige profils, réglages, auth, sessions, sauvegarde et caches vers la racine démo :
-// c'est voulu pour le SERVEUR démo, pas pour seed-demo, qui produit la démo à partir des
-// vrais profils. LoadForCLI en démo doit rendre EXACTEMENT les chemins d'état hors démo.
+// La CI lance toute la suite Go avec LEVELUP_DEMO_MODE=true, et tout binaire opérateur
+// (cmd/levelup, cmd/token-capture, cmd/restore…) opère sur les VRAIES données. Load, que
+// tous appellent, rend donc en démo EXACTEMENT les chemins d'état hors démo (sémantique
+// d'avant B5). LoadServer, appelé par cmd/server et lui seul, applique les redirections de
+// B5.2 et B5.5 (config_demo_hermetic_test.go).
 
 import (
 	"testing"
@@ -14,8 +15,8 @@ import (
 	title "levelup/go-api/internal/domain/title"
 )
 
-// cheminsDEtat : les chemins que B5.2 et B5.5 redirigent en démo (hors bases warehouse,
-// dont la résolution démo précède B5 et reste liée à DemoMode).
+// cheminsDEtat : les chemins que B5.2 et B5.5 redirigent pour le serveur démo (hors bases
+// warehouse, dont la résolution démo précède B5 et reste liée à DemoMode).
 func cheminsDEtat(cfg *AppConfig) map[string]string {
 	rt := cfg.RuntimePaths()
 	return map[string]string{
@@ -34,22 +35,22 @@ func cheminsDEtat(cfg *AppConfig) map[string]string {
 	}
 }
 
-func TestLoadForCLI_DemoMode_CheminsDEtatDuDepot(t *testing.T) {
+func TestLoad_DemoMode_CheminsDEtatDuDepot(t *testing.T) {
 	depot, demo := t.TempDir(), t.TempDir()
 
 	poserEnvDemo(t, depot, demo, false)
-	horsDemo, err := LoadForCLI()
+	horsDemo, err := Load()
 	if err != nil {
-		t.Fatalf("LoadForCLI hors démo : %v", err)
+		t.Fatalf("Load hors démo : %v", err)
 	}
 	poserEnvDemo(t, depot, demo, true)
-	enDemo, err := LoadForCLI()
+	enDemo, err := Load()
 	if err != nil {
-		t.Fatalf("LoadForCLI en démo : %v", err)
+		t.Fatalf("Load en démo : %v", err)
 	}
 
 	if !enDemo.DemoMode {
-		t.Error("LoadForCLI en démo : DemoMode doit refléter l'environnement (sémantique d'avant B5)")
+		t.Error("Load en démo : DemoMode doit refléter l'environnement (sémantique d'avant B5)")
 	}
 	attendu := cheminsDEtat(horsDemo)
 	for nom, chemin := range cheminsDEtat(enDemo) {
@@ -61,22 +62,25 @@ func TestLoadForCLI_DemoMode_CheminsDEtatDuDepot(t *testing.T) {
 		}
 	}
 	if enDemo.PersistBatchAsync != horsDemo.PersistBatchAsync {
-		t.Errorf("PersistBatchAsync : %v en démo, %v hors démo — la CLI ne suit pas la coupure du serveur",
+		t.Errorf("PersistBatchAsync : %v en démo, %v hors démo — seul le serveur démo coupe la file",
 			enDemo.PersistBatchAsync, horsDemo.PersistBatchAsync)
 	}
 }
 
-// Témoin : le SERVEUR garde les redirections de B5.2 (Load, inchangé).
-func TestLoad_DemoMode_ServeurToujoursRedirige(t *testing.T) {
+// Témoin : le SERVEUR démo garde les redirections de B5.2 et la coupure de la file persist.
+func TestLoadServer_DemoMode_Redirige(t *testing.T) {
 	depot, demo := t.TempDir(), t.TempDir()
 	poserEnvDemo(t, depot, demo, true)
-	cfg, err := Load()
+	cfg, err := LoadServer()
 	if err != nil {
-		t.Fatalf("Load : %v", err)
+		t.Fatalf("LoadServer : %v", err)
 	}
 	for nom, chemin := range cheminsDEtat(cfg) {
 		if !sous(demo, chemin) {
 			t.Errorf("serveur démo : %s = %q hors de la racine démo", nom, chemin)
 		}
+	}
+	if cfg.PersistBatchAsync {
+		t.Error("serveur démo : PersistBatchAsync = true, attendu false (file persist coupée, B5.3)")
 	}
 }

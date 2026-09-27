@@ -61,7 +61,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	cfg, err := config.LoadForCLI() // outil opérateur : jamais les chemins d'état de la démo (B-C9)
+	cfg, err := config.Load()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "erreur config: %v\n", err)
 		os.Exit(1)

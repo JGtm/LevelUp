@@ -45,7 +45,7 @@ type AppConfig struct {
 	SessionDir      string
 	DemoMode        bool
 	DemoFixturesDir string
-	stateFromRepo   bool // LoadForCLI : chemins d'état du dépôt même en démo (B-C9), cf. config_demo.go
+	stateFromRepo   bool // Load : chemins d'état du dépôt même en démo (B-C10) ; LoadServer : faux
 	// DemoLocale : locale UI forcée en mode démo (vitrine publique). Défaut "en"
 	// (audience internationale). Surchargeable via LEVELUP_DEMO_LOCALE — les tests
 	// E2E la pinnent à "fr" pour exercer l'UI française (specs FR). Le visiteur peut
@@ -213,7 +213,7 @@ func BootstrapEnvLocal() {
 	loadEnvLocal(filepath.Join(repoRoot, ".env.local"))
 }
 
-// load charge la configuration de l'environnement (défauts = dév local) ; fromRepo : cf. LoadForCLI.
+// load charge la configuration de l'environnement (défauts = dév local) ; fromRepo : cf. Load/LoadServer.
 func load(fromRepo bool) (*AppConfig, error) {
 	repoRoot := getEnvOrDefault("LEVELUP_REPO_ROOT", autoDetectRepoRoot())
 	// Charger .env.local avant toute lecture de variable d'environnement,
@@ -350,7 +350,7 @@ func (c *AppConfig) corsAllLocalhost() bool {
 // et hors DemoMode, refuse de démarrer si la configuration est non sûre. Hors
 // production, ne renvoie jamais d'erreur — les avertissements restent consultables
 // via SecurityWarnings() pour un log au boot. À appeler explicitement depuis
-// cmd/server ; Load() ne valide pas (les CLI et tests réutilisent Load avec des
+// cmd/server ; LoadServer et Load ne valident pas (Load sert les CLI et les tests, avec des
 // défauts de dev).
 func (c *AppConfig) Validate() error {
 	if c.DemoMode || !c.IsProduction() {

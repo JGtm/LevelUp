@@ -216,7 +216,7 @@ ou auto-détection) avant toute lecture `os.Getenv`.
 | `LEVELUP_INSTANCE_LOCKED` | Verrouille l'instance aux utilisateurs existants. | `false` |
 | `LEVELUP_RATE_LIMIT_RPM` | Rate limit HTTP (requêtes/minute). | défaut interne |
 | `LEVELUP_WEB_DIST` | Chemin du frontend buildé (`apps/web/dist`), posé par l'image Docker. | (aucun) |
-| `LEVELUP_DEMO_MODE` | `true` active le mode démo. En démo, les défauts d'état et d'exécution ci-dessus (`db_profiles.json`, `app_settings.json`, auth, sessions, logs, sauvegardes) passent sous la racine démo : voir [Chemins du mode démo](#chemins-du-mode-démo). | `false` |
+| `LEVELUP_DEMO_MODE` | `true` active le mode démo. En démo, le serveur API (et lui seul) place les défauts d'état et d'exécution ci-dessus (`db_profiles.json`, `app_settings.json`, auth, sessions, logs, sauvegardes) sous la racine démo : voir [Chemins du mode démo](#chemins-du-mode-démo). | `false` |
 | `LEVELUP_DEMO_FIXTURES_DIR` | Racine démo (fixture générée par `levelup seed-demo`). | `<root>/data/demo` |
 | `LEVELUP_LANG` | Langue UI/CLI par défaut. | `fr` |
 | `LEVELUP_APP_VERSION` | Version applicative reportée. | `dev` |
@@ -239,7 +239,10 @@ Avec `LEVELUP_DEMO_MODE=true`, `LEVELUP_REPO_ROOT` fournit toujours la configura
 (`config/titles/**`, `data/titles/*/reference/**`, `static/`, `.env.local`), mais rien de ce que
 le serveur lit comme état ou écrit en tournant n'y vit (décision D-7, lot B5 du backlog). Les
 défauts dérivent alors de la racine démo `<démo>` = `LEVELUP_DEMO_FIXTURES_DIR` ; une variable
-posée explicitement garde la main :
+posée explicitement garde la main. Cela ne vaut que pour le processus serveur API
+(`config.LoadServer`) : tout autre binaire (`levelup seed-demo` et les autres outils opérateurs, les
+tests) garde les défauts du dépôt quelle que soit `LEVELUP_DEMO_MODE`, puisqu'il travaille sur les
+vraies données (lot B-C10 du backlog) :
 
 | Élément | Défaut en démo |
 |---------|----------------|

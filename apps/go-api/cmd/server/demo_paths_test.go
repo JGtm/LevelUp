@@ -44,9 +44,9 @@ func chargerCfg(t *testing.T, depot, demo string, demoMode bool) *config.AppConf
 	if demoMode {
 		t.Setenv("LEVELUP_DEMO_MODE", "true")
 	}
-	cfg, err := config.Load()
+	cfg, err := config.LoadServer()
 	if err != nil {
-		t.Fatalf("config.Load: %v", err)
+		t.Fatalf("config.LoadServer: %v", err)
 	}
 	return cfg
 }

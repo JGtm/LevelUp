@@ -18,20 +18,13 @@ import (
 	title "levelup/go-api/internal/domain/title"
 )
 
-// Load charge la configuration du SERVEUR. En démo, sans variable explicite, les chemins
-// d'état et d'exécution suivent la disposition démo (lot B5, D-7).
-func Load() (*AppConfig, error) { return load(false) }
-
-// LoadForCLI charge la configuration d'un OUTIL OPÉRATEUR (cmd/levelup) : chemins d'état
-// du dépôt, que LEVELUP_DEMO_MODE soit posé ou non (lot B-C9 du backlog 2026-09-26).
-//
-// Les redirections du mode démo (B5.2, B5.5) rendent le SERVEUR démo hermétique. La CLI
-// n'est pas ce serveur : seed-demo PRODUIT la démo à partir des vrais profils et des vraies
-// bases, les autres sous-commandes opèrent sur les données réelles. La CI lance toute la suite
-// Go avec LEVELUP_DEMO_MODE=true : sans ce chargement, seed-demo y lisait le db_profiles.json
-// de la fixture. DemoMode garde la valeur de l'environnement (sémantique d'avant B5) ;
-// seules les redirections d'état sont neutralisées.
-func LoadForCLI() (*AppConfig, error) {
+// Load charge la configuration de TOUT binaire autre que le serveur : outils opérateurs
+// (cmd/levelup, cmd/token-capture, cmd/restore…) et tests. Chemins d'état du DÉPÔT, que
+// LEVELUP_DEMO_MODE soit posé ou non : ces binaires opèrent sur les vraies données (seed-demo
+// PRODUIT la démo à partir des vrais profils), et la CI lance toute la suite Go avec
+// LEVELUP_DEMO_MODE=true. DemoMode garde la valeur de l'environnement (sémantique d'avant B5).
+// Lots B-C9 puis B-C10 du backlog 2026-09-26.
+func Load() (*AppConfig, error) {
 	cfg, err := load(true)
 	if cfg != nil {
 		cfg.stateFromRepo = true
@@ -39,8 +32,15 @@ func LoadForCLI() (*AppConfig, error) {
 	return cfg, err
 }
 
+// LoadServer charge la configuration du processus SERVEUR (cmd/server, et lui seul). En
+// démo, sans variable explicite, les chemins d'état et d'exécution suivent la disposition
+// démo et la file persist asynchrone est coupée (lot B5, D-7) : la redirection appartient au
+// seul serveur démo. Tout ce qui tourne dans le serveur reçoit ce cfg par injection.
+func LoadServer() (*AppConfig, error) { return load(false) }
+
 // demoState dit si les chemins d'état et d'exécution suivent la disposition démo : en démo,
-// sauf pour une configuration chargée par LoadForCLI.
+// sauf pour une configuration chargée par Load (binaire autre que le serveur). Une AppConfig
+// construite à la main (tests) avec DemoMode suit la disposition, comme le serveur.
 func (c *AppConfig) demoState() bool { return c.DemoMode && !c.stateFromRepo }
 
 // DemoLayout rend la disposition de l'arbre démo (LEVELUP_DEMO_FIXTURES_DIR).
@@ -112,7 +112,7 @@ type statePaths struct {
 }
 
 // loadStatePaths lit le mode démo (LEVELUP_DEMO_MODE) et la racine démo
-// (LEVELUP_DEMO_FIXTURES_DIR) de l'environnement, pour load. fromRepo (LoadForCLI) : aucune
+// (LEVELUP_DEMO_FIXTURES_DIR) de l'environnement, pour load. fromRepo (Load, hors serveur) : aucune
 // redirection démo des chemins d'état.
 func loadStatePaths(repoRoot string, fromRepo bool) statePaths {
 	fixturesDir := demoFixturesDirFromEnv(repoRoot)

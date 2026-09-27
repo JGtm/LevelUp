@@ -308,7 +308,7 @@ func main() {
 	}
 
 	// --- 2. Configuration ---
-	cfg, err := config.Load()
+	cfg, err := config.LoadServer() // seul processus à suivre la disposition démo (B-C10)
 	if err != nil {
 		slog.Error("chargement config", "err", err)
 		os.Exit(1)
