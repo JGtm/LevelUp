@@ -45,6 +45,7 @@ type AppConfig struct {
 	SessionDir      string
 	DemoMode        bool
 	DemoFixturesDir string
+	stateFromRepo   bool // LoadForCLI : chemins d'état du dépôt même en démo (B-C9), cf. config_demo.go
 	// DemoLocale : locale UI forcée en mode démo (vitrine publique). Défaut "en"
 	// (audience internationale). Surchargeable via LEVELUP_DEMO_LOCALE — les tests
 	// E2E la pinnent à "fr" pour exercer l'UI française (specs FR). Le visiteur peut
@@ -212,16 +213,15 @@ func BootstrapEnvLocal() {
 	loadEnvLocal(filepath.Join(repoRoot, ".env.local"))
 }
 
-// Load charge la configuration depuis les variables d'environnement.
-// Les valeurs par défaut correspondent au développement local.
-func Load() (*AppConfig, error) {
+// load charge la configuration de l'environnement (défauts = dév local) ; fromRepo : cf. LoadForCLI.
+func load(fromRepo bool) (*AppConfig, error) {
 	repoRoot := getEnvOrDefault("LEVELUP_REPO_ROOT", autoDetectRepoRoot())
 	// Charger .env.local avant toute lecture de variable d'environnement,
 	// pour que les variables locales (SPNKR_AZURE_*, LEVELUP_*) soient disponibles.
 	// (No-op si main() a déjà appelé BootstrapEnvLocal — loadEnvLocal n'écrase
 	// jamais une var déjà définie.)
 	loadEnvLocal(filepath.Join(repoRoot, ".env.local"))
-	st := loadStatePaths(repoRoot) // mode démo + chemins d'état et d'exécution, cf. config_demo.go
+	st := loadStatePaths(repoRoot, fromRepo) // mode démo + chemins d'état et d'exécution, cf. config_demo.go
 	appSettingsPath := st.path("LEVELUP_APP_SETTINGS", filepath.Join(repoRoot, "app_settings.json"), titlePkg.DemoLayout.AppSettingsPath)
 
 	cfg := &AppConfig{
@@ -229,7 +229,7 @@ func Load() (*AppConfig, error) {
 		DBProfilesPath:    st.path("LEVELUP_DB_PROFILES", filepath.Join(repoRoot, "db_profiles.json"), titlePkg.DemoLayout.DBProfilesPath),
 		AppSettingsPath:   appSettingsPath,
 		SessionDir:        st.path("LEVELUP_SESSION_DIR", filepath.Join(repoRoot, "data", "sessions"), titlePkg.DemoLayout.SessionDir),
-		DemoMode:          st.demo,
+		DemoMode:          st.demoMode,
 		DemoFixturesDir:   st.fixturesDir,
 		DemoLocale:        getEnvOrDefault("LEVELUP_DEMO_LOCALE", "en"),
 		APIHost:           getEnvOrDefault("LEVELUP_API_HOST", "127.0.0.1"),

@@ -1253,6 +1253,8 @@ Périmètre FERMÉ : un item par constat retenu, chacun avec un test de non-rég
 - [x] **B-C8 (R2-2)** (`wire/prestige_lazy_service.go` `SquadUsualContexts` : `resolveWithPlayerDB`, titre = `pdb.TitleSlug`, le titre de l'appelant n'a plus voix ; test d'intégration par le vrai chemin HTTP `wire/prestige_squad_usual_contexts_title_test.go` : `GET /squads?user_id=…` sans `title_slug` → handler → service paresseux → bundle → fournisseur ; rouge `halo_5 : [Arene Campagne]` puis vert, témoin `halo_infinite` 2 playlists) : `SquadUsualContexts` prend le titre du `PlayerDB` résolu. Le test de
   comportement passe par le handler, sans slug en dur.
 
+- [x] **B-C9 (CI de branche, run `36328284365`, job « Go Coverage + Baseline »)** (`config.LoadForCLI` dans `config/config_demo.go` : `DemoMode` tel que l'environnement le pose, AUCUNE redirection d'état B5.2/B5.5 — `statePaths.demo` faux, `demoState()` pour `RuntimePaths`/`WatcherTokensDir`/`TitleSettingsPath` ; `Load` inchangé pour le serveur ; `config.go` reste à 629 lignes (champ `stateFromRepo`, `load(fromRepo)`) ; `cmd/levelup/main.go` → `LoadForCLI` pour TOUTES les sous-commandes, statuées au journal ; E2E `ops/seed_demo_cli_test.go` joué sans la variable ET avec `LEVELUP_DEMO_MODE=true`, rouge `…/data/demo/db_profiles.json: … introuvable` (erreur de la CI) puis vert ; `config/config_cli_test.go` : chemins d'état en démo = hors démo, témoin serveur redirigé) : `seed-demo` sous `LEVELUP_DEMO_MODE=true` lit les vrais profils et les vraies bases ; son comportement ne dépend pas de la variable.
+
 **Gate** : GO-F (paquets touchés, puis suites complètes), lint, et la baseline de tests si un test
 est supprimé.
 - [ ] **Fusion 2** : CI de branche verte au niveau job, fusion dans `feat/v75`, CI de `feat/v75`
@@ -1464,6 +1466,15 @@ est supprimé.
   `db_exists` valent `false` pour tous les profils de la fixture (dont les dossiers portent un autre
   nom que la clé de profil : `DemoPlayer` → `DEMO`). Affichage honnête (aucune lecture), mais
   appauvri. Non traité.
+- DB-40 (B-C9, 2026-09-27) : 42 autres binaires opérateurs de `cmd/*` appellent `config.Load()` (ex.
+  `token-capture`, `token-import`, `restore`, `backup-once`, `h5-sync`, `refresh-metadata`). Sous
+  `LEVELUP_DEMO_MODE=true`, ils suivent les redirections d'état du serveur démo (profils, réglages,
+  auth, tokens vers `<démo>/…`) : `token-capture` écrirait par exemple dans le magasin de tokens de la
+  démo. B-C9 ne couvre que `cmd/levelup`. Non traité.
+- DB-41 (B-C9) : sous `LEVELUP_DEMO_MODE=true`, la CLI garde les effets de `DemoMode` antérieurs à B5 :
+  `config.SharedDBPath`, `MetadataDBPath`, `PrestigeBundleDBPaths` et la résolution des player DB
+  visent la fixture démo. Une sous-commande de sync lancée dans cet environnement écrirait donc dans
+  la fixture. Préexistant, non traité.
 
 ---
 
@@ -2267,3 +2278,47 @@ ouvertes en démo par `RequireAdmin`) restent hors périmètre, versées aux dé
     identifiants corrigés.
   - B-C8 : le correctif vit dans `LazyPrestigeService` (seul point qui connaît le PlayerDB) ; le
     paramètre `title_slug` de la requête devient inerte (DB-37).
+
+**[2026-09-27] B-C9 — `seed-demo` sous `LEVELUP_DEMO_MODE=true` (item ajouté par le superviseur sur la CI de branche rouge, run `36328284365`, commit `3de419efe`, job « Go Coverage + Baseline »).**
+
+- Cause : la CI lance toute la suite Go avec `LEVELUP_DEMO_MODE=true` (`.github/workflows/ci.yml:436`).
+  `TestSeedDemoCLI_E2E` lance le binaire avec `os.Environ()`, donc en démo ; depuis B5.2, `config.Load`
+  y redirige `DBProfilesPath` vers `<repo>/data/demo/db_profiles.json`.
+- Rouge (`BC-9-rouge.log`, `EXIT_ROUGE_BC9=1`) : sous-test `LEVELUP_DEMO_MODE_true` → `erreur: seed-demo:
+  titres pour "JGtm": read profiles: open …\data\demo\db_profiles.json: Le chemin d'accès spécifié est
+  introuvable.` (l'erreur de la CI) ; sous-test `sans_LEVELUP_DEMO_MODE` vert. Le test retire la
+  variable de l'environnement hérité puis la pose selon le cas : il ne dépend plus du poste.
+- Correctif : `config.LoadForCLI` (`config_demo.go`), appelé par `cmd/levelup/main.go`. `DemoMode`
+  reflète toujours l'environnement (sémantique d'avant B5), mais aucune redirection d'état de B5.2/B5.5
+  ne s'applique : profils, réglages et tout ce qui en dérive (webhook, fuseau, saison CSR, base médias,
+  Prestige), auth, sessions, sauvegarde, file persist non coupée, `RuntimePaths`, `WatcherTokensDir`,
+  `TitleSettingsPath`. `Load` (serveur) est inchangé. `config.go` reste à 629 lignes.
+- Vert : `EXIT_VERT_BC9=0` (deux sous-tests), `EXIT_TEST_CONFIG_BC9=0` (`config_cli_test.go` : en démo,
+  chemins d'état de `LoadForCLI` identiques à hors démo et jamais sous la racine démo ; témoin : `Load`
+  redirige toujours).
+- Sous-commandes de `cmd/levelup` statuées. `LoadForCLI` vaut pour TOUTES : ce sont des outils
+  opérateurs sur les données réelles, aucune n'est un consommateur de la démo (le seul consommateur
+  est le serveur démo) :
+  - `seed-demo` (`DBProfilesPath`) : productrice de la démo, doit lire les vrais profils → corrigée ;
+    `--synthetic` ne lit aucun profil (harnais visuel, CI e2e) → inchangée ;
+  - `index-media` (`MediaCapturesBaseDir`, `UserTimezone`, tirés d'`app_settings`) : indexe les captures
+    réelles avant `seed-demo` (regen de déploiement) → dépôt ;
+  - `notify-version`, `notify-sync` (`AppSettingsPath`) : notifications réelles → dépôt ;
+  - `check-env`, `gate-check` (`DBProfilesPath`, `AppSettingsPath`) : diagnostic du poste → dépôt ;
+  - `add-title` (écrit `db_profiles.json`) : opérateur → dépôt ;
+  - `identity list` / `identity purge` (`UsersFilePath`, `AuthDir`, `DBProfilesPath`) : annuaire réel
+    (ADR 0035) → dépôt ;
+  - `backfill-csr` et le moteur de pool (`CurrentCSRSeasonID`) ; `sync-*`, `backfill*`,
+    `engagement-coefs`, `rebuild-pme-art`, `recompute-friends`, `backfill-squad-creators`,
+    `sync-achievements` (`LoadPlayers` → `DBProfilesPath`) : opérateurs sur les vraies bases → dépôt.
+    Leurs bases warehouse et player restent résolues selon `DemoMode`, comme avant B5 (DB-41) ;
+  - `backfill-h5-kill-mechanics`, moteur de pool (`pr.WatcherTokensDir()`) : `PathResolver` du dépôt,
+    non concernés par B5.2.
+- Gates (logs `BC9-gate-*.log`) : `EXIT_BUILD_BC9=0`, `EXIT_VET_BC9=0`, `EXIT_TEST_BC9=0` (config, ops,
+  cmd/levelup, archlint), `EXIT_INTEG_BC9=0` (`./internal/ops/ ./cmd/levelup/...` sans la variable),
+  `EXIT_INTEG_DEMO_BC9=0` (même commande avec `LEVELUP_DEMO_MODE=true`, reproduction de la CI),
+  `make go-api-lint` : `0 issues.`, `EXIT_LINT_BC9=0`.
+- Baseline : `TestSeedDemoCLI_E2E` garde son nom (présent dans `tests_pre_migration.jsonl`), les cas
+  sont des sous-tests ; aucun test supprimé.
+- Découvertes : DB-40 (autres binaires `cmd/*` sur `config.Load`), DB-41 (effets de `DemoMode` sur les
+  bases dans la CLI).

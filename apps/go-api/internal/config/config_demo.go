@@ -18,6 +18,31 @@ import (
 	title "levelup/go-api/internal/domain/title"
 )
 
+// Load charge la configuration du SERVEUR. En démo, sans variable explicite, les chemins
+// d'état et d'exécution suivent la disposition démo (lot B5, D-7).
+func Load() (*AppConfig, error) { return load(false) }
+
+// LoadForCLI charge la configuration d'un OUTIL OPÉRATEUR (cmd/levelup) : chemins d'état
+// du dépôt, que LEVELUP_DEMO_MODE soit posé ou non (lot B-C9 du backlog 2026-09-26).
+//
+// Les redirections du mode démo (B5.2, B5.5) rendent le SERVEUR démo hermétique. La CLI
+// n'est pas ce serveur : seed-demo PRODUIT la démo à partir des vrais profils et des vraies
+// bases, les autres sous-commandes opèrent sur les données réelles. La CI lance toute la suite
+// Go avec LEVELUP_DEMO_MODE=true : sans ce chargement, seed-demo y lisait le db_profiles.json
+// de la fixture. DemoMode garde la valeur de l'environnement (sémantique d'avant B5) ;
+// seules les redirections d'état sont neutralisées.
+func LoadForCLI() (*AppConfig, error) {
+	cfg, err := load(true)
+	if cfg != nil {
+		cfg.stateFromRepo = true
+	}
+	return cfg, err
+}
+
+// demoState dit si les chemins d'état et d'exécution suivent la disposition démo : en démo,
+// sauf pour une configuration chargée par LoadForCLI.
+func (c *AppConfig) demoState() bool { return c.DemoMode && !c.stateFromRepo }
+
 // DemoLayout rend la disposition de l'arbre démo (LEVELUP_DEMO_FIXTURES_DIR).
 func (c *AppConfig) DemoLayout() title.DemoLayout {
 	return title.NewDemoLayout(c.DemoFixturesDir)
@@ -28,7 +53,7 @@ func (c *AppConfig) DemoLayout() title.DemoLayout {
 // rejeu, faits de film. Hors démo : le PathResolver du dépôt (inchangé). En démo : un
 // PathResolver enraciné sous `<démo>/runtime/`. Jamais pour lire une donnée de référence.
 func (c *AppConfig) RuntimePaths() *title.PathResolver {
-	if c.DemoMode {
+	if c.demoState() {
 		return c.DemoLayout().RuntimePaths()
 	}
 	return title.NewPathResolver(c.RepoRoot)
@@ -38,7 +63,7 @@ func (c *AppConfig) RuntimePaths() *title.PathResolver {
 // magasin VIDE de la fixture (`<démo>/auth/watcher_tokens`) — la démo ne se connecte à rien
 // et ne lit jamais les tokens réels du poste.
 func (c *AppConfig) WatcherTokensDir() string {
-	if c.DemoMode {
+	if c.demoState() {
 		return c.DemoLayout().WatcherTokensDir()
 	}
 	return title.NewPathResolver(c.RepoRoot).WatcherTokensDir()
@@ -47,7 +72,7 @@ func (c *AppConfig) WatcherTokensDir() string {
 // TitleSettingsPath rend l'overlay de réglages d'un titre : celui de la fixture en démo,
 // `data/titles/<slug>/settings.json` du dépôt sinon.
 func (c *AppConfig) TitleSettingsPath(slug string) string {
-	if c.DemoMode {
+	if c.demoState() {
 		return c.DemoLayout().TitleSettingsPath(slug)
 	}
 	return title.NewPathResolver(c.RepoRoot).TitleSettingsPath(slug)
@@ -80,16 +105,20 @@ func DemoLogsDir() (string, bool) {
 // disposition démo. Dans les deux cas, une variable d'environnement posée garde la main
 // (contrat documenté de docs/CONFIGURATION.md) — même sémantique que getEnvOrDefault.
 type statePaths struct {
-	demo        bool
+	demo        bool // les chemins suivent la disposition démo
+	demoMode    bool // LEVELUP_DEMO_MODE, tel que l'environnement le pose
 	fixturesDir string
 	layout      title.DemoLayout
 }
 
 // loadStatePaths lit le mode démo (LEVELUP_DEMO_MODE) et la racine démo
-// (LEVELUP_DEMO_FIXTURES_DIR) de l'environnement, pour Load.
-func loadStatePaths(repoRoot string) statePaths {
+// (LEVELUP_DEMO_FIXTURES_DIR) de l'environnement, pour load. fromRepo (LoadForCLI) : aucune
+// redirection démo des chemins d'état.
+func loadStatePaths(repoRoot string, fromRepo bool) statePaths {
 	fixturesDir := demoFixturesDirFromEnv(repoRoot)
-	return statePaths{demo: demoModeFromEnv(), fixturesDir: fixturesDir, layout: title.NewDemoLayout(fixturesDir)}
+	demoMode := demoModeFromEnv()
+	return statePaths{demo: demoMode && !fromRepo, demoMode: demoMode, fixturesDir: fixturesDir,
+		layout: title.NewDemoLayout(fixturesDir)}
 }
 
 // demoFixturesDirFromEnv lit LEVELUP_DEMO_FIXTURES_DIR (défaut `<repoRoot>/data/demo`).
