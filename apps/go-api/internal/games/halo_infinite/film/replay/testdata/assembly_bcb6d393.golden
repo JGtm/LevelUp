@@ -297,7 +297,7 @@ POWER-UPS (voie ti=37) — balaye=true · 198 creation(s) acceptee(s) -> 6 reten
     presence t0=1426 prouvee jusqu a 1426, absente a 1471
     presence t0=2324 prouvee jusqu a 2471, absente a 2671
     presence t0=2628 prouvee jusqu a 2628, absente a 2671
-26 occupation(s) achevee(s) publiee(s) · 16 datee(s) a l instant exact par l evenement natif · 16 avec un ramasseur nomme
+26 occupation(s) achevee(s) publiee(s) · 12 datee(s) a l instant exact par l evenement natif · 12 avec un ramasseur nomme
 
 ## ARMES PORTEES — l inventaire, pas la main : le loadout ne dit pas QUELLE arme est degainee
 162 loadout(s) publie(s) · 12 famille(s) distincte(s)
