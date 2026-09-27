@@ -214,7 +214,11 @@ var plafondsParFichier = map[string]int{
 	// SCHEMA 73 -> 74 (2026-09-27, lot J5.5 du PLAN_SUITE_AUDIT_DECODEUR_FILM), +37 : l entree v74
 	// (l identite par vie : GB-1, RA2-1/2/3/6, RB2-3, GA1-3, les revisions qui montent, l effet au
 	// parc). Exception ecrite, dans le commit qui monte `SchemaVersion`.
-	"internal/games/halo_infinite/film/replay/document_chronicle.go": 2704,
+	// SCHEMA 74 -> 75 (2026-09-27, lot J10.7 du PLAN_SUITE_AUDIT_DECODEUR_FILM), +29 : l entree v75
+	// (le determinisme des tris, la tolerance de siege, le lien prise -> arme au sol, les tables
+	// de la grammaire, les revisions qui montent ou non, l effet au parc). Exception ecrite, dans le
+	// commit qui monte `SchemaVersion`.
+	"internal/games/halo_infinite/film/replay/document_chronicle.go": 2733,
 	// --- production, hors perimetre du lot 2.7 (aucune preuve d equivalence ne couvrait
 	// leur scission : elle se decidera au lot qui les rouvrira).
 	// `assist.go` EST SORTI DE CETTE TABLE LE 2026-09-16 (lot 2.6.2) : le type `Assist` a descendu
@@ -295,7 +299,9 @@ var plafondsParFichier = map[string]int{
 	// justification de la montee (drapeau, bombe, zones : des changements de sens).
 	// SCHEMA 73 -> 74 (2026-09-27, lot J5.5 du PLAN_SUITE_AUDIT_DECODEUR_FILM) : 1357 -> 1363, la
 	// justification de la montee (l identite par vie, GB-1).
-	"internal/games/halo_infinite/film/replay/structure_test.go":             1363,
+	// SCHEMA 74 -> 75 (2026-09-27, lot J10.7 du PLAN_SUITE_AUDIT_DECODEUR_FILM) : 1363 -> 1367, la
+	// justification de la montee (le determinisme des tris).
+	"internal/games/halo_infinite/film/replay/structure_test.go":             1367,
 	"internal/games/halo_infinite/film/replay/t0_mouvement_research_test.go": 872,
 	// DEPLACE PAR LE LOT J4.2 (2026-09-26) de `replay` vers `grammar` avec la lecture d inventaire ;
 	// plafond inchange (827 -> 829 lignes : le predicat de lecture vide ecrit en clair, cf. le fichier).

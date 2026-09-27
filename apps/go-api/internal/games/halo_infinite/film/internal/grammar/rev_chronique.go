@@ -308,3 +308,36 @@ package grammar
 // Mesure (bobines du depot) : fermeture d image-cle `ti=13` de 0 % a ~100 % sur les sept bobines,
 // aucune autre ligne ne bouge ; carte de fermeture sans aucun compte `fermes` modifie, une ligne
 // neuve (ks_000d5950 `ti=23` 0/1). Golden des familles de mini-bobine inchange.
+//
+// ENTREE `grammar-2026-09-27.3` (2026-09-27, lot J10.7 du plan de suite de l audit du decodeur) :
+// UNE SEULE MONTEE POUR LE JALON J10 (determinisme et correctifs residuels), dont les lots J10.2 a
+// J10.6 avaient refige le golden a revision constante en attendant celle-ci.
+//
+// J10.2 (GB-4, neutre, dit pour memoire) : `ScanFilmWeaponDamages` ne rejoue plus de monde (plus de
+// `_, _ = DecodeFrameRecords`, plus de base d atterrissage calculee puis jetee) ; aucun bit n est lu
+// autrement, aucune sortie ne change.
+//
+// J10.5 (GA1-4) : la coincidence de la suite croissante des datums d image-cle suit la regle de la
+// grammaire (a slot egal, la generation la plus basse, puis le candidat le plus tot : l ordre de
+// `kfCand.betterThan`) — la suite gardait la coincidence la plus TARDIVE ; `ambigus` compte des
+// SLOTS (vus avec deux archetypes, ou ecartes en entier), plus des candidats.
+//
+// J10.6 (GA1-5) : la table des joueurs laisse le recul sur les vacants de tete decider a completude
+// egale (`>=`) : le bourrage de queue ne le neutralise plus, et le rang des joueurs d un roster dont
+// le slot 0 est vacant n est plus decale.
+//
+// J10.1 (GB-3, faiblesse 9, DT-9) : LES TRIS QUI DECIDENT D UNE SORTIE SONT TOTAUX. Dans la
+// grammaire : le fil des morts (instant, xuid, gamertag) ; les emissions d equipement — chaine
+// d une vie et fusion stricte/recuperee departagees par la position du record (`abilityEmission.Bit`,
+// le bit du composant i0), liste publiee rangee par (instant, chunk, paquet, slot, generation,
+// offset, bit) et non plus dans l ordre d iteration de la map des vies (GB-3) ; les series navpoint,
+// les declarations de la table anticipee, les echantillons d i0, les positions et les degats de
+// l appariement tir -> touche, les deux tris des tirs `weaponscan` (la deduplication garde le PREMIER
+// d un amas) : ex aequo dans l ordre du film ; teleportations et bascules de lunette : (instant,
+// slot). Une sortie ne change que sur des ex aequo que l ancien tri departageait au hasard.
+//
+// Hors de la grammaire, au meme lot : les calques du rejeu (J10.3 RB2-6 la tolerance de siege en
+// `time.Duration`, J10.4 RB2-7 le lien prise -> arme au sol borne par `LowUS`, J10.1 RA2-5 le roster
+// et dix-huit autres tris, les relais de bots de `replaybuild`) — `replay.SchemaVersion` monte
+// (74 -> 75) ; `killsource` (cinq tris et l ordre des candidats) et `objectives` (le pied de film)
+// gardent leur revision, series jamais publiees : golden regenere a revision constante.

@@ -434,3 +434,13 @@ package killsource
 // (`conditionBacklog`, `sync/killcollector/postsync.go`) : geste de PRODUCTION, pris par le pilote
 // SUR SIGNAL UTILISATEUR (D6), jamais automatique. La meme vague (J11) rejoue de toute facon les
 // faits d isolement, dont `IsolationDecoderRev` monte au meme lot.
+//
+// COMPLEMENT DU 2026-09-27 (lot J10.1 du meme plan, REVISION CONSTANTE) : la serie n a jamais ete
+// publiee, son golden est regenere a revision constante par la recette. Ce qui change dans le
+// perimetre : la VALEUR de `grammar.Rev` (`grammar-2026-09-27.3`) et cinq tris de cette couche
+// rendus TOTAUX (DT-9) — les kill-events (instant, chunk, paquet, bit : `pickAssistHit` garde le
+// premier porteur), les bots d un meme slot (ordre de decouverte, stable : l epinglage au
+// kill-feed), les paquets de replication (instant, chunk, rang), les dead-states de la marche et les
+// images-cles (ordre du film, stable), et l ordre des candidats de la bijection (le contenu du
+// dead-state departage deux candidats sans position). Le kill-feed ne peut changer que sur des ex
+// aequo que l ancien tri departageait au hasard.
