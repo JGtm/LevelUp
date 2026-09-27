@@ -58,7 +58,7 @@ const TOL_MUTED_WINE = '#882255'
 // sur la sémantique des autres palettes (débâcle = orange/vermillon).
 const TOL_VIBRANT_ORANGE = '#EE7733'
 // Tol Dark Cyan (schéma « dark ») : narrative-sabordage, couleur PROPRE — Muted Indigo
-// #332288 est déjà frag-vehicle ; assez sombre pour ne pas rappeler TOL_CYAN.
+// #332288 est déjà frag-turret ; assez sombre pour ne pas rappeler TOL_CYAN.
 const TOL_DARK_CYAN = '#225555'
 // Tol Muted Olive : narrative-abnegation, couleur PROPRE (TOL_YELLOW est outcome-draw / warning).
 const TOL_MUTED_OLIVE = '#999933'
@@ -174,12 +174,29 @@ export const tolBrightPalette: Palette = {
   'frag-melee':           TOL_RED,            // rouge rosé
   'frag-grenade':         TOL_YELLOW,         // jaune
   'frag-spartan-ability': TOL_BLUE,           // bleu
-  'frag-vehicle':         '#332288',          // Tol Muted Indigo — indigo profond
-  'frag-turret':          TOL_VIBRANT_ORANGE, // orange brûlé
+  // Véhicule et tourelle ÉCHANGÉS le 2026-09-26 (D9) : véhicule = orange des véhicules.
+  'frag-vehicle':         TOL_VIBRANT_ORANGE, // orange brûlé
+  'frag-turret':          '#332288',          // Tol Muted Indigo — indigo profond
   'frag-equipment':       TOL_MUTED_WINE,     // wine — écho du fuchsia du défaut
   'frag-environmental':   '#004488',          // Tol High-contrast Blue — bleu profond
   //                       (le Vibrant Blue #0077BB valait ΔE 4,2 contre TOL_BLUE)
   'frag-unattributed':    NEUTRAL_GREY,       // gris neutre (résidu)
+
+  // ── Ressources de la carte (D9, 2026-09-26) — teintes déjà présentes ici ─────
+  // TOL_VIBRANT_ORANGE (frag-vehicle) échoue le validateur (clair : 2,82:1 ; sombre :
+  // hors bande de clarté) : les véhicules prennent le Vibrant Red, la teinte chaude la
+  // plus proche qui passe. Validateur dataviz (toutes paires, clair et sombre) : tout
+  // passe ; CVD 7,3 rouge ↔ vert (bande 6-8, légale : chaque ressource est nommée).
+  'resource-powerup':      '#117733', // Tol Muted Green (= squad-player-4)
+  'resource-power-weapon': '#AA4499', // Tol Muted Purple (= assist-given)
+  'resource-vehicle':      '#CC3311', // Tol Vibrant Red (= squad-player-2)
+  'resource-rack':         '#0077BB', // Tol Vibrant Blue (= squad-player-1)
+
+  // ── Rôles d'objectif (D9) — validateur : tout passe, clair et sombre (TOL_PURPLE
+  // à 2,94:1 sur le thème sombre, libellés visibles) ──────────────────────────
+  'objective-role-take':   '#0077BB',  // Tol Vibrant Blue
+  'objective-role-defend': '#117733',  // Tol Muted Green
+  'objective-role-hold':   TOL_PURPLE, // pourpre
 
   // ── Heatmaps ────────────────────────────────────────────────────────────────
   'heatmap-cold':           TOL_RED,

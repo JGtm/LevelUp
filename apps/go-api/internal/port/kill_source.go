@@ -10,6 +10,8 @@
 // arsenal ne sont plus deux voies a departager, mais une seule lecture).
 package port
 
+import "context"
+
 // KillSourceClassifier traduit une SOURCE DE DEGAT du film en cle du registre d'armes.
 //
 // Second retour faux = cette source ne designe aucune entree de registre. Le kill n'est
@@ -34,4 +36,45 @@ type KillSourceDescriber interface {
 	// KillSourceClassName rend le nom de la classe de la source (« ARME », « VEHICULE »,
 	// « MELEE »…). Second retour faux = tag inconnu de la table du titre.
 	KillSourceClassName(sourceTag uint32) (string, bool)
+}
+
+// KillSourceCategorizer range une source de degat dans une CATEGORIE canonique
+// (domain.KillSourceCategory*) — objet explosif du decor, chute et environnement.
+//
+// POURQUOI UNE TROISIEME INTERFACE, ET OPTIONNELLE. La cle de registre (Classifier) ne
+// suffit pas a compter un bidon : la plupart des objets explosifs du decor n'ont AUCUNE
+// cle (un seul tag par type de bobine en porte une), et leurs frags retombaient en
+// « Non attribue ». La CATEGORIE, elle, est certaine pour chacun. Seul le titre sait la
+// lire dans ses propres classes de source ; un titre sans film n'en fournit pas, et le
+// lecteur rend alors games.ErrCapabilityNotSupported (degradation propre).
+//
+// Consommateur : « Outils de destruction » de l'Escouade (decision D8 du plan du
+// 2026-09-26). La « Repartition des frags » (fragdist) ne la lit pas.
+type KillSourceCategorizer interface {
+	// KillSourceCategory rend la categorie canonique de la source. Second retour faux =
+	// la source n'appartient a aucune categorie (arme, melee, grenade, vehicule, inconnue).
+	KillSourceCategory(sourceTag uint32) (string, bool)
+}
+
+// KillSourceCategoryRow : frags d'un joueur dont la source appartient a une categorie.
+// WeaponKey est la cle de registre de la source quand elle en a une ("" sinon) : elle
+// dit quelles lignes par arme du meme joueur ces frags recouvrent, pour ne pas les
+// compter deux fois.
+type KillSourceCategoryRow struct {
+	XUID      string
+	Category  string
+	WeaponKey string
+	Kills     int
+}
+
+// KillSourceCategoryRepository est l'interface OPTIONNELLE du lecteur adosse a la source
+// de degat : les frags par (joueur, categorie de source), sur les memes filtres que
+// WeaponKillsRepository. Decouverte par assertion ; le lecteur historique (titre sans
+// film) ne l'implemente pas.
+type KillSourceCategoryRepository interface {
+	LoadKillSourceCategoryKills(
+		ctx context.Context,
+		slug string,
+		filters WeaponKillFilters,
+	) ([]KillSourceCategoryRow, error)
 }

@@ -27,6 +27,7 @@
 package halo_infinite
 
 import (
+	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games/halo_infinite/film/damagetag"
 	"levelup/go-api/internal/games/halo_infinite/film/killicon"
 )
@@ -97,4 +98,33 @@ func (KillSourceRegistry) KillSourceClassName(sourceTag uint32) (string, bool) {
 // optionnelles de la source de degat.
 func (a *AssetURLAdapter) KillSourceClassName(sourceTag uint32) (string, bool) {
 	return KillSourceRegistry{}.KillSourceClassName(sourceTag)
+}
+
+// KillSourceCategory range une source de degat dans une categorie canonique
+// (port.KillSourceCategorizer) : objet explosif du decor (toutes les bobines et objets
+// destructibles, cle de registre ou non) et chute / environnement.
+//
+// POURQUOI PAR LA CLASSE ET NON PAR LA CLE. Sur les 19 tags `OBJET_EXPLOSIF`, quatre
+// seulement portent une cle (une par type de bobine) ; les autres — modeles
+// destructibles, effets partages — n'en ont pas, et leurs frags retombaient en « Non
+// attribue ». La classe `damagetag` est certaine pour chacun : elle suffit a compter.
+func (KillSourceRegistry) KillSourceCategory(sourceTag uint32) (string, bool) {
+	l, ok := damagetag.Lookup(sourceTag)
+	if !ok {
+		return "", false
+	}
+	switch l.Class {
+	case damagetag.ClassObjet:
+		return domain.KillSourceCategoryExplosiveObject, true
+	case damagetag.ClassGlobal:
+		return domain.KillSourceCategoryEnvironment, true
+	default:
+		return "", false
+	}
+}
+
+// KillSourceCategory sur l'adapter d'assets : MEME table, meme reponse (le cablage ne
+// connait que l'adapter d'assets, cf. KillSourceClassName).
+func (a *AssetURLAdapter) KillSourceCategory(sourceTag uint32) (string, bool) {
+	return KillSourceRegistry{}.KillSourceCategory(sourceTag)
 }

@@ -84,6 +84,9 @@ func depsUsage(t *testing.T, db *sql.DB, slug string, acquis, relaches *int) Dep
 		Gamertag:  "testeur",
 		RepoRoot:  racineDepot(t),
 		TitleSlug: slug,
+		// Le segment de LECTURE du fil de l eau : les niveaux d armes y lisent l identite des
+		// matchs (lot L4.1). Sans lui, un match projetable n est plus marque.
+		WithRead: func(_ context.Context, _ string, fn func(*sql.DB)) { fn(db) },
 		AcquireWriter: func(context.Context) (*sql.DB, func(), error) {
 			*acquis++
 			return db, func() { *relaches++ }, nil

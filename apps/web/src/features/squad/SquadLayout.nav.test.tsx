@@ -1,7 +1,8 @@
 /**
  * SquadLayout.nav.test.tsx — LA BARRE D'ONGLETS DE L'ESCOUADE : quatre onglets, pas
  * cinq (lot 3 « sections », 2026-09-22). Passée de trois à quatre avec l'arrivée
- * d'Usages, elle a un PLAFOND : quatre onglets maximum, un axe de lecture par onglet.
+ * d'Usages (renommé « Emprise » le 2026-09-27), elle a un PLAFOND : quatre onglets
+ * maximum, un axe de lecture par onglet.
  * Ce test est le ratchet de ce plafond autant que du libellé des quatre.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
@@ -14,6 +15,10 @@ import { useSquadFilterStore } from '@/stores/squadFilterStore'
 import { useAppShellStore } from '@/stores/appShellStore'
 import { SquadLayout } from './SquadLayout'
 import { getSquadText } from './i18n'
+import { EMPRISE_2209 } from './emprise/emprise.fixtures'
+
+/** La route active simulée (null = aucune) : `useMatchRoute` ne reconnaît qu'elle. */
+let routeActive: string | null = null
 
 vi.mock('@tanstack/react-router', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@tanstack/react-router')>()
@@ -21,7 +26,7 @@ vi.mock('@tanstack/react-router', async (importOriginal) => {
     ...actual,
     useParams: () => ({ playerSlug: 'p' }),
     useSearch: () => ({}),
-    useMatchRoute: () => () => null,
+    useMatchRoute: () => ({ to }: { to: string }) => (to === routeActive ? {} : null),
     useNavigate: () => vi.fn(),
     Outlet: () => <div data-testid="contenu-onglet" />,
     Link: ({ children, to }: { children?: ReactNode; to?: string }) => <a href={to}>{children}</a>,
@@ -38,6 +43,8 @@ const teammatesReponse = {
   composition_sessions: [],
   latest_composition_session: '',
   match_history: [],
+  // Un bloc Emprise avec de quoi montrer : sans lui, l'onglet se masque (D10, test dédié).
+  squad_emprise: EMPRISE_2209,
 }
 
 const resolveReponse = {
@@ -57,6 +64,7 @@ const resolveReponse = {
 }
 
 beforeEach(() => {
+  routeActive = null
   localStorage.clear()
   useSquadFilterStore.getState().resetFilters()
   useAppShellStore.setState({ locale: 'fr' })
@@ -88,13 +96,42 @@ describe('SquadLayout — barre d\'onglets', () => {
       t.nav.synergies,
       t.nav.contributions,
       t.nav.dynamique,
-      t.nav.usages,
+      t.nav.emprise,
     ])
     expect(liens.map((a) => a.getAttribute('href'))).toEqual([
       '/{-$lang}/t/$titleSlug/players/$playerSlug/squad/synergies',
       '/{-$lang}/t/$titleSlug/players/$playerSlug/squad/contributions',
       '/{-$lang}/t/$titleSlug/players/$playerSlug/squad/dynamique',
-      '/{-$lang}/t/$titleSlug/players/$playerSlug/squad/usages',
+      '/{-$lang}/t/$titleSlug/players/$playerSlug/squad/emprise',
     ])
+    // D1 (plan PLAN_EMPRISE_ET_CARTES_DEPLACEES_2026-09-26) : l'onglet s'appelle « Emprise »
+    // (EN « Map control ») ; « Tactique » et « Contrôle » sont déjà pris ailleurs.
+    expect(t.nav.emprise).toBe('Emprise')
+    expect(getSquadText('en').nav.emprise).toBe('Map control')
+  })
+
+  it('D10 : sans rien à montrer (Halo 5 sans frags aux armes spéciales, périmètre vide), l’onglet Emprise se masque', async () => {
+    server.use(
+      http.post('/api/v1/players/:playerSlug/pages/teammates', () =>
+        HttpResponse.json({ ...teammatesReponse, squad_emprise: { ...EMPRISE_2209, resources: [], objects: [], matches: [], production: [], habit: undefined } }),
+      ),
+    )
+    await monter()
+    const t = getSquadText('fr')
+    const liens = Array.from(screen.getAllByRole('navigation')[0].querySelectorAll('a'))
+    expect(liens.map((a) => a.textContent)).toEqual([t.nav.synergies, t.nav.contributions, t.nav.dynamique])
+  })
+
+  it('constat R13 (revue L6.1) : sur l’onglet Emprise, il reste visible même sans rien à montrer', async () => {
+    routeActive = '/{-$lang}/t/$titleSlug/players/$playerSlug/squad/emprise'
+    server.use(
+      http.post('/api/v1/players/:playerSlug/pages/teammates', () =>
+        HttpResponse.json({ ...teammatesReponse, squad_emprise: { ...EMPRISE_2209, resources: [], objects: [], matches: [], production: [], habit: undefined } }),
+      ),
+    )
+    await monter()
+    const t = getSquadText('fr')
+    const liens = Array.from(screen.getAllByRole('navigation')[0].querySelectorAll('a'))
+    expect(liens.map((a) => a.textContent)).toEqual([t.nav.synergies, t.nav.contributions, t.nav.dynamique, t.nav.emprise])
   })
 })

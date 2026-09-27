@@ -1,6 +1,8 @@
 /**
- * ObjectiveCards.tsx — LES CINQ CARTES DU BLOC « OBJECTIFS » (artefact
- * 2ec1b8eb) : trois en contexte Solo, deux en contexte Escouade.
+ * ObjectiveCards.tsx — LES TROIS CARTES DU BLOC « OBJECTIFS » (artefact
+ * 2ec1b8eb), contexte Solo. Les deux cartes du contexte Escouade ont laissé la place aux
+ * cartes d'objectif de l'onglet Contributions (lot L3 du plan
+ * PLAN_EMPRISE_ET_CARTES_DEPLACEES_2026-09-26).
  *
  * DEUX LECTURES QUI NE DISENT PAS LA MÊME CHOSE. Par RÔLE (prendre / défendre /
  * tenir), la part réconcilie des modes qui n'ont pas les mêmes colonnes. Par
@@ -11,11 +13,10 @@
  * secondes et s'écrivent en m:ss.
  */
 import { FormesCard, FormesSubtitle } from '../FormesCard'
-import { MINUS_INK, PLUS_INK, SPREAD_INK, TEAM_REST_INK, squadPlayerInk } from '../colors'
+import { MINUS_INK, PLUS_INK, SPREAD_INK, squadPlayerInk } from '../colors'
 import { EcartForm, type EcartRow } from '../forms/EcartForm'
 import { GrilleForm, type GrilleColumn, type GrilleRow } from '../forms/GrilleForm'
 import { JaugeDoubleForm, type JaugeRow } from '../forms/JaugeDoubleForm'
-import { Piste100Form, type PisteRow } from '../forms/Piste100Form'
 import {
   OBJECTIVE_ROLES,
   aggregateColumns,
@@ -24,11 +25,9 @@ import {
   matchesOfFamily,
   objectiveCell,
   objectiveFamilies,
-  roleLobbyParts,
 } from '../model/objectives'
 import type { FormesViewModel } from '../viewModel'
 import { listWindow } from '../model/display'
-import { lobbyTrackRow } from './shared'
 
 /** La colonne des noms d'une grille par match — cf. EquipmentCards. */
 const MATCH_NAME_WIDTH = 240
@@ -225,92 +224,6 @@ export function ObjectivesRawGridCard({ vm }: { vm: FormesViewModel }) {
           </div>
         )
       })}
-    </FormesCard>
-  )
-}
-
-/** Carte 18 — « Rapport de force par famille de mode » (écart, parité 50 %). */
-export function ObjectivesGapSquadCard({ vm }: { vm: FormesViewModel }) {
-  const { t, ct } = vm
-  return (
-    <FormesCard
-      title={ct.cards.objectivesGapSquad.title}
-      note={ct.cards.objectivesGapSquad.note}
-      legend={[
-        { label: t.common.moreThanOpponent, ink: PLUS_INK },
-        { label: t.common.less, ink: MINUS_INK },
-        { label: t.common.parity, line: true },
-      ]}
-    >
-      {objectiveFamilies(vm.block).map((family) => {
-        const matches = matchesOfFamily(vm.block, family)
-        const rows: EcartRow[] = columnsOfFamily(vm.block, family).map((col) => {
-          const agg = aggregateColumns(matches, vm.mainXuid, [col])
-          return {
-            key: `${family}-${col.key}`,
-            label: t.columns[col.key] ?? col.key,
-            pct: agg.teamShareOfLobbyPct,
-            parity: 50,
-            detail: t.common.outOfFmt(
-              vm.fmtCount(agg.team, col.duration),
-              vm.fmtCount(agg.lobby - agg.team, col.duration),
-            ),
-          }
-        })
-        return (
-          <div key={family}>
-            <FormesSubtitle>{ct.familyMatchesFmt(familyLabel(vm, family), matches.length)}</FormesSubtitle>
-            <EcartForm
-              rows={rows}
-              formatPct={vm.fmtPct}
-              formatSigned={vm.fmtSigned}
-              notMeasuredLabel={t.common.notMeasured}
-              parityTipFmt={t.common.parityFmt}
-              rowTipFmt={t.common.gapTipFmt}
-              pointsFmt={t.common.pointsFmt}
-              axisTitle={t.common.gapAxis}
-              parityAxisLabel={t.common.parity}
-            />
-          </div>
-        )
-      })}
-    </FormesCard>
-  )
-}
-
-/** Carte 19 — « Ce que mon camp prend de l'objectif » (piste 100, par rôle). */
-export function ObjectivesLobbyTrackCard({ vm }: { vm: FormesViewModel }) {
-  const { t, ct } = vm
-  const squadXuids = vm.squad.map((s) => s.xuid)
-  const rows: PisteRow[] = OBJECTIVE_ROLES.map((role) =>
-    lobbyTrackRow(
-      vm,
-      role,
-      t.roles[role],
-      roleLobbyParts(vm.block, role, squadXuids),
-      t.roleHints[role],
-    ),
-  )
-  return (
-    <FormesCard
-      title={ct.cards.objectivesLobbyTrack.title}
-      note={ct.cards.objectivesLobbyTrack.note}
-      legend={[
-        ...vm.squad.map((s) => ({ label: s.label, ink: s.ink })),
-        { label: t.common.teamRest, ink: TEAM_REST_INK },
-        { label: t.common.enemyTeamCounted, hatch: true },
-        { label: t.common.parity, line: true },
-      ]}
-    >
-      <Piste100Form
-        rows={rows}
-        showParity
-        axisTitle={t.common.lobbyShareAxis}
-        parityLabel={t.common.parityFmt('50 %')}
-        emptyLabel={t.common.noMeasure}
-        formatCount={(v) => vm.fmtCount(v)}
-        segmentTipFmt={t.common.segmentTipFmt}
-      />
     </FormesCard>
   )
 }

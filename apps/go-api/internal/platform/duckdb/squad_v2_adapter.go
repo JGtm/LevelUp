@@ -175,6 +175,31 @@ func (a *SquadV2LoaderAdapter) LoadWeaponKills(
 	return rows, nil
 }
 
+// LoadKillSourceCategories charge les frags par (joueur, catégorie de source de dégât du
+// film) — objets explosifs, chute et environnement — pour les « Outils de destruction »
+// (D8). Le lecteur d'arme du titre doit implémenter l'interface OPTIONNELLE
+// port.KillSourceCategoryRepository (lecteur adossé au film) ; sinon (titre sans film)
+// games.ErrCapabilityNotSupported.
+func (a *SquadV2LoaderAdapter) LoadKillSourceCategories(
+	ctx context.Context,
+	titleSlug string,
+	filters port.WeaponKillFilters,
+) ([]port.KillSourceCategoryRow, error) {
+	pdb, err := a.resolveAnyPlayerDB(ctx, titleSlug)
+	if err != nil {
+		return nil, err
+	}
+	repo, ok := a.weaponKillsRepo(pdb).(port.KillSourceCategoryRepository)
+	if !ok {
+		return nil, games.ErrCapabilityNotSupported
+	}
+	rows, err := repo.LoadKillSourceCategoryKills(ctx, titleSlug, filters)
+	if err != nil {
+		return nil, fmt.Errorf("SquadV2LoaderAdapter.LoadKillSourceCategories: %w", err)
+	}
+	return rows, nil
+}
+
 // LoadKillMechanics agrège les mécaniques de kill NATIVES Halo 5 par xuid sur les
 // matchs partagés (assassinats + compétences spartiate). Mirror de LoadWeaponKills :
 // résout n'importe quelle player DB du titre (shared attaché in-process), puis

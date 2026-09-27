@@ -394,3 +394,27 @@ func filterSynthesisBySession(
 }
 
 // buildTeammateOptions convertit les TopTeammateRow en TeammateOption.
+
+// filterCanonicalByMatchIDsSet ne garde que les canonical rows dont le match_id
+// figure dans le slice de SynthesisMatchRow filtré (post cascade + sessions).
+// Sert de pont entre la pipeline legacy SynthesisMatchRow et les builders
+// canoniques (ComputeKPIStats, squadagg.BuildSquadHeader).
+func filterCanonicalByMatchIDsSet(
+	rows []canonical.PlayerMatchRow,
+	filtered []legacymatch.SynthesisMatchRow,
+) []canonical.PlayerMatchRow {
+	if len(filtered) == 0 || len(rows) == 0 {
+		return nil
+	}
+	keep := make(map[string]struct{}, len(filtered))
+	for _, m := range filtered {
+		keep[m.MatchID] = struct{}{}
+	}
+	out := make([]canonical.PlayerMatchRow, 0, len(filtered))
+	for _, r := range rows {
+		if _, ok := keep[r.Summary.MatchID]; ok {
+			out = append(out, r)
+		}
+	}
+	return out
+}

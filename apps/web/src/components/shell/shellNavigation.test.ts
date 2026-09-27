@@ -23,6 +23,7 @@ describe('routeShowsSoloFilters (lot perf L4a, D4.4)', () => {
 
   it('Escouade, Carrière, Accueil, pages hors joueur : non (aucune résolution solo)', () => {
     expect(routeShowsSoloFilters('/t/halo_infinite/players/p/squad/synergies')).toBe(false)
+    expect(routeShowsSoloFilters('/t/halo_infinite/players/p/squad/emprise')).toBe(false)
     expect(routeShowsSoloFilters('/t/halo_infinite/players/p/squad/usages')).toBe(false)
     expect(routeShowsSoloFilters('/t/halo_infinite/players/p/career')).toBe(false)
     expect(routeShowsSoloFilters('/t/halo_infinite/players/p/home')).toBe(false)

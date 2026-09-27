@@ -30,8 +30,6 @@ import (
 	"levelup/go-api/internal/analysis"
 	"levelup/go-api/internal/domain"
 	"levelup/go-api/internal/games"
-	"levelup/go-api/internal/games/canonical"
-	"levelup/go-api/internal/legacymatch"
 	"levelup/go-api/internal/observability/timing"
 	"levelup/go-api/internal/port"
 	"levelup/go-api/internal/service/squadagg"
@@ -100,12 +98,13 @@ type TeammatesService struct {
 	// film.usage_summary ; nil → bloc servi avec Available=false et raison
 	// machine. Cf. teammates_service_usage.go.
 	sessionUsageRepo port.SessionUsageRepository
-	// formesUsageRepo / formesObjectiveRepo / repoRoot (lot D2, 2026-09-13) : les
-	// deux sources du bloc « formes retenues » et la racine du dépôt, où se lit le
-	// catalogue d'armes du titre. Cf. teammates_service_formes.go.
+	// formesUsageRepo / formesObjectiveRepo / repoRoot (lot D2) : les deux sources du bloc
+	// « formes retenues » et la racine du dépôt (catalogue d'armes), cf. teammates_service_formes.go.
 	formesUsageRepo     port.SquadFormesUsageRepository
 	formesObjectiveRepo port.SquadFormesObjectiveRepository
 	repoRoot            string
+	objectiveModeEcarte func(pairName string) bool  // D6, cf. teammates_service_objective_history.go
+	empriseRepo         port.SquadEmpriseRepository // feuille de match de l'Emprise, cf. teammates_service_emprise.go
 	// matchRangeRepo (optionnel) : le lecteur de portee de frag de TOUT le lobby, par
 	// match (lot N2, D22-5). Sans lui, pas de referentiel : le bloc « roles de portee »
 	// est omis. Cf. teammates_squad_range.go.
@@ -384,9 +383,8 @@ func (s *TeammatesService) GetPage(
 		return requeteAnnulee(err)
 	}
 
-	// Header (SessionBriefing) — alimente le composant <SessionBriefing> dans
-	// SquadLayout. Mode solo (SoloKPIs uniquement) si aucun coequipier
-	// selectionne ; mode squad complet sinon.
+	// Header (SessionBriefing) de SquadLayout : mode solo (SoloKPIs uniquement) sans coéquipier
+	// sélectionné, mode squad complet sinon.
 	mainFilteredCanonical := filterCanonicalByMatchIDsSet(canonicalRows, filteredMatches)
 	compFilter := &exactCompositionFilter{
 		teamByMatch:   exactTeamByMatch,
@@ -443,10 +441,13 @@ func (s *TeammatesService) GetPage(
 		compositionSessions = wrapSessionLabelsAsComposition(sessionLabels.Squad)
 	}
 
-	// Blocs « servi ou gâché » (E6.1bis) et « formes retenues » (lot D2) : best-effort, gatés
-	// par film.usage_summary, sur le scope FILTRÉ de la page (filteredMatches) — jamais
-	// l'intersection escouade ; lectures communes faites une fois (teammates_service_usage.go).
-	equipmentUsage, squadFormes := s.loadUsageBlocks(ctx, playerXUID, filteredMatches, sec.matchHistory, req)
+	// Blocs d'usage (servi ou gâché, formes, historique d'objectif, Emprise) : best-effort, sur le
+	// périmètre D2 — composition exacte ∩ filteredMatches, ou filteredMatches seul (teammates_service_usage.go).
+	usage := s.loadUsageBlocks(ctx, playerXUID, porteeUsage{
+		filtered: filteredMatches, squadRows: allSquadRows, timelineRows: allSquadRowsForTimeline,
+		mainTeamByMatch: mainTeamByMatch, history: sec.matchHistory, pairNames: pairNamesOf(canonicalRows, allSquadRowsForTimeline),
+		compositionSessions: compositionSessions,
+	}, req)
 	if err := ctx.Err(); err != nil {
 		return requeteAnnulee(err)
 	}
@@ -469,7 +470,7 @@ func (s *TeammatesService) GetPage(
 		IntensityProfile:    sec.intensityProfile,
 		PerformanceSeries:   sec.performanceSeries,
 		FragClasses:         sec.fragClasses,
-		WeaponKills:         sec.weaponKills,
+		WeaponTools:         sec.weaponTools,
 		WeaponAccuracy:      sec.weaponAccuracy,
 		NativeKillMechanics: sec.nativeKillMechanics,
 		FirstBlood:          sec.firstBlood,
@@ -483,33 +484,10 @@ func (s *TeammatesService) GetPage(
 		CompositionSessions:      compositionSessions,
 		LatestCompositionSession: latestCompositionSession,
 		DataIssues:               issues.list(),
-		EquipmentUsage:           equipmentUsage,
-		SquadFormes:              squadFormes,
+		SquadFormes:              usage.formes,
+		SquadObjectiveHistory:    usage.objectif,
+		SquadEmprise:             usage.emprise,
 	}, nil
-}
-
-// filterCanonicalByMatchIDsSet ne garde que les canonical rows dont le match_id
-// figure dans le slice de SynthesisMatchRow filtré (post cascade + sessions).
-// Sert de pont entre la pipeline legacy SynthesisMatchRow et les builders
-// canoniques (ComputeKPIStats, squadagg.BuildSquadHeader).
-func filterCanonicalByMatchIDsSet(
-	rows []canonical.PlayerMatchRow,
-	filtered []legacymatch.SynthesisMatchRow,
-) []canonical.PlayerMatchRow {
-	if len(filtered) == 0 || len(rows) == 0 {
-		return nil
-	}
-	keep := make(map[string]struct{}, len(filtered))
-	for _, m := range filtered {
-		keep[m.MatchID] = struct{}{}
-	}
-	out := make([]canonical.PlayerMatchRow, 0, len(filtered))
-	for _, r := range rows {
-		if _, ok := keep[r.Summary.MatchID]; ok {
-			out = append(out, r)
-		}
-	}
-	return out
 }
 
 // buildBriefingHeaderForTeammatesPage construit le SquadHeader pour la page

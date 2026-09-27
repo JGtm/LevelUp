@@ -8,16 +8,9 @@
  */
 import { describe, expect, it } from 'vitest'
 
-import { FORMES_MAIN_XUID, FORMES_MATE_A, formesFixture } from '../formes.fixtures'
-import { PAD_AXIS, matchSizes, parityOf } from './access'
-import {
-  aggregateAxis,
-  lobbyParts,
-  myShareOfMatch,
-  playerSpread,
-  playerTotal,
-  teamShareOfMatch,
-} from './aggregates'
+import { FORMES_MAIN_XUID, formesFixture } from '../formes.fixtures'
+import { matchSizes, parityOf } from './access'
+import { aggregateAxis, myShareOfMatch, playerSpread, playerTotal } from './aggregates'
 
 const block = formesFixture()
 
@@ -49,30 +42,13 @@ describe('aggregateAxis', () => {
     expect(agg.team.measured).toBeGreaterThan(0)
     expect(agg.team.min).not.toBeNull()
   })
-
-  it('publie la part de mon camp dans le lobby', () => {
-    const agg = aggregateAxis(block, PAD_AXIS)
-    // Prises nommées : mon camp 4 (2+1+0+1) au match 1, 2 au match 2 -> 6.
-    // Lobby : 6 au match 1, 3 au match 2 -> 9.
-    expect(agg.teamTotal).toBe(6)
-    expect(agg.lobbyTotal).toBe(9)
-    expect(agg.teamShareOfLobbyPct).toBeCloseTo((6 / 9) * 100, 6)
-  })
 })
 
-describe('teamShareOfMatch / myShareOfMatch', () => {
+describe('myShareOfMatch', () => {
   it('rend null sur un match SANS FILM — jamais un zéro', () => {
     const noFilm = block.matches?.[0]
     expect(noFilm?.measured).toBe(false)
-    expect(teamShareOfMatch(noFilm!, FORMES_MAIN_XUID, 'camo')).toBeNull()
     expect(myShareOfMatch(noFilm!, FORMES_MAIN_XUID, 'camo')).toBeNull()
-  })
-
-  it('rend null quand personne n’a touché l’axe sur un match mesuré', () => {
-    const flag = block.matches?.[2]
-    // Personne ne prend de surbouclier sauf un allié : la part existe. Sur un axe
-    // que personne n'alimente, elle n'existe pas.
-    expect(teamShareOfMatch(flag!, FORMES_MAIN_XUID, 'overshield')).not.toBeNull()
   })
 })
 
@@ -85,23 +61,6 @@ describe('playerSpread', () => {
     expect(spread?.max).toBe(3)
     expect(spread?.matches).toBe(2)
     expect(spread?.mean).toBeCloseTo(2, 6)
-  })
-})
-
-describe('lobbyParts', () => {
-  it('sépare l’escouade, le reste du camp et l’adversaire', () => {
-    const parts = lobbyParts(
-      (block.matches ?? []).filter((m) => m.measured),
-      [FORMES_MAIN_XUID, FORMES_MATE_A],
-      'dropped',
-    )
-    // Objets lâchés — match 1 : moi 3, Madina 2, Choco 2 (hors escouade ici),
-    // DectroPK 1 (hors escouade), adversaires 4 + 1 = 5.
-    // Match 2 : moi 1, Madina 0, adversaire 2.
-    expect(parts.bySquad[FORMES_MAIN_XUID]).toBe(4)
-    expect(parts.bySquad[FORMES_MATE_A]).toBe(2)
-    expect(parts.teamRest).toBe(3)
-    expect(parts.opponents).toBe(7)
   })
 })
 

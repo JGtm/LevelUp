@@ -117,8 +117,10 @@ function equipmentBilanFamilyOf(key: string): string | null {
  */
 export const USAGE_METRIC_TOKENS: Record<UsageMetricKind, SemanticToken> = {
   grapple: 'frag-sidearm', // vert — comme la famille grappin de la vue match
-  camo: 'frag-heavy', // violet — états actifs
-  overshield: 'frag-heavy', // violet — états actifs (même famille que camo)
+  // Camouflage et surbouclier = la ressource « bonus » (D9, plan Emprise, 2026-09-26) :
+  // même sarcelle que sur l'onglet Emprise de l'Escouade.
+  camo: 'resource-powerup',
+  overshield: 'resource-powerup',
   wall: 'frag-shoulder', // cyan — poses
   deployed_other: 'frag-shoulder', // cyan — poses
   // Même jeton que le groupe fusionné `equipment` de la vue match
@@ -131,14 +133,14 @@ export const USAGE_METRIC_TOKENS: Record<UsageMetricKind, SemanticToken> = {
 }
 
 /**
- * L'encre des trois rôles d'objectif (colonnes des grilles du bloc 3). Gamme
- * `chart-series-*` : la couleur IDENTIFIE un rôle, elle ne juge rien — une gamme
- * ordinale (perf-tier) ou de statut mentirait.
+ * L'encre des trois rôles d'objectif (colonnes des grilles du bloc 3). Famille
+ * dédiée `objective-role-*` (D9, 2026-09-26) : la couleur IDENTIFIE un rôle, elle ne
+ * juge rien — une gamme ordinale (perf-tier) ou de statut mentirait.
  */
 export const ROLE_TOKENS: Record<string, SemanticToken> = {
-  take: 'chart-series-1',
-  defend: 'chart-series-2',
-  hold: 'chart-series-3',
+  take: 'objective-role-take',
+  defend: 'objective-role-defend',
+  hold: 'objective-role-hold',
 }
 
 /** Le jeton d'un rôle, avec repli neutre pour un rôle non catalogué. */

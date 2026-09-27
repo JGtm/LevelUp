@@ -162,11 +162,29 @@ export const okabePalette: Palette = {
   'frag-melee':           '#BBBBBB', // gris clair
   'frag-grenade':         '#E69F00', // Orange (l'ambre du défaut)
   'frag-spartan-ability': '#0072B2', // Blue
-  'frag-vehicle':         '#009E73', // Bluish Green
-  'frag-turret':          '#A04700', // Vermillion assombri (× 0.75)
+  // Véhicule et tourelle ÉCHANGÉS le 2026-09-26 (D9) : véhicule = orange des véhicules.
+  'frag-vehicle':         '#A04700', // Vermillion assombri (× 0.75) (= resource-vehicle)
+  'frag-turret':          '#009E73', // Bluish Green
   'frag-equipment':       '#8E5374', // Reddish Purple assombri (dérivé squad-player-3)
   'frag-environmental':   '#013A63', // Blue assombri (dérivé heatmap-freq-low)
   'frag-unattributed':    '#888888', // gris neutre (résidu)
+
+  // ── Ressources de la carte (D9, 2026-09-26) — teintes déjà présentes ici ─────
+  // Validateur dataviz (toutes paires) : AUCUN jeu de 4 teintes de cette palette ne
+  // passe tout. Retenu : pire ΔE normal 18,7, CVD 7,6 (bande 6-8, légale : chaque
+  // ressource est nommée) ; seul écart, le Reddish Purple sort de la bande de clarté
+  // du thème sombre de 0,009 (L 0,679 > 0,67) — plus clair, donc toujours lisible.
+  // L'alternative sans pourpre (ocre #B77E00) tombait à ΔE 14,5 entre armes
+  // spéciales et véhicules, deux ressources voisines : écartée.
+  'resource-powerup':      '#009E73', // Bluish Green
+  'resource-power-weapon': '#CC79A7', // Reddish Purple (= frag-heavy)
+  'resource-vehicle':      '#A04700', // Vermillion assombri (= frag-vehicle)
+  'resource-rack':         '#0072B2', // Blue
+
+  // ── Rôles d'objectif (D9) — validateur : tout passe, clair et sombre ─────────
+  'objective-role-take':   '#0072B2', // Blue
+  'objective-role-defend': '#009E73', // Bluish Green
+  'objective-role-hold':   '#B77E00', // Orange assombri (× 0.60, = squad-player-2)
 
   // ── Heatmaps — axe blue/vermillion ────────────────────────────────────────
   'heatmap-cold':           '#D55E00', // Vermillion — mauvais

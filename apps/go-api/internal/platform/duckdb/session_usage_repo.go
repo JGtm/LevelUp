@@ -96,6 +96,7 @@ func (r *SessionUsageRepo) LoadUsagePlayers(ctx context.Context, matchIDs []stri
 	// '{}', mais un ALTER DuckDB ne pose aucune contrainte NOT NULL — le repli
 	// évite qu'une base au DEFAULT contourné rende un NULL au Scan.
 	q := `SELECT match_id, xuid, grapple_pulls, camo_episodes, overshield_episodes,
+	             camo_ms, camo_kills, overshield_ms, overshield_kills,
 	             dropped_objects, pad_pickups, deployed_json, pad_pickups_json,
 	             COALESCE(taken_json, '{}'), COALESCE(spent_json, '{}'),
 	             COALESCE(kept_json, '{}'), COALESCE(dropped_json, '{}')
@@ -112,7 +113,8 @@ func (r *SessionUsageRepo) LoadUsagePlayers(ctx context.Context, matchIDs []stri
 		var deployed, pads string
 		var taken, spent, kept, dropped string
 		if err := rows.Scan(&p.MatchID, &p.XUID, &p.GrapplePulls, &p.CamoEpisodes,
-			&p.OvershieldEpisodes, &p.DroppedObjects, &p.PadPickups, &deployed, &pads,
+			&p.OvershieldEpisodes, &p.CamoMS, &p.CamoKills, &p.OvershieldMS, &p.OvershieldKills,
+			&p.DroppedObjects, &p.PadPickups, &deployed, &pads,
 			&taken, &spent, &kept, &dropped); err != nil {
 			return nil, fmt.Errorf("SessionUsageRepo: players scan: %w", err)
 		}

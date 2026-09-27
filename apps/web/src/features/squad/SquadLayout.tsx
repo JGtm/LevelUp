@@ -2,7 +2,7 @@
  * SquadLayout — layout partagé de la section Escouade.
  *
  * Gère la sélection des coéquipiers (via data.options), les KPI cards et la
- * navigation par onglets (Synergies / Contributions / Dynamique / Usages). Expose les données
+ * navigation par onglets (Synergies / Contributions / Dynamique / Emprise). Expose les données
  * sélectionnées via SquadContext pour les onglets enfants.
  *
  * Multi-titres : tous les libellés métier passent par useFieldMappings
@@ -19,7 +19,8 @@
  * sessions pickées, composition stricte) — ce dont sa requête a besoin.
  *
  * Route parente : /players/$playerSlug/squad
- * Routes enfants : /squad/synergies · /squad/contributions · /squad/dynamique · /squad/usages
+ * Routes enfants : /squad/synergies · /squad/contributions · /squad/dynamique · /squad/emprise
+ * (/squad/usages, l'ancien nom de l'onglet, redirige vers /squad/emprise).
  */
 import { useState, useMemo } from 'react'
 import { Outlet, useParams, Link, useMatchRoute } from '@tanstack/react-router'
@@ -32,7 +33,6 @@ import { useFiltersResolve } from '@/features/filters/queries'
 import { EmptyStateCard } from '@/components/ui/empty-state'
 import { AddFriendModal } from '@/features/friends/AddFriendFlow'
 import { getSquadText } from './i18n'
-import { SquadObjectiveStatsPanel } from './SquadObjectiveStatsPanel'
 import { formatMessage } from '@/lib/i18n/format'
 import { commonManifest, type CommonManifestKey } from '@/lib/i18n/generated/common'
 import { log } from './_logger'
@@ -44,6 +44,7 @@ import type { KPIStats as V2KPIStats } from './v2/types'
 import { SessionBriefing } from '@/features/_shared/SessionBriefing'
 import { formatDataIssues } from './squadDataIssues'
 import { exactCompositionDefault } from './exactComposition'
+import { empriseHasContent } from './emprise/empriseContent'
 
 import { useNavigateToMatch } from '@/lib/match-nav/useNavigateToMatch'
 import { filterContextToMatchFilterSpec } from '@/lib/match-nav/fromFilterContext'
@@ -231,11 +232,16 @@ export function SquadLayout() {
   const synergiesRoute = '/{-$lang}/t/$titleSlug/players/$playerSlug/squad/synergies' as const
   const contributionsRoute = '/{-$lang}/t/$titleSlug/players/$playerSlug/squad/contributions' as const
   const dynamiqueRoute = '/{-$lang}/t/$titleSlug/players/$playerSlug/squad/dynamique' as const
-  const usagesRoute = '/{-$lang}/t/$titleSlug/players/$playerSlug/squad/usages' as const
+  const empriseRoute = '/{-$lang}/t/$titleSlug/players/$playerSlug/squad/emprise' as const
   const isSynergies = !!matchRoute({ to: synergiesRoute, fuzzy: true })
   const isContributions = !!matchRoute({ to: contributionsRoute, fuzzy: true })
   const isDynamique = !!matchRoute({ to: dynamiqueRoute, fuzzy: true })
-  const isUsages = !!matchRoute({ to: usagesRoute, fuzzy: true })
+  const isEmprise = !!matchRoute({ to: empriseRoute, fuzzy: true })
+  // D10 (plan PLAN_EMPRISE_ET_CARTES_DEPLACEES_2026-09-26) : sans rien à montrer (Halo 5 sans
+  // frags aux armes spéciales, périmètre vide), l'onglet Emprise se masque — même prédicat que
+  // la page. Visible tant que la réponse n'est pas arrivée, et tant qu'on est dessus.
+  const empriseVisible = useMemo(() => !data || empriseHasContent(data.squad_emprise), [data])
+  const showEmprise = isEmprise || empriseVisible
 
   // ── Gestion chargement / erreur ──────────────────────────────────────────
   // La barre de filtres (sticky) est toujours rendue; seul le contenu est
@@ -389,13 +395,6 @@ export function SquadLayout() {
             return <SessionBriefing kpis={toContractKpis(soloKpis)} squad={briefingSquad} />
           })()}
 
-          {/* Objectifs de l'escouade (CTF/Zones/Oddball) — capability-gated + data-driven. */}
-          <SquadObjectiveStatsPanel
-            statsByXuid={data?.header?.objective_stats_by_xuid}
-            texts={t}
-            numLoc={t.intlLocale}
-          />
-
           {/* « Cap d'escouade » (Enregistrer cette compo) — remonté AU-DESSUS de la
               barre d'onglets L3, commun aux deux onglets (Synergies / Contributions). */}
           <SquadFocusStrip />
@@ -424,13 +423,15 @@ export function SquadLayout() {
               >
                 {t.nav.dynamique}
               </Link>
-              <Link
-                to="/{-$lang}/t/$titleSlug/players/$playerSlug/squad/usages"
-                params={{ titleSlug, playerSlug }}
-                className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${isUsages ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
-              >
-                {t.nav.usages}
-              </Link>
+              {showEmprise && (
+                <Link
+                  to="/{-$lang}/t/$titleSlug/players/$playerSlug/squad/emprise"
+                  params={{ titleSlug, playerSlug }}
+                  className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${isEmprise ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
+                >
+                  {t.nav.emprise}
+                </Link>
+              )}
             </nav>
           </div>
 

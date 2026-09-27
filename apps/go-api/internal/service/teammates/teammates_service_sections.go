@@ -46,7 +46,7 @@ type sectionsEscouade struct {
 	synergyRadar        []domain.SquadSynergyRadarSeries
 	intensityProfile    *domain.SquadIntensityProfile
 	performanceSeries   map[string][]domain.SquadPerformanceSeriesPoint
-	weaponKills         *domain.SquadWeaponKills
+	weaponTools         *domain.SquadWeaponTools
 	weaponAccuracy      *domain.SquadWeaponAccuracy
 	fragClasses         map[string][]domain.FragClassEntry
 	nativeKillMechanics *domain.SquadKillMechanics
@@ -134,7 +134,7 @@ func (s *TeammatesService) graphesDeLaPopulation(
 	})
 	siVivante(ctx, func() { out.performanceSeries = s.buildSquadPerformanceSeries(ctx, p.rows, gt, px, sel, tm) })
 	siVivante(ctx, func() {
-		out.weaponKills, out.fragClasses = s.buildSquadWeaponKills(ctx, p.rows, gt, px, tm, out.performanceSeries)
+		out.weaponTools, out.fragClasses = s.buildSquadWeaponKills(ctx, p.rows, gt, px, tm, out.performanceSeries)
 	})
 	siVivante(ctx, func() { out.weaponAccuracy = s.buildSquadWeaponAccuracy(ctx, p.rows, gt, px, tm) })
 	siVivante(ctx, func() { out.nativeKillMechanics = s.buildSquadKillMechanics(ctx, p.rows, gt, px, tm) })

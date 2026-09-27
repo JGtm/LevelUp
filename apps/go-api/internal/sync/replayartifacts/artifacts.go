@@ -373,7 +373,7 @@ func cuireLeCycle(ctx context.Context, d Deps, insertedIDs []string) {
 	// point d'entrée — voir Deriver.
 	Deriver(ctx, DerivationsDeps{
 		RepoRoot: d.RepoRoot, TitleSlug: d.TitleSlug, Gamertag: d.Gamertag,
-		AcquireWriter: d.AcquireWriter,
+		WithRead: d.WithRead, AcquireWriter: d.AcquireWriter,
 	}, b.ranges)
 	publierBilan(ctx, d, b, len(work))
 }
