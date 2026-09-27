@@ -615,7 +615,7 @@ toujours « 7 <= plafond » — PASSÉ (logs `A3-red.log` / `A3-green.log`). CI 
     un LUFS), bande [−20 ; −14] dBFS pour les musiques + l'intro, [−21 ; −13] pour les voix. Il
     vit dans un fichier à part (`replaySoundAssets.guard.test.ts` a atteint `max-lines`). La
     lecture des chunks passe par `test/wavFile.ts`, que `fmtDe` réutilise.
-- [ ] **A4.9 (DA-9, ajouté par le superviseur le 2026-09-27)** L'intro joue aussi au premier
+- [x] **A4.9 (DA-9, ajouté par le superviseur le 2026-09-27)** L'intro joue aussi au premier
   « Lecture » après un rechargement : si son tampon n'est pas décodé au geste, attente bornée du
   décodage, puis départ avec un décalage égal au temps écoulé depuis le geste, converti en temps
   de lecture (`src.start(t, offset)`). Borne : offset ≤ durée du préambule à la vitesse courante
@@ -623,6 +623,12 @@ toujours « 7 <= plafond » — PASSÉ (logs `A3-red.log` / `A3-green.log`). CI 
   (`replayAudio.ts` / `introSound.ts`), `useReplaySound.ts` ne grossit pas. Tests (faux contexte
   à décodage asynchrone) : décodage en 200 ms → offset ≈ 0,2 s ; au-delà de la borne → aucune
   source ; déjà décodé → offset 0. Rouge avant.
+  - **Statut** : `sound/introSound.ts:41` (`introLateBoundS`), `:50` (`playIntroAligned`) ;
+    `sound/replayAudio.ts:175` (promesses de chargement), `:344` `isLoaded`, `:349`
+    `whenLoaded`, `:359` `playFrom`, `:397` `src.start(t0, offsetS)` ; hook
+    `sound/useReplaySound.ts:590` (643 lignes, inchangé). Tests `sound/introAlign.test.ts`
+    (5 cas, `:53` à `:85`) et `sound/introSound.test.tsx:76` (premier « Lecture » après
+    rechargement, de bout en bout).
 
 **Gate** : WEB (filtres `src/features/match-replay`), recette A4.7, gate utilisateur.
 
@@ -1407,8 +1413,8 @@ est supprimé.
   son manqué »). Elle joue quand le lecteur existe déjà : arrivée par un lien dans l'application
   (`hasBeenActive`, A2), un geste antérieur sur la page, « Recommencer », ou un rejeu terminé.
   Le texte de A4.4 impose la voie ordinaire ; un départ différé jusqu'au décodage (tant que la
-  lecture est encore dans le préambule) serait une décision de conception hors du plan. Non
-  traité, remonté au superviseur.
+  lecture est encore dans le préambule) serait une décision de conception hors du plan. Remonté
+  au superviseur ; **traité par A4.9** (décision du superviseur, 2026-09-27).
 - DA-10 (A4.1) : les trois fanfares du dépôt (`end_*_music_01.wav`) mesurent **−25,1 à −25,4
   LUFS** (TP −10,2 à −11,9), et non −18 comme le dit `endMatchSound.ts` (« livrées à −18 LUFS »).
   Leur réduction en stéréo s'est faite APRÈS la normalisation de `_fin_partie/livraison/`
@@ -1917,6 +1923,42 @@ plan.**
 - Gates (logs `A4-8-*.log`) : `EXIT_TYPECHECK=0` (purge), `EXIT_LINT=0` (0 erreur,
   26 avertissements préexistants), `EXIT_VITEST_MATCH_REPLAY=0` : 220 fichiers et 3 206 tests
   réussis, 4 fichiers et 7 tests sautés.
+
+**[2026-09-27] A4.9 — l'intro calée sur le coup d'envoi même décodée en retard (DA-9) —
+exécutant opus.**
+
+- Couche son :
+  - `replayAudio.ts` : l'ensemble `pending` devient une table URL → promesse de chargement,
+    toujours une seule requête par URL. Ajout de `isLoaded`, `whenLoaded` et `playFrom(url,
+    offsetS)`, qui prend la voie ordinaire (plafond de voix compris).
+  - `start` reçoit un décalage, 0 par défaut : `src.start(t0, offsetS)`, avec l'enveloppe
+    (fondu, arrêt) avancée d'autant. Les autres sons ne changent pas.
+  - `introSound.ts` : `playIntroAligned` part tout de suite si le tampon est prêt. Sinon il
+    attend `whenLoaded`, puis entre dans le tampon au retard mural écoulé depuis le geste.
+    Au-delà de `introLateBoundS(vitesse)` = `LEAD_IN_MS` / vitesse (1 s à 1×, 0,5 s à 2×) :
+    silence.
+- Lecture de la conversion « temps écoulé → temps de lecture » :
+  - le tampon se joue en temps réel, sans accélération, donc le décalage dans le tampon égale
+    le temps MURAL écoulé ;
+  - la vitesse n'intervient que dans la borne, qui est la durée du préambule à l'écran ;
+  - la résolution reste donc là où elle serait tombée sans retard. À 2×, cet endroit est déjà
+    0,5 s après le coup d'envoi (DA-12), comme sans retard.
+- Hook : `playIntro` appelle `playIntroAligned`. Les 5 lignes deviennent 5 lignes, et
+  `useReplaySound.ts` reste à 643 lignes.
+- Double de test `FakeSource.start(t, offset)` : il mémorise maintenant le décalage.
+- Rouge (log `A4-9-rouge.log`, `EXIT_ROUGE_A49=1`, 6 échecs sur 11 ; `introLateBoundS` et
+  `playIntroAligned` réduits à des bouchons) :
+  - `expected NaN to be close to 1` (borne) ;
+  - `expected [] to have a length of 1 but got +0` (×2) : décodage en 200 ms, et premier
+    « Lecture » après rechargement dans le hook — le cas de DA-9 ;
+  - `TypeError: libere is not a function` (×3) : aucune requête lancée par le bouchon.
+- Vert : `A4-9-vert-1.log`, `EXIT_VERT_A49=0`.
+- Gates (logs `A4-9-*.log`) : `EXIT_TYPECHECK=0` (purge), `EXIT_LINT=0` (0 erreur,
+  26 avertissements préexistants), `EXIT_VITEST_MATCH_REPLAY=0` : 221 fichiers et 3 212 tests
+  réussis, 4 fichiers et 7 tests sautés.
+- Hors test : sous Firefox, le contexte né dans le geste peut rester suspendu 0,8 à 4,3 s (DA-7).
+  Son horloge ne court pas pendant ce temps, alors que la lecture, elle, avance ; le départ
+  calé ne rattrape pas cet écart. Non traité (hors de portée de la page, cf. DA-7).
 
 ### Lots B
 

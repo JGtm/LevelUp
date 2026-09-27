@@ -13,14 +13,49 @@
  *    « Lecture » sur un rejeu terminé) — c'est la lecture qui le sait (`useReplayPlayback`,
  *    option `onStarted`). Jamais sur une reprise, un glissé, un saut, un lien tactique ni une
  *    lecture automatique ;
- *  - par la VOIE ORDINAIRE du lecteur (`play`) : son coupé ou vitesse au-delà de
- *    SOUND_MAX_SPEED, elle se tait comme tout le reste ;
+ *  - par la VOIE ORDINAIRE du lecteur (`playFrom`, plafond de voix compris) : son coupé ou
+ *    vitesse au-delà de SOUND_MAX_SPEED, elle se tait comme tout le reste ;
  *  - ABSENTE DE L'EXPORT : un clip commence où l'utilisateur le cadre, pas au préambule. Elle
  *    est tout de même rangée en MUSIQUE dans les familles de l'export (`exportSoundFamilies.ts`),
  *    pour que le classement reste vrai le jour où elle y entrerait.
  *
  * Sa durée et son format sont gardés par `replaySoundAssets.guard.test.ts`.
+ *
+ * UN TAMPON EN RETARD RESTE CALÉ (A4.9, DA-9). Au premier « Lecture » après un rechargement, le
+ * lecteur audio naît dans ce clic et l'extrait n'est pas encore décodé : la voie ordinaire le
+ * sautait. `playIntroAligned` attend donc le décodage, puis entre dans le tampon avec un
+ * DÉCALAGE égal au temps mural écoulé depuis le geste. Le tampon se joue en temps réel, sans
+ * accélération, donc ce décalage est aussi celui du tampon, et la résolution reste là où elle
+ * serait tombée. Si l'attente dépasse ce qu'il restait du préambule à l'écran
+ * (`introLateBoundS`), le coup d'envoi est passé : silence, jamais une montée décalée de son
+ * image.
  */
+import { LEAD_IN_MS } from '../model/replayWindow'
+import type { ReplayAudioPlayer } from './replayAudio'
 
 /** Le fichier de l'extrait, dans `static/sounds/halo_infinite/`. */
 export const INTRO_MUSIC_STEM = 'intro_music_01'
+
+
+/** Le retard admis, en secondes : la durée du préambule À L'ÉCRAN à cette vitesse (1 s à 1×). */
+export function introLateBoundS(speed: number): number {
+  return LEAD_IN_MS / 1000 / speed
+}
+
+/**
+ * playIntroAligned joue l'extrait tout de suite s'il est décodé, sinon dès qu'il l'est, entré à
+ * l'instant où il aurait dû partir, ou pas du tout au-delà de la borne (cf. l'en-tête).
+ * `nowMs` est l'horloge murale, injectée par les tests.
+ */
+export async function playIntroAligned(
+  player: Pick<ReplayAudioPlayer, 'isLoaded' | 'whenLoaded' | 'playFrom'>,
+  url: string,
+  speed: number,
+  nowMs: () => number = () => performance.now(),
+): Promise<void> {
+  if (player.isLoaded(url)) return player.playFrom(url, 0)
+  const geste = nowMs()
+  await player.whenLoaded(url)
+  const retardS = (nowMs() - geste) / 1000
+  if (retardS <= introLateBoundS(speed)) player.playFrom(url, retardS)
+}

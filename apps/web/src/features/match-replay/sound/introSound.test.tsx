@@ -71,6 +71,21 @@ describe('useReplaySound — la musique d’intro', () => {
     expect(introSources()).toHaveLength(1)
   })
 
+  // DA-9 / A4.9 : premier « Lecture » après un rechargement. Le lecteur naît DANS ce geste
+  // (`wake`), l'extrait n'est pas encore décodé quand `intro` est appelée juste après.
+  it('premier « Lecture » après un rechargement : l’extrait part quand même, une fois décodé', async () => {
+    localStorage.setItem('replay-sound-on', 'true')
+    const { result } = mount()
+    act(() => {
+      result.current.wake()
+      result.current.intro()
+    })
+    expect(introSources()).toHaveLength(0)
+    await act(async () => { await flushAudio() })
+    expect(introSources()).toHaveLength(1)
+    localStorage.clear()
+  })
+
   it('à SOUND_MAX_SPEED tout juste, elle part encore', async () => {
     const { result } = mount(SOUND_MAX_SPEED)
     act(() => result.current.toggle())

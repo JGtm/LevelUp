@@ -48,7 +48,7 @@ import { soundUrlOf } from './replayAudioMix'
 import { persistPreference, readStoredFlag, readStoredNumber } from '../settings/replayPreferences'
 import { endMatchSounds, endMatchSoundStems, type EndMatchSoundSpec } from './endMatchSound'
 import { endMatchSoundsFor, soundFamiliesFor } from './exportSoundFamilies'
-import { INTRO_MUSIC_STEM } from './introSound'
+import { INTRO_MUSIC_STEM, playIntroAligned } from './introSound'
 import type { ReplayLocale } from '../i18n/i18n'
 import { ReplayAudioPlayer, soundShapeOf } from './replayAudio'
 import type { ReplayDocumentReady } from '../../../lib/replay/replayNormalize'
@@ -584,10 +584,10 @@ export function useReplaySound(
     }
   }, [])
 
-  // L'INTRO passe par `play` (voie ordinaire, plafond de voix compris) : aucune règle à part.
+  // L'INTRO : voie ordinaire, calée sur le coup d'envoi même décodée en retard (`introSound.ts`).
   const playIntro = useCallback(() => {
-    const url = urlsRef.current.get(INTRO_MUSIC_STEM)
-    if (url && onRef.current && soundPlaysAtSpeed(speedRef.current)) playerRef.current?.play(url)
+    const [url, player, speed] = [urlsRef.current.get(INTRO_MUSIC_STEM), playerRef.current, speedRef.current]
+    if (url && player && onRef.current && soundPlaysAtSpeed(speed)) void playIntroAligned(player, url, speed)
   }, [])
 
   // LA PISTE POUR L'EXPORT SE LIT À L'APPEL, JAMAIS AU RENDU — même patron que
