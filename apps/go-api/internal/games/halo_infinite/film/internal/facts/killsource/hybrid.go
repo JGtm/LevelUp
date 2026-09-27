@@ -71,12 +71,15 @@ type pass struct {
 	// seul comptage des inexpliques : un candidat a indice de bot qui a servi n en est pas un.
 	botUsed map[[3]int]bool
 	// appar : D OU VIENT L APPARIEMENT de chaque ligne PUBLIEE (lot 1.9.7).
-	appar     types.ApparStats
-	redundant int
-	noBit     int
-	agree     int
-	disagree  int
-	multiCand int
+	appar types.ApparStats
+	// provenance : le compteur de `appar` qu a monte chaque ligne de `byTime`. Un remplacement au
+	// temps 4 le redescend : une ligne publiee, une provenance (revue ronde 2 du lot J7).
+	provenance map[int]*int
+	redundant  int
+	noBit      int
+	agree      int
+	disagree   int
+	multiCand  int
 
 	unexpPair int
 	unexpSelf int
@@ -88,7 +91,7 @@ type pass struct {
 	// ligne publiee (lot J7.4, FK-4). Un instant publie ne se reecrit jamais.
 	collisionsBot int
 	// autoSurFabriqueRemplacees : lignes du temps 3 posees sur un couple FABRIQUE et remplacees par
-	// la mort de bot que le temps 4 verifie au meme instant (revue du lot J7, FK-4).
+	// la mort de bot que le temps 4 constate a leur instant exact (revue du lot J7, FK-4).
 	autoSurFabriqueRemplacees int
 	// fantomes : les instants de couples RECOLLES ou le temps 4 a PUBLIE la mort de bot — les
 	// seuls couples retires du denominateur (`Coverage.GhostPairs`, lot J7.4).
@@ -156,7 +159,7 @@ func (p *pass) runStrong() {
 			continue
 		}
 		st.Published++
-		p.noterAppariement(parLaFenetre, &p.appar.Fenetre)
+		p.noterLigne(e.timeMS, parLaFenetre, &p.appar.Fenetre)
 		p.byTime[e.timeMS] = p.ctx.buildKill(killDraft{timeMS: e.timeMS, victim: e.victim,
 			killer: e.killer, inFeed: true, origin: OriginCredit}, cd)
 	}
@@ -168,13 +171,31 @@ func (p *pass) runStrong() {
 // AU NIVEAU PUBLIE, ET PAS AU NIVEAU APPARIE : c est la provenance d une LIGNE qui interesse un
 // lecteur de document. La mesure du lot, elle, compte au niveau apparie (un candidat peut
 // s apparier a un instant deja publie par la voie prioritaire) — les deux denominateurs sont
-// differents, et les confondre est le piege que cette phrase existe pour nommer.
-func (p *pass) noterAppariement(parLaFenetre bool, compteurDeLaFenetre *int) {
+// differents, et les confondre est le piege que cette phrase existe pour nommer. Rend le compteur.
+func (p *pass) noterAppariement(parLaFenetre bool, compteurDeLaFenetre *int) *int {
+	c := &p.appar.Identite
 	if parLaFenetre {
-		*compteurDeLaFenetre++
-		return
+		c = compteurDeLaFenetre
 	}
-	p.appar.Identite++
+	*c++
+	return c
+}
+
+// noterLigne : [pass.noterAppariement] pour une ligne de `byTime`, dont la provenance est retenue
+// par instant — pour que [pass.retirerLigne] la retire si le temps 4 remplace la ligne.
+func (p *pass) noterLigne(instant int, parLaFenetre bool, compteurDeLaFenetre *int) {
+	if p.provenance == nil {
+		p.provenance = map[int]*int{}
+	}
+	p.provenance[instant] = p.noterAppariement(parLaFenetre, compteurDeLaFenetre)
+}
+
+// retirerLigne : la ligne de l instant est remplacee, sa provenance sort du compte avec elle.
+func (p *pass) retirerLigne(instant int) {
+	if c := p.provenance[instant]; c != nil {
+		*c--
+		delete(p.provenance, instant)
+	}
 }
 
 // runSelfSource : temps 3 — les morts dont la SOURCE APPARTIENT A LA VICTIME.
@@ -214,7 +235,7 @@ func (p *pass) runSelfSource() {
 			continue
 		}
 		st.Published++
-		p.noterAppariement(parLaFenetre, &p.appar.Fenetre)
+		p.noterLigne(e.timeMS, parLaFenetre, &p.appar.Fenetre)
 		// Le feed credite un AUTRE joueur : on publie SON credit tel quel, et on leve le
 		// drapeau de divergence. Masquer l un ou l autre detruirait l information.
 		p.byTime[e.timeMS] = p.ctx.buildKill(killDraft{timeMS: e.timeMS, victim: e.victim,
@@ -248,13 +269,14 @@ func (p *pass) runBots() {
 		}
 		if remplace {
 			p.autoSurFabriqueRemplacees++
+			p.retirerLigne(m.event.timeMS) // une ligne publiee, une provenance
 		}
 		p.botUsed[k] = true
 		if m.fab {
 			p.fantomes[m.event.timeMS] = true // le couple recolle etait une mort de bot : fantome
 		}
 		p.botStats.Published++
-		p.noterAppariement(m.parLaFenetre, &p.appar.BotFenetre)
+		p.noterLigne(m.event.timeMS, m.parLaFenetre, &p.appar.BotFenetre)
 		// `inFeed = false` : le kill est au feed, la MORT n y est pas. La victime vient du
 		// roster de replication, pas du kill-feed — et le consommateur doit pouvoir le savoir.
 		p.byTime[m.event.timeMS] = p.ctx.buildKill(killDraft{timeMS: m.event.timeMS,
@@ -296,7 +318,7 @@ func (p *pass) runBotKillers() {
 		}
 		p.botUsed[k] = true
 		p.botKillerStats.Published++
-		p.noterAppariement(m.parLaFenetre, &p.appar.BotFenetre)
+		p.noterLigne(m.event.timeMS, m.parLaFenetre, &p.appar.BotFenetre)
 		p.byTime[m.event.timeMS] = p.ctx.buildKill(killDraft{timeMS: m.event.timeMS,
 			victim: m.event.victim, killer: tueur,
 			inFeed: true, origin: OriginBotKiller}, m.cand)

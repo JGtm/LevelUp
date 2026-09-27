@@ -436,7 +436,13 @@ package killsource
 //	             SAUF une ligne du temps 3 posee sur un couple RECOLLE : elle ne confirme pas le
 //	             tueur du couple, et cede a la mort de bot verifiee au meme instant (revue adverse,
 //	             `Stats.AutoInfligeesSurCoupleFabriqueRemplacees`). Un couple recolle n est fantome
-//	             que si sa mort de bot est PUBLIEE, ce qui tient `Covered <= RealPairs`.
+//	             que si sa mort de bot est PUBLIEE, ce qui tient `Covered <= RealPairs`. Revue ronde
+//	             2 : « au meme instant » est a la milliseconde — le dead-state de la mort de bot doit
+//	             tomber a l instant du kill-feed que la ligne porte ; une mort de bot prise par la
+//	             fenetre a un kill VOISIN n est plus publiee a une fausse date et ne prive plus ce
+//	             voisin de sa ligne. Un remplacement retire la provenance de la ligne remplacee :
+//	             `Stats.Appariement` compte une provenance PAR LIGNE PUBLIEE (plus de `Fenetre`
+//	             gonfle d une ligne disparue).
 //	FK-5 (J7.5)  le numerateur de sante ne compte que des candidats, une fois : le temps 3 laisse
 //	             les indices de bot aux temps de bot, et les inexpliques a indice de bot se
 //	             comptent sur la population (plus sur le scan entier).

@@ -18,7 +18,8 @@ package archlint
 //     remplissage, et aucun appel d une fonction de `strings` ou de `bytes` qui en recoit une. Une
 //     expression de remplissage est un litteral de chaine qui commence par `?`, le litteral rune
 //     `'?'`, ou une constante / variable (du paquet ou locale) qui vaut l un des deux — les trois
-//     formes qui contournaient la premiere version (revue adverse du lot J7).
+//     formes qui contournaient la premiere version (revue adverse du lot J7). La variable compte
+//     qu elle soit DECLAREE (`var q = "?"`) ou AFFECTEE (`q := "?"`, `q = '?'`, revue ronde 2).
 //
 // Fabriquer le nom (`fmt.Sprintf("?%d", ...)`, `return "?"`) n est pas le COMPARER : ces deux
 // sites restent, ils sont les ancres du registre des replis.
@@ -70,19 +71,7 @@ func TestKillsourceUnSeulPredicatDuNomDeRemplissage(t *testing.T) {
 // valeur est un litteral `?` sont collectees d abord, sur tout le paquet (et dans les fonctions) :
 // les comparer vaut comparer le litteral.
 func violationsDeRemplissage(fichiers map[string]*ast.File) (violations []string, predicatVu bool) {
-	alias := map[string]bool{}
-	for _, f := range fichiers {
-		ast.Inspect(f, func(n ast.Node) bool {
-			if vs, ok := n.(*ast.ValueSpec); ok {
-				for i, nom := range vs.Names {
-					if i < len(vs.Values) && litteralDeRemplissage(vs.Values[i]) {
-						alias[nom.Name] = true
-					}
-				}
-			}
-			return true
-		})
-	}
+	alias := aliasDeRemplissage(fichiers)
 	for nom, f := range fichiers {
 		for _, decl := range f.Decls {
 			fn, ok := decl.(*ast.FuncDecl)
@@ -98,6 +87,39 @@ func violationsDeRemplissage(fichiers map[string]*ast.File) (violations []string
 		}
 	}
 	return violations, predicatVu
+}
+
+// aliasDeRemplissage : les noms qui recoivent un litteral de remplissage, sur tout le paquet — par
+// une DECLARATION (`const q = "?"`, `var q = '?'`) ou par une INSTRUCTION d affectation, definition
+// courte comprise (`q := "?"`, `q = '?'`, `a, q := 1, "?1"` ; revue ronde 2 du lot J7, constat 3).
+// La collecte est par NOM, sans portee : un homonyme ailleurs dans le paquet est suspect aussi.
+func aliasDeRemplissage(fichiers map[string]*ast.File) map[string]bool {
+	alias := map[string]bool{}
+	noter := func(nom, valeur ast.Expr) {
+		if id, ok := nom.(*ast.Ident); ok && id.Name != "_" && litteralDeRemplissage(valeur) {
+			alias[id.Name] = true
+		}
+	}
+	for _, f := range fichiers {
+		ast.Inspect(f, func(n ast.Node) bool {
+			switch x := n.(type) {
+			case *ast.ValueSpec:
+				for i, nom := range x.Names {
+					if i < len(x.Values) {
+						noter(nom, x.Values[i])
+					}
+				}
+			case *ast.AssignStmt:
+				if (x.Tok == token.DEFINE || x.Tok == token.ASSIGN) && len(x.Lhs) == len(x.Rhs) {
+					for i := range x.Lhs {
+						noter(x.Lhs[i], x.Rhs[i])
+					}
+				}
+			}
+			return true
+		})
+	}
+	return alias
 }
 
 // comparaisonsAuRemplissage rend les comparaisons au nom de remplissage dans une declaration :

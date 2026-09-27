@@ -8,8 +8,9 @@ package archlint
 // / `bytes` qui cherchent le caractere `'?'`. Chaque forme est ici une source synthetique que le
 // verificateur DOIT signaler ; les deux fabrications legitimes du paquet ne le doivent pas.
 //
-// MUTATION QUI DOIT LE FAIRE ROUGIR : retirer de [expressionDeRemplissage] l un de ses trois cas
-// (litteral rune, identifiant de constante, chaine), ou limiter l appel a `strings`.
+// MUTATIONS QUI DOIVENT LE FAIRE ROUGIR : retirer de [expressionDeRemplissage] l un de ses trois cas
+// (litteral rune, identifiant de constante, chaine), limiter l appel a `strings`, ou ne plus
+// collecter les alias poses par une instruction d affectation (`q := "?"`, `q = "?"`).
 
 import (
 	"go/ast"
@@ -33,6 +34,13 @@ func TestRatchetDuRemplissageVoitLesFormesDeContournement(t *testing.T) {
 		{"bytes.IndexByte", "import \"bytes\"\nfunc f(b []byte) int { return bytes.IndexByte(b, '?') }", true},
 		{"case rune", "func f(n string) bool { switch n[0] { case '?': return true }; return false }", true},
 		{"chaine, comme avant", `func f(n string) bool { return n == "?" }`, true},
+		// Revue ronde 2 du lot J7 (constat 3) : les alias poses par une INSTRUCTION d affectation.
+		{"definition courte chaine", `func f(n string) bool { q := "?"; return n == q }`, true},
+		{"definition courte rune", `func f(n string) bool { q := '?'; return n[0] == q }`, true},
+		{"definition courte + HasPrefix", "import \"strings\"\nfunc f(n string) bool { q := \"?\"; return strings.HasPrefix(n, q) }", true},
+		{"var puis affectation", `func f(n string) bool { var q string; q = "?"; return n == q }`, true},
+		{"affectation multiple", `func f(n string) bool { a, q := 1, "?1"; _ = a; return n != q }`, true},
+		{"affectation d autre chose", `func f(n string) bool { q := "x"; return n == q }`, false},
 		{"fabrication Sprintf", "import \"fmt\"\nfunc f(i int) string { return fmt.Sprintf(\"?%d\", i) }", false},
 		{"fabrication return", `func f() string { return "?" }`, false},
 	} {

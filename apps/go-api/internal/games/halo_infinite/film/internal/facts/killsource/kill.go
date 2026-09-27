@@ -453,7 +453,11 @@ type Stats struct {
 	// meme instant, LU au kill-event 85, ou RECOLLE sur le voisin (le repli). Lot 1.9.3.
 	Couples types.CoupleStats
 	// Appariement : D OU VIENT L APPARIEMENT dead-state <-> kill-feed de chaque ligne publiee —
-	// l identite de paquet, ou la fenetre de 2,5 s (le repli). Lot 1.9.7.
+	// l identite de paquet, ou la fenetre de 2,5 s (le repli). Lot 1.9.7. UNE PROVENANCE PAR LIGNE
+	// PUBLIEE, comptee sur ce qui reste publie : quand le temps 4 remplace une ligne du temps 3
+	// (`AutoInfligeesSurCoupleFabriqueRemplacees`), la provenance de la ligne remplacee est retiree
+	// avant que celle de la mort de bot soit comptee (revue ronde 2 du lot J7) — sans quoi
+	// `Fenetre`, critere de retrait d un repli, compterait une ligne qui n existe plus.
 	Appariement types.ApparStats
 	// NomsDeRemplissageRefuses : lignes des temps 4 et 5 NON publiees parce que le nom pris au
 	// roster est un nom de remplissage (lot J7.1, [pass.nomPubliable]). Zero attendu : les deux
@@ -464,9 +468,10 @@ type Stats struct {
 	// reecrit jamais ; l ecart se compte ici.
 	CollisionsDeMortDeBot int
 	// AutoInfligeesSurCoupleFabriqueRemplacees : lignes du temps 3 posees sur un couple RECOLLE,
-	// remplacees par la mort de bot que le temps 4 verifie au meme instant (revue du lot J7, cf.
-	// `autoSurCoupleFabrique`). `SelfWalk` / `SelfScan.Published` les comptent encore : c est ce
-	// que le temps 3 a publie, pas ce qui reste.
+	// remplacees par la mort de bot que le temps 4 verifie au meme instant — son dead-state a la
+	// milliseconde de la ligne (revue du lot J7, rondes 1 et 2, cf. `autoSurCoupleFabrique`).
+	// `SelfWalk` / `SelfScan.Published` les comptent encore : c est ce que le temps 3 a publie, pas
+	// ce qui reste ; `Appariement` non.
 	AutoInfligeesSurCoupleFabriqueRemplacees int
 }
 

@@ -14,14 +14,23 @@ package killsource
 //
 //	le couple de l instant est FABRIQUE par le recollage (`m.fab`), ET
 //	la ligne publiee vient du temps 3 (`OriginSelfSource`) — appariee sur la VICTIME SEULE, son
-//	dead-state designe la victime elle-meme : rien dans le film ne confirme le TUEUR du couple.
+//	dead-state designe la victime elle-meme : rien dans le film ne confirme le TUEUR du couple, ET
+//	le dead-state de la mort de bot est CONSTATE A CET INSTANT : `m.cand.ms == prev.TimeMS`, a la
+//	milliseconde, l instant du kill-feed que la ligne porte (revue ronde 2 du lot J7).
+//
+// LA BORNE D INSTANT N EST PAS UNE PRECAUTION. Un couple recolle n a pas d identite de paquet : son
+// appariement passe par la fenetre de 2,5 s et prend le PREMIER candidat, qui peut etre la mort de
+// bot d un kill VOISIN. Sans elle, cette mort de bot etait publiee a une fausse date (l instant du
+// couple) et le kill voisin, qui la porte vraiment, perdait sa ligne (candidat deja servi). Hors de
+// la borne, la ligne du temps 3 reste, la mort de bot est une collision comptee, et son candidat
+// reste libre pour l instant qui la porte.
 //
 // Une ligne du temps 1 ou 2 sur ce meme couple fabrique, elle, a ete appariee sur le couple ENTIER
 // par un dead-state (le film confirme « K tue V ») : elle reste, et la mort de bot est une collision
 // comptee. Quand le temps 4 remplace, le couple devient fantome (`pass.fantomes`) : il sort du
 // denominateur avec la ligne qui en sort du numerateur, `Covered <= RealPairs` tient.
 func autoSurCoupleFabrique(m botMatch, prev Kill) bool {
-	return m.fab && prev.Read.Origin == OriginSelfSource
+	return m.fab && prev.Read.Origin == OriginSelfSource && m.cand.ms == prev.TimeMS
 }
 
 // nomPubliable rend le nom que le roster donne a l indice `i`, et faux quand ce nom ne designe
