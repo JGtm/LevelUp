@@ -678,7 +678,7 @@ func mountAPIV1(r chi.Router, d apiV1Deps) *handlers.XboxOAuthHandler {
 		r.Use(ownershipMW)
 		// Le suivi live suit le profil : pause/purge retirent le couple du watcher,
 		// réactivation le remet (revue adversariale du 2026-09-16, P1).
-		handlers.NewTitleSyncHandler(profileService).
+		handlers.NewTitleSyncHandler(profileService, cfg.DemoMode).
 			WithWatcher(func() handlers.TitleWatcher {
 				// DaemonController ne porte pas RemovePlayerTitle : même assertion
 				// que buildPlayerDirectory pour WatchedReader. nil si pas de daemon.

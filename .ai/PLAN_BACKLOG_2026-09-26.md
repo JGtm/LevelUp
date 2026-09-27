@@ -1227,7 +1227,7 @@ plus B5.8.
 
 Périmètre FERMÉ : un item par constat retenu, chacun avec un test de non-régression rouge avant.
 
-- [ ] **B-C1 (C1 + C2)** : en mode démo, `POST /setup/players`, `DELETE /profiles/{p}/titles/{t}/data`
+- [x] **B-C1 (C1 + C2)** (`handlers/demo_guard.go` `refuseInDemo`, 4 appelants : `setup.go` handleCreatePlayer, `title_sync.go` Purge — `NewTitleSyncHandler(profiles, demoMode)`, câblé `server_apiv1.go` `cfg.DemoMode` —, `watcher_handler.go` handlePatchSubscriptions, `settings_backup.go` migré ; `demo_mutations_refused_test.go` rouge puis vert ; garde-rail `archlint/no_demo_forbidden_literal_test.go`, 4e copie, règle n°6, prouvé par mutation ; OpenAPI : réponse `default` ApiError, aucune déclaration, comme B5.6) : en mode démo, `POST /setup/players`, `DELETE /profiles/{p}/titles/{t}/data`
   et `PATCH /watcher/subscriptions` répondent 403 `demo_mode_forbidden`, sur le modèle de
   `settings_backup.go` (B5.6). Tests handler : 403 en démo, comportement inchangé hors démo.
   Contrat OpenAPI tenu comme pour B5.6.

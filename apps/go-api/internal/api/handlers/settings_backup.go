@@ -25,9 +25,8 @@ func (h *SettingsHandler) handleGetBackupStatus(ctx context.Context, _ *struct{}
 // démo, donc n'importe quel visiteur atteint cette route, et le scheduler est construit sur
 // le PathResolver du dépôt — une démo lancée sur un poste de dev sauvegardait les bases réelles.
 func (h *SettingsHandler) handlePostBackupRun(ctx context.Context, _ *struct{}) (*settingsJSONOutput, error) {
-	if h.cfg != nil && h.cfg.DemoMode {
-		return nil, humacore.NewError(http.StatusForbidden, "demo_mode_forbidden",
-			"backup is disabled in demo mode")
+	if err := refuseInDemo(h.cfg != nil && h.cfg.DemoMode, "backup"); err != nil {
+		return nil, err
 	}
 	if h.backupSched == nil {
 		return nil, humacore.NewError(http.StatusServiceUnavailable, "backup_scheduler_unavailable", "backup scheduler non initialisé")
