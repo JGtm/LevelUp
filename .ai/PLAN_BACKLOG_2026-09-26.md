@@ -1185,7 +1185,7 @@ plus B5.8.
 
 ### B-R — Revue adversariale des lots B
 
-- [ ] Skill `adversarial-review` sur les commits de B1 à B5 (plage `<fusion 1>..<fin de B5>` de
+- [x] Skill `adversarial-review` sur les commits de B1 à B5 (plage `<fusion 1>..<fin de B5>` de
   `feat/backlog-2026-09-26`), contexte frais (opus-high), seul agent actif.
   - **Précision (superviseur, 2026-09-27)** : faute de fusion 1, la plage relue est le diff Go
     `d61443ef5..3de419efe -- apps/go-api docs/CONFIGURATION.md docs/FR/CONFIGURATION.md
@@ -1220,7 +1220,7 @@ plus B5.8.
     répondent 403 `demo_mode_forbidden`, sur le modèle de B5.6 (sauvegarde). L'ouverture
     générale des actions admin en démo (DB-28) reste une entrée de backlog : c'est une décision
     de contrat d'API, hors de ce lot.
-- [ ] Constats P0 et P1 : lot de corrections par un exécutant opus-high, sur la même branche,
+- [x] Constats P0 et P1 : lot de corrections par un exécutant opus-high, sur la même branche,
   gates du lot concerné rejoués. Constats P2 : découvertes, versés au backlog.
   - Le lot de corrections (B-C) attend le relecteur 2, pour traiter les constats des deux
     relectures d'un seul coup. La ronde 2 relira ensuite les seules corrections (§8 du skill).
@@ -1279,6 +1279,20 @@ Périmètre FERMÉ : un item par constat retenu, chacun avec un test de non-rég
 
 **Gate** : GO-F (paquets touchés, puis suites complètes), lint, et la baseline de tests si un test
 est supprimé.
+
+**Superviseur, vérification de B-C** (2026-09-27) : `EXIT_BUILD=0`, `EXIT_VET=0`, et
+`EXIT_TEST_DEMO=0` sous `LEVELUP_DEMO_MODE=true` (config, `cmd/server`, handlers, assets).
+
+**Ronde 2 de la revue** : un relecteur neuf sur les SEULES corrections, commits `4861dbdd5` à
+`94363c225`.
+- **0 P0, 0 P1, 2 P2** ; 18 conditions vérifiées qui tiennent.
+- Le nombre de P0+P1 passe de 2 (ronde 1 : C1 et R2-1) à 0. La décroissance est stricte : la
+  revue est CLOSE.
+- P2 consignés, non corrigés dans ce diff (§7 du skill) :
+  - le paramètre `title_slug` de `GET /squads` n'a plus d'effet ; le retirer change le contrat
+    OpenAPI ;
+  - `api/wire/prestige_lazy_service.go` est passé de 519 à 525 lignes (commentaire).
+  Les deux sont versés au backlog (entrée [go/hygiène]).
 - [ ] **Fusion 2** : CI de branche verte au niveau job, fusion dans `feat/v75`, CI de `feat/v75`
   au niveau job. Puis **vérification sur données réelles par le superviseur**, après mise à jour
   du checkout principal :
