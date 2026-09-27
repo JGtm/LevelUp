@@ -1166,8 +1166,43 @@ plus B5.8.
 
 - [ ] Skill `adversarial-review` sur les commits de B1 à B5 (plage `<fusion 1>..<fin de B5>` de
   `feat/backlog-2026-09-26`), contexte frais (opus-high), seul agent actif.
+  - **Précision (superviseur, 2026-09-27)** : faute de fusion 1, la plage relue est le diff Go
+    `d61443ef5..3de419efe -- apps/go-api docs/CONFIGURATION.md docs/FR/CONFIGURATION.md
+    .ai/baselines`.
+  - Le skill exige deux relecteurs pour un diff qui touche `sync`, `migration` et `persist`. Ils
+    passent l'un APRÈS l'autre (un seul agent à la fois), aveugles l'un à l'autre :
+    - relecteur 1 : lentilles L1 (DuckDB / anti-ART) et L3 (anti-patterns) ;
+    - relecteur 2 : lentilles L6 (tests), L2 (multi-titre) et L4 (données).
+  - **Relecteur 1 : 6 constats recevables, tous sur B5 (démo) ; 23 conditions vérifiées qui
+    tiennent (B1-B4 : aucun constat).** Triage du superviseur :
+    - **C1, P1** : `server_apiv1.go:416`, `NewProfileService(cfg.DBProfilesPath, cfg.RepoRoot)`.
+      En démo sur un vrai checkout, `POST /setup/players` (profil azure_manual) puis
+      `DELETE /profiles/{p}/titles/{t}/data` EFFACE `<dépôt>/data/titles/<t>/players/<p>`.
+      Préexistant, mais dans l'objectif du lot → **corrigé**.
+    - **C2, P2 → corrigé** : en démo, `db_profiles.json` et `app_settings.json` visent désormais
+      la fixture, montée en écriture dans le conteneur de production. `POST /setup/players` et
+      `PATCH /watcher/subscriptions` persistent donc des écritures anonymes sur l'hôte.
+    - **C3, P2 → corrigé** : `server_player_directory.go:65`, `NewPathFS(cfg.RepoRoot)` : la
+      section Identités de la démo liste les vrais dossiers de joueurs du poste.
+    - **C4, P2 → corrigé après vérification** : `server_apiv1.go:1383`, un cache d'assets écrit
+      sous le dépôt en démo (`PersistBinary`). Vérifier aussi que le téléchargement GameCMS est
+      bien couvert par `netguard` ; si le réseau part vraiment en démo, c'est un trou de
+      l'hermétisme RÉSEAU, corrigé dans le même lot.
+    - **C5, P2 → corrigé** : `config.go` passe de 629 à 640 lignes, alors que la règle n°5 dit
+      « ne pas accroître la dette ». Les ajouts vont dans `config_demo.go`.
+    - **C6, P2 → corrigé** : le retrait convergent des index (B3.4) est silencieux, alors que le
+      contrat de `sync/schema.go:21-28` exige que « toute action réelle est journalisée ».
+    - **Code mort (non retenu par le relecteur, retenu ici, règle n°7)** :
+      `title.DemoLayout.Root()` sans appelant → supprimé.
+  - **Décision de correction** : C1 et C2 → en mode démo, les trois routes de mutation
+    (`POST /setup/players`, `DELETE /profiles/.../data`, `PATCH /watcher/subscriptions`)
+    répondent 403 `demo_mode_forbidden`, sur le modèle de B5.6 (sauvegarde). L'ouverture
+    générale des actions admin en démo (DB-28) reste une entrée de backlog : c'est une décision
+    de contrat d'API, hors de ce lot.
 - [ ] Constats P0 et P1 : lot de corrections par un exécutant opus-high, sur la même branche,
   gates du lot concerné rejoués. Constats P2 : découvertes, versés au backlog.
+  - Le lot de corrections (B-C) attend le relecteur 2, pour traiter les constats des deux
+    relectures d'un seul coup. La ronde 2 relira ensuite les seules corrections (§8 du skill).
 - [ ] **Fusion 2** : CI de branche verte au niveau job, fusion dans `feat/v75`, CI de `feat/v75`
   au niveau job. Puis **vérification sur données réelles par le superviseur**, après mise à jour
   du checkout principal :
